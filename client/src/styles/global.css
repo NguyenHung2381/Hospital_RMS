@@ -1,0 +1,237 @@
+/* =============================================
+   GLOBALS.CSS - CSS nền tảng toàn cục
+   Bệnh viện Hữu Nghị Đa Khoa Nghệ An
+   Hệ thống Quản lý Nghiên cứu Khoa học
+============================================= */
+
+@import './variables.css';
+@import './mixins.css';
+
+/* === FONT IMPORT === */
+@import url('https://fonts.googleapis.com/css2?family=Mulish:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,400&family=Be+Vietnam+Pro:wght@300;400;500;600;700;800&display=swap');
+
+/* === RESET & BASE === */
+*,
+*::before,
+*::after {
+	box-sizing: border-box;
+	margin: 0;
+	padding: 0;
+}
+
+html {
+	font-size: 16px;
+	scroll-behavior: smooth;
+	-webkit-text-size-adjust: 100%;
+	text-size-adjust: 100%;
+}
+
+body {
+	font-family: var(--font-body);
+	font-size: var(--font-size-base);
+	font-weight: var(--font-weight-normal);
+	line-height: var(--line-height-base);
+	color: var(--color-gray-800);
+	background-color: var(--color-gray-50);
+	-webkit-font-smoothing: antialiased;
+	-moz-osx-font-smoothing: grayscale;
+	text-rendering: optimizeLegibility;
+	min-height: 100vh;
+}
+
+/* === TYPOGRAPHY === */
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+	font-family: var(--font-heading);
+	font-weight: var(--font-weight-bold);
+	line-height: var(--line-height-tight);
+	color: var(--color-gray-800);
+}
+
+h1 {
+	font-size: var(--font-size-4xl);
+}
+h2 {
+	font-size: var(--font-size-3xl);
+}
+h3 {
+	font-size: var(--font-size-2xl);
+}
+h4 {
+	font-size: var(--font-size-xl);
+}
+h5 {
+	font-size: var(--font-size-lg);
+}
+h6 {
+	font-size: var(--font-size-base);
+}
+
+p {
+	line-height: var(--line-height-base);
+	color: var(--color-gray-600);
+}
+
+a {
+	color: var(--color-primary);
+	text-decoration: none;
+	transition: color var(--transition-fast);
+}
+
+a:hover {
+	color: var(--color-primary-dark);
+}
+
+strong,
+b {
+	font-weight: var(--font-weight-bold);
+}
+
+em,
+i {
+	font-style: italic;
+}
+
+small {
+	font-size: var(--font-size-sm);
+}
+
+/* === FORM ELEMENTS === */
+input,
+textarea,
+select,
+button {
+	font-family: inherit;
+	font-size: inherit;
+}
+
+button {
+	cursor: pointer;
+	border: none;
+	background: none;
+}
+
+input[type='text'],
+input[type='email'],
+input[type='password'],
+input[type='number'],
+input[type='search'],
+input[type='tel'],
+textarea,
+select {
+	appearance: none;
+	-webkit-appearance: none;
+}
+
+label {
+	display: inline-block;
+	cursor: pointer;
+}
+
+/* === IMAGES === */
+img,
+video {
+	max-width: 100%;
+	height: auto;
+	display: block;
+}
+
+/* === SCROLLBAR (Webkit) === */
+::-webkit-scrollbar {
+	width: 6px;
+	height: 6px;
+}
+
+::-webkit-scrollbar-track {
+	background: var(--color-gray-100);
+	border-radius: var(--radius-full);
+}
+
+::-webkit-scrollbar-thumb {
+	background: var(--color-gray-300);
+	border-radius: var(--radius-full);
+}
+
+::-webkit-scrollbar-thumb:hover {
+	background: var(--color-primary-light);
+}
+
+/* === SELECTION === */
+::selection {
+	background: rgba(46, 184, 122, 0.2);
+	color: var(--color-primary-dark);
+}
+
+/* === FOCUS === */
+:focus-visible {
+	outline: 3px solid var(--color-primary-light);
+	outline-offset: 2px;
+	border-radius: var(--radius-sm);
+}
+
+/* === LIST === */
+ul,
+ol {
+	list-style: none;
+}
+
+/* === TABLE === */
+table {
+	border-collapse: collapse;
+	width: 100%;
+}
+
+/* === LAYOUT CONTAINERS === */
+.container {
+	width: 100%;
+	max-width: 1200px;
+	margin: 0 auto;
+	padding: 0 var(--space-6);
+}
+
+.container-sm {
+	max-width: 640px;
+	margin: 0 auto;
+	padding: 0 var(--space-4);
+}
+
+.container-md {
+	max-width: 800px;
+	margin: 0 auto;
+	padding: 0 var(--space-6);
+}
+
+/* === PAGE WRAPPER === */
+.page-wrapper {
+	min-height: 100vh;
+	display: flex;
+	flex-direction: column;
+}
+
+/* === LOADING OVERLAY === */
+.loading-overlay {
+	position: fixed;
+	inset: 0;
+	background: rgba(255, 255, 255, 0.85);
+	backdrop-filter: blur(4px);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	z-index: var(--z-overlay);
+}
+
+/* === PRINT === */
+@media print {
+	body {
+		background: white;
+		color: black;
+	}
+
+	.no-print {
+		display: none !important;
+	}
+}

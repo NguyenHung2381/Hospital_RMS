@@ -1,0 +1,483 @@
+/* =============================================
+   LOGIN MODULE CSS
+   Form đăng nhập hệ thống
+============================================= */
+
+/* === TIÊU ĐỀ TRANG === */
+.loginHeader {
+	margin-bottom: var(--space-8);
+}
+
+.loginTag {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--space-2);
+	background: var(--color-primary-pale);
+	color: var(--color-primary-dark);
+	padding: var(--space-1) var(--space-3);
+	border-radius: var(--radius-full);
+	font-size: var(--font-size-xs);
+	font-weight: var(--font-weight-bold);
+	text-transform: uppercase;
+	letter-spacing: 0.08em;
+	margin-bottom: var(--space-4);
+}
+
+.loginTag span {
+	width: 6px;
+	height: 6px;
+	border-radius: 50%;
+	background: var(--color-primary);
+	display: inline-block;
+	animation: blink 2s ease-in-out infinite;
+}
+
+@keyframes blink {
+	0%,
+	100% {
+		opacity: 1;
+	}
+	50% {
+		opacity: 0.3;
+	}
+}
+
+.loginTitle {
+	font-size: var(--font-size-3xl);
+	font-weight: var(--font-weight-extrabold);
+	color: var(--color-gray-800);
+	line-height: 1.15;
+	letter-spacing: -0.025em;
+	margin-bottom: var(--space-2);
+}
+
+.loginTitle span {
+	color: var(--color-primary);
+}
+
+.loginSubtitle {
+	font-size: var(--font-size-sm);
+	color: var(--color-gray-500);
+	line-height: var(--line-height-base);
+}
+
+/* === CARD FORM === */
+.loginCard {
+	background: var(--color-white);
+	border-radius: var(--radius-2xl);
+	padding: var(--space-8);
+	box-shadow:
+		0 2px 8px rgba(46, 184, 122, 0.06),
+		0 8px 32px rgba(0, 0, 0, 0.08);
+	border: 1px solid rgba(46, 184, 122, 0.08);
+	margin-bottom: var(--space-6);
+}
+
+/* === FORM === */
+.loginForm {
+	display: flex;
+	flex-direction: column;
+	gap: var(--space-5);
+}
+
+/* === INPUT GROUP === */
+.inputGroup {
+	display: flex;
+	flex-direction: column;
+	gap: var(--space-2);
+}
+
+.inputLabel {
+	font-size: var(--font-size-sm);
+	font-weight: var(--font-weight-semibold);
+	color: var(--color-gray-700);
+	display: flex;
+	align-items: center;
+	gap: var(--space-1);
+}
+
+.inputRequired {
+	color: var(--color-accent);
+	font-size: var(--font-size-base);
+	line-height: 1;
+}
+
+.inputWrapper {
+	position: relative;
+}
+
+.inputIcon {
+	position: absolute;
+	left: var(--space-4);
+	top: 50%;
+	transform: translateY(-50%);
+	width: 18px;
+	height: 18px;
+	color: var(--color-gray-400);
+	transition: color var(--transition-fast);
+	pointer-events: none;
+}
+
+.inputField {
+	width: 100%;
+	padding: var(--space-3) var(--space-4) var(--space-3)
+		calc(var(--space-4) + 18px + var(--space-3));
+	background: var(--color-gray-50);
+	border: 2px solid var(--color-gray-200);
+	border-radius: var(--radius-lg);
+	font-family: var(--font-body);
+	font-size: var(--font-size-base);
+	color: var(--color-gray-800);
+	transition: all var(--transition-base);
+	box-sizing: border-box;
+}
+
+.inputField::placeholder {
+	color: var(--color-gray-400);
+	font-weight: var(--font-weight-normal);
+}
+
+.inputField:hover {
+	border-color: var(--color-gray-300);
+	background: var(--color-white);
+}
+
+.inputField:focus {
+	outline: none;
+	border-color: var(--color-primary);
+	background: var(--color-white);
+	box-shadow: 0 0 0 4px rgba(46, 184, 122, 0.12);
+}
+
+.inputWrapper:focus-within .inputIcon {
+	color: var(--color-primary);
+}
+
+.inputField.hasError {
+	border-color: var(--color-error);
+	background: rgba(232, 69, 69, 0.03);
+}
+
+.inputField.hasError:focus {
+	box-shadow: 0 0 0 4px rgba(232, 69, 69, 0.1);
+}
+
+/* Ẩn icon mắt mặc định của trình duyệt (Edge/Chrome) */
+.inputField[type='password']::-ms-reveal,
+.inputField[type='password']::-ms-clear {
+	display: none;
+}
+
+.inputField[type='password']::-webkit-credentials-auto-fill-button,
+.inputField[type='password']::-webkit-strong-password-auto-fill-button {
+	display: none !important;
+	visibility: hidden;
+}
+
+/* === PASSWORD TOGGLE === */
+.passwordToggle {
+	position: absolute;
+	right: var(--space-3);
+	top: 50%;
+	transform: translateY(-50%);
+	background: none;
+	border: none;
+	cursor: pointer;
+	padding: var(--space-1);
+	color: var(--color-gray-400);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	border-radius: var(--radius-sm);
+	transition: color var(--transition-fast);
+}
+
+.passwordToggle:hover {
+	color: var(--color-primary);
+}
+
+/* === ERROR MESSAGE === */
+.inputError {
+	font-size: var(--font-size-xs);
+	color: var(--color-error);
+	display: flex;
+	align-items: center;
+	gap: var(--space-1);
+	margin-top: var(--space-1);
+	animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+	from {
+		opacity: 0;
+		transform: translateY(-4px);
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0);
+	}
+}
+
+/* === OPTIONS ROW === */
+.optionsRow {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--space-4);
+}
+
+/* === CHECKBOX === */
+.checkboxLabel {
+	display: flex;
+	align-items: center;
+	gap: var(--space-2);
+	cursor: pointer;
+	user-select: none;
+}
+
+.checkboxInput {
+	appearance: none;
+	-webkit-appearance: none;
+	width: 18px;
+	height: 18px;
+	border: 2px solid var(--color-gray-300);
+	border-radius: var(--radius-sm);
+	background: var(--color-white);
+	cursor: pointer;
+	transition: all var(--transition-fast);
+	flex-shrink: 0;
+	position: relative;
+}
+
+.checkboxInput:checked {
+	background: var(--color-primary);
+	border-color: var(--color-primary);
+}
+
+.checkboxInput:checked::after {
+	content: '';
+	position: absolute;
+	left: 4px;
+	top: 1px;
+	width: 6px;
+	height: 10px;
+	border: 2px solid white;
+	border-top: none;
+	border-left: none;
+	transform: rotate(45deg);
+}
+
+.checkboxInput:focus-visible {
+	outline: 3px solid rgba(46, 184, 122, 0.3);
+	outline-offset: 2px;
+}
+
+.checkboxText {
+	font-size: var(--font-size-sm);
+	color: var(--color-gray-600);
+	font-weight: var(--font-weight-medium);
+}
+
+/* === FORGOT LINK === */
+.forgotLink {
+	font-size: var(--font-size-sm);
+	font-weight: var(--font-weight-semibold);
+	color: var(--color-primary);
+	text-decoration: none;
+	transition: color var(--transition-fast);
+	white-space: nowrap;
+}
+
+.forgotLink:hover {
+	color: var(--color-primary-dark);
+	text-decoration: underline;
+}
+
+/* === ALERT === */
+.alertBox {
+	display: flex;
+	align-items: flex-start;
+	gap: var(--space-3);
+	padding: var(--space-3) var(--space-4);
+	border-radius: var(--radius-lg);
+	font-size: var(--font-size-sm);
+	line-height: var(--line-height-base);
+	border-left: 4px solid transparent;
+	animation: fadeIn 0.3s ease;
+}
+
+.alertError {
+	background: rgba(232, 69, 69, 0.07);
+	border-left-color: var(--color-error);
+	color: #b91c1c;
+}
+
+.alertSuccess {
+	background: var(--color-primary-pale);
+	border-left-color: var(--color-primary);
+	color: var(--color-primary-dark);
+}
+
+/* === SUBMIT BUTTON === */
+.submitBtn {
+	width: 100%;
+	padding: var(--space-4) var(--space-6);
+	background: linear-gradient(
+		135deg,
+		var(--color-primary) 0%,
+		var(--color-primary-dark) 100%
+	);
+	color: var(--color-white);
+	border: none;
+	border-radius: var(--radius-xl);
+	font-family: var(--font-heading);
+	font-size: var(--font-size-base);
+	font-weight: var(--font-weight-bold);
+	letter-spacing: 0.02em;
+	cursor: pointer;
+	transition: all var(--transition-base);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: var(--space-2);
+	box-shadow: 0 4px 16px rgba(46, 184, 122, 0.35);
+	margin-top: var(--space-2);
+	position: relative;
+	overflow: hidden;
+}
+
+.submitBtn::before {
+	content: '';
+	position: absolute;
+	inset: 0;
+	background: linear-gradient(
+		135deg,
+		rgba(255, 255, 255, 0.1) 0%,
+		transparent 60%
+	);
+	opacity: 0;
+	transition: opacity var(--transition-fast);
+}
+
+.submitBtn:hover {
+	box-shadow: 0 8px 28px rgba(46, 184, 122, 0.45);
+	transform: translateY(-2px);
+}
+
+.submitBtn:hover::before {
+	opacity: 1;
+}
+
+.submitBtn:active {
+	transform: translateY(0);
+	box-shadow: 0 2px 10px rgba(46, 184, 122, 0.3);
+}
+
+.submitBtn:disabled {
+	opacity: 0.7;
+	cursor: not-allowed;
+	transform: none;
+	box-shadow: none;
+}
+
+/* Spinner trong nút */
+.btnSpinner {
+	width: 20px;
+	height: 20px;
+	border: 2px solid rgba(255, 255, 255, 0.4);
+	border-top-color: white;
+	border-radius: 50%;
+	animation: spin 0.65s linear infinite;
+	flex-shrink: 0;
+}
+
+@keyframes spin {
+	to {
+		transform: rotate(360deg);
+	}
+}
+
+/* === DIVIDER === */
+.divider {
+	display: flex;
+	align-items: center;
+	gap: var(--space-4);
+	margin: var(--space-4) 0;
+}
+
+.dividerLine {
+	flex: 1;
+	height: 1px;
+	background: var(--color-gray-200);
+}
+
+.dividerText {
+	font-size: var(--font-size-xs);
+	color: var(--color-gray-400);
+	white-space: nowrap;
+	font-weight: var(--font-weight-medium);
+}
+
+/* === SUPPORT INFO === */
+.supportBox {
+	background: var(--color-primary-pale);
+	border: 1px solid rgba(46, 184, 122, 0.2);
+	border-radius: var(--radius-lg);
+	padding: var(--space-4) var(--space-5);
+	display: flex;
+	align-items: flex-start;
+	gap: var(--space-3);
+}
+
+.supportIcon {
+	width: 36px;
+	height: 36px;
+	border-radius: var(--radius-lg);
+	background: var(--color-primary-pale);
+	border: 1.5px solid rgba(46, 184, 122, 0.3);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	flex-shrink: 0;
+	color: var(--color-primary-dark);
+}
+
+.supportTitle {
+	font-size: var(--font-size-sm);
+	font-weight: var(--font-weight-bold);
+	color: var(--color-gray-700);
+	margin-bottom: var(--space-1);
+}
+
+.supportText {
+	font-size: var(--font-size-xs);
+	color: var(--color-gray-500);
+	line-height: var(--line-height-base);
+}
+
+.supportText a {
+	color: var(--color-primary);
+	font-weight: var(--font-weight-semibold);
+}
+
+/* === SECURITY BADGES === */
+.securityBadges {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: var(--space-4);
+	flex-wrap: wrap;
+}
+
+.secBadge {
+	display: flex;
+	align-items: center;
+	gap: var(--space-1);
+	font-size: var(--font-size-xs);
+	color: var(--color-gray-400);
+	font-weight: var(--font-weight-medium);
+}
+
+.secBadge svg {
+	color: var(--color-primary);
+}
