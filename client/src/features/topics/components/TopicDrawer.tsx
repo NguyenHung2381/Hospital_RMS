@@ -111,7 +111,28 @@ export function TopicDrawer({
 			const result = await grantTopicMemberAccounts(topic.id);
 			const refreshed = await getTopicMembers(topic.id);
 			setMembers(refreshed);
-			if (result.length > 0) setGrantedAccounts(result);
+			if (result.credentials.length > 0) setGrantedAccounts(result.credentials);
+		} catch (err) {
+			setGrantError(err instanceof Error ? err.message : 'Lỗi cấp tài khoản');
+		} finally {
+			setGrantingIds(new Set());
+		}
+	};
+
+	const handleGrantSingleMember = async (memberId: string) => {
+		if (topic.status !== 'approved') {
+			setGrantError(
+				'Đề tài chưa được duyệt nên chưa thể cấp tài khoản thành viên.',
+			);
+			return;
+		}
+		setGrantingIds(new Set([memberId]));
+		setGrantError('');
+		try {
+			const result = await grantTopicMemberAccounts(topic.id, [memberId]);
+			const refreshed = await getTopicMembers(topic.id);
+			setMembers(refreshed);
+			if (result.credentials.length > 0) setGrantedAccounts(result.credentials);
 		} catch (err) {
 			setGrantError(err instanceof Error ? err.message : 'Lỗi cấp tài khoản');
 		} finally {
@@ -898,7 +919,7 @@ export function TopicDrawer({
 															)}
 															<button
 																className={styles.grantBtn}
-																onClick={() => handleGrantAccountsNoEmail()}
+																onClick={() => handleGrantSingleMember(m.id)}
 																disabled={
 																	isGranting ||
 																	grantingIds.size > 0 ||

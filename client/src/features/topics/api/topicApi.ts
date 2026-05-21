@@ -108,10 +108,15 @@ export interface GrantedAccount {
 	password_plain: string;
 }
 
-export const grantTopicMemberAccounts = (topicId: string) =>
-	apiClient.post<GrantedAccount[]>(
+export interface GrantAccountsResult {
+	credentials: GrantedAccount[];
+	skipped: { member_id: string; ho_ten: string; reason: string }[];
+}
+
+export const grantTopicMemberAccounts = (topicId: string, memberIds?: string[]) =>
+	apiClient.post<GrantAccountsResult>(
 		`/topics/${topicId}/members/grant-accounts`,
-		{},
+		memberIds ? { member_ids: memberIds } : {},
 	);
 
 interface FileListResponse {

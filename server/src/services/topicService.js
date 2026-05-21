@@ -534,10 +534,14 @@ const grantAccountsNoEmail = async (topicId, memberIds, actorId) => {
 			  AND tm.account_granted = 0
 		`);
 
-		const skipped = membersResult.recordset.filter(
+		const filterIds = Array.isArray(memberIds) && memberIds.length > 0 ? new Set(memberIds) : null;
+		const allRows = membersResult.recordset;
+		const filteredRows = filterIds ? allRows.filter((row) => filterIds.has(row.id)) : allRows;
+
+		const skipped = filteredRows.filter(
 			(row) => !row.staff_number,
 		);
-		const membersToProcess = membersResult.recordset.filter(
+		const membersToProcess = filteredRows.filter(
 			(row) => !!row.staff_number,
 		);
 

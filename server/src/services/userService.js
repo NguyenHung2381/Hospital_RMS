@@ -113,7 +113,12 @@ const remove = async (id, actorId) => {
 	await pool.request()
 		.input('id', sql.VarChar(20), id)
 		.input('actor_id', sql.VarChar(20), actorId)
-		.query(`EXEC sp_set_actor @actor_id; DELETE FROM users WHERE id = @id`);
+		.query(`
+			EXEC sp_set_actor @actor_id;
+			UPDATE topic_members SET user_id = NULL, account_granted = 0, account_granted_at = NULL WHERE user_id = @id;
+			UPDATE round_deadlines SET created_by = @actor_id WHERE created_by = @id;
+			DELETE FROM users WHERE id = @id;
+		`);
 	broadcast('update', { entity: 'user' });
 };
 
