@@ -65,10 +65,10 @@ router.get('/db', async (req, res) => {
 		} catch {
 			// Fallback: tạo connection tạm từ biến môi trường
 			pool = await sql.connect({
-				server:   process.env.DB_SERVER,
-				database: process.env.DB_DATABASE,   // fix: DB_NAME → DB_DATABASE
-				user:     process.env.DB_USER,
-				password: process.env.DB_PASSWORD,
+				server:   process.env.DB_SERVER   || 'localhost',
+				database: process.env.DB_DATABASE || 'RMS_HOSPITAL',
+				user:     process.env.DB_USER     || 'sa',
+				password: process.env.DB_PASSWORD || '',
 				port:     parseInt(process.env.DB_PORT) || 1433,
 				connectionTimeout: 10000,
 				requestTimeout:    10000,

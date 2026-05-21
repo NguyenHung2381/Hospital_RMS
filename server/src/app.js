@@ -4,10 +4,10 @@ const dotenv = require('dotenv');
 // Nạp biến môi trường dựa trên NODE_ENV
 const envFile =
 	process.env.NODE_ENV === 'production' ? '.env.production' : '.env';
-dotenv.config({ path: path.resolve(process.cwd(), envFile) });
+dotenv.config({ path: path.resolve(__dirname, envFile) });
 // Fallback nạp thêm file .env mặc định nếu có những biến dùng chung chưa được định nghĩa trong file môi trường cụ thể
 if (process.env.NODE_ENV === 'production') {
-	dotenv.config({ path: path.resolve(process.cwd(), '.env') });
+	dotenv.config({ path: path.resolve(__dirname, '.env') });
 }
 const express = require('express');
 const cors = require('cors');

@@ -371,7 +371,7 @@ export default function TopicPage() {
 	return (
 		<AdminLayout
 			pageTitle='Quản lý Đề tài Nghiên cứu'
-			pageSubtitle='Danh sách và theo dõi tất cả đề tài NCKH — bảng topics'
+			pageSubtitle='Danh sách và theo dõi tất cả đề tài NCKH'
 			headerActions={headerActions}
 		>
 			{/* ── STATS ── */}

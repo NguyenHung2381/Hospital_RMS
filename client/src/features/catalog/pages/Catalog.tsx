@@ -47,19 +47,49 @@ const catalogApi = {
 // ─── ICONS ────────────────────────────────
 const Ic = {
 	Plus: () => (
-		<svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2.5' strokeLinecap='round'>
-			<line x1='12' y1='5' x2='12' y2='19' />
-			<line x1='5' y1='12' x2='19' y2='12' />
+		<svg
+			viewBox='0 0 24 24'
+			fill='none'
+			stroke='currentColor'
+			strokeWidth='2.5'
+			strokeLinecap='round'
+		>
+			<line
+				x1='12'
+				y1='5'
+				x2='12'
+				y2='19'
+			/>
+			<line
+				x1='5'
+				y1='12'
+				x2='19'
+				y2='12'
+			/>
 		</svg>
 	),
 	Edit: () => (
-		<svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'>
+		<svg
+			viewBox='0 0 24 24'
+			fill='none'
+			stroke='currentColor'
+			strokeWidth='2'
+			strokeLinecap='round'
+			strokeLinejoin='round'
+		>
 			<path d='M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7' />
 			<path d='M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z' />
 		</svg>
 	),
 	Trash: () => (
-		<svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'>
+		<svg
+			viewBox='0 0 24 24'
+			fill='none'
+			stroke='currentColor'
+			strokeWidth='2'
+			strokeLinecap='round'
+			strokeLinejoin='round'
+		>
 			<polyline points='3 6 5 6 21 6' />
 			<path d='M19 6l-1 14H6L5 6' />
 			<path d='M10 11v6' />
@@ -68,40 +98,112 @@ const Ic = {
 		</svg>
 	),
 	Search: () => (
-		<svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'>
-			<circle cx='11' cy='11' r='8' />
-			<line x1='21' y1='21' x2='16.65' y2='16.65' />
+		<svg
+			viewBox='0 0 24 24'
+			fill='none'
+			stroke='currentColor'
+			strokeWidth='2'
+			strokeLinecap='round'
+			strokeLinejoin='round'
+		>
+			<circle
+				cx='11'
+				cy='11'
+				r='8'
+			/>
+			<line
+				x1='21'
+				y1='21'
+				x2='16.65'
+				y2='16.65'
+			/>
 		</svg>
 	),
 	X: () => (
-		<svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2.5' strokeLinecap='round'>
-			<line x1='18' y1='6' x2='6' y2='18' />
-			<line x1='6' y1='6' x2='18' y2='18' />
+		<svg
+			viewBox='0 0 24 24'
+			fill='none'
+			stroke='currentColor'
+			strokeWidth='2.5'
+			strokeLinecap='round'
+		>
+			<line
+				x1='18'
+				y1='6'
+				x2='6'
+				y2='18'
+			/>
+			<line
+				x1='6'
+				y1='6'
+				x2='18'
+				y2='18'
+			/>
 		</svg>
 	),
 	Check: () => (
-		<svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2.5' strokeLinecap='round' strokeLinejoin='round'>
+		<svg
+			viewBox='0 0 24 24'
+			fill='none'
+			stroke='currentColor'
+			strokeWidth='2.5'
+			strokeLinecap='round'
+			strokeLinejoin='round'
+		>
 			<polyline points='20 6 9 17 4 12' />
 		</svg>
 	),
 	ChevronLeft: () => (
-		<svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2.5' strokeLinecap='round' strokeLinejoin='round'>
+		<svg
+			viewBox='0 0 24 24'
+			fill='none'
+			stroke='currentColor'
+			strokeWidth='2.5'
+			strokeLinecap='round'
+			strokeLinejoin='round'
+		>
 			<polyline points='15 18 9 12 15 6' />
 		</svg>
 	),
 	ChevronRight: () => (
-		<svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2.5' strokeLinecap='round' strokeLinejoin='round'>
+		<svg
+			viewBox='0 0 24 24'
+			fill='none'
+			stroke='currentColor'
+			strokeWidth='2.5'
+			strokeLinecap='round'
+			strokeLinejoin='round'
+		>
 			<polyline points='9 18 15 12 9 6' />
 		</svg>
 	),
 	Tag: () => (
-		<svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'>
+		<svg
+			viewBox='0 0 24 24'
+			fill='none'
+			stroke='currentColor'
+			strokeWidth='2'
+			strokeLinecap='round'
+			strokeLinejoin='round'
+		>
 			<path d='M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z' />
-			<line x1='7' y1='7' x2='7.01' y2='7' />
+			<line
+				x1='7'
+				y1='7'
+				x2='7.01'
+				y2='7'
+			/>
 		</svg>
 	),
 	Layers: () => (
-		<svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'>
+		<svg
+			viewBox='0 0 24 24'
+			fill='none'
+			stroke='currentColor'
+			strokeWidth='2'
+			strokeLinecap='round'
+			strokeLinejoin='round'
+		>
 			<polygon points='12 2 2 7 12 12 22 7 12 2' />
 			<polyline points='2 17 12 22 22 17' />
 			<polyline points='2 12 12 17 22 12' />
@@ -120,7 +222,8 @@ const ITEM_COLORS = [
 ];
 function getItemColor(id: string) {
 	let hash = 0;
-	for (let i = 0; i < id.length; i++) hash = id.charCodeAt(i) + ((hash << 5) - hash);
+	for (let i = 0; i < id.length; i++)
+		hash = id.charCodeAt(i) + ((hash << 5) - hash);
 	return ITEM_COLORS[Math.abs(hash) % ITEM_COLORS.length];
 }
 function getInitials(s: string) {
@@ -130,7 +233,10 @@ function getInitials(s: string) {
 }
 
 // ─── TAB CONFIG ───────────────────────────
-const TAB_CONFIG: Record<CatalogTab, { label: string; subtitle: string; placeholder: string }> = {
+const TAB_CONFIG: Record<
+	CatalogTab,
+	{ label: string; subtitle: string; placeholder: string }
+> = {
 	categories: {
 		label: 'Phân loại',
 		subtitle: 'Danh mục phân loại đề tài nghiên cứu',
@@ -161,7 +267,9 @@ function ItemFormModal({
 }) {
 	const cfg = TAB_CONFIG[tab];
 	const [form, setForm] = useState<CatalogFormData>(
-		item ? { name: item.name, description: item.description ?? '' } : EMPTY_FORM,
+		item
+			? { name: item.name, description: item.description ?? '' }
+			: EMPTY_FORM,
 	);
 	const [errors, setErrors] = useState<Partial<CatalogFormData>>({});
 
@@ -174,7 +282,8 @@ function ItemFormModal({
 
 	const validate = () => {
 		const err: Partial<CatalogFormData> = {};
-		if (!form.name.trim()) err.name = `Vui lòng nhập tên ${cfg.label.toLowerCase()}`;
+		if (!form.name.trim())
+			err.name = `Vui lòng nhập tên ${cfg.label.toLowerCase()}`;
 		setErrors(err);
 		return Object.keys(err).length === 0;
 	};
@@ -201,7 +310,10 @@ function ItemFormModal({
 								: `Cập nhật — ${item?.name}`}
 						</div>
 					</div>
-					<button className={styles.modalClose} onClick={onClose}>
+					<button
+						className={styles.modalClose}
+						onClick={onClose}
+					>
 						<Ic.X />
 					</button>
 				</div>
@@ -289,7 +401,10 @@ function DeleteModal({
 						</div>
 						<div className={styles.modalSub}>{item.name}</div>
 					</div>
-					<button className={styles.modalClose} onClick={onClose}>
+					<button
+						className={styles.modalClose}
+						onClick={onClose}
+					>
 						<Ic.X />
 					</button>
 				</div>
@@ -329,7 +444,9 @@ function DeleteModal({
 export default function Catalog() {
 	const location = useLocation();
 	const navigate = useNavigate();
-	const tab: CatalogTab = location.pathname.includes('levels') ? 'levels' : 'categories';
+	const tab: CatalogTab = location.pathname.includes('levels')
+		? 'levels'
+		: 'categories';
 	const [items, setItems] = useState<CatalogItem[]>([]);
 	const [isLoadingData, setIsLoadingData] = useState(true);
 	const [search, setSearch] = useState('');
@@ -426,7 +543,10 @@ export default function Catalog() {
 				setModal(null);
 				showToast('success', `Đã thêm "${created.name}"`);
 			} catch (err) {
-				showToast('error', err instanceof Error ? err.message : 'Thêm thất bại');
+				showToast(
+					'error',
+					err instanceof Error ? err.message : 'Thêm thất bại',
+				);
 			} finally {
 				setLoading(false);
 			}
@@ -468,17 +588,17 @@ export default function Catalog() {
 			setDeletingItem(null);
 			showToast('success', `Đã xoá "${deletingItem.name}"`);
 		} catch (err) {
-			showToast(
-				'error',
-				err instanceof Error ? err.message : 'Xoá thất bại',
-			);
+			showToast('error', err instanceof Error ? err.message : 'Xoá thất bại');
 		} finally {
 			setLoading(false);
 		}
 	}, [tab, deletingItem, showToast]);
 
 	const headerActions = (
-		<button className={styles.btnAddHeader} onClick={() => setModal('add')}>
+		<button
+			className={styles.btnAddHeader}
+			onClick={() => setModal('add')}
+		>
 			<Ic.Plus /> Thêm {cfg.label.toLowerCase()}
 		</button>
 	);
@@ -562,9 +682,7 @@ export default function Catalog() {
 							<tr>
 								<td colSpan={4}>
 									<div className={styles.emptyState}>
-										<div className={styles.emptyDesc}>
-											Đang tải dữ liệu...
-										</div>
+										<div className={styles.emptyDesc}>Đang tải dữ liệu...</div>
 									</div>
 								</td>
 							</tr>
@@ -589,10 +707,11 @@ export default function Catalog() {
 								const rowNum =
 									(safePage - 1) * (pageSize || filtered.length) + i + 1;
 								return (
-									<tr key={item.id} className={styles.tr}>
-										<td className={`${styles.td} ${styles.tdIdx}`}>
-											{rowNum}
-										</td>
+									<tr
+										key={item.id}
+										className={styles.tr}
+									>
+										<td className={`${styles.td} ${styles.tdIdx}`}>{rowNum}</td>
 										<td className={styles.td}>
 											<div className={styles.itemCell}>
 												<div
@@ -658,9 +777,7 @@ export default function Catalog() {
 						{Array.from({ length: totalPages }, (_, idx) => idx + 1)
 							.filter(
 								(p) =>
-									p === 1 ||
-									p === totalPages ||
-									Math.abs(p - safePage) <= 1,
+									p === 1 || p === totalPages || Math.abs(p - safePage) <= 1,
 							)
 							.reduce<(number | 'ellipsis')[]>((acc, p, idx, arr) => {
 								if (idx > 0 && p - (arr[idx - 1] as number) > 1)
@@ -670,7 +787,10 @@ export default function Catalog() {
 							}, [])
 							.map((p, idx) =>
 								p === 'ellipsis' ? (
-									<span key={`e${idx}`} className={styles.pageEllipsis}>
+									<span
+										key={`e${idx}`}
+										className={styles.pageEllipsis}
+									>
 										…
 									</span>
 								) : (

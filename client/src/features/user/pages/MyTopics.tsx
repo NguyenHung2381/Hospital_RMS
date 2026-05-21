@@ -1,12 +1,43 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import PlusSvg from '../../../assets/svg/plus.svg?react';
+import SearchSvg from '../../../assets/svg/search.svg?react';
+import UsersSvg from '../../../assets/svg/users.svg?react';
+import BuildingSvg from '../../../assets/svg/building.svg?react';
+import UserCheckSvg from '../../../assets/svg/user-check.svg?react';
+import ClockSvg from '../../../assets/svg/clock.svg?react';
+import CheckSvg from '../../../assets/svg/check.svg?react';
+import CheckCircleSvg from '../../../assets/svg/check-circle.svg?react';
+import XCircleSvg from '../../../assets/svg/x-circle.svg?react';
+import MessageSvg from '../../../assets/svg/message.svg?react';
+import DownloadSvg from '../../../assets/svg/download.svg?react';
+import EyeSvg from '../../../assets/svg/eye.svg?react';
+import FileTextSvg from '../../../assets/svg/file-text.svg?react';
+import DocSvg from '../../../assets/svg/doc.svg?react';
+import EditSvg from '../../../assets/svg/edit.svg?react';
+import UploadSvg from '../../../assets/svg/upload.svg?react';
+import TrashSvg from '../../../assets/svg/trash.svg?react';
+import XSvg from '../../../assets/svg/x.svg?react';
 import UserLayout from '../../../layouts/UserLayout';
 import { useRealtimeUpdate } from '../../../hooks/useRealtime';
 import styles from './MyTopics.module.css';
 import { getStoredUser, getToken } from '../../../lib/authStorage';
 import { BASE_URL } from '../../../lib/apiClient';
-import { getTopics, getTopicFiles } from '../../topics/api/topicApi';
-import type { Topic, TopicStatus, TopicFile } from '../../topics/types/topic.type';
+import {
+	getTopics,
+	getTopicFiles,
+	updateTopic,
+	uploadTopicFiles,
+	getCategories,
+	getLevels,
+	getDepts,
+	type SimpleItem,
+} from '../../topics/api/topicApi';
+import type {
+	Topic,
+	TopicStatus,
+	TopicFile,
+} from '../../topics/types/topic.type';
 import {
 	getApprovalTopicDetail,
 	getApprovals,
@@ -124,95 +155,24 @@ function getFileTypeMeta(file: TopicFile): { label: string; cls: string } {
 
 // ─── ICONS ────────────────────────────────
 const Ic = {
-	Plus: () => (
-		<svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'>
-			<line x1='12' y1='5' x2='12' y2='19' />
-			<line x1='5' y1='12' x2='19' y2='12' />
-		</svg>
-	),
-	Search: () => (
-		<svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'>
-			<circle cx='11' cy='11' r='8' />
-			<line x1='21' y1='21' x2='16.65' y2='16.65' />
-		</svg>
-	),
-	Users: () => (
-		<svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'>
-			<path d='M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2' />
-			<circle cx='9' cy='7' r='4' />
-			<path d='M23 21v-2a4 4 0 0 0-3-3.87' />
-			<path d='M16 3.13a4 4 0 0 1 0 7.75' />
-		</svg>
-	),
-	Building: () => (
-		<svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'>
-			<rect x='2' y='3' width='20' height='14' rx='2' ry='2' />
-			<path d='M8 21h8' />
-			<path d='M12 17v4' />
-		</svg>
-	),
-	UserCheck: () => (
-		<svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'>
-			<path d='M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2' />
-			<circle cx='9' cy='7' r='4' />
-			<polyline points='16 11 18 13 22 9' />
-		</svg>
-	),
-	Clock: () => (
-		<svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'>
-			<circle cx='12' cy='12' r='10' />
-			<polyline points='12 6 12 12 16 14' />
-		</svg>
-	),
-	Check: () => (
-		<svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2.5' strokeLinecap='round' strokeLinejoin='round'>
-			<polyline points='20 6 9 17 4 12' />
-		</svg>
-	),
-	Approve: () => (
-		<svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'>
-			<path d='M22 11.08V12a10 10 0 1 1-5.93-9.14' />
-			<polyline points='22 4 12 14.01 9 11.01' />
-		</svg>
-	),
-	Reject: () => (
-		<svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'>
-			<circle cx='12' cy='12' r='10' />
-			<line x1='4.93' y1='4.93' x2='19.07' y2='19.07' />
-		</svg>
-	),
-	Request: () => (
-		<svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'>
-			<path d='M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z' />
-		</svg>
-	),
-	Download: () => (
-		<svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'>
-			<path d='M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4' />
-			<polyline points='7 10 12 15 17 10' />
-			<line x1='12' y1='15' x2='12' y2='3' />
-		</svg>
-	),
-	Eye: () => (
-		<svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'>
-			<path d='M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z' />
-			<circle cx='12' cy='12' r='3' />
-		</svg>
-	),
-	File: () => (
-		<svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'>
-			<path d='M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z' />
-			<polyline points='14 2 14 8 20 8' />
-			<line x1='16' y1='13' x2='8' y2='13' />
-			<line x1='16' y1='17' x2='8' y2='17' />
-		</svg>
-	),
-	Empty: () => (
-		<svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='1.5' strokeLinecap='round' strokeLinejoin='round'>
-			<path d='M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z' />
-			<polyline points='14 2 14 8 20 8' />
-		</svg>
-	),
+	Plus: () => <PlusSvg />,
+	Search: () => <SearchSvg />,
+	Users: () => <UsersSvg />,
+	Building: () => <BuildingSvg />,
+	UserCheck: () => <UserCheckSvg />,
+	Clock: () => <ClockSvg />,
+	Check: () => <CheckSvg />,
+	Approve: () => <CheckCircleSvg />,
+	Reject: () => <XCircleSvg />,
+	Request: () => <MessageSvg />,
+	Download: () => <DownloadSvg />,
+	Eye: () => <EyeSvg />,
+	File: () => <FileTextSvg />,
+	Empty: () => <DocSvg />,
+	Edit: () => <EditSvg />,
+	Upload: () => <UploadSvg />,
+	Trash: () => <TrashSvg />,
+	X: () => <XSvg />,
 };
 
 // ─── BADGE ────────────────────────────────
@@ -243,7 +203,9 @@ function FileViewerModal({
 }) {
 	const containerRef = useRef<HTMLDivElement>(null);
 	const blobUrlRef = useRef<string | null>(null);
-	const [renderState, setRenderState] = useState<'loading' | 'done' | 'error'>('loading');
+	const [renderState, setRenderState] = useState<'loading' | 'done' | 'error'>(
+		'loading',
+	);
 	const [pdfBlobUrl, setPdfBlobUrl] = useState<string | null>(null);
 
 	useEffect(() => {
@@ -296,21 +258,34 @@ function FileViewerModal({
 	return (
 		<div
 			className={styles.viewerBackdrop}
-			onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+			onClick={(e) => {
+				if (e.target === e.currentTarget) onClose();
+			}}
 		>
 			<div className={styles.viewerModal}>
 				<div className={styles.viewerHeader}>
 					<span className={styles.viewerTitle}>{file.name}</span>
-					<button className={styles.viewerClose} onClick={onClose}>✕</button>
+					<button
+						className={styles.viewerClose}
+						onClick={onClose}
+					>
+						✕
+					</button>
 				</div>
 				{renderState === 'loading' && (
 					<div className={styles.viewerStatus}>
-						<span className={styles.spinner} style={{ borderTopColor: 'var(--color-primary)' }} />
+						<span
+							className={styles.spinner}
+							style={{ borderTopColor: 'var(--color-primary)' }}
+						/>
 						Đang tải tài liệu...
 					</div>
 				)}
 				{renderState === 'error' && (
-					<div className={styles.viewerStatus} style={{ color: '#b91c1c' }}>
+					<div
+						className={styles.viewerStatus}
+						style={{ color: '#b91c1c' }}
+					>
 						Không thể tải tài liệu. Hãy thử tải về.
 					</div>
 				)}
@@ -323,7 +298,11 @@ function FileViewerModal({
 					</div>
 				)}
 				{!file.isWord && renderState === 'done' && pdfBlobUrl && (
-					<embed src={pdfBlobUrl} type='application/pdf' className={styles.viewerFrame} />
+					<embed
+						src={pdfBlobUrl}
+						type='application/pdf'
+						className={styles.viewerFrame}
+					/>
 				)}
 			</div>
 		</div>
@@ -361,11 +340,42 @@ export default function MyTopics() {
 	const [activeTab, setActiveTab] = useState<FilterTab>('submitted');
 	const [userSelectedId, setSelectedId] = useState<string | null>(null);
 	const [detailLoading, setDetailLoading] = useState(false);
-	const [detailTopic, setDetailTopic] = useState<TopicApprovalDetail | null>(null);
+	const [detailTopic, setDetailTopic] = useState<TopicApprovalDetail | null>(
+		null,
+	);
 	const [detailFiles, setDetailFiles] = useState<TopicFile[]>([]);
 	const [detailHistory, setDetailHistory] = useState<ApprovalHistory[]>([]);
-	const [fileViewer, setFileViewer] = useState<{ url: string; name: string; isWord: boolean } | null>(null);
+	const [fileViewer, setFileViewer] = useState<{
+		url: string;
+		name: string;
+		isWord: boolean;
+	} | null>(null);
 	const [refreshKey, setRefreshKey] = useState(0);
+
+	// ── Supplement: edit topic info ──
+	const [editOpen, setEditOpen] = useState(false);
+	const [editForm, setEditForm] = useState({
+		title: '',
+		description: '',
+		category_id: '',
+		level_id: '',
+		department_id: '',
+	});
+	const [editLoading, setEditLoading] = useState(false);
+	const [editError, setEditError] = useState('');
+	const [refData, setRefData] = useState<{
+		categories: SimpleItem[];
+		levels: SimpleItem[];
+		depts: SimpleItem[];
+	} | null>(null);
+	const [refDataLoading, setRefDataLoading] = useState(false);
+
+	// ── Supplement: file upload ──
+	const fileInputRef = useRef<HTMLInputElement>(null);
+	const [pendingFiles, setPendingFiles] = useState<File[]>([]);
+	const [batchNote, setBatchNote] = useState('');
+	const [uploadLoading, setUploadLoading] = useState(false);
+	const [uploadError, setUploadError] = useState('');
 
 	const refreshData = useCallback(() => setRefreshKey((k) => k + 1), []);
 	useRealtimeUpdate('topic', refreshData);
@@ -389,7 +399,10 @@ export default function MyTopics() {
 					setDeptTopics(deptRes.data);
 					setMyTopics(myRes.data);
 				} else {
-					const res = await getTopics({ limit: 200, participant_id: currentUserId });
+					const res = await getTopics({
+						limit: 200,
+						participant_id: currentUserId,
+					});
 					setMyTopics(res.data);
 				}
 			} catch {
@@ -426,8 +439,7 @@ export default function MyTopics() {
 			const q = search.toLowerCase();
 			list = list.filter(
 				(t) =>
-					t.title.toLowerCase().includes(q) ||
-					t.id.toLowerCase().includes(q),
+					t.title.toLowerCase().includes(q) || t.id.toLowerCase().includes(q),
 			);
 		}
 		return list;
@@ -444,6 +456,12 @@ export default function MyTopics() {
 	useEffect(() => {
 		let cancelled = false;
 		void (async () => {
+			// Reset supplement state on topic switch
+			setEditOpen(false);
+			setPendingFiles([]);
+			setBatchNote('');
+			setUploadError('');
+			setEditError('');
 			if (!selectedId) {
 				setDetailTopic(null);
 				setDetailFiles([]);
@@ -474,11 +492,101 @@ export default function MyTopics() {
 				if (!cancelled) setDetailLoading(false);
 			}
 		})();
-		return () => { cancelled = true; };
+		return () => {
+			cancelled = true;
+		};
 	}, [selectedId]);
+
+	// ── Load reference data when edit modal opens ──
+	useEffect(() => {
+		if (!editOpen || refData !== null || refDataLoading) return;
+		void (async () => {
+			setRefDataLoading(true);
+			try {
+				const [cats, lvls, dpts] = await Promise.all([
+					getCategories(),
+					getLevels(),
+					getDepts(),
+				]);
+				setRefData({
+					categories: cats.data,
+					levels: lvls.data,
+					depts: dpts.data,
+				});
+			} catch {
+				// silent — selects stay empty
+			} finally {
+				setRefDataLoading(false);
+			}
+		})();
+	}, [editOpen, refData, refDataLoading]);
 
 	// ── Latest approval info for "updated by" ──
 	const latestApproval = detailHistory[0] ?? null;
+
+	// ── Supplement: open edit modal ──
+	function openEdit() {
+		if (!detailTopic) return;
+		setEditForm({
+			title: detailTopic.title,
+			description: detailTopic.description ?? '',
+			category_id: detailTopic.category_id ?? '',
+			level_id: detailTopic.level_id ?? '',
+			department_id: detailTopic.department_id ?? '',
+		});
+		setEditError('');
+		setEditOpen(true);
+	}
+
+	// ── Supplement: save topic edits ──
+	async function handleSaveEdit() {
+		if (!detailTopic || !editForm.title.trim()) return;
+		setEditLoading(true);
+		setEditError('');
+		try {
+			await updateTopic(detailTopic.id, {
+				title: editForm.title.trim(),
+				description: editForm.description || undefined,
+				category_id: editForm.category_id || undefined,
+				level_id: editForm.level_id || undefined,
+				department_id: editForm.department_id || undefined,
+			});
+			const [topic, files] = await Promise.all([
+				getApprovalTopicDetail(detailTopic.id),
+				getTopicFiles(detailTopic.id),
+			]);
+			setDetailTopic(topic);
+			setDetailFiles(files.data ?? []);
+			setEditOpen(false);
+			refreshData();
+		} catch {
+			setEditError('Có lỗi xảy ra khi lưu. Vui lòng thử lại.');
+		} finally {
+			setEditLoading(false);
+		}
+	}
+
+	// ── Supplement: upload files ──
+	async function handleUpload() {
+		if (!detailTopic || pendingFiles.length === 0) return;
+		setUploadLoading(true);
+		setUploadError('');
+		try {
+			await uploadTopicFiles(
+				detailTopic.id,
+				pendingFiles,
+				batchNote || undefined,
+			);
+			setPendingFiles([]);
+			setBatchNote('');
+			const files = await getTopicFiles(detailTopic.id);
+			setDetailFiles(files.data ?? []);
+		} catch {
+			setUploadError('Tải lên thất bại. Vui lòng thử lại.');
+		} finally {
+			setUploadLoading(false);
+		}
+	}
 
 	// ── Header actions ──
 	const headerActions = canRegister ? (
@@ -511,7 +619,10 @@ export default function MyTopics() {
 					<span>Đang tải...</span>
 				</div>
 			) : error ? (
-				<div className={styles.stateBox} style={{ color: '#ef4444' }}>
+				<div
+					className={styles.stateBox}
+					style={{ color: '#ef4444' }}
+				>
 					{error}
 				</div>
 			) : (
@@ -521,31 +632,51 @@ export default function MyTopics() {
 						<div className={styles.categoryRow}>
 							<button
 								className={`${styles.categoryCard} ${category === 'department' ? styles.categoryCardActive : ''}`}
-								onClick={() => { setCategory('department'); setSearch(''); }}
+								onClick={() => {
+									setCategory('department');
+									setSearch('');
+								}}
 							>
-								<div className={`${styles.categoryIcon} ${category === 'department' ? styles.categoryIconActive : ''}`}>
+								<div
+									className={`${styles.categoryIcon} ${category === 'department' ? styles.categoryIconActive : ''}`}
+								>
 									<Ic.Building />
 								</div>
 								<div className={styles.categoryText}>
 									<div className={styles.categoryLabel}>Đề tài của khoa</div>
-									<div className={styles.categoryDesc}>Toàn bộ đề tài thuộc khoa/phòng</div>
+									<div className={styles.categoryDesc}>
+										Toàn bộ đề tài thuộc khoa/phòng
+									</div>
 								</div>
-								<div className={`${styles.categoryCount} ${category === 'department' ? styles.categoryCountActive : ''}`}>
+								<div
+									className={`${styles.categoryCount} ${category === 'department' ? styles.categoryCountActive : ''}`}
+								>
 									{deptTopics.length}
 								</div>
 							</button>
 							<button
 								className={`${styles.categoryCard} ${category === 'mine' ? styles.categoryCardActive : ''}`}
-								onClick={() => { setCategory('mine'); setSearch(''); }}
+								onClick={() => {
+									setCategory('mine');
+									setSearch('');
+								}}
 							>
-								<div className={`${styles.categoryIcon} ${category === 'mine' ? styles.categoryIconActive : ''}`}>
+								<div
+									className={`${styles.categoryIcon} ${category === 'mine' ? styles.categoryIconActive : ''}`}
+								>
 									<Ic.UserCheck />
 								</div>
 								<div className={styles.categoryText}>
-									<div className={styles.categoryLabel}>Đề tài tôi tham gia</div>
-									<div className={styles.categoryDesc}>Đề tài tôi đăng ký hoặc là thành viên</div>
+									<div className={styles.categoryLabel}>
+										Đề tài tôi tham gia
+									</div>
+									<div className={styles.categoryDesc}>
+										Đề tài tôi đăng ký hoặc là thành viên
+									</div>
 								</div>
-								<div className={`${styles.categoryCount} ${category === 'mine' ? styles.categoryCountActive : ''}`}>
+								<div
+									className={`${styles.categoryCount} ${category === 'mine' ? styles.categoryCountActive : ''}`}
+								>
 									{myTopics.length}
 								</div>
 							</button>
@@ -556,10 +687,38 @@ export default function MyTopics() {
 					<div className={styles.statsRow}>
 						{(
 							[
-								{ key: 'submitted' as FilterTab, iconCls: 'iconAmber', cardCls: 'amber', hintCls: 'hintAmber', hint: 'Cần xử lý sớm', Icon: Ic.Clock },
-								{ key: 'approved' as FilterTab, iconCls: 'iconGreen', cardCls: 'green', hintCls: 'hintGreen', hint: 'Hoàn tất', Icon: Ic.Approve },
-								{ key: 'rejected' as FilterTab, iconCls: 'iconRed', cardCls: 'red', hintCls: 'hintRed', hint: 'Không đạt yêu cầu', Icon: Ic.Reject },
-								{ key: 'supplement' as FilterTab, iconCls: 'iconBlue', cardCls: 'blue', hintCls: 'hintBlue', hint: 'Cần bổ sung hồ sơ', Icon: Ic.Request },
+								{
+									key: 'submitted' as FilterTab,
+									iconCls: 'iconAmber',
+									cardCls: 'amber',
+									hintCls: 'hintAmber',
+									hint: 'Cần xử lý sớm',
+									Icon: Ic.Clock,
+								},
+								{
+									key: 'approved' as FilterTab,
+									iconCls: 'iconGreen',
+									cardCls: 'green',
+									hintCls: 'hintGreen',
+									hint: 'Hoàn tất',
+									Icon: Ic.Approve,
+								},
+								{
+									key: 'rejected' as FilterTab,
+									iconCls: 'iconRed',
+									cardCls: 'red',
+									hintCls: 'hintRed',
+									hint: 'Không đạt yêu cầu',
+									Icon: Ic.Reject,
+								},
+								{
+									key: 'supplement' as FilterTab,
+									iconCls: 'iconBlue',
+									cardCls: 'blue',
+									hintCls: 'hintBlue',
+									hint: 'Cần bổ sung hồ sơ',
+									Icon: Ic.Request,
+								},
 							] as const
 						).map((s) => {
 							const cfg = STATUS_CFG[s.key];
@@ -569,13 +728,17 @@ export default function MyTopics() {
 									className={`${styles.statCard} ${styles[s.cardCls as keyof typeof styles]} ${activeTab === s.key ? styles.statActive : ''}`}
 									onClick={() => setActiveTab(s.key)}
 								>
-									<div className={`${styles.statIcon} ${styles[s.iconCls as keyof typeof styles]}`}>
+									<div
+										className={`${styles.statIcon} ${styles[s.iconCls as keyof typeof styles]}`}
+									>
 										<s.Icon />
 									</div>
 									<div className={styles.statBody}>
 										<div className={styles.statValue}>{stats[s.key]}</div>
 										<div className={styles.statLabel}>{cfg.label}</div>
-										<div className={`${styles.statHint} ${styles[s.hintCls as keyof typeof styles]}`}>
+										<div
+											className={`${styles.statHint} ${styles[s.hintCls as keyof typeof styles]}`}
+										>
 											{s.hint}
 										</div>
 									</div>
@@ -591,13 +754,12 @@ export default function MyTopics() {
 							<div className={styles.listHeader}>
 								<div className={styles.listHeaderTop}>
 									<span className={styles.listTitle}>Danh sách đề tài</span>
-									<span className={styles.listCount}>{filtered.length} đề tài</span>
+									<span className={styles.listCount}>
+										{filtered.length} đề tài
+									</span>
 								</div>
 								<div className={styles.listSearch}>
-									<svg className={styles.listSearchIcon} viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'>
-										<circle cx='11' cy='11' r='8' />
-										<line x1='21' y1='21' x2='16.65' y2='16.65' />
-									</svg>
+									<SearchSvg className={styles.listSearchIcon} />
 									<input
 										className={styles.listSearchInput}
 										placeholder='Tìm mã, tên đề tài...'
@@ -613,7 +775,10 @@ export default function MyTopics() {
 									<div
 										key={t.key}
 										className={`${styles.listTab} ${activeTab === t.key ? styles.listTabActive : ''}`}
-										onClick={() => { setActiveTab(t.key); setSearch(''); }}
+										onClick={() => {
+											setActiveTab(t.key);
+											setSearch('');
+										}}
 									>
 										{t.label}
 										<span className={styles.tabCount}>{stats[t.key]}</span>
@@ -625,12 +790,18 @@ export default function MyTopics() {
 							<div className={styles.listBody}>
 								{filtered.length === 0 ? (
 									<div className={styles.listEmpty}>
-										<div className={styles.listEmptyIcon}><Ic.Empty /></div>
+										<div className={styles.listEmptyIcon}>
+											<Ic.Empty />
+										</div>
 										<div className={styles.listEmptyTitle}>
-											{search ? 'Không tìm thấy đề tài phù hợp' : 'Chưa có đề tài nào'}
+											{search
+												? 'Không tìm thấy đề tài phù hợp'
+												: 'Chưa có đề tài nào'}
 										</div>
 										<div className={styles.listEmptyDesc}>
-											{search ? 'Thử từ khoá khác hoặc đổi bộ lọc.' : 'Không có đề tài ở trạng thái này.'}
+											{search
+												? 'Thử từ khoá khác hoặc đổi bộ lọc.'
+												: 'Không có đề tài ở trạng thái này.'}
 										</div>
 									</div>
 								) : (
@@ -642,12 +813,26 @@ export default function MyTopics() {
 												className={`${styles.listItem} ${selectedId === t.id ? styles.listItemSelected : ''}`}
 												onClick={() => setSelectedId(t.id)}
 											>
-												<div className={styles.urgencyDot} style={{ background: cfg.dot }} />
+												<div
+													className={styles.urgencyDot}
+													style={{ background: cfg.dot }}
+												/>
 												<div className={styles.listItemContent}>
 													<div className={styles.listItemTopicId}>{t.id}</div>
-													<div className={styles.listItemTitle} title={t.title}>{t.title}</div>
+													<div
+														className={styles.listItemTitle}
+														title={t.title}
+													>
+														{t.title}
+													</div>
 													<div className={styles.listItemMeta}>
-														<span style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+														<span
+															style={{
+																display: 'flex',
+																alignItems: 'center',
+																gap: 3,
+															}}
+														>
 															<Ic.Users />
 															{t.member_count ?? 0} thành viên
 														</span>
@@ -656,7 +841,12 @@ export default function MyTopics() {
 													</div>
 												</div>
 												<div className={styles.listItemRight}>
-													<Badge cls={cfg.badgeCls} dot>{cfg.label}</Badge>
+													<Badge
+														cls={cfg.badgeCls}
+														dot
+													>
+														{cfg.label}
+													</Badge>
 												</div>
 											</div>
 										);
@@ -669,12 +859,13 @@ export default function MyTopics() {
 						<div className={styles.detailPanel}>
 							{!selectedId ? (
 								<div className={styles.detailEmpty}>
-									<svg className={styles.detailEmptyIcon} viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='1.5' strokeLinecap='round' strokeLinejoin='round'>
-										<path d='M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z' />
-										<polyline points='14 2 14 8 20 8' />
-									</svg>
-									<p className={styles.detailEmptyTitle}>Chọn một đề tài để xem chi tiết</p>
-									<p className={styles.detailEmptyDesc}>Nhấn vào một đề tài ở danh sách bên trái</p>
+									<DocSvg className={styles.detailEmptyIcon} />
+									<p className={styles.detailEmptyTitle}>
+										Chọn một đề tài để xem chi tiết
+									</p>
+									<p className={styles.detailEmptyDesc}>
+										Nhấn vào một đề tài ở danh sách bên trái
+									</p>
 								</div>
 							) : (
 								<>
@@ -682,21 +873,35 @@ export default function MyTopics() {
 									{detailLoading && !detailTopic ? (
 										<div className={styles.detailEmpty}>
 											<div className={styles.detailSpinner} />
-											<p className={styles.detailEmptyDesc}>Đang tải chi tiết...</p>
+											<p className={styles.detailEmptyDesc}>
+												Đang tải chi tiết...
+											</p>
 										</div>
 									) : detailTopic ? (
 										<>
 											{/* Header */}
 											<div className={styles.detailHeader}>
-												<div className={styles.detailTopicId}>{detailTopic.id}</div>
-												<div className={styles.detailTitle}>{detailTopic.title}</div>
+												<div className={styles.detailTopicId}>
+													{detailTopic.id}
+												</div>
+												<div className={styles.detailTitle}>
+													{detailTopic.title}
+												</div>
 												<div className={styles.detailBadges}>
-													<Badge cls={STATUS_CFG[detailTopic.status as TopicStatus]?.badgeCls ?? 'badgeGray'} dot>
-														{STATUS_CFG[detailTopic.status as TopicStatus]?.label ?? detailTopic.status}
+													<Badge
+														cls={
+															STATUS_CFG[detailTopic.status as TopicStatus]
+																?.badgeCls ?? 'badgeGray'
+														}
+														dot
+													>
+														{STATUS_CFG[detailTopic.status as TopicStatus]
+															?.label ?? detailTopic.status}
 													</Badge>
 													{detailTopic.category_id && (
 														<Badge cls='badgeGray'>
-															{detailTopic.category_name ?? detailTopic.category_id}
+															{detailTopic.category_name ??
+																detailTopic.category_id}
 														</Badge>
 													)}
 													{detailTopic.level_id && (
@@ -710,43 +915,72 @@ export default function MyTopics() {
 											{/* Body */}
 											<div
 												className={styles.detailBody}
-												style={detailLoading ? { opacity: 0.5, pointerEvents: 'none' } : undefined}
+												style={
+													detailLoading
+														? { opacity: 0.5, pointerEvents: 'none' }
+														: undefined
+												}
 											>
 												{/* Info grid */}
 												<div className={styles.infoGrid}>
 													<div className={styles.infoItem}>
-														<div className={styles.infoLabel}>Người đăng ký</div>
+														<div className={styles.infoLabel}>
+															Người đăng ký
+														</div>
 														<div className={styles.infoValue}>
-															{detailTopic.created_by_name ?? detailTopic.created_by}
+															{detailTopic.created_by_name ??
+																detailTopic.created_by}
 														</div>
 													</div>
 													<div className={styles.infoItem}>
-														<div className={styles.infoLabel}>Phòng ban / Khoa</div>
+														<div className={styles.infoLabel}>
+															Phòng ban / Khoa
+														</div>
 														<div className={styles.infoValue}>
-															{detailTopic.department_name ?? detailTopic.department_id ?? '—'}
+															{detailTopic.department_name ??
+																detailTopic.department_id ??
+																'—'}
 														</div>
 													</div>
 													<div className={styles.infoItem}>
-														<div className={styles.infoLabel}>Đợt nghiên cứu</div>
+														<div className={styles.infoLabel}>
+															Đợt nghiên cứu
+														</div>
 														<div className={styles.infoValue}>
-															{detailTopic.round_name ?? detailTopic.round_id ?? '—'}
+															{detailTopic.round_name ??
+																detailTopic.round_id ??
+																'—'}
 														</div>
 													</div>
 													<div className={styles.infoItem}>
-														<div className={styles.infoLabel}>Số thành viên</div>
+														<div className={styles.infoLabel}>
+															Số thành viên
+														</div>
 														<div className={styles.infoValue}>
-															{detailTopic.members?.length ?? detailTopic.member_count ?? 0} người
+															{detailTopic.members?.length ??
+																detailTopic.member_count ??
+																0}{' '}
+															người
 														</div>
 													</div>
 													<div className={styles.infoItem}>
-														<div className={styles.infoLabel}>Ngày nộp hồ sơ</div>
-														<div className={styles.infoValue}>{formatDate(detailTopic.created_at)}</div>
+														<div className={styles.infoLabel}>
+															Ngày nộp hồ sơ
+														</div>
+														<div className={styles.infoValue}>
+															{formatDate(detailTopic.created_at)}
+														</div>
 													</div>
 													{(latestApproval ?? detailTopic.updated_at) && (
 														<div className={styles.infoItem}>
-															<div className={styles.infoLabel}>Cập nhật lần cuối</div>
+															<div className={styles.infoLabel}>
+																Cập nhật lần cuối
+															</div>
 															<div className={styles.infoValue}>
-																{formatDate(latestApproval?.created_at ?? detailTopic.updated_at)}
+																{formatDate(
+																	latestApproval?.created_at ??
+																		detailTopic.updated_at,
+																)}
 																{latestApproval &&
 																	` · ${latestApproval.approver_name ?? latestApproval.created_by}`}
 															</div>
@@ -758,7 +992,8 @@ export default function MyTopics() {
 												{(detailTopic.members?.length ?? 0) > 0 && (
 													<div className={styles.descSection}>
 														<div className={styles.sectionLabel}>
-															Thành viên nhóm nghiên cứu ({detailTopic.members.length} người)
+															Thành viên nhóm nghiên cứu (
+															{detailTopic.members.length} người)
 														</div>
 														<div className={styles.membersGrid}>
 															{detailTopic.members.map((m, i) => {
@@ -774,18 +1009,32 @@ export default function MyTopics() {
 																		: m.role === 'secretary'
 																			? 'Thư ký'
 																			: 'Thành viên';
-																const initial = m.ho_ten.split(' ').slice(-1)[0]?.[0] ?? '?';
+																const initial =
+																	m.ho_ten.split(' ').slice(-1)[0]?.[0] ?? '?';
 																return (
-																	<div key={i} className={styles.memberCard}>
-																		<div className={`${styles.memberAvatar} ${avatarCls}`}>
+																	<div
+																		key={i}
+																		className={styles.memberCard}
+																	>
+																		<div
+																			className={`${styles.memberAvatar} ${avatarCls}`}
+																		>
 																			{initial}
 																		</div>
 																		<div className={styles.memberInfo}>
-																			<div className={styles.memberName}>{m.ho_ten}</div>
+																			<div className={styles.memberName}>
+																				{m.ho_ten}
+																			</div>
 																			<div className={styles.memberMeta}>
-																				<span className={styles.memberRoleBadge}>{roleLabel}</span>
+																				<span
+																					className={styles.memberRoleBadge}
+																				>
+																					{roleLabel}
+																				</span>
 																				{detailTopic.department_name && (
-																					<span className={styles.memberDept}>{detailTopic.department_name}</span>
+																					<span className={styles.memberDept}>
+																						{detailTopic.department_name}
+																					</span>
 																				)}
 																			</div>
 																		</div>
@@ -798,7 +1047,9 @@ export default function MyTopics() {
 
 												{/* Description */}
 												<div className={styles.descSection}>
-													<div className={styles.sectionLabel}>Mô tả / Tóm tắt đề tài</div>
+													<div className={styles.sectionLabel}>
+														Mô tả / Tóm tắt đề tài
+													</div>
 													<div className={styles.descBox}>
 														{detailTopic.description || 'Chưa có mô tả.'}
 													</div>
@@ -817,18 +1068,37 @@ export default function MyTopics() {
 																	badgeCls: 'badgeGray',
 																};
 																return (
-																	<div key={i} className={styles.historyItem}>
+																	<div
+																		key={i}
+																		className={styles.historyItem}
+																	>
 																		<div className={styles.historyTop}>
 																			<span className={styles.historyReviewer}>
-																				{h.approver_name ?? h.created_by} — {hcfg.label}
+																				{h.approver_name ?? h.created_by} —{' '}
+																				{hcfg.label}
 																			</span>
-																			<div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-																				<Badge cls={hcfg.badgeCls} dot>{hcfg.label}</Badge>
-																				<span className={styles.historyDate}>{formatDate(h.created_at)}</span>
+																			<div
+																				style={{
+																					display: 'flex',
+																					alignItems: 'center',
+																					gap: 8,
+																				}}
+																			>
+																				<Badge
+																					cls={hcfg.badgeCls}
+																					dot
+																				>
+																					{hcfg.label}
+																				</Badge>
+																				<span className={styles.historyDate}>
+																					{formatDate(h.created_at)}
+																				</span>
 																			</div>
 																		</div>
 																		{h.comment && (
-																			<div className={styles.historyComment}>"{h.comment}"</div>
+																			<div className={styles.historyComment}>
+																				"{h.comment}"
+																			</div>
 																		)}
 																	</div>
 																);
@@ -842,6 +1112,104 @@ export default function MyTopics() {
 													<div className={styles.sectionLabel}>
 														Tài liệu đính kèm ({detailFiles.length} tệp)
 													</div>
+
+													{/* Upload area — supplement mode only */}
+													{detailTopic.status === 'supplement' && (
+														<div className={styles.uploadArea}>
+															<div
+																className={styles.uploadDropzone}
+																onClick={() => fileInputRef.current?.click()}
+																onDragOver={(e) => e.preventDefault()}
+																onDrop={(e) => {
+																	e.preventDefault();
+																	setPendingFiles((prev) => [
+																		...prev,
+																		...Array.from(e.dataTransfer.files),
+																	]);
+																}}
+															>
+																<input
+																	ref={fileInputRef}
+																	type='file'
+																	multiple
+																	style={{ display: 'none' }}
+																	onChange={(e) => {
+																		setPendingFiles((prev) => [
+																			...prev,
+																			...Array.from(e.target.files ?? []),
+																		]);
+																		e.target.value = '';
+																	}}
+																/>
+																<Ic.Upload />
+																<span>Nhấn hoặc kéo tệp vào đây để tải lên</span>
+															</div>
+															{pendingFiles.length > 0 && (
+																<>
+																	<div className={styles.pendingList}>
+																		{pendingFiles.map((f, i) => (
+																			<div
+																				key={i}
+																				className={styles.pendingItem}
+																			>
+																				<Ic.File />
+																				<span className={styles.pendingName}>
+																					{f.name}
+																				</span>
+																				<span className={styles.pendingSize}>
+																					{formatFileSize(f.size)}
+																				</span>
+																				<button
+																					className={styles.pendingRemove}
+																					onClick={() =>
+																						setPendingFiles((prev) =>
+																							prev.filter((_, j) => j !== i),
+																						)
+																					}
+																				>
+																					<Ic.X />
+																				</button>
+																			</div>
+																		))}
+																	</div>
+																	<div className={styles.uploadFooter}>
+																		<input
+																			className={styles.batchNoteInput}
+																			placeholder='Ghi chú lô tài liệu (tuỳ chọn)'
+																			value={batchNote}
+																			onChange={(e) =>
+																				setBatchNote(e.target.value)
+																			}
+																			disabled={uploadLoading}
+																		/>
+																		<button
+																			className={styles.btnUpload}
+																			onClick={() => void handleUpload()}
+																			disabled={uploadLoading}
+																		>
+																			{uploadLoading ? (
+																				<>
+																					<span className={styles.spinnerSm} />
+																					Đang tải...
+																				</>
+																			) : (
+																				<>
+																					<Ic.Upload />
+																					Tải lên {pendingFiles.length} tệp
+																				</>
+																			)}
+																		</button>
+																	</div>
+																	{uploadError && (
+																		<div className={styles.uploadError}>
+																			{uploadError}
+																		</div>
+																	)}
+																</>
+															)}
+														</div>
+													)}
+
 													{detailFiles.length === 0 ? (
 														<div className={styles.filesEmpty}>
 															Chưa có tài liệu nào được đính kèm
@@ -852,16 +1220,26 @@ export default function MyTopics() {
 																const meta = getFileTypeMeta(f);
 																const viewerUrl = getFileViewerUrl(f);
 																return (
-																	<div key={f.id} className={styles.fileItem}>
-																		<div className={`${styles.fileIcon} ${styles[meta.cls as keyof typeof styles]}`}>
+																	<div
+																		key={f.id}
+																		className={styles.fileItem}
+																	>
+																		<div
+																			className={`${styles.fileIcon} ${styles[meta.cls as keyof typeof styles]}`}
+																		>
 																			<Ic.File />
 																		</div>
 																		<div className={styles.fileInfo}>
-																			<div className={styles.fileName} title={f.file_name}>
+																			<div
+																				className={styles.fileName}
+																				title={f.file_name}
+																			>
 																				{f.file_name}
 																			</div>
 																			<div className={styles.fileMeta}>
-																				<span className={`${styles.fileTypeBadge} ${styles[meta.cls as keyof typeof styles]}`}>
+																				<span
+																					className={`${styles.fileTypeBadge} ${styles[meta.cls as keyof typeof styles]}`}
+																				>
 																					{meta.label}
 																				</span>
 																				· {formatFileSize(f.file_size)} ·{' '}
@@ -905,7 +1283,9 @@ export default function MyTopics() {
 											{/* Status notice at bottom */}
 											<div className={styles.actionPanel}>
 												{detailTopic.status === 'submitted' && (
-													<div className={`${styles.processedNotice} ${styles.processedAmber}`}>
+													<div
+														className={`${styles.processedNotice} ${styles.processedAmber}`}
+													>
 														<Ic.Clock />
 														<div>
 															<div style={{ fontWeight: 700, fontSize: 13 }}>
@@ -918,7 +1298,9 @@ export default function MyTopics() {
 													</div>
 												)}
 												{detailTopic.status === 'approved' && (
-													<div className={`${styles.processedNotice} ${styles.processedApproved}`}>
+													<div
+														className={`${styles.processedNotice} ${styles.processedApproved}`}
+													>
 														<Ic.Approve />
 														<div>
 															<div style={{ fontWeight: 700, fontSize: 13 }}>
@@ -926,14 +1308,22 @@ export default function MyTopics() {
 															</div>
 															<div style={{ fontSize: 12, marginTop: 2 }}>
 																Phê duyệt bởi{' '}
-																{latestApproval?.approver_name ?? latestApproval?.created_by ?? '—'}{' '}
-																· {formatDate(latestApproval?.created_at ?? detailTopic.updated_at)}
+																{latestApproval?.approver_name ??
+																	latestApproval?.created_by ??
+																	'—'}{' '}
+																·{' '}
+																{formatDate(
+																	latestApproval?.created_at ??
+																		detailTopic.updated_at,
+																)}
 															</div>
 														</div>
 													</div>
 												)}
 												{detailTopic.status === 'rejected' && (
-													<div className={`${styles.processedNotice} ${styles.processedRejected}`}>
+													<div
+														className={`${styles.processedNotice} ${styles.processedRejected}`}
+													>
 														<Ic.Reject />
 														<div>
 															<div style={{ fontWeight: 700, fontSize: 13 }}>
@@ -941,23 +1331,44 @@ export default function MyTopics() {
 															</div>
 															<div style={{ fontSize: 12, marginTop: 2 }}>
 																Bởi{' '}
-																{latestApproval?.approver_name ?? latestApproval?.created_by ?? '—'}{' '}
-																· {formatDate(latestApproval?.created_at ?? detailTopic.updated_at)}
+																{latestApproval?.approver_name ??
+																	latestApproval?.created_by ??
+																	'—'}{' '}
+																·{' '}
+																{formatDate(
+																	latestApproval?.created_at ??
+																		detailTopic.updated_at,
+																)}
 															</div>
 														</div>
 													</div>
 												)}
 												{detailTopic.status === 'supplement' && (
-													<div className={`${styles.processedNotice} ${styles.processedBlue}`}>
-														<Ic.Request />
-														<div>
-															<div style={{ fontWeight: 700, fontSize: 13 }}>
-																Cần bổ sung hồ sơ
-															</div>
-															<div style={{ fontSize: 12, marginTop: 2 }}>
-																Hội đồng yêu cầu bổ sung thêm thông tin. Vui lòng kiểm tra nhận xét.
+													<div className={styles.supplementActions}>
+														<div
+															className={`${styles.processedNotice} ${styles.processedBlue}`}
+															style={{ flex: 1 }}
+														>
+															<Ic.Request />
+															<div>
+																<div
+																	style={{ fontWeight: 700, fontSize: 13 }}
+																>
+																	Cần bổ sung hồ sơ
+																</div>
+																<div style={{ fontSize: 12, marginTop: 2 }}>
+																	Hội đồng yêu cầu bổ sung thêm thông tin.
+																	Vui lòng cập nhật thông tin và tài liệu.
+																</div>
 															</div>
 														</div>
+														<button
+															className={styles.btnEdit}
+															onClick={openEdit}
+														>
+															<Ic.Edit />
+															Chỉnh sửa đề tài
+														</button>
 													</div>
 												)}
 											</div>
@@ -970,9 +1381,188 @@ export default function MyTopics() {
 				</>
 			)}
 
+			{/* ── EDIT TOPIC MODAL (supplement) ── */}
+			{editOpen && (
+				<div
+					className={styles.editBackdrop}
+					onClick={(e) => {
+						if (e.target === e.currentTarget && !editLoading)
+							setEditOpen(false);
+					}}
+				>
+					<div className={styles.editModal}>
+						<div className={styles.editModalHeader}>
+							<span className={styles.editModalTitle}>
+								Chỉnh sửa thông tin đề tài
+							</span>
+							<button
+								className={styles.viewerClose}
+								onClick={() => !editLoading && setEditOpen(false)}
+							>
+								✕
+							</button>
+						</div>
+
+						<div className={styles.editModalBody}>
+							{refDataLoading ? (
+								<div className={styles.stateBox}>
+									<div className={styles.spinner} />
+									<span>Đang tải dữ liệu...</span>
+								</div>
+							) : (
+								<>
+									<div className={styles.editField}>
+										<label className={styles.editLabel}>
+											Tiêu đề đề tài *
+										</label>
+										<input
+											className={styles.editInput}
+											value={editForm.title}
+											onChange={(e) =>
+												setEditForm((f) => ({
+													...f,
+													title: e.target.value,
+												}))
+											}
+											placeholder='Nhập tiêu đề đề tài'
+											disabled={editLoading}
+										/>
+									</div>
+
+									<div className={styles.editField}>
+										<label className={styles.editLabel}>
+											Mô tả / Tóm tắt
+										</label>
+										<textarea
+											className={styles.editTextarea}
+											value={editForm.description}
+											onChange={(e) =>
+												setEditForm((f) => ({
+													...f,
+													description: e.target.value,
+												}))
+											}
+											placeholder='Nhập mô tả đề tài'
+											rows={4}
+											disabled={editLoading}
+										/>
+									</div>
+
+									<div className={styles.editFieldRow}>
+										<div className={styles.editField}>
+											<label className={styles.editLabel}>Danh mục</label>
+											<select
+												className={styles.editSelect}
+												value={editForm.category_id}
+												onChange={(e) =>
+													setEditForm((f) => ({
+														...f,
+														category_id: e.target.value,
+													}))
+												}
+												disabled={editLoading}
+											>
+												<option value=''>-- Chọn danh mục --</option>
+												{refData?.categories.map((c) => (
+													<option
+														key={c.id}
+														value={c.id}
+													>
+														{c.name}
+													</option>
+												))}
+											</select>
+										</div>
+										<div className={styles.editField}>
+											<label className={styles.editLabel}>Cấp độ</label>
+											<select
+												className={styles.editSelect}
+												value={editForm.level_id}
+												onChange={(e) =>
+													setEditForm((f) => ({
+														...f,
+														level_id: e.target.value,
+													}))
+												}
+												disabled={editLoading}
+											>
+												<option value=''>-- Chọn cấp độ --</option>
+												{refData?.levels.map((l) => (
+													<option
+														key={l.id}
+														value={l.id}
+													>
+														{l.name}
+													</option>
+												))}
+											</select>
+										</div>
+									</div>
+
+									<div className={styles.editField}>
+										<label className={styles.editLabel}>
+											Phòng ban / Khoa
+										</label>
+										<select
+											className={styles.editSelect}
+											value={editForm.department_id}
+											onChange={(e) =>
+												setEditForm((f) => ({
+													...f,
+													department_id: e.target.value,
+												}))
+											}
+											disabled={editLoading}
+										>
+											<option value=''>-- Chọn phòng ban --</option>
+											{refData?.depts.map((d) => (
+												<option
+													key={d.id}
+													value={d.id}
+												>
+													{d.name}
+												</option>
+											))}
+										</select>
+									</div>
+
+									{editError && (
+										<div className={styles.editError}>{editError}</div>
+									)}
+								</>
+							)}
+						</div>
+
+						<div className={styles.editModalFooter}>
+							<button
+								className={styles.btnSecondary}
+								onClick={() => setEditOpen(false)}
+								disabled={editLoading}
+							>
+								Hủy
+							</button>
+							<button
+								className={styles.btnPrimary}
+								onClick={() => void handleSaveEdit()}
+								disabled={
+									editLoading ||
+									!editForm.title.trim() ||
+									refDataLoading
+								}
+							>
+								{editLoading ? 'Đang lưu...' : 'Lưu thay đổi'}
+							</button>
+						</div>
+					</div>
+				</div>
+			)}
+
 			{/* ── FILE VIEWER ── */}
 			{fileViewer && (
-				<FileViewerModal file={fileViewer} onClose={() => setFileViewer(null)} />
+				<FileViewerModal
+					file={fileViewer}
+					onClose={() => setFileViewer(null)}
+				/>
 			)}
 		</UserLayout>
 	);

@@ -1062,7 +1062,7 @@ export default function TopicMembers() {
 		return (
 			<AdminLayout
 				pageTitle='Quản lý Thành viên'
-				pageSubtitle='Quản lý danh sách thành viên theo đề tài NCKH — bảng topic_members'
+				pageSubtitle='Quản lý danh sách thành viên theo đề tài NCKH'
 				headerActions={headerActions}
 			>
 				<div className={styles.emptyState}>
@@ -1079,7 +1079,7 @@ export default function TopicMembers() {
 		return (
 			<AdminLayout
 				pageTitle='Quản lý Thành viên'
-				pageSubtitle='Quản lý danh sách thành viên theo đề tài NCKH — bảng topic_members'
+				pageSubtitle='Quản lý danh sách thành viên theo đề tài NCKH'
 				headerActions={headerActions}
 			>
 				<div className={styles.emptyState}>
@@ -1097,7 +1097,7 @@ export default function TopicMembers() {
 		return (
 			<AdminLayout
 				pageTitle='Quản lý Thành viên'
-				pageSubtitle='Quản lý danh sách thành viên theo đề tài NCKH — bảng topic_members'
+				pageSubtitle='Quản lý danh sách thành viên theo đề tài NCKH'
 				headerActions={headerActions}
 			>
 				<div className={styles.emptyState}>
@@ -1116,7 +1116,7 @@ export default function TopicMembers() {
 	return (
 		<AdminLayout
 			pageTitle='Quản lý Thành viên'
-			pageSubtitle='Quản lý danh sách thành viên theo đề tài NCKH — bảng topic_members'
+			pageSubtitle='Quản lý danh sách thành viên theo đề tài NCKH'
 			headerActions={headerActions}
 		>
 			{/* ── TOPIC ACCORDION ── */}

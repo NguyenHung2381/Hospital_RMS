@@ -1,4 +1,16 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import FileTextSvg from '../../../assets/svg/file-text.svg?react';
+import SearchSvg from '../../../assets/svg/search.svg?react';
+import XSvg from '../../../assets/svg/x.svg?react';
+import CheckSvg from '../../../assets/svg/check.svg?react';
+import AlertSvg from '../../../assets/svg/alert.svg?react';
+import SendSvg from '../../../assets/svg/send.svg?react';
+import ListSvg from '../../../assets/svg/list.svg?react';
+import HelpSvg from '../../../assets/svg/help.svg?react';
+import ChevRSvg from '../../../assets/svg/chev-r.svg?react';
+import UserPlusSvg from '../../../assets/svg/user-plus.svg?react';
+import UploadSvg from '../../../assets/svg/upload.svg?react';
+import PaperclipSvg from '../../../assets/svg/paperclip.svg?react';
 
 const MAX_FILE_SIZE = 150 * 1024 * 1024; // 150 MB
 import { useNavigate, useSearchParams } from 'react-router-dom';
@@ -69,280 +81,18 @@ function fmtDate(iso: string) {
 
 // ─── ICONS ────────────────────────────────
 const Icon = {
-	FileText: () => (
-		<svg
-			viewBox='0 0 24 24'
-			fill='none'
-			stroke='currentColor'
-			strokeWidth='2'
-			strokeLinecap='round'
-			strokeLinejoin='round'
-		>
-			<path d='M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z' />
-			<polyline points='14 2 14 8 20 8' />
-			<line
-				x1='16'
-				y1='13'
-				x2='8'
-				y2='13'
-			/>
-			<line
-				x1='16'
-				y1='17'
-				x2='8'
-				y2='17'
-			/>
-		</svg>
-	),
-	Search: () => (
-		<svg
-			viewBox='0 0 24 24'
-			fill='none'
-			stroke='currentColor'
-			strokeWidth='2'
-			strokeLinecap='round'
-			strokeLinejoin='round'
-		>
-			<circle
-				cx='11'
-				cy='11'
-				r='8'
-			/>
-			<line
-				x1='21'
-				y1='21'
-				x2='16.65'
-				y2='16.65'
-			/>
-		</svg>
-	),
-	X: () => (
-		<svg
-			viewBox='0 0 24 24'
-			fill='none'
-			stroke='currentColor'
-			strokeWidth='2.5'
-			strokeLinecap='round'
-			strokeLinejoin='round'
-		>
-			<line
-				x1='18'
-				y1='6'
-				x2='6'
-				y2='18'
-			/>
-			<line
-				x1='6'
-				y1='6'
-				x2='18'
-				y2='18'
-			/>
-		</svg>
-	),
-	Check: () => (
-		<svg
-			viewBox='0 0 24 24'
-			fill='none'
-			stroke='currentColor'
-			strokeWidth='2.5'
-			strokeLinecap='round'
-			strokeLinejoin='round'
-		>
-			<polyline points='20 6 9 17 4 12' />
-		</svg>
-	),
-	AlertCircle: () => (
-		<svg
-			viewBox='0 0 24 24'
-			fill='none'
-			stroke='currentColor'
-			strokeWidth='2'
-			strokeLinecap='round'
-			strokeLinejoin='round'
-		>
-			<circle
-				cx='12'
-				cy='12'
-				r='10'
-			/>
-			<line
-				x1='12'
-				y1='8'
-				x2='12'
-				y2='12'
-			/>
-			<line
-				x1='12'
-				y1='16'
-				x2='12.01'
-				y2='16'
-			/>
-		</svg>
-	),
-	Send: () => (
-		<svg
-			viewBox='0 0 24 24'
-			fill='none'
-			stroke='currentColor'
-			strokeWidth='2'
-			strokeLinecap='round'
-			strokeLinejoin='round'
-		>
-			<line
-				x1='22'
-				y1='2'
-				x2='11'
-				y2='13'
-			/>
-			<polygon points='22 2 15 22 11 13 2 9 22 2' />
-		</svg>
-	),
-	List: () => (
-		<svg
-			viewBox='0 0 24 24'
-			fill='none'
-			stroke='currentColor'
-			strokeWidth='2'
-			strokeLinecap='round'
-			strokeLinejoin='round'
-		>
-			<line
-				x1='8'
-				y1='6'
-				x2='21'
-				y2='6'
-			/>
-			<line
-				x1='8'
-				y1='12'
-				x2='21'
-				y2='12'
-			/>
-			<line
-				x1='8'
-				y1='18'
-				x2='21'
-				y2='18'
-			/>
-			<line
-				x1='3'
-				y1='6'
-				x2='3.01'
-				y2='6'
-			/>
-			<line
-				x1='3'
-				y1='12'
-				x2='3.01'
-				y2='12'
-			/>
-			<line
-				x1='3'
-				y1='18'
-				x2='3.01'
-				y2='18'
-			/>
-		</svg>
-	),
-	HelpCircle: () => (
-		<svg
-			width='15'
-			height='15'
-			viewBox='0 0 24 24'
-			fill='none'
-			stroke='currentColor'
-			strokeWidth='2'
-			strokeLinecap='round'
-			strokeLinejoin='round'
-		>
-			<circle
-				cx='12'
-				cy='12'
-				r='10'
-			/>
-			<path d='M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3' />
-			<line
-				x1='12'
-				y1='17'
-				x2='12.01'
-				y2='17'
-			/>
-		</svg>
-	),
-	ChevronRight: () => (
-		<svg
-			width='12'
-			height='12'
-			viewBox='0 0 24 24'
-			fill='none'
-			stroke='currentColor'
-			strokeWidth='2.5'
-			strokeLinecap='round'
-			strokeLinejoin='round'
-		>
-			<polyline points='9 18 15 12 9 6' />
-		</svg>
-	),
-	UserPlus: () => (
-		<svg
-			viewBox='0 0 24 24'
-			fill='none'
-			stroke='currentColor'
-			strokeWidth='2'
-			strokeLinecap='round'
-			strokeLinejoin='round'
-		>
-			<path d='M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2' />
-			<circle
-				cx='8.5'
-				cy='7'
-				r='4'
-			/>
-			<line
-				x1='20'
-				y1='8'
-				x2='20'
-				y2='14'
-			/>
-			<line
-				x1='23'
-				y1='11'
-				x2='17'
-				y2='11'
-			/>
-		</svg>
-	),
-	Upload: () => (
-		<svg
-			viewBox='0 0 24 24'
-			fill='none'
-			stroke='currentColor'
-			strokeWidth='2'
-			strokeLinecap='round'
-			strokeLinejoin='round'
-		>
-			<polyline points='16 16 12 12 8 16' />
-			<line
-				x1='12'
-				y1='12'
-				x2='12'
-				y2='21'
-			/>
-			<path d='M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3' />
-		</svg>
-	),
-	Paperclip: () => (
-		<svg
-			viewBox='0 0 24 24'
-			fill='none'
-			stroke='currentColor'
-			strokeWidth='2'
-			strokeLinecap='round'
-			strokeLinejoin='round'
-		>
-			<path d='M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48' />
-		</svg>
-	),
+	FileText: () => <FileTextSvg />,
+	Search: () => <SearchSvg />,
+	X: () => <XSvg />,
+	Check: () => <CheckSvg />,
+	AlertCircle: () => <AlertSvg />,
+	Send: () => <SendSvg />,
+	List: () => <ListSvg />,
+	HelpCircle: () => <HelpSvg width={15} height={15} />,
+	ChevronRight: () => <ChevRSvg width={12} height={12} />,
+	UserPlus: () => <UserPlusSvg />,
+	Upload: () => <UploadSvg />,
+	Paperclip: () => <PaperclipSvg />,
 };
 
 // ─── GUIDE STEPS ──────────────────────────

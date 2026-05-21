@@ -6,6 +6,13 @@ import type { LoginUser } from '../api/authApi';
 import { loginApi } from '../api/authApi';
 import type { FormErrors, LoginForm } from '../types/Auth.type';
 import styles from './Login.module.css';
+import UserSvg from '../../../assets/svg/user.svg?react';
+import LockSvg from '../../../assets/svg/lock.svg?react';
+import EyeSvg from '../../../assets/svg/eye.svg?react';
+import EyeOffSvg from '../../../assets/svg/eye-off.svg?react';
+import AlertSvg from '../../../assets/svg/alert.svg?react';
+import ShieldSvg from '../../../assets/svg/shield.svg?react';
+import MessageSvg from '../../../assets/svg/message.svg?react';
 
 function isAdminUser(u: LoginUser): boolean {
 	if (u.account_type === 'admin') return true;
@@ -18,151 +25,16 @@ function isAdminUser(u: LoginUser): boolean {
 	);
 }
 
-// === ICONS (inline SVG để không phụ thuộc thư viện) ===
-const IconUser = () => (
-	<svg
-		width='18'
-		height='18'
-		viewBox='0 0 24 24'
-		fill='none'
-		stroke='currentColor'
-		strokeWidth='2'
-		strokeLinecap='round'
-		strokeLinejoin='round'
-	>
-		<path d='M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2' />
-		<circle
-			cx='12'
-			cy='7'
-			r='4'
-		/>
-	</svg>
-);
-
-const IconLock = () => (
-	<svg
-		width='18'
-		height='18'
-		viewBox='0 0 24 24'
-		fill='none'
-		stroke='currentColor'
-		strokeWidth='2'
-		strokeLinecap='round'
-		strokeLinejoin='round'
-	>
-		<rect
-			x='3'
-			y='11'
-			width='18'
-			height='11'
-			rx='2'
-			ry='2'
-		/>
-		<path d='M7 11V7a5 5 0 0 1 10 0v4' />
-	</svg>
-);
-
-const IconEye = () => (
-	<svg
-		width='18'
-		height='18'
-		viewBox='0 0 24 24'
-		fill='none'
-		stroke='currentColor'
-		strokeWidth='2'
-		strokeLinecap='round'
-		strokeLinejoin='round'
-	>
-		<path d='M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z' />
-		<circle
-			cx='12'
-			cy='12'
-			r='3'
-		/>
-	</svg>
-);
-
-const IconEyeOff = () => (
-	<svg
-		width='18'
-		height='18'
-		viewBox='0 0 24 24'
-		fill='none'
-		stroke='currentColor'
-		strokeWidth='2'
-		strokeLinecap='round'
-		strokeLinejoin='round'
-	>
-		<path d='M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24' />
-		<line
-			x1='1'
-			y1='1'
-			x2='23'
-			y2='23'
-		/>
-	</svg>
-);
-
-const IconAlert = () => (
-	<svg
-		width='16'
-		height='16'
-		viewBox='0 0 24 24'
-		fill='none'
-		stroke='currentColor'
-		strokeWidth='2.5'
-		strokeLinecap='round'
-		strokeLinejoin='round'
-	>
-		<circle
-			cx='12'
-			cy='12'
-			r='10'
-		/>
-		<line
-			x1='12'
-			y1='8'
-			x2='12'
-			y2='12'
-		/>
-		<line
-			x1='12'
-			y1='16'
-			x2='12.01'
-			y2='16'
-		/>
-	</svg>
-);
-
-const IconShield = () => (
-	<svg
-		width='14'
-		height='14'
-		viewBox='0 0 24 24'
-		fill='none'
-		stroke='currentColor'
-		strokeWidth='2'
-		strokeLinecap='round'
-		strokeLinejoin='round'
-	>
-		<path d='M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z' />
-	</svg>
-);
-
-const IconSupport = () => (
-	<svg
-		width='18'
-		height='18'
-		viewBox='0 0 24 24'
-		fill='none'
-		stroke='currentColor'
-		strokeWidth='2'
-		strokeLinecap='round'
-		strokeLinejoin='round'
-	>
-		<path d='M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z' />
-	</svg>
-);
+// === ICONS ===
+const Icon = {
+	User: () => <UserSvg width={18} height={18} />,
+	Lock: () => <LockSvg width={18} height={18} />,
+	Eye: () => <EyeSvg width={18} height={18} />,
+	EyeOff: () => <EyeOffSvg width={18} height={18} />,
+	Alert: () => <AlertSvg width={16} height={16} />,
+	Shield: () => <ShieldSvg width={14} height={14} />,
+	Support: () => <MessageSvg width={18} height={18} />,
+};
 
 // === COMPONENT ===
 export default function Login() {
@@ -190,8 +62,8 @@ export default function Login() {
 
 		if (!form.password) {
 			newErrors.password = 'Vui lòng nhập mật khẩu';
-		} else if (form.password.length < 2) {
-			newErrors.password = 'Mật khẩu ít nhất 6 ký tự';
+		} else if (form.password.length < 5) {
+			newErrors.password = 'Mật khẩu ít nhất 5 ký tự';
 		}
 
 		setErrors(newErrors);
@@ -258,7 +130,7 @@ export default function Login() {
 						className={`${styles.alertBox} ${styles.alertError}`}
 						role='alert'
 					>
-						<IconAlert />
+						<Icon.Alert />
 						<span>{apiError}</span>
 					</div>
 				)}
@@ -278,7 +150,7 @@ export default function Login() {
 						</label>
 						<div className={styles.inputWrapper}>
 							<span className={styles.inputIcon}>
-								<IconUser />
+								<Icon.User />
 							</span>
 							<input
 								id='username'
@@ -301,7 +173,7 @@ export default function Login() {
 								className={styles.inputError}
 								role='alert'
 							>
-								<IconAlert />
+								<Icon.Alert />
 								{errors.username}
 							</span>
 						)}
@@ -317,7 +189,7 @@ export default function Login() {
 						</label>
 						<div className={styles.inputWrapper}>
 							<span className={styles.inputIcon}>
-								<IconLock />
+								<Icon.Lock />
 							</span>
 							<input
 								id='password'
@@ -338,7 +210,7 @@ export default function Login() {
 								onClick={() => setShowPassword((v) => !v)}
 								aria-label={showPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
 							>
-								{showPassword ? <IconEyeOff /> : <IconEye />}
+								{showPassword ? <Icon.EyeOff /> : <Icon.Eye />}
 							</button>
 						</div>
 						{errors.password && (
@@ -347,7 +219,7 @@ export default function Login() {
 								className={styles.inputError}
 								role='alert'
 							>
-								<IconAlert />
+								<Icon.Alert />
 								{errors.password}
 							</span>
 						)}
@@ -394,7 +266,7 @@ export default function Login() {
 			{/* Hỗ trợ */}
 			<div className={styles.supportBox}>
 				<div className={styles.supportIcon}>
-					<IconSupport />
+					<Icon.Support />
 				</div>
 				<div>
 					<div className={styles.supportTitle}>Cần hỗ trợ?</div>
@@ -408,15 +280,15 @@ export default function Login() {
 			{/* Security badges */}
 			<div className={styles.securityBadges}>
 				<span className={styles.secBadge}>
-					<IconShield />
+					<Icon.Shield />
 					Kết nối bảo mật SSL
 				</span>
 				<span className={styles.secBadge}>
-					<IconShield />
+					<Icon.Shield />
 					Mã hóa AES-256
 				</span>
 				<span className={styles.secBadge}>
-					<IconShield />
+					<Icon.Shield />
 					Xác thực 2 lớp
 				</span>
 			</div>

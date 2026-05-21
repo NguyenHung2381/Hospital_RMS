@@ -23,6 +23,23 @@ import {
 	closeSupplementWindow,
 } from '../api/roundApi';
 import { useRealtimeUpdate } from '../../../hooks/useRealtime';
+import CalendarSvg from '../../../assets/svg/calendar.svg?react';
+import PlusSvg from '../../../assets/svg/plus.svg?react';
+import CheckSvg from '../../../assets/svg/check.svg?react';
+import EditSvg from '../../../assets/svg/edit.svg?react';
+import TrashSvg from '../../../assets/svg/trash.svg?react';
+import CopySvg from '../../../assets/svg/copy.svg?react';
+import KeySvg from '../../../assets/svg/key.svg?react';
+import DocSvg from '../../../assets/svg/doc.svg?react';
+import XSvg from '../../../assets/svg/x.svg?react';
+import WarnSvg from '../../../assets/svg/warn.svg?react';
+import InfoSvg from '../../../assets/svg/info.svg?react';
+import AlertSvg from '../../../assets/svg/alert.svg?react';
+import ArrowRSvg from '../../../assets/svg/arrow-r.svg?react';
+import RefreshSvg from '../../../assets/svg/refresh.svg?react';
+import LinkSvg from '../../../assets/svg/link.svg?react';
+import ClockSvg from '../../../assets/svg/clock.svg?react';
+import CheckCircleSvg from '../../../assets/svg/check-circle.svg?react';
 
 // ─── HELPERS ──────────────────────────────
 const STATUS_CFG: Record<
@@ -65,304 +82,21 @@ function uniqueYears(rounds: ResearchRound[]) {
 
 // ─── ICONS ────────────────────────────────
 const Ic = {
-	Cal: () => (
-		<svg
-			viewBox='0 0 24 24'
-			fill='none'
-			stroke='currentColor'
-			strokeWidth='2'
-			strokeLinecap='round'
-			strokeLinejoin='round'
-		>
-			<rect
-				x='3'
-				y='4'
-				width='18'
-				height='18'
-				rx='2'
-				ry='2'
-			/>
-			<line
-				x1='16'
-				y1='2'
-				x2='16'
-				y2='6'
-			/>
-			<line
-				x1='8'
-				y1='2'
-				x2='8'
-				y2='6'
-			/>
-			<line
-				x1='3'
-				y1='10'
-				x2='21'
-				y2='10'
-			/>
-		</svg>
-	),
-	Plus: () => (
-		<svg
-			viewBox='0 0 24 24'
-			fill='none'
-			stroke='currentColor'
-			strokeWidth='2.5'
-			strokeLinecap='round'
-			strokeLinejoin='round'
-			style={{ width: 14, height: 14 }}
-		>
-			<line
-				x1='12'
-				y1='5'
-				x2='12'
-				y2='19'
-			/>
-			<line
-				x1='5'
-				y1='12'
-				x2='19'
-				y2='12'
-			/>
-		</svg>
-	),
-	Check: () => (
-		<svg
-			viewBox='0 0 24 24'
-			fill='none'
-			stroke='currentColor'
-			strokeWidth='2.5'
-			strokeLinecap='round'
-			strokeLinejoin='round'
-			style={{ width: 14, height: 14, flexShrink: 0 }}
-		>
-			<polyline points='20 6 9 17 4 12' />
-		</svg>
-	),
-	Edit: () => (
-		<svg
-			viewBox='0 0 24 24'
-			fill='none'
-			stroke='currentColor'
-			strokeWidth='2'
-			strokeLinecap='round'
-			strokeLinejoin='round'
-			style={{ width: 14, height: 14, flexShrink: 0 }}
-		>
-			<path d='M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7' />
-			<path d='M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z' />
-		</svg>
-	),
-	Trash: () => (
-		<svg
-			viewBox='0 0 24 24'
-			fill='none'
-			stroke='currentColor'
-			strokeWidth='2'
-			strokeLinecap='round'
-			strokeLinejoin='round'
-		>
-			<polyline points='3 6 5 6 21 6' />
-			<path d='M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2' />
-		</svg>
-	),
-	Copy: () => (
-		<svg
-			viewBox='0 0 24 24'
-			fill='none'
-			stroke='currentColor'
-			strokeWidth='2'
-			strokeLinecap='round'
-			strokeLinejoin='round'
-		>
-			<rect
-				x='9'
-				y='9'
-				width='13'
-				height='13'
-				rx='2'
-				ry='2'
-			/>
-			<path d='M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1' />
-		</svg>
-	),
-	Key: () => (
-		<svg
-			viewBox='0 0 24 24'
-			fill='none'
-			stroke='currentColor'
-			strokeWidth='2'
-			strokeLinecap='round'
-			strokeLinejoin='round'
-		>
-			<path d='M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4' />
-		</svg>
-	),
-	Doc: () => (
-		<svg
-			viewBox='0 0 24 24'
-			fill='none'
-			stroke='currentColor'
-			strokeWidth='2'
-			strokeLinecap='round'
-			strokeLinejoin='round'
-		>
-			<path d='M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z' />
-			<polyline points='14 2 14 8 20 8' />
-		</svg>
-	),
-	X: () => (
-		<svg
-			viewBox='0 0 24 24'
-			fill='none'
-			stroke='currentColor'
-			strokeWidth='2.5'
-			strokeLinecap='round'
-			strokeLinejoin='round'
-			style={{ width: 14, height: 14, flexShrink: 0 }}
-		>
-			<line
-				x1='18'
-				y1='6'
-				x2='6'
-				y2='18'
-			/>
-			<line
-				x1='6'
-				y1='6'
-				x2='18'
-				y2='18'
-			/>
-		</svg>
-	),
-	Warn: () => (
-		<svg
-			viewBox='0 0 24 24'
-			fill='none'
-			stroke='currentColor'
-			strokeWidth='2'
-			strokeLinecap='round'
-			strokeLinejoin='round'
-		>
-			<path d='M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z' />
-			<line
-				x1='12'
-				y1='9'
-				x2='12'
-				y2='13'
-			/>
-			<line
-				x1='12'
-				y1='17'
-				x2='12.01'
-				y2='17'
-			/>
-		</svg>
-	),
-	Info: () => (
-		<svg
-			viewBox='0 0 24 24'
-			fill='none'
-			stroke='currentColor'
-			strokeWidth='2'
-			strokeLinecap='round'
-			strokeLinejoin='round'
-			style={{ width: 16, height: 16 }}
-		>
-			<circle
-				cx='12'
-				cy='12'
-				r='10'
-			/>
-			<line
-				x1='12'
-				y1='8'
-				x2='12'
-				y2='12'
-			/>
-			<line
-				x1='12'
-				y1='16'
-				x2='12.01'
-				y2='16'
-			/>
-		</svg>
-	),
-	Alert: () => (
-		<svg
-			viewBox='0 0 24 24'
-			fill='none'
-			stroke='currentColor'
-			strokeWidth='2'
-			strokeLinecap='round'
-			strokeLinejoin='round'
-			style={{ width: 12, height: 12 }}
-		>
-			<circle
-				cx='12'
-				cy='12'
-				r='10'
-			/>
-			<line
-				x1='12'
-				y1='8'
-				x2='12'
-				y2='12'
-			/>
-			<line
-				x1='12'
-				y1='16'
-				x2='12.01'
-				y2='16'
-			/>
-		</svg>
-	),
-	Arrow: () => (
-		<svg
-			viewBox='0 0 24 24'
-			fill='none'
-			stroke='currentColor'
-			strokeWidth='2'
-			strokeLinecap='round'
-			strokeLinejoin='round'
-			style={{ width: 14, height: 14 }}
-		>
-			<line
-				x1='5'
-				y1='12'
-				x2='19'
-				y2='12'
-			/>
-			<polyline points='12 5 19 12 12 19' />
-		</svg>
-	),
-	Refresh: () => (
-		<svg
-			viewBox='0 0 24 24'
-			fill='none'
-			stroke='currentColor'
-			strokeWidth='2'
-			strokeLinecap='round'
-			strokeLinejoin='round'
-			style={{ width: 14, height: 14 }}
-		>
-			<polyline points='23 4 23 10 17 10' />
-			<path d='M20.49 15a9 9 0 1 1-.21-5.36' />
-		</svg>
-	),
-	Link: () => (
-		<svg
-			viewBox='0 0 24 24'
-			fill='none'
-			stroke='currentColor'
-			strokeWidth='2'
-			strokeLinecap='round'
-			strokeLinejoin='round'
-		>
-			<path d='M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71' />
-			<path d='M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71' />
-		</svg>
-	),
+	Cal: () => <CalendarSvg />,
+	Plus: () => <PlusSvg style={{ width: 14, height: 14 }} />,
+	Check: () => <CheckSvg style={{ width: 14, height: 14, flexShrink: 0 }} />,
+	Edit: () => <EditSvg style={{ width: 14, height: 14, flexShrink: 0 }} />,
+	Trash: () => <TrashSvg />,
+	Copy: () => <CopySvg />,
+	Key: () => <KeySvg />,
+	Doc: () => <DocSvg />,
+	X: () => <XSvg style={{ width: 14, height: 14, flexShrink: 0 }} />,
+	Warn: () => <WarnSvg />,
+	Info: () => <InfoSvg style={{ width: 16, height: 16 }} />,
+	Alert: () => <AlertSvg style={{ width: 12, height: 12 }} />,
+	Arrow: () => <ArrowRSvg style={{ width: 14, height: 14 }} />,
+	Refresh: () => <RefreshSvg style={{ width: 14, height: 14 }} />,
+	Link: () => <LinkSvg />,
 };
 
 // ─── FORM FIELD (module level) ─────────────
@@ -1396,41 +1130,7 @@ function RoundCard({ round, onEdit, onDelete, onCopyLink }: RoundCardProps) {
 
 				{/* Date range */}
 				<div className={styles.dateRange}>
-					<svg
-						viewBox='0 0 24 24'
-						fill='none'
-						stroke='currentColor'
-						strokeWidth='2'
-						strokeLinecap='round'
-						strokeLinejoin='round'
-					>
-						<rect
-							x='3'
-							y='4'
-							width='18'
-							height='18'
-							rx='2'
-							ry='2'
-						/>
-						<line
-							x1='16'
-							y1='2'
-							x2='16'
-							y2='6'
-						/>
-						<line
-							x1='8'
-							y1='2'
-							x2='8'
-							y2='6'
-						/>
-						<line
-							x1='3'
-							y1='10'
-							x2='21'
-							y2='10'
-						/>
-					</svg>
+					<CalendarSvg />
 					<span>{round.start_date}</span>
 					<div className={styles.dateSep} />
 					<span>{round.end_date}</span>
@@ -1464,18 +1164,7 @@ function RoundCard({ round, onEdit, onDelete, onCopyLink }: RoundCardProps) {
 							marginBottom: 8,
 						}}
 					>
-						<svg
-							viewBox='0 0 24 24'
-							fill='none'
-							stroke='currentColor'
-							strokeWidth='2'
-							strokeLinecap='round'
-							strokeLinejoin='round'
-							style={{ width: 13, height: 13, flexShrink: 0 }}
-						>
-							<path d='M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z' />
-							<polyline points='14 2 14 8 20 8' />
-						</svg>
+						<DocSvg style={{ width: 13, height: 13, flexShrink: 0 }} />
 						<span>Đăng ký:</span>
 						<span style={{ fontWeight: 500 }}>
 							{round.registration_start_date} → {round.registration_end_date}
@@ -1486,19 +1175,7 @@ function RoundCard({ round, onEdit, onDelete, onCopyLink }: RoundCardProps) {
 				{/* Scheduled info (draft rounds) */}
 				{round.status === 'draft' && (
 					<div className={styles.scheduledInfo}>
-						<svg
-							viewBox='0 0 24 24'
-							fill='none'
-							stroke='currentColor'
-							strokeWidth='2'
-							strokeLinecap='round'
-							strokeLinejoin='round'
-						>
-							<rect x='3' y='4' width='18' height='18' rx='2' ry='2' />
-							<line x1='16' y1='2' x2='16' y2='6' />
-							<line x1='8' y1='2' x2='8' y2='6' />
-							<line x1='3' y1='10' x2='21' y2='10' />
-						</svg>
+						<CalendarSvg />
 						<span>Chưa mở đăng ký</span>
 						{round.registration_start_date && (
 							<span className={styles.scheduledDate}>
@@ -1715,7 +1392,7 @@ export default function Round() {
 	return (
 		<AdminLayout
 			pageTitle='Quản lý Đợt Nghiên cứu'
-			pageSubtitle='Thiết lập và theo dõi các đợt đăng ký đề tài NCKH — bảng research_rounds'
+			pageSubtitle='Thiết lập và theo dõi các đợt đăng ký đề tài NCKH'
 			headerActions={headerActions}
 		>
 			{/* ── STATS ── */}
@@ -1732,21 +1409,7 @@ export default function Round() {
 				</div>
 				<div className={`${styles.statCard} ${styles.blue}`}>
 					<div className={`${styles.statIcon} ${styles.iconBlue}`}>
-						<svg
-							viewBox='0 0 24 24'
-							fill='none'
-							stroke='currentColor'
-							strokeWidth='2'
-							strokeLinecap='round'
-							strokeLinejoin='round'
-						>
-							<circle
-								cx='12'
-								cy='12'
-								r='10'
-							/>
-							<polyline points='12 6 12 12 16 14' />
-						</svg>
+						<ClockSvg />
 					</div>
 					<div className={styles.statBody}>
 						<div className={styles.statValue}>{stats.active}</div>
@@ -1756,17 +1419,7 @@ export default function Round() {
 				</div>
 				<div className={`${styles.statCard} ${styles.gray}`}>
 					<div className={`${styles.statIcon} ${styles.iconGray}`}>
-						<svg
-							viewBox='0 0 24 24'
-							fill='none'
-							stroke='currentColor'
-							strokeWidth='2'
-							strokeLinecap='round'
-							strokeLinejoin='round'
-						>
-							<path d='M22 11.08V12a10 10 0 1 1-5.93-9.14' />
-							<polyline points='22 4 12 14.01 9 11.01' />
-						</svg>
+						<CheckCircleSvg />
 					</div>
 					<div className={styles.statBody}>
 						<div className={styles.statValue}>{stats.closed}</div>
@@ -1776,22 +1429,7 @@ export default function Round() {
 				</div>
 				<div className={`${styles.statCard} ${styles.amber}`}>
 					<div className={`${styles.statIcon} ${styles.iconAmber}`}>
-						<svg
-							viewBox='0 0 24 24'
-							fill='none'
-							stroke='currentColor'
-							strokeWidth='2'
-							strokeLinecap='round'
-							strokeLinejoin='round'
-						>
-							<rect x='3' y='4' width='18' height='18' rx='2' ry='2' />
-							<line x1='16' y1='2' x2='16' y2='6' />
-							<line x1='8' y1='2' x2='8' y2='6' />
-							<line x1='3' y1='10' x2='21' y2='10' />
-							<line x1='12' y1='15' x2='12' y2='15' />
-							<line x1='8' y1='15' x2='8' y2='15' />
-							<line x1='16' y1='15' x2='16' y2='15' />
-						</svg>
+						<CalendarSvg />
 					</div>
 					<div className={styles.statBody}>
 						<div className={styles.statValue}>{stats.draft}</div>
@@ -1872,42 +1510,7 @@ export default function Round() {
 					</div>
 				) : filtered.length === 0 ? (
 					<div className={styles.emptyState}>
-						<svg
-							className={styles.emptyIcon}
-							viewBox='0 0 24 24'
-							fill='none'
-							stroke='currentColor'
-							strokeWidth='1.5'
-							strokeLinecap='round'
-							strokeLinejoin='round'
-						>
-							<rect
-								x='3'
-								y='4'
-								width='18'
-								height='18'
-								rx='2'
-								ry='2'
-							/>
-							<line
-								x1='16'
-								y1='2'
-								x2='16'
-								y2='6'
-							/>
-							<line
-								x1='8'
-								y1='2'
-								x2='8'
-								y2='6'
-							/>
-							<line
-								x1='3'
-								y1='10'
-								x2='21'
-								y2='10'
-							/>
-						</svg>
+						<CalendarSvg className={styles.emptyIcon} />
 						<p className={styles.emptyTitle}>Không có đợt nghiên cứu nào</p>
 						<p className={styles.emptyDesc}>
 							Thử thay đổi bộ lọc hoặc tạo đợt mới

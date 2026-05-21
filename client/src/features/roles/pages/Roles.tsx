@@ -818,7 +818,7 @@ export default function Roles() {
 	return (
 		<AdminLayout
 			pageTitle='Quản lý Vai trò & Quyền'
-			pageSubtitle='Danh sách vai trò và phân quyền người dùng — bảng roles & permissions'
+			pageSubtitle='Danh sách vai trò và phân quyền người dùng'
 			headerActions={headerActions}
 		>
 			{/* ── STATS ── */}

@@ -210,7 +210,7 @@ router.delete('/:id', authorize('admin'), ctrl.removeOne);
 router.post(
 	'/:id/reset-password',
 	authorize('admin'),
-	[body('new_password').isLength({ min: 6 })],
+	[body('new_password').isLength({ min: 5 })],
 	validate,
 	ctrl.resetPassword,
 );

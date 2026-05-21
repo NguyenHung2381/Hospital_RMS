@@ -841,8 +841,6 @@ export default function UserList() {
 		});
 	}, [users, typeFilters, deptFilters, search]);
 
-	// Reset về trang 1 khi filter hoặc search thay đổi
-	useEffect(() => { setCurrentPage(1); }, [typeFilters, deptFilters, search, pageSize]);
 
 	const totalPages = Math.max(1, Math.ceil(filteredUsers.length / pageSize));
 	const pagedUsers = useMemo(() => {
@@ -898,6 +896,7 @@ export default function UserList() {
 	const handleEdit = useCallback(
 		async (form: UserForm): Promise<void> => {
 			if (!editUser) return;
+			suppressRealtime();
 			const updated = await updateUserApi(editUser.id, {
 				staff_number: form.staff_number || undefined,
 				full_name: form.full_name,
@@ -908,7 +907,6 @@ export default function UserList() {
 				is_active: form.is_active,
 			});
 			if (form.password) await resetUserPassword(editUser.id, form.password);
-			suppressRealtime();
 			setUsers((prev) =>
 				prev.map((u) => (u.id === editUser.id ? updated : u)),
 			);
@@ -964,7 +962,7 @@ export default function UserList() {
 		return (
 			<AdminLayout
 				pageTitle='Quản lý người dùng'
-				pageSubtitle='Quản lý tài khoản cán bộ, nhân viên — bảng users'
+				pageSubtitle='Quản lý tài khoản cán bộ, nhân viên'
 				headerActions={headerActions}
 			>
 				<div className={styles.emptyState}>
@@ -981,7 +979,7 @@ export default function UserList() {
 		return (
 			<AdminLayout
 				pageTitle='Quản lý người dùng'
-				pageSubtitle='Quản lý tài khoản cán bộ, nhân viên — bảng users'
+				pageSubtitle='Quản lý tài khoản cán bộ, nhân viên'
 				headerActions={headerActions}
 			>
 				<div className={styles.emptyState}>
@@ -998,7 +996,7 @@ export default function UserList() {
 	return (
 		<AdminLayout
 			pageTitle='Quản lý người dùng'
-			pageSubtitle='Quản lý tài khoản cán bộ, nhân viên — bảng users'
+			pageSubtitle='Quản lý tài khoản cán bộ, nhân viên'
 			headerActions={headerActions}
 		>
 			{/* ── GLOBAL STATS ── */}
@@ -1060,12 +1058,12 @@ export default function UserList() {
 								className={styles.searchInput}
 								placeholder='Tìm theo tên, username, email...'
 								value={search}
-								onChange={(e) => setSearch(e.target.value)}
+								onChange={(e) => { setSearch(e.target.value); setCurrentPage(1); }}
 							/>
 							{search && (
 								<button
 									className={styles.searchClear}
-									onClick={() => setSearch('')}
+									onClick={() => { setSearch(''); setCurrentPage(1); }}
 								>
 									<Ic.X />
 								</button>
@@ -1109,8 +1107,8 @@ export default function UserList() {
 											<input type="checkbox" 
 												checked={deptFilters.includes(d.id)}
 												onChange={(e) => {
-													if (e.target.checked) setDeptFilters(p => [...p, d.id]);
-													else setDeptFilters(p => p.filter(id => id !== d.id));
+													if (e.target.checked) { setDeptFilters(p => [...p, d.id]); setCurrentPage(1); }
+													else { setDeptFilters(p => p.filter(id => id !== d.id)); setCurrentPage(1); }
 												}}
 												style={{ cursor: 'pointer', accentColor: 'var(--color-primary)' }}
 											/>
@@ -1127,7 +1125,7 @@ export default function UserList() {
 						<div className={styles.roleFilters}>
 							<button
 								className={`${styles.roleFilterBtn} ${typeFilters.length === 0 ? styles.roleFilterActive : ''}`}
-								onClick={() => setTypeFilters([])}
+								onClick={() => { setTypeFilters([]); setCurrentPage(1); }}
 							>
 								Tất cả loại
 								<span className={styles.roleFilterCount}>
@@ -1142,6 +1140,7 @@ export default function UserList() {
 										setTypeFilters(prev => 
 											prev.includes(t.value) ? prev.filter(v => v !== t.value) : [...prev, t.value]
 										);
+										setCurrentPage(1);
 									}}
 								>
 									{t.label}
@@ -1382,7 +1381,7 @@ export default function UserList() {
 									<select
 										className={styles.pageSizeSelect}
 										value={pageSize}
-										onChange={(e) => setPageSize(Number(e.target.value))}
+										onChange={(e) => { setPageSize(Number(e.target.value)); setCurrentPage(1); }}
 									>
 										{[10, 20, 50, 100].map((n) => (
 											<option key={n} value={n}>{n}</option>

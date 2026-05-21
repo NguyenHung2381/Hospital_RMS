@@ -4,7 +4,13 @@
 // Bảng: approvals (join topics, users)
 // =============================================
 
-import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
+import React, {
+	useState,
+	useMemo,
+	useEffect,
+	useCallback,
+	useRef,
+} from 'react';
 import styles from './Approval.module.css';
 import AdminLayout from '../../../layouts/AdminLayout';
 import { useRealtimeUpdate } from '../../../hooks/useRealtime';
@@ -30,6 +36,21 @@ import { getTopicFiles } from '../../topics/api/topicApi';
 import type { TopicFile } from '../../topics/types/topic.type';
 import { getToken } from '../../../lib/authStorage';
 import { BASE_URL } from '../../../lib/apiClient';
+import CheckSvg from '../../../assets/svg/check.svg?react';
+import XSvg from '../../../assets/svg/x.svg?react';
+import AlertSvg from '../../../assets/svg/alert.svg?react';
+import CheckCircleSvg from '../../../assets/svg/check-circle.svg?react';
+import XCircleSvg from '../../../assets/svg/x-circle.svg?react';
+import MessageSvg from '../../../assets/svg/message.svg?react';
+import ClockSvg from '../../../assets/svg/clock.svg?react';
+import SearchSvg from '../../../assets/svg/search.svg?react';
+import WarnSvg from '../../../assets/svg/warn.svg?react';
+import UsersSvg from '../../../assets/svg/users.svg?react';
+import DotSvg from '../../../assets/svg/dot.svg?react';
+import HistorySvg from '../../../assets/svg/history.svg?react';
+import DownloadSvg from '../../../assets/svg/download.svg?react';
+import EyeSvg from '../../../assets/svg/eye.svg?react';
+import FileTextSvg from '../../../assets/svg/file-text.svg?react';
 
 // ─── HELPERS ──────────────────────────────
 const STATUS_CFG: Record<ApvStatus, { label: string; cls: string }> = {
@@ -208,266 +229,21 @@ function mergeTopicDetail(
 }
 
 const Ic = {
-	Check: () => (
-		<svg
-			viewBox='0 0 24 24'
-			fill='none'
-			stroke='currentColor'
-			strokeWidth='2.5'
-			strokeLinecap='round'
-			strokeLinejoin='round'
-		>
-			<polyline points='20 6 9 17 4 12' />
-		</svg>
-	),
-	X: () => (
-		<svg
-			viewBox='0 0 24 24'
-			fill='none'
-			stroke='currentColor'
-			strokeWidth='2.5'
-			strokeLinecap='round'
-			strokeLinejoin='round'
-		>
-			<line
-				x1='18'
-				y1='6'
-				x2='6'
-				y2='18'
-			/>
-			<line
-				x1='6'
-				y1='6'
-				x2='18'
-				y2='18'
-			/>
-		</svg>
-	),
-	Info: () => (
-		<svg
-			viewBox='0 0 24 24'
-			fill='none'
-			stroke='currentColor'
-			strokeWidth='2'
-			strokeLinecap='round'
-			strokeLinejoin='round'
-		>
-			<circle
-				cx='12'
-				cy='12'
-				r='10'
-			/>
-			<line
-				x1='12'
-				y1='8'
-				x2='12'
-				y2='12'
-			/>
-			<line
-				x1='12'
-				y1='16'
-				x2='12.01'
-				y2='16'
-			/>
-		</svg>
-	),
-	Approve: () => (
-		<svg
-			viewBox='0 0 24 24'
-			fill='none'
-			stroke='currentColor'
-			strokeWidth='2'
-			strokeLinecap='round'
-			strokeLinejoin='round'
-		>
-			<path d='M22 11.08V12a10 10 0 1 1-5.93-9.14' />
-			<polyline points='22 4 12 14.01 9 11.01' />
-		</svg>
-	),
-	Reject: () => (
-		<svg
-			viewBox='0 0 24 24'
-			fill='none'
-			stroke='currentColor'
-			strokeWidth='2'
-			strokeLinecap='round'
-			strokeLinejoin='round'
-		>
-			<circle
-				cx='12'
-				cy='12'
-				r='10'
-			/>
-			<line
-				x1='4.93'
-				y1='4.93'
-				x2='19.07'
-				y2='19.07'
-			/>
-		</svg>
-	),
-	Request: () => (
-		<svg
-			viewBox='0 0 24 24'
-			fill='none'
-			stroke='currentColor'
-			strokeWidth='2'
-			strokeLinecap='round'
-			strokeLinejoin='round'
-		>
-			<path d='M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z' />
-		</svg>
-	),
-	Clock: () => (
-		<svg
-			viewBox='0 0 24 24'
-			fill='none'
-			stroke='currentColor'
-			strokeWidth='2'
-			strokeLinecap='round'
-			strokeLinejoin='round'
-		>
-			<circle
-				cx='12'
-				cy='12'
-				r='10'
-			/>
-			<polyline points='12 6 12 12 16 14' />
-		</svg>
-	),
-	Search: () => (
-		<svg
-			viewBox='0 0 24 24'
-			fill='none'
-			stroke='currentColor'
-			strokeWidth='2'
-			strokeLinecap='round'
-			strokeLinejoin='round'
-		>
-			<circle
-				cx='11'
-				cy='11'
-				r='8'
-			/>
-			<line
-				x1='21'
-				y1='21'
-				x2='16.65'
-				y2='16.65'
-			/>
-		</svg>
-	),
-	Urgent: () => (
-		<svg
-			viewBox='0 0 24 24'
-			fill='none'
-			stroke='currentColor'
-			strokeWidth='2'
-			strokeLinecap='round'
-			strokeLinejoin='round'
-		>
-			<path d='M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z' />
-			<line
-				x1='12'
-				y1='9'
-				x2='12'
-				y2='13'
-			/>
-			<line
-				x1='12'
-				y1='17'
-				x2='12.01'
-				y2='17'
-			/>
-		</svg>
-	),
-	Users: () => (
-		<svg
-			viewBox='0 0 24 24'
-			fill='none'
-			stroke='currentColor'
-			strokeWidth='2'
-			strokeLinecap='round'
-			strokeLinejoin='round'
-		>
-			<path d='M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2' />
-			<circle
-				cx='9'
-				cy='7'
-				r='4'
-			/>
-			<path d='M23 21v-2a4 4 0 0 0-3-3.87' />
-			<path d='M16 3.13a4 4 0 0 1 0 7.75' />
-		</svg>
-	),
-	Dot: () => (
-		<svg
-			viewBox='0 0 24 24'
-			fill='currentColor'
-			style={{ width: 8, height: 8 }}
-		>
-			<circle
-				cx='12'
-				cy='12'
-				r='8'
-			/>
-		</svg>
-	),
-	History: () => (
-		<svg
-			viewBox='0 0 24 24'
-			fill='none'
-			stroke='currentColor'
-			strokeWidth='2'
-			strokeLinecap='round'
-			strokeLinejoin='round'
-		>
-			<polyline points='1 4 1 10 7 10' />
-			<path d='M3.51 15a9 9 0 1 0 .49-5' />
-		</svg>
-	),
-	Download: () => (
-		<svg
-			viewBox='0 0 24 24'
-			fill='none'
-			stroke='currentColor'
-			strokeWidth='2'
-			strokeLinecap='round'
-			strokeLinejoin='round'
-		>
-			<path d='M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4' />
-			<polyline points='7 10 12 15 17 10' />
-			<line x1='12' y1='15' x2='12' y2='3' />
-		</svg>
-	),
-	Eye: () => (
-		<svg
-			viewBox='0 0 24 24'
-			fill='none'
-			stroke='currentColor'
-			strokeWidth='2'
-			strokeLinecap='round'
-			strokeLinejoin='round'
-		>
-			<path d='M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z' />
-			<circle cx='12' cy='12' r='3' />
-		</svg>
-	),
-	File: () => (
-		<svg
-			viewBox='0 0 24 24'
-			fill='none'
-			stroke='currentColor'
-			strokeWidth='2'
-			strokeLinecap='round'
-			strokeLinejoin='round'
-		>
-			<path d='M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z' />
-			<polyline points='14 2 14 8 20 8' />
-			<line x1='16' y1='13' x2='8' y2='13' />
-			<line x1='16' y1='17' x2='8' y2='17' />
-		</svg>
-	),
+	Check: () => <CheckSvg />,
+	X: () => <XSvg />,
+	Info: () => <AlertSvg />,
+	Approve: () => <CheckCircleSvg />,
+	Reject: () => <XCircleSvg />,
+	Request: () => <MessageSvg />,
+	Clock: () => <ClockSvg />,
+	Search: () => <SearchSvg />,
+	Urgent: () => <WarnSvg />,
+	Users: () => <UsersSvg />,
+	Dot: () => <DotSvg style={{ width: 8, height: 8 }} />,
+	History: () => <HistorySvg />,
+	Download: () => <DownloadSvg />,
+	Eye: () => <EyeSvg />,
+	File: () => <FileTextSvg />,
 };
 
 // ─── BADGE COMPONENT ──────────────────────
@@ -726,7 +502,9 @@ function FileViewerModal({
 }) {
 	const containerRef = useRef<HTMLDivElement>(null);
 	const blobUrlRef = useRef<string | null>(null);
-	const [renderState, setRenderState] = useState<'loading' | 'done' | 'error'>('loading');
+	const [renderState, setRenderState] = useState<'loading' | 'done' | 'error'>(
+		'loading',
+	);
 	const [pdfBlobUrl, setPdfBlobUrl] = useState<string | null>(null);
 
 	useEffect(() => {
@@ -857,7 +635,9 @@ export default function Approval() {
 		'bulkApprove' | 'bulkReject' | null
 	>(null);
 	const [bulkComment, setBulkComment] = useState('');
-	const [filesByTopic, setFilesByTopic] = useState<Record<string, TopicFile[]>>({});
+	const [filesByTopic, setFilesByTopic] = useState<Record<string, TopicFile[]>>(
+		{},
+	);
 	const [fileViewer, setFileViewer] = useState<{
 		url: string;
 		name: string;
@@ -1380,27 +1160,7 @@ export default function Approval() {
 						)}
 
 						<div className={styles.listSearch}>
-							<svg
-								className={styles.listSearchIcon}
-								viewBox='0 0 24 24'
-								fill='none'
-								stroke='currentColor'
-								strokeWidth='2'
-								strokeLinecap='round'
-								strokeLinejoin='round'
-							>
-								<circle
-									cx='11'
-									cy='11'
-									r='8'
-								/>
-								<line
-									x1='21'
-									y1='21'
-									x2='16.65'
-									y2='16.65'
-								/>
-							</svg>
+							<SearchSvg className={styles.listSearchIcon} />
 							<input
 								className={styles.listSearchInput}
 								placeholder='Tìm mã, tên đề tài, người nộp...'
@@ -1577,18 +1337,7 @@ export default function Approval() {
 				<div className={styles.detailPanel}>
 					{!selected ? (
 						<div className={styles.detailEmpty}>
-							<svg
-								className={styles.detailEmptyIcon}
-								viewBox='0 0 24 24'
-								fill='none'
-								stroke='currentColor'
-								strokeWidth='1.5'
-								strokeLinecap='round'
-								strokeLinejoin='round'
-							>
-								<path d='M22 11.08V12a10 10 0 1 1-5.93-9.14' />
-								<polyline points='22 4 12 14.01 9 11.01' />
-							</svg>
+							<CheckCircleSvg className={styles.detailEmptyIcon} />
 							<p className={styles.detailEmptyTitle}>
 								Chọn một hồ sơ để xem chi tiết
 							</p>
@@ -1617,29 +1366,9 @@ export default function Approval() {
 									<Badge cls='badgeGray'>{selected.topic_category}</Badge>
 									{selected.is_urgent && (
 										<span className={`${styles.badge} ${styles.badgeRed}`}>
-											<svg
-												viewBox='0 0 24 24'
-												fill='none'
-												stroke='currentColor'
-												strokeWidth='2'
-												strokeLinecap='round'
-												strokeLinejoin='round'
+											<WarnSvg
 												style={{ width: 11, height: 11, flexShrink: 0 }}
-											>
-												<path d='M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z' />
-												<line
-													x1='12'
-													y1='9'
-													x2='12'
-													y2='13'
-												/>
-												<line
-													x1='12'
-													y1='17'
-													x2='12.01'
-													y2='17'
-												/>
-											</svg>
+											/>
 											Cần xử lý khẩn
 										</span>
 									)}

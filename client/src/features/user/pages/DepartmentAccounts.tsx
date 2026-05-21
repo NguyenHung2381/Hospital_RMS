@@ -30,30 +30,30 @@ import styles from './DepartmentAccounts.module.css';
 
 // ─── CONSTANTS ────────────────────────────
 const ACCOUNT_TYPES: { value: AccountType; label: string }[] = [
-	{ value: 'manager',  label: 'Quản lý'    },
-	{ value: 'reviewer', label: 'Thẩm định'  },
-	{ value: 'dept',     label: 'TK Khoa'    },
-	{ value: 'member',   label: 'Thành viên' },
+	{ value: 'manager', label: 'Quản lý' },
+	{ value: 'reviewer', label: 'Thẩm định' },
+	{ value: 'dept', label: 'TK Khoa' },
+	{ value: 'member', label: 'Thành viên' },
 ];
 
 const ACCOUNT_TYPE_CFG: Record<
 	AccountType,
 	{ label: string; cls: string; avatarCls: string }
 > = {
-	admin:    { label: 'Quản trị',   cls: 'rolePurple', avatarCls: 'avatarPurple' },
-	director: { label: 'Giám đốc',   cls: 'roleRed',    avatarCls: 'avatarRed'    },
-	reviewer: { label: 'Thẩm định',  cls: 'roleGray',   avatarCls: 'avatarGray'   },
-	manager:  { label: 'Quản lý',    cls: 'roleBlue',   avatarCls: 'avatarBlue'   },
-	dept:     { label: 'TK Khoa',    cls: 'roleAmber',  avatarCls: 'avatarAmber'  },
-	member:   { label: 'Thành viên', cls: 'roleGreen',  avatarCls: 'avatarGreen'  },
+	admin: { label: 'Quản trị', cls: 'rolePurple', avatarCls: 'avatarPurple' },
+	director: { label: 'Giám đốc', cls: 'roleRed', avatarCls: 'avatarRed' },
+	reviewer: { label: 'Thẩm định', cls: 'roleGray', avatarCls: 'avatarGray' },
+	manager: { label: 'Quản lý', cls: 'roleBlue', avatarCls: 'avatarBlue' },
+	dept: { label: 'TK Khoa', cls: 'roleAmber', avatarCls: 'avatarAmber' },
+	member: { label: 'Thành viên', cls: 'roleGreen', avatarCls: 'avatarGreen' },
 };
 
 // Types a dept manager can assign (no admin/director escalation)
 const EDITABLE_ACCOUNT_TYPES: { value: AccountType; label: string }[] = [
-	{ value: 'manager',  label: 'Quản lý'    },
-	{ value: 'reviewer', label: 'Thẩm định'  },
-	{ value: 'dept',     label: 'TK Khoa'    },
-	{ value: 'member',   label: 'Thành viên' },
+	{ value: 'manager', label: 'Quản lý' },
+	{ value: 'reviewer', label: 'Thẩm định' },
+	{ value: 'dept', label: 'TK Khoa' },
+	{ value: 'member', label: 'Thành viên' },
 ];
 
 // ─── HELPERS ──────────────────────────────
@@ -77,18 +77,26 @@ function formatDate(dateStr: string | null | undefined): string {
 // ─── ICONS ────────────────────────────────
 const Ic = {
 	Users: UsersSvg,
-	Edit:  EditSvg,
+	Edit: EditSvg,
 	Trash: TrashSvg,
 	Check: CheckSvg,
-	X:     XSvg,
+	X: XSvg,
 	Search: SearchSvg,
 	ChevronDown: ChevDSvg,
-	Info:  InfoSvg,
-	Warn:  WarnSvg,
+	Info: InfoSvg,
+	Warn: WarnSvg,
 };
 
 // ─── BADGE ────────────────────────────────
-function Badge({ cls, children, dot }: { cls: string; children: React.ReactNode; dot?: boolean }) {
+function Badge({
+	cls,
+	children,
+	dot,
+}: {
+	cls: string;
+	children: React.ReactNode;
+	dot?: boolean;
+}) {
 	return (
 		<span className={`${styles.badge} ${styles[cls as keyof typeof styles]}`}>
 			{dot && <span className={styles.badgeDot} />}
@@ -98,10 +106,20 @@ function Badge({ cls, children, dot }: { cls: string; children: React.ReactNode;
 }
 
 // ─── AVATAR ───────────────────────────────
-function Avatar({ name, cls, size = 'md' }: { name: string; cls: string; size?: 'sm' | 'md' }) {
+function Avatar({
+	name,
+	cls,
+	size = 'md',
+}: {
+	name: string;
+	cls: string;
+	size?: 'sm' | 'md';
+}) {
 	const sizeCls = size === 'sm' ? styles.avatarSm : styles.avatarMd;
 	return (
-		<div className={`${styles.avatar} ${styles[cls as keyof typeof styles]} ${sizeCls}`}>
+		<div
+			className={`${styles.avatar} ${styles[cls as keyof typeof styles]} ${sizeCls}`}
+		>
 			{getInitials(name)}
 		</div>
 	);
@@ -123,7 +141,12 @@ function Toggle({ on, onChange }: { on: boolean; onChange: () => void }) {
 
 // ─── FORM FIELD ───────────────────────────
 function Field({
-	id, label, required, error, hint, children,
+	id,
+	label,
+	required,
+	error,
+	hint,
+	children,
 }: {
 	id: string;
 	label: string;
@@ -134,7 +157,10 @@ function Field({
 }) {
 	return (
 		<div className={styles.formGroup}>
-			<label htmlFor={id} className={styles.formLabel}>
+			<label
+				htmlFor={id}
+				className={styles.formLabel}
+			>
 				{label}
 				{required && <span className={styles.required}>*</span>}
 			</label>
@@ -167,13 +193,13 @@ interface EditModalProps {
 
 function EditModal({ user, roles, deptName, onClose, onSave }: EditModalProps) {
 	const [form, setForm] = useState<EditForm>({
-		full_name:    user.full_name,
+		full_name: user.full_name,
 		staff_number: user.staff_number ?? '',
-		email:        user.email ?? '',
-		role_id:      user.role_id ?? '',
+		email: user.email ?? '',
+		role_id: user.role_id ?? '',
 		account_type: user.account_type,
-		is_active:    user.is_active,
-		password:     '',
+		is_active: user.is_active,
+		password: '',
 	});
 	const [errors, setErrors] = useState<FormErrors>({});
 	const [loading, setLoading] = useState(false);
@@ -182,13 +208,19 @@ function EditModal({ user, roles, deptName, onClose, onSave }: EditModalProps) {
 
 	const set = (field: keyof EditForm, value: unknown) => {
 		setForm((p) => ({ ...p, [field]: value }));
-		if (errors[field]) setErrors((p) => { const n = { ...p }; delete n[field]; return n; });
+		if (errors[field])
+			setErrors((p) => {
+				const n = { ...p };
+				delete n[field];
+				return n;
+			});
 	};
 
 	const validate = (): boolean => {
 		const e: FormErrors = {};
-		if (!form.full_name.trim())    e.full_name    = 'Vui lòng nhập họ và tên';
-		if (!form.staff_number.trim()) e.staff_number = 'Vui lòng nhập mã nhân viên';
+		if (!form.full_name.trim()) e.full_name = 'Vui lòng nhập họ và tên';
+		if (!form.staff_number.trim())
+			e.staff_number = 'Vui lòng nhập mã nhân viên';
 		if (form.email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email))
 			e.email = 'Email không hợp lệ';
 		if (!form.role_id) e.role_id = 'Vui lòng chọn vai trò';
@@ -213,9 +245,15 @@ function EditModal({ user, roles, deptName, onClose, onSave }: EditModalProps) {
 	return (
 		<div
 			className={styles.modalBackdrop}
-			onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+			onClick={(e) => {
+				if (e.target === e.currentTarget) onClose();
+			}}
 		>
-			<div className={styles.modal} role='dialog' aria-modal='true'>
+			<div
+				className={styles.modal}
+				role='dialog'
+				aria-modal='true'
+			>
 				{/* Header */}
 				<div className={styles.modalHeader}>
 					<div
@@ -230,7 +268,11 @@ function EditModal({ user, roles, deptName, onClose, onSave }: EditModalProps) {
 							Cập nhật thông tin — {user.username}
 						</div>
 					</div>
-					<button className={styles.modalClose} onClick={onClose} aria-label='Đóng'>
+					<button
+						className={styles.modalClose}
+						onClick={onClose}
+						aria-label='Đóng'
+					>
 						<Ic.X />
 					</button>
 				</div>
@@ -239,7 +281,12 @@ function EditModal({ user, roles, deptName, onClose, onSave }: EditModalProps) {
 				<div className={styles.modalBody}>
 					<div className={styles.formSection}>Thông tin cá nhân</div>
 					<div className={styles.formRow}>
-						<Field id='full_name' label='Họ và tên' required error={errors.full_name}>
+						<Field
+							id='full_name'
+							label='Họ và tên'
+							required
+							error={errors.full_name}
+						>
 							<input
 								id='full_name'
 								className={`${styles.formInput} ${errors.full_name ? styles.inputError : ''}`}
@@ -265,7 +312,11 @@ function EditModal({ user, roles, deptName, onClose, onSave }: EditModalProps) {
 					</div>
 					<div className={styles.formRow}>
 						<div className={styles.formRowFull}>
-							<Field id='email' label='Email' error={errors.email}>
+							<Field
+								id='email'
+								label='Email'
+								error={errors.email}
+							>
 								<input
 									id='email'
 									type='email'
@@ -280,7 +331,11 @@ function EditModal({ user, roles, deptName, onClose, onSave }: EditModalProps) {
 
 					<div className={styles.formSection}>Thông tin tài khoản</div>
 					<div className={styles.formRow}>
-						<Field id='username_ro' label='Tên đăng nhập' hint='Không thể thay đổi'>
+						<Field
+							id='username_ro'
+							label='Tên đăng nhập'
+							hint='Không thể thay đổi'
+						>
 							<div className={styles.readonlyField}>{user.username}</div>
 						</Field>
 						<Field
@@ -303,10 +358,15 @@ function EditModal({ user, roles, deptName, onClose, onSave }: EditModalProps) {
 									type='button'
 									onClick={() => setShowPwd((v) => !v)}
 									style={{
-										position: 'absolute', right: 10, top: '50%',
-										transform: 'translateY(-50%)', background: 'none',
-										border: 'none', cursor: 'pointer',
-										color: 'var(--color-gray-400)', display: 'flex',
+										position: 'absolute',
+										right: 10,
+										top: '50%',
+										transform: 'translateY(-50%)',
+										background: 'none',
+										border: 'none',
+										cursor: 'pointer',
+										color: 'var(--color-gray-400)',
+										display: 'flex',
 									}}
 									aria-label={showPwd ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
 								>
@@ -318,10 +378,19 @@ function EditModal({ user, roles, deptName, onClose, onSave }: EditModalProps) {
 
 					<div className={styles.formSection}>Phân công & Vai trò</div>
 					<div className={styles.formRow}>
-						<Field id='dept_ro' label='Khoa / Phòng ban' hint='Không thể thay đổi'>
+						<Field
+							id='dept_ro'
+							label='Khoa / Phòng ban'
+							hint='Không thể thay đổi'
+						>
 							<div className={styles.readonlyField}>{deptName}</div>
 						</Field>
-						<Field id='role_id' label='Vai trò' required error={errors.role_id}>
+						<Field
+							id='role_id'
+							label='Vai trò'
+							required
+							error={errors.role_id}
+						>
 							<div className={styles.selectWrapper}>
 								<select
 									id='role_id'
@@ -331,7 +400,12 @@ function EditModal({ user, roles, deptName, onClose, onSave }: EditModalProps) {
 								>
 									<option value=''>— Chọn vai trò —</option>
 									{roles.map((r) => (
-										<option key={r.id} value={r.id}>{r.name}</option>
+										<option
+											key={r.id}
+											value={r.id}
+										>
+											{r.name}
+										</option>
 									))}
 								</select>
 								<Ic.ChevronDown />
@@ -339,16 +413,27 @@ function EditModal({ user, roles, deptName, onClose, onSave }: EditModalProps) {
 						</Field>
 					</div>
 					<div className={styles.formRow}>
-						<Field id='account_type' label='Loại tài khoản' required>
+						<Field
+							id='account_type'
+							label='Loại tài khoản'
+							required
+						>
 							<div className={styles.selectWrapper}>
 								<select
 									id='account_type'
 									className={styles.formSelect}
 									value={form.account_type}
-									onChange={(e) => set('account_type', e.target.value as AccountType)}
+									onChange={(e) =>
+										set('account_type', e.target.value as AccountType)
+									}
 								>
 									{EDITABLE_ACCOUNT_TYPES.map((t) => (
-										<option key={t.value} value={t.value}>{t.label}</option>
+										<option
+											key={t.value}
+											value={t.value}
+										>
+											{t.label}
+										</option>
 									))}
 								</select>
 								<Ic.ChevronDown />
@@ -362,28 +447,47 @@ function EditModal({ user, roles, deptName, onClose, onSave }: EditModalProps) {
 						<div>
 							<div className={styles.formToggleLabel}>Trạng thái tài khoản</div>
 							<div className={styles.formToggleSub}>
-								{form.is_active ? 'Tài khoản đang hoạt động' : 'Tài khoản bị tạm khoá'}
+								{form.is_active
+									? 'Tài khoản đang hoạt động'
+									: 'Tài khoản bị tạm khoá'}
 							</div>
 						</div>
-						<Toggle on={form.is_active} onChange={() => set('is_active', !form.is_active)} />
+						<Toggle
+							on={form.is_active}
+							onChange={() => set('is_active', !form.is_active)}
+						/>
 					</div>
 				</div>
 
 				{/* Footer */}
 				<div className={styles.modalFooter}>
 					{saveError && (
-						<span className={styles.fieldError} style={{ flex: 1 }}>{saveError}</span>
+						<span
+							className={styles.fieldError}
+							style={{ flex: 1 }}
+						>
+							{saveError}
+						</span>
 					)}
-					<button className={styles.btnCancel} onClick={onClose}>Huỷ</button>
+					<button
+						className={styles.btnCancel}
+						onClick={onClose}
+					>
+						Huỷ
+					</button>
 					<button
 						className={styles.btnConfirmBlue}
 						onClick={handleSubmit}
 						disabled={loading}
 					>
 						{loading ? (
-							<><span className={styles.spinner} /> Đang lưu...</>
+							<>
+								<span className={styles.spinner} /> Đang lưu...
+							</>
 						) : (
-							<><Ic.Check /> Lưu thay đổi</>
+							<>
+								<Ic.Check /> Lưu thay đổi
+							</>
 						)}
 					</button>
 				</div>
@@ -394,7 +498,9 @@ function EditModal({ user, roles, deptName, onClose, onSave }: EditModalProps) {
 
 // ─── DELETE MODAL ─────────────────────────
 function DeleteModal({
-	user, onClose, onConfirm,
+	user,
+	onClose,
+	onConfirm,
 }: {
 	user: User;
 	onClose: () => void;
@@ -417,10 +523,19 @@ function DeleteModal({
 	return (
 		<div
 			className={styles.modalBackdrop}
-			onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+			onClick={(e) => {
+				if (e.target === e.currentTarget) onClose();
+			}}
 		>
-			<div className={`${styles.modal} ${styles.modalSm}`} role='alertdialog' aria-modal='true'>
-				<div className={styles.modalBody} style={{ textAlign: 'center', gap: 16 }}>
+			<div
+				className={`${styles.modal} ${styles.modalSm}`}
+				role='alertdialog'
+				aria-modal='true'
+			>
+				<div
+					className={styles.modalBody}
+					style={{ textAlign: 'center', gap: 16 }}
+				>
 					<div
 						className={`${styles.modalHeaderIcon} ${styles.iconDanger}`}
 						style={{ margin: '0 auto' }}
@@ -429,23 +544,43 @@ function DeleteModal({
 					</div>
 					<div>
 						<div className={styles.modalTitle}>Xoá tài khoản?</div>
-						<div className={styles.modalSubtitle} style={{ marginTop: 6 }}>
-							Bạn chắc chắn muốn xoá tài khoản{' '}
-							<strong>{user.full_name}</strong> ({user.username})?{' '}
-							Hành động này không thể hoàn tác.
+						<div
+							className={styles.modalSubtitle}
+							style={{ marginTop: 6 }}
+						>
+							Bạn chắc chắn muốn xoá tài khoản <strong>{user.full_name}</strong>{' '}
+							({user.username})? Hành động này không thể hoàn tác.
 						</div>
 					</div>
 				</div>
 				<div className={styles.modalFooter}>
 					{deleteError && (
-						<span className={styles.fieldError} style={{ flex: 1 }}>{deleteError}</span>
+						<span
+							className={styles.fieldError}
+							style={{ flex: 1 }}
+						>
+							{deleteError}
+						</span>
 					)}
-					<button className={styles.btnCancel} onClick={onClose}>Huỷ bỏ</button>
-					<button className={styles.btnDanger} onClick={handleConfirm} disabled={loading}>
+					<button
+						className={styles.btnCancel}
+						onClick={onClose}
+					>
+						Huỷ bỏ
+					</button>
+					<button
+						className={styles.btnDanger}
+						onClick={handleConfirm}
+						disabled={loading}
+					>
 						{loading ? (
-							<><span className={styles.spinner} /> Đang xoá...</>
+							<>
+								<span className={styles.spinner} /> Đang xoá...
+							</>
 						) : (
-							<><Ic.Trash /> Xác nhận xoá</>
+							<>
+								<Ic.Trash /> Xác nhận xoá
+							</>
 						)}
 					</button>
 				</div>
@@ -457,18 +592,18 @@ function DeleteModal({
 // ─── MAIN PAGE ────────────────────────────
 export default function DepartmentAccounts() {
 	const currentUser = getStoredUser<StoredUser>();
-	const deptId   = currentUser?.department_id ?? null;
+	const deptId = currentUser?.department_id ?? null;
 	const deptName = currentUser?.department ?? 'Khoa của tôi';
 
-	const [users,   setUsers]   = useState<User[]>([]);
-	const [roles,   setRoles]   = useState<SimpleItem[]>([]);
+	const [users, setUsers] = useState<User[]>([]);
+	const [roles, setRoles] = useState<SimpleItem[]>([]);
 	const [isLoading, setIsLoading] = useState(true);
 	const [loadError, setLoadError] = useState<string | null>(null);
-	const [search,       setSearch]       = useState('');
-	const [typeFilter,   setTypeFilter]   = useState<AccountType | 'all'>('all');
-	const [refreshKey,   setRefreshKey]   = useState(0);
-	const [editUser,     setEditUser]     = useState<User | null>(null);
-	const [deleteUser,   setDeleteUser]   = useState<User | null>(null);
+	const [search, setSearch] = useState('');
+	const [typeFilter, setTypeFilter] = useState<AccountType | 'all'>('all');
+	const [refreshKey, setRefreshKey] = useState(0);
+	const [editUser, setEditUser] = useState<User | null>(null);
+	const [deleteUser, setDeleteUser] = useState<User | null>(null);
 	const [toast, setToast] = useState<{
 		msg: string;
 		type: 'success' | 'error' | 'info';
@@ -516,11 +651,14 @@ export default function DepartmentAccounts() {
 	}, [deptId, refreshKey]);
 
 	// ── Stats ──────────────────────────────
-	const stats = useMemo(() => ({
-		total:  users.length,
-		active: users.filter((u) => u.is_active).length,
-		locked: users.filter((u) => !u.is_active).length,
-	}), [users]);
+	const stats = useMemo(
+		() => ({
+			total: users.length,
+			active: users.filter((u) => u.is_active).length,
+			locked: users.filter((u) => !u.is_active).length,
+		}),
+		[users],
+	);
 
 	// ── Filtered list ──────────────────────
 	const filteredUsers = useMemo(() => {
@@ -545,21 +683,24 @@ export default function DepartmentAccounts() {
 	);
 
 	// ── CRUD handlers ──────────────────────
-	const handleEdit = useCallback(async (form: EditForm): Promise<void> => {
-		if (!editUser) return;
-		const updated = await updateUserApi(editUser.id, {
-			staff_number: form.staff_number || undefined,
-			full_name:    form.full_name,
-			email:        form.email || undefined,
-			role_id:      form.role_id || undefined,
-			account_type: form.account_type,
-			is_active:    form.is_active,
-		});
-		if (form.password) await resetUserPassword(editUser.id, form.password);
-		setUsers((prev) => prev.map((u) => (u.id === editUser.id ? updated : u)));
-		setEditUser(null);
-		showToast('Đã cập nhật thông tin tài khoản');
-	}, [editUser, showToast]);
+	const handleEdit = useCallback(
+		async (form: EditForm): Promise<void> => {
+			if (!editUser) return;
+			const updated = await updateUserApi(editUser.id, {
+				staff_number: form.staff_number || undefined,
+				full_name: form.full_name,
+				email: form.email || undefined,
+				role_id: form.role_id || undefined,
+				account_type: form.account_type,
+				is_active: form.is_active,
+			});
+			if (form.password) await resetUserPassword(editUser.id, form.password);
+			setUsers((prev) => prev.map((u) => (u.id === editUser.id ? updated : u)));
+			setEditUser(null);
+			showToast('Đã cập nhật thông tin tài khoản');
+		},
+		[editUser, showToast],
+	);
 
 	const handleDelete = useCallback(async (): Promise<void> => {
 		if (!deleteUser) return;
@@ -569,27 +710,37 @@ export default function DepartmentAccounts() {
 		showToast(`Đã xoá tài khoản ${deleteUser.full_name}`, 'info');
 	}, [deleteUser, showToast]);
 
-	const handleToggleActive = useCallback(async (id: string) => {
-		const target = users.find((u) => u.id === id);
-		if (!target) return;
-		try {
-			const updated = await updateUserApi(id, { is_active: !target.is_active });
-			setUsers((prev) => prev.map((u) => (u.id === id ? updated : u)));
-			showToast(
-				updated.is_active ? 'Đã kích hoạt tài khoản' : 'Đã khoá tài khoản',
-				'info',
-			);
-		} catch {
-			showToast('Không thể cập nhật trạng thái', 'error');
-		}
-	}, [users, showToast]);
+	const handleToggleActive = useCallback(
+		async (id: string) => {
+			const target = users.find((u) => u.id === id);
+			if (!target) return;
+			try {
+				const updated = await updateUserApi(id, {
+					is_active: !target.is_active,
+				});
+				setUsers((prev) => prev.map((u) => (u.id === id ? updated : u)));
+				showToast(
+					updated.is_active ? 'Đã kích hoạt tài khoản' : 'Đã khoá tài khoản',
+					'info',
+				);
+			} catch {
+				showToast('Không thể cập nhật trạng thái', 'error');
+			}
+		},
+		[users, showToast],
+	);
 
 	// ── Loading / error states ──────────────
 	if (isLoading) {
 		return (
-			<UserLayout pageTitle='Tài khoản trong khoa' pageSubtitle={deptName ?? ''}>
+			<UserLayout
+				pageTitle='Tài khoản trong khoa'
+				pageSubtitle={deptName ?? ''}
+			>
 				<div className={styles.emptyState}>
-					<div className={styles.emptyIcon}><Ic.Users /></div>
+					<div className={styles.emptyIcon}>
+						<Ic.Users />
+					</div>
 					<div className={styles.emptyTitle}>Đang tải dữ liệu...</div>
 				</div>
 			</UserLayout>
@@ -598,9 +749,14 @@ export default function DepartmentAccounts() {
 
 	if (loadError) {
 		return (
-			<UserLayout pageTitle='Tài khoản trong khoa' pageSubtitle={deptName ?? ''}>
+			<UserLayout
+				pageTitle='Tài khoản trong khoa'
+				pageSubtitle={deptName ?? ''}
+			>
 				<div className={styles.emptyState}>
-					<div className={styles.emptyIcon}><Ic.Info /></div>
+					<div className={styles.emptyIcon}>
+						<Ic.Info />
+					</div>
 					<div className={styles.emptyTitle}>Không tải được dữ liệu</div>
 					<div className={styles.emptyDesc}>{loadError}</div>
 				</div>
@@ -658,7 +814,10 @@ export default function DepartmentAccounts() {
 								onChange={(e) => setSearch(e.target.value)}
 							/>
 							{search && (
-								<button className={styles.searchClear} onClick={() => setSearch('')}>
+								<button
+									className={styles.searchClear}
+									onClick={() => setSearch('')}
+								>
 									<Ic.X />
 								</button>
 							)}
@@ -686,7 +845,9 @@ export default function DepartmentAccounts() {
 						</div>
 					</div>
 					<div className={styles.toolbarRight}>
-						<span className={styles.resultCount}>{filteredUsers.length} tài khoản</span>
+						<span className={styles.resultCount}>
+							{filteredUsers.length} tài khoản
+						</span>
 					</div>
 				</div>
 
@@ -694,7 +855,9 @@ export default function DepartmentAccounts() {
 				<div className={styles.tableWrap}>
 					{filteredUsers.length === 0 ? (
 						<div className={styles.emptyState}>
-							<div className={styles.emptyIcon}><Ic.Users /></div>
+							<div className={styles.emptyIcon}>
+								<Ic.Users />
+							</div>
 							<div className={styles.emptyTitle}>
 								{search || typeFilter !== 'all'
 									? 'Không tìm thấy kết quả'
@@ -725,30 +888,49 @@ export default function DepartmentAccounts() {
 									const typeCfg =
 										ACCOUNT_TYPE_CFG[u.account_type] ?? ACCOUNT_TYPE_CFG.member;
 									return (
-										<tr key={u.id} className={styles.tr}>
-											<td className={`${styles.td} ${styles.tdIdx}`}>{i + 1}</td>
+										<tr
+											key={u.id}
+											className={styles.tr}
+										>
+											<td className={`${styles.td} ${styles.tdIdx}`}>
+												{i + 1}
+											</td>
 											<td className={styles.td}>
 												<div className={styles.memberCell}>
-													<Avatar name={u.full_name} cls={typeCfg.avatarCls} />
+													<Avatar
+														name={u.full_name}
+														cls={typeCfg.avatarCls}
+													/>
 													<div>
-														<div className={styles.memberName}>{u.full_name}</div>
+														<div className={styles.memberName}>
+															{u.full_name}
+														</div>
 														<div className={styles.memberId}>{u.id}</div>
 													</div>
 												</div>
 											</td>
 											<td className={styles.td}>
 												<div>
-													<div className={styles.usernameText}>{u.username}</div>
+													<div className={styles.usernameText}>
+														{u.username}
+													</div>
 													<div className={styles.staffNum}>
 														MNV: {u.staff_number ?? '—'}
 													</div>
 												</div>
 											</td>
 											<td className={styles.td}>
-												<span className={styles.roleText}>{getRoleName(u.role_id)}</span>
+												<span className={styles.roleText}>
+													{getRoleName(u.role_id)}
+												</span>
 											</td>
 											<td className={styles.td}>
-												<Badge cls={typeCfg.cls} dot>{typeCfg.label}</Badge>
+												<Badge
+													cls={typeCfg.cls}
+													dot
+												>
+													{typeCfg.label}
+												</Badge>
 											</td>
 											<td className={styles.td}>
 												<div className={styles.statusToggle}>
@@ -770,7 +952,9 @@ export default function DepartmentAccounts() {
 												</div>
 											</td>
 											<td className={styles.td}>
-												<span className={styles.dateText}>{formatDate(u.created_at)}</span>
+												<span className={styles.dateText}>
+													{formatDate(u.created_at)}
+												</span>
 											</td>
 											<td className={`${styles.td} ${styles.tdActions}`}>
 												<button
@@ -821,8 +1005,8 @@ export default function DepartmentAccounts() {
 					className={`${styles.toast} ${styles[`toast${toast.type.charAt(0).toUpperCase() + toast.type.slice(1)}` as keyof typeof styles]}`}
 				>
 					{toast.type === 'success' && <Ic.Check />}
-					{toast.type === 'error'   && <Ic.X />}
-					{toast.type === 'info'    && <Ic.Info />}
+					{toast.type === 'error' && <Ic.X />}
+					{toast.type === 'info' && <Ic.Info />}
 					{toast.msg}
 				</div>
 			)}

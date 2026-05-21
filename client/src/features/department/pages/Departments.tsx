@@ -620,7 +620,7 @@ export default function Departments() {
 	return (
 		<AdminLayout
 			pageTitle='Quản lý Khoa Phòng'
-			pageSubtitle='Danh sách khoa phòng và đơn vị trong bệnh viện — bảng departments'
+			pageSubtitle='Danh sách khoa phòng và đơn vị trong bệnh viện'
 			headerActions={headerActions}
 		>
 			{/* ── TOOLBAR ── */}

@@ -60,20 +60,18 @@ const create = async (data, actorId) => {
   const result = await pool.request()
     .input('actor_id', sql.VarChar(20), actorId)
     .input('name', sql.NVarChar(255), data.name)
-    .input('code', sql.VarChar(50), data.code)
+    .input('code', sql.VarChar(20), data.code)
     .input('viet_tat', sql.NVarChar(100), data.viet_tat)
     .input('description', sql.NVarChar(sql.MAX), data.description || null)
     .query(`
-      DECLARE @new_id VARCHAR(20);
-      SET @new_id = 'DV' + UPPER(LEFT(@code, 18));
       EXEC sp_set_actor @actor_id;
-      INSERT INTO departments (id, name, code, viet_tat, description, created_by)
-      VALUES (@new_id, @name, @code, @viet_tat, @description, @actor_id);
-      SELECT @new_id AS id;
+      INSERT INTO departments (name, code, viet_tat, description, created_by)
+      VALUES (@name, @code, @viet_tat, @description, @actor_id);
+      SELECT id FROM departments WHERE viet_tat = @viet_tat;
     `);
-	const dept = await getById(result.recordset[0].id);
-	broadcast('update', { entity: 'department' });
-	return dept;
+  const dept = await getById(result.recordset[0].id);
+  broadcast('update', { entity: 'department' });
+  return dept;
 };
 
 const update = async (id, data, actorId) => {
