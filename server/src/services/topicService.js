@@ -3,18 +3,20 @@ const bcrypt = require('bcryptjs');
 const notifSvc = require('./notificationService');
 const { broadcast } = require('./eventService');
 
-const getAll = async ({
-	page = 1,
-	limit = 20,
-	search,
-	round_id,
-	department_id,
-	status,
-	category_id,
-	level_id,
-	participant_id,
-	year,
-}) => {
+const getAll = async (filters, actor = null) => {
+	const {
+		page = 1,
+		limit = 20,
+		search,
+		round_id,
+		department_id,
+		status,
+		category_id,
+		level_id,
+		participant_id,
+		year,
+	} = filters || {};
+
 	const pool = await getPool();
 	const offset = (page - 1) * limit;
 
@@ -22,7 +24,21 @@ const getAll = async ({
 	const req = pool
 		.request()
 		.input('offset', sql.Int, offset)
-		.input('limit', sql.Int, limit);
+		.input('limit', sql.Int, Number(limit));
+
+	// Lọc theo role: manager chỉ thấy khoa mình, member chỉ thấy đề tài tham gia
+	if (actor) {
+		if (actor.account_type === 'manager') {
+			where += ' AND t.department_id = @actor_dept';
+			req.input('actor_dept', sql.VarChar(20), actor.department_id);
+		} else if (actor.account_type === 'member') {
+			where += ` AND EXISTS (
+        SELECT 1 FROM topic_members WHERE topic_id = t.id AND user_id = @actor_id
+      )`;
+			req.input('actor_id', sql.VarChar(20), actor.id);
+		}
+		// admin: không giới hạn
+	}
 
 	if (search) {
 		where += ' AND (t.title LIKE @search OR t.description LIKE @search)';
@@ -32,7 +48,8 @@ const getAll = async ({
 		where += ' AND t.round_id = @round_id';
 		req.input('round_id', sql.VarChar(10), round_id);
 	}
-	if (department_id) {
+	if (department_id && actor?.account_type === 'admin') {
+		// manager đã bị khoá cứng theo khoa, chỉ admin mới lọc theo department_id tuỳ ý
 		where += ' AND t.department_id = @dept';
 		req.input('dept', sql.VarChar(20), department_id);
 	}
@@ -48,7 +65,8 @@ const getAll = async ({
 		where += ' AND t.level_id = @lvl';
 		req.input('lvl', sql.VarChar(5), level_id);
 	}
-	if (participant_id) {
+	if (participant_id && actor?.account_type === 'admin') {
+		// Chỉ admin mới lọc theo participant_id tuỳ ý (member đã tự động lọc)
 		where += ` AND (t.created_by = @participant_id OR EXISTS (
       SELECT 1 FROM topic_members WHERE topic_id = t.id AND user_id = @participant_id
     ))`;
@@ -87,7 +105,7 @@ const getAll = async ({
 	};
 };
 
-const getById = async (id) => {
+const getById = async (id, actor = null) => {
 	const pool = await getPool();
 	const result = await pool.request().input('id', sql.VarChar(15), id).query(`
       SELECT t.*, r.name AS round_name, c.name AS category_name,
@@ -104,6 +122,26 @@ const getById = async (id) => {
 
 	if (!result.recordset[0]) return null;
 	const topic = result.recordset[0];
+
+	// Kiểm tra quyền xem chi tiết
+	if (actor && actor.account_type !== 'admin') {
+		if (actor.account_type === 'manager') {
+			if (topic.department_id !== actor.department_id) {
+				throw Object.assign(new Error('Không có quyền xem đề tài này'), { status: 403 });
+			}
+		} else if (actor.account_type === 'member') {
+			const access = await pool.request()
+				.input('topic_id', sql.VarChar(15), id)
+				.input('user_id', sql.VarChar(20), actor.id)
+				.query(`
+          SELECT 1 AS ok FROM topic_members
+          WHERE topic_id = @topic_id AND user_id = @user_id
+        `);
+			if (!access.recordset[0]) {
+				throw Object.assign(new Error('Không có quyền xem đề tài này'), { status: 403 });
+			}
+		}
+	}
 
 	// Get members
 	const members = await pool.request().input('topic_id', sql.VarChar(15), id)

@@ -176,8 +176,9 @@ export default function TopicRegister() {
 	const [manualForm, setManualForm] = useState({
 		ho_ten: '',
 		staff_number: '',
-		email: '',
+		phone_number: '',
 		chuc_vu: '',
+		department_id: '',
 		role: 'member' as MemberRole,
 	});
 	const [manualErrors, setManualErrors] = useState<Record<string, string>>({});
@@ -329,15 +330,13 @@ export default function TopicRegister() {
 		if (!manualForm.ho_ten.trim()) errs.ho_ten = 'Nhập họ tên';
 		if (!manualForm.staff_number.trim())
 			errs.staff_number = 'Nhập mã nhân viên';
-		if (!manualForm.email.trim()) errs.email = 'Nhập email';
-		else if (!/\S+@\S+\.\S+/.test(manualForm.email))
-			errs.email = 'Email không hợp lệ';
+		if (!manualForm.phone_number.trim()) errs.phone_number = 'Nhập số điện thoại';
 		if (!manualForm.chuc_vu.trim()) errs.chuc_vu = 'Nhập chức danh';
 		if (Object.keys(errs).length) {
 			setManualErrors(errs);
 			return;
 		}
-		if (pendingMembers.some((m) => m.email === manualForm.email.trim())) {
+		if (pendingMembers.some((m) => m.staff_number === manualForm.staff_number.trim())) {
 			setToast({ msg: 'Thành viên này đã được thêm.', type: 'error' });
 			return;
 		}
@@ -347,16 +346,18 @@ export default function TopicRegister() {
 				id: `manual_${Date.now()}`,
 				ho_ten: manualForm.ho_ten.trim(),
 				staff_number: manualForm.staff_number.trim(),
-				email: manualForm.email.trim(),
+				phone_number: manualForm.phone_number.trim(),
 				chuc_vu: manualForm.chuc_vu.trim(),
+				department_id: manualForm.department_id || undefined,
 				role: manualForm.role,
 			},
 		]);
 		setManualForm({
 			ho_ten: '',
 			staff_number: '',
-			email: '',
+			phone_number: '',
 			chuc_vu: '',
+			department_id: '',
 			role: 'member',
 		});
 		setManualErrors({});
@@ -443,8 +444,9 @@ export default function TopicRegister() {
 		setManualForm({
 			ho_ten: '',
 			staff_number: '',
-			email: '',
+			phone_number: '',
 			chuc_vu: '',
+			department_id: '',
 			role: 'member',
 		});
 		setManualErrors({});
@@ -482,9 +484,10 @@ export default function TopicRegister() {
 									addTopicMember(created.id, {
 										ho_ten: m.ho_ten,
 										email: m.email,
+										so_dien_thoai: m.phone_number || null,
 										chuc_vu: m.chuc_vu || null,
 										staff_number: m.staff_number || null,
-										department_id: t.department_id || null,
+										department_id: m.department_id || t.department_id || null,
 										role: m.role,
 									}),
 								),
@@ -955,8 +958,9 @@ export default function TopicRegister() {
 																setManualForm({
 																	ho_ten: memberQuery,
 																	staff_number: '',
-																	email: '',
+																	phone_number: '',
 																	chuc_vu: '',
+																	department_id: '',
 																	role: addRole,
 																});
 																setShowManualForm(true);
@@ -996,8 +1000,9 @@ export default function TopicRegister() {
 										setManualForm({
 											ho_ten: '',
 											staff_number: '',
-											email: '',
+											phone_number: '',
 											chuc_vu: '',
+											department_id: '',
 											role: pendingMembers.length === 0 ? 'leader' : 'member',
 										});
 										setShowManualForm(true);
@@ -1065,24 +1070,24 @@ export default function TopicRegister() {
 									<div className={styles.formRow}>
 										<div className={styles.formGroup}>
 											<label className={styles.formLabel}>
-												Email <span className={styles.formRequired}>*</span>
+												Số điện thoại <span className={styles.formRequired}>*</span>
 											</label>
 											<input
-												className={`${styles.formInput} ${manualErrors.email ? styles.hasError : ''}`}
-												placeholder='example@hospital.vn'
-												type='email'
-												value={manualForm.email}
+												className={`${styles.formInput} ${manualErrors.phone_number ? styles.hasError : ''}`}
+												placeholder='0912345678'
+												type='tel'
+												value={manualForm.phone_number}
 												onChange={(e) => {
 													setManualForm((p) => ({
 														...p,
-														email: e.target.value,
+														phone_number: e.target.value,
 													}));
-													setManualErrors((p) => ({ ...p, email: '' }));
+													setManualErrors((p) => ({ ...p, phone_number: '' }));
 												}}
 											/>
-											{manualErrors.email && (
+											{manualErrors.phone_number && (
 												<div className={styles.formError}>
-													<Icon.AlertCircle /> {manualErrors.email}
+													<Icon.AlertCircle /> {manualErrors.phone_number}
 												</div>
 											)}
 										</div>
@@ -1110,29 +1115,48 @@ export default function TopicRegister() {
 										</div>
 									</div>
 
-									<div className={styles.formGroup}>
-										<label className={styles.formLabel}>
-											Vai trò trong đề tài
-										</label>
-										<select
-											className={styles.formSelect}
-											value={manualForm.role}
-											onChange={(e) =>
-												setManualForm((p) => ({
-													...p,
-													role: e.target.value as MemberRole,
-												}))
-											}
-										>
-											{(Object.keys(ROLE_CFG) as MemberRole[]).map((r) => (
-												<option
-													key={r}
-													value={r}
-												>
-													{ROLE_CFG[r].label}
-												</option>
-											))}
-										</select>
+									<div className={styles.formRow}>
+										<div className={styles.formGroup}>
+											<label className={styles.formLabel}>Khoa phòng</label>
+											<select
+												className={styles.formSelect}
+												value={manualForm.department_id}
+												onChange={(e) =>
+													setManualForm((p) => ({
+														...p,
+														department_id: e.target.value,
+													}))
+												}
+											>
+												<option value=''>-- Chọn khoa --</option>
+												{depts.map((d) => (
+													<option key={d.id} value={d.id}>
+														{d.name}
+													</option>
+												))}
+											</select>
+										</div>
+										<div className={styles.formGroup}>
+											<label className={styles.formLabel}>
+												Vai trò trong đề tài
+											</label>
+											<select
+												className={styles.formSelect}
+												value={manualForm.role}
+												onChange={(e) =>
+													setManualForm((p) => ({
+														...p,
+														role: e.target.value as MemberRole,
+													}))
+												}
+											>
+												{(Object.keys(ROLE_CFG) as MemberRole[]).map((r) => (
+													<option key={r} value={r}>
+														{ROLE_CFG[r].label}
+													</option>
+												))}
+											</select>
+										</div>
 									</div>
 
 									<div
@@ -1184,7 +1208,8 @@ export default function TopicRegister() {
 															<span>MNV: {m.staff_number} · </span>
 														)}
 														{m.chuc_vu && <span>{m.chuc_vu} · </span>}
-														<span>{m.email}</span>
+														{m.phone_number && <span>{m.phone_number}</span>}
+														{!m.phone_number && m.email && <span>{m.email}</span>}
 													</div>
 												</div>
 												<select

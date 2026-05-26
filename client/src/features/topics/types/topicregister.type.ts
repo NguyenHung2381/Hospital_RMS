@@ -4,9 +4,11 @@ export interface PendingMember {
 	id: string;
 	ho_ten: string;
 	staff_number: string;
-	email: string;
+	email?: string;
+	phone_number?: string;
 	chuc_vu: string;
 	role: MemberRole;
+	department_id?: string;
 }
 
 export interface RegisterForm {

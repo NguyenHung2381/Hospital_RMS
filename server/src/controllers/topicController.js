@@ -4,6 +4,21 @@ const { createCrudController } = require('./crudController');
 
 const base = createCrudController(topicService);
 
+const getAll = async (req, res, next) => {
+  try {
+    const result = await topicService.getAll(req.query, req.user);
+    return success(res, result);
+  } catch (err) { next(err); }
+};
+
+const getById = async (req, res, next) => {
+  try {
+    const item = await topicService.getById(req.params.id, req.user);
+    if (!item) return notFound(res);
+    return success(res, item);
+  } catch (err) { next(err); }
+};
+
 const getMembers = async (req, res, next) => {
   try {
     const members = await topicService.getMembers(req.params.id);
@@ -79,4 +94,4 @@ const updateOne = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
-module.exports = { ...base, updateOne, getMembers, addMember, updateMember, deleteMember, grantAccounts, submit, approve, getApprovals, exportData };
+module.exports = { ...base, getAll, getById, updateOne, getMembers, addMember, updateMember, deleteMember, grantAccounts, submit, approve, getApprovals, exportData };

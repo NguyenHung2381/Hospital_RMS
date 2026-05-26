@@ -1259,7 +1259,7 @@ function RoundCard({ round, onEdit, onDelete, onCopyLink }: RoundCardProps) {
 				>
 					<Ic.Link />
 					<span className={styles.linkRowText}>
-						/dang-ky?token={round.public_token.slice(0, 10)}…
+						/dang-ky-de-tai?token={round.public_token.slice(0, 10)}…
 					</span>
 					<span className={styles.linkRowHint}>Sao chép</span>
 				</div>
@@ -1374,8 +1374,26 @@ export default function Round() {
 
 	const handleCopyLink = useCallback((token: string) => {
 		const link = `${window.location.origin}/dang-ky-de-tai?token=${token}`;
-		navigator.clipboard?.writeText(link).catch(() => {});
-		setToast('Đã sao chép link đăng ký vào clipboard');
+		if (navigator.clipboard) {
+			navigator.clipboard.writeText(link).then(
+				() => setToast('Đã sao chép link đăng ký vào clipboard'),
+				() => fallbackCopy(link),
+			);
+		} else {
+			fallbackCopy(link);
+		}
+
+		function fallbackCopy(text: string) {
+			const ta = document.createElement('textarea');
+			ta.value = text;
+			ta.style.cssText = 'position:fixed;opacity:0';
+			document.body.appendChild(ta);
+			ta.focus();
+			ta.select();
+			const ok = document.execCommand('copy');
+			document.body.removeChild(ta);
+			setToast(ok ? 'Đã sao chép link đăng ký vào clipboard' : `Link: ${text}`);
+		}
 	}, []);
 
 	// Header actions
