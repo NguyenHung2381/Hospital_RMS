@@ -1,11 +1,11 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useCallback, useEffect, useState } from 'react';
+import { useRealtimeUpdate } from '../../../layouts/hooks/useRealtime';
 import {
 	getNotifications,
-	markNotificationRead,
 	markAllNotificationsRead,
+	markNotificationRead,
 	type Notification,
 } from '../api/notificationApi';
-import { useRealtimeUpdate } from '../../../hooks/useRealtime';
 
 export function useNotifications() {
 	const [notifications, setNotifications] = useState<Notification[]>([]);

@@ -1,19 +1,17 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import FileTextSvg from '../../../assets/svg/file-text.svg?react';
-import SearchSvg from '../../../assets/svg/search.svg?react';
-import XSvg from '../../../assets/svg/x.svg?react';
-import CheckSvg from '../../../assets/svg/check.svg?react';
-import AlertSvg from '../../../assets/svg/alert.svg?react';
-import SendSvg from '../../../assets/svg/send.svg?react';
-import ListSvg from '../../../assets/svg/list.svg?react';
-import HelpSvg from '../../../assets/svg/help.svg?react';
-import ChevRSvg from '../../../assets/svg/chev-r.svg?react';
-import UserPlusSvg from '../../../assets/svg/user-plus.svg?react';
-import UploadSvg from '../../../assets/svg/upload.svg?react';
-import PaperclipSvg from '../../../assets/svg/paperclip.svg?react';
-
-const MAX_FILE_SIZE = 150 * 1024 * 1024; // 150 MB
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import AlertSvg from '../../../assets/svg/alert.svg?react';
+import CheckSvg from '../../../assets/svg/check.svg?react';
+import ChevRSvg from '../../../assets/svg/chev-r.svg?react';
+import FileTextSvg from '../../../assets/svg/file-text.svg?react';
+import HelpSvg from '../../../assets/svg/help.svg?react';
+import ListSvg from '../../../assets/svg/list.svg?react';
+import PaperclipSvg from '../../../assets/svg/paperclip.svg?react';
+import SearchSvg from '../../../assets/svg/search.svg?react';
+import SendSvg from '../../../assets/svg/send.svg?react';
+import UploadSvg from '../../../assets/svg/upload.svg?react';
+import UserPlusSvg from '../../../assets/svg/user-plus.svg?react';
+import XSvg from '../../../assets/svg/x.svg?react';
 import UserLayout from '../../../layouts/UserLayout';
 import { getStoredUser } from '../../../lib/authStorage';
 import { getRoundByPublicToken } from '../../round/api/roundApi';
@@ -26,6 +24,7 @@ import {
 	getRounds,
 	getTopics,
 	searchUsers,
+	uploadTopicFiles,
 	type SimpleItem,
 	type UserSuggestion,
 } from '../api/topicApi';
@@ -37,6 +36,8 @@ import type {
 	RegisterForm,
 } from '../types/topicregister.type';
 import styles from './TopicRegister.module.css';
+
+const MAX_FILE_SIZE = 150 * 1024 * 1024; // 150 MB
 
 // ─── HELPERS ──────────────────────────────
 const STATUS_CFG: Record<TopicStatus, { label: string; dot: string }> = {
@@ -88,8 +89,18 @@ const Icon = {
 	AlertCircle: () => <AlertSvg />,
 	Send: () => <SendSvg />,
 	List: () => <ListSvg />,
-	HelpCircle: () => <HelpSvg width={15} height={15} />,
-	ChevronRight: () => <ChevRSvg width={12} height={12} />,
+	HelpCircle: () => (
+		<HelpSvg
+			width={15}
+			height={15}
+		/>
+	),
+	ChevronRight: () => (
+		<ChevRSvg
+			width={12}
+			height={12}
+		/>
+	),
 	UserPlus: () => <UserPlusSvg />,
 	Upload: () => <UploadSvg />,
 	Paperclip: () => <PaperclipSvg />,
@@ -330,13 +341,18 @@ export default function TopicRegister() {
 		if (!manualForm.ho_ten.trim()) errs.ho_ten = 'Nhập họ tên';
 		if (!manualForm.staff_number.trim())
 			errs.staff_number = 'Nhập mã nhân viên';
-		if (!manualForm.phone_number.trim()) errs.phone_number = 'Nhập số điện thoại';
+		if (!manualForm.phone_number.trim())
+			errs.phone_number = 'Nhập số điện thoại';
 		if (!manualForm.chuc_vu.trim()) errs.chuc_vu = 'Nhập chức danh';
 		if (Object.keys(errs).length) {
 			setManualErrors(errs);
 			return;
 		}
-		if (pendingMembers.some((m) => m.staff_number === manualForm.staff_number.trim())) {
+		if (
+			pendingMembers.some(
+				(m) => m.staff_number === manualForm.staff_number.trim(),
+			)
+		) {
 			setToast({ msg: 'Thành viên này đã được thêm.', type: 'error' });
 			return;
 		}
@@ -378,9 +394,7 @@ export default function TopicRegister() {
 			}
 		});
 		if (oversized.length) {
-			setFileError(
-				`File vượt quá 150MB: ${oversized.join(', ')}`,
-			);
+			setFileError(`File vượt quá 150MB: ${oversized.join(', ')}`);
 		} else {
 			setFileError('');
 		}
@@ -492,6 +506,9 @@ export default function TopicRegister() {
 									}),
 								),
 							);
+						}
+						if (t.attachments.length > 0) {
+							await uploadTopicFiles(created.id, t.attachments);
 						}
 					}),
 				);
@@ -877,7 +894,10 @@ export default function TopicRegister() {
 							<div className={styles.formGroup}>
 								<label className={styles.formLabel}>Tìm kiếm thành viên</label>
 								<div style={{ display: 'flex', gap: 8, marginBottom: 4 }}>
-									<div className={styles.memberSearch} style={{ flex: 1, marginBottom: 0 }}>
+									<div
+										className={styles.memberSearch}
+										style={{ flex: 1, marginBottom: 0 }}
+									>
 										<span className={styles.memberSearchIcon}>
 											{isSearching ? (
 												<span
@@ -980,7 +1000,10 @@ export default function TopicRegister() {
 										onChange={(e) => setAddRole(e.target.value as MemberRole)}
 									>
 										{(Object.keys(ROLE_CFG) as MemberRole[]).map((r) => (
-											<option key={r} value={r}>
+											<option
+												key={r}
+												value={r}
+											>
 												{ROLE_CFG[r].label}
 											</option>
 										))}
@@ -1070,7 +1093,8 @@ export default function TopicRegister() {
 									<div className={styles.formRow}>
 										<div className={styles.formGroup}>
 											<label className={styles.formLabel}>
-												Số điện thoại <span className={styles.formRequired}>*</span>
+												Số điện thoại{' '}
+												<span className={styles.formRequired}>*</span>
 											</label>
 											<input
 												className={`${styles.formInput} ${manualErrors.phone_number ? styles.hasError : ''}`}
@@ -1130,7 +1154,10 @@ export default function TopicRegister() {
 											>
 												<option value=''>-- Chọn khoa --</option>
 												{depts.map((d) => (
-													<option key={d.id} value={d.id}>
+													<option
+														key={d.id}
+														value={d.id}
+													>
 														{d.name}
 													</option>
 												))}
@@ -1151,7 +1178,10 @@ export default function TopicRegister() {
 												}
 											>
 												{(Object.keys(ROLE_CFG) as MemberRole[]).map((r) => (
-													<option key={r} value={r}>
+													<option
+														key={r}
+														value={r}
+													>
 														{ROLE_CFG[r].label}
 													</option>
 												))}
@@ -1209,7 +1239,9 @@ export default function TopicRegister() {
 														)}
 														{m.chuc_vu && <span>{m.chuc_vu} · </span>}
 														{m.phone_number && <span>{m.phone_number}</span>}
-														{!m.phone_number && m.email && <span>{m.email}</span>}
+														{!m.phone_number && m.email && (
+															<span>{m.email}</span>
+														)}
 													</div>
 												</div>
 												<select
@@ -1250,77 +1282,80 @@ export default function TopicRegister() {
 									</div>
 								</div>
 							)}
-						{/* ── File upload ── */}
-						<div className={styles.formSection} style={{ marginTop: 4 }}>
-							Tài liệu đính kèm
-						</div>
-
-						<div className={styles.formGroup}>
+							{/* ── File upload ── */}
 							<div
-								className={`${styles.dropZone} ${isDragging ? styles.dropZoneActive : ''}`}
-								onClick={() => fileInputRef.current?.click()}
-								onDragOver={(e) => {
-									e.preventDefault();
-									setIsDragging(true);
-								}}
-								onDragLeave={() => setIsDragging(false)}
-								onDrop={(e) => {
-									e.preventDefault();
-									setIsDragging(false);
-									handleFiles(e.dataTransfer.files);
-								}}
+								className={styles.formSection}
+								style={{ marginTop: 4 }}
 							>
-								<span className={styles.dropZoneIcon}>
-									<Icon.Upload />
-								</span>
-								<span className={styles.dropZoneText}>
-									Kéo thả file vào đây hoặc{' '}
-									<span className={styles.dropZoneLink}>chọn file</span>
-								</span>
-								<span className={styles.dropZoneHint}>
-									Dung lượng tối đa: 150MB mỗi file
-								</span>
-								<input
-									ref={fileInputRef}
-									type='file'
-									multiple
-									style={{ display: 'none' }}
-									onChange={(e) => handleFiles(e.target.files)}
-								/>
+								Tài liệu đính kèm
 							</div>
-							{fileError && (
-								<div className={styles.formError}>
-									<Icon.AlertCircle /> {fileError}
-								</div>
-							)}
 
-							{attachments.length > 0 && (
-								<div className={styles.fileList}>
-									{attachments.map((f) => (
-										<div
-											key={f.name}
-											className={styles.fileItem}
-										>
-											<span className={styles.fileItemIcon}>
-												<Icon.Paperclip />
-											</span>
-											<span className={styles.fileItemName}>{f.name}</span>
-											<span className={styles.fileItemSize}>
-												{(f.size / (1024 * 1024)).toFixed(1)} MB
-											</span>
-											<button
-												type='button'
-												className={styles.removeBtn}
-												onClick={() => removeAttachment(f.name)}
-												title='Xoá file'
-											>
-												<Icon.X />
-											</button>
-										</div>
-									))}
+							<div className={styles.formGroup}>
+								<div
+									className={`${styles.dropZone} ${isDragging ? styles.dropZoneActive : ''}`}
+									onClick={() => fileInputRef.current?.click()}
+									onDragOver={(e) => {
+										e.preventDefault();
+										setIsDragging(true);
+									}}
+									onDragLeave={() => setIsDragging(false)}
+									onDrop={(e) => {
+										e.preventDefault();
+										setIsDragging(false);
+										handleFiles(e.dataTransfer.files);
+									}}
+								>
+									<span className={styles.dropZoneIcon}>
+										<Icon.Upload />
+									</span>
+									<span className={styles.dropZoneText}>
+										Kéo thả file vào đây hoặc{' '}
+										<span className={styles.dropZoneLink}>chọn file</span>
+									</span>
+									<span className={styles.dropZoneHint}>
+										Dung lượng tối đa: 150MB mỗi file
+									</span>
+									<input
+										ref={fileInputRef}
+										type='file'
+										multiple
+										style={{ display: 'none' }}
+										onChange={(e) => handleFiles(e.target.files)}
+									/>
 								</div>
-							)}
-						</div>
+								{fileError && (
+									<div className={styles.formError}>
+										<Icon.AlertCircle /> {fileError}
+									</div>
+								)}
+
+								{attachments.length > 0 && (
+									<div className={styles.fileList}>
+										{attachments.map((f) => (
+											<div
+												key={f.name}
+												className={styles.fileItem}
+											>
+												<span className={styles.fileItemIcon}>
+													<Icon.Paperclip />
+												</span>
+												<span className={styles.fileItemName}>{f.name}</span>
+												<span className={styles.fileItemSize}>
+													{(f.size / (1024 * 1024)).toFixed(1)} MB
+												</span>
+												<button
+													type='button'
+													className={styles.removeBtn}
+													onClick={() => removeAttachment(f.name)}
+													title='Xoá file'
+												>
+													<Icon.X />
+												</button>
+											</div>
+										))}
+									</div>
+								)}
+							</div>
 						</div>
 
 						{/* Form footer */}
@@ -1395,6 +1430,8 @@ export default function TopicRegister() {
 												<div className={styles.pendingTitle}>{t.title}</div>
 												<div className={styles.pendingMeta}>
 													{roundName} · {t.members.length} thành viên
+													{t.attachments.length > 0 &&
+														` · ${t.attachments.length} file`}
 												</div>
 											</div>
 											<button

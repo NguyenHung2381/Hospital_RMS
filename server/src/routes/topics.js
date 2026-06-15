@@ -1,7 +1,8 @@
 const router = require('express').Router();
 const { body } = require('express-validator');
 const ctrl = require('../controllers/topicController');
-const exportCtrl = require('../controllers/topicExportController');
+const exportCtrl     = require('../controllers/topicExportController');
+const fullExportCtrl = require('../controllers/topicFullExportController');
 const fileCtrl = require('../controllers/fileController');
 const { authenticate, authorize } = require('../middlewares/auth');
 const { validate } = require('../middlewares/errorHandler');
@@ -97,6 +98,38 @@ router.post('/export-data', [body('ids').isArray()], validate, ctrl.exportData);
  *               format: binary
  */
 router.post('/export-excel', [body('ids').isArray()], validate, exportCtrl.exportExcel);
+
+/**
+ * @swagger
+ * /topics/export-report:
+ *   post:
+ *     summary: Xuất báo cáo NCKH đầy đủ (nhiều sheet — tổng quan, danh sách, thành viên, theo phân loại)
+ *     tags: [Topics]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [ids]
+ *             properties:
+ *               ids:        { type: array, items: { type: string } }
+ *               fileName:   { type: string, example: "bao-cao-nckh-2026" }
+ *               title:      { type: string }
+ *               subtitle:   { type: string }
+ *               refNumber:  { type: string }
+ *               refDate:    { type: string }
+ *               sections:
+ *                 type: array
+ *                 items: { type: string, enum: [overview, topics, members, by_category] }
+ *     responses:
+ *       200:
+ *         description: File Excel .xlsx nhiều sheet
+ *         content:
+ *           application/vnd.openxmlformats-officedocument.spreadsheetml.sheet:
+ *             schema: { type: string, format: binary }
+ */
+router.post('/export-report', [body('ids').isArray()], validate, fullExportCtrl.exportReport);
 
 /**
  * @swagger

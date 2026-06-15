@@ -1,10 +1,4 @@
 /* =============================================
-   APPROVAL MODULE CSS
-   Trang Phê duyệt Đề tài — RMS Hospital
-   Bệnh viện Hữu Nghị Đa Khoa Nghệ An
-============================================= */
-
-/* =============================================
    STATS
 ============================================= */
 .statsRow {
@@ -471,7 +465,9 @@
 	align-items: center;
 	justify-content: center;
 	flex-shrink: 0;
-	transition: border-color 140ms ease, background 140ms ease,
+	transition:
+		border-color 140ms ease,
+		background 140ms ease,
 		box-shadow 140ms ease;
 }
 

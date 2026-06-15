@@ -1,19 +1,32 @@
-// =============================================
-// Approval.tsx — Trang Phê duyệt Đề tài
-// Bệnh viện Hữu Nghị Đa Khoa Nghệ An — RMS
-// Bảng: approvals (join topics, users)
-// =============================================
-
-import React, {
-	useState,
-	useMemo,
-	useEffect,
+﻿import React, {
 	useCallback,
+	useEffect,
+	useMemo,
 	useRef,
+	useState,
 } from 'react';
-import styles from './Approval.module.css';
+import AlertSvg from '../../../assets/svg/alert.svg?react';
+import CheckCircleSvg from '../../../assets/svg/check-circle.svg?react';
+import CheckSvg from '../../../assets/svg/check.svg?react';
+import ClockSvg from '../../../assets/svg/clock.svg?react';
+import DotSvg from '../../../assets/svg/dot.svg?react';
+import DownloadSvg from '../../../assets/svg/download.svg?react';
+import EyeSvg from '../../../assets/svg/eye.svg?react';
+import FileTextSvg from '../../../assets/svg/file-text.svg?react';
+import HistorySvg from '../../../assets/svg/history.svg?react';
+import MessageSvg from '../../../assets/svg/message.svg?react';
+import SearchSvg from '../../../assets/svg/search.svg?react';
+import UsersSvg from '../../../assets/svg/users.svg?react';
+import WarnSvg from '../../../assets/svg/warn.svg?react';
+import XCircleSvg from '../../../assets/svg/x-circle.svg?react';
+import XSvg from '../../../assets/svg/x.svg?react';
 import AdminLayout from '../../../layouts/AdminLayout';
-import { useRealtimeUpdate } from '../../../hooks/useRealtime';
+import { useRealtimeUpdate } from '../../../layouts/hooks/useRealtime';
+import { BASE_URL } from '../../../lib/apiClient';
+import { getToken } from '../../../lib/authStorage';
+import { getTopicFiles } from '../../topics/api/topicApi';
+import type { TopicFile } from '../../topics/types/topic.type';
+import { formatFileSize } from '../../topics/utils/topicHelpers';
 import {
 	approveTopic,
 	getApprovals,
@@ -31,26 +44,8 @@ import type {
 	ModalType,
 	TabKey,
 	TopicLevel,
-} from '../types/Approval.type';
-import { getTopicFiles } from '../../topics/api/topicApi';
-import type { TopicFile } from '../../topics/types/topic.type';
-import { getToken } from '../../../lib/authStorage';
-import { BASE_URL } from '../../../lib/apiClient';
-import CheckSvg from '../../../assets/svg/check.svg?react';
-import XSvg from '../../../assets/svg/x.svg?react';
-import AlertSvg from '../../../assets/svg/alert.svg?react';
-import CheckCircleSvg from '../../../assets/svg/check-circle.svg?react';
-import XCircleSvg from '../../../assets/svg/x-circle.svg?react';
-import MessageSvg from '../../../assets/svg/message.svg?react';
-import ClockSvg from '../../../assets/svg/clock.svg?react';
-import SearchSvg from '../../../assets/svg/search.svg?react';
-import WarnSvg from '../../../assets/svg/warn.svg?react';
-import UsersSvg from '../../../assets/svg/users.svg?react';
-import DotSvg from '../../../assets/svg/dot.svg?react';
-import HistorySvg from '../../../assets/svg/history.svg?react';
-import DownloadSvg from '../../../assets/svg/download.svg?react';
-import EyeSvg from '../../../assets/svg/eye.svg?react';
-import FileTextSvg from '../../../assets/svg/file-text.svg?react';
+} from '../types/approval.type';
+import styles from './Approval.module.css';
 
 // ─── HELPERS ──────────────────────────────
 const STATUS_CFG: Record<ApvStatus, { label: string; cls: string }> = {
@@ -89,15 +84,9 @@ function formatDate(value?: string | null) {
 	return new Intl.DateTimeFormat('vi-VN').format(date);
 }
 
-function formatFileSize(bytes: number): string {
-	if (bytes < 1024) return `${bytes} B`;
-	if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-	return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-}
-
 function getFileViewerUrl(file: TopicFile): string | null {
 	const name = file.file_name.toLowerCase();
-	const mime = file.mime_type;
+	const mime = file.mime_type ?? '';
 	if (mime === 'application/pdf' || name.endsWith('.pdf')) return file.file_url;
 	if (
 		mime.includes('wordprocessingml') ||
@@ -110,7 +99,7 @@ function getFileViewerUrl(file: TopicFile): string | null {
 
 function getFileTypeMeta(file: TopicFile): { label: string; cls: string } {
 	const name = file.file_name.toLowerCase();
-	const mime = file.mime_type;
+	const mime = file.mime_type ?? '';
 	if (mime === 'application/pdf' || name.endsWith('.pdf'))
 		return { label: 'PDF', cls: 'fileIconPdf' };
 	if (

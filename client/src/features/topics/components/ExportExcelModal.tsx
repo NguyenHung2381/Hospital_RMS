@@ -3,7 +3,7 @@ import type { SimpleItem } from '../api/topicApi';
 import { exportTopicsExcel } from '../api/topicApi';
 import styles from '../pages/Topic.module.css';
 import type { Topic } from '../types/topic.type';
-import { Ic } from '../utils/topicIcons';
+import { Ic } from './icons';
 
 interface ExportExcelModalProps {
 	topics: Topic[];

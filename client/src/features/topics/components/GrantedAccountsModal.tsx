@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import type { GrantedAccount } from '../api/topicApi';
-import type { TopicMember } from '../types/topic.type';
 import styles from '../pages/Topic.module.css';
-import { Ic } from '../utils/topicIcons';
+import type { TopicMember } from '../types/topic.type';
+import { Ic } from './icons';
 
 export function GrantedAccountsModal({
 	accounts,

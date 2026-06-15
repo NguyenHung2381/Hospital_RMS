@@ -1,9 +1,5 @@
 // ─── TYPES ────────────────────────────────
-export type TopicStatus =
-	| 'submitted'
-	| 'approved'
-	| 'rejected'
-	| 'supplement';
+export type TopicStatus = 'submitted' | 'approved' | 'rejected' | 'supplement';
 export type MemberRole = 'leader' | 'secretary' | 'member';
 export type ApvStatus = 'pending' | 'approved' | 'rejected';
 export type DrawerTab = 'info' | 'members' | 'files';

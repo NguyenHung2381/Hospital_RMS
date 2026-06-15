@@ -36,7 +36,7 @@ const getByRoundId = async (roundId) => {
   return r.recordset.map(normalize);
 };
 
-const ALLOWED_DEADLINE_TYPES = ['nop_bao_cao', 'xet_duyet', 'nghiem_thu'];
+const ALLOWED_DEADLINE_TYPES = ['nop_bao_cao', 'sua_thong_tin', 'xet_duyet', 'nghiem_thu'];
 
 const upsert = async (roundId, phase, data, actorId) => {
   const pool = await getPool();

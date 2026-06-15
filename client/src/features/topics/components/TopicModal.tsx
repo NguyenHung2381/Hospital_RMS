@@ -17,9 +17,9 @@ import {
 	STATUS_CFG,
 	getInitials,
 } from '../utils/topicHelpers';
-import { Ic } from '../utils/topicIcons';
-import { Badge } from './shared/Badge';
-import { FormField } from './shared/FormField';
+import { Badge } from './Badge';
+import { FormField } from './FormField';
+import { Ic } from './icons';
 
 export interface PendingMember {
 	tempId: string;
@@ -160,7 +160,14 @@ export function TopicModal({
 				role: manualRole,
 			},
 		]);
-		setManualForm({ ho_ten: '', staff_number: '', email: '', so_dien_thoai: '', chuc_vu: '', department_id: '' });
+		setManualForm({
+			ho_ten: '',
+			staff_number: '',
+			email: '',
+			so_dien_thoai: '',
+			chuc_vu: '',
+			department_id: '',
+		});
 		setManualError('');
 		setIsManualAdd(false);
 	};
@@ -718,7 +725,9 @@ export function TopicModal({
 											borderBottom: '1px solid rgba(46,184,122,0.18)',
 										}}
 									>
-										<div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+										<div
+											style={{ display: 'flex', alignItems: 'center', gap: 8 }}
+										>
 											<div
 												style={{
 													width: 28,
@@ -732,18 +741,40 @@ export function TopicModal({
 													flexShrink: 0,
 												}}
 											>
-												<svg width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'>
+												<svg
+													width='14'
+													height='14'
+													viewBox='0 0 24 24'
+													fill='none'
+													stroke='currentColor'
+													strokeWidth='2'
+													strokeLinecap='round'
+													strokeLinejoin='round'
+												>
 													<path d='M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2' />
-													<circle cx='12' cy='7' r='4' />
+													<circle
+														cx='12'
+														cy='7'
+														r='4'
+													/>
 												</svg>
 											</div>
-											<span style={{ fontSize: 13, fontWeight: 700, color: 'var(--color-primary-dark)' }}>
+											<span
+												style={{
+													fontSize: 13,
+													fontWeight: 700,
+													color: 'var(--color-primary-dark)',
+												}}
+											>
 												Thêm thành viên thủ công
 											</span>
 										</div>
 										<button
 											type='button'
-											onClick={() => { setIsManualAdd(false); setManualError(''); }}
+											onClick={() => {
+												setIsManualAdd(false);
+												setManualError('');
+											}}
 											style={{
 												background: 'none',
 												border: 'none',
@@ -760,7 +791,14 @@ export function TopicModal({
 									</div>
 
 									{/* Form body */}
-									<div style={{ padding: '14px 14px 12px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+									<div
+										style={{
+											padding: '14px 14px 12px',
+											display: 'flex',
+											flexDirection: 'column',
+											gap: 12,
+										}}
+									>
 										{/* Row 1: Họ tên (full width) */}
 										<div className={styles.formGroup}>
 											<label className={styles.formLabel}>
@@ -770,7 +808,12 @@ export function TopicModal({
 												className={styles.formInput}
 												placeholder='Nguyễn Văn A'
 												value={manualForm.ho_ten}
-												onChange={(e) => setManualForm((p) => ({ ...p, ho_ten: e.target.value }))}
+												onChange={(e) =>
+													setManualForm((p) => ({
+														...p,
+														ho_ten: e.target.value,
+													}))
+												}
 											/>
 										</div>
 
@@ -778,13 +821,19 @@ export function TopicModal({
 										<div className={styles.formRow}>
 											<div className={styles.formGroup}>
 												<label className={styles.formLabel}>
-													Mã nhân viên <span className={styles.formRequired}>*</span>
+													Mã nhân viên{' '}
+													<span className={styles.formRequired}>*</span>
 												</label>
 												<input
 													className={styles.formInput}
 													placeholder='VD: 0123'
 													value={manualForm.staff_number}
-													onChange={(e) => setManualForm((p) => ({ ...p, staff_number: e.target.value }))}
+													onChange={(e) =>
+														setManualForm((p) => ({
+															...p,
+															staff_number: e.target.value,
+														}))
+													}
 												/>
 											</div>
 											<div className={styles.formGroup}>
@@ -793,22 +842,39 @@ export function TopicModal({
 													className={styles.formInput}
 													placeholder='Bác sĩ, Điều dưỡng...'
 													value={manualForm.chuc_vu}
-													onChange={(e) => setManualForm((p) => ({ ...p, chuc_vu: e.target.value }))}
+													onChange={(e) =>
+														setManualForm((p) => ({
+															...p,
+															chuc_vu: e.target.value,
+														}))
+													}
 												/>
 											</div>
 										</div>
 
 										{/* Row 3: Khoa/Phòng ban (full width) */}
 										<div className={styles.formGroup}>
-											<label className={styles.formLabel}>Khoa / Phòng ban</label>
+											<label className={styles.formLabel}>
+												Khoa / Phòng ban
+											</label>
 											<select
 												className={styles.formSelect}
 												value={manualForm.department_id}
-												onChange={(e) => setManualForm((p) => ({ ...p, department_id: e.target.value }))}
+												onChange={(e) =>
+													setManualForm((p) => ({
+														...p,
+														department_id: e.target.value,
+													}))
+												}
 											>
 												<option value=''>— Chọn khoa —</option>
 												{departments.map((d) => (
-													<option key={d.id} value={d.id}>{d.name}</option>
+													<option
+														key={d.id}
+														value={d.id}
+													>
+														{d.name}
+													</option>
 												))}
 											</select>
 										</div>
@@ -822,17 +888,29 @@ export function TopicModal({
 													placeholder='email@hospital.vn'
 													type='email'
 													value={manualForm.email}
-													onChange={(e) => setManualForm((p) => ({ ...p, email: e.target.value }))}
+													onChange={(e) =>
+														setManualForm((p) => ({
+															...p,
+															email: e.target.value,
+														}))
+													}
 												/>
 											</div>
 											<div className={styles.formGroup}>
-												<label className={styles.formLabel}>Số điện thoại</label>
+												<label className={styles.formLabel}>
+													Số điện thoại
+												</label>
 												<input
 													className={styles.formInput}
 													placeholder='0901234567'
 													type='tel'
 													value={manualForm.so_dien_thoai}
-													onChange={(e) => setManualForm((p) => ({ ...p, so_dien_thoai: e.target.value }))}
+													onChange={(e) =>
+														setManualForm((p) => ({
+															...p,
+															so_dien_thoai: e.target.value,
+														}))
+													}
 												/>
 											</div>
 										</div>
@@ -840,45 +918,55 @@ export function TopicModal({
 										{/* Vai trò — chip selector */}
 										<div className={styles.formGroup}>
 											<label className={styles.formLabel}>Vai trò</label>
-											<div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-												{(Object.keys(MEMBER_ROLE_CFG) as MemberRole[]).map((r) => (
-													<button
-														key={r}
-														type='button'
-														onClick={() => setManualRole(r)}
-														style={{
-															display: 'flex',
-															alignItems: 'center',
-															gap: 6,
-															padding: '5px 13px',
-															borderRadius: 20,
-															fontSize: 12,
-															fontWeight: 600,
-															cursor: 'pointer',
-															transition: 'all 0.15s',
-															border: manualRole === r
-																? '2px solid var(--color-primary)'
-																: '2px solid var(--color-gray-200)',
-															background: manualRole === r
-																? 'var(--color-primary)'
-																: 'var(--color-white)',
-															color: manualRole === r ? '#fff' : 'var(--color-gray-600)',
-														}}
-													>
-														<span
+											<div
+												style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}
+											>
+												{(Object.keys(MEMBER_ROLE_CFG) as MemberRole[]).map(
+													(r) => (
+														<button
+															key={r}
+															type='button'
+															onClick={() => setManualRole(r)}
 															style={{
-																width: 6,
-																height: 6,
-																borderRadius: '50%',
-																flexShrink: 0,
-																background: manualRole === r
-																	? 'rgba(255,255,255,0.8)'
-																	: 'var(--color-gray-300)',
+																display: 'flex',
+																alignItems: 'center',
+																gap: 6,
+																padding: '5px 13px',
+																borderRadius: 20,
+																fontSize: 12,
+																fontWeight: 600,
+																cursor: 'pointer',
+																transition: 'all 0.15s',
+																border:
+																	manualRole === r
+																		? '2px solid var(--color-primary)'
+																		: '2px solid var(--color-gray-200)',
+																background:
+																	manualRole === r
+																		? 'var(--color-primary)'
+																		: 'var(--color-white)',
+																color:
+																	manualRole === r
+																		? '#fff'
+																		: 'var(--color-gray-600)',
 															}}
-														/>
-														{MEMBER_ROLE_CFG[r].label}
-													</button>
-												))}
+														>
+															<span
+																style={{
+																	width: 6,
+																	height: 6,
+																	borderRadius: '50%',
+																	flexShrink: 0,
+																	background:
+																		manualRole === r
+																			? 'rgba(255,255,255,0.8)'
+																			: 'var(--color-gray-300)',
+																}}
+															/>
+															{MEMBER_ROLE_CFG[r].label}
+														</button>
+													),
+												)}
 											</div>
 										</div>
 
@@ -902,12 +990,21 @@ export function TopicModal({
 										)}
 
 										{/* Buttons */}
-										<div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+										<div
+											style={{
+												display: 'flex',
+												gap: 8,
+												justifyContent: 'flex-end',
+											}}
+										>
 											<button
 												className={styles.btnSecondary}
 												style={{ padding: '6px 14px', fontSize: 12 }}
 												type='button'
-												onClick={() => { setIsManualAdd(false); setManualError(''); }}
+												onClick={() => {
+													setIsManualAdd(false);
+													setManualError('');
+												}}
 											>
 												Huỷ
 											</button>

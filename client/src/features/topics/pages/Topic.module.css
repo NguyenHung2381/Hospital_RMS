@@ -1,10 +1,4 @@
 /* =============================================
-   TOPIC MODULE CSS
-   Trang Quản lý Đề tài Nghiên cứu — RMS Hospital
-   Bệnh viện Hữu Nghị Đa Khoa Nghệ An
-============================================= */
-
-/* =============================================
    STATS
 ============================================= */
 .statsRow {
@@ -259,7 +253,9 @@
 	color: var(--color-primary);
 	opacity: 0.7;
 	flex-shrink: 0;
-	transition: opacity 0.1s, background 0.1s;
+	transition:
+		opacity 0.1s,
+		background 0.1s;
 }
 .msClear:hover {
 	opacity: 1;
@@ -274,7 +270,9 @@
 	background: #fff;
 	border: 1px solid #e5e7eb;
 	border-radius: 10px;
-	box-shadow: 0 8px 28px rgba(0, 0, 0, 0.12), 0 2px 8px rgba(0, 0, 0, 0.06);
+	box-shadow:
+		0 8px 28px rgba(0, 0, 0, 0.12),
+		0 2px 8px rgba(0, 0, 0, 0.06);
 	min-width: 210px;
 	max-height: 320px;
 	overflow-y: auto;
@@ -303,7 +301,9 @@
 	color: #374151;
 	background: #f9fafb;
 	outline: none;
-	transition: border-color 0.15s, box-shadow 0.15s;
+	transition:
+		border-color 0.15s,
+		box-shadow 0.15s;
 }
 
 .msSearch::placeholder {
@@ -311,7 +311,7 @@
 }
 
 .msSearch:focus {
-	border-color: var(--color-primary, #378ADD);
+	border-color: var(--color-primary, #378add);
 	background: #fff;
 	box-shadow: 0 0 0 3px rgba(55, 138, 221, 0.12);
 }
@@ -356,14 +356,17 @@
 	align-items: center;
 	justify-content: center;
 	flex-shrink: 0;
-	transition: border-color 0.15s, background 0.15s, box-shadow 0.15s;
+	transition:
+		border-color 0.15s,
+		background 0.15s,
+		box-shadow 0.15s;
 }
 .msItem:hover .msCheck {
 	border-color: #93c5fd;
 }
 .msCheckOn {
-	border-color: var(--color-primary, #378ADD);
-	background: var(--color-primary, #378ADD);
+	border-color: var(--color-primary, #378add);
+	background: var(--color-primary, #378add);
 	box-shadow: 0 0 0 3px rgba(55, 138, 221, 0.15);
 }
 
@@ -991,7 +994,9 @@
 	font-weight: var(--font-weight-semibold);
 	color: #16a34a;
 	cursor: pointer;
-	transition: background 150ms, border-color 150ms;
+	transition:
+		background 150ms,
+		border-color 150ms;
 	white-space: nowrap;
 }
 
@@ -1064,7 +1069,9 @@
 	overflow-y: auto;
 }
 
-.grantCredentialList::-webkit-scrollbar { width: 4px; }
+.grantCredentialList::-webkit-scrollbar {
+	width: 4px;
+}
 .grantCredentialList::-webkit-scrollbar-thumb {
 	background: var(--color-gray-200);
 	border-radius: 999px;
@@ -1714,7 +1721,9 @@
 	font-weight: var(--font-weight-semibold);
 	color: #1d4ed8;
 	cursor: pointer;
-	transition: background 150ms, border-color 150ms;
+	transition:
+		background 150ms,
+		border-color 150ms;
 }
 
 .fileBulkBtn:hover {
@@ -1753,8 +1762,13 @@
 	flex-shrink: 0;
 }
 
-.fileBulkClear:hover { color: #1d4ed8; }
-.fileBulkClear svg { width: 12px; height: 12px; }
+.fileBulkClear:hover {
+	color: #1d4ed8;
+}
+.fileBulkClear svg {
+	width: 12px;
+	height: 12px;
+}
 
 /* ── Upload zone ────────────────────────────── */
 .uploadZone {
@@ -1766,7 +1780,9 @@
 	align-items: center;
 	gap: var(--space-2);
 	cursor: pointer;
-	transition: border-color 180ms, background 180ms;
+	transition:
+		border-color 180ms,
+		background 180ms;
 	background: var(--color-gray-50);
 	text-align: center;
 	margin-bottom: var(--space-3);
@@ -1877,7 +1893,9 @@
 	overflow-y: auto;
 }
 
-.uploadPendingList::-webkit-scrollbar { width: 4px; }
+.uploadPendingList::-webkit-scrollbar {
+	width: 4px;
+}
 .uploadPendingList::-webkit-scrollbar-thumb {
 	background: var(--color-gray-200);
 	border-radius: 999px;
@@ -1933,7 +1951,9 @@
 	justify-content: center;
 	cursor: pointer;
 	color: var(--color-gray-400);
-	transition: background 150ms, color 150ms;
+	transition:
+		background 150ms,
+		color 150ms;
 	flex-shrink: 0;
 	padding: 0;
 }
@@ -1969,7 +1989,10 @@
 	background: var(--color-white);
 	border: 1px solid var(--color-gray-100);
 	border-radius: var(--radius-xl);
-	transition: border-color 150ms, box-shadow 150ms, background 150ms;
+	transition:
+		border-color 150ms,
+		box-shadow 150ms,
+		background 150ms;
 	cursor: pointer;
 	user-select: none;
 }
@@ -2218,8 +2241,12 @@
 }
 
 @keyframes cfmProgressAnim {
-	0%   { background-position: 100% 0; }
-	100% { background-position: -100% 0; }
+	0% {
+		background-position: 100% 0;
+	}
+	100% {
+		background-position: -100% 0;
+	}
 }
 
 /* Batch note row */
@@ -2309,29 +2336,79 @@
 @media (max-width: 768px) {
 	.statsRow {
 		grid-template-columns: 1fr 1fr;
+		gap: var(--space-3);
 	}
-	.tableControls {
-		flex-direction: column;
-		align-items: flex-start;
+
+	.statCard {
+		padding: var(--space-3);
+		gap: var(--space-3);
 	}
-	.searchInput {
-		width: 100%;
+
+	.statValue {
+		font-size: 22px;
 	}
-	.searchInput:focus {
-		width: 100%;
-	}
-	.formRow {
-		grid-template-columns: 1fr;
-	}
+
 	.tableHeader {
 		flex-direction: column;
 		align-items: flex-start;
+		gap: var(--space-3);
+		padding: var(--space-4);
 	}
+
+	.tableHeaderLeft {
+		width: 100%;
+	}
+
+	/* Filters: search full-width, rest 2-column grid */
+	.tableControls {
+		width: 100%;
+		display: grid;
+		grid-template-columns: 1fr 1fr;
+		gap: var(--space-2);
+		align-items: stretch;
+	}
+
+	.searchWrap {
+		grid-column: 1 / -1;
+	}
+
+	.searchInput {
+		width: 100%;
+	}
+
+	.searchInput:focus {
+		width: 100%;
+	}
+
+	.filterSelect {
+		width: 100%;
+		box-sizing: border-box;
+		justify-content: flex-start;
+	}
+
+	.formRow {
+		grid-template-columns: 1fr;
+	}
+
 	.drawer {
 		width: 100%;
 		max-width: 100%;
 	}
+
 	.infoGrid {
 		grid-template-columns: 1fr;
+	}
+
+	.drawerHeader {
+		padding: var(--space-4) var(--space-4);
+	}
+
+	.drawerBody {
+		padding: var(--space-4);
+	}
+
+	.drawerFooter {
+		padding: var(--space-3) var(--space-4);
+		flex-wrap: wrap;
 	}
 }

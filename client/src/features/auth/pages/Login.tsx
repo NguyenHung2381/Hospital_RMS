@@ -4,7 +4,7 @@ import AuthLayout from '../../../layouts/AuthLayout';
 import { saveAuth } from '../../../lib/authStorage';
 import type { LoginUser } from '../api/authApi';
 import { loginApi } from '../api/authApi';
-import type { FormErrors, LoginForm } from '../types/Auth.type';
+import type { FormErrors, LoginForm } from '../types/auth.type';
 import styles from './Login.module.css';
 import UserSvg from '../../../assets/svg/user.svg?react';
 import LockSvg from '../../../assets/svg/lock.svg?react';
@@ -27,13 +27,48 @@ function isAdminUser(u: LoginUser): boolean {
 
 // === ICONS ===
 const Icon = {
-	User: () => <UserSvg width={18} height={18} />,
-	Lock: () => <LockSvg width={18} height={18} />,
-	Eye: () => <EyeSvg width={18} height={18} />,
-	EyeOff: () => <EyeOffSvg width={18} height={18} />,
-	Alert: () => <AlertSvg width={16} height={16} />,
-	Shield: () => <ShieldSvg width={14} height={14} />,
-	Support: () => <MessageSvg width={18} height={18} />,
+	User: () => (
+		<UserSvg
+			width={18}
+			height={18}
+		/>
+	),
+	Lock: () => (
+		<LockSvg
+			width={18}
+			height={18}
+		/>
+	),
+	Eye: () => (
+		<EyeSvg
+			width={18}
+			height={18}
+		/>
+	),
+	EyeOff: () => (
+		<EyeOffSvg
+			width={18}
+			height={18}
+		/>
+	),
+	Alert: () => (
+		<AlertSvg
+			width={16}
+			height={16}
+		/>
+	),
+	Shield: () => (
+		<ShieldSvg
+			width={14}
+			height={14}
+		/>
+	),
+	Support: () => (
+		<MessageSvg
+			width={18}
+			height={18}
+		/>
+	),
 };
 
 // === COMPONENT ===

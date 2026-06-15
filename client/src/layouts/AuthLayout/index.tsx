@@ -1,9 +1,3 @@
-// =============================================
-// index.tsx - AuthLayout Component
-// Layout bọc ngoài cho các trang xác thực
-// Bệnh viện Hữu Nghị Đa Khoa Nghệ An
-// =============================================
-
 import React from 'react';
 import Logo from '../../assets/logo.png';
 import styles from './AuthLayout.module.css';

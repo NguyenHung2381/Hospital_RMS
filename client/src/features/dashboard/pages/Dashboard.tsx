@@ -1,28 +1,27 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
-	PieChart,
-	Pie,
-	Cell,
-	Tooltip,
-	ResponsiveContainer,
-	BarChart,
 	Bar,
+	BarChart,
+	CartesianGrid,
+	Cell,
+	Legend,
+	Pie,
+	PieChart,
+	ResponsiveContainer,
+	Tooltip,
 	XAxis,
 	YAxis,
-	CartesianGrid,
-	Legend,
 } from 'recharts';
-import styles from './Dashboard.module.css';
 import AdminLayout from '../../../layouts/AdminLayout';
-import { Icon } from '../../../layouts/AdminLayout/icons';
-import { getDashboardStats, type DashboardStats } from '../api/dashboardApi';
+import { useRealtimeUpdate } from '../../../layouts/hooks/useRealtime';
 import {
-	getTopics,
 	getDepts,
 	getLevels,
+	getTopics,
 	type SimpleItem,
 } from '../../topics/api/topicApi';
-import { useRealtimeUpdate } from '../../../hooks/useRealtime';
+import { getDashboardStats, type DashboardStats } from '../api/dashboardApi';
+import styles from './Dashboard.module.css';
 
 // ─── Types ───────────────────────────────────
 type RealStatus =
@@ -261,7 +260,6 @@ function PieTooltip({
 	);
 }
 
-
 // ─── Status Badge ─────────────────────────────
 function StatusBadge({ status }: { status: string }) {
 	const cfg = STATUS_CONFIG[status] ?? { label: status, cls: 'badgeGray' };
@@ -358,8 +356,6 @@ export default function Dashboard() {
 			setCurrentPage(1);
 		}, 400);
 	};
-
-
 
 	// ── Initial: load stats + filter options ──
 	useEffect(() => {
@@ -459,7 +455,10 @@ export default function Dashboard() {
 			});
 	}, [currentPage, searchTerm, deptFilter, levelFilter, activeTab]);
 
-	useRealtimeUpdate(['topic', 'user', 'department', 'round', 'category', 'level'], refreshAll);
+	useRealtimeUpdate(
+		['topic', 'user', 'department', 'round', 'category', 'level'],
+		refreshAll,
+	);
 
 	// ── Handlers — set topicsLoading=true from event so effect never does it synchronously ──
 	const handleTab = (tab: TabKey) => {
@@ -523,7 +522,11 @@ export default function Dashboard() {
 		return row;
 	});
 	const deptCats = Array.from(
-		new Set((stats?.by_department ?? []).flatMap((d) => d.categories.map((c) => c.name))),
+		new Set(
+			(stats?.by_department ?? []).flatMap((d) =>
+				d.categories.map((c) => c.name),
+			),
+		),
 	);
 	const trendRows = stats?.trend_by_category?.rows ?? [];
 	const trendCats = stats?.trend_by_category?.categories ?? [];
@@ -535,29 +538,10 @@ export default function Dashboard() {
 		return kpi.by_status[tab as keyof typeof kpi.by_status] ?? 0;
 	};
 
-	// ── Header actions ────────────────────────
-	const headerActions = (
-		<>
-			<button
-				className={styles.btnSecondary}
-				onClick={refreshAll}
-			>
-				<Icon.Refresh /> Làm mới
-			</button>
-			<button className={styles.btnSecondary}>
-				<Icon.Download /> Xuất báo cáo
-			</button>
-			<button className={styles.btnPrimary}>
-				<Icon.Plus /> Đăng ký đề tài
-			</button>
-		</>
-	);
-
 	return (
 		<AdminLayout
 			pageTitle='Dashboard tổng quan'
 			pageSubtitle='Hệ thống Quản lý Nghiên cứu Khoa học — Đợt 1 năm 2026'
-			headerActions={headerActions}
 		>
 			{/* ── KPI ──────────────────────────── */}
 			<div className={styles.metricsGrid}>
@@ -902,7 +886,9 @@ export default function Dashboard() {
 									name={String(cat)}
 									stackId='a'
 									fill={DEPT_COLORS[i % DEPT_COLORS.length]}
-									radius={i === deptCats.length - 1 ? [4, 4, 0, 0] : [0, 0, 0, 0]}
+									radius={
+										i === deptCats.length - 1 ? [4, 4, 0, 0] : [0, 0, 0, 0]
+									}
 								/>
 							))}
 						</BarChart>
@@ -1008,23 +994,22 @@ export default function Dashboard() {
 								<th className={styles.colDept}>Phòng ban</th>
 								<th className={styles.colStatus}>Trạng thái</th>
 								<th className={styles.colDate}>Ngày tạo</th>
-								<th className={styles.colActions}>Thao tác</th>
 							</tr>
 						</thead>
 						<tbody>
 							{topicsLoading ? (
 								<SkeletonRows
-									cols={8}
+									cols={7}
 									rows={ROWS_PER_PAGE}
 								/>
 							) : topicsError ? (
 								<EmptyRow
-									cols={8}
+									cols={7}
 									text='Không tải được danh sách đề tài. Vui lòng thử lại.'
 								/>
 							) : topics.length === 0 ? (
 								<EmptyRow
-									cols={8}
+									cols={7}
 									text='Không tìm thấy đề tài nào phù hợp.'
 								/>
 							) : (
@@ -1074,46 +1059,6 @@ export default function Dashboard() {
 											>
 												{formatDate(t.created_at)}
 											</span>
-										</td>
-										<td>
-											<div className={styles.actionBtns}>
-												<div
-													className={styles.actionBtn}
-													title='Xem chi tiết'
-												>
-													<svg
-														viewBox='0 0 24 24'
-														fill='none'
-														stroke='currentColor'
-														strokeWidth='2'
-														strokeLinecap='round'
-														strokeLinejoin='round'
-													>
-														<path d='M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z' />
-														<circle
-															cx='12'
-															cy='12'
-															r='3'
-														/>
-													</svg>
-												</div>
-												<div
-													className={styles.actionBtn}
-													title='Chỉnh sửa'
-												>
-													<svg
-														viewBox='0 0 24 24'
-														fill='none'
-														stroke='currentColor'
-														strokeWidth='2'
-														strokeLinecap='round'
-														strokeLinejoin='round'
-													>
-														<path d='M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7' />
-														<path d='M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z' />
-													</svg>
-												</div>
-											</div>
 										</td>
 									</tr>
 								))
@@ -1338,10 +1283,34 @@ export default function Dashboard() {
 													</div>
 													<span className={styles.deptCount}>{dept.total}</span>
 												</div>
-												<div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 8px', marginTop: 4 }}>
+												<div
+													style={{
+														display: 'flex',
+														flexWrap: 'wrap',
+														gap: '4px 8px',
+														marginTop: 4,
+													}}
+												>
 													{dept.categories.map((cat, ci) => (
-														<span key={cat.name} style={{ fontSize: 11, color: 'var(--color-gray-500)' }}>
-															<span style={{ display: 'inline-block', width: 7, height: 7, borderRadius: '50%', background: DEPT_COLORS[ci % DEPT_COLORS.length], marginRight: 3, verticalAlign: 'middle' }} />
+														<span
+															key={cat.name}
+															style={{
+																fontSize: 11,
+																color: 'var(--color-gray-500)',
+															}}
+														>
+															<span
+																style={{
+																	display: 'inline-block',
+																	width: 7,
+																	height: 7,
+																	borderRadius: '50%',
+																	background:
+																		DEPT_COLORS[ci % DEPT_COLORS.length],
+																	marginRight: 3,
+																	verticalAlign: 'middle',
+																}}
+															/>
 															{cat.name}: {cat.count}
 														</span>
 													))}

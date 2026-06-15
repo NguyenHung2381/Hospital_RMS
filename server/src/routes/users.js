@@ -51,7 +51,7 @@ router.get('/me', ctrl.getMe);
  *       403:
  *         description: Không có quyền truy cập
  */
-router.get('/', authorize('admin', 'manager'), ctrl.getAll);
+router.get('/', authorize('admin', 'manager', 'dept'), ctrl.getAll);
 
 /**
  * @swagger
@@ -209,7 +209,7 @@ router.delete('/:id', authorize('admin'), ctrl.removeOne);
  */
 router.post(
 	'/:id/reset-password',
-	authorize('admin'),
+	authorize('admin', 'manager', 'dept'),
 	[body('new_password').isLength({ min: 5 })],
 	validate,
 	ctrl.resetPassword,

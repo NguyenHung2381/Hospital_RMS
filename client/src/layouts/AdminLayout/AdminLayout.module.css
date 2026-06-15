@@ -1,9 +1,3 @@
-/* =============================================
-   ADMIN LAYOUT MODULE CSS — v2
-   Sidebar xanh lá · Thu gọn · Lưu state
-   Bệnh viện Hữu Nghị Đa Khoa Nghệ An
-============================================= */
-
 /* ── WRAPPER ─────────────────────────────── */
 .adminWrapper {
 	display: flex;
@@ -1131,6 +1125,32 @@
 	height: 15px;
 }
 
+/* Mobile hamburger toggle button */
+.mobileMenuBtn {
+	display: none;
+	width: 32px;
+	height: 32px;
+	border-radius: var(--radius-md);
+	border: 1px solid rgba(255, 255, 255, 0.2);
+	background: rgba(255, 255, 255, 0.1);
+	align-items: center;
+	justify-content: center;
+	cursor: pointer;
+	flex-shrink: 0;
+	color: rgba(255, 255, 255, 0.8);
+	transition: all var(--transition-fast);
+}
+
+.mobileMenuBtn:hover {
+	background: rgba(255, 255, 255, 0.2);
+	color: #fff;
+}
+
+.mobileMenuBtn svg {
+	width: 18px;
+	height: 18px;
+}
+
 /* =============================================
    RESPONSIVE
 ============================================= */
@@ -1143,6 +1163,7 @@
 		width: 100% !important;
 		height: auto;
 		position: static;
+		overflow: visible;
 		box-shadow: 0 2px 12px rgba(26, 136, 88, 0.2);
 	}
 
@@ -1150,24 +1171,64 @@
 		height: 56px;
 		min-height: 56px;
 	}
+
+	/* Ẩn nút thu gọn desktop, hiện nút hamburger */
+	.collapseBtn {
+		display: none;
+	}
+
+	.mobileMenuBtn {
+		display: flex;
+	}
+
 	.sidebarNav {
 		display: none;
 	}
+
 	.sidebarFooter {
 		display: none;
+	}
+
+	/* Hiện nav/footer khi mobile menu mở */
+	.sidebarNav.mobileOpen {
+		display: block;
+	}
+
+	.sidebarFooter.mobileOpen {
+		display: block;
+	}
+
+	/* Page header on mobile */
+	.pageHeader {
+		flex-direction: column;
+		gap: var(--space-3);
+		align-items: stretch;
+	}
+
+	.pageTitle {
+		font-size: var(--font-size-xl);
+		letter-spacing: -0.01em;
+	}
+
+	.pageHeaderRight {
+		flex-wrap: wrap;
+		justify-content: flex-start;
 	}
 
 	.pageArea {
 		padding: var(--space-4);
 	}
+
 	.topbar {
 		padding: 0 var(--space-4);
 	}
+
 	.searchBar.searchOpen {
 		width: 200px;
 	}
+
 	.notifPanel {
-		right: -60px;
-		width: 320px;
+		right: 0;
+		width: min(360px, calc(100vw - 16px));
 	}
 }

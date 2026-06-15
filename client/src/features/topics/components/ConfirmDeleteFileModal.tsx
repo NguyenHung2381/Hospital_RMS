@@ -1,8 +1,12 @@
 import React, { useState } from 'react';
-import type { TopicFile } from '../types/topic.type';
 import styles from '../pages/Topic.module.css';
-import { formatFileSize, getFileTypeColor, getMimeExtension } from '../utils/topicHelpers';
-import { Ic } from '../utils/topicIcons';
+import type { TopicFile } from '../types/topic.type';
+import {
+	formatFileSize,
+	getFileTypeColor,
+	getMimeExtension,
+} from '../utils/topicHelpers';
+import { Ic } from './icons';
 
 export function ConfirmDeleteFileModal({
 	files,

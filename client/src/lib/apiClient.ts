@@ -1,8 +1,12 @@
-import { getToken, clearAuth } from './authStorage';
+import { clearAuth, getToken } from './authStorage';
 
-const envHost = import.meta.env.VITE_API_HOST;
-const envPort = import.meta.env.VITE_API_PORT || '3000';
-export const BASE_URL = `http://${envHost || window.location.hostname}:${envPort}`;
+// Use relative URL by default so Vite proxy handles routing — works on localhost,
+// LAN, and ngrok without any reconfiguration.
+// Set VITE_API_BASE_URL in client/.env to override (e.g. for separate deployments).
+export const BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? '').replace(
+	/\/$/,
+	'',
+);
 
 let isRefreshing = false;
 let refreshQueue: Array<(token: string) => void> = [];
@@ -138,6 +142,24 @@ async function requestForm<T>(path: string, body: FormData): Promise<T> {
 		body,
 		headers: token ? { Authorization: `Bearer ${token}` } : {},
 	});
+
+	if (res.status === 401) {
+		const newToken = await tryRefresh();
+		if (newToken) {
+			const retryRes = await fetch(`${BASE_URL}/api/v1${path}`, {
+				method: 'POST',
+				body,
+				headers: { Authorization: `Bearer ${newToken}` },
+			});
+			const retryJson = await retryRes.json();
+			if (!retryRes.ok || !retryJson.success)
+				throw new Error(retryJson.message ?? 'Có lỗi xảy ra, vui lòng thử lại');
+			return retryJson.data as T;
+		}
+		clearAuth();
+		window.location.href = '/login';
+		throw new Error('Phiên đăng nhập đã hết hạn');
+	}
 
 	const json = await res.json();
 

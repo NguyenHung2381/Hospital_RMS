@@ -7,7 +7,14 @@ export type TopicStatus =
 	| 'supplement'
 	| 'in_progress'
 	| 'completed';
-export type ModalType = 'add' | 'edit' | 'delete' | 'grant' | 'bulkApprove' | 'bulkReject' | null;
+export type ModalType =
+	| 'add'
+	| 'edit'
+	| 'delete'
+	| 'grant'
+	| 'bulkApprove'
+	| 'bulkReject'
+	| null;
 
 export interface TopicMember {
 	id: string;

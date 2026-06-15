@@ -1,6 +1,4 @@
-const envHost = import.meta.env.VITE_API_HOST;
-const envPort = import.meta.env.VITE_API_PORT || '3000';
-const BASE_URL = `http://${envHost || window.location.hostname}:${envPort}`;
+import { BASE_URL } from '../../../lib/apiClient';
 
 export interface LoginUser {
 	id: string;

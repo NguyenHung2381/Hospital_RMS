@@ -1,8 +1,36 @@
 const userService = require('../services/userService');
-const { success, created, notFound } = require('../utils/response');
+const { success, created, notFound, forbidden } = require('../utils/response');
 const { createCrudController } = require('./crudController');
 
 const base = createCrudController(userService);
+
+const getAll = async (req, res, next) => {
+  try {
+    const actor = req.user;
+    const query = { ...req.query };
+    if (actor.account_type === 'dept') {
+      query.department_id = actor.department_id;
+    }
+    const result = await userService.getAll(query);
+    return success(res, result);
+  } catch (err) { next(err); }
+};
+
+const updateOne = async (req, res, next) => {
+  try {
+    const actor = req.user;
+    if (actor.account_type === 'dept') {
+      const target = await userService.getById(req.params.id);
+      if (!target) return notFound(res);
+      if (target.department_id !== actor.department_id) {
+        return forbidden(res, 'Bạn không có quyền chỉnh sửa tài khoản ngoài khoa của mình');
+      }
+    }
+    const item = await userService.update(req.params.id, req.body, actor.id);
+    if (!item) return notFound(res);
+    return success(res, item, 'Cập nhật thành công');
+  } catch (err) { next(err); }
+};
 
 const resetPassword = async (req, res, next) => {
   try {
@@ -27,4 +55,4 @@ const searchMembers = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
-module.exports = { ...base, resetPassword, getMe, searchMembers };
+module.exports = { ...base, getAll, updateOne, resetPassword, getMe, searchMembers };

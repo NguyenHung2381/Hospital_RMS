@@ -24,7 +24,9 @@ export const getNotifications = (params?: {
 	const entries = Object.entries(params ?? {})
 		.filter(([, v]) => v !== undefined)
 		.map(([k, v]) => [k, String(v)] as [string, string]);
-	const qs = entries.length ? `?${new URLSearchParams(entries).toString()}` : '';
+	const qs = entries.length
+		? `?${new URLSearchParams(entries).toString()}`
+		: '';
 	return apiClient.get<NotifListResponse>(`/notifications${qs}`);
 };
 

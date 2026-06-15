@@ -13,6 +13,7 @@ import {
 	type SimpleItem,
 	type UserSuggestion,
 } from '../api/topicApi';
+import styles from '../pages/Topic.module.css';
 import type {
 	DrawerTab,
 	MemberRole,
@@ -20,7 +21,6 @@ import type {
 	TopicFile,
 	TopicMember,
 } from '../types/topic.type';
-import styles from '../pages/Topic.module.css';
 import {
 	MEMBER_ROLE_CFG,
 	STATUS_CFG,
@@ -31,11 +31,11 @@ import {
 	getMimeExtension,
 	lookup,
 } from '../utils/topicHelpers';
-import { Ic } from '../utils/topicIcons';
-import { Badge } from './shared/Badge';
+import { Badge } from './Badge';
 import { ConfirmDeleteFileModal } from './ConfirmDeleteFileModal';
 import { ConfirmUploadModal } from './ConfirmUploadModal';
 import { GrantedAccountsModal } from './GrantedAccountsModal';
+import { Ic } from './icons';
 
 interface DrawerProps {
 	topic: Topic;
@@ -91,7 +91,9 @@ export function TopicDrawer({
 	const [grantingIds, setGrantingIds] = useState<Set<string>>(new Set());
 	const [grantedAccounts, setGrantedAccounts] = useState<GrantedAccount[]>([]);
 	const [grantError, setGrantError] = useState('');
-	const pendingMembers = members.filter((m) => !m.account_granted && !m.has_existing_account);
+	const pendingMembers = members.filter(
+		(m) => !m.account_granted && !m.has_existing_account,
+	);
 	const membersMissingEmail = pendingMembers.filter(
 		(m) => !m.email || !m.email.trim(),
 	);
@@ -218,14 +220,14 @@ export function TopicDrawer({
 	};
 
 	useEffect(() => {
-		const q = newMember.ho_ten.trim();
-		if (q.length < 2) {
-			setNameSuggestions([]);
-			setShowNameSuggestions(false);
-			return;
-		}
 		if (nameDebounceRef.current) clearTimeout(nameDebounceRef.current);
 		nameDebounceRef.current = setTimeout(() => {
+			const q = newMember.ho_ten.trim();
+			if (q.length < 2) {
+				setNameSuggestions([]);
+				setShowNameSuggestions(false);
+				return;
+			}
 			setIsSearchingName(true);
 			searchUsers(q)
 				.then((res) => {
@@ -504,55 +506,112 @@ export function TopicDrawer({
 												<span style={{ color: 'var(--color-red-500)' }}>*</span>
 											</label>
 											<div style={{ position: 'relative' }}>
-											<input
-												className={styles.formInput}
-												placeholder='Nhập họ tên...'
-												value={newMember.ho_ten}
-												onChange={(e) => {
-													setNewMember((p) => ({ ...p, ho_ten: e.target.value }));
-													if (e.target.value.trim().length < 2) setShowNameSuggestions(false);
-												}}
-												onBlur={() => setTimeout(() => setShowNameSuggestions(false), 150)}
-											/>
-											{showNameSuggestions && (
-												<div style={{
-													position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 200,
-													background: 'var(--color-white)', border: '1px solid var(--color-gray-200)',
-													borderRadius: 6, boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
-													overflow: 'hidden', marginTop: 2,
-												}}>
-													{isSearchingName ? (
-														<div style={{ padding: '8px 12px', fontSize: 12, color: 'var(--color-gray-400)' }}>Đang tìm...</div>
-													) : nameSuggestions.length === 0 ? (
-														<div style={{ padding: '8px 12px', fontSize: 12, color: 'var(--color-gray-400)' }}>Không tìm thấy</div>
-													) : (
-														nameSuggestions.map((u) => (
+												<input
+													className={styles.formInput}
+													placeholder='Nhập họ tên...'
+													value={newMember.ho_ten}
+													onChange={(e) => {
+														setNewMember((p) => ({
+															...p,
+															ho_ten: e.target.value,
+														}));
+														if (e.target.value.trim().length < 2)
+															setShowNameSuggestions(false);
+													}}
+													onBlur={() =>
+														setTimeout(() => setShowNameSuggestions(false), 150)
+													}
+												/>
+												{showNameSuggestions && (
+													<div
+														style={{
+															position: 'absolute',
+															top: '100%',
+															left: 0,
+															right: 0,
+															zIndex: 200,
+															background: 'var(--color-white)',
+															border: '1px solid var(--color-gray-200)',
+															borderRadius: 6,
+															boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+															overflow: 'hidden',
+															marginTop: 2,
+														}}
+													>
+														{isSearchingName ? (
 															<div
-																key={u.id}
-																onMouseDown={() => {
-																	setNewMember((p) => ({
-																		...p,
-																		ho_ten: u.full_name,
-																		staff_number: u.staff_number != null ? String(u.staff_number) : '',
-																		email: u.email,
-																		department_id: u.department_id,
-																	}));
-																	setShowNameSuggestions(false);
+																style={{
+																	padding: '8px 12px',
+																	fontSize: 12,
+																	color: 'var(--color-gray-400)',
 																}}
-																style={{ padding: '7px 12px', cursor: 'pointer', borderBottom: '1px solid var(--color-gray-100)' }}
-																onMouseEnter={(e) => (e.currentTarget.style.background = '#f0fbf6')}
-																onMouseLeave={(e) => (e.currentTarget.style.background = '')}
 															>
-																<div style={{ fontWeight: 600, fontSize: 12, color: 'var(--color-gray-800)' }}>{u.full_name}</div>
-																<div style={{ fontSize: 11, color: 'var(--color-gray-400)' }}>
-																	MNV: {u.staff_number ?? '—'} · {u.username}
-																</div>
+																Đang tìm...
 															</div>
-														))
-													)}
-												</div>
-											)}
-										</div>
+														) : nameSuggestions.length === 0 ? (
+															<div
+																style={{
+																	padding: '8px 12px',
+																	fontSize: 12,
+																	color: 'var(--color-gray-400)',
+																}}
+															>
+																Không tìm thấy
+															</div>
+														) : (
+															nameSuggestions.map((u) => (
+																<div
+																	key={u.id}
+																	onMouseDown={() => {
+																		setNewMember((p) => ({
+																			...p,
+																			ho_ten: u.full_name,
+																			staff_number:
+																				u.staff_number != null
+																					? String(u.staff_number)
+																					: '',
+																			email: u.email,
+																			department_id: u.department_id,
+																		}));
+																		setShowNameSuggestions(false);
+																	}}
+																	style={{
+																		padding: '7px 12px',
+																		cursor: 'pointer',
+																		borderBottom:
+																			'1px solid var(--color-gray-100)',
+																	}}
+																	onMouseEnter={(e) =>
+																		(e.currentTarget.style.background =
+																			'#f0fbf6')
+																	}
+																	onMouseLeave={(e) =>
+																		(e.currentTarget.style.background = '')
+																	}
+																>
+																	<div
+																		style={{
+																			fontWeight: 600,
+																			fontSize: 12,
+																			color: 'var(--color-gray-800)',
+																		}}
+																	>
+																		{u.full_name}
+																	</div>
+																	<div
+																		style={{
+																			fontSize: 11,
+																			color: 'var(--color-gray-400)',
+																		}}
+																	>
+																		MNV: {u.staff_number ?? '—'} · {u.username}
+																	</div>
+																</div>
+															))
+														)}
+													</div>
+												)}
+											</div>
 										</div>
 										<div>
 											<label
@@ -671,7 +730,14 @@ export function TopicDrawer({
 											</select>
 										</div>
 									</div>
-									<div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 8, marginBottom: 8 }}>
+									<div
+										style={{
+											display: 'grid',
+											gridTemplateColumns: '1fr',
+											gap: 8,
+											marginBottom: 8,
+										}}
+									>
 										<div>
 											<label
 												style={{
@@ -712,7 +778,10 @@ export function TopicDrawer({
 												type='tel'
 												value={newMember.so_dien_thoai}
 												onChange={(e) =>
-													setNewMember((p) => ({ ...p, so_dien_thoai: e.target.value }))
+													setNewMember((p) => ({
+														...p,
+														so_dien_thoai: e.target.value,
+													}))
 												}
 											/>
 										</div>
@@ -808,7 +877,7 @@ export function TopicDrawer({
 								</div>
 							)}
 
-							{false && membersMissingEmail.length > 0 && (
+							{membersMissingEmail.length > 0 && (
 								<div
 									style={{
 										fontSize: 12,
@@ -893,7 +962,8 @@ export function TopicDrawer({
 																		color: 'var(--color-gray-400)',
 																	}}
 																>
-																	TK: {genMemberUsername(m.ho_ten, m.staff_number)}
+																	TK:{' '}
+																	{genMemberUsername(m.ho_ten, m.staff_number)}
 																</span>
 															)}
 														</div>

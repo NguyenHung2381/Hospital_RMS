@@ -2,11 +2,12 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import Logo from '../../assets/logo.png';
 import type { LoginUser } from '../../features/auth/api/authApi';
+import { NotificationPanel } from '../../features/notifications/components/NotificationPanel';
 import { useNotifications } from '../../features/notifications/hooks/useNotifications';
-import type { Notification as ApiNotif } from '../../features/notifications/api/notificationApi';
+import { toNotif } from '../../features/notifications/utils/notifUtils';
 import { getTopics } from '../../features/topics/api/topicApi';
-import { useRealtimeUpdate } from '../../hooks/useRealtime';
 import { clearAuth, getStoredUser } from '../../lib/authStorage';
+import { useRealtimeUpdate } from '../hooks/useRealtime';
 import styles from './AdminLayout.module.css';
 import { Icon } from './icons';
 
@@ -28,6 +29,7 @@ const KEY_TO_PATH: Record<string, string> = {
 	levels: '/admin/levels',
 	users: '/admin/users',
 	roles: '/admin/roles',
+	reports: '/admin/reports',
 };
 
 // Map ngược từ URL pathname → nav key (để highlight sidebar)
@@ -76,50 +78,11 @@ const NAV_GROUPS: NavGroup[] = [
 			{ key: 'roles', label: 'Vai trò & Quyền', icon: <Icon.Role /> },
 		],
 	},
+	{
+		section: 'Xuất dữ liệu',
+		items: [{ key: 'reports', label: 'Báo cáo & Xuất', icon: <Icon.Report /> }],
+	},
 ];
-
-// ─── NOTIFICATIONS ────────────────────────
-interface Notif {
-	id: string;
-	type: 'approval' | 'topic' | 'system' | 'warning';
-	title: string;
-	desc: string;
-	time: string;
-	read: boolean;
-}
-
-const NOTIF_TYPE_MAP: Record<string, Notif['type']> = {
-	topic_approved: 'approval',
-	topic_rejected: 'approval',
-	topic_submitted: 'approval',
-	deadline_reminder: 'warning',
-	member_added: 'topic',
-	account_granted: 'system',
-};
-
-function relativeTime(iso: string): string {
-	const diff = Date.now() - new Date(iso).getTime();
-	const m = Math.floor(diff / 60000);
-	if (m < 1) return 'Vừa xong';
-	if (m < 60) return `${m} phút trước`;
-	const h = Math.floor(m / 60);
-	if (h < 24) return `${h} giờ trước`;
-	const d = Math.floor(h / 24);
-	if (d === 1) return 'Hôm qua';
-	if (d < 7) return `${d} ngày trước`;
-	return new Date(iso).toLocaleDateString('vi-VN');
-}
-
-function toNotif(n: ApiNotif): Notif {
-	return {
-		id: n.id,
-		type: NOTIF_TYPE_MAP[n.type] ?? 'system',
-		title: n.title,
-		desc: n.message ?? '',
-		time: relativeTime(n.created_at),
-		read: n.is_read,
-	};
-}
 
 // ─── PROPS ────────────────────────────────
 export interface AdminLayoutProps {
@@ -152,6 +115,21 @@ export default function AdminLayout({
 		if (typeof window === 'undefined') return false;
 		return localStorage.getItem(SIDEBAR_KEY) === 'true';
 	});
+
+	const [isMobile, setIsMobile] = useState(() =>
+		typeof window !== 'undefined' ? window.innerWidth <= 768 : false,
+	);
+
+	useEffect(() => {
+		const mq = window.matchMedia('(max-width: 768px)');
+		const handler = (e: MediaQueryListEvent) => setIsMobile(e.matches);
+		mq.addEventListener('change', handler);
+		return () => mq.removeEventListener('change', handler);
+	}, []);
+
+	const effectiveCollapsed = isMobile ? false : collapsed;
+
+	const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
 	const toggleSidebar = useCallback(() => {
 		setCollapsed((prev) => {
@@ -194,7 +172,6 @@ export default function AdminLayout({
 
 	// ── Notification state ───────────────────
 	const [notifOpen, setNotifOpen] = useState(false);
-	const [notifTab, setNotifTab] = useState<'all' | 'unread'>('all');
 	const {
 		notifications: rawNotifs,
 		unreadCount,
@@ -202,7 +179,6 @@ export default function AdminLayout({
 		markAll,
 	} = useNotifications();
 	const notifs = rawNotifs.map(toNotif);
-	const notifWrapRef = useRef<HTMLDivElement>(null);
 
 	// ── User menu state ──────────────────────
 	const [userMenuOpen, setUserMenuOpen] = useState(false);
@@ -233,23 +209,6 @@ export default function AdminLayout({
 		return () => window.removeEventListener('keydown', handler);
 	}, []);
 
-	const markAllRead = markAll;
-	const markOneRead = markOne;
-
-	// Đóng notification khi click ngoài
-	useEffect(() => {
-		const handler = (e: MouseEvent) => {
-			if (
-				notifWrapRef.current &&
-				!notifWrapRef.current.contains(e.target as Node)
-			) {
-				setNotifOpen(false);
-			}
-		};
-		if (notifOpen) document.addEventListener('mousedown', handler);
-		return () => document.removeEventListener('mousedown', handler);
-	}, [notifOpen]);
-
 	// ── Initials ─────────────────────────────
 	const initials = userName
 		.split(' ')
@@ -263,28 +222,20 @@ export default function AdminLayout({
 		NAV_GROUPS.flatMap((g) => g.items).find((i) => i.key === activePage)
 			?.label ?? 'Dashboard';
 
-	// ── Notif icon map ───────────────────────
-	const notifIconMap = {
-		approval: { el: <Icon.IcCheck />, cls: styles.iconApproval },
-		topic: { el: <Icon.IcDoc />, cls: styles.iconTopic },
-		system: { el: <Icon.IcInfo />, cls: styles.iconSystem },
-		warning: { el: <Icon.IcWarn />, cls: styles.iconWarning },
-	};
-
-	const displayedNotifs =
-		notifTab === 'unread' ? notifs.filter((n) => !n.read) : notifs;
-
 	// ── Nav click handler ─────────────────────
 	const handleNavClick = (key: string) => {
 		const path = KEY_TO_PATH[key];
-		if (path) navigate(path);
+		if (path) {
+			setMobileNavOpen(false);
+			navigate(path);
+		}
 	};
 
 	return (
 		<div className={styles.adminWrapper}>
 			{/* ══ SIDEBAR ════════════════════════════ */}
 			<aside
-				className={`${styles.sidebar} ${collapsed ? styles.collapsed : ''}`}
+				className={`${styles.sidebar} ${effectiveCollapsed ? styles.collapsed : ''}`}
 			>
 				{/* Header */}
 				<div className={styles.sidebarHeader}>
@@ -305,15 +256,55 @@ export default function AdminLayout({
 					<button
 						className={styles.collapseBtn}
 						onClick={toggleSidebar}
-						aria-label={collapsed ? 'Mở rộng sidebar' : 'Thu gọn sidebar'}
-						title={collapsed ? 'Mở rộng' : 'Thu gọn'}
+						aria-label={
+							effectiveCollapsed ? 'Mở rộng sidebar' : 'Thu gọn sidebar'
+						}
+						title={effectiveCollapsed ? 'Mở rộng' : 'Thu gọn'}
 					>
 						<Icon.ChevronL />
+					</button>
+					<button
+						className={styles.mobileMenuBtn}
+						onClick={() => setMobileNavOpen((o) => !o)}
+						aria-label={mobileNavOpen ? 'Đóng menu' : 'Mở menu'}
+					>
+						{mobileNavOpen ? (
+							<Icon.X />
+						) : (
+							<svg
+								viewBox='0 0 24 24'
+								fill='none'
+								stroke='currentColor'
+								strokeWidth='2'
+								strokeLinecap='round'
+							>
+								<line
+									x1='3'
+									y1='6'
+									x2='21'
+									y2='6'
+								/>
+								<line
+									x1='3'
+									y1='12'
+									x2='21'
+									y2='12'
+								/>
+								<line
+									x1='3'
+									y1='18'
+									x2='21'
+									y2='18'
+								/>
+							</svg>
+						)}
 					</button>
 				</div>
 
 				{/* Nav */}
-				<nav className={styles.sidebarNav}>
+				<nav
+					className={`${styles.sidebarNav} ${mobileNavOpen ? styles.mobileOpen : ''}`}
+				>
 					{NAV_GROUPS.map((group) => (
 						<React.Fragment key={group.section}>
 							<div className={styles.navSection}>{group.section}</div>
@@ -348,7 +339,9 @@ export default function AdminLayout({
 				</nav>
 
 				{/* Footer user */}
-				<div className={styles.sidebarFooter}>
+				<div
+					className={`${styles.sidebarFooter} ${mobileNavOpen ? styles.mobileOpen : ''}`}
+				>
 					<div
 						className={styles.userMenuWrap}
 						ref={userMenuRef}
@@ -411,140 +404,16 @@ export default function AdminLayout({
 						<div className={styles.topbarDivider} />
 
 						{/* Notification */}
-						<div
-							className={styles.notifWrapper}
-							ref={notifWrapRef}
-						>
-							<button
-								className={`${styles.topbarIconBtn} ${notifOpen ? styles.active : ''}`}
-								onClick={() => setNotifOpen((o) => !o)}
-								aria-label='Thông báo'
-								aria-expanded={notifOpen}
-							>
-								<Icon.Bell />
-								{unreadCount > 0 && <span className={styles.notifDot} />}
-							</button>
-
-							{notifOpen && (
-								<>
-									<div
-										className={styles.notifOverlay}
-										onClick={() => setNotifOpen(false)}
-									/>
-									<div
-										className={styles.notifPanel}
-										role='dialog'
-										aria-label='Thông báo'
-									>
-										{/* Header */}
-										<div className={styles.notifPanelHeader}>
-											<span className={styles.notifPanelTitle}>
-												Thông báo
-												{unreadCount > 0 && (
-													<span
-														style={{
-															marginLeft: 8,
-															background: 'var(--color-accent)',
-															color: '#fff',
-															fontSize: 11,
-															fontWeight: 700,
-															padding: '1px 7px',
-															borderRadius: 999,
-														}}
-													>
-														{unreadCount}
-													</span>
-												)}
-											</span>
-											<div className={styles.notifPanelActions}>
-												{unreadCount > 0 && (
-													<button
-														className={styles.notifMarkAll}
-														onClick={markAllRead}
-													>
-														Đánh dấu đã đọc
-													</button>
-												)}
-												<button
-													className={styles.notifClose}
-													onClick={() => setNotifOpen(false)}
-													aria-label='Đóng'
-												>
-													<Icon.X />
-												</button>
-											</div>
-										</div>
-
-										{/* Tabs */}
-										<div className={styles.notifTabs}>
-											{(['all', 'unread'] as const).map((tab) => (
-												<div
-													key={tab}
-													className={`${styles.notifTab} ${notifTab === tab ? styles.notifTabActive : ''}`}
-													onClick={() => setNotifTab(tab)}
-												>
-													{tab === 'all' ? 'Tất cả' : 'Chưa đọc'}
-													<span className={styles.notifTabBadge}>
-														{tab === 'all' ? notifs.length : unreadCount}
-													</span>
-												</div>
-											))}
-										</div>
-
-										{/* List */}
-										<div className={styles.notifList}>
-											{displayedNotifs.length === 0 ? (
-												<div
-													style={{
-														padding: '32px 24px',
-														textAlign: 'center',
-														color: 'var(--color-gray-400)',
-														fontSize: 13,
-													}}
-												>
-													Không có thông báo nào
-												</div>
-											) : (
-												displayedNotifs.map((n) => {
-													const cfg = notifIconMap[n.type];
-													return (
-														<div
-															key={n.id}
-															className={`${styles.notifItem} ${!n.read ? styles.unread : ''}`}
-															onClick={() => markOneRead(n.id)}
-														>
-															<div
-																className={`${styles.notifItemIcon} ${cfg.cls}`}
-															>
-																{cfg.el}
-															</div>
-															<div className={styles.notifItemContent}>
-																<div className={styles.notifItemTitle}>
-																	{n.title}
-																</div>
-																<div className={styles.notifItemDesc}>
-																	{n.desc}
-																</div>
-																<div className={styles.notifItemTime}>
-																	{n.time}
-																</div>
-															</div>
-														</div>
-													);
-												})
-											)}
-										</div>
-
-										{/* Footer */}
-										<div className={styles.notifPanelFooter}>
-											<button className={styles.notifViewAll}>
-												Xem tất cả thông báo →
-											</button>
-										</div>
-									</div>
-								</>
-							)}
-						</div>
+						<NotificationPanel
+							open={notifOpen}
+							onToggle={() => setNotifOpen((o) => !o)}
+							onClose={() => setNotifOpen(false)}
+							notifications={notifs}
+							unreadCount={unreadCount}
+							onMarkAll={markAll}
+							onMarkOne={markOne}
+							s={styles}
+						/>
 					</div>
 				</header>
 

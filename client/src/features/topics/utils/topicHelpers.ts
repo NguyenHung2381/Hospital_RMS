@@ -7,7 +7,10 @@ export const STATUS_CFG: Record<TopicStatus, { label: string; cls: string }> = {
 	supplement: { label: 'Bổ sung', cls: 'badgeBlue' },
 };
 
-export const MEMBER_ROLE_CFG: Record<MemberRole, { label: string; cls: string }> = {
+export const MEMBER_ROLE_CFG: Record<
+	MemberRole,
+	{ label: string; cls: string }
+> = {
 	leader: { label: 'Chủ nhiệm', cls: 'badgeGreen' },
 	secretary: { label: 'Thư ký', cls: 'badgeBlue' },
 	member: { label: 'Thành viên', cls: 'badgeGray' },
@@ -22,7 +25,8 @@ export function formatFileSize(bytes: number): string {
 export const MIME_EXT: Record<string, string> = {
 	'application/pdf': 'pdf',
 	'application/msword': 'doc',
-	'application/vnd.openxmlformats-officedocument.wordprocessingml.document': 'docx',
+	'application/vnd.openxmlformats-officedocument.wordprocessingml.document':
+		'docx',
 	'application/vnd.ms-excel': 'xls',
 	'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': 'xlsx',
 	'application/zip': 'zip',
@@ -32,7 +36,8 @@ export const MIME_EXT: Record<string, string> = {
 	'image/gif': 'gif',
 };
 
-export function getMimeExtension(mimeType: string): string {
+export function getMimeExtension(mimeType: string | null | undefined): string {
+	if (!mimeType) return 'file';
 	return MIME_EXT[mimeType] ?? mimeType.split('/').pop() ?? 'file';
 }
 
@@ -52,7 +57,10 @@ export function getFileTypeColor(ext: string): string {
 	return map[ext.toLowerCase()] ?? '#9CA3AF';
 }
 
-export function lookup<T extends { id: string; name: string }>(arr: T[], id: string) {
+export function lookup<T extends { id: string; name: string }>(
+	arr: T[],
+	id: string,
+) {
 	return arr.find((x) => x.id === id)?.name ?? id;
 }
 
@@ -68,7 +76,10 @@ export function getInitials(name: string | null | undefined) {
 		.toUpperCase();
 }
 
-export function genMemberUsername(fullName: string | null | undefined, staffNumber: string | number | null | undefined): string {
+export function genMemberUsername(
+	fullName: string | null | undefined,
+	staffNumber: string | number | null | undefined,
+): string {
 	if (!fullName || !staffNumber) return '';
 	const initials = fullName
 		.replace(

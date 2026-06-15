@@ -113,7 +113,10 @@ export interface GrantAccountsResult {
 	skipped: { member_id: string; ho_ten: string; reason: string }[];
 }
 
-export const grantTopicMemberAccounts = (topicId: string, memberIds?: string[]) =>
+export const grantTopicMemberAccounts = (
+	topicId: string,
+	memberIds?: string[],
+) =>
 	apiClient.post<GrantAccountsResult>(
 		`/topics/${topicId}/members/grant-accounts`,
 		memberIds ? { member_ids: memberIds } : {},
@@ -213,6 +216,21 @@ export interface ExportExcelPayload {
 
 export const exportTopicsExcel = (payload: ExportExcelPayload) =>
 	apiClient.postBlob('/topics/export-excel', payload);
+
+export type ReportSection = 'overview' | 'topics' | 'members' | 'by_category';
+
+export interface ExportReportPayload {
+	ids: string[];
+	fileName?: string;
+	title?: string;
+	subtitle?: string;
+	refNumber?: string;
+	refDate?: string;
+	sections?: ReportSection[];
+}
+
+export const exportTopicsReport = (payload: ExportReportPayload) =>
+	apiClient.postBlob('/topics/export-report', payload);
 
 export const searchUsers = (q: string, departmentId?: string) => {
 	const params = new URLSearchParams({ q, limit: '10' });

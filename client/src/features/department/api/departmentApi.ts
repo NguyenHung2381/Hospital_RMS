@@ -1,6 +1,9 @@
 import { apiClient } from '../../../lib/apiClient';
-import type { Department, DeptFormData, DeptListResponse } from '../types/Departments.type';
-
+import type {
+	Department,
+	DeptFormData,
+	DeptListResponse,
+} from '../types/department.type';
 
 export const getDepartments = () =>
 	apiClient.get<DeptListResponse>('/departments');

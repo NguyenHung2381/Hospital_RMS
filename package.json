@@ -5,6 +5,7 @@
 	"scripts": {
 		"server": "cd server && npm run dev",
 		"client": "cd client && npm run dev",
-		"dev": "concurrently -n SERVER,CLIENT -c cyan,yellow \"npm run server\" \"npm run client\""
+		"client:wait": "node scripts/wait-server.js && npm run client",
+		"dev": "concurrently -n SERVER,CLIENT -c cyan,yellow \"npm run server\" \"npm run client:wait\""
 	}
 }

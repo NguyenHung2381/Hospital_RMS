@@ -12,7 +12,11 @@ export interface DashboardStats {
 			completed: number;
 		};
 	};
-	by_department: { name: string; total: number; categories: { name: string; count: number }[] }[];
+	by_department: {
+		name: string;
+		total: number;
+		categories: { name: string; count: number }[];
+	}[];
 	by_category: { name: string; count: number }[];
 	by_level: { name: string; count: number }[];
 	trend_by_category: {

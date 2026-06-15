@@ -1,5 +1,8 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+﻿import { useCallback, useEffect, useMemo, useState } from 'react';
+import { MultiSelect } from '../../../components/ui/MultiSelect';
+import { Pagination } from '../../../components/ui/Pagination';
 import AdminLayout from '../../../layouts/AdminLayout';
+import { useRealtimeUpdate } from '../../../layouts/hooks/useRealtime';
 import {
 	addTopicMember,
 	createTopic,
@@ -12,142 +15,18 @@ import {
 	updateTopic as updateTopicApi,
 	type SimpleItem,
 } from '../api/topicApi';
-import type { Topic, TopicForm, TopicStatus } from '../types/topic.type';
-import styles from './Topic.module.css';
-import { STATUS_CFG, lookup } from '../utils/topicHelpers';
-import { Ic } from '../utils/topicIcons';
-import { Badge } from '../components/shared/Badge';
-import { TopicModal, type PendingMember } from '../components/TopicModal';
+import { Badge } from '../components/Badge';
 import { DeleteModal } from '../components/DeleteModal';
-import { TopicDrawer } from '../components/TopicDrawer';
 import { ExportExcelModal } from '../components/ExportExcelModal';
-import { useRealtimeUpdate } from '../../../hooks/useRealtime';
+import { Ic } from '../components/icons';
+import { TopicDrawer } from '../components/TopicDrawer';
+import { TopicModal, type PendingMember } from '../components/TopicModal';
+import type { Topic, TopicForm, TopicStatus } from '../types/topic.type';
+import { STATUS_CFG, lookup } from '../utils/topicHelpers';
+import styles from './Topic.module.css';
 
 type TabKey = 'all' | TopicStatus;
 const PAGE_SIZE_OPTIONS = [9, 20, 50, 100] as const;
-
-// ─── Multi-select dropdown ────────────────────────────────────────────────────
-function MultiSelect({
-	options,
-	selected,
-	onChange,
-	placeholder,
-	searchable,
-}: {
-	options: { id: string; label: string }[];
-	selected: Set<string>;
-	onChange: (next: Set<string>) => void;
-	placeholder: string;
-	searchable?: boolean;
-}) {
-	const [open, setOpen] = useState(false);
-	const [query, setQuery] = useState('');
-	const [alignRight, setAlignRight] = useState(false);
-	const ref = useRef<HTMLDivElement>(null);
-	const searchRef = useRef<HTMLInputElement>(null);
-
-	useEffect(() => {
-		if (!open) return;
-
-		// Auto-detect: nếu space bên phải không đủ 220px thì căn phải
-		if (ref.current) {
-			const rect = ref.current.getBoundingClientRect();
-			setAlignRight(rect.left + 220 > window.innerWidth);
-		}
-
-		const handler = (e: MouseEvent) => {
-			if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
-		};
-		document.addEventListener('mousedown', handler);
-		if (searchable) setTimeout(() => searchRef.current?.focus(), 0);
-		return () => {
-			document.removeEventListener('mousedown', handler);
-			setQuery('');
-		};
-	}, [open, searchable]);
-
-	const toggle = (id: string) => {
-		const next = new Set(selected);
-		if (next.has(id)) next.delete(id); else next.add(id);
-		onChange(next);
-	};
-
-	const buttonLabel =
-		selected.size === 0 ? placeholder
-		: selected.size === 1 ? (options.find((o) => selected.has(o.id))?.label ?? placeholder)
-		: `${selected.size} đã chọn`;
-
-	const filtered = searchable && query.trim()
-		? options.filter((o) => o.label.toLowerCase().includes(query.trim().toLowerCase()))
-		: options;
-
-	return (
-		<div ref={ref} style={{ position: 'relative' }}>
-			<button
-				type='button'
-				className={`${styles.filterSelect} ${selected.size > 0 ? styles.filterActive : ''}`}
-				onClick={() => setOpen((o) => !o)}
-			>
-				<span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis' }}>
-					{buttonLabel}
-				</span>
-				{selected.size > 0 && (
-					<span
-						className={styles.msClear}
-						onClick={(e) => { e.stopPropagation(); onChange(new Set()); }}
-						title='Bỏ chọn tất cả'
-					>✕</span>
-				)}
-			</button>
-			{open && (
-				<div
-					className={styles.msMenu}
-					style={alignRight ? { left: 'auto', right: 0 } : undefined}
-				>
-					{searchable && (
-						<div className={styles.msSearchWrap}>
-							<input
-								ref={searchRef}
-								type='text'
-								className={styles.msSearch}
-								placeholder='Tìm kiếm...'
-								value={query}
-								onChange={(e) => setQuery(e.target.value)}
-								onClick={(e) => e.stopPropagation()}
-							/>
-						</div>
-					)}
-					{filtered.length === 0 ? (
-						<div className={styles.msEmpty}>Không tìm thấy kết quả</div>
-					) : filtered.map((opt) => {
-						const on = selected.has(opt.id);
-						return (
-							<label
-								key={opt.id}
-								className={`${styles.msItem} ${on ? styles.msItemOn : ''}`}
-							>
-								<div className={`${styles.msCheck} ${on ? styles.msCheckOn : ''}`}>
-									{on && (
-										<svg viewBox='0 0 10 8' fill='none' stroke='#fff' strokeWidth='2.2' strokeLinecap='round' strokeLinejoin='round' style={{ width: 9, height: 7 }}>
-											<polyline points='1 4 3.5 7 9 1' />
-										</svg>
-									)}
-								</div>
-								<input
-									type='checkbox'
-									checked={on}
-									onChange={() => toggle(opt.id)}
-									style={{ display: 'none' }}
-								/>
-								{opt.label}
-							</label>
-						);
-					})}
-				</div>
-			)}
-		</div>
-	);
-}
 
 export default function TopicPage() {
 	const [topics, setTopics] = useState<Topic[]>([]);
@@ -213,7 +92,9 @@ export default function TopicPage() {
 	const visibleRounds = useMemo(
 		() =>
 			yearFilters.size > 0
-				? rounds.filter((r) => r.year != null && yearFilters.has(r.year.toString()))
+				? rounds.filter(
+						(r) => r.year != null && yearFilters.has(r.year.toString()),
+					)
 				: rounds,
 		[rounds, yearFilters],
 	);
@@ -264,18 +145,35 @@ export default function TopicPage() {
 				const y = round?.year ?? t.round_year;
 				if (!y || !yearFilters.has(y.toString())) return false;
 			}
-			if (roundFilters.size > 0 && !roundFilters.has(t.round_id ?? '')) return false;
-			if (levelFilters.size > 0 && !levelFilters.has(t.level_id ?? '')) return false;
-			if (catFilters.size > 0 && !catFilters.has(t.category_id ?? '')) return false;
-			if (deptFilters.size > 0 && !deptFilters.has(t.department_id ?? '')) return false;
+			if (roundFilters.size > 0 && !roundFilters.has(t.round_id ?? ''))
+				return false;
+			if (levelFilters.size > 0 && !levelFilters.has(t.level_id ?? ''))
+				return false;
+			if (catFilters.size > 0 && !catFilters.has(t.category_id ?? ''))
+				return false;
+			if (deptFilters.size > 0 && !deptFilters.has(t.department_id ?? ''))
+				return false;
 			if (search) {
 				const q = search.toLowerCase();
-				if (!t.title.toLowerCase().includes(q) && !t.id.toLowerCase().includes(q))
+				if (
+					!t.title.toLowerCase().includes(q) &&
+					!t.id.toLowerCase().includes(q)
+				)
 					return false;
 			}
 			return true;
 		});
-	}, [topics, rounds, activeTab, yearFilters, roundFilters, levelFilters, catFilters, deptFilters, search]);
+	}, [
+		topics,
+		rounds,
+		activeTab,
+		yearFilters,
+		roundFilters,
+		levelFilters,
+		catFilters,
+		deptFilters,
+		search,
+	]);
 
 	const totalPages = Math.max(1, Math.ceil(filtered.length / rowsPerPage));
 	const safePage = Math.min(page, totalPages);
@@ -474,7 +372,10 @@ export default function TopicPage() {
 							/>
 						</div>
 						<MultiSelect
-							options={availableYears.map((y) => ({ id: y.toString(), label: String(y) }))}
+							options={availableYears.map((y) => ({
+								id: y.toString(),
+								label: String(y),
+							}))}
 							selected={yearFilters}
 							onChange={handleYearChange}
 							placeholder='Tất cả năm'
@@ -482,25 +383,37 @@ export default function TopicPage() {
 						<MultiSelect
 							options={visibleRounds.map((r) => ({ id: r.id, label: r.name }))}
 							selected={roundFilters}
-							onChange={(next) => { setRoundFilters(next); setPage(1); }}
+							onChange={(next) => {
+								setRoundFilters(next);
+								setPage(1);
+							}}
 							placeholder='Tất cả đợt'
 						/>
 						<MultiSelect
 							options={levels.map((l) => ({ id: l.id, label: l.name }))}
 							selected={levelFilters}
-							onChange={(next) => { setLevelFilters(next); setPage(1); }}
+							onChange={(next) => {
+								setLevelFilters(next);
+								setPage(1);
+							}}
 							placeholder='Cấp độ'
 						/>
 						<MultiSelect
 							options={categories.map((c) => ({ id: c.id, label: c.name }))}
 							selected={catFilters}
-							onChange={(next) => { setCatFilters(next); setPage(1); }}
+							onChange={(next) => {
+								setCatFilters(next);
+								setPage(1);
+							}}
 							placeholder='Phân loại'
 						/>
 						<MultiSelect
 							options={departments.map((d) => ({ id: d.id, label: d.name }))}
 							selected={deptFilters}
-							onChange={(next) => { setDeptFilters(next); setPage(1); }}
+							onChange={(next) => {
+								setDeptFilters(next);
+								setPage(1);
+							}}
 							placeholder='Phòng ban'
 							searchable
 						/>
@@ -702,71 +615,19 @@ export default function TopicPage() {
 				</div>
 
 				{/* Pagination */}
-				<div className={styles.pagination}>
-					<span className={styles.pageInfo}>
-						{filtered.length === 0
-							? 'Không có đề tài nào'
-							: `Hiển thị ${(safePage - 1) * rowsPerPage + 1}–${Math.min(safePage * rowsPerPage, filtered.length)} trong ${filtered.length} đề tài`}
-					</span>
-					<select
-						className={styles.filterSelect}
-						value={rowsPerPage}
-						onChange={(e) => {
-							setRowsPerPage(Number(e.target.value));
-							setPage(1);
-						}}
-						style={{ marginLeft: 'auto', marginRight: '0.5rem' }}
-					>
-						{PAGE_SIZE_OPTIONS.map((n) => (
-							<option key={n} value={n}>{n} / trang</option>
-						))}
-					</select>
-					<div className={styles.pageBtns}>
-						<button
-							className={styles.pageBtn}
-							onClick={() => setPage((p) => Math.max(1, p - 1))}
-							disabled={safePage === 1}
-						>
-							<Ic.ChevL />
-						</button>
-						{Array.from({ length: totalPages }, (_, i) => i + 1)
-							.filter(
-								(p) =>
-									p === 1 || p === totalPages || Math.abs(p - safePage) <= 1,
-							)
-							.reduce<(number | '…')[]>((acc, p, i, arr) => {
-								if (i > 0 && p - (arr[i - 1] as number) > 1) acc.push('…');
-								acc.push(p);
-								return acc;
-							}, [])
-							.map((p, i) =>
-								p === '…' ? (
-									<span
-										key={`e${i}`}
-										className={styles.pageBtn}
-										style={{ border: 'none', cursor: 'default' }}
-									>
-										…
-									</span>
-								) : (
-									<button
-										key={p}
-										className={`${styles.pageBtn} ${safePage === p ? styles.pageBtnActive : ''}`}
-										onClick={() => setPage(p as number)}
-									>
-										{p}
-									</button>
-								),
-							)}
-						<button
-							className={styles.pageBtn}
-							onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-							disabled={safePage === totalPages}
-						>
-							<Ic.ChevR />
-						</button>
-					</div>
-				</div>
+				<Pagination
+					page={safePage}
+					totalPages={totalPages}
+					total={filtered.length}
+					rowsPerPage={rowsPerPage}
+					pageSizeOptions={PAGE_SIZE_OPTIONS}
+					onPageChange={setPage}
+					onRowsPerPageChange={(n) => {
+						setRowsPerPage(n);
+						setPage(1);
+					}}
+					itemLabel='đề tài'
+				/>
 			</div>
 
 			{/* ── MODALS & DRAWER ── */}

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import styles from '../pages/Topic.module.css';
 import type { Topic } from '../types/topic.type';
-import { Ic } from '../utils/topicIcons';
+import { Ic } from './icons';
 
 export function DeleteModal({
 	topic,

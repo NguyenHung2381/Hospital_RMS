@@ -1,6 +1,35 @@
-import React, { useState, useMemo, useCallback, useEffect } from 'react';
-import styles from './Round.module.css';
+﻿import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import AlertSvg from '../../../assets/svg/alert.svg?react';
+import ArrowRSvg from '../../../assets/svg/arrow-r.svg?react';
+import CalendarSvg from '../../../assets/svg/calendar.svg?react';
+import CheckCircleSvg from '../../../assets/svg/check-circle.svg?react';
+import CheckSvg from '../../../assets/svg/check.svg?react';
+import ClockSvg from '../../../assets/svg/clock.svg?react';
+import CopySvg from '../../../assets/svg/copy.svg?react';
+import DocSvg from '../../../assets/svg/doc.svg?react';
+import EditSvg from '../../../assets/svg/edit.svg?react';
+import InfoSvg from '../../../assets/svg/info.svg?react';
+import KeySvg from '../../../assets/svg/key.svg?react';
+import LinkSvg from '../../../assets/svg/link.svg?react';
+import PlusSvg from '../../../assets/svg/plus.svg?react';
+import RefreshSvg from '../../../assets/svg/refresh.svg?react';
+import TrashSvg from '../../../assets/svg/trash.svg?react';
+import WarnSvg from '../../../assets/svg/warn.svg?react';
+import XSvg from '../../../assets/svg/x.svg?react';
 import AdminLayout from '../../../layouts/AdminLayout';
+import { useRealtimeUpdate } from '../../../layouts/hooks/useRealtime';
+import {
+	closeSupplementWindow,
+	createRound,
+	deleteDeadline,
+	deleteRound as deleteRoundApi,
+	formToPayload,
+	getDeadlines,
+	getRounds,
+	openSupplementWindow,
+	updateRound,
+	upsertDeadline,
+} from '../api/roundApi';
 import type {
 	DeadlineType,
 	FormErrors,
@@ -8,38 +37,9 @@ import type {
 	RoundDeadline,
 	RoundForm,
 	RoundStatus,
-} from '../types/Round.type';
-import { DEADLINE_TYPE_LABELS } from '../types/Round.type';
-import {
-	getRounds,
-	createRound,
-	updateRound,
-	deleteRound as deleteRoundApi,
-	formToPayload,
-	getDeadlines,
-	upsertDeadline,
-	deleteDeadline,
-	openSupplementWindow,
-	closeSupplementWindow,
-} from '../api/roundApi';
-import { useRealtimeUpdate } from '../../../hooks/useRealtime';
-import CalendarSvg from '../../../assets/svg/calendar.svg?react';
-import PlusSvg from '../../../assets/svg/plus.svg?react';
-import CheckSvg from '../../../assets/svg/check.svg?react';
-import EditSvg from '../../../assets/svg/edit.svg?react';
-import TrashSvg from '../../../assets/svg/trash.svg?react';
-import CopySvg from '../../../assets/svg/copy.svg?react';
-import KeySvg from '../../../assets/svg/key.svg?react';
-import DocSvg from '../../../assets/svg/doc.svg?react';
-import XSvg from '../../../assets/svg/x.svg?react';
-import WarnSvg from '../../../assets/svg/warn.svg?react';
-import InfoSvg from '../../../assets/svg/info.svg?react';
-import AlertSvg from '../../../assets/svg/alert.svg?react';
-import ArrowRSvg from '../../../assets/svg/arrow-r.svg?react';
-import RefreshSvg from '../../../assets/svg/refresh.svg?react';
-import LinkSvg from '../../../assets/svg/link.svg?react';
-import ClockSvg from '../../../assets/svg/clock.svg?react';
-import CheckCircleSvg from '../../../assets/svg/check-circle.svg?react';
+} from '../types/round.type';
+import { DEADLINE_TYPE_LABELS } from '../types/round.type';
+import styles from './Round.module.css';
 
 // ─── HELPERS ──────────────────────────────
 const STATUS_CFG: Record<
@@ -185,13 +185,15 @@ function DeadlineManager({ roundId }: { roundId: string }) {
 				deadline_type: row.deadline_type || null,
 			});
 			setDeadlines((p) =>
-				[...p.filter((d) => d.phase !== phase), saved].sort((a, b) => a.phase - b.phase),
+				[...p.filter((d) => d.phase !== phase), saved].sort(
+					(a, b) => a.phase - b.phase,
+				),
 			);
 			setNewRow(null);
 			setEditPhase(null);
 			setEditRow(null);
-		} catch {
-			setErr('Lưu thất bại');
+		} catch (e) {
+			setErr(e instanceof Error ? e.message : 'Lưu thất bại');
 		} finally {
 			setSaving(false);
 		}
@@ -231,10 +233,19 @@ function DeadlineManager({ roundId }: { roundId: string }) {
 		label: string,
 	) => (
 		<div style={{ marginBottom: 8 }}>
-			<div style={{ fontSize: 11, color: 'var(--color-muted)', marginBottom: 4 }}>
+			<div
+				style={{ fontSize: 11, color: 'var(--color-muted)', marginBottom: 4 }}
+			>
 				{label}
 			</div>
-			<div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+			<div
+				style={{
+					display: 'flex',
+					gap: 6,
+					flexWrap: 'wrap',
+					alignItems: 'center',
+				}}
+			>
 				<input
 					className={styles.formInput}
 					style={{ flex: '1 1 160px', minWidth: 120 }}
@@ -247,11 +258,18 @@ function DeadlineManager({ roundId }: { roundId: string }) {
 					style={{ width: 140 }}
 					value={row.deadline_type}
 					onChange={(e) =>
-						setRow((p) => p && { ...p, deadline_type: e.target.value as DeadlineType | '' })
+						setRow(
+							(p) =>
+								p && {
+									...p,
+									deadline_type: e.target.value as DeadlineType | '',
+								},
+						)
 					}
 				>
 					<option value=''>-- Loại hạn --</option>
 					<option value='nop_bao_cao'>Nộp báo cáo</option>
+					<option value='sua_thong_tin'>Sửa thông tin</option>
 					<option value='xet_duyet'>Xét duyệt</option>
 					<option value='nghiem_thu'>Nghiệm thu</option>
 				</select>
@@ -260,7 +278,9 @@ function DeadlineManager({ roundId }: { roundId: string }) {
 					className={styles.formInput}
 					style={{ width: 140 }}
 					value={row.start_date}
-					onChange={(e) => setRow((p) => p && { ...p, start_date: e.target.value })}
+					onChange={(e) =>
+						setRow((p) => p && { ...p, start_date: e.target.value })
+					}
 					title='Ngày bắt đầu (tùy chọn)'
 				/>
 				<input
@@ -279,7 +299,10 @@ function DeadlineManager({ roundId }: { roundId: string }) {
 				>
 					{saving ? <span className={styles.spinner} /> : <Ic.Check />}
 				</button>
-				<button className={styles.btnSecondary} onClick={onCancel}>
+				<button
+					className={styles.btnSecondary}
+					onClick={onCancel}
+				>
 					<Ic.X />
 				</button>
 			</div>
@@ -301,15 +324,26 @@ function DeadlineManager({ roundId }: { roundId: string }) {
 				</div>
 			)}
 			{deadlines.length === 0 && !newRow && (
-				<div style={{ fontSize: 13, color: 'var(--color-muted)', marginBottom: 8 }}>
+				<div
+					style={{ fontSize: 13, color: 'var(--color-muted)', marginBottom: 8 }}
+				>
 					Chưa có hạn nộp nào
 				</div>
 			)}
 
 			{deadlines.map((d) =>
 				editPhase === d.phase && editRow ? (
-					<div key={d.id} style={{ marginBottom: 6 }}>
-						{rowForm(editRow, setEditRow, d.phase, cancelEdit, `Sửa lần ${d.phase}`)}
+					<div
+						key={d.id}
+						style={{ marginBottom: 6 }}
+					>
+						{rowForm(
+							editRow,
+							setEditRow,
+							d.phase,
+							cancelEdit,
+							`Sửa lần ${d.phase}`,
+						)}
 					</div>
 				) : (
 					<div
@@ -343,7 +377,9 @@ function DeadlineManager({ roundId }: { roundId: string }) {
 						<span style={{ color: 'var(--color-muted)', fontSize: 12 }}>
 							{d.start_date ? `${d.start_date} → ` : ''}
 						</span>
-						<span style={{ fontWeight: 600, color: 'var(--color-primary-dark)' }}>
+						<span
+							style={{ fontWeight: 600, color: 'var(--color-primary-dark)' }}
+						>
 							{d.deadline_date}
 						</span>
 						<button
@@ -387,7 +423,10 @@ function DeadlineManager({ roundId }: { roundId: string }) {
 						newRow,
 						setNewRow,
 						nextPhase,
-						() => { setNewRow(null); setErr(''); },
+						() => {
+							setNewRow(null);
+							setErr('');
+						},
 						`Thêm lần ${nextPhase}`,
 					)
 				: nextPhase <= 9 && (
@@ -406,7 +445,12 @@ function DeadlineManager({ roundId }: { roundId: string }) {
 								cursor: 'pointer',
 							}}
 							onClick={() =>
-								setNewRow({ name: `Hạn nộp báo cáo lần ${nextPhase}`, start_date: '', date: '', deadline_type: 'nop_bao_cao' })
+								setNewRow({
+									name: `Hạn nộp báo cáo lần ${nextPhase}`,
+									start_date: '',
+									date: '',
+									deadline_type: 'nop_bao_cao',
+								})
 							}
 						>
 							<Ic.Plus />
@@ -826,7 +870,10 @@ function RoundModal({
 										className={`${styles.formInput} ${errors.registration_start_date ? styles.hasError : ''}`}
 										value={toInputDate(form.registration_start_date)}
 										onChange={(e) =>
-											set('registration_start_date', fromInputDate(e.target.value))
+											set(
+												'registration_start_date',
+												fromInputDate(e.target.value),
+											)
 										}
 									/>
 								</FormField>
@@ -841,7 +888,10 @@ function RoundModal({
 										className={`${styles.formInput} ${errors.registration_end_date ? styles.hasError : ''}`}
 										value={toInputDate(form.registration_end_date)}
 										onChange={(e) =>
-											set('registration_end_date', fromInputDate(e.target.value))
+											set(
+												'registration_end_date',
+												fromInputDate(e.target.value),
+											)
 										}
 									/>
 								</FormField>
@@ -877,7 +927,9 @@ function RoundModal({
 										type='date'
 										className={`${styles.formInput} ${errors.end_date ? styles.hasError : ''}`}
 										value={toInputDate(form.end_date)}
-										onChange={(e) => set('end_date', fromInputDate(e.target.value))}
+										onChange={(e) =>
+											set('end_date', fromInputDate(e.target.value))
+										}
 									/>
 								</FormField>
 							</div>
@@ -935,14 +987,20 @@ function RoundModal({
 								onDone={(updated) => onRoundUpdate?.(updated)}
 							/>
 
-							<div className={styles.formSection}>Thống kê đề tài trong đợt</div>
+							<div className={styles.formSection}>
+								Thống kê đề tài trong đợt
+							</div>
 							<div className={styles.statusInfoRow}>
 								<div className={styles.statusInfoItem}>
-									<div className={styles.statusInfoVal}>{round.topic_total}</div>
+									<div className={styles.statusInfoVal}>
+										{round.topic_total}
+									</div>
 									<div className={styles.statusInfoLbl}>Tổng đề tài</div>
 								</div>
 								<div className={styles.statusInfoItem}>
-									<div className={styles.statusInfoVal}>{round.topic_active}</div>
+									<div className={styles.statusInfoVal}>
+										{round.topic_active}
+									</div>
 									<div className={styles.statusInfoLbl}>Đang thực hiện</div>
 								</div>
 								<div className={styles.statusInfoItem}>
@@ -1301,7 +1359,7 @@ export default function Round() {
 	const [refreshKey, setRefreshKey] = useState(0);
 
 	const refreshData = useCallback(() => {
-		setRefreshKey(prev => prev + 1);
+		setRefreshKey((prev) => prev + 1);
 	}, []);
 
 	useRealtimeUpdate('round', refreshData);
@@ -1469,7 +1527,8 @@ export default function Round() {
 						<div className={styles.sectionSub}>
 							{filtered.length} đợt
 							{yearFilter !== 'all' ? ` — Năm ${yearFilter}` : ''}
-							{' · '}{stats.topicSum} đề tài
+							{' · '}
+							{stats.topicSum} đề tài
 						</div>
 					</div>
 					<div className={styles.sectionRight}>

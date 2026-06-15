@@ -47,6 +47,14 @@ app.use(
 
 // ─── Routes ───────────────────────────────────────────────────────────────────
 const API = '/api/v1';
+
+app.use(API, (req, res, next) => {
+	res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+	res.set('Pragma', 'no-cache');
+	res.set('Expires', '0');
+	next();
+});
+
 app.use(`${API}/auth`, require('./routes/auth'));
 app.use(`${API}/users`, require('./routes/users'));
 app.use(`${API}/topics`, require('./routes/topics'));
@@ -67,17 +75,25 @@ app.use((req, res) => {
 // ─── Global error handler ─────────────────────────────────────────────────────
 app.use(errorHandler);
 
+// ─── Global process error guards (prevent crash on unhandled rejections) ─────
+process.on('unhandledRejection', (reason) => {
+	console.error('❌ Unhandled Promise Rejection:', reason);
+});
+process.on('uncaughtException', (err) => {
+	console.error('❌ Uncaught Exception:', err.message, err.stack);
+});
+
 // ─── Start server (tự động chuyển port nếu bị chiếm) ────────────────────────
 const net = require('net');
 const os = require('os');
 
 const isPortInUse = (port) =>
 	new Promise((resolve) => {
-		const tester = net
-			.createServer()
-			.once('error', () => resolve(true))
-			.once('listening', () => tester.close(() => resolve(false)))
-			.listen(port);
+		// Dùng connect thay vì bind: tránh SO_REUSEADDR trên Windows
+		// cho phép bind trùng port khiến cách cũ luôn báo "rảnh"
+		const client = net.createConnection({ port, host: '127.0.0.1' });
+		client.once('connect', () => { client.destroy(); resolve(true); });
+		client.once('error', (err) => resolve(err.code !== 'ECONNREFUSED'));
 	});
 
 const findAvailablePort = async (startPort, maxRetries = 10) => {
@@ -118,17 +134,21 @@ function getNetworkIp() {
 			// Tự động đồng bộ Port sang file .env của Frontend (Client)
 			const fs = require('fs');
 			const clientEnvPath = path.resolve(__dirname, '../../client/.env');
+			let envContent = '';
 			if (fs.existsSync(clientEnvPath)) {
-				let envContent = fs.readFileSync(clientEnvPath, 'utf8');
-				if (envContent.match(/^VITE_API_PORT=.*$/m)) {
-					envContent = envContent.replace(
-						/^VITE_API_PORT=.*$/m,
-						`VITE_API_PORT=${PORT}`,
-					);
-				} else {
-					envContent += `\nVITE_API_PORT=${PORT}\n`;
-				}
-				fs.writeFileSync(clientEnvPath, envContent);
+				envContent = fs.readFileSync(clientEnvPath, 'utf8');
+			}
+			let newContent = envContent;
+			if (newContent.match(/^VITE_API_PORT=.*$/m)) {
+				newContent = newContent.replace(
+					/^VITE_API_PORT=.*$/m,
+					`VITE_API_PORT=${PORT}`,
+				);
+			} else {
+				newContent = newContent.trim() ? newContent.trim() + `\nVITE_API_PORT=${PORT}\n` : `VITE_API_PORT=${PORT}\n`;
+			}
+			if (envContent !== newContent) {
+				fs.writeFileSync(clientEnvPath, newContent);
 				console.log(`✅ Đã tự động đồng bộ Port ${PORT} sang thư mục client`);
 			}
 

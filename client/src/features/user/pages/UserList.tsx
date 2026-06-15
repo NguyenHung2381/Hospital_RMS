@@ -1,10 +1,4 @@
-// =============================================
-// UserList.tsx — Quản lý Người dùng
-// Bệnh viện Hữu Nghị Đa Khoa Nghệ An — RMS
-// Bảng: users (join departments, roles)
-// =============================================
-
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+﻿import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import CheckSvg from '../../../assets/svg/check.svg?react';
 import ChevDSvg from '../../../assets/svg/chev-d.svg?react';
 import ChevRSvg from '../../../assets/svg/chev-r.svg?react';
@@ -18,6 +12,7 @@ import UsersSvg from '../../../assets/svg/users.svg?react';
 import WarnSvg from '../../../assets/svg/warn.svg?react';
 import XSvg from '../../../assets/svg/x.svg?react';
 import AdminLayout from '../../../layouts/AdminLayout';
+import { useRealtimeUpdate } from '../../../layouts/hooks/useRealtime';
 import {
 	createUser,
 	deleteUser as deleteUserApi,
@@ -28,30 +23,34 @@ import {
 	updateUser as updateUserApi,
 	type SimpleItem,
 } from '../api/userApi';
-import { useRealtimeUpdate } from '../../../hooks/useRealtime';
-import type { AccountType, FormErrors, User, UserForm } from '../types/User.type';
+import type {
+	AccountType,
+	FormErrors,
+	User,
+	UserForm,
+} from '../types/user.type';
 import styles from './UserList.module.css';
 
 // ─── CONSTANTS ────────────────────────────
 const ACCOUNT_TYPES: { value: AccountType; label: string }[] = [
-	{ value: 'admin',    label: 'Quản trị'    },
-	{ value: 'director', label: 'Giám đốc'    },
-	{ value: 'reviewer', label: 'Thẩm định'   },
-	{ value: 'manager',  label: 'Quản lý'     },
-	{ value: 'dept',     label: 'TK Khoa'     },
-	{ value: 'member',   label: 'Thành viên'  },
+	{ value: 'admin', label: 'Quản trị' },
+	{ value: 'director', label: 'Giám đốc' },
+	{ value: 'reviewer', label: 'Thẩm định' },
+	{ value: 'manager', label: 'Quản lý' },
+	{ value: 'dept', label: 'TK Khoa' },
+	{ value: 'member', label: 'Thành viên' },
 ];
 
 const ACCOUNT_TYPE_CFG: Record<
 	AccountType,
 	{ label: string; cls: string; avatarCls: string }
 > = {
-	admin:    { label: 'Quản trị',   cls: 'rolePurple', avatarCls: 'avatarPurple' },
-	director: { label: 'Giám đốc',   cls: 'roleRed',    avatarCls: 'avatarRed'    },
-	reviewer: { label: 'Thẩm định',  cls: 'roleGray',   avatarCls: 'avatarGray'   },
-	manager:  { label: 'Quản lý',    cls: 'roleBlue',   avatarCls: 'avatarBlue'   },
-	dept:     { label: 'TK Khoa',    cls: 'roleAmber',  avatarCls: 'avatarAmber'  },
-	member:   { label: 'Thành viên', cls: 'roleGreen',  avatarCls: 'avatarGreen'  },
+	admin: { label: 'Quản trị', cls: 'rolePurple', avatarCls: 'avatarPurple' },
+	director: { label: 'Giám đốc', cls: 'roleRed', avatarCls: 'avatarRed' },
+	reviewer: { label: 'Thẩm định', cls: 'roleGray', avatarCls: 'avatarGray' },
+	manager: { label: 'Quản lý', cls: 'roleBlue', avatarCls: 'avatarBlue' },
+	dept: { label: 'TK Khoa', cls: 'roleAmber', avatarCls: 'avatarAmber' },
+	member: { label: 'Thành viên', cls: 'roleGreen', avatarCls: 'avatarGreen' },
 };
 
 // ─── HELPERS ──────────────────────────────
@@ -269,14 +268,12 @@ function UserModal({
 		if (!form.username.trim()) e.username = 'Vui lòng nhập tên đăng nhập';
 		else if (form.username.length < 3)
 			e.username = 'Tên đăng nhập ít nhất 3 ký tự';
-		if (
-			form.email.trim() &&
-			!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)
-		)
+		if (form.email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email))
 			e.email = 'Email không hợp lệ';
 		if (!form.department_id) e.department_id = 'Vui lòng chọn phòng ban';
 		if (!form.role_id) e.role_id = 'Vui lòng chọn vai trò';
-		if (mode === 'create' && !form.password) e.password = 'Vui lòng nhập mật khẩu';
+		if (mode === 'create' && !form.password)
+			e.password = 'Vui lòng nhập mật khẩu';
 		else if (form.password && form.password.length < 5)
 			e.password = 'Mật khẩu ít nhất 5 ký tự';
 		setErrors(e);
@@ -368,9 +365,7 @@ function UserModal({
 								className={`${styles.formInput} ${errors.staff_number ? styles.inputError : ''}`}
 								placeholder='vd: BV001234'
 								value={form.staff_number}
-								onChange={(e) =>
-									set('staff_number', e.target.value.trim())
-								}
+								onChange={(e) => set('staff_number', e.target.value.trim())}
 							/>
 						</Field>
 					</div>
@@ -584,9 +579,7 @@ function UserModal({
 					</button>
 					<button
 						className={
-							mode === 'create'
-								? styles.btnConfirmAmber
-								: styles.btnConfirmBlue
+							mode === 'create' ? styles.btnConfirmAmber : styles.btnConfirmBlue
 						}
 						onClick={handleSubmit}
 						disabled={loading}
@@ -666,9 +659,8 @@ function DeleteModal({
 							className={styles.modalSubtitle}
 							style={{ marginTop: 6 }}
 						>
-							Bạn chắc chắn muốn xoá tài khoản{' '}
-							<strong>{user.full_name}</strong> ({user.username})? Hành động
-							này không thể hoàn tác.
+							Bạn chắc chắn muốn xoá tài khoản <strong>{user.full_name}</strong>{' '}
+							({user.username})? Hành động này không thể hoàn tác.
 						</div>
 					</div>
 				</div>
@@ -708,6 +700,115 @@ function DeleteModal({
 	);
 }
 
+// ─── RESET PASSWORD MODAL ─────────────────
+function ResetPasswordModal({
+	user,
+	onClose,
+	onConfirm,
+}: {
+	user: User;
+	onClose: () => void;
+	onConfirm: () => Promise<void>;
+}) {
+	const [loading, setLoading] = useState(false);
+	const [error, setError] = useState<string | null>(null);
+
+	const handleConfirm = async () => {
+		setLoading(true);
+		setError(null);
+		try {
+			await onConfirm();
+		} catch (err) {
+			setError(err instanceof Error ? err.message : 'Có lỗi xảy ra');
+			setLoading(false);
+		}
+	};
+
+	return (
+		<div
+			className={styles.modalBackdrop}
+			onClick={(e) => {
+				if (e.target === e.currentTarget) onClose();
+			}}
+		>
+			<div
+				className={`${styles.modal} ${styles.modalSm}`}
+				role='alertdialog'
+				aria-modal='true'
+			>
+				<div
+					className={styles.modalBody}
+					style={{ textAlign: 'center', gap: 16 }}
+				>
+					<div
+						className={styles.modalHeaderIcon}
+						style={{
+							margin: '0 auto',
+							background: '#fff7ed',
+							color: '#b45309',
+						}}
+					>
+						<Ic.Key />
+					</div>
+					<div>
+						<div className={styles.modalTitle}>Đặt lại mật khẩu?</div>
+						<div
+							className={styles.modalSubtitle}
+							style={{ marginTop: 6 }}
+						>
+							Mật khẩu của <strong>{user.full_name}</strong> ({user.username})
+							sẽ được đặt lại về{' '}
+							<strong
+								style={{
+									fontFamily: 'monospace',
+									background: '#f3f4f6',
+									padding: '1px 6px',
+									borderRadius: 4,
+								}}
+							>
+								123456
+							</strong>
+							.
+						</div>
+					</div>
+				</div>
+				<div className={styles.modalFooter}>
+					{error && (
+						<span
+							className={styles.fieldError}
+							style={{ flex: 1 }}
+						>
+							{error}
+						</span>
+					)}
+					<button
+						className={styles.btnCancel}
+						onClick={onClose}
+					>
+						Huỷ bỏ
+					</button>
+					<button
+						className={styles.btnConfirmBlue}
+						onClick={handleConfirm}
+						disabled={loading}
+						style={{ background: '#b45309', borderColor: '#b45309' }}
+					>
+						{loading ? (
+							<>
+								<span className={styles.spinner} /> Đang đặt lại...
+							</>
+						) : (
+							<>
+								<Ic.Key /> Xác nhận
+							</>
+						)}
+					</button>
+				</div>
+			</div>
+		</div>
+	);
+}
+
 // ─── MAIN PAGE ────────────────────────────
 export default function UserList() {
 	const [users, setUsers] = useState<User[]>([]);
@@ -725,6 +826,7 @@ export default function UserList() {
 	const [showCreate, setShowCreate] = useState(false);
 	const [editUser, setEditUser] = useState<User | null>(null);
 	const [deleteUser, setDeleteUser] = useState<User | null>(null);
+	const [resetUser, setResetUser] = useState<User | null>(null);
 	const [toast, setToast] = useState<{
 		msg: string;
 		type: 'success' | 'error' | 'info';
@@ -748,7 +850,9 @@ export default function UserList() {
 	const suppressRealtimeRef = React.useRef(false);
 	const suppressRealtime = (ms = 3000) => {
 		suppressRealtimeRef.current = true;
-		setTimeout(() => { suppressRealtimeRef.current = false; }, ms);
+		setTimeout(() => {
+			suppressRealtimeRef.current = false;
+		}, ms);
 	};
 
 	const refreshData = useCallback(() => {
@@ -785,8 +889,7 @@ export default function UserList() {
 			total: users.length,
 			active: users.filter((u) => u.is_active).length,
 			inactive: users.filter((u) => !u.is_active).length,
-			pwdWarn: users.filter((u) => isPasswordOld(u.password_changed_at))
-				.length,
+			pwdWarn: users.filter((u) => isPasswordOld(u.password_changed_at)).length,
 		}),
 		[users],
 	);
@@ -794,14 +897,20 @@ export default function UserList() {
 	// ── Filter logic ───────────────────────
 	const usersForTypeCount = useMemo(() => {
 		return users.filter((u) => {
-			if (deptFilters.length > 0 && (!u.department_id || !deptFilters.includes(u.department_id))) return false;
+			if (
+				deptFilters.length > 0 &&
+				(!u.department_id || !deptFilters.includes(u.department_id))
+			)
+				return false;
 			if (search) {
 				const q = search.toLowerCase();
 				return (
 					u.full_name.toLowerCase().includes(q) ||
 					u.username.toLowerCase().includes(q) ||
 					(u.email ?? '').toLowerCase().includes(q) ||
-					String(u.staff_number ?? '').toLowerCase().includes(q)
+					String(u.staff_number ?? '')
+						.toLowerCase()
+						.includes(q)
 				);
 			}
 			return true;
@@ -810,14 +919,17 @@ export default function UserList() {
 
 	const usersForDeptCount = useMemo(() => {
 		return users.filter((u) => {
-			if (typeFilters.length > 0 && !typeFilters.includes(u.account_type)) return false;
+			if (typeFilters.length > 0 && !typeFilters.includes(u.account_type))
+				return false;
 			if (search) {
 				const q = search.toLowerCase();
 				return (
 					u.full_name.toLowerCase().includes(q) ||
 					u.username.toLowerCase().includes(q) ||
 					(u.email ?? '').toLowerCase().includes(q) ||
-					String(u.staff_number ?? '').toLowerCase().includes(q)
+					String(u.staff_number ?? '')
+						.toLowerCase()
+						.includes(q)
 				);
 			}
 			return true;
@@ -826,21 +938,27 @@ export default function UserList() {
 
 	const filteredUsers = useMemo(() => {
 		return users.filter((u) => {
-			if (typeFilters.length > 0 && !typeFilters.includes(u.account_type)) return false;
-			if (deptFilters.length > 0 && (!u.department_id || !deptFilters.includes(u.department_id))) return false;
+			if (typeFilters.length > 0 && !typeFilters.includes(u.account_type))
+				return false;
+			if (
+				deptFilters.length > 0 &&
+				(!u.department_id || !deptFilters.includes(u.department_id))
+			)
+				return false;
 			if (search) {
 				const q = search.toLowerCase();
 				return (
 					u.full_name.toLowerCase().includes(q) ||
 					u.username.toLowerCase().includes(q) ||
 					(u.email ?? '').toLowerCase().includes(q) ||
-					String(u.staff_number ?? '').toLowerCase().includes(q)
+					String(u.staff_number ?? '')
+						.toLowerCase()
+						.includes(q)
 				);
 			}
 			return true;
 		});
 	}, [users, typeFilters, deptFilters, search]);
-
 
 	const totalPages = Math.max(1, Math.ceil(filteredUsers.length / pageSize));
 	const pagedUsers = useMemo(() => {
@@ -864,7 +982,10 @@ export default function UserList() {
 	// Close dropdown when clicking outside
 	useEffect(() => {
 		const handleClickOutside = (e: MouseEvent) => {
-			if (isDeptDropdownOpen && !(e.target as Element).closest('.dept-dropdown-container')) {
+			if (
+				isDeptDropdownOpen &&
+				!(e.target as Element).closest('.dept-dropdown-container')
+			) {
 				setIsDeptDropdownOpen(false);
 			}
 		};
@@ -907,9 +1028,7 @@ export default function UserList() {
 				is_active: form.is_active,
 			});
 			if (form.password) await resetUserPassword(editUser.id, form.password);
-			setUsers((prev) =>
-				prev.map((u) => (u.id === editUser.id ? updated : u)),
-			);
+			setUsers((prev) => prev.map((u) => (u.id === editUser.id ? updated : u)));
 			setEditUser(null);
 			showToast('Đã cập nhật thông tin tài khoản');
 		},
@@ -924,6 +1043,16 @@ export default function UserList() {
 		setDeleteUser(null);
 		showToast(`Đã xoá tài khoản ${deleteUser.full_name}`, 'info');
 	}, [deleteUser, showToast]);
+
+	const handleResetPassword = useCallback(async (): Promise<void> => {
+		if (!resetUser) return;
+		await resetUserPassword(resetUser.id, '123456');
+		setResetUser(null);
+		showToast(
+			`Đã đặt lại mật khẩu của ${resetUser.full_name} về mặc định`,
+			'info',
+		);
+	}, [resetUser, showToast]);
 
 	const handleToggleActive = useCallback(
 		async (id: string) => {
@@ -1049,7 +1178,15 @@ export default function UserList() {
 			</div>
 
 			{/* ── TOOLBAR & TABLE ── */}
-			<div className={styles.tableWrap} style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 20 }}>
+			<div
+				className={styles.tableWrap}
+				style={{
+					padding: 24,
+					display: 'flex',
+					flexDirection: 'column',
+					gap: 20,
+				}}
+			>
 				<div className={styles.toolbar}>
 					<div className={styles.toolbarLeft}>
 						<div className={styles.searchBox}>
@@ -1058,63 +1195,135 @@ export default function UserList() {
 								className={styles.searchInput}
 								placeholder='Tìm theo tên, username, email...'
 								value={search}
-								onChange={(e) => { setSearch(e.target.value); setCurrentPage(1); }}
+								onChange={(e) => {
+									setSearch(e.target.value);
+									setCurrentPage(1);
+								}}
 							/>
 							{search && (
 								<button
 									className={styles.searchClear}
-									onClick={() => { setSearch(''); setCurrentPage(1); }}
+									onClick={() => {
+										setSearch('');
+										setCurrentPage(1);
+									}}
 								>
 									<Ic.X />
 								</button>
 							)}
 						</div>
-						
+
 						{/* Multi-select Dept */}
-						<div className='dept-dropdown-container' style={{ position: 'relative' }}>
-							<button 
+						<div
+							className='dept-dropdown-container'
+							style={{ position: 'relative' }}
+						>
+							<button
 								className={`${styles.roleFilterBtn} ${deptFilters.length > 0 ? styles.roleFilterActive : ''}`}
-								style={{ background: 'var(--color-gray-100)', border: '1px solid var(--color-gray-200)', height: 38, padding: '0 16px', borderRadius: 8, fontSize: 13 }}
+								style={{
+									background: 'var(--color-gray-100)',
+									border: '1px solid var(--color-gray-200)',
+									height: 38,
+									padding: '0 16px',
+									borderRadius: 8,
+									fontSize: 13,
+								}}
 								onClick={() => setIsDeptDropdownOpen(!isDeptDropdownOpen)}
 							>
-								Khoa/Phòng {deptFilters.length > 0 ? `(${deptFilters.length})` : ''}
-								<Ic.ChevronDown style={{ width: 14, marginLeft: 4, transform: isDeptDropdownOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }} />
+								Khoa/Phòng{' '}
+								{deptFilters.length > 0 ? `(${deptFilters.length})` : ''}
+								<Ic.ChevronDown
+									style={{
+										width: 14,
+										marginLeft: 4,
+										transform: isDeptDropdownOpen ? 'rotate(180deg)' : 'none',
+										transition: 'transform 0.2s',
+									}}
+								/>
 							</button>
-							
+
 							{isDeptDropdownOpen && (
-								<div style={{
-									position: 'absolute',
-									top: 'calc(100% + 4px)',
-									left: 0,
-									width: 300,
-									maxHeight: 350,
-									overflowY: 'auto',
-									background: 'var(--color-white)',
-									border: '1px solid var(--color-gray-200)',
-									borderRadius: 8,
-									boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
-									zIndex: 100,
-									display: 'flex',
-									flexDirection: 'column',
-									padding: 8,
-									gap: 4
-								}}>
-									{departments.map(d => (
-										<label key={d.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 8px', cursor: 'pointer', borderRadius: 4, transition: 'background 0.1s' }}
-											onMouseEnter={e => (e.currentTarget.style.background = 'var(--color-gray-50)')}
-											onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+								<div
+									style={{
+										position: 'absolute',
+										top: 'calc(100% + 4px)',
+										left: 0,
+										width: 300,
+										maxHeight: 350,
+										overflowY: 'auto',
+										background: 'var(--color-white)',
+										border: '1px solid var(--color-gray-200)',
+										borderRadius: 8,
+										boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+										zIndex: 100,
+										display: 'flex',
+										flexDirection: 'column',
+										padding: 8,
+										gap: 4,
+									}}
+								>
+									{departments.map((d) => (
+										<label
+											key={d.id}
+											style={{
+												display: 'flex',
+												alignItems: 'center',
+												gap: 8,
+												padding: '6px 8px',
+												cursor: 'pointer',
+												borderRadius: 4,
+												transition: 'background 0.1s',
+											}}
+											onMouseEnter={(e) =>
+												(e.currentTarget.style.background =
+													'var(--color-gray-50)')
+											}
+											onMouseLeave={(e) =>
+												(e.currentTarget.style.background = 'transparent')
+											}
 										>
-											<input type="checkbox" 
+											<input
+												type='checkbox'
 												checked={deptFilters.includes(d.id)}
 												onChange={(e) => {
-													if (e.target.checked) { setDeptFilters(p => [...p, d.id]); setCurrentPage(1); }
-													else { setDeptFilters(p => p.filter(id => id !== d.id)); setCurrentPage(1); }
+													if (e.target.checked) {
+														setDeptFilters((p) => [...p, d.id]);
+														setCurrentPage(1);
+													} else {
+														setDeptFilters((p) =>
+															p.filter((id) => id !== d.id),
+														);
+														setCurrentPage(1);
+													}
 												}}
-												style={{ cursor: 'pointer', accentColor: 'var(--color-primary)' }}
+												style={{
+													cursor: 'pointer',
+													accentColor: 'var(--color-primary)',
+												}}
 											/>
-											<span style={{ fontSize: 13, color: 'var(--color-gray-800)', flex: 1 }}>{d.name}</span>
-											<span style={{ fontSize: 11, color: 'var(--color-gray-400)', background: 'var(--color-gray-100)', padding: '2px 6px', borderRadius: 10 }}>
-												{usersForDeptCount.filter(u => u.department_id === d.id).length}
+											<span
+												style={{
+													fontSize: 13,
+													color: 'var(--color-gray-800)',
+													flex: 1,
+												}}
+											>
+												{d.name}
+											</span>
+											<span
+												style={{
+													fontSize: 11,
+													color: 'var(--color-gray-400)',
+													background: 'var(--color-gray-100)',
+													padding: '2px 6px',
+													borderRadius: 10,
+												}}
+											>
+												{
+													usersForDeptCount.filter(
+														(u) => u.department_id === d.id,
+													).length
+												}
 											</span>
 										</label>
 									))}
@@ -1125,7 +1334,10 @@ export default function UserList() {
 						<div className={styles.roleFilters}>
 							<button
 								className={`${styles.roleFilterBtn} ${typeFilters.length === 0 ? styles.roleFilterActive : ''}`}
-								onClick={() => { setTypeFilters([]); setCurrentPage(1); }}
+								onClick={() => {
+									setTypeFilters([]);
+									setCurrentPage(1);
+								}}
 							>
 								Tất cả loại
 								<span className={styles.roleFilterCount}>
@@ -1137,15 +1349,21 @@ export default function UserList() {
 									key={t.value}
 									className={`${styles.roleFilterBtn} ${typeFilters.includes(t.value) ? styles.roleFilterActive : ''}`}
 									onClick={() => {
-										setTypeFilters(prev => 
-											prev.includes(t.value) ? prev.filter(v => v !== t.value) : [...prev, t.value]
+										setTypeFilters((prev) =>
+											prev.includes(t.value)
+												? prev.filter((v) => v !== t.value)
+												: [...prev, t.value],
 										);
 										setCurrentPage(1);
 									}}
 								>
 									{t.label}
 									<span className={styles.roleFilterCount}>
-										{usersForTypeCount.filter((u) => u.account_type === t.value).length}
+										{
+											usersForTypeCount.filter(
+												(u) => u.account_type === t.value,
+											).length
+										}
 									</span>
 								</button>
 							))}
@@ -1159,7 +1377,10 @@ export default function UserList() {
 				</div>
 
 				{/* USER TABLE */}
-				<div className={styles.tableWrap} style={{ border: 'none', borderRadius: 0 }}>
+				<div
+					className={styles.tableWrap}
+					style={{ border: 'none', borderRadius: 0 }}
+				>
 					{filteredUsers.length === 0 ? (
 						<div className={styles.emptyState}>
 							<div className={styles.emptyIcon}>
@@ -1175,117 +1396,84 @@ export default function UserList() {
 									? 'Thử thay đổi bộ lọc hoặc từ khoá tìm kiếm'
 									: 'Cấp tài khoản đầu tiên'}
 							</div>
-							{!search && typeFilters.length === 0 && deptFilters.length === 0 && (
-								<button
-									className={styles.btnGrantHeader}
-									onClick={() => setShowCreate(true)}
-									style={{ marginTop: 16 }}
-								>
-									<Ic.Key /> Cấp tài khoản
-								</button>
-							)}
+							{!search &&
+								typeFilters.length === 0 &&
+								deptFilters.length === 0 && (
+									<button
+										className={styles.btnGrantHeader}
+										onClick={() => setShowCreate(true)}
+										style={{ marginTop: 16 }}
+									>
+										<Ic.Key /> Cấp tài khoản
+									</button>
+								)}
 						</div>
 					) : (
 						<table className={styles.table}>
 							<thead>
 								<tr>
 									<th className={styles.th}>#</th>
-									<th className={styles.th}>
-										Người dùng
-									</th>
-									<th className={styles.th}>
-										Khoa / Phòng
-									</th>
-									<th className={styles.th}>
-										Đăng nhập / Mã NV
-									</th>
+									<th className={styles.th}>Người dùng</th>
+									<th className={styles.th}>Khoa / Phòng</th>
+									<th className={styles.th}>Đăng nhập / Mã NV</th>
 									<th className={styles.th}>Vai trò</th>
 									<th className={styles.th}>Loại TK</th>
-									<th className={styles.th}>
-										Trạng thái
-									</th>
+									<th className={styles.th}>Trạng thái</th>
 									<th className={styles.th}>Ngày tạo</th>
-									<th
-										className={`${styles.th} ${styles.thRight}`}
-									>
-										Thao tác
-									</th>
+									<th className={`${styles.th} ${styles.thRight}`}>Thao tác</th>
 								</tr>
 							</thead>
 							<tbody>
 								{pagedUsers.map((u, i) => {
 									const rowNum = (currentPage - 1) * pageSize + i + 1;
 									const typeCfg =
-										ACCOUNT_TYPE_CFG[
-											u.account_type
-										] ?? ACCOUNT_TYPE_CFG.member;
+										ACCOUNT_TYPE_CFG[u.account_type] ?? ACCOUNT_TYPE_CFG.member;
 									return (
 										<tr
 											key={u.id}
 											className={styles.tr}
 										>
-											<td
-												className={`${styles.td} ${styles.tdIdx}`}
-											>
+											<td className={`${styles.td} ${styles.tdIdx}`}>
 												{rowNum}
 											</td>
 											<td className={styles.td}>
-												<div
-													className={
-														styles.memberCell
-													}
-												>
+												<div className={styles.memberCell}>
 													<Avatar
 														name={u.full_name}
 														cls={typeCfg.avatarCls}
 														size='md'
 													/>
 													<div>
-														<div
-															className={
-																styles.memberName
-															}
-														>
+														<div className={styles.memberName}>
 															{u.full_name}
 														</div>
-														<div
-															className={
-																styles.memberId
-															}
-														>
-															{u.id}
-														</div>
+														<div className={styles.memberId}>{u.id}</div>
 													</div>
 												</div>
 											</td>
 											<td className={styles.td}>
-												<div style={{ fontSize: 13, color: 'var(--color-gray-700)', fontWeight: 500 }}>
+												<div
+													style={{
+														fontSize: 13,
+														color: 'var(--color-gray-700)',
+														fontWeight: 500,
+													}}
+												>
 													{getDeptName(u.department_id)}
 												</div>
 											</td>
 											<td className={styles.td}>
 												<div>
-													<div
-														className={
-															styles.usernameText
-														}
-													>
+													<div className={styles.usernameText}>
 														{u.username}
 													</div>
-													<div
-														className={
-															styles.staffNum
-														}
-													>
-														MNV:{' '}
-														{u.staff_number ?? '—'}
+													<div className={styles.staffNum}>
+														MNV: {u.staff_number ?? '—'}
 													</div>
 												</div>
 											</td>
 											<td className={styles.td}>
-												<span
-													className={styles.roleText}
-												>
+												<span className={styles.roleText}>
 													{getRoleName(u.role_id)}
 												</span>
 											</td>
@@ -1298,18 +1486,10 @@ export default function UserList() {
 												</Badge>
 											</td>
 											<td className={styles.td}>
-												<div
-													className={
-														styles.statusToggle
-													}
-												>
+												<div className={styles.statusToggle}>
 													<Toggle
 														on={u.is_active}
-														onChange={() =>
-															handleToggleActive(
-																u.id,
-															)
-														}
+														onChange={() => handleToggleActive(u.id)}
 													/>
 													<span
 														style={{
@@ -1320,37 +1500,35 @@ export default function UserList() {
 																: 'var(--color-gray-400)',
 														}}
 													>
-														{u.is_active
-															? 'Hoạt động'
-															: 'Khoá'}
+														{u.is_active ? 'Hoạt động' : 'Khoá'}
 													</span>
 												</div>
 											</td>
 											<td className={styles.td}>
-												<span
-													className={styles.dateText}
-												>
+												<span className={styles.dateText}>
 													{formatDate(u.created_at)}
 												</span>
 											</td>
-											<td
-												className={`${styles.td} ${styles.tdActions}`}
-											>
+											<td className={`${styles.td} ${styles.tdActions}`}>
 												<button
 													className={`${styles.actionBtn} ${styles.actionEdit}`}
 													title='Chỉnh sửa'
-													onClick={() =>
-														setEditUser(u)
-													}
+													onClick={() => setEditUser(u)}
 												>
 													<Ic.Edit />
 												</button>
 												<button
+													className={styles.actionBtn}
+													title='Đặt lại mật khẩu về 123456'
+													onClick={() => setResetUser(u)}
+													style={{ color: '#b45309' }}
+												>
+													<Ic.Key />
+												</button>
+												<button
 													className={`${styles.actionBtn} ${styles.actionDelete}`}
 													title='Xoá'
-													onClick={() =>
-														setDeleteUser(u)
-													}
+													onClick={() => setDeleteUser(u)}
 												>
 													<Ic.Trash />
 												</button>
@@ -1366,10 +1544,11 @@ export default function UserList() {
 					{filteredUsers.length > 0 && (
 						<div className={styles.paginationBar}>
 							<div className={styles.paginationInfo}>
-								Hiển thị{' '}
-								<strong>{(currentPage - 1) * pageSize + 1}</strong>
+								Hiển thị <strong>{(currentPage - 1) * pageSize + 1}</strong>
 								{' – '}
-								<strong>{Math.min(currentPage * pageSize, filteredUsers.length)}</strong>
+								<strong>
+									{Math.min(currentPage * pageSize, filteredUsers.length)}
+								</strong>
 								{' / '}
 								<strong>{filteredUsers.length}</strong> bản ghi
 							</div>
@@ -1381,10 +1560,18 @@ export default function UserList() {
 									<select
 										className={styles.pageSizeSelect}
 										value={pageSize}
-										onChange={(e) => { setPageSize(Number(e.target.value)); setCurrentPage(1); }}
+										onChange={(e) => {
+											setPageSize(Number(e.target.value));
+											setCurrentPage(1);
+										}}
 									>
 										{[10, 20, 50, 100].map((n) => (
-											<option key={n} value={n}>{n}</option>
+											<option
+												key={n}
+												value={n}
+											>
+												{n}
+											</option>
 										))}
 									</select>
 									<span className={styles.pageSizeLabel}>/ trang</span>
@@ -1397,52 +1584,78 @@ export default function UserList() {
 										onClick={() => setCurrentPage(1)}
 										disabled={currentPage === 1}
 										title='Trang đầu'
-									>«</button>
+									>
+										«
+									</button>
 									<button
 										className={styles.pageBtn}
 										onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
 										disabled={currentPage === 1}
 										title='Trang trước'
-									>‹</button>
+									>
+										‹
+									</button>
 
 									{/* Page number pills */}
 									{Array.from({ length: totalPages }, (_, i) => i + 1)
-										.filter((p) =>
-											p === 1 ||
-											p === totalPages ||
-											Math.abs(p - currentPage) <= 1
+										.filter(
+											(p) =>
+												p === 1 ||
+												p === totalPages ||
+												Math.abs(p - currentPage) <= 1,
 										)
-										.reduce<(number | 'ellipsis-start' | 'ellipsis-end')[]>((acc, p, idx, arr) => {
-											if (idx > 0 && (p as number) - (arr[idx - 1] as number) > 1) {
-												acc.push(idx === 1 ? 'ellipsis-start' : 'ellipsis-end');
-											}
-											acc.push(p);
-											return acc;
-										}, [])
+										.reduce<(number | 'ellipsis-start' | 'ellipsis-end')[]>(
+											(acc, p, idx, arr) => {
+												if (
+													idx > 0 &&
+													(p as number) - (arr[idx - 1] as number) > 1
+												) {
+													acc.push(
+														idx === 1 ? 'ellipsis-start' : 'ellipsis-end',
+													);
+												}
+												acc.push(p);
+												return acc;
+											},
+											[],
+										)
 										.map((item, idx) =>
 											typeof item === 'string' ? (
-												<span key={item + idx} className={styles.pageEllipsis}>…</span>
+												<span
+													key={item + idx}
+													className={styles.pageEllipsis}
+												>
+													…
+												</span>
 											) : (
 												<button
 													key={item}
 													className={`${styles.pageBtn} ${item === currentPage ? styles.pageBtnActive : ''}`}
 													onClick={() => setCurrentPage(item)}
-												>{item}</button>
-											)
+												>
+													{item}
+												</button>
+											),
 										)}
 
 									<button
 										className={styles.pageBtn}
-										onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+										onClick={() =>
+											setCurrentPage((p) => Math.min(totalPages, p + 1))
+										}
 										disabled={currentPage === totalPages}
 										title='Trang sau'
-									>›</button>
+									>
+										›
+									</button>
 									<button
 										className={styles.pageBtn}
 										onClick={() => setCurrentPage(totalPages)}
 										disabled={currentPage === totalPages}
 										title='Trang cuối'
-									>»</button>
+									>
+										»
+									</button>
 								</div>
 							</div>
 						</div>
@@ -1476,6 +1689,13 @@ export default function UserList() {
 					user={deleteUser}
 					onClose={() => setDeleteUser(null)}
 					onConfirm={handleDelete}
+				/>
+			)}
+			{resetUser && (
+				<ResetPasswordModal
+					user={resetUser}
+					onClose={() => setResetUser(null)}
+					onConfirm={handleResetPassword}
 				/>
 			)}
 

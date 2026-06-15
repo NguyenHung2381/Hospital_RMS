@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import styles from '../pages/Topic.module.css';
 import { formatFileSize, getFileTypeColor } from '../utils/topicHelpers';
-import { Ic } from '../utils/topicIcons';
+import { Ic } from './icons';
 
 export function ConfirmUploadModal({
 	files,

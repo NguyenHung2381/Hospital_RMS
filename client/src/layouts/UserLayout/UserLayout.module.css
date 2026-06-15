@@ -1,9 +1,3 @@
-/* =============================================
-   USER LAYOUT MODULE CSS
-   Sidebar xanh lá · Thu gọn · Cổng người dùng
-   Bệnh viện Hữu Nghị Đa Khoa Nghệ An
-============================================= */
-
 /* ── WRAPPER ─────────────────────────────── */
 .userWrapper {
 	display: flex;
@@ -996,6 +990,32 @@
 	flex-shrink: 0;
 }
 
+/* Mobile hamburger toggle button */
+.mobileMenuBtn {
+	display: none;
+	width: 32px;
+	height: 32px;
+	border-radius: var(--radius-md);
+	border: 1px solid rgba(255, 255, 255, 0.2);
+	background: rgba(255, 255, 255, 0.1);
+	align-items: center;
+	justify-content: center;
+	cursor: pointer;
+	flex-shrink: 0;
+	color: rgba(255, 255, 255, 0.8);
+	transition: all var(--transition-fast);
+}
+
+.mobileMenuBtn:hover {
+	background: rgba(255, 255, 255, 0.2);
+	color: #fff;
+}
+
+.mobileMenuBtn svg {
+	width: 18px;
+	height: 18px;
+}
+
 /* =============================================
    RESPONSIVE
 ============================================= */
@@ -1008,6 +1028,7 @@
 		width: 100% !important;
 		height: auto;
 		position: static;
+		overflow: visible;
 		box-shadow: 0 2px 12px rgba(26, 136, 88, 0.2);
 	}
 
@@ -1016,9 +1037,27 @@
 		min-height: 56px;
 	}
 
+	/* Ẩn nút thu gọn desktop, hiện nút hamburger */
+	.collapseBtn {
+		display: none;
+	}
+
+	.mobileMenuBtn {
+		display: flex;
+	}
+
 	.sidebarNav,
 	.sidebarFooter {
 		display: none;
+	}
+
+	/* Hiện nav/footer khi mobile menu mở */
+	.sidebarNav.mobileOpen {
+		display: block;
+	}
+
+	.sidebarFooter.mobileOpen {
+		display: block;
 	}
 
 	.pageArea {
@@ -1034,7 +1073,7 @@
 	}
 
 	.notifPanel {
-		right: -60px;
-		width: 320px;
+		right: 0;
+		width: min(360px, calc(100vw - 16px));
 	}
 }

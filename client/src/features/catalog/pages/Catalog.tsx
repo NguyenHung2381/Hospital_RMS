@@ -1,217 +1,20 @@
-import React, { useState, useMemo, useCallback, useEffect } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
-import styles from './Catalog.module.css';
+﻿import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import AdminLayout from '../../../layouts/AdminLayout';
-import { apiClient } from '../../../lib/apiClient';
-import { useRealtimeUpdate } from '../../../hooks/useRealtime';
+import { useRealtimeUpdate } from '../../../layouts/hooks/useRealtime';
+import { catalogApi } from '../api/catalogApi';
+import { Ic } from '../components/icons';
+import type {
+	CatalogFormData,
+	CatalogItem,
+	CatalogTab,
+	ModalType,
+} from '../types/catalog.type';
+import styles from './Catalog.module.css';
 
-// ─── TYPES ────────────────────────────────
-type CatalogTab = 'categories' | 'levels';
-type ModalType = 'add' | 'edit' | 'delete' | null;
-
-interface CatalogItem {
-	id: string;
-	name: string;
-	description: string | null;
-	created_at: string;
-}
-interface CatalogFormData {
-	name: string;
-	description: string;
-}
-interface CatalogListResponse {
-	data: CatalogItem[];
-	pagination: { page: number; limit: number; total: number };
-}
-
+// ─── CONSTANTS ────────────────────────────
 const EMPTY_FORM: CatalogFormData = { name: '', description: '' };
 
-// ─── API ──────────────────────────────────
-const catalogApi = {
-	list: (tab: CatalogTab) =>
-		apiClient.get<CatalogListResponse>(`/${tab}?limit=500`),
-	create: (tab: CatalogTab, form: CatalogFormData) =>
-		apiClient.post<CatalogItem>(`/${tab}`, {
-			name: form.name,
-			description: form.description || null,
-		}),
-	update: (tab: CatalogTab, id: string, form: CatalogFormData) =>
-		apiClient.put<CatalogItem>(`/${tab}/${id}`, {
-			name: form.name,
-			description: form.description || null,
-		}),
-	remove: (tab: CatalogTab, id: string) =>
-		apiClient.delete<null>(`/${tab}/${id}`),
-};
-
-// ─── ICONS ────────────────────────────────
-const Ic = {
-	Plus: () => (
-		<svg
-			viewBox='0 0 24 24'
-			fill='none'
-			stroke='currentColor'
-			strokeWidth='2.5'
-			strokeLinecap='round'
-		>
-			<line
-				x1='12'
-				y1='5'
-				x2='12'
-				y2='19'
-			/>
-			<line
-				x1='5'
-				y1='12'
-				x2='19'
-				y2='12'
-			/>
-		</svg>
-	),
-	Edit: () => (
-		<svg
-			viewBox='0 0 24 24'
-			fill='none'
-			stroke='currentColor'
-			strokeWidth='2'
-			strokeLinecap='round'
-			strokeLinejoin='round'
-		>
-			<path d='M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7' />
-			<path d='M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z' />
-		</svg>
-	),
-	Trash: () => (
-		<svg
-			viewBox='0 0 24 24'
-			fill='none'
-			stroke='currentColor'
-			strokeWidth='2'
-			strokeLinecap='round'
-			strokeLinejoin='round'
-		>
-			<polyline points='3 6 5 6 21 6' />
-			<path d='M19 6l-1 14H6L5 6' />
-			<path d='M10 11v6' />
-			<path d='M14 11v6' />
-			<path d='M9 6V4h6v2' />
-		</svg>
-	),
-	Search: () => (
-		<svg
-			viewBox='0 0 24 24'
-			fill='none'
-			stroke='currentColor'
-			strokeWidth='2'
-			strokeLinecap='round'
-			strokeLinejoin='round'
-		>
-			<circle
-				cx='11'
-				cy='11'
-				r='8'
-			/>
-			<line
-				x1='21'
-				y1='21'
-				x2='16.65'
-				y2='16.65'
-			/>
-		</svg>
-	),
-	X: () => (
-		<svg
-			viewBox='0 0 24 24'
-			fill='none'
-			stroke='currentColor'
-			strokeWidth='2.5'
-			strokeLinecap='round'
-		>
-			<line
-				x1='18'
-				y1='6'
-				x2='6'
-				y2='18'
-			/>
-			<line
-				x1='6'
-				y1='6'
-				x2='18'
-				y2='18'
-			/>
-		</svg>
-	),
-	Check: () => (
-		<svg
-			viewBox='0 0 24 24'
-			fill='none'
-			stroke='currentColor'
-			strokeWidth='2.5'
-			strokeLinecap='round'
-			strokeLinejoin='round'
-		>
-			<polyline points='20 6 9 17 4 12' />
-		</svg>
-	),
-	ChevronLeft: () => (
-		<svg
-			viewBox='0 0 24 24'
-			fill='none'
-			stroke='currentColor'
-			strokeWidth='2.5'
-			strokeLinecap='round'
-			strokeLinejoin='round'
-		>
-			<polyline points='15 18 9 12 15 6' />
-		</svg>
-	),
-	ChevronRight: () => (
-		<svg
-			viewBox='0 0 24 24'
-			fill='none'
-			stroke='currentColor'
-			strokeWidth='2.5'
-			strokeLinecap='round'
-			strokeLinejoin='round'
-		>
-			<polyline points='9 18 15 12 9 6' />
-		</svg>
-	),
-	Tag: () => (
-		<svg
-			viewBox='0 0 24 24'
-			fill='none'
-			stroke='currentColor'
-			strokeWidth='2'
-			strokeLinecap='round'
-			strokeLinejoin='round'
-		>
-			<path d='M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z' />
-			<line
-				x1='7'
-				y1='7'
-				x2='7.01'
-				y2='7'
-			/>
-		</svg>
-	),
-	Layers: () => (
-		<svg
-			viewBox='0 0 24 24'
-			fill='none'
-			stroke='currentColor'
-			strokeWidth='2'
-			strokeLinecap='round'
-			strokeLinejoin='round'
-		>
-			<polygon points='12 2 2 7 12 12 22 7 12 2' />
-			<polyline points='2 17 12 22 22 17' />
-			<polyline points='2 12 12 17 22 12' />
-		</svg>
-	),
-};
-
-// ─── HELPERS ──────────────────────────────
 const ITEM_COLORS = [
 	{ bg: '#e1f5ee', color: '#085041' },
 	{ bg: '#e6f1fb', color: '#0c447c' },
@@ -220,19 +23,7 @@ const ITEM_COLORS = [
 	{ bg: '#fce8fb', color: '#6b1a69' },
 	{ bg: '#f1efe8', color: '#444441' },
 ];
-function getItemColor(id: string) {
-	let hash = 0;
-	for (let i = 0; i < id.length; i++)
-		hash = id.charCodeAt(i) + ((hash << 5) - hash);
-	return ITEM_COLORS[Math.abs(hash) % ITEM_COLORS.length];
-}
-function getInitials(s: string) {
-	const parts = s.trim().split(/\s+/);
-	if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
-	return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
-}
 
-// ─── TAB CONFIG ───────────────────────────
 const TAB_CONFIG: Record<
 	CatalogTab,
 	{ label: string; subtitle: string; placeholder: string }
@@ -248,6 +39,20 @@ const TAB_CONFIG: Record<
 		placeholder: 'VD: Cấp tỉnh',
 	},
 };
+
+// ─── HELPERS ──────────────────────────────
+function getItemColor(id: string) {
+	let hash = 0;
+	for (let i = 0; i < id.length; i++)
+		hash = id.charCodeAt(i) + ((hash << 5) - hash);
+	return ITEM_COLORS[Math.abs(hash) % ITEM_COLORS.length];
+}
+
+function getInitials(s: string) {
+	const parts = s.trim().split(/\s+/);
+	if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+	return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+}
 
 // ─── FORM MODAL ───────────────────────────
 function ItemFormModal({
@@ -447,6 +252,7 @@ export default function Catalog() {
 	const tab: CatalogTab = location.pathname.includes('levels')
 		? 'levels'
 		: 'categories';
+
 	const [items, setItems] = useState<CatalogItem[]>([]);
 	const [isLoadingData, setIsLoadingData] = useState(true);
 	const [search, setSearch] = useState('');
@@ -462,21 +268,17 @@ export default function Catalog() {
 	const [page, setPage] = useState(1);
 	const [refreshKey, setRefreshKey] = useState(0);
 
-	const refreshData = useCallback(() => {
-		setRefreshKey((prev) => prev + 1);
-	}, []);
+	const cfg = TAB_CONFIG[tab];
 
+	const refreshData = useCallback(() => setRefreshKey((k) => k + 1), []);
 	useRealtimeUpdate('category', refreshData);
 	useRealtimeUpdate('level', refreshData);
-
-	const cfg = TAB_CONFIG[tab];
 
 	const showToast = useCallback((type: 'success' | 'error', msg: string) => {
 		setToast({ type, msg });
 		setTimeout(() => setToast(null), 3000);
 	}, []);
 
-	// Gọi API trong effect — setState chỉ được gọi trong callback async, không gọi sync
 	useEffect(() => {
 		catalogApi
 			.list(tab)

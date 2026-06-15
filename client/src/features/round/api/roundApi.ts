@@ -1,5 +1,11 @@
 import { apiClient } from '../../../lib/apiClient';
-import type { DeadlineType, ResearchRound, RoundDeadline, RoundForm, RoundStatus } from '../types/Round.type';
+import type {
+	DeadlineType,
+	ResearchRound,
+	RoundDeadline,
+	RoundForm,
+	RoundStatus,
+} from '../types/round.type';
 
 export interface RoundListParams {
 	page?: number;
@@ -18,10 +24,10 @@ export interface CreateRoundPayload {
 	name: string;
 	year: number;
 	dot_so: number;
-	start_date: string;              // yyyy-mm-dd
-	end_date: string;                // yyyy-mm-dd
+	start_date: string; // yyyy-mm-dd
+	end_date: string; // yyyy-mm-dd
 	registration_start_date?: string; // yyyy-mm-dd
-	registration_end_date?: string;   // yyyy-mm-dd
+	registration_end_date?: string; // yyyy-mm-dd
 	status?: RoundStatus;
 }
 
@@ -29,17 +35,17 @@ export interface UpdateRoundPayload {
 	name?: string;
 	year?: number;
 	dot_so?: number;
-	start_date?: string;              // yyyy-mm-dd
-	end_date?: string;                // yyyy-mm-dd
+	start_date?: string; // yyyy-mm-dd
+	end_date?: string; // yyyy-mm-dd
 	registration_start_date?: string; // yyyy-mm-dd or null to clear
-	registration_end_date?: string;   // yyyy-mm-dd or null to clear
+	registration_end_date?: string; // yyyy-mm-dd or null to clear
 	status?: RoundStatus;
 }
 
 export interface DeadlinePayload {
 	name: string;
-	start_date?: string | null;   // yyyy-mm-dd
-	deadline_date: string;        // yyyy-mm-dd
+	start_date?: string | null; // yyyy-mm-dd
+	deadline_date: string; // yyyy-mm-dd
 	deadline_type?: DeadlineType | null;
 }
 
@@ -52,11 +58,11 @@ function toApiDate(s: string): string {
 
 export function formToPayload(form: RoundForm): CreateRoundPayload {
 	return {
-		name:   form.name,
-		year:   form.year,
+		name: form.name,
+		year: form.year,
 		dot_so: form.dot_so,
 		start_date: toApiDate(form.start_date),
-		end_date:   toApiDate(form.end_date),
+		end_date: toApiDate(form.end_date),
 		registration_start_date: form.registration_start_date
 			? toApiDate(form.registration_start_date)
 			: undefined,
@@ -71,7 +77,9 @@ export const getRounds = (params?: RoundListParams) => {
 	const entries = Object.entries(params ?? {})
 		.filter(([, v]) => v !== undefined && v !== '')
 		.map(([k, v]) => [k, String(v)] as [string, string]);
-	const qs = entries.length ? '?' + new URLSearchParams(entries).toString() : '';
+	const qs = entries.length
+		? '?' + new URLSearchParams(entries).toString()
+		: '';
 	return apiClient.get<RoundListResponse>(`/research-rounds${qs}`);
 };
 
@@ -89,27 +97,45 @@ export const getRoundById = (id: string) =>
 
 export const getRoundByPublicToken = (token: string) =>
 	apiClient
-		.get<RoundListResponse>(`/research-rounds?public_token=${encodeURIComponent(token)}&limit=1`)
+		.get<RoundListResponse>(
+			`/research-rounds?public_token=${encodeURIComponent(token)}&limit=1`,
+		)
 		.then((res) => res.data.find((r) => r.public_token === token) ?? null);
 
 // ─── Supplement Window API ────────────────────────────────────────────────────
 export interface SupplementWindowPayload {
 	supplement_start: string; // yyyy-mm-dd
-	supplement_end:   string; // yyyy-mm-dd
+	supplement_end: string; // yyyy-mm-dd
 }
 
-export const openSupplementWindow = (id: string, payload: SupplementWindowPayload) =>
-	apiClient.post<{ topics_opened: number }>(`/research-rounds/${id}/supplement/open`, payload);
+export const openSupplementWindow = (
+	id: string,
+	payload: SupplementWindowPayload,
+) =>
+	apiClient.post<{ topics_opened: number }>(
+		`/research-rounds/${id}/supplement/open`,
+		payload,
+	);
 
 export const closeSupplementWindow = (id: string) =>
-	apiClient.post<{ topics_closed: number }>(`/research-rounds/${id}/supplement/close`, {});
+	apiClient.post<{ topics_closed: number }>(
+		`/research-rounds/${id}/supplement/close`,
+		{},
+	);
 
 // ─── Deadline API ──────────────────────────────────────────────────────────────
 export const getDeadlines = (roundId: string) =>
 	apiClient.get<RoundDeadline[]>(`/research-rounds/${roundId}/deadlines`);
 
-export const upsertDeadline = (roundId: string, phase: number, payload: DeadlinePayload) =>
-	apiClient.post<RoundDeadline>(`/research-rounds/${roundId}/deadlines/${phase}`, payload);
+export const upsertDeadline = (
+	roundId: string,
+	phase: number,
+	payload: DeadlinePayload,
+) =>
+	apiClient.post<RoundDeadline>(
+		`/research-rounds/${roundId}/deadlines/${phase}`,
+		payload,
+	);
 
 export const deleteDeadline = (roundId: string, phase: number) =>
 	apiClient.delete<null>(`/research-rounds/${roundId}/deadlines/${phase}`);

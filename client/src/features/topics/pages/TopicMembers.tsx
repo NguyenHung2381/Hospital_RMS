@@ -1,11 +1,4 @@
-// =============================================
-// TopicMembers.tsx — Quản lý Thành viên Đề tài
-// Bệnh viện Hữu Nghị Đa Khoa Nghệ An — RMS
-// Bảng: topic_members (join topics, users)
-// =============================================
-
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { useRealtimeUpdate } from '../../../hooks/useRealtime';
+﻿import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import CheckSvg from '../../../assets/svg/check.svg?react';
 import ChevDSvg from '../../../assets/svg/chev-d.svg?react';
 import ChevRSvg from '../../../assets/svg/chev-r.svg?react';
@@ -21,6 +14,7 @@ import TrashSvg from '../../../assets/svg/trash.svg?react';
 import UsersSvg from '../../../assets/svg/users.svg?react';
 import XSvg from '../../../assets/svg/x.svg?react';
 import AdminLayout from '../../../layouts/AdminLayout';
+import { useRealtimeUpdate } from '../../../layouts/hooks/useRealtime';
 import {
 	addTopicMember,
 	deleteTopicMember as deleteTopicMemberApi,
@@ -170,7 +164,9 @@ function normalizeMember(member: Record<string, unknown>): TopicMember {
 		account_granted_at: formatDate(
 			member.account_granted_at as string | null | undefined,
 		),
-		has_existing_account: Boolean((member as Record<string, unknown>).has_existing_account),
+		has_existing_account: Boolean(
+			(member as Record<string, unknown>).has_existing_account,
+		),
 		created_at:
 			formatDate(member.created_at as string | null | undefined) ?? '',
 		created_by: String(member.created_by ?? ''),
@@ -884,8 +880,12 @@ export default function TopicMembers() {
 	const stats = useMemo(
 		() => ({
 			total: topicMembers.length,
-			granted: topicMembers.filter((m) => m.account_granted || m.has_existing_account).length,
-			pending: topicMembers.filter((m) => !m.account_granted && !m.has_existing_account).length,
+			granted: topicMembers.filter(
+				(m) => m.account_granted || m.has_existing_account,
+			).length,
+			pending: topicMembers.filter(
+				(m) => !m.account_granted && !m.has_existing_account,
+			).length,
 			chu_nhiem: topicMembers.filter((m) => m.role === 'chu_nhiem').length,
 		}),
 		[topicMembers],
@@ -1018,7 +1018,9 @@ export default function TopicMembers() {
 				);
 			} catch (err) {
 				showToast(
-					err instanceof Error ? err.message : 'Có lỗi xảy ra khi xử lý hàng loạt',
+					err instanceof Error
+						? err.message
+						: 'Có lỗi xảy ra khi xử lý hàng loạt',
 					'error',
 				);
 			} finally {
@@ -1145,9 +1147,7 @@ export default function TopicMembers() {
 											onClick={() => toggleRound(round)}
 											role='button'
 											tabIndex={0}
-											onKeyDown={(e) =>
-												e.key === 'Enter' && toggleRound(round)
-											}
+											onKeyDown={(e) => e.key === 'Enter' && toggleRound(round)}
 										>
 											<span
 												className={`${styles.roundChevron} ${isRoundOpen ? styles.roundChevronOpen : ''}`}
@@ -1497,10 +1497,12 @@ export default function TopicMembers() {
 																												<span
 																													style={{
 																														marginLeft: 6,
-																														color: 'var(--color-gray-400)',
+																														color:
+																															'var(--color-gray-400)',
 																													}}
 																												>
-																													· MNV: {m.staff_number}
+																													· MNV:{' '}
+																													{m.staff_number}
 																												</span>
 																											)}
 																										</div>
@@ -1703,10 +1705,12 @@ export default function TopicMembers() {
 				<BulkActionModal
 					action={modal === 'bulkApprove' ? 'approve' : 'reject'}
 					round={bulkTargetRound}
-					count={topics.filter(
-						(t) =>
-							t.round_name === bulkTargetRound && t.status === 'submitted',
-					).length}
+					count={
+						topics.filter(
+							(t) =>
+								t.round_name === bulkTargetRound && t.status === 'submitted',
+						).length
+					}
 					onClose={() => setModal(null)}
 					onConfirm={() =>
 						void handleBulkAction(

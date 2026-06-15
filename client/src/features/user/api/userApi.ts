@@ -1,5 +1,5 @@
 import { apiClient } from '../../../lib/apiClient';
-import type { AccountType, User } from '../types/User.type';
+import type { AccountType, User } from '../types/user.type';
 
 export interface SimpleItem {
 	id: string;
@@ -51,7 +51,9 @@ export const getUsers = (params?: UserListParams) => {
 	const entries = Object.entries(params ?? {})
 		.filter(([, v]) => v !== undefined && v !== '')
 		.map(([k, v]) => [k, String(v)] as [string, string]);
-	const qs = entries.length ? '?' + new URLSearchParams(entries).toString() : '';
+	const qs = entries.length
+		? '?' + new URLSearchParams(entries).toString()
+		: '';
 	return apiClient.get<UserListResponse>(`/users${qs}`);
 };
 
@@ -71,4 +73,6 @@ export const deleteUser = (id: string) =>
 	apiClient.delete<null>(`/users/${id}`);
 
 export const resetUserPassword = (id: string, newPassword: string) =>
-	apiClient.post<null>(`/users/${id}/reset-password`, { new_password: newPassword });
+	apiClient.post<null>(`/users/${id}/reset-password`, {
+		new_password: newPassword,
+	});

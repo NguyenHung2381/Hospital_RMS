@@ -96,7 +96,9 @@ const getAll = async (filters, actor = null) => {
     ORDER BY t.created_at DESC
     OFFSET @offset ROWS FETCH NEXT @limit ROWS ONLY;
 
-    SELECT COUNT(*) AS total FROM topics t ${where};
+    SELECT COUNT(*) AS total FROM topics t
+    LEFT JOIN research_rounds r ON r.id = t.round_id
+    ${where};
   `);
 
 	return {
@@ -185,14 +187,40 @@ const update = async (id, data, actorId, isAdmin = false) => {
 	const current = await getById(id);
 	if (!current)
 		throw Object.assign(new Error('Đề tài không tồn tại.'), { status: 404 });
+
+	// Kiểm tra xem hiện tại có đang trong cửa sổ bổ sung thông tin (supplement window) của đợt hay không
+	let isWithinSupplementWindow = false;
+	if (current.round_id) {
+		const roundRes = await pool.request()
+			.input('round_id', sql.VarChar(10), current.round_id)
+			.query(`
+				SELECT supplement_start_date, supplement_end_date
+				FROM research_rounds
+				WHERE id = @round_id
+			`);
+		const round = roundRes.recordset[0];
+		if (round && round.supplement_start_date && round.supplement_end_date) {
+			const today = new Date();
+			today.setHours(0, 0, 0, 0);
+			const start = new Date(round.supplement_start_date);
+			start.setHours(0, 0, 0, 0);
+			const end = new Date(round.supplement_end_date);
+			end.setHours(0, 0, 0, 0);
+			if (today >= start && today <= end) {
+				isWithinSupplementWindow = true;
+			}
+		}
+	}
+
 	if (
 		!isAdmin &&
 		current.status !== 'submitted' &&
-		current.status !== 'supplement'
+		current.status !== 'supplement' &&
+		!(isWithinSupplementWindow && current.status === 'approved')
 	) {
 		throw Object.assign(
 			new Error(
-				'Chỉ có thể chỉnh sửa đề tài ở trạng thái "Chờ duyệt" hoặc "Bổ sung".',
+				'Chỉ có thể chỉnh sửa đề tài ở trạng thái "Chờ duyệt", "Bổ sung" hoặc trong đợt bổ sung thông tin.',
 			),
 			{ status: 403 },
 		);
@@ -309,11 +337,13 @@ const addMember = async (topicId, memberData, actorId) => {
 		.input('staff_number', sql.NVarChar(50), memberData.staff_number != null ? String(memberData.staff_number) : null)
 		.input('department_id', sql.VarChar(20), memberData.department_id || null)
 		.input('role', sql.VarChar(20), memberData.role || 'member').query(`
+      BEGIN TRANSACTION;
       DECLARE @new_id VARCHAR(20);
       EXEC sp_gen_member_id @topic_id, @new_id OUTPUT;
       EXEC sp_set_actor @actor_id;
       INSERT INTO topic_members (id, topic_id, name, email, phone_number, position, staff_number, department_id, role, created_by)
       VALUES (@new_id, @topic_id, @ho_ten, @email, @so_dien_thoai, @chuc_vu, @staff_number, @department_id, @role, @actor_id);
+      COMMIT TRANSACTION;
       SELECT @new_id AS id;
     `);
 	broadcast('update', { entity: 'topic' });
