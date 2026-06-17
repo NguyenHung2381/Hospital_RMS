@@ -240,11 +240,23 @@ export default function AdminLayout({
 				{/* Header */}
 				<div className={styles.sidebarHeader}>
 					<div className={styles.sidebarBrand}>
-						<div className={styles.sidebarLogo}>
-							<img
-								src={Logo}
-								alt='Logo BV Nghệ An'
-							/>
+						<div className={styles.logoToggleWrap}>
+							<div className={styles.sidebarLogo}>
+								<img
+									src={Logo}
+									alt='Logo BV Nghệ An'
+								/>
+							</div>
+							<button
+								className={styles.collapseBtn}
+								onClick={toggleSidebar}
+								aria-label={
+									effectiveCollapsed ? 'Mở rộng sidebar' : 'Thu gọn sidebar'
+								}
+								title={effectiveCollapsed ? 'Mở rộng' : 'Thu gọn'}
+							>
+								<Icon.ChevronL />
+							</button>
 						</div>
 						<div className={styles.sidebarBrandText}>
 							<div className={styles.sidebarBrandName}>
@@ -253,16 +265,6 @@ export default function AdminLayout({
 							<div className={styles.sidebarBrandSub}>Quản lý NCKH</div>
 						</div>
 					</div>
-					<button
-						className={styles.collapseBtn}
-						onClick={toggleSidebar}
-						aria-label={
-							effectiveCollapsed ? 'Mở rộng sidebar' : 'Thu gọn sidebar'
-						}
-						title={effectiveCollapsed ? 'Mở rộng' : 'Thu gọn'}
-					>
-						<Icon.ChevronL />
-					</button>
 					<button
 						className={styles.mobileMenuBtn}
 						onClick={() => setMobileNavOpen((o) => !o)}

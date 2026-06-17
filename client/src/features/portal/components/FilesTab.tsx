@@ -88,6 +88,13 @@ export default function FilesTab({
 						<div className={styles.uploadZoneHint}>
 							PDF, Word, Excel, ZIP, hình ảnh — tối đa 50 MB/file
 						</div>
+						<div className={styles.uploadZoneFormats}>
+							<span className={styles.formatBadge}>pdf</span>
+							<span className={styles.formatBadge}>word</span>
+							<span className={styles.formatBadge}>excel</span>
+							<span className={styles.formatBadge}>zip/rar</span>
+							<span className={styles.formatBadge}>image</span>
+						</div>
 					</div>
 				</>
 			) : (
@@ -107,6 +114,7 @@ export default function FilesTab({
 						<button
 							className={styles.pendingClearBtn}
 							onClick={() => setPendingFiles([])}
+							disabled={uploading}
 						>
 							Xoá tất cả
 						</button>
@@ -135,6 +143,7 @@ export default function FilesTab({
 										onClick={() =>
 											setPendingFiles((p) => p.filter((_, j) => j !== i))
 										}
+										disabled={uploading}
 									>
 										<XSvg />
 									</button>
@@ -142,23 +151,32 @@ export default function FilesTab({
 							);
 						})}
 					</div>
+
 					<input
 						className={styles.noteInput}
-						placeholder='Ghi chú đợt tải lên (tuỳ chọn)'
+						placeholder='Ghi chú đợt upload (tùy chọn)'
 						value={batchNote}
 						onChange={(e) => setBatchNote(e.target.value)}
 						disabled={uploading}
 					/>
+
 					{uploadError && <p className={styles.uploadError}>{uploadError}</p>}
 					<button
 						className={styles.btnPrimary}
 						onClick={handleUpload}
 						disabled={uploading}
 					>
-						<UploadSvg />{' '}
-						{uploading
-							? 'Đang tải lên...'
-							: `Tải lên ${pendingFiles.length} file`}
+						{uploading ? (
+							<>
+								<span className={styles.spinner} />
+								<span>Đang tải lên...</span>
+							</>
+						) : (
+							<>
+								<UploadSvg />
+								<span>Tải lên {pendingFiles.length} file</span>
+							</>
+						)}
 					</button>
 				</div>
 			)}

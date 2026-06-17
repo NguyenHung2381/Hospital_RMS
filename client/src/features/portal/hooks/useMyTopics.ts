@@ -55,7 +55,7 @@ export function useMyTopics() {
 	const [error, setError] = useState('');
 	const [search, setSearch] = useState('');
 	const [category, setCategory] = useState<CategoryTab>('department');
-	const [activeTab, setActiveTab] = useState<FilterTab>('submitted');
+	const [_activeTab, setActiveTab] = useState<FilterTab | null>(null);
 	const [userSelectedId, setSelectedId] = useState<string | null>(null);
 	const [detailLoading, setDetailLoading] = useState(false);
 	const [detailTopic, setDetailTopic] = useState<TopicApprovalDetail | null>(
@@ -94,6 +94,38 @@ export function useMyTopics() {
 	const [batchNote, setBatchNote] = useState('');
 	const [uploadLoading, setUploadLoading] = useState(false);
 	const [uploadError, setUploadError] = useState('');
+
+	const prevPendingRef = useRef<File[]>([]);
+	useEffect(() => {
+		const prev = prevPendingRef.current;
+		const curr = pendingFiles;
+		if (curr.length > prev.length) {
+			const added = curr.filter((f) => !prev.includes(f));
+			if (added.length > 0) {
+				console.log(
+					'Đã nạp file vào danh sách chờ tải lên:',
+					added.map((f) => ({ name: f.name, size: f.size })),
+				);
+			}
+		} else if (curr.length < prev.length) {
+			if (curr.length === 0 && prev.length > 0) {
+				console.log('Đã xóa toàn bộ file trong danh sách chờ.');
+			} else {
+				const removed = prev.filter((f) => !curr.includes(f));
+				if (removed.length > 0) {
+					console.log(
+						'Đã xóa file khỏi danh sách chờ:',
+						removed.map((f) => f.name),
+					);
+				}
+			}
+		}
+		prevPendingRef.current = curr;
+	}, [pendingFiles]);
+
+	console.log(pendingFiles);
+
+	const prevSelectedIdRef = useRef<string | null | undefined>(undefined);
 
 	const refreshData = useCallback(() => setRefreshKey((k) => k + 1), []);
 	useRealtimeUpdate(['topic', 'round'], refreshData);
@@ -147,6 +179,23 @@ export function useMyTopics() {
 		[activeTopics],
 	);
 
+	// Derive the active tab: if the user hasn't picked one yet, auto-pick the first
+	// non-empty tab in priority order so the list is never blank on first load.
+	const activeTab = useMemo<FilterTab>(() => {
+		if (_activeTab !== null) return _activeTab;
+		if (activeTopics.length === 0) return 'submitted';
+		const order: FilterTab[] = [
+			'supplement',
+			'submitted',
+			'approved',
+			'rejected',
+		];
+		return (
+			order.find((tab) => activeTopics.some((t) => t.status === tab)) ??
+			'submitted'
+		);
+	}, [_activeTab, activeTopics]);
+
 	const filtered = useMemo(() => {
 		let list = activeTopics.filter((t) => t.status === activeTab);
 		if (search.trim()) {
@@ -168,11 +217,17 @@ export function useMyTopics() {
 	useEffect(() => {
 		let cancelled = false;
 		void (async () => {
-			setEditOpen(false);
-			setPendingFiles([]);
-			setBatchNote('');
-			setUploadError('');
-			setEditError('');
+			// Only reset form/upload state when the topic actually changes, not on background refreshes
+			// (refreshKey increments). This prevents pending file selections from being lost when an
+			// unrelated SSE event triggers a reload of the same topic.
+			if (selectedId !== prevSelectedIdRef.current) {
+				prevSelectedIdRef.current = selectedId;
+				setEditOpen(false);
+				setPendingFiles([]);
+				setBatchNote('');
+				setUploadError('');
+				setEditError('');
+			}
 			setActiveRound(null);
 			setRoundDeadlines([]);
 			if (!selectedId) {
@@ -186,25 +241,28 @@ export function useMyTopics() {
 			setDetailHistory([]);
 			setDetailLoading(true);
 			try {
-				const [topic, files, history] = await Promise.all([
-					getApprovalTopicDetail(selectedId),
+				// Fetch topic first to get round_id, then fetch all remaining data in parallel
+				const topic = await getApprovalTopicDetail(selectedId);
+				if (cancelled) return;
+
+				const [files, history, rd, dl] = await Promise.all([
 					getTopicFiles(selectedId),
 					getApprovals(selectedId).catch(() => [] as ApprovalHistory[]),
+					topic.round_id
+						? getRoundById(topic.round_id)
+						: Promise.resolve(null as ResearchRound | null),
+					topic.round_id
+						? getDeadlines(topic.round_id)
+						: Promise.resolve([] as RoundDeadline[]),
 				]);
 				if (cancelled) return;
+
+				// Set all state in one batch so canUploadFiles is computed once with complete data
 				setDetailTopic(topic);
 				setDetailFiles(files.data ?? []);
 				setDetailHistory(history);
-				if (topic.round_id) {
-					const [rd, dl] = await Promise.all([
-						getRoundById(topic.round_id),
-						getDeadlines(topic.round_id),
-					]);
-					if (!cancelled) {
-						setActiveRound(rd);
-						setRoundDeadlines(dl);
-					}
-				}
+				setActiveRound(rd);
+				setRoundDeadlines(dl);
 			} catch {
 				if (!cancelled) {
 					setDetailTopic(null);
@@ -246,18 +304,17 @@ export function useMyTopics() {
 	const latestApproval = detailHistory[0] ?? null;
 
 	const canUploadFiles = useMemo(() => {
-		if (!detailTopic) return false;
-		if (detailTopic.status === 'supplement') return true;
-		if (detailTopic.status === 'approved' && activeRound)
-			return (
-				getEditMode(
-					detailTopic as unknown as Topic,
-					activeRound,
-					roundDeadlines,
-				) !== 'none'
-			);
-		return false;
+		if (!detailTopic || !activeRound) return false;
+		return (
+			getEditMode(
+				detailTopic as unknown as Topic,
+				activeRound,
+				roundDeadlines,
+			) !== 'none'
+		);
 	}, [detailTopic, activeRound, roundDeadlines]);
+
+	// console.log(canUploadFiles, detailTopic, activeRound, roundDeadlines, editOpen);
 
 	function openEdit() {
 		if (!detailTopic) return;
@@ -303,15 +360,25 @@ export function useMyTopics() {
 		if (!detailTopic || pendingFiles.length === 0) return;
 		setUploadLoading(true);
 		setUploadError('');
+		console.log('Bắt đầu quá trình tải lên file cho đề tài:', detailTopic.id, {
+			files: pendingFiles.map((f) => ({
+				name: f.name,
+				size: f.size,
+				type: f.type,
+			})),
+			batchNote,
+		});
 		try {
 			await uploadTopicFiles(
 				detailTopic.id,
 				pendingFiles,
 				batchNote || undefined,
 			);
+			console.log('Tải lên file thành công cho đề tài:', detailTopic.id);
 			setPendingFiles([]);
 			setBatchNote('');
-		} catch {
+		} catch (error) {
+			console.error('Tải lên file thất bại cho đề tài:', detailTopic.id, error);
 			setUploadError('Tải lên thất bại. Vui lòng thử lại.');
 			setUploadLoading(false);
 			return;

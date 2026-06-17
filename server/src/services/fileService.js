@@ -14,7 +14,7 @@ const uploadFiles = async (topicId, filesData, batchNote, actorId) => {
 		.input('batch_note', sql.NVarChar(500), batchNote || null)
 		.input('files_json', sql.NVarChar(sql.MAX), JSON.stringify(filesData))
 		.execute('sp_upload_files');
-	broadcast('update', { entity: 'topic' });
+	broadcast('update', { entity: 'file' });
 	return result.recordset[0];
 };
 
@@ -88,7 +88,7 @@ const deleteFile = async (fileId, actorId) => {
 		const diskPath = path.join(UPLOADS_ROOT, fileUrl.replace('/uploads/', ''));
 		fs.unlink(diskPath, () => {}); // bỏ qua lỗi nếu file không tồn tại
 	}
-	broadcast('update', { entity: 'topic' });
+	broadcast('update', { entity: 'file' });
 };
 
 module.exports = { uploadFiles, getByTopic, getBatches, deleteFile };

@@ -53,9 +53,17 @@
 .sidebarBrand {
 	display: flex;
 	align-items: center;
+	justify-content: center;
 	gap: var(--space-3);
 	min-width: 0;
 	flex: 1;
+}
+
+.logoToggleWrap {
+	position: relative;
+	flex-shrink: 0;
+	width: 54px;
+	height: 54px;
 }
 
 .sidebarLogo {
@@ -66,11 +74,18 @@
 	padding: 4px;
 	flex-shrink: 0;
 	box-shadow: 0 2px 10px rgba(0, 0, 0, 0.15);
-	transition: transform 280ms ease;
+	transition:
+		transform 280ms ease,
+		opacity 200ms ease;
 }
 
-.sidebar:not(.collapsed) .sidebarLogo:hover {
-	transform: scale(1.06);
+.logoToggleWrap:hover .sidebarLogo {
+	opacity: 0;
+}
+
+.logoToggleWrap:hover .collapseBtn {
+	opacity: 1;
+	pointer-events: auto;
 }
 
 .sidebarLogo img {
@@ -109,26 +124,29 @@
 	margin-top: 1px;
 }
 
-/* Nút toggle thu gọn */
+/* Nút toggle thu gọn — phủ toàn bộ logo, ẩn mặc định */
 .collapseBtn {
-	width: 28px;
-	height: 28px;
-	border-radius: var(--radius-md);
-	border: 1px solid rgba(255, 255, 255, 0.2);
-	background: rgba(255, 255, 255, 0.1);
+	position: absolute;
+	inset: 0;
+	border-radius: 50%;
+	border: 2px solid rgba(255, 255, 255, 0.6);
+	background: rgba(0, 0, 0, 0.3);
 	display: flex;
 	align-items: center;
 	justify-content: center;
 	cursor: pointer;
-	flex-shrink: 0;
-	color: rgba(255, 255, 255, 0.8);
-	transition: all var(--transition-fast);
+	color: #fff;
+	opacity: 0;
+	pointer-events: none;
+	transition:
+		opacity var(--transition-fast),
+		background var(--transition-fast);
+	backdrop-filter: blur(4px);
 }
 
 .collapseBtn:hover {
-	background: rgba(255, 255, 255, 0.2);
-	color: #fff;
-	border-color: rgba(255, 255, 255, 0.35);
+	background: rgba(0, 0, 0, 0.4);
+	border-color: rgba(255, 255, 255, 0.8);
 }
 
 .collapseBtn svg {
@@ -142,24 +160,14 @@
 	transform: rotate(180deg);
 }
 
-/* Khi thu gọn: logo + button xếp dọc, căn giữa */
+/* Khi thu gọn: căn giữa logo */
 .sidebar.collapsed .sidebarHeader {
-	flex-direction: column;
 	justify-content: center;
-	align-items: center;
-	padding: var(--space-3) 0;
-	gap: var(--space-2);
-	height: auto;
-	min-height: 72px;
+	padding: 0;
 }
 
 .sidebar.collapsed .sidebarBrand {
 	flex: 0;
-}
-
-.sidebar.collapsed .sidebarLogo {
-	width: 34px;
-	height: 34px;
 }
 
 .sidebar.collapsed .sidebarBrandText {

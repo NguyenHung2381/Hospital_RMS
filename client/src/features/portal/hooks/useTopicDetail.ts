@@ -1,4 +1,4 @@
-﻿import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { useRealtimeUpdate } from '../../../layouts/hooks/useRealtime';
 import { BASE_URL } from '../../../shared/api/axios';
@@ -99,6 +99,29 @@ export function useTopicDetail() {
 	const [batchNote, setBatchNote] = useState('');
 	const [uploading, setUploading] = useState(false);
 	const [uploadError, setUploadError] = useState('');
+
+	const prevPendingRef = useRef<File[]>([]);
+	useEffect(() => {
+		const prev = prevPendingRef.current;
+		const curr = pendingFiles;
+		if (curr.length > prev.length) {
+			const added = curr.filter((f) => !prev.includes(f));
+			if (added.length > 0) {
+				console.log('Đã nạp file vào danh sách chờ tải lên:', added.map((f) => ({ name: f.name, size: f.size })));
+			}
+		} else if (curr.length < prev.length) {
+			if (curr.length === 0 && prev.length > 0) {
+				console.log('Đã xóa toàn bộ file trong danh sách chờ.');
+			} else {
+				const removed = prev.filter((f) => !curr.includes(f));
+				if (removed.length > 0) {
+					console.log('Đã xóa file khỏi danh sách chờ:', removed.map((f) => f.name));
+				}
+			}
+		}
+		prevPendingRef.current = curr;
+	}, [pendingFiles]);
+
 	const [dragging, setDragging] = useState(false);
 	const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 	const [refreshKey, setRefreshKey] = useState(0);
@@ -282,7 +305,8 @@ export function useTopicDetail() {
 	};
 
 	const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-		setPendingFiles((p) => [...p, ...Array.from(e.target.files ?? [])]);
+		const selectedFiles = Array.from(e.target.files ?? []);
+		setPendingFiles((p) => [...p, ...selectedFiles]);
 		e.target.value = '';
 	};
 
@@ -290,12 +314,18 @@ export function useTopicDetail() {
 		if (!id || !pendingFiles.length) return;
 		setUploading(true);
 		setUploadError('');
+		console.log('Bắt đầu quá trình tải lên file cho đề tài:', id, {
+			files: pendingFiles.map((f) => ({ name: f.name, size: f.size, type: f.type })),
+			batchNote,
+		});
 		try {
 			await uploadTopicFiles(id, pendingFiles, batchNote.trim() || undefined);
+			console.log('Tải lên file thành công cho đề tài:', id);
 			setFiles((await getTopicFiles(id)).data);
 			setPendingFiles([]);
 			setBatchNote('');
 		} catch (err) {
+			console.error('Tải lên file thất bại cho đề tài:', id, err);
 			setUploadError(err instanceof Error ? err.message : 'Lỗi tải lên file');
 		} finally {
 			setUploading(false);

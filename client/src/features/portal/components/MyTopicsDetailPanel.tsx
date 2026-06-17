@@ -1,5 +1,3 @@
-import type React from 'react';
-import type { Dispatch, RefObject, SetStateAction } from 'react';
 import {
 	CheckCircleSvg,
 	ClockSvg,
@@ -13,12 +11,15 @@ import {
 	XCircleSvg,
 	XSvg,
 } from '@/assets/icons';
+import type React from 'react';
+import type { Dispatch, RefObject, SetStateAction } from 'react';
 import { BASE_URL } from '../../../shared/api/axios';
 import type {
 	Approval as ApprovalHistory,
 	TopicApprovalDetail,
 } from '../../approval/api/approval';
 import type { TopicFile, TopicStatus } from '../../topics/types/topic.type';
+import styles from '../pages/MyTopics.module.css';
 import {
 	APV_STATUS_CFG,
 	STATUS_CFG,
@@ -26,7 +27,6 @@ import {
 	getFileTypeMeta,
 	getFileViewerUrl,
 } from '../utils/myTopicsHelpers';
-import styles from '../pages/MyTopics.module.css';
 
 function Badge({
 	cls,
@@ -325,9 +325,10 @@ export function MyTopicsDetailPanel({
 												onDragOver={(e) => e.preventDefault()}
 												onDrop={(e) => {
 													e.preventDefault();
+													const droppedFiles = Array.from(e.dataTransfer.files);
 													setPendingFiles((prev) => [
 														...prev,
-														...Array.from(e.dataTransfer.files),
+														...droppedFiles,
 													]);
 												}}
 											>
@@ -337,15 +338,16 @@ export function MyTopicsDetailPanel({
 													multiple
 													style={{ display: 'none' }}
 													onChange={(e) => {
+														const selectedFiles = Array.from(e.target.files ?? []);
 														setPendingFiles((prev) => [
 															...prev,
-															...Array.from(e.target.files ?? []),
+															...selectedFiles,
 														]);
 														e.target.value = '';
 													}}
 												/>
 												<UploadSvg />
-												<span>Nhấn hoặc kéo tệp vào đây để tải lên</span>
+												<span>Kéo thả file vào đây hoặc chọn từ máy tính</span>
 											</div>
 											{pendingFiles.length > 0 && (
 												<>
@@ -369,20 +371,23 @@ export function MyTopicsDetailPanel({
 																			prev.filter((_, j) => j !== i),
 																		)
 																	}
+																	disabled={uploadLoading}
 																>
 																	<XSvg />
 																</button>
 															</div>
 														))}
 													</div>
+													
+													<input
+														className={styles.batchNoteInput}
+														placeholder='Ghi chú đợt upload (tùy chọn)'
+														value={batchNote}
+														onChange={(e) => setBatchNote(e.target.value)}
+														disabled={uploadLoading}
+													/>
+
 													<div className={styles.uploadFooter}>
-														<input
-															className={styles.batchNoteInput}
-															placeholder='Ghi chú lô tài liệu (tuỳ chọn)'
-															value={batchNote}
-															onChange={(e) => setBatchNote(e.target.value)}
-															disabled={uploadLoading}
-														/>
 														<button
 															className={styles.btnUpload}
 															onClick={() => void handleUpload()}
@@ -391,12 +396,12 @@ export function MyTopicsDetailPanel({
 															{uploadLoading ? (
 																<>
 																	<span className={styles.spinnerSm} />
-																	Đang tải...
+																	Đang tải lên...
 																</>
 															) : (
 																<>
 																	<UploadSvg />
-																	Tải lên {pendingFiles.length} tệp
+																	Tải lên {pendingFiles.length} file
 																</>
 															)}
 														</button>

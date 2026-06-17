@@ -396,61 +396,153 @@
 	align-items: center;
 	gap: var(--space-2);
 	cursor: pointer;
-	transition: all var(--transition-fast);
+	transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 	margin-bottom: var(--space-4);
 	text-align: center;
 	background: var(--color-gray-50);
+	position: relative;
+	overflow: hidden;
+}
+
+.uploadZone::before {
+	content: '';
+	position: absolute;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	background: linear-gradient(135deg, rgba(46, 184, 122, 0.03) 0%, rgba(52, 184, 216, 0.03) 100%);
+	opacity: 0;
+	transition: opacity var(--transition-base);
+	pointer-events: none;
+}
+
+.uploadZone:hover::before,
+.uploadZoneActive::before {
+	opacity: 1;
 }
 
 .uploadZone:hover,
 .uploadZoneActive {
 	border-color: var(--color-primary);
-	background: rgba(46, 184, 122, 0.04);
+	background: var(--color-primary-pale);
+	transform: translateY(-2px);
+	box-shadow: var(--shadow-md);
 }
 
 .uploadZoneIcon {
-	width: 44px;
-	height: 44px;
-	border-radius: var(--radius-lg);
+	width: 52px;
+	height: 52px;
+	border-radius: 50%;
 	background: var(--color-white);
 	border: 1.5px solid var(--color-gray-200);
 	display: flex;
 	align-items: center;
 	justify-content: center;
 	color: var(--color-primary);
-	font-size: 20px;
 	margin-bottom: var(--space-1);
-	box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+	box-shadow: var(--shadow-sm);
+	transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+	z-index: 1;
+}
+
+.uploadZoneIcon svg {
+	width: 20px;
+	height: 20px;
+}
+
+.uploadZone:hover .uploadZoneIcon,
+.uploadZoneActive .uploadZoneIcon {
+	transform: translateY(-4px) scale(1.05);
+	background: var(--color-primary);
+	color: var(--color-white);
+	border-color: var(--color-primary);
+	box-shadow: 0 6px 15px rgba(46, 184, 122, 0.35);
 }
 
 .uploadZoneText {
 	font-size: var(--font-size-sm);
-	font-weight: var(--font-weight-medium);
+	font-weight: var(--font-weight-semibold);
 	color: var(--color-gray-600);
+	z-index: 1;
+	transition: color var(--transition-fast);
+}
+
+.uploadZone:hover .uploadZoneText {
+	color: var(--color-gray-800);
 }
 
 .uploadZoneText span {
 	color: var(--color-primary);
-	font-weight: var(--font-weight-semibold);
-	text-decoration: underline;
-	text-underline-offset: 2px;
+	font-weight: var(--font-weight-bold);
+	text-decoration: none;
+	border-bottom: 2px solid rgba(46, 184, 122, 0.3);
+	padding-bottom: 1px;
+	transition: all var(--transition-fast);
+}
+
+.uploadZoneText:hover span {
+	border-bottom-color: var(--color-primary);
 }
 
 .uploadZoneHint {
 	font-size: 11px;
 	color: var(--color-gray-400);
+	z-index: 1;
+}
+
+/* File format badges under the hint */
+.uploadZoneFormats {
+	display: flex;
+	gap: 6px;
+	flex-wrap: wrap;
+	justify-content: center;
+	margin-top: var(--space-2);
+	z-index: 1;
+}
+
+.formatBadge {
+	font-size: 9px;
+	font-weight: var(--font-weight-bold);
+	padding: 2px 8px;
+	border-radius: var(--radius-sm);
+	background: var(--color-white);
+	color: var(--color-gray-500);
+	text-transform: uppercase;
+	letter-spacing: 0.05em;
+	transition: all var(--transition-fast);
+	border: 1px solid var(--color-gray-200);
+}
+
+.uploadZone:hover .formatBadge {
+	border-color: rgba(46, 184, 122, 0.2);
+	color: var(--color-primary-dark);
 }
 
 /* ── PENDING FILES ── */
 .pendingWrap {
 	background: var(--color-white);
-	border: 1.5px solid rgba(46, 184, 122, 0.3);
-	border-radius: var(--radius-lg);
-	padding: var(--space-4);
+	border: 1px solid var(--color-gray-200);
+	border-top: 3px solid var(--color-primary);
+	border-radius: var(--radius-xl);
+	padding: var(--space-5);
 	display: flex;
 	flex-direction: column;
-	gap: var(--space-3);
+	gap: var(--space-4);
 	margin-bottom: var(--space-4);
+	box-shadow: var(--shadow-md);
+	animation: slideUp 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+@keyframes slideUp {
+	from {
+		opacity: 0;
+		transform: translateY(12px);
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0);
+	}
 }
 
 .pendingHeader {
@@ -461,8 +553,27 @@
 
 .pendingCount {
 	font-size: var(--font-size-sm);
-	font-weight: var(--font-weight-semibold);
-	color: var(--color-primary-dark);
+	font-weight: var(--font-weight-bold);
+	color: var(--color-gray-800);
+	display: flex;
+	align-items: center;
+	gap: 6px;
+}
+
+.pendingCount::before {
+	content: '';
+	display: inline-block;
+	width: 8px;
+	height: 8px;
+	border-radius: 50%;
+	background: var(--color-primary);
+	animation: pendingPulse 1.5s infinite;
+}
+
+@keyframes pendingPulse {
+	0% { transform: scale(0.9); opacity: 1; }
+	50% { transform: scale(1.3); opacity: 0.5; }
+	100% { transform: scale(0.9); opacity: 1; }
 }
 
 .pendingClearBtn {
@@ -471,42 +582,71 @@
 	font-size: var(--font-size-xs);
 	color: var(--color-gray-400);
 	cursor: pointer;
-	padding: 2px 6px;
-	border-radius: var(--radius-sm);
+	padding: 4px 8px;
+	border-radius: var(--radius-md);
+	transition: all var(--transition-fast);
+	font-weight: var(--font-weight-semibold);
 }
 
 .pendingClearBtn:hover {
-	color: var(--color-red-500);
+	color: var(--color-error);
 	background: #fee2e2;
 }
 
 .pendingList {
 	display: flex;
 	flex-direction: column;
-	gap: 4px;
+	gap: 6px;
+	max-height: 200px;
+	overflow-y: auto;
+	padding-right: 2px;
+}
+
+.pendingList::-webkit-scrollbar {
+	width: 4px;
+}
+
+.pendingList::-webkit-scrollbar-thumb {
+	background: var(--color-gray-200);
+	border-radius: 999px;
 }
 
 .pendingRow {
 	display: flex;
 	align-items: center;
-	gap: var(--space-2);
-	padding: 5px 8px;
-	border-radius: var(--radius-md);
+	gap: var(--space-3);
+	padding: var(--space-3);
+	border-radius: var(--radius-lg);
 	background: var(--color-gray-50);
+	border: 1px solid var(--color-gray-100);
+	transition: all var(--transition-fast);
+}
+
+.pendingRow:hover {
+	background: var(--color-white);
+	border-color: var(--color-gray-300);
+	box-shadow: 0 2px 6px rgba(0, 0, 0, 0.03);
 }
 
 .pendingExt {
-	padding: 2px 7px;
-	border-radius: var(--radius-sm);
-	font-size: 10px;
+	width: 38px;
+	height: 38px;
+	border-radius: var(--radius-md);
+	font-size: 9px;
 	font-weight: var(--font-weight-bold);
 	flex-shrink: 0;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	letter-spacing: 0.05em;
+	box-shadow: inset 0 -2px 0 rgba(0,0,0,0.05);
 }
 
 .pendingName {
 	flex: 1;
 	min-width: 0;
-	font-size: var(--font-size-xs);
+	font-size: var(--font-size-sm);
+	font-weight: var(--font-weight-semibold);
 	color: var(--color-gray-700);
 	overflow: hidden;
 	text-overflow: ellipsis;
@@ -514,7 +654,7 @@
 }
 
 .pendingSize {
-	font-size: 11px;
+	font-size: var(--font-size-xs);
 	color: var(--color-gray-400);
 	flex-shrink: 0;
 }
@@ -524,49 +664,58 @@
 	border: none;
 	cursor: pointer;
 	color: var(--color-gray-400);
-	padding: 2px;
+	padding: 5px;
 	display: flex;
 	align-items: center;
+	justify-content: center;
 	flex-shrink: 0;
-	border-radius: var(--radius-sm);
+	border-radius: var(--radius-md);
+	transition: all var(--transition-fast);
 }
 
 .pendingRemove:hover {
-	color: var(--color-red-500);
+	color: var(--color-error);
 	background: #fee2e2;
+	transform: scale(1.05);
 }
 
 .pendingRemove svg {
-	width: 13px;
-	height: 13px;
+	width: 14px;
+	height: 14px;
 }
 
 .noteInput {
-	padding: 8px 12px;
+	padding: 10px 14px;
 	border: 1.5px solid var(--color-gray-200);
 	border-radius: var(--radius-lg);
 	font-size: var(--font-size-sm);
 	color: var(--color-gray-800);
-	background: var(--color-white);
+	background: var(--color-gray-50);
 	outline: none;
 	width: 100%;
 	box-sizing: border-box;
 	font-family: var(--font-body);
-	transition: border-color var(--transition-fast);
+	transition: all var(--transition-fast);
 }
 
 .noteInput:focus {
 	border-color: var(--color-primary);
-	box-shadow: 0 0 0 3px rgba(46, 184, 122, 0.1);
+	background: var(--color-white);
+	box-shadow: 0 0 0 3px rgba(46, 184, 122, 0.15);
 }
 
 .uploadError {
 	font-size: 12px;
 	color: var(--color-red-600);
 	margin: 0;
-	padding: 6px 10px;
+	padding: 8px 12px;
 	background: #fef2f2;
-	border-radius: var(--radius-sm);
+	border: 1px solid #fecaca;
+	border-radius: var(--radius-md);
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	font-weight: var(--font-weight-medium);
 }
 
 /* ── UPLOADED FILES ── */
@@ -575,8 +724,8 @@
 	align-items: center;
 	gap: var(--space-2);
 	padding-bottom: var(--space-3);
-	border-bottom: 1px solid var(--color-gray-100);
-	margin-bottom: var(--space-3);
+	border-bottom: 1px solid var(--color-gray-150, #e9edf0);
+	margin-bottom: var(--space-4);
 }
 
 .filesSelectAll {
@@ -585,53 +734,63 @@
 }
 
 .fileCheckbox {
-	width: 15px;
-	height: 15px;
+	width: 16px;
+	height: 16px;
 	accent-color: var(--color-primary);
 	cursor: pointer;
+	border-radius: var(--radius-sm);
+	border: 1px solid var(--color-gray-300);
 }
 
 .filesTitle {
 	flex: 1;
 	font-size: var(--font-size-sm);
-	font-weight: var(--font-weight-semibold);
-	color: var(--color-gray-600);
+	font-weight: var(--font-weight-bold);
+	color: var(--color-gray-700);
 }
 
 .bulkBar {
 	display: flex;
 	align-items: center;
-	gap: var(--space-2);
-	background: var(--color-gray-900);
-	border-radius: var(--radius-lg);
-	padding: 8px 14px;
-	margin-bottom: var(--space-3);
+	gap: var(--space-3);
+	background: var(--color-primary-pale);
+	border: 1.5px solid rgba(46, 184, 122, 0.25);
+	border-radius: var(--radius-xl);
+	padding: 10px 16px;
+	margin-bottom: var(--space-4);
+	box-shadow: 0 4px 12px rgba(46, 184, 122, 0.05);
+	animation: slideUp 0.2s ease both;
 }
 
 .bulkCount {
 	flex: 1;
 	font-size: var(--font-size-xs);
-	font-weight: var(--font-weight-semibold);
-	color: #fff;
+	font-weight: var(--font-weight-bold);
+	color: var(--color-primary-dark);
 }
 
 .bulkBtn {
 	display: inline-flex;
 	align-items: center;
-	gap: 5px;
-	padding: 5px 12px;
-	border: 1.5px solid rgba(255, 255, 255, 0.2);
-	background: rgba(255, 255, 255, 0.08);
-	border-radius: var(--radius-md);
+	gap: 6px;
+	padding: 6px 14px;
+	border: 1.5px solid rgba(46, 184, 122, 0.2);
+	background: var(--color-white);
+	border-radius: var(--radius-lg);
 	font-size: 12px;
-	font-weight: var(--font-weight-semibold);
-	color: #fff;
+	font-weight: var(--font-weight-bold);
+	color: var(--color-primary-dark);
 	cursor: pointer;
-	transition: background var(--transition-fast);
+	transition: all var(--transition-fast);
+	box-shadow: var(--shadow-sm);
 }
 
 .bulkBtn:hover {
-	background: rgba(255, 255, 255, 0.15);
+	background: var(--color-primary);
+	color: var(--color-white);
+	border-color: var(--color-primary);
+	transform: translateY(-1px);
+	box-shadow: 0 4px 10px rgba(46, 184, 122, 0.2);
 }
 
 .bulkBtn svg {
@@ -640,48 +799,58 @@
 }
 
 .bulkBtnDanger {
-	border-color: rgba(252, 165, 165, 0.4);
-	color: #fca5a5;
+	border-color: rgba(232, 69, 69, 0.2);
+	color: var(--color-error);
 }
 
 .bulkBtnDanger:hover {
-	background: rgba(239, 68, 68, 0.2);
+	background: var(--color-error);
+	color: var(--color-white);
+	border-color: var(--color-error);
+	box-shadow: 0 4px 10px rgba(232, 69, 69, 0.2);
 }
 
 .fileList {
 	display: flex;
 	flex-direction: column;
-	gap: 6px;
+	gap: 8px;
 }
 
 .fileRow {
 	display: flex;
 	align-items: center;
 	gap: var(--space-3);
-	padding: 10px var(--space-3);
-	border: 1px solid var(--color-gray-100);
-	border-radius: var(--radius-lg);
-	background: var(--color-gray-50);
+	padding: 12px var(--space-4);
+	border: 1px solid var(--color-gray-150, #e9edf0);
+	border-radius: var(--radius-xl);
+	background: var(--color-white);
 	transition: all var(--transition-fast);
 }
 
 .fileRow:hover {
 	background: var(--color-white);
 	border-color: var(--color-gray-300);
-	box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+	box-shadow: var(--shadow-md);
+	transform: translateY(-1.5px);
 }
 
 .fileRowSelected {
-	background: rgba(46, 184, 122, 0.04);
-	border-color: rgba(46, 184, 122, 0.35);
+	background: var(--color-primary-pale) !important;
+	border-color: rgba(46, 184, 122, 0.35) !important;
 }
 
 .fileExt {
-	padding: 3px 8px;
-	border-radius: var(--radius-sm);
-	font-size: 10px;
+	width: 40px;
+	height: 40px;
+	border-radius: var(--radius-lg);
+	font-size: 9px;
 	font-weight: var(--font-weight-bold);
 	flex-shrink: 0;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	letter-spacing: 0.04em;
+	box-shadow: inset 0 -2px 0 rgba(0,0,0,0.05);
 }
 
 .fileInfo {
@@ -691,17 +860,22 @@
 
 .fileName {
 	font-size: var(--font-size-sm);
-	font-weight: var(--font-weight-medium);
+	font-weight: var(--font-weight-bold);
 	color: var(--color-gray-800);
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
+	transition: color var(--transition-fast);
+}
+
+.fileRow:hover .fileName {
+	color: var(--color-primary-dark);
 }
 
 .fileMeta {
 	font-size: 11px;
 	color: var(--color-gray-400);
-	margin-top: 3px;
+	margin-top: 4px;
 	display: flex;
 	align-items: center;
 	gap: 6px;
@@ -711,15 +885,15 @@
 .fileActions {
 	display: flex;
 	align-items: center;
-	gap: 4px;
+	gap: var(--space-2);
 	flex-shrink: 0;
 }
 
 .fileActionBtn {
-	width: 30px;
-	height: 30px;
-	border-radius: var(--radius-md);
-	border: 1.5px solid var(--color-gray-200);
+	width: 32px;
+	height: 32px;
+	border-radius: 50%;
+	border: 1px solid var(--color-gray-200);
 	background: var(--color-white);
 	display: flex;
 	align-items: center;
@@ -728,34 +902,56 @@
 	cursor: pointer;
 	transition: all var(--transition-fast);
 	text-decoration: none;
+	box-shadow: var(--shadow-sm);
 }
 
 .fileActionBtn:hover {
 	border-color: var(--color-primary);
-	color: var(--color-primary);
-	background: rgba(46, 184, 122, 0.06);
+	color: var(--color-white);
+	background: var(--color-primary);
+	transform: scale(1.05);
+	box-shadow: 0 4px 8px rgba(46, 184, 122, 0.25);
 }
 
 .fileActionBtn svg {
-	width: 13px;
-	height: 13px;
+	width: 14px;
+	height: 14px;
 }
 
 .fileActionDanger:hover {
-	border-color: var(--color-red-400);
-	color: var(--color-red-500);
-	background: #fff5f5;
+	border-color: var(--color-error);
+	color: var(--color-white);
+	background: var(--color-error);
+	box-shadow: 0 4px 8px rgba(232, 69, 69, 0.25);
 }
 
 /* ── BATCH NOTE ── */
 .batchNote {
-	font-size: 11px;
-	color: var(--color-primary-dark);
-	background: rgba(46, 184, 122, 0.1);
-	border-radius: var(--radius-sm);
-	padding: 1px 7px;
+	font-size: 10px;
+	font-weight: var(--font-weight-bold);
+	color: var(--color-secondary-dark);
+	background: rgba(52, 184, 216, 0.08);
+	border: 1px solid rgba(52, 184, 216, 0.2);
+	border-radius: var(--radius-full);
+	padding: 1px 8px;
 	display: inline-flex;
 	align-items: center;
+	letter-spacing: 0.02em;
+}
+
+.emptyFiles {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	padding: var(--space-12) var(--space-4);
+	gap: var(--space-3);
+	text-align: center;
+	background: var(--color-gray-50);
+	border: 1.5px dashed var(--color-gray-200);
+	border-radius: var(--radius-xl);
+	color: var(--color-gray-400);
+	font-size: var(--font-size-sm);
 }
 
 /* ── BUTTONS ── */

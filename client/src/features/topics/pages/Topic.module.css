@@ -1693,42 +1693,45 @@
 .fileBulkBar {
 	display: flex;
 	align-items: center;
-	gap: var(--space-2);
-	padding: var(--space-2) var(--space-3);
-	background: #eff6ff;
-	border: 1px solid #bfdbfe;
-	border-radius: var(--radius-lg);
+	gap: var(--space-3);
+	background: var(--color-primary-pale);
+	border: 1.5px solid rgba(46, 184, 122, 0.25);
+	border-radius: var(--radius-xl);
+	padding: 10px 16px;
 	margin-bottom: var(--space-2);
-	animation: fadeIn 150ms ease both;
+	box-shadow: 0 4px 12px rgba(46, 184, 122, 0.05);
+	animation: slideUp 0.2s ease both;
 }
 
 .fileBulkCount {
 	font-size: var(--font-size-xs);
-	font-weight: var(--font-weight-semibold);
-	color: #1d4ed8;
+	font-weight: var(--font-weight-bold);
+	color: var(--color-primary-dark);
 	flex: 1;
 }
 
 .fileBulkBtn {
 	display: flex;
 	align-items: center;
-	gap: 5px;
-	padding: 4px 10px;
-	border-radius: var(--radius-md);
-	border: 1px solid #bfdbfe;
-	background: white;
-	font-size: var(--font-size-xs);
-	font-weight: var(--font-weight-semibold);
-	color: #1d4ed8;
+	gap: 6px;
+	padding: 6px 14px;
+	border-radius: var(--radius-lg);
+	border: 1.5px solid rgba(46, 184, 122, 0.2);
+	background: var(--color-white);
+	font-size: 12px;
+	font-weight: var(--font-weight-bold);
+	color: var(--color-primary-dark);
 	cursor: pointer;
-	transition:
-		background 150ms,
-		border-color 150ms;
+	transition: all var(--transition-fast);
+	box-shadow: var(--shadow-sm);
 }
 
 .fileBulkBtn:hover {
-	background: #dbeafe;
-	border-color: #93c5fd;
+	background: var(--color-primary);
+	color: var(--color-white);
+	border-color: var(--color-primary);
+	transform: translateY(-1px);
+	box-shadow: 0 4px 10px rgba(46, 184, 122, 0.2);
 }
 
 .fileBulkBtn svg {
@@ -1737,13 +1740,15 @@
 }
 
 .fileBulkBtnDanger {
-	color: #dc2626;
-	border-color: #fecaca;
+	color: var(--color-error);
+	border-color: rgba(232, 69, 69, 0.2);
 }
 
 .fileBulkBtnDanger:hover {
-	background: #fef2f2;
-	border-color: #f87171;
+	background: var(--color-error);
+	color: var(--color-white);
+	border-color: var(--color-error);
+	box-shadow: 0 4px 10px rgba(232, 69, 69, 0.2);
 }
 
 .fileBulkClear {
@@ -1756,14 +1761,15 @@
 	align-items: center;
 	justify-content: center;
 	cursor: pointer;
-	color: #93c5fd;
-	transition: color 150ms;
+	color: var(--color-gray-400);
+	transition: all var(--transition-fast);
 	padding: 0;
 	flex-shrink: 0;
 }
 
 .fileBulkClear:hover {
-	color: #1d4ed8;
+	color: var(--color-primary-dark);
+	background: rgba(46, 184, 122, 0.1);
 }
 .fileBulkClear svg {
 	width: 12px;
@@ -1772,7 +1778,7 @@
 
 /* ── Upload zone ────────────────────────────── */
 .uploadZone {
-	border: 2px dashed var(--color-gray-200);
+	border: 2px dashed var(--color-gray-300);
 	border-radius: var(--radius-xl);
 	padding: var(--space-6) var(--space-4);
 	display: flex;
@@ -1780,23 +1786,38 @@
 	align-items: center;
 	gap: var(--space-2);
 	cursor: pointer;
-	transition:
-		border-color 180ms,
-		background 180ms;
+	transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 	background: var(--color-gray-50);
 	text-align: center;
 	margin-bottom: var(--space-3);
+	position: relative;
+	overflow: hidden;
 }
 
-.uploadZone:hover {
-	border-color: var(--color-primary);
-	background: var(--color-primary-light, #f0f4ff);
+.uploadZone::before {
+	content: '';
+	position: absolute;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	background: linear-gradient(135deg, rgba(46, 184, 122, 0.03) 0%, rgba(52, 184, 216, 0.03) 100%);
+	opacity: 0;
+	transition: opacity var(--transition-base);
+	pointer-events: none;
 }
 
+.uploadZone:hover::before,
+.uploadZoneActive::before {
+	opacity: 1;
+}
+
+.uploadZone:hover,
 .uploadZoneActive {
 	border-color: var(--color-primary);
-	background: var(--color-primary-light, #eff6ff);
-	border-style: solid;
+	background: var(--color-primary-pale);
+	transform: translateY(-2px);
+	box-shadow: var(--shadow-md);
 }
 
 .uploadZoneIcon {
@@ -1809,7 +1830,9 @@
 	align-items: center;
 	justify-content: center;
 	color: var(--color-primary);
-	box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+	box-shadow: var(--shadow-sm);
+	transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+	z-index: 1;
 }
 
 .uploadZoneIcon svg {
@@ -1817,22 +1840,72 @@
 	height: 18px;
 }
 
+.uploadZone:hover .uploadZoneIcon,
+.uploadZoneActive .uploadZoneIcon {
+	transform: translateY(-4px) scale(1.05);
+	background: var(--color-primary);
+	color: var(--color-white);
+	border-color: var(--color-primary);
+	box-shadow: 0 4px 10px rgba(46, 184, 122, 0.3);
+}
+
 .uploadZoneText {
 	font-size: var(--font-size-sm);
 	color: var(--color-gray-600);
-	font-weight: var(--font-weight-medium);
+	font-weight: var(--font-weight-semibold);
+	z-index: 1;
+	transition: color var(--transition-fast);
+}
+
+.uploadZone:hover .uploadZoneText {
+	color: var(--color-gray-800);
 }
 
 .uploadZoneText span {
 	color: var(--color-primary);
-	font-weight: var(--font-weight-semibold);
-	text-decoration: underline;
-	text-underline-offset: 2px;
+	font-weight: var(--font-weight-bold);
+	text-decoration: none;
+	border-bottom: 2px solid rgba(46, 184, 122, 0.3);
+	padding-bottom: 1px;
+	transition: all var(--transition-fast);
+}
+
+.uploadZoneText:hover span {
+	border-bottom-color: var(--color-primary);
 }
 
 .uploadZoneHint {
 	font-size: var(--font-size-xs);
 	color: var(--color-gray-400);
+	z-index: 1;
+}
+
+/* File format badges under the hint */
+.uploadZoneFormats {
+	display: flex;
+	gap: 6px;
+	flex-wrap: wrap;
+	justify-content: center;
+	margin-top: var(--space-1);
+	z-index: 1;
+}
+
+.formatBadge {
+	font-size: 9px;
+	font-weight: var(--font-weight-bold);
+	padding: 1px 6px;
+	border-radius: var(--radius-sm);
+	background: var(--color-white);
+	color: var(--color-gray-500);
+	text-transform: uppercase;
+	letter-spacing: 0.05em;
+	transition: all var(--transition-fast);
+	border: 1px solid var(--color-gray-200);
+}
+
+.uploadZone:hover .formatBadge {
+	border-color: rgba(46, 184, 122, 0.2);
+	color: var(--color-primary-dark);
 }
 
 /* Pending files */
@@ -1844,7 +1917,10 @@
 	padding: var(--space-4);
 	background: var(--color-white);
 	border: 1px solid var(--color-gray-200);
+	border-top: 3px solid var(--color-primary);
 	border-radius: var(--radius-xl);
+	box-shadow: var(--shadow-md);
+	animation: slideUp 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) both;
 }
 
 .uploadPendingHeader {
@@ -1858,10 +1934,20 @@
 	align-items: center;
 	gap: var(--space-2);
 	font-size: var(--font-size-xs);
-	font-weight: var(--font-weight-semibold);
-	color: var(--color-gray-600);
+	font-weight: var(--font-weight-bold);
+	color: var(--color-gray-800);
 	text-transform: uppercase;
 	letter-spacing: 0.06em;
+}
+
+.uploadPendingCount::before {
+	content: '';
+	display: inline-block;
+	width: 6px;
+	height: 6px;
+	border-radius: 50%;
+	background: var(--color-primary);
+	animation: pendingPulse 1.5s infinite;
 }
 
 .uploadPendingDot {
@@ -1877,12 +1963,15 @@
 	background: none;
 	border: none;
 	cursor: pointer;
-	padding: 0;
-	transition: color 150ms;
+	padding: 4px 8px;
+	border-radius: var(--radius-md);
+	transition: all var(--transition-fast);
+	font-weight: var(--font-weight-semibold);
 }
 
 .uploadClearAll:hover {
-	color: var(--color-red-500);
+	color: var(--color-error);
+	background: #fee2e2;
 }
 
 .uploadPendingList {
@@ -1891,11 +1980,13 @@
 	gap: var(--space-2);
 	max-height: 180px;
 	overflow-y: auto;
+	padding-right: 2px;
 }
 
 .uploadPendingList::-webkit-scrollbar {
 	width: 4px;
 }
+
 .uploadPendingList::-webkit-scrollbar-thumb {
 	background: var(--color-gray-200);
 	border-radius: 999px;
@@ -1909,6 +2000,13 @@
 	background: var(--color-gray-50);
 	border: 1px solid var(--color-gray-100);
 	border-radius: var(--radius-lg);
+	transition: all var(--transition-fast);
+}
+
+.uploadPendingRow:hover {
+	background: var(--color-white);
+	border-color: var(--color-gray-300);
+	box-shadow: 0 2px 6px rgba(0, 0, 0, 0.03);
 }
 
 .uploadPendingBadge {
@@ -1922,12 +2020,14 @@
 	font-size: 8px;
 	font-weight: var(--font-weight-bold);
 	letter-spacing: 0.04em;
+	box-shadow: inset 0 -2px 0 rgba(0,0,0,0.05);
 }
 
 .uploadPendingName {
 	flex: 1;
 	min-width: 0;
 	font-size: var(--font-size-sm);
+	font-weight: var(--font-weight-semibold);
 	color: var(--color-gray-700);
 	overflow: hidden;
 	text-overflow: ellipsis;
@@ -1951,16 +2051,15 @@
 	justify-content: center;
 	cursor: pointer;
 	color: var(--color-gray-400);
-	transition:
-		background 150ms,
-		color 150ms;
+	transition: all var(--transition-fast);
 	flex-shrink: 0;
 	padding: 0;
 }
 
 .uploadPendingRemove:hover {
-	background: #fef2f2;
-	color: #dc2626;
+	background: #fee2e2;
+	color: var(--color-error);
+	transform: scale(1.05);
 }
 
 .uploadPendingRemove svg {
@@ -1970,8 +2069,16 @@
 
 .uploadError {
 	font-size: var(--font-size-xs);
-	color: var(--color-red-500);
+	color: var(--color-error);
 	margin: 0;
+	padding: 6px 10px;
+	background: #fee2e2;
+	border: 1px solid #fecaca;
+	border-radius: var(--radius-md);
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	font-weight: var(--font-weight-medium);
 }
 
 /* Uploaded file list */
@@ -1987,19 +2094,22 @@
 	gap: var(--space-3);
 	padding: var(--space-3);
 	background: var(--color-white);
-	border: 1px solid var(--color-gray-100);
+	border: 1px solid var(--color-gray-150, #e9edf0);
 	border-radius: var(--radius-xl);
-	transition:
-		border-color 150ms,
-		box-shadow 150ms,
-		background 150ms;
+	transition: all var(--transition-fast);
 	cursor: pointer;
 	user-select: none;
 }
 
 .fileRow:hover {
-	border-color: var(--color-gray-200);
-	box-shadow: 0 1px 6px rgba(0, 0, 0, 0.05);
+	border-color: var(--color-gray-300);
+	box-shadow: var(--shadow-md);
+	transform: translateY(-1.5px);
+}
+
+.fileRowSelected {
+	background: var(--color-primary-pale) !important;
+	border-color: rgba(46, 184, 122, 0.35) !important;
 }
 
 .fileRowBadge {
@@ -2013,6 +2123,7 @@
 	font-size: 8px;
 	font-weight: var(--font-weight-bold);
 	letter-spacing: 0.04em;
+	box-shadow: inset 0 -2px 0 rgba(0,0,0,0.05);
 }
 
 .fileRowInfo {
@@ -2022,11 +2133,16 @@
 
 .fileRowName {
 	font-size: var(--font-size-sm);
-	font-weight: var(--font-weight-semibold);
+	font-weight: var(--font-weight-bold);
 	color: var(--color-gray-800);
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
+	transition: color var(--transition-fast);
+}
+
+.fileRow:hover .fileRowName {
+	color: var(--color-primary-dark);
 }
 
 .fileRowMeta {
@@ -2036,20 +2152,20 @@
 	gap: var(--space-2);
 	font-size: var(--font-size-xs);
 	color: var(--color-gray-500);
-	margin-top: 2px;
+	margin-top: 4px;
 }
 
 .fileRowActions {
 	display: flex;
 	align-items: center;
-	gap: var(--space-1);
+	gap: var(--space-2);
 	flex-shrink: 0;
 }
 
 .fileActionBtn {
-	width: 30px;
-	height: 30px;
-	border-radius: var(--radius-lg);
+	width: 32px;
+	height: 32px;
+	border-radius: 50%;
 	border: 1px solid var(--color-gray-200);
 	background: var(--color-white);
 	display: flex;
@@ -2057,15 +2173,18 @@
 	justify-content: center;
 	cursor: pointer;
 	color: var(--color-gray-500);
-	transition: all 150ms;
+	transition: all var(--transition-fast);
 	text-decoration: none;
 	padding: 0;
+	box-shadow: var(--shadow-sm);
 }
 
 .fileActionBtn:hover {
-	background: var(--color-gray-50);
-	color: var(--color-gray-800);
-	border-color: var(--color-gray-300);
+	border-color: var(--color-primary);
+	color: var(--color-white);
+	background: var(--color-primary);
+	transform: scale(1.05);
+	box-shadow: 0 4px 8px rgba(46, 184, 122, 0.25);
 }
 
 .fileActionBtn svg {
@@ -2074,9 +2193,10 @@
 }
 
 .fileActionDanger:hover {
-	background: #fef2f2;
-	color: #dc2626;
-	border-color: #fecaca;
+	border-color: var(--color-error);
+	color: var(--color-white);
+	background: var(--color-error);
+	box-shadow: 0 4px 8px rgba(232, 69, 69, 0.25);
 }
 
 /* ── Enhanced confirm modal ─────────────────── */

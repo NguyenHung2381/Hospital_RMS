@@ -535,6 +535,6 @@ router.get('/:topic_id/files/batches', fileCtrl.getBatches);
  *       201:
  *         description: Upload thành công
  */
-router.post('/:topic_id/files', upload.array('files', 30), fileCtrl.upload);
+router.post('/:topic_id/files', fileCtrl.checkUploadWindow, upload.array('files', 30), fileCtrl.upload);
 
 module.exports = router;

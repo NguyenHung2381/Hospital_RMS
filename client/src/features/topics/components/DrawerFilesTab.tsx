@@ -87,6 +87,13 @@ export function DrawerFilesTab({
 				<div className={styles.uploadZoneHint}>
 					PDF, Word, Excel, ZIP, hình ảnh — tối đa 50 MB/file
 				</div>
+				<div className={styles.uploadZoneFormats}>
+					<span className={styles.formatBadge}>pdf</span>
+					<span className={styles.formatBadge}>word</span>
+					<span className={styles.formatBadge}>excel</span>
+					<span className={styles.formatBadge}>zip/rar</span>
+					<span className={styles.formatBadge}>image</span>
+				</div>
 			</div>
 
 			{pendingFiles.length > 0 && (
@@ -103,6 +110,7 @@ export function DrawerFilesTab({
 						<button
 							className={styles.uploadClearAll}
 							onClick={() => setPendingFiles([])}
+							disabled={uploading}
 						>
 							Xoá tất cả
 						</button>
@@ -131,6 +139,7 @@ export function DrawerFilesTab({
 										className={styles.uploadPendingRemove}
 										onClick={() => removePending(i)}
 										title='Bỏ file này'
+										disabled={uploading}
 									>
 										<IcX />
 									</button>
@@ -155,10 +164,17 @@ export function DrawerFilesTab({
 						onClick={() => setShowUploadConfirm(true)}
 						disabled={uploading}
 					>
-						<IcPlus />
-						{uploading
-							? 'Đang tải lên...'
-							: `Tải lên ${pendingFiles.length} file`}
+						{uploading ? (
+							<>
+								<span className={styles.spinner} />
+								<span>Đang tải lên...</span>
+							</>
+						) : (
+							<>
+								<IcPlus />
+								<span>Tải lên {pendingFiles.length} file</span>
+							</>
+						)}
 					</button>
 				</div>
 			)}

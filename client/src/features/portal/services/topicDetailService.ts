@@ -47,89 +47,22 @@ export function getEditMode(
 	const supStart = parseDdMmYyyy(round.supplement_start_date);
 	const supEnd = parseDdMmYyyy(round.supplement_end_date);
 
-	console.group('[getEditMode] topic:', topic.id);
-	console.log('today         :', today.toLocaleDateString('vi-VN'));
-	console.log('topic.status  :', topic.status);
-	console.log(
-		'reg window    :',
-		round.registration_start_date,
-		'→',
-		round.registration_end_date,
-		'| active:',
-		!!(regStart && regEnd && today >= regStart && today <= regEnd),
-	);
-	console.log(
-		'sup window    :',
-		round.supplement_start_date,
-		'→',
-		round.supplement_end_date,
-		'| active:',
-		!!(supStart && supEnd && today >= supStart && today <= supEnd),
-	);
-
 	if (regStart && regEnd && today >= regStart && today <= regEnd)
-		if (topic.status === 'submitted' || topic.status === 'supplement') {
-			console.log('→ full (trong thời gian đăng ký)');
-			console.groupEnd();
+		if (topic.status === 'submitted' || topic.status === 'supplement')
 			return 'full';
-		}
 
 	if (supStart && supEnd && today >= supStart && today <= supEnd)
-		if (topic.status === 'supplement' || topic.status === 'approved') {
-			console.log('→ supplement (trong cửa sổ bổ sung)');
-			console.groupEnd();
+		if (topic.status === 'supplement' || topic.status === 'approved')
 			return 'supplement';
-		}
 
-	// Tìm đợt nộp báo cáo đang hoạt động trước, nếu không có thì lấy đợt nộp báo cáo đầu tiên
-	const reportDl =
-		deadlines.find((d) => {
-			if (d.deadline_type !== 'nop_bao_cao') return false;
-			const dlStart = parseDdMmYyyy(d.start_date);
-			const dlEnd = parseDdMmYyyy(d.deadline_date);
-			const afterStart = !dlStart || today >= dlStart;
-			const beforeEnd = !!dlEnd && today <= dlEnd;
-			return afterStart && beforeEnd;
-		}) || deadlines.find((d) => d.deadline_type === 'nop_bao_cao');
+	const reportDl = deadlines.find((d) => {
+		if (d.deadline_type !== 'nop_bao_cao') return false;
+		const dlStart = parseDdMmYyyy(d.start_date);
+		const dlEnd = parseDdMmYyyy(d.deadline_date);
+		return (!dlStart || today >= dlStart) && !!dlEnd && today <= dlEnd;
+	});
 
-	console.log(
-		'nop_bao_cao dl:',
-		reportDl
-			? `start=${reportDl.start_date ?? 'null'} end=${reportDl.deadline_date}`
-			: 'KHÔNG TÌM THẤY deadline nop_bao_cao',
-	);
+	if (reportDl && topic.status === 'approved') return 'file-only';
 
-	if (reportDl && topic.status === 'approved') {
-		const dlStart = parseDdMmYyyy(reportDl.start_date);
-		const dlEnd = parseDdMmYyyy(reportDl.deadline_date);
-		const afterStart = !dlStart || today >= dlStart;
-		const beforeEnd = !!dlEnd && today <= dlEnd;
-		console.log(
-			'  dlEnd parsed :',
-			dlEnd?.toLocaleDateString('vi-VN') ?? 'null',
-			'| today <= dlEnd:',
-			beforeEnd,
-		);
-		console.log(
-			'  dlStart check:',
-			afterStart ? 'OK' : `chưa đến (start=${reportDl.start_date})`,
-		);
-		if (beforeEnd && afterStart) {
-			console.log('→ file-only');
-			console.groupEnd();
-			return 'file-only';
-		}
-		console.log('→ none (deadline nop_bao_cao không còn hiệu lực)');
-	} else if (!reportDl) {
-		console.log('→ none (không có deadline nop_bao_cao)');
-	} else {
-		console.log(
-			'→ none (topic.status không phải approved, hiện là:',
-			topic.status,
-			')',
-		);
-	}
-
-	console.groupEnd();
 	return 'none';
 }
