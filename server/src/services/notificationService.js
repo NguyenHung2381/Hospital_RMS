@@ -1,6 +1,9 @@
 const { getPool, sql } = require('../config/db');
 
-const getForUser = async (userId, { page = 1, limit = 20, unread_only = false } = {}) => {
+const getForUser = async (
+	userId,
+	{ page = 1, limit = 20, unread_only = false } = {},
+) => {
 	const pool = await getPool();
 	const offset = (page - 1) * limit;
 	const filter = unread_only ? 'AND is_read = 0' : '';
@@ -64,7 +67,12 @@ const markAllRead = async (userId) => {
  * Push a notification to a list of user IDs via sp_push_notification.
  * Errors are swallowed so callers are never broken by notification failures.
  */
-const push = async (type, title, userIds, { message = null, refId = null, refType = null } = {}) => {
+const push = async (
+	type,
+	title,
+	userIds,
+	{ message = null, refId = null, refType = null } = {},
+) => {
 	if (!userIds?.length) return;
 	try {
 		const pool = await getPool();

@@ -1,19 +1,20 @@
-﻿import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import {
+	CheckSvg,
+	ChevLSvg,
+	ChevRSvg,
+	EditSvg,
+	LayersSvg,
+	PlusSvg,
+	SearchSvg,
+	TagSvg,
+	TrashSvg,
+	XSvg,
+} from '@/assets/icons';
 import AdminLayout from '../../../layouts/AdminLayout';
-import { useRealtimeUpdate } from '../../../layouts/hooks/useRealtime';
-import { catalogApi } from '../api/catalogApi';
-import { Ic } from '../components/icons';
-import type {
-	CatalogFormData,
-	CatalogItem,
-	CatalogTab,
-	ModalType,
-} from '../types/catalog.type';
+import { CatalogDeleteModal } from '../components/CatalogDeleteModal';
+import { CatalogFormModal } from '../components/CatalogFormModal';
+import { useCatalog } from '../hooks/useCatalog';
 import styles from './Catalog.module.css';
-
-// ─── CONSTANTS ────────────────────────────
-const EMPTY_FORM: CatalogFormData = { name: '', description: '' };
 
 const ITEM_COLORS = [
 	{ bg: '#e1f5ee', color: '#085041' },
@@ -24,23 +25,6 @@ const ITEM_COLORS = [
 	{ bg: '#f1efe8', color: '#444441' },
 ];
 
-const TAB_CONFIG: Record<
-	CatalogTab,
-	{ label: string; subtitle: string; placeholder: string }
-> = {
-	categories: {
-		label: 'Phân loại',
-		subtitle: 'Danh mục phân loại đề tài nghiên cứu',
-		placeholder: 'VD: Nghiên cứu lâm sàng',
-	},
-	levels: {
-		label: 'Cấp độ',
-		subtitle: 'Danh mục cấp độ đề tài nghiên cứu',
-		placeholder: 'VD: Cấp tỉnh',
-	},
-};
-
-// ─── HELPERS ──────────────────────────────
 function getItemColor(id: string) {
 	let hash = 0;
 	for (let i = 0; i < id.length; i++)
@@ -54,409 +38,68 @@ function getInitials(s: string) {
 	return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 }
 
-// ─── FORM MODAL ───────────────────────────
-function ItemFormModal({
-	mode,
-	item,
-	tab,
-	onClose,
-	onSave,
-	loading,
-}: {
-	mode: 'add' | 'edit';
-	item?: CatalogItem;
-	tab: CatalogTab;
-	onClose: () => void;
-	onSave: (d: CatalogFormData) => void;
-	loading: boolean;
-}) {
-	const cfg = TAB_CONFIG[tab];
-	const [form, setForm] = useState<CatalogFormData>(
-		item
-			? { name: item.name, description: item.description ?? '' }
-			: EMPTY_FORM,
-	);
-	const [errors, setErrors] = useState<Partial<CatalogFormData>>({});
-
-	const set =
-		(k: keyof CatalogFormData) =>
-		(e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-			setForm((f) => ({ ...f, [k]: e.target.value }));
-			setErrors((er) => ({ ...er, [k]: '' }));
-		};
-
-	const validate = () => {
-		const err: Partial<CatalogFormData> = {};
-		if (!form.name.trim())
-			err.name = `Vui lòng nhập tên ${cfg.label.toLowerCase()}`;
-		setErrors(err);
-		return Object.keys(err).length === 0;
-	};
-
-	return (
-		<div
-			className={styles.modalBackdrop}
-			onClick={(e) => e.target === e.currentTarget && onClose()}
-		>
-			<div className={styles.modal}>
-				<div className={styles.modalHeader}>
-					<div className={styles.modalHeaderIcon}>
-						{tab === 'categories' ? <Ic.Tag /> : <Ic.Layers />}
-					</div>
-					<div>
-						<div className={styles.modalTitle}>
-							{mode === 'add'
-								? `Thêm ${cfg.label.toLowerCase()}`
-								: `Chỉnh sửa ${cfg.label.toLowerCase()}`}
-						</div>
-						<div className={styles.modalSub}>
-							{mode === 'add'
-								? `Thêm ${cfg.label.toLowerCase()} mới vào hệ thống`
-								: `Cập nhật — ${item?.name}`}
-						</div>
-					</div>
-					<button
-						className={styles.modalClose}
-						onClick={onClose}
-					>
-						<Ic.X />
-					</button>
-				</div>
-
-				<div className={styles.modalBody}>
-					<div className={styles.formGroup}>
-						<label className={styles.formLabel}>
-							Tên {cfg.label.toLowerCase()}{' '}
-							<span className={styles.required}>*</span>
-						</label>
-						<input
-							className={`${styles.formInput} ${errors.name ? styles.inputError : ''}`}
-							value={form.name}
-							onChange={set('name')}
-							placeholder={cfg.placeholder}
-						/>
-						{errors.name && (
-							<div className={styles.fieldError}>{errors.name}</div>
-						)}
-					</div>
-					<div className={styles.formGroup}>
-						<label className={styles.formLabel}>Mô tả</label>
-						<textarea
-							className={styles.formTextarea}
-							value={form.description}
-							onChange={set('description')}
-							rows={3}
-							placeholder='Mô tả ngắn...'
-						/>
-					</div>
-				</div>
-
-				<div className={styles.modalFooter}>
-					<button
-						className={styles.btnCancel}
-						onClick={onClose}
-						disabled={loading}
-					>
-						Huỷ
-					</button>
-					<button
-						className={styles.btnConfirm}
-						onClick={() => validate() && onSave(form)}
-						disabled={loading}
-					>
-						{loading ? <span className={styles.spinner} /> : <Ic.Check />}
-						{mode === 'add'
-							? `Thêm ${cfg.label.toLowerCase()}`
-							: 'Lưu thay đổi'}
-					</button>
-				</div>
-			</div>
-		</div>
-	);
-}
-
-// ─── DELETE MODAL ─────────────────────────
-function DeleteModal({
-	item,
-	tab,
-	onClose,
-	onConfirm,
-	loading,
-}: {
-	item: CatalogItem;
-	tab: CatalogTab;
-	onClose: () => void;
-	onConfirm: () => void;
-	loading: boolean;
-}) {
-	const cfg = TAB_CONFIG[tab];
-	return (
-		<div
-			className={styles.modalBackdrop}
-			onClick={(e) => e.target === e.currentTarget && onClose()}
-		>
-			<div className={`${styles.modal} ${styles.modalSm}`}>
-				<div className={styles.modalHeader}>
-					<div className={styles.modalHeaderIconDanger}>
-						<Ic.Trash />
-					</div>
-					<div>
-						<div className={styles.modalTitle}>
-							Xoá {cfg.label.toLowerCase()}
-						</div>
-						<div className={styles.modalSub}>{item.name}</div>
-					</div>
-					<button
-						className={styles.modalClose}
-						onClick={onClose}
-					>
-						<Ic.X />
-					</button>
-				</div>
-				<div className={styles.modalBody}>
-					<p className={styles.deleteDesc}>
-						Bạn có chắc muốn xoá <strong>{item.name}</strong> khỏi hệ thống?
-						Thao tác này không thể hoàn tác.
-					</p>
-				</div>
-				<div className={styles.modalFooter}>
-					<button
-						className={styles.btnCancel}
-						onClick={onClose}
-						disabled={loading}
-					>
-						Huỷ
-					</button>
-					<button
-						className={styles.btnDanger}
-						onClick={onConfirm}
-						disabled={loading}
-					>
-						{loading ? (
-							<span className={`${styles.spinner} ${styles.spinnerDark}`} />
-						) : (
-							<Ic.Trash />
-						)}
-						Xác nhận xoá
-					</button>
-				</div>
-			</div>
-		</div>
-	);
-}
-
-// ─── MAIN ─────────────────────────────────
 export default function Catalog() {
-	const location = useLocation();
-	const navigate = useNavigate();
-	const tab: CatalogTab = location.pathname.includes('levels')
-		? 'levels'
-		: 'categories';
-
-	const [items, setItems] = useState<CatalogItem[]>([]);
-	const [isLoadingData, setIsLoadingData] = useState(true);
-	const [search, setSearch] = useState('');
-	const [modal, setModal] = useState<ModalType>(null);
-	const [editingItem, setEditingItem] = useState<CatalogItem | null>(null);
-	const [deletingItem, setDeletingItem] = useState<CatalogItem | null>(null);
-	const [loading, setLoading] = useState(false);
-	const [toast, setToast] = useState<{
-		type: 'success' | 'error';
-		msg: string;
-	} | null>(null);
-	const [pageSize, setPageSize] = useState(10);
-	const [page, setPage] = useState(1);
-	const [refreshKey, setRefreshKey] = useState(0);
-
-	const cfg = TAB_CONFIG[tab];
-
-	const refreshData = useCallback(() => setRefreshKey((k) => k + 1), []);
-	useRealtimeUpdate('category', refreshData);
-	useRealtimeUpdate('level', refreshData);
-
-	const showToast = useCallback((type: 'success' | 'error', msg: string) => {
-		setToast({ type, msg });
-		setTimeout(() => setToast(null), 3000);
-	}, []);
-
-	useEffect(() => {
-		catalogApi
-			.list(tab)
-			.then((res) => setItems(res.data))
-			.catch(() =>
-				showToast(
-					'error',
-					`Không thể tải danh sách ${TAB_CONFIG[tab].label.toLowerCase()}`,
-				),
-			)
-			.finally(() => setIsLoadingData(false));
-	}, [tab, showToast, refreshKey]);
-
-	const handleTabChange = useCallback(
-		(next: CatalogTab) => {
-			if (next === tab) return;
-			setItems([]);
-			setIsLoadingData(true);
-			setSearch('');
-			setPage(1);
-			setModal(null);
-			setEditingItem(null);
-			setDeletingItem(null);
-			navigate(`/admin/${next}`);
-		},
-		[tab, navigate],
-	);
-
-	const filtered = useMemo(() => {
-		if (!search.trim()) return items;
-		const q = search.toLowerCase();
-		return items.filter(
-			(d) =>
-				d.name.toLowerCase().includes(q) ||
-				(d.description ?? '').toLowerCase().includes(q),
-		);
-	}, [items, search]);
-
-	const totalPages = pageSize === 0 ? 1 : Math.ceil(filtered.length / pageSize);
-	const safePage = Math.min(page, totalPages || 1);
-
-	const paged = useMemo(() => {
-		if (pageSize === 0) return filtered;
-		const start = (safePage - 1) * pageSize;
-		return filtered.slice(start, start + pageSize);
-	}, [filtered, safePage, pageSize]);
-
-	const handleSearch = useCallback((v: string) => {
-		setSearch(v);
-		setPage(1);
-	}, []);
-
-	const handlePageSize = useCallback((v: number) => {
-		setPageSize(v);
-		setPage(1);
-	}, []);
-
-	const handleAdd = useCallback(
-		async (data: CatalogFormData) => {
-			setLoading(true);
-			try {
-				const created = await catalogApi.create(tab, data);
-				setItems((prev) => [created, ...prev]);
-				setModal(null);
-				showToast('success', `Đã thêm "${created.name}"`);
-			} catch (err) {
-				showToast(
-					'error',
-					err instanceof Error ? err.message : 'Thêm thất bại',
-				);
-			} finally {
-				setLoading(false);
-			}
-		},
-		[tab, showToast],
-	);
-
-	const handleEdit = useCallback(
-		async (data: CatalogFormData) => {
-			if (!editingItem) return;
-			setLoading(true);
-			try {
-				const updated = await catalogApi.update(tab, editingItem.id, data);
-				setItems((prev) =>
-					prev.map((d) => (d.id === editingItem.id ? updated : d)),
-				);
-				setModal(null);
-				setEditingItem(null);
-				showToast('success', `Đã cập nhật "${updated.name}"`);
-			} catch (err) {
-				showToast(
-					'error',
-					err instanceof Error ? err.message : 'Cập nhật thất bại',
-				);
-			} finally {
-				setLoading(false);
-			}
-		},
-		[tab, editingItem, showToast],
-	);
-
-	const handleDelete = useCallback(async () => {
-		if (!deletingItem) return;
-		setLoading(true);
-		try {
-			await catalogApi.remove(tab, deletingItem.id);
-			setItems((prev) => prev.filter((d) => d.id !== deletingItem.id));
-			setModal(null);
-			setDeletingItem(null);
-			showToast('success', `Đã xoá "${deletingItem.name}"`);
-		} catch (err) {
-			showToast('error', err instanceof Error ? err.message : 'Xoá thất bại');
-		} finally {
-			setLoading(false);
-		}
-	}, [tab, deletingItem, showToast]);
+	const d = useCatalog();
 
 	const headerActions = (
 		<button
 			className={styles.btnAddHeader}
-			onClick={() => setModal('add')}
+			onClick={() => d.setModal('add')}
 		>
-			<Ic.Plus /> Thêm {cfg.label.toLowerCase()}
+			<PlusSvg /> Thêm {d.cfg.label.toLowerCase()}
 		</button>
 	);
 
 	return (
 		<AdminLayout
 			pageTitle='Quản lý Danh mục'
-			pageSubtitle={cfg.subtitle}
+			pageSubtitle={d.cfg.subtitle}
 			headerActions={headerActions}
 		>
 			{/* ── TABS ── */}
 			<div className={styles.tabs}>
 				<button
-					className={`${styles.tabBtn} ${tab === 'categories' ? styles.tabBtnActive : ''}`}
-					onClick={() => handleTabChange('categories')}
+					className={`${styles.tabBtn} ${d.tab === 'categories' ? styles.tabBtnActive : ''}`}
+					onClick={() => d.handleTabChange('categories')}
 				>
-					<Ic.Tag />
-					Phân loại
+					<TagSvg /> Phân loại
 				</button>
 				<button
-					className={`${styles.tabBtn} ${tab === 'levels' ? styles.tabBtnActive : ''}`}
-					onClick={() => handleTabChange('levels')}
+					className={`${styles.tabBtn} ${d.tab === 'levels' ? styles.tabBtnActive : ''}`}
+					onClick={() => d.handleTabChange('levels')}
 				>
-					<Ic.Layers />
-					Cấp độ
+					<LayersSvg /> Cấp độ
 				</button>
 			</div>
 
 			{/* ── TOOLBAR ── */}
 			<div className={styles.toolbar}>
 				<div className={styles.searchBox}>
-					<Ic.Search />
+					<SearchSvg />
 					<input
 						className={styles.searchInput}
 						placeholder='Tìm theo tên, mô tả...'
-						value={search}
-						onChange={(e) => handleSearch(e.target.value)}
+						value={d.search}
+						onChange={(e) => d.handleSearch(e.target.value)}
 					/>
-					{search && (
+					{d.search && (
 						<button
 							className={styles.searchClear}
-							onClick={() => handleSearch('')}
+							onClick={() => d.handleSearch('')}
 						>
-							<Ic.X />
+							<XSvg />
 						</button>
 					)}
 				</div>
 				<span className={styles.resultCount}>
-					{filtered.length} {cfg.label.toLowerCase()}
+					{d.filtered.length} {d.cfg.label.toLowerCase()}
 				</span>
 				<div className={styles.pageSizeWrap}>
 					<label className={styles.pageSizeLabel}>Hiển thị</label>
 					<select
 						className={styles.pageSizeSelect}
-						value={pageSize}
-						onChange={(e) => handlePageSize(Number(e.target.value))}
+						value={d.pageSize}
+						onChange={(e) => d.handlePageSize(Number(e.target.value))}
 					>
 						<option value={5}>5</option>
 						<option value={10}>10</option>
@@ -474,13 +117,13 @@ export default function Catalog() {
 					<thead>
 						<tr>
 							<th className={styles.th}>#</th>
-							<th className={styles.th}>{cfg.label}</th>
+							<th className={styles.th}>{d.cfg.label}</th>
 							<th className={styles.th}>Mô tả</th>
 							<th className={`${styles.th} ${styles.thRight}`}>Thao tác</th>
 						</tr>
 					</thead>
 					<tbody>
-						{isLoadingData ? (
+						{d.isLoadingData ? (
 							<tr>
 								<td colSpan={4}>
 									<div className={styles.emptyState}>
@@ -488,26 +131,26 @@ export default function Catalog() {
 									</div>
 								</td>
 							</tr>
-						) : filtered.length === 0 ? (
+						) : d.filtered.length === 0 ? (
 							<tr>
 								<td colSpan={4}>
 									<div className={styles.emptyState}>
 										<div className={styles.emptyTitle}>
-											Không tìm thấy {cfg.label.toLowerCase()}
+											Không tìm thấy {d.cfg.label.toLowerCase()}
 										</div>
 										<div className={styles.emptyDesc}>
-											{search
+											{d.search
 												? 'Thử thay đổi từ khoá tìm kiếm'
-												: `Chưa có ${cfg.label.toLowerCase()} nào`}
+												: `Chưa có ${d.cfg.label.toLowerCase()} nào`}
 										</div>
 									</div>
 								</td>
 							</tr>
 						) : (
-							paged.map((item, i) => {
+							d.paged.map((item, i) => {
 								const c = getItemColor(item.id);
 								const rowNum =
-									(safePage - 1) * (pageSize || filtered.length) + i + 1;
+									(d.safePage - 1) * (d.pageSize || d.filtered.length) + i + 1;
 								return (
 									<tr
 										key={item.id}
@@ -535,21 +178,21 @@ export default function Catalog() {
 												className={`${styles.actionBtn} ${styles.actionEdit}`}
 												title='Chỉnh sửa'
 												onClick={() => {
-													setEditingItem(item);
-													setModal('edit');
+													d.setEditingItem(item);
+													d.setModal('edit');
 												}}
 											>
-												<Ic.Edit />
+												<EditSvg />
 											</button>
 											<button
 												className={`${styles.actionBtn} ${styles.actionDelete}`}
 												title='Xoá'
 												onClick={() => {
-													setDeletingItem(item);
-													setModal('delete');
+													d.setDeletingItem(item);
+													d.setModal('delete');
 												}}
 											>
-												<Ic.Trash />
+												<TrashSvg />
 											</button>
 										</td>
 									</tr>
@@ -561,25 +204,27 @@ export default function Catalog() {
 			</div>
 
 			{/* ── PAGINATION ── */}
-			{filtered.length > 0 && totalPages > 1 && (
+			{d.filtered.length > 0 && d.totalPages > 1 && (
 				<div className={styles.pagination}>
 					<span className={styles.paginationInfo}>
-						{pageSize === 0
-							? `Hiển thị tất cả ${filtered.length} ${cfg.label.toLowerCase()}`
-							: `${(safePage - 1) * pageSize + 1}–${Math.min(safePage * pageSize, filtered.length)} / ${filtered.length}`}
+						{d.pageSize === 0
+							? `Hiển thị tất cả ${d.filtered.length} ${d.cfg.label.toLowerCase()}`
+							: `${(d.safePage - 1) * d.pageSize + 1}–${Math.min(d.safePage * d.pageSize, d.filtered.length)} / ${d.filtered.length}`}
 					</span>
 					<div className={styles.paginationControls}>
 						<button
 							className={styles.pageBtn}
-							onClick={() => setPage((p) => Math.max(1, p - 1))}
-							disabled={safePage === 1}
+							onClick={() => d.setPage((p) => Math.max(1, p - 1))}
+							disabled={d.safePage === 1}
 						>
-							<Ic.ChevronLeft />
+							<ChevLSvg />
 						</button>
-						{Array.from({ length: totalPages }, (_, idx) => idx + 1)
+						{Array.from({ length: d.totalPages }, (_, idx) => idx + 1)
 							.filter(
 								(p) =>
-									p === 1 || p === totalPages || Math.abs(p - safePage) <= 1,
+									p === 1 ||
+									p === d.totalPages ||
+									Math.abs(p - d.safePage) <= 1,
 							)
 							.reduce<(number | 'ellipsis')[]>((acc, p, idx, arr) => {
 								if (idx > 0 && p - (arr[idx - 1] as number) > 1)
@@ -598,8 +243,8 @@ export default function Catalog() {
 								) : (
 									<button
 										key={p}
-										className={`${styles.pageBtn} ${p === safePage ? styles.pageBtnActive : ''}`}
-										onClick={() => setPage(p as number)}
+										className={`${styles.pageBtn} ${p === d.safePage ? styles.pageBtnActive : ''}`}
+										onClick={() => d.setPage(p as number)}
 									>
 										{p}
 									</button>
@@ -607,64 +252,64 @@ export default function Catalog() {
 							)}
 						<button
 							className={styles.pageBtn}
-							onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-							disabled={safePage === totalPages}
+							onClick={() => d.setPage((p) => Math.min(d.totalPages, p + 1))}
+							disabled={d.safePage === d.totalPages}
 						>
-							<Ic.ChevronRight />
+							<ChevRSvg />
 						</button>
 					</div>
 				</div>
 			)}
 
 			{/* ── MODALS ── */}
-			{modal === 'add' && (
-				<ItemFormModal
+			{d.modal === 'add' && (
+				<CatalogFormModal
 					mode='add'
-					tab={tab}
-					onClose={() => setModal(null)}
-					onSave={handleAdd}
-					loading={loading}
+					tab={d.tab}
+					onClose={() => d.setModal(null)}
+					onSave={d.handleAdd}
+					loading={d.loading}
 				/>
 			)}
-			{modal === 'edit' && editingItem && (
-				<ItemFormModal
+			{d.modal === 'edit' && d.editingItem && (
+				<CatalogFormModal
 					mode='edit'
-					item={editingItem}
-					tab={tab}
+					item={d.editingItem}
+					tab={d.tab}
 					onClose={() => {
-						setModal(null);
-						setEditingItem(null);
+						d.setModal(null);
+						d.setEditingItem(null);
 					}}
-					onSave={handleEdit}
-					loading={loading}
+					onSave={d.handleEdit}
+					loading={d.loading}
 				/>
 			)}
-			{modal === 'delete' && deletingItem && (
-				<DeleteModal
-					item={deletingItem}
-					tab={tab}
+			{d.modal === 'delete' && d.deletingItem && (
+				<CatalogDeleteModal
+					item={d.deletingItem}
+					tab={d.tab}
 					onClose={() => {
-						setModal(null);
-						setDeletingItem(null);
+						d.setModal(null);
+						d.setDeletingItem(null);
 					}}
-					onConfirm={handleDelete}
-					loading={loading}
+					onConfirm={d.handleDelete}
+					loading={d.loading}
 				/>
 			)}
 
 			{/* ── TOAST ── */}
-			{toast && (
+			{d.toast && (
 				<div
 					className={`${styles.toast} ${
 						styles[
 							`toast${
-								toast.type.charAt(0).toUpperCase() + toast.type.slice(1)
+								d.toast.type.charAt(0).toUpperCase() + d.toast.type.slice(1)
 							}` as keyof typeof styles
 						]
 					}`}
 				>
-					{toast.type === 'success' ? <Ic.Check /> : <Ic.X />}
-					{toast.msg}
+					{d.toast.type === 'success' ? <CheckSvg /> : <XSvg />}
+					{d.toast.msg}
 				</div>
 			)}
 		</AdminLayout>

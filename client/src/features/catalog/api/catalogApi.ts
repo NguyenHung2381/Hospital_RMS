@@ -1,4 +1,4 @@
-import { apiClient } from '../../../lib/apiClient';
+import { apiClient } from '../../../shared/api/axios';
 import type {
 	CatalogItem,
 	CatalogFormData,

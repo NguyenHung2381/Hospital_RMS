@@ -1,4 +1,5 @@
-import React, { useEffect, useRef, useState } from 'react';
+﻿import { CheckSmSvg } from '@/assets/icons';
+import { useEffect, useRef, useState } from 'react';
 import styles from './MultiSelect.module.css';
 
 interface MultiSelectProps {
@@ -29,7 +30,8 @@ export function MultiSelect({
 			setAlignRight(rect.left + 220 > window.innerWidth);
 		}
 		const handler = (e: MouseEvent) => {
-			if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+			if (ref.current && !ref.current.contains(e.target as Node))
+				setOpen(false);
 		};
 		document.addEventListener('mousedown', handler);
 		if (searchable) setTimeout(() => searchRef.current?.focus(), 0);
@@ -61,7 +63,10 @@ export function MultiSelect({
 			: options;
 
 	return (
-		<div ref={ref} style={{ position: 'relative' }}>
+		<div
+			ref={ref}
+			style={{ position: 'relative' }}
+		>
 			<button
 				type='button'
 				className={`${styles.trigger} ${selected.size > 0 ? styles.triggerActive : ''}`}
@@ -116,17 +121,9 @@ export function MultiSelect({
 											className={`${styles.checkbox} ${on ? styles.checkboxSelected : ''}`}
 										>
 											{on && (
-												<svg
-													viewBox='0 0 10 8'
-													fill='none'
-													stroke='#fff'
-													strokeWidth='2.2'
-													strokeLinecap='round'
-													strokeLinejoin='round'
-													style={{ width: 9, height: 7 }}
-												>
-													<polyline points='1 4 3.5 7 9 1' />
-												</svg>
+												<CheckSmSvg
+													style={{ color: '#fff', width: 9, height: 7 }}
+												/>
 											)}
 										</div>
 										<input

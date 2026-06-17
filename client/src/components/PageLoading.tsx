@@ -1,3 +1,4 @@
+import { SpinnerRingSvg } from '@/assets/icons';
 import logo from '../assets/logo.png';
 
 export default function PageLoading() {
@@ -15,27 +16,25 @@ export default function PageLoading() {
 		>
 			{/* Spinner ring + circular logo */}
 			<div className='spinner-wrapper'>
-				<svg className='spinner-ring' viewBox='0 0 110 110' width='110' height='110'>
-					<circle
-						cx='55' cy='55' r='50'
-						fill='none'
-						stroke='#e0e7ff'
-						strokeWidth='5'
-					/>
-					<circle
-						cx='55' cy='55' r='50'
-						fill='none'
-						stroke='#6366f1'
-						strokeWidth='5'
-						strokeLinecap='round'
-						strokeDasharray='80 235'
-					/>
-				</svg>
-				<img src={logo} alt='Loading' className='logo-circle' />
+				<SpinnerRingSvg className='spinner-ring' width={110} height={110} />
+				<img
+					src={logo}
+					alt='Loading'
+					className='logo-circle'
+				/>
 			</div>
 
 			{/* Text + dots */}
-			<div style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#6366f1', fontWeight: 500, fontSize: 14 }}>
+			<div
+				style={{
+					display: 'flex',
+					alignItems: 'center',
+					gap: 6,
+					color: '#6366f1',
+					fontWeight: 500,
+					fontSize: 14,
+				}}
+			>
 				<span>Đang tải dữ liệu</span>
 				<span className='dot dot-1'>.</span>
 				<span className='dot dot-2'>.</span>

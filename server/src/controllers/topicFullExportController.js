@@ -423,19 +423,19 @@ function buildOverviewSheet(ws, topics, opts) {
 // SHEET 2 — DANH SÁCH ĐỀ TÀI (merged member rows, 12 columns)
 // ════════════════════════════════════════════════════════════════════════════════
 const TOPIC_COLS = [
-	{ label: 'STT',         w: 5,  wrap: false, center: true  },
-	{ label: 'Mã đề tài',  w: 16, wrap: false, center: true  },
-	{ label: 'Tên đề tài', w: 40, wrap: true,  center: false },
-	{ label: 'Phân loại',  w: 18, wrap: false, center: true  },
-	{ label: 'Cấp độ',     w: 12, wrap: false, center: true  },
-	{ label: 'Đợt NC',     w: 30, wrap: true,  center: false },
-	{ label: 'Phòng ban',  w: 34, wrap: true,  center: false },
-	{ label: 'Trạng thái', w: 14, wrap: false, center: true  },
-	{ label: 'Ngày tạo',   w: 12, wrap: false, center: true  },
-	{ label: 'Họ và tên',  w: 22, wrap: false, center: false },
-	{ label: 'Chức vụ',    w: 16, wrap: true,  center: false },
-	{ label: 'MNV',        w: 9,  wrap: false, center: true  },
-	{ label: 'Vai trò NC', w: 13, wrap: false, center: true  },
+	{ label: 'STT', w: 5, wrap: false, center: true },
+	{ label: 'Mã đề tài', w: 16, wrap: false, center: true },
+	{ label: 'Tên đề tài', w: 40, wrap: true, center: false },
+	{ label: 'Phân loại', w: 18, wrap: false, center: true },
+	{ label: 'Cấp độ', w: 12, wrap: false, center: true },
+	{ label: 'Đợt NC', w: 30, wrap: true, center: false },
+	{ label: 'Phòng ban', w: 34, wrap: true, center: false },
+	{ label: 'Trạng thái', w: 14, wrap: false, center: true },
+	{ label: 'Ngày tạo', w: 12, wrap: false, center: true },
+	{ label: 'Họ và tên', w: 22, wrap: false, center: false },
+	{ label: 'Chức vụ', w: 16, wrap: true, center: false },
+	{ label: 'MNV', w: 9, wrap: false, center: true },
+	{ label: 'Vai trò NC', w: 13, wrap: false, center: true },
 ];
 
 function buildTopicListSheet(ws, topics, opts, sectionTitle) {
@@ -487,15 +487,19 @@ function buildTopicListSheet(ws, topics, opts, sectionTitle) {
 
 		// Cols 1–9: topic info (merge vertically)
 		const topicVals = [
-			{ v: idx + 1,                                                    ci: 0 },
-			{ v: topic.id,                                                   ci: 1 },
-			{ v: topic.title,                                                ci: 2 },
-			{ v: topic.category_name ?? '',                                  ci: 3 },
-			{ v: topic.level_name ?? '',                                     ci: 4 },
-			{ v: topic.round_name ?? '',                                     ci: 5 },
-			{ v: topic.department_name ?? '',                                ci: 6 },
-			{ v: STATUS_LABELS[topic.status] ?? topic.status, fill: statusColor, ci: 7 },
-			{ v: fmtDate(topic.created_at),                                  ci: 8 },
+			{ v: idx + 1, ci: 0 },
+			{ v: topic.id, ci: 1 },
+			{ v: topic.title, ci: 2 },
+			{ v: topic.category_name ?? '', ci: 3 },
+			{ v: topic.level_name ?? '', ci: 4 },
+			{ v: topic.round_name ?? '', ci: 5 },
+			{ v: topic.department_name ?? '', ci: 6 },
+			{
+				v: STATUS_LABELS[topic.status] ?? topic.status,
+				fill: statusColor,
+				ci: 7,
+			},
+			{ v: fmtDate(topic.created_at), ci: 8 },
 		];
 		topicVals.forEach(({ v, fill, ci }) => {
 			const col = TOPIC_COLS[ci];
@@ -519,14 +523,17 @@ function buildTopicListSheet(ws, topics, opts, sectionTitle) {
 			const r = curRow + mi;
 			const m = members[mi];
 			const isFirst = mi === 0;
-			const isLast  = mi === rowCount - 1;
+			const isLast = mi === rowCount - 1;
 			const hairLine = { style: 'hair', color: { argb: 'FFCCCCCC' } };
-			const memBorder = rowCount === 1 ? bAll : {
-				top:    isFirst ? bAll.top    : hairLine,
-				bottom: isLast  ? bAll.bottom : hairLine,
-				left:   bAll.left,
-				right:  bAll.right,
-			};
+			const memBorder =
+				rowCount === 1
+					? bAll
+					: {
+							top: isFirst ? bAll.top : hairLine,
+							bottom: isLast ? bAll.bottom : hairLine,
+							left: bAll.left,
+							right: bAll.right,
+						};
 
 			[
 				m?.ho_ten ?? '',
@@ -539,7 +546,11 @@ function buildTopicListSheet(ws, topics, opts, sectionTitle) {
 					value: v,
 					font: fnt({ size: 9, bold: m?.role === 'leader' && ci === 0 }),
 					fill: sf(bg),
-					alignment: { horizontal: col.center ? 'center' : 'left', vertical: 'middle', wrapText: col.wrap },
+					alignment: {
+						horizontal: col.center ? 'center' : 'left',
+						vertical: 'middle',
+						wrapText: col.wrap,
+					},
 					border: memBorder,
 				});
 			});
@@ -598,18 +609,18 @@ function buildMembersSheet(ws, topics, opts) {
 	});
 
 	const MCOLS = [
-		{ label: 'STT',        w: 5  },
-		{ label: 'Mã ĐT',     w: 16 },
-		{ label: 'Tên đề tài',w: 38 },
+		{ label: 'STT', w: 5 },
+		{ label: 'Mã ĐT', w: 16 },
+		{ label: 'Tên đề tài', w: 38 },
 		{ label: 'Phòng ban', w: 34 },
 		{ label: 'Họ và tên', w: 22 },
-		{ label: 'MNV',       w: 9  },
-		{ label: 'Chức vụ',   w: 16 },
-		{ label: 'Vai trò NC',w: 13 },
-		{ label: 'Email',     w: 28 },
-		{ label: 'SĐT',       w: 13 },
+		{ label: 'MNV', w: 9 },
+		{ label: 'Chức vụ', w: 16 },
+		{ label: 'Vai trò NC', w: 13 },
+		{ label: 'Email', w: 28 },
+		{ label: 'SĐT', w: 13 },
 		{ label: 'Phân loại', w: 18 },
-		{ label: 'Trạng thái',w: 14 },
+		{ label: 'Trạng thái', w: 14 },
 	];
 
 	MCOLS.forEach((c, i) => {

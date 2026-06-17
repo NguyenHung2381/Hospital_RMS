@@ -1,102 +1,38 @@
-﻿import { useCallback, useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import CalendarSvg from '../../../assets/svg/calendar.svg?react';
-import ChevRSvg from '../../../assets/svg/chev-r.svg?react';
-import ClipboardCheckSvg from '../../../assets/svg/clipboard-check.svg?react';
-import DocPlusSvg from '../../../assets/svg/doc-plus.svg?react';
-import DocSvg from '../../../assets/svg/doc.svg?react';
-import ProgressSvg from '../../../assets/svg/progress.svg?react';
-import UserSvg from '../../../assets/svg/user.svg?react';
-import WarnSvg from '../../../assets/svg/warn.svg?react';
+import {
+	CalendarSvg,
+	ChevRSvg,
+	ClipboardCheckSvg,
+	DocPlusSvg,
+	DocSvg,
+	ProgressSvg,
+	UserSvg,
+	WarnSvg,
+} from '@/assets/icons';
 import UserLayout from '../../../layouts/UserLayout';
-import { useRealtimeUpdate } from '../../../layouts/hooks/useRealtime';
-import { getStoredUser, type StoredUser } from '../../../lib/authStorage';
-import { getTopics } from '../../topics/api/topicApi';
-import type { Topic, TopicStatus } from '../../topics/types/topic.type';
+import { STATUS_LABELS, useUserHome } from '../hooks/useUserHome';
 import styles from './UserHome.module.css';
 
-// ─── CONFIG ───────────────────────────────
-const STATUS_LABELS: Record<
-	TopicStatus,
-	{ label: string; color: string; bg: string }
-> = {
-	submitted: { label: 'Chờ duyệt', color: '#c17d10', bg: '#fdf3dc' },
-	approved: { label: 'Đang thực hiện', color: '#1e9460', bg: '#e8f7f0' },
-	rejected: { label: 'Từ chối', color: '#991b1b', bg: '#fee2e2' },
-	supplement: { label: 'Bổ sung', color: '#5b21b6', bg: '#ede9fe' },
-};
-
-// ─── COMPONENT ────────────────────────────
 export default function UserHome() {
-	const navigate = useNavigate();
-	const user = getStoredUser<StoredUser>() ?? {};
-
-	const fullName: string = user.full_name ?? user.username ?? 'Người dùng';
-	const roleName: string = user.role_name ?? user.role ?? 'Thành viên';
-	const dept: string = user.department ?? '';
-	const currentUserId: string = user.id ?? '';
-
-	const initials = fullName
-		.split(' ')
-		.map((w: string) => w[0])
-		.filter(Boolean)
-		.slice(-2)
-		.join('')
-		.toUpperCase();
-
-	// ── State ──
-	const [topics, setTopics] = useState<Topic[]>([]);
-	const [loading, setLoading] = useState(!!currentUserId);
-	const [error, setError] = useState('');
-	const [refreshKey, setRefreshKey] = useState(0);
-
-	const refreshData = useCallback(() => setRefreshKey((k) => k + 1), []);
-	useRealtimeUpdate('topic', refreshData);
-
-	// ── Fetch ──
-	useEffect(() => {
-		if (!currentUserId) return;
-		let cancelled = false;
-		getTopics({ limit: 200, participant_id: currentUserId })
-			.then((res) => {
-				if (!cancelled) {
-					setTopics(res.data);
-					setLoading(false);
-				}
-			})
-			.catch(() => {
-				if (!cancelled) {
-					setError('Không thể tải dữ liệu.');
-					setLoading(false);
-				}
-			});
-		return () => {
-			cancelled = true;
-		};
-	}, [currentUserId, refreshKey]);
-
-	// ── Derived stats ──
-	const pendingCount = topics.filter((t) => t.status === 'submitted').length;
-	const recentTopics = topics.slice(0, 3);
+	const d = useUserHome();
 
 	return (
 		<UserLayout
 			pageTitle={undefined}
-			userName={fullName}
-			userRole={roleName}
-			userInitials={initials}
+			userName={d.fullName}
+			userRole={d.roleName}
+			userInitials={d.initials}
 		>
 			{/* ── Welcome banner ── */}
 			<div className={styles.welcomeBanner}>
 				<div className={styles.welcomeLeft}>
-					<div className={styles.welcomeAvatar}>{initials}</div>
+					<div className={styles.welcomeAvatar}>{d.initials}</div>
 					<div className={styles.welcomeText}>
 						<h2 className={styles.welcomeTitle}>
-							Xin chào, {fullName.split(' ').pop()}!
+							Xin chào, {d.fullName.split(' ').pop()}!
 						</h2>
 						<p className={styles.welcomeSub}>
-							{roleName}
-							{dept ? ` · ${dept}` : ''}
+							{d.roleName}
+							{d.dept ? ` · ${d.dept}` : ''}
 						</p>
 					</div>
 				</div>
@@ -120,12 +56,11 @@ export default function UserHome() {
 					</div>
 					<div className={styles.statInfo}>
 						<div className={styles.statValue}>
-							{loading ? '—' : topics.length}
+							{d.loading ? '—' : d.topics.length}
 						</div>
 						<div className={styles.statLabel}>Đề tài tham gia</div>
 					</div>
 				</div>
-
 				<div className={styles.statCard}>
 					<div
 						className={styles.statIcon}
@@ -135,12 +70,11 @@ export default function UserHome() {
 					</div>
 					<div className={styles.statInfo}>
 						<div className={styles.statValue}>
-							{loading ? '—' : pendingCount}
+							{d.loading ? '—' : d.pendingCount}
 						</div>
 						<div className={styles.statLabel}>Chờ phê duyệt</div>
 					</div>
 				</div>
-
 				<div className={styles.statCard}>
 					<div
 						className={styles.statIcon}
@@ -153,7 +87,6 @@ export default function UserHome() {
 						<div className={styles.statLabel}>Thông báo mới</div>
 					</div>
 				</div>
-
 				<div className={styles.statCard}>
 					<div
 						className={styles.statIcon}
@@ -176,13 +109,12 @@ export default function UserHome() {
 						<h3 className={styles.cardTitle}>Đề tài của tôi</h3>
 						<button
 							className={styles.cardLink}
-							onClick={() => navigate('/user/my-topics')}
+							onClick={() => d.navigate('/user/my-topics')}
 						>
 							Xem tất cả →
 						</button>
 					</div>
-
-					{loading ? (
+					{d.loading ? (
 						<div
 							style={{
 								padding: '24px 0',
@@ -193,7 +125,7 @@ export default function UserHome() {
 						>
 							Đang tải...
 						</div>
-					) : error ? (
+					) : d.error ? (
 						<div
 							style={{
 								padding: '24px 0',
@@ -202,9 +134,9 @@ export default function UserHome() {
 								fontSize: '0.875rem',
 							}}
 						>
-							{error}
+							{d.error}
 						</div>
-					) : recentTopics.length === 0 ? (
+					) : d.recentTopics.length === 0 ? (
 						<div
 							style={{
 								padding: '24px 0',
@@ -217,7 +149,7 @@ export default function UserHome() {
 						</div>
 					) : (
 						<div className={styles.topicList}>
-							{recentTopics.map((t) => {
+							{d.recentTopics.map((t) => {
 								const s = STATUS_LABELS[t.status];
 								return (
 									<div
@@ -225,7 +157,7 @@ export default function UserHome() {
 										className={styles.topicItem}
 										style={{ cursor: 'pointer' }}
 										onClick={() =>
-											navigate(`/user/my-topics/${t.id}`, {
+											d.navigate(`/user/my-topics/${t.id}`, {
 												state: { topic: t },
 											})
 										}
@@ -252,11 +184,10 @@ export default function UserHome() {
 					<div className={styles.cardHeader}>
 						<h3 className={styles.cardTitle}>Thao tác nhanh</h3>
 					</div>
-
 					<div className={styles.actionList}>
 						<button
 							className={styles.actionBtn}
-							onClick={() => navigate('/user/register-topic')}
+							onClick={() => d.navigate('/user/register-topic')}
 						>
 							<div
 								className={styles.actionIcon}
@@ -272,10 +203,9 @@ export default function UserHome() {
 							</div>
 							<ChevRSvg className={styles.actionArrow} />
 						</button>
-
 						<button
 							className={styles.actionBtn}
-							onClick={() => navigate('/user/my-topics')}
+							onClick={() => d.navigate('/user/my-topics')}
 						>
 							<div
 								className={styles.actionIcon}
@@ -291,10 +221,9 @@ export default function UserHome() {
 							</div>
 							<ChevRSvg className={styles.actionArrow} />
 						</button>
-
 						<button
 							className={styles.actionBtn}
-							onClick={() => navigate('/user/profile')}
+							onClick={() => d.navigate('/user/profile')}
 						>
 							<div
 								className={styles.actionIcon}

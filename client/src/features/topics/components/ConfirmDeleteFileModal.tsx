@@ -6,7 +6,7 @@ import {
 	getFileTypeColor,
 	getMimeExtension,
 } from '../utils/topicHelpers';
-import { Ic } from './icons';
+import { AlertSvg as IcAlert, WarnSvg as IcWarn, XSvg as IcX } from '@/assets/icons';
 
 export function ConfirmDeleteFileModal({
 	files,
@@ -58,7 +58,7 @@ export function ConfirmDeleteFileModal({
 					}
 				>
 					<div className={styles.cfmHeaderIcon}>
-						<Ic.Warn />
+						<IcWarn />
 					</div>
 					<div className={styles.cfmHeaderText}>
 						<div className={styles.cfmHeaderTitle}>
@@ -76,7 +76,7 @@ export function ConfirmDeleteFileModal({
 						disabled={loading}
 						aria-label='Đóng'
 					>
-						<Ic.X />
+						<IcX />
 					</button>
 				</div>
 
@@ -148,7 +148,7 @@ export function ConfirmDeleteFileModal({
 					)}
 
 					<div className={styles.cfmWarningBox}>
-						<Ic.Warn />
+						<IcWarn />
 						<span>
 							{isBulk
 								? `${files.length} file sẽ bị xoá vĩnh viễn khỏi hệ thống và không thể khôi phục.`
@@ -163,7 +163,7 @@ export function ConfirmDeleteFileModal({
 						<span
 							style={{ fontSize: 12, color: 'var(--color-red-600)', flex: 1 }}
 						>
-							<Ic.Alert /> {error}
+							<IcAlert /> {error}
 						</span>
 					)}
 					<button

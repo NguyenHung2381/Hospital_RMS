@@ -1,4 +1,4 @@
-import { BASE_URL } from '../../../lib/apiClient';
+import { BASE_URL } from '../../../shared/api/axios';
 import type { TopicFile } from '../../topics/types/topic.type';
 import {
 	formatFileSize,
@@ -6,7 +6,7 @@ import {
 	getMimeExtension,
 } from '../../topics/utils/topicHelpers';
 import styles from '../pages/TopicDetail.module.css';
-import { DownloadIcon, TrashIcon, UploadIcon, XIcon } from './TopicIcons';
+import { DownloadSvg, TrashSvg, UploadSvg, XSvg } from '@/assets/icons';
 
 type Props = {
 	files: TopicFile[];
@@ -80,7 +80,7 @@ export default function FilesTab({
 						}}
 					>
 						<div className={styles.uploadZoneIcon}>
-							<UploadIcon />
+							<UploadSvg />
 						</div>
 						<div className={styles.uploadZoneText}>
 							Kéo thả file vào đây hoặc <span>chọn từ máy tính</span>
@@ -136,7 +136,7 @@ export default function FilesTab({
 											setPendingFiles((p) => p.filter((_, j) => j !== i))
 										}
 									>
-										<XIcon />
+										<XSvg />
 									</button>
 								</div>
 							);
@@ -155,7 +155,7 @@ export default function FilesTab({
 						onClick={handleUpload}
 						disabled={uploading}
 					>
-						<UploadIcon />{' '}
+						<UploadSvg />{' '}
 						{uploading
 							? 'Đang tải lên...'
 							: `Tải lên ${pendingFiles.length} file`}
@@ -191,14 +191,14 @@ export default function FilesTab({
 						className={styles.bulkBtn}
 						onClick={handleBulkDownload}
 					>
-						<DownloadIcon /> Tải xuống
+						<DownloadSvg /> Tải xuống
 					</button>
 					{canDeleteFiles && (
 						<button
 							className={`${styles.bulkBtn} ${styles.bulkBtnDanger}`}
 							onClick={handleBulkDelete}
 						>
-							<TrashIcon /> Xoá
+							<TrashSvg /> Xoá
 						</button>
 					)}
 				</div>
@@ -252,7 +252,7 @@ export default function FilesTab({
 										title='Tải xuống'
 										onClick={(e) => e.stopPropagation()}
 									>
-										<DownloadIcon />
+										<DownloadSvg />
 									</a>
 									{canDeleteFiles && (
 										<button
@@ -260,7 +260,7 @@ export default function FilesTab({
 											title='Xoá file'
 											onClick={() => handleDeleteFile(f.id)}
 										>
-											<TrashIcon />
+											<TrashSvg />
 										</button>
 									)}
 								</div>

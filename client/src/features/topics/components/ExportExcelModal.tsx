@@ -3,7 +3,7 @@ import type { SimpleItem } from '../api/topicApi';
 import { exportTopicsExcel } from '../api/topicApi';
 import styles from '../pages/Topic.module.css';
 import type { Topic } from '../types/topic.type';
-import { Ic } from './icons';
+import { AlertSvg as IcAlert, DownloadSvg as IcDownload, XSvg as IcX } from '@/assets/icons';
 
 interface ExportExcelModalProps {
 	topics: Topic[];
@@ -98,7 +98,7 @@ export function ExportExcelModal({
 						disabled={loading}
 						aria-label='Đóng'
 					>
-						<Ic.X />
+						<IcX />
 					</button>
 				</div>
 
@@ -284,7 +284,7 @@ export function ExportExcelModal({
 						<span
 							style={{ fontSize: 12, color: 'var(--color-red-600)', flex: 1 }}
 						>
-							<Ic.Alert /> {error}
+							<IcAlert /> {error}
 						</span>
 					)}
 					<button
@@ -306,7 +306,7 @@ export function ExportExcelModal({
 							</>
 						) : (
 							<>
-								<Ic.Download />
+								<IcDownload />
 								Tải xuống
 							</>
 						)}

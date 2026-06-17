@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useRef } from 'react';
-import { BASE_URL } from '../../lib/apiClient';
-import { getToken } from '../../lib/authStorage';
+import { BASE_URL } from '../../shared/api/axios';
+import { getToken } from '../../shared/utils/storage';
 
 /**
  * Hook để lắng nghe các sự kiện cập nhật thời gian thực từ server (SSE).

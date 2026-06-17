@@ -1,18 +1,20 @@
 import React, { useCallback, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import AuthLayout from '../../../layouts/AuthLayout';
-import { saveAuth } from '../../../lib/authStorage';
+import { saveAuth } from '../../../shared/utils/storage';
 import type { LoginUser } from '../api/authApi';
 import { loginApi } from '../api/authApi';
 import type { FormErrors, LoginForm } from '../types/auth.type';
 import styles from './Login.module.css';
-import UserSvg from '../../../assets/svg/user.svg?react';
-import LockSvg from '../../../assets/svg/lock.svg?react';
-import EyeSvg from '../../../assets/svg/eye.svg?react';
-import EyeOffSvg from '../../../assets/svg/eye-off.svg?react';
-import AlertSvg from '../../../assets/svg/alert.svg?react';
-import ShieldSvg from '../../../assets/svg/shield.svg?react';
-import MessageSvg from '../../../assets/svg/message.svg?react';
+import {
+	AlertSvg,
+	EyeOffSvg,
+	EyeSvg,
+	LockSvg,
+	MessageSvg,
+	ShieldSvg,
+	UserSvg,
+} from '@/assets/icons';
 
 function isAdminUser(u: LoginUser): boolean {
 	if (u.account_type === 'admin') return true;

@@ -14,7 +14,9 @@
 	white-space: nowrap;
 	min-width: 90px;
 	max-width: 160px;
-	transition: border-color 0.15s, box-shadow 0.15s;
+	transition:
+		border-color 0.15s,
+		box-shadow 0.15s;
 	outline: none;
 	font-family: inherit;
 }

@@ -113,10 +113,14 @@ const create = async (data, actorId) => {
 	const dot_so = Number(data.dot_so) || 1;
 	const id = `DOT${year}${dot_so}`;
 
-	const existing = await pool.request().input('id', sql.VarChar(9), id)
+	const existing = await pool
+		.request()
+		.input('id', sql.VarChar(9), id)
 		.query('SELECT 1 FROM research_rounds WHERE id = @id');
 	if (existing.recordset.length > 0) {
-		const err = new Error(`Đợt số ${dot_so} năm ${year} đã tồn tại (mã: ${id})`);
+		const err = new Error(
+			`Đợt số ${dot_so} năm ${year} đã tồn tại (mã: ${id})`,
+		);
 		err.statusCode = 409;
 		throw err;
 	}
@@ -229,7 +233,9 @@ const update = async (id, data, actorId) => {
 const remove = async (id, actorId) => {
 	const pool = await getPool();
 
-	const linked = await pool.request().input('id', sql.VarChar(9), id)
+	const linked = await pool
+		.request()
+		.input('id', sql.VarChar(9), id)
 		.query('SELECT COUNT(*) AS cnt FROM topics WHERE round_id = @id');
 	const cnt = linked.recordset[0].cnt;
 	if (cnt > 0) {

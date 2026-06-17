@@ -1,30 +1,5 @@
+﻿import { ChevLSvg, ChevRSvg } from '@/assets/icons';
 import styles from './Pagination.module.css';
-
-const ChevL = (
-	<svg
-		viewBox='0 0 24 24'
-		fill='none'
-		stroke='currentColor'
-		strokeWidth='2.5'
-		strokeLinecap='round'
-		style={{ width: 13, height: 13 }}
-	>
-		<polyline points='15 18 9 12 15 6' />
-	</svg>
-);
-
-const ChevR = (
-	<svg
-		viewBox='0 0 24 24'
-		fill='none'
-		stroke='currentColor'
-		strokeWidth='2.5'
-		strokeLinecap='round'
-		style={{ width: 13, height: 13 }}
-	>
-		<polyline points='9 18 15 12 9 6' />
-	</svg>
-);
 
 interface PaginationProps {
 	page: number;
@@ -87,7 +62,7 @@ export function Pagination({
 					onClick={() => onPageChange(Math.max(1, safe - 1))}
 					disabled={safe === 1}
 				>
-					{ChevL}
+					<ChevLSvg style={{ width: 13, height: 13 }} />
 				</button>
 				{pages.map((p, i) =>
 					p === '…' ? (
@@ -112,7 +87,7 @@ export function Pagination({
 					onClick={() => onPageChange(Math.min(totalPages, safe + 1))}
 					disabled={safe === totalPages}
 				>
-					{ChevR}
+					<ChevRSvg style={{ width: 13, height: 13 }} />
 				</button>
 			</div>
 		</div>

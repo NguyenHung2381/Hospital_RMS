@@ -1,4 +1,4 @@
-import { BASE_URL } from '../../../lib/apiClient';
+import { BASE_URL } from '../../../shared/api/axios';
 
 export interface LoginUser {
 	id: string;

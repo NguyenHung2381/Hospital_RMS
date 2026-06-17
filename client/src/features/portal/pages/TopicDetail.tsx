@@ -2,7 +2,7 @@ import UserLayout from '../../../layouts/UserLayout';
 import FilesTab from '../components/FilesTab';
 import InfoTab from '../components/InfoTab';
 import MembersTab from '../components/MembersTab';
-import { ChevLeft } from '../components/TopicIcons';
+import { ChevLSvg } from '@/assets/icons';
 import { useTopicDetail } from '../hooks/useTopicDetail';
 import { STATUS_CFG } from '../types/topicDetail.type';
 import styles from './TopicDetail.module.css';
@@ -63,7 +63,7 @@ export default function TopicDetail() {
 					onClick={() => d.navigate('/user/my-topics')}
 					title='Quay lại danh sách'
 				>
-					<ChevLeft />
+					<ChevLSvg />
 				</button>
 				<h1 className={styles.pageTitle}>Chi tiết đề tài</h1>
 			</div>

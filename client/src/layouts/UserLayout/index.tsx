@@ -8,7 +8,7 @@ import {
 	clearAuth,
 	getStoredUser,
 	type StoredUser,
-} from '../../lib/authStorage';
+} from '../../shared/utils/storage';
 import styles from './UserLayout.module.css';
 import { Icon } from './icons';
 
@@ -243,36 +243,7 @@ export default function UserLayout({
 						onClick={() => setMobileNavOpen((o) => !o)}
 						aria-label={mobileNavOpen ? 'Đóng menu' : 'Mở menu'}
 					>
-						{mobileNavOpen ? (
-							<Icon.X />
-						) : (
-							<svg
-								viewBox='0 0 24 24'
-								fill='none'
-								stroke='currentColor'
-								strokeWidth='2'
-								strokeLinecap='round'
-							>
-								<line
-									x1='3'
-									y1='6'
-									x2='21'
-									y2='6'
-								/>
-								<line
-									x1='3'
-									y1='12'
-									x2='21'
-									y2='12'
-								/>
-								<line
-									x1='3'
-									y1='18'
-									x2='21'
-									y2='18'
-								/>
-							</svg>
-						)}
+						{mobileNavOpen ? <Icon.X /> : <Icon.Menu />}
 					</button>
 				</div>
 

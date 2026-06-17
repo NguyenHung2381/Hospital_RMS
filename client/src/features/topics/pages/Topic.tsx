@@ -1,266 +1,44 @@
-﻿import { useCallback, useEffect, useMemo, useState } from 'react';
-import { MultiSelect } from '../../../components/ui/MultiSelect';
-import { Pagination } from '../../../components/ui/Pagination';
+﻿import {
+	ApproveSvg,
+	CheckSvg,
+	DocSvg,
+	DownloadSvg,
+	EditSvg,
+	EyeSvg,
+	PlusSvg,
+	ProgressSvg,
+	SearchSvg,
+	TrashSvg,
+} from '@/assets/icons';
 import AdminLayout from '../../../layouts/AdminLayout';
-import { useRealtimeUpdate } from '../../../layouts/hooks/useRealtime';
-import {
-	addTopicMember,
-	createTopic,
-	deleteTopic as deleteTopicApi,
-	getCategories,
-	getDepts,
-	getLevels,
-	getRounds,
-	getTopics,
-	updateTopic as updateTopicApi,
-	type SimpleItem,
-} from '../api/topicApi';
+import { MultiSelect } from '../../../shared/components/Input/MultiSelect';
+import { Pagination } from '../../../shared/components/Table/Pagination';
 import { Badge } from '../components/Badge';
 import { DeleteModal } from '../components/DeleteModal';
 import { ExportExcelModal } from '../components/ExportExcelModal';
-import { Ic } from '../components/icons';
 import { TopicDrawer } from '../components/TopicDrawer';
-import { TopicModal, type PendingMember } from '../components/TopicModal';
-import type { Topic, TopicForm, TopicStatus } from '../types/topic.type';
+import { TopicModal } from '../components/TopicModal';
+import { useTopicPage } from '../hooks/useTopicPage';
 import { STATUS_CFG, lookup } from '../utils/topicHelpers';
 import styles from './Topic.module.css';
 
-type TabKey = 'all' | TopicStatus;
-const PAGE_SIZE_OPTIONS = [9, 20, 50, 100] as const;
-
 export default function TopicPage() {
-	const [topics, setTopics] = useState<Topic[]>([]);
-	const [categories, setCategories] = useState<SimpleItem[]>([]);
-	const [levels, setLevels] = useState<SimpleItem[]>([]);
-	const [rounds, setRounds] = useState<SimpleItem[]>([]);
-	const [departments, setDepartments] = useState<SimpleItem[]>([]);
-	const [isLoadingData, setIsLoadingData] = useState(true);
-	const [loadError, setLoadError] = useState('');
-
-	const [search, setSearch] = useState('');
-	const [yearFilters, setYearFilters] = useState<Set<string>>(new Set());
-	const [roundFilters, setRoundFilters] = useState<Set<string>>(new Set());
-	const [levelFilters, setLevelFilters] = useState<Set<string>>(new Set());
-	const [catFilters, setCatFilters] = useState<Set<string>>(new Set());
-	const [deptFilters, setDeptFilters] = useState<Set<string>>(new Set());
-	const [activeTab, setActiveTab] = useState<TabKey>('all');
-	const [page, setPage] = useState(1);
-	const [rowsPerPage, setRowsPerPage] = useState<number>(PAGE_SIZE_OPTIONS[0]);
-
-	const [showCreate, setShowCreate] = useState(false);
-	const [showExport, setShowExport] = useState(false);
-	const [editTopic, setEditTopic] = useState<Topic | null>(null);
-	const [deleteTopic, setDeleteTopic] = useState<Topic | null>(null);
-	const [viewTopic, setViewTopic] = useState<Topic | null>(null);
-	const [refreshKey, setRefreshKey] = useState(0);
-
-	const refreshData = useCallback(() => {
-		setRefreshKey((prev) => prev + 1);
-	}, []);
-
-	useRealtimeUpdate('topic', refreshData);
-
-	useEffect(() => {
-		Promise.all([
-			getTopics({ limit: 500 }),
-			getCategories(),
-			getLevels(),
-			getRounds(),
-			getDepts(),
-		])
-			.then(([topicsRes, catsRes, lvlsRes, rdsRes, deptsRes]) => {
-				setTopics(topicsRes.data);
-				setCategories(catsRes.data);
-				setLevels(lvlsRes.data);
-				setRounds(rdsRes.data);
-				setDepartments(deptsRes.data);
-			})
-			.catch((err: unknown) =>
-				setLoadError(err instanceof Error ? err.message : 'Lỗi tải dữ liệu'),
-			)
-			.finally(() => setIsLoadingData(false));
-	}, [refreshKey]);
-
-	const availableYears = useMemo(() => {
-		const years = rounds
-			.map((r) => r.year)
-			.filter((y): y is number => y !== undefined);
-		return Array.from(new Set(years)).sort((a, b) => b - a);
-	}, [rounds]);
-
-	// Đợt hiển thị trong dropdown: chỉ đợt thuộc năm đang chọn (nếu có)
-	const visibleRounds = useMemo(
-		() =>
-			yearFilters.size > 0
-				? rounds.filter(
-						(r) => r.year != null && yearFilters.has(r.year.toString()),
-					)
-				: rounds,
-		[rounds, yearFilters],
-	);
-
-	const handleYearChange = useCallback(
-		(next: Set<string>) => {
-			setYearFilters(next);
-			// Bỏ các đợt không thuộc năm mới được chọn
-			if (next.size > 0) {
-				setRoundFilters((prev) => {
-					const kept = new Set<string>();
-					for (const id of prev) {
-						const r = rounds.find((r) => r.id === id);
-						if (r?.year != null && next.has(r.year.toString())) kept.add(id);
-					}
-					return kept;
-				});
-			}
-			setPage(1);
-		},
-		[rounds],
-	);
-
-	const stats = useMemo(
-		() => ({
-			total: topics.length,
-			submitted: topics.filter((t) => t.status === 'submitted').length,
-			approved: topics.filter((t) => t.status === 'approved').length,
-			rejected: topics.filter((t) => t.status === 'rejected').length,
-			supplement: topics.filter((t) => t.status === 'supplement').length,
-		}),
-		[topics],
-	);
-
-	const TABS: { key: TabKey; label: string; count: number }[] = [
-		{ key: 'all', label: 'Tất cả', count: stats.total },
-		{ key: 'submitted', label: 'Chờ duyệt', count: stats.submitted },
-		{ key: 'approved', label: 'Đã duyệt', count: stats.approved },
-		{ key: 'rejected', label: 'Từ chối', count: stats.rejected },
-		{ key: 'supplement', label: 'Bổ sung', count: stats.supplement },
-	];
-
-	const filtered = useMemo(() => {
-		return topics.filter((t) => {
-			if (activeTab !== 'all' && t.status !== activeTab) return false;
-			if (yearFilters.size > 0) {
-				const round = rounds.find((r) => r.id === t.round_id);
-				const y = round?.year ?? t.round_year;
-				if (!y || !yearFilters.has(y.toString())) return false;
-			}
-			if (roundFilters.size > 0 && !roundFilters.has(t.round_id ?? ''))
-				return false;
-			if (levelFilters.size > 0 && !levelFilters.has(t.level_id ?? ''))
-				return false;
-			if (catFilters.size > 0 && !catFilters.has(t.category_id ?? ''))
-				return false;
-			if (deptFilters.size > 0 && !deptFilters.has(t.department_id ?? ''))
-				return false;
-			if (search) {
-				const q = search.toLowerCase();
-				if (
-					!t.title.toLowerCase().includes(q) &&
-					!t.id.toLowerCase().includes(q)
-				)
-					return false;
-			}
-			return true;
-		});
-	}, [
-		topics,
-		rounds,
-		activeTab,
-		yearFilters,
-		roundFilters,
-		levelFilters,
-		catFilters,
-		deptFilters,
-		search,
-	]);
-
-	const totalPages = Math.max(1, Math.ceil(filtered.length / rowsPerPage));
-	const safePage = Math.min(page, totalPages);
-	const pageSlice = filtered.slice(
-		(safePage - 1) * rowsPerPage,
-		safePage * rowsPerPage,
-	);
-	const resetPage = () => setPage(1);
-
-	const handleCreate = useCallback(
-		async (form: TopicForm, pendingMembers: PendingMember[]): Promise<void> => {
-			const created = await createTopic({
-				title: form.title,
-				description: form.description || undefined,
-				round_id: form.round_id,
-				category_id: form.category_id || undefined,
-				level_id: form.level_id || undefined,
-				department_id: form.department_id || undefined,
-				status: form.status,
-			});
-			if (pendingMembers.length > 0) {
-				await Promise.allSettled(
-					pendingMembers.map((m) =>
-						addTopicMember(created.id, {
-							ho_ten: m.ho_ten,
-							staff_number: m.staff_number || null,
-							email: m.email || undefined,
-							so_dien_thoai: m.so_dien_thoai || null,
-							chuc_vu: m.chuc_vu ?? null,
-							department_id: m.department_id ?? null,
-							role: m.role,
-						}),
-					),
-				);
-			}
-			setTopics((prev) => [
-				{ ...created, member_count: pendingMembers.length },
-				...prev,
-			]);
-			setShowCreate(false);
-		},
-		[],
-	);
-
-	const handleEdit = useCallback(
-		async (form: TopicForm): Promise<void> => {
-			if (!editTopic) return;
-			const updated = await updateTopicApi(editTopic.id, {
-				title: form.title,
-				description: form.description || undefined,
-				round_id: form.round_id,
-				category_id: form.category_id || undefined,
-				level_id: form.level_id || undefined,
-				department_id: form.department_id || undefined,
-				status: form.status,
-			});
-			setTopics((prev) =>
-				prev.map((t) => (t.id === editTopic.id ? updated : t)),
-			);
-			setEditTopic(null);
-			setViewTopic(null);
-		},
-		[editTopic],
-	);
-
-	const handleDelete = useCallback(async (): Promise<void> => {
-		if (!deleteTopic) return;
-		await deleteTopicApi(deleteTopic.id);
-		setTopics((prev) => prev.filter((t) => t.id !== deleteTopic.id));
-		setDeleteTopic(null);
-		setViewTopic(null);
-	}, [deleteTopic]);
+	const d = useTopicPage();
 
 	const headerActions = (
 		<>
 			<button
 				className={styles.btnSecondary}
-				onClick={() => setShowExport(true)}
+				onClick={() => d.setShowExport(true)}
 			>
-				<Ic.Download />
+				<DownloadSvg style={{ width: 14, height: 14 }} />
 				Xuất Excel
 			</button>
 			<button
 				className={styles.btnPrimary}
-				onClick={() => setShowCreate(true)}
+				onClick={() => d.setShowCreate(true)}
 			>
-				<Ic.Plus />
+				<PlusSvg style={{ width: 14, height: 14 }} />
 				Đăng ký đề tài
 			</button>
 		</>
@@ -276,10 +54,10 @@ export default function TopicPage() {
 			<div className={styles.statsRow}>
 				<div className={`${styles.statCard} ${styles.green}`}>
 					<div className={`${styles.statIcon} ${styles.iconGreen}`}>
-						<Ic.Doc />
+						<DocSvg />
 					</div>
 					<div className={styles.statBody}>
-						<div className={styles.statValue}>{stats.total}</div>
+						<div className={styles.statValue}>{d.stats.total}</div>
 						<div className={styles.statLabel}>Tổng đề tài</div>
 						<div className={`${styles.statDelta} ${styles.deltaUp}`}>
 							Đợt 1/2026 + lịch sử
@@ -288,14 +66,14 @@ export default function TopicPage() {
 				</div>
 				<div className={`${styles.statCard} ${styles.blue}`}>
 					<div className={`${styles.statIcon} ${styles.iconBlue}`}>
-						<Ic.Progress />
+						<ProgressSvg />
 					</div>
 					<div className={styles.statBody}>
-						<div className={styles.statValue}>{stats.approved}</div>
+						<div className={styles.statValue}>{d.stats.approved}</div>
 						<div className={styles.statLabel}>Đã được duyệt</div>
 						<div className={`${styles.statDelta} ${styles.deltaNeutral}`}>
-							{stats.total > 0
-								? Math.round((stats.approved / stats.total) * 100)
+							{d.stats.total > 0
+								? Math.round((d.stats.approved / d.stats.total) * 100)
 								: 0}
 							% tổng đề tài
 						</div>
@@ -303,10 +81,10 @@ export default function TopicPage() {
 				</div>
 				<div className={`${styles.statCard} ${styles.amber}`}>
 					<div className={`${styles.statIcon} ${styles.iconAmber}`}>
-						<Ic.Approve />
+						<ApproveSvg />
 					</div>
 					<div className={styles.statBody}>
-						<div className={styles.statValue}>{stats.submitted}</div>
+						<div className={styles.statValue}>{d.stats.submitted}</div>
 						<div className={styles.statLabel}>Chờ phê duyệt</div>
 						<div className={`${styles.statDelta} ${styles.deltaDown}`}>
 							Cần xử lý sớm
@@ -315,14 +93,14 @@ export default function TopicPage() {
 				</div>
 				<div className={`${styles.statCard} ${styles.pink}`}>
 					<div className={`${styles.statIcon} ${styles.iconPink}`}>
-						<Ic.Check />
+						<CheckSvg />
 					</div>
 					<div className={styles.statBody}>
-						<div className={styles.statValue}>{stats.rejected}</div>
+						<div className={styles.statValue}>{d.stats.rejected}</div>
 						<div className={styles.statLabel}>Bị từ chối</div>
 						<div className={`${styles.statDelta} ${styles.deltaDown}`}>
-							{stats.total > 0
-								? Math.round((stats.rejected / stats.total) * 100)
+							{d.stats.total > 0
+								? Math.round((d.stats.rejected / d.stats.total) * 100)
 								: 0}
 							% tổng đề tài
 						</div>
@@ -332,87 +110,74 @@ export default function TopicPage() {
 
 			{/* ── TABLE CARD ── */}
 			<div className={styles.tableCard}>
-				{/* Header */}
 				<div className={styles.tableHeader}>
 					<div className={styles.tableHeaderLeft}>
 						<span className={styles.tableTitle}>Danh sách đề tài</span>
-						<span className={styles.tableCount}>{filtered.length} đề tài</span>
+						<span className={styles.tableCount}>
+							{d.filtered.length} đề tài
+						</span>
 					</div>
 					<div className={styles.tableControls}>
 						<div className={styles.searchWrap}>
-							<svg
-								className={styles.searchIcon}
-								viewBox='0 0 24 24'
-								fill='none'
-								stroke='currentColor'
-								strokeWidth='2'
-								strokeLinecap='round'
-								strokeLinejoin='round'
-							>
-								<circle
-									cx='11'
-									cy='11'
-									r='8'
-								/>
-								<line
-									x1='21'
-									y1='21'
-									x2='16.65'
-									y2='16.65'
-								/>
-							</svg>
+							<SearchSvg className={styles.searchIcon} />
 							<input
 								className={styles.searchInput}
 								placeholder='Tìm mã, tên đề tài...'
-								value={search}
+								value={d.search}
 								onChange={(e) => {
-									setSearch(e.target.value);
-									resetPage();
+									d.setSearch(e.target.value);
+									d.resetPage();
 								}}
 							/>
 						</div>
 						<MultiSelect
-							options={availableYears.map((y) => ({
+							options={d.availableYears.map((y) => ({
 								id: y.toString(),
 								label: String(y),
 							}))}
-							selected={yearFilters}
-							onChange={handleYearChange}
+							selected={d.yearFilters}
+							onChange={d.handleYearChange}
 							placeholder='Tất cả năm'
 						/>
 						<MultiSelect
-							options={visibleRounds.map((r) => ({ id: r.id, label: r.name }))}
-							selected={roundFilters}
+							options={d.visibleRounds.map((r) => ({
+								id: r.id,
+								label: r.name,
+							}))}
+							selected={d.roundFilters}
 							onChange={(next) => {
-								setRoundFilters(next);
-								setPage(1);
+								d.setRoundFilters(next);
+								d.setPage(1);
 							}}
 							placeholder='Tất cả đợt'
 						/>
 						<MultiSelect
-							options={levels.map((l) => ({ id: l.id, label: l.name }))}
-							selected={levelFilters}
+							options={d.levels.map((l) => ({ id: l.id, label: l.name }))}
+							selected={d.levelFilters}
 							onChange={(next) => {
-								setLevelFilters(next);
-								setPage(1);
+								d.setLevelFilters(next);
+								d.setPage(1);
 							}}
 							placeholder='Cấp độ'
 						/>
 						<MultiSelect
-							options={categories.map((c) => ({ id: c.id, label: c.name }))}
-							selected={catFilters}
+							options={d.categories.map((c) => ({ id: c.id, label: c.name }))}
+							selected={d.catFilters}
 							onChange={(next) => {
-								setCatFilters(next);
-								setPage(1);
+								d.setCatFilters(next);
+								d.setPage(1);
 							}}
 							placeholder='Phân loại'
 						/>
 						<MultiSelect
-							options={departments.map((d) => ({ id: d.id, label: d.name }))}
-							selected={deptFilters}
+							options={d.departments.map((dep) => ({
+								id: dep.id,
+								label: dep.name,
+							}))}
+							selected={d.deptFilters}
 							onChange={(next) => {
-								setDeptFilters(next);
-								setPage(1);
+								d.setDeptFilters(next);
+								d.setPage(1);
 							}}
 							placeholder='Phòng ban'
 							searchable
@@ -420,15 +185,14 @@ export default function TopicPage() {
 					</div>
 				</div>
 
-				{/* Tabs */}
 				<div className={styles.tabsRow}>
-					{TABS.map((t) => (
+					{d.TABS.map((t) => (
 						<div
 							key={t.key}
-							className={`${styles.tab} ${activeTab === t.key ? styles.tabActive : ''}`}
+							className={`${styles.tab} ${d.activeTab === t.key ? styles.tabActive : ''}`}
 							onClick={() => {
-								setActiveTab(t.key);
-								resetPage();
+								d.setActiveTab(t.key);
+								d.resetPage();
 							}}
 						>
 							{t.label}
@@ -437,7 +201,6 @@ export default function TopicPage() {
 					))}
 				</div>
 
-				{/* Table */}
 				<div className={styles.tableWrap}>
 					<table className={styles.table}>
 						<thead>
@@ -454,7 +217,7 @@ export default function TopicPage() {
 							</tr>
 						</thead>
 						<tbody>
-							{isLoadingData ? (
+							{d.isLoadingData ? (
 								<tr>
 									<td
 										colSpan={10}
@@ -468,7 +231,7 @@ export default function TopicPage() {
 										Đang tải dữ liệu...
 									</td>
 								</tr>
-							) : loadError ? (
+							) : d.loadError ? (
 								<tr>
 									<td
 										colSpan={10}
@@ -479,25 +242,14 @@ export default function TopicPage() {
 											fontSize: 13,
 										}}
 									>
-										{loadError}
+										{d.loadError}
 									</td>
 								</tr>
-							) : pageSlice.length === 0 ? (
+							) : d.pageSlice.length === 0 ? (
 								<tr>
 									<td colSpan={10}>
 										<div className={styles.emptyState}>
-											<svg
-												className={styles.emptyIcon}
-												viewBox='0 0 24 24'
-												fill='none'
-												stroke='currentColor'
-												strokeWidth='1.5'
-												strokeLinecap='round'
-												strokeLinejoin='round'
-											>
-												<path d='M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z' />
-												<polyline points='14 2 14 8 20 8' />
-											</svg>
+											<DocSvg className={styles.emptyIcon} />
 											<p className={styles.emptyTitle}>
 												Không tìm thấy đề tài nào
 											</p>
@@ -508,7 +260,7 @@ export default function TopicPage() {
 									</td>
 								</tr>
 							) : (
-								pageSlice.map((t) => {
+								d.pageSlice.map((t) => {
 									const sc = STATUS_CFG[t.status];
 									return (
 										<tr key={t.id}>
@@ -519,18 +271,18 @@ export default function TopicPage() {
 												<div
 													className={styles.topicTitle}
 													title={t.title}
-													onClick={() => setViewTopic(t)}
+													onClick={() => d.setViewTopic(t)}
 												>
 													{t.title}
 												</div>
 												<div className={styles.topicMeta}>
-													{lookup(departments, t.department_id)} ·{' '}
+													{lookup(d.departments, t.department_id)} ·{' '}
 													{t.member_count} thành viên
 												</div>
 											</td>
 											<td>
 												<span className={styles.dateText}>
-													{lookup(rounds, t.round_id)}
+													{lookup(d.rounds, t.round_id)}
 												</span>
 											</td>
 											<td>
@@ -543,7 +295,7 @@ export default function TopicPage() {
 																: 'badgeTeal'
 													}
 												>
-													{lookup(levels, t.level_id)}
+													{lookup(d.levels, t.level_id)}
 												</Badge>
 											</td>
 											<td>
@@ -553,12 +305,12 @@ export default function TopicPage() {
 														color: 'var(--color-gray-600)',
 													}}
 												>
-													{lookup(categories, t.category_id)}
+													{lookup(d.categories, t.category_id)}
 												</span>
 											</td>
 											<td>
 												<span style={{ fontSize: 12 }}>
-													{lookup(departments, t.department_id)}
+													{lookup(d.departments, t.department_id)}
 												</span>
 											</td>
 											<td>
@@ -583,26 +335,26 @@ export default function TopicPage() {
 													<div
 														className={styles.actionBtn}
 														title='Xem chi tiết'
-														onClick={() => setViewTopic(t)}
+														onClick={() => d.setViewTopic(t)}
 													>
-														<Ic.Eye />
+														<EyeSvg />
 													</div>
 													<div
 														className={styles.actionBtn}
 														title='Chỉnh sửa'
 														onClick={() => {
-															setEditTopic(t);
-															setViewTopic(null);
+															d.setEditTopic(t);
+															d.setViewTopic(null);
 														}}
 													>
-														<Ic.Edit />
+														<EditSvg />
 													</div>
 													<div
 														className={`${styles.actionBtn} ${styles.danger}`}
 														title='Xoá'
-														onClick={() => setDeleteTopic(t)}
+														onClick={() => d.setDeleteTopic(t)}
 													>
-														<Ic.Trash />
+														<TrashSvg />
 													</div>
 												</div>
 											</td>
@@ -614,75 +366,74 @@ export default function TopicPage() {
 					</table>
 				</div>
 
-				{/* Pagination */}
 				<Pagination
-					page={safePage}
-					totalPages={totalPages}
-					total={filtered.length}
-					rowsPerPage={rowsPerPage}
-					pageSizeOptions={PAGE_SIZE_OPTIONS}
-					onPageChange={setPage}
+					page={d.safePage}
+					totalPages={d.totalPages}
+					total={d.filtered.length}
+					rowsPerPage={d.rowsPerPage}
+					pageSizeOptions={d.PAGE_SIZE_OPTIONS}
+					onPageChange={d.setPage}
 					onRowsPerPageChange={(n) => {
-						setRowsPerPage(n);
-						setPage(1);
+						d.setRowsPerPage(n);
+						d.setPage(1);
 					}}
 					itemLabel='đề tài'
 				/>
 			</div>
 
 			{/* ── MODALS & DRAWER ── */}
-			{showExport && (
+			{d.showExport && (
 				<ExportExcelModal
-					topics={topics}
-					filtered={filtered}
-					categories={categories}
-					levels={levels}
-					rounds={rounds}
-					departments={departments}
-					onClose={() => setShowExport(false)}
+					topics={d.topics}
+					filtered={d.filtered}
+					categories={d.categories}
+					levels={d.levels}
+					rounds={d.rounds}
+					departments={d.departments}
+					onClose={() => d.setShowExport(false)}
 				/>
 			)}
-			{showCreate && (
+			{d.showCreate && (
 				<TopicModal
 					mode='create'
-					categories={categories}
-					levels={levels}
-					rounds={rounds}
-					departments={departments}
-					onClose={() => setShowCreate(false)}
-					onSave={handleCreate}
+					categories={d.categories}
+					levels={d.levels}
+					rounds={d.rounds}
+					departments={d.departments}
+					onClose={() => d.setShowCreate(false)}
+					onSave={d.handleCreate}
 				/>
 			)}
-			{editTopic && (
+			{d.editTopic && (
 				<TopicModal
 					mode='edit'
-					topic={editTopic}
-					categories={categories}
-					levels={levels}
-					rounds={rounds}
-					departments={departments}
-					onClose={() => setEditTopic(null)}
-					onSave={handleEdit}
+					topic={d.editTopic}
+					categories={d.categories}
+					levels={d.levels}
+					rounds={d.rounds}
+					departments={d.departments}
+					onClose={() => d.setEditTopic(null)}
+					onSave={d.handleEdit}
 				/>
 			)}
-			{deleteTopic && (
+			{d.deleteTopic && (
 				<DeleteModal
-					topic={deleteTopic}
-					onClose={() => setDeleteTopic(null)}
-					onConfirm={handleDelete}
+					topic={d.deleteTopic}
+					onClose={() => d.setDeleteTopic(null)}
+					onConfirm={d.handleDelete}
 				/>
 			)}
-			{viewTopic && !editTopic && (
+			{d.viewTopic && !d.editTopic && (
 				<TopicDrawer
-					topic={viewTopic}
-					categories={categories}
-					levels={levels}
-					rounds={rounds}
-					departments={departments}
-					onClose={() => setViewTopic(null)}
+					topic={d.viewTopic}
+					categories={d.categories}
+					levels={d.levels}
+					rounds={d.rounds}
+					departments={d.departments}
+					onClose={() => d.setViewTopic(null)}
 					onEdit={() => {
-						setEditTopic(viewTopic);
-						setViewTopic(null);
+						d.setEditTopic(d.viewTopic!);
+						d.setViewTopic(null);
 					}}
 				/>
 			)}

@@ -58,7 +58,14 @@ const getStats = async () => {
   `);
 
 	const statusRows = result.recordsets[0];
-	const byStatus = { draft: 0, submitted: 0, approved: 0, rejected: 0, supplement: 0, completed: 0 };
+	const byStatus = {
+		draft: 0,
+		submitted: 0,
+		approved: 0,
+		rejected: 0,
+		supplement: 0,
+		completed: 0,
+	};
 	let total = 0;
 	for (const row of statusRows) {
 		const key = row.status;
@@ -72,14 +79,26 @@ const getStats = async () => {
 			const deptMap = {};
 			for (const row of result.recordsets[1]) {
 				const dept = row.dept_name;
-				if (!deptMap[dept]) deptMap[dept] = { name: dept, total: 0, categories: [] };
-				deptMap[dept].categories.push({ name: row.category_name, count: row.cnt });
+				if (!deptMap[dept])
+					deptMap[dept] = { name: dept, total: 0, categories: [] };
+				deptMap[dept].categories.push({
+					name: row.category_name,
+					count: row.cnt,
+				});
 				deptMap[dept].total += row.cnt;
 			}
-			return Object.values(deptMap).sort((a, b) => b.total - a.total).slice(0, 10);
+			return Object.values(deptMap)
+				.sort((a, b) => b.total - a.total)
+				.slice(0, 10);
 		})(),
-		by_category: result.recordsets[2].map((r) => ({ name: r.name || 'Chưa xác định', count: r.cnt })),
-		by_level: result.recordsets[3].map((r) => ({ name: r.name || 'Chưa xác định', count: r.cnt })),
+		by_category: result.recordsets[2].map((r) => ({
+			name: r.name || 'Chưa xác định',
+			count: r.cnt,
+		})),
+		by_level: result.recordsets[3].map((r) => ({
+			name: r.name || 'Chưa xác định',
+			count: r.cnt,
+		})),
 		trend_by_category: (() => {
 			const raw = result.recordsets[4];
 			const yearMap = {};
@@ -90,7 +109,9 @@ const getStats = async () => {
 				catSet.add(row.category_name);
 			}
 			return {
-				rows: Object.values(yearMap).sort((a, b) => String(a.year).localeCompare(String(b.year))),
+				rows: Object.values(yearMap).sort((a, b) =>
+					String(a.year).localeCompare(String(b.year)),
+				),
 				categories: Array.from(catSet),
 			};
 		})(),

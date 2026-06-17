@@ -1,8 +1,8 @@
 ﻿import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { useRealtimeUpdate } from '../../../layouts/hooks/useRealtime';
-import { BASE_URL } from '../../../lib/apiClient';
-import { getStoredUser } from '../../../lib/authStorage';
+import { BASE_URL } from '../../../shared/api/axios';
+import { getStoredUser } from '../../../shared/utils/storage';
 import { getDeadlines, getRoundById } from '../../round/api/roundApi';
 import type {
 	ResearchRound,

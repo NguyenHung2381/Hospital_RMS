@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import type { GrantedAccount } from '../api/topicApi';
 import styles from '../pages/Topic.module.css';
 import type { TopicMember } from '../types/topic.type';
-import { Ic } from './icons';
+import { CheckSvg as IcCheck, WarnSvg as IcWarn, XSvg as IcX } from '@/assets/icons';
 
 export function GrantedAccountsModal({
 	accounts,
@@ -49,7 +49,7 @@ export function GrantedAccountsModal({
 					}
 				>
 					<div className={styles.cfmHeaderIcon}>
-						<Ic.Check />
+						<IcCheck />
 					</div>
 					<div className={styles.cfmHeaderText}>
 						<div className={styles.cfmHeaderTitle}>Tài khoản đã được cấp</div>
@@ -62,7 +62,7 @@ export function GrantedAccountsModal({
 						onClick={onClose}
 						aria-label='Đóng'
 					>
-						<Ic.X />
+						<IcX />
 					</button>
 				</div>
 
@@ -79,7 +79,7 @@ export function GrantedAccountsModal({
 							color: '#92400e',
 						}}
 					>
-						<Ic.Warn />
+						<IcWarn />
 						<span>
 							Lưu thông tin ngay — mật khẩu chỉ hiển thị{' '}
 							<strong>một lần duy nhất</strong>.

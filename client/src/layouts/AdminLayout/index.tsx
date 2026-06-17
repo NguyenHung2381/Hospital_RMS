@@ -6,7 +6,7 @@ import { NotificationPanel } from '../../features/notifications/components/Notif
 import { useNotifications } from '../../features/notifications/hooks/useNotifications';
 import { toNotif } from '../../features/notifications/utils/notifUtils';
 import { getTopics } from '../../features/topics/api/topicApi';
-import { clearAuth, getStoredUser } from '../../lib/authStorage';
+import { clearAuth, getStoredUser } from '../../shared/utils/storage';
 import { useRealtimeUpdate } from '../hooks/useRealtime';
 import styles from './AdminLayout.module.css';
 import { Icon } from './icons';
@@ -268,36 +268,7 @@ export default function AdminLayout({
 						onClick={() => setMobileNavOpen((o) => !o)}
 						aria-label={mobileNavOpen ? 'Đóng menu' : 'Mở menu'}
 					>
-						{mobileNavOpen ? (
-							<Icon.X />
-						) : (
-							<svg
-								viewBox='0 0 24 24'
-								fill='none'
-								stroke='currentColor'
-								strokeWidth='2'
-								strokeLinecap='round'
-							>
-								<line
-									x1='3'
-									y1='6'
-									x2='21'
-									y2='6'
-								/>
-								<line
-									x1='3'
-									y1='12'
-									x2='21'
-									y2='12'
-								/>
-								<line
-									x1='3'
-									y1='18'
-									x2='21'
-									y2='18'
-								/>
-							</svg>
-						)}
+						{mobileNavOpen ? <Icon.X /> : <Icon.Menu />}
 					</button>
 				</div>
 

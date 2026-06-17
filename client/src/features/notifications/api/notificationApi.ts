@@ -1,4 +1,4 @@
-import { apiClient } from '../../../lib/apiClient';
+import { apiClient } from '../../../shared/api/axios';
 
 export interface Notification {
 	id: string;

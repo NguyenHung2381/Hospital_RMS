@@ -1,6 +1,6 @@
 import React from 'react';
 import styles from '../pages/Topic.module.css';
-import { Ic } from './icons';
+import { AlertSvg as IcAlert } from '@/assets/icons';
 
 export function FormField({
 	id,
@@ -29,7 +29,7 @@ export function FormField({
 			{children}
 			{error && (
 				<span className={styles.formError}>
-					<Ic.Alert />
+					<IcAlert />
 					{error}
 				</span>
 			)}

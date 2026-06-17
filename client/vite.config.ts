@@ -30,6 +30,11 @@ const apiPort = getApiPort();
 
 export default defineConfig({
 	plugins: [react(), svgr()],
+	resolve: {
+		alias: {
+			'@': path.resolve(__dirname, './src'),
+		},
+	},
 	server: {
 		host: true,
 		allowedHosts: true,

@@ -1,10 +1,12 @@
 import React, { useEffect, useRef, useState } from 'react';
-import ApproveSvg from '../../../assets/svg/approve.svg?react';
-import BellSvg from '../../../assets/svg/bell.svg?react';
-import DocSvg from '../../../assets/svg/doc.svg?react';
-import InfoSvg from '../../../assets/svg/info.svg?react';
-import WarnSvg from '../../../assets/svg/warn.svg?react';
-import XSvg from '../../../assets/svg/x.svg?react';
+import {
+	ApproveSvg,
+	BellSvg,
+	DocSvg,
+	InfoSvg,
+	WarnSvg,
+	XSvg,
+} from '@/assets/icons';
 import type { Notif } from '../utils/notifUtils';
 
 interface NotificationPanelProps {

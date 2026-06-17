@@ -1,7 +1,7 @@
 const router = require('express').Router();
 const { body } = require('express-validator');
 const ctrl = require('../controllers/topicController');
-const exportCtrl     = require('../controllers/topicExportController');
+const exportCtrl = require('../controllers/topicExportController');
 const fullExportCtrl = require('../controllers/topicFullExportController');
 const fileCtrl = require('../controllers/fileController');
 const { authenticate, authorize } = require('../middlewares/auth');
@@ -97,7 +97,12 @@ router.post('/export-data', [body('ids').isArray()], validate, ctrl.exportData);
  *               type: string
  *               format: binary
  */
-router.post('/export-excel', [body('ids').isArray()], validate, exportCtrl.exportExcel);
+router.post(
+	'/export-excel',
+	[body('ids').isArray()],
+	validate,
+	exportCtrl.exportExcel,
+);
 
 /**
  * @swagger
@@ -129,7 +134,12 @@ router.post('/export-excel', [body('ids').isArray()], validate, exportCtrl.expor
  *           application/vnd.openxmlformats-officedocument.spreadsheetml.sheet:
  *             schema: { type: string, format: binary }
  */
-router.post('/export-report', [body('ids').isArray()], validate, fullExportCtrl.exportReport);
+router.post(
+	'/export-report',
+	[body('ids').isArray()],
+	validate,
+	fullExportCtrl.exportReport,
+);
 
 /**
  * @swagger
@@ -525,10 +535,6 @@ router.get('/:topic_id/files/batches', fileCtrl.getBatches);
  *       201:
  *         description: Upload thành công
  */
-router.post(
-	'/:topic_id/files',
-	upload.array('files', 30),
-	fileCtrl.upload,
-);
+router.post('/:topic_id/files', upload.array('files', 30), fileCtrl.upload);
 
 module.exports = router;

@@ -65,15 +65,15 @@ router.get('/db', async (req, res) => {
 		} catch {
 			// Fallback: tạo connection tạm từ biến môi trường
 			pool = await sql.connect({
-				server:   process.env.DB_SERVER   || 'localhost',
+				server: process.env.DB_SERVER || 'localhost',
 				database: process.env.DB_DATABASE || 'RMS_HOSPITAL',
-				user:     process.env.DB_USER     || 'sa',
+				user: process.env.DB_USER || 'sa',
 				password: process.env.DB_PASSWORD || '',
-				port:     parseInt(process.env.DB_PORT) || 1433,
+				port: parseInt(process.env.DB_PORT) || 1433,
 				connectionTimeout: 10000,
-				requestTimeout:    10000,
+				requestTimeout: 10000,
 				options: {
-					encrypt:               process.env.DB_ENCRYPT === 'true',
+					encrypt: process.env.DB_ENCRYPT === 'true',
 					trustServerCertificate: process.env.DB_TRUST_SERVER_CERT !== 'false',
 				},
 			});
@@ -87,8 +87,8 @@ router.get('/db', async (req, res) => {
 			success: true,
 			status: 'connected',
 			database: {
-				server: process.env.DB_SERVER   || 'N/A',
-				name:   process.env.DB_DATABASE || 'N/A',   // fix: DB_NAME → DB_DATABASE
+				server: process.env.DB_SERVER || 'N/A',
+				name: process.env.DB_DATABASE || 'N/A', // fix: DB_NAME → DB_DATABASE
 				serverTime: result.recordset[0]?.serverTime,
 				latencyMs: latency,
 			},

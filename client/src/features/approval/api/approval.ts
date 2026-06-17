@@ -1,8 +1,13 @@
-import { apiClient } from '../../../lib/apiClient';
+import { apiClient } from '../../../shared/api/axios';
 import type { Topic, TopicMember } from '../../topics/types/topic.type';
 
 export type ApprovalStatus = 'pending' | 'approved' | 'rejected';
-export type TopicApprovalStatus = 'draft' | 'submitted' | 'approved' | 'rejected' | 'supplement';
+export type TopicApprovalStatus =
+	| 'draft'
+	| 'submitted'
+	| 'approved'
+	| 'rejected'
+	| 'supplement';
 
 export interface TopicApprovalItem extends Topic {
 	round_name?: string;
@@ -48,7 +53,9 @@ export const getApprovalTopics = (params?: {
 	const entries = Object.entries(params ?? {})
 		.filter(([, value]) => value !== undefined && value !== '')
 		.map(([key, value]) => [key, String(value)] as [string, string]);
-	const qs = entries.length ? `?${new URLSearchParams(entries).toString()}` : '';
+	const qs = entries.length
+		? `?${new URLSearchParams(entries).toString()}`
+		: '';
 	return apiClient.get<TopicListResponse>(`/topics${qs}`);
 };
 
@@ -58,8 +65,10 @@ export const getApprovalTopicDetail = (topicId: string) =>
 export const submitTopicForApproval = (topicId: string) =>
 	apiClient.post<Topic>(`/topics/${topicId}/submit`, {});
 
-export const updateTopicApproval = (topicId: string, payload: ApprovalPayload) =>
-	apiClient.post<Approval>(`/topics/${topicId}/approve`, payload);
+export const updateTopicApproval = (
+	topicId: string,
+	payload: ApprovalPayload,
+) => apiClient.post<Approval>(`/topics/${topicId}/approve`, payload);
 
 export const approveTopic = (topicId: string, comment?: string) =>
 	updateTopicApproval(topicId, { status: 'approved', comment });

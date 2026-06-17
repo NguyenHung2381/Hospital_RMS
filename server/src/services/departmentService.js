@@ -21,19 +21,21 @@ const departmentSelect = `
 `;
 
 const getAll = async ({ page = 1, limit = 100, search } = {}) => {
-  const pool = await getPool();
-  const offset = (page - 1) * limit;
-  let where = 'WHERE 1=1';
-  const req = pool.request()
-    .input('offset', sql.Int, offset)
-    .input('limit', sql.Int, limit);
+	const pool = await getPool();
+	const offset = (page - 1) * limit;
+	let where = 'WHERE 1=1';
+	const req = pool
+		.request()
+		.input('offset', sql.Int, offset)
+		.input('limit', sql.Int, limit);
 
-  if (search) {
-    where += ' AND (d.name LIKE @search OR d.code LIKE @search OR d.viet_tat LIKE @search OR d.description LIKE @search)';
-    req.input('search', sql.NVarChar, `%${search}%`);
-  }
+	if (search) {
+		where +=
+			' AND (d.name LIKE @search OR d.code LIKE @search OR d.viet_tat LIKE @search OR d.description LIKE @search)';
+		req.input('search', sql.NVarChar, `%${search}%`);
+	}
 
-  const result = await req.query(`
+	const result = await req.query(`
     ${departmentSelect}
     ${where}
     ORDER BY d.created_at DESC
@@ -41,52 +43,69 @@ const getAll = async ({ page = 1, limit = 100, search } = {}) => {
 
     SELECT COUNT(*) AS total FROM departments ${where};
   `);
-  return { data: result.recordsets[0], pagination: { page, limit, total: result.recordsets[1][0].total } };
+	return {
+		data: result.recordsets[0],
+		pagination: { page, limit, total: result.recordsets[1][0].total },
+	};
 };
 
 const getById = async (id) => {
-  const pool = await getPool();
-  const result = await pool.request()
-    .input('id', sql.VarChar(20), id)
-    .query(`
+	const pool = await getPool();
+	const result = await pool.request().input('id', sql.VarChar(20), id).query(`
       ${departmentSelect}
       WHERE d.id = @id
     `);
-  return result.recordset[0] || null;
+	return result.recordset[0] || null;
 };
 
 const create = async (data, actorId) => {
-  const pool = await getPool();
-  const result = await pool.request()
-    .input('actor_id', sql.VarChar(20), actorId)
-    .input('name', sql.NVarChar(255), data.name)
-    .input('code', sql.VarChar(20), data.code)
-    .input('viet_tat', sql.NVarChar(100), data.viet_tat)
-    .input('description', sql.NVarChar(sql.MAX), data.description || null)
-    .query(`
+	const pool = await getPool();
+	const result = await pool
+		.request()
+		.input('actor_id', sql.VarChar(20), actorId)
+		.input('name', sql.NVarChar(255), data.name)
+		.input('code', sql.VarChar(20), data.code)
+		.input('viet_tat', sql.NVarChar(100), data.viet_tat)
+		.input('description', sql.NVarChar(sql.MAX), data.description || null)
+		.query(`
       EXEC sp_set_actor @actor_id;
       INSERT INTO departments (name, code, viet_tat, description, created_by)
       VALUES (@name, @code, @viet_tat, @description, @actor_id);
       SELECT id FROM departments WHERE viet_tat = @viet_tat;
     `);
-  const dept = await getById(result.recordset[0].id);
-  broadcast('update', { entity: 'department' });
-  return dept;
+	const dept = await getById(result.recordset[0].id);
+	broadcast('update', { entity: 'department' });
+	return dept;
 };
 
 const update = async (id, data, actorId) => {
-  const pool = await getPool();
-  const sets = ['updated_at = GETDATE()', 'updated_by = @actor_id'];
-  const req = pool.request()
-    .input('id', sql.VarChar(20), id)
-    .input('actor_id', sql.VarChar(20), actorId);
+	const pool = await getPool();
+	const sets = ['updated_at = GETDATE()', 'updated_by = @actor_id'];
+	const req = pool
+		.request()
+		.input('id', sql.VarChar(20), id)
+		.input('actor_id', sql.VarChar(20), actorId);
 
-  if (data.name !== undefined) { sets.push('name = @name'); req.input('name', sql.NVarChar(255), data.name); }
-  if (data.code !== undefined) { sets.push('code = @code'); req.input('code', sql.VarChar(50), data.code); }
-  if (data.viet_tat !== undefined) { sets.push('viet_tat = @viet_tat'); req.input('viet_tat', sql.NVarChar(100), data.viet_tat); }
-  if (data.description !== undefined) { sets.push('description = @description'); req.input('description', sql.NVarChar(sql.MAX), data.description); }
+	if (data.name !== undefined) {
+		sets.push('name = @name');
+		req.input('name', sql.NVarChar(255), data.name);
+	}
+	if (data.code !== undefined) {
+		sets.push('code = @code');
+		req.input('code', sql.VarChar(50), data.code);
+	}
+	if (data.viet_tat !== undefined) {
+		sets.push('viet_tat = @viet_tat');
+		req.input('viet_tat', sql.NVarChar(100), data.viet_tat);
+	}
+	if (data.description !== undefined) {
+		sets.push('description = @description');
+		req.input('description', sql.NVarChar(sql.MAX), data.description);
+	}
 
-  await req.query(`EXEC sp_set_actor @actor_id; UPDATE departments SET ${sets.join(', ')} WHERE id = @id`);
+	await req.query(
+		`EXEC sp_set_actor @actor_id; UPDATE departments SET ${sets.join(', ')} WHERE id = @id`,
+	);
 	const dept = await getById(id);
 	broadcast('update', { entity: 'department' });
 	return dept;
@@ -94,10 +113,13 @@ const update = async (id, data, actorId) => {
 
 const remove = async (id, actorId) => {
 	const pool = await getPool();
-	await pool.request()
+	await pool
+		.request()
 		.input('id', sql.VarChar(20), id)
 		.input('actor_id', sql.VarChar(20), actorId)
-		.query(`EXEC sp_set_actor @actor_id; DELETE FROM departments WHERE id = @id`);
+		.query(
+			`EXEC sp_set_actor @actor_id; DELETE FROM departments WHERE id = @id`,
+		);
 	broadcast('update', { entity: 'department' });
 };
 

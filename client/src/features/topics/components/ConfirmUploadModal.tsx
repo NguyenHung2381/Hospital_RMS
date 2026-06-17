@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import styles from '../pages/Topic.module.css';
 import { formatFileSize, getFileTypeColor } from '../utils/topicHelpers';
-import { Ic } from './icons';
+import { AlertSvg as IcAlert, DownloadSvg as IcDownload, XSvg as IcX } from '@/assets/icons';
 
 export function ConfirmUploadModal({
 	files,
@@ -54,7 +54,7 @@ export function ConfirmUploadModal({
 					}
 				>
 					<div className={styles.cfmHeaderIcon}>
-						<Ic.Download />
+						<IcDownload />
 					</div>
 					<div className={styles.cfmHeaderText}>
 						<div className={styles.cfmHeaderTitle}>Xác nhận tải lên</div>
@@ -68,7 +68,7 @@ export function ConfirmUploadModal({
 						disabled={loading}
 						aria-label='Đóng'
 					>
-						<Ic.X />
+						<IcX />
 					</button>
 				</div>
 
@@ -122,7 +122,7 @@ export function ConfirmUploadModal({
 						<span
 							style={{ fontSize: 12, color: 'var(--color-red-600)', flex: 1 }}
 						>
-							<Ic.Alert /> {error}
+							<IcAlert /> {error}
 						</span>
 					)}
 					<button

@@ -1,531 +1,67 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
-import AlertSvg from '../../../assets/svg/alert.svg?react';
-import CheckSvg from '../../../assets/svg/check.svg?react';
-import ChevRSvg from '../../../assets/svg/chev-r.svg?react';
-import FileTextSvg from '../../../assets/svg/file-text.svg?react';
-import HelpSvg from '../../../assets/svg/help.svg?react';
-import ListSvg from '../../../assets/svg/list.svg?react';
-import PaperclipSvg from '../../../assets/svg/paperclip.svg?react';
-import SearchSvg from '../../../assets/svg/search.svg?react';
-import SendSvg from '../../../assets/svg/send.svg?react';
-import UploadSvg from '../../../assets/svg/upload.svg?react';
-import UserPlusSvg from '../../../assets/svg/user-plus.svg?react';
-import XSvg from '../../../assets/svg/x.svg?react';
+﻿import { AlertSvg, CheckSvg, ChevRSvg, FileTextSvg, HelpSvg, ListSvg, PaperclipSvg, SearchSvg, SendSvg, UploadSvg, UserPlusSvg, XSvg } from '@/assets/icons';
 import UserLayout from '../../../layouts/UserLayout';
-import { getStoredUser } from '../../../lib/authStorage';
-import { getRoundByPublicToken } from '../../round/api/roundApi';
-import {
-	addTopicMember,
-	createTopic,
-	getCategories,
-	getDepts,
-	getLevels,
-	getRounds,
-	getTopics,
-	searchUsers,
-	uploadTopicFiles,
-	type SimpleItem,
-	type UserSuggestion,
-} from '../api/topicApi';
-import type { FormErrors, MemberRole, TopicStatus } from '../types/topic.type';
-import type {
-	MyTopic,
-	PendingMember,
-	PendingTopic,
-	RegisterForm,
-} from '../types/topicregister.type';
+import { useTopicRegister } from '../hooks/useTopicRegister';
+import type { MemberRole } from '../types/topic.type';
+import { BADGE_CLS, fmtDate, getInitials, GUIDE_STEPS, ROLE_CFG, STATUS_CFG } from '../utils/topicRegisterHelpers';
 import styles from './TopicRegister.module.css';
 
-const MAX_FILE_SIZE = 150 * 1024 * 1024; // 150 MB
-
-// ─── HELPERS ──────────────────────────────
-const STATUS_CFG: Record<TopicStatus, { label: string; dot: string }> = {
-	submitted: { label: 'Chờ duyệt', dot: '#f59e0b' },
-	approved: { label: 'Đã duyệt', dot: '#22c55e' },
-	rejected: { label: 'Từ chối', dot: '#ef4444' },
-	supplement: { label: 'Bổ sung', dot: '#8b5cf6' },
-};
-
-const BADGE_CLS: Record<TopicStatus, string> = {
-	submitted: styles.badgeAmber,
-	approved: styles.badgeGreen,
-	rejected: styles.badgeRed,
-	supplement: styles.badgeBlue,
-};
-
-const ROLE_CFG: Record<MemberRole, { label: string }> = {
-	leader: { label: 'Chủ nhiệm' },
-	secretary: { label: 'Thư ký' },
-	member: { label: 'Thành viên' },
-};
-
-function getInitials(name: string | null | undefined) {
-	if (!name) return '?';
-	return name
-		.replace(/^(BS\.|TS\.|PGS\.|GS\.|ĐD\.|DS\.|CN\.|KS\.)\s*/i, '')
-		.split(' ')
-		.map((w) => w[0])
-		.filter(Boolean)
-		.slice(-2)
-		.join('')
-		.toUpperCase();
-}
-
-function fmtDate(iso: string) {
-	return new Date(iso).toLocaleDateString('vi-VN', {
-		day: '2-digit',
-		month: '2-digit',
-		year: 'numeric',
-	});
-}
-
-// ─── ICONS ────────────────────────────────
-const Icon = {
-	FileText: () => <FileTextSvg />,
-	Search: () => <SearchSvg />,
-	X: () => <XSvg />,
-	Check: () => <CheckSvg />,
-	AlertCircle: () => <AlertSvg />,
-	Send: () => <SendSvg />,
-	List: () => <ListSvg />,
-	HelpCircle: () => (
-		<HelpSvg
-			width={15}
-			height={15}
-		/>
-	),
-	ChevronRight: () => (
-		<ChevRSvg
-			width={12}
-			height={12}
-		/>
-	),
-	UserPlus: () => <UserPlusSvg />,
-	Upload: () => <UploadSvg />,
-	Paperclip: () => <PaperclipSvg />,
-};
-
-// ─── GUIDE STEPS ──────────────────────────
-const GUIDE_STEPS = [
-	{
-		title: 'Điền thông tin đề tài',
-		desc: 'Nhập tiêu đề, mô tả và chọn vòng nghiên cứu phù hợp.',
-	},
-	{
-		title: 'Thêm thành viên',
-		desc: 'Tìm kiếm hoặc thêm thủ công với đầy đủ thông tin bắt buộc.',
-	},
-	{
-		title: 'Thêm vào danh sách',
-		desc: 'Nhấn "Thêm vào danh sách" rồi tiếp tục điền đề tài kế tiếp.',
-	},
-	{
-		title: 'Gửi tất cả',
-		desc: 'Khi hoàn tất, nhấn "Gửi tất cả" để nộp lên hội đồng phê duyệt.',
-	},
-];
-
-// ─── COMPONENT ────────────────────────────
 export default function TopicRegister() {
-	const navigate = useNavigate();
-	const [searchParams] = useSearchParams();
-	const publicToken = searchParams.get('token');
+	const {
+		userName,
+		userRole,
+		userInitials,
+		currentDeptId,
+		canRegister,
+		rounds,
+		categories,
+		levels,
+		depts,
+		myTopics,
+		loadingRef,
+		lockedRound,
+		form,
+		errors,
+		setField,
+		handleDeptChange,
+		pendingTopics,
+		submittingAll,
+		submitError,
+		addTopicToList,
+		removeTopicFromList,
+		submitAll,
+		pendingMembers,
+		memberQuery,
+		suggestions,
+		showSuggestions,
+		isSearching,
+		addRole,
+		addedIds,
+		setMemberQuery,
+		setSuggestions,
+		setShowSuggestions,
+		setAddRole,
+		addMember,
+		removeMember,
+		changeRole,
+		showManualForm,
+		manualForm,
+		manualErrors,
+		setShowManualForm,
+		setManualForm,
+		setManualErrors,
+		addMemberManual,
+		attachments,
+		fileError,
+		isDragging,
+		fileInputRef,
+		handleFiles,
+		removeAttachment,
+		setIsDragging,
+		toast,
+		navigate,
+		clearForm,
+	} = useTopicRegister();
 
-	// ── User info ──
-	const userInfo = getStoredUser<Record<string, string>>();
-	const currentUserId: string = userInfo?.id ?? '';
-	const currentDeptId: string = userInfo?.department_id ?? '';
-	const userName: string =
-		userInfo?.full_name ?? userInfo?.username ?? 'Người dùng';
-	const userRole: string = userInfo?.role_name ?? '';
-	const userInitials: string = getInitials(userName || 'U');
-	const canRegister = !!currentDeptId;
-
-	// ── Reference data ──
-	const [rounds, setRounds] = useState<SimpleItem[]>([]);
-	const [categories, setCategories] = useState<SimpleItem[]>([]);
-	const [levels, setLevels] = useState<SimpleItem[]>([]);
-	const [depts, setDepts] = useState<SimpleItem[]>([]);
-	const [myTopics, setMyTopics] = useState<MyTopic[]>([]);
-	const [loadingRef, setLoadingRef] = useState(true);
-	const [lockedRound, setLockedRound] = useState<{
-		id: string;
-		name: string;
-		registration_start_date?: string | null;
-		registration_end_date?: string | null;
-	} | null>(null);
-
-	// ── Form state ──
-	const [form, setForm] = useState<RegisterForm>({
-		title: '',
-		description: '',
-		staff_number: '',
-		round_id: '',
-		category_id: '',
-		level_id: '',
-		department_id: currentDeptId,
-	});
-	const [errors, setErrors] = useState<FormErrors>({});
-
-	// ── Pending topics (batch) ──
-	const [pendingTopics, setPendingTopics] = useState<PendingTopic[]>([]);
-	const [submittingAll, setSubmittingAll] = useState(false);
-	const [submitError, setSubmitError] = useState('');
-
-	// ── Member state ──
-	const [pendingMembers, setPendingMembers] = useState<PendingMember[]>([]);
-	const [memberQuery, setMemberQuery] = useState('');
-	const [suggestions, setSuggestions] = useState<UserSuggestion[]>([]);
-	const [showSuggestions, setShowSuggestions] = useState(false);
-	const [isSearching, setIsSearching] = useState(false);
-	const [addRole, setAddRole] = useState<MemberRole>('member');
-	const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-	// ── Manual add form ──
-	const [showManualForm, setShowManualForm] = useState(false);
-	const [manualForm, setManualForm] = useState({
-		ho_ten: '',
-		staff_number: '',
-		phone_number: '',
-		chuc_vu: '',
-		department_id: '',
-		role: 'member' as MemberRole,
-	});
-	const [manualErrors, setManualErrors] = useState<Record<string, string>>({});
-
-	// ── File attachments ──
-	const [attachments, setAttachments] = useState<File[]>([]);
-	const [fileError, setFileError] = useState('');
-	const [isDragging, setIsDragging] = useState(false);
-	const fileInputRef = useRef<HTMLInputElement>(null);
-
-	// ── Toast ──
-	const [toast, setToast] = useState<{
-		msg: string;
-		type: 'success' | 'error';
-	} | null>(null);
-
-	// ── Load reference data ──
-	useEffect(() => {
-		const base = Promise.all([
-			getRounds(),
-			getCategories(),
-			getLevels(),
-			getDepts(),
-		]).then(([r, c, l, d]) => {
-			setRounds(r.data);
-			setCategories(c.data);
-			setLevels(l.data);
-			setDepts(d.data);
-		});
-
-		const tokenLoad = publicToken
-			? getRoundByPublicToken(publicToken).then((round) => {
-					if (round) {
-						setLockedRound({
-							id: round.id,
-							name: round.name,
-							registration_start_date: round.registration_start_date,
-							registration_end_date: round.registration_end_date,
-						});
-						setForm((prev) => ({ ...prev, round_id: round.id }));
-					}
-				})
-			: Promise.resolve();
-
-		Promise.all([base, tokenLoad]).finally(() => setLoadingRef(false));
-	}, [publicToken]);
-
-	// ── Load my topics ──
-	useEffect(() => {
-		if (!currentUserId) return;
-		getTopics({ limit: 20 })
-			.then((res) => {
-				setMyTopics(
-					res.data
-						.filter((t) => t.created_by === currentUserId)
-						.map((t) => ({
-							id: t.id,
-							title: t.title,
-							status: t.status,
-							created_at: t.created_at,
-						})),
-				);
-			})
-			.catch(() => {
-				/* ignore */
-			});
-	}, [currentUserId]);
-
-	// ── Member search debounce ──
-	useEffect(() => {
-		if (memberQuery.trim().length < 2) return;
-		if (debounceRef.current) clearTimeout(debounceRef.current);
-		debounceRef.current = setTimeout(() => {
-			setIsSearching(true);
-			searchUsers(memberQuery)
-				.then((res) => {
-					setSuggestions(res.data);
-					setShowSuggestions(true);
-				})
-				.catch(() => setSuggestions([]))
-				.finally(() => setIsSearching(false));
-		}, 300);
-		return () => {
-			if (debounceRef.current) clearTimeout(debounceRef.current);
-		};
-	}, [memberQuery]);
-
-	// ── Auto-hide toast ──
-	useEffect(() => {
-		if (!toast) return;
-		const t = setTimeout(() => setToast(null), 3500);
-		return () => clearTimeout(t);
-	}, [toast]);
-
-	// ── Form field helper ──
-	const setField = useCallback(
-		<K extends keyof RegisterForm>(key: K, val: RegisterForm[K]) => {
-			setForm((f) => ({ ...f, [key]: val }));
-			setErrors((e) => {
-				const n = { ...e };
-				delete n[key];
-				return n;
-			});
-		},
-		[],
-	);
-
-	const handleDeptChange = useCallback(
-		(deptId: string) => {
-			setField('department_id', deptId);
-		},
-		[setField],
-	);
-
-	// ── Member helpers ──
-	const addMember = useCallback(
-		(u: UserSuggestion) => {
-			if (pendingMembers.some((m) => m.id === u.id)) return;
-			setPendingMembers((prev) => [
-				...prev,
-				{
-					id: u.id,
-					ho_ten: u.full_name,
-					staff_number: u.staff_number != null ? String(u.staff_number) : '',
-					email: u.email,
-					chuc_vu: '',
-					role: addRole,
-				},
-			]);
-			setMemberQuery('');
-			setSuggestions([]);
-			setShowSuggestions(false);
-		},
-		[pendingMembers, addRole],
-	);
-
-	const removeMember = useCallback((id: string) => {
-		setPendingMembers((prev) => prev.filter((m) => m.id !== id));
-	}, []);
-
-	const changeRole = useCallback((id: string, role: MemberRole) => {
-		setPendingMembers((prev) =>
-			prev.map((m) => (m.id === id ? { ...m, role } : m)),
-		);
-	}, []);
-
-	const addMemberManual = useCallback(() => {
-		const errs: Record<string, string> = {};
-		if (!manualForm.ho_ten.trim()) errs.ho_ten = 'Nhập họ tên';
-		if (!manualForm.staff_number.trim())
-			errs.staff_number = 'Nhập mã nhân viên';
-		if (!manualForm.phone_number.trim())
-			errs.phone_number = 'Nhập số điện thoại';
-		if (!manualForm.chuc_vu.trim()) errs.chuc_vu = 'Nhập chức danh';
-		if (Object.keys(errs).length) {
-			setManualErrors(errs);
-			return;
-		}
-		if (
-			pendingMembers.some(
-				(m) => m.staff_number === manualForm.staff_number.trim(),
-			)
-		) {
-			setToast({ msg: 'Thành viên này đã được thêm.', type: 'error' });
-			return;
-		}
-		setPendingMembers((prev) => [
-			...prev,
-			{
-				id: `manual_${Date.now()}`,
-				ho_ten: manualForm.ho_ten.trim(),
-				staff_number: manualForm.staff_number.trim(),
-				phone_number: manualForm.phone_number.trim(),
-				chuc_vu: manualForm.chuc_vu.trim(),
-				department_id: manualForm.department_id || undefined,
-				role: manualForm.role,
-			},
-		]);
-		setManualForm({
-			ho_ten: '',
-			staff_number: '',
-			phone_number: '',
-			chuc_vu: '',
-			department_id: '',
-			role: 'member',
-		});
-		setManualErrors({});
-		setShowManualForm(false);
-		setMemberQuery('');
-	}, [pendingMembers, manualForm]);
-
-	// ── File helpers ──
-	const handleFiles = useCallback((files: FileList | null) => {
-		if (!files) return;
-		const toAdd: File[] = [];
-		const oversized: string[] = [];
-		Array.from(files).forEach((f) => {
-			if (f.size > MAX_FILE_SIZE) {
-				oversized.push(f.name);
-			} else {
-				toAdd.push(f);
-			}
-		});
-		if (oversized.length) {
-			setFileError(`File vượt quá 150MB: ${oversized.join(', ')}`);
-		} else {
-			setFileError('');
-		}
-		if (toAdd.length) {
-			setAttachments((prev) => {
-				const existingNames = new Set(prev.map((f) => f.name));
-				return [...prev, ...toAdd.filter((f) => !existingNames.has(f.name))];
-			});
-		}
-	}, []);
-
-	const removeAttachment = useCallback((name: string) => {
-		setAttachments((prev) => prev.filter((f) => f.name !== name));
-		setFileError('');
-	}, []);
-
-	// ── Topic batch helpers ──
-	const addTopicToList = useCallback(() => {
-		const e: FormErrors = {};
-		if (!form.title.trim()) e.title = 'Tiêu đề đề tài là bắt buộc';
-		if (!form.round_id) e.round_id = 'Vui lòng chọn vòng nghiên cứu';
-		if (!form.department_id) e.department_id = 'Vui lòng chọn khoa phòng';
-		if (Object.keys(e).length) {
-			setErrors(e);
-			return;
-		}
-
-		setPendingTopics((prev) => [
-			...prev,
-			{
-				localId: `t_${Date.now()}`,
-				title: form.title.trim(),
-				description: form.description.trim(),
-				staff_number: form.staff_number.trim(),
-				round_id: form.round_id,
-				category_id: form.category_id,
-				level_id: form.level_id,
-				department_id: form.department_id,
-				members: pendingMembers,
-				attachments,
-			},
-		]);
-		setToast({ msg: 'Đã thêm đề tài vào danh sách.', type: 'success' });
-
-		// Reset form — keep round & department for next topic
-		setForm({
-			title: '',
-			description: '',
-			staff_number: '',
-			round_id: form.round_id,
-			category_id: '',
-			level_id: '',
-			department_id: form.department_id,
-		});
-		setErrors({});
-		setPendingMembers([]);
-		setMemberQuery('');
-		setSuggestions([]);
-		setShowSuggestions(false);
-		setShowManualForm(false);
-		setManualForm({
-			ho_ten: '',
-			staff_number: '',
-			phone_number: '',
-			chuc_vu: '',
-			department_id: '',
-			role: 'member',
-		});
-		setManualErrors({});
-		setAttachments([]);
-		setFileError('');
-	}, [form, pendingMembers, attachments]);
-
-	const removeTopicFromList = useCallback((localId: string) => {
-		setPendingTopics((prev) => prev.filter((t) => t.localId !== localId));
-	}, []);
-
-	const submitAll = useCallback(
-		async (status: TopicStatus) => {
-			if (pendingTopics.length === 0) {
-				setToast({ msg: 'Chưa có đề tài nào trong danh sách.', type: 'error' });
-				return;
-			}
-			setSubmittingAll(true);
-			setSubmitError('');
-			try {
-				await Promise.all(
-					pendingTopics.map(async (t) => {
-						const created = await createTopic({
-							title: t.title,
-							description: t.description || undefined,
-							round_id: t.round_id,
-							category_id: t.category_id || undefined,
-							level_id: t.level_id || undefined,
-							department_id: t.department_id,
-							status,
-						});
-						if (t.members.length > 0) {
-							await Promise.allSettled(
-								t.members.map((m) =>
-									addTopicMember(created.id, {
-										ho_ten: m.ho_ten,
-										email: m.email,
-										so_dien_thoai: m.phone_number || null,
-										chuc_vu: m.chuc_vu || null,
-										staff_number: m.staff_number || null,
-										department_id: m.department_id || t.department_id || null,
-										role: m.role,
-									}),
-								),
-							);
-						}
-						if (t.attachments.length > 0) {
-							await uploadTopicFiles(created.id, t.attachments);
-						}
-					}),
-				);
-				setToast({
-					msg: `Đã gửi ${pendingTopics.length} đề tài để phê duyệt!`,
-					type: 'success',
-				});
-				setTimeout(() => navigate('/user/my-topics'), 1800);
-			} catch {
-				setSubmitError('Có lỗi xảy ra, vui lòng thử lại.');
-				setSubmittingAll(false);
-			}
-		},
-		[pendingTopics, navigate],
-	);
-
-	// ─── RENDER ───────────────────────────────
 	const breadcrumbs = [
 		{ label: 'Đề tài', path: '/user/my-topics' },
 		{ label: 'Đăng ký mới' },
@@ -556,7 +92,6 @@ export default function TopicRegister() {
 
 	const activeRounds = rounds.filter((r) => !r.status || r.status === 'active');
 
-	// No active rounds
 	if (activeRounds.length === 0) {
 		return (
 			<UserLayout
@@ -568,7 +103,7 @@ export default function TopicRegister() {
 			>
 				<div className={styles.emptyCard}>
 					<div className={styles.emptyCardIcon}>
-						<Icon.List />
+						<ListSvg />
 					</div>
 					<div className={styles.emptyTitle}>
 						Chưa có vòng nghiên cứu nào đang mở
@@ -581,7 +116,6 @@ export default function TopicRegister() {
 		);
 	}
 
-	// Account restriction
 	if (!canRegister) {
 		return (
 			<UserLayout
@@ -596,7 +130,7 @@ export default function TopicRegister() {
 						className={styles.emptyCardIcon}
 						style={{ background: '#fee2e2', color: '#ef4444' }}
 					>
-						<Icon.AlertCircle />
+						<AlertSvg />
 					</div>
 					<div className={styles.emptyTitle}>
 						Chức năng này chỉ dành cho tài khoản khoa phòng
@@ -610,7 +144,6 @@ export default function TopicRegister() {
 		);
 	}
 
-	// Registration window check (only when accessed via public token with dates)
 	if (lockedRound) {
 		const parseReg = (s: string) => {
 			const [d, m, y] = s.split('/').map(Number);
@@ -637,7 +170,7 @@ export default function TopicRegister() {
 								className={styles.emptyCardIcon}
 								style={{ background: '#fef3c7', color: '#d97706' }}
 							>
-								<Icon.AlertCircle />
+								<AlertSvg />
 							</div>
 							<div className={styles.emptyTitle}>
 								Chưa đến thời gian đăng ký
@@ -670,7 +203,7 @@ export default function TopicRegister() {
 								className={styles.emptyCardIcon}
 								style={{ background: '#fee2e2', color: '#ef4444' }}
 							>
-								<Icon.AlertCircle />
+								<AlertSvg />
 							</div>
 							<div className={styles.emptyTitle}>Đã hết thời gian đăng ký</div>
 							<div className={styles.emptyDesc}>
@@ -685,7 +218,6 @@ export default function TopicRegister() {
 		}
 	}
 
-	const addedIds = new Set(pendingMembers.map((m) => m.id));
 	const currentDeptName =
 		depts.find((d) => d.id === currentDeptId)?.name ?? currentDeptId;
 
@@ -700,11 +232,11 @@ export default function TopicRegister() {
 			<div className={styles.pageGrid}>
 				{/* ── LEFT COLUMN ── */}
 				<div className={styles.leftCol}>
-					{/* ── FORM CARD ── */}
+					{/* FORM CARD */}
 					<div className={styles.formCard}>
 						<div className={styles.formCardHeader}>
 							<div className={styles.formCardIcon}>
-								<Icon.FileText />
+								<FileTextSvg />
 							</div>
 							<div>
 								<div className={styles.formCardTitle}>
@@ -717,7 +249,6 @@ export default function TopicRegister() {
 						</div>
 
 						<div className={styles.formCardBody}>
-							{/* ── Thông tin cơ bản ── */}
 							<div className={styles.formSection}>Thông tin cơ bản</div>
 
 							<div className={styles.formGroup}>
@@ -736,7 +267,7 @@ export default function TopicRegister() {
 								/>
 								{errors.title && (
 									<div className={styles.formError}>
-										<Icon.AlertCircle /> {errors.title}
+										<AlertSvg /> {errors.title}
 									</div>
 								)}
 							</div>
@@ -758,9 +289,8 @@ export default function TopicRegister() {
 								/>
 							</div>
 
-							{/* ── Phân loại ── */}
 							<div className={styles.formSection}>
-								Phân loại & Vòng nghiên cứu
+								Phân loại &amp; Vòng nghiên cứu
 							</div>
 
 							<div className={styles.formRow}>
@@ -794,13 +324,12 @@ export default function TopicRegister() {
 											</select>
 											{errors.round_id && (
 												<div className={styles.formError}>
-													<Icon.AlertCircle /> {errors.round_id}
+													<AlertSvg /> {errors.round_id}
 												</div>
 											)}
 										</>
 									)}
 								</div>
-
 								<div className={styles.formGroup}>
 									<label
 										className={styles.formLabel}
@@ -852,7 +381,6 @@ export default function TopicRegister() {
 										))}
 									</select>
 								</div>
-
 								<div className={styles.formGroup}>
 									<label
 										className={styles.formLabel}
@@ -882,13 +410,12 @@ export default function TopicRegister() {
 									)}
 									{errors.department_id && (
 										<div className={styles.formError}>
-											<Icon.AlertCircle /> {errors.department_id}
+											<AlertSvg /> {errors.department_id}
 										</div>
 									)}
 								</div>
 							</div>
 
-							{/* ── Thành viên ── */}
 							<div className={styles.formSection}>Thành viên tham gia</div>
 
 							<div className={styles.formGroup}>
@@ -912,7 +439,7 @@ export default function TopicRegister() {
 													}}
 												/>
 											) : (
-												<Icon.Search />
+												<SearchSvg />
 											)}
 										</span>
 										<input
@@ -976,11 +503,8 @@ export default function TopicRegister() {
 																e.preventDefault();
 																setShowSuggestions(false);
 																setManualForm({
+																	...manualForm,
 																	ho_ten: memberQuery,
-																	staff_number: '',
-																	phone_number: '',
-																	chuc_vu: '',
-																	department_id: '',
 																	role: addRole,
 																});
 																setShowManualForm(true);
@@ -1014,7 +538,6 @@ export default function TopicRegister() {
 								</div>
 							</div>
 
-							{/* Nút mở form thêm thủ công */}
 							{!showManualForm && (
 								<button
 									type='button'
@@ -1031,11 +554,10 @@ export default function TopicRegister() {
 										setShowManualForm(true);
 									}}
 								>
-									<Icon.UserPlus /> Thêm thành viên thủ công
+									<UserPlusSvg /> Thêm thành viên thủ công
 								</button>
 							)}
 
-							{/* Manual add form */}
 							{showManualForm && (
 								<div className={styles.manualAddForm}>
 									<div className={styles.manualAddTitle}>
@@ -1052,16 +574,16 @@ export default function TopicRegister() {
 												placeholder='Nguyễn Văn A'
 												value={manualForm.ho_ten}
 												onChange={(e) => {
-													setManualForm((p) => ({
-														...p,
+													setManualForm({
+														...manualForm,
 														ho_ten: e.target.value,
-													}));
-													setManualErrors((p) => ({ ...p, ho_ten: '' }));
+													});
+													setManualErrors({ ...manualErrors, ho_ten: '' });
 												}}
 											/>
 											{manualErrors.ho_ten && (
 												<div className={styles.formError}>
-													<Icon.AlertCircle /> {manualErrors.ho_ten}
+													<AlertSvg /> {manualErrors.ho_ten}
 												</div>
 											)}
 										</div>
@@ -1075,16 +597,19 @@ export default function TopicRegister() {
 												placeholder='NV001'
 												value={manualForm.staff_number}
 												onChange={(e) => {
-													setManualForm((p) => ({
-														...p,
+													setManualForm({
+														...manualForm,
 														staff_number: e.target.value,
-													}));
-													setManualErrors((p) => ({ ...p, staff_number: '' }));
+													});
+													setManualErrors({
+														...manualErrors,
+														staff_number: '',
+													});
 												}}
 											/>
 											{manualErrors.staff_number && (
 												<div className={styles.formError}>
-													<Icon.AlertCircle /> {manualErrors.staff_number}
+													<AlertSvg /> {manualErrors.staff_number}
 												</div>
 											)}
 										</div>
@@ -1102,16 +627,19 @@ export default function TopicRegister() {
 												type='tel'
 												value={manualForm.phone_number}
 												onChange={(e) => {
-													setManualForm((p) => ({
-														...p,
+													setManualForm({
+														...manualForm,
 														phone_number: e.target.value,
-													}));
-													setManualErrors((p) => ({ ...p, phone_number: '' }));
+													});
+													setManualErrors({
+														...manualErrors,
+														phone_number: '',
+													});
 												}}
 											/>
 											{manualErrors.phone_number && (
 												<div className={styles.formError}>
-													<Icon.AlertCircle /> {manualErrors.phone_number}
+													<AlertSvg /> {manualErrors.phone_number}
 												</div>
 											)}
 										</div>
@@ -1124,16 +652,16 @@ export default function TopicRegister() {
 												placeholder='Bác sĩ, Điều dưỡng...'
 												value={manualForm.chuc_vu}
 												onChange={(e) => {
-													setManualForm((p) => ({
-														...p,
+													setManualForm({
+														...manualForm,
 														chuc_vu: e.target.value,
-													}));
-													setManualErrors((p) => ({ ...p, chuc_vu: '' }));
+													});
+													setManualErrors({ ...manualErrors, chuc_vu: '' });
 												}}
 											/>
 											{manualErrors.chuc_vu && (
 												<div className={styles.formError}>
-													<Icon.AlertCircle /> {manualErrors.chuc_vu}
+													<AlertSvg /> {manualErrors.chuc_vu}
 												</div>
 											)}
 										</div>
@@ -1146,10 +674,10 @@ export default function TopicRegister() {
 												className={styles.formSelect}
 												value={manualForm.department_id}
 												onChange={(e) =>
-													setManualForm((p) => ({
-														...p,
+													setManualForm({
+														...manualForm,
 														department_id: e.target.value,
-													}))
+													})
 												}
 											>
 												<option value=''>-- Chọn khoa --</option>
@@ -1171,10 +699,10 @@ export default function TopicRegister() {
 												className={styles.formSelect}
 												value={manualForm.role}
 												onChange={(e) =>
-													setManualForm((p) => ({
-														...p,
+													setManualForm({
+														...manualForm,
 														role: e.target.value as MemberRole,
-													}))
+													})
 												}
 											>
 												{(Object.keys(ROLE_CFG) as MemberRole[]).map((r) => (
@@ -1219,7 +747,6 @@ export default function TopicRegister() {
 								</div>
 							)}
 
-							{/* Member list */}
 							{pendingMembers.length > 0 && (
 								<div className={styles.manualBox}>
 									<div className={styles.memberList}>
@@ -1238,10 +765,11 @@ export default function TopicRegister() {
 															<span>MNV: {m.staff_number} · </span>
 														)}
 														{m.chuc_vu && <span>{m.chuc_vu} · </span>}
-														{m.phone_number && <span>{m.phone_number}</span>}
-														{!m.phone_number && m.email && (
+														{m.phone_number ? (
+															<span>{m.phone_number}</span>
+														) : m.email ? (
 															<span>{m.email}</span>
-														)}
+														) : null}
 													</div>
 												</div>
 												<select
@@ -1275,14 +803,14 @@ export default function TopicRegister() {
 													onClick={() => removeMember(m.id)}
 													title='Xoá'
 												>
-													<Icon.X />
+													<XSvg />
 												</button>
 											</div>
 										))}
 									</div>
 								</div>
 							)}
-							{/* ── File upload ── */}
+
 							<div
 								className={styles.formSection}
 								style={{ marginTop: 4 }}
@@ -1306,7 +834,7 @@ export default function TopicRegister() {
 									}}
 								>
 									<span className={styles.dropZoneIcon}>
-										<Icon.Upload />
+										<UploadSvg />
 									</span>
 									<span className={styles.dropZoneText}>
 										Kéo thả file vào đây hoặc{' '}
@@ -1325,10 +853,9 @@ export default function TopicRegister() {
 								</div>
 								{fileError && (
 									<div className={styles.formError}>
-										<Icon.AlertCircle /> {fileError}
+										<AlertSvg /> {fileError}
 									</div>
 								)}
-
 								{attachments.length > 0 && (
 									<div className={styles.fileList}>
 										{attachments.map((f) => (
@@ -1337,7 +864,7 @@ export default function TopicRegister() {
 												className={styles.fileItem}
 											>
 												<span className={styles.fileItemIcon}>
-													<Icon.Paperclip />
+													<PaperclipSvg />
 												</span>
 												<span className={styles.fileItemName}>{f.name}</span>
 												<span className={styles.fileItemSize}>
@@ -1349,7 +876,7 @@ export default function TopicRegister() {
 													onClick={() => removeAttachment(f.name)}
 													title='Xoá file'
 												>
-													<Icon.X />
+													<XSvg />
 												</button>
 											</div>
 										))}
@@ -1358,7 +885,6 @@ export default function TopicRegister() {
 							</div>
 						</div>
 
-						{/* Form footer */}
 						<div className={styles.formFooter}>
 							<span
 								style={{
@@ -1374,25 +900,7 @@ export default function TopicRegister() {
 							<button
 								type='button'
 								className={styles.btnSecondary}
-								onClick={() => {
-									setForm({
-										title: '',
-										description: '',
-										staff_number: '',
-										round_id: lockedRound ? lockedRound.id : '',
-										category_id: '',
-										level_id: '',
-										department_id: currentDeptId,
-									});
-									setErrors({});
-									setPendingMembers([]);
-									setMemberQuery('');
-									setSuggestions([]);
-									setShowManualForm(false);
-									setManualErrors({});
-									setAttachments([]);
-									setFileError('');
-								}}
+								onClick={clearForm}
 							>
 								Xoá form
 							</button>
@@ -1406,7 +914,7 @@ export default function TopicRegister() {
 						</div>
 					</div>
 
-					{/* ── PENDING TOPICS CARD ── */}
+					{/* PENDING TOPICS CARD */}
 					{pendingTopics.length > 0 && (
 						<div className={styles.pendingCard}>
 							<div className={styles.pendingHeader}>
@@ -1415,7 +923,6 @@ export default function TopicRegister() {
 									{pendingTopics.length}
 								</span>
 							</div>
-
 							<div className={styles.pendingList}>
 								{pendingTopics.map((t, i) => {
 									const roundName =
@@ -1440,17 +947,16 @@ export default function TopicRegister() {
 												onClick={() => removeTopicFromList(t.localId)}
 												title='Xoá'
 											>
-												<Icon.X />
+												<XSvg />
 											</button>
 										</div>
 									);
 								})}
 							</div>
-
 							<div className={styles.pendingFooter}>
 								{submitError && (
 									<div className={styles.saveError}>
-										<Icon.AlertCircle /> {submitError}
+										<AlertSvg /> {submitError}
 									</div>
 								)}
 								<button
@@ -1460,7 +966,7 @@ export default function TopicRegister() {
 									disabled={submittingAll}
 								>
 									{submittingAll ? <span className={styles.spinner} /> : null}
-									<Icon.Send />
+									<SendSvg />
 									Gửi tất cả ({pendingTopics.length})
 								</button>
 							</div>
@@ -1470,11 +976,13 @@ export default function TopicRegister() {
 
 				{/* ── RIGHT: SIDE PANEL ── */}
 				<div className={styles.sidePanel}>
-					{/* Guide card */}
 					<div className={styles.sideCard}>
 						<div className={styles.sideCardHeader}>
 							<span>Hướng dẫn đăng ký</span>
-							<Icon.HelpCircle />
+							<HelpSvg
+								width={15}
+								height={15}
+							/>
 						</div>
 						<div className={styles.sideCardBody}>
 							{GUIDE_STEPS.map((s, i) => (
@@ -1492,7 +1000,6 @@ export default function TopicRegister() {
 						</div>
 					</div>
 
-					{/* My topics card */}
 					<div className={styles.sideCard}>
 						<div className={styles.sideCardHeader}>
 							<span>Đề tài của tôi</span>
@@ -1511,7 +1018,11 @@ export default function TopicRegister() {
 								}}
 								onClick={() => navigate('/user/my-topics')}
 							>
-								Xem tất cả <Icon.ChevronRight />
+								Xem tất cả{' '}
+								<ChevRSvg
+									width={12}
+									height={12}
+								/>
 							</button>
 						</div>
 						<div className={styles.sideCardBody}>
@@ -1537,9 +1048,12 @@ export default function TopicRegister() {
 										<div className={styles.myTopicMeta}>
 											<span>{fmtDate(t.created_at)}</span>
 											<span
-												className={`${styles.badge} ${BADGE_CLS[t.status]}`}
+												className={`${styles.badge} ${styles[BADGE_CLS[t.status] as keyof typeof styles]}`}
 											>
-												<span className={styles.badgeDot} />
+												<span
+													className={styles.badgeDot}
+													style={{ background: STATUS_CFG[t.status].dot }}
+												/>
 												{STATUS_CFG[t.status].label}
 											</span>
 										</div>
@@ -1551,12 +1065,11 @@ export default function TopicRegister() {
 				</div>
 			</div>
 
-			{/* Toast */}
 			{toast && (
 				<div
 					className={`${styles.toast} ${toast.type === 'success' ? styles.toastSuccess : styles.toastError}`}
 				>
-					{toast.type === 'success' ? <Icon.Check /> : <Icon.AlertCircle />}
+					{toast.type === 'success' ? <CheckSvg /> : <AlertSvg />}
 					{toast.msg}
 				</div>
 			)}

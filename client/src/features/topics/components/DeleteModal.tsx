@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import styles from '../pages/Topic.module.css';
 import type { Topic } from '../types/topic.type';
-import { Ic } from './icons';
+import { AlertSvg as IcAlert, WarnSvg as IcWarn } from '@/assets/icons';
 
 export function DeleteModal({
 	topic,
@@ -40,7 +40,7 @@ export function DeleteModal({
 			>
 				<div className={styles.modalBody}>
 					<div className={styles.confirmIcon}>
-						<Ic.Warn />
+						<IcWarn />
 					</div>
 					<h2 className={styles.confirmTitle}>Xoá đề tài?</h2>
 					<p className={styles.confirmDesc}>
@@ -58,7 +58,7 @@ export function DeleteModal({
 						<span
 							style={{ fontSize: 12, color: 'var(--color-red-600)', flex: 1 }}
 						>
-							<Ic.Alert /> {deleteError}
+							<IcAlert /> {deleteError}
 						</span>
 					)}
 					<button

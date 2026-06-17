@@ -1,4 +1,4 @@
-import { relativeTime } from '../../../utils/dateUtils';
+import { relativeTime } from '../../../shared/utils/formatDate';
 import type { Notification as ApiNotif } from '../api/notificationApi';
 
 export interface Notif {
