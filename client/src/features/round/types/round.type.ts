@@ -2,16 +2,16 @@
 export type RoundStatus = 'draft' | 'active' | 'closed';
 
 export type DeadlineType =
-	| 'nop_bao_cao'
-	| 'sua_thong_tin'
-	| 'xet_duyet'
-	| 'nghiem_thu';
+	| 'registration'
+	| 'supplement'
+	| 'report_submission'
+	| 'council_submission';
 
 export const DEADLINE_TYPE_LABELS: Record<DeadlineType, string> = {
-	nop_bao_cao: 'Nộp báo cáo',
-	sua_thong_tin: 'Sửa thông tin',
-	xet_duyet: 'Xét duyệt',
-	nghiem_thu: 'Nghiệm thu',
+	registration: 'Đăng ký',
+	supplement: 'Bổ sung',
+	report_submission: 'Nộp báo cáo',
+	council_submission: 'Nộp HĐ',
 };
 
 export interface RoundDeadline {
@@ -28,13 +28,9 @@ export interface ResearchRound {
 	id: string;
 	name: string;
 	year: number;
-	dot_so: number; // số thứ tự đợt trong năm
+	round_number: number; // số thứ tự đợt trong năm
 	start_date: string; // dd/mm/yyyy
 	end_date: string;
-	registration_start_date?: string | null; // dd/mm/yyyy
-	registration_end_date?: string | null; // dd/mm/yyyy
-	supplement_start_date?: string | null; // dd/mm/yyyy
-	supplement_end_date?: string | null; // dd/mm/yyyy
 	status: RoundStatus;
 	public_token: string;
 	created_at: string;
@@ -50,11 +46,9 @@ export interface ResearchRound {
 export interface RoundForm {
 	name: string;
 	year: number;
-	dot_so: number;
+	round_number: number;
 	start_date: string;
 	end_date: string;
-	registration_start_date: string;
-	registration_end_date: string;
 	status: RoundStatus;
 }
 

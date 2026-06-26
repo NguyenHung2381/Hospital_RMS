@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { AlertSvg, CheckSvg, EditSvg, PlusSvg, XSvg } from '@/assets/icons';
+import { AlertSvg, CalendarSvg, CheckSvg, EditSvg, PlusSvg, XSvg } from '@/assets/icons';
 import { deleteDeadline, getDeadlines, upsertDeadline } from '../api/roundApi';
 import type { DeadlineType, RoundDeadline } from '../types/round.type';
 import { DEADLINE_TYPE_LABELS } from '../types/round.type';
@@ -31,82 +31,105 @@ function RowForm({
 	onSave: (phase: number, row: DeadlineRowState) => Promise<void>;
 }) {
 	return (
-		<div style={{ marginBottom: 8 }}>
+		<div className={styles.timelineFormCard}>
 			<div
-				style={{ fontSize: 11, color: 'var(--color-muted)', marginBottom: 4 }}
+				style={{ fontSize: 12, fontWeight: 'bold', color: 'var(--color-primary-dark)' }}
 			>
-				{label}
+				{label} (Giai đoạn {phase})
 			</div>
-			<div
-				style={{
-					display: 'flex',
-					gap: 6,
-					flexWrap: 'wrap',
-					alignItems: 'center',
-				}}
-			>
-				<input
-					className={styles.formInput}
-					style={{ flex: '1 1 160px', minWidth: 120 }}
-					placeholder='Tên hạn nộp'
-					value={row.name}
-					onChange={(e) => setRow((p) => p && { ...p, name: e.target.value })}
-				/>
-				<select
-					className={styles.formInput}
-					style={{ width: 140 }}
-					value={row.deadline_type}
-					onChange={(e) =>
-						setRow(
-							(p) =>
-								p && {
-									...p,
-									deadline_type: e.target.value as DeadlineType | '',
-								},
-						)
-					}
-				>
-					<option value=''>-- Loại hạn --</option>
-					<option value='nop_bao_cao'>Nộp báo cáo</option>
-					<option value='sua_thong_tin'>Sửa thông tin</option>
-					<option value='xet_duyet'>Xét duyệt</option>
-					<option value='nghiem_thu'>Nghiệm thu</option>
-				</select>
-				<input
-					type='date'
-					className={styles.formInput}
-					style={{ width: 140 }}
-					value={row.start_date}
-					onChange={(e) =>
-						setRow((p) => p && { ...p, start_date: e.target.value })
-					}
-					title='Ngày bắt đầu (tùy chọn)'
-				/>
-				<input
-					type='date'
-					className={styles.formInput}
-					style={{ width: 140 }}
-					value={row.date}
-					onChange={(e) => setRow((p) => p && { ...p, date: e.target.value })}
-					title='Ngày kết thúc / hạn cuối'
-				/>
+			
+			<div className={styles.timelineFormGrid}>
+				<div className={styles.timelineFormFull}>
+					<label style={{ fontSize: 11, fontWeight: 600, color: 'var(--color-gray-600)', display: 'block', marginBottom: 4 }}>
+						Tên mốc thời gian / Hạn nộp
+					</label>
+					<input
+						className={styles.formInput}
+						placeholder='VD: Đăng ký đề tài'
+						value={row.name}
+						onChange={(e) => setRow((p) => p && { ...p, name: e.target.value })}
+					/>
+				</div>
+
+				<div>
+					<label style={{ fontSize: 11, fontWeight: 600, color: 'var(--color-gray-600)', display: 'block', marginBottom: 4 }}>
+						Loại hạn nộp
+					</label>
+					<select
+						className={styles.formSelect}
+						value={row.deadline_type}
+						onChange={(e) =>
+							setRow(
+								(p) =>
+									p && {
+										...p,
+										deadline_type: e.target.value as DeadlineType | '',
+									},
+							)
+						}
+					>
+						<option value=''>-- Chọn loại --</option>
+						<option value='registration'>Đăng ký</option>
+						<option value='supplement'>Bổ sung</option>
+						<option value='report_submission'>Nộp báo cáo</option>
+						<option value='council_submission'>Nộp HĐ</option>
+					</select>
+				</div>
+
+				<div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+					<div>
+						<label style={{ fontSize: 11, fontWeight: 600, color: 'var(--color-gray-600)', display: 'block', marginBottom: 4 }}>
+							Ngày bắt đầu
+						</label>
+						<input
+							type='date'
+							className={styles.formInput}
+							value={row.start_date}
+							onChange={(e) =>
+								setRow((p) => p && { ...p, start_date: e.target.value })
+							}
+						/>
+					</div>
+					<div>
+						<label style={{ fontSize: 11, fontWeight: 600, color: 'var(--color-gray-600)', display: 'block', marginBottom: 4 }}>
+							Hạn cuối
+						</label>
+						<input
+							type='date'
+							className={styles.formInput}
+							value={row.date}
+							onChange={(e) => setRow((p) => p && { ...p, date: e.target.value })}
+						/>
+					</div>
+				</div>
+			</div>
+
+			<div className={styles.timelineFormActions}>
 				<button
+					type="button"
+					className={styles.btnSecondary}
+					onClick={onCancel}
+					disabled={saving}
+				>
+					Hủy
+				</button>
+				<button
+					type="button"
 					className={styles.btnPrimary}
 					onClick={() => void onSave(phase, row)}
 					disabled={saving}
-					style={{ whiteSpace: 'nowrap' }}
 				>
 					{saving ? (
-						<span className={styles.spinner} />
+						<>
+							<span className={styles.spinner} />
+							Đang lưu...
+						</>
 					) : (
-						<CheckSvg style={{ width: 14, height: 14 }} />
+						<>
+							<CheckSvg style={{ width: 14, height: 14 }} />
+							Lưu
+						</>
 					)}
-				</button>
-				<button
-					className={styles.btnSecondary}
-					onClick={onCancel}
-				>
-					<XSvg style={{ width: 14, height: 14 }} />
 				</button>
 			</div>
 		</div>
@@ -196,148 +219,158 @@ export function DeadlineManager({ roundId }: { roundId: string }) {
 					{err}
 				</div>
 			)}
+			
 			{deadlines.length === 0 && !newRow && (
 				<div
-					style={{ fontSize: 13, color: 'var(--color-muted)', marginBottom: 8 }}
+					style={{ fontSize: 13, color: 'var(--color-muted)', marginBottom: 8, fontStyle: 'italic' }}
 				>
-					Chưa có hạn nộp nào
+					Chưa thiết lập mốc thời gian nào cho đợt này.
 				</div>
 			)}
 
-			{deadlines.map((d) =>
-				editPhase === d.phase && editRow ? (
-					<div
-						key={d.id}
-						style={{ marginBottom: 6 }}
-					>
-						<RowForm
-							row={editRow}
-							setRow={setEditRow}
-							phase={d.phase}
-							onCancel={() => {
-								setEditPhase(null);
-								setEditRow(null);
-								setErr('');
-							}}
-							label={`Sửa lần ${d.phase}`}
-							saving={saving}
-							onSave={handleSave}
-						/>
-					</div>
-				) : (
-					<div
-						key={d.id}
-						style={{
-							display: 'flex',
-							alignItems: 'center',
-							gap: 8,
-							marginBottom: 6,
-							fontSize: 13,
-						}}
-					>
-						<span style={{ minWidth: 52, color: 'var(--color-muted)' }}>
-							Lần {d.phase}
-						</span>
-						<span style={{ flex: 1 }}>{d.name}</span>
-						{d.deadline_type && (
-							<span
-								style={{
-									fontSize: 11,
-									padding: '1px 6px',
-									borderRadius: 4,
-									background: 'var(--color-primary-light, #e8f0fe)',
-									color: 'var(--color-primary-dark)',
-									whiteSpace: 'nowrap',
-								}}
-							>
-								{DEADLINE_TYPE_LABELS[d.deadline_type]}
-							</span>
-						)}
-						<span style={{ color: 'var(--color-muted)', fontSize: 12 }}>
-							{d.start_date ? `${d.start_date} → ` : ''}
-						</span>
-						<span
-							style={{ fontWeight: 600, color: 'var(--color-primary-dark)' }}
+			<div className={styles.deadlineTimeline}>
+				{deadlines.map((d) => {
+					const isEditing = editPhase === d.phase && editRow;
+					
+					return (
+						<div 
+							key={d.id} 
+							className={`${styles.timelineItem} ${!isEditing ? styles.timelineItemActive : ''}`}
 						>
-							{d.deadline_date}
-						</span>
-						<button
-							onClick={() => startEdit(d)}
-							style={{
-								background: 'none',
-								border: 'none',
-								cursor: 'pointer',
-								color: 'var(--color-primary)',
-								padding: '2px 4px',
-								borderRadius: 4,
-								display: 'flex',
-								alignItems: 'center',
-							}}
-							title='Sửa'
-						>
-							<EditSvg style={{ width: 14, height: 14 }} />
-						</button>
-						<button
-							onClick={() => void handleRemove(d.phase)}
-							style={{
-								background: 'none',
-								border: 'none',
-								cursor: 'pointer',
-								color: '#A32D2D',
-								padding: '2px 4px',
-								borderRadius: 4,
-								display: 'flex',
-								alignItems: 'center',
-							}}
-							title='Xoá'
-						>
-							<XSvg style={{ width: 14, height: 14 }} />
-						</button>
-					</div>
-				),
-			)}
+							<div className={styles.timelineNode}>
+								{d.phase}
+							</div>
+							
+							{isEditing ? (
+								<RowForm
+									row={editRow}
+									setRow={setEditRow}
+									phase={d.phase}
+									onCancel={() => {
+										setEditPhase(null);
+										setEditRow(null);
+										setErr('');
+									}}
+									label="Cập nhật mốc thời gian"
+									saving={saving}
+									onSave={handleSave}
+								/>
+							) : (
+								<div className={styles.timelineCard}>
+									<div className={styles.timelineTitle}>{d.name}</div>
+									
+									{d.deadline_type && (
+										<span className={`${styles.timelineBadge} ${styles[d.deadline_type]}`}>
+											{DEADLINE_TYPE_LABELS[d.deadline_type]}
+										</span>
+									)}
+									
+									<div className={styles.timelineDates}>
+										<CalendarSvg />
+										{d.start_date ? (
+											<span>
+												{d.start_date} <span style={{ color: 'var(--color-gray-400)' }}>→</span> <span className={styles.timelineDateHighlighted}>{d.deadline_date}</span>
+											</span>
+										) : (
+											<span>
+												Hạn cuối: <span className={styles.timelineDateHighlighted}>{d.deadline_date}</span>
+											</span>
+										)}
+									</div>
+									
+									<div className={styles.timelineActions}>
+										<button
+											type="button"
+											className={`${styles.timelineActionBtn} ${styles.edit}`}
+											onClick={() => startEdit(d)}
+											title="Chỉnh sửa"
+										>
+											<EditSvg style={{ width: 14, height: 14 }} />
+										</button>
+										<button
+											type="button"
+											className={`${styles.timelineActionBtn} ${styles.delete}`}
+											onClick={() => void handleRemove(d.phase)}
+											title="Xóa mốc"
+										>
+											<XSvg style={{ width: 14, height: 14 }} />
+										</button>
+									</div>
+								</div>
+							)}
+						</div>
+					);
+				})}
+			</div>
 
 			{newRow ? (
-				<RowForm
-					row={newRow}
-					setRow={setNewRow}
-					phase={nextPhase}
-					onCancel={() => {
-						setNewRow(null);
-						setErr('');
-					}}
-					label={`Thêm lần ${nextPhase}`}
-					saving={saving}
-					onSave={handleSave}
-				/>
+				<div style={{ paddingLeft: 24, position: 'relative' }}>
+					<div 
+						className={styles.timelineNode} 
+						style={{ 
+							left: 0, 
+							top: 12, 
+							borderColor: 'var(--color-primary)', 
+							background: 'var(--color-primary-pale)',
+							color: 'var(--color-primary-dark)',
+							boxShadow: '0 0 0 3px rgba(46, 184, 122, 0.15)'
+						}}
+					>
+						+
+					</div>
+					<RowForm
+						row={newRow}
+						setRow={setNewRow}
+						phase={nextPhase}
+						onCancel={() => {
+							setNewRow(null);
+							setErr('');
+						}}
+						label="Thêm mốc thời gian mới"
+						saving={saving}
+						onSave={handleSave}
+					/>
+				</div>
 			) : (
 				nextPhase <= 9 && (
-					<button
-						style={{
-							marginTop: 8,
-							display: 'flex',
-							alignItems: 'center',
-							gap: 4,
-							fontSize: 12,
-							color: 'var(--color-primary)',
-							background: 'none',
-							border: '1px dashed var(--color-primary)',
-							padding: '4px 12px',
-							borderRadius: 6,
-							cursor: 'pointer',
-						}}
-						onClick={() =>
-							setNewRow({
-								name: `Hạn nộp báo cáo lần ${nextPhase}`,
-								start_date: '',
-								date: '',
-								deadline_type: 'nop_bao_cao',
-							})
-						}
-					>
-						<PlusSvg style={{ width: 14, height: 14 }} /> Thêm hạn nộp lần{' '}
-						{nextPhase}
-					</button>
+					<div style={{ paddingLeft: 24 }}>
+						<button
+							type="button"
+							style={{
+								marginTop: 8,
+								display: 'flex',
+								alignItems: 'center',
+								gap: 6,
+								fontSize: 12,
+								fontWeight: 600,
+								color: 'var(--color-primary-dark)',
+								background: 'var(--color-white)',
+								border: '1.5px dashed var(--color-primary-light)',
+								padding: '6px 16px',
+								borderRadius: 8,
+								cursor: 'pointer',
+								transition: 'all var(--transition-fast)'
+							}}
+							onClick={() =>
+								setNewRow({
+									name: '',
+									start_date: '',
+									date: '',
+									deadline_type: '',
+								})
+							}
+							onMouseEnter={(e) => {
+								e.currentTarget.style.borderColor = 'var(--color-primary)';
+								e.currentTarget.style.background = 'var(--color-primary-pale)';
+							}}
+							onMouseLeave={(e) => {
+								e.currentTarget.style.borderColor = 'var(--color-primary-light)';
+								e.currentTarget.style.background = 'var(--color-white)';
+							}}
+						>
+							<PlusSvg style={{ width: 14, height: 14 }} /> Thêm mốc thời gian (Lần {nextPhase})
+						</button>
+					</div>
 				)
 			)}
 		</div>

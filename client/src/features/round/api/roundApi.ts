@@ -23,22 +23,18 @@ interface RoundListResponse {
 export interface CreateRoundPayload {
 	name: string;
 	year: number;
-	dot_so: number;
+	round_number: number;
 	start_date: string; // yyyy-mm-dd
 	end_date: string; // yyyy-mm-dd
-	registration_start_date?: string; // yyyy-mm-dd
-	registration_end_date?: string; // yyyy-mm-dd
 	status?: RoundStatus;
 }
 
 export interface UpdateRoundPayload {
 	name?: string;
 	year?: number;
-	dot_so?: number;
+	round_number?: number;
 	start_date?: string; // yyyy-mm-dd
 	end_date?: string; // yyyy-mm-dd
-	registration_start_date?: string; // yyyy-mm-dd or null to clear
-	registration_end_date?: string; // yyyy-mm-dd or null to clear
 	status?: RoundStatus;
 }
 
@@ -60,15 +56,9 @@ export function formToPayload(form: RoundForm): CreateRoundPayload {
 	return {
 		name: form.name,
 		year: form.year,
-		dot_so: form.dot_so,
+		round_number: form.round_number,
 		start_date: toApiDate(form.start_date),
 		end_date: toApiDate(form.end_date),
-		registration_start_date: form.registration_start_date
-			? toApiDate(form.registration_start_date)
-			: undefined,
-		registration_end_date: form.registration_end_date
-			? toApiDate(form.registration_end_date)
-			: undefined,
 		status: form.status,
 	};
 }

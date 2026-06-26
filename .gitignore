@@ -41,6 +41,7 @@ desktop.ini
 *.njsproj
 *.sln
 *.sw?
+*.sql
 
 # Lock files (keep only one, remove if you prefer to commit these)
 # package-lock.json

@@ -5,7 +5,7 @@ export interface Department {
 	id: string;
 	name: string;
 	code: string;
-	viet_tat: string;
+	abbreviation: string;
 	description: string | null;
 	dept_account_id: string | null;
 	created_at: string;
@@ -16,7 +16,7 @@ export interface Department {
 export interface DeptFormData {
 	name: string;
 	code: string;
-	viet_tat: string;
+	abbreviation: string;
 	description: string;
 }
 
@@ -28,6 +28,6 @@ export interface DeptListResponse {
 export const EMPTY_FORM: DeptFormData = {
 	name: '',
 	code: '',
-	viet_tat: '',
+	abbreviation: '',
 	description: '',
 };

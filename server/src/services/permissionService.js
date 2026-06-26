@@ -1,5 +1,6 @@
 const { getPool, sql } = require('../config/db');
 const { broadcast } = require('./eventService');
+const permCache = require('../middlewares/permissionCache');
 
 const getAll = async () => {
 	const pool = await getPool();
@@ -44,6 +45,7 @@ const setRolePermissions = async (roleId, permissionIds, actorId) => {
 		}
 
 		await transaction.commit();
+		permCache.clear(roleId); // xóa cache để hiệu lực ngay
 		broadcast('update', { entity: 'role' });
 		return getRolePermissions(roleId);
 	} catch (err) {

@@ -3,6 +3,7 @@ import styles from './AdminLayout.module.css';
 import {
 	ApproveSvg,
 	BellSvg,
+	CalendarSvg,
 	ChevLSvg,
 	DashboardSvg,
 	DeptSvg,
@@ -40,6 +41,7 @@ export const Icon = {
 	Dashboard: () => <DashboardSvg {...nav} />,
 	Topic: () => <TopicSvg {...nav} />,
 	Round: () => <RoundSvg {...nav} />,
+	Schedule: () => <CalendarSvg {...nav} />,
 	Approval: () => <ApproveSvg {...nav} />,
 	Members: () => <UsersSvg {...nav} />,
 	File: () => <FileSvg {...nav} />,

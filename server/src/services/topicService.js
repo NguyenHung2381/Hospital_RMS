@@ -288,17 +288,6 @@ const remove = async (id, actorId) => {
 const getMembers = async (topicId) => {
 	const pool = await getPool();
 
-	// account_expires_at is added by migration 001 — use dynamic SQL so the query
-	// doesn't crash if the migration hasn't been run yet
-	const hasExpiry = await pool.request().query(`
-    SELECT COUNT(*) AS c FROM sys.columns
-    WHERE object_id = OBJECT_ID('users') AND name = 'account_expires_at'
-  `);
-	const expiryCol =
-		hasExpiry.recordset[0].c > 0
-			? ', u.account_expires_at'
-			: ', NULL AS account_expires_at';
-
 	const result = await pool
 		.request()
 		.input('topic_id', sql.VarChar(15), topicId).query(`
@@ -312,8 +301,8 @@ const getMembers = async (topicId) => {
         tm.phone_number  AS so_dien_thoai,
         tm.position      AS chuc_vu,
         u.username,
-        u.is_active      AS account_is_active${expiryCol},
-        -- Kiểm tra xem thành viên đã có tài khoản trong hệ thống chưa (kể cả chưa liên kết qua user_id)
+        u.is_active      AS account_is_active,
+        u.account_expires_at,
         CASE
           WHEN u.id IS NOT NULL THEN 0
           WHEN tm.staff_number IS NOT NULL AND EXISTS (
@@ -340,13 +329,15 @@ const addMember = async (topicId, memberData, actorId) => {
 		.input('chuc_vu', sql.NVarChar(200), memberData.chuc_vu || null)
 		.input(
 			'staff_number',
-			sql.NVarChar(50),
-			memberData.staff_number != null ? String(memberData.staff_number) : null,
+			sql.Int,
+			memberData.staff_number != null && memberData.staff_number !== ''
+				? parseInt(String(memberData.staff_number), 10)
+				: null,
 		)
 		.input('department_id', sql.VarChar(20), memberData.department_id || null)
 		.input('role', sql.VarChar(20), memberData.role || 'member').query(`
       BEGIN TRANSACTION;
-      DECLARE @new_id VARCHAR(20);
+      DECLARE @new_id VARCHAR(22);
       EXEC sp_gen_member_id @topic_id, @new_id OUTPUT;
       EXEC sp_set_actor @actor_id;
       INSERT INTO topic_members (id, topic_id, name, email, phone_number, position, staff_number, department_id, role, created_by)
@@ -501,21 +492,14 @@ const grantAccounts = async (topicId, memberIds, actorId) => {
 		});
 	}
 
-	// Set account_expires_at = round end_date (guarded: column may not exist until migration runs)
-	const hasExpiry = await pool.request().query(`
-    SELECT COUNT(*) AS c FROM sys.columns
-    WHERE object_id = OBJECT_ID('users') AND name = 'account_expires_at'
-  `);
-	if (hasExpiry.recordset[0].c > 0) {
-		await pool.request().input('topic_id', sql.VarChar(15), topicId).query(`
-        UPDATE u SET u.account_expires_at = rr.end_date
-        FROM users u
-        INNER JOIN topic_members tm ON tm.user_id = u.id
-        INNER JOIN topics t ON t.id = tm.topic_id
-        INNER JOIN research_rounds rr ON rr.id = t.round_id
-        WHERE t.id = @topic_id AND tm.account_granted = 1
-      `);
-	}
+	await pool.request().input('topic_id', sql.VarChar(15), topicId).query(`
+      UPDATE u SET u.account_expires_at = rr.end_date
+      FROM users u
+      INNER JOIN topic_members tm ON tm.user_id = u.id
+      INNER JOIN topics t ON t.id = tm.topic_id
+      INNER JOIN research_rounds rr ON rr.id = t.round_id
+      WHERE t.id = @topic_id AND tm.account_granted = 1
+    `);
 
 	broadcast('update', { entity: 'topic' });
 
@@ -548,7 +532,7 @@ const grantAccounts = async (topicId, memberIds, actorId) => {
 				SELECT tm.user_id
 				FROM topic_members tm
 				WHERE tm.topic_id = @topic_id
-				  AND tm.role = 'chu_nhiem'
+				  AND tm.role = 'leader'
 				  AND tm.user_id IS NOT NULL
 				  AND tm.user_id NOT IN (${excludeList})
 			`);
@@ -807,7 +791,7 @@ const grantAccountsNoEmail = async (topicId, memberIds, actorId) => {
 					SELECT tm.user_id
 					FROM topic_members tm
 					WHERE tm.topic_id = @topic_id
-					  AND tm.role = 'chu_nhiem'
+					  AND tm.role = 'leader'
 					  AND tm.user_id IS NOT NULL
 					  AND tm.user_id NOT IN (${excludeList})
 				`);
@@ -1001,15 +985,6 @@ const getForExport = async (topicIds) => {
 	if (!topicIds || topicIds.length === 0) return [];
 	const pool = await getPool();
 
-	const hasStaffNum = await pool.request().query(`
-    SELECT COUNT(*) AS c FROM sys.columns
-    WHERE object_id = OBJECT_ID('topic_members') AND name = 'staff_number'
-  `);
-	const staffNumCol =
-		hasStaffNum.recordset[0].c > 0
-			? ', tm.staff_number'
-			: ', NULL AS staff_number';
-
 	const req = pool.request();
 	topicIds.forEach((id, i) => req.input(`id${i}`, sql.VarChar(15), id));
 	const idParams = topicIds.map((_, i) => `@id${i}`).join(',');
@@ -1023,8 +998,8 @@ const getForExport = async (topicIds) => {
       t.department_id, d.name AS department_name,
       t.created_by, u.full_name AS created_by_name,
       tm.id AS member_id, tm.name AS ho_ten, tm.role,
-      tm.position AS chuc_vu, tm.email AS member_email, tm.phone_number AS so_dien_thoai
-      ${staffNumCol}
+      tm.position AS chuc_vu, tm.email AS member_email, tm.phone_number AS so_dien_thoai,
+      tm.staff_number
     FROM topics t
     LEFT JOIN research_rounds r ON r.id = t.round_id
     LEFT JOIN categories c ON c.id = t.category_id

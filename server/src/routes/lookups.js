@@ -2,7 +2,7 @@ const router = require('express').Router();
 const { body } = require('express-validator');
 const { createCrudService } = require('../services/crudService');
 const { createCrudController } = require('../controllers/crudController');
-const { authenticate, authorize } = require('../middlewares/auth');
+const { authenticate, authorize, authorizePermission } = require('../middlewares/auth');
 const { validate } = require('../middlewares/errorHandler');
 const roundCtrl    = require('../controllers/roundController');
 const deadlineSvc  = require('../services/deadlineService');
@@ -46,26 +46,26 @@ const { success, created, notFound } = require('../utils/response');
  *         application/json:
  *           schema:
  *             type: object
- *             required: [name, code, viet_tat]
+ *             required: [name, code, abbreviation]
  *             properties:
  *               name: { type: string, example: "Khoa Nội tổng hợp" }
  *               code: { type: string, example: "NTTQ" }
- *               viet_tat: { type: string, example: "NTH" }
+ *               abbreviation: { type: string, example: "NTH" }
  *     responses:
  *       201:
  *         description: Tạo thành công
  *       403:
  *         description: Không có quyền
  */
-router.get('/departments', authenticate, async (req, res, next) => {
+router.get('/departments', authenticate, authorizePermission(['departments', 'read']), async (req, res, next) => {
   try { return success(res, await deptService.getAll(req.query)); } catch (e) { next(e); }
 });
 
 router.post(
   '/departments',
   authenticate,
-  authorize('admin'),
-  [body('name').notEmpty(), body('code').notEmpty(), body('viet_tat').notEmpty()],
+  authorizePermission(['departments', 'create']),
+  [body('name').notEmpty(), body('code').notEmpty(), body('abbreviation').notEmpty()],
   validate,
   async (req, res, next) => {
     try { return created(res, await deptService.create(req.body, req.user.id)); } catch (e) { next(e); }
@@ -106,7 +106,7 @@ router.post(
  *             properties:
  *               name: { type: string }
  *               code: { type: string }
- *               viet_tat: { type: string }
+ *               abbreviation: { type: string }
  *     responses:
  *       200:
  *         description: Cập nhật thành công
@@ -134,7 +134,7 @@ router.get('/departments/:id', authenticate, async (req, res, next) => {
 router.put(
   '/departments/:id',
   authenticate,
-  authorize('admin'),
+  authorizePermission(['departments', 'update']),
   async (req, res, next) => {
     try {
       const item = await deptService.update(req.params.id, req.body, req.user.id);
@@ -144,7 +144,7 @@ router.put(
   },
 );
 
-router.delete('/departments/:id', authenticate, authorize('admin'), async (req, res, next) => {
+router.delete('/departments/:id', authenticate, authorizePermission(['departments', 'delete']), async (req, res, next) => {
   try { await deptService.remove(req.params.id, req.user.id); return success(res, null, 'Xóa thành công'); } catch (e) { next(e); }
 });
 
@@ -413,8 +413,8 @@ const roleCtrl = createCrudController(roleService);
  *       201:
  *         description: Tạo thành công
  */
-router.get('/roles', authenticate, roleCtrl.getAll);
-router.post('/roles', authenticate, authorize('admin'), roleCtrl.createOne);
+router.get('/roles', authenticate, authorizePermission(['roles', 'read']), roleCtrl.getAll);
+router.post('/roles', authenticate, authorizePermission(['roles', 'create']), roleCtrl.createOne);
 
 /**
  * @swagger
@@ -462,14 +462,9 @@ router.post('/roles', authenticate, authorize('admin'), roleCtrl.createOne);
  *       200:
  *         description: Xoá thành công
  */
-router.get('/roles/:id', authenticate, roleCtrl.getById);
-router.put('/roles/:id', authenticate, authorize('admin'), roleCtrl.updateOne);
-router.delete(
-	'/roles/:id',
-	authenticate,
-	authorize('admin'),
-	roleCtrl.removeOne,
-);
+router.get('/roles/:id', authenticate, authorizePermission(['roles', 'read']), roleCtrl.getById);
+router.put('/roles/:id', authenticate, authorizePermission(['roles', 'update']), roleCtrl.updateOne);
+router.delete('/roles/:id', authenticate, authorizePermission(['roles', 'delete']), roleCtrl.removeOne);
 
 // ─── Research Rounds ──────────────────────────────────────────────────────────
 
@@ -492,7 +487,7 @@ router.delete(
  *         application/json:
  *           schema:
  *             type: object
- *             required: [name, year, dot_so, start_date, end_date]
+ *             required: [name, year, round_number, start_date, end_date]
  *             properties:
  *               name:
  *                 type: string
@@ -500,7 +495,7 @@ router.delete(
  *               year:
  *                 type: integer
  *                 example: 2024
- *               dot_so:
+ *               round_number:
  *                 type: integer
  *                 minimum: 1
  *                 maximum: 9
@@ -523,17 +518,17 @@ router.delete(
  *       403:
  *         description: Không có quyền
  */
-router.get('/research-rounds', authenticate, roundCtrl.getAll);
+router.get('/research-rounds', authenticate, authorizePermission(['rounds', 'read']), roundCtrl.getAll);
 router.post(
 	'/research-rounds',
 	authenticate,
-	authorize('admin', 'manager'),
+	authorizePermission(['rounds', 'create']),
 	[
 		body('name').notEmpty().withMessage('Tên đợt không được để trống'),
 		body('year')
 			.isInt({ min: 2000, max: 2100 })
 			.withMessage('Năm không hợp lệ'),
-		body('dot_so').isInt({ min: 1, max: 9 }).withMessage('Số đợt phải từ 1–9'),
+		body('round_number').isInt({ min: 1, max: 9 }).withMessage('Số đợt phải từ 1–9'),
 		body('start_date')
 			.notEmpty()
 			.withMessage('Ngày bắt đầu không được để trống'),
@@ -603,11 +598,11 @@ router.post(
  *       200:
  *         description: Xoá thành công
  */
-router.get('/research-rounds/:id', authenticate, roundCtrl.getById);
+router.get('/research-rounds/:id', authenticate, authorizePermission(['rounds', 'read']), roundCtrl.getById);
 router.put(
 	'/research-rounds/:id',
 	authenticate,
-	authorize('admin', 'manager'),
+	authorizePermission(['rounds', 'update']),
 	[
 		body('status').optional().isIn(['draft', 'open', 'closed', 'active']),
 		body('start_date').optional().notEmpty(),
@@ -616,12 +611,7 @@ router.put(
 	validate,
 	roundCtrl.updateOne,
 );
-router.delete(
-	'/research-rounds/:id',
-	authenticate,
-	authorize('admin'),
-	roundCtrl.removeOne,
-);
+router.delete('/research-rounds/:id', authenticate, authorizePermission(['rounds', 'delete']), roundCtrl.removeOne);
 
 // ─── Round Supplement Window ──────────────────────────────────────────────────
 const roundSvc = require('../services/roundService');
@@ -629,7 +619,7 @@ const roundSvc = require('../services/roundService');
 router.post(
   '/research-rounds/:id/supplement/open',
   authenticate,
-  authorize('admin', 'manager'),
+  authorizePermission(['rounds', 'manage']),
   [
     body('supplement_start').notEmpty().withMessage('Ngày bắt đầu bổ sung không được để trống'),
     body('supplement_end').notEmpty().withMessage('Ngày kết thúc bổ sung không được để trống'),
@@ -646,7 +636,7 @@ router.post(
 router.post(
   '/research-rounds/:id/supplement/close',
   authenticate,
-  authorize('admin', 'manager'),
+  authorizePermission(['rounds', 'manage']),
   async (req, res, next) => {
     try {
       const result = await roundSvc.closeSupplementWindow(req.params.id, req.user.id);
@@ -656,14 +646,14 @@ router.post(
 );
 
 // ─── Round Deadlines ──────────────────────────────────────────────────────────
-router.get('/research-rounds/:id/deadlines', authenticate, async (req, res, next) => {
+router.get('/research-rounds/:id/deadlines', authenticate, authorizePermission(['rounds', 'read']), async (req, res, next) => {
   try { return success(res, await deadlineSvc.getByRoundId(req.params.id)); } catch (e) { next(e); }
 });
 
 router.post(
   '/research-rounds/:id/deadlines/:phase',
   authenticate,
-  authorize('admin', 'manager'),
+  authorizePermission(['rounds', 'update']),
   [
     body('name').notEmpty().withMessage('Tên hạn nộp không được để trống'),
     body('deadline_date').notEmpty().withMessage('Ngày hạn nộp không được để trống'),
@@ -679,7 +669,7 @@ router.post(
   },
 );
 
-router.delete('/research-rounds/:id/deadlines/:phase', authenticate, authorize('admin', 'manager'), async (req, res, next) => {
+router.delete('/research-rounds/:id/deadlines/:phase', authenticate, authorizePermission(['rounds', 'update']), async (req, res, next) => {
   try {
     const phase = parseInt(req.params.phase, 10);
     await deadlineSvc.remove(req.params.id, phase, req.user.id);
@@ -689,12 +679,12 @@ router.delete('/research-rounds/:id/deadlines/:phase', authenticate, authorize('
 
 // ─── Permissions ──────────────────────────────────────────────────────────────
 // GET /permissions — danh sách toàn bộ quyền (dùng cho ma trận phân quyền)
-router.get('/permissions', authenticate, async (req, res, next) => {
+router.get('/permissions', authenticate, authorizePermission(['roles', 'read']), async (req, res, next) => {
   try { return success(res, await permService.getAll()); } catch (e) { next(e); }
 });
 
 // GET /roles/:id/permissions — lấy danh sách quyền hiện tại của vai trò
-router.get('/roles/:id/permissions', authenticate, async (req, res, next) => {
+router.get('/roles/:id/permissions', authenticate, authorizePermission(['roles', 'read']), async (req, res, next) => {
   try { return success(res, await permService.getRolePermissions(req.params.id)); } catch (e) { next(e); }
 });
 
@@ -702,7 +692,7 @@ router.get('/roles/:id/permissions', authenticate, async (req, res, next) => {
 router.put(
   '/roles/:id/permissions',
   authenticate,
-  authorize('admin'),
+  authorizePermission(['roles', 'manage']),
   [body('permission_ids').isArray()],
   validate,
   async (req, res, next) => {

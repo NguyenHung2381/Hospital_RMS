@@ -20,6 +20,7 @@ const Catalog = lazy(() => import('../../features/catalog/pages/Catalog'));
 const Users = lazy(() => import('../../features/user/pages/UserList'));
 const Roles = lazy(() => import('../../features/roles/pages/Roles'));
 const Reports = lazy(() => import('../../features/reports/pages/Reports'));
+const Schedule = lazy(() => import('../../features/schedule/pages/Schedule'));
 
 // ── User portal pages ─────────────────────────────────────
 const UserHome = lazy(() => import('../../features/portal/pages/UserHome'));
@@ -77,6 +78,10 @@ export const adminRoutes: RouteObject[] = [
 		element: admin('Phân loại đề tài', <Catalog />),
 	},
 	{ path: '/admin/levels', element: admin('Cấp độ đề tài', <Catalog />) },
+	{
+		path: '/admin/schedule',
+		element: admin('Lịch trình nghiên cứu', <Schedule />),
+	},
 ];
 
 export const userRoutes: RouteObject[] = [

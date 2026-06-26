@@ -4,7 +4,7 @@ const ctrl = require('../controllers/topicController');
 const exportCtrl = require('../controllers/topicExportController');
 const fullExportCtrl = require('../controllers/topicFullExportController');
 const fileCtrl = require('../controllers/fileController');
-const { authenticate, authorize } = require('../middlewares/auth');
+const { authenticate, authorizePermission } = require('../middlewares/auth');
 const { validate } = require('../middlewares/errorHandler');
 const upload = require('../middlewares/upload');
 
@@ -40,7 +40,7 @@ router.use(authenticate);
  *       200:
  *         description: Danh sách đề tài
  */
-router.get('/', ctrl.getAll);
+router.get('/', authorizePermission(['topics', 'read']), ctrl.getAll);
 
 /**
  * @swagger
@@ -64,7 +64,7 @@ router.get('/', ctrl.getAll);
  *       200:
  *         description: Danh sách đề tài kèm thành viên
  */
-router.post('/export-data', [body('ids').isArray()], validate, ctrl.exportData);
+router.post('/export-data', authorizePermission(['reports', 'create']), [body('ids').isArray()], validate, ctrl.exportData);
 
 /**
  * @swagger
@@ -99,6 +99,7 @@ router.post('/export-data', [body('ids').isArray()], validate, ctrl.exportData);
  */
 router.post(
 	'/export-excel',
+	authorizePermission(['reports', 'create']),
 	[body('ids').isArray()],
 	validate,
 	exportCtrl.exportExcel,
@@ -136,6 +137,7 @@ router.post(
  */
 router.post(
 	'/export-report',
+	authorizePermission(['reports', 'create']),
 	[body('ids').isArray()],
 	validate,
 	fullExportCtrl.exportReport,
@@ -158,7 +160,7 @@ router.post(
  *       404:
  *         description: Không tìm thấy đề tài
  */
-router.get('/:id', ctrl.getById);
+router.get('/:id', authorizePermission(['topics', 'read']), ctrl.getById);
 
 /**
  * @swagger
@@ -186,6 +188,7 @@ router.get('/:id', ctrl.getById);
  */
 router.post(
 	'/',
+	authorizePermission(['topics', 'create']),
 	[body('title').notEmpty(), body('round_id').notEmpty()],
 	validate,
 	ctrl.createOne,
@@ -216,6 +219,7 @@ router.post(
  */
 router.put(
 	'/:id',
+	authorizePermission(['topics', 'update']),
 	[body('title').optional().notEmpty()],
 	validate,
 	ctrl.updateOne,
@@ -239,7 +243,7 @@ router.put(
  *       403:
  *         description: Không có quyền
  */
-router.delete('/:id', authorize('admin', 'manager'), ctrl.removeOne);
+router.delete('/:id', authorizePermission(['topics', 'delete']), ctrl.removeOne);
 
 /**
  * @swagger
@@ -256,7 +260,7 @@ router.delete('/:id', authorize('admin', 'manager'), ctrl.removeOne);
  *       200:
  *         description: Danh sách thành viên
  */
-router.get('/:id/members', ctrl.getMembers);
+router.get('/:id/members', authorizePermission(['topics', 'read']), ctrl.getMembers);
 
 /**
  * @swagger
@@ -293,6 +297,7 @@ router.get('/:id/members', ctrl.getMembers);
  */
 router.post(
 	'/:id/members',
+	authorizePermission(['topics', 'update']),
 	[
 		body('ho_ten').notEmpty(),
 		body('email').optional({ checkFalsy: true }).isEmail(),
@@ -334,6 +339,7 @@ router.post(
  */
 router.put(
 	'/:id/members/:member_id',
+	authorizePermission(['topics', 'update']),
 	[
 		body('ho_ten').optional().notEmpty(),
 		body('email').optional().isEmail(),
@@ -362,7 +368,7 @@ router.put(
  *       200:
  *         description: Xoá thành viên thành công
  */
-router.delete('/:id/members/:member_id', ctrl.deleteMember);
+router.delete('/:id/members/:member_id', authorizePermission(['topics', 'update']), ctrl.deleteMember);
 
 /**
  * @swagger
@@ -394,7 +400,7 @@ router.delete('/:id/members/:member_id', ctrl.deleteMember);
  */
 router.post(
 	'/:id/members/grant-accounts',
-	authorize('admin', 'manager'),
+	authorizePermission(['users', 'create']),
 	ctrl.grantAccounts,
 );
 
@@ -413,7 +419,7 @@ router.post(
  *       200:
  *         description: Nộp đề tài thành công
  */
-router.post('/:id/submit', ctrl.submit);
+router.post('/:id/submit', authorizePermission(['topics', 'update']), ctrl.submit);
 
 /**
  * @swagger
@@ -430,7 +436,7 @@ router.post('/:id/submit', ctrl.submit);
  *       200:
  *         description: Danh sách lịch sử xét duyệt
  */
-router.get('/:id/approvals', ctrl.getApprovals);
+router.get('/:id/approvals', authorizePermission(['topics', 'read']), ctrl.getApprovals);
 
 /**
  * @swagger
@@ -464,7 +470,7 @@ router.get('/:id/approvals', ctrl.getApprovals);
  */
 router.post(
 	'/:id/approve',
-	authorize('admin', 'manager'),
+	authorizePermission(['topics', 'approve']),
 	[body('status').isIn(['approved', 'rejected'])],
 	validate,
 	ctrl.approve,
@@ -485,7 +491,7 @@ router.post(
  *       200:
  *         description: Danh sách file
  */
-router.get('/:topic_id/files', fileCtrl.getByTopic);
+router.get('/:topic_id/files', authorizePermission(['files', 'read']), fileCtrl.getByTopic);
 
 /**
  * @swagger
@@ -502,7 +508,7 @@ router.get('/:topic_id/files', fileCtrl.getByTopic);
  *       200:
  *         description: Danh sách batch
  */
-router.get('/:topic_id/files/batches', fileCtrl.getBatches);
+router.get('/:topic_id/files/batches', authorizePermission(['files', 'read']), fileCtrl.getBatches);
 
 /**
  * @swagger
@@ -535,6 +541,6 @@ router.get('/:topic_id/files/batches', fileCtrl.getBatches);
  *       201:
  *         description: Upload thành công
  */
-router.post('/:topic_id/files', fileCtrl.checkUploadWindow, upload.array('files', 30), fileCtrl.upload);
+router.post('/:topic_id/files', authorizePermission(['files', 'create']), fileCtrl.checkUploadWindow, upload.array('files', 30), fileCtrl.upload);
 
 module.exports = router;

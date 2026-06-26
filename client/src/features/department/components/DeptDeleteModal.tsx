@@ -36,7 +36,7 @@ export function DeptDeleteModal({
 				</div>
 				<div className={styles.modalBody}>
 					<p className={styles.deleteDesc}>
-						Bạn có chắc muốn xoá <strong>{dept.name}</strong> ({dept.viet_tat})
+						Bạn có chắc muốn xoá <strong>{dept.name}</strong> ({dept.abbreviation})
 						khỏi hệ thống?
 					</p>
 					{(dept.topic_count ?? 0) > 0 && (

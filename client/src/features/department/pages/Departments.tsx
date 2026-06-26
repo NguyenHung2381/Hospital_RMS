@@ -145,7 +145,7 @@ export default function Departments() {
 													className={styles.deptAvatar}
 													style={{ background: c.bg, color: c.color }}
 												>
-													{getInitials(dept.viet_tat || dept.name)}
+													{getInitials(dept.abbreviation || dept.name)}
 												</div>
 												<span className={styles.deptName}>{dept.name}</span>
 											</div>

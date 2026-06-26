@@ -80,7 +80,7 @@ const getAll = async ({
     FROM research_rounds r
     LEFT JOIN users u ON u.id = r.created_by
     ${where}
-    ORDER BY r.year DESC, r.dot_so DESC
+    ORDER BY r.year DESC, r.round_number DESC
     OFFSET @offset ROWS FETCH NEXT @limit ROWS ONLY;
 
     SELECT COUNT(*) AS total FROM research_rounds r ${where};
@@ -94,7 +94,7 @@ const getAll = async ({
 
 const getById = async (id) => {
 	const pool = await getPool();
-	const result = await pool.request().input('id', sql.VarChar(9), id).query(`
+	const result = await pool.request().input('id', sql.VarChar(10), id).query(`
       SELECT r.*, u.full_name AS created_by_name,
              (SELECT COUNT(*) FROM topics WHERE round_id = r.id)                               AS topic_total,
              (SELECT COUNT(*) FROM topics WHERE round_id = r.id AND status = 'approved')       AS topic_active,
@@ -110,16 +110,21 @@ const getById = async (id) => {
 const create = async (data, actorId) => {
 	const pool = await getPool();
 	const year = Number(data.year) || new Date().getFullYear();
-	const dot_so = Number(data.dot_so) || 1;
-	const id = `DOT${year}${dot_so}`;
+	const round_number = Number(data.round_number) || 1;
 
-	const existing = await pool
-		.request()
-		.input('id', sql.VarChar(9), id)
-		.query('SELECT 1 FROM research_rounds WHERE id = @id');
-	if (existing.recordset.length > 0) {
+	// Dùng SP để sinh ID (đồng thời kiểm tra trùng)
+	let id;
+	try {
+		const idResult = await pool
+			.request()
+			.input('year', sql.Int, year)
+			.input('round_number', sql.TinyInt, round_number)
+			.output('new_id', sql.VarChar(10))
+			.execute('sp_gen_round_id');
+		id = idResult.output.new_id;
+	} catch (spErr) {
 		const err = new Error(
-			`Đợt số ${dot_so} năm ${year} đã tồn tại (mã: ${id})`,
+			`Đợt số ${round_number} năm ${year} đã tồn tại`,
 		);
 		err.statusCode = 409;
 		throw err;
@@ -128,10 +133,10 @@ const create = async (data, actorId) => {
 	const req = pool
 		.request()
 		.input('actor_id', sql.VarChar(20), actorId)
-		.input('id', sql.VarChar(9), id)
+		.input('id', sql.VarChar(10), id)
 		.input('name', sql.NVarChar(200), data.name)
 		.input('year', sql.Int, year)
-		.input('dot_so', sql.Int, dot_so)
+		.input('round_number', sql.TinyInt, round_number)
 		.input('start_date', sql.Date, new Date(data.start_date))
 		.input('end_date', sql.Date, new Date(data.end_date))
 		.input(
@@ -155,10 +160,10 @@ const create = async (data, actorId) => {
 	await req.query(`
       EXEC sp_set_actor @actor_id;
       INSERT INTO research_rounds
-        (id, name, year, dot_so, start_date, end_date, status, public_token,
+        (id, name, year, round_number, start_date, end_date, status, public_token,
          registration_start_date, registration_end_date, created_by)
       VALUES
-        (@id, @name, @year, @dot_so, @start_date, @end_date, @status,
+        (@id, @name, @year, @round_number, @start_date, @end_date, @status,
          LOWER(REPLACE(NEWID(),'-','')), @reg_start, @reg_end, @actor_id);
     `);
 
@@ -172,7 +177,7 @@ const update = async (id, data, actorId) => {
 	const sets = ['updated_at = GETDATE()', 'updated_by = @actor_id'];
 	const req = pool
 		.request()
-		.input('id', sql.VarChar(9), id)
+		.input('id', sql.VarChar(10), id)
 		.input('actor_id', sql.VarChar(20), actorId);
 
 	if (data.name !== undefined) {
@@ -183,9 +188,9 @@ const update = async (id, data, actorId) => {
 		sets.push('year = @year');
 		req.input('year', sql.Int, data.year);
 	}
-	if (data.dot_so !== undefined) {
-		sets.push('dot_so = @dot_so');
-		req.input('dot_so', sql.Int, data.dot_so);
+	if (data.round_number !== undefined) {
+		sets.push('round_number = @round_number');
+		req.input('round_number', sql.TinyInt, data.round_number);
 	}
 	if (data.start_date !== undefined) {
 		sets.push('start_date = @start_date');
@@ -221,6 +226,22 @@ const update = async (id, data, actorId) => {
 			data.registration_end_date ? new Date(data.registration_end_date) : null,
 		);
 	}
+	if (data.supplement_start_date !== undefined) {
+		sets.push('supplement_start_date = @sup_start');
+		req.input(
+			'sup_start',
+			sql.Date,
+			data.supplement_start_date ? new Date(data.supplement_start_date) : null,
+		);
+	}
+	if (data.supplement_end_date !== undefined) {
+		sets.push('supplement_end_date = @sup_end');
+		req.input(
+			'sup_end',
+			sql.Date,
+			data.supplement_end_date ? new Date(data.supplement_end_date) : null,
+		);
+	}
 
 	await req.query(
 		`EXEC sp_set_actor @actor_id; UPDATE research_rounds SET ${sets.join(', ')} WHERE id = @id`,
@@ -235,7 +256,7 @@ const remove = async (id, actorId) => {
 
 	const linked = await pool
 		.request()
-		.input('id', sql.VarChar(9), id)
+		.input('id', sql.VarChar(10), id)
 		.query('SELECT COUNT(*) AS cnt FROM topics WHERE round_id = @id');
 	const cnt = linked.recordset[0].cnt;
 	if (cnt > 0) {
@@ -248,7 +269,7 @@ const remove = async (id, actorId) => {
 
 	await pool
 		.request()
-		.input('id', sql.VarChar(9), id)
+		.input('id', sql.VarChar(10), id)
 		.input('actor_id', sql.VarChar(20), actorId)
 		.query(
 			`EXEC sp_set_actor @actor_id; DELETE FROM research_rounds WHERE id = @id`,

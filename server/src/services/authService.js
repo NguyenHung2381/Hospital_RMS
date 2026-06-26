@@ -6,21 +6,12 @@ const { v4: uuidv4 } = require('uuid');
 const login = async (username, password) => {
 	const pool = await getPool();
 
-	const hasExpiry = await pool.request().query(`
-    SELECT COUNT(*) AS c FROM sys.columns
-    WHERE object_id = OBJECT_ID('users') AND name = 'account_expires_at'
-  `);
-	const expiryCol =
-		hasExpiry.recordset[0].c > 0
-			? 'u.account_expires_at'
-			: 'NULL AS account_expires_at';
-
 	const result = await pool
 		.request()
 		.input('username', sql.VarChar(50), username).query(`
       SELECT u.id, u.username, u.password, u.full_name, u.email, u.staff_number,
              u.role_id, u.account_type, u.is_active, u.department_id,
-             ${expiryCol}, r.name AS role_name
+             u.account_expires_at, r.name AS role_name
       FROM users u
       LEFT JOIN roles r ON r.id = u.role_id
       WHERE u.username = @username
@@ -72,27 +63,13 @@ const login = async (username, password) => {
 		},
 	);
 
-	// Store refresh token
-	const tokenIdResult = await pool
-		.request()
-		.output('new_id', sql.VarChar(60))
-		.execute('sp_gen_token_id');
-	const tokenId = tokenIdResult.output.new_id;
-
-	// Store refresh token — thêm id vào INSERT
+	// Store refresh token via SP (handles id generation + remember_me)
 	await pool
 		.request()
-		.input('id', sql.VarChar(60), tokenId)
 		.input('user_id', sql.VarChar(20), user.id)
-		.input('token', sql.VarChar(500), refreshToken)
-		.input(
-			'expires_at',
-			sql.DateTime2,
-			new Date(Date.now() + 7 * 24 * 3600 * 1000),
-		).query(`
-      INSERT INTO refresh_tokens (id, user_id, token, expires_at)
-      VALUES (@id, @user_id, @token, @expires_at)
-    `);
+		.input('token', sql.VarChar(512), refreshToken)
+		.input('remember_me', sql.Bit, 0)
+		.execute('sp_create_refresh_token');
 
 	return {
 		user: {

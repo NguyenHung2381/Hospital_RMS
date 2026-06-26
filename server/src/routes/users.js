@@ -1,7 +1,7 @@
 const router = require('express').Router();
 const { body } = require('express-validator');
 const ctrl = require('../controllers/userController');
-const { authenticate, authorize } = require('../middlewares/auth');
+const { authenticate, authorizePermission } = require('../middlewares/auth');
 const { validate } = require('../middlewares/errorHandler');
 
 router.use(authenticate);
@@ -51,7 +51,7 @@ router.get('/me', ctrl.getMe);
  *       403:
  *         description: Không có quyền truy cập
  */
-router.get('/', authorize('admin', 'manager', 'dept'), ctrl.getAll);
+router.get('/', authorizePermission(['users', 'read']), ctrl.getAll);
 
 /**
  * @swagger
@@ -109,7 +109,7 @@ router.get('/:id', ctrl.getById);
  */
 router.post(
 	'/',
-	authorize('admin'),
+	authorizePermission(['users', 'create']),
 	[
 		body('username').notEmpty(),
 		body('password').isLength({ min: 6 }),
@@ -148,6 +148,7 @@ router.post(
  */
 router.put(
 	'/:id',
+	authorizePermission(['users', 'update']),
 	[body('full_name').optional().notEmpty()],
 	validate,
 	ctrl.updateOne,
@@ -174,7 +175,7 @@ router.put(
  *       404:
  *         description: Không tìm thấy người dùng
  */
-router.delete('/:id', authorize('admin'), ctrl.removeOne);
+router.delete('/:id', authorizePermission(['users', 'delete']), ctrl.removeOne);
 
 /**
  * @swagger
@@ -209,7 +210,7 @@ router.delete('/:id', authorize('admin'), ctrl.removeOne);
  */
 router.post(
 	'/:id/reset-password',
-	authorize('admin', 'manager', 'dept'),
+	authorizePermission(['users', 'update']),
 	[body('new_password').isLength({ min: 5 })],
 	validate,
 	ctrl.resetPassword,

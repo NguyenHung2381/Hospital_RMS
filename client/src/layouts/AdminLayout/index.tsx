@@ -30,6 +30,7 @@ const KEY_TO_PATH: Record<string, string> = {
 	users: '/admin/users',
 	roles: '/admin/roles',
 	reports: '/admin/reports',
+	schedule: '/admin/schedule',
 };
 
 // Map ngược từ URL pathname → nav key (để highlight sidebar)
@@ -59,6 +60,7 @@ const NAV_GROUPS: NavGroup[] = [
 		items: [
 			{ key: 'topics', label: 'Đề tài nghiên cứu', icon: <Icon.Topic /> },
 			{ key: 'rounds', label: 'Đợt nghiên cứu', icon: <Icon.Round /> },
+			{ key: 'schedule', label: 'Lịch trình', icon: <Icon.Schedule /> },
 			{ key: 'approvals', label: 'Phê duyệt', icon: <Icon.Approval /> },
 			{ key: 'members', label: 'Thành viên đề tài', icon: <Icon.Members /> },
 		],

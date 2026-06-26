@@ -51,7 +51,7 @@ export function useDepartments() {
 			(d) =>
 				d.name.toLowerCase().includes(q) ||
 				(d.code ?? '').toLowerCase().includes(q) ||
-				(d.viet_tat ?? '').toLowerCase().includes(q),
+				(d.abbreviation ?? '').toLowerCase().includes(q),
 		);
 	}, [depts, search]);
 

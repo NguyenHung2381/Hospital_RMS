@@ -1,0 +1,90 @@
+.colorPicker {
+	composes: panel from '../styles/shared.module.css';
+	position: fixed;
+	z-index: 301;
+	width: 224px;
+}
+
+.head {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: 10px 12px 8px;
+	border-bottom: 1px solid var(--color-gray-100);
+}
+.title {
+	font-size: var(--font-size-xs);
+	font-weight: var(--font-weight-semibold);
+	color: var(--color-gray-700);
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	max-width: 166px;
+}
+.closeBtn {
+	composes: closeBtn from '../styles/shared.module.css';
+	width: 24px;
+	height: 24px;
+}
+
+.presets {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 7px;
+	padding: 10px 12px 8px;
+}
+.swatch {
+	width: 22px;
+	height: 22px;
+	border-radius: 50%;
+	border: 2px solid transparent;
+	outline: 2px solid transparent;
+	cursor: pointer;
+	transition: transform 0.1s, outline-color 0.1s;
+	flex-shrink: 0;
+	padding: 0;
+}
+.swatch:hover { transform: scale(1.18); }
+.swatchActive {
+	outline-color: var(--color-gray-700);
+	transform: scale(1.1);
+}
+
+.inputRow {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	padding: 0 12px 10px;
+}
+.colorInput {
+	width: 36px;
+	height: 28px;
+	border: 1px solid var(--color-gray-200);
+	border-radius: var(--radius-md);
+	padding: 2px;
+	cursor: pointer;
+	background: transparent;
+	flex-shrink: 0;
+}
+.colorHex {
+	font-size: var(--font-size-xs);
+	color: var(--color-gray-500);
+	font-family: monospace;
+	letter-spacing: 0.04em;
+}
+
+.foot {
+	display: flex;
+	gap: 8px;
+	justify-content: flex-end;
+	padding: 8px 12px 10px;
+	border-top: 1px solid var(--color-gray-100);
+}
+.foot button { height: 30px; font-size: var(--font-size-xs); padding: 0 12px; }
+
+.btnPrimary {
+	composes: btnPrimary from '../styles/shared.module.css';
+}
+.btnSecondary {
+	composes: btnSecondary from '../styles/shared.module.css';
+}

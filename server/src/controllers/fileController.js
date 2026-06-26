@@ -67,7 +67,7 @@ async function assertUploadWindow(topicId) {
 			.query(`
 				SELECT start_date, deadline_date
 				FROM round_deadlines
-				WHERE round_id = @rid AND deadline_type = 'nop_bao_cao'
+				WHERE round_id = @rid AND deadline_type = 'report_submission'
 			`);
 
 		for (const dl of dls) {

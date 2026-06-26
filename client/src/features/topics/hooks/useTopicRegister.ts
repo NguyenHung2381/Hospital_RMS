@@ -60,8 +60,6 @@ export interface TopicRegisterState {
 	lockedRound: {
 		id: string;
 		name: string;
-		registration_start_date?: string | null;
-		registration_end_date?: string | null;
 	} | null;
 
 	// Form
@@ -204,8 +202,6 @@ export function useTopicRegister(): TopicRegisterState {
 						setLockedRound({
 							id: round.id,
 							name: round.name,
-							registration_start_date: round.registration_start_date,
-							registration_end_date: round.registration_end_date,
 						});
 						setFormState((prev) => ({ ...prev, round_id: round.id }));
 					}

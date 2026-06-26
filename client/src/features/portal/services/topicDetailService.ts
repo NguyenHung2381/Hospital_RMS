@@ -37,15 +37,19 @@ export function parseDdMmYyyy(s: string | null | undefined): Date | null {
 
 export function getEditMode(
 	topic: Topic,
-	round: ResearchRound,
+	_round: ResearchRound,
 	deadlines: RoundDeadline[],
 ): EditMode {
 	const today = new Date();
 	today.setHours(0, 0, 0, 0);
-	const regStart = parseDdMmYyyy(round.registration_start_date);
-	const regEnd = parseDdMmYyyy(round.registration_end_date);
-	const supStart = parseDdMmYyyy(round.supplement_start_date);
-	const supEnd = parseDdMmYyyy(round.supplement_end_date);
+
+	// Registration and supplement windows come from round_deadlines (not research_rounds columns)
+	const regDl = deadlines.find((d) => d.deadline_type === 'registration' && d.start_date);
+	const supDl = deadlines.find((d) => d.deadline_type === 'supplement' && d.start_date);
+	const regStart = regDl ? parseDdMmYyyy(regDl.start_date) : null;
+	const regEnd = regDl ? parseDdMmYyyy(regDl.deadline_date) : null;
+	const supStart = supDl ? parseDdMmYyyy(supDl.start_date) : null;
+	const supEnd = supDl ? parseDdMmYyyy(supDl.deadline_date) : null;
 
 	if (regStart && regEnd && today >= regStart && today <= regEnd)
 		if (topic.status === 'submitted' || topic.status === 'supplement')
@@ -56,7 +60,7 @@ export function getEditMode(
 			return 'supplement';
 
 	const reportDl = deadlines.find((d) => {
-		if (d.deadline_type !== 'nop_bao_cao') return false;
+		if (d.deadline_type !== 'report_submission') return false;
 		const dlStart = parseDdMmYyyy(d.start_date);
 		const dlEnd = parseDdMmYyyy(d.deadline_date);
 		return (!dlStart || today >= dlStart) && !!dlEnd && today <= dlEnd;

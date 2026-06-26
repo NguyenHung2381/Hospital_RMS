@@ -1,6 +1,6 @@
 const router = require('express').Router();
 const fileCtrl = require('../controllers/fileController');
-const { authenticate } = require('../middlewares/auth');
+const { authenticate, authorizePermission } = require('../middlewares/auth');
 
 router.use(authenticate);
 
@@ -32,6 +32,6 @@ router.use(authenticate);
  *       401:
  *         description: Chưa xác thực
  */
-router.delete('/:file_id', fileCtrl.deleteFile);
+router.delete('/:file_id', authorizePermission(['files', 'delete']), fileCtrl.deleteFile);
 
 module.exports = router;

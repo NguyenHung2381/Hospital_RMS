@@ -1,6 +1,5 @@
 import {
 	CalendarSvg,
-	DocSvg,
 	EditSvg,
 	LinkSvg,
 	TrashSvg,
@@ -54,7 +53,7 @@ export function RoundCard({
 						<div className={styles.roundCardId}>{round.id}</div>
 						<div className={styles.roundCardName}>{round.name}</div>
 						<div className={styles.roundCardSubname}>
-							Đợt {round.dot_so} · Năm {round.year}
+							Đợt {round.round_number} · Năm {round.year}
 						</div>
 					</div>
 					<span
@@ -88,34 +87,10 @@ export function RoundCard({
 					)}
 				</div>
 
-				{round.registration_start_date && round.registration_end_date && (
-					<div
-						style={{
-							display: 'flex',
-							alignItems: 'center',
-							gap: 6,
-							fontSize: 12,
-							color: 'var(--color-muted)',
-							marginBottom: 8,
-						}}
-					>
-						<DocSvg style={{ width: 13, height: 13, flexShrink: 0 }} />
-						<span>Đăng ký:</span>
-						<span style={{ fontWeight: 500 }}>
-							{round.registration_start_date} → {round.registration_end_date}
-						</span>
-					</div>
-				)}
-
 				{round.status === 'draft' && (
 					<div className={styles.scheduledInfo}>
 						<CalendarSvg />
 						<span>Chưa mở đăng ký</span>
-						{round.registration_start_date && (
-							<span className={styles.scheduledDate}>
-								Mở từ {round.registration_start_date}
-							</span>
-						)}
 					</div>
 				)}
 

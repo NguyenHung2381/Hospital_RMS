@@ -31,7 +31,7 @@ const getAll = async ({ page = 1, limit = 100, search } = {}) => {
 
 	if (search) {
 		where +=
-			' AND (d.name LIKE @search OR d.code LIKE @search OR d.viet_tat LIKE @search OR d.description LIKE @search)';
+			' AND (d.name LIKE @search OR d.code LIKE @search OR d.abbreviation LIKE @search OR d.description LIKE @search)';
 		req.input('search', sql.NVarChar, `%${search}%`);
 	}
 
@@ -60,20 +60,27 @@ const getById = async (id) => {
 
 const create = async (data, actorId) => {
 	const pool = await getPool();
-	const result = await pool
+	const idResult = await pool
+		.request()
+		.input('abbreviation', sql.VarChar(20), data.abbreviation)
+		.output('new_id', sql.VarChar(20))
+		.execute('sp_gen_dept_id');
+	const newId = idResult.output.new_id;
+
+	await pool
 		.request()
 		.input('actor_id', sql.VarChar(20), actorId)
+		.input('id', sql.VarChar(20), newId)
 		.input('name', sql.NVarChar(255), data.name)
 		.input('code', sql.VarChar(20), data.code)
-		.input('viet_tat', sql.NVarChar(100), data.viet_tat)
+		.input('abbreviation', sql.VarChar(20), data.abbreviation)
 		.input('description', sql.NVarChar(sql.MAX), data.description || null)
 		.query(`
       EXEC sp_set_actor @actor_id;
-      INSERT INTO departments (name, code, viet_tat, description, created_by)
-      VALUES (@name, @code, @viet_tat, @description, @actor_id);
-      SELECT id FROM departments WHERE viet_tat = @viet_tat;
+      INSERT INTO departments (id, name, code, abbreviation, description, created_by)
+      VALUES (@id, @name, @code, @abbreviation, @description, @actor_id);
     `);
-	const dept = await getById(result.recordset[0].id);
+	const dept = await getById(newId);
 	broadcast('update', { entity: 'department' });
 	return dept;
 };
@@ -94,9 +101,9 @@ const update = async (id, data, actorId) => {
 		sets.push('code = @code');
 		req.input('code', sql.VarChar(50), data.code);
 	}
-	if (data.viet_tat !== undefined) {
-		sets.push('viet_tat = @viet_tat');
-		req.input('viet_tat', sql.NVarChar(100), data.viet_tat);
+	if (data.abbreviation !== undefined) {
+		sets.push('abbreviation = @abbreviation');
+		req.input('abbreviation', sql.VarChar(20), data.abbreviation);
 	}
 	if (data.description !== undefined) {
 		sets.push('description = @description');

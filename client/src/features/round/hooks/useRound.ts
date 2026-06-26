@@ -63,7 +63,7 @@ export function useRound() {
 					if (statusFilter !== 'all' && r.status !== statusFilter) return false;
 					return true;
 				})
-				.sort((a, b) => b.year - a.year || b.dot_so - a.dot_so),
+				.sort((a, b) => b.year - a.year || b.round_number - a.round_number),
 		[rounds, yearFilter, statusFilter],
 	);
 

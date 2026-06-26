@@ -25,7 +25,7 @@ export function DeptFormModal({
 			? {
 					name: dept.name,
 					code: dept.code,
-					viet_tat: dept.viet_tat,
+					abbreviation: dept.abbreviation,
 					description: dept.description ?? '',
 				}
 			: EMPTY_FORM,
@@ -63,7 +63,7 @@ export function DeptFormModal({
 		const err: Partial<DeptFormData> = {};
 		if (!form.name.trim()) err.name = 'Vui lòng nhập tên khoa phòng';
 		if (!form.code.trim()) err.code = 'Vui lòng nhập mã';
-		if (!form.viet_tat.trim()) err.viet_tat = 'Vui lòng nhập viết tắt';
+		if (!form.abbreviation.trim()) err.abbreviation = 'Vui lòng nhập viết tắt';
 		setErrors(err);
 		return Object.keys(err).length === 0;
 	};
@@ -134,13 +134,13 @@ export function DeptFormModal({
 								Viết tắt <span className={styles.required}>*</span>
 							</label>
 							<input
-								className={`${styles.formInput} ${errors.viet_tat ? styles.inputError : ''}`}
-								value={form.viet_tat}
-								onChange={set('viet_tat')}
+								className={`${styles.formInput} ${errors.abbreviation ? styles.inputError : ''}`}
+								value={form.abbreviation}
+								onChange={set('abbreviation')}
 								placeholder='VD: Tim mạch'
 							/>
-							{errors.viet_tat && (
-								<div className={styles.fieldError}>{errors.viet_tat}</div>
+							{errors.abbreviation && (
+								<div className={styles.fieldError}>{errors.abbreviation}</div>
 							)}
 						</div>
 						<div

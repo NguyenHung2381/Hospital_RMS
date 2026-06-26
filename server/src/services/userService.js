@@ -22,7 +22,7 @@ const getAll = async ({
 
 	if (search) {
 		where +=
-			' AND (u.username LIKE @search OR u.full_name LIKE @search OR u.email LIKE @search OR u.staff_number LIKE @search)';
+			' AND (u.username LIKE @search OR u.full_name LIKE @search OR u.email LIKE @search OR CAST(u.staff_number AS VARCHAR(20)) LIKE @search)';
 		req.input('search', sql.NVarChar, `%${search}%`);
 	}
 	if (department_id) {
@@ -87,7 +87,13 @@ const create = async (data, actorId) => {
 		.input('actor_id', sql.VarChar(20), actorId)
 		.input('username', sql.VarChar(50), data.username)
 		.input('password', sql.VarChar(255), hashed)
-		.input('staff_number', sql.VarChar(20), data.staff_number || null)
+		.input(
+			'staff_number',
+			sql.Int,
+			data.staff_number != null && data.staff_number !== ''
+				? parseInt(String(data.staff_number), 10)
+				: null,
+		)
 		.input('full_name', sql.NVarChar(200), data.full_name)
 		.input('email', sql.VarChar(100), data.email || null)
 		.input('department_id', sql.VarChar(20), data.department_id || null)
@@ -120,8 +126,10 @@ const update = async (id, data, actorId) => {
 		sets.push('staff_number = @staff_number');
 		req.input(
 			'staff_number',
-			sql.VarChar(20),
-			data.staff_number != null ? String(data.staff_number) : null,
+			sql.Int,
+			data.staff_number != null && data.staff_number !== ''
+				? parseInt(String(data.staff_number), 10)
+				: null,
 		);
 	}
 	if (data.full_name !== undefined) {
@@ -195,7 +203,7 @@ const searchForMember = async ({ q, department_id, limit = 10 }) => {
 
 	if (q && q.trim()) {
 		where +=
-			' AND (u.username LIKE @search OR u.full_name LIKE @search OR u.staff_number LIKE @search)';
+			' AND (u.username LIKE @search OR u.full_name LIKE @search OR CAST(u.staff_number AS VARCHAR(20)) LIKE @search)';
 		req.input('search', sql.NVarChar, `%${q.trim()}%`);
 	}
 	if (department_id) {

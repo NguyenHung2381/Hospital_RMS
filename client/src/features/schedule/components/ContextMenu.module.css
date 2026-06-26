@@ -1,0 +1,99 @@
+.ctxMenu {
+	composes: panel from '../styles/shared.module.css';
+	position: fixed;
+	z-index: 300;
+	min-width: 192px;
+	padding: 4px;
+	list-style: none;
+	margin: 0;
+}
+
+.ctxItem {
+	display: flex;
+	align-items: center;
+	gap: 9px;
+	width: 100%;
+	padding: 8px 12px;
+	border: none;
+	background: transparent;
+	font-size: var(--font-size-sm);
+	color: var(--color-gray-700);
+	cursor: pointer;
+	border-radius: var(--radius-md);
+	font-family: var(--font-body);
+	text-align: left;
+	transition: background 0.1s;
+}
+.ctxItem:hover:not(:disabled) {
+	background: var(--color-gray-100);
+	color: var(--color-gray-900);
+}
+.ctxItemDisabled {
+	color: var(--color-gray-400) !important;
+	cursor: not-allowed;
+}
+.ctxItemDisabled:hover { background: transparent !important; }
+
+.ctxSep {
+	height: 1px;
+	background: var(--color-gray-100);
+	margin: 3px 8px;
+}
+
+/* ─── Icons ──────────────────────────────────────────────────────────────── */
+.ctxAddIcon {
+	display: inline-block;
+	width: 14px;
+	height: 14px;
+	flex-shrink: 0;
+	position: relative;
+}
+.ctxAddIcon::before,
+.ctxAddIcon::after {
+	content: '';
+	position: absolute;
+	background: currentColor;
+	border-radius: 1px;
+}
+.ctxAddIcon::before { width: 2px;  height: 10px; left: 6px; top: 2px; }
+.ctxAddIcon::after  { width: 10px; height: 2px;  left: 2px; top: 6px; }
+
+.ctxColorIcon {
+	display: inline-block;
+	width: 14px;
+	height: 14px;
+	border-radius: 50%;
+	flex-shrink: 0;
+	background: conic-gradient(#e05252 0deg, #ef9f27 72deg, #2eb87a 144deg, #378add 216deg, #7c52e0 288deg, #e05252 360deg);
+	box-shadow: 0 0 0 1.5px rgba(0,0,0,0.12) inset;
+}
+
+.ctxEditIcon {
+	display: inline-block;
+	width: 14px;
+	height: 14px;
+	flex-shrink: 0;
+	position: relative;
+}
+.ctxEditIcon::before {
+	content: '';
+	position: absolute;
+	width: 7px;
+	height: 7px;
+	border: 1.5px solid currentColor;
+	border-radius: 1px;
+	top: 1px;
+	left: 4px;
+	transform: rotate(45deg);
+	transform-origin: center;
+}
+.ctxEditIcon::after {
+	content: '';
+	position: absolute;
+	width: 3px;
+	height: 1.5px;
+	background: currentColor;
+	bottom: 2px;
+	left: 2px;
+	border-radius: 1px;
+}
