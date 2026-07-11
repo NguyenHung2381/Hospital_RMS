@@ -1,7 +1,9 @@
 # Dependencies
 node_modules/
+.claude/
 .pnp
 .pnp.js
+Hoi dong de cuong/
 
 # Environment variables
 .env

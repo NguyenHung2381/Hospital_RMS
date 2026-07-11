@@ -1,12 +1,14 @@
 import { EditSvg, KeySvg, TrashSvg, UsersSvg } from '@/assets/icons';
 import styles from '../pages/UserList.module.css';
 import type { User } from '../types/user.type';
-import { ACCOUNT_TYPE_CFG, formatDate } from '../utils/userHelpers';
+import { formatDate as _formatDate } from '../../../shared/utils/formatDate';
+import { ACCOUNT_TYPE_CFG } from '../utils/userHelpers';
+const formatDate = (s: string | null | undefined) => _formatDate(s) ?? '—';
 import { Avatar, Toggle } from './UserModal';
 
 interface UserTableProps {
-	pagedUsers: User[];
-	filteredUsers: User[];
+	users: User[];
+	totalCount: number;
 	currentPage: number;
 	pageSize: number;
 	totalPages: number;
@@ -42,8 +44,8 @@ function Badge({
 }
 
 export function UserTable({
-	pagedUsers,
-	filteredUsers,
+	users,
+	totalCount,
 	currentPage,
 	pageSize,
 	totalPages,
@@ -71,7 +73,7 @@ export function UserTable({
 			className={styles.tableWrap}
 			style={{ border: 'none', borderRadius: 0 }}
 		>
-			{filteredUsers.length === 0 ? (
+			{users.length === 0 ? (
 				<div className={styles.emptyState}>
 					<div className={styles.emptyIcon}>
 						<UsersSvg />
@@ -110,7 +112,7 @@ export function UserTable({
 						</tr>
 					</thead>
 					<tbody>
-						{pagedUsers.map((u, i) => {
+						{users.map((u, i) => {
 							const rowNum = (currentPage - 1) * pageSize + i + 1;
 							const typeCfg =
 								ACCOUNT_TYPE_CFG[u.account_type] ?? ACCOUNT_TYPE_CFG.member;
@@ -221,16 +223,14 @@ export function UserTable({
 			)}
 
 			{/* PAGINATION */}
-			{filteredUsers.length > 0 && (
+			{totalCount > 0 && (
 				<div className={styles.paginationBar}>
 					<div className={styles.paginationInfo}>
 						Hiển thị <strong>{(currentPage - 1) * pageSize + 1}</strong>
 						{' – '}
-						<strong>
-							{Math.min(currentPage * pageSize, filteredUsers.length)}
-						</strong>
+						<strong>{Math.min(currentPage * pageSize, totalCount)}</strong>
 						{' / '}
-						<strong>{filteredUsers.length}</strong> bản ghi
+						<strong>{totalCount}</strong> bản ghi
 					</div>
 					<div className={styles.paginationControls}>
 						<div className={styles.pageSizeSelector}>

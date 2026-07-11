@@ -1,0 +1,244 @@
+.container {
+	display: flex;
+	flex-direction: column;
+	gap: var(--space-4);
+	width: 100%;
+}
+
+.roundCard {
+	background: var(--color-white);
+	border: 1px solid var(--color-gray-200);
+	border-radius: var(--radius-xl);
+	padding: var(--space-5);
+	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+	display: flex;
+	flex-direction: column;
+	gap: var(--space-4);
+	transition: box-shadow 0.15s ease, border-color 0.15s ease;
+}
+.roundCard:hover {
+	box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+	border-color: var(--color-gray-300);
+}
+
+.cardHeader {
+	display: flex;
+	align-items: flex-start;
+	justify-content: space-between;
+	gap: var(--space-4);
+	flex-wrap: wrap;
+	padding-bottom: var(--space-3);
+	border-bottom: 1px solid var(--color-gray-100);
+}
+
+.headerLeft {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+}
+
+.roundTitleRow {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	flex-wrap: wrap;
+}
+
+.roundId {
+	font-size: 12px;
+	font-weight: var(--font-weight-bold);
+	color: var(--color-primary);
+	font-family: monospace;
+	background: color-mix(in srgb, var(--color-primary) 10%, transparent);
+	padding: 2px 8px;
+	border-radius: var(--radius-md);
+}
+
+.roundName {
+	font-size: 16px;
+	font-weight: var(--font-weight-bold);
+	color: var(--color-gray-900);
+	margin: 0;
+}
+
+.metaRow {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	flex-wrap: wrap;
+	font-size: 12px;
+	color: var(--color-gray-500);
+}
+
+.statusBadge {
+	display: inline-block;
+	padding: 3px 10px;
+	border-radius: var(--radius-full);
+	font-size: 11px;
+	font-weight: var(--font-weight-bold);
+	background: color-mix(in srgb, var(--status-color) 14%, transparent);
+	color: var(--status-color);
+	border: 1px solid color-mix(in srgb, var(--status-color) 30%, transparent);
+}
+
+.addBtn {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	padding: 6px 14px;
+	border-radius: var(--radius-lg);
+	border: 1px dashed var(--color-gray-300);
+	background: var(--color-gray-50);
+	font-size: 12px;
+	font-weight: var(--font-weight-semibold);
+	color: var(--color-gray-700);
+	cursor: pointer;
+	transition: all 0.15s ease;
+}
+.addBtn:hover {
+	border-color: var(--color-primary);
+	color: var(--color-primary);
+	background: color-mix(in srgb, var(--color-primary) 8%, transparent);
+}
+
+/* Main Phases Grid */
+.phasesGrid {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+	gap: var(--space-3);
+}
+
+.phaseCard {
+	background: var(--color-gray-50);
+	border: 1px solid var(--color-gray-200);
+	border-radius: var(--radius-lg);
+	padding: var(--space-3) var(--space-4);
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+	border-left: 4px solid var(--phase-color, var(--color-primary));
+}
+
+.phaseTitle {
+	font-size: 11px;
+	font-weight: var(--font-weight-bold);
+	color: var(--color-gray-500);
+	text-transform: uppercase;
+	letter-spacing: 0.05em;
+}
+
+.phaseDate {
+	font-size: 13px;
+	font-weight: var(--font-weight-bold);
+	color: var(--color-gray-800);
+}
+
+/* Vertical Timeline for Deadlines */
+.timelineSection {
+	display: flex;
+	flex-direction: column;
+	gap: var(--space-3);
+	margin-top: var(--space-2);
+}
+
+.sectionTitle {
+	font-size: 13px;
+	font-weight: var(--font-weight-bold);
+	color: var(--color-gray-700);
+	display: flex;
+	align-items: center;
+	gap: 6px;
+}
+
+.verticalList {
+	position: relative;
+	display: flex;
+	flex-direction: column;
+	gap: var(--space-3);
+	padding-left: 20px;
+}
+.verticalList::before {
+	content: '';
+	position: absolute;
+	top: 8px;
+	bottom: 8px;
+	left: 7px;
+	width: 2px;
+	background: var(--color-gray-200);
+}
+
+.deadlineItem {
+	position: relative;
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--space-3);
+	background: var(--color-white);
+	border: 1px solid var(--color-gray-200);
+	border-radius: var(--radius-lg);
+	padding: var(--space-3) var(--space-4);
+	transition: all 0.15s ease;
+	cursor: pointer;
+}
+.deadlineItem:hover {
+	border-color: var(--color-primary);
+	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+	transform: translateX(2px);
+}
+
+.deadlineDot {
+	position: absolute;
+	left: -17px;
+	top: 50%;
+	transform: translateY(-50%);
+	width: 12px;
+	height: 12px;
+	border-radius: 50%;
+	border: 2px solid #fff;
+	background: var(--dl-color, var(--color-primary));
+	box-shadow: 0 0 0 2px color-mix(in srgb, var(--dl-color, var(--color-primary)) 40%, transparent);
+}
+
+.deadlineInfo {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+}
+
+.deadlineName {
+	font-size: 14px;
+	font-weight: var(--font-weight-bold);
+	color: var(--color-gray-800);
+}
+
+.deadlineMeta {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	font-size: 11px;
+	color: var(--color-gray-500);
+}
+
+.phaseBadge {
+	background: var(--color-gray-100);
+	padding: 1px 6px;
+	border-radius: 4px;
+	font-weight: var(--font-weight-semibold);
+}
+
+.deadlineDateBadge {
+	font-size: 12px;
+	font-weight: var(--font-weight-bold);
+	color: var(--dl-color, var(--color-primary));
+	background: color-mix(in srgb, var(--dl-color, var(--color-primary)) 10%, transparent);
+	padding: 4px 10px;
+	border-radius: var(--radius-md);
+	white-space: nowrap;
+}
+
+.emptyDeadlines {
+	font-size: 12px;
+	color: var(--color-gray-400);
+	font-style: italic;
+	padding-left: 8px;
+}

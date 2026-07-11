@@ -41,13 +41,10 @@ export const TOPIC_STATUS_CFG: Record<
 	TopicStatus,
 	{ label: string; cls: string }
 > = {
-	draft: { label: 'Bản nháp', cls: 'tsBadgeGray' },
 	submitted: { label: 'Chờ duyệt', cls: 'tsBadgeAmber' },
 	approved: { label: 'Đã phê duyệt', cls: 'tsBadgeGreen' },
 	rejected: { label: 'Từ chối', cls: 'tsBadgeRed' },
 	supplement: { label: 'Bổ sung', cls: 'tsBadgeBlue' },
-	in_progress: { label: 'Đang thực hiện', cls: 'tsBadgeBlue' },
-	completed: { label: 'Hoàn thành', cls: 'tsBadgeTeal' },
 };
 
 export const EMPTY_FORM: MemberFormData = {
@@ -61,13 +58,10 @@ export const EMPTY_FORM: MemberFormData = {
 
 export function normalizeStatus(status?: string | null): TopicStatus {
 	switch (status) {
-		case 'draft':
 		case 'submitted':
 		case 'approved':
 		case 'rejected':
 		case 'supplement':
-		case 'in_progress':
-		case 'completed':
 			return status;
 		default:
 			return 'submitted';

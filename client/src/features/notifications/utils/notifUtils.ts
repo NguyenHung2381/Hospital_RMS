@@ -1,22 +1,25 @@
 import { relativeTime } from '../../../shared/utils/formatDate';
 import type { Notification as ApiNotif } from '../api/notificationApi';
+import type { NotifCategory } from '../types/notification.type';
 
 export interface Notif {
 	id: string;
-	type: 'approval' | 'topic' | 'system' | 'warning';
+	type: NotifCategory;
 	title: string;
 	desc: string;
 	time: string;
 	read: boolean;
 }
 
-export const NOTIF_TYPE_MAP: Record<string, Notif['type']> = {
+export const NOTIF_TYPE_MAP: Record<string, NotifCategory> = {
 	topic_approved: 'approval',
 	topic_rejected: 'approval',
 	topic_submitted: 'approval',
 	deadline_reminder: 'warning',
+	warning: 'warning',
 	member_added: 'topic',
 	account_granted: 'system',
+	broadcast: 'system',
 };
 
 export function toNotif(n: ApiNotif): Notif {

@@ -178,6 +178,7 @@ export function useTopicPage() {
 				level_id: form.level_id || undefined,
 				department_id: form.department_id || undefined,
 				status: form.status,
+				related_department_ids: form.related_department_ids,
 			});
 			if (pendingMembers.length > 0) {
 				await Promise.allSettled(
@@ -214,6 +215,7 @@ export function useTopicPage() {
 				level_id: form.level_id || undefined,
 				department_id: form.department_id || undefined,
 				status: form.status,
+				related_department_ids: form.related_department_ids,
 			});
 			setTopics((prev) =>
 				prev.map((t) => (t.id === editTopic.id ? updated : t)),

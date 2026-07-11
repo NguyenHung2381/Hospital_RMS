@@ -306,9 +306,7 @@ export function useTopicMembers(): TopicMembersState {
 		[topicMembers],
 	);
 
-	const canGrant =
-		selectedTopic?.status === 'approved' ||
-		selectedTopic?.status === 'in_progress';
+	const canGrant = selectedTopic?.status === 'approved';
 
 	const handleAdd = useCallback(
 		async (data: MemberFormData) => {

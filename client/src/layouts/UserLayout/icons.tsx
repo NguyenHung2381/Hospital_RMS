@@ -16,6 +16,7 @@ import {
 	WarnSvg,
 	XSvg,
 } from '@/assets/icons';
+
 import styles from './UserLayout.module.css';
 
 export const Icon = {
@@ -24,6 +25,8 @@ export const Icon = {
 	Register: () => <DocPlusSvg className={styles.navIcon} />,
 	Profile: () => <UserSvg className={styles.navIcon} />,
 	Users: () => <UsersSvg className={styles.navIcon} />,
+	Notif: () => <BellSvg className={styles.navIcon} />,
+	Grading: () => <ClipboardCheckSvg className={styles.navIcon} />,
 	Bell: BellSvg,
 	Search: SearchSvg,
 	X: XSvg,

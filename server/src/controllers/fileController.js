@@ -18,14 +18,7 @@ async function assertUploadWindow(topicId) {
 	const { recordset } = await pool
 		.request()
 		.input('tid', sql.VarChar(15), topicId)
-		.query(`
-			SELECT t.status, t.round_id,
-			       r.registration_start_date, r.registration_end_date,
-			       r.supplement_start_date,   r.supplement_end_date
-			FROM topics t
-			LEFT JOIN research_rounds r ON r.id = t.round_id
-			WHERE t.id = @tid
-		`);
+		.query(`SELECT t.status, t.round_id FROM topics t WHERE t.id = @tid`);
 
 	if (!recordset[0]) {
 		const err = new Error('Đề tài không tồn tại');
@@ -33,33 +26,11 @@ async function assertUploadWindow(topicId) {
 		throw err;
 	}
 
-	const {
-		status,
-		round_id,
-		registration_start_date,
-		registration_end_date,
-		supplement_start_date,
-		supplement_end_date,
-	} = recordset[0];
+	const { status, round_id } = recordset[0];
 
 	const today = todayVN();
 
-	const inRange = (start, end) => {
-		if (!start || !end) return false;
-		return today >= new Date(start) && today <= new Date(end);
-	};
-
-	// 1. Đợt đăng ký
-	if (inRange(registration_start_date, registration_end_date)) {
-		if (status === 'submitted' || status === 'supplement') return;
-	}
-
-	// 2. Đợt bổ sung
-	if (inRange(supplement_start_date, supplement_end_date)) {
-		if (status === 'supplement' || status === 'approved') return;
-	}
-
-	// 3. Đợt nộp báo cáo
+	// Đợt nộp báo cáo
 	if (round_id && status === 'approved') {
 		const { recordset: dls } = await pool
 			.request()

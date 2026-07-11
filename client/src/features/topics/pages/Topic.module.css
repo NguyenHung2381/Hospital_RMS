@@ -235,6 +235,10 @@
 }
 
 /* ── MultiSelect dropdown ── */
+.filterSelectWrap {
+	display: inline-block;
+}
+
 .filterSelect {
 	display: flex;
 	align-items: center;
@@ -430,7 +434,7 @@
 	width: 100%;
 	border-collapse: collapse;
 	font-size: var(--font-size-sm);
-	table-layout: fixed;
+	table-layout: auto;
 }
 
 .table thead th {
@@ -467,34 +471,43 @@
 /* Column widths */
 .colId {
 	width: 110px;
+	min-width: 110px;
 }
 .colTitle {
-	width: auto;
+	width: 260px;
 	min-width: 220px;
 }
 .colRound {
-	width: 110px;
+	width: 130px;
+	min-width: 120px;
 }
 .colLevel {
-	width: 100px;
+	width: 110px;
+	min-width: 100px;
 }
 .colCategory {
-	width: 120px;
+	width: 130px;
+	min-width: 120px;
 }
 .colDept {
-	width: 120px;
+	width: 160px;
+	min-width: 140px;
 }
 .colStatus {
 	width: 130px;
+	min-width: 120px;
 }
 .colProgress {
 	width: 120px;
+	min-width: 110px;
 }
 .colDate {
-	width: 100px;
+	width: 110px;
+	min-width: 100px;
 }
 .colActions {
-	width: 90px;
+	width: 100px;
+	min-width: 90px;
 }
 
 /* Topic cell */
@@ -2490,20 +2503,29 @@
 
 	.searchWrap {
 		grid-column: 1 / -1;
+		width: 100%;
 	}
 
 	.searchInput {
-		width: 100%;
+		width: 100% !important;
 	}
 
 	.searchInput:focus {
+		width: 100% !important;
+	}
+
+	.filterSelectWrap {
 		width: 100%;
 	}
 
-	.filterSelect {
-		width: 100%;
-		box-sizing: border-box;
-		justify-content: flex-start;
+	.filterSelectWrap button {
+		width: 100% !important;
+		max-width: 100% !important;
+		min-width: 0 !important;
+		height: 36px !important;
+		font-size: 13px !important;
+		justify-content: space-between !important;
+		box-sizing: border-box !important;
 	}
 
 	.formRow {

@@ -20,17 +20,20 @@ const KEY_TO_PATH: Record<string, string> = {
 	dashboard: '/admin',
 	topics: '/admin/topics',
 	rounds: '/admin/rounds',
+	councils: '/admin/councils',
 	approvals: '/admin/approvals',
 	progress: '/admin/progress',
 	members: '/admin/members',
 	files: '/admin/files',
 	departments: '/admin/departments',
+	externalReviewers: '/admin/external-reviewers',
 	categories: '/admin/categories',
 	levels: '/admin/levels',
 	users: '/admin/users',
 	roles: '/admin/roles',
 	reports: '/admin/reports',
 	schedule: '/admin/schedule',
+	notifications: '/admin/notifications',
 };
 
 // Map ngược từ URL pathname → nav key (để highlight sidebar)
@@ -60,17 +63,23 @@ const NAV_GROUPS: NavGroup[] = [
 		items: [
 			{ key: 'topics', label: 'Đề tài nghiên cứu', icon: <Icon.Topic /> },
 			{ key: 'rounds', label: 'Đợt nghiên cứu', icon: <Icon.Round /> },
+			{ key: 'councils', label: 'Hội đồng chấm', icon: <Icon.Council /> },
 			{ key: 'schedule', label: 'Lịch trình', icon: <Icon.Schedule /> },
 			{ key: 'approvals', label: 'Phê duyệt', icon: <Icon.Approval /> },
 			{ key: 'members', label: 'Thành viên đề tài', icon: <Icon.Members /> },
+			{
+				key: 'externalReviewers',
+				label: 'Người ngoài viện',
+				icon: <Icon.ExternalReviewer />,
+			},
 		],
 	},
 	{
 		section: 'Danh mục',
 		items: [
 			{ key: 'departments', label: 'Phòng ban', icon: <Icon.Dept /> },
-			{ key: 'categories', label: 'Phân loại', icon: <Icon.List /> },
-			{ key: 'levels', label: 'Cấp độ', icon: <Icon.List /> },
+			{ key: 'categories', label: 'Phân loại', icon: <Icon.Category /> },
+			{ key: 'levels', label: 'Cấp độ', icon: <Icon.Level /> },
 		],
 	},
 	{
@@ -78,6 +87,7 @@ const NAV_GROUPS: NavGroup[] = [
 		items: [
 			{ key: 'users', label: 'Người dùng', icon: <Icon.User /> },
 			{ key: 'roles', label: 'Vai trò & Quyền', icon: <Icon.Role /> },
+			{ key: 'notifications', label: 'Thông báo', icon: <Icon.Notif /> },
 		],
 	},
 	{
@@ -119,11 +129,11 @@ export default function AdminLayout({
 	});
 
 	const [isMobile, setIsMobile] = useState(() =>
-		typeof window !== 'undefined' ? window.innerWidth <= 768 : false,
+		typeof window !== 'undefined' ? window.innerWidth <= 1024 : false,
 	);
 
 	useEffect(() => {
-		const mq = window.matchMedia('(max-width: 768px)');
+		const mq = window.matchMedia('(max-width: 1024px)');
 		const handler = (e: MediaQueryListEvent) => setIsMobile(e.matches);
 		mq.addEventListener('change', handler);
 		return () => mq.removeEventListener('change', handler);
@@ -150,6 +160,7 @@ export default function AdminLayout({
 	const [navBadges, setNavBadges] = useState<{
 		topics?: number;
 		approvals?: number;
+		notifications?: number;
 	}>({});
 
 	const fetchBadges = useCallback(() => {
@@ -181,6 +192,13 @@ export default function AdminLayout({
 		markAll,
 	} = useNotifications();
 	const notifs = rawNotifs.map(toNotif);
+
+	useEffect(() => {
+		setNavBadges((prev) => ({
+			...prev,
+			notifications: unreadCount > 0 ? unreadCount : undefined,
+		}));
+	}, [unreadCount]);
 
 	// ── User menu state ──────────────────────
 	const [userMenuOpen, setUserMenuOpen] = useState(false);
@@ -235,9 +253,17 @@ export default function AdminLayout({
 
 	return (
 		<div className={styles.adminWrapper}>
+			{/* Mobile Backdrop Overlay */}
+			{mobileNavOpen && (
+				<div
+					className={styles.mobileBackdrop}
+					onClick={() => setMobileNavOpen(false)}
+				/>
+			)}
+
 			{/* ══ SIDEBAR ════════════════════════════ */}
 			<aside
-				className={`${styles.sidebar} ${effectiveCollapsed ? styles.collapsed : ''}`}
+				className={`${styles.sidebar} ${effectiveCollapsed ? styles.collapsed : ''} ${mobileNavOpen ? styles.mobileDrawerOpen : ''}`}
 			>
 				{/* Header */}
 				<div className={styles.sidebarHeader}>
@@ -269,10 +295,10 @@ export default function AdminLayout({
 					</div>
 					<button
 						className={styles.mobileMenuBtn}
-						onClick={() => setMobileNavOpen((o) => !o)}
-						aria-label={mobileNavOpen ? 'Đóng menu' : 'Mở menu'}
+						onClick={() => setMobileNavOpen(false)}
+						aria-label='Đóng menu'
 					>
-						{mobileNavOpen ? <Icon.X /> : <Icon.Menu />}
+						<Icon.X />
 					</button>
 				</div>
 
@@ -355,6 +381,21 @@ export default function AdminLayout({
 				{/* Topbar */}
 				<header className={styles.topbar}>
 					<div className={styles.topbarLeft}>
+						<button
+							className={styles.mobileNavTrigger}
+							onClick={() => setMobileNavOpen(true)}
+							aria-label='Mở menu'
+						>
+							<Icon.Menu />
+						</button>
+						<div className={styles.mobileHeaderBrand}>
+							<img
+								src={Logo}
+								alt='Logo'
+								className={styles.mobileBrandLogo}
+							/>
+							<span className={styles.mobileBrandTitle}>Hospital RMS</span>
+						</div>
 						{/* Breadcrumb */}
 						<div className={styles.breadcrumb}>
 							<span className={styles.breadcrumbItem}>RMS Hospital</span>

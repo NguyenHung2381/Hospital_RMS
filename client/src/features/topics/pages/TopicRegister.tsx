@@ -2,7 +2,8 @@
 import UserLayout from '../../../layouts/UserLayout';
 import { useTopicRegister } from '../hooks/useTopicRegister';
 import type { MemberRole } from '../types/topic.type';
-import { BADGE_CLS, fmtDate, getInitials, GUIDE_STEPS, ROLE_CFG, STATUS_CFG } from '../utils/topicRegisterHelpers';
+import { getInitials } from '../../../shared/utils/helper';
+import { BADGE_CLS, fmtDate, GUIDE_STEPS, ROLE_CFG, STATUS_CFG } from '../utils/topicRegisterHelpers';
 import styles from './TopicRegister.module.css';
 
 export default function TopicRegister() {

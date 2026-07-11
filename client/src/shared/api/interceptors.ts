@@ -4,22 +4,6 @@ import { BASE_URL } from './endpoints';
 let isRefreshing = false;
 let refreshQueue: Array<(token: string) => void> = [];
 
-export function getQueue() {
-	return refreshQueue;
-}
-
-export function setRefreshing(value: boolean) {
-	isRefreshing = value;
-}
-
-export function getIsRefreshing() {
-	return isRefreshing;
-}
-
-export function clearQueue() {
-	refreshQueue = [];
-}
-
 export async function tryRefresh(): Promise<string | null> {
 	const refreshToken =
 		localStorage.getItem('refresh_token') ??

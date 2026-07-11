@@ -64,17 +64,6 @@ export function lookup<T extends { id: string; name: string }>(
 	return arr.find((x) => x.id === id)?.name ?? id;
 }
 
-export function getInitials(name: string | null | undefined) {
-	if (!name) return '?';
-	return name
-		.replace(/^(BS\.|TS\.|PGS\.|GS\.|ĐD\.|DS\.|CN\.|KS\.)\s*/i, '')
-		.split(' ')
-		.map((w) => w[0])
-		.filter(Boolean)
-		.slice(-2)
-		.join('')
-		.toUpperCase();
-}
 
 export function genMemberUsername(
 	fullName: string | null | undefined,

@@ -15,12 +15,19 @@ const Departments = lazy(
 const Topics = lazy(() => import('../../features/topics/pages/Topic'));
 const Members = lazy(() => import('../../features/topics/pages/TopicMembers'));
 const Rounds = lazy(() => import('../../features/round/pages/Round'));
+const Councils = lazy(() => import('../../features/council/pages/Council'));
+const ExternalReviewers = lazy(
+	() => import('../../features/council/pages/ExternalReviewers'),
+);
 const Approvals = lazy(() => import('../../features/approval/pages/Approval'));
 const Catalog = lazy(() => import('../../features/catalog/pages/Catalog'));
 const Users = lazy(() => import('../../features/user/pages/UserList'));
 const Roles = lazy(() => import('../../features/roles/pages/Roles'));
 const Reports = lazy(() => import('../../features/reports/pages/Reports'));
 const Schedule = lazy(() => import('../../features/schedule/pages/Schedule'));
+const AdminNotifications = lazy(
+	() => import('../../features/notifications/pages/AdminNotifications'),
+);
 
 // ── User portal pages ─────────────────────────────────────
 const UserHome = lazy(() => import('../../features/portal/pages/UserHome'));
@@ -29,11 +36,17 @@ const UserTopicDetail = lazy(
 	() => import('../../features/portal/pages/TopicDetail'),
 );
 const UserProfile = lazy(() => import('../../features/portal/pages/Profile'));
+const UserCouncilProgress = lazy(
+	() => import('../../features/portal/pages/CouncilProgress'),
+);
 const DepartmentAccounts = lazy(
 	() => import('../../features/portal/pages/DepartmentAccounts'),
 );
 const TopicRegister = lazy(
 	() => import('../../features/topics/pages/TopicRegister'),
+);
+const UserNotifications = lazy(
+	() => import('../../features/notifications/pages/UserNotifications'),
 );
 
 const admin = (
@@ -60,8 +73,16 @@ export const adminRoutes: RouteObject[] = [
 	{ path: '/admin/members', element: admin('Quản lý Thành viên', <Members />) },
 	{ path: '/admin/rounds', element: admin('Đợt nghiên cứu', <Rounds />) },
 	{
+		path: '/admin/councils',
+		element: admin('Hội đồng chấm đề cương', <Councils />),
+	},
+	{
 		path: '/admin/approvals',
 		element: admin('Phê duyệt Đề tài', <Approvals />),
+	},
+	{
+		path: '/admin/external-reviewers',
+		element: admin('Người ngoài viện', <ExternalReviewers />),
 	},
 	{
 		path: '/admin/departments',
@@ -82,6 +103,10 @@ export const adminRoutes: RouteObject[] = [
 		path: '/admin/schedule',
 		element: admin('Lịch trình nghiên cứu', <Schedule />),
 	},
+	{
+		path: '/admin/notifications',
+		element: admin('Quản lý thông báo', <AdminNotifications />),
+	},
 ];
 
 export const userRoutes: RouteObject[] = [
@@ -94,10 +119,18 @@ export const userRoutes: RouteObject[] = [
 		path: '/user/my-topics/:id',
 		element: user('Chi tiết đề tài', <UserTopicDetail />),
 	},
+	{
+		path: '/user/council-progress',
+		element: user('Đánh giá tiến độ đề tài', <UserCouncilProgress />),
+	},
 	{ path: '/user/profile', element: user('Hồ sơ cá nhân', <UserProfile />) },
 	{
 		path: '/user/department-accounts',
 		element: user('Tài khoản trong khoa', <DepartmentAccounts />),
+	},
+	{
+		path: '/user/notifications',
+		element: user('Thông báo của tôi', <UserNotifications />),
 	},
 	{
 		path: '/user/register-topic',

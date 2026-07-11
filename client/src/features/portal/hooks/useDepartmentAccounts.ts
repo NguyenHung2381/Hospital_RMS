@@ -10,7 +10,10 @@ import {
 	type SimpleItem,
 } from '../../user/api/userApi';
 import type { AccountType, User } from '../../user/types/user.type';
-import { type EditForm, formatDate } from '../utils/deptAccountsHelpers';
+import { formatDate as _formatDate } from '../../../shared/utils/formatDate';
+import type { EditForm } from '../utils/deptAccountsHelpers';
+
+const formatDate = (s: string | null | undefined) => _formatDate(s) ?? '—';
 
 export function useDepartmentAccounts() {
 	const currentUser = getStoredUser<StoredUser>();

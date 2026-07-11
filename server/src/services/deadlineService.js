@@ -68,15 +68,16 @@ const upsert = async (roundId, phase, data, actorId) => {
       EXEC sp_set_actor @actor_id;
       IF EXISTS (
         SELECT 1 FROM round_deadlines
-        WHERE round_id = @round_id AND deadline_type = @deadline_type AND phase = @phase
+        WHERE round_id = @round_id AND phase = @phase
       )
         UPDATE round_deadlines
            SET name          = @name,
                start_date    = @start_date,
                deadline_date = @deadline_date,
+               deadline_type = @deadline_type,
                updated_at    = GETDATE(),
                updated_by    = @actor_id
-         WHERE round_id = @round_id AND deadline_type = @deadline_type AND phase = @phase;
+         WHERE round_id = @round_id AND phase = @phase;
       ELSE
         INSERT INTO round_deadlines (id, round_id, phase, name, start_date, deadline_date, deadline_type, created_by)
         VALUES (@id, @round_id, @phase, @name, @start_date, @deadline_date, @deadline_type, @actor_id);
@@ -86,9 +87,8 @@ const upsert = async (roundId, phase, data, actorId) => {
 		.request()
 		.input('round_id', sql.VarChar(10), roundId)
 		.input('phase', sql.TinyInt, phase)
-		.input('deadline_type', sql.VarChar(30), deadlineType)
 		.query(
-			'SELECT * FROM round_deadlines WHERE round_id = @round_id AND deadline_type = @deadline_type AND phase = @phase',
+			'SELECT * FROM round_deadlines WHERE round_id = @round_id AND phase = @phase',
 		);
 	broadcast('update', { entity: 'round' });
 	return r.recordset[0] ? normalize(r.recordset[0]) : null;

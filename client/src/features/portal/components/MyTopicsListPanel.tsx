@@ -1,11 +1,11 @@
 import type React from 'react';
 import { DocSvg, SearchSvg, UsersSvg } from '@/assets/icons';
 import type { Topic } from '../../topics/types/topic.type';
+import { formatDate } from '../../../shared/utils/formatDate';
 import {
 	type FilterTab,
 	STATUS_CFG,
 	TABS,
-	formatDate,
 } from '../utils/myTopicsHelpers';
 import styles from '../pages/MyTopics.module.css';
 

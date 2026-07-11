@@ -22,7 +22,8 @@ import type {
 	PendingTopic,
 	RegisterForm,
 } from '../types/topicregister.type';
-import { getInitials, MAX_FILE_SIZE } from '../utils/topicRegisterHelpers';
+import { getInitials } from '../../../shared/utils/helper';
+import { MAX_FILE_SIZE } from '../utils/topicRegisterHelpers';
 
 export interface ManualForm {
 	ho_ten: string;

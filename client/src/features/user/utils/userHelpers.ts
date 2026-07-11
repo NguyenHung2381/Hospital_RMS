@@ -21,22 +21,6 @@ export const ACCOUNT_TYPE_CFG: Record<
 	member: { label: 'Thành viên', cls: 'roleGreen', avatarCls: 'avatarGreen' },
 };
 
-export function getInitials(name: string) {
-	return name
-		.split(' ')
-		.filter(Boolean)
-		.slice(-2)
-		.map((w) => w[0])
-		.join('')
-		.toUpperCase();
-}
-
-export function formatDate(dateStr: string | null | undefined): string {
-	if (!dateStr) return '—';
-	const d = new Date(dateStr);
-	if (isNaN(d.getTime())) return dateStr;
-	return new Intl.DateTimeFormat('vi-VN').format(d);
-}
 
 export function isPasswordOld(dateStr: string | null): boolean {
 	if (!dateStr) return true;

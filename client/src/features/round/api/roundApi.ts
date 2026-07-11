@@ -92,27 +92,6 @@ export const getRoundByPublicToken = (token: string) =>
 		)
 		.then((res) => res.data.find((r) => r.public_token === token) ?? null);
 
-// ─── Supplement Window API ────────────────────────────────────────────────────
-export interface SupplementWindowPayload {
-	supplement_start: string; // yyyy-mm-dd
-	supplement_end: string; // yyyy-mm-dd
-}
-
-export const openSupplementWindow = (
-	id: string,
-	payload: SupplementWindowPayload,
-) =>
-	apiClient.post<{ topics_opened: number }>(
-		`/research-rounds/${id}/supplement/open`,
-		payload,
-	);
-
-export const closeSupplementWindow = (id: string) =>
-	apiClient.post<{ topics_closed: number }>(
-		`/research-rounds/${id}/supplement/close`,
-		{},
-	);
-
 // ─── Deadline API ──────────────────────────────────────────────────────────────
 export const getDeadlines = (roundId: string) =>
 	apiClient.get<RoundDeadline[]>(`/research-rounds/${roundId}/deadlines`);

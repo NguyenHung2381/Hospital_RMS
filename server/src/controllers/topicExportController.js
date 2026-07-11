@@ -184,12 +184,7 @@ function buildSheet(
 							? bNoTop
 							: bSides;
 
-			const staffNum =
-				m?.staff_number != null && m.staff_number !== ''
-					? m.staff_number
-					: m
-						? 'NULL'
-						: '';
+			const staffNum = m?.staff_number != null ? m.staff_number : '';
 			const roleLabel = m ? (ROLE_LABELS[m.role] ?? m.role ?? '') : '';
 
 			[

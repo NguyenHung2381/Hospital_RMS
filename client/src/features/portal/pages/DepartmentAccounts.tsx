@@ -16,10 +16,10 @@ import {
 } from '../components/DeptAccountsConfirmModals';
 import { DeptAccountsEditModal } from '../components/DeptAccountsEditModal';
 import { useDepartmentAccounts } from '../hooks/useDepartmentAccounts';
+import { getInitials } from '../../../shared/utils/helper';
 import {
 	ACCOUNT_TYPE_CFG,
 	ACCOUNT_TYPES,
-	getInitials,
 } from '../utils/deptAccountsHelpers';
 import styles from './DepartmentAccounts.module.css';
 

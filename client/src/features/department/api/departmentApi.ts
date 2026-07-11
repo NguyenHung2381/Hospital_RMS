@@ -14,6 +14,7 @@ export const createDepartment = (form: DeptFormData) =>
 		code: form.code,
 		abbreviation: form.abbreviation,
 		description: form.description || null,
+		specialty_group: form.specialty_group || null,
 	});
 
 export const updateDepartment = (id: string, form: DeptFormData) =>
@@ -22,6 +23,7 @@ export const updateDepartment = (id: string, form: DeptFormData) =>
 		code: form.code,
 		abbreviation: form.abbreviation,
 		description: form.description || null,
+		specialty_group: form.specialty_group || null,
 	});
 
 export const deleteDepartment = (id: string) =>

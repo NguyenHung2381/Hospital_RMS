@@ -1,7 +1,8 @@
 /** Lấy chữ viết tắt từ họ tên (VD: "Nguyễn Văn A" → "NA") */
-export function getInitials(name: string): string {
+export function getInitials(name: string | null | undefined): string {
+	if (!name) return '?';
 	return name
-		.replace(/^(GS\.|PGS\.|TS\.|ThS\.|BS\.|KS\.|CN\.)\s*/i, '')
+		.replace(/^(GS\.|PGS\.|TS\.|ThS\.|BS\.|KS\.|CN\.|ĐD\.|DS\.)\s*/i, '')
 		.split(/\s+/)
 		.filter(Boolean)
 		.slice(-2)

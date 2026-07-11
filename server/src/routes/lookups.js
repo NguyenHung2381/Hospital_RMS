@@ -7,6 +7,7 @@ const { validate } = require('../middlewares/errorHandler');
 const roundCtrl    = require('../controllers/roundController');
 const deadlineSvc  = require('../services/deadlineService');
 const deptService = require('../services/departmentService');
+const extReviewerService = require('../services/externalReviewerService');
 const permService = require('../services/permissionService');
 const { success, created, notFound } = require('../utils/response');
 
@@ -146,6 +147,57 @@ router.put(
 
 router.delete('/departments/:id', authenticate, authorizePermission(['departments', 'delete']), async (req, res, next) => {
   try { await deptService.remove(req.params.id, req.user.id); return success(res, null, 'Xóa thành công'); } catch (e) { next(e); }
+});
+
+// ─── External Reviewers (người ngoài viện tham gia hội đồng) ──────────────────
+
+/**
+ * @swagger
+ * /external-reviewers:
+ *   get:
+ *     summary: Lấy danh sách người ngoài viện tham gia hội đồng
+ *     tags: [Councils]
+ *     responses:
+ *       200:
+ *         description: Danh sách người ngoài viện
+ *   post:
+ *     summary: Thêm người ngoài viện mới
+ *     tags: [Councils]
+ *     description: Chỉ admin mới có quyền
+ *     responses:
+ *       201:
+ *         description: Tạo thành công
+ */
+router.get('/external-reviewers', authenticate, authorizePermission(['councils', 'read']), async (req, res, next) => {
+  try { return success(res, await extReviewerService.getAll(req.query)); } catch (e) { next(e); }
+});
+
+router.post(
+  '/external-reviewers',
+  authenticate,
+  authorizePermission(['councils', 'create']),
+  [body('full_name').notEmpty().withMessage('Họ tên không được để trống')],
+  validate,
+  async (req, res, next) => {
+    try { return created(res, await extReviewerService.create(req.body, req.user.id)); } catch (e) { next(e); }
+  },
+);
+
+router.put(
+  '/external-reviewers/:id',
+  authenticate,
+  authorizePermission(['councils', 'update']),
+  async (req, res, next) => {
+    try {
+      const item = await extReviewerService.update(req.params.id, req.body);
+      if (!item) return notFound(res);
+      return success(res, item, 'Cập nhật thành công');
+    } catch (e) { next(e); }
+  },
+);
+
+router.delete('/external-reviewers/:id', authenticate, authorizePermission(['councils', 'delete']), async (req, res, next) => {
+  try { await extReviewerService.remove(req.params.id); return success(res, null, 'Xóa thành công'); } catch (e) { next(e); }
 });
 
 // Constraint CHK_cat_id yêu cầu id LIKE 'LDT[0-9][0-9]' → LDT01, LDT02, ...
@@ -613,38 +665,6 @@ router.put(
 );
 router.delete('/research-rounds/:id', authenticate, authorizePermission(['rounds', 'delete']), roundCtrl.removeOne);
 
-// ─── Round Supplement Window ──────────────────────────────────────────────────
-const roundSvc = require('../services/roundService');
-
-router.post(
-  '/research-rounds/:id/supplement/open',
-  authenticate,
-  authorizePermission(['rounds', 'manage']),
-  [
-    body('supplement_start').notEmpty().withMessage('Ngày bắt đầu bổ sung không được để trống'),
-    body('supplement_end').notEmpty().withMessage('Ngày kết thúc bổ sung không được để trống'),
-  ],
-  validate,
-  async (req, res, next) => {
-    try {
-      const result = await roundSvc.openSupplementWindow(req.params.id, req.body, req.user.id);
-      return success(res, result, `Đã mở cửa sổ bổ sung (${result.topics_opened} đề tài)`);
-    } catch (e) { next(e); }
-  },
-);
-
-router.post(
-  '/research-rounds/:id/supplement/close',
-  authenticate,
-  authorizePermission(['rounds', 'manage']),
-  async (req, res, next) => {
-    try {
-      const result = await roundSvc.closeSupplementWindow(req.params.id, req.user.id);
-      return success(res, result, `Đã đóng cửa sổ bổ sung (${result.topics_closed} đề tài)`);
-    } catch (e) { next(e); }
-  },
-);
-
 // ─── Round Deadlines ──────────────────────────────────────────────────────────
 router.get('/research-rounds/:id/deadlines', authenticate, authorizePermission(['rounds', 'read']), async (req, res, next) => {
   try { return success(res, await deadlineSvc.getByRoundId(req.params.id)); } catch (e) { next(e); }
@@ -675,6 +695,19 @@ router.delete('/research-rounds/:id/deadlines/:phase', authenticate, authorizePe
     await deadlineSvc.remove(req.params.id, phase, req.user.id);
     return success(res, null, 'Xoá hạn nộp thành công');
   } catch (e) { next(e); }
+});
+
+// ─── Job titles (danh mục chỉ đọc) ─────────────────────────────────────────────
+router.get('/job-titles', authenticate, async (req, res, next) => {
+	try {
+		const pool = await getPool();
+		const r = await pool
+			.request()
+			.query('SELECT id, name FROM job_titles ORDER BY name');
+		return success(res, r.recordset);
+	} catch (e) {
+		next(e);
+	}
 });
 
 // ─── Permissions ──────────────────────────────────────────────────────────────

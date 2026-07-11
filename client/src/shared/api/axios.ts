@@ -37,6 +37,32 @@ async function requestBlob(path: string, body: unknown): Promise<Blob> {
 		},
 	});
 
+	if (res.status === 401) {
+		const newToken = await tryRefresh();
+		if (newToken) {
+			const retryRes = await fetch(`${BASE_URL}/api/v1${path}`, {
+				method: 'POST',
+				body: JSON.stringify(body),
+				headers: {
+					'Content-Type': 'application/json',
+					Authorization: `Bearer ${newToken}`,
+				},
+			});
+			if (!retryRes.ok) {
+				const ct = retryRes.headers.get('Content-Type') ?? '';
+				if (ct.includes('json')) {
+					const json = await retryRes.json();
+					throw new Error(json.message ?? 'Lỗi xuất file');
+				}
+				throw new Error(`Lỗi xuất file (${retryRes.status})`);
+			}
+			return retryRes.blob();
+		}
+		clearAuth();
+		window.location.href = '/login';
+		throw new Error('Phiên đăng nhập đã hết hạn');
+	}
+
 	if (!res.ok) {
 		const ct = res.headers.get('Content-Type') ?? '';
 		if (ct.includes('json')) {
@@ -90,6 +116,8 @@ export const apiClient = {
 		request<T>(path, { method: 'POST', body: JSON.stringify(body) }),
 	put: <T>(path: string, body: unknown) =>
 		request<T>(path, { method: 'PUT', body: JSON.stringify(body) }),
+	patch: <T>(path: string, body: unknown) =>
+		request<T>(path, { method: 'PATCH', body: JSON.stringify(body) }),
 	delete: <T>(path: string) => request<T>(path, { method: 'DELETE' }),
 	postForm: <T>(path: string, body: FormData) => requestForm<T>(path, body),
 	postBlob: (path: string, body: unknown) => requestBlob(path, body),

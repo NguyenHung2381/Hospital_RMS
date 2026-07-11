@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
 	ApproveSvg,
 	BellSvg,
@@ -33,6 +34,7 @@ export function NotificationPanel({
 }: NotificationPanelProps) {
 	const [tab, setTab] = useState<'all' | 'unread'>('all');
 	const wrapRef = useRef<HTMLDivElement>(null);
+	const navigate = useNavigate();
 
 	useEffect(() => {
 		if (!open) return;
@@ -54,6 +56,11 @@ export function NotificationPanel({
 
 	const displayed =
 		tab === 'unread' ? notifications.filter((n) => !n.read) : notifications;
+
+	const handleViewAll = () => {
+		onClose();
+		navigate('/user/notifications');
+	};
 
 	return (
 		<div
@@ -174,7 +181,12 @@ export function NotificationPanel({
 
 						{/* Footer */}
 						<div className={s.notifPanelFooter}>
-							<button className={s.notifViewAll}>Xem tất cả thông báo →</button>
+							<button
+								className={s.notifViewAll}
+								onClick={handleViewAll}
+							>
+								Xem tất cả thông báo →
+							</button>
 						</div>
 					</div>
 				</>

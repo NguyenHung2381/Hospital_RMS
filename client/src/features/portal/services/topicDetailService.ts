@@ -3,6 +3,7 @@ import type {
 	RoundDeadline,
 } from '../../round/types/round.type';
 import type { Topic } from '../../topics/types/topic.type';
+import { parseDate as parseDdMmYyyy } from '../../../shared/utils/formatDate';
 import type { EditMode } from '../types/topicDetail.type';
 
 export function fmtDate(iso: string): string {
@@ -13,26 +14,6 @@ export function fmtDate(iso: string): string {
 		hour: '2-digit',
 		minute: '2-digit',
 	});
-}
-
-export function parseDdMmYyyy(s: string | null | undefined): Date | null {
-	if (!s) return null;
-	if (s.includes('/')) {
-		const [d, m, y] = s.split('/');
-		if (!d || !m || !y) return null;
-		const dt = new Date(Number(y), Number(m) - 1, Number(d));
-		return isNaN(dt.getTime()) ? null : dt;
-	}
-	if (s.includes('-')) {
-		const parts = s.split('T')[0].split('-');
-		if (parts.length === 3) {
-			const [y, m, d] = parts;
-			const dt = new Date(Number(y), Number(m) - 1, Number(d));
-			return isNaN(dt.getTime()) ? null : dt;
-		}
-	}
-	const dt = new Date(s);
-	return isNaN(dt.getTime()) ? null : dt;
 }
 
 export function getEditMode(

@@ -159,7 +159,33 @@ const getById = async (id, actor = null) => {
     `);
 	topic.members = members.recordset;
 
+	// Chuyên ngành liên quan (đề tài liên ngành, VD kế toán tích hợp CNTT)
+	const related = await pool.request().input('topic_id', sql.VarChar(15), id)
+		.query(`
+      SELECT trd.department_id, d.name AS department_name
+      FROM topic_related_departments trd
+      LEFT JOIN departments d ON d.id = trd.department_id
+      WHERE trd.topic_id = @topic_id
+    `);
+	topic.related_departments = related.recordset;
+
 	return topic;
+};
+
+// Ghi đè danh sách chuyên ngành liên quan của đề tài
+const setRelatedDepartments = async (topicId, ids) => {
+	const pool = await getPool();
+	const req = pool.request().input('topic_id', sql.VarChar(15), topicId);
+	ids.forEach((d, i) => req.input(`d${i}`, sql.VarChar(20), d));
+	await req.query(`
+    DELETE FROM topic_related_departments WHERE topic_id = @topic_id;
+    ${
+			ids.length
+				? `INSERT INTO topic_related_departments (topic_id, department_id)
+           VALUES ${ids.map((_, i) => `(@topic_id, @d${i})`).join(', ')};`
+				: ''
+		}
+  `);
 };
 
 const create = async (data, actorId) => {
@@ -180,6 +206,11 @@ const create = async (data, actorId) => {
       VALUES (@new_id, @title, @description, @round_id, @category_id, @level_id, @department_id, 'submitted', @actor_id);
       SELECT @new_id AS id;
     `);
+	if (Array.isArray(data.related_department_ids) && data.related_department_ids.length)
+		await setRelatedDepartments(
+			result.recordset[0].id,
+			data.related_department_ids,
+		);
 	const topic = await getById(result.recordset[0].id);
 	broadcast('update', { entity: 'topic' });
 	return topic;
@@ -192,39 +223,14 @@ const update = async (id, data, actorId, isAdmin = false) => {
 	if (!current)
 		throw Object.assign(new Error('Đề tài không tồn tại.'), { status: 404 });
 
-	// Kiểm tra xem hiện tại có đang trong cửa sổ bổ sung thông tin (supplement window) của đợt hay không
-	let isWithinSupplementWindow = false;
-	if (current.round_id) {
-		const roundRes = await pool
-			.request()
-			.input('round_id', sql.VarChar(10), current.round_id).query(`
-				SELECT supplement_start_date, supplement_end_date
-				FROM research_rounds
-				WHERE id = @round_id
-			`);
-		const round = roundRes.recordset[0];
-		if (round && round.supplement_start_date && round.supplement_end_date) {
-			const today = new Date();
-			today.setHours(0, 0, 0, 0);
-			const start = new Date(round.supplement_start_date);
-			start.setHours(0, 0, 0, 0);
-			const end = new Date(round.supplement_end_date);
-			end.setHours(0, 0, 0, 0);
-			if (today >= start && today <= end) {
-				isWithinSupplementWindow = true;
-			}
-		}
-	}
-
 	if (
 		!isAdmin &&
 		current.status !== 'submitted' &&
-		current.status !== 'supplement' &&
-		!(isWithinSupplementWindow && current.status === 'approved')
+		current.status !== 'supplement'
 	) {
 		throw Object.assign(
 			new Error(
-				'Chỉ có thể chỉnh sửa đề tài ở trạng thái "Chờ duyệt", "Bổ sung" hoặc trong đợt bổ sung thông tin.',
+				'Chỉ có thể chỉnh sửa đề tài ở trạng thái "Chờ duyệt" hoặc "Bổ sung".',
 			),
 			{ status: 403 },
 		);
@@ -265,7 +271,14 @@ const update = async (id, data, actorId, isAdmin = false) => {
 		req.input('status', sql.VarChar(15), data.status);
 	}
 
-	if (!sets.length) return getById(id);
+	const relatedChanged = Array.isArray(data.related_department_ids);
+	if (relatedChanged)
+		await setRelatedDepartments(id, data.related_department_ids);
+
+	if (!sets.length) {
+		if (relatedChanged) broadcast('update', { entity: 'topic' });
+		return getById(id);
+	}
 	sets.push('updated_at = GETDATE()', 'updated_by = @actor_id');
 	await req.query(
 		`EXEC sp_set_actor @actor_id; UPDATE topics SET ${sets.join(', ')} WHERE id = @id`,
@@ -277,6 +290,13 @@ const update = async (id, data, actorId, isAdmin = false) => {
 
 const remove = async (id, actorId) => {
 	const pool = await getPool();
+	// Phải NULL hóa FK trên users trước khi xóa topic (cascade xóa topic_members)
+	await pool.request().input('topic_id', sql.VarChar(15), id).query(`
+      UPDATE u SET u.topic_member_id = NULL
+      FROM users u
+      JOIN topic_members tm ON tm.id = u.topic_member_id
+      WHERE tm.topic_id = @topic_id
+    `);
 	await pool
 		.request()
 		.input('id', sql.VarChar(15), id)
@@ -873,7 +893,12 @@ const submit = async (topicId, actorId) => {
 		.input('actor_id', sql.VarChar(20), actorId).query(`
       EXEC sp_set_actor @actor_id;
       UPDATE topics SET status = 'submitted', updated_at = GETDATE(), updated_by = @actor_id
-      WHERE id = @topic_id AND status = 'supplement'
+      WHERE id = @topic_id AND status = 'supplement';
+      -- Nộp lại: reset verdict cũ, nếu không getApprovals vẫn trả kết quả duyệt lần trước
+      IF @@ROWCOUNT > 0
+        UPDATE approvals SET status = 'pending', comment = NULL,
+          updated_at = GETDATE(), updated_by = @actor_id
+        WHERE topic_id = @topic_id;
     `);
 
 	// Notify all admin/manager accounts
@@ -1008,7 +1033,8 @@ const getForExport = async (topicIds) => {
     LEFT JOIN users u ON u.id = t.created_by
     LEFT JOIN topic_members tm ON tm.topic_id = t.id
     WHERE t.id IN (${idParams})
-    ORDER BY t.created_at DESC, tm.role
+    ORDER BY t.created_at DESC,
+      CASE tm.role WHEN 'leader' THEN 0 WHEN 'secretary' THEN 1 ELSE 2 END
   `);
 
 	const topicsMap = new Map();

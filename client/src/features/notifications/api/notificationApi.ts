@@ -11,9 +11,36 @@ export interface Notification {
 	created_at: string;
 }
 
-interface NotifListResponse {
+export interface AdminNotification extends Notification {
+	user_id: string;
+	full_name: string;
+}
+
+export interface NotifListResponse {
 	data: Notification[];
 	pagination: { page: number; limit: number; total: number };
+}
+
+export interface AdminNotifListResponse {
+	data: AdminNotification[];
+	pagination: { page: number; limit: number; total: number };
+}
+
+export interface SendNotificationPayload {
+	type: string;
+	title: string;
+	message?: string;
+	ref_id?: string;
+	ref_type?: string;
+	target_type: 'all' | 'department' | 'users';
+	target_ids?: string[];
+}
+
+function toQS(params: object): string {
+	const entries = Object.entries(params)
+		.filter(([, v]) => v !== undefined && v !== '')
+		.map(([k, v]) => [k, String(v)] as [string, string]);
+	return entries.length ? `?${new URLSearchParams(entries)}` : '';
 }
 
 export const getNotifications = (params?: {
@@ -21,13 +48,7 @@ export const getNotifications = (params?: {
 	limit?: number;
 	unread_only?: boolean;
 }) => {
-	const entries = Object.entries(params ?? {})
-		.filter(([, v]) => v !== undefined)
-		.map(([k, v]) => [k, String(v)] as [string, string]);
-	const qs = entries.length
-		? `?${new URLSearchParams(entries).toString()}`
-		: '';
-	return apiClient.get<NotifListResponse>(`/notifications${qs}`);
+	return apiClient.get<NotifListResponse>(`/notifications${toQS(params ?? {})}`);
 };
 
 export const getUnreadCount = () =>
@@ -38,3 +59,18 @@ export const markNotificationRead = (id: string) =>
 
 export const markAllNotificationsRead = () =>
 	apiClient.put<null>('/notifications/read-all', {});
+
+export const sendNotification = (payload: SendNotificationPayload) =>
+	apiClient.post<{ sent: number }>('/notifications/send', payload);
+
+export const adminGetNotifications = (params?: {
+	page?: number;
+	limit?: number;
+	type?: string;
+	search?: string;
+}) => {
+	return apiClient.get<AdminNotifListResponse>(`/notifications/admin${toQS(params ?? {})}`);
+};
+
+export const deleteNotification = (id: string) =>
+	apiClient.delete<null>(`/notifications/${id}`);

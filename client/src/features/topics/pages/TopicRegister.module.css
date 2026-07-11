@@ -956,3 +956,35 @@
 		display: none;
 	}
 }
+
+@media (max-width: 768px) {
+	.formCardHeader {
+		padding: var(--space-4);
+	}
+
+	.formCardBody {
+		padding: var(--space-4);
+	}
+
+	.formRow {
+		grid-template-columns: 1fr;
+		gap: var(--space-3);
+	}
+
+	.formFooter {
+		flex-direction: column-reverse;
+		align-items: stretch;
+		padding: var(--space-4);
+		gap: var(--space-2);
+	}
+
+	.btnPrimary,
+	.btnSecondary {
+		width: 100%;
+		justify-content: center;
+	}
+
+	.dropZone {
+		padding: var(--space-5) var(--space-3);
+	}
+}

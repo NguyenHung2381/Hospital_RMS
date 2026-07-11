@@ -210,11 +210,7 @@ export default function UserList() {
 													borderRadius: 10,
 												}}
 											>
-												{
-													d.usersForDeptCount.filter(
-														(u) => u.department_id === dept.id,
-													).length
-												}
+												{d.deptCounts[dept.id] ?? 0}
 											</span>
 										</label>
 									))}
@@ -232,7 +228,7 @@ export default function UserList() {
 							>
 								Tất cả loại
 								<span className={styles.roleFilterCount}>
-									{d.usersForTypeCount.length}
+									{Object.values(d.typeCounts).reduce((a, b) => a + b, 0)}
 								</span>
 							</button>
 							{ACCOUNT_TYPES.map((t) => (
@@ -250,11 +246,7 @@ export default function UserList() {
 								>
 									{t.label}
 									<span className={styles.roleFilterCount}>
-										{
-											d.usersForTypeCount.filter(
-												(u) => u.account_type === t.value,
-											).length
-										}
+										{d.typeCounts[t.value] ?? 0}
 									</span>
 								</button>
 							))}
@@ -262,15 +254,15 @@ export default function UserList() {
 					</div>
 					<div className={styles.toolbarRight}>
 						<span className={styles.resultCount}>
-							{d.filteredUsers.length} tài khoản
+							{d.totalCount} tài khoản
 						</span>
 					</div>
 				</div>
 
 				{/* USER TABLE */}
 				<UserTable
-					pagedUsers={d.pagedUsers}
-					filteredUsers={d.filteredUsers}
+					users={d.users}
+					totalCount={d.totalCount}
 					currentPage={d.currentPage}
 					pageSize={d.pageSize}
 					totalPages={d.totalPages}

@@ -38,6 +38,7 @@ export default defineConfig({
 	server: {
 		host: true,
 		allowedHosts: true,
+		port: process.env.PORT ? Number(process.env.PORT) : 5173,
 		proxy: {
 			// All API and static-upload requests are proxied to the Express backend.
 			// Using localhost (not dynamic IP) so the proxy works regardless of

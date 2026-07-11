@@ -1,13 +1,16 @@
 import React, { useCallback, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import AuthLayout from '../../../layouts/AuthLayout';
 import { saveAuth } from '../../../shared/utils/storage';
+import { getMyProgress } from '../../council/api/councilApi';
 import type { LoginUser } from '../api/authApi';
 import { loginApi } from '../api/authApi';
 import type { FormErrors, LoginForm } from '../types/auth.type';
 import styles from './Login.module.css';
 import {
 	AlertSvg,
+	ClipboardCheckSvg,
 	EyeOffSvg,
 	EyeSvg,
 	LockSvg,
@@ -86,6 +89,11 @@ export default function Login() {
 	const [showPassword, setShowPassword] = useState(false);
 	const [isLoading, setIsLoading] = useState(false);
 	const [apiError, setApiError] = useState<string | null>(null);
+	// Popup chọn nơi vào cho tài khoản có ghế trong hội đồng chấm đề tài
+	const [councilPrompt, setCouncilPrompt] = useState<{
+		dest: string;
+		count: number;
+	} | null>(null);
 
 	// Validation
 	const validate = useCallback((): boolean => {
@@ -133,6 +141,19 @@ export default function Login() {
 			saveAuth(data, form.remember);
 			const from = searchParams.get('from');
 			const dest = from || (isAdminUser(data.user) ? '/admin' : '/user');
+
+			// Chỉ hỏi khi vào thẳng cổng người dùng (không phải deep-link cụ thể)
+			if (!from && !isAdminUser(data.user)) {
+				try {
+					const progress = await getMyProgress();
+					if (progress.length > 0) {
+						setCouncilPrompt({ dest, count: progress.length });
+						return;
+					}
+				} catch {
+					// Không chặn đăng nhập nếu kiểm tra ghế hội đồng thất bại
+				}
+			}
 			navigate(dest);
 		} catch (err) {
 			setApiError(
@@ -329,6 +350,44 @@ export default function Login() {
 					Xác thực 2 lớp
 				</span>
 			</div>
+
+			{councilPrompt &&
+				createPortal(
+					<div className={styles.destBackdrop}>
+						<div
+							className={styles.destModal}
+							role='alertdialog'
+							aria-modal='true'
+						>
+							<div className={styles.destIcon}>
+								<ClipboardCheckSvg />
+							</div>
+							<h2 className={styles.destTitle}>
+								Bạn có nhiệm vụ trong hội đồng
+							</h2>
+							<p className={styles.destDesc}>
+								Bạn đang được phân công đánh giá {councilPrompt.count} đề tài
+								với vai trò thành viên hội đồng chấm đề cương. Bạn muốn vào
+								đâu?
+							</p>
+							<div className={styles.destOptions}>
+								<button
+									className={styles.destOptionPrimary}
+									onClick={() => navigate('/user/council-progress')}
+								>
+									Vào cổng đánh giá hội đồng
+								</button>
+								<button
+									className={styles.destOptionSecondary}
+									onClick={() => navigate(councilPrompt.dest)}
+								>
+									Vào trang chủ
+								</button>
+							</div>
+						</div>
+					</div>,
+					document.body,
+				)}
 		</AuthLayout>
 	);
 }

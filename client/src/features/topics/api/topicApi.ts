@@ -39,6 +39,7 @@ export interface CreateTopicPayload {
 	level_id?: string;
 	department_id?: string;
 	status?: string;
+	related_department_ids?: string[];
 }
 
 export interface UpdateTopicPayload {
@@ -49,6 +50,7 @@ export interface UpdateTopicPayload {
 	level_id?: string;
 	department_id?: string;
 	status?: string;
+	related_department_ids?: string[];
 }
 
 export type TopicMemberApiRole = 'leader' | 'secretary' | 'member';

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useRealtimeUpdate } from '../../../layouts/hooks/useRealtime';
 import {
 	createUser,
@@ -11,7 +11,6 @@ import {
 	type SimpleItem,
 } from '../api/userApi';
 import type { AccountType, User, UserForm } from '../types/user.type';
-import { isPasswordOld } from '../utils/userHelpers';
 
 export interface UserListState {
 	users: User[];
@@ -36,11 +35,10 @@ export interface UserListState {
 		inactive: number;
 		pwdWarn: number;
 	};
-	filteredUsers: User[];
-	usersForTypeCount: User[];
-	usersForDeptCount: User[];
+	totalCount: number;
+	typeCounts: Record<string, number>;
+	deptCounts: Record<string, number>;
 	totalPages: number;
-	pagedUsers: User[];
 
 	setSearch: (v: string) => void;
 	setTypeFilters: React.Dispatch<React.SetStateAction<AccountType[]>>;
@@ -70,6 +68,8 @@ export function useUserList(): UserListState {
 	const [isLoadingData, setIsLoadingData] = useState(true);
 	const [loadError, setLoadError] = useState<string | null>(null);
 	const [search, setSearchRaw] = useState('');
+	// Debounce chuỗi tìm kiếm gửi lên server — tránh gọi API mỗi phím gõ
+	const [debouncedSearch, setDebouncedSearch] = useState('');
 	const [typeFilters, setTypeFilters] = useState<AccountType[]>([]);
 	const [deptFilters, setDeptFilters] = useState<string[]>([]);
 	const [isDeptDropdownOpen, setIsDeptDropdownOpen] = useState(false);
@@ -84,11 +84,18 @@ export function useUserList(): UserListState {
 		msg: string;
 		type: 'success' | 'error' | 'info';
 	} | null>(null);
-	const suppressRealtimeRef = useRef(false);
+	const [globalStats, setGlobalStats] = useState({
+		total: 0,
+		active: 0,
+		inactive: 0,
+		pwdWarn: 0,
+	});
+	const [totalCount, setTotalCount] = useState(0);
+	const [typeCounts, setTypeCounts] = useState<Record<string, number>>({});
+	const [deptCounts, setDeptCounts] = useState<Record<string, number>>({});
 
 	const setSearch = useCallback((v: string) => {
 		setSearchRaw(v);
-		setCurrentPageRaw(1);
 	}, []);
 	const setPageSize = useCallback((v: number) => {
 		setPageSizeRaw(v);
@@ -108,101 +115,73 @@ export function useUserList(): UserListState {
 		return () => clearTimeout(t);
 	}, [toast]);
 
-	const suppressRealtime = (ms = 3000) => {
-		suppressRealtimeRef.current = true;
-		setTimeout(() => {
-			suppressRealtimeRef.current = false;
-		}, ms);
-	};
-
-	const refreshData = useCallback(() => {
-		if (!suppressRealtimeRef.current) setRefreshKey((k) => k + 1);
-	}, []);
+	const refreshData = useCallback(() => setRefreshKey((k) => k + 1), []);
 	useRealtimeUpdate('user', refreshData);
 
+	// Debounce tìm kiếm 300ms rồi mới gọi API, đồng thời quay về trang 1
 	useEffect(() => {
-		const load = async () => {
-			setIsLoadingData(true);
-			setLoadError(null);
+		const t = setTimeout(() => {
+			setDebouncedSearch(search);
+			setCurrentPageRaw(1);
+		}, 300);
+		return () => clearTimeout(t);
+	}, [search]);
+
+	// Danh mục khoa/phòng + vai trò — tải một lần
+	useEffect(() => {
+		void (async () => {
 			try {
-				const [usersRes, deptsRes, rolesRes] = await Promise.all([
-					getUsers({ limit: 200 }),
+				const [deptsRes, rolesRes] = await Promise.all([
 					getDepts(),
 					getRolesList(),
 				]);
-				setUsers(usersRes.data);
 				setDepartments(deptsRes.data);
 				setRoles(rolesRes.data);
+			} catch {
+				// Không chặn danh sách người dùng nếu tải danh mục lỗi
+			}
+		})();
+	}, []);
+
+	// Danh sách người dùng — phân trang/lọc phía server, tải lại khi bất kỳ tham số nào đổi
+	useEffect(() => {
+		const controller = new AbortController();
+		void (async () => {
+			setIsLoadingData(true);
+			setLoadError(null);
+			try {
+				const res = await getUsers({
+					page: currentPage,
+					limit: pageSize,
+					search: debouncedSearch || undefined,
+					department_id: deptFilters.join(',') || undefined,
+					account_type: typeFilters.join(',') || undefined,
+				});
+				if (controller.signal.aborted) return;
+				setUsers(res.data);
+				setTotalCount(res.pagination.total);
+				setGlobalStats({
+					total: res.global_stats.total,
+					active: res.global_stats.active,
+					inactive: res.global_stats.inactive,
+					pwdWarn: res.global_stats.pwd_warn,
+				});
+				setTypeCounts(res.type_counts);
+				setDeptCounts(res.dept_counts);
+				// Trang hiện tại vượt quá số trang thực tế (vd. đổi bộ lọc) — quay về trang 1
+				const lastPage = Math.max(1, Math.ceil(res.pagination.total / pageSize));
+				if (currentPage > lastPage) setCurrentPageRaw(1);
 			} catch (err) {
+				if (controller.signal.aborted) return;
 				setLoadError(err instanceof Error ? err.message : 'Có lỗi xảy ra');
 			} finally {
-				setIsLoadingData(false);
+				if (!controller.signal.aborted) setIsLoadingData(false);
 			}
-		};
-		void load();
-	}, [refreshKey]);
+		})();
+		return () => controller.abort();
+	}, [currentPage, pageSize, debouncedSearch, typeFilters, deptFilters, refreshKey]);
 
-	const globalStats = useMemo(
-		() => ({
-			total: users.length,
-			active: users.filter((u) => u.is_active).length,
-			inactive: users.filter((u) => !u.is_active).length,
-			pwdWarn: users.filter((u) => isPasswordOld(u.password_changed_at)).length,
-		}),
-		[users],
-	);
-
-	const matchesSearch = (u: User) => {
-		if (!search) return true;
-		const q = search.toLowerCase();
-		return (
-			u.full_name.toLowerCase().includes(q) ||
-			u.username.toLowerCase().includes(q) ||
-			(u.email ?? '').toLowerCase().includes(q) ||
-			String(u.staff_number ?? '')
-				.toLowerCase()
-				.includes(q)
-		);
-	};
-
-	const usersForTypeCount = useMemo(
-		() =>
-			users.filter(
-				(u) =>
-					(deptFilters.length === 0 ||
-						(u.department_id && deptFilters.includes(u.department_id))) &&
-					matchesSearch(u),
-			),
-		[users, deptFilters, search], // eslint-disable-line react-hooks/exhaustive-deps
-	);
-
-	const usersForDeptCount = useMemo(
-		() =>
-			users.filter(
-				(u) =>
-					(typeFilters.length === 0 || typeFilters.includes(u.account_type)) &&
-					matchesSearch(u),
-			),
-		[users, typeFilters, search], // eslint-disable-line react-hooks/exhaustive-deps
-	);
-
-	const filteredUsers = useMemo(
-		() =>
-			users.filter(
-				(u) =>
-					(typeFilters.length === 0 || typeFilters.includes(u.account_type)) &&
-					(deptFilters.length === 0 ||
-						(u.department_id && deptFilters.includes(u.department_id))) &&
-					matchesSearch(u),
-			),
-		[users, typeFilters, deptFilters, search], // eslint-disable-line react-hooks/exhaustive-deps
-	);
-
-	const totalPages = Math.max(1, Math.ceil(filteredUsers.length / pageSize));
-	const pagedUsers = useMemo(() => {
-		const start = (currentPage - 1) * pageSize;
-		return filteredUsers.slice(start, start + pageSize);
-	}, [filteredUsers, currentPage, pageSize]);
+	const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
 
 	const getRoleName = useCallback(
 		(id: string) => roles.find((r) => r.id === id)?.name ?? '—',
@@ -226,19 +205,17 @@ export function useUserList(): UserListState {
 				role_id: form.role_id || undefined,
 				account_type: form.account_type,
 			});
-			suppressRealtime();
-			setUsers((prev) => [newUser, ...prev]);
 			setShowCreate(false);
+			refreshData();
 			showToast(`Đã cấp tài khoản cho ${newUser.full_name}`);
 		},
-		[showToast],
+		[showToast, refreshData],
 	);
 
 	const handleEdit = useCallback(
 		async (form: UserForm): Promise<void> => {
 			if (!editUser) return;
-			suppressRealtime();
-			const updated = await updateUserApi(editUser.id, {
+			await updateUserApi(editUser.id, {
 				staff_number: form.staff_number || undefined,
 				full_name: form.full_name,
 				email: form.email || undefined,
@@ -248,21 +225,20 @@ export function useUserList(): UserListState {
 				is_active: form.is_active,
 			});
 			if (form.password) await resetUserPassword(editUser.id, form.password);
-			setUsers((prev) => prev.map((u) => (u.id === editUser.id ? updated : u)));
 			setEditUser(null);
+			refreshData();
 			showToast('Đã cập nhật thông tin tài khoản');
 		},
-		[editUser, showToast],
+		[editUser, showToast, refreshData],
 	);
 
 	const handleDelete = useCallback(async (): Promise<void> => {
 		if (!deleteUser) return;
 		await deleteUserApi(deleteUser.id);
-		suppressRealtime();
-		setUsers((prev) => prev.filter((u) => u.id !== deleteUser.id));
 		setDeleteUser(null);
+		refreshData();
 		showToast(`Đã xoá tài khoản ${deleteUser.full_name}`, 'info');
-	}, [deleteUser, showToast]);
+	}, [deleteUser, showToast, refreshData]);
 
 	const handleResetPassword = useCallback(async (): Promise<void> => {
 		if (!resetUser) return;
@@ -282,8 +258,8 @@ export function useUserList(): UserListState {
 				const updated = await updateUserApi(id, {
 					is_active: !target.is_active,
 				});
-				suppressRealtime();
 				setUsers((prev) => prev.map((u) => (u.id === id ? updated : u)));
+				refreshData();
 				showToast(
 					updated.is_active ? 'Đã kích hoạt tài khoản' : 'Đã khoá tài khoản',
 					'info',
@@ -292,7 +268,7 @@ export function useUserList(): UserListState {
 				showToast('Không thể cập nhật trạng thái', 'error');
 			}
 		},
-		[users, showToast],
+		[users, showToast, refreshData],
 	);
 
 	return {
@@ -313,11 +289,10 @@ export function useUserList(): UserListState {
 		resetUser,
 		toast,
 		globalStats,
-		filteredUsers,
-		usersForTypeCount,
-		usersForDeptCount,
+		totalCount,
+		typeCounts,
+		deptCounts,
 		totalPages,
-		pagedUsers,
 		setSearch,
 		setTypeFilters,
 		setDeptFilters,

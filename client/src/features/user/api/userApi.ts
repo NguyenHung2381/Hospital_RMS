@@ -19,6 +19,14 @@ export interface UserListParams {
 interface UserListResponse {
 	data: User[];
 	pagination: { page: number; limit: number; total: number };
+	global_stats: {
+		total: number;
+		active: number;
+		inactive: number;
+		pwd_warn: number;
+	};
+	type_counts: Record<string, number>;
+	dept_counts: Record<string, number>;
 }
 
 interface SimpleListResponse {

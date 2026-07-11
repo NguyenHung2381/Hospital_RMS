@@ -185,6 +185,36 @@ table {
 	width: 100%;
 }
 
+/* Responsive table container utility */
+.table-responsive {
+	width: 100%;
+	overflow-x: auto;
+	-webkit-overflow-scrolling: touch;
+	scrollbar-width: thin;
+}
+
+/* === MOBILE TOUCH TARGETS & MODAL UTILITIES === */
+@media (max-width: 768px) {
+	/* Touch targets minimum 38px cho nút thông thường (ngoại trừ dot/chip/icon) */
+	button:not([class*='dot']):not([class*='Dot']):not([class*='chip']):not([class*='Chip']):not([class*='zoom']):not([class*='Zoom']):not([class*='arrow']):not([class*='Arrow']):not([class*='close']):not([class*='Close']),
+	a, 
+	input[type='button'], 
+	input[type='submit'] {
+		min-height: 38px;
+	}
+
+	/* Responsive modal container */
+	.modal-container,
+	div[class*='modalCard'],
+	div[class*='modalBox'],
+	div[class*='modalContent'] {
+		width: min(560px, calc(100vw - 24px)) !important;
+		max-height: 85vh !important;
+		overflow-y: auto !important;
+		margin: 12px auto !important;
+	}
+}
+
 /* === LAYOUT CONTAINERS === */
 .container {
 	width: 100%;

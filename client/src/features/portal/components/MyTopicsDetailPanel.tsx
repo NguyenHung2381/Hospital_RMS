@@ -20,10 +20,10 @@ import type {
 } from '../../approval/api/approval';
 import type { TopicFile, TopicStatus } from '../../topics/types/topic.type';
 import styles from '../pages/MyTopics.module.css';
+import { formatDate } from '../../../shared/utils/formatDate';
 import {
 	APV_STATUS_CFG,
 	STATUS_CFG,
-	formatDate,
 	getFileTypeMeta,
 	getFileViewerUrl,
 } from '../utils/myTopicsHelpers';

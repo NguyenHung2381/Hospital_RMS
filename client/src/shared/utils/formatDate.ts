@@ -17,3 +17,23 @@ export function formatDate(value?: string | null): string | null {
 	if (Number.isNaN(date.getTime())) return value;
 	return new Intl.DateTimeFormat('vi-VN').format(date);
 }
+
+export function parseDate(s: string | null | undefined): Date | null {
+	if (!s) return null;
+	if (s.includes('/')) {
+		const [d, m, y] = s.split('/');
+		if (!d || !m || !y) return null;
+		const dt = new Date(Number(y), Number(m) - 1, Number(d));
+		return isNaN(dt.getTime()) ? null : dt;
+	}
+	if (s.includes('-')) {
+		const parts = s.split('T')[0].split('-');
+		if (parts.length === 3) {
+			const [y, m, d] = parts;
+			const dt = new Date(Number(y), Number(m) - 1, Number(d));
+			return isNaN(dt.getTime()) ? null : dt;
+		}
+	}
+	const dt = new Date(s);
+	return isNaN(dt.getTime()) ? null : dt;
+}

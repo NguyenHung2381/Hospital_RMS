@@ -22,8 +22,7 @@ export interface TopicFile {
 export interface Topic {
 	id: string;
 	title: string;
-	description: string;
-	staff_number: string;
+	description: string | null;
 	round_id: string;
 	round_name?: string;
 	round_year?: number;
@@ -38,6 +37,8 @@ export interface Topic {
 	progress: number;
 	member_count: number;
 	my_role?: MemberRole;
+	// chuyên ngành liên quan (đề tài liên ngành) — chỉ có khi GET chi tiết
+	related_departments?: { department_id: string; department_name: string }[];
 }
 
 export interface TopicMember {
@@ -47,7 +48,7 @@ export interface TopicMember {
 	email: string;
 	so_dien_thoai: string | null;
 	chuc_vu: string | null;
-	staff_number: string | null;
+	staff_number: number | null;
 	department_id: string | null;
 	role: MemberRole;
 	account_granted: boolean;
@@ -82,6 +83,7 @@ export interface TopicForm {
 	level_id: string;
 	department_id: string;
 	status: TopicStatus;
+	related_department_ids: string[];
 }
 
 export interface FormErrors {

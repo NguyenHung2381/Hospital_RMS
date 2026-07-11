@@ -90,4 +90,87 @@ const push = async (
 	}
 };
 
-module.exports = { getForUser, getUnreadCount, markRead, markAllRead, push };
+const getUsersByTarget = async (targetType, targetIds = []) => {
+	const pool = await getPool();
+	if (targetType === 'all') {
+		const res = await pool.request().query(
+			"SELECT id FROM users WHERE is_active = 1",
+		);
+		return res.recordset.map((r) => r.id);
+	}
+	if (targetType === 'department') {
+		if (!targetIds.length) return [];
+		const res = await pool
+			.request()
+			.input('dept_ids', sql.NVarChar(sql.MAX), JSON.stringify(targetIds))
+			.query(
+				`SELECT id FROM users WHERE is_active = 1
+         AND department_id IN (SELECT value FROM OPENJSON(@dept_ids))`,
+			);
+		return res.recordset.map((r) => r.id);
+	}
+	return targetIds;
+};
+
+const sendBroadcast = async ({
+	type,
+	title,
+	message,
+	refId,
+	refType,
+	targetType,
+	targetIds,
+}) => {
+	const userIds = await getUsersByTarget(targetType, targetIds ?? []);
+	if (!userIds.length) return { sent: 0 };
+	await push(type, title, userIds, { message, refId, refType });
+	return { sent: userIds.length };
+};
+
+const adminGetAll = async ({ page = 1, limit = 20, type, search } = {}) => {
+	const pool = await getPool();
+	const offset = (page - 1) * limit;
+	const conditions = [];
+	const req = pool
+		.request()
+		.input('offset', sql.Int, offset)
+		.input('limit', sql.Int, limit);
+	if (type) {
+		conditions.push('n.type = @type');
+		req.input('type', sql.VarChar(50), type);
+	}
+	if (search) {
+		conditions.push('(n.title LIKE @search OR n.message LIKE @search)');
+		req.input('search', sql.NVarChar(255), `%${search}%`);
+	}
+	const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
+	const result = await req.query(`
+    SELECT n.id, n.user_id, u.full_name, n.type, n.title, n.message,
+           n.ref_id, n.ref_type, n.is_read, n.created_at
+    FROM   notifications n
+    JOIN   users u ON u.id = n.user_id
+    ${where}
+    ORDER  BY n.created_at DESC
+    OFFSET @offset ROWS FETCH NEXT @limit ROWS ONLY;
+
+    SELECT COUNT(*) AS total
+    FROM   notifications n
+    JOIN   users u ON u.id = n.user_id
+    ${where};
+  `);
+	return {
+		data: result.recordsets[0],
+		pagination: { page, limit, total: result.recordsets[1][0].total },
+	};
+};
+
+const deleteNotif = async (id) => {
+	const pool = await getPool();
+	const result = await pool
+		.request()
+		.input('id', sql.VarChar(30), id)
+		.query('DELETE FROM notifications WHERE id = @id');
+	return result.rowsAffected[0] > 0;
+};
+
+module.exports = { getForUser, getUnreadCount, markRead, markAllRead, push, getUsersByTarget, sendBroadcast, adminGetAll, deleteNotif };

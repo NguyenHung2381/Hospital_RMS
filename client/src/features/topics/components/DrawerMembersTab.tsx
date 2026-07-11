@@ -3,10 +3,10 @@ import type { SimpleItem, UserSuggestion } from '../api/topicApi';
 import type { NewMemberForm } from '../hooks/useTopicDrawer';
 import styles from '../pages/Topic.module.css';
 import type { Topic, TopicMember } from '../types/topic.type';
+import { getInitials } from '../../../shared/utils/helper';
 import {
 	MEMBER_ROLE_CFG,
 	genMemberUsername,
-	getInitials,
 } from '../utils/topicHelpers';
 import { Badge } from './Badge';
 import { AlertSvg as IcAlert, InfoSvg as IcInfo, PlusSvg as IcPlus, TrashSvg as IcTrash } from '@/assets/icons';

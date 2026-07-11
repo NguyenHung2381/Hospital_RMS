@@ -1,4 +1,4 @@
-﻿import {
+import {
 	ApproveSvg,
 	CheckSvg,
 	DocSvg,
@@ -131,6 +131,7 @@ export default function TopicPage() {
 							/>
 						</div>
 						<MultiSelect
+							className={styles.filterSelectWrap}
 							options={d.availableYears.map((y) => ({
 								id: y.toString(),
 								label: String(y),
@@ -140,6 +141,7 @@ export default function TopicPage() {
 							placeholder='Tất cả năm'
 						/>
 						<MultiSelect
+							className={styles.filterSelectWrap}
 							options={d.visibleRounds.map((r) => ({
 								id: r.id,
 								label: r.name,
@@ -152,6 +154,7 @@ export default function TopicPage() {
 							placeholder='Tất cả đợt'
 						/>
 						<MultiSelect
+							className={styles.filterSelectWrap}
 							options={d.levels.map((l) => ({ id: l.id, label: l.name }))}
 							selected={d.levelFilters}
 							onChange={(next) => {
@@ -161,6 +164,7 @@ export default function TopicPage() {
 							placeholder='Cấp độ'
 						/>
 						<MultiSelect
+							className={styles.filterSelectWrap}
 							options={d.categories.map((c) => ({ id: c.id, label: c.name }))}
 							selected={d.catFilters}
 							onChange={(next) => {
@@ -170,6 +174,7 @@ export default function TopicPage() {
 							placeholder='Phân loại'
 						/>
 						<MultiSelect
+							className={styles.filterSelectWrap}
 							options={d.departments.map((dep) => ({
 								id: dep.id,
 								label: dep.name,

@@ -1,4 +1,4 @@
-﻿import { CheckSmSvg } from '@/assets/icons';
+import { CheckSmSvg } from '@/assets/icons';
 import { useEffect, useRef, useState } from 'react';
 import styles from './MultiSelect.module.css';
 
@@ -8,6 +8,7 @@ interface MultiSelectProps {
 	onChange: (next: Set<string>) => void;
 	placeholder: string;
 	searchable?: boolean;
+	className?: string;
 }
 
 export function MultiSelect({
@@ -16,6 +17,7 @@ export function MultiSelect({
 	onChange,
 	placeholder,
 	searchable,
+	className,
 }: MultiSelectProps) {
 	const [open, setOpen] = useState(false);
 	const [query, setQuery] = useState('');
@@ -65,6 +67,7 @@ export function MultiSelect({
 	return (
 		<div
 			ref={ref}
+			className={className}
 			style={{ position: 'relative' }}
 		>
 			<button

@@ -1436,7 +1436,13 @@
 @media (max-width: 900px) {
 	.toolbar {
 		flex-direction: column;
-		align-items: flex-start;
+		align-items: stretch;
+		gap: var(--space-3);
+	}
+	.toolbarLeft {
+		width: 100%;
+		flex-direction: column;
+		align-items: stretch;
 	}
 	.searchBox {
 		width: 100%;
@@ -1448,14 +1454,44 @@
 
 @media (max-width: 768px) {
 	.statsRow {
-		grid-template-columns: 1fr 1fr;
+		grid-template-columns: repeat(2, 1fr);
+		gap: var(--space-3);
 	}
 	.roleFilters {
-		flex-wrap: wrap;
-	}
-	.table {
-		display: block;
+		width: 100%;
 		overflow-x: auto;
+		flex-wrap: nowrap;
+		-webkit-overflow-scrolling: touch;
+		padding: 4px;
+	}
+	.tableWrap {
+		overflow-x: auto;
+		-webkit-overflow-scrolling: touch;
+	}
+	.topicRow {
+		padding: var(--space-3) var(--space-4);
+		flex-direction: column;
+		align-items: flex-start;
+		gap: var(--space-2);
+	}
+	.topicRowRight {
+		align-self: flex-end;
+	}
+	.paginationBar {
+		flex-direction: column;
+		align-items: center;
+		gap: var(--space-3);
+		padding: var(--space-4);
+	}
+	.paginationControls {
+		width: 100%;
+		justify-content: center;
+	}
+}
+
+@media (max-width: 480px) {
+	.statsRow {
+		grid-template-columns: 1fr;
 	}
 }
 

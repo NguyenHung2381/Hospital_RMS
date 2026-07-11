@@ -26,18 +26,6 @@ const normalize = (r) => {
 		status: STATUS_TO_FRONT[s] ?? s,
 		start_date: fmtDate(r.start_date),
 		end_date: fmtDate(r.end_date),
-		registration_start_date: r.registration_start_date
-			? fmtDate(r.registration_start_date)
-			: null,
-		registration_end_date: r.registration_end_date
-			? fmtDate(r.registration_end_date)
-			: null,
-		supplement_start_date: r.supplement_start_date
-			? fmtDate(r.supplement_start_date)
-			: null,
-		supplement_end_date: r.supplement_end_date
-			? fmtDate(r.supplement_end_date)
-			: null,
 		created_at: fmtDate(r.created_at),
 		updated_at: r.updated_at ? fmtDate(r.updated_at) : undefined,
 	};
@@ -143,28 +131,15 @@ const create = async (data, actorId) => {
 			'status',
 			sql.VarChar(10),
 			STATUS_TO_DB[data.status] ?? data.status ?? 'draft',
-		)
-		.input(
-			'reg_start',
-			sql.Date,
-			data.registration_start_date
-				? new Date(data.registration_start_date)
-				: null,
-		)
-		.input(
-			'reg_end',
-			sql.Date,
-			data.registration_end_date ? new Date(data.registration_end_date) : null,
 		);
 
 	await req.query(`
       EXEC sp_set_actor @actor_id;
       INSERT INTO research_rounds
-        (id, name, year, round_number, start_date, end_date, status, public_token,
-         registration_start_date, registration_end_date, created_by)
+        (id, name, year, round_number, start_date, end_date, status, public_token, created_by)
       VALUES
         (@id, @name, @year, @round_number, @start_date, @end_date, @status,
-         LOWER(REPLACE(NEWID(),'-','')), @reg_start, @reg_end, @actor_id);
+         LOWER(REPLACE(NEWID(),'-','')), @actor_id);
     `);
 
 	const round = await getById(id);
@@ -208,41 +183,6 @@ const update = async (id, data, actorId) => {
 			STATUS_TO_DB[data.status] ?? data.status,
 		);
 	}
-	if (data.registration_start_date !== undefined) {
-		sets.push('registration_start_date = @reg_start');
-		req.input(
-			'reg_start',
-			sql.Date,
-			data.registration_start_date
-				? new Date(data.registration_start_date)
-				: null,
-		);
-	}
-	if (data.registration_end_date !== undefined) {
-		sets.push('registration_end_date = @reg_end');
-		req.input(
-			'reg_end',
-			sql.Date,
-			data.registration_end_date ? new Date(data.registration_end_date) : null,
-		);
-	}
-	if (data.supplement_start_date !== undefined) {
-		sets.push('supplement_start_date = @sup_start');
-		req.input(
-			'sup_start',
-			sql.Date,
-			data.supplement_start_date ? new Date(data.supplement_start_date) : null,
-		);
-	}
-	if (data.supplement_end_date !== undefined) {
-		sets.push('supplement_end_date = @sup_end');
-		req.input(
-			'sup_end',
-			sql.Date,
-			data.supplement_end_date ? new Date(data.supplement_end_date) : null,
-		);
-	}
-
 	await req.query(
 		`EXEC sp_set_actor @actor_id; UPDATE research_rounds SET ${sets.join(', ')} WHERE id = @id`,
 	);
@@ -277,42 +217,10 @@ const remove = async (id, actorId) => {
 	broadcast('update', { entity: 'round' });
 };
 
-const openSupplementWindow = async (
-	id,
-	{ supplement_start, supplement_end },
-	actorId,
-) => {
-	const pool = await getPool();
-	const result = await pool
-		.request()
-		.input('round_id', sql.VarChar(10), id)
-		.input('actor_id', sql.VarChar(20), actorId)
-		.input('sup_start', sql.Date, new Date(supplement_start))
-		.input('sup_end', sql.Date, new Date(supplement_end))
-		.query(
-			`EXEC sp_open_supplement_window @round_id, @actor_id, @sup_start, @sup_end`,
-		);
-	broadcast('update', { entity: 'round' });
-	return result.recordset[0]; // { topics_opened }
-};
-
-const closeSupplementWindow = async (id, actorId) => {
-	const pool = await getPool();
-	const result = await pool
-		.request()
-		.input('round_id', sql.VarChar(10), id)
-		.input('actor_id', sql.VarChar(20), actorId)
-		.query(`EXEC sp_close_supplement_window @round_id, @actor_id`);
-	broadcast('update', { entity: 'round' });
-	return result.recordset[0]; // { topics_closed }
-};
-
 module.exports = {
 	getAll,
 	getById,
 	create,
 	update,
 	remove,
-	openSupplementWindow,
-	closeSupplementWindow,
 };

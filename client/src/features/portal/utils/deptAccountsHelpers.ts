@@ -34,19 +34,3 @@ export interface EditForm {
 	password: string;
 }
 
-export function getInitials(name: string): string {
-	return name
-		.split(' ')
-		.filter(Boolean)
-		.slice(-2)
-		.map((w) => w[0])
-		.join('')
-		.toUpperCase();
-}
-
-export function formatDate(dateStr: string | null | undefined): string {
-	if (!dateStr) return '—';
-	const d = new Date(dateStr);
-	if (isNaN(d.getTime())) return dateStr;
-	return new Intl.DateTimeFormat('vi-VN').format(d);
-}

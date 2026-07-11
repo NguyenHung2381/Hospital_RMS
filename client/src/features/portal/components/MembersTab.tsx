@@ -1,5 +1,5 @@
 import type { TopicMember } from '../../topics/types/topic.type';
-import { getInitials } from '../../topics/utils/topicHelpers';
+import { getInitials } from '../../../shared/utils/helper';
 import styles from '../pages/TopicDetail.module.css';
 import type { MemberFormState } from '../types/topicDetail.type';
 import { blankMember, ROLE_BADGE } from '../types/topicDetail.type';

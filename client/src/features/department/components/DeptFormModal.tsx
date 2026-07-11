@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { BookOpenSvg, CheckSvg, XSvg } from '@/assets/icons';
 import {
 	EMPTY_FORM,
+	SPECIALTY_GROUPS,
 	type Department,
 	type DeptFormData,
 } from '../types/department.type';
@@ -27,6 +28,7 @@ export function DeptFormModal({
 					code: dept.code,
 					abbreviation: dept.abbreviation,
 					description: dept.description ?? '',
+					specialty_group: dept.specialty_group ?? '',
 				}
 			: EMPTY_FORM,
 	);
@@ -34,7 +36,11 @@ export function DeptFormModal({
 
 	const set =
 		(k: keyof DeptFormData) =>
-		(e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+		(
+			e: React.ChangeEvent<
+				HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
+			>,
+		) => {
 			setForm((f) => ({ ...f, [k]: e.target.value }));
 			setErrors((er) => ({ ...er, [k]: '' }));
 		};
@@ -142,6 +148,27 @@ export function DeptFormModal({
 							{errors.abbreviation && (
 								<div className={styles.fieldError}>{errors.abbreviation}</div>
 							)}
+						</div>
+						<div
+							className={styles.formGroup}
+							style={{ gridColumn: '1 / -1' }}
+						>
+							<label className={styles.formLabel}>Hệ chuyên môn</label>
+							<select
+								className={styles.formInput}
+								value={form.specialty_group}
+								onChange={set('specialty_group')}
+							>
+								<option value=''>-- Chưa gán hệ --</option>
+								{SPECIALTY_GROUPS.map((g) => (
+									<option
+										key={g}
+										value={g}
+									>
+										{g}
+									</option>
+								))}
+							</select>
 						</div>
 						<div
 							className={styles.formGroup}

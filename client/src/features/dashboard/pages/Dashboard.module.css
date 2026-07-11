@@ -978,26 +978,67 @@
 
 @media (max-width: 768px) {
 	.metricsGrid {
-		grid-template-columns: 1fr 1fr;
+		grid-template-columns: repeat(2, 1fr);
+		gap: var(--space-3);
 	}
+
+	.tableSectionHeader {
+		flex-direction: column;
+		align-items: stretch;
+		gap: var(--space-3);
+		padding: var(--space-4);
+	}
+
 	.tableControls {
-		flex-wrap: wrap;
+		flex-direction: column;
+		align-items: stretch;
+		width: 100%;
+		gap: var(--space-2);
 	}
-	.searchInput {
-		width: 160px;
+
+	.searchWrap {
+		width: 100%;
 	}
+
+	.searchInput,
 	.searchInput:focus {
-		width: 160px;
+		width: 100% !important;
+	}
+
+	.filterSelect {
+		width: 100%;
+	}
+
+	.tabsRow {
+		overflow-x: auto;
+		flex-wrap: nowrap;
+		white-space: nowrap;
+		padding: 0 var(--space-4);
+		-webkit-overflow-scrolling: touch;
+	}
+
+	.pagination {
+		flex-direction: column;
+		gap: var(--space-3);
+		align-items: center;
+		padding: var(--space-4);
 	}
 }
 
-@media (max-width: 480px) {
+@media (max-width: 540px) {
 	.metricsGrid {
 		grid-template-columns: 1fr;
 	}
-	.tableSectionHeader {
-		flex-direction: column;
-		align-items: flex-start;
-		gap: var(--space-3);
+
+	.metricValue {
+		font-size: 28px;
+	}
+
+	.approvalItem {
+		padding: var(--space-3);
+	}
+
+	.approvalAvatar {
+		display: none;
 	}
 }

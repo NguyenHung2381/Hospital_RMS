@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import {
+	getTopic,
 	searchUsers,
 	type SimpleItem,
 	type UserSuggestion,
@@ -52,8 +53,34 @@ export function useTopicModal({
 		level_id: topic?.level_id ?? '',
 		department_id: topic?.department_id ?? '',
 		status: topic?.status ?? 'submitted',
+		related_department_ids: (topic?.related_departments ?? []).map(
+			(r) => r.department_id,
+		),
 	});
 	const [errors, setErrors] = useState<FormErrors>({});
+
+	// Danh sách đề tài không kèm chuyên ngành liên quan — nạp từ API chi tiết khi sửa
+	useEffect(() => {
+		if (!topic || topic.related_departments) return;
+		getTopic(topic.id)
+			.then((t) =>
+				setForm((p) => ({
+					...p,
+					related_department_ids: (t.related_departments ?? []).map(
+						(r) => r.department_id,
+					),
+				})),
+			)
+			.catch(() => undefined);
+	}, [topic]);
+
+	const toggleRelatedDept = (deptId: string) =>
+		setForm((p) => ({
+			...p,
+			related_department_ids: p.related_department_ids.includes(deptId)
+				? p.related_department_ids.filter((d) => d !== deptId)
+				: [...p.related_department_ids, deptId],
+		}));
 	const [loading, setLoading] = useState(false);
 	const [saveError, setSaveError] = useState('');
 
@@ -164,7 +191,10 @@ export function useTopicModal({
 	const removeMember = (tempId: string) =>
 		setPendingMembers((prev) => prev.filter((m) => m.tempId !== tempId));
 
-	const setField = (field: keyof TopicForm, val: string) => {
+	const setField = (
+		field: Exclude<keyof TopicForm, 'related_department_ids'>,
+		val: string,
+	) => {
 		setForm((p) => ({ ...p, [field]: val }));
 		if (errors[field])
 			setErrors((p) => {
@@ -231,6 +261,7 @@ export function useTopicModal({
 		addManual,
 		removeMember,
 		setField,
+		toggleRelatedDept,
 		handleSubmit,
 	};
 }

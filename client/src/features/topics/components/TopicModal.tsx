@@ -207,6 +207,76 @@ export function TopicModal({
 					</div>
 
 					<FormField
+						id='related_departments'
+						label='Chuyên ngành liên quan (đề tài liên ngành)'
+						hint='VD: đề tài kế toán tích hợp CNTT thì chọn thêm phòng CNTT — hội đồng chấm sẽ ưu tiên có người của các khoa/phòng này'
+					>
+						<select
+							id='related_departments'
+							className={styles.formSelect}
+							value=''
+							onChange={(e) =>
+								e.target.value && m.toggleRelatedDept(e.target.value)
+							}
+						>
+							<option value=''>— Thêm khoa/phòng liên quan —</option>
+							{departments
+								.filter(
+									(d) =>
+										d.id !== m.form.department_id &&
+										!m.form.related_department_ids.includes(d.id),
+								)
+								.map((d) => (
+									<option
+										key={d.id}
+										value={d.id}
+									>
+										{d.name}
+									</option>
+								))}
+						</select>
+						{m.form.related_department_ids.length > 0 && (
+							<div
+								style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 8 }}
+							>
+								{m.form.related_department_ids.map((id) => (
+									<span
+										key={id}
+										style={{
+											display: 'inline-flex',
+											alignItems: 'center',
+											gap: 4,
+											padding: '3px 10px',
+											borderRadius: 20,
+											fontSize: 12,
+											fontWeight: 600,
+											background: 'var(--color-gray-100)',
+											color: 'var(--color-gray-700)',
+										}}
+									>
+										{m.deptName(id) || id}
+										<button
+											type='button'
+											onClick={() => m.toggleRelatedDept(id)}
+											aria-label='Bỏ'
+											style={{
+												border: 'none',
+												background: 'none',
+												cursor: 'pointer',
+												padding: 0,
+												display: 'inline-flex',
+												color: 'inherit',
+											}}
+										>
+											<IcX style={{ width: 12, height: 12 }} />
+										</button>
+									</span>
+								))}
+							</div>
+						)}
+					</FormField>
+
+					<FormField
 						id='status'
 						label='Trạng thái đề tài'
 					>

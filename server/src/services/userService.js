@@ -2,6 +2,20 @@ const bcrypt = require('bcryptjs');
 const { getPool, sql } = require('../config/db');
 const { broadcast } = require('./eventService');
 
+// department_id/account_type nhận danh sách phân tách bởi dấu phẩy (multi-select trên UI)
+const splitList = (v) => (v ? String(v).split(',').filter(Boolean) : []);
+
+// Thêm mệnh đề IN (...) với tham số đặt tên riêng theo prefix, tránh đụng tên giữa các lần gọi
+const inClause = (req, col, prefix, values, sqlType) => {
+	if (!values.length) return null;
+	const names = values.map((v, i) => {
+		const name = `${prefix}${i}`;
+		req.input(name, sqlType, v);
+		return `@${name}`;
+	});
+	return `${col} IN (${names.join(', ')})`;
+};
+
 const getAll = async ({
 	page = 1,
 	limit = 20,
@@ -13,53 +27,90 @@ const getAll = async ({
 }) => {
 	const pool = await getPool();
 	const offset = (page - 1) * limit;
+	const deptIds = splitList(department_id);
+	const accountTypes = splitList(account_type);
 
-	let where = 'WHERE 1=1';
-	const req = pool
-		.request()
-		.input('offset', sql.Int, offset)
-		.input('limit', sql.Int, limit);
+	const req = pool.request().input('offset', sql.Int, offset).input('limit', sql.Int, limit);
 
+	// Mệnh đề dùng chung (search/role/is_active) — không phụ thuộc dept/loại tài khoản
+	const baseClauses = ['1=1'];
 	if (search) {
-		where +=
-			' AND (u.username LIKE @search OR u.full_name LIKE @search OR u.email LIKE @search OR CAST(u.staff_number AS VARCHAR(20)) LIKE @search)';
+		baseClauses.push(
+			'(u.username LIKE @search OR u.full_name LIKE @search OR u.email LIKE @search OR CAST(u.staff_number AS VARCHAR(20)) LIKE @search)',
+		);
 		req.input('search', sql.NVarChar, `%${search}%`);
 	}
-	if (department_id) {
-		where += ' AND u.department_id = @dept';
-		req.input('dept', sql.VarChar(20), department_id);
-	}
 	if (role_id) {
-		where += ' AND u.role_id = @role_id';
+		baseClauses.push('u.role_id = @role_id');
 		req.input('role_id', sql.VarChar(20), role_id);
 	}
-	if (account_type) {
-		where += ' AND u.account_type = @account_type';
-		req.input('account_type', sql.VarChar(20), account_type);
-	}
 	if (is_active !== undefined) {
-		where += ' AND u.is_active = @is_active';
+		baseClauses.push('u.is_active = @is_active');
 		req.input('is_active', sql.Bit, is_active);
 	}
+
+	const deptClause = inClause(req, 'u.department_id', 'dept', deptIds, sql.VarChar(20));
+	const typeClause = inClause(req, 'u.account_type', 'atype', accountTypes, sql.VarChar(20));
+
+	const whereAll = ['WHERE', [...baseClauses, deptClause, typeClause].filter(Boolean).join(' AND ')].join(' ');
+	// Đếm theo loại tài khoản: bỏ qua bộ lọc loại tài khoản (để hiện số lượng nếu chọn thêm loại khác)
+	const whereForTypeFacet = ['WHERE', [...baseClauses, deptClause].filter(Boolean).join(' AND ')].join(' ');
+	// Đếm theo khoa/phòng: bỏ qua bộ lọc khoa/phòng
+	const whereForDeptFacet = ['WHERE', [...baseClauses, typeClause].filter(Boolean).join(' AND ')].join(' ');
 
 	const result = await req.query(`
     SELECT u.id, u.username, u.staff_number, u.full_name, u.email, u.account_type, u.is_active,
            u.department_id, d.name AS department_name,
            u.role_id, r.name AS role_name,
-           u.created_at, u.updated_at
+           u.can_sit_council, u.can_chair_council,
+           u.password_changed_at, u.created_at, u.updated_at
     FROM users u
     LEFT JOIN departments d ON d.id = u.department_id
     LEFT JOIN roles r ON r.id = u.role_id
-    ${where}
+    ${whereAll}
     ORDER BY u.created_at DESC
     OFFSET @offset ROWS FETCH NEXT @limit ROWS ONLY;
 
-    SELECT COUNT(*) AS total FROM users u ${where};
+    SELECT COUNT(*) AS total FROM users u ${whereAll};
+
+    SELECT
+      COUNT(*) AS total,
+      SUM(CASE WHEN u.is_active = 1 THEN 1 ELSE 0 END) AS active,
+      SUM(CASE WHEN u.is_active = 0 THEN 1 ELSE 0 END) AS inactive,
+      SUM(CASE WHEN u.password_changed_at IS NULL
+               OR DATEDIFF(day, u.password_changed_at, GETDATE()) > 90
+          THEN 1 ELSE 0 END) AS pwd_warn
+    FROM users u;
+
+    SELECT u.account_type, COUNT(*) AS count
+    FROM users u ${whereForTypeFacet}
+    GROUP BY u.account_type;
+
+    SELECT u.department_id, COUNT(*) AS count
+    FROM users u ${whereForDeptFacet}
+    GROUP BY u.department_id;
   `);
 
+	const [rows, totalRows, globalStatsRows, typeCountRows, deptCountRows] =
+		result.recordsets;
+
 	return {
-		data: result.recordsets[0],
-		pagination: { page, limit, total: result.recordsets[1][0].total },
+		data: rows,
+		pagination: { page, limit, total: totalRows[0].total },
+		global_stats: {
+			total: globalStatsRows[0].total,
+			active: globalStatsRows[0].active,
+			inactive: globalStatsRows[0].inactive,
+			pwd_warn: globalStatsRows[0].pwd_warn,
+		},
+		type_counts: Object.fromEntries(
+			typeCountRows.map((r) => [r.account_type, r.count]),
+		),
+		dept_counts: Object.fromEntries(
+			deptCountRows
+				.filter((r) => r.department_id)
+				.map((r) => [r.department_id, r.count]),
+		),
 	};
 };
 
@@ -69,6 +120,7 @@ const getById = async (id) => {
       SELECT u.id, u.username, u.staff_number, u.full_name, u.email, u.account_type, u.is_active,
              u.department_id, d.name AS department_name,
              u.role_id, r.name AS role_name,
+             u.can_sit_council, u.can_chair_council,
              u.password_changed_at, u.created_at, u.updated_at
       FROM users u
       LEFT JOIN departments d ON d.id = u.department_id
@@ -155,6 +207,14 @@ const update = async (id, data, actorId) => {
 	if (data.is_active !== undefined) {
 		sets.push('is_active = @is_active');
 		req.input('is_active', sql.Bit, data.is_active);
+	}
+	if (data.can_sit_council !== undefined) {
+		sets.push('can_sit_council = @can_sit_council');
+		req.input('can_sit_council', sql.Bit, data.can_sit_council);
+	}
+	if (data.can_chair_council !== undefined) {
+		sets.push('can_chair_council = @can_chair_council');
+		req.input('can_chair_council', sql.Bit, data.can_chair_council);
 	}
 
 	if (!sets.length) return getById(id);

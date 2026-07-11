@@ -1,3 +1,4 @@
+import { getInitials } from '../../../shared/utils/helper';
 import styles from '../pages/TopicMembers.module.css';
 
 interface AvatarProps {
@@ -7,13 +8,7 @@ interface AvatarProps {
 }
 
 export function Avatar({ name, cls, size = 'md' }: AvatarProps) {
-	const initials = name
-		.split(' ')
-		.filter(Boolean)
-		.slice(-2)
-		.map((w) => w[0])
-		.join('')
-		.toUpperCase();
+	const initials = getInitials(name);
 	const sizeCls =
 		`avatar${size.charAt(0).toUpperCase() + size.slice(1)}` as keyof typeof styles;
 	return (

@@ -22,17 +22,6 @@ export const ROLE_CFG: Record<MemberRole, { label: string }> = {
 	member: { label: 'Thành viên' },
 };
 
-export function getInitials(name: string | null | undefined): string {
-	if (!name) return '?';
-	return name
-		.replace(/^(BS\.|TS\.|PGS\.|GS\.|ĐD\.|DS\.|CN\.|KS\.)\s*/i, '')
-		.split(' ')
-		.map((w) => w[0])
-		.filter(Boolean)
-		.slice(-2)
-		.join('')
-		.toUpperCase();
-}
 
 export function fmtDate(iso: string): string {
 	return new Date(iso).toLocaleDateString('vi-VN', {

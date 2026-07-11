@@ -20,8 +20,10 @@ const KEY_TO_PATH: Record<string, string> = {
 	home: '/user',
 	myTopics: '/user/my-topics',
 	registerTopic: '/user/register-topic',
+	councilProgress: '/user/council-progress',
 	profile: '/user/profile',
 	deptAccounts: '/user/department-accounts',
+	notifications: '/user/notifications',
 };
 
 const PATH_TO_KEY: Record<string, string> = Object.fromEntries(
@@ -57,6 +59,11 @@ const NAV_GROUPS: NavGroup[] = [
 				icon: <Icon.Register />,
 				restrictMember: true,
 			},
+			{
+				key: 'councilProgress',
+				label: 'Đánh giá tiến độ',
+				icon: <Icon.Grading />,
+			},
 		],
 	},
 	{
@@ -69,6 +76,7 @@ const NAV_GROUPS: NavGroup[] = [
 				icon: <Icon.Users />,
 				managerOnly: true,
 			},
+			{ key: 'notifications', label: 'Thông báo', icon: <Icon.Notif /> },
 		],
 	},
 ];
@@ -83,6 +91,7 @@ export interface UserLayoutProps {
 	userName?: string;
 	userRole?: string;
 	userInitials?: string;
+	hideSidebar?: boolean;
 }
 
 // ─── COMPONENT ────────────────────────────
@@ -95,6 +104,7 @@ export default function UserLayout({
 	userName = 'Người dùng',
 	userRole = 'Thành viên',
 	userInitials,
+	hideSidebar = false,
 }: UserLayoutProps) {
 	const navigate = useNavigate();
 	const location = useLocation();
@@ -123,11 +133,11 @@ export default function UserLayout({
 	});
 
 	const [isMobile, setIsMobile] = useState(() =>
-		typeof window !== 'undefined' ? window.innerWidth <= 768 : false,
+		typeof window !== 'undefined' ? window.innerWidth <= 1024 : false,
 	);
 
 	useEffect(() => {
-		const mq = window.matchMedia('(max-width: 768px)');
+		const mq = window.matchMedia('(max-width: 1024px)');
 		const handler = (e: MediaQueryListEvent) => setIsMobile(e.matches);
 		mq.addEventListener('change', handler);
 		return () => mq.removeEventListener('change', handler);
@@ -175,11 +185,33 @@ export default function UserLayout({
 	} = useNotifications();
 	const notifs = rawNotifs.map(toNotif);
 
+	const navBadges: Record<string, number | undefined> = {
+		notifications: unreadCount > 0 ? unreadCount : undefined,
+	};
+
+	// ── User menu state ──────────────────────
+	const [userMenuOpen, setUserMenuOpen] = useState(false);
+	const userMenuRef = useRef<HTMLDivElement>(null);
+
+	useEffect(() => {
+		const handler = (e: MouseEvent) => {
+			if (
+				userMenuRef.current &&
+				!userMenuRef.current.contains(e.target as Node)
+			) {
+				setUserMenuOpen(false);
+			}
+		};
+		if (userMenuOpen) document.addEventListener('mousedown', handler);
+		return () => document.removeEventListener('mousedown', handler);
+	}, [userMenuOpen]);
+
 	useEffect(() => {
 		const handler = (e: KeyboardEvent) => {
 			if (e.key === 'Escape') {
 				closeSearch();
 				setNotifOpen(false);
+				setUserMenuOpen(false);
 			}
 		};
 		window.addEventListener('keydown', handler);
@@ -210,9 +242,18 @@ export default function UserLayout({
 
 	return (
 		<div className={styles.userWrapper}>
+			{/* Mobile Backdrop Overlay */}
+			{!hideSidebar && mobileNavOpen && (
+				<div
+					className={styles.mobileBackdrop}
+					onClick={() => setMobileNavOpen(false)}
+				/>
+			)}
+
 			{/* ══ SIDEBAR ════════════════════════════ */}
+			{!hideSidebar && (
 			<aside
-				className={`${styles.sidebar} ${effectiveCollapsed ? styles.collapsed : ''}`}
+				className={`${styles.sidebar} ${effectiveCollapsed ? styles.collapsed : ''} ${mobileNavOpen ? styles.mobileDrawerOpen : ''}`}
 			>
 				{/* Header */}
 				<div className={styles.sidebarHeader}>
@@ -240,10 +281,10 @@ export default function UserLayout({
 					</button>
 					<button
 						className={styles.mobileMenuBtn}
-						onClick={() => setMobileNavOpen((o) => !o)}
-						aria-label={mobileNavOpen ? 'Đóng menu' : 'Mở menu'}
+						onClick={() => setMobileNavOpen(false)}
+						aria-label='Đóng menu'
 					>
-						{mobileNavOpen ? <Icon.X /> : <Icon.Menu />}
+						<Icon.X />
 					</button>
 				</div>
 
@@ -265,15 +306,15 @@ export default function UserLayout({
 								>
 									{item.icon}
 									<span className={styles.navLabel}>{item.label}</span>
-									{item.badge !== undefined && (
+									{(item.badge !== undefined || navBadges[item.key] !== undefined) && (
 										<span
 											className={
-												Number(item.badge) > 50
+												Number(item.badge ?? navBadges[item.key]) > 50
 													? styles.navBadge
 													: styles.navBadgeGray
 											}
 										>
-											{item.badge}
+											{item.badge ?? navBadges[item.key]}
 										</span>
 									)}
 								</button>
@@ -287,26 +328,61 @@ export default function UserLayout({
 					className={`${styles.sidebarFooter} ${mobileNavOpen ? styles.mobileOpen : ''}`}
 				>
 					<div
-						className={styles.userCard}
-						title={collapsed ? userName : undefined}
+						className={styles.userMenuWrap}
+						ref={userMenuRef}
 					>
-						<div className={styles.userAvatar}>{initials}</div>
-						<div className={styles.userInfo}>
-							<div className={styles.userName}>{userName}</div>
-							<div className={styles.userRole}>{userRole}</div>
+						{userMenuOpen && (
+							<div className={styles.userDropdown}>
+								<button
+									className={styles.userDropdownItem}
+									onClick={handleLogout}
+								>
+									<Icon.LogOut />
+									<span>Đăng xuất</span>
+								</button>
+							</div>
+						)}
+						<div
+							className={styles.userCard}
+							title={collapsed ? userName : undefined}
+							onClick={() => setUserMenuOpen((o) => !o)}
+						>
+							<div className={styles.userAvatar}>{initials}</div>
+							<div className={styles.userInfo}>
+								<div className={styles.userName}>{userName}</div>
+								<div className={styles.userRole}>{userRole}</div>
+							</div>
+							<span className={styles.userMenuIcon}>
+								<Icon.MoreV />
+							</span>
 						</div>
-						<span className={styles.userMenuIcon}>
-							<Icon.MoreV />
-						</span>
 					</div>
 				</div>
 			</aside>
+			)}
 
 			{/* ══ MAIN ═══════════════════════════════ */}
-			<div className={styles.mainContent}>
+			<div className={`${styles.mainContent} ${hideSidebar ? styles.noSidebar : ''}`}>
 				{/* Topbar */}
 				<header className={styles.topbar}>
 					<div className={styles.topbarLeft}>
+						{!hideSidebar && (
+						<button
+							className={styles.mobileNavTrigger}
+							onClick={() => setMobileNavOpen(true)}
+							aria-label='Mở menu'
+						>
+							<Icon.Menu />
+						</button>
+						)}
+						<div className={styles.mobileHeaderBrand}>
+							<img
+								src={Logo}
+								alt='Logo'
+								className={styles.mobileBrandLogo}
+							/>
+							<span className={styles.mobileBrandTitle}>Hospital RMS</span>
+						</div>
 						{/* Breadcrumb */}
 						<div className={styles.breadcrumb}>
 							<span className={styles.breadcrumbItem}>Cổng người dùng</span>

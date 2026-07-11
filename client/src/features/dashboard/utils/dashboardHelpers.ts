@@ -39,7 +39,7 @@ export const STATUS_COLORS: Record<string, string> = {
 	completed: '#E8457A',
 };
 
-export const DEPT_COLORS = [
+export const CHART_COLORS = [
 	'#2EB87A',
 	'#378ADD',
 	'#EF9F27',
@@ -51,19 +51,8 @@ export const DEPT_COLORS = [
 	'#EC4899',
 	'#6366F1',
 ];
-
-export const CATEGORY_COLORS = [
-	'#2EB87A',
-	'#378ADD',
-	'#EF9F27',
-	'#E8457A',
-	'#7C3AED',
-	'#06B6D4',
-	'#F97316',
-	'#84CC16',
-	'#EC4899',
-	'#6366F1',
-];
+export const DEPT_COLORS = CHART_COLORS;
+export const CATEGORY_COLORS = CHART_COLORS;
 
 export const APPROVAL_CONFIG: Record<string, { label: string; cls: string }> = {
 	pending: { label: 'Chờ duyệt', cls: 'badgeAmber' },

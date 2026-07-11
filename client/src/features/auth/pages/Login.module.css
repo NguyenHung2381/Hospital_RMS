@@ -476,3 +476,87 @@
 .secBadge svg {
 	color: var(--color-primary);
 }
+
+/* === POPUP CHỌN NƠI VÀO — cho tài khoản có ghế trong hội đồng === */
+.destBackdrop {
+	position: fixed;
+	inset: 0;
+	background: rgba(15, 23, 42, 0.55);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: var(--space-4);
+	z-index: 1000;
+}
+
+.destModal {
+	width: 100%;
+	max-width: 420px;
+	background: var(--color-white);
+	border-radius: var(--radius-xl);
+	box-shadow: var(--shadow-lg, 0 20px 40px rgba(0, 0, 0, 0.2));
+	padding: var(--space-6);
+	text-align: center;
+}
+
+.destIcon {
+	width: 52px;
+	height: 52px;
+	margin: 0 auto var(--space-4);
+	border-radius: 50%;
+	background: var(--color-primary-pale);
+	color: var(--color-primary-dark);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+
+.destTitle {
+	font-size: var(--font-size-lg, 18px);
+	font-weight: var(--font-weight-bold);
+	color: var(--color-gray-800);
+	margin-bottom: var(--space-2);
+}
+
+.destDesc {
+	font-size: var(--font-size-sm, 13px);
+	color: var(--color-gray-500);
+	margin-bottom: var(--space-6);
+}
+
+.destOptions {
+	display: flex;
+	flex-direction: column;
+	gap: var(--space-3);
+}
+
+.destOptionPrimary,
+.destOptionSecondary {
+	width: 100%;
+	padding: var(--space-3) var(--space-4);
+	border-radius: var(--radius-lg);
+	font-family: var(--font-body);
+	font-size: var(--font-size-sm, 14px);
+	font-weight: var(--font-weight-bold);
+	cursor: pointer;
+}
+
+.destOptionPrimary {
+	border: none;
+	background: var(--color-primary);
+	color: #fff;
+}
+
+.destOptionPrimary:hover {
+	filter: brightness(1.08);
+}
+
+.destOptionSecondary {
+	border: 1px solid var(--color-gray-200);
+	background: var(--color-white);
+	color: var(--color-gray-700);
+}
+
+.destOptionSecondary:hover {
+	background: var(--color-gray-50, #f8fafc);
+}

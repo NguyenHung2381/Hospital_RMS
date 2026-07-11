@@ -49,7 +49,10 @@ app.use(
 const API = '/api/v1';
 
 app.use(API, (req, res, next) => {
-	res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+	res.set(
+		'Cache-Control',
+		'no-store, no-cache, must-revalidate, proxy-revalidate',
+	);
 	res.set('Pragma', 'no-cache');
 	res.set('Expires', '0');
 	next();
@@ -58,6 +61,7 @@ app.use(API, (req, res, next) => {
 app.use(`${API}/auth`, require('./routes/auth'));
 app.use(`${API}/users`, require('./routes/users'));
 app.use(`${API}/topics`, require('./routes/topics'));
+app.use(`${API}/councils`, require('./routes/councils'));
 app.use(`${API}/files`, require('./routes/files'));
 app.use(`${API}/dashboard`, require('./routes/dashboard'));
 app.use(`${API}/notifications`, require('./routes/notifications'));
@@ -92,7 +96,10 @@ const isPortInUse = (port) =>
 		// Dùng connect thay vì bind: tránh SO_REUSEADDR trên Windows
 		// cho phép bind trùng port khiến cách cũ luôn báo "rảnh"
 		const client = net.createConnection({ port, host: '127.0.0.1' });
-		client.once('connect', () => { client.destroy(); resolve(true); });
+		client.once('connect', () => {
+			client.destroy();
+			resolve(true);
+		});
 		client.once('error', (err) => resolve(err.code !== 'ECONNREFUSED'));
 	});
 
@@ -145,7 +152,9 @@ function getNetworkIp() {
 					`VITE_API_PORT=${PORT}`,
 				);
 			} else {
-				newContent = newContent.trim() ? newContent.trim() + `\nVITE_API_PORT=${PORT}\n` : `VITE_API_PORT=${PORT}\n`;
+				newContent = newContent.trim()
+					? newContent.trim() + `\nVITE_API_PORT=${PORT}\n`
+					: `VITE_API_PORT=${PORT}\n`;
 			}
 			if (envContent !== newContent) {
 				fs.writeFileSync(clientEnvPath, newContent);

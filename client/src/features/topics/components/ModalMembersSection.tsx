@@ -3,7 +3,8 @@ import type { SimpleItem, UserSuggestion } from '../api/topicApi';
 import type { ManualMemberForm, PendingMember } from '../hooks/useTopicModal';
 import styles from '../pages/Topic.module.css';
 import type { MemberRole } from '../types/topic.type';
-import { MEMBER_ROLE_CFG, getInitials } from '../utils/topicHelpers';
+import { getInitials } from '../../../shared/utils/helper';
+import { MEMBER_ROLE_CFG } from '../utils/topicHelpers';
 import { Badge } from './Badge';
 import { AlertSvg, PlusSvg, SearchSvg, UserSvg, XSvg } from '@/assets/icons';
 

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { apiClient } from '../../../shared/api/axios';
+import { getInitials } from '../../../shared/utils/helper';
 import { getStoredUser } from '../../../shared/utils/storage';
 
 interface ProfileData {
@@ -32,15 +33,6 @@ export function fmtDate(iso: string | null) {
 	});
 }
 
-function getInitials(name: string) {
-	return name
-		.split(' ')
-		.map((w) => w[0])
-		.filter(Boolean)
-		.slice(-2)
-		.join('')
-		.toUpperCase();
-}
 
 export function useProfile() {
 	const storedUser = useMemo(() => getStoredUser<Record<string, string>>(), []);

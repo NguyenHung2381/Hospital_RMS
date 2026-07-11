@@ -3,7 +3,8 @@ import React, { useState } from 'react';
 import type { SimpleItem } from '../api/userApi';
 import styles from '../pages/UserList.module.css';
 import type { AccountType, FormErrors, User, UserForm } from '../types/user.type';
-import { ACCOUNT_TYPES, getInitials, suggestUsername } from '../utils/userHelpers';
+import { getInitials } from '../../../shared/utils/helper';
+import { ACCOUNT_TYPES, suggestUsername } from '../utils/userHelpers';
 
 function Field({
 	id,

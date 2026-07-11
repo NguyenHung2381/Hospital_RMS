@@ -75,10 +75,11 @@ const create = async (data, actorId) => {
 		.input('code', sql.VarChar(20), data.code)
 		.input('abbreviation', sql.VarChar(20), data.abbreviation)
 		.input('description', sql.NVarChar(sql.MAX), data.description || null)
+		.input('specialty_group', sql.NVarChar(100), data.specialty_group || null)
 		.query(`
       EXEC sp_set_actor @actor_id;
-      INSERT INTO departments (id, name, code, abbreviation, description, created_by)
-      VALUES (@id, @name, @code, @abbreviation, @description, @actor_id);
+      INSERT INTO departments (id, name, code, abbreviation, description, specialty_group, created_by)
+      VALUES (@id, @name, @code, @abbreviation, @description, @specialty_group, @actor_id);
     `);
 	const dept = await getById(newId);
 	broadcast('update', { entity: 'department' });
@@ -99,7 +100,7 @@ const update = async (id, data, actorId) => {
 	}
 	if (data.code !== undefined) {
 		sets.push('code = @code');
-		req.input('code', sql.VarChar(50), data.code);
+		req.input('code', sql.VarChar(20), data.code);
 	}
 	if (data.abbreviation !== undefined) {
 		sets.push('abbreviation = @abbreviation');
@@ -108,6 +109,10 @@ const update = async (id, data, actorId) => {
 	if (data.description !== undefined) {
 		sets.push('description = @description');
 		req.input('description', sql.NVarChar(sql.MAX), data.description);
+	}
+	if (data.specialty_group !== undefined) {
+		sets.push('specialty_group = @specialty_group');
+		req.input('specialty_group', sql.NVarChar(100), data.specialty_group || null);
 	}
 
 	await req.query(

@@ -1,9 +1,4 @@
-import { getStoredUser as getAuthUser, getToken } from '../../shared/utils/storage';
-
-export interface StoredUser {
-	account_type?: string;
-	role?: string;
-}
+import { getStoredUser as getAuthUser, getToken, type StoredUser } from '../../shared/utils/storage';
 
 export function getStoredUser(): StoredUser | null {
 	return getAuthUser<StoredUser>();
