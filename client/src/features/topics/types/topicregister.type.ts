@@ -1,4 +1,4 @@
-import type { MemberRole, TopicStatus } from './topic.type';
+import type { ArticleType, MemberRole, TopicStatus } from './topic.type';
 
 export interface PendingMember {
 	id: string;
@@ -12,6 +12,7 @@ export interface PendingMember {
 }
 
 export interface RegisterForm {
+	article_type: ArticleType;
 	title: string;
 	description: string;
 	staff_number: string;
@@ -19,10 +20,14 @@ export interface RegisterForm {
 	category_id: string;
 	level_id: string;
 	department_id: string;
+	journal_name: string;
+	doi: string;
+	publish_date: string;
 }
 
 export interface PendingTopic {
 	localId: string;
+	article_type: ArticleType;
 	title: string;
 	description: string;
 	staff_number: string;
@@ -30,6 +35,9 @@ export interface PendingTopic {
 	category_id: string;
 	level_id: string;
 	department_id: string;
+	journal_name: string;
+	doi: string;
+	publish_date: string;
 	members: PendingMember[];
 	attachments: File[];
 }

@@ -1,5 +1,6 @@
 // ─── TYPES ────────────────────────────────
 export type TopicStatus = 'submitted' | 'approved' | 'rejected' | 'supplement';
+export type ArticleType = 'de_tai' | 'bai_bao';
 export type MemberRole = 'leader' | 'secretary' | 'member';
 export type ApvStatus = 'pending' | 'approved' | 'rejected';
 export type DrawerTab = 'info' | 'members' | 'files';
@@ -33,12 +34,14 @@ export interface Topic {
 	created_at: string;
 	created_by: string;
 	updated_at?: string;
+	article_type?: ArticleType;
+	journal_name?: string | null;
+	doi?: string | null;
+	publish_date?: string | null;
 	// derived / computed
 	progress: number;
 	member_count: number;
 	my_role?: MemberRole;
-	// chuyên ngành liên quan (đề tài liên ngành) — chỉ có khi GET chi tiết
-	related_departments?: { department_id: string; department_name: string }[];
 }
 
 export interface TopicMember {
@@ -83,7 +86,6 @@ export interface TopicForm {
 	level_id: string;
 	department_id: string;
 	status: TopicStatus;
-	related_department_ids: string[];
 }
 
 export interface FormErrors {

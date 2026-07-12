@@ -139,26 +139,36 @@ function getNetworkIp() {
 			}
 
 			// Tự động đồng bộ Port sang file .env của Frontend (Client)
-			const fs = require('fs');
-			const clientEnvPath = path.resolve(__dirname, '../../client/.env');
-			let envContent = '';
-			if (fs.existsSync(clientEnvPath)) {
-				envContent = fs.readFileSync(clientEnvPath, 'utf8');
-			}
-			let newContent = envContent;
-			if (newContent.match(/^VITE_API_PORT=.*$/m)) {
-				newContent = newContent.replace(
-					/^VITE_API_PORT=.*$/m,
-					`VITE_API_PORT=${PORT}`,
-				);
-			} else {
-				newContent = newContent.trim()
-					? newContent.trim() + `\nVITE_API_PORT=${PORT}\n`
-					: `VITE_API_PORT=${PORT}\n`;
-			}
-			if (envContent !== newContent) {
-				fs.writeFileSync(clientEnvPath, newContent);
-				console.log(`✅ Đã tự động đồng bộ Port ${PORT} sang thư mục client`);
+			// Chỉ áp dụng khi chạy native cùng máy với client — bỏ qua nếu
+			// thư mục client không tồn tại cạnh server (vd: chạy trong Docker container riêng)
+			try {
+				const fs = require('fs');
+				const clientEnvPath = path.resolve(__dirname, '../../client/.env');
+				if (fs.existsSync(path.dirname(clientEnvPath))) {
+					let envContent = '';
+					if (fs.existsSync(clientEnvPath)) {
+						envContent = fs.readFileSync(clientEnvPath, 'utf8');
+					}
+					let newContent = envContent;
+					if (newContent.match(/^VITE_API_PORT=.*$/m)) {
+						newContent = newContent.replace(
+							/^VITE_API_PORT=.*$/m,
+							`VITE_API_PORT=${PORT}`,
+						);
+					} else {
+						newContent = newContent.trim()
+							? newContent.trim() + `\nVITE_API_PORT=${PORT}\n`
+							: `VITE_API_PORT=${PORT}\n`;
+					}
+					if (envContent !== newContent) {
+						fs.writeFileSync(clientEnvPath, newContent);
+						console.log(
+							`✅ Đã tự động đồng bộ Port ${PORT} sang thư mục client`,
+						);
+					}
+				}
+			} catch (err) {
+				console.warn(`⚠️  Không thể đồng bộ port sang client/.env: ${err.message}`);
 			}
 
 			const networkIp = getNetworkIp() || '192.168.x.x';

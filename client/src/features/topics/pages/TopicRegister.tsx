@@ -1,9 +1,9 @@
-﻿import { AlertSvg, CheckSvg, ChevRSvg, FileTextSvg, HelpSvg, ListSvg, PaperclipSvg, SearchSvg, SendSvg, UploadSvg, UserPlusSvg, XSvg } from '@/assets/icons';
+import { AlertSvg, CheckSvg, ChevRSvg, FileTextSvg, HelpSvg, ListSvg, PaperclipSvg, SearchSvg, SendSvg, UploadSvg, UserPlusSvg, XSvg, PlusSvg } from '@/assets/icons';
 import UserLayout from '../../../layouts/UserLayout';
 import { useTopicRegister } from '../hooks/useTopicRegister';
-import type { MemberRole } from '../types/topic.type';
+import type { ArticleType, MemberRole } from '../types/topic.type';
 import { getInitials } from '../../../shared/utils/helper';
-import { BADGE_CLS, fmtDate, GUIDE_STEPS, ROLE_CFG, STATUS_CFG } from '../utils/topicRegisterHelpers';
+import { ARTICLE_ROLE_CFG, ARTICLE_TYPE_CFG, BADGE_CLS, fmtDate, GUIDE_STEPS, STATUS_CFG } from '../utils/topicRegisterHelpers';
 import styles from './TopicRegister.module.css';
 
 export default function TopicRegister() {
@@ -67,6 +67,10 @@ export default function TopicRegister() {
 		{ label: 'Đề tài', path: '/user/my-topics' },
 		{ label: 'Đăng ký mới' },
 	];
+
+	const isPaper = form.article_type === 'bai_bao';
+	const roleCfg = ARTICLE_ROLE_CFG[form.article_type];
+	const roleKeys = Object.keys(roleCfg) as MemberRole[];
 
 	if (loadingRef) {
 		return (
@@ -153,7 +157,7 @@ export default function TopicRegister() {
 			userName={userName}
 			userRole={userRole}
 			userInitials={userInitials}
-			pageTitle='Đăng ký đề tài mới'
+			pageTitle={ARTICLE_TYPE_CFG[form.article_type].label}
 			breadcrumbs={breadcrumbs}
 		>
 			<div className={styles.pageGrid}>
@@ -167,15 +171,28 @@ export default function TopicRegister() {
 							</div>
 							<div>
 								<div className={styles.formCardTitle}>
-									Đăng ký đề tài nghiên cứu
+									{ARTICLE_TYPE_CFG[form.article_type].label}
 								</div>
 								<div className={styles.formCardSub}>
-									Điền thông tin rồi nhấn "Thêm vào danh sách"
+									{ARTICLE_TYPE_CFG[form.article_type].sub}
 								</div>
 							</div>
 						</div>
 
 						<div className={styles.formCardBody}>
+							<div className={styles.statusPills}>
+								{(Object.keys(ARTICLE_TYPE_CFG) as ArticleType[]).map((t) => (
+									<button
+										key={t}
+										type='button'
+										className={`${styles.statusPill} ${form.article_type === t ? styles.statusPillActive : ''}`}
+										onClick={() => setField('article_type', t)}
+									>
+										{ARTICLE_TYPE_CFG[t].tabLabel}
+									</button>
+								))}
+							</div>
+
 							<div className={styles.formSection}>Thông tin cơ bản</div>
 
 							<div className={styles.formGroup}>
@@ -183,12 +200,17 @@ export default function TopicRegister() {
 									className={styles.formLabel}
 									htmlFor='reg-title'
 								>
-									Tiêu đề đề tài <span className={styles.formRequired}>*</span>
+									{isPaper ? 'Tên bài báo / báo cáo' : 'Tiêu đề đề tài'}{' '}
+									<span className={styles.formRequired}>*</span>
 								</label>
 								<input
 									id='reg-title'
 									className={`${styles.formInput} ${errors.title ? styles.hasError : ''}`}
-									placeholder='Nhập tiêu đề đề tài nghiên cứu...'
+									placeholder={
+										isPaper
+											? 'Nhập tên bài báo / báo cáo đăng tập san...'
+											: 'Nhập tiêu đề đề tài nghiên cứu...'
+									}
 									value={form.title}
 									onChange={(e) => setField('title', e.target.value)}
 								/>
@@ -284,30 +306,54 @@ export default function TopicRegister() {
 							</div>
 
 							<div className={styles.formRow}>
-								<div className={styles.formGroup}>
-									<label
-										className={styles.formLabel}
-										htmlFor='reg-level'
-									>
-										Cấp độ
-									</label>
-									<select
-										id='reg-level'
-										className={styles.formSelect}
-										value={form.level_id}
-										onChange={(e) => setField('level_id', e.target.value)}
-									>
-										<option value=''>-- Chọn cấp độ --</option>
-										{levels.map((l) => (
-											<option
-												key={l.id}
-												value={l.id}
-											>
-												{l.name}
-											</option>
-										))}
-									</select>
-								</div>
+								{!isPaper ? (
+									<div className={styles.formGroup}>
+										<label
+											className={styles.formLabel}
+											htmlFor='reg-level'
+										>
+											Cấp độ
+										</label>
+										<select
+											id='reg-level'
+											className={styles.formSelect}
+											value={form.level_id}
+											onChange={(e) => setField('level_id', e.target.value)}
+										>
+											<option value=''>-- Chọn cấp độ --</option>
+											{levels.map((l) => (
+												<option
+													key={l.id}
+													value={l.id}
+												>
+													{l.name}
+												</option>
+											))}
+										</select>
+									</div>
+								) : (
+									<div className={styles.formGroup}>
+										<label
+											className={styles.formLabel}
+											htmlFor='reg-journal'
+										>
+											Tên tập san / tạp chí{' '}
+											<span className={styles.formRequired}>*</span>
+										</label>
+										<input
+											id='reg-journal'
+											className={`${styles.formInput} ${errors.journal_name ? styles.hasError : ''}`}
+											placeholder='VD: Tạp chí Y học TP.HCM'
+											value={form.journal_name}
+											onChange={(e) => setField('journal_name', e.target.value)}
+										/>
+										{errors.journal_name && (
+											<div className={styles.formError}>
+												<AlertSvg /> {errors.journal_name}
+											</div>
+										)}
+									</div>
+								)}
 								<div className={styles.formGroup}>
 									<label
 										className={styles.formLabel}
@@ -343,7 +389,46 @@ export default function TopicRegister() {
 								</div>
 							</div>
 
-							<div className={styles.formSection}>Thành viên tham gia</div>
+							{isPaper && (
+								<div className={styles.formRow}>
+									<div className={styles.formGroup}>
+										<label
+											className={styles.formLabel}
+											htmlFor='reg-doi'
+										>
+											DOI (nếu có)
+										</label>
+										<input
+											id='reg-doi'
+											className={styles.formInput}
+											placeholder='VD: 10.1234/abcd.2026'
+											value={form.doi}
+											onChange={(e) => setField('doi', e.target.value)}
+										/>
+									</div>
+									<div className={styles.formGroup}>
+										<label
+											className={styles.formLabel}
+											htmlFor='reg-publish-date'
+										>
+											Ngày xuất bản
+										</label>
+										<input
+											id='reg-publish-date'
+											type='date'
+											className={styles.formInput}
+											value={form.publish_date}
+											onChange={(e) =>
+												setField('publish_date', e.target.value)
+											}
+										/>
+									</div>
+								</div>
+							)}
+
+							<div className={styles.formSection}>
+								{isPaper ? 'Tác giả' : 'Thành viên tham gia'}
+							</div>
 
 							<div className={styles.formGroup}>
 								<label className={styles.formLabel}>Tìm kiếm thành viên</label>
@@ -421,11 +506,37 @@ export default function TopicRegister() {
 														);
 													})
 												) : (
-													<div className={styles.noResults}>
-														<span>Không tìm thấy kết quả</span>
+													<div
+														style={{
+															padding: '20px 14px',
+															textAlign: 'center',
+															background: 'var(--color-gray-50)',
+															display: 'flex',
+															flexDirection: 'column',
+															alignItems: 'center',
+															gap: 10,
+														}}
+													>
+														<div
+															style={{
+																fontSize: 13,
+																color: 'var(--color-gray-500)',
+															}}
+														>
+															Không tìm thấy nhân viên phù hợp
+														</div>
 														<button
 															type='button'
-															className={styles.suggAdd}
+															className={styles.btnSecondary}
+															style={{
+																fontSize: 12,
+																padding: '6px 12px',
+																display: 'inline-flex',
+																alignItems: 'center',
+																gap: 6,
+																cursor: 'pointer',
+																boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
+															}}
 															onMouseDown={(e) => {
 																e.preventDefault();
 																setShowSuggestions(false);
@@ -437,7 +548,8 @@ export default function TopicRegister() {
 																setShowManualForm(true);
 															}}
 														>
-															+ Thêm thủ công
+															<PlusSvg style={{ width: 12, height: 12 }} />
+															Thêm thủ công
 														</button>
 													</div>
 												)}
@@ -450,12 +562,12 @@ export default function TopicRegister() {
 										value={addRole}
 										onChange={(e) => setAddRole(e.target.value as MemberRole)}
 									>
-										{(Object.keys(ROLE_CFG) as MemberRole[]).map((r) => (
+										{roleKeys.map((r) => (
 											<option
 												key={r}
 												value={r}
 											>
-												{ROLE_CFG[r].label}
+												{roleCfg[r]?.label}
 											</option>
 										))}
 									</select>
@@ -632,12 +744,12 @@ export default function TopicRegister() {
 													})
 												}
 											>
-												{(Object.keys(ROLE_CFG) as MemberRole[]).map((r) => (
+												{roleKeys.map((r) => (
 													<option
 														key={r}
 														value={r}
 													>
-														{ROLE_CFG[r].label}
+														{roleCfg[r]?.label}
 													</option>
 												))}
 											</select>
@@ -715,12 +827,12 @@ export default function TopicRegister() {
 														changeRole(m.id, e.target.value as MemberRole)
 													}
 												>
-													{(Object.keys(ROLE_CFG) as MemberRole[]).map((r) => (
+													{roleKeys.map((r) => (
 														<option
 															key={r}
 															value={r}
 														>
-															{ROLE_CFG[r].label}
+															{roleCfg[r]?.label}
 														</option>
 													))}
 												</select>
@@ -821,8 +933,8 @@ export default function TopicRegister() {
 								}}
 							>
 								{pendingTopics.length > 0
-									? `${pendingTopics.length} đề tài đang chờ gửi`
-									: 'Chưa có đề tài nào trong danh sách'}
+									? `${pendingTopics.length} mục đang chờ gửi`
+									: 'Chưa có mục nào trong danh sách'}
 							</span>
 							<button
 								type='button'
@@ -845,7 +957,7 @@ export default function TopicRegister() {
 					{pendingTopics.length > 0 && (
 						<div className={styles.pendingCard}>
 							<div className={styles.pendingHeader}>
-								<span>Danh sách đề tài chờ gửi</span>
+								<span>Danh sách chờ gửi</span>
 								<span className={styles.pendingBadge}>
 									{pendingTopics.length}
 								</span>
@@ -861,7 +973,15 @@ export default function TopicRegister() {
 										>
 											<div className={styles.pendingNum}>{i + 1}</div>
 											<div className={styles.pendingInfo}>
-												<div className={styles.pendingTitle}>{t.title}</div>
+												<div className={styles.pendingTitle}>
+													<span
+														className={`${styles.badge} ${t.article_type === 'bai_bao' ? styles.badgeTeal : styles.badgeBlue}`}
+														style={{ marginRight: 6 }}
+													>
+														{ARTICLE_TYPE_CFG[t.article_type].tabLabel}
+													</span>
+													{t.title}
+												</div>
 												<div className={styles.pendingMeta}>
 													{roundName} · {t.members.length} thành viên
 													{t.attachments.length > 0 &&

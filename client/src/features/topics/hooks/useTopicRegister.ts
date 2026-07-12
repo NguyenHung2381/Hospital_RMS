@@ -148,6 +148,7 @@ export function useTopicRegister(): TopicRegisterState {
 		useState<TopicRegisterState['lockedRound']>(null);
 
 	const [form, setFormState] = useState<RegisterForm>({
+		article_type: 'de_tai',
 		title: '',
 		description: '',
 		staff_number: '',
@@ -155,6 +156,9 @@ export function useTopicRegister(): TopicRegisterState {
 		category_id: '',
 		level_id: '',
 		department_id: currentDeptId,
+		journal_name: '',
+		doi: '',
+		publish_date: '',
 	});
 	const [errors, setErrors] = useState<FormErrors>({});
 
@@ -371,7 +375,8 @@ export function useTopicRegister(): TopicRegisterState {
 	}, []);
 
 	const clearForm = useCallback(() => {
-		setFormState({
+		setFormState((f) => ({
+			article_type: f.article_type,
 			title: '',
 			description: '',
 			staff_number: '',
@@ -379,7 +384,10 @@ export function useTopicRegister(): TopicRegisterState {
 			category_id: '',
 			level_id: '',
 			department_id: currentDeptId,
-		});
+			journal_name: '',
+			doi: '',
+			publish_date: '',
+		}));
 		setErrors({});
 		setPendingMembers([]);
 		setMemberQuery('');
@@ -392,9 +400,15 @@ export function useTopicRegister(): TopicRegisterState {
 
 	const addTopicToList = useCallback(() => {
 		const e: FormErrors = {};
-		if (!form.title.trim()) e.title = 'Tiêu đề đề tài là bắt buộc';
+		if (!form.title.trim())
+			e.title =
+				form.article_type === 'bai_bao'
+					? 'Tiêu đề bài báo là bắt buộc'
+					: 'Tiêu đề đề tài là bắt buộc';
 		if (!form.round_id) e.round_id = 'Vui lòng chọn vòng nghiên cứu';
 		if (!form.department_id) e.department_id = 'Vui lòng chọn khoa phòng';
+		if (form.article_type === 'bai_bao' && !form.journal_name.trim())
+			e.journal_name = 'Vui lòng nhập tên tập san / tạp chí';
 		if (Object.keys(e).length) {
 			setErrors(e);
 			return;
@@ -403,6 +417,7 @@ export function useTopicRegister(): TopicRegisterState {
 			...prev,
 			{
 				localId: `t_${Date.now()}`,
+				article_type: form.article_type,
 				title: form.title.trim(),
 				description: form.description.trim(),
 				staff_number: form.staff_number.trim(),
@@ -410,12 +425,22 @@ export function useTopicRegister(): TopicRegisterState {
 				category_id: form.category_id,
 				level_id: form.level_id,
 				department_id: form.department_id,
+				journal_name: form.journal_name.trim(),
+				doi: form.doi.trim(),
+				publish_date: form.publish_date,
 				members: pendingMembers,
 				attachments,
 			},
 		]);
-		setToast({ msg: 'Đã thêm đề tài vào danh sách.', type: 'success' });
+		setToast({
+			msg:
+				form.article_type === 'bai_bao'
+					? 'Đã thêm bài báo vào danh sách.'
+					: 'Đã thêm đề tài vào danh sách.',
+			type: 'success',
+		});
 		setFormState({
+			article_type: form.article_type,
 			title: '',
 			description: '',
 			staff_number: '',
@@ -423,6 +448,9 @@ export function useTopicRegister(): TopicRegisterState {
 			category_id: '',
 			level_id: '',
 			department_id: form.department_id,
+			journal_name: '',
+			doi: '',
+			publish_date: '',
 		});
 		setErrors({});
 		setPendingMembers([]);
@@ -461,6 +489,10 @@ export function useTopicRegister(): TopicRegisterState {
 							level_id: t.level_id || undefined,
 							department_id: t.department_id,
 							status,
+							article_type: t.article_type,
+							journal_name: t.journal_name || undefined,
+							doi: t.doi || undefined,
+							publish_date: t.publish_date || undefined,
 						});
 						if (t.members.length > 0) {
 							await Promise.allSettled(
@@ -482,7 +514,7 @@ export function useTopicRegister(): TopicRegisterState {
 					}),
 				);
 				setToast({
-					msg: `Đã gửi ${pendingTopics.length} đề tài để phê duyệt!`,
+					msg: `Đã gửi ${pendingTopics.length} mục để phê duyệt!`,
 					type: 'success',
 				});
 				setTimeout(() => navigate('/user/my-topics'), 1800);

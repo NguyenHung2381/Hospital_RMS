@@ -189,7 +189,12 @@ router.get('/:id', authorizePermission(['topics', 'read']), ctrl.getById);
 router.post(
 	'/',
 	authorizePermission(['topics', 'create']),
-	[body('title').notEmpty(), body('round_id').notEmpty()],
+	[
+		body('title').notEmpty(),
+		body('round_id').notEmpty(),
+		body('article_type').optional().isIn(['de_tai', 'bai_bao']),
+		body('publish_date').optional({ checkFalsy: true }).isISO8601(),
+	],
 	validate,
 	ctrl.createOne,
 );

@@ -1,4 +1,4 @@
-import { CheckSvg, EditSvg, PlusSvg, SearchSvg, TrashSvg, XSvg } from '@/assets/icons';
+import { CheckSvg, EditSvg, PlusSvg, TrashSvg, XSvg } from '@/assets/icons';
 import AdminLayout from '../../../layouts/AdminLayout';
 import { ExternalReviewerDeleteModal } from '../components/ExternalReviewerDeleteModal';
 import { ExternalReviewerFormModal } from '../components/ExternalReviewerFormModal';

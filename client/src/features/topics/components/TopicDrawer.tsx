@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { SimpleItem } from '../api/topicApi';
 import { useTopicDrawer } from '../hooks/useTopicDrawer';
 import styles from '../pages/Topic.module.css';
@@ -35,6 +35,14 @@ export function TopicDrawer({
 	const d = useTopicDrawer(topic);
 	const statusCfg = STATUS_CFG[topic.status];
 
+	useEffect(() => {
+		const onKey = (e: KeyboardEvent) => {
+			if (e.key === 'Escape') onClose();
+		};
+		document.addEventListener('keydown', onKey);
+		return () => document.removeEventListener('keydown', onKey);
+	}, [onClose]);
+
 	const TABS: { key: DrawerTab; label: string; count?: number }[] = [
 		{ key: 'info', label: 'Thông tin' },
 		{ key: 'members', label: 'Thành viên', count: d.members.length },
@@ -43,13 +51,11 @@ export function TopicDrawer({
 
 	return (
 		<>
-			<div
-				className={styles.drawerBackdrop}
-				onClick={onClose}
-			/>
+			<div className={styles.drawerBackdrop}>
 			<div
 				className={styles.drawer}
 				role='dialog'
+				aria-modal='true'
 				aria-label='Chi tiết đề tài'
 			>
 				{/* Header */}
@@ -228,6 +234,7 @@ export function TopicDrawer({
 						Chỉnh sửa đề tài
 					</button>
 				</div>
+			</div>
 			</div>
 
 			{d.filesToDelete.length > 0 && (

@@ -1,0 +1,26 @@
+services:
+  server:
+    build:
+      context: ./server
+      target: prod
+    env_file:
+      - path: ./server/.env
+        required: false
+    ports:
+      - "3000:3000"
+    volumes:
+      - server_uploads:/app/uploads
+    restart: unless-stopped
+
+  client:
+    build:
+      context: ./client
+      target: prod
+    ports:
+      - "80:80"
+    depends_on:
+      - server
+    restart: unless-stopped
+
+volumes:
+  server_uploads:

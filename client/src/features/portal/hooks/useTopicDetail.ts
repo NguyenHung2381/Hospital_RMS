@@ -263,7 +263,7 @@ export function useTopicDetail() {
 			email: m.email ?? '',
 			so_dien_thoai: m.so_dien_thoai ?? '',
 			chuc_vu: m.chuc_vu ?? '',
-			staff_number: m.staff_number ?? '',
+			staff_number: m.staff_number != null ? String(m.staff_number) : '',
 			role: m.role,
 		});
 		setMemberErr('');

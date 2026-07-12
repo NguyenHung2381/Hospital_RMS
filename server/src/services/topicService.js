@@ -198,12 +198,16 @@ const create = async (data, actorId) => {
 		.input('round_id', sql.VarChar(10), data.round_id)
 		.input('category_id', sql.VarChar(6), data.category_id || null)
 		.input('level_id', sql.VarChar(5), data.level_id || null)
-		.input('department_id', sql.VarChar(20), data.department_id || null).query(`
+		.input('department_id', sql.VarChar(20), data.department_id || null)
+		.input('article_type', sql.VarChar(20), data.article_type || 'de_tai')
+		.input('journal_name', sql.NVarChar(255), data.journal_name || null)
+		.input('doi', sql.VarChar(100), data.doi || null)
+		.input('publish_date', sql.Date, data.publish_date || null).query(`
       DECLARE @new_id VARCHAR(15);
       EXEC sp_gen_topic_id @category_id, @round_id, @new_id OUTPUT;
       EXEC sp_set_actor @actor_id;
-      INSERT INTO topics (id, title, description, round_id, category_id, level_id, department_id, status, created_by)
-      VALUES (@new_id, @title, @description, @round_id, @category_id, @level_id, @department_id, 'submitted', @actor_id);
+      INSERT INTO topics (id, title, description, round_id, category_id, level_id, department_id, status, created_by, article_type, journal_name, doi, publish_date)
+      VALUES (@new_id, @title, @description, @round_id, @category_id, @level_id, @department_id, 'submitted', @actor_id, @article_type, @journal_name, @doi, @publish_date);
       SELECT @new_id AS id;
     `);
 	if (Array.isArray(data.related_department_ids) && data.related_department_ids.length)
@@ -416,7 +420,7 @@ const grantAccounts = async (topicId, memberIds, actorId) => {
 		err.statusCode = 404;
 		throw err;
 	}
-	if (topic.status !== 'approved' && topic.status !== 'in_progress') {
+	if (topic.status !== 'approved') {
 		const err = new Error(
 			'Đề tài chưa được phê duyệt nên chưa thể cấp tài khoản thành viên',
 		);
@@ -587,7 +591,7 @@ const grantAccountsNoEmail = async (topicId, memberIds, actorId) => {
 		err.statusCode = 404;
 		throw err;
 	}
-	if (topic.status !== 'approved' && topic.status !== 'in_progress') {
+	if (topic.status !== 'approved') {
 		const err = new Error(
 			'Äá» tÃ i chÆ°a Ä‘Æ°á»£c phÃª duyá»‡t nÃªn chÆ°a thá»ƒ cáº¥p tÃ i khoáº£n thÃ nh viÃªn',
 		);
@@ -606,7 +610,9 @@ const grantAccountsNoEmail = async (topicId, memberIds, actorId) => {
 		memberRequest.input('topic_id', sql.VarChar(15), topicId);
 		const membersResult = await memberRequest.query(`
 			SELECT tm.id, tm.name AS ho_ten, tm.email, tm.staff_number,
-			       t.department_id, rr.end_date
+			       tm.phone_number, tm.position, tm.role,
+			       tm.department_id AS member_department_id,
+			       t.department_id AS topic_department_id, rr.end_date
 			FROM topic_members tm
 			INNER JOIN topics t ON t.id = tm.topic_id
 			INNER JOIN research_rounds rr ON rr.id = t.round_id
@@ -619,12 +625,9 @@ const grantAccountsNoEmail = async (topicId, memberIds, actorId) => {
 				? new Set(memberIds)
 				: null;
 		const allRows = membersResult.recordset;
-		const filteredRows = filterIds
+		const membersToProcess = filterIds
 			? allRows.filter((row) => filterIds.has(row.id))
 			: allRows;
-
-		const skipped = filteredRows.filter((row) => !row.staff_number);
-		const membersToProcess = filteredRows.filter((row) => !!row.staff_number);
 
 		const deptCodeRequest = new sql.Request(tx);
 		deptCodeRequest.input('topic_id', sql.VarChar(15), topicId);
@@ -642,8 +645,14 @@ const grantAccountsNoEmail = async (topicId, memberIds, actorId) => {
 		}
 
 		for (const member of membersToProcess) {
-			const staffNumber = Number(member.staff_number);
-			const baseUsername = buildMemberUsername(member.ho_ten, staffNumber);
+			const staffNumber =
+				member.staff_number != null ? Number(member.staff_number) : null;
+			const baseUsername = buildMemberUsername(
+				member.ho_ten,
+				staffNumber != null ? staffNumber : '0000',
+			);
+			const deptId = member.member_department_id || member.topic_department_id;
+			const roleId = member.role === 'leader' ? 'VT05' : 'VT06';
 
 			const existingUserRequest = new sql.Request(tx);
 			existingUserRequest
@@ -707,7 +716,10 @@ const grantAccountsNoEmail = async (topicId, memberIds, actorId) => {
 					.input('full_name', sql.NVarChar(255), member.ho_ten)
 					.input('staff_number', sql.Int, staffNumber)
 					.input('email', sql.VarChar(255), storedEmail)
-					.input('department_id', sql.VarChar(20), member.department_id)
+					.input('phone_number', sql.VarChar(10), member.phone_number || null)
+					.input('position_detail', sql.NVarChar(255), member.position || null)
+					.input('department_id', sql.VarChar(20), deptId)
+					.input('role_id', sql.VarChar(6), roleId)
 					.input('topic_member_id', sql.VarChar(22), member.id)
 					.input('expires_at', sql.Date, member.end_date)
 					.input('actor_id', sql.VarChar(20), actorId);
@@ -718,8 +730,10 @@ const grantAccountsNoEmail = async (topicId, memberIds, actorId) => {
 					    full_name = @full_name,
 					    staff_number = @staff_number,
 					    email = @email,
+					    phone_number = @phone_number,
+					    position_detail = @position_detail,
 					    department_id = @department_id,
-					    role_id = 'VT06',
+					    role_id = @role_id,
 					    account_type = 'member',
 					    is_active = 1,
 					    topic_member_id = @topic_member_id,
@@ -737,20 +751,23 @@ const grantAccountsNoEmail = async (topicId, memberIds, actorId) => {
 					.input('full_name', sql.NVarChar(255), member.ho_ten)
 					.input('staff_number', sql.Int, staffNumber)
 					.input('email', sql.VarChar(255), storedEmail)
-					.input('department_id', sql.VarChar(20), member.department_id)
+					.input('phone_number', sql.VarChar(10), member.phone_number || null)
+					.input('position_detail', sql.NVarChar(255), member.position || null)
+					.input('department_id', sql.VarChar(20), deptId)
+					.input('role_id', sql.VarChar(6), roleId)
 					.input('topic_member_id', sql.VarChar(22), member.id)
 					.input('expires_at', sql.Date, member.end_date)
 					.input('actor_id', sql.VarChar(20), actorId);
 				await createUserRequest.query(`
 					INSERT INTO users (
 						id, username, password, full_name, staff_number, email,
-						department_id, role_id, account_type, topic_member_id,
-						account_expires_at, created_by
+						phone_number, position_detail, department_id, role_id,
+						account_type, topic_member_id, account_expires_at, created_by
 					)
 					VALUES (
 						@uid, @username, @password, @full_name, @staff_number, @email,
-						@department_id, 'VT06', 'member', @topic_member_id,
-						@expires_at, @actor_id
+						@phone_number, @position_detail, @department_id, @role_id,
+						'member', @topic_member_id, @expires_at, @actor_id
 					)
 				`);
 			}
@@ -832,11 +849,7 @@ const grantAccountsNoEmail = async (topicId, memberIds, actorId) => {
 
 		return {
 			credentials,
-			skipped: skipped.map((s) => ({
-				member_id: s.id,
-				ho_ten: s.ho_ten,
-				reason: 'missing_staff_number',
-			})),
+			skipped: [],
 		};
 	} catch (err) {
 		console.error('Transaction error in grantAccountsNoEmail:', err);

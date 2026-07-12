@@ -59,12 +59,11 @@ const getStats = async () => {
 
 	const statusRows = result.recordsets[0];
 	const byStatus = {
-		draft: 0,
 		submitted: 0,
 		approved: 0,
 		rejected: 0,
 		supplement: 0,
-		completed: 0,
+		cancelled: 0,
 	};
 	let total = 0;
 	for (const row of statusRows) {

@@ -223,9 +223,10 @@
 	z-index: 100;
 	border: 1px solid var(--color-gray-200);
 	border-radius: var(--radius-lg);
-	overflow: hidden;
 	background: var(--color-white);
 	box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+	max-height: 240px;
+	overflow-y: auto;
 }
 
 .suggestionItem {
@@ -317,6 +318,8 @@
 	border: 1px solid var(--color-gray-200);
 	border-radius: var(--radius-lg);
 	padding: var(--space-4);
+	max-height: 200px;
+	overflow-y: auto;
 }
 
 .memberList {

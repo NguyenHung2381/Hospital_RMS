@@ -1,4 +1,4 @@
-﻿import type { Dispatch, SetStateAction } from 'react';
+import type { Dispatch, SetStateAction } from 'react';
 import type { SimpleItem, UserSuggestion } from '../api/topicApi';
 import type { ManualMemberForm, PendingMember } from '../hooks/useTopicModal';
 import styles from '../pages/Topic.module.css';
@@ -7,6 +7,7 @@ import { getInitials } from '../../../shared/utils/helper';
 import { MEMBER_ROLE_CFG } from '../utils/topicHelpers';
 import { Badge } from './Badge';
 import { AlertSvg, PlusSvg, SearchSvg, UserSvg, XSvg } from '@/assets/icons';
+import { SearchableSelect } from '../../../shared/components/Input/SearchableSelect';
 
 interface ModalMembersSectionProps {
 	departments: SimpleItem[];
@@ -123,14 +124,39 @@ export function ModalMembersSection({
 				<button
 					type='button'
 					className={styles.btnSecondary}
-					style={{ fontSize: 12, padding: '4px 10px', marginBottom: 8 }}
+					style={{
+						fontSize: 12,
+						padding: '6px 12px',
+						marginBottom: 8,
+						alignSelf: 'flex-start',
+						display: 'inline-flex',
+						alignItems: 'center',
+						gap: 6,
+						cursor: 'pointer',
+						boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
+						border: '1.5px dashed var(--color-gray-300)',
+						color: 'var(--color-gray-500)',
+						background: 'none',
+						transition: 'all 0.15s ease',
+					}}
 					onClick={() => {
 						setIsManualAdd(true);
 						setShowSuggestions(false);
 						setMemberQuery('');
 					}}
+					onMouseEnter={(e) => {
+						e.currentTarget.style.borderColor = 'var(--color-primary)';
+						e.currentTarget.style.color = 'var(--color-primary-dark)';
+						e.currentTarget.style.background = 'var(--color-primary-pale)';
+					}}
+					onMouseLeave={(e) => {
+						e.currentTarget.style.borderColor = 'var(--color-gray-300)';
+						e.currentTarget.style.color = 'var(--color-gray-500)';
+						e.currentTarget.style.background = 'none';
+					}}
 				>
-					<PlusSvg /> Thêm thủ công
+					<PlusSvg style={{ width: 12, height: 12 }} />
+					Thêm thủ công
 				</button>
 			)}
 
@@ -139,8 +165,11 @@ export function ModalMembersSection({
 					style={{
 						border: '1px solid var(--color-gray-200)',
 						borderRadius: 8,
-						overflow: 'hidden',
 						marginBottom: 8,
+						maxHeight: '240px',
+						overflowY: 'auto',
+						boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
+						background: 'var(--color-white)',
 					}}
 				>
 					{isSearching ? (
@@ -156,21 +185,34 @@ export function ModalMembersSection({
 					) : suggestions.length === 0 ? (
 						<div
 							style={{
-								padding: '10px 14px',
-								fontSize: 13,
-								color: 'var(--color-gray-400)',
+								padding: '20px 14px',
+								textAlign: 'center',
+								background: 'var(--color-gray-50)',
+								display: 'flex',
+								flexDirection: 'column',
+								alignItems: 'center',
+								gap: 10,
 							}}
 						>
-							Không tìm thấy nhân viên —{' '}
+							<div
+								style={{
+									fontSize: 13,
+									color: 'var(--color-gray-500)',
+								}}
+							>
+								Không tìm thấy nhân viên phù hợp
+							</div>
 							<button
 								type='button'
+								className={styles.btnSecondary}
 								style={{
-									color: 'var(--color-primary-dark)',
-									fontWeight: 600,
-									background: 'none',
-									border: 'none',
+									fontSize: 12,
+									padding: '6px 12px',
+									display: 'inline-flex',
+									alignItems: 'center',
+									gap: 6,
 									cursor: 'pointer',
-									fontSize: 13,
+									boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
 								}}
 								onClick={() => {
 									setIsManualAdd(true);
@@ -178,7 +220,8 @@ export function ModalMembersSection({
 									setMemberQuery('');
 								}}
 							>
-								thêm thủ công
+								<PlusSvg style={{ width: 12, height: 12 }} />
+								Thêm thủ công
 							</button>
 						</div>
 					) : (
@@ -267,25 +310,41 @@ export function ModalMembersSection({
 							);
 						})
 					)}
-					<div
-						style={{
-							padding: '8px 14px',
-							borderTop: '1px solid var(--color-gray-100)',
-							cursor: 'pointer',
-							fontSize: 12,
-							color: 'var(--color-gray-500)',
-							display: 'flex',
-							alignItems: 'center',
-							gap: 6,
-						}}
-						onClick={() => {
-							setIsManualAdd(true);
-							setShowSuggestions(false);
-							setMemberQuery('');
-						}}
-					>
-						<PlusSvg /> Thêm thủ công (không có trong hệ thống)
-					</div>
+					{suggestions.length > 0 && (
+						<div
+							style={{
+								padding: '8px 14px',
+								borderTop: '1px solid var(--color-gray-100)',
+								cursor: 'pointer',
+								fontSize: 12,
+								color: 'var(--color-gray-500)',
+								display: 'flex',
+								alignItems: 'center',
+								gap: 6,
+								transition: 'background 0.12s, color 0.12s',
+								position: 'sticky',
+								bottom: 0,
+								background: 'var(--color-white)',
+								zIndex: 1,
+							}}
+							onMouseEnter={(e) => {
+								(e.currentTarget as HTMLDivElement).style.background = '#f9fafb';
+								(e.currentTarget as HTMLDivElement).style.color = 'var(--color-primary-dark)';
+							}}
+							onMouseLeave={(e) => {
+								(e.currentTarget as HTMLDivElement).style.background = '';
+								(e.currentTarget as HTMLDivElement).style.color = '';
+							}}
+							onClick={() => {
+								setIsManualAdd(true);
+								setShowSuggestions(false);
+								setMemberQuery('');
+							}}
+						>
+							<PlusSvg style={{ width: 12, height: 12 }} />
+							Thêm thủ công (không có trong hệ thống)
+						</div>
+					)}
 				</div>
 			)}
 
@@ -408,26 +467,14 @@ export function ModalMembersSection({
 
 						<div className={styles.formGroup}>
 							<label className={styles.formLabel}>Khoa / Phòng ban</label>
-							<select
-								className={styles.formSelect}
+							<SearchableSelect
+								options={departments}
 								value={manualForm.department_id}
-								onChange={(e) =>
-									setManualForm((p) => ({
-										...p,
-										department_id: e.target.value,
-									}))
+								onChange={(id) =>
+									setManualForm((p) => ({ ...p, department_id: id }))
 								}
-							>
-								<option value=''>— Chọn khoa —</option>
-								{departments.map((d) => (
-									<option
-										key={d.id}
-										value={d.id}
-									>
-										{d.name}
-									</option>
-								))}
-							</select>
+								placeholder='— Chọn khoa —'
+							/>
 						</div>
 
 						<div className={styles.formRow}>
@@ -559,7 +606,8 @@ export function ModalMembersSection({
 					style={{
 						border: '1px solid var(--color-gray-200)',
 						borderRadius: 8,
-						overflow: 'hidden',
+						maxHeight: '180px',
+						overflowY: 'auto',
 					}}
 				>
 					{pendingMembers.map((m) => {

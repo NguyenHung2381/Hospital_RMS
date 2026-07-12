@@ -27,6 +27,10 @@ function getApiPort(): string {
 }
 
 const apiPort = getApiPort();
+// Host của backend — mặc định 'localhost' (chạy native cùng máy).
+// Trong Docker Compose, client và server là 2 container khác nhau nên cần
+// override bằng tên service (vd: VITE_API_HOST=server).
+const apiHost = process.env.VITE_API_HOST || 'localhost';
 
 export default defineConfig({
 	plugins: [react(), svgr()],
@@ -39,17 +43,21 @@ export default defineConfig({
 		host: true,
 		allowedHosts: true,
 		port: process.env.PORT ? Number(process.env.PORT) : 5173,
+		// Bind mount qua Docker Desktop (WSL2) không phát native fs-events —
+		// cần polling để HMR nhận ra thay đổi file. Chỉ bật khi chạy trong Docker.
+		watch:
+			process.env.CHOKIDAR_USEPOLLING === 'true'
+				? { usePolling: true }
+				: undefined,
 		proxy: {
 			// All API and static-upload requests are proxied to the Express backend.
-			// Using localhost (not dynamic IP) so the proxy works regardless of
-			// which network interface the machine is on — including via ngrok.
 			'/api': {
-				target: `http://localhost:${apiPort}`,
+				target: `http://${apiHost}:${apiPort}`,
 				changeOrigin: true,
 				secure: false,
 			},
 			'/uploads': {
-				target: `http://localhost:${apiPort}`,
+				target: `http://${apiHost}:${apiPort}`,
 				changeOrigin: true,
 				secure: false,
 			},

@@ -1,5 +1,5 @@
 import { apiClient } from '../../../shared/api/axios';
-import type { Topic, TopicFile, TopicMember } from '../types/topic.type';
+import type { ArticleType, Topic, TopicFile, TopicMember } from '../types/topic.type';
 
 export interface SimpleItem {
 	id: string;
@@ -39,7 +39,10 @@ export interface CreateTopicPayload {
 	level_id?: string;
 	department_id?: string;
 	status?: string;
-	related_department_ids?: string[];
+	article_type?: ArticleType;
+	journal_name?: string;
+	doi?: string;
+	publish_date?: string;
 }
 
 export interface UpdateTopicPayload {
@@ -50,7 +53,6 @@ export interface UpdateTopicPayload {
 	level_id?: string;
 	department_id?: string;
 	status?: string;
-	related_department_ids?: string[];
 }
 
 export type TopicMemberApiRole = 'leader' | 'secretary' | 'member';

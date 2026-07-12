@@ -44,20 +44,18 @@ const C = {
 };
 
 const STATUS_LABELS = {
-	draft: 'Nháp',
 	submitted: 'Chờ duyệt',
 	approved: 'Đã phê duyệt',
 	rejected: 'Từ chối',
 	supplement: 'Bổ sung',
-	completed: 'Hoàn thành',
+	cancelled: 'Đã hủy',
 };
 const STATUS_ORDER = [
 	'approved',
-	'completed',
 	'submitted',
 	'rejected',
 	'supplement',
-	'draft',
+	'cancelled',
 ];
 const ROLE_LABELS = {
 	leader: 'Chủ nhiệm',
@@ -252,11 +250,10 @@ function buildOverviewSheet(ws, topics, opts) {
 		if (cnt === 0) continue;
 		const bgMap = {
 			approved: C.green,
-			completed: C.statBg,
 			submitted: C.amber,
 			rejected: C.red,
 			supplement: C.amber,
-			draft: C.gray,
+			cancelled: C.gray,
 		};
 		twoColRow(`    • ${STATUS_LABELS[st]}`, cnt, bgMap[st] || C.white);
 	}
@@ -478,11 +475,10 @@ function buildTopicListSheet(ws, topics, opts, sectionTitle) {
 		const statusColor =
 			{
 				approved: C.green,
-				completed: C.statBg,
 				submitted: C.amber,
 				rejected: C.red,
 				supplement: C.amber,
-				draft: C.gray,
+				cancelled: C.gray,
 			}[topic.status] || C.white;
 
 		// Cols 1–9: topic info (merge vertically)

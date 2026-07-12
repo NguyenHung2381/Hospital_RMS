@@ -587,7 +587,7 @@ router.post(
 		body('end_date')
 			.notEmpty()
 			.withMessage('Ngày kết thúc không được để trống'),
-		body('status').optional().isIn(['draft', 'open', 'closed', 'active']),
+		body('status').optional().isIn(['draft', 'open', 'closed', 'cancelled']),
 	],
 	validate,
 	roundCtrl.createOne,
@@ -656,7 +656,7 @@ router.put(
 	authenticate,
 	authorizePermission(['rounds', 'update']),
 	[
-		body('status').optional().isIn(['draft', 'open', 'closed', 'active']),
+		body('status').optional().isIn(['draft', 'open', 'closed', 'cancelled']),
 		body('start_date').optional().notEmpty(),
 		body('end_date').optional().notEmpty(),
 	],

@@ -13,7 +13,6 @@ const Departments = lazy(
 	() => import('../../features/department/pages/Departments'),
 );
 const Topics = lazy(() => import('../../features/topics/pages/Topic'));
-const Members = lazy(() => import('../../features/topics/pages/TopicMembers'));
 const Rounds = lazy(() => import('../../features/round/pages/Round'));
 const Councils = lazy(() => import('../../features/council/pages/Council'));
 const ExternalReviewers = lazy(
@@ -70,7 +69,6 @@ const user = (
 export const adminRoutes: RouteObject[] = [
 	{ path: '/admin', element: admin('Bảng điều khiển', <Dashboard />) },
 	{ path: '/admin/topics', element: admin('Quản lý Đề tài', <Topics />) },
-	{ path: '/admin/members', element: admin('Quản lý Thành viên', <Members />) },
 	{ path: '/admin/rounds', element: admin('Đợt nghiên cứu', <Rounds />) },
 	{
 		path: '/admin/councils',

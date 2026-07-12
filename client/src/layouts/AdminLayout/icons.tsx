@@ -27,7 +27,6 @@ import {
 	TopicSvg,
 	UserPlusSvg,
 	UserSvg,
-	UsersSvg,
 	WarnSvg,
 	XSvg,
 } from '@/assets/icons';
@@ -49,7 +48,6 @@ export const Icon = {
 	Council: () => <ClipboardCheckSvg {...nav} />,
 	Schedule: () => <CalendarSvg {...nav} />,
 	Approval: () => <ApproveSvg {...nav} />,
-	Members: () => <UsersSvg {...nav} />,
 	File: () => <FileSvg {...nav} />,
 	Progress: () => <ProgressSvg {...nav} />,
 	Dept: () => <DeptSvg {...nav} />,

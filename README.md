@@ -137,6 +137,21 @@ cd client && npm run build
 cd server && npm run start:prod
 ```
 
+### Chạy bằng Docker
+
+SQL Server vẫn chạy trên máy host (không container hóa), cần bật **TCP/IP** trong SQL Server Configuration Manager và mở firewall port 1433 để container kết nối vào được.
+
+```bash
+# Dev (hot reload, mount code từ máy vào container)
+docker compose up --build
+# client: http://localhost:5173, server: http://localhost:3000
+
+# Prod-style (build tĩnh, gần giống lúc deploy)
+# copy server/.env.example -> server/.env và điền config DB thật trước khi chạy
+docker compose -f docker-compose.prod.yml up --build -d
+# client: http://localhost, server: http://localhost:3000
+```
+
 ---
 
 ## Cấu trúc dự án

@@ -23,7 +23,6 @@ const KEY_TO_PATH: Record<string, string> = {
 	councils: '/admin/councils',
 	approvals: '/admin/approvals',
 	progress: '/admin/progress',
-	members: '/admin/members',
 	files: '/admin/files',
 	departments: '/admin/departments',
 	externalReviewers: '/admin/external-reviewers',
@@ -66,7 +65,6 @@ const NAV_GROUPS: NavGroup[] = [
 			{ key: 'councils', label: 'Hội đồng chấm', icon: <Icon.Council /> },
 			{ key: 'schedule', label: 'Lịch trình', icon: <Icon.Schedule /> },
 			{ key: 'approvals', label: 'Phê duyệt', icon: <Icon.Approval /> },
-			{ key: 'members', label: 'Thành viên đề tài', icon: <Icon.Members /> },
 			{
 				key: 'externalReviewers',
 				label: 'Người ngoài viện',
