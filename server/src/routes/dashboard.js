@@ -1,7 +1,7 @@
 const router = require('express').Router();
 const { authenticate, authorizePermission } = require('../middlewares/auth');
 const dashboardService = require('../services/dashboardService');
-const { success, error } = require('../utils/response');
+const { success } = require('../utils/response');
 
 router.use(authenticate);
 

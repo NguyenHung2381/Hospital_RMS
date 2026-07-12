@@ -1,4 +1,4 @@
-const { success, created, notFound, error } = require('../utils/response');
+const { success, created, notFound } = require('../utils/response');
 
 const createCrudController = (service) => {
 	const getAll = async (req, res, next) => {

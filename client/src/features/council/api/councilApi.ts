@@ -211,6 +211,7 @@ export interface ProgressTopic {
 	reviews: ProgressReview[];
 	evaluation_files: EvaluationFile[];
 	minutes_files: EvaluationFile[];
+	topic_files: EvaluationFile[];
 	result: TopicResult | null;
 }
 
@@ -254,6 +255,15 @@ export const uploadMinutesFiles = (topicId: string, files: File[]) => {
 
 export const deleteMinutesFile = (topicId: string, fileId: string) =>
 	apiClient.delete<null>(`/councils/progress/${topicId}/minutes/${fileId}`);
+
+export const uploadCommentImage = (topicId: string, file: File) => {
+	const form = new FormData();
+	form.append('image', file);
+	return apiClient.postForm<{ url: string }>(
+		`/councils/progress/${topicId}/comment-image`,
+		form,
+	);
+};
 
 // ─── Tự động phân công hội đồng ─────────────────────────────────────────────
 export interface AutoAssignPayload {

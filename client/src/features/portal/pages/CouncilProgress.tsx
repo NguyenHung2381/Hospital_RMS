@@ -10,6 +10,7 @@ import {
 	PROGRESS_RATING_LABELS,
 	saveProgressReview,
 	saveTopicResult,
+	uploadCommentImage,
 	uploadEvaluationFiles,
 	uploadMinutesFiles,
 	type Conclusion,
@@ -18,6 +19,8 @@ import {
 } from '../../council/api/councilApi';
 import { SEAT_ROLE_LABELS } from '../../council/types/council.type';
 import { SPECIALTY_GROUPS } from '../../department/types/department.type';
+import RichTextEditor from '../../../shared/components/RichTextEditor';
+import { htmlToPlainText, sanitizeCommentHtml } from '../../../shared/utils/sanitizeHtml';
 import styles from './CouncilProgress.module.css';
 
 const SESSION_LABELS: Record<string, string> = {
@@ -82,6 +85,7 @@ export default function CouncilProgress() {
 	);
 	const minutesInputs = useRef<Record<string, HTMLInputElement | null>>({});
 	const [selectedTopicId, setSelectedTopicId] = useState<string | null>(null);
+	const [activeTab, setActiveTab] = useState<'my-review' | 'council-conclusion'>('my-review');
 
 	const selectedTopic = useMemo(() => {
 		if (!selectedTopicId) return null;
@@ -346,96 +350,99 @@ export default function CouncilProgress() {
 			) : (
 				<>
 					<div className={styles.pageWatermark} />
-					<div className={styles.statsStrip}>
-						<div className={`${styles.statChip} ${styles.statTotal}`}>
-							<span className={styles.statIcon}>📋</span>
-							<span className={styles.statValue}>{stats.total}</span>
-							<span className={styles.statLabel}>đề tài được phân công</span>
-						</div>
-						<div className={`${styles.statChip} ${styles.statReviewed}`}>
-							<span className={styles.statIcon}>✅</span>
-							<span className={styles.statValue}>{stats.reviewed}</span>
-							<span className={styles.statLabel}>đã đánh giá</span>
-						</div>
-						<div className={`${styles.statChip} ${styles.statPending}`}>
-							<span className={styles.statIcon}>⏳</span>
-							<span className={styles.statValue}>{stats.pending}</span>
-							<span className={styles.statLabel}>chờ đánh giá</span>
-						</div>
-					</div>
-				<div className={styles.splitWrapper}>
-					{/* Left sidebar: list of topics grouped by Council -> Session */}
-					<aside className={styles.sidebarPane}>
-						{councils.map((councilTopics) => {
-							const c = councilTopics[0];
-							return (
-								<div key={c.council_id} className={styles.sidebarCouncilGroup}>
-									<div className={styles.sidebarCouncilHeader}>
-										<h3 className={styles.sidebarCouncilName} title={c.council_name}>
-											{c.council_name}
-										</h3>
-										<div className={styles.sidebarCouncilMeta}>
-											{c.round_name && <span>{c.round_name}</span>}
-											{c.defense_date && <span>Ngày: {c.defense_date}</span>}
-										</div>
-									</div>
+					<div className={styles.splitWrapper}>
+						{/* Left sidebar: list of topics grouped by Council -> Session */}
+						<aside className={styles.sidebarPane}>
+							<div className={styles.sidebarHeader}>
+								<h3 className={styles.sidebarTitle}>Đề tài được giao</h3>
+								<div className={styles.sidebarStats}>
+									<span className={styles.statTag} title="Tổng số đề tài">
+										📋 <strong>{stats.total}</strong>
+									</span>
+									<span className={`${styles.statTag} ${styles.statReviewedTag}`} title="Đã đánh giá">
+										✅ <strong>{stats.reviewed}</strong>
+									</span>
+									<span className={`${styles.statTag} ${styles.statPendingTag}`} title="Chờ đánh giá">
+										⏳ <strong>{stats.pending}</strong>
+									</span>
+								</div>
+							</div>
 
-									{groupBySession(councilTopics).map(({ session, items }) => (
-										<div key={session ?? 'none'} className={styles.sidebarSessionSection}>
-											<div className={styles.sidebarSessionTitle}>
-												{session === 'morning' ? (
-													<span className={styles.sessionMorningIcon}>☀️ {SESSION_LABELS[session]}</span>
-												) : session === 'afternoon' ? (
-													<span className={styles.sessionAfternoonIcon}>⛅ {SESSION_LABELS[session]}</span>
-												) : (
-													<span>Chưa xếp phiên</span>
-												)}
+							{councils.map((councilTopics) => {
+								const c = councilTopics[0];
+								return (
+									<div key={c.council_id} className={styles.sidebarCouncilGroup}>
+										<div className={styles.sidebarCouncilHeader}>
+											<h3 className={styles.sidebarCouncilName} title={c.council_name}>
+												{c.council_name}
+											</h3>
+											<div className={styles.sidebarCouncilMeta}>
+												{c.round_name && <span>{c.round_name}</span>}
+												{c.defense_date && <span>Ngày: {c.defense_date}</span>}
 											</div>
-											<div className={styles.sidebarTopicList}>
-												{items.map((t, idx) => {
-													const isSelected = t.id === selectedTopicId;
-													const mine = t.reviews.find((r) => r.user_id === user?.id);
-													const isReviewed = mine && (mine.rating != null || mine.progress_percent != null);
-													return (
-														<div
-															key={t.id}
-															className={`${styles.sidebarTopicCard} ${isSelected ? styles.activeTopicCard : ''}`}
-															onClick={() => setSelectedTopicId(t.id)}
-														>
-															<div className={styles.sidebarTopicCardHeader}>
-																<span className={styles.sidebarTopicIndex}>{idx + 1}</span>
-																<div className={styles.sidebarTopicTitle} title={t.title}>
-																	{t.title}
+										</div>
+
+										{groupBySession(councilTopics).map(({ session, items }) => (
+											<div key={session ?? 'none'} className={styles.sidebarSessionSection}>
+												<div className={styles.sidebarSessionTitle}>
+													{session === 'morning' ? (
+														<span className={styles.sessionMorningIcon}>☀️ {SESSION_LABELS[session]}</span>
+													) : session === 'afternoon' ? (
+														<span className={styles.sessionAfternoonIcon}>⛅ {SESSION_LABELS[session]}</span>
+													) : (
+														<span>Chưa xếp phiên</span>
+													)}
+												</div>
+												<div className={styles.sidebarTopicList}>
+													{items.map((t, idx) => {
+														const isSelected = t.id === selectedTopicId;
+														const mine = t.reviews.find((r) => r.user_id === user?.id);
+														const isReviewed = mine && (mine.rating != null || mine.progress_percent != null);
+														return (
+															<div
+																key={t.id}
+																className={`${styles.sidebarTopicCard} ${isSelected ? styles.activeTopicCard : ''}`}
+																onClick={() => setSelectedTopicId(t.id)}
+															>
+																<div className={styles.sidebarTopicCardHeader}>
+																	<span className={styles.sidebarTopicIndex}>{idx + 1}</span>
+																	<div className={styles.sidebarTopicTitle} title={t.title}>
+																		{t.title}
+																	</div>
 																</div>
-															</div>
-															<div className={styles.sidebarTopicMeta}>
-																<span className={styles.sidebarRoleBadge}>
-																	{SEAT_ROLE_LABELS[t.my_role]}
-																</span>
-																{isReviewed ? (
-																	<span className={styles.statusReviewed}>✓ Đã đánh giá</span>
-																) : (
-																	<span className={styles.statusPending}>Chưa đánh giá</span>
+																<div className={styles.sidebarTopicMeta}>
+																	<span className={styles.sidebarRoleBadge}>
+																		{SEAT_ROLE_LABELS[t.my_role]}
+																	</span>
+																	<div className={styles.sidebarTopicStatus}>
+																		{isReviewed ? (
+																			<span className={styles.statusDotReviewed} title="Đã đánh giá" />
+																		) : (
+																			<span className={styles.statusDotPending} title="Chờ đánh giá" />
+																		)}
+																		<span className={styles.statusText}>
+																			{mine?.progress_percent != null ? `${mine.progress_percent}%` : 'Chờ'}
+																		</span>
+																	</div>
+																</div>
+																{mine?.progress_percent != null && (
+																	<div className={styles.sidebarProgressTrack}>
+																		<div
+																			className={styles.sidebarProgressFill}
+																			style={{ width: `${mine.progress_percent}%` }}
+																		/>
+																	</div>
 																)}
 															</div>
-															{mine?.progress_percent != null && (
-																<div className={styles.sidebarProgressTrack}>
-																	<div
-																		className={styles.sidebarProgressFill}
-																		style={{ width: `${mine.progress_percent}%` }}
-																	/>
-																</div>
-															)}
-														</div>
-													);
-												})}
+														);
+													})}
+												</div>
 											</div>
-										</div>
-									))}
-								</div>
-							);
-						})}
-					</aside>
+										))}
+									</div>
+								);
+							})}
+						</aside>
 
 					{/* Right pane: selected topic details */}
 					<main className={styles.detailsPane}>
@@ -475,299 +482,373 @@ export default function CouncilProgress() {
 												<h2 className={styles.detailsTopicTitle}>{t.title}</h2>
 											</div>
 
-											<div className={styles.detailsHeaderMeta}>
-												<div className={styles.detailsMetaItem}>
-													<strong>Hội đồng:</strong> {t.council_name}
+											<div className={styles.detailsHeaderMetaGrid}>
+												<div className={styles.detailsMetaCell}>
+													<span className={styles.detailsMetaLabel}>Hội đồng</span>
+													<span className={styles.detailsMetaVal}>{t.council_name}</span>
 												</div>
 												{t.round_name && (
-													<div className={styles.detailsMetaItem}>
-														<strong>Đợt nghiên cứu:</strong> {t.round_name}
+													<div className={styles.detailsMetaCell}>
+														<span className={styles.detailsMetaLabel}>Đợt nghiên cứu</span>
+														<span className={styles.detailsMetaVal}>{t.round_name}</span>
 													</div>
 												)}
-												<div className={styles.detailsMetaItemRow}>
-													{t.defense_date && (
-														<div className={styles.detailsMetaItem}>
-															<strong>Ngày họp:</strong> {t.defense_date}
-														</div>
-													)}
-													{t.location && (
-														<div className={styles.detailsMetaItem}>
-															<strong>Địa điểm:</strong> {t.location}
-														</div>
-													)}
-													{t.session && (
-														<div className={styles.detailsMetaItem}>
-															<strong>Phiên:</strong> {SESSION_LABELS[t.session] || t.session}
-														</div>
-													)}
-												</div>
-											</div>
-										</div>
-
-										{/* ── Đánh giá của tôi ── */}
-										<div className={`${styles.cardSection} ${styles.accentGreen}`}>
-											<h3 className={`${styles.cardSectionTitle} ${styles.accentGreen}`}>📝 Đánh giá của tôi</h3>
-											
-											<div className={styles.evaluationFormGrid}>
-												<div className={styles.evaluationFormLeft}>
-													<div className={styles.formGroup}>
-														<label className={styles.formLabel}>Tiến độ hoàn thành</label>
-														<div className={styles.inputGroupPercent}>
-															<input
-																type='number'
-																min={0}
-																max={100}
-																step={5}
-																value={d.percent}
-																onChange={(e) =>
-																	setDraft(t.id, { percent: e.target.value })
-																}
-																className={styles.percentInput}
-																placeholder="0"
-															/>
-															<span className={styles.inputGroupAddon}>%</span>
-														</div>
+												{t.defense_date && (
+													<div className={styles.detailsMetaCell}>
+														<span className={styles.detailsMetaLabel}>Ngày họp</span>
+														<span className={styles.detailsMetaVal}>{t.defense_date}</span>
 													</div>
-
-													<div className={styles.formGroup}>
-														<label className={styles.formLabel}>Xếp loại tiến độ</label>
-														<div className={styles.customSelectWrapper}>
-															<select
-																value={d.rating}
-																onChange={(e) =>
-																	setDraft(t.id, {
-																		rating: e.target.value as Draft['rating'],
-																	})
-																}
-																className={`${styles.ratingSelect} ${d.rating ? styles['select_' + d.rating] : ''}`}
-															>
-																<option value=''>— Chọn xếp loại —</option>
-																{(
-																	Object.keys(
-																		PROGRESS_RATING_LABELS,
-																	) as ProgressRating[]
-																).map((r) => (
-																	<option
-																		key={r}
-																		value={r}
-																	>
-																		{PROGRESS_RATING_LABELS[r]}
-																	</option>
-																))}
-															</select>
-														</div>
+												)}
+												{t.location && (
+													<div className={styles.detailsMetaCell}>
+														<span className={styles.detailsMetaLabel}>Địa điểm</span>
+														<span className={styles.detailsMetaVal}>{t.location}</span>
 													</div>
-												</div>
-
-												<div className={styles.evaluationFormRight}>
-													<div className={styles.formGroup}>
-														<div className={styles.textareaHeader}>
-															<label className={styles.formLabel}>Nhận xét chi tiết</label>
-															<span className={styles.charCounter}>
-																{d.comment.length} / 2000
-															</span>
-														</div>
-														<textarea
-															rows={5}
-															maxLength={2000}
-															value={d.comment}
-															onChange={(e) =>
-																setDraft(t.id, { comment: e.target.value })
-															}
-															className={styles.commentInput}
-															placeholder='Nhận xét chi tiết về tiến độ, khối lượng đã thực hiện, kiến nghị điều chỉnh...'
-														/>
-													</div>
-												</div>
-											</div>
-
-											<div className={styles.cardSectionActions}>
-												<button
-													className={styles.saveBtn}
-													disabled={savingId === t.id}
-													onClick={() => handleSave(t)}
-												>
-													{savingId === t.id ? (
-														<span className={styles.loadingSpinnerBtn}>
-															<span className={styles.spinner}></span>
-															Đang lưu…
+												)}
+												{t.session && (
+													<div className={styles.detailsMetaCell}>
+														<span className={styles.detailsMetaLabel}>Phiên họp</span>
+														<span className={styles.detailsMetaVal}>
+															{SESSION_LABELS[t.session] || t.session}
 														</span>
-													) : savedId === t.id ? (
-														'✓ Đã lưu đánh giá'
-													) : (
-														<>💾 Lưu đánh giá</>
-													)}
-												</button>
+													</div>
+												)}
 											</div>
 										</div>
 
-										{/* ── Đánh giá của hội đồng ── */}
-										{others.length > 0 && (
-											<div className={`${styles.cardSection} ${styles.accentBlue}`}>
-												<div className={styles.othersTitleRow}>
-													<h3 className={`${styles.cardSectionTitle} ${styles.accentBlue}`}>👥 Đánh giá của hội đồng</h3>
-													<span className={styles.avgBadge}>
-														{reviewed.length}/5 đã đánh giá
-													</span>
-												</div>
-												<div className={styles.othersTableContainer}>
-													<table className={styles.othersTable}>
-														<thead>
-															<tr>
-																<th>Thành viên</th>
-																<th>Vai trò</th>
-																<th>Tiến độ</th>
-																<th>Xếp loại</th>
-																<th>Nhận xét</th>
-															</tr>
-														</thead>
-														<tbody>
-															{others.map((r) => (
-																<tr key={r.user_id}>
-																	<td className={styles.othersTableName}>{r.full_name}</td>
-																	<td className={styles.othersTableRole}>{SEAT_ROLE_LABELS[r.role]}</td>
-																	<td className={styles.othersTablePercent}>
-																		{r.progress_percent != null
-																			? `${r.progress_percent}%`
-																			: '—'}
-																	</td>
-																	<td>
-																		{r.rating ? (
-																			<span
-																				className={`${styles.ratingBadge} ${styles[RATING_CLASS[r.rating]]}`}
+										{/* Tab Navigation */}
+										<div className={styles.tabsContainer}>
+											<button
+												className={`${styles.tabBtn} ${activeTab === 'my-review' ? styles.activeTab : ''}`}
+												onClick={() => setActiveTab('my-review')}
+											>
+												<span className={styles.tabIcon}>📝</span>
+												<span className={styles.tabLabel}>Đánh giá cá nhân</span>
+											</button>
+											<button
+												className={`${styles.tabBtn} ${activeTab === 'council-conclusion' ? styles.activeTab : ''}`}
+												onClick={() => setActiveTab('council-conclusion')}
+											>
+												<span className={styles.tabIcon}>👥</span>
+												<span className={styles.tabLabel}>Hội đồng &amp; Kết luận</span>
+											</button>
+										</div>
+
+										{/* Tab Contents */}
+										<div className={styles.tabPanel}>
+											{/* ── Tab 1: Đánh giá cá nhân ── */}
+											{activeTab === 'my-review' && (
+												<div className={styles.cardSection}>
+													<h3 className={styles.cardSectionTitle}>
+														📝 Đánh giá cá nhân của tôi
+													</h3>
+													
+													<div className={styles.evaluationFormGrid}>
+														<div className={styles.evaluationFormLeft}>
+															<div className={styles.formGroup}>
+																<label className={styles.formLabel}>Tiến độ hoàn thành</label>
+																<div className={styles.inputGroupPercent}>
+																	<input
+																		type='number'
+																		min={0}
+																		max={100}
+																		step={5}
+																		value={d.percent}
+																		onChange={(e) =>
+																			setDraft(t.id, { percent: e.target.value })
+																		}
+																		className={styles.percentInput}
+																		placeholder="0"
+																	/>
+																	<span className={styles.inputGroupAddon}>%</span>
+																</div>
+															</div>
+
+															<div className={styles.formGroup}>
+																<label className={styles.formLabel}>Xếp loại tiến độ</label>
+																<div className={styles.customSelectWrapper}>
+																	<select
+																		value={d.rating}
+																		onChange={(e) =>
+																			setDraft(t.id, {
+																				rating: e.target.value as Draft['rating'],
+																			})
+																		}
+																		className={`${styles.ratingSelect} ${d.rating ? styles['select_' + d.rating] : ''}`}
+																	>
+																		<option value=''>— Chọn xếp loại —</option>
+																		{(
+																			Object.keys(
+																				PROGRESS_RATING_LABELS,
+																			) as ProgressRating[]
+																		).map((r) => (
+																			<option
+																				key={r}
+																				value={r}
 																			>
-																				{PROGRESS_RATING_LABELS[r.rating]}
-																			</span>
-																		) : (
-																			'—'
-																		)}
-																	</td>
-																	<td className={styles.othersTableComment} title={r.comment ?? undefined}>
-																		{r.comment || '—'}
-																	</td>
-																</tr>
-															))}
-														</tbody>
-													</table>
-												</div>
-											</div>
-										)}
-
-										{/* ── Kết luận & nhận xét chung của hội đồng ── */}
-										<div className={`${styles.conclusionPanel} ${isChairman ? styles.isChairmanPanel : ''}`}>
-											<div className={styles.conclusionHeader}>
-												<span className={styles.conclusionTitle}>
-													⚖️ Kết luận &amp; nhận xét chung của hội đồng
-												</span>
-												{!isChairman && (
-													<span className={styles.conclusionHint}>
-														Do chủ tịch hội đồng chốt
-													</span>
-												)}
-											</div>
-
-											{isChairman ? (
-												<div className={styles.conclusionForm}>
-													{isChairman && (
-														<div className={styles.conclusionChairmanBadge}>
-															👑 Vai trò: Chủ tịch Hội đồng
+																				{PROGRESS_RATING_LABELS[r]}
+																			</option>
+																		))}
+																	</select>
+																</div>
+															</div>
 														</div>
-													)}
-													<div className={styles.conclusionFormGrid}>
-														<div className={styles.conclusionSelectField}>
-															<label className={styles.formLabel}>Kết luận cuối cùng</label>
-															<div className={styles.customSelectWrapper}>
-																<select
-																	value={rd.conclusion}
-																	onChange={(e) =>
-																		setResultDraft(t.id, {
-																			conclusion: e.target
-																				.value as ResultDraft['conclusion'],
-																		})
+
+														<div className={styles.evaluationFormRight}>
+															<div className={styles.formGroup}>
+																<label className={styles.formLabel}>Nhận xét chi tiết</label>
+																<RichTextEditor
+																	value={d.comment}
+																	onChange={(html) => setDraft(t.id, { comment: html })}
+																	onUploadImage={(file) =>
+																		uploadCommentImage(t.id, file).then((r) => r.url)
 																	}
-																	className={`${styles.conclusionSelect} ${rd.conclusion ? styles['select_' + rd.conclusion] : ''}`}
-																>
-																	<option value=''>— Chọn kết luận —</option>
-																	{(
-																		Object.keys(CONCLUSION_LABELS) as Conclusion[]
-																	).map((c) => (
-																		<option
-																			key={c}
-																			value={c}
-																		>
-																			{CONCLUSION_LABELS[c]}
-																		</option>
-																	))}
-																</select>
+																	maxTextLength={2000}
+																	placeholder='Nhận xét chi tiết về tiến độ, khối lượng đã thực hiện, kiến nghị điều chỉnh...'
+																/>
 															</div>
-														</div>
-														<div className={styles.conclusionTextField}>
-															<div className={styles.textareaHeader}>
-																<label className={styles.formLabel}>Nhận xét chung đại diện cho cả hội đồng</label>
-																<span className={styles.charCounter}>
-																	{rd.general_comment.length} / 2000
-																</span>
-															</div>
-															<textarea
-																rows={4}
-																maxLength={2000}
-																value={rd.general_comment}
-																onChange={(e) =>
-																	setResultDraft(t.id, {
-																		general_comment: e.target.value,
-																	})
-																}
-																className={styles.conclusionTextarea}
-																placeholder='Tóm tắt các ý kiến nhận xét chung của toàn hội đồng, các đề nghị chỉnh sửa chi tiết (nếu có)...'
-															/>
 														</div>
 													</div>
-													<div className={styles.conclusionActions}>
+
+													<div className={styles.cardSectionActions}>
 														<button
 															className={styles.saveBtn}
-															disabled={savingResultId === t.id}
-															onClick={() => handleSaveResult(t)}
+															disabled={savingId === t.id}
+															onClick={() => handleSave(t)}
 														>
-															{savingResultId === t.id ? (
+															{savingId === t.id ? (
 																<span className={styles.loadingSpinnerBtn}>
 																	<span className={styles.spinner}></span>
 																	Đang lưu…
 																</span>
-															) : savedResultId === t.id ? (
-																'✓ Đã lưu kết luận'
+															) : savedId === t.id ? (
+																'✓ Đã lưu đánh giá'
 															) : (
-																<>💾 Lưu kết luận</>
+																<>💾 Lưu đánh giá</>
 															)}
 														</button>
 													</div>
 												</div>
-											) : t.result?.conclusion ? (
-												<div className={styles.conclusionDisplay}>
-													<div className={styles.conclusionDisplayHeader}>
-														<span
-															className={`${styles.ratingBadge} ${styles[CONCLUSION_CLASS[t.result.conclusion]]}`}
-														>
-															{CONCLUSION_LABELS[t.result.conclusion]}
-														</span>
-														<span className={styles.conclusionMeta}>
-															Chốt bởi: {t.result.decided_by_name} · {t.result.updated_at}
-														</span>
-													</div>
-													{t.result.general_comment && (
-														<div className={styles.conclusionComment}>
-															{t.result.general_comment}
+											)}
+
+											{/* ── Tab 2: Hội đồng & Kết luận ── */}
+											{activeTab === 'council-conclusion' && (
+												<div className={styles.conclusionTabWrapper}>
+													{/* Table of other members' reviews */}
+													<div className={styles.cardSection}>
+														<div className={styles.othersTitleRow}>
+															<h3 className={styles.cardSectionTitle}>
+																👥 Ý kiến từ Hội đồng
+															</h3>
+															<span className={styles.avgBadge}>
+																{reviewed.length}/5 thành viên đã đánh giá
+															</span>
 														</div>
-													)}
-												</div>
-											) : (
-												<div className={styles.conclusionEmpty}>
-													Chủ tịch hội đồng chưa chốt kết luận.
+														{others.length > 0 ? (
+															<div className={styles.othersTableContainer}>
+																<table className={styles.othersTable}>
+																	<thead>
+																		<tr>
+																			<th>Thành viên</th>
+																			<th>Vai trò</th>
+																			<th>Tiến độ</th>
+																			<th>Xếp loại</th>
+																			<th>Nhận xét</th>
+																		</tr>
+																	</thead>
+																	<tbody>
+																		{others.map((r) => (
+																			<tr key={r.user_id}>
+																				<td className={styles.othersTableName}>{r.full_name}</td>
+																				<td className={styles.othersTableRole}>{SEAT_ROLE_LABELS[r.role]}</td>
+																				<td className={styles.othersTablePercent}>
+																					{r.progress_percent != null
+																						? `${r.progress_percent}%`
+																						: '—'}
+																				</td>
+																				<td>
+																					{r.rating ? (
+																						<span
+																							className={`${styles.ratingBadge} ${styles[RATING_CLASS[r.rating]]}`}
+																						>
+																							{PROGRESS_RATING_LABELS[r.rating]}
+																						</span>
+																					) : (
+																						'—'
+																					)}
+																				</td>
+																				<td
+																					className={styles.othersTableComment}
+																					title={r.comment ? htmlToPlainText(r.comment) : undefined}
+																				>
+																					{r.comment ? (
+																						<span
+																							dangerouslySetInnerHTML={{ __html: sanitizeCommentHtml(r.comment) }}
+																						/>
+																					) : (
+																						'—'
+																					)}
+																				</td>
+																			</tr>
+																		))}
+																	</tbody>
+																</table>
+															</div>
+														) : (
+															<div className={styles.emptyTableState}>
+																Chưa có ý kiến đánh giá từ các thành viên khác.
+															</div>
+														)}
+													</div>
+
+													{/* Conclusion Section */}
+													<div className={`${styles.conclusionPanel} ${isChairman ? styles.isChairmanPanel : ''}`}>
+														<div className={styles.conclusionHeader}>
+															<span className={styles.conclusionTitle}>
+																⚖️ Kết luận &amp; Nhận xét chung của Hội đồng
+															</span>
+															{!isChairman && (
+																<span className={styles.conclusionHint}>
+																	Do Chủ tịch Hội đồng quyết định
+																</span>
+															)}
+														</div>
+
+														{isChairman ? (
+															<div className={styles.conclusionForm}>
+																<div className={styles.conclusionChairmanBadge}>
+																	👑 Vai trò: Chủ tịch Hội đồng
+																</div>
+																<div className={styles.conclusionFormGrid}>
+																	<div className={styles.conclusionSelectField}>
+																		<label className={styles.formLabel}>Kết luận cuối cùng</label>
+																		<div className={styles.customSelectWrapper}>
+																			<select
+																				value={rd.conclusion}
+																				onChange={(e) =>
+																					setResultDraft(t.id, {
+																						conclusion: e.target
+																							.value as ResultDraft['conclusion'],
+																					})
+																				}
+																				className={`${styles.conclusionSelect} ${rd.conclusion ? styles['select_' + rd.conclusion] : ''}`}
+																			>
+																				<option value=''>— Chọn kết luận —</option>
+																				{(
+																					Object.keys(CONCLUSION_LABELS) as Conclusion[]
+																				).map((c) => (
+																					<option
+																						key={c}
+																						value={c}
+																					>
+																						{CONCLUSION_LABELS[c]}
+																					</option>
+																				))}
+																			</select>
+																		</div>
+																	</div>
+																	<div className={styles.conclusionTextField}>
+																		<label className={styles.formLabel}>Nhận xét chung đại diện Hội đồng</label>
+																		<RichTextEditor
+																			value={rd.general_comment}
+																			onChange={(html) =>
+																				setResultDraft(t.id, { general_comment: html })
+																			}
+																			onUploadImage={(file) =>
+																				uploadCommentImage(t.id, file).then((r) => r.url)
+																			}
+																			maxTextLength={2000}
+																			placeholder='Tóm tắt ý kiến nhận xét chung của toàn hội đồng, các đề nghị chỉnh sửa chi tiết (nếu có)...'
+																		/>
+																	</div>
+																</div>
+																<div className={styles.conclusionActions}>
+																	<button
+																		className={styles.saveBtn}
+																		disabled={savingResultId === t.id}
+																		onClick={() => handleSaveResult(t)}
+																	>
+																		{savingResultId === t.id ? (
+																			<span className={styles.loadingSpinnerBtn}>
+																				<span className={styles.spinner}></span>
+																				Đang lưu…
+																			</span>
+																		) : savedResultId === t.id ? (
+																			'✓ Đã lưu kết luận'
+																		) : (
+																			<>💾 Lưu kết luận</>
+																		)}
+																	</button>
+																</div>
+															</div>
+														) : t.result?.conclusion ? (
+															<div className={styles.conclusionDisplay}>
+																<div className={styles.conclusionDisplayHeader}>
+																	<span
+																		className={`${styles.ratingBadge} ${styles[CONCLUSION_CLASS[t.result.conclusion]]}`}
+																	>
+																		{CONCLUSION_LABELS[t.result.conclusion]}
+																	</span>
+																	<span className={styles.conclusionMeta}>
+																		Chốt bởi: {t.result.decided_by_name} · {t.result.updated_at}
+																	</span>
+																</div>
+																{t.result.general_comment && (
+																	<div
+																		className={styles.conclusionComment}
+																		dangerouslySetInnerHTML={{
+																			__html: sanitizeCommentHtml(t.result.general_comment),
+																		}}
+																	/>
+																)}
+															</div>
+														) : (
+															<div className={styles.conclusionEmpty}>
+																Chủ tịch hội đồng chưa chốt kết luận.
+															</div>
+														)}
+													</div>
 												</div>
 											)}
 										</div>
 
-										{/* ── File đánh giá & Biên bản ── */}
+										{/* ── Tài liệu đề tài (thuyết minh, hồ sơ... do chủ nhiệm tải lên) ── */}
 										<div className={styles.filesRow}>
+											<div className={styles.filesBox}>
+												<div className={styles.filesTitle}>
+													<span>📎 Tài liệu đề tài</span>
+												</div>
+												{t.topic_files.length === 0 ? (
+													<div className={styles.noFiles}>
+														Chưa có tài liệu đề tài nào được tải lên.
+													</div>
+												) : (
+													<div className={styles.fileList}>
+														{t.topic_files.map((f) => (
+															<div key={f.id} className={styles.fileRow}>
+																<a
+																	href={`${BASE_URL}${f.file_url}`}
+																	target='_blank'
+																	rel='noreferrer'
+																	className={styles.fileName}
+																>
+																	<span className={styles.fileIcon}>{getFileIcon(f.file_name)}</span>
+																	<span className={styles.fileText}>{f.file_name}</span>
+																</a>
+																<span className={styles.fileMeta}>
+																	{fmtSize(f.file_size)} ·{' '}
+																	{f.uploaded_by_name ?? ''} · {f.created_at}
+																</span>
+															</div>
+														))}
+													</div>
+												)}
+											</div>
+										</div>
+
+										{/* ── File đánh giá & Biên bản (Always visible at the bottom to fill empty space) ── */}
+										<div className={styles.filesRow}>
+											{/* File đánh giá */}
 											<div className={styles.filesBox}>
 												<div className={styles.filesTitle}>
 													<span>📁 File đánh giá</span>
@@ -839,7 +920,7 @@ export default function CouncilProgress() {
 												)}
 											</div>
 
-											{/* ── Biên bản hội đồng ── */}
+											{/* Biên bản hội đồng */}
 											<div className={styles.filesBox}>
 												<div className={styles.filesTitle}>
 													<span>🗂️ Biên bản hội đồng</span>

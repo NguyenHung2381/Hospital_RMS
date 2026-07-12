@@ -43,7 +43,7 @@ export default function AdminNotifications() {
 	const [deptSearch, setDeptSearch] = useState('');
 	const [usersList, setUsersList] = useState<User[]>([]);
 	const [userSearch, setUserSearch] = useState('');
-	const [loadingUsers, setLoadingUsers] = useState(false);
+	const [loadingUsers, setLoadingUsers] = useState(true);
 	const [sending, setSending] = useState(false);
 	const [toast, setToast] = useState<{ msg: string; ok: boolean } | null>(null);
 
@@ -131,7 +131,6 @@ export default function AdminNotifications() {
 			.then((res) => setDepts(res.data))
 			.catch(() => {});
 
-		setLoadingUsers(true);
 		getUsers({ limit: 200 })
 			.then((res) => setUsersList(res.data))
 			.catch(() => {})
@@ -387,9 +386,8 @@ export default function AdminNotifications() {
 																onClick={() =>
 																	setExpandedDepts((prev) => {
 																		const next = new Set(prev);
-																		next.has(dept.id)
-																			? next.delete(dept.id)
-																			: next.add(dept.id);
+																		if (next.has(dept.id)) next.delete(dept.id);
+																		else next.add(dept.id);
 																		return next;
 																	})
 																}

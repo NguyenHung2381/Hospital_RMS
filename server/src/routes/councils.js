@@ -4,6 +4,7 @@ const ctrl = require('../controllers/councilController');
 const exportCtrl = require('../controllers/councilExportController');
 const progressCtrl = require('../controllers/councilProgressController');
 const upload = require('../middlewares/upload');
+const uploadImage = require('../middlewares/uploadImage');
 const { authenticate, authorizePermission } = require('../middlewares/auth');
 const { validate } = require('../middlewares/errorHandler');
 
@@ -281,6 +282,27 @@ router.post(
 router.delete(
 	'/progress/:topic_id/minutes/:file_id',
 	progressCtrl.deleteMinutesFile,
+);
+
+/**
+ * @swagger
+ * /councils/progress/{topic_id}/comment-image:
+ *   post:
+ *     summary: Chèn ảnh vào nhận xét tiến độ/kết luận (ai có ghế trong hội đồng đề tài đều dùng được)
+ *     tags: [Councils]
+ *     parameters:
+ *       - in: path
+ *         name: topic_id
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       201:
+ *         description: Đã tải ảnh lên, trả về URL để chèn vào nhận xét
+ */
+router.post(
+	'/progress/:topic_id/comment-image',
+	uploadImage.single('image'),
+	progressCtrl.uploadCommentImage,
 );
 
 /**

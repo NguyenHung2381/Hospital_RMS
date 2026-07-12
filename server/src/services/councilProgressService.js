@@ -10,12 +10,27 @@
  */
 const { getPool, sql } = require('../config/db');
 const fileService = require('./fileService');
+const sanitizeHtml = require('sanitize-html');
 
 const EVAL_NOTE = 'Đánh giá tiến độ của hội đồng'; // ponytail: phân biệt file đánh giá bằng note batch — thêm cột file_type nếu sau này cần chặt chẽ hơn
 const MINUTES_NOTE = 'Biên bản họp hội đồng';
 
 const RATINGS = ['on_track', 'behind', 'at_risk'];
 const CONCLUSIONS = ['pass', 'fail', 'revise'];
+
+// Nhận xét hỗ trợ định dạng chữ + chèn ảnh (HTML) — lọc trước khi lưu để chặn
+// stored-XSS; ảnh chỉ được chèn qua uploadCommentImage nên src luôn bắt đầu
+// bằng /uploads/, chặn javascript:/data: và ảnh từ nguồn ngoài.
+const sanitizeComment = (html) => {
+	if (!html) return null;
+	const clean = sanitizeHtml(html, {
+		allowedTags: ['b', 'strong', 'i', 'em', 'u', 's', 'ul', 'ol', 'li', 'br', 'p', 'img'],
+		allowedAttributes: { img: ['src', 'alt'] },
+		exclusiveFilter: (frame) =>
+			frame.tag === 'img' && !frame.attribs.src?.startsWith('/uploads/'),
+	});
+	return clean || null;
+};
 
 // Ghế thực tế của user với các đề tài: ghế thay thế ghi đè ghế gốc cùng vai.
 const SEAT_CTE = `
@@ -89,6 +104,18 @@ const getMyProgress = async (userId) => {
         AND f.topic_id IN (SELECT topic_id FROM #seat)
       ORDER BY f.created_at DESC;
 
+      -- Tài liệu đề tài do chủ nhiệm/khoa tải lên (không phải file đánh giá/biên bản) — hội đồng xem để tham khảo khi đánh giá.
+      SELECT f.id, f.topic_id, f.file_name, f.file_url, f.file_size,
+             f.created_by, u.full_name AS uploaded_by_name,
+             CONVERT(VARCHAR(16), f.created_at, 120) AS created_at
+      FROM files f
+      INNER JOIN file_batches fb ON fb.id = f.batch_id
+      LEFT JOIN users u ON u.id = f.created_by
+      WHERE f.is_deleted = 0
+        AND (fb.note IS NULL OR fb.note NOT IN (@eval_note, @minutes_note))
+        AND f.topic_id IN (SELECT topic_id FROM #seat)
+      ORDER BY f.created_at DESC;
+
       SELECT tr.topic_id, tr.conclusion, tr.general_comment, tr.decided_by,
              u.full_name AS decided_by_name,
              CONVERT(VARCHAR(16), tr.updated_at, 120) AS updated_at
@@ -97,7 +124,7 @@ const getMyProgress = async (userId) => {
       WHERE tr.topic_id IN (SELECT topic_id FROM #seat);
     `);
 
-	const [topics, reviews, files, results] = result.recordsets;
+	const [topics, reviews, files, topicFiles, results] = result.recordsets;
 	const reviewsByTopic = new Map();
 	for (const r of reviews) {
 		if (!reviewsByTopic.has(r.topic_id)) reviewsByTopic.set(r.topic_id, []);
@@ -110,12 +137,18 @@ const getMyProgress = async (userId) => {
 		if (!map.has(f.topic_id)) map.set(f.topic_id, []);
 		map.get(f.topic_id).push(f);
 	}
+	const topicFilesByTopic = new Map();
+	for (const f of topicFiles) {
+		if (!topicFilesByTopic.has(f.topic_id)) topicFilesByTopic.set(f.topic_id, []);
+		topicFilesByTopic.get(f.topic_id).push(f);
+	}
 	const resultByTopic = new Map(results.map((r) => [r.topic_id, r]));
 	return topics.map((t) => ({
 		...t,
 		reviews: reviewsByTopic.get(t.id) ?? [],
 		evaluation_files: evalFilesByTopic.get(t.id) ?? [],
 		minutes_files: minutesFilesByTopic.get(t.id) ?? [],
+		topic_files: topicFilesByTopic.get(t.id) ?? [],
 		result: resultByTopic.get(t.id) ?? null,
 	}));
 };
@@ -145,7 +178,7 @@ const upsertReview = async (
 		.input('role', sql.VarChar(15), roles[0])
 		.input('progress_percent', sql.Int, progress_percent ?? null)
 		.input('rating', sql.VarChar(15), rating || null)
-		.input('comment', sql.NVarChar(2000), comment || null).query(`
+		.input('comment', sql.NVarChar(sql.MAX), sanitizeComment(comment)).query(`
       UPDATE council_progress_reviews
       SET progress_percent = @progress_percent, rating = @rating,
           comment = @comment, role = @role, updated_at = GETDATE()
@@ -194,7 +227,7 @@ const upsertResult = async (
 		.input('topic_id', sql.VarChar(15), topicId)
 		.input('user_id', sql.VarChar(20), userId)
 		.input('conclusion', sql.VarChar(15), conclusion || null)
-		.input('general_comment', sql.NVarChar(2000), general_comment || null)
+		.input('general_comment', sql.NVarChar(sql.MAX), sanitizeComment(general_comment))
 		.query(`
       UPDATE council_topic_results
       SET conclusion = @conclusion, general_comment = @general_comment,
@@ -213,6 +246,22 @@ const uploadEvalFiles = async (topicId, filesData, userId) => {
 
 const uploadMinutesFiles = async (topicId, filesData, userId) => {
 	return fileService.uploadFiles(topicId, filesData, MINUTES_NOTE, userId);
+};
+
+// Ảnh chèn vào nhận xét (rich-text) — không lưu vào bảng files vì đây là ảnh
+// minh hoạ trong nhận xét, không phải tài liệu đề tài. Bất kỳ ai có ghế trong
+// hội đồng của đề tài đều được chèn ảnh vào nhận xét của chính mình.
+const uploadCommentImage = async (topicId, userId, file) => {
+	const roles = await getRolesForTopic(topicId, userId);
+	if (!roles.length) {
+		throw Object.assign(
+			new Error('Bạn không có ghế trong hội đồng đánh giá đề tài này.'),
+			{ status: 403 },
+		);
+	}
+	return {
+		url: `/uploads/topics/${topicId}/comments/${file.filename}`,
+	};
 };
 
 const deleteEvalFileByNote = async (topicId, fileId, userId, note, label) => {
@@ -251,6 +300,7 @@ module.exports = {
 	upsertResult,
 	uploadEvalFiles,
 	uploadMinutesFiles,
+	uploadCommentImage,
 	deleteEvalFile,
 	deleteMinutesFile,
 };

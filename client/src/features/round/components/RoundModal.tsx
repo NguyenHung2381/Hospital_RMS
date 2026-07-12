@@ -28,17 +28,17 @@ import styles from '../pages/Round.module.css';
 interface RoundModalProps {
 	mode: 'create' | 'edit';
 	round?: ResearchRound;
+	rounds: ResearchRound[];
 	onClose: () => void;
 	onSave: (form: RoundForm) => Promise<void>;
-	onRoundUpdate?: (r: ResearchRound) => void;
 }
 
 export function RoundModal({
 	mode,
 	round,
+	rounds,
 	onClose,
 	onSave,
-	onRoundUpdate: _onRoundUpdate,
 }: RoundModalProps) {
 	const currentYear = new Date().getFullYear();
 	const [activeTab, setActiveTab] = useState<'info' | 'advanced'>('info');
@@ -99,6 +99,13 @@ export function RoundModal({
 		return new Date(y, m - 1, d);
 	};
 
+	const duplicateRound = rounds.find(
+		(r) =>
+			r.id !== round?.id &&
+			r.year === form.year &&
+			r.round_number === form.round_number
+	);
+
 	const validate = (): boolean => {
 		const e: FormErrors = {};
 		if (!form.name.trim()) e.name = 'Vui lòng nhập tên đợt';
@@ -107,6 +114,8 @@ export function RoundModal({
 		const s = parseDate(form.start_date),
 			e2 = parseDate(form.end_date);
 		if (s && e2 && e2 <= s) e.end_date = 'Ngày kết thúc phải sau ngày bắt đầu';
+		if (duplicateRound)
+			e.round_number = `Đợt ${form.round_number} năm ${form.year} đã tồn tại`;
 		setErrors(e);
 		return Object.keys(e).length === 0;
 	};
@@ -215,17 +224,21 @@ export function RoundModal({
 									id='round_number'
 									label='Số đợt trong năm'
 									required
+									error={
+										duplicateRound
+											? `Đợt ${form.round_number} năm ${form.year} đã tồn tại`
+											: errors.round_number
+									}
 								>
-									<select
+									<input
 										id='round_number'
-										className={styles.formSelect}
+										type='number'
+										min={1}
+										max={99}
+										className={`${styles.formInput} ${duplicateRound ? styles.hasError : ''}`}
 										value={form.round_number}
 										onChange={(e) => set('round_number', Number(e.target.value))}
-									>
-										<option value={1}>Đợt 1</option>
-										<option value={2}>Đợt 2</option>
-										<option value={3}>Đợt 3</option>
-									</select>
+									/>
 								</FormField>
 							</div>
 							<FormField

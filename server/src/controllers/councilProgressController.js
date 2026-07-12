@@ -112,6 +112,24 @@ const uploadMinutesFiles = async (req, res, next) => {
 	}
 };
 
+const uploadCommentImage = async (req, res, next) => {
+	try {
+		if (!req.file) {
+			return res
+				.status(400)
+				.json({ success: false, message: 'Chưa có ảnh nào được tải lên' });
+		}
+		const result = await progressService.uploadCommentImage(
+			req.params.topic_id,
+			req.user.id,
+			req.file,
+		);
+		return created(res, result, 'Đã tải ảnh lên');
+	} catch (err) {
+		next(err);
+	}
+};
+
 const deleteMinutesFile = async (req, res, next) => {
 	try {
 		await progressService.deleteMinutesFile(
@@ -133,5 +151,6 @@ module.exports = {
 	uploadFiles,
 	deleteFile,
 	uploadMinutesFiles,
+	uploadCommentImage,
 	deleteMinutesFile,
 };

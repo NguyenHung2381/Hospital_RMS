@@ -191,12 +191,10 @@ export default function AdminLayout({
 	} = useNotifications();
 	const notifs = rawNotifs.map(toNotif);
 
-	useEffect(() => {
-		setNavBadges((prev) => ({
-			...prev,
-			notifications: unreadCount > 0 ? unreadCount : undefined,
-		}));
-	}, [unreadCount]);
+	const badges = {
+		...navBadges,
+		notifications: unreadCount > 0 ? unreadCount : undefined,
+	};
 
 	// ── User menu state ──────────────────────
 	const [userMenuOpen, setUserMenuOpen] = useState(false);
@@ -318,17 +316,17 @@ export default function AdminLayout({
 								>
 									{item.icon}
 									<span className={styles.navLabel}>{item.label}</span>
-									{navBadges[item.key as keyof typeof navBadges] !==
+									{badges[item.key as keyof typeof badges] !==
 										undefined && (
 										<span
 											className={
-												(navBadges[item.key as keyof typeof navBadges] ?? 0) >
+												(badges[item.key as keyof typeof badges] ?? 0) >
 												50
 													? styles.navBadge
 													: styles.navBadgeGray
 											}
 										>
-											{navBadges[item.key as keyof typeof navBadges]}
+											{badges[item.key as keyof typeof badges]}
 										</span>
 									)}
 								</button>

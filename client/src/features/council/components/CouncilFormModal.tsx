@@ -10,10 +10,44 @@ import {
 import { toInputDate } from '../utils/councilHelpers';
 import styles from '../pages/Council.module.css';
 
+const LOCATION_PRESETS = [
+	'Hội trường 3',
+	'Hội trường ghép tạng',
+	'VP Khoa thăm dò chức năng',
+	'VP Trung tâm HTSS',
+	'VP Trung tâm xét nghiệm',
+	'VP TT bệnh nhiệt đới',
+	'VP TT Đột quỵ',
+	'VP HSTC ngoại khoa',
+	'VP khoa Cấp cứu',
+	'VP khoa Chấn thương chỉnh hình',
+	'VP khoa Cơ xương khớp',
+	'VP khoa Dị ứng - MDLS',
+	'VP khoa Gây mê hồi sức',
+	'VP khoa HSTC',
+	'VP khoa Kiểm soát nhiễm khuẩn',
+	'VP khoa Ngoại thận - tiết niệu',
+	'VP khoa Ngoại tổng hợp 2',
+	'VP khoa Nhi - sơ sinh',
+	'VP khoa Nội thận - TN - LM',
+	'VP khoa Nội tiêu hoá',
+	'VP khoa Nội tim mạch 1',
+	'VP khoa Phẫu thuật - TMLN',
+	'VP khoa Phụ sản',
+	'VP khoa PTTKCS',
+	'VP khoa Tai mũi họng',
+	'VP khoa Thần kinh',
+	'VP khoa Tim mạch 2',
+	'VP khoa X-quang',
+];
+
+const CUSTOM_LOCATION = '__custom__';
+
 export function CouncilFormModal({
 	mode,
 	council,
 	rounds,
+	existingCouncils = [],
 	onClose,
 	onSave,
 	loading,
@@ -21,10 +55,17 @@ export function CouncilFormModal({
 	mode: 'add' | 'edit';
 	council?: Council;
 	rounds: ResearchRound[];
+	existingCouncils?: Council[];
 	onClose: () => void;
 	onSave: (form: CouncilForm) => void;
 	loading: boolean;
 }) {
+	const locationOptions = Array.from(
+		new Set([
+			...LOCATION_PRESETS,
+			...existingCouncils.map((c) => c.location).filter((l): l is string => !!l),
+		]),
+	).sort();
 	const [form, setForm] = useState<CouncilForm>(
 		council
 			? {
@@ -38,6 +79,9 @@ export function CouncilFormModal({
 			: EMPTY_FORM,
 	);
 	const [errors, setErrors] = useState<Partial<Record<keyof CouncilForm, string>>>({});
+	const [customLocation, setCustomLocation] = useState(
+		() => !!form.location && !locationOptions.includes(form.location),
+	);
 
 	const set =
 		<K extends keyof CouncilForm>(k: K) =>
@@ -138,12 +182,39 @@ export function CouncilFormModal({
 						</div>
 						<div className={styles.formGroup}>
 							<label className={styles.formLabel}>Địa điểm</label>
-							<input
-								className={styles.formInput}
-								value={form.location}
-								onChange={set('location')}
-								placeholder='VD: Hội trường 3'
-							/>
+							{customLocation ? (
+								<input
+									className={styles.formInput}
+									value={form.location}
+									onChange={set('location')}
+									placeholder='Nhập địa điểm...'
+									autoFocus
+								/>
+							) : (
+								<select
+									className={styles.formInput}
+									value={form.location}
+									onChange={(e) => {
+										if (e.target.value === CUSTOM_LOCATION) {
+											setCustomLocation(true);
+											setForm((f) => ({ ...f, location: '' }));
+										} else {
+											setForm((f) => ({ ...f, location: e.target.value }));
+										}
+									}}
+								>
+									<option value=''>-- Chọn địa điểm --</option>
+									{locationOptions.map((loc) => (
+										<option
+											key={loc}
+											value={loc}
+										>
+											{loc}
+										</option>
+									))}
+									<option value={CUSTOM_LOCATION}>+ Địa điểm khác...</option>
+								</select>
+							)}
 						</div>
 					</div>
 

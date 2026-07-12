@@ -95,36 +95,6 @@ export function useMyTopics() {
 	const [uploadLoading, setUploadLoading] = useState(false);
 	const [uploadError, setUploadError] = useState('');
 
-	const prevPendingRef = useRef<File[]>([]);
-	useEffect(() => {
-		const prev = prevPendingRef.current;
-		const curr = pendingFiles;
-		if (curr.length > prev.length) {
-			const added = curr.filter((f) => !prev.includes(f));
-			if (added.length > 0) {
-				console.log(
-					'Đã nạp file vào danh sách chờ tải lên:',
-					added.map((f) => ({ name: f.name, size: f.size })),
-				);
-			}
-		} else if (curr.length < prev.length) {
-			if (curr.length === 0 && prev.length > 0) {
-				console.log('Đã xóa toàn bộ file trong danh sách chờ.');
-			} else {
-				const removed = prev.filter((f) => !curr.includes(f));
-				if (removed.length > 0) {
-					console.log(
-						'Đã xóa file khỏi danh sách chờ:',
-						removed.map((f) => f.name),
-					);
-				}
-			}
-		}
-		prevPendingRef.current = curr;
-	}, [pendingFiles]);
-
-	console.log(pendingFiles);
-
 	const prevSelectedIdRef = useRef<string | null | undefined>(undefined);
 
 	const refreshData = useCallback(() => setRefreshKey((k) => k + 1), []);
@@ -314,8 +284,6 @@ export function useMyTopics() {
 		);
 	}, [detailTopic, activeRound, roundDeadlines]);
 
-	// console.log(canUploadFiles, detailTopic, activeRound, roundDeadlines, editOpen);
-
 	function openEdit() {
 		if (!detailTopic) return;
 		setEditForm({
@@ -360,21 +328,12 @@ export function useMyTopics() {
 		if (!detailTopic || pendingFiles.length === 0) return;
 		setUploadLoading(true);
 		setUploadError('');
-		console.log('Bắt đầu quá trình tải lên file cho đề tài:', detailTopic.id, {
-			files: pendingFiles.map((f) => ({
-				name: f.name,
-				size: f.size,
-				type: f.type,
-			})),
-			batchNote,
-		});
 		try {
 			await uploadTopicFiles(
 				detailTopic.id,
 				pendingFiles,
 				batchNote || undefined,
 			);
-			console.log('Tải lên file thành công cho đề tài:', detailTopic.id);
 			setPendingFiles([]);
 			setBatchNote('');
 		} catch (error) {

@@ -177,6 +177,7 @@ export default function Round() {
 			{d.showCreate && (
 				<RoundModal
 					mode='create'
+					rounds={d.rounds}
 					onClose={() => d.setShowCreate(false)}
 					onSave={d.handleCreate}
 				/>
@@ -185,14 +186,9 @@ export default function Round() {
 				<RoundModal
 					mode='edit'
 					round={d.editRound}
+					rounds={d.rounds}
 					onClose={() => d.setEditRound(null)}
 					onSave={d.handleEdit}
-					onRoundUpdate={(updated) => {
-						d.setEditRound(updated);
-						d.setRounds((prev) =>
-							prev.map((r) => (r.id === updated.id ? updated : r)),
-						);
-					}}
 				/>
 			)}
 			{d.deleteRound && (

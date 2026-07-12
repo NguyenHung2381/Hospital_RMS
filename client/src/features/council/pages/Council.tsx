@@ -22,7 +22,7 @@ import { CouncilDetailModal } from '../components/CouncilDetailModal';
 import { CouncilFormModal } from '../components/CouncilFormModal';
 import { exportCouncilSchedule } from '../api/councilApi';
 import { useCouncils } from '../hooks/useCouncils';
-import { SEAT_ROLES, STATUS_LABELS } from '../types/council.type';
+import { SEAT_ROLES, STATUS_LABELS, type Council } from '../types/council.type';
 import styles from './Council.module.css';
 
 export default function Council() {
@@ -31,7 +31,7 @@ export default function Council() {
 
 	// Gom hội đồng theo đợt, giữ thứ tự xuất hiện trong danh sách
 	const groups = useMemo(() => {
-		const map = new Map<string, typeof d.councils>();
+		const map = new Map<string, Council[]>();
 		for (const c of d.councils) {
 			const arr = map.get(c.round_id) ?? [];
 			arr.push(c);
@@ -397,6 +397,7 @@ export default function Council() {
 				<CouncilFormModal
 					mode='add'
 					rounds={d.rounds}
+					existingCouncils={d.allCouncils}
 					onClose={() => d.setModal(null)}
 					onSave={d.handleCreate}
 					loading={d.loading}
@@ -407,6 +408,7 @@ export default function Council() {
 					mode='edit'
 					council={d.activeCouncil}
 					rounds={d.rounds}
+					existingCouncils={d.allCouncils}
 					onClose={() => {
 						d.setModal(null);
 						d.setActiveCouncil(null);

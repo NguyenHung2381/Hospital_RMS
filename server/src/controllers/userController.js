@@ -1,5 +1,5 @@
 const userService = require('../services/userService');
-const { success, created, notFound, forbidden } = require('../utils/response');
+const { success, notFound, forbidden } = require('../utils/response');
 const { createCrudController } = require('./crudController');
 
 const base = createCrudController(userService);
