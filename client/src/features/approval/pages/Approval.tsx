@@ -12,7 +12,7 @@ import { ApprovalDetailPanel } from '../components/ApprovalDetailPanel';
 import { ApprovalListPanel } from '../components/ApprovalListPanel';
 import { BulkConfirmModal } from '../components/BulkConfirmModal';
 import { ConfirmModal } from '../components/ConfirmModal';
-import { FileViewerModal } from '../components/FileViewerModal';
+import { FileViewerModal } from '@/shared/components/FileViewerModal';
 import { useApproval } from '../hooks/useApproval';
 import styles from './Approval.module.css';
 

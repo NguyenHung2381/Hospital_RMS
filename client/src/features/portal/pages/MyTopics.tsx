@@ -10,7 +10,7 @@ import {
 } from '@/assets/icons';
 import UserLayout from '../../../layouts/UserLayout';
 import { EditTopicModal } from '../components/EditTopicModal';
-import { FileViewerModal } from '../components/FileViewerModal';
+import { FileViewerModal } from '@/shared/components/FileViewerModal';
 import { MyTopicsDetailPanel } from '../components/MyTopicsDetailPanel';
 import { MyTopicsListPanel } from '../components/MyTopicsListPanel';
 import { useMyTopics } from '../hooks/useMyTopics';

@@ -9,16 +9,20 @@ const getStats = async () => {
     FROM topics
     GROUP BY status;
 
-    -- Topics by department with category breakdown
+    -- Topics by department: article_type + status breakdown (for full dept stats table)
     SELECT
       ISNULL(d.name, N'Chưa xác định') AS dept_name,
-      ISNULL(c.name, N'Chưa phân loại') AS category_name,
+      t.article_type,
+      t.status,
       COUNT(t.id) AS cnt
     FROM topics t
     LEFT JOIN departments d ON d.id = t.department_id
-    LEFT JOIN categories c ON c.id = t.category_id
-    GROUP BY d.name, c.name
-    ORDER BY dept_name, cnt DESC;
+    GROUP BY d.name, t.article_type, t.status;
+
+    -- Overall totals by article_type (đề tài NCKH vs bài báo/tập san)
+    SELECT t.article_type, COUNT(t.id) AS cnt
+    FROM topics t
+    GROUP BY t.article_type;
 
     -- Topics by category
     SELECT c.name AS name, COUNT(t.id) AS cnt
@@ -79,27 +83,48 @@ const getStats = async () => {
 			for (const row of result.recordsets[1]) {
 				const dept = row.dept_name;
 				if (!deptMap[dept])
-					deptMap[dept] = { name: dept, total: 0, categories: [] };
-				deptMap[dept].categories.push({
-					name: row.category_name,
-					count: row.cnt,
-				});
-				deptMap[dept].total += row.cnt;
+					deptMap[dept] = {
+						name: dept,
+						total: 0,
+						de_tai: 0,
+						bai_bao: 0,
+						approved: 0,
+						by_status: {
+							submitted: 0,
+							approved: 0,
+							rejected: 0,
+							supplement: 0,
+							cancelled: 0,
+						},
+					};
+				const d = deptMap[dept];
+				d.total += row.cnt;
+				d[row.article_type === 'bai_bao' ? 'bai_bao' : 'de_tai'] += row.cnt;
+				if (d.by_status[row.status] !== undefined)
+					d.by_status[row.status] += row.cnt;
+				if (row.status === 'approved') d.approved += row.cnt;
 			}
 			return Object.values(deptMap)
-				.sort((a, b) => b.total - a.total)
-				.slice(0, 10);
+				.map((d) => ({
+					...d,
+					approval_rate: d.total > 0 ? d.approved / d.total : 0,
+				}))
+				.sort((a, b) => b.total - a.total);
 		})(),
-		by_category: result.recordsets[2].map((r) => ({
+		by_article_type: result.recordsets[2].map((r) => ({
+			type: r.article_type === 'bai_bao' ? 'bai_bao' : 'de_tai',
+			count: r.cnt,
+		})),
+		by_category: result.recordsets[3].map((r) => ({
 			name: r.name || 'Chưa xác định',
 			count: r.cnt,
 		})),
-		by_level: result.recordsets[3].map((r) => ({
+		by_level: result.recordsets[4].map((r) => ({
 			name: r.name || 'Chưa xác định',
 			count: r.cnt,
 		})),
 		trend_by_category: (() => {
-			const raw = result.recordsets[4];
+			const raw = result.recordsets[5];
 			const yearMap = {};
 			const catSet = new Set();
 			for (const row of raw) {
@@ -114,7 +139,7 @@ const getStats = async () => {
 				categories: Array.from(catSet),
 			};
 		})(),
-		recent_approvals: result.recordsets[5],
+		recent_approvals: result.recordsets[6],
 	};
 };
 

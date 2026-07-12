@@ -192,11 +192,31 @@ const autoAssignOne = async (
 			);
 		}
 
+		// Gợi ý địa điểm mặc định = phòng khoa của Chủ tịch (mẫu thật từ lịch bảo vệ
+		// đề cương 2026: phòng đi theo khoa chủ tịch, không theo hệ chuyên môn —
+		// 1 hệ có thể sinh nhiều hội đồng song song ở nhiều phòng khác nhau). Chỉ là
+		// gợi ý, admin sửa tay qua dropdown địa điểm nếu phòng đã có người dùng.
+		let location = null;
+		if (seats.chairman?.type === 'user') {
+			const deptRes = await pool
+				.request()
+				.input('uid', sql.VarChar(20), seats.chairman.id)
+				.query(`
+          SELECT d.name AS dept_name
+          FROM users u
+          LEFT JOIN departments d ON d.id = u.department_id
+          WHERE u.id = @uid
+        `);
+			const deptName = deptRes.recordset[0]?.dept_name;
+			if (deptName) location = `VP khoa ${deptName}`;
+		}
+
 		const council = await councilService.create(
 			{
 				round_id,
 				name: `Hội đồng ${specialty_group} #${i + 1}`,
 				specialty_group,
+				location,
 			},
 			actorId,
 		);

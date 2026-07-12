@@ -1085,12 +1085,6 @@
 	flex-shrink: 0;
 }
 
-@keyframes spin {
-	to {
-		transform: rotate(360deg);
-	}
-}
-
 .emptyFiles {
 	display: flex;
 	flex-direction: column;

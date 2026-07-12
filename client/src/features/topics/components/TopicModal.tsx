@@ -2,8 +2,9 @@ import type { SimpleItem } from '../api/topicApi';
 import type { PendingMember } from '../hooks/useTopicModal';
 import { useTopicModal } from '../hooks/useTopicModal';
 import styles from '../pages/Topic.module.css';
-import type { Topic, TopicForm, TopicStatus } from '../types/topic.type';
+import type { ArticleType, Topic, TopicForm, TopicStatus } from '../types/topic.type';
 import { STATUS_CFG } from '../utils/topicHelpers';
+import { ARTICLE_TYPE_CFG } from '../utils/topicRegisterHelpers';
 import { FormField } from './FormField';
 import { AlertSvg as IcAlert, CheckSvg as IcCheck, PlusSvg as IcPlus, XSvg as IcX } from '@/assets/icons';
 import { ModalMembersSection } from './ModalMembersSection';
@@ -109,6 +110,43 @@ export function TopicModal({
 
 					<div className={styles.formSection}>Phân loại & Đợt nghiên cứu</div>
 
+					<FormField
+						id='article_type'
+						label='Loại đăng ký'
+					>
+						<div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+							{(Object.keys(ARTICLE_TYPE_CFG) as ArticleType[]).map((t) => (
+								<button
+									key={t}
+									type='button'
+									onClick={() => m.setField('article_type', t)}
+									style={{
+										padding: '6px 14px',
+										borderRadius: 20,
+										fontSize: 13,
+										fontWeight: 600,
+										cursor: 'pointer',
+										transition: 'all 0.15s',
+										border:
+											m.form.article_type === t
+												? '2px solid var(--color-primary)'
+												: '2px solid var(--color-gray-200)',
+										background:
+											m.form.article_type === t
+												? 'var(--color-primary)'
+												: 'var(--color-white)',
+										color:
+											m.form.article_type === t
+												? '#fff'
+												: 'var(--color-gray-600)',
+									}}
+								>
+									{ARTICLE_TYPE_CFG[t].tabLabel}
+								</button>
+							))}
+						</div>
+					</FormField>
+
 					<div className={styles.formRow}>
 						<FormField
 							id='round_id'
@@ -159,29 +197,46 @@ export function TopicModal({
 					</div>
 
 					<div className={styles.formRow}>
-						<FormField
-							id='level_id'
-							label='Cấp độ đề tài'
-							required
-							error={m.errors.level_id}
-						>
-							<select
-								id='level_id'
-								className={styles.formSelect}
-								value={m.form.level_id}
-								onChange={(e) => m.setField('level_id', e.target.value)}
+						{m.form.article_type === 'bai_bao' ? (
+							<FormField
+								id='journal_name'
+								label='Tên tập san / tạp chí'
+								required
+								error={m.errors.journal_name}
 							>
-								<option value=''>— Chọn cấp độ —</option>
-								{levels.map((l) => (
-									<option
-										key={l.id}
-										value={l.id}
-									>
-										{l.name}
-									</option>
-								))}
-							</select>
-						</FormField>
+								<input
+									id='journal_name'
+									className={`${styles.formInput} ${m.errors.journal_name ? styles.hasError : ''}`}
+									placeholder='VD: Tạp chí Y học TP.HCM'
+									value={m.form.journal_name}
+									onChange={(e) => m.setField('journal_name', e.target.value)}
+								/>
+							</FormField>
+						) : (
+							<FormField
+								id='level_id'
+								label='Cấp độ đề tài'
+								required
+								error={m.errors.level_id}
+							>
+								<select
+									id='level_id'
+									className={styles.formSelect}
+									value={m.form.level_id}
+									onChange={(e) => m.setField('level_id', e.target.value)}
+								>
+									<option value=''>— Chọn cấp độ —</option>
+									{levels.map((l) => (
+										<option
+											key={l.id}
+											value={l.id}
+										>
+											{l.name}
+										</option>
+									))}
+								</select>
+							</FormField>
+						)}
 						<FormField
 							id='department_id'
 							label='Phòng ban / Khoa'
@@ -198,6 +253,35 @@ export function TopicModal({
 							/>
 						</FormField>
 					</div>
+
+					{m.form.article_type === 'bai_bao' && (
+						<div className={styles.formRow}>
+							<FormField
+								id='doi'
+								label='DOI (nếu có)'
+							>
+								<input
+									id='doi'
+									className={styles.formInput}
+									placeholder='VD: 10.1234/abcd.2026'
+									value={m.form.doi}
+									onChange={(e) => m.setField('doi', e.target.value)}
+								/>
+							</FormField>
+							<FormField
+								id='publish_date'
+								label='Ngày xuất bản'
+							>
+								<input
+									id='publish_date'
+									type='date'
+									className={styles.formInput}
+									value={m.form.publish_date}
+									onChange={(e) => m.setField('publish_date', e.target.value)}
+								/>
+							</FormField>
+						</div>
+					)}
 
 					<FormField
 						id='status'

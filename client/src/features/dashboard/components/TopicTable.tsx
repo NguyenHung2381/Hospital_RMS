@@ -1,6 +1,6 @@
 ﻿import { ChevLSvg, ChevRSvg, DocSvg, SearchSvg } from '@/assets/icons';
 import type { SimpleItem } from '../../topics/api/topicApi';
-import type { DashboardStats } from '../api/dashboardApi';
+import type { DashboardStats } from '../types/dashboard.type';
 import {
 	formatDate,
 	ROWS_PER_PAGE,

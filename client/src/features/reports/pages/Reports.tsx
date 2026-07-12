@@ -19,6 +19,7 @@ import {
 	STATUS_OPTIONS,
 	SUMMARY_COLS,
 } from '../utils/reportHelpers';
+import { exportStatsExcel } from '../utils/statsExcel';
 import styles from './Reports.module.css';
 
 const IcBarChart = () => <BarChartSvg style={{ width: 15, height: 15 }} />;
@@ -76,6 +77,16 @@ export default function Reports() {
 		<AdminLayout
 			pageTitle='Báo cáo & Thống kê'
 			pageSubtitle='Thống kê tổng quan và xuất dữ liệu nghiên cứu khoa học'
+			headerActions={
+				activeTab === 'stats' && stats ? (
+					<button
+						className={`${styles.btnExport} ${styles.btnExport_green}`}
+						onClick={() => exportStatsExcel(stats, yearFilter)}
+					>
+						<IcDownload /> Xuất Excel
+					</button>
+				) : undefined
+			}
 		>
 			{/* ── Tab bar ──────────────────────────── */}
 			<div className={styles.tabBar}>

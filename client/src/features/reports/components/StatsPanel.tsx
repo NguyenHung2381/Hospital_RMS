@@ -1,5 +1,5 @@
 import { AlertSvg, RefreshSvg } from '@/assets/icons';
-import type { DashboardStats } from '../api/reportApi';
+import type { DashboardStats } from '../types/report.type';
 import { fmtDate } from '../utils/reportHelpers';
 import styles from '../pages/Reports.module.css';
 
@@ -45,24 +45,28 @@ export function StatsPanel({
 		);
 	if (!stats) return null;
 
-	const { overview, by_department, by_category, by_level, recent_approvals } =
-		stats;
+	const {
+		overview,
+		by_department,
+		by_article_type,
+		by_category,
+		by_level,
+		recent_approvals,
+	} = stats;
 	const s = overview.by_status;
 
 	const cards = [
 		{ label: 'Tổng số đề tài', value: overview.total, cls: styles.scTotal },
 		{ label: 'Đã phê duyệt', value: s.approved, cls: styles.scApproved },
 		{ label: 'Chờ duyệt', value: s.submitted, cls: styles.scSubmitted },
-		{ label: 'Hoàn thành', value: s.completed, cls: styles.scCompleted },
+		{ label: 'Bổ sung', value: s.supplement, cls: styles.scCompleted },
 		{ label: 'Từ chối', value: s.rejected, cls: styles.scRejected },
-		{
-			label: 'Nháp / Bổ sung',
-			value: s.draft + s.supplement,
-			cls: styles.scDraft,
-		},
+		{ label: 'Huỷ', value: s.cancelled, cls: styles.scDraft },
 	];
 
-	const maxDept = Math.max(...by_department.map((d) => d.total), 1);
+	const deTaiCount = by_article_type.find((a) => a.type === 'de_tai')?.count ?? 0;
+	const baiBaoCount = by_article_type.find((a) => a.type === 'bai_bao')?.count ?? 0;
+
 	const maxCat = Math.max(...by_category.map((c) => c.count), 1);
 	const maxLvl = Math.max(...by_level.map((l) => l.count), 1);
 
@@ -81,10 +85,24 @@ export function StatsPanel({
 				))}
 			</div>
 
+			{/* Theo phân hệ: đề tài NCKH vs bài báo / tập san */}
+			<div className={styles.phanHeGrid}>
+				<div className={`${styles.statCard} ${styles.scTotal}`}>
+					<div className={styles.statValue}>{deTaiCount}</div>
+					<div className={styles.statLabel}>Đề tài NCKH</div>
+				</div>
+				<div className={`${styles.statCard} ${styles.scApproved}`}>
+					<div className={styles.statValue}>{baiBaoCount}</div>
+					<div className={styles.statLabel}>Bài báo & Tập san</div>
+				</div>
+			</div>
+
 			{/* Main grid: dept table + category / level */}
 			<div className={styles.statsMainGrid}>
 				<div className={styles.statsCard}>
-					<div className={styles.statsCardHead}>Theo phòng ban (Top 10)</div>
+					<div className={styles.statsCardHead}>
+						Theo khoa / phòng / trung tâm
+					</div>
 					<div className={styles.statsCardBody}>
 						{by_department.length === 0 ? (
 							<p className={styles.statsEmpty}>Chưa có dữ liệu</p>
@@ -94,12 +112,21 @@ export function StatsPanel({
 									<tr>
 										<th className={styles.dtTh}>#</th>
 										<th className={`${styles.dtTh} ${styles.dtThName}`}>
-											Phòng ban
+											Khoa / Phòng / Trung tâm
 										</th>
 										<th className={`${styles.dtTh} ${styles.dtThNum}`}>
 											Đề tài
 										</th>
-										<th className={styles.dtTh}>Tỷ lệ</th>
+										<th className={`${styles.dtTh} ${styles.dtThNum}`}>
+											Bài báo
+										</th>
+										<th className={`${styles.dtTh} ${styles.dtThNum}`}>
+											Tổng
+										</th>
+										<th className={`${styles.dtTh} ${styles.dtThNum}`}>
+											Đã duyệt
+										</th>
+										<th className={styles.dtTh}>Tỷ lệ duyệt</th>
 									</tr>
 								</thead>
 								<tbody>
@@ -113,14 +140,30 @@ export function StatsPanel({
 											</td>
 											<td className={styles.dtTd}>{d.name}</td>
 											<td className={`${styles.dtTd} ${styles.dtNum}`}>
+												{d.de_tai}
+											</td>
+											<td className={`${styles.dtTd} ${styles.dtNum}`}>
+												{d.bai_bao}
+											</td>
+											<td className={`${styles.dtTd} ${styles.dtNum}`}>
 												<strong>{d.total}</strong>
 											</td>
+											<td className={`${styles.dtTd} ${styles.dtNum}`}>
+												{d.approved}
+											</td>
 											<td className={styles.dtTd}>
-												<div className={styles.barTrack}>
-													<div
-														className={styles.barFill}
-														style={{ width: `${(d.total / maxDept) * 100}%` }}
-													/>
+												<div className={styles.rateCell}>
+													<div className={styles.barTrack}>
+														<div
+															className={styles.barFill}
+															style={{
+																width: `${d.approval_rate * 100}%`,
+															}}
+														/>
+													</div>
+													<span className={styles.rateText}>
+														{Math.round(d.approval_rate * 100)}%
+													</span>
 												</div>
 											</td>
 										</tr>

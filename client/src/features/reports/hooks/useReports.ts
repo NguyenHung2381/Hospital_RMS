@@ -9,7 +9,8 @@ import {
 	type ReportSection,
 	type SimpleItem,
 } from '../../topics/api/topicApi';
-import { getDashboardStats, type DashboardStats } from '../api/reportApi';
+import { getDashboardStats } from '../api/reportApi';
+import type { DashboardStats } from '../types/report.type';
 import {
 	buildFinalHtml,
 	buildScheduleHtml,

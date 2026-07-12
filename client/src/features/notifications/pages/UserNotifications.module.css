@@ -307,7 +307,6 @@
 	border-radius: 50%;
 	animation: spin 0.65s linear infinite;
 }
-@keyframes spin { to { transform: rotate(360deg); } }
 
 @media (max-width: 640px) {
 	.toolbar { flex-direction: column; align-items: flex-start; }

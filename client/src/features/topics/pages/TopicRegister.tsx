@@ -1,9 +1,12 @@
-import { AlertSvg, CheckSvg, ChevRSvg, FileTextSvg, HelpSvg, ListSvg, PaperclipSvg, SearchSvg, SendSvg, UploadSvg, UserPlusSvg, XSvg, PlusSvg } from '@/assets/icons';
+import { AlertSvg, CheckSvg, FileTextSvg, ListSvg } from '@/assets/icons';
 import UserLayout from '../../../layouts/UserLayout';
+import { PendingTopicsCard } from '../components/PendingTopicsCard';
+import { RegisterAttachmentsSection } from '../components/RegisterAttachmentsSection';
+import { RegisterMemberSection } from '../components/RegisterMemberSection';
+import { RegisterSidePanel } from '../components/RegisterSidePanel';
 import { useTopicRegister } from '../hooks/useTopicRegister';
 import type { ArticleType, MemberRole } from '../types/topic.type';
-import { getInitials } from '../../../shared/utils/helper';
-import { ARTICLE_ROLE_CFG, ARTICLE_TYPE_CFG, BADGE_CLS, fmtDate, GUIDE_STEPS, STATUS_CFG } from '../utils/topicRegisterHelpers';
+import { ARTICLE_ROLE_CFG, ARTICLE_TYPE_CFG } from '../utils/topicRegisterHelpers';
 import styles from './TopicRegister.module.css';
 
 export default function TopicRegister() {
@@ -430,425 +433,32 @@ export default function TopicRegister() {
 								{isPaper ? 'Tác giả' : 'Thành viên tham gia'}
 							</div>
 
-							<div className={styles.formGroup}>
-								<label className={styles.formLabel}>Tìm kiếm thành viên</label>
-								<div style={{ display: 'flex', gap: 8, marginBottom: 4 }}>
-									<div
-										className={styles.memberSearch}
-										style={{ flex: 1, marginBottom: 0 }}
-									>
-										<span className={styles.memberSearchIcon}>
-											{isSearching ? (
-												<span
-													style={{
-														width: 15,
-														height: 15,
-														border: '2px solid #cbd5e1',
-														borderTopColor: '#1a6abd',
-														borderRadius: '50%',
-														display: 'inline-block',
-														animation: 'spin 0.6s linear infinite',
-													}}
-												/>
-											) : (
-												<SearchSvg />
-											)}
-										</span>
-										<input
-											className={styles.memberSearchInput}
-											placeholder='Tìm theo tên hoặc mã nhân viên...'
-											value={memberQuery}
-											onChange={(e) => {
-												const val = e.target.value;
-												setMemberQuery(val);
-												if (val.trim().length < 2) {
-													setSuggestions([]);
-													setShowSuggestions(false);
-												}
-											}}
-											onBlur={() =>
-												setTimeout(() => setShowSuggestions(false), 180)
-											}
-											onFocus={() =>
-												suggestions.length > 0 && setShowSuggestions(true)
-											}
-										/>
-										{showSuggestions && (
-											<div className={styles.suggestionsBox}>
-												{suggestions.length > 0 ? (
-													suggestions.map((u) => {
-														const already = addedIds.has(u.id);
-														return (
-															<div
-																key={u.id}
-																className={`${styles.suggestionItem} ${already ? styles.suggestionDisabled : ''}`}
-																onMouseDown={() => !already && addMember(u)}
-															>
-																<div className={styles.suggAvatar}>
-																	{getInitials(u.full_name)}
-																</div>
-																<div style={{ flex: 1, minWidth: 0 }}>
-																	<div className={styles.suggName}>
-																		{u.full_name}
-																	</div>
-																	<div className={styles.suggMeta}>
-																		{u.username} · MNV: {u.staff_number ?? '—'}
-																	</div>
-																</div>
-																{already ? (
-																	<span className={styles.suggAdded}>
-																		Đã thêm
-																	</span>
-																) : (
-																	<span className={styles.suggAdd}>+ Thêm</span>
-																)}
-															</div>
-														);
-													})
-												) : (
-													<div
-														style={{
-															padding: '20px 14px',
-															textAlign: 'center',
-															background: 'var(--color-gray-50)',
-															display: 'flex',
-															flexDirection: 'column',
-															alignItems: 'center',
-															gap: 10,
-														}}
-													>
-														<div
-															style={{
-																fontSize: 13,
-																color: 'var(--color-gray-500)',
-															}}
-														>
-															Không tìm thấy nhân viên phù hợp
-														</div>
-														<button
-															type='button'
-															className={styles.btnSecondary}
-															style={{
-																fontSize: 12,
-																padding: '6px 12px',
-																display: 'inline-flex',
-																alignItems: 'center',
-																gap: 6,
-																cursor: 'pointer',
-																boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
-															}}
-															onMouseDown={(e) => {
-																e.preventDefault();
-																setShowSuggestions(false);
-																setManualForm({
-																	...manualForm,
-																	ho_ten: memberQuery,
-																	role: addRole,
-																});
-																setShowManualForm(true);
-															}}
-														>
-															<PlusSvg style={{ width: 12, height: 12 }} />
-															Thêm thủ công
-														</button>
-													</div>
-												)}
-											</div>
-										)}
-									</div>
-									<select
-										className={styles.formSelect}
-										style={{ width: 130, flexShrink: 0 }}
-										value={addRole}
-										onChange={(e) => setAddRole(e.target.value as MemberRole)}
-									>
-										{roleKeys.map((r) => (
-											<option
-												key={r}
-												value={r}
-											>
-												{roleCfg[r]?.label}
-											</option>
-										))}
-									</select>
-								</div>
-								<div className={styles.formHint}>
-									Tìm tối thiểu 2 ký tự · Chỉ thành viên cùng khoa phòng
-								</div>
-							</div>
-
-							{!showManualForm && (
-								<button
-									type='button'
-									className={styles.manualAddTrigger}
-									onClick={() => {
-										setManualForm({
-											ho_ten: '',
-											staff_number: '',
-											phone_number: '',
-											chuc_vu: '',
-											department_id: '',
-											role: pendingMembers.length === 0 ? 'leader' : 'member',
-										});
-										setShowManualForm(true);
-									}}
-								>
-									<UserPlusSvg /> Thêm thành viên thủ công
-								</button>
-							)}
-
-							{showManualForm && (
-								<div className={styles.manualAddForm}>
-									<div className={styles.manualAddTitle}>
-										Thêm thành viên thủ công
-									</div>
-
-									<div className={styles.formRow}>
-										<div className={styles.formGroup}>
-											<label className={styles.formLabel}>
-												Họ tên <span className={styles.formRequired}>*</span>
-											</label>
-											<input
-												className={`${styles.formInput} ${manualErrors.ho_ten ? styles.hasError : ''}`}
-												placeholder='Nguyễn Văn A'
-												value={manualForm.ho_ten}
-												onChange={(e) => {
-													setManualForm({
-														...manualForm,
-														ho_ten: e.target.value,
-													});
-													setManualErrors({ ...manualErrors, ho_ten: '' });
-												}}
-											/>
-											{manualErrors.ho_ten && (
-												<div className={styles.formError}>
-													<AlertSvg /> {manualErrors.ho_ten}
-												</div>
-											)}
-										</div>
-										<div className={styles.formGroup}>
-											<label className={styles.formLabel}>
-												Mã nhân viên{' '}
-												<span className={styles.formRequired}>*</span>
-											</label>
-											<input
-												className={`${styles.formInput} ${manualErrors.staff_number ? styles.hasError : ''}`}
-												placeholder='NV001'
-												value={manualForm.staff_number}
-												onChange={(e) => {
-													setManualForm({
-														...manualForm,
-														staff_number: e.target.value,
-													});
-													setManualErrors({
-														...manualErrors,
-														staff_number: '',
-													});
-												}}
-											/>
-											{manualErrors.staff_number && (
-												<div className={styles.formError}>
-													<AlertSvg /> {manualErrors.staff_number}
-												</div>
-											)}
-										</div>
-									</div>
-
-									<div className={styles.formRow}>
-										<div className={styles.formGroup}>
-											<label className={styles.formLabel}>
-												Số điện thoại{' '}
-												<span className={styles.formRequired}>*</span>
-											</label>
-											<input
-												className={`${styles.formInput} ${manualErrors.phone_number ? styles.hasError : ''}`}
-												placeholder='0912345678'
-												type='tel'
-												value={manualForm.phone_number}
-												onChange={(e) => {
-													setManualForm({
-														...manualForm,
-														phone_number: e.target.value,
-													});
-													setManualErrors({
-														...manualErrors,
-														phone_number: '',
-													});
-												}}
-											/>
-											{manualErrors.phone_number && (
-												<div className={styles.formError}>
-													<AlertSvg /> {manualErrors.phone_number}
-												</div>
-											)}
-										</div>
-										<div className={styles.formGroup}>
-											<label className={styles.formLabel}>
-												Chức danh <span className={styles.formRequired}>*</span>
-											</label>
-											<input
-												className={`${styles.formInput} ${manualErrors.chuc_vu ? styles.hasError : ''}`}
-												placeholder='Bác sĩ, Điều dưỡng...'
-												value={manualForm.chuc_vu}
-												onChange={(e) => {
-													setManualForm({
-														...manualForm,
-														chuc_vu: e.target.value,
-													});
-													setManualErrors({ ...manualErrors, chuc_vu: '' });
-												}}
-											/>
-											{manualErrors.chuc_vu && (
-												<div className={styles.formError}>
-													<AlertSvg /> {manualErrors.chuc_vu}
-												</div>
-											)}
-										</div>
-									</div>
-
-									<div className={styles.formRow}>
-										<div className={styles.formGroup}>
-											<label className={styles.formLabel}>Khoa phòng</label>
-											<select
-												className={styles.formSelect}
-												value={manualForm.department_id}
-												onChange={(e) =>
-													setManualForm({
-														...manualForm,
-														department_id: e.target.value,
-													})
-												}
-											>
-												<option value=''>-- Chọn khoa --</option>
-												{depts.map((d) => (
-													<option
-														key={d.id}
-														value={d.id}
-													>
-														{d.name}
-													</option>
-												))}
-											</select>
-										</div>
-										<div className={styles.formGroup}>
-											<label className={styles.formLabel}>
-												Vai trò trong đề tài
-											</label>
-											<select
-												className={styles.formSelect}
-												value={manualForm.role}
-												onChange={(e) =>
-													setManualForm({
-														...manualForm,
-														role: e.target.value as MemberRole,
-													})
-												}
-											>
-												{roleKeys.map((r) => (
-													<option
-														key={r}
-														value={r}
-													>
-														{roleCfg[r]?.label}
-													</option>
-												))}
-											</select>
-										</div>
-									</div>
-
-									<div
-										style={{
-											display: 'flex',
-											gap: 8,
-											justifyContent: 'flex-end',
-										}}
-									>
-										<button
-											type='button'
-											className={styles.btnSecondary}
-											style={{ padding: '7px 14px', fontSize: 12.5 }}
-											onClick={() => {
-												setShowManualForm(false);
-												setManualErrors({});
-											}}
-										>
-											Huỷ
-										</button>
-										<button
-											type='button'
-											className={styles.btnPrimary}
-											style={{ padding: '7px 14px', fontSize: 12.5 }}
-											onClick={addMemberManual}
-										>
-											Thêm thành viên
-										</button>
-									</div>
-								</div>
-							)}
-
-							{pendingMembers.length > 0 && (
-								<div className={styles.manualBox}>
-									<div className={styles.memberList}>
-										{pendingMembers.map((m) => (
-											<div
-												key={m.id}
-												className={styles.memberItem}
-											>
-												<div className={styles.memberAvatar}>
-													{getInitials(m.ho_ten)}
-												</div>
-												<div className={styles.memberInfo}>
-													<div className={styles.memberName}>{m.ho_ten}</div>
-													<div className={styles.memberMeta}>
-														{m.staff_number && (
-															<span>MNV: {m.staff_number} · </span>
-														)}
-														{m.chuc_vu && <span>{m.chuc_vu} · </span>}
-														{m.phone_number ? (
-															<span>{m.phone_number}</span>
-														) : m.email ? (
-															<span>{m.email}</span>
-														) : null}
-													</div>
-												</div>
-												<select
-													style={{
-														fontSize: 12,
-														padding: '3px 8px',
-														border: '1px solid var(--color-gray-200)',
-														borderRadius: 6,
-														background: 'var(--color-white)',
-														color: 'var(--color-gray-700)',
-														cursor: 'pointer',
-														outline: 'none',
-													}}
-													value={m.role}
-													onChange={(e) =>
-														changeRole(m.id, e.target.value as MemberRole)
-													}
-												>
-													{roleKeys.map((r) => (
-														<option
-															key={r}
-															value={r}
-														>
-															{roleCfg[r]?.label}
-														</option>
-													))}
-												</select>
-												<button
-													type='button'
-													className={styles.removeBtn}
-													onClick={() => removeMember(m.id)}
-													title='Xoá'
-												>
-													<XSvg />
-												</button>
-											</div>
-										))}
-									</div>
-								</div>
-							)}
+							<RegisterMemberSection
+								depts={depts}
+								roleKeys={roleKeys}
+								roleCfg={roleCfg}
+								memberQuery={memberQuery}
+								setMemberQuery={setMemberQuery}
+								suggestions={suggestions}
+								setSuggestions={setSuggestions}
+								showSuggestions={showSuggestions}
+								setShowSuggestions={setShowSuggestions}
+								isSearching={isSearching}
+								addRole={addRole}
+								setAddRole={setAddRole}
+								addedIds={addedIds}
+								addMember={addMember}
+								pendingMembers={pendingMembers}
+								removeMember={removeMember}
+								changeRole={changeRole}
+								showManualForm={showManualForm}
+								setShowManualForm={setShowManualForm}
+								manualForm={manualForm}
+								setManualForm={setManualForm}
+								manualErrors={manualErrors}
+								setManualErrors={setManualErrors}
+								addMemberManual={addMemberManual}
+							/>
 
 							<div
 								className={styles.formSection}
@@ -857,71 +467,15 @@ export default function TopicRegister() {
 								Tài liệu đính kèm
 							</div>
 
-							<div className={styles.formGroup}>
-								<div
-									className={`${styles.dropZone} ${isDragging ? styles.dropZoneActive : ''}`}
-									onClick={() => fileInputRef.current?.click()}
-									onDragOver={(e) => {
-										e.preventDefault();
-										setIsDragging(true);
-									}}
-									onDragLeave={() => setIsDragging(false)}
-									onDrop={(e) => {
-										e.preventDefault();
-										setIsDragging(false);
-										handleFiles(e.dataTransfer.files);
-									}}
-								>
-									<span className={styles.dropZoneIcon}>
-										<UploadSvg />
-									</span>
-									<span className={styles.dropZoneText}>
-										Kéo thả file vào đây hoặc{' '}
-										<span className={styles.dropZoneLink}>chọn file</span>
-									</span>
-									<span className={styles.dropZoneHint}>
-										Dung lượng tối đa: 150MB mỗi file
-									</span>
-									<input
-										ref={fileInputRef}
-										type='file'
-										multiple
-										style={{ display: 'none' }}
-										onChange={(e) => handleFiles(e.target.files)}
-									/>
-								</div>
-								{fileError && (
-									<div className={styles.formError}>
-										<AlertSvg /> {fileError}
-									</div>
-								)}
-								{attachments.length > 0 && (
-									<div className={styles.fileList}>
-										{attachments.map((f) => (
-											<div
-												key={f.name}
-												className={styles.fileItem}
-											>
-												<span className={styles.fileItemIcon}>
-													<PaperclipSvg />
-												</span>
-												<span className={styles.fileItemName}>{f.name}</span>
-												<span className={styles.fileItemSize}>
-													{(f.size / (1024 * 1024)).toFixed(1)} MB
-												</span>
-												<button
-													type='button'
-													className={styles.removeBtn}
-													onClick={() => removeAttachment(f.name)}
-													title='Xoá file'
-												>
-													<XSvg />
-												</button>
-											</div>
-										))}
-									</div>
-								)}
-							</div>
+							<RegisterAttachmentsSection
+								attachments={attachments}
+								fileError={fileError}
+								isDragging={isDragging}
+								fileInputRef={fileInputRef}
+								handleFiles={handleFiles}
+								removeAttachment={removeAttachment}
+								setIsDragging={setIsDragging}
+							/>
 						</div>
 
 						<div className={styles.formFooter}>
@@ -955,161 +509,22 @@ export default function TopicRegister() {
 
 					{/* PENDING TOPICS CARD */}
 					{pendingTopics.length > 0 && (
-						<div className={styles.pendingCard}>
-							<div className={styles.pendingHeader}>
-								<span>Danh sách chờ gửi</span>
-								<span className={styles.pendingBadge}>
-									{pendingTopics.length}
-								</span>
-							</div>
-							<div className={styles.pendingList}>
-								{pendingTopics.map((t, i) => {
-									const roundName =
-										rounds.find((r) => r.id === t.round_id)?.name ?? '—';
-									return (
-										<div
-											key={t.localId}
-											className={styles.pendingItem}
-										>
-											<div className={styles.pendingNum}>{i + 1}</div>
-											<div className={styles.pendingInfo}>
-												<div className={styles.pendingTitle}>
-													<span
-														className={`${styles.badge} ${t.article_type === 'bai_bao' ? styles.badgeTeal : styles.badgeBlue}`}
-														style={{ marginRight: 6 }}
-													>
-														{ARTICLE_TYPE_CFG[t.article_type].tabLabel}
-													</span>
-													{t.title}
-												</div>
-												<div className={styles.pendingMeta}>
-													{roundName} · {t.members.length} thành viên
-													{t.attachments.length > 0 &&
-														` · ${t.attachments.length} file`}
-												</div>
-											</div>
-											<button
-												type='button'
-												className={styles.removeBtn}
-												onClick={() => removeTopicFromList(t.localId)}
-												title='Xoá'
-											>
-												<XSvg />
-											</button>
-										</div>
-									);
-								})}
-							</div>
-							<div className={styles.pendingFooter}>
-								{submitError && (
-									<div className={styles.saveError}>
-										<AlertSvg /> {submitError}
-									</div>
-								)}
-								<button
-									type='button'
-									className={styles.btnPrimary}
-									onClick={() => submitAll('submitted')}
-									disabled={submittingAll}
-								>
-									{submittingAll ? <span className={styles.spinner} /> : null}
-									<SendSvg />
-									Gửi tất cả ({pendingTopics.length})
-								</button>
-							</div>
-						</div>
+						<PendingTopicsCard
+							pendingTopics={pendingTopics}
+							rounds={rounds}
+							removeTopicFromList={removeTopicFromList}
+							submitError={submitError}
+							submittingAll={submittingAll}
+							submitAll={() => submitAll('submitted')}
+						/>
 					)}
 				</div>
 
 				{/* ── RIGHT: SIDE PANEL ── */}
-				<div className={styles.sidePanel}>
-					<div className={styles.sideCard}>
-						<div className={styles.sideCardHeader}>
-							<span>Hướng dẫn đăng ký</span>
-							<HelpSvg
-								width={15}
-								height={15}
-							/>
-						</div>
-						<div className={styles.sideCardBody}>
-							{GUIDE_STEPS.map((s, i) => (
-								<div
-									key={i}
-									className={styles.guideStep}
-								>
-									<div className={styles.guideNum}>{i + 1}</div>
-									<div className={styles.guideText}>
-										<span className={styles.guideTextBold}>{s.title}.</span>{' '}
-										{s.desc}
-									</div>
-								</div>
-							))}
-						</div>
-					</div>
-
-					<div className={styles.sideCard}>
-						<div className={styles.sideCardHeader}>
-							<span>Đề tài của tôi</span>
-							<button
-								type='button'
-								style={{
-									background: 'none',
-									border: 'none',
-									cursor: 'pointer',
-									color: '#1a6abd',
-									fontSize: 12,
-									fontWeight: 600,
-									display: 'inline-flex',
-									alignItems: 'center',
-									gap: 3,
-								}}
-								onClick={() => navigate('/user/my-topics')}
-							>
-								Xem tất cả{' '}
-								<ChevRSvg
-									width={12}
-									height={12}
-								/>
-							</button>
-						</div>
-						<div className={styles.sideCardBody}>
-							{myTopics.length === 0 ? (
-								<div
-									style={{
-										textAlign: 'center',
-										padding: '24px 0',
-										color: 'var(--color-gray-400)',
-										fontSize: 13,
-									}}
-								>
-									Bạn chưa có đề tài nào
-								</div>
-							) : (
-								myTopics.slice(0, 5).map((t) => (
-									<div
-										key={t.id}
-										className={styles.myTopicItem}
-										onClick={() => navigate('/user/my-topics')}
-									>
-										<div className={styles.myTopicTitle}>{t.title}</div>
-										<div className={styles.myTopicMeta}>
-											<span>{fmtDate(t.created_at)}</span>
-											<span
-												className={`${styles.badge} ${styles[BADGE_CLS[t.status] as keyof typeof styles]}`}
-											>
-												<span
-													className={styles.badgeDot}
-													style={{ background: STATUS_CFG[t.status].dot }}
-												/>
-												{STATUS_CFG[t.status].label}
-											</span>
-										</div>
-									</div>
-								))
-							)}
-						</div>
-					</div>
-				</div>
+				<RegisterSidePanel
+					myTopics={myTopics}
+					navigate={navigate}
+				/>
 			</div>
 
 			{toast && (

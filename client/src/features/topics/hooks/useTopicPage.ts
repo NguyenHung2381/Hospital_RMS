@@ -33,6 +33,9 @@ export function useTopicPage() {
 	const [levelFilters, setLevelFilters] = useState<Set<string>>(new Set());
 	const [catFilters, setCatFilters] = useState<Set<string>>(new Set());
 	const [deptFilters, setDeptFilters] = useState<Set<string>>(new Set());
+	const [articleTypeFilters, setArticleTypeFilters] = useState<Set<string>>(
+		new Set(),
+	);
 	const [activeTab, setActiveTab] = useState<TabKey>('all');
 	const [page, setPage] = useState(1);
 	const [rowsPerPage, setRowsPerPage] = useState<number>(PAGE_SIZE_OPTIONS[0]);
@@ -138,6 +141,11 @@ export function useTopicPage() {
 				return false;
 			if (deptFilters.size > 0 && !deptFilters.has(t.department_id ?? ''))
 				return false;
+			if (
+				articleTypeFilters.size > 0 &&
+				!articleTypeFilters.has(t.article_type ?? 'de_tai')
+			)
+				return false;
 			if (search) {
 				const q = search.toLowerCase();
 				if (
@@ -157,6 +165,7 @@ export function useTopicPage() {
 		levelFilters,
 		catFilters,
 		deptFilters,
+		articleTypeFilters,
 		search,
 	]);
 
@@ -178,6 +187,10 @@ export function useTopicPage() {
 				level_id: form.level_id || undefined,
 				department_id: form.department_id || undefined,
 				status: form.status,
+				article_type: form.article_type,
+				journal_name: form.journal_name || undefined,
+				doi: form.doi || undefined,
+				publish_date: form.publish_date || undefined,
 			});
 			if (pendingMembers.length > 0) {
 				await Promise.allSettled(
@@ -214,6 +227,10 @@ export function useTopicPage() {
 				level_id: form.level_id || undefined,
 				department_id: form.department_id || undefined,
 				status: form.status,
+				article_type: form.article_type,
+				journal_name: form.journal_name || undefined,
+				doi: form.doi || undefined,
+				publish_date: form.publish_date || undefined,
 			});
 			setTopics((prev) =>
 				prev.map((t) => (t.id === editTopic.id ? updated : t)),
@@ -246,6 +263,7 @@ export function useTopicPage() {
 		levelFilters,
 		catFilters,
 		deptFilters,
+		articleTypeFilters,
 		activeTab,
 		page,
 		rowsPerPage,
@@ -269,6 +287,7 @@ export function useTopicPage() {
 		setLevelFilters,
 		setCatFilters,
 		setDeptFilters,
+		setArticleTypeFilters,
 		setActiveTab,
 		setPage,
 		setRowsPerPage,

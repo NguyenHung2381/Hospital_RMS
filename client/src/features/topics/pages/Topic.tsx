@@ -187,6 +187,19 @@ export default function TopicPage() {
 							placeholder='Phòng ban'
 							searchable
 						/>
+						<MultiSelect
+							className={styles.filterSelectWrap}
+							options={[
+								{ id: 'de_tai', label: 'Đề tài NCKH' },
+								{ id: 'bai_bao', label: 'Bài báo & Tập san' },
+							]}
+							selected={d.articleTypeFilters}
+							onChange={(next) => {
+								d.setArticleTypeFilters(next);
+								d.setPage(1);
+							}}
+							placeholder='Loại'
+						/>
 					</div>
 				</div>
 
@@ -278,6 +291,9 @@ export default function TopicPage() {
 													title={t.title}
 													onClick={() => d.setViewTopic(t)}
 												>
+													{t.article_type === 'bai_bao' && (
+														<Badge cls='badgeBlue'>Bài báo</Badge>
+													)}{' '}
 													{t.title}
 												</div>
 												<div className={styles.topicMeta}>

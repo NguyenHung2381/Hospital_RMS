@@ -86,6 +86,10 @@ export interface TopicForm {
 	level_id: string;
 	department_id: string;
 	status: TopicStatus;
+	article_type: ArticleType;
+	journal_name: string;
+	doi: string;
+	publish_date: string;
 }
 
 export interface FormErrors {

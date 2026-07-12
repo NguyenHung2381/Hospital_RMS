@@ -1,0 +1,115 @@
+.viewerBackdrop {
+	position: fixed;
+	inset: 0;
+	background: rgba(0, 0, 0, 0.65);
+	backdrop-filter: blur(2px);
+	z-index: 600;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 24px;
+	animation: modalFadeIn 200ms ease both;
+}
+
+.viewerModal {
+	background: var(--color-white);
+	border-radius: var(--radius-xl);
+	box-shadow: 0 24px 80px rgba(0, 0, 0, 0.25);
+	width: 88vw;
+	max-width: 1100px;
+	height: 86vh;
+	display: flex;
+	flex-direction: column;
+	overflow: hidden;
+	animation: modalPopIn 220ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+.viewerHeader {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: 14px 20px;
+	border-bottom: 1px solid var(--color-gray-100);
+	gap: 12px;
+	flex-shrink: 0;
+}
+
+.viewerTitle {
+	font-size: var(--font-size-sm);
+	font-weight: var(--font-weight-semibold);
+	color: var(--color-gray-800);
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.viewerClose {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 28px;
+	height: 28px;
+	border-radius: var(--radius-md);
+	border: 1.5px solid var(--color-gray-200);
+	background: transparent;
+	color: var(--color-gray-600);
+	font-size: 14px;
+	cursor: pointer;
+	flex-shrink: 0;
+	transition: all var(--transition-fast);
+	font-family: var(--font-body);
+	line-height: 1;
+}
+
+.viewerClose:hover {
+	background: var(--color-gray-100);
+	color: var(--color-gray-800);
+	border-color: var(--color-gray-300);
+}
+
+.viewerStatus {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 10px;
+	height: 100%;
+	min-height: 200px;
+	font-size: var(--font-size-sm);
+	color: var(--color-gray-500);
+	font-weight: var(--font-weight-medium);
+}
+
+.spinner {
+	width: 20px;
+	height: 20px;
+	border: 2.5px solid var(--color-gray-200);
+	border-top-color: var(--color-primary);
+	border-radius: 50%;
+	animation: spin 0.7s linear infinite;
+	flex-shrink: 0;
+}
+
+.viewerDocxWrap {
+	flex: 1;
+	overflow-y: auto;
+	min-height: 0;
+	background: #f5f5f5;
+	padding: 0;
+}
+
+.viewerDocxWrap::-webkit-scrollbar {
+	width: 6px;
+}
+
+.viewerDocxWrap::-webkit-scrollbar-thumb {
+	background: var(--color-gray-300);
+	border-radius: 999px;
+}
+
+.viewerFrame {
+	flex: 1;
+	width: 100%;
+	border: none;
+	min-height: 0;
+}
+

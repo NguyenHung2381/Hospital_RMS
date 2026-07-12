@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
-import { BASE_URL } from '../../../shared/api/axios';
-import { getToken } from '../../../shared/utils/storage';
-import styles from '../pages/MyTopics.module.css';
+import { BASE_URL } from '../../api/axios';
+import { getToken } from '../../utils/storage';
+import styles from './FileViewerModal.module.css';
 
 interface FileViewerModalProps {
 	file: { url: string; name: string; isWord: boolean };
@@ -18,6 +18,7 @@ export function FileViewerModal({ file, onClose }: FileViewerModalProps) {
 
 	useEffect(() => {
 		let cancelled = false;
+
 		const render = async () => {
 			try {
 				const token = getToken();
@@ -48,11 +49,13 @@ export function FileViewerModal({ file, onClose }: FileViewerModalProps) {
 					blobUrlRef.current = url;
 					if (!cancelled) setPdfBlobUrl(url);
 				}
+
 				if (!cancelled) setRenderState('done');
 			} catch {
 				if (!cancelled) setRenderState('error');
 			}
 		};
+
 		void render();
 		return () => {
 			cancelled = true;
@@ -80,12 +83,10 @@ export function FileViewerModal({ file, onClose }: FileViewerModalProps) {
 						✕
 					</button>
 				</div>
+
 				{renderState === 'loading' && (
 					<div className={styles.viewerStatus}>
-						<span
-							className={styles.spinner}
-							style={{ borderTopColor: 'var(--color-primary)' }}
-						/>
+						<span className={styles.spinner} />
 						Đang tải tài liệu...
 					</div>
 				)}
@@ -97,6 +98,7 @@ export function FileViewerModal({ file, onClose }: FileViewerModalProps) {
 						Không thể tải tài liệu. Hãy thử tải về.
 					</div>
 				)}
+
 				{file.isWord && (
 					<div
 						className={styles.viewerDocxWrap}
@@ -105,6 +107,7 @@ export function FileViewerModal({ file, onClose }: FileViewerModalProps) {
 						<div ref={containerRef} />
 					</div>
 				)}
+
 				{!file.isWord && renderState === 'done' && pdfBlobUrl && (
 					<embed
 						src={pdfBlobUrl}

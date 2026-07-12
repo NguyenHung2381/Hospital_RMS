@@ -15,6 +15,7 @@ const getAll = async (filters, actor = null) => {
 		level_id,
 		participant_id,
 		year,
+		article_type,
 	} = filters || {};
 
 	const pool = await getPool();
@@ -76,6 +77,10 @@ const getAll = async (filters, actor = null) => {
 		where += ' AND r.year = @year';
 		req.input('year', sql.Int, parseInt(year, 10));
 	}
+	if (article_type) {
+		where += ' AND t.article_type = @article_type';
+		req.input('article_type', sql.VarChar(20), article_type);
+	}
 
 	const result = await req.query(`
     SELECT t.id, t.title, t.description, t.status, t.created_at,
@@ -84,6 +89,7 @@ const getAll = async (filters, actor = null) => {
            t.level_id, l.name AS level_name,
            t.department_id, d.name AS department_name,
            t.created_by, u.full_name AS created_by_name,
+           t.article_type, t.journal_name, t.doi, t.publish_date,
            (SELECT COUNT(*) FROM topic_members tm WHERE tm.topic_id = t.id) AS member_count,
            0 AS progress
     FROM topics t
@@ -273,6 +279,22 @@ const update = async (id, data, actorId, isAdmin = false) => {
 	if (data.status !== undefined) {
 		sets.push('status = @status');
 		req.input('status', sql.VarChar(15), data.status);
+	}
+	if (data.article_type !== undefined) {
+		sets.push('article_type = @article_type');
+		req.input('article_type', sql.VarChar(20), data.article_type);
+	}
+	if (data.journal_name !== undefined) {
+		sets.push('journal_name = @journal_name');
+		req.input('journal_name', sql.NVarChar(255), data.journal_name || null);
+	}
+	if (data.doi !== undefined) {
+		sets.push('doi = @doi');
+		req.input('doi', sql.VarChar(100), data.doi || null);
+	}
+	if (data.publish_date !== undefined) {
+		sets.push('publish_date = @publish_date');
+		req.input('publish_date', sql.Date, data.publish_date || null);
 	}
 
 	const relatedChanged = Array.isArray(data.related_department_ids);

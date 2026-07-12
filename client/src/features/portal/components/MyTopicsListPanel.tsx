@@ -1,4 +1,3 @@
-import type React from 'react';
 import { DocSvg, SearchSvg, UsersSvg } from '@/assets/icons';
 import type { Topic } from '../../topics/types/topic.type';
 import { formatDate } from '../../../shared/utils/formatDate';
@@ -7,24 +6,8 @@ import {
 	STATUS_CFG,
 	TABS,
 } from '../utils/myTopicsHelpers';
+import { Badge } from './MyTopicsBadge';
 import styles from '../pages/MyTopics.module.css';
-
-function Badge({
-	cls,
-	dot,
-	children,
-}: {
-	cls: string;
-	dot?: boolean;
-	children: React.ReactNode;
-}) {
-	return (
-		<span className={`${styles.badge} ${styles[cls as keyof typeof styles]}`}>
-			{dot && <span className={styles.badgeDot} />}
-			{children}
-		</span>
-	);
-}
 
 interface MyTopicsListPanelProps {
 	filtered: Topic[];

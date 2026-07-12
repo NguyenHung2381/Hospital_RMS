@@ -6,7 +6,8 @@ import {
 	getTopics,
 	type SimpleItem,
 } from '../../topics/api/topicApi';
-import { getDashboardStats, type DashboardStats } from '../api/dashboardApi';
+import { getDashboardStats } from '../api/dashboardApi';
+import type { DashboardStats } from '../types/dashboard.type';
 import {
 	ROWS_PER_PAGE,
 	type TabKey,

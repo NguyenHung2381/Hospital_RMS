@@ -1118,66 +1118,7 @@
 	flex-shrink: 0;
 }
 
-@keyframes spin {
-	to {
-		transform: rotate(360deg);
-	}
-}
-
-/* ── FILE VIEWER MODAL ── */
-.viewerBackdrop {
-	position: fixed;
-	inset: 0;
-	background: rgba(0, 0, 0, 0.65);
-	backdrop-filter: blur(2px);
-	z-index: 600;
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	padding: 24px;
-	animation: fadeIn 200ms ease both;
-}
-
-@keyframes fadeIn {
-	from {
-		opacity: 0;
-	}
-	to {
-		opacity: 1;
-	}
-}
-
-.viewerModal {
-	background: var(--color-white);
-	border-radius: var(--radius-xl);
-	box-shadow: 0 24px 80px rgba(0, 0, 0, 0.25);
-	width: 88vw;
-	max-width: 1100px;
-	height: 86vh;
-	display: flex;
-	flex-direction: column;
-	overflow: hidden;
-}
-
-.viewerHeader {
-	display: flex;
-	align-items: center;
-	justify-content: space-between;
-	padding: 14px 20px;
-	border-bottom: 1px solid var(--color-gray-100);
-	gap: 12px;
-	flex-shrink: 0;
-}
-
-.viewerTitle {
-	font-size: var(--font-size-sm);
-	font-weight: var(--font-weight-semibold);
-	color: var(--color-gray-800);
-	white-space: nowrap;
-	overflow: hidden;
-	text-overflow: ellipsis;
-}
-
+/* ── FILE VIEWER MODAL: close button reused by EditTopicModal ── */
 .viewerClose {
 	background: none;
 	border: none;
@@ -1193,28 +1134,6 @@
 
 .viewerClose:hover {
 	color: var(--color-gray-800);
-}
-
-.viewerStatus {
-	flex: 1;
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	gap: var(--space-3);
-	font-size: var(--font-size-sm);
-	color: var(--color-gray-500);
-}
-
-.viewerDocxWrap {
-	flex: 1;
-	overflow-y: auto;
-	padding: 24px;
-}
-
-.viewerFrame {
-	flex: 1;
-	width: 100%;
-	border: none;
 }
 
 /* ── SUPPLEMENT: ACTIONS BAR ── */
@@ -1289,7 +1208,7 @@
 	align-items: center;
 	justify-content: center;
 	padding: 24px;
-	animation: fadeIn 200ms ease both;
+	animation: modalFadeIn 200ms ease both;
 }
 
 .editModal {

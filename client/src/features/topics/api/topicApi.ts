@@ -19,6 +19,7 @@ export interface TopicListParams {
 	level_id?: string;
 	participant_id?: string;
 	year?: number | string;
+	article_type?: ArticleType;
 }
 
 interface TopicListResponse {
@@ -53,6 +54,10 @@ export interface UpdateTopicPayload {
 	level_id?: string;
 	department_id?: string;
 	status?: string;
+	article_type?: ArticleType;
+	journal_name?: string;
+	doi?: string;
+	publish_date?: string;
 }
 
 export type TopicMemberApiRole = 'leader' | 'secretary' | 'member';

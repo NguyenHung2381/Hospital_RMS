@@ -225,7 +225,11 @@ router.post(
 router.put(
 	'/:id',
 	authorizePermission(['topics', 'update']),
-	[body('title').optional().notEmpty()],
+	[
+		body('title').optional().notEmpty(),
+		body('article_type').optional().isIn(['de_tai', 'bai_bao']),
+		body('publish_date').optional({ checkFalsy: true }).isISO8601(),
+	],
 	validate,
 	ctrl.updateOne,
 );

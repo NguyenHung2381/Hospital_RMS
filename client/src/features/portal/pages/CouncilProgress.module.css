@@ -1387,10 +1387,6 @@
 	animation: spin 0.8s linear infinite;
 }
 
-@keyframes spin {
-	to { transform: rotate(360deg); }
-}
-
 /* Chairman consensus form */
 .conclusionChairmanBadge {
 	display: inline-flex;
@@ -1455,5 +1451,4 @@
 		height: 320px;
 	}
 }
-
 

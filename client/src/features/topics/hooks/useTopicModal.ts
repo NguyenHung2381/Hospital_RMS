@@ -52,6 +52,10 @@ export function useTopicModal({
 		level_id: topic?.level_id ?? '',
 		department_id: topic?.department_id ?? '',
 		status: topic?.status ?? 'submitted',
+		article_type: topic?.article_type ?? 'de_tai',
+		journal_name: topic?.journal_name ?? '',
+		doi: topic?.doi ?? '',
+		publish_date: topic?.publish_date ?? '',
 	});
 	const [errors, setErrors] = useState<FormErrors>({});
 
@@ -177,13 +181,16 @@ export function useTopicModal({
 
 	const validate = (): boolean => {
 		const e: FormErrors = {};
+		const isPaper = form.article_type === 'bai_bao';
 		if (!form.title.trim()) e.title = 'Vui lòng nhập tên đề tài';
 		else if (form.title.length < 10)
 			e.title = 'Tên đề tài quá ngắn (ít nhất 10 ký tự)';
 		if (!form.round_id) e.round_id = 'Vui lòng chọn đợt nghiên cứu';
 		if (!form.category_id) e.category_id = 'Vui lòng chọn phân loại';
-		if (!form.level_id) e.level_id = 'Vui lòng chọn cấp độ';
+		if (!isPaper && !form.level_id) e.level_id = 'Vui lòng chọn cấp độ';
 		if (!form.department_id) e.department_id = 'Vui lòng chọn phòng ban / khoa';
+		if (isPaper && !form.journal_name.trim())
+			e.journal_name = 'Vui lòng nhập tên tập san / tạp chí';
 		setErrors(e);
 		return Object.keys(e).length === 0;
 	};
