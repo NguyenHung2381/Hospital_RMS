@@ -8,7 +8,7 @@ import type {
 
 export const catalogApi = {
 	list: (tab: CatalogTab) =>
-		apiClient.get<CatalogListResponse>(`/${tab}?limit=500`),
+		apiClient.get<CatalogListResponse>(`/${tab}?limit=0`),
 
 	create: (tab: CatalogTab, form: CatalogFormData) =>
 		apiClient.post<CatalogItem>(`/${tab}`, {

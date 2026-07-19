@@ -1,4 +1,5 @@
 const router = require('express').Router();
+const multer = require('multer');
 const { body } = require('express-validator');
 const ctrl = require('../controllers/councilController');
 const exportCtrl = require('../controllers/councilExportController');
@@ -71,6 +72,44 @@ router.post(
 	[body('round_id').notEmpty().withMessage('Đợt nghiên cứu không được để trống')],
 	validate,
 	exportCtrl.exportExcel,
+);
+
+/**
+ * @swagger
+ * /councils/import-excel:
+ *   post:
+ *     summary: Nhập hội đồng từ file Excel lịch bảo vệ (mỗi dòng 1 đề tài, 3 cột hội đồng multi-line)
+ *     tags: [Councils]
+ *     description: >
+ *       Gom các dòng cùng bộ 5 ghế thành hội đồng, match người với nhân viên /
+ *       danh bạ ngoài viện theo tên+khoa, match đề tài có sẵn trong đợt theo tên
+ *       rồi gán kèm phiên sáng/chiều. Gửi dry_run=1 để xem trước không ghi dữ liệu.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             required: [round_id, file]
+ *             properties:
+ *               round_id: { type: string, example: "DOT20261" }
+ *               dry_run: { type: string, enum: ["0", "1"] }
+ *               file: { type: string, format: binary }
+ *     responses:
+ *       200:
+ *         description: "dry_run: preview councils[]; commit: { councils_created, topics_assigned, warnings[] }"
+ *       400:
+ *         description: File không hợp lệ hoặc thiếu cột bắt buộc
+ */
+const uploadExcel = multer({
+	storage: multer.memoryStorage(),
+	limits: { fileSize: 10 * 1024 * 1024 },
+});
+router.post(
+	'/import-excel',
+	authorizePermission(['councils', 'create']),
+	uploadExcel.single('file'),
+	ctrl.importExcel,
 );
 
 // ─── Cổng đánh giá tiến độ của thành viên hội đồng ────────────────────────────

@@ -161,7 +161,7 @@ export function useAdminNotifications() {
 			.then((res) => setDepts(res.data))
 			.catch(() => {});
 
-		getUsers({ limit: 200 })
+		getUsers({ limit: 0 })
 			.then((res) => setUsersList(res.data))
 			.catch(() => {})
 			.finally(() => setLoadingUsers(false));

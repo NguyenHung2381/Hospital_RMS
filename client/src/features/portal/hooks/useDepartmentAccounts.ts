@@ -62,7 +62,7 @@ export function useDepartmentAccounts() {
 			setLoadError(null);
 			try {
 				const [usersRes, rolesRes] = await Promise.all([
-					getUsers({ department_id: deptId, limit: 200 }),
+					getUsers({ department_id: deptId, limit: 0 }),
 					getRolesList(),
 				]);
 				setUsers(usersRes.data);

@@ -164,7 +164,7 @@ export function NotificationHistoryTable({
 											</td>
 											<td className={styles.td}>
 												<span
-													className={`${styles.typeBadge} ${styles[`type_${category}`]}`}
+													className={`${styles.typeBadge} ${styles[`type_${row.type}`] ?? styles[`type_${category}`]}`}
 												>
 													{typeLabel(row.type)}
 												</span>

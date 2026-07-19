@@ -66,10 +66,10 @@ export const getUsers = (params?: UserListParams) => {
 };
 
 export const getDepts = () =>
-	apiClient.get<SimpleListResponse>('/departments?limit=200');
+	apiClient.get<SimpleListResponse>('/departments?limit=0');
 
 export const getRolesList = () =>
-	apiClient.get<SimpleListResponse>('/roles?limit=100');
+	apiClient.get<SimpleListResponse>('/roles?limit=0');
 
 export const createUser = (payload: CreateUserPayload) =>
 	apiClient.post<User>('/users', payload);

@@ -31,7 +31,7 @@ export function useRound() {
 	useRealtimeUpdate('round', refreshData);
 
 	useEffect(() => {
-		getRounds({ limit: 200 })
+		getRounds({ limit: 0 })
 			.then((res) => setRounds(res.data))
 			.catch(() => setLoadError('Không thể tải danh sách đợt nghiên cứu'))
 			.finally(() => setIsLoadingData(false));

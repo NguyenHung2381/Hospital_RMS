@@ -52,7 +52,7 @@ export function useTopicPage() {
 
 	useEffect(() => {
 		Promise.all([
-			getTopics({ limit: 500 }),
+			getTopics({ limit: 0 }),
 			getCategories(),
 			getLevels(),
 			getRounds(),

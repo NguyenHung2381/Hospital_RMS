@@ -169,4 +169,5 @@ export type ModalType =
 	| 'bulk-edit'
 	| 'bulk-delete'
 	| 'auto-assign'
+	| 'import'
 	| null;

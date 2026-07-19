@@ -44,7 +44,7 @@ export function useUserHome() {
 	useEffect(() => {
 		if (!currentUserId) return;
 		let cancelled = false;
-		getTopics({ limit: 200, participant_id: currentUserId })
+		getTopics({ limit: 0, participant_id: currentUserId })
 			.then((res) => {
 				if (!cancelled) {
 					setTopics(res.data);

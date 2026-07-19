@@ -285,6 +285,65 @@ export interface AutoAssignResult {
 export const autoAssignCouncils = (payload: AutoAssignPayload) =>
 	apiClient.post<AutoAssignResult>('/councils/auto-assign', payload);
 
+// ─── Nhập hội đồng từ file Excel lịch bảo vệ ────────────────────────────────
+export interface ImportMatchedPerson {
+	type: 'user' | 'external';
+	id: string;
+	full_name: string;
+	department_name?: string | null;
+	specialty_group?: string | null;
+}
+
+export interface ImportSeatPreview {
+	role: SeatRole;
+	raw_name: string;
+	raw_dept: string;
+	matched?: ImportMatchedPerson | null;
+	error?: string;
+}
+
+export interface ImportTopicPreview {
+	row: number;
+	raw_title: string;
+	session: CouncilSession | null;
+	matched?: { id: string; title: string } | null;
+	warning?: string;
+	skip_assign?: boolean;
+	// Ghế của dòng này lệch bộ gốc → ghế thay thế theo đề tài
+	substitutes: ImportSeatPreview[];
+}
+
+export interface ImportCouncilPreview {
+	name: string;
+	location: string | null;
+	specialty_group: string | null;
+	duplicate: boolean;
+	seats: ImportSeatPreview[];
+	topics: ImportTopicPreview[];
+}
+
+export interface ImportExcelResult {
+	dry_run: boolean;
+	councils?: ImportCouncilPreview[];
+	topics_total?: number;
+	topics_matched?: number;
+	councils_created?: number;
+	topics_assigned?: number;
+	warnings: string[];
+}
+
+export const importCouncilsExcel = (
+	roundId: string,
+	file: File,
+	dryRun: boolean,
+) => {
+	const form = new FormData();
+	form.append('round_id', roundId);
+	form.append('dry_run', dryRun ? '1' : '0');
+	form.append('file', file);
+	return apiClient.postForm<ImportExcelResult>('/councils/import-excel', form);
+};
+
 // ─── Xuất Excel lịch bảo vệ (theo mẫu chuẩn bệnh viện) ──────────────────────
 export const exportCouncilSchedule = (payload: {
 	round_id: string;

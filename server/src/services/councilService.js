@@ -1,5 +1,6 @@
 const { getPool, sql } = require('../config/db');
 const { broadcast } = require('./eventService');
+const { paging } = require('../utils/paging');
 
 const VN_OFFSET_MS = 7 * 60 * 60 * 1000; // UTC+7 (Asia/Ho_Chi_Minh)
 
@@ -43,12 +44,12 @@ const ROLE_ORDER = `CASE cm.role
 
 const getAll = async ({ page = 1, limit = 20, round_id, status } = {}) => {
 	const pool = await getPool();
-	const offset = (page - 1) * limit;
+	const pg = paging(page, limit);
 	let where = 'WHERE 1=1';
 	const req = pool
 		.request()
-		.input('offset', sql.Int, offset)
-		.input('limit', sql.Int, Number(limit));
+		.input('offset', sql.Int, pg.offset)
+		.input('limit', sql.Int, pg.limit);
 
 	if (round_id) {
 		where += ' AND c.round_id = @round_id';
@@ -80,14 +81,14 @@ const getAll = async ({ page = 1, limit = 20, round_id, status } = {}) => {
     LEFT JOIN research_rounds r ON r.id = c.round_id
     ${where}
     ORDER BY c.created_at DESC
-    OFFSET @offset ROWS FETCH NEXT @limit ROWS ONLY;
+    ${pg.fetchClause};
 
     SELECT COUNT(*) AS total FROM councils c ${where};
   `);
 
 	return {
 		data: result.recordsets[0].map(normalize),
-		pagination: { page, limit, total: result.recordsets[1][0].total },
+		pagination: { page: pg.page, limit: pg.limit, total: result.recordsets[1][0].total },
 	};
 };
 

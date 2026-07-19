@@ -285,6 +285,30 @@
 	transform: translateY(0);
 }
 
+.btnAmber {
+	background: #fff7ed;
+	color: #c2410c;
+	border-color: #fed7aa;
+	box-shadow: 0 4px 10px rgba(245, 166, 35, 0.08);
+}
+
+.btnAmber:hover {
+	background: #ffedd5;
+	border-color: #fdba74;
+}
+
+.btnGreen {
+	background: var(--color-primary-pale);
+	color: var(--color-primary-dark);
+	border-color: #a8e6cb;
+	box-shadow: 0 4px 10px rgba(46, 184, 122, 0.08);
+}
+
+.btnGreen:hover {
+	background: #d4f3e5;
+	border-color: var(--color-primary-light);
+}
+
 .btnAddHeader svg,
 .btnCreateCouncil svg {
 	width: 14px;
@@ -469,6 +493,60 @@
 	color: var(--color-gray-500);
 	line-height: 1.4;
 	word-break: break-word;
+}
+
+.memberList {
+	list-style: none;
+	margin: 0;
+	padding: 0;
+	display: flex;
+	flex-direction: column;
+	gap: 3px;
+	font-size: var(--font-size-xs);
+	line-height: 1.4;
+}
+
+.memberItem {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	white-space: nowrap;
+	color: var(--color-gray-500);
+}
+
+.memberItem svg {
+	width: 12px;
+	height: 12px;
+	flex-shrink: 0;
+}
+
+.memberRole {
+	font-weight: var(--font-weight-bold);
+	min-width: 26px;
+}
+
+.memberName {
+	color: var(--color-gray-600);
+}
+
+.roleCT {
+	color: var(--color-primary-dark);
+}
+
+.roleTK {
+	color: var(--color-secondary-dark);
+}
+
+.rolePB1 {
+	color: var(--color-accent);
+}
+
+.rolePB2 {
+	color: var(--color-warning);
+}
+
+.roleTV {
+	color: var(--color-gray-500);
 }
 
 .tdActions {

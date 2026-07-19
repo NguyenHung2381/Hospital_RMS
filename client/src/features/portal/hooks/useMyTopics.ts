@@ -103,8 +103,8 @@ export function useMyTopics() {
 	useEffect(() => {
 		if (!currentUserId) return;
 		const deptParams = userDeptId
-			? { limit: 200, department_id: userDeptId }
-			: { limit: 200 };
+			? { limit: 0, department_id: userDeptId }
+			: { limit: 0 };
 
 		async function fetchTopics() {
 			setLoading(true);
@@ -113,13 +113,13 @@ export function useMyTopics() {
 				if (canSeeDept) {
 					const [deptRes, myRes] = await Promise.all([
 						getTopics(deptParams),
-						getTopics({ limit: 200, participant_id: currentUserId }),
+						getTopics({ limit: 0, participant_id: currentUserId }),
 					]);
 					setDeptTopics(deptRes.data);
 					setMyTopics(myRes.data);
 				} else {
 					const res = await getTopics({
-						limit: 200,
+						limit: 0,
 						participant_id: currentUserId,
 					});
 					setMyTopics(res.data);

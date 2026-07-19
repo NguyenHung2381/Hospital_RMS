@@ -1,6 +1,7 @@
 const bcrypt = require('bcryptjs');
 const { getPool, sql } = require('../config/db');
 const { broadcast } = require('./eventService');
+const { paging } = require('../utils/paging');
 
 // department_id/account_type nhận danh sách phân tách bởi dấu phẩy (multi-select trên UI)
 const splitList = (v) => (v ? String(v).split(',').filter(Boolean) : []);
@@ -26,11 +27,11 @@ const getAll = async ({
 	is_active,
 }) => {
 	const pool = await getPool();
-	const offset = (page - 1) * limit;
+	const pg = paging(page, limit);
 	const deptIds = splitList(department_id);
 	const accountTypes = splitList(account_type);
 
-	const req = pool.request().input('offset', sql.Int, offset).input('limit', sql.Int, limit);
+	const req = pool.request().input('offset', sql.Int, pg.offset).input('limit', sql.Int, pg.limit);
 
 	// Mệnh đề dùng chung (search/role/is_active) — không phụ thuộc dept/loại tài khoản
 	const baseClauses = ['1=1'];
@@ -69,7 +70,7 @@ const getAll = async ({
     LEFT JOIN roles r ON r.id = u.role_id
     ${whereAll}
     ORDER BY u.created_at DESC
-    OFFSET @offset ROWS FETCH NEXT @limit ROWS ONLY;
+    ${pg.fetchClause};
 
     SELECT COUNT(*) AS total FROM users u ${whereAll};
 
@@ -96,7 +97,7 @@ const getAll = async ({
 
 	return {
 		data: rows,
-		pagination: { page, limit, total: totalRows[0].total },
+		pagination: { page: pg.page, limit: pg.limit, total: totalRows[0].total },
 		global_stats: {
 			total: globalStatsRows[0].total,
 			active: globalStatsRows[0].active,

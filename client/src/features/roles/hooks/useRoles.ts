@@ -33,7 +33,7 @@ export function useRoles() {
 	useRealtimeUpdate('role', refreshData);
 
 	useEffect(() => {
-		getRoles({ limit: 200 })
+		getRoles({ limit: 0 })
 			.then((res) => setRoles(res.data))
 			.catch(() => showToast('error', 'Không thể tải danh sách vai trò'))
 			.finally(() => setIsLoadingData(false));

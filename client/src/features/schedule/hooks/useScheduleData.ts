@@ -9,7 +9,7 @@ import type { RoundRow } from '../types/schedule.type';
 // "council-*" không khớp phase nào nên EventDetailModal phải tự ẩn nút sửa).
 async function councilDeadlines(roundId: string): Promise<RoundDeadline[]> {
 	try {
-		const res = await getCouncils({ round_id: roundId, limit: 100 });
+		const res = await getCouncils({ round_id: roundId, limit: 0 });
 		return res.data
 			.filter((c) => c.defense_date)
 			.map((c) => ({
@@ -47,7 +47,7 @@ export function useScheduleData(year: number) {
 	useEffect(() => {
 		let cancelled = false;
 		dispatch({ type: 'start' });
-		getRounds({ year, limit: 50 })
+		getRounds({ year, limit: 0 })
 			.then(async (res) => {
 				const withDl = await Promise.all(
 					res.data.map(async (r) => {

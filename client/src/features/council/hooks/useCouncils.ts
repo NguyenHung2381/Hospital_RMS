@@ -40,13 +40,13 @@ export function useCouncils() {
 	}, []);
 
 	useEffect(() => {
-		getRounds({ limit: 200 })
+		getRounds({ limit: 0 })
 			.then((res) => setRounds(res.data))
 			.catch(() => undefined);
 	}, []);
 
 	useEffect(() => {
-		getCouncils({ limit: 200 })
+		getCouncils({ limit: 0 })
 			.then((res) => setCouncils(res.data))
 			.catch(() => showToast('error', 'Không thể tải danh sách hội đồng'))
 			.finally(() => setIsLoadingData(false));

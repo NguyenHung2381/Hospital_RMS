@@ -221,7 +221,7 @@ export default function UserNotifications() {
 											<div className={styles.itemTop}>
 												<span className={styles.itemTitle}>{n.title}</span>
 												<span
-													className={`${styles.typeBadge} ${styles[`type_${notif.type}`]}`}
+													className={`${styles.typeBadge} ${styles[`type_${n.type}`] ?? styles[`type_${notif.type}`]}`}
 												>
 													{typeLabel(n.type)}
 												</span>

@@ -2,6 +2,7 @@ const { getPool, sql } = require('../config/db');
 const bcrypt = require('bcryptjs');
 const notifSvc = require('./notificationService');
 const { broadcast } = require('./eventService');
+const { paging } = require('../utils/paging');
 
 const getAll = async (filters, actor = null) => {
 	const {
@@ -19,13 +20,13 @@ const getAll = async (filters, actor = null) => {
 	} = filters || {};
 
 	const pool = await getPool();
-	const offset = (page - 1) * limit;
+	const pg = paging(page, limit);
 
 	let where = 'WHERE 1=1';
 	const req = pool
 		.request()
-		.input('offset', sql.Int, offset)
-		.input('limit', sql.Int, Number(limit));
+		.input('offset', sql.Int, pg.offset)
+		.input('limit', sql.Int, pg.limit);
 
 	// Lọc theo role: manager chỉ thấy khoa mình, member chỉ thấy đề tài tham gia
 	if (actor) {
@@ -100,7 +101,7 @@ const getAll = async (filters, actor = null) => {
     LEFT JOIN users u ON u.id = t.created_by
     ${where}
     ORDER BY t.created_at DESC
-    OFFSET @offset ROWS FETCH NEXT @limit ROWS ONLY;
+    ${pg.fetchClause};
 
     SELECT COUNT(*) AS total FROM topics t
     LEFT JOIN research_rounds r ON r.id = t.round_id
@@ -109,7 +110,7 @@ const getAll = async (filters, actor = null) => {
 
 	return {
 		data: result.recordsets[0],
-		pagination: { page, limit, total: result.recordsets[1][0].total },
+		pagination: { page: pg.page, limit: pg.limit, total: result.recordsets[1][0].total },
 	};
 };
 

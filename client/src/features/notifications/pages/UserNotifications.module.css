@@ -222,6 +222,17 @@
 .type_approval { background: #e1f5ee; color: #065f46; }
 .type_warning { background: #fef3c7; color: #92400e; }
 .type_topic { background: #ede9fe; color: #5b21b6; }
+/* Màu riêng theo từng loại thông báo; thiếu loại nào thì rơi về màu category ở trên */
+.type_topic_approved { background: #e1f5ee; color: #065f46; }
+.type_topic_rejected { background: #fee2e2; color: #b91c1c; }
+.type_topic_submitted { background: #e0f2fe; color: #0369a1; }
+.type_topic_supplement_requested { background: #fef3c7; color: #92400e; }
+.type_supplement_opened { background: #ccfbf1; color: #0f766e; }
+.type_supplement_closed { background: #e5e7eb; color: #374151; }
+.type_broadcast { background: #e0f2fe; color: #0369a1; }
+.type_deadline_reminder { background: #fef3c7; color: #92400e; }
+.type_member_added { background: #ede9fe; color: #5b21b6; }
+.type_account_granted { background: #e0e7ff; color: #4338ca; }
 
 .itemMsg {
 	font-size: var(--font-size-sm);

@@ -9,6 +9,8 @@ import {
 	RoundSvg,
 	TopicSvg,
 	TrashSvg,
+	UploadSvg,
+	UserSvg,
 	XSvg,
 } from '@/assets/icons';
 import AdminLayout from '../../../layouts/AdminLayout';
@@ -20,6 +22,7 @@ import {
 import { CouncilDeleteModal } from '../components/CouncilDeleteModal';
 import { CouncilDetailModal } from '../components/CouncilDetailModal';
 import { CouncilFormModal } from '../components/CouncilFormModal';
+import { CouncilImportModal } from '../components/CouncilImportModal';
 import { exportCouncilSchedule } from '../api/councilApi';
 import { useCouncils } from '../hooks/useCouncils';
 import { SEAT_ROLES, STATUS_LABELS, type Council } from '../types/council.type';
@@ -29,7 +32,7 @@ export default function Council() {
 	const d = useCouncils();
 	const [expanded, setExpanded] = useState<Set<string>>(new Set());
 
-	// Gom hội đồng theo đợt, giữ thứ tự xuất hiện trong danh sách
+	// Gom hội đồng theo đợt, đợt mới nhất (năm giảm dần, số đợt giảm dần) lên đầu
 	const groups = useMemo(() => {
 		const map = new Map<string, Council[]>();
 		for (const c of d.councils) {
@@ -37,12 +40,22 @@ export default function Council() {
 			arr.push(c);
 			map.set(c.round_id, arr);
 		}
-		return [...map.entries()].map(([roundId, items]) => ({
-			roundId,
-			label: items[0].round_name ?? roundId,
-			items,
-		}));
-	}, [d.councils]);
+		const roundById = new Map(d.rounds.map((r) => [r.id, r]));
+		return [...map.entries()]
+			.map(([roundId, items]) => ({
+				roundId,
+				label: items[0].round_name ?? roundId,
+				items,
+			}))
+			.sort((a, b) => {
+				const ra = roundById.get(a.roundId);
+				const rb = roundById.get(b.roundId);
+				return (
+					(rb?.year ?? 0) - (ra?.year ?? 0) ||
+					(rb?.round_number ?? 0) - (ra?.round_number ?? 0)
+				);
+			});
+	}, [d.councils, d.rounds]);
 
 	const [exportingRound, setExportingRound] = useState<string | null>(null);
 	const exportRound = async (roundId: string) => {
@@ -73,13 +86,19 @@ export default function Council() {
 	const headerActions = (
 		<div className={styles.headerActions}>
 			<button
-				className={styles.btnCreateCouncil}
+				className={`${styles.btnCreateCouncil} ${styles.btnAmber}`}
 				onClick={() => d.setModal('auto-assign')}
 			>
 				<RefreshSvg /> Tự động phân công
 			</button>
 			<button
 				className={styles.btnCreateCouncil}
+				onClick={() => d.setModal('import')}
+			>
+				<UploadSvg /> Nhập Excel
+			</button>
+			<button
+				className={`${styles.btnCreateCouncil} ${styles.btnGreen}`}
 				onClick={() => d.setModal('add')}
 			>
 				<RefreshSvg /> Tạo hội đồng
@@ -327,13 +346,36 @@ export default function Council() {
 											>
 												{c.member_count ?? 0}/{SEAT_ROLES.length}
 											</span>
-											<span className={styles.memberNames}>
-												{c.members_summary || (
-													<span className={styles.emptyDash}>
-														Chưa xếp thành viên
-													</span>
-												)}
-											</span>
+											{c.members_summary ? (
+												<ul className={styles.memberList}>
+													{c.members_summary
+														.split(/,\s+(?=(?:CT|TK|PB1|PB2|TV): )/)
+														.map((m) => {
+															const i = m.indexOf(': ');
+															const role = i > 0 ? m.slice(0, i) : '';
+															return (
+																<li
+																	key={m}
+																	className={`${styles.memberItem} ${styles[`role${role}`] ?? ''}`}
+																>
+																	<UserSvg />
+																	{role && (
+																		<span className={styles.memberRole}>
+																			{role}
+																		</span>
+																	)}
+																	<span className={styles.memberName}>
+																		{i > 0 ? m.slice(i + 2) : m}
+																	</span>
+																</li>
+															);
+														})}
+												</ul>
+											) : (
+												<span className={styles.emptyDash}>
+													Chưa xếp thành viên
+												</span>
+											)}
 										</div>
 									</td>
 									<td className={styles.td}>
@@ -389,6 +431,13 @@ export default function Council() {
 				<AutoAssignModal
 					rounds={d.rounds}
 					existingCouncils={d.allCouncils}
+					onClose={() => d.setModal(null)}
+					onDone={d.refreshData}
+				/>
+			)}
+			{d.modal === 'import' && (
+				<CouncilImportModal
+					rounds={d.rounds}
 					onClose={() => d.setModal(null)}
 					onDone={d.refreshData}
 				/>

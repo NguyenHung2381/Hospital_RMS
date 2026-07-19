@@ -86,7 +86,7 @@ export function AutoAssignModal({
 				external_reviewer_ids: externalIds.length ? externalIds : undefined,
 			});
 
-			const updatedRes = await getCouncils({ round_id: roundId, limit: 200 });
+			const updatedRes = await getCouncils({ round_id: roundId, limit: 0 });
 			const updatedCouncils = updatedRes.data;
 
 			const existingIds = new Set(existingCouncils.map((c: Council) => c.id));

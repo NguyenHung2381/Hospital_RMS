@@ -6,7 +6,7 @@ import type {
 } from '../types/department.type';
 
 export const getDepartments = () =>
-	apiClient.get<DeptListResponse>('/departments');
+	apiClient.get<DeptListResponse>('/departments?limit=0');
 
 export const createDepartment = (form: DeptFormData) =>
 	apiClient.post<Department>('/departments', {

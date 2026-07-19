@@ -126,10 +126,10 @@ export function useApproval(): ApprovalState {
 			setError(null);
 			try {
 				const [submitted, approved, rejected, supplement] = await Promise.all([
-					getApprovalTopics({ limit: 100, status: 'submitted' }),
-					getApprovalTopics({ limit: 100, status: 'approved' }),
-					getApprovalTopics({ limit: 100, status: 'rejected' }),
-					getApprovalTopics({ limit: 100, status: 'supplement' }),
+					getApprovalTopics({ limit: 0, status: 'submitted' }),
+					getApprovalTopics({ limit: 0, status: 'approved' }),
+					getApprovalTopics({ limit: 0, status: 'rejected' }),
+					getApprovalTopics({ limit: 0, status: 'supplement' }),
 				]);
 				if (cancelled) return;
 				const next = [

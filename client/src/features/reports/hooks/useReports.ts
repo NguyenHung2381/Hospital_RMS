@@ -217,7 +217,7 @@ export function useReports(): ReportsState {
 
 	const getAllIds = async () => {
 		const res = await getTopics({
-			limit: 1000,
+			limit: 0,
 			year: yearFilter || undefined,
 			round_id: roundFilter || undefined,
 			department_id: deptFilter || undefined,

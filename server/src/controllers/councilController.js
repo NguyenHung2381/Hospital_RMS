@@ -1,5 +1,6 @@
 const councilService = require('../services/councilService');
 const councilAutoAssignService = require('../services/councilAutoAssignService');
+const councilImportService = require('../services/councilImportService');
 const { success, created, notFound } = require('../utils/response');
 const { createCrudController } = require('./crudController');
 
@@ -9,6 +10,34 @@ const autoAssign = async (req, res, next) => {
 	try {
 		const result = await councilAutoAssignService.autoAssign(req.body, req.user.id);
 		return success(res, result, `Đã tạo ${result.councils_created} hội đồng nháp`);
+	} catch (err) {
+		next(err);
+	}
+};
+
+const importExcel = async (req, res, next) => {
+	try {
+		if (!req.file) {
+			return res.status(400).json({ success: false, message: 'Chưa chọn file Excel.' });
+		}
+		if (!req.body.round_id) {
+			return res.status(400).json({ success: false, message: 'Đợt nghiên cứu không được để trống.' });
+		}
+		const result = await councilImportService.importExcel(
+			{
+				buffer: req.file.buffer,
+				round_id: req.body.round_id,
+				dry_run: req.body.dry_run === '1' || req.body.dry_run === 'true',
+			},
+			req.user.id,
+		);
+		return success(
+			res,
+			result,
+			result.dry_run
+				? 'Đã đọc file — kiểm tra trước khi nhập'
+				: `Đã nhập ${result.councils_created} hội đồng, gán ${result.topics_assigned} đề tài`,
+		);
 	} catch (err) {
 		next(err);
 	}
@@ -169,6 +198,7 @@ const removeSeatSubstitute = async (req, res, next) => {
 module.exports = {
 	...base,
 	autoAssign,
+	importExcel,
 	getMembers,
 	addMember,
 	updateMember,

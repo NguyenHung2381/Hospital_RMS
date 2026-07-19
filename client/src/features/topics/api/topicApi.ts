@@ -155,16 +155,16 @@ export const uploadTopicFiles = (
 };
 
 export const getCategories = () =>
-	apiClient.get<SimpleListResponse>('/categories?limit=100');
+	apiClient.get<SimpleListResponse>('/categories?limit=0');
 
 export const getLevels = () =>
-	apiClient.get<SimpleListResponse>('/levels?limit=100');
+	apiClient.get<SimpleListResponse>('/levels?limit=0');
 
 export const getRounds = () =>
-	apiClient.get<SimpleListResponse>('/research-rounds?limit=100');
+	apiClient.get<SimpleListResponse>('/research-rounds?limit=0');
 
 export const getDepts = () =>
-	apiClient.get<SimpleListResponse>('/departments?limit=200');
+	apiClient.get<SimpleListResponse>('/departments?limit=0');
 
 export interface UserSuggestion {
 	id: string;

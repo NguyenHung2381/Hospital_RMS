@@ -18,27 +18,24 @@ const uploadFiles = async (topicId, filesData, batchNote, actorId) => {
 	return result.recordset[0];
 };
 
-const getByTopic = async (topicId, { page = 1, limit = 20 } = {}) => {
+// File của một đề tài luôn ít — trả toàn bộ, không phân trang
+const getByTopic = async (topicId) => {
 	const pool = await getPool();
-	const offset = (page - 1) * limit;
 	const result = await pool
 		.request()
-		.input('topic_id', sql.VarChar(15), topicId)
-		.input('offset', sql.Int, offset)
-		.input('limit', sql.Int, limit).query(`
+		.input('topic_id', sql.VarChar(15), topicId).query(`
       SELECT f.*, u.full_name AS uploaded_by_name, fb.note AS batch_note
       FROM files f
       LEFT JOIN users u ON u.id = f.created_by
       LEFT JOIN file_batches fb ON fb.id = f.batch_id
       WHERE f.topic_id = @topic_id AND f.is_deleted = 0
-      ORDER BY f.created_at DESC
-      OFFSET @offset ROWS FETCH NEXT @limit ROWS ONLY;
-
-      SELECT COUNT(*) AS total FROM files WHERE topic_id = @topic_id AND is_deleted = 0;
+      ORDER BY f.created_at DESC;
     `);
+	// Giữ shape { data, pagination } để client không phải đổi type
+	const data = result.recordset;
 	return {
-		data: result.recordsets[0],
-		pagination: { page, limit, total: result.recordsets[1][0].total },
+		data,
+		pagination: { page: 1, limit: 0, total: data.length },
 	};
 };
 

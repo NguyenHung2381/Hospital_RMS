@@ -1,5 +1,6 @@
 const { getPool, sql } = require('../config/db');
 const { broadcast } = require('./eventService');
+const { paging } = require('../utils/paging');
 
 // Factory for simple lookup tables: departments, categories, levels, roles, research_rounds
 // idPrefix: fixed prefix prepended to the random portion of the generated ID
@@ -9,12 +10,12 @@ const createCrudService = (tableName, idLength = 20, idPrefix = '') => {
 
 	const getAll = async ({ page = 1, limit = 100, search } = {}) => {
 		const pool = await getPool();
-		const offset = (page - 1) * limit;
+		const pg = paging(page, limit, 100);
 		let where = 'WHERE 1=1';
 		const req = pool
 			.request()
-			.input('offset', sql.Int, offset)
-			.input('limit', sql.Int, limit);
+			.input('offset', sql.Int, pg.offset)
+			.input('limit', sql.Int, pg.limit);
 
 		if (search) {
 			where += ' AND (name LIKE @search OR description LIKE @search)';
@@ -23,12 +24,12 @@ const createCrudService = (tableName, idLength = 20, idPrefix = '') => {
 
 		const result = await req.query(`
       SELECT * FROM ${tableName} ${where} ORDER BY created_at DESC
-      OFFSET @offset ROWS FETCH NEXT @limit ROWS ONLY;
+      ${pg.fetchClause};
       SELECT COUNT(*) AS total FROM ${tableName} ${where};
     `);
 		return {
 			data: result.recordsets[0],
-			pagination: { page, limit, total: result.recordsets[1][0].total },
+			pagination: { page: pg.page, limit: pg.limit, total: result.recordsets[1][0].total },
 		};
 	};
 
