@@ -24,6 +24,7 @@ export interface CreateRoundPayload {
 	name: string;
 	year: number;
 	round_number: number;
+	round_type?: string;
 	start_date: string; // yyyy-mm-dd
 	end_date: string; // yyyy-mm-dd
 	status?: RoundStatus;
@@ -33,6 +34,7 @@ export interface UpdateRoundPayload {
 	name?: string;
 	year?: number;
 	round_number?: number;
+	round_type?: string;
 	start_date?: string; // yyyy-mm-dd
 	end_date?: string; // yyyy-mm-dd
 	status?: RoundStatus;
@@ -57,6 +59,7 @@ export function formToPayload(form: RoundForm): CreateRoundPayload {
 		name: form.name,
 		year: form.year,
 		round_number: form.round_number,
+		round_type: form.round_type || undefined,
 		start_date: toApiDate(form.start_date),
 		end_date: toApiDate(form.end_date),
 		status: form.status,

@@ -30,8 +30,8 @@ export const SESSION_LABELS: Record<CouncilSession, string> = {
 };
 
 export const STATUS_LABELS: Record<CouncilStatus, string> = {
-	draft: 'Nháp',
-	finalized: 'Đã chốt',
+	draft: 'Bản nháp',
+	finalized: 'Chính thức',
 };
 
 export interface CouncilMember {

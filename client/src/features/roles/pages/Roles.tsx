@@ -1,8 +1,6 @@
 import AdminLayout from '../../../layouts/AdminLayout';
 import {
 	CheckSvg,
-	ChevLSvg,
-	ChevRSvg,
 	EditSvg,
 	KeySvg,
 	PlusSvg,
@@ -12,10 +10,13 @@ import {
 	UsersSvg,
 	XSvg,
 } from '@/assets/icons';
+import { Pagination } from '../../../shared/components/Table/Pagination';
 import { RoleDeleteModal, RoleFormModal } from '../components/RoleModals';
 import { RolePermissionModal } from '../components/RolePermissionModal';
 import { useRoles } from '../hooks/useRoles';
 import styles from './Roles.module.css';
+
+const PAGE_SIZE_OPTIONS = [5, 10, 25, 0] as const;
 
 function getInitials(name: string) {
 	const parts = name.trim().split(/\s+/);
@@ -271,60 +272,20 @@ export default function Roles() {
 
 			{/* Pagination */}
 			{r.filtered.length > 0 && r.totalPages > 1 && (
-				<div className={styles.pagination}>
-					<span className={styles.paginationInfo}>
-						{r.pageSize === 0
-							? `Hiển thị tất cả ${r.filtered.length} vai trò`
-							: `${(r.safePage - 1) * r.pageSize + 1}–${Math.min(r.safePage * r.pageSize, r.filtered.length)} / ${r.filtered.length}`}
-					</span>
-					<div className={styles.paginationControls}>
-						<button
-							className={styles.pageBtn}
-							onClick={() => r.setPage((p) => Math.max(1, p - 1))}
-							disabled={r.safePage === 1}
-						>
-							<ChevLSvg />
-						</button>
-						{Array.from({ length: r.totalPages }, (_, idx) => idx + 1)
-							.filter(
-								(p) =>
-									p === 1 ||
-									p === r.totalPages ||
-									Math.abs(p - r.safePage) <= 1,
-							)
-							.reduce<(number | 'ellipsis')[]>((acc, p, idx, arr) => {
-								if (idx > 0 && p - (arr[idx - 1] as number) > 1)
-									acc.push('ellipsis');
-								acc.push(p);
-								return acc;
-							}, [])
-							.map((p, idx) =>
-								p === 'ellipsis' ? (
-									<span
-										key={`e${idx}`}
-										className={styles.pageEllipsis}
-									>
-										…
-									</span>
-								) : (
-									<button
-										key={p}
-										className={`${styles.pageBtn} ${p === r.safePage ? styles.pageBtnActive : ''}`}
-										onClick={() => r.setPage(p as number)}
-									>
-										{p}
-									</button>
-								),
-							)}
-						<button
-							className={styles.pageBtn}
-							onClick={() => r.setPage((p) => Math.min(r.totalPages, p + 1))}
-							disabled={r.safePage === r.totalPages}
-						>
-							<ChevRSvg />
-						</button>
-					</div>
-				</div>
+				<Pagination
+					page={r.safePage}
+					totalPages={r.totalPages}
+					total={r.filtered.length}
+					rowsPerPage={r.pageSize}
+					pageSizeOptions={PAGE_SIZE_OPTIONS}
+					onPageChange={r.setPage}
+					onRowsPerPageChange={(n) => {
+						r.setPageSize(n);
+						r.setPage(1);
+					}}
+					itemLabel='vai trò'
+					hideSizeSelect
+				/>
 			)}
 
 			{/* Modals */}

@@ -1,4 +1,5 @@
-﻿import { ActivitySvg, ClipboardCheckSvg, DocSvg, InfoSvg } from '@/assets/icons';
+﻿import { useNavigate } from 'react-router-dom';
+import { ActivitySvg, ClipboardCheckSvg, DocSvg, InfoSvg } from '@/assets/icons';
 import AdminLayout from '../../../layouts/AdminLayout';
 import {
 	DeptBarChart,
@@ -16,6 +17,7 @@ import {
 import styles from './Dashboard.module.css';
 
 export default function Dashboard() {
+	const navigate = useNavigate();
 	const {
 		stats,
 		statsLoading,
@@ -57,7 +59,7 @@ export default function Dashboard() {
 
 	return (
 		<AdminLayout
-			pageTitle='Dashboard tổng quan'
+			pageTitle='Tổng quan'
 			pageSubtitle='Hệ thống Quản lý Nghiên cứu Khoa học — Đợt 1 năm 2026'
 		>
 			{/* ── KPI ──────────────────────────── */}
@@ -172,7 +174,12 @@ export default function Dashboard() {
 				<div className={styles.approvalCard}>
 					<div className={styles.cardHeader}>
 						<span className={styles.cardTitle}>Phê duyệt gần đây</span>
-						<span className={styles.cardViewAll}>Xem tất cả →</span>
+						<span
+							className={styles.cardViewAll}
+							onClick={() => navigate('/admin/approvals')}
+						>
+							Xem tất cả →
+						</span>
 					</div>
 					<div className={styles.approvalList}>
 						{statsLoading ? (
@@ -276,7 +283,12 @@ export default function Dashboard() {
 				<div className={styles.deptSummaryCard}>
 					<div className={styles.cardHeader}>
 						<span className={styles.cardTitle}>Đề tài theo phòng ban</span>
-						<span className={styles.cardViewAll}>Chi tiết →</span>
+						<span
+							className={styles.cardViewAll}
+							onClick={() => navigate('/admin/departments')}
+						>
+							Chi tiết →
+						</span>
 					</div>
 					<div className={styles.deptList}>
 						{statsLoading

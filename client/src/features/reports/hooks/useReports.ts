@@ -9,7 +9,11 @@ import {
 	type ReportSection,
 	type SimpleItem,
 } from '../../topics/api/topicApi';
-import { getDashboardStats } from '../api/reportApi';
+import {
+	exportDashboardStats,
+	getDashboardStats,
+	type StatsExportSection,
+} from '../api/reportApi';
 import type { DashboardStats } from '../types/report.type';
 import {
 	buildFinalHtml,
@@ -68,6 +72,11 @@ export interface ReportsState {
 	exporting: boolean;
 	exportError: string;
 	handleExport: () => void;
+
+	// Stats export (Excel, server-side)
+	statsExporting: boolean;
+	statsExportError: string;
+	handleStatsExport: (sections: StatsExportSection[]) => Promise<boolean>;
 
 	// Derived
 	activeType: (typeof REPORT_TYPES)[number];
@@ -142,6 +151,32 @@ export function useReports(): ReportsState {
 	// Export
 	const [exporting, setExporting] = useState(false);
 	const [exportError, setExportError] = useState('');
+
+	// Stats export
+	const [statsExporting, setStatsExporting] = useState(false);
+	const [statsExportError, setStatsExportError] = useState('');
+
+	const handleStatsExport = async (sections: StatsExportSection[]) => {
+		setStatsExporting(true);
+		setStatsExportError('');
+		try {
+			const blob = await exportDashboardStats(yearFilter, sections);
+			const url = URL.createObjectURL(blob);
+			const a = document.createElement('a');
+			a.href = url;
+			a.download = `thong-ke-de-tai-${yearFilter}.xlsx`;
+			document.body.appendChild(a);
+			a.click();
+			document.body.removeChild(a);
+			URL.revokeObjectURL(url);
+			return true;
+		} catch (err) {
+			setStatsExportError(err instanceof Error ? err.message : 'Lỗi xuất dữ liệu');
+			return false;
+		} finally {
+			setStatsExporting(false);
+		}
+	};
 
 	useEffect(() => {
 		getRounds()
@@ -225,7 +260,7 @@ export function useReports(): ReportsState {
 
 			if (format === 'xlsx') {
 				const serverSections: ReportSection[] =
-					reportType === 'summary' ? ['topics'] : [...finalSections];
+					reportType === 'summary' ? ['overview', 'topics'] : [...finalSections];
 				const fnMap: Record<string, string> = {
 					summary: `tong-hop-de-tai-${yearFilter}`,
 					final: `bao-cao-nckh-${yearFilter}`,
@@ -337,6 +372,9 @@ export function useReports(): ReportsState {
 		exporting,
 		exportError,
 		handleExport,
+		statsExporting,
+		statsExportError,
+		handleStatsExport,
 		activeType,
 	};
 }

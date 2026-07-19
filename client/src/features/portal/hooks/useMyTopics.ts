@@ -145,6 +145,7 @@ export function useMyTopics() {
 			approved: activeTopics.filter((t) => t.status === 'approved').length,
 			rejected: activeTopics.filter((t) => t.status === 'rejected').length,
 			supplement: activeTopics.filter((t) => t.status === 'supplement').length,
+			cancelled: activeTopics.filter((t) => t.status === 'cancelled').length,
 		}),
 		[activeTopics],
 	);

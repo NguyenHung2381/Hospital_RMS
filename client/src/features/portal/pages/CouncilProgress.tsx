@@ -1,4 +1,5 @@
 import UserLayout from '../../../layouts/UserLayout';
+import { parseDate } from '../../../shared/utils/formatDate';
 import { SEAT_ROLE_LABELS } from '../../council/types/council.type';
 import { ProgressConclusionTab } from '../components/ProgressConclusionTab';
 import { ProgressFilesSection } from '../components/ProgressFilesSection';
@@ -45,7 +46,7 @@ export default function CouncilProgress() {
 	return (
 		<UserLayout
 			pageTitle='Đánh giá tiến độ đề tài'
-			pageSubtitle='Hội đồng đánh giá tiến độ các đề tài được phân công; thư ký upload file đánh giá'
+			pageSubtitle='Hội đồng đánh giá tiến độ các đề tài được phân công; thư ký tải lên biên bản và tài liệu đánh giá'
 			userName={user?.full_name ?? 'Người dùng'}
 			userRole={user?.role_name ?? 'Thành viên'}
 			hideSidebar
@@ -57,11 +58,10 @@ export default function CouncilProgress() {
 			) : councils.length === 0 ? (
 				<div className={styles.stateBox}>
 					<div className={styles.emptyTitle}>
-						Bạn chưa có ghế trong hội đồng nào
+						Bạn chưa được phân công vào hội đồng nào
 					</div>
 					<div className={styles.emptyDesc}>
-						Khi được phân công vào hội đồng, đề tài cần đánh giá tiến độ sẽ
-						hiển thị tại đây.
+						Khi được phân công vào thành viên hội đồng, danh sách đề tài cần đánh giá tiến độ sẽ hiển thị tại đây.
 					</div>
 				</div>
 			) : (
@@ -94,6 +94,14 @@ export default function CouncilProgress() {
 									};
 									const others = t.reviews.filter((r) => r.user_id !== user?.id);
 									const reviewed = t.reviews.filter((r) => r.rating != null || r.progress_percent != null);
+									const defenseDate = parseDate(t.defense_date);
+									const now = new Date();
+									const isReportDay =
+										!!defenseDate &&
+										defenseDate.getFullYear() === now.getFullYear() &&
+										defenseDate.getMonth() === now.getMonth() &&
+										defenseDate.getDate() === now.getDate();
+									const effectiveTab = isReportDay ? activeTab : 'council-conclusion';
 
 									return (
 										<div className={styles.detailsContent}>
@@ -150,15 +158,17 @@ export default function CouncilProgress() {
 
 											{/* Tab Navigation */}
 											<div className={styles.tabsContainer}>
+												{isReportDay && (
+													<button
+														className={`${styles.tabBtn} ${effectiveTab === 'my-review' ? styles.activeTab : ''}`}
+														onClick={() => setActiveTab('my-review')}
+													>
+														<span className={styles.tabIcon}>📝</span>
+														<span className={styles.tabLabel}>Đánh giá cá nhân</span>
+													</button>
+												)}
 												<button
-													className={`${styles.tabBtn} ${activeTab === 'my-review' ? styles.activeTab : ''}`}
-													onClick={() => setActiveTab('my-review')}
-												>
-													<span className={styles.tabIcon}>📝</span>
-													<span className={styles.tabLabel}>Đánh giá cá nhân</span>
-												</button>
-												<button
-													className={`${styles.tabBtn} ${activeTab === 'council-conclusion' ? styles.activeTab : ''}`}
+													className={`${styles.tabBtn} ${effectiveTab === 'council-conclusion' ? styles.activeTab : ''}`}
 													onClick={() => setActiveTab('council-conclusion')}
 												>
 													<span className={styles.tabIcon}>👥</span>
@@ -168,7 +178,7 @@ export default function CouncilProgress() {
 
 											{/* Tab Contents */}
 											<div className={styles.tabPanel}>
-												{activeTab === 'my-review' && (
+												{isReportDay && effectiveTab === 'my-review' && (
 													<ProgressMyReviewTab
 														topic={t}
 														draft={d}
@@ -179,7 +189,7 @@ export default function CouncilProgress() {
 													/>
 												)}
 
-												{activeTab === 'council-conclusion' && (
+												{effectiveTab === 'council-conclusion' && (
 													<ProgressConclusionTab
 														topic={t}
 														others={others}
@@ -213,8 +223,8 @@ export default function CouncilProgress() {
 								})()
 							) : (
 								<div className={styles.emptyDetailsState}>
-									<div className={styles.emptyDetailsTitle}>Vui lòng chọn một đề tài</div>
-									<div className={styles.emptyDetailsDesc}>Chọn đề tài từ danh sách bên trái để xem đầy đủ thông tin và nhập kết quả đánh giá.</div>
+									<div className={styles.emptyDetailsTitle}>Vui lòng chọn đề tài để đánh giá</div>
+									<div className={styles.emptyDetailsDesc}>Chọn một đề tài từ danh sách bên trái để xem thông tin chi tiết và tiến hành đánh giá.</div>
 								</div>
 							)}
 						</main>

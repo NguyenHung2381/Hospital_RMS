@@ -4,8 +4,8 @@ const dbConfig = {
 	server: process.env.DB_SERVER || 'localhost',
 	port: parseInt(process.env.DB_PORT) || 1433,
 	database: process.env.DB_DATABASE || 'RMS_HOSPITAL',
-	user: process.env.DB_USER || 'sa',
-	password: process.env.DB_PASSWORD || '123',
+	user: process.env.DB_USER,
+	password: process.env.DB_PASSWORD,
 
 	// Timeout kết nối và query — phải đặt ở top-level, KHÔNG nằm trong options
 	connectionTimeout: 30000, // 30s chờ thiết lập kết nối

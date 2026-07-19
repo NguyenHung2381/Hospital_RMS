@@ -29,7 +29,7 @@ export const LEVEL_CFG: Record<TopicLevel, { label: string; cls: string }> = {
 export const APV_HISTORY_CFG: Record<ApvStatus, string> = {
 	pending: 'Nộp hồ sơ',
 	approved: 'Phê duyệt',
-	rejected: 'Từ chối',
+	rejected: 'Không phê duyệt',
 	info_requested: 'Yêu cầu bổ sung',
 };
 
@@ -42,13 +42,14 @@ const FALLBACK_LEVEL_LABEL: Record<string, string> = {
 
 export function toApvStatus(status: string): ApvStatus {
 	if (status === 'approved' || status === 'rejected') return status;
+	if (status === 'supplement') return 'info_requested';
 	return 'pending';
 }
 
 export function getLevelStyle(level: string) {
 	return (
 		LEVEL_CFG[level as TopicLevel] ?? {
-			label: FALLBACK_LEVEL_LABEL[level] ?? level ?? 'Chua phan cap',
+			label: FALLBACK_LEVEL_LABEL[level] ?? level ?? 'Chưa phân cấp',
 			cls: 'badgeGray',
 		}
 	);
@@ -125,10 +126,10 @@ export function mapTopicToRecord(topic: TopicApprovalItem): ApprovalRecord {
 		topic_description: topic.description ?? '',
 		topic_level: topic.level_id ?? '',
 		topic_category:
-			topic.category_name ?? topic.category_id ?? 'Chua phan loai',
+			topic.category_name ?? topic.category_id ?? 'Chưa phân loại',
 		topic_dept:
-			topic.department_name ?? topic.department_id ?? 'Chua gan khoa/phong',
-		topic_round: topic.round_name ?? topic.round_id ?? 'Chua gan dot',
+			topic.department_name ?? topic.department_id ?? 'Chưa gán khoa/phòng',
+		topic_round: topic.round_name ?? topic.round_id ?? 'Chưa gán đợt',
 		topic_member_count: topic.member_count ?? 0,
 		status,
 		comment: null,

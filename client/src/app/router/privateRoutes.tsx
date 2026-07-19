@@ -27,6 +27,9 @@ const Schedule = lazy(() => import('../../features/schedule/pages/Schedule'));
 const AdminNotifications = lazy(
 	() => import('../../features/notifications/pages/AdminNotifications'),
 );
+const ActivityLogs = lazy(
+	() => import('../../features/activity-log/pages/ActivityLogs'),
+);
 
 // ── User portal pages ─────────────────────────────────────
 const UserHome = lazy(() => import('../../features/portal/pages/UserHome'));
@@ -104,6 +107,10 @@ export const adminRoutes: RouteObject[] = [
 	{
 		path: '/admin/notifications',
 		element: admin('Quản lý thông báo', <AdminNotifications />),
+	},
+	{
+		path: '/admin/activity-logs',
+		element: admin('Nhật ký hoạt động', <ActivityLogs />),
 	},
 ];
 

@@ -222,6 +222,12 @@
 	color: rgba(255, 255, 255, 0.75);
 	cursor: pointer;
 	border-left: 2px solid transparent;
+	border-top: none;
+	border-right: none;
+	border-bottom: none;
+	background: transparent;
+	width: 100%;
+	box-sizing: border-box;
 	transition: all var(--transition-fast);
 	text-decoration: none;
 	position: relative;

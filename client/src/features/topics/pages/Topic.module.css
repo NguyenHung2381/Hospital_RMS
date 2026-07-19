@@ -2454,6 +2454,56 @@
 	}
 }
 
+/* Warning / Error boxes inside member section */
+.warningBox {
+	display: flex;
+	flex-direction: column;
+	gap: var(--space-2);
+	margin-bottom: var(--space-3);
+}
+
+.warningItem {
+	display: flex;
+	align-items: flex-start;
+	gap: var(--space-2);
+	padding: var(--space-3) var(--space-4);
+	background: #fffbeb;
+	border: 1px solid #fde68a;
+	border-radius: var(--radius-md);
+	font-size: 13px;
+	color: #b45309;
+	line-height: 1.4;
+}
+
+.warningItem svg {
+	width: 16px;
+	height: 16px;
+	color: #d97706;
+	margin-top: 1px;
+	flex-shrink: 0;
+}
+
+.errorItem {
+	display: flex;
+	align-items: flex-start;
+	gap: var(--space-2);
+	padding: var(--space-3) var(--space-4);
+	background: #fef2f2;
+	border: 1px solid #fecaca;
+	border-radius: var(--radius-md);
+	font-size: 13px;
+	color: #b91c1c;
+	line-height: 1.4;
+}
+
+.errorItem svg {
+	width: 16px;
+	height: 16px;
+	color: #dc2626;
+	margin-top: 1px;
+	flex-shrink: 0;
+}
+
 @media (max-width: 768px) {
 	.statsRow {
 		grid-template-columns: 1fr 1fr;

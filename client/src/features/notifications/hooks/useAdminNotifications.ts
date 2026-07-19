@@ -1,13 +1,17 @@
 import { useEffect, useMemo, useState } from 'react';
 import { getDepartments } from '../../department/api/departmentApi';
 import type { Department } from '../../department/types/department.type';
+import { getTopics } from '../../topics/api/topicApi';
+import type { Topic } from '../../topics/types/topic.type';
 import { getUsers } from '../../user/api/userApi';
 import type { User } from '../../user/types/user.type';
 import {
 	adminGetNotifications,
-	deleteNotification,
+	deleteNotificationBatch,
+	getBatchRecipients,
 	sendNotification,
 	type AdminNotification,
+	type NotificationRecipient,
 } from '../api/notificationApi';
 import type { TargetType } from '../types/notification.type';
 
@@ -33,6 +37,13 @@ export function useAdminNotifications() {
 	const [loadingUsers, setLoadingUsers] = useState(true);
 	const [sending, setSending] = useState(false);
 	const [toast, setToast] = useState<{ msg: string; ok: boolean } | null>(null);
+	const [showSendModal, setShowSendModal] = useState(false);
+
+	// ── Đề tài liên quan (ref_type/ref_id) ────
+	const [topicSearch, setTopicSearch] = useState('');
+	const [topicResults, setTopicResults] = useState<Topic[]>([]);
+	const [loadingTopics, setLoadingTopics] = useState(false);
+	const [selectedTopic, setSelectedTopic] = useState<Topic | null>(null);
 
 	// ── Tree-select helpers ──────────────────
 	const [expandedDepts, setExpandedDepts] = useState<Set<string>>(new Set());
@@ -129,8 +140,16 @@ export function useAdminNotifications() {
 	const [search, setSearch] = useState('');
 	const [filterType, setFilterType] = useState('');
 	const [loading, setLoading] = useState(false);
-	const [deleting, setDeleting] = useState<string | null>(null);
+	const [pendingDelete, setPendingDelete] = useState<AdminNotification | null>(null);
+	const [deletingBatch, setDeletingBatch] = useState(false);
 	const [refreshKey, setRefreshKey] = useState(0);
+
+	// ── Recipient drill-down (mở rộng 1 lượt gửi) ────
+	const [expandedBatch, setExpandedBatch] = useState<string | null>(null);
+	const [recipientsByBatch, setRecipientsByBatch] = useState<
+		Record<string, NotificationRecipient[]>
+	>({});
+	const [loadingRecipients, setLoadingRecipients] = useState<string | null>(null);
 
 	const showToast = (msg: string, ok = true) => {
 		setToast({ msg, ok });
@@ -147,6 +166,34 @@ export function useAdminNotifications() {
 			.catch(() => {})
 			.finally(() => setLoadingUsers(false));
 	}, []);
+
+	useEffect(() => {
+		const q = topicSearch.trim();
+		if (!q) {
+			setTopicResults([]);
+			return;
+		}
+		setLoadingTopics(true);
+		const timer = setTimeout(() => {
+			getTopics({ search: q, limit: 20 })
+				.then((res) => setTopicResults(res.data))
+				.catch(() => {})
+				.finally(() => setLoadingTopics(false));
+		}, 300);
+		return () => clearTimeout(timer);
+	}, [topicSearch]);
+
+	const selectTopic = (topic: Topic) => {
+		setForm((f) => ({ ...f, ref_type: 'topic', ref_id: topic.id }));
+		setSelectedTopic(topic);
+		setTopicSearch('');
+		setTopicResults([]);
+	};
+
+	const clearTopic = () => {
+		setForm((f) => ({ ...f, ref_type: '', ref_id: '' }));
+		setSelectedTopic(null);
+	};
 
 	useEffect(() => {
 		let cancelled = false;
@@ -207,6 +254,9 @@ export function useAdminNotifications() {
 			setDeptSearch('');
 			setUserSearch('');
 			setExpandedDepts(new Set());
+			setSelectedTopic(null);
+			setTopicSearch('');
+			setShowSendModal(false);
 			setRefreshKey((k) => k + 1);
 		} catch (err: unknown) {
 			showToast(err instanceof Error ? err.message : 'Gửi thất bại', false);
@@ -215,16 +265,33 @@ export function useAdminNotifications() {
 		}
 	};
 
-	const handleDelete = async (id: string) => {
-		setDeleting(id);
+	const confirmDelete = async () => {
+		if (!pendingDelete) return;
+		setDeletingBatch(true);
 		try {
-			await deleteNotification(id);
+			await deleteNotificationBatch(pendingDelete.batch_key);
 			showToast('Đã xoá thông báo');
+			setPendingDelete(null);
 			setRefreshKey((k) => k + 1);
 		} catch {
 			showToast('Xoá thất bại', false);
 		} finally {
-			setDeleting(null);
+			setDeletingBatch(false);
+		}
+	};
+
+	const toggleBatchExpand = (batchKey: string) => {
+		if (expandedBatch === batchKey) {
+			setExpandedBatch(null);
+			return;
+		}
+		setExpandedBatch(batchKey);
+		if (!recipientsByBatch[batchKey]) {
+			setLoadingRecipients(batchKey);
+			getBatchRecipients(batchKey)
+				.then((data) => setRecipientsByBatch((prev) => ({ ...prev, [batchKey]: data })))
+				.catch(() => {})
+				.finally(() => setLoadingRecipients(null));
 		}
 	};
 
@@ -242,6 +309,15 @@ export function useAdminNotifications() {
 		loadingUsers,
 		sending,
 		toast,
+		showSendModal,
+		setShowSendModal,
+		topicSearch,
+		setTopicSearch,
+		topicResults,
+		loadingTopics,
+		selectedTopic,
+		selectTopic,
+		clearTopic,
 		expandedDepts,
 		usersByDept,
 		getDeptState,
@@ -263,9 +339,15 @@ export function useAdminNotifications() {
 		filterType,
 		setFilterType,
 		loading,
-		deleting,
+		pendingDelete,
+		setPendingDelete,
+		deletingBatch,
+		expandedBatch,
+		recipientsByBatch,
+		loadingRecipients,
+		toggleBatchExpand,
 		setRefreshKey,
 		handleSend,
-		handleDelete,
+		confirmDelete,
 	};
 }

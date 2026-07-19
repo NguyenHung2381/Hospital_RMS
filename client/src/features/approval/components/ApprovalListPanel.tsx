@@ -1,4 +1,4 @@
-﻿import type React from 'react';
+import type React from 'react';
 import type { Dispatch, SetStateAction } from 'react';
 import {
 	CheckCircleSvg,
@@ -125,7 +125,7 @@ export function ApprovalListPanel({
 								setBulkModal('bulkReject');
 							}}
 						>
-							<XCircleSvg /> Từ chối ({checkedCount})
+							<XCircleSvg /> Không phê duyệt ({checkedCount})
 						</button>
 						<button
 							className={styles.btnSelClear}
@@ -197,9 +197,9 @@ export function ApprovalListPanel({
 						}}
 					>
 						<div style={{ fontSize: 13, fontWeight: 600, marginBottom: 4 }}>
-							Không có hồ sơ nào
+							Không có hồ sơ phê duyệt nào
 						</div>
-						<div style={{ fontSize: 12 }}>Thử thay đổi bộ lọc</div>
+						<div style={{ fontSize: 12 }}>Vui lòng thử thay đổi bộ lọc tìm kiếm</div>
 					</div>
 				) : (
 					filtered.map((r) => {

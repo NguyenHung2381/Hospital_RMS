@@ -24,7 +24,20 @@ const CONCLUSIONS = ['pass', 'fail', 'revise'];
 const sanitizeComment = (html) => {
 	if (!html) return null;
 	const clean = sanitizeHtml(html, {
-		allowedTags: ['b', 'strong', 'i', 'em', 'u', 's', 'ul', 'ol', 'li', 'br', 'p', 'img'],
+		allowedTags: [
+			'b',
+			'strong',
+			'i',
+			'em',
+			'u',
+			's',
+			'ul',
+			'ol',
+			'li',
+			'br',
+			'p',
+			'img',
+		],
 		allowedAttributes: { img: ['src', 'alt'] },
 		exclusiveFilter: (frame) =>
 			frame.tag === 'img' && !frame.attribs.src?.startsWith('/uploads/'),
@@ -139,7 +152,8 @@ const getMyProgress = async (userId) => {
 	}
 	const topicFilesByTopic = new Map();
 	for (const f of topicFiles) {
-		if (!topicFilesByTopic.has(f.topic_id)) topicFilesByTopic.set(f.topic_id, []);
+		if (!topicFilesByTopic.has(f.topic_id))
+			topicFilesByTopic.set(f.topic_id, []);
 		topicFilesByTopic.get(f.topic_id).push(f);
 	}
 	const resultByTopic = new Map(results.map((r) => [r.topic_id, r]));
@@ -227,8 +241,11 @@ const upsertResult = async (
 		.input('topic_id', sql.VarChar(15), topicId)
 		.input('user_id', sql.VarChar(20), userId)
 		.input('conclusion', sql.VarChar(15), conclusion || null)
-		.input('general_comment', sql.NVarChar(sql.MAX), sanitizeComment(general_comment))
-		.query(`
+		.input(
+			'general_comment',
+			sql.NVarChar(sql.MAX),
+			sanitizeComment(general_comment),
+		).query(`
       UPDATE council_topic_results
       SET conclusion = @conclusion, general_comment = @general_comment,
           decided_by = @user_id, updated_at = GETDATE()

@@ -188,7 +188,6 @@ export function useTopicPage() {
 				department_id: form.department_id || undefined,
 				status: form.status,
 				article_type: form.article_type,
-				journal_name: form.journal_name || undefined,
 				doi: form.doi || undefined,
 				publish_date: form.publish_date || undefined,
 			});
@@ -228,7 +227,6 @@ export function useTopicPage() {
 				department_id: form.department_id || undefined,
 				status: form.status,
 				article_type: form.article_type,
-				journal_name: form.journal_name || undefined,
 				doi: form.doi || undefined,
 				publish_date: form.publish_date || undefined,
 			});

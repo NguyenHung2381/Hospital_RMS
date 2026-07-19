@@ -552,6 +552,9 @@ router.delete('/roles/:id', authenticate, authorizePermission(['roles', 'delete'
  *                 minimum: 1
  *                 maximum: 9
  *                 example: 1
+ *               round_type:
+ *                 type: string
+ *                 example: "Nghiên cứu khoa học"
  *               start_date:
  *                 type: string
  *                 format: date
@@ -581,6 +584,7 @@ router.post(
 			.isInt({ min: 2000, max: 2100 })
 			.withMessage('Năm không hợp lệ'),
 		body('round_number').isInt({ min: 1, max: 9 }).withMessage('Số đợt phải từ 1–9'),
+		body('round_type').optional().isLength({ max: 100 }).withMessage('Loại đợt tối đa 100 ký tự'),
 		body('start_date')
 			.notEmpty()
 			.withMessage('Ngày bắt đầu không được để trống'),
@@ -657,6 +661,7 @@ router.put(
 	authorizePermission(['rounds', 'update']),
 	[
 		body('status').optional().isIn(['draft', 'open', 'closed', 'cancelled']),
+		body('round_type').optional().isLength({ max: 100 }).withMessage('Loại đợt tối đa 100 ký tự'),
 		body('start_date').optional().notEmpty(),
 		body('end_date').optional().notEmpty(),
 	],

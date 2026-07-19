@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import AdminLayout from '../../../layouts/AdminLayout';
 import {
 	AlertSvg,
@@ -11,6 +12,7 @@ import {
 	FileTextSvg,
 	FilterSvg,
 } from '@/assets/icons';
+import { StatsExportModal } from '../components/StatsExportModal';
 import { StatsPanel } from '../components/StatsPanel';
 import { useReports } from '../hooks/useReports';
 import {
@@ -19,7 +21,6 @@ import {
 	STATUS_OPTIONS,
 	SUMMARY_COLS,
 } from '../utils/reportHelpers';
-import { exportStatsExcel } from '../utils/statsExcel';
 import styles from './Reports.module.css';
 
 const IcBarChart = () => <BarChartSvg style={{ width: 15, height: 15 }} />;
@@ -70,8 +71,13 @@ export default function Reports() {
 		exporting,
 		exportError,
 		handleExport,
+		statsExporting,
+		statsExportError,
+		handleStatsExport,
 		activeType,
 	} = useReports();
+
+	const [statsExportOpen, setStatsExportOpen] = useState(false);
 
 	return (
 		<AdminLayout
@@ -81,13 +87,24 @@ export default function Reports() {
 				activeTab === 'stats' && stats ? (
 					<button
 						className={`${styles.btnExport} ${styles.btnExport_green}`}
-						onClick={() => exportStatsExcel(stats, yearFilter)}
+						onClick={() => setStatsExportOpen(true)}
 					>
 						<IcDownload /> Xuất Excel
 					</button>
 				) : undefined
 			}
 		>
+			<StatsExportModal
+				open={statsExportOpen}
+				onClose={() => setStatsExportOpen(false)}
+				exporting={statsExporting}
+				error={statsExportError}
+				onExport={(sections) => {
+					void handleStatsExport(sections).then((ok) => {
+						if (ok) setStatsExportOpen(false);
+					});
+				}}
+			/>
 			{/* ── Tab bar ──────────────────────────── */}
 			<div className={styles.tabBar}>
 				<button

@@ -20,6 +20,8 @@ interface NotificationPanelProps {
 	onMarkOne: (id: string) => void;
 	/** CSS module from the parent layout — provides all notif* class names. */
 	s: Record<string, string>;
+	/** Route for "Xem tất cả" — keep it inside whichever layout is currently rendering this panel. */
+	viewAllPath?: string;
 }
 
 export function NotificationPanel({
@@ -31,6 +33,7 @@ export function NotificationPanel({
 	onMarkAll,
 	onMarkOne,
 	s,
+	viewAllPath = '/user/notifications',
 }: NotificationPanelProps) {
 	const [tab, setTab] = useState<'all' | 'unread'>('all');
 	const wrapRef = useRef<HTMLDivElement>(null);
@@ -59,7 +62,7 @@ export function NotificationPanel({
 
 	const handleViewAll = () => {
 		onClose();
-		navigate('/user/notifications');
+		navigate(viewAllPath);
 	};
 
 	return (

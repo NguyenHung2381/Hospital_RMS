@@ -1,14 +1,17 @@
+import { Fragment } from 'react';
 import {
 	BellSvg,
 	CheckCircleSvg,
+	ChevDSvg,
 	RefreshSvg,
 	SearchSvg,
 	TrashSvg,
 	WarnSvg,
 } from '@/assets/icons';
-import type { AdminNotification } from '../api/notificationApi';
+import type { AdminNotification, NotificationRecipient } from '../api/notificationApi';
 import { NOTIF_TYPES } from '../types/notification.type';
-import { toNotif } from '../utils/notifUtils';
+import { NOTIF_TYPE_MAP } from '../utils/notifUtils';
+import { relativeTime } from '../../../shared/utils/formatDate';
 import styles from '../pages/AdminNotifications.module.css';
 
 interface NotificationHistoryTableProps {
@@ -22,9 +25,12 @@ interface NotificationHistoryTableProps {
 	filterType: string;
 	setFilterType: (v: string) => void;
 	loading: boolean;
-	deleting: string | null;
+	expandedBatch: string | null;
+	recipientsByBatch: Record<string, NotificationRecipient[]>;
+	loadingRecipients: string | null;
+	onToggleExpand: (batchKey: string) => void;
 	onRefresh: () => void;
-	onDelete: (id: string) => void;
+	onDeleteRequest: (row: AdminNotification) => void;
 	onFilterChange: () => void;
 }
 
@@ -39,9 +45,12 @@ export function NotificationHistoryTable({
 	filterType,
 	setFilterType,
 	loading,
-	deleting,
+	expandedBatch,
+	recipientsByBatch,
+	loadingRecipients,
+	onToggleExpand,
 	onRefresh,
-	onDelete,
+	onDeleteRequest,
 	onFilterChange,
 }: NotificationHistoryTableProps) {
 	const typeLabel = (t: string) => NOTIF_TYPES.find((x) => x.value === t)?.label ?? t;
@@ -118,68 +127,123 @@ export function NotificationHistoryTable({
 					<table className={styles.table}>
 						<thead>
 							<tr>
+								<th className={styles.th} />
 								<th className={styles.th}>Loại</th>
 								<th className={styles.th}>Tiêu đề / Nội dung</th>
 								<th className={styles.th}>Người nhận</th>
-								<th className={styles.th}>Trạng thái</th>
+								<th className={styles.th}>Đã đọc</th>
 								<th className={styles.th}>Thời gian</th>
 								<th className={styles.th} />
 							</tr>
 						</thead>
 						<tbody>
 							{rows.map((row) => {
-								const notif = toNotif(row);
+								const category = NOTIF_TYPE_MAP[row.type] ?? 'system';
+								const isExpanded = expandedBatch === row.batch_key;
+								const allRead = row.read_count >= row.recipient_count;
+								const recipients = recipientsByBatch[row.batch_key];
 								return (
-									<tr
-										key={row.id}
-										className={styles.tr}
-									>
-										<td className={styles.td}>
-											<span
-												className={`${styles.typeBadge} ${styles[`type_${notif.type}`]}`}
-											>
-												{typeLabel(row.type)}
-											</span>
-										</td>
-										<td className={styles.td}>
-											<div className={styles.rowTitle}>{row.title}</div>
-											{row.message && <div className={styles.rowMsg}>{row.message}</div>}
-										</td>
-										<td className={styles.td}>
-											<div className={styles.recipientName}>{row.full_name}</div>
-											<div className={styles.recipientId}>{row.user_id}</div>
-										</td>
-										<td className={styles.td}>
-											{row.is_read ? (
-												<span className={styles.readBadge}>
-													<CheckCircleSvg style={{ width: 12, height: 12 }} />
-													Đã đọc
+									<Fragment key={row.batch_key}>
+										<tr className={styles.tr}>
+											<td className={styles.td}>
+												<button
+													type='button'
+													className={styles.expandBtn}
+													onClick={() => onToggleExpand(row.batch_key)}
+													title={isExpanded ? 'Thu gọn' : 'Xem người nhận'}
+												>
+													<ChevDSvg
+														style={{
+															width: 12,
+															height: 12,
+															transition: 'transform 180ms',
+															transform: isExpanded ? 'none' : 'rotate(-90deg)',
+														}}
+													/>
+												</button>
+											</td>
+											<td className={styles.td}>
+												<span
+													className={`${styles.typeBadge} ${styles[`type_${category}`]}`}
+												>
+													{typeLabel(row.type)}
 												</span>
-											) : (
-												<span className={styles.unreadBadge}>
-													<WarnSvg style={{ width: 12, height: 12 }} />
-													Chưa đọc
-												</span>
-											)}
-										</td>
-										<td className={styles.td}>
-											<div className={styles.timeText}>{notif.time}</div>
-										</td>
-										<td className={styles.td}>
-											<button
-												className={styles.btnDelete}
-												onClick={() => onDelete(row.id)}
-												disabled={deleting === row.id}
-												title='Xoá'
-											>
-												{deleting === row.id ? (
-													<span className={styles.spinnerSm} />
+											</td>
+											<td className={styles.td}>
+												<div className={styles.rowTitle}>{row.title}</div>
+												{row.message && <div className={styles.rowMsg}>{row.message}</div>}
+											</td>
+											<td className={styles.td}>
+												<div className={styles.recipientName}>
+													{row.recipient_count} người
+												</div>
+											</td>
+											<td className={styles.td}>
+												{allRead ? (
+													<span className={styles.readBadge}>
+														<CheckCircleSvg style={{ width: 12, height: 12 }} />
+														{row.read_count}/{row.recipient_count}
+													</span>
 												) : (
-													<TrashSvg style={{ width: 14, height: 14 }} />
+													<span className={styles.unreadBadge}>
+														<WarnSvg style={{ width: 12, height: 12 }} />
+														{row.read_count}/{row.recipient_count}
+													</span>
 												)}
-											</button>
-										</td>
-									</tr>
+											</td>
+											<td className={styles.td}>
+												<div className={styles.timeText}>{relativeTime(row.created_at)}</div>
+											</td>
+											<td className={styles.td}>
+												<button
+													className={styles.btnDelete}
+													onClick={() => onDeleteRequest(row)}
+													title='Xoá'
+												>
+													<TrashSvg style={{ width: 14, height: 14 }} />
+												</button>
+											</td>
+										</tr>
+										{isExpanded && (
+											<tr className={styles.recipientsRow}>
+												<td
+													className={styles.td}
+													colSpan={7}
+												>
+													{loadingRecipients === row.batch_key ? (
+														<div className={styles.recipientsLoading}>
+															<span className={styles.spinnerDark} />
+														</div>
+													) : (
+														<div className={styles.recipientsList}>
+															{(recipients ?? []).map((r) => (
+																<div
+																	key={r.user_id}
+																	className={styles.userNode}
+																>
+																	<span className={styles.userNodeName}>
+																		{r.full_name}
+																	</span>
+																	<span className={styles.userNodeSub}>{r.username}</span>
+																	{r.is_read ? (
+																		<span className={styles.readBadge}>
+																			<CheckCircleSvg style={{ width: 12, height: 12 }} />
+																			Đã đọc
+																		</span>
+																	) : (
+																		<span className={styles.unreadBadge}>
+																			<WarnSvg style={{ width: 12, height: 12 }} />
+																			Chưa đọc
+																		</span>
+																	)}
+																</div>
+															))}
+														</div>
+													)}
+												</td>
+											</tr>
+										)}
+									</Fragment>
 								);
 							})}
 						</tbody>

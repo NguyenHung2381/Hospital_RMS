@@ -5,13 +5,15 @@ export type DeadlineType =
 	| 'registration'
 	| 'supplement'
 	| 'report_submission'
-	| 'council_submission';
+	| 'council_submission'
+	| 'council_defense';
 
 export const DEADLINE_TYPE_LABELS: Record<DeadlineType, string> = {
 	registration: 'Đăng ký',
 	supplement: 'Bổ sung',
 	report_submission: 'Nộp báo cáo',
 	council_submission: 'Nộp HĐ',
+	council_defense: 'Ngày báo cáo hội đồng',
 };
 
 export interface RoundDeadline {
@@ -29,6 +31,7 @@ export interface ResearchRound {
 	name: string;
 	year: number;
 	round_number: number; // số thứ tự đợt trong năm
+	round_type?: string | null; // nhãn loại đợt (NCKH, bài báo, ...), tự do
 	start_date: string; // dd/mm/yyyy
 	end_date: string;
 	status: RoundStatus;
@@ -47,6 +50,7 @@ export interface RoundForm {
 	name: string;
 	year: number;
 	round_number: number;
+	round_type: string;
 	start_date: string;
 	end_date: string;
 	status: RoundStatus;

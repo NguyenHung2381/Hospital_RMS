@@ -44,6 +44,12 @@ export const STATUS_CFG = {
 		bg: '#ede9fe',
 		color: '#5b21b6',
 	},
+	cancelled: {
+		label: 'Đã hủy',
+		dot: '#9ca3af',
+		bg: '#f3f4f6',
+		color: '#374151',
+	},
 } as const;
 
 export const ROLE_BADGE = {

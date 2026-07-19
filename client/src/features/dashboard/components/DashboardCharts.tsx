@@ -29,8 +29,8 @@ function PieTooltip({
 	return (
 		<div
 			style={{
-				background: '#fff',
-				border: '1px solid #e5e7eb',
+				background: 'var(--color-white)',
+				border: '1px solid var(--color-gray-200)',
 				borderRadius: 8,
 				padding: '8px 12px',
 				fontSize: 12,
@@ -58,21 +58,27 @@ interface StatusPieChartProps {
 	pieData: { name: string; value: number; key: string }[];
 	loading: boolean;
 	error: boolean;
+	title?: string;
+	subtitle?: string;
+	colors?: Record<string, string>;
+	centerLabel?: string;
 }
 
 export function StatusPieChart({
 	pieData,
 	loading,
 	error,
+	title = 'Phân bố theo trạng thái',
+	subtitle = 'Tỷ lệ các trạng thái đề tài hiện tại',
+	colors = STATUS_COLORS,
+	centerLabel = 'đề tài',
 }: StatusPieChartProps) {
 	return (
 		<div className={styles.chartCard}>
 			<div className={styles.chartCardHeader}>
 				<div>
-					<div className={styles.chartTitle}>Phân bố theo trạng thái</div>
-					<div className={styles.chartSubtitle}>
-						Tỷ lệ các trạng thái đề tài hiện tại
-					</div>
+					<div className={styles.chartTitle}>{title}</div>
+					<div className={styles.chartSubtitle}>{subtitle}</div>
 				</div>
 			</div>
 			{loading ? (
@@ -85,47 +91,86 @@ export function StatusPieChart({
 					{error ? 'Không tải được dữ liệu' : 'Chưa có dữ liệu'}
 				</div>
 			) : (
-				<>
-					<div className={styles.chartLegend}>
-						{pieData.map((d) => (
-							<div
-								key={d.key}
-								className={styles.legendItem}
-							>
-								<div
-									className={styles.legendDot}
-									style={{ background: STATUS_COLORS[d.key] }}
-								/>
-								{d.name} ({d.value})
-							</div>
-						))}
-					</div>
-					<ResponsiveContainer
-						width='100%'
-						height={180}
-					>
-						<PieChart>
-							<Pie
-								data={pieData}
-								dataKey='value'
-								nameKey='name'
-								cx='50%'
-								cy='50%'
-								innerRadius={45}
-								outerRadius={72}
-								paddingAngle={3}
-							>
+				(() => {
+					const total = pieData.reduce((sum, d) => sum + d.value, 0);
+					return (
+						<>
+							<div className={styles.chartLegend}>
 								{pieData.map((d) => (
-									<Cell
+									<div
 										key={d.key}
-										fill={STATUS_COLORS[d.key]}
-									/>
+										className={styles.legendItem}
+									>
+										<div
+											className={styles.legendDot}
+											style={{ background: colors[d.key] }}
+										/>
+										{d.name} ({d.value} · {Math.round((d.value / total) * 100)}
+										%)
+									</div>
 								))}
-							</Pie>
-							<Tooltip content={<PieTooltip />} />
-						</PieChart>
-					</ResponsiveContainer>
-				</>
+							</div>
+							<div style={{ position: 'relative' }}>
+								<ResponsiveContainer
+									width='100%'
+									height={180}
+								>
+									<PieChart>
+										<Pie
+											data={pieData}
+											dataKey='value'
+											nameKey='name'
+											cx='50%'
+											cy='50%'
+											innerRadius={45}
+											outerRadius={72}
+											paddingAngle={3}
+											cornerRadius={4}
+										>
+											{pieData.map((d) => (
+												<Cell
+													key={d.key}
+													fill={colors[d.key]}
+												/>
+											))}
+										</Pie>
+										<Tooltip content={<PieTooltip />} />
+									</PieChart>
+								</ResponsiveContainer>
+								<div
+									style={{
+										position: 'absolute',
+										top: '50%',
+										left: '50%',
+										transform: 'translate(-50%, -50%)',
+										textAlign: 'center',
+										pointerEvents: 'none',
+									}}
+								>
+									<div
+										style={{
+											fontSize: 22,
+											fontWeight: 700,
+											color: 'var(--color-gray-800)',
+											lineHeight: 1,
+										}}
+									>
+										{total}
+									</div>
+									<div
+										style={{
+											fontSize: 10,
+											color: 'var(--color-gray-400)',
+											marginTop: 3,
+										}}
+									>
+										{centerLabel}
+									</div>
+								</div>
+							</div>
+						</>
+					);
+				})()
 			)}
 		</div>
 	);
@@ -198,7 +243,18 @@ export function TrendBarChart({
 								border: '1px solid #e5e7eb',
 							}}
 						/>
-						<Legend wrapperStyle={{ fontSize: 11 }} />
+						<Legend
+							verticalAlign='top'
+							align='right'
+							iconType='rect'
+							iconSize={10}
+							height={32}
+							wrapperStyle={{
+								fontSize: 11,
+								paddingBottom: 10,
+								marginTop: -10,
+							}}
+						/>
 						{trendCats.map((cat, i) => (
 							<Bar
 								key={String(cat)}
@@ -224,6 +280,8 @@ interface DeptBarChartProps {
 	deptCats: string[];
 	loading: boolean;
 	error: boolean;
+	title?: string;
+	subtitle?: string;
 }
 
 export function DeptBarChart({
@@ -231,74 +289,98 @@ export function DeptBarChart({
 	deptCats,
 	loading,
 	error,
+	title = 'Đề tài theo phòng ban',
+	subtitle = 'Top phòng ban có nhiều đề tài nhất',
 }: DeptBarChartProps) {
+	const minWidth = Math.max(deptBarData.length * 130, 100);
 	return (
 		<div className={styles.chartCard}>
 			<div className={styles.chartCardHeader}>
 				<div>
-					<div className={styles.chartTitle}>Đề tài theo phòng ban</div>
-					<div className={styles.chartSubtitle}>
-						Top phòng ban có nhiều đề tài nhất
-					</div>
+					<div className={styles.chartTitle}>{title}</div>
+					<div className={styles.chartSubtitle}>{subtitle}</div>
 				</div>
 			</div>
 			{loading ? (
 				<div
 					className={styles.skeleton}
-					style={{ height: 220, borderRadius: 12 }}
+					style={{ height: 360, borderRadius: 12 }}
 				/>
 			) : error || deptBarData.length === 0 ? (
-				<div style={{ ...CHART_EMPTY_STYLE, height: 220 }}>
+				<div style={{ ...CHART_EMPTY_STYLE, height: 360 }}>
 					{error ? 'Không tải được dữ liệu' : 'Chưa có dữ liệu'}
 				</div>
 			) : (
-				<ResponsiveContainer
-					width='100%'
-					height={220}
-				>
-					<BarChart
-						data={deptBarData}
-						margin={{ top: 8, right: 8, left: -20, bottom: 0 }}
-					>
-						<CartesianGrid
-							strokeDasharray='3 3'
-							stroke='#f0f0f0'
-							vertical={false}
-						/>
-						<XAxis
-							dataKey='name'
-							tick={{ fontSize: 11, fill: '#9ca3af' }}
-							axisLine={false}
-							tickLine={false}
-							interval={0}
-						/>
-						<YAxis
-							tick={{ fontSize: 11, fill: '#9ca3af' }}
-							axisLine={false}
-							tickLine={false}
-							allowDecimals={false}
-						/>
-						<Tooltip
-							formatter={(v, name) => [`${v ?? 0} đề tài`, name]}
-							contentStyle={{
-								borderRadius: 8,
-								fontSize: 12,
-								border: '1px solid #e5e7eb',
-							}}
-						/>
-						<Legend wrapperStyle={{ fontSize: 11 }} />
-						{deptCats.map((cat, i) => (
-							<Bar
-								key={String(cat)}
-								dataKey={String(cat)}
-								name={String(cat)}
-								stackId='a'
-								fill={DEPT_COLORS[i % DEPT_COLORS.length]}
-								radius={i === deptCats.length - 1 ? [4, 4, 0, 0] : [0, 0, 0, 0]}
-							/>
-						))}
-					</BarChart>
-				</ResponsiveContainer>
+				<div style={{ overflowX: 'auto' }}>
+					<div style={{ minWidth, width: '100%' }}>
+						<ResponsiveContainer
+							width='100%'
+							height={360}
+						>
+							<BarChart
+								data={deptBarData}
+								margin={{ top: 8, right: 8, left: -10, bottom: 90 }}
+							>
+								<CartesianGrid
+									strokeDasharray='3 3'
+									stroke='#f0f0f0'
+									vertical={false}
+								/>
+								<XAxis
+									dataKey='name'
+									tick={{ fontSize: 13, fill: '#6b7280' }}
+									tickFormatter={(value) =>
+										value.length > 22 ? `${value.substring(0, 20)}...` : value
+									}
+									axisLine={false}
+									tickLine={false}
+									interval={0}
+									angle={-35}
+									textAnchor='end'
+									height={85}
+								/>
+								<YAxis
+									tick={{ fontSize: 13, fill: '#6b7280' }}
+									axisLine={false}
+									tickLine={false}
+									allowDecimals={false}
+								/>
+								<Tooltip
+									formatter={(v, name) => [`${v ?? 0} đề tài`, name]}
+									contentStyle={{
+										borderRadius: 8,
+										fontSize: 13,
+										border: '1px solid #e5e7eb',
+									}}
+								/>
+								<Legend
+									verticalAlign='top'
+									align='right'
+									iconType='rect'
+									iconSize={10}
+									height={32}
+									wrapperStyle={{
+										fontSize: 13,
+										paddingBottom: 10,
+										marginTop: -10,
+									}}
+								/>
+								{deptCats.map((cat, i) => (
+									<Bar
+										key={String(cat)}
+										dataKey={String(cat)}
+										name={String(cat)}
+										stackId='a'
+										fill={DEPT_COLORS[i % DEPT_COLORS.length]}
+										radius={
+											i === deptCats.length - 1 ? [4, 4, 0, 0] : [0, 0, 0, 0]
+										}
+									/>
+								))}
+							</BarChart>
+						</ResponsiveContainer>
+					</div>
+				</div>
 			)}
 		</div>
 	);

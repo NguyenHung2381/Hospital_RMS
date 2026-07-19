@@ -23,6 +23,10 @@ export function useRealtimeUpdate(
 
 		const entityList = entityKey.split(',');
 
+		// ponytail: token nằm trong query string vì EventSource không cho set header
+		// Authorization — có thể lộ token qua access log của server/proxy. Nếu cần
+		// siết chặt hơn, nâng cấp sang cơ chế ticket ngắn hạn (endpoint riêng cấp
+		// 1 ticket dùng 1 lần cho /events) thay vì access token thật.
 		const eventSource = new EventSource(
 			`${BASE_URL}/api/v1/events?token=${token}`,
 		);

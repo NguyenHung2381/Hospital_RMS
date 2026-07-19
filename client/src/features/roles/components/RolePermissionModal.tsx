@@ -8,11 +8,16 @@ import {
 	UsersSvg,
 	XSvg,
 } from '@/assets/icons';
-import { getRolePermissions, setRolePermissions } from '../api/roleApi';
 import {
-	MATRIX_ACTION_LABELS,
+	getAllPermissions,
+	getRolePermissions,
+	setRolePermissions,
+} from '../api/roleApi';
+import {
 	MATRIX_ACTIONS,
-	PERMISSION_MATRIX,
+	MATRIX_ACTION_LABELS,
+	type Permission,
+	type PermissionMatrixRow,
 	type Role,
 } from '../types/role.type';
 import styles from '../pages/Roles.module.css';
@@ -27,6 +32,42 @@ const RESOURCE_ICON: Record<string, React.ReactNode> = {
 	reports: <InfoSvg />,
 };
 
+// API không trả label tiếng Việt cho resource — map hiển thị riêng ở đây.
+const RESOURCE_LABELS: Record<string, string> = {
+	topics: 'Đề tài nghiên cứu',
+	users: 'Người dùng',
+	departments: 'Khoa phòng',
+	roles: 'Vai trò & Quyền',
+	rounds: 'Đợt nghiên cứu',
+	files: 'Tài liệu',
+	reports: 'Báo cáo & Thống kê',
+};
+
+function buildMatrix(perms: Permission[]): PermissionMatrixRow[] {
+	const byResource = new Map<string, Permission[]>();
+	for (const p of perms) {
+		const arr = byResource.get(p.resource) ?? [];
+		arr.push(p);
+		byResource.set(p.resource, arr);
+	}
+	return [...byResource.entries()].map(([resource, list]) => ({
+		resource,
+		resourceLabel: RESOURCE_LABELS[resource] ?? resource,
+		actions: list
+			.slice()
+			.sort(
+				(a, b) =>
+					MATRIX_ACTIONS.indexOf(a.action as (typeof MATRIX_ACTIONS)[number]) -
+					MATRIX_ACTIONS.indexOf(b.action as (typeof MATRIX_ACTIONS)[number]),
+			)
+			.map((p) => ({
+				id: p.id,
+				action: p.action,
+				label: MATRIX_ACTION_LABELS[p.action] ?? p.action,
+			})),
+	}));
+}
+
 interface RolePermissionModalProps {
 	role: Role;
 	onClose: () => void;
@@ -39,13 +80,17 @@ export function RolePermissionModal({
 	onSaved,
 }: RolePermissionModalProps) {
 	const [granted, setGranted] = useState<Set<string>>(new Set());
+	const [matrix, setMatrix] = useState<PermissionMatrixRow[]>([]);
 	const [loading, setLoading] = useState(true);
 	const [saving, setSaving] = useState(false);
 	const [error, setError] = useState('');
 
 	useEffect(() => {
-		getRolePermissions(role.id)
-			.then((ids) => setGranted(new Set(ids)))
+		Promise.all([getAllPermissions(), getRolePermissions(role.id)])
+			.then(([perms, ids]) => {
+				setMatrix(buildMatrix(perms));
+				setGranted(new Set(ids));
+			})
 			.catch(() => setError('Không thể tải quyền hiện tại'))
 			.finally(() => setLoading(false));
 	}, [role.id]);
@@ -143,7 +188,7 @@ export function RolePermissionModal({
 								</tr>
 							</thead>
 							<tbody>
-								{PERMISSION_MATRIX.map((row) => {
+								{matrix.map((row) => {
 									const rowIds = row.actions.map((a) => a.id);
 									const allSelected = rowIds.every((id) => granted.has(id));
 

@@ -8,6 +8,7 @@ import {
 	getApprovalTopicDetail,
 	getApprovalTopics,
 	rejectTopic,
+	requestSupplementTopic,
 } from '../api/approval';
 import type {
 	ApprovalRecord,
@@ -124,16 +125,18 @@ export function useApproval(): ApprovalState {
 			setListLoading(true);
 			setError(null);
 			try {
-				const [submitted, approved, rejected] = await Promise.all([
+				const [submitted, approved, rejected, supplement] = await Promise.all([
 					getApprovalTopics({ limit: 100, status: 'submitted' }),
 					getApprovalTopics({ limit: 100, status: 'approved' }),
 					getApprovalTopics({ limit: 100, status: 'rejected' }),
+					getApprovalTopics({ limit: 100, status: 'supplement' }),
 				]);
 				if (cancelled) return;
 				const next = [
 					...submitted.data,
 					...approved.data,
 					...rejected.data,
+					...supplement.data,
 				].map(mapTopicToRecord);
 				setRecords(next);
 				setSelectedId((cur) => {
@@ -145,7 +148,7 @@ export function useApproval(): ApprovalState {
 					setError(
 						err instanceof Error
 							? err.message
-							: 'Khong tai duoc du lieu phe duyet',
+							: 'Không thể tải dữ liệu phê duyệt',
 					);
 			} finally {
 				if (!cancelled) setListLoading(false);
@@ -180,7 +183,7 @@ export function useApproval(): ApprovalState {
 			} catch (err) {
 				if (!cancelled)
 					setToast({
-						msg: err instanceof Error ? err.message : 'Khong tai duoc chi tiet',
+						msg: err instanceof Error ? err.message : 'Không thể tải chi tiết đề tài',
 						type: 'reject',
 					});
 			} finally {
@@ -264,7 +267,7 @@ export function useApproval(): ApprovalState {
 			count: stats.info_requested,
 		},
 		{ key: 'approved' as TabKey, label: 'Đã duyệt', count: stats.approved },
-		{ key: 'rejected' as TabKey, label: 'Từ chối', count: stats.rejected },
+		{ key: 'rejected' as TabKey, label: 'Không phê duyệt', count: stats.rejected },
 	];
 
 	const openModal = useCallback((type: ModalType) => {
@@ -286,10 +289,10 @@ export function useApproval(): ApprovalState {
 		if ((modal === 'reject' || modal === 'request') && !comment.trim()) return;
 		setLoading(true);
 		try {
-			if (modal === 'request')
-				throw new Error('Backend chua ho tro thao tac yeu cau bo sung');
 			if (modal === 'approve')
 				await approveTopic(selected.id, comment.trim() || undefined);
+			else if (modal === 'request')
+				await requestSupplementTopic(selected.id, comment.trim());
 			else await rejectTopic(selected.id, comment.trim());
 
 			const [topic, approvals] = await Promise.all([
@@ -297,7 +300,11 @@ export function useApproval(): ApprovalState {
 				getApprovals(selected.id),
 			]);
 			const newStatus: ApvStatus =
-				modal === 'approve' ? 'approved' : 'rejected';
+				modal === 'approve'
+					? 'approved'
+					: modal === 'request'
+						? 'info_requested'
+						: 'rejected';
 			setRecords((prev) =>
 				prev.map((r) =>
 					r.id === selected.id
@@ -312,8 +319,10 @@ export function useApproval(): ApprovalState {
 			setToast({
 				msg:
 					modal === 'approve'
-						? 'Da phe duyet de tai thanh cong'
-						: 'Da tu choi de tai',
+						? 'Đã phê duyệt đề tài thành công'
+						: modal === 'request'
+							? 'Đã gửi yêu cầu bổ sung tới chủ nhiệm đề tài'
+							: 'Đã không phê duyệt đề tài',
 				type: modal,
 			});
 			setModal(null);
@@ -321,8 +330,8 @@ export function useApproval(): ApprovalState {
 			setActiveTab(newStatus);
 		} catch (err) {
 			setToast({
-				msg: err instanceof Error ? err.message : 'Co loi xay ra',
-				type: modal === 'approve' ? 'approve' : 'reject',
+				msg: err instanceof Error ? err.message : 'Có lỗi xảy ra, vui lòng thử lại sau.',
+				type: modal === 'approve' ? 'approve' : modal === 'request' ? 'request' : 'reject',
 			});
 		} finally {
 			setLoading(false);
@@ -338,42 +347,40 @@ export function useApproval(): ApprovalState {
 			.map((r) => r.id);
 		if (!targetIds.length) return;
 		setLoading(true);
-		try {
-			await Promise.all(
-				targetIds.map((id) =>
-					action === 'approve'
-						? approveTopic(id, bulkComment.trim() || undefined)
-						: rejectTopic(id, bulkComment.trim()),
-				),
-			);
-			const newStatus: ApvStatus =
-				action === 'approve' ? 'approved' : 'rejected';
-			setRecords((prev) =>
-				prev.map((r) =>
-					targetIds.includes(r.id)
-						? { ...r, status: newStatus, is_urgent: false }
-						: r,
-				),
-			);
-			setCheckedIds(new Set());
-			setBulkModal(null);
-			setBulkComment('');
-			setActiveTab(newStatus);
-			setToast({
-				msg: `Đã ${action === 'approve' ? 'phê duyệt' : 'từ chối'} ${targetIds.length} đề tài`,
-				type: action === 'approve' ? 'approve' : 'reject',
-			});
-		} catch (err) {
-			setToast({
-				msg:
-					err instanceof Error
-						? err.message
-						: 'Có lỗi xảy ra khi xử lý hàng loạt',
-				type: 'reject',
-			});
-		} finally {
-			setLoading(false);
-		}
+		const results = await Promise.allSettled(
+			targetIds.map((id) =>
+				action === 'approve'
+					? approveTopic(id, bulkComment.trim() || undefined)
+					: rejectTopic(id, bulkComment.trim()),
+			),
+		);
+		const okIds = new Set(
+			targetIds.filter((_, i) => results[i].status === 'fulfilled'),
+		);
+		const failedCount = targetIds.length - okIds.size;
+		const newStatus: ApvStatus = action === 'approve' ? 'approved' : 'rejected';
+		setRecords((prev) =>
+			prev.map((r) =>
+				okIds.has(r.id) ? { ...r, status: newStatus, is_urgent: false } : r,
+			),
+		);
+		// Chỉ bỏ tick các đề tài đã xử lý thành công — các đề tài lỗi vẫn được
+		// chọn để user thử lại mà không cần tick lại từ đầu.
+		setCheckedIds((prev) => {
+			const next = new Set(prev);
+			okIds.forEach((id) => next.delete(id));
+			return next;
+		});
+		setBulkModal(null);
+		setBulkComment('');
+		if (okIds.size > 0) setActiveTab(newStatus);
+		setToast({
+			msg: failedCount
+				? `Đã ${action === 'approve' ? 'phê duyệt' : 'từ chối'} ${okIds.size} đề tài, ${failedCount} đề tài lỗi`
+				: `Đã ${action === 'approve' ? 'phê duyệt' : 'từ chối'} ${okIds.size} đề tài`,
+			type: failedCount ? 'reject' : action === 'approve' ? 'approve' : 'reject',
+		});
+		setLoading(false);
 	}, [bulkModal, bulkComment, filtered, checkedIds]);
 
 	return {

@@ -313,7 +313,7 @@
 	border: 1px solid var(--color-gray-200);
 	border-radius: var(--radius-xl);
 	overflow: auto;
-	box-shadow: 0 4px 16px rgba(0, 0, 0, 0.04);
+	box-shadow: 0 6px 20px rgba(0, 0, 0, 0.05);
 	position: relative;
 	scrollbar-width: thin;
 	scrollbar-color: var(--color-gray-300) transparent;
@@ -325,8 +325,9 @@
 /* ─── Header ─────────────────────────────────────────────────────────────── */
 .ganttHeader {
 	display: flex;
-	background: var(--color-gray-50);
+	background: linear-gradient(180deg, var(--color-white) 0%, var(--color-gray-50) 100%);
 	border-bottom: 2px solid var(--color-gray-200);
+	box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
 	position: sticky;
 	top: 0;
 	z-index: 25;
@@ -389,7 +390,8 @@
 }
 .monthBandCurrent {
 	color: #15803d;
-	background: color-mix(in srgb, #2eb87a 12%, transparent);
+	background: color-mix(in srgb, #2eb87a 14%, transparent);
+	box-shadow: inset 0 -2px 0 color-mix(in srgb, #2eb87a 45%, transparent);
 	font-weight: var(--font-weight-bold);
 }
 
@@ -414,14 +416,16 @@
 /* ─── Rows ───────────────────────────────────────────────────────────────── */
 .ganttRow {
 	display: flex;
+	width: fit-content;
+	min-width: 100%;
 	border-bottom: 1px solid var(--color-gray-200);
 	min-height: 160px;
-	transition: background 0.15s ease;
+	transition: background 0.18s ease;
 	position: relative;
 }
 .ganttRow:last-child { border-bottom: none; }
-.ganttRow:nth-child(even) > .timeline { background: rgba(0, 0, 0, 0.008); }
-.ganttRow:hover { background: rgba(0, 0, 0, 0.012); }
+.ganttRow:nth-child(even) > .timeline { background: rgba(55, 138, 221, 0.02); }
+.ganttRow:hover { background: rgba(55, 138, 221, 0.035); }
 .ganttRow:hover > .labelCol { background: var(--color-gray-50); }
 
 .ganttRow .labelCol {
@@ -532,40 +536,44 @@
 /* ─── Gantt Bars ─────────────────────────────────────────────────────────── */
 .bar {
 	position: absolute;
-	border-radius: 6px;
+	border-radius: 7px;
 	min-width: 4px;
-	opacity: 0.92;
-	transition: opacity 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+	opacity: 0.94;
+	background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.16) 0%, rgba(255, 255, 255, 0) 45%, rgba(0, 0, 0, 0.06) 100%);
+	background-blend-mode: overlay;
+	transition: opacity 0.15s ease, box-shadow 0.18s ease, transform 0.15s ease;
 	cursor: grab;
 	overflow: hidden;
-	box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
+	box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1), 0 2px 5px rgba(0, 0, 0, 0.06);
 }
 .bar:hover {
 	opacity: 1;
 	z-index: 12;
-	box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+	transform: translateY(-1px);
+	box-shadow: 0 6px 14px rgba(0, 0, 0, 0.18);
 }
 .barActive {
 	cursor: grabbing !important;
 	opacity: 1 !important;
 	z-index: 18 !important;
 	transition: none !important;
-	box-shadow: 0 6px 18px rgba(0, 0, 0, 0.3) !important;
+	transform: translateY(-1px) scale(1.01) !important;
+	box-shadow: 0 8px 20px rgba(0, 0, 0, 0.28) !important;
 }
 .barTypeLabel {
 	position: absolute;
 	inset: 0;
 	display: flex;
 	align-items: center;
-	padding: 0 8px;
+	padding: 0 9px;
 	font-size: 10px;
 	font-weight: 700;
-	color: rgba(255, 255, 255, 0.96);
+	color: rgba(255, 255, 255, 0.97);
 	white-space: nowrap;
 	overflow: hidden;
 	pointer-events: none;
-	letter-spacing: 0.02em;
-	text-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+	letter-spacing: 0.03em;
+	text-shadow: 0 1px 2px rgba(0, 0, 0, 0.45);
 }
 
 /* Resize Handles */
@@ -607,19 +615,20 @@
 	bottom: 0;
 	left: 11px;
 	width: 2px;
-	opacity: 0.65;
+	opacity: 0.55;
+	border-radius: 2px;
 	transition: opacity 0.15s ease, width 0.15s ease;
 }
 .deadlineDot {
 	position: absolute;
 	top: 8px;
-	left: 6px;
-	width: 12px;
-	height: 12px;
+	left: 5px;
+	width: 14px;
+	height: 14px;
 	border-radius: 50%;
-	border: 2px solid #fff;
-	box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
-	transition: transform 0.15s ease;
+	border: 2.5px solid #fff;
+	box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(0, 0, 0, 0.04);
+	transition: transform 0.15s ease, top 0.15s ease;
 	z-index: 1;
 }
 .deadlinePhase {
@@ -632,6 +641,7 @@
 	font-weight: 800;
 	line-height: 1;
 	pointer-events: none;
+	transition: top 0.15s ease;
 }
 .deadlineLabel {
 	position: absolute;
@@ -641,10 +651,11 @@
 	font-weight: var(--font-weight-bold);
 	white-space: nowrap;
 	pointer-events: none;
-	background: rgba(255, 255, 255, 0.92);
-	padding: 1px 5px;
+	background: rgba(255, 255, 255, 0.94);
+	padding: 2px 6px;
 	border-radius: 4px;
-	box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+	box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+	transition: top 0.15s ease;
 }
 
 /* ─── Empty & Loading States ─────────────────────────────────────────────── */

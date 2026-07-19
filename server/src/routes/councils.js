@@ -417,7 +417,7 @@ router.post(
 	[
 		body('round_id').notEmpty().withMessage('Đợt nghiên cứu không được để trống'),
 		body('name').notEmpty().withMessage('Tên hội đồng không được để trống'),
-		body('defense_date').optional().isISO8601(),
+		body('defense_date').optional({ checkFalsy: true }).isISO8601(),
 	],
 	validate,
 	ctrl.createOne,
@@ -465,7 +465,7 @@ router.put(
 	authorizePermission(['councils', 'update']),
 	[
 		body('name').optional().notEmpty(),
-		body('defense_date').optional().isISO8601(),
+		body('defense_date').optional({ checkFalsy: true }).isISO8601(),
 		body('status').optional().isIn(['draft', 'finalized']),
 	],
 	validate,

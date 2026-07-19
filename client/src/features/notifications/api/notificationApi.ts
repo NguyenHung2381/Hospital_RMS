@@ -11,9 +11,24 @@ export interface Notification {
 	created_at: string;
 }
 
-export interface AdminNotification extends Notification {
+/** 1 hàng = 1 lượt gửi (gộp mọi người nhận cùng batch_id). */
+export interface AdminNotification {
+	batch_key: string;
+	type: string;
+	title: string;
+	message: string | null;
+	ref_id: string | null;
+	ref_type: string | null;
+	created_at: string;
+	recipient_count: number;
+	read_count: number;
+}
+
+export interface NotificationRecipient {
 	user_id: string;
 	full_name: string;
+	username: string;
+	is_read: boolean;
 }
 
 export interface NotifListResponse {
@@ -72,5 +87,10 @@ export const adminGetNotifications = (params?: {
 	return apiClient.get<AdminNotifListResponse>(`/notifications/admin${toQS(params ?? {})}`);
 };
 
-export const deleteNotification = (id: string) =>
-	apiClient.delete<null>(`/notifications/${id}`);
+export const getBatchRecipients = (batchKey: string) =>
+	apiClient.get<NotificationRecipient[]>(
+		`/notifications/admin/${batchKey}/recipients`,
+	);
+
+export const deleteNotificationBatch = (batchKey: string) =>
+	apiClient.delete<null>(`/notifications/admin/batch/${batchKey}`);

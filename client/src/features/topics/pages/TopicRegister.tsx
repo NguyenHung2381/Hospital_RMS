@@ -264,7 +264,7 @@ export default function TopicRegister() {
 												value={form.round_id}
 												onChange={(e) => setField('round_id', e.target.value)}
 											>
-												<option value=''>-- Chọn vòng --</option>
+												<option value=''>-- Chọn đợt nghiên cứu --</option>
 												{activeRounds.map((r) => (
 													<option
 														key={r.id}
@@ -295,7 +295,7 @@ export default function TopicRegister() {
 										value={form.category_id}
 										onChange={(e) => setField('category_id', e.target.value)}
 									>
-										<option value=''>-- Chọn danh mục --</option>
+										<option value=''>-- Chọn phân loại danh mục --</option>
 										{categories.map((c) => (
 											<option
 												key={c.id}
@@ -309,7 +309,7 @@ export default function TopicRegister() {
 							</div>
 
 							<div className={styles.formRow}>
-								{!isPaper ? (
+								{!isPaper && (
 									<div className={styles.formGroup}>
 										<label
 											className={styles.formLabel}
@@ -323,7 +323,7 @@ export default function TopicRegister() {
 											value={form.level_id}
 											onChange={(e) => setField('level_id', e.target.value)}
 										>
-											<option value=''>-- Chọn cấp độ --</option>
+											<option value=''>-- Chọn cấp đề tài --</option>
 											{levels.map((l) => (
 												<option
 													key={l.id}
@@ -333,28 +333,6 @@ export default function TopicRegister() {
 												</option>
 											))}
 										</select>
-									</div>
-								) : (
-									<div className={styles.formGroup}>
-										<label
-											className={styles.formLabel}
-											htmlFor='reg-journal'
-										>
-											Tên tập san / tạp chí{' '}
-											<span className={styles.formRequired}>*</span>
-										</label>
-										<input
-											id='reg-journal'
-											className={`${styles.formInput} ${errors.journal_name ? styles.hasError : ''}`}
-											placeholder='VD: Tạp chí Y học TP.HCM'
-											value={form.journal_name}
-											onChange={(e) => setField('journal_name', e.target.value)}
-										/>
-										{errors.journal_name && (
-											<div className={styles.formError}>
-												<AlertSvg /> {errors.journal_name}
-											</div>
-										)}
 									</div>
 								)}
 								<div className={styles.formGroup}>
@@ -373,7 +351,7 @@ export default function TopicRegister() {
 											value={form.department_id}
 											onChange={(e) => handleDeptChange(e.target.value)}
 										>
-											<option value=''>-- Chọn khoa --</option>
+											<option value=''>-- Chọn khoa/phòng ban --</option>
 											{depts.map((d) => (
 												<option
 													key={d.id}
@@ -495,7 +473,7 @@ export default function TopicRegister() {
 								className={styles.btnSecondary}
 								onClick={clearForm}
 							>
-								Xoá form
+								Xóa form
 							</button>
 							<button
 								type='button'

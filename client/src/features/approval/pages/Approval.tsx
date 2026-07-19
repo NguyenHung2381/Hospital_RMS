@@ -121,7 +121,7 @@ export default function Approval() {
 	return (
 		<AdminLayout
 			pageTitle='Phê duyệt Đề tài'
-			pageSubtitle='Xem xét và quyết định hồ sơ đề tài NCKH'
+			pageSubtitle='Xem xét và quyết định hồ sơ đề tài nghiên cứu khoa học'
 			headerActions={headerActions}
 		>
 			{/* Stats */}
@@ -148,7 +148,7 @@ export default function Approval() {
 					{
 						key: 'rejected' as const,
 						value: stats.rejected,
-						label: 'Đã từ chối',
+						label: 'Không phê duyệt',
 						iconCls: 'iconRed',
 						cardCls: 'red',
 						hintCls: 'hintRed',

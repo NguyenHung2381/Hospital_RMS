@@ -43,7 +43,10 @@ export default function Schedule() {
 	const [modal, setModal]             = useState<ModalState | null>(null);
 	const [ctxMenu, setCtxMenu]         = useState<CtxMenuState | null>(null);
 	const [colorPicker, setColorPicker] = useState<ColorPickerState | null>(null);
-	const [customColors, setCustomColors] = useState<Record<string, string>>({});
+	const [customColors, setCustomColors] = useState<Record<string, string>>(() => {
+		try { return JSON.parse(localStorage.getItem('schedule_custom_colors') ?? '{}'); }
+		catch { return {}; }
+	});
 	const [containerWidth, setContainerWidth] = useState<number>(900);
 
 	const ganttRef = useRef<HTMLDivElement>(null);
@@ -107,7 +110,7 @@ export default function Schedule() {
 		};
 		el.addEventListener('wheel', onWheel, { passive: false });
 		return () => el.removeEventListener('wheel', onWheel);
-	}, [zoomIn, zoomOut]);
+	}, [zoomIn, zoomOut, viewMode]);
 
 	// ── Close overlays on outside click ───────────────────────────────────────
 	useEffect(() => {
@@ -130,7 +133,11 @@ export default function Schedule() {
 		[customColors],
 	);
 	const applyColor = useCallback((key: string, color: string) => {
-		setCustomColors((prev) => ({ ...prev, [key]: color }));
+		setCustomColors((prev) => {
+			const next = { ...prev, [key]: color };
+			localStorage.setItem('schedule_custom_colors', JSON.stringify(next));
+			return next;
+		});
 	}, []);
 
 	// ── Context menu ──────────────────────────────────────────────────────────
@@ -179,8 +186,10 @@ export default function Schedule() {
 	}, [ctxMenu, ctxTarget, gc, openColorPicker, applyColor]);
 
 	const ctxOnEdit = useMemo(() => {
-		if (!ctxTarget || ctxTarget.kind !== 'deadline') return null;
-		return () => setModal({ round: ctxTarget.round, deadline: ctxTarget.deadline });
+		if (!ctxTarget) return null;
+		if (ctxTarget.kind === 'deadline') return () => setModal({ round: ctxTarget.round, deadline: ctxTarget.deadline });
+		if (ctxTarget.kind === 'bar' && ctxTarget.deadline) return () => setModal({ round: ctxTarget.round, deadline: ctxTarget.deadline! });
+		return null;
 	}, [ctxTarget]);
 
 	const ctxOnAddActivity = useCallback(() => {
@@ -431,7 +440,7 @@ export default function Schedule() {
 						</div>
 
 						<p className={styles.hint}>
-							Kéo thanh để điều chỉnh thời gian · Kéo cạnh để co giãn · Nhấp để xem tùy chọn · Ctrl+lăn để thu phóng · Đường đỏ là hôm nay
+							Kéo thanh để điều chỉnh thời gian · Kéo cạnh để co giãn · Nhấp đúp để xem tùy chọn · Ctrl+lăn để thu phóng · Đường đỏ là hôm nay
 						</p>
 					</>
 				)}

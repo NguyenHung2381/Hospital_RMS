@@ -54,6 +54,7 @@ export function RoundCard({
 						<div className={styles.roundCardName}>{round.name}</div>
 						<div className={styles.roundCardSubname}>
 							Đợt {round.round_number} · Năm {round.year}
+							{round.round_type ? ` · ${round.round_type}` : ''}
 						</div>
 					</div>
 					<span

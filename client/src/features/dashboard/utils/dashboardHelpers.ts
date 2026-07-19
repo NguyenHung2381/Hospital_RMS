@@ -1,3 +1,5 @@
+export { formatDateVN as formatDate } from '../../../shared/utils/formatDate';
+
 export type RealStatus =
 	| 'draft'
 	| 'submitted'
@@ -28,6 +30,7 @@ export const STATUS_CONFIG: Record<string, { label: string; cls: string }> = {
 	rejected: { label: 'Từ chối', cls: 'badgeRed' },
 	supplement: { label: 'Bổ sung', cls: 'badgeBlue' },
 	completed: { label: 'Hoàn thành', cls: 'badgePink' },
+	cancelled: { label: 'Đã hủy', cls: 'badgeGray' },
 };
 
 export const STATUS_COLORS: Record<string, string> = {
@@ -37,6 +40,7 @@ export const STATUS_COLORS: Record<string, string> = {
 	rejected: '#E24B4A',
 	supplement: '#378ADD',
 	completed: '#E8457A',
+	cancelled: '#9CA3AF',
 };
 
 export const CHART_COLORS = [
@@ -69,15 +73,3 @@ export const TABS: { key: TabKey; label: string }[] = [
 ];
 
 export const ROWS_PER_PAGE = 8;
-
-export function formatDate(iso: string): string {
-	if (!iso) return '';
-	const d = new Date(iso);
-	if (isNaN(d.getTime())) return '';
-	return d.toLocaleDateString('vi-VN', {
-		timeZone: 'Asia/Ho_Chi_Minh',
-		day: '2-digit',
-		month: '2-digit',
-		year: 'numeric',
-	});
-}

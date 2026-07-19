@@ -18,6 +18,15 @@ const getAll = async (req, res, next) => {
 	}
 };
 
+// Các field liên quan đến phân quyền — chỉ admin mới được đổi, để tránh
+// một role không phải admin nhưng có quyền users:update tự nâng quyền qua endpoint này.
+const ADMIN_ONLY_FIELDS = [
+	'account_type',
+	'role_id',
+	'can_sit_council',
+	'can_chair_council',
+];
+
 const updateOne = async (req, res, next) => {
 	try {
 		const actor = req.user;
@@ -31,7 +40,11 @@ const updateOne = async (req, res, next) => {
 				);
 			}
 		}
-		const item = await userService.update(req.params.id, req.body, actor.id);
+		const data = { ...req.body };
+		if (actor.account_type !== 'admin') {
+			for (const field of ADMIN_ONLY_FIELDS) delete data[field];
+		}
+		const item = await userService.update(req.params.id, data, actor.id);
 		if (!item) return notFound(res);
 		return success(res, item, 'Cập nhật thành công');
 	} catch (err) {

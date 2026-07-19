@@ -125,6 +125,7 @@ const create = async (data, actorId) => {
 		.input('name', sql.NVarChar(200), data.name)
 		.input('year', sql.Int, year)
 		.input('round_number', sql.TinyInt, round_number)
+		.input('round_type', sql.NVarChar(100), data.round_type || null)
 		.input('start_date', sql.Date, new Date(data.start_date))
 		.input('end_date', sql.Date, new Date(data.end_date))
 		.input(
@@ -136,9 +137,9 @@ const create = async (data, actorId) => {
 	await req.query(`
       EXEC sp_set_actor @actor_id;
       INSERT INTO research_rounds
-        (id, name, year, round_number, start_date, end_date, status, public_token, created_by)
+        (id, name, year, round_number, round_type, start_date, end_date, status, public_token, created_by)
       VALUES
-        (@id, @name, @year, @round_number, @start_date, @end_date, @status,
+        (@id, @name, @year, @round_number, @round_type, @start_date, @end_date, @status,
          LOWER(REPLACE(NEWID(),'-','')), @actor_id);
     `);
 
@@ -166,6 +167,10 @@ const update = async (id, data, actorId) => {
 	if (data.round_number !== undefined) {
 		sets.push('round_number = @round_number');
 		req.input('round_number', sql.TinyInt, data.round_number);
+	}
+	if (data.round_type !== undefined) {
+		sets.push('round_type = @round_type');
+		req.input('round_type', sql.NVarChar(100), data.round_type || null);
 	}
 	if (data.start_date !== undefined) {
 		sets.push('start_date = @start_date');

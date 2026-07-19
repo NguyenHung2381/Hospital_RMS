@@ -60,6 +60,25 @@ export function RoundInfoTab({ form, errors, set, duplicateRound, years }: Round
 				</FormField>
 			</div>
 			<FormField
+				id='round_type'
+				label='Loại đợt'
+				hint='VD: Nghiên cứu khoa học, Bài báo... — để trống nếu không phân loại'
+			>
+				<input
+					id='round_type'
+					list='round-type-suggestions'
+					className={styles.formInput}
+					placeholder='VD: Nghiên cứu khoa học'
+					value={form.round_type}
+					onChange={(e) => set('round_type', e.target.value)}
+				/>
+				<datalist id='round-type-suggestions'>
+					<option value='Nghiên cứu khoa học' />
+					<option value='Bài báo' />
+					<option value='Sáng kiến' />
+				</datalist>
+			</FormField>
+			<FormField
 				id='name'
 				label='Tên đợt nghiên cứu'
 				required

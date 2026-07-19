@@ -34,6 +34,13 @@ export const STATUS_CFG = {
 		badgeCls: 'badgeBlue',
 		label: 'Cần bổ sung',
 	},
+	cancelled: {
+		...BASE_STATUS_CFG.cancelled,
+		dot: '#9ca3af',
+		bg: '#f3f4f6',
+		color: '#374151',
+		badgeCls: 'badgeGray',
+	},
 } satisfies Record<
 	TopicStatus,
 	{

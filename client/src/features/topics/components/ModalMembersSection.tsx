@@ -30,6 +30,7 @@ interface ModalMembersSectionProps {
 	selectUser: (u: UserSuggestion) => void;
 	addManual: () => void;
 	removeMember: (tempId: string) => void;
+	changeRole: (tempId: string, role: MemberRole) => void;
 }
 
 export function ModalMembersSection({
@@ -55,6 +56,7 @@ export function ModalMembersSection({
 	selectUser,
 	addManual,
 	removeMember,
+	changeRole,
 }: ModalMembersSectionProps) {
 	return (
 		<>
@@ -91,6 +93,7 @@ export function ModalMembersSection({
 			{isManualAdd && (
 				<ManualMemberForm
 					departments={departments}
+					pendingMembers={pendingMembers}
 					manualForm={manualForm}
 					setManualForm={setManualForm}
 					manualRole={manualRole}
@@ -104,6 +107,7 @@ export function ModalMembersSection({
 			<PendingMemberList
 				pendingMembers={pendingMembers}
 				removeMember={removeMember}
+				changeRole={changeRole}
 			/>
 		</>
 	);

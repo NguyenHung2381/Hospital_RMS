@@ -2,7 +2,6 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRealtimeUpdate } from '../../../layouts/hooks/useRealtime';
 import { getRounds } from '../../round/api/roundApi';
 import type { ResearchRound } from '../../round/types/round.type';
-import { SPECIALTY_GROUPS } from '../../department/types/department.type';
 import {
 	createCouncil,
 	deleteCouncil,
@@ -11,6 +10,7 @@ import {
 	updateCouncil,
 	type UpdateCouncilPayload,
 } from '../api/councilApi';
+import { sortCouncilsBySpecialty } from '../utils/councilHelpers';
 import type {
 	Council,
 	CouncilForm,
@@ -60,35 +60,7 @@ export function useCouncils() {
 				return true;
 			});
 
-			const cleanString = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, '');
-
-			const getSpecialtyIndex = (group: string | null | undefined) => {
-				if (!group) return 999;
-				const cleanedGroup = cleanString(group);
-				const idx = SPECIALTY_GROUPS.findIndex((g) => cleanString(g) === cleanedGroup);
-				return idx !== -1 ? idx : 999;
-			};
-
-			const getNumberSuffix = (name: string) => {
-				const match = name.match(/#(\d+)/);
-				return match ? parseInt(match[1], 10) : 0;
-			};
-
-			return [...res].sort((a, b) => {
-				const idxA = getSpecialtyIndex(a.specialty_group);
-				const idxB = getSpecialtyIndex(b.specialty_group);
-				if (idxA !== idxB) {
-					return idxA - idxB;
-				}
-
-				const numA = getNumberSuffix(a.name);
-				const numB = getNumberSuffix(b.name);
-				if (numA !== numB) {
-					return numA - numB;
-				}
-
-				return a.name.localeCompare(b.name, 'vi');
-			});
+			return sortCouncilsBySpecialty(res);
 		},
 		[councils, roundFilter, statusFilter],
 	);

@@ -4,6 +4,7 @@ import Logo from '../../assets/logo.png';
 import { NotificationPanel } from '../../features/notifications/components/NotificationPanel';
 import { useNotifications } from '../../features/notifications/hooks/useNotifications';
 import { toNotif } from '../../features/notifications/utils/notifUtils';
+import { getInitials } from '../../shared/utils/helper';
 import {
 	clearAuth,
 	getStoredUser,
@@ -219,14 +220,7 @@ export default function UserLayout({
 	}, []);
 
 	// ── Initials ──────────────────────────────
-	const initials =
-		userInitials ??
-		userName
-			.split(' ')
-			.map((w) => w[0])
-			.slice(-2)
-			.join('')
-			.toUpperCase();
+	const initials = userInitials ?? getInitials(userName);
 
 	const currentLabel =
 		NAV_GROUPS.flatMap((g) => g.items).find((i) => i.key === activePage)
@@ -265,7 +259,7 @@ export default function UserLayout({
 							/>
 						</div>
 						<div className={styles.sidebarBrandText}>
-							<div className={styles.sidebarBrandName}>BV Hữu Nghị NK</div>
+							<div className={styles.sidebarBrandName}>BV Hữu nghị ĐK Nghệ An</div>
 							<div className={styles.sidebarBrandSub}>Cổng người dùng</div>
 						</div>
 					</div>

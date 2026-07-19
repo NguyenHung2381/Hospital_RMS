@@ -20,7 +20,6 @@ export interface RegisterForm {
 	category_id: string;
 	level_id: string;
 	department_id: string;
-	journal_name: string;
 	doi: string;
 	publish_date: string;
 }
@@ -35,7 +34,6 @@ export interface PendingTopic {
 	category_id: string;
 	level_id: string;
 	department_id: string;
-	journal_name: string;
 	doi: string;
 	publish_date: string;
 	members: PendingMember[];

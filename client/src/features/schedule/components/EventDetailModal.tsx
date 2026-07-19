@@ -40,7 +40,7 @@ export function EventDetailModal({ detail, onClose, onEditDeadline, onAddDeadlin
 				</div>
 
 				<div className={styles.detailFoot}>
-					{detail.deadline ? (
+					{detail.deadline?.deadline_type === 'council_defense' ? null : detail.deadline ? (
 						<button
 							className={styles.detailEditBtn}
 							onClick={() => {

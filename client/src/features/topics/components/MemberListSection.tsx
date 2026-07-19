@@ -48,46 +48,31 @@ export function MemberListSection({
 				</div>
 			)}
 
-			{grantError && (
-				<div
-					style={{
-						fontSize: 12,
-						color: 'var(--color-red-600)',
-						display: 'flex',
-						gap: 4,
-						alignItems: 'center',
-					}}
-				>
-					<IcAlert /> {grantError}
-				</div>
-			)}
+			{(grantError || (pendingMembers.length > 0 && topic.status !== 'approved') || membersMissingEmail.length > 0) && (
+				<div className={styles.warningBox}>
+					{grantError && (
+						<div className={styles.errorItem}>
+							<IcAlert />
+							<span>{grantError}</span>
+						</div>
+					)}
 
-			{pendingMembers.length > 0 && topic.status !== 'approved' && (
-				<div
-					style={{
-						fontSize: 12,
-						color: 'var(--color-amber-700)',
-						display: 'flex',
-						gap: 4,
-						alignItems: 'center',
-					}}
-				>
-					<IcInfo /> Cần duyệt đề tài trước khi cấp tài khoản thành viên.
-				</div>
-			)}
+					{pendingMembers.length > 0 && topic.status !== 'approved' && (
+						<div className={styles.warningItem}>
+							<IcInfo />
+							<span>Cần duyệt đề tài trước khi cấp tài khoản thành viên.</span>
+						</div>
+					)}
 
-			{membersMissingEmail.length > 0 && (
-				<div
-					style={{
-						fontSize: 12,
-						color: 'var(--color-amber-700)',
-						display: 'flex',
-						gap: 4,
-						alignItems: 'center',
-					}}
-				>
-					<IcInfo /> {membersMissingEmail.length} thành viên chưa có email nên
-					chưa thể tạo tài khoản.
+					{membersMissingEmail.length > 0 && (
+						<div className={styles.warningItem}>
+							<IcInfo />
+							<span>
+								{membersMissingEmail.length} thành viên chưa có email nên
+								chưa thể tạo tài khoản.
+							</span>
+						</div>
+					)}
 				</div>
 			)}
 

@@ -23,12 +23,12 @@ const MODAL_CFG = {
 		btnLabel: 'Xác nhận phê duyệt',
 	},
 	reject: {
-		title: 'Từ chối đề tài',
-		desc: 'Đề tài sẽ bị từ chối. Vui lòng nêu rõ lý do để nhóm nghiên cứu có thể cải thiện.',
-		placeholder: 'Nêu rõ lý do từ chối (bắt buộc)...',
+		title: 'Không phê duyệt đề tài',
+		desc: 'Đề tài sẽ không được phê duyệt. Vui lòng nêu rõ lý do để nhóm nghiên cứu có thể điều chỉnh và cải thiện.',
+		placeholder: 'Nêu rõ lý do không phê duyệt (bắt buộc)...',
 		iconCls: 'iconReject',
 		btnCls: 'btnConfirmReject',
-		btnLabel: 'Xác nhận từ chối',
+		btnLabel: 'Xác nhận không phê duyệt',
 	},
 	request: {
 		title: 'Yêu cầu bổ sung hồ sơ',
@@ -102,7 +102,7 @@ export function ConfirmModal({
 						className={styles.btnCancel}
 						onClick={onClose}
 					>
-						Huỷ
+						Hủy
 					</button>
 					<button
 						className={styles[cfg.btnCls as keyof typeof styles] as string}

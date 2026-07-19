@@ -10,12 +10,15 @@
  *   refDate      string     — reference date
  *   sections     string[]   — which sheets to include:
  *                             'overview' | 'topics' | 'members' | 'by_category'
+ *                             | 'by_department' | 'by_specialty_group'
  *
  * Sheets produced (in order):
  *   1. "Tổng quan"          — stats: by status, category, level, department
  *   2. "Danh sách đề tài"   — full topic list with merged member rows
  *   3. "Thành viên"         — flat cross-reference of all members
  *   4+. One sheet per distinct category (if 'by_category' requested)
+ *   +.  One sheet per khoa/phòng (if 'by_department' requested)
+ *   +.  One sheet per hệ chuyên môn (if 'by_specialty_group' requested)
  */
 
 const ExcelJS = require('exceljs');
@@ -767,19 +770,39 @@ async function exportReport(req, res, next) {
 			buildMembersSheet(wb.addWorksheet('Thành viên'), data, opts);
 		}
 
-		if (sections.includes('by_category')) {
-			// One sheet per distinct category
-			const catMap = new Map();
+		// One sheet per distinct value of keyFn(topic) — used for by_category /
+		// by_department / by_specialty_group, which all group the same topic list.
+		const addGroupedSheets = (keyFn, fallbackLabel) => {
+			const groups = new Map();
 			data.forEach((t) => {
-				const k = t.category_name || 'Chưa phân loại';
-				if (!catMap.has(k)) catMap.set(k, []);
-				catMap.get(k).push(t);
+				const k = keyFn(t) || fallbackLabel;
+				if (!groups.has(k)) groups.set(k, []);
+				groups.get(k).push(t);
 			});
-			catMap.forEach((catTopics, catName) => {
-				const sheetName = catName.replace(/[\\/*?[\]:]/g, '').slice(0, 31);
+			const used = new Set(wb.worksheets.map((ws) => ws.name));
+			groups.forEach((groupTopics, groupName) => {
+				let sheetName = groupName.replace(/[\\/*?[\]:]/g, '').slice(0, 31) || fallbackLabel;
+				let i = 2;
+				while (used.has(sheetName)) {
+					const suffix = ` (${i++})`;
+					sheetName = sheetName.slice(0, 31 - suffix.length) + suffix;
+				}
+				used.add(sheetName);
 				const ws = wb.addWorksheet(sheetName);
-				buildTopicListSheet(ws, catTopics, opts, `${title} — ${catName}`);
+				buildTopicListSheet(ws, groupTopics, opts, `${title} — ${groupName}`);
 			});
+		};
+
+		if (sections.includes('by_category')) {
+			addGroupedSheets((t) => t.category_name, 'Chưa phân loại');
+		}
+
+		if (sections.includes('by_department')) {
+			addGroupedSheets((t) => t.department_name, 'Chưa phân');
+		}
+
+		if (sections.includes('by_specialty_group')) {
+			addGroupedSheets((t) => t.specialty_group, 'Chưa xác định');
 		}
 
 		// Ensure at least one sheet

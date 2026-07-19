@@ -6,6 +6,7 @@ import { NotificationPanel } from '../../features/notifications/components/Notif
 import { useNotifications } from '../../features/notifications/hooks/useNotifications';
 import { toNotif } from '../../features/notifications/utils/notifUtils';
 import { getTopics } from '../../features/topics/api/topicApi';
+import { getInitials } from '../../shared/utils/helper';
 import { clearAuth, getStoredUser } from '../../shared/utils/storage';
 import { useRealtimeUpdate } from '../hooks/useRealtime';
 import styles from './AdminLayout.module.css';
@@ -33,6 +34,7 @@ const KEY_TO_PATH: Record<string, string> = {
 	reports: '/admin/reports',
 	schedule: '/admin/schedule',
 	notifications: '/admin/notifications',
+	activityLogs: '/admin/activity-logs',
 };
 
 // Map ngược từ URL pathname → nav key (để highlight sidebar)
@@ -55,7 +57,7 @@ interface NavGroup {
 const NAV_GROUPS: NavGroup[] = [
 	{
 		section: 'Tổng quan',
-		items: [{ key: 'dashboard', label: 'Dashboard', icon: <Icon.Dashboard /> }],
+		items: [{ key: 'dashboard', label: 'Tổng quan', icon: <Icon.Dashboard /> }],
 	},
 	{
 		section: 'Quản lý đề tài',
@@ -86,6 +88,7 @@ const NAV_GROUPS: NavGroup[] = [
 			{ key: 'users', label: 'Người dùng', icon: <Icon.User /> },
 			{ key: 'roles', label: 'Vai trò & Quyền', icon: <Icon.Role /> },
 			{ key: 'notifications', label: 'Thông báo', icon: <Icon.Notif /> },
+			{ key: 'activityLogs', label: 'Nhật ký hoạt động', icon: <Icon.List /> },
 		],
 	},
 	{
@@ -226,17 +229,12 @@ export default function AdminLayout({
 	}, []);
 
 	// ── Initials ─────────────────────────────
-	const initials = userName
-		.split(' ')
-		.map((w) => w[0])
-		.slice(-2)
-		.join('')
-		.toUpperCase();
+	const initials = getInitials(userName);
 
 	// ── Current page label ───────────────────
 	const currentLabel =
 		NAV_GROUPS.flatMap((g) => g.items).find((i) => i.key === activePage)
-			?.label ?? 'Dashboard';
+			?.label ?? 'Tổng quan';
 
 	// ── Nav click handler ─────────────────────
 	const handleNavClick = (key: string) => {
@@ -284,7 +282,7 @@ export default function AdminLayout({
 						</div>
 						<div className={styles.sidebarBrandText}>
 							<div className={styles.sidebarBrandName}>
-								Bệnh viện Hữu nghi Đa khoa Nghệ An
+								Bệnh viện Hữu nghị Đa khoa Nghệ An
 							</div>
 							<div className={styles.sidebarBrandSub}>Quản lý NCKH</div>
 						</div>
@@ -425,6 +423,7 @@ export default function AdminLayout({
 							onMarkAll={markAll}
 							onMarkOne={markOne}
 							s={styles}
+							viewAllPath='/admin/notifications'
 						/>
 					</div>
 				</header>

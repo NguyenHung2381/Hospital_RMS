@@ -86,7 +86,7 @@ export default function FilesTab({
 							Kéo thả file vào đây hoặc <span>chọn từ máy tính</span>
 						</div>
 						<div className={styles.uploadZoneHint}>
-							PDF, Word, Excel, ZIP, hình ảnh — tối đa 50 MB/file
+							PDF, Word, Excel, ZIP, hình ảnh — tối đa 150 MB/file
 						</div>
 						<div className={styles.uploadZoneFormats}>
 							<span className={styles.formatBadge}>pdf</span>

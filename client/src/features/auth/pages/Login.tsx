@@ -1,10 +1,10 @@
 import React, { useCallback, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { isAdmin } from '../../../app/router/authHelpers';
 import AuthLayout from '../../../layouts/AuthLayout';
 import { saveAuth } from '../../../shared/utils/storage';
 import { getMyProgress } from '../../council/api/councilApi';
-import type { LoginUser } from '../api/authApi';
 import { loginApi } from '../api/authApi';
 import type { FormErrors, LoginForm } from '../types/auth.type';
 import styles from './Login.module.css';
@@ -18,17 +18,6 @@ import {
 	ShieldSvg,
 	UserSvg,
 } from '@/assets/icons';
-
-function isAdminUser(u: LoginUser): boolean {
-	if (u.account_type === 'admin') return true;
-	const role = (u.role ?? '').toLowerCase();
-	return (
-		role.includes('giám đốc') ||
-		role.includes('giam_doc') ||
-		role.includes('giam doc') ||
-		role.includes('director')
-	);
-}
 
 // === ICONS ===
 const Icon = {
@@ -140,10 +129,10 @@ export default function Login() {
 			const data = await loginApi(form.username, form.password);
 			saveAuth(data, form.remember);
 			const from = searchParams.get('from');
-			const dest = from || (isAdminUser(data.user) ? '/admin' : '/user');
+			const dest = from || (isAdmin(data.user) ? '/admin' : '/user');
 
 			// Chỉ hỏi khi vào thẳng cổng người dùng (không phải deep-link cụ thể)
-			if (!from && !isAdminUser(data.user)) {
+			if (!from && !isAdmin(data.user)) {
 				try {
 					const progress = await getMyProgress();
 					if (progress.length > 0) {
@@ -295,12 +284,6 @@ export default function Login() {
 							/>
 							<span className={styles.checkboxText}>Ghi nhớ đăng nhập</span>
 						</label>
-						<a
-							href='/forgot-password'
-							className={styles.forgotLink}
-						>
-							Quên mật khẩu?
-						</a>
 					</div>
 
 					{/* Nút đăng nhập */}
@@ -333,22 +316,6 @@ export default function Login() {
 						<a href='mailto:cntt@bvhndk.vn'>cntt@bvhndk.vn</a>
 					</p>
 				</div>
-			</div>
-
-			{/* Security badges */}
-			<div className={styles.securityBadges}>
-				<span className={styles.secBadge}>
-					<Icon.Shield />
-					Kết nối bảo mật SSL
-				</span>
-				<span className={styles.secBadge}>
-					<Icon.Shield />
-					Mã hóa AES-256
-				</span>
-				<span className={styles.secBadge}>
-					<Icon.Shield />
-					Xác thực 2 lớp
-				</span>
 			</div>
 
 			{councilPrompt &&

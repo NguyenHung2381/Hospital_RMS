@@ -20,6 +20,7 @@ export function useRound() {
 	const [loadError, setLoadError] = useState('');
 	const [yearFilter, setYearFilter] = useState<number | 'all'>('all');
 	const [statusFilter, setStatusFilter] = useState<RoundStatus | 'all'>('all');
+	const [viewTab, setViewTab] = useState<'current' | 'scheduled'>('current');
 	const [showCreate, setShowCreate] = useState(false);
 	const [editRound, setEditRound] = useState<ResearchRound | null>(null);
 	const [deleteRound, setDeleteRound] = useState<ResearchRound | null>(null);
@@ -59,12 +60,14 @@ export function useRound() {
 		() =>
 			rounds
 				.filter((r) => {
+					if (viewTab === 'scheduled') return r.status === 'draft';
+					if (r.status === 'draft') return false;
 					if (yearFilter !== 'all' && r.year !== yearFilter) return false;
 					if (statusFilter !== 'all' && r.status !== statusFilter) return false;
 					return true;
 				})
 				.sort((a, b) => b.year - a.year || b.round_number - a.round_number),
-		[rounds, yearFilter, statusFilter],
+		[rounds, yearFilter, statusFilter, viewTab],
 	);
 
 	const handleCreate = useCallback(async (form: RoundForm): Promise<void> => {
@@ -121,6 +124,8 @@ export function useRound() {
 		loadError,
 		yearFilter,
 		statusFilter,
+		viewTab,
+		setViewTab,
 		showCreate,
 		editRound,
 		deleteRound,

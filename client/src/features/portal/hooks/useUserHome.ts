@@ -13,6 +13,7 @@ export const STATUS_LABELS: Record<
 	approved: { label: 'Đang thực hiện', color: '#1e9460', bg: '#e8f7f0' },
 	rejected: { label: 'Từ chối', color: '#991b1b', bg: '#fee2e2' },
 	supplement: { label: 'Bổ sung', color: '#5b21b6', bg: '#ede9fe' },
+	cancelled: { label: 'Đã hủy', color: '#374151', bg: '#f3f4f6' },
 };
 
 export function useUserHome() {

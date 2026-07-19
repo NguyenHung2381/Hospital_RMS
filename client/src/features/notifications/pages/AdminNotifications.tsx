@@ -1,5 +1,6 @@
-import { CheckCircleSvg, WarnSvg } from '@/assets/icons';
+import { CheckCircleSvg, SendSvg, WarnSvg } from '@/assets/icons';
 import AdminLayout from '../../../layouts/AdminLayout';
+import { NotificationDeleteModal } from '../components/NotificationDeleteModal';
 import { NotificationHistoryTable } from '../components/NotificationHistoryTable';
 import { NotificationSendForm } from '../components/NotificationSendForm';
 import { useAdminNotifications } from '../hooks/useAdminNotifications';
@@ -18,6 +19,15 @@ export default function AdminNotifications() {
 		loadingUsers,
 		sending,
 		toast,
+		showSendModal,
+		setShowSendModal,
+		topicSearch,
+		setTopicSearch,
+		topicResults,
+		loadingTopics,
+		selectedTopic,
+		selectTopic,
+		clearTopic,
 		expandedDepts,
 		usersByDept,
 		getDeptState,
@@ -39,18 +49,57 @@ export default function AdminNotifications() {
 		filterType,
 		setFilterType,
 		loading,
-		deleting,
+		pendingDelete,
+		setPendingDelete,
+		deletingBatch,
+		expandedBatch,
+		recipientsByBatch,
+		loadingRecipients,
+		toggleBatchExpand,
 		setRefreshKey,
 		handleSend,
-		handleDelete,
+		confirmDelete,
 	} = useAdminNotifications();
+
+	const headerActions = (
+		<button
+			className={styles.btnSend}
+			onClick={() => setShowSendModal(true)}
+		>
+			<SendSvg style={{ width: 15, height: 15 }} />
+			Gửi thông báo
+		</button>
+	);
 
 	return (
 		<AdminLayout
 			pageTitle='Quản lý thông báo'
 			pageSubtitle='Gửi thông báo và xem lịch sử thông báo hệ thống'
+			headerActions={headerActions}
 		>
 			<div className={styles.layout}>
+				<NotificationHistoryTable
+					total={total}
+					rows={rows}
+					page={page}
+					setPage={setPage}
+					totalPages={totalPages}
+					search={search}
+					setSearch={setSearch}
+					filterType={filterType}
+					setFilterType={setFilterType}
+					loading={loading}
+					expandedBatch={expandedBatch}
+					recipientsByBatch={recipientsByBatch}
+					loadingRecipients={loadingRecipients}
+					onToggleExpand={toggleBatchExpand}
+					onRefresh={() => setRefreshKey((k) => k + 1)}
+					onDeleteRequest={setPendingDelete}
+					onFilterChange={() => setPage(1)}
+				/>
+			</div>
+
+			{showSendModal && (
 				<NotificationSendForm
 					form={form}
 					setForm={setForm}
@@ -73,26 +122,26 @@ export default function AdminNotifications() {
 					toggleDeptExpanded={toggleDeptExpanded}
 					filteredDepts={filteredDepts}
 					filteredUsers={filteredUsers}
+					topicSearch={topicSearch}
+					setTopicSearch={setTopicSearch}
+					topicResults={topicResults}
+					loadingTopics={loadingTopics}
+					selectedTopic={selectedTopic}
+					onSelectTopic={selectTopic}
+					onClearTopic={clearTopic}
 					onSend={handleSend}
+					onClose={() => setShowSendModal(false)}
 				/>
+			)}
 
-				<NotificationHistoryTable
-					total={total}
-					rows={rows}
-					page={page}
-					setPage={setPage}
-					totalPages={totalPages}
-					search={search}
-					setSearch={setSearch}
-					filterType={filterType}
-					setFilterType={setFilterType}
-					loading={loading}
-					deleting={deleting}
-					onRefresh={() => setRefreshKey((k) => k + 1)}
-					onDelete={handleDelete}
-					onFilterChange={() => setPage(1)}
+			{pendingDelete && (
+				<NotificationDeleteModal
+					notif={pendingDelete}
+					onClose={() => setPendingDelete(null)}
+					onConfirm={confirmDelete}
+					loading={deletingBatch}
 				/>
-			</div>
+			)}
 
 			{toast && (
 				<div

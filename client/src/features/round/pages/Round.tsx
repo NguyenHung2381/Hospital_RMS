@@ -86,56 +86,76 @@ export default function Round() {
 
 			{/* ── ROUNDS GRID ── */}
 			<div>
+				<div className={styles.modalTabs} style={{ padding: 0, marginBottom: 'var(--space-4)' }}>
+					<button
+						className={`${styles.modalTab} ${d.viewTab === 'current' ? styles.modalTabActive : ''}`}
+						onClick={() => d.setViewTab('current')}
+					>
+						Đợt nghiên cứu
+					</button>
+					<button
+						className={`${styles.modalTab} ${d.viewTab === 'scheduled' ? styles.modalTabActive : ''}`}
+						onClick={() => d.setViewTab('scheduled')}
+					>
+						Đang lên lịch ({d.stats.draft})
+					</button>
+				</div>
+
 				<div
 					className={styles.sectionHeading}
 					style={{ marginBottom: 'var(--space-4)' }}
 				>
 					<div>
-						<div className={styles.sectionTitle}>Tất cả đợt nghiên cứu</div>
+						<div className={styles.sectionTitle}>
+							{d.viewTab === 'scheduled' ? 'Đợt đang lên lịch' : 'Tất cả đợt nghiên cứu'}
+						</div>
 						<div className={styles.sectionSub}>
 							{d.filtered.length} đợt
-							{d.yearFilter !== 'all' ? ` — Năm ${d.yearFilter}` : ''}
+							{d.viewTab === 'current' && d.yearFilter !== 'all' ? ` — Năm ${d.yearFilter}` : ''}
 							{' · '}
 							{d.stats.topicSum} đề tài
 						</div>
 					</div>
-					<div className={styles.sectionRight}>
-						<select
-							className={styles.formSelect}
-							style={{ width: 'auto' }}
-							value={d.statusFilter}
-							onChange={(e) =>
-								d.setStatusFilter(e.target.value as typeof d.statusFilter)
-							}
-						>
-							<option value='all'>Tất cả trạng thái</option>
-							<option value='active'>Đang mở</option>
-							<option value='closed'>Đã đóng</option>
-							<option value='draft'>Lên lịch</option>
-						</select>
-					</div>
+					{d.viewTab === 'current' && (
+						<div className={styles.sectionRight}>
+							<select
+								className={styles.formSelect}
+								style={{ width: 'auto' }}
+								value={d.statusFilter}
+								onChange={(e) =>
+									d.setStatusFilter(e.target.value as typeof d.statusFilter)
+								}
+							>
+								<option value='all'>Tất cả trạng thái</option>
+								<option value='active'>Đang mở</option>
+								<option value='closed'>Đã đóng</option>
+							</select>
+						</div>
+					)}
 				</div>
 
-				<div
-					className={styles.yearBar}
-					style={{ marginBottom: 'var(--space-5)' }}
-				>
-					<button
-						className={`${styles.yearChip} ${d.yearFilter === 'all' ? styles.yearChipActive : ''}`}
-						onClick={() => d.setYearFilter('all')}
+				{d.viewTab === 'current' && (
+					<div
+						className={styles.yearBar}
+						style={{ marginBottom: 'var(--space-5)' }}
 					>
-						Tất cả năm
-					</button>
-					{d.years.map((y) => (
 						<button
-							key={y}
-							className={`${styles.yearChip} ${d.yearFilter === y ? styles.yearChipActive : ''}`}
-							onClick={() => d.setYearFilter(y)}
+							className={`${styles.yearChip} ${d.yearFilter === 'all' ? styles.yearChipActive : ''}`}
+							onClick={() => d.setYearFilter('all')}
 						>
-							{y}
+							Tất cả năm
 						</button>
-					))}
-				</div>
+						{d.years.map((y) => (
+							<button
+								key={y}
+								className={`${styles.yearChip} ${d.yearFilter === y ? styles.yearChipActive : ''}`}
+								onClick={() => d.setYearFilter(y)}
+							>
+								{y}
+							</button>
+						))}
+					</div>
+				)}
 
 				{d.isLoadingData ? (
 					<div className={styles.emptyState}>
@@ -158,6 +178,27 @@ export default function Round() {
 							Thử thay đổi bộ lọc hoặc tạo đợt mới
 						</p>
 					</div>
+				) : d.viewTab === 'current' && d.yearFilter === 'all' ? (
+					d.years.map((y) => {
+						const group = d.filtered.filter((r) => r.year === y);
+						if (group.length === 0) return null;
+						return (
+							<div key={y} className={styles.yearGroup}>
+								<div className={styles.yearGroupTitle}>Năm {y}</div>
+								<div className={styles.roundsGrid}>
+									{group.map((r) => (
+										<RoundCard
+											key={r.id}
+											round={r}
+											onEdit={() => d.setEditRound(r)}
+											onDelete={() => d.setDeleteRound(r)}
+											onCopyLink={d.handleCopyLink}
+										/>
+									))}
+								</div>
+							</div>
+						);
+					})
 				) : (
 					<div className={styles.roundsGrid}>
 						{d.filtered.map((r) => (

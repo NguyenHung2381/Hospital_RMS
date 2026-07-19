@@ -127,6 +127,10 @@ const sendBroadcast = async ({
 	return { sent: userIds.length };
 };
 
+/**
+ * Gộp các dòng cùng 1 lượt gửi (cùng batch_id, hoặc cùng id nếu là dòng cũ
+ * trước khi có batch_id) thành 1 hàng, kèm số người nhận và số người đã đọc.
+ */
 const adminGetAll = async ({ page = 1, limit = 20, type, search } = {}) => {
 	const pool = await getPool();
 	const offset = (page - 1) * limit;
@@ -145,23 +149,54 @@ const adminGetAll = async ({ page = 1, limit = 20, type, search } = {}) => {
 	}
 	const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
 	const result = await req.query(`
-    SELECT n.id, n.user_id, u.full_name, n.type, n.title, n.message,
-           n.ref_id, n.ref_type, n.is_read, n.created_at
+    SELECT
+           COALESCE(n.batch_id, n.id) AS batch_key,
+           MIN(n.type)                AS type,
+           MIN(n.title)               AS title,
+           MIN(n.message)             AS message,
+           MIN(n.ref_id)              AS ref_id,
+           MIN(n.ref_type)            AS ref_type,
+           MIN(n.created_at)          AS created_at,
+           COUNT(*)                   AS recipient_count,
+           SUM(CASE WHEN n.is_read = 1 THEN 1 ELSE 0 END) AS read_count
     FROM   notifications n
-    JOIN   users u ON u.id = n.user_id
     ${where}
-    ORDER  BY n.created_at DESC
+    GROUP  BY COALESCE(n.batch_id, n.id)
+    ORDER  BY created_at DESC
     OFFSET @offset ROWS FETCH NEXT @limit ROWS ONLY;
 
-    SELECT COUNT(*) AS total
+    SELECT COUNT(DISTINCT COALESCE(n.batch_id, n.id)) AS total
     FROM   notifications n
-    JOIN   users u ON u.id = n.user_id
     ${where};
   `);
 	return {
 		data: result.recordsets[0],
 		pagination: { page, limit, total: result.recordsets[1][0].total },
 	};
+};
+
+const getBatchRecipients = async (batchKey) => {
+	const pool = await getPool();
+	const result = await pool
+		.request()
+		.input('batch_key', sql.VarChar(30), batchKey)
+		.query(`
+      SELECT u.id AS user_id, u.full_name, u.username, n.is_read
+      FROM   notifications n
+      JOIN   users u ON u.id = n.user_id
+      WHERE  COALESCE(n.batch_id, n.id) = @batch_key
+      ORDER  BY u.full_name
+    `);
+	return result.recordset;
+};
+
+const deleteBatch = async (batchKey) => {
+	const pool = await getPool();
+	const result = await pool
+		.request()
+		.input('batch_key', sql.VarChar(30), batchKey)
+		.query('DELETE FROM notifications WHERE COALESCE(batch_id, id) = @batch_key');
+	return result.rowsAffected[0] > 0;
 };
 
 const deleteNotif = async (id) => {
@@ -173,4 +208,16 @@ const deleteNotif = async (id) => {
 	return result.rowsAffected[0] > 0;
 };
 
-module.exports = { getForUser, getUnreadCount, markRead, markAllRead, push, getUsersByTarget, sendBroadcast, adminGetAll, deleteNotif };
+module.exports = {
+	getForUser,
+	getUnreadCount,
+	markRead,
+	markAllRead,
+	push,
+	getUsersByTarget,
+	sendBroadcast,
+	adminGetAll,
+	getBatchRecipients,
+	deleteBatch,
+	deleteNotif,
+};

@@ -134,6 +134,42 @@ router.get('/admin', authorize('admin'), ctrl.adminList);
 
 /**
  * @swagger
+ * /notifications/admin/{batchKey}/recipients:
+ *   get:
+ *     summary: Lấy danh sách người nhận của 1 lượt gửi (admin only)
+ *     tags: [Notifications]
+ *     parameters:
+ *       - in: path
+ *         name: batchKey
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       200:
+ *         description: Danh sách người nhận
+ */
+router.get('/admin/:batchKey/recipients', authorize('admin'), ctrl.getBatchRecipients);
+
+/**
+ * @swagger
+ * /notifications/admin/batch/{batchKey}:
+ *   delete:
+ *     summary: Xoá cả 1 lượt gửi thông báo (admin only)
+ *     tags: [Notifications]
+ *     parameters:
+ *       - in: path
+ *         name: batchKey
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       200:
+ *         description: Đã xoá
+ *       404:
+ *         description: Không tìm thấy
+ */
+router.delete('/admin/batch/:batchKey', authorize('admin'), ctrl.deleteBatch);
+
+/**
+ * @swagger
  * /notifications/{id}:
  *   delete:
  *     summary: Xoá thông báo (admin only)

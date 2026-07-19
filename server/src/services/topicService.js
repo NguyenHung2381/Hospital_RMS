@@ -429,7 +429,31 @@ const ensureUniqueUsername = async (pool, baseUsername, userId) => {
 	}
 };
 
-const grantAccounts = async (topicId, memberIds, actorId) => {
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+// sp_gen_user_id giữ applock tới khi transaction bao ngoài commit để tránh sinh trùng mã;
+// khi có nhiều thao tác cấp tài khoản chạy đồng thời, lock có thể timeout. Thử lại vài lần
+// trước khi báo lỗi cho người dùng.
+const genUserIdWithRetry = async (tx, deptCode, isDeptAccount = false, attempts = 3) => {
+	for (let attempt = 1; attempt <= attempts; attempt += 1) {
+		try {
+			const req = new sql.Request(tx);
+			req
+				.input('dept_code', sql.VarChar(20), deptCode)
+				.input('is_dept_account', sql.Bit, isDeptAccount ? 1 : 0)
+				.output('new_id', sql.VarChar(20));
+			await req.execute('sp_gen_user_id');
+			return req.output.new_id;
+		} catch (err) {
+			const isLockTimeout =
+				err.number === 50000 && err.procName === 'sp_gen_user_id';
+			if (!isLockTimeout || attempt === attempts) throw err;
+			await sleep(300 * attempt);
+		}
+	}
+};
+
+const grantAccountsNoEmail = async (topicId, memberIds, actorId) => {
 	const pool = await getPool();
 
 	const topicResult = await pool
@@ -445,177 +469,6 @@ const grantAccounts = async (topicId, memberIds, actorId) => {
 	if (topic.status !== 'approved') {
 		const err = new Error(
 			'Đề tài chưa được phê duyệt nên chưa thể cấp tài khoản thành viên',
-		);
-		err.statusCode = 400;
-		throw err;
-	}
-
-	const missingEmailResult = await pool
-		.request()
-		.input('topic_id', sql.VarChar(15), topicId).query(`
-			SELECT tm.name AS ho_ten
-			FROM topic_members tm
-			WHERE tm.topic_id = @topic_id
-			  AND tm.account_granted = 0
-			  AND (tm.email IS NULL OR LTRIM(RTRIM(tm.email)) = '')
-		`);
-	if (missingEmailResult.recordset.length > 0) {
-		const names = missingEmailResult.recordset
-			.map((row) => row.ho_ten)
-			.filter(Boolean)
-			.slice(0, 3)
-			.join(', ');
-		const suffix = missingEmailResult.recordset.length > 3 ? ', ...' : '';
-		const err = new Error(
-			`Không thể cấp tài khoản cho thành viên chưa có email: ${names}${suffix}`,
-		);
-		err.statusCode = 400;
-		throw err;
-	}
-
-	// SP creates user rows with a placeholder password hash; returns newly-granted users
-	const spResult = await pool
-		.request()
-		.input('topic_id', sql.VarChar(15), topicId)
-		.input('actor_id', sql.VarChar(20), actorId)
-		.execute('sp_grant_member_accounts');
-
-	const newUsers = spResult.recordset || [];
-
-	// Replace placeholder hash with default password "123456"
-	const DEFAULT_PASSWORD = '123456';
-	const defaultHash = await bcrypt.hash(DEFAULT_PASSWORD, 10);
-	const credentials = [];
-	for (const u of newUsers) {
-		await pool
-			.request()
-			.input('uid', sql.VarChar(20), u.id)
-			.input('hash', sql.VarChar(200), defaultHash)
-			.query(`UPDATE users SET password = @hash WHERE id = @uid`);
-		credentials.push({
-			user_id: u.id,
-			username: u.username,
-			full_name: u.full_name,
-			password_plain: DEFAULT_PASSWORD,
-		});
-	}
-
-	// Override username with initials_staffnumber format for members who have staff_number
-	if (newUsers.length > 0) {
-		const newUserIds = newUsers.map((u) => `'${u.id}'`).join(',');
-		const memberInfo = await pool.request().query(`
-			SELECT tm.user_id, tm.name AS ho_ten, tm.staff_number
-			FROM topic_members tm
-			WHERE tm.topic_id = '${topicId}'
-			  AND tm.user_id IN (${newUserIds})
-			  AND tm.staff_number IS NOT NULL
-		`);
-		for (const row of memberInfo.recordset) {
-			const username = buildMemberUsername(row.ho_ten, row.staff_number);
-			await pool
-				.request()
-				.input('uid', sql.VarChar(20), row.user_id)
-				.input('uname', sql.VarChar(100), username)
-				.query(`UPDATE users SET username = @uname WHERE id = @uid`);
-			const cred = credentials.find((c) => c.user_id === row.user_id);
-			if (cred) cred.username = username;
-		}
-	}
-
-	// Resolve member_id for each user from topic_members
-	if (credentials.length > 0) {
-		const tmResult = await pool
-			.request()
-			.input('topic_id', sql.VarChar(15), topicId)
-			.query(
-				`SELECT tm.id AS member_id, tm.user_id FROM topic_members tm WHERE tm.topic_id = @topic_id AND tm.user_id IS NOT NULL`,
-			);
-		const memberMap = Object.fromEntries(
-			tmResult.recordset.map((r) => [r.user_id, r.member_id]),
-		);
-		credentials.forEach((c) => {
-			c.member_id = memberMap[c.user_id] || null;
-		});
-	}
-
-	await pool.request().input('topic_id', sql.VarChar(15), topicId).query(`
-      UPDATE u SET u.account_expires_at = rr.end_date
-      FROM users u
-      INNER JOIN topic_members tm ON tm.user_id = u.id
-      INNER JOIN topics t ON t.id = tm.topic_id
-      INNER JOIN research_rounds rr ON rr.id = t.round_id
-      WHERE t.id = @topic_id AND tm.account_granted = 1
-    `);
-
-	broadcast('update', { entity: 'topic' });
-
-	// Thông báo cho các tài khoản vừa được cấp
-	const newUserIds = credentials.map((c) => c.user_id);
-	if (newUserIds.length > 0) {
-		await notifSvc.push(
-			'account_granted',
-			'Tài khoản hệ thống đã được cấp',
-			newUserIds,
-			{
-				message: `Tài khoản đã được cấp để tham gia đề tài ${topicId}. Vui lòng đăng nhập với mật khẩu mặc định (123456) và đổi mật khẩu ngay.`,
-				refId: topicId,
-				refType: 'topic',
-			},
-		);
-
-		// Thông báo cho các tài khoản thuộc khoa của đề tài và chủ nhiệm đề tài
-		const excludeList = newUserIds.map((id) => `'${id}'`).join(',');
-		const deptResult = await pool
-			.request()
-			.input('topic_id', sql.VarChar(15), topicId).query(`
-				SELECT DISTINCT u.id
-				FROM users u
-				INNER JOIN topics t ON t.department_id = u.department_id
-				WHERE t.id = @topic_id
-				  AND u.is_active = 1
-				  AND u.id NOT IN (${excludeList})
-				UNION
-				SELECT tm.user_id
-				FROM topic_members tm
-				WHERE tm.topic_id = @topic_id
-				  AND tm.role = 'leader'
-				  AND tm.user_id IS NOT NULL
-				  AND tm.user_id NOT IN (${excludeList})
-			`);
-		const deptUserIds = deptResult.recordset.map((r) => r.id);
-		if (deptUserIds.length > 0) {
-			await notifSvc.push(
-				'account_granted',
-				'Cấp tài khoản thành viên đề tài',
-				deptUserIds,
-				{
-					message: `Đã cấp ${credentials.length} tài khoản cho thành viên đề tài ${topicId}. Thành viên mới có thể đăng nhập hệ thống.`,
-					refId: topicId,
-					refType: 'topic',
-				},
-			);
-		}
-	}
-
-	return credentials;
-};
-
-const grantAccountsNoEmail = async (topicId, memberIds, actorId) => {
-	const pool = await getPool();
-
-	const topicResult = await pool
-		.request()
-		.input('topic_id', sql.VarChar(15), topicId)
-		.query(`SELECT id, status FROM topics WHERE id = @topic_id`);
-	const topic = topicResult.recordset[0];
-	if (!topic) {
-		const err = new Error('KhÃ´ng tÃ¬m tháº¥y Ä‘á» tÃ i');
-		err.statusCode = 404;
-		throw err;
-	}
-	if (topic.status !== 'approved') {
-		const err = new Error(
-			'Äá» tÃ i chÆ°a Ä‘Æ°á»£c phÃª duyá»‡t nÃªn chÆ°a thá»ƒ cáº¥p tÃ i khoáº£n thÃ nh viÃªn',
 		);
 		err.statusCode = 400;
 		throw err;
@@ -661,7 +514,7 @@ const grantAccountsNoEmail = async (topicId, memberIds, actorId) => {
 		`);
 		const deptCode = deptCodeResult.recordset[0]?.code;
 		if (!deptCode) {
-			const err = new Error('KhÃ´ng xác định được khoa/phòng để tạo tài khoản');
+			const err = new Error('Không xác định được khoa/phòng để tạo tài khoản');
 			err.statusCode = 400;
 			throw err;
 		}
@@ -694,13 +547,7 @@ const grantAccountsNoEmail = async (topicId, memberIds, actorId) => {
 
 			let userId = existingUserResult.recordset[0]?.id;
 			if (!userId) {
-				const newIdRequest = new sql.Request(tx);
-				newIdRequest
-					.input('dept_code', sql.VarChar(20), deptCode)
-					.input('is_dept_account', sql.Bit, 0)
-					.output('new_id', sql.VarChar(20));
-				await newIdRequest.execute('sp_gen_user_id');
-				userId = newIdRequest.output.new_id;
+				userId = await genUserIdWithRetry(tx, deptCode);
 				if (!userId) {
 					const fallbackIdRequest = new sql.Request(tx);
 					fallbackIdRequest.input('dept_code', sql.VarChar(20), deptCode);
@@ -717,7 +564,7 @@ const grantAccountsNoEmail = async (topicId, memberIds, actorId) => {
 					userId = fallbackIdResult.recordset[0]?.new_id;
 				}
 				if (!userId) {
-					const err = new Error('KhÃ´ng sinh Ä‘Æ°á»£c mÃ£ tÃ i khoáº£n má»›i');
+					const err = new Error('Không sinh được mã tài khoản mới');
 					err.statusCode = 500;
 					throw err;
 				}
@@ -836,23 +683,30 @@ const grantAccountsNoEmail = async (topicId, memberIds, actorId) => {
 			);
 
 			// Thông báo cho khoa và chủ nhiệm đề tài
-			const excludeList = newUserIds.map((id) => `'${id}'`).join(',');
-			const deptResult = await pool
+			const excludeReq = pool
 				.request()
-				.input('topic_id', sql.VarChar(15), topicId).query(`
+				.input('topic_id', sql.VarChar(15), topicId);
+			const excludeParams = newUserIds
+				.map((id, i) => {
+					const name = `excl${i}`;
+					excludeReq.input(name, sql.VarChar(20), id);
+					return `@${name}`;
+				})
+				.join(',');
+			const deptResult = await excludeReq.query(`
 					SELECT DISTINCT u.id
 					FROM users u
 					INNER JOIN topics t ON t.department_id = u.department_id
 					WHERE t.id = @topic_id
 					  AND u.is_active = 1
-					  AND u.id NOT IN (${excludeList})
+					  AND u.id NOT IN (${excludeParams})
 					UNION
 					SELECT tm.user_id
 					FROM topic_members tm
 					WHERE tm.topic_id = @topic_id
 					  AND tm.role = 'leader'
 					  AND tm.user_id IS NOT NULL
-					  AND tm.user_id NOT IN (${excludeList})
+					  AND tm.user_id NOT IN (${excludeParams})
 				`);
 			const deptUserIds = deptResult.recordset.map((r) => r.id);
 			if (deptUserIds.length > 0) {
@@ -905,11 +759,18 @@ const approve = async (topicId, status, comment, actorId) => {
       ) x
     `);
 	const ids = userRes.recordset.map((r) => r.uid).filter(Boolean);
-	const type = status === 'approved' ? 'topic_approved' : 'topic_rejected';
+	const type =
+		status === 'approved'
+			? 'topic_approved'
+			: status === 'supplement'
+				? 'topic_supplement_requested'
+				: 'topic_rejected';
 	const title =
 		status === 'approved'
 			? 'Đề tài của bạn đã được phê duyệt'
-			: 'Đề tài của bạn bị từ chối';
+			: status === 'supplement'
+				? 'Đề tài của bạn cần bổ sung thông tin'
+				: 'Đề tài của bạn bị từ chối';
 	await notifSvc.push(type, title, ids, {
 		message: comment || null,
 		refId: topicId,
@@ -1055,7 +916,7 @@ const getForExport = async (topicIds) => {
       t.round_id, r.name AS round_name, r.year AS round_year,
       t.category_id, c.name AS category_name,
       t.level_id, l.name AS level_name,
-      t.department_id, d.name AS department_name,
+      t.department_id, d.name AS department_name, d.specialty_group,
       t.created_by, u.full_name AS created_by_name,
       tm.id AS member_id, tm.name AS ho_ten, tm.role,
       tm.position AS chuc_vu, tm.email AS member_email, tm.phone_number AS so_dien_thoai,
@@ -1089,6 +950,7 @@ const getForExport = async (topicIds) => {
 				level_name: row.level_name,
 				department_id: row.department_id,
 				department_name: row.department_name,
+				specialty_group: row.specialty_group,
 				created_by: row.created_by,
 				created_by_name: row.created_by_name,
 				members: [],

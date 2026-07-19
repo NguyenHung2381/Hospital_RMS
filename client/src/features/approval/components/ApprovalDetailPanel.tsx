@@ -334,12 +334,11 @@ export function ApprovalDetailPanel({
 										onClick={() => openModal('reject')}
 									>
 										<XCircleSvg />
-										Từ chối
+										Không phê duyệt
 									</button>
 									<button
 										className={styles.btnRequest}
 										onClick={() => openModal('request')}
-										title='Backend chua ho tro'
 									>
 										<MessageSvg />
 										Yêu cầu bổ sung
@@ -367,7 +366,7 @@ export function ApprovalDetailPanel({
 								<XCircleSvg />
 								<div>
 									<div style={{ fontWeight: 700, fontSize: 13 }}>
-										Đề tài đã bị từ chối
+										Đề tài không được phê duyệt
 									</div>
 									<div style={{ fontSize: 12, marginTop: 2 }}>
 										Bởi {selected.updated_by} · {selected.updated_at}

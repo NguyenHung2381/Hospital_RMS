@@ -1,5 +1,10 @@
 // ─── TYPES ────────────────────────────────
-export type TopicStatus = 'submitted' | 'approved' | 'rejected' | 'supplement';
+export type TopicStatus =
+	| 'submitted'
+	| 'approved'
+	| 'rejected'
+	| 'supplement'
+	| 'cancelled';
 export type ArticleType = 'de_tai' | 'bai_bao';
 export type MemberRole = 'leader' | 'secretary' | 'member';
 export type ApvStatus = 'pending' | 'approved' | 'rejected';
@@ -87,7 +92,6 @@ export interface TopicForm {
 	department_id: string;
 	status: TopicStatus;
 	article_type: ArticleType;
-	journal_name: string;
 	doi: string;
 	publish_date: string;
 }

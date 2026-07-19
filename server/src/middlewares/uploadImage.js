@@ -5,6 +5,7 @@ const path = require('path');
 const fs = require('fs');
 
 const UPLOADS_ROOT = path.resolve(process.env.UPLOADS_DIR || 'uploads');
+const SAFE_ID = /^[A-Za-z0-9_-]{1,20}$/;
 
 const ALLOWED_MIME = new Set([
 	'image/png',
@@ -15,6 +16,9 @@ const ALLOWED_MIME = new Set([
 
 const storage = multer.diskStorage({
 	destination: (req, _file, cb) => {
+		if (!SAFE_ID.test(req.params.topic_id)) {
+			return cb(Object.assign(new Error('topic_id không hợp lệ'), { statusCode: 400 }));
+		}
 		const dir = path.join(
 			UPLOADS_ROOT,
 			'topics',

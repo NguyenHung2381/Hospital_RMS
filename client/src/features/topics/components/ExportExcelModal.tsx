@@ -74,7 +74,7 @@ export function ExportExcelModal({
 		>
 			<div
 				className={styles.modal}
-				style={{ maxWidth: 480 }}
+				style={{ maxWidth: 540 }}
 				role='dialog'
 				aria-modal='true'
 				aria-labelledby='export-title'
@@ -116,7 +116,7 @@ export function ExportExcelModal({
 							style={{
 								resize: 'vertical',
 								fontFamily: 'inherit',
-								fontSize: 13,
+								fontSize: 14,
 							}}
 						/>
 					</div>
@@ -136,7 +136,7 @@ export function ExportExcelModal({
 							style={{
 								resize: 'vertical',
 								fontFamily: 'inherit',
-								fontSize: 13,
+								fontSize: 14,
 							}}
 						/>
 					</div>
@@ -147,7 +147,7 @@ export function ExportExcelModal({
 						style={{ marginTop: 'var(--space-3)' }}
 					>
 						Thông tin văn bản{' '}
-						<span className={styles.formHint}>(tuỳ chọn)</span>
+						<span className={styles.formHint}>(tùy chọn)</span>
 					</div>
 					<div className={styles.formRow}>
 						<div className={styles.formGroup}>
@@ -156,7 +156,7 @@ export function ExportExcelModal({
 								className={styles.formInput}
 								value={refNumber}
 								onChange={(e) => setRefNumber(e.target.value)}
-								placeholder='VD: 38'
+								placeholder='Ví dụ: 38'
 							/>
 						</div>
 						<div className={styles.formGroup}>
@@ -165,7 +165,7 @@ export function ExportExcelModal({
 								className={styles.formInput}
 								value={refDate}
 								onChange={(e) => setRefDate(e.target.value)}
-								placeholder='VD: 16/01/2026'
+								placeholder='Ví dụ: 16/01/2026'
 							/>
 						</div>
 					</div>
@@ -197,33 +197,40 @@ export function ExportExcelModal({
 									display: 'flex',
 									flexDirection: 'column',
 									alignItems: 'flex-start',
-									gap: 2,
-									padding: '10px 14px',
-									borderRadius: 8,
-									fontSize: 13,
+									gap: 4,
+									padding: '14px 18px',
+									borderRadius: 12,
+									fontSize: 14,
 									fontWeight: 600,
 									cursor: 'pointer',
-									transition: 'all 0.15s',
+									transition: 'all 0.2s ease',
 									border:
 										scope === opt.value
 											? '2px solid var(--color-primary)'
 											: '2px solid var(--color-gray-200)',
 									background:
 										scope === opt.value
-											? 'var(--color-primary-light, #f0fdf4)'
+											? 'var(--color-primary-pale)'
 											: 'var(--color-white)',
 									color:
 										scope === opt.value
-											? 'var(--color-primary-dark)'
+											? 'var(--color-gray-900)'
 											: 'var(--color-gray-700)',
+									boxShadow:
+										scope === opt.value
+											? '0 4px 12px rgba(46, 184, 122, 0.12)'
+											: 'none',
 								}}
 							>
-								<span>{opt.label}</span>
+								<span style={{ fontSize: 15, fontWeight: 700 }}>{opt.label}</span>
 								<span
 									style={{
-										fontSize: 12,
-										fontWeight: 400,
-										color: 'var(--color-gray-400)',
+										fontSize: 13,
+										fontWeight: 500,
+										color:
+											scope === opt.value
+												? 'var(--color-primary-dark)'
+												: 'var(--color-gray-500)',
 									}}
 								>
 									{opt.count} đề tài
@@ -248,9 +255,10 @@ export function ExportExcelModal({
 						/>
 						<span
 							style={{
-								fontSize: 13,
-								color: 'var(--color-gray-400)',
+								fontSize: 14,
+								color: 'var(--color-gray-500)',
 								whiteSpace: 'nowrap',
+								fontWeight: 500,
 							}}
 						>
 							.xlsx
@@ -261,17 +269,17 @@ export function ExportExcelModal({
 					<div
 						style={{
 							marginTop: 'var(--space-3)',
-							padding: '10px 12px',
+							padding: '12px 16px',
 							background: 'var(--color-gray-50)',
 							border: '1px solid var(--color-gray-200)',
-							borderRadius: 8,
-							fontSize: 12,
-							color: 'var(--color-gray-500)',
+							borderRadius: 10,
+							fontSize: 13.5,
+							color: 'var(--color-gray-600)',
 							lineHeight: 1.5,
 						}}
 					>
 						Sẽ xuất{' '}
-						<strong style={{ color: 'var(--color-gray-700)' }}>
+						<strong style={{ color: 'var(--color-gray-800)' }}>
 							{exportData.length} đề tài
 						</strong>{' '}
 						— file được tạo trên server và tải về trực tiếp.
@@ -292,7 +300,7 @@ export function ExportExcelModal({
 						onClick={onClose}
 						disabled={loading}
 					>
-						Huỷ
+						Hủy
 					</button>
 					<button
 						className={styles.btnPrimary}

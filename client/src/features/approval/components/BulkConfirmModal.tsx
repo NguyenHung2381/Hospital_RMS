@@ -42,10 +42,10 @@ export function BulkConfirmModal({
 						{isApprove ? <CheckCircleSvg /> : <XCircleSvg />}
 					</div>
 					<h2 className={styles.modalTitle}>
-						{isApprove ? 'Phê duyệt' : 'Từ chối'} {count} đề tài đã chọn
+						{isApprove ? 'Phê duyệt' : 'Không phê duyệt'} {count} đề tài đã chọn
 					</h2>
 					<p className={styles.modalDesc}>
-						Thao tác này sẽ {isApprove ? 'phê duyệt' : 'từ chối'}{' '}
+						Thao tác này sẽ {isApprove ? 'phê duyệt' : 'không phê duyệt'}{' '}
 						<strong>{count} đề tài</strong> cùng lúc.
 						{isApprove
 							? ' Chủ nhiệm các đề tài sẽ nhận thông báo và có thể bắt đầu triển khai.'
@@ -56,7 +56,7 @@ export function BulkConfirmModal({
 						placeholder={
 							isApprove
 								? 'Nhận xét chung (không bắt buộc)...'
-								: 'Lý do từ chối áp dụng cho tất cả (bắt buộc)...'
+								: 'Lý do không phê duyệt áp dụng cho tất cả (bắt buộc)...'
 						}
 						value={comment}
 						onChange={(e) => onChangeComment(e.target.value)}
@@ -69,7 +69,7 @@ export function BulkConfirmModal({
 						className={styles.btnCancel}
 						onClick={onClose}
 					>
-						Huỷ
+						Hủy
 					</button>
 					<button
 						className={
@@ -91,7 +91,7 @@ export function BulkConfirmModal({
 						) : isApprove ? (
 							`Phê duyệt ${count} đề tài`
 						) : (
-							`Từ chối ${count} đề tài`
+							`Không phê duyệt ${count} đề tài`
 						)}
 					</button>
 				</div>

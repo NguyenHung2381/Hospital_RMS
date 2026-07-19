@@ -10,7 +10,7 @@ import {
 	uploadMinutesFiles,
 	type ProgressTopic,
 } from '../../council/api/councilApi';
-import { SPECIALTY_GROUPS } from '../../department/types/department.type';
+import { compareCouncilsBySpecialty } from '../../council/utils/councilHelpers';
 import type { Draft, ResultDraft } from '../types/councilProgress.type';
 
 export function useCouncilProgress() {
@@ -129,44 +129,12 @@ export function useCouncilProgress() {
 		}
 		const res = [...map.values()];
 
-		const cleanString = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, '');
-
-		const getSpecialtyFromCouncilName = (fullName: string) => {
-			let name = fullName.replace(/^Hội\s+đồng\s+/i, '');
-			name = name.replace(/\s*#\d+$/, '');
-			return name.trim();
-		};
-
-		const getSpecialtyIndex = (councilName: string) => {
-			const spec = getSpecialtyFromCouncilName(councilName);
-			const cleanedGroup = cleanString(spec);
-			const idx = SPECIALTY_GROUPS.findIndex((g) => cleanString(g) === cleanedGroup);
-			return idx !== -1 ? idx : 999;
-		};
-
-		const getNumberSuffix = (name: string) => {
-			const match = name.match(/#(\d+)/);
-			return match ? parseInt(match[1], 10) : 0;
-		};
-
-		res.sort((a, b) => {
-			const nameA = a[0]?.council_name ?? '';
-			const nameB = b[0]?.council_name ?? '';
-
-			const idxA = getSpecialtyIndex(nameA);
-			const idxB = getSpecialtyIndex(nameB);
-			if (idxA !== idxB) {
-				return idxA - idxB;
-			}
-
-			const numA = getNumberSuffix(nameA);
-			const numB = getNumberSuffix(nameB);
-			if (numA !== numB) {
-				return numA - numB;
-			}
-
-			return nameA.localeCompare(nameB, 'vi');
-		});
+		res.sort((a, b) =>
+			compareCouncilsBySpecialty(
+				{ name: a[0]?.council_name ?? '' },
+				{ name: b[0]?.council_name ?? '' },
+			),
+		);
 
 		return res;
 	}, [topics]);

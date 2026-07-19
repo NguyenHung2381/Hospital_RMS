@@ -113,11 +113,11 @@ export function ProgressConclusionTab({
 			>
 				<div className={styles.conclusionHeader}>
 					<span className={styles.conclusionTitle}>
-						⚖️ Kết luận &amp; Nhận xét chung của Hội đồng
+						⚖️ Kết luận và Nhận xét chung của Hội đồng
 					</span>
 					{!isChairman && (
 						<span className={styles.conclusionHint}>
-							Do Chủ tịch Hội đồng quyết định
+							Kết luận do Chủ tịch Hội đồng phê duyệt
 						</span>
 					)}
 				</div>
@@ -125,7 +125,7 @@ export function ProgressConclusionTab({
 				{isChairman ? (
 					<div className={styles.conclusionForm}>
 						<div className={styles.conclusionChairmanBadge}>
-							👑 Vai trò: Chủ tịch Hội đồng
+							Vai trò: Chủ tịch Hội đồng
 						</div>
 						<div className={styles.conclusionFormGrid}>
 							<div className={styles.conclusionSelectField}>
@@ -140,7 +140,7 @@ export function ProgressConclusionTab({
 										}
 										className={`${styles.conclusionSelect} ${rd.conclusion ? styles['select_' + rd.conclusion] : ''}`}
 									>
-										<option value=''>— Chọn kết luận —</option>
+										<option value=''>— Chọn kết luận của Hội đồng —</option>
 										{(Object.keys(CONCLUSION_LABELS) as Conclusion[]).map(
 											(c) => (
 												<option
@@ -156,7 +156,7 @@ export function ProgressConclusionTab({
 							</div>
 							<div className={styles.conclusionTextField}>
 								<label className={styles.formLabel}>
-									Nhận xét chung đại diện Hội đồng
+									Ý kiến nhận xét chung của Hội đồng
 								</label>
 								<RichTextEditor
 									value={rd.general_comment}
@@ -185,7 +185,7 @@ export function ProgressConclusionTab({
 								) : savedResultId === t.id ? (
 									'✓ Đã lưu kết luận'
 								) : (
-									<>💾 Lưu kết luận</>
+									'Lưu kết luận'
 								)}
 							</button>
 						</div>
@@ -199,7 +199,7 @@ export function ProgressConclusionTab({
 								{CONCLUSION_LABELS[t.result.conclusion]}
 							</span>
 							<span className={styles.conclusionMeta}>
-								Chốt bởi: {t.result.decided_by_name} · {t.result.updated_at}
+								Phê duyệt bởi: {t.result.decided_by_name} · {t.result.updated_at}
 							</span>
 						</div>
 						{t.result.general_comment && (
@@ -213,7 +213,7 @@ export function ProgressConclusionTab({
 					</div>
 				) : (
 					<div className={styles.conclusionEmpty}>
-						Chủ tịch hội đồng chưa chốt kết luận.
+						Chủ tịch Hội đồng chưa phê duyệt kết luận chung.
 					</div>
 				)}
 			</div>

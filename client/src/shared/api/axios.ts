@@ -1,6 +1,6 @@
 import { clearAuth, getToken } from '../utils/storage';
 import { BASE_URL } from './endpoints';
-import { handle401, tryRefresh } from './interceptors';
+import { handle401, refreshQueued } from './interceptors';
 
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 	const token = getToken();
@@ -38,7 +38,7 @@ async function requestBlob(path: string, body: unknown): Promise<Blob> {
 	});
 
 	if (res.status === 401) {
-		const newToken = await tryRefresh();
+		const newToken = await refreshQueued();
 		if (newToken) {
 			const retryRes = await fetch(`${BASE_URL}/api/v1${path}`, {
 				method: 'POST',
@@ -84,7 +84,7 @@ async function requestForm<T>(path: string, body: FormData): Promise<T> {
 	});
 
 	if (res.status === 401) {
-		const newToken = await tryRefresh();
+		const newToken = await refreshQueued();
 		if (newToken) {
 			const retryRes = await fetch(`${BASE_URL}/api/v1${path}`, {
 				method: 'POST',

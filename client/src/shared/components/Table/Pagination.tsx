@@ -10,6 +10,8 @@ interface PaginationProps {
 	onPageChange: (page: number) => void;
 	onRowsPerPageChange: (n: number) => void;
 	itemLabel?: string;
+	// Ẩn dropdown chọn số dòng/trang khi trang đã có control riêng ở nơi khác.
+	hideSizeSelect?: boolean;
 }
 
 export function Pagination({
@@ -21,6 +23,7 @@ export function Pagination({
 	onPageChange,
 	onRowsPerPageChange,
 	itemLabel = 'mục',
+	hideSizeSelect = false,
 }: PaginationProps) {
 	const safe = Math.min(page, Math.max(1, totalPages));
 
@@ -41,20 +44,22 @@ export function Pagination({
 		<div className={styles.wrapper}>
 			<span className={styles.info}>{infoText}</span>
 			<div className={styles.spacer} />
-			<select
-				className={styles.sizeSelect}
-				value={rowsPerPage}
-				onChange={(e) => onRowsPerPageChange(Number(e.target.value))}
-			>
-				{pageSizeOptions.map((n) => (
-					<option
-						key={n}
-						value={n}
-					>
-						{n} / trang
-					</option>
-				))}
-			</select>
+			{!hideSizeSelect && (
+				<select
+					className={styles.sizeSelect}
+					value={rowsPerPage}
+					onChange={(e) => onRowsPerPageChange(Number(e.target.value))}
+				>
+					{pageSizeOptions.map((n) => (
+						<option
+							key={n}
+							value={n}
+						>
+							{n} / trang
+						</option>
+					))}
+				</select>
+			)}
 			<div className={styles.buttons}>
 				<button
 					className={styles.btn}

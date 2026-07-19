@@ -18,6 +18,20 @@ export function formatDate(value?: string | null): string | null {
 	return new Intl.DateTimeFormat('vi-VN').format(date);
 }
 
+// dd/mm/yyyy cố định theo giờ VN (khác `formatDate` ở trên: luôn trả string, không phụ
+// thuộc timezone trình duyệt) — dùng cho báo cáo/dashboard cần hiển thị nhất quán.
+export function formatDateVN(iso: string | null | undefined): string {
+	if (!iso) return '';
+	const d = new Date(iso);
+	if (isNaN(d.getTime())) return '';
+	return d.toLocaleDateString('vi-VN', {
+		timeZone: 'Asia/Ho_Chi_Minh',
+		day: '2-digit',
+		month: '2-digit',
+		year: 'numeric',
+	});
+}
+
 export function parseDate(s: string | null | undefined): Date | null {
 	if (!s) return null;
 	if (s.includes('/')) {

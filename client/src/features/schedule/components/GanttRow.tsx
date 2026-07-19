@@ -72,8 +72,48 @@ export function GanttRow({
 	const resL   = resOvr ? resOvr.l : resBaseL;
 	const resW   = resOvr ? resOvr.w : resBaseW;
 
+	// Lane layout for extra deadlines: stack items whose ranges collide instead of
+	// letting them overlap (e.g. two milestones a few days apart at low zoom).
+	const LANE_H    = 26;
+	const LANE_BASE = 126;
+	type DlEntry = {
+		dl: RoundDeadline; dlDate: Date; dlStartDate: Date | null;
+		startPx: number; endPx: number; lane: number;
+	};
+	const dlEntries = round.deadlines
+		.filter((dl) => dl !== regDeadline && dl !== supDeadline)
+		.map((dl): DlEntry | null => {
+			const dlDate = parseDate(dl.deadline_date);
+			if (!dlDate) return null;
+			const dlStartDate = parseDate(dl.start_date);
+			let startPx: number, endPx: number;
+			if (dlStartDate) {
+				const baseL = toPct(dlStartDate);
+				const baseW = Math.max(0.3, toPct(dlDate) - baseL);
+				startPx = (baseL / 100) * timelineW;
+				endPx   = ((baseL + baseW) / 100) * timelineW;
+			} else {
+				const centerPx = (toPct(dlDate) / 100) * timelineW;
+				const labelPx  = zoom >= 2 ? Math.min(200, dl.name.length * 6 + 34) : 24;
+				startPx = centerPx - 8;
+				endPx   = centerPx + labelPx;
+			}
+			return { dl, dlDate, dlStartDate, startPx, endPx, lane: 0 };
+		})
+		.filter((e): e is DlEntry => e !== null)
+		.sort((a, b) => a.startPx - b.startPx);
+
+	const laneEnds: number[] = [];
+	for (const e of dlEntries) {
+		let lane = laneEnds.findIndex((end) => end <= e.startPx - 4);
+		if (lane === -1) { lane = laneEnds.length; laneEnds.push(e.endPx); }
+		else laneEnds[lane] = e.endPx;
+		e.lane = lane;
+	}
+	const rowHeight = Math.max(160, LANE_BASE + laneEnds.length * LANE_H + 14);
+
 	return (
-		<div className={styles.ganttRow}>
+		<div className={styles.ganttRow} style={{ minHeight: rowHeight }}>
 			{/* Label column */}
 			<div className={styles.labelCol}>
 				<span className={styles.roundId}>{round.id}</span>
@@ -116,8 +156,8 @@ export function GanttRow({
 			{/* Timeline */}
 			<div
 				className={styles.timeline}
-				style={{ width: `${timelineW}px`, cursor: 'pointer' }}
-				onClick={(e) => openCtx(e, { kind: 'row', round })}
+				style={{ width: `${timelineW}px`, minHeight: rowHeight, cursor: 'pointer' }}
+				onDoubleClick={(e) => openCtx(e, { kind: 'row', round })}
 			>
 				{/* Grid lines */}
 				{monthData.map(({ startPct, idx }) => (
@@ -140,9 +180,9 @@ export function GanttRow({
 						className={styles.bar}
 						style={{ left: `${regBaseL}%`, width: `${regBaseW}%`, background: regColor, top: 6, height: 20 }}
 						title={`Đăng ký: ${regDeadline?.start_date} → ${regDeadline?.deadline_date}`}
-						onClick={(e) => {
+						onDoubleClick={(e) => {
 							if (dragEndedRef.current) return;
-							openCtx(e, { kind: 'bar', round, barKind: 'registration' });
+							openCtx(e, { kind: 'bar', round, barKind: 'registration', deadline: regDeadline });
 						}}
 					>
 						{zoom >= 2 && <span className={styles.barTypeLabel}>Đăng ký</span>}
@@ -156,7 +196,7 @@ export function GanttRow({
 						style={{ left: `${resL}%`, width: `${resW}%`, background: resColor, top: 32, height: 52 }}
 						title={`Nghiên cứu: ${round.start_date} → ${round.end_date}`}
 						onMouseDown={(e) => startBarDrag(e, 'move', round, 'research', resBaseL, resBaseW)}
-						onClick={(e) => {
+						onDoubleClick={(e) => {
 							if (dragEndedRef.current) return;
 							openCtx(e, { kind: 'bar', round, barKind: 'research' });
 						}}
@@ -183,85 +223,81 @@ export function GanttRow({
 						className={styles.bar}
 						style={{ left: `${supBaseL}%`, width: `${supBaseW}%`, background: supColor, top: 92, height: 20 }}
 						title={`Bổ sung: ${supDeadline?.start_date} → ${supDeadline?.deadline_date}`}
-						onClick={(e) => {
+						onDoubleClick={(e) => {
 							if (dragEndedRef.current) return;
-							openCtx(e, { kind: 'bar', round, barKind: 'supplement' });
+							openCtx(e, { kind: 'bar', round, barKind: 'supplement', deadline: supDeadline });
 						}}
 					>
 						{zoom >= 2 && <span className={styles.barTypeLabel}>Bổ sung</span>}
 					</div>
 				)}
 
-				{/* Deadline bars / pins */}
-				{round.deadlines
-					.filter((dl) => dl !== regDeadline && dl !== supDeadline)
-					.map((dl) => {
-						const dlDate = parseDate(dl.deadline_date);
-						if (!dlDate) return null;
-						const color = gc(
-							`deadline-${dl.id}`,
-							DEADLINE_COLORS[dl.deadline_type ?? ''] ?? '#888888',
-						);
-						const dlStartDate = parseDate(dl.start_date);
+				{/* Deadline bars / pins (stacked into lanes when dates collide) */}
+				{dlEntries.map(({ dl, dlDate, dlStartDate, lane }) => {
+					const color = gc(
+						`deadline-${dl.id}`,
+						DEADLINE_COLORS[dl.deadline_type ?? ''] ?? '#888888',
+					);
+					const laneOffset = lane * LANE_H;
 
-						if (dlStartDate) {
-							const baseL = toPct(dlStartDate);
-							const baseW = Math.max(0.3, toPct(dlDate) - baseL);
-							const ovr   = deadlineBarOvr?.deadlineId === dl.id ? deadlineBarOvr : null;
-							const barL  = ovr ? ovr.l : baseL;
-							const barW  = ovr ? ovr.w : baseW;
-
-							return (
-								<div
-									key={dl.id}
-									className={`${styles.bar}${ovr ? ` ${styles.barActive}` : ''}`}
-									style={{ left: `${barL}%`, width: `${barW}%`, background: color, top: 126, height: 20, zIndex: 4 }}
-									title={`${dl.name}\n${dl.start_date} → ${dl.deadline_date}\nKéo để di chuyển · Nhấp để xem tùy chọn`}
-									onMouseDown={(e) => startDeadlineBarDrag(e, 'move', round, dl, baseL, baseW)}
-									onClick={(e) => {
-										if (dragEndedRef.current) return;
-										openCtx(e, { kind: 'deadline', round, deadline: dl });
-									}}
-								>
-									<div
-										className={`${styles.barHandle} ${styles.barHandleL}`}
-										onMouseDown={(e) => { e.stopPropagation(); startDeadlineBarDrag(e, 'left', round, dl, baseL, baseW); }}
-									/>
-									<span className={styles.barTypeLabel}>{dl.name}</span>
-									<div
-										className={`${styles.barHandle} ${styles.barHandleR}`}
-										onMouseDown={(e) => { e.stopPropagation(); startDeadlineBarDrag(e, 'right', round, dl, baseL, baseW); }}
-									/>
-								</div>
-							);
-						}
-
-						// Pin (no start_date)
-						const basePct   = toPct(dlDate);
-						const activePct = pinOvr?.deadlineId === dl.id ? pinOvr.pct : basePct;
-						const isActive  = pinOvr?.deadlineId === dl.id;
+					if (dlStartDate) {
+						const baseL = toPct(dlStartDate);
+						const baseW = Math.max(0.3, toPct(dlDate) - baseL);
+						const ovr   = deadlineBarOvr?.deadlineId === dl.id ? deadlineBarOvr : null;
+						const barL  = ovr ? ovr.l : baseL;
+						const barW  = ovr ? ovr.w : baseW;
 
 						return (
-							<button
+							<div
 								key={dl.id}
-								className={`${styles.deadlinePin}${isActive ? ` ${styles.deadlinePinActive}` : ''}`}
-								style={{ left: `${activePct}%` }}
-								title={`${dl.name}\n${dl.deadline_date}\nKéo để di chuyển · Nhấp để xem tùy chọn`}
-								onMouseDown={(e) => startPinDrag(e, round, dl, basePct, null)}
-								onClick={(e) => {
+								className={`${styles.bar}${ovr ? ` ${styles.barActive}` : ''}`}
+								style={{ left: `${barL}%`, width: `${barW}%`, background: color, top: LANE_BASE + laneOffset, height: 20, zIndex: 4 }}
+								title={`${dl.name}\n${dl.start_date} → ${dl.deadline_date}\nKéo để di chuyển · Nhấp đúp để xem tùy chọn`}
+								onMouseDown={(e) => startDeadlineBarDrag(e, 'move', round, dl, baseL, baseW)}
+								onDoubleClick={(e) => {
 									if (dragEndedRef.current) return;
 									openCtx(e, { kind: 'deadline', round, deadline: dl });
 								}}
 							>
-								<div className={styles.deadlineLine} style={{ background: color }} />
-								<div className={styles.deadlineDot}  style={{ background: color }} />
-								<span className={styles.deadlinePhase} style={{ color }}>{dl.phase}</span>
-								{zoom >= 2 && (
-									<span className={styles.deadlineLabel} style={{ color }}>{dl.name}</span>
-								)}
-							</button>
+								<div
+									className={`${styles.barHandle} ${styles.barHandleL}`}
+									onMouseDown={(e) => { e.stopPropagation(); startDeadlineBarDrag(e, 'left', round, dl, baseL, baseW); }}
+								/>
+								<span className={styles.barTypeLabel}>{dl.name}</span>
+								<div
+									className={`${styles.barHandle} ${styles.barHandleR}`}
+									onMouseDown={(e) => { e.stopPropagation(); startDeadlineBarDrag(e, 'right', round, dl, baseL, baseW); }}
+								/>
+							</div>
 						);
-					})}
+					}
+
+					// Pin (no start_date)
+					const basePct   = toPct(dlDate);
+					const activePct = pinOvr?.deadlineId === dl.id ? pinOvr.pct : basePct;
+					const isActive  = pinOvr?.deadlineId === dl.id;
+
+					return (
+						<button
+							key={dl.id}
+							className={`${styles.deadlinePin}${isActive ? ` ${styles.deadlinePinActive}` : ''}`}
+							style={{ left: `${activePct}%` }}
+							title={`${dl.name}\n${dl.deadline_date}\nKéo để di chuyển · Nhấp đúp để xem tùy chọn`}
+							onMouseDown={(e) => startPinDrag(e, round, dl, basePct, null)}
+							onDoubleClick={(e) => {
+								if (dragEndedRef.current) return;
+								openCtx(e, { kind: 'deadline', round, deadline: dl });
+							}}
+						>
+							<div className={styles.deadlineLine} style={{ background: color }} />
+							<div className={styles.deadlineDot}  style={{ background: color, top: 8 + laneOffset }} />
+							<span className={styles.deadlinePhase} style={{ color, top: 23 + laneOffset }}>{dl.phase}</span>
+							{zoom >= 2 && (
+								<span className={styles.deadlineLabel} style={{ color, top: 34 + laneOffset }}>{dl.name}</span>
+							)}
+						</button>
+					);
+				})}
 			</div>
 		</div>
 	);

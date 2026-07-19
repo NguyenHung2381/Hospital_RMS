@@ -9,12 +9,12 @@ export const ARTICLE_TYPE_CFG: Record<
 	de_tai: {
 		label: 'Đăng ký đề tài nghiên cứu',
 		tabLabel: 'Đề tài NCKH',
-		sub: 'Điền thông tin rồi nhấn "Thêm vào danh sách"',
+		sub: 'Nhập thông tin đăng ký rồi nhấn "Thêm vào danh sách"',
 	},
 	bai_bao: {
 		label: 'Đăng ký bài báo / báo cáo tập san',
 		tabLabel: 'Bài báo & Tập san',
-		sub: 'Điền thông tin bài báo rồi nhấn "Thêm vào danh sách"',
+		sub: 'Nhập thông tin bài báo/báo cáo rồi nhấn "Thêm vào danh sách"',
 	},
 };
 
@@ -35,10 +35,11 @@ export const ARTICLE_ROLE_CFG: Record<
 };
 
 export const STATUS_CFG: Record<TopicStatus, { label: string; dot: string }> = {
-	submitted: { label: 'Chờ duyệt', dot: '#f59e0b' },
-	approved: { label: 'Đã duyệt', dot: '#22c55e' },
-	rejected: { label: 'Từ chối', dot: '#ef4444' },
-	supplement: { label: 'Bổ sung', dot: '#8b5cf6' },
+	submitted: { label: 'Chờ phê duyệt', dot: '#f59e0b' },
+	approved: { label: 'Đã phê duyệt', dot: '#22c55e' },
+	rejected: { label: 'Không phê duyệt', dot: '#ef4444' },
+	supplement: { label: 'Yêu cầu bổ sung', dot: '#8b5cf6' },
+	cancelled: { label: 'Đã hủy', dot: '#9ca3af' },
 };
 
 export const BADGE_CLS: Record<TopicStatus, string> = {
@@ -46,6 +47,7 @@ export const BADGE_CLS: Record<TopicStatus, string> = {
 	approved: 'badgeGreen',
 	rejected: 'badgeRed',
 	supplement: 'badgeBlue',
+	cancelled: 'badgeGray',
 };
 
 export function fmtDate(iso: string): string {
@@ -59,7 +61,7 @@ export function fmtDate(iso: string): string {
 export const GUIDE_STEPS = [
 	{
 		title: 'Điền thông tin đề tài',
-		desc: 'Nhập tiêu đề, mô tả và chọn vòng nghiên cứu phù hợp.',
+		desc: 'Nhập tiêu đề, mô tả và chọn đợt nghiên cứu phù hợp.',
 	},
 	{
 		title: 'Thêm thành viên',
@@ -71,6 +73,6 @@ export const GUIDE_STEPS = [
 	},
 	{
 		title: 'Gửi tất cả',
-		desc: 'Khi hoàn tất, nhấn "Gửi tất cả" để nộp lên hội đồng phê duyệt.',
+		desc: 'Khi hoàn tất, nhấn "Gửi tất cả" để nộp hồ sơ yêu cầu phê duyệt.',
 	},
 ];

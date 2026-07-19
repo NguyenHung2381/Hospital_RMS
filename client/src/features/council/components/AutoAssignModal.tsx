@@ -8,6 +8,7 @@ import {
 	getCouncilById,
 	type AutoAssignResult,
 } from '../api/councilApi';
+import { compareCouncilsBySpecialty } from '../utils/councilHelpers';
 import type { ResearchRound } from '../../round/types/round.type';
 import {
 	SEAT_ROLES,
@@ -99,32 +100,7 @@ export function AutoAssignModal({
 			);
 
 			// Sắp xếp các hội đồng vừa tạo theo cùng quy tắc để hiển thị nhất quán
-			const cleanString = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, '');
-			const getSpecialtyFromCouncilName = (fullName: string) => {
-				let name = fullName.replace(/^Hội\s+đồng\s+/i, '');
-				name = name.replace(/\s*#\d+$/, '');
-				return name.trim();
-			};
-			const getSpecialtyIndex = (councilName: string) => {
-				const spec = getSpecialtyFromCouncilName(councilName);
-				const cleanedGroup = cleanString(spec);
-				const idx = SPECIALTY_GROUPS.findIndex((g) => cleanString(g) === cleanedGroup);
-				return idx !== -1 ? idx : 999;
-			};
-			const getNumberSuffix = (name: string) => {
-				const match = name.match(/#(\d+)/);
-				return match ? parseInt(match[1], 10) : 0;
-			};
-
-			fullNewCouncils.sort((a: Council, b: Council) => {
-				const idxA = getSpecialtyIndex(a.name);
-				const idxB = getSpecialtyIndex(b.name);
-				if (idxA !== idxB) return idxA - idxB;
-				const numA = getNumberSuffix(a.name);
-				const numB = getNumberSuffix(b.name);
-				if (numA !== numB) return numA - numB;
-				return a.name.localeCompare(b.name, 'vi');
-			});
+			fullNewCouncils.sort(compareCouncilsBySpecialty);
 
 			setCreatedCouncils(fullNewCouncils);
 			setResult(res);
@@ -141,14 +117,14 @@ export function AutoAssignModal({
 			className={styles.modalBackdrop}
 			onClick={(e) => e.target === e.currentTarget && onClose()}
 		>
-			<div className={`${styles.modal} ${styles.modalSm}`}>
+			<div className={styles.modal} style={{ width: '33vw', maxWidth: '33vw' }}>
 				<div className={styles.modalHeader}>
 					<div className={styles.modalHeaderIcon}>
 						<RefreshSvg />
 					</div>
 					<div>
-						<div className={styles.modalTitle}>Tự động phân công hội đồng</div>
-						<div className={styles.modalSub}>Chọn 1 hoặc nhiều hệ chuyên môn, chạy 1 lần</div>
+						<div className={styles.modalTitle} style={{ fontSize: 22 }}>Tự động phân công hội đồng</div>
+						<div className={styles.modalSub} style={{ fontSize: 14 }}>Chọn 1 hoặc nhiều hệ chuyên môn, chạy 1 lần</div>
 					</div>
 					<button
 						className={styles.modalClose}
@@ -221,20 +197,24 @@ export function AutoAssignModal({
 										{allSelected ? 'Bỏ chọn tất cả' : 'Chọn tất cả'}
 									</button>
 								</label>
-								<div className={styles.checkList} style={{ maxHeight: 200, overflowY: 'auto' }}>
+								<div
+									className={styles.checkList}
+									style={{ maxHeight: 260, overflowY: 'auto' }}
+								>
 									{SPECIALTY_GROUPS.map((g) => {
 										const active = specialtyGroups.includes(g);
 										return (
 											<label
 												key={g}
 												className={styles.checkRow}
-												style={{ padding: '8px 12px', fontSize: 15, gap: 10 }}
+												style={{ padding: '14px 16px', fontSize: 17, gap: 12 }}
 											>
 												<input
 													type='checkbox'
 													checked={active}
 													onChange={() => toggleGroup(g)}
 													className={styles.rowCheckbox}
+													style={{ width: 20, height: 20 }}
 												/>
 												<span>{g}</span>
 											</label>

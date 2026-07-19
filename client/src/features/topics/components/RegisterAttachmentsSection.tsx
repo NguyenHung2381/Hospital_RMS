@@ -41,11 +41,11 @@ export function RegisterAttachmentsSection({
 					<UploadSvg />
 				</span>
 				<span className={styles.dropZoneText}>
-					Kéo thả file vào đây hoặc{' '}
-					<span className={styles.dropZoneLink}>chọn file</span>
+					Kéo thả tệp tin vào đây hoặc{' '}
+					<span className={styles.dropZoneLink}>chọn tệp</span>
 				</span>
 				<span className={styles.dropZoneHint}>
-					Dung lượng tối đa: 150MB mỗi file
+					Dung lượng tối đa: 150MB mỗi tệp
 				</span>
 				<input
 					ref={fileInputRef}
@@ -78,7 +78,7 @@ export function RegisterAttachmentsSection({
 								type='button'
 								className={styles.removeBtn}
 								onClick={() => removeAttachment(f.name)}
-								title='Xoá file'
+								title='Xóa tệp'
 							>
 								<XSvg />
 							</button>

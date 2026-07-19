@@ -9,15 +9,18 @@ const getStats = async () => {
     FROM topics
     GROUP BY status;
 
-    -- Topics by department: article_type + status breakdown (for full dept stats table)
+    -- Topics by department: article_type + status + category breakdown (for full dept stats table)
     SELECT
       ISNULL(d.name, N'Chưa xác định') AS dept_name,
+      ISNULL(d.specialty_group, N'Chưa xác định') AS specialty_group,
       t.article_type,
       t.status,
+      ISNULL(c.name, N'Chưa xác định') AS category_name,
       COUNT(t.id) AS cnt
     FROM topics t
     LEFT JOIN departments d ON d.id = t.department_id
-    GROUP BY d.name, t.article_type, t.status;
+    LEFT JOIN categories c ON c.id = t.category_id
+    GROUP BY d.name, d.specialty_group, t.article_type, t.status, c.name;
 
     -- Overall totals by article_type (đề tài NCKH vs bài báo/tập san)
     SELECT t.article_type, COUNT(t.id) AS cnt
@@ -59,6 +62,37 @@ const getStats = async () => {
     LEFT JOIN topics t ON t.id = a.topic_id
     LEFT JOIN users u ON u.id = a.created_by
     ORDER BY a.created_at DESC;
+
+    -- Council progress-review completion: expected = mỗi ghế hội đồng × mỗi đề tài của hội đồng đó
+    SELECT
+      (SELECT COUNT(*) FROM council_members cm INNER JOIN topics t ON t.council_id = cm.council_id) AS expected,
+      (SELECT COUNT(*) FROM council_progress_reviews pr INNER JOIN topics t ON t.id = pr.topic_id WHERE pr.progress_percent IS NOT NULL) AS completed;
+
+    -- Xếp loại tiến độ trong số các đánh giá đã hoàn thành
+    SELECT pr.rating, COUNT(*) AS cnt
+    FROM council_progress_reviews pr
+    INNER JOIN topics t ON t.id = pr.topic_id
+    WHERE pr.progress_percent IS NOT NULL AND pr.rating IS NOT NULL
+    GROUP BY pr.rating;
+
+    -- Council progress-review completion theo phòng ban: số đánh giá cần chấm
+    SELECT
+      ISNULL(d.name, N'Chưa xác định') AS dept_name,
+      COUNT(*) AS expected
+    FROM council_members cm
+    INNER JOIN topics t ON t.council_id = cm.council_id
+    LEFT JOIN departments d ON d.id = t.department_id
+    GROUP BY d.name;
+
+    -- Council progress-review completion theo phòng ban: số đánh giá đã chấm
+    SELECT
+      ISNULL(d.name, N'Chưa xác định') AS dept_name,
+      COUNT(*) AS completed
+    FROM council_progress_reviews pr
+    INNER JOIN topics t ON t.id = pr.topic_id
+    LEFT JOIN departments d ON d.id = t.department_id
+    WHERE pr.progress_percent IS NOT NULL
+    GROUP BY d.name;
   `);
 
 	const statusRows = result.recordsets[0];
@@ -76,6 +110,11 @@ const getStats = async () => {
 		total += row.cnt;
 	}
 
+	const deptExpected = {};
+	for (const row of result.recordsets[9]) deptExpected[row.dept_name] = row.expected;
+	const deptCompleted = {};
+	for (const row of result.recordsets[10]) deptCompleted[row.dept_name] = row.completed;
+
 	return {
 		overview: { total, by_status: byStatus },
 		by_department: (() => {
@@ -85,6 +124,7 @@ const getStats = async () => {
 				if (!deptMap[dept])
 					deptMap[dept] = {
 						name: dept,
+						specialty_group: row.specialty_group,
 						total: 0,
 						de_tai: 0,
 						bai_bao: 0,
@@ -96,6 +136,7 @@ const getStats = async () => {
 							supplement: 0,
 							cancelled: 0,
 						},
+						categories: {},
 					};
 				const d = deptMap[dept];
 				d.total += row.cnt;
@@ -103,11 +144,21 @@ const getStats = async () => {
 				if (d.by_status[row.status] !== undefined)
 					d.by_status[row.status] += row.cnt;
 				if (row.status === 'approved') d.approved += row.cnt;
+				d.categories[row.category_name] =
+					(d.categories[row.category_name] ?? 0) + row.cnt;
 			}
 			return Object.values(deptMap)
 				.map((d) => ({
 					...d,
+					categories: Object.entries(d.categories).map(([name, count]) => ({
+						name,
+						count,
+					})),
 					approval_rate: d.total > 0 ? d.approved / d.total : 0,
+					council_progress: {
+						expected: deptExpected[d.name] ?? 0,
+						completed: deptCompleted[d.name] ?? 0,
+					},
 				}))
 				.sort((a, b) => b.total - a.total);
 		})(),
@@ -140,6 +191,14 @@ const getStats = async () => {
 			};
 		})(),
 		recent_approvals: result.recordsets[6],
+		council_progress: {
+			expected: result.recordsets[7][0]?.expected ?? 0,
+			completed: result.recordsets[7][0]?.completed ?? 0,
+			by_rating: result.recordsets[8].map((r) => ({
+				rating: r.rating,
+				count: r.cnt,
+			})),
+		},
 	};
 };
 

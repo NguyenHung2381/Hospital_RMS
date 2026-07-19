@@ -1,7 +1,7 @@
 import { apiClient } from '../../../shared/api/axios';
 import type { Topic, TopicMember } from '../../topics/types/topic.type';
 
-export type ApprovalStatus = 'pending' | 'approved' | 'rejected';
+export type ApprovalStatus = 'pending' | 'approved' | 'rejected' | 'supplement';
 export type TopicApprovalStatus =
 	| 'draft'
 	| 'submitted'
@@ -32,7 +32,7 @@ export interface Approval {
 }
 
 export interface ApprovalPayload {
-	status: Extract<ApprovalStatus, 'approved' | 'rejected'>;
+	status: Extract<ApprovalStatus, 'approved' | 'rejected' | 'supplement'>;
 	comment?: string | null;
 }
 
@@ -75,3 +75,6 @@ export const approveTopic = (topicId: string, comment?: string) =>
 
 export const rejectTopic = (topicId: string, comment?: string) =>
 	updateTopicApproval(topicId, { status: 'rejected', comment });
+
+export const requestSupplementTopic = (topicId: string, comment: string) =>
+	updateTopicApproval(topicId, { status: 'supplement', comment });

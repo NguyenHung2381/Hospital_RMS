@@ -10,6 +10,7 @@ import type {
 	Topic,
 	TopicForm,
 } from '../types/topic.type';
+import { isAddRoleAllowed, isEditRoleAllowed } from '../utils/topicHelpers';
 
 export interface PendingMember {
 	tempId: string;
@@ -53,7 +54,6 @@ export function useTopicModal({
 		department_id: topic?.department_id ?? '',
 		status: topic?.status ?? 'submitted',
 		article_type: topic?.article_type ?? 'de_tai',
-		journal_name: topic?.journal_name ?? '',
 		doi: topic?.doi ?? '',
 		publish_date: topic?.publish_date ?? '',
 	});
@@ -99,12 +99,22 @@ export function useTopicModal({
 		};
 	}, [memberQuery]);
 
+	// Chủ nhiệm phải được chọn đầu tiên; hết lượt Chủ nhiệm/Thư ký thì mặc định về Thành viên
+	useEffect(() => {
+		if (!isAddRoleAllowed(pendingMembers, addRole))
+			setAddRole(pendingMembers.length === 0 ? 'leader' : 'member');
+		if (!isAddRoleAllowed(pendingMembers, manualRole))
+			setManualRole(pendingMembers.length === 0 ? 'leader' : 'member');
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [pendingMembers]);
+
 	const deptName = (id: string) =>
 		departments.find((d) => d.id === id)?.name ?? '';
 
 	const selectUser = (u: UserSuggestion) => {
 		if (pendingMembers.some((m) => m.staff_number === (u.staff_number ?? '')))
 			return;
+		if (!isAddRoleAllowed(pendingMembers, addRole)) return;
 		setPendingMembers((prev) => [
 			...prev,
 			{
@@ -140,6 +150,16 @@ export function useTopicModal({
 			setManualError('Mã nhân viên này đã được thêm');
 			return;
 		}
+		if (!isAddRoleAllowed(pendingMembers, manualRole)) {
+			setManualError(
+				pendingMembers.length === 0
+					? 'Vui lòng chọn Chủ nhiệm trước'
+					: manualRole === 'leader'
+						? 'Đã có Chủ nhiệm, không thể thêm người thứ hai'
+						: 'Đã có Thư ký, không thể thêm người thứ hai',
+			);
+			return;
+		}
 		setPendingMembers((prev) => [
 			...prev,
 			{
@@ -169,6 +189,13 @@ export function useTopicModal({
 	const removeMember = (tempId: string) =>
 		setPendingMembers((prev) => prev.filter((m) => m.tempId !== tempId));
 
+	const changeRole = (tempId: string, role: MemberRole) => {
+		if (!isEditRoleAllowed(pendingMembers, tempId, role)) return;
+		setPendingMembers((prev) =>
+			prev.map((m) => (m.tempId === tempId ? { ...m, role } : m)),
+		);
+	};
+
 	const setField = (field: keyof TopicForm, val: string) => {
 		setForm((p) => ({ ...p, [field]: val }));
 		if (errors[field])
@@ -189,8 +216,6 @@ export function useTopicModal({
 		if (!form.category_id) e.category_id = 'Vui lòng chọn phân loại';
 		if (!isPaper && !form.level_id) e.level_id = 'Vui lòng chọn cấp độ';
 		if (!form.department_id) e.department_id = 'Vui lòng chọn phòng ban / khoa';
-		if (isPaper && !form.journal_name.trim())
-			e.journal_name = 'Vui lòng nhập tên tập san / tạp chí';
 		setErrors(e);
 		return Object.keys(e).length === 0;
 	};
@@ -238,6 +263,7 @@ export function useTopicModal({
 		selectUser,
 		addManual,
 		removeMember,
+		changeRole,
 		setField,
 		handleSubmit,
 	};

@@ -156,7 +156,6 @@ export function useTopicRegister(): TopicRegisterState {
 		category_id: '',
 		level_id: '',
 		department_id: currentDeptId,
-		journal_name: '',
 		doi: '',
 		publish_date: '',
 	});
@@ -384,7 +383,6 @@ export function useTopicRegister(): TopicRegisterState {
 			category_id: '',
 			level_id: '',
 			department_id: currentDeptId,
-			journal_name: '',
 			doi: '',
 			publish_date: '',
 		}));
@@ -407,8 +405,6 @@ export function useTopicRegister(): TopicRegisterState {
 					: 'Tiêu đề đề tài là bắt buộc';
 		if (!form.round_id) e.round_id = 'Vui lòng chọn vòng nghiên cứu';
 		if (!form.department_id) e.department_id = 'Vui lòng chọn khoa phòng';
-		if (form.article_type === 'bai_bao' && !form.journal_name.trim())
-			e.journal_name = 'Vui lòng nhập tên tập san / tạp chí';
 		if (Object.keys(e).length) {
 			setErrors(e);
 			return;
@@ -425,7 +421,6 @@ export function useTopicRegister(): TopicRegisterState {
 				category_id: form.category_id,
 				level_id: form.level_id,
 				department_id: form.department_id,
-				journal_name: form.journal_name.trim(),
 				doi: form.doi.trim(),
 				publish_date: form.publish_date,
 				members: pendingMembers,
@@ -448,7 +443,6 @@ export function useTopicRegister(): TopicRegisterState {
 			category_id: '',
 			level_id: '',
 			department_id: form.department_id,
-			journal_name: '',
 			doi: '',
 			publish_date: '',
 		});
@@ -478,49 +472,65 @@ export function useTopicRegister(): TopicRegisterState {
 			}
 			setSubmittingAll(true);
 			setSubmitError('');
-			try {
-				await Promise.all(
-					pendingTopics.map(async (t) => {
-						const created = await createTopic({
-							title: t.title,
-							description: t.description || undefined,
-							round_id: t.round_id,
-							category_id: t.category_id || undefined,
-							level_id: t.level_id || undefined,
-							department_id: t.department_id,
-							status,
-							article_type: t.article_type,
-							journal_name: t.journal_name || undefined,
-							doi: t.doi || undefined,
-							publish_date: t.publish_date || undefined,
-						});
-						if (t.members.length > 0) {
-							await Promise.allSettled(
-								t.members.map((m) =>
-									addTopicMember(created.id, {
-										ho_ten: m.ho_ten,
-										email: m.email,
-										so_dien_thoai: m.phone_number || null,
-										chuc_vu: m.chuc_vu || null,
-										staff_number: m.staff_number || null,
-										department_id: m.department_id || t.department_id || null,
-										role: m.role,
-									}),
-								),
-							);
-						}
-						if (t.attachments.length > 0)
-							await uploadTopicFiles(created.id, t.attachments);
-					}),
-				);
+			const results = await Promise.allSettled(
+				pendingTopics.map(async (t) => {
+					const created = await createTopic({
+						title: t.title,
+						description: t.description || undefined,
+						round_id: t.round_id,
+						category_id: t.category_id || undefined,
+						level_id: t.level_id || undefined,
+						department_id: t.department_id,
+						status,
+						article_type: t.article_type,
+						doi: t.doi || undefined,
+						publish_date: t.publish_date || undefined,
+					});
+					if (t.members.length > 0) {
+						await Promise.allSettled(
+							t.members.map((m) =>
+								addTopicMember(created.id, {
+									ho_ten: m.ho_ten,
+									email: m.email,
+									so_dien_thoai: m.phone_number || null,
+									chuc_vu: m.chuc_vu || null,
+									staff_number: m.staff_number || null,
+									department_id: m.department_id || t.department_id || null,
+									role: m.role,
+								}),
+							),
+						);
+					}
+					if (t.attachments.length > 0)
+						await uploadTopicFiles(created.id, t.attachments);
+					return t.localId;
+				}),
+			);
+			const succeededIds = new Set(
+				results
+					.filter(
+						(r): r is PromiseFulfilledResult<string> => r.status === 'fulfilled',
+					)
+					.map((r) => r.value),
+			);
+			const failedCount = pendingTopics.length - succeededIds.size;
+			// Chỉ xoá khỏi danh sách chờ các đề tài đã tạo thành công — tránh gửi
+			// trùng khi user bấm gửi lại sau khi 1 phần bị lỗi.
+			setPendingTopics((prev) => prev.filter((t) => !succeededIds.has(t.localId)));
+			setSubmittingAll(false);
+			if (failedCount === 0) {
 				setToast({
-					msg: `Đã gửi ${pendingTopics.length} mục để phê duyệt!`,
+					msg: `Đã gửi ${succeededIds.size} mục để phê duyệt!`,
 					type: 'success',
 				});
 				setTimeout(() => navigate('/user/my-topics'), 1800);
-			} catch {
+			} else if (succeededIds.size === 0) {
 				setSubmitError('Có lỗi xảy ra, vui lòng thử lại.');
-				setSubmittingAll(false);
+			} else {
+				setToast({
+					msg: `Đã gửi ${succeededIds.size} mục, ${failedCount} mục lỗi. Vui lòng thử lại các mục còn trong danh sách.`,
+					type: 'error',
+				});
 			}
 		},
 		[pendingTopics, navigate],

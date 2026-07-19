@@ -1,8 +1,20 @@
 const router = require('express').Router();
 const { body } = require('express-validator');
+const rateLimit = require('express-rate-limit');
 const authController = require('../controllers/authController');
 const { authenticate } = require('../middlewares/auth');
 const { validate } = require('../middlewares/errorHandler');
+
+const loginLimiter = rateLimit({
+	windowMs: 15 * 60 * 1000, // 15 phút
+	limit: 10, // tối đa 10 lần thử đăng nhập / IP / cửa sổ thời gian
+	standardHeaders: true,
+	legacyHeaders: false,
+	message: {
+		success: false,
+		message: 'Quá nhiều lần đăng nhập thất bại. Vui lòng thử lại sau ít phút.',
+	},
+});
 
 /**
  * @swagger
@@ -40,6 +52,7 @@ const { validate } = require('../middlewares/errorHandler');
  */
 router.post(
 	'/login',
+	loginLimiter,
 	[body('username').notEmpty(), body('password').notEmpty()],
 	validate,
 	authController.login,

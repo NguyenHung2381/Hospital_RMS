@@ -197,22 +197,7 @@ export function TopicModal({
 					</div>
 
 					<div className={styles.formRow}>
-						{m.form.article_type === 'bai_bao' ? (
-							<FormField
-								id='journal_name'
-								label='Tên tập san / tạp chí'
-								required
-								error={m.errors.journal_name}
-							>
-								<input
-									id='journal_name'
-									className={`${styles.formInput} ${m.errors.journal_name ? styles.hasError : ''}`}
-									placeholder='VD: Tạp chí Y học TP.HCM'
-									value={m.form.journal_name}
-									onChange={(e) => m.setField('journal_name', e.target.value)}
-								/>
-							</FormField>
-						) : (
+						{m.form.article_type !== 'bai_bao' && (
 							<FormField
 								id='level_id'
 								label='Cấp độ đề tài'
@@ -363,6 +348,7 @@ export function TopicModal({
 							selectUser={m.selectUser}
 							addManual={m.addManual}
 							removeMember={m.removeMember}
+							changeRole={m.changeRole}
 						/>
 					)}
 				</div>

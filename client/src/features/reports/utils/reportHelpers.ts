@@ -1,16 +1,19 @@
+import { formatDateVN as fmtDate } from '../../../shared/utils/formatDate';
 import type { ExportTopic, ReportSection } from '../../topics/api/topicApi';
+import type { StatsExportSection } from '../api/reportApi';
+
+export { fmtDate };
 
 export const currentYear = new Date().getFullYear();
 export type ReportType = 'summary' | 'schedule' | 'final';
 export type ExportFormat = 'pdf' | 'xlsx';
 
 export const STATUS_LABELS: Record<string, string> = {
-	draft: 'Nháp',
 	submitted: 'Chờ duyệt',
 	approved: 'Đã phê duyệt',
 	rejected: 'Từ chối',
 	supplement: 'Bổ sung',
-	completed: 'Hoàn thành',
+	cancelled: 'Đã hủy',
 };
 
 export const STATUS_OPTIONS = [
@@ -42,11 +45,32 @@ export const DEFAULT_COLS: SummaryColKey[] = [
 	'leader',
 ];
 
+export const STATS_EXPORT_SECTIONS: {
+	key: StatsExportSection;
+	label: string;
+	desc: string;
+}[] = [
+	{ key: 'overview', label: 'Tổng quan', desc: 'Tổng số đề tài, theo phân hệ, theo trạng thái' },
+	{ key: 'by_specialty_group', label: 'Theo hệ', desc: 'Tổng hợp theo hệ chuyên môn' },
+	{
+		key: 'by_department_table',
+		label: 'Theo khoa-phòng-TT',
+		desc: 'Bảng đầy đủ từng khoa/phòng/trung tâm',
+	},
+	{
+		key: 'by_department_detail',
+		label: '1 sheet riêng cho từng khoa',
+		desc: 'Chi tiết trạng thái và phân loại của mỗi khoa/phòng',
+	},
+];
+
 export const FINAL_SECTIONS: { key: ReportSection; label: string }[] = [
 	{ key: 'overview', label: 'Thống kê tổng quan' },
 	{ key: 'topics', label: 'Danh sách đề tài (đầy đủ)' },
 	{ key: 'members', label: 'Danh sách thành viên' },
 	{ key: 'by_category', label: 'Sheet riêng theo phân loại' },
+	{ key: 'by_department', label: 'Sheet riêng theo khoa/phòng' },
+	{ key: 'by_specialty_group', label: 'Sheet riêng theo hệ chuyên môn' },
 ];
 
 export interface ScheduleOpts {
@@ -106,18 +130,6 @@ export function esc(s: string | null | undefined): string {
 		.replace(/>/g, '&gt;');
 }
 
-export function fmtDate(iso: string | null | undefined): string {
-	if (!iso) return '';
-	const d = new Date(iso);
-	return isNaN(d.getTime())
-		? ''
-		: d.toLocaleDateString('vi-VN', {
-				timeZone: 'Asia/Ho_Chi_Minh',
-				day: '2-digit',
-				month: '2-digit',
-				year: 'numeric',
-			});
-}
 
 export function getLeader(t: ExportTopic): string {
 	return t.members.find((m) => m.role === 'leader')?.ho_ten ?? '';

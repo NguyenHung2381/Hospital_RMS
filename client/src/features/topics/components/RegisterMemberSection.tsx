@@ -204,7 +204,7 @@ export function RegisterMemberSection({
 					</select>
 				</div>
 				<div className={styles.formHint}>
-					Tìm tối thiểu 2 ký tự · Chỉ thành viên cùng khoa phòng
+					Nhập tối thiểu 2 ký tự để tìm kiếm · Chỉ thành viên cùng khoa/phòng ban
 				</div>
 			</div>
 
@@ -254,7 +254,7 @@ export function RegisterMemberSection({
 						</div>
 						<div className={styles.formGroup}>
 							<label className={styles.formLabel}>
-								Mã nhân viên <span className={styles.formRequired}>*</span>
+								Mã nhân viên (MNV) <span className={styles.formRequired}>*</span>
 							</label>
 							<input
 								className={`${styles.formInput} ${manualErrors.staff_number ? styles.hasError : ''}`}
@@ -302,7 +302,7 @@ export function RegisterMemberSection({
 						</div>
 						<div className={styles.formGroup}>
 							<label className={styles.formLabel}>
-								Chức danh <span className={styles.formRequired}>*</span>
+								Chức danh chuyên môn <span className={styles.formRequired}>*</span>
 							</label>
 							<input
 								className={`${styles.formInput} ${manualErrors.chuc_vu ? styles.hasError : ''}`}
@@ -334,7 +334,7 @@ export function RegisterMemberSection({
 									})
 								}
 							>
-								<option value=''>-- Chọn khoa --</option>
+								<option value=''>-- Chọn khoa/phòng ban --</option>
 								{depts.map((d) => (
 									<option
 										key={d.id}
@@ -385,7 +385,7 @@ export function RegisterMemberSection({
 								setManualErrors({});
 							}}
 						>
-							Huỷ
+							Hủy
 						</button>
 						<button
 							type='button'
@@ -451,7 +451,7 @@ export function RegisterMemberSection({
 									type='button'
 									className={styles.removeBtn}
 									onClick={() => removeMember(m.id)}
-									title='Xoá'
+									title='Xóa'
 								>
 									<XSvg />
 								</button>

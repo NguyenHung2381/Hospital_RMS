@@ -27,7 +27,7 @@ export function ProgressMyReviewTab({
 }: ProgressMyReviewTabProps) {
 	return (
 		<div className={styles.cardSection}>
-			<h3 className={styles.cardSectionTitle}>📝 Đánh giá cá nhân của tôi</h3>
+			<h3 className={styles.cardSectionTitle}>📝 Ý kiến đánh giá cá nhân</h3>
 
 			<div className={styles.evaluationFormGrid}>
 				<div className={styles.evaluationFormLeft}>
@@ -60,7 +60,7 @@ export function ProgressMyReviewTab({
 								}
 								className={`${styles.ratingSelect} ${d.rating ? styles['select_' + d.rating] : ''}`}
 							>
-								<option value=''>— Chọn xếp loại —</option>
+								<option value=''>— Chọn kết quả xếp loại —</option>
 								{(Object.keys(PROGRESS_RATING_LABELS) as ProgressRating[]).map(
 									(r) => (
 										<option
@@ -106,7 +106,7 @@ export function ProgressMyReviewTab({
 					) : savedId === t.id ? (
 						'✓ Đã lưu đánh giá'
 					) : (
-						<>💾 Lưu đánh giá</>
+						'Lưu đánh giá'
 					)}
 				</button>
 			</div>

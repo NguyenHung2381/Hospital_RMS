@@ -218,12 +218,11 @@ export function useDashboard(): DashboardState {
 	const kpi = stats?.overview ?? {
 		total: 0,
 		by_status: {
-			draft: 0,
 			submitted: 0,
 			approved: 0,
 			rejected: 0,
 			supplement: 0,
-			completed: 0,
+			cancelled: 0,
 		},
 	};
 	const totalPages = Math.max(1, Math.ceil(topicsTotal / ROWS_PER_PAGE));
@@ -231,7 +230,6 @@ export function useDashboard(): DashboardState {
 
 	const pieData = stats
 		? [
-				{ name: 'Nháp', value: kpi.by_status.draft, key: 'draft' },
 				{ name: 'Chờ duyệt', value: kpi.by_status.submitted, key: 'submitted' },
 				{
 					name: 'Đã phê duyệt',
@@ -240,11 +238,7 @@ export function useDashboard(): DashboardState {
 				},
 				{ name: 'Từ chối', value: kpi.by_status.rejected, key: 'rejected' },
 				{ name: 'Bổ sung', value: kpi.by_status.supplement, key: 'supplement' },
-				{
-					name: 'Hoàn thành',
-					value: kpi.by_status.completed,
-					key: 'completed',
-				},
+				{ name: 'Đã hủy', value: kpi.by_status.cancelled, key: 'cancelled' },
 			].filter((d) => d.value > 0)
 		: [];
 

@@ -1,7 +1,5 @@
 import {
 	CheckSvg,
-	ChevLSvg,
-	ChevRSvg,
 	EditSvg,
 	LayersSvg,
 	PlusSvg,
@@ -11,10 +9,13 @@ import {
 	XSvg,
 } from '@/assets/icons';
 import AdminLayout from '../../../layouts/AdminLayout';
+import { Pagination } from '../../../shared/components/Table/Pagination';
 import { CatalogDeleteModal } from '../components/CatalogDeleteModal';
 import { CatalogFormModal } from '../components/CatalogFormModal';
 import { useCatalog } from '../hooks/useCatalog';
 import styles from './Catalog.module.css';
+
+const PAGE_SIZE_OPTIONS = [5, 10, 25, 50, 0] as const;
 
 const ITEM_COLORS = [
 	{ bg: '#e1f5ee', color: '#085041' },
@@ -205,60 +206,17 @@ export default function Catalog() {
 
 			{/* ── PAGINATION ── */}
 			{d.filtered.length > 0 && d.totalPages > 1 && (
-				<div className={styles.pagination}>
-					<span className={styles.paginationInfo}>
-						{d.pageSize === 0
-							? `Hiển thị tất cả ${d.filtered.length} ${d.cfg.label.toLowerCase()}`
-							: `${(d.safePage - 1) * d.pageSize + 1}–${Math.min(d.safePage * d.pageSize, d.filtered.length)} / ${d.filtered.length}`}
-					</span>
-					<div className={styles.paginationControls}>
-						<button
-							className={styles.pageBtn}
-							onClick={() => d.setPage((p) => Math.max(1, p - 1))}
-							disabled={d.safePage === 1}
-						>
-							<ChevLSvg />
-						</button>
-						{Array.from({ length: d.totalPages }, (_, idx) => idx + 1)
-							.filter(
-								(p) =>
-									p === 1 ||
-									p === d.totalPages ||
-									Math.abs(p - d.safePage) <= 1,
-							)
-							.reduce<(number | 'ellipsis')[]>((acc, p, idx, arr) => {
-								if (idx > 0 && p - (arr[idx - 1] as number) > 1)
-									acc.push('ellipsis');
-								acc.push(p);
-								return acc;
-							}, [])
-							.map((p, idx) =>
-								p === 'ellipsis' ? (
-									<span
-										key={`e${idx}`}
-										className={styles.pageEllipsis}
-									>
-										…
-									</span>
-								) : (
-									<button
-										key={p}
-										className={`${styles.pageBtn} ${p === d.safePage ? styles.pageBtnActive : ''}`}
-										onClick={() => d.setPage(p as number)}
-									>
-										{p}
-									</button>
-								),
-							)}
-						<button
-							className={styles.pageBtn}
-							onClick={() => d.setPage((p) => Math.min(d.totalPages, p + 1))}
-							disabled={d.safePage === d.totalPages}
-						>
-							<ChevRSvg />
-						</button>
-					</div>
-				</div>
+				<Pagination
+					page={d.safePage}
+					totalPages={d.totalPages}
+					total={d.filtered.length}
+					rowsPerPage={d.pageSize}
+					pageSizeOptions={PAGE_SIZE_OPTIONS}
+					onPageChange={d.setPage}
+					onRowsPerPageChange={d.handlePageSize}
+					itemLabel={d.cfg.label.toLowerCase()}
+					hideSizeSelect
+				/>
 			)}
 
 			{/* ── MODALS ── */}

@@ -2,7 +2,7 @@ import { clearAuth } from '../utils/storage';
 import { BASE_URL } from './endpoints';
 
 let isRefreshing = false;
-let refreshQueue: Array<(token: string) => void> = [];
+let refreshQueue: Array<(token: string | null) => void> = [];
 
 export async function tryRefresh(): Promise<string | null> {
 	const refreshToken =
@@ -28,59 +28,45 @@ export async function tryRefresh(): Promise<string | null> {
 	return json.data.access_token as string;
 }
 
-export async function handle401<T>(
-	path: string,
-	options: RequestInit,
-): Promise<T> {
+// Đảm bảo nhiều request 401 đồng thời chỉ gọi /auth/refresh 1 lần — request nào
+// tới sau sẽ chờ (queue) kết quả của lần refresh đang chạy thay vì tự gọi refresh riêng.
+export async function refreshQueued(): Promise<string | null> {
 	if (!isRefreshing) {
 		isRefreshing = true;
 		const newToken = await tryRefresh().finally(() => {
 			isRefreshing = false;
 		});
-
-		if (newToken) {
-			refreshQueue.forEach((cb) => cb(newToken));
-			refreshQueue = [];
-
-			const retryRes = await fetch(`${BASE_URL}/api/v1${path}`, {
-				...options,
-				headers: {
-					'Content-Type': 'application/json',
-					Authorization: `Bearer ${newToken}`,
-					...(options.headers ?? {}),
-				},
-			});
-			const retryJson = await retryRes.json();
-			if (!retryRes.ok || !retryJson.success) {
-				throw new Error(retryJson.message ?? 'Có lỗi xảy ra, vui lòng thử lại');
-			}
-			return retryJson.data as T;
-		} else {
-			refreshQueue = [];
-			clearAuth();
-			window.location.href = '/login';
-			throw new Error('Phiên đăng nhập đã hết hạn');
-		}
-	} else {
-		return new Promise<T>((resolve, reject) => {
-			refreshQueue.push(async (newToken: string) => {
-				const retryRes = await fetch(`${BASE_URL}/api/v1${path}`, {
-					...options,
-					headers: {
-						'Content-Type': 'application/json',
-						Authorization: `Bearer ${newToken}`,
-						...(options.headers ?? {}),
-					},
-				});
-				const retryJson = await retryRes.json();
-				if (!retryRes.ok || !retryJson.success) {
-					reject(
-						new Error(retryJson.message ?? 'Có lỗi xảy ra, vui lòng thử lại'),
-					);
-				} else {
-					resolve(retryJson.data as T);
-				}
-			});
-		});
+		const queue = refreshQueue;
+		refreshQueue = [];
+		queue.forEach((cb) => cb(newToken));
+		return newToken;
 	}
+	return new Promise<string | null>((resolve) => {
+		refreshQueue.push(resolve);
+	});
+}
+
+export async function handle401<T>(
+	path: string,
+	options: RequestInit,
+): Promise<T> {
+	const newToken = await refreshQueued();
+	if (newToken) {
+		const retryRes = await fetch(`${BASE_URL}/api/v1${path}`, {
+			...options,
+			headers: {
+				'Content-Type': 'application/json',
+				Authorization: `Bearer ${newToken}`,
+				...(options.headers ?? {}),
+			},
+		});
+		const retryJson = await retryRes.json();
+		if (!retryRes.ok || !retryJson.success) {
+			throw new Error(retryJson.message ?? 'Có lỗi xảy ra, vui lòng thử lại');
+		}
+		return retryJson.data as T;
+	}
+	clearAuth();
+	window.location.href = '/login';
+	throw new Error('Phiên đăng nhập đã hết hạn');
 }

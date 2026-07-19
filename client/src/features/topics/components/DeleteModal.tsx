@@ -42,15 +42,15 @@ export function DeleteModal({
 					<div className={styles.confirmIcon}>
 						<IcWarn />
 					</div>
-					<h2 className={styles.confirmTitle}>Xoá đề tài?</h2>
+					<h2 className={styles.confirmTitle}>Xác nhận xóa đề tài?</h2>
 					<p className={styles.confirmDesc}>
-						Bạn sắp xoá đề tài{' '}
+						Bạn sắp thực hiện xóa đề tài{' '}
 						<strong>
 							"{topic.title.slice(0, 60)}
 							{topic.title.length > 60 ? '...' : ''}"
 						</strong>
-						. Tất cả thành viên, tiến độ và tài liệu liên quan cũng sẽ bị xoá.
-						Hành động không thể hoàn tác.
+						. Toàn bộ thông tin thành viên, tiến độ và tài liệu liên quan cũng sẽ bị xóa bỏ.
+						Hành động này không thể hoàn tác.
 					</p>
 				</div>
 				<div className={styles.modalFooter}>
@@ -65,7 +65,7 @@ export function DeleteModal({
 						className={styles.btnSecondary}
 						onClick={onClose}
 					>
-						Huỷ bỏ
+						Hủy bỏ
 					</button>
 					<button
 						className={styles.btnDanger}
@@ -78,10 +78,10 @@ export function DeleteModal({
 									className={styles.spinner}
 									style={{ borderTopColor: '#791F1F' }}
 								/>
-								Đang xoá...
+								Đang xóa...
 							</>
 						) : (
-							'Xác nhận xoá'
+							'Xác nhận xóa'
 						)}
 					</button>
 				</div>

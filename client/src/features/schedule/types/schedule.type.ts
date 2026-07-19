@@ -26,6 +26,7 @@ export const DEADLINE_COLORS: Record<string, string> = {
 	supplement:         '#e09d52',
 	council_submission: '#7c52e0',
 	registration:       '#52a9e0',
+	council_defense:    '#e05298',
 };
 
 export const COLOR_PRESETS = [
@@ -53,7 +54,7 @@ export type DragMode = 'move' | 'left' | 'right';
 
 export type CtxTarget =
 	| { kind: 'row';      round: RoundRow }
-	| { kind: 'bar';      round: RoundRow; barKind: BarKind }
+	| { kind: 'bar';      round: RoundRow; barKind: BarKind; deadline?: RoundDeadline | null }
 	| { kind: 'deadline'; round: RoundRow; deadline: RoundDeadline };
 
 export interface CtxMenuState {

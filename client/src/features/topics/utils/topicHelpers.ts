@@ -1,10 +1,11 @@
 import type { MemberRole, TopicStatus } from '../types/topic.type';
 
 export const STATUS_CFG: Record<TopicStatus, { label: string; cls: string }> = {
-	submitted: { label: 'Chờ duyệt', cls: 'badgeAmber' },
-	approved: { label: 'Đã duyệt', cls: 'badgeGreen' },
-	rejected: { label: 'Từ chối', cls: 'badgeRed' },
-	supplement: { label: 'Bổ sung', cls: 'badgeBlue' },
+	submitted: { label: 'Chờ phê duyệt', cls: 'badgeAmber' },
+	approved: { label: 'Đã phê duyệt', cls: 'badgeGreen' },
+	rejected: { label: 'Không phê duyệt', cls: 'badgeRed' },
+	supplement: { label: 'Yêu cầu bổ sung', cls: 'badgeBlue' },
+	cancelled: { label: 'Đã hủy', cls: 'badgeGray' },
 };
 
 export const MEMBER_ROLE_CFG: Record<
@@ -15,6 +16,29 @@ export const MEMBER_ROLE_CFG: Record<
 	secretary: { label: 'Thư ký', cls: 'badgeBlue' },
 	member: { label: 'Thành viên', cls: 'badgeGray' },
 };
+
+// Chủ nhiệm phải là người được thêm đầu tiên; mỗi đề tài chỉ có tối đa 1 Chủ nhiệm và 1 Thư ký
+export function isAddRoleAllowed(
+	pendingMembers: { role: MemberRole }[],
+	role: MemberRole,
+): boolean {
+	if (pendingMembers.length === 0) return role === 'leader';
+	if (role === 'leader' || role === 'secretary')
+		return !pendingMembers.some((m) => m.role === role);
+	return true;
+}
+
+export function isEditRoleAllowed(
+	pendingMembers: { tempId: string; role: MemberRole }[],
+	tempId: string,
+	role: MemberRole,
+): boolean {
+	if (role === 'leader' || role === 'secretary')
+		return !pendingMembers.some(
+			(m) => m.tempId !== tempId && m.role === role,
+		);
+	return true;
+}
 
 export function formatFileSize(bytes: number): string {
 	if (bytes < 1024) return `${bytes} B`;

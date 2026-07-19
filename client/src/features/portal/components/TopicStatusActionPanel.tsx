@@ -26,7 +26,7 @@ export function TopicStatusActionPanel({
 							Đề tài đang chờ phê duyệt
 						</div>
 						<div style={{ fontSize: 12, marginTop: 2 }}>
-							Hồ sơ đã được nộp và đang chờ hội đồng xem xét.
+							Hồ sơ đã được nộp và đang chờ Ban Quản lý khoa học xem xét.
 						</div>
 					</div>
 				</div>
@@ -60,7 +60,7 @@ export function TopicStatusActionPanel({
 					<XCircleSvg />
 					<div>
 						<div style={{ fontWeight: 700, fontSize: 13 }}>
-							Đề tài đã bị từ chối
+							Đề tài không được phê duyệt
 						</div>
 						<div style={{ fontSize: 12, marginTop: 2 }}>
 							Bởi{' '}

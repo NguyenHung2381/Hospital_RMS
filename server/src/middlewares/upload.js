@@ -3,9 +3,13 @@ const path = require('path');
 const fs = require('fs');
 
 const UPLOADS_ROOT = path.resolve(process.env.UPLOADS_DIR || 'uploads');
+const SAFE_ID = /^[A-Za-z0-9_-]{1,20}$/;
 
 const storage = multer.diskStorage({
 	destination: (req, _file, cb) => {
+		if (!SAFE_ID.test(req.params.topic_id)) {
+			return cb(Object.assign(new Error('topic_id không hợp lệ'), { statusCode: 400 }));
+		}
 		const topicDir = path.join(UPLOADS_ROOT, 'topics', req.params.topic_id);
 		fs.mkdirSync(topicDir, { recursive: true });
 		cb(null, topicDir);
@@ -23,7 +27,7 @@ const storage = multer.diskStorage({
 
 const upload = multer({
 	storage,
-	limits: { fileSize: 50 * 1024 * 1024 }, // 50 MB per file
+	limits: { fileSize: 150 * 1024 * 1024 }, // 150 MB per file
 });
 
 module.exports = upload;

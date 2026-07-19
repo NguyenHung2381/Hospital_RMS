@@ -1,3 +1,4 @@
+import { removeDiacritics as stripDiacritics } from '../../../shared/utils/helper';
 import type { AccountType } from '../types/user.type';
 
 export const ACCOUNT_TYPES: { value: AccountType; label: string }[] = [
@@ -29,12 +30,8 @@ export function isPasswordOld(dateStr: string | null): boolean {
 	return (Date.now() - d.getTime()) / (1000 * 60 * 60 * 24) > 90;
 }
 
-export function removeDiacritics(str: string) {
-	return str
-		.normalize('NFD')
-		.replace(/[̀-ͯ]/g, '')
-		.replace(/đ/gi, 'd')
-		.toLowerCase();
+function removeDiacritics(str: string): string {
+	return stripDiacritics(str).toLowerCase();
 }
 
 export function suggestUsername(fullName: string, staffNumber: string): string {

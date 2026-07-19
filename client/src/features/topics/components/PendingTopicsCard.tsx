@@ -24,7 +24,7 @@ export function PendingTopicsCard({
 	return (
 		<div className={styles.pendingCard}>
 			<div className={styles.pendingHeader}>
-				<span>Danh sách chờ gửi</span>
+				<span>Danh sách đăng ký chờ gửi</span>
 				<span className={styles.pendingBadge}>{pendingTopics.length}</span>
 			</div>
 			<div className={styles.pendingList}>
@@ -49,14 +49,14 @@ export function PendingTopicsCard({
 								</div>
 								<div className={styles.pendingMeta}>
 									{roundName} · {t.members.length} thành viên
-									{t.attachments.length > 0 && ` · ${t.attachments.length} file`}
+									{t.attachments.length > 0 && ` · ${t.attachments.length} tệp`}
 								</div>
 							</div>
 							<button
 								type='button'
 								className={styles.removeBtn}
 								onClick={() => removeTopicFromList(t.localId)}
-								title='Xoá'
+								title='Xóa'
 							>
 								<XSvg />
 							</button>

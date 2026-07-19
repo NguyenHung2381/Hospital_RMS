@@ -3,7 +3,7 @@ import type { UserSuggestion } from '../api/topicApi';
 import type { PendingMember } from '../hooks/useTopicModal';
 import type { MemberRole } from '../types/topic.type';
 import { getInitials } from '../../../shared/utils/helper';
-import { MEMBER_ROLE_CFG } from '../utils/topicHelpers';
+import { isAddRoleAllowed, MEMBER_ROLE_CFG } from '../utils/topicHelpers';
 import styles from '../pages/Topic.module.css';
 
 interface MemberSearchBoxProps {
@@ -84,12 +84,25 @@ export function MemberSearchBox({
 						<option
 							key={r}
 							value={r}
+							disabled={!isAddRoleAllowed(pendingMembers, r)}
 						>
 							{MEMBER_ROLE_CFG[r].label}
 						</option>
 					))}
 				</select>
 			</div>
+			{pendingMembers.length === 0 && (
+				<div
+					style={{
+						fontSize: 11,
+						color: 'var(--color-gray-400)',
+						marginTop: -2,
+						marginBottom: 6,
+					}}
+				>
+					Người đầu tiên được thêm sẽ là Chủ nhiệm
+				</div>
+			)}
 
 			{!isManualAdd && (
 				<button

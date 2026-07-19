@@ -182,7 +182,7 @@ export type Conclusion = 'pass' | 'fail' | 'revise';
 export const CONCLUSION_LABELS: Record<Conclusion, string> = {
 	pass: 'Đạt',
 	fail: 'Không đạt',
-	revise: 'Cần chỉnh sửa',
+	revise: 'Yêu cầu chỉnh sửa',
 };
 
 export interface TopicResult {

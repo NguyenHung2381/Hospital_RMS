@@ -8,12 +8,15 @@ export interface StatusCounts {
 
 export interface DeptStat {
 	name: string;
+	specialty_group: string;
 	total: number;
 	de_tai: number;
 	bai_bao: number;
 	approved: number;
 	approval_rate: number;
 	by_status: StatusCounts;
+	categories: NameCount[];
+	council_progress: { expected: number; completed: number };
 }
 
 export interface ArticleTypeCount {
@@ -36,6 +39,14 @@ export interface RecentApproval {
 	approver_name: string | null;
 }
 
+export type ProgressRating = 'on_track' | 'behind' | 'at_risk';
+
+export interface CouncilProgressStat {
+	expected: number;
+	completed: number;
+	by_rating: { rating: ProgressRating; count: number }[];
+}
+
 export interface DashboardStats {
 	overview: { total: number; by_status: StatusCounts };
 	by_department: DeptStat[];
@@ -47,4 +58,5 @@ export interface DashboardStats {
 		categories: string[];
 	};
 	recent_approvals: RecentApproval[];
+	council_progress: CouncilProgressStat;
 }

@@ -469,7 +469,7 @@ router.get('/:id/approvals', authorizePermission(['topics', 'read']), ctrl.getAp
  *             properties:
  *               status:
  *                 type: string
- *                 enum: [approved, rejected]
+ *                 enum: [approved, rejected, supplement]
  *                 example: "approved"
  *     responses:
  *       200:
@@ -480,7 +480,7 @@ router.get('/:id/approvals', authorizePermission(['topics', 'read']), ctrl.getAp
 router.post(
 	'/:id/approve',
 	authorizePermission(['topics', 'approve']),
-	[body('status').isIn(['approved', 'rejected'])],
+	[body('status').isIn(['approved', 'rejected', 'supplement'])],
 	validate,
 	ctrl.approve,
 );

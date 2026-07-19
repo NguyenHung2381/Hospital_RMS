@@ -1,14 +1,15 @@
 import type { Dispatch, SetStateAction } from 'react';
 import { AlertSvg, PlusSvg, UserSvg, XSvg } from '@/assets/icons';
 import type { SimpleItem } from '../api/topicApi';
-import type { ManualMemberForm as ManualMemberFormData } from '../hooks/useTopicModal';
+import type { ManualMemberForm as ManualMemberFormData, PendingMember } from '../hooks/useTopicModal';
 import type { MemberRole } from '../types/topic.type';
-import { MEMBER_ROLE_CFG } from '../utils/topicHelpers';
+import { isAddRoleAllowed, MEMBER_ROLE_CFG } from '../utils/topicHelpers';
 import { SearchableSelect } from '../../../shared/components/Input/SearchableSelect';
 import styles from '../pages/Topic.module.css';
 
 interface ManualMemberFormProps {
 	departments: SimpleItem[];
+	pendingMembers: PendingMember[];
 	manualForm: ManualMemberFormData;
 	setManualForm: Dispatch<SetStateAction<ManualMemberFormData>>;
 	manualRole: MemberRole;
@@ -20,6 +21,7 @@ interface ManualMemberFormProps {
 
 export function ManualMemberForm({
 	departments,
+	pendingMembers,
 	manualForm,
 	setManualForm,
 	manualRole,
@@ -190,10 +192,13 @@ export function ManualMemberForm({
 				<div className={styles.formGroup}>
 					<label className={styles.formLabel}>Vai trò</label>
 					<div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-						{(Object.keys(MEMBER_ROLE_CFG) as MemberRole[]).map((r) => (
+						{(Object.keys(MEMBER_ROLE_CFG) as MemberRole[]).map((r) => {
+							const allowed = isAddRoleAllowed(pendingMembers, r);
+							return (
 							<button
 								key={r}
 								type='button'
+								disabled={!allowed}
 								onClick={() => setManualRole(r)}
 								style={{
 									display: 'flex',
@@ -203,7 +208,8 @@ export function ManualMemberForm({
 									borderRadius: 20,
 									fontSize: 12,
 									fontWeight: 600,
-									cursor: 'pointer',
+									cursor: allowed ? 'pointer' : 'not-allowed',
+									opacity: allowed ? 1 : 0.45,
 									transition: 'all 0.15s',
 									border:
 										manualRole === r
@@ -231,7 +237,8 @@ export function ManualMemberForm({
 								/>
 								{MEMBER_ROLE_CFG[r].label}
 							</button>
-						))}
+							);
+						})}
 					</div>
 				</div>
 

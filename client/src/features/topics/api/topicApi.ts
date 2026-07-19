@@ -41,7 +41,6 @@ export interface CreateTopicPayload {
 	department_id?: string;
 	status?: string;
 	article_type?: ArticleType;
-	journal_name?: string;
 	doi?: string;
 	publish_date?: string;
 }
@@ -55,7 +54,6 @@ export interface UpdateTopicPayload {
 	department_id?: string;
 	status?: string;
 	article_type?: ArticleType;
-	journal_name?: string;
 	doi?: string;
 	publish_date?: string;
 }
@@ -226,7 +224,13 @@ export interface ExportExcelPayload {
 export const exportTopicsExcel = (payload: ExportExcelPayload) =>
 	apiClient.postBlob('/topics/export-excel', payload);
 
-export type ReportSection = 'overview' | 'topics' | 'members' | 'by_category';
+export type ReportSection =
+	| 'overview'
+	| 'topics'
+	| 'members'
+	| 'by_category'
+	| 'by_department'
+	| 'by_specialty_group';
 
 export interface ExportReportPayload {
 	ids: string[];

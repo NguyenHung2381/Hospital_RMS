@@ -18,8 +18,8 @@ const swaggerAuth = (req, res, next) => {
 	const base64 = authHeader.slice(6); // bỏ "Basic "
 	const [user, pass] = Buffer.from(base64, 'base64').toString().split(':');
 
-	const validUser = process.env.SWAGGER_USER || 'admin';
-	const validPass = process.env.SWAGGER_PASS || 'admin123';
+	const validUser = process.env.SWAGGER_USER;
+	const validPass = process.env.SWAGGER_PASS;
 
 	if (user === validUser && pass === validPass) {
 		return next();
