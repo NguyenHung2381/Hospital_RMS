@@ -16,7 +16,7 @@ import type { PendingMember } from '../components/TopicModal';
 import type { Topic, TopicForm, TopicStatus } from '../types/topic.type';
 
 type TabKey = 'all' | TopicStatus;
-const PAGE_SIZE_OPTIONS = [9, 20, 50, 100] as const;
+const PAGE_SIZE_OPTIONS = [10, 20, 50, 100] as const;
 
 export function useTopicPage() {
 	const [topics, setTopics] = useState<Topic[]>([]);
@@ -38,7 +38,8 @@ export function useTopicPage() {
 	);
 	const [activeTab, setActiveTab] = useState<TabKey>('all');
 	const [page, setPage] = useState(1);
-	const [rowsPerPage, setRowsPerPage] = useState<number>(PAGE_SIZE_OPTIONS[0]);
+	const [rowsPerPage, setRowsPerPage] = useState<number>(20);
+
 
 	const [showCreate, setShowCreate] = useState(false);
 	const [showExport, setShowExport] = useState(false);

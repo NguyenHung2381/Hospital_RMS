@@ -12,6 +12,7 @@
 
 const ExcelJS = require('exceljs');
 const dashboardService = require('../services/dashboardService');
+const { fnt, al, sf, bAll } = require('../utils/excelStyle');
 
 const C = {
 	hdrBlue: 'FF1F4E79',
@@ -40,20 +41,6 @@ const STATUS_BG = {
 	supplement: C.amber,
 	cancelled: C.gray,
 };
-
-function fnt({ bold = false, color = '1B2A4A', size = 10, italic = false } = {}) {
-	return { name: 'Times New Roman', bold, color: { argb: 'FF' + color }, size, italic };
-}
-function al(h = 'center', wrap = true) {
-	return { horizontal: h, vertical: 'middle', wrapText: wrap };
-}
-function sf(argb) {
-	return { type: 'pattern', pattern: 'solid', fgColor: { argb } };
-}
-const bAll = (() => {
-	const s = { style: 'thin', color: { argb: 'FF000000' } };
-	return { top: s, left: s, bottom: s, right: s };
-})();
 
 // Quốc hiệu + tiêu ngữ — giống mẫu văn bản hành chính dùng ở export-report.
 function writeLetterhead(ws, lastCol) {

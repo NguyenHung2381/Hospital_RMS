@@ -13,6 +13,7 @@ import {
 import AdminLayout from '../../../layouts/AdminLayout';
 import { MultiSelect } from '../../../shared/components/Input/MultiSelect';
 import { Pagination } from '../../../shared/components/Table/Pagination';
+import { Skeleton, SkeletonTable } from '../../../shared/components/Loading';
 import { Badge } from '../components/Badge';
 import { DeleteModal } from '../components/DeleteModal';
 import { ExportExcelModal } from '../components/ExportExcelModal';
@@ -21,6 +22,7 @@ import { TopicModal } from '../components/TopicModal';
 import { useTopicPage } from '../hooks/useTopicPage';
 import { STATUS_CFG, lookup } from '../utils/topicHelpers';
 import styles from './Topic.module.css';
+
 
 export default function TopicPage() {
 	const d = useTopicPage();
@@ -57,10 +59,12 @@ export default function TopicPage() {
 						<DocSvg />
 					</div>
 					<div className={styles.statBody}>
-						<div className={styles.statValue}>{d.stats.total}</div>
+						<div className={styles.statValue}>
+							{d.isLoadingData ? <Skeleton width={50} height={32} /> : d.stats.total}
+						</div>
 						<div className={styles.statLabel}>Tổng đề tài</div>
 						<div className={`${styles.statDelta} ${styles.deltaUp}`}>
-							Đợt 1/2026 + lịch sử
+							{d.isLoadingData ? <Skeleton width={80} height={14} /> : 'Đợt 1/2026 + lịch sử'}
 						</div>
 					</div>
 				</div>
@@ -69,13 +73,16 @@ export default function TopicPage() {
 						<ProgressSvg />
 					</div>
 					<div className={styles.statBody}>
-						<div className={styles.statValue}>{d.stats.approved}</div>
+						<div className={styles.statValue}>
+							{d.isLoadingData ? <Skeleton width={50} height={32} /> : d.stats.approved}
+						</div>
 						<div className={styles.statLabel}>Đã được duyệt</div>
 						<div className={`${styles.statDelta} ${styles.deltaNeutral}`}>
-							{d.stats.total > 0
-								? Math.round((d.stats.approved / d.stats.total) * 100)
-								: 0}
-							% tổng đề tài
+							{d.isLoadingData ? (
+								<Skeleton width={80} height={14} />
+							) : (
+								`${d.stats.total > 0 ? Math.round((d.stats.approved / d.stats.total) * 100) : 0}% tổng đề tài`
+							)}
 						</div>
 					</div>
 				</div>
@@ -84,10 +91,12 @@ export default function TopicPage() {
 						<ApproveSvg />
 					</div>
 					<div className={styles.statBody}>
-						<div className={styles.statValue}>{d.stats.submitted}</div>
+						<div className={styles.statValue}>
+							{d.isLoadingData ? <Skeleton width={50} height={32} /> : d.stats.submitted}
+						</div>
 						<div className={styles.statLabel}>Chờ phê duyệt</div>
 						<div className={`${styles.statDelta} ${styles.deltaDown}`}>
-							Cần xử lý sớm
+							{d.isLoadingData ? <Skeleton width={80} height={14} /> : 'Cần xử lý sớm'}
 						</div>
 					</div>
 				</div>
@@ -96,13 +105,16 @@ export default function TopicPage() {
 						<CheckSvg />
 					</div>
 					<div className={styles.statBody}>
-						<div className={styles.statValue}>{d.stats.rejected}</div>
+						<div className={styles.statValue}>
+							{d.isLoadingData ? <Skeleton width={50} height={32} /> : d.stats.rejected}
+						</div>
 						<div className={styles.statLabel}>Bị từ chối</div>
 						<div className={`${styles.statDelta} ${styles.deltaDown}`}>
-							{d.stats.total > 0
-								? Math.round((d.stats.rejected / d.stats.total) * 100)
-								: 0}
-							% tổng đề tài
+							{d.isLoadingData ? (
+								<Skeleton width={80} height={14} />
+							) : (
+								`${d.stats.total > 0 ? Math.round((d.stats.rejected / d.stats.total) * 100) : 0}% tổng đề tài`
+							)}
 						</div>
 					</div>
 				</div>
@@ -236,19 +248,7 @@ export default function TopicPage() {
 						</thead>
 						<tbody>
 							{d.isLoadingData ? (
-								<tr>
-									<td
-										colSpan={10}
-										style={{
-											textAlign: 'center',
-											padding: '40px',
-											color: 'var(--color-gray-400)',
-											fontSize: 13,
-										}}
-									>
-										Đang tải dữ liệu...
-									</td>
-								</tr>
+								<SkeletonTable rows={10} cols={9} />
 							) : d.loadError ? (
 								<tr>
 									<td

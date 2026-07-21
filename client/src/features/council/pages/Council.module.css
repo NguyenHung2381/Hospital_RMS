@@ -1014,6 +1014,35 @@ select.formInput:focus {
 	background-color: var(--color-white);
 }
 
+.topicSelect {
+	appearance: none;
+	-webkit-appearance: none;
+	width: auto;
+	font-size: 12px;
+	padding: 4px 26px 4px 10px;
+	border: 1.5px solid var(--color-gray-200);
+	border-radius: var(--radius-md);
+	font-family: var(--font-body);
+	color: var(--color-gray-700);
+	background: #f8fafc url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%234a6070' stroke-width='2.5' stroke-linecap='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E") no-repeat right 8px center;
+	background-size: 10px;
+	cursor: pointer;
+	outline: none;
+	transition: all 0.2s ease;
+}
+
+.topicSelect:hover {
+	border-color: var(--color-gray-300);
+	background-color: var(--color-gray-50);
+}
+
+.topicSelect:focus {
+	border-color: var(--color-primary);
+	box-shadow: 0 0 0 3px rgba(46, 184, 122, 0.15);
+	background-color: var(--color-white);
+}
+
+
 .formTextarea {
 	width: 100%;
 	padding: 10px 14px;

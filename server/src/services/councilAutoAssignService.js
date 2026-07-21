@@ -1,5 +1,6 @@
 const { getPool, sql } = require('../config/db');
 const councilService = require('./councilService');
+const councilAssignmentService = require('./councilAssignmentService');
 
 const SEAT_ORDER = ['chairman', 'secretary', 'reviewer1', 'reviewer2', 'member'];
 const SEAT_LABELS = {
@@ -236,10 +237,10 @@ const autoAssignOne = async (
 		}
 
 		const topicIds = cluster.map((t) => t.id);
-		await councilService.assignTopics(council.id, topicIds, actorId);
+		await councilAssignmentService.assignTopics(council.id, topicIds, actorId);
 		const half = Math.ceil(topicIds.length / 2);
 		for (let j = 0; j < topicIds.length; j++) {
-			await councilService.setTopicSession(
+			await councilAssignmentService.setTopicSession(
 				council.id,
 				topicIds[j],
 				j < half ? 'morning' : 'afternoon',

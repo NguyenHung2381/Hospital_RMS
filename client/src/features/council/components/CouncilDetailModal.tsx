@@ -337,8 +337,7 @@ export function CouncilDetailModal({
 													{t.department_name ?? ''}
 												</span>
 												<select
-													className={styles.formInput}
-													style={{ width: 'auto', fontSize: 12, padding: '3px 6px' }}
+													className={styles.topicSelect}
 													title='Thay người một ghế riêng cho đề tài này'
 													value=''
 													onChange={(e) =>
@@ -360,8 +359,7 @@ export function CouncilDetailModal({
 													))}
 												</select>
 												<select
-													className={styles.formInput}
-													style={{ width: 'auto', fontSize: 12, padding: '3px 6px' }}
+													className={styles.topicSelect}
 													title='Buổi bảo vệ'
 													value={t.session ?? ''}
 													onChange={(e) =>
@@ -378,6 +376,7 @@ export function CouncilDetailModal({
 														</option>
 													))}
 												</select>
+
 												<button
 													className={styles.topicRemove}
 													title='Bỏ gán'

@@ -6,6 +6,7 @@ import {
 	PlusSvg,
 } from '@/assets/icons';
 import AdminLayout from '../../../layouts/AdminLayout';
+import { SkeletonCard } from '../../../shared/components/Loading';
 import { RoundCard } from '../components/RoundCard';
 import { RoundDeleteModal } from '../components/RoundDeleteModal';
 import { RoundModal } from '../components/RoundModal';
@@ -158,8 +159,8 @@ export default function Round() {
 				)}
 
 				{d.isLoadingData ? (
-					<div className={styles.emptyState}>
-						<p className={styles.emptyTitle}>Đang tải...</p>
+					<div className={styles.roundsGrid}>
+						<SkeletonCard count={3} />
 					</div>
 				) : d.loadError ? (
 					<div className={styles.emptyState}>

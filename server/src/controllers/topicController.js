@@ -1,4 +1,5 @@
 const topicService = require('../services/topicService');
+const topicMemberService = require('../services/topicMemberService');
 const { success, created, notFound } = require('../utils/response');
 const { createCrudController } = require('./crudController');
 
@@ -25,7 +26,7 @@ const getById = async (req, res, next) => {
 
 const getMembers = async (req, res, next) => {
 	try {
-		const members = await topicService.getMembers(req.params.id);
+		const members = await topicMemberService.getMembers(req.params.id);
 		return success(res, members);
 	} catch (err) {
 		next(err);
@@ -34,7 +35,7 @@ const getMembers = async (req, res, next) => {
 
 const addMember = async (req, res, next) => {
 	try {
-		const member = await topicService.addMember(
+		const member = await topicMemberService.addMember(
 			req.params.id,
 			req.body,
 			req.user.id,
@@ -47,7 +48,7 @@ const addMember = async (req, res, next) => {
 
 const updateMember = async (req, res, next) => {
 	try {
-		const member = await topicService.updateMember(
+		const member = await topicMemberService.updateMember(
 			req.params.id,
 			req.params.member_id,
 			req.body,
@@ -62,7 +63,7 @@ const updateMember = async (req, res, next) => {
 
 const deleteMember = async (req, res, next) => {
 	try {
-		await topicService.deleteMember(
+		await topicMemberService.deleteMember(
 			req.params.id,
 			req.params.member_id,
 			req.user.id,
@@ -75,7 +76,7 @@ const deleteMember = async (req, res, next) => {
 
 const grantAccounts = async (req, res, next) => {
 	try {
-		const result = await topicService.grantAccounts(
+		const result = await topicMemberService.grantAccounts(
 			req.params.id,
 			req.body.member_ids,
 			req.user.id,

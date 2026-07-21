@@ -4,6 +4,8 @@
 <head>
   <meta charset="UTF-8" />
   <link rel="icon" type="image/svg+xml" href="./src/assets/logo.png" />
+  <!-- LCP element on the loading screen is this logo, imported via JS so the browser can't discover it until the bundle executes; preload skips that wait -->
+  <link rel="preload" as="image" href="./src/assets/logo-spinner.png" fetchpriority="high" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Quản lý Đề tài Nghiên cứu Khoa học</title>
 </head>

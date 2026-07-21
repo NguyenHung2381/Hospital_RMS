@@ -1,4 +1,5 @@
 const councilService = require('../services/councilService');
+const councilAssignmentService = require('../services/councilAssignmentService');
 const councilAutoAssignService = require('../services/councilAutoAssignService');
 const councilImportService = require('../services/councilImportService');
 const { success, created, notFound } = require('../utils/response');
@@ -111,7 +112,7 @@ const getUnassignedTopics = async (req, res, next) => {
 	try {
 		return success(
 			res,
-			await councilService.getUnassignedTopics(req.query.round_id),
+			await councilAssignmentService.getUnassignedTopics(req.query.round_id),
 		);
 	} catch (err) {
 		next(err);
@@ -120,7 +121,7 @@ const getUnassignedTopics = async (req, res, next) => {
 
 const getTopics = async (req, res, next) => {
 	try {
-		return success(res, await councilService.getTopics(req.params.id));
+		return success(res, await councilAssignmentService.getTopics(req.params.id));
 	} catch (err) {
 		next(err);
 	}
@@ -128,7 +129,7 @@ const getTopics = async (req, res, next) => {
 
 const assignTopics = async (req, res, next) => {
 	try {
-		const result = await councilService.assignTopics(
+		const result = await councilAssignmentService.assignTopics(
 			req.params.id,
 			req.body.topic_ids,
 			req.user.id,
@@ -141,7 +142,7 @@ const assignTopics = async (req, res, next) => {
 
 const unassignTopic = async (req, res, next) => {
 	try {
-		await councilService.unassignTopic(
+		await councilAssignmentService.unassignTopic(
 			req.params.id,
 			req.params.topic_id,
 			req.user.id,
@@ -154,7 +155,7 @@ const unassignTopic = async (req, res, next) => {
 
 const setTopicSession = async (req, res, next) => {
 	try {
-		await councilService.setTopicSession(
+		await councilAssignmentService.setTopicSession(
 			req.params.id,
 			req.params.topic_id,
 			req.body.session,
@@ -168,7 +169,7 @@ const setTopicSession = async (req, res, next) => {
 
 const setSeatSubstitute = async (req, res, next) => {
 	try {
-		await councilService.setSeatSubstitute(
+		await councilAssignmentService.setSeatSubstitute(
 			req.params.id,
 			req.params.topic_id,
 			req.body.role,
@@ -183,7 +184,7 @@ const setSeatSubstitute = async (req, res, next) => {
 
 const removeSeatSubstitute = async (req, res, next) => {
 	try {
-		await councilService.removeSeatSubstitute(
+		await councilAssignmentService.removeSeatSubstitute(
 			req.params.id,
 			req.params.topic_id,
 			req.params.role,

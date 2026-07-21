@@ -10,6 +10,7 @@
 const ExcelJS = require('exceljs');
 const { getPool, sql } = require('../config/db');
 const councilService = require('./councilService');
+const councilAssignmentService = require('./councilAssignmentService');
 
 const SEAT_ORDER = ['chairman', 'secretary', 'reviewer1', 'reviewer2', 'member'];
 const ROLE_BY_NORM = {
@@ -90,8 +91,11 @@ const splitLines = (s) =>
 		.map((x) => x.trim())
 		.filter(Boolean);
 
-// Tìm sheet + dòng header (dòng có ô "STT" và ô "Hội đồng") — file thật có
-// 3-4 dòng tiêu đề văn bản phía trên nên không đọc cứng từ dòng 1.
+// Tìm sheet + dòng header — file thật có 3-4 dòng tiêu đề văn bản phía trên
+// nên không đọc cứng từ dòng 1. Hỗ trợ 2 layout:
+//  1. Cột "Hội đồng" gộp multi-line (tên/khoa/vai trò) — file lịch bảo vệ.
+//  2. 5 cột ghế riêng "Chủ tịch/Thư ký/Phản biện 1/Phản biện 2/Thành viên"
+//     — file HD_Decuong (không có khoa ghế, phiên, địa điểm).
 const findHeader = (workbook) => {
 	for (const ws of workbook.worksheets) {
 		const scanMax = Math.min(ws.rowCount, 30);
@@ -102,6 +106,7 @@ const findHeader = (workbook) => {
 			let titleCol = 0;
 			let sessionCol = 0;
 			let locationCol = 0;
+			const roleCols = {};
 			// Ô merged (VD "Hội đồng" phủ 3 cột) trả cùng text cho mọi cột con —
 			// chỉ nhận cột ĐẦU TIÊN match cho mỗi header.
 			row.eachCell({ includeEmpty: false }, (cell, col) => {
@@ -111,9 +116,19 @@ const findHeader = (workbook) => {
 				else if (h.startsWith('ten') && (h.includes('de tai') || h.includes('sang kien')) && !titleCol) titleCol = col;
 				else if (h === 'phien' && !sessionCol) sessionCol = col;
 				else if (h === 'dia diem' && !locationCol) locationCol = col;
+				else if (ROLE_BY_NORM[h] && !roleCols[ROLE_BY_NORM[h]]) roleCols[ROLE_BY_NORM[h]] = col;
 			});
-			if (sttCol && councilCol && titleCol) {
-				return { ws, headerRow: r, sttCol, councilCol, titleCol, sessionCol, locationCol };
+			if (sttCol && titleCol && (councilCol || Object.keys(roleCols).length === 5)) {
+				return {
+					ws,
+					headerRow: r,
+					sttCol,
+					councilCol,
+					titleCol,
+					sessionCol,
+					locationCol,
+					roleCols: councilCol ? null : roleCols,
+				};
 			}
 		}
 	}
@@ -139,11 +154,11 @@ const parseWorkbook = async (buffer) => {
 	const header = findHeader(workbook);
 	if (!header) {
 		throw Object.assign(
-			new Error('Không tìm thấy dòng tiêu đề (cần các cột STT, Tên đề tài, Hội đồng).'),
+			new Error('Không tìm thấy dòng tiêu đề (cần cột STT, Tên đề tài, và cột Hội đồng hoặc 5 cột Chủ tịch/Thư ký/Phản biện 1/Phản biện 2/Thành viên).'),
 			{ status: 400 },
 		);
 	}
-	const { ws, headerRow, councilCol, titleCol, sessionCol, locationCol } = header;
+	const { ws, headerRow, councilCol, titleCol, sessionCol, locationCol, roleCols } = header;
 
 	const rows = [];
 	let emptyStreak = 0;
@@ -151,21 +166,30 @@ const parseWorkbook = async (buffer) => {
 	for (let r = headerRow + 1; r <= ws.rowCount && emptyStreak < 30; r++) {
 		const row = ws.getRow(r);
 		const title = cellText(row.getCell(titleCol)).replace(/\s+/g, ' ').trim();
-		const names = splitLines(cellText(row.getCell(councilCol)));
-		if (!title && !names.length) {
+		let seats;
+		if (roleCols) {
+			// Layout 2: mỗi ghế một cột, mỗi ô 1 tên (không có khoa ghế)
+			seats = SEAT_ORDER.map((role) => ({
+				role,
+				raw_name: cellText(row.getCell(roleCols[role])).replace(/\s+/g, ' ').trim(),
+				raw_dept: '',
+			})).filter((s) => s.raw_name);
+		} else {
+			const names = splitLines(cellText(row.getCell(councilCol)));
+			const depts = splitLines(cellText(row.getCell(councilCol + 1)));
+			const roleLabels = splitLines(cellText(row.getCell(councilCol + 2)));
+			seats = names.slice(0, 5).map((rawName, i) => ({
+				role: ROLE_BY_NORM[norm(roleLabels[i])] || SEAT_ORDER[i],
+				raw_name: rawName,
+				raw_dept: depts[i] || '',
+			}));
+		}
+		if (!title && !seats.length) {
 			emptyStreak++;
 			continue;
 		}
 		emptyStreak = 0;
-		if (!title || !names.length) continue; // dòng ghi chú / dở dang
-
-		const depts = splitLines(cellText(row.getCell(councilCol + 1)));
-		const roleLabels = splitLines(cellText(row.getCell(councilCol + 2)));
-		const seats = names.slice(0, 5).map((rawName, i) => ({
-			role: ROLE_BY_NORM[norm(roleLabels[i])] || SEAT_ORDER[i],
-			raw_name: rawName,
-			raw_dept: depts[i] || '',
-		}));
+		if (!title || !seats.length) continue; // dòng ghi chú / dở dang
 
 		rows.push({
 			row: r,
@@ -187,9 +211,10 @@ const loadDb = async (roundId) => {
 	const [usersRes, extRes, topicsRes, existingRes] = await Promise.all([
 		pool.request().query(`
 			SELECT u.id, u.full_name, u.department_id, d.name AS department_name,
-			       d.specialty_group
+			       d.specialty_group, q.code AS qualification
 			FROM users u
 			LEFT JOIN departments d ON d.id = u.department_id
+			LEFT JOIN qualifications q ON q.id = u.qualification_id
 			WHERE u.is_active = 1 AND u.account_type <> 'dept'
 		`),
 		pool.request().query(`
@@ -247,6 +272,17 @@ const matchPerson = (seat, db) => {
 				return uDept && (uDept === dKey || dice(uDept, dKey) >= 0.75);
 			});
 			if (byDept.length === 1) return { matched: toMatched(byDept[0]) };
+		}
+		// Không có khoa (layout 5 cột ghế) — thử phân xử bằng học vị trước tên
+		// ("ThS. X" khớp cả ThS/ThS ĐD/ThS Dược; nhiều người cùng học vị thì chịu)
+		const lastDot = seat.raw_name.trim().lastIndexOf('.');
+		const qKey = lastDot >= 0 ? norm(seat.raw_name.trim().slice(0, lastDot)) : '';
+		if (qKey) {
+			const byQual = candidates.filter((u) => {
+				const uq = norm(u.qualification || '');
+				return uq === qKey || uq.startsWith(qKey + ' ');
+			});
+			if (byQual.length === 1) return { matched: toMatched(byQual[0]) };
 		}
 		return {
 			error: `Trùng tên "${seat.raw_name}" (${candidates.length} người) — không phân xử được bằng khoa "${seat.raw_dept}".`,
@@ -480,19 +516,19 @@ const importExcel = async ({ buffer, round_id, dry_run }, actorId) => {
 
 		const assignable = c.topics.filter((t) => t.matched && !t.skip_assign);
 		if (assignable.length) {
-			await councilService.assignTopics(
+			await councilAssignmentService.assignTopics(
 				council.id,
 				assignable.map((t) => t.matched.id),
 				actorId,
 			);
 			for (const t of assignable) {
 				if (t.session) {
-					await councilService.setTopicSession(council.id, t.matched.id, t.session, actorId);
+					await councilAssignmentService.setTopicSession(council.id, t.matched.id, t.session, actorId);
 				}
 				for (const s of t.substitutes) {
 					// Ghế thay thế chỉ hỗ trợ người trong viện (bảng chỉ có user_id)
 					if (s.matched?.type === 'user') {
-						await councilService.setSeatSubstitute(
+						await councilAssignmentService.setSeatSubstitute(
 							council.id, t.matched.id, s.role, s.matched.id, actorId,
 						);
 					}

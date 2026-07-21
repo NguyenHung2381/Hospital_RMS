@@ -10,7 +10,7 @@ services:
       - "host.docker.internal:host-gateway"
     # -L (legacy watch = polling): bind mount qua Docker Desktop không phát
     # native fs-events nên nodemon cần polling mới thấy thay đổi file.
-    command: ["npx", "nodemon", "-L", "--trace-deprecation", "src/app.js"]
+    command: ["npx", "nodemon", "-L", "--trace-deprecation", "src/server.js"]
     ports:
       - "3000:3000"
     volumes:

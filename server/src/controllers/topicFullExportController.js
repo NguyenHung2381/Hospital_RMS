@@ -23,6 +23,7 @@
 
 const ExcelJS = require('exceljs');
 const topicService = require('../services/topicService');
+const { fnt, al, sf, bAll } = require('../utils/excelStyle');
 
 // ── Palette ──────────────────────────────────────────────────────────────────
 const C = {
@@ -67,48 +68,12 @@ const ROLE_LABELS = {
 };
 
 // ── Style helpers ─────────────────────────────────────────────────────────────
-function fnt({
-	bold = false,
-	color = '1B2A4A',
-	size = 10,
-	italic = false,
-} = {}) {
-	return {
-		name: 'Times New Roman',
-		bold,
-		color: { argb: 'FF' + color },
-		size,
-		italic,
-	};
-}
-function al(h = 'center', wrap = true) {
-	return { horizontal: h, vertical: 'middle', wrapText: wrap };
-}
-function sf(argb) {
-	return { type: 'pattern', pattern: 'solid', fgColor: { argb } };
-}
-function bdr(color = '000000') {
-	const s = { style: 'thin', color: { argb: 'FF' + color } };
-	return { top: s, left: s, bottom: s, right: s };
-}
-const bAll = bdr();
 const bMedium = {
 	top: { style: 'medium', color: { argb: 'FF000000' } },
 	left: { style: 'medium', color: { argb: 'FF000000' } },
 	bottom: { style: 'medium', color: { argb: 'FF000000' } },
 	right: { style: 'medium', color: { argb: 'FF000000' } },
 };
-function bNoBot() {
-	const b = bAll;
-	return { ...b, bottom: undefined };
-}
-function bNoTop() {
-	const b = bAll;
-	return { ...b, top: undefined };
-}
-function bSides() {
-	return { left: bAll.left, right: bAll.right };
-}
 
 function fmtDate(iso) {
 	if (!iso) return '';

@@ -8,6 +8,7 @@ const Login = lazy(() => import('../../features/auth/pages/Login'));
 const TopicRegister = lazy(
 	() => import('../../features/topics/pages/TopicRegister'),
 );
+const NotFound = lazy(() => import('../../shared/pages/NotFound'));
 
 export const publicRoutes: RouteObject[] = [
 	{
@@ -32,6 +33,14 @@ export const publicRoutes: RouteObject[] = [
 					<TopicRegister />
 				</LazyRoute>
 			</RequireAuth>
+		),
+	},
+	{
+		path: '*',
+		element: (
+			<LazyRoute title='Không tìm thấy trang'>
+				<NotFound />
+			</LazyRoute>
 		),
 	},
 ];

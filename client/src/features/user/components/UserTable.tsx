@@ -5,6 +5,7 @@ import { formatDate as _formatDate } from '../../../shared/utils/formatDate';
 import { ACCOUNT_TYPE_CFG } from '../utils/userHelpers';
 const formatDate = (s: string | null | undefined) => _formatDate(s) ?? '—';
 import { Avatar, Toggle } from './UserModal';
+import { Skeleton, SkeletonTable } from '../../../shared/components/Loading';
 
 interface UserTableProps {
 	users: User[];
@@ -24,6 +25,7 @@ interface UserTableProps {
 	setPageSize: (n: number) => void;
 	handleToggleActive: (id: string) => Promise<void>;
 	setShowCreate: (v: boolean) => void;
+	loading?: boolean;
 }
 
 function Badge({
@@ -61,6 +63,7 @@ export function UserTable({
 	setPageSize,
 	handleToggleActive,
 	setShowCreate,
+	loading,
 }: UserTableProps) {
 	const isFiltered = !!(
 		search ||
@@ -73,7 +76,7 @@ export function UserTable({
 			className={styles.tableWrap}
 			style={{ border: 'none', borderRadius: 0 }}
 		>
-			{users.length === 0 ? (
+			{users.length === 0 && !loading ? (
 				<div className={styles.emptyState}>
 					<div className={styles.emptyIcon}>
 						<UsersSvg />
@@ -112,7 +115,10 @@ export function UserTable({
 						</tr>
 					</thead>
 					<tbody>
-						{users.map((u, i) => {
+						{loading ? (
+							<SkeletonTable rows={pageSize || 10} cols={9} />
+						) : (
+							users.map((u, i) => {
 							const rowNum = (currentPage - 1) * pageSize + i + 1;
 							const typeCfg =
 								ACCOUNT_TYPE_CFG[u.account_type] ?? ACCOUNT_TYPE_CFG.member;
@@ -217,20 +223,26 @@ export function UserTable({
 									</td>
 								</tr>
 							);
-						})}
+						}))}
 					</tbody>
 				</table>
 			)}
 
-			{/* PAGINATION */}
-			{totalCount > 0 && (
+			{/* PAGINATION — reserve space during loading too, avoids the bar popping in and shifting the page (CLS) */}
+			{(loading || totalCount > 0) && (
 				<div className={styles.paginationBar}>
 					<div className={styles.paginationInfo}>
-						Hiển thị <strong>{(currentPage - 1) * pageSize + 1}</strong>
-						{' – '}
-						<strong>{Math.min(currentPage * pageSize, totalCount)}</strong>
-						{' / '}
-						<strong>{totalCount}</strong> bản ghi
+						{loading ? (
+							<Skeleton width={160} height={14} style={{ verticalAlign: 'middle' }} />
+						) : (
+							<>
+								Hiển thị <strong>{(currentPage - 1) * pageSize + 1}</strong>
+								{' – '}
+								<strong>{Math.min(currentPage * pageSize, totalCount)}</strong>
+								{' / '}
+								<strong>{totalCount}</strong> bản ghi
+							</>
+						)}
 					</div>
 					<div className={styles.paginationControls}>
 						<div className={styles.pageSizeSelector}>

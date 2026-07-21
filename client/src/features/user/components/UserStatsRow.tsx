@@ -1,11 +1,13 @@
 import { CheckSvg, KeySvg, UsersSvg, XSvg } from '@/assets/icons';
 import styles from '../pages/UserList.module.css';
+import { Skeleton } from '../../../shared/components/Loading';
 
 interface UserStatsRowProps {
 	total: number;
 	active: number;
 	inactive: number;
 	pwdWarn: number;
+	loading?: boolean;
 }
 
 export function UserStatsRow({
@@ -13,6 +15,7 @@ export function UserStatsRow({
 	active,
 	inactive,
 	pwdWarn,
+	loading,
 }: UserStatsRowProps) {
 	return (
 		<div className={styles.statsRow}>
@@ -21,7 +24,9 @@ export function UserStatsRow({
 					<UsersSvg />
 				</div>
 				<div className={styles.statBody}>
-					<div className={styles.statValue}>{total}</div>
+					<div className={styles.statValue}>
+						{loading ? <Skeleton width={50} height={28} style={{ verticalAlign: 'middle' }} /> : total}
+					</div>
 					<div className={styles.statLabel}>Tổng tài khoản</div>
 				</div>
 			</div>
@@ -30,10 +35,16 @@ export function UserStatsRow({
 					<CheckSvg />
 				</div>
 				<div className={styles.statBody}>
-					<div className={styles.statValue}>{active}</div>
+					<div className={styles.statValue}>
+						{loading ? <Skeleton width={50} height={28} style={{ verticalAlign: 'middle' }} /> : active}
+					</div>
 					<div className={styles.statLabel}>Đang hoạt động</div>
 					<div className={`${styles.statDelta} ${styles.deltaUp}`}>
-						{total > 0 ? Math.round((active / total) * 100) : 0}% tổng tài khoản
+						{loading ? (
+							<Skeleton width={80} height={14} />
+						) : (
+							`${total > 0 ? Math.round((active / total) * 100) : 0}% tổng tài khoản`
+						)}
 					</div>
 				</div>
 			</div>
@@ -42,7 +53,9 @@ export function UserStatsRow({
 					<XSvg />
 				</div>
 				<div className={styles.statBody}>
-					<div className={styles.statValue}>{inactive}</div>
+					<div className={styles.statValue}>
+						{loading ? <Skeleton width={50} height={28} style={{ verticalAlign: 'middle' }} /> : inactive}
+					</div>
 					<div className={styles.statLabel}>Tạm khoá</div>
 				</div>
 			</div>
@@ -51,10 +64,12 @@ export function UserStatsRow({
 					<KeySvg />
 				</div>
 				<div className={styles.statBody}>
-					<div className={styles.statValue}>{pwdWarn}</div>
+					<div className={styles.statValue}>
+						{loading ? <Skeleton width={50} height={28} style={{ verticalAlign: 'middle' }} /> : pwdWarn}
+					</div>
 					<div className={styles.statLabel}>Mật khẩu cũ &gt;90 ngày</div>
 					<div className={`${styles.statDelta} ${styles.deltaDown}`}>
-						Cần nhắc đổi mật khẩu
+						{loading ? <Skeleton width={80} height={14} /> : 'Cần nhắc đổi mật khẩu'}
 					</div>
 				</div>
 			</div>

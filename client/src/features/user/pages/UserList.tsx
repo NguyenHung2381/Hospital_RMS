@@ -8,6 +8,7 @@ import {
 	XSvg,
 } from '@/assets/icons';
 import AdminLayout from '../../../layouts/AdminLayout';
+import { Skeleton } from '../../../shared/components/Loading';
 import { ResetPasswordModal } from '../components/ResetPasswordModal';
 import { UserDeleteModal } from '../components/UserDeleteModal';
 import { UserModal } from '../components/UserModal';
@@ -29,22 +30,6 @@ export default function UserList() {
 		</button>
 	);
 
-	if (d.isLoadingData) {
-		return (
-			<AdminLayout
-				pageTitle='Quản lý người dùng'
-				pageSubtitle='Quản lý tài khoản cán bộ, nhân viên'
-				headerActions={headerActions}
-			>
-				<div className={styles.emptyState}>
-					<div className={styles.emptyIcon}>
-						<UsersSvg />
-					</div>
-					<div className={styles.emptyTitle}>Đang tải dữ liệu...</div>
-				</div>
-			</AdminLayout>
-		);
-	}
 
 	if (d.loadError) {
 		return (
@@ -76,6 +61,7 @@ export default function UserList() {
 				active={d.globalStats.active}
 				inactive={d.globalStats.inactive}
 				pwdWarn={d.globalStats.pwdWarn}
+				loading={d.isLoadingData}
 			/>
 
 			{/* ── TOOLBAR & TABLE ── */}
@@ -278,6 +264,7 @@ export default function UserList() {
 					setPageSize={d.setPageSize}
 					handleToggleActive={d.handleToggleActive}
 					setShowCreate={d.setShowCreate}
+					loading={d.isLoadingData}
 				/>
 			</div>
 
