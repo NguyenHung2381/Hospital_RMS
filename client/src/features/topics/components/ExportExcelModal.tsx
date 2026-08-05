@@ -2,12 +2,13 @@ import { useState } from 'react';
 import type { SimpleItem } from '../api/topicApi';
 import { exportTopicsExcel } from '../api/topicApi';
 import styles from '../pages/Topic.module.css';
-import type { Topic } from '../types/topic.type';
 import { AlertSvg as IcAlert, DownloadSvg as IcDownload, XSvg as IcX } from '@/assets/icons';
 
 interface ExportExcelModalProps {
-	topics: Topic[];
-	filtered: Topic[];
+	totalCount: number;
+	filteredCount: number;
+	/** Lấy id theo phạm vi ngay lúc xuất — không giữ cả bảng trong bộ nhớ */
+	fetchExportIds: (scope: 'filtered' | 'all') => Promise<string[]>;
 	categories: SimpleItem[];
 	levels: SimpleItem[];
 	rounds: SimpleItem[];
@@ -16,8 +17,9 @@ interface ExportExcelModalProps {
 }
 
 export function ExportExcelModal({
-	topics,
-	filtered,
+	totalCount,
+	filteredCount,
+	fetchExportIds,
 	onClose,
 }: ExportExcelModalProps) {
 	const currentYear = new Date().getFullYear();
@@ -36,14 +38,15 @@ export function ExportExcelModal({
 		`(Danh sách đề tài nghiên cứu khoa học cấp cơ sở năm ${year})`,
 	);
 
-	const exportData = scope === 'all' ? topics : filtered;
+	const exportCount = scope === 'all' ? totalCount : filteredCount;
 
 	const handleExport = async () => {
 		setLoading(true);
 		setError('');
 		try {
+			const ids = await fetchExportIds(scope);
 			const blob = await exportTopicsExcel({
-				ids: exportData.map((t) => t.id),
+				ids,
 				fileName: fileName.trim() || `lich-bao-ve-de-tai-${year}`,
 				customTitle,
 				customSubtitle,
@@ -183,9 +186,9 @@ export function ExportExcelModal({
 								{
 									value: 'filtered',
 									label: 'Danh sách đang lọc',
-									count: filtered.length,
+									count: filteredCount,
 								},
-								{ value: 'all', label: 'Tất cả đề tài', count: topics.length },
+								{ value: 'all', label: 'Tất cả đề tài', count: totalCount },
 							] as const
 						).map((opt) => (
 							<button
@@ -280,7 +283,7 @@ export function ExportExcelModal({
 					>
 						Sẽ xuất{' '}
 						<strong style={{ color: 'var(--color-gray-800)' }}>
-							{exportData.length} đề tài
+							{exportCount} đề tài
 						</strong>{' '}
 						— file được tạo trên server và tải về trực tiếp.
 					</div>
@@ -305,7 +308,7 @@ export function ExportExcelModal({
 					<button
 						className={styles.btnPrimary}
 						onClick={handleExport}
-						disabled={loading || exportData.length === 0}
+						disabled={loading || exportCount === 0}
 					>
 						{loading ? (
 							<>

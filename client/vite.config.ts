@@ -43,6 +43,16 @@ export default defineConfig({
 		host: true,
 		allowedHosts: true,
 		port: process.env.PORT ? Number(process.env.PORT) : 5173,
+		// Biên dịch sẵn các trang nặng khi dev server khởi động, tránh transform
+		// waterfall làm Suspense (thanh 92%) treo ở lần điều hướng đầu.
+		warmup: {
+			clientFiles: [
+				'./src/features/topics/pages/Topic.tsx',
+				'./src/features/council/pages/Council.tsx',
+				'./src/features/dashboard/pages/Dashboard.tsx',
+				'./src/features/portal/pages/UserHome.tsx',
+			],
+		},
 		// Bind mount qua Docker Desktop (WSL2) không phát native fs-events —
 		// cần polling để HMR nhận ra thay đổi file. Chỉ bật khi chạy trong Docker.
 		watch:

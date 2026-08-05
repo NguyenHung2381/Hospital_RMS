@@ -1,7 +1,7 @@
 /* eslint-disable react-refresh/only-export-components */
-import { lazy } from 'react';
 import type { RouteObject } from 'react-router-dom';
 import { LazyRoute } from './LazyRoute';
+import { lazyRoute as lazy } from './routePrefetch';
 import { RedirectIfLoggedIn, RequireAuth, RootRedirect } from './guards';
 
 const Login = lazy(() => import('../../features/auth/pages/Login'));

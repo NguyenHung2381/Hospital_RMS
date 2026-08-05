@@ -8,6 +8,7 @@ export interface SimpleItem {
 	status?: string;
 }
 
+// Các trường lọc nhận 1 giá trị hoặc danh sách "a,b,c" (multi-select trên UI)
 export interface TopicListParams {
 	page?: number;
 	limit?: number;
@@ -19,12 +20,22 @@ export interface TopicListParams {
 	level_id?: string;
 	participant_id?: string;
 	year?: number | string;
-	article_type?: ArticleType;
+	article_type?: ArticleType | string;
+}
+
+export interface TopicGlobalStats {
+	total: number;
+	submitted: number;
+	approved: number;
+	rejected: number;
+	supplement: number;
 }
 
 interface TopicListResponse {
 	data: Topic[];
 	pagination: { page: number; limit: number; total: number };
+	/** Tổng quan theo trạng thái, bỏ qua bộ lọc UI (server tính) */
+	global_stats: TopicGlobalStats;
 }
 
 interface SimpleListResponse {

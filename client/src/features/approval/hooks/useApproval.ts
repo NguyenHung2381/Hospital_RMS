@@ -125,19 +125,21 @@ export function useApproval(): ApprovalState {
 			setListLoading(true);
 			setError(null);
 			try {
-				const [submitted, approved, rejected, supplement] = await Promise.all([
-					getApprovalTopics({ limit: 0, status: 'submitted' }),
-					getApprovalTopics({ limit: 0, status: 'approved' }),
-					getApprovalTopics({ limit: 0, status: 'rejected' }),
-					getApprovalTopics({ limit: 0, status: 'supplement' }),
-				]);
+				// 1 query lấy hết rồi lọc client-side, thay vì 4 request fetch-all song song.
+				const res = await getApprovalTopics({ limit: 0 });
 				if (cancelled) return;
-				const next = [
-					...submitted.data,
-					...approved.data,
-					...rejected.data,
-					...supplement.data,
-				].map(mapTopicToRecord);
+				// Giữ nguyên thứ tự nhóm cũ (submitted → approved → rejected → supplement)
+				// để record mặc định được chọn không đổi.
+				const RANK: Record<string, number> = {
+					submitted: 0,
+					approved: 1,
+					rejected: 2,
+					supplement: 3,
+				};
+				const next = res.data
+					.filter((t) => t.status in RANK)
+					.sort((a, b) => RANK[a.status] - RANK[b.status])
+					.map(mapTopicToRecord);
 				setRecords(next);
 				setSelectedId((cur) => {
 					if (cur && next.some((r) => r.id === cur)) return cur;

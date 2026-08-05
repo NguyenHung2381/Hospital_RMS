@@ -2,6 +2,7 @@ const { getPool, sql } = require('../config/db');
 const notifSvc = require('./notificationService');
 const { broadcast } = require('./eventService');
 const { paging } = require('../utils/paging');
+const { splitList, inClause, buildWhere } = require('../utils/sqlFilters');
 
 const getAll = async (filters, actor = null) => {
 	const {
@@ -21,66 +22,89 @@ const getAll = async (filters, actor = null) => {
 	const pool = await getPool();
 	const pg = paging(page, limit);
 
-	let where = 'WHERE 1=1';
 	const req = pool
 		.request()
 		.input('offset', sql.Int, pg.offset)
 		.input('limit', sql.Int, pg.limit);
 
-	// Lọc theo role: manager chỉ thấy khoa mình, member chỉ thấy đề tài tham gia
+	// Giới hạn theo quyền — áp cho cả số liệu tổng quan (không phụ thuộc bộ lọc UI):
+	// manager chỉ thấy khoa mình, member chỉ thấy đề tài tham gia, admin không giới hạn.
+	const actorClauses = [];
 	if (actor) {
 		if (actor.account_type === 'manager') {
-			where += ' AND t.department_id = @actor_dept';
+			actorClauses.push('t.department_id = @actor_dept');
 			req.input('actor_dept', sql.VarChar(20), actor.department_id);
 		} else if (actor.account_type === 'member') {
-			where += ` AND EXISTS (
+			actorClauses.push(`EXISTS (
         SELECT 1 FROM topic_members WHERE topic_id = t.id AND user_id = @actor_id
-      )`;
+      )`);
 			req.input('actor_id', sql.VarChar(20), actor.id);
 		}
-		// admin: không giới hạn
 	}
 
+	// Mệnh đề dùng chung — quyền + mọi bộ lọc UI TRỪ trạng thái
+	const baseClauses = [...actorClauses];
+
 	if (search) {
-		where += ' AND (t.title LIKE @search OR t.description LIKE @search)';
+		// t.id để tìm theo mã đề tài (bảng admin cho tìm cả mã lẫn tiêu đề)
+		baseClauses.push(
+			'(t.title LIKE @search OR t.description LIKE @search OR t.id LIKE @search)',
+		);
 		req.input('search', sql.NVarChar, `%${search}%`);
-	}
-	if (round_id) {
-		where += ' AND t.round_id = @round_id';
-		req.input('round_id', sql.VarChar(10), round_id);
-	}
-	if (department_id && actor?.account_type === 'admin') {
-		// manager đã bị khoá cứng theo khoa, chỉ admin mới lọc theo department_id tuỳ ý
-		where += ' AND t.department_id = @dept';
-		req.input('dept', sql.VarChar(20), department_id);
-	}
-	if (status) {
-		where += ' AND t.status = @status';
-		req.input('status', sql.VarChar(15), status);
-	}
-	if (category_id) {
-		where += ' AND t.category_id = @cat';
-		req.input('cat', sql.VarChar(6), category_id);
-	}
-	if (level_id) {
-		where += ' AND t.level_id = @lvl';
-		req.input('lvl', sql.VarChar(5), level_id);
 	}
 	if (participant_id && actor?.account_type === 'admin') {
 		// Chỉ admin mới lọc theo participant_id tuỳ ý (member đã tự động lọc)
-		where += ` AND (t.created_by = @participant_id OR EXISTS (
+		baseClauses.push(`(t.created_by = @participant_id OR EXISTS (
       SELECT 1 FROM topic_members WHERE topic_id = t.id AND user_id = @participant_id
-    ))`;
+    ))`);
 		req.input('participant_id', sql.VarChar(20), participant_id);
 	}
-	if (year) {
-		where += ' AND r.year = @year';
-		req.input('year', sql.Int, parseInt(year, 10));
+
+	// Các bộ lọc multi-select: nhận 1 giá trị hoặc danh sách "a,b,c"
+	baseClauses.push(
+		inClause(req, 't.round_id', 'rnd', splitList(round_id), sql.VarChar(10)),
+		inClause(req, 't.category_id', 'cat', splitList(category_id), sql.VarChar(6)),
+		inClause(req, 't.level_id', 'lvl', splitList(level_id), sql.VarChar(5)),
+		inClause(
+			req,
+			't.article_type',
+			'atype',
+			splitList(article_type),
+			sql.VarChar(20),
+		),
+		inClause(
+			req,
+			'r.year',
+			'yr',
+			splitList(year).map((y) => parseInt(y, 10)),
+			sql.Int,
+		),
+	);
+	if (department_id && actor?.account_type === 'admin') {
+		// manager đã bị khoá cứng theo khoa, chỉ admin mới lọc theo department_id tuỳ ý
+		baseClauses.push(
+			inClause(
+				req,
+				't.department_id',
+				'dept',
+				splitList(department_id),
+				sql.VarChar(20),
+			),
+		);
 	}
-	if (article_type) {
-		where += ' AND t.article_type = @article_type';
-		req.input('article_type', sql.VarChar(20), article_type);
-	}
+
+	const statusClause = inClause(
+		req,
+		't.status',
+		'st',
+		splitList(status),
+		sql.VarChar(15),
+	);
+
+	const whereAll = buildWhere([...baseClauses, statusClause]);
+	// Số liệu tổng quan (thẻ thống kê + số trên tab): chỉ theo quyền, KHÔNG theo bộ lọc UI
+	// — giữ đúng hành vi cũ khi client còn tự đếm trên toàn bộ danh sách.
+	const whereGlobal = buildWhere(actorClauses);
 
 	const result = await req.query(`
     SELECT t.id, t.title, t.description, t.status, t.created_at,
@@ -98,18 +122,35 @@ const getAll = async (filters, actor = null) => {
     LEFT JOIN levels l ON l.id = t.level_id
     LEFT JOIN departments d ON d.id = t.department_id
     LEFT JOIN users u ON u.id = t.created_by
-    ${where}
+    ${whereAll}
     ORDER BY t.created_at DESC
     ${pg.fetchClause};
 
     SELECT COUNT(*) AS total FROM topics t
     LEFT JOIN research_rounds r ON r.id = t.round_id
-    ${where};
+    ${whereAll};
+
+    SELECT t.status, COUNT(*) AS count FROM topics t
+    ${whereGlobal}
+    GROUP BY t.status;
   `);
 
+	const [rows, totalRows, globalStatusRows] = result.recordsets;
+	const byStatus = Object.fromEntries(
+		globalStatusRows.map((r) => [r.status, r.count]),
+	);
+
 	return {
-		data: result.recordsets[0],
-		pagination: { page: pg.page, limit: pg.limit, total: result.recordsets[1][0].total },
+		data: rows,
+		pagination: { page: pg.page, limit: pg.limit, total: totalRows[0].total },
+		// Tổng quan theo trạng thái trên toàn bộ đề tài user được thấy (bỏ qua bộ lọc UI)
+		global_stats: {
+			total: globalStatusRows.reduce((s, r) => s + r.count, 0),
+			submitted: byStatus.submitted ?? 0,
+			approved: byStatus.approved ?? 0,
+			rejected: byStatus.rejected ?? 0,
+			supplement: byStatus.supplement ?? 0,
+		},
 	};
 };
 

@@ -4,11 +4,9 @@ import {
 	InfoSvg,
 	KeySvg,
 	SearchSvg,
-	UsersSvg,
 	XSvg,
 } from '@/assets/icons';
 import AdminLayout from '../../../layouts/AdminLayout';
-import { Skeleton } from '../../../shared/components/Loading';
 import { ResetPasswordModal } from '../components/ResetPasswordModal';
 import { UserDeleteModal } from '../components/UserDeleteModal';
 import { UserModal } from '../components/UserModal';

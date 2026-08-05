@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState, type Dispatch, type SetStateAction } from 'react';
 import { useRealtimeUpdate } from '../../../layouts/hooks/useRealtime';
 import {
 	addTopicMember,
@@ -18,8 +18,23 @@ import type { Topic, TopicForm, TopicStatus } from '../types/topic.type';
 type TabKey = 'all' | TopicStatus;
 const PAGE_SIZE_OPTIONS = [10, 20, 50, 100] as const;
 
+const EMPTY_STATS = {
+	total: 0,
+	submitted: 0,
+	approved: 0,
+	rejected: 0,
+	supplement: 0,
+};
+
+// Set bộ lọc → "a,b,c" cho query string; rỗng → undefined (bỏ khỏi query)
+const joinSet = (s: Set<string>) => (s.size ? Array.from(s).join(',') : undefined);
+
 export function useTopicPage() {
+	// Chỉ chứa các dòng của TRANG hiện tại — server lo lọc & phân trang
 	const [topics, setTopics] = useState<Topic[]>([]);
+	const [total, setTotal] = useState(0);
+	const [stats, setStats] = useState<typeof EMPTY_STATS>(EMPTY_STATS);
+	const [debouncedSearch, setDebouncedSearch] = useState('');
 	const [categories, setCategories] = useState<SimpleItem[]>([]);
 	const [levels, setLevels] = useState<SimpleItem[]>([]);
 	const [rounds, setRounds] = useState<SimpleItem[]>([]);
@@ -29,7 +44,7 @@ export function useTopicPage() {
 
 	const [search, setSearch] = useState('');
 	const [yearFilters, setYearFilters] = useState<Set<string>>(new Set());
-	const [roundFilters, setRoundFilters] = useState<Set<string>>(new Set());
+	const [roundFilters, setRoundFiltersRaw] = useState<Set<string>>(new Set());
 	const [levelFilters, setLevelFilters] = useState<Set<string>>(new Set());
 	const [catFilters, setCatFilters] = useState<Set<string>>(new Set());
 	const [deptFilters, setDeptFilters] = useState<Set<string>>(new Set());
@@ -38,7 +53,13 @@ export function useTopicPage() {
 	);
 	const [activeTab, setActiveTab] = useState<TabKey>('all');
 	const [page, setPage] = useState(1);
-	const [rowsPerPage, setRowsPerPage] = useState<number>(20);
+	const [rowsPerPage, setRowsPerPageRaw] = useState<number>(20);
+
+	// Đổi số dòng/trang → về trang 1, tránh đứng ở trang không còn tồn tại
+	const setRowsPerPage = useCallback((n: number) => {
+		setRowsPerPageRaw(n);
+		setPage(1);
+	}, []);
 
 
 	const [showCreate, setShowCreate] = useState(false);
@@ -51,26 +72,81 @@ export function useTopicPage() {
 	const refreshData = useCallback(() => setRefreshKey((prev) => prev + 1), []);
 	useRealtimeUpdate('topic', refreshData);
 
+	// Danh mục — tải một lần, không phụ thuộc bộ lọc
 	useEffect(() => {
-		Promise.all([
-			getTopics({ limit: 0 }),
-			getCategories(),
-			getLevels(),
-			getRounds(),
-			getDepts(),
-		])
-			.then(([topicsRes, catsRes, lvlsRes, rdsRes, deptsRes]) => {
-				setTopics(topicsRes.data);
+		Promise.all([getCategories(), getLevels(), getRounds(), getDepts()])
+			.then(([catsRes, lvlsRes, rdsRes, deptsRes]) => {
 				setCategories(catsRes.data);
 				setLevels(lvlsRes.data);
 				setRounds(rdsRes.data);
 				setDepartments(deptsRes.data);
 			})
-			.catch((err: unknown) =>
-				setLoadError(err instanceof Error ? err.message : 'Lỗi tải dữ liệu'),
-			)
-			.finally(() => setIsLoadingData(false));
-	}, [refreshKey]);
+			.catch(() => {
+				// Không chặn danh sách đề tài nếu danh mục lỗi
+			});
+	}, []);
+
+	// Debounce ô tìm kiếm 300ms rồi mới gọi API
+	useEffect(() => {
+		const t = setTimeout(() => setDebouncedSearch(search), 300);
+		return () => clearTimeout(t);
+	}, [search]);
+
+	// Tham số lọc gửi lên server (Set → "a,b,c")
+	const listParams = useMemo(
+		() => ({
+			search: debouncedSearch || undefined,
+			status: activeTab === 'all' ? undefined : activeTab,
+			round_id: joinSet(roundFilters),
+			level_id: joinSet(levelFilters),
+			category_id: joinSet(catFilters),
+			department_id: joinSet(deptFilters),
+			article_type: joinSet(articleTypeFilters),
+			year: joinSet(yearFilters),
+		}),
+		[
+			debouncedSearch,
+			activeTab,
+			roundFilters,
+			levelFilters,
+			catFilters,
+			deptFilters,
+			articleTypeFilters,
+			yearFilters,
+		],
+	);
+
+	// Danh sách đề tài — phân trang + lọc phía server
+	useEffect(() => {
+		const controller = new AbortController();
+		void (async () => {
+			setIsLoadingData(true);
+			setLoadError('');
+			try {
+				const res = await getTopics({
+					...listParams,
+					page,
+					limit: rowsPerPage,
+				});
+				if (controller.signal.aborted) return;
+				setTopics(res.data);
+				setTotal(res.pagination.total);
+				setStats(res.global_stats);
+				// Trang hiện tại vượt quá số trang thực tế (vd. vừa xoá) — về trang 1
+				const lastPage = Math.max(
+					1,
+					Math.ceil(res.pagination.total / rowsPerPage),
+				);
+				if (page > lastPage) setPage(1);
+			} catch (err: unknown) {
+				if (controller.signal.aborted) return;
+				setLoadError(err instanceof Error ? err.message : 'Lỗi tải dữ liệu');
+			} finally {
+				if (!controller.signal.aborted) setIsLoadingData(false);
+			}
+		})();
+		return () => controller.abort();
+	}, [listParams, page, rowsPerPage, refreshKey]);
 
 	const availableYears = useMemo(() => {
 		const years = rounds
@@ -93,7 +169,7 @@ export function useTopicPage() {
 		(next: Set<string>) => {
 			setYearFilters(next);
 			if (next.size > 0) {
-				setRoundFilters((prev) => {
+				setRoundFiltersRaw((prev) => {
 					const kept = new Set<string>();
 					for (const id of prev) {
 						const r = rounds.find((r) => r.id === id);
@@ -107,17 +183,6 @@ export function useTopicPage() {
 		[rounds],
 	);
 
-	const stats = useMemo(
-		() => ({
-			total: topics.length,
-			submitted: topics.filter((t) => t.status === 'submitted').length,
-			approved: topics.filter((t) => t.status === 'approved').length,
-			rejected: topics.filter((t) => t.status === 'rejected').length,
-			supplement: topics.filter((t) => t.status === 'supplement').length,
-		}),
-		[topics],
-	);
-
 	const TABS: { key: TabKey; label: string; count: number }[] = [
 		{ key: 'all', label: 'Tất cả', count: stats.total },
 		{ key: 'submitted', label: 'Chờ duyệt', count: stats.submitted },
@@ -126,57 +191,33 @@ export function useTopicPage() {
 		{ key: 'supplement', label: 'Bổ sung', count: stats.supplement },
 	];
 
-	const filtered = useMemo(() => {
-		return topics.filter((t) => {
-			if (activeTab !== 'all' && t.status !== activeTab) return false;
-			if (yearFilters.size > 0) {
-				const round = rounds.find((r) => r.id === t.round_id);
-				const y = round?.year ?? t.round_year;
-				if (!y || !yearFilters.has(y.toString())) return false;
-			}
-			if (roundFilters.size > 0 && !roundFilters.has(t.round_id ?? ''))
-				return false;
-			if (levelFilters.size > 0 && !levelFilters.has(t.level_id ?? ''))
-				return false;
-			if (catFilters.size > 0 && !catFilters.has(t.category_id ?? ''))
-				return false;
-			if (deptFilters.size > 0 && !deptFilters.has(t.department_id ?? ''))
-				return false;
-			if (
-				articleTypeFilters.size > 0 &&
-				!articleTypeFilters.has(t.article_type ?? 'de_tai')
-			)
-				return false;
-			if (search) {
-				const q = search.toLowerCase();
-				if (
-					!t.title.toLowerCase().includes(q) &&
-					!t.id.toLowerCase().includes(q)
-				)
-					return false;
-			}
-			return true;
-		});
-	}, [
-		topics,
-		rounds,
-		activeTab,
-		yearFilters,
-		roundFilters,
-		levelFilters,
-		catFilters,
-		deptFilters,
-		articleTypeFilters,
-		search,
-	]);
-
-	const totalPages = Math.max(1, Math.ceil(filtered.length / rowsPerPage));
+	const totalPages = Math.max(1, Math.ceil(total / rowsPerPage));
 	const safePage = Math.min(page, totalPages);
-	const pageSlice = filtered.slice(
-		(safePage - 1) * rowsPerPage,
-		safePage * rowsPerPage,
-	);
+	// Server đã lọc + cắt trang, không slice lại ở client
+	const pageSlice = topics;
 	const resetPage = () => setPage(1);
+
+	// Đổi bộ lọc luôn kéo về trang 1 — nếu không sẽ đứng ở trang không còn tồn tại
+	// (trước đây client tự clamp được vì giữ cả danh sách, giờ server cắt trang).
+	const filterSetter =
+		<T,>(set: Dispatch<SetStateAction<T>>) =>
+		(v: T) => {
+			set(v);
+			setPage(1);
+		};
+
+	// Export cần danh sách id — lấy đúng lúc bấm xuất, không giữ cả bảng trong bộ nhớ.
+	// ponytail: 1 request limit=0; nếu tập xuất lên tới hàng trăm nghìn thì chuyển
+	// sang cho server tự xuất theo bộ lọc thay vì gửi mảng id.
+	const fetchExportIds = useCallback(
+		async (scope: 'filtered' | 'all') => {
+			const res = await getTopics(
+				scope === 'all' ? { limit: 0 } : { ...listParams, limit: 0 },
+			);
+			return res.data.map((t) => t.id);
+		},
+		[listParams],
+	);
 
 	const handleCreate = useCallback(
 		async (form: TopicForm, pendingMembers: PendingMember[]): Promise<void> => {
@@ -207,19 +248,17 @@ export function useTopicPage() {
 					),
 				);
 			}
-			setTopics((prev) => [
-				{ ...created, member_count: pendingMembers.length },
-				...prev,
-			]);
+			// Chỉ giữ trang hiện tại nên tải lại từ server thay vì chèn tay
+			refreshData();
 			setShowCreate(false);
 		},
-		[],
+		[refreshData],
 	);
 
 	const handleEdit = useCallback(
 		async (form: TopicForm): Promise<void> => {
 			if (!editTopic) return;
-			const updated = await updateTopicApi(editTopic.id, {
+			await updateTopicApi(editTopic.id, {
 				title: form.title,
 				description: form.description || undefined,
 				round_id: form.round_id,
@@ -231,22 +270,20 @@ export function useTopicPage() {
 				doi: form.doi || undefined,
 				publish_date: form.publish_date || undefined,
 			});
-			setTopics((prev) =>
-				prev.map((t) => (t.id === editTopic.id ? updated : t)),
-			);
+			refreshData();
 			setEditTopic(null);
 			setViewTopic(null);
 		},
-		[editTopic],
+		[editTopic, refreshData],
 	);
 
 	const handleDelete = useCallback(async (): Promise<void> => {
 		if (!deleteTopic) return;
 		await deleteTopicApi(deleteTopic.id);
-		setTopics((prev) => prev.filter((t) => t.id !== deleteTopic.id));
+		refreshData();
 		setDeleteTopic(null);
 		setViewTopic(null);
-	}, [deleteTopic]);
+	}, [deleteTopic, refreshData]);
 
 	return {
 		topics,
@@ -275,18 +312,19 @@ export function useTopicPage() {
 		visibleRounds,
 		stats,
 		TABS,
-		filtered,
+		total,
+		fetchExportIds,
 		totalPages,
 		safePage,
 		pageSlice,
 		PAGE_SIZE_OPTIONS,
 		setSearch,
 		setYearFilters,
-		setRoundFilters,
-		setLevelFilters,
-		setCatFilters,
-		setDeptFilters,
-		setArticleTypeFilters,
+		setRoundFilters: filterSetter(setRoundFiltersRaw),
+		setLevelFilters: filterSetter(setLevelFilters),
+		setCatFilters: filterSetter(setCatFilters),
+		setDeptFilters: filterSetter(setDeptFilters),
+		setArticleTypeFilters: filterSetter(setArticleTypeFilters),
 		setActiveTab,
 		setPage,
 		setRowsPerPage,

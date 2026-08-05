@@ -1,8 +1,9 @@
 /* eslint-disable react-refresh/only-export-components */
 // @refresh reset
-import React, { lazy } from 'react';
+import React from 'react';
 import type { RouteObject } from 'react-router-dom';
 import { LazyRoute } from './LazyRoute';
+import { lazyRoute as lazy } from './routePrefetch';
 import { RequireAdmin, RequireAuth, RequireNotMember } from './guards';
 
 // ── Admin pages ──────────────────────────────────────────

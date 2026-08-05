@@ -2,20 +2,8 @@ const bcrypt = require('bcryptjs');
 const { getPool, sql } = require('../config/db');
 const { broadcast } = require('./eventService');
 const { paging } = require('../utils/paging');
-
 // department_id/account_type nhận danh sách phân tách bởi dấu phẩy (multi-select trên UI)
-const splitList = (v) => (v ? String(v).split(',').filter(Boolean) : []);
-
-// Thêm mệnh đề IN (...) với tham số đặt tên riêng theo prefix, tránh đụng tên giữa các lần gọi
-const inClause = (req, col, prefix, values, sqlType) => {
-	if (!values.length) return null;
-	const names = values.map((v, i) => {
-		const name = `${prefix}${i}`;
-		req.input(name, sqlType, v);
-		return `@${name}`;
-	});
-	return `${col} IN (${names.join(', ')})`;
-};
+const { splitList, inClause } = require('../utils/sqlFilters');
 
 const getAll = async ({
 	page = 1,

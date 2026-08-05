@@ -125,9 +125,7 @@ export default function TopicPage() {
 				<div className={styles.tableHeader}>
 					<div className={styles.tableHeaderLeft}>
 						<span className={styles.tableTitle}>Danh sách đề tài</span>
-						<span className={styles.tableCount}>
-							{d.filtered.length} đề tài
-						</span>
+						<span className={styles.tableCount}>{d.total} đề tài</span>
 					</div>
 					<div className={styles.tableControls}>
 						<div className={styles.searchWrap}>
@@ -390,7 +388,7 @@ export default function TopicPage() {
 				<Pagination
 					page={d.safePage}
 					totalPages={d.totalPages}
-					total={d.filtered.length}
+					total={d.total}
 					rowsPerPage={d.rowsPerPage}
 					pageSizeOptions={d.PAGE_SIZE_OPTIONS}
 					onPageChange={d.setPage}
@@ -405,8 +403,9 @@ export default function TopicPage() {
 			{/* ── MODALS & DRAWER ── */}
 			{d.showExport && (
 				<ExportExcelModal
-					topics={d.topics}
-					filtered={d.filtered}
+					totalCount={d.stats.total}
+					filteredCount={d.total}
+					fetchExportIds={d.fetchExportIds}
 					categories={d.categories}
 					levels={d.levels}
 					rounds={d.rounds}
