@@ -8,6 +8,7 @@ import { useTopicRegister } from '../hooks/useTopicRegister';
 import type { ArticleType, MemberRole } from '../types/topic.type';
 import { ARTICLE_ROLE_CFG, ARTICLE_TYPE_CFG } from '../utils/topicRegisterHelpers';
 import styles from './TopicRegister.module.css';
+import { DatePicker } from '../../../shared/components/Input/DatePicker';
 
 export default function TopicRegister() {
 	const {
@@ -394,14 +395,11 @@ export default function TopicRegister() {
 										>
 											Ngày xuất bản
 										</label>
-										<input
+										<DatePicker
 											id='reg-publish-date'
-											type='date'
-											className={styles.formInput}
 											value={form.publish_date}
-											onChange={(e) =>
-												setField('publish_date', e.target.value)
-											}
+											onChange={(val) => setField('publish_date', val)}
+											placeholder='Chọn ngày xuất bản...'
 										/>
 									</div>
 								</div>

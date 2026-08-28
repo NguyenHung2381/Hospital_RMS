@@ -1,4 +1,5 @@
 import {
+	CalendarSvg,
 	CheckSvg,
 	EditSvg,
 	LayersSvg,
@@ -10,6 +11,12 @@ import {
 } from '@/assets/icons';
 import AdminLayout from '../../../layouts/AdminLayout';
 import { Pagination } from '../../../shared/components/Table/Pagination';
+import sel from '../../../shared/components/Table/RowSelect.module.css';
+import {
+	BulkBar,
+	SelectCheckbox,
+} from '../../../shared/components/Table/RowSelect';
+import { useRowSelection } from '../../../shared/hooks/useRowSelection';
 import { CatalogDeleteModal } from '../components/CatalogDeleteModal';
 import { CatalogFormModal } from '../components/CatalogFormModal';
 import { useCatalog } from '../hooks/useCatalog';
@@ -41,6 +48,7 @@ function getInitials(s: string) {
 
 export default function Catalog() {
 	const d = useCatalog();
+	const rowSel = useRowSelection(d.paged.map((x) => x.id));
 
 	const headerActions = (
 		<button
@@ -70,6 +78,12 @@ export default function Catalog() {
 					onClick={() => d.handleTabChange('levels')}
 				>
 					<LayersSvg /> Cấp độ
+				</button>
+				<button
+					className={`${styles.tabBtn} ${d.tab === 'round-types' ? styles.tabBtnActive : ''}`}
+					onClick={() => d.handleTabChange('round-types')}
+				>
+					<CalendarSvg /> Loại đợt
 				</button>
 			</div>
 
@@ -114,9 +128,23 @@ export default function Catalog() {
 
 			{/* ── TABLE ── */}
 			<div className={styles.tableWrap}>
+				<BulkBar
+					rowSel={rowSel}
+					itemLabel={d.cfg.label.toLowerCase()}
+					loading={d.loading}
+					onBulkDelete={d.handleBulkDelete}
+				/>
 				<table className={styles.table}>
 					<thead>
 						<tr>
+							<th className={sel.checkCol}>
+								<SelectCheckbox
+									title='Chọn tất cả'
+									checked={rowSel.allPageSelected}
+									indeterminate={rowSel.somePageSelected}
+									onChange={rowSel.toggleSelectAll}
+								/>
+							</th>
 							<th className={styles.th}>#</th>
 							<th className={styles.th}>{d.cfg.label}</th>
 							<th className={styles.th}>Mô tả</th>
@@ -126,7 +154,7 @@ export default function Catalog() {
 					<tbody>
 						{d.isLoadingData ? (
 							<tr>
-								<td colSpan={4}>
+								<td colSpan={5}>
 									<div className={styles.emptyState}>
 										<div className={styles.emptyDesc}>Đang tải dữ liệu...</div>
 									</div>
@@ -134,7 +162,7 @@ export default function Catalog() {
 							</tr>
 						) : d.filtered.length === 0 ? (
 							<tr>
-								<td colSpan={4}>
+								<td colSpan={5}>
 									<div className={styles.emptyState}>
 										<div className={styles.emptyTitle}>
 											Không tìm thấy {d.cfg.label.toLowerCase()}
@@ -155,8 +183,15 @@ export default function Catalog() {
 								return (
 									<tr
 										key={item.id}
-										className={styles.tr}
+										className={`${styles.tr} ${rowSel.isSelected(item.id) ? sel.rowSelected : ''}`}
 									>
+										<td className={sel.checkCol}>
+											<SelectCheckbox
+												title='Chọn dòng'
+												checked={rowSel.isSelected(item.id)}
+												onChange={() => rowSel.toggleSelect(item.id)}
+											/>
+										</td>
 										<td className={`${styles.td} ${styles.tdIdx}`}>{rowNum}</td>
 										<td className={styles.td}>
 											<div className={styles.itemCell}>

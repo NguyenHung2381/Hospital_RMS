@@ -39,12 +39,22 @@ export function DeptDeleteModal({
 						Bạn có chắc muốn xoá <strong>{dept.name}</strong> ({dept.abbreviation})
 						khỏi hệ thống?
 					</p>
-					{(dept.topic_count ?? 0) > 0 && (
+					{((dept.topic_count ?? 0) > 0 || (dept.user_count ?? 0) > 0) && (
 						<div className={styles.warnBox}>
 							<InfoSvg />
 							<span>
-								Có <strong>{dept.topic_count} đề tài</strong> đang liên kết với
-								khoa phòng này.
+								Có{' '}
+								{(dept.user_count ?? 0) > 0 && (
+									<strong>{dept.user_count} người dùng</strong>
+								)}
+								{(dept.user_count ?? 0) > 0 &&
+									(dept.topic_count ?? 0) > 0 &&
+									' và '}
+								{(dept.topic_count ?? 0) > 0 && (
+									<strong>{dept.topic_count} đề tài</strong>
+								)}{' '}
+								đang liên kết với khoa phòng này. Khi xoá, các bản ghi này sẽ
+								được gỡ liên kết (không bị xoá theo).
 							</span>
 						</div>
 					)}

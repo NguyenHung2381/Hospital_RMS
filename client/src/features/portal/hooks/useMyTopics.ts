@@ -1,45 +1,51 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRealtimeUpdate } from '../../../layouts/hooks/useRealtime';
-import { getStoredUser } from '../../../shared/utils/storage';
+import { getStoredUser, type StoredUser } from '../../../shared/utils/storage';
 import {
 	getApprovalTopicDetail,
 	getApprovals,
 	type Approval as ApprovalHistory,
 	type TopicApprovalDetail,
 } from '../../approval/api/approval';
-import { getDeadlines, getRoundById } from '../../round/api/roundApi';
-import type {
-	ResearchRound,
-	RoundDeadline,
-} from '../../round/types/round.type';
+import { getDeadlines } from '../../round/api/roundApi';
+import type { RoundDeadline } from '../../round/types/round.type';
 import {
 	getCategories,
 	getDepts,
 	getLevels,
 	getTopicFiles,
+	getTopicMembers,
 	getTopics,
 	updateTopic,
 	uploadTopicFiles,
 	type SimpleItem,
 } from '../../topics/api/topicApi';
-import type { Topic, TopicFile } from '../../topics/types/topic.type';
+import type {
+	MemberRole,
+	Topic,
+	TopicFile,
+} from '../../topics/types/topic.type';
 import { formatFileSize } from '../../topics/utils/topicHelpers';
-import { getEditMode } from '../services/topicDetailService';
+import { getTopicPermissions } from '../services/topicDetailService';
 import {
 	type CategoryTab,
 	type FilterTab,
-	isDeptAccount,
+	canSeeDeptTopics,
 } from '../utils/myTopicsHelpers';
 
 export function useMyTopics() {
-	const userInfo = getStoredUser<Record<string, string>>();
+	const userInfo = getStoredUser<StoredUser>();
 	const fullName = userInfo?.full_name ?? userInfo?.username ?? 'Người dùng';
 	const userRole = userInfo?.role ?? userInfo?.role_name ?? 'Thành viên';
 	const currentUserId = userInfo?.id ?? '';
 	const userDeptId = userInfo?.department_id ?? '';
-	const accountType = userInfo?.account_type ?? 'member';
-	const canSeeDept = isDeptAccount(accountType);
-	const canRegister = accountType !== 'member';
+	const permissions = userInfo?.permissions ?? [];
+	const isSuperuser = permissions.includes('system:manage');
+	const canSeeDept = canSeeDeptTopics(permissions);
+	const canRegister =
+		isSuperuser ||
+		permissions.includes('topics:create') ||
+		permissions.includes('topics:manage');
 
 	const initials = fullName
 		.split(' ')
@@ -69,8 +75,8 @@ export function useMyTopics() {
 		isWord: boolean;
 	} | null>(null);
 	const [refreshKey, setRefreshKey] = useState(0);
-	const [activeRound, setActiveRound] = useState<ResearchRound | null>(null);
 	const [roundDeadlines, setRoundDeadlines] = useState<RoundDeadline[]>([]);
+	const [myRole, setMyRole] = useState<MemberRole | null>(null);
 
 	const [editOpen, setEditOpen] = useState(false);
 	const [editForm, setEditForm] = useState({
@@ -199,8 +205,8 @@ export function useMyTopics() {
 				setUploadError('');
 				setEditError('');
 			}
-			setActiveRound(null);
 			setRoundDeadlines([]);
+			setMyRole(null);
 			if (!selectedId) {
 				setDetailTopic(null);
 				setDetailFiles([]);
@@ -216,24 +222,24 @@ export function useMyTopics() {
 				const topic = await getApprovalTopicDetail(selectedId);
 				if (cancelled) return;
 
-				const [files, history, rd, dl] = await Promise.all([
+				const [files, history, dl, mem] = await Promise.all([
 					getTopicFiles(selectedId),
 					getApprovals(selectedId).catch(() => [] as ApprovalHistory[]),
 					topic.round_id
-						? getRoundById(topic.round_id)
-						: Promise.resolve(null as ResearchRound | null),
-					topic.round_id
 						? getDeadlines(topic.round_id)
 						: Promise.resolve([] as RoundDeadline[]),
+					getTopicMembers(selectedId).catch(() => []),
 				]);
 				if (cancelled) return;
 
-				// Set all state in one batch so canUploadFiles is computed once with complete data
+				// Set all state in one batch so permissions are computed once with complete data
 				setDetailTopic(topic);
 				setDetailFiles(files.data ?? []);
 				setDetailHistory(history);
-				setActiveRound(rd);
 				setRoundDeadlines(dl);
+				setMyRole(
+					mem.find((m) => m.user_id === currentUserId)?.role ?? null,
+				);
 			} catch {
 				if (!cancelled) {
 					setDetailTopic(null);
@@ -247,7 +253,7 @@ export function useMyTopics() {
 		return () => {
 			cancelled = true;
 		};
-	}, [selectedId, refreshKey]);
+	}, [selectedId, refreshKey, currentUserId]);
 
 	useEffect(() => {
 		if (!editOpen || refData !== null || refDataLoading) return;
@@ -274,16 +280,13 @@ export function useMyTopics() {
 
 	const latestApproval = detailHistory[0] ?? null;
 
-	const canUploadFiles = useMemo(() => {
-		if (!detailTopic || !activeRound) return false;
-		return (
-			getEditMode(
-				detailTopic as unknown as Topic,
-				activeRound,
-				roundDeadlines,
-			) !== 'none'
-		);
-	}, [detailTopic, activeRound, roundDeadlines]);
+	const perms = useMemo(
+		() => getTopicPermissions(myRole, roundDeadlines, isSuperuser),
+		[myRole, roundDeadlines, isSuperuser],
+	);
+	const canUploadFiles = perms.canAddFiles;
+	const canEditTitle = perms.canEditTitle;
+	const canEditInfo = perms.canEditInfo;
 
 	function openEdit() {
 		if (!detailTopic) return;
@@ -300,16 +303,23 @@ export function useMyTopics() {
 
 	async function handleSaveEdit() {
 		if (!detailTopic || !editForm.title.trim()) return;
+		// Chỉ gửi những trường mốc thời gian đang cho phép.
+		const payload: Parameters<typeof updateTopic>[1] = {};
+		if (canEditTitle) payload.title = editForm.title.trim();
+		if (canEditInfo) {
+			payload.description = editForm.description || undefined;
+			payload.category_id = editForm.category_id || undefined;
+			payload.level_id = editForm.level_id || undefined;
+			payload.department_id = editForm.department_id || undefined;
+		}
+		if (Object.keys(payload).length === 0) {
+			setEditOpen(false);
+			return;
+		}
 		setEditLoading(true);
 		setEditError('');
 		try {
-			await updateTopic(detailTopic.id, {
-				title: editForm.title.trim(),
-				description: editForm.description || undefined,
-				category_id: editForm.category_id || undefined,
-				level_id: editForm.level_id || undefined,
-				department_id: editForm.department_id || undefined,
-			});
+			await updateTopic(detailTopic.id, payload);
 			const [topic, files] = await Promise.all([
 				getApprovalTopicDetail(detailTopic.id),
 				getTopicFiles(detailTopic.id),
@@ -383,6 +393,8 @@ export function useMyTopics() {
 		detailHistory,
 		latestApproval,
 		canUploadFiles,
+		canEditTitle,
+		canEditInfo,
 		// file viewer
 		fileViewer,
 		setFileViewer,

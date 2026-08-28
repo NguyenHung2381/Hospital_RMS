@@ -84,12 +84,15 @@ const buildMemberUsername = (fullName, staffNumber) => {
 	return `${initials}_${padded}`;
 };
 
-const ensureUniqueUsername = async (pool, baseUsername, userId) => {
+// executor có thể là pool hoặc sql.Transaction — cả hai đều expose .request().
+// Khi truyền transaction, việc kiểm tra trùng username chạy cùng ngữ cảnh với
+// INSERT/UPDATE users nên nhất quán hơn.
+const ensureUniqueUsername = async (executor, baseUsername, userId) => {
 	let username = baseUsername;
 	let suffix = 1;
 	while (true) {
 		// Tạo request mới mỗi lần để tránh lỗi "parameter already set"
-		const existing = await pool
+		const existing = await executor
 			.request()
 			.input('username_check', sql.VarChar(100), username)
 			.query(`SELECT TOP 1 id FROM users WHERE username = @username_check`);
@@ -103,10 +106,27 @@ const ensureUniqueUsername = async (pool, baseUsername, userId) => {
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
-// sp_gen_user_id giữ applock tới khi transaction bao ngoài commit để tránh sinh trùng mã;
-// khi có nhiều thao tác cấp tài khoản chạy đồng thời, lock có thể timeout. Thử lại vài lần
-// trước khi báo lỗi cho người dùng.
-const genUserIdWithRetry = async (tx, deptCode, isDeptAccount = false, attempts = 3) => {
+// sp_gen_user_id dùng sp_getapplock (LockOwner = Transaction) nên khóa "sinh mã"
+// được giữ tới khi transaction bao ngoài COMMIT/ROLLBACK. Vì vậy transaction gọi
+// proc này PHẢI NGẮN: sinh mã -> INSERT users -> commit ngay (xem grantAccountsNoEmail).
+// Nếu khóa vẫn timeout (nhiều thao tác song song trên cùng khoa), proc RAISERROR
+// với error number 50000 -> thử lại vài lần trước khi bỏ cuộc.
+const isGenLockTimeout = (err) => {
+	if (!err) return false;
+	const msg = String(err.message || '');
+	return (
+		err.number === 50000 ||
+		err.originalError?.info?.number === 50000 ||
+		/kh[oó]a sinh m[ãa]/i.test(msg)
+	);
+};
+
+const genUserIdWithRetry = async (
+	tx,
+	deptCode,
+	isDeptAccount = false,
+	attempts = 3,
+) => {
 	for (let attempt = 1; attempt <= attempts; attempt += 1) {
 		try {
 			const req = new sql.Request(tx);
@@ -117,17 +137,59 @@ const genUserIdWithRetry = async (tx, deptCode, isDeptAccount = false, attempts 
 			await req.execute('sp_gen_user_id');
 			return req.output.new_id;
 		} catch (err) {
-			const isLockTimeout =
-				err.number === 50000 && err.procName === 'sp_gen_user_id';
-			if (!isLockTimeout || attempt === attempts) throw err;
-			await sleep(300 * attempt);
+			if (!isGenLockTimeout(err) || attempt === attempts) throw err;
+			await sleep(200 * attempt);
 		}
 	}
+	return undefined;
 };
 
+// Sinh mã NV bên trong transaction ngắn của từng thành viên.
+// Ưu tiên sp_gen_user_id. Nếu proc trả lỗi khóa (ví dụ DB chưa chạy migration
+// 2026-08-28_fix_gen_id_applock_owner.sql — bug @owner NVARCHAR(10) cắt cụt
+// 'Transaction' -> sp_getapplock luôn thất bại khi gọi trong transaction) thì
+// tự sinh bằng SELECT có (UPDLOCK, HOLDLOCK): range lock trên dải id 'NV<khoa>'
+// được giữ tới khi tx commit nên vẫn chống trùng mã khi chạy song song.
+const genUserIdInTx = async (tx, deptCode) => {
+	try {
+		const id = await genUserIdWithRetry(tx, deptCode, false, 2);
+		if (id) return id;
+	} catch (err) {
+		if (!isGenLockTimeout(err)) throw err;
+		console.warn(
+			'grantAccountsNoEmail: sp_gen_user_id lỗi khóa, dùng fallback sinh mã trong transaction:',
+			err.message,
+		);
+	}
+	const res = await new sql.Request(tx)
+		.input('dept_code', sql.VarChar(20), deptCode).query(`
+			DECLARE @prefix VARCHAR(12) = 'NV' + @dept_code;
+			DECLARE @count INT;
+			SELECT @count = ISNULL(MAX(CAST(RIGHT(id,4) AS INT)), 0) + 1
+			FROM users WITH (UPDLOCK, HOLDLOCK)
+			WHERE id LIKE @prefix + '[0-9][0-9][0-9][0-9]'
+			  AND RIGHT(id,4) <> '0000';
+			IF @count < 1 SET @count = 1;
+			SELECT @prefix + RIGHT('0000' + CAST(@count AS VARCHAR(4)), 4) AS new_id;
+		`);
+	return res.recordset[0]?.new_id;
+};
+
+// Cấp tài khoản cho thành viên đề tài (luồng không dùng email).
+//
+// QUAN TRỌNG: mỗi thành viên được xử lý trong MỘT transaction riêng, ngắn gọn
+// (sinh mã -> INSERT/UPDATE users -> gắn user_id vào topic_members -> commit).
+// sp_gen_user_id giữ applock "sinh mã" tới khi transaction commit, nên nếu gộp
+// cả vòng lặp + bcrypt + notification vào một transaction lớn (như trước đây) thì
+// khóa bị giữ quá lâu -> thao tác cấp tài khoản chạy song song trên cùng khoa sẽ
+// timeout và văng lỗi "Không lấy được khóa sinh mã nhân viên".
+//
+// Đổi lại: mất tính "all-or-nothing" của cả batch. Thành viên nào lỗi sẽ được
+// đưa vào `skipped` kèm lý do, các thành viên còn lại vẫn được cấp bình thường.
 const grantAccountsNoEmail = async (topicId, memberIds, actorId) => {
 	const pool = await getPool();
 
+	// --- 1. Kiểm tra đề tài (chỉ đọc, không cần transaction) ---
 	const topicResult = await pool
 		.request()
 		.input('topic_id', sql.VarChar(15), topicId)
@@ -146,16 +208,10 @@ const grantAccountsNoEmail = async (topicId, memberIds, actorId) => {
 		throw err;
 	}
 
-	const DEFAULT_PASSWORD = '123456';
-	const defaultHash = await bcrypt.hash(DEFAULT_PASSWORD, 10);
-	const credentials = [];
-	const tx = new sql.Transaction(pool);
-	await tx.begin();
-
-	try {
-		const memberRequest = new sql.Request(tx);
-		memberRequest.input('topic_id', sql.VarChar(15), topicId);
-		const membersResult = await memberRequest.query(`
+	// --- 2. Lấy danh sách thành viên cần cấp + mã khoa (chỉ đọc) ---
+	const membersResult = await pool
+		.request()
+		.input('topic_id', sql.VarChar(15), topicId).query(`
 			SELECT tm.id, tm.name AS ho_ten, tm.email, tm.staff_number,
 			       tm.phone_number, tm.position, tm.role,
 			       tm.department_id AS member_department_id,
@@ -167,74 +223,76 @@ const grantAccountsNoEmail = async (topicId, memberIds, actorId) => {
 			  AND tm.account_granted = 0
 		`);
 
-		const filterIds =
-			Array.isArray(memberIds) && memberIds.length > 0
-				? new Set(memberIds)
-				: null;
-		const allRows = membersResult.recordset;
-		const membersToProcess = filterIds
-			? allRows.filter((row) => filterIds.has(row.id))
-			: allRows;
+	const filterIds =
+		Array.isArray(memberIds) && memberIds.length > 0
+			? new Set(memberIds)
+			: null;
+	const membersToProcess = filterIds
+		? membersResult.recordset.filter((row) => filterIds.has(row.id))
+		: membersResult.recordset;
 
-		const deptCodeRequest = new sql.Request(tx);
-		deptCodeRequest.input('topic_id', sql.VarChar(15), topicId);
-		const deptCodeResult = await deptCodeRequest.query(`
+	const deptCodeResult = await pool
+		.request()
+		.input('topic_id', sql.VarChar(15), topicId).query(`
 			SELECT d.code
 			FROM topics t
 			INNER JOIN departments d ON d.id = t.department_id
 			WHERE t.id = @topic_id
 		`);
-		const deptCode = deptCodeResult.recordset[0]?.code;
-		if (!deptCode) {
-			const err = new Error('Không xác định được khoa/phòng để tạo tài khoản');
-			err.statusCode = 400;
-			throw err;
-		}
+	const deptCode = deptCodeResult.recordset[0]?.code;
+	if (!deptCode) {
+		const err = new Error('Không xác định được khoa/phòng để tạo tài khoản');
+		err.statusCode = 400;
+		throw err;
+	}
 
-		for (const member of membersToProcess) {
-			const staffNumber =
-				member.staff_number != null ? Number(member.staff_number) : null;
-			const baseUsername = buildMemberUsername(
-				member.ho_ten,
-				staffNumber != null ? staffNumber : '0000',
-			);
-			const deptId = member.member_department_id || member.topic_department_id;
-			const roleId = member.role === 'leader' ? 'VT05' : 'VT06';
+	const DEFAULT_PASSWORD = '123456';
+	const defaultHash = await bcrypt.hash(DEFAULT_PASSWORD, 10);
+	const credentials = [];
+	const skipped = [];
 
-			const existingUserRequest = new sql.Request(tx);
-			existingUserRequest
+	// --- 3. Mỗi thành viên = 1 transaction ngắn ---
+	for (const member of membersToProcess) {
+		const staffNumber =
+			member.staff_number != null ? Number(member.staff_number) : null;
+		const baseUsername = buildMemberUsername(
+			member.ho_ten,
+			staffNumber != null ? staffNumber : '0000',
+		);
+		const deptId = member.member_department_id || member.topic_department_id;
+		const roleId = member.role === 'leader' ? 'VT05' : 'VT06';
+
+		const tx = new sql.Transaction(pool);
+		let began = false;
+		try {
+			await tx.begin();
+			began = true;
+
+			// Ghi actor cho trigger audit (trg_users_audit đọc SESSION_CONTEXT)
+			await new sql.Request(tx)
+				.input('actor_id', sql.VarChar(20), actorId)
+				.query(`EXEC sp_set_actor @actor_id`);
+
+			// Tài khoản đã tồn tại (theo topic_member_id / mã NV / email)?
+			const existingUserResult = await new sql.Request(tx)
 				.input('member_id', sql.VarChar(22), member.id)
 				.input('staff_number', sql.Int, staffNumber)
-				.input('email', sql.VarChar(255), member.email || null);
-			const existingUserResult = await existingUserRequest.query(`
-				SELECT TOP 1 id
-				FROM users
-				WHERE topic_member_id = @member_id
-				   OR staff_number = @staff_number
-				   OR (@email IS NOT NULL AND email = @email)
-				ORDER BY CASE WHEN topic_member_id = @member_id THEN 0 ELSE 1 END,
-				         CASE WHEN staff_number = @staff_number THEN 0 ELSE 1 END,
-				         CASE WHEN @email IS NOT NULL AND email = @email THEN 0 ELSE 1 END
-			`);
+				.input('email', sql.VarChar(255), member.email || null).query(`
+					SELECT TOP 1 id
+					FROM users
+					WHERE topic_member_id = @member_id
+					   OR staff_number = @staff_number
+					   OR (@email IS NOT NULL AND email = @email)
+					ORDER BY CASE WHEN topic_member_id = @member_id THEN 0 ELSE 1 END,
+					         CASE WHEN staff_number = @staff_number THEN 0 ELSE 1 END,
+					         CASE WHEN @email IS NOT NULL AND email = @email THEN 0 ELSE 1 END
+				`);
+			const existingUser = existingUserResult.recordset[0];
 
-			let userId = existingUserResult.recordset[0]?.id;
+			let userId = existingUser?.id;
 			if (!userId) {
-				userId = await genUserIdWithRetry(tx, deptCode);
-				if (!userId) {
-					const fallbackIdRequest = new sql.Request(tx);
-					fallbackIdRequest.input('dept_code', sql.VarChar(20), deptCode);
-					const fallbackIdResult = await fallbackIdRequest.query(`
-						DECLARE @prefix VARCHAR(12) = 'NV' + @dept_code;
-						DECLARE @count INT;
-						SELECT @count = ISNULL(MAX(CAST(RIGHT(id,4) AS INT)), 0) + 1
-						FROM users
-						WHERE id LIKE @prefix + '[0-9][0-9][0-9][0-9]'
-						  AND RIGHT(id,4) <> '0000';
-						IF @count < 1 SET @count = 1;
-						SELECT @prefix + RIGHT('0000' + CAST(@count AS VARCHAR(4)), 4) AS new_id;
-					`);
-					userId = fallbackIdResult.recordset[0]?.new_id;
-				}
+				// Khóa "sinh mã" chỉ được giữ tới khi tx ngắn này commit (vài ms sau).
+				userId = await genUserIdInTx(tx, deptCode);
 				if (!userId) {
 					const err = new Error('Không sinh được mã tài khoản mới');
 					err.statusCode = 500;
@@ -242,29 +300,29 @@ const grantAccountsNoEmail = async (topicId, memberIds, actorId) => {
 				}
 			}
 
-			const username = await ensureUniqueUsername(pool, baseUsername, userId);
+			const username = await ensureUniqueUsername(tx, baseUsername, userId);
 			const storedEmail =
 				member.email && String(member.email).trim()
 					? String(member.email).trim()
 					: `${String(userId).toLowerCase()}@member.local`;
 
-			if (existingUserResult.recordset[0]) {
-				const updateUserRequest = new sql.Request(tx);
-				updateUserRequest
-					.input('uid', sql.VarChar(20), userId)
-					.input('username', sql.VarChar(100), username)
-					.input('password', sql.VarChar(255), defaultHash)
-					.input('full_name', sql.NVarChar(255), member.ho_ten)
-					.input('staff_number', sql.Int, staffNumber)
-					.input('email', sql.VarChar(255), storedEmail)
-					.input('phone_number', sql.VarChar(10), member.phone_number || null)
-					.input('position_detail', sql.NVarChar(255), member.position || null)
-					.input('department_id', sql.VarChar(20), deptId)
-					.input('role_id', sql.VarChar(6), roleId)
-					.input('topic_member_id', sql.VarChar(22), member.id)
-					.input('expires_at', sql.Date, member.end_date)
-					.input('actor_id', sql.VarChar(20), actorId);
-				await updateUserRequest.query(`
+			const writeReq = new sql.Request(tx)
+				.input('uid', sql.VarChar(20), userId)
+				.input('username', sql.VarChar(100), username)
+				.input('password', sql.VarChar(255), defaultHash)
+				.input('full_name', sql.NVarChar(255), member.ho_ten)
+				.input('staff_number', sql.Int, staffNumber)
+				.input('email', sql.VarChar(255), storedEmail)
+				.input('phone_number', sql.VarChar(10), member.phone_number || null)
+				.input('position_detail', sql.NVarChar(255), member.position || null)
+				.input('department_id', sql.VarChar(20), deptId)
+				.input('role_id', sql.VarChar(6), roleId)
+				.input('topic_member_id', sql.VarChar(22), member.id)
+				.input('expires_at', sql.Date, member.end_date)
+				.input('actor_id', sql.VarChar(20), actorId);
+
+			if (existingUser) {
+				await writeReq.query(`
 					UPDATE users
 					SET username = @username,
 					    password = @password,
@@ -275,7 +333,6 @@ const grantAccountsNoEmail = async (topicId, memberIds, actorId) => {
 					    position_detail = @position_detail,
 					    department_id = @department_id,
 					    role_id = @role_id,
-					    account_type = 'member',
 					    is_active = 1,
 					    topic_member_id = @topic_member_id,
 					    account_expires_at = @expires_at,
@@ -284,49 +341,34 @@ const grantAccountsNoEmail = async (topicId, memberIds, actorId) => {
 					WHERE id = @uid
 				`);
 			} else {
-				const createUserRequest = new sql.Request(tx);
-				createUserRequest
-					.input('uid', sql.VarChar(20), userId)
-					.input('username', sql.VarChar(100), username)
-					.input('password', sql.VarChar(255), defaultHash)
-					.input('full_name', sql.NVarChar(255), member.ho_ten)
-					.input('staff_number', sql.Int, staffNumber)
-					.input('email', sql.VarChar(255), storedEmail)
-					.input('phone_number', sql.VarChar(10), member.phone_number || null)
-					.input('position_detail', sql.NVarChar(255), member.position || null)
-					.input('department_id', sql.VarChar(20), deptId)
-					.input('role_id', sql.VarChar(6), roleId)
-					.input('topic_member_id', sql.VarChar(22), member.id)
-					.input('expires_at', sql.Date, member.end_date)
-					.input('actor_id', sql.VarChar(20), actorId);
-				await createUserRequest.query(`
+				await writeReq.query(`
 					INSERT INTO users (
 						id, username, password, full_name, staff_number, email,
 						phone_number, position_detail, department_id, role_id,
-						account_type, topic_member_id, account_expires_at, created_by
+						topic_member_id, account_expires_at, created_by
 					)
 					VALUES (
 						@uid, @username, @password, @full_name, @staff_number, @email,
 						@phone_number, @position_detail, @department_id, @role_id,
-						'member', @topic_member_id, @expires_at, @actor_id
+						@topic_member_id, @expires_at, @actor_id
 					)
 				`);
 			}
 
-			const updateMemberRequest = new sql.Request(tx);
-			updateMemberRequest
+			await new sql.Request(tx)
 				.input('member_id', sql.VarChar(22), member.id)
 				.input('uid', sql.VarChar(20), userId)
-				.input('actor_id', sql.VarChar(20), actorId);
-			await updateMemberRequest.query(`
-				UPDATE topic_members
-				SET user_id = @uid,
-				    account_granted = 1,
-				    account_granted_at = GETDATE(),
-				    updated_at = GETDATE(),
-				    updated_by = @actor_id
-				WHERE id = @member_id
-			`);
+				.input('actor_id', sql.VarChar(20), actorId).query(`
+					UPDATE topic_members
+					SET user_id = @uid,
+					    account_granted = 1,
+					    account_granted_at = GETDATE(),
+					    updated_at = GETDATE(),
+					    updated_by = @actor_id
+					WHERE id = @member_id
+				`);
+
+			await tx.commit();
 
 			credentials.push({
 				member_id: member.id,
@@ -335,79 +377,99 @@ const grantAccountsNoEmail = async (topicId, memberIds, actorId) => {
 				full_name: member.ho_ten,
 				password_plain: DEFAULT_PASSWORD,
 			});
+		} catch (err) {
+			if (began) {
+				try {
+					await tx.rollback();
+				} catch {
+					// bỏ qua nếu transaction đã bị abort
+				}
+			}
+			console.error(
+				`grantAccountsNoEmail: bỏ qua thành viên ${member.id}:`,
+				err.message,
+			);
+			skipped.push({
+				member_id: member.id,
+				ho_ten: member.ho_ten,
+				reason: err instanceof Error ? err.message : 'Lỗi không xác định',
+			});
 		}
+	}
 
-		await tx.commit();
-		broadcast('update', { entity: 'topic' });
+	if (credentials.length === 0) {
+		if (skipped.length > 0) {
+			const err = new Error(
+				skipped.length === 1
+					? skipped[0].reason
+					: `Không cấp được tài khoản cho ${skipped.length} thành viên`,
+			);
+			err.statusCode = 500;
+			throw err;
+		}
+		return { credentials, skipped };
+	}
 
-		// Thông báo cho tài khoản vừa được cấp
+	broadcast('update', { entity: 'topic' });
+
+	// --- 4. Thông báo (ngoài transaction; lỗi ở đây không ảnh hưởng việc cấp) ---
+	try {
 		const newUserIds = credentials.map((c) => c.user_id);
-		if (newUserIds.length > 0) {
+		await notifSvc.push(
+			'account_granted',
+			'Tài khoản hệ thống đã được cấp',
+			newUserIds,
+			{
+				message: `Tài khoản đã được cấp để tham gia đề tài ${topicId}. Vui lòng đăng nhập với mật khẩu mặc định (123456) và đổi mật khẩu ngay.`,
+				refId: topicId,
+				refType: 'topic',
+			},
+		);
+
+		// Thông báo cho khoa và chủ nhiệm đề tài
+		const excludeReq = pool
+			.request()
+			.input('topic_id', sql.VarChar(15), topicId);
+		const excludeParams = newUserIds
+			.map((id, i) => {
+				const name = `excl${i}`;
+				excludeReq.input(name, sql.VarChar(20), id);
+				return `@${name}`;
+			})
+			.join(',');
+		const deptResult = await excludeReq.query(`
+				SELECT DISTINCT u.id
+				FROM users u
+				INNER JOIN topics t ON t.department_id = u.department_id
+				WHERE t.id = @topic_id
+				  AND u.is_active = 1
+				  AND u.id NOT IN (${excludeParams})
+				UNION
+				SELECT tm.user_id
+				FROM topic_members tm
+				WHERE tm.topic_id = @topic_id
+				  AND tm.role = 'leader'
+				  AND tm.user_id IS NOT NULL
+				  AND tm.user_id NOT IN (${excludeParams})
+			`);
+		const deptUserIds = deptResult.recordset.map((r) => r.id);
+		if (deptUserIds.length > 0) {
 			await notifSvc.push(
 				'account_granted',
-				'Tài khoản hệ thống đã được cấp',
-				newUserIds,
+				'Cấp tài khoản thành viên đề tài',
+				deptUserIds,
 				{
-					message: `Tài khoản đã được cấp để tham gia đề tài ${topicId}. Vui lòng đăng nhập với mật khẩu mặc định (123456) và đổi mật khẩu ngay.`,
+					message: `Đã cấp ${credentials.length} tài khoản cho thành viên đề tài ${topicId}. Thành viên mới có thể đăng nhập hệ thống.`,
 					refId: topicId,
 					refType: 'topic',
 				},
 			);
-
-			// Thông báo cho khoa và chủ nhiệm đề tài
-			const excludeReq = pool
-				.request()
-				.input('topic_id', sql.VarChar(15), topicId);
-			const excludeParams = newUserIds
-				.map((id, i) => {
-					const name = `excl${i}`;
-					excludeReq.input(name, sql.VarChar(20), id);
-					return `@${name}`;
-				})
-				.join(',');
-			const deptResult = await excludeReq.query(`
-					SELECT DISTINCT u.id
-					FROM users u
-					INNER JOIN topics t ON t.department_id = u.department_id
-					WHERE t.id = @topic_id
-					  AND u.is_active = 1
-					  AND u.id NOT IN (${excludeParams})
-					UNION
-					SELECT tm.user_id
-					FROM topic_members tm
-					WHERE tm.topic_id = @topic_id
-					  AND tm.role = 'leader'
-					  AND tm.user_id IS NOT NULL
-					  AND tm.user_id NOT IN (${excludeParams})
-				`);
-			const deptUserIds = deptResult.recordset.map((r) => r.id);
-			if (deptUserIds.length > 0) {
-				await notifSvc.push(
-					'account_granted',
-					'Cấp tài khoản thành viên đề tài',
-					deptUserIds,
-					{
-						message: `Đã cấp ${credentials.length} tài khoản cho thành viên đề tài ${topicId}. Thành viên mới có thể đăng nhập hệ thống.`,
-						refId: topicId,
-						refType: 'topic',
-					},
-				);
-			}
 		}
-
-		return {
-			credentials,
-			skipped: [],
-		};
 	} catch (err) {
-		console.error('Transaction error in grantAccountsNoEmail:', err);
-		try {
-			await tx.rollback();
-		} catch {
-			// ignore rollback error if transaction is already aborted
-		}
-		throw err;
+		console.error('grantAccountsNoEmail: gửi thông báo thất bại:', err.message);
 	}
+
+	return { credentials, skipped };
 };
 
 const updateMember = async (topicId, memberId, data, actorId) => {

@@ -9,8 +9,10 @@ import {
 	resetUserPassword,
 	updateUser as updateUserApi,
 	type SimpleItem,
+	type UpdateUserPayload,
 } from '../api/userApi';
-import type { AccountType, User, UserForm } from '../types/user.type';
+import { bulkToast, runBulk } from '../../../shared/utils/runBulk';
+import type { User, UserForm } from '../types/user.type';
 
 export interface UserListState {
 	users: User[];
@@ -19,7 +21,7 @@ export interface UserListState {
 	isLoadingData: boolean;
 	loadError: string | null;
 	search: string;
-	typeFilters: AccountType[];
+	roleFilters: string[];
 	deptFilters: string[];
 	isDeptDropdownOpen: boolean;
 	pageSize: number;
@@ -36,12 +38,12 @@ export interface UserListState {
 		pwdWarn: number;
 	};
 	totalCount: number;
-	typeCounts: Record<string, number>;
+	roleCounts: Record<string, number>;
 	deptCounts: Record<string, number>;
 	totalPages: number;
 
 	setSearch: (v: string) => void;
-	setTypeFilters: React.Dispatch<React.SetStateAction<AccountType[]>>;
+	setRoleFilters: React.Dispatch<React.SetStateAction<string[]>>;
 	setDeptFilters: React.Dispatch<React.SetStateAction<string[]>>;
 	setIsDeptDropdownOpen: (v: boolean) => void;
 	setPageSize: (v: number) => void;
@@ -57,6 +59,8 @@ export interface UserListState {
 	handleDelete: () => Promise<void>;
 	handleResetPassword: () => Promise<void>;
 	handleToggleActive: (id: string) => Promise<void>;
+	handleBulkDelete: (ids: string[]) => Promise<void>;
+	handleBulkEdit: (ids: string[], payload: UpdateUserPayload) => Promise<void>;
 }
 
 import type React from 'react';
@@ -70,7 +74,7 @@ export function useUserList(): UserListState {
 	const [search, setSearchRaw] = useState('');
 	// Debounce chuỗi tìm kiếm gửi lên server — tránh gọi API mỗi phím gõ
 	const [debouncedSearch, setDebouncedSearch] = useState('');
-	const [typeFilters, setTypeFilters] = useState<AccountType[]>([]);
+	const [roleFilters, setRoleFilters] = useState<string[]>([]);
 	const [deptFilters, setDeptFilters] = useState<string[]>([]);
 	const [isDeptDropdownOpen, setIsDeptDropdownOpen] = useState(false);
 	const [pageSize, setPageSizeRaw] = useState(20);
@@ -91,7 +95,7 @@ export function useUserList(): UserListState {
 		pwdWarn: 0,
 	});
 	const [totalCount, setTotalCount] = useState(0);
-	const [typeCounts, setTypeCounts] = useState<Record<string, number>>({});
+	const [roleCounts, setRoleCounts] = useState<Record<string, number>>({});
 	const [deptCounts, setDeptCounts] = useState<Record<string, number>>({});
 
 	const setSearch = useCallback((v: string) => {
@@ -143,7 +147,9 @@ export function useUserList(): UserListState {
 		})();
 	}, []);
 
-	// Danh sách người dùng — phân trang/lọc phía server, tải lại khi bất kỳ tham số nào đổi
+	// Bảng danh sách — phụ thuộc trang/kích thước trang/lọc. meta=0: server bỏ
+	// qua thống kê + facet (đã tách sang effect riêng bên dưới) nên chuyển trang
+	// chỉ chạy đúng 1 câu SELECT.
 	useEffect(() => {
 		const controller = new AbortController();
 		void (async () => {
@@ -155,19 +161,12 @@ export function useUserList(): UserListState {
 					limit: pageSize,
 					search: debouncedSearch || undefined,
 					department_id: deptFilters.join(',') || undefined,
-					account_type: typeFilters.join(',') || undefined,
+					role_id: roleFilters.join(',') || undefined,
+					meta: 0,
 				});
 				if (controller.signal.aborted) return;
 				setUsers(res.data);
 				setTotalCount(res.pagination.total);
-				setGlobalStats({
-					total: res.global_stats.total,
-					active: res.global_stats.active,
-					inactive: res.global_stats.inactive,
-					pwdWarn: res.global_stats.pwd_warn,
-				});
-				setTypeCounts(res.type_counts);
-				setDeptCounts(res.dept_counts);
 				// Trang hiện tại vượt quá số trang thực tế (vd. đổi bộ lọc) — quay về trang 1
 				const lastPage = Math.max(1, Math.ceil(res.pagination.total / pageSize));
 				if (currentPage > lastPage) setCurrentPageRaw(1);
@@ -179,7 +178,39 @@ export function useUserList(): UserListState {
 			}
 		})();
 		return () => controller.abort();
-	}, [currentPage, pageSize, debouncedSearch, typeFilters, deptFilters, refreshKey]);
+	}, [currentPage, pageSize, debouncedSearch, roleFilters, deptFilters, refreshKey]);
+
+	// Thống kê tổng + facet counts — KHÔNG phụ thuộc trang. Chỉ tải lại khi đổi
+	// tìm kiếm/bộ lọc hoặc có realtime update; chuyển trang không kích hoạt lại.
+	useEffect(() => {
+		const controller = new AbortController();
+		void (async () => {
+			try {
+				const res = await getUsers({
+					page: 1,
+					limit: 1,
+					search: debouncedSearch || undefined,
+					department_id: deptFilters.join(',') || undefined,
+					role_id: roleFilters.join(',') || undefined,
+					meta: 1,
+				});
+				if (controller.signal.aborted) return;
+				if (res.global_stats) {
+					setGlobalStats({
+						total: res.global_stats.total,
+						active: res.global_stats.active,
+						inactive: res.global_stats.inactive,
+						pwdWarn: res.global_stats.pwd_warn,
+					});
+				}
+				if (res.role_counts) setRoleCounts(res.role_counts);
+				if (res.dept_counts) setDeptCounts(res.dept_counts);
+			} catch {
+				// Không chặn bảng nếu tải thống kê lỗi
+			}
+		})();
+		return () => controller.abort();
+	}, [debouncedSearch, roleFilters, deptFilters, refreshKey]);
 
 	const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
 
@@ -203,7 +234,7 @@ export function useUserList(): UserListState {
 				email: form.email || undefined,
 				department_id: form.department_id || undefined,
 				role_id: form.role_id || undefined,
-				account_type: form.account_type,
+
 			});
 			setShowCreate(false);
 			refreshData();
@@ -221,7 +252,7 @@ export function useUserList(): UserListState {
 				email: form.email || undefined,
 				department_id: form.department_id || undefined,
 				role_id: form.role_id || undefined,
-				account_type: form.account_type,
+
 				is_active: form.is_active,
 			});
 			if (form.password) await resetUserPassword(editUser.id, form.password);
@@ -271,6 +302,34 @@ export function useUserList(): UserListState {
 		[users, showToast, refreshData],
 	);
 
+	const handleBulkDelete = useCallback(
+		async (ids: string[]): Promise<void> => {
+			if (!ids.length) return;
+			const { okIds, failedCount } = await runBulk(ids, deleteUserApi);
+			refreshData();
+			showToast(
+				bulkToast('xoá', okIds.size, failedCount, 'tài khoản'),
+				failedCount ? 'error' : 'info',
+			);
+		},
+		[showToast, refreshData],
+	);
+
+	const handleBulkEdit = useCallback(
+		async (ids: string[], payload: UpdateUserPayload): Promise<void> => {
+			if (!ids.length || !Object.keys(payload).length) return;
+			const { okIds, failedCount } = await runBulk(ids, (id) =>
+				updateUserApi(id, payload),
+			);
+			refreshData();
+			showToast(
+				bulkToast('cập nhật', okIds.size, failedCount, 'tài khoản'),
+				failedCount ? 'error' : 'success',
+			);
+		},
+		[showToast, refreshData],
+	);
+
 	return {
 		users,
 		departments,
@@ -278,7 +337,7 @@ export function useUserList(): UserListState {
 		isLoadingData,
 		loadError,
 		search,
-		typeFilters,
+		roleFilters,
 		deptFilters,
 		isDeptDropdownOpen,
 		pageSize,
@@ -290,11 +349,11 @@ export function useUserList(): UserListState {
 		toast,
 		globalStats,
 		totalCount,
-		typeCounts,
+		roleCounts,
 		deptCounts,
 		totalPages,
 		setSearch,
-		setTypeFilters,
+		setRoleFilters,
 		setDeptFilters,
 		setIsDeptDropdownOpen,
 		setPageSize,
@@ -310,5 +369,7 @@ export function useUserList(): UserListState {
 		handleDelete,
 		handleResetPassword,
 		handleToggleActive,
+		handleBulkDelete,
+		handleBulkEdit,
 	};
 }

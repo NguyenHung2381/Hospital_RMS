@@ -19,6 +19,7 @@ interface MyTopicsDetailPanelProps {
 	detailHistory: ApprovalHistory[];
 	latestApproval: ApprovalHistory | null;
 	canUploadFiles: boolean;
+	canEditTopic: boolean;
 	setFileViewer: (
 		v: { url: string; name: string; isWord: boolean } | null,
 	) => void;
@@ -42,6 +43,7 @@ export function MyTopicsDetailPanel({
 	detailHistory,
 	latestApproval,
 	canUploadFiles,
+	canEditTopic,
 	setFileViewer,
 	fileInputRef,
 	pendingFiles,
@@ -109,6 +111,7 @@ export function MyTopicsDetailPanel({
 							<TopicStatusActionPanel
 								detailTopic={detailTopic}
 								latestApproval={latestApproval}
+								canEditTopic={canEditTopic}
 								openEdit={openEdit}
 							/>
 						</>

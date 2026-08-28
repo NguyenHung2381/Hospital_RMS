@@ -15,17 +15,33 @@ const fmtDate = (d) => {
 	return `${dd}/${mm}/${vnDt.getUTCFullYear()}`;
 };
 
+// Những mục chủ nhiệm/thư ký được sửa trong cửa sổ "Bổ sung".
+const SUPPLEMENT_FIELDS = ['title', 'description', 'members', 'files'];
+
+const parseSupplementFields = (raw) => {
+	if (!raw) return null;
+	const list = String(raw)
+		.split(',')
+		.map((s) => s.trim())
+		.filter((s) => SUPPLEMENT_FIELDS.includes(s));
+	return list.length ? list : null;
+};
+
 const normalize = (r) => ({
 	...r,
 	start_date: r.start_date ? fmtDate(r.start_date) : null,
 	deadline_date: fmtDate(r.deadline_date),
+	supplement_fields:
+		r.deadline_type === 'supplement'
+			? parseSupplementFields(r.supplement_fields)
+			: null,
 	created_at: fmtDate(r.created_at),
 	updated_at: r.updated_at ? fmtDate(r.updated_at) : undefined,
 });
 
 // ID: "HN" + yearDot(5) + typeChar(1) + phase padded to 2 digits  (max 10 chars < varchar(12))
-// deadlineType abbrev: R=registration S=supplement N=report_submission C=council_submission
-const TYPE_CHAR = { registration: 'R', supplement: 'S', report_submission: 'N', council_submission: 'C' };
+// deadlineType abbrev: E=edit S=supplement N=report_submission
+const TYPE_CHAR = { edit: 'E', supplement: 'S', report_submission: 'N' };
 const genId = (roundId, deadlineType, phase) =>
 	`HN${roundId.slice(3)}${TYPE_CHAR[deadlineType] ?? 'X'}${String(phase).padStart(2, '0')}`;
 
@@ -40,20 +56,23 @@ const getByRoundId = async (roundId) => {
 	return r.recordset.map(normalize);
 };
 
-const ALLOWED_DEADLINE_TYPES = [
-	'registration',
-	'supplement',
-	'report_submission',
-	'council_submission',
-];
+const ALLOWED_DEADLINE_TYPES = ['edit', 'supplement', 'report_submission'];
 
 const upsert = async (roundId, phase, data, actorId) => {
 	const pool = await getPool();
 	const deadlineType = ALLOWED_DEADLINE_TYPES.includes(data.deadline_type)
 		? data.deadline_type
-		: 'report_submission';
+		: 'edit';
 	const id = genId(roundId, deadlineType, phase);
 	const startDate = data.start_date ? new Date(data.start_date) : null;
+	const supplementFields =
+		deadlineType === 'supplement'
+			? parseSupplementFields(
+					Array.isArray(data.supplement_fields)
+						? data.supplement_fields.join(',')
+						: data.supplement_fields,
+				)
+			: null;
 
 	await pool
 		.request()
@@ -64,23 +83,29 @@ const upsert = async (roundId, phase, data, actorId) => {
 		.input('name', sql.NVarChar(255), data.name)
 		.input('start_date', sql.Date, startDate)
 		.input('deadline_date', sql.Date, new Date(data.deadline_date))
-		.input('deadline_type', sql.VarChar(30), deadlineType).query(`
+		.input('deadline_type', sql.VarChar(30), deadlineType)
+		.input(
+			'supplement_fields',
+			sql.VarChar(120),
+			supplementFields ? supplementFields.join(',') : null,
+		).query(`
       EXEC sp_set_actor @actor_id;
       IF EXISTS (
         SELECT 1 FROM round_deadlines
         WHERE round_id = @round_id AND phase = @phase
       )
         UPDATE round_deadlines
-           SET name          = @name,
-               start_date    = @start_date,
-               deadline_date = @deadline_date,
-               deadline_type = @deadline_type,
-               updated_at    = GETDATE(),
-               updated_by    = @actor_id
+           SET name              = @name,
+               start_date        = @start_date,
+               deadline_date     = @deadline_date,
+               deadline_type     = @deadline_type,
+               supplement_fields = @supplement_fields,
+               updated_at        = GETDATE(),
+               updated_by        = @actor_id
          WHERE round_id = @round_id AND phase = @phase;
       ELSE
-        INSERT INTO round_deadlines (id, round_id, phase, name, start_date, deadline_date, deadline_type, created_by)
-        VALUES (@id, @round_id, @phase, @name, @start_date, @deadline_date, @deadline_type, @actor_id);
+        INSERT INTO round_deadlines (id, round_id, phase, name, start_date, deadline_date, deadline_type, supplement_fields, created_by)
+        VALUES (@id, @round_id, @phase, @name, @start_date, @deadline_date, @deadline_type, @supplement_fields, @actor_id);
     `);
 
 	const r = await pool

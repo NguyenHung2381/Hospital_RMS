@@ -5,6 +5,7 @@ export interface Role {
 	name: string;
 	description: string | null;
 	user_count?: number;
+	permission_count?: number;
 	created_at: string;
 	updated_at?: string;
 }
@@ -42,17 +43,23 @@ export interface PermissionMatrixRow {
 // Tất cả cột hành động có thể xuất hiện trong ma trận
 export const MATRIX_ACTIONS = [
 	'read',
+	'read_department',
+	'read_all',
 	'create',
 	'update',
 	'delete',
 	'approve',
+	'access',
 	'manage',
 ] as const;
 export const MATRIX_ACTION_LABELS: Record<string, string> = {
 	read: 'Xem',
+	read_department: 'Xem (khoa)',
+	read_all: 'Xem (toàn bộ)',
 	create: 'Tạo',
 	update: 'Sửa',
 	delete: 'Xóa',
 	approve: 'Duyệt',
+	access: 'Truy cập',
 	manage: 'Quản lý',
 };

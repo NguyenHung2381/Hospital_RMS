@@ -1,17 +1,35 @@
 import React, { useEffect, useState } from 'react';
 import { AlertSvg, CalendarSvg, CheckSvg, EditSvg, PlusSvg, XSvg } from '@/assets/icons';
 import { deleteDeadline, getDeadlines, upsertDeadline } from '../api/roundApi';
-import type { DeadlineType, RoundDeadline } from '../types/round.type';
-import { DEADLINE_TYPE_LABELS } from '../types/round.type';
-import { toIso } from '../utils/roundHelpers';
+import type {
+	DeadlineType,
+	RoundDeadline,
+	SupplementField,
+} from '../types/round.type';
+import {
+	DEADLINE_TYPE_LABELS,
+	SUPPLEMENT_FIELDS,
+	SUPPLEMENT_FIELD_LABELS,
+} from '../types/round.type';
+import { fromInputDate, toIso } from '../utils/roundHelpers';
 import styles from '../pages/Round.module.css';
+import { DatePicker } from '../../../shared/components/Input/DatePicker';
 
 type DeadlineRowState = {
 	name: string;
 	start_date: string;
 	date: string;
 	deadline_type: DeadlineType | '';
+	supplement_fields: SupplementField[];
 };
+
+const emptyRow = (): DeadlineRowState => ({
+	name: '',
+	start_date: '',
+	date: '',
+	deadline_type: '',
+	supplement_fields: [...SUPPLEMENT_FIELDS],
+});
 
 function RowForm({
 	row,
@@ -21,6 +39,8 @@ function RowForm({
 	label,
 	saving,
 	onSave,
+	roundStart,
+	roundEnd,
 }: {
 	row: DeadlineRowState;
 	setRow: React.Dispatch<React.SetStateAction<DeadlineRowState | null>>;
@@ -29,7 +49,15 @@ function RowForm({
 	label: string;
 	saving: boolean;
 	onSave: (phase: number, row: DeadlineRowState) => Promise<void>;
+	roundStart?: string;
+	roundEnd?: string;
 }) {
+	// Show the round's context band only while the milestone range is incomplete.
+	// Once both dates are picked, only the milestone band is shown.
+	const bothDatesPicked = Boolean(row.start_date && row.date);
+	const ctxStart = bothDatesPicked ? undefined : roundStart;
+	const ctxEnd = bothDatesPicked ? undefined : roundEnd;
+
 	return (
 		<div className={styles.timelineFormCard}>
 			<div
@@ -69,39 +97,92 @@ function RowForm({
 						}
 					>
 						<option value=''>-- Chọn loại --</option>
-						<option value='registration'>Đăng ký</option>
-						<option value='supplement'>Bổ sung</option>
-						<option value='report_submission'>Nộp báo cáo</option>
-						<option value='council_submission'>Nộp HĐ</option>
+						{(
+							Object.entries(DEADLINE_TYPE_LABELS) as [DeadlineType, string][]
+						).map(([k, v]) => (
+							<option key={k} value={k}>
+								{v}
+							</option>
+						))}
 					</select>
 				</div>
+
+				{row.deadline_type === 'supplement' && (
+					<div className={styles.timelineFormFull}>
+						<label style={{ fontSize: 11, fontWeight: 600, color: 'var(--color-gray-600)', display: 'block', marginBottom: 4 }}>
+							Chủ nhiệm / thư ký được sửa những mục
+						</label>
+						<div style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
+							{SUPPLEMENT_FIELDS.map((f) => (
+								<label
+									key={f}
+									style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--color-gray-700)', cursor: 'pointer' }}
+								>
+									<input
+										type='checkbox'
+										checked={row.supplement_fields.includes(f)}
+										onChange={(e) =>
+											setRow(
+												(p) =>
+													p && {
+														...p,
+														supplement_fields: e.target.checked
+															? [...p.supplement_fields, f]
+															: p.supplement_fields.filter((x) => x !== f),
+													},
+											)
+										}
+									/>
+									{SUPPLEMENT_FIELD_LABELS[f]}
+								</label>
+							))}
+						</div>
+					</div>
+				)}
 
 				<div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
 					<div>
 						<label style={{ fontSize: 11, fontWeight: 600, color: 'var(--color-gray-600)', display: 'block', marginBottom: 4 }}>
 							Ngày bắt đầu
 						</label>
-						<input
-							type='date'
-							className={styles.formInput}
+						<DatePicker
 							value={row.start_date}
-							onChange={(e) =>
-								setRow((p) => p && { ...p, start_date: e.target.value })
+							onChange={(val) =>
+								setRow((p) => p && { ...p, start_date: val })
 							}
+							min={roundStart}
+							max={roundEnd}
+							rangeStart={ctxStart}
+							rangeEnd={ctxEnd}
+							activeStart={row.start_date}
+							activeEnd={row.date}
+							placeholder='Chọn ngày bắt đầu'
 						/>
 					</div>
 					<div>
 						<label style={{ fontSize: 11, fontWeight: 600, color: 'var(--color-gray-600)', display: 'block', marginBottom: 4 }}>
 							Hạn cuối
 						</label>
-						<input
-							type='date'
-							className={styles.formInput}
+						<DatePicker
 							value={row.date}
-							onChange={(e) => setRow((p) => p && { ...p, date: e.target.value })}
+							onChange={(val) => setRow((p) => p && { ...p, date: val })}
+							min={roundStart}
+							max={roundEnd}
+							rangeStart={ctxStart}
+							rangeEnd={ctxEnd}
+							activeStart={row.start_date}
+							activeEnd={row.date}
+							placeholder='Chọn ngày hạn'
 						/>
 					</div>
 				</div>
+
+				{(roundStart || roundEnd) && (
+					<div className={styles.timelineFormFull} style={{ fontSize: 11, color: 'var(--color-gray-500)', marginTop: -2 }}>
+						Chỉ chọn trong khoảng thời gian của đợt
+						{roundStart && roundEnd ? `: ${fromInputDate(roundStart)} → ${fromInputDate(roundEnd)}` : ''}
+					</div>
+				)}
 			</div>
 
 			<div className={styles.timelineFormActions}>
@@ -136,7 +217,16 @@ function RowForm({
 	);
 }
 
-export function DeadlineManager({ roundId }: { roundId: string }) {
+export function DeadlineManager({
+	roundId,
+	roundStart,
+	roundEnd,
+}: {
+	roundId: string;
+	/** Round period bounds in 'YYYY-MM-DD' — milestone dates are clamped to this range */
+	roundStart?: string;
+	roundEnd?: string;
+}) {
 	const [deadlines, setDeadlines] = useState<RoundDeadline[]>([]);
 	const [isLoading, setIsLoading] = useState(true);
 	const [newRow, setNewRow] = useState<DeadlineRowState | null>(null);
@@ -161,6 +251,17 @@ export function DeadlineManager({ roundId }: { roundId: string }) {
 			setErr('Vui lòng nhập đủ tên và ngày kết thúc');
 			return;
 		}
+		if (row.start_date && row.date && row.start_date > row.date) {
+			setErr('Ngày bắt đầu phải trước hạn cuối');
+			return;
+		}
+		const outOfRange = [row.start_date, row.date].some(
+			(d) => d && ((roundStart && d < roundStart) || (roundEnd && d > roundEnd)),
+		);
+		if (outOfRange) {
+			setErr('Mốc thời gian phải nằm trong khoảng thời gian của đợt');
+			return;
+		}
 		setSaving(true);
 		setErr('');
 		try {
@@ -169,6 +270,8 @@ export function DeadlineManager({ roundId }: { roundId: string }) {
 				start_date: row.start_date || null,
 				deadline_date: row.date,
 				deadline_type: row.deadline_type || null,
+				supplement_fields:
+					row.deadline_type === 'supplement' ? row.supplement_fields : null,
 			});
 			setDeadlines((p) =>
 				[...p.filter((d) => d.phase !== phase), saved].sort(
@@ -201,6 +304,10 @@ export function DeadlineManager({ roundId }: { roundId: string }) {
 			start_date: toIso(d.start_date ?? ''),
 			date: toIso(d.deadline_date),
 			deadline_type: (d.deadline_type as DeadlineType) ?? '',
+			supplement_fields:
+				d.supplement_fields && d.supplement_fields.length
+					? d.supplement_fields
+					: [...SUPPLEMENT_FIELDS],
 		});
 		setNewRow(null);
 	};
@@ -254,6 +361,8 @@ export function DeadlineManager({ roundId }: { roundId: string }) {
 									label="Cập nhật mốc thời gian"
 									saving={saving}
 									onSave={handleSave}
+									roundStart={roundStart}
+									roundEnd={roundEnd}
 								/>
 							) : (
 								<div className={styles.timelineCard}>
@@ -329,6 +438,8 @@ export function DeadlineManager({ roundId }: { roundId: string }) {
 						label="Thêm mốc thời gian mới"
 						saving={saving}
 						onSave={handleSave}
+						roundStart={roundStart}
+						roundEnd={roundEnd}
 					/>
 				</div>
 			) : (
@@ -351,14 +462,7 @@ export function DeadlineManager({ roundId }: { roundId: string }) {
 								cursor: 'pointer',
 								transition: 'all var(--transition-fast)'
 							}}
-							onClick={() =>
-								setNewRow({
-									name: '',
-									start_date: '',
-									date: '',
-									deadline_type: '',
-								})
-							}
+							onClick={() => setNewRow(emptyRow())}
 							onMouseEnter={(e) => {
 								e.currentTarget.style.borderColor = 'var(--color-primary)';
 								e.currentTarget.style.background = 'var(--color-primary-pale)';

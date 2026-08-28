@@ -5,6 +5,8 @@ import type {
 	RoundDeadline,
 	RoundForm,
 	RoundStatus,
+	RoundType,
+	SupplementField,
 } from '../types/round.type';
 
 export interface RoundListParams {
@@ -24,7 +26,7 @@ export interface CreateRoundPayload {
 	name: string;
 	year: number;
 	round_number: number;
-	round_type?: string;
+	round_type_id: string;
 	start_date: string; // yyyy-mm-dd
 	end_date: string; // yyyy-mm-dd
 	status?: RoundStatus;
@@ -34,7 +36,7 @@ export interface UpdateRoundPayload {
 	name?: string;
 	year?: number;
 	round_number?: number;
-	round_type?: string;
+	round_type_id?: string;
 	start_date?: string; // yyyy-mm-dd
 	end_date?: string; // yyyy-mm-dd
 	status?: RoundStatus;
@@ -45,6 +47,8 @@ export interface DeadlinePayload {
 	start_date?: string | null; // yyyy-mm-dd
 	deadline_date: string; // yyyy-mm-dd
 	deadline_type?: DeadlineType | null;
+	/** Chỉ gửi khi deadline_type === 'supplement'. */
+	supplement_fields?: SupplementField[] | null;
 }
 
 // dd/mm/yyyy → yyyy-mm-dd
@@ -59,7 +63,7 @@ export function formToPayload(form: RoundForm): CreateRoundPayload {
 		name: form.name,
 		year: form.year,
 		round_number: form.round_number,
-		round_type: form.round_type || undefined,
+		round_type_id: form.round_type_id,
 		start_date: toApiDate(form.start_date),
 		end_date: toApiDate(form.end_date),
 		status: form.status,
@@ -87,6 +91,11 @@ export const deleteRound = (id: string) =>
 
 export const getRoundById = (id: string) =>
 	apiClient.get<ResearchRound>(`/research-rounds/${id}`);
+
+export const getRoundTypes = () =>
+	apiClient
+		.get<{ data: RoundType[]; pagination: unknown }>('/round-types?limit=0')
+		.then((res) => res.data);
 
 export const getRoundByPublicToken = (token: string) =>
 	apiClient

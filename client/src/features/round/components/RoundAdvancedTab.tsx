@@ -9,6 +9,7 @@ import {
 	LinkSvg,
 } from '@/assets/icons';
 import type { ResearchRound } from '../types/round.type';
+import { toInputDate } from '../utils/roundHelpers';
 import { DeadlineManager } from './DeadlineManager';
 import styles from '../pages/Round.module.css';
 
@@ -113,7 +114,11 @@ export function RoundAdvancedTab({ round }: RoundAdvancedTabProps) {
 			</div>
 
 			<div className={styles.formSection}>Mốc thời gian &amp; Hạn nộp</div>
-			<DeadlineManager roundId={round.id} />
+			<DeadlineManager
+				roundId={round.id}
+				roundStart={toInputDate(round.start_date)}
+				roundEnd={toInputDate(round.end_date)}
+			/>
 
 			<div className={styles.formSection}>
 				Thống kê đề tài trong đợt

@@ -3,6 +3,8 @@ const notifSvc = require('./notificationService');
 const { broadcast } = require('./eventService');
 const { paging } = require('../utils/paging');
 const { splitList, inClause, buildWhere } = require('../utils/sqlFilters');
+const { assertTopicActionWindow } = require('./deadlineGuard');
+const { topicScope } = require('../middlewares/auth');
 
 const getAll = async (filters, actor = null) => {
 	const {
@@ -27,14 +29,15 @@ const getAll = async (filters, actor = null) => {
 		.input('offset', sql.Int, pg.offset)
 		.input('limit', sql.Int, pg.limit);
 
-	// Giới hạn theo quyền — áp cho cả số liệu tổng quan (không phụ thuộc bộ lọc UI):
-	// manager chỉ thấy khoa mình, member chỉ thấy đề tài tham gia, admin không giới hạn.
+	// Giới hạn theo phạm vi vai trò — áp cho cả số liệu tổng quan (không phụ thuộc bộ lọc UI):
+	// 'department' chỉ thấy khoa mình, 'own' chỉ thấy đề tài tham gia, 'all' không giới hạn.
+	const scope = topicScope(actor);
 	const actorClauses = [];
 	if (actor) {
-		if (actor.account_type === 'manager') {
+		if (scope === 'department') {
 			actorClauses.push('t.department_id = @actor_dept');
 			req.input('actor_dept', sql.VarChar(20), actor.department_id);
-		} else if (actor.account_type === 'member') {
+		} else if (scope === 'own') {
 			actorClauses.push(`EXISTS (
         SELECT 1 FROM topic_members WHERE topic_id = t.id AND user_id = @actor_id
       )`);
@@ -52,8 +55,8 @@ const getAll = async (filters, actor = null) => {
 		);
 		req.input('search', sql.NVarChar, `%${search}%`);
 	}
-	if (participant_id && actor?.account_type === 'admin') {
-		// Chỉ admin mới lọc theo participant_id tuỳ ý (member đã tự động lọc)
+	if (participant_id && scope === 'all') {
+		// Chỉ vai trò phạm vi toàn hệ thống mới lọc theo participant_id tuỳ ý
 		baseClauses.push(`(t.created_by = @participant_id OR EXISTS (
       SELECT 1 FROM topic_members WHERE topic_id = t.id AND user_id = @participant_id
     ))`);
@@ -80,8 +83,8 @@ const getAll = async (filters, actor = null) => {
 			sql.Int,
 		),
 	);
-	if (department_id && actor?.account_type === 'admin') {
-		// manager đã bị khoá cứng theo khoa, chỉ admin mới lọc theo department_id tuỳ ý
+	if (department_id && scope === 'all') {
+		// phạm vi 'department' đã bị khoá cứng theo khoa; chỉ 'all' mới lọc theo department_id tuỳ ý
 		baseClauses.push(
 			inClause(
 				req,
@@ -172,15 +175,16 @@ const getById = async (id, actor = null) => {
 	if (!result.recordset[0]) return null;
 	const topic = result.recordset[0];
 
-	// Kiểm tra quyền xem chi tiết
-	if (actor && actor.account_type !== 'admin') {
-		if (actor.account_type === 'manager') {
+	// Kiểm tra quyền xem chi tiết theo phạm vi vai trò
+	const detailScope = topicScope(actor);
+	if (actor && detailScope !== 'all') {
+		if (detailScope === 'department') {
 			if (topic.department_id !== actor.department_id) {
 				throw Object.assign(new Error('Không có quyền xem đề tài này'), {
 					status: 403,
 				});
 			}
-		} else if (actor.account_type === 'member') {
+		} else {
 			const access = await pool
 				.request()
 				.input('topic_id', sql.VarChar(15), id)
@@ -267,24 +271,40 @@ const create = async (data, actorId) => {
 	return topic;
 };
 
-const update = async (id, data, actorId, isAdmin = false) => {
+const update = async (id, data, actorId, actor = null) => {
 	const pool = await getPool();
 
 	const current = await getById(id);
 	if (!current)
-		throw Object.assign(new Error('Đề tài không tồn tại.'), { status: 404 });
+		throw Object.assign(new Error('Đề tài không tồn tại.'), {
+			status: 404,
+			statusCode: 404,
+		});
 
-	if (
-		!isAdmin &&
-		current.status !== 'submitted' &&
-		current.status !== 'supplement'
-	) {
-		throw Object.assign(
-			new Error(
-				'Chỉ có thể chỉnh sửa đề tài ở trạng thái "Chờ duyệt" hoặc "Bổ sung".',
-			),
-			{ status: 403 },
-		);
+	// actor có thể là object (req.user), true (bỏ qua kiểm tra), hoặc null.
+	const bypass = actor === true;
+	const scope = bypass ? 'all' : topicScope(actor);
+
+	if (!bypass && scope === 'own') {
+		// Chủ nhiệm / thư ký: chỉ sửa được khi mốc "Sửa" / "Bổ sung" tương ứng đang mở.
+		if (data.title !== undefined)
+			await assertTopicActionWindow(id, actorId, 'edit-title');
+		if (
+			data.description !== undefined ||
+			data.category_id !== undefined ||
+			data.level_id !== undefined ||
+			data.department_id !== undefined
+		)
+			await assertTopicActionWindow(id, actorId, 'edit-info');
+	} else if (scope !== 'all') {
+		if (current.status !== 'submitted' && current.status !== 'supplement') {
+			throw Object.assign(
+				new Error(
+					'Chỉ có thể chỉnh sửa đề tài ở trạng thái "Chờ duyệt" hoặc "Bổ sung".',
+				),
+				{ status: 403, statusCode: 403 },
+			);
+		}
 	}
 
 	const sets = [];
@@ -431,12 +451,16 @@ const submit = async (topicId, actorId) => {
         WHERE topic_id = @topic_id;
     `);
 
-	// Notify all admin/manager accounts
-	const adminRes = await pool
-		.request()
-		.query(
-			`SELECT id FROM users WHERE account_type IN ('admin', 'manager') AND is_active = 1`,
-		);
+	// Thông báo cho các tài khoản có quyền duyệt / xem toàn bộ đề tài
+	const adminRes = await pool.request().query(`
+      SELECT DISTINCT u.id
+      FROM users u
+      INNER JOIN role_permissions rp ON rp.role_id = u.role_id
+      INNER JOIN permissions p ON p.id = rp.permission_id
+      WHERE u.is_active = 1
+        AND p.resource = 'topics'
+        AND p.action IN ('approve', 'read_all', 'manage')
+    `);
 	const ids = adminRes.recordset.map((r) => r.id);
 	await notifSvc.push('topic_submitted', 'Có đề tài mới cần xét duyệt', ids, {
 		refId: topicId,

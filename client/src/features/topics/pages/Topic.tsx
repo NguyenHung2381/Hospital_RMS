@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import {
 	ApproveSvg,
 	CheckSvg,
@@ -13,10 +14,18 @@ import {
 import AdminLayout from '../../../layouts/AdminLayout';
 import { MultiSelect } from '../../../shared/components/Input/MultiSelect';
 import { Pagination } from '../../../shared/components/Table/Pagination';
+import sel from '../../../shared/components/Table/RowSelect.module.css';
+import {
+	BulkButton,
+	BulkDeleteModal,
+	SelectCheckbox,
+} from '../../../shared/components/Table/RowSelect';
+import { useRowSelection } from '../../../shared/hooks/useRowSelection';
 import { Skeleton, SkeletonTable } from '../../../shared/components/Loading';
 import { Badge } from '../components/Badge';
 import { DeleteModal } from '../components/DeleteModal';
 import { ExportExcelModal } from '../components/ExportExcelModal';
+import { TopicBulkEditModal } from '../components/TopicBulkEditModal';
 import { TopicDrawer } from '../components/TopicDrawer';
 import { TopicModal } from '../components/TopicModal';
 import { useTopicPage } from '../hooks/useTopicPage';
@@ -26,6 +35,8 @@ import styles from './Topic.module.css';
 
 export default function TopicPage() {
 	const d = useTopicPage();
+	const rowSel = useRowSelection(d.pageSlice.map((t) => t.id));
+	const [bulkModal, setBulkModal] = useState<'edit' | 'delete' | null>(null);
 
 	const headerActions = (
 		<>
@@ -125,7 +136,29 @@ export default function TopicPage() {
 				<div className={styles.tableHeader}>
 					<div className={styles.tableHeaderLeft}>
 						<span className={styles.tableTitle}>Danh sách đề tài</span>
-						<span className={styles.tableCount}>{d.total} đề tài</span>
+						{rowSel.selectedCount > 0 ? (
+							<span className={styles.tableCount}>
+								Đã chọn {rowSel.selectedCount}
+								<BulkButton onClick={() => setBulkModal('edit')}>
+									<EditSvg /> Sửa đồng loạt
+								</BulkButton>
+								<BulkButton
+									danger
+									onClick={() => setBulkModal('delete')}
+								>
+									<TrashSvg /> Xoá đã chọn
+								</BulkButton>
+								<button
+									type='button'
+									className={styles.clearSelectionBtn}
+									onClick={rowSel.clearSelection}
+								>
+									Bỏ chọn
+								</button>
+							</span>
+						) : (
+							<span className={styles.tableCount}>{d.total} đề tài</span>
+						)}
 					</div>
 					<div className={styles.tableControls}>
 						<div className={styles.searchWrap}>
@@ -233,6 +266,14 @@ export default function TopicPage() {
 					<table className={styles.table}>
 						<thead>
 							<tr>
+								<th className={sel.checkCol}>
+									<SelectCheckbox
+										title='Chọn tất cả'
+										checked={rowSel.allPageSelected}
+										indeterminate={rowSel.somePageSelected}
+										onChange={rowSel.toggleSelectAll}
+									/>
+								</th>
 								<th className={styles.colId}>Mã đề tài</th>
 								<th className={styles.colTitle}>Tên đề tài</th>
 								<th className={styles.colRound}>Đợt NC</th>
@@ -246,7 +287,7 @@ export default function TopicPage() {
 						</thead>
 						<tbody>
 							{d.isLoadingData ? (
-								<SkeletonTable rows={10} cols={9} />
+								<SkeletonTable rows={10} cols={10} />
 							) : d.loadError ? (
 								<tr>
 									<td
@@ -279,7 +320,19 @@ export default function TopicPage() {
 								d.pageSlice.map((t) => {
 									const sc = STATUS_CFG[t.status];
 									return (
-										<tr key={t.id}>
+										<tr
+											key={t.id}
+											className={
+												rowSel.isSelected(t.id) ? sel.rowSelected : ''
+											}
+										>
+											<td className={sel.checkCol}>
+												<SelectCheckbox
+													title='Chọn đề tài'
+													checked={rowSel.isSelected(t.id)}
+													onChange={() => rowSel.toggleSelect(t.id)}
+												/>
+											</td>
 											<td>
 												<div className={styles.topicId}>{t.id}</div>
 											</td>
@@ -456,6 +509,56 @@ export default function TopicPage() {
 						d.setViewTopic(null);
 					}}
 				/>
+			)}
+			{bulkModal === 'edit' && (
+				<TopicBulkEditModal
+					count={rowSel.selectedCount}
+					categories={d.categories}
+					levels={d.levels}
+					departments={d.departments}
+					loading={d.bulkBusy}
+					onClose={() => setBulkModal(null)}
+					onSave={async (patch) => {
+						await d.handleBulkEdit([...rowSel.selectedIds], patch);
+						rowSel.clearSelection();
+						setBulkModal(null);
+					}}
+				/>
+			)}
+			<BulkDeleteModal
+				open={bulkModal === 'delete'}
+				count={rowSel.selectedCount}
+				itemLabel='đề tài'
+				loading={d.bulkBusy}
+				note='Toàn bộ thành viên, tiến độ và tài liệu của các đề tài này cũng bị xoá.'
+				onClose={() => setBulkModal(null)}
+				onConfirm={async () => {
+					await d.handleBulkDelete([...rowSel.selectedIds]);
+					rowSel.clearSelection();
+					setBulkModal(null);
+				}}
+			/>
+			{d.bulkNotice && (
+				<div
+					style={{
+						position: 'fixed',
+						bottom: 24,
+						right: 24,
+						zIndex: 2000,
+						padding: '12px 18px',
+						borderRadius: 10,
+						fontSize: 13,
+						fontWeight: 600,
+						color: '#fff',
+						boxShadow: 'var(--shadow-md)',
+						background:
+							d.bulkNotice.type === 'success'
+								? 'var(--color-primary)'
+								: 'var(--color-red-600, #dc2626)',
+					}}
+				>
+					{d.bulkNotice.msg}
+				</div>
 			)}
 		</AdminLayout>
 	);

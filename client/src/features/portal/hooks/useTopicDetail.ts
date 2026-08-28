@@ -3,11 +3,8 @@ import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { useRealtimeUpdate } from '../../../layouts/hooks/useRealtime';
 import { BASE_URL } from '../../../shared/api/axios';
 import { getStoredUser } from '../../../shared/utils/storage';
-import { getDeadlines, getRoundById } from '../../round/api/roundApi';
-import type {
-	ResearchRound,
-	RoundDeadline,
-} from '../../round/types/round.type';
+import { getDeadlines } from '../../round/api/roundApi';
+import type { RoundDeadline } from '../../round/types/round.type';
 import {
 	addTopicMember,
 	deleteTopicFile,
@@ -29,11 +26,9 @@ import type {
 	TopicFile,
 	TopicMember,
 } from '../../topics/types/topic.type';
-import { getEditMode } from '../services/topicDetailService';
+import { getTopicPermissions } from '../services/topicDetailService';
 import {
 	blankMember,
-	EDIT_MODE_INFO,
-	type EditMode,
 	type InfoForm,
 	type MemberFormState,
 	type TopicDetailTabKey,
@@ -44,7 +39,18 @@ export function useTopicDetail() {
 	const location = useLocation();
 	const navigate = useNavigate();
 
-	const userInfo = getStoredUser<Record<string, string>>();
+	const userInfo = getStoredUser<{
+		id?: string;
+		full_name?: string;
+		username?: string;
+		role?: string;
+		role_name?: string;
+		permissions?: string[];
+	}>();
+	const currentUserId = userInfo?.id ?? '';
+	const isAdminAccount = !!userInfo?.permissions?.some(
+		(p) => p === 'system:manage' || p === 'topics:read_all',
+	);
 	const fullName = userInfo?.full_name ?? userInfo?.username ?? 'Người dùng';
 	const userRole = userInfo?.role ?? userInfo?.role_name ?? 'Thành viên';
 	const initials = fullName
@@ -59,7 +65,6 @@ export function useTopicDetail() {
 	const [topic, setTopic] = useState<Topic | null>(
 		(location.state as { topic?: Topic } | null)?.topic ?? null,
 	);
-	const [activeRound, setActiveRound] = useState<ResearchRound | null>(null);
 	const [roundDeadlines, setRoundDeadlines] = useState<RoundDeadline[]>([]);
 	const [meta, setMeta] = useState<{
 		categories: SimpleItem[];
@@ -107,16 +112,23 @@ export function useTopicDetail() {
 	const refreshData = useCallback(() => setRefreshKey((k) => k + 1), []);
 	useRealtimeUpdate(['topic', 'round'], refreshData);
 
-	// ── Edit mode ──
-	const editMode = useMemo<EditMode>(() => {
-		if (!topic || !activeRound) return 'none';
-		return getEditMode(topic, activeRound, roundDeadlines);
-	}, [topic, activeRound, roundDeadlines]);
+	// ── Quyền thao tác (chủ nhiệm / thư ký + mốc thời gian đang mở) ──
+	const myRole = useMemo(
+		() => members.find((m) => m.user_id === currentUserId)?.role ?? null,
+		[members, currentUserId],
+	);
 
-	const canEditInfo = editMode === 'full' || editMode === 'supplement';
-	const canUploadFiles = editMode !== 'none';
-	const canDeleteFiles = editMode === 'full' || editMode === 'supplement';
-	const editBanner = EDIT_MODE_INFO[editMode];
+	const perms = useMemo(
+		() => getTopicPermissions(myRole, roundDeadlines, isAdminAccount),
+		[myRole, roundDeadlines, isAdminAccount],
+	);
+
+	const canEditTitle = perms.canEditTitle;
+	const canEditInfo = perms.canEditInfo;
+	const canEditMembers = perms.canEditMembers;
+	const canUploadFiles = perms.canAddFiles;
+	const canDeleteFiles = perms.canDeleteFiles;
+	const editBanner = perms.banner;
 
 	// ── Fetch ──
 	useEffect(() => {
@@ -145,12 +157,7 @@ export function useTopicDetail() {
 				}
 
 				if (cur?.round_id) {
-					const [rd, dl] = await Promise.all([
-						getRoundById(cur.round_id),
-						getDeadlines(cur.round_id),
-					]);
-					setActiveRound(rd);
-					setRoundDeadlines(dl);
+					setRoundDeadlines(await getDeadlines(cur.round_id));
 				}
 			} catch {
 				setError('Không thể tải thông tin đề tài.');
@@ -189,17 +196,22 @@ export function useTopicDetail() {
 			setInfoErr('Tên đề tài không được để trống.');
 			return;
 		}
+		// Chỉ gửi những trường mốc thời gian đang cho phép — tránh bị server từ chối.
+		const payload: Parameters<typeof updateTopic>[1] = {};
+		if (canEditTitle) payload.title = infoForm.title.trim();
+		if (canEditInfo) {
+			payload.description = infoForm.description.trim() || undefined;
+			payload.category_id = infoForm.category_id || undefined;
+			payload.level_id = infoForm.level_id || undefined;
+		}
+		if (Object.keys(payload).length === 0) {
+			setEditingInfo(false);
+			return;
+		}
 		setSavingInfo(true);
 		setInfoErr('');
 		try {
-			setTopic(
-				await updateTopic(topic.id, {
-					title: infoForm.title.trim(),
-					description: infoForm.description.trim() || undefined,
-					category_id: infoForm.category_id || undefined,
-					level_id: infoForm.level_id || undefined,
-				}),
-			);
+			setTopic(await updateTopic(topic.id, payload));
 			setEditingInfo(false);
 		} catch (e) {
 			setInfoErr(e instanceof Error ? e.message : 'Lưu thất bại');
@@ -366,8 +378,9 @@ export function useTopicDetail() {
 		error,
 		tab,
 		setTab,
-		editMode,
+		canEditTitle,
 		canEditInfo,
+		canEditMembers,
 		canUploadFiles,
 		canDeleteFiles,
 		editBanner,

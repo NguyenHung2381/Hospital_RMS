@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { CheckSvg, PlusSvg, XSvg } from '@/assets/icons';
-import type { ResearchRound, RoundForm } from '../types/round.type';
+import type { ResearchRound, RoundForm, RoundType } from '../types/round.type';
 import { useRoundModalForm } from '../hooks/useRoundModalForm';
 import { RoundAdvancedTab } from './RoundAdvancedTab';
 import { RoundInfoTab } from './RoundInfoTab';
@@ -10,6 +10,7 @@ interface RoundModalProps {
 	mode: 'create' | 'edit';
 	round?: ResearchRound;
 	rounds: ResearchRound[];
+	roundTypes: RoundType[];
 	onClose: () => void;
 	onSave: (form: RoundForm) => Promise<void>;
 }
@@ -18,6 +19,7 @@ export function RoundModal({
 	mode,
 	round,
 	rounds,
+	roundTypes,
 	onClose,
 	onSave,
 }: RoundModalProps) {
@@ -26,6 +28,7 @@ export function RoundModal({
 		useRoundModalForm({
 			round,
 			rounds,
+			roundTypes,
 			onSave,
 			onSubmitInvalid: () => setActiveTab('info'),
 		});
@@ -93,6 +96,7 @@ export function RoundModal({
 							set={set}
 							duplicateRound={duplicateRound}
 							years={years}
+							roundTypes={roundTypes}
 						/>
 					)}
 

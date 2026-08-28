@@ -61,13 +61,14 @@ const getAll = async ({
 	}
 
 	const result = await req.query(`
-    SELECT r.*, u.full_name AS created_by_name,
+    SELECT r.*, u.full_name AS created_by_name, rt.name AS round_type_name,
            (SELECT COUNT(*) FROM topics WHERE round_id = r.id)                               AS topic_total,
            (SELECT COUNT(*) FROM topics WHERE round_id = r.id AND status = 'approved')       AS topic_active,
            (SELECT COUNT(*) FROM topics WHERE round_id = r.id AND status = 'submitted')      AS topic_pending,
            0                                                                                 AS topic_completed
     FROM research_rounds r
     LEFT JOIN users u ON u.id = r.created_by
+    LEFT JOIN round_types rt ON rt.id = r.round_type_id
     ${where}
     ORDER BY r.year DESC, r.round_number DESC
     ${pg.fetchClause};
@@ -84,13 +85,14 @@ const getAll = async ({
 const getById = async (id) => {
 	const pool = await getPool();
 	const result = await pool.request().input('id', sql.VarChar(10), id).query(`
-      SELECT r.*, u.full_name AS created_by_name,
+      SELECT r.*, u.full_name AS created_by_name, rt.name AS round_type_name,
              (SELECT COUNT(*) FROM topics WHERE round_id = r.id)                               AS topic_total,
              (SELECT COUNT(*) FROM topics WHERE round_id = r.id AND status = 'approved')       AS topic_active,
              (SELECT COUNT(*) FROM topics WHERE round_id = r.id AND status = 'submitted')      AS topic_pending,
              0                                                                                 AS topic_completed
       FROM research_rounds r
       LEFT JOIN users u ON u.id = r.created_by
+      LEFT JOIN round_types rt ON rt.id = r.round_type_id
       WHERE r.id = @id
     `);
 	return result.recordset[0] ? normalize(result.recordset[0]) : null;
@@ -126,7 +128,7 @@ const create = async (data, actorId) => {
 		.input('name', sql.NVarChar(200), data.name)
 		.input('year', sql.Int, year)
 		.input('round_number', sql.TinyInt, round_number)
-		.input('round_type', sql.NVarChar(100), data.round_type || null)
+		.input('round_type_id', sql.VarChar(6), data.round_type_id || null)
 		.input('start_date', sql.Date, new Date(data.start_date))
 		.input('end_date', sql.Date, new Date(data.end_date))
 		.input(
@@ -138,9 +140,9 @@ const create = async (data, actorId) => {
 	await req.query(`
       EXEC sp_set_actor @actor_id;
       INSERT INTO research_rounds
-        (id, name, year, round_number, round_type, start_date, end_date, status, public_token, created_by)
+        (id, name, year, round_number, round_type_id, start_date, end_date, status, public_token, created_by)
       VALUES
-        (@id, @name, @year, @round_number, @round_type, @start_date, @end_date, @status,
+        (@id, @name, @year, @round_number, @round_type_id, @start_date, @end_date, @status,
          LOWER(REPLACE(NEWID(),'-','')), @actor_id);
     `);
 
@@ -169,9 +171,9 @@ const update = async (id, data, actorId) => {
 		sets.push('round_number = @round_number');
 		req.input('round_number', sql.TinyInt, data.round_number);
 	}
-	if (data.round_type !== undefined) {
-		sets.push('round_type = @round_type');
-		req.input('round_type', sql.NVarChar(100), data.round_type || null);
+	if (data.round_type_id !== undefined) {
+		sets.push('round_type_id = @round_type_id');
+		req.input('round_type_id', sql.VarChar(6), data.round_type_id || null);
 	}
 	if (data.start_date !== undefined) {
 		sets.push('start_date = @start_date');

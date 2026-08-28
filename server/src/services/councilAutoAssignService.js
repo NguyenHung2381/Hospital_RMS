@@ -58,7 +58,7 @@ const pickInternal = async (pool, { roundId, specialtyGroup, deptIds, usedUserId
       WHERE c.round_id = @round_id
       GROUP BY cm.user_id
     ) lt ON lt.user_id = u.id
-    WHERE u.is_active = 1 AND u.account_type <> 'dept'
+    WHERE u.is_active = 1 AND u.role_id <> 'VT07' -- loại tài khoản khoa dùng chung (vai trò truong_khoa)
       ${deptParams.length ? `AND (u.department_id IS NULL OR u.department_id NOT IN (${deptParams.join(',')}))` : ''}
       ${usedParams.length ? `AND u.id NOT IN (${usedParams.join(',')})` : ''}
     ORDER BY

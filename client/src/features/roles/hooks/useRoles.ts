@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRealtimeUpdate } from '../../../layouts/hooks/useRealtime';
+import { bulkToast, runBulk } from '../../../shared/utils/runBulk';
 import { createRole, deleteRole, getRoles, updateRole } from '../api/roleApi';
 import type { ModalType, Role, RoleFormData } from '../types/role.type';
 
@@ -127,6 +128,25 @@ export function useRoles() {
 		}
 	}, [deletingRole, showToast]);
 
+	const handleBulkDelete = useCallback(
+		async (ids: string[]) => {
+			if (!ids.length) return;
+			setLoading(true);
+			try {
+				const { okIds, failedCount } = await runBulk(ids, deleteRole);
+				setRoles((prev) => prev.filter((r) => !okIds.has(r.id)));
+				setModal(null);
+				showToast(
+					failedCount ? 'error' : 'success',
+					bulkToast('xoá', okIds.size, failedCount, 'vai trò'),
+				);
+			} finally {
+				setLoading(false);
+			}
+		},
+		[showToast],
+	);
+
 	const handlePermSaved = useCallback(
 		(roleId: string, ids: string[]) => {
 			setPermCountMap((prev) => ({ ...prev, [roleId]: ids.length }));
@@ -163,6 +183,7 @@ export function useRoles() {
 		handleAdd,
 		handleEdit,
 		handleDelete,
+		handleBulkDelete,
 		handlePermSaved,
 	};
 }

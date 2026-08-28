@@ -3,6 +3,7 @@ import { CheckSvg, EditSvg, InfoSvg, TrashSvg, XSvg } from '@/assets/icons';
 import type { UpdateCouncilPayload } from '../api/councilApi';
 import { STATUS_LABELS, type CouncilStatus } from '../types/council.type';
 import styles from '../pages/Council.module.css';
+import { DatePicker } from '../../../shared/components/Input/DatePicker';
 
 export function CouncilBulkEditModal({
 	count,
@@ -86,11 +87,10 @@ export function CouncilBulkEditModal({
 						</div>
 						<div className={styles.formGroup}>
 							<label className={styles.formLabel}>Ngày bảo vệ</label>
-							<input
-								type='date'
-								className={styles.formInput}
+							<DatePicker
 								value={defenseDate}
-								onChange={(e) => setDefenseDate(e.target.value)}
+								onChange={setDefenseDate}
+								placeholder='Chọn ngày bảo vệ'
 							/>
 						</div>
 					</div>

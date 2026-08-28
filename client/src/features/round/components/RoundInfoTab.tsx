@@ -1,7 +1,13 @@
-import type { FormErrors, RoundForm, RoundStatus } from '../types/round.type';
+import type {
+	FormErrors,
+	RoundForm,
+	RoundStatus,
+	RoundType,
+} from '../types/round.type';
 import { STATUS_CFG, STATUS_OPTIONS, fromInputDate, toInputDate } from '../utils/roundHelpers';
 import { FormField } from './DeadlineManager';
 import styles from '../pages/Round.module.css';
+import { DatePicker } from '../../../shared/components/Input/DatePicker';
 
 interface RoundInfoTabProps {
 	form: RoundForm;
@@ -9,9 +15,17 @@ interface RoundInfoTabProps {
 	set: <K extends keyof RoundForm>(field: K, val: RoundForm[K]) => void;
 	duplicateRound: boolean;
 	years: number[];
+	roundTypes: RoundType[];
 }
 
-export function RoundInfoTab({ form, errors, set, duplicateRound, years }: RoundInfoTabProps) {
+export function RoundInfoTab({
+	form,
+	errors,
+	set,
+	duplicateRound,
+	years,
+	roundTypes,
+}: RoundInfoTabProps) {
 	return (
 		<>
 			<div className={styles.formSection}>Thông tin đợt nghiên cứu</div>
@@ -60,23 +74,28 @@ export function RoundInfoTab({ form, errors, set, duplicateRound, years }: Round
 				</FormField>
 			</div>
 			<FormField
-				id='round_type'
+				id='round_type_id'
 				label='Loại đợt'
-				hint='VD: Nghiên cứu khoa học, Bài báo... — để trống nếu không phân loại'
+				required
+				error={errors.round_type_id as string}
+				hint='Quản lý danh sách loại đợt tại mục Danh mục › Loại đợt'
 			>
-				<input
-					id='round_type'
-					list='round-type-suggestions'
-					className={styles.formInput}
-					placeholder='VD: Nghiên cứu khoa học'
-					value={form.round_type}
-					onChange={(e) => set('round_type', e.target.value)}
-				/>
-				<datalist id='round-type-suggestions'>
-					<option value='Nghiên cứu khoa học' />
-					<option value='Bài báo' />
-					<option value='Sáng kiến' />
-				</datalist>
+				<select
+					id='round_type_id'
+					className={`${styles.formSelect} ${errors.round_type_id ? styles.hasError : ''}`}
+					value={form.round_type_id}
+					onChange={(e) => set('round_type_id', e.target.value)}
+				>
+					<option value=''>— Chọn loại đợt —</option>
+					{roundTypes.map((t) => (
+						<option
+							key={t.id}
+							value={t.id}
+						>
+							{t.name}
+						</option>
+					))}
+				</select>
 			</FormField>
 			<FormField
 				id='name'
@@ -101,14 +120,12 @@ export function RoundInfoTab({ form, errors, set, duplicateRound, years }: Round
 					required
 					error={errors.start_date}
 				>
-					<input
+					<DatePicker
 						id='start_date'
-						type='date'
-						className={`${styles.formInput} ${errors.start_date ? styles.hasError : ''}`}
 						value={toInputDate(form.start_date)}
-						onChange={(e) =>
-							set('start_date', fromInputDate(e.target.value))
-						}
+						onChange={(val) => set('start_date', fromInputDate(val))}
+						hasError={!!errors.start_date}
+						placeholder='Chọn ngày bắt đầu...'
 					/>
 				</FormField>
 				<FormField
@@ -117,14 +134,12 @@ export function RoundInfoTab({ form, errors, set, duplicateRound, years }: Round
 					required
 					error={errors.end_date}
 				>
-					<input
+					<DatePicker
 						id='end_date'
-						type='date'
-						className={`${styles.formInput} ${errors.end_date ? styles.hasError : ''}`}
 						value={toInputDate(form.end_date)}
-						onChange={(e) =>
-							set('end_date', fromInputDate(e.target.value))
-						}
+						onChange={(val) => set('end_date', fromInputDate(val))}
+						hasError={!!errors.end_date}
+						placeholder='Chọn ngày kết thúc...'
 					/>
 				</FormField>
 			</div>

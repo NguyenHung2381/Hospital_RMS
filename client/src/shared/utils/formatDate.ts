@@ -8,14 +8,14 @@ export function relativeTime(iso: string): string {
 	const d = Math.floor(h / 24);
 	if (d === 1) return 'Hôm qua';
 	if (d < 7) return `${d} ngày trước`;
-	return new Date(iso).toLocaleDateString('vi-VN');
+	return formatDateVN(iso);
 }
 
 export function formatDate(value?: string | null): string | null {
 	if (!value) return null;
 	const date = new Date(value);
 	if (Number.isNaN(date.getTime())) return value;
-	return new Intl.DateTimeFormat('vi-VN').format(date);
+	return formatDateVN(value);
 }
 
 // dd/mm/yyyy cố định theo giờ VN (khác `formatDate` ở trên: luôn trả string, không phụ
@@ -29,6 +29,22 @@ export function formatDateVN(iso: string | null | undefined): string {
 		day: '2-digit',
 		month: '2-digit',
 		year: 'numeric',
+	});
+}
+
+// dd/mm/yyyy HH:mm — dùng cho hiển thị ngày giờ đầy đủ chuẩn Việt Nam
+export function formatDateTimeVN(iso: string | null | undefined): string {
+	if (!iso) return '';
+	const d = new Date(iso);
+	if (isNaN(d.getTime())) return '';
+	return d.toLocaleString('vi-VN', {
+		timeZone: 'Asia/Ho_Chi_Minh',
+		day: '2-digit',
+		month: '2-digit',
+		year: 'numeric',
+		hour: '2-digit',
+		minute: '2-digit',
+		hour12: false,
 	});
 }
 
@@ -51,3 +67,4 @@ export function parseDate(s: string | null | undefined): Date | null {
 	const dt = new Date(s);
 	return isNaN(dt.getTime()) ? null : dt;
 }
+

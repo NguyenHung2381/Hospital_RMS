@@ -7,6 +7,7 @@ import {
 	getFileTypeColor,
 	getMimeExtension,
 } from '../utils/topicHelpers';
+import { formatDateVN } from '../../../shared/utils/formatDate';
 import { DocSvg as IcDoc, DownloadSvg as IcDownload, PlusSvg as IcPlus, TrashSvg as IcTrash, XSvg as IcX } from '@/assets/icons';
 
 interface DrawerFilesTabProps {
@@ -249,10 +250,7 @@ export function DrawerFilesTab({
 					{files.map((f) => {
 						const ext = getMimeExtension(f.mime_type);
 						const color = getFileTypeColor(ext);
-						const uploadedDate = new Date(f.created_at).toLocaleDateString(
-							'vi-VN',
-							{ day: '2-digit', month: '2-digit', year: 'numeric' },
-						);
+						const uploadedDate = formatDateVN(f.created_at);
 						const isSelected = selectedIds.has(f.id);
 						return (
 							<div

@@ -15,6 +15,8 @@ interface EditTopicModalProps {
 	editError: string;
 	editForm: EditForm;
 	setEditForm: Dispatch<SetStateAction<EditForm>>;
+	canEditTitle: boolean;
+	canEditInfo: boolean;
 	refData: {
 		categories: SimpleItem[];
 		levels: SimpleItem[];
@@ -30,6 +32,8 @@ export function EditTopicModal({
 	editError,
 	editForm,
 	setEditForm,
+	canEditTitle,
+	canEditInfo,
 	refData,
 	refDataLoading,
 	onClose,
@@ -72,7 +76,7 @@ export function EditTopicModal({
 										setEditForm((f) => ({ ...f, title: e.target.value }))
 									}
 									placeholder='Nhập tiêu đề đề tài'
-									disabled={editLoading}
+									disabled={editLoading || !canEditTitle}
 								/>
 							</div>
 
@@ -86,7 +90,7 @@ export function EditTopicModal({
 									}
 									placeholder='Nhập mô tả đề tài'
 									rows={4}
-									disabled={editLoading}
+									disabled={editLoading || !canEditInfo}
 								/>
 							</div>
 
@@ -102,7 +106,7 @@ export function EditTopicModal({
 												category_id: e.target.value,
 											}))
 										}
-										disabled={editLoading}
+										disabled={editLoading || !canEditInfo}
 									>
 										<option value=''>-- Chọn danh mục --</option>
 										{refData?.categories.map((c) => (
@@ -126,7 +130,7 @@ export function EditTopicModal({
 												level_id: e.target.value,
 											}))
 										}
-										disabled={editLoading}
+										disabled={editLoading || !canEditInfo}
 									>
 										<option value=''>-- Chọn cấp độ --</option>
 										{refData?.levels.map((l) => (
@@ -152,7 +156,7 @@ export function EditTopicModal({
 											department_id: e.target.value,
 										}))
 									}
-									disabled={editLoading}
+									disabled={editLoading || !canEditInfo}
 								>
 									<option value=''>-- Chọn phòng ban --</option>
 									{refData?.depts.map((d) => (

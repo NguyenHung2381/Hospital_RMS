@@ -3,11 +3,15 @@ import { XSvg } from '@/assets/icons';
 import { deleteDeadline, upsertDeadline } from '../../round/api/roundApi';
 import {
 	DEADLINE_TYPE_LABELS,
+	SUPPLEMENT_FIELDS,
+	SUPPLEMENT_FIELD_LABELS,
 	type DeadlineType,
+	type SupplementField,
 } from '../../round/types/round.type';
 import { toInputDate } from '../../round/utils/roundHelpers';
 import type { ModalState, RoundRow } from '../types/schedule.type';
 import styles from './DeadlineModal.module.css';
+import { DatePicker } from '../../../shared/components/Input/DatePicker';
 
 interface Props {
 	state: ModalState;
@@ -23,6 +27,11 @@ export function DeadlineModal({ state, onClose, onSaved }: Props) {
 	const [deadlineDate, setDeadlineDate] = useState(toInputDate(deadline?.deadline_date ?? ''));
 	const [startDate, setStartDate]     = useState(toInputDate(deadline?.start_date ?? ''));
 	const [dlType, setDlType]           = useState<DeadlineType | ''>(deadline?.deadline_type ?? '');
+	const [suppFields, setSuppFields]  = useState<SupplementField[]>(
+		deadline?.supplement_fields && deadline.supplement_fields.length
+			? deadline.supplement_fields
+			: [...SUPPLEMENT_FIELDS],
+	);
 	const [saving, setSaving]           = useState(false);
 	const [deleting, setDeleting]       = useState(false);
 	const [err, setErr]                 = useState('');
@@ -40,6 +49,7 @@ export function DeadlineModal({ state, onClose, onSaved }: Props) {
 				deadline_date: deadlineDate,
 				start_date:    startDate || null,
 				deadline_type: dlType || null,
+				supplement_fields: dlType === 'supplement' ? suppFields : null,
 			});
 			onSaved({
 				...round,
@@ -100,20 +110,22 @@ export function DeadlineModal({ state, onClose, onSaved }: Props) {
 					<div className={styles.fieldRow}>
 						<div className={styles.field}>
 							<label className={styles.fieldLabel}>Ngày bắt đầu</label>
-							<input
-								className={styles.input}
-								type='date'
+							<DatePicker
 								value={startDate}
-								onChange={(e) => setStartDate(e.target.value)}
+								onChange={setStartDate}
+								rangeStart={startDate}
+								rangeEnd={deadlineDate}
+								placeholder='Chọn ngày bắt đầu'
 							/>
 						</div>
 						<div className={styles.field}>
 							<label className={styles.fieldLabel}>Ngày hạn *</label>
-							<input
-								className={styles.input}
-								type='date'
+							<DatePicker
 								value={deadlineDate}
-								onChange={(e) => setDeadlineDate(e.target.value)}
+								onChange={setDeadlineDate}
+								rangeStart={startDate}
+								rangeEnd={deadlineDate}
+								placeholder='Chọn ngày hạn'
 							/>
 						</div>
 					</div>
@@ -130,6 +142,34 @@ export function DeadlineModal({ state, onClose, onSaved }: Props) {
 							))}
 						</select>
 					</div>
+					{dlType === 'supplement' && (
+						<div className={styles.field}>
+							<label className={styles.fieldLabel}>
+								Chủ nhiệm / thư ký được sửa những mục
+							</label>
+							<div style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
+								{SUPPLEMENT_FIELDS.map((f) => (
+									<label
+										key={f}
+										style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, cursor: 'pointer' }}
+									>
+										<input
+											type='checkbox'
+											checked={suppFields.includes(f)}
+											onChange={(e) =>
+												setSuppFields((prev) =>
+													e.target.checked
+														? [...prev, f]
+														: prev.filter((x) => x !== f),
+												)
+											}
+										/>
+										{SUPPLEMENT_FIELD_LABELS[f]}
+									</label>
+								))}
+							</div>
+						</div>
+					)}
 					{err && <p className={styles.formErr}>{err}</p>}
 				</div>
 

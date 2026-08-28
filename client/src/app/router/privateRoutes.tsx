@@ -4,7 +4,7 @@ import React from 'react';
 import type { RouteObject } from 'react-router-dom';
 import { LazyRoute } from './LazyRoute';
 import { lazyRoute as lazy } from './routePrefetch';
-import { RequireAdmin, RequireAuth, RequireNotMember } from './guards';
+import { RequireAdmin, RequireAuth, RequirePermission } from './guards';
 
 // ── Admin pages ──────────────────────────────────────────
 const Dashboard = lazy(
@@ -102,6 +102,10 @@ export const adminRoutes: RouteObject[] = [
 	},
 	{ path: '/admin/levels', element: admin('Cấp độ đề tài', <Catalog />) },
 	{
+		path: '/admin/round-types',
+		element: admin('Loại đợt nghiên cứu', <Catalog />),
+	},
+	{
 		path: '/admin/schedule',
 		element: admin('Lịch trình nghiên cứu', <Schedule />),
 	},
@@ -141,11 +145,11 @@ export const userRoutes: RouteObject[] = [
 	{
 		path: '/user/register-topic',
 		element: (
-			<RequireNotMember>
+			<RequirePermission perm='topics:create'>
 				<LazyRoute title='Đăng ký đề tài'>
 					<TopicRegister />
 				</LazyRoute>
-			</RequireNotMember>
+			</RequirePermission>
 		),
 	},
 ];

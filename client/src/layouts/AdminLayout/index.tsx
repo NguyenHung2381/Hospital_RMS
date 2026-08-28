@@ -29,6 +29,7 @@ const KEY_TO_PATH: Record<string, string> = {
 	externalReviewers: '/admin/external-reviewers',
 	categories: '/admin/categories',
 	levels: '/admin/levels',
+	roundTypes: '/admin/round-types',
 	users: '/admin/users',
 	roles: '/admin/roles',
 	reports: '/admin/reports',
@@ -48,6 +49,8 @@ interface NavItem {
 	label: string;
 	icon: React.ReactNode;
 	badge?: number | string;
+	// Quyền cần có để thấy mục này (bỏ trống = luôn hiện cho người vào được /admin)
+	perm?: string;
 }
 interface NavGroup {
 	section: string;
@@ -62,40 +65,51 @@ const NAV_GROUPS: NavGroup[] = [
 	{
 		section: 'Quản lý đề tài',
 		items: [
-			{ key: 'topics', label: 'Đề tài nghiên cứu', icon: <Icon.Topic /> },
-			{ key: 'rounds', label: 'Đợt nghiên cứu', icon: <Icon.Round /> },
-			{ key: 'councils', label: 'Hội đồng chấm', icon: <Icon.Council /> },
-			{ key: 'schedule', label: 'Lịch trình', icon: <Icon.Schedule /> },
-			{ key: 'approvals', label: 'Phê duyệt', icon: <Icon.Approval /> },
+			{ key: 'topics', label: 'Đề tài nghiên cứu', icon: <Icon.Topic />, perm: 'topics:read' },
+			{ key: 'rounds', label: 'Đợt nghiên cứu', icon: <Icon.Round />, perm: 'rounds:read' },
+			{ key: 'councils', label: 'Hội đồng chấm', icon: <Icon.Council />, perm: 'councils:read' },
+			{ key: 'schedule', label: 'Lịch trình', icon: <Icon.Schedule />, perm: 'rounds:read' },
+			{ key: 'approvals', label: 'Phê duyệt', icon: <Icon.Approval />, perm: 'topics:approve' },
 			{
 				key: 'externalReviewers',
 				label: 'Người ngoài viện',
 				icon: <Icon.ExternalReviewer />,
+				perm: 'councils:read',
 			},
 		],
 	},
 	{
 		section: 'Danh mục',
 		items: [
-			{ key: 'departments', label: 'Phòng ban', icon: <Icon.Dept /> },
-			{ key: 'categories', label: 'Phân loại', icon: <Icon.Category /> },
-			{ key: 'levels', label: 'Cấp độ', icon: <Icon.Level /> },
+			{ key: 'departments', label: 'Phòng ban', icon: <Icon.Dept />, perm: 'departments:read' },
+			{ key: 'categories', label: 'Phân loại', icon: <Icon.Category />, perm: 'catalog:manage' },
+			{ key: 'levels', label: 'Cấp độ', icon: <Icon.Level />, perm: 'catalog:manage' },
+			{ key: 'roundTypes', label: 'Loại đợt', icon: <Icon.Round />, perm: 'catalog:manage' },
 		],
 	},
 	{
 		section: 'Hệ thống',
 		items: [
-			{ key: 'users', label: 'Người dùng', icon: <Icon.User /> },
-			{ key: 'roles', label: 'Vai trò & Quyền', icon: <Icon.Role /> },
-			{ key: 'notifications', label: 'Thông báo', icon: <Icon.Notif /> },
-			{ key: 'activityLogs', label: 'Nhật ký hoạt động', icon: <Icon.List /> },
+			{ key: 'users', label: 'Người dùng', icon: <Icon.User />, perm: 'users:read' },
+			{ key: 'roles', label: 'Vai trò & Quyền', icon: <Icon.Role />, perm: 'roles:read' },
+			{ key: 'notifications', label: 'Thông báo', icon: <Icon.Notif />, perm: 'notifications:manage' },
+			{ key: 'activityLogs', label: 'Nhật ký hoạt động', icon: <Icon.List />, perm: 'activity_logs:read' },
 		],
 	},
 	{
 		section: 'Xuất dữ liệu',
-		items: [{ key: 'reports', label: 'Báo cáo & Xuất', icon: <Icon.Report /> }],
+		items: [{ key: 'reports', label: 'Báo cáo & Xuất', icon: <Icon.Report />, perm: 'reports:read' }],
 	},
 ];
+
+// Có quyền "resource:action" (system:manage = tất cả; resource:manage bao action).
+function permitted(perms: string[], key?: string): boolean {
+	if (!key) return true;
+	if (perms.includes('system:manage')) return true;
+	if (perms.includes(key)) return true;
+	const [resource] = key.split(':');
+	return perms.includes(`${resource}:manage`);
+}
 
 // ─── PROPS ────────────────────────────────
 export interface AdminLayoutProps {
@@ -119,6 +133,13 @@ export default function AdminLayout({
 	const userRole = storedUser?.role ?? '';
 	const navigate = useNavigate();
 	const location = useLocation();
+
+	// Lọc menu theo quyền của vai trò (giữ nhóm nếu còn ít nhất 1 mục).
+	const navPerms = storedUser?.permissions ?? [];
+	const navGroups = NAV_GROUPS.map((g) => ({
+		...g,
+		items: g.items.filter((it) => permitted(navPerms, it.perm)),
+	})).filter((g) => g.items.length > 0);
 
 	// Tự detect activePage từ URL hiện tại
 	const activePage = PATH_TO_KEY[location.pathname] ?? 'dashboard';
@@ -300,7 +321,7 @@ export default function AdminLayout({
 				<nav
 					className={`${styles.sidebarNav} ${mobileNavOpen ? styles.mobileOpen : ''}`}
 				>
-					{NAV_GROUPS.map((group) => (
+					{navGroups.map((group) => (
 						<React.Fragment key={group.section}>
 							<div className={styles.navSection}>{group.section}</div>
 							{group.items.map((item) => (

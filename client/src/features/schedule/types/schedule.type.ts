@@ -1,6 +1,16 @@
-import type { ResearchRound, RoundDeadline } from '../../round/types/round.type';
+import type {
+	DeadlineType,
+	ResearchRound,
+	RoundDeadline,
+} from '../../round/types/round.type';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
+
+/**
+ * "Ngày báo cáo hội đồng" — pseudo-type CHỈ dùng để tô màu / gắn nhãn trên lịch.
+ * Không phải một loại mốc thật trong round_deadlines (được dựng từ council.defense_date).
+ */
+export const DEFENSE_PSEUDO_TYPE = 'council_defense' as unknown as DeadlineType;
 export const MONTHS_LONG = [
 	'Tháng 1', 'Tháng 2', 'Tháng 3', 'Tháng 4',
 	'Tháng 5', 'Tháng 6', 'Tháng 7', 'Tháng 8',
@@ -24,8 +34,7 @@ export const STATUS_CFG = {
 export const DEADLINE_COLORS: Record<string, string> = {
 	report_submission:  '#e05252',
 	supplement:         '#e09d52',
-	council_submission: '#7c52e0',
-	registration:       '#52a9e0',
+	edit:               '#52a9e0',
 	council_defense:    '#e05298',
 };
 
@@ -35,8 +44,8 @@ export const COLOR_PRESETS = [
 ];
 
 export const BAR_DEFAULT_COLORS = {
-	registration: '#378add',
-	supplement:   '#ef9f27',
+	edit:       '#378add',
+	supplement: '#ef9f27',
 } as const;
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -49,7 +58,7 @@ export interface ModalState {
 	deadline: RoundDeadline | null;
 }
 
-export type BarKind = 'registration' | 'research' | 'supplement';
+export type BarKind = 'edit' | 'research' | 'supplement';
 export type DragMode = 'move' | 'left' | 'right';
 
 export type CtxTarget =

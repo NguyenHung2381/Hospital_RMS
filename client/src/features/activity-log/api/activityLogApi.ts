@@ -1,7 +1,8 @@
 import { apiClient } from '../../../shared/api/axios';
 
 export interface ActivityLog {
-	id: number;
+	// id giờ là timestamp nano-giây từ Loki (chuỗi số dài), chỉ dùng làm React key.
+	id: string | number;
 	actor_id: string | null;
 	actor_username: string | null;
 	method: string;

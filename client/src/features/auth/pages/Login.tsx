@@ -1,7 +1,7 @@
 import React, { useCallback, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { isAdmin } from '../../../app/router/authHelpers';
+import { canAccessAdminPanel } from '../../../app/router/authHelpers';
 import AuthLayout from '../../../layouts/AuthLayout';
 import { saveAuth } from '../../../shared/utils/storage';
 import { getMyProgress } from '../../council/api/councilApi';
@@ -129,10 +129,11 @@ export default function Login() {
 			const data = await loginApi(form.username, form.password);
 			saveAuth(data, form.remember);
 			const from = searchParams.get('from');
-			const dest = from || (isAdmin(data.user) ? '/admin' : '/user');
+			const dest =
+				from || (canAccessAdminPanel(data.user) ? '/admin' : '/user');
 
 			// Chỉ hỏi khi vào thẳng cổng người dùng (không phải deep-link cụ thể)
-			if (!from && !isAdmin(data.user)) {
+			if (!from && !canAccessAdminPanel(data.user)) {
 				try {
 					const progress = await getMyProgress();
 					if (progress.length > 0) {

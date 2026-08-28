@@ -13,7 +13,6 @@ import { UserModal } from '../components/UserModal';
 import { UserStatsRow } from '../components/UserStatsRow';
 import { UserTable } from '../components/UserTable';
 import { useUserList } from '../hooks/useUserList';
-import { ACCOUNT_TYPES } from '../utils/userHelpers';
 import styles from './UserList.module.css';
 
 export default function UserList() {
@@ -204,33 +203,33 @@ export default function UserList() {
 
 						<div className={styles.roleFilters}>
 							<button
-								className={`${styles.roleFilterBtn} ${d.typeFilters.length === 0 ? styles.roleFilterActive : ''}`}
+								className={`${styles.roleFilterBtn} ${d.roleFilters.length === 0 ? styles.roleFilterActive : ''}`}
 								onClick={() => {
-									d.setTypeFilters([]);
+									d.setRoleFilters([]);
 									d.setCurrentPage(1);
 								}}
 							>
-								Tất cả loại
+								Tất cả vai trò
 								<span className={styles.roleFilterCount}>
-									{Object.values(d.typeCounts).reduce((a, b) => a + b, 0)}
+									{Object.values(d.roleCounts).reduce((a, b) => a + b, 0)}
 								</span>
 							</button>
-							{ACCOUNT_TYPES.map((t) => (
+							{d.roles.map((r) => (
 								<button
-									key={t.value}
-									className={`${styles.roleFilterBtn} ${d.typeFilters.includes(t.value) ? styles.roleFilterActive : ''}`}
+									key={r.id}
+									className={`${styles.roleFilterBtn} ${d.roleFilters.includes(r.id) ? styles.roleFilterActive : ''}`}
 									onClick={() => {
-										d.setTypeFilters((prev) =>
-											prev.includes(t.value)
-												? prev.filter((v) => v !== t.value)
-												: [...prev, t.value],
+										d.setRoleFilters((prev) =>
+											prev.includes(r.id)
+												? prev.filter((v) => v !== r.id)
+												: [...prev, r.id],
 										);
 										d.setCurrentPage(1);
 									}}
 								>
-									{t.label}
+									{r.name}
 									<span className={styles.roleFilterCount}>
-										{d.typeCounts[t.value] ?? 0}
+										{d.roleCounts[r.id] ?? 0}
 									</span>
 								</button>
 							))}
@@ -251,7 +250,7 @@ export default function UserList() {
 					pageSize={d.pageSize}
 					totalPages={d.totalPages}
 					search={d.search}
-					typeFilters={d.typeFilters}
+					roleFilters={d.roleFilters}
 					deptFilters={d.deptFilters}
 					getRoleName={d.getRoleName}
 					getDeptName={d.getDeptName}
@@ -263,6 +262,10 @@ export default function UserList() {
 					handleToggleActive={d.handleToggleActive}
 					setShowCreate={d.setShowCreate}
 					loading={d.isLoadingData}
+					departments={d.departments}
+					roles={d.roles}
+					handleBulkDelete={d.handleBulkDelete}
+					handleBulkEdit={d.handleBulkEdit}
 				/>
 			</div>
 

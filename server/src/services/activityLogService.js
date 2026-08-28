@@ -1,83 +1,128 @@
-const { getPool, sql } = require('../config/db');
+// Đọc activity log trực tiếp từ các file log xoay theo ngày.
+// Việc GHI nằm ở middlewares/activityLogger.js (auditLogger -> pino-roll ->
+// server/logs/audit-*.log). File này chỉ lo phần ĐỌC cho trang admin
+// /activity-logs. Không còn phụ thuộc SQL Server hay dịch vụ ngoài nào.
 
-// ponytail: buffer trong RAM, mất tối đa ~FLUSH_INTERVAL_MS log nếu server
-// crash giữa chừng — chấp nhận được cho audit log (không phải dữ liệu tài
-// chính), đổi lại giảm round-trip DB rất nhiều so với insert từng request.
-const FLUSH_INTERVAL_MS = 2000;
-const MAX_BUFFER = 200;
+const fsp = require('fs/promises');
+const path = require('path');
 
-let buffer = [];
+// Phải khớp CHÍNH XÁC với auditLogger.js: mặc định <server>/logs, neo theo mã
+// nguồn để không lệ thuộc thư mục chạy server.
+const LOG_DIR = process.env.LOG_DIR
+	? path.resolve(process.env.LOG_DIR)
+	: path.join(__dirname, '..', '..', 'logs');
 
-const flush = async () => {
-	if (!buffer.length) return;
-	const batch = buffer.splice(0, buffer.length);
+// Chặn quét lan man: không đọc quá ngần này file / dòng cho một lần truy vấn.
+const MAX_FILES_SCANNED = 100;
+const MAX_LINES_SCANNED = 200_000;
 
+// Chỉ nhận các file do auditLogger sinh ra: audit.log, audit.2026-08-27.log, ...
+const isAuditName = (name) => /^audit([.\-].*)?\.log$/i.test(name);
+
+// Liệt kê file log, mới nhất trước (theo mtime — file đang ghi có mtime mới nhất).
+const listLogFiles = async () => {
+	let names;
 	try {
-		const pool = await getPool();
-		const request = pool.request();
-		const values = batch.map((row, i) => {
-			request.input(`actor_id${i}`, sql.VarChar(20), row.actor_id);
-			request.input(`actor_username${i}`, sql.VarChar(100), row.actor_username);
-			request.input(`method${i}`, sql.VarChar(10), row.method);
-			request.input(`path${i}`, sql.VarChar(255), row.path);
-			request.input(`status_code${i}`, sql.Int, row.status_code);
-			request.input(`ip${i}`, sql.VarChar(45), row.ip);
-			request.input(`body${i}`, sql.NVarChar(1000), row.body);
-			return `(@actor_id${i}, @actor_username${i}, @method${i}, @path${i}, @status_code${i}, @ip${i}, @body${i})`;
-		});
-
-		await request.query(`
-      INSERT INTO activity_logs (actor_id, actor_username, method, path, status_code, ip_address, request_body)
-      VALUES ${values.join(',')};
-    `);
+		names = await fsp.readdir(LOG_DIR);
 	} catch (err) {
-		// Log không bao giờ được làm hỏng request chính — chỉ cảnh báo ra console.
-		console.error('[ActivityLog] Ghi log thất bại:', err.message);
+		if (err.code === 'ENOENT') return []; // chưa có log nào
+		throw err;
 	}
+	const stats = await Promise.all(
+		names.filter(isAuditName).map(async (name) => {
+			const full = path.join(LOG_DIR, name);
+			try {
+				const st = await fsp.stat(full);
+				return st.isFile() ? { full, mtime: st.mtimeMs } : null;
+			} catch {
+				return null;
+			}
+		}),
+	);
+	return stats
+		.filter(Boolean)
+		.sort((a, b) => b.mtime - a.mtime)
+		.slice(0, MAX_FILES_SCANNED)
+		.map((s) => s.full);
 };
 
-setInterval(flush, FLUSH_INTERVAL_MS).unref();
-
-const enqueue = (entry) => {
-	buffer.push(entry);
-	if (buffer.length >= MAX_BUFFER) flush();
+const rowMatches = (o, { actor_id, method, search }) => {
+	if (method && String(o.method || '').toUpperCase() !== method.toUpperCase())
+		return false;
+	if (actor_id && String(o.actor_id ?? '') !== String(actor_id)) return false;
+	if (
+		search &&
+		!String(o.path || '').toLowerCase().includes(search.toLowerCase())
+	)
+		return false;
+	return true;
 };
 
-// Keyset (seek) pagination — không dùng OFFSET vì bảng có thể lên tới hàng
-// triệu dòng, OFFSET càng về sau càng chậm do phải quét bỏ qua từng đó dòng.
+// Con trỏ = trường `ts` (epoch ms có phần thập phân) của dòng cuối trang trước;
+// lấy tiếp các dòng có ts NHỎ HƠN. ts tăng đơn điệu nên không sót ở ranh giới trang.
 const getAll = async ({ limit = 50, cursor, actor_id, method, search } = {}) => {
-	const pool = await getPool();
-	const request = pool.request().input('limit', sql.Int, limit);
-	const conditions = [];
+	const beforeTs = cursor != null && cursor !== '' ? Number(cursor) : Infinity;
+	const cutoff = Number.isNaN(beforeTs) ? Infinity : beforeTs;
 
-	if (cursor) {
-		conditions.push('created_at < @cursor');
-		request.input('cursor', sql.DateTime2, new Date(cursor));
-	}
-	if (actor_id) {
-		conditions.push('actor_id = @actor_id');
-		request.input('actor_id', sql.VarChar(20), actor_id);
-	}
-	if (method) {
-		conditions.push('method = @method');
-		request.input('method', sql.VarChar(10), method);
-	}
-	if (search) {
-		conditions.push('path LIKE @search');
-		request.input('search', sql.VarChar(255), `%${search}%`);
-	}
-	const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
+	const files = await listLogFiles();
+	const collected = [];
+	let linesScanned = 0;
+	let stop = false;
 
-	const result = await request.query(`
-    SELECT TOP (@limit) id, actor_id, actor_username, method, path, status_code, ip_address, created_at
-    FROM   activity_logs
-    ${where}
-    ORDER  BY created_at DESC, id DESC;
-  `);
+	for (const file of files) {
+		let content;
+		try {
+			content = await fsp.readFile(file, 'utf8');
+		} catch {
+			continue;
+		}
+		const lines = content.split('\n');
+		// Duyệt từ cuối file lên (dòng mới nằm cuối).
+		for (let i = lines.length - 1; i >= 0; i--) {
+			const line = lines[i].trim();
+			if (!line) continue;
+			if (++linesScanned > MAX_LINES_SCANNED) {
+				stop = true;
+				break;
+			}
 
-	const rows = result.recordset;
-	const nextCursor = rows.length === limit ? rows[rows.length - 1].created_at : null;
-	return { data: rows, next_cursor: nextCursor };
+			let o;
+			try {
+				o = JSON.parse(line);
+			} catch {
+				continue; // dòng hỏng / đang ghi dở
+			}
+			if (o.stream !== 'audit') continue;
+
+			const ts = typeof o.ts === 'number' ? o.ts : Date.parse(o.time);
+			if (Number.isNaN(ts) || ts >= cutoff) continue;
+			if (!rowMatches(o, { actor_id, method, search })) continue;
+
+			collected.push({
+				id: String(o.ts ?? o.time),
+				actor_id: o.actor_id ?? null,
+				actor_username: o.actor_username ?? null,
+				method: o.method ?? null,
+				path: o.path ?? null,
+				status_code: o.status_code ?? null,
+				ip_address: o.ip ?? null,
+				created_at: o.time ?? new Date(ts).toISOString(),
+				_ts: ts,
+			});
+		}
+		if (stop) break;
+		// Đủ dữ liệu cho trang hiện tại + phần lớn file đã ở sau con trỏ -> dừng.
+		if (collected.length >= limit) break;
+	}
+
+	collected.sort((a, b) => b._ts - a._ts);
+	const sliced = collected.slice(0, limit).map(({ _ts, ...row }) => row);
+	const nextCursor =
+		sliced.length === limit
+			? String(collected[limit - 1]._ts)
+			: null;
+
+	return { data: sliced, next_cursor: nextCursor };
 };
 
-module.exports = { enqueue, flush, getAll };
+module.exports = { getAll, LOG_DIR };

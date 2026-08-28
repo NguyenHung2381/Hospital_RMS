@@ -9,6 +9,7 @@ import {
 } from '../types/council.type';
 import { toInputDate } from '../utils/councilHelpers';
 import styles from '../pages/Council.module.css';
+import { DatePicker } from '../../../shared/components/Input/DatePicker';
 
 const LOCATION_PRESETS = [
 	'Hội trường 3',
@@ -220,11 +221,12 @@ export function CouncilFormModal({
 
 					<div className={styles.formGroup}>
 						<label className={styles.formLabel}>Ngày bảo vệ</label>
-						<input
-							type='date'
-							className={styles.formInput}
+						<DatePicker
 							value={form.defense_date}
-							onChange={set('defense_date')}
+							onChange={(val) =>
+								setForm((prev) => ({ ...prev, defense_date: val }))
+							}
+							placeholder='Chọn ngày bảo vệ...'
 						/>
 					</div>
 

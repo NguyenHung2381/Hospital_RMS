@@ -33,7 +33,13 @@ const apiPort = getApiPort();
 const apiHost = process.env.VITE_API_HOST || 'localhost';
 
 export default defineConfig({
-	plugins: [react(), svgr()],
+	plugins: [
+		react(),
+		// `icon: true` buộc mọi icon `*.svg?react` có kích thước nội tại 1em
+		// (thay vì mặc định 300×150 của trình duyệt khi SVG chỉ có viewBox).
+		// Các rule CSS `.parent svg { width/height }` sẵn có vẫn override bình thường.
+		svgr({ svgrOptions: { icon: true } }),
+	],
 	resolve: {
 		alias: {
 			'@': path.resolve(__dirname, './src'),

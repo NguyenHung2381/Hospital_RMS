@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRealtimeUpdate } from '../../../layouts/hooks/useRealtime';
+import { bulkToast, runBulk } from '../../../shared/utils/runBulk';
 import {
 	createDepartment,
 	deleteDepartment,
@@ -134,6 +135,25 @@ export function useDepartments() {
 		}
 	}, [deletingDept, showToast]);
 
+	const handleBulkDelete = useCallback(
+		async (ids: string[]) => {
+			if (!ids.length) return;
+			setLoading(true);
+			try {
+				const { okIds, failedCount } = await runBulk(ids, deleteDepartment);
+				setDepts((prev) => prev.filter((d) => !okIds.has(d.id)));
+				setModal(null);
+				showToast(
+					failedCount ? 'error' : 'success',
+					bulkToast('xoá', okIds.size, failedCount, 'khoa phòng'),
+				);
+			} finally {
+				setLoading(false);
+			}
+		},
+		[showToast],
+	);
+
 	return {
 		depts,
 		isLoadingData,
@@ -159,5 +179,6 @@ export function useDepartments() {
 		handleAdd,
 		handleEdit,
 		handleDelete,
+		handleBulkDelete,
 	};
 }

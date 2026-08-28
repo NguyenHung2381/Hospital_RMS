@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { CheckSvg, LayersSvg, TagSvg, XSvg } from '@/assets/icons';
+import { CalendarSvg, CheckSvg, LayersSvg, TagSvg, XSvg } from '@/assets/icons';
 import type {
 	CatalogFormData,
 	CatalogItem,
@@ -54,7 +54,13 @@ export function CatalogFormModal({
 			<div className={styles.modal}>
 				<div className={styles.modalHeader}>
 					<div className={styles.modalHeaderIcon}>
-						{tab === 'categories' ? <TagSvg /> : <LayersSvg />}
+						{tab === 'categories' ? (
+							<TagSvg />
+						) : tab === 'round-types' ? (
+							<CalendarSvg />
+						) : (
+							<LayersSvg />
+						)}
 					</div>
 					<div>
 						<div className={styles.modalTitle}>

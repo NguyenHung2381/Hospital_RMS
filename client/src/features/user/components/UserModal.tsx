@@ -2,9 +2,9 @@
 import React, { useState } from 'react';
 import type { SimpleItem } from '../api/userApi';
 import styles from '../pages/UserList.module.css';
-import type { AccountType, FormErrors, User, UserForm } from '../types/user.type';
+import type { FormErrors, User, UserForm } from '../types/user.type';
 import { getInitials } from '../../../shared/utils/helper';
-import { ACCOUNT_TYPES, suggestUsername } from '../utils/userHelpers';
+import { suggestUsername } from '../utils/userHelpers';
 
 function Field({
 	id,
@@ -96,7 +96,6 @@ export function UserModal({
 		email: user?.email ?? '',
 		department_id: user?.department_id ?? defaultDeptId ?? '',
 		role_id: user?.role_id ?? '',
-		account_type: user?.account_type ?? 'member',
 		is_active: user?.is_active ?? true,
 		password: mode === 'create' ? '123456' : '',
 	});
@@ -382,35 +381,6 @@ export function UserModal({
 								<ChevDSvg />
 							</div>
 						</Field>
-					</div>
-					<div className={styles.formRow}>
-						<Field
-							id='account_type'
-							label='Loại tài khoản'
-							required
-						>
-							<div className={styles.selectWrapper}>
-								<select
-									id='account_type'
-									className={styles.formSelect}
-									value={form.account_type}
-									onChange={(e) =>
-										set('account_type', e.target.value as AccountType)
-									}
-								>
-									{ACCOUNT_TYPES.map((t) => (
-										<option
-											key={t.value}
-											value={t.value}
-										>
-											{t.label}
-										</option>
-									))}
-								</select>
-								<ChevDSvg />
-							</div>
-						</Field>
-						<div />
 					</div>
 
 					<div className={styles.formToggleRow}>

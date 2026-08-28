@@ -2,7 +2,7 @@ const { getPool, sql } = require('../config/db');
 const { broadcast } = require('./eventService');
 const { paging } = require('../utils/paging');
 
-// Factory for simple lookup tables: departments, categories, levels, roles, research_rounds
+// Factory for simple lookup tables: departments, categories, levels, roles, round_types, research_rounds
 // idPrefix: fixed prefix prepended to the random portion of the generated ID
 const createCrudService = (tableName, idLength = 20, idPrefix = '') => {
 	// Thực thể để phát tín hiệu (vd: roles -> role)

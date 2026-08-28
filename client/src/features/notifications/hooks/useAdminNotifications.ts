@@ -5,6 +5,7 @@ import { getTopics } from '../../topics/api/topicApi';
 import type { Topic } from '../../topics/types/topic.type';
 import { getUsers } from '../../user/api/userApi';
 import type { User } from '../../user/types/user.type';
+import { bulkToast, runBulk } from '../../../shared/utils/runBulk';
 import {
 	adminGetNotifications,
 	deleteNotificationBatch,
@@ -280,6 +281,24 @@ export function useAdminNotifications() {
 		}
 	};
 
+	const handleBulkDelete = async (batchKeys: string[]) => {
+		if (!batchKeys.length) return;
+		setDeletingBatch(true);
+		try {
+			const { okIds, failedCount } = await runBulk(
+				batchKeys,
+				deleteNotificationBatch,
+			);
+			showToast(
+				bulkToast('xoá', okIds.size, failedCount, 'thông báo'),
+				!failedCount,
+			);
+			setRefreshKey((k) => k + 1);
+		} finally {
+			setDeletingBatch(false);
+		}
+	};
+
 	const toggleBatchExpand = (batchKey: string) => {
 		if (expandedBatch === batchKey) {
 			setExpandedBatch(null);
@@ -349,5 +368,6 @@ export function useAdminNotifications() {
 		setRefreshKey,
 		handleSend,
 		confirmDelete,
+		handleBulkDelete,
 	};
 }

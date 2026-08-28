@@ -1,26 +1,29 @@
 import { removeDiacritics as stripDiacritics } from '../../../shared/utils/helper';
-import type { AccountType } from '../types/user.type';
 
-export const ACCOUNT_TYPES: { value: AccountType; label: string }[] = [
-	{ value: 'admin', label: 'Quản trị' },
-	{ value: 'director', label: 'Giám đốc' },
-	{ value: 'reviewer', label: 'Thẩm định' },
-	{ value: 'manager', label: 'Quản lý' },
-	{ value: 'dept', label: 'TK Khoa' },
-	{ value: 'member', label: 'Thành viên' },
-];
-
-export const ACCOUNT_TYPE_CFG: Record<
-	AccountType,
+// Cấu hình hiển thị theo vai trò (role_id). Nhãn lấy động từ API khi có role_name;
+// đây là fallback + màu badge/avatar cho các vai trò gốc.
+export const ROLE_CFG: Record<
+	string,
 	{ label: string; cls: string; avatarCls: string }
 > = {
-	admin: { label: 'Quản trị', cls: 'rolePurple', avatarCls: 'avatarPurple' },
-	director: { label: 'Giám đốc', cls: 'roleRed', avatarCls: 'avatarRed' },
-	reviewer: { label: 'Thẩm định', cls: 'roleGray', avatarCls: 'avatarGray' },
-	manager: { label: 'Quản lý', cls: 'roleBlue', avatarCls: 'avatarBlue' },
-	dept: { label: 'TK Khoa', cls: 'roleAmber', avatarCls: 'avatarAmber' },
-	member: { label: 'Thành viên', cls: 'roleGreen', avatarCls: 'avatarGreen' },
+	VT01: { label: 'Quản trị', cls: 'rolePurple', avatarCls: 'avatarPurple' },
+	VT02: { label: 'Giám đốc / Lãnh đạo', cls: 'roleRed', avatarCls: 'avatarRed' },
+	VT03: { label: 'Cán bộ NCKH', cls: 'roleBlue', avatarCls: 'avatarBlue' },
+	VT04: { label: 'Hội đồng xét duyệt', cls: 'roleGray', avatarCls: 'avatarGray' },
+	VT05: { label: 'Chủ nhiệm đề tài', cls: 'roleAmber', avatarCls: 'avatarAmber' },
+	VT06: { label: 'Thành viên đề tài', cls: 'roleGreen', avatarCls: 'avatarGreen' },
+	VT07: { label: 'Trưởng khoa/phòng', cls: 'roleTeal', avatarCls: 'avatarTeal' },
 };
+
+const FALLBACK_ROLE_CFG = {
+	label: 'Vai trò',
+	cls: 'roleGray',
+	avatarCls: 'avatarGray',
+};
+
+export function roleCfg(roleId?: string | null) {
+	return (roleId && ROLE_CFG[roleId]) || FALLBACK_ROLE_CFG;
+}
 
 
 export function isPasswordOld(dateStr: string | null): boolean {

@@ -1,5 +1,5 @@
 import { apiClient } from '../../../shared/api/axios';
-import type { AccountType, User } from '../types/user.type';
+import type { User } from '../types/user.type';
 
 export interface SimpleItem {
 	id: string;
@@ -12,21 +12,24 @@ export interface UserListParams {
 	search?: string;
 	department_id?: string;
 	role_id?: string;
-	account_type?: string;
 	is_active?: boolean;
+	// meta=0 -> chỉ lấy danh sách + tổng số (bỏ global_stats + facet counts).
+	// Dùng khi chỉ đổi trang/kích thước trang.
+	meta?: 0 | 1;
 }
 
 interface UserListResponse {
 	data: User[];
 	pagination: { page: number; limit: number; total: number };
-	global_stats: {
+	// Chỉ có khi gọi với meta=1 (mặc định).
+	global_stats?: {
 		total: number;
 		active: number;
 		inactive: number;
 		pwd_warn: number;
 	};
-	type_counts: Record<string, number>;
-	dept_counts: Record<string, number>;
+	role_counts?: Record<string, number>;
+	dept_counts?: Record<string, number>;
 }
 
 interface SimpleListResponse {
@@ -42,7 +45,6 @@ export interface CreateUserPayload {
 	email?: string;
 	department_id?: string;
 	role_id?: string;
-	account_type?: AccountType;
 }
 
 export interface UpdateUserPayload {
@@ -51,7 +53,6 @@ export interface UpdateUserPayload {
 	email?: string;
 	department_id?: string;
 	role_id?: string;
-	account_type?: AccountType;
 	is_active?: boolean;
 }
 

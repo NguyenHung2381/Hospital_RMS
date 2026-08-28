@@ -32,6 +32,6 @@ router.use(authenticate);
  *       401:
  *         description: Chưa xác thực
  */
-router.delete('/:file_id', authorizePermission(['files', 'delete']), fileCtrl.deleteFile);
+router.delete('/:file_id', authorizePermission(['files', 'delete']), fileCtrl.checkDeleteWindow, fileCtrl.deleteFile);
 
 module.exports = router;

@@ -122,6 +122,22 @@ export default function Round() {
 							<select
 								className={styles.formSelect}
 								style={{ width: 'auto' }}
+								value={d.typeFilter}
+								onChange={(e) => d.setTypeFilter(e.target.value)}
+							>
+								<option value='all'>Tất cả loại đợt</option>
+								{d.roundTypes.map((t) => (
+									<option
+										key={t.id}
+										value={t.id}
+									>
+										{t.name}
+									</option>
+								))}
+							</select>
+							<select
+								className={styles.formSelect}
+								style={{ width: 'auto' }}
 								value={d.statusFilter}
 								onChange={(e) =>
 									d.setStatusFilter(e.target.value as typeof d.statusFilter)
@@ -220,6 +236,7 @@ export default function Round() {
 				<RoundModal
 					mode='create'
 					rounds={d.rounds}
+					roundTypes={d.roundTypes}
 					onClose={() => d.setShowCreate(false)}
 					onSave={d.handleCreate}
 				/>
@@ -229,6 +246,7 @@ export default function Round() {
 					mode='edit'
 					round={d.editRound}
 					rounds={d.rounds}
+					roundTypes={d.roundTypes}
 					onClose={() => d.setEditRound(null)}
 					onSave={d.handleEdit}
 				/>

@@ -650,46 +650,58 @@
 /* ── MEMBERS ── */
 .membersGrid {
 	display: grid;
-	grid-template-columns: repeat(2, 1fr);
-	gap: 8px;
+	grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+	gap: 10px;
 }
 
 .memberCard {
 	display: flex;
 	align-items: center;
-	gap: 10px;
-	padding: 9px 12px;
-	background: var(--color-gray-50);
-	border-radius: var(--radius-lg);
-	border: 1px solid var(--color-gray-100);
-	transition: background var(--transition-fast);
+	gap: 12px;
+	padding: 10px 14px;
+	background: #ffffff;
+	border-radius: var(--radius-xl, 12px);
+	border: 1px solid var(--color-gray-200, #e5e7eb);
+	box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+	transition: all 0.2s ease;
 }
 
 .memberCard:hover {
-	background: var(--color-white);
-	border-color: var(--color-gray-200);
+	background: #ffffff;
+	border-color: rgba(16, 185, 129, 0.35);
+	box-shadow: 0 4px 12px rgba(16, 185, 129, 0.08);
+	transform: translateY(-1px);
 }
 
 .memberAvatar {
-	width: 34px;
-	height: 34px;
+	width: 36px;
+	height: 36px;
 	border-radius: 50%;
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	font-size: 13px;
+	font-size: 12px;
 	font-weight: 700;
 	flex-shrink: 0;
+	letter-spacing: 0.02em;
 }
 
 .memberRoleLead {
-	background: var(--color-primary-pale);
-	color: var(--color-primary-dark);
+	background: #ecfdf5;
+	color: #047857;
+	border: 1.5px solid #a7f3d0;
+}
+
+.memberRoleSecretary {
+	background: #eff6ff;
+	color: #1d4ed8;
+	border: 1.5px solid #bfdbfe;
 }
 
 .memberRoleMember {
-	background: var(--color-gray-100);
-	color: var(--color-gray-600);
+	background: #f1f5f9;
+	color: #475569;
+	border: 1.5px solid #cbd5e1;
 }
 
 .memberInfo {
@@ -698,9 +710,9 @@
 }
 
 .memberName {
-	font-size: 12px;
+	font-size: 13px;
 	font-weight: 600;
-	color: var(--color-gray-800);
+	color: var(--color-gray-800, #1f2937);
 	white-space: nowrap;
 	overflow: hidden;
 	text-overflow: ellipsis;
@@ -709,24 +721,47 @@
 .memberMeta {
 	display: flex;
 	align-items: center;
-	gap: 5px;
-	margin-top: 2px;
+	gap: 6px;
+	margin-top: 3px;
 	flex-wrap: wrap;
 }
 
-.memberRoleBadge {
-	font-size: 10px;
+.roleBadgeLead {
+	font-size: 10.5px;
 	font-weight: 700;
-	padding: 1px 6px;
-	border-radius: var(--radius-full);
-	background: var(--color-gray-200);
-	color: var(--color-gray-600);
+	padding: 2px 8px;
+	border-radius: var(--radius-full, 9999px);
+	background: #ecfdf5;
+	color: #047857;
+	border: 1px solid #a7f3d0;
+	white-space: nowrap;
+}
+
+.roleBadgeSecretary {
+	font-size: 10.5px;
+	font-weight: 700;
+	padding: 2px 8px;
+	border-radius: var(--radius-full, 9999px);
+	background: #eff6ff;
+	color: #1d4ed8;
+	border: 1px solid #bfdbfe;
+	white-space: nowrap;
+}
+
+.roleBadgeMember {
+	font-size: 10.5px;
+	font-weight: 700;
+	padding: 2px 8px;
+	border-radius: var(--radius-full, 9999px);
+	background: #f8fafc;
+	color: #475569;
+	border: 1px solid #cbd5e1;
 	white-space: nowrap;
 }
 
 .memberDept {
-	font-size: 10px;
-	color: var(--color-gray-400);
+	font-size: 11px;
+	color: var(--color-gray-500, #6b7280);
 	white-space: nowrap;
 	overflow: hidden;
 	text-overflow: ellipsis;

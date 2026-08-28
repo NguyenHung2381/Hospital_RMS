@@ -9,6 +9,7 @@ import { FormField } from './FormField';
 import { AlertSvg as IcAlert, CheckSvg as IcCheck, PlusSvg as IcPlus, XSvg as IcX } from '@/assets/icons';
 import { ModalMembersSection } from './ModalMembersSection';
 import { SearchableSelect } from '../../../shared/components/Input/SearchableSelect';
+import { DatePicker } from '../../../shared/components/Input/DatePicker';
 
 export type { PendingMember };
 
@@ -257,12 +258,11 @@ export function TopicModal({
 								id='publish_date'
 								label='Ngày xuất bản'
 							>
-								<input
+								<DatePicker
 									id='publish_date'
-									type='date'
-									className={styles.formInput}
 									value={m.form.publish_date}
-									onChange={(e) => m.setField('publish_date', e.target.value)}
+									onChange={(val) => m.setField('publish_date', val)}
+									placeholder='Chọn ngày xuất bản...'
 								/>
 							</FormField>
 						</div>

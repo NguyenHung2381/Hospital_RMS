@@ -1,0 +1,35 @@
+# Promtail 3.5 - đọc file log JSON của server (pino) và đẩy sang Loki.
+server:
+  http_listen_port: 9080
+  grpc_listen_port: 0
+  log_level: warn
+
+positions:
+  filename: /tmp/positions.yaml
+
+clients:
+  - url: http://loki:3100/loki/api/v1/push
+
+scrape_configs:
+  - job_name: rms-server-logs
+    static_configs:
+      - targets: [localhost]
+        labels:
+          job: rms-server
+          app: rms-hospital
+          __path__: /logs/*.log
+    pipeline_stages:
+      # Mỗi dòng là 1 JSON object do pino sinh ra.
+      - json:
+          expressions:
+            level: level
+            stream: stream
+            time: time
+            msg: msg
+      # stream = "audit" | ... -> label để lọc nhanh trong Loki (low-cardinality).
+      - labels:
+          stream:
+      # Dùng mốc thời gian trong log thay cho thời điểm promtail đọc được.
+      - timestamp:
+          source: time
+          format: RFC3339Nano

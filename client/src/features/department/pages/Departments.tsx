@@ -10,6 +10,12 @@ import {
 } from '@/assets/icons';
 import AdminLayout from '../../../layouts/AdminLayout';
 import { Pagination } from '../../../shared/components/Table/Pagination';
+import sel from '../../../shared/components/Table/RowSelect.module.css';
+import {
+	BulkBar,
+	SelectCheckbox,
+} from '../../../shared/components/Table/RowSelect';
+import { useRowSelection } from '../../../shared/hooks/useRowSelection';
 import { DeptDeleteModal } from '../components/DeptDeleteModal';
 import { DeptFormModal } from '../components/DeptFormModal';
 import { useDepartments } from '../hooks/useDepartments';
@@ -39,6 +45,7 @@ function getInitials(s: string) {
 
 export default function Departments() {
 	const d = useDepartments();
+	const rowSel = useRowSelection(d.paged.map((x) => x.id));
 
 	const headerActions = (
 		<button
@@ -96,9 +103,23 @@ export default function Departments() {
 
 			{/* ── TABLE ── */}
 			<div className={styles.tableWrap}>
+				<BulkBar
+					rowSel={rowSel}
+					itemLabel='khoa phòng'
+					loading={d.loading}
+					onBulkDelete={d.handleBulkDelete}
+				/>
 				<table className={styles.table}>
 					<thead>
 						<tr>
+							<th className={sel.checkCol}>
+								<SelectCheckbox
+									title='Chọn tất cả'
+									checked={rowSel.allPageSelected}
+									indeterminate={rowSel.somePageSelected}
+									onChange={rowSel.toggleSelectAll}
+								/>
+							</th>
 							<th className={styles.th}>#</th>
 							<th className={styles.th}>Khoa phòng</th>
 							<th className={styles.th}>Mã</th>
@@ -110,7 +131,7 @@ export default function Departments() {
 					<tbody>
 						{d.isLoadingData ? (
 							<tr>
-								<td colSpan={6}>
+								<td colSpan={7}>
 									<div className={styles.emptyState}>
 										<div className={styles.emptyDesc}>Đang tải dữ liệu...</div>
 									</div>
@@ -118,7 +139,7 @@ export default function Departments() {
 							</tr>
 						) : d.filtered.length === 0 ? (
 							<tr>
-								<td colSpan={6}>
+								<td colSpan={7}>
 									<div className={styles.emptyState}>
 										<div className={styles.emptyTitle}>
 											Không tìm thấy khoa phòng
@@ -137,8 +158,15 @@ export default function Departments() {
 								return (
 									<tr
 										key={dept.id}
-										className={styles.tr}
+										className={`${styles.tr} ${rowSel.isSelected(dept.id) ? sel.rowSelected : ''}`}
 									>
+										<td className={sel.checkCol}>
+											<SelectCheckbox
+												title='Chọn khoa phòng'
+												checked={rowSel.isSelected(dept.id)}
+												onChange={() => rowSel.toggleSelect(dept.id)}
+											/>
+										</td>
 										<td className={`${styles.td} ${styles.tdIdx}`}>{rowNum}</td>
 										<td className={styles.td}>
 											<div className={styles.deptCell}>

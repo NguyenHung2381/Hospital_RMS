@@ -24,5 +24,15 @@ export const createExternalReviewer = (form: ExternalReviewerForm) =>
 export const updateExternalReviewer = (id: string, form: ExternalReviewerForm) =>
 	apiClient.put<ExternalReviewer>(`/external-reviewers/${id}`, toPayload(form));
 
+/** Cập nhật một phần (dùng cho sửa hàng loạt) — server chỉ ghi trường được gửi. */
+export type ExternalReviewerPatch = Partial<{
+	organization: string | null;
+	specialty_group: string | null;
+	is_active: boolean;
+}>;
+
+export const patchExternalReviewer = (id: string, patch: ExternalReviewerPatch) =>
+	apiClient.put<ExternalReviewer>(`/external-reviewers/${id}`, patch);
+
 export const deleteExternalReviewer = (id: string) =>
 	apiClient.delete<null>(`/external-reviewers/${id}`);

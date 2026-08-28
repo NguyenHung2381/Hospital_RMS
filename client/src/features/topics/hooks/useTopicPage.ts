@@ -14,6 +14,13 @@ import {
 } from '../api/topicApi';
 import type { PendingMember } from '../components/TopicModal';
 import type { Topic, TopicForm, TopicStatus } from '../types/topic.type';
+import { bulkToast, runBulk } from '../../../shared/utils/runBulk';
+import type { UpdateTopicPayload } from '../api/topicApi';
+
+export type TopicBulkPatch = Pick<
+	UpdateTopicPayload,
+	'status' | 'category_id' | 'level_id' | 'department_id'
+>;
 
 type TabKey = 'all' | TopicStatus;
 const PAGE_SIZE_OPTIONS = [10, 20, 50, 100] as const;
@@ -68,9 +75,20 @@ export function useTopicPage() {
 	const [deleteTopic, setDeleteTopic] = useState<Topic | null>(null);
 	const [viewTopic, setViewTopic] = useState<Topic | null>(null);
 	const [refreshKey, setRefreshKey] = useState(0);
+	const [bulkBusy, setBulkBusy] = useState(false);
+	const [bulkNotice, setBulkNotice] = useState<{
+		type: 'success' | 'error';
+		msg: string;
+	} | null>(null);
 
 	const refreshData = useCallback(() => setRefreshKey((prev) => prev + 1), []);
 	useRealtimeUpdate('topic', refreshData);
+
+	useEffect(() => {
+		if (!bulkNotice) return;
+		const t = setTimeout(() => setBulkNotice(null), 3000);
+		return () => clearTimeout(t);
+	}, [bulkNotice]);
 
 	// Danh mục — tải một lần, không phụ thuộc bộ lọc
 	useEffect(() => {
@@ -285,6 +303,44 @@ export function useTopicPage() {
 		setViewTopic(null);
 	}, [deleteTopic, refreshData]);
 
+	const handleBulkDelete = useCallback(
+		async (ids: string[]): Promise<void> => {
+			if (!ids.length) return;
+			setBulkBusy(true);
+			try {
+				const { okIds, failedCount } = await runBulk(ids, deleteTopicApi);
+				refreshData();
+				setBulkNotice({
+					type: failedCount ? 'error' : 'success',
+					msg: bulkToast('xoá', okIds.size, failedCount, 'đề tài'),
+				});
+			} finally {
+				setBulkBusy(false);
+			}
+		},
+		[refreshData],
+	);
+
+	const handleBulkEdit = useCallback(
+		async (ids: string[], patch: TopicBulkPatch): Promise<void> => {
+			if (!ids.length || !Object.keys(patch).length) return;
+			setBulkBusy(true);
+			try {
+				const { okIds, failedCount } = await runBulk(ids, (id) =>
+					updateTopicApi(id, patch),
+				);
+				refreshData();
+				setBulkNotice({
+					type: failedCount ? 'error' : 'success',
+					msg: bulkToast('cập nhật', okIds.size, failedCount, 'đề tài'),
+				});
+			} finally {
+				setBulkBusy(false);
+			}
+		},
+		[refreshData],
+	);
+
 	return {
 		topics,
 		categories,
@@ -337,6 +393,10 @@ export function useTopicPage() {
 		handleCreate,
 		handleEdit,
 		handleDelete,
+		handleBulkDelete,
+		handleBulkEdit,
+		bulkBusy,
+		bulkNotice,
 		resetPage,
 	};
 }

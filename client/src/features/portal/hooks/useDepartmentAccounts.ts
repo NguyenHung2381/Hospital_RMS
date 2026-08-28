@@ -9,8 +9,9 @@ import {
 	updateUser as updateUserApi,
 	type SimpleItem,
 } from '../../user/api/userApi';
-import type { AccountType, User } from '../../user/types/user.type';
+import type { User } from '../../user/types/user.type';
 import { formatDate as _formatDate } from '../../../shared/utils/formatDate';
+import { bulkToast, runBulk } from '../../../shared/utils/runBulk';
 import type { EditForm } from '../utils/deptAccountsHelpers';
 
 const formatDate = (s: string | null | undefined) => _formatDate(s) ?? '—';
@@ -25,7 +26,7 @@ export function useDepartmentAccounts() {
 	const [isLoading, setIsLoading] = useState(true);
 	const [loadError, setLoadError] = useState<string | null>(null);
 	const [search, setSearch] = useState('');
-	const [typeFilter, setTypeFilter] = useState<AccountType | 'all'>('all');
+	const [roleFilter, setRoleFilter] = useState<string | 'all'>('all');
 	const [refreshKey, setRefreshKey] = useState(0);
 	const [editUser, setEditUser] = useState<User | null>(null);
 	const [deleteUser, setDeleteUser] = useState<User | null>(null);
@@ -87,7 +88,7 @@ export function useDepartmentAccounts() {
 
 	const filteredUsers = useMemo(() => {
 		return users.filter((u) => {
-			if (typeFilter !== 'all' && u.account_type !== typeFilter) return false;
+			if (roleFilter !== 'all' && u.role_id !== roleFilter) return false;
 			if (search) {
 				const q = search.toLowerCase();
 				return (
@@ -99,7 +100,7 @@ export function useDepartmentAccounts() {
 			}
 			return true;
 		});
-	}, [users, typeFilter, search]);
+	}, [users, roleFilter, search]);
 
 	const getRoleName = useCallback(
 		(id: string) => roles.find((r) => r.id === id)?.name ?? '—',
@@ -114,7 +115,6 @@ export function useDepartmentAccounts() {
 				full_name: form.full_name,
 				email: form.email || undefined,
 				role_id: form.role_id || undefined,
-				account_type: form.account_type,
 				is_active: form.is_active,
 			});
 			if (form.password) await resetUserPassword(editUser.id, form.password);
@@ -163,6 +163,41 @@ export function useDepartmentAccounts() {
 		[users, showToast],
 	);
 
+	const handleBulkDelete = useCallback(
+		async (ids: string[]): Promise<void> => {
+			if (!ids.length) return;
+			const { okIds, failedCount } = await runBulk(ids, deleteUserApi);
+			setUsers((prev) => prev.filter((u) => !okIds.has(u.id)));
+			showToast(
+				bulkToast('xoá', okIds.size, failedCount, 'tài khoản'),
+				failedCount ? 'error' : 'info',
+			);
+		},
+		[showToast],
+	);
+
+	const handleBulkSetActive = useCallback(
+		async (ids: string[], isActive: boolean): Promise<void> => {
+			if (!ids.length) return;
+			const { okIds, failedCount } = await runBulk(ids, (id) =>
+				updateUserApi(id, { is_active: isActive }),
+			);
+			setUsers((prev) =>
+				prev.map((u) => (okIds.has(u.id) ? { ...u, is_active: isActive } : u)),
+			);
+			showToast(
+				bulkToast(
+					isActive ? 'kích hoạt' : 'khoá',
+					okIds.size,
+					failedCount,
+					'tài khoản',
+				),
+				failedCount ? 'error' : 'info',
+			);
+		},
+		[showToast],
+	);
+
 	return {
 		deptName,
 		users,
@@ -170,8 +205,9 @@ export function useDepartmentAccounts() {
 		loadError,
 		search,
 		setSearch,
-		typeFilter,
-		setTypeFilter,
+		roleFilter,
+		setRoleFilter,
+		roles,
 		filteredUsers,
 		stats,
 		editUser,
@@ -186,6 +222,8 @@ export function useDepartmentAccounts() {
 		handleDelete,
 		handleResetPassword,
 		handleToggleActive,
+		handleBulkDelete,
+		handleBulkSetActive,
 		formatDate,
 	};
 }

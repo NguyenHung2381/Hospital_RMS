@@ -7,7 +7,7 @@ import MemberFormFields from './MemberFormFields';
 
 type Props = {
 	members: TopicMember[];
-	canEditInfo: boolean;
+	canEditMembers: boolean;
 	addingMember: boolean;
 	setAddingMember: (v: boolean) => void;
 	newMember: MemberFormState;
@@ -27,7 +27,7 @@ type Props = {
 
 export default function MembersTab({
 	members,
-	canEditInfo,
+	canEditMembers,
 	addingMember,
 	setAddingMember,
 	newMember,
@@ -102,7 +102,7 @@ export default function MembersTab({
 								>
 									{rc.label}
 								</span>
-								{canEditInfo && (
+								{canEditMembers && (
 									<div className={styles.memberActions}>
 										<button
 											className={styles.btnSecondary}
@@ -126,7 +126,7 @@ export default function MembersTab({
 				</div>
 			)}
 
-			{canEditInfo && !addingMember && (
+			{canEditMembers && !addingMember && (
 				<button
 					className={styles.btnSecondary}
 					onClick={() => {
@@ -140,7 +140,7 @@ export default function MembersTab({
 				</button>
 			)}
 
-			{canEditInfo && addingMember && (
+			{canEditMembers && addingMember && (
 				<div
 					className={styles.memberEditBox}
 					style={{ marginTop: 12 }}

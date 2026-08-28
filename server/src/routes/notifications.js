@@ -1,6 +1,9 @@
 const router = require('express').Router();
 const ctrl = require('../controllers/notificationController');
-const { authenticate, authorize } = require('../middlewares/auth');
+const { authenticate, authorizePermission } = require('../middlewares/auth');
+
+// Quản trị thông báo hệ thống (gửi / xem lô / xoá)
+const canManageNotifications = authorizePermission(['notifications', 'manage']);
 
 /**
  * @swagger
@@ -105,7 +108,7 @@ router.put('/:id/read', ctrl.markOne);
  *       200:
  *         description: Đã gửi
  */
-router.post('/send', authorize('admin'), ctrl.send);
+router.post('/send', canManageNotifications, ctrl.send);
 
 /**
  * @swagger
@@ -130,7 +133,7 @@ router.post('/send', authorize('admin'), ctrl.send);
  *       200:
  *         description: Danh sách thông báo
  */
-router.get('/admin', authorize('admin'), ctrl.adminList);
+router.get('/admin', canManageNotifications, ctrl.adminList);
 
 /**
  * @swagger
@@ -147,7 +150,7 @@ router.get('/admin', authorize('admin'), ctrl.adminList);
  *       200:
  *         description: Danh sách người nhận
  */
-router.get('/admin/:batchKey/recipients', authorize('admin'), ctrl.getBatchRecipients);
+router.get('/admin/:batchKey/recipients', canManageNotifications, ctrl.getBatchRecipients);
 
 /**
  * @swagger
@@ -166,7 +169,7 @@ router.get('/admin/:batchKey/recipients', authorize('admin'), ctrl.getBatchRecip
  *       404:
  *         description: Không tìm thấy
  */
-router.delete('/admin/batch/:batchKey', authorize('admin'), ctrl.deleteBatch);
+router.delete('/admin/batch/:batchKey', canManageNotifications, ctrl.deleteBatch);
 
 /**
  * @swagger
@@ -185,6 +188,6 @@ router.delete('/admin/batch/:batchKey', authorize('admin'), ctrl.deleteBatch);
  *       404:
  *         description: Không tìm thấy
  */
-router.delete('/:id', authorize('admin'), ctrl.deleteOne);
+router.delete('/:id', canManageNotifications, ctrl.deleteOne);
 
 module.exports = router;

@@ -1,9 +1,10 @@
 import { ListSvg, RefreshSvg, SearchSvg } from '@/assets/icons';
 import AdminLayout from '../../../layouts/AdminLayout';
 import { useActivityLogs } from '../hooks/useActivityLogs';
+import { formatDateTimeVN } from '../../../shared/utils/formatDate';
 import styles from './ActivityLogs.module.css';
 
-const METHODS = ['POST', 'PUT', 'PATCH', 'DELETE'];
+const METHODS = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'];
 
 export default function ActivityLogs() {
 	const {
@@ -127,7 +128,7 @@ export default function ActivityLogs() {
 										<td className={styles.td}>{row.ip_address}</td>
 										<td className={styles.td}>
 											<span className={styles.timeText}>
-												{new Date(row.created_at).toLocaleString('vi-VN')}
+												{formatDateTimeVN(row.created_at)}
 											</span>
 										</td>
 									</tr>

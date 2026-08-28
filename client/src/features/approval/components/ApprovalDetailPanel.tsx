@@ -9,6 +9,7 @@ import {
 	XCircleSvg,
 } from '@/assets/icons';
 import { formatDate } from '../../../shared/utils/formatDate';
+import { getInitials } from '../../../shared/utils/helper';
 import { formatFileSize } from '../../topics/utils/topicHelpers';
 import type { TopicFile } from '../../topics/types/topic.type';
 import type { ApprovalRecord, ModalType } from '../types/approval.type';
@@ -133,32 +134,56 @@ export function ApprovalDetailPanel({
 						</div>
 
 						{/* Members */}
-						<div className={styles.descSection}>
-							<div className={styles.sectionLabel}>
-								Thành viên nhóm nghiên cứu ({selected.members.length} người)
-							</div>
-							<div className={styles.membersGrid}>
-								{selected.members.map((m, i) => (
-									<div
-										key={i}
-										className={styles.memberCard}
-									>
-										<div
-											className={`${styles.memberAvatar} ${styles[`memberRole${m.role === 'Chủ nhiệm' ? 'Lead' : m.role === 'Cố vấn' ? 'Advisor' : 'Member'}` as keyof typeof styles]}`}
-										>
-											{m.name.split(' ').slice(-1)[0][0]}
-										</div>
-										<div className={styles.memberInfo}>
-											<div className={styles.memberName}>{m.name}</div>
-											<div className={styles.memberMeta}>
-												<span className={styles.memberRoleBadge}>{m.role}</span>
-												<span className={styles.memberDept}>{m.dept}</span>
+						{(selected.members?.length ?? 0) > 0 && (
+							<div className={styles.descSection}>
+								<div className={styles.sectionLabel}>
+									Thành viên nhóm nghiên cứu ({selected.members?.length ?? 0} người)
+								</div>
+								<div className={styles.membersGrid}>
+									{(selected.members ?? []).map((m, i) => {
+										const isLead = m.role === 'Chủ nhiệm';
+										const isSec = m.role === 'Thư ký';
+										const isAdv = m.role === 'Cố vấn';
+
+										const avatarCls = isLead
+											? styles.memberRoleLead
+											: isSec
+												? styles.memberRoleSecretary
+												: isAdv
+													? styles.memberRoleAdvisor
+													: styles.memberRoleMember;
+
+										const badgeCls = isLead
+											? styles.roleBadgeLead
+											: isSec
+												? styles.roleBadgeSecretary
+												: isAdv
+													? styles.roleBadgeAdvisor
+													: styles.roleBadgeMember;
+
+										const initials = getInitials(m.name || 'TV');
+
+										return (
+											<div
+												key={i}
+												className={styles.memberCard}
+											>
+												<div className={`${styles.memberAvatar} ${avatarCls}`}>
+													{initials}
+												</div>
+												<div className={styles.memberInfo}>
+													<div className={styles.memberName}>{m.name}</div>
+													<div className={styles.memberMeta}>
+														<span className={badgeCls}>{m.role}</span>
+														{m.dept && <span className={styles.memberDept}>{m.dept}</span>}
+													</div>
+												</div>
 											</div>
-										</div>
-									</div>
-								))}
+										);
+									})}
+								</div>
 							</div>
-						</div>
+						)}
 
 						{/* Description */}
 						<div className={styles.descSection}>

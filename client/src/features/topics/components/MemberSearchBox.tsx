@@ -1,10 +1,11 @@
 import { PlusSvg, SearchSvg } from '@/assets/icons';
+import { getInitials } from '../../../shared/utils/helper';
 import type { UserSuggestion } from '../api/topicApi';
 import type { PendingMember } from '../hooks/useTopicModal';
-import type { MemberRole } from '../types/topic.type';
-import { getInitials } from '../../../shared/utils/helper';
-import { isAddRoleAllowed, MEMBER_ROLE_CFG } from '../utils/topicHelpers';
 import styles from '../pages/Topic.module.css';
+import type { MemberRole } from '../types/topic.type';
+import { isAddRoleAllowed } from '../utils/topicHelpers';
+import { RoleSelectPill } from './RoleSelectPill';
 
 interface MemberSearchBoxProps {
 	pendingMembers: PendingMember[];
@@ -46,7 +47,7 @@ export function MemberSearchBox({
 	return (
 		<>
 			{/* Search box */}
-			<div style={{ display: 'flex', gap: 8, marginBottom: 4 }}>
+			<div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
 				<div style={{ position: 'relative', flex: 1 }}>
 					<SearchSvg
 						style={{
@@ -74,22 +75,12 @@ export function MemberSearchBox({
 						}}
 					/>
 				</div>
-				<select
-					className={styles.formSelect}
-					style={{ width: 130, flexShrink: 0 }}
+				<RoleSelectPill
 					value={addRole}
-					onChange={(e) => setAddRole(e.target.value as MemberRole)}
-				>
-					{(Object.keys(MEMBER_ROLE_CFG) as MemberRole[]).map((r) => (
-						<option
-							key={r}
-							value={r}
-							disabled={!isAddRoleAllowed(pendingMembers, r)}
-						>
-							{MEMBER_ROLE_CFG[r].label}
-						</option>
-					))}
-				</select>
+					onChange={setAddRole}
+					disabledCheck={(r) => isAddRoleAllowed(pendingMembers, r)}
+					size='md'
+				/>
 			</div>
 			{pendingMembers.length === 0 && (
 				<div

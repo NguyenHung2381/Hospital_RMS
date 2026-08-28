@@ -762,7 +762,9 @@
 	width: 100%;
 	max-width: 580px;
 	max-height: 90vh;
-	overflow-y: auto;
+	display: flex;
+	flex-direction: column;
+	overflow: hidden;
 	animation: modalIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
 	border: 1px solid var(--color-gray-100);
 }
@@ -787,13 +789,12 @@
 }
 
 .modalHeader {
+	flex-shrink: 0;
 	display: flex;
 	align-items: center;
 	gap: var(--space-4);
 	padding: var(--space-5) var(--space-6);
 	border-bottom: 1px solid var(--color-gray-100);
-	position: sticky;
-	top: 0;
 	background: rgba(255, 255, 255, 0.95);
 	backdrop-filter: blur(4px);
 	z-index: 10;
@@ -874,13 +875,28 @@
 }
 
 .modalBody {
+	flex: 1;
+	min-height: 0;
+	overflow-y: auto;
 	padding: var(--space-6);
 	display: flex;
 	flex-direction: column;
 	gap: var(--space-5);
 }
 
+.modalBody::-webkit-scrollbar {
+	width: 5px;
+}
+.modalBody::-webkit-scrollbar-thumb {
+	background: var(--color-gray-300);
+	border-radius: 999px;
+}
+.modalBody::-webkit-scrollbar-track {
+	background: transparent;
+}
+
 .modalFooter {
+	flex-shrink: 0;
 	padding: var(--space-4) var(--space-6);
 	border-top: 1px solid var(--color-gray-100);
 	display: flex;

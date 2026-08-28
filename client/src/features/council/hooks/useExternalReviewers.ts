@@ -1,10 +1,13 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRealtimeUpdate } from '../../../layouts/hooks/useRealtime';
+import { bulkToast, runBulk } from '../../../shared/utils/runBulk';
 import {
 	createExternalReviewer,
 	deleteExternalReviewer,
 	getExternalReviewers,
+	patchExternalReviewer,
 	updateExternalReviewer,
+	type ExternalReviewerPatch,
 } from '../api/externalReviewerApi';
 import {
 	EMPTY_EXTERNAL_REVIEWER_FORM,
@@ -103,6 +106,49 @@ export function useExternalReviewers() {
 		}
 	}, [deletingReviewer, showToast, refreshData]);
 
+	const handleBulkDelete = useCallback(
+		async (ids: string[]) => {
+			if (!ids.length) return;
+			setLoading(true);
+			try {
+				const { okIds, failedCount } = await runBulk(
+					ids,
+					deleteExternalReviewer,
+				);
+				setModal(null);
+				refreshData();
+				showToast(
+					failedCount ? 'error' : 'success',
+					bulkToast('xoá', okIds.size, failedCount, 'người ngoài viện'),
+				);
+			} finally {
+				setLoading(false);
+			}
+		},
+		[showToast, refreshData],
+	);
+
+	const handleBulkEdit = useCallback(
+		async (ids: string[], patch: ExternalReviewerPatch) => {
+			if (!ids.length || !Object.keys(patch).length) return;
+			setLoading(true);
+			try {
+				const { okIds, failedCount } = await runBulk(ids, (id) =>
+					patchExternalReviewer(id, patch),
+				);
+				setModal(null);
+				refreshData();
+				showToast(
+					failedCount ? 'error' : 'success',
+					bulkToast('cập nhật', okIds.size, failedCount, 'người ngoài viện'),
+				);
+			} finally {
+				setLoading(false);
+			}
+		},
+		[showToast, refreshData],
+	);
+
 	return {
 		reviewers,
 		isLoadingData,
@@ -121,5 +167,7 @@ export function useExternalReviewers() {
 		handleAdd,
 		handleEdit,
 		handleDelete,
+		handleBulkDelete,
+		handleBulkEdit,
 	};
 }

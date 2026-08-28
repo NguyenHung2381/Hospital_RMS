@@ -215,7 +215,7 @@ const loadDb = async (roundId) => {
 			FROM users u
 			LEFT JOIN departments d ON d.id = u.department_id
 			LEFT JOIN qualifications q ON q.id = u.qualification_id
-			WHERE u.is_active = 1 AND u.account_type <> 'dept'
+			WHERE u.is_active = 1 AND u.role_id <> 'VT07' -- loại tài khoản khoa dùng chung
 		`),
 		pool.request().query(`
 			SELECT id, full_name, organization FROM external_reviewers WHERE is_active = 1

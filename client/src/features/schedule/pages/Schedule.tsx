@@ -179,7 +179,7 @@ export default function Schedule() {
 				const defaultColor = target.barKind === 'research'
 					? statusColor
 					: (BAR_DEFAULT_COLORS[target.barKind as keyof typeof BAR_DEFAULT_COLORS] ?? '#888888');
-				const barLabels: Record<string, string> = { registration: 'Đăng ký', research: 'Nghiên cứu', supplement: 'Bổ sung' };
+				const barLabels: Record<string, string> = { edit: 'Sửa', research: 'Nghiên cứu', supplement: 'Bổ sung' };
 				openColorPicker(x, y, `Màu: ${barLabels[target.barKind]}`, gc(key, defaultColor), (c) => applyColor(key, c));
 			}
 		};

@@ -1,5 +1,13 @@
+import { useState } from 'react';
 import { CheckSvg, EditSvg, PlusSvg, TrashSvg, XSvg } from '@/assets/icons';
 import AdminLayout from '../../../layouts/AdminLayout';
+import sel from '../../../shared/components/Table/RowSelect.module.css';
+import {
+	BulkBar,
+	SelectCheckbox,
+} from '../../../shared/components/Table/RowSelect';
+import { useRowSelection } from '../../../shared/hooks/useRowSelection';
+import { ExternalReviewerBulkEditModal } from '../components/ExternalReviewerBulkEditModal';
 import { ExternalReviewerDeleteModal } from '../components/ExternalReviewerDeleteModal';
 import { ExternalReviewerFormModal } from '../components/ExternalReviewerFormModal';
 import { useExternalReviewers } from '../hooks/useExternalReviewers';
@@ -7,6 +15,8 @@ import styles from './Council.module.css';
 
 export default function ExternalReviewers() {
 	const d = useExternalReviewers();
+	const rowSel = useRowSelection(d.filtered.map((x) => x.id));
+	const [bulkEditOpen, setBulkEditOpen] = useState(false);
 
 	const headerActions = (
 		<button
@@ -35,9 +45,25 @@ export default function ExternalReviewers() {
 			</div>
 
 			<div className={styles.tableWrap}>
+				<BulkBar
+					rowSel={rowSel}
+					itemLabel='người'
+					loading={d.loading}
+					onBulkDelete={d.handleBulkDelete}
+					onBulkEdit={() => setBulkEditOpen(true)}
+					deleteNote='Người đã từng ngồi ghế hội đồng sẽ được vô hiệu hoá thay vì xoá hẳn, để giữ tên hiển thị trên hội đồng cũ.'
+				/>
 				<table className={styles.table}>
 					<thead>
 						<tr>
+							<th className={sel.checkCol}>
+								<SelectCheckbox
+									title='Chọn tất cả'
+									checked={rowSel.allPageSelected}
+									indeterminate={rowSel.somePageSelected}
+									onChange={rowSel.toggleSelectAll}
+								/>
+							</th>
 							<th className={styles.th}>Họ tên</th>
 							<th className={styles.th}>Đơn vị công tác</th>
 							<th className={styles.th}>Hệ chuyên môn</th>
@@ -49,7 +75,7 @@ export default function ExternalReviewers() {
 					<tbody>
 						{d.isLoadingData ? (
 							<tr>
-								<td colSpan={6}>
+								<td colSpan={7}>
 									<div className={styles.emptyState}>
 										<div className={styles.emptyDesc}>Đang tải dữ liệu...</div>
 									</div>
@@ -57,7 +83,7 @@ export default function ExternalReviewers() {
 							</tr>
 						) : d.filtered.length === 0 ? (
 							<tr>
-								<td colSpan={6}>
+								<td colSpan={7}>
 									<div className={styles.emptyState}>
 										<div className={styles.emptyTitle}>Chưa có người ngoài viện nào</div>
 										<div className={styles.emptyDesc}>
@@ -70,8 +96,15 @@ export default function ExternalReviewers() {
 							d.filtered.map((r) => (
 								<tr
 									key={r.id}
-									className={styles.tr}
+									className={`${styles.tr} ${rowSel.isSelected(r.id) ? sel.rowSelected : ''}`}
 								>
+									<td className={sel.checkCol}>
+										<SelectCheckbox
+											title='Chọn người'
+											checked={rowSel.isSelected(r.id)}
+											onChange={() => rowSel.toggleSelect(r.id)}
+										/>
+									</td>
 									<td className={styles.td}>
 										<div className={styles.councilName}>{r.full_name}</div>
 									</td>
@@ -153,6 +186,18 @@ export default function ExternalReviewers() {
 					}}
 					onConfirm={d.handleDelete}
 					loading={d.loading}
+				/>
+			)}
+			{bulkEditOpen && (
+				<ExternalReviewerBulkEditModal
+					count={rowSel.selectedCount}
+					loading={d.loading}
+					onClose={() => setBulkEditOpen(false)}
+					onSave={async (patch) => {
+						await d.handleBulkEdit([...rowSel.selectedIds], patch);
+						rowSel.clearSelection();
+						setBulkEditOpen(false);
+					}}
 				/>
 			)}
 

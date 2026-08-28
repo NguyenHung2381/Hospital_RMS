@@ -10,7 +10,7 @@ const login = async (username, password) => {
 		.request()
 		.input('username', sql.VarChar(50), username).query(`
       SELECT u.id, u.username, u.password, u.full_name, u.email, u.staff_number,
-             u.role_id, u.account_type, u.is_active, u.department_id,
+             u.role_id, u.is_active, u.department_id,
              u.account_expires_at, r.name AS role_name
       FROM users u
       LEFT JOIN roles r ON r.id = u.role_id
@@ -38,13 +38,14 @@ const login = async (username, password) => {
 			message: 'Tên đăng nhập hoặc mật khẩu không đúng',
 		};
 
+	const permissions = await loadPermissions(pool, user.role_id);
+
 	const payload = {
 		id: user.id,
 		username: user.username,
 		full_name: user.full_name,
 		staff_number: user.staff_number ? String(user.staff_number) : null,
 		role_id: user.role_id,
-		account_type: user.account_type,
 		department_id: user.department_id,
 		account_expires_at: user.account_expires_at
 			? new Date(user.account_expires_at).toISOString().split('T')[0]
@@ -79,12 +80,27 @@ const login = async (username, password) => {
 			full_name: user.full_name,
 			email: user.email,
 			role: user.role_name,
-			account_type: user.account_type,
+			role_id: user.role_id,
 			department_id: user.department_id,
+			permissions,
 		},
 		access_token: accessToken,
 		refresh_token: refreshToken,
 	};
+};
+
+// Danh sách quyền "resource:action" của một vai trò — trả về cho client để
+// điều hướng / ẩn hiện menu. Backend vẫn tự kiểm tra qua permissionCache.
+const loadPermissions = async (pool, roleId) => {
+	if (!roleId) return [];
+	const res = await pool.request().input('role_id', sql.VarChar(20), roleId)
+		.query(`
+      SELECT p.resource, p.action
+      FROM permissions p
+      INNER JOIN role_permissions rp ON rp.permission_id = p.id
+      WHERE rp.role_id = @role_id
+    `);
+	return res.recordset.map((r) => `${r.resource}:${r.action}`);
 };
 
 const refreshAccessToken = async (refreshToken) => {
@@ -124,7 +140,6 @@ const refreshAccessToken = async (refreshToken) => {
 		full_name: user.full_name,
 		staff_number: user.staff_number ? String(user.staff_number) : null,
 		role_id: user.role_id,
-		account_type: user.account_type,
 		department_id: user.department_id,
 	};
 	const newAccessToken = jwt.sign(payload, process.env.JWT_SECRET, {

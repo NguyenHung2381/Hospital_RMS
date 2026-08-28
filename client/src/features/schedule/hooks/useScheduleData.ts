@@ -2,7 +2,7 @@ import { useEffect, useReducer, useState } from 'react';
 import { getCouncils } from '../../council/api/councilApi';
 import { getDeadlines, getRounds } from '../../round/api/roundApi';
 import type { RoundDeadline } from '../../round/types/round.type';
-import type { RoundRow } from '../types/schedule.type';
+import { DEFENSE_PSEUDO_TYPE, type RoundRow } from '../types/schedule.type';
 
 // Ngày báo cáo (defense_date) của hội đồng không phải là RoundDeadline thật —
 // gắn thêm vào deadlines[] chỉ để hiển thị lên lịch, không cho sửa/xóa (id
@@ -18,7 +18,7 @@ async function councilDeadlines(roundId: string): Promise<RoundDeadline[]> {
 				phase: -1,
 				name: `${c.name} — Ngày báo cáo`,
 				deadline_date: c.defense_date as string,
-				deadline_type: 'council_defense' as const,
+				deadline_type: DEFENSE_PSEUDO_TYPE,
 			}));
 	} catch {
 		return [];

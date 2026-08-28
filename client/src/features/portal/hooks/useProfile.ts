@@ -11,18 +11,11 @@ interface ProfileData {
 	staff_number: string | null;
 	department_id: string | null;
 	role: string | null;
-	account_type: string;
+	role_name?: string | null;
 	is_active: boolean;
 	password_changed_at: string | null;
 	created_at: string;
 }
-
-export const ACCOUNT_TYPE_LABEL: Record<string, string> = {
-	admin: 'Quản trị viên',
-	manager: 'Quản lý',
-	member: 'Thành viên',
-	viewer: 'Người xem',
-};
 
 export function fmtDate(iso: string | null) {
 	if (!iso) return '—';
@@ -59,7 +52,6 @@ export function useProfile() {
 						staff_number: storedUser.staff_number ?? null,
 						department_id: storedUser.department_id ?? null,
 						role: storedUser.role ?? storedUser.role_name ?? null,
-						account_type: storedUser.account_type ?? 'member',
 						is_active: true,
 						password_changed_at: null,
 						created_at: new Date().toISOString(),

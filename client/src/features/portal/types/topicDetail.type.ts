@@ -1,4 +1,29 @@
-export type EditMode = 'full' | 'supplement' | 'file-only' | 'none';
+import type { DeadlineType } from '../../round/types/round.type';
+
+/**
+ * Những thao tác chủ nhiệm / thư ký được phép làm với đề tài, suy ra từ mốc
+ * thời gian (round_deadlines) đang mở và vai trò của người dùng trong đề tài.
+ */
+export type TopicPermissions = {
+	canEditTitle: boolean;
+	canEditInfo: boolean; // mô tả + danh mục + cấp độ + khoa
+	canEditMembers: boolean;
+	canAddFiles: boolean;
+	canDeleteFiles: boolean;
+	activeType: DeadlineType | null;
+	banner: { text: string; bg: string; color: string } | null;
+};
+
+export const NO_TOPIC_PERMISSIONS: TopicPermissions = {
+	canEditTitle: false,
+	canEditInfo: false,
+	canEditMembers: false,
+	canAddFiles: false,
+	canDeleteFiles: false,
+	activeType: null,
+	banner: null,
+};
+
 export type TopicDetailTabKey = 'info' | 'members' | 'files';
 
 export type MemberFormState = {
@@ -58,26 +83,13 @@ export const ROLE_BADGE = {
 	member: { label: 'Thành viên', bg: '#f3f4f6', color: '#374151' },
 } as const;
 
-export const EDIT_MODE_INFO: Record<
-	EditMode,
-	{ text: string; bg: string; color: string } | null
+export const EDIT_BANNER_STYLE: Record<
+	DeadlineType,
+	{ bg: string; color: string }
 > = {
-	full: {
-		text: 'Đang trong thời gian đăng ký — có thể chỉnh sửa thông tin và tải lên tài liệu.',
-		bg: '#dcfce7',
-		color: '#166534',
-	},
-	supplement: {
-		text: 'Đang trong cửa sổ bổ sung thông tin — có thể chỉnh sửa tên, thành viên và tài liệu.',
-		bg: '#ede9fe',
-		color: '#5b21b6',
-	},
-	'file-only': {
-		text: 'Đang trong thời hạn nộp báo cáo — chỉ có thể tải lên tài liệu.',
-		bg: '#dbeafe',
-		color: '#1e40af',
-	},
-	none: null,
+	edit: { bg: '#dcfce7', color: '#166534' },
+	supplement: { bg: '#ede9fe', color: '#5b21b6' },
+	report_submission: { bg: '#dbeafe', color: '#1e40af' },
 };
 
 export type InfoForm = {

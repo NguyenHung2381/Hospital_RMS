@@ -7,7 +7,8 @@ export interface LoginUser {
 	full_name: string;
 	email: string;
 	role: string;
-	account_type: string;
+	role_id: string | null;
+	permissions: string[];
 	department_id: string | null;
 }
 

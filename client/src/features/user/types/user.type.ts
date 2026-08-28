@@ -1,11 +1,4 @@
 // ─── TYPES ────────────────────────────────
-export type AccountType =
-	| 'admin'
-	| 'director'
-	| 'reviewer'
-	| 'manager'
-	| 'dept'
-	| 'member';
 export type TabKey = 'all' | 'active' | 'inactive';
 
 export interface User {
@@ -16,7 +9,7 @@ export interface User {
 	email: string;
 	department_id: string;
 	role_id: string;
-	account_type: AccountType;
+	role_name?: string | null;
 	is_active: boolean;
 	topic_member_id: string | null;
 	password_changed_at: string | null;
@@ -31,7 +24,6 @@ export interface UserForm {
 	email: string;
 	department_id: string;
 	role_id: string;
-	account_type: AccountType;
 	is_active: boolean;
 	password: string;
 }

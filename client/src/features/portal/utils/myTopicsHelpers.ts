@@ -70,11 +70,13 @@ export const TABS: { key: FilterTab; label: string }[] = [
 	{ key: 'rejected', label: 'Từ chối' },
 ];
 
-export function isDeptAccount(accountType: string): boolean {
+// Được xem đề tài trong phạm vi khoa / toàn hệ thống (không chỉ đề tài mình tham gia).
+export function canSeeDeptTopics(permissions: string[] = []): boolean {
 	return (
-		accountType === 'manager' ||
-		accountType === 'admin' ||
-		accountType === 'dept'
+		permissions.includes('system:manage') ||
+		permissions.includes('topics:manage') ||
+		permissions.includes('topics:read_all') ||
+		permissions.includes('topics:read_department')
 	);
 }
 

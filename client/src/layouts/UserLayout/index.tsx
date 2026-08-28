@@ -112,16 +112,22 @@ export default function UserLayout({
 
 	const activePage = PATH_TO_KEY[location.pathname] ?? 'home';
 
-	const storedAccountType = getStoredUser<StoredUser>()?.account_type;
-	const isMemberAccount = storedAccountType === 'member';
-	const isManagerAccount = ['admin', 'director', 'manager', 'dept'].includes(
-		storedAccountType ?? '',
-	);
+	const perms = getStoredUser<StoredUser>()?.permissions ?? [];
+	const has = (k: string) =>
+		perms.includes('system:manage') || perms.includes(k);
+	// "restrictMember": ẩn với vai trò chỉ tham gia đề tài (không tạo được đề tài).
+	const canRegisterTopic = has('topics:create') || has('topics:manage');
+	// "managerOnly": các mục điều hành khoa / hệ thống.
+	const isManagerAccount =
+		has('admin_panel:access') ||
+		has('topics:read_department') ||
+		has('topics:read_all') ||
+		has('users:read_department');
 
 	const visibleNavGroups = NAV_GROUPS.map((g) => ({
 		...g,
 		items: g.items.filter((item) => {
-			if (item.restrictMember && isMemberAccount) return false;
+			if (item.restrictMember && !canRegisterTopic) return false;
 			if (item.managerOnly && !isManagerAccount) return false;
 			return true;
 		}),

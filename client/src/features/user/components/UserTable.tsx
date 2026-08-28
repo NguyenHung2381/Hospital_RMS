@@ -1,11 +1,20 @@
+import { useState } from 'react';
 import { EditSvg, KeySvg, TrashSvg, UsersSvg } from '@/assets/icons';
 import styles from '../pages/UserList.module.css';
+import type { SimpleItem, UpdateUserPayload } from '../api/userApi';
 import type { User } from '../types/user.type';
 import { formatDate as _formatDate } from '../../../shared/utils/formatDate';
-import { ACCOUNT_TYPE_CFG } from '../utils/userHelpers';
+import { roleCfg } from '../utils/userHelpers';
 const formatDate = (s: string | null | undefined) => _formatDate(s) ?? '—';
 import { Avatar, Toggle } from './UserModal';
+import { UserBulkEditModal } from './UserBulkEditModal';
 import { Skeleton, SkeletonTable } from '../../../shared/components/Loading';
+import sel from '../../../shared/components/Table/RowSelect.module.css';
+import {
+	BulkBar,
+	SelectCheckbox,
+} from '../../../shared/components/Table/RowSelect';
+import { useRowSelection } from '../../../shared/hooks/useRowSelection';
 
 interface UserTableProps {
 	users: User[];
@@ -14,7 +23,7 @@ interface UserTableProps {
 	pageSize: number;
 	totalPages: number;
 	search: string;
-	typeFilters: string[];
+	roleFilters: string[];
 	deptFilters: string[];
 	getRoleName: (id: string) => string;
 	getDeptName: (id?: string) => string;
@@ -26,6 +35,10 @@ interface UserTableProps {
 	handleToggleActive: (id: string) => Promise<void>;
 	setShowCreate: (v: boolean) => void;
 	loading?: boolean;
+	departments: SimpleItem[];
+	roles: SimpleItem[];
+	handleBulkDelete: (ids: string[]) => Promise<void>;
+	handleBulkEdit: (ids: string[], payload: UpdateUserPayload) => Promise<void>;
 }
 
 function Badge({
@@ -52,7 +65,7 @@ export function UserTable({
 	pageSize,
 	totalPages,
 	search,
-	typeFilters,
+	roleFilters,
 	deptFilters,
 	getRoleName,
 	getDeptName,
@@ -64,10 +77,16 @@ export function UserTable({
 	handleToggleActive,
 	setShowCreate,
 	loading,
+	departments,
+	roles,
+	handleBulkDelete,
+	handleBulkEdit,
 }: UserTableProps) {
+	const rowSel = useRowSelection(users.map((u) => u.id));
+	const [bulkEditOpen, setBulkEditOpen] = useState(false);
 	const isFiltered = !!(
 		search ||
-		typeFilters.length > 0 ||
+		roleFilters.length > 0 ||
 		deptFilters.length > 0
 	);
 
@@ -100,15 +119,44 @@ export function UserTable({
 					)}
 				</div>
 			) : (
+				<>
+				<BulkBar
+					rowSel={rowSel}
+					itemLabel='tài khoản'
+					loading={loading}
+					onBulkDelete={handleBulkDelete}
+					onBulkEdit={() => setBulkEditOpen(true)}
+				/>
+				{bulkEditOpen && (
+					<UserBulkEditModal
+						count={rowSel.selectedCount}
+						departments={departments}
+						roles={roles}
+						loading={!!loading}
+						onClose={() => setBulkEditOpen(false)}
+						onSave={async (payload) => {
+							await handleBulkEdit([...rowSel.selectedIds], payload);
+							rowSel.clearSelection();
+							setBulkEditOpen(false);
+						}}
+					/>
+				)}
 				<table className={styles.table}>
 					<thead>
 						<tr>
+							<th className={sel.checkCol}>
+								<SelectCheckbox
+									title='Chọn tất cả'
+									checked={rowSel.allPageSelected}
+									indeterminate={rowSel.somePageSelected}
+									onChange={rowSel.toggleSelectAll}
+								/>
+							</th>
 							<th className={styles.th}>#</th>
 							<th className={styles.th}>Người dùng</th>
 							<th className={styles.th}>Khoa / Phòng</th>
 							<th className={styles.th}>Đăng nhập / Mã NV</th>
 							<th className={styles.th}>Vai trò</th>
-							<th className={styles.th}>Loại TK</th>
 							<th className={styles.th}>Trạng thái</th>
 							<th className={styles.th}>Ngày tạo</th>
 							<th className={`${styles.th} ${styles.thRight}`}>Thao tác</th>
@@ -120,19 +168,25 @@ export function UserTable({
 						) : (
 							users.map((u, i) => {
 							const rowNum = (currentPage - 1) * pageSize + i + 1;
-							const typeCfg =
-								ACCOUNT_TYPE_CFG[u.account_type] ?? ACCOUNT_TYPE_CFG.member;
+							const rCfg = roleCfg(u.role_id);
 							return (
 								<tr
 									key={u.id}
-									className={styles.tr}
+									className={`${styles.tr} ${rowSel.isSelected(u.id) ? sel.rowSelected : ''}`}
 								>
+									<td className={sel.checkCol}>
+										<SelectCheckbox
+											title='Chọn tài khoản'
+											checked={rowSel.isSelected(u.id)}
+											onChange={() => rowSel.toggleSelect(u.id)}
+										/>
+									</td>
 									<td className={`${styles.td} ${styles.tdIdx}`}>{rowNum}</td>
 									<td className={styles.td}>
 										<div className={styles.memberCell}>
 											<Avatar
 												name={u.full_name}
-												cls={typeCfg.avatarCls}
+												cls={rCfg.avatarCls}
 												size='md'
 											/>
 											<div>
@@ -161,16 +215,11 @@ export function UserTable({
 										</div>
 									</td>
 									<td className={styles.td}>
-										<span className={styles.roleText}>
-											{getRoleName(u.role_id)}
-										</span>
-									</td>
-									<td className={styles.td}>
 										<Badge
-											cls={typeCfg.cls}
+											cls={rCfg.cls}
 											dot
 										>
-											{typeCfg.label}
+											{getRoleName(u.role_id) || rCfg.label}
 										</Badge>
 									</td>
 									<td className={styles.td}>
@@ -226,6 +275,7 @@ export function UserTable({
 						}))}
 					</tbody>
 				</table>
+				</>
 			)}
 
 			{/* PAGINATION — reserve space during loading too, avoids the bar popping in and shifting the page (CLS) */}

@@ -1,6 +1,6 @@
 export { useTopicDetail } from './hooks/useTopicDetail';
 export type {
-	EditMode,
+	TopicPermissions,
 	MemberFormState,
 	InfoForm,
 } from './types/topicDetail.type';

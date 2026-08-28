@@ -5,21 +5,25 @@ import {
 	deleteRound as deleteRoundApi,
 	formToPayload,
 	getRounds,
+	getRoundTypes,
 	updateRound,
 } from '../api/roundApi';
 import type {
 	ResearchRound,
 	RoundForm,
 	RoundStatus,
+	RoundType,
 } from '../types/round.type';
 import { uniqueYears } from '../utils/roundHelpers';
 
 export function useRound() {
 	const [rounds, setRounds] = useState<ResearchRound[]>([]);
+	const [roundTypes, setRoundTypes] = useState<RoundType[]>([]);
 	const [isLoadingData, setIsLoadingData] = useState(true);
 	const [loadError, setLoadError] = useState('');
 	const [yearFilter, setYearFilter] = useState<number | 'all'>('all');
 	const [statusFilter, setStatusFilter] = useState<RoundStatus | 'all'>('all');
+	const [typeFilter, setTypeFilter] = useState<string | 'all'>('all');
 	const [viewTab, setViewTab] = useState<'current' | 'scheduled'>('current');
 	const [showCreate, setShowCreate] = useState(false);
 	const [editRound, setEditRound] = useState<ResearchRound | null>(null);
@@ -29,12 +33,19 @@ export function useRound() {
 
 	const refreshData = useCallback(() => setRefreshKey((k) => k + 1), []);
 	useRealtimeUpdate('round', refreshData);
+	useRealtimeUpdate('round_type', refreshData);
 
 	useEffect(() => {
 		getRounds({ limit: 0 })
 			.then((res) => setRounds(res.data))
 			.catch(() => setLoadError('Không thể tải danh sách đợt nghiên cứu'))
 			.finally(() => setIsLoadingData(false));
+	}, [refreshKey]);
+
+	useEffect(() => {
+		getRoundTypes()
+			.then(setRoundTypes)
+			.catch(() => setRoundTypes([]));
 	}, [refreshKey]);
 
 	useEffect(() => {
@@ -60,6 +71,8 @@ export function useRound() {
 		() =>
 			rounds
 				.filter((r) => {
+					if (typeFilter !== 'all' && r.round_type_id !== typeFilter)
+						return false;
 					if (viewTab === 'scheduled') return r.status === 'draft';
 					if (r.status === 'draft') return false;
 					if (yearFilter !== 'all' && r.year !== yearFilter) return false;
@@ -67,7 +80,7 @@ export function useRound() {
 					return true;
 				})
 				.sort((a, b) => b.year - a.year || b.round_number - a.round_number),
-		[rounds, yearFilter, statusFilter, viewTab],
+		[rounds, yearFilter, statusFilter, typeFilter, viewTab],
 	);
 
 	const handleCreate = useCallback(async (form: RoundForm): Promise<void> => {
@@ -120,10 +133,12 @@ export function useRound() {
 
 	return {
 		rounds,
+		roundTypes,
 		isLoadingData,
 		loadError,
 		yearFilter,
 		statusFilter,
+		typeFilter,
 		viewTab,
 		setViewTab,
 		showCreate,
@@ -135,6 +150,7 @@ export function useRound() {
 		filtered,
 		setYearFilter,
 		setStatusFilter,
+		setTypeFilter,
 		setShowCreate,
 		setEditRound,
 		setDeleteRound,

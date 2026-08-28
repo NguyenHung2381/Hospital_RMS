@@ -6,6 +6,8 @@ services:
     environment:
       NODE_ENV: development
       DB_SERVER: host.docker.internal
+      # Giữ tối thiểu 100 file log ngày (>= 3 tháng) cho promtail + trang /activity-logs
+      LOG_RETENTION_FILES: "100"
     extra_hosts:
       - "host.docker.internal:host-gateway"
     # -L (legacy watch = polling): bind mount qua Docker Desktop không phát
@@ -32,3 +34,27 @@ services:
       - /app/node_modules
     depends_on:
       - server
+
+  # ─── Log stack: Promtail đọc file log của server → đẩy vào Loki ───────────────
+  loki:
+    image: grafana/loki:3.5.1
+    command: ["-config.file=/etc/loki/config.yaml"]
+    ports:
+      - "3100:3100"
+    volumes:
+      - ./infra/loki-config.yaml:/etc/loki/config.yaml:ro
+      - loki_data:/loki
+    restart: unless-stopped
+
+  promtail:
+    image: grafana/promtail:3.5.1
+    command: ["-config.file=/etc/promtail/config.yaml"]
+    volumes:
+      - ./infra/promtail-config.yaml:/etc/promtail/config.yaml:ro
+      - ./server/logs:/logs:ro
+    depends_on:
+      - loki
+    restart: unless-stopped
+
+volumes:
+  loki_data:

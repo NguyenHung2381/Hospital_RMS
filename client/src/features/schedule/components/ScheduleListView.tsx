@@ -2,6 +2,7 @@ import React from 'react';
 import { PlusSvg } from '@/assets/icons';
 import { DEADLINE_TYPE_LABELS, type RoundDeadline } from '../../round/types/round.type';
 import { DEADLINE_COLORS, STATUS_CFG, type RoundRow } from '../types/schedule.type';
+import { formatDateVN } from '../../../shared/utils/formatDate';
 import styles from './ScheduleListView.module.css';
 
 interface ScheduleListViewProps {
@@ -23,7 +24,7 @@ export function ScheduleListView({
 		<div className={styles.container}>
 			{rows.map((round) => {
 				const status = STATUS_CFG[round.status as keyof typeof STATUS_CFG] ?? STATUS_CFG.closed;
-				const regDeadline = round.deadlines.find((d) => d.deadline_type === 'registration' && d.start_date);
+				const regDeadline = round.deadlines.find((d) => d.deadline_type === 'edit' && d.start_date);
 				const supDeadline = round.deadlines.find((d) => d.deadline_type === 'supplement' && d.start_date);
 
 				return (
@@ -59,22 +60,22 @@ export function ScheduleListView({
 						{/* Main Phases Summary Grid */}
 						<div className={styles.phasesGrid}>
 							<div className={styles.phaseCard} style={{ '--phase-color': '#378add' } as React.CSSProperties}>
-								<span className={styles.phaseTitle}>Giai đoạn Đăng ký</span>
+								<span className={styles.phaseTitle}>Giai đoạn Sửa</span>
 								<span className={styles.phaseDate}>
-									{regDeadline?.start_date ? `${regDeadline.start_date} ➔ ${regDeadline.deadline_date}` : 'Chưa thiết lập'}
+									{regDeadline?.start_date ? `${formatDateVN(regDeadline.start_date)} ➔ ${formatDateVN(regDeadline.deadline_date)}` : 'Chưa thiết lập'}
 								</span>
 							</div>
 							<div className={styles.phaseCard} style={{ '--phase-color': status.color } as React.CSSProperties}>
 								<span className={styles.phaseTitle}>Giai đoạn Nghiên cứu</span>
 								<span className={styles.phaseDate}>
-									{round.start_date} ➔ {round.end_date}
+									{formatDateVN(round.start_date)} ➔ {formatDateVN(round.end_date)}
 								</span>
 							</div>
 							{supDeadline && (
 								<div className={styles.phaseCard} style={{ '--phase-color': '#ef9f27' } as React.CSSProperties}>
 									<span className={styles.phaseTitle}>Giai đoạn Bổ sung</span>
 									<span className={styles.phaseDate}>
-										{supDeadline.start_date ? `${supDeadline.start_date} ➔ ${supDeadline.deadline_date}` : supDeadline.deadline_date}
+										{supDeadline.start_date ? `${formatDateVN(supDeadline.start_date)} ➔ ${formatDateVN(supDeadline.deadline_date)}` : formatDateVN(supDeadline.deadline_date)}
 									</span>
 								</div>
 							)}
@@ -112,7 +113,7 @@ export function ScheduleListView({
 													</div>
 												</div>
 												<div className={styles.deadlineDateBadge}>
-													{dl.start_date ? `${dl.start_date} ➔ ${dl.deadline_date}` : dl.deadline_date}
+													{dl.start_date ? `${formatDateVN(dl.start_date)} ➔ ${formatDateVN(dl.deadline_date)}` : formatDateVN(dl.deadline_date)}
 												</div>
 											</div>
 										);

@@ -12,6 +12,12 @@ import type { AdminNotification, NotificationRecipient } from '../api/notificati
 import { NOTIF_TYPES } from '../types/notification.type';
 import { NOTIF_TYPE_MAP } from '../utils/notifUtils';
 import { relativeTime } from '../../../shared/utils/formatDate';
+import sel from '../../../shared/components/Table/RowSelect.module.css';
+import {
+	BulkBar,
+	SelectCheckbox,
+} from '../../../shared/components/Table/RowSelect';
+import { useRowSelection } from '../../../shared/hooks/useRowSelection';
 import styles from '../pages/AdminNotifications.module.css';
 
 interface NotificationHistoryTableProps {
@@ -31,6 +37,7 @@ interface NotificationHistoryTableProps {
 	onToggleExpand: (batchKey: string) => void;
 	onRefresh: () => void;
 	onDeleteRequest: (row: AdminNotification) => void;
+	onBulkDelete: (batchKeys: string[]) => Promise<void> | void;
 	onFilterChange: () => void;
 }
 
@@ -51,9 +58,11 @@ export function NotificationHistoryTable({
 	onToggleExpand,
 	onRefresh,
 	onDeleteRequest,
+	onBulkDelete,
 	onFilterChange,
 }: NotificationHistoryTableProps) {
 	const typeLabel = (t: string) => NOTIF_TYPES.find((x) => x.value === t)?.label ?? t;
+	const rowSel = useRowSelection(rows.map((r) => r.batch_key));
 
 	return (
 		<section className={styles.card}>
@@ -124,9 +133,24 @@ export function NotificationHistoryTable({
 				</div>
 			) : (
 				<div className={styles.tableWrap}>
+					<BulkBar
+						rowSel={rowSel}
+						itemLabel='thông báo'
+						loading={loading}
+						onBulkDelete={onBulkDelete}
+						deleteNote='Toàn bộ bản ghi thông báo tới người nhận trong các lô này sẽ bị xoá.'
+					/>
 					<table className={styles.table}>
 						<thead>
 							<tr>
+								<th className={sel.checkCol}>
+									<SelectCheckbox
+										title='Chọn tất cả'
+										checked={rowSel.allPageSelected}
+										indeterminate={rowSel.somePageSelected}
+										onChange={rowSel.toggleSelectAll}
+									/>
+								</th>
 								<th className={styles.th} />
 								<th className={styles.th}>Loại</th>
 								<th className={styles.th}>Tiêu đề / Nội dung</th>
@@ -144,7 +168,16 @@ export function NotificationHistoryTable({
 								const recipients = recipientsByBatch[row.batch_key];
 								return (
 									<Fragment key={row.batch_key}>
-										<tr className={styles.tr}>
+										<tr
+											className={`${styles.tr} ${rowSel.isSelected(row.batch_key) ? sel.rowSelected : ''}`}
+										>
+											<td className={sel.checkCol}>
+												<SelectCheckbox
+													title='Chọn thông báo'
+													checked={rowSel.isSelected(row.batch_key)}
+													onChange={() => rowSel.toggleSelect(row.batch_key)}
+												/>
+											</td>
 											<td className={styles.td}>
 												<button
 													type='button'
@@ -208,7 +241,7 @@ export function NotificationHistoryTable({
 											<tr className={styles.recipientsRow}>
 												<td
 													className={styles.td}
-													colSpan={7}
+													colSpan={8}
 												>
 													{loadingRecipients === row.batch_key ? (
 														<div className={styles.recipientsLoading}>

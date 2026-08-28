@@ -10,6 +10,7 @@ import { ConfirmUploadModal } from './ConfirmUploadModal';
 import { DrawerFilesTab } from './DrawerFilesTab';
 import { DrawerMembersTab } from './DrawerMembersTab';
 import { GrantedAccountsModal } from './GrantedAccountsModal';
+import { formatDateTimeVN } from '../../../shared/utils/formatDate';
 import { EditSvg as IcEdit, XSvg as IcX } from '@/assets/icons';
 
 interface DrawerProps {
@@ -133,13 +134,7 @@ export function TopicDrawer({
 								<div className={styles.infoItem}>
 									<div className={styles.infoLabel}>Ngày đăng ký</div>
 									<div className={styles.infoValue}>
-										{new Date(topic.created_at).toLocaleString('vi-VN', {
-											day: '2-digit',
-											month: '2-digit',
-											year: 'numeric',
-											hour: '2-digit',
-											minute: '2-digit',
-										})}
+										{formatDateTimeVN(topic.created_at)}
 									</div>
 								</div>
 								<div className={styles.infoItem}>

@@ -1,6 +1,7 @@
 import type { Approval as ApprovalHistory, TopicApprovalDetail } from '../../approval/api/approval';
 import type { TopicStatus } from '../../topics/types/topic.type';
 import { formatDate } from '../../../shared/utils/formatDate';
+import { getInitials } from '../../../shared/utils/helper';
 import { STATUS_CFG } from '../utils/myTopicsHelpers';
 import { Badge } from './MyTopicsBadge';
 import styles from '../pages/MyTopics.module.css';
@@ -99,39 +100,48 @@ export function TopicInfoSection({ detailTopic, latestApproval }: TopicInfoSecti
 			{(detailTopic.members?.length ?? 0) > 0 && (
 				<div className={styles.descSection}>
 					<div className={styles.sectionLabel}>
-						Thành viên nhóm nghiên cứu ({detailTopic.members.length}{' '}
+						Thành viên nhóm nghiên cứu ({detailTopic.members?.length ?? 0}{' '}
 						người)
 					</div>
 					<div className={styles.membersGrid}>
-						{detailTopic.members.map((m, i) => {
-							const avatarCls =
-								m.role === 'leader'
-									? styles.memberRoleLead
+						{(detailTopic.members ?? []).map((m, i) => {
+							const isLead = m.role === 'leader';
+							const isSec = m.role === 'secretary';
+
+							const avatarCls = isLead
+								? styles.memberRoleLead
+								: isSec
+									? styles.memberRoleSecretary
 									: styles.memberRoleMember;
-							const roleLabel =
-								m.role === 'leader'
-									? 'Chủ nhiệm'
-									: m.role === 'secretary'
-										? 'Thư ký'
-										: 'Thành viên';
-							const initial =
-								m.ho_ten.split(' ').slice(-1)[0]?.[0] ?? '?';
+
+							const badgeCls = isLead
+								? styles.roleBadgeLead
+								: isSec
+									? styles.roleBadgeSecretary
+									: styles.roleBadgeMember;
+
+							const roleLabel = isLead
+								? 'Chủ nhiệm'
+								: isSec
+									? 'Thư ký'
+									: 'Thành viên';
+
+							const initials = getInitials(m.ho_ten || m.username || 'TV');
+
 							return (
 								<div
-									key={i}
+									key={m.id || i}
 									className={styles.memberCard}
 								>
-									<div
-										className={`${styles.memberAvatar} ${avatarCls}`}
-									>
-										{initial}
+									<div className={`${styles.memberAvatar} ${avatarCls}`}>
+										{initials}
 									</div>
 									<div className={styles.memberInfo}>
 										<div className={styles.memberName}>
 											{m.ho_ten}
 										</div>
 										<div className={styles.memberMeta}>
-											<span className={styles.memberRoleBadge}>
+											<span className={badgeCls}>
 												{roleLabel}
 											</span>
 											{detailTopic.department_name && (

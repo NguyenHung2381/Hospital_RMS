@@ -1,0 +1,492 @@
+/* =============================================
+   DATE PICKER COMPONENT
+============================================= */
+
+.container {
+	position: relative;
+	display: inline-block;
+	width: 100%;
+}
+
+.inputWrapper {
+	position: relative;
+	display: flex;
+	align-items: center;
+}
+
+.input {
+	width: 100%;
+	height: 40px;
+	padding: 0 36px 0 38px;
+	font-family: inherit;
+	font-size: 13.5px;
+	font-weight: 500;
+	color: var(--color-gray-800, #1f2937);
+	background: var(--color-white, #ffffff);
+	border: 1.5px solid var(--color-gray-200, #e5e7eb);
+	border-radius: var(--radius-lg, 10px);
+	cursor: pointer;
+	outline: none;
+	transition: all 0.2s ease;
+	box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+}
+
+.input:hover:not(:disabled) {
+	border-color: var(--color-gray-300, #cbd5e1);
+	background: var(--color-gray-50, #f8fafc);
+}
+
+.input:focus,
+.isOpen {
+	border-color: var(--color-primary, #10b981) !important;
+	background: var(--color-white, #ffffff) !important;
+	box-shadow: 0 0 0 3.5px rgba(16, 185, 129, 0.12) !important;
+}
+
+.hasError {
+	border-color: #ef4444 !important;
+}
+
+.hasError:focus {
+	box-shadow: 0 0 0 3.5px rgba(239, 68, 68, 0.12) !important;
+}
+
+.input:disabled {
+	background: var(--color-gray-100, #f3f4f6);
+	color: var(--color-gray-400, #9ca3af);
+	cursor: not-allowed;
+	opacity: 0.7;
+}
+
+.calendarIcon {
+	position: absolute;
+	left: 12px;
+	pointer-events: none;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	color: var(--color-gray-400, #9ca3af);
+	transition: color 0.15s ease;
+}
+
+.input:focus + .calendarIcon,
+.isOpen ~ .calendarIcon {
+	color: var(--color-primary, #10b981);
+}
+
+.clearBtn {
+	position: absolute;
+	right: 10px;
+	background: transparent;
+	border: none;
+	cursor: pointer;
+	padding: 4px;
+	border-radius: 50%;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	color: var(--color-gray-400, #9ca3af);
+	transition: all 0.15s ease;
+}
+
+.clearBtn:hover {
+	background: var(--color-gray-100, #f3f4f6);
+	color: var(--color-gray-700, #374151);
+}
+
+/* =============================================
+   POPOVER DIALOG
+============================================= */
+
+.popover {
+	position: absolute;
+	top: calc(100% + 6px);
+	left: 0;
+	z-index: 999;
+	width: 310px;
+	max-width: calc(100vw - 24px);
+	background: #ffffff;
+	border: 1px solid var(--color-gray-200, #e5e7eb);
+	border-radius: 16px;
+	padding: 16px;
+	box-shadow:
+		0 12px 32px rgba(0, 0, 0, 0.14),
+		0 4px 12px rgba(0, 0, 0, 0.06);
+	animation: popoverFadeInBottom 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+	user-select: none;
+	overflow: hidden;
+}
+
+.placementTop {
+	top: auto !important;
+	bottom: calc(100% + 6px) !important;
+	animation: popoverFadeInTop 0.18s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+.alignRight {
+	left: auto !important;
+	right: 0 !important;
+}
+
+@keyframes popoverFadeInBottom {
+	from {
+		opacity: 0;
+		transform: translateY(-6px) scale(0.98);
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0) scale(1);
+	}
+}
+
+@keyframes popoverFadeInTop {
+	from {
+		opacity: 0;
+		transform: translateY(6px) scale(0.98);
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0) scale(1);
+	}
+}
+
+/* Header */
+.header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	margin-bottom: 12px;
+}
+
+.headerSelectors {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+}
+
+.select {
+	appearance: none;
+	-webkit-appearance: none;
+	background: var(--color-gray-50, #f8fafc);
+	border: 1px solid var(--color-gray-200, #e5e7eb);
+	border-radius: 8px;
+	padding: 4px 10px;
+	font-family: inherit;
+	font-size: 13px;
+	font-weight: 600;
+	color: var(--color-gray-800, #1f2937);
+	cursor: pointer;
+	outline: none;
+	transition: all 0.15s ease;
+}
+
+.select:hover {
+	background: var(--color-gray-100, #f1f5f9);
+	border-color: var(--color-gray-300, #cbd5e1);
+}
+
+.select:focus {
+	border-color: var(--color-primary, #10b981);
+}
+
+.navGroup {
+	display: flex;
+	align-items: center;
+	gap: 4px;
+}
+
+.navBtn {
+	width: 28px;
+	height: 28px;
+	border-radius: 8px;
+	border: 1px solid var(--color-gray-200, #e5e7eb);
+	background: var(--color-white, #ffffff);
+	color: var(--color-gray-600, #4b5563);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	cursor: pointer;
+	transition: all 0.15s ease;
+}
+
+.navBtn:hover {
+	background: var(--color-gray-100, #f1f5f9);
+	color: var(--color-gray-900, #111827);
+	border-color: var(--color-gray-300, #cbd5e1);
+}
+
+/* Weekday header */
+.weekdays {
+	display: grid;
+	grid-template-columns: repeat(7, 1fr);
+	gap: 2px;
+	margin-bottom: 6px;
+	text-align: center;
+}
+
+.weekday {
+	font-size: 11.5px;
+	font-weight: 700;
+	color: var(--color-gray-400, #9ca3af);
+	padding: 4px 0;
+	text-transform: uppercase;
+	letter-spacing: 0.03em;
+}
+
+.weekdayIsWeekend {
+	color: #ef4444;
+	opacity: 0.8;
+}
+
+/* Days Grid */
+.daysGrid {
+	display: grid;
+	grid-template-columns: repeat(7, 1fr);
+	gap: 3px;
+}
+
+.dayCell {
+	position: relative;
+	height: 34px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	font-size: 13px;
+	font-weight: 500;
+	color: var(--color-gray-700, #374151);
+	background: transparent;
+	border: none;
+	border-radius: 10px;
+	cursor: pointer;
+	transition: all 0.15s ease;
+}
+
+.dayCell:hover:not(.isDisabled):not(.isSelected) {
+	background: var(--color-gray-100, #f1f5f9);
+	color: var(--color-gray-900, #111827);
+}
+
+.otherMonth {
+	color: var(--color-gray-400, #9ca3af);
+}
+
+.otherMonth:hover:not(.isDisabled):not(.isSelected) {
+	color: var(--color-gray-600, #4b5563);
+}
+
+.isToday {
+	font-weight: 700;
+	color: var(--color-primary-dark, #047857);
+}
+
+.isToday::after {
+	content: '';
+	position: absolute;
+	bottom: 3px;
+	width: 4px;
+	height: 4px;
+	border-radius: 50%;
+	background: var(--color-primary, #10b981);
+}
+
+/* Context band — the parent round's whole period (blue, distinct from the
+   green milestone band). Only rendered until both milestone dates are set. */
+.inRange {
+	background: #dbeafe !important;
+	color: #1e3a8a !important;
+	font-weight: 700 !important;
+	opacity: 1 !important;
+	border-radius: 0;
+	margin-left: -2px;
+	margin-right: -2px;
+	z-index: 1;
+}
+
+.otherMonth.inRange {
+	color: #1e3a8a !important;
+	font-weight: 700 !important;
+	opacity: 1 !important;
+}
+
+.inRange:hover:not(.isDisabled):not(.isSelected) {
+	background: #bfdbfe !important;
+}
+
+.inRange:nth-child(7n+1) {
+	border-top-left-radius: 10px;
+	border-bottom-left-radius: 10px;
+	margin-left: 0;
+}
+
+.inRange:nth-child(7n) {
+	border-top-right-radius: 10px;
+	border-bottom-right-radius: 10px;
+	margin-right: 0;
+}
+
+.rangeStart {
+	border-top-left-radius: 10px !important;
+	border-bottom-left-radius: 10px !important;
+	margin-left: 0 !important;
+}
+
+.rangeEnd {
+	border-top-right-radius: 10px !important;
+	border-bottom-right-radius: 10px !important;
+	margin-right: 0 !important;
+}
+
+.rangeStart.rangeEnd {
+	border-radius: 10px !important;
+	margin-left: 0 !important;
+	margin-right: 0 !important;
+}
+
+/* Stronger inner band — this milestone's own start → deadline span.
+   Declared after .inRange so it wins wherever the two overlap. */
+.inActiveRange {
+	background: var(--color-primary-light, #a7f3d0) !important;
+	color: #064e3b !important;
+	font-weight: 700 !important;
+	opacity: 1 !important;
+	border-radius: 0;
+	margin-left: -2px;
+	margin-right: -2px;
+	z-index: 1;
+}
+
+.otherMonth.inActiveRange {
+	color: #064e3b !important;
+	font-weight: 700 !important;
+	opacity: 1 !important;
+}
+
+.inActiveRange:hover:not(.isDisabled):not(.isSelected) {
+	background: var(--color-primary, #10b981) !important;
+	color: #ffffff !important;
+}
+
+.inActiveRange:nth-child(7n + 1) {
+	border-top-left-radius: 10px;
+	border-bottom-left-radius: 10px;
+	margin-left: 0;
+}
+
+.inActiveRange:nth-child(7n) {
+	border-top-right-radius: 10px;
+	border-bottom-right-radius: 10px;
+	margin-right: 0;
+}
+
+.activeRangeStart {
+	border-top-left-radius: 10px !important;
+	border-bottom-left-radius: 10px !important;
+	margin-left: 0 !important;
+}
+
+.activeRangeEnd {
+	border-top-right-radius: 10px !important;
+	border-bottom-right-radius: 10px !important;
+	margin-right: 0 !important;
+}
+
+.activeRangeStart.activeRangeEnd {
+	border-radius: 10px !important;
+	margin-left: 0 !important;
+	margin-right: 0 !important;
+}
+
+.isSelected {
+	background: var(--color-primary, #10b981) !important;
+	color: #ffffff !important;
+	font-weight: 700 !important;
+	box-shadow: 0 3px 10px rgba(16, 185, 129, 0.35);
+	border-radius: 10px !important;
+	margin-left: 0;
+	margin-right: 0;
+	z-index: 2;
+}
+
+.isSelected::after {
+	display: none;
+}
+
+/* Both ends of the milestone range get a solid marker so it's always clear
+   which day is the start and which is the deadline — even from the other
+   field's picker where only one of them is the "selected" value. */
+.activeRangeStart:not(.isSelected),
+.activeRangeEnd:not(.isSelected),
+.activeEndpoint:not(.isSelected) {
+	background: var(--color-primary, #10b981) !important;
+	color: #ffffff !important;
+	font-weight: 700 !important;
+	z-index: 2;
+}
+
+/* Lone marker (only one milestone date picked so far) — a full rounded pill. */
+.activeEndpoint {
+	border-radius: 10px !important;
+	margin-left: 0 !important;
+	margin-right: 0 !important;
+}
+
+/* When the selected day is an end of the range, merge it into the band
+   (square inner corner + pull toward the band) instead of floating apart. */
+.isSelected.activeRangeStart:not(.activeRangeEnd),
+.isSelected.rangeStart:not(.rangeEnd) {
+	border-top-right-radius: 0 !important;
+	border-bottom-right-radius: 0 !important;
+	margin-right: -2px !important;
+}
+
+.isSelected.activeRangeEnd:not(.activeRangeStart),
+.isSelected.rangeEnd:not(.rangeStart) {
+	border-top-left-radius: 0 !important;
+	border-bottom-left-radius: 0 !important;
+	margin-left: -2px !important;
+}
+
+.isDisabled {
+	color: var(--color-gray-200, #e5e7eb) !important;
+	cursor: not-allowed !important;
+	background: transparent !important;
+}
+
+/* Footer Action Bar */
+.footer {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	margin-top: 12px;
+	padding-top: 10px;
+	border-top: 1px solid var(--color-gray-100, #f3f4f6);
+}
+
+.todayBtn,
+.clearTextBtn {
+	font-size: 12px;
+	font-weight: 600;
+	background: transparent;
+	border: none;
+	cursor: pointer;
+	padding: 4px 8px;
+	border-radius: 6px;
+	transition: all 0.15s ease;
+}
+
+.todayBtn {
+	color: var(--color-primary-dark, #047857);
+}
+
+.todayBtn:hover {
+	background: var(--color-primary-pale, #ecfdf5);
+}
+
+.clearTextBtn {
+	color: var(--color-gray-500, #6b7280);
+}
+
+.clearTextBtn:hover {
+	background: var(--color-gray-100, #f3f4f6);
+	color: var(--color-red-600, #dc2626);
+}

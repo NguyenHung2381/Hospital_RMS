@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useRealtimeUpdate } from '../../../layouts/hooks/useRealtime';
+import { bulkToast, runBulk } from '../../../shared/utils/runBulk';
 import { catalogApi } from '../api/catalogApi';
 import type {
 	CatalogFormData,
@@ -25,14 +26,21 @@ export const TAB_CONFIG: Record<
 		subtitle: 'Danh mục cấp độ đề tài nghiên cứu',
 		placeholder: 'VD: Cấp tỉnh',
 	},
+	'round-types': {
+		label: 'Loại đợt',
+		subtitle: 'Danh mục loại đợt nghiên cứu',
+		placeholder: 'VD: Nghiên cứu khoa học',
+	},
 };
 
 export function useCatalog() {
 	const location = useLocation();
 	const navigate = useNavigate();
-	const tab: CatalogTab = location.pathname.includes('levels')
-		? 'levels'
-		: 'categories';
+	const tab: CatalogTab = location.pathname.includes('round-types')
+		? 'round-types'
+		: location.pathname.includes('levels')
+			? 'levels'
+			: 'categories';
 
 	const [items, setItems] = useState<CatalogItem[]>([]);
 	const [isLoadingData, setIsLoadingData] = useState(true);
@@ -54,6 +62,7 @@ export function useCatalog() {
 	const refreshData = useCallback(() => setRefreshKey((k) => k + 1), []);
 	useRealtimeUpdate('category', refreshData);
 	useRealtimeUpdate('level', refreshData);
+	useRealtimeUpdate('round_type', refreshData);
 
 	const showToast = useCallback((type: 'success' | 'error', msg: string) => {
 		setToast({ type, msg });
@@ -177,6 +186,27 @@ export function useCatalog() {
 		}
 	}, [tab, deletingItem, showToast]);
 
+	const handleBulkDelete = useCallback(
+		async (ids: string[]) => {
+			if (!ids.length) return;
+			setLoading(true);
+			try {
+				const { okIds, failedCount } = await runBulk(ids, (id) =>
+					catalogApi.remove(tab, id),
+				);
+				setItems((prev) => prev.filter((d) => !okIds.has(d.id)));
+				setModal(null);
+				showToast(
+					failedCount ? 'error' : 'success',
+					bulkToast('xoá', okIds.size, failedCount, cfg.label.toLowerCase()),
+				);
+			} finally {
+				setLoading(false);
+			}
+		},
+		[tab, cfg.label, showToast],
+	);
+
 	return {
 		tab,
 		cfg,
@@ -204,5 +234,6 @@ export function useCatalog() {
 		handleAdd,
 		handleEdit,
 		handleDelete,
+		handleBulkDelete,
 	};
 }

@@ -2,8 +2,18 @@ const topicService = require('../services/topicService');
 const topicMemberService = require('../services/topicMemberService');
 const { success, created, notFound } = require('../utils/response');
 const { createCrudController } = require('./crudController');
+const { assertTopicActionWindow } = require('../services/deadlineGuard');
+const { isDeadlineBound } = require('../middlewares/auth');
 
 const base = createCrudController(topicService);
+
+// Tài khoản thành viên (chủ nhiệm/thư ký) chỉ được sửa thành viên khi có mốc
+// "Sửa" hoặc "Bổ sung" (bật mục Thành viên) đang mở. Đơn vị/superuser không bị chặn.
+async function guardMemberEdit(req) {
+	if (isDeadlineBound(req.user)) {
+		await assertTopicActionWindow(req.params.id, req.user.id, 'edit-members');
+	}
+}
 
 const getAll = async (req, res, next) => {
 	try {
@@ -35,6 +45,7 @@ const getMembers = async (req, res, next) => {
 
 const addMember = async (req, res, next) => {
 	try {
+		await guardMemberEdit(req);
 		const member = await topicMemberService.addMember(
 			req.params.id,
 			req.body,
@@ -48,6 +59,7 @@ const addMember = async (req, res, next) => {
 
 const updateMember = async (req, res, next) => {
 	try {
+		await guardMemberEdit(req);
 		const member = await topicMemberService.updateMember(
 			req.params.id,
 			req.params.member_id,
@@ -63,6 +75,7 @@ const updateMember = async (req, res, next) => {
 
 const deleteMember = async (req, res, next) => {
 	try {
+		await guardMemberEdit(req);
 		await topicMemberService.deleteMember(
 			req.params.id,
 			req.params.member_id,
@@ -132,12 +145,11 @@ const exportData = async (req, res, next) => {
 
 const updateOne = async (req, res, next) => {
 	try {
-		const isAdmin = req.user?.account_type === 'admin';
 		const item = await topicService.update(
 			req.params.id,
 			req.body,
 			req.user.id,
-			isAdmin,
+			req.user,
 		);
 		if (!item) return notFound(res);
 		return success(res, item, 'Cập nhật thành công');

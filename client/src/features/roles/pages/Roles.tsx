@@ -11,9 +11,16 @@ import {
 	XSvg,
 } from '@/assets/icons';
 import { Pagination } from '../../../shared/components/Table/Pagination';
+import sel from '../../../shared/components/Table/RowSelect.module.css';
+import {
+	BulkBar,
+	SelectCheckbox,
+} from '../../../shared/components/Table/RowSelect';
+import { useRowSelection } from '../../../shared/hooks/useRowSelection';
 import { RoleDeleteModal, RoleFormModal } from '../components/RoleModals';
 import { RolePermissionModal } from '../components/RolePermissionModal';
 import { useRoles } from '../hooks/useRoles';
+import { formatDateVN } from '../../../shared/utils/formatDate';
 import styles from './Roles.module.css';
 
 const PAGE_SIZE_OPTIONS = [5, 10, 25, 0] as const;
@@ -26,6 +33,7 @@ function getInitials(name: string) {
 
 export default function Roles() {
 	const r = useRoles();
+	const rowSel = useRowSelection(r.paged.map((x) => x.id));
 
 	const headerActions = (
 		<button
@@ -120,9 +128,23 @@ export default function Roles() {
 
 			{/* Table */}
 			<div className={styles.tableWrap}>
+				<BulkBar
+					rowSel={rowSel}
+					itemLabel='vai trò'
+					loading={r.loading}
+					onBulkDelete={r.handleBulkDelete}
+				/>
 				<table className={styles.table}>
 					<thead>
 						<tr>
+							<th className={sel.checkCol}>
+								<SelectCheckbox
+									title='Chọn tất cả'
+									checked={rowSel.allPageSelected}
+									indeterminate={rowSel.somePageSelected}
+									onChange={rowSel.toggleSelectAll}
+								/>
+							</th>
 							<th className={styles.th}>#</th>
 							<th className={styles.th}>Vai trò</th>
 							<th className={styles.th}>Mô tả</th>
@@ -135,7 +157,7 @@ export default function Roles() {
 					<tbody>
 						{r.isLoadingData ? (
 							<tr>
-								<td colSpan={7}>
+								<td colSpan={8}>
 									<div className={styles.emptyState}>
 										<div className={styles.emptyDesc}>Đang tải dữ liệu...</div>
 									</div>
@@ -143,7 +165,7 @@ export default function Roles() {
 							</tr>
 						) : r.filtered.length === 0 ? (
 							<tr>
-								<td colSpan={7}>
+								<td colSpan={8}>
 									<div className={styles.emptyState}>
 										<ShieldSvg className={styles.emptyIcon} />
 										<p className={styles.emptyTitle}>
@@ -163,12 +185,20 @@ export default function Roles() {
 							r.paged.map((role, i) => {
 								const rowNum =
 									(r.safePage - 1) * (r.pageSize || r.filtered.length) + i + 1;
-								const pCount = r.permCountMap[role.id];
+								const pCount =
+									r.permCountMap[role.id] ?? role.permission_count;
 								return (
 									<tr
 										key={role.id}
-										className={styles.tr}
+										className={`${styles.tr} ${rowSel.isSelected(role.id) ? sel.rowSelected : ''}`}
 									>
+										<td className={sel.checkCol}>
+											<SelectCheckbox
+												title='Chọn vai trò'
+												checked={rowSel.isSelected(role.id)}
+												onChange={() => rowSel.toggleSelect(role.id)}
+											/>
+										</td>
 										<td className={`${styles.td} ${styles.tdIdx}`}>{rowNum}</td>
 										<td className={styles.td}>
 											<div className={styles.roleCell}>
@@ -228,7 +258,7 @@ export default function Roles() {
 											)}
 										</td>
 										<td className={styles.td}>
-											<span className={styles.dateText}>{role.created_at}</span>
+											<span className={styles.dateText}>{formatDateVN(role.created_at)}</span>
 										</td>
 										<td className={`${styles.td} ${styles.tdActions}`}>
 											<button

@@ -124,15 +124,32 @@ const update = async (id, data, actorId) => {
 	return dept;
 };
 
+// Xoá khoa phòng: gỡ liên kết (set NULL) mọi bản ghi đang trỏ tới khoa này
+// thay vì xoá kèm, để giữ lại user / đề tài. Riêng topic_related_departments có
+// department_id NOT NULL nên phải xoá dòng. Toàn bộ chạy trong 1 transaction.
 const remove = async (id, actorId) => {
 	const pool = await getPool();
 	await pool
 		.request()
 		.input('id', sql.VarChar(20), id)
 		.input('actor_id', sql.VarChar(20), actorId)
-		.query(
-			`EXEC sp_set_actor @actor_id; DELETE FROM departments WHERE id = @id`,
-		);
+		.query(`
+      BEGIN TRANSACTION;
+      BEGIN TRY
+        EXEC sp_set_actor @actor_id;
+        UPDATE users SET department_id = NULL WHERE department_id = @id;
+        UPDATE topics SET department_id = NULL WHERE department_id = @id;
+        UPDATE topic_members SET department_id = NULL WHERE department_id = @id;
+        UPDATE departments SET parent_id = NULL WHERE parent_id = @id;
+        DELETE FROM topic_related_departments WHERE department_id = @id;
+        DELETE FROM departments WHERE id = @id;
+        COMMIT TRANSACTION;
+      END TRY
+      BEGIN CATCH
+        IF @@TRANCOUNT > 0 ROLLBACK TRANSACTION;
+        THROW;
+      END CATCH;
+    `);
 	broadcast('update', { entity: 'department' });
 };
 

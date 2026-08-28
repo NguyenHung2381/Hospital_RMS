@@ -2,7 +2,7 @@ const router = require('express').Router();
 const { body } = require('express-validator');
 const { createCrudService } = require('../services/crudService');
 const { createCrudController } = require('../controllers/crudController');
-const { authenticate, authorize, authorizePermission } = require('../middlewares/auth');
+const { authenticate, authorizePermission } = require('../middlewares/auth');
 const { validate } = require('../middlewares/errorHandler');
 const roundCtrl    = require('../controllers/roundController');
 const deadlineSvc  = require('../services/deadlineService');
@@ -257,7 +257,7 @@ const catCtrl = createCrudController(catService);
  *         description: Tạo thành công
  */
 router.get('/categories', authenticate, catCtrl.getAll);
-router.post('/categories', authenticate, authorize('admin'), catCtrl.createOne);
+router.post('/categories', authenticate, authorizePermission(['catalog', 'manage']), catCtrl.createOne);
 
 /**
  * @swagger
@@ -309,13 +309,13 @@ router.get('/categories/:id', authenticate, catCtrl.getById);
 router.put(
 	'/categories/:id',
 	authenticate,
-	authorize('admin'),
+	authorizePermission(['catalog', 'manage']),
 	catCtrl.updateOne,
 );
 router.delete(
 	'/categories/:id',
 	authenticate,
-	authorize('admin'),
+	authorizePermission(['catalog', 'manage']),
 	catCtrl.removeOne,
 );
 
@@ -379,7 +379,7 @@ const lvlCtrl = createCrudController(lvlService);
  *         description: Tạo thành công
  */
 router.get('/levels', authenticate, lvlCtrl.getAll);
-router.post('/levels', authenticate, authorize('admin'), lvlCtrl.createOne);
+router.post('/levels', authenticate, authorizePermission(['catalog', 'manage']), lvlCtrl.createOne);
 
 /**
  * @swagger
@@ -428,13 +428,115 @@ router.post('/levels', authenticate, authorize('admin'), lvlCtrl.createOne);
  *         description: Xoá thành công
  */
 router.get('/levels/:id', authenticate, lvlCtrl.getById);
-router.put('/levels/:id', authenticate, authorize('admin'), lvlCtrl.updateOne);
+router.put('/levels/:id', authenticate, authorizePermission(['catalog', 'manage']), lvlCtrl.updateOne);
 router.delete(
 	'/levels/:id',
 	authenticate,
-	authorize('admin'),
+	authorizePermission(['catalog', 'manage']),
 	lvlCtrl.removeOne,
 );
+
+// ─── Round Types ──────────────────────────────────────────────────────────────
+// Constraint CHK_round_types_id yêu cầu id LIKE 'RT[0-9][0-9]' → RT01, RT02, ...
+// crudService mặc định dùng NEWID() (hex) nên override hàm create riêng.
+const _rtBase = createCrudService('round_types', 6, 'RT');
+const rtService = {
+	..._rtBase,
+	create: async (data, actorId) => {
+		const pool = await getPool();
+		const result = await pool
+			.request()
+			.input('actor_id', sql.VarChar(20), actorId)
+			.input('name', sql.NVarChar(500), data.name)
+			.input('description', sql.NVarChar(sql.MAX), data.description || null)
+			.query(`
+				DECLARE @seq INT;
+				SELECT @seq = ISNULL(MAX(CAST(RIGHT(id, 2) AS INT)), 0) + 1
+				FROM round_types
+				WHERE id LIKE 'RT[0-9][0-9]';
+				IF @seq > 99 THROW 50002, 'Đã đạt giới hạn 99 loại đợt', 1;
+				DECLARE @new_id VARCHAR(6) = 'RT' + RIGHT('0' + CAST(@seq AS VARCHAR(2)), 2);
+				EXEC sp_set_actor @actor_id;
+				INSERT INTO round_types (id, name, description, created_by)
+				VALUES (@new_id, @name, @description, @actor_id);
+				SELECT * FROM round_types WHERE id = @new_id;
+			`);
+		broadcast('update', { entity: 'round_type' });
+		return result.recordset[0];
+	},
+};
+const rtCtrl = createCrudController(rtService);
+
+/**
+ * @swagger
+ * /round-types:
+ *   get:
+ *     summary: Lấy danh sách loại đợt nghiên cứu
+ *     tags: [ResearchRounds]
+ *     responses:
+ *       200:
+ *         description: Danh sách loại đợt
+ *   post:
+ *     summary: Tạo loại đợt mới
+ *     tags: [ResearchRounds]
+ *     description: Chỉ admin mới có quyền
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [name]
+ *             properties:
+ *               name: { type: string, example: "Nghiên cứu khoa học" }
+ *               description: { type: string }
+ *     responses:
+ *       201:
+ *         description: Tạo thành công
+ */
+router.get('/round-types', authenticate, rtCtrl.getAll);
+router.post(
+	'/round-types',
+	authenticate,
+	authorizePermission(['catalog', 'manage']),
+	[body('name').trim().notEmpty().withMessage('Tên loại đợt không được để trống')],
+	validate,
+	rtCtrl.createOne,
+);
+
+/**
+ * @swagger
+ * /round-types/{id}:
+ *   get:
+ *     summary: Lấy chi tiết loại đợt
+ *     tags: [ResearchRounds]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *   put:
+ *     summary: Cập nhật loại đợt
+ *     tags: [ResearchRounds]
+ *     description: Chỉ admin mới có quyền
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *   delete:
+ *     summary: Xoá loại đợt
+ *     tags: [ResearchRounds]
+ *     description: Chỉ admin mới có quyền. Không xoá được khi còn đợt đang dùng.
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ */
+router.get('/round-types/:id', authenticate, rtCtrl.getById);
+router.put('/round-types/:id', authenticate, authorizePermission(['catalog', 'manage']), rtCtrl.updateOne);
+router.delete('/round-types/:id', authenticate, authorizePermission(['catalog', 'manage']), rtCtrl.removeOne);
 
 // ─── Roles ────────────────────────────────────────────────────────────────────
 const roleService = require('../services/roleService');
@@ -539,7 +641,7 @@ router.delete('/roles/:id', authenticate, authorizePermission(['roles', 'delete'
  *         application/json:
  *           schema:
  *             type: object
- *             required: [name, year, round_number, start_date, end_date]
+ *             required: [name, year, round_number, round_type_id, start_date, end_date]
  *             properties:
  *               name:
  *                 type: string
@@ -552,9 +654,9 @@ router.delete('/roles/:id', authenticate, authorizePermission(['roles', 'delete'
  *                 minimum: 1
  *                 maximum: 9
  *                 example: 1
- *               round_type:
+ *               round_type_id:
  *                 type: string
- *                 example: "Nghiên cứu khoa học"
+ *                 example: "RT01"
  *               start_date:
  *                 type: string
  *                 format: date
@@ -584,14 +686,23 @@ router.post(
 			.isInt({ min: 2000, max: 2100 })
 			.withMessage('Năm không hợp lệ'),
 		body('round_number').isInt({ min: 1, max: 9 }).withMessage('Số đợt phải từ 1–9'),
-		body('round_type').optional().isLength({ max: 100 }).withMessage('Loại đợt tối đa 100 ký tự'),
+		body('round_type_id')
+			.trim()
+			.notEmpty()
+			.withMessage('Vui lòng chọn loại đợt')
+			.bail()
+			.matches(/^RT\d{2}$/)
+			.withMessage('Loại đợt không hợp lệ'),
 		body('start_date')
 			.notEmpty()
 			.withMessage('Ngày bắt đầu không được để trống'),
 		body('end_date')
 			.notEmpty()
 			.withMessage('Ngày kết thúc không được để trống'),
-		body('status').optional().isIn(['draft', 'open', 'closed', 'cancelled']),
+		// Chấp nhận cả từ vựng phía FE ('active') lẫn DB ('open'); service tự quy đổi.
+		body('status')
+			.optional()
+			.isIn(['draft', 'active', 'open', 'closed', 'cancelled']),
 	],
 	validate,
 	roundCtrl.createOne,
@@ -660,8 +771,14 @@ router.put(
 	authenticate,
 	authorizePermission(['rounds', 'update']),
 	[
-		body('status').optional().isIn(['draft', 'open', 'closed', 'cancelled']),
-		body('round_type').optional().isLength({ max: 100 }).withMessage('Loại đợt tối đa 100 ký tự'),
+		// Chấp nhận cả từ vựng phía FE ('active') lẫn DB ('open'); service tự quy đổi.
+		body('status')
+			.optional()
+			.isIn(['draft', 'active', 'open', 'closed', 'cancelled']),
+		body('round_type_id')
+			.optional()
+			.matches(/^RT\d{2}$/)
+			.withMessage('Loại đợt không hợp lệ'),
 		body('start_date').optional().notEmpty(),
 		body('end_date').optional().notEmpty(),
 	],

@@ -59,6 +59,7 @@ export interface TopicMember {
 	staff_number: number | null;
 	department_id: string | null;
 	role: MemberRole;
+	user_id: string | null;
 	account_granted: boolean;
 	username: string | null;
 	account_expires_at: string | null;

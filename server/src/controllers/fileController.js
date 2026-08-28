@@ -1,63 +1,43 @@
 const fileService = require('../services/fileService');
 const { success, created } = require('../utils/response');
 const { getPool, sql } = require('../config/db');
+const { assertTopicActionWindow } = require('../services/deadlineGuard');
+const { isDeadlineBound } = require('../middlewares/auth');
 
-const VN_OFFSET_MS = 7 * 60 * 60 * 1000; // UTC+7
-
-function todayVN() {
-	const now = new Date();
-	const vnNow = new Date(now.getTime() + VN_OFFSET_MS);
-	return new Date(
-		Date.UTC(vnNow.getUTCFullYear(), vnNow.getUTCMonth(), vnNow.getUTCDate()),
-	);
-}
-
-async function assertUploadWindow(topicId) {
-	const pool = await getPool();
-
-	const { recordset } = await pool
-		.request()
-		.input('tid', sql.VarChar(15), topicId)
-		.query(`SELECT t.status, t.round_id FROM topics t WHERE t.id = @tid`);
-
-	if (!recordset[0]) {
-		const err = new Error('Đề tài không tồn tại');
-		err.status = 404;
-		throw err;
-	}
-
-	const { status, round_id } = recordset[0];
-
-	const today = todayVN();
-
-	// Đợt nộp báo cáo
-	if (round_id && status === 'approved') {
-		const { recordset: dls } = await pool
-			.request()
-			.input('rid', sql.VarChar(10), round_id)
-			.query(`
-				SELECT start_date, deadline_date
-				FROM round_deadlines
-				WHERE round_id = @rid AND deadline_type = 'report_submission'
-			`);
-
-		for (const dl of dls) {
-			const afterStart = !dl.start_date || today >= new Date(dl.start_date);
-			const dlEnd = dl.deadline_date ? new Date(dl.deadline_date) : null;
-			if (afterStart && dlEnd && today <= dlEnd) return;
-		}
-	}
-
-	const err = new Error('Không trong thời gian cho phép tải lên tài liệu');
-	err.status = 403;
-	throw err;
-}
-
-// Middleware: chỉ áp dụng với account_type === 'member'
+// Middleware: chỉ áp dụng với vai trò phạm vi "own" (đơn vị/superuser không bị chặn theo mốc)
 const checkUploadWindow = async (req, res, next) => {
-	if (req.user?.account_type !== 'member') return next();
+	if (!isDeadlineBound(req.user)) return next();
 	try {
-		await assertUploadWindow(req.params.topic_id);
+		await assertTopicActionWindow(req.params.topic_id, req.user.id, 'add-files');
+		next();
+	} catch (err) {
+		return res
+			.status(err.status || 403)
+			.json({ success: false, message: err.message });
+	}
+};
+
+// Middleware xoá file: chỉ cho phép trong cửa sổ "Sửa" hoặc "Bổ sung" (có mục Tài liệu).
+const checkDeleteWindow = async (req, res, next) => {
+	if (!isDeadlineBound(req.user)) return next();
+	try {
+		const pool = await getPool();
+		const { recordset } = await pool
+			.request()
+			.input('fid', sql.VarChar(32), req.params.file_id)
+			.query(
+				`SELECT topic_id FROM files WHERE id = @fid AND is_deleted = 0`,
+			);
+		if (!recordset[0]) {
+			return res
+				.status(404)
+				.json({ success: false, message: 'Không tìm thấy file' });
+		}
+		await assertTopicActionWindow(
+			recordset[0].topic_id,
+			req.user.id,
+			'delete-files',
+		);
 		next();
 	} catch (err) {
 		return res
@@ -123,4 +103,11 @@ const deleteFile = async (req, res, next) => {
 	}
 };
 
-module.exports = { upload, getByTopic, getBatches, deleteFile, checkUploadWindow };
+module.exports = {
+	upload,
+	getByTopic,
+	getBatches,
+	deleteFile,
+	checkUploadWindow,
+	checkDeleteWindow,
+};

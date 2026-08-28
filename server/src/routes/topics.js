@@ -409,7 +409,7 @@ router.delete('/:id/members/:member_id', authorizePermission(['topics', 'update'
  */
 router.post(
 	'/:id/members/grant-accounts',
-	authorizePermission(['users', 'create']),
+	authorizePermission(['topics', 'update']),
 	ctrl.grantAccounts,
 );
 

@@ -11,6 +11,7 @@ import {
 	getProgressColor,
 	STATUS_CFG,
 } from '../utils/roundHelpers';
+import { formatDateVN } from '../../../shared/utils/formatDate';
 import styles from '../pages/Round.module.css';
 
 interface RoundCardProps {
@@ -54,7 +55,7 @@ export function RoundCard({
 						<div className={styles.roundCardName}>{round.name}</div>
 						<div className={styles.roundCardSubname}>
 							Đợt {round.round_number} · Năm {round.year}
-							{round.round_type ? ` · ${round.round_type}` : ''}
+							{round.round_type_name ? ` · ${round.round_type_name}` : ''}
 						</div>
 					</div>
 					<span
@@ -67,9 +68,9 @@ export function RoundCard({
 
 				<div className={styles.dateRange}>
 					<CalendarSvg />
-					<span>{round.start_date}</span>
+					<span>{formatDateVN(round.start_date)}</span>
 					<div className={styles.dateSep} />
-					<span>{round.end_date}</span>
+					<span>{formatDateVN(round.end_date)}</span>
 					{round.status === 'active' && daysLeft > 0 && (
 						<span
 							style={{

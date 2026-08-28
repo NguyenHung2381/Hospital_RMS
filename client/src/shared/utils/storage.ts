@@ -11,7 +11,8 @@ export type StoredUser = {
 	email?: string;
 	role?: string;
 	role_name?: string;
-	account_type?: string;
+	role_id?: string | null;
+	permissions?: string[];
 	staff_number?: string | null;
 	department?: string | null;
 	department_id?: string | null;

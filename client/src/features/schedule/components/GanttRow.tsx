@@ -44,9 +44,9 @@ export function GanttRow({
 	const end   = parseDate(round.end_date);
 	if (!start || !end) return null;
 
-	// Derive registration/supplement bars from round_deadlines
+	// Derive edit/supplement bars from round_deadlines
 	const regDeadline = round.deadlines.find(
-		(d) => d.deadline_type === 'registration' && d.start_date,
+		(d) => d.deadline_type === 'edit' && d.start_date,
 	);
 	const supDeadline = round.deadlines.find(
 		(d) => d.deadline_type === 'supplement' && d.start_date,
@@ -57,7 +57,7 @@ export function GanttRow({
 	const supEnd   = supDeadline ? parseDate(supDeadline.deadline_date) : null;
 
 	const status   = STATUS_CFG[round.status as keyof typeof STATUS_CFG] ?? STATUS_CFG.closed;
-	const regColor = gc(`bar-${round.id}-registration`, BAR_DEFAULT_COLORS.registration);
+	const regColor = gc(`bar-${round.id}-edit`, BAR_DEFAULT_COLORS.edit);
 	const resColor = gc(`bar-${round.id}-research`,     status.color);
 	const supColor = gc(`bar-${round.id}-supplement`,   BAR_DEFAULT_COLORS.supplement);
 
@@ -179,13 +179,13 @@ export function GanttRow({
 					<div
 						className={styles.bar}
 						style={{ left: `${regBaseL}%`, width: `${regBaseW}%`, background: regColor, top: 6, height: 20 }}
-						title={`Đăng ký: ${regDeadline?.start_date} → ${regDeadline?.deadline_date}`}
+						title={`Sửa: ${regDeadline?.start_date} → ${regDeadline?.deadline_date}`}
 						onDoubleClick={(e) => {
 							if (dragEndedRef.current) return;
-							openCtx(e, { kind: 'bar', round, barKind: 'registration', deadline: regDeadline });
+							openCtx(e, { kind: 'bar', round, barKind: 'edit', deadline: regDeadline });
 						}}
 					>
-						{zoom >= 2 && <span className={styles.barTypeLabel}>Đăng ký</span>}
+						{zoom >= 2 && <span className={styles.barTypeLabel}>Sửa</span>}
 					</div>
 				)}
 

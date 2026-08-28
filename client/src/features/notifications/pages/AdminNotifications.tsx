@@ -59,6 +59,7 @@ export default function AdminNotifications() {
 		setRefreshKey,
 		handleSend,
 		confirmDelete,
+		handleBulkDelete,
 	} = useAdminNotifications();
 
 	const headerActions = (
@@ -95,6 +96,7 @@ export default function AdminNotifications() {
 					onToggleExpand={toggleBatchExpand}
 					onRefresh={() => setRefreshKey((k) => k + 1)}
 					onDeleteRequest={setPendingDelete}
+					onBulkDelete={handleBulkDelete}
 					onFilterChange={() => setPage(1)}
 				/>
 			</div>

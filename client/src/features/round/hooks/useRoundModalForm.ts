@@ -1,9 +1,15 @@
 import { useState } from 'react';
-import type { FormErrors, ResearchRound, RoundForm } from '../types/round.type';
+import type {
+	FormErrors,
+	ResearchRound,
+	RoundForm,
+	RoundType,
+} from '../types/round.type';
 
 interface UseRoundModalFormProps {
 	round?: ResearchRound;
 	rounds: ResearchRound[];
+	roundTypes: RoundType[];
 	onSave: (form: RoundForm) => Promise<void>;
 	onSubmitInvalid: () => void;
 }
@@ -14,13 +20,19 @@ function parseDate(s: string) {
 	return new Date(y, m - 1, d);
 }
 
-export function useRoundModalForm({ round, rounds, onSave, onSubmitInvalid }: UseRoundModalFormProps) {
+export function useRoundModalForm({
+	round,
+	rounds,
+	roundTypes,
+	onSave,
+	onSubmitInvalid,
+}: UseRoundModalFormProps) {
 	const currentYear = new Date().getFullYear();
 	const [form, setForm] = useState<RoundForm>({
 		name: round?.name ?? '',
 		year: round?.year ?? currentYear,
 		round_number: round?.round_number ?? 1,
-		round_type: round?.round_type ?? '',
+		round_type_id: round?.round_type_id ?? '',
 		start_date: round?.start_date ?? '',
 		end_date: round?.end_date ?? '',
 		status: round?.status ?? 'draft',
@@ -32,10 +44,19 @@ export function useRoundModalForm({ round, rounds, onSave, onSubmitInvalid }: Us
 	const set = <K extends keyof RoundForm>(field: K, val: RoundForm[K]) => {
 		setForm((p) => {
 			const next = { ...p, [field]: val };
-			if (!round && (field === 'year' || field === 'round_number' || field === 'round_type'))
-				next.name = next.round_type
-					? `Đợt ${next.round_number} - ${next.round_type} - Năm ${next.year}`
+			if (
+				!round &&
+				(field === 'year' ||
+					field === 'round_number' ||
+					field === 'round_type_id')
+			) {
+				const typeName = roundTypes.find(
+					(t) => t.id === next.round_type_id,
+				)?.name;
+				next.name = typeName
+					? `Đợt ${next.round_number} - ${typeName} - Năm ${next.year}`
 					: `Đợt ${next.round_number} năm ${next.year}`;
+			}
 			return next;
 		});
 		if (errors[field as string])
@@ -56,6 +77,7 @@ export function useRoundModalForm({ round, rounds, onSave, onSubmitInvalid }: Us
 	const validate = (): boolean => {
 		const e: FormErrors = {};
 		if (!form.name.trim()) e.name = 'Vui lòng nhập tên đợt';
+		if (!form.round_type_id) e.round_type_id = 'Vui lòng chọn loại đợt';
 		if (!form.start_date) e.start_date = 'Vui lòng chọn ngày bắt đầu';
 		if (!form.end_date) e.end_date = 'Vui lòng chọn ngày kết thúc';
 		const s = parseDate(form.start_date),

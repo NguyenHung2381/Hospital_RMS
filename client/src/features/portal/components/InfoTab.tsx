@@ -17,6 +17,7 @@ type Meta = {
 type Props = {
 	topic: Topic;
 	meta: Meta;
+	canEditTitle: boolean;
 	canEditInfo: boolean;
 	editingInfo: boolean;
 	setEditingInfo: (v: boolean) => void;
@@ -31,6 +32,7 @@ type Props = {
 export default function InfoTab({
 	topic,
 	meta,
+	canEditTitle,
 	canEditInfo,
 	editingInfo,
 	setEditingInfo,
@@ -51,6 +53,7 @@ export default function InfoTab({
 					<input
 						className={styles.formInput}
 						value={infoForm.title}
+						disabled={!canEditTitle}
 						onChange={(e) =>
 							setInfoForm((f) => ({ ...f, title: e.target.value }))
 						}
@@ -62,6 +65,7 @@ export default function InfoTab({
 						<select
 							className={styles.formInput}
 							value={infoForm.level_id}
+							disabled={!canEditInfo}
 							onChange={(e) =>
 								setInfoForm((f) => ({ ...f, level_id: e.target.value }))
 							}
@@ -82,6 +86,7 @@ export default function InfoTab({
 						<select
 							className={styles.formInput}
 							value={infoForm.category_id}
+							disabled={!canEditInfo}
 							onChange={(e) =>
 								setInfoForm((f) => ({ ...f, category_id: e.target.value }))
 							}
@@ -105,6 +110,7 @@ export default function InfoTab({
 						rows={4}
 						style={{ resize: 'vertical' }}
 						value={infoForm.description}
+						disabled={!canEditInfo}
 						onChange={(e) =>
 							setInfoForm((f) => ({ ...f, description: e.target.value }))
 						}
@@ -197,7 +203,7 @@ export default function InfoTab({
 					<div className={styles.descBox}>{topic.description}</div>
 				</div>
 			)}
-			{canEditInfo && (
+			{(canEditTitle || canEditInfo) && (
 				<div style={{ marginTop: 16 }}>
 					<button
 						className={styles.btnSecondary}

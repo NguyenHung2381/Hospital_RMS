@@ -132,6 +132,7 @@ export default function TopicDetail() {
 					<InfoTab
 						topic={topic}
 						meta={meta}
+						canEditTitle={d.canEditTitle}
 						canEditInfo={d.canEditInfo}
 						editingInfo={d.editingInfo}
 						setEditingInfo={d.setEditingInfo}
@@ -149,7 +150,7 @@ export default function TopicDetail() {
 				<div className={styles.panel}>
 					<MembersTab
 						members={members}
-						canEditInfo={d.canEditInfo}
+						canEditMembers={d.canEditMembers}
 						addingMember={d.addingMember}
 						setAddingMember={d.setAddingMember}
 						newMember={d.newMember}

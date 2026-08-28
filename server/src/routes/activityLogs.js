@@ -1,6 +1,6 @@
 const router = require('express').Router();
 const ctrl = require('../controllers/activityLogController');
-const { authenticate, authorize } = require('../middlewares/auth');
+const { authenticate, authorizePermission } = require('../middlewares/auth');
 
 /**
  * @swagger
@@ -9,7 +9,7 @@ const { authenticate, authorize } = require('../middlewares/auth');
  *   description: Nhật ký tác động của người dùng lên hệ thống (admin only)
  */
 
-router.use(authenticate, authorize('admin'));
+router.use(authenticate, authorizePermission(['activity_logs', 'read']));
 
 /**
  * @swagger

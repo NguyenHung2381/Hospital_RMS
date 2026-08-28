@@ -6,12 +6,14 @@ import styles from '../pages/MyTopics.module.css';
 interface TopicStatusActionPanelProps {
 	detailTopic: TopicApprovalDetail;
 	latestApproval: ApprovalHistory | null;
+	canEditTopic: boolean;
 	openEdit: () => void;
 }
 
 export function TopicStatusActionPanel({
 	detailTopic,
 	latestApproval,
+	canEditTopic,
 	openEdit,
 }: TopicStatusActionPanelProps) {
 	return (
@@ -92,14 +94,25 @@ export function TopicStatusActionPanel({
 							</div>
 						</div>
 					</div>
-					<button
-						className={styles.btnEdit}
-						onClick={openEdit}
-					>
-						<EditSvg />
-						Chỉnh sửa đề tài
-					</button>
+					{canEditTopic && (
+						<button
+							className={styles.btnEdit}
+							onClick={openEdit}
+						>
+							<EditSvg />
+							Chỉnh sửa đề tài
+						</button>
+					)}
 				</div>
+			)}
+			{canEditTopic && detailTopic.status !== 'supplement' && (
+				<button
+					className={styles.btnEdit}
+					onClick={openEdit}
+				>
+					<EditSvg />
+					Chỉnh sửa đề tài
+				</button>
 			)}
 		</div>
 	);

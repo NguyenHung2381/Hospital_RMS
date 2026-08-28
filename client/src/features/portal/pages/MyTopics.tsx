@@ -199,6 +199,7 @@ export default function MyTopics() {
 							detailHistory={d.detailHistory}
 							latestApproval={d.latestApproval}
 							canUploadFiles={d.canUploadFiles}
+							canEditTopic={d.canEditTitle || d.canEditInfo}
 							setFileViewer={d.setFileViewer}
 							fileInputRef={d.fileInputRef}
 							pendingFiles={d.pendingFiles}
@@ -221,6 +222,8 @@ export default function MyTopics() {
 					editError={d.editError}
 					editForm={d.editForm}
 					setEditForm={d.setEditForm}
+					canEditTitle={d.canEditTitle}
+					canEditInfo={d.canEditInfo}
 					refData={d.refData}
 					refDataLoading={d.refDataLoading}
 					onClose={() => d.setEditOpen(false)}

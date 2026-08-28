@@ -91,7 +91,12 @@ export function CalendarView({
 
 	const openEventDetail = (round: RoundRow, deadline?: RoundDeadline, isRoundBar?: boolean, customColor?: string) => {
 		if (deadline) {
-			const typeLabel = deadline.deadline_type ? DEADLINE_TYPE_LABELS[deadline.deadline_type] : undefined;
+			const typeLabel =
+				deadline.phase === -1
+					? 'Ngày báo cáo hội đồng'
+					: deadline.deadline_type
+						? DEADLINE_TYPE_LABELS[deadline.deadline_type]
+						: undefined;
 			const color = customColor || gc(`deadline-${deadline.id}`, DEADLINE_COLORS[deadline.deadline_type ?? ''] ?? '#888888');
 			setDetailModal({
 				title:        deadline.name,

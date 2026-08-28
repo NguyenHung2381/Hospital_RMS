@@ -28,8 +28,14 @@ const RESOURCE_ICON: Record<string, React.ReactNode> = {
 	departments: <InfoSvg />,
 	roles: <ShieldSvg />,
 	rounds: <InfoSvg />,
+	councils: <UsersSvg />,
 	files: <InfoSvg />,
 	reports: <InfoSvg />,
+	system: <ShieldSvg />,
+	admin_panel: <ShieldSvg />,
+	activity_logs: <InfoSvg />,
+	catalog: <InfoSvg />,
+	notifications: <InfoSvg />,
 };
 
 // API không trả label tiếng Việt cho resource — map hiển thị riêng ở đây.
@@ -39,8 +45,14 @@ const RESOURCE_LABELS: Record<string, string> = {
 	departments: 'Khoa phòng',
 	roles: 'Vai trò & Quyền',
 	rounds: 'Đợt nghiên cứu',
+	councils: 'Hội đồng chấm',
 	files: 'Tài liệu',
 	reports: 'Báo cáo & Thống kê',
+	system: 'Hệ thống (toàn quyền)',
+	admin_panel: 'Khu vực quản trị',
+	activity_logs: 'Nhật ký hoạt động',
+	catalog: 'Danh mục (phân loại, cấp độ...)',
+	notifications: 'Thông báo hệ thống',
 };
 
 function buildMatrix(perms: Permission[]): PermissionMatrixRow[] {

@@ -1,10 +1,7 @@
 import React, { useState } from 'react';
 import { CheckSvg, ChevDSvg, EditSvg, InfoSvg, XSvg } from '@/assets/icons';
 import type { FormErrors, User } from '../../user/types/user.type';
-import {
-	EDITABLE_ACCOUNT_TYPES,
-	type EditForm,
-} from '../utils/deptAccountsHelpers';
+import { EDITABLE_ROLES, type EditForm } from '../utils/deptAccountsHelpers';
 import styles from '../pages/DepartmentAccounts.module.css';
 
 function Toggle({ on, onChange }: { on: boolean; onChange: () => void }) {
@@ -69,7 +66,6 @@ export function DeptAccountsEditModal({
 		staff_number: user.staff_number != null ? String(user.staff_number) : '',
 		email: user.email ?? '',
 		role_id: user.role_id ?? '',
-		account_type: user.account_type,
 		is_active: user.is_active,
 		password: '',
 	});
@@ -276,23 +272,18 @@ export function DeptAccountsEditModal({
 							<div className={styles.readonlyField}>{deptName}</div>
 						</Field>
 						<Field
-							id='account_type'
-							label='Loại tài khoản'
+							id='role_id'
+							label='Vai trò'
 							required
 						>
 							<div className={styles.selectWrapper}>
 								<select
-									id='account_type'
+									id='role_id'
 									className={styles.formSelect}
-									value={form.account_type}
-									onChange={(e) =>
-										set(
-											'account_type',
-											e.target.value as EditForm['account_type'],
-										)
-									}
+									value={form.role_id}
+									onChange={(e) => set('role_id', e.target.value)}
 								>
-									{EDITABLE_ACCOUNT_TYPES.map((t) => (
+									{EDITABLE_ROLES.map((t) => (
 										<option
 											key={t.value}
 											value={t.value}

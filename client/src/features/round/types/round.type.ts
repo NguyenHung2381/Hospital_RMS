@@ -1,19 +1,29 @@
 // ─── TYPES ────────────────────────────────
 export type RoundStatus = 'draft' | 'active' | 'closed';
 
-export type DeadlineType =
-	| 'registration'
-	| 'supplement'
-	| 'report_submission'
-	| 'council_submission'
-	| 'council_defense';
+export type DeadlineType = 'edit' | 'supplement' | 'report_submission';
 
 export const DEADLINE_TYPE_LABELS: Record<DeadlineType, string> = {
-	registration: 'Đăng ký',
+	edit: 'Sửa',
 	supplement: 'Bổ sung',
 	report_submission: 'Nộp báo cáo',
-	council_submission: 'Nộp HĐ',
-	council_defense: 'Ngày báo cáo hội đồng',
+};
+
+// Những mục mà chủ nhiệm / thư ký được phép chỉnh sửa trong cửa sổ "Bổ sung".
+export type SupplementField = 'title' | 'description' | 'members' | 'files';
+
+export const SUPPLEMENT_FIELDS: SupplementField[] = [
+	'title',
+	'description',
+	'members',
+	'files',
+];
+
+export const SUPPLEMENT_FIELD_LABELS: Record<SupplementField, string> = {
+	title: 'Tên đề tài',
+	description: 'Mô tả / thông tin',
+	members: 'Thành viên',
+	files: 'Tài liệu / File',
 };
 
 export interface RoundDeadline {
@@ -24,6 +34,8 @@ export interface RoundDeadline {
 	start_date?: string | null; // dd/mm/yyyy
 	deadline_date: string; // dd/mm/yyyy
 	deadline_type?: DeadlineType | null;
+	/** Chỉ có ý nghĩa khi deadline_type === 'supplement'. null/[] ⇒ cho phép tất cả. */
+	supplement_fields?: SupplementField[] | null;
 }
 
 export interface ResearchRound {
@@ -31,7 +43,8 @@ export interface ResearchRound {
 	name: string;
 	year: number;
 	round_number: number; // số thứ tự đợt trong năm
-	round_type?: string | null; // nhãn loại đợt (NCKH, bài báo, ...), tự do
+	round_type_id?: string | null; // FK round_types.id (RT01, RT02, ...)
+	round_type_name?: string | null; // tên loại đợt (join từ round_types)
 	start_date: string; // dd/mm/yyyy
 	end_date: string;
 	status: RoundStatus;
@@ -50,10 +63,17 @@ export interface RoundForm {
 	name: string;
 	year: number;
 	round_number: number;
-	round_type: string;
+	round_type_id: string;
 	start_date: string;
 	end_date: string;
 	status: RoundStatus;
+}
+
+export interface RoundType {
+	id: string;
+	name: string;
+	description: string | null;
+	created_at: string;
 }
 
 export interface FormErrors {

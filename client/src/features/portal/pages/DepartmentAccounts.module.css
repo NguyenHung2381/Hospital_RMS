@@ -390,6 +390,10 @@
 	background: #fef3c7;
 	color: #92400e;
 }
+.avatarTeal {
+	background: #d6f3ee;
+	color: #0f6d63;
+}
 
 /* ── BADGE ──────────────────────────────── */
 .badge {
@@ -434,6 +438,10 @@
 .roleAmber {
 	background: #fef3c7;
 	color: #92400e;
+}
+.roleTeal {
+	background: #d6f3ee;
+	color: #0f6d63;
 }
 
 /* ── TOGGLE ─────────────────────────────── */

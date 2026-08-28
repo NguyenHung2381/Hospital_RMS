@@ -6,6 +6,7 @@ import {
 	getFileTypeColor,
 	getMimeExtension,
 } from '../utils/topicHelpers';
+import { formatDateVN } from '../../../shared/utils/formatDate';
 import { AlertSvg as IcAlert, WarnSvg as IcWarn, XSvg as IcX } from '@/assets/icons';
 
 export function ConfirmDeleteFileModal({
@@ -114,13 +115,7 @@ export function ConfirmDeleteFileModal({
 							{(() => {
 								const ext = getMimeExtension(files[0].mime_type);
 								const color = getFileTypeColor(ext);
-								const uploadedDate = new Date(
-									files[0].created_at,
-								).toLocaleDateString('vi-VN', {
-									day: '2-digit',
-									month: '2-digit',
-									year: 'numeric',
-								});
+								const uploadedDate = formatDateVN(files[0].created_at);
 								return (
 									<>
 										<div

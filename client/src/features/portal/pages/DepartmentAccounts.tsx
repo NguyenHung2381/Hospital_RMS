@@ -10,6 +10,14 @@ import {
 	XSvg,
 } from '@/assets/icons';
 import UserLayout from '../../../layouts/UserLayout';
+import sel from '../../../shared/components/Table/RowSelect.module.css';
+import {
+	BulkButton,
+	BulkDeleteModal,
+	SelectCheckbox,
+	SelectionBar,
+} from '../../../shared/components/Table/RowSelect';
+import { useRowSelection } from '../../../shared/hooks/useRowSelection';
 import {
 	DeptAccountsDeleteModal,
 	DeptAccountsResetPasswordModal,
@@ -17,10 +25,7 @@ import {
 import { DeptAccountsEditModal } from '../components/DeptAccountsEditModal';
 import { useDepartmentAccounts } from '../hooks/useDepartmentAccounts';
 import { getInitials } from '../../../shared/utils/helper';
-import {
-	ACCOUNT_TYPE_CFG,
-	ACCOUNT_TYPES,
-} from '../utils/deptAccountsHelpers';
+import { roleCfg } from '../utils/deptAccountsHelpers';
 import styles from './DepartmentAccounts.module.css';
 
 function Badge({
@@ -74,6 +79,19 @@ function Toggle({ on, onChange }: { on: boolean; onChange: () => void }) {
 
 export default function DepartmentAccounts() {
 	const d = useDepartmentAccounts();
+	const rowSel = useRowSelection((d.filteredUsers ?? []).map((u) => u.id));
+	const [bulkDeleteOpen, setBulkDeleteOpen] = React.useState(false);
+	const [bulkBusy, setBulkBusy] = React.useState(false);
+	const runBulkAction = async (fn: () => Promise<void>) => {
+		setBulkBusy(true);
+		try {
+			await fn();
+			rowSel.clearSelection();
+			setBulkDeleteOpen(false);
+		} finally {
+			setBulkBusy(false);
+		}
+	};
 
 	if (d.isLoading) {
 		return (
@@ -168,21 +186,21 @@ export default function DepartmentAccounts() {
 						</div>
 						<div className={styles.roleFilters}>
 							<button
-								className={`${styles.roleFilterBtn} ${d.typeFilter === 'all' ? styles.roleFilterActive : ''}`}
-								onClick={() => d.setTypeFilter('all')}
+								className={`${styles.roleFilterBtn} ${d.roleFilter === 'all' ? styles.roleFilterActive : ''}`}
+								onClick={() => d.setRoleFilter('all')}
 							>
 								Tất cả
 								<span className={styles.roleFilterCount}>{d.users.length}</span>
 							</button>
-							{ACCOUNT_TYPES.map((t) => (
+							{d.roles.map((t) => (
 								<button
-									key={t.value}
-									className={`${styles.roleFilterBtn} ${d.typeFilter === t.value ? styles.roleFilterActive : ''}`}
-									onClick={() => d.setTypeFilter(t.value)}
+									key={t.id}
+									className={`${styles.roleFilterBtn} ${d.roleFilter === t.id ? styles.roleFilterActive : ''}`}
+									onClick={() => d.setRoleFilter(t.id)}
 								>
-									{t.label}
+									{t.name}
 									<span className={styles.roleFilterCount}>
-										{d.users.filter((u) => u.account_type === t.value).length}
+										{d.users.filter((u) => u.role_id === t.id).length}
 									</span>
 								</button>
 							))}
@@ -203,20 +221,65 @@ export default function DepartmentAccounts() {
 								<UsersSvg />
 							</div>
 							<div className={styles.emptyTitle}>
-								{d.search || d.typeFilter !== 'all'
+								{d.search || d.roleFilter !== 'all'
 									? 'Không tìm thấy kết quả'
 									: 'Chưa có tài khoản trong khoa'}
 							</div>
 							<div className={styles.emptyDesc}>
-								{d.search || d.typeFilter !== 'all'
+								{d.search || d.roleFilter !== 'all'
 									? 'Thử thay đổi bộ lọc hoặc từ khoá tìm kiếm'
 									: 'Liên hệ quản trị viên để cấp tài khoản'}
 							</div>
 						</div>
 					) : (
+						<>
+						<SelectionBar
+							count={rowSel.selectedCount}
+							onClear={rowSel.clearSelection}
+							itemLabel='tài khoản'
+							actions={
+								<>
+									<BulkButton
+										disabled={bulkBusy}
+										onClick={() =>
+											runBulkAction(() =>
+												d.handleBulkSetActive([...rowSel.selectedIds], true),
+											)
+										}
+									>
+										<CheckSvg /> Kích hoạt
+									</BulkButton>
+									<BulkButton
+										disabled={bulkBusy}
+										onClick={() =>
+											runBulkAction(() =>
+												d.handleBulkSetActive([...rowSel.selectedIds], false),
+											)
+										}
+									>
+										<XSvg /> Khoá
+									</BulkButton>
+									<BulkButton
+										danger
+										disabled={bulkBusy}
+										onClick={() => setBulkDeleteOpen(true)}
+									>
+										<TrashSvg /> Xoá đã chọn
+									</BulkButton>
+								</>
+							}
+						/>
 						<table className={styles.table}>
 							<thead>
 								<tr>
+									<th className={sel.checkCol}>
+										<SelectCheckbox
+											title='Chọn tất cả'
+											checked={rowSel.allPageSelected}
+											indeterminate={rowSel.somePageSelected}
+											onChange={rowSel.toggleSelectAll}
+										/>
+									</th>
 									<th className={styles.th}>#</th>
 									<th className={styles.th}>Người dùng</th>
 									<th className={styles.th}>Đăng nhập / Mã NV</th>
@@ -229,13 +292,19 @@ export default function DepartmentAccounts() {
 							</thead>
 							<tbody>
 								{d.filteredUsers.map((u, i) => {
-									const typeCfg =
-										ACCOUNT_TYPE_CFG[u.account_type] ?? ACCOUNT_TYPE_CFG.member;
+									const typeCfg = roleCfg(u.role_id);
 									return (
 										<tr
 											key={u.id}
-											className={styles.tr}
+											className={`${styles.tr} ${rowSel.isSelected(u.id) ? sel.rowSelected : ''}`}
 										>
+											<td className={sel.checkCol}>
+												<SelectCheckbox
+													title='Chọn tài khoản'
+													checked={rowSel.isSelected(u.id)}
+													onChange={() => rowSel.toggleSelect(u.id)}
+												/>
+											</td>
 											<td className={`${styles.td} ${styles.tdIdx}`}>
 												{i + 1}
 											</td>
@@ -329,6 +398,7 @@ export default function DepartmentAccounts() {
 								})}
 							</tbody>
 						</table>
+						</>
 					)}
 				</div>
 			</div>
@@ -356,6 +426,18 @@ export default function DepartmentAccounts() {
 					onConfirm={d.handleResetPassword}
 				/>
 			)}
+			<BulkDeleteModal
+				open={bulkDeleteOpen}
+				count={rowSel.selectedCount}
+				itemLabel='tài khoản'
+				loading={bulkBusy}
+				onClose={() => setBulkDeleteOpen(false)}
+				onConfirm={() =>
+					runBulkAction(() =>
+						d.handleBulkDelete([...rowSel.selectedIds]),
+					)
+				}
+			/>
 
 			{/* Toast */}
 			{d.toast && (

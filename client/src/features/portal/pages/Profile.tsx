@@ -10,7 +10,7 @@ import {
 	UserSvg,
 } from '@/assets/icons';
 import UserLayout from '../../../layouts/UserLayout';
-import { ACCOUNT_TYPE_LABEL, fmtDate, useProfile } from '../hooks/useProfile';
+import { fmtDate, useProfile } from '../hooks/useProfile';
 import styles from './Profile.module.css';
 
 export default function Profile() {
@@ -170,13 +170,6 @@ export default function Profile() {
 									<div className={styles.detailLabel}>Chức vụ / Vai trò</div>
 									<div className={styles.detailValue}>
 										{d.profile.role ?? d.userRole}
-									</div>
-								</div>
-								<div className={styles.detailItem}>
-									<div className={styles.detailLabel}>Loại tài khoản</div>
-									<div className={styles.detailValue}>
-										{ACCOUNT_TYPE_LABEL[d.profile.account_type] ??
-											d.profile.account_type}
 									</div>
 								</div>
 								<div className={styles.detailItem}>
