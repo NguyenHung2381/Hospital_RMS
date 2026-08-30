@@ -1,13 +1,24 @@
+const fs = require('fs');
 const path = require('path');
 const dotenv = require('dotenv');
 
-// Nạp biến môi trường dựa trên NODE_ENV
+// Nạp biến môi trường dựa trên NODE_ENV. File .env nên nằm ở thư mục gốc của
+// server (cạnh .env.example và docker-compose). Vẫn hỗ trợ src/.env để không
+// vỡ nếu file bị đặt nhầm chỗ. dotenv KHÔNG ghi đè biến đã có sẵn, nên thứ tự
+// dưới đây chính là thứ tự ưu tiên.
+const SERVER_DIR = path.resolve(__dirname, '..');
 const envFile =
 	process.env.NODE_ENV === 'production' ? '.env.production' : '.env';
-dotenv.config({ path: path.resolve(__dirname, envFile) });
-// Fallback nạp thêm file .env mặc định nếu có những biến dùng chung chưa được định nghĩa trong file môi trường cụ thể
-if (process.env.NODE_ENV === 'production') {
-	dotenv.config({ path: path.resolve(__dirname, '.env') });
+const envCandidates = [
+	path.resolve(SERVER_DIR, envFile),
+	path.resolve(SERVER_DIR, '.env'),
+	path.resolve(__dirname, envFile),
+	path.resolve(__dirname, '.env'),
+];
+for (const envPath of envCandidates) {
+	if (fs.existsSync(envPath)) {
+		dotenv.config({ path: envPath });
+	}
 }
 
 // Bắt buộc phải có các biến môi trường nhạy cảm — không cho phép fail-open
