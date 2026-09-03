@@ -6,6 +6,7 @@ import {
 	SearchSvg,
 	XSvg,
 } from '@/assets/icons';
+import { EmptyState } from '@/shared/components';
 import AdminLayout from '../../../layouts/AdminLayout';
 import { ResetPasswordModal } from '../components/ResetPasswordModal';
 import { UserDeleteModal } from '../components/UserDeleteModal';
@@ -35,13 +36,11 @@ export default function UserList() {
 				pageSubtitle='Quản lý tài khoản cán bộ, nhân viên'
 				headerActions={headerActions}
 			>
-				<div className={styles.emptyState}>
-					<div className={styles.emptyIcon}>
-						<InfoSvg />
-					</div>
-					<div className={styles.emptyTitle}>Không tải được dữ liệu</div>
-					<div className={styles.emptyDesc}>{d.loadError}</div>
-				</div>
+				<EmptyState
+					icon={<InfoSvg />}
+					title='Không tải được dữ liệu'
+					desc={d.loadError}
+				/>
 			</AdminLayout>
 		);
 	}

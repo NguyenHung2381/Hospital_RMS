@@ -1,20 +1,23 @@
 import { useState } from 'react';
 import { EditSvg, KeySvg, TrashSvg, UsersSvg } from '@/assets/icons';
+import {
+	Badge,
+	BulkBar,
+	EmptyState,
+	Pagination,
+	SelectCheckbox,
+	Skeleton,
+	SkeletonTable,
+} from '@/shared/components';
+import { formatDateOr } from '@/shared/utils';
+import { useRowSelection } from '@/shared/hooks/useRowSelection';
+import sel from '@/shared/components/Table/RowSelect.module.css';
 import styles from '../pages/UserList.module.css';
 import type { SimpleItem, UpdateUserPayload } from '../api/userApi';
 import type { User } from '../types/user.type';
-import { formatDate as _formatDate } from '../../../shared/utils/formatDate';
 import { roleCfg } from '../utils/userHelpers';
-const formatDate = (s: string | null | undefined) => _formatDate(s) ?? '—';
 import { Avatar, Toggle } from './UserModal';
 import { UserBulkEditModal } from './UserBulkEditModal';
-import { Skeleton, SkeletonTable } from '../../../shared/components/Loading';
-import sel from '../../../shared/components/Table/RowSelect.module.css';
-import {
-	BulkBar,
-	SelectCheckbox,
-} from '../../../shared/components/Table/RowSelect';
-import { useRowSelection } from '../../../shared/hooks/useRowSelection';
 
 interface UserTableProps {
 	users: User[];
@@ -39,23 +42,6 @@ interface UserTableProps {
 	roles: SimpleItem[];
 	handleBulkDelete: (ids: string[]) => Promise<void>;
 	handleBulkEdit: (ids: string[], payload: UpdateUserPayload) => Promise<void>;
-}
-
-function Badge({
-	cls,
-	children,
-	dot,
-}: {
-	cls: string;
-	children: React.ReactNode;
-	dot?: boolean;
-}) {
-	return (
-		<span className={`${styles.badge} ${styles[cls as keyof typeof styles]}`}>
-			{dot && <span className={styles.badgeDot} />}
-			{children}
-		</span>
-	);
 }
 
 export function UserTable({
@@ -96,28 +82,25 @@ export function UserTable({
 			style={{ border: 'none', borderRadius: 0 }}
 		>
 			{users.length === 0 && !loading ? (
-				<div className={styles.emptyState}>
-					<div className={styles.emptyIcon}>
-						<UsersSvg />
-					</div>
-					<div className={styles.emptyTitle}>
-						{isFiltered ? 'Không tìm thấy kết quả' : 'Chưa có tài khoản'}
-					</div>
-					<div className={styles.emptyDesc}>
-						{isFiltered
+				<EmptyState
+					icon={<UsersSvg />}
+					title={isFiltered ? 'Không tìm thấy kết quả' : 'Chưa có tài khoản'}
+					desc={
+						isFiltered
 							? 'Thử thay đổi bộ lọc hoặc từ khoá tìm kiếm'
-							: 'Cấp tài khoản đầu tiên'}
-					</div>
-					{!isFiltered && (
-						<button
-							className={styles.btnGrantHeader}
-							onClick={() => setShowCreate(true)}
-							style={{ marginTop: 16 }}
-						>
-							<KeySvg /> Cấp tài khoản
-						</button>
-					)}
-				</div>
+							: 'Cấp tài khoản đầu tiên'
+					}
+					action={
+						!isFiltered && (
+							<button
+								className={styles.btnGrantHeader}
+								onClick={() => setShowCreate(true)}
+							>
+								<KeySvg /> Cấp tài khoản
+							</button>
+						)
+					}
+				/>
 			) : (
 				<>
 				<BulkBar
@@ -216,7 +199,7 @@ export function UserTable({
 									</td>
 									<td className={styles.td}>
 										<Badge
-											cls={rCfg.cls}
+											tone={rCfg.tone}
 											dot
 										>
 											{getRoleName(u.role_id) || rCfg.label}
@@ -243,7 +226,7 @@ export function UserTable({
 									</td>
 									<td className={styles.td}>
 										<span className={styles.dateText}>
-											{formatDate(u.created_at)}
+											{formatDateOr(u.created_at)}
 										</span>
 									</td>
 									<td className={`${styles.td} ${styles.tdActions}`}>
@@ -278,113 +261,28 @@ export function UserTable({
 				</>
 			)}
 
-			{/* PAGINATION — reserve space during loading too, avoids the bar popping in and shifting the page (CLS) */}
-			{(loading || totalCount > 0) && (
+			{/* Giữ chỗ khi loading để tránh CLS khi thanh phân trang xuất hiện */}
+			{loading ? (
 				<div className={styles.paginationBar}>
-					<div className={styles.paginationInfo}>
-						{loading ? (
-							<Skeleton width={160} height={14} style={{ verticalAlign: 'middle' }} />
-						) : (
-							<>
-								Hiển thị <strong>{(currentPage - 1) * pageSize + 1}</strong>
-								{' – '}
-								<strong>{Math.min(currentPage * pageSize, totalCount)}</strong>
-								{' / '}
-								<strong>{totalCount}</strong> bản ghi
-							</>
-						)}
-					</div>
-					<div className={styles.paginationControls}>
-						<div className={styles.pageSizeSelector}>
-							<span className={styles.pageSizeLabel}>Hiển thị</span>
-							<select
-								className={styles.pageSizeSelect}
-								value={pageSize}
-								onChange={(e) => setPageSize(Number(e.target.value))}
-							>
-								{[10, 20, 50, 100].map((n) => (
-									<option
-										key={n}
-										value={n}
-									>
-										{n}
-									</option>
-								))}
-							</select>
-							<span className={styles.pageSizeLabel}>/ trang</span>
-						</div>
-						<div className={styles.pageButtons}>
-							<button
-								className={styles.pageBtn}
-								onClick={() => setCurrentPage(1)}
-								disabled={currentPage === 1}
-								title='Trang đầu'
-							>
-								«
-							</button>
-							<button
-								className={styles.pageBtn}
-								onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
-								disabled={currentPage === 1}
-								title='Trang trước'
-							>
-								‹
-							</button>
-							{Array.from({ length: totalPages }, (_, i) => i + 1)
-								.filter(
-									(p) =>
-										p === 1 ||
-										p === totalPages ||
-										Math.abs(p - currentPage) <= 1,
-								)
-								.reduce<(number | 'ellipsis-start' | 'ellipsis-end')[]>(
-									(acc, p, idx, arr) => {
-										if (idx > 0 && (p as number) - (arr[idx - 1] as number) > 1)
-											acc.push(idx === 1 ? 'ellipsis-start' : 'ellipsis-end');
-										acc.push(p);
-										return acc;
-									},
-									[],
-								)
-								.map((item, idx) =>
-									typeof item === 'string' ? (
-										<span
-											key={item + idx}
-											className={styles.pageEllipsis}
-										>
-											…
-										</span>
-									) : (
-										<button
-											key={item}
-											className={`${styles.pageBtn} ${item === currentPage ? styles.pageBtnActive : ''}`}
-											onClick={() => setCurrentPage(item)}
-										>
-											{item}
-										</button>
-									),
-								)}
-							<button
-								className={styles.pageBtn}
-								onClick={() =>
-									setCurrentPage(Math.min(totalPages, currentPage + 1))
-								}
-								disabled={currentPage === totalPages}
-								title='Trang sau'
-							>
-								›
-							</button>
-							<button
-								className={styles.pageBtn}
-								onClick={() => setCurrentPage(totalPages)}
-								disabled={currentPage === totalPages}
-								title='Trang cuối'
-							>
-								»
-							</button>
-						</div>
-					</div>
+					<Skeleton
+						width={160}
+						height={14}
+						style={{ verticalAlign: 'middle' }}
+					/>
 				</div>
+			) : (
+				totalCount > 0 && (
+					<Pagination
+						page={currentPage}
+						totalPages={totalPages}
+						total={totalCount}
+						rowsPerPage={pageSize}
+						pageSizeOptions={[10, 20, 50, 100]}
+						onPageChange={setCurrentPage}
+						onRowsPerPageChange={setPageSize}
+						itemLabel='bản ghi'
+					/>
+				)
 			)}
 		</div>
 	);

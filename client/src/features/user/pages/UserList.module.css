@@ -687,19 +687,7 @@
 	color: #791f1f;
 }
 
-/* ── EMPTY STATE ────────────────────────── */
-.emptyState {
-	composes: emptyState from '../../../shared/components/Table/Table.module.css';
-}
-.emptyIcon {
-	composes: emptyIcon from '../../../shared/components/Table/Table.module.css';
-}
-.emptyTitle {
-	composes: emptyTitle from '../../../shared/components/Table/Table.module.css';
-}
-.emptyDesc {
-	composes: emptyDesc from '../../../shared/components/Table/Table.module.css';
-}
+/* Trạng thái rỗng: dùng <EmptyState> ở @/shared/components */
 
 /* ── AVATAR ─────────────────────────────── */
 .avatar {
@@ -813,54 +801,7 @@
 	height: 15px;
 }
 
-/* ── BADGES ─────────────────────────────── */
-.badge {
-	display: inline-flex;
-	align-items: center;
-	gap: 4px;
-	padding: 3px var(--space-2);
-	border-radius: var(--radius-full);
-	font-size: 11px;
-	font-weight: var(--font-weight-bold);
-	white-space: nowrap;
-}
-
-.badgeDot {
-	width: 5px;
-	height: 5px;
-	border-radius: 50%;
-	background: currentColor;
-	flex-shrink: 0;
-}
-
-.rolePurple {
-	background: #eeedfe;
-	color: #3c3489;
-}
-.roleBlue {
-	background: #e6f1fb;
-	color: #0c447c;
-}
-.roleGreen {
-	background: #e1f5ee;
-	color: #085041;
-}
-.roleGray {
-	background: #f1efe8;
-	color: #444441;
-}
-.roleRed {
-	background: #fee2e2;
-	color: #991b1b;
-}
-.roleAmber {
-	background: #fef3c7;
-	color: #92400e;
-}
-.roleTeal {
-	background: #d6f3ee;
-	color: #0f6d63;
-}
+/* ── BADGES: dùng <Badge tone> ở @/shared/components ── */
 
 .tsBadgeGreen {
 	background: #e1f5ee;
@@ -1419,105 +1360,13 @@
 	}
 }
 
-/* -- PAGINATION ---------------------------- */
+/* -- PAGINATION: dùng <Pagination> ở @/shared/components -------------------- */
+/* Chỉ giữ khung giữ chỗ khi loading (tránh CLS). */
 .paginationBar {
 	display: flex;
 	align-items: center;
-	justify-content: space-between;
 	padding: 12px 20px;
 	border-top: 1px solid var(--color-gray-100);
 	background: var(--color-surface);
 	border-radius: 0 0 12px 12px;
-	flex-wrap: wrap;
-	gap: 10px;
-}
-
-.paginationInfo {
-	font-size: 13px;
-	color: var(--color-gray-500);
-}
-.paginationInfo strong {
-	color: var(--color-gray-800);
-}
-
-.paginationControls {
-	display: flex;
-	align-items: center;
-	gap: 16px;
-	flex-wrap: wrap;
-}
-
-.pageSizeSelector {
-	display: flex;
-	align-items: center;
-	gap: 6px;
-}
-
-.pageSizeLabel {
-	font-size: 13px;
-	color: var(--color-gray-500);
-}
-
-.pageSizeSelect {
-	height: 32px;
-	padding: 0 8px;
-	border: 1.5px solid var(--color-gray-200);
-	border-radius: 8px;
-	font-size: 13px;
-	background: var(--color-surface);
-	color: var(--color-gray-800);
-	cursor: pointer;
-	transition: border-color 0.15s;
-}
-.pageSizeSelect:focus {
-	outline: none;
-	border-color: var(--color-primary);
-}
-
-.pageButtons {
-	display: flex;
-	align-items: center;
-	gap: 3px;
-}
-
-.pageBtn {
-	min-width: 32px;
-	height: 32px;
-	padding: 0 8px;
-	border: 1.5px solid var(--color-gray-200);
-	border-radius: 8px;
-	font-size: 13px;
-	font-weight: 500;
-	background: var(--color-surface);
-	color: var(--color-gray-700);
-	cursor: pointer;
-	transition: all 0.15s;
-	display: flex;
-	align-items: center;
-	justify-content: center;
-}
-.pageBtn:hover:not(:disabled) {
-	background: var(--color-primary-pale);
-	border-color: var(--color-primary);
-	color: var(--color-primary-dark);
-}
-.pageBtn:disabled {
-	opacity: 0.35;
-	cursor: not-allowed;
-}
-.pageBtnActive {
-	background: var(--color-primary) !important;
-	border-color: var(--color-primary) !important;
-	color: #fff !important;
-	font-weight: 700;
-}
-
-.pageEllipsis {
-	min-width: 28px;
-	height: 32px;
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	font-size: 14px;
-	color: var(--color-gray-400);
 }
