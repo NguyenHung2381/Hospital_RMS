@@ -1,8 +1,9 @@
 import type { NavigateFunction } from 'react-router-dom';
 import { ChevRSvg, HelpSvg } from '@/assets/icons';
+import { Badge } from '@/shared/components';
 import type { MyTopic } from '../types/topicregister.type';
 import {
-	BADGE_CLS,
+	BADGE_TONE,
 	fmtDate,
 	GUIDE_STEPS,
 	STATUS_CFG,
@@ -88,15 +89,12 @@ export function RegisterSidePanel({ myTopics, navigate }: RegisterSidePanelProps
 								<div className={styles.myTopicTitle}>{t.title}</div>
 								<div className={styles.myTopicMeta}>
 									<span>{fmtDate(t.created_at)}</span>
-									<span
-										className={`${styles.badge} ${styles[BADGE_CLS[t.status] as keyof typeof styles]}`}
+									<Badge
+										tone={BADGE_TONE[t.status]}
+										dot
 									>
-										<span
-											className={styles.badgeDot}
-											style={{ background: STATUS_CFG[t.status].dot }}
-										/>
 										{STATUS_CFG[t.status].label}
-									</span>
+									</Badge>
 								</div>
 							</div>
 						))

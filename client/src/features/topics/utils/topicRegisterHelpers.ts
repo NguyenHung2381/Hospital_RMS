@@ -1,4 +1,5 @@
 import type { ArticleType, MemberRole, TopicStatus } from '../types/topic.type';
+import type { BadgeTone } from '@/shared/components/Badge/badgeTone';
 
 export const MAX_FILE_SIZE = 150 * 1024 * 1024; // 150 MB
 
@@ -42,12 +43,12 @@ export const STATUS_CFG: Record<TopicStatus, { label: string; dot: string }> = {
 	cancelled: { label: 'Đã hủy', dot: '#9ca3af' },
 };
 
-export const BADGE_CLS: Record<TopicStatus, string> = {
-	submitted: 'badgeAmber',
-	approved: 'badgeGreen',
-	rejected: 'badgeRed',
-	supplement: 'badgeBlue',
-	cancelled: 'badgeGray',
+export const BADGE_TONE: Record<TopicStatus, BadgeTone> = {
+	submitted: 'amber',
+	approved: 'green',
+	rejected: 'red',
+	supplement: 'blue',
+	cancelled: 'gray',
 };
 
 export function fmtDate(iso: string): string {

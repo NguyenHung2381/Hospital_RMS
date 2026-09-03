@@ -22,7 +22,7 @@ import {
 } from '../../../shared/components/Table/RowSelect';
 import { useRowSelection } from '../../../shared/hooks/useRowSelection';
 import { Skeleton, SkeletonTable } from '../../../shared/components/Loading';
-import { Badge } from '../components/Badge';
+import { Badge } from '@/shared/components';
 import { DeleteModal } from '../components/DeleteModal';
 import { ExportExcelModal } from '../components/ExportExcelModal';
 import { TopicBulkEditModal } from '../components/TopicBulkEditModal';
@@ -343,7 +343,7 @@ export default function TopicPage() {
 													onClick={() => d.setViewTopic(t)}
 												>
 													{t.article_type === 'bai_bao' && (
-														<Badge cls='badgeBlue'>Bài báo</Badge>
+														<Badge tone='blue'>Bài báo</Badge>
 													)}{' '}
 													{t.title}
 												</div>
@@ -359,12 +359,12 @@ export default function TopicPage() {
 											</td>
 											<td>
 												<Badge
-													cls={
+													tone={
 														t.level_id === 'CD04'
-															? 'badgePink'
+															? 'pink'
 															: t.level_id === 'CD03'
-																? 'badgePurple'
-																: 'badgeTeal'
+																? 'purple'
+																: 'teal'
 													}
 												>
 													{lookup(d.levels, t.level_id)}
@@ -387,7 +387,7 @@ export default function TopicPage() {
 											</td>
 											<td>
 												<Badge
-													cls={sc.cls}
+													tone={sc.tone}
 													dot
 												>
 													{sc.label}

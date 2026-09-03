@@ -1,20 +1,21 @@
 import type { MemberRole, TopicStatus } from '../types/topic.type';
+import type { BadgeTone } from '@/shared/components/Badge/badgeTone';
 
-export const STATUS_CFG: Record<TopicStatus, { label: string; cls: string }> = {
-	submitted: { label: 'Chờ phê duyệt', cls: 'badgeAmber' },
-	approved: { label: 'Đã phê duyệt', cls: 'badgeGreen' },
-	rejected: { label: 'Không phê duyệt', cls: 'badgeRed' },
-	supplement: { label: 'Yêu cầu bổ sung', cls: 'badgeBlue' },
-	cancelled: { label: 'Đã hủy', cls: 'badgeGray' },
+export const STATUS_CFG: Record<TopicStatus, { label: string; tone: BadgeTone }> = {
+	submitted: { label: 'Chờ phê duyệt', tone: 'amber' },
+	approved: { label: 'Đã phê duyệt', tone: 'green' },
+	rejected: { label: 'Không phê duyệt', tone: 'red' },
+	supplement: { label: 'Yêu cầu bổ sung', tone: 'blue' },
+	cancelled: { label: 'Đã hủy', tone: 'gray' },
 };
 
 export const MEMBER_ROLE_CFG: Record<
 	MemberRole,
-	{ label: string; cls: string }
+	{ label: string; tone: BadgeTone }
 > = {
-	leader: { label: 'Chủ nhiệm', cls: 'badgeGreen' },
-	secretary: { label: 'Thư ký', cls: 'badgeBlue' },
-	member: { label: 'Thành viên', cls: 'badgeGray' },
+	leader: { label: 'Chủ nhiệm', tone: 'green' },
+	secretary: { label: 'Thư ký', tone: 'blue' },
+	member: { label: 'Thành viên', tone: 'gray' },
 };
 
 // Chủ nhiệm phải là người được thêm đầu tiên; mỗi đề tài chỉ có tối đa 1 Chủ nhiệm và 1 Thư ký

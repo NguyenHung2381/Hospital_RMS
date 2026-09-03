@@ -2,7 +2,7 @@ import { AlertSvg as IcAlert, InfoSvg as IcInfo, TrashSvg as IcTrash } from '@/a
 import type { Topic, TopicMember } from '../types/topic.type';
 import { getInitials } from '../../../shared/utils/helper';
 import { genMemberUsername, MEMBER_ROLE_CFG } from '../utils/topicHelpers';
-import { Badge } from './Badge';
+import { Badge } from '@/shared/components';
 import styles from '../pages/Topic.module.css';
 
 interface MemberListSectionProps {
@@ -115,7 +115,7 @@ export function MemberListSection({
 									</div>
 								</div>
 								<div className={styles.memberRight}>
-									<Badge cls={rc.cls}>{rc.label}</Badge>
+									<Badge tone={rc.tone}>{rc.label}</Badge>
 									{m.account_granted ? (
 										<div className={styles.memberAccountInfo}>
 											<span className={styles.memberAccountGranted}>

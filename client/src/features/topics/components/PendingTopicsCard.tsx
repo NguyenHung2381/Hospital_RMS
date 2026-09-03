@@ -1,4 +1,5 @@
 import { AlertSvg, SendSvg, XSvg } from '@/assets/icons';
+import { Badge } from '@/shared/components';
 import type { SimpleItem } from '../api/topicApi';
 import type { PendingTopic } from '../types/topicregister.type';
 import { ARTICLE_TYPE_CFG } from '../utils/topicRegisterHelpers';
@@ -39,12 +40,12 @@ export function PendingTopicsCard({
 							<div className={styles.pendingNum}>{i + 1}</div>
 							<div className={styles.pendingInfo}>
 								<div className={styles.pendingTitle}>
-									<span
-										className={`${styles.badge} ${t.article_type === 'bai_bao' ? styles.badgeTeal : styles.badgeBlue}`}
+									<Badge
+										tone={t.article_type === 'bai_bao' ? 'teal' : 'blue'}
 										style={{ marginRight: 6 }}
 									>
 										{ARTICLE_TYPE_CFG[t.article_type].tabLabel}
-									</span>
+									</Badge>
 									{t.title}
 								</div>
 								<div className={styles.pendingMeta}>

@@ -4,7 +4,7 @@ import { useTopicDrawer } from '../hooks/useTopicDrawer';
 import styles from '../pages/Topic.module.css';
 import type { DrawerTab, Topic } from '../types/topic.type';
 import { STATUS_CFG, lookup } from '../utils/topicHelpers';
-import { Badge } from './Badge';
+import { Badge } from '@/shared/components';
 import { ConfirmDeleteFileModal } from './ConfirmDeleteFileModal';
 import { ConfirmUploadModal } from './ConfirmUploadModal';
 import { DrawerFilesTab } from './DrawerFilesTab';
@@ -66,13 +66,13 @@ export function TopicDrawer({
 						<div className={styles.drawerTitle}>{topic.title}</div>
 						<div className={styles.drawerBadges}>
 							<Badge
-								cls={statusCfg.cls}
+								tone={statusCfg.tone}
 								dot
 							>
 								{statusCfg.label}
 							</Badge>
-							<Badge cls='badgePurple'>{lookup(levels, topic.level_id)}</Badge>
-							<Badge cls='badgeTeal'>
+							<Badge tone='purple'>{lookup(levels, topic.level_id)}</Badge>
+							<Badge tone='teal'>
 								{lookup(categories, topic.category_id)}
 							</Badge>
 						</div>
