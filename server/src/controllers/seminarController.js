@@ -1,0 +1,184 @@
+/**
+ * seminarController.js — Hội thảo / Hội nghị & CME.
+ * Base CRUD lấy từ createCrudController(seminarService); phần người tham dự,
+ * cấp CME và thống kê xử lý riêng.
+ */
+const seminarService = require('../services/seminarService');
+const partService = require('../services/seminarParticipantService');
+const importService = require('../services/seminarImportService');
+const { createCrudController } = require('./crudController');
+const { success, created, notFound } = require('../utils/response');
+
+const base = createCrudController(seminarService);
+
+// ─── Thống kê ────────────────────────────────────────────────────────────────
+const statsHosted = async (req, res, next) => {
+	try {
+		return success(res, await seminarService.statsHosted(req.query));
+	} catch (e) {
+		next(e);
+	}
+};
+
+const cmeStats = async (req, res, next) => {
+	try {
+		return success(res, await seminarService.statsCme(req.query));
+	} catch (e) {
+		next(e);
+	}
+};
+
+const cmeRegister = async (req, res, next) => {
+	try {
+		return success(res, await seminarService.cmeRegister(req.query));
+	} catch (e) {
+		next(e);
+	}
+};
+
+const updateCmeRegister = async (req, res, next) => {
+	try {
+		const out = await seminarService.updateRegisterSeq(
+			req.params.year,
+			req.body.last_seq,
+			req.user.id,
+		);
+		return success(res, out, 'Đã cập nhật sổ cấp CME');
+	} catch (e) {
+		next(e);
+	}
+};
+
+// ─── Người tham dự ───────────────────────────────────────────────────────────
+const listParticipants = async (req, res, next) => {
+	try {
+		return success(res, await partService.listBySeminar(req.params.id));
+	} catch (e) {
+		next(e);
+	}
+};
+
+const addParticipant = async (req, res, next) => {
+	try {
+		return created(
+			res,
+			await partService.add(req.params.id, req.body, req.user.id),
+			'Đã thêm người tham dự',
+		);
+	} catch (e) {
+		next(e);
+	}
+};
+
+const updateParticipant = async (req, res, next) => {
+	try {
+		const p = await partService.update(
+			req.params.id,
+			req.params.pid,
+			req.body,
+			req.user.id,
+		);
+		if (!p) return notFound(res);
+		return success(res, p, 'Đã cập nhật');
+	} catch (e) {
+		next(e);
+	}
+};
+
+const removeParticipant = async (req, res, next) => {
+	try {
+		await partService.remove(req.params.id, req.params.pid, req.user.id);
+		return success(res, null, 'Đã xoá');
+	} catch (e) {
+		next(e);
+	}
+};
+
+// ─── CME ─────────────────────────────────────────────────────────────────────
+const issueCme = async (req, res, next) => {
+	try {
+		const ids = req.body.participant_ids || (req.params.pid ? [req.params.pid] : []);
+		const out = await partService.issueCme(req.params.id, ids, req.user.id, {
+			year: req.body.year,
+		});
+		return success(
+			res,
+			out,
+			out.issued
+				? `Đã cấp ${out.issued} số CME (${String(out.from).padStart(4, '0')}–${String(out.to).padStart(4, '0')} / ${out.year})`
+				: 'Không có người nào cần cấp số CME',
+		);
+	} catch (e) {
+		next(e);
+	}
+};
+
+const revokeCme = async (req, res, next) => {
+	try {
+		await partService.revokeCme(req.params.id, req.params.pid, req.user.id);
+		return success(res, null, 'Đã thu hồi số CME');
+	} catch (e) {
+		next(e);
+	}
+};
+
+const bulkCmeStatus = async (req, res, next) => {
+	try {
+		const out = await partService.setCmeStatus(
+			req.params.id,
+			req.body.participant_ids || [],
+			req.body.status,
+			req.user.id,
+		);
+		return success(res, out, `Đã cập nhật ${out.updated} bản ghi`);
+	} catch (e) {
+		next(e);
+	}
+};
+
+// ─── Nhập Excel danh sách người tham dự ──────────────────────────────────────
+const importParticipants = async (req, res, next) => {
+	try {
+		if (!req.file) {
+			return res
+				.status(400)
+				.json({ success: false, message: 'Chưa chọn file Excel.' });
+		}
+		const out = await importService.importExcel(
+			{
+				buffer: req.file.buffer,
+				seminar_id: req.params.id,
+				dry_run: req.body.dry_run === '1' || req.body.dry_run === 'true',
+				issue_cme: req.body.issue_cme === '1' || req.body.issue_cme === 'true',
+			},
+			req.user.id,
+		);
+		return success(
+			res,
+			out,
+			out.dry_run
+				? 'Đã đọc file — kiểm tra trước khi nhập'
+				: `Đã nhập ${out.inserted} người${
+						out.cme_issued ? `, cấp ${out.cme_issued} số CME` : ''
+					}`,
+		);
+	} catch (e) {
+		next(e);
+	}
+};
+
+module.exports = {
+	...base,
+	statsHosted,
+	cmeStats,
+	cmeRegister,
+	updateCmeRegister,
+	listParticipants,
+	addParticipant,
+	updateParticipant,
+	removeParticipant,
+	issueCme,
+	revokeCme,
+	bulkCmeStatus,
+	importParticipants,
+};

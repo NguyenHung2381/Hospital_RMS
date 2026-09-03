@@ -49,6 +49,9 @@ export const MATRIX_ACTIONS = [
 	'update',
 	'delete',
 	'approve',
+	'import',
+	'export',
+	'cme_manage',
 	'access',
 	'manage',
 ] as const;
@@ -60,6 +63,9 @@ export const MATRIX_ACTION_LABELS: Record<string, string> = {
 	update: 'Sửa',
 	delete: 'Xóa',
 	approve: 'Duyệt',
+	import: 'Nhập Excel',
+	export: 'Xuất Excel',
+	cme_manage: 'Cấp CME',
 	access: 'Truy cập',
 	manage: 'Quản lý',
 };

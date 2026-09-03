@@ -19,6 +19,11 @@ const Councils = lazy(() => import('../../features/council/pages/Council'));
 const ExternalReviewers = lazy(
 	() => import('../../features/council/pages/ExternalReviewers'),
 );
+const Seminars = lazy(() => import('../../features/seminar/pages/Seminars'));
+const SeminarDetail = lazy(
+	() => import('../../features/seminar/pages/SeminarDetail'),
+);
+const CmeRegister = lazy(() => import('../../features/seminar/pages/CmeRegister'));
 const Approvals = lazy(() => import('../../features/approval/pages/Approval'));
 const Catalog = lazy(() => import('../../features/catalog/pages/Catalog'));
 const Users = lazy(() => import('../../features/user/pages/UserList'));
@@ -85,6 +90,18 @@ export const adminRoutes: RouteObject[] = [
 	{
 		path: '/admin/external-reviewers',
 		element: admin('Người ngoài viện', <ExternalReviewers />),
+	},
+	{
+		path: '/admin/seminars',
+		element: admin('Hội thảo & Hội nghị', <Seminars />),
+	},
+	{
+		path: '/admin/seminars/:id',
+		element: admin('Chi tiết hội thảo', <SeminarDetail />),
+	},
+	{
+		path: '/admin/cme-register',
+		element: admin('Sổ cấp CME', <CmeRegister />),
 	},
 	{
 		path: '/admin/departments',

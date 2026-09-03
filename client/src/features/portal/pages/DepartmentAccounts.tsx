@@ -10,6 +10,7 @@ import {
 	XSvg,
 } from '@/assets/icons';
 import UserLayout from '../../../layouts/UserLayout';
+import { InlineLoading } from '../../../shared/components/Loading';
 import sel from '../../../shared/components/Table/RowSelect.module.css';
 import {
 	BulkButton,
@@ -99,12 +100,7 @@ export default function DepartmentAccounts() {
 				pageTitle='Tài khoản trong khoa'
 				pageSubtitle={d.deptName}
 			>
-				<div className={styles.emptyState}>
-					<div className={styles.emptyIcon}>
-						<UsersSvg />
-					</div>
-					<div className={styles.emptyTitle}>Đang tải dữ liệu...</div>
-				</div>
+				<InlineLoading />
 			</UserLayout>
 		);
 	}

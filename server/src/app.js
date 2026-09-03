@@ -94,6 +94,7 @@ app.use(`${API}/dashboard`, require('./routes/dashboard'));
 app.use(`${API}/notifications`, require('./routes/notifications'));
 app.use(`${API}/events`, require('./routes/events'));
 app.use(`${API}/activity-logs`, require('./routes/activityLogs'));
+app.use(`${API}/seminars`, require('./routes/seminars'));
 app.use(API, require('./routes/lookups'));
 
 // ─── 404 handler ──────────────────────────────────────────────────────────────

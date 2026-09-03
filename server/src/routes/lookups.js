@@ -202,7 +202,9 @@ router.delete('/external-reviewers/:id', authenticate, authorizePermission(['cou
 
 // Constraint CHK_cat_id yêu cầu id LIKE 'LDT[0-9][0-9]' → LDT01, LDT02, ...
 // crudService dùng NEWID() (hex) nên phải override hàm create riêng.
-const _catBase = createCrudService('categories', 5, 'LDT');
+const _catBase = createCrudService('categories', 5, 'LDT', [
+  { table: 'topics', column: 'category_id', label: 'đề tài' },
+]);
 const catService = {
 	..._catBase,
 	create: async (data, actorId) => {
@@ -325,7 +327,9 @@ router.delete(
 const { getPool, sql } = require('../config/db');
 const { broadcast } = require('../services/eventService');
 
-const _lvlBase = createCrudService('levels', 4, 'CD');
+const _lvlBase = createCrudService('levels', 4, 'CD', [
+  { table: 'topics', column: 'level_id', label: 'đề tài' },
+]);
 const lvlService = {
 	..._lvlBase,
 	create: async (data, actorId) => {

@@ -1,5 +1,6 @@
 import { AlertSvg, CheckSvg, FileTextSvg, ListSvg } from '@/assets/icons';
 import UserLayout from '../../../layouts/UserLayout';
+import { InlineLoading } from '../../../shared/components/Loading';
 import { PendingTopicsCard } from '../components/PendingTopicsCard';
 import { RegisterAttachmentsSection } from '../components/RegisterAttachmentsSection';
 import { RegisterMemberSection } from '../components/RegisterMemberSection';
@@ -85,16 +86,7 @@ export default function TopicRegister() {
 				pageTitle='Đăng ký đề tài'
 				breadcrumbs={breadcrumbs}
 			>
-				<div
-					style={{
-						textAlign: 'center',
-						padding: 60,
-						color: 'var(--color-gray-400)',
-						fontSize: 14,
-					}}
-				>
-					Đang tải dữ liệu...
-				</div>
+				<InlineLoading />
 			</UserLayout>
 		);
 	}

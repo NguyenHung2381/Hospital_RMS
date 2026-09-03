@@ -14,6 +14,7 @@ import {
 	XSvg,
 } from '@/assets/icons';
 import AdminLayout from '../../../layouts/AdminLayout';
+import { SkeletonTable } from '../../../shared/components/Loading';
 import { AutoAssignModal } from '../components/AutoAssignModal';
 import {
 	CouncilBulkDeleteModal,
@@ -222,13 +223,10 @@ export default function Council() {
 					</thead>
 					<tbody>
 						{d.isLoadingData ? (
-							<tr>
-								<td colSpan={8}>
-									<div className={styles.emptyState}>
-										<div className={styles.emptyDesc}>Đang tải dữ liệu...</div>
-									</div>
-								</td>
-							</tr>
+							<SkeletonTable
+								rows={8}
+								cols={8}
+							/>
 						) : d.councils.length === 0 ? (
 							<tr>
 								<td colSpan={8}>

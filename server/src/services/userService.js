@@ -265,6 +265,43 @@ const update = async (id, data, actorId) => {
 
 const remove = async (id, actorId) => {
 	const pool = await getPool();
+
+	// Nhiều FK trỏ tới users.id KHÔNG có ON DELETE CASCADE (đề tài/hội đồng/đợt/tệp
+	// do user tạo, ghế hội đồng, tài khoản liên hệ khoa...). Không thể xoá cứng mà
+	// giữ được lịch sử → chặn và yêu cầu vô hiệu hoá tài khoản (is_active = 0).
+	const check = await pool.request().input('id', sql.VarChar(20), id).query(`
+		SELECT
+			(SELECT COUNT(*) FROM topics WHERE created_by = @id) AS topics_created,
+			(SELECT COUNT(*) FROM councils WHERE created_by = @id) AS councils_created,
+			(SELECT COUNT(*) FROM research_rounds WHERE created_by = @id) AS rounds_created,
+			(SELECT COUNT(*) FROM file_batches WHERE created_by = @id)
+			  + (SELECT COUNT(*) FROM files WHERE created_by = @id) AS files_created,
+			(SELECT COUNT(*) FROM topic_progress WHERE created_by = @id) AS progress_created,
+			(SELECT COUNT(*) FROM council_topic_results WHERE decided_by = @id) AS results_decided,
+			(SELECT COUNT(*) FROM council_members WHERE user_id = @id)
+			  + (SELECT COUNT(*) FROM council_progress_reviews WHERE user_id = @id)
+			  + (SELECT COUNT(*) FROM council_seat_substitutes WHERE user_id = @id) AS council_seats,
+			(SELECT COUNT(*) FROM departments WHERE dept_account_id = @id) AS dept_accounts
+	`);
+	const c = check.recordset[0];
+	const blockers = [];
+	if (c.topics_created) blockers.push(`${c.topics_created} đề tài`);
+	if (c.councils_created) blockers.push(`${c.councils_created} hội đồng`);
+	if (c.rounds_created) blockers.push(`${c.rounds_created} đợt nghiên cứu`);
+	if (c.files_created) blockers.push(`${c.files_created} tệp đính kèm`);
+	if (c.progress_created) blockers.push(`${c.progress_created} bản ghi tiến độ`);
+	if (c.results_decided) blockers.push(`${c.results_decided} kết luận hội đồng`);
+	if (c.council_seats) blockers.push(`${c.council_seats} lượt tham gia hội đồng`);
+	if (c.dept_accounts) blockers.push(`${c.dept_accounts} khoa (tài khoản liên hệ)`);
+
+	if (blockers.length) {
+		const err = new Error(
+			`Không thể xoá tài khoản vì còn liên kết: ${blockers.join(', ')}. Hãy vô hiệu hoá tài khoản (ngừng hoạt động) thay vì xoá.`,
+		);
+		err.statusCode = 409;
+		throw err;
+	}
+
 	await pool
 		.request()
 		.input('id', sql.VarChar(20), id)

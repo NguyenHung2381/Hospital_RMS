@@ -121,6 +121,26 @@ const upsert = async (roundId, phase, data, actorId) => {
 
 const remove = async (roundId, phase, actorId) => {
 	const pool = await getPool();
+
+	// deadline_actions.deadline_id không có ON DELETE CASCADE → chặn nếu mốc đã
+	// phát sinh hành động (gia hạn tự động, khoá nộp...).
+	const used = await pool
+		.request()
+		.input('round_id', sql.VarChar(10), roundId)
+		.input('phase', sql.TinyInt, phase).query(`
+      SELECT COUNT(*) AS cnt
+      FROM deadline_actions da
+      JOIN round_deadlines rd ON rd.id = da.deadline_id
+      WHERE rd.round_id = @round_id AND rd.phase = @phase;
+    `);
+	if (used.recordset[0].cnt > 0) {
+		const err = new Error(
+			`Không thể xoá mốc thời hạn vì đã có ${used.recordset[0].cnt} hành động được ghi nhận.`,
+		);
+		err.statusCode = 409;
+		throw err;
+	}
+
 	await pool
 		.request()
 		.input('round_id', sql.VarChar(10), roundId)

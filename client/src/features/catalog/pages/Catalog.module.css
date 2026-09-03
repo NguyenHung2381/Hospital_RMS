@@ -112,61 +112,28 @@
 
 /* ── TABLE ───────────────────────────────── */
 .tableWrap {
-	background: var(--color-white);
-	border: 1px solid var(--color-gray-200);
-	border-radius: var(--radius-xl);
-	overflow: hidden;
+	composes: tableWrap from '../../../shared/components/Table/Table.module.css';
 }
-
 .table {
-	width: 100%;
-	border-collapse: collapse;
+	composes: table from '../../../shared/components/Table/Table.module.css';
 }
-
 .th {
-	padding: var(--space-3) var(--space-5);
-	text-align: left;
-	font-size: 11px;
-	font-weight: var(--font-weight-bold);
-	color: var(--color-gray-500);
-	text-transform: uppercase;
-	letter-spacing: 0.06em;
-	background: var(--color-gray-50);
-	border-bottom: 1px solid var(--color-gray-100);
-	white-space: nowrap;
+	composes: th from '../../../shared/components/Table/Table.module.css';
 }
 .thRight {
-	text-align: right;
+	composes: thRight from '../../../shared/components/Table/Table.module.css';
 }
-
 .tr {
-	border-bottom: 1px solid var(--color-gray-100);
-	transition: background var(--transition-fast);
+	composes: tr from '../../../shared/components/Table/Table.module.css';
 }
-.tr:last-child {
-	border-bottom: none;
-}
-.tr:hover {
-	background: #f8fdfb;
-}
-
 .td {
-	padding: var(--space-4) var(--space-5);
-	font-size: var(--font-size-sm);
-	color: var(--color-gray-700);
-	vertical-align: middle;
+	composes: td from '../../../shared/components/Table/Table.module.css';
 }
-
 .tdIdx {
-	font-size: 12px;
-	color: var(--color-gray-400);
-	font-weight: var(--font-weight-semibold);
-	width: 44px;
+	composes: tdIdx from '../../../shared/components/Table/Table.module.css';
 }
-
 .tdActions {
-	text-align: right;
-	white-space: nowrap;
+	composes: tdActions from '../../../shared/components/Table/Table.module.css';
 }
 
 /* Item cell */
@@ -244,21 +211,13 @@
 
 /* ── EMPTY STATE ─────────────────────────── */
 .emptyState {
-	display: flex;
-	flex-direction: column;
-	align-items: center;
-	padding: 60px 24px;
-	text-align: center;
+	composes: emptyState from '../../../shared/components/Table/Table.module.css';
 }
 .emptyTitle {
-	font-size: var(--font-size-base);
-	font-weight: var(--font-weight-bold);
-	color: var(--color-gray-700);
-	margin-bottom: var(--space-2);
+	composes: emptyTitle from '../../../shared/components/Table/Table.module.css';
 }
 .emptyDesc {
-	font-size: var(--font-size-sm);
-	color: var(--color-gray-400);
+	composes: emptyDesc from '../../../shared/components/Table/Table.module.css';
 }
 
 /* ── HEADER BUTTON ───────────────────────── */

@@ -4,7 +4,9 @@ const { paging } = require('../utils/paging');
 
 // Factory for simple lookup tables: departments, categories, levels, roles, round_types, research_rounds
 // idPrefix: fixed prefix prepended to the random portion of the generated ID
-const createCrudService = (tableName, idLength = 20, idPrefix = '') => {
+// deleteGuards: [{ table, column, label }] — trước khi xoá sẽ đếm số dòng con đang
+//   tham chiếu tới id này; nếu còn thì trả lỗi 409 thay vì để DB ném FK 547.
+const createCrudService = (tableName, idLength = 20, idPrefix = '', deleteGuards = []) => {
 	// Thực thể để phát tín hiệu (vd: roles -> role)
 	const entity = tableName.endsWith('s') ? tableName.slice(0, -1) : tableName;
 
@@ -91,6 +93,31 @@ const createCrudService = (tableName, idLength = 20, idPrefix = '') => {
 
 	const remove = async (id, actorId) => {
 		const pool = await getPool();
+
+		if (deleteGuards.length) {
+			const selects = deleteGuards
+				.map(
+					(g, i) =>
+						`(SELECT COUNT(*) FROM ${g.table} WHERE ${g.column} = @id) AS c${i}`,
+				)
+				.join(', ');
+			const res = await pool
+				.request()
+				.input('id', sql.VarChar(idLength), id)
+				.query(`SELECT ${selects}`);
+			const row = res.recordset[0];
+			const parts = deleteGuards
+				.map((g, i) => (row[`c${i}`] > 0 ? `${row[`c${i}`]} ${g.label}` : null))
+				.filter(Boolean);
+			if (parts.length) {
+				const err = new Error(
+					`Không thể xoá vì đang có ${parts.join(', ')} liên kết. Hãy gỡ hoặc chuyển liên kết sang mục khác trước.`,
+				);
+				err.statusCode = 409;
+				throw err;
+			}
+		}
+
 		await pool
 			.request()
 			.input('id', sql.VarChar(idLength), id)

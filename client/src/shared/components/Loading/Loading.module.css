@@ -135,6 +135,52 @@
 	font-variant-numeric: tabular-nums;
 }
 
+/* === INLINE LOADING (page section inside a layout) === */
+.inline {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	gap: var(--space-4);
+	padding: 72px var(--space-6);
+	color: var(--color-gray-500);
+}
+
+.inlineSpinner {
+	position: relative;
+	width: 44px;
+	height: 44px;
+}
+
+.inlineSpinner::before,
+.inlineSpinner::after {
+	content: '';
+	position: absolute;
+	inset: 0;
+	border-radius: 50%;
+	border: 3px solid transparent;
+}
+
+.inlineSpinner::before {
+	border-top-color: var(--color-primary);
+	border-right-color: var(--color-primary-light);
+	animation: spin 1.1s linear infinite;
+}
+
+.inlineSpinner::after {
+	inset: 8px;
+	border-bottom-color: var(--color-secondary);
+	border-left-color: var(--color-secondary);
+	opacity: 0.55;
+	animation: spin 1.6s linear infinite reverse;
+}
+
+.inlineLabel {
+	font-size: var(--font-size-sm);
+	font-weight: var(--font-weight-medium);
+	letter-spacing: 0.01em;
+}
+
 /* === SKELETON LOADING === */
 .skeleton {
 	background: linear-gradient(

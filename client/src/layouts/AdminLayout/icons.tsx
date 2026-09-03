@@ -2,6 +2,7 @@ import styles from './AdminLayout.module.css';
 
 import {
 	ApproveSvg,
+	BadgeSvg,
 	BellSvg,
 	CalendarSvg,
 	ChevLSvg,
@@ -52,6 +53,8 @@ export const Icon = {
 	Progress: () => <ProgressSvg {...nav} />,
 	Dept: () => <DeptSvg {...nav} />,
 	ExternalReviewer: () => <UserPlusSvg {...nav} />,
+	Seminar: () => <CalendarSvg {...nav} />,
+	Cme: () => <BadgeSvg {...nav} />,
 	User: () => <UserSvg {...nav} />,
 	Role: () => <RoleSvg {...nav} />,
 	List: () => <ListSvg {...nav} />,

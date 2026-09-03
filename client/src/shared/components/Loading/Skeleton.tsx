@@ -31,6 +31,28 @@ export function Skeleton({
 	);
 }
 
+interface InlineLoadingProps {
+	label?: string;
+	className?: string;
+	style?: React.CSSProperties;
+}
+
+export function InlineLoading({
+	label = 'Đang tải dữ liệu…',
+	className = '',
+	style,
+}: InlineLoadingProps) {
+	return (
+		<div
+			className={`${styles.inline} ${className}`}
+			style={style}
+		>
+			<div className={styles.inlineSpinner} />
+			{label && <span className={styles.inlineLabel}>{label}</span>}
+		</div>
+	);
+}
+
 interface SkeletonTableProps {
 	rows?: number;
 	cols?: number;

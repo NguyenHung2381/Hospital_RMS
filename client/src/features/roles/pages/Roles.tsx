@@ -10,6 +10,7 @@ import {
 	UsersSvg,
 	XSvg,
 } from '@/assets/icons';
+import { SkeletonTable } from '../../../shared/components/Loading';
 import { Pagination } from '../../../shared/components/Table/Pagination';
 import sel from '../../../shared/components/Table/RowSelect.module.css';
 import {
@@ -156,13 +157,10 @@ export default function Roles() {
 					</thead>
 					<tbody>
 						{r.isLoadingData ? (
-							<tr>
-								<td colSpan={8}>
-									<div className={styles.emptyState}>
-										<div className={styles.emptyDesc}>Đang tải dữ liệu...</div>
-									</div>
-								</td>
-							</tr>
+							<SkeletonTable
+								rows={r.pageSize || 8}
+								cols={8}
+							/>
 						) : r.filtered.length === 0 ? (
 							<tr>
 								<td colSpan={8}>

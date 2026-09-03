@@ -202,14 +202,20 @@ const update = async (id, data, actorId) => {
 const remove = async (id, actorId) => {
 	const pool = await getPool();
 
-	const linked = await pool
-		.request()
-		.input('id', sql.VarChar(10), id)
-		.query('SELECT COUNT(*) AS cnt FROM topics WHERE round_id = @id');
-	const cnt = linked.recordset[0].cnt;
-	if (cnt > 0) {
+	const linked = await pool.request().input('id', sql.VarChar(10), id).query(`
+			SELECT
+				(SELECT COUNT(*) FROM topics WHERE round_id = @id) AS topics,
+				(SELECT COUNT(*) FROM councils WHERE round_id = @id) AS councils,
+				(SELECT COUNT(*) FROM round_deadlines WHERE round_id = @id) AS deadlines
+		`);
+	const { topics, councils, deadlines } = linked.recordset[0];
+	const parts = [];
+	if (topics) parts.push(`${topics} đề tài`);
+	if (councils) parts.push(`${councils} hội đồng`);
+	if (deadlines) parts.push(`${deadlines} mốc thời hạn`);
+	if (parts.length) {
 		const err = new Error(
-			`Không thể xóa đợt nghiên cứu vì đang có ${cnt} đề tài liên kết. Hãy xóa hoặc chuyển đề tài sang đợt khác trước.`,
+			`Không thể xóa đợt nghiên cứu vì đang có ${parts.join(', ')} liên kết. Hãy xóa hoặc chuyển sang đợt khác trước.`,
 		);
 		err.statusCode = 409;
 		throw err;

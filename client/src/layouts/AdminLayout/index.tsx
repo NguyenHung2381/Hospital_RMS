@@ -22,6 +22,8 @@ const KEY_TO_PATH: Record<string, string> = {
 	topics: '/admin/topics',
 	rounds: '/admin/rounds',
 	councils: '/admin/councils',
+	seminars: '/admin/seminars',
+	cmeRegister: '/admin/cme-register',
 	approvals: '/admin/approvals',
 	progress: '/admin/progress',
 	files: '/admin/files',
@@ -75,6 +77,23 @@ const NAV_GROUPS: NavGroup[] = [
 				label: 'Người ngoài viện',
 				icon: <Icon.ExternalReviewer />,
 				perm: 'councils:read',
+			},
+		],
+	},
+	{
+		section: 'Đào tạo & Hội nghị',
+		items: [
+			{
+				key: 'seminars',
+				label: 'Hội thảo & Hội nghị',
+				icon: <Icon.Seminar />,
+				perm: 'seminars:read',
+			},
+			{
+				key: 'cmeRegister',
+				label: 'Sổ cấp CME',
+				icon: <Icon.Cme />,
+				perm: 'seminars:read',
 			},
 		],
 	},

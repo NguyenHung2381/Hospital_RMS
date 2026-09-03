@@ -3,7 +3,9 @@ const { createCrudService } = require('./crudService');
 const { broadcast } = require('./eventService');
 const { paging } = require('../utils/paging');
 
-const base = createCrudService('roles', 4);
+const base = createCrudService('roles', 4, '', [
+	{ table: 'users', column: 'role_id', label: 'tài khoản' },
+]);
 
 // Override getAll để kèm user_count (số tài khoản đang gán vai trò) và
 // permission_count (số quyền đã gán cho vai trò) — crudService mặc định chỉ

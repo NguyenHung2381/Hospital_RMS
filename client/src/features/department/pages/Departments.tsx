@@ -9,6 +9,7 @@ import {
 	XSvg,
 } from '@/assets/icons';
 import AdminLayout from '../../../layouts/AdminLayout';
+import { SkeletonTable } from '../../../shared/components/Loading';
 import { Pagination } from '../../../shared/components/Table/Pagination';
 import sel from '../../../shared/components/Table/RowSelect.module.css';
 import {
@@ -130,13 +131,10 @@ export default function Departments() {
 					</thead>
 					<tbody>
 						{d.isLoadingData ? (
-							<tr>
-								<td colSpan={7}>
-									<div className={styles.emptyState}>
-										<div className={styles.emptyDesc}>Đang tải dữ liệu...</div>
-									</div>
-								</td>
-							</tr>
+							<SkeletonTable
+								rows={d.pageSize || 8}
+								cols={7}
+							/>
 						) : d.filtered.length === 0 ? (
 							<tr>
 								<td colSpan={7}>

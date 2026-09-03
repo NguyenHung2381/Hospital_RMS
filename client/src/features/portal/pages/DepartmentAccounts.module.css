@@ -252,53 +252,26 @@
 .tableWrap {
 	overflow-x: auto;
 }
-
 .table {
-	width: 100%;
-	border-collapse: collapse;
-	font-size: 13px;
+	composes: table from '../../../shared/components/Table/Table.module.css';
 }
-
 .th {
-	padding: 10px 14px;
-	text-align: left;
-	font-size: 11px;
-	font-weight: var(--font-weight-semibold);
-	color: var(--color-gray-400);
-	text-transform: uppercase;
-	letter-spacing: 0.04em;
-	border-bottom: 1px solid var(--color-gray-100);
-	white-space: nowrap;
-	background: var(--color-gray-50);
+	composes: th from '../../../shared/components/Table/Table.module.css';
 }
-
 .thRight {
-	text-align: right;
+	composes: thRight from '../../../shared/components/Table/Table.module.css';
 }
-
 .tr {
-	transition: background 0.1s;
+	composes: tr from '../../../shared/components/Table/Table.module.css';
 }
-.tr:hover {
-	background: var(--color-gray-50);
-}
-
 .td {
-	padding: 12px 14px;
-	border-bottom: 1px solid var(--color-gray-100);
-	color: var(--color-gray-700);
-	vertical-align: middle;
+	composes: td from '../../../shared/components/Table/Table.module.css';
 }
-
 .tdIdx {
-	color: var(--color-gray-400);
-	font-size: 12px;
-	width: 40px;
+	composes: tdIdx from '../../../shared/components/Table/Table.module.css';
 }
-
 .tdActions {
-	text-align: right;
-	white-space: nowrap;
+	composes: tdActions from '../../../shared/components/Table/Table.module.css';
 }
 
 /* ── MEMBER CELL ────────────────────────── */
@@ -518,41 +491,16 @@
 
 /* ── EMPTY STATE ────────────────────────── */
 .emptyState {
-	display: flex;
-	flex-direction: column;
-	align-items: center;
-	justify-content: center;
-	padding: 56px 24px;
-	gap: 12px;
-	text-align: center;
+	composes: emptyState from '../../../shared/components/Table/Table.module.css';
 }
-
 .emptyIcon {
-	width: 56px;
-	height: 56px;
-	background: var(--color-gray-100);
-	border-radius: 50%;
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	color: var(--color-gray-300);
+	composes: emptyIcon from '../../../shared/components/Table/Table.module.css';
 }
-
-.emptyIcon svg {
-	width: 26px;
-	height: 26px;
-}
-
 .emptyTitle {
-	font-size: 15px;
-	font-weight: var(--font-weight-semibold);
-	color: var(--color-gray-600);
+	composes: emptyTitle from '../../../shared/components/Table/Table.module.css';
 }
-
 .emptyDesc {
-	font-size: 13px;
-	color: var(--color-gray-400);
-	max-width: 340px;
+	composes: emptyDesc from '../../../shared/components/Table/Table.module.css';
 }
 
 /* ── MODAL ──────────────────────────────── */

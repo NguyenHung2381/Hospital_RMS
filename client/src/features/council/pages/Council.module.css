@@ -317,53 +317,20 @@
 
 /* ── MAIN DATA TABLE ─────────────────────── */
 .tableWrap {
-	background: var(--color-white);
-	border: 1px solid var(--color-gray-200);
-	border-radius: var(--radius-xl);
-	box-shadow: var(--shadow-sm);
-	overflow: hidden;
-	transition: box-shadow 0.3s ease;
+	composes: tableWrap from '../../../shared/components/Table/Table.module.css';
 }
-
-.tableWrap:hover {
-	box-shadow: var(--shadow-md);
-}
-
 .table {
-	width: 100%;
-	border-collapse: collapse;
+	composes: table from '../../../shared/components/Table/Table.module.css';
 }
-
 .th {
-	padding: var(--space-4) var(--space-5);
-	text-align: left;
-	font-size: 11px;
-	font-weight: var(--font-weight-bold);
-	color: var(--color-gray-500);
-	text-transform: uppercase;
-	letter-spacing: 0.08em;
-	background: #f8fafc;
-	border-bottom: 2px solid var(--color-gray-100);
-	white-space: nowrap;
+	composes: th from '../../../shared/components/Table/Table.module.css';
 }
-
 .thRight {
-	text-align: right;
+	composes: thRight from '../../../shared/components/Table/Table.module.css';
 }
-
 .tr {
-	border-bottom: 1px solid var(--color-gray-100);
-	transition: background-color 0.2s ease, border-left-color 0.2s ease;
+	composes: tr from '../../../shared/components/Table/Table.module.css';
 	cursor: pointer;
-	background-color: #ffffff;
-}
-
-.tr:last-child {
-	border-bottom: none;
-}
-
-.tr:hover {
-	background-color: rgba(46, 184, 122, 0.03); /* Subtle green tint on hover */
 }
 
 /* Row highlights when selected */
@@ -373,10 +340,7 @@
 }
 
 .td {
-	padding: var(--space-4) var(--space-5);
-	font-size: var(--font-size-sm);
-	color: var(--color-gray-700);
-	vertical-align: middle;
+	composes: td from '../../../shared/components/Table/Table.module.css';
 }
 
 .thCheck {
@@ -719,27 +683,13 @@
 
 /* ── EMPTY & LOADING STATE ───────────────── */
 .emptyState {
-	display: flex;
-	flex-direction: column;
-	align-items: center;
-	justify-content: center;
-	padding: 80px 24px;
-	text-align: center;
-	background: #ffffff;
+	composes: emptyState from '../../../shared/components/Table/Table.module.css';
 }
-
 .emptyTitle {
-	font-size: 16px;
-	font-weight: var(--font-weight-bold);
-	color: var(--color-gray-800);
-	margin-bottom: var(--space-2);
+	composes: emptyTitle from '../../../shared/components/Table/Table.module.css';
 }
-
 .emptyDesc {
-	font-size: var(--font-size-sm);
-	color: var(--color-gray-400);
-	max-width: 320px;
-	line-height: 1.5;
+	composes: emptyDesc from '../../../shared/components/Table/Table.module.css';
 }
 
 /* ── PREMIUM MODALS ──────────────────────── */
