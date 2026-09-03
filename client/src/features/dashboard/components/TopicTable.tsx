@@ -1,4 +1,6 @@
-﻿import { ChevLSvg, ChevRSvg, DocSvg, SearchSvg } from '@/assets/icons';
+﻿import { DocSvg, SearchSvg } from '@/assets/icons';
+import { Badge, Pagination, SkeletonTable, TableEmpty } from '@/shared/components';
+import { PAGE_SIZE_OPTIONS } from '@/shared/utils';
 import type { SimpleItem } from '../../topics/api/topicApi';
 import type { DashboardStats } from '../types/dashboard.type';
 import {
@@ -12,46 +14,14 @@ import {
 import styles from '../pages/Dashboard.module.css';
 
 function StatusBadge({ status }: { status: string }) {
-	const cfg = STATUS_CONFIG[status] ?? { label: status, cls: 'badgeGray' };
+	const cfg = STATUS_CONFIG[status] ?? { label: status, tone: 'gray' as const };
 	return (
-		<span
-			className={`${styles.badge} ${styles[cfg.cls as keyof typeof styles]}`}
+		<Badge
+			tone={cfg.tone}
+			dot
 		>
-			<span className={styles.badgeDot} />
 			{cfg.label}
-		</span>
-	);
-}
-
-function EmptyRow({ cols, text }: { cols: number; text: string }) {
-	return (
-		<tr>
-			<td colSpan={cols}>
-				<div className={styles.emptyState}>
-					<DocSvg className={styles.emptyIcon} />
-					<p className={styles.emptyText}>{text}</p>
-				</div>
-			</td>
-		</tr>
-	);
-}
-
-function SkeletonRows({ cols, rows }: { cols: number; rows: number }) {
-	return (
-		<>
-			{Array.from({ length: rows }).map((_, i) => (
-				<tr key={i}>
-					{Array.from({ length: cols }).map((_, j) => (
-						<td key={j}>
-							<div
-								className={styles.skeleton}
-								style={{ height: 16, borderRadius: 4 }}
-							/>
-						</td>
-					))}
-				</tr>
-			))}
-		</>
+		</Badge>
 	);
 }
 
@@ -183,19 +153,21 @@ export function TopicTable({
 					</thead>
 					<tbody>
 						{loading ? (
-							<SkeletonRows
-								cols={7}
+							<SkeletonTable
 								rows={ROWS_PER_PAGE}
+								cols={7}
 							/>
 						) : error ? (
-							<EmptyRow
-								cols={7}
-								text='Không tải được danh sách đề tài. Vui lòng thử lại.'
+							<TableEmpty
+								colSpan={7}
+								icon={<DocSvg />}
+								title='Không tải được danh sách đề tài. Vui lòng thử lại.'
 							/>
 						) : topics.length === 0 ? (
-							<EmptyRow
-								cols={7}
-								text='Không tìm thấy đề tài nào phù hợp.'
+							<TableEmpty
+								colSpan={7}
+								icon={<DocSvg />}
+								title='Không tìm thấy đề tài nào phù hợp.'
 							/>
 						) : (
 							topics.map((t) => (
@@ -252,58 +224,17 @@ export function TopicTable({
 				</table>
 			</div>
 
-			{/* Pagination */}
-			<div className={styles.pagination}>
-				<span className={styles.pageInfo}>
-					{total > 0
-						? `Hiển thị ${(safePage - 1) * ROWS_PER_PAGE + 1}–${Math.min(safePage * ROWS_PER_PAGE, total)} trong tổng số ${total} đề tài`
-						: 'Không có dữ liệu'}
-				</span>
-				<div className={styles.pageBtns}>
-					<button
-						className={styles.pageBtn}
-						onClick={() => onPageChange(Math.max(1, safePage - 1))}
-						disabled={safePage === 1 || loading}
-					>
-						<ChevLSvg style={{ width: 13, height: 13 }} />
-					</button>
-					{Array.from({ length: totalPages }, (_, i) => i + 1)
-						.filter(
-							(p) => p === 1 || p === totalPages || Math.abs(p - safePage) <= 1,
-						)
-						.reduce<(number | '...')[]>((acc, p, i, arr) => {
-							if (i > 0 && p - (arr[i - 1] as number) > 1) acc.push('...');
-							acc.push(p);
-							return acc;
-						}, [])
-						.map((p, i) =>
-							p === '...' ? (
-								<span
-									key={`sep-${i}`}
-									className={styles.pageBtn}
-									style={{ border: 'none', cursor: 'default' }}
-								>
-									…
-								</span>
-							) : (
-								<button
-									key={p}
-									className={`${styles.pageBtn} ${safePage === p ? styles.pageBtnActive : ''}`}
-									onClick={() => onPageChange(p as number)}
-								>
-									{p}
-								</button>
-							),
-						)}
-					<button
-						className={styles.pageBtn}
-						onClick={() => onPageChange(Math.min(totalPages, safePage + 1))}
-						disabled={safePage === totalPages || loading}
-					>
-						<ChevRSvg style={{ width: 13, height: 13 }} />
-					</button>
-				</div>
-			</div>
+			<Pagination
+				page={safePage}
+				totalPages={totalPages}
+				total={total}
+				rowsPerPage={ROWS_PER_PAGE}
+				pageSizeOptions={PAGE_SIZE_OPTIONS}
+				onPageChange={onPageChange}
+				onRowsPerPageChange={() => {}}
+				itemLabel='đề tài'
+				hideSizeSelect
+			/>
 		</div>
 	);
 }

@@ -10,8 +10,10 @@ export { Card } from './Card';
 
 export { Button } from './Button';
 export { Modal } from './Modal';
-export { FileViewerModal } from './FileViewerModal';
-export { default as RichTextEditor } from './RichTextEditor';
+
+/* Nặng (docx-preview / dompurify) — import trực tiếp theo đường dẫn, không qua barrel:
+ *   import { FileViewerModal } from '@/shared/components/FileViewerModal';
+ *   import RichTextEditor from '@/shared/components/RichTextEditor'; */
 
 export { DatePicker } from './Input/DatePicker';
 export { MultiSelect } from './Input/MultiSelect';

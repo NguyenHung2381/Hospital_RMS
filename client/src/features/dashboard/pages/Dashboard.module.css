@@ -491,57 +491,7 @@
 	max-width: 320px;
 }
 
-/* Badges */
-.badge {
-	display: inline-flex;
-	align-items: center;
-	gap: 4px;
-	padding: 3px 8px 3px 6px;
-	border-radius: var(--radius-full);
-	font-size: 11px;
-	font-weight: var(--font-weight-bold);
-	white-space: nowrap;
-	border: 1px solid transparent;
-}
-
-.badgeDot {
-	width: 5px;
-	height: 5px;
-	border-radius: 50%;
-	background: currentColor;
-	flex-shrink: 0;
-}
-
-.badgeGreen {
-	background: #e1f5ee;
-	color: #085041;
-	border-color: #b8e8d5;
-}
-.badgeBlue {
-	background: #e6f1fb;
-	color: #0c447c;
-	border-color: #b8d8f5;
-}
-.badgeAmber {
-	background: #faeeda;
-	color: #633806;
-	border-color: #f5d9a8;
-}
-.badgeGray {
-	background: #f1efe8;
-	color: #444441;
-	border-color: #dddad0;
-}
-.badgeRed {
-	background: #fcebeb;
-	color: #791f1f;
-	border-color: #f5c8c8;
-}
-.badgePink {
-	background: rgba(232, 69, 122, 0.1);
-	color: var(--color-accent-dark);
-	border-color: rgba(232, 69, 122, 0.25);
-}
+/* Badge trạng thái: dùng <Badge> ở @/shared/components */
 
 /* Progress bar */
 .progressWrap {
@@ -604,68 +554,7 @@
 	height: 13px;
 }
 
-/* Pagination */
-.pagination {
-	padding: var(--space-3) var(--space-6);
-	border-top: 1px solid var(--color-gray-100);
-	display: flex;
-	align-items: center;
-	justify-content: space-between;
-	background: linear-gradient(135deg, var(--color-white), var(--color-gray-50));
-}
-
-.pageInfo {
-	font-size: var(--font-size-sm);
-	color: var(--color-gray-500);
-}
-
-.pageBtns {
-	display: flex;
-	align-items: center;
-	gap: 4px;
-}
-
-.pageBtn {
-	min-width: 32px;
-	height: 32px;
-	padding: 0 var(--space-2);
-	border: 1px solid var(--color-gray-200);
-	border-radius: var(--radius-md);
-	font-family: var(--font-body);
-	font-size: var(--font-size-sm);
-	color: var(--color-gray-600);
-	cursor: pointer;
-	background: var(--color-white);
-	transition: all var(--transition-fast);
-	display: flex;
-	align-items: center;
-	justify-content: center;
-}
-
-.pageBtn:hover:not(:disabled) {
-	background: var(--color-primary-pale);
-	border-color: var(--color-primary-light);
-	color: var(--color-primary-dark);
-}
-
-.pageBtn:disabled {
-	opacity: 0.35;
-	cursor: not-allowed;
-}
-
-.pageBtnActive {
-	background: var(--color-primary);
-	border-color: var(--color-primary);
-	color: #ffffff;
-	font-weight: var(--font-weight-bold);
-	box-shadow: 0 2px 8px rgba(46, 184, 122, 0.4);
-}
-
-.pageBtnActive:hover:not(:disabled) {
-	background: var(--color-primary-dark) !important;
-	border-color: var(--color-primary-dark) !important;
-	color: #ffffff !important;
-}
+/* Phân trang: dùng <Pagination> ở @/shared/components */
 
 /* =============================================
    BOTTOM ROW — Recent Approvals + Dept Summary
@@ -877,20 +766,7 @@
 	text-align: right;
 }
 
-/* =============================================
-   EMPTY STATE
-============================================= */
-.emptyState {
-	composes: emptyState from '../../../shared/components/Table/Table.module.css';
-}
-
-.emptyIcon {
-	composes: emptyIcon from '../../../shared/components/Table/Table.module.css';
-}
-
-.emptyText {
-	composes: emptyDesc from '../../../shared/components/Table/Table.module.css';
-}
+/* Trạng thái rỗng: dùng <EmptyState>/<TableEmpty> ở @/shared/components */
 
 /* =============================================
    SKELETON LOADING

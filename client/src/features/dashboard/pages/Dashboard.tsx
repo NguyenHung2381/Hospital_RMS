@@ -1,5 +1,6 @@
 ﻿import { useNavigate } from 'react-router-dom';
 import { ActivitySvg, ClipboardCheckSvg, DocSvg, InfoSvg } from '@/assets/icons';
+import { Badge } from '@/shared/components';
 import AdminLayout from '../../../layouts/AdminLayout';
 import {
 	DeptBarChart,
@@ -234,7 +235,7 @@ export default function Dashboard() {
 							stats.recent_approvals.map((apv) => {
 								const cfg = APPROVAL_CONFIG[apv.status] ?? {
 									label: apv.status,
-									cls: 'badgeGray',
+									tone: 'gray' as const,
 								};
 								const name = apv.approver_name ?? 'N/A';
 								const initials =
@@ -263,11 +264,7 @@ export default function Dashboard() {
 											</div>
 										</div>
 										<div className={styles.approvalRight}>
-											<span
-												className={`${styles.badge} ${styles[cfg.cls as keyof typeof styles]}`}
-											>
-												{cfg.label}
-											</span>
+											<Badge tone={cfg.tone}>{cfg.label}</Badge>
 											<span className={styles.approvalDate}>
 												{formatDate(apv.created_at)}
 											</span>

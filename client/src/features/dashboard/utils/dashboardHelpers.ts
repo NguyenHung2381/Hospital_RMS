@@ -1,3 +1,5 @@
+import type { BadgeTone } from '@/shared/components/Badge/badgeTone';
+
 export { formatDateVN as formatDate } from '../../../shared/utils/formatDate';
 
 export type RealStatus =
@@ -23,14 +25,14 @@ export interface TopicRow {
 	progress: number;
 }
 
-export const STATUS_CONFIG: Record<string, { label: string; cls: string }> = {
-	draft: { label: 'Nháp', cls: 'badgeGray' },
-	submitted: { label: 'Chờ duyệt', cls: 'badgeAmber' },
-	approved: { label: 'Đã phê duyệt', cls: 'badgeGreen' },
-	rejected: { label: 'Từ chối', cls: 'badgeRed' },
-	supplement: { label: 'Bổ sung', cls: 'badgeBlue' },
-	completed: { label: 'Hoàn thành', cls: 'badgePink' },
-	cancelled: { label: 'Đã hủy', cls: 'badgeGray' },
+export const STATUS_CONFIG: Record<string, { label: string; tone: BadgeTone }> = {
+	draft: { label: 'Nháp', tone: 'gray' },
+	submitted: { label: 'Chờ duyệt', tone: 'amber' },
+	approved: { label: 'Đã phê duyệt', tone: 'green' },
+	rejected: { label: 'Từ chối', tone: 'red' },
+	supplement: { label: 'Bổ sung', tone: 'blue' },
+	completed: { label: 'Hoàn thành', tone: 'pink' },
+	cancelled: { label: 'Đã hủy', tone: 'gray' },
 };
 
 export const STATUS_COLORS: Record<string, string> = {
@@ -58,10 +60,10 @@ export const CHART_COLORS = [
 export const DEPT_COLORS = CHART_COLORS;
 export const CATEGORY_COLORS = CHART_COLORS;
 
-export const APPROVAL_CONFIG: Record<string, { label: string; cls: string }> = {
-	pending: { label: 'Chờ duyệt', cls: 'badgeAmber' },
-	approved: { label: 'Đã duyệt', cls: 'badgeGreen' },
-	rejected: { label: 'Từ chối', cls: 'badgeRed' },
+export const APPROVAL_CONFIG: Record<string, { label: string; tone: BadgeTone }> = {
+	pending: { label: 'Chờ duyệt', tone: 'amber' },
+	approved: { label: 'Đã duyệt', tone: 'green' },
+	rejected: { label: 'Từ chối', tone: 'red' },
 };
 
 export const TABS: { key: TabKey; label: string }[] = [
