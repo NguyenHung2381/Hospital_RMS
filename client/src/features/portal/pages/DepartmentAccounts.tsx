@@ -27,24 +27,8 @@ import { DeptAccountsEditModal } from '../components/DeptAccountsEditModal';
 import { useDepartmentAccounts } from '../hooks/useDepartmentAccounts';
 import { getInitials } from '../../../shared/utils/helper';
 import { roleCfg } from '../utils/deptAccountsHelpers';
+import { Badge } from '@/shared/components';
 import styles from './DepartmentAccounts.module.css';
-
-function Badge({
-	cls,
-	children,
-	dot,
-}: {
-	cls: string;
-	children: React.ReactNode;
-	dot?: boolean;
-}) {
-	return (
-		<span className={`${styles.badge} ${styles[cls as keyof typeof styles]}`}>
-			{dot && <span className={styles.badgeDot} />}
-			{children}
-		</span>
-	);
-}
 
 function Avatar({
 	name,
@@ -335,7 +319,7 @@ export default function DepartmentAccounts() {
 											</td>
 											<td className={styles.td}>
 												<Badge
-													cls={typeCfg.cls}
+													tone={typeCfg.tone}
 													dot
 												>
 													{typeCfg.label}

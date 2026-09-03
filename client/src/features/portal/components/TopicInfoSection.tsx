@@ -2,8 +2,8 @@ import type { Approval as ApprovalHistory, TopicApprovalDetail } from '../../app
 import type { TopicStatus } from '../../topics/types/topic.type';
 import { formatDate } from '../../../shared/utils/formatDate';
 import { getInitials } from '../../../shared/utils/helper';
+import { Badge } from '@/shared/components';
 import { STATUS_CFG } from '../utils/myTopicsHelpers';
-import { Badge } from './MyTopicsBadge';
 import styles from '../pages/MyTopics.module.css';
 
 interface TopicInfoSectionProps {
@@ -18,9 +18,8 @@ export function TopicHeader({ detailTopic }: { detailTopic: TopicApprovalDetail 
 			<div className={styles.detailTitle}>{detailTopic.title}</div>
 			<div className={styles.detailBadges}>
 				<Badge
-					cls={
-						STATUS_CFG[detailTopic.status as TopicStatus]?.badgeCls ??
-						'badgeGray'
+					tone={
+						STATUS_CFG[detailTopic.status as TopicStatus]?.tone ?? 'gray'
 					}
 					dot
 				>
@@ -28,12 +27,12 @@ export function TopicHeader({ detailTopic }: { detailTopic: TopicApprovalDetail 
 						detailTopic.status}
 				</Badge>
 				{detailTopic.category_id && (
-					<Badge cls='badgeGray'>
+					<Badge tone='gray'>
 						{detailTopic.category_name ?? detailTopic.category_id}
 					</Badge>
 				)}
 				{detailTopic.level_id && (
-					<Badge cls='badgeGray'>
+					<Badge tone='gray'>
 						{detailTopic.level_name ?? detailTopic.level_id}
 					</Badge>
 				)}

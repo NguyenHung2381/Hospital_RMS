@@ -1062,50 +1062,7 @@
 	color: #0c447c;
 }
 
-/* ── BADGES ── */
-.badge {
-	display: inline-flex;
-	align-items: center;
-	gap: 4px;
-	padding: 3px var(--space-2);
-	border-radius: var(--radius-full);
-	font-size: 11px;
-	font-weight: var(--font-weight-bold);
-	white-space: nowrap;
-}
-
-.badgeDot {
-	width: 5px;
-	height: 5px;
-	border-radius: 50%;
-	background: currentColor;
-	flex-shrink: 0;
-}
-
-.badgeGreen {
-	background: #e1f5ee;
-	color: #085041;
-}
-.badgeAmber {
-	background: #faeeda;
-	color: #633806;
-}
-.badgeRed {
-	background: #fcebeb;
-	color: #791f1f;
-}
-.badgeBlue {
-	background: #e6f1fb;
-	color: #0c447c;
-}
-.badgeGray {
-	background: #f1efe8;
-	color: #444441;
-}
-.badgePurple {
-	background: #eeedfe;
-	color: #3c3489;
-}
+/* ── BADGES: dùng <Badge tone> ở @/shared/components ── */
 
 /* ── BUTTONS ── */
 .btnPrimary {

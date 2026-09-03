@@ -1,7 +1,7 @@
 import type { Approval as ApprovalHistory } from '../../approval/api/approval';
 import { formatDate } from '../../../shared/utils/formatDate';
+import { Badge } from '@/shared/components';
 import { APV_STATUS_CFG } from '../utils/myTopicsHelpers';
-import { Badge } from './MyTopicsBadge';
 import styles from '../pages/MyTopics.module.css';
 
 interface TopicHistorySectionProps {
@@ -20,7 +20,7 @@ export function TopicHistorySection({ detailHistory }: TopicHistorySectionProps)
 				{[...detailHistory].reverse().map((h, i) => {
 					const hcfg = APV_STATUS_CFG[h.status] ?? {
 						label: h.status,
-						badgeCls: 'badgeGray',
+						tone: 'gray' as const,
 					};
 					return (
 						<div
@@ -39,7 +39,7 @@ export function TopicHistorySection({ detailHistory }: TopicHistorySectionProps)
 									}}
 								>
 									<Badge
-										cls={hcfg.badgeCls}
+										tone={hcfg.tone}
 										dot
 									>
 										{hcfg.label}

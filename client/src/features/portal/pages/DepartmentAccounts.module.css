@@ -368,54 +368,7 @@
 	color: #0f6d63;
 }
 
-/* ── BADGE ──────────────────────────────── */
-.badge {
-	display: inline-flex;
-	align-items: center;
-	gap: 5px;
-	font-size: 11px;
-	font-weight: var(--font-weight-semibold);
-	padding: 3px 9px;
-	border-radius: 999px;
-	white-space: nowrap;
-}
-
-.badgeDot {
-	width: 5px;
-	height: 5px;
-	border-radius: 50%;
-	background: currentColor;
-	flex-shrink: 0;
-}
-
-.rolePurple {
-	background: #ede9fe;
-	color: #5b21b6;
-}
-.roleBlue {
-	background: #e6f1fb;
-	color: #0c447c;
-}
-.roleGreen {
-	background: var(--color-primary-pale);
-	color: var(--color-primary-dark);
-}
-.roleGray {
-	background: var(--color-gray-100);
-	color: var(--color-gray-500);
-}
-.roleRed {
-	background: #fee2e2;
-	color: #991b1b;
-}
-.roleAmber {
-	background: #fef3c7;
-	color: #92400e;
-}
-.roleTeal {
-	background: #d6f3ee;
-	color: #0f6d63;
-}
+/* ── BADGE: dùng <Badge tone> ở @/shared/components ── */
 
 /* ── TOGGLE ─────────────────────────────── */
 .toggleTrack {

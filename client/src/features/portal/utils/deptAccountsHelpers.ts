@@ -1,18 +1,24 @@
+import type { BadgeTone } from '@/shared/components/Badge/badgeTone';
+
 // Hiển thị tài khoản trong khoa theo vai trò (role_id).
 export const ROLE_CFG: Record<
 	string,
-	{ label: string; cls: string; avatarCls: string }
+	{ label: string; tone: BadgeTone; avatarCls: string }
 > = {
-	VT01: { label: 'Quản trị', cls: 'rolePurple', avatarCls: 'avatarPurple' },
-	VT02: { label: 'Giám đốc / Lãnh đạo', cls: 'roleRed', avatarCls: 'avatarRed' },
-	VT03: { label: 'Cán bộ NCKH', cls: 'roleBlue', avatarCls: 'avatarBlue' },
-	VT04: { label: 'Hội đồng xét duyệt', cls: 'roleGray', avatarCls: 'avatarGray' },
-	VT05: { label: 'Chủ nhiệm đề tài', cls: 'roleAmber', avatarCls: 'avatarAmber' },
-	VT06: { label: 'Thành viên đề tài', cls: 'roleGreen', avatarCls: 'avatarGreen' },
-	VT07: { label: 'Trưởng khoa/phòng', cls: 'roleTeal', avatarCls: 'avatarTeal' },
+	VT01: { label: 'Quản trị', tone: 'purple', avatarCls: 'avatarPurple' },
+	VT02: { label: 'Giám đốc / Lãnh đạo', tone: 'red', avatarCls: 'avatarRed' },
+	VT03: { label: 'Cán bộ NCKH', tone: 'blue', avatarCls: 'avatarBlue' },
+	VT04: { label: 'Hội đồng xét duyệt', tone: 'gray', avatarCls: 'avatarGray' },
+	VT05: { label: 'Chủ nhiệm đề tài', tone: 'amber', avatarCls: 'avatarAmber' },
+	VT06: { label: 'Thành viên đề tài', tone: 'green', avatarCls: 'avatarGreen' },
+	VT07: { label: 'Trưởng khoa/phòng', tone: 'teal', avatarCls: 'avatarTeal' },
 };
 
-const FALLBACK_CFG = { label: 'Vai trò', cls: 'roleGray', avatarCls: 'avatarGray' };
+const FALLBACK_CFG = {
+	label: 'Vai trò',
+	tone: 'gray' as const,
+	avatarCls: 'avatarGray',
+};
 
 export function roleCfg(roleId?: string | null) {
 	return (roleId && ROLE_CFG[roleId]) || FALLBACK_CFG;

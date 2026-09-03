@@ -1,12 +1,12 @@
 import { DocSvg, SearchSvg, UsersSvg } from '@/assets/icons';
 import type { Topic } from '../../topics/types/topic.type';
 import { formatDate } from '../../../shared/utils/formatDate';
+import { Badge } from '@/shared/components';
 import {
 	type FilterTab,
 	STATUS_CFG,
 	TABS,
 } from '../utils/myTopicsHelpers';
-import { Badge } from './MyTopicsBadge';
 import styles from '../pages/MyTopics.module.css';
 
 interface MyTopicsListPanelProps {
@@ -113,7 +113,7 @@ export function MyTopicsListPanel({
 								</div>
 								<div className={styles.listItemRight}>
 									<Badge
-										cls={cfg.badgeCls}
+										tone={cfg.tone}
 										dot
 									>
 										{cfg.label}

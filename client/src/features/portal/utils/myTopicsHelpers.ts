@@ -1,5 +1,6 @@
 import { STATUS_CFG as BASE_STATUS_CFG } from '../../topics/utils/topicHelpers';
 import type { TopicFile, TopicStatus } from '../../topics/types/topic.type';
+import type { BadgeTone } from '@/shared/components/Badge/badgeTone';
 
 export type FilterTab = TopicStatus;
 export type CategoryTab = 'department' | 'mine';
@@ -10,28 +11,28 @@ export const STATUS_CFG = {
 		dot: '#f59e0b',
 		bg: '#fef3c7',
 		color: '#92400e',
-		badgeCls: 'badgeAmber',
+		tone: 'amber',
 	},
 	approved: {
 		...BASE_STATUS_CFG.approved,
 		dot: '#22c55e',
 		bg: '#dcfce7',
 		color: '#166534',
-		badgeCls: 'badgeGreen',
+		tone: 'green',
 	},
 	rejected: {
 		...BASE_STATUS_CFG.rejected,
 		dot: '#ef4444',
 		bg: '#fee2e2',
 		color: '#991b1b',
-		badgeCls: 'badgeRed',
+		tone: 'red',
 	},
 	supplement: {
 		...BASE_STATUS_CFG.supplement,
 		dot: '#8b5cf6',
 		bg: '#ede9fe',
 		color: '#5b21b6',
-		badgeCls: 'badgeBlue',
+		tone: 'blue',
 		label: 'Cần bổ sung',
 	},
 	cancelled: {
@@ -39,7 +40,7 @@ export const STATUS_CFG = {
 		dot: '#9ca3af',
 		bg: '#f3f4f6',
 		color: '#374151',
-		badgeCls: 'badgeGray',
+		tone: 'gray',
 	},
 } satisfies Record<
 	TopicStatus,
@@ -49,18 +50,18 @@ export const STATUS_CFG = {
 		dot: string;
 		bg: string;
 		color: string;
-		badgeCls: string;
+		tone: BadgeTone;
 	}
 >;
 
 export const APV_STATUS_CFG: Record<
 	string,
-	{ label: string; badgeCls: string }
+	{ label: string; tone: BadgeTone }
 > = {
-	pending: { label: 'Nộp hồ sơ', badgeCls: 'badgeAmber' },
-	approved: { label: 'Phê duyệt', badgeCls: 'badgeGreen' },
-	rejected: { label: 'Từ chối', badgeCls: 'badgeRed' },
-	info_requested: { label: 'Yêu cầu bổ sung', badgeCls: 'badgeBlue' },
+	pending: { label: 'Nộp hồ sơ', tone: 'amber' },
+	approved: { label: 'Phê duyệt', tone: 'green' },
+	rejected: { label: 'Từ chối', tone: 'red' },
+	info_requested: { label: 'Yêu cầu bổ sung', tone: 'blue' },
 };
 
 export const TABS: { key: FilterTab; label: string }[] = [

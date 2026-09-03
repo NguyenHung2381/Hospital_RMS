@@ -3,6 +3,7 @@ import FilesTab from '../components/FilesTab';
 import InfoTab from '../components/InfoTab';
 import MembersTab from '../components/MembersTab';
 import { ChevLSvg } from '@/assets/icons';
+import { Badge } from '@/shared/components';
 import { useTopicDetail } from '../hooks/useTopicDetail';
 import { STATUS_CFG } from '../types/topicDetail.type';
 import styles from './TopicDetail.module.css';
@@ -72,16 +73,12 @@ export default function TopicDetail() {
 			<div className={styles.topicStrip}>
 				<span className={styles.topicId}>{topic.id}</span>
 				<span className={styles.topicStripTitle}>{topic.title}</span>
-				<span
-					className={styles.badge}
-					style={{ background: statusCfg.bg, color: statusCfg.color }}
+				<Badge
+					tone={statusCfg.tone}
+					dot
 				>
-					<span
-						className={styles.badgeDot}
-						style={{ background: statusCfg.dot }}
-					/>
 					{statusCfg.label}
-				</span>
+				</Badge>
 			</div>
 
 			{/* Edit mode banner */}

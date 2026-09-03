@@ -47,30 +47,35 @@ export const blankMember: MemberFormState = {
 export const STATUS_CFG = {
 	submitted: {
 		label: 'Chờ duyệt',
+		tone: 'amber',
 		dot: '#f59e0b',
 		bg: '#fef3c7',
 		color: '#92400e',
 	},
 	approved: {
 		label: 'Đã duyệt',
+		tone: 'green',
 		dot: '#22c55e',
 		bg: '#dcfce7',
 		color: '#166534',
 	},
 	rejected: {
 		label: 'Từ chối',
+		tone: 'red',
 		dot: '#ef4444',
 		bg: '#fee2e2',
 		color: '#991b1b',
 	},
 	supplement: {
 		label: 'Bổ sung',
+		tone: 'blue',
 		dot: '#8b5cf6',
 		bg: '#ede9fe',
 		color: '#5b21b6',
 	},
 	cancelled: {
 		label: 'Đã hủy',
+		tone: 'gray',
 		dot: '#9ca3af',
 		bg: '#f3f4f6',
 		color: '#374151',
