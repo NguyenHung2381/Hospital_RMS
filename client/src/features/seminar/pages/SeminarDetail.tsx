@@ -11,6 +11,7 @@ import {
 	XSvg,
 } from '@/assets/icons';
 import AdminLayout from '../../../layouts/AdminLayout';
+import { Badge } from '@/shared/components';
 import { InlineLoading } from '../../../shared/components/Loading';
 import {
 	BulkBar,
@@ -269,9 +270,12 @@ export default function SeminarDetail() {
 												{p.title_prefix ? `${p.title_prefix} ` : ''}
 												{p.full_name}
 												{p.is_foreign && (
-													<span className={`${styles.badge} ${styles.badgeAmber}`} style={{ marginLeft: 6 }}>
+													<Badge
+														tone='amber'
+														style={{ marginLeft: 6 }}
+													>
 														NN
-													</span>
+													</Badge>
 												)}
 											</td>
 											<td>{PARTICIPATION_LABELS[p.participation_type]}</td>
@@ -291,17 +295,17 @@ export default function SeminarDetail() {
 											)}
 											{sem.grants_cme && (
 												<td>
-													<span
-														className={`${styles.badge} ${
+													<Badge
+														tone={
 															p.cme_status === 'signed'
-																? styles.badgeGreen
+																? 'green'
 																: p.cme_status === 'issued'
-																	? styles.badgeBlue
-																	: styles.badgeGray
-														}`}
+																	? 'blue'
+																	: 'gray'
+														}
 													>
 														{CME_STATUS_LABELS[p.cme_status]}
-													</span>
+													</Badge>
 												</td>
 											)}
 											<td className={styles.tdRight}>

@@ -4,6 +4,7 @@ import {
 	LinkSvg,
 	TrashSvg,
 } from '@/assets/icons';
+import { Badge } from '@/shared/components';
 import type { ResearchRound } from '../types/round.type';
 import {
 	calcDaysLeft,
@@ -58,12 +59,12 @@ export function RoundCard({
 							{round.round_type_name ? ` · ${round.round_type_name}` : ''}
 						</div>
 					</div>
-					<span
-						className={`${styles.badge} ${styles[sc.cls as keyof typeof styles]}`}
+					<Badge
+						tone={sc.tone}
+						dot
 					>
-						<span className={styles.badgeDot} />
 						{sc.label}
-					</span>
+					</Badge>
 				</div>
 
 				<div className={styles.dateRange}>

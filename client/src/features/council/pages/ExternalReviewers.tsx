@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { CheckSvg, EditSvg, PlusSvg, TrashSvg, XSvg } from '@/assets/icons';
 import AdminLayout from '../../../layouts/AdminLayout';
+import { Badge } from '@/shared/components';
 import { SkeletonTable } from '../../../shared/components/Loading';
 import sel from '../../../shared/components/Table/RowSelect.module.css';
 import {
@@ -120,11 +121,9 @@ export default function ExternalReviewers() {
 										</span>
 									</td>
 									<td className={styles.td}>
-										<span
-											className={`${styles.badge} ${r.is_active ? styles.badgeFinalized : styles.badgeDraft}`}
-										>
+										<Badge tone={r.is_active ? 'green' : 'amber'}>
 											{r.is_active ? 'Đang hoạt động' : 'Ngừng hoạt động'}
-										</span>
+										</Badge>
 									</td>
 									<td className={`${styles.td} ${styles.tdActions}`}>
 										<button

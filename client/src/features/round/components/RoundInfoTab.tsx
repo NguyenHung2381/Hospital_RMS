@@ -7,6 +7,7 @@ import type {
 import { STATUS_CFG, STATUS_OPTIONS, fromInputDate, toInputDate } from '../utils/roundHelpers';
 import { FormField } from './DeadlineManager';
 import styles from '../pages/Round.module.css';
+import { Badge } from '@/shared/components';
 import { DatePicker } from '../../../shared/components/Input/DatePicker';
 
 interface RoundInfoTabProps {
@@ -154,12 +155,12 @@ export function RoundInfoTab({
 							className={`${styles.statusOption} ${form.status === value ? styles.statusOptionSelected : ''}`}
 							onClick={() => set('status', value as RoundStatus)}
 						>
-							<span
-								className={`${styles.badge} ${styles[cfg.cls as keyof typeof styles]}`}
+							<Badge
+								tone={cfg.tone}
+								dot
 							>
-								<span className={styles.badgeDot} />
 								{label}
-							</span>
+							</Badge>
 							<span className={styles.statusOptionDesc}>{desc}</span>
 						</button>
 					);

@@ -146,19 +146,7 @@
 .muted { color: var(--color-gray-400); }
 .mono { font-family: var(--font-mono); }
 
-.badge {
-	display: inline-block;
-	padding: 2px 8px;
-	border-radius: var(--radius-full);
-	font-size: 12px;
-	font-weight: var(--font-weight-medium);
-	white-space: nowrap;
-}
-.badgeGray { background: var(--color-gray-100); color: var(--color-gray-600); }
-.badgeBlue { background: #e6f1fb; color: #0c447c; }
-.badgeGreen { background: #e1f5ee; color: #085041; }
-.badgeAmber { background: #faeeda; color: #633806; }
-.badgePurple { background: #eeedfe; color: #3c3489; }
+/* Badge: dùng <Badge tone> ở @/shared/components */
 
 .actionBtn {
 	width: 30px;

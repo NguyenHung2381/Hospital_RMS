@@ -9,6 +9,7 @@ import {
 	XSvg,
 } from '@/assets/icons';
 import AdminLayout from '../../../layouts/AdminLayout';
+import { Badge } from '@/shared/components';
 import { SkeletonTable } from '../../../shared/components/Loading';
 import { Pagination } from '../../../shared/components/Table/Pagination';
 import { SeminarDeleteModal } from '../components/SeminarDeleteModal';
@@ -163,14 +164,14 @@ export default function Seminars() {
 										</span>
 									</td>
 									<td>
-										<span className={`${styles.badge} ${styles.badgeBlue}`}>
+										<Badge tone='blue'>
 											{EVENT_TYPE_LABELS[row.event_type]}
-										</span>
+										</Badge>
 									</td>
 									<td>
-										<span className={`${styles.badge} ${styles.badgeGray}`}>
+										<Badge tone='gray'>
 											{row.scope === 'hosted' ? 'BV tổ chức' : 'Cử đi dự'}
-										</span>
+										</Badge>
 									</td>
 									<td>{fmtDate(row.start_date, row.date_text) || <span className={styles.muted}>—</span>}</td>
 									<td>{row.location || <span className={styles.muted}>—</span>}</td>
@@ -179,9 +180,9 @@ export default function Seminars() {
 									</td>
 									<td style={{ textAlign: 'center' }}>
 										{row.grants_cme ? (
-											<span className={`${styles.badge} ${styles.badgeGreen}`}>
+											<Badge tone='green'>
 												{row.manual_cme_count ?? row.cme_issued_count ?? 0}
-											</span>
+											</Badge>
 										) : (
 											<span className={styles.muted}>—</span>
 										)}

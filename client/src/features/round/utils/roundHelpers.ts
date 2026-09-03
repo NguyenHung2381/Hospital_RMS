@@ -1,12 +1,13 @@
 import type { ResearchRound, RoundStatus } from '../types/round.type';
+import type { BadgeTone } from '@/shared/components/Badge/badgeTone';
 
 export const STATUS_CFG: Record<
 	RoundStatus,
-	{ label: string; cls: string; barCls: string }
+	{ label: string; tone: BadgeTone; barCls: string }
 > = {
-	active: { label: 'Đang mở', cls: 'badgeGreen', barCls: 'barActive' },
-	closed: { label: 'Đã đóng', cls: 'badgeGray', barCls: 'barClosed' },
-	draft: { label: 'Lên lịch', cls: 'badgeBlue', barCls: 'barUpcoming' },
+	active: { label: 'Đang mở', tone: 'green', barCls: 'barActive' },
+	closed: { label: 'Đã đóng', tone: 'gray', barCls: 'barClosed' },
+	draft: { label: 'Lên lịch', tone: 'blue', barCls: 'barUpcoming' },
 };
 
 export const STATUS_OPTIONS: {

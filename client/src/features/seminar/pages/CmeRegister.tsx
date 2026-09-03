@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { CheckSvg, SearchSvg, UsersSvg, XSvg } from '@/assets/icons';
 import AdminLayout from '../../../layouts/AdminLayout';
 import { useRealtimeUpdate } from '../../../layouts/hooks/useRealtime';
+import { Badge } from '@/shared/components';
 import { SkeletonTable } from '../../../shared/components/Loading';
 import { Pagination } from '../../../shared/components/Table/Pagination';
 import {
@@ -256,17 +257,17 @@ export default function CmeRegister() {
 									<td>{PARTICIPATION_LABELS[e.participation_type]}</td>
 									<td>{e.cme_credits ?? <span className={styles.muted}>—</span>}</td>
 									<td>
-										<span
-											className={`${styles.badge} ${
+										<Badge
+											tone={
 												e.cme_status === 'signed'
-													? styles.badgeGreen
+													? 'green'
 													: e.cme_status === 'issued'
-														? styles.badgeBlue
-														: styles.badgeGray
-											}`}
+														? 'blue'
+														: 'gray'
+											}
 										>
 											{CME_STATUS_LABELS[e.cme_status]}
-										</span>
+										</Badge>
 									</td>
 									<td className={styles.muted}>{e.seminar_title}</td>
 									<td className={styles.tdRight}>

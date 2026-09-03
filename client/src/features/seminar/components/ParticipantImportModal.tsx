@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react';
 import { CheckSvg, InfoSvg, UploadSvg, XSvg } from '@/assets/icons';
+import { Badge } from '@/shared/components';
 import { importParticipantsExcel } from '../api/seminarApi';
 import {
 	PARTICIPATION_LABELS,
@@ -204,21 +205,21 @@ export function ParticipantImportModal({
 															{r.title_prefix ? `${r.title_prefix} ` : ''}
 															{r.full_name}
 															{r.is_foreign && (
-																<span
-																	className={`${styles.badge} ${styles.badgeAmber}`}
+																<Badge
+																	tone='amber'
 																	style={{ marginLeft: 6 }}
 																>
 																	NN
-																</span>
+																</Badge>
 															)}
 															{r.matched_user && (
-																<span
-																	className={`${styles.badge} ${styles.badgeGreen}`}
+																<Badge
+																	tone='green'
 																	style={{ marginLeft: 6 }}
 																	title={r.matched_user.department_name || ''}
 																>
 																	đã khớp
-																</span>
+																</Badge>
 															)}
 															{r.warnings.map((w, j) => (
 																<div key={j} className={styles.rowWarn}>

@@ -14,6 +14,7 @@ import {
 	XSvg,
 } from '@/assets/icons';
 import AdminLayout from '../../../layouts/AdminLayout';
+import { Badge } from '@/shared/components';
 import { SkeletonTable } from '../../../shared/components/Loading';
 import { AutoAssignModal } from '../components/AutoAssignModal';
 import {
@@ -339,11 +340,15 @@ export default function Council() {
 											className={styles.memberCell}
 											title={c.members_summary || 'Chưa xếp thành viên'}
 										>
-											<span
-												className={`${styles.badge} ${(c.member_count ?? 0) >= SEAT_ROLES.length ? styles.badgeFinalized : styles.badgeDraft}`}
+											<Badge
+												tone={
+													(c.member_count ?? 0) >= SEAT_ROLES.length
+														? 'green'
+														: 'amber'
+												}
 											>
 												{c.member_count ?? 0}/{SEAT_ROLES.length}
-											</span>
+											</Badge>
 											{c.members_summary ? (
 												<ul className={styles.memberList}>
 													{c.members_summary
@@ -383,11 +388,9 @@ export default function Council() {
 										</div>
 									</td>
 									<td className={styles.td}>
-										<span
-											className={`${styles.badge} ${c.status === 'finalized' ? styles.badgeFinalized : styles.badgeDraft}`}
-										>
+										<Badge tone={c.status === 'finalized' ? 'green' : 'amber'}>
 											{STATUS_LABELS[c.status]}
-										</span>
+										</Badge>
 									</td>
 									<td
 										className={`${styles.td} ${styles.tdActions}`}

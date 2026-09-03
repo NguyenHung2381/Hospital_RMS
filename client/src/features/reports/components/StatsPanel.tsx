@@ -1,4 +1,5 @@
 import { AlertSvg, RefreshSvg } from '@/assets/icons';
+import { Badge } from '@/shared/components';
 import {
 	DeptBarChart,
 	StatusPieChart,
@@ -471,15 +472,9 @@ export function StatsPanel({
 										key={a.id}
 										className={styles.approvalItem}
 									>
-										<span
-											className={`${styles.approvalBadge} ${
-												a.status === 'approved'
-													? styles.badgeApproved
-													: styles.badgeRejected
-											}`}
-										>
+										<Badge tone={a.status === 'approved' ? 'green' : 'red'}>
 											{a.status === 'approved' ? 'Đã duyệt' : 'Từ chối'}
-										</span>
+										</Badge>
 										<span className={styles.approvalTitle}>{a.topic_title}</span>
 										<span className={styles.approvalMeta}>
 											{a.approver_name ?? '—'} · {fmtDate(a.created_at)}
