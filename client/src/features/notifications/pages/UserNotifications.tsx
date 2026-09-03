@@ -8,6 +8,8 @@ import {
 	InfoSvg,
 	WarnSvg,
 } from '@/assets/icons';
+import { EmptyState, Pagination } from '@/shared/components';
+import { PAGE_SIZE_OPTIONS } from '@/shared/utils';
 import UserLayout from '../../../layouts/UserLayout';
 import { getStoredUser } from '../../../shared/utils/storage';
 import type { StoredUser } from '../../../shared/utils/storage';
@@ -185,23 +187,15 @@ export default function UserNotifications() {
 							<span className={styles.spinnerDark} />
 						</div>
 					) : displayed.length === 0 ? (
-						<div className={styles.emptyState}>
-							<BellSvg
-								style={{
-									width: 40,
-									height: 40,
-									color: 'var(--color-gray-300)',
-								}}
-							/>
-							<div className={styles.emptyTitle}>
-								{tab === 'unread'
+						<EmptyState
+							icon={<BellSvg />}
+							title={
+								tab === 'unread'
 									? 'Không có thông báo chưa đọc'
-									: 'Chưa có thông báo nào'}
-							</div>
-							<div className={styles.emptySub}>
-								Thông báo mới sẽ hiển thị tại đây
-							</div>
-						</div>
+									: 'Chưa có thông báo nào'
+							}
+							desc='Thông báo mới sẽ hiển thị tại đây'
+						/>
 					) : (
 						<ul className={styles.list}>
 							{displayed.map((n) => {
@@ -245,41 +239,18 @@ export default function UserNotifications() {
 					)}
 				</div>
 
-				{/* Pagination */}
 				{totalPages > 1 && (
-					<div className={styles.pagination}>
-						<span className={styles.paginInfo}>
-							Trang {page}/{totalPages} — {total} thông báo
-						</span>
-						<div className={styles.paginBtns}>
-							<button
-								className={styles.paginBtn}
-								disabled={page === 1}
-								onClick={() => setPage((p) => p - 1)}
-							>
-								‹
-							</button>
-							{Array.from(
-								{ length: Math.min(totalPages, 7) },
-								(_, i) => i + 1,
-							).map((p) => (
-								<button
-									key={p}
-									className={`${styles.paginBtn} ${page === p ? styles.paginBtnActive : ''}`}
-									onClick={() => setPage(p)}
-								>
-									{p}
-								</button>
-							))}
-							<button
-								className={styles.paginBtn}
-								disabled={page === totalPages}
-								onClick={() => setPage((p) => p + 1)}
-							>
-								›
-							</button>
-						</div>
-					</div>
+					<Pagination
+						page={page}
+						totalPages={totalPages}
+						total={total}
+						rowsPerPage={LIMIT}
+						pageSizeOptions={PAGE_SIZE_OPTIONS}
+						onPageChange={setPage}
+						onRowsPerPageChange={() => {}}
+						itemLabel='thông báo'
+						hideSizeSelect
+					/>
 				)}
 			</div>
 		</UserLayout>

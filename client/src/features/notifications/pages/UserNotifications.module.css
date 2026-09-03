@@ -124,20 +124,7 @@
 	padding: 48px;
 }
 
-.emptyState {
-	display: flex;
-	flex-direction: column;
-	align-items: center;
-	gap: var(--space-3);
-	padding: 56px 24px;
-	text-align: center;
-}
-.emptyTitle {
-	font-size: var(--font-size-base);
-	font-weight: var(--font-weight-semibold);
-	color: var(--color-gray-500);
-}
-.emptySub { font-size: var(--font-size-sm); color: var(--color-gray-400); }
+/* Trạng thái rỗng: dùng <EmptyState> ở @/shared/components */
 
 .list {
 	list-style: none;
@@ -262,46 +249,7 @@
 	font-family: var(--font-mono);
 }
 
-/* ── PAGINATION ─────────────────────────── */
-.pagination {
-	display: flex;
-	align-items: center;
-	justify-content: space-between;
-	padding: var(--space-3) var(--space-4);
-	background: var(--color-white);
-	border: 1px solid var(--color-gray-200);
-	border-radius: var(--radius-xl);
-}
-.paginInfo { font-size: var(--font-size-sm); color: var(--color-gray-400); }
-.paginBtns { display: flex; gap: var(--space-1); }
-
-.paginBtn {
-	min-width: 32px;
-	height: 32px;
-	padding: 0 var(--space-2);
-	border: 1.5px solid var(--color-gray-200);
-	border-radius: var(--radius-md);
-	background: var(--color-white);
-	font-family: var(--font-body);
-	font-size: var(--font-size-sm);
-	font-weight: var(--font-weight-semibold);
-	color: var(--color-gray-600);
-	cursor: pointer;
-	display: inline-flex;
-	align-items: center;
-	justify-content: center;
-	transition: all var(--transition-fast);
-}
-.paginBtn:hover:not(:disabled) {
-	border-color: var(--color-primary);
-	color: var(--color-primary-dark);
-}
-.paginBtn:disabled { opacity: 0.35; cursor: not-allowed; }
-.paginBtnActive {
-	background: var(--color-primary);
-	border-color: var(--color-primary);
-	color: #fff;
-}
+/* ── PAGINATION: dùng <Pagination> ở @/shared/components ── */
 
 /* ── SPINNERS ───────────────────────────── */
 .spinner {

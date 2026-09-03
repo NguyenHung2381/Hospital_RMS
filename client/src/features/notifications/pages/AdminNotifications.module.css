@@ -4,20 +4,8 @@
 	gap: var(--space-6);
 }
 
-.card {
-	background: var(--color-white);
-	border: 1px solid var(--color-gray-200);
-	border-radius: var(--radius-xl);
-	overflow: hidden;
-}
-
-.cardHeader {
-	display: flex;
-	align-items: center;
-	gap: var(--space-4);
-	padding: var(--space-5) var(--space-6);
-	border-bottom: 1px solid var(--color-gray-100);
-}
+/* .card / .cardHeader: dùng <Card> ở @/shared/components.
+ * .cardHeaderIcon/.cardTitle/.cardSub vẫn dùng lại cho header của modal bên dưới. */
 
 .cardHeaderIcon {
 	width: 40px;
@@ -519,18 +507,7 @@
 	padding: 40px;
 }
 
-.emptyState {
-	display: flex;
-	flex-direction: column;
-	align-items: center;
-	gap: var(--space-3);
-	padding: 48px 24px;
-	color: var(--color-gray-400);
-}
-.emptyTitle {
-	font-size: var(--font-size-sm);
-	font-weight: var(--font-weight-semibold);
-}
+/* Trạng thái rỗng: dùng <EmptyState> ở @/shared/components */
 
 .tableWrap {
 	overflow-x: auto;
@@ -683,53 +660,7 @@
 	cursor: not-allowed;
 }
 
-/* ── PAGINATION ─────────────────────────── */
-.pagination {
-	display: flex;
-	align-items: center;
-	justify-content: space-between;
-	padding: var(--space-4) var(--space-6);
-	border-top: 1px solid var(--color-gray-100);
-}
-.paginInfo {
-	font-size: var(--font-size-sm);
-	color: var(--color-gray-400);
-}
-.paginBtns {
-	display: flex;
-	gap: var(--space-1);
-}
-
-.paginBtn {
-	min-width: 32px;
-	height: 32px;
-	padding: 0 var(--space-2);
-	border: 1.5px solid var(--color-gray-200);
-	border-radius: var(--radius-md);
-	background: var(--color-white);
-	font-family: var(--font-body);
-	font-size: var(--font-size-sm);
-	font-weight: var(--font-weight-semibold);
-	color: var(--color-gray-600);
-	cursor: pointer;
-	display: inline-flex;
-	align-items: center;
-	justify-content: center;
-	transition: all var(--transition-fast);
-}
-.paginBtn:hover:not(:disabled) {
-	border-color: var(--color-primary);
-	color: var(--color-primary-dark);
-}
-.paginBtn:disabled {
-	opacity: 0.35;
-	cursor: not-allowed;
-}
-.paginBtnActive {
-	background: var(--color-primary);
-	border-color: var(--color-primary);
-	color: #fff;
-}
+/* ── PAGINATION: dùng <Pagination> ở @/shared/components ── */
 
 /* ── SPINNERS ───────────────────────────── */
 .spinner {

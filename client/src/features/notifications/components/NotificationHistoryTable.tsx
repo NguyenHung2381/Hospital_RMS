@@ -12,12 +12,16 @@ import type { AdminNotification, NotificationRecipient } from '../api/notificati
 import { NOTIF_TYPES } from '../types/notification.type';
 import { NOTIF_TYPE_MAP } from '../utils/notifUtils';
 import { relativeTime } from '../../../shared/utils/formatDate';
-import sel from '../../../shared/components/Table/RowSelect.module.css';
 import {
 	BulkBar,
+	Card,
+	EmptyState,
+	Pagination,
 	SelectCheckbox,
-} from '../../../shared/components/Table/RowSelect';
-import { useRowSelection } from '../../../shared/hooks/useRowSelection';
+} from '@/shared/components';
+import { PAGE_SIZE_OPTIONS } from '@/shared/utils';
+import sel from '@/shared/components/Table/RowSelect.module.css';
+import { useRowSelection } from '@/shared/hooks/useRowSelection';
 import styles from '../pages/AdminNotifications.module.css';
 
 interface NotificationHistoryTableProps {
@@ -65,23 +69,21 @@ export function NotificationHistoryTable({
 	const rowSel = useRowSelection(rows.map((r) => r.batch_key));
 
 	return (
-		<section className={styles.card}>
-			<div className={styles.cardHeader}>
-				<div className={styles.cardHeaderIcon}>
-					<BellSvg />
-				</div>
-				<div>
-					<div className={styles.cardTitle}>Lịch sử thông báo</div>
-					<div className={styles.cardSub}>Tổng cộng {total} thông báo trong hệ thống</div>
-				</div>
-				<button
-					className={styles.btnRefresh}
-					onClick={onRefresh}
-					title='Làm mới'
-				>
-					<RefreshSvg style={{ width: 14, height: 14 }} />
-				</button>
-			</div>
+		<Card>
+			<Card.Header
+				icon={<BellSvg />}
+				title='Lịch sử thông báo'
+				sub={`Tổng cộng ${total} thông báo trong hệ thống`}
+				actions={
+					<button
+						className={styles.btnRefresh}
+						onClick={onRefresh}
+						title='Làm mới'
+					>
+						<RefreshSvg style={{ width: 14, height: 14 }} />
+					</button>
+				}
+			/>
 
 			<div className={styles.historyToolbar}>
 				<div className={styles.searchBox}>
@@ -121,16 +123,10 @@ export function NotificationHistoryTable({
 					<span className={styles.spinnerDark} />
 				</div>
 			) : rows.length === 0 ? (
-				<div className={styles.emptyState}>
-					<BellSvg
-						style={{
-							width: 36,
-							height: 36,
-							color: 'var(--color-gray-300)',
-						}}
-					/>
-					<div className={styles.emptyTitle}>Chưa có thông báo nào</div>
-				</div>
+				<EmptyState
+					icon={<BellSvg />}
+					title='Chưa có thông báo nào'
+				/>
 			) : (
 				<div className={styles.tableWrap}>
 					<BulkBar
@@ -285,37 +281,18 @@ export function NotificationHistoryTable({
 			)}
 
 			{totalPages > 1 && (
-				<div className={styles.pagination}>
-					<span className={styles.paginInfo}>
-						Trang {page}/{totalPages} — {total} mục
-					</span>
-					<div className={styles.paginBtns}>
-						<button
-							className={styles.paginBtn}
-							disabled={page === 1}
-							onClick={() => setPage((p) => p - 1)}
-						>
-							‹
-						</button>
-						{Array.from({ length: Math.min(totalPages, 7) }, (_, i) => i + 1).map((p) => (
-							<button
-								key={p}
-								className={`${styles.paginBtn} ${page === p ? styles.paginBtnActive : ''}`}
-								onClick={() => setPage(() => p)}
-							>
-								{p}
-							</button>
-						))}
-						<button
-							className={styles.paginBtn}
-							disabled={page === totalPages}
-							onClick={() => setPage((p) => p + 1)}
-						>
-							›
-						</button>
-					</div>
-				</div>
+				<Pagination
+					page={page}
+					totalPages={totalPages}
+					total={total}
+					rowsPerPage={Math.ceil(total / totalPages) || total}
+					pageSizeOptions={PAGE_SIZE_OPTIONS}
+					onPageChange={(p) => setPage(() => p)}
+					onRowsPerPageChange={() => {}}
+					itemLabel='mục'
+					hideSizeSelect
+				/>
 			)}
-		</section>
+		</Card>
 	);
 }
