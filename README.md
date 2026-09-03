@@ -172,10 +172,12 @@ Hospital_RMS/
 │       │   ├── roles/              # Vai trò người dùng
 │       │   └── notifications/      # Thông báo
 │       ├── layouts/                # AdminLayout, UserLayout, AuthLayout
-│       ├── lib/
-│       │   ├── apiClient.ts        # HTTP client với tự động refresh token
-│       │   └── authStorage.ts      # Lưu trữ token
-│       └── routers/                # Route guards và cấu hình trang
+│       ├── shared/                 # Dùng chung mọi feature
+│       │   ├── components/         # Badge, Card, EmptyState, Modal, Pagination, Table CSS…
+│       │   ├── hooks/              # useRowSelection…
+│       │   ├── utils/              # cx, formatDate, storage, runBulk…
+│       │   └── api/                # axios instance + interceptors (refresh token)
+│       └── app/router/             # Route guards và cấu hình trang
 │
 └── server/                         # Node.js + Express API
     └── src/
@@ -189,6 +191,24 @@ Hospital_RMS/
         ├── migrations/             # SQL migration scripts
         └── uploads/                # Thư mục lưu file tải lên
 ```
+
+### UI kit dùng chung (`client/src/shared`)
+
+Các mảnh giao diện lặp lại được gom về một nguồn duy nhất — sửa 1 nơi, đổi cả app.
+Import gọn qua barrel: `import { Badge, EmptyState, Pagination } from '@/shared/components'`.
+
+| Thành phần | Dùng cho | Ghi chú |
+|---|---|---|
+| `<Badge tone dot>` | Nhãn trạng thái (chip chấm màu) | `tone`: `green\|blue\|amber\|gray\|red\|pink\|purple\|teal`. Config trạng thái của feature khai báo `tone: BadgeTone` thay cho tên class. |
+| `<EmptyState icon title desc action>` / `<TableEmpty colSpan …>` | Khối "chưa có dữ liệu" | `TableEmpty` bọc sẵn `<tr><td colSpan>`. |
+| `<Card>` + `<Card.Header icon title sub actions>` + `<Card.Body>` | Khung card có viền + header icon | |
+| `<Pagination …>` | Thanh phân trang | `hideSizeSelect` khi trang không có ô chọn số dòng; `infoText` để ghi đè câu chữ. |
+| `<Modal>`, `<Button>`, `Input/*`, `BulkBar`, `SkeletonTable`… | (đã có sẵn) | |
+| `Table.module.css` | Nguồn chân lý style bảng danh sách | feature dùng `composes: … from '@/shared/components/Table/Table.module.css'`, **không** tự định nghĩa lại `.tableWrap/.th/.td/.tr/.emptyState`. |
+
+Quy ước: không tự viết lại `Badge`/pagination/empty-state trong feature; cần biến thể thì
+truyền `className`/`style` vào component dùng chung. `docx-preview`/`RichTextEditor` nặng —
+import trực tiếp theo đường dẫn, không qua barrel.
 
 ---
 
