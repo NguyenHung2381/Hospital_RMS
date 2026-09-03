@@ -18,6 +18,11 @@ export function formatDate(value?: string | null): string | null {
 	return formatDateVN(value);
 }
 
+/** Như `formatDate` nhưng luôn trả string — rơi về `fallback` (mặc định "—") khi rỗng. */
+export function formatDateOr(value?: string | null, fallback = '—'): string {
+	return formatDate(value) ?? fallback;
+}
+
 // dd/mm/yyyy cố định theo giờ VN (khác `formatDate` ở trên: luôn trả string, không phụ
 // thuộc timezone trình duyệt) — dùng cho báo cáo/dashboard cần hiển thị nhất quán.
 export function formatDateVN(iso: string | null | undefined): string {

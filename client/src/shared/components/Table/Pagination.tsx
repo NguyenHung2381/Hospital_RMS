@@ -12,6 +12,8 @@ interface PaginationProps {
 	itemLabel?: string;
 	// Ẩn dropdown chọn số dòng/trang khi trang đã có control riêng ở nơi khác.
 	hideSizeSelect?: boolean;
+	// Ghi đè hoàn toàn dòng thông tin bên trái (khi feature cần câu chữ riêng).
+	infoText?: string;
 }
 
 export function Pagination({
@@ -24,13 +26,15 @@ export function Pagination({
 	onRowsPerPageChange,
 	itemLabel = 'mục',
 	hideSizeSelect = false,
+	infoText,
 }: PaginationProps) {
 	const safe = Math.min(page, Math.max(1, totalPages));
 
-	const infoText =
-		total === 0
+	const info =
+		infoText ??
+		(total === 0
 			? `Không có ${itemLabel} nào`
-			: `Hiển thị ${(safe - 1) * rowsPerPage + 1}–${Math.min(safe * rowsPerPage, total)} trong ${total} ${itemLabel}`;
+			: `Hiển thị ${(safe - 1) * rowsPerPage + 1}–${Math.min(safe * rowsPerPage, total)} trong ${total} ${itemLabel}`);
 
 	const pages = Array.from({ length: totalPages }, (_, i) => i + 1)
 		.filter((p) => p === 1 || p === totalPages || Math.abs(p - safe) <= 1)
@@ -42,7 +46,7 @@ export function Pagination({
 
 	return (
 		<div className={styles.wrapper}>
-			<span className={styles.info}>{infoText}</span>
+			<span className={styles.info}>{info}</span>
 			<div className={styles.spacer} />
 			{!hideSizeSelect && (
 				<select

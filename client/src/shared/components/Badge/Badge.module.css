@@ -1,0 +1,60 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+ * Badge dùng chung — nguồn chân lý duy nhất cho nhãn trạng thái (badge chấm màu).
+ *
+ * Dùng qua component:  <Badge tone="green" dot>Đã duyệt</Badge>
+ * Dùng qua composes trong *.module.css của feature (khi cần thêm rule riêng):
+ *     .badge { composes: badge from '@/shared/components/Badge/Badge.module.css'; }
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+.badge {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+	padding: 3px var(--space-2);
+	border-radius: var(--radius-full);
+	font-size: 11px;
+	font-weight: var(--font-weight-bold);
+	white-space: nowrap;
+}
+
+.dot {
+	width: 5px;
+	height: 5px;
+	border-radius: 50%;
+	background: currentColor;
+	flex-shrink: 0;
+}
+
+/* ── Bảng màu (giữ nguyên giá trị đang dùng trên toàn hệ thống) ───────────── */
+.green {
+	background: #e1f5ee;
+	color: #085041;
+}
+.blue {
+	background: #e6f1fb;
+	color: #0c447c;
+}
+.amber {
+	background: #faeeda;
+	color: #633806;
+}
+.gray {
+	background: #f1efe8;
+	color: #444441;
+}
+.red {
+	background: #fcebeb;
+	color: #791f1f;
+}
+.pink {
+	background: rgba(232, 69, 122, 0.1);
+	color: var(--color-accent-dark);
+}
+.purple {
+	background: #eeedfe;
+	color: #3c3489;
+}
+.teal {
+	background: #e1f5ee;
+	color: #0f6e56;
+}

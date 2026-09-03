@@ -1,0 +1,19 @@
+/* Trạng thái rỗng dùng chung. Kế thừa style từ Table.module.css (nguồn chân lý)
+ * để không phân mảnh định nghĩa. */
+
+.root {
+	composes: emptyState from '../Table/Table.module.css';
+}
+.icon {
+	composes: emptyIcon from '../Table/Table.module.css';
+}
+.title {
+	composes: emptyTitle from '../Table/Table.module.css';
+}
+.desc {
+	composes: emptyDesc from '../Table/Table.module.css';
+}
+
+.action {
+	margin-top: var(--space-4);
+}
