@@ -1,4 +1,5 @@
 import { formatDate } from '../../../shared/utils/formatDate';
+import type { BadgeTone } from '@/shared/components/Badge/badgeTone';
 import type { TopicFile } from '../../topics/types/topic.type';
 import type {
 	ApprovalRecord,
@@ -12,18 +13,18 @@ import type {
 	TopicApprovalItem,
 } from '../api/approval';
 
-export const STATUS_CFG: Record<ApvStatus, { label: string; cls: string }> = {
-	pending: { label: 'Chờ phê duyệt', cls: 'badgeAmber' },
-	approved: { label: 'Đã phê duyệt', cls: 'badgeGreen' },
-	rejected: { label: 'Từ chối', cls: 'badgeRed' },
-	info_requested: { label: 'Yêu cầu bổ sung', cls: 'badgeBlue' },
+export const STATUS_CFG: Record<ApvStatus, { label: string; tone: BadgeTone }> = {
+	pending: { label: 'Chờ phê duyệt', tone: 'amber' },
+	approved: { label: 'Đã phê duyệt', tone: 'green' },
+	rejected: { label: 'Từ chối', tone: 'red' },
+	info_requested: { label: 'Yêu cầu bổ sung', tone: 'blue' },
 };
 
-export const LEVEL_CFG: Record<TopicLevel, { label: string; cls: string }> = {
-	'LV-BV': { label: 'Cấp bệnh viện', cls: 'badgeTeal' },
-	'LV-BO': { label: 'Cấp bộ', cls: 'badgePurple' },
-	'LV-NN': { label: 'Nhà nước', cls: 'badgeAmber' },
-	'LV-CS': { label: 'Cơ sở', cls: 'badgeGray' },
+export const LEVEL_CFG: Record<TopicLevel, { label: string; tone: BadgeTone }> = {
+	'LV-BV': { label: 'Cấp bệnh viện', tone: 'teal' },
+	'LV-BO': { label: 'Cấp bộ', tone: 'purple' },
+	'LV-NN': { label: 'Nhà nước', tone: 'amber' },
+	'LV-CS': { label: 'Cơ sở', tone: 'gray' },
 };
 
 export const APV_HISTORY_CFG: Record<ApvStatus, string> = {
@@ -50,7 +51,7 @@ export function getLevelStyle(level: string) {
 	return (
 		LEVEL_CFG[level as TopicLevel] ?? {
 			label: FALLBACK_LEVEL_LABEL[level] ?? level ?? 'Chưa phân cấp',
-			cls: 'badgeGray',
+			tone: 'gray' as const,
 		}
 	);
 }

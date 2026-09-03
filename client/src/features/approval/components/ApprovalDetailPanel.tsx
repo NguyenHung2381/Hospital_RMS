@@ -1,4 +1,3 @@
-import type React from 'react';
 import {
 	CheckCircleSvg,
 	DownloadSvg,
@@ -8,6 +7,7 @@ import {
 	WarnSvg,
 	XCircleSvg,
 } from '@/assets/icons';
+import { Badge } from '@/shared/components';
 import { formatDate } from '../../../shared/utils/formatDate';
 import { getInitials } from '../../../shared/utils/helper';
 import { formatFileSize } from '../../topics/utils/topicHelpers';
@@ -21,23 +21,6 @@ import {
 	STATUS_CFG,
 } from '../utils/approvalHelpers';
 import styles from '../pages/Approval.module.css';
-
-function Badge({
-	cls,
-	dot,
-	children,
-}: {
-	cls: string;
-	dot?: boolean;
-	children: React.ReactNode;
-}) {
-	return (
-		<span className={`${styles.badge} ${styles[cls as keyof typeof styles]}`}>
-			{dot && <span className={styles.badgeDot} />}
-			{children}
-		</span>
-	);
-}
 
 interface ApprovalDetailPanelProps {
 	selected: ApprovalRecord | null;
@@ -77,20 +60,20 @@ export function ApprovalDetailPanel({
 						<div className={styles.detailTitle}>{selected.topic_title}</div>
 						<div className={styles.detailBadges}>
 							<Badge
-								cls={STATUS_CFG[selected.status].cls}
+								tone={STATUS_CFG[selected.status].tone}
 								dot
 							>
 								{STATUS_CFG[selected.status].label}
 							</Badge>
-							<Badge cls={getLevelStyle(selected.topic_level).cls}>
+							<Badge tone={getLevelStyle(selected.topic_level).tone}>
 								{getLevelStyle(selected.topic_level).label}
 							</Badge>
-							<Badge cls='badgeGray'>{selected.topic_category}</Badge>
+							<Badge tone='gray'>{selected.topic_category}</Badge>
 							{selected.is_urgent && (
-								<span className={`${styles.badge} ${styles.badgeRed}`}>
+								<Badge tone='red'>
 									<WarnSvg style={{ width: 11, height: 11, flexShrink: 0 }} />
 									Cần xử lý khẩn
-								</span>
+								</Badge>
 							)}
 						</div>
 					</div>
@@ -233,7 +216,7 @@ export function ApprovalDetailPanel({
 														}}
 													>
 														<Badge
-															cls={hcfg.cls}
+															tone={hcfg.tone}
 															dot
 														>
 															{hcfg.label}
