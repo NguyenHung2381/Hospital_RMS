@@ -15,8 +15,12 @@
 /* ── Khung bảng (dạng card) ──────────────────────────────────────────────── */
 .tableWrap {
 	background: var(--color-white);
-	border: 1px solid var(--color-gray-200);
-	border-radius: var(--radius-xl);
+	/* Viền vẽ bằng inset box-shadow thay cho `border`: khi khung vừa bo góc vừa
+	 * cuộn ngang (overflow-x:auto ở màn hẹp), `border + border-radius + overflow`
+	 * bị hở/nhân đôi góc bo — box-shadow không tham gia vào vùng cắt nên hết lỗi. */
+	box-shadow: inset 0 0 0 1px var(--color-gray-200);
+	/* radius vừa phải cho bảng dày — góc lớn hơn sẽ "ăn" vào nút ở ô Thao tác của hàng cuối */
+	border-radius: var(--radius-lg);
 	overflow: hidden;
 }
 

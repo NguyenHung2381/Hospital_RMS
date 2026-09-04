@@ -79,7 +79,7 @@ export function UserTable({
 	return (
 		<div
 			className={styles.tableWrap}
-			style={{ border: 'none', borderRadius: 0 }}
+			style={{ border: 'none', borderRadius: 0, boxShadow: 'none' }}
 		>
 			{users.length === 0 && !loading ? (
 				<EmptyState
