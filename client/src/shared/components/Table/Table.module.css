@@ -74,16 +74,15 @@
 	white-space: nowrap;
 }
 
-.thRight {
+/* Selector nhân đôi class để thắng độ ưu tiên của `.table thead th` (căn trái mặc
+ * định) — nếu chỉ `.thRight { text-align: right }` thì header "Thao tác" vẫn bị
+ * căn trái trong khi các nút ở body căn phải → lệch nhau. */
+.thRight.thRight,
+.tdRight.tdRight {
 	text-align: right;
 }
-.tdRight {
-	text-align: right;
-}
-.thCenter {
-	text-align: center;
-}
-.tdCenter {
+.thCenter.thCenter,
+.tdCenter.tdCenter {
 	text-align: center;
 }
 
