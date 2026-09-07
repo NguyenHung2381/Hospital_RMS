@@ -98,4 +98,46 @@ async function assertTopicActionWindow(topicId, actorUserId, action) {
 	throw err;
 }
 
-module.exports = { assertTopicActionWindow, isTopicActionAllowed };
+/**
+ * Đợt `roundId` có đang trong thời gian "Đăng ký đề tài" không?
+ * - Không cấu hình mốc `topic_registration` ⇒ true (giữ hành vi cũ).
+ * - Có cấu hình ⇒ hôm nay (giờ VN) phải nằm trong [start_date, deadline_date].
+ */
+async function isRegistrationOpen(roundId) {
+	if (!roundId) return false;
+	const pool = await getPool();
+	const rows = (
+		await pool.request().input('rid', sql.VarChar(10), roundId).query(`
+			SELECT start_date, deadline_date
+			FROM round_deadlines
+			WHERE round_id = @rid AND deadline_type = 'topic_registration'
+		`)
+	).recordset;
+
+	if (rows.length === 0) return true;
+
+	const today = todayVN();
+	return rows.some((r) => {
+		const afterStart = !r.start_date || today >= new Date(r.start_date);
+		const end = r.deadline_date ? new Date(r.deadline_date) : null;
+		return afterStart && end && today <= end;
+	});
+}
+
+/** Ném lỗi 403 nếu ngoài thời gian đăng ký đề tài của đợt. */
+async function assertRegistrationOpen(roundId) {
+	if (await isRegistrationOpen(roundId)) return;
+	const err = new Error(
+		'Hiện không trong thời gian đăng ký đề tài của đợt này.',
+	);
+	err.status = 403;
+	err.statusCode = 403;
+	throw err;
+}
+
+module.exports = {
+	assertTopicActionWindow,
+	isTopicActionAllowed,
+	isRegistrationOpen,
+	assertRegistrationOpen,
+};

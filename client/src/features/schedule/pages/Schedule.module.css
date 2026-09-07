@@ -671,14 +671,6 @@
 .emptyIcon { width: 48px; height: 48px; opacity: 0.4; }
 .emptyTxt  { font-size: var(--font-size-sm); color: var(--color-gray-500); margin: 0; font-weight: var(--font-weight-medium); }
 .errorTxt  { font-size: var(--font-size-sm); color: var(--schedule-danger); font-weight: var(--font-weight-semibold); }
-.spinner {
-	width: 32px;
-	height: 32px;
-	border: 3px solid var(--color-gray-200);
-	border-top-color: var(--color-primary);
-	border-radius: 50%;
-	animation: spin 0.7s linear infinite;
-}
 
 /* ─── Hint Bar ───────────────────────────────────────────────────────────── */
 .hint {

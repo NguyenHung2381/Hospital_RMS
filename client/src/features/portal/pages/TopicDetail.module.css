@@ -2,11 +2,19 @@
    TOPIC DETAIL PAGE
 ============================================= */
 
+/* Cụm tiêu đề chi tiết: nút back + tên trang + dải nhận diện đề tài.
+   Gom lại 1 khối để nhịp dọc chặt, tránh khoảng trống do gap của .pageInner. */
+.detailHeader {
+	display: flex;
+	flex-direction: column;
+	gap: var(--space-3);
+	margin-top: calc(-1 * var(--space-2));
+}
+
 .pageTopRow {
 	display: flex;
 	align-items: center;
 	gap: var(--space-3);
-	margin-bottom: var(--space-5);
 }
 
 .pageTitle {
@@ -48,7 +56,6 @@
 	display: flex;
 	align-items: center;
 	gap: var(--space-3);
-	margin-bottom: var(--space-4);
 	flex-wrap: wrap;
 }
 
@@ -81,42 +88,38 @@
 
 /* ── PROGRESS BLOCK (inside InfoTab) ── */
 .progressBlock {
-	margin-bottom: var(--space-4);
-	padding: var(--space-3) var(--space-4);
-	background: var(--color-gray-50);
-	border-radius: var(--radius-lg);
-	border: 1px solid var(--color-gray-100);
-	border-left: 3px solid var(--color-primary);
+	margin-bottom: var(--space-6);
 }
 
 .progressBlockLabel {
 	display: flex;
-	align-items: center;
+	align-items: baseline;
 	justify-content: space-between;
-	font-size: 11px;
+	font-size: var(--font-size-xs);
 	font-weight: var(--font-weight-bold);
-	color: var(--color-primary);
+	color: var(--color-gray-400);
 	text-transform: uppercase;
 	letter-spacing: 0.06em;
 	margin-bottom: var(--space-2);
 }
 
 .progressBlockValue {
-	font-size: 13px;
+	font-size: var(--font-size-sm);
 	font-weight: var(--font-weight-bold);
 	color: var(--color-primary-dark);
+	letter-spacing: 0;
 }
 
 .progressBar {
-	height: 8px;
-	background: var(--color-gray-200);
-	border-radius: 4px;
+	height: 6px;
+	background: var(--color-gray-100);
+	border-radius: 999px;
 	overflow: hidden;
 }
 
 .progressFill {
 	height: 100%;
-	background: linear-gradient(90deg, var(--color-primary) 0%, #34d399 100%);
+	background: var(--color-primary);
 	border-radius: 4px;
 	transition: width 0.5s ease;
 }
@@ -130,7 +133,6 @@
 	padding: 10px 16px;
 	font-size: 13px;
 	font-weight: 500;
-	margin-bottom: var(--space-4);
 	border: 1px solid currentColor;
 	opacity: 0.9;
 }
@@ -143,95 +145,83 @@
 	opacity: 0.8;
 }
 
-/* ── TABS ── */
-.tabs {
-	display: flex;
-	align-items: flex-end;
-	gap: 0;
-	border-bottom: 2px solid var(--color-gray-200);
-	margin-bottom: var(--space-5);
-}
-
-.tab {
-	display: inline-flex;
-	align-items: center;
-	gap: 7px;
-	padding: 10px 20px;
-	border: none;
-	background: none;
-	border-bottom: 2px solid transparent;
-	margin-bottom: -2px;
-	font-size: var(--font-size-sm);
-	font-weight: var(--font-weight-medium);
-	color: var(--color-gray-500);
-	cursor: pointer;
-	transition: all var(--transition-fast);
-	white-space: nowrap;
-}
-
-.tab:hover {
-	color: var(--color-gray-800);
-}
-
-.tabActive {
-	border-bottom-color: var(--color-primary);
-	color: var(--color-primary);
-	font-weight: var(--font-weight-semibold);
-}
-
-.tabCount {
-	display: inline-flex;
-	align-items: center;
-	justify-content: center;
-	min-width: 20px;
-	height: 20px;
-	padding: 0 6px;
-	border-radius: 10px;
-	font-size: 11px;
-	font-weight: var(--font-weight-bold);
-	background: var(--color-gray-100);
-	color: var(--color-gray-500);
-}
-
-.tabCountActive {
-	background: rgba(46, 184, 122, 0.12);
-	color: var(--color-primary-dark);
-}
-
-/* ── PANEL ── */
-.panel {
+/* ── INFORMATION SHEET (every section on one continuous surface) ── */
+.sheet {
 	background: var(--color-white);
 	border: 1px solid var(--color-gray-200);
 	border-radius: var(--radius-xl);
-	padding: var(--space-6);
 	box-shadow: 0 1px 6px rgba(0, 0, 0, 0.04);
+	padding: var(--space-8) var(--space-10);
 }
 
-/* ── INFO GRID ── */
-.infoGrid {
+/* A section is a block on the sheet — separated by whitespace, led by its heading */
+.section + .section {
+	margin-top: var(--space-8);
+}
+
+/* ── HERO (catalog-style intro block) ── */
+.hero {
+	padding-bottom: var(--space-6);
+	border-bottom: 1px solid var(--color-gray-150, #eef1f3);
+	margin-bottom: var(--space-6);
+}
+
+.heroMeta {
+	display: flex;
+	align-items: center;
+	flex-wrap: wrap;
+	gap: var(--space-2);
+	margin-bottom: var(--space-3);
+}
+
+.heroTitle {
+	margin: 0;
+	font-size: var(--font-size-2xl);
+	font-weight: var(--font-weight-extrabold);
+	line-height: 1.3;
+	color: var(--color-gray-900);
+	letter-spacing: -0.01em;
+}
+
+.heroCaption {
+	margin: var(--space-3) 0 0;
+	font-size: var(--font-size-sm);
+	font-weight: var(--font-weight-medium);
+	color: var(--color-gray-600);
+}
+
+.heroSub {
+	margin: 4px 0 0;
+	font-size: var(--font-size-xs);
+	color: var(--color-gray-400);
+}
+
+/* ── KEY FACTS STRIP (evenly divided, brochure highlights) ── */
+.factStrip {
 	display: grid;
 	grid-template-columns: repeat(4, 1fr);
-	gap: var(--space-3);
-	margin-bottom: var(--space-5);
+	border: 1px solid var(--color-gray-200);
+	border-radius: var(--radius-lg);
+	overflow: hidden;
+	background: var(--color-gray-50);
 }
 
-.infoItem {
+.fact {
 	display: flex;
 	flex-direction: column;
-	gap: 5px;
-	padding: var(--space-3) var(--space-4);
-	background: var(--color-gray-50);
-	border-radius: var(--radius-lg);
-	border: 1px solid var(--color-gray-100);
-	border-left: 3px solid var(--color-gray-200);
-	transition: box-shadow var(--transition-fast);
+	align-items: center;
+	justify-content: flex-start;
+	gap: 6px;
+	padding: var(--space-4) var(--space-3);
+	text-align: center;
+	border-right: 1px solid var(--color-gray-200);
 }
 
-.infoItem:hover {
-	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+.fact:last-child {
+	border-right: none;
 }
 
-.infoLabel {
+.factLabel {
 	font-size: 11px;
 	font-weight: var(--font-weight-bold);
 	color: var(--color-gray-400);
@@ -239,18 +229,35 @@
 	letter-spacing: 0.06em;
 }
 
-.infoValue {
+.factValue {
 	font-size: var(--font-size-sm);
-	font-weight: var(--font-weight-semibold);
+	font-weight: var(--font-weight-bold);
 	color: var(--color-gray-800);
+	line-height: 1.4;
+}
+
+.factBar {
+	width: 64px;
+	height: 5px;
+	margin-top: 2px;
+	background: var(--color-gray-200);
+	border-radius: 999px;
+	overflow: hidden;
+}
+
+.factBarFill {
+	height: 100%;
+	background: var(--color-primary);
+	border-radius: 999px;
+	transition: width 0.4s ease;
 }
 
 .descSection {
-	margin-top: var(--space-2);
+	margin-top: var(--space-6);
 }
 
 .descLabel {
-	font-size: 11px;
+	font-size: var(--font-size-xs);
 	font-weight: var(--font-weight-bold);
 	color: var(--color-gray-400);
 	text-transform: uppercase;
@@ -259,38 +266,42 @@
 }
 
 .descBox {
+	font-size: var(--font-size-sm);
+	color: var(--color-gray-700);
+	line-height: 1.75;
+	white-space: pre-wrap;
 	background: var(--color-gray-50);
-	border: 1px solid var(--color-gray-200);
-	border-left: 3px solid var(--color-primary);
+	border: 1px solid var(--color-gray-150, #eef1f3);
 	border-radius: var(--radius-lg);
 	padding: var(--space-4);
-	font-size: var(--font-size-sm);
-	color: var(--color-gray-700);
-	line-height: 1.7;
-	white-space: pre-wrap;
 }
 
-/* ── SECTION HEADER ── */
+/* ── SECTION HEADER — a heading on the sheet ── */
 .sectionHeader {
 	display: flex;
-	align-items: center;
+	align-items: baseline;
 	gap: var(--space-2);
-	font-size: var(--font-size-sm);
+	font-size: var(--font-size-xs);
 	font-weight: var(--font-weight-bold);
-	color: var(--color-gray-700);
-	margin-bottom: var(--space-4);
+	color: var(--color-gray-500);
+	text-transform: uppercase;
+	letter-spacing: 0.08em;
+	padding-bottom: var(--space-2);
+	border-bottom: 1px solid var(--color-gray-150, #eef1f3);
+	margin-bottom: var(--space-5);
 }
 
 .sectionCount {
-	font-size: 12px;
-	font-weight: var(--font-weight-normal);
-	color: var(--color-gray-400);
+	font-size: 11px;
+	font-weight: var(--font-weight-bold);
+	color: var(--color-gray-350, #b6bdc6);
+	letter-spacing: 0.04em;
 }
 
 /* ── MEMBERS ── */
 .memberList {
-	display: flex;
-	flex-direction: column;
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
 	gap: 10px;
 }
 
@@ -298,16 +309,16 @@
 	display: flex;
 	align-items: center;
 	gap: var(--space-3);
-	padding: var(--space-3) var(--space-4);
-	background: var(--color-gray-50);
-	border: 1px solid var(--color-gray-100);
+	padding: 10px var(--space-3);
+	background: var(--color-white);
+	border: 1px solid var(--color-gray-150, #eef1f3);
 	border-radius: var(--radius-lg);
-	transition: background var(--transition-fast);
+	transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
 }
 
 .memberItem:hover {
-	background: #f0fdf4;
-	border-color: rgba(46, 184, 122, 0.2);
+	border-color: var(--color-gray-300);
+	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
 }
 
 .memberAvatar {
@@ -361,6 +372,7 @@
 /* ── MEMBER EDIT INLINE ── */
 .memberEditBox {
 	width: 100%;
+	grid-column: 1 / -1;
 	padding: var(--space-3) var(--space-4);
 	background: var(--color-white);
 	border: 1.5px solid var(--color-primary);
@@ -372,15 +384,15 @@
 
 /* ── FILE UPLOAD ── */
 .uploadZone {
-	border: 2px dashed var(--color-gray-300);
-	border-radius: var(--radius-xl);
-	padding: var(--space-8) var(--space-6);
+	border: 1.5px dashed var(--color-gray-300);
+	border-radius: var(--radius-lg);
+	padding: var(--space-6);
 	display: flex;
 	flex-direction: column;
 	align-items: center;
 	gap: var(--space-2);
 	cursor: pointer;
-	transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+	transition: border-color var(--transition-fast), background var(--transition-fast);
 	margin-bottom: var(--space-4);
 	text-align: center;
 	background: var(--color-gray-50);
@@ -410,13 +422,11 @@
 .uploadZoneActive {
 	border-color: var(--color-primary);
 	background: var(--color-primary-pale);
-	transform: translateY(-2px);
-	box-shadow: var(--shadow-md);
 }
 
 .uploadZoneIcon {
-	width: 52px;
-	height: 52px;
+	width: 44px;
+	height: 44px;
 	border-radius: 50%;
 	background: var(--color-white);
 	border: 1.5px solid var(--color-gray-200);
@@ -437,11 +447,9 @@
 
 .uploadZone:hover .uploadZoneIcon,
 .uploadZoneActive .uploadZoneIcon {
-	transform: translateY(-4px) scale(1.05);
 	background: var(--color-primary);
 	color: var(--color-white);
 	border-color: var(--color-primary);
-	box-shadow: 0 6px 15px rgba(46, 184, 122, 0.35);
 }
 
 .uploadZoneText {
@@ -1125,41 +1133,52 @@
 }
 
 /* ── RESPONSIVE ── */
-@media (max-width: 1024px) {
-	.infoGrid {
-		grid-template-columns: repeat(3, 1fr);
-	}
-}
-
 @media (max-width: 768px) {
-	.headerTop {
-		flex-direction: column;
-		gap: var(--space-3);
+	.sheet {
+		padding: var(--space-6);
 	}
 
-	.infoGrid {
+	.section + .section {
+		margin-top: var(--space-6);
+	}
+
+	.factStrip {
 		grid-template-columns: repeat(2, 1fr);
 	}
 
-	.tabs {
-		overflow-x: auto;
+	.fact:nth-child(2) {
+		border-right: none;
 	}
 
-	.tab {
-		padding: 10px 14px;
+	.fact:nth-child(1),
+	.fact:nth-child(2) {
+		border-bottom: 1px solid var(--color-gray-200);
+	}
+
+	.memberList {
+		grid-template-columns: 1fr;
 	}
 }
 
 @media (max-width: 480px) {
-	.infoGrid {
-		grid-template-columns: 1fr;
-	}
-
 	.header {
 		padding: var(--space-4);
 	}
 
-	.panel {
-		padding: var(--space-4);
+	.sheet {
+		padding: var(--space-5) var(--space-4);
+	}
+
+	.factStrip {
+		grid-template-columns: 1fr;
+	}
+
+	.fact {
+		border-right: none;
+		border-bottom: 1px solid var(--color-gray-200);
+	}
+
+	.fact:last-child {
+		border-bottom: none;
 	}
 }

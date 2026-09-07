@@ -2,10 +2,32 @@ const topicService = require('../services/topicService');
 const topicMemberService = require('../services/topicMemberService');
 const { success, created, notFound } = require('../utils/response');
 const { createCrudController } = require('./crudController');
-const { assertTopicActionWindow } = require('../services/deadlineGuard');
+const {
+	assertTopicActionWindow,
+	assertRegistrationOpen,
+} = require('../services/deadlineGuard');
 const { isDeadlineBound } = require('../middlewares/auth');
 
 const base = createCrudController(topicService);
+
+// Tài khoản khoa phòng (phạm vi 'own') chỉ đăng ký được đề tài khi mốc
+// "Đăng ký đề tài" của đợt đang mở. Đơn vị/superuser không bị chặn.
+const createOne = async (req, res, next) => {
+	try {
+		if (isDeadlineBound(req.user)) {
+			await assertRegistrationOpen(req.body.round_id);
+			await topicService.assertLevelForRound(
+				req.body.round_id,
+				req.body.level_id,
+				req.body.article_type,
+			);
+		}
+		const item = await topicService.create(req.body, req.user.id);
+		return created(res, item);
+	} catch (err) {
+		next(err);
+	}
+};
 
 // Tài khoản thành viên (chủ nhiệm/thư ký) chỉ được sửa thành viên khi có mốc
 // "Sửa" hoặc "Bổ sung" (bật mục Thành viên) đang mở. Đơn vị/superuser không bị chặn.
@@ -162,6 +184,7 @@ module.exports = {
 	...base,
 	getAll,
 	getById,
+	createOne,
 	updateOne,
 	getMembers,
 	addMember,

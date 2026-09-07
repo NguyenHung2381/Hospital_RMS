@@ -218,6 +218,10 @@ export interface ProgressTopic {
 export const getMyProgress = () =>
 	apiClient.get<ProgressTopic[]>('/councils/my-progress');
 
+/** Số đề tài user có ghế hội đồng — 0 nghĩa là không phải thành viên hội đồng nào. */
+export const getMyProgressCount = () =>
+	apiClient.get<{ count: number }>('/councils/my-progress/count');
+
 export const saveProgressReview = (
 	topicId: string,
 	payload: {

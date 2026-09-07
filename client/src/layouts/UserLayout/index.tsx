@@ -1,6 +1,8 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import Logo from '../../assets/logo.png';
+import { getMyProgressCount } from '../../features/council/api/councilApi';
+import { useRegistrationOpen } from '../../features/round/hooks/useRegistrationOpen';
 import { NotificationPanel } from '../../features/notifications/components/NotificationPanel';
 import { useNotifications } from '../../features/notifications/hooks/useNotifications';
 import { toNotif } from '../../features/notifications/utils/notifUtils';
@@ -12,9 +14,6 @@ import {
 } from '../../shared/utils/storage';
 import styles from './UserLayout.module.css';
 import { Icon } from './icons';
-
-// ─── STORAGE KEY ──────────────────────────
-const SIDEBAR_KEY = 'rms_user_sidebar_collapsed';
 
 // ─── ROUTE MAP ────────────────────────────
 const KEY_TO_PATH: Record<string, string> = {
@@ -36,50 +35,43 @@ interface NavItem {
 	key: string;
 	label: string;
 	icon: React.ReactNode;
-	badge?: number | string;
 	restrictMember?: boolean;
 	managerOnly?: boolean;
-}
-interface NavGroup {
-	section: string;
-	items: NavItem[];
+	/** Chỉ hiện khi user đang giữ ghế trong ít nhất một hội đồng. */
+	councilOnly?: boolean;
+	/** Chỉ hiện khi đang trong thời gian "Đăng ký đề tài" của một đợt đang mở. */
+	needsRegistrationWindow?: boolean;
 }
 
-const NAV_GROUPS: NavGroup[] = [
+// Cổng người dùng ít mục → thanh điều hướng NGANG thay cho sidebar dọc.
+// Mục chính nằm trên thanh; mục "tài khoản" gom vào menu avatar.
+const PRIMARY_NAV: NavItem[] = [
+	{ key: 'home', label: 'Trang chủ', icon: <Icon.Dashboard /> },
+	{ key: 'myTopics', label: 'Đề tài của tôi', icon: <Icon.Topic /> },
 	{
-		section: 'Tổng quan',
-		items: [{ key: 'home', label: 'Trang chủ', icon: <Icon.Dashboard /> }],
+		key: 'registerTopic',
+		label: 'Đăng ký đề tài',
+		icon: <Icon.Register />,
+		restrictMember: true,
+		needsRegistrationWindow: true,
 	},
 	{
-		section: 'Đề tài nghiên cứu',
-		items: [
-			{ key: 'myTopics', label: 'Đề tài của tôi', icon: <Icon.Topic /> },
-			{
-				key: 'registerTopic',
-				label: 'Đăng ký đề tài',
-				icon: <Icon.Register />,
-				restrictMember: true,
-			},
-			{
-				key: 'councilProgress',
-				label: 'Đánh giá tiến độ',
-				icon: <Icon.Grading />,
-			},
-		],
+		key: 'councilProgress',
+		label: 'Đánh giá tiến độ',
+		icon: <Icon.Grading />,
+		councilOnly: true,
 	},
+];
+
+const ACCOUNT_NAV: NavItem[] = [
+	{ key: 'profile', label: 'Hồ sơ cá nhân', icon: <Icon.Profile /> },
 	{
-		section: 'Tài khoản',
-		items: [
-			{ key: 'profile', label: 'Hồ sơ cá nhân', icon: <Icon.Profile /> },
-			{
-				key: 'deptAccounts',
-				label: 'Tài khoản trong khoa',
-				icon: <Icon.Users />,
-				managerOnly: true,
-			},
-			{ key: 'notifications', label: 'Thông báo', icon: <Icon.Notif /> },
-		],
+		key: 'deptAccounts',
+		label: 'Tài khoản trong khoa',
+		icon: <Icon.Users />,
+		managerOnly: true,
 	},
+	{ key: 'notifications', label: 'Thông báo', icon: <Icon.Notif /> },
 ];
 
 // ─── PROPS ────────────────────────────────
@@ -92,6 +84,7 @@ export interface UserLayoutProps {
 	userName?: string;
 	userRole?: string;
 	userInitials?: string;
+	/** Giữ tên cũ để tương thích: ẩn thanh điều hướng, chỉ còn nội dung căn giữa. */
 	hideSidebar?: boolean;
 }
 
@@ -117,6 +110,11 @@ export default function UserLayout({
 		perms.includes('system:manage') || perms.includes(k);
 	// "restrictMember": ẩn với vai trò chỉ tham gia đề tài (không tạo được đề tài).
 	const canRegisterTopic = has('topics:create') || has('topics:manage');
+	// "needsRegistrationWindow": chỉ hiện mục Đăng ký đề tài khi đợt đang mở cửa
+	// sổ đăng ký. Chỉ cần kiểm tra khi user có quyền tạo đề tài.
+	const { open: registrationOpen } = useRegistrationOpen(
+		!hideSidebar && canRegisterTopic,
+	);
 	// "managerOnly": các mục điều hành khoa / hệ thống.
 	const isManagerAccount =
 		has('admin_panel:access') ||
@@ -124,63 +122,42 @@ export default function UserLayout({
 		has('topics:read_all') ||
 		has('users:read_department');
 
-	const visibleNavGroups = NAV_GROUPS.map((g) => ({
-		...g,
-		items: g.items.filter((item) => {
-			if (item.restrictMember && !canRegisterTopic) return false;
-			if (item.managerOnly && !isManagerAccount) return false;
-			return true;
-		}),
-	})).filter((g) => g.items.length > 0);
-
-	// ── Sidebar collapsed state ───────────────
-	const [collapsed, setCollapsed] = useState<boolean>(() => {
-		if (typeof window === 'undefined') return false;
-		return localStorage.getItem(SIDEBAR_KEY) === 'true';
-	});
-
-	const [isMobile, setIsMobile] = useState(() =>
-		typeof window !== 'undefined' ? window.innerWidth <= 1024 : false,
-	);
-
+	// Chỉ hiện "Đánh giá tiến độ" khi user thực sự có ghế trong hội đồng.
+	const [isCouncilMember, setIsCouncilMember] = useState(false);
 	useEffect(() => {
-		const mq = window.matchMedia('(max-width: 1024px)');
-		const handler = (e: MediaQueryListEvent) => setIsMobile(e.matches);
-		mq.addEventListener('change', handler);
-		return () => mq.removeEventListener('change', handler);
-	}, []);
+		if (hideSidebar) return;
+		let alive = true;
+		getMyProgressCount()
+			.then((r) => {
+				if (alive) setIsCouncilMember((r?.count ?? 0) > 0);
+			})
+			.catch(() => {
+				if (alive) setIsCouncilMember(false);
+			});
+		return () => {
+			alive = false;
+		};
+	}, [hideSidebar]);
 
-	const effectiveCollapsed = isMobile ? false : collapsed;
+	const keep = (item: NavItem) => {
+		if (item.restrictMember && !canRegisterTopic) return false;
+		if (item.managerOnly && !isManagerAccount) return false;
+		if (item.councilOnly && !isCouncilMember) return false;
+		if (item.needsRegistrationWindow && !registrationOpen) return false;
+		return true;
+	};
+	const primaryNav = PRIMARY_NAV.filter(keep);
+	const accountNav = ACCOUNT_NAV.filter(keep);
 
+	const showNav = !hideSidebar;
+
+	// ── Mobile drawer ─────────────────────────
 	const [mobileNavOpen, setMobileNavOpen] = useState(false);
-
-	const toggleSidebar = useCallback(() => {
-		setCollapsed((prev) => {
-			const next = !prev;
-			localStorage.setItem(SIDEBAR_KEY, String(next));
-			return next;
-		});
-	}, []);
 
 	const handleLogout = useCallback(() => {
 		clearAuth();
 		navigate('/login');
 	}, [navigate]);
-
-	// ── Search state ──────────────────────────
-	const [searchOpen, setSearchOpen] = useState(false);
-	const [searchValue, setSearchValue] = useState('');
-	const searchInputRef = useRef<HTMLInputElement>(null);
-
-	const openSearch = () => {
-		setSearchOpen(true);
-		setTimeout(() => searchInputRef.current?.focus(), 50);
-	};
-
-	const closeSearch = () => {
-		setSearchOpen(false);
-		setSearchValue('');
-	};
 
 	// ── Notification state ────────────────────
 	const [notifOpen, setNotifOpen] = useState(false);
@@ -191,10 +168,6 @@ export default function UserLayout({
 		markAll,
 	} = useNotifications();
 	const notifs = rawNotifs.map(toNotif);
-
-	const navBadges: Record<string, number | undefined> = {
-		notifications: unreadCount > 0 ? unreadCount : undefined,
-	};
 
 	// ── User menu state ──────────────────────
 	const [userMenuOpen, setUserMenuOpen] = useState(false);
@@ -216,9 +189,9 @@ export default function UserLayout({
 	useEffect(() => {
 		const handler = (e: KeyboardEvent) => {
 			if (e.key === 'Escape') {
-				closeSearch();
 				setNotifOpen(false);
 				setUserMenuOpen(false);
+				setMobileNavOpen(false);
 			}
 		};
 		window.addEventListener('keydown', handler);
@@ -229,217 +202,69 @@ export default function UserLayout({
 	const initials = userInitials ?? getInitials(userName);
 
 	const currentLabel =
-		NAV_GROUPS.flatMap((g) => g.items).find((i) => i.key === activePage)
-			?.label ?? 'Đề tài của tôi';
+		[...PRIMARY_NAV, ...ACCOUNT_NAV].find((i) => i.key === activePage)?.label ??
+		'Đề tài của tôi';
 
 	const handleNavClick = (key: string) => {
 		const path = KEY_TO_PATH[key];
 		if (path) {
 			setMobileNavOpen(false);
+			setUserMenuOpen(false);
 			navigate(path);
 		}
 	};
 
+	const showPageHeader = Boolean(
+		breadcrumbs?.length || pageTitle || pageSubtitle || headerActions,
+	);
+
 	return (
 		<div className={styles.userWrapper}>
-			{/* Mobile Backdrop Overlay */}
-			{!hideSidebar && mobileNavOpen && (
-				<div
-					className={styles.mobileBackdrop}
-					onClick={() => setMobileNavOpen(false)}
-				/>
-			)}
+			{/* ══ TOP BAR ════════════════════════════ */}
+			<header className={styles.topbar}>
+				<div className={styles.topbarInner}>
+					{showNav && (
+						<button
+							className={styles.mobileNavTrigger}
+							onClick={() => setMobileNavOpen((o) => !o)}
+							aria-label='Mở menu'
+							aria-expanded={mobileNavOpen}
+						>
+							<Icon.Menu />
+						</button>
+					)}
 
-			{/* ══ SIDEBAR ════════════════════════════ */}
-			{!hideSidebar && (
-			<aside
-				className={`${styles.sidebar} ${effectiveCollapsed ? styles.collapsed : ''} ${mobileNavOpen ? styles.mobileDrawerOpen : ''}`}
-			>
-				{/* Header */}
-				<div className={styles.sidebarHeader}>
-					<div className={styles.sidebarBrand}>
-						<div className={styles.sidebarLogo}>
-							<img
-								src={Logo}
-								alt='Logo BV Nghệ An'
-							/>
-						</div>
-						<div className={styles.sidebarBrandText}>
-							<div className={styles.sidebarBrandName}>BV Hữu nghị ĐK Nghệ An</div>
-							<div className={styles.sidebarBrandSub}>Cổng người dùng</div>
-						</div>
-					</div>
 					<button
-						className={styles.collapseBtn}
-						onClick={toggleSidebar}
-						aria-label={
-							effectiveCollapsed ? 'Mở rộng sidebar' : 'Thu gọn sidebar'
-						}
-						title={effectiveCollapsed ? 'Mở rộng' : 'Thu gọn'}
+						className={styles.brand}
+						onClick={() => navigate('/user')}
+						aria-label='Về trang chủ'
 					>
-						<Icon.ChevronL />
+						<img
+							src={Logo}
+							alt='Logo BV Nghệ An'
+							className={styles.brandLogo}
+						/>
+						<span className={styles.brandText}>
+							<span className={styles.brandName}>BV Hữu nghị ĐK Nghệ An</span>
+							<span className={styles.brandSub}>Cổng người dùng</span>
+						</span>
 					</button>
-					<button
-						className={styles.mobileMenuBtn}
-						onClick={() => setMobileNavOpen(false)}
-						aria-label='Đóng menu'
-					>
-						<Icon.X />
-					</button>
-				</div>
 
-				{/* Nav */}
-				<nav
-					className={`${styles.sidebarNav} ${mobileNavOpen ? styles.mobileOpen : ''}`}
-				>
-					{visibleNavGroups.map((group) => (
-						<React.Fragment key={group.section}>
-							<div className={styles.navSection}>{group.section}</div>
-							{group.items.map((item) => (
+					{showNav && (
+						<nav className={styles.topNav}>
+							{primaryNav.map((item) => (
 								<button
 									key={item.key}
 									type='button'
 									className={`${styles.navItem} ${activePage === item.key ? styles.active : ''}`}
-									data-label={item.label}
 									onClick={() => handleNavClick(item.key)}
-									title={collapsed ? item.label : undefined}
 								>
 									{item.icon}
-									<span className={styles.navLabel}>{item.label}</span>
-									{(item.badge !== undefined || navBadges[item.key] !== undefined) && (
-										<span
-											className={
-												Number(item.badge ?? navBadges[item.key]) > 50
-													? styles.navBadge
-													: styles.navBadgeGray
-											}
-										>
-											{item.badge ?? navBadges[item.key]}
-										</span>
-									)}
+									<span>{item.label}</span>
 								</button>
 							))}
-						</React.Fragment>
-					))}
-				</nav>
-
-				{/* Footer user */}
-				<div
-					className={`${styles.sidebarFooter} ${mobileNavOpen ? styles.mobileOpen : ''}`}
-				>
-					<div
-						className={styles.userMenuWrap}
-						ref={userMenuRef}
-					>
-						{userMenuOpen && (
-							<div className={styles.userDropdown}>
-								<button
-									className={styles.userDropdownItem}
-									onClick={handleLogout}
-								>
-									<Icon.LogOut />
-									<span>Đăng xuất</span>
-								</button>
-							</div>
-						)}
-						<div
-							className={styles.userCard}
-							title={collapsed ? userName : undefined}
-							onClick={() => setUserMenuOpen((o) => !o)}
-						>
-							<div className={styles.userAvatar}>{initials}</div>
-							<div className={styles.userInfo}>
-								<div className={styles.userName}>{userName}</div>
-								<div className={styles.userRole}>{userRole}</div>
-							</div>
-							<span className={styles.userMenuIcon}>
-								<Icon.MoreV />
-							</span>
-						</div>
-					</div>
-				</div>
-			</aside>
-			)}
-
-			{/* ══ MAIN ═══════════════════════════════ */}
-			<div className={`${styles.mainContent} ${hideSidebar ? styles.noSidebar : ''}`}>
-				{/* Topbar */}
-				<header className={styles.topbar}>
-					<div className={styles.topbarLeft}>
-						{!hideSidebar && (
-						<button
-							className={styles.mobileNavTrigger}
-							onClick={() => setMobileNavOpen(true)}
-							aria-label='Mở menu'
-						>
-							<Icon.Menu />
-						</button>
-						)}
-						<div className={styles.mobileHeaderBrand}>
-							<img
-								src={Logo}
-								alt='Logo'
-								className={styles.mobileBrandLogo}
-							/>
-							<span className={styles.mobileBrandTitle}>Hospital RMS</span>
-						</div>
-						{/* Breadcrumb */}
-						<div className={styles.breadcrumb}>
-							<span className={styles.breadcrumbItem}>Cổng người dùng</span>
-							<span className={styles.breadcrumbSep}>/</span>
-							{breadcrumbs?.map((bc, i) => (
-								<React.Fragment key={i}>
-									{bc.path ? (
-										<button
-											className={styles.breadcrumbItem}
-											style={{
-												background: 'none',
-												border: 'none',
-												cursor: 'pointer',
-												padding: 0,
-												font: 'inherit',
-											}}
-											onClick={() => navigate(bc.path!)}
-										>
-											{bc.label}
-										</button>
-									) : (
-										<span className={styles.breadcrumbItem}>{bc.label}</span>
-									)}
-									<span className={styles.breadcrumbSep}>/</span>
-								</React.Fragment>
-							))}
-							<span className={styles.breadcrumbCurrent}>{currentLabel}</span>
-						</div>
-
-						{/* Search bar */}
-						<div
-							className={`${styles.searchBar} ${searchOpen ? styles.searchOpen : ''}`}
-							onClick={!searchOpen ? openSearch : undefined}
-							role='search'
-						>
-							<div className={styles.searchIconBtn}>
-								<Icon.Search />
-							</div>
-							<input
-								ref={searchInputRef}
-								className={styles.searchInput}
-								placeholder='Tìm kiếm đề tài, thông báo...'
-								value={searchValue}
-								onChange={(e) => setSearchValue(e.target.value)}
-								tabIndex={searchOpen ? 0 : -1}
-							/>
-							{searchOpen && (
-								<button
-									className={styles.searchClear}
-									onClick={closeSearch}
-									aria-label='Đóng tìm kiếm'
-								>
-									<Icon.X />
-								</button>
-							)}
-						</div>
-					</div>
+						</nav>
+					)}
 
 					<div className={styles.topbarRight}>
 						{/* Round indicator */}
@@ -448,39 +273,140 @@ export default function UserLayout({
 							Đợt 1 — 2026
 						</div>
 
-						<div className={styles.topbarDivider} />
+						{showNav && (
+							<NotificationPanel
+								open={notifOpen}
+								onToggle={() => setNotifOpen((o) => !o)}
+								onClose={() => setNotifOpen(false)}
+								notifications={notifs}
+								unreadCount={unreadCount}
+								onMarkAll={markAll}
+								onMarkOne={markOne}
+								s={styles}
+							/>
+						)}
 
-						{/* Notification */}
-						<NotificationPanel
-							open={notifOpen}
-							onToggle={() => setNotifOpen((o) => !o)}
-							onClose={() => setNotifOpen(false)}
-							notifications={notifs}
-							unreadCount={unreadCount}
-							onMarkAll={markAll}
-							onMarkOne={markOne}
-							s={styles}
-						/>
+						{/* User chip + dropdown */}
+						<div
+							className={styles.userMenuWrap}
+							ref={userMenuRef}
+						>
+							<button
+								className={styles.userChip}
+								onClick={() => setUserMenuOpen((o) => !o)}
+								aria-haspopup='menu'
+								aria-expanded={userMenuOpen}
+							>
+								<span className={styles.userAvatar}>{initials}</span>
+								<span className={styles.userMeta}>
+									<span className={styles.userName}>{userName}</span>
+									<span className={styles.userRole}>{userRole}</span>
+								</span>
+								<span className={styles.userChevron}>
+									<Icon.MoreV />
+								</span>
+							</button>
 
-						<div className={styles.topbarDivider} />
+							{userMenuOpen && (
+								<div
+									className={styles.userDropdown}
+									role='menu'
+								>
+									{accountNav.map((item) => (
+										<button
+											key={item.key}
+											className={styles.userDropdownItem}
+											onClick={() => handleNavClick(item.key)}
+											role='menuitem'
+										>
+											{item.icon}
+											<span>{item.label}</span>
+										</button>
+									))}
+									<div className={styles.userDropdownSep} />
+									<button
+										className={`${styles.userDropdownItem} ${styles.userDropdownDanger}`}
+										onClick={handleLogout}
+										role='menuitem'
+									>
+										<Icon.LogOut />
+										<span>Đăng xuất</span>
+									</button>
+								</div>
+							)}
+						</div>
+					</div>
+				</div>
 
-						{/* Logout */}
+				{/* Mobile drawer nav (dưới thanh bar) */}
+				{showNav && (
+					<div
+						className={`${styles.mobileNav} ${mobileNavOpen ? styles.mobileNavOpen : ''}`}
+					>
+						{[...primaryNav, ...accountNav].map((item) => (
+							<button
+								key={item.key}
+								type='button'
+								className={`${styles.mobileNavItem} ${activePage === item.key ? styles.active : ''}`}
+								onClick={() => handleNavClick(item.key)}
+							>
+								{item.icon}
+								<span>{item.label}</span>
+							</button>
+						))}
 						<button
-							className={styles.topbarIconBtn}
+							className={`${styles.mobileNavItem} ${styles.userDropdownDanger}`}
 							onClick={handleLogout}
-							title='Đăng xuất'
-							aria-label='Đăng xuất'
 						>
 							<Icon.LogOut />
+							<span>Đăng xuất</span>
 						</button>
 					</div>
-				</header>
+				)}
+			</header>
 
-				{/* Page content */}
-				<main className={styles.pageArea}>
-					{(pageTitle || headerActions) && (
+			{showNav && mobileNavOpen && (
+				<div
+					className={styles.mobileBackdrop}
+					onClick={() => setMobileNavOpen(false)}
+				/>
+			)}
+
+			{/* ══ PAGE ═══════════════════════════════ */}
+			<main className={styles.pageArea}>
+				<div className={styles.pageInner}>
+					{showPageHeader && (
 						<div className={styles.pageHeader}>
 							<div className={styles.pageHeaderLeft}>
+								<div className={styles.breadcrumb}>
+									<button
+										className={styles.breadcrumbItem}
+										onClick={() => navigate('/user')}
+									>
+										Cổng người dùng
+									</button>
+									<span className={styles.breadcrumbSep}>/</span>
+									{breadcrumbs?.map((bc, i) => (
+										<React.Fragment key={i}>
+											{bc.path ? (
+												<button
+													className={styles.breadcrumbItem}
+													onClick={() => navigate(bc.path!)}
+												>
+													{bc.label}
+												</button>
+											) : (
+												<span className={styles.breadcrumbItem}>
+													{bc.label}
+												</span>
+											)}
+											<span className={styles.breadcrumbSep}>/</span>
+										</React.Fragment>
+									))}
+									<span className={styles.breadcrumbCurrent}>
+										{currentLabel}
+									</span>
+								</div>
 								{pageTitle && <h1 className={styles.pageTitle}>{pageTitle}</h1>}
 								{pageSubtitle && (
 									<p className={styles.pageSubtitle}>{pageSubtitle}</p>
@@ -493,8 +419,13 @@ export default function UserLayout({
 					)}
 
 					{children}
-				</main>
-			</div>
+				</div>
+			</main>
+
+			<footer className={styles.portalFooter}>
+				© {new Date().getFullYear()} Bệnh viện Hữu Nghị Đa Khoa Nghệ An — Cổng
+				người dùng
+			</footer>
 		</div>
 	);
 }

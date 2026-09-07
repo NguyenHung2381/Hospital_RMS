@@ -63,6 +63,11 @@ export interface TopicRegisterState {
 		name: string;
 	} | null;
 
+	// Round picker (bước chọn đợt trước khi vào form)
+	pickedRoundId: string;
+	pickRound: (id: string) => void;
+	resetRound: () => void;
+
 	// Form
 	form: RegisterForm;
 	errors: FormErrors;
@@ -146,6 +151,7 @@ export function useTopicRegister(): TopicRegisterState {
 	const [loadingRef, setLoadingRef] = useState(true);
 	const [lockedRound, setLockedRound] =
 		useState<TopicRegisterState['lockedRound']>(null);
+	const [pickedRoundId, setPickedRoundId] = useState('');
 
 	const [form, setFormState] = useState<RegisterForm>({
 		article_type: 'de_tai',
@@ -207,12 +213,35 @@ export function useTopicRegister(): TopicRegisterState {
 							id: round.id,
 							name: round.name,
 						});
+						setPickedRoundId(round.id);
 						setFormState((prev) => ({ ...prev, round_id: round.id }));
 					}
 				})
 			: Promise.resolve();
 		Promise.all([base, tokenLoad]).finally(() => setLoadingRef(false));
 	}, [publicToken]);
+
+	// Cấp độ "ăn theo" đợt: mỗi khi đổi vòng nghiên cứu, tải lại danh sách cấp độ
+	// được phép cho loại đợt đó. Nếu cấp độ đang chọn không còn hợp lệ → bỏ chọn.
+	useEffect(() => {
+		const roundId = form.round_id;
+		if (!roundId) return;
+		let alive = true;
+		getLevels({ round_id: roundId })
+			.then((res) => {
+				if (!alive) return;
+				setLevels(res.data);
+				setFormState((f) =>
+					f.level_id && !res.data.some((l) => l.id === f.level_id)
+						? { ...f, level_id: '' }
+						: f,
+				);
+			})
+			.catch(() => {});
+		return () => {
+			alive = false;
+		};
+	}, [form.round_id]);
 
 	// Load my topics
 	useEffect(() => {
@@ -277,6 +306,20 @@ export function useTopicRegister(): TopicRegisterState {
 		},
 		[setField],
 	);
+
+	const pickRound = useCallback(
+		(id: string) => {
+			setPickedRoundId(id);
+			setField('round_id', id);
+		},
+		[setField],
+	);
+
+	const resetRound = useCallback(() => {
+		if (lockedRound) return; // đợt đã khoá theo link công khai
+		setPickedRoundId('');
+		setField('round_id', '');
+	}, [lockedRound, setField]);
 
 	const addMember = useCallback(
 		(u: UserSuggestion) => {
@@ -379,7 +422,7 @@ export function useTopicRegister(): TopicRegisterState {
 			title: '',
 			description: '',
 			staff_number: '',
-			round_id: lockedRound ? lockedRound.id : '',
+			round_id: lockedRound ? lockedRound.id : pickedRoundId,
 			category_id: '',
 			level_id: '',
 			department_id: currentDeptId,
@@ -394,7 +437,7 @@ export function useTopicRegister(): TopicRegisterState {
 		setManualErrors({});
 		setAttachments([]);
 		setFileError('');
-	}, [lockedRound, currentDeptId]);
+	}, [lockedRound, pickedRoundId, currentDeptId]);
 
 	const addTopicToList = useCallback(() => {
 		const e: FormErrors = {};
@@ -404,6 +447,8 @@ export function useTopicRegister(): TopicRegisterState {
 					? 'Tiêu đề bài báo là bắt buộc'
 					: 'Tiêu đề đề tài là bắt buộc';
 		if (!form.round_id) e.round_id = 'Vui lòng chọn vòng nghiên cứu';
+		if (form.article_type !== 'bai_bao' && !form.level_id)
+			e.level_id = 'Vui lòng chọn cấp độ đề tài';
 		if (!form.department_id) e.department_id = 'Vui lòng chọn khoa phòng';
 		if (Object.keys(e).length) {
 			setErrors(e);
@@ -549,6 +594,9 @@ export function useTopicRegister(): TopicRegisterState {
 		myTopics,
 		loadingRef,
 		lockedRound,
+		pickedRoundId,
+		pickRound,
+		resetRound,
 		form,
 		errors,
 		setField,

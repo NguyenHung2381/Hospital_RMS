@@ -130,6 +130,18 @@ router.get('/my-progress', progressCtrl.getMyProgress);
 
 /**
  * @swagger
+ * /councils/my-progress/count:
+ *   get:
+ *     summary: Số đề tài tôi có ghế hội đồng (0 = không phải thành viên hội đồng nào)
+ *     tags: [Councils]
+ *     responses:
+ *       200:
+ *         description: "{ count: number }"
+ */
+router.get('/my-progress/count', progressCtrl.getMySeatCount);
+
+/**
+ * @swagger
  * /councils/progress/{topic_id}/review:
  *   put:
  *     summary: Lưu đánh giá tiến độ của tôi cho một đề tài (upsert)

@@ -4,6 +4,7 @@ import type {
 	Approval as ApprovalHistory,
 	TopicApprovalDetail,
 } from '../../approval/api/approval';
+import { InlineLoading } from '../../../shared/components/Loading';
 import type { TopicFile } from '../../topics/types/topic.type';
 import { TopicFilesSection } from './TopicFilesSection';
 import { TopicHistorySection } from './TopicHistorySection';
@@ -71,10 +72,7 @@ export function MyTopicsDetailPanel({
 			) : (
 				<>
 					{detailLoading && !detailTopic ? (
-						<div className={styles.detailEmpty}>
-							<div className={styles.detailSpinner} />
-							<p className={styles.detailEmptyDesc}>Đang tải chi tiết...</p>
-						</div>
+						<InlineLoading label='Đang tải chi tiết…' />
 					) : detailTopic ? (
 						<>
 							<TopicHeader detailTopic={detailTopic} />

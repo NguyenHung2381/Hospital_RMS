@@ -24,8 +24,6 @@ export const NO_TOPIC_PERMISSIONS: TopicPermissions = {
 	banner: null,
 };
 
-export type TopicDetailTabKey = 'info' | 'members' | 'files';
-
 export type MemberFormState = {
 	ho_ten: string;
 	email: string;
@@ -92,6 +90,7 @@ export const EDIT_BANNER_STYLE: Record<
 	DeadlineType,
 	{ bg: string; color: string }
 > = {
+	topic_registration: { bg: '#dcfce7', color: '#166534' },
 	edit: { bg: '#dcfce7', color: '#166534' },
 	supplement: { bg: '#ede9fe', color: '#5b21b6' },
 	report_submission: { bg: '#dbeafe', color: '#1e40af' },

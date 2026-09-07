@@ -3,17 +3,9 @@ import FilesTab from '../components/FilesTab';
 import InfoTab from '../components/InfoTab';
 import MembersTab from '../components/MembersTab';
 import { ChevLSvg } from '@/assets/icons';
-import { Badge } from '@/shared/components';
+import { InlineLoading } from '@/shared/components';
 import { useTopicDetail } from '../hooks/useTopicDetail';
-import { STATUS_CFG } from '../types/topicDetail.type';
 import styles from './TopicDetail.module.css';
-
-type TabKey = 'info' | 'members' | 'files';
-const TABS: { key: TabKey; label: string }[] = [
-	{ key: 'info', label: 'Thông tin' },
-	{ key: 'members', label: 'Thành viên' },
-	{ key: 'files', label: 'Tài liệu' },
-];
 
 export default function TopicDetail() {
 	const d = useTopicDetail();
@@ -27,10 +19,7 @@ export default function TopicDetail() {
 	if (d.loading)
 		return (
 			<UserLayout {...layoutProps}>
-				<div className={styles.stateBox}>
-					<div className={styles.spinner} />
-					<span>Đang tải...</span>
-				</div>
+				<InlineLoading label='Đang tải…' />
 			</UserLayout>
 		);
 
@@ -47,7 +36,6 @@ export default function TopicDetail() {
 		);
 
 	const { topic, meta, members, files } = d;
-	const statusCfg = STATUS_CFG[topic.status] ?? STATUS_CFG.submitted;
 
 	return (
 		<UserLayout
@@ -57,75 +45,36 @@ export default function TopicDetail() {
 				{ label: topic.title },
 			]}
 		>
-			{/* Page top row: back + title */}
-			<div className={styles.pageTopRow}>
-				<button
-					className={styles.backBtn}
-					onClick={() => d.navigate('/user/my-topics')}
-					title='Quay lại danh sách'
-				>
-					<ChevLSvg />
-				</button>
-				<h1 className={styles.pageTitle}>Chi tiết đề tài</h1>
-			</div>
-
-			{/* Topic identity strip */}
-			<div className={styles.topicStrip}>
-				<span className={styles.topicId}>{topic.id}</span>
-				<span className={styles.topicStripTitle}>{topic.title}</span>
-				<Badge
-					tone={statusCfg.tone}
-					dot
-				>
-					{statusCfg.label}
-				</Badge>
-			</div>
-
-			{/* Edit mode banner */}
-			{d.editBanner && (
-				<div
-					className={styles.editBanner}
-					style={{ background: d.editBanner.bg, color: d.editBanner.color }}
-				>
-					<span
-						className={styles.editBannerDot}
-						style={{ background: d.editBanner.color }}
-					/>
-					{d.editBanner.text}
+			{/* Detail header: back + page title */}
+			<div className={styles.detailHeader}>
+				<div className={styles.pageTopRow}>
+					<button
+						className={styles.backBtn}
+						onClick={() => d.navigate('/user/my-topics')}
+						title='Quay lại danh sách'
+					>
+						<ChevLSvg />
+					</button>
+					<h1 className={styles.pageTitle}>Chi tiết đề tài</h1>
 				</div>
-			)}
 
-			{/* Tabs */}
-			<div className={styles.tabs}>
-				{TABS.map((t) => {
-					const count =
-						t.key === 'members'
-							? members.length
-							: t.key === 'files'
-								? files.length
-								: undefined;
-					return (
-						<button
-							key={t.key}
-							className={`${styles.tab} ${d.tab === t.key ? styles.tabActive : ''}`}
-							onClick={() => d.setTab(t.key)}
-						>
-							{t.label}
-							{count !== undefined && (
-								<span
-									className={`${styles.tabCount} ${d.tab === t.key ? styles.tabCountActive : ''}`}
-								>
-									{count}
-								</span>
-							)}
-						</button>
-					);
-				})}
+				{d.editBanner && (
+					<div
+						className={styles.editBanner}
+						style={{ background: d.editBanner.bg, color: d.editBanner.color }}
+					>
+						<span
+							className={styles.editBannerDot}
+							style={{ background: d.editBanner.color }}
+						/>
+						{d.editBanner.text}
+					</div>
+				)}
 			</div>
 
-			{/* Panels */}
-			{d.tab === 'info' && (
-				<div className={styles.panel}>
+			{/* One information sheet — brochure-style sections */}
+			<div className={styles.sheet}>
+				<section className={styles.section}>
 					<InfoTab
 						topic={topic}
 						meta={meta}
@@ -140,11 +89,9 @@ export default function TopicDetail() {
 						startEditInfo={d.startEditInfo}
 						handleSaveInfo={d.handleSaveInfo}
 					/>
-				</div>
-			)}
+				</section>
 
-			{d.tab === 'members' && (
-				<div className={styles.panel}>
+				<section className={styles.section}>
 					<MembersTab
 						members={members}
 						canEditMembers={d.canEditMembers}
@@ -164,11 +111,13 @@ export default function TopicDetail() {
 						handleSaveMember={d.handleSaveMember}
 						handleDeleteMember={d.handleDeleteMember}
 					/>
-				</div>
-			)}
+				</section>
 
-			{d.tab === 'files' && (
-				<div className={styles.panel}>
+				<section className={styles.section}>
+					<div className={styles.sectionHeader}>
+						Tài liệu đính kèm
+						<span className={styles.sectionCount}>— {files.length} file</span>
+					</div>
 					<FilesTab
 						files={files}
 						canUploadFiles={d.canUploadFiles}
@@ -191,8 +140,8 @@ export default function TopicDetail() {
 						handleBulkDelete={d.handleBulkDelete}
 						handleBulkDownload={d.handleBulkDownload}
 					/>
-				</div>
-			)}
+				</section>
+			</div>
 		</UserLayout>
 	);
 }

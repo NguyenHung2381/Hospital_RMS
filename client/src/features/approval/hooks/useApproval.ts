@@ -185,7 +185,10 @@ export function useApproval(): ApprovalState {
 			} catch (err) {
 				if (!cancelled)
 					setToast({
-						msg: err instanceof Error ? err.message : 'Không thể tải chi tiết đề tài',
+						msg:
+							err instanceof Error
+								? err.message
+								: 'Không thể tải chi tiết đề tài',
 						type: 'reject',
 					});
 			} finally {
@@ -269,7 +272,11 @@ export function useApproval(): ApprovalState {
 			count: stats.info_requested,
 		},
 		{ key: 'approved' as TabKey, label: 'Đã duyệt', count: stats.approved },
-		{ key: 'rejected' as TabKey, label: 'Không phê duyệt', count: stats.rejected },
+		{
+			key: 'rejected' as TabKey,
+			label: 'Không phê duyệt',
+			count: stats.rejected,
+		},
 	];
 
 	const openModal = useCallback((type: ModalType) => {
@@ -332,8 +339,16 @@ export function useApproval(): ApprovalState {
 			setActiveTab(newStatus);
 		} catch (err) {
 			setToast({
-				msg: err instanceof Error ? err.message : 'Có lỗi xảy ra, vui lòng thử lại sau.',
-				type: modal === 'approve' ? 'approve' : modal === 'request' ? 'request' : 'reject',
+				msg:
+					err instanceof Error
+						? err.message
+						: 'Có lỗi xảy ra, vui lòng thử lại sau.',
+				type:
+					modal === 'approve'
+						? 'approve'
+						: modal === 'request'
+							? 'request'
+							: 'reject',
 			});
 		} finally {
 			setLoading(false);
@@ -380,7 +395,11 @@ export function useApproval(): ApprovalState {
 			msg: failedCount
 				? `Đã ${action === 'approve' ? 'phê duyệt' : 'từ chối'} ${okIds.size} đề tài, ${failedCount} đề tài lỗi`
 				: `Đã ${action === 'approve' ? 'phê duyệt' : 'từ chối'} ${okIds.size} đề tài`,
-			type: failedCount ? 'reject' : action === 'approve' ? 'approve' : 'reject',
+			type: failedCount
+				? 'reject'
+				: action === 'approve'
+					? 'approve'
+					: 'reject',
 		});
 		setLoading(false);
 	}, [bulkModal, bulkComment, filtered, checkedIds]);

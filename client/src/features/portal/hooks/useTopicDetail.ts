@@ -31,7 +31,6 @@ import {
 	blankMember,
 	type InfoForm,
 	type MemberFormState,
-	type TopicDetailTabKey,
 } from '../types/topicDetail.type';
 
 export function useTopicDetail() {
@@ -76,7 +75,6 @@ export function useTopicDetail() {
 	const [files, setFiles] = useState<TopicFile[]>([]);
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState('');
-	const [tab, setTab] = useState<TopicDetailTabKey>('info');
 
 	// ── Info edit state ──
 	const [editingInfo, setEditingInfo] = useState(false);
@@ -376,8 +374,6 @@ export function useTopicDetail() {
 		files,
 		loading,
 		error,
-		tab,
-		setTab,
 		canEditTitle,
 		canEditInfo,
 		canEditMembers,

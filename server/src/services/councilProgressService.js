@@ -308,8 +308,23 @@ const deleteEvalFile = (topicId, fileId, userId) =>
 const deleteMinutesFile = (topicId, fileId, userId) =>
 	deleteEvalFileByNote(topicId, fileId, userId, MINUTES_NOTE, 'biên bản');
 
+// Số đề tài user đang giữ ghế (gốc hoặc thay thế) — để client biết có hiển thị
+// mục "Đánh giá tiến độ" hay không. Truy vấn nhẹ, chỉ đếm.
+const getMySeatCount = async (userId) => {
+	const pool = await getPool();
+	const result = await pool
+		.request()
+		.input('user_id', sql.VarChar(20), userId).query(`
+      SELECT COUNT(*) AS n FROM (
+        SELECT DISTINCT topic_id FROM (${SEAT_CTE}) seat
+      ) x
+    `);
+	return result.recordset[0]?.n ?? 0;
+};
+
 module.exports = {
 	getMyProgress,
+	getMySeatCount,
 	getRolesForTopic,
 	upsertReview,
 	assertSecretary,

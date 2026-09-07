@@ -1,5 +1,6 @@
 import { ListSvg, RefreshSvg, SearchSvg } from '@/assets/icons';
 import AdminLayout from '../../../layouts/AdminLayout';
+import { InlineLoading } from '../../../shared/components';
 import { useActivityLogs } from '../hooks/useActivityLogs';
 import { formatDateTimeVN } from '../../../shared/utils/formatDate';
 import styles from './ActivityLogs.module.css';
@@ -32,7 +33,9 @@ export default function ActivityLogs() {
 					</div>
 					<div>
 						<div className={styles.cardTitle}>Nhật ký hoạt động</div>
-						<div className={styles.cardSub}>Sắp xếp theo thời gian gần nhất</div>
+						<div className={styles.cardSub}>
+							Sắp xếp theo thời gian gần nhất
+						</div>
 					</div>
 					<button
 						className={styles.btnRefresh}
@@ -71,12 +74,12 @@ export default function ActivityLogs() {
 				</div>
 
 				{loading ? (
-					<div className={styles.loadingWrap}>
-						<span className={styles.spinnerDark} />
-					</div>
+					<InlineLoading />
 				) : rows.length === 0 ? (
 					<div className={styles.emptyState}>
-						<ListSvg style={{ width: 36, height: 36, color: 'var(--color-gray-300)' }} />
+						<ListSvg
+							style={{ width: 36, height: 36, color: 'var(--color-gray-300)' }}
+						/>
 						<div className={styles.emptyTitle}>Chưa có log nào</div>
 					</div>
 				) : (
@@ -102,7 +105,9 @@ export default function ActivityLogs() {
 											<div className={styles.actorName}>
 												{row.actor_username ?? 'Không xác định'}
 											</div>
-											{row.actor_id && <div className={styles.actorId}>{row.actor_id}</div>}
+											{row.actor_id && (
+												<div className={styles.actorId}>{row.actor_id}</div>
+											)}
 										</td>
 										<td className={styles.td}>
 											<span

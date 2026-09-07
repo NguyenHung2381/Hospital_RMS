@@ -32,6 +32,7 @@ export const STATUS_CFG = {
 } as const;
 
 export const DEADLINE_COLORS: Record<string, string> = {
+	topic_registration: '#2eb87a',
 	report_submission:  '#e05252',
 	supplement:         '#e09d52',
 	edit:               '#52a9e0',

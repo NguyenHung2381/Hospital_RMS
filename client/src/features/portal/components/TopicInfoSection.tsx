@@ -143,9 +143,9 @@ export function TopicInfoSection({ detailTopic, latestApproval }: TopicInfoSecti
 											<span className={badgeCls}>
 												{roleLabel}
 											</span>
-											{detailTopic.department_name && (
+											{m.department_name && (
 												<span className={styles.memberDept}>
-													{detailTopic.department_name}
+													{m.department_name}
 												</span>
 											)}
 										</div>

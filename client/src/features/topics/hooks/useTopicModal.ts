@@ -99,14 +99,15 @@ export function useTopicModal({
 		};
 	}, [memberQuery]);
 
-	// Chủ nhiệm phải được chọn đầu tiên; hết lượt Chủ nhiệm/Thư ký thì mặc định về Thành viên
-	useEffect(() => {
-		if (!isAddRoleAllowed(pendingMembers, addRole))
-			setAddRole(pendingMembers.length === 0 ? 'leader' : 'member');
-		if (!isAddRoleAllowed(pendingMembers, manualRole))
-			setManualRole(pendingMembers.length === 0 ? 'leader' : 'member');
-		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [pendingMembers]);
+	// Chủ nhiệm phải được chọn đầu tiên; hết lượt Chủ nhiệm/Thư ký thì mặc định về Thành viên.
+	// Chuẩn hoá ngay khi render mỗi lần danh sách thành viên đổi (tránh cascading render từ effect).
+	const [prevPending, setPrevPending] = useState(pendingMembers);
+	if (prevPending !== pendingMembers) {
+		setPrevPending(pendingMembers);
+		const fallback: MemberRole = pendingMembers.length === 0 ? 'leader' : 'member';
+		if (!isAddRoleAllowed(pendingMembers, addRole)) setAddRole(fallback);
+		if (!isAddRoleAllowed(pendingMembers, manualRole)) setManualRole(fallback);
+	}
 
 	const deptName = (id: string) =>
 		departments.find((d) => d.id === id)?.name ?? '';

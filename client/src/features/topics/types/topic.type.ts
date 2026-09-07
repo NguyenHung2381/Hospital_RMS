@@ -58,6 +58,7 @@ export interface TopicMember {
 	chuc_vu: string | null;
 	staff_number: number | null;
 	department_id: string | null;
+	department_name?: string | null;
 	role: MemberRole;
 	user_id: string | null;
 	account_granted: boolean;

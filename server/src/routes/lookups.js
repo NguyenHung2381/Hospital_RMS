@@ -259,7 +259,7 @@ const catCtrl = createCrudController(catService);
  *         description: Tạo thành công
  */
 router.get('/categories', authenticate, catCtrl.getAll);
-router.post('/categories', authenticate, authorizePermission(['catalog', 'manage']), catCtrl.createOne);
+router.post('/categories', authenticate, authorizePermission(['catalog', 'create']), catCtrl.createOne);
 
 /**
  * @swagger
@@ -311,13 +311,13 @@ router.get('/categories/:id', authenticate, catCtrl.getById);
 router.put(
 	'/categories/:id',
 	authenticate,
-	authorizePermission(['catalog', 'manage']),
+	authorizePermission(['catalog', 'update']),
 	catCtrl.updateOne,
 );
 router.delete(
 	'/categories/:id',
 	authenticate,
-	authorizePermission(['catalog', 'manage']),
+	authorizePermission(['catalog', 'delete']),
 	catCtrl.removeOne,
 );
 
@@ -326,6 +326,34 @@ router.delete(
 // crudService dùng NEWID() (hex) nên phải override hàm create riêng.
 const { getPool, sql } = require('../config/db');
 const { broadcast } = require('../services/eventService');
+
+// ── round_type_levels: cấp độ được phép theo loại đợt ────────────────────────
+const getLevelIdsForRoundType = async (roundTypeId) => {
+	if (!roundTypeId) return [];
+	try {
+		const pool = await getPool();
+		const r = await pool
+			.request()
+			.input('rt', sql.VarChar(6), roundTypeId)
+			.query(
+				'SELECT level_id FROM round_type_levels WHERE round_type_id = @rt',
+			);
+		return r.recordset.map((x) => x.level_id);
+	} catch {
+		// Bảng chưa tồn tại (migration chưa chạy) ⇒ coi như chưa cấu hình.
+		return [];
+	}
+};
+
+const getRoundTypeIdForRound = async (roundId) => {
+	if (!roundId) return null;
+	const pool = await getPool();
+	const r = await pool
+		.request()
+		.input('rid', sql.VarChar(10), roundId)
+		.query('SELECT round_type_id FROM research_rounds WHERE id = @rid');
+	return r.recordset[0]?.round_type_id ?? null;
+};
 
 const _lvlBase = createCrudService('levels', 4, 'CD', [
   { table: 'topics', column: 'level_id', label: 'đề tài' },
@@ -382,8 +410,29 @@ const lvlCtrl = createCrudController(lvlService);
  *       201:
  *         description: Tạo thành công
  */
-router.get('/levels', authenticate, lvlCtrl.getAll);
-router.post('/levels', authenticate, authorizePermission(['catalog', 'manage']), lvlCtrl.createOne);
+// Lọc cấp độ theo đợt / loại đợt: dùng ở form đăng ký đề tài.
+// Loại đợt chưa cấu hình cấp độ nào ⇒ trả tất cả (fallback).
+router.get('/levels', authenticate, async (req, res, next) => {
+	try {
+		const { round_id, round_type_id } = req.query;
+		if (!round_id && !round_type_id) return lvlCtrl.getAll(req, res, next);
+
+		const rtId =
+			round_type_id || (await getRoundTypeIdForRound(round_id));
+		const allowed = rtId ? await getLevelIdsForRoundType(rtId) : [];
+		const all = await lvlService.getAll({ limit: 0 });
+		const data = allowed.length
+			? all.data.filter((lv) => allowed.includes(lv.id))
+			: all.data;
+		return success(res, {
+			data,
+			pagination: { ...all.pagination, total: data.length },
+		});
+	} catch (e) {
+		next(e);
+	}
+});
+router.post('/levels', authenticate, authorizePermission(['catalog', 'create']), lvlCtrl.createOne);
 
 /**
  * @swagger
@@ -432,11 +481,11 @@ router.post('/levels', authenticate, authorizePermission(['catalog', 'manage']),
  *         description: Xoá thành công
  */
 router.get('/levels/:id', authenticate, lvlCtrl.getById);
-router.put('/levels/:id', authenticate, authorizePermission(['catalog', 'manage']), lvlCtrl.updateOne);
+router.put('/levels/:id', authenticate, authorizePermission(['catalog', 'update']), lvlCtrl.updateOne);
 router.delete(
 	'/levels/:id',
 	authenticate,
-	authorizePermission(['catalog', 'manage']),
+	authorizePermission(['catalog', 'delete']),
 	lvlCtrl.removeOne,
 );
 
@@ -502,7 +551,7 @@ router.get('/round-types', authenticate, rtCtrl.getAll);
 router.post(
 	'/round-types',
 	authenticate,
-	authorizePermission(['catalog', 'manage']),
+	authorizePermission(['catalog', 'create']),
 	[body('name').trim().notEmpty().withMessage('Tên loại đợt không được để trống')],
 	validate,
 	rtCtrl.createOne,
@@ -539,8 +588,53 @@ router.post(
  *         schema: { type: string }
  */
 router.get('/round-types/:id', authenticate, rtCtrl.getById);
-router.put('/round-types/:id', authenticate, authorizePermission(['catalog', 'manage']), rtCtrl.updateOne);
-router.delete('/round-types/:id', authenticate, authorizePermission(['catalog', 'manage']), rtCtrl.removeOne);
+router.put('/round-types/:id', authenticate, authorizePermission(['catalog', 'update']), rtCtrl.updateOne);
+router.delete('/round-types/:id', authenticate, authorizePermission(['catalog', 'delete']), rtCtrl.removeOne);
+
+// ── Cấp độ được phép theo loại đợt (round_type_levels) ──
+router.get('/round-types/:id/levels', authenticate, async (req, res, next) => {
+	try {
+		return success(res, await getLevelIdsForRoundType(req.params.id));
+	} catch (e) {
+		next(e);
+	}
+});
+
+router.put(
+	'/round-types/:id/levels',
+	authenticate,
+	authorizePermission(['catalog', 'update']),
+	[body('level_ids').isArray().withMessage('level_ids phải là mảng')],
+	validate,
+	async (req, res, next) => {
+		try {
+			const rtId = req.params.id;
+			const ids = [...new Set((req.body.level_ids || []).filter(Boolean))];
+			const pool = await getPool();
+			await pool
+				.request()
+				.input('rt', sql.VarChar(6), rtId)
+				.query('DELETE FROM round_type_levels WHERE round_type_id = @rt');
+			for (const lid of ids) {
+				await pool
+					.request()
+					.input('rt', sql.VarChar(6), rtId)
+					.input('lid', sql.VarChar(5), lid).query(`
+						IF EXISTS (SELECT 1 FROM levels WHERE id = @lid)
+						INSERT INTO round_type_levels (round_type_id, level_id)
+						VALUES (@rt, @lid)`);
+			}
+			broadcast('update', { entity: 'round_type' });
+			return success(
+				res,
+				await getLevelIdsForRoundType(rtId),
+				'Đã cập nhật cấp độ cho loại đợt',
+			);
+		} catch (e) {
+			next(e);
+		}
+	},
+);
 
 // ─── Roles ────────────────────────────────────────────────────────────────────
 const roleService = require('../services/roleService');

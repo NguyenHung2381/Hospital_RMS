@@ -79,8 +79,12 @@ export default function CmeRegister() {
 		};
 	}, [year, refreshKey]);
 
-	// Đổi năm / từ khoá thì quay về trang đầu
-	useEffect(() => setPage(1), [year, search]);
+	// Đổi năm / từ khoá thì quay về trang đầu (điều chỉnh khi render, không dùng effect)
+	const [pageResetKey, setPageResetKey] = useState(`${year}|${search}`);
+	if (pageResetKey !== `${year}|${search}`) {
+		setPageResetKey(`${year}|${search}`);
+		setPage(1);
+	}
 
 	const saveSeq = async () => {
 		const n = Number(seqDraft);
@@ -111,9 +115,8 @@ export default function CmeRegister() {
 		}
 	};
 
-	const allEntries = reg?.entries ?? [];
-
 	const filtered = useMemo(() => {
+		const allEntries = reg?.entries ?? [];
 		const q = search.trim().toLowerCase();
 		if (!q) return allEntries;
 		return allEntries.filter((e) =>
@@ -121,7 +124,7 @@ export default function CmeRegister() {
 				.filter(Boolean)
 				.some((v) => String(v).toLowerCase().includes(q)),
 		);
-	}, [allEntries, search]);
+	}, [reg, search]);
 
 	const total = filtered.length;
 	const totalPages = Math.max(1, Math.ceil(total / pageSize));

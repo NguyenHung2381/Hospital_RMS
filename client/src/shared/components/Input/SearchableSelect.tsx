@@ -28,7 +28,8 @@ export function SearchableSelect({
 	useEffect(() => {
 		if (!open) return;
 		const handler = (e: MouseEvent) => {
-			if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+			if (ref.current && !ref.current.contains(e.target as Node))
+				setOpen(false);
 		};
 		document.addEventListener('mousedown', handler);
 		setTimeout(() => searchRef.current?.focus(), 0);

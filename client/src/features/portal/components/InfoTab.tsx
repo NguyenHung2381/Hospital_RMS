@@ -1,11 +1,11 @@
 import type { SimpleItem } from '../../topics/api/topicApi';
 import type { Topic } from '../../topics/types/topic.type';
 import { lookup } from '../../topics/utils/topicHelpers';
+import { Badge } from '@/shared/components';
 import styles from '../pages/TopicDetail.module.css';
 import { fmtDate } from '../services/topicDetailService';
 import type { InfoForm } from '../types/topicDetail.type';
 import { STATUS_CFG } from '../types/topicDetail.type';
-import InfoField from './InfoField';
 
 type Meta = {
 	categories: SimpleItem[];
@@ -137,74 +137,70 @@ export default function InfoTab({
 		);
 	}
 
+	const round = lookup(meta.rounds, topic.round_id);
+	const department = lookup(meta.departments, topic.department_id);
+	const level = lookup(meta.levels, topic.level_id);
+	const category = lookup(meta.categories, topic.category_id);
+	const progress = topic.progress ?? 0;
+
 	return (
 		<>
-			{/* Progress bar */}
-			<div className={styles.progressBlock}>
-				<div className={styles.progressBlockLabel}>
-					Tiến độ hoàn thành
-					<span className={styles.progressBlockValue}>
-						{topic.progress ?? 0}%
-					</span>
+			{/* Hero — catalog-style intro */}
+			<header className={styles.hero}>
+				<div className={styles.heroMeta}>
+					<span className={styles.topicId}>{topic.id}</span>
+					<Badge
+						tone={statusCfg.tone}
+						dot
+					>
+						{statusCfg.label}
+					</Badge>
 				</div>
-				<div className={styles.progressBar}>
-					<div
-						className={styles.progressFill}
-						style={{ width: `${topic.progress ?? 0}%` }}
-					/>
+				<h2 className={styles.heroTitle}>{topic.title}</h2>
+				<p className={styles.heroCaption}>
+					{round || '—'}
+					{department ? ` · ${department}` : ''}
+				</p>
+				<p className={styles.heroSub}>
+					Đăng ký ngày {fmtDate(topic.created_at)}
+				</p>
+			</header>
+
+			{/* Key facts */}
+			<div className={styles.factStrip}>
+				<div className={styles.fact}>
+					<div className={styles.factLabel}>Cấp độ</div>
+					<div className={styles.factValue}>{level || '—'}</div>
+				</div>
+				<div className={styles.fact}>
+					<div className={styles.factLabel}>Phân loại</div>
+					<div className={styles.factValue}>{category || '—'}</div>
+				</div>
+				<div className={styles.fact}>
+					<div className={styles.factLabel}>Thành viên</div>
+					<div className={styles.factValue}>{topic.member_count ?? 0} người</div>
+				</div>
+				<div className={styles.fact}>
+					<div className={styles.factLabel}>Tiến độ</div>
+					<div className={styles.factValue}>{progress}%</div>
+					<div className={styles.factBar}>
+						<div
+							className={styles.factBarFill}
+							style={{ width: `${progress}%` }}
+						/>
+					</div>
 				</div>
 			</div>
 
-			<div className={styles.infoGrid}>
-				<InfoField
-					label='Đợt nghiên cứu'
-					value={lookup(meta.rounds, topic.round_id) || '—'}
-					color='#3b82f6'
-				/>
-				<InfoField
-					label='Phòng ban / Khoa'
-					value={lookup(meta.departments, topic.department_id) || '—'}
-					color='#8b5cf6'
-				/>
-				<InfoField
-					label='Cấp độ'
-					value={lookup(meta.levels, topic.level_id) || '—'}
-					color='#f59e0b'
-				/>
-				<InfoField
-					label='Phân loại'
-					value={lookup(meta.categories, topic.category_id) || '—'}
-					color='#14b8a6'
-				/>
-				<InfoField
-					label='Mã số đề tài'
-					value={topic.id}
-					color='#10b981'
-				/>
-				<InfoField
-					label='Ngày đăng ký'
-					value={fmtDate(topic.created_at)}
-					color='#6366f1'
-				/>
-				<InfoField
-					label='Số thành viên'
-					value={`${topic.member_count ?? 0} người`}
-					color='#f43f5e'
-				/>
-				<InfoField
-					label='Trạng thái'
-					value={statusCfg.label}
-					color={statusCfg.dot}
-				/>
-			</div>
 			{topic.description && (
 				<div className={styles.descSection}>
-					<div className={styles.descLabel}>Mô tả / Tóm tắt</div>
+					<div className={styles.descLabel}>Giới thiệu đề tài</div>
 					<div className={styles.descBox}>{topic.description}</div>
 				</div>
 			)}
+
 			{(canEditTitle || canEditInfo) && (
-				<div style={{ marginTop: 16 }}>
+				<div style={{ marginTop: 20 }}>
 					<button
 						className={styles.btnSecondary}
 						onClick={startEditInfo}

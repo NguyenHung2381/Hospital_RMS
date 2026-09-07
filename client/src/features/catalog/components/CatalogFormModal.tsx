@@ -1,11 +1,13 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { CalendarSvg, CheckSvg, LayersSvg, TagSvg, XSvg } from '@/assets/icons';
 import type {
 	CatalogFormData,
 	CatalogItem,
 	CatalogTab,
+	LevelOption,
 } from '../types/catalog.type';
 import { EMPTY_FORM, TAB_CONFIG } from '../hooks/useCatalog';
+import { catalogApi } from '../api/catalogApi';
 import styles from '../pages/Catalog.module.css';
 
 export function CatalogFormModal({
@@ -24,12 +26,40 @@ export function CatalogFormModal({
 	loading: boolean;
 }) {
 	const cfg = TAB_CONFIG[tab];
+	const isRoundType = tab === 'round-types';
 	const [form, setForm] = useState<CatalogFormData>(
 		item
 			? { name: item.name, description: item.description ?? '' }
 			: EMPTY_FORM,
 	);
 	const [errors, setErrors] = useState<Partial<CatalogFormData>>({});
+
+	// ── Cấp độ cho phép (chỉ tab "Loại đợt") ──
+	const [levels, setLevels] = useState<LevelOption[]>([]);
+	const [levelIds, setLevelIds] = useState<string[]>([]);
+
+	useEffect(() => {
+		if (!isRoundType) return;
+		let alive = true;
+		catalogApi
+			.allLevels()
+			.then((ls) => alive && setLevels(ls))
+			.catch(() => {});
+		if (mode === 'edit' && item) {
+			catalogApi
+				.roundTypeLevels(item.id)
+				.then((ids) => alive && setLevelIds(ids))
+				.catch(() => {});
+		}
+		return () => {
+			alive = false;
+		};
+	}, [isRoundType, mode, item]);
+
+	const toggleLevel = (id: string) =>
+		setLevelIds((prev) =>
+			prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
+		);
 
 	const set =
 		(k: keyof CatalogFormData) =>
@@ -44,6 +74,11 @@ export function CatalogFormModal({
 			err.name = `Vui lòng nhập tên ${cfg.label.toLowerCase()}`;
 		setErrors(err);
 		return Object.keys(err).length === 0;
+	};
+
+	const handleSave = () => {
+		if (!validate()) return;
+		onSave(isRoundType ? { ...form, level_ids: levelIds } : form);
 	};
 
 	return (
@@ -108,6 +143,53 @@ export function CatalogFormModal({
 							placeholder='Mô tả ngắn...'
 						/>
 					</div>
+
+					{isRoundType && (
+						<div className={styles.formGroup}>
+							<label className={styles.formLabel}>
+								Cấp độ đề tài cho phép
+							</label>
+							<div className={styles.fieldError} style={{ color: 'var(--color-gray-500)', marginBottom: 6 }}>
+								Form đăng ký đề tài chỉ hiện các cấp độ được tick ở đây. Bỏ trống
+								= cho phép tất cả.
+							</div>
+							<div
+								style={{
+									display: 'flex',
+									flexWrap: 'wrap',
+									gap: 10,
+								}}
+							>
+								{levels.length === 0 && (
+									<span style={{ fontSize: 13, color: 'var(--color-gray-400)' }}>
+										Chưa có cấp độ nào trong hệ thống.
+									</span>
+								)}
+								{levels.map((lv) => (
+									<label
+										key={lv.id}
+										style={{
+											display: 'flex',
+											alignItems: 'center',
+											gap: 6,
+											fontSize: 13,
+											cursor: 'pointer',
+											padding: '4px 10px',
+											borderRadius: 8,
+											border: '1px solid var(--color-gray-200)',
+										}}
+									>
+										<input
+											type='checkbox'
+											checked={levelIds.includes(lv.id)}
+											onChange={() => toggleLevel(lv.id)}
+										/>
+										{lv.name}
+									</label>
+								))}
+							</div>
+						</div>
+					)}
 				</div>
 
 				<div className={styles.modalFooter}>
@@ -120,7 +202,7 @@ export function CatalogFormModal({
 					</button>
 					<button
 						className={styles.btnConfirm}
-						onClick={() => validate() && onSave(form)}
+						onClick={handleSave}
 						disabled={loading}
 					>
 						{loading ? <span className={styles.spinner} /> : <CheckSvg />}

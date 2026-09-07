@@ -8,7 +8,7 @@ import {
 	XCircleSvg,
 	XSvg,
 } from '@/assets/icons';
-import { Badge } from '@/shared/components';
+import { Badge, InlineLoading } from '@/shared/components';
 import type { ApprovalRecord, TabKey } from '../types/approval.type';
 import { STATUS_CFG } from '../utils/approvalHelpers';
 import styles from '../pages/Approval.module.css';
@@ -152,15 +152,7 @@ export function ApprovalListPanel({
 			{/* Items */}
 			<div className={styles.listBody}>
 				{listLoading ? (
-					<div
-						style={{
-							padding: '48px 24px',
-							textAlign: 'center',
-							color: 'var(--color-gray-400)',
-						}}
-					>
-						<div style={{ fontSize: 13, fontWeight: 600 }}>Đang tải...</div>
-					</div>
+					<InlineLoading label='Đang tải…' />
 				) : error ? (
 					<div
 						style={{
@@ -182,7 +174,9 @@ export function ApprovalListPanel({
 						<div style={{ fontSize: 13, fontWeight: 600, marginBottom: 4 }}>
 							Không có hồ sơ phê duyệt nào
 						</div>
-						<div style={{ fontSize: 12 }}>Vui lòng thử thay đổi bộ lọc tìm kiếm</div>
+						<div style={{ fontSize: 12 }}>
+							Vui lòng thử thay đổi bộ lọc tìm kiếm
+						</div>
 					</div>
 				) : (
 					filtered.map((r) => {

@@ -7,6 +7,7 @@ import { ProgressMyReviewTab } from '../components/ProgressMyReviewTab';
 import { ProgressSidebar } from '../components/ProgressSidebar';
 import { useCouncilProgress } from '../hooks/useCouncilProgress';
 import { SESSION_LABELS } from '../utils/councilProgressHelpers';
+import { InlineLoading } from '@/shared/components';
 import styles from './CouncilProgress.module.css';
 
 export default function CouncilProgress() {
@@ -52,7 +53,7 @@ export default function CouncilProgress() {
 			hideSidebar
 		>
 			{loading ? (
-				<div className={styles.stateBox}>Đang tải…</div>
+				<InlineLoading label='Đang tải…' />
 			) : error ? (
 				<div className={`${styles.stateBox} ${styles.stateError}`}>{error}</div>
 			) : councils.length === 0 ? (

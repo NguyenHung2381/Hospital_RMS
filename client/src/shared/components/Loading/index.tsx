@@ -40,5 +40,9 @@ export default function PageLoading() {
 	);
 }
 
-export * from './Skeleton';
-
+export {
+	Skeleton,
+	InlineLoading,
+	SkeletonTable,
+	SkeletonCard,
+} from './Skeleton';

@@ -64,6 +64,7 @@ export const APPROVAL_CONFIG: Record<string, { label: string; tone: BadgeTone }>
 	pending: { label: 'Chờ duyệt', tone: 'amber' },
 	approved: { label: 'Đã duyệt', tone: 'green' },
 	rejected: { label: 'Từ chối', tone: 'red' },
+	supplement: { label: 'Bổ sung', tone: 'blue' },
 };
 
 export const TABS: { key: TabKey; label: string }[] = [

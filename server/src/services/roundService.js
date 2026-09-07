@@ -19,6 +19,25 @@ const fmtDate = (d) => {
 const STATUS_TO_FRONT = { open: 'active' };
 const STATUS_TO_DB = { active: 'open' };
 
+// Cột phái sinh: cửa sổ "Đăng ký đề tài" (round_deadlines.deadline_type =
+// 'topic_registration'). Khi đợt CHƯA cấu hình mốc này ⇒ registration_open = 1
+// (giữ nguyên hành vi cũ). Khi đã cấu hình ⇒ chỉ mở trong khoảng [start, hạn].
+const REG_WINDOW_COLS = `
+       (SELECT MIN(rd.start_date) FROM round_deadlines rd
+          WHERE rd.round_id = r.id AND rd.deadline_type = 'topic_registration')     AS registration_start,
+       (SELECT MAX(rd.deadline_date) FROM round_deadlines rd
+          WHERE rd.round_id = r.id AND rd.deadline_type = 'topic_registration')     AS registration_end,
+       CAST(CASE
+         WHEN NOT EXISTS (SELECT 1 FROM round_deadlines rd
+                          WHERE rd.round_id = r.id AND rd.deadline_type = 'topic_registration') THEN 1
+         WHEN EXISTS (SELECT 1 FROM round_deadlines rd
+                      WHERE rd.round_id = r.id AND rd.deadline_type = 'topic_registration'
+                        AND (rd.start_date IS NULL
+                             OR rd.start_date <= CAST(DATEADD(HOUR, 7, GETUTCDATE()) AS DATE))
+                        AND rd.deadline_date >= CAST(DATEADD(HOUR, 7, GETUTCDATE()) AS DATE)) THEN 1
+         ELSE 0
+       END AS BIT)                                                                  AS registration_open`;
+
 const normalize = (r) => {
 	const s =
 		typeof r.status === 'string' ? r.status.trim().toLowerCase() : r.status;
@@ -29,6 +48,11 @@ const normalize = (r) => {
 		end_date: fmtDate(r.end_date),
 		created_at: fmtDate(r.created_at),
 		updated_at: r.updated_at ? fmtDate(r.updated_at) : undefined,
+		registration_open: r.registration_open === true || r.registration_open === 1,
+		registration_start: r.registration_start
+			? fmtDate(r.registration_start)
+			: null,
+		registration_end: r.registration_end ? fmtDate(r.registration_end) : null,
 	};
 };
 
@@ -65,7 +89,8 @@ const getAll = async ({
            (SELECT COUNT(*) FROM topics WHERE round_id = r.id)                               AS topic_total,
            (SELECT COUNT(*) FROM topics WHERE round_id = r.id AND status = 'approved')       AS topic_active,
            (SELECT COUNT(*) FROM topics WHERE round_id = r.id AND status = 'submitted')      AS topic_pending,
-           0                                                                                 AS topic_completed
+           0                                                                                 AS topic_completed,
+${REG_WINDOW_COLS}
     FROM research_rounds r
     LEFT JOIN users u ON u.id = r.created_by
     LEFT JOIN round_types rt ON rt.id = r.round_type_id
@@ -89,7 +114,8 @@ const getById = async (id) => {
              (SELECT COUNT(*) FROM topics WHERE round_id = r.id)                               AS topic_total,
              (SELECT COUNT(*) FROM topics WHERE round_id = r.id AND status = 'approved')       AS topic_active,
              (SELECT COUNT(*) FROM topics WHERE round_id = r.id AND status = 'submitted')      AS topic_pending,
-             0                                                                                 AS topic_completed
+             0                                                                                 AS topic_completed,
+${REG_WINDOW_COLS}
       FROM research_rounds r
       LEFT JOIN users u ON u.id = r.created_by
       LEFT JOIN round_types rt ON rt.id = r.round_type_id

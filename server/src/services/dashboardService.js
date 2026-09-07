@@ -53,15 +53,24 @@ const getStats = async () => {
     GROUP BY r.year, c.name
     ORDER BY year ASC;
 
-    -- Recent approvals (last 8)
+    -- Recent approvals (last 8) — chỉ đề tài đã có quyết định, mới nhất trước.
+    -- • status lấy theo topics: đây là nguồn sự thật hiển thị ở mọi màn khác
+    --   (bảng đề tài, màn Phê duyệt, "Đề tài của tôi"). approvals.status có thể
+    --   lệch (vd. sửa trạng thái đề tài trực tiếp không đụng bảng approvals).
+    -- • approver/date lấy theo cột audit updated_* mà trg_approvals_audit ghi khi
+    --   sp_approve_topic đổi trạng thái. created_by/created_at là người & thời
+    --   điểm NỘP hồ sơ, không phải người/lúc phê duyệt.
     SELECT TOP 8
       a.id, a.topic_id, t.title AS topic_title,
-      a.status, a.comment, a.created_at,
+      t.status,
+      a.comment,
+      COALESCE(a.updated_at, a.created_at) AS created_at,
       u.full_name AS approver_name
     FROM approvals a
-    LEFT JOIN topics t ON t.id = a.topic_id
-    LEFT JOIN users u ON u.id = a.created_by
-    ORDER BY a.created_at DESC;
+    INNER JOIN topics t ON t.id = a.topic_id
+    LEFT JOIN users u ON u.id = COALESCE(a.updated_by, a.created_by)
+    WHERE t.status IN ('approved', 'rejected', 'supplement')
+    ORDER BY COALESCE(a.updated_at, a.created_at) DESC;
 
     -- Council progress-review completion: expected = mỗi ghế hội đồng × mỗi đề tài của hội đồng đó
     SELECT

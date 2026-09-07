@@ -1,0 +1,585 @@
+/* =============================================
+   DEADLINE MANAGER MODULE CSS
+   Hospital RMS - Quản lý mốc thời gian đợt NCKH
+============================================= */
+
+.managerContainer {
+	display: flex;
+	flex-direction: column;
+	gap: 16px;
+	width: 100%;
+}
+
+.errorMessage {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	padding: 10px 14px;
+	background: #fef2f2;
+	border: 1px solid #fecaca;
+	border-radius: 8px;
+	color: #b91c1c;
+	font-size: 13px;
+	font-weight: 500;
+	margin-bottom: 4px;
+}
+
+.emptyTimelineNotice {
+	font-size: 13px;
+	color: var(--color-gray-500, #6b8090);
+	font-style: italic;
+	padding: 12px 16px;
+	background: #f8fafb;
+	border-radius: 8px;
+	border: 1px dashed #cbd5dc;
+}
+
+/* ── TIMELINE CONTAINER ── */
+.deadlineTimeline {
+	display: flex;
+	flex-direction: column;
+	gap: 14px;
+	position: relative;
+}
+
+.timelineItem {
+	position: relative;
+	padding-left: 36px;
+	display: flex;
+	flex-direction: column;
+}
+
+/* Vertical guide line connecting nodes */
+.timelineItem::before {
+	content: '';
+	position: absolute;
+	left: 13px;
+	top: 28px;
+	bottom: -16px;
+	width: 2px;
+	background: #e2e8ec;
+}
+
+.timelineItem:last-child::before {
+	display: none;
+}
+
+.timelineNode {
+	position: absolute;
+	left: 0;
+	top: 10px;
+	width: 28px;
+	height: 28px;
+	border-radius: 50%;
+	background: var(--color-primary-pale, #e8f8f2);
+	border: 2px solid var(--color-primary, #2eb87a);
+	color: var(--color-primary-dark, #1e9460);
+	font-size: 12px;
+	font-weight: 800;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	z-index: 2;
+	box-shadow: 0 0 0 3px rgba(46, 184, 122, 0.12);
+}
+
+.timelineCard {
+	background: #ffffff;
+	border: 1px solid var(--color-gray-200, #e2e8ec);
+	border-radius: 12px;
+	padding: 14px 18px;
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 16px;
+	box-shadow: 0 2px 6px rgba(13, 24, 32, 0.03);
+	transition: all 0.2s ease;
+}
+
+.timelineCard:hover {
+	border-color: var(--color-primary-light, #4fd49a);
+	box-shadow: 0 4px 14px rgba(13, 24, 32, 0.06);
+}
+
+.timelineInfo {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	flex-wrap: wrap;
+	flex: 1;
+	min-width: 0;
+}
+
+.timelineTitle {
+	font-size: 14px;
+	font-weight: 700;
+	color: var(--color-gray-800, #1a2a35);
+}
+
+.timelineBadge {
+	font-size: 11px;
+	padding: 3px 9px;
+	border-radius: 9999px;
+	font-weight: 700;
+	white-space: nowrap;
+}
+
+.timelineBadge.topic_registration {
+	background: #dcfce7;
+	color: #166534;
+}
+
+.timelineBadge.edit {
+	background: #e0f2fe;
+	color: #0369a1;
+}
+
+.timelineBadge.supplement {
+	background: #fef3c7;
+	color: #b45309;
+}
+
+.timelineBadge.report_submission {
+	background: #e0f8f0;
+	color: #047857;
+}
+
+.timelineDates {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	font-size: 12.5px;
+	color: var(--color-gray-500, #6b8090);
+	font-weight: 500;
+	margin-left: auto;
+}
+
+.timelineDates svg {
+	width: 14px;
+	height: 14px;
+	color: var(--color-gray-400, #9aaab6);
+}
+
+.timelineDateHighlighted {
+	font-weight: 700;
+	color: var(--color-primary-dark, #1e9460);
+}
+
+.timelineActions {
+	display: flex;
+	align-items: center;
+	gap: 4px;
+}
+
+.timelineActionBtn {
+	background: transparent;
+	border: 1px solid transparent;
+	cursor: pointer;
+	width: 30px;
+	height: 30px;
+	border-radius: 8px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	color: var(--color-gray-400, #9aaab6);
+	transition: all 0.15s ease;
+}
+
+.timelineActionBtn:hover {
+	background: #f3f4f6;
+	color: #1f2937;
+	border-color: #e5e7eb;
+}
+
+.timelineActionBtn.edit:hover {
+	color: var(--color-primary, #2eb87a);
+	background: #f0fdf4;
+	border-color: #bbf7d0;
+}
+
+.timelineActionBtn.delete:hover {
+	color: #ef4444;
+	background: #fef2f2;
+	border-color: #fecaca;
+}
+
+/* ── FORM CARD (NEW / EDIT MILESTONE) ── */
+.timelineFormCard {
+	background: #ffffff;
+	border: 1.5px solid rgba(46, 184, 122, 0.3);
+	border-left: 4px solid var(--color-primary, #2eb87a);
+	border-radius: 14px;
+	padding: 20px 22px;
+	display: flex;
+	flex-direction: column;
+	gap: 16px;
+	box-shadow:
+		0 8px 24px -4px rgba(13, 24, 32, 0.08),
+		0 2px 6px rgba(13, 24, 32, 0.04);
+	animation: slideDown 0.22s ease;
+}
+
+@keyframes slideDown {
+	from {
+		opacity: 0;
+		transform: translateY(-6px);
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0);
+	}
+}
+
+.formCardHeader {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding-bottom: 12px;
+	border-bottom: 1px solid #f0f4f6;
+}
+
+.formCardTitleWrap {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+
+.formCardTitle {
+	font-size: 14.5px;
+	font-weight: 700;
+	color: var(--color-gray-800, #1a2a35);
+}
+
+.phaseBadge {
+	font-size: 11px;
+	font-weight: 800;
+	background: var(--color-primary-pale, #e8f8f2);
+	color: var(--color-primary-dark, #1e9460);
+	border: 1px solid rgba(46, 184, 122, 0.25);
+	padding: 2px 8px;
+	border-radius: 9999px;
+}
+
+.closeFormBtn {
+	background: none;
+	border: none;
+	cursor: pointer;
+	color: var(--color-gray-400, #9aaab6);
+	width: 26px;
+	height: 26px;
+	border-radius: 6px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	transition: all 0.15s ease;
+}
+
+.closeFormBtn:hover {
+	background: #f3f4f6;
+	color: #1f2937;
+}
+
+/* ── FORM FIELDS GRID ── */
+.timelineFormGrid {
+	display: grid;
+	grid-template-columns: repeat(2, 1fr);
+	gap: 14px;
+}
+
+.timelineFormFull {
+	grid-column: span 2;
+}
+
+.fieldGroup {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+}
+
+.fieldLabel {
+	font-size: 12.5px;
+	font-weight: 600;
+	color: var(--color-gray-700, #374151);
+	display: flex;
+	align-items: center;
+	gap: 4px;
+}
+
+.fieldRequired {
+	color: #ef4444;
+	font-weight: 700;
+}
+
+.formInput {
+	height: 40px;
+	padding: 0 14px;
+	border: 1.5px solid #d1d5db;
+	border-radius: 8px;
+	font-family: inherit;
+	font-size: 13.5px;
+	color: var(--color-gray-800, #1a2a35);
+	background: #ffffff;
+	transition: all 0.18s ease;
+	outline: none;
+	width: 100%;
+}
+
+.formInput:hover {
+	border-color: #9ca3af;
+}
+
+.formInput:focus {
+	border-color: var(--color-primary, #2eb87a);
+	background: #ffffff;
+	box-shadow: 0 0 0 3px rgba(46, 184, 122, 0.15);
+}
+
+.formSelect {
+	height: 40px;
+	padding: 0 36px 0 14px;
+	border: 1.5px solid #d1d5db;
+	border-radius: 8px;
+	font-family: inherit;
+	font-size: 13.5px;
+	color: var(--color-gray-800, #1a2a35);
+	background-color: #ffffff;
+	background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%236b7280'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E");
+	background-repeat: no-repeat;
+	background-position: right 12px center;
+	background-size: 16px;
+	appearance: none;
+	cursor: pointer;
+	outline: none;
+	width: 100%;
+	transition: all 0.18s ease;
+}
+
+.formSelect:hover {
+	border-color: #9ca3af;
+	background-color: #ffffff;
+}
+
+.formSelect:focus {
+	border-color: var(--color-primary, #2eb87a);
+	background-color: #ffffff;
+	box-shadow: 0 0 0 3px rgba(46, 184, 122, 0.15);
+}
+
+/* ── SUPPLEMENT PERMISSION CHIPS ── */
+.supplementBox {
+	background: #f8fafb;
+	border: 1px solid #e5e7eb;
+	border-radius: 10px;
+	padding: 12px 14px;
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+}
+
+.chipsContainer {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+}
+
+.chipLabel {
+	display: inline-flex;
+	align-items: center;
+	gap: 8px;
+	padding: 7px 14px;
+	border-radius: 8px;
+	border: 1.5px solid #e5e7eb;
+	background: #ffffff;
+	font-size: 12.5px;
+	font-weight: 500;
+	color: #4b5563;
+	cursor: pointer;
+	transition: all 0.18s ease;
+	user-select: none;
+}
+
+.chipLabel:hover {
+	border-color: #cbd5e1;
+	background: #f9fafb;
+}
+
+.chipLabelActive {
+	border-color: var(--color-primary, #2eb87a);
+	background: var(--color-primary-pale, #e8f8f2);
+	color: #115e3b;
+	font-weight: 600;
+	box-shadow: 0 1px 4px rgba(46, 184, 122, 0.15);
+}
+
+.customCheckbox {
+	width: 16px;
+	height: 16px;
+	border-radius: 4px;
+	border: 1.5px solid #9ca3af;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	background: #fff;
+	transition: all 0.15s ease;
+	flex-shrink: 0;
+}
+
+.chipLabelActive .customCheckbox {
+	background: var(--color-primary, #2eb87a);
+	border-color: var(--color-primary, #2eb87a);
+	color: #fff;
+}
+
+/* Hidden original checkbox */
+.hiddenCheckbox {
+	position: absolute;
+	opacity: 0;
+	pointer-events: none;
+}
+
+/* ── DATE RANGE PICKERS ── */
+.dateRow {
+	display: grid;
+	grid-template-columns: 1fr 1fr;
+	gap: 14px;
+	grid-column: span 2;
+}
+
+/* ── NOTICE & HINT ── */
+.rangeHint {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	padding: 8px 12px;
+	background: #f0fdf4;
+	border: 1px solid #bbf7d0;
+	border-radius: 8px;
+	font-size: 12px;
+	color: #15803d;
+	grid-column: span 2;
+}
+
+.rangeHint svg {
+	width: 14px;
+	height: 14px;
+	flex-shrink: 0;
+}
+
+/* ── ACTIONS FOOTER ── */
+.timelineFormActions {
+	display: flex;
+	align-items: center;
+	justify-content: flex-end;
+	gap: 10px;
+	padding-top: 10px;
+	border-top: 1px solid #f0f4f6;
+}
+
+.btnSecondary {
+	height: 38px;
+	padding: 0 18px;
+	border-radius: 8px;
+	border: 1px solid #d1d5db;
+	background: #ffffff;
+	color: #4b5563;
+	font-size: 13px;
+	font-weight: 600;
+	cursor: pointer;
+	transition: all 0.18s ease;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+}
+
+.btnSecondary:hover:not(:disabled) {
+	background: #f3f4f6;
+	color: #1f2937;
+	border-color: #9ca3af;
+}
+
+.btnSecondary:disabled {
+	opacity: 0.5;
+	cursor: not-allowed;
+}
+
+.btnPrimary {
+	height: 38px;
+	padding: 0 20px;
+	border-radius: 8px;
+	border: none;
+	background: var(--color-primary-dark, #1e9460);
+	color: #ffffff;
+	font-size: 13px;
+	font-weight: 700;
+	cursor: pointer;
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	box-shadow: 0 2px 8px rgba(30, 148, 96, 0.25);
+	transition: all 0.18s ease;
+}
+
+.btnPrimary:hover:not(:disabled) {
+	background: #157347;
+	transform: translateY(-1px);
+	box-shadow: 0 4px 12px rgba(30, 148, 96, 0.35);
+}
+
+.btnPrimary:disabled {
+	opacity: 0.6;
+	cursor: not-allowed;
+}
+
+.btnPrimary svg {
+	width: 14px;
+	height: 14px;
+}
+
+/* ── ADD BUTTON ── */
+.addPhaseContainer {
+	padding-left: 36px;
+}
+
+.addPhaseBtn {
+	display: inline-flex;
+	align-items: center;
+	gap: 8px;
+	font-size: 13px;
+	font-weight: 600;
+	color: var(--color-primary-dark, #1e9460);
+	background: #ffffff;
+	border: 1.5px dashed var(--color-primary-light, #4fd49a);
+	padding: 8px 18px;
+	border-radius: 10px;
+	cursor: pointer;
+	transition: all 0.2s ease;
+}
+
+.addPhaseBtn:hover {
+	border-color: var(--color-primary, #2eb87a);
+	background: var(--color-primary-pale, #e8f8f2);
+	transform: translateY(-1px);
+	box-shadow: 0 2px 8px rgba(46, 184, 122, 0.15);
+}
+
+.addPhaseBtn svg {
+	width: 15px;
+	height: 15px;
+}
+
+@media (max-width: 640px) {
+	.timelineFormGrid,
+	.dateRow {
+		grid-template-columns: 1fr;
+	}
+
+	.timelineCard {
+		flex-direction: column;
+		align-items: flex-start;
+		gap: 10px;
+	}
+
+	.timelineDates {
+		margin-left: 0;
+	}
+}

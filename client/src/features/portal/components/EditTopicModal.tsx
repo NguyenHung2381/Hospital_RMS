@@ -1,5 +1,6 @@
 import type { Dispatch, SetStateAction } from 'react';
 import type { SimpleItem } from '../../topics/api/topicApi';
+import { InlineLoading } from '@/shared/components';
 import styles from '../pages/MyTopics.module.css';
 
 interface EditForm {
@@ -61,10 +62,7 @@ export function EditTopicModal({
 
 				<div className={styles.editModalBody}>
 					{refDataLoading ? (
-						<div className={styles.stateBox}>
-							<div className={styles.spinner} />
-							<span>Đang tải dữ liệu...</span>
-						</div>
+						<InlineLoading label='Đang tải dữ liệu…' />
 					) : (
 						<>
 							<div className={styles.editField}>

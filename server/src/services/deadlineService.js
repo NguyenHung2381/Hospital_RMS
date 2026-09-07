@@ -40,8 +40,13 @@ const normalize = (r) => ({
 });
 
 // ID: "HN" + yearDot(5) + typeChar(1) + phase padded to 2 digits  (max 10 chars < varchar(12))
-// deadlineType abbrev: E=edit S=supplement N=report_submission
-const TYPE_CHAR = { edit: 'E', supplement: 'S', report_submission: 'N' };
+// deadlineType abbrev: R=topic_registration E=edit S=supplement N=report_submission
+const TYPE_CHAR = {
+	topic_registration: 'R',
+	edit: 'E',
+	supplement: 'S',
+	report_submission: 'N',
+};
 const genId = (roundId, deadlineType, phase) =>
 	`HN${roundId.slice(3)}${TYPE_CHAR[deadlineType] ?? 'X'}${String(phase).padStart(2, '0')}`;
 
@@ -56,7 +61,12 @@ const getByRoundId = async (roundId) => {
 	return r.recordset.map(normalize);
 };
 
-const ALLOWED_DEADLINE_TYPES = ['edit', 'supplement', 'report_submission'];
+const ALLOWED_DEADLINE_TYPES = [
+	'topic_registration',
+	'edit',
+	'supplement',
+	'report_submission',
+];
 
 const upsert = async (roundId, phase, data, actorId) => {
 	const pool = await getPool();

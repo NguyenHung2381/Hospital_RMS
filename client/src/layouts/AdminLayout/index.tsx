@@ -67,11 +67,36 @@ const NAV_GROUPS: NavGroup[] = [
 	{
 		section: 'Quản lý đề tài',
 		items: [
-			{ key: 'topics', label: 'Đề tài nghiên cứu', icon: <Icon.Topic />, perm: 'topics:read' },
-			{ key: 'rounds', label: 'Đợt nghiên cứu', icon: <Icon.Round />, perm: 'rounds:read' },
-			{ key: 'councils', label: 'Hội đồng chấm', icon: <Icon.Council />, perm: 'councils:read' },
-			{ key: 'schedule', label: 'Lịch trình', icon: <Icon.Schedule />, perm: 'rounds:read' },
-			{ key: 'approvals', label: 'Phê duyệt', icon: <Icon.Approval />, perm: 'topics:approve' },
+			{
+				key: 'topics',
+				label: 'Đề tài nghiên cứu',
+				icon: <Icon.Topic />,
+				perm: 'topics:read',
+			},
+			{
+				key: 'rounds',
+				label: 'Đợt nghiên cứu',
+				icon: <Icon.Round />,
+				perm: 'rounds:read',
+			},
+			{
+				key: 'councils',
+				label: 'Hội đồng chấm',
+				icon: <Icon.Council />,
+				perm: 'councils:read',
+			},
+			{
+				key: 'schedule',
+				label: 'Lịch trình',
+				icon: <Icon.Schedule />,
+				perm: 'rounds:read',
+			},
+			{
+				key: 'approvals',
+				label: 'Phê duyệt',
+				icon: <Icon.Approval />,
+				perm: 'topics:approve',
+			},
 			{
 				key: 'externalReviewers',
 				label: 'Người ngoài viện',
@@ -100,24 +125,71 @@ const NAV_GROUPS: NavGroup[] = [
 	{
 		section: 'Danh mục',
 		items: [
-			{ key: 'departments', label: 'Phòng ban', icon: <Icon.Dept />, perm: 'departments:read' },
-			{ key: 'categories', label: 'Phân loại', icon: <Icon.Category />, perm: 'catalog:manage' },
-			{ key: 'levels', label: 'Cấp độ', icon: <Icon.Level />, perm: 'catalog:manage' },
-			{ key: 'roundTypes', label: 'Loại đợt', icon: <Icon.Round />, perm: 'catalog:manage' },
+			{
+				key: 'departments',
+				label: 'Phòng ban',
+				icon: <Icon.Dept />,
+				perm: 'departments:read',
+			},
+			{
+				key: 'categories',
+				label: 'Phân loại',
+				icon: <Icon.Category />,
+				perm: 'catalog:read',
+			},
+			{
+				key: 'levels',
+				label: 'Cấp độ',
+				icon: <Icon.Level />,
+				perm: 'catalog:read',
+			},
+			{
+				key: 'roundTypes',
+				label: 'Loại đợt',
+				icon: <Icon.Round />,
+				perm: 'catalog:read',
+			},
 		],
 	},
 	{
 		section: 'Hệ thống',
 		items: [
-			{ key: 'users', label: 'Người dùng', icon: <Icon.User />, perm: 'users:read' },
-			{ key: 'roles', label: 'Vai trò & Quyền', icon: <Icon.Role />, perm: 'roles:read' },
-			{ key: 'notifications', label: 'Thông báo', icon: <Icon.Notif />, perm: 'notifications:manage' },
-			{ key: 'activityLogs', label: 'Nhật ký hoạt động', icon: <Icon.List />, perm: 'activity_logs:read' },
+			{
+				key: 'users',
+				label: 'Người dùng',
+				icon: <Icon.User />,
+				perm: 'users:read',
+			},
+			{
+				key: 'roles',
+				label: 'Vai trò & Quyền',
+				icon: <Icon.Role />,
+				perm: 'roles:read',
+			},
+			{
+				key: 'notifications',
+				label: 'Thông báo',
+				icon: <Icon.Notif />,
+				perm: 'notifications:read',
+			},
+			{
+				key: 'activityLogs',
+				label: 'Nhật ký hoạt động',
+				icon: <Icon.List />,
+				perm: 'activity_logs:read',
+			},
 		],
 	},
 	{
 		section: 'Xuất dữ liệu',
-		items: [{ key: 'reports', label: 'Báo cáo & Xuất', icon: <Icon.Report />, perm: 'reports:read' }],
+		items: [
+			{
+				key: 'reports',
+				label: 'Báo cáo & Xuất',
+				icon: <Icon.Report />,
+				perm: 'reports:read',
+			},
+		],
 	},
 ];
 
@@ -354,12 +426,10 @@ export default function AdminLayout({
 								>
 									{item.icon}
 									<span className={styles.navLabel}>{item.label}</span>
-									{badges[item.key as keyof typeof badges] !==
-										undefined && (
+									{badges[item.key as keyof typeof badges] !== undefined && (
 										<span
 											className={
-												(badges[item.key as keyof typeof badges] ?? 0) >
-												50
+												(badges[item.key as keyof typeof badges] ?? 0) > 50
 													? styles.navBadge
 													: styles.navBadgeGray
 											}

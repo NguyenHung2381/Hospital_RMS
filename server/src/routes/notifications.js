@@ -2,8 +2,11 @@ const router = require('express').Router();
 const ctrl = require('../controllers/notificationController');
 const { authenticate, authorizePermission } = require('../middlewares/auth');
 
-// Quản trị thông báo hệ thống (gửi / xem lô / xoá)
-const canManageNotifications = authorizePermission(['notifications', 'manage']);
+// Quản trị thông báo hệ thống — tách theo thao tác.
+// authorizePermission luôn cho 'notifications:manage' đi qua nên vai trò cũ giữ nguyên quyền.
+const canReadNotifAdmin = authorizePermission(['notifications', 'read']);
+const canSendNotifications = authorizePermission(['notifications', 'create']);
+const canDeleteNotifications = authorizePermission(['notifications', 'delete']);
 
 /**
  * @swagger
@@ -108,7 +111,7 @@ router.put('/:id/read', ctrl.markOne);
  *       200:
  *         description: Đã gửi
  */
-router.post('/send', canManageNotifications, ctrl.send);
+router.post('/send', canSendNotifications, ctrl.send);
 
 /**
  * @swagger
@@ -133,7 +136,7 @@ router.post('/send', canManageNotifications, ctrl.send);
  *       200:
  *         description: Danh sách thông báo
  */
-router.get('/admin', canManageNotifications, ctrl.adminList);
+router.get('/admin', canReadNotifAdmin, ctrl.adminList);
 
 /**
  * @swagger
@@ -150,7 +153,7 @@ router.get('/admin', canManageNotifications, ctrl.adminList);
  *       200:
  *         description: Danh sách người nhận
  */
-router.get('/admin/:batchKey/recipients', canManageNotifications, ctrl.getBatchRecipients);
+router.get('/admin/:batchKey/recipients', canReadNotifAdmin, ctrl.getBatchRecipients);
 
 /**
  * @swagger
@@ -169,7 +172,7 @@ router.get('/admin/:batchKey/recipients', canManageNotifications, ctrl.getBatchR
  *       404:
  *         description: Không tìm thấy
  */
-router.delete('/admin/batch/:batchKey', canManageNotifications, ctrl.deleteBatch);
+router.delete('/admin/batch/:batchKey', canDeleteNotifications, ctrl.deleteBatch);
 
 /**
  * @swagger
@@ -188,6 +191,6 @@ router.delete('/admin/batch/:batchKey', canManageNotifications, ctrl.deleteBatch
  *       404:
  *         description: Không tìm thấy
  */
-router.delete('/:id', canManageNotifications, ctrl.deleteOne);
+router.delete('/:id', canDeleteNotifications, ctrl.deleteOne);
 
 module.exports = router;

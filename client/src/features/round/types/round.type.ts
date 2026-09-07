@@ -1,9 +1,14 @@
 // ─── TYPES ────────────────────────────────
 export type RoundStatus = 'draft' | 'active' | 'closed';
 
-export type DeadlineType = 'edit' | 'supplement' | 'report_submission';
+export type DeadlineType =
+	| 'topic_registration'
+	| 'edit'
+	| 'supplement'
+	| 'report_submission';
 
 export const DEADLINE_TYPE_LABELS: Record<DeadlineType, string> = {
+	topic_registration: 'Đăng ký đề tài',
 	edit: 'Sửa',
 	supplement: 'Bổ sung',
 	report_submission: 'Nộp báo cáo',
@@ -57,6 +62,13 @@ export interface ResearchRound {
 	topic_active: number;
 	topic_completed: number;
 	topic_pending: number;
+	/**
+	 * Cửa sổ "Đăng ký đề tài" của đợt đang mở? (server tính theo mốc
+	 * deadline_type='topic_registration'). true khi đợt chưa cấu hình mốc này.
+	 */
+	registration_open?: boolean;
+	registration_start?: string | null; // dd/mm/yyyy
+	registration_end?: string | null; // dd/mm/yyyy
 }
 
 export interface RoundForm {

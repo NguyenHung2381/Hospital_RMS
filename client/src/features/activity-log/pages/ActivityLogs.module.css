@@ -113,11 +113,6 @@
 	transition: all var(--transition-fast);
 }
 
-.loadingWrap {
-	display: flex;
-	justify-content: center;
-	padding: 40px;
-}
 .emptyState {
 	display: flex;
 	flex-direction: column;
@@ -222,20 +217,6 @@
 .btnLoadMore:disabled {
 	opacity: 0.5;
 	cursor: not-allowed;
-}
-
-.spinnerDark {
-	width: 24px;
-	height: 24px;
-	border: 2px solid var(--color-gray-200);
-	border-top-color: var(--color-primary);
-	border-radius: 50%;
-	animation: spin 0.65s linear infinite;
-}
-@keyframes spin {
-	to {
-		transform: rotate(360deg);
-	}
 }
 
 @media (max-width: 640px) {

@@ -120,7 +120,8 @@ export function ApprovalDetailPanel({
 						{(selected.members?.length ?? 0) > 0 && (
 							<div className={styles.descSection}>
 								<div className={styles.sectionLabel}>
-									Thành viên nhóm nghiên cứu ({selected.members?.length ?? 0} người)
+									Thành viên nhóm nghiên cứu ({selected.members?.length ?? 0}{' '}
+									người)
 								</div>
 								<div className={styles.membersGrid}>
 									{(selected.members ?? []).map((m, i) => {
@@ -158,7 +159,11 @@ export function ApprovalDetailPanel({
 													<div className={styles.memberName}>{m.name}</div>
 													<div className={styles.memberMeta}>
 														<span className={badgeCls}>{m.role}</span>
-														{m.dept && <span className={styles.memberDept}>{m.dept}</span>}
+														{m.dept && (
+															<span className={styles.memberDept}>
+																{m.dept}
+															</span>
+														)}
 													</div>
 												</div>
 											</div>

@@ -131,16 +131,6 @@
 	word-break: break-all;
 }
 
-.loadingBox {
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	gap: var(--space-3);
-	padding: var(--space-8);
-	color: var(--color-gray-400);
-	font-size: var(--font-size-sm);
-}
-
 /* ── RIGHT COLUMN ── */
 .rightCol {
 	display: flex;

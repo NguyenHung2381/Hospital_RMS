@@ -80,16 +80,25 @@ export function DatePicker({
 	// rather than today, so the highlighted period is visible immediately.
 	const fallbackAnchor = value || activeStart || min || rangeStart || '';
 	const parsedDate = fallbackAnchor ? new Date(fallbackAnchor) : null;
-	const initialYear = parsedDate && !isNaN(parsedDate.getTime()) ? parsedDate.getFullYear() : today.getFullYear();
-	const initialMonth = parsedDate && !isNaN(parsedDate.getTime()) ? parsedDate.getMonth() : today.getMonth();
+	const initialYear =
+		parsedDate && !isNaN(parsedDate.getTime())
+			? parsedDate.getFullYear()
+			: today.getFullYear();
+	const initialMonth =
+		parsedDate && !isNaN(parsedDate.getTime())
+			? parsedDate.getMonth()
+			: today.getMonth();
 
 	const [viewYear, setViewYear] = useState<number>(initialYear);
 	const [viewMonth, setViewMonth] = useState<number>(initialMonth);
 	const [placement, setPlacement] = useState<'bottom' | 'top'>('bottom');
 	const [alignRight, setAlignRight] = useState<boolean>(false);
 
-	// Sync view month/year when popover opens or value changes
-	useEffect(() => {
+	// Sync view month/year when the selected value changes.
+	// Điều chỉnh state ngay khi render (thay vì trong effect) để tránh cascading render.
+	const [prevValue, setPrevValue] = useState(value);
+	if (value !== prevValue) {
+		setPrevValue(value);
 		if (value) {
 			const d = new Date(value);
 			if (!isNaN(d.getTime())) {
@@ -97,7 +106,7 @@ export function DatePicker({
 				setViewMonth(d.getMonth());
 			}
 		}
-	}, [value]);
+	}
 
 	// Calculate optimal placement based on available viewport and parent container space
 	useEffect(() => {
@@ -171,7 +180,10 @@ export function DatePicker({
 	// Close on click outside
 	useEffect(() => {
 		function handleClickOutside(e: MouseEvent) {
-			if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+			if (
+				containerRef.current &&
+				!containerRef.current.contains(e.target as Node)
+			) {
 				setIsOpen(false);
 			}
 		}
@@ -326,10 +338,32 @@ export function DatePicker({
 						strokeLinecap='round'
 						strokeLinejoin='round'
 					>
-						<rect x='3' y='4' width='18' height='18' rx='2' ry='2' />
-						<line x1='16' y1='2' x2='16' y2='6' />
-						<line x1='8' y1='2' x2='8' y2='6' />
-						<line x1='3' y1='10' x2='21' y2='10' />
+						<rect
+							x='3'
+							y='4'
+							width='18'
+							height='18'
+							rx='2'
+							ry='2'
+						/>
+						<line
+							x1='16'
+							y1='2'
+							x2='16'
+							y2='6'
+						/>
+						<line
+							x1='8'
+							y1='2'
+							x2='8'
+							y2='6'
+						/>
+						<line
+							x1='3'
+							y1='10'
+							x2='21'
+							y2='10'
+						/>
 					</svg>
 				</span>
 
@@ -354,8 +388,18 @@ export function DatePicker({
 							strokeLinecap='round'
 							strokeLinejoin='round'
 						>
-							<line x1='18' y1='6' x2='6' y2='18' />
-							<line x1='6' y1='6' x2='18' y2='18' />
+							<line
+								x1='18'
+								y1='6'
+								x2='6'
+								y2='18'
+							/>
+							<line
+								x1='6'
+								y1='6'
+								x2='18'
+								y2='18'
+							/>
 						</svg>
 					</button>
 				)}
@@ -378,7 +422,10 @@ export function DatePicker({
 								onChange={(e) => setViewMonth(Number(e.target.value))}
 							>
 								{MONTH_NAMES.map((m, idx) => (
-									<option key={m} value={idx}>
+									<option
+										key={m}
+										value={idx}
+									>
 										{m}
 									</option>
 								))}
@@ -391,7 +438,10 @@ export function DatePicker({
 								onChange={(e) => setViewYear(Number(e.target.value))}
 							>
 								{yearOptions.map((y) => (
-									<option key={y} value={y}>
+									<option
+										key={y}
+										value={y}
+									>
 										{y}
 									</option>
 								))}
@@ -467,7 +517,8 @@ export function DatePicker({
 							const ctxEndCell = !!ctxBand && cell.iso === ctxBand[1];
 
 							const inActive = inActiveBand(cell.iso);
-							const isActiveStartDay = !!activeStart && cell.iso === activeStart;
+							const isActiveStartDay =
+								!!activeStart && cell.iso === activeStart;
 							const isActiveEndDay = !!activeEnd && cell.iso === activeEnd;
 							// Rounded caps only when the full band is drawn (both ends set).
 							const activeStartCell = !!activeBand && isActiveStartDay;

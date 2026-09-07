@@ -541,15 +541,6 @@
 	color: var(--color-gray-400);
 }
 
-.detailSpinner {
-	width: 28px;
-	height: 28px;
-	border: 3px solid var(--color-gray-100);
-	border-top-color: var(--color-primary);
-	border-radius: 50%;
-	animation: spin 0.7s linear infinite;
-}
-
 .detailHeader {
 	padding: var(--space-5) var(--space-6);
 	border-bottom: 1px solid var(--color-gray-100);
@@ -1617,5 +1608,13 @@
 
 	.statsRow {
 		grid-template-columns: repeat(2, 1fr);
+	}
+}
+
+/* Định nghĩa cục bộ để .detailSpinner / .spinner / .spinnerSm luôn quay
+   kể cả khi không lấy được @keyframes spin toàn cục (giống các module khác). */
+@keyframes spin {
+	to {
+		transform: rotate(360deg);
 	}
 }

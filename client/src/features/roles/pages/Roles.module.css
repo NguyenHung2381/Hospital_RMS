@@ -1048,17 +1048,6 @@
 	color: #3c3489;
 }
 
-/* Loading spinner trong modal */
-.permLoading {
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	padding: 48px;
-	color: var(--color-gray-400);
-	font-size: var(--font-size-sm);
-	gap: var(--space-3);
-}
-
 /* ── RESPONSIVE ──────────────────────────── */
 @media (max-width: 900px) {
 	.table {

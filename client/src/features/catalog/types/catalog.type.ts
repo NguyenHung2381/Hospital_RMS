@@ -11,6 +11,13 @@ export interface CatalogItem {
 export interface CatalogFormData {
 	name: string;
 	description: string;
+	/** Chỉ dùng cho tab "Loại đợt": danh sách cấp độ được phép. */
+	level_ids?: string[];
+}
+
+export interface LevelOption {
+	id: string;
+	name: string;
 }
 
 export interface CatalogListResponse {

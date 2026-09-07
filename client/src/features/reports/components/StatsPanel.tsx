@@ -1,5 +1,5 @@
 import { AlertSvg, RefreshSvg } from '@/assets/icons';
-import { Badge } from '@/shared/components';
+import { Badge, InlineLoading } from '@/shared/components';
 import {
 	DeptBarChart,
 	StatusPieChart,
@@ -39,13 +39,7 @@ export function StatsPanel({
 	error,
 	onRetry,
 }: StatsPanelProps) {
-	if (loading)
-		return (
-			<div className={styles.statsState}>
-				<span className={styles.dotSpin} />
-				Đang tải thống kê...
-			</div>
-		);
+	if (loading) return <InlineLoading label='Đang tải thống kê…' />;
 	if (error)
 		return (
 			<div className={`${styles.statsState} ${styles.statsErr}`}>
@@ -472,8 +466,20 @@ export function StatsPanel({
 										key={a.id}
 										className={styles.approvalItem}
 									>
-										<Badge tone={a.status === 'approved' ? 'green' : 'red'}>
-											{a.status === 'approved' ? 'Đã duyệt' : 'Từ chối'}
+										<Badge
+											tone={
+												a.status === 'approved'
+													? 'green'
+													: a.status === 'supplement'
+														? 'blue'
+														: 'red'
+											}
+										>
+											{a.status === 'approved'
+												? 'Đã duyệt'
+												: a.status === 'supplement'
+													? 'Bổ sung'
+													: 'Từ chối'}
 										</Badge>
 										<span className={styles.approvalTitle}>{a.topic_title}</span>
 										<span className={styles.approvalMeta}>

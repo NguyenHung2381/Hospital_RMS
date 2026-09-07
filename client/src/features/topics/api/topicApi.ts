@@ -6,6 +6,11 @@ export interface SimpleItem {
 	name: string;
 	year?: number;
 	status?: string;
+	/** Chỉ có ở danh sách đợt (/research-rounds): cửa sổ đăng ký đề tài đang mở? */
+	registration_open?: boolean;
+	/** Mốc mở/đóng đăng ký đề tài (dd/mm/yyyy) — chỉ có ở /research-rounds. */
+	registration_start?: string | null;
+	registration_end?: string | null;
 }
 
 // Các trường lọc nhận 1 giá trị hoặc danh sách "a,b,c" (multi-select trên UI)
@@ -168,8 +173,12 @@ export const uploadTopicFiles = (
 export const getCategories = () =>
 	apiClient.get<SimpleListResponse>('/categories?limit=0');
 
-export const getLevels = () =>
-	apiClient.get<SimpleListResponse>('/levels?limit=0');
+export const getLevels = (params?: { round_id?: string; round_type_id?: string }) => {
+	const qs = new URLSearchParams({ limit: '0' });
+	if (params?.round_id) qs.set('round_id', params.round_id);
+	if (params?.round_type_id) qs.set('round_type_id', params.round_type_id);
+	return apiClient.get<SimpleListResponse>(`/levels?${qs.toString()}`);
+};
 
 export const getRounds = () =>
 	apiClient.get<SimpleListResponse>('/research-rounds?limit=0');

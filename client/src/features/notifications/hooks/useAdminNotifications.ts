@@ -43,8 +43,12 @@ export function useAdminNotifications() {
 	// ── Đề tài liên quan (ref_type/ref_id) ────
 	const [topicSearch, setTopicSearch] = useState('');
 	const [topicResults, setTopicResults] = useState<Topic[]>([]);
-	const [loadingTopics, setLoadingTopics] = useState(false);
+	const [fetchedTopicQuery, setFetchedTopicQuery] = useState('');
 	const [selectedTopic, setSelectedTopic] = useState<Topic | null>(null);
+
+	// Đang tải khi từ khoá hiện tại chưa khớp với từ khoá đã fetch xong (suy ra khi render)
+	const loadingTopics =
+		topicSearch.trim() !== '' && topicSearch.trim() !== fetchedTopicQuery;
 
 	// ── Tree-select helpers ──────────────────
 	const [expandedDepts, setExpandedDepts] = useState<Set<string>>(new Set());
@@ -170,16 +174,12 @@ export function useAdminNotifications() {
 
 	useEffect(() => {
 		const q = topicSearch.trim();
-		if (!q) {
-			setTopicResults([]);
-			return;
-		}
-		setLoadingTopics(true);
+		if (!q) return;
 		const timer = setTimeout(() => {
 			getTopics({ search: q, limit: 20 })
 				.then((res) => setTopicResults(res.data))
 				.catch(() => {})
-				.finally(() => setLoadingTopics(false));
+				.finally(() => setFetchedTopicQuery(q));
 		}, 300);
 		return () => clearTimeout(timer);
 	}, [topicSearch]);

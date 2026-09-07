@@ -205,8 +205,11 @@ const getById = async (id, actor = null) => {
 		.query(`
       SELECT tm.id, tm.name AS ho_ten, tm.email, tm.phone_number AS so_dien_thoai, tm.position AS chuc_vu, tm.role,
              tm.department_id,
+             md.name AS department_name,
              tm.account_granted, tm.user_id
-      FROM topic_members tm WHERE tm.topic_id = @topic_id
+      FROM topic_members tm
+      LEFT JOIN departments md ON md.id = tm.department_id
+      WHERE tm.topic_id = @topic_id
     `);
 	topic.members = members.recordset;
 
@@ -237,6 +240,41 @@ const setRelatedDepartments = async (topicId, ids) => {
 				: ''
 		}
   `);
+};
+
+// "Cấp độ ăn theo đợt": cấp độ đề tài phải thuộc danh sách cấu hình cho loại
+// đợt của round. Loại đợt chưa cấu hình cấp độ nào ⇒ bỏ qua (fallback).
+const assertLevelForRound = async (roundId, levelId, articleType) => {
+	if (articleType === 'bai_bao') return; // bài báo không có cấp độ
+	const pool = await getPool();
+	const rtId = (
+		await pool
+			.request()
+			.input('rid', sql.VarChar(10), roundId)
+			.query('SELECT round_type_id FROM research_rounds WHERE id = @rid')
+	).recordset[0]?.round_type_id;
+	let allowed = [];
+	if (rtId) {
+		try {
+			allowed = (
+				await pool
+					.request()
+					.input('rt', sql.VarChar(6), rtId)
+					.query(
+						'SELECT level_id FROM round_type_levels WHERE round_type_id = @rt',
+					)
+			).recordset.map((x) => x.level_id);
+		} catch {
+			return; // bảng chưa tồn tại (migration chưa chạy)
+		}
+	}
+	if (allowed.length === 0) return;
+	if (!levelId || !allowed.includes(levelId)) {
+		const err = new Error('Vui lòng chọn cấp độ đề tài hợp lệ cho đợt này.');
+		err.status = 400;
+		err.statusCode = 400;
+		throw err;
+	}
 };
 
 const create = async (data, actorId) => {
@@ -367,8 +405,32 @@ const update = async (id, data, actorId, actor = null) => {
 		return getById(id);
 	}
 	sets.push('updated_at = GETDATE()', 'updated_by = @actor_id');
+
+	// Đổi status đề tài qua đường update chung (không phải sp_approve_topic) thì
+	// đồng bộ luôn approvals.status, nếu không bảng approvals sẽ kẹt ở giá trị cũ
+	// và các chỗ đọc nó (vd card "Phê duyệt gần đây" ở Dashboard) hiển thị sai.
+	// Chỉ map trạng thái có tương ứng ở approvals (CHK: pending|approved|rejected|
+	// supplement); cancelled/completed không map ⇒ giữ nguyên bản ghi duyệt.
+	// updated_at/updated_by của approvals do trigger trg_approvals_audit tự ghi
+	// từ SESSION_CONTEXT (đã set bởi sp_set_actor trong cùng batch).
+	const APV_STATUS_BY_TOPIC = {
+		submitted: 'pending',
+		approved: 'approved',
+		rejected: 'rejected',
+		supplement: 'supplement',
+	};
+	const apvStatus =
+		data.status !== undefined ? APV_STATUS_BY_TOPIC[data.status] : undefined;
+	let apvSyncSql = '';
+	if (apvStatus) {
+		req.input('apv_status', sql.VarChar(15), apvStatus);
+		apvSyncSql =
+			' UPDATE approvals SET status = @apv_status' +
+			' WHERE topic_id = @id AND status <> @apv_status;';
+	}
+
 	await req.query(
-		`EXEC sp_set_actor @actor_id; UPDATE topics SET ${sets.join(', ')} WHERE id = @id`,
+		`EXEC sp_set_actor @actor_id; UPDATE topics SET ${sets.join(', ')} WHERE id = @id;${apvSyncSql}`,
 	);
 	const topic = await getById(id);
 	broadcast('update', { entity: 'topic' });
@@ -566,4 +628,5 @@ module.exports = {
 	approve,
 	getApprovals,
 	getForExport,
+	assertLevelForRound,
 };

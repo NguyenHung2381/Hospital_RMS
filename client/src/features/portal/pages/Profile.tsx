@@ -10,6 +10,7 @@ import {
 	UserSvg,
 } from '@/assets/icons';
 import UserLayout from '../../../layouts/UserLayout';
+import { InlineLoading } from '@/shared/components';
 import { fmtDate, useProfile } from '../hooks/useProfile';
 import styles from './Profile.module.css';
 
@@ -109,12 +110,7 @@ export default function Profile() {
 						</div>
 					)}
 
-					{d.loadingProfile && (
-						<div className={styles.loadingBox}>
-							<div className={styles.spinner} />
-							<span>Đang tải thông tin...</span>
-						</div>
-					)}
+					{d.loadingProfile && <InlineLoading label='Đang tải thông tin…' />}
 				</div>
 
 				{/* ── RIGHT COL ── */}

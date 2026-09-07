@@ -7,6 +7,7 @@ import { ContextMenu } from '../components/ContextMenu';
 import { DeadlineModal } from '../components/DeadlineModal';
 import { GanttRow } from '../components/GanttRow';
 import { ScheduleListView } from '../components/ScheduleListView';
+import { InlineLoading } from '@/shared/components';
 import { useDrag } from '../hooks/useDrag';
 import { useGanttTimeline } from '../hooks/useGanttTimeline';
 import { useScheduleData } from '../hooks/useScheduleData';
@@ -336,10 +337,7 @@ export default function Schedule() {
 
 				{/* Main Content View (Gantt or List) */}
 				{loading ? (
-					<div className={styles.emptyState}>
-						<div className={styles.spinner} />
-						<span>Đang tải dữ liệu...</span>
-					</div>
+					<InlineLoading label='Đang tải dữ liệu…' />
 				) : error ? (
 					<div className={styles.emptyState}>
 						<span className={styles.errorTxt}>{error}</span>

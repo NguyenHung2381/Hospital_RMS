@@ -196,9 +196,13 @@ table {
 /* === MOBILE TOUCH TARGETS & MODAL UTILITIES === */
 @media (max-width: 768px) {
 	/* Touch targets minimum 38px cho nút thông thường (ngoại trừ dot/chip/icon) */
-	button:not([class*='dot']):not([class*='Dot']):not([class*='chip']):not([class*='Chip']):not([class*='zoom']):not([class*='Zoom']):not([class*='arrow']):not([class*='Arrow']):not([class*='close']):not([class*='Close']),
-	a, 
-	input[type='button'], 
+	button:not([class*='dot']):not([class*='Dot']):not([class*='chip']):not(
+			[class*='Chip']
+		):not([class*='zoom']):not([class*='Zoom']):not([class*='arrow']):not(
+			[class*='Arrow']
+		):not([class*='close']):not([class*='Close']),
+	a,
+	input[type='button'],
 	input[type='submit'] {
 		min-height: 38px;
 	}

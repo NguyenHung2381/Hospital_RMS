@@ -9,6 +9,7 @@ import {
 	XCircleSvg,
 } from '@/assets/icons';
 import UserLayout from '../../../layouts/UserLayout';
+import { InlineLoading } from '@/shared/components';
 import { EditTopicModal } from '../components/EditTopicModal';
 import { FileViewerModal } from '@/shared/components/FileViewerModal';
 import { MyTopicsDetailPanel } from '../components/MyTopicsDetailPanel';
@@ -46,10 +47,7 @@ export default function MyTopics() {
 			userInitials={d.initials}
 		>
 			{d.loading ? (
-				<div className={styles.stateBox}>
-					<div className={styles.spinner} />
-					<span>Đang tải...</span>
-				</div>
+				<InlineLoading label='Đang tải…' />
 			) : d.error ? (
 				<div
 					className={styles.stateBox}

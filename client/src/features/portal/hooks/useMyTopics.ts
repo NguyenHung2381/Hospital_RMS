@@ -8,6 +8,7 @@ import {
 	type TopicApprovalDetail,
 } from '../../approval/api/approval';
 import { getDeadlines } from '../../round/api/roundApi';
+import { useRegistrationOpen } from '../../round/hooks/useRegistrationOpen';
 import type { RoundDeadline } from '../../round/types/round.type';
 import {
 	getCategories,
@@ -42,10 +43,13 @@ export function useMyTopics() {
 	const permissions = userInfo?.permissions ?? [];
 	const isSuperuser = permissions.includes('system:manage');
 	const canSeeDept = canSeeDeptTopics(permissions);
-	const canRegister =
+	const canCreateTopic =
 		isSuperuser ||
 		permissions.includes('topics:create') ||
 		permissions.includes('topics:manage');
+	// Nút "Đăng ký đề tài mới" chỉ hiện khi đang trong thời gian đăng ký của đợt.
+	const { open: registrationOpen } = useRegistrationOpen(canCreateTopic);
+	const canRegister = canCreateTopic && registrationOpen;
 
 	const initials = fullName
 		.split(' ')

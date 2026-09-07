@@ -31,6 +31,7 @@ import {
 } from '../types/council.type';
 import { AssignTopicsModal } from './AssignTopicsModal';
 import { MemberSeatModal } from './MemberSeatModal';
+import { InlineLoading } from '@/shared/components';
 import styles from '../pages/Council.module.css';
 
 export function CouncilDetailModal({
@@ -226,9 +227,7 @@ export function CouncilDetailModal({
 
 				<div className={styles.modalBody}>
 					{isLoading || !council ? (
-						<div style={{ fontSize: 13, color: 'var(--color-gray-400)' }}>
-							Đang tải...
-						</div>
+						<InlineLoading label='Đang tải…' />
 					) : (
 						<>
 							{error && <div className={styles.fieldError}>{error}</div>}

@@ -14,7 +14,13 @@ interface EmptyStateProps {
 /**
  * Khối "chưa có dữ liệu" / "không tìm thấy kết quả" dùng chung cho các trang danh sách.
  */
-export function EmptyState({ icon, title, desc, action, className }: EmptyStateProps) {
+export function EmptyState({
+	icon,
+	title,
+	desc,
+	action,
+	className,
+}: EmptyStateProps) {
 	return (
 		<div className={cx(styles.root, className)}>
 			{icon && <div className={styles.icon}>{icon}</div>}

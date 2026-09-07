@@ -1,5 +1,13 @@
 import React, { useEffect, useState } from 'react';
-import { AlertSvg, CalendarSvg, CheckSvg, EditSvg, PlusSvg, XSvg } from '@/assets/icons';
+import {
+	AlertSvg,
+	CalendarSvg,
+	CheckSvg,
+	EditSvg,
+	InfoSvg,
+	PlusSvg,
+	XSvg,
+} from '@/assets/icons';
 import { deleteDeadline, getDeadlines, upsertDeadline } from '../api/roundApi';
 import type {
 	DeadlineType,
@@ -12,8 +20,10 @@ import {
 	SUPPLEMENT_FIELD_LABELS,
 } from '../types/round.type';
 import { fromInputDate, toIso } from '../utils/roundHelpers';
-import styles from '../pages/Round.module.css';
+import roundStyles from '../pages/Round.module.css';
+import styles from './DeadlineManager.module.css';
 import { DatePicker } from '../../../shared/components/Input/DatePicker';
+import { InlineLoading } from '../../../shared/components';
 
 type DeadlineRowState = {
 	name: string;
@@ -60,29 +70,42 @@ function RowForm({
 
 	return (
 		<div className={styles.timelineFormCard}>
-			<div
-				style={{ fontSize: 12, fontWeight: 'bold', color: 'var(--color-primary-dark)' }}
-			>
-				{label} (Giai đoạn {phase})
+			<div className={styles.formCardHeader}>
+				<div className={styles.formCardTitleWrap}>
+					<span className={styles.formCardTitle}>{label}</span>
+					<span className={styles.phaseBadge}>Giai đoạn {phase}</span>
+				</div>
+				<button
+					type='button'
+					className={styles.closeFormBtn}
+					onClick={onCancel}
+					title='Đóng'
+				>
+					<XSvg style={{ width: 14, height: 14 }} />
+				</button>
 			</div>
-			
+
 			<div className={styles.timelineFormGrid}>
-				<div className={styles.timelineFormFull}>
-					<label style={{ fontSize: 11, fontWeight: 600, color: 'var(--color-gray-600)', display: 'block', marginBottom: 4 }}>
-						Tên mốc thời gian / Hạn nộp
+				{/* Field 1: Tên mốc thời gian (Full width) */}
+				<div className={`${styles.fieldGroup} ${styles.timelineFormFull}`}>
+					<label className={styles.fieldLabel}>
+						Tên mốc thời gian / Hạn nộp{' '}
+						<span className={styles.fieldRequired}>*</span>
 					</label>
 					<input
 						className={styles.formInput}
-						placeholder='VD: Đăng ký đề tài'
+						placeholder='VD: Đăng ký đề tài, Bổ sung đề cương...'
 						value={row.name}
-						onChange={(e) => setRow((p) => p && { ...p, name: e.target.value })}
+						onChange={(e) =>
+							setRow((p) => p && { ...p, name: e.target.value })
+						}
+						autoFocus
 					/>
 				</div>
 
-				<div>
-					<label style={{ fontSize: 11, fontWeight: 600, color: 'var(--color-gray-600)', display: 'block', marginBottom: 4 }}>
-						Loại hạn nộp
-					</label>
+				{/* Field 2: Loại hạn nộp (Full width) */}
+				<div className={`${styles.fieldGroup} ${styles.timelineFormFull}`}>
+					<label className={styles.fieldLabel}>Loại hạn nộp</label>
 					<select
 						className={styles.formSelect}
 						value={row.deadline_type}
@@ -96,55 +119,69 @@ function RowForm({
 							)
 						}
 					>
-						<option value=''>-- Chọn loại --</option>
+						<option value=''>-- Chọn loại hạn nộp --</option>
 						{(
 							Object.entries(DEADLINE_TYPE_LABELS) as [DeadlineType, string][]
 						).map(([k, v]) => (
-							<option key={k} value={k}>
+							<option
+								key={k}
+								value={k}
+							>
 								{v}
 							</option>
 						))}
 					</select>
 				</div>
 
+				{/* Field 3: Checkboxes when supplement */}
 				{row.deadline_type === 'supplement' && (
-					<div className={styles.timelineFormFull}>
-						<label style={{ fontSize: 11, fontWeight: 600, color: 'var(--color-gray-600)', display: 'block', marginBottom: 4 }}>
-							Chủ nhiệm / thư ký được sửa những mục
+					<div
+						className={`${styles.supplementBox} ${styles.timelineFormFull}`}
+					>
+						<label className={styles.fieldLabel}>
+							Chủ nhiệm / thư ký được sửa những mục:
 						</label>
-						<div style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
-							{SUPPLEMENT_FIELDS.map((f) => (
-								<label
-									key={f}
-									style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--color-gray-700)', cursor: 'pointer' }}
-								>
-									<input
-										type='checkbox'
-										checked={row.supplement_fields.includes(f)}
-										onChange={(e) =>
-											setRow(
-												(p) =>
-													p && {
-														...p,
-														supplement_fields: e.target.checked
-															? [...p.supplement_fields, f]
-															: p.supplement_fields.filter((x) => x !== f),
-													},
-											)
-										}
-									/>
-									{SUPPLEMENT_FIELD_LABELS[f]}
-								</label>
-							))}
+						<div className={styles.chipsContainer}>
+							{SUPPLEMENT_FIELDS.map((f) => {
+								const checked = row.supplement_fields.includes(f);
+								return (
+									<label
+										key={f}
+										className={`${styles.chipLabel} ${checked ? styles.chipLabelActive : ''}`}
+									>
+										<input
+											type='checkbox'
+											className={styles.hiddenCheckbox}
+											checked={checked}
+											onChange={(e) =>
+												setRow(
+													(p) =>
+														p && {
+															...p,
+															supplement_fields: e.target.checked
+																? [...p.supplement_fields, f]
+																: p.supplement_fields.filter((x) => x !== f),
+														},
+												)
+											}
+										/>
+										<span className={styles.customCheckbox}>
+											{checked && (
+												<CheckSvg style={{ width: 10, height: 10 }} />
+											)}
+										</span>
+										<span>{SUPPLEMENT_FIELD_LABELS[f]}</span>
+									</label>
+								);
+							})}
 						</div>
 					</div>
 				)}
 
-				<div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-					<div>
-						<label style={{ fontSize: 11, fontWeight: 600, color: 'var(--color-gray-600)', display: 'block', marginBottom: 4 }}>
-							Ngày bắt đầu
-						</label>
+				{/* Field 4: Date Pickers (2 columns full width) */}
+				<div className={styles.dateRow}>
+					<div className={styles.fieldGroup}>
+						<label className={styles.fieldLabel}>Ngày bắt đầu</label>
 						<DatePicker
 							value={row.start_date}
 							onChange={(val) =>
@@ -159,9 +196,9 @@ function RowForm({
 							placeholder='Chọn ngày bắt đầu'
 						/>
 					</div>
-					<div>
-						<label style={{ fontSize: 11, fontWeight: 600, color: 'var(--color-gray-600)', display: 'block', marginBottom: 4 }}>
-							Hạn cuối
+					<div className={styles.fieldGroup}>
+						<label className={styles.fieldLabel}>
+							Hạn cuối <span className={styles.fieldRequired}>*</span>
 						</label>
 						<DatePicker
 							value={row.date}
@@ -177,17 +214,23 @@ function RowForm({
 					</div>
 				</div>
 
+				{/* Range Hint */}
 				{(roundStart || roundEnd) && (
-					<div className={styles.timelineFormFull} style={{ fontSize: 11, color: 'var(--color-gray-500)', marginTop: -2 }}>
-						Chỉ chọn trong khoảng thời gian của đợt
-						{roundStart && roundEnd ? `: ${fromInputDate(roundStart)} → ${fromInputDate(roundEnd)}` : ''}
+					<div className={styles.rangeHint}>
+						<InfoSvg />
+						<span>
+							Chỉ chọn trong khoảng thời gian của đợt
+							{roundStart && roundEnd
+								? `: ${fromInputDate(roundStart)} → ${fromInputDate(roundEnd)}`
+								: ''}
+						</span>
 					</div>
 				)}
 			</div>
 
 			<div className={styles.timelineFormActions}>
 				<button
-					type="button"
+					type='button'
 					className={styles.btnSecondary}
 					onClick={onCancel}
 					disabled={saving}
@@ -195,16 +238,13 @@ function RowForm({
 					Hủy
 				</button>
 				<button
-					type="button"
+					type='button'
 					className={styles.btnPrimary}
 					onClick={() => void onSave(phase, row)}
 					disabled={saving}
 				>
 					{saving ? (
-						<>
-							<span className={styles.spinner} />
-							Đang lưu...
-						</>
+						'Đang lưu...'
 					) : (
 						<>
 							<CheckSvg style={{ width: 14, height: 14 }} />
@@ -256,7 +296,9 @@ export function DeadlineManager({
 			return;
 		}
 		const outOfRange = [row.start_date, row.date].some(
-			(d) => d && ((roundStart && d < roundStart) || (roundEnd && d > roundEnd)),
+			(d) =>
+				d &&
+				((roundStart && d < roundStart) || (roundEnd && d > roundEnd)),
 		);
 		if (outOfRange) {
 			setErr('Mốc thời gian phải nằm trong khoảng thời gian của đợt');
@@ -271,7 +313,9 @@ export function DeadlineManager({
 				deadline_date: row.date,
 				deadline_type: row.deadline_type || null,
 				supplement_fields:
-					row.deadline_type === 'supplement' ? row.supplement_fields : null,
+					row.deadline_type === 'supplement'
+						? row.supplement_fields
+						: null,
 			});
 			setDeadlines((p) =>
 				[...p.filter((d) => d.phase !== phase), saved].sort(
@@ -312,25 +356,14 @@ export function DeadlineManager({
 		setNewRow(null);
 	};
 
-	if (isLoading)
-		return (
-			<div style={{ fontSize: 13, color: 'var(--color-muted)' }}>
-				Đang tải...
-			</div>
-		);
+	if (isLoading) return <InlineLoading label='Đang tải…' />;
 
 	return (
-		<div>
-			{err && (
-				<div style={{ color: '#A32D2D', fontSize: 12, marginBottom: 8 }}>
-					{err}
-				</div>
-			)}
-			
+		<div className={styles.managerContainer}>
+			{err && <div className={styles.errorMessage}>{err}</div>}
+
 			{deadlines.length === 0 && !newRow && (
-				<div
-					style={{ fontSize: 13, color: 'var(--color-muted)', marginBottom: 8, fontStyle: 'italic' }}
-				>
+				<div className={styles.emptyTimelineNotice}>
 					Chưa thiết lập mốc thời gian nào cho đợt này.
 				</div>
 			)}
@@ -338,16 +371,14 @@ export function DeadlineManager({
 			<div className={styles.deadlineTimeline}>
 				{deadlines.map((d) => {
 					const isEditing = editPhase === d.phase && editRow;
-					
+
 					return (
-						<div 
-							key={d.id} 
-							className={`${styles.timelineItem} ${!isEditing ? styles.timelineItemActive : ''}`}
+						<div
+							key={d.id}
+							className={styles.timelineItem}
 						>
-							<div className={styles.timelineNode}>
-								{d.phase}
-							</div>
-							
+							<div className={styles.timelineNode}>{d.phase}</div>
+
 							{isEditing ? (
 								<RowForm
 									row={editRow}
@@ -358,7 +389,7 @@ export function DeadlineManager({
 										setEditRow(null);
 										setErr('');
 									}}
-									label="Cập nhật mốc thời gian"
+									label='Cập nhật mốc thời gian'
 									saving={saving}
 									onSave={handleSave}
 									roundStart={roundStart}
@@ -366,41 +397,58 @@ export function DeadlineManager({
 								/>
 							) : (
 								<div className={styles.timelineCard}>
-									<div className={styles.timelineTitle}>{d.name}</div>
-									
-									{d.deadline_type && (
-										<span className={`${styles.timelineBadge} ${styles[d.deadline_type]}`}>
-											{DEADLINE_TYPE_LABELS[d.deadline_type]}
-										</span>
-									)}
-									
+									<div className={styles.timelineInfo}>
+										<span className={styles.timelineTitle}>{d.name}</span>
+
+										{d.deadline_type && (
+											<span
+												className={`${styles.timelineBadge} ${styles[d.deadline_type]}`}
+											>
+												{DEADLINE_TYPE_LABELS[d.deadline_type]}
+											</span>
+										)}
+									</div>
+
 									<div className={styles.timelineDates}>
 										<CalendarSvg />
 										{d.start_date ? (
 											<span>
-												{d.start_date} <span style={{ color: 'var(--color-gray-400)' }}>→</span> <span className={styles.timelineDateHighlighted}>{d.deadline_date}</span>
+												{d.start_date}{' '}
+												<span style={{ color: 'var(--color-gray-400)' }}>
+													→
+												</span>{' '}
+												<span
+													className={styles.timelineDateHighlighted}
+												>
+													{d.deadline_date}
+												</span>
 											</span>
 										) : (
 											<span>
-												Hạn cuối: <span className={styles.timelineDateHighlighted}>{d.deadline_date}</span>
+												Hạn cuối:{' '}
+												<span
+													className={styles.timelineDateHighlighted}
+												>
+													{d.deadline_date}
+												</span>
 											</span>
 										)}
 									</div>
-									
+
 									<div className={styles.timelineActions}>
 										<button
-											type="button"
+											type='button'
 											className={`${styles.timelineActionBtn} ${styles.edit}`}
 											onClick={() => startEdit(d)}
-											title="Chỉnh sửa"
+											title='Chỉnh sửa'
 										>
 											<EditSvg style={{ width: 14, height: 14 }} />
 										</button>
 										<button
-											type="button"
+											type='button'
 											className={`${styles.timelineActionBtn} ${styles.delete}`}
 											onClick={() => void handleRemove(d.phase)}
-											title="Xóa mốc"
+											title='Xóa mốc'
 										>
 											<XSvg style={{ width: 14, height: 14 }} />
 										</button>
@@ -413,16 +461,13 @@ export function DeadlineManager({
 			</div>
 
 			{newRow ? (
-				<div style={{ paddingLeft: 24, position: 'relative' }}>
-					<div 
-						className={styles.timelineNode} 
-						style={{ 
-							left: 0, 
-							top: 12, 
-							borderColor: 'var(--color-primary)', 
-							background: 'var(--color-primary-pale)',
-							color: 'var(--color-primary-dark)',
-							boxShadow: '0 0 0 3px rgba(46, 184, 122, 0.15)'
+				<div className={styles.timelineItem}>
+					<div
+						className={styles.timelineNode}
+						style={{
+							borderColor: 'var(--color-primary, #2eb87a)',
+							background: 'var(--color-primary-pale, #e8f8f2)',
+							color: 'var(--color-primary-dark, #1e9460)',
 						}}
 					>
 						+
@@ -435,7 +480,7 @@ export function DeadlineManager({
 							setNewRow(null);
 							setErr('');
 						}}
-						label="Thêm mốc thời gian mới"
+						label='Thêm mốc thời gian mới'
 						saving={saving}
 						onSave={handleSave}
 						roundStart={roundStart}
@@ -444,35 +489,13 @@ export function DeadlineManager({
 				</div>
 			) : (
 				nextPhase <= 9 && (
-					<div style={{ paddingLeft: 24 }}>
+					<div className={styles.addPhaseContainer}>
 						<button
-							type="button"
-							style={{
-								marginTop: 8,
-								display: 'flex',
-								alignItems: 'center',
-								gap: 6,
-								fontSize: 12,
-								fontWeight: 600,
-								color: 'var(--color-primary-dark)',
-								background: 'var(--color-white)',
-								border: '1.5px dashed var(--color-primary-light)',
-								padding: '6px 16px',
-								borderRadius: 8,
-								cursor: 'pointer',
-								transition: 'all var(--transition-fast)'
-							}}
+							type='button'
+							className={styles.addPhaseBtn}
 							onClick={() => setNewRow(emptyRow())}
-							onMouseEnter={(e) => {
-								e.currentTarget.style.borderColor = 'var(--color-primary)';
-								e.currentTarget.style.background = 'var(--color-primary-pale)';
-							}}
-							onMouseLeave={(e) => {
-								e.currentTarget.style.borderColor = 'var(--color-primary-light)';
-								e.currentTarget.style.background = 'var(--color-white)';
-							}}
 						>
-							<PlusSvg style={{ width: 14, height: 14 }} /> Thêm mốc thời gian (Lần {nextPhase})
+							<PlusSvg /> Thêm mốc thời gian (Lần {nextPhase})
 						</button>
 					</div>
 				)
@@ -498,22 +521,24 @@ export function FormField({
 	children: React.ReactNode;
 }) {
 	return (
-		<div className={styles.formGroup}>
+		<div className={roundStyles.formGroup}>
 			<label
 				htmlFor={id}
-				className={styles.formLabel}
+				className={roundStyles.formLabel}
 			>
 				{label}
-				{required && <span className={styles.formRequired}>*</span>}
+				{required && <span className={roundStyles.formRequired}>*</span>}
 			</label>
 			{children}
 			{error && (
-				<span className={styles.formError}>
+				<span className={roundStyles.formError}>
 					<AlertSvg style={{ width: 12, height: 12 }} />
 					{error}
 				</span>
 			)}
-			{!error && hint && <span className={styles.formHint}>{hint}</span>}
+			{!error && hint && (
+				<span className={roundStyles.formHint}>{hint}</span>
+			)}
 		</div>
 	);
 }

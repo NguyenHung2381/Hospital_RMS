@@ -1,4 +1,11 @@
-import { AlertSvg, CheckSvg, FileTextSvg, ListSvg } from '@/assets/icons';
+import {
+	AlertSvg,
+	CalendarSvg,
+	CheckSvg,
+	ChevRSvg,
+	FileTextSvg,
+	ListSvg,
+} from '@/assets/icons';
 import UserLayout from '../../../layouts/UserLayout';
 import { InlineLoading } from '../../../shared/components/Loading';
 import { PendingTopicsCard } from '../components/PendingTopicsCard';
@@ -25,6 +32,9 @@ export default function TopicRegister() {
 		myTopics,
 		loadingRef,
 		lockedRound,
+		pickedRoundId,
+		pickRound,
+		resetRound,
 		form,
 		errors,
 		setField,
@@ -93,6 +103,12 @@ export default function TopicRegister() {
 
 	const activeRounds = rounds.filter((r) => !r.status || r.status === 'active');
 
+	// Ngoài thời gian "Đăng ký đề tài" của mọi đợt đang mở → không cho đăng ký.
+	// (đợt chưa cấu hình mốc này thì server trả registration_open = true)
+	const registrationOpen =
+		lockedRound != null ||
+		activeRounds.some((r) => r.registration_open !== false);
+
 	if (activeRounds.length === 0) {
 		return (
 			<UserLayout
@@ -140,6 +156,115 @@ export default function TopicRegister() {
 						Tài khoản của bạn chưa được gán vào khoa phòng. Vui lòng liên hệ
 						quản trị viên.
 					</div>
+				</div>
+			</UserLayout>
+		);
+	}
+
+	if (!registrationOpen) {
+		return (
+			<UserLayout
+				userName={userName}
+				userRole={userRole}
+				userInitials={userInitials}
+				pageTitle='Đăng ký đề tài'
+				breadcrumbs={breadcrumbs}
+			>
+				<div className={styles.emptyCard}>
+					<div
+						className={styles.emptyCardIcon}
+						style={{ background: '#fef3c7', color: '#b45309' }}
+					>
+						<AlertSvg />
+					</div>
+					<div className={styles.emptyTitle}>
+						Ngoài thời gian đăng ký đề tài
+					</div>
+					<div className={styles.emptyDesc}>
+						Hiện chưa đến hoặc đã hết thời gian đăng ký đề tài của đợt. Vui
+						lòng quay lại trong thời gian quy định hoặc liên hệ quản trị viên.
+					</div>
+				</div>
+			</UserLayout>
+		);
+	}
+
+	// ── BƯỚC 1: chọn đợt ──
+	// Chỉ liệt kê đợt đang mở cửa sổ "Đăng ký đề tài" (registration_open).
+	const openRounds = activeRounds.filter((r) => r.registration_open !== false);
+	const pickedRound =
+		rounds.find((r) => r.id === (lockedRound?.id ?? pickedRoundId)) ?? null;
+
+	if (!pickedRound) {
+		return (
+			<UserLayout
+				userName={userName}
+				userRole={userRole}
+				userInitials={userInitials}
+				pageTitle='Đăng ký đề tài'
+				breadcrumbs={breadcrumbs}
+			>
+				<div className={styles.pageGrid}>
+					<div className={styles.leftCol}>
+						<div className={styles.roundPickerCard}>
+							<div className={styles.roundPickerHead}>
+								<div className={styles.formCardIcon}>
+									<ListSvg />
+								</div>
+								<div>
+									<div className={styles.formCardTitle}>
+										Chọn đợt đăng ký đề tài
+									</div>
+									<div className={styles.formCardSub}>
+										Chọn một đợt nghiên cứu đang trong thời gian nhận đăng ký
+										để tiếp tục điền hồ sơ.
+									</div>
+								</div>
+							</div>
+							<div className={styles.roundPickerList}>
+								{openRounds.map((r) => (
+									<button
+										key={r.id}
+										type='button'
+										className={styles.roundPickerItem}
+										onClick={() => pickRound(r.id)}
+									>
+										<div className={styles.roundPickerItemMain}>
+											<div className={styles.roundPickerItemName}>
+												{r.name}
+												{r.year ? (
+													<span className={styles.roundPickerItemYear}>
+														Năm {r.year}
+													</span>
+												) : null}
+											</div>
+											<div className={styles.roundPickerItemWindow}>
+												<CalendarSvg />
+												{r.registration_start || r.registration_end ? (
+													<span>
+														Nhận đăng ký: {r.registration_start ?? '…'} –{' '}
+														{r.registration_end ?? '…'}
+													</span>
+												) : (
+													<span>
+														Nhận đăng ký: không giới hạn thời gian
+													</span>
+												)}
+											</div>
+										</div>
+										<span className={styles.roundPickerItemCta}>
+											Chọn đợt này <ChevRSvg />
+										</span>
+									</button>
+								))}
+							</div>
+						</div>
+					</div>
+
+					<RegisterSidePanel
+						myTopics={myTopics}
+						navigate={navigate}
+					/>
 				</div>
 			</UserLayout>
 		);
@@ -240,40 +365,27 @@ export default function TopicRegister() {
 
 							<div className={styles.formRow}>
 								<div className={styles.formGroup}>
-									<label
-										className={styles.formLabel}
-										htmlFor='reg-round'
-									>
+									<span className={styles.formLabel}>
 										Vòng nghiên cứu{' '}
 										<span className={styles.formRequired}>*</span>
-									</label>
-									{lockedRound ? (
-										<div className={styles.deptLocked}>{lockedRound.name}</div>
-									) : (
-										<>
-											<select
-												id='reg-round'
-												className={`${styles.formSelect} ${errors.round_id ? styles.hasError : ''}`}
-												value={form.round_id}
-												onChange={(e) => setField('round_id', e.target.value)}
+									</span>
+									<div className={styles.roundLockedRow}>
+										<div
+											className={styles.deptLocked}
+											style={{ flex: 1 }}
+										>
+											{pickedRound.name}
+										</div>
+										{!lockedRound && (
+											<button
+												type='button'
+												className={styles.changeRoundBtn}
+												onClick={resetRound}
 											>
-												<option value=''>-- Chọn đợt nghiên cứu --</option>
-												{activeRounds.map((r) => (
-													<option
-														key={r.id}
-														value={r.id}
-													>
-														{r.name}
-													</option>
-												))}
-											</select>
-											{errors.round_id && (
-												<div className={styles.formError}>
-													<AlertSvg /> {errors.round_id}
-												</div>
-											)}
-										</>
-									)}
+												Đổi đợt
+											</button>
+										)}
+									</div>
 								</div>
 								<div className={styles.formGroup}>
 									<label
@@ -308,11 +420,11 @@ export default function TopicRegister() {
 											className={styles.formLabel}
 											htmlFor='reg-level'
 										>
-											Cấp độ
+											Cấp độ <span className={styles.formRequired}>*</span>
 										</label>
 										<select
 											id='reg-level'
-											className={styles.formSelect}
+											className={`${styles.formSelect} ${errors.level_id ? styles.hasError : ''}`}
 											value={form.level_id}
 											onChange={(e) => setField('level_id', e.target.value)}
 										>
@@ -326,6 +438,11 @@ export default function TopicRegister() {
 												</option>
 											))}
 										</select>
+										{errors.level_id && (
+											<div className={styles.formError}>
+												<AlertSvg /> {errors.level_id}
+											</div>
+										)}
 									</div>
 								)}
 								<div className={styles.formGroup}>

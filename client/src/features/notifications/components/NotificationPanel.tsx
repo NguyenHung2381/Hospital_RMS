@@ -65,6 +65,12 @@ export function NotificationPanel({
 		navigate(viewAllPath);
 	};
 
+	const handleItemClick = (n: Notif) => {
+		if (!n.read) onMarkOne(n.id);
+		onClose();
+		navigate(viewAllPath);
+	};
+
 	return (
 		<div
 			className={s.notifWrapper}
@@ -166,7 +172,7 @@ export function NotificationPanel({
 										<div
 											key={n.id}
 											className={`${s.notifItem} ${!n.read ? s.unread : ''}`}
-											onClick={() => onMarkOne(n.id)}
+											onClick={() => handleItemClick(n)}
 										>
 											<div className={`${s.notifItemIcon} ${cfg.cls}`}>
 												{cfg.el}

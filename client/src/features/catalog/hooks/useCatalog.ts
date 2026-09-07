@@ -131,6 +131,8 @@ export function useCatalog() {
 			setLoading(true);
 			try {
 				const created = await catalogApi.create(tab, data);
+				if (tab === 'round-types' && data.level_ids?.length)
+					await catalogApi.setRoundTypeLevels(created.id, data.level_ids);
 				setItems((prev) => [created, ...prev]);
 				setModal(null);
 				showToast('success', `Đã thêm "${created.name}"`);
@@ -152,6 +154,11 @@ export function useCatalog() {
 			setLoading(true);
 			try {
 				const updated = await catalogApi.update(tab, editingItem.id, data);
+				if (tab === 'round-types')
+					await catalogApi.setRoundTypeLevels(
+						editingItem.id,
+						data.level_ids ?? [],
+					);
 				setItems((prev) =>
 					prev.map((d) => (d.id === editingItem.id ? updated : d)),
 				);

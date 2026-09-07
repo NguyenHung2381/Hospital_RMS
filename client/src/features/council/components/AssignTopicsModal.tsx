@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { CheckSvg, DocPlusSvg, XSvg } from '@/assets/icons';
 import { getUnassignedTopics } from '../api/councilApi';
 import type { Council, CouncilTopic } from '../types/council.type';
+import { InlineLoading } from '@/shared/components';
 import styles from '../pages/Council.module.css';
 
 export function AssignTopicsModal({
@@ -68,9 +69,7 @@ export function AssignTopicsModal({
 
 				<div className={styles.modalBody}>
 					{isLoading ? (
-						<div style={{ fontSize: 13, color: 'var(--color-gray-400)' }}>
-							Đang tải...
-						</div>
+						<InlineLoading label='Đang tải…' />
 					) : topics.length === 0 ? (
 						<div className={styles.emptyState}>
 							<div className={styles.emptyDesc}>

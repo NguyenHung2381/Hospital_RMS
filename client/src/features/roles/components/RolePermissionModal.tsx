@@ -20,6 +20,7 @@ import {
 	type PermissionMatrixRow,
 	type Role,
 } from '../types/role.type';
+import { InlineLoading } from '@/shared/components';
 import styles from '../pages/Roles.module.css';
 
 const RESOURCE_ICON: Record<string, React.ReactNode> = {
@@ -180,16 +181,7 @@ export function RolePermissionModal({
 
 				<div className={styles.permModalBody}>
 					{loading ? (
-						<div className={styles.permLoading}>
-							<span
-								className={styles.spinner}
-								style={{
-									borderTopColor: '#3c3489',
-									borderColor: 'rgba(60,52,137,0.2)',
-								}}
-							/>
-							Đang tải quyền...
-						</div>
+						<InlineLoading label='Đang tải quyền…' />
 					) : (
 						<table className={styles.permMatrix}>
 							<thead>

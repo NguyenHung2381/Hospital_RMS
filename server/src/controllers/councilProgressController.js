@@ -14,6 +14,15 @@ const getMyProgress = async (req, res, next) => {
 	}
 };
 
+const getMySeatCount = async (req, res, next) => {
+	try {
+		const count = await progressService.getMySeatCount(req.user.id);
+		return success(res, { count });
+	} catch (err) {
+		next(err);
+	}
+};
+
 const upsertReview = async (req, res, next) => {
 	try {
 		const { progress_percent, rating, comment } = req.body;
@@ -145,6 +154,7 @@ const deleteMinutesFile = async (req, res, next) => {
 
 module.exports = {
 	getMyProgress,
+	getMySeatCount,
 	upsertReview,
 	upsertResult,
 	requireSecretary,

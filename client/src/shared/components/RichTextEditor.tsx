@@ -35,7 +35,8 @@ export default function RichTextEditor({
 	const updateActiveStates = () => {
 		const el = editorRef.current;
 		const sel = document.getSelection();
-		if (!el || !sel || sel.rangeCount === 0 || !el.contains(sel.anchorNode)) return;
+		if (!el || !sel || sel.rangeCount === 0 || !el.contains(sel.anchorNode))
+			return;
 		setActive({
 			bold: document.queryCommandState('bold'),
 			italic: document.queryCommandState('italic'),
@@ -49,7 +50,8 @@ export default function RichTextEditor({
 	// tên/click mà không phát sinh sự kiện input.
 	useEffect(() => {
 		document.addEventListener('selectionchange', updateActiveStates);
-		return () => document.removeEventListener('selectionchange', updateActiveStates);
+		return () =>
+			document.removeEventListener('selectionchange', updateActiveStates);
 	}, []);
 
 	// Đồng bộ nội dung từ ngoài vào (vd khi load dữ liệu đã lưu) — chỉ khi
@@ -77,7 +79,9 @@ export default function RichTextEditor({
 		updateActiveStates();
 	};
 
-	const handleImageSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
+	const handleImageSelected = async (
+		e: React.ChangeEvent<HTMLInputElement>,
+	) => {
 		const file = e.target.files?.[0];
 		e.target.value = '';
 		if (!file) return;
@@ -166,7 +170,9 @@ export default function RichTextEditor({
 					onChange={handleImageSelected}
 				/>
 				{maxTextLength != null && (
-					<span className={`${styles.counter} ${overLimit ? styles.counterOver : ''}`}>
+					<span
+						className={`${styles.counter} ${overLimit ? styles.counterOver : ''}`}
+					>
 						{textLength} / {maxTextLength}
 					</span>
 				)}
@@ -182,11 +188,21 @@ export default function RichTextEditor({
 				}}
 				onBlur={() => {
 					focused.current = false;
-					setActive({ bold: false, italic: false, underline: false, ul: false, ol: false });
+					setActive({
+						bold: false,
+						italic: false,
+						underline: false,
+						ul: false,
+						ol: false,
+					});
 				}}
 				onPaste={(e) => {
 					e.preventDefault();
-					document.execCommand('insertText', false, e.clipboardData.getData('text/plain'));
+					document.execCommand(
+						'insertText',
+						false,
+						e.clipboardData.getData('text/plain'),
+					);
 				}}
 				data-placeholder={placeholder}
 				suppressContentEditableWarning
