@@ -1,12 +1,20 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { CheckSvg, SearchSvg, UsersSvg, XSvg } from '@/assets/icons';
+import { CheckSvg, SearchSvg, TrashSvg, UsersSvg, XSvg } from '@/assets/icons';
 import AdminLayout from '../../../layouts/AdminLayout';
 import { useRealtimeUpdate } from '../../../layouts/hooks/useRealtime';
-import { Badge } from '@/shared/components';
+import { Badge, Button, Modal } from '@/shared/components';
 import { SkeletonTable } from '../../../shared/components/Loading';
 import { Pagination } from '../../../shared/components/Table/Pagination';
+import sel from '../../../shared/components/Table/RowSelect.module.css';
 import {
+	BulkButton,
+	SelectCheckbox,
+	SelectionBar,
+} from '../../../shared/components/Table/RowSelect';
+import { useRowSelection } from '../../../shared/hooks/useRowSelection';
+import {
+	bulkCmeStatus,
 	getCmeRegister,
 	getCmeStats,
 	revokeCme,
@@ -18,6 +26,7 @@ import {
 	PARTICIPATION_LABELS,
 	SOURCE_LABELS,
 	type CmeRegister as CmeRegisterT,
+	type CmeRegisterEntry,
 	type CmeStats,
 } from '../types/seminar.type';
 import styles from './Seminar.module.css';
@@ -44,6 +53,11 @@ export default function CmeRegister() {
 	const [seqDraft, setSeqDraft] = useState('');
 	const [savingSeq, setSavingSeq] = useState(false);
 	const [revokingId, setRevokingId] = useState<string | null>(null);
+	const [bulkBusy, setBulkBusy] = useState(false);
+	const [revokeAllOpen, setRevokeAllOpen] = useState(false);
+	const [revokeAllBusy, setRevokeAllBusy] = useState(false);
+	const [revokeAllDone, setRevokeAllDone] = useState(0);
+	const [confirmText, setConfirmText] = useState('');
 	const [toast, setToast] = useState<{ type: 'success' | 'error'; msg: string } | null>(null);
 	const [refreshKey, setRefreshKey] = useState(0);
 
@@ -59,13 +73,19 @@ export default function CmeRegister() {
 		setTimeout(() => setToast(null), 3000);
 	};
 
+	// Năm mà dữ liệu đang hiển thị thuộc về. Chỉ hiện skeleton khi tải lần đầu
+	// hoặc khi đổi năm — các lần refetch nền (thu hồi / lưu số / realtime) giữ
+	// nguyên bảng để không bị nháy mỗi lần refreshKey tăng.
+	const loadedYearRef = useRef<number | null>(null);
+
 	useEffect(() => {
 		let alive = true;
 		const load = () => {
-			setLoading(true);
+			if (loadedYearRef.current !== year) setLoading(true);
 			Promise.all([getCmeRegister(year), getCmeStats(year)])
 				.then(([r, s]) => {
 					if (!alive) return;
+					loadedYearRef.current = year;
 					setReg(r);
 					setStats(s);
 					setSeqDraft(String(r.last_seq));
@@ -130,6 +150,99 @@ export default function CmeRegister() {
 	const totalPages = Math.max(1, Math.ceil(total / pageSize));
 	const safePage = Math.min(page, totalPages);
 	const paged = filtered.slice((safePage - 1) * pageSize, safePage * pageSize);
+
+	const rowSel = useRowSelection(paged.map((e) => e.id));
+	const selectedEntries = filtered.filter((e) => rowSel.isSelected(e.id));
+
+	// Đổi năm / từ khoá thì bỏ chọn (điều chỉnh khi render, đồng bộ với reset trang ở trên).
+	const [selResetKey, setSelResetKey] = useState(`${year}|${search}`);
+	if (selResetKey !== `${year}|${search}` && !revokeAllBusy) {
+		setSelResetKey(`${year}|${search}`);
+		rowSel.clearSelection();
+		setRevokeAllOpen(false);
+		setConfirmText('');
+	}
+
+	// Gom các dòng đã chọn theo hội nghị vì API cấp/thu hồi CME chạy theo từng seminar.
+	const groupBySeminar = (entries: CmeRegisterEntry[]) => {
+		const map = new Map<string, CmeRegisterEntry[]>();
+		for (const e of entries) {
+			const list = map.get(e.seminar_id);
+			if (list) list.push(e);
+			else map.set(e.seminar_id, [e]);
+		}
+		return [...map.entries()];
+	};
+
+	const bulkMarkSigned = async () => {
+		const targets = selectedEntries.filter((e) => e.cme_status !== 'signed');
+		if (targets.length === 0) {
+			showToast('error', 'Các dòng đã chọn đều đã ký nhận');
+			return;
+		}
+		setBulkBusy(true);
+		try {
+			for (const [seminarId, list] of groupBySeminar(targets))
+				await bulkCmeStatus(seminarId, list.map((e) => e.id), 'signed');
+			showToast('success', `Đã đánh dấu ký nhận ${targets.length} lượt cấp`);
+			rowSel.clearSelection();
+			refresh();
+		} catch (e) {
+			showToast('error', e instanceof Error ? e.message : 'Thao tác thất bại');
+		} finally {
+			setBulkBusy(false);
+		}
+	};
+
+	const bulkRevoke = async () => {
+		const n = selectedEntries.length;
+		if (n === 0) return;
+		if (
+			!window.confirm(
+				`Thu hồi số quyết định của ${n} lượt cấp đã chọn? Các dòng này sẽ bị xoá khỏi sổ.`,
+			)
+		)
+			return;
+		setBulkBusy(true);
+		try {
+			for (const [seminarId, list] of groupBySeminar(selectedEntries))
+				for (const e of list) await revokeCme(seminarId, e.id);
+			showToast('success', `Đã thu hồi ${n} số CME`);
+			rowSel.clearSelection();
+			refresh();
+		} catch (e) {
+			showToast('error', e instanceof Error ? e.message : 'Thu hồi thất bại');
+		} finally {
+			setBulkBusy(false);
+		}
+	};
+
+	// Thu hồi TẤT CẢ lượt cấp đang khớp bộ lọc (năm + từ khoá), kể cả trang chưa hiển thị.
+	const handleRevokeAll = async () => {
+		const targets = filtered;
+		if (targets.length === 0 || confirmText.trim() !== String(targets.length)) return;
+		setRevokeAllBusy(true);
+		setRevokeAllDone(0);
+		let done = 0;
+		try {
+			for (const [seminarId, list] of groupBySeminar(targets))
+				for (const e of list) {
+					await revokeCme(seminarId, e.id);
+					done += 1;
+					setRevokeAllDone(done);
+				}
+			showToast('success', `Đã thu hồi ${done} số CME`);
+		} catch (e) {
+			const msg = e instanceof Error ? e.message : 'Thu hồi thất bại';
+			showToast('error', `${msg} (đã thu hồi ${done}/${targets.length})`);
+		} finally {
+			setRevokeAllBusy(false);
+			setRevokeAllOpen(false);
+			setConfirmText('');
+			rowSel.clearSelection();
+			refresh();
+		}
+	};
 
 	return (
 		<AdminLayout
@@ -203,12 +316,52 @@ export default function CmeRegister() {
 					)}
 				</div>
 				<span className={styles.resultCount}>{total} lượt cấp</span>
+				{perms.canCme && total > 0 && (
+					<Button
+						variant='danger'
+						size='sm'
+						icon={<TrashSvg />}
+						onClick={() => {
+							setConfirmText('');
+							setRevokeAllOpen(true);
+						}}
+					>
+						Thu hồi tất cả{search ? ' (theo lọc)' : ''}
+					</Button>
+				)}
 			</div>
 
 			<div className={styles.tableWrap}>
+				{perms.canCme && (
+					<SelectionBar
+						count={rowSel.selectedCount}
+						onClear={rowSel.clearSelection}
+						itemLabel='lượt cấp'
+						actions={
+							<>
+								<BulkButton onClick={bulkMarkSigned} disabled={bulkBusy}>
+									<CheckSvg /> Đánh dấu đã ký
+								</BulkButton>
+								<BulkButton danger onClick={bulkRevoke} disabled={bulkBusy}>
+									<XSvg /> Thu hồi số CME
+								</BulkButton>
+							</>
+						}
+					/>
+				)}
 				<table className={styles.table}>
 					<thead>
 						<tr>
+							{perms.canCme && (
+								<th className={sel.checkCol}>
+									<SelectCheckbox
+										title='Chọn tất cả'
+										checked={rowSel.allPageSelected}
+										indeterminate={rowSel.somePageSelected && !rowSel.allPageSelected}
+										onChange={rowSel.toggleSelectAll}
+									/>
+								</th>
+							)}
 							<th>SQĐ</th>
 							<th>Họ và tên</th>
 							<th>Ngày sinh</th>
@@ -225,11 +378,11 @@ export default function CmeRegister() {
 						{loading ? (
 							<SkeletonTable
 								rows={8}
-								cols={10}
+								cols={perms.canCme ? 11 : 10}
 							/>
 						) : total === 0 ? (
 							<tr>
-								<td colSpan={10}>
+								<td colSpan={perms.canCme ? 11 : 10}>
 									<div className={styles.emptyState}>
 										<div className={styles.emptyTitle}>
 											{search
@@ -246,7 +399,19 @@ export default function CmeRegister() {
 							</tr>
 						) : (
 							paged.map((e) => (
-								<tr key={e.id}>
+								<tr
+									key={e.id}
+									className={rowSel.isSelected(e.id) ? sel.rowSelected : undefined}
+								>
+									{perms.canCme && (
+										<td className={sel.checkCol}>
+											<SelectCheckbox
+												title='Chọn lượt cấp'
+												checked={rowSel.isSelected(e.id)}
+												onChange={() => rowSel.toggleSelect(e.id)}
+											/>
+										</td>
+									)}
 									<td className={styles.mono}>{e.cme_certificate_no}</td>
 									<td>
 										{e.title_prefix ? `${e.title_prefix} ` : ''}
@@ -315,6 +480,62 @@ export default function CmeRegister() {
 					itemLabel='lượt cấp'
 				/>
 			)}
+
+			<Modal
+				open={revokeAllOpen}
+				onClose={() => !revokeAllBusy && setRevokeAllOpen(false)}
+				title='Thu hồi tất cả số CME'
+				size='sm'
+				closeOnBackdrop={!revokeAllBusy}
+				footer={
+					<>
+						<Button
+							variant='ghost'
+							onClick={() => setRevokeAllOpen(false)}
+							disabled={revokeAllBusy}
+						>
+							Huỷ
+						</Button>
+						<Button
+							variant='danger'
+							onClick={handleRevokeAll}
+							loading={revokeAllBusy}
+							disabled={confirmText.trim() !== String(total)}
+						>
+							Thu hồi {total} lượt cấp
+						</Button>
+					</>
+				}
+			>
+				<p style={{ margin: '0 0 12px', lineHeight: 1.6, fontSize: 'var(--font-size-sm)' }}>
+					Sẽ thu hồi số quyết định của{' '}
+					<strong>toàn bộ {total} lượt cấp</strong>{' '}
+					{search ? (
+						<>
+							đang khớp từ khoá “<strong>{search}</strong>”
+						</>
+					) : (
+						<>trong năm {year}</>
+					)}
+					. Các dòng này sẽ bị xoá khỏi sổ và <strong>không thể hoàn tác</strong>.
+				</p>
+				<label className={styles.formLabel} style={{ display: 'block', marginBottom: 6 }}>
+					Nhập số <strong>{total}</strong> để xác nhận
+				</label>
+				<input
+					className={styles.seqInput}
+					value={confirmText}
+					onChange={(e) => setConfirmText(e.target.value.replace(/\D/g, ''))}
+					disabled={revokeAllBusy}
+					autoFocus
+					inputMode='numeric'
+				/>
+				{revokeAllBusy && (
+					<p className={styles.muted} style={{ marginTop: 10 }}>
+						Đang thu hồi {revokeAllDone}/{total}…
+					</p>
+				)}
+			</Modal>
 
 			{toast && (
 				<div

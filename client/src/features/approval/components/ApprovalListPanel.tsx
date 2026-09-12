@@ -1,4 +1,4 @@
-import type { Dispatch, SetStateAction } from 'react';
+import { useEffect, useRef, type Dispatch, type SetStateAction } from 'react';
 import {
 	CheckCircleSvg,
 	CheckSmSvg,
@@ -56,6 +56,24 @@ export function ApprovalListPanel({
 	setBulkModal,
 	setBulkComment,
 }: ApprovalListPanelProps) {
+	// Cuộn tab đang chọn vào giữa vùng nhìn thấy khi đổi tab
+	const tabsRef = useRef<HTMLDivElement>(null);
+	useEffect(() => {
+		const container = tabsRef.current;
+		if (!container) return;
+		const activeEl = container.querySelector<HTMLElement>(
+			`.${styles.listTabActive}`,
+		);
+		if (!activeEl) return;
+		const cRect = container.getBoundingClientRect();
+		const aRect = activeEl.getBoundingClientRect();
+		const delta =
+			aRect.left -
+			cRect.left -
+			(container.clientWidth - activeEl.clientWidth) / 2;
+		container.scrollBy({ left: delta, behavior: 'smooth' });
+	}, [activeTab]);
+
 	return (
 		<div className={styles.listPanel}>
 			<div className={styles.listHeader}>
@@ -131,7 +149,10 @@ export function ApprovalListPanel({
 			</div>
 
 			{/* Tabs */}
-			<div className={styles.listTabs}>
+			<div
+				className={styles.listTabs}
+				ref={tabsRef}
+			>
 				{TABS.map((t) => (
 					<div
 						key={t.key}

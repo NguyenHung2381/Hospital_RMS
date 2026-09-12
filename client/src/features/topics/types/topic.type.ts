@@ -43,6 +43,12 @@ export interface Topic {
 	journal_name?: string | null;
 	doi?: string | null;
 	publish_date?: string | null;
+	budget_estimated?: number | null;
+	budget_actual?: number | null;
+	approval_decision_no?: string | null;
+	approval_decision_date?: string | null;
+	recognition_decision_no?: string | null;
+	recognition_decision_date?: string | null;
 	// derived / computed
 	progress: number;
 	member_count: number;
@@ -96,6 +102,12 @@ export interface TopicForm {
 	article_type: ArticleType;
 	doi: string;
 	publish_date: string;
+	budget_estimated: string;
+	budget_actual: string;
+	approval_decision_no: string;
+	approval_decision_date: string;
+	recognition_decision_no: string;
+	recognition_decision_date: string;
 }
 
 export interface FormErrors {

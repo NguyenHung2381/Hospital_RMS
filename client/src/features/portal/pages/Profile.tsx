@@ -7,6 +7,7 @@ import {
 	EyeSvg,
 	LockSvg,
 	MailSvg,
+	ShieldSvg,
 	UserSvg,
 } from '@/assets/icons';
 import UserLayout from '../../../layouts/UserLayout';
@@ -205,7 +206,7 @@ export default function Profile() {
 							<div>
 								<div className={styles.detailCardTitle}>Đổi mật khẩu</div>
 								<div className={styles.detailCardSub}>
-									Mật khẩu mới phải có ít nhất 6 ký tự
+									Mật khẩu mới phải có ít nhất 8 ký tự, gồm cả chữ và số
 								</div>
 							</div>
 						</div>
@@ -261,15 +262,15 @@ export default function Profile() {
 											className={styles.strengthFill}
 											style={{
 												width:
-													d.newPwd.length < 6
+													d.newPwd.length < 8
 														? '33%'
-														: d.newPwd.length < 10
+														: d.newPwd.length < 12
 															? '66%'
 															: '100%',
 												background:
-													d.newPwd.length < 6
+													d.newPwd.length < 8
 														? '#ef4444'
-														: d.newPwd.length < 10
+														: d.newPwd.length < 12
 															? '#f59e0b'
 															: '#22c55e',
 											}}
@@ -344,6 +345,52 @@ export default function Profile() {
 									{d.pwdSaving ? 'Đang lưu...' : 'Đổi mật khẩu'}
 								</button>
 							</div>
+						</div>
+					</div>
+
+					{/* Security: revoke all sessions */}
+					<div className={styles.detailCard}>
+						<div className={styles.detailCardHeader}>
+							<div
+								className={styles.detailCardIcon}
+								style={{ background: '#e0e7ff', color: '#4338ca' }}
+							>
+								<ShieldSvg />
+							</div>
+							<div>
+								<div className={styles.detailCardTitle}>Bảo mật</div>
+								<div className={styles.detailCardSub}>
+									Đăng xuất khỏi tất cả thiết bị đang đăng nhập bằng tài khoản
+									này (kể cả thiết bị này)
+								</div>
+							</div>
+						</div>
+
+						<div className={styles.pwdFooter}>
+							<button
+								type='button'
+								className={styles.btnPrimary}
+								style={{ background: '#dc2626' }}
+								onClick={() => void d.handleLogoutAll()}
+								disabled={d.loggingOutAll}
+							>
+								{d.loggingOutAll ? (
+									<span
+										className={styles.spinner}
+										style={{
+											width: 14,
+											height: 14,
+											border: '2px solid rgba(255,255,255,0.4)',
+											borderTopColor: '#fff',
+										}}
+									/>
+								) : (
+									<ShieldSvg />
+								)}
+								{d.loggingOutAll
+									? 'Đang đăng xuất...'
+									: 'Đăng xuất khỏi mọi thiết bị'}
+							</button>
 						</div>
 					</div>
 				</div>

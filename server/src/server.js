@@ -1,5 +1,6 @@
 const path = require('path');
 const app = require('./app');
+const jobs = require('./jobs');
 
 // ─── Global process error guards (prevent crash on unhandled rejections) ─────
 process.on('unhandledRejection', (reason) => {
@@ -99,6 +100,8 @@ function getNetworkIp() {
 			console.log(`   > Network: http://${networkIp}:${PORT}`);
 			console.log(`   Environment: ${process.env.NODE_ENV || 'development'}`);
 			console.log(`📚 Swagger UI:  http://localhost:${PORT}/api-docs`);
+
+			jobs.start();
 		});
 	} catch (err) {
 		console.error(`❌ Không thể khởi động server: ${err.message}`);

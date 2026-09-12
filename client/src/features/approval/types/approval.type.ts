@@ -20,6 +20,12 @@ export interface ApprovalRecord {
 	created_by: string; // người nộp (chủ nhiệm)
 	updated_at: string | null;
 	updated_by: string | null;
+	budget_estimated: number | null;
+	budget_actual: number | null;
+	approval_decision_no: string | null;
+	approval_decision_date: string | null;
+	recognition_decision_no: string | null;
+	recognition_decision_date: string | null;
 	// derived
 	is_urgent: boolean; // nộp > 3 ngày chưa duyệt
 	history: ApvHistoryItem[];

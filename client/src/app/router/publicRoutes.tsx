@@ -8,6 +8,10 @@ const Login = lazy(() => import('../../features/auth/pages/Login'));
 const TopicRegister = lazy(
 	() => import('../../features/topics/pages/TopicRegister'),
 );
+const CourseRegisterPublic = lazy(
+	() => import('../../features/public/pages/CourseRegisterPublic'),
+);
+const PublicLookup = lazy(() => import('../../features/public/pages/PublicLookup'));
 const NotFound = lazy(() => import('../../shared/pages/NotFound'));
 
 export const publicRoutes: RouteObject[] = [
@@ -33,6 +37,22 @@ export const publicRoutes: RouteObject[] = [
 					<TopicRegister />
 				</LazyRoute>
 			</RequireAuth>
+		),
+	},
+	{
+		path: '/dang-ky-khoa-hoc',
+		element: (
+			<LazyRoute title='Đăng ký khóa học'>
+				<CourseRegisterPublic />
+			</LazyRoute>
+		),
+	},
+	{
+		path: '/tra-cuu-ket-qua',
+		element: (
+			<LazyRoute title='Tra cứu kết quả'>
+				<PublicLookup />
+			</LazyRoute>
 		),
 	},
 	{

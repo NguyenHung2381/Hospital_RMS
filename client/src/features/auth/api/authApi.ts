@@ -36,3 +36,25 @@ export async function loginApi(
 
 	return json.data as LoginResponse;
 }
+
+export interface SessionInfo {
+	id: string;
+	ip_address: string | null;
+	user_agent: string | null;
+	created_at: string | null;
+	expires_at: string;
+}
+
+export async function logoutAllApi(accessToken: string): Promise<void> {
+	const res = await fetch(`${BASE_URL}/api/v1/auth/logout-all`, {
+		method: 'POST',
+		headers: {
+			'Content-Type': 'application/json',
+			Authorization: `Bearer ${accessToken}`,
+		},
+	});
+	const json = await res.json();
+	if (!res.ok || !json.success) {
+		throw new Error(json.message ?? 'Có lỗi xảy ra, vui lòng thử lại');
+	}
+}

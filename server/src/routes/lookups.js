@@ -636,6 +636,44 @@ router.put(
 	},
 );
 
+// ─── Danh mục Đào tạo (trainee_types, training_forms, training_types, subjects, cme_credit_categories) ──
+// Shape id/name/description/audit giống categories/levels ⇒ dùng thẳng crudService(), không cần override.
+const TRAINING_CATALOG_TABLES = {
+	'trainee-types': 'trainee_types',
+	'training-forms': 'training_forms',
+	'training-types': 'training_types',
+	'cme-credit-categories': 'cme_credit_categories',
+	subjects: 'subjects',
+};
+
+for (const [path, table] of Object.entries(TRAINING_CATALOG_TABLES)) {
+	const svc = createCrudService(table, 20);
+	const ctrl = createCrudController(svc);
+
+	router.get(`/${path}`, authenticate, ctrl.getAll);
+	router.get(`/${path}/:id`, authenticate, ctrl.getById);
+	router.post(
+		`/${path}`,
+		authenticate,
+		authorizePermission(['training_catalog', 'create']),
+		[body('name').trim().notEmpty().withMessage('Tên không được để trống')],
+		validate,
+		ctrl.createOne,
+	);
+	router.put(
+		`/${path}/:id`,
+		authenticate,
+		authorizePermission(['training_catalog', 'update']),
+		ctrl.updateOne,
+	);
+	router.delete(
+		`/${path}/:id`,
+		authenticate,
+		authorizePermission(['training_catalog', 'delete']),
+		ctrl.removeOne,
+	);
+}
+
 // ─── Roles ────────────────────────────────────────────────────────────────────
 const roleService = require('../services/roleService');
 const roleCtrl = createCrudController(roleService);

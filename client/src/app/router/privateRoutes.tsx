@@ -24,6 +24,7 @@ const SeminarDetail = lazy(
 	() => import('../../features/seminar/pages/SeminarDetail'),
 );
 const CmeRegister = lazy(() => import('../../features/seminar/pages/CmeRegister'));
+const CmeCompliance = lazy(() => import('../../features/seminar/pages/CmeCompliance'));
 const Approvals = lazy(() => import('../../features/approval/pages/Approval'));
 const Catalog = lazy(() => import('../../features/catalog/pages/Catalog'));
 const Users = lazy(() => import('../../features/user/pages/UserList'));
@@ -36,6 +37,18 @@ const AdminNotifications = lazy(
 const ActivityLogs = lazy(
 	() => import('../../features/activity-log/pages/ActivityLogs'),
 );
+const TrainingCatalog = lazy(
+	() => import('../../features/training-catalog/pages/TrainingCatalog'),
+);
+const Trainees = lazy(() => import('../../features/trainee/pages/Trainees'));
+const TrainingPrograms = lazy(
+	() => import('../../features/training-program/pages/TrainingPrograms'),
+);
+const Lecturers = lazy(() => import('../../features/lecturer/pages/Lecturers'));
+const TrainingRounds = lazy(
+	() => import('../../features/training-round/pages/TrainingRounds'),
+);
+const Courses = lazy(() => import('../../features/course/pages/Courses'));
 
 // ── User portal pages ─────────────────────────────────────
 const UserHome = lazy(() => import('../../features/portal/pages/UserHome'));
@@ -104,6 +117,10 @@ export const adminRoutes: RouteObject[] = [
 		element: admin('Sổ cấp CME', <CmeRegister />),
 	},
 	{
+		path: '/admin/cme-compliance',
+		element: admin('Cảnh báo tín chỉ CME', <CmeCompliance />),
+	},
+	{
 		path: '/admin/departments',
 		element: admin('Khoa / Phòng ban', <Departments />),
 	},
@@ -133,6 +150,46 @@ export const adminRoutes: RouteObject[] = [
 	{
 		path: '/admin/activity-logs',
 		element: admin('Nhật ký hoạt động', <ActivityLogs />),
+	},
+	{
+		path: '/admin/trainees',
+		element: admin('Học viên', <Trainees />),
+	},
+	{
+		path: '/admin/training-programs',
+		element: admin('Chương trình Đào tạo', <TrainingPrograms />),
+	},
+	{
+		path: '/admin/lecturers',
+		element: admin('Giảng viên', <Lecturers />),
+	},
+	{
+		path: '/admin/training-rounds',
+		element: admin('Đợt Đào tạo', <TrainingRounds />),
+	},
+	{
+		path: '/admin/courses',
+		element: admin('Quản lý Khóa học', <Courses />),
+	},
+	{
+		path: '/admin/trainee-types',
+		element: admin('Đối tượng học viên', <TrainingCatalog />),
+	},
+	{
+		path: '/admin/training-forms',
+		element: admin('Hình thức học', <TrainingCatalog />),
+	},
+	{
+		path: '/admin/training-types',
+		element: admin('Loại hình đào tạo', <TrainingCatalog />),
+	},
+	{
+		path: '/admin/subjects',
+		element: admin('Môn học', <TrainingCatalog />),
+	},
+	{
+		path: '/admin/cme-credit-categories',
+		element: admin('Danh mục quy đổi CME', <TrainingCatalog />),
 	},
 ];
 

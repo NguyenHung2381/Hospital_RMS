@@ -2,8 +2,45 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { getPool, sql } = require('../config/db');
 const { v4: uuidv4 } = require('uuid');
+const securityEvents = require('./securityEventService');
 
-const login = async (username, password) => {
+// Khoá tạm tài khoản sau N lần sai mật khẩu liên tiếp — chống dò mật khẩu
+// theo TÀI KHOẢN (bổ sung cho rate-limit theo IP đã có ở routes/auth.js,
+// vốn không chặn được kẻ tấn công rải request qua nhiều IP).
+const MAX_FAILED_LOGIN_ATTEMPTS = 5;
+const LOCK_DURATION_MINUTES = 15;
+
+const recordFailedLogin = async (pool, user, ip) => {
+	const attempts = (user.failed_login_count || 0) + 1;
+	const locked = attempts >= MAX_FAILED_LOGIN_ATTEMPTS;
+	const lockedUntil = locked
+		? new Date(Date.now() + LOCK_DURATION_MINUTES * 60 * 1000)
+		: null;
+
+	await pool
+		.request()
+		.input('id', sql.VarChar(20), user.id)
+		.input('failed_login_count', sql.Int, locked ? 0 : attempts)
+		.input('locked_until', sql.DateTime, lockedUntil)
+		.query(`
+			UPDATE users
+			SET failed_login_count = @failed_login_count, locked_until = @locked_until
+			WHERE id = @id
+		`);
+
+	if (locked) {
+		await securityEvents.log({
+			eventType: 'login_locked',
+			actorId: user.id,
+			targetType: 'user',
+			targetId: user.id,
+			ip,
+			detail: `Khoá ${LOCK_DURATION_MINUTES} phút sau ${attempts} lần sai mật khẩu liên tiếp`,
+		});
+	}
+};
+
+const login = async (username, password, ip = null, userAgent = null) => {
 	const pool = await getPool();
 
 	const result = await pool
@@ -11,7 +48,8 @@ const login = async (username, password) => {
 		.input('username', sql.VarChar(50), username).query(`
       SELECT u.id, u.username, u.password, u.full_name, u.email, u.staff_number,
              u.role_id, u.is_active, u.department_id,
-             u.account_expires_at, r.name AS role_name
+             u.account_expires_at, u.failed_login_count, u.locked_until,
+             r.name AS role_name
       FROM users u
       LEFT JOIN roles r ON r.id = u.role_id
       WHERE u.username = @username
@@ -31,12 +69,33 @@ const login = async (username, password) => {
 			message: 'Tài khoản đã bị vô hiệu hóa hoặc hết hạn sử dụng',
 		};
 
+	if (user.locked_until && new Date(user.locked_until) > new Date()) {
+		const minutesLeft = Math.ceil(
+			(new Date(user.locked_until) - new Date()) / 60000,
+		);
+		throw {
+			statusCode: 403,
+			message: `Tài khoản tạm khoá do đăng nhập sai nhiều lần. Thử lại sau ${minutesLeft} phút.`,
+		};
+	}
+
 	const isMatch = await bcrypt.compare(password, user.password);
-	if (!isMatch)
+	if (!isMatch) {
+		await recordFailedLogin(pool, user, ip);
 		throw {
 			statusCode: 401,
 			message: 'Tên đăng nhập hoặc mật khẩu không đúng',
 		};
+	}
+
+	if (user.failed_login_count > 0 || user.locked_until) {
+		await pool
+			.request()
+			.input('id', sql.VarChar(20), user.id)
+			.query(
+				`UPDATE users SET failed_login_count = 0, locked_until = NULL WHERE id = @id`,
+			);
+	}
 
 	const permissions = await loadPermissions(pool, user.role_id);
 
@@ -72,6 +131,8 @@ const login = async (username, password) => {
 		.input('remember_me', sql.Bit, 0)
 		.execute('sp_create_refresh_token');
 
+	await tagRefreshTokenSession(pool, refreshToken, ip, userAgent);
+
 	return {
 		user: {
 			id: user.id,
@@ -89,6 +150,25 @@ const login = async (username, password) => {
 	};
 };
 
+// Gắn IP/thiết bị vào dòng refresh_tokens vừa tạo — làm ở bước riêng (UPDATE
+// sau INSERT) thay vì sửa sp_create_refresh_token, vì body của stored proc đó
+// không nằm trong repo (thuộc schema nền chưa có migration gốc) nên không an
+// toàn để CREATE OR ALTER lại mà không biết nó đang làm gì bên trong.
+const tagRefreshTokenSession = async (pool, token, ip, userAgent) => {
+	try {
+		await pool
+			.request()
+			.input('token', sql.VarChar(512), token)
+			.input('ip_address', sql.VarChar(64), ip)
+			.input('user_agent', sql.NVarChar(255), userAgent ? String(userAgent).slice(0, 255) : null)
+			.query(
+				`UPDATE refresh_tokens SET ip_address = @ip_address, user_agent = @user_agent WHERE token = @token`,
+			);
+	} catch (err) {
+		console.error('❌ tagRefreshTokenSession failed:', err.message);
+	}
+};
+
 // Danh sách quyền "resource:action" của một vai trò — trả về cho client để
 // điều hướng / ẩn hiện menu. Backend vẫn tự kiểm tra qua permissionCache.
 const loadPermissions = async (pool, roleId) => {
@@ -103,7 +183,11 @@ const loadPermissions = async (pool, roleId) => {
 	return res.recordset.map((r) => `${r.resource}:${r.action}`);
 };
 
-const refreshAccessToken = async (refreshToken) => {
+// Xoay refresh token ở mỗi lần làm mới: phát hành token mới, xoá ngay token
+// cũ. Trước đây 1 refresh token sống nguyên tới khi hết hạn (mặc định 7
+// ngày) hoặc logout thủ công — lộ token là lộ quyền truy cập suốt 7 ngày.
+// Rotate xong, token cũ dùng lại sẽ bị từ chối ngay ở bước SELECT bên dưới.
+const refreshAccessToken = async (refreshToken, ip = null, userAgent = null) => {
 	let decoded;
 	try {
 		decoded = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET);
@@ -122,7 +206,8 @@ const refreshAccessToken = async (refreshToken) => {
 			`SELECT * FROM refresh_tokens WHERE token = @token AND expires_at > GETDATE()`,
 		);
 
-	if (!rt.recordset[0])
+	const existing = rt.recordset[0];
+	if (!existing)
 		throw { statusCode: 401, message: 'Refresh token không hợp lệ' };
 
 	const userResult = await pool
@@ -146,7 +231,28 @@ const refreshAccessToken = async (refreshToken) => {
 		expiresIn: process.env.JWT_EXPIRES_IN || '8h',
 	});
 
-	return { access_token: newAccessToken };
+	const newRefreshToken = jwt.sign(
+		{ id: user.id },
+		process.env.JWT_REFRESH_SECRET,
+		{
+			expiresIn: process.env.JWT_REFRESH_EXPIRES_IN || '7d',
+		},
+	);
+
+	await pool
+		.request()
+		.input('user_id', sql.VarChar(20), user.id)
+		.input('token', sql.VarChar(512), newRefreshToken)
+		.input('remember_me', sql.Bit, existing.remember_me ?? 0)
+		.execute('sp_create_refresh_token');
+	await tagRefreshTokenSession(pool, newRefreshToken, ip, userAgent);
+
+	await pool
+		.request()
+		.input('token', sql.VarChar(500), refreshToken)
+		.query(`DELETE FROM refresh_tokens WHERE token = @token`);
+
+	return { access_token: newAccessToken, refresh_token: newRefreshToken };
 };
 
 const logout = async (refreshToken) => {
@@ -155,6 +261,51 @@ const logout = async (refreshToken) => {
 		.request()
 		.input('token', sql.VarChar(500), refreshToken)
 		.query(`DELETE FROM refresh_tokens WHERE token = @token`);
+};
+
+// Đăng xuất khỏi mọi thiết bị: xoá toàn bộ refresh token của người dùng
+// (mỗi access token đang lưu hành vẫn sống tới khi tự hết hạn — tối đa
+// JWT_EXPIRES_IN, mặc định 8h — vì kiến trúc hiện tại không có bảng
+// blacklist access token; đây là đánh đổi chấp nhận được với thời hạn ngắn).
+const logoutAll = async (userId, actorIp = null) => {
+	const pool = await getPool();
+	await pool
+		.request()
+		.input('user_id', sql.VarChar(20), userId)
+		.query(`DELETE FROM refresh_tokens WHERE user_id = @user_id`);
+
+	await securityEvents.log({
+		eventType: 'logout_all_sessions',
+		actorId: userId,
+		targetType: 'user',
+		targetId: userId,
+		ip: actorIp,
+	});
+};
+
+// Liệt kê phiên đăng nhập đang hoạt động (mỗi refresh token còn hạn = 1 phiên).
+// Dùng SELECT * + lọc lại field ở tầng JS: bảng refresh_tokens thuộc schema
+// nền không có trong repo (không migration gốc) nên không chắc có cột nào
+// ngoài token/expires_at/remember_me — tránh tham chiếu cột chưa xác nhận
+// (vd created_at) để không vỡ query nếu cột đó không tồn tại.
+const listSessions = async (userId) => {
+	const pool = await getPool();
+	const result = await pool
+		.request()
+		.input('user_id', sql.VarChar(20), userId)
+		.query(`
+			SELECT *
+			FROM refresh_tokens
+			WHERE user_id = @user_id AND expires_at > GETDATE()
+			ORDER BY expires_at DESC
+		`);
+	return result.recordset.map((r) => ({
+		id: r.id,
+		ip_address: r.ip_address ?? null,
+		user_agent: r.user_agent ?? null,
+		created_at: r.created_at ?? null,
+		expires_at: r.expires_at,
+	}));
 };
 
 const changePassword = async (userId, oldPassword, newPassword) => {
@@ -180,4 +331,11 @@ const changePassword = async (userId, oldPassword, newPassword) => {
 		);
 };
 
-module.exports = { login, refreshAccessToken, logout, changePassword };
+module.exports = {
+	login,
+	refreshAccessToken,
+	logout,
+	logoutAll,
+	listSessions,
+	changePassword,
+};

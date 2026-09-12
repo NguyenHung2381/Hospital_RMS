@@ -56,6 +56,12 @@ export function useTopicModal({
 		article_type: topic?.article_type ?? 'de_tai',
 		doi: topic?.doi ?? '',
 		publish_date: topic?.publish_date ?? '',
+		budget_estimated: topic?.budget_estimated?.toString() ?? '',
+		budget_actual: topic?.budget_actual?.toString() ?? '',
+		approval_decision_no: topic?.approval_decision_no ?? '',
+		approval_decision_date: topic?.approval_decision_date ?? '',
+		recognition_decision_no: topic?.recognition_decision_no ?? '',
+		recognition_decision_date: topic?.recognition_decision_date ?? '',
 	});
 	const [errors, setErrors] = useState<FormErrors>({});
 

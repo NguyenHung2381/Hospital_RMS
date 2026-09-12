@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { apiClient } from '../../../shared/api/axios';
 import { getInitials } from '../../../shared/utils/helper';
-import { getStoredUser } from '../../../shared/utils/storage';
+import { clearAuth, getStoredUser, getToken } from '../../../shared/utils/storage';
+import { logoutAllApi } from '../../auth/api/authApi';
 
 interface ProfileData {
 	id: string;
@@ -85,8 +86,8 @@ export function useProfile() {
 			setPwdError('Vui lòng nhập mật khẩu hiện tại.');
 			return;
 		}
-		if (newPwd.length < 6) {
-			setPwdError('Mật khẩu mới phải có ít nhất 6 ký tự.');
+		if (newPwd.length < 8 || !/[A-Za-z]/.test(newPwd) || !/[0-9]/.test(newPwd)) {
+			setPwdError('Mật khẩu mới phải có ít nhất 8 ký tự, gồm cả chữ và số.');
 			return;
 		}
 		if (newPwd !== confirmPwd) {
@@ -112,6 +113,24 @@ export function useProfile() {
 		}
 	}
 
+	const [loggingOutAll, setLoggingOutAll] = useState(false);
+
+	async function handleLogoutAll() {
+		const token = getToken();
+		if (!token) return;
+		setLoggingOutAll(true);
+		try {
+			await logoutAllApi(token);
+			clearAuth();
+			window.location.href = '/login';
+		} catch (e: unknown) {
+			const msg =
+				e instanceof Error ? e.message : 'Có lỗi xảy ra, vui lòng thử lại.';
+			showToast(msg, 'error');
+			setLoggingOutAll(false);
+		}
+	}
+
 	return {
 		fullName,
 		userRole,
@@ -127,6 +146,7 @@ export function useProfile() {
 		pwdError,
 		pwdSaving,
 		toast,
+		loggingOutAll,
 		setOldPwd,
 		setNewPwd,
 		setConfirmPwd,
@@ -135,5 +155,6 @@ export function useProfile() {
 		setShowConfirm,
 		setPwdError,
 		handleChangePassword,
+		handleLogoutAll,
 	};
 }

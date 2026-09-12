@@ -103,6 +103,30 @@ router.post('/logout', authController.logout);
 
 /**
  * @swagger
+ * /auth/logout-all:
+ *   post:
+ *     summary: Đăng xuất khỏi mọi thiết bị (thu hồi toàn bộ refresh token)
+ *     tags: [Auth]
+ *     responses:
+ *       200:
+ *         description: Đã đăng xuất khỏi mọi thiết bị
+ */
+router.post('/logout-all', authenticate, authController.logoutAll);
+
+/**
+ * @swagger
+ * /auth/sessions:
+ *   get:
+ *     summary: Liệt kê các phiên đăng nhập đang hoạt động của tôi
+ *     tags: [Auth]
+ *     responses:
+ *       200:
+ *         description: Danh sách phiên (mỗi refresh token còn hạn là 1 phiên)
+ */
+router.get('/sessions', authenticate, authController.sessions);
+
+/**
+ * @swagger
  * /auth/change-password:
  *   post:
  *     summary: Đổi mật khẩu
@@ -120,7 +144,7 @@ router.post('/logout', authController.logout);
  *                 example: "oldpass123"
  *               new_password:
  *                 type: string
- *                 minLength: 6
+ *                 minLength: 8
  *                 example: "newpass456"
  *     responses:
  *       200:
@@ -131,7 +155,16 @@ router.post('/logout', authController.logout);
 router.post(
 	'/change-password',
 	authenticate,
-	[body('old_password').notEmpty(), body('new_password').isLength({ min: 6 })],
+	[
+		body('old_password').notEmpty(),
+		body('new_password')
+			.isLength({ min: 8 })
+			.withMessage('Mật khẩu mới phải có ít nhất 8 ký tự')
+			.matches(/[A-Za-z]/)
+			.withMessage('Mật khẩu mới phải có ít nhất 1 chữ cái')
+			.matches(/[0-9]/)
+			.withMessage('Mật khẩu mới phải có ít nhất 1 chữ số'),
+	],
 	validate,
 	authController.changePassword,
 );

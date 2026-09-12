@@ -32,6 +32,13 @@ const KEY_TO_PATH: Record<string, string> = {
 	categories: '/admin/categories',
 	levels: '/admin/levels',
 	roundTypes: '/admin/round-types',
+	trainees: '/admin/trainees',
+	trainingPrograms: '/admin/training-programs',
+	lecturers: '/admin/lecturers',
+	trainingCatalog: '/admin/trainee-types',
+	trainingRounds: '/admin/training-rounds',
+	courses: '/admin/courses',
+	cmeCompliance: '/admin/cme-compliance',
 	users: '/admin/users',
 	roles: '/admin/roles',
 	reports: '/admin/reports',
@@ -43,6 +50,14 @@ const KEY_TO_PATH: Record<string, string> = {
 // Map ngược từ URL pathname → nav key (để highlight sidebar)
 const PATH_TO_KEY: Record<string, string> = Object.fromEntries(
 	Object.entries(KEY_TO_PATH).map(([k, v]) => [v, k]),
+);
+// Danh mục Đào tạo gộp 5 tab dưới 1 mục sidebar — các path còn lại (ngoài
+// path mặc định /admin/trainee-types) cần trỏ ngược thủ công để vẫn highlight
+// đúng mục khi đang ở tab khác.
+['/admin/training-forms', '/admin/training-types', '/admin/subjects', '/admin/cme-credit-categories'].forEach(
+	(p) => {
+		PATH_TO_KEY[p] = 'trainingCatalog';
+	},
 );
 
 // ─── NAV CONFIG ───────────────────────────
@@ -120,6 +135,12 @@ const NAV_GROUPS: NavGroup[] = [
 				icon: <Icon.Cme />,
 				perm: 'seminars:read',
 			},
+			{
+				key: 'cmeCompliance',
+				label: 'Cảnh báo tín chỉ CME',
+				icon: <Icon.Cme />,
+				perm: 'seminars:cme_manage',
+			},
 		],
 	},
 	{
@@ -148,6 +169,47 @@ const NAV_GROUPS: NavGroup[] = [
 				label: 'Loại đợt',
 				icon: <Icon.Round />,
 				perm: 'catalog:read',
+			},
+		],
+	},
+	{
+		section: 'Đào tạo (Khoá học)',
+		items: [
+			{
+				key: 'trainingRounds',
+				label: 'Đợt đào tạo',
+				icon: <Icon.TrainingRound />,
+				perm: 'training_rounds:read',
+			},
+			{
+				key: 'courses',
+				label: 'Khóa học',
+				icon: <Icon.Course />,
+				perm: 'courses:read',
+			},
+			{
+				key: 'trainees',
+				label: 'Học viên',
+				icon: <Icon.Trainee />,
+				perm: 'trainees:read',
+			},
+			{
+				key: 'trainingPrograms',
+				label: 'Chương trình đào tạo',
+				icon: <Icon.TrainingProgram />,
+				perm: 'training_programs:read',
+			},
+			{
+				key: 'lecturers',
+				label: 'Giảng viên',
+				icon: <Icon.Lecturer />,
+				perm: 'lecturers:read',
+			},
+			{
+				key: 'trainingCatalog',
+				label: 'Danh mục đào tạo',
+				icon: <Icon.TrainingCatalog />,
+				perm: 'training_catalog:read',
 			},
 		],
 	},

@@ -59,6 +59,7 @@ export interface CreateTopicPayload {
 	article_type?: ArticleType;
 	doi?: string;
 	publish_date?: string;
+	budget_estimated?: number;
 }
 
 export interface UpdateTopicPayload {
@@ -72,6 +73,12 @@ export interface UpdateTopicPayload {
 	article_type?: ArticleType;
 	doi?: string;
 	publish_date?: string;
+	budget_estimated?: number;
+	budget_actual?: number;
+	approval_decision_no?: string;
+	approval_decision_date?: string;
+	recognition_decision_no?: string;
+	recognition_decision_date?: string;
 }
 
 export type TopicMemberApiRole = 'leader' | 'secretary' | 'member';

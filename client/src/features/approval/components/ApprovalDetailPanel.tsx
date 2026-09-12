@@ -173,6 +173,56 @@ export function ApprovalDetailPanel({
 							</div>
 						)}
 
+						{/* Tài chính & Quyết định */}
+						{(selected.budget_estimated != null ||
+							selected.budget_actual != null ||
+							selected.approval_decision_no ||
+							selected.recognition_decision_no) && (
+							<div className={styles.descSection}>
+								<div className={styles.sectionLabel}>Tài chính & Quyết định</div>
+								<div className={styles.infoGrid}>
+									{selected.budget_estimated != null && (
+										<div className={styles.infoItem}>
+											<div className={styles.infoLabel}>Kinh phí dự toán</div>
+											<div className={styles.infoValue}>
+												{selected.budget_estimated.toLocaleString('vi-VN')} đ
+											</div>
+										</div>
+									)}
+									{selected.budget_actual != null && (
+										<div className={styles.infoItem}>
+											<div className={styles.infoLabel}>Kinh phí thực tế</div>
+											<div className={styles.infoValue}>
+												{selected.budget_actual.toLocaleString('vi-VN')} đ
+											</div>
+										</div>
+									)}
+									{selected.approval_decision_no && (
+										<div className={styles.infoItem}>
+											<div className={styles.infoLabel}>QĐ phê duyệt</div>
+											<div className={styles.infoValue}>
+												{selected.approval_decision_no}
+												{selected.approval_decision_date
+													? ` · ${selected.approval_decision_date}`
+													: ''}
+											</div>
+										</div>
+									)}
+									{selected.recognition_decision_no && (
+										<div className={styles.infoItem}>
+											<div className={styles.infoLabel}>QĐ công nhận</div>
+											<div className={styles.infoValue}>
+												{selected.recognition_decision_no}
+												{selected.recognition_decision_date
+													? ` · ${selected.recognition_decision_date}`
+													: ''}
+											</div>
+										</div>
+									)}
+								</div>
+							</div>
+						)}
+
 						{/* Description */}
 						<div className={styles.descSection}>
 							<div className={styles.sectionLabel}>Mô tả / Tóm tắt đề tài</div>

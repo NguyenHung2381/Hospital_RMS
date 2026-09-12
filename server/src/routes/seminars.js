@@ -2,8 +2,10 @@ const router = require('express').Router();
 const { body } = require('express-validator');
 const multer = require('multer');
 const ctrl = require('../controllers/seminarController');
+const cmeRequirementService = require('../services/cmeRequirementService');
 const { authenticate, authorizePermission } = require('../middlewares/auth');
 const { validate } = require('../middlewares/errorHandler');
+const { success, created } = require('../utils/response');
 
 const uploadExcel = multer({
 	storage: multer.memoryStorage(),
@@ -173,6 +175,83 @@ router.post(
 	validate,
 	ctrl.createOne,
 );
+
+/**
+ * @swagger
+ * /seminars/cme-requirements:
+ *   get:
+ *     summary: Ngưỡng tín chỉ CME theo năm (toàn viện hoặc theo khoa/phòng)
+ *     tags: [Seminars]
+ *   post:
+ *     summary: Thêm ngưỡng tín chỉ CME
+ *     tags: [Seminars]
+ */
+// LƯU Ý: các route path cố định (/cme-requirements, /cme-compliance) PHẢI
+// đăng ký TRƯỚC router.get('/:id', ...) bên dưới — nếu không Express sẽ khớp
+// nhầm vào /:id (vd coi "cme-requirements" là 1 seminar id).
+router.get('/cme-requirements', authenticate, canCme, async (req, res, next) => {
+	try {
+		return success(res, await cmeRequirementService.getAll(req.query));
+	} catch (e) {
+		next(e);
+	}
+});
+router.post(
+	'/cme-requirements',
+	authenticate,
+	canCme,
+	[
+		body('year').isInt({ min: 2000, max: 2100 }),
+		body('required_credits').isFloat({ min: 0 }),
+	],
+	validate,
+	async (req, res, next) => {
+		try {
+			return created(res, await cmeRequirementService.create(req.body, req.user.id));
+		} catch (e) {
+			next(e);
+		}
+	},
+);
+router.put('/cme-requirements/:id', authenticate, canCme, async (req, res, next) => {
+	try {
+		await cmeRequirementService.update(req.params.id, req.body, req.user.id);
+		return success(res, null, 'Đã cập nhật');
+	} catch (e) {
+		next(e);
+	}
+});
+router.delete('/cme-requirements/:id', authenticate, canCme, async (req, res, next) => {
+	try {
+		await cmeRequirementService.remove(req.params.id);
+		return success(res, null, 'Đã xoá');
+	} catch (e) {
+		next(e);
+	}
+});
+
+/**
+ * @swagger
+ * /seminars/cme-compliance:
+ *   get:
+ *     summary: Danh sách nhân sự chưa đạt ngưỡng tín chỉ CME của năm
+ *     tags: [Seminars]
+ *     parameters:
+ *       - in: query
+ *         name: year
+ *         required: true
+ *         schema: { type: integer }
+ */
+router.get('/cme-compliance', authenticate, canCme, async (req, res, next) => {
+	try {
+		if (!req.query.year) {
+			return res.status(400).json({ success: false, message: 'Thiếu tham số year' });
+		}
+		return success(res, await cmeRequirementService.getComplianceReport(req.query.year));
+	} catch (e) {
+		next(e);
+	}
+});
 
 /**
  * @swagger

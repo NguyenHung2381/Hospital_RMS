@@ -138,6 +138,12 @@ export function mapTopicToRecord(topic: TopicApprovalItem): ApprovalRecord {
 		created_by: topic.created_by_name ?? topic.created_by,
 		updated_at: formatDate(topic.updated_at),
 		updated_by: null,
+		budget_estimated: topic.budget_estimated ?? null,
+		budget_actual: topic.budget_actual ?? null,
+		approval_decision_no: topic.approval_decision_no ?? null,
+		approval_decision_date: formatDate(topic.approval_decision_date),
+		recognition_decision_no: topic.recognition_decision_no ?? null,
+		recognition_decision_date: formatDate(topic.recognition_decision_date),
 		is_urgent: isUrgentTopic(topic.created_at, status),
 		history: [],
 		members: [],
@@ -161,6 +167,15 @@ export function mergeTopicDetail(
 			topic.department_name ?? topic.department_id ?? record.topic_dept,
 		topic_round: topic.round_name ?? topic.round_id ?? record.topic_round,
 		topic_member_count: topic.members?.length ?? record.topic_member_count,
+		budget_estimated: topic.budget_estimated ?? record.budget_estimated,
+		budget_actual: topic.budget_actual ?? record.budget_actual,
+		approval_decision_no: topic.approval_decision_no ?? record.approval_decision_no,
+		approval_decision_date:
+			formatDate(topic.approval_decision_date) ?? record.approval_decision_date,
+		recognition_decision_no:
+			topic.recognition_decision_no ?? record.recognition_decision_no,
+		recognition_decision_date:
+			formatDate(topic.recognition_decision_date) ?? record.recognition_decision_date,
 		comment: latest?.comment ?? null,
 		updated_at: formatDate(latest?.created_at) ?? record.updated_at,
 		updated_by:

@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import {
+	CalendarSvg,
 	CheckSvg,
 	InfoSvg,
 	KeySvg,
@@ -38,6 +39,13 @@ const RESOURCE_ICON: Record<string, React.ReactNode> = {
 	activity_logs: <InfoSvg />,
 	catalog: <InfoSvg />,
 	notifications: <InfoSvg />,
+	security_events: <ShieldSvg />,
+	trainees: <UsersSvg />,
+	training_programs: <LayersSvg />,
+	lecturers: <UsersSvg />,
+	training_catalog: <InfoSvg />,
+	training_rounds: <CalendarSvg />,
+	courses: <LayersSvg />,
 };
 
 // API không trả label tiếng Việt cho resource — map hiển thị riêng ở đây.
@@ -56,6 +64,13 @@ const RESOURCE_LABELS: Record<string, string> = {
 	activity_logs: 'Nhật ký hoạt động',
 	catalog: 'Danh mục (phân loại, cấp độ...)',
 	notifications: 'Thông báo hệ thống',
+	security_events: 'Nhật ký bảo mật',
+	trainees: 'Học viên (Đào tạo)',
+	training_programs: 'Chương trình đào tạo',
+	lecturers: 'Giảng viên',
+	training_catalog: 'Danh mục Đào tạo',
+	training_rounds: 'Đợt đào tạo',
+	courses: 'Khóa học (đăng ký, giảng viên, lịch học, điểm danh)',
 };
 
 function buildMatrix(perms: Permission[]): PermissionMatrixRow[] {

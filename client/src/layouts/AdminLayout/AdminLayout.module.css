@@ -275,10 +275,7 @@
 }
 
 .sidebar.collapsed .navLabel {
-	opacity: 0;
-	max-width: 0;
-	overflow: hidden;
-	flex: none;
+	display: none;
 }
 
 .navBadge {
@@ -315,6 +312,7 @@
 	padding: 0;
 	width: 40px;
 	height: 40px;
+	gap: 0;
 	justify-content: center;
 	align-items: center;
 	border-left: none;

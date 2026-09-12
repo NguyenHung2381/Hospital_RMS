@@ -250,6 +250,9 @@ export function useTopicPage() {
 				article_type: form.article_type,
 				doi: form.doi || undefined,
 				publish_date: form.publish_date || undefined,
+				budget_estimated: form.budget_estimated
+					? Number(form.budget_estimated)
+					: undefined,
 			});
 			if (pendingMembers.length > 0) {
 				await Promise.allSettled(
@@ -287,6 +290,16 @@ export function useTopicPage() {
 				article_type: form.article_type,
 				doi: form.doi || undefined,
 				publish_date: form.publish_date || undefined,
+				budget_estimated: form.budget_estimated
+					? Number(form.budget_estimated)
+					: undefined,
+				budget_actual: form.budget_actual
+					? Number(form.budget_actual)
+					: undefined,
+				approval_decision_no: form.approval_decision_no || undefined,
+				approval_decision_date: form.approval_decision_date || undefined,
+				recognition_decision_no: form.recognition_decision_no || undefined,
+				recognition_decision_date: form.recognition_decision_date || undefined,
 			});
 			refreshData();
 			setEditTopic(null);

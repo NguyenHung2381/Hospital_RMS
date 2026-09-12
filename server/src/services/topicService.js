@@ -291,12 +291,14 @@ const create = async (data, actorId) => {
 		.input('article_type', sql.VarChar(20), data.article_type || 'de_tai')
 		.input('journal_name', sql.NVarChar(255), data.journal_name || null)
 		.input('doi', sql.VarChar(100), data.doi || null)
-		.input('publish_date', sql.Date, data.publish_date || null).query(`
+		.input('publish_date', sql.Date, data.publish_date || null)
+		.input('budget_estimated', sql.Decimal(18, 2), data.budget_estimated ?? null)
+		.query(`
       DECLARE @new_id VARCHAR(15);
       EXEC sp_gen_topic_id @category_id, @round_id, @new_id OUTPUT;
       EXEC sp_set_actor @actor_id;
-      INSERT INTO topics (id, title, description, round_id, category_id, level_id, department_id, status, created_by, article_type, journal_name, doi, publish_date)
-      VALUES (@new_id, @title, @description, @round_id, @category_id, @level_id, @department_id, 'submitted', @actor_id, @article_type, @journal_name, @doi, @publish_date);
+      INSERT INTO topics (id, title, description, round_id, category_id, level_id, department_id, status, created_by, article_type, journal_name, doi, publish_date, budget_estimated)
+      VALUES (@new_id, @title, @description, @round_id, @category_id, @level_id, @department_id, 'submitted', @actor_id, @article_type, @journal_name, @doi, @publish_date, @budget_estimated);
       SELECT @new_id AS id;
     `);
 	if (Array.isArray(data.related_department_ids) && data.related_department_ids.length)
@@ -395,6 +397,30 @@ const update = async (id, data, actorId, actor = null) => {
 		sets.push('publish_date = @publish_date');
 		req.input('publish_date', sql.Date, data.publish_date || null);
 	}
+	if (data.budget_estimated !== undefined) {
+		sets.push('budget_estimated = @budget_estimated');
+		req.input('budget_estimated', sql.Decimal(18, 2), data.budget_estimated);
+	}
+	if (data.budget_actual !== undefined) {
+		sets.push('budget_actual = @budget_actual');
+		req.input('budget_actual', sql.Decimal(18, 2), data.budget_actual);
+	}
+	if (data.approval_decision_no !== undefined) {
+		sets.push('approval_decision_no = @approval_decision_no');
+		req.input('approval_decision_no', sql.NVarChar(100), data.approval_decision_no || null);
+	}
+	if (data.approval_decision_date !== undefined) {
+		sets.push('approval_decision_date = @approval_decision_date');
+		req.input('approval_decision_date', sql.Date, data.approval_decision_date || null);
+	}
+	if (data.recognition_decision_no !== undefined) {
+		sets.push('recognition_decision_no = @recognition_decision_no');
+		req.input('recognition_decision_no', sql.NVarChar(100), data.recognition_decision_no || null);
+	}
+	if (data.recognition_decision_date !== undefined) {
+		sets.push('recognition_decision_date = @recognition_decision_date');
+		req.input('recognition_decision_date', sql.Date, data.recognition_decision_date || null);
+	}
 
 	const relatedChanged = Array.isArray(data.related_department_ids);
 	if (relatedChanged)
@@ -487,7 +513,7 @@ const approve = async (topicId, status, comment, actorId) => {
 			: status === 'supplement'
 				? 'Đề tài của bạn cần bổ sung thông tin'
 				: 'Đề tài của bạn bị từ chối';
-	await notifSvc.push(type, title, ids, {
+	await notifSvc.pushWithEmail(type, title, ids, {
 		message: comment || null,
 		refId: topicId,
 		refType: 'topic',

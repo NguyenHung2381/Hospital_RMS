@@ -1,6 +1,6 @@
 import React, { useCallback, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { canAccessAdminPanel } from '../../../app/router/authHelpers';
 import AuthLayout from '../../../layouts/AuthLayout';
 import { saveAuth } from '../../../shared/utils/storage';
@@ -318,6 +318,13 @@ export default function Login() {
 					</p>
 				</div>
 			</div>
+
+			{/* Cổng công khai — không cần tài khoản */}
+			<p className={styles.supportText} style={{ textAlign: 'center', marginTop: 12 }}>
+				Chưa có tài khoản?{' '}
+				<Link to='/dang-ky-khoa-hoc'>Đăng ký khóa học đào tạo</Link> ·{' '}
+				<Link to='/tra-cuu-ket-qua'>Tra cứu kết quả</Link>
+			</p>
 
 			{councilPrompt &&
 				createPortal(

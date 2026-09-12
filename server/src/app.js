@@ -41,6 +41,7 @@ if (missingEnv.length > 0) {
 
 const express = require('express');
 const cors = require('cors');
+const helmet = require('helmet');
 const { errorHandler } = require('./middlewares/errorHandler');
 const swaggerUi = require('swagger-ui-express');
 const swaggerSpec = require('./config/swagger');
@@ -50,6 +51,11 @@ const activityLogger = require('./middlewares/activityLogger');
 const app = express();
 
 // ─── Middlewares ─────────────────────────────────────────────────────────────
+// Header bảo mật (X-Frame-Options, X-Content-Type-Options, HSTS...). Tắt CSP
+// mặc định của helmet vì /api-docs (Swagger UI) cần inline style/script mà
+// một CSP mặc định sẽ chặn; API JSON thuần không cần CSP để tự bảo vệ.
+app.use(helmet({ contentSecurityPolicy: false }));
+
 // CORS_ORIGIN không set = cho phép mọi origin (hành vi mặc định cũ, không đổi).
 // Set CORS_ORIGIN (phân cách bởi dấu phẩy) để giới hạn origin được phép gọi API.
 const corsOrigins = process.env.CORS_ORIGIN
@@ -105,7 +111,14 @@ app.use(`${API}/dashboard`, require('./routes/dashboard'));
 app.use(`${API}/notifications`, require('./routes/notifications'));
 app.use(`${API}/events`, require('./routes/events'));
 app.use(`${API}/activity-logs`, require('./routes/activityLogs'));
+app.use(`${API}/security-events`, require('./routes/securityEvents'));
 app.use(`${API}/seminars`, require('./routes/seminars'));
+app.use(`${API}/trainees`, require('./routes/trainees'));
+app.use(`${API}/training-programs`, require('./routes/trainingPrograms'));
+app.use(`${API}/lecturers`, require('./routes/lecturers'));
+app.use(`${API}/training-rounds`, require('./routes/trainingRounds'));
+app.use(`${API}/courses`, require('./routes/courses'));
+app.use(`${API}/public`, require('./routes/public'));
 app.use(API, require('./routes/lookups'));
 
 // ─── 404 handler ──────────────────────────────────────────────────────────────

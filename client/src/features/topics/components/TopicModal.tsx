@@ -268,6 +268,105 @@ export function TopicModal({
 						</div>
 					)}
 
+					{m.form.article_type === 'de_tai' && (
+						<>
+							<div className={styles.formSection}>Tài chính & Quyết định</div>
+							<div className={styles.formRow}>
+								<FormField
+									id='budget_estimated'
+									label='Kinh phí dự toán (VNĐ)'
+								>
+									<input
+										id='budget_estimated'
+										type='number'
+										min={0}
+										className={styles.formInput}
+										placeholder='VD: 50000000'
+										value={m.form.budget_estimated}
+										onChange={(e) => m.setField('budget_estimated', e.target.value)}
+									/>
+								</FormField>
+								{mode === 'edit' && (
+									<FormField
+										id='budget_actual'
+										label='Kinh phí thực tế (VNĐ)'
+									>
+										<input
+											id='budget_actual'
+											type='number'
+											min={0}
+											className={styles.formInput}
+											placeholder='VD: 48500000'
+											value={m.form.budget_actual}
+											onChange={(e) => m.setField('budget_actual', e.target.value)}
+										/>
+									</FormField>
+								)}
+							</div>
+
+							{mode === 'edit' && (
+								<>
+									<div className={styles.formRow}>
+										<FormField
+											id='approval_decision_no'
+											label='Số quyết định phê duyệt'
+										>
+											<input
+												id='approval_decision_no'
+												className={styles.formInput}
+												placeholder='VD: 123/QĐ-BV'
+												value={m.form.approval_decision_no}
+												onChange={(e) =>
+													m.setField('approval_decision_no', e.target.value)
+												}
+											/>
+										</FormField>
+										<FormField
+											id='approval_decision_date'
+											label='Ngày quyết định phê duyệt'
+										>
+											<DatePicker
+												id='approval_decision_date'
+												value={m.form.approval_decision_date}
+												onChange={(val) => m.setField('approval_decision_date', val)}
+												placeholder='Chọn ngày...'
+											/>
+										</FormField>
+									</div>
+									<div className={styles.formRow}>
+										<FormField
+											id='recognition_decision_no'
+											label='Số quyết định công nhận'
+										>
+											<input
+												id='recognition_decision_no'
+												className={styles.formInput}
+												placeholder='VD: 456/QĐ-BV'
+												value={m.form.recognition_decision_no}
+												onChange={(e) =>
+													m.setField('recognition_decision_no', e.target.value)
+												}
+											/>
+										</FormField>
+										<FormField
+											id='recognition_decision_date'
+											label='Ngày quyết định công nhận'
+										>
+											<DatePicker
+												id='recognition_decision_date'
+												value={m.form.recognition_decision_date}
+												onChange={(val) =>
+													m.setField('recognition_decision_date', val)
+												}
+												placeholder='Chọn ngày...'
+											/>
+										</FormField>
+									</div>
+								</>
+							)}
+						</>
+					)}
+
 					<FormField
 						id='status'
 						label='Trạng thái đề tài'

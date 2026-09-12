@@ -1,4 +1,5 @@
 const { getPool, sql } = require('../config/db');
+const mailService = require('./mailService');
 
 const getForUser = async (
 	userId,
@@ -87,6 +88,49 @@ const push = async (
 			.execute('sp_push_notification');
 	} catch (err) {
 		console.error('[notification] push failed:', err.message);
+	}
+};
+
+/**
+ * Giống push(), nhưng gửi thêm email cho những người nhận có địa chỉ email
+ * (nếu MAIL_ENABLED=true — xem services/mailService.js). Dùng cho các sự
+ * kiện quan trọng (duyệt/từ chối đề tài, nhắc deadline) thay vì mọi loại
+ * notification để tránh spam hộp thư cho các thông báo vặt.
+ */
+const pushWithEmail = async (
+	type,
+	title,
+	userIds,
+	{ message = null, refId = null, refType = null } = {},
+) => {
+	await push(type, title, userIds, { message, refId, refType });
+	if (!userIds?.length || !mailService.isEnabled()) return;
+
+	try {
+		const pool = await getPool();
+		const res = await pool
+			.request()
+			.input('user_ids', sql.NVarChar(sql.MAX), JSON.stringify(userIds))
+			.query(`
+				SELECT id, email, full_name FROM users
+				WHERE id IN (SELECT [value] FROM OPENJSON(@user_ids))
+				  AND email IS NOT NULL AND email <> ''
+			`);
+		await Promise.all(
+			res.recordset.map((u) =>
+				mailService.send({
+					to: u.email,
+					subject: title,
+					html: mailService.renderNotificationEmail({
+						fullName: u.full_name,
+						title,
+						message,
+					}),
+				}),
+			),
+		);
+	} catch (err) {
+		console.error('[notification] pushWithEmail failed:', err.message);
 	}
 };
 
@@ -214,6 +258,7 @@ module.exports = {
 	markRead,
 	markAllRead,
 	push,
+	pushWithEmail,
 	getUsersByTarget,
 	sendBroadcast,
 	adminGetAll,
