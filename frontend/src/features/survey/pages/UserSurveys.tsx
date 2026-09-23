@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import { CheckSvg, ClipboardCheckSvg } from '@/assets/icons';
 import { InlineLoading } from '@/shared/components';
 import UserLayout from '../../../layouts/UserLayout';
@@ -49,69 +50,68 @@ function RespondForm({
 
 	return (
 		<div className={styles.respondWrap}>
-			<div className={styles.tableCard} style={{ padding: 24 }}>
-				<div className={styles.tableTitle}>{survey.title}</div>
-				{survey.description && (
-					<div className={styles.descText} style={{ marginTop: 4 }}>
-						{survey.description}
-					</div>
-				)}
+			<div className={styles.respondCard}>
+				<div className={styles.respondHeader}>
+					<h2 className={styles.respondTitle}>{survey.title}</h2>
+					{survey.description && <p className={styles.respondDesc}>{survey.description}</p>}
+					<span className={styles.respondMeta}>
+						<ClipboardCheckSvg /> {survey.questions.length} câu hỏi
+					</span>
+				</div>
 
-				{survey.questions.map((q, qi) => (
-					<div
-						key={q.id}
-						className={styles.questionBlock}
-					>
-						<div className={styles.questionLabel}>
-							{qi + 1}. {q.question_text}
-						</div>
-						{q.question_type === 'text' && (
-							<textarea
-								className={styles.formTextarea}
-								rows={3}
-								value={answers[q.id]?.answer_text ?? ''}
-								onChange={(e) => setText(q.id, e.target.value)}
-								placeholder='Nhập câu trả lời...'
-							/>
-						)}
-						{q.question_type === 'single_choice' &&
-							q.options.map((opt) => (
-								<label
-									key={opt}
-									className={styles.optionChoice}
-								>
-									<input
-										type='radio'
-										name={q.id}
-										checked={(answers[q.id]?.answer_options ?? [])[0] === opt}
-										onChange={() => setSingle(q.id, opt)}
-									/>
-									{opt}
-								</label>
-							))}
-						{q.question_type === 'multi_choice' &&
-							q.options.map((opt) => (
-								<label
-									key={opt}
-									className={styles.optionChoice}
-								>
-									<input
-										type='checkbox'
-										checked={(answers[q.id]?.answer_options ?? []).includes(opt)}
-										onChange={() => toggleMulti(q.id, opt)}
-									/>
-									{opt}
-								</label>
-							))}
-					</div>
-				))}
+				<div className={styles.respondBody}>
+					{survey.questions.map((q, qi) => (
+						<fieldset
+							key={q.id}
+							className={styles.questionBlock}
+						>
+							<legend className={styles.questionLabel}>
+								<span className={styles.questionIndex}>{qi + 1}</span>
+								<span>{q.question_text}</span>
+							</legend>
+							{q.question_type === 'text' && (
+								<textarea
+									className={styles.formTextarea}
+									rows={3}
+									value={answers[q.id]?.answer_text ?? ''}
+									onChange={(e) => setText(q.id, e.target.value)}
+									placeholder='Nhập câu trả lời...'
+								/>
+							)}
+							{q.question_type !== 'text' && (
+								<div className={styles.optionList}>
+									{q.options.map((opt) => {
+										const picked = answers[q.id]?.answer_options ?? [];
+										const single = q.question_type === 'single_choice';
+										return (
+											<label
+												key={opt}
+												className={styles.optionChoice}
+											>
+												<input
+													type={single ? 'radio' : 'checkbox'}
+													name={q.id}
+													checked={single ? picked[0] === opt : picked.includes(opt)}
+													onChange={() => (single ? setSingle(q.id, opt) : toggleMulti(q.id, opt))}
+												/>
+												<span>{opt}</span>
+											</label>
+										);
+									})}
+								</div>
+							)}
+							{q.question_type === 'multi_choice' && (
+								<div className={styles.questionHint}>Có thể chọn nhiều đáp án</div>
+							)}
+						</fieldset>
+					))}
 
-				{error && (
-					<div style={{ color: '#e24b4a', fontSize: 13, marginTop: 8 }}>{error}</div>
-				)}
+					{error && <div className={styles.respondError}>{error}</div>}
+				</div>
 
-				<div style={{ display: 'flex', gap: 8, marginTop: 20 }}>
+				<div className={styles.respondFooter}>
 					<button
+						type='button'
 						className={styles.btnCancel}
 						onClick={onCancel}
 						disabled={submitting}
@@ -119,6 +119,7 @@ function RespondForm({
 						Huỷ
 					</button>
 					<button
+						type='button'
 						className={styles.btnConfirm}
 						onClick={handleSubmit}
 						disabled={submitting}
@@ -133,29 +134,54 @@ function RespondForm({
 }
 
 export default function UserSurveys() {
+	// Mỗi khảo sát có URL riêng /user/khao-sat/:id — có thể chia sẻ link trực tiếp
+	// (chưa đăng nhập sẽ được RequireAuth chuyển tới /login?from=... rồi quay lại).
+	const { id } = useParams<{ id: string }>();
+	const navigate = useNavigate();
 	const [surveys, setSurveys] = useState<ActiveSurvey[] | null>(null);
-	const [selected, setSelected] = useState<SurveyToRespond | null>(null);
-	const [error, setError] = useState('');
+	// Kết quả mở khảo sát, gắn với id đã tải để khi URL đổi không hiện nhầm dữ liệu cũ.
+	const [opened, setOpened] = useState<{ id: string; survey?: SurveyToRespond; error?: string } | null>(null);
+	const [listError, setListError] = useState('');
 	const [doneMsg, setDoneMsg] = useState('');
+
+	const current = id && opened?.id === id ? opened : null;
+	const selected = current?.survey ?? null;
+	const error = current?.error || listError;
 
 	const load = () => {
 		surveyApi
 			.listActive()
 			.then(setSurveys)
-			.catch(() => setError('Không thể tải danh sách khảo sát'));
+			.catch(() => setListError('Không thể tải danh sách khảo sát'));
 	};
 
 	useEffect(() => {
-		load();
-	}, []);
-
-	const openSurvey = async (id: string) => {
-		setError('');
-		try {
-			setSelected(await surveyApi.getForRespond(id));
-		} catch (err) {
-			setError(err instanceof Error ? err.message : 'Không thể mở khảo sát');
+		if (!id) {
+			load();
+			return;
 		}
+		let cancelled = false;
+		surveyApi
+			.getForRespond(id)
+			.then((survey) => {
+				if (!cancelled) setOpened({ id, survey });
+			})
+			.catch((err) => {
+				if (cancelled) return;
+				setOpened({ id, error: err instanceof Error ? err.message : 'Không thể mở khảo sát' });
+				load();
+			});
+		return () => {
+			cancelled = true;
+		};
+	}, [id]);
+
+	// Đang mở 1 khảo sát theo URL thì chưa hiện danh sách (tránh nháy); lỗi thì hiện lại.
+	const showList = !id || !!current;
+
+	const openSurvey = (surveyId: string) => {
+		setDoneMsg('');
+		navigate(`/user/khao-sat/${surveyId}`);
 	};
 
 	if (selected) {
@@ -166,11 +192,10 @@ export default function UserSurveys() {
 			>
 				<RespondForm
 					survey={selected}
-					onCancel={() => setSelected(null)}
+					onCancel={() => navigate('/user/khao-sat')}
 					onDone={() => {
-						setSelected(null);
 						setDoneMsg('Đã nộp khảo sát, cảm ơn bạn đã phản hồi.');
-						load();
+						navigate('/user/khao-sat');
 					}}
 				/>
 			</UserLayout>
@@ -189,16 +214,17 @@ export default function UserSurveys() {
 			)}
 			{error && <div className={styles.emptyState}>{error}</div>}
 
-			{!surveys && !error && <InlineLoading />}
+			{!surveys && !error && !id && <InlineLoading />}
+			{id && !current && <InlineLoading />}
 
-			{surveys && surveys.length === 0 && (
+			{showList && surveys && surveys.length === 0 && (
 				<div className={styles.emptyState}>
 					<div className={styles.emptyTitle}>Không có khảo sát nào đang mở</div>
 					<div className={styles.emptyDesc}>Quay lại sau khi có khảo sát mới dành cho bạn.</div>
 				</div>
 			)}
 
-			{surveys && surveys.length > 0 && (
+			{showList && surveys && surveys.length > 0 && (
 				<div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
 					{surveys.map((s) => (
 						<div

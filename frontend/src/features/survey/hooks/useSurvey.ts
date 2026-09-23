@@ -183,6 +183,24 @@ export function useSurvey() {
 		[showToast],
 	);
 
+	const copyRespondLink = useCallback(
+		async (survey: Survey) => {
+			const link = `${window.location.origin}/user/khao-sat/${survey.id}`;
+			try {
+				await navigator.clipboard.writeText(link);
+				showToast(
+					'success',
+					survey.status === 'active'
+						? 'Đã sao chép link khảo sát'
+						: 'Đã sao chép link — khảo sát chưa ở trạng thái "Đang mở" nên người dùng chưa trả lời được',
+				);
+			} catch {
+				showToast('error', `Không sao chép được, link: ${link}`);
+			}
+		},
+		[showToast],
+	);
+
 	return {
 		items,
 		roles,
@@ -212,5 +230,6 @@ export function useSurvey() {
 		handleDelete,
 		handleBulkDelete,
 		openResults,
+		copyRespondLink,
 	};
 }

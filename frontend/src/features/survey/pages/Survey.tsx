@@ -1,4 +1,4 @@
-import { BarChartSvg, CheckSvg, EditSvg, PlusSvg, SearchSvg, TrashSvg, XSvg } from '@/assets/icons';
+import { BarChartSvg, CheckSvg, EditSvg, LinkSvg, PlusSvg, SearchSvg, TrashSvg, XSvg } from '@/assets/icons';
 import { useState } from 'react';
 import AdminLayout from '../../../layouts/AdminLayout';
 import { SkeletonTable } from '../../../shared/components/Loading';
@@ -180,6 +180,13 @@ export default function Survey() {
 														onClick={() => d.openResults(survey)}
 													>
 														<BarChartSvg />
+													</div>
+													<div
+														className={styles.actionBtn}
+														title='Sao chép link trả lời khảo sát'
+														onClick={() => d.copyRespondLink(survey)}
+													>
+														<LinkSvg />
 													</div>
 													<div
 														className={styles.actionBtn}

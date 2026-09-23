@@ -18,7 +18,7 @@ function getApiPort(): string {
 	}
 
 	// 2. Fallback to server's .env
-	const serverEnvPath = path.resolve(process.cwd(), '../server/src/.env');
+	const serverEnvPath = path.resolve(process.cwd(), '../backend/.env');
 	if (fs.existsSync(serverEnvPath)) {
 		const content = fs.readFileSync(serverEnvPath, 'utf8');
 		const match = content.match(/^PORT=(\d+)/m);

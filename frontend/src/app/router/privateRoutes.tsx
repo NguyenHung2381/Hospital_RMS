@@ -301,6 +301,10 @@ export const userRoutes: RouteObject[] = [
 		element: user('Khảo sát', <UserSurveys />),
 	},
 	{
+		path: '/user/khao-sat/:id',
+		element: user('Trả lời khảo sát', <UserSurveys />),
+	},
+	{
 		path: '/user/viec-cua-toi',
 		element: user('Việc của tôi', <MyTasks />),
 	},
