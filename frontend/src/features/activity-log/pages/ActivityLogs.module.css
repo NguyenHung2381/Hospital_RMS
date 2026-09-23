@@ -1,0 +1,162 @@
+/* ── CARD + HEADER (chuẩn tham chiếu: trang Đề tài) ─────────────────────── */
+.tableCard {
+	composes: tableCard from '../../../shared/components/Table/Table.module.css';
+}
+.tableHeader {
+	composes: tableHeader from '../../../shared/components/Table/Table.module.css';
+}
+.tableHeaderLeft {
+	composes: tableHeaderLeft from '../../../shared/components/Table/Table.module.css';
+}
+.tableTitle {
+	composes: tableTitle from '../../../shared/components/Table/Table.module.css';
+}
+.tableCount {
+	composes: tableCount from '../../../shared/components/Table/Table.module.css';
+}
+.tableControls {
+	composes: tableControls from '../../../shared/components/Table/Table.module.css';
+}
+
+.btnRefresh {
+	width: 32px;
+	height: 32px;
+	border: 1.5px solid var(--color-gray-200);
+	border-radius: var(--radius-md);
+	background: transparent;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	cursor: pointer;
+	color: var(--color-gray-500);
+	transition: all var(--transition-fast);
+}
+.btnRefresh:hover {
+	background: var(--color-gray-50);
+	color: var(--color-gray-700);
+}
+
+.searchBox {
+	composes: searchWrap from '../../../shared/components/Table/Table.module.css';
+}
+.searchIcon {
+	composes: searchIcon from '../../../shared/components/Table/Table.module.css';
+}
+.searchInput {
+	composes: searchInput from '../../../shared/components/Table/Table.module.css';
+}
+.filterSelect {
+	composes: filterSelect from '../../../shared/components/Table/Table.module.css';
+}
+
+.emptyState {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: var(--space-3);
+	padding: 48px 24px;
+	color: var(--color-gray-400);
+}
+.emptyTitle {
+	font-size: var(--font-size-sm);
+	font-weight: var(--font-weight-semibold);
+}
+
+.tableWrap {
+	overflow-x: auto;
+}
+.table {
+	composes: table from '../../../shared/components/Table/Table.module.css';
+}
+.th {
+	composes: th from '../../../shared/components/Table/Table.module.css';
+}
+.tr {
+	composes: tr from '../../../shared/components/Table/Table.module.css';
+}
+.td {
+	composes: td from '../../../shared/components/Table/Table.module.css';
+}
+
+.methodBadge {
+	display: inline-flex;
+	align-items: center;
+	padding: 2px 8px;
+	border-radius: var(--radius-full);
+	font-size: 11px;
+	font-weight: var(--font-weight-bold);
+	white-space: nowrap;
+}
+.method_POST {
+	background: #e1f5ee;
+	color: #065f46;
+}
+.method_PUT,
+.method_PATCH {
+	background: #e0f2fe;
+	color: #0369a1;
+}
+.method_DELETE {
+	background: #fcebeb;
+	color: #791f1f;
+}
+
+.path {
+	font-family: var(--font-mono);
+	font-size: 12.5px;
+}
+.actorName {
+	font-weight: var(--font-weight-medium);
+	color: var(--color-gray-800);
+}
+.actorId {
+	font-size: 11px;
+	color: var(--color-gray-400);
+	font-family: var(--font-mono);
+}
+.statusOk {
+	color: #065f46;
+	font-weight: var(--font-weight-semibold);
+}
+.statusErr {
+	color: #791f1f;
+	font-weight: var(--font-weight-semibold);
+}
+.timeText {
+	font-size: 12px;
+	color: var(--color-gray-400);
+	white-space: nowrap;
+}
+
+.footer {
+	display: flex;
+	justify-content: center;
+	padding: var(--space-4) var(--space-6);
+	border-top: 1px solid var(--color-gray-100);
+}
+.btnLoadMore {
+	padding: var(--space-2) var(--space-6);
+	border: 1.5px solid var(--color-gray-200);
+	border-radius: var(--radius-lg);
+	background: var(--color-white);
+	font-family: var(--font-body);
+	font-size: var(--font-size-sm);
+	font-weight: var(--font-weight-semibold);
+	color: var(--color-gray-600);
+	cursor: pointer;
+	transition: all var(--transition-fast);
+}
+.btnLoadMore:hover:not(:disabled) {
+	border-color: var(--color-primary);
+	color: var(--color-primary-dark);
+}
+.btnLoadMore:disabled {
+	opacity: 0.5;
+	cursor: not-allowed;
+}
+
+@media (max-width: 640px) {
+	.tableWrap {
+		font-size: 12px;
+	}
+}

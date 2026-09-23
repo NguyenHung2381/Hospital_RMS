@@ -1,0 +1,373 @@
+import React, { useState } from 'react';
+import { CalendarSvg, CheckSvg, XSvg } from '@/assets/icons';
+import { DatePicker } from '@/shared/components';
+import {
+	EMPTY_SEMINAR_FORM,
+	EVENT_TYPE_LABELS,
+	SCOPE_LABELS,
+	type Seminar,
+	type SeminarEventType,
+	type SeminarForm,
+	type SeminarScope,
+} from '../types/seminar.type';
+import styles from '../pages/Seminar.module.css';
+
+const numStr = (n: number | null) => (n != null ? String(n) : '');
+
+function toForm(s: Seminar): SeminarForm {
+	return {
+		title: s.title,
+		event_type: s.event_type,
+		scope: s.scope,
+		location: s.location ?? '',
+		start_date: s.start_date ? s.start_date.slice(0, 10) : '',
+		end_date: s.end_date ? s.end_date.slice(0, 10) : '',
+		date_text: s.date_text ?? '',
+		event_year: s.event_year ? String(s.event_year) : '',
+		host_chair: s.host_chair ?? '',
+		speakers: s.speakers ?? '',
+		permit_doc_no: s.permit_doc_no ?? '',
+		co_organizers: s.co_organizers ?? '',
+		coordinator: s.coordinator ?? '',
+		grants_cme: s.grants_cme,
+		cme_default_credits:
+			s.cme_default_credits != null ? String(s.cme_default_credits) : '',
+		manual_participant_count: numStr(s.manual_participant_count),
+		manual_internal_count: numStr(s.manual_internal_count),
+		manual_external_count: numStr(s.manual_external_count),
+		manual_foreign_count: numStr(s.manual_foreign_count),
+		manual_cme_count: numStr(s.manual_cme_count),
+		notes: s.notes ?? '',
+	};
+}
+
+export function SeminarFormModal({
+	mode,
+	seminar,
+	loading,
+	onClose,
+	onSave,
+}: {
+	mode: 'add' | 'edit';
+	seminar?: Seminar | null;
+	loading: boolean;
+	onClose: () => void;
+	onSave: (form: SeminarForm) => void;
+}) {
+	const [form, setForm] = useState<SeminarForm>(
+		seminar ? toForm(seminar) : EMPTY_SEMINAR_FORM,
+	);
+	const [err, setErr] = useState<string>('');
+
+	const set =
+		<K extends keyof SeminarForm>(k: K) =>
+		(
+			e: React.ChangeEvent<
+				HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
+			>,
+		) => {
+			const v =
+				e.target.type === 'checkbox'
+					? (e.target as HTMLInputElement).checked
+					: e.target.value;
+			setForm((f) => ({ ...f, [k]: v }));
+			setErr('');
+		};
+
+	const submit = () => {
+		if (!form.title.trim()) {
+			setErr('Vui lòng nhập tên hội thảo/hội nghị');
+			return;
+		}
+		// suy năm từ ngày bắt đầu nếu để trống
+		const year =
+			form.event_year ||
+			(form.start_date ? form.start_date.slice(0, 4) : '') ||
+			(form.date_text.match(/20\d{2}/)?.[0] ?? '');
+		onSave({ ...form, event_year: year });
+	};
+
+	return (
+		<div
+			className={styles.modalBackdrop}
+			onClick={(e) => e.target === e.currentTarget && onClose()}
+		>
+			<div className={styles.modal}>
+				<div className={styles.modalHeader}>
+					<CalendarSvg />
+					<div>
+						<div className={styles.modalTitle}>
+							{mode === 'add'
+								? 'Thêm hội thảo / hội nghị'
+								: 'Chỉnh sửa hội thảo / hội nghị'}
+						</div>
+						<div className={styles.modalSub}>
+							Thông tin sự kiện — người tham dự quản lý ở trang chi tiết
+						</div>
+					</div>
+					<button className={styles.modalClose} onClick={onClose}>
+						<XSvg />
+					</button>
+				</div>
+
+				<div className={styles.modalBody}>
+					<div className={styles.formGrid}>
+						<div className={`${styles.formGroup} ${styles.full}`}>
+							<label className={styles.formLabel}>
+								Tên / Nội dung <span className={styles.required}>*</span>
+							</label>
+							<input
+								className={`${styles.formInput} ${err ? styles.inputError : ''}`}
+								value={form.title}
+								onChange={set('title')}
+								placeholder='VD: Hội nghị khoa học Phẫu thuật Gan Mật Tụy...'
+							/>
+							{err && <div className={styles.fieldError}>{err}</div>}
+						</div>
+
+						<div className={styles.formGroup}>
+							<label className={styles.formLabel}>Hình thức</label>
+							<select
+								className={styles.formInput}
+								value={form.event_type}
+								onChange={set('event_type')}
+							>
+								{(Object.keys(EVENT_TYPE_LABELS) as SeminarEventType[]).map(
+									(t) => (
+										<option key={t} value={t}>
+											{EVENT_TYPE_LABELS[t]}
+										</option>
+									),
+								)}
+							</select>
+						</div>
+
+						<div className={styles.formGroup}>
+							<label className={styles.formLabel}>Phạm vi</label>
+							<select
+								className={styles.formInput}
+								value={form.scope}
+								onChange={set('scope')}
+							>
+								{(Object.keys(SCOPE_LABELS) as SeminarScope[]).map((s) => (
+									<option key={s} value={s}>
+										{SCOPE_LABELS[s]}
+									</option>
+								))}
+							</select>
+						</div>
+
+						<div className={`${styles.formGroup} ${styles.full}`}>
+							<label className={styles.formLabel}>Địa điểm</label>
+							<input
+								className={styles.formInput}
+								value={form.location}
+								onChange={set('location')}
+							/>
+						</div>
+
+						<div className={styles.formGroup}>
+							<label className={styles.formLabel}>Ngày bắt đầu</label>
+							<DatePicker
+								value={form.start_date}
+								onChange={(val) => setForm((f) => ({ ...f, start_date: val }))}
+								max={form.end_date || undefined}
+							/>
+						</div>
+						<div className={styles.formGroup}>
+							<label className={styles.formLabel}>Ngày kết thúc</label>
+							<DatePicker
+								value={form.end_date}
+								onChange={(val) => setForm((f) => ({ ...f, end_date: val }))}
+								min={form.start_date || undefined}
+							/>
+						</div>
+
+						<div className={styles.formGroup}>
+							<label className={styles.formLabel}>Thời gian (dạng chữ)</label>
+							<input
+								className={styles.formInput}
+								value={form.date_text}
+								onChange={set('date_text')}
+								placeholder='VD: 05-06/06/2026'
+							/>
+							<span className={styles.hint}>
+								Giữ nguyên chuỗi gốc khi ngày không theo chuẩn
+							</span>
+						</div>
+						<div className={styles.formGroup}>
+							<label className={styles.formLabel}>Năm sự kiện</label>
+							<input
+								className={styles.formInput}
+								value={form.event_year}
+								onChange={set('event_year')}
+								placeholder='2026'
+								inputMode='numeric'
+							/>
+							<span className={styles.hint}>
+								Dùng cho chu trình cấp số CME theo năm
+							</span>
+						</div>
+
+						<div className={styles.formGroup}>
+							<label className={styles.formLabel}>Người điều phối</label>
+							<input
+								className={styles.formInput}
+								value={form.coordinator}
+								onChange={set('coordinator')}
+							/>
+						</div>
+						<div className={styles.formGroup}>
+							<label className={styles.formLabel}>Chủ tọa (nếu BV tổ chức)</label>
+							<input
+								className={styles.formInput}
+								value={form.host_chair}
+								onChange={set('host_chair')}
+							/>
+						</div>
+
+						<div className={`${styles.formGroup} ${styles.full}`}>
+							<label className={styles.formLabel}>Báo cáo viên</label>
+							<input
+								className={styles.formInput}
+								value={form.speakers}
+								onChange={set('speakers')}
+							/>
+						</div>
+
+						<div className={styles.formGroup}>
+							<label className={styles.formLabel}>Công văn cấp phép của Sở</label>
+							<input
+								className={styles.formInput}
+								value={form.permit_doc_no}
+								onChange={set('permit_doc_no')}
+							/>
+						</div>
+						<div className={styles.formGroup}>
+							<label className={styles.formLabel}>Đơn vị phối hợp tổ chức</label>
+							<input
+								className={styles.formInput}
+								value={form.co_organizers}
+								onChange={set('co_organizers')}
+							/>
+						</div>
+
+						<div className={styles.formGroup}>
+							<label className={styles.checkFilter}>
+								<input
+									type='checkbox'
+									checked={form.grants_cme}
+									onChange={set('grants_cme')}
+								/>
+								Có cấp CME
+							</label>
+						</div>
+						{form.grants_cme && (
+							<div className={styles.formGroup}>
+								<label className={styles.formLabel}>Tín chỉ CME / người</label>
+								<input
+									className={styles.formInput}
+									value={form.cme_default_credits}
+									onChange={set('cme_default_credits')}
+									placeholder='VD: 3 hoặc 3.5'
+									inputMode='decimal'
+								/>
+								<span className={styles.hint}>
+									Số tín chỉ mỗi đại biểu, không phải tổng số chứng chỉ
+								</span>
+							</div>
+						)}
+
+						{/* ── Số liệu tổng hợp (khi chưa nhập từng người) ── */}
+						<div className={`${styles.formGroup} ${styles.full}`}>
+							<label className={styles.formLabel} style={{ fontWeight: 700 }}>
+								Số liệu tổng hợp
+							</label>
+							<span className={styles.hint}>
+								Nhập nhanh số lượng ở đây nếu chưa cần danh sách từng người. Khi
+								có số nhập tay, hệ thống hiển thị số này thay cho số đếm tự động.
+							</span>
+						</div>
+						<div className={styles.formGroup}>
+							<label className={styles.formLabel}>Số lượng người tham dự</label>
+							<input
+								className={styles.formInput}
+								value={form.manual_participant_count}
+								onChange={set('manual_participant_count')}
+								inputMode='numeric'
+								placeholder='VD: 260'
+							/>
+						</div>
+						{form.grants_cme && (
+							<div className={styles.formGroup}>
+								<label className={styles.formLabel}>Số lượng chứng chỉ CME</label>
+								<input
+									className={styles.formInput}
+									value={form.manual_cme_count}
+									onChange={set('manual_cme_count')}
+									inputMode='numeric'
+									placeholder='VD: 330'
+								/>
+							</div>
+						)}
+						<div className={styles.formGroup}>
+							<label className={styles.formLabel}>Trong đó: nội viện</label>
+							<input
+								className={styles.formInput}
+								value={form.manual_internal_count}
+								onChange={set('manual_internal_count')}
+								inputMode='numeric'
+							/>
+						</div>
+						<div className={styles.formGroup}>
+							<label className={styles.formLabel}>Ngoại viện</label>
+							<input
+								className={styles.formInput}
+								value={form.manual_external_count}
+								onChange={set('manual_external_count')}
+								inputMode='numeric'
+							/>
+						</div>
+						<div className={styles.formGroup}>
+							<label className={styles.formLabel}>Nước ngoài</label>
+							<input
+								className={styles.formInput}
+								value={form.manual_foreign_count}
+								onChange={set('manual_foreign_count')}
+								inputMode='numeric'
+							/>
+						</div>
+
+						<div className={`${styles.formGroup} ${styles.full}`}>
+							<label className={styles.formLabel}>Ghi chú</label>
+							<textarea
+								className={styles.formTextarea}
+								rows={2}
+								value={form.notes}
+								onChange={set('notes')}
+							/>
+						</div>
+					</div>
+				</div>
+
+				<div className={styles.modalFooter}>
+					<button
+						className={styles.btnCancel}
+						onClick={onClose}
+						disabled={loading}
+					>
+						Huỷ
+					</button>
+					<button
+						className={styles.btnPrimary}
+						onClick={submit}
+						disabled={loading}
+					>
+						{loading ? <span className={styles.spinner} /> : <CheckSvg />}
+						{mode === 'add' ? 'Thêm' : 'Lưu thay đổi'}
+					</button>
+				</div>
+			</div>
+		</div>
+	);
+}

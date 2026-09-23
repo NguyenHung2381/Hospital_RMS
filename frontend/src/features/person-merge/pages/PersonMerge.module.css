@@ -1,0 +1,190 @@
+/* Khung bảng / tab / ô tìm kiếm dùng chung — không tự định nghĩa lại (xem shared/components/Table) */
+.tableCard {
+	composes: tableCard from '../../../shared/components/Table/Table.module.css';
+}
+.tableHeader {
+	composes: tableHeader from '../../../shared/components/Table/Table.module.css';
+}
+.tableHeaderLeft {
+	composes: tableHeaderLeft from '../../../shared/components/Table/Table.module.css';
+}
+.tableTitle {
+	composes: tableTitle from '../../../shared/components/Table/Table.module.css';
+}
+.tableCount {
+	composes: tableCount from '../../../shared/components/Table/Table.module.css';
+}
+.tableControls {
+	composes: tableControls from '../../../shared/components/Table/Table.module.css';
+}
+.searchBox {
+	composes: searchWrap from '../../../shared/components/Table/Table.module.css';
+}
+.searchIcon {
+	composes: searchIcon from '../../../shared/components/Table/Table.module.css';
+}
+.searchInput {
+	composes: searchInput from '../../../shared/components/Table/Table.module.css';
+}
+.tabsRow {
+	composes: tabsRow from '../../../shared/components/Table/Table.module.css';
+}
+.tab {
+	composes: tab from '../../../shared/components/Table/Table.module.css';
+}
+.tabActive {
+	composes: tabActive from '../../../shared/components/Table/Table.module.css';
+}
+.tabBadge {
+	composes: tabBadge from '../../../shared/components/Table/Table.module.css';
+}
+.tableWrap {
+	composes: tableWrap from '../../../shared/components/Table/Table.module.css';
+}
+.table {
+	composes: table from '../../../shared/components/Table/Table.module.css';
+}
+.th {
+	composes: th from '../../../shared/components/Table/Table.module.css';
+}
+.thRight {
+	composes: thRight from '../../../shared/components/Table/Table.module.css';
+}
+.tr {
+	composes: tr from '../../../shared/components/Table/Table.module.css';
+	cursor: pointer;
+}
+.td {
+	composes: td from '../../../shared/components/Table/Table.module.css';
+	vertical-align: top;
+}
+.tdIdx {
+	composes: tdIdx from '../../../shared/components/Table/Table.module.css';
+}
+.tdActions {
+	composes: tdActions from '../../../shared/components/Table/Table.module.css';
+}
+
+.filterSelect {
+	composes: filterSelect from '../../../shared/components/Table/Table.module.css';
+}
+
+/* Ô một hồ sơ trong hàng */
+.person {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+	min-width: 0;
+}
+.personName {
+	font-weight: var(--font-weight-semibold);
+	color: var(--color-gray-800);
+}
+.personSub {
+	font-size: var(--font-size-xs);
+	color: var(--color-gray-500);
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	max-width: 260px;
+}
+.personTags {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--space-1);
+	margin-top: 2px;
+}
+
+.reviewBtn {
+	font: inherit;
+	font-size: var(--font-size-sm);
+	font-weight: var(--font-weight-semibold);
+	padding: 6px 14px;
+	border-radius: var(--radius-lg);
+	border: 1.5px solid var(--color-primary);
+	background: var(--color-white);
+	color: var(--color-primary-dark);
+	cursor: pointer;
+	white-space: nowrap;
+}
+.reviewBtn:hover {
+	background: var(--color-primary);
+	color: var(--color-white);
+}
+
+.emptyBlock {
+	padding: var(--space-12) var(--space-6);
+	text-align: center;
+	color: var(--color-gray-500);
+}
+.emptyTitle {
+	font-weight: var(--font-weight-semibold);
+	color: var(--color-gray-700);
+	margin-bottom: var(--space-1);
+}
+
+.loadingRow {
+	padding: var(--space-12);
+	display: flex;
+	justify-content: center;
+}
+
+/* Toast (cùng kiểu các trang khác) */
+.toast {
+	position: fixed;
+	bottom: 28px;
+	right: 28px;
+	color: #fff;
+	padding: var(--space-3) var(--space-5);
+	border-radius: var(--radius-xl);
+	font-size: var(--font-size-sm);
+	font-weight: var(--font-weight-semibold);
+	z-index: var(--z-toast, 999);
+	display: flex;
+	align-items: center;
+	gap: var(--space-2);
+	box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+	max-width: min(420px, calc(100vw - 32px));
+}
+.toastSuccess {
+	background: var(--color-primary-dark);
+}
+.toastError {
+	background: #7f1d1d;
+}
+.toast svg {
+	width: 15px;
+	height: 15px;
+	flex: none;
+}
+
+/* Thẻ giải thích ngắn đầu trang */
+.hint {
+	display: flex;
+	gap: var(--space-3);
+	align-items: flex-start;
+	padding: var(--space-3) var(--space-4);
+	margin-bottom: var(--space-4);
+	background: var(--color-gray-50);
+	border: 1px solid var(--color-gray-200);
+	border-radius: var(--radius-lg);
+	font-size: var(--font-size-sm);
+	color: var(--color-gray-600);
+	line-height: var(--line-height-base);
+}
+.hint svg {
+	width: 16px;
+	height: 16px;
+	flex: none;
+	margin-top: 2px;
+	color: var(--color-info);
+}
+
+@media (max-width: 720px) {
+	.searchInput {
+		width: 100%;
+	}
+	.personSub {
+		max-width: 180px;
+	}
+}
