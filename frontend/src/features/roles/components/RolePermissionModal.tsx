@@ -43,6 +43,7 @@ const RESOURCE_ICON: Record<string, React.ReactNode> = {
 	training_programs: <LayersSvg />,
 	lecturers: <UsersSvg />,
 	training_catalog: <InfoSvg />,
+	venues: <InfoSvg />,
 	courses: <LayersSvg />,
 };
 
@@ -67,6 +68,7 @@ const RESOURCE_LABELS: Record<string, string> = {
 	training_programs: 'Chương trình đào tạo',
 	lecturers: 'Giảng viên',
 	training_catalog: 'Danh mục Đào tạo',
+	venues: 'Địa điểm (phòng họp, phòng học)',
 	courses: 'Khóa học (đăng ký, giảng viên, lịch học, điểm danh)',
 };
 

@@ -1,3 +1,5 @@
+import { formatDateVN } from '../../../shared/utils/formatDate';
+import { notify } from '../../../shared/utils/feedback';
 import React, { useEffect, useState } from 'react';
 import {
 	AlertSvg,
@@ -325,6 +327,7 @@ export function DeadlineManager({
 			setNewRow(null);
 			setEditPhase(null);
 			setEditRow(null);
+			notify.success('Đã lưu mốc thời gian');
 		} catch (e) {
 			setErr(e instanceof Error ? e.message : 'Lưu thất bại');
 		} finally {
@@ -336,6 +339,7 @@ export function DeadlineManager({
 		try {
 			await deleteDeadline(roundId, phase);
 			setDeadlines((p) => p.filter((d) => d.phase !== phase));
+			notify.success('Đã xoá mốc thời gian');
 		} catch {
 			setErr('Xoá thất bại');
 		}
@@ -413,14 +417,14 @@ export function DeadlineManager({
 										<CalendarSvg />
 										{d.start_date ? (
 											<span>
-												{d.start_date}{' '}
+												{formatDateVN(d.start_date)}{' '}
 												<span style={{ color: 'var(--color-gray-400)' }}>
 													→
 												</span>{' '}
 												<span
 													className={styles.timelineDateHighlighted}
 												>
-													{d.deadline_date}
+													{formatDateVN(d.deadline_date)}
 												</span>
 											</span>
 										) : (
@@ -429,7 +433,7 @@ export function DeadlineManager({
 												<span
 													className={styles.timelineDateHighlighted}
 												>
-													{d.deadline_date}
+													{formatDateVN(d.deadline_date)}
 												</span>
 											</span>
 										)}

@@ -4,7 +4,29 @@ const { broadcast } = require('./eventService');
 const { paging } = require('../utils/paging');
 const { splitList, inClause, buildWhere } = require('../utils/sqlFilters');
 const { assertTopicActionWindow } = require('./deadlineGuard');
-const { topicScope } = require('../middlewares/auth');
+const { topicScope, hasPermission } = require('../middlewares/auth');
+
+// Danh sách hành động hợp lệ cho đề tài theo status + quyền của actor — nguồn
+// chân lý duy nhất để frontend ẩn/hiện nút phê duyệt/từ chối/bổ sung/nộp lại/
+// cấp tài khoản, thay vì tự suy luận theo topic.status rải rác ở nhiều nơi
+// (ApprovalDetailPanel.tsx, useTopicDrawer.ts...). Khớp ĐÚNG điều kiện mà mỗi
+// route thật sự kiểm tra (vd 'submit' không đòi phải là leader/secretary vì
+// backend /submit cũng không kiểm tra điều đó) — allowedActions không được
+// lỏng/chặt hơn quyền thật ở route.
+const computeAllowedActions = (topic, actor) => {
+	if (!actor) return [];
+	const actions = [];
+	if (topic.status === 'submitted' && hasPermission(actor, 'topics', 'approve')) {
+		actions.push('approve', 'reject', 'request_supplement');
+	}
+	if (topic.status === 'supplement' && hasPermission(actor, 'topics', 'update')) {
+		actions.push('submit');
+	}
+	if (topic.status === 'approved' && hasPermission(actor, 'topics', 'update')) {
+		actions.push('grant_accounts');
+	}
+	return actions;
+};
 
 const getAll = async (filters, actor = null) => {
 	const {
@@ -117,7 +139,7 @@ const getAll = async (filters, actor = null) => {
            t.level_id, l.name AS level_name,
            t.department_id, d.name AS department_name,
            t.created_by, u.full_name AS created_by_name,
-           t.article_type, t.journal_name, t.doi, t.publish_date,
+           t.article_type, t.journal_name, t.doi, t.publish_date, t.is_featured,
            (SELECT COUNT(*) FROM topic_members tm WHERE tm.topic_id = t.id) AS member_count,
            0 AS progress
     FROM topics t
@@ -143,6 +165,9 @@ const getAll = async (filters, actor = null) => {
 	const byStatus = Object.fromEntries(
 		globalStatusRows.map((r) => [r.status, r.count]),
 	);
+	rows.forEach((row) => {
+		row.allowed_actions = computeAllowedActions(row, actor);
+	});
 
 	return {
 		data: rows,
@@ -223,6 +248,7 @@ const getById = async (id, actor = null) => {
       WHERE trd.topic_id = @topic_id
     `);
 	topic.related_departments = related.recordset;
+	topic.allowed_actions = computeAllowedActions(topic, actor);
 
 	return topic;
 };
@@ -326,6 +352,38 @@ const update = async (id, data, actorId, actor = null) => {
 	const bypass = actor === true;
 	const scope = bypass ? 'all' : topicScope(actor);
 
+	// BR04: không cho đổi status qua đường PUT chung trừ khi actor thực sự có
+	// quyền topics:approve — trước đây bất kỳ ai có topics:update (kể cả
+	// phạm vi 'own'/'department') có thể set status='approved' bằng payload
+	// tự chế, bỏ qua hẳn sp_approve_topic + quyền topics:approve. Đường hợp lệ
+	// duy nhất để phê duyệt/từ chối/yêu cầu bổ sung là POST /topics/:id/approve;
+	// route này (PUT) chỉ còn dùng cho các trường hợp admin có quyền approve
+	// cần sửa trực tiếp (vd nhập liệu/data-fix qua ô chọn trạng thái ở
+	// TopicModal.tsx).
+	if (data.status !== undefined) {
+		const VALID_STATUSES = [
+			'submitted',
+			'approved',
+			'rejected',
+			'supplement',
+			'cancelled',
+		];
+		if (!VALID_STATUSES.includes(data.status)) {
+			throw Object.assign(new Error('Trạng thái đề tài không hợp lệ.'), {
+				status: 400,
+				statusCode: 400,
+			});
+		}
+		if (!bypass && !hasPermission(actor, 'topics', 'approve')) {
+			throw Object.assign(
+				new Error(
+					'Bạn không có quyền thay đổi trạng thái đề tài trực tiếp. Dùng chức năng Phê duyệt/Yêu cầu bổ sung.',
+				),
+				{ status: 403, statusCode: 403 },
+			);
+		}
+	}
+
 	if (!bypass && scope === 'own') {
 		// Chủ nhiệm / thư ký: chỉ sửa được khi mốc "Sửa" / "Bổ sung" tương ứng đang mở.
 		if (data.title !== undefined)
@@ -421,6 +479,10 @@ const update = async (id, data, actorId, actor = null) => {
 	if (data.recognition_decision_date !== undefined) {
 		sets.push('recognition_decision_date = @recognition_decision_date');
 		req.input('recognition_decision_date', sql.Date, data.recognition_decision_date || null);
+	}
+	if (data.is_featured !== undefined) {
+		sets.push('is_featured = @is_featured');
+		req.input('is_featured', sql.Bit, data.is_featured ? 1 : 0);
 	}
 
 	const relatedChanged = Array.isArray(data.related_department_ids);

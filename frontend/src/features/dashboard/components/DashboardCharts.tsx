@@ -186,6 +186,8 @@ interface TrendBarChartProps {
 	subtitle?: string;
 	xKey?: string;
 	unitLabel?: string;
+	/** false = cột nhóm cạnh nhau (khi các chuỗi không cộng dồn được với nhau) */
+	stacked?: boolean;
 }
 
 export function TrendBarChart({
@@ -197,6 +199,7 @@ export function TrendBarChart({
 	subtitle = 'Số lượng đề tài nghiên cứu phân theo lĩnh vực chuyên môn',
 	xKey = 'year',
 	unitLabel = 'đề tài',
+	stacked = true,
 }: TrendBarChartProps) {
 	return (
 		<div className={styles.chartCard}>
@@ -266,10 +269,12 @@ export function TrendBarChart({
 								key={String(cat)}
 								dataKey={String(cat)}
 								name={String(cat)}
-								stackId='a'
+								stackId={stacked ? 'a' : undefined}
 								fill={CATEGORY_COLORS[i % CATEGORY_COLORS.length]}
 								radius={
-									i === trendCats.length - 1 ? [4, 4, 0, 0] : [0, 0, 0, 0]
+									!stacked || i === trendCats.length - 1
+										? [4, 4, 0, 0]
+										: [0, 0, 0, 0]
 								}
 							/>
 						))}

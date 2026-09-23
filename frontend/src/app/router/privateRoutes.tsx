@@ -7,8 +7,11 @@ import { lazyRoute as lazy } from './routePrefetch';
 import { RequireAdmin, RequireAuth, RequirePermission } from './guards';
 
 // ── Admin pages ──────────────────────────────────────────
-const Dashboard = lazy(
-	() => import('../../features/dashboard/pages/Dashboard'),
+const OverviewDashboard = lazy(
+	() => import('../../features/dashboard/pages/OverviewDashboard'),
+);
+const ResearchDashboard = lazy(
+	() => import('../../features/dashboard/pages/ResearchDashboard'),
 );
 const TrainingDashboard = lazy(
 	() => import('../../features/dashboard/pages/TrainingDashboard'),
@@ -50,11 +53,25 @@ const ActivityLogs = lazy(
 const TrainingCatalog = lazy(
 	() => import('../../features/training-catalog/pages/TrainingCatalog'),
 );
+const Venues = lazy(() => import('../../features/venue/pages/Venues'));
 const Trainees = lazy(() => import('../../features/trainee/pages/Trainees'));
 const TrainingPrograms = lazy(
 	() => import('../../features/training-program/pages/TrainingPrograms'),
 );
 const Lessons = lazy(() => import('../../features/training-program/pages/Lessons'));
+const TrainingPlan = lazy(
+	() => import('../../features/training-plan/pages/TrainingPlan'),
+);
+const Survey = lazy(() => import('../../features/survey/pages/Survey'));
+const Workflow = lazy(() => import('../../features/workflow/pages/Workflow'));
+const UserSurveys = lazy(
+	() => import('../../features/survey/pages/UserSurveys'),
+);
+const MyTasks = lazy(() => import('../../features/my-tasks/pages/MyTasks'));
+const AttendanceCheckIn = lazy(
+	() => import('../../features/attendance-checkin/pages/AttendanceCheckIn'),
+);
+const UserExams = lazy(() => import('../../features/exam/pages/UserExams'));
 const Lecturers = lazy(() => import('../../features/lecturer/pages/Lecturers'));
 const Courses = lazy(() => import('../../features/course/pages/Courses'));
 const PersonMerge = lazy(
@@ -100,7 +117,11 @@ const user = (
 );
 
 export const adminRoutes: RouteObject[] = [
-	{ path: '/admin', element: admin('Bảng điều khiển', <Dashboard />) },
+	{ path: '/admin', element: admin('Tổng quan Hệ thống', <OverviewDashboard />) },
+	{
+		path: '/admin/dashboard/research',
+		element: admin('Tổng quan NCKH', <ResearchDashboard />),
+	},
 	{
 		path: '/admin/dashboard/training',
 		element: admin('Tổng quan Đào tạo', <TrainingDashboard />),
@@ -142,6 +163,14 @@ export const adminRoutes: RouteObject[] = [
 	{
 		path: '/admin/departments',
 		element: admin('Khoa / Phòng ban', <Departments />),
+	},
+	{
+		path: '/admin/venues',
+		element: (
+			<RequirePermission perm='venues:read'>
+				{admin('Địa điểm', <Venues />)}
+			</RequirePermission>
+		),
 	},
 	{ path: '/admin/users', element: admin('Người dùng', <Users />) },
 	{ path: '/admin/roles', element: admin('Phân quyền', <Roles />) },
@@ -191,6 +220,14 @@ export const adminRoutes: RouteObject[] = [
 		element: admin('Bài học', <Lessons />),
 	},
 	{
+		path: '/admin/training-plans',
+		element: (
+			<RequirePermission perm='training_plans:manage'>
+				{admin('Kế hoạch đào tạo', <TrainingPlan />)}
+			</RequirePermission>
+		),
+	},
+	{
 		path: '/admin/lecturers',
 		element: admin('Giảng viên', <Lecturers />),
 	},
@@ -218,6 +255,22 @@ export const adminRoutes: RouteObject[] = [
 		path: '/admin/cme-credit-categories',
 		element: admin('Danh mục quy đổi CME', <TrainingCatalog />),
 	},
+	{
+		path: '/admin/surveys',
+		element: (
+			<RequirePermission perm='surveys:manage'>
+				{admin('Khảo sát', <Survey />)}
+			</RequirePermission>
+		),
+	},
+	{
+		path: '/admin/workflows',
+		element: (
+			<RequirePermission perm='workflows:manage'>
+				{admin('Workflow duyệt', <Workflow />)}
+			</RequirePermission>
+		),
+	},
 ];
 
 export const userRoutes: RouteObject[] = [
@@ -242,6 +295,22 @@ export const userRoutes: RouteObject[] = [
 	{
 		path: '/user/notifications',
 		element: user('Thông báo của tôi', <UserNotifications />),
+	},
+	{
+		path: '/user/khao-sat',
+		element: user('Khảo sát', <UserSurveys />),
+	},
+	{
+		path: '/user/viec-cua-toi',
+		element: user('Việc của tôi', <MyTasks />),
+	},
+	{
+		path: '/user/diem-danh',
+		element: user('Điểm danh QR', <AttendanceCheckIn />),
+	},
+	{
+		path: '/user/thi-online',
+		element: user('Thi online', <UserExams />),
 	},
 	{
 		path: '/user/register-topic',

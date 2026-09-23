@@ -43,6 +43,25 @@ export const updateTrainee = (id: string, form: TraineeFormData) =>
 
 export const deleteTrainee = (id: string) => apiClient.delete<null>(`/trainees/${id}`);
 
+export interface GrantedTraineeAccount {
+	trainee_id: string;
+	user_id: string;
+	username: string;
+	full_name: string;
+	password_plain: string;
+}
+
+export interface GrantTraineeAccountsResult {
+	credentials: GrantedTraineeAccount[];
+	skipped: { trainee_id: string; full_name: string; reason: string }[];
+}
+
+export const grantTraineeAccounts = (traineeIds?: string[]) =>
+	apiClient.post<GrantTraineeAccountsResult>(
+		'/trainees/grant-accounts',
+		traineeIds ? { trainee_ids: traineeIds } : {},
+	);
+
 export const importTraineesExcel = (file: File, dryRun: boolean) => {
 	const form = new FormData();
 	form.append('dry_run', dryRun ? '1' : '0');

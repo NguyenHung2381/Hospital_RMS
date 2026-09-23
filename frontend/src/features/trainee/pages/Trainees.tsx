@@ -1,11 +1,13 @@
 import { useState } from 'react';
-import { BookOpenSvg, CheckSvg, EditSvg, FileTextSvg, PlusSvg, SearchSvg, TrashSvg, UploadSvg, XSvg } from '@/assets/icons';
+import { BookOpenSvg, CheckSvg, EditSvg, FileTextSvg, KeySvg, PlusSvg, SearchSvg, TrashSvg, UploadSvg, XSvg } from '@/assets/icons';
+import { Badge } from '@/shared/components';
 import AdminLayout from '../../../layouts/AdminLayout';
 import { SkeletonTable } from '../../../shared/components/Loading';
 import { Pagination } from '../../../shared/components/Table/Pagination';
 import sel from '../../../shared/components/Table/RowSelect.module.css';
 import { BulkButton, BulkDeleteModal, SelectCheckbox } from '../../../shared/components/Table/RowSelect';
 import { useRowSelection } from '../../../shared/hooks/useRowSelection';
+import { GrantedAccountsModal } from '../components/GrantedAccountsModal';
 import { TraineeDeleteModal } from '../components/TraineeDeleteModal';
 import { TraineeDetailModal } from '../components/TraineeDetailModal';
 import { TraineeFormModal } from '../components/TraineeFormModal';
@@ -71,6 +73,12 @@ export default function Trainees() {
 						{rowSel.selectedCount > 0 ? (
 							<span className={styles.tableCount}>
 								Đã chọn {rowSel.selectedCount}
+								<BulkButton
+									disabled={d.granting}
+									onClick={() => d.handleGrantAccounts([...rowSel.selectedIds])}
+								>
+									<KeySvg /> Cấp tài khoản
+								</BulkButton>
 								<BulkButton
 									danger
 									onClick={() => setConfirmBulkDelete(true)}
@@ -196,7 +204,20 @@ export default function Trainees() {
 													{getInitials(t.full_name)}
 												</div>
 												<div>
-													<div className={styles.personName}>{t.full_name}</div>
+													<div
+														className={styles.personName}
+														style={{ display: 'flex', alignItems: 'center', gap: 6 }}
+													>
+														{t.full_name}
+														{t.account_granted && (
+															<Badge
+																tone='green'
+																dot
+															>
+																TK
+															</Badge>
+														)}
+													</div>
 													{t.dob && (
 														<div className={styles.personSub}>
 															{formatDate(t.dob)}
@@ -301,6 +322,16 @@ export default function Trainees() {
 				<TraineeImportModal
 					onClose={() => setShowImport(false)}
 					onDone={d.refreshData}
+				/>
+			)}
+
+			{d.grantedAccounts.length > 0 && (
+				<GrantedAccountsModal
+					accounts={d.grantedAccounts}
+					onClose={() => {
+						d.setGrantedAccounts([]);
+						rowSel.clearSelection();
+					}}
 				/>
 			)}
 

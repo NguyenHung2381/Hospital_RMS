@@ -1,3 +1,4 @@
+import { notify } from '../../../shared/utils/feedback';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { getStoredUser, type StoredUser } from '../../../shared/utils/storage';
 import {
@@ -160,10 +161,11 @@ export function useCouncilProgress() {
 				comment: d.comment,
 			});
 			setSavedId(t.id);
+			notify.success('Đã lưu đánh giá tiến độ');
 			setTimeout(() => setSavedId((s) => (s === t.id ? null : s)), 2500);
 			await load();
 		} catch (e) {
-			alert(e instanceof Error ? e.message : 'Lưu đánh giá thất bại');
+			notify.error(e instanceof Error ? e.message : 'Lưu đánh giá thất bại');
 		} finally {
 			setSavingId(null);
 		}
@@ -174,9 +176,10 @@ export function useCouncilProgress() {
 		setUploadingId(t.id);
 		try {
 			await uploadEvaluationFiles(t.id, [...files]);
+			notify.success(`Đã tải lên ${files.length} file đánh giá`);
 			await load();
 		} catch (e) {
-			alert(e instanceof Error ? e.message : 'Upload thất bại');
+			notify.error(e instanceof Error ? e.message : 'Upload thất bại');
 		} finally {
 			setUploadingId(null);
 			const input = fileInputs.current[t.id];
@@ -188,9 +191,10 @@ export function useCouncilProgress() {
 		if (!confirm('Xóa file đánh giá này?')) return;
 		try {
 			await deleteEvaluationFile(t.id, fileId);
+			notify.success('Đã xoá file đánh giá');
 			await load();
 		} catch (e) {
-			alert(e instanceof Error ? e.message : 'Xóa file thất bại');
+			notify.error(e instanceof Error ? e.message : 'Xóa file thất bại');
 		}
 	};
 
@@ -206,10 +210,11 @@ export function useCouncilProgress() {
 				general_comment: d.general_comment,
 			});
 			setSavedResultId(t.id);
+			notify.success('Đã lưu kết luận hội đồng');
 			setTimeout(() => setSavedResultId((s) => (s === t.id ? null : s)), 2500);
 			await load();
 		} catch (e) {
-			alert(e instanceof Error ? e.message : 'Lưu kết luận thất bại');
+			notify.error(e instanceof Error ? e.message : 'Lưu kết luận thất bại');
 		} finally {
 			setSavingResultId(null);
 		}
@@ -223,9 +228,10 @@ export function useCouncilProgress() {
 		setUploadingMinutesId(t.id);
 		try {
 			await uploadMinutesFiles(t.id, [...files]);
+			notify.success(`Đã tải lên ${files.length} biên bản`);
 			await load();
 		} catch (e) {
-			alert(e instanceof Error ? e.message : 'Upload thất bại');
+			notify.error(e instanceof Error ? e.message : 'Upload thất bại');
 		} finally {
 			setUploadingMinutesId(null);
 			const input = minutesInputs.current[t.id];
@@ -237,9 +243,10 @@ export function useCouncilProgress() {
 		if (!confirm('Xóa biên bản này?')) return;
 		try {
 			await deleteMinutesFile(t.id, fileId);
+			notify.success('Đã xoá biên bản');
 			await load();
 		} catch (e) {
-			alert(e instanceof Error ? e.message : 'Xóa file thất bại');
+			notify.error(e instanceof Error ? e.message : 'Xóa file thất bại');
 		}
 	};
 

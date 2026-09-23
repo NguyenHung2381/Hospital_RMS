@@ -136,6 +136,20 @@ const bulkCmeStatus = async (req, res, next) => {
 	}
 };
 
+// ─── Điểm danh QR ─────────────────────────────────────────────────────────────
+const getCheckInQrToken = (req, res) => {
+	return success(res, { token: partService.generateCheckInQrToken(req.params.id) });
+};
+
+const checkInSelf = async (req, res, next) => {
+	try {
+		const result = await partService.checkInSelf(req.body.token, req.user);
+		return success(res, result, 'Điểm danh thành công');
+	} catch (e) {
+		next(e);
+	}
+};
+
 // ─── Nhập Excel danh sách người tham dự ──────────────────────────────────────
 const importParticipants = async (req, res, next) => {
 	try {
@@ -181,4 +195,6 @@ module.exports = {
 	revokeCme,
 	bulkCmeStatus,
 	importParticipants,
+	getCheckInQrToken,
+	checkInSelf,
 };

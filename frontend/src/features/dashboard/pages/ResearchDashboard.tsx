@@ -4,6 +4,7 @@ import { ActivitySvg, ClipboardCheckSvg, DocSvg, InfoSvg } from '@/assets/icons'
 import { Badge } from '@/shared/components';
 import AdminLayout from '../../../layouts/AdminLayout';
 import { CouncilProgressStrip } from '../components/CouncilProgressStrip';
+import { DashboardTabs } from '../components/DashboardTabs';
 import {
 	DeptBarChart,
 	StatusPieChart,
@@ -11,7 +12,6 @@ import {
 } from '../components/DashboardCharts';
 import { MetricCard } from '../components/MetricCard';
 import { ModuleOverviewChart } from '../components/ModuleOverviewChart';
-import { QuickAccess } from '../components/QuickAccess';
 import { TopicTable } from '../components/TopicTable';
 import { UpcomingCouncilsTable } from '../components/UpcomingCouncilsTable';
 import { useDashboard } from '../hooks/useDashboard';
@@ -25,7 +25,7 @@ import styles from './Dashboard.module.css';
 
 type TableMode = 'topics' | 'councils';
 
-export default function Dashboard() {
+export default function ResearchDashboard() {
 	const navigate = useNavigate();
 	const [tableMode, setTableMode] = useState<TableMode>('topics');
 	const {
@@ -76,9 +76,11 @@ export default function Dashboard() {
 
 	return (
 		<AdminLayout
-			pageTitle='Tổng quan Quản lý Nghiên cứu & Đào tạo'
-			pageSubtitle='Hệ thống Quản trị Hoạt động NCKH, Hội đồng Đánh giá & Đào tạo Y khoa liên tục (CME)'
+			pageTitle='Tổng quan Nghiên cứu khoa học'
+			pageSubtitle='Đề tài NCKH, tiến độ Hội đồng đánh giá, phân bố theo khoa/phòng & nhật ký thẩm định'
 		>
+			<DashboardTabs />
+
 			{/* ── TẦNG 1: CHỈ SỐ ĐIỀU HÀNH & TIẾN ĐỘ HỘI ĐỒNG ── */}
 			<div className={styles.metricsGrid}>
 				<MetricCard
@@ -175,9 +177,6 @@ export default function Dashboard() {
 					/>
 				</div>
 			</div>
-
-			{/* ── TẦNG 3: TRUY CẬP NHANH PHÂN HỆ NGHIỆP VỤ ── */}
-			<QuickAccess />
 
 			{/* ── TẦNG 4: NGHIỆP VỤ CHI TIẾT & NHẬT KÝ THẨM ĐỊNH ── */}
 			<div className={styles.operationsGrid}>

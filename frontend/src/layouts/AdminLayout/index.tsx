@@ -6,6 +6,8 @@ import { NotificationPanel } from '../../features/notifications/components/Notif
 import { useNotifications } from '../../features/notifications/hooks/useNotifications';
 import { toNotif } from '../../features/notifications/utils/notifUtils';
 import { getTopics } from '../../features/topics/api/topicApi';
+import { getMyTasks } from '../../features/my-tasks/api/myTasksApi';
+import { usePermission } from '../../shared/hooks/usePermission';
 import { getInitials } from '../../shared/utils/helper';
 import { clearAuth, getStoredUser } from '../../shared/utils/storage';
 import { useRealtimeUpdate } from '../hooks/useRealtime';
@@ -19,6 +21,7 @@ const SIDEBAR_KEY = 'rms_sidebar_collapsed';
 // Map từ nav key → đường dẫn URL thực tế
 const KEY_TO_PATH: Record<string, string> = {
 	dashboard: '/admin',
+	researchDashboard: '/admin/dashboard/research',
 	trainingDashboard: '/admin/dashboard/training',
 	topics: '/admin/topics',
 	rounds: '/admin/rounds',
@@ -29,6 +32,7 @@ const KEY_TO_PATH: Record<string, string> = {
 	progress: '/admin/progress',
 	files: '/admin/files',
 	departments: '/admin/departments',
+	venues: '/admin/venues',
 	externalReviewers: '/admin/external-reviewers',
 	categories: '/admin/categories',
 	levels: '/admin/levels',
@@ -36,6 +40,8 @@ const KEY_TO_PATH: Record<string, string> = {
 	trainees: '/admin/trainees',
 	trainingPrograms: '/admin/training-programs',
 	lessons: '/admin/lessons',
+	trainingPlans: '/admin/training-plans',
+	myTasks: '/user/viec-cua-toi',
 	lecturers: '/admin/lecturers',
 	trainingCatalog: '/admin/trainee-types',
 	courses: '/admin/courses',
@@ -48,6 +54,8 @@ const KEY_TO_PATH: Record<string, string> = {
 	notifications: '/admin/notifications',
 	activityLogs: '/admin/activity-logs',
 	personMerge: '/admin/person-merge',
+	surveys: '/admin/surveys',
+	workflows: '/admin/workflows',
 };
 
 // Map ngược từ URL pathname → nav key (để highlight sidebar)
@@ -81,12 +89,17 @@ const NAV_GROUPS: NavGroup[] = [
 	{
 		section: 'Tổng quan',
 		items: [
-			{ key: 'dashboard', label: 'Tổng quan', icon: <Icon.Dashboard /> },
+			{ key: 'dashboard', label: 'Tổng quan chung', icon: <Icon.Dashboard /> },
+			{ key: 'researchDashboard', label: 'Tổng quan NCKH', icon: <Icon.Dashboard /> },
 			{ key: 'trainingDashboard', label: 'Tổng quan Đào tạo', icon: <Icon.Dashboard /> },
+			{ key: 'myTasks', label: 'Việc của tôi', icon: <Icon.Approval /> },
 		],
 	},
 	{
-		section: 'Quản lý đề tài',
+		// Gộp "Quản lý đề tài" + "Danh mục" (Phân loại/Cấp độ/Loại đợt) cũ làm 1 —
+		// 3 danh mục này CHỈ dùng để phân loại đề tài NCKH, để chung với luồng
+		// nghiệp vụ NCKH dễ tìm hơn là tách thành 1 mục "Danh mục" mơ hồ riêng.
+		section: 'Nghiên cứu khoa học',
 		items: [
 			{
 				key: 'topics',
@@ -124,10 +137,30 @@ const NAV_GROUPS: NavGroup[] = [
 				icon: <Icon.ExternalReviewer />,
 				perm: 'councils:read',
 			},
+			{
+				key: 'categories',
+				label: 'Phân loại đề tài',
+				icon: <Icon.Category />,
+				perm: 'catalog:read',
+			},
+			{
+				key: 'levels',
+				label: 'Cấp độ đề tài',
+				icon: <Icon.Level />,
+				perm: 'catalog:read',
+			},
+			{
+				key: 'roundTypes',
+				label: 'Loại đợt',
+				icon: <Icon.Round />,
+				perm: 'catalog:read',
+			},
 		],
 	},
 	{
-		section: 'Đào tạo & Hội nghị',
+		// Đổi tên từ "Đào tạo & Hội nghị" — trước đây trùng chữ "Đào tạo" với mục
+		// bên dưới gây nhầm lẫn 2 khu vực khác nhau (hội nghị/CME vs khóa học).
+		section: 'Hội nghị & CME',
 		items: [
 			{
 				key: 'seminars',
@@ -156,36 +189,9 @@ const NAV_GROUPS: NavGroup[] = [
 		],
 	},
 	{
-		section: 'Danh mục',
-		items: [
-			{
-				key: 'departments',
-				label: 'Phòng ban',
-				icon: <Icon.Dept />,
-				perm: 'departments:read',
-			},
-			{
-				key: 'categories',
-				label: 'Phân loại',
-				icon: <Icon.Category />,
-				perm: 'catalog:read',
-			},
-			{
-				key: 'levels',
-				label: 'Cấp độ',
-				icon: <Icon.Level />,
-				perm: 'catalog:read',
-			},
-			{
-				key: 'roundTypes',
-				label: 'Loại đợt',
-				icon: <Icon.Round />,
-				perm: 'catalog:read',
-			},
-		],
-	},
-	{
-		section: 'Đào tạo (Khoá học)',
+		// Bỏ "(Khoá học)" trong tên — không còn trùng với mục "Hội nghị & CME" ở
+		// trên nên không cần phân biệt nữa.
+		section: 'Đào tạo',
 		items: [
 			{
 				key: 'courses',
@@ -212,6 +218,12 @@ const NAV_GROUPS: NavGroup[] = [
 				perm: 'training_programs:read',
 			},
 			{
+				key: 'trainingPlans',
+				label: 'Kế hoạch đào tạo',
+				icon: <Icon.TrainingPlan />,
+				perm: 'training_plans:manage',
+			},
+			{
 				key: 'lecturers',
 				label: 'Giảng viên',
 				icon: <Icon.Lecturer />,
@@ -226,6 +238,10 @@ const NAV_GROUPS: NavGroup[] = [
 		],
 	},
 	{
+		// Gộp thêm "Phòng ban" (dùng chung toàn hệ thống, không chỉ để phân loại
+		// đề tài, nên hợp lý hơn khi đứng cạnh Người dùng/Vai trò) và "Báo cáo &
+		// Xuất" (trước đây là mục "Xuất dữ liệu" — 1 mục cũng đủ thành 1 nhóm
+		// riêng, không cần tách).
 		section: 'Hệ thống',
 		items: [
 			{
@@ -239,6 +255,18 @@ const NAV_GROUPS: NavGroup[] = [
 				label: 'Vai trò & Quyền',
 				icon: <Icon.Role />,
 				perm: 'roles:read',
+			},
+			{
+				key: 'departments',
+				label: 'Khoa / Phòng ban',
+				icon: <Icon.Dept />,
+				perm: 'departments:read',
+			},
+			{
+				key: 'venues',
+				label: 'Địa điểm / Phòng họp',
+				icon: <Icon.Venue />,
+				perm: 'venues:read',
 			},
 			{
 				key: 'notifications',
@@ -258,11 +286,18 @@ const NAV_GROUPS: NavGroup[] = [
 				icon: <Icon.List />,
 				perm: 'activity_logs:read',
 			},
-		],
-	},
-	{
-		section: 'Xuất dữ liệu',
-		items: [
+			{
+				key: 'surveys',
+				label: 'Khảo sát',
+				icon: <Icon.Survey />,
+				perm: 'surveys:manage',
+			},
+			{
+				key: 'workflows',
+				label: 'Workflow duyệt',
+				icon: <Icon.Workflow />,
+				perm: 'workflows:manage',
+			},
 			{
 				key: 'reports',
 				label: 'Báo cáo & Xuất',
@@ -272,15 +307,6 @@ const NAV_GROUPS: NavGroup[] = [
 		],
 	},
 ];
-
-// Có quyền "resource:action" (system:manage = tất cả; resource:manage bao action).
-function permitted(perms: string[], key?: string): boolean {
-	if (!key) return true;
-	if (perms.includes('system:manage')) return true;
-	if (perms.includes(key)) return true;
-	const [resource] = key.split(':');
-	return perms.includes(`${resource}:manage`);
-}
 
 // ─── PROPS ────────────────────────────────
 export interface AdminLayoutProps {
@@ -306,10 +332,10 @@ export default function AdminLayout({
 	const location = useLocation();
 
 	// Lọc menu theo quyền của vai trò (giữ nhóm nếu còn ít nhất 1 mục).
-	const navPerms = storedUser?.permissions ?? [];
+	const { has } = usePermission();
 	const navGroups = NAV_GROUPS.map((g) => ({
 		...g,
-		items: g.items.filter((it) => permitted(navPerms, it.perm)),
+		items: g.items.filter((it) => has(it.perm)),
 	})).filter((g) => g.items.length > 0);
 
 	// Tự detect activePage từ URL hiện tại
@@ -353,18 +379,21 @@ export default function AdminLayout({
 	const [navBadges, setNavBadges] = useState<{
 		topics?: number;
 		approvals?: number;
+		myTasks?: number;
 		notifications?: number;
 	}>({});
 
 	const fetchBadges = useCallback(() => {
-		Promise.all([
-			getTopics({ limit: 1 }),
-			getTopics({ limit: 1, status: 'submitted' }),
-		])
-			.then(([topicsRes, approvalsRes]) => {
+		// approvals: số đề tài THỰC SỰ chờ actor này duyệt (allowed_actions chứa
+		// 'approve', tính theo quyền + phạm vi thật) — thay vì đếm toàn bộ đề tài
+		// 'submitted' trên toàn hệ thống như trước (sai với admin phạm vi khoa).
+		// myTasks gộp thêm cả việc chấm tiến độ hội đồng (khác 'approvals').
+		Promise.all([getTopics({ limit: 1 }), getMyTasks()])
+			.then(([topicsRes, tasks]) => {
 				setNavBadges({
 					topics: topicsRes.pagination.total,
-					approvals: approvalsRes.pagination.total,
+					approvals: tasks.approvals.length,
+					myTasks: tasks.total,
 				});
 			})
 			.catch(() => {});

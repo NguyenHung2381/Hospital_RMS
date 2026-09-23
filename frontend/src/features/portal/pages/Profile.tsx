@@ -5,11 +5,13 @@ import {
 	CheckSvg,
 	EyeOffSvg,
 	EyeSvg,
+	KeySvg,
 	LockSvg,
 	MailSvg,
 	ShieldSvg,
 	UserSvg,
 } from '@/assets/icons';
+import { QRCode } from 'antd';
 import UserLayout from '../../../layouts/UserLayout';
 import { InlineLoading } from '@/shared/components';
 import { fmtDate, useProfile } from '../hooks/useProfile';
@@ -346,6 +348,170 @@ export default function Profile() {
 								</button>
 							</div>
 						</div>
+					</div>
+
+					{/* 2FA (TOTP) */}
+					<div className={styles.detailCard}>
+						<div className={styles.detailCardHeader}>
+							<div
+								className={styles.detailCardIcon}
+								style={{ background: '#e0e7ff', color: '#4338ca' }}
+							>
+								<KeySvg />
+							</div>
+							<div>
+								<div className={styles.detailCardTitle}>Xác thực 2 lớp (2FA)</div>
+								<div className={styles.detailCardSub}>
+									{d.twoFaEnabled
+										? 'Đang bật — mỗi lần đăng nhập cần thêm mã từ ứng dụng xác thực'
+										: 'Tự nguyện — bảo vệ tài khoản bằng mã OTP từ Google Authenticator...'}
+								</div>
+							</div>
+						</div>
+
+						{d.twoFaEnabled === null ? null : d.twoFaSetup ? (
+							<div className={styles.pwdForm}>
+								<div style={{ display: 'flex', gap: 20, alignItems: 'flex-start', flexWrap: 'wrap' }}>
+									<QRCode value={d.twoFaSetup.otpauth_uri} />
+									<div style={{ flex: 1, minWidth: 220 }}>
+										<div className={styles.formLabel} style={{ marginBottom: 6 }}>
+											1. Quét mã QR bằng ứng dụng xác thực (Google Authenticator, Authy...)
+										</div>
+										<div className={styles.formLabel} style={{ marginBottom: 6 }}>
+											2. Nhập mã 6 số hiện tại để xác nhận
+										</div>
+										<input
+											type='text'
+											inputMode='numeric'
+											maxLength={6}
+											className={styles.formInput}
+											placeholder='000000'
+											value={d.twoFaCode}
+											onChange={(e) => d.setTwoFaCode(e.target.value.replace(/\D/g, ''))}
+										/>
+									</div>
+								</div>
+
+								{d.twoFaError && (
+									<div className={styles.errorMsg}>
+										<AlertSvg /> {d.twoFaError}
+									</div>
+								)}
+
+								<div className={styles.pwdFooter}>
+									<button
+										type='button'
+										className={styles.btnPrimary}
+										onClick={() => void d.handleConfirm2FASetup()}
+										disabled={d.twoFaSaving || d.twoFaCode.trim().length === 0}
+									>
+										{d.twoFaSaving ? (
+											<span
+												className={styles.spinner}
+												style={{
+													width: 14,
+													height: 14,
+													border: '2px solid rgba(255,255,255,0.4)',
+													borderTopColor: '#fff',
+												}}
+											/>
+										) : (
+											<CheckSvg />
+										)}
+										Xác nhận & bật 2FA
+									</button>
+									<button
+										type='button'
+										className={styles.btnPrimary}
+										style={{ background: 'var(--color-gray-400)' }}
+										onClick={d.handleCancel2FASetup}
+										disabled={d.twoFaSaving}
+									>
+										Huỷ
+									</button>
+								</div>
+							</div>
+						) : d.twoFaEnabled ? (
+							<div className={styles.pwdForm}>
+								{!d.showDisable2Fa ? (
+									<div className={styles.pwdFooter}>
+										<button
+											type='button'
+											className={styles.btnPrimary}
+											style={{ background: '#dc2626' }}
+											onClick={() => d.setShowDisable2Fa(true)}
+										>
+											Tắt xác thực 2 lớp
+										</button>
+									</div>
+								) : (
+									<>
+										<div className={styles.formGroup}>
+											<label className={styles.formLabel}>Nhập mật khẩu để xác nhận</label>
+											<input
+												type='password'
+												className={styles.formInput}
+												placeholder='Mật khẩu hiện tại...'
+												value={d.disablePwd}
+												onChange={(e) => d.setDisablePwd(e.target.value)}
+											/>
+										</div>
+										{d.twoFaError && (
+											<div className={styles.errorMsg}>
+												<AlertSvg /> {d.twoFaError}
+											</div>
+										)}
+										<div className={styles.pwdFooter}>
+											<button
+												type='button'
+												className={styles.btnPrimary}
+												style={{ background: '#dc2626' }}
+												onClick={() => void d.handleDisable2FA()}
+												disabled={d.twoFaSaving || !d.disablePwd}
+											>
+												Xác nhận tắt 2FA
+											</button>
+											<button
+												type='button'
+												className={styles.btnPrimary}
+												style={{ background: 'var(--color-gray-400)' }}
+												onClick={() => {
+													d.setShowDisable2Fa(false);
+													d.setDisablePwd('');
+												}}
+												disabled={d.twoFaSaving}
+											>
+												Huỷ
+											</button>
+										</div>
+									</>
+								)}
+							</div>
+						) : (
+							<div className={styles.pwdFooter}>
+								<button
+									type='button'
+									className={styles.btnPrimary}
+									onClick={() => void d.handleStart2FASetup()}
+									disabled={d.twoFaSaving}
+								>
+									{d.twoFaSaving ? (
+										<span
+											className={styles.spinner}
+											style={{
+												width: 14,
+												height: 14,
+												border: '2px solid rgba(255,255,255,0.4)',
+												borderTopColor: '#fff',
+											}}
+										/>
+									) : (
+										<KeySvg />
+									)}
+									Bật xác thực 2 lớp
+								</button>
+							</div>
+						)}
 					</div>
 
 					{/* Security: revoke all sessions */}

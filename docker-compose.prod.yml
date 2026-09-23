@@ -1,25 +1,46 @@
 services:
   server:
     build:
-      context: ./server
+      context: ./backend
       target: prod
     env_file:
-      - path: ./server/.env
+      - path: ./backend/.env
         required: false
+    environment:
+      REDIS_HOST: redis
+      # Tin proxy nội bộ (Vite/nginx trong mạng Docker) để req.ip = IP máy khách
+      # qua X-Forwarded-For, thay vì IP container frontend (172.x).
+      TRUST_PROXY: "loopback, uniquelocal"
+      REDIS_PORT: "6379"
     ports:
       - "3000:3000"
     volumes:
       - server_uploads:/app/uploads
+    depends_on:
+      - redis
     restart: unless-stopped
 
   client:
     build:
-      context: ./client
+      context: ./frontend
       target: prod
     ports:
       - "80:80"
     depends_on:
       - server
+    restart: unless-stopped
+
+  # Xem docker-compose.yml (dev) để biết lý do tắt persistence + allkeys-lru.
+  redis:
+    image: redis:7-alpine
+    command:
+      [
+        "redis-server",
+        "--maxmemory", "128mb",
+        "--maxmemory-policy", "allkeys-lru",
+        "--save", "",
+        "--appendonly", "no",
+      ]
     restart: unless-stopped
 
 volumes:

@@ -67,4 +67,62 @@ const changePassword = async (req, res, next) => {
 	}
 };
 
-module.exports = { login, refresh, logout, logoutAll, sessions, changePassword };
+const verify2FA = async (req, res, next) => {
+	try {
+		const { pre_auth_token, code } = req.body;
+		const data = await authService.verify2FALogin(pre_auth_token, code, req.ip, req.get('user-agent'));
+		return success(res, data, 'Đăng nhập thành công');
+	} catch (err) {
+		next(err);
+	}
+};
+
+const setup2FA = async (req, res, next) => {
+	try {
+		const data = await authService.setup2FA(req.user.id);
+		return success(res, data);
+	} catch (err) {
+		next(err);
+	}
+};
+
+const verifySetup2FA = async (req, res, next) => {
+	try {
+		await authService.confirm2FASetup(req.user.id, req.body.code);
+		return success(res, null, 'Đã bật xác thực 2 lớp');
+	} catch (err) {
+		next(err);
+	}
+};
+
+const disable2FA = async (req, res, next) => {
+	try {
+		await authService.disable2FA(req.user.id, req.body.password);
+		return success(res, null, 'Đã tắt xác thực 2 lớp');
+	} catch (err) {
+		next(err);
+	}
+};
+
+const status2FA = async (req, res, next) => {
+	try {
+		const data = await authService.get2FAStatus(req.user.id);
+		return success(res, data);
+	} catch (err) {
+		next(err);
+	}
+};
+
+module.exports = {
+	login,
+	refresh,
+	logout,
+	logoutAll,
+	sessions,
+	changePassword,
+	verify2FA,
+	setup2FA,
+	verifySetup2FA,
+	disable2FA,
+	status2FA,
+};

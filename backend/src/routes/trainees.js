@@ -58,6 +58,32 @@ router.post(
 
 /**
  * @swagger
+ * /trainees/grant-accounts:
+ *   post:
+ *     summary: Cấp tài khoản đăng nhập cho học viên (mật khẩu mặc định 123456)
+ *     tags: [Trainees]
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               trainee_ids:
+ *                 type: array
+ *                 items: { type: string }
+ *                 description: Bỏ trống = cấp cho mọi học viên chưa có tài khoản
+ *     responses:
+ *       200:
+ *         description: Cấp tài khoản thành công (kèm danh sách bị bỏ qua nếu có lỗi)
+ */
+router.post(
+	'/grant-accounts',
+	authorizePermission(['trainees', 'manage']),
+	ctrl.grantAccounts,
+);
+
+/**
+ * @swagger
  * /trainees/{id}:
  *   get:
  *     summary: Chi tiết học viên

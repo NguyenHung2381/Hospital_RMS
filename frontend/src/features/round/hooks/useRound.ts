@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRealtimeUpdate } from '../../../layouts/hooks/useRealtime';
+import { notify } from '../../../shared/utils/feedback';
 import {
 	createRound,
 	deleteRound as deleteRoundApi,
@@ -87,6 +88,7 @@ export function useRound() {
 		const created = await createRound(formToPayload(form));
 		setRounds((prev) => [created, ...prev]);
 		setShowCreate(false);
+		notify.success('Đã tạo đợt mới');
 	}, []);
 
 	const handleEdit = useCallback(
@@ -97,6 +99,7 @@ export function useRound() {
 				prev.map((r) => (r.id === editRound.id ? updated : r)),
 			);
 			setEditRound(null);
+			notify.success('Đã cập nhật đợt');
 		},
 		[editRound],
 	);
@@ -106,6 +109,7 @@ export function useRound() {
 		await deleteRoundApi(deleteRound.id);
 		setRounds((prev) => prev.filter((r) => r.id !== deleteRound.id));
 		setDeleteRound(null);
+		notify.success('Đã xoá đợt');
 	}, [deleteRound]);
 
 	const handleCopyLink = useCallback((token: string) => {

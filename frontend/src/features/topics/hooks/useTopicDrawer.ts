@@ -1,3 +1,4 @@
+import { notify } from '../../../shared/utils/feedback';
 import { useEffect, useRef, useState, type ChangeEvent } from 'react';
 import { BASE_URL } from '../../../shared/api/axios';
 import {
@@ -222,7 +223,8 @@ export function useTopicDrawer(topic: Topic) {
 
 	const doDeleteFiles = async () => {
 		const ids = filesToDelete.map((f) => f.id);
-		for (const id of ids) await deleteTopicFile(id);
+		await Promise.all(ids.map((id) => deleteTopicFile(id)));
+		notify.success(`Đã xoá ${ids.length} file`);
 		setFiles((prev) => prev.filter((f) => !ids.includes(f.id)));
 		setSelectedIds((prev) => {
 			const next = new Set(prev);
@@ -257,6 +259,7 @@ export function useTopicDrawer(topic: Topic) {
 			setMembers(updated);
 			setNewMember(EMPTY_NEW_MEMBER);
 			setShowAddMember(false);
+			notify.success('Đã thêm thành viên');
 		} catch (err) {
 			setMemberError(
 				err instanceof Error ? err.message : 'Lỗi thêm thành viên',
@@ -270,8 +273,9 @@ export function useTopicDrawer(topic: Topic) {
 		try {
 			await deleteTopicMember(topic.id, memberId);
 			setMembers((prev) => prev.filter((m) => m.id !== memberId));
-		} catch {
-			// ignore
+			notify.success('Đã xoá thành viên');
+		} catch (err) {
+			notify.error(err instanceof Error ? err.message : 'Xoá thành viên thất bại');
 		}
 	};
 

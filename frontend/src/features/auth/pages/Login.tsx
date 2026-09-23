@@ -5,7 +5,7 @@ import { canAccessAdminPanel } from '../../../app/router/authHelpers';
 import AuthLayout from '../../../layouts/AuthLayout';
 import { saveAuth } from '../../../shared/utils/storage';
 import { getMyProgress } from '../../council/api/councilApi';
-import { loginApi } from '../api/authApi';
+import { loginApi, verify2FAApi, type LoginResponse } from '../api/authApi';
 import type { FormErrors, LoginForm } from '../types/auth.type';
 import styles from './Login.module.css';
 import {
@@ -83,6 +83,11 @@ export default function Login() {
 		dest: string;
 		count: number;
 	} | null>(null);
+	// Bước 2 của đăng nhập cho tài khoản đã bật 2FA — chỉ set khi backend trả
+	// requires_2fa=true ở bước 1 (mật khẩu đúng).
+	const [preAuthToken, setPreAuthToken] = useState<string | null>(null);
+	const [otpCode, setOtpCode] = useState('');
+	const [otpError, setOtpError] = useState<string | null>(null);
 
 	// Validation
 	const validate = useCallback((): boolean => {
@@ -117,6 +122,28 @@ export default function Login() {
 			if (apiError) setApiError(null);
 		};
 
+	// Dùng chung cho cả 2 đường: đăng nhập thường (không 2FA) và sau khi xác
+	// minh mã OTP thành công (bước 2 của tài khoản đã bật 2FA).
+	const completeLogin = async (data: LoginResponse) => {
+		saveAuth(data, form.remember);
+		const from = searchParams.get('from');
+		const dest = from || (canAccessAdminPanel(data.user) ? '/admin' : '/user');
+
+		// Chỉ hỏi khi vào thẳng cổng người dùng (không phải deep-link cụ thể)
+		if (!from && !canAccessAdminPanel(data.user)) {
+			try {
+				const progress = await getMyProgress();
+				if (progress.length > 0) {
+					setCouncilPrompt({ dest, count: progress.length });
+					return;
+				}
+			} catch {
+				// Không chặn đăng nhập nếu kiểm tra ghế hội đồng thất bại
+			}
+		}
+		navigate(dest);
+	};
+
 	// Handle submit
 	const handleSubmit = async (e: React.FormEvent) => {
 		e.preventDefault();
@@ -127,24 +154,11 @@ export default function Login() {
 
 		try {
 			const data = await loginApi(form.username, form.password);
-			saveAuth(data, form.remember);
-			const from = searchParams.get('from');
-			const dest =
-				from || (canAccessAdminPanel(data.user) ? '/admin' : '/user');
-
-			// Chỉ hỏi khi vào thẳng cổng người dùng (không phải deep-link cụ thể)
-			if (!from && !canAccessAdminPanel(data.user)) {
-				try {
-					const progress = await getMyProgress();
-					if (progress.length > 0) {
-						setCouncilPrompt({ dest, count: progress.length });
-						return;
-					}
-				} catch {
-					// Không chặn đăng nhập nếu kiểm tra ghế hội đồng thất bại
-				}
+			if ('requires_2fa' in data) {
+				setPreAuthToken(data.pre_auth_token);
+				return;
 			}
-			navigate(dest);
+			await completeLogin(data);
 		} catch (err) {
 			setApiError(
 				err instanceof Error ? err.message : 'Có lỗi xảy ra, vui lòng thử lại',
@@ -153,6 +167,117 @@ export default function Login() {
 			setIsLoading(false);
 		}
 	};
+
+	const handleVerify2FA = async (e: React.FormEvent) => {
+		e.preventDefault();
+		if (!preAuthToken || !otpCode.trim()) return;
+		setIsLoading(true);
+		setOtpError(null);
+		try {
+			const data = await verify2FAApi(preAuthToken, otpCode.trim());
+			await completeLogin(data);
+		} catch (err) {
+			setOtpError(err instanceof Error ? err.message : 'Mã xác thực không đúng');
+		} finally {
+			setIsLoading(false);
+		}
+	};
+
+	if (preAuthToken) {
+		return (
+			<AuthLayout>
+				<div className={styles.loginHeader}>
+					<div className={styles.loginTag}>
+						<Icon.Shield />
+						Xác thực 2 lớp
+					</div>
+					<h2 className={styles.loginTitle}>
+						Nhập mã <span>xác thực</span>
+					</h2>
+					<p className={styles.loginSubtitle}>
+						Mở ứng dụng xác thực (Google Authenticator...) và nhập mã 6 số hiện tại
+					</p>
+				</div>
+
+				<div className={styles.loginCard}>
+					{otpError && (
+						<div
+							className={`${styles.alertBox} ${styles.alertError}`}
+							role='alert'
+						>
+							<Icon.Alert />
+							<span>{otpError}</span>
+						</div>
+					)}
+
+					<form
+						onSubmit={handleVerify2FA}
+						className={styles.loginForm}
+						noValidate
+					>
+						<div className={styles.inputGroup}>
+							<label
+								htmlFor='otp'
+								className={styles.inputLabel}
+							>
+								Mã xác thực <span className={styles.inputRequired}>*</span>
+							</label>
+							<div className={styles.inputWrapper}>
+								<span className={styles.inputIcon}>
+									<Icon.Lock />
+								</span>
+								<input
+									id='otp'
+									type='text'
+									inputMode='numeric'
+									maxLength={6}
+									className={styles.inputField}
+									placeholder='000000'
+									value={otpCode}
+									onChange={(e) => {
+										setOtpCode(e.target.value.replace(/\D/g, ''));
+										if (otpError) setOtpError(null);
+									}}
+									autoComplete='one-time-code'
+									autoFocus
+									disabled={isLoading}
+								/>
+							</div>
+						</div>
+
+						<button
+							type='submit'
+							className={styles.submitBtn}
+							disabled={isLoading || otpCode.trim().length === 0}
+						>
+							{isLoading ? (
+								<>
+									<span className={styles.btnSpinner} />
+									Đang xác thực...
+								</>
+							) : (
+								'Xác nhận'
+							)}
+						</button>
+
+						<button
+							type='button'
+							className={styles.passwordToggle}
+							style={{ margin: '12px auto 0', display: 'block' }}
+							onClick={() => {
+								setPreAuthToken(null);
+								setOtpCode('');
+								setOtpError(null);
+							}}
+							disabled={isLoading}
+						>
+							← Quay lại đăng nhập
+						</button>
+					</form>
+				</div>
+			</AuthLayout>
+		);
+	}
 
 	return (
 		<AuthLayout>

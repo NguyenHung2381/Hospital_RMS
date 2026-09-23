@@ -374,8 +374,9 @@ export function ApprovalDetailPanel({
 
 					{/* Action panel */}
 					<div className={styles.actionPanel}>
-						{selected.status === 'pending' ||
-						selected.status === 'info_requested' ? (
+						{selected.allowed_actions.some((a) =>
+							['approve', 'reject', 'request_supplement'].includes(a),
+						) ? (
 							<>
 								<div>
 									<div className={styles.actionLabel}>Quyết định phê duyệt</div>
@@ -422,7 +423,7 @@ export function ApprovalDetailPanel({
 									</div>
 								</div>
 							</div>
-						) : (
+						) : selected.status === 'rejected' ? (
 							<div
 								className={`${styles.processedNotice} ${styles.processedRejected}`}
 							>
@@ -433,6 +434,18 @@ export function ApprovalDetailPanel({
 									</div>
 									<div style={{ fontSize: 12, marginTop: 2 }}>
 										Bởi {selected.updated_by} · {selected.updated_at}
+									</div>
+								</div>
+							</div>
+						) : (
+							<div className={styles.processedNotice}>
+								<WarnSvg />
+								<div>
+									<div style={{ fontWeight: 700, fontSize: 13 }}>
+										Bạn không có quyền xử lý hồ sơ này
+									</div>
+									<div style={{ fontSize: 12, marginTop: 2 }}>
+										Hồ sơ đang chờ người có quyền phê duyệt xử lý.
 									</div>
 								</div>
 							</div>

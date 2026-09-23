@@ -206,6 +206,37 @@ const registerTopic = async (data) => {
 	return { topic_id: topic.id };
 };
 
+// Thư viện đề tài công khai — chỉ đề tài đã duyệt VÀ được admin/khoa gắn cờ
+// is_featured (TopicModal.tsx, quyền topics:update). Trả tối thiểu: không lộ
+// thành viên/CCCD/file — mirror mức lộ thông tin của getOpenTopicRounds.
+const getFeaturedTopics = async () => {
+	const pool = await getPool();
+	const result = await pool.request().query(`
+    SELECT t.id, t.title, t.description, t.article_type, t.journal_name, t.publish_date,
+           t.created_at, d.name AS department_name, r.year AS round_year, c.name AS category_name
+    FROM topics t
+    LEFT JOIN departments d ON d.id = t.department_id
+    LEFT JOIN research_rounds r ON r.id = t.round_id
+    LEFT JOIN categories c ON c.id = t.category_id
+    WHERE t.is_featured = 1 AND t.status = 'approved'
+    ORDER BY t.publish_date DESC, t.created_at DESC
+  `);
+	return result.recordset;
+};
+
+// Tra cứu trạng thái hồ sơ đề tài đã nộp qua cổng công khai bằng chính mã đề
+// tài trả về lúc đăng ký (registerTopic ở trên) — chỉ trả tối thiểu, không
+// JOIN thành viên/file/khoa phòng.
+const getTopicStatus = async (topicId) => {
+	const pool = await getPool();
+	const result = await pool.request().input('id', sql.VarChar(15), topicId).query(`
+    SELECT id, title, status, created_at, updated_at
+    FROM topics
+    WHERE id = @id
+  `);
+	return result.recordset[0] || null;
+};
+
 module.exports = {
 	getOpenCourses,
 	getTraineeTypes,
@@ -216,4 +247,6 @@ module.exports = {
 	getPublicDepartments,
 	getPublicLevels,
 	registerTopic,
+	getTopicStatus,
+	getFeaturedTopics,
 };

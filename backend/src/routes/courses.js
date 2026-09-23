@@ -21,6 +21,9 @@ router.use(authenticate);
 
 // ─── Courses ──────────────────────────────────────────────────────────────
 router.get('/', authorizePermission(['courses', 'read']), ctrl.getAll);
+// Nhân viên nội viện chưa có hồ sơ học viên — để ghi danh thẳng vào khóa (phải
+// khai báo trước '/:id').
+router.get('/staff-candidates', authorizePermission(['courses', 'create']), ctrl.listStaffCandidates);
 router.get('/:id', authorizePermission(['courses', 'read']), ctrl.getById);
 
 router.post(
@@ -68,7 +71,13 @@ router.get('/:id/enrollments', authorizePermission(['courses', 'read']), ctrl.li
 router.post(
 	'/:id/enrollments',
 	authorizePermission(['courses', 'create']),
-	[body('trainee_id').notEmpty().withMessage('Vui lòng chọn học viên')],
+	// trainee_id: học viên có sẵn; user_id: nhân viên nội viện (tự tạo/gắn hồ sơ học viên).
+	[
+		body('trainee_id')
+			.if(body('user_id').not().exists({ checkFalsy: true }))
+			.notEmpty()
+			.withMessage('Vui lòng chọn học viên'),
+	],
 	validate,
 	ctrl.registerTrainee,
 );
@@ -138,6 +147,21 @@ router.put(
 	[body('records').isArray()],
 	validate,
 	ctrl.setAttendance,
+);
+
+// Mã QR điểm danh: sinh mã cần quyền courses:update (giảng viên/quản lý hiển
+// thị lên màn hình lớp); tự quét chỉ cần đăng nhập (học viên dùng token
+// trong QR để chứng minh, không cần quyền courses riêng).
+router.get(
+	'/sessions/:sessionId/attendance-qr',
+	authorizePermission(['courses', 'update']),
+	ctrl.getAttendanceQrToken,
+);
+router.post(
+	'/attendance/check-in',
+	[body('token').notEmpty()],
+	validate,
+	ctrl.checkInSelf,
 );
 
 // ─── Documents (tài liệu & bài kiểm tra) ───────────────────────────────────

@@ -251,6 +251,7 @@ const importExcel = async ({ buffer, dry_run }, actorId) => {
 				notes: p.notes,
 			},
 			actorId,
+			{ fetch: false },
 		);
 		inserted += 1;
 	}

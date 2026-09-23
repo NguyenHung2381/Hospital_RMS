@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { AlertSvg, CheckSvg } from '@/assets/icons';
 import PublicLayout from '../../../layouts/PublicLayout';
 import {
@@ -40,6 +41,8 @@ export default function TopicRegisterPublic() {
 	const [submitting, setSubmitting] = useState(false);
 	const [error, setError] = useState('');
 	const [success, setSuccess] = useState('');
+	const [registeredId, setRegisteredId] = useState('');
+	const [copied, setCopied] = useState(false);
 
 	const loadCaptcha = useCallback(() => {
 		getCaptcha()
@@ -85,8 +88,10 @@ export default function TopicRegisterPublic() {
 
 		setSubmitting(true);
 		try {
-			await registerTopic({ ...form, captcha_token: captcha.token });
+			const result = await registerTopic({ ...form, captcha_token: captcha.token });
 			setSuccess('Đăng ký đề tài thành công! Khoa/phòng và hội đồng sẽ xem xét và duyệt hồ sơ của bạn.');
+			setRegisteredId(result.topic_id ?? '');
+			setCopied(false);
 			setForm(EMPTY_FORM);
 			loadCaptcha();
 		} catch (err) {
@@ -109,7 +114,29 @@ export default function TopicRegisterPublic() {
 			)}
 			{success && (
 				<div className={`${styles.alertBox} ${styles.alertSuccess}`}>
-					<CheckSvg /> {success}
+					<CheckSvg />
+					<div>
+						<div>{success}</div>
+						{registeredId && (
+							<div style={{ marginTop: 8 }}>
+								Mã hồ sơ của bạn: <strong>{registeredId}</strong>{' '}
+								<button
+									type='button'
+									className={styles.captchaRefresh}
+									onClick={() => {
+										void navigator.clipboard.writeText(registeredId);
+										setCopied(true);
+									}}
+								>
+									{copied ? 'Đã sao chép' : 'Sao chép mã'}
+								</button>
+								<div style={{ marginTop: 4, fontSize: 'var(--font-size-sm)' }}>
+									Lưu lại mã này để{' '}
+									<Link to={`/tra-cuu-ho-so/${registeredId}`}>tra cứu trạng thái hồ sơ</Link> sau này.
+								</div>
+							</div>
+						)}
+					</div>
 				</div>
 			)}
 

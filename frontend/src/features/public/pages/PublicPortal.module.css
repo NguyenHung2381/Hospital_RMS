@@ -225,3 +225,36 @@
 		grid-template-columns: 1fr;
 	}
 }
+
+/* ── THƯ VIỆN ĐỀ TÀI ─────────────────────────── */
+.libraryList {
+	display: flex;
+	flex-direction: column;
+	gap: var(--space-3);
+}
+.libraryCard {
+	display: flex;
+	flex-direction: column;
+	gap: var(--space-2);
+	padding: var(--space-4);
+	border: 1.5px solid var(--color-gray-200);
+	border-radius: var(--radius-lg);
+}
+.libraryTitle {
+	font-weight: var(--font-weight-semibold);
+	color: var(--color-gray-900);
+	font-size: var(--font-size-base);
+}
+.libraryDesc {
+	font-size: var(--font-size-sm);
+	color: var(--color-gray-600);
+	line-height: 1.5;
+}
+.libraryMeta {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--space-2);
+	align-items: center;
+	font-size: var(--font-size-xs);
+	color: var(--color-gray-500);
+}

@@ -54,6 +54,7 @@ export function useTopicModal({
 		department_id: topic?.department_id ?? '',
 		status: topic?.status ?? 'submitted',
 		article_type: topic?.article_type ?? 'de_tai',
+		journal_name: topic?.journal_name ?? '',
 		doi: topic?.doi ?? '',
 		publish_date: topic?.publish_date ?? '',
 		budget_estimated: topic?.budget_estimated?.toString() ?? '',
@@ -62,6 +63,7 @@ export function useTopicModal({
 		approval_decision_date: topic?.approval_decision_date ?? '',
 		recognition_decision_no: topic?.recognition_decision_no ?? '',
 		recognition_decision_date: topic?.recognition_decision_date ?? '',
+		is_featured: topic?.is_featured ?? false,
 	});
 	const [errors, setErrors] = useState<FormErrors>({});
 
@@ -213,6 +215,10 @@ export function useTopicModal({
 			});
 	};
 
+	const toggleFeatured = () => {
+		setForm((p) => ({ ...p, is_featured: !p.is_featured }));
+	};
+
 	const validate = (): boolean => {
 		const e: FormErrors = {};
 		const isPaper = form.article_type === 'bai_bao';
@@ -272,6 +278,7 @@ export function useTopicModal({
 		removeMember,
 		changeRole,
 		setField,
+		toggleFeatured,
 		handleSubmit,
 	};
 }

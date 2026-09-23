@@ -2,7 +2,14 @@ import { useEffect, useMemo, useState } from 'react';
 import { apiClient } from '../../../shared/api/axios';
 import { getInitials } from '../../../shared/utils/helper';
 import { clearAuth, getStoredUser, getToken } from '../../../shared/utils/storage';
-import { logoutAllApi } from '../../auth/api/authApi';
+import {
+	disable2FAApi,
+	get2FAStatusApi,
+	logoutAllApi,
+	setup2FAApi,
+	verifySetup2FAApi,
+	type TwoFaSetup,
+} from '../../auth/api/authApi';
 
 interface ProfileData {
 	id: string;
@@ -113,6 +120,81 @@ export function useProfile() {
 		}
 	}
 
+	// ─── 2FA (TOTP) ──────────────────────────────────────────────────────────
+	const [twoFaEnabled, setTwoFaEnabled] = useState<boolean | null>(null);
+	const [twoFaSetup, setTwoFaSetup] = useState<TwoFaSetup | null>(null);
+	const [twoFaCode, setTwoFaCode] = useState('');
+	const [twoFaSaving, setTwoFaSaving] = useState(false);
+	const [twoFaError, setTwoFaError] = useState('');
+	const [disablePwd, setDisablePwd] = useState('');
+	const [showDisable2Fa, setShowDisable2Fa] = useState(false);
+
+	useEffect(() => {
+		const token = getToken();
+		if (!token) return;
+		get2FAStatusApi(token)
+			.then((r) => setTwoFaEnabled(r.enabled))
+			.catch(() => setTwoFaEnabled(false));
+	}, []);
+
+	async function handleStart2FASetup() {
+		const token = getToken();
+		if (!token) return;
+		setTwoFaError('');
+		setTwoFaSaving(true);
+		try {
+			setTwoFaSetup(await setup2FAApi(token));
+		} catch (e: unknown) {
+			// Lỗi ở bước NÀY xảy ra trước khi panel setup (có ô hiện twoFaError)
+			// kịp mở — dùng toast chung thay vì twoFaError để người dùng thấy được.
+			showToast(e instanceof Error ? e.message : 'Không thể khởi tạo 2FA', 'error');
+		} finally {
+			setTwoFaSaving(false);
+		}
+	}
+
+	function handleCancel2FASetup() {
+		setTwoFaSetup(null);
+		setTwoFaCode('');
+		setTwoFaError('');
+	}
+
+	async function handleConfirm2FASetup() {
+		const token = getToken();
+		if (!token || !twoFaCode.trim()) return;
+		setTwoFaError('');
+		setTwoFaSaving(true);
+		try {
+			await verifySetup2FAApi(token, twoFaCode.trim());
+			setTwoFaEnabled(true);
+			setTwoFaSetup(null);
+			setTwoFaCode('');
+			showToast('Đã bật xác thực 2 lớp!', 'success');
+		} catch (e: unknown) {
+			setTwoFaError(e instanceof Error ? e.message : 'Mã xác thực không đúng');
+		} finally {
+			setTwoFaSaving(false);
+		}
+	}
+
+	async function handleDisable2FA() {
+		const token = getToken();
+		if (!token || !disablePwd) return;
+		setTwoFaError('');
+		setTwoFaSaving(true);
+		try {
+			await disable2FAApi(token, disablePwd);
+			setTwoFaEnabled(false);
+			setShowDisable2Fa(false);
+			setDisablePwd('');
+			showToast('Đã tắt xác thực 2 lớp', 'success');
+		} catch (e: unknown) {
+			setTwoFaError(e instanceof Error ? e.message : 'Mật khẩu không đúng');
+		} finally {
+			setTwoFaSaving(false);
+		}
+	}
+
 	const [loggingOutAll, setLoggingOutAll] = useState(false);
 
 	async function handleLogoutAll() {
@@ -156,5 +238,19 @@ export function useProfile() {
 		setPwdError,
 		handleChangePassword,
 		handleLogoutAll,
+		twoFaEnabled,
+		twoFaSetup,
+		twoFaCode,
+		twoFaSaving,
+		twoFaError,
+		disablePwd,
+		showDisable2Fa,
+		setTwoFaCode,
+		setDisablePwd,
+		setShowDisable2Fa,
+		handleStart2FASetup,
+		handleCancel2FASetup,
+		handleConfirm2FASetup,
+		handleDisable2FA,
 	};
 }

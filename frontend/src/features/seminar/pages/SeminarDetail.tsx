@@ -4,6 +4,7 @@ import {
 	BadgeSvg,
 	CheckSvg,
 	ChevLSvg,
+	ClipboardCheckSvg,
 	EditSvg,
 	PlusSvg,
 	TrashSvg,
@@ -21,6 +22,7 @@ import { useRowSelection } from '../../../shared/hooks/useRowSelection';
 import { IssueCmeModal } from '../components/IssueCmeModal';
 import { ParticipantFormModal } from '../components/ParticipantFormModal';
 import { ParticipantImportModal } from '../components/ParticipantImportModal';
+import { SeminarCheckInQrModal } from '../components/SeminarCheckInQrModal';
 import { useSeminarDetail } from '../hooks/useSeminarDetail';
 import { useSeminarPerms } from '../utils/perms';
 import {
@@ -60,6 +62,7 @@ export default function SeminarDetail() {
 	const [editing, setEditing] = useState<SeminarParticipant | null>(null);
 	const [issueOpen, setIssueOpen] = useState(false);
 	const [importOpen, setImportOpen] = useState(false);
+	const [checkInQrOpen, setCheckInQrOpen] = useState(false);
 
 	const filtered = useMemo(
 		() =>
@@ -186,6 +189,14 @@ export default function SeminarDetail() {
 										onClick={() => setImportOpen(true)}
 									>
 										<UploadSvg /> Nhập Excel
+									</button>
+								)}
+								{perms.canUpdate && (
+									<button
+										className={styles.btnGhost}
+										onClick={() => setCheckInQrOpen(true)}
+									>
+										<ClipboardCheckSvg /> Mã QR điểm danh
 									</button>
 								)}
 								{perms.canCme && sem.grants_cme && selected.length > 0 && (
@@ -377,6 +388,13 @@ export default function SeminarDetail() {
 							setEditing(null);
 						}
 					}}
+				/>
+			)}
+
+			{checkInQrOpen && sem && (
+				<SeminarCheckInQrModal
+					seminarId={sem.id}
+					onClose={() => setCheckInQrOpen(false)}
 				/>
 			)}
 

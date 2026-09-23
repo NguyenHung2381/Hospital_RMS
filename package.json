@@ -3,8 +3,8 @@
 		"concurrently": "^9.2.1"
 	},
 	"scripts": {
-		"server": "cd server && npm run dev",
-		"client": "cd client && npm run dev",
+		"server": "cd backend && npm run dev",
+		"client": "cd frontend && npm run dev",
 		"client:wait": "node scripts/wait-server.js && npm run client",
 		"dev": "concurrently -n SERVER,CLIENT -c cyan,yellow \"npm run server\" \"npm run client:wait\""
 	}

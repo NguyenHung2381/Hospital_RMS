@@ -51,6 +51,12 @@ export default function PublicLayout({ title, subtitle, children }: PublicLayout
 							Tra cứu kết quả
 						</Link>
 						<Link
+							to='/tra-cuu-ho-so'
+							className={styles.navLink}
+						>
+							Tra cứu hồ sơ đề tài
+						</Link>
+						<Link
 							to='/login'
 							className={styles.navLinkPrimary}
 						>

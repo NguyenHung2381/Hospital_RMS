@@ -1,3 +1,4 @@
+import { notify } from '../../../shared/utils/feedback';
 import { useState } from 'react';
 import { XSvg } from '@/assets/icons';
 import { deleteDeadline, upsertDeadline } from '../../round/api/roundApi';
@@ -57,6 +58,7 @@ export function DeadlineModal({ state, onClose, onSaved }: Props) {
 					? round.deadlines.map((d) => (d.phase === phase ? saved : d))
 					: [...round.deadlines, saved],
 			});
+			notify.success(isEdit ? 'Đã cập nhật mốc thời gian' : 'Đã thêm mốc thời gian');
 		} catch (e: unknown) {
 			setErr(e instanceof Error ? e.message : 'Lỗi không xác định');
 			setSaving(false);
@@ -73,6 +75,7 @@ export function DeadlineModal({ state, onClose, onSaved }: Props) {
 				...round,
 				deadlines: round.deadlines.filter((d) => d.phase !== deadline.phase),
 			});
+			notify.success('Đã xoá mốc thời gian');
 		} catch (e: unknown) {
 			setErr(e instanceof Error ? e.message : 'Lỗi không xác định');
 			setDeleting(false);

@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useRef } from 'react';
-import { BASE_URL } from '../../shared/api/axios';
+import { BASE_URL, invalidateApiCache } from '../../shared/api/axios';
 import { getToken } from '../../shared/utils/storage';
 
 /**
@@ -32,6 +32,8 @@ function handleUpdate(e: MessageEvent) {
 		console.error('[Realtime] Parse error:', err);
 		return;
 	}
+	// Dữ liệu trên server vừa đổi — bỏ cache GET để các trang tải lại bản mới
+	invalidateApiCache();
 	for (const sub of subscribers) {
 		if (entity === 'all' || sub.entities.includes(entity)) {
 			sub.notify();

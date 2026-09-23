@@ -1,5 +1,5 @@
 import { apiClient } from '../../../shared/api/axios';
-import type { ArticleType, Topic, TopicFile, TopicMember } from '../types/topic.type';
+import type { ArticleType, Topic, TopicAuthor, TopicFile, TopicMember } from '../types/topic.type';
 
 export interface SimpleItem {
 	id: string;
@@ -57,6 +57,7 @@ export interface CreateTopicPayload {
 	department_id?: string;
 	status?: string;
 	article_type?: ArticleType;
+	journal_name?: string;
 	doi?: string;
 	publish_date?: string;
 	budget_estimated?: number;
@@ -71,6 +72,7 @@ export interface UpdateTopicPayload {
 	department_id?: string;
 	status?: string;
 	article_type?: ArticleType;
+	journal_name?: string;
 	doi?: string;
 	publish_date?: string;
 	budget_estimated?: number;
@@ -79,6 +81,7 @@ export interface UpdateTopicPayload {
 	approval_decision_date?: string;
 	recognition_decision_no?: string;
 	recognition_decision_date?: string;
+	is_featured?: boolean;
 }
 
 export type TopicMemberApiRole = 'leader' | 'secretary' | 'member';
@@ -116,6 +119,18 @@ export const deleteTopic = (id: string) =>
 
 export const getTopicMembers = (topicId: string) =>
 	apiClient.get<TopicMember[]>(`/topics/${topicId}/members`);
+
+export interface TopicAuthorPayload {
+	author_name: string;
+	affiliation?: string | null;
+	is_corresponding?: boolean;
+}
+
+export const getTopicAuthors = (topicId: string) =>
+	apiClient.get<TopicAuthor[]>(`/topics/${topicId}/authors`);
+
+export const setTopicAuthors = (topicId: string, authors: TopicAuthorPayload[]) =>
+	apiClient.put<TopicAuthor[]>(`/topics/${topicId}/authors`, { authors });
 
 export const addTopicMember = (topicId: string, payload: TopicMemberPayload) =>
 	apiClient.post<{ id: string }>(`/topics/${topicId}/members`, payload);

@@ -209,21 +209,29 @@ const importExcel = async ({ buffer, dry_run }, actorId) => {
 		return { dry_run: true, rows: preview, summary, warnings };
 	}
 
+	// Id sinh bằng NEWID() nên chèn song song an toàn — chạy theo lô CONCURRENCY
+	// dòng thay vì tuần tự từng dòng (pool DB tối đa 10 kết nối).
+	const CONCURRENCY = 5;
+	const valid = preview.filter((p) => p.valid);
 	let inserted = 0;
-	for (const p of preview) {
-		if (!p.valid) continue;
-		await cmeRecordService.create(
-			{
-				user_id: p.user_id,
-				category_id: p.category_id,
-				title: p.title,
-				activity_date: p.activity_date,
-				credits: p.credits,
-				note: p.notes,
-			},
-			actorId,
+	for (let i = 0; i < valid.length; i += CONCURRENCY) {
+		await Promise.all(
+			valid.slice(i, i + CONCURRENCY).map((p) =>
+				cmeRecordService.create(
+					{
+						user_id: p.user_id,
+						category_id: p.category_id,
+						title: p.title,
+						activity_date: p.activity_date,
+						credits: p.credits,
+						note: p.notes,
+					},
+					actorId,
+					{ fetch: false },
+				),
+			),
 		);
-		inserted += 1;
+		inserted += Math.min(CONCURRENCY, valid.length - i);
 	}
 
 	return { dry_run: false, inserted, warnings };

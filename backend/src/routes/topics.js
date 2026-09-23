@@ -228,12 +228,16 @@ router.put(
 	authorizePermission(['topics', 'update']),
 	[
 		body('title').optional().notEmpty(),
+		body('status')
+			.optional()
+			.isIn(['submitted', 'approved', 'rejected', 'supplement', 'cancelled']),
 		body('article_type').optional().isIn(['de_tai', 'bai_bao']),
 		body('publish_date').optional({ checkFalsy: true }).isISO8601(),
 		body('budget_estimated').optional({ checkFalsy: true }).isFloat({ min: 0 }),
 		body('budget_actual').optional({ checkFalsy: true }).isFloat({ min: 0 }),
 		body('approval_decision_date').optional({ checkFalsy: true }).isISO8601(),
 		body('recognition_decision_date').optional({ checkFalsy: true }).isISO8601(),
+		body('is_featured').optional().isBoolean(),
 	],
 	validate,
 	ctrl.updateOne,
@@ -556,5 +560,15 @@ router.get('/:topic_id/files/batches', authorizePermission(['files', 'read']), f
  *         description: Upload thành công
  */
 router.post('/:topic_id/files', authorizePermission(['files', 'create']), fileCtrl.checkUploadWindow, upload.array('files', 30), fileCtrl.upload);
+
+// ─── Đồng tác giả (bài báo/tập san) ──────────────────────────────────────────
+router.get('/:id/authors', authorizePermission(['topics', 'read']), ctrl.getAuthors);
+router.put(
+	'/:id/authors',
+	authorizePermission(['topics', 'update']),
+	[body('authors').isArray().withMessage('authors phải là mảng')],
+	validate,
+	ctrl.setAuthors,
+);
 
 module.exports = router;

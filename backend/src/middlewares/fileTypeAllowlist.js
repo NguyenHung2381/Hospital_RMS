@@ -1,6 +1,6 @@
 const path = require('path');
 
-// Đuôi file được phép upload lên /uploads (được serve tĩnh, không qua auth).
+// Đuôi file được phép upload lên /uploads (phục vụ qua link có chữ ký, xem utils/signedUpload.js).
 // Chỉ liệt kê định dạng KHÔNG được trình duyệt tự thực thi — loại hẳn html,
 // svg, js, exe, php... để chặn stored-XSS / phát tán mã độc qua đường upload
 // tài liệu đề tài & đào tạo. Cùng nguyên tắc mà uploadImage.js đã áp dụng cho

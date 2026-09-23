@@ -5,9 +5,15 @@
  * tục cho mọi hội nghị trong năm; sang năm mới reset. Cấp nhiều người một lần
  * thì cấp tuần tự trong 1 transaction để giữ dãy liền mạch.
  */
+const jwt = require('jsonwebtoken');
 const { getPool, sql } = require('../config/db');
 const { broadcast } = require('./eventService');
 const personService = require('./personService');
+
+// Mã QR điểm danh hội thảo — JWT ngắn hạn ký seminar_id (mirror
+// courseService.generateAttendanceQrToken / utils/captcha.js).
+const CHECKIN_QR_TTL = '75s'; // xem giải thích ở courseService.ATTENDANCE_QR_TTL
+const CHECKIN_QR_PURPOSE = 'seminar_checkin_qr';
 
 const PART_TYPES = ['attendee', 'speaker', 'chair', 'organizer', 'trainee'];
 const SOURCES = ['internal', 'external'];
@@ -332,11 +338,55 @@ const setCmeStatus = async (seminarId, ids, status, actorId) => {
 	return { updated: r.recordset[0].updated };
 };
 
+// seminar_participants đã có sẵn user_id (khác course_enrollments phải qua
+// trainees) — tự điểm danh chỉ cần so đúng tài khoản đang đăng nhập, KHÔNG tự
+// tạo participant mới nếu chưa có trong danh sách (tránh lộ khả năng "tự đăng
+// ký tham dự" qua đường quét QR).
+const generateCheckInQrToken = (seminarId) =>
+	jwt.sign({ seminar_id: seminarId, purpose: CHECKIN_QR_PURPOSE }, process.env.JWT_SECRET, {
+		expiresIn: CHECKIN_QR_TTL,
+	});
+
+const checkInSelf = async (token, actor) => {
+	let decoded;
+	try {
+		decoded = jwt.verify(token, process.env.JWT_SECRET);
+	} catch {
+		const err = new Error('Mã QR đã hết hạn, vui lòng thử lại.');
+		err.statusCode = 401;
+		throw err;
+	}
+	if (decoded.purpose !== CHECKIN_QR_PURPOSE) {
+		const err = new Error('Mã QR không hợp lệ.');
+		err.statusCode = 401;
+		throw err;
+	}
+
+	const pool = await getPool();
+	const result = await pool
+		.request()
+		.input('seminar_id', sql.VarChar(20), decoded.seminar_id)
+		.input('user_id', sql.VarChar(20), actor.id).query(`
+      UPDATE seminar_participants SET checked_in_at = GETDATE()
+      WHERE seminar_id = @seminar_id AND user_id = @user_id;
+      SELECT id FROM seminar_participants WHERE seminar_id = @seminar_id AND user_id = @user_id;
+    `);
+	if (!result.recordset[0]) {
+		const err = new Error('Bạn không có trong danh sách tham dự hội thảo/hội nghị này.');
+		err.statusCode = 403;
+		throw err;
+	}
+	broadcast('update', { entity: 'seminar' });
+	return { seminar_id: decoded.seminar_id };
+};
+
 module.exports = {
 	listBySeminar,
 	add,
 	bulkAdd,
 	update,
+	generateCheckInQrToken,
+	checkInSelf,
 	remove,
 	issueCme,
 	revokeCme,

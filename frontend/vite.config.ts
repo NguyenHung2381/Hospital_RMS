@@ -90,15 +90,24 @@ export default defineConfig({
 			clientFiles: [
 				'./src/features/topics/pages/Topic.tsx',
 				'./src/features/council/pages/Council.tsx',
-				'./src/features/dashboard/pages/Dashboard.tsx',
+				'./src/features/dashboard/pages/OverviewDashboard.tsx',
 				'./src/features/portal/pages/UserHome.tsx',
 			],
 		},
 		// Bind mount qua Docker Desktop (WSL2) không phát native fs-events —
 		// cần polling để HMR nhận ra thay đổi file. Chỉ bật khi chạy trong Docker.
+		// Chu kỳ mặc định của chokidar là 100ms: ~700 lệnh stat() qua bind mount
+		// mỗi 100ms chiếm hết threadpool libuv, khiến MỌI request tới dev server
+		// (đọc file, DNS lookup của proxy /api) phải xếp hàng 200–900ms. Nới ra
+		// 1s và bỏ qua thư mục build — HMR trễ tối đa ~1s, không đáng kể.
 		watch:
 			process.env.CHOKIDAR_USEPOLLING === 'true'
-				? { usePolling: true }
+				? {
+						usePolling: true,
+						interval: 1000,
+						binaryInterval: 3000,
+						ignored: ['**/dist/**', '**/.git/**'],
+					}
 				: undefined,
 		proxy: {
 			// All API and static-upload requests are proxied to the Express backend.
@@ -106,11 +115,14 @@ export default defineConfig({
 				target: `http://${apiHost}:${apiPort}`,
 				changeOrigin: true,
 				secure: false,
+				// Gửi X-Forwarded-For để backend (TRUST_PROXY) lấy đúng IP máy khách.
+				xfwd: true,
 			},
 			'/uploads': {
 				target: `http://${apiHost}:${apiPort}`,
 				changeOrigin: true,
 				secure: false,
+				xfwd: true,
 			},
 		},
 	},

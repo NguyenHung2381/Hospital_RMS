@@ -457,7 +457,6 @@ export default function Council() {
 				<CouncilFormModal
 					mode='add'
 					rounds={d.rounds}
-					existingCouncils={d.allCouncils}
 					onClose={() => d.setModal(null)}
 					onSave={d.handleCreate}
 					loading={d.loading}
@@ -468,7 +467,6 @@ export default function Council() {
 					mode='edit'
 					council={d.activeCouncil}
 					rounds={d.rounds}
-					existingCouncils={d.allCouncils}
 					onClose={() => {
 						d.setModal(null);
 						d.setActiveCouncil(null);

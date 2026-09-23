@@ -147,6 +147,7 @@ export function mapTopicToRecord(topic: TopicApprovalItem): ApprovalRecord {
 		is_urgent: isUrgentTopic(topic.created_at, status),
 		history: [],
 		members: [],
+		allowed_actions: topic.allowed_actions ?? [],
 	};
 }
 
@@ -186,5 +187,6 @@ export function mergeTopicDetail(
 			role: getMemberRoleLabel(member.role),
 			dept: topic.department_name ?? topic.department_id ?? '',
 		})),
+		allowed_actions: topic.allowed_actions ?? record.allowed_actions,
 	};
 }

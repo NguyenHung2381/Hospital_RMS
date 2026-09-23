@@ -63,10 +63,10 @@ function getNetworkIp() {
 
 			// Tự động đồng bộ Port sang file .env của Frontend (Client)
 			// Chỉ áp dụng khi chạy native cùng máy với client — bỏ qua nếu
-			// thư mục client không tồn tại cạnh server (vd: chạy trong Docker container riêng)
+			// thư mục frontend không tồn tại cạnh backend (vd: chạy trong Docker container riêng)
 			try {
 				const fs = require('fs');
-				const clientEnvPath = path.resolve(__dirname, '../../client/.env');
+				const clientEnvPath = path.resolve(__dirname, '../../frontend/.env');
 				if (fs.existsSync(path.dirname(clientEnvPath))) {
 					let envContent = '';
 					if (fs.existsSync(clientEnvPath)) {

@@ -116,3 +116,31 @@ export const registerTopic = (data: TopicRegisterPayload) =>
 		method: 'POST',
 		body: JSON.stringify(data),
 	});
+
+// ─── Tra cứu hồ sơ đề tài theo mã ────────────────────────────────────────────
+export interface TopicStatus {
+	id: string;
+	title: string;
+	status: 'submitted' | 'approved' | 'rejected' | 'supplement' | 'cancelled';
+	created_at: string;
+	updated_at: string | null;
+}
+
+export const getTopicStatus = (topicId: string) =>
+	request<TopicStatus>(`/topics/${encodeURIComponent(topicId)}/status`);
+
+// ─── Thư viện đề tài công khai ───────────────────────────────────────────────
+export interface FeaturedTopic {
+	id: string;
+	title: string;
+	description: string | null;
+	article_type: 'de_tai' | 'bai_bao';
+	journal_name: string | null;
+	publish_date: string | null;
+	created_at: string;
+	department_name: string | null;
+	round_year: number | null;
+	category_name: string | null;
+}
+
+export const getFeaturedTopics = () => request<FeaturedTopic[]>('/featured-topics');

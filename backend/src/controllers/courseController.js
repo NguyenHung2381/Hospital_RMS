@@ -1,9 +1,10 @@
 const courseService = require('../services/courseService');
 const { success, created, notFound } = require('../utils/response');
+const { hasPermission } = require('../middlewares/auth');
 
 const getAll = async (req, res, next) => {
 	try {
-		return success(res, await courseService.getAll(req.query));
+		return success(res, await courseService.getAll(req.query, req.user));
 	} catch (err) {
 		next(err);
 	}
@@ -11,7 +12,7 @@ const getAll = async (req, res, next) => {
 
 const getById = async (req, res, next) => {
 	try {
-		const item = await courseService.getById(req.params.id);
+		const item = await courseService.getById(req.params.id, req.user);
 		if (!item) return notFound(res);
 		return success(res, item);
 	} catch (err) {
@@ -92,7 +93,22 @@ const listEnrollments = async (req, res, next) => {
 
 const registerTrainee = async (req, res, next) => {
 	try {
-		return created(res, await courseService.registerTrainee(req.params.id, req.body.trainee_id, req.user.id));
+		const { trainee_id, user_id } = req.body;
+		// Admin (system:manage) và quản lý đào tạo (courses:update/manage) được ghi
+		// danh hộ cả khi khóa học đã đóng/chưa mở cửa sổ đăng ký.
+		const opts = { bypassWindow: hasPermission(req.user, 'courses', 'update') };
+		const item = user_id
+			? await courseService.registerStaff(req.params.id, user_id, req.user.id, opts)
+			: await courseService.registerTrainee(req.params.id, trainee_id, req.user.id, opts);
+		return created(res, item);
+	} catch (err) {
+		next(err);
+	}
+};
+
+const listStaffCandidates = async (req, res, next) => {
+	try {
+		return success(res, await courseService.listStaffCandidates());
 	} catch (err) {
 		next(err);
 	}
@@ -222,6 +238,19 @@ const setAttendance = async (req, res, next) => {
 	}
 };
 
+const getAttendanceQrToken = (req, res) => {
+	return success(res, { token: courseService.generateAttendanceQrToken(req.params.sessionId) });
+};
+
+const checkInSelf = async (req, res, next) => {
+	try {
+		const result = await courseService.checkInSelf(req.body.token, req.user);
+		return success(res, result, 'Điểm danh thành công');
+	} catch (err) {
+		next(err);
+	}
+};
+
 // ─── Documents ────────────────────────────────────────────────────────────
 const listDocuments = async (req, res, next) => {
 	try {
@@ -340,6 +369,7 @@ module.exports = {
 	removeProgramLink,
 	listEnrollments,
 	registerTrainee,
+	listStaffCandidates,
 	decideEnrollment,
 	bulkDecideEnrollments,
 	removeEnrollment,
@@ -353,6 +383,8 @@ module.exports = {
 	removeSession,
 	listAttendance,
 	setAttendance,
+	getAttendanceQrToken,
+	checkInSelf,
 	listDocuments,
 	addDocument,
 	incrementDocumentDownload,

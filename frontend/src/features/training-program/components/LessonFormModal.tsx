@@ -1,3 +1,4 @@
+import { notify } from '../../../shared/utils/feedback';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { CheckSvg, ListSvg, XSvg } from '@/assets/icons';
 import {
@@ -113,6 +114,7 @@ export function LessonFormModal({
 			const lessonId = mode === 'edit' && lesson ? lesson.lesson_id : (await createLesson(form)).id;
 			if (mode === 'edit') await updateLesson(lessonId, form);
 			await setLessonPrograms(lessonId, form.program_ids);
+			notify.success(mode === 'edit' ? 'Đã cập nhật bài học' : 'Đã thêm bài học');
 			onSaved();
 			onClose();
 		} catch (err) {

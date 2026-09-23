@@ -1,3 +1,4 @@
+import { formatDateVN } from '../../../shared/utils/formatDate';
 import { useNavigate } from 'react-router-dom';
 import { ShieldSvg } from '@/assets/icons';
 import { SkeletonTable, TableEmpty } from '@/shared/components';
@@ -70,7 +71,7 @@ export function UpcomingCouncilsTable({
 										<span style={{ fontSize: 13 }}>{c.round_name ?? '—'}</span>
 									</td>
 									<td>
-										<span style={{ fontSize: 13 }}>{c.defense_date ?? '—'}</span>
+										<span style={{ fontSize: 13 }}>{c.defense_date ? formatDateVN(c.defense_date) : "—"}</span>
 									</td>
 									<td>
 										<span style={{ fontSize: 13 }}>{c.chairman_name ?? '—'}</span>

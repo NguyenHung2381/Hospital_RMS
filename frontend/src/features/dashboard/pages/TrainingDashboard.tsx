@@ -1,9 +1,11 @@
+import { formatDateVN } from '../../../shared/utils/formatDate';
 import { useEffect, useState } from 'react';
 import { BadgeSvg, BookOpenSvg, ClockSvg, UserCheckSvg, UsersSvg } from '@/assets/icons';
 import AdminLayout from '../../../layouts/AdminLayout';
 import { useRealtimeUpdate } from '../../../layouts/hooks/useRealtime';
 import { getTrainingStats } from '../api/trainingDashboardApi';
 import { StatusPieChart, TrendBarChart } from '../components/DashboardCharts';
+import { DashboardTabs } from '../components/DashboardTabs';
 import { MetricCard } from '../components/MetricCard';
 import type { TrainingStats } from '../types/trainingDashboard.type';
 import { CHART_COLORS } from '../utils/dashboardHelpers';
@@ -54,6 +56,8 @@ export default function TrainingDashboard() {
 			pageTitle='Tổng quan Đào tạo'
 			pageSubtitle='Khóa học, học viên, giảng viên, lịch học & xu hướng đăng ký'
 		>
+			<DashboardTabs />
+
 			<div className={styles.metricsGrid}>
 				<MetricCard
 					label='Khóa học đang mở'
@@ -159,7 +163,7 @@ export default function TrainingDashboard() {
 											</div>
 										</div>
 										<div style={{ textAlign: 'right', color: 'var(--color-gray-600)' }}>
-											<div>{s.session_date}</div>
+											<div>{formatDateVN(s.session_date)}</div>
 											<div style={{ fontSize: 12 }}>
 												{s.start_time ? `${s.start_time}-${s.end_time ?? ''}` : ''} {s.room ?? ''}
 											</div>

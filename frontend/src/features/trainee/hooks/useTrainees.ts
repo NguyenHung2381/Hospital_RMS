@@ -6,7 +6,9 @@ import {
 	createTrainee,
 	deleteTrainee,
 	getTrainees,
+	grantTraineeAccounts,
 	updateTrainee,
+	type GrantedTraineeAccount,
 } from '../api/traineeApi';
 import type { DetailTab } from './useTraineeDetail';
 import { EMPTY_FORM, type ModalType, type Trainee, type TraineeFormData } from '../types/trainee.type';
@@ -32,6 +34,8 @@ export function useTrainees() {
 	const [pageSize, setPageSize] = useState(10);
 	const [page, setPage] = useState(1);
 	const [refreshKey, setRefreshKey] = useState(0);
+	const [grantedAccounts, setGrantedAccounts] = useState<GrantedTraineeAccount[]>([]);
+	const [granting, setGranting] = useState(false);
 
 	const refreshData = useCallback(() => setRefreshKey((prev) => prev + 1), []);
 	useRealtimeUpdate('trainee', refreshData);
@@ -163,6 +167,37 @@ export function useTrainees() {
 		[showToast],
 	);
 
+	const handleGrantAccounts = useCallback(
+		async (ids?: string[]) => {
+			setGranting(true);
+			try {
+				const result = await grantTraineeAccounts(ids);
+				if (result.credentials.length > 0) {
+					const grantedIds = new Set(result.credentials.map((c) => c.trainee_id));
+					setTrainees((prev) =>
+						prev.map((t) => (grantedIds.has(t.id) ? { ...t, account_granted: true } : t)),
+					);
+					setGrantedAccounts(result.credentials);
+				}
+				if (result.skipped.length > 0) {
+					showToast(
+						result.credentials.length > 0 ? 'success' : 'error',
+						`Cấp được ${result.credentials.length} tài khoản, bỏ qua ${result.skipped.length} (đã có tài khoản hoặc lỗi).`,
+					);
+				} else if (result.credentials.length > 0) {
+					showToast('success', `Đã cấp ${result.credentials.length} tài khoản mới.`);
+				} else {
+					showToast('error', 'Không có học viên nào cần cấp tài khoản.');
+				}
+			} catch (err) {
+				showToast('error', err instanceof Error ? err.message : 'Cấp tài khoản thất bại');
+			} finally {
+				setGranting(false);
+			}
+		},
+		[showToast],
+	);
+
 	return {
 		trainees,
 		traineeTypes,
@@ -196,5 +231,9 @@ export function useTrainees() {
 		handleDelete,
 		handleBulkDelete,
 		refreshData,
+		grantedAccounts,
+		setGrantedAccounts,
+		granting,
+		handleGrantAccounts,
 	};
 }

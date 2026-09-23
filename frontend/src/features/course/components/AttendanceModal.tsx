@@ -1,7 +1,10 @@
+import { formatDateVN } from '../../../shared/utils/formatDate';
+import { notify } from '../../../shared/utils/feedback';
 import { useEffect, useState } from 'react';
 import { CheckSvg, ClipboardCheckSvg, XSvg } from '@/assets/icons';
 import { getAttendance, saveAttendance } from '../api/courseApi';
 import type { AttendanceRow, AttendanceStatus, ClassSession } from '../types/course.type';
+import { AttendanceQrDisplay } from './AttendanceQrDisplay';
 import styles from '../pages/Courses.module.css';
 
 const ATT_OPTIONS: { value: AttendanceStatus; label: string; cls: string }[] = [
@@ -15,6 +18,7 @@ export function AttendanceModal({ session, onClose }: { session: ClassSession; o
 	const [loading, setLoading] = useState(true);
 	const [saving, setSaving] = useState(false);
 	const [error, setError] = useState('');
+	const [showQr, setShowQr] = useState(false);
 
 	useEffect(() => {
 		let alive = true;
@@ -30,6 +34,18 @@ export function AttendanceModal({ session, onClose }: { session: ClassSession; o
 	const setStatus = (enrollmentId: string, status: AttendanceStatus) =>
 		setRows((prev) => prev.map((r) => (r.enrollment_id === enrollmentId ? { ...r, status } : r)));
 
+	// Trong lúc hiện QR, học viên có thể tự quét bất kỳ lúc nào — tải lại danh
+	// sách định kỳ để giảng viên thấy cập nhật gần như trực tiếp.
+	useEffect(() => {
+		if (!showQr) return;
+		const poll = setInterval(() => {
+			getAttendance(session.id)
+				.then((r) => setRows((prev) => r.map((row) => ({ ...row, status: row.status ?? prev.find((p) => p.enrollment_id === row.enrollment_id)?.status ?? 'present' }))))
+				.catch(() => {});
+		}, 5000);
+		return () => clearInterval(poll);
+	}, [showQr, session.id]);
+
 	const handleSave = async () => {
 		setSaving(true);
 		setError('');
@@ -38,6 +54,7 @@ export function AttendanceModal({ session, onClose }: { session: ClassSession; o
 				session.id,
 				rows.map((r) => ({ enrollment_id: r.enrollment_id, status: r.status ?? 'present' })),
 			);
+			notify.success('Đã lưu điểm danh');
 			onClose();
 		} catch (err) {
 			setError(err instanceof Error ? err.message : 'Lưu điểm danh thất bại');
@@ -59,7 +76,7 @@ export function AttendanceModal({ session, onClose }: { session: ClassSession; o
 					<div>
 						<div className={styles.modalTitle}>Điểm danh buổi học</div>
 						<div className={styles.modalSub}>
-							{session.session_date}
+							{formatDateVN(session.session_date)}
 							{session.start_time ? ` · ${session.start_time}-${session.end_time ?? ''}` : ''}
 							{session.room ? ` · ${session.room}` : ''}
 						</div>
@@ -73,6 +90,25 @@ export function AttendanceModal({ session, onClose }: { session: ClassSession; o
 				</div>
 
 				<div className={styles.modalBody}>
+					<button
+						type='button'
+						onClick={() => setShowQr((v) => !v)}
+						style={{
+							alignSelf: 'flex-start',
+							background: 'transparent',
+							border: '1.5px solid var(--color-gray-200)',
+							borderRadius: 8,
+							padding: '6px 12px',
+							fontSize: 13,
+							fontWeight: 600,
+							cursor: 'pointer',
+							marginBottom: 8,
+						}}
+					>
+						{showQr ? 'Ẩn mã QR điểm danh' : 'Hiện mã QR điểm danh'}
+					</button>
+					{showQr && <AttendanceQrDisplay sessionId={session.id} />}
+
 					{error && <div className={styles.errorBanner}>{error}</div>}
 					{loading ? (
 						<div className={styles.subEmpty}>Đang tải...</div>

@@ -8,7 +8,7 @@ export type TopicStatus =
 export type ArticleType = 'de_tai' | 'bai_bao';
 export type MemberRole = 'leader' | 'secretary' | 'member';
 export type ApvStatus = 'pending' | 'approved' | 'rejected';
-export type DrawerTab = 'info' | 'members' | 'files';
+export type DrawerTab = 'info' | 'members' | 'files' | 'authors';
 
 export interface TopicFile {
 	id: string;
@@ -49,10 +49,18 @@ export interface Topic {
 	approval_decision_date?: string | null;
 	recognition_decision_no?: string | null;
 	recognition_decision_date?: string | null;
+	/** Đưa đề tài này vào trang công khai "Thư viện đề tài" — chỉ có hiệu lực
+	 * khi status='approved' (lọc thêm ở publicPortalService.getFeaturedTopics). */
+	is_featured?: boolean;
 	// derived / computed
 	progress: number;
 	member_count: number;
 	my_role?: MemberRole;
+	/** Hành động hợp lệ theo status + quyền của actor hiện tại — tính sẵn ở
+	 * backend (topicService.computeAllowedActions), không tự suy luận theo
+	 * status ở frontend. Có thể trong số: approve, reject, request_supplement,
+	 * submit, grant_accounts. */
+	allowed_actions?: string[];
 }
 
 export interface TopicMember {
@@ -100,6 +108,7 @@ export interface TopicForm {
 	department_id: string;
 	status: TopicStatus;
 	article_type: ArticleType;
+	journal_name: string;
 	doi: string;
 	publish_date: string;
 	budget_estimated: string;
@@ -108,8 +117,18 @@ export interface TopicForm {
 	approval_decision_date: string;
 	recognition_decision_no: string;
 	recognition_decision_date: string;
+	is_featured: boolean;
 }
 
 export interface FormErrors {
 	[k: string]: string;
+}
+
+export interface TopicAuthor {
+	id: string;
+	topic_id: string;
+	author_name: string;
+	affiliation: string | null;
+	author_order: number;
+	is_corresponding: boolean;
 }

@@ -1,8 +1,17 @@
+const jwt = require('jsonwebtoken');
 const { getPool, sql } = require('../config/db');
 const { broadcast } = require('./eventService');
 const { paging } = require('../utils/paging');
 const mailService = require('./mailService');
 const trainingFileService = require('./trainingFileService');
+const { courseScope } = require('../middlewares/auth');
+
+// Mã QR điểm danh: JWT ngắn hạn ký chính session_id (mirror utils/captcha.js)
+// — không trạng thái, không cần lưu DB, hết hạn nhanh. FE làm mới QR mỗi 28s;
+// TTL 75s để mã vừa biến khỏi màn hình vẫn còn ≥45s — đủ cho đường "chụp ảnh
+// mã QR" (mở camera → chụp → xác nhận → tải lên) khi không có HTTPS để quét trực tiếp.
+const ATTENDANCE_QR_TTL = '75s';
+const ATTENDANCE_QR_PURPOSE = 'course_attendance_qr';
 
 // Mỗi khóa học tự có cửa sổ đăng ký riêng (enrollment_start/end_date) và tự
 // quyết định có công khai trên cổng đăng ký không cần đăng nhập hay không
@@ -74,8 +83,19 @@ const courseSelect = `
   LEFT JOIN training_forms tf ON tf.id = c.training_form_id
 `;
 
+// EXISTS: khóa có giảng viên = actor được phân công dạy hay không (điều kiện
+// dùng chung cho cả getAll và getById khi scope === 'assigned').
+const ASSIGNED_EXISTS_SQL = `EXISTS (
+    SELECT 1 FROM lecturer_assignments la
+    INNER JOIN lecturers lec ON lec.id = la.lecturer_id
+    WHERE la.course_id = c.id AND lec.user_id = @actor_id
+  )`;
+
 // ─── Courses ──────────────────────────────────────────────────────────────
-const getAll = async ({ page = 1, limit = 20, search, program_id, status } = {}) => {
+const getAll = async (
+	{ page = 1, limit = 20, search, program_id, status } = {},
+	actor = null,
+) => {
 	const pool = await getPool();
 	const pg = paging(page, limit, 100);
 	const where = ['1=1'];
@@ -93,6 +113,10 @@ const getAll = async ({ page = 1, limit = 20, search, program_id, status } = {})
 		where.push('c.status = @status');
 		req.input('status', sql.VarChar(15), status);
 	}
+	if (actor && courseScope(actor) === 'assigned') {
+		where.push(ASSIGNED_EXISTS_SQL);
+		req.input('actor_id', sql.VarChar(20), actor.id);
+	}
 	const whereSql = `WHERE ${where.join(' AND ')}`;
 
 	const result = await req.query(`
@@ -106,8 +130,21 @@ const getAll = async ({ page = 1, limit = 20, search, program_id, status } = {})
 	};
 };
 
-const getById = async (id) => {
+const getById = async (id, actor = null) => {
 	const pool = await getPool();
+	if (actor && courseScope(actor) === 'assigned') {
+		const access = await pool
+			.request()
+			.input('id', sql.VarChar(20), id)
+			.input('actor_id', sql.VarChar(20), actor.id)
+			.query(`SELECT 1 AS ok FROM courses c WHERE c.id = @id AND ${ASSIGNED_EXISTS_SQL}`);
+		if (!access.recordset[0]) {
+			throw Object.assign(new Error('Không có quyền xem khóa học này'), {
+				status: 403,
+				statusCode: 403,
+			});
+		}
+	}
 	const result = await pool.request().input('id', sql.VarChar(20), id).query(`${courseSelect} WHERE c.id = @id`);
 	return result.recordset[0] ? normalize(result.recordset[0]) : null;
 };
@@ -214,7 +251,7 @@ const addProgramLink = async (courseId, data, actorId) => {
 		.input('program_id', sql.VarChar(20), data.program_id)
 		.input('start_date', sql.Date, data.start_date || null)
 		.input('end_date', sql.Date, data.end_date || null)
-		.input('location', sql.NVarChar(200), data.location || null)
+		.input('location', sql.NVarChar(255), data.location || null)
 		.input('lecturer_id', sql.VarChar(20), data.lecturer_id || null)
 		.input('external_lecturer_name', sql.NVarChar(150), data.external_lecturer_name || null)
 		.input('status', sql.VarChar(15), data.status || 'active')
@@ -249,7 +286,7 @@ const updateProgramLink = async (linkId, data, actorId) => {
 	const fieldMap = {
 		start_date: sql.Date,
 		end_date: sql.Date,
-		location: sql.NVarChar(200),
+		location: sql.NVarChar(255),
 		lecturer_id: sql.VarChar(20),
 		external_lecturer_name: sql.NVarChar(150),
 		status: sql.VarChar(15),
@@ -285,9 +322,10 @@ const listEnrollments = async (courseId) => {
 	return r.recordset;
 };
 
-// Thêm học viên vào khóa học (đăng ký hộ — chưa có cổng tự đăng ký ở giai
-// đoạn này). Chặn ngay nếu khóa học đang đóng cửa sổ đăng ký.
-const registerTrainee = async (courseId, traineeId, actorId) => {
+// Thêm học viên vào khóa học. Chặn nếu khóa học đang đóng cửa sổ đăng ký, trừ
+// khi options.bypassWindow (admin / quản lý đào tạo ghi danh hộ — xem
+// courseController.registerTrainee).
+const registerTrainee = async (courseId, traineeId, actorId, { bypassWindow = false } = {}) => {
 	const pool = await getPool();
 	const course = await getById(courseId);
 	if (!course) {
@@ -295,7 +333,7 @@ const registerTrainee = async (courseId, traineeId, actorId) => {
 		err.statusCode = 404;
 		throw err;
 	}
-	if (!course.enrollment_open) {
+	if (!course.enrollment_open && !bypassWindow) {
 		const err = new Error('Khóa học hiện không trong thời gian đăng ký.');
 		err.statusCode = 403;
 		throw err;
@@ -327,6 +365,85 @@ const registerTrainee = async (courseId, traineeId, actorId) => {
 		});
 	broadcast('update', { entity: 'course_enrollment' });
 	return { id: result.recordset[0].id };
+};
+
+// Nhân viên nội viện (users) CHƯA có hồ sơ học viên — hiện chung với danh sách
+// học viên ở ô "thêm học viên" của khóa học. Người đã có hồ sơ (trainees.user_id)
+// thì đã nằm trong GET /trainees nên loại ra, tránh trùng 2 dòng. Bỏ VT08 (tài
+// khoản do "Cấp tài khoản học viên" sinh ra — luôn đã gắn với 1 trainee).
+const listStaffCandidates = async () => {
+	const pool = await getPool();
+	const result = await pool.request().query(`
+    SELECT u.id, u.full_name, u.staff_number, d.name AS department_name
+    FROM users u
+    LEFT JOIN departments d ON d.id = u.department_id
+    WHERE u.is_active = 1
+      AND ISNULL(u.role_id, '') <> 'VT08'
+      AND NOT EXISTS (SELECT 1 FROM trainees t WHERE t.user_id = u.id)
+    ORDER BY u.full_name
+  `);
+	return result.recordset;
+};
+
+// Ghi danh 1 nhân viên nội viện: dùng lại hồ sơ học viên đã gắn tài khoản nếu có,
+// chưa có thì tự tạo từ thông tin users (is_employee = 1, gắn sẵn user_id) — nhờ đó
+// nhân viên đăng nhập bằng chính tài khoản đang dùng là điểm danh QR / thi online
+// được ngay, không cần "Cấp tài khoản học viên" riêng.
+const registerStaff = async (courseId, userId, actorId, { bypassWindow = false } = {}) => {
+	const course = await getById(courseId);
+	if (!course) {
+		const err = new Error('Khóa học không tồn tại.');
+		err.statusCode = 404;
+		throw err;
+	}
+	if (!course.enrollment_open && !bypassWindow) {
+		const err = new Error('Khóa học hiện không trong thời gian đăng ký.');
+		err.statusCode = 403;
+		throw err;
+	}
+
+	const pool = await getPool();
+	const linked = await pool
+		.request()
+		.input('uid', sql.VarChar(20), userId)
+		.query('SELECT TOP 1 id FROM trainees WHERE user_id = @uid');
+	let traineeId = linked.recordset[0]?.id;
+
+	if (!traineeId) {
+		const userRes = await pool
+			.request()
+			.input('uid', sql.VarChar(20), userId)
+			.query('SELECT id, full_name, email, department_id FROM users WHERE id = @uid AND is_active = 1');
+		const user = userRes.recordset[0];
+		if (!user) {
+			const err = new Error('Nhân viên không tồn tại hoặc đã bị khoá.');
+			err.statusCode = 404;
+			throw err;
+		}
+		// require muộn — traineeService kéo theo topicMemberService/personService, tránh vòng require.
+		const traineeService = require('./traineeService');
+		const trainee = await traineeService.create(
+			{
+				full_name: user.full_name,
+				email: user.email,
+				department_id: user.department_id,
+				is_employee: true,
+			},
+			actorId,
+		);
+		traineeId = trainee.id;
+		await pool
+			.request()
+			.input('tid', sql.VarChar(20), traineeId)
+			.input('uid', sql.VarChar(20), userId)
+			.query(`
+        UPDATE trainees
+        SET user_id = @uid, account_granted = 1, account_granted_at = GETDATE()
+        WHERE id = @tid
+      `);
+	}
+
+	return registerTrainee(courseId, traineeId, actorId, { bypassWindow });
 };
 
 // Duyệt/từ chối đăng ký. Duyệt mà khóa đã đủ số lượng (capacity) ⇒ tự động
@@ -435,6 +552,39 @@ const listAssignments = async (courseId) => {
 
 const assignLecturer = async (courseId, data, actorId) => {
 	const pool = await getPool();
+	// Không phân công học viên làm giảng viên: chặn tài khoản học viên (VT08) và
+	// người đang đăng ký học chính khóa này (khớp theo hồ sơ người / tài khoản).
+	const check = await pool
+		.request()
+		.input('course_id', sql.VarChar(20), courseId)
+		.input('lecturer_id', sql.VarChar(20), data.lecturer_id).query(`
+      SELECT l.is_active, u.role_id,
+             (SELECT COUNT(*) FROM course_enrollments e
+              JOIN trainees t ON t.id = e.trainee_id
+              WHERE e.course_id = @course_id AND e.status <> 'rejected'
+                AND ((l.person_id IS NOT NULL AND t.person_id = l.person_id)
+                  OR (l.user_id IS NOT NULL AND t.user_id = l.user_id))) AS enrolled
+      FROM lecturers l
+      LEFT JOIN users u ON u.id = l.user_id
+      WHERE l.id = @lecturer_id
+    `);
+	const lec = check.recordset[0];
+	if (!lec || !lec.is_active) {
+		const err = new Error('Giảng viên không tồn tại hoặc đã ngừng hoạt động.');
+		err.statusCode = 404;
+		throw err;
+	}
+	if (lec.role_id === 'VT08') {
+		const err = new Error('Không thể phân công tài khoản học viên làm giảng viên.');
+		err.statusCode = 400;
+		throw err;
+	}
+	if (lec.enrolled > 0) {
+		const err = new Error('Người này đang là học viên của khóa học, không thể phân công làm giảng viên.');
+		err.statusCode = 400;
+		throw err;
+	}
+
 	const result = await pool
 		.request()
 		.input('actor_id', sql.VarChar(20), actorId)
@@ -484,7 +634,7 @@ const createSession = async (courseId, data, actorId) => {
 		.input('session_date', sql.Date, data.session_date)
 		.input('start_time', sql.VarChar(5), data.start_time || null)
 		.input('end_time', sql.VarChar(5), data.end_time || null)
-		.input('room', sql.NVarChar(100), data.room || null)
+		.input('room', sql.NVarChar(255), data.room || null)
 		.query(`
       DECLARE @new_id VARCHAR(20);
       EXEC sp_gen_class_session_id @actor_id = @actor_id, @new_id = @new_id OUTPUT;
@@ -507,7 +657,7 @@ const updateSession = async (sessionId, data, actorId) => {
 		session_date: sql.Date,
 		start_time: sql.VarChar(5),
 		end_time: sql.VarChar(5),
-		room: sql.NVarChar(100),
+		room: sql.NVarChar(255),
 	};
 	for (const [field, type] of Object.entries(fieldMap)) {
 		if (data[field] !== undefined) {
@@ -555,7 +705,7 @@ const createSessionsBulk = async (courseId, data, actorId) => {
 			.input('session_date', sql.Date, sessionDate)
 			.input('start_time', sql.VarChar(5), start_time || null)
 			.input('end_time', sql.VarChar(5), end_time || null)
-			.input('room', sql.NVarChar(100), room || null)
+			.input('room', sql.NVarChar(255), room || null)
 			.query(`
         IF EXISTS (
           SELECT 1 FROM class_sessions
@@ -624,6 +774,71 @@ const bulkSetAttendance = async (sessionId, records, actorId) => {
 	for (const rec of records) {
 		await setAttendance(sessionId, rec.enrollment_id, rec.status, rec.note, actorId);
 	}
+};
+
+// Sinh mã QR điểm danh cho 1 buổi học — giảng viên/quản lý (đã qua
+// authorizePermission courses:update ở route) hiển thị lên màn hình lớp,
+// học viên tự quét bằng tài khoản đã đăng nhập (checkInSelf).
+const generateAttendanceQrToken = (sessionId) =>
+	jwt.sign({ session_id: sessionId, purpose: ATTENDANCE_QR_PURPOSE }, process.env.JWT_SECRET, {
+		expiresIn: ATTENDANCE_QR_TTL,
+	});
+
+// Học viên tự điểm danh bằng mã QR vừa quét — actor phải là tài khoản đã được
+// cấp cho 1 trainee (trainees.user_id, xem D0) có ghi danh 'approved' vào
+// khóa của buổi học này.
+const checkInSelf = async (token, actor) => {
+	let decoded;
+	try {
+		decoded = jwt.verify(token, process.env.JWT_SECRET);
+	} catch {
+		const err = new Error('Mã QR đã hết hạn, vui lòng thử lại.');
+		err.statusCode = 401;
+		throw err;
+	}
+	if (decoded.purpose !== ATTENDANCE_QR_PURPOSE) {
+		const err = new Error('Mã QR không hợp lệ.');
+		err.statusCode = 401;
+		throw err;
+	}
+
+	const pool = await getPool();
+	const enrollRes = await pool
+		.request()
+		.input('session_id', sql.VarChar(20), decoded.session_id)
+		.input('user_id', sql.VarChar(20), actor.id).query(`
+      SELECT e.id AS enrollment_id
+      FROM class_sessions sess
+      JOIN course_enrollments e ON e.course_id = sess.course_id AND e.status = 'approved'
+      JOIN trainees t ON t.id = e.trainee_id
+      WHERE sess.id = @session_id AND t.user_id = @user_id
+    `);
+	const enrollment = enrollRes.recordset[0];
+	if (!enrollment) {
+		const err = new Error('Bạn không có trong danh sách học viên của buổi học này.');
+		err.statusCode = 403;
+		throw err;
+	}
+
+	await pool
+		.request()
+		.input('session_id', sql.VarChar(20), decoded.session_id)
+		.input('enrollment_id', sql.VarChar(20), enrollment.enrollment_id)
+		.input('actor_id', sql.VarChar(20), actor.id).query(`
+      IF EXISTS (SELECT 1 FROM attendance WHERE session_id = @session_id AND enrollment_id = @enrollment_id)
+        UPDATE attendance SET status = 'present', method = 'qr', checked_in_at = GETDATE(),
+               updated_at = GETDATE(), updated_by = @actor_id
+        WHERE session_id = @session_id AND enrollment_id = @enrollment_id;
+      ELSE
+      BEGIN
+        DECLARE @new_id VARCHAR(20);
+        EXEC sp_gen_attendance_id @actor_id = @actor_id, @new_id = @new_id OUTPUT;
+        INSERT INTO attendance (id, session_id, enrollment_id, status, method, checked_in_at, updated_by, updated_at)
+        VALUES (@new_id, @session_id, @enrollment_id, 'present', 'qr', GETDATE(), @actor_id, GETDATE());
+      END
+    `);
+	broadcast('update', { entity: 'attendance' });
+	return { session_id: decoded.session_id };
 };
 
 // ─── Tài liệu / bài kiểm tra khóa học (course_documents) ────────────────────
@@ -924,6 +1139,8 @@ module.exports = {
 	removeProgramLink,
 	listEnrollments,
 	registerTrainee,
+	listStaffCandidates,
+	registerStaff,
 	decideEnrollment,
 	bulkDecideEnrollments,
 	removeEnrollment,
@@ -938,6 +1155,8 @@ module.exports = {
 	listAttendance,
 	setAttendance,
 	bulkSetAttendance,
+	generateAttendanceQrToken,
+	checkInSelf,
 	listDocuments,
 	addDocument,
 	incrementDocumentDownload,

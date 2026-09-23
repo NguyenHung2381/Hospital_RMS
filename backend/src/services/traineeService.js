@@ -1,8 +1,14 @@
+const bcrypt = require('bcryptjs');
 const { getPool, sql } = require('../config/db');
 const { broadcast } = require('./eventService');
 const { paging } = require('../utils/paging');
 const trainingFileService = require('./trainingFileService');
 const personService = require('./personService');
+const {
+	buildMemberUsername,
+	ensureUniqueUsername,
+	genUserIdInTx,
+} = require('./topicMemberService');
 
 const traineeSelect = `
   SELECT t.*, tt.name AS trainee_type_name, d.name AS department_name
@@ -67,7 +73,8 @@ const getById = async (id, actor = null) => {
 	return maskSensitive(row, canReadSensitive(actor));
 };
 
-const create = async (data, actorId) => {
+// opts.fetch=false: bỏ query đọc lại bản ghi — dùng cho import hàng loạt
+const create = async (data, actorId, { fetch = true } = {}) => {
 	const pool = await getPool();
 	const result = await pool
 		.request()
@@ -114,7 +121,7 @@ const create = async (data, actorId) => {
 	const id = result.recordset[0].id;
 	await personService.syncPerson('trainees', id, { actorId });
 	broadcast('update', { entity: 'trainee' });
-	return getById(id, true);
+	return fetch ? getById(id, true) : { id };
 };
 
 const update = async (id, data, actorId) => {
@@ -251,6 +258,124 @@ const removeDocument = async (docId, actorId) => {
 	broadcast('update', { entity: 'trainee_document' });
 };
 
+// ─── Cấp tài khoản đăng nhập cho học viên (D0) ──────────────────────────────
+// Mirror topicMemberService.grantAccountsNoEmail: mỗi học viên xử lý trong 1
+// transaction ngắn riêng (sp_gen_user_id giữ applock sinh mã tới khi transaction
+// commit — gộp nhiều học viên vào 1 transaction lớn sẽ làm khoá bị giữ quá lâu).
+// Khác topic_members ở chỗ học viên không thuộc 1 khoa/phòng thống nhất (mỗi
+// học viên tự có department_id riêng, có thể null) nên mã NV dùng mã khoa của
+// CHÍNH học viên đó, hoặc tiền tố chung 'HV' nếu học viên không gắn khoa nào.
+const DEFAULT_TRAINEE_PASSWORD = '123456';
+
+const grantAccounts = async (traineeIds, actorId) => {
+	const pool = await getPool();
+
+	const traineesResult = await pool.request().query(`
+    SELECT t.id, t.full_name, t.email, t.phone, t.national_id, t.department_id,
+           d.code AS department_code
+    FROM trainees t
+    LEFT JOIN departments d ON d.id = t.department_id
+    WHERE ISNULL(t.account_granted, 0) = 0
+  `);
+	const filterIds =
+		Array.isArray(traineeIds) && traineeIds.length > 0
+			? new Set(traineeIds)
+			: null;
+	const traineesToProcess = filterIds
+		? traineesResult.recordset.filter((row) => filterIds.has(row.id))
+		: traineesResult.recordset;
+
+	const defaultHash = await bcrypt.hash(DEFAULT_TRAINEE_PASSWORD, 12);
+	const credentials = [];
+	const skipped = [];
+
+	for (const trainee of traineesToProcess) {
+		const usernameSeed = trainee.national_id
+			? trainee.national_id.slice(-4)
+			: trainee.id.slice(-4);
+		const baseUsername = buildMemberUsername(trainee.full_name, usernameSeed);
+		const deptCode = trainee.department_code || 'HV';
+
+		const tx = new sql.Transaction(pool);
+		let began = false;
+		try {
+			await tx.begin();
+			began = true;
+
+			await new sql.Request(tx)
+				.input('actor_id', sql.VarChar(20), actorId)
+				.query(`EXEC sp_set_actor @actor_id`);
+
+			const userId = await genUserIdInTx(tx, deptCode);
+			if (!userId) {
+				throw new Error('Không sinh được mã tài khoản mới');
+			}
+
+			const username = await ensureUniqueUsername(tx, baseUsername, userId);
+			const storedEmail =
+				trainee.email && trainee.email.trim()
+					? trainee.email.trim()
+					: `${userId.toLowerCase()}@trainee.local`;
+
+			await new sql.Request(tx)
+				.input('uid', sql.VarChar(20), userId)
+				.input('username', sql.VarChar(100), username)
+				.input('password', sql.VarChar(255), defaultHash)
+				.input('full_name', sql.NVarChar(255), trainee.full_name)
+				.input('email', sql.VarChar(255), storedEmail)
+				.input('phone_number', sql.VarChar(10), trainee.phone || null)
+				.input('department_id', sql.VarChar(20), trainee.department_id || null)
+				.input('role_id', sql.VarChar(6), 'VT08')
+				.input('actor_id', sql.VarChar(20), actorId).query(`
+          INSERT INTO users (
+            id, username, password, full_name, email,
+            phone_number, department_id, role_id, created_by
+          )
+          VALUES (
+            @uid, @username, @password, @full_name, @email,
+            @phone_number, @department_id, @role_id, @actor_id
+          )
+        `);
+
+			await new sql.Request(tx)
+				.input('trainee_id', sql.VarChar(20), trainee.id)
+				.input('uid', sql.VarChar(20), userId)
+				.input('actor_id', sql.VarChar(20), actorId).query(`
+          UPDATE trainees
+          SET user_id = @uid, account_granted = 1, account_granted_at = GETDATE(),
+              updated_at = GETDATE(), updated_by = @actor_id
+          WHERE id = @trainee_id
+        `);
+
+			await tx.commit();
+
+			credentials.push({
+				trainee_id: trainee.id,
+				user_id: userId,
+				username,
+				full_name: trainee.full_name,
+				password_plain: DEFAULT_TRAINEE_PASSWORD,
+			});
+		} catch (err) {
+			if (began) {
+				try {
+					await tx.rollback();
+				} catch {
+					// bỏ qua nếu transaction đã bị abort
+				}
+			}
+			skipped.push({
+				trainee_id: trainee.id,
+				full_name: trainee.full_name,
+				reason: err instanceof Error ? err.message : 'Lỗi không xác định',
+			});
+		}
+	}
+
+	if (credentials.length > 0) broadcast('update', { entity: 'trainee' });
+	return { credentials, skipped };
+};
+
 module.exports = {
 	getAll,
 	getById,
@@ -262,4 +387,5 @@ module.exports = {
 	listDocuments,
 	addDocument,
 	removeDocument,
+	grantAccounts,
 };

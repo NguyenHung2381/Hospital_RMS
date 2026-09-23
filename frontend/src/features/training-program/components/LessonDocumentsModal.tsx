@@ -1,3 +1,4 @@
+import { notify } from '../../../shared/utils/feedback';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { DocSvg, DownloadSvg, PlusSvg, TrashSvg, XSvg } from '@/assets/icons';
 import {
@@ -57,6 +58,7 @@ export function LessonDocumentsModal({
 		setError('');
 		try {
 			await addLessonDocument(lesson.id, source, { title: form.title, is_public: form.isPublic });
+			notify.success('Đã thêm tài liệu');
 			setForm({ title: '', isPublic: true, sourceType: 'file', externalUrl: '' });
 			if (fileInputRef.current) fileInputRef.current.value = '';
 			await load();
@@ -71,6 +73,7 @@ export function LessonDocumentsModal({
 		setBusy(true);
 		try {
 			await removeLessonDocument(docId);
+			notify.success('Đã xoá tài liệu');
 			await load();
 		} catch (err) {
 			setError(err instanceof Error ? err.message : 'Xoá thất bại');

@@ -38,6 +38,23 @@ router.get('/stats', authorizePermission(['reports', 'read']), async (req, res, 
 
 /**
  * @swagger
+ * /dashboard/overview:
+ *   get:
+ *     summary: Thống kê chung toàn hệ thống (tài khoản, NCKH, Đào tạo, Hội thảo-CME)
+ *     tags: [Dashboard]
+ *     security:
+ *       - bearerAuth: []
+ */
+router.get('/overview', authorizePermission(['reports', 'read']), async (req, res, next) => {
+	try {
+		success(res, await dashboardService.getOverviewStats());
+	} catch (err) {
+		next(err);
+	}
+});
+
+/**
+ * @swagger
  * /dashboard/export-stats:
  *   post:
  *     summary: Xuất Excel thống kê tổng quan (tổng quan, theo hệ, theo khoa, 1 sheet/khoa)

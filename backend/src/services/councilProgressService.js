@@ -11,6 +11,7 @@
 const { getPool, sql } = require('../config/db');
 const fileService = require('./fileService');
 const sanitizeHtml = require('sanitize-html');
+const { stripUploadSignatures } = require('../utils/signedUpload');
 
 const EVAL_NOTE = 'Đánh giá tiến độ của hội đồng'; // ponytail: phân biệt file đánh giá bằng note batch — thêm cột file_type nếu sau này cần chặt chẽ hơn
 const MINUTES_NOTE = 'Biên bản họp hội đồng';
@@ -42,7 +43,9 @@ const sanitizeComment = (html) => {
 		exclusiveFilter: (frame) =>
 			frame.tag === 'img' && !frame.attribs.src?.startsWith('/uploads/'),
 	});
-	return clean || null;
+	// Ảnh hiển thị trên trình soạn thảo mang src đã ký (có hạn) — lưu đường dẫn
+	// gốc, response sau sẽ ký lại.
+	return stripUploadSignatures(clean) || null;
 };
 
 // Ghế thực tế của user với các đề tài: ghế thay thế ghi đè ghế gốc cùng vai.

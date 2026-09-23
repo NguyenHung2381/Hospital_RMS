@@ -2,7 +2,7 @@
 
 Ứng dụng web quản lý toàn bộ vòng đời hoạt động nghiên cứu khoa học trong bệnh viện: đăng ký đề tài, phân công thành viên, hội đồng chấm đề cương, quy trình phê duyệt, theo dõi tiến độ, quản lý hội thảo/hội nghị và cấp CME, cùng hệ thống báo cáo — thống kê.
 
-Monorepo gồm hai phần chạy độc lập: **`client/`** (React SPA) và **`server/`** (REST API).
+Monorepo gồm hai phần chạy độc lập: **`frontend/`** (React SPA) và **`backend/`** (REST API).
 
 ---
 
@@ -40,7 +40,7 @@ Hospital RMS (Research Management System) phục vụ các nhóm người dùng:
 
 ## Công nghệ sử dụng
 
-### Frontend (`client/`)
+### Frontend (`frontend/`)
 
 | Thành phần | Công nghệ |
 |---|---|
@@ -53,7 +53,7 @@ Hospital RMS (Research Management System) phục vụ các nhóm người dùng:
 | Data fetching | `fetch` bọc trong `apiClient`, tự refresh token khi 401 |
 | Realtime | SSE — một `EventSource` dùng chung cho mỗi tab |
 
-### Backend (`server/`)
+### Backend (`backend/`)
 
 | Thành phần | Công nghệ |
 |---|---|
@@ -75,7 +75,7 @@ Hospital RMS (Research Management System) phục vụ các nhóm người dùng:
 - **Node.js** ≥ 20 LTS, **npm** ≥ 9 (React 19 / Vite 8 / TypeScript 6).
 - **Microsoft SQL Server** (Express hoặc Full) với database `RMS_HOSPITAL`.
   - Bật **TCP/IP** trong SQL Server Configuration Manager, mở firewall port `1433` nếu server API và SQL Server không cùng máy (bắt buộc khi chạy Docker).
-- Cổng mặc định: `3000` (backend), `5173` (frontend). Backend tự nhảy sang port trống kế tiếp nếu `3000` bị chiếm và đồng bộ port đó sang `client/.env`.
+- Cổng mặc định: `3000` (backend), `5173` (frontend). Backend tự nhảy sang port trống kế tiếp nếu `3000` bị chiếm và đồng bộ port đó sang `frontend/.env`.
 
 ---
 
@@ -88,8 +88,8 @@ cd Hospital_RMS
 
 # Cài dependencies cho cả 3 package
 npm install                 # root — chỉ chứa 'concurrently' để chạy song song
-npm install --prefix server
-npm install --prefix client
+npm install --prefix backend
+npm install --prefix frontend
 ```
 
 Khởi tạo database: chạy `script.sql` (dump đầy đủ) hoặc `scripts/upgrade_db_script_to_hospital_rms.sql` (nâng cấp schema) trên SQL Server, tạo database tên `RMS_HOSPITAL`.
@@ -98,12 +98,12 @@ Khởi tạo database: chạy `script.sql` (dump đầy đủ) hoặc `scripts/u
 
 ## Cấu hình môi trường
 
-### Backend — `server/.env`
+### Backend — `backend/.env`
 
 Sao chép từ mẫu và điền thông tin thật:
 
 ```bash
-cp server/.env.example server/.env
+cp backend/.env.example backend/.env
 ```
 
 ```env
@@ -128,7 +128,7 @@ SWAGGER_PASS=change-me
 # Tuỳ chọn
 # CORS_ORIGIN=https://rms.example.com,https://admin.rms.example.com   # bỏ trống = mọi origin
 # UPLOADS_DIR=uploads
-# LOG_DIR=logs                       # mặc định <server>/logs
+# LOG_DIR=logs                       # mặc định <backend>/logs
 # LOG_RETENTION_FILES=90             # số file log tối đa được giữ (≈ số ngày)
 # LOG_STDOUT=1                       # ghi ra stdout thay vì file
 # AUDIT_LOG_METHODS=POST,PUT,PATCH,DELETE   # bỏ trống = ghi mọi method (kể cả GET)
@@ -136,9 +136,9 @@ SWAGGER_PASS=change-me
 
 > Biến bắt buộc: `DB_USER`, `DB_PASSWORD`, `JWT_SECRET`, `JWT_REFRESH_SECRET`, `SWAGGER_USER`, `SWAGGER_PASS`.
 
-### Frontend — `client/.env` (tuỳ chọn khi dev)
+### Frontend — `frontend/.env` (tuỳ chọn khi dev)
 
-Khi chạy dev, client gọi đường dẫn tương đối và đi qua proxy của Vite — thường **không cần** file này. Backend tự ghi `VITE_API_PORT` vào `client/.env` mỗi lần khởi động.
+Khi chạy dev, client gọi đường dẫn tương đối và đi qua proxy của Vite — thường **không cần** file này. Backend tự ghi `VITE_API_PORT` vào `frontend/.env` mỗi lần khởi động.
 
 ```env
 VITE_API_PORT=3000          # cổng backend để Vite proxy /api và /uploads
@@ -163,11 +163,11 @@ npm run client      # chỉ frontend
 ### Production
 
 ```bash
-# Build frontend (ra client/dist)
-npm run build --prefix client
+# Build frontend (ra frontend/dist)
+npm run build --prefix frontend
 
 # Chạy backend ở chế độ production
-npm run start:prod --prefix server
+npm run start:prod --prefix backend
 ```
 
 ---
@@ -183,7 +183,7 @@ docker compose up --build
 #   Loki   → http://localhost:3100
 
 # Prod-style — build tĩnh, client phục vụ qua Nginx
-cp server/.env.example server/.env      # điền config DB thật trước khi chạy
+cp backend/.env.example backend/.env    # điền config DB thật trước khi chạy
 docker compose -f docker-compose.prod.yml up --build -d
 #   client → http://localhost   server → http://localhost:3000
 ```
@@ -194,7 +194,7 @@ docker compose -f docker-compose.prod.yml up --build -d
 
 ```
 Hospital_RMS/
-├── client/                          # React + TypeScript SPA (Vite)
+├── frontend/                        # React + TypeScript SPA (Vite)
 │   └── src/
 │       ├── app/
 │       │   ├── App.tsx
@@ -224,7 +224,7 @@ Hospital_RMS/
 │       │   └── api/                # apiClient (fetch), interceptors (refresh token), endpoints
 │       └── styles/
 │
-├── server/                          # Node.js + Express REST API
+├── backend/                         # Node.js + Express REST API
 │   └── src/
 │       ├── server.js               # bootstrap: auto-port, đồng bộ port sang client, network IP
 │       ├── app.js                  # nạp .env, kiểm tra biến bắt buộc, middleware, mount routes
@@ -293,9 +293,19 @@ Hospital_RMS/
 ## Kiến trúc & quy ước
 
 ### Realtime — một kết nối SSE cho mỗi tab
-`useRealtimeUpdate(entities, callback)` (`client/src/layouts/hooks/useRealtime.ts`) đăng ký vào **một** `EventSource` dùng chung ở cấp module, kết nối tới `GET /api/v1/events?token=<jwt>`. Nếu mỗi hook tự mở kết nối riêng, một trang nhiều panel sẽ vượt giới hạn 6 kết nối HTTP/1.1 mỗi origin của trình duyệt và làm treo toàn bộ request còn lại — **luôn dùng hook này**, không tự tạo `EventSource`.
+`useRealtimeUpdate(entities, callback)` (`frontend/src/layouts/hooks/useRealtime.ts`) đăng ký vào **một** `EventSource` dùng chung ở cấp module, kết nối tới `GET /api/v1/events?token=<jwt>`. Nếu mỗi hook tự mở kết nối riêng, một trang nhiều panel sẽ vượt giới hạn 6 kết nối HTTP/1.1 mỗi origin của trình duyệt và làm treo toàn bộ request còn lại — **luôn dùng hook này**, không tự tạo `EventSource`.
 
-### UI kit dùng chung (`client/src/shared`)
+### Danh tính hợp nhất (`persons`) — dual-write
+Một con người từng bị lưu ở 6 bảng riêng (`users`, `trainees`, `lecturers`, `external_reviewers`, `topic_members`, `seminar_participants`). Nay mỗi bảng có cột `person_id` trỏ về **một** bản ghi `persons`.
+
+- **Bảng nguồn vẫn là nguồn sự thật.** Sau mỗi lệnh ghi thành công, `personService.syncPerson(source, id, { actorId })` gắn/cập nhật person. Hàm này **không bao giờ ném lỗi** (chỉ log) nên không chặn thao tác của người dùng. Viết đường ghi mới vào 6 bảng trên → nhớ gọi nó (hoặc `syncPersons` cho import hàng loạt).
+- **Quy tắc gắn người** (giống migration): có `user_id` → person của user · trùng CCCD · `staff_number` + tên · email + tên · SĐT chuẩn hoá + tên · tên + ngày sinh. Mỗi quy tắc chỉ dùng khi khớp đúng 1 person; trùng **tên đơn thuần không bao giờ tự gộp** (đưa vào hàng đợi duyệt `person_merge_candidates`). Một người chỉ có một tài khoản.
+- **Nguồn phụ chỉ điền chỗ trống**, không ghi đè person do nguồn khác tạo. Email giả `<id>@member.local` (luồng cấp tài khoản) không vào `persons`.
+- **Job đêm 03:00** (`jobs/personLinkJob`) gắn nốt bản ghi còn `person_id IS NULL` (script import một lần, SQL tay, lỗi tạm thời…).
+- **Cờ tắt khẩn cấp:** `PERSON_DUAL_WRITE=false` trong `backend/.env`. Trước khi chạy migration, dual-write tự bỏ qua (kiểm tra lại mỗi 60s).
+- **Duyệt gộp:** màn hình *Hệ thống → Duyệt trùng danh tính* (`/admin/person-merge`, quyền `persons:read` / `persons:merge`, mặc định chỉ admin). Gộp chuyển toàn bộ `person_id` sang hồ sơ gốc, đánh dấu hồ sơ kia `MERGED` và ghi `person_merge_log` (ảnh chụp + danh sách bản ghi đã chuyển, đủ để khôi phục thủ công). Không thể gộp hai hồ sơ đều có tài khoản.
+
+### UI kit dùng chung (`frontend/src/shared`)
 Các mảnh giao diện lặp lại được gom về một nguồn duy nhất — sửa một nơi, đổi cả app. Import qua barrel: `import { Badge, EmptyState, Pagination } from '@/shared/components'`.
 
 | Thành phần | Dùng cho | Ghi chú |
@@ -348,6 +358,7 @@ http://localhost:3000/api-docs
 | Notifications | `/notifications` | Thông báo người dùng, đánh dấu đã đọc, gửi thủ công |
 | Events | `/events` | SSE stream cập nhật real-time (`?token=`) |
 | Activity Logs | `/activity-logs` | Đọc nhật ký hoạt động từ file log |
+| Persons | `/persons/merge-candidates` | Hàng đợi trùng danh tính: danh sách, chi tiết, `/:id/merge`, `/:id/reject`, `/:id/reopen`, `/stats` |
 | Lookups | `/departments`, `/categories`, `/levels`, `/roles`, `/research-rounds`, `/round-types` | Danh mục — hỗ trợ GET (list), GET/:id, POST, PUT/:id, DELETE/:id |
 
 ---
@@ -388,6 +399,12 @@ Vai trò và tập quyền cụ thể được quản lý trong trang **Phân qu
 
 ### Migrations & scripts
 
+> `backend/migrations/` được ignore có chủ đích (không nằm trong git); chạy tay theo thứ tự tên file. Dùng `sqlcmd -I` (bảng có index lọc / cột tính toán cần `QUOTED_IDENTIFIER ON`).
+
+- `2026-09-25_persons_foundation.sql` — bảng `persons`, `person_merge_candidates`, cột `person_id` trên 6 bảng nguồn, backfill (idempotent, có rollback ở cuối file).
+- `2026-09-26_person_merge_review.sql` — `person_merge_log` và quyền `persons:read` / `persons:merge`.
+- `scripts/profiling/gd0_profiling.sql` — thống kê hiện trạng dữ liệu (chỉ đọc), chạy trên **bản sao** trước khi migrate.
+
 - `script.sql` — dump database đầy đủ để khởi tạo mới.
 - `scripts/upgrade_db_script_to_hospital_rms.sql` — script nâng cấp schema.
 - `scripts/drop-activity-logs.sql` — gỡ bảng activity log cũ (nhật ký nay ghi ra file, không còn dùng SQL).
@@ -396,8 +413,8 @@ Vai trò và tập quyền cụ thể được quản lý trong trang **Phân qu
 
 ## Nhật ký hoạt động & logging
 
-- Server ghi log bằng **Pino**; `pino-roll` xoay file JSON theo ngày tại `LOG_DIR/audit-*.log` (mặc định `server/logs/`).
+- Server ghi log bằng **Pino**; `pino-roll` xoay file JSON theo ngày tại `LOG_DIR/audit-*.log` (mặc định `backend/logs/`).
 - Middleware `activityLogger` ghi lại các request ghi dữ liệu (mặc định mọi method; giới hạn qua `AUDIT_LOG_METHODS`).
 - Trang **Nhật ký hoạt động** (`/admin/activity-logs`) đọc **trực tiếp** từ các file log — không truy vấn SQL.
 - `LOG_RETENTION_FILES` giới hạn số file được giữ (tự xoá file cũ hơn). Đặt `LOG_STDOUT=1` để ghi ra stdout khi có trình thu gom log riêng.
-- Docker (dev) kèm **Loki + Promtail**: Promtail đọc `server/logs` và đẩy vào Loki (`http://localhost:3100`) để tra cứu/giám sát.
+- Docker (dev) kèm **Loki + Promtail**: Promtail đọc `backend/logs` và đẩy vào Loki (`http://localhost:3100`) để tra cứu/giám sát.

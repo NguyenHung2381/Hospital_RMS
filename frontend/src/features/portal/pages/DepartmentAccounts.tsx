@@ -83,6 +83,9 @@ export default function DepartmentAccounts() {
 			<UserLayout
 				pageTitle='Tài khoản trong khoa'
 				pageSubtitle={d.deptName}
+				userName={d.fullName}
+				userRole={d.userRole}
+				userInitials={getInitials(d.fullName)}
 			>
 				<InlineLoading />
 			</UserLayout>
@@ -94,6 +97,9 @@ export default function DepartmentAccounts() {
 			<UserLayout
 				pageTitle='Tài khoản trong khoa'
 				pageSubtitle={d.deptName}
+				userName={d.fullName}
+				userRole={d.userRole}
+				userInitials={getInitials(d.fullName)}
 			>
 				<div className={styles.emptyState}>
 					<div className={styles.emptyIcon}>
@@ -110,6 +116,9 @@ export default function DepartmentAccounts() {
 		<UserLayout
 			pageTitle='Tài khoản trong khoa'
 			pageSubtitle={`Xem và quản lý tài khoản — ${d.deptName}`}
+			userName={d.fullName}
+			userRole={d.userRole}
+			userInitials={getInitials(d.fullName)}
 		>
 			{/* Stats */}
 			<div className={styles.statsRow}>

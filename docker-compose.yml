@@ -1,11 +1,16 @@
 services:
   server:
     build:
-      context: ./server
+      context: ./backend
       target: dev
     environment:
       NODE_ENV: development
+      # Tin proxy nội bộ (Vite/nginx trong mạng Docker) để req.ip = IP máy khách
+      # qua X-Forwarded-For, thay vì IP container frontend (172.x).
+      TRUST_PROXY: "loopback, uniquelocal"
       DB_SERVER: host.docker.internal
+      REDIS_HOST: redis
+      REDIS_PORT: "6379"
       # Giữ tối thiểu 100 file log ngày (>= 3 tháng) cho promtail + trang /activity-logs
       LOG_RETENTION_FILES: "100"
     extra_hosts:
@@ -16,12 +21,14 @@ services:
     ports:
       - "3000:3000"
     volumes:
-      - ./server:/app
+      - ./backend:/app
       - /app/node_modules
+    depends_on:
+      - redis
 
   client:
     build:
-      context: ./client
+      context: ./frontend
       target: dev
     environment:
       VITE_API_HOST: server
@@ -30,10 +37,28 @@ services:
     ports:
       - "5173:5173"
     volumes:
-      - ./client:/app
+      - ./frontend:/app
       - /app/node_modules
     depends_on:
       - server
+
+  # ─── Cache: Redis cho dashboard aggregates + danh mục/lookup (departments,
+  # roles, categories, levels, round_types...) — cache-aside, không dùng làm
+  # nguồn dữ liệu chính nên tắt hẳn persistence (RDB/AOF) để nhẹ CPU/disk I/O,
+  # allkeys-lru tự đẩy key cũ khi đầy thay vì phải TTL tay từng key.
+  redis:
+    image: redis:7-alpine
+    command:
+      [
+        "redis-server",
+        "--maxmemory", "128mb",
+        "--maxmemory-policy", "allkeys-lru",
+        "--save", "",
+        "--appendonly", "no",
+      ]
+    ports:
+      - "6379:6379"
+    restart: unless-stopped
 
   # ─── Log stack: Promtail đọc file log của server → đẩy vào Loki ───────────────
   loki:
@@ -51,7 +76,7 @@ services:
     command: ["-config.file=/etc/promtail/config.yaml"]
     volumes:
       - ./infra/promtail-config.yaml:/etc/promtail/config.yaml:ro
-      - ./server/logs:/logs:ro
+      - ./backend/logs:/logs:ro
     depends_on:
       - loki
     restart: unless-stopped

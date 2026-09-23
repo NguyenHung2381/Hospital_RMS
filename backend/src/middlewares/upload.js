@@ -22,8 +22,8 @@ const storage = multer.diskStorage({
 			.basename(file.originalname, ext)
 			.replace(/\s+/g, '_')
 			.replace(/[^a-zA-Z0-9_\-.]/g, '');
-		// random (không dùng Date.now()+số nhỏ, dễ đoán) — file được serve tĩnh
-		// không qua auth, tên đoán được là truy cập được thẳng tài liệu người khác.
+		// random (không dùng Date.now()+số nhỏ, dễ đoán) — lớp phòng thủ thêm ngoài
+		// chữ ký link /uploads (utils/signedUpload.js).
 		const unique = crypto.randomBytes(16).toString('hex');
 		cb(null, `${base}-${unique}${ext}`);
 	},

@@ -84,6 +84,18 @@ const removeDocument = async (req, res, next) => {
 	}
 };
 
+const grantAccounts = async (req, res, next) => {
+	try {
+		const result = await traineeService.grantAccounts(
+			req.body.trainee_ids,
+			req.user.id,
+		);
+		return success(res, result);
+	} catch (err) {
+		next(err);
+	}
+};
+
 const importExcel = async (req, res, next) => {
 	try {
 		if (!req.file) {
@@ -112,5 +124,6 @@ module.exports = {
 	listDocuments,
 	addDocument,
 	removeDocument,
+	grantAccounts,
 	importExcel,
 };

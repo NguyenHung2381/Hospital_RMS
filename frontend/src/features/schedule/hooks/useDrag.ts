@@ -1,3 +1,4 @@
+import { notify } from '../../../shared/utils/feedback';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { UpdateRoundPayload } from '../../round/api/roundApi';
 import { updateRound, upsertDeadline } from '../../round/api/roundApi';
@@ -158,7 +159,11 @@ export function useDrag({ setRows, yearStart, yearMs, zoom }: UseDragProps) {
 					setRows((prev) => prev.map((r) =>
 						r.id === drag.round.id ? { ...saved, deadlines: r.deadlines } : r,
 					));
-				} catch { /* silently revert */ }
+					notify.success('Đã cập nhật lịch');
+				} catch (err) {
+					// Không cập nhật rows → thanh tự về vị trí cũ
+					notify.error(err instanceof Error ? err.message : 'Cập nhật lịch thất bại');
+				}
 			}
 
 			if (pinDragRef.current) {
@@ -190,7 +195,11 @@ export function useDrag({ setRows, yearStart, yearMs, zoom }: UseDragProps) {
 							? { ...r, deadlines: r.deadlines.map((d) => d.id === drag.deadline.id ? saved : d) }
 							: r,
 					));
-				} catch { /* silently revert */ }
+					notify.success('Đã cập nhật lịch');
+				} catch (err) {
+					// Không cập nhật rows → thanh tự về vị trí cũ
+					notify.error(err instanceof Error ? err.message : 'Cập nhật lịch thất bại');
+				}
 			}
 
 			if (deadlineBarDragRef.current) {
@@ -218,7 +227,11 @@ export function useDrag({ setRows, yearStart, yearMs, zoom }: UseDragProps) {
 							? { ...r, deadlines: r.deadlines.map((d) => d.id === drag.deadline.id ? saved : d) }
 							: r,
 					));
-				} catch { /* silently revert */ }
+					notify.success('Đã cập nhật lịch');
+				} catch (err) {
+					// Không cập nhật rows → thanh tự về vị trí cũ
+					notify.error(err instanceof Error ? err.message : 'Cập nhật lịch thất bại');
+				}
 			}
 		};
 

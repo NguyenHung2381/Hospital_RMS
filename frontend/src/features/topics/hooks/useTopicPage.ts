@@ -15,6 +15,7 @@ import {
 import type { PendingMember } from '../components/TopicModal';
 import type { Topic, TopicForm, TopicStatus } from '../types/topic.type';
 import { bulkToast, runBulk } from '../../../shared/utils/runBulk';
+import { notify } from '../../../shared/utils/feedback';
 import type { UpdateTopicPayload } from '../api/topicApi';
 
 export type TopicBulkPatch = Pick<
@@ -248,6 +249,7 @@ export function useTopicPage() {
 				department_id: form.department_id || undefined,
 				status: form.status,
 				article_type: form.article_type,
+				journal_name: form.journal_name || undefined,
 				doi: form.doi || undefined,
 				publish_date: form.publish_date || undefined,
 				budget_estimated: form.budget_estimated
@@ -272,6 +274,7 @@ export function useTopicPage() {
 			// Chỉ giữ trang hiện tại nên tải lại từ server thay vì chèn tay
 			refreshData();
 			setShowCreate(false);
+			notify.success(`Đã thêm đề tài "${created.title}"`);
 		},
 		[refreshData],
 	);
@@ -288,6 +291,7 @@ export function useTopicPage() {
 				department_id: form.department_id || undefined,
 				status: form.status,
 				article_type: form.article_type,
+				journal_name: form.journal_name || undefined,
 				doi: form.doi || undefined,
 				publish_date: form.publish_date || undefined,
 				budget_estimated: form.budget_estimated
@@ -300,10 +304,12 @@ export function useTopicPage() {
 				approval_decision_date: form.approval_decision_date || undefined,
 				recognition_decision_no: form.recognition_decision_no || undefined,
 				recognition_decision_date: form.recognition_decision_date || undefined,
+				is_featured: form.is_featured,
 			});
 			refreshData();
 			setEditTopic(null);
 			setViewTopic(null);
+			notify.success('Đã cập nhật đề tài');
 		},
 		[editTopic, refreshData],
 	);
@@ -314,6 +320,7 @@ export function useTopicPage() {
 		refreshData();
 		setDeleteTopic(null);
 		setViewTopic(null);
+		notify.success('Đã xoá đề tài');
 	}, [deleteTopic, refreshData]);
 
 	const handleBulkDelete = useCallback(

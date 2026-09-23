@@ -25,6 +25,9 @@ export interface Trainee {
 	is_active: boolean;
 	is_employee: boolean;
 	created_at: string;
+	/** D0 — tài khoản đăng nhập cho học viên (điểm danh QR, thi online). */
+	user_id: string | null;
+	account_granted: boolean;
 }
 
 export interface TraineeFormData {

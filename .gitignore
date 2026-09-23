@@ -28,7 +28,7 @@ dist-ssr/
 build/
 
 # Uploaded files
-server/uploads/
+backend/uploads/
 
 # OS files
 .DS_Store
@@ -54,3 +54,10 @@ desktop.ini
 *.local
 .cache/
 .temp/
+
+# Báo cáo từ script import dữ liệu cũ (scripts/import_*.js, scripts/create_*.js)
+# — chứa PII thật (CCCD/SĐT/tên nhân viên) và/hoặc mật khẩu tạm dạng rõ, không
+# bao giờ được commit.
+staff_license_import_unmatched.csv
+legacy_users_created_CHUA_MAT_KHAU.csv
+*_CHUA_MAT_KHAU.csv

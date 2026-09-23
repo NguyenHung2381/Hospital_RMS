@@ -1,0 +1,164 @@
+.emptyState {
+	text-align: center;
+	padding: var(--space-8) var(--space-4);
+	color: var(--color-gray-500);
+}
+.emptyTitle {
+	font-weight: var(--font-weight-semibold);
+	color: var(--color-gray-700);
+	margin-bottom: 4px;
+}
+.emptyDesc {
+	font-size: var(--font-size-sm);
+}
+
+.paperCard {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 12px;
+	padding: var(--space-4);
+	border: 1.5px solid var(--color-gray-200);
+	border-radius: var(--radius-lg);
+	background: var(--color-white);
+}
+.paperTitle {
+	font-weight: var(--font-weight-semibold);
+	color: var(--color-gray-900);
+	font-size: var(--font-size-sm);
+}
+.paperMeta {
+	font-size: var(--font-size-xs);
+	color: var(--color-gray-500);
+	margin-top: 4px;
+}
+
+.errorBanner {
+	background: #fcebeb;
+	color: #791f1f;
+	padding: 10px 14px;
+	border-radius: var(--radius-md);
+	font-size: var(--font-size-sm);
+	margin-bottom: 12px;
+}
+
+.toast {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	padding: 10px 14px;
+	border-radius: var(--radius-md);
+	font-size: var(--font-size-sm);
+	font-weight: var(--font-weight-semibold);
+	margin-bottom: 12px;
+}
+.toastSuccess {
+	background: #e1f5ee;
+	color: #085041;
+}
+
+.examWrap {
+	max-width: 680px;
+	margin: 0 auto;
+}
+.examHeader {
+	display: flex;
+	justify-content: flex-end;
+	margin-bottom: 12px;
+	position: sticky;
+	top: 0;
+	z-index: 2;
+}
+.timer {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	font-weight: var(--font-weight-bold);
+	font-size: var(--font-size-lg);
+	padding: 6px 14px;
+	border-radius: var(--radius-full, 999px);
+	background: var(--color-gray-100);
+}
+
+.questionBlock {
+	padding: var(--space-4) 0;
+	border-bottom: 1px solid var(--color-gray-100);
+}
+.questionBlock:last-of-type {
+	border-bottom: none;
+}
+.questionLabel {
+	font-weight: var(--font-weight-semibold);
+	color: var(--color-gray-800);
+	margin-bottom: var(--space-2);
+	font-size: var(--font-size-sm);
+}
+.optionChoice {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	padding: 6px 0;
+	font-size: var(--font-size-sm);
+	color: var(--color-gray-700);
+	cursor: pointer;
+}
+.formTextarea {
+	width: 100%;
+	padding: var(--space-2) var(--space-3);
+	border: 1.5px solid var(--color-gray-200);
+	border-radius: var(--radius-lg);
+	font-family: var(--font-body);
+	font-size: var(--font-size-sm);
+	color: var(--color-gray-800);
+	background: var(--color-gray-50);
+	outline: none;
+	resize: vertical;
+	box-sizing: border-box;
+}
+.formTextarea:focus {
+	border-color: var(--color-primary);
+	background: var(--color-white);
+}
+
+.btnCancel {
+	padding: 10px 18px;
+	border-radius: var(--radius-lg);
+	border: 1.5px solid var(--color-gray-200);
+	background: var(--color-white);
+	font-weight: var(--font-weight-semibold);
+	font-size: var(--font-size-sm);
+	cursor: pointer;
+	color: var(--color-gray-600);
+}
+.btnConfirm {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	padding: 10px 18px;
+	border-radius: var(--radius-lg);
+	border: none;
+	background: var(--color-primary);
+	color: #fff;
+	font-weight: var(--font-weight-semibold);
+	font-size: var(--font-size-sm);
+	cursor: pointer;
+}
+.btnConfirm:disabled,
+.btnCancel:disabled {
+	opacity: 0.6;
+	cursor: not-allowed;
+}
+.spinner {
+	width: 14px;
+	height: 14px;
+	border: 2px solid rgba(255, 255, 255, 0.4);
+	border-top-color: #fff;
+	border-radius: 50%;
+	display: inline-block;
+	animation: exam-spin 0.7s linear infinite;
+}
+@keyframes exam-spin {
+	to {
+		transform: rotate(360deg);
+	}
+}

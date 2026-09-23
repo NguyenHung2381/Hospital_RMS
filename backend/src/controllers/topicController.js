@@ -1,5 +1,7 @@
 const topicService = require('../services/topicService');
 const topicMemberService = require('../services/topicMemberService');
+const topicAuthorService = require('../services/topicAuthorService');
+const workflowEngineService = require('../services/workflowEngineService');
 const { success, created, notFound } = require('../utils/response');
 const { createCrudController } = require('./crudController');
 const {
@@ -131,8 +133,29 @@ const submit = async (req, res, next) => {
 	}
 };
 
+// Nếu có workflow_definitions đang active cho resource 'topics' (admin phải
+// chủ động tạo + bật, xem 2026-10-06_workflow_engine.sql) → đi qua engine mới
+// (nhiều bước, gán theo vai trò). Mặc định KHÔNG có định nghĩa nào active nên
+// luôn rơi vào nhánh cũ (sp_approve_topic) — không đổi hành vi hiện tại.
 const approve = async (req, res, next) => {
 	try {
+		const useWorkflow = await workflowEngineService.hasActiveDefinition('topics');
+		if (useWorkflow) {
+			// Engine mới chỉ xử lý approved/rejected — 'supplement' (yêu cầu bổ
+			// sung) vẫn đi đường cũ vì workflow_tasks không có trạng thái tương ứng.
+			if (req.body.status === 'supplement') {
+				const result = await topicService.approve(req.params.id, req.body.status, req.body.comment, req.user.id);
+				return success(res, result, 'Xử lý phê duyệt thành công');
+			}
+			const outcome = await workflowEngineService.advance(
+				'topics',
+				req.params.id,
+				req.body.status,
+				req.user,
+				req.body.comment,
+			);
+			return success(res, outcome, 'Đã cập nhật bước duyệt');
+		}
 		const result = await topicService.approve(
 			req.params.id,
 			req.body.status,
@@ -180,6 +203,23 @@ const updateOne = async (req, res, next) => {
 	}
 };
 
+const getAuthors = async (req, res, next) => {
+	try {
+		return success(res, await topicAuthorService.listAuthors(req.params.id));
+	} catch (err) {
+		next(err);
+	}
+};
+
+const setAuthors = async (req, res, next) => {
+	try {
+		const authors = await topicAuthorService.setAuthors(req.params.id, req.body.authors, req.user.id);
+		return success(res, authors, 'Đã cập nhật danh sách đồng tác giả');
+	} catch (err) {
+		next(err);
+	}
+};
+
 module.exports = {
 	...base,
 	getAll,
@@ -195,4 +235,6 @@ module.exports = {
 	approve,
 	getApprovals,
 	exportData,
+	getAuthors,
+	setAuthors,
 };

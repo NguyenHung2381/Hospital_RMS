@@ -18,6 +18,7 @@ import {
 	incrementDocumentDownload as apiIncrementDocumentDownload,
 	issueCertificate as apiIssueCertificate,
 	registerTrainee as apiRegisterTrainee,
+	registerStaff as apiRegisterStaff,
 	removeAssignment as apiRemoveAssignment,
 	removeCertificate as apiRemoveCertificate,
 	removeDocument as apiRemoveDocument,
@@ -47,10 +48,53 @@ export interface SimpleItem {
 	name: string;
 }
 
-export type DetailTab = 'programs' | 'enrollments' | 'lecturers' | 'sessions' | 'documents' | 'results';
+/** Giảng viên: bác sĩ/nhân viên nội viện hoặc chuyên gia ngoài viện (GS/PGS/TS...). */
+export interface LecturerItem extends SimpleItem {
+	is_external: boolean;
+}
 
-export function useCourseDetail(courseId: string) {
-	const [tab, setTab] = useState<DetailTab>('enrollments');
+interface PersonRow {
+	id: string;
+	full_name: string;
+	phone?: string | null;
+	specialty?: string | null;
+	is_employee?: boolean | null;
+}
+
+interface LecturerRow extends PersonRow {
+	is_external: boolean;
+	academic_degree?: string | null;
+	academic_rank?: string | null;
+}
+
+interface StaffCandidate {
+	id: string;
+	full_name: string;
+	staff_number?: string | null;
+	department_name?: string | null;
+}
+
+/** Tiền tố id cho nhân viên nội viện chưa có hồ sơ học viên trong danh sách chọn —
+ * registerTrainee nhận ra để gửi `user_id` thay vì `trainee_id`. */
+export const STAFF_OPTION_PREFIX = 'user:';
+
+const joinLabel = (...parts: (string | null | undefined)[]) => parts.filter(Boolean).join(' · ');
+
+// "PGS.TS Nguyễn Văn A · Tim mạch" — thêm học hàm/học vị trước tên nếu tên chưa ghi sẵn.
+const toLecturerItem = (l: LecturerRow): LecturerItem => {
+	const title = [l.academic_rank, l.academic_degree].filter(Boolean).join('.');
+	const hasTitle = !title || /^(GS|PGS|TS|ThS|BS|CN|DS|ĐD)[.\s]/i.test(l.full_name.trim());
+	return {
+		id: l.id,
+		name: joinLabel(hasTitle ? l.full_name : `${title} ${l.full_name}`, l.specialty),
+		is_external: !!l.is_external,
+	};
+};
+
+export type DetailTab = 'programs' | 'enrollments' | 'lecturers' | 'sessions' | 'documents' | 'exams' | 'results';
+
+export function useCourseDetail(courseId: string, initialTab: DetailTab = 'enrollments') {
+	const [tab, setTab] = useState<DetailTab>(initialTab);
 	const [programLinks, setProgramLinks] = useState<CourseProgramLink[]>([]);
 	const [enrollments, setEnrollments] = useState<Enrollment[]>([]);
 	const [assignments, setAssignments] = useState<LecturerAssignment[]>([]);
@@ -59,7 +103,7 @@ export function useCourseDetail(courseId: string) {
 	const [grades, setGrades] = useState<Grade[]>([]);
 	const [certificates, setCertificates] = useState<Certificate[]>([]);
 	const [trainees, setTrainees] = useState<SimpleItem[]>([]);
-	const [lecturers, setLecturers] = useState<SimpleItem[]>([]);
+	const [lecturers, setLecturers] = useState<LecturerItem[]>([]);
 	const [subjects, setSubjects] = useState<SimpleItem[]>([]);
 	const [programs, setPrograms] = useState<SimpleItem[]>([]);
 	const [loading, setLoading] = useState(true);
@@ -96,12 +140,39 @@ const load = useCallback(() => {
 		load();
 	}, [load]);
 
+	// Ô "thêm học viên" gộp 2 nguồn: hồ sơ học viên (cả nội viện lẫn ngoại viện) +
+	// nhân viên nội viện chưa có hồ sơ học viên (tạo tự động khi ghi danh).
+	const loadEnrollCandidates = useCallback(() => {
+		Promise.all([
+			apiClient.get<{ data: PersonRow[] }>('/trainees?limit=0').then((r) => r.data),
+			apiClient.get<StaffCandidate[]>('/courses/staff-candidates').catch(() => [] as StaffCandidate[]),
+		])
+			.then(([traineeRows, staff]) =>
+				setTrainees([
+					...traineeRows.map((t) => ({
+						id: t.id,
+						name: joinLabel(t.full_name, t.phone, t.is_employee ? 'Nội viện' : 'Ngoại viện'),
+					})),
+					...staff.map((u) => ({
+						id: STAFF_OPTION_PREFIX + u.id,
+						name: joinLabel(u.full_name, u.staff_number, u.department_name, 'Nội viện'),
+					})),
+				]),
+			)
+			.catch(() => {});
+	}, []);
+
 	useEffect(() => {
-		apiClient.get<{ data: SimpleItem[] }>('/trainees?limit=0').then((r) => setTrainees(r.data)).catch(() => {});
-		apiClient.get<{ data: SimpleItem[] }>('/lecturers?limit=0&active_only=true').then((r) => setLecturers(r.data)).catch(() => {});
+		// trainees/lecturers trả cột `full_name` (không có `name`) — quy về SimpleItem, kèm
+		// SĐT/chuyên môn để phân biệt người trùng tên trong dropdown.
+		loadEnrollCandidates();
+		apiClient
+			.get<{ data: LecturerRow[] }>('/lecturers?limit=0&active_only=true')
+			.then((r) => setLecturers(r.data.map(toLecturerItem)))
+			.catch(() => {});
 		apiClient.get<{ data: SimpleItem[] }>('/subjects?limit=0').then((r) => setSubjects(r.data)).catch(() => {});
 		apiClient.get<{ data: SimpleItem[] }>('/training-programs?limit=0').then((r) => setPrograms(r.data)).catch(() => {});
-	}, []);
+	}, [loadEnrollCandidates]);
 
 	const addProgramLink = useCallback(
 		async (data: CourseProgramLinkFormData) => {
@@ -110,8 +181,10 @@ const load = useCallback(() => {
 			try {
 				await apiAddProgramLink(courseId, data);
 				await load();
+				return true;
 			} catch (err) {
 				setError(err instanceof Error ? err.message : 'Gán chương trình thất bại');
+				return false;
 			} finally {
 				setBusy(false);
 			}
@@ -126,8 +199,10 @@ const load = useCallback(() => {
 			try {
 				await apiUpdateProgramLink(linkId, data);
 				await load();
+				return true;
 			} catch (err) {
 				setError(err instanceof Error ? err.message : 'Cập nhật thất bại');
+				return false;
 			} finally {
 				setBusy(false);
 			}
@@ -155,7 +230,13 @@ const load = useCallback(() => {
 			setBusy(true);
 			setError('');
 			try {
-				await apiRegisterTrainee(courseId, traineeId);
+				if (traineeId.startsWith(STAFF_OPTION_PREFIX)) {
+					await apiRegisterStaff(courseId, traineeId.slice(STAFF_OPTION_PREFIX.length));
+					// Nhân viên vừa được tạo hồ sơ học viên — nạp lại để không còn hiện 2 lần.
+					loadEnrollCandidates();
+				} else {
+					await apiRegisterTrainee(courseId, traineeId);
+				}
 				await load();
 			} catch (err) {
 				setError(err instanceof Error ? err.message : 'Đăng ký thất bại');
@@ -163,7 +244,7 @@ const load = useCallback(() => {
 				setBusy(false);
 			}
 		},
-		[courseId, load],
+		[courseId, load, loadEnrollCandidates],
 	);
 
 	const decideEnrollment = useCallback(
@@ -303,8 +384,10 @@ const load = useCallback(() => {
 			try {
 				await apiAddDocument(courseId, source, data);
 				await load();
+				return true;
 			} catch (err) {
 				setError(err instanceof Error ? err.message : 'Tải lên thất bại');
+				return false;
 			} finally {
 				setBusy(false);
 			}

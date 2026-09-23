@@ -1,3 +1,4 @@
+import { notify } from '../../../shared/utils/feedback';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { useRealtimeUpdate } from '../../../layouts/hooks/useRealtime';
@@ -211,6 +212,7 @@ export function useTopicDetail() {
 		try {
 			setTopic(await updateTopic(topic.id, payload));
 			setEditingInfo(false);
+			notify.success('Đã lưu thông tin đề tài');
 		} catch (e) {
 			setInfoErr(e instanceof Error ? e.message : 'Lưu thất bại');
 		} finally {
@@ -237,6 +239,7 @@ export function useTopicDetail() {
 			setMembers(await getTopicMembers(topic.id));
 			setNewMember(blankMember);
 			setAddingMember(false);
+			notify.success('Đã thêm thành viên');
 		} catch (e) {
 			setMemberErr(e instanceof Error ? e.message : 'Thêm thất bại');
 		} finally {
@@ -275,6 +278,7 @@ export function useTopicDetail() {
 			});
 			setMembers(await getTopicMembers(topic.id));
 			setEditingMemberId(null);
+			notify.success('Đã cập nhật thành viên');
 		} catch (e) {
 			setMemberErr(e instanceof Error ? e.message : 'Lưu thất bại');
 		} finally {
@@ -287,6 +291,7 @@ export function useTopicDetail() {
 		try {
 			await deleteTopicMember(topic.id, memberId);
 			setMembers((p) => p.filter((m) => m.id !== memberId));
+			notify.success('Đã xoá thành viên');
 		} catch (e) {
 			setMemberErr(e instanceof Error ? e.message : 'Xoá thất bại');
 		}
@@ -305,6 +310,7 @@ export function useTopicDetail() {
 		try {
 			await uploadTopicFiles(id, pendingFiles, batchNote.trim() || undefined);
 			setFiles((await getTopicFiles(id)).data);
+			notify.success(`Đã tải lên ${pendingFiles.length} file`);
 			setPendingFiles([]);
 			setBatchNote('');
 		} catch (err) {
@@ -333,6 +339,7 @@ export function useTopicDetail() {
 	const handleDeleteFile = async (fileId: string) => {
 		await deleteTopicFile(fileId);
 		setFiles((p) => p.filter((f) => f.id !== fileId));
+		notify.success('Đã xoá file');
 		setSelectedIds((p) => {
 			const n = new Set(p);
 			n.delete(fileId);
@@ -342,8 +349,9 @@ export function useTopicDetail() {
 
 	const handleBulkDelete = async () => {
 		const ids = Array.from(selectedIds);
-		for (const fid of ids) await deleteTopicFile(fid);
+		await Promise.all(ids.map((fid) => deleteTopicFile(fid)));
 		setFiles((p) => p.filter((f) => !ids.includes(f.id)));
+		notify.success(`Đã xoá ${ids.length} file`);
 		setSelectedIds(new Set());
 	};
 

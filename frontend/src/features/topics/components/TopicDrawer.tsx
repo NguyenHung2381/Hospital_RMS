@@ -7,6 +7,7 @@ import { STATUS_CFG, lookup } from '../utils/topicHelpers';
 import { Badge } from '@/shared/components';
 import { ConfirmDeleteFileModal } from './ConfirmDeleteFileModal';
 import { ConfirmUploadModal } from './ConfirmUploadModal';
+import { DrawerAuthorsTab } from './DrawerAuthorsTab';
 import { DrawerFilesTab } from './DrawerFilesTab';
 import { DrawerMembersTab } from './DrawerMembersTab';
 import { GrantedAccountsModal } from './GrantedAccountsModal';
@@ -48,6 +49,9 @@ export function TopicDrawer({
 		{ key: 'info', label: 'Thông tin' },
 		{ key: 'members', label: 'Thành viên', count: d.members.length },
 		{ key: 'files', label: 'Tài liệu', count: d.files.length },
+		...(topic.article_type === 'bai_bao'
+			? ([{ key: 'authors', label: 'Đồng tác giả' }] as const)
+			: []),
 	];
 
 	return (
@@ -185,6 +189,10 @@ export function TopicDrawer({
 							handleAddMember={d.handleAddMember}
 							handleDeleteMember={d.handleDeleteMember}
 						/>
+					)}
+
+					{tab === 'authors' && topic.article_type === 'bai_bao' && (
+						<DrawerAuthorsTab topicId={topic.id} />
 					)}
 
 					{tab === 'files' && (

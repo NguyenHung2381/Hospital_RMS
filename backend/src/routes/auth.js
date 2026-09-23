@@ -40,6 +40,19 @@ const changePasswordLimiter = rateLimit({
 	},
 });
 
+// Xác minh mã OTP là bước cuối cùng của đăng nhập — chặn dò mã 6 số tương tự
+// loginLimiter, tách riêng vì đây là 1 route khác (/auth/2fa/verify).
+const twoFaVerifyLimiter = rateLimit({
+	windowMs: 15 * 60 * 1000,
+	limit: 10,
+	standardHeaders: true,
+	legacyHeaders: false,
+	message: {
+		success: false,
+		message: 'Quá nhiều lần nhập sai mã xác thực. Vui lòng thử lại sau ít phút.',
+	},
+});
+
 const logoutAllLimiter = rateLimit({
 	windowMs: 15 * 60 * 1000,
 	limit: 10,
@@ -205,5 +218,86 @@ router.post(
 	validate,
 	authController.changePassword,
 );
+
+/**
+ * @swagger
+ * /auth/2fa/verify:
+ *   post:
+ *     summary: Xác minh mã OTP (bước 2 của đăng nhập cho tài khoản đã bật 2FA)
+ *     tags: [Auth]
+ *     security: []
+ *     responses:
+ *       200:
+ *         description: Đăng nhập thành công, trả về access/refresh token
+ *       401:
+ *         description: Mã không đúng hoặc pre_auth_token hết hạn
+ */
+router.post(
+	'/2fa/verify',
+	twoFaVerifyLimiter,
+	[body('pre_auth_token').notEmpty(), body('code').notEmpty()],
+	validate,
+	authController.verify2FA,
+);
+
+/**
+ * @swagger
+ * /auth/2fa/setup:
+ *   post:
+ *     summary: Khởi tạo thiết lập 2FA — sinh secret + otpauth URI để quét QR
+ *     tags: [Auth]
+ *     responses:
+ *       200:
+ *         description: Trả về secret và otpauth_uri (chưa bật, chờ xác nhận mã đầu tiên)
+ */
+router.post('/2fa/setup', authenticate, authController.setup2FA);
+
+/**
+ * @swagger
+ * /auth/2fa/verify-setup:
+ *   post:
+ *     summary: Xác nhận mã đầu tiên sau khi quét QR — chính thức bật 2FA
+ *     tags: [Auth]
+ *     responses:
+ *       200:
+ *         description: Đã bật xác thực 2 lớp
+ */
+router.post(
+	'/2fa/verify-setup',
+	authenticate,
+	[body('code').notEmpty()],
+	validate,
+	authController.verifySetup2FA,
+);
+
+/**
+ * @swagger
+ * /auth/2fa/disable:
+ *   post:
+ *     summary: Tắt xác thực 2 lớp (yêu cầu nhập lại mật khẩu)
+ *     tags: [Auth]
+ *     responses:
+ *       200:
+ *         description: Đã tắt xác thực 2 lớp
+ */
+router.post(
+	'/2fa/disable',
+	authenticate,
+	[body('password').notEmpty()],
+	validate,
+	authController.disable2FA,
+);
+
+/**
+ * @swagger
+ * /auth/2fa/status:
+ *   get:
+ *     summary: Trạng thái 2FA của tài khoản hiện tại
+ *     tags: [Auth]
+ *     responses:
+ *       200:
+ *         description: "{ enabled: boolean }"
+ */
+router.get('/2fa/status', authenticate, authController.status2FA);
 
 module.exports = router;

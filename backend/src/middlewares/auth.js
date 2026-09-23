@@ -88,6 +88,26 @@ const scopeFor = (user, resource) => {
 const topicScope = (user) => scopeFor(user, 'topics');
 const userScope = (user) => scopeFor(user, 'users');
 
+// Phạm vi khóa đào tạo — khác các resource khác ở chỗ 'courses:read' (phẳng,
+// đã tồn tại từ trước) mặc nhiên coi là 'all' để KHÔNG đổi hành vi của các vai
+// trò đang có quyền này. Chỉ khi actor có thêm 'courses:read_assigned' (và
+// không có courses:read_all/manage) mới bị thu hẹp còn đúng khóa được phân
+// công qua lecturer_assignments — vì vậy phải kiểm tra 'read_assigned' TRƯỚC
+// khi rơi về nhánh flat 'read' ở dưới.
+const courseScope = (user) => {
+	const perms = user?.permissions;
+	if (!perms) return 'own';
+	if (
+		perms.has('system:manage') ||
+		perms.has('courses:manage') ||
+		perms.has('courses:read_all')
+	)
+		return 'all';
+	if (perms.has('courses:read_assigned')) return 'assigned';
+	if (perms.has('courses:read')) return 'all';
+	return 'own';
+};
+
 // Bị chặn theo mốc thời gian (deadline) khi chỉ có phạm vi 'own'.
 const isDeadlineBound = (user) => topicScope(user) === 'own';
 
@@ -121,5 +141,6 @@ module.exports = {
 	hasPermission,
 	topicScope,
 	userScope,
+	courseScope,
 	isDeadlineBound,
 };

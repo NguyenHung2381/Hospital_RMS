@@ -1,3 +1,4 @@
+import { notify } from '../../../shared/utils/feedback';
 import { useCallback, useEffect, useState } from 'react';
 import { getTraineeEnrollments } from '../api/traineeApi';
 import {
@@ -39,6 +40,7 @@ export function useTraineeDetail(traineeId: string, initialTab: DetailTab = 'gen
 			setError('');
 			try {
 				await addTraineeDocument(traineeId, file, docType);
+				notify.success('Đã tải lên tài liệu');
 				await load();
 			} catch (err) {
 				setError(err instanceof Error ? err.message : 'Tải lên thất bại');
@@ -55,6 +57,7 @@ export function useTraineeDetail(traineeId: string, initialTab: DetailTab = 'gen
 			setError('');
 			try {
 				await removeTraineeDocument(docId);
+				notify.success('Đã xoá tài liệu');
 				await load();
 			} catch (err) {
 				setError(err instanceof Error ? err.message : 'Xoá thất bại');

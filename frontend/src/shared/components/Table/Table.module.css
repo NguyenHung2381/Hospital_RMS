@@ -144,6 +144,15 @@
 		0 2px 6px -1px rgba(15, 23, 42, 0.04);
 	overflow: hidden;
 }
+/* .tableWrap nằm trong .tableCard: card ngoài đã có viền/bóng — bỏ lớp card
+ * thứ hai (tránh viền kép + khoảng hở dưới hàng cuối), chỉ giữ cuộn ngang. */
+.tableCard .tableWrap {
+	border: none;
+	border-radius: 0;
+	box-shadow: none;
+	margin-bottom: 0;
+	overflow-x: auto;
+}
 
 /* ── Thanh tiêu đề: tên bảng + đếm dòng bên trái, tìm kiếm/lọc bên phải ──── */
 .tableHeader {

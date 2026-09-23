@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { CheckSvg, EditSvg, PlusSvg, SearchSvg, TrashSvg, XSvg } from '@/assets/icons';
+import { CalendarSvg, CheckSvg, EditSvg, EyeSvg, PlusSvg, SearchSvg, TrashSvg, XSvg } from '@/assets/icons';
 import AdminLayout from '../../../layouts/AdminLayout';
 import { SkeletonTable } from '../../../shared/components/Loading';
 import { Pagination } from '../../../shared/components/Table/Pagination';
@@ -11,6 +11,7 @@ import { CourseDeleteModal } from '../components/CourseDeleteModal';
 import { CourseDetailModal } from '../components/CourseDetailModal';
 import { CourseFormModal } from '../components/CourseFormModal';
 import { useCourses } from '../hooks/useCourses';
+import type { DetailTab } from '../hooks/useCourseDetail';
 import { DISPLAY_STATUS_CFG } from '../types/course.type';
 import styles from './Courses.module.css';
 
@@ -18,6 +19,7 @@ const PAGE_SIZE_OPTIONS = [5, 10, 25, 50, 0] as const;
 
 export default function Courses() {
 	const d = useCourses();
+	const [detailTab, setDetailTab] = useState<DetailTab>('enrollments');
 	const rowSel = useRowSelection(d.paged.map((x) => x.id));
 	const [confirmBulkDelete, setConfirmBulkDelete] = useState(false);
 
@@ -159,7 +161,11 @@ export default function Courses() {
 										<td className={styles.td}>
 											<span
 												className={styles.itemName}
-												onClick={() => d.setDetailCourse(c)}
+												title='Xem chi tiết khóa học'
+												onClick={() => {
+													setDetailTab('enrollments');
+													d.setDetailCourse(c);
+												}}
 											>
 												{c.name}
 											</span>
@@ -211,6 +217,26 @@ export default function Courses() {
 										</td>
 										<td className={`${styles.td} ${styles.tdActions}`}>
 											<div className={styles.actionBtns}>
+												<div
+													className={styles.actionBtn}
+													title='Lịch học & điểm danh (QR)'
+													onClick={() => {
+														setDetailTab('sessions');
+														d.setDetailCourse(c);
+													}}
+												>
+													<CalendarSvg />
+												</div>
+												<div
+													className={styles.actionBtn}
+													title='Chi tiết khóa học (học viên, giảng viên, tài liệu, kết quả…)'
+													onClick={() => {
+														setDetailTab('enrollments');
+														d.setDetailCourse(c);
+													}}
+												>
+													<EyeSvg />
+												</div>
 												<div
 													className={styles.actionBtn}
 													title='Chỉnh sửa'
@@ -305,6 +331,7 @@ export default function Courses() {
 			{d.detailCourse && (
 				<CourseDetailModal
 					course={d.detailCourse}
+					initialTab={detailTab}
 					onClose={() => d.setDetailCourse(null)}
 				/>
 			)}

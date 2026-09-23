@@ -1,9 +1,22 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
+const otplib = require('otplib');
 const { getPool, sql } = require('../config/db');
 const { v4: uuidv4 } = require('uuid');
 const securityEvents = require('./securityEventService');
+
+// Token trung gian giữa bước 1 (mật khẩu đúng) và bước 2 (mã OTP) của tài
+// khoản đã bật 2FA — KHÔNG phải access token thật, không mang quyền, chỉ xác
+// nhận "đã qua bước mật khẩu cho user này", mirror captcha.js (ký JWT ngắn
+// hạn, không cần lưu DB). Hết hạn nhanh (5 phút) vì người dùng nhập mã ngay.
+const PRE_AUTH_2FA_TTL = '5m';
+const PRE_AUTH_2FA_PURPOSE = '2fa_pre_auth';
+
+// epochTolerance=1 cho phép lệch đồng hồ ±1 bước (±30s) giữa app xác thực và
+// server — người dùng thường không kịp nhập mã đúng khung 30s hiện tại.
+const verifyTotp = (secret, token) =>
+	otplib.verify({ secret, token, type: 'totp', epochTolerance: 1 });
 
 // refresh_tokens.token lưu HASH, không lưu JWT gốc — nếu DB bị lộ (backup,
 // SQL injection, insider) thì token đọc được từ đó không dùng lại được ngay
@@ -56,6 +69,7 @@ const login = async (username, password, ip = null, userAgent = null) => {
       SELECT u.id, u.username, u.password, u.full_name, u.email, u.staff_number,
              u.role_id, u.is_active, u.department_id,
              u.account_expires_at, u.failed_login_count, u.locked_until,
+             u.totp_enabled,
              r.name AS role_name
       FROM users u
       LEFT JOIN roles r ON r.id = u.role_id
@@ -104,6 +118,23 @@ const login = async (username, password, ip = null, userAgent = null) => {
 			);
 	}
 
+	// Tài khoản đã bật 2FA: dừng lại ở đây, KHÔNG phát token thật — chỉ trả 1
+	// pre-auth token ngắn hạn để client gọi tiếp /auth/2fa/verify kèm mã OTP.
+	if (user.totp_enabled) {
+		const preAuthToken = jwt.sign(
+			{ id: user.id, purpose: PRE_AUTH_2FA_PURPOSE },
+			process.env.JWT_SECRET,
+			{ expiresIn: PRE_AUTH_2FA_TTL },
+		);
+		return { requires_2fa: true, pre_auth_token: preAuthToken };
+	}
+
+	return issueTokens(pool, user, ip, userAgent);
+};
+
+// Phát access/refresh token thật + trả về profile đầy đủ — dùng chung cho
+// login() thường và verify2FALogin() (bước 2 sau khi xác minh mã OTP).
+const issueTokens = async (pool, user, ip, userAgent) => {
 	const permissions = await loadPermissions(pool, user.role_id);
 
 	const payload = {
@@ -158,6 +189,139 @@ const login = async (username, password, ip = null, userAgent = null) => {
 		access_token: accessToken,
 		refresh_token: refreshToken,
 	};
+};
+
+// Bước 2 của đăng nhập 2FA: tiêu thụ pre-auth token (bước 1, mật khẩu đúng) +
+// xác minh mã OTP, phát token thật nếu khớp.
+const verify2FALogin = async (preAuthToken, code, ip = null, userAgent = null) => {
+	let decoded;
+	try {
+		decoded = jwt.verify(preAuthToken, process.env.JWT_SECRET);
+	} catch {
+		throw { statusCode: 401, message: 'Phiên đăng nhập đã hết hạn, vui lòng đăng nhập lại' };
+	}
+	if (decoded.purpose !== PRE_AUTH_2FA_PURPOSE)
+		throw { statusCode: 401, message: 'Token không hợp lệ' };
+
+	const pool = await getPool();
+	const result = await pool
+		.request()
+		.input('id', sql.VarChar(20), decoded.id).query(`
+      SELECT u.id, u.username, u.full_name, u.email, u.staff_number, u.role_id,
+             u.department_id, u.account_expires_at, u.totp_secret, u.totp_enabled,
+             r.name AS role_name
+      FROM users u
+      LEFT JOIN roles r ON r.id = u.role_id
+      WHERE u.id = @id
+    `);
+	const user = result.recordset[0];
+	if (!user || !user.totp_enabled || !user.totp_secret)
+		throw { statusCode: 401, message: 'Tài khoản chưa bật xác thực 2 lớp' };
+
+	const { valid } = await verifyTotp(user.totp_secret, code);
+	if (!valid) {
+		await securityEvents.log({
+			eventType: 'login_2fa_failed',
+			actorId: user.id,
+			targetType: 'user',
+			targetId: user.id,
+			ip,
+			detail: 'Sai mã xác thực 2 lớp lúc đăng nhập',
+		});
+		throw { statusCode: 401, message: 'Mã xác thực không đúng hoặc đã hết hạn' };
+	}
+
+	return issueTokens(pool, user, ip, userAgent);
+};
+
+// ─── 2FA: thiết lập / xác nhận / tắt (Hồ sơ cá nhân) ────────────────────────
+// Sinh secret mới + lưu NGAY (totp_enabled vẫn = 0 — "đang chờ xác nhận"),
+// tránh phải giữ secret ở phía client giữa 2 bước setup/verify-setup.
+const setup2FA = async (userId) => {
+	const pool = await getPool();
+	const userRes = await pool
+		.request()
+		.input('id', sql.VarChar(20), userId)
+		.query('SELECT username FROM users WHERE id = @id');
+	const user = userRes.recordset[0];
+	if (!user) throw { statusCode: 404, message: 'Người dùng không tồn tại' };
+
+	const secret = await otplib.generateSecret();
+	await pool
+		.request()
+		.input('id', sql.VarChar(20), userId)
+		.input('secret', sql.NVarChar(255), secret)
+		.query('UPDATE users SET totp_secret = @secret, totp_enabled = 0, totp_verified_at = NULL WHERE id = @id');
+
+	const otpauthUri = otplib.generateURI({
+		issuer: 'RMS Hospital',
+		label: user.username,
+		secret,
+		type: 'totp',
+	});
+	return { secret, otpauth_uri: otpauthUri };
+};
+
+// Xác nhận mã OTP đầu tiên sau setup2FA() → chính thức bật 2FA cho tài khoản.
+const confirm2FASetup = async (userId, code) => {
+	const pool = await getPool();
+	const userRes = await pool
+		.request()
+		.input('id', sql.VarChar(20), userId)
+		.query('SELECT totp_secret FROM users WHERE id = @id');
+	const user = userRes.recordset[0];
+	if (!user || !user.totp_secret)
+		throw { statusCode: 400, message: 'Chưa khởi tạo thiết lập 2FA, vui lòng bắt đầu lại' };
+
+	const { valid } = await verifyTotp(user.totp_secret, code);
+	if (!valid) throw { statusCode: 400, message: 'Mã xác thực không đúng' };
+
+	await pool
+		.request()
+		.input('id', sql.VarChar(20), userId)
+		.query('UPDATE users SET totp_enabled = 1, totp_verified_at = GETDATE() WHERE id = @id');
+
+	await securityEvents.log({
+		eventType: '2fa_enabled',
+		actorId: userId,
+		targetType: 'user',
+		targetId: userId,
+	});
+};
+
+// Tắt 2FA — yêu cầu nhập lại mật khẩu (hành động nhạy cảm, giống đổi mật khẩu).
+const disable2FA = async (userId, password) => {
+	const pool = await getPool();
+	const userRes = await pool
+		.request()
+		.input('id', sql.VarChar(20), userId)
+		.query('SELECT password FROM users WHERE id = @id');
+	const user = userRes.recordset[0];
+	if (!user) throw { statusCode: 404, message: 'Người dùng không tồn tại' };
+
+	const isMatch = await bcrypt.compare(password, user.password);
+	if (!isMatch) throw { statusCode: 400, message: 'Mật khẩu không đúng' };
+
+	await pool
+		.request()
+		.input('id', sql.VarChar(20), userId)
+		.query('UPDATE users SET totp_secret = NULL, totp_enabled = 0, totp_verified_at = NULL WHERE id = @id');
+
+	await securityEvents.log({
+		eventType: '2fa_disabled',
+		actorId: userId,
+		targetType: 'user',
+		targetId: userId,
+	});
+};
+
+const get2FAStatus = async (userId) => {
+	const pool = await getPool();
+	const result = await pool
+		.request()
+		.input('id', sql.VarChar(20), userId)
+		.query('SELECT totp_enabled FROM users WHERE id = @id');
+	return { enabled: !!result.recordset[0]?.totp_enabled };
 };
 
 // Gắn IP/thiết bị vào dòng refresh_tokens vừa tạo — làm ở bước riêng (UPDATE
@@ -357,4 +521,9 @@ module.exports = {
 	logoutAll,
 	listSessions,
 	changePassword,
+	verify2FALogin,
+	setup2FA,
+	confirm2FASetup,
+	disable2FA,
+	get2FAStatus,
 };

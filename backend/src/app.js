@@ -34,7 +34,7 @@ const REQUIRED_ENV = [
 const missingEnv = REQUIRED_ENV.filter((key) => !process.env[key]);
 if (missingEnv.length > 0) {
 	console.error(
-		`❌ Thiếu biến môi trường bắt buộc: ${missingEnv.join(', ')}. Xem server/.env.example.`,
+		`❌ Thiếu biến môi trường bắt buộc: ${missingEnv.join(', ')}. Xem backend/.env.example.`,
 	);
 	process.exit(1);
 }
@@ -44,7 +44,7 @@ if (missingEnv.length > 0) {
 // như JWT_SECRET/DB_PASSWORD ở trên.
 if (process.env.NODE_ENV === 'production' && !process.env.CORS_ORIGIN) {
 	console.error(
-		'❌ Thiếu biến môi trường CORS_ORIGIN ở production. Xem server/.env.example.',
+		'❌ Thiếu biến môi trường CORS_ORIGIN ở production. Xem backend/.env.example.',
 	);
 	process.exit(1);
 }
@@ -79,6 +79,10 @@ const swaggerUi = require('swagger-ui-express');
 const swaggerSpec = require('./config/swagger');
 const swaggerAuth = require('./middlewares/swaggerAuth');
 const activityLogger = require('./middlewares/activityLogger');
+const {
+	signUploadUrlsInJson,
+	verifyUploadSignature,
+} = require('./utils/signedUpload');
 
 const app = express();
 
@@ -111,8 +115,14 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 
 // ─── Static uploads ───────────────────────────────────────────────────────────
+// Chỉ phục vụ link có chữ ký còn hạn — link được ký ở signUploadUrlsInJson
+// khi API (đã qua kiểm tra quyền) trả đường dẫn file. Xem utils/signedUpload.js.
 const UPLOADS_ROOT = path.resolve(process.env.UPLOADS_DIR || 'uploads');
-app.use('/uploads', express.static(UPLOADS_ROOT));
+app.use(
+	'/uploads',
+	verifyUploadSignature,
+	express.static(UPLOADS_ROOT, { cacheControl: false, index: false, dotfiles: 'deny' }),
+);
 
 // ─── Health check ─────────────────────────────────────────────────────────────
 app.use('/health', require('./routes/health'));
@@ -155,6 +165,8 @@ app.use(API, (req, res, next) => {
 	next();
 });
 
+// Ký link /uploads trước activityLogger để nhật ký không lưu chữ ký.
+app.use(API, signUploadUrlsInJson);
 app.use(API, activityLogger);
 
 app.use(`${API}/auth`, require('./routes/auth'));
@@ -171,6 +183,11 @@ app.use(`${API}/seminars`, require('./routes/seminars'));
 app.use(`${API}/cme-records`, require('./routes/cmeRecords'));
 app.use(`${API}/trainees`, require('./routes/trainees'));
 app.use(`${API}/training-programs`, require('./routes/trainingPrograms'));
+app.use(`${API}/training-plans`, require('./routes/trainingPlans'));
+app.use(`${API}/surveys`, require('./routes/surveys'));
+app.use(`${API}/my-tasks`, require('./routes/myTasks'));
+app.use(`${API}/exams`, require('./routes/exams'));
+app.use(`${API}/workflows`, require('./routes/workflows'));
 app.use(`${API}/lecturers`, require('./routes/lecturers'));
 app.use(`${API}/courses`, require('./routes/courses'));
 app.use(`${API}/staff-licenses`, require('./routes/staffLicenses'));

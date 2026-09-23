@@ -1,3 +1,4 @@
+import { formatDateTimeVN } from '../../../shared/utils/formatDate';
 import type { ProgressTopic } from '../../council/api/councilApi';
 import { BASE_URL } from '../../../shared/api/axios';
 import { fmtSize, getFileIcon } from '../utils/councilProgressHelpers';
@@ -64,7 +65,7 @@ export function ProgressFilesSection({
 									</a>
 									<span className={styles.fileMeta}>
 										{fmtSize(f.file_size)} · {f.uploaded_by_name ?? ''} ·{' '}
-										{f.created_at}
+										{formatDateTimeVN(f.created_at)}
 									</span>
 								</div>
 							))}
@@ -124,7 +125,7 @@ export function ProgressFilesSection({
 									</a>
 									<span className={styles.fileMeta}>
 										{fmtSize(f.file_size)} · {f.uploaded_by_name ?? ''} ·{' '}
-										{f.created_at}
+										{formatDateTimeVN(f.created_at)}
 									</span>
 									{isSecretary && (
 										<button
@@ -192,7 +193,7 @@ export function ProgressFilesSection({
 									</a>
 									<span className={styles.fileMeta}>
 										{fmtSize(f.file_size)} · {f.uploaded_by_name ?? ''} ·{' '}
-										{f.created_at}
+										{formatDateTimeVN(f.created_at)}
 									</span>
 									{isSecretary && (
 										<button

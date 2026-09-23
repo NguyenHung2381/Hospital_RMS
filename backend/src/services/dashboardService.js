@@ -274,4 +274,93 @@ const getTrainingStats = async () => remember('dash:training-stats', 90, async (
 	};
 });
 
-module.exports = { getStats, getTrainingStats };
+// Dashboard chung toàn hệ thống — số liệu gộp của cả 3 mảng (hệ thống/tài
+// khoản, NCKH, Đào tạo, Hội thảo-CME). Chi tiết từng mảng nằm ở getStats()
+// (NCKH) và getTrainingStats() (Đào tạo).
+const getOverviewStats = async () => remember('dash:overview-stats', 90, async () => {
+	const pool = await getPool();
+	const result = await pool.request().query(`
+    DECLARE @year INT = YEAR(GETDATE());
+
+    -- KPI tổng quan
+    SELECT
+      (SELECT COUNT(*) FROM users) AS users_total,
+      (SELECT COUNT(*) FROM users WHERE is_active = 1) AS users_active,
+      (SELECT COUNT(*) FROM users WHERE locked_until IS NOT NULL AND locked_until > GETDATE()) AS users_locked,
+      (SELECT COUNT(*) FROM departments) AS departments_total,
+      (SELECT COUNT(*) FROM topics) AS topics_total,
+      (SELECT COUNT(*) FROM topics WHERE YEAR(created_at) = @year) AS topics_this_year,
+      (SELECT COUNT(*) FROM topics WHERE status = 'submitted') AS topics_pending,
+      (SELECT COUNT(*) FROM topics WHERE status = 'approved') AS topics_approved,
+      (SELECT COUNT(*) FROM research_rounds WHERE status = 'active') AS rounds_active,
+      (SELECT COUNT(*) FROM councils) AS councils_total,
+      (SELECT COUNT(*) FROM courses) AS courses_total,
+      (SELECT COUNT(*) FROM courses WHERE status = 'open') AS courses_open,
+      (SELECT COUNT(*) FROM trainees WHERE is_active = 1) AS trainees_active,
+      (SELECT COUNT(*) FROM lecturers WHERE is_active = 1) AS lecturers_active,
+      (SELECT COUNT(*) FROM course_enrollments WHERE status = 'pending') AS enrollments_pending,
+      (SELECT COUNT(*) FROM certificates WHERE status = 'active') AS certificates_active,
+      (SELECT COUNT(*) FROM seminars WHERE event_year = @year) AS seminars_this_year,
+      (SELECT COUNT(*) FROM seminar_participants sp
+         INNER JOIN seminars s ON s.id = sp.seminar_id
+         WHERE s.event_year = @year) AS participants_this_year,
+      (SELECT COUNT(*) FROM seminar_participants WHERE cme_year = @year AND cme_status IN ('issued', 'signed')) AS cme_issued_this_year,
+      @year AS current_year;
+
+    -- Hoạt động theo tháng (12 tháng gần nhất): đề tài mới, lượt đăng ký khóa học, hội thảo
+    DECLARE @from DATE = DATEFROMPARTS(YEAR(DATEADD(MONTH, -11, GETDATE())), MONTH(DATEADD(MONTH, -11, GETDATE())), 1);
+    SELECT FORMAT(created_at, 'yyyy-MM') AS month, COUNT(*) AS cnt
+    FROM topics WHERE created_at >= @from
+    GROUP BY FORMAT(created_at, 'yyyy-MM');
+
+    SELECT FORMAT(registered_at, 'yyyy-MM') AS month, COUNT(*) AS cnt
+    FROM course_enrollments WHERE registered_at >= @from
+    GROUP BY FORMAT(registered_at, 'yyyy-MM');
+
+    SELECT FORMAT(start_date, 'yyyy-MM') AS month, COUNT(*) AS cnt
+    FROM seminars WHERE start_date >= @from AND start_date <= GETDATE()
+    GROUP BY FORMAT(start_date, 'yyyy-MM');
+
+    -- Tài khoản đang hoạt động theo vai trò
+    SELECT COALESCE(r.description, r.name, N'Chưa gán vai trò') AS name, COUNT(*) AS cnt
+    FROM users u
+    LEFT JOIN roles r ON r.id = u.role_id
+    WHERE u.is_active = 1
+    GROUP BY COALESCE(r.description, r.name, N'Chưa gán vai trò')
+    ORDER BY cnt DESC;
+
+    -- Khoa/Phòng: số tài khoản + số đề tài NCKH
+    SELECT TOP 10 d.name,
+      (SELECT COUNT(*) FROM users u WHERE u.department_id = d.id AND u.is_active = 1) AS users_cnt,
+      (SELECT COUNT(*) FROM topics t WHERE t.department_id = d.id) AS topics_cnt
+    FROM departments d
+    ORDER BY topics_cnt DESC, users_cnt DESC;
+  `);
+
+	// Ghép 3 chuỗi theo tháng thành 1 dãy 12 tháng liên tục (tháng trống = 0).
+	const toMap = (rows) => Object.fromEntries(rows.map((r) => [r.month, r.cnt]));
+	const topicsByMonth = toMap(result.recordsets[1]);
+	const enrollByMonth = toMap(result.recordsets[2]);
+	const seminarsByMonth = toMap(result.recordsets[3]);
+	const now = new Date();
+	const monthly = [];
+	for (let i = 11; i >= 0; i--) {
+		const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+		const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+		monthly.push({
+			month: key,
+			topics: topicsByMonth[key] ?? 0,
+			enrollments: enrollByMonth[key] ?? 0,
+			seminars: seminarsByMonth[key] ?? 0,
+		});
+	}
+
+	return {
+		kpi: result.recordsets[0][0],
+		monthly_activity: monthly,
+		users_by_role: result.recordsets[4],
+		top_departments: result.recordsets[5],
+	};
+});
+
+module.exports = { getStats, getTrainingStats, getOverviewStats };

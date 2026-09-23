@@ -31,6 +31,16 @@ const captchaLimiter = rateLimit({
 	message: { success: false, message: 'Quá nhiều yêu cầu. Vui lòng thử lại sau ít phút.' },
 });
 
+// Tra cứu hồ sơ theo mã — nới hơn lookupLimiter (CCCD) vì mã ở đây (topic id)
+// không phải dữ liệu cá nhân, chỉ giới hạn để chặn dò quét.
+const codeLookupLimiter = rateLimit({
+	windowMs: 15 * 60 * 1000,
+	limit: 20,
+	standardHeaders: true,
+	legacyHeaders: false,
+	message: { success: false, message: 'Quá nhiều lượt tra cứu. Vui lòng thử lại sau ít phút.' },
+});
+
 /**
  * @swagger
  * tags:
@@ -87,5 +97,11 @@ router.post(
 	validate,
 	ctrl.registerTopic,
 );
+
+// ─── Tra cứu hồ sơ đề tài theo mã ────────────────────────────────────────────
+router.get('/topics/:id/status', codeLookupLimiter, ctrl.getTopicStatus);
+
+// ─── Thư viện đề tài công khai ───────────────────────────────────────────────
+router.get('/featured-topics', ctrl.getFeaturedTopics);
 
 module.exports = router;

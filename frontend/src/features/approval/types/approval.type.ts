@@ -30,6 +30,9 @@ export interface ApprovalRecord {
 	is_urgent: boolean; // nộp > 3 ngày chưa duyệt
 	history: ApvHistoryItem[];
 	members: ApprovalMember[];
+	/** Tính sẵn ở backend theo status + quyền thật của người xem — dùng để ẩn/hiện
+	 * nút quyết định thay vì tự suy luận theo status. */
+	allowed_actions: string[];
 }
 
 export interface ApvHistoryItem {

@@ -241,31 +241,45 @@ export function TopicModal({
 					</div>
 
 					{m.form.article_type === 'bai_bao' && (
-						<div className={styles.formRow}>
+						<>
 							<FormField
-								id='doi'
-								label='DOI (nếu có)'
+								id='journal_name'
+								label='Tên tập san / hội nghị'
 							>
 								<input
-									id='doi'
+									id='journal_name'
 									className={styles.formInput}
-									placeholder='VD: 10.1234/abcd.2026'
-									value={m.form.doi}
-									onChange={(e) => m.setField('doi', e.target.value)}
+									placeholder='VD: Tạp chí Y học Việt Nam'
+									value={m.form.journal_name}
+									onChange={(e) => m.setField('journal_name', e.target.value)}
 								/>
 							</FormField>
-							<FormField
-								id='publish_date'
-								label='Ngày xuất bản'
-							>
-								<DatePicker
+							<div className={styles.formRow}>
+								<FormField
+									id='doi'
+									label='DOI (nếu có)'
+								>
+									<input
+										id='doi'
+										className={styles.formInput}
+										placeholder='VD: 10.1234/abcd.2026'
+										value={m.form.doi}
+										onChange={(e) => m.setField('doi', e.target.value)}
+									/>
+								</FormField>
+								<FormField
 									id='publish_date'
-									value={m.form.publish_date}
-									onChange={(val) => m.setField('publish_date', val)}
-									placeholder='Chọn ngày xuất bản...'
-								/>
-							</FormField>
-						</div>
+									label='Ngày xuất bản'
+								>
+									<DatePicker
+										id='publish_date'
+										value={m.form.publish_date}
+										onChange={(val) => m.setField('publish_date', val)}
+										placeholder='Chọn ngày xuất bản...'
+									/>
+								</FormField>
+							</div>
+						</>
 					)}
 
 					{m.form.article_type === 'de_tai' && (
@@ -422,6 +436,32 @@ export function TopicModal({
 							))}
 						</div>
 					</FormField>
+
+					{mode === 'edit' && m.form.status === 'approved' && (
+						<FormField
+							id='is_featured'
+							label='Thư viện đề tài'
+						>
+							<label
+								style={{
+									display: 'flex',
+									alignItems: 'center',
+									gap: 8,
+									cursor: 'pointer',
+									fontSize: 13,
+									color: 'var(--color-gray-700)',
+								}}
+							>
+								<input
+									id='is_featured'
+									type='checkbox'
+									checked={m.form.is_featured}
+									onChange={() => m.toggleFeatured()}
+								/>
+								Đưa đề tài này vào trang công khai "Thư viện đề tài"
+							</label>
+						</FormField>
+					)}
 
 					{mode === 'create' && (
 						<ModalMembersSection

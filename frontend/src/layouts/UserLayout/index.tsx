@@ -6,12 +6,9 @@ import { useRegistrationOpen } from '../../features/round/hooks/useRegistrationO
 import { NotificationPanel } from '../../features/notifications/components/NotificationPanel';
 import { useNotifications } from '../../features/notifications/hooks/useNotifications';
 import { toNotif } from '../../features/notifications/utils/notifUtils';
+import { usePermission } from '../../shared/hooks/usePermission';
 import { getInitials } from '../../shared/utils/helper';
-import {
-	clearAuth,
-	getStoredUser,
-	type StoredUser,
-} from '../../shared/utils/storage';
+import { clearAuth } from '../../shared/utils/storage';
 import styles from './UserLayout.module.css';
 import { Icon } from './icons';
 
@@ -21,6 +18,10 @@ const KEY_TO_PATH: Record<string, string> = {
 	myTopics: '/user/my-topics',
 	registerTopic: '/user/register-topic',
 	councilProgress: '/user/council-progress',
+	surveys: '/user/khao-sat',
+	myTasks: '/user/viec-cua-toi',
+	attendanceCheckIn: '/user/diem-danh',
+	userExams: '/user/thi-online',
 	profile: '/user/profile',
 	deptAccounts: '/user/department-accounts',
 	notifications: '/user/notifications',
@@ -61,6 +62,10 @@ const PRIMARY_NAV: NavItem[] = [
 		icon: <Icon.Grading />,
 		councilOnly: true,
 	},
+	{ key: 'surveys', label: 'Khảo sát', icon: <Icon.Survey /> },
+	{ key: 'myTasks', label: 'Việc của tôi', icon: <Icon.Grading /> },
+	{ key: 'attendanceCheckIn', label: 'Điểm danh QR', icon: <Icon.AttendanceCheckIn /> },
+	{ key: 'userExams', label: 'Thi online', icon: <Icon.UserExams /> },
 ];
 
 const ACCOUNT_NAV: NavItem[] = [
@@ -105,9 +110,7 @@ export default function UserLayout({
 
 	const activePage = PATH_TO_KEY[location.pathname] ?? 'home';
 
-	const perms = getStoredUser<StoredUser>()?.permissions ?? [];
-	const has = (k: string) =>
-		perms.includes('system:manage') || perms.includes(k);
+	const { has } = usePermission();
 	// "restrictMember": ẩn với vai trò chỉ tham gia đề tài (không tạo được đề tài).
 	const canRegisterTopic = has('topics:create') || has('topics:manage');
 	// "needsRegistrationWindow": chỉ hiện mục Đăng ký đề tài khi đợt đang mở cửa
@@ -250,22 +253,6 @@ export default function UserLayout({
 						</span>
 					</button>
 
-					{showNav && (
-						<nav className={styles.topNav}>
-							{primaryNav.map((item) => (
-								<button
-									key={item.key}
-									type='button'
-									className={`${styles.navItem} ${activePage === item.key ? styles.active : ''}`}
-									onClick={() => handleNavClick(item.key)}
-								>
-									{item.icon}
-									<span>{item.label}</span>
-								</button>
-							))}
-						</nav>
-					)}
-
 					<div className={styles.topbarRight}>
 						{/* Round indicator */}
 						<div className={styles.roundIndicator}>
@@ -337,6 +324,25 @@ export default function UserLayout({
 						</div>
 					</div>
 				</div>
+
+				{/* Hàng điều hướng riêng: đủ chỗ cho mọi mục, không đè lên cụm tài khoản. */}
+				{showNav && (
+					<div className={styles.topNavBar}>
+						<nav className={styles.topNav}>
+							{primaryNav.map((item) => (
+								<button
+									key={item.key}
+									type='button'
+									className={`${styles.navItem} ${activePage === item.key ? styles.active : ''}`}
+									onClick={() => handleNavClick(item.key)}
+								>
+									{item.icon}
+									<span>{item.label}</span>
+								</button>
+							))}
+						</nav>
+					</div>
+				)}
 
 				{/* Mobile drawer nav (dưới thanh bar) */}
 				{showNav && (

@@ -1,3 +1,4 @@
+import { formatDateVN } from '../../../shared/utils/formatDate';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { CheckSvg, InfoSvg, PaperclipSvg, PlusSvg, SearchSvg, TrashSvg, UploadSvg } from '@/assets/icons';
 import AdminLayout from '../../../layouts/AdminLayout';
@@ -373,7 +374,7 @@ export default function CmeManualRecords() {
 		<AdminLayout
 			pageTitle='Ghi nhận CME độc lập'
 			pageSubtitle='Ghi nhận tín chỉ CME không qua sự kiện hội thảo (tự học, học online, minh chứng đính kèm)'
-			breadcrumbs={[{ label: 'Đào tạo' }]}
+			breadcrumbs={[{ label: 'Hội nghị & CME' }]}
 			headerActions={
 				perms.canCme ? (
 					<div style={{ display: 'flex', gap: 8 }}>
@@ -440,7 +441,7 @@ export default function CmeManualRecords() {
 									<td>{r.department_name ?? '—'}</td>
 									<td>{r.title}</td>
 									<td>{r.category_name ? <Badge tone='blue'>{r.category_name}</Badge> : '—'}</td>
-									<td>{r.activity_date}</td>
+									<td>{formatDateVN(r.activity_date)}</td>
 									<td>{r.credits}</td>
 									<td>
 										{r.evidence_file_url ? (

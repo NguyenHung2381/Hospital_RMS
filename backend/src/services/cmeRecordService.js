@@ -57,7 +57,8 @@ const getById = async (id) => {
 	return result.recordset[0] || null;
 };
 
-const create = async (data, actorId) => {
+// opts.fetch=false: bỏ query đọc lại bản ghi — dùng cho import hàng loạt
+const create = async (data, actorId, { fetch = true } = {}) => {
 	const pool = await getPool();
 	const result = await pool
 		.request()
@@ -76,7 +77,7 @@ const create = async (data, actorId) => {
     `);
 	const id = result.recordset[0].id;
 	broadcast('update', { entity: 'cme_record' });
-	return getById(id);
+	return fetch ? getById(id) : { id };
 };
 
 const update = async (id, data, actorId) => {

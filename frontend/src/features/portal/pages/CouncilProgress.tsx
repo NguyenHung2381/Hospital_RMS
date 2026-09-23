@@ -1,5 +1,5 @@
 import UserLayout from '../../../layouts/UserLayout';
-import { parseDate } from '../../../shared/utils/formatDate';
+import { formatDateVN, parseDate } from '../../../shared/utils/formatDate';
 import { SEAT_ROLE_LABELS } from '../../council/types/council.type';
 import { ProgressConclusionTab } from '../components/ProgressConclusionTab';
 import { ProgressFilesSection } from '../components/ProgressFilesSection';
@@ -48,8 +48,8 @@ export default function CouncilProgress() {
 		<UserLayout
 			pageTitle='Đánh giá tiến độ đề tài'
 			pageSubtitle='Hội đồng đánh giá tiến độ các đề tài được phân công; thư ký tải lên biên bản và tài liệu đánh giá'
-			userName={user?.full_name ?? 'Người dùng'}
-			userRole={user?.role_name ?? 'Thành viên'}
+			userName={user?.full_name ?? user?.username ?? 'Người dùng'}
+			userRole={user?.role ?? user?.role_name ?? 'Thành viên'}
 			hideSidebar
 		>
 			{loading ? (
@@ -137,7 +137,7 @@ export default function CouncilProgress() {
 													{t.defense_date && (
 														<div className={styles.detailsMetaCell}>
 															<span className={styles.detailsMetaLabel}>Ngày họp</span>
-															<span className={styles.detailsMetaVal}>{t.defense_date}</span>
+															<span className={styles.detailsMetaVal}>{formatDateVN(t.defense_date)}</span>
 														</div>
 													)}
 													{t.location && (

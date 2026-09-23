@@ -20,6 +20,8 @@ export function useDepartmentAccounts() {
 	const currentUser = getStoredUser<StoredUser>();
 	const deptId = currentUser?.department_id ?? null;
 	const deptName = currentUser?.department ?? 'Khoa của tôi';
+	const fullName = currentUser?.full_name ?? currentUser?.username ?? 'Người dùng';
+	const userRole = currentUser?.role ?? currentUser?.role_name ?? 'Thành viên';
 
 	const [users, setUsers] = useState<User[]>([]);
 	const [roles, setRoles] = useState<SimpleItem[]>([]);
@@ -200,6 +202,8 @@ export function useDepartmentAccounts() {
 
 	return {
 		deptName,
+		fullName,
+		userRole,
 		users,
 		isLoading,
 		loadError,

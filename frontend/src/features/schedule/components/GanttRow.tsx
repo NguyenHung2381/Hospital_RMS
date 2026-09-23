@@ -1,3 +1,4 @@
+import { formatDateVN } from '../../../shared/utils/formatDate';
 import { PlusSvg } from '@/assets/icons';
 import type { RoundDeadline } from '../../round/types/round.type';
 import {
@@ -179,7 +180,7 @@ export function GanttRow({
 					<div
 						className={styles.bar}
 						style={{ left: `${regBaseL}%`, width: `${regBaseW}%`, background: regColor, top: 6, height: 20 }}
-						title={`Sửa: ${regDeadline?.start_date} → ${regDeadline?.deadline_date}`}
+						title={`Sửa: ${formatDateVN(regDeadline?.start_date)} → ${formatDateVN(regDeadline?.deadline_date)}`}
 						onDoubleClick={(e) => {
 							if (dragEndedRef.current) return;
 							openCtx(e, { kind: 'bar', round, barKind: 'edit', deadline: regDeadline });
@@ -194,7 +195,7 @@ export function GanttRow({
 					<div
 						className={`${styles.bar}${resOvr ? ` ${styles.barActive}` : ''}`}
 						style={{ left: `${resL}%`, width: `${resW}%`, background: resColor, top: 32, height: 52 }}
-						title={`Nghiên cứu: ${round.start_date} → ${round.end_date}`}
+						title={`Nghiên cứu: ${formatDateVN(round.start_date)} → ${formatDateVN(round.end_date)}`}
 						onMouseDown={(e) => startBarDrag(e, 'move', round, 'research', resBaseL, resBaseW)}
 						onDoubleClick={(e) => {
 							if (dragEndedRef.current) return;
@@ -207,7 +208,7 @@ export function GanttRow({
 						/>
 						{zoom >= 2 && (
 							<span className={styles.barTypeLabel}>
-								Nghiên cứu · {round.start_date} → {round.end_date}
+								Nghiên cứu · {formatDateVN(round.start_date)} → {formatDateVN(round.end_date)}
 							</span>
 						)}
 						<div
@@ -222,7 +223,7 @@ export function GanttRow({
 					<div
 						className={styles.bar}
 						style={{ left: `${supBaseL}%`, width: `${supBaseW}%`, background: supColor, top: 92, height: 20 }}
-						title={`Bổ sung: ${supDeadline?.start_date} → ${supDeadline?.deadline_date}`}
+						title={`Bổ sung: ${formatDateVN(supDeadline?.start_date)} → ${formatDateVN(supDeadline?.deadline_date)}`}
 						onDoubleClick={(e) => {
 							if (dragEndedRef.current) return;
 							openCtx(e, { kind: 'bar', round, barKind: 'supplement', deadline: supDeadline });
@@ -252,7 +253,7 @@ export function GanttRow({
 								key={dl.id}
 								className={`${styles.bar}${ovr ? ` ${styles.barActive}` : ''}`}
 								style={{ left: `${barL}%`, width: `${barW}%`, background: color, top: LANE_BASE + laneOffset, height: 20, zIndex: 4 }}
-								title={`${dl.name}\n${dl.start_date} → ${dl.deadline_date}\nKéo để di chuyển · Nhấp đúp để xem tùy chọn`}
+								title={`${dl.name}\n${formatDateVN(dl.start_date)} → ${formatDateVN(dl.deadline_date)}\nKéo để di chuyển · Nhấp đúp để xem tùy chọn`}
 								onMouseDown={(e) => startDeadlineBarDrag(e, 'move', round, dl, baseL, baseW)}
 								onDoubleClick={(e) => {
 									if (dragEndedRef.current) return;
@@ -282,7 +283,7 @@ export function GanttRow({
 							key={dl.id}
 							className={`${styles.deadlinePin}${isActive ? ` ${styles.deadlinePinActive}` : ''}`}
 							style={{ left: `${activePct}%` }}
-							title={`${dl.name}\n${dl.deadline_date}\nKéo để di chuyển · Nhấp đúp để xem tùy chọn`}
+							title={`${dl.name}\n${formatDateVN(dl.deadline_date)}\nKéo để di chuyển · Nhấp đúp để xem tùy chọn`}
 							onMouseDown={(e) => startPinDrag(e, round, dl, basePct, null)}
 							onDoubleClick={(e) => {
 								if (dragEndedRef.current) return;

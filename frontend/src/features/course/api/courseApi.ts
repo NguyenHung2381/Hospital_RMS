@@ -77,6 +77,9 @@ export const getEnrollments = (courseId: string) =>
 	apiClient.get<Enrollment[]>(`/courses/${courseId}/enrollments`);
 export const registerTrainee = (courseId: string, traineeId: string) =>
 	apiClient.post<{ id: string }>(`/courses/${courseId}/enrollments`, { trainee_id: traineeId });
+/** Ghi danh nhân viên nội viện (users) — backend tự tạo/gắn hồ sơ học viên. */
+export const registerStaff = (courseId: string, userId: string) =>
+	apiClient.post<{ id: string }>(`/courses/${courseId}/enrollments`, { user_id: userId });
 export const decideEnrollment = (enrollmentId: string, status: EnrollmentStatus, note?: string) =>
 	apiClient.put<{ id: string; status: string }>(`/courses/enrollments/${enrollmentId}/decide`, { status, note });
 export const removeEnrollment = (enrollmentId: string) =>
@@ -121,6 +124,12 @@ export const saveAttendance = (
 	sessionId: string,
 	records: { enrollment_id: string; status: string; note?: string }[],
 ) => apiClient.put<null>(`/courses/sessions/${sessionId}/attendance`, { records });
+
+export const getAttendanceQrToken = (sessionId: string) =>
+	apiClient.get<{ token: string }>(`/courses/sessions/${sessionId}/attendance-qr`);
+
+export const checkInAttendance = (token: string) =>
+	apiClient.post<{ session_id: string }>('/courses/attendance/check-in', { token });
 
 // ─── Documents (tài liệu & bài kiểm tra) ────────────────────────────────────
 export const getDocuments = (courseId: string) =>

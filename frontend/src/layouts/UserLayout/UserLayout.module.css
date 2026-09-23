@@ -93,14 +93,27 @@
 }
 
 /* ── Horizontal nav (tab-style) ── */
+.topNavBar {
+	border-top: 1px solid rgba(255, 255, 255, 0.14);
+	background: rgba(0, 0, 0, 0.06);
+}
+
 .topNav {
+	max-width: 1240px;
+	margin: 0 auto;
+	height: 46px;
+	padding: 0 var(--space-6);
 	display: flex;
-	align-self: stretch;
 	align-items: stretch;
 	gap: var(--space-1);
-	flex: 1;
-	min-width: 0;
-	margin-left: var(--space-4);
+	/* Màn hẹp hơn tổng các mục → cuộn ngang trong hàng riêng, không tràn. */
+	overflow-x: auto;
+	overflow-y: hidden;
+	scrollbar-width: none;
+}
+
+.topNav::-webkit-scrollbar {
+	display: none;
 }
 
 .navItem {
@@ -847,7 +860,7 @@
    RESPONSIVE
 ============================================= */
 @media (max-width: 1024px) {
-	.topNav {
+	.topNavBar {
 		display: none;
 	}
 

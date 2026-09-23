@@ -342,6 +342,19 @@ router.post(
 router.put('/:id/participants/:pid', authenticate, canUpdate, ctrl.updateParticipant);
 router.delete('/:id/participants/:pid', authenticate, canUpdate, ctrl.removeParticipant);
 
+// ─── Điểm danh QR ─────────────────────────────────────────────────────────────
+// Sinh mã cần quyền seminars:update (ban tổ chức hiển thị lên màn hình hội
+// trường); tự quét chỉ cần đăng nhập — participant tra theo user_id trong
+// token, không cần quyền seminars riêng.
+router.get('/:id/checkin-qr', authenticate, canUpdate, ctrl.getCheckInQrToken);
+router.post(
+	'/checkin',
+	authenticate,
+	[body('token').notEmpty()],
+	validate,
+	ctrl.checkInSelf,
+);
+
 // ─── Cấp CME ─────────────────────────────────────────────────────────────────
 
 /**

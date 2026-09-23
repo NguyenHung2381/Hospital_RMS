@@ -1,3 +1,4 @@
+import { formatDateVN } from '../../../shared/utils/formatDate';
 import type { ProgressTopic } from '../../council/api/councilApi';
 import { SEAT_ROLE_LABELS } from '../../council/types/council.type';
 import { groupBySession, SESSION_LABELS } from '../utils/councilProgressHelpers';
@@ -60,7 +61,7 @@ export function ProgressSidebar({
 							</h3>
 							<div className={styles.sidebarCouncilMeta}>
 								{c.round_name && <span>{c.round_name}</span>}
-								{c.defense_date && <span>Ngày: {c.defense_date}</span>}
+								{c.defense_date && <span>Ngày: {formatDateVN(c.defense_date)}</span>}
 							</div>
 						</div>
 

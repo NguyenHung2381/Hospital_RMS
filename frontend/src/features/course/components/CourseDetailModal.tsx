@@ -1,4 +1,5 @@
-import { useMemo, useRef, useState } from 'react';
+import { formatDateVN } from '../../../shared/utils/formatDate';
+import { useMemo, useState } from 'react';
 import {
 	BadgeSvg,
 	BookOpenSvg,
@@ -6,7 +7,6 @@ import {
 	CheckSvg,
 	ClipboardCheckSvg,
 	DocSvg,
-	DownloadSvg,
 	LayersSvg,
 	PlusSvg,
 	TrashSvg,
@@ -14,18 +14,16 @@ import {
 	UsersSvg,
 	XSvg,
 } from '@/assets/icons';
+import { SearchableSelect } from '@/shared/components';
+import { VenueSelect } from '../../venue/components/VenueSelect';
 import { useCourseDetail, type DetailTab } from '../hooks/useCourseDetail';
-import {
-	DOC_TYPE_CFG,
-	ENROLLMENT_STATUS_CFG,
-	EXAM_TYPE_CFG,
-	type Course,
-	type DocType,
-	type ExamType,
-	type SourceType,
-} from '../types/course.type';
+import { ENROLLMENT_STATUS_CFG, type Course } from '../types/course.type';
 import { groupGradesByProgram } from '../utils/gradeStats';
 import { AttendanceModal } from './AttendanceModal';
+import { CourseDocumentsTab } from './CourseDocumentsTab';
+import { LecturerOptions } from './LecturerOptions';
+import { ProgramLinksTab } from './ProgramLinksTab';
+import { ExamsTab } from './ExamsTab';
 import styles from '../pages/Courses.module.css';
 
 const TABS: { key: DetailTab; label: string; icon: React.ReactNode }[] = [
@@ -34,13 +32,23 @@ const TABS: { key: DetailTab; label: string; icon: React.ReactNode }[] = [
 	{ key: 'lecturers', label: 'Giảng viên', icon: <UserCheckSvg /> },
 	{ key: 'sessions', label: 'Lịch học', icon: <ClipboardCheckSvg /> },
 	{ key: 'documents', label: 'Tài liệu & Kiểm tra', icon: <DocSvg /> },
+	{ key: 'exams', label: 'Ngân hàng câu hỏi & Thi online', icon: <ClipboardCheckSvg /> },
 	{ key: 'results', label: 'Kết quả & Chứng chỉ', icon: <BadgeSvg /> },
 ];
 
 const WEEKDAY_LABELS = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
 
-export function CourseDetailModal({ course, onClose }: { course: Course; onClose: () => void }) {
-	const d = useCourseDetail(course.id);
+export function CourseDetailModal({
+	course,
+	initialTab,
+	onClose,
+}: {
+	course: Course;
+	/** Tab mở sẵn khi vào modal (vd nút "Lịch học & điểm danh" ở bảng mở thẳng tab sessions). */
+	initialTab?: DetailTab;
+	onClose: () => void;
+}) {
+	const d = useCourseDetail(course.id, initialTab);
 	const [newTraineeId, setNewTraineeId] = useState('');
 	const [newLecturerId, setNewLecturerId] = useState('');
 	const [newAssignSubjectId, setNewAssignSubjectId] = useState('');
@@ -64,23 +72,6 @@ export function CourseDetailModal({ course, onClose }: { course: Course; onClose
 	});
 	const [bulkResult, setBulkResult] = useState<{ created: number; skipped: number } | null>(null);
 	const attendanceSession = d.sessions.find((s) => s.id === d.attendanceSessionId) ?? null;
-	const fileInputRef = useRef<HTMLInputElement>(null);
-	const [docForm, setDocForm] = useState<{
-		doc_type: DocType;
-		title: string;
-		is_public: boolean;
-		exam_type: ExamType | '';
-		sourceType: SourceType;
-		externalUrl: string;
-	}>({
-		doc_type: 'material',
-		title: '',
-		is_public: true,
-		exam_type: '',
-		sourceType: 'file',
-		externalUrl: '',
-	});
-	const [newProgramLink, setNewProgramLink] = useState({ program_id: '', start_date: '', end_date: '', location: '' });
 	const [certExpiry, setCertExpiry] = useState<Record<string, string>>({});
 	const gradeGroups = useMemo(() => groupGradesByProgram(d.grades, d.programLinks), [d.grades, d.programLinks]);
 
@@ -128,118 +119,24 @@ export function CourseDetailModal({ course, onClose }: { course: Course; onClose
 					{d.loading ? (
 						<div className={styles.subEmpty}>Đang tải...</div>
 					) : d.tab === 'programs' ? (
-						<>
-							<div className={styles.subToolbar}>
-								<select
-									className={styles.subSelect}
-									value={newProgramLink.program_id}
-									onChange={(e) => setNewProgramLink((f) => ({ ...f, program_id: e.target.value }))}
-								>
-									<option value=''>-- Chọn chương trình đào tạo --</option>
-									{d.programs
-										.filter((p) => !d.programLinks.some((l) => l.program_id === p.id))
-										.map((p) => (
-											<option key={p.id} value={p.id}>
-												{p.name}
-											</option>
-										))}
-								</select>
-								<input
-									type='date'
-									className={styles.subInput}
-									value={newProgramLink.start_date}
-									onChange={(e) => setNewProgramLink((f) => ({ ...f, start_date: e.target.value }))}
-								/>
-								<input
-									type='date'
-									className={styles.subInput}
-									value={newProgramLink.end_date}
-									onChange={(e) => setNewProgramLink((f) => ({ ...f, end_date: e.target.value }))}
-								/>
-								<input
-									className={styles.subInput}
-									placeholder='Địa điểm'
-									value={newProgramLink.location}
-									onChange={(e) => setNewProgramLink((f) => ({ ...f, location: e.target.value }))}
-								/>
-								<button
-									className={styles.btnGhost}
-									disabled={!newProgramLink.program_id || d.busy}
-									onClick={() => {
-										d.addProgramLink({
-											program_id: newProgramLink.program_id,
-											start_date: newProgramLink.start_date,
-											end_date: newProgramLink.end_date,
-											location: newProgramLink.location,
-											lecturer_id: '',
-											external_lecturer_name: '',
-											status: 'active',
-										});
-										setNewProgramLink({ program_id: '', start_date: '', end_date: '', location: '' });
-									}}
-								>
-									<PlusSvg /> Gán chương trình
-								</button>
-							</div>
-
-							{d.programLinks.length === 0 ? (
-								<div className={styles.subEmpty}>Khóa học chưa áp dụng chương trình đào tạo nào.</div>
-							) : (
-								<div className={styles.subList}>
-									{d.programLinks.map((link) => (
-										<div key={link.id} className={styles.subRow}>
-											<div className={styles.subRowMain}>
-												<div className={styles.subRowName}>{link.program_name}</div>
-												<div className={styles.subRowMeta}>
-													{link.start_date ?? '?'} → {link.end_date ?? '?'}
-													{link.location ? ` · ${link.location}` : ''}
-													{link.lecturer_name ? ` · GV: ${link.lecturer_name}` : ''}
-												</div>
-											</div>
-											<select
-												className={styles.subSelect}
-												style={{ maxWidth: 130 }}
-												value={link.status}
-												onChange={(e) =>
-													d.updateProgramLink(link.id, { status: e.target.value as 'active' | 'inactive' })
-												}
-											>
-												<option value='active'>Đang áp dụng</option>
-												<option value='inactive'>Ngừng áp dụng</option>
-											</select>
-											<button
-												className={styles.actionBtn}
-												title='Gỡ chương trình'
-												disabled={d.busy}
-												onClick={() => d.removeProgramLink(link.id)}
-											>
-												<TrashSvg />
-											</button>
-										</div>
-									))}
-								</div>
-							)}
-						</>
+						<ProgramLinksTab
+							programs={d.programs}
+							programLinks={d.programLinks}
+							busy={d.busy}
+							onAdd={d.addProgramLink}
+							onUpdate={d.updateProgramLink}
+							onRemove={d.removeProgramLink}
+						/>
 					) : d.tab === 'enrollments' ? (
 						<>
 							<div className={styles.subToolbar}>
-								<select
-									className={styles.subSelect}
+								<SearchableSelect
+									className={styles.subSearch}
+									options={d.trainees.filter((t) => !d.enrollments.some((e) => e.trainee_id === t.id))}
 									value={newTraineeId}
-									onChange={(e) => setNewTraineeId(e.target.value)}
-								>
-									<option value=''>-- Chọn học viên để thêm --</option>
-									{d.trainees
-										.filter((t) => !d.enrollments.some((e) => e.trainee_id === t.id))
-										.map((t) => (
-											<option
-												key={t.id}
-												value={t.id}
-											>
-												{t.name}
-											</option>
-										))}
-								</select>
+									onChange={setNewTraineeId}
+									placeholder='-- Chọn học viên / nhân viên nội viện (gõ tên để tìm) --'
+								/>
 								<button
 									className={styles.btnGhost}
 									disabled={!newTraineeId || d.busy}
@@ -316,14 +213,7 @@ export function CourseDetailModal({ course, onClose }: { course: Course; onClose
 									onChange={(e) => setNewLecturerId(e.target.value)}
 								>
 									<option value=''>-- Chọn giảng viên --</option>
-									{d.lecturers.map((l) => (
-										<option
-											key={l.id}
-											value={l.id}
-										>
-											{l.name}
-										</option>
-									))}
+									<LecturerOptions lecturers={d.lecturers} />
 								</select>
 								<select
 									className={styles.subSelect}
@@ -405,11 +295,12 @@ export function CourseDetailModal({ course, onClose }: { course: Course; onClose
 									value={sessionForm.end_time}
 									onChange={(e) => setSessionForm((f) => ({ ...f, end_time: e.target.value }))}
 								/>
-								<input
-									className={styles.subInput}
-									placeholder='Phòng học'
+								<VenueSelect
+									scope='training'
+									className={styles.subSelect}
+									placeholder='-- Phòng học --'
 									value={sessionForm.room}
-									onChange={(e) => setSessionForm((f) => ({ ...f, room: e.target.value }))}
+									onChange={(room) => setSessionForm((f) => ({ ...f, room }))}
 								/>
 								<select
 									className={styles.subSelect}
@@ -417,14 +308,7 @@ export function CourseDetailModal({ course, onClose }: { course: Course; onClose
 									onChange={(e) => setSessionForm((f) => ({ ...f, lecturer_id: e.target.value }))}
 								>
 									<option value=''>-- Giảng viên --</option>
-									{d.lecturers.map((l) => (
-										<option
-											key={l.id}
-											value={l.id}
-										>
-											{l.name}
-										</option>
-									))}
+									<LecturerOptions lecturers={d.lecturers} />
 								</select>
 								<button
 									className={styles.btnGhost}
@@ -482,11 +366,12 @@ export function CourseDetailModal({ course, onClose }: { course: Course; onClose
 										value={bulkForm.end_time}
 										onChange={(e) => setBulkForm((f) => ({ ...f, end_time: e.target.value }))}
 									/>
-									<input
-										className={styles.subInput}
-										placeholder='Phòng học'
+									<VenueSelect
+										scope='training'
+										className={styles.subSelect}
+										placeholder='-- Phòng học --'
 										value={bulkForm.room}
-										onChange={(e) => setBulkForm((f) => ({ ...f, room: e.target.value }))}
+										onChange={(room) => setBulkForm((f) => ({ ...f, room }))}
 									/>
 									<div style={{ display: 'flex', gap: 4 }}>
 										{WEEKDAY_LABELS.map((label, idx) => (
@@ -536,7 +421,7 @@ export function CourseDetailModal({ course, onClose }: { course: Course; onClose
 										>
 											<div className={styles.subRowMain}>
 												<div className={styles.subRowName}>
-													{s.session_date}
+													{formatDateVN(s.session_date)}
 													{s.start_time ? ` · ${s.start_time}-${s.end_time ?? ''}` : ''}
 												</div>
 												<div className={styles.subRowMeta}>
@@ -563,136 +448,15 @@ export function CourseDetailModal({ course, onClose }: { course: Course; onClose
 							)}
 						</>
 					) : d.tab === 'documents' ? (
-						<>
-							<div className={styles.subToolbar}>
-								<select
-									className={styles.subSelect}
-									value={docForm.doc_type}
-									onChange={(e) => setDocForm((f) => ({ ...f, doc_type: e.target.value as DocType }))}
-								>
-									<option value='material'>Tài liệu</option>
-									<option value='test_question'>Đề kiểm tra</option>
-									<option value='test_answer'>Đáp án</option>
-								</select>
-								<input
-									className={styles.subInput}
-									placeholder='Tiêu đề'
-									value={docForm.title}
-									onChange={(e) => setDocForm((f) => ({ ...f, title: e.target.value }))}
-								/>
-								{(docForm.doc_type === 'test_question' || docForm.doc_type === 'test_answer') && (
-									<select
-										className={styles.subSelect}
-										value={docForm.exam_type}
-										onChange={(e) => setDocForm((f) => ({ ...f, exam_type: e.target.value as ExamType | '' }))}
-									>
-										<option value=''>-- Loại kiểm tra --</option>
-										{Object.entries(EXAM_TYPE_CFG).map(([key, label]) => (
-											<option key={key} value={key}>
-												{label}
-											</option>
-										))}
-									</select>
-								)}
-								<label className={styles.attRadio}>
-									<input
-										type='checkbox'
-										checked={docForm.is_public}
-										onChange={(e) => setDocForm((f) => ({ ...f, is_public: e.target.checked }))}
-									/>
-									Công khai
-								</label>
-								<select
-									className={styles.subSelect}
-									value={docForm.sourceType}
-									onChange={(e) => setDocForm((f) => ({ ...f, sourceType: e.target.value as SourceType }))}
-								>
-									<option value='file'>Tải file lên</option>
-									<option value='link'>Dán link</option>
-								</select>
-								{docForm.sourceType === 'file' ? (
-									<input
-										type='file'
-										ref={fileInputRef}
-										className={styles.subInput}
-									/>
-								) : (
-									<input
-										className={styles.subInput}
-										placeholder='https://...'
-										value={docForm.externalUrl}
-										onChange={(e) => setDocForm((f) => ({ ...f, externalUrl: e.target.value }))}
-									/>
-								)}
-								<button
-									className={styles.btnGhost}
-									disabled={d.busy || !docForm.title.trim()}
-									onClick={() => {
-										if (!docForm.title.trim()) return;
-										if (docForm.sourceType === 'file') {
-											const file = fileInputRef.current?.files?.[0];
-											if (!file) return;
-											d.addDocument({ type: 'file', file }, docForm);
-										} else {
-											if (!docForm.externalUrl.trim()) return;
-											d.addDocument({ type: 'link', external_url: docForm.externalUrl.trim() }, docForm);
-										}
-										setDocForm({
-											doc_type: 'material',
-											title: '',
-											is_public: true,
-											exam_type: '',
-											sourceType: 'file',
-											externalUrl: '',
-										});
-										if (fileInputRef.current) fileInputRef.current.value = '';
-									}}
-								>
-									<PlusSvg /> Thêm tài liệu
-								</button>
-							</div>
-
-							{d.documents.length === 0 ? (
-								<div className={styles.subEmpty}>Chưa có tài liệu nào.</div>
-							) : (
-								<div className={styles.subList}>
-									{d.documents.map((doc) => (
-										<div
-											key={doc.id}
-											className={styles.subRow}
-										>
-											<div className={styles.subRowMain}>
-												<a
-													href={doc.source_type === 'link' ? (doc.external_url ?? '#') : (doc.file_url ?? '#')}
-													target='_blank'
-													rel='noreferrer'
-													className={styles.docLink}
-													onClick={() => d.incrementDocumentDownload(doc.id)}
-												>
-													{doc.title}
-												</a>
-												<div className={styles.subRowMeta}>
-													{DOC_TYPE_CFG[doc.doc_type]}
-													{doc.exam_type ? ` (${EXAM_TYPE_CFG[doc.exam_type]})` : ''} ·{' '}
-													{doc.source_type === 'link' ? 'Liên kết ngoài' : doc.file_name}
-													{!doc.is_public ? ' · Chưa công khai' : ''}
-													{' · '}
-													<DownloadSvg /> {doc.download_count}
-												</div>
-											</div>
-											<button
-												className={styles.actionBtn}
-												title='Xoá'
-												disabled={d.busy}
-												onClick={() => d.removeDocument(doc.id)}
-											>
-												<TrashSvg />
-											</button>
-										</div>
-									))}
-								</div>
-							)}
-						</>
+						<CourseDocumentsTab
+							documents={d.documents}
+							busy={d.busy}
+							onAdd={d.addDocument}
+							onRemove={d.removeDocument}
+							onOpen={d.incrementDocumentDownload}
+						/>
+					) : d.tab === 'exams' ? (
+						<ExamsTab courseId={course.id} />
 					) : (
 						<>
 							<div
@@ -758,8 +522,8 @@ export function CourseDetailModal({ course, onClose }: { course: Course; onClose
 																	>
 																		{cert.cert_no} · {cert.status === 'revoked' ? 'Đã thu hồi' : 'Đã cấp'}
 																	</span>{' '}
-																	Cấp ngày {cert.issue_date}
-																	{cert.expiry_date ? ` · Hạn ${cert.expiry_date}` : ''}
+																	Cấp ngày {formatDateVN(cert.issue_date)}
+																	{cert.expiry_date ? ` · Hạn ${formatDateVN(cert.expiry_date)}` : ''}
 																</>
 															)}
 														</div>

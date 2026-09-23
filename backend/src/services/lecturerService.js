@@ -9,6 +9,21 @@ const lecturerSelect = `
   LEFT JOIN users u ON u.id = l.user_id
 `;
 
+// Giảng viên chỉ là bác sĩ/nhân viên nội viện (users) hoặc chuyên gia ngoài viện —
+// không gắn được tài khoản học viên (VT08 — do "Cấp tài khoản học viên" sinh ra).
+const assertNotTraineeAccount = async (pool, userId) => {
+	if (!userId) return;
+	const r = await pool
+		.request()
+		.input('uid', sql.VarChar(20), userId)
+		.query('SELECT role_id FROM users WHERE id = @uid');
+	if (r.recordset[0]?.role_id === 'VT08') {
+		const err = new Error('Không thể dùng tài khoản học viên làm giảng viên.');
+		err.statusCode = 400;
+		throw err;
+	}
+};
+
 const getAll = async ({ page = 1, limit = 20, search, active_only } = {}) => {
 	const pool = await getPool();
 	const pg = paging(page, limit, 100);
@@ -41,6 +56,7 @@ const getById = async (id) => {
 
 const create = async (data, actorId) => {
 	const pool = await getPool();
+	await assertNotTraineeAccount(pool, data.user_id);
 	const result = await pool
 		.request()
 		.input('actor_id', sql.VarChar(20), actorId)
@@ -74,6 +90,7 @@ const update = async (id, data, actorId) => {
 	const req = pool.request().input('id', sql.VarChar(20), id).input('actor_id', sql.VarChar(20), actorId);
 
 	if (data.user_id !== undefined) {
+		await assertNotTraineeAccount(pool, data.user_id);
 		sets.push('user_id = @user_id');
 		req.input('user_id', sql.VarChar(20), data.user_id || null);
 	}

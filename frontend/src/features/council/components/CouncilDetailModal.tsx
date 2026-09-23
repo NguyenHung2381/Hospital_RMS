@@ -1,3 +1,5 @@
+import { formatDateVN } from '../../../shared/utils/formatDate';
+import { notify } from '../../../shared/utils/feedback';
 import { useCallback, useEffect, useState } from 'react';
 import {
 	CalendarSvg,
@@ -86,6 +88,7 @@ export function CouncilDetailModal({
 				await addCouncilMember(council.id, { ...seat, role: seatModal });
 			}
 			setSeatModal(null);
+			notify.success('Đã lưu thành viên hội đồng');
 			load();
 			onChanged();
 		} catch (err) {
@@ -103,6 +106,7 @@ export function CouncilDetailModal({
 		try {
 			await removeCouncilMember(council.id, existing.id);
 			setSeatModal(null);
+			notify.success('Đã xoá thành viên khỏi hội đồng');
 			load();
 			onChanged();
 		} catch (err) {
@@ -171,6 +175,7 @@ export function CouncilDetailModal({
 				subModal.role,
 			);
 			setSubModal(null);
+			notify.success('Đã xoá ghế thay thế');
 			load();
 			onChanged();
 		} catch (err) {
@@ -400,7 +405,7 @@ export function CouncilDetailModal({
 									}}
 								>
 									<CalendarSvg style={{ width: 13, height: 13 }} />
-									Ngày bảo vệ: {council.defense_date}
+									Ngày bảo vệ: {formatDateVN(council.defense_date)}
 								</div>
 							)}
 						</>

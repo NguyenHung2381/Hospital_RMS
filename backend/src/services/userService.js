@@ -311,6 +311,7 @@ const remove = async (id, actorId) => {
 		.input('actor_id', sql.VarChar(20), actorId).query(`
 			EXEC sp_set_actor @actor_id;
 			UPDATE topic_members SET user_id = NULL, account_granted = 0, account_granted_at = NULL WHERE user_id = @id;
+			UPDATE trainees SET user_id = NULL, account_granted = 0, account_granted_at = NULL WHERE user_id = @id;
 			UPDATE round_deadlines SET created_by = @actor_id WHERE created_by = @id;
 			DELETE FROM users WHERE id = @id;
 		`);

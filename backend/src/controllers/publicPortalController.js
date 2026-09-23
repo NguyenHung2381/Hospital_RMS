@@ -97,6 +97,24 @@ const registerTopic = async (req, res, next) => {
 	}
 };
 
+const getFeaturedTopics = async (req, res, next) => {
+	try {
+		success(res, await service.getFeaturedTopics());
+	} catch (err) {
+		next(err);
+	}
+};
+
+const getTopicStatus = async (req, res, next) => {
+	try {
+		const topic = await service.getTopicStatus(req.params.id);
+		if (!topic) return error(res, 'Không tìm thấy hồ sơ với mã này.', 404);
+		success(res, topic);
+	} catch (err) {
+		next(err);
+	}
+};
+
 module.exports = {
 	getCaptcha,
 	getOpenCourses,
@@ -108,4 +126,6 @@ module.exports = {
 	getPublicDepartments,
 	getPublicLevels,
 	registerTopic,
+	getTopicStatus,
+	getFeaturedTopics,
 };

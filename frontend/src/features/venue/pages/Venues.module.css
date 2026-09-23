@@ -1,0 +1,48 @@
+/* Phần lớn style dùng lại từ training-catalog/pages/TrainingCatalog.module.css
+ * (bảng, modal, form) — file này chỉ chứa phần riêng của trang Địa điểm. */
+
+.venueIcon {
+	background: #e1f5ee;
+	color: #085041;
+}
+.venueIcon svg {
+	width: 16px;
+	height: 16px;
+}
+
+.subText {
+	margin-top: 2px;
+	font-size: 12px;
+	color: var(--color-gray-500);
+	max-width: 320px;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.tdNum {
+	text-align: right;
+	font-variant-numeric: tabular-nums;
+}
+
+.formRow {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: var(--space-3);
+}
+
+.checkLabel {
+	display: inline-flex;
+	align-items: center;
+	gap: 8px;
+	height: 40px;
+	font-size: 13px;
+	color: var(--color-gray-700);
+	cursor: pointer;
+}
+
+@media (max-width: 560px) {
+	.formRow {
+		grid-template-columns: 1fr;
+	}
+}

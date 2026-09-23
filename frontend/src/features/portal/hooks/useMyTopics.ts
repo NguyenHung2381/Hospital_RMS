@@ -1,3 +1,4 @@
+import { notify } from '../../../shared/utils/feedback';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRealtimeUpdate } from '../../../layouts/hooks/useRealtime';
 import { getStoredUser, type StoredUser } from '../../../shared/utils/storage';
@@ -332,6 +333,7 @@ export function useMyTopics() {
 			setDetailFiles(files.data ?? []);
 			setEditOpen(false);
 			refreshData();
+			notify.success('Đã lưu thay đổi đề tài');
 		} catch {
 			setEditError('Có lỗi xảy ra khi lưu. Vui lòng thử lại.');
 		} finally {

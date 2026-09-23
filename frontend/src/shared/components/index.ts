@@ -10,10 +10,14 @@ export { Card } from './Card';
 
 export { Button } from './Button';
 export { Modal } from './Modal';
+export { Can } from './Can';
+export { DataTable } from './DataTable';
+export type { DataTableProps, DataTablePagination } from './DataTable';
 
-/* Nặng (docx-preview / dompurify) — import trực tiếp theo đường dẫn, không qua barrel:
+/* Nặng (docx-preview / dompurify / html5-qrcode) — import trực tiếp theo đường dẫn, không qua barrel:
  *   import { FileViewerModal } from '@/shared/components/FileViewerModal';
- *   import RichTextEditor from '@/shared/components/RichTextEditor'; */
+ *   import RichTextEditor from '@/shared/components/RichTextEditor';
+ *   import { QrScanner } from '@/shared/components/QrScanner'; */
 
 export { DatePicker } from './Input/DatePicker';
 export { MultiSelect } from './Input/MultiSelect';

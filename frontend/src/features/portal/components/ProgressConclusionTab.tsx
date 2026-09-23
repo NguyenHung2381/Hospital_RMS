@@ -1,3 +1,4 @@
+import { formatDateTimeVN } from '../../../shared/utils/formatDate';
 import {
 	CONCLUSION_LABELS,
 	PROGRESS_RATING_LABELS,
@@ -199,7 +200,7 @@ export function ProgressConclusionTab({
 								{CONCLUSION_LABELS[t.result.conclusion]}
 							</span>
 							<span className={styles.conclusionMeta}>
-								Phê duyệt bởi: {t.result.decided_by_name} · {t.result.updated_at}
+								Phê duyệt bởi: {t.result.decided_by_name} · {formatDateTimeVN(t.result.updated_at)}
 							</span>
 						</div>
 						{t.result.general_comment && (
