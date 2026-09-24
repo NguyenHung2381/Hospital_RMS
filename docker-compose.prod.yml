@@ -12,8 +12,13 @@ services:
       # qua X-Forwarded-For, thay vì IP container frontend (172.x).
       TRUST_PROXY: "loopback, uniquelocal"
       REDIS_PORT: "6379"
-    ports:
-      - "3000:3000"
+      # Origin trình duyệt dùng để truy cập web (ghi đè CORS_ORIGIN trong backend/.env)
+      CORS_ORIGIN: "http://bvnghean.vn:8084,http://www.bvnghean.vn:8084"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    # API không mở cổng ra ngoài — chỉ nginx (client) gọi tới qua mạng nội bộ
+    expose:
+      - "3000"
     volumes:
       - server_uploads:/app/uploads
       # JWT secret tự sinh khi thiếu (docker-entrypoint.sh) — giữ qua restart/redeploy
@@ -26,8 +31,9 @@ services:
     build:
       context: ./frontend
       target: prod
+    # http://bvnghean.vn:8084 → nginx (port 80 trong container)
     ports:
-      - "80:80"
+      - "8084:80"
     depends_on:
       - server
     restart: unless-stopped
