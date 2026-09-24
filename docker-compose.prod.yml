@@ -22,9 +22,11 @@ services:
     mem_limit: 512m
     extra_hosts:
       - "host.docker.internal:host-gateway"
-    # API không mở cổng ra ngoài — chỉ nginx (client) gọi tới qua mạng nội bộ
-    expose:
-      - "3001"
+    # Mở localhost:3001 trên máy server (chỉ loopback, không lộ ra mạng) để
+    # reverse proxy/IIS trên cùng máy gọi được API; nginx (client) vẫn gọi
+    # backend:3001 qua mạng nội bộ Docker.
+    ports:
+      - "127.0.0.1:3001:3001"
     volumes:
       - server_uploads:/app/uploads
       # JWT secret tự sinh khi thiếu (docker-entrypoint.sh) — giữ qua restart/redeploy
