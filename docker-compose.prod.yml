@@ -3,10 +3,19 @@ services:
     build:
       context: ./backend
       target: prod
+    # .env.production (nếu có) nạp sau → ghi đè .env: đặt DB_USER/DB_PASSWORD
+    # của login riêng (scripts/create-app-login.sql) ở đây, .env giữ "sa" cho dev.
     env_file:
       - path: ./backend/.env
         required: false
+      - path: ./backend/.env.production
+        required: false
     environment:
+      # Luôn mã hoá kết nối app <-> SQL Server ở prod (ghi đè DB_ENCRYPT trong
+      # backend/.env). SQL Server chưa cài chứng chỉ vẫn tự sinh cert tự ký →
+      # DB_TRUST_SERVER_CERT=true (mặc định) để chấp nhận; có cert CA thật thì
+      # đặt DB_TRUST_SERVER_CERT=false trong backend/.env.production.
+      DB_ENCRYPT: "true"
       # Ghim cổng API (ghi đè PORT trong backend/.env) — phải khớp proxy_pass
       # trong frontend/nginx.conf.
       PORT: "3001"
