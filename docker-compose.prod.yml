@@ -7,6 +7,9 @@ services:
       - path: ./backend/.env
         required: false
     environment:
+      # Ghim cổng API (ghi đè PORT trong backend/.env) — phải khớp proxy_pass
+      # trong frontend/nginx.conf.
+      PORT: "3001"
       REDIS_HOST: redis
       # Tin proxy nội bộ (Vite/nginx trong mạng Docker) để req.ip = IP máy khách
       # qua X-Forwarded-For, thay vì IP container frontend (172.x).
@@ -21,7 +24,7 @@ services:
       - "host.docker.internal:host-gateway"
     # API không mở cổng ra ngoài — chỉ nginx (client) gọi tới qua mạng nội bộ
     expose:
-      - "3000"
+      - "3001"
     volumes:
       - server_uploads:/app/uploads
       # JWT secret tự sinh khi thiếu (docker-entrypoint.sh) — giữ qua restart/redeploy

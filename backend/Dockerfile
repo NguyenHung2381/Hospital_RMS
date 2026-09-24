@@ -33,7 +33,7 @@ RUN tr -d '\r' < /usr/local/bin/docker-entrypoint.sh > /tmp/entrypoint \
     && mv /tmp/entrypoint /usr/local/bin/docker-entrypoint.sh \
     && chmod +x /usr/local/bin/docker-entrypoint.sh
 ENTRYPOINT ["docker-entrypoint.sh"]
-EXPOSE 3000
+EXPOSE 3001
 # Gọi thẳng node (NODE_ENV đã set ở trên): `npm run` giữ thêm 1 tiến trình npm
 # ~60-75MB RSS suốt đời container, và nuốt SIGTERM khiến tắt container chậm.
 CMD ["node", "src/server.js"]
