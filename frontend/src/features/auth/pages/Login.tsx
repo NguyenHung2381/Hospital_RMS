@@ -1,11 +1,16 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { canAccessAdminPanel } from '../../../app/router/authHelpers';
 import AuthLayout from '../../../layouts/AuthLayout';
 import { saveAuth } from '../../../shared/utils/storage';
 import { getMyProgress } from '../../council/api/councilApi';
-import { loginApi, verify2FAApi, type LoginResponse } from '../api/authApi';
+import {
+	LoginLockedError,
+	loginApi,
+	verify2FAApi,
+	type LoginResponse,
+} from '../api/authApi';
 import type { FormErrors, LoginForm } from '../types/auth.type';
 import styles from './Login.module.css';
 import {
@@ -88,6 +93,29 @@ export default function Login() {
 	const [preAuthToken, setPreAuthToken] = useState<string | null>(null);
 	const [otpCode, setOtpCode] = useState('');
 	const [otpError, setOtpError] = useState<string | null>(null);
+	// Đăng nhập bị khoá tạm: mốc hết khoá (ms) + số giây còn lại để đếm ngược.
+	const [lockedUntil, setLockedUntil] = useState<number | null>(null);
+	const [secondsLeft, setSecondsLeft] = useState(0);
+
+	useEffect(() => {
+		if (!lockedUntil) return;
+		const tick = () => {
+			const left = Math.ceil((lockedUntil - Date.now()) / 1000);
+			if (left <= 0) {
+				setLockedUntil(null);
+				setSecondsLeft(0);
+				setApiError(null);
+			} else {
+				setSecondsLeft(left);
+			}
+		};
+		tick();
+		const id = setInterval(tick, 1000);
+		return () => clearInterval(id);
+	}, [lockedUntil]);
+
+	const isLocked = lockedUntil !== null && secondsLeft > 0;
+	const countdown = `${Math.floor(secondsLeft / 60)}:${String(secondsLeft % 60).padStart(2, '0')}`;
 
 	// Validation
 	const validate = useCallback((): boolean => {
@@ -119,7 +147,8 @@ export default function Login() {
 			if (errors[field as keyof FormErrors]) {
 				setErrors((prev) => ({ ...prev, [field]: undefined }));
 			}
-			if (apiError) setApiError(null);
+			// Giữ thông báo khoá cho tới khi hết giờ đếm ngược.
+			if (apiError && !isLocked) setApiError(null);
 		};
 
 	// Dùng chung cho cả 2 đường: đăng nhập thường (không 2FA) và sau khi xác
@@ -147,7 +176,7 @@ export default function Login() {
 	// Handle submit
 	const handleSubmit = async (e: React.FormEvent) => {
 		e.preventDefault();
-		if (!validate()) return;
+		if (isLocked || !validate()) return;
 
 		setIsLoading(true);
 		setApiError(null);
@@ -160,6 +189,10 @@ export default function Login() {
 			}
 			await completeLogin(data);
 		} catch (err) {
+			if (err instanceof LoginLockedError) {
+				setLockedUntil(Date.now() + err.retryAfterSeconds * 1000);
+				setSecondsLeft(err.retryAfterSeconds);
+			}
 			setApiError(
 				err instanceof Error ? err.message : 'Có lỗi xảy ra, vui lòng thử lại',
 			);
@@ -304,7 +337,15 @@ export default function Login() {
 						role='alert'
 					>
 						<Icon.Alert />
-						<span>{apiError}</span>
+						<span>
+							{apiError}
+							{isLocked && (
+								<>
+									{' '}
+									Còn lại <strong>{countdown}</strong>.
+								</>
+							)}
+						</span>
 					</div>
 				)}
 
@@ -416,13 +457,15 @@ export default function Login() {
 					<button
 						type='submit'
 						className={styles.submitBtn}
-						disabled={isLoading}
+						disabled={isLoading || isLocked}
 					>
 						{isLoading ? (
 							<>
 								<span className={styles.btnSpinner} />
 								Đang xác thực...
 							</>
+						) : isLocked ? (
+							`Thử lại sau ${countdown}`
 						) : (
 							'Đăng nhập hệ thống'
 						)}

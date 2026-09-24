@@ -126,6 +126,10 @@ export const adminRoutes: RouteObject[] = [
 		path: '/admin/dashboard/training',
 		element: admin('Tổng quan Đào tạo', <TrainingDashboard />),
 	},
+	{
+		path: '/admin/viec-cua-toi',
+		element: admin('Việc của tôi', <MyTasks />),
+	},
 	{ path: '/admin/topics', element: admin('Quản lý Đề tài', <Topics />) },
 	{ path: '/admin/rounds', element: admin('Đợt nghiên cứu', <Rounds />) },
 	{

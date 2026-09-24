@@ -58,6 +58,19 @@ const recordFailedLogin = async (pool, user, ip) => {
 			detail: `Khoá ${LOCK_DURATION_MINUTES} phút sau ${attempts} lần sai mật khẩu liên tiếp`,
 		});
 	}
+	return lockedUntil;
+};
+
+const lockedError = (lockedUntil) => {
+	const secondsLeft = Math.max(
+		1,
+		Math.ceil((new Date(lockedUntil) - new Date()) / 1000),
+	);
+	return {
+		statusCode: 403,
+		message: `Tài khoản tạm khoá do đăng nhập sai nhiều lần. Thử lại sau ${Math.ceil(secondsLeft / 60)} phút.`,
+		retryAfterSeconds: secondsLeft,
+	};
 };
 
 const login = async (username, password, ip = null, userAgent = null) => {
@@ -91,18 +104,15 @@ const login = async (username, password, ip = null, userAgent = null) => {
 		};
 
 	if (user.locked_until && new Date(user.locked_until) > new Date()) {
-		const minutesLeft = Math.ceil(
-			(new Date(user.locked_until) - new Date()) / 60000,
-		);
-		throw {
-			statusCode: 403,
-			message: `Tài khoản tạm khoá do đăng nhập sai nhiều lần. Thử lại sau ${minutesLeft} phút.`,
-		};
+		throw lockedError(user.locked_until);
 	}
 
 	const isMatch = await bcrypt.compare(password, user.password);
 	if (!isMatch) {
-		await recordFailedLogin(pool, user, ip);
+		const lockedUntil = await recordFailedLogin(pool, user, ip);
+		// Lần sai làm khoá tài khoản → báo khoá ngay, không để người dùng thử
+		// thêm lần nữa mới biết.
+		if (lockedUntil) throw lockedError(lockedUntil);
 		throw {
 			statusCode: 401,
 			message: 'Tên đăng nhập hoặc mật khẩu không đúng',

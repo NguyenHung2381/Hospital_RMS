@@ -23,6 +23,17 @@ export interface Requires2FAResponse {
 	pre_auth_token: string;
 }
 
+// Lỗi đăng nhập bị khoá tạm (sai mật khẩu nhiều lần / quá giới hạn theo IP) —
+// kèm số giây còn lại để trang đăng nhập đếm ngược.
+export class LoginLockedError extends Error {
+	retryAfterSeconds: number;
+
+	constructor(message: string, retryAfterSeconds: number) {
+		super(message);
+		this.retryAfterSeconds = retryAfterSeconds;
+	}
+}
+
 export async function loginApi(
 	username: string,
 	password: string,
@@ -36,7 +47,11 @@ export async function loginApi(
 	const json = await res.json();
 
 	if (!res.ok || !json.success) {
-		throw new Error(json.message ?? 'Có lỗi xảy ra, vui lòng thử lại');
+		const message = json.message ?? 'Có lỗi xảy ra, vui lòng thử lại';
+		if (json.retry_after_seconds > 0) {
+			throw new LoginLockedError(message, json.retry_after_seconds);
+		}
+		throw new Error(message);
 	}
 
 	return json.data as LoginResponse | Requires2FAResponse;

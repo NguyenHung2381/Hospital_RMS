@@ -41,7 +41,31 @@ function handleUpdate(e: MessageEvent) {
 	}
 }
 
+// Nối lại khi kết nối bị đóng hẳn (401 token hết hạn, 502 lúc backend khởi
+// động lại...) — EventSource chỉ tự nối lại khi mạng rớt, còn response lỗi thì
+// nó bỏ cuộc luôn. Backoff tăng dần để không dội request vào server.
+const RECONNECT_MIN_MS = 5_000;
+const RECONNECT_MAX_MS = 60_000;
+let reconnectDelay = RECONNECT_MIN_MS;
+let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+
+function clearReconnect() {
+	if (reconnectTimer) clearTimeout(reconnectTimer);
+	reconnectTimer = null;
+}
+
+function scheduleReconnect() {
+	if (reconnectTimer || subscribers.size === 0) return;
+	reconnectTimer = setTimeout(() => {
+		reconnectTimer = null;
+		closeConnection();
+		ensureConnection();
+	}, reconnectDelay);
+	reconnectDelay = Math.min(reconnectDelay * 2, RECONNECT_MAX_MS);
+}
+
 function closeConnection() {
+	clearReconnect();
 	if (!source) return;
 	source.removeEventListener('update', handleUpdate as EventListener);
 	source.close();
@@ -67,8 +91,13 @@ function ensureConnection() {
 	source = new EventSource(`${BASE_URL}/api/v1/events?token=${token}`);
 	sourceToken = token;
 	source.addEventListener('update', handleUpdate as EventListener);
+	source.onopen = () => {
+		reconnectDelay = RECONNECT_MIN_MS;
+	};
 	source.onerror = () => {
-		// EventSource tự động thử kết nối lại khi readyState === CONNECTING.
+		// CONNECTING: trình duyệt tự nối lại (chờ theo `retry:` server gửi).
+		// CLOSED: server trả lỗi → tự lên lịch nối lại với token mới nhất.
+		if (source?.readyState === EventSource.CLOSED) scheduleReconnect();
 	};
 }
 

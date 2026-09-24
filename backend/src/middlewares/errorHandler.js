@@ -39,6 +39,13 @@ const errorHandler = (err, req, res, next) => {
 	// chung chung, tránh lộ stack/chi tiết nội bộ cho client.
 	const message =
 		statusCode < 500 || !isProd ? err.message || 'Lỗi server nội bộ' : 'Lỗi server nội bộ';
+	// Lỗi khoá tạm (vd. đăng nhập sai nhiều lần) kèm số giây còn lại để client
+	// hiển thị đồng hồ đếm ngược.
+	if (err.retryAfterSeconds) {
+		return res
+			.status(statusCode)
+			.json({ success: false, message, retry_after_seconds: err.retryAfterSeconds });
+	}
 	return error(res, message, statusCode);
 };
 

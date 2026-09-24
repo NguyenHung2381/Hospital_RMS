@@ -10,9 +10,17 @@ const loginLimiter = rateLimit({
 	limit: 10, // tối đa 10 lần thử đăng nhập / IP / cửa sổ thời gian
 	standardHeaders: true,
 	legacyHeaders: false,
-	message: {
-		success: false,
-		message: 'Quá nhiều lần đăng nhập thất bại. Vui lòng thử lại sau ít phút.',
+	// Trả kèm số giây còn lại tới khi cửa sổ reset để client đếm ngược.
+	handler: (req, res, next, options) => {
+		const resetTime = req.rateLimit?.resetTime;
+		const retryAfterSeconds = resetTime
+			? Math.max(1, Math.ceil((resetTime.getTime() - Date.now()) / 1000))
+			: Math.ceil(options.windowMs / 1000);
+		res.status(options.statusCode).json({
+			success: false,
+			message: 'Quá nhiều lần đăng nhập thất bại. Vui lòng thử lại sau ít phút.',
+			retry_after_seconds: retryAfterSeconds,
+		});
 	},
 });
 

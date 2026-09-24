@@ -1,8 +1,9 @@
 import { formatDateVN } from '../../../shared/utils/formatDate';
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { ApproveSvg, ClipboardCheckSvg } from '@/assets/icons';
 import { Badge, Card, EmptyState, InlineLoading } from '@/shared/components';
+import AdminLayout from '../../../layouts/AdminLayout';
 import UserLayout from '../../../layouts/UserLayout';
 import { canAccessAdminPanel } from '../../../app/router/authHelpers';
 import { getStoredUser } from '../../../shared/utils/storage';
@@ -21,9 +22,12 @@ export default function MyTasks() {
 	}, []);
 
 	const isAdmin = canAccessAdminPanel(getStoredUser());
+	// Trang dùng chung cho 2 cổng: vào từ /admin/... thì giữ layout admin,
+	// tránh bị "nhảy" sang giao diện người dùng khi bấm từ sidebar admin.
+	const Layout = useLocation().pathname.startsWith('/admin') ? AdminLayout : UserLayout;
 
 	return (
-		<UserLayout
+		<Layout
 			pageTitle='Việc của tôi'
 			pageSubtitle='Đề tài đang chờ bạn xử lý'
 		>
@@ -162,6 +166,6 @@ export default function MyTasks() {
 					</Card.Body>
 				</Card>
 			)}
-		</UserLayout>
+		</Layout>
 	);
 }

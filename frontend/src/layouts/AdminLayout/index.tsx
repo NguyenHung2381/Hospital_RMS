@@ -41,7 +41,7 @@ const KEY_TO_PATH: Record<string, string> = {
 	trainingPrograms: '/admin/training-programs',
 	lessons: '/admin/lessons',
 	trainingPlans: '/admin/training-plans',
-	myTasks: '/user/viec-cua-toi',
+	myTasks: '/admin/viec-cua-toi',
 	lecturers: '/admin/lecturers',
 	trainingCatalog: '/admin/trainee-types',
 	courses: '/admin/courses',
