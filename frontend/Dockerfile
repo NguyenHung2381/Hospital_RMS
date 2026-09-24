@@ -8,7 +8,7 @@ RUN --mount=type=cache,target=/root/.npm \
     npm ci --no-audit --no-fund --fetch-timeout=600000 --fetch-retries=5 --fetch-retry-maxtimeout=120000
 COPY . .
 EXPOSE 5173
-CMD ["npm", "run", "dev"]
+CMD ["node", "node_modules/vite/bin/vite.js"]
 
 FROM node:22-alpine AS build
 WORKDIR /app

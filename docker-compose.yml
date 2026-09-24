@@ -13,11 +13,16 @@ services:
       REDIS_PORT: "6379"
       # Giữ tối thiểu 100 file log ngày (>= 3 tháng) cho promtail + trang /activity-logs
       LOG_RETENTION_FILES: "100"
+      # Chặn heap V8 để GC dọn sớm thay vì phình tới khi Docker Desktop hết RAM.
+      NODE_OPTIONS: "--max-old-space-size=384"
     extra_hosts:
       - "host.docker.internal:host-gateway"
     # -L (legacy watch = polling): bind mount qua Docker Desktop không phát
     # native fs-events nên nodemon cần polling mới thấy thay đổi file.
-    command: ["npx", "nodemon", "-L", "--trace-deprecation", "src/server.js"]
+    # Gọi thẳng nodemon bằng node thay vì `npx nodemon`: npx để lại 1 tiến trình
+    # npm (~75MB RSS) nằm chờ suốt đời container mà không làm gì.
+    command: ["node", "node_modules/nodemon/bin/nodemon.js", "-L", "--trace-deprecation", "src/server.js"]
+    mem_limit: 640m
     ports:
       - "3000:3000"
     volumes:
@@ -36,6 +41,10 @@ services:
       VITE_API_HOST: server
       VITE_API_PORT: "3000"
       CHOKIDAR_USEPOLLING: "true"
+      NODE_OPTIONS: "--max-old-space-size=512"
+    # Chạy vite trực tiếp, bỏ tiến trình `npm run dev` (~60MB RSS) bọc ngoài.
+    command: ["node", "node_modules/vite/bin/vite.js"]
+    mem_limit: 768m
     ports:
       - "5173:5173"
     volumes:
@@ -60,10 +69,16 @@ services:
       ]
     ports:
       - "6379:6379"
+    mem_limit: 160m
     restart: unless-stopped
 
   # ─── Log stack: Promtail đọc file log của server → đẩy vào Loki ───────────────
+  # KHÔNG chạy mặc định: trang /activity-logs đọc thẳng file log, không cần Loki,
+  # và compose này không có Grafana để xem Loki. Cần thì bật riêng:
+  #   docker compose --profile logs up -d
   loki:
+    profiles: ["logs"]
+    mem_limit: 256m
     image: grafana/loki:3.5.1
     command: ["-config.file=/etc/loki/config.yaml"]
     ports:
@@ -74,6 +89,8 @@ services:
     restart: unless-stopped
 
   promtail:
+    profiles: ["logs"]
+    mem_limit: 96m
     image: grafana/promtail:3.5.1
     command: ["-config.file=/etc/promtail/config.yaml"]
     volumes:

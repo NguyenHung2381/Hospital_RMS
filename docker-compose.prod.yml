@@ -1,5 +1,5 @@
 services:
-  server:
+  backend:
     build:
       context: ./backend
       target: prod
@@ -13,7 +13,10 @@ services:
       TRUST_PROXY: "loopback, uniquelocal"
       REDIS_PORT: "6379"
       # Origin trình duyệt dùng để truy cập web (ghi đè CORS_ORIGIN trong backend/.env)
-      CORS_ORIGIN: "http://bvnghean.vn:8084,http://www.bvnghean.vn:8084"
+      CORS_ORIGIN: "http://nckh.bvnghean.vn:8084,http://bvnghean.vn:8084,http://www.bvnghean.vn:8084"
+      # Heap V8 < mem_limit để còn chỗ cho buffer (upload/xuất Excel) + stack.
+      NODE_OPTIONS: "--max-old-space-size=384"
+    mem_limit: 512m
     extra_hosts:
       - "host.docker.internal:host-gateway"
     # API không mở cổng ra ngoài — chỉ nginx (client) gọi tới qua mạng nội bộ
@@ -27,15 +30,16 @@ services:
       - redis
     restart: unless-stopped
 
-  client:
+  frontend:
     build:
       context: ./frontend
       target: prod
-    # http://bvnghean.vn:8084 → nginx (port 80 trong container)
+    # http://nckh.bvnghean.vn:8084 → nginx (port 80 trong container)
     ports:
       - "8084:80"
+    mem_limit: 64m
     depends_on:
-      - server
+      - backend
     restart: unless-stopped
 
   # Xem docker-compose.yml (dev) để biết lý do tắt persistence + allkeys-lru.
@@ -49,6 +53,7 @@ services:
         "--save", "",
         "--appendonly", "no",
       ]
+    mem_limit: 160m
     restart: unless-stopped
 
 volumes:

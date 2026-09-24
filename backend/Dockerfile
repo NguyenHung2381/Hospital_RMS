@@ -8,10 +8,12 @@ RUN --mount=type=cache,target=/root/.npm \
     npm ci --no-audit --no-fund --fetch-timeout=600000 --fetch-retries=5 --fetch-retry-maxtimeout=120000
 COPY . .
 # Entrypoint tự sinh JWT secret nếu thiếu (xem docker-entrypoint.sh). Đặt ngoài
-# /app để bind mount ./backend:/app ở bản dev không che mất; sed bỏ CRLF phòng
+# /app để bind mount ./backend:/app ở bản dev không che mất; tr bỏ CR (CRLF) phòng
 # khi file bị checkout trên Windows.
 COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
-RUN sed -i 's/$//' /usr/local/bin/docker-entrypoint.sh && chmod +x /usr/local/bin/docker-entrypoint.sh
+RUN tr -d '\r' < /usr/local/bin/docker-entrypoint.sh > /tmp/entrypoint \
+    && mv /tmp/entrypoint /usr/local/bin/docker-entrypoint.sh \
+    && chmod +x /usr/local/bin/docker-entrypoint.sh
 ENTRYPOINT ["docker-entrypoint.sh"]
 EXPOSE 3000
 CMD ["npm", "run", "dev"]
@@ -24,10 +26,14 @@ RUN --mount=type=cache,target=/root/.npm \
 COPY . .
 ENV NODE_ENV=production
 # Entrypoint tự sinh JWT secret nếu thiếu (xem docker-entrypoint.sh). Đặt ngoài
-# /app để bind mount ./backend:/app ở bản dev không che mất; sed bỏ CRLF phòng
+# /app để bind mount ./backend:/app ở bản dev không che mất; tr bỏ CR (CRLF) phòng
 # khi file bị checkout trên Windows.
 COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
-RUN sed -i 's/$//' /usr/local/bin/docker-entrypoint.sh && chmod +x /usr/local/bin/docker-entrypoint.sh
+RUN tr -d '\r' < /usr/local/bin/docker-entrypoint.sh > /tmp/entrypoint \
+    && mv /tmp/entrypoint /usr/local/bin/docker-entrypoint.sh \
+    && chmod +x /usr/local/bin/docker-entrypoint.sh
 ENTRYPOINT ["docker-entrypoint.sh"]
 EXPOSE 3000
-CMD ["npm", "run", "start:prod"]
+# Gọi thẳng node (NODE_ENV đã set ở trên): `npm run` giữ thêm 1 tiến trình npm
+# ~60-75MB RSS suốt đời container, và nuốt SIGTERM khiến tắt container chậm.
+CMD ["node", "src/server.js"]

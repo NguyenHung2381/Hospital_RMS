@@ -1,0 +1,311 @@
+/* Khung bộ lọc trang Nhật ký hoạt động — mọi ô cao 38px, căn thẳng hàng. */
+.panel {
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+	padding: 16px 24px;
+	border-bottom: 1px solid var(--color-gray-100);
+	background: var(--color-white);
+}
+
+/* ── Hàng chính ─────────────────────────────────────────────────────────── */
+.mainRow {
+	display: grid;
+	grid-template-columns: auto minmax(200px, 1fr) minmax(200px, 1fr) auto;
+	gap: 10px;
+	align-items: center;
+}
+.rangeGroup {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+}
+.arrow {
+	color: var(--color-gray-400);
+	font-size: 13px;
+}
+.date {
+	width: 150px;
+}
+
+.control {
+	width: 100%;
+	height: 38px;
+	padding: 0 12px;
+	border: 1.5px solid var(--color-gray-200);
+	border-radius: var(--radius-lg);
+	background: var(--color-white);
+	font-family: var(--font-body);
+	font-size: var(--font-size-sm);
+	color: var(--color-gray-800);
+	outline: none;
+	transition:
+		border-color var(--transition-fast),
+		box-shadow var(--transition-fast);
+}
+.rangeGroup > .control {
+	width: auto;
+	min-width: 150px;
+	font-weight: var(--font-weight-semibold);
+}
+select.control {
+	cursor: pointer;
+}
+.control:focus {
+	border-color: var(--color-primary);
+	box-shadow: 0 0 0 3px rgba(46, 184, 122, 0.12);
+}
+.control::placeholder {
+	color: var(--color-gray-400);
+}
+.controlOn {
+	border-color: var(--color-primary);
+	background: var(--color-primary-pale);
+	color: var(--color-primary-dark);
+	font-weight: var(--font-weight-semibold);
+}
+
+.search {
+	position: relative;
+	display: flex;
+	align-items: center;
+	min-width: 0;
+}
+.search input {
+	width: 100%;
+	height: 38px;
+	padding: 0 12px 0 34px;
+	border: 1.5px solid var(--color-gray-200);
+	border-radius: var(--radius-lg);
+	background: var(--color-gray-50);
+	font-family: var(--font-body);
+	font-size: var(--font-size-sm);
+	color: var(--color-gray-800);
+	outline: none;
+	transition: all var(--transition-fast);
+}
+.search input::placeholder {
+	color: var(--color-gray-400);
+}
+.search input:focus {
+	border-color: var(--color-primary);
+	background: var(--color-white);
+	box-shadow: 0 0 0 3px rgba(46, 184, 122, 0.12);
+}
+.searchIcon {
+	position: absolute;
+	left: 12px;
+	width: 14px;
+	height: 14px;
+	color: var(--color-gray-400);
+	pointer-events: none;
+}
+
+.advancedBtn {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	height: 38px;
+	padding: 0 14px;
+	border: 1.5px solid var(--color-gray-200);
+	border-radius: var(--radius-lg);
+	background: var(--color-white);
+	font-family: var(--font-body);
+	font-size: var(--font-size-sm);
+	font-weight: var(--font-weight-semibold);
+	color: var(--color-gray-700);
+	cursor: pointer;
+	white-space: nowrap;
+}
+.advancedBtn:hover,
+.advancedBtnOn {
+	border-color: var(--color-primary);
+	color: var(--color-primary-dark);
+}
+.countBadge {
+	min-width: 18px;
+	height: 18px;
+	padding: 0 5px;
+	border-radius: var(--radius-full);
+	background: var(--color-primary);
+	color: #fff;
+	font-size: 11px;
+	line-height: 18px;
+	text-align: center;
+}
+
+/* ── Lọc nhanh ──────────────────────────────────────────────────────────── */
+.quickRow,
+.tagRow {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 6px;
+}
+.quickLabel {
+	margin-right: 4px;
+	font-size: 11.5px;
+	font-weight: var(--font-weight-bold);
+	text-transform: uppercase;
+	letter-spacing: 0.04em;
+	color: var(--color-gray-400);
+	white-space: nowrap;
+}
+.quickChip {
+	height: 28px;
+	padding: 0 12px;
+	border: 1px solid var(--color-gray-200);
+	border-radius: var(--radius-full);
+	background: var(--color-white);
+	font-family: var(--font-body);
+	font-size: 12.5px;
+	font-weight: var(--font-weight-medium);
+	color: var(--color-gray-600);
+	cursor: pointer;
+	white-space: nowrap;
+	transition: all var(--transition-fast);
+}
+.quickChip:hover {
+	border-color: var(--color-primary);
+	color: var(--color-primary-dark);
+}
+.quickChipOn {
+	border-color: var(--color-primary);
+	background: var(--color-primary);
+	color: #fff;
+}
+.quickChipOn:hover {
+	color: #fff;
+	background: var(--color-primary-dark);
+}
+
+/* ── Lưới bộ lọc nâng cao ───────────────────────────────────────────────── */
+.grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+	gap: 12px 12px;
+	padding: 14px;
+	border: 1px solid var(--color-gray-100);
+	border-radius: var(--radius-lg);
+	background: var(--color-gray-50);
+}
+.field {
+	display: flex;
+	flex-direction: column;
+	gap: 5px;
+	min-width: 0;
+}
+.fieldCheck {
+	justify-content: flex-end;
+}
+.label {
+	font-size: 12px;
+	font-weight: var(--font-weight-semibold);
+	color: var(--color-gray-600);
+}
+.check {
+	display: inline-flex;
+	align-items: center;
+	gap: 8px;
+	height: 38px;
+	font-size: var(--font-size-sm);
+	color: var(--color-gray-700);
+	cursor: pointer;
+	user-select: none;
+}
+.check input {
+	width: 16px;
+	height: 16px;
+	accent-color: var(--color-primary);
+}
+
+/* MultiSelect dùng chung có trigger 32px / max 160px — kéo giãn cho khớp lưới. */
+.ms {
+	width: 100%;
+}
+.ms > button {
+	width: 100%;
+	max-width: none;
+	height: 38px;
+	padding: 0 12px;
+	border: 1.5px solid var(--color-gray-200);
+	border-radius: var(--radius-lg);
+	font-size: var(--font-size-sm);
+}
+.ms > div {
+	min-width: 100%;
+	max-width: 320px;
+}
+
+/* ── Điều kiện đang lọc ─────────────────────────────────────────────────── */
+.tag {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	height: 26px;
+	padding: 0 6px 0 10px;
+	border-radius: var(--radius-full);
+	background: var(--color-primary-pale);
+	color: var(--color-primary-dark);
+	font-size: 12px;
+	font-weight: var(--font-weight-medium);
+	max-width: 320px;
+}
+.tag button {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 16px;
+	height: 16px;
+	border: none;
+	border-radius: 50%;
+	background: transparent;
+	color: inherit;
+	cursor: pointer;
+	flex-shrink: 0;
+}
+.tag button:hover {
+	background: rgba(0, 0, 0, 0.08);
+}
+.clearAll {
+	border: none;
+	background: transparent;
+	font-family: var(--font-body);
+	font-size: 12.5px;
+	font-weight: var(--font-weight-semibold);
+	color: #b42318;
+	cursor: pointer;
+}
+.clearAll:hover {
+	text-decoration: underline;
+}
+
+@media (max-width: 1100px) {
+	.mainRow {
+		grid-template-columns: 1fr 1fr;
+	}
+	.rangeGroup {
+		grid-column: 1 / -1;
+		flex-wrap: wrap;
+	}
+}
+@media (max-width: 640px) {
+	.panel {
+		padding: 12px 16px;
+	}
+	.mainRow {
+		grid-template-columns: 1fr;
+	}
+	.rangeGroup > .control,
+	.date {
+		width: 100%;
+	}
+	.advancedBtn {
+		justify-content: center;
+	}
+	.quickRow {
+		flex-wrap: nowrap;
+		overflow-x: auto;
+		padding-bottom: 2px;
+	}
+}
