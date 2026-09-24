@@ -18,6 +18,10 @@ Monorepo gồm hai ứng dụng chạy độc lập, dùng chung một REST API:
 - [Bắt đầu nhanh](#bắt-đầu-nhanh)
 - [Cấu hình môi trường](#cấu-hình-môi-trường)
 - [Chạy bằng Docker](#chạy-bằng-docker)
+  - [Develop](#develop-docker-composeyml)
+  - [Production](#production-docker-composeprodyml)
+  - [JWT secret](#jwt-secret)
+  - [Xử lý sự cố](#xử-lý-sự-cố-docker)
 - [Cấu trúc dự án](#cấu-trúc-dự-án)
 - [Phân hệ chức năng](#phân-hệ-chức-năng)
 - [API](#api)
@@ -111,14 +115,14 @@ Chạy riêng từng phần: `npm run server` (backend) hoặc `npm run client` 
 
 Nếu port `3000` đang bận, backend tự chuyển sang port trống kế tiếp và ghi `VITE_API_PORT` vào `frontend/.env` để Vite proxy đúng port.
 
-### Build production
+### Build production (không Docker)
 
 ```bash
-npm run build --prefix frontend        # ra frontend/dist
+npm run build --prefix frontend        # ra frontend/dist (bundle JS được làm rối bằng javascript-obfuscator)
 npm run start:prod --prefix backend    # NODE_ENV=production
 ```
 
-Ở production, server **không khởi động** nếu thiếu `CORS_ORIGIN`.
+Ở production, server **không khởi động** nếu thiếu `CORS_ORIGIN`. Cách triển khai khuyến nghị là dùng Docker, xem [Docker: Production](#production-docker-composeprodyml).
 
 ---
 
@@ -153,29 +157,233 @@ VITE_API_PORT=3000        # backend tự ghi mỗi lần khởi động
 
 ## Chạy bằng Docker
 
-SQL Server **không** chạy trong container mà vẫn chạy trên máy host. Container kết nối tới SQL Server qua `host.docker.internal`.
+Dự án có hai file compose:
+
+| | Develop | Production |
+|---|---|---|
+| File | `docker-compose.yml` | `docker-compose.prod.yml` |
+| Project Compose | `hospital_rms_dev` | `hospital_rms` |
+| Build target | `dev` (Node, mount source code) | `prod` (backend `npm ci --omit=dev`, frontend build tĩnh + Nginx) |
+| Service | `server`, `client`, `redis` (+ `loki`, `promtail`) | `backend`, `frontend`, `redis` |
+| Truy cập web | `http://localhost:5173` (Vite) | `http://<host>:8084` (Nginx) |
+| API | `http://localhost:3000` | `127.0.0.1:3001` (chỉ loopback trên máy server) |
+| Hot reload | Có (nodemon + Vite, polling) | Không |
+| Biến môi trường | `backend/.env` được mount vào container | `backend/.env` + `backend/.env.production` qua `env_file` |
+| Upload | `backend/uploads/` trên máy host | Volume `server_uploads` |
+
+Mỗi file đặt tên project riêng (khoá `name:` ở đầu file) nên hai môi trường chạy song song được trên cùng một máy: container, network và volume tách biệt, không dùng chung JWT secret. Trước đây cả hai cùng lấy tên thư mục làm tên project, chạy môi trường này sẽ dừng container của môi trường kia.
+
+### Yêu cầu chung
+
+- **Docker Desktop** (Windows/macOS) hoặc **Docker Engine** (Linux) có **Compose v2.24 trở lên**. Bản prod dùng cú pháp `env_file` với `path`/`required`, bản cũ hơn sẽ báo lỗi.
+- BuildKit bật sẵn (mặc định từ Docker 23). Dockerfile dùng `RUN --mount=type=cache` để giữ cache npm giữa các lần build.
+- **SQL Server không chạy trong container** mà chạy trên máy host hoặc một máy chủ riêng:
+  - Bật **TCP/IP** trong SQL Server Configuration Manager, dùng port cố định (mặc định `1433`).
+  - Mở port `1433` trên firewall cho dải IP của Docker. Container coi SQL Server trên host là máy khác trong mạng, không phải `localhost`.
+  - Bật **SQL Server Authentication** (mixed mode). Container không dùng được Windows Authentication.
+
+---
+
+### Develop (`docker-compose.yml`)
+
+Source code được bind mount vào container. Sửa code trên máy là container tự nạp lại: nodemon cho backend, Vite HMR cho frontend.
+
+#### Service
+
+| Service | Port | Ghi chú |
+|---|---|---|
+| `server` | `3000` | Express + nodemon (`-L`, polling). `mem_limit: 640m`, heap V8 384 MB |
+| `client` | `5173` | Vite dev server, proxy `/api` và `/uploads` sang `server:3000`. `mem_limit: 768m` |
+| `redis` | `6379` | Redis 7, `maxmemory 128mb`, `allkeys-lru`, tắt RDB/AOF (chỉ làm cache) |
+| `loki` | `3100` | Profile `logs`, **không chạy mặc định** |
+| `promtail` | – | Profile `logs`, đọc `backend/logs` rồi đẩy vào Loki |
+
+#### Cấu hình
+
+1. Tạo `backend/.env` từ file mẫu:
+
+   ```bash
+   cp backend/.env.example backend/.env
+   ```
+
+   Điền `DB_USER`, `DB_PASSWORD`, `DB_DATABASE`. Để trống hoặc giữ nguyên giá trị mẫu của `JWT_SECRET` / `JWT_REFRESH_SECRET` cũng được, container sẽ tự sinh và ghi vào file này (xem [JWT secret](#jwt-secret)).
+
+2. Các biến compose tự đặt, **không cần** khai báo trong `.env`:
+
+   | Biến | Giá trị | Lý do |
+   |---|---|---|
+   | `NODE_ENV` | `development` | |
+   | `DB_SERVER` | `host.docker.internal` | Trỏ về SQL Server trên máy host (`extra_hosts: host-gateway` để chạy được cả trên Linux) |
+   | `REDIS_HOST` / `REDIS_PORT` | `redis` / `6379` | Tên service trong mạng Docker |
+   | `TRUST_PROXY` | `loopback, uniquelocal` | Tin Vite proxy trong mạng Docker, để `req.ip` là IP thật của máy khách chứ không phải IP container `client` |
+   | `LOG_RETENTION_FILES` | `100` | Giữ ít nhất khoảng 3 tháng log |
+   | `VITE_API_HOST` / `VITE_API_PORT` | `server` / `3000` | Đích proxy của Vite |
+   | `CHOKIDAR_USEPOLLING` | `true` | Bind mount qua Docker Desktop không phát fs-events, phải polling (chu kỳ 1 giây) |
+
+   Biến môi trường do compose đặt được ưu tiên hơn giá trị trong `backend/.env`.
+
+#### Chạy
 
 ```bash
-# Dev: hot reload (mount code), kèm Redis + Loki + Promtail
-docker compose up --build
-#   client → http://localhost:5173
-#   server → http://localhost:3000
-#   redis  → localhost:6379      loki → http://localhost:3100
-
-# Prod-style: client build tĩnh phục vụ qua Nginx
-cp backend/.env.example backend/.env    # bắt buộc, điền DB_SERVER và DB_*
-docker compose -f docker-compose.prod.yml up --build -d
-#   client → http://localhost        server → http://localhost:3000
+docker compose up --build            # lần đầu, hoặc sau khi sửa Dockerfile
+docker compose up -d                 # chạy nền
+docker compose logs -f server        # xem log backend
+docker compose --profile logs up -d  # bật thêm Loki + Promtail
+docker compose down                  # dừng và xoá container (giữ volume)
 ```
 
-File upload ở bản prod được lưu trong volume `server_uploads`.
+| Địa chỉ | Nội dung |
+|---|---|
+| `http://localhost:5173` | Giao diện web |
+| `http://localhost:3000/api-docs` | Swagger UI (Basic Auth `SWAGGER_USER` / `SWAGGER_PASS`) |
+| `http://localhost:3000/health` | Health check |
+| `http://localhost:3100` | Loki (khi bật profile `logs`) |
+
+#### Thêm hoặc cập nhật package
+
+`node_modules` nằm trong anonymous volume (`/app/node_modules`) để không bị bind mount ghi đè. Vì vậy sau khi sửa `package.json`, phải build lại image **và** tạo lại volume đó, nếu không container vẫn dùng `node_modules` cũ:
+
+```bash
+docker compose up -d --build --renew-anon-volumes server   # hoặc client
+```
+
+---
+
+### Production (`docker-compose.prod.yml`)
+
+```
+Trình duyệt ──► :8084 ──► frontend (Nginx, file tĩnh)
+                              │  /api/, /uploads/, /api/v1/events (SSE)
+                              ▼
+                          backend:3001 ──► redis:6379
+                              │
+                              ▼
+                          SQL Server (DB_SERVER, ngoài Docker)
+```
+
+#### Service
+
+| Service | Port trên máy host | Ghi chú |
+|---|---|---|
+| `frontend` | `8084` → `80` | Nginx phục vụ `frontend/dist` và reverse proxy tới `backend:3001`. `mem_limit: 64m` |
+| `backend` | `127.0.0.1:3001` | Chỉ mở trên loopback để IIS / reverse proxy cùng máy gọi được. Không lộ ra mạng. `mem_limit: 512m` |
+| `redis` | – | Không publish port, chỉ dùng trong mạng Docker |
+
+Mọi service đều có `restart: unless-stopped`, tự khởi động lại cùng Docker.
+
+#### Bước 1: Chuẩn bị SQL Server
+
+- Tạo login riêng cho ứng dụng, chỉ có quyền trên database `RMS_HOSPITAL`, bằng `scripts/create-app-login.sql`. File `*.sql` không có trong repo, lấy từ nhóm phát triển.
+- **Không dùng `sa` ở production.** Server sẽ in cảnh báo khi khởi động nếu `DB_USER=sa`.
+
+#### Bước 2: Tạo file môi trường
+
+Compose nạp hai file theo thứ tự. File sau ghi đè file trước, và cả hai đều không bắt buộc phải có:
+
+| File | Nội dung nên đặt |
+|---|---|
+| `backend/.env` | Cấu hình chung: `DB_SERVER`, `DB_PORT`, `DB_DATABASE`, `SWAGGER_*`, `SMTP_*`, `JOBS_ENABLED`… |
+| `backend/.env.production` | Thông tin chỉ dùng cho prod: `DB_USER` / `DB_PASSWORD` của login riêng, `DB_TRUST_SERVER_CERT`, `UPLOAD_URL_SECRET` |
+
+```bash
+cp backend/.env.example backend/.env
+# sửa DB_SERVER thành địa chỉ SQL Server thật
+#   (dùng host.docker.internal nếu SQL Server nằm trên chính máy chạy Docker)
+
+cat > backend/.env.production <<'EOF'
+DB_USER=rms_app
+DB_PASSWORD=<mật khẩu mạnh>
+DB_TRUST_SERVER_CERT=true
+SWAGGER_PASS=<mật khẩu mạnh>
+EOF
+```
+
+Cả hai file đều bị `.gitignore` và `.dockerignore` loại ra nên không bị commit hay đóng gói vào image.
+
+#### Bước 3: Kiểm tra các biến compose ghi đè
+
+Các biến sau được đặt cứng trong `docker-compose.prod.yml` và **luôn thắng** giá trị trong file `.env`:
+
+| Biến | Giá trị | Ghi chú |
+|---|---|---|
+| `DB_ENCRYPT` | `true` | Luôn mã hoá kết nối tới SQL Server. SQL Server chưa cài chứng chỉ thì dùng chứng chỉ tự ký, cần `DB_TRUST_SERVER_CERT=true`. Có chứng chỉ CA thật thì đặt `false` |
+| `PORT` | `3001` | Phải khớp `proxy_pass http://backend:3001` trong `frontend/nginx.conf` |
+| `REDIS_HOST` / `REDIS_PORT` | `redis` / `6379` | |
+| `TRUST_PROXY` | `loopback, uniquelocal` | Tin Nginx trong mạng Docker, để rate-limit đăng nhập tính theo IP thật của máy khách |
+| `CORS_ORIGIN` | `http://nckh.bvnghean.vn:8084,…` | Bắt buộc ở production |
+| `NODE_OPTIONS` | `--max-old-space-size=384` | Heap nhỏ hơn `mem_limit` để còn chỗ cho buffer upload và xuất Excel |
+
+**Đổi domain hoặc port** thì phải sửa đồng bộ ba chỗ:
+
+1. `CORS_ORIGIN` trong `docker-compose.prod.yml`: origin chính xác mà trình duyệt dùng, gồm cả scheme và port.
+2. `server_name` trong `frontend/nginx.conf`.
+3. `ports: "8084:80"` của service `frontend`.
+
+#### Bước 4: Build và chạy
+
+```bash
+docker compose -f docker-compose.prod.yml up -d --build
+docker compose -f docker-compose.prod.yml ps
+docker compose -f docker-compose.prod.yml logs -f backend
+```
+
+Kiểm tra trên máy server:
+
+```bash
+curl http://127.0.0.1:3001/health     # backend
+curl -I http://localhost:8084         # frontend
+```
+
+Swagger UI ở prod chỉ truy cập được từ chính máy server: `http://127.0.0.1:3001/api-docs`.
+
+#### Cập nhật phiên bản
+
+```bash
+git pull
+docker compose -f docker-compose.prod.yml up -d --build
+docker image prune -f                 # dọn image cũ
+```
+
+Người dùng không bị đăng xuất khi redeploy vì JWT secret được giữ trong volume `server_secrets`.
+
+#### Dữ liệu và sao lưu
+
+| Volume | Nội dung |
+|---|---|
+| `server_uploads` | Toàn bộ file người dùng upload (hồ sơ đề tài, tài liệu, video khoá học…) |
+| `server_secrets` | JWT secret tự sinh (`/app/secrets/jwt.env`) |
+| `server_logs` | Log hoạt động `audit-*.log` (`/app/logs`), nguồn dữ liệu của trang Nhật ký hoạt động |
+
+> ⚠️ **Không chạy `docker compose -f docker-compose.prod.yml down -v`.** Cờ `-v` xoá các volume trên: mất toàn bộ file upload, nhật ký hoạt động, và mọi người dùng bị đăng xuất.
+
+Tên volume thật có tiền tố là tên project (`hospital_rms`, đặt cố định trong `docker-compose.prod.yml`), ví dụ `hospital_rms_server_uploads`. Xem bằng `docker volume ls`. Nếu máy chủ trước đây chạy từ thư mục có tên khác, volume cũ mang tiền tố của thư mục đó: chạy với `-p <tên cũ>` (hoặc `COMPOSE_PROJECT_NAME=<tên cũ>`) để giữ dữ liệu. Sao lưu:
+
+```bash
+docker run --rm -v hospital_rms_server_uploads:/data -v "$PWD":/backup alpine \
+  tar czf /backup/uploads-$(date +%F).tar.gz -C /data .
+```
+
+Sao lưu log hoạt động cũng làm tương tự với volume `hospital_rms_server_logs`.
+
+#### Nginx
+
+`frontend/nginx.conf`:
+
+- `client_max_body_size 300m`, khớp giới hạn `TRAINING_MEDIA_MAX_MB`.
+- `/api/v1/events` (SSE) tách riêng: tắt buffering và gzip, `proxy_read_timeout 1h`.
+- `/api/` và `/uploads/` proxy tới backend, kèm `X-Forwarded-For` / `X-Forwarded-Proto`.
+- Các đường dẫn còn lại trả `index.html` cho SPA.
+
+Nginx trong container chỉ nghe HTTP. Để chạy HTTPS, đặt một reverse proxy (IIS ARR, Nginx trên host…) phía trước cổng `8084` để lo chứng chỉ TLS, rồi thêm origin `https://…` vào `CORS_ORIGIN`.
+
+---
 
 ### JWT secret
 
 Container server tự sinh `JWT_SECRET` / `JWT_REFRESH_SECRET` khi khởi động nếu còn trống hoặc là giá trị mẫu `change-me…` (`backend/docker-entrypoint.sh`):
 
-- Có `backend/.env` và chạy bản dev: điền thẳng vào `backend/.env`.
-- Không có: lưu trong volume `server_secrets`, giữ nguyên qua restart/redeploy.
+- **Dev** (có `backend/.env` được mount vào `/app/.env`): ghi thẳng vào `backend/.env`.
+- **Prod** (biến lấy qua `env_file`): lưu trong volume `server_secrets`, giữ nguyên qua restart/redeploy. Secret đã đặt thật trong `.env` / `.env.production` thì được giữ nguyên, không bị thay.
 
 Sinh tay (không Docker): `npm run gen:jwt` (thêm `-- --dry-run` để xem trước, `-- --force` để thay secret đang dùng).
 
@@ -188,7 +396,23 @@ Sinh tay (không Docker): `npm run gen:jwt` (thêm `-- --dry-run` để xem trư
 .\scripts\rotate-jwt-secrets.ps1 -Unregister                # gỡ lịch
 ```
 
+Script tự nhận service API theo file compose (`backend` ở prod, `server` ở dev) và ghi secret mới vào đúng nơi đang giữ secret. Thứ tự tìm: `backend/.env.production` (chỉ ở prod), rồi `backend/.env`, cuối cùng là volume `server_secrets`. File bị ghi đè được backup thành `<tên file>.bak`.
+
 Log ghi tại `logs/jwt-rotate.log`.
+
+### Xử lý sự cố Docker
+
+| Hiện tượng | Nguyên nhân / cách xử lý |
+|---|---|
+| Backend báo `Failed to connect to host.docker.internal:1433` | SQL Server chưa bật TCP/IP, chưa mở firewall port `1433`, hoặc instance có tên (`SQLEXPRESS`) đang dùng port động. Đặt port cố định `1433` trong SQL Server Configuration Manager rồi khởi động lại dịch vụ SQL Server. |
+| Backend thoát ngay, log báo thiếu biến | Thiếu `DB_USER`, `DB_PASSWORD`, `SWAGGER_USER` hoặc `SWAGGER_PASS` trong `backend/.env` / `.env.production`. |
+| Prod báo lỗi CORS trên trình duyệt | Origin trình duyệt đang dùng (scheme + domain + port) chưa có trong `CORS_ORIGIN` của `docker-compose.prod.yml`. |
+| Compose báo lỗi ở `env_file` | Docker Compose cũ hơn v2.24. Cập nhật Docker Desktop / plugin compose. |
+| Dev: sửa code không thấy cập nhật | Kiểm tra `docker compose logs client`. Polling có độ trễ khoảng 1 giây. Nếu vừa thêm package thì chạy lại với `--renew-anon-volumes`. |
+| Dev: lỗi `Cannot find module` sau khi `git pull` | `package.json` đã đổi nhưng `node_modules` trong volume còn cũ. Chạy `docker compose up -d --build --renew-anon-volumes`. |
+| `npm ci` lỗi `EIDLETIMEOUT` khi build | Mạng chập chờn. Chạy lại lệnh build, cache npm được giữ nên không phải tải lại từ đầu. |
+| Upload file lớn bị lỗi `413` ở prod | Vượt `client_max_body_size 300m` trong `frontend/nginx.conf` hoặc giới hạn `TRAINING_*_MAX_MB` của backend. |
+| Docker Desktop ngốn RAM | Mỗi service đã có `mem_limit`. Tắt profile `logs` nếu không dùng Loki. |
 
 ---
 
@@ -227,8 +451,8 @@ Hospital_RMS/
 │
 ├── scripts/                    # wait-server.js, script import dữ liệu từ hệ thống cũ
 ├── infra/                      # cấu hình Loki, Promtail
-├── docker-compose.yml          # dev: server, client, redis, loki, promtail
-└── docker-compose.prod.yml     # prod: server, client (Nginx), redis
+├── docker-compose.yml          # dev: server, client, redis (+ loki, promtail qua profile "logs")
+└── docker-compose.prod.yml     # prod: backend, frontend (Nginx), redis
 ```
 
 ---
@@ -285,9 +509,22 @@ Hospital_RMS/
 - **Chống dò mật khẩu**: rate-limit đăng nhập, tạm khoá tài khoản sau nhiều lần sai, ghi lại sự kiện bảo mật (API `/security-events`).
 - **Bảo trì tài khoản**: job hằng đêm vô hiệu hoá tài khoản hết hạn và cảnh báo mật khẩu cũ.
 - **Phân quyền theo permission** gắn với vai trò, dạng `resource:action` (vd `topics:create`, `persons:merge`):
-  - Backend dùng `authorizePermission([...])`, quyền được cache trong `permissionCache`.
-  - Frontend dùng `<RequirePermission perm="...">` và guard ở router.
-  - Vai trò và tập quyền được quản lý tại `/admin/roles`.
+  - **Danh mục quyền nằm trong code**: `backend/src/permissions/catalog.js` là nguồn duy nhất (module → resource → quyền, kèm tên/mô tả tiếng Việt). Server đồng bộ danh mục vào bảng `permissions` mỗi lần khởi động: thêm quyền mới, cập nhật tên/nhóm, không xoá quyền nào. Quyền tách ra từ quyền cũ khai báo `seedFrom` để vai trò đang có quyền cũ được cấp sẵn quyền mới.
+  - **Có đúng quyền mới được làm**: `manage` không còn là wildcard bao các action khác, nó chỉ là tên một quyền cụ thể (vd `roles:manage` = phân quyền vai trò). Riêng `system:manage` là superuser.
+  - **Phạm vi dữ liệu** là thuộc tính của lượt cấp quyền (cột `role_permissions.scope`), không phải action riêng: đề tài `own` / `department` / `all`, người dùng `department` / `all`, khoá học `assigned` / `all` (`backend/src/permissions/scopes.js`). Backend đọc bằng `scopeOf(user, resource)`; màn hình phân quyền có cột "Phạm vi dữ liệu" cho các resource này.
+  - Migration SQL tương ứng nằm ở `backend/migrations/` (chạy theo thứ tự tên file, `sqlcmd -C -I -b -f 65001`). Server cũng tự chạy các bước này lúc khởi động nếu login có quyền `ALTER TABLE`.
+  - Nâng cấp từ mô hình cũ (`topics:read_all`, `users:read_department`, `courses:read_assigned`, `X:manage` dạng wildcard) chạy tự động lúc khởi động, một lần, giữ nguyên quyền hiệu lực của mọi vai trò. Xem trước: `npm run migrate:permissions -- --dry-run`. Nếu login của ứng dụng không có quyền `ALTER TABLE`, chạy `npm run migrate:permissions` bằng tài khoản có quyền; trong lúc chưa nâng cấp, hệ thống vẫn tính đúng quyền từ dữ liệu cũ nhưng không cho sửa phân quyền.
+  - Backend dùng `authorizePermission([...])`, quyền được cache trong `permissionCache`. Dùng quyền không có trong catalog sẽ bị cảnh báo lúc khởi động.
+  - Hướng dẫn cho lập trình viên (thêm quyền, thêm route, lọc theo phạm vi, nâng cấp CSDL): `backend/src/permissions/README.md`.
+  - `npm test` (trong `backend`) chạy bộ test phân quyền: danh mục quyền, quy tắc quyền/phạm vi, chống leo thang, ma trận vai trò mẫu × route. Không cần DB.
+  - `npm run check:routes` (trong `backend`) quét mọi route: route không gắn quyền phải được khai báo kèm lý do trong `src/permissions/routePolicy.js`, nếu không script báo lỗi.
+  - **Superuser** là cờ `roles.is_superuser`, không phải quyền trong ma trận, nên không cấp được qua giao diện. **Vai trò hệ thống** (`roles.is_system`, 8 vai trò gốc) không xoá được. Code nghiệp vụ tham chiếu vai trò qua mã `roles.code` (`admin`, `member`, `trainee`, `dept_head`…, xem `services/roleCodes.js`), không dùng id `VT0x`.
+  - **Thu hồi phiên ngay lập tức**: access token mang `tv` = `users.token_version`. Reset mật khẩu, đăng xuất mọi thiết bị, tự đổi mật khẩu sẽ tăng version, nên mọi access token cũ bị từ chối ngay (tự đổi mật khẩu thì phiên hiện tại được cấp token mới).
+  - Cache quyền / trạng thái tài khoản nằm trong RAM từng instance; lệnh xoá cache được phát qua Redis pub/sub (`utils/cacheBus.js`) để mọi instance cùng xoá. Redis không sẵn sàng thì mỗi instance tự hết hạn theo TTL.
+  - Frontend làm mới quyền từ `GET /users/me` khi mở ứng dụng và khi vai trò/tài khoản thay đổi (SSE), nên đổi quyền có hiệu lực trên giao diện mà không cần đăng nhập lại.
+  - Frontend dùng `<RequirePermission perm="...">`, `<Can>`, `usePermission()`, `scopeOf()` với kiểu `PermissionKey` sinh từ catalog (`npm run gen:perm-types` trong `backend` → `frontend/src/shared/types/permissions.generated.ts`); gõ sai tên quyền là lỗi biên dịch.
+  - Chống leo thang quyền (`services/privilegeGuard.js`): chỉ cấp/gán được quyền và vai trò không vượt quá quyền của chính mình.
+  - Vai trò và tập quyền được quản lý tại `/admin/roles`; ma trận quyền dựng từ `GET /permissions/catalog`.
 
 ---
 
@@ -334,7 +571,7 @@ Hospital_RMS/
 - Pino ghi file JSON xoay theo ngày tại `LOG_DIR/audit-*.log` (mặc định `backend/logs/`), giữ tối đa `LOG_RETENTION_FILES` file.
 - Middleware `activityLogger` ghi lại request, lọc theo `AUDIT_LOG_METHODS`. Trang **Nhật ký hoạt động** (`/admin/activity-logs`) đọc trực tiếp từ file log, không dùng SQL.
 - `LOG_STDOUT=1` để ghi ra stdout khi đã có hệ thống thu gom log riêng.
-- Bản Docker dev có sẵn Promtail đọc `backend/logs` và đẩy vào Loki (`http://localhost:3100`).
+- Bản Docker dev có sẵn Promtail đọc `backend/logs` và đẩy vào Loki (`http://localhost:3100`), bật bằng `docker compose --profile logs up -d`.
 
 ---
 

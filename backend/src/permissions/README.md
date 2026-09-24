@@ -1,0 +1,58 @@
+# Phân quyền
+
+Mô hình: mỗi tài khoản có **một vai trò**; vai trò có tập **lượt cấp quyền** `resource:action`, mỗi lượt cấp có thể kèm **phạm vi dữ liệu**.
+
+| Khái niệm | Ở đâu | Ghi chú |
+|---|---|---|
+| Danh mục quyền | `catalog.js` | Nguồn duy nhất. Server đồng bộ vào bảng `permissions` lúc khởi động (`sync.js`). |
+| Phạm vi dữ liệu | `scopes.js`, cột `role_permissions.scope` | `topics`: own / department / all · `users`: department / all · `courses`: assigned / all. Resource khác: `NULL`. |
+| Superuser | cột `roles.is_superuser` | Không phải quyền trong danh mục, không cấp được qua giao diện. Trong code hiện dưới dạng key `system:manage`. |
+| Vai trò hệ thống | `roles.is_system`, `roles.code` | 8 vai trò gốc, không xoá được. Code tham chiếu qua mã (`services/roleCodes.js`), không dùng id `VT0x`. |
+| Chống leo thang | `services/privilegeGuard.js` | Chỉ cấp / gán / sửa được thứ không vượt quyền (và phạm vi) của chính mình. |
+| Phiên đăng nhập | `users.token_version`, `services/sessionVersion.js` | Tăng version ⇒ mọi access token cũ bị từ chối ngay. |
+
+Quy tắc kiểm tra: **có đúng quyền mới được** (`manage` không phải wildcard), superuser được hết. Frontend dùng cùng quy tắc (`frontend/src/shared/utils/permissions.ts`), nhưng chỉ để ẩn/hiện; backend luôn tự kiểm tra.
+
+## Việc thường gặp
+
+**Thêm quyền mới**
+1. Thêm `p('PERM-XXX-ACTION', 'action', 'Tên hiển thị', 'Mô tả')` vào đúng resource trong `catalog.js`. Id cố định, tên không trùng (cột `name` có UNIQUE).
+2. Tách từ quyền cũ ⇒ thêm `seedFrom: ['resource:action']` để vai trò đang có quyền cũ được cấp sẵn quyền mới (chỉ ở lần tạo).
+3. `npm run gen:perm-types` để sinh lại kiểu `PermissionKey` cho frontend.
+4. Dùng ở route: `authorizePermission(['resource', 'action'])`.
+5. `npm test`, rồi cập nhật bảng `EXPECT` trong `test/permissions/routeMatrix.test.js` nếu quyền đó đổi ai được làm gì.
+
+**Thêm route**: gắn `authorizePermission(...)`. Route cố ý chỉ cần đăng nhập hoặc công khai thì khai báo kèm lý do trong `routePolicy.js`. Thiếu thì `npm run check:routes` và `npm test` đều báo lỗi.
+
+**Lọc dữ liệu theo phạm vi**: `scopeOf(req.user, 'topics')` trả `'own' | 'department' | 'all'` (null = không có quyền trên resource). Xem cách dùng ở `topicService.getAll`, `userController.isDeptScoped`, `courseService` (`'assigned'`).
+
+**Tham chiếu vai trò trong code**: `roleIdOf(ROLE.TRAINEE)` / `inputRoleId(request, 'trainee_role', ROLE.TRAINEE)` rồi dùng `@trainee_role` trong SQL.
+
+**Thu hồi phiên của một tài khoản**: `bumpTokenVersion(userId)`.
+
+## Kiểm tra
+
+```bash
+npm test                                  # danh mục, quy tắc quyền/phạm vi, chống leo thang, ma trận vai trò × route
+npm run check:routes -- --list            # bảng mọi route và quyền của nó
+npm run migrate:permissions -- --dry-run  # xem trước nâng cấp CSDL
+```
+
+Vai trò mẫu cho test ma trận nằm ở `test/permissions/fixtures/role-templates.json`: ảnh chụp quyền của 8 vai trò hệ thống, không đọc DB. Khi đổi quyền của vai trò hệ thống có chủ đích, chụp lại fixture và sửa bảng `EXPECT` trong cùng commit.
+
+## Nâng cấp CSDL
+
+Chạy theo thứ tự tên file trong `backend/migrations/` (`sqlcmd -C -I -b -f 65001`), hoặc để server tự chạy lúc khởi động (`migrations.js`, cần quyền `ALTER TABLE`):
+
+1. `20260924_01_permission_scopes.sql`: cột `scope`, quy đổi quyền kiểu cũ, 2 quyền tách riêng `exams:manage`, `cme_records:manage`.
+2. `20260924_02_token_version_role_codes.sql`: `users.token_version`, `roles.code` / `is_system` / `is_superuser`.
+
+### Kiểm tra lúc khởi động
+
+Code chỉ chạy với CSDL đã ở mô hình mới, không còn nhánh chạy theo dữ liệu kiểu cũ. Khi khởi động, `permissions/index.js`:
+
+1. Tự chạy migration nếu còn thiếu (cần quyền `ALTER TABLE`; đã nâng cấp thì không làm gì).
+2. Kiểm tra đủ cột (`role_permissions.scope`, `users.token_version`, `roles.code` / `is_system` / `is_superuser`) và không còn quyền kiểu cũ (`read_all`, `read_department`, `read_assigned`, `system:manage`). **Thiếu thì server dừng** (exit 1) và liệt kê từng mục kèm file SQL cần chạy.
+3. Không kết nối được CSDL (SQL Server chưa lên) thì chỉ cảnh báo, server vẫn chạy như trước.
+
+`normalizeLegacy` (`scopes.js`) và `LEGACY_ROLE_IDS` (`roleCodes.js`) chỉ còn phục vụ migration.

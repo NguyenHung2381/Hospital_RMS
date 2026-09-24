@@ -1,4 +1,5 @@
 import { notify } from '../../../shared/utils/feedback';
+import { scopeOf } from '../../../shared/utils/permissions';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { useRealtimeUpdate } from '../../../layouts/hooks/useRealtime';
@@ -48,9 +49,7 @@ export function useTopicDetail() {
 		permissions?: string[];
 	}>();
 	const currentUserId = userInfo?.id ?? '';
-	const isAdminAccount = !!userInfo?.permissions?.some(
-		(p) => p === 'system:manage' || p === 'topics:read_all',
-	);
+	const isAdminAccount = scopeOf(userInfo, 'topics') === 'all';
 	const fullName = userInfo?.full_name ?? userInfo?.username ?? 'Người dùng';
 	const userRole = userInfo?.role ?? userInfo?.role_name ?? 'Thành viên';
 	const initials = fullName

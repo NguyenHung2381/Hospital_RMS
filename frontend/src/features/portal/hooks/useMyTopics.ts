@@ -1,4 +1,5 @@
 import { notify } from '../../../shared/utils/feedback';
+import { hasPermission, isSuperuser as isSuperuserUser } from '../../../shared/utils/permissions';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRealtimeUpdate } from '../../../layouts/hooks/useRealtime';
 import { getStoredUser, type StoredUser } from '../../../shared/utils/storage';
@@ -41,13 +42,9 @@ export function useMyTopics() {
 	const userRole = userInfo?.role ?? userInfo?.role_name ?? 'Thành viên';
 	const currentUserId = userInfo?.id ?? '';
 	const userDeptId = userInfo?.department_id ?? '';
-	const permissions = userInfo?.permissions ?? [];
-	const isSuperuser = permissions.includes('system:manage');
-	const canSeeDept = canSeeDeptTopics(permissions);
-	const canCreateTopic =
-		isSuperuser ||
-		permissions.includes('topics:create') ||
-		permissions.includes('topics:manage');
+	const isSuperuser = isSuperuserUser(userInfo);
+	const canSeeDept = canSeeDeptTopics(userInfo);
+	const canCreateTopic = hasPermission(userInfo, 'topics:create');
 	// Nút "Đăng ký đề tài mới" chỉ hiện khi đang trong thời gian đăng ký của đợt.
 	const { open: registrationOpen } = useRegistrationOpen(canCreateTopic);
 	const canRegister = canCreateTopic && registrationOpen;

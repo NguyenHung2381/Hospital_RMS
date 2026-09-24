@@ -51,6 +51,17 @@ function getNetworkIp() {
 
 (async () => {
 	try {
+		// Nâng cấp / kiểm tra CSDL phân quyền + đồng bộ danh mục quyền trước khi
+		// nhận request (xem permissions/index.js). CSDL chưa ở mô hình mới thì
+		// DỪNG: code không còn nhánh chạy theo mô hình cũ.
+		try {
+			await require('./permissions').initPermissions();
+		} catch (err) {
+			if (err.code !== 'PERMISSION_SCHEMA_OUTDATED') throw err;
+			console.error(`❌ [permissions] ${err.message}`);
+			process.exit(1);
+		}
+
 		const PREFERRED_PORT = parseInt(process.env.PORT) || 3000;
 		const PORT = await findAvailablePort(PREFERRED_PORT);
 

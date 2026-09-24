@@ -268,6 +268,47 @@
 }
 
 /* ── HEADER BUTTON ───────────────────────── */
+.headerBtns {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--space-2);
+}
+.btnSecondaryHeader {
+	display: flex;
+	align-items: center;
+	gap: var(--space-2);
+	padding: var(--space-2) var(--space-4);
+	border: 1px solid var(--color-gray-200);
+	border-radius: var(--radius-lg);
+	background: var(--color-white);
+	color: var(--color-gray-700);
+	font-size: var(--font-size-sm);
+	font-weight: 500;
+	cursor: pointer;
+}
+.btnSecondaryHeader:hover {
+	border-color: var(--color-primary);
+	color: var(--color-primary);
+}
+.btnSecondaryHeader svg {
+	width: 15px;
+	height: 15px;
+}
+.statCellLink {
+	white-space: nowrap;
+	border: none;
+	background: none;
+	padding: 0;
+	font: inherit;
+	cursor: pointer;
+}
+.statCellLink:not(:disabled):hover {
+	color: var(--color-primary);
+	text-decoration: underline;
+}
+.statCellLink:disabled {
+	cursor: default;
+}
 .btnAddHeader {
 	display: flex;
 	align-items: center;
@@ -877,6 +918,21 @@
 }
 
 /* Cell nhãn resource */
+.permModuleRow td {
+	padding: var(--space-2) var(--space-5);
+	background: var(--color-gray-50);
+	font-size: var(--font-size-xs);
+	font-weight: var(--font-weight-semibold);
+	color: var(--color-gray-600);
+	text-transform: uppercase;
+	letter-spacing: 0.04em;
+}
+/* Quyền nhạy cảm (quản lý tài khoản / phân quyền): viền cảnh báo quanh ô */
+.permCritical {
+	outline: 1px dashed #e2a04a;
+	outline-offset: 2px;
+	border-radius: 4px;
+}
 .permResourceCell {
 	padding: var(--space-3) var(--space-5);
 	vertical-align: middle;
@@ -1021,4 +1077,233 @@
 	.searchBox {
 		width: 100%;
 	}
+}
+
+/* ── Công cụ xem quyền: so sánh vai trò, tra cứu quyền người dùng, lọc ma trận ── */
+.viewToolbar {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--space-3);
+	padding: var(--space-3) var(--space-5);
+	border-bottom: 1px solid var(--color-gray-100);
+}
+.viewSelect {
+	min-width: 200px;
+	flex: 1;
+	padding: 6px 10px;
+	border: 1px solid var(--color-gray-200);
+	border-radius: var(--radius-md);
+	background: var(--color-white);
+	font-size: var(--font-size-sm);
+	color: var(--color-gray-800);
+}
+.viewSelect:focus {
+	outline: none;
+	border-color: var(--color-primary);
+}
+.viewVs {
+	font-size: var(--font-size-xs);
+	color: var(--color-gray-500);
+}
+.viewToggle {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	font-size: var(--font-size-xs);
+	color: var(--color-gray-600);
+	cursor: pointer;
+	white-space: nowrap;
+}
+.viewSearch {
+	position: relative;
+	flex: 1;
+	min-width: 220px;
+	display: flex;
+	align-items: center;
+	gap: var(--space-2);
+	padding: 6px 10px;
+	border: 1px solid var(--color-gray-200);
+	border-radius: var(--radius-md);
+	background: var(--color-white);
+}
+.viewSearch:focus-within {
+	border-color: var(--color-primary);
+}
+.viewSearch > svg {
+	width: 14px;
+	height: 14px;
+	flex-shrink: 0;
+	color: var(--color-gray-400);
+}
+.viewSearch input {
+	flex: 1;
+	min-width: 0;
+	border: none;
+	outline: none;
+	background: transparent;
+	font-size: var(--font-size-sm);
+	color: var(--color-gray-800);
+}
+.viewResults {
+	position: absolute;
+	top: calc(100% + 4px);
+	left: 0;
+	right: 0;
+	z-index: 5;
+	max-height: 260px;
+	overflow-y: auto;
+	padding: var(--space-1);
+	border: 1px solid var(--color-gray-200);
+	border-radius: var(--radius-md);
+	background: var(--color-white);
+	box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+}
+.viewResults button {
+	display: flex;
+	flex-direction: column;
+	align-items: flex-start;
+	width: 100%;
+	padding: 6px 8px;
+	border: none;
+	border-radius: var(--radius-sm);
+	background: none;
+	text-align: left;
+	font-size: var(--font-size-sm);
+	color: var(--color-gray-800);
+	cursor: pointer;
+}
+.viewResults button:hover {
+	background: var(--color-gray-50);
+}
+.viewSub {
+	font-size: var(--font-size-xs);
+	color: var(--color-gray-500);
+}
+.viewEmpty {
+	padding: var(--space-6) var(--space-5);
+	text-align: center;
+	font-size: var(--font-size-sm);
+	color: var(--color-gray-500);
+}
+.viewCell {
+	padding: var(--space-2) var(--space-3);
+	font-size: var(--font-size-xs);
+	color: var(--color-gray-700);
+	vertical-align: middle;
+}
+.viewGranted {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+	padding: 2px 8px;
+	border-radius: var(--radius-full);
+	background: #e1f5ee;
+	color: #1d6b48;
+	font-size: 11px;
+	font-weight: 600;
+	white-space: nowrap;
+}
+.viewGranted svg {
+	width: 10px;
+	height: 10px;
+}
+.viewChips {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 4px;
+}
+.viewUserCard {
+	display: flex;
+	flex-wrap: wrap;
+	justify-content: space-between;
+	align-items: center;
+	gap: var(--space-2);
+	margin: var(--space-3) var(--space-5);
+	padding: var(--space-3);
+	border: 1px solid var(--color-gray-100);
+	border-radius: var(--radius-md);
+	background: var(--color-gray-50);
+}
+
+/* Bước xác nhận trước khi lưu phân quyền */
+.permConfirm {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+	max-height: 180px;
+	overflow-y: auto;
+	margin: 0 var(--space-5);
+	padding: var(--space-3);
+	border: 1px solid var(--color-gray-200);
+	border-radius: var(--radius-md);
+	background: var(--color-gray-50);
+	font-size: var(--font-size-xs);
+	color: var(--color-gray-700);
+	line-height: 1.5;
+}
+.permConfirmTitle {
+	font-weight: 600;
+	color: var(--color-gray-800);
+}
+.permConfirmWarn {
+	padding: 4px 8px;
+	border-radius: var(--radius-sm);
+	background: #fdf2e0;
+	color: #8a5a12;
+	font-weight: 600;
+}
+
+/* ── Ma trận phân quyền: modal rộng + ghim cột tên / hàng tiêu đề khi cuộn ── */
+.modalXl {
+	max-width: min(1240px, 96vw);
+}
+.permMatrix thead th:first-child,
+.permMatrix .permResourceCell {
+	position: sticky;
+	left: 0;
+	z-index: 1;
+	background: var(--color-white);
+	box-shadow: 1px 0 0 var(--color-gray-100);
+}
+.permMatrix thead th:first-child {
+	z-index: 3;
+	background: var(--color-gray-200);
+}
+/* Ô gộp colSpan không "dính" được — cho nhãn bên trong dính trái khi cuộn ngang */
+.permModuleLabel {
+	position: sticky;
+	left: var(--space-5);
+}
+.permScopeSelect {
+	min-width: 150px;
+	padding: 4px 8px;
+	border: 1px solid var(--color-gray-200);
+	border-radius: var(--radius-sm);
+	background: var(--color-white);
+	font-size: var(--font-size-xs);
+	color: var(--color-gray-800);
+	cursor: pointer;
+}
+.permScopeSelect:focus {
+	outline: none;
+	border-color: var(--color-primary);
+}
+.permSuperNotice {
+	display: flex;
+	align-items: flex-start;
+	gap: var(--space-2);
+	margin: var(--space-3) var(--space-5);
+	padding: var(--space-3);
+	border-radius: var(--radius-md);
+	background: #fdecec;
+	color: #8a2b2b;
+	font-size: var(--font-size-xs);
+	line-height: 1.5;
+}
+.permSuperNotice svg {
+	flex-shrink: 0;
+	width: 14px;
+	height: 14px;
+	margin-top: 1px;
 }

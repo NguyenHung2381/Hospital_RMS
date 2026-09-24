@@ -7,6 +7,7 @@ import {
 	hasPermission,
 	hasToken,
 } from './authHelpers';
+import type { PermissionKey } from '../../shared/types/permissions.generated';
 
 export function RequireAuth({ children }: { children: React.ReactNode }) {
 	const location = useLocation();
@@ -29,7 +30,7 @@ export function RequirePermission({
 	perm,
 	children,
 }: {
-	perm: string;
+	perm: PermissionKey;
 	children: React.ReactNode;
 }) {
 	if (!hasToken()) return <Navigate to='/login' replace />;

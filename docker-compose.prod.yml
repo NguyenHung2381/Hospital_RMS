@@ -1,3 +1,12 @@
+# Tên project cố định cho production — GIỮ NGUYÊN "hospital_rms": đây là tên
+# mặc định cũ (lấy từ tên thư mục), các volume dữ liệu thật đang mang tiền tố
+# này (hospital_rms_server_uploads, _server_logs, _server_secrets). Đổi tên là
+# Compose tạo volume mới rỗng → "mất" file upload, log, JWT secret.
+# Dev dùng project riêng (hospital_rms_dev, xem docker-compose.yml).
+# Máy chủ đặt source ở thư mục tên khác: kiểm tra `docker volume ls` trước, rồi
+# chạy với `-p <tên cũ>` hoặc COMPOSE_PROJECT_NAME=<tên cũ> để giữ volume.
+name: hospital_rms
+
 services:
   backend:
     build:
@@ -40,6 +49,9 @@ services:
       - server_uploads:/app/uploads
       # JWT secret tự sinh khi thiếu (docker-entrypoint.sh) — giữ qua restart/redeploy
       - server_secrets:/app/secrets
+      # Log hoạt động (audit-*.log) — nguồn dữ liệu của trang /activity-logs,
+      # phải nằm ngoài container để không mất khi redeploy/tạo lại container.
+      - server_logs:/app/logs
     depends_on:
       - redis
     restart: unless-stopped
@@ -73,3 +85,4 @@ services:
 volumes:
   server_uploads:
   server_secrets:
+  server_logs:

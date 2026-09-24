@@ -1,6 +1,7 @@
 import { apiClient } from '../../../shared/api/axios';
 import type {
-	Permission,
+	PermissionCatalog,
+	RoleGrant,
 	Role,
 	RoleFormData,
 	RoleListResponse,
@@ -32,13 +33,14 @@ export const deleteRole = (id: string) =>
 	apiClient.delete<null>(`/roles/${id}`);
 
 // Permission endpoints
-export const getAllPermissions = () =>
-	apiClient.get<Permission[]>('/permissions');
+export const getPermissionCatalog = () =>
+	apiClient.get<PermissionCatalog>('/permissions/catalog');
 
 export const getRolePermissions = (roleId: string) =>
-	apiClient.get<string[]>(`/roles/${roleId}/permissions`);
+	apiClient.get<RoleGrant[]>(`/roles/${roleId}/permissions`);
 
-export const setRolePermissions = (roleId: string, permissionIds: string[]) =>
-	apiClient.put<string[]>(`/roles/${roleId}/permissions`, {
-		permission_ids: permissionIds,
-	});
+export const cloneRole = (roleId: string, data: RoleFormData) =>
+	apiClient.post<Role>(`/roles/${roleId}/clone`, data);
+
+export const setRolePermissions = (roleId: string, grants: RoleGrant[]) =>
+	apiClient.put<RoleGrant[]>(`/roles/${roleId}/permissions`, { grants });

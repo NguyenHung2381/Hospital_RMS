@@ -12,6 +12,7 @@ const ExcelJS = require('exceljs');
 const { getPool, sql } = require('../config/db');
 const { norm, normDept, stripQualification } = require('../utils/vietnameseText');
 const partService = require('./seminarParticipantService');
+const { ROLE, inputRoleId } = require('./roleCodes');
 
 // ─── Khớp tên cột: header đã norm() → field nội bộ ──────────────────────────
 // Duyệt từ mẫu cụ thể tới chung chung; chỉ nhận cột ĐẦU TIÊN match mỗi field.
@@ -323,11 +324,12 @@ const parseWorkbook = async (buffer) => {
 // ─── Khớp cán bộ nội viện ──────────────────────────────────────────────────
 const loadUsers = async () => {
 	const pool = await getPool();
-	const r = await pool.request().query(`
+	// Loại tài khoản khoa dùng chung (vai trò dept_head) — không phải một người
+	const r = await (await inputRoleId(pool.request(), 'dept_head_role', ROLE.DEPT_HEAD)).query(`
 		SELECT u.id, u.full_name, u.staff_number, d.name AS department_name
 		FROM users u
 		LEFT JOIN departments d ON d.id = u.department_id
-		WHERE u.is_active = 1 AND u.role_id <> 'VT07'
+		WHERE u.is_active = 1 AND u.role_id <> @dept_head_role
 	`);
 	const byStaff = new Map();
 	const byName = new Map();

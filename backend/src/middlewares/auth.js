@@ -2,17 +2,24 @@ const jwt = require('jsonwebtoken');
 const { unauthorized } = require('../utils/response');
 const permCache = require('./permissionCache');
 const userStatusCache = require('./userStatusCache');
+const { isKnownKey } = require('../permissions/catalog');
+const { scopeRank } = require('../permissions/scopes');
 
 // Xác thực 2 lớp cho mọi API cần token:
 //   Lớp 1 — JWT: chữ ký hợp lệ + chưa hết hạn (stateless, không biết được
 //     việc xảy ra SAU khi token phát hành).
-//   Lớp 2 — DB (qua cache 60s): tài khoản còn is_active=1 và không bị khoá
-//     (locked_until) NGAY LÚC NÀY. Bắt được các trường hợp lớp 1 không thấy:
-//     admin vô hiệu hoá/khoá tài khoản, hoặc tài khoản bị khoá do đăng nhập
-//     sai sau khi access token đã phát hành — access token cũ (sống tới 8h)
-//     sẽ bị chặn trong vòng tối đa 60s thay vì tiếp tục dùng được tới hết hạn.
-// Sau đó mới nạp tập quyền của vai trò vào req.user.permissions (permCache,
-// cache 5 phút/role) nên tổng chi phí không đáng kể.
+//   Lớp 2 — DB (qua cache 60s): tài khoản còn is_active=1, chưa quá
+//     account_expires_at, kèm role_id/department_id HIỆN TẠI. Bắt
+//     được trường hợp lớp 1 không thấy: admin vô hiệu hoá tài khoản sau khi
+//     access token đã phát hành — access token cũ (sống tới 8h) sẽ bị chặn
+//     trong vòng tối đa 60s thay vì tiếp tục dùng được tới hết hạn.
+//     Kèm users.token_version: khác phiên bản trong token ⇒ phiên đã bị thu hồi.
+//     Cố ý KHÔNG xét locked_until (khoá tạm do đăng nhập sai): nếu đá phiên
+//     đang mở ra thì kẻ tấn công chỉ cần cố tình nhập sai mật khẩu là đẩy
+//     được người dùng thật ra khỏi hệ thống. Khoá tạm chỉ chặn đăng nhập MỚI.
+// Sau đó mới nạp tập quyền của vai trò vào req.user.permissions (+ phạm vi
+// dữ liệu vào req.user.permissionScopes) qua permCache (cache 5 phút/role) nên
+// tổng chi phí không đáng kể.
 const authenticate = async (req, res, next) => {
 	const authHeader = req.headers['authorization'];
 	const token = authHeader && authHeader.split(' ')[1]; // Bearer <token>
@@ -28,119 +35,119 @@ const authenticate = async (req, res, next) => {
 		return unauthorized(res, 'Token không hợp lệ');
 	}
 
-	if (
-		decoded.account_expires_at &&
-		new Date(decoded.account_expires_at) < new Date()
-	) {
+	// Token có "purpose" (pre-auth 2FA, QR điểm danh...) cũng ký bằng
+	// JWT_SECRET nhưng KHÔNG phải access token — nếu nhận, pre-auth token (chỉ
+	// cần mật khẩu) gọi được /auth/2fa/setup để ghi đè secret và tắt 2FA.
+	if (decoded.purpose) return unauthorized(res, 'Token không hợp lệ');
+
+	let status;
+	try {
+		status = await userStatusCache.load(decoded.id);
+	} catch (err) {
+		return next(err);
+	}
+	if (!status.isActive) {
+		return unauthorized(res, 'Tài khoản đã bị vô hiệu hóa hoặc hết hạn sử dụng');
+	}
+	// users.token_version tăng (reset mật khẩu, đăng xuất mọi thiết bị, tự đổi
+	// mật khẩu) ⇒ mọi access token phát hành trước đó hết hiệu lực NGAY, không
+	// phải chờ tới hạn 8h. Token cũ không có `tv` được coi là phiên bản 0.
+	if ((decoded.tv ?? 0) !== status.tokenVersion) {
+		return unauthorized(res, 'Phiên đăng nhập đã hết hiệu lực, vui lòng đăng nhập lại');
+	}
+	if (status.accountExpiresAt && new Date(status.accountExpiresAt) < new Date()) {
 		return unauthorized(
 			res,
 			'Tài khoản đã hết hạn sử dụng (đợt nghiên cứu đã kết thúc)',
 		);
 	}
 
+	// Các field quyết định phân quyền lấy từ DB (userStatusCache), đè lên giá
+	// trị trong JWT — đổi vai trò / khoa có hiệu lực ngay, không chờ token hết hạn.
+	req.user = {
+		...decoded,
+		role_id: status.roleId,
+		department_id: status.departmentId,
+		account_expires_at: status.accountExpiresAt,
+	};
 	try {
-		const status = await userStatusCache.load(decoded.id);
-		if (!status.isActive) {
-			return unauthorized(res, 'Tài khoản đã bị vô hiệu hóa hoặc hết hạn sử dụng');
-		}
-		if (status.lockedUntil && new Date(status.lockedUntil) > new Date()) {
-			return unauthorized(res, 'Tài khoản đang bị tạm khoá');
-		}
-	} catch (err) {
-		return next(err);
-	}
-
-	req.user = decoded; // { id, username, role_id, account_expires_at }
-	try {
-		req.user.permissions = decoded.role_id
-			? await permCache.load(decoded.role_id)
-			: new Set();
+		const perms = status.roleId
+			? await permCache.load(status.roleId)
+			: { keys: new Set(), scopes: new Map() };
+		req.user.permissions = perms.keys; // Set<"resource:action">
+		req.user.permissionScopes = perms.scopes; // Map<"resource:action", scope>
 	} catch (err) {
 		return next(err);
 	}
 	next();
 };
 
-// Người dùng có quyền "resource:action" (hoặc "resource:manage", hoặc là superuser).
+// Có ĐÚNG quyền "resource:action" (hoặc là superuser). "manage" không còn là
+// wildcard — xem permissions/catalog.js.
 const hasPermission = (user, resource, action) => {
 	const perms = user?.permissions;
 	if (!perms) return false;
-	return (
-		perms.has('system:manage') ||
-		perms.has(`${resource}:manage`) ||
-		perms.has(`${resource}:${action}`)
-	);
+	return perms.has('system:manage') || perms.has(`${resource}:${action}`);
 };
 
-// Phạm vi dữ liệu đề tài / tài khoản mà vai trò được xem.
-//   'all'        — xem toàn hệ thống (superuser hoặc *:read_all)
-//   'department' — chỉ trong khoa của mình (*:read_department)
-//   'own'        — chỉ dữ liệu liên quan trực tiếp tới mình
-const scopeFor = (user, resource) => {
+// Phạm vi dữ liệu của actor trên một resource có phạm vi (permissions/scopes.js):
+//   topics:  'own' | 'department' | 'all'
+//   users:   'department' | 'all'
+//   courses: 'assigned' | 'all'
+// Lấy theo lượt cấp quyền `resource:action` (mặc định action 'read' — phạm vi
+// XEM, quyết định danh sách/chi tiết thấy được). Không có quyền đó → phạm vi
+// rộng nhất trong các quyền khác của resource; không có quyền nào → null.
+const scopeOf = (user, resource, action = 'read') => {
 	const perms = user?.permissions;
-	if (!perms) return 'own';
-	if (perms.has('system:manage') || perms.has(`${resource}:read_all`))
-		return 'all';
-	if (perms.has(`${resource}:read_department`)) return 'department';
-	return 'own';
+	if (!perms) return null;
+	if (perms.has('system:manage')) return 'all';
+	const scopes = user.permissionScopes;
+	const direct = scopes?.get(`${resource}:${action}`);
+	if (direct) return direct;
+	let best = null;
+	for (const [key, scope] of scopes ?? []) {
+		if (!key.startsWith(`${resource}:`)) continue;
+		if (best === null || scopeRank(resource, scope) > scopeRank(resource, best)) best = scope;
+	}
+	return best;
 };
 
-const topicScope = (user) => scopeFor(user, 'topics');
-const userScope = (user) => scopeFor(user, 'users');
-
-// Phạm vi khóa đào tạo — khác các resource khác ở chỗ 'courses:read' (phẳng,
-// đã tồn tại từ trước) mặc nhiên coi là 'all' để KHÔNG đổi hành vi của các vai
-// trò đang có quyền này. Chỉ khi actor có thêm 'courses:read_assigned' (và
-// không có courses:read_all/manage) mới bị thu hẹp còn đúng khóa được phân
-// công qua lecturer_assignments — vì vậy phải kiểm tra 'read_assigned' TRƯỚC
-// khi rơi về nhánh flat 'read' ở dưới.
-const courseScope = (user) => {
-	const perms = user?.permissions;
-	if (!perms) return 'own';
-	if (
-		perms.has('system:manage') ||
-		perms.has('courses:manage') ||
-		perms.has('courses:read_all')
-	)
-		return 'all';
-	if (perms.has('courses:read_assigned')) return 'assigned';
-	if (perms.has('courses:read')) return 'all';
-	return 'own';
-};
-
-// Bị chặn theo mốc thời gian (deadline) khi chỉ có phạm vi 'own'.
-const isDeadlineBound = (user) => topicScope(user) === 'own';
+// Chỉ thấy đề tài mình tham gia ⇒ bị chặn theo mốc thời gian (deadline) của đợt.
+const isDeadlineBound = (user) => (scopeOf(user, 'topics') ?? 'own') === 'own';
 
 // Kiểm tra phân quyền theo resource:action từ bảng role_permissions.
 // Quyền 'system:manage' bỏ qua mọi kiểm tra (superuser).
-// Quyền 'manage' của một resource cho phép mọi action trên resource đó.
 // Hỗ trợ nhiều cặp [resource, action]: người dùng chỉ cần có ít nhất một.
 const authorizePermission = (...pairs) => {
-	return (req, res, next) => {
+	// Quyền không có trong catalog = gõ sai hoặc quên khai báo → route luôn 403
+	// với mọi người trừ superuser. Báo ngay lúc nạp route thay vì đợi người dùng.
+	for (const [resource, action] of pairs) {
+		if (!isKnownKey(`${resource}:${action}`)) {
+			console.warn(
+				`⚠️  [permissions] authorizePermission dùng quyền không có trong catalog: ${resource}:${action}`,
+			);
+		}
+	}
+	const middleware = (req, res, next) => {
 		const perms = req.user?.permissions;
 		if (perms?.has('system:manage')) return next();
 
-		const ok =
-			perms &&
-			pairs.some(
-				([resource, action]) =>
-					perms.has(`${resource}:${action}`) ||
-					perms.has(`${resource}:manage`),
-			);
+		const ok = perms && pairs.some(([resource, action]) => perms.has(`${resource}:${action}`));
 		if (ok) return next();
 		return res.status(403).json({
 			success: false,
 			message: 'Không đủ quyền thực hiện thao tác này',
 		});
 	};
+	// Cho scripts/check-route-permissions.js đọc được route cần quyền gì.
+	middleware.permissionPairs = pairs;
+	return middleware;
 };
 
 module.exports = {
 	authenticate,
 	authorizePermission,
 	hasPermission,
-	topicScope,
-	userScope,
-	courseScope,
+	scopeOf,
 	isDeadlineBound,
 };

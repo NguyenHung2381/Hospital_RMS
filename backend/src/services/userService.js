@@ -2,9 +2,13 @@ const bcrypt = require('bcryptjs');
 const { getPool, sql } = require('../config/db');
 const { broadcast } = require('./eventService');
 const personService = require('./personService');
+const securityEvents = require('./securityEventService');
+const userStatusCache = require('../middlewares/userStatusCache');
+const { bumpTokenVersion } = require('./sessionVersion');
 const { paging } = require('../utils/paging');
 // department_id/role_id nhận danh sách phân tách bởi dấu phẩy (multi-select trên UI)
 const { splitList, inClause } = require('../utils/sqlFilters');
+const { ROLE, requireRoleId } = require('./roleCodes');
 
 // ─── Cache thống kê toàn bảng (global_stats) ─────────────────────────────────
 // global_stats không phụ thuộc filter/phân trang nên trước đây bị quét lại toàn
@@ -101,7 +105,7 @@ const getAll = async ({
 
     SELECT u.id, u.username, u.staff_number, u.full_name, u.email, u.is_active,
            u.department_id, d.name AS department_name,
-           u.role_id, r.name AS role_name,
+           u.role_id, r.name AS role_name, r.code AS role_code,
            u.can_sit_council, u.can_chair_council,
            u.password_changed_at, u.created_at, u.updated_at,
            COUNT(*) OVER() AS _total
@@ -158,7 +162,7 @@ const getById = async (id) => {
 	const result = await pool.request().input('id', sql.VarChar(20), id).query(`
       SELECT u.id, u.username, u.staff_number, u.full_name, u.email, u.is_active,
              u.department_id, d.name AS department_name,
-             u.role_id, r.name AS role_name,
+             u.role_id, r.name AS role_name, r.code AS role_code,
              u.can_sit_council, u.can_chair_council,
              u.password_changed_at, u.created_at, u.updated_at
       FROM users u
@@ -188,7 +192,7 @@ const create = async (data, actorId) => {
 		.input('full_name', sql.NVarChar(200), data.full_name)
 		.input('email', sql.VarChar(100), data.email || null)
 		.input('department_id', sql.VarChar(20), data.department_id || null)
-		.input('role_id', sql.VarChar(20), data.role_id || 'VT06')
+		.input('role_id', sql.VarChar(20), data.role_id || (await requireRoleId(ROLE.MEMBER)))
 		.query(`
       DECLARE @new_id VARCHAR(20);
       SET @new_id = 'NV' + LEFT(REPLACE(NEWID(), '-', ''), 8);
@@ -259,6 +263,9 @@ const update = async (id, data, actorId) => {
 	await req.query(
 		`EXEC sp_set_actor @actor_id; UPDATE users SET ${sets.join(', ')} WHERE id = @id`,
 	);
+	// Vai trò / khoa / trạng thái mới phải có hiệu lực ngay với phiên đang mở
+	// (middlewares/auth.js đọc các field này qua userStatusCache, không tin JWT).
+	userStatusCache.clear(id);
 	await personService.syncPerson('users', id, { actorId });
 	const user = await getById(id);
 	invalidateStatsCache();
@@ -315,11 +322,15 @@ const remove = async (id, actorId) => {
 			UPDATE round_deadlines SET created_by = @actor_id WHERE created_by = @id;
 			DELETE FROM users WHERE id = @id;
 		`);
+	userStatusCache.clear(id);
 	invalidateStatsCache();
 	broadcast('update', { entity: 'user' });
 };
 
-const resetPassword = async (id, newPassword, actorId) => {
+// Reset mật khẩu bởi người quản lý: thu hồi toàn bộ phiên của tài khoản đích
+// (refresh token + token_version) — người đang giữ phiên cũ (có thể chính là
+// kẻ đã chiếm tài khoản) bị đăng xuất ngay, phải đăng nhập bằng mật khẩu mới.
+const resetPassword = async (id, newPassword, actorId, ip = null) => {
 	const pool = await getPool();
 	const hashed = await bcrypt.hash(newPassword, 12);
 	await pool
@@ -328,8 +339,19 @@ const resetPassword = async (id, newPassword, actorId) => {
 		.input('password', sql.VarChar(255), hashed)
 		.input('actor_id', sql.VarChar(20), actorId)
 		.query(
-			`EXEC sp_set_actor @actor_id; UPDATE users SET password=@password, password_changed_at=GETDATE(), updated_at=GETDATE(), updated_by=@actor_id WHERE id=@id`,
+			`EXEC sp_set_actor @actor_id;
+			 UPDATE users SET password=@password, password_changed_at=GETDATE(), updated_at=GETDATE(), updated_by=@actor_id WHERE id=@id;
+			 DELETE FROM refresh_tokens WHERE user_id=@id;`,
 		);
+	// Thu hồi ngay cả access token đang lưu hành (không chờ hết hạn 8h)
+	await bumpTokenVersion(id, pool);
+	await securityEvents.log({
+		eventType: 'password_reset_by_admin',
+		actorId,
+		targetType: 'user',
+		targetId: id,
+		ip,
+	});
 	invalidateStatsCache();
 	broadcast('update', { entity: 'user' });
 };

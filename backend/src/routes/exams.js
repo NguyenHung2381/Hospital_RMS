@@ -13,9 +13,10 @@ const { validate } = require('../middlewares/errorHandler');
 
 router.use(authenticate);
 
-// Quản lý (giảng viên/quản lý khóa học) — dùng lại quyền 'courses:update' vì
-// ngân hàng câu hỏi/đề thi gắn chặt với khóa học, không tách permission riêng.
-const canManage = authorizePermission(['courses', 'update']);
+// Quản lý ngân hàng câu hỏi / đề thi / bài làm. Trước đây mượn 'courses:update';
+// nay là quyền riêng 'exams:manage' (permissions/catalog.js, seedFrom
+// courses:update → vai trò đang có quyền cũ được cấp sẵn quyền mới).
+const canManage = authorizePermission(['exams', 'manage']);
 
 // ─── Học viên: đề đang mở + làm bài — ĐẶT TRƯỚC route quản trị bên dưới để
 // không bị nuốt bởi '/papers/:id' (đều là GET/POST 1 segment sau /papers). ──

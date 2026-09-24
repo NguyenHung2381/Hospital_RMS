@@ -3,8 +3,14 @@ const { success } = require('../utils/response');
 
 const login = async (req, res, next) => {
 	try {
-		const { username, password } = req.body;
-		const data = await authService.login(username, password, req.ip, req.get('user-agent'));
+		const { username, password, device_token } = req.body;
+		const data = await authService.login(
+			username,
+			password,
+			req.ip,
+			req.get('user-agent'),
+			device_token,
+		);
 		return success(res, data, 'Đăng nhập thành công');
 	} catch (err) {
 		next(err);
@@ -56,11 +62,18 @@ const sessions = async (req, res, next) => {
 const changePassword = async (req, res, next) => {
 	try {
 		const { old_password, new_password } = req.body;
-		await authService.changePassword(req.user.id, old_password, new_password);
+		// Trả cặp token mới cho phiên này — token cũ vừa bị thu hồi cùng mọi phiên khác
+		const tokens = await authService.changePassword(
+			req.user.id,
+			old_password,
+			new_password,
+			req.ip,
+			req.headers['user-agent'],
+		);
 		return success(
 			res,
-			null,
-			'Đổi mật khẩu thành công. Vui lòng đăng nhập lại trên các thiết bị khác.',
+			tokens,
+			'Đổi mật khẩu thành công. Các thiết bị khác đã bị đăng xuất.',
 		);
 	} catch (err) {
 		next(err);
@@ -69,8 +82,14 @@ const changePassword = async (req, res, next) => {
 
 const verify2FA = async (req, res, next) => {
 	try {
-		const { pre_auth_token, code } = req.body;
-		const data = await authService.verify2FALogin(pre_auth_token, code, req.ip, req.get('user-agent'));
+		const { pre_auth_token, code, device_token } = req.body;
+		const data = await authService.verify2FALogin(
+			pre_auth_token,
+			code,
+			req.ip,
+			req.get('user-agent'),
+			device_token,
+		);
 		return success(res, data, 'Đăng nhập thành công');
 	} catch (err) {
 		next(err);

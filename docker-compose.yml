@@ -1,3 +1,10 @@
+# Tên project riêng cho môi trường dev. Không đặt thì Compose lấy tên thư mục
+# (hospital_rms) — trùng với docker-compose.prod.yml, khiến 2 môi trường bị
+# gộp vào 1 project: chạy file này sẽ dừng/tạo lại container của file kia
+# (redis dùng chung tên service) và dùng chung volume (server_secrets → chung
+# JWT secret). Tên container / volume dev có tiền tố hospital_rms_dev.
+name: hospital_rms_dev
+
 services:
   server:
     build:

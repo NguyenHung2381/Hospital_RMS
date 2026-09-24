@@ -4,7 +4,8 @@ const { broadcast } = require('./eventService');
 const { paging } = require('../utils/paging');
 const mailService = require('./mailService');
 const trainingFileService = require('./trainingFileService');
-const { courseScope } = require('../middlewares/auth');
+const { scopeOf } = require('../middlewares/auth');
+const { ROLE, roleIdOf, inputRoleId } = require('./roleCodes');
 
 // Mã QR điểm danh: JWT ngắn hạn ký chính session_id (mirror utils/captcha.js)
 // — không trạng thái, không cần lưu DB, hết hạn nhanh. FE làm mới QR mỗi 28s;
@@ -113,7 +114,7 @@ const getAll = async (
 		where.push('c.status = @status');
 		req.input('status', sql.VarChar(15), status);
 	}
-	if (actor && courseScope(actor) === 'assigned') {
+	if (actor && scopeOf(actor, 'courses') === 'assigned') {
 		where.push(ASSIGNED_EXISTS_SQL);
 		req.input('actor_id', sql.VarChar(20), actor.id);
 	}
@@ -132,7 +133,7 @@ const getAll = async (
 
 const getById = async (id, actor = null) => {
 	const pool = await getPool();
-	if (actor && courseScope(actor) === 'assigned') {
+	if (actor && scopeOf(actor, 'courses') === 'assigned') {
 		const access = await pool
 			.request()
 			.input('id', sql.VarChar(20), id)
@@ -373,12 +374,12 @@ const registerTrainee = async (courseId, traineeId, actorId, { bypassWindow = fa
 // khoản do "Cấp tài khoản học viên" sinh ra — luôn đã gắn với 1 trainee).
 const listStaffCandidates = async () => {
 	const pool = await getPool();
-	const result = await pool.request().query(`
+	const result = await (await inputRoleId(pool.request(), 'trainee_role', ROLE.TRAINEE)).query(`
     SELECT u.id, u.full_name, u.staff_number, d.name AS department_name
     FROM users u
     LEFT JOIN departments d ON d.id = u.department_id
     WHERE u.is_active = 1
-      AND ISNULL(u.role_id, '') <> 'VT08'
+      AND ISNULL(u.role_id, '') <> @trainee_role
       AND NOT EXISTS (SELECT 1 FROM trainees t WHERE t.user_id = u.id)
     ORDER BY u.full_name
   `);
@@ -574,7 +575,7 @@ const assignLecturer = async (courseId, data, actorId) => {
 		err.statusCode = 404;
 		throw err;
 	}
-	if (lec.role_id === 'VT08') {
+	if (lec.role_id && lec.role_id === (await roleIdOf(ROLE.TRAINEE))) {
 		const err = new Error('Không thể phân công tài khoản học viên làm giảng viên.');
 		err.statusCode = 400;
 		throw err;

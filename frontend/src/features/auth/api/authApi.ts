@@ -1,4 +1,5 @@
 import { BASE_URL } from '../../../shared/api/axios';
+import { getDeviceToken, saveDeviceToken } from '../../../shared/utils/storage';
 
 export interface LoginUser {
 	id: string;
@@ -9,6 +10,7 @@ export interface LoginUser {
 	role: string;
 	role_id: string | null;
 	permissions: string[];
+	permission_scopes?: Record<string, string>;
 	department_id: string | null;
 }
 
@@ -16,6 +18,7 @@ export interface LoginResponse {
 	user: LoginUser;
 	access_token: string;
 	refresh_token: string;
+	device_token?: string;
 }
 
 export interface Requires2FAResponse {
@@ -41,7 +44,11 @@ export async function loginApi(
 	const res = await fetch(`${BASE_URL}/api/v1/auth/login`, {
 		method: 'POST',
 		headers: { 'Content-Type': 'application/json' },
-		body: JSON.stringify({ username, password }),
+		body: JSON.stringify({
+			username,
+			password,
+			device_token: getDeviceToken(username),
+		}),
 	});
 
 	const json = await res.json();
@@ -54,26 +61,39 @@ export async function loginApi(
 		throw new Error(message);
 	}
 
-	return json.data as LoginResponse | Requires2FAResponse;
+	const data = json.data as LoginResponse | Requires2FAResponse;
+	if ('device_token' in data && data.device_token) saveDeviceToken(username, data.device_token);
+	return data;
 }
 
 export async function verify2FAApi(
+	username: string,
 	preAuthToken: string,
 	code: string,
 ): Promise<LoginResponse> {
 	const res = await fetch(`${BASE_URL}/api/v1/auth/2fa/verify`, {
 		method: 'POST',
 		headers: { 'Content-Type': 'application/json' },
-		body: JSON.stringify({ pre_auth_token: preAuthToken, code }),
+		body: JSON.stringify({
+			pre_auth_token: preAuthToken,
+			code,
+			device_token: getDeviceToken(username),
+		}),
 	});
 
 	const json = await res.json();
 
 	if (!res.ok || !json.success) {
-		throw new Error(json.message ?? 'Mã xác thực không đúng');
+		const message = json.message ?? 'Mã xác thực không đúng';
+		if (json.retry_after_seconds > 0) {
+			throw new LoginLockedError(message, json.retry_after_seconds);
+		}
+		throw new Error(message);
 	}
 
-	return json.data as LoginResponse;
+	const data = json.data as LoginResponse;
+	if (data.device_token) saveDeviceToken(username, data.device_token);
+	return data;
 }
 
 export interface TwoFaSetup {

@@ -90,25 +90,41 @@ try {
 	$ErrorActionPreference = 'Stop'
 	if ($LASTEXITCODE -ne 0) { throw 'Docker chưa chạy (mở Docker Desktop rồi thử lại).' }
 
-	$envFile = Join-Path $root 'backend\.env'
-	$current = Get-EnvValue $envFile 'JWT_SECRET'
-	$hostMode = $current -and ($current -notlike 'change-me*')
+	# Tên service API khác nhau giữa 2 file compose: dev = "server", prod = "backend"
+	$ErrorActionPreference = 'Continue'
+	$services = & docker compose --project-directory $root -f $composePath config --services 2>$null
+	$ErrorActionPreference = 'Stop'
+	if ($LASTEXITCODE -ne 0) { throw "Không đọc được danh sách service trong $ComposeFile" }
+	$service = @('backend', 'server') | Where-Object { $services -contains $_ } | Select-Object -First 1
+	if (-not $service) { throw "Không thấy service 'backend' hoặc 'server' trong $ComposeFile" }
+	# Chỉ bản prod (service "backend") nạp backend/.env.production qua env_file
+	$isProd = $service -eq 'backend'
+
+	# Tìm nơi đang giữ secret thật, theo đúng thứ tự ưu tiên khi nạp: ở prod
+	# .env.production ghi đè .env, nên đổi ở .env khi .env.production có secret
+	# thật sẽ không có tác dụng.
+	$envName = $null
+	$candidates = if ($isProd) { @('.env.production', '.env') } else { @('.env') }
+	foreach ($name in $candidates) {
+		$current = Get-EnvValue (Join-Path $root "backend\$name") 'JWT_SECRET'
+		if ($current -and ($current -notlike 'change-me*')) { $envName = $name; break }
+	}
 
 	# Chạy script trong image server (không cần Node trên máy host)
 	$genArgs = @('run', '--rm', '--no-deps', '--entrypoint', 'node')
-	if ($hostMode) {
-		Write-Log 'Secret nằm trong backend/.env → ghi đè file này (backup backend/.env.bak)'
-		$genArgs += @('-v', "$(Join-Path $root 'backend'):/w", 'server',
-			'/app/scripts/gen-jwt-secrets.js', '--env', '/w/.env', '--force')
+	if ($envName) {
+		Write-Log "Secret nằm trong backend/$envName → ghi đè file này (backup backend/$envName.bak)"
+		$genArgs += @('-v', "$(Join-Path $root 'backend'):/w", $service,
+			'/app/scripts/gen-jwt-secrets.js', '--env', "/w/$envName", '--force')
 	} else {
 		Write-Log 'Secret nằm trong volume server_secrets → ghi đè /app/secrets/jwt.env'
-		$genArgs += @('server', '/app/scripts/gen-jwt-secrets.js',
+		$genArgs += @($service, '/app/scripts/gen-jwt-secrets.js',
 			'--env', '/app/secrets/jwt.env', '--force')
 	}
 	Invoke-Compose $genArgs
 
 	# Tạo lại container: env_file được đọc lại, entrypoint nạp secret mới
-	Invoke-Compose @('up', '-d', '--force-recreate', '--no-deps', 'server')
+	Invoke-Compose @('up', '-d', '--force-recreate', '--no-deps', $service)
 	Write-Log 'Hoàn tất — mọi phiên đăng nhập cũ đã hết hiệu lực.'
 } catch {
 	Write-Log "LỖI: $($_.Exception.Message)"

@@ -2,6 +2,7 @@ const { getPool, sql } = require('../config/db');
 const { broadcast } = require('./eventService');
 const { paging } = require('../utils/paging');
 const personService = require('./personService');
+const { ROLE, roleIdOf } = require('./roleCodes');
 
 const lecturerSelect = `
   SELECT l.*, u.full_name AS user_full_name, u.username
@@ -10,14 +11,15 @@ const lecturerSelect = `
 `;
 
 // Giảng viên chỉ là bác sĩ/nhân viên nội viện (users) hoặc chuyên gia ngoài viện —
-// không gắn được tài khoản học viên (VT08 — do "Cấp tài khoản học viên" sinh ra).
+// không gắn được tài khoản học viên (vai trò trainee — do "Cấp tài khoản học viên" sinh ra).
 const assertNotTraineeAccount = async (pool, userId) => {
 	if (!userId) return;
 	const r = await pool
 		.request()
 		.input('uid', sql.VarChar(20), userId)
 		.query('SELECT role_id FROM users WHERE id = @uid');
-	if (r.recordset[0]?.role_id === 'VT08') {
+	const roleId = r.recordset[0]?.role_id;
+	if (roleId && roleId === (await roleIdOf(ROLE.TRAINEE))) {
 		const err = new Error('Không thể dùng tài khoản học viên làm giảng viên.');
 		err.statusCode = 400;
 		throw err;

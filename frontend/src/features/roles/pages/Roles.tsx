@@ -1,16 +1,21 @@
 import { useState } from 'react';
+import { Badge } from '@/shared/components';
 import AdminLayout from '../../../layouts/AdminLayout';
 import {
 	CheckSvg,
+	CopySvg,
 	EditSvg,
 	KeySvg,
+	LayersSvg,
 	PlusSvg,
 	SearchSvg,
 	ShieldSvg,
 	TrashSvg,
+	UserCheckSvg,
 	UsersSvg,
 	XSvg,
 } from '@/assets/icons';
+import { usePermission } from '../../../shared/hooks/usePermission';
 import { SkeletonTable } from '../../../shared/components/Loading';
 import { Pagination } from '../../../shared/components/Table/Pagination';
 import sel from '../../../shared/components/Table/RowSelect.module.css';
@@ -22,6 +27,9 @@ import {
 import { useRowSelection } from '../../../shared/hooks/useRowSelection';
 import { RoleDeleteModal, RoleFormModal } from '../components/RoleModals';
 import { RolePermissionModal } from '../components/RolePermissionModal';
+import { RoleUsersModal } from '../components/RoleUsersModal';
+import { RoleCompareModal } from '../components/RoleCompareModal';
+import { UserPermissionsModal } from '../components/UserPermissionsModal';
 import { useRoles } from '../hooks/useRoles';
 import { formatDateVN } from '../../../shared/utils/formatDate';
 import styles from './Roles.module.css';
@@ -38,14 +46,27 @@ export default function Roles() {
 	const r = useRoles();
 	const rowSel = useRowSelection(r.paged.map((x) => x.id));
 	const [confirmBulkDelete, setConfirmBulkDelete] = useState(false);
+	const { has } = usePermission();
+	// Nhân bản = tạo vai trò + cấp quyền cho nó → cần cả 2 quyền (khớp backend)
+	const canClone = has('roles:create') && has('roles:manage');
 
 	const headerActions = (
-		<button
-			className={styles.btnAddHeader}
-			onClick={() => r.setModal('add')}
-		>
-			<PlusSvg /> Thêm vai trò
-		</button>
+		<div className={styles.headerBtns}>
+			{has('users:read') && (
+				<button className={styles.btnSecondaryHeader} onClick={() => r.setModal('userPermissions')}>
+					<UserCheckSvg /> Tra cứu quyền người dùng
+				</button>
+			)}
+			<button className={styles.btnSecondaryHeader} onClick={() => r.setModal('compare')}>
+				<LayersSvg /> So sánh vai trò
+			</button>
+			<button
+				className={styles.btnAddHeader}
+				onClick={() => r.setModal('add')}
+			>
+				<PlusSvg /> Thêm vai trò
+			</button>
+		</div>
 	);
 
 	return (
@@ -227,8 +248,23 @@ export default function Roles() {
 													{getInitials(role.name)}
 												</div>
 												<div>
-													<div className={styles.roleName}>{role.name}</div>
-													<div className={styles.roleId}>{role.id}</div>
+													<div className={styles.roleName}>
+														{role.name}
+														{role.is_superuser && (
+															<Badge tone='red' style={{ marginLeft: 6 }} title='Bỏ qua mọi kiểm tra phân quyền'>
+																Toàn quyền
+															</Badge>
+														)}
+														{role.is_system && (
+															<Badge tone='gray' style={{ marginLeft: 6 }} title='Vai trò gốc của hệ thống — không xoá được'>
+																Hệ thống
+															</Badge>
+														)}
+													</div>
+													<div className={styles.roleId}>
+														{role.id}
+														{role.code ? ` · ${role.code}` : ''}
+													</div>
 												</div>
 											</div>
 										</td>
@@ -242,10 +278,19 @@ export default function Roles() {
 											</span>
 										</td>
 										<td className={styles.td}>
-											<div className={styles.statCell}>
+											<button
+												type='button'
+												className={`${styles.statCell} ${styles.statCellLink}`}
+												title='Xem danh sách người dùng mang vai trò này'
+												disabled={!has('users:read')}
+												onClick={() => {
+													r.setActionRole(role);
+													r.setModal('users');
+												}}
+											>
 												<UsersSvg />
 												{role.user_count ?? 0} người
-											</div>
+											</button>
 										</td>
 										<td className={styles.td}>
 											{pCount !== undefined ? (
@@ -262,6 +307,7 @@ export default function Roles() {
 															pCount > 0 ? '#3c3489' : 'var(--color-gray-400)',
 														fontSize: 11,
 														fontWeight: 600,
+														whiteSpace: 'nowrap',
 													}}
 												>
 													<KeySvg />
@@ -293,6 +339,18 @@ export default function Roles() {
 												>
 													<KeySvg />
 												</div>
+												{canClone && (
+													<div
+														className={styles.actionBtn}
+														title='Nhân bản (vai trò mới cùng quyền)'
+														onClick={() => {
+															r.setActionRole(role);
+															r.setModal('clone');
+														}}
+													>
+														<CopySvg />
+													</div>
+												)}
 												<div
 													className={styles.actionBtn}
 													title='Chỉnh sửa'
@@ -303,16 +361,18 @@ export default function Roles() {
 												>
 													<EditSvg />
 												</div>
-												<div
-													className={`${styles.actionBtn} ${styles.danger}`}
-													title='Xoá'
-													onClick={() => {
-														r.setDeletingRole(role);
-														r.setModal('delete');
-													}}
-												>
-													<TrashSvg />
-												</div>
+												{!role.is_system && (
+													<div
+														className={`${styles.actionBtn} ${styles.danger}`}
+														title='Xoá'
+														onClick={() => {
+															r.setDeletingRole(role);
+															r.setModal('delete');
+														}}
+													>
+														<TrashSvg />
+													</div>
+												)}
 											</div>
 										</td>
 									</tr>
@@ -395,6 +455,32 @@ export default function Roles() {
 					}}
 					onSaved={r.handlePermSaved}
 				/>
+			)}
+
+			{r.modal === 'clone' && r.actionRole && (
+				<RoleFormModal
+					mode='clone'
+					role={r.actionRole}
+					onClose={() => {
+						r.setModal(null);
+						r.setActionRole(null);
+					}}
+					onSave={r.handleClone}
+					loading={r.loading}
+				/>
+			)}
+			{r.modal === 'users' && r.actionRole && (
+				<RoleUsersModal
+					role={r.actionRole}
+					onClose={() => {
+						r.setModal(null);
+						r.setActionRole(null);
+					}}
+				/>
+			)}
+			{r.modal === 'compare' && <RoleCompareModal onClose={() => r.setModal(null)} />}
+			{r.modal === 'userPermissions' && (
+				<UserPermissionsModal onClose={() => r.setModal(null)} />
 			)}
 
 			{/* Toast */}

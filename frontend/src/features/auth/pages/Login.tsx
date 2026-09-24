@@ -207,7 +207,7 @@ export default function Login() {
 		setIsLoading(true);
 		setOtpError(null);
 		try {
-			const data = await verify2FAApi(preAuthToken, otpCode.trim());
+			const data = await verify2FAApi(form.username, preAuthToken, otpCode.trim());
 			await completeLogin(data);
 		} catch (err) {
 			setOtpError(err instanceof Error ? err.message : 'Mã xác thực không đúng');

@@ -15,7 +15,7 @@ import sel from '@/shared/components/Table/RowSelect.module.css';
 import styles from '../pages/UserList.module.css';
 import type { SimpleItem, UpdateUserPayload } from '../api/userApi';
 import type { User } from '../types/user.type';
-import { roleCfg } from '../utils/userHelpers';
+import { roleCfg } from '@/shared/utils/roleDisplay';
 import { Avatar, Toggle } from './UserModal';
 import { UserBulkEditModal } from './UserBulkEditModal';
 
@@ -148,7 +148,7 @@ export function UserTable({
 						) : (
 							users.map((u, i) => {
 							const rowNum = (currentPage - 1) * pageSize + i + 1;
-							const rCfg = roleCfg(u.role_id);
+							const rCfg = roleCfg(u);
 							return (
 								<tr
 									key={u.id}

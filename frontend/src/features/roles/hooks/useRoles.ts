@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useRealtimeUpdate } from '../../../layouts/hooks/useRealtime';
 import { bulkToast, runBulk } from '../../../shared/utils/runBulk';
-import { createRole, deleteRole, getRoles, updateRole } from '../api/roleApi';
+import { cloneRole, createRole, deleteRole, getRoles, updateRole } from '../api/roleApi';
 import type { ModalType, Role, RoleFormData, RoleStats } from '../types/role.type';
 
 const EMPTY_STATS: RoleStats = { total: 0, withUsers: 0, totalUsers: 0 };
@@ -19,6 +19,8 @@ export function useRoles() {
 	const [editingRole, setEditingRole] = useState<Role | null>(null);
 	const [deletingRole, setDeletingRole] = useState<Role | null>(null);
 	const [permRole, setPermRole] = useState<Role | null>(null);
+	// Vai trò đang được nhân bản / xem danh sách người dùng
+	const [actionRole, setActionRole] = useState<Role | null>(null);
 	const [loading, setLoading] = useState(false);
 	const [pageSize, setPageSize] = useState(10);
 	const [page, setPage] = useState(1);
@@ -147,6 +149,25 @@ export function useRoles() {
 		[showToast, refreshData],
 	);
 
+	const handleClone = useCallback(
+		async (data: RoleFormData) => {
+			if (!actionRole) return;
+			setLoading(true);
+			try {
+				const created = await cloneRole(actionRole.id, data);
+				setModal(null);
+				setActionRole(null);
+				showToast('success', `Đã nhân bản thành "${created.name}" (${created.permission_count ?? 0} quyền)`);
+				refreshData();
+			} catch (err) {
+				showToast('error', err instanceof Error ? err.message : 'Nhân bản thất bại');
+			} finally {
+				setLoading(false);
+			}
+		},
+		[actionRole, showToast, refreshData],
+	);
+
 	const handlePermSaved = useCallback(
 		(roleId: string, ids: string[]) => {
 			setPermCountMap((prev) => ({ ...prev, [roleId]: ids.length }));
@@ -168,6 +189,8 @@ export function useRoles() {
 		setDeletingRole,
 		permRole,
 		setPermRole,
+		actionRole,
+		setActionRole,
 		loading,
 		pageSize,
 		setPageSize,
@@ -182,6 +205,7 @@ export function useRoles() {
 		stats,
 		handleAdd,
 		handleEdit,
+		handleClone,
 		handleDelete,
 		handleBulkDelete,
 		handlePermSaved,

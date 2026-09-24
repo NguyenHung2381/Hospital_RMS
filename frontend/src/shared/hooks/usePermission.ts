@@ -1,12 +1,13 @@
 import { getStoredUser, type StoredUser } from '../utils/storage';
+import type { PermissionKey } from '../types/permissions.generated';
 import { hasPermission, hasAnyPermission, canAccessAdminPanel } from '../utils/permissions';
 
 export interface UsePermissionResult {
 	user: StoredUser | null;
 	/** true nếu user có quyền `key` (vd "topics:create"), hoặc `key` rỗng/undefined. */
-	has: (key?: string | null) => boolean;
+	has: (key?: PermissionKey | null) => boolean;
 	/** true nếu user có ít nhất một trong các quyền truyền vào. */
-	hasAny: (keys: string[]) => boolean;
+	hasAny: (keys: PermissionKey[]) => boolean;
 	canAccessAdminPanel: boolean;
 }
 

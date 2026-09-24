@@ -26,7 +26,8 @@ import {
 import { DeptAccountsEditModal } from '../components/DeptAccountsEditModal';
 import { useDepartmentAccounts } from '../hooks/useDepartmentAccounts';
 import { getInitials } from '../../../shared/utils/helper';
-import { roleCfg } from '../utils/deptAccountsHelpers';
+import { roleCfg } from '@/shared/utils/roleDisplay';
+import { usePermission } from '../../../shared/hooks/usePermission';
 import { Badge } from '@/shared/components';
 import styles from './DepartmentAccounts.module.css';
 
@@ -49,13 +50,23 @@ function Avatar({
 	);
 }
 
-function Toggle({ on, onChange }: { on: boolean; onChange: () => void }) {
+function Toggle({
+	on,
+	onChange,
+	disabled,
+}: {
+	on: boolean;
+	onChange: () => void;
+	disabled?: boolean;
+}) {
 	return (
 		<button
 			type='button'
 			className={`${styles.toggleTrack} ${on ? styles.on : ''}`}
 			onClick={onChange}
 			aria-pressed={on}
+			disabled={disabled}
+			style={disabled ? { cursor: 'not-allowed', opacity: 0.6 } : undefined}
 		>
 			<span className={styles.toggleThumb} />
 		</button>
@@ -64,6 +75,12 @@ function Toggle({ on, onChange }: { on: boolean; onChange: () => void }) {
 
 export default function DepartmentAccounts() {
 	const d = useDepartmentAccounts();
+	// Nút thao tác chỉ hiện khi có đúng quyền backend đòi (PUT/DELETE /users/:id,
+	// reset-password). Tài khoản khoa (dept_head) thường chỉ có users:read —
+	// trang khi đó chỉ để xem, thay vì bấm nút nào cũng lỗi 403.
+	const { has } = usePermission();
+	const canUpdate = has('users:update');
+	const canDelete = has('users:delete');
 	const rowSel = useRowSelection((d.filteredUsers ?? []).map((u) => u.id));
 	const [bulkDeleteOpen, setBulkDeleteOpen] = React.useState(false);
 	const [bulkBusy, setBulkBusy] = React.useState(false);
@@ -228,33 +245,39 @@ export default function DepartmentAccounts() {
 							itemLabel='tài khoản'
 							actions={
 								<>
-									<BulkButton
-										disabled={bulkBusy}
-										onClick={() =>
-											runBulkAction(() =>
-												d.handleBulkSetActive([...rowSel.selectedIds], true),
-											)
-										}
-									>
-										<CheckSvg /> Kích hoạt
-									</BulkButton>
-									<BulkButton
-										disabled={bulkBusy}
-										onClick={() =>
-											runBulkAction(() =>
-												d.handleBulkSetActive([...rowSel.selectedIds], false),
-											)
-										}
-									>
-										<XSvg /> Khoá
-									</BulkButton>
-									<BulkButton
-										danger
-										disabled={bulkBusy}
-										onClick={() => setBulkDeleteOpen(true)}
-									>
-										<TrashSvg /> Xoá đã chọn
-									</BulkButton>
+									{canUpdate && (
+										<BulkButton
+											disabled={bulkBusy}
+											onClick={() =>
+												runBulkAction(() =>
+													d.handleBulkSetActive([...rowSel.selectedIds], true),
+												)
+											}
+										>
+											<CheckSvg /> Kích hoạt
+										</BulkButton>
+									)}
+									{canUpdate && (
+										<BulkButton
+											disabled={bulkBusy}
+											onClick={() =>
+												runBulkAction(() =>
+													d.handleBulkSetActive([...rowSel.selectedIds], false),
+												)
+											}
+										>
+											<XSvg /> Khoá
+										</BulkButton>
+									)}
+									{canDelete && (
+										<BulkButton
+											danger
+											disabled={bulkBusy}
+											onClick={() => setBulkDeleteOpen(true)}
+										>
+											<TrashSvg /> Xoá đã chọn
+										</BulkButton>
+									)}
 								</>
 							}
 						/>
@@ -281,7 +304,7 @@ export default function DepartmentAccounts() {
 							</thead>
 							<tbody>
 								{d.filteredUsers.map((u, i) => {
-									const typeCfg = roleCfg(u.role_id);
+									const typeCfg = roleCfg(u);
 									return (
 										<tr
 											key={u.id}
@@ -338,6 +361,7 @@ export default function DepartmentAccounts() {
 												<div className={styles.statusToggle}>
 													<Toggle
 														on={u.is_active}
+														disabled={!canUpdate}
 														onChange={() => void d.handleToggleActive(u.id)}
 													/>
 													<span
@@ -359,28 +383,34 @@ export default function DepartmentAccounts() {
 												</span>
 											</td>
 											<td className={`${styles.td} ${styles.tdActions}`}>
-												<button
-													className={`${styles.actionBtn} ${styles.actionEdit}`}
-													title='Chỉnh sửa'
-													onClick={() => d.setEditUser(u)}
-												>
-													<EditSvg />
-												</button>
-												<button
-													className={styles.actionBtn}
-													title='Đặt lại mật khẩu về 123456'
-													onClick={() => d.setResetUser(u)}
-													style={{ color: '#b45309' }}
-												>
-													<KeySvg />
-												</button>
-												<button
-													className={`${styles.actionBtn} ${styles.actionDelete}`}
-													title='Xoá'
-													onClick={() => d.setDeleteUser(u)}
-												>
-													<TrashSvg />
-												</button>
+												{canUpdate && (
+													<button
+														className={`${styles.actionBtn} ${styles.actionEdit}`}
+														title='Chỉnh sửa'
+														onClick={() => d.setEditUser(u)}
+													>
+														<EditSvg />
+													</button>
+												)}
+												{canUpdate && (
+													<button
+														className={styles.actionBtn}
+														title='Đặt lại mật khẩu về 123456'
+														onClick={() => d.setResetUser(u)}
+														style={{ color: '#b45309' }}
+													>
+														<KeySvg />
+													</button>
+												)}
+												{canDelete && (
+													<button
+														className={`${styles.actionBtn} ${styles.actionDelete}`}
+														title='Xoá'
+														onClick={() => d.setDeleteUser(u)}
+													>
+														<TrashSvg />
+													</button>
+												)}
 											</td>
 										</tr>
 									);

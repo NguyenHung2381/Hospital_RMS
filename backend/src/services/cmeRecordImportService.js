@@ -9,6 +9,7 @@ const ExcelJS = require('exceljs');
 const { getPool } = require('../config/db');
 const { norm, stripQualification } = require('../utils/vietnameseText');
 const cmeRecordService = require('./cmeRecordService');
+const { ROLE, inputRoleId } = require('./roleCodes');
 
 const COLUMN_MATCHERS = [
 	['stt', (h) => h === 'stt' || h === 'tt'],
@@ -136,7 +137,10 @@ const parseWorkbook = async (buffer) => {
 const loadLookups = async () => {
 	const pool = await getPool();
 	const [users, categories] = await Promise.all([
-		pool.request().query("SELECT id, full_name, staff_number FROM users WHERE is_active = 1 AND role_id <> 'VT07'"),
+		// Loại tài khoản khoa dùng chung (vai trò dept_head) — không phải một người
+		(await inputRoleId(pool.request(), 'dept_head_role', ROLE.DEPT_HEAD)).query(
+			'SELECT id, full_name, staff_number FROM users WHERE is_active = 1 AND role_id <> @dept_head_role',
+		),
 		pool.request().query('SELECT id, name FROM cme_credit_categories'),
 	]);
 	const byStaff = new Map();

@@ -3,6 +3,7 @@ const { createCrudService } = require('./crudService');
 const { broadcast } = require('./eventService');
 const { paging } = require('../utils/paging');
 const { remember, invalidate } = require('../utils/cache');
+const permCache = require('../middlewares/permissionCache');
 
 // Cùng prefix `lookup:roles:` mà createCrudService('roles', ...) tự invalidate
 // sau update/remove — getAll/create ở dưới bị override nên tự quản cache riêng.
@@ -90,4 +91,20 @@ const create = async (data, actorId) => {
 	return result.recordset[0];
 };
 
-module.exports = { ...base, getAll, create };
+// Vai trò hệ thống (roles.is_system — 8 vai trò gốc, code nghiệp vụ tham chiếu
+// qua roles.code) không được xoá: xoá đi thì cấp tài khoản chủ nhiệm / học viên,
+// lọc tài khoản khoa... lỗi ngay. Sửa tên / mô tả / quyền vẫn được.
+const remove = async (id, actorId) => {
+	const pool = await getPool();
+	const r = await pool
+		.request()
+		.input('id', sql.VarChar(20), id)
+		.query('SELECT is_system FROM roles WHERE id = @id');
+	if (r.recordset[0]?.is_system) {
+		throw Object.assign(new Error('Không thể xoá vai trò hệ thống'), { statusCode: 409 });
+	}
+	await base.remove(id, actorId);
+	permCache.clear(id);
+};
+
+module.exports = { ...base, getAll, create, remove };

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { hasPermission } from '../../../shared/utils/permissions';
 import { useNavigate } from 'react-router-dom';
 import { useRealtimeUpdate } from '../../../layouts/hooks/useRealtime';
 import { getStoredUser, type StoredUser } from '../../../shared/utils/storage';
@@ -89,12 +90,8 @@ export function useUserHome() {
 	const roleName: string = user.role_name ?? user.role ?? 'Thành viên';
 	const dept: string = user.department ?? '';
 	const currentUserId: string = user.id ?? '';
-	const perms: string[] = user.permissions ?? [];
 
-	const canCreateTopic =
-		perms.includes('system:manage') ||
-		perms.includes('topics:create') ||
-		perms.includes('topics:manage');
+	const canCreateTopic = hasPermission(user, 'topics:create');
 
 	const initials = fullName
 		.split(' ')

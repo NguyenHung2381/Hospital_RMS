@@ -9,6 +9,7 @@ const deadlineSvc  = require('../services/deadlineService');
 const deptService = require('../services/departmentService');
 const extReviewerService = require('../services/externalReviewerService');
 const permService = require('../services/permissionService');
+const { assertCanEditRole } = require('../services/privilegeGuard');
 const { success, created, notFound } = require('../utils/response');
 
 /**
@@ -858,8 +859,13 @@ router.post('/roles', authenticate, authorizePermission(['roles', 'create']), ro
  *         description: Xoá thành công
  */
 router.get('/roles/:id', authenticate, authorizePermission(['roles', 'read']), roleCtrl.getById);
-router.put('/roles/:id', authenticate, authorizePermission(['roles', 'update']), roleCtrl.updateOne);
-router.delete('/roles/:id', authenticate, authorizePermission(['roles', 'delete']), roleCtrl.removeOne);
+// Không sửa/xoá được vai trò của chính mình, vai trò toàn quyền, hay vai trò
+// có quyền cao hơn mình — xem services/privilegeGuard.js.
+const guardRoleEdit = async (req, res, next) => {
+  try { await assertCanEditRole(req.user, req.params.id); next(); } catch (e) { next(e); }
+};
+router.put('/roles/:id', authenticate, authorizePermission(['roles', 'update']), guardRoleEdit, roleCtrl.updateOne);
+router.delete('/roles/:id', authenticate, authorizePermission(['roles', 'delete']), guardRoleEdit, roleCtrl.removeOne);
 
 // ─── Research Rounds ──────────────────────────────────────────────────────────
 
@@ -1074,29 +1080,55 @@ router.get('/job-titles', authenticate, async (req, res, next) => {
 });
 
 // ─── Permissions ──────────────────────────────────────────────────────────────
-// GET /permissions — danh sách toàn bộ quyền (dùng cho ma trận phân quyền)
-router.get('/permissions', authenticate, authorizePermission(['roles', 'read']), async (req, res, next) => {
-  try { return success(res, await permService.getAll()); } catch (e) { next(e); }
+// GET /permissions/catalog — danh mục quyền nhóm theo module/resource kèm nhãn
+// (nguồn: permissions/catalog.js) — màn hình phân quyền dựng ma trận từ đây.
+router.get('/permissions/catalog', authenticate, authorizePermission(['roles', 'read']), async (req, res, next) => {
+  try { return success(res, await permService.getCatalog()); } catch (e) { next(e); }
 });
 
-// GET /roles/:id/permissions — lấy danh sách quyền hiện tại của vai trò
+// POST /roles/:id/clone — nhân bản vai trò (tên mới + đúng quyền & phạm vi của
+// vai trò nguồn). Cần cả quyền tạo vai trò lẫn quyền phân quyền.
+router.post(
+  '/roles/:id/clone',
+  authenticate,
+  authorizePermission(['roles', 'create']),
+  authorizePermission(['roles', 'manage']),
+  [body('name').trim().isLength({ min: 2 }).withMessage('Tên vai trò ít nhất 2 ký tự')],
+  validate,
+  async (req, res, next) => {
+    try {
+      const role = await permService.cloneRole(
+        req.params.id,
+        { name: req.body.name.trim(), description: req.body.description?.trim() || null },
+        req.user,
+        req.ip,
+      );
+      return created(res, role, 'Đã nhân bản vai trò');
+    } catch (e) { next(e); }
+  },
+);
+
+// GET /roles/:id/permissions — các lượt cấp quyền hiện tại: [{ permission_id, scope }]
 router.get('/roles/:id/permissions', authenticate, authorizePermission(['roles', 'read']), async (req, res, next) => {
   try { return success(res, await permService.getRolePermissions(req.params.id)); } catch (e) { next(e); }
 });
 
-// PUT /roles/:id/permissions — cập nhật (thay thế toàn bộ) quyền của vai trò
+// PUT /roles/:id/permissions — thay toàn bộ quyền của vai trò.
+// Body: { grants: [{ permission_id, scope }] } — scope chỉ dùng cho resource có
+// phạm vi dữ liệu (topics / users / courses), resource khác để null.
 router.put(
   '/roles/:id/permissions',
   authenticate,
   authorizePermission(['roles', 'manage']),
-  [body('permission_ids').isArray()],
+  [body('grants').isArray()],
   validate,
   async (req, res, next) => {
     try {
       const result = await permService.setRolePermissions(
         req.params.id,
-        req.body.permission_ids,
-        req.user.id,
+        req.body.grants,
+        req.user,
+        req.ip,
       );
       return success(res, result, 'Cập nhật phân quyền thành công');
     } catch (e) { next(e); }

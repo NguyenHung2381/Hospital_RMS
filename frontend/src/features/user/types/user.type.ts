@@ -10,6 +10,8 @@ export interface User {
 	department_id: string;
 	role_id: string;
 	role_name?: string | null;
+	/** Mã vai trò (roles.code) — vd 'member', 'trainee'; null với vai trò tự tạo */
+	role_code?: string | null;
 	is_active: boolean;
 	topic_member_id: string | null;
 	password_changed_at: string | null;

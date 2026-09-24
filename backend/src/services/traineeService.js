@@ -4,11 +4,13 @@ const { broadcast } = require('./eventService');
 const { paging } = require('../utils/paging');
 const trainingFileService = require('./trainingFileService');
 const personService = require('./personService');
+const { hasPermission } = require('../middlewares/auth');
 const {
 	buildMemberUsername,
 	ensureUniqueUsername,
 	genUserIdInTx,
 } = require('./topicMemberService');
+const { ROLE, requireRoleId } = require('./roleCodes');
 
 const traineeSelect = `
   SELECT t.*, tt.name AS trainee_type_name, d.name AS department_name
@@ -26,11 +28,7 @@ const maskSensitive = (row, canSeeSensitive) => {
 	return { ...row, national_id: id.length > 4 ? `••••${id.slice(-4)}` : '••••' };
 };
 
-const canReadSensitive = (actor) => {
-	const perms = actor?.permissions;
-	if (!perms) return false;
-	return perms.has('system:manage') || perms.has('trainees:manage') || perms.has('trainees:read_sensitive');
-};
+const canReadSensitive = (actor) => hasPermission(actor, 'trainees', 'read_sensitive');
 
 const getAll = async ({ page = 1, limit = 20, search, trainee_type_id, department_id } = {}, actor = null) => {
 	const pool = await getPool();
@@ -286,6 +284,7 @@ const grantAccounts = async (traineeIds, actorId) => {
 		: traineesResult.recordset;
 
 	const defaultHash = await bcrypt.hash(DEFAULT_TRAINEE_PASSWORD, 12);
+	const traineeRoleId = await requireRoleId(ROLE.TRAINEE);
 	const credentials = [];
 	const skipped = [];
 
@@ -325,7 +324,7 @@ const grantAccounts = async (traineeIds, actorId) => {
 				.input('email', sql.VarChar(255), storedEmail)
 				.input('phone_number', sql.VarChar(10), trainee.phone || null)
 				.input('department_id', sql.VarChar(20), trainee.department_id || null)
-				.input('role_id', sql.VarChar(6), 'VT08')
+				.input('role_id', sql.VarChar(6), traineeRoleId)
 				.input('actor_id', sql.VarChar(20), actorId).query(`
           INSERT INTO users (
             id, username, password, full_name, email,

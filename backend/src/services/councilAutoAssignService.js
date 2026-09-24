@@ -1,6 +1,7 @@
 const { getPool, sql } = require('../config/db');
 const councilService = require('./councilService');
 const councilAssignmentService = require('./councilAssignmentService');
+const { ROLE, inputRoleId } = require('./roleCodes');
 
 const SEAT_ORDER = ['chairman', 'secretary', 'reviewer1', 'reviewer2', 'member'];
 const SEAT_LABELS = {
@@ -39,6 +40,7 @@ const pickInternal = async (pool, { roundId, specialtyGroup, deptIds, usedUserId
 		.request()
 		.input('round_id', sql.VarChar(10), roundId)
 		.input('sg', sql.NVarChar(100), specialtyGroup);
+	await inputRoleId(req, 'dept_head_role', ROLE.DEPT_HEAD);
 	const deptParams = deptIds.map((id, i) => {
 		req.input(`d${i}`, sql.VarChar(20), id);
 		return `@d${i}`;
@@ -58,7 +60,7 @@ const pickInternal = async (pool, { roundId, specialtyGroup, deptIds, usedUserId
       WHERE c.round_id = @round_id
       GROUP BY cm.user_id
     ) lt ON lt.user_id = u.id
-    WHERE u.is_active = 1 AND u.role_id <> 'VT07' -- loại tài khoản khoa dùng chung (vai trò truong_khoa)
+    WHERE u.is_active = 1 AND u.role_id <> @dept_head_role -- loại tài khoản khoa dùng chung (vai trò dept_head)
       ${deptParams.length ? `AND (u.department_id IS NULL OR u.department_id NOT IN (${deptParams.join(',')}))` : ''}
       ${usedParams.length ? `AND u.id NOT IN (${usedParams.join(',')})` : ''}
     ORDER BY

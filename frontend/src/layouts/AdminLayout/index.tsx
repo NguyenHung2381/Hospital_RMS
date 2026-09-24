@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import type { PermissionKey } from '@/shared/types/permissions.generated';
 import { useLocation, useNavigate } from 'react-router-dom';
 import Logo from '../../assets/logo.png';
 import type { LoginUser } from '../../features/auth/api/authApi';
@@ -78,7 +79,7 @@ interface NavItem {
 	icon: React.ReactNode;
 	badge?: number | string;
 	// Quyền cần có để thấy mục này (bỏ trống = luôn hiện cho người vào được /admin)
-	perm?: string;
+	perm?: PermissionKey;
 }
 interface NavGroup {
 	section: string;
@@ -184,7 +185,7 @@ const NAV_GROUPS: NavGroup[] = [
 				key: 'cmeRecords',
 				label: 'Ghi nhận CME độc lập',
 				icon: <Icon.Cme />,
-				perm: 'seminars:cme_manage',
+				perm: 'cme_records:manage',
 			},
 		],
 	},

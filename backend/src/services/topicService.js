@@ -4,7 +4,11 @@ const { broadcast } = require('./eventService');
 const { paging } = require('../utils/paging');
 const { splitList, inClause, buildWhere } = require('../utils/sqlFilters');
 const { assertTopicActionWindow } = require('./deadlineGuard');
-const { topicScope, hasPermission } = require('../middlewares/auth');
+const { scopeOf, hasPermission } = require('../middlewares/auth');
+const { findActiveUserIdsWhere } = require('./permissionService');
+
+// Phạm vi xem đề tài: không có quyền topics nào ⇒ chỉ đề tài mình tham gia.
+const topicScope = (actor) => scopeOf(actor, 'topics') ?? 'own';
 
 // Danh sách hành động hợp lệ cho đề tài theo status + quyền của actor — nguồn
 // chân lý duy nhất để frontend ẩn/hiện nút phê duyệt/từ chối/bổ sung/nộp lại/
@@ -603,16 +607,9 @@ const submit = async (topicId, actorId) => {
     `);
 
 	// Thông báo cho các tài khoản có quyền duyệt / xem toàn bộ đề tài
-	const adminRes = await pool.request().query(`
-      SELECT DISTINCT u.id
-      FROM users u
-      INNER JOIN role_permissions rp ON rp.role_id = u.role_id
-      INNER JOIN permissions p ON p.id = rp.permission_id
-      WHERE u.is_active = 1
-        AND p.resource = 'topics'
-        AND p.action IN ('approve', 'read_all', 'manage')
-    `);
-	const ids = adminRes.recordset.map((r) => r.id);
+	const ids = await findActiveUserIdsWhere(
+		(u) => hasPermission(u, 'topics', 'approve') || scopeOf(u, 'topics') === 'all',
+	);
 	await notifSvc.push('topic_submitted', 'Có đề tài mới cần xét duyệt', ids, {
 		refId: topicId,
 		refType: 'topic',

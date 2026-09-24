@@ -7,6 +7,7 @@ import { NotificationPanel } from '../../features/notifications/components/Notif
 import { useNotifications } from '../../features/notifications/hooks/useNotifications';
 import { toNotif } from '../../features/notifications/utils/notifUtils';
 import { usePermission } from '../../shared/hooks/usePermission';
+import { scopeOf } from '../../shared/utils/permissions';
 import { getInitials } from '../../shared/utils/helper';
 import { clearAuth } from '../../shared/utils/storage';
 import styles from './UserLayout.module.css';
@@ -110,20 +111,21 @@ export default function UserLayout({
 
 	const activePage = PATH_TO_KEY[location.pathname] ?? 'home';
 
-	const { has } = usePermission();
+	const { has, user } = usePermission();
 	// "restrictMember": ẩn với vai trò chỉ tham gia đề tài (không tạo được đề tài).
-	const canRegisterTopic = has('topics:create') || has('topics:manage');
+	const canRegisterTopic = has('topics:create');
 	// "needsRegistrationWindow": chỉ hiện mục Đăng ký đề tài khi đợt đang mở cửa
 	// sổ đăng ký. Chỉ cần kiểm tra khi user có quyền tạo đề tài.
 	const { open: registrationOpen } = useRegistrationOpen(
 		!hideSidebar && canRegisterTopic,
 	);
 	// "managerOnly": các mục điều hành khoa / hệ thống.
+	const topicScope = scopeOf(user, 'topics');
 	const isManagerAccount =
 		has('admin_panel:access') ||
-		has('topics:read_department') ||
-		has('topics:read_all') ||
-		has('users:read_department');
+		topicScope === 'department' ||
+		topicScope === 'all' ||
+		has('users:read');
 
 	// Chỉ hiện "Đánh giá tiến độ" khi user thực sự có ghế trong hội đồng.
 	const [isCouncilMember, setIsCouncilMember] = useState(false);

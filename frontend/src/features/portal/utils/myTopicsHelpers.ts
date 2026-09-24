@@ -1,4 +1,5 @@
 import { STATUS_CFG as BASE_STATUS_CFG } from '../../topics/utils/topicHelpers';
+import { scopeOf, type PermissionUser } from '@/shared/utils/permissions';
 import type { TopicFile, TopicStatus } from '../../topics/types/topic.type';
 import type { BadgeTone } from '@/shared/components/Badge/badgeTone';
 
@@ -68,13 +69,9 @@ export const TABS: { key: FilterTab; label: string }[] = [
 ];
 
 // Được xem đề tài trong phạm vi khoa / toàn hệ thống (không chỉ đề tài mình tham gia).
-export function canSeeDeptTopics(permissions: string[] = []): boolean {
-	return (
-		permissions.includes('system:manage') ||
-		permissions.includes('topics:manage') ||
-		permissions.includes('topics:read_all') ||
-		permissions.includes('topics:read_department')
-	);
+export function canSeeDeptTopics(user: PermissionUser | null | undefined): boolean {
+	const scope = scopeOf(user, 'topics');
+	return scope === 'department' || scope === 'all';
 }
 
 

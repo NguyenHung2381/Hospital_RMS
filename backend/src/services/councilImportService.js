@@ -11,6 +11,7 @@ const ExcelJS = require('exceljs');
 const { getPool, sql } = require('../config/db');
 const councilService = require('./councilService');
 const councilAssignmentService = require('./councilAssignmentService');
+const { ROLE, inputRoleId } = require('./roleCodes');
 
 const SEAT_ORDER = ['chairman', 'secretary', 'reviewer1', 'reviewer2', 'member'];
 const ROLE_BY_NORM = {
@@ -209,13 +210,13 @@ const parseWorkbook = async (buffer) => {
 const loadDb = async (roundId) => {
 	const pool = await getPool();
 	const [usersRes, extRes, topicsRes, existingRes] = await Promise.all([
-		pool.request().query(`
+		(await inputRoleId(pool.request(), 'dept_head_role', ROLE.DEPT_HEAD)).query(`
 			SELECT u.id, u.full_name, u.department_id, d.name AS department_name,
 			       d.specialty_group, q.code AS qualification
 			FROM users u
 			LEFT JOIN departments d ON d.id = u.department_id
 			LEFT JOIN qualifications q ON q.id = u.qualification_id
-			WHERE u.is_active = 1 AND u.role_id <> 'VT07' -- loại tài khoản khoa dùng chung
+			WHERE u.is_active = 1 AND u.role_id <> @dept_head_role -- loại tài khoản khoa dùng chung (vai trò dept_head)
 		`),
 		pool.request().query(`
 			SELECT id, full_name, organization FROM external_reviewers WHERE is_active = 1

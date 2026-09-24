@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { CheckSvg, ChevDSvg, EditSvg, InfoSvg, XSvg } from '@/assets/icons';
+import { CheckSvg, EditSvg, InfoSvg, XSvg } from '@/assets/icons';
 import type { FormErrors, User } from '../../user/types/user.type';
-import { EDITABLE_ROLES, type EditForm } from '../utils/deptAccountsHelpers';
+import type { EditForm } from '../utils/deptAccountsHelpers';
 import styles from '../pages/DepartmentAccounts.module.css';
 
 function Toggle({ on, onChange }: { on: boolean; onChange: () => void }) {
@@ -65,7 +65,6 @@ export function DeptAccountsEditModal({
 		full_name: user.full_name,
 		staff_number: user.staff_number != null ? String(user.staff_number) : '',
 		email: user.email ?? '',
-		role_id: user.role_id ?? '',
 		is_active: user.is_active,
 		password: '',
 	});
@@ -271,29 +270,14 @@ export function DeptAccountsEditModal({
 						>
 							<div className={styles.readonlyField}>{deptName}</div>
 						</Field>
+						{/* Chỉ quản trị hệ thống đổi được vai trò (backend bỏ qua role_id của
+						    người khác) — đổi ở trang quản trị Người dùng. */}
 						<Field
-							id='role_id'
+							id='role_ro'
 							label='Vai trò'
-							required
+							hint='Đổi tại trang quản trị Người dùng'
 						>
-							<div className={styles.selectWrapper}>
-								<select
-									id='role_id'
-									className={styles.formSelect}
-									value={form.role_id}
-									onChange={(e) => set('role_id', e.target.value)}
-								>
-									{EDITABLE_ROLES.map((t) => (
-										<option
-											key={t.value}
-											value={t.value}
-										>
-											{t.label}
-										</option>
-									))}
-								</select>
-								<ChevDSvg />
-							</div>
+							<div className={styles.readonlyField}>{user.role_name ?? '—'}</div>
 						</Field>
 					</div>
 

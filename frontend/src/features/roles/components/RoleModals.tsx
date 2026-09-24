@@ -4,7 +4,8 @@ import { EMPTY_FORM, type Role, type RoleFormData } from '../types/role.type';
 import styles from '../pages/Roles.module.css';
 
 interface RoleFormModalProps {
-	mode: 'add' | 'edit';
+	/** 'clone': tạo vai trò mới mang đúng quyền của `role` (vai trò nguồn) */
+	mode: 'add' | 'edit' | 'clone';
 	role?: Role;
 	onClose: () => void;
 	onSave: (data: RoleFormData) => void;
@@ -20,7 +21,10 @@ export function RoleFormModal({
 }: RoleFormModalProps) {
 	const [form, setForm] = useState<RoleFormData>(
 		role
-			? { name: role.name, description: role.description ?? '' }
+			? {
+					name: mode === 'clone' ? `${role.name} (bản sao)` : role.name,
+					description: role.description ?? '',
+				}
 			: EMPTY_FORM,
 	);
 	const [errors, setErrors] = useState<Partial<RoleFormData>>({});
@@ -53,12 +57,18 @@ export function RoleFormModal({
 					</div>
 					<div>
 						<div className={styles.modalTitle}>
-							{mode === 'add' ? 'Thêm vai trò mới' : 'Chỉnh sửa vai trò'}
+							{mode === 'add'
+								? 'Thêm vai trò mới'
+								: mode === 'clone'
+									? 'Nhân bản vai trò'
+									: 'Chỉnh sửa vai trò'}
 						</div>
 						<div className={styles.modalSub}>
 							{mode === 'add'
 								? 'Tạo vai trò mới để phân quyền người dùng'
-								: `Cập nhật — ${role?.id}`}
+								: mode === 'clone'
+									? `Vai trò mới mang đúng quyền & phạm vi của "${role?.name}"`
+									: `Cập nhật — ${role?.id}`}
 						</div>
 					</div>
 					<button
@@ -112,7 +122,7 @@ export function RoleFormModal({
 						disabled={loading}
 					>
 						{loading ? <span className={styles.spinner} /> : <CheckSvg />}
-						{mode === 'add' ? 'Thêm vai trò' : 'Lưu thay đổi'}
+						{mode === 'add' ? 'Thêm vai trò' : mode === 'clone' ? 'Nhân bản' : 'Lưu thay đổi'}
 					</button>
 				</div>
 			</div>

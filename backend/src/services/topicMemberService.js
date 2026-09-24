@@ -3,6 +3,7 @@ const bcrypt = require('bcryptjs');
 const notifSvc = require('./notificationService');
 const { broadcast } = require('./eventService');
 const personService = require('./personService');
+const { ROLE, requireRoleId } = require('./roleCodes');
 
 const getMembers = async (topicId) => {
 	const pool = await getPool();
@@ -262,7 +263,7 @@ const grantAccountsNoEmail = async (topicId, memberIds, actorId) => {
 			staffNumber != null ? staffNumber : '0000',
 		);
 		const deptId = member.member_department_id || member.topic_department_id;
-		const roleId = member.role === 'leader' ? 'VT05' : 'VT06';
+		const roleId = await requireRoleId(member.role === 'leader' ? ROLE.TOPIC_LEADER : ROLE.MEMBER);
 
 		const tx = new sql.Transaction(pool);
 		let began = false;

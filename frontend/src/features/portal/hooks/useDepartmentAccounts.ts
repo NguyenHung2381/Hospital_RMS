@@ -3,7 +3,6 @@ import { useRealtimeUpdate } from '../../../layouts/hooks/useRealtime';
 import { getStoredUser, type StoredUser } from '../../../shared/utils/storage';
 import {
 	deleteUser as deleteUserApi,
-	getRolesList,
 	getUsers,
 	resetUserPassword,
 	updateUser as updateUserApi,
@@ -24,7 +23,6 @@ export function useDepartmentAccounts() {
 	const userRole = currentUser?.role ?? currentUser?.role_name ?? 'Thành viên';
 
 	const [users, setUsers] = useState<User[]>([]);
-	const [roles, setRoles] = useState<SimpleItem[]>([]);
 	const [isLoading, setIsLoading] = useState(true);
 	const [loadError, setLoadError] = useState<string | null>(null);
 	const [search, setSearch] = useState('');
@@ -64,12 +62,10 @@ export function useDepartmentAccounts() {
 			setIsLoading(true);
 			setLoadError(null);
 			try {
-				const [usersRes, rolesRes] = await Promise.all([
-					getUsers({ department_id: deptId, limit: 0 }),
-					getRolesList(),
-				]);
+				// Vai trò lấy từ chính danh sách tài khoản (role_id + role_name) — không
+				// gọi GET /roles: cần roles:read, tài khoản khoa không có quyền đó.
+				const usersRes = await getUsers({ department_id: deptId, limit: 0 });
 				setUsers(usersRes.data);
-				setRoles(rolesRes.data);
 			} catch (err) {
 				setLoadError(err instanceof Error ? err.message : 'Có lỗi xảy ra');
 			} finally {
@@ -104,6 +100,13 @@ export function useDepartmentAccounts() {
 		});
 	}, [users, roleFilter, search]);
 
+	// Các vai trò đang có trong khoa (bộ lọc theo vai trò), suy ra từ tài khoản
+	const roles = useMemo<SimpleItem[]>(() => {
+		const byId = new Map<string, string>();
+		for (const u of users) if (u.role_id) byId.set(u.role_id, u.role_name ?? u.role_id);
+		return [...byId].map(([id, name]) => ({ id, name })).sort((a, b) => a.name.localeCompare(b.name, 'vi'));
+	}, [users]);
+
 	const getRoleName = useCallback(
 		(id: string) => roles.find((r) => r.id === id)?.name ?? '—',
 		[roles],
@@ -116,7 +119,6 @@ export function useDepartmentAccounts() {
 				staff_number: form.staff_number || undefined,
 				full_name: form.full_name,
 				email: form.email || undefined,
-				role_id: form.role_id || undefined,
 				is_active: form.is_active,
 			});
 			if (form.password) await resetUserPassword(editUser.id, form.password);

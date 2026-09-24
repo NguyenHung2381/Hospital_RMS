@@ -1,4 +1,6 @@
 import type React from 'react';
+import type { PermissionKey } from '@/shared/types/permissions.generated';
+import { hasPermission } from '@/shared/utils/permissions';
 import { useNavigate } from 'react-router-dom';
 import {
 	BadgeSvg,
@@ -20,7 +22,7 @@ interface QuickLink {
 	label: string;
 	path: string;
 	icon: React.ReactNode;
-	perm?: string;
+	perm?: PermissionKey;
 }
 
 const QUICK_LINKS: QuickLink[] = [
@@ -86,19 +88,10 @@ const QUICK_LINKS: QuickLink[] = [
 	},
 ];
 
-// Cùng logic với AdminLayout: "resource:manage"/"system:manage" bao các quyền con.
-function permitted(perms: string[], perm?: string): boolean {
-	if (!perm) return true;
-	if (perms.includes('system:manage')) return true;
-	if (perms.includes(perm)) return true;
-	const [resource] = perm.split(':');
-	return perms.includes(`${resource}:manage`);
-}
-
 export function QuickAccess() {
 	const navigate = useNavigate();
-	const perms = getStoredUser<LoginUser>()?.permissions ?? [];
-	const links = QUICK_LINKS.filter((l) => permitted(perms, l.perm));
+	const user = getStoredUser<LoginUser>();
+	const links = QUICK_LINKS.filter((l) => hasPermission(user, l.perm));
 
 	if (links.length === 0) return null;
 

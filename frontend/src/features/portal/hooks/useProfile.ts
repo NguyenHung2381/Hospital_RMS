@@ -1,7 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
 import { apiClient } from '../../../shared/api/axios';
 import { getInitials } from '../../../shared/utils/helper';
-import { clearAuth, getStoredUser, getToken } from '../../../shared/utils/storage';
+import {
+	clearAuth,
+	getStoredUser,
+	getToken,
+	replaceTokens,
+} from '../../../shared/utils/storage';
 import {
 	disable2FAApi,
 	get2FAStatusApi,
@@ -103,14 +108,17 @@ export function useProfile() {
 		}
 		setPwdSaving(true);
 		try {
-			await apiClient.post('/auth/change-password', {
-				old_password: oldPwd,
-				new_password: newPwd,
-			});
+			// Server thu hồi mọi phiên (kể cả token đang dùng) rồi trả cặp token mới
+			// cho phiên này — phải lưu lại, nếu không request kế tiếp sẽ bị 401.
+			const tokens = await apiClient.post<{ access_token: string; refresh_token: string } | null>(
+				'/auth/change-password',
+				{ old_password: oldPwd, new_password: newPwd },
+			);
+			if (tokens?.access_token) replaceTokens(tokens.access_token, tokens.refresh_token);
 			setOldPwd('');
 			setNewPwd('');
 			setConfirmPwd('');
-			showToast('Đổi mật khẩu thành công!', 'success');
+			showToast('Đổi mật khẩu thành công! Các thiết bị khác đã bị đăng xuất.', 'success');
 		} catch (e: unknown) {
 			const msg =
 				e instanceof Error ? e.message : 'Có lỗi xảy ra, vui lòng thử lại.';

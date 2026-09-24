@@ -1,6 +1,7 @@
 const router = require('express').Router();
 const jwt = require('jsonwebtoken');
 const { addClient, removeClient } = require('../services/eventService');
+const userStatusCache = require('../middlewares/userStatusCache');
 
 // 15 giây — dưới ngưỡng idle-timeout thấp nhất thường gặp của proxy đứng trước
 // (nginx proxy_read_timeout mặc định 60s, IIS ARR 120s, Cloudflare 100s...).
@@ -17,16 +18,30 @@ const RETRY_MS = 10_000;
 // để xả bộ đệm ngay khi mở kết nối.
 const FLUSH_PADDING = `:${' '.repeat(2048)}\n\n`;
 
-router.get('/', (req, res) => {
+router.get('/', async (req, res, next) => {
 	const token = req.query.token;
 	if (!token) {
 		return res.status(401).json({ success: false, message: 'Unauthorized' });
 	}
 
+	let decoded;
 	try {
-		jwt.verify(token, process.env.JWT_SECRET);
+		decoded = jwt.verify(token, process.env.JWT_SECRET);
 	} catch {
 		return res.status(401).json({ success: false, message: 'Invalid token' });
+	}
+	// Chỉ nhận access token (xem middlewares/auth.js): token có "purpose" (pre-auth
+	// 2FA, QR điểm danh, captcha...) cũng ký bằng JWT_SECRET nhưng không phải phiên.
+	if (decoded.purpose || !decoded.id) {
+		return res.status(401).json({ success: false, message: 'Invalid token' });
+	}
+	try {
+		const status = await userStatusCache.load(decoded.id);
+		if (!status.isActive) {
+			return res.status(401).json({ success: false, message: 'Unauthorized' });
+		}
+	} catch (err) {
+		return next(err);
 	}
 
 	// Kết nối sống lâu: bỏ timeout socket, tắt Nagle để ping/sự kiện đi ngay

@@ -17,7 +17,7 @@ const uploadExcel = multer({ storage: multer.memoryStorage(), limits: { fileSize
  */
 
 router.use(authenticate);
-const canManage = authorizePermission(['seminars', 'cme_manage']);
+const canManage = authorizePermission(['cme_records', 'manage']);
 
 router.get('/', canManage, ctrl.getAll);
 router.get('/:id', canManage, ctrl.getById);

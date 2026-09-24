@@ -1,6 +1,7 @@
 const { getPool, sql } = require('../config/db');
 const { broadcast } = require('./eventService');
 const { paging } = require('../utils/paging');
+const { ROLE, inputRoleId } = require('./roleCodes');
 
 const VN_OFFSET_MS = 7 * 60 * 60 * 1000; // UTC+7 (Asia/Ho_Chi_Minh)
 
@@ -332,6 +333,7 @@ const getEligibleUsers = async (councilId, search = '', type = 'internal') => {
 		.request()
 		.input('council_id', sql.VarChar(15), councilId)
 		.input('search', sql.NVarChar, `%${search}%`);
+	await inputRoleId(req, 'dept_head_role', ROLE.DEPT_HEAD);
 
 	const result = await req.query(`
     SELECT TOP 20 u.id, u.username, u.full_name, u.staff_number,
@@ -351,7 +353,7 @@ const getEligibleUsers = async (councilId, search = '', type = 'internal') => {
     LEFT JOIN departments d ON d.id = u.department_id
     LEFT JOIN qualifications q ON q.id = u.qualification_id
     WHERE u.is_active = 1
-      AND u.role_id <> 'VT07' -- loại tài khoản khoa dùng chung khỏi nguồn thành viên hội đồng
+      AND u.role_id <> @dept_head_role -- loại tài khoản khoa dùng chung khỏi nguồn thành viên hội đồng
       AND NOT EXISTS (
         SELECT 1 FROM council_members cm
         WHERE cm.council_id = @council_id AND cm.user_id = u.id
