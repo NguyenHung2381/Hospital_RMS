@@ -16,6 +16,8 @@ services:
       - "3000:3000"
     volumes:
       - server_uploads:/app/uploads
+      # JWT secret tự sinh khi thiếu (docker-entrypoint.sh) — giữ qua restart/redeploy
+      - server_secrets:/app/secrets
     depends_on:
       - redis
     restart: unless-stopped
@@ -45,3 +47,4 @@ services:
 
 volumes:
   server_uploads:
+  server_secrets:

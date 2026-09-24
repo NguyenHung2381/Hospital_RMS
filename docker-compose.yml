@@ -23,6 +23,8 @@ services:
     volumes:
       - ./backend:/app
       - /app/node_modules
+      # JWT secret tự sinh khi thiếu (docker-entrypoint.sh) — giữ qua restart/redeploy
+      - server_secrets:/app/secrets
     depends_on:
       - redis
 
@@ -83,3 +85,4 @@ services:
 
 volumes:
   loki_data:
+  server_secrets:

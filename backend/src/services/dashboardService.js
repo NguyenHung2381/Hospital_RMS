@@ -329,11 +329,15 @@ const getOverviewStats = async () => remember('dash:overview-stats', 90, async (
     GROUP BY COALESCE(r.description, r.name, N'Chưa gán vai trò')
     ORDER BY cnt DESC;
 
-    -- Khoa/Phòng: số tài khoản + số đề tài NCKH
-    SELECT TOP 10 d.name,
-      (SELECT COUNT(*) FROM users u WHERE u.department_id = d.id AND u.is_active = 1) AS users_cnt,
-      (SELECT COUNT(*) FROM topics t WHERE t.department_id = d.id) AS topics_cnt
-    FROM departments d
+    -- Khoa/Phòng: số tài khoản + số đề tài NCKH (bỏ đơn vị chưa có số liệu)
+    SELECT TOP 10 name, users_cnt, topics_cnt
+    FROM (
+      SELECT d.name,
+        (SELECT COUNT(*) FROM users u WHERE u.department_id = d.id AND u.is_active = 1) AS users_cnt,
+        (SELECT COUNT(*) FROM topics t WHERE t.department_id = d.id) AS topics_cnt
+      FROM departments d
+    ) x
+    WHERE users_cnt > 0 OR topics_cnt > 0
     ORDER BY topics_cnt DESC, users_cnt DESC;
   `);
 

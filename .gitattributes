@@ -1,0 +1,2 @@
+# Script shell chạy trong container Linux — luôn giữ LF
+*.sh text eol=lf

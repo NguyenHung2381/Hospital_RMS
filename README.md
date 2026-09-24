@@ -1,192 +1,194 @@
-# Hospital RMS — Hệ thống Quản lý Nghiên cứu Khoa học Bệnh viện
+# Hospital RMS — Hệ thống Quản lý Nghiên cứu Khoa học & Đào tạo Bệnh viện
 
-Ứng dụng web quản lý toàn bộ vòng đời hoạt động nghiên cứu khoa học trong bệnh viện: đăng ký đề tài, phân công thành viên, hội đồng chấm đề cương, quy trình phê duyệt, theo dõi tiến độ, quản lý hội thảo/hội nghị và cấp CME, cùng hệ thống báo cáo — thống kê.
+Ứng dụng web quản lý hoạt động **nghiên cứu khoa học** và **đào tạo liên tục (CME)** trong bệnh viện: đăng ký đề tài, hội đồng chấm đề cương, quy trình phê duyệt nhiều bước, hội thảo/hội nghị, chương trình – kế hoạch – khoá đào tạo, thi trực tuyến, khảo sát, điểm danh QR, cấp và theo dõi tín chỉ CME, cùng hệ thống báo cáo – thống kê.
 
-Monorepo gồm hai phần chạy độc lập: **`frontend/`** (React SPA) và **`backend/`** (REST API).
+Monorepo gồm hai ứng dụng chạy độc lập, dùng chung một REST API:
+
+| Thư mục | Vai trò |
+|---|---|
+| [`frontend/`](frontend/) | React + TypeScript SPA (Vite) |
+| [`backend/`](backend/) | Node.js + Express REST API trên Microsoft SQL Server |
 
 ---
 
 ## Mục lục
 
 - [Tổng quan](#tổng-quan)
-- [Công nghệ sử dụng](#công-nghệ-sử-dụng)
-- [Yêu cầu hệ thống](#yêu-cầu-hệ-thống)
-- [Cài đặt](#cài-đặt)
+- [Công nghệ](#công-nghệ)
+- [Bắt đầu nhanh](#bắt-đầu-nhanh)
 - [Cấu hình môi trường](#cấu-hình-môi-trường)
-- [Khởi chạy](#khởi-chạy)
 - [Chạy bằng Docker](#chạy-bằng-docker)
 - [Cấu trúc dự án](#cấu-trúc-dự-án)
-- [Tính năng chính](#tính-năng-chính)
-- [Kiến trúc & quy ước](#kiến-trúc--quy-ước)
-- [API Documentation](#api-documentation)
-- [Phân quyền](#phân-quyền)
+- [Phân hệ chức năng](#phân-hệ-chức-năng)
+- [API](#api)
+- [Xác thực & phân quyền](#xác-thực--phân-quyền)
 - [Database](#database)
-- [Nhật ký hoạt động & logging](#nhật-ký-hoạt-động--logging)
+- [Tác vụ nền, cache & logging](#tác-vụ-nền-cache--logging)
+- [Quy ước phát triển](#quy-ước-phát-triển)
 
 ---
 
 ## Tổng quan
 
-Hospital RMS (Research Management System) phục vụ các nhóm người dùng:
+Ứng dụng có ba cổng truy cập:
 
-- **Nhân viên nghiên cứu** — đăng ký đề tài, bổ sung thành viên, tải hồ sơ, theo dõi trạng thái phê duyệt và tiến độ.
-- **Thành viên hội đồng** — chấm đề cương, nhập điểm/nhận xét, theo dõi tiến độ các đề tài mình phụ trách.
-- **Quản lý khoa / cấp duyệt** — phê duyệt hoặc trả lại đề tài kèm ghi chú, quản lý tài khoản trong khoa.
-- **Quản trị viên** — quản lý người dùng, phân quyền, danh mục, đợt nghiên cứu, hội đồng, hội thảo/CME, xem toàn bộ dữ liệu và nhật ký hệ thống.
+| Cổng | Đường dẫn | Dành cho |
+|---|---|---|
+| **Cổng công khai** | `/`, `/dang-ky-de-tai`, `/de-xuat-de-tai`, `/dang-ky-khoa-hoc`, `/tra-cuu-ket-qua`, `/tra-cuu-ho-so/:maTraCuu`, `/thu-vien-de-tai` | Khách chưa đăng nhập: đăng ký/đề xuất đề tài, đăng ký khoá học, tra cứu hồ sơ bằng mã, thư viện đề tài |
+| **Cổng người dùng** | `/user/*` | Nhân viên: đề tài của tôi, tiến độ hội đồng, việc của tôi, khảo sát, thi trực tuyến, điểm danh, hồ sơ cá nhân |
+| **Cổng quản trị** | `/admin/*` | Quản trị viên và cán bộ quản lý: toàn bộ nghiệp vụ, danh mục, phân quyền, nhật ký |
 
-Ứng dụng chia thành hai cổng: **cổng quản trị** (`/admin/*`) và **cổng người dùng** (`/user/*`), dùng chung một API.
+Nhóm người dùng chính:
+
+- **Nhân viên nghiên cứu / học viên**: đăng ký đề tài, nộp hồ sơ, tham gia khoá học, làm bài thi, khảo sát, theo dõi tiến độ.
+- **Thành viên hội đồng**: chấm đề cương, nhập điểm/nhận xét, theo dõi các đề tài được phân công.
+- **Quản lý khoa / cấp duyệt**: duyệt hoặc trả lại đề tài, quản lý tài khoản trong khoa.
+- **Quản trị viên**: người dùng, vai trò/quyền, danh mục, đợt nghiên cứu, hội đồng, đào tạo, CME, quy trình duyệt, cài đặt hệ thống, nhật ký.
 
 ---
 
-## Công nghệ sử dụng
+## Công nghệ
 
-### Frontend (`frontend/`)
-
-| Thành phần | Công nghệ |
-|---|---|
-| Framework | React 19 + TypeScript |
-| Build tool | Vite 8 (`@vitejs/plugin-react`, `vite-plugin-svgr`) |
-| Routing | React Router DOM 7 (route lazy + prefetch, guard theo quyền) |
-| Biểu đồ | Recharts |
-| Xử lý HTML an toàn | DOMPurify |
-| Xem / xuất tài liệu | `docx-preview`, xuất Excel phía client |
-| Data fetching | `fetch` bọc trong `apiClient`, tự refresh token khi 401 |
-| Realtime | SSE — một `EventSource` dùng chung cho mỗi tab |
-
-### Backend (`backend/`)
+### Frontend
 
 | Thành phần | Công nghệ |
 |---|---|
-| Runtime | Node.js + Express 4 |
+| Framework | React 19, TypeScript 6 |
+| Build | Vite 8 (`@vitejs/plugin-react`, `vite-plugin-svgr`) |
+| Routing | React Router 7: lazy route + prefetch, guard theo quyền |
+| UI | Ant Design 5 + UI kit nội bộ (`shared/components`) |
+| Server state | TanStack Query 5 |
+| Client state | Zustand |
+| Form & validation | React Hook Form + Zod |
+| Khác | Recharts (biểu đồ), dnd-kit (kéo thả), html5-qrcode (quét QR), DOMPurify, docx-preview |
+| Realtime | SSE, dùng một `EventSource` chung cho mỗi tab |
+
+### Backend
+
+| Thành phần | Công nghệ |
+|---|---|
+| Runtime | Node.js, Express 4 (JS, đang chuyển dần một phần sang TS: `tsx`, `npm run typecheck`) |
 | Database | Microsoft SQL Server (`mssql`, connection pool) |
-| Authentication | JWT access token + refresh token, mật khẩu băm bằng `bcryptjs` |
-| Phân quyền | Permission-based (bảng quyền + cache theo vai trò) |
-| Upload file | Multer (file hồ sơ + ảnh) |
-| Xuất Excel | ExcelJS |
-| Validation | express-validator |
-| Rate limiting | express-rate-limit |
-| Logging | Pino + `pino-roll` (file JSON xoay theo ngày) |
-| API Docs | Swagger / OpenAPI (`swagger-jsdoc` + `swagger-ui-express`), bảo vệ bằng Basic Auth |
+| Cache | Redis (`ioredis`), cache-aside, fail-open |
+| Xác thực | JWT access + refresh token, `bcryptjs`, 2FA TOTP (`otplib`), captcha, khoá tài khoản khi sai mật khẩu nhiều lần |
+| Bảo mật | `helmet`, `express-rate-limit`, `sanitize-html`, link `/uploads` ký HMAC có hạn |
+| Validation | `express-validator`, Zod |
+| Upload / Excel | Multer (kèm allowlist loại file), ExcelJS |
+| Email | Nodemailer (mặc định tắt) |
+| Tác vụ nền | `node-cron` |
+| Logging | Pino + `pino-roll`, tuỳ chọn Loki + Promtail |
+| API docs | Swagger / OpenAPI (`swagger-jsdoc`, `swagger-ui-express`), bảo vệ bằng Basic Auth |
 
 ---
 
-## Yêu cầu hệ thống
+## Bắt đầu nhanh
 
-- **Node.js** ≥ 20 LTS, **npm** ≥ 9 (React 19 / Vite 8 / TypeScript 6).
-- **Microsoft SQL Server** (Express hoặc Full) với database `RMS_HOSPITAL`.
-  - Bật **TCP/IP** trong SQL Server Configuration Manager, mở firewall port `1433` nếu server API và SQL Server không cùng máy (bắt buộc khi chạy Docker).
-- Cổng mặc định: `3000` (backend), `5173` (frontend). Backend tự nhảy sang port trống kế tiếp nếu `3000` bị chiếm và đồng bộ port đó sang `frontend/.env`.
+### Yêu cầu
 
----
+- **Node.js** ≥ 20 LTS, **npm** ≥ 9
+- **Microsoft SQL Server** (Express hoặc bản đầy đủ) có database `RMS_HOSPITAL`
+  - Bật **TCP/IP** trong SQL Server Configuration Manager. Mở port `1433` trên firewall nếu API và SQL Server không cùng máy (bắt buộc khi chạy Docker).
+- **Redis** (tuỳ chọn): không có Redis thì server vẫn chạy, chỉ bỏ qua cache.
 
-## Cài đặt
+### Cài đặt và chạy
 
 ```bash
-# Clone repository
 git clone <repo-url>
 cd Hospital_RMS
 
-# Cài dependencies cho cả 3 package
-npm install                 # root — chỉ chứa 'concurrently' để chạy song song
+npm install                      # root: chỉ có 'concurrently'
 npm install --prefix backend
 npm install --prefix frontend
+
+cp backend/.env.example backend/.env   # rồi điền thông tin DB và secret thật
+
+npm run dev
+#   SERVER → nodemon src/server.js           http://localhost:3000
+#   CLIENT → vite (đợi server sẵn sàng)      http://localhost:5173
 ```
 
-Khởi tạo database: chạy `script.sql` (dump đầy đủ) hoặc `scripts/upgrade_db_script_to_hospital_rms.sql` (nâng cấp schema) trên SQL Server, tạo database tên `RMS_HOSPITAL`.
+Chạy riêng từng phần: `npm run server` (backend) hoặc `npm run client` (frontend).
+
+Nếu port `3000` đang bận, backend tự chuyển sang port trống kế tiếp và ghi `VITE_API_PORT` vào `frontend/.env` để Vite proxy đúng port.
+
+### Build production
+
+```bash
+npm run build --prefix frontend        # ra frontend/dist
+npm run start:prod --prefix backend    # NODE_ENV=production
+```
+
+Ở production, server **không khởi động** nếu thiếu `CORS_ORIGIN`.
 
 ---
 
 ## Cấu hình môi trường
 
-### Backend — `backend/.env`
+### `backend/.env`
 
-Sao chép từ mẫu và điền thông tin thật:
+Xem đầy đủ các biến và chú thích trong [`backend/.env.example`](backend/.env.example). Tóm tắt:
 
-```bash
-cp backend/.env.example backend/.env
-```
+| Nhóm | Biến | Ghi chú |
+|---|---|---|
+| **Bắt buộc** | `DB_USER`, `DB_PASSWORD`, `JWT_SECRET`, `JWT_REFRESH_SECRET`, `SWAGGER_USER`, `SWAGGER_PASS` | Server thoát ngay khi khởi động nếu thiếu biến nào. Secret nên là chuỗi ngẫu nhiên dài (`openssl rand -hex 32`). |
+| SQL Server | `DB_SERVER`, `DB_PORT`, `DB_DATABASE`, `DB_ENCRYPT`, `DB_TRUST_SERVER_CERT` | Production: không dùng `sa`, nên tạo login riêng chỉ có quyền trên `RMS_HOSPITAL` và bật `DB_ENCRYPT=true`. |
+| HTTP | `PORT`, `CORS_ORIGIN`, `TRUST_PROXY` | `CORS_ORIGIN` bắt buộc ở production. `TRUST_PROXY` phải đặt đúng khi chạy sau reverse proxy, nếu không rate-limit đăng nhập sẽ không hoạt động đúng. |
+| Upload | `UPLOAD_URL_SECRET`, `UPLOAD_URL_TTL_SEC`, `TRAINING_UPLOAD_MAX_MB`, `TRAINING_MEDIA_MAX_MB` | Link tải file được ký HMAC. Đổi secret thì mọi link cũ mất hiệu lực. |
+| Log | `LOG_DIR`, `LOG_RETENTION_FILES`, `LOG_STDOUT`, `AUDIT_LOG_METHODS` | Xem phần [logging](#tác-vụ-nền-cache--logging). |
+| Email | `MAIL_ENABLED`, `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM` | Mặc định tắt, email chỉ in ra console. |
+| Redis | `REDIS_HOST`, `REDIS_PORT` | Mặc định `localhost:6379`. |
+| Cron | `JOBS_ENABLED`, `CRON_TZ` | `JOBS_ENABLED=false` để tắt job nền (môi trường test, hoặc các instance phụ). |
+| Danh tính | `PERSON_DUAL_WRITE` | Đặt `false` để tắt khẩn cấp đồng bộ `persons`. |
 
-```env
-PORT=3000
+### `frontend/.env` (tuỳ chọn)
 
-# SQL Server
-DB_SERVER=localhost\SQLEXPRESS      # hoặc host.docker.internal khi chạy Docker
-DB_PORT=1433
-DB_DATABASE=RMS_HOSPITAL
-DB_USER=sa
-DB_PASSWORD=your_password
-DB_ENCRYPT=false
-DB_TRUST_SERVER_CERT=true
-
-# Bắt buộc — server THOÁT ngay khi khởi động nếu thiếu bất kỳ biến nào dưới đây.
-# Dùng chuỗi ngẫu nhiên đủ dài (vd: openssl rand -hex 32), KHÔNG dùng giá trị mẫu.
-JWT_SECRET=change-me-to-a-long-random-string
-JWT_REFRESH_SECRET=change-me-to-a-different-long-random-string
-SWAGGER_USER=admin
-SWAGGER_PASS=change-me
-
-# Tuỳ chọn
-# CORS_ORIGIN=https://rms.example.com,https://admin.rms.example.com   # bỏ trống = mọi origin
-# UPLOADS_DIR=uploads
-# LOG_DIR=logs                       # mặc định <backend>/logs
-# LOG_RETENTION_FILES=90             # số file log tối đa được giữ (≈ số ngày)
-# LOG_STDOUT=1                       # ghi ra stdout thay vì file
-# AUDIT_LOG_METHODS=POST,PUT,PATCH,DELETE   # bỏ trống = ghi mọi method (kể cả GET)
-```
-
-> Biến bắt buộc: `DB_USER`, `DB_PASSWORD`, `JWT_SECRET`, `JWT_REFRESH_SECRET`, `SWAGGER_USER`, `SWAGGER_PASS`.
-
-### Frontend — `frontend/.env` (tuỳ chọn khi dev)
-
-Khi chạy dev, client gọi đường dẫn tương đối và đi qua proxy của Vite — thường **không cần** file này. Backend tự ghi `VITE_API_PORT` vào `frontend/.env` mỗi lần khởi động.
+Khi dev, client gọi đường dẫn tương đối qua proxy của Vite nên thường không cần tự tạo file này.
 
 ```env
-VITE_API_PORT=3000          # cổng backend để Vite proxy /api và /uploads
-# VITE_API_BASE_URL=        # chỉ set khi build deploy client tách domain
-```
-
----
-
-## Khởi chạy
-
-```bash
-# Development — chạy backend + frontend cùng lúc
-npm run dev
-#   SERVER  → nodemon src/server.js        (http://localhost:3000)
-#   CLIENT  → vite  (chờ server sẵn sàng)  (http://localhost:5173)
-
-# Chạy riêng
-npm run server      # chỉ backend
-npm run client      # chỉ frontend
-```
-
-### Production
-
-```bash
-# Build frontend (ra frontend/dist)
-npm run build --prefix frontend
-
-# Chạy backend ở chế độ production
-npm run start:prod --prefix backend
+VITE_API_PORT=3000        # backend tự ghi mỗi lần khởi động
+# VITE_API_BASE_URL=      # chỉ đặt khi deploy client ở domain khác với API
 ```
 
 ---
 
 ## Chạy bằng Docker
 
-SQL Server **không** được container hoá — vẫn chạy trên máy host. Container kết nối vào qua `host.docker.internal`.
+SQL Server **không** chạy trong container mà vẫn chạy trên máy host. Container kết nối tới SQL Server qua `host.docker.internal`.
 
 ```bash
-# Dev — hot reload, mount code từ máy vào container, kèm log stack (Loki + Promtail)
+# Dev: hot reload (mount code), kèm Redis + Loki + Promtail
 docker compose up --build
-#   client → http://localhost:5173   server → http://localhost:3000
-#   Loki   → http://localhost:3100
+#   client → http://localhost:5173
+#   server → http://localhost:3000
+#   redis  → localhost:6379      loki → http://localhost:3100
 
-# Prod-style — build tĩnh, client phục vụ qua Nginx
-cp backend/.env.example backend/.env    # điền config DB thật trước khi chạy
+# Prod-style: client build tĩnh phục vụ qua Nginx
+cp backend/.env.example backend/.env    # bắt buộc, điền DB_SERVER và DB_*
 docker compose -f docker-compose.prod.yml up --build -d
-#   client → http://localhost   server → http://localhost:3000
+#   client → http://localhost        server → http://localhost:3000
 ```
+
+File upload ở bản prod được lưu trong volume `server_uploads`.
+
+### JWT secret
+
+Container server tự sinh `JWT_SECRET` / `JWT_REFRESH_SECRET` khi khởi động nếu còn trống hoặc là giá trị mẫu `change-me…` (`backend/docker-entrypoint.sh`):
+
+- Có `backend/.env` và chạy bản dev: điền thẳng vào `backend/.env`.
+- Không có: lưu trong volume `server_secrets`, giữ nguyên qua restart/redeploy.
+
+Sinh tay (không Docker): `npm run gen:jwt` (thêm `-- --dry-run` để xem trước, `-- --force` để thay secret đang dùng).
+
+Đổi secret định kỳ (Windows Task Scheduler). **Mỗi lần đổi, mọi người dùng bị đăng xuất**:
+
+```powershell
+.\scripts\rotate-jwt-secrets.ps1 -Register                  # 4 tuần/lần, 02:30 Chủ nhật, compose prod
+.\scripts\rotate-jwt-secrets.ps1 -Register -ComposeFile docker-compose.yml -EveryWeeks 2
+.\scripts\rotate-jwt-secrets.ps1                            # đổi ngay
+.\scripts\rotate-jwt-secrets.ps1 -Unregister                # gỡ lịch
+```
+
+Log ghi tại `logs/jwt-rotate.log`.
 
 ---
 
@@ -194,227 +196,168 @@ docker compose -f docker-compose.prod.yml up --build -d
 
 ```
 Hospital_RMS/
-├── frontend/                        # React + TypeScript SPA (Vite)
-│   └── src/
-│       ├── app/
-│       │   ├── App.tsx
-│       │   └── router/              # publicRoutes, privateRoutes, guards, lazy + prefetch
-│       ├── features/                # mỗi feature: api / components / hooks / pages / types / utils
-│       │   ├── auth/                # đăng nhập
-│       │   ├── dashboard/           # tổng quan thống kê
-│       │   ├── topics/              # quản lý & đăng ký đề tài
-│       │   ├── approval/            # phê duyệt đề tài
-│       │   ├── council/             # hội đồng chấm đề cương + người ngoài viện
-│       │   ├── round/               # đợt nghiên cứu, deadline
-│       │   ├── schedule/            # lịch trình nghiên cứu
-│       │   ├── seminar/             # hội thảo / hội nghị + sổ cấp CME
-│       │   ├── reports/             # báo cáo & xuất dữ liệu
-│       │   ├── catalog/             # danh mục: phân loại, cấp độ, loại đợt
-│       │   ├── department/          # khoa / phòng ban
-│       │   ├── user/                # quản lý người dùng
-│       │   ├── roles/               # phân quyền theo vai trò
-│       │   ├── notifications/       # thông báo (admin + người dùng)
-│       │   ├── activity-log/        # nhật ký hoạt động
-│       │   └── portal/              # cổng người dùng: trang chủ, đề tài của tôi, tiến độ hội đồng, hồ sơ
-│       ├── layouts/                 # AdminLayout, UserLayout, AuthLayout, EmptyLayout + hooks (useRealtime)
-│       ├── shared/                  # dùng chung mọi feature
-│       │   ├── components/          # Badge, Button, Card, EmptyState, Input/*, Loading, Modal, Table, FileViewerModal…
-│       │   ├── hooks/              # useRowSelection…
-│       │   ├── utils/              # cx, formatDate, storage, runBulk…
-│       │   └── api/                # apiClient (fetch), interceptors (refresh token), endpoints
-│       └── styles/
+├── frontend/src/
+│   ├── app/
+│   │   ├── providers/          # AntdProvider, QueryProvider
+│   │   └── router/             # publicRoutes, privateRoutes, guards, LazyRoute, routePrefetch
+│   ├── features/               # mỗi feature: api / components / hooks / pages / types / utils
+│   │   ├── auth, dashboard, notifications, activity-log, my-tasks
+│   │   ├── topics, approval, council, round, schedule, reports, workflow, person-merge
+│   │   ├── seminar, venue
+│   │   ├── trainee, lecturer, course, training-program, training-plan, training-catalog
+│   │   ├── exam, survey, attendance-checkin
+│   │   ├── catalog, department, user, roles
+│   │   ├── portal/             # cổng người dùng (/user/*)
+│   │   └── public/             # cổng công khai
+│   ├── layouts/                # AdminLayout, UserLayout, AuthLayout… + hooks (useRealtime)
+│   ├── shared/                 # components (UI kit), hooks, utils, api (apiClient, interceptors)
+│   └── styles/
 │
-├── backend/                         # Node.js + Express REST API
-│   └── src/
-│       ├── server.js               # bootstrap: auto-port, đồng bộ port sang client, network IP
-│       ├── app.js                  # nạp .env, kiểm tra biến bắt buộc, middleware, mount routes
-│       ├── config/                 # db.js (mssql pool), swagger.js, auditLogger.js
-│       ├── routes/                 # auth, users, topics, councils, files, dashboard,
-│       │                           # notifications, events (SSE), activityLogs, seminars, lookups, health
-│       ├── controllers/            # xử lý request/response + các controller export Excel
-│       ├── services/               # business logic (topic, council, seminar, deadline, permission…)
-│       ├── middlewares/            # auth, permissionCache, activityLogger, upload, swaggerAuth, errorHandler
-│       └── utils/                  # response, paging, sqlFilters, excelStyle, vietnameseText
+├── backend/src/
+│   ├── server.js               # bootstrap: tự chọn port, đồng bộ port sang frontend/.env
+│   ├── app.js                  # nạp & kiểm tra .env, middleware, mount routes
+│   ├── config/                 # db, redis, swagger, auditLogger, env
+│   ├── core/                   # db (gọi stored procedure), errors (AppError)
+│   ├── routes/                 # định nghĩa endpoint + validation
+│   ├── controllers/            # request/response, các controller export Excel
+│   ├── services/               # business logic
+│   ├── middlewares/            # auth, permissionCache, activityLogger, upload*, fileTypeAllowlist…
+│   ├── jobs/                   # cron: bảo trì tài khoản, nhắc deadline, gắn persons
+│   └── utils/                  # response, paging, sqlFilters, cache, captcha, signedUpload…
 │
-├── infra/                           # loki-config.yaml, promtail-config.yaml
-├── scripts/                         # upgrade_db_script_to_hospital_rms.sql, drop-activity-logs.sql, wait-server.js
-├── docs/                            # tài liệu nghiệp vụ (kế hoạch, mẫu Excel CME…)
-├── script.sql                       # dump database đầy đủ
-├── docker-compose.yml               # dev: server + client + loki + promtail
-└── docker-compose.prod.yml          # prod: server + client (Nginx)
+├── scripts/                    # wait-server.js, script import dữ liệu từ hệ thống cũ
+├── infra/                      # cấu hình Loki, Promtail
+├── docker-compose.yml          # dev: server, client, redis, loki, promtail
+└── docker-compose.prod.yml     # prod: server, client (Nginx), redis
 ```
 
 ---
 
-## Tính năng chính
+## Phân hệ chức năng
 
-### Đề tài nghiên cứu
-- Đăng ký đề tài với loại, cấp độ, đợt nghiên cứu; kiểm tra cấp độ hợp lệ theo cấu hình đợt.
-- Kiểm soát cửa sổ đăng ký (registration window) theo deadline của đợt.
-- Thêm/xoá thành viên, cấp tài khoản đăng nhập cho thành viên.
-- Tải file đính kèm theo lô (batch upload).
-- Xuất danh sách / hồ sơ đầy đủ đề tài ra Excel.
+### Nghiên cứu khoa học
+- **Đề tài**: đăng ký với loại, cấp độ, đợt nghiên cứu. Hệ thống kiểm tra cấp độ hợp lệ theo loại đợt và chỉ cho đăng ký trong cửa sổ thời gian của đợt. Quản lý thành viên, cấp tài khoản cho thành viên, upload hồ sơ theo lô, xuất Excel danh sách và hồ sơ đầy đủ.
+- **Đợt nghiên cứu & lịch trình**: nhiều loại deadline (đăng ký, nộp bổ sung…), tự động nhắc deadline, trang lịch tổng hợp các mốc.
+- **Hội đồng chấm đề cương**: tạo hội đồng, phân ghế thủ công hoặc tự động, thêm người ngoài viện, import từ file, chấm điểm/nhận xét, theo dõi tiến độ chấm, xuất Excel.
+- **Phê duyệt**: nộp, duyệt hoặc trả lại kèm ghi chú, lưu lịch sử duyệt. **Workflow engine** cho phép định nghĩa quy trình duyệt nhiều bước (`/admin/workflows`). Khi không có định nghĩa nào đang bật, hệ thống dùng luồng duyệt một bước (`sp_approve_topic`).
+- **Cổng công khai**: đăng ký/đề xuất đề tài không cần tài khoản (có captcha), tra cứu trạng thái bằng mã hồ sơ, thư viện đề tài tiêu biểu.
 
-### Hội đồng chấm đề cương
-- Tạo hội đồng, phân ghế thành viên (thủ công hoặc tự động), nhập người ngoài viện.
-- Import danh sách hội đồng từ file.
-- Chấm điểm / nhận xét đề cương; theo dõi tiến độ chấm.
-- Người dùng có ghế hội đồng xem được số đề tài mình phụ trách và tiến độ.
+### Đào tạo & CME
+- **Hội thảo / hội nghị**: quản lý theo năm, địa điểm, danh sách tham dự (import Excel), sổ cấp CME nội viện/ngoại viện.
+- **Đào tạo**: học viên, giảng viên, chương trình và bài học, kế hoạch đào tạo, khoá học (đăng ký công khai), danh mục đào tạo (loại học viên, hình thức, loại hình, môn học, nhóm tín chỉ CME).
+- **Thi trực tuyến**, **khảo sát** (có link chia sẻ), **điểm danh bằng QR**.
+- **CME**: sổ đăng ký, hồ sơ tín chỉ, theo dõi mức độ đáp ứng yêu cầu CME (`/admin/cme-compliance`), chứng chỉ hành nghề của nhân viên.
 
-### Quy trình phê duyệt
-- Nộp đề tài để xét duyệt, phê duyệt / trả lại kèm ghi chú.
-- Lịch sử phê duyệt đầy đủ; trạng thái hiển thị luôn lấy theo `topics.status` (bảng đề tài) — xem ghi chú ở phần Database.
-
-### Đợt nghiên cứu & lịch trình
-- Tạo đợt nghiên cứu với nhiều loại deadline (đăng ký đề tài, nộp bổ sung…).
-- Cửa sổ nộp bổ sung, nhắc deadline tự động.
-- Trang lịch trình tổng hợp các mốc thời gian.
-
-### Hội thảo / Hội nghị & CME
-- Quản lý hội thảo, hội nghị theo năm (tách riêng khỏi đề tài NCKH).
-- Danh sách tham dự, import từ Excel.
-- Sổ cấp CME (nội viện / ngoại viện) theo từng hội nghị.
-
-### Dashboard & Báo cáo
-- Tổng quan số liệu theo đợt, khoa, trạng thái; biểu đồ tiến độ.
-- Trang Báo cáo & Xuất dữ liệu tập trung cho các bản kết xuất Excel.
-
-### Thông báo & Realtime
-- Thông báo real-time qua SSE cho các sự kiện (phê duyệt, deadline, phân công hội đồng…).
-- Đánh dấu đã đọc / chưa đọc, bộ đếm chưa đọc.
-- Quản trị viên soạn và gửi thông báo thủ công.
-
-### Quản trị hệ thống
-- Quản lý người dùng, khoa/phòng ban, danh mục (phân loại, cấp độ, loại đợt), vai trò & quyền.
-- Nhật ký hoạt động đọc trực tiếp từ file log.
+### Chung
+- **Dashboard** riêng cho nghiên cứu và đào tạo, trang **Báo cáo & xuất dữ liệu** tập trung.
+- **Việc của tôi**: gom các việc đang chờ người dùng xử lý.
+- **Thông báo realtime** qua SSE, đánh dấu đã đọc/chưa đọc, admin gửi thông báo thủ công. Email thông báo duyệt/từ chối và nhắc deadline (khi bật SMTP).
+- **Quản trị**: người dùng, khoa/phòng, danh mục, vai trò & quyền, cài đặt hệ thống, duyệt trùng danh tính, nhật ký hoạt động.
 
 ---
 
-## Kiến trúc & quy ước
+## API
 
-### Realtime — một kết nối SSE cho mỗi tab
-`useRealtimeUpdate(entities, callback)` (`frontend/src/layouts/hooks/useRealtime.ts`) đăng ký vào **một** `EventSource` dùng chung ở cấp module, kết nối tới `GET /api/v1/events?token=<jwt>`. Nếu mỗi hook tự mở kết nối riêng, một trang nhiều panel sẽ vượt giới hạn 6 kết nối HTTP/1.1 mỗi origin của trình duyệt và làm treo toàn bộ request còn lại — **luôn dùng hook này**, không tự tạo `EventSource`.
+- **Swagger UI:** `http://localhost:3000/api-docs` (Basic Auth: `SWAGGER_USER` / `SWAGGER_PASS`)
+- **Base URL:** `/api/v1` · **Health check:** `GET /health`
+- **Response:** `{ "success": true, "message": "...", "data": {} }`
+- **Xác thực:** header `Authorization: Bearer <access_token>`, trừ `/auth/login`, `/auth/refresh` và `/public/*`.
+- **Query chung:** `page` (mặc định 1), `limit` (mặc định 20), `search`, cùng các bộ lọc riêng (`department_id`, `round_id`, `status`, `category_id`, `level_id`…).
 
-### Danh tính hợp nhất (`persons`) — dual-write
-Một con người từng bị lưu ở 6 bảng riêng (`users`, `trainees`, `lecturers`, `external_reviewers`, `topic_members`, `seminar_participants`). Nay mỗi bảng có cột `person_id` trỏ về **một** bản ghi `persons`.
-
-- **Bảng nguồn vẫn là nguồn sự thật.** Sau mỗi lệnh ghi thành công, `personService.syncPerson(source, id, { actorId })` gắn/cập nhật person. Hàm này **không bao giờ ném lỗi** (chỉ log) nên không chặn thao tác của người dùng. Viết đường ghi mới vào 6 bảng trên → nhớ gọi nó (hoặc `syncPersons` cho import hàng loạt).
-- **Quy tắc gắn người** (giống migration): có `user_id` → person của user · trùng CCCD · `staff_number` + tên · email + tên · SĐT chuẩn hoá + tên · tên + ngày sinh. Mỗi quy tắc chỉ dùng khi khớp đúng 1 person; trùng **tên đơn thuần không bao giờ tự gộp** (đưa vào hàng đợi duyệt `person_merge_candidates`). Một người chỉ có một tài khoản.
-- **Nguồn phụ chỉ điền chỗ trống**, không ghi đè person do nguồn khác tạo. Email giả `<id>@member.local` (luồng cấp tài khoản) không vào `persons`.
-- **Job đêm 03:00** (`jobs/personLinkJob`) gắn nốt bản ghi còn `person_id IS NULL` (script import một lần, SQL tay, lỗi tạm thời…).
-- **Cờ tắt khẩn cấp:** `PERSON_DUAL_WRITE=false` trong `backend/.env`. Trước khi chạy migration, dual-write tự bỏ qua (kiểm tra lại mỗi 60s).
-- **Duyệt gộp:** màn hình *Hệ thống → Duyệt trùng danh tính* (`/admin/person-merge`, quyền `persons:read` / `persons:merge`, mặc định chỉ admin). Gộp chuyển toàn bộ `person_id` sang hồ sơ gốc, đánh dấu hồ sơ kia `MERGED` và ghi `person_merge_log` (ảnh chụp + danh sách bản ghi đã chuyển, đủ để khôi phục thủ công). Không thể gộp hai hồ sơ đều có tài khoản.
-
-### UI kit dùng chung (`frontend/src/shared`)
-Các mảnh giao diện lặp lại được gom về một nguồn duy nhất — sửa một nơi, đổi cả app. Import qua barrel: `import { Badge, EmptyState, Pagination } from '@/shared/components'`.
-
-| Thành phần | Dùng cho | Ghi chú |
-|---|---|---|
-| `<Badge tone dot>` | Nhãn trạng thái (chip chấm màu) | `tone`: `green\|blue\|amber\|gray\|red\|pink\|purple\|teal`. Config trạng thái của feature khai báo `tone: BadgeTone` thay cho tên class. |
-| `<EmptyState icon title desc action>` / `<TableEmpty colSpan …>` | Khối "chưa có dữ liệu" | `TableEmpty` bọc sẵn `<tr><td colSpan>`. |
-| `<Card>` + `<Card.Header icon title sub actions>` + `<Card.Body>` | Khung card có viền + header icon | |
-| `<Pagination …>` | Thanh phân trang | `hideSizeSelect` khi không có ô chọn số dòng; `infoText` để ghi đè câu chữ. |
-| `Table.module.css` | Nguồn chân lý style bảng danh sách | feature dùng `composes: … from '@/shared/components/Table/Table.module.css'`, **không** tự định nghĩa lại `.tableWrap/.th/.td/.tr/.emptyState`. |
-| `<Modal>`, `<Button>`, `Input/*` (DatePicker, MultiSelect, SearchableSelect), `Loading`/`Skeleton`, `FileViewerModal` | (đã có sẵn) | |
-
-Quy ước: không tự viết lại `Badge` / pagination / empty-state trong feature; cần biến thể thì truyền `className`/`style` vào component dùng chung. `docx-preview` / `RichTextEditor` nặng — import trực tiếp theo đường dẫn, **không** qua barrel.
-
-> Lưu ý: nhiều CSS Module không dùng được `animation: spin` (keyframe bị scope hoá) — dùng component `Loading` / `InlineLoading` sẵn có thay vì tự viết spinner.
-
----
-
-## API Documentation
-
-Swagger UI có sẵn sau khi khởi chạy backend:
-
-```
-http://localhost:3000/api-docs
-```
-
-Đăng nhập Basic Auth bằng `SWAGGER_USER` / `SWAGGER_PASS`.
-
-**Base URL:** `/api/v1`  ·  **Health check:** `GET /health`
-
-**Định dạng response:**
-```json
-{ "success": true, "message": "...", "data": {} }
-```
-
-**Authentication:** mọi endpoint (trừ `/auth/login`) yêu cầu header `Authorization: Bearer <access_token>`.
-
-**Query params chung:** `page` (mặc định 1), `limit` (mặc định 20), `search`, cùng các bộ lọc riêng (`department_id`, `round_id`, `status`, `category_id`, `level_id`…).
-
-### Các nhóm endpoint chính
-
-| Nhóm | Base path | Mô tả |
-|---|---|---|
-| Auth | `/auth` | Đăng nhập, refresh token, đăng xuất, đổi mật khẩu |
-| Users | `/users` | CRUD người dùng, `/me`, tìm kiếm, reset mật khẩu |
-| Topics | `/topics` | CRUD đề tài, thành viên, cấp tài khoản, file/batch, phê duyệt |
-| Councils | `/councils` | Hội đồng, phân ghế, chấm điểm, import, tiến độ, export |
-| Seminars | `/seminars` | Hội thảo/hội nghị, người tham dự, cấp CME, import |
-| Files | `/files` | Xoá file (upload nằm dưới `/topics/:id/files`) |
-| Dashboard | `/dashboard` | Thống kê tổng quan + export |
-| Notifications | `/notifications` | Thông báo người dùng, đánh dấu đã đọc, gửi thủ công |
-| Events | `/events` | SSE stream cập nhật real-time (`?token=`) |
-| Activity Logs | `/activity-logs` | Đọc nhật ký hoạt động từ file log |
-| Persons | `/persons/merge-candidates` | Hàng đợi trùng danh tính: danh sách, chi tiết, `/:id/merge`, `/:id/reject`, `/:id/reopen`, `/stats` |
-| Lookups | `/departments`, `/categories`, `/levels`, `/roles`, `/research-rounds`, `/round-types` | Danh mục — hỗ trợ GET (list), GET/:id, POST, PUT/:id, DELETE/:id |
-
----
-
-## Phân quyền
-
-Xác thực bằng JWT (access token ngắn hạn + refresh token dài hạn). Cấp quyền theo **permission** gắn với vai trò, được cache trong middleware `permissionCache` và kiểm tra bằng `authorizePermission` ở backend / `<RequirePermission perm="...">` ở frontend (ví dụ quyền `topics:create`).
-
-| Vai trò | Quyền hạn tiêu biểu |
+| Nhóm | Base path |
 |---|---|
-| **Admin** | Toàn quyền: người dùng, vai trò/quyền, danh mục, đợt nghiên cứu, hội đồng, hội thảo/CME, xem tất cả đề tài và nhật ký |
-| **Manager / cấp duyệt** | Phê duyệt đề tài, xem đề tài trong khoa, quản lý thành viên & tài khoản trong khoa |
-| **Thành viên hội đồng** | Chấm đề cương, xem tiến độ các đề tài được phân công |
-| **Member** | Đăng ký đề tài, tải file, xem và theo dõi đề tài của bản thân |
+| Xác thực | `/auth`: login, refresh, logout, logout-all, sessions, change-password, `2fa/*` |
+| Người dùng | `/users` |
+| Nghiên cứu | `/topics`, `/councils`, `/files`, `/workflows` |
+| Hội thảo & CME | `/seminars`, `/cme-records`, `/staff-licenses` |
+| Đào tạo | `/trainees`, `/lecturers`, `/courses`, `/training-programs`, `/training-plans`, `/exams`, `/surveys` |
+| Tổng hợp | `/dashboard`, `/my-tasks`, `/notifications`, `/events` (SSE, `?token=`) |
+| Hệ thống | `/activity-logs`, `/security-events`, `/system-settings`, `/persons/merge-candidates` |
+| Công khai | `/public`: captcha, khoá học mở, đăng ký, tra cứu trạng thái đề tài, đề tài tiêu biểu |
+| Danh mục | `/departments`, `/categories`, `/levels`, `/roles`, `/research-rounds`, `/round-types`… (CRUD chuẩn) |
 
-Vai trò và tập quyền cụ thể được quản lý trong trang **Phân quyền** (`/admin/roles`).
+---
+
+## Xác thực & phân quyền
+
+- **JWT**: access token ngắn hạn + refresh token dài hạn. Frontend tự refresh khi gặp `401`. Người dùng có thể xem các phiên đăng nhập và đăng xuất khỏi mọi thiết bị.
+- **2FA** TOTP (tuỳ chọn cho từng người dùng).
+- **Chống dò mật khẩu**: rate-limit đăng nhập, tạm khoá tài khoản sau nhiều lần sai, ghi lại sự kiện bảo mật (API `/security-events`).
+- **Bảo trì tài khoản**: job hằng đêm vô hiệu hoá tài khoản hết hạn và cảnh báo mật khẩu cũ.
+- **Phân quyền theo permission** gắn với vai trò, dạng `resource:action` (vd `topics:create`, `persons:merge`):
+  - Backend dùng `authorizePermission([...])`, quyền được cache trong `permissionCache`.
+  - Frontend dùng `<RequirePermission perm="...">` và guard ở router.
+  - Vai trò và tập quyền được quản lý tại `/admin/roles`.
 
 ---
 
 ## Database
 
-**Engine:** Microsoft SQL Server  ·  **Database:** `RMS_HOSPITAL`  ·  **Connection pool:** min 2 — max 10.
+**Engine:** Microsoft SQL Server · **Database:** `RMS_HOSPITAL` · **Pool:** min 2, max 10.
 
-### Stored procedures được sử dụng
+> Mọi file `*.sql` đều bị `.gitignore` loại khỏi repo, gồm dump schema, migration và script bảo trì. Hãy lấy bộ script khởi tạo và migration từ nhóm phát triển. Chạy migration bằng `sqlcmd -I` theo thứ tự tên file, vì các bảng có index lọc hoặc cột tính toán cần `QUOTED_IDENTIFIER ON`.
+
+### Stored procedures chính
 
 | Procedure | Mục đích |
 |---|---|
-| `sp_set_actor` | Set session context `user_id` trước mỗi thao tác ghi (phục vụ audit) |
-| `sp_gen_topic_id` / `sp_gen_user_id` / `sp_gen_member_id` | Sinh ID đề tài / người dùng / thành viên |
-| `sp_gen_batch_id` / `sp_gen_file_id` | Sinh ID batch upload / file |
+| `sp_set_actor` | Đặt `user_id` vào session context trước mỗi lệnh ghi (phục vụ audit) |
+| `sp_gen_topic_id`, `sp_gen_user_id`, `sp_gen_member_id`, `sp_gen_batch_id`, `sp_gen_file_id` | Sinh mã đề tài / người dùng / thành viên / batch / file |
 | `sp_grant_member_accounts` | Cấp tài khoản đăng nhập cho thành viên đề tài |
-| `sp_approve_topic` | Quy trình phê duyệt đề tài |
+| `sp_approve_topic` | Luồng duyệt đề tài một bước |
 | `sp_upload_files` | Ghi nhiều file trong một batch |
 
 ### Ghi chú nghiệp vụ
 
-- **Trạng thái phê duyệt vs. trạng thái đề tài:** `approvals.status` có thể lệch với `topics.status`. UI hiển thị theo `topics.status`. Với bản ghi `approvals`: `created_*` = thời điểm nộp, `updated_*` = thời điểm duyệt.
-
-### Migrations & scripts
-
-> `backend/migrations/` được ignore có chủ đích (không nằm trong git); chạy tay theo thứ tự tên file. Dùng `sqlcmd -I` (bảng có index lọc / cột tính toán cần `QUOTED_IDENTIFIER ON`).
-
-- `2026-09-25_persons_foundation.sql` — bảng `persons`, `person_merge_candidates`, cột `person_id` trên 6 bảng nguồn, backfill (idempotent, có rollback ở cuối file).
-- `2026-09-26_person_merge_review.sql` — `person_merge_log` và quyền `persons:read` / `persons:merge`.
-- `scripts/profiling/gd0_profiling.sql` — thống kê hiện trạng dữ liệu (chỉ đọc), chạy trên **bản sao** trước khi migrate.
-
-- `script.sql` — dump database đầy đủ để khởi tạo mới.
-- `scripts/upgrade_db_script_to_hospital_rms.sql` — script nâng cấp schema.
-- `scripts/drop-activity-logs.sql` — gỡ bảng activity log cũ (nhật ký nay ghi ra file, không còn dùng SQL).
+- **Trạng thái đề tài:** `approvals.status` có thể lệch với `topics.status`. Giao diện luôn hiển thị theo `topics.status`. Trong bảng `approvals`, `created_*` là thời điểm nộp và `updated_*` là thời điểm duyệt.
+- **Danh tính hợp nhất (`persons`):** trước đây một người có thể nằm ở 6 bảng (`users`, `trainees`, `lecturers`, `external_reviewers`, `topic_members`, `seminar_participants`). Nay mỗi bảng có cột `person_id` trỏ về một bản ghi `persons`.
+  - Bảng nguồn vẫn là nguồn dữ liệu gốc. Sau mỗi lệnh ghi thành công, gọi `personService.syncPerson(source, id, { actorId })` (hoặc `syncPersons` khi import hàng loạt). Hàm này không bao giờ ném lỗi nên không chặn thao tác của người dùng. **Khi viết đường ghi mới vào 6 bảng trên, phải gọi hàm này.**
+  - Thứ tự quy tắc ghép: `user_id` → CCCD → `staff_number` + tên → email + tên → SĐT chuẩn hoá + tên → tên + ngày sinh. Mỗi quy tắc chỉ áp dụng khi khớp đúng một person. Trùng **tên** đơn thuần không bao giờ tự gộp mà được đưa vào hàng đợi `person_merge_candidates`, duyệt tại `/admin/person-merge`.
+  - Gộp hồ sơ ghi `person_merge_log` đủ để khôi phục thủ công. Không thể gộp hai hồ sơ đều đã có tài khoản.
+  - Job 03:00 hằng đêm gắn nốt các bản ghi còn `person_id IS NULL`.
 
 ---
 
-## Nhật ký hoạt động & logging
+## Tác vụ nền, cache & logging
 
-- Server ghi log bằng **Pino**; `pino-roll` xoay file JSON theo ngày tại `LOG_DIR/audit-*.log` (mặc định `backend/logs/`).
-- Middleware `activityLogger` ghi lại các request ghi dữ liệu (mặc định mọi method; giới hạn qua `AUDIT_LOG_METHODS`).
-- Trang **Nhật ký hoạt động** (`/admin/activity-logs`) đọc **trực tiếp** từ các file log — không truy vấn SQL.
-- `LOG_RETENTION_FILES` giới hạn số file được giữ (tự xoá file cũ hơn). Đặt `LOG_STDOUT=1` để ghi ra stdout khi có trình thu gom log riêng.
-- Docker (dev) kèm **Loki + Promtail**: Promtail đọc `backend/logs` và đẩy vào Loki (`http://localhost:3100`) để tra cứu/giám sát.
+**Cron job** (`backend/src/jobs`, múi giờ `CRON_TZ`, mặc định `Asia/Ho_Chi_Minh`):
+
+| Giờ | Job |
+|---|---|
+| 01:00 | Bảo trì tài khoản: vô hiệu hoá tài khoản hết hạn, cảnh báo mật khẩu cũ |
+| 02:00 | Nhắc deadline sắp tới hoặc đã quá hạn (thông báo + email) |
+| 03:00 | Gắn `person_id` cho các bản ghi còn thiếu |
+
+**Redis cache**: cache-aside cho số liệu dashboard và danh mục (khoa, vai trò, loại, cấp độ…). Nếu mất kết nối Redis, server đọc thẳng từ SQL Server.
+
+**Logging**:
+- Pino ghi file JSON xoay theo ngày tại `LOG_DIR/audit-*.log` (mặc định `backend/logs/`), giữ tối đa `LOG_RETENTION_FILES` file.
+- Middleware `activityLogger` ghi lại request, lọc theo `AUDIT_LOG_METHODS`. Trang **Nhật ký hoạt động** (`/admin/activity-logs`) đọc trực tiếp từ file log, không dùng SQL.
+- `LOG_STDOUT=1` để ghi ra stdout khi đã có hệ thống thu gom log riêng.
+- Bản Docker dev có sẵn Promtail đọc `backend/logs` và đẩy vào Loki (`http://localhost:3100`).
+
+---
+
+## Quy ước phát triển
+
+### Realtime: một kết nối SSE cho mỗi tab
+Luôn dùng `useRealtimeUpdate(entities, callback)` ([`frontend/src/layouts/hooks/useRealtime.ts`](frontend/src/layouts/hooks/useRealtime.ts)). Hook này đăng ký vào **một** `EventSource` dùng chung tới `GET /api/v1/events?token=<jwt>`. Không tự tạo `EventSource`: mỗi panel mở một kết nối riêng sẽ vượt giới hạn 6 kết nối HTTP/1.1 mỗi origin của trình duyệt và làm treo các request khác.
+
+### UI kit dùng chung (`frontend/src/shared/components`)
+Import qua barrel: `import { Badge, EmptyState, Pagination } from '@/shared/components'`.
+
+| Thành phần | Dùng cho |
+|---|---|
+| `<Badge tone dot>` | Nhãn trạng thái. `tone`: `green \| blue \| amber \| gray \| red \| pink \| purple \| teal`. Config trạng thái của feature khai báo `tone: BadgeTone` thay vì tên class. |
+| `<EmptyState>` / `<TableEmpty colSpan>` | Khối "chưa có dữ liệu" (`TableEmpty` đã bọc sẵn `<tr><td>`) |
+| `<Card>` + `Card.Header` / `Card.Body` | Khung card có header icon |
+| `<Pagination>` | Phân trang (`hideSizeSelect`, `infoText`) |
+| `Table.module.css` | Style gốc cho bảng. Feature dùng `composes: … from '@/shared/components/Table/Table.module.css'`, không tự định nghĩa lại `.tableWrap/.th/.td/.tr/.emptyState` |
+| `Modal`, `Button`, `Input/*`, `Loading` / `Skeleton`, `FileViewerModal`, `QrScanner` | Có sẵn |
+
+- Không tự viết lại Badge, phân trang hay empty-state trong feature. Nếu cần biến thể, truyền `className`/`style` vào component dùng chung.
+- `docx-preview` và `RichTextEditor` nặng nên import trực tiếp theo đường dẫn, không import qua barrel.
+- `animation: spin` không dùng được trong CSS Module (keyframe bị scope hoá). Dùng `Loading` / `InlineLoading` có sẵn.
+
+### Dữ liệu nhạy cảm
+Các script trong `scripts/` dùng để import dữ liệu từ hệ thống cũ. Báo cáo chúng sinh ra (`*_CHUA_MAT_KHAU.csv`, `staff_license_import_unmatched.csv`) chứa thông tin cá nhân thật hoặc mật khẩu tạm và đã được `.gitignore`. **Không bao giờ commit các file này.**

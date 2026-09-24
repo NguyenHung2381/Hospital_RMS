@@ -6,6 +6,8 @@
 		"server": "cd backend && npm run dev",
 		"client": "cd frontend && npm run dev",
 		"client:wait": "node scripts/wait-server.js && npm run client",
-		"dev": "concurrently -n SERVER,CLIENT -c cyan,yellow \"npm run server\" \"npm run client:wait\""
+		"dev": "concurrently -n SERVER,CLIENT -c cyan,yellow \"npm run server\" \"npm run client:wait\"",
+		"gen:jwt": "node backend/scripts/gen-jwt-secrets.js",
+		"rotate:jwt": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/rotate-jwt-secrets.ps1"
 	}
 }
