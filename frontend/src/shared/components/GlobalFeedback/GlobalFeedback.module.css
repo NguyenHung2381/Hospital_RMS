@@ -50,7 +50,7 @@
 	height: 3px;
 	z-index: 2000;
 	overflow: hidden;
-	background: rgba(46, 184, 122, 0.15);
+	background: rgba(10, 155, 74, 0.15);
 	pointer-events: none;
 	animation: fadeIn 0.15s ease-out;
 }
@@ -61,7 +61,7 @@
 	top: 0;
 	bottom: 0;
 	background: linear-gradient(90deg, var(--color-primary-light), var(--color-primary));
-	box-shadow: 0 0 8px rgba(46, 184, 122, 0.6);
+	box-shadow: 0 0 8px rgba(10, 155, 74, 0.6);
 	animation: slide 1.3s cubic-bezier(0.65, 0.05, 0.35, 1) infinite;
 }
 

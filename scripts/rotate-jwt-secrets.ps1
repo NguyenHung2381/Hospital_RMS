@@ -1,4 +1,4 @@
-﻿<#
+<#
 .SYNOPSIS
   Đổi JWT_SECRET + JWT_REFRESH_SECRET rồi tạo lại container server (Docker).
 
@@ -90,15 +90,15 @@ try {
 	$ErrorActionPreference = 'Stop'
 	if ($LASTEXITCODE -ne 0) { throw 'Docker chưa chạy (mở Docker Desktop rồi thử lại).' }
 
-	# Tên service API khác nhau giữa 2 file compose: dev = "server", prod = "backend"
+	# Cả 2 file compose đều đặt tên service API là "backend"
 	$ErrorActionPreference = 'Continue'
 	$services = & docker compose --project-directory $root -f $composePath config --services 2>$null
 	$ErrorActionPreference = 'Stop'
 	if ($LASTEXITCODE -ne 0) { throw "Không đọc được danh sách service trong $ComposeFile" }
-	$service = @('backend', 'server') | Where-Object { $services -contains $_ } | Select-Object -First 1
-	if (-not $service) { throw "Không thấy service 'backend' hoặc 'server' trong $ComposeFile" }
-	# Chỉ bản prod (service "backend") nạp backend/.env.production qua env_file
-	$isProd = $service -eq 'backend'
+	$service = 'backend'
+	if ($services -notcontains $service) { throw "Không thấy service '$service' trong $ComposeFile" }
+	# Chỉ bản prod (docker-compose.prod.yml) nạp backend/.env.production qua env_file
+	$isProd = (Split-Path $composePath -Leaf) -like '*prod*'
 
 	# Tìm nơi đang giữ secret thật, theo đúng thứ tự ưu tiên khi nạp: ở prod
 	# .env.production ghi đè .env, nên đổi ở .env khi .env.production có secret
@@ -110,7 +110,7 @@ try {
 		if ($current -and ($current -notlike 'change-me*')) { $envName = $name; break }
 	}
 
-	# Chạy script trong image server (không cần Node trên máy host)
+	# Chạy script trong image backend (không cần Node trên máy host)
 	$genArgs = @('run', '--rm', '--no-deps', '--entrypoint', 'node')
 	if ($envName) {
 		Write-Log "Secret nằm trong backend/$envName → ghi đè file này (backup backend/$envName.bak)"

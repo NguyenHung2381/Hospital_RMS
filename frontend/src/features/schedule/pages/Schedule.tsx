@@ -26,7 +26,7 @@ import styles from './Schedule.module.css';
 
 const LEGEND = [
 	{ color: '#378add', label: 'Đăng ký',  pin: false },
-	{ color: '#2eb87a', label: 'Nghiên cứu', pin: false },
+	{ color: '#0a9b4a', label: 'Nghiên cứu', pin: false },
 	{ color: '#ef9f27', label: 'Bổ sung',  pin: false },
 	{ color: '#e05252', label: 'Hạn nộp',  pin: true  },
 ];

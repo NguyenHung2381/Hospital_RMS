@@ -27,7 +27,7 @@ const DOC_TYPE_LABEL: Record<string, string> = {
 
 const ENROLLMENT_STATUS_CFG: Record<EnrollmentStatus, { label: string; color: string; bg: string }> = {
 	pending: { label: 'Chờ duyệt', color: '#633806', bg: '#faeeda' },
-	approved: { label: 'Đã duyệt', color: '#085041', bg: '#e1f5ee' },
+	approved: { label: 'Đã duyệt', color: '#085028', bg: '#e1f5ea' },
 	rejected: { label: 'Từ chối', color: '#791f1f', bg: '#fcebeb' },
 	waitlisted: { label: 'Danh sách chờ', color: '#3c3489', bg: '#eeedfe' },
 };

@@ -13,7 +13,7 @@
 	background:
 		radial-gradient(
 			ellipse 90% 360px at 50% -80px,
-			rgba(46, 184, 122, 0.1),
+			rgba(10, 155, 74, 0.1),
 			transparent 70%
 		),
 		var(--color-gray-50);
@@ -30,12 +30,12 @@
 	/* Thanh điều hướng xanh lá gradient (khác AdminLayout nền tối) */
 	background: linear-gradient(
 		100deg,
-		#1a8858 0%,
-		#1e9460 48%,
-		#22a06b 100%
+		#0a783b 0%,
+		#087c3b 48%,
+		#0c9047 100%
 	);
 	border-bottom: 1px solid rgba(255, 255, 255, 0.14);
-	box-shadow: 0 2px 12px rgba(26, 136, 88, 0.28);
+	box-shadow: 0 2px 12px rgba(10, 120, 59, 0.28);
 }
 
 .topbarInner {
@@ -330,7 +330,7 @@
 }
 
 .userDropdownDanger:hover {
-	background: #fdecf2;
+	background: #fce6f3;
 	color: var(--color-accent-dark);
 }
 
@@ -378,7 +378,7 @@
 	padding: 0 var(--space-4);
 	max-height: 0;
 	overflow: hidden;
-	background: #1a8858;
+	background: #0a783b;
 	border-top: 1px solid transparent;
 	transition:
 		max-height 260ms ease,
@@ -749,10 +749,10 @@
 	background: var(--color-gray-50);
 }
 .notifItem.unread {
-	background: rgba(46, 184, 122, 0.03);
+	background: rgba(10, 155, 74, 0.03);
 }
 .notifItem.unread:hover {
-	background: rgba(46, 184, 122, 0.06);
+	background: rgba(10, 155, 74, 0.06);
 }
 
 .notifItem.unread::before {
@@ -892,7 +892,7 @@
 	}
 
 	.mobileNavItem.userDropdownDanger {
-		color: #ffd7e4;
+		color: #fad6ec;
 	}
 
 	.mobileNavItem.userDropdownDanger:hover {

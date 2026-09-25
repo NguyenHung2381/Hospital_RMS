@@ -23,7 +23,7 @@
 
 .statCard.green {
 	border-left-color: var(--color-primary);
-	background: linear-gradient(135deg, rgba(46, 184, 122, 0.04) 0%, var(--color-white) 100%);
+	background: linear-gradient(135deg, rgba(10, 155, 74, 0.04) 0%, var(--color-white) 100%);
 }
 .statCard.blue {
 	border-left-color: #3b82f6;
@@ -45,7 +45,7 @@
 }
 
 .statCard:hover.green {
-	border-color: rgba(46, 184, 122, 0.4);
+	border-color: rgba(10, 155, 74, 0.4);
 }
 .statCard:hover.blue {
 	border-color: rgba(59, 130, 246, 0.4);
@@ -155,14 +155,14 @@
 
 .roundCard:hover {
 	border-color: var(--color-primary-light);
-	box-shadow: 0 6px 24px rgba(46, 184, 122, 0.12);
+	box-shadow: 0 6px 24px rgba(10, 155, 74, 0.12);
 	transform: translateY(-2px);
 }
 
 /* Active round highlight */
 .roundCard.isActive {
 	border-color: var(--color-primary);
-	box-shadow: 0 0 0 3px rgba(46, 184, 122, 0.12);
+	box-shadow: 0 0 0 3px rgba(10, 155, 74, 0.12);
 }
 
 /* Color bar top */
@@ -334,7 +334,7 @@
 	align-items: center;
 	gap: var(--space-2);
 	background: var(--color-primary-pale);
-	border: 1px solid rgba(46, 184, 122, 0.3);
+	border: 1px solid rgba(10, 155, 74, 0.3);
 	border-radius: var(--radius-md);
 	padding: 5px var(--space-3);
 	font-size: 11px;
@@ -349,7 +349,7 @@
 
 .linkRow:hover {
 	border-color: var(--color-primary);
-	background: rgba(46, 184, 122, 0.18);
+	background: rgba(10, 155, 74, 0.18);
 }
 
 .linkRow svg {
@@ -690,7 +690,7 @@
 .formInput:focus {
 	border-color: var(--color-primary);
 	background: var(--color-white);
-	box-shadow: 0 0 0 3px rgba(46, 184, 122, 0.1);
+	box-shadow: 0 0 0 3px rgba(10, 155, 74, 0.1);
 }
 .formInput.hasError {
 	border-color: var(--color-error);
@@ -714,7 +714,7 @@
 .formSelect:focus {
 	border-color: var(--color-primary);
 	background: var(--color-white);
-	box-shadow: 0 0 0 3px rgba(46, 184, 122, 0.1);
+	box-shadow: 0 0 0 3px rgba(10, 155, 74, 0.1);
 }
 
 .formError {
@@ -749,7 +749,7 @@
 	gap: var(--space-3);
 	padding: var(--space-3) var(--space-4);
 	background: var(--color-primary-pale);
-	border: 1px solid rgba(46, 184, 122, 0.2);
+	border: 1px solid rgba(10, 155, 74, 0.2);
 	border-radius: var(--radius-lg);
 	font-size: var(--font-size-sm);
 	color: var(--color-primary-dark);
@@ -764,7 +764,7 @@
 .tokenCode {
 	font-family: var(--font-mono);
 	font-size: 12px;
-	background: rgba(46, 184, 122, 0.15);
+	background: rgba(10, 155, 74, 0.15);
 	padding: 2px 8px;
 	border-radius: var(--radius-sm);
 	color: var(--color-primary-dark);
@@ -849,11 +849,11 @@
 	color: var(--color-white);
 	cursor: pointer;
 	transition: all var(--transition-base);
-	box-shadow: 0 3px 10px rgba(46, 184, 122, 0.28);
+	box-shadow: 0 3px 10px rgba(10, 155, 74, 0.28);
 }
 
 .btnPrimary:hover {
-	box-shadow: 0 5px 16px rgba(46, 184, 122, 0.4);
+	box-shadow: 0 5px 16px rgba(10, 155, 74, 0.4);
 	transform: translateY(-1px);
 }
 .btnPrimary:active {
@@ -978,7 +978,7 @@
 .toast svg {
 	width: 15px;
 	height: 15px;
-	color: #7fffc4;
+	color: #7fffb9;
 }
 
 /* =============================================
@@ -1047,7 +1047,7 @@
 .statusOptionSelected {
 	border-color: var(--color-primary);
 	background: var(--color-primary-pale);
-	box-shadow: 0 0 0 3px rgba(46, 184, 122, 0.12);
+	box-shadow: 0 0 0 3px rgba(10, 155, 74, 0.12);
 }
 
 .statusOptionDesc {
@@ -1170,9 +1170,9 @@
 }
 
 .btnCopySuccess {
-	background: #e1f5ee !important;
+	background: #e1f5ea !important;
 	border-color: var(--color-primary) !important;
-	color: #085041 !important;
+	color: #085028 !important;
 }
 
 .tokenWarningText {
@@ -1398,7 +1398,7 @@
 	border-color: var(--color-primary);
 	color: var(--color-primary-dark);
 	background: var(--color-primary-pale);
-	box-shadow: 0 0 0 3px rgba(46, 184, 122, 0.15);
+	box-shadow: 0 0 0 3px rgba(10, 155, 74, 0.15);
 }
 
 .timelineCard {
@@ -1414,7 +1414,7 @@
 
 .timelineCard:hover {
 	border-color: var(--color-primary-light);
-	box-shadow: 0 4px 12px rgba(46, 184, 122, 0.05);
+	box-shadow: 0 4px 12px rgba(10, 155, 74, 0.05);
 	transform: translateX(3px);
 }
 
@@ -1442,7 +1442,7 @@
 	color: #b45309;
 }
 .timelineBadge.report_submission {
-	background: #e0f8f0;
+	background: #e0f8eb;
 	color: #047857;
 }
 
@@ -1575,14 +1575,14 @@
 	display: inline-flex;
 	align-items: center;
 	gap: var(--space-2);
-	box-shadow: 0 2px 8px rgba(30, 148, 96, 0.25);
+	box-shadow: 0 2px 8px rgba(8, 124, 59, 0.25);
 	transition: all var(--transition-fast);
 }
 
 .btnPrimary:hover:not(:disabled) {
-	background: #167a4d;
+	background: #096b35;
 	transform: translateY(-1px);
-	box-shadow: 0 4px 12px rgba(30, 148, 96, 0.35);
+	box-shadow: 0 4px 12px rgba(8, 124, 59, 0.35);
 }
 
 .btnPrimary:disabled {

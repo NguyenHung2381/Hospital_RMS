@@ -71,16 +71,16 @@
 	width: 28px;
 	height: 28px;
 	border-radius: 50%;
-	background: var(--color-primary-pale, #e8f8f2);
-	border: 2px solid var(--color-primary, #2eb87a);
-	color: var(--color-primary-dark, #1e9460);
+	background: var(--color-primary-pale, #e7f5ed);
+	border: 2px solid var(--color-primary, #0a9b4a);
+	color: var(--color-primary-dark, #087c3b);
 	font-size: 12px;
 	font-weight: 800;
 	display: flex;
 	align-items: center;
 	justify-content: center;
 	z-index: 2;
-	box-shadow: 0 0 0 3px rgba(46, 184, 122, 0.12);
+	box-shadow: 0 0 0 3px rgba(10, 155, 74, 0.12);
 }
 
 .timelineCard {
@@ -97,7 +97,7 @@
 }
 
 .timelineCard:hover {
-	border-color: var(--color-primary-light, #4fd49a);
+	border-color: var(--color-primary-light, #4fc47e);
 	box-shadow: 0 4px 14px rgba(13, 24, 32, 0.06);
 }
 
@@ -140,7 +140,7 @@
 }
 
 .timelineBadge.report_submission {
-	background: #e0f8f0;
+	background: #e0f8eb;
 	color: #047857;
 }
 
@@ -162,7 +162,7 @@
 
 .timelineDateHighlighted {
 	font-weight: 700;
-	color: var(--color-primary-dark, #1e9460);
+	color: var(--color-primary-dark, #087c3b);
 }
 
 .timelineActions {
@@ -192,7 +192,7 @@
 }
 
 .timelineActionBtn.edit:hover {
-	color: var(--color-primary, #2eb87a);
+	color: var(--color-primary, #0a9b4a);
 	background: #f0fdf4;
 	border-color: #bbf7d0;
 }
@@ -206,8 +206,8 @@
 /* ── FORM CARD (NEW / EDIT MILESTONE) ── */
 .timelineFormCard {
 	background: #ffffff;
-	border: 1.5px solid rgba(46, 184, 122, 0.3);
-	border-left: 4px solid var(--color-primary, #2eb87a);
+	border: 1.5px solid rgba(10, 155, 74, 0.3);
+	border-left: 4px solid var(--color-primary, #0a9b4a);
 	border-radius: 14px;
 	padding: 20px 22px;
 	display: flex;
@@ -253,9 +253,9 @@
 .phaseBadge {
 	font-size: 11px;
 	font-weight: 800;
-	background: var(--color-primary-pale, #e8f8f2);
-	color: var(--color-primary-dark, #1e9460);
-	border: 1px solid rgba(46, 184, 122, 0.25);
+	background: var(--color-primary-pale, #e7f5ed);
+	color: var(--color-primary-dark, #087c3b);
+	border: 1px solid rgba(10, 155, 74, 0.25);
 	padding: 2px 8px;
 	border-radius: 9999px;
 }
@@ -329,9 +329,9 @@
 }
 
 .formInput:focus {
-	border-color: var(--color-primary, #2eb87a);
+	border-color: var(--color-primary, #0a9b4a);
 	background: #ffffff;
-	box-shadow: 0 0 0 3px rgba(46, 184, 122, 0.15);
+	box-shadow: 0 0 0 3px rgba(10, 155, 74, 0.15);
 }
 
 .formSelect {
@@ -360,9 +360,9 @@
 }
 
 .formSelect:focus {
-	border-color: var(--color-primary, #2eb87a);
+	border-color: var(--color-primary, #0a9b4a);
 	background-color: #ffffff;
-	box-shadow: 0 0 0 3px rgba(46, 184, 122, 0.15);
+	box-shadow: 0 0 0 3px rgba(10, 155, 74, 0.15);
 }
 
 /* ── SUPPLEMENT PERMISSION CHIPS ── */
@@ -404,11 +404,11 @@
 }
 
 .chipLabelActive {
-	border-color: var(--color-primary, #2eb87a);
-	background: var(--color-primary-pale, #e8f8f2);
-	color: #115e3b;
+	border-color: var(--color-primary, #0a9b4a);
+	background: var(--color-primary-pale, #e7f5ed);
+	color: #115e34;
 	font-weight: 600;
-	box-shadow: 0 1px 4px rgba(46, 184, 122, 0.15);
+	box-shadow: 0 1px 4px rgba(10, 155, 74, 0.15);
 }
 
 .customCheckbox {
@@ -425,8 +425,8 @@
 }
 
 .chipLabelActive .customCheckbox {
-	background: var(--color-primary, #2eb87a);
-	border-color: var(--color-primary, #2eb87a);
+	background: var(--color-primary, #0a9b4a);
+	border-color: var(--color-primary, #0a9b4a);
 	color: #fff;
 }
 
@@ -507,7 +507,7 @@
 	padding: 0 20px;
 	border-radius: 8px;
 	border: none;
-	background: var(--color-primary-dark, #1e9460);
+	background: var(--color-primary-dark, #087c3b);
 	color: #ffffff;
 	font-size: 13px;
 	font-weight: 700;
@@ -515,14 +515,14 @@
 	display: inline-flex;
 	align-items: center;
 	gap: 6px;
-	box-shadow: 0 2px 8px rgba(30, 148, 96, 0.25);
+	box-shadow: 0 2px 8px rgba(8, 124, 59, 0.25);
 	transition: all 0.18s ease;
 }
 
 .btnPrimary:hover:not(:disabled) {
-	background: #157347;
+	background: #086532;
 	transform: translateY(-1px);
-	box-shadow: 0 4px 12px rgba(30, 148, 96, 0.35);
+	box-shadow: 0 4px 12px rgba(8, 124, 59, 0.35);
 }
 
 .btnPrimary:disabled {
@@ -546,9 +546,9 @@
 	gap: 8px;
 	font-size: 13px;
 	font-weight: 600;
-	color: var(--color-primary-dark, #1e9460);
+	color: var(--color-primary-dark, #087c3b);
 	background: #ffffff;
-	border: 1.5px dashed var(--color-primary-light, #4fd49a);
+	border: 1.5px dashed var(--color-primary-light, #4fc47e);
 	padding: 8px 18px;
 	border-radius: 10px;
 	cursor: pointer;
@@ -556,10 +556,10 @@
 }
 
 .addPhaseBtn:hover {
-	border-color: var(--color-primary, #2eb87a);
-	background: var(--color-primary-pale, #e8f8f2);
+	border-color: var(--color-primary, #0a9b4a);
+	background: var(--color-primary-pale, #e7f5ed);
 	transform: translateY(-1px);
-	box-shadow: 0 2px 8px rgba(46, 184, 122, 0.15);
+	box-shadow: 0 2px 8px rgba(10, 155, 74, 0.15);
 }
 
 .addPhaseBtn svg {

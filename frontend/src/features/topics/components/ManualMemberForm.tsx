@@ -48,7 +48,7 @@ export function ManualMemberForm({
 					justifyContent: 'space-between',
 					padding: '10px 14px',
 					background: 'var(--color-primary-pale)',
-					borderBottom: '1px solid rgba(46,184,122,0.18)',
+					borderBottom: '1px solid rgba(10,155,74,0.18)',
 				}}
 			>
 				<div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -57,7 +57,7 @@ export function ManualMemberForm({
 							width: 28,
 							height: 28,
 							borderRadius: '50%',
-							background: 'rgba(46,184,122,0.18)',
+							background: 'rgba(10,155,74,0.18)',
 							display: 'flex',
 							alignItems: 'center',
 							justifyContent: 'center',

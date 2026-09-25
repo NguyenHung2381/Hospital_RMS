@@ -27,8 +27,8 @@
 
 /* ── Bảng màu (giữ nguyên giá trị đang dùng trên toàn hệ thống) ───────────── */
 .green {
-	background: #e1f5ee;
-	color: #085041;
+	background: #e1f5ea;
+	color: #085028;
 }
 .blue {
 	background: #e6f1fb;
@@ -47,7 +47,7 @@
 	color: #791f1f;
 }
 .pink {
-	background: rgba(232, 69, 122, 0.1);
+	background: rgba(223, 9, 132, 0.1);
 	color: var(--color-accent-dark);
 }
 .purple {
@@ -55,6 +55,6 @@
 	color: #3c3489;
 }
 .teal {
-	background: #e1f5ee;
-	color: #0f6e56;
+	background: #e1f5ea;
+	color: #0f6e3a;
 }

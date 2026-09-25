@@ -76,7 +76,7 @@
 	white-space: nowrap;
 }
 .method_POST {
-	background: #e1f5ee;
+	background: #e1f5ea;
 	color: #065f46;
 }
 .method_PUT,
@@ -286,7 +286,7 @@
 	color: var(--color-gray-600);
 }
 .action_create {
-	background: #e1f5ee;
+	background: #e1f5ea;
 	color: #065f46;
 }
 .action_update,

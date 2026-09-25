@@ -144,11 +144,11 @@
 	font-weight: var(--font-weight-bold);
 	cursor: pointer;
 	transition: all var(--transition-base);
-	box-shadow: 0 3px 10px rgba(46, 184, 122, 0.28);
+	box-shadow: 0 3px 10px rgba(10, 155, 74, 0.28);
 	white-space: nowrap;
 }
 .btnAddHeader:hover {
-	box-shadow: 0 5px 16px rgba(46, 184, 122, 0.4);
+	box-shadow: 0 5px 16px rgba(10, 155, 74, 0.4);
 	transform: translateY(-1px);
 }
 .btnAddHeader svg {
@@ -196,8 +196,8 @@
 	width: 42px;
 	height: 42px;
 	border-radius: var(--radius-lg);
-	background: #e1f5ee;
-	color: #085041;
+	background: #e1f5ea;
+	color: #085028;
 	display: flex;
 	align-items: center;
 	justify-content: center;
@@ -296,7 +296,7 @@
 .formInput:focus {
 	border-color: var(--color-primary);
 	background: var(--color-white);
-	box-shadow: 0 0 0 3px rgba(46, 184, 122, 0.1);
+	box-shadow: 0 0 0 3px rgba(10, 155, 74, 0.1);
 }
 .formTextarea {
 	width: 100%;
@@ -371,10 +371,10 @@
 	color: var(--color-white);
 	cursor: pointer;
 	transition: all var(--transition-base);
-	box-shadow: 0 3px 10px rgba(46, 184, 122, 0.28);
+	box-shadow: 0 3px 10px rgba(10, 155, 74, 0.28);
 }
 .btnConfirm:hover {
-	box-shadow: 0 5px 16px rgba(46, 184, 122, 0.4);
+	box-shadow: 0 5px 16px rgba(10, 155, 74, 0.4);
 	transform: translateY(-1px);
 }
 .btnConfirm:disabled {
@@ -445,11 +445,11 @@
 	white-space: nowrap;
 }
 .btnSmallApprove {
-	color: #085041;
-	border-color: #9fd8c2;
+	color: #085028;
+	border-color: #9fd8b9;
 }
 .btnSmallApprove:hover {
-	background: #e1f5ee;
+	background: #e1f5ea;
 }
 .btnSmallReject {
 	color: #791f1f;
@@ -544,7 +544,7 @@
 }
 .pageSizeSelect:focus {
 	border-color: var(--color-primary);
-	box-shadow: 0 0 0 3px rgba(46, 184, 122, 0.1);
+	box-shadow: 0 0 0 3px rgba(10, 155, 74, 0.1);
 }
 
 /* ── DETAIL MODAL ─────────────────────────── */
@@ -688,9 +688,9 @@
 	border: 1px solid var(--color-gray-200);
 }
 .attRadioActivePresent {
-	background: #e1f5ee;
-	border-color: #9fd8c2;
-	color: #085041;
+	background: #e1f5ea;
+	border-color: #9fd8b9;
+	color: #085028;
 }
 .attRadioActiveAbsent {
 	background: #fcebeb;
@@ -725,7 +725,7 @@
 	font-size: 12px;
 	font-weight: var(--font-weight-bold);
 	color: var(--color-primary-dark);
-	background: #e1f5ee;
+	background: #e1f5ea;
 	padding: 3px 8px;
 	border-radius: var(--radius-full);
 }

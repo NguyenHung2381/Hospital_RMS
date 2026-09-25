@@ -68,7 +68,7 @@ export const EMPTY_FORM: CourseFormData = {
 
 export const DISPLAY_STATUS_CFG: Record<CourseDisplayStatus, { label: string; color: string; bg: string }> = {
 	upcoming: { label: 'Sắp khai giảng', color: '#633806', bg: '#faeeda' },
-	enrolling: { label: 'Đang mở đăng ký', color: '#085041', bg: '#e1f5ee' },
+	enrolling: { label: 'Đang mở đăng ký', color: '#085028', bg: '#e1f5ea' },
 	in_progress: { label: 'Đang trong quá trình học', color: '#3c3489', bg: '#eeedfe' },
 	completed: { label: 'Hoàn thành', color: '#0c447c', bg: '#e6f1fb' },
 	cancelled: { label: 'Đã huỷ', color: '#791f1f', bg: '#fcebeb' },
@@ -76,7 +76,7 @@ export const DISPLAY_STATUS_CFG: Record<CourseDisplayStatus, { label: string; co
 
 export const ENROLLMENT_STATUS_CFG: Record<EnrollmentStatus, { label: string; color: string; bg: string }> = {
 	pending: { label: 'Chờ duyệt', color: '#633806', bg: '#faeeda' },
-	approved: { label: 'Đã duyệt', color: '#085041', bg: '#e1f5ee' },
+	approved: { label: 'Đã duyệt', color: '#085028', bg: '#e1f5ea' },
 	rejected: { label: 'Từ chối', color: '#791f1f', bg: '#fcebeb' },
 	waitlisted: { label: 'Danh sách chờ', color: '#3c3489', bg: '#eeedfe' },
 };

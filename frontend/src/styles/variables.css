@@ -5,15 +5,16 @@
 ============================================= */
 
 :root {
-	/* === MÀU CHỦ ĐẠO (từ logo) === */
-	--color-primary: #2eb87a; /* Xanh lá chính */
-	--color-primary-dark: #1e9460; /* Xanh lá đậm */
-	--color-primary-light: #4fd49a; /* Xanh lá nhạt */
-	--color-primary-pale: #e8f8f2; /* Xanh lá rất nhạt (nền) */
+	/* === MÀU CHỦ ĐẠO: Xanh Tây Ban Nha — RGB 10,155,74 | CMYK 85/15/100/0 === */
+	--color-primary: #0a9b4a; /* Xanh lá chính */
+	--color-primary-dark: #087c3b; /* Xanh lá đậm */
+	--color-primary-light: #4fc47e; /* Xanh lá nhạt */
+	--color-primary-pale: #e7f5ed; /* Xanh lá rất nhạt (nền) */
 
-	--color-accent: #e8457a; /* Hồng/đỏ (chữ thập logo) */
-	--color-accent-dark: #c23060; /* Hồng đậm */
-	--color-accent-light: #f07da0; /* Hồng nhạt */
+	/* === MÀU BỔ TRỢ: Hồng tím — RGB 223,9,132 | CMYK 6/100/6/0 === */
+	--color-accent: #df0984; /* Hồng tím */
+	--color-accent-dark: #b3076a; /* Hồng đậm */
+	--color-accent-light: #ee84c3; /* Hồng nhạt */
 
 	--color-secondary: #34b8d8; /* Xanh dương bổ trợ */
 	--color-secondary-dark: #1a9abe;
@@ -32,7 +33,7 @@
 	--color-gray-900: #0d1820;
 
 	/* === MÀU TRẠNG THÁI === */
-	--color-success: #2eb87a;
+	--color-success: #0a9b4a;
 	--color-warning: #f5a623;
 	--color-error: #e84545;
 	--color-info: #34b8d8;
@@ -85,14 +86,14 @@
 
 	/* === SHADOW === */
 	--shadow-sm:
-		0 1px 3px rgba(46, 184, 122, 0.08), 0 1px 2px rgba(0, 0, 0, 0.06);
+		0 1px 3px rgba(10, 155, 74, 0.08), 0 1px 2px rgba(0, 0, 0, 0.06);
 	--shadow-md:
-		0 4px 16px rgba(46, 184, 122, 0.12), 0 2px 6px rgba(0, 0, 0, 0.08);
+		0 4px 16px rgba(10, 155, 74, 0.12), 0 2px 6px rgba(0, 0, 0, 0.08);
 	--shadow-lg:
-		0 10px 40px rgba(46, 184, 122, 0.16), 0 4px 12px rgba(0, 0, 0, 0.1);
+		0 10px 40px rgba(10, 155, 74, 0.16), 0 4px 12px rgba(0, 0, 0, 0.1);
 	--shadow-xl:
-		0 20px 60px rgba(46, 184, 122, 0.2), 0 8px 24px rgba(0, 0, 0, 0.12);
-	--shadow-glow: 0 0 30px rgba(46, 184, 122, 0.25);
+		0 20px 60px rgba(10, 155, 74, 0.2), 0 8px 24px rgba(0, 0, 0, 0.12);
+	--shadow-glow: 0 0 30px rgba(10, 155, 74, 0.25);
 
 	/* === TRANSITION === */
 	--transition-fast: 150ms ease;

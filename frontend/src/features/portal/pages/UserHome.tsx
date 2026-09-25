@@ -158,7 +158,7 @@ export default function UserHome() {
 						<div className={styles.statTopRow}>
 							<div
 								className={styles.statIconBox}
-								style={{ background: '#e8f8f2', color: '#167a4d' }}
+								style={{ background: '#e7f5ed', color: '#096b35' }}
 							>
 								<DocSvg />
 							</div>
@@ -499,7 +499,7 @@ export default function UserHome() {
 									>
 										<div
 											className={styles.actionIcon}
-											style={{ background: '#e8f8f2', color: '#167a4d' }}
+											style={{ background: '#e7f5ed', color: '#096b35' }}
 										>
 											<DocPlusSvg />
 										</div>

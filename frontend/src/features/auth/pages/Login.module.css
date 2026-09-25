@@ -62,9 +62,9 @@
 	border-radius: var(--radius-2xl);
 	padding: var(--space-8);
 	box-shadow:
-		0 2px 8px rgba(46, 184, 122, 0.06),
+		0 2px 8px rgba(10, 155, 74, 0.06),
 		0 8px 32px rgba(0, 0, 0, 0.08);
-	border: 1px solid rgba(46, 184, 122, 0.08);
+	border: 1px solid rgba(10, 155, 74, 0.08);
 	margin-bottom: var(--space-6);
 }
 
@@ -141,7 +141,7 @@
 	outline: none;
 	border-color: var(--color-primary);
 	background: var(--color-white);
-	box-shadow: 0 0 0 4px rgba(46, 184, 122, 0.12);
+	box-shadow: 0 0 0 4px rgba(10, 155, 74, 0.12);
 }
 
 .inputWrapper:focus-within .inputIcon {
@@ -263,7 +263,7 @@
 }
 
 .checkboxInput:focus-visible {
-	outline: 3px solid rgba(46, 184, 122, 0.3);
+	outline: 3px solid rgba(10, 155, 74, 0.3);
 	outline-offset: 2px;
 }
 
@@ -335,7 +335,7 @@
 	align-items: center;
 	justify-content: center;
 	gap: var(--space-2);
-	box-shadow: 0 4px 16px rgba(46, 184, 122, 0.35);
+	box-shadow: 0 4px 16px rgba(10, 155, 74, 0.35);
 	margin-top: var(--space-2);
 	position: relative;
 	overflow: hidden;
@@ -355,7 +355,7 @@
 }
 
 .submitBtn:hover {
-	box-shadow: 0 8px 28px rgba(46, 184, 122, 0.45);
+	box-shadow: 0 8px 28px rgba(10, 155, 74, 0.45);
 	transform: translateY(-2px);
 }
 
@@ -365,7 +365,7 @@
 
 .submitBtn:active {
 	transform: translateY(0);
-	box-shadow: 0 2px 10px rgba(46, 184, 122, 0.3);
+	box-shadow: 0 2px 10px rgba(10, 155, 74, 0.3);
 }
 
 .submitBtn:disabled {
@@ -410,7 +410,7 @@
 /* === SUPPORT INFO === */
 .supportBox {
 	background: var(--color-primary-pale);
-	border: 1px solid rgba(46, 184, 122, 0.2);
+	border: 1px solid rgba(10, 155, 74, 0.2);
 	border-radius: var(--radius-lg);
 	padding: var(--space-4) var(--space-5);
 	display: flex;
@@ -423,7 +423,7 @@
 	height: 36px;
 	border-radius: var(--radius-lg);
 	background: var(--color-primary-pale);
-	border: 1.5px solid rgba(46, 184, 122, 0.3);
+	border: 1.5px solid rgba(10, 155, 74, 0.3);
 	display: flex;
 	align-items: center;
 	justify-content: center;

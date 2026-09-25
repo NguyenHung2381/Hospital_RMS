@@ -469,9 +469,9 @@ export function DeadlineManager({
 					<div
 						className={styles.timelineNode}
 						style={{
-							borderColor: 'var(--color-primary, #2eb87a)',
-							background: 'var(--color-primary-pale, #e8f8f2)',
-							color: 'var(--color-primary-dark, #1e9460)',
+							borderColor: 'var(--color-primary, #0a9b4a)',
+							background: 'var(--color-primary-pale, #e7f5ed)',
+							color: 'var(--color-primary-dark, #087c3b)',
 						}}
 					>
 						+

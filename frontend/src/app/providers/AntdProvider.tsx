@@ -4,15 +4,15 @@ import type { ReactNode } from 'react';
 
 // Theme tokens map sang các biến đã có trong shared/styles/variables.css —
 // không định nghĩa màu mới, chỉ ánh xạ để component antd (Table, DatePicker,
-// Upload...) khớp bộ nhận diện hiện có (xanh lá #2EB87A / hồng #E8457A).
+// Upload...) khớp bộ nhận diện hiện có (xanh lá #0A9B4A / hồng #DF0984).
 const theme = {
 	token: {
-		colorPrimary: '#2eb87a',
-		colorSuccess: '#2eb87a',
+		colorPrimary: '#0a9b4a',
+		colorSuccess: '#0a9b4a',
 		colorWarning: '#f5a623',
 		colorError: '#e84545',
 		colorInfo: '#34b8d8',
-		colorLink: '#2eb87a',
+		colorLink: '#0a9b4a',
 		borderRadius: 8,
 		fontFamily: "'Mulish', 'Be Vietnam Pro', sans-serif",
 	},

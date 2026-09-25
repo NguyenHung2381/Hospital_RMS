@@ -21,7 +21,7 @@ const IcRefresh = () => <RefreshSvg style={{ width: 13, height: 13 }} />;
 const DEPT_STATUS_KEYS = ['submitted', 'rejected', 'supplement', 'cancelled'] as const;
 
 const RATING_COLORS: Record<ProgressRating, string> = {
-	on_track: '#2EB87A',
+	on_track: '#0A9B4A',
 	behind: '#EF9F27',
 	at_risk: '#E24B4A',
 };

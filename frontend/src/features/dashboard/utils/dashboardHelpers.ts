@@ -38,18 +38,18 @@ export const STATUS_CONFIG: Record<string, { label: string; tone: BadgeTone }> =
 export const STATUS_COLORS: Record<string, string> = {
 	draft: '#9CA3AF',
 	submitted: '#EF9F27',
-	approved: '#2EB87A',
+	approved: '#0A9B4A',
 	rejected: '#E24B4A',
 	supplement: '#378ADD',
-	completed: '#E8457A',
+	completed: '#DF0984',
 	cancelled: '#9CA3AF',
 };
 
 export const CHART_COLORS = [
-	'#2EB87A',
+	'#0A9B4A',
 	'#378ADD',
 	'#EF9F27',
-	'#E8457A',
+	'#DF0984',
 	'#7C3AED',
 	'#06B6D4',
 	'#F97316',

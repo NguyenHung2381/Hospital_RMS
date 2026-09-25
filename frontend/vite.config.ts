@@ -63,7 +63,7 @@ const obfuscatorPlugin = (): Plugin => ({
 const apiPort = getApiPort();
 // Host của backend — mặc định 'localhost' (chạy native cùng máy).
 // Trong Docker Compose, client và server là 2 container khác nhau nên cần
-// override bằng tên service (vd: VITE_API_HOST=server).
+// override bằng tên service (vd: VITE_API_HOST=backend).
 const apiHost = process.env.VITE_API_HOST || 'localhost';
 
 export default defineConfig({

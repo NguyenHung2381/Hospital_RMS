@@ -227,7 +227,7 @@ Source code được bind mount vào container. Sửa code trên máy là contai
 ```bash
 docker compose up --build            # lần đầu, hoặc sau khi sửa Dockerfile
 docker compose up -d                 # chạy nền
-docker compose logs -f server        # xem log backend
+docker compose logs -f backend       # xem log backend
 docker compose --profile logs up -d  # bật thêm Loki + Promtail
 docker compose down                  # dừng và xoá container (giữ volume)
 ```
@@ -244,7 +244,7 @@ docker compose down                  # dừng và xoá container (giữ volume)
 `node_modules` nằm trong anonymous volume (`/app/node_modules`) để không bị bind mount ghi đè. Vì vậy sau khi sửa `package.json`, phải build lại image **và** tạo lại volume đó, nếu không container vẫn dùng `node_modules` cũ:
 
 ```bash
-docker compose up -d --build --renew-anon-volumes server   # hoặc client
+docker compose up -d --build --renew-anon-volumes backend  # hoặc frontend
 ```
 
 ---
@@ -396,7 +396,7 @@ Sinh tay (không Docker): `npm run gen:jwt` (thêm `-- --dry-run` để xem trư
 .\scripts\rotate-jwt-secrets.ps1 -Unregister                # gỡ lịch
 ```
 
-Script tự nhận service API theo file compose (`backend` ở prod, `server` ở dev) và ghi secret mới vào đúng nơi đang giữ secret. Thứ tự tìm: `backend/.env.production` (chỉ ở prod), rồi `backend/.env`, cuối cùng là volume `server_secrets`. File bị ghi đè được backup thành `<tên file>.bak`.
+Script dùng service API `backend` (cả dev lẫn prod), nhận prod theo tên file compose, và ghi secret mới vào đúng nơi đang giữ secret. Thứ tự tìm: `backend/.env.production` (chỉ ở prod), rồi `backend/.env`, cuối cùng là volume `server_secrets`. File bị ghi đè được backup thành `<tên file>.bak`.
 
 Log ghi tại `logs/jwt-rotate.log`.
 
@@ -408,7 +408,7 @@ Log ghi tại `logs/jwt-rotate.log`.
 | Backend thoát ngay, log báo thiếu biến | Thiếu `DB_USER`, `DB_PASSWORD`, `SWAGGER_USER` hoặc `SWAGGER_PASS` trong `backend/.env` / `.env.production`. |
 | Prod báo lỗi CORS trên trình duyệt | Origin trình duyệt đang dùng (scheme + domain + port) chưa có trong `CORS_ORIGIN` của `docker-compose.prod.yml`. |
 | Compose báo lỗi ở `env_file` | Docker Compose cũ hơn v2.24. Cập nhật Docker Desktop / plugin compose. |
-| Dev: sửa code không thấy cập nhật | Kiểm tra `docker compose logs client`. Polling có độ trễ khoảng 1 giây. Nếu vừa thêm package thì chạy lại với `--renew-anon-volumes`. |
+| Dev: sửa code không thấy cập nhật | Kiểm tra `docker compose logs frontend`. Polling có độ trễ khoảng 1 giây. Nếu vừa thêm package thì chạy lại với `--renew-anon-volumes`. |
 | Dev: lỗi `Cannot find module` sau khi `git pull` | `package.json` đã đổi nhưng `node_modules` trong volume còn cũ. Chạy `docker compose up -d --build --renew-anon-volumes`. |
 | `npm ci` lỗi `EIDLETIMEOUT` khi build | Mạng chập chờn. Chạy lại lệnh build, cache npm được giữ nên không phải tải lại từ đầu. |
 | Upload file lớn bị lỗi `413` ở prod | Vượt `client_max_body_size 300m` trong `frontend/nginx.conf` hoặc giới hạn `TRAINING_*_MAX_MB` của backend. |
@@ -451,7 +451,7 @@ Hospital_RMS/
 │
 ├── scripts/                    # wait-server.js, script import dữ liệu từ hệ thống cũ
 ├── infra/                      # cấu hình Loki, Promtail
-├── docker-compose.yml          # dev: server, client, redis (+ loki, promtail qua profile "logs")
+├── docker-compose.yml          # dev: backend, frontend, redis (+ loki, promtail qua profile "logs")
 └── docker-compose.prod.yml     # prod: backend, frontend (Nginx), redis
 ```
 

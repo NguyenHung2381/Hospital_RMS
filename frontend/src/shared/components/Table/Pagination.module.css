@@ -68,15 +68,15 @@
 }
 
 .btnActive {
-	background: var(--color-primary, #2eb87a);
-	border-color: var(--color-primary, #2eb87a);
+	background: var(--color-primary, #0a9b4a);
+	border-color: var(--color-primary, #0a9b4a);
 	color: #fff;
-	box-shadow: 0 2px 6px rgba(46, 184, 122, 0.35);
+	box-shadow: 0 2px 6px rgba(10, 155, 74, 0.35);
 }
 
 .btnActive:hover:not(:disabled) {
-	background: var(--color-primary-dark, #1e9460);
-	border-color: var(--color-primary-dark, #1e9460);
+	background: var(--color-primary-dark, #087c3b);
+	border-color: var(--color-primary-dark, #087c3b);
 }
 
 .ellipsis {

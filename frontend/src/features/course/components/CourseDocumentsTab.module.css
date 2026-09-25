@@ -105,7 +105,7 @@
 .dropZone:hover,
 .dropZoneActive {
 	border-color: var(--color-primary);
-	background: #eefaf4;
+	background: #eefaf3;
 }
 .dropIcon {
 	width: 22px;
@@ -129,7 +129,7 @@
 	padding: 10px 12px;
 	border: 1.5px solid var(--color-primary);
 	border-radius: var(--radius-lg);
-	background: #eefaf4;
+	background: #eefaf3;
 }
 .fileChipIcon {
 	width: 20px;
@@ -188,7 +188,7 @@
 	font-weight: var(--font-weight-bold);
 	color: var(--color-white);
 	cursor: pointer;
-	box-shadow: 0 3px 10px rgba(46, 184, 122, 0.28);
+	box-shadow: 0 3px 10px rgba(10, 155, 74, 0.28);
 }
 .submitBtn svg {
 	width: 14px;
@@ -222,7 +222,7 @@
 }
 .filterChipActive {
 	border-color: var(--color-primary);
-	background: #eefaf4;
+	background: #eefaf3;
 	color: var(--color-primary-dark);
 }
 .filterCount {

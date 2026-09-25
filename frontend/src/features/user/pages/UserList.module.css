@@ -136,12 +136,12 @@
 }
 
 .roundHeader:hover {
-	background: #f0fbf6;
+	background: #f0fbf5;
 }
 
 .roundHeaderOpen {
 	border-bottom-color: var(--color-gray-100);
-	background: #f0fbf6;
+	background: #f0fbf5;
 }
 
 .roundHeaderLeft {
@@ -187,7 +187,7 @@
 }
 
 .roundHeaderOpen .roundTopicCount {
-	background: #d1f0e3;
+	background: #d1f0df;
 	color: var(--color-primary-dark);
 }
 
@@ -234,7 +234,7 @@
 }
 
 .topicRowActive {
-	background: #f0fbf6 !important;
+	background: #f0fbf5 !important;
 	border-left-color: var(--color-primary) !important;
 	border-bottom-color: var(--color-gray-100) !important;
 }
@@ -330,8 +330,8 @@
 /* ── MEMBER PANEL (inline user panel) ───── */
 .memberPanel {
 	padding: var(--space-6);
-	background: #f8fdfb;
-	border-top: 1px solid #d1f0e3;
+	background: #f8fdfa;
+	border-top: 1px solid #d1f0df;
 	display: flex;
 	flex-direction: column;
 	gap: var(--space-5);
@@ -700,11 +700,11 @@
 	font-weight: var(--font-weight-bold);
 	cursor: pointer;
 	transition: all var(--transition-base);
-	box-shadow: 0 3px 10px rgba(46, 184, 122, 0.28);
+	box-shadow: 0 3px 10px rgba(10, 155, 74, 0.28);
 }
 
 .btnAddHeader:hover {
-	box-shadow: 0 5px 16px rgba(46, 184, 122, 0.4);
+	box-shadow: 0 5px 16px rgba(10, 155, 74, 0.4);
 	transform: translateY(-1px);
 }
 
@@ -716,8 +716,8 @@
 /* ── BADGES: dùng <Badge tone> ở @/shared/components ── */
 
 .tsBadgeGreen {
-	background: #e1f5ee;
-	color: #085041;
+	background: #e1f5ea;
+	color: #085028;
 }
 .tsBadgeGray {
 	background: var(--color-gray-100);
@@ -929,7 +929,7 @@
 .formInput:focus {
 	border-color: var(--color-primary);
 	background: var(--color-white);
-	box-shadow: 0 0 0 3px rgba(46, 184, 122, 0.1);
+	box-shadow: 0 0 0 3px rgba(10, 155, 74, 0.1);
 }
 
 .formInput:disabled {
@@ -986,7 +986,7 @@
 .formSelect:focus {
 	border-color: var(--color-primary);
 	background: var(--color-white);
-	box-shadow: 0 0 0 3px rgba(46, 184, 122, 0.1);
+	box-shadow: 0 0 0 3px rgba(10, 155, 74, 0.1);
 }
 
 /* Toggle row */

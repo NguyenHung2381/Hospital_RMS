@@ -154,11 +154,11 @@
 	font-weight: var(--font-weight-bold);
 	cursor: pointer;
 	transition: all var(--transition-base);
-	box-shadow: 0 3px 10px rgba(46, 184, 122, 0.28);
+	box-shadow: 0 3px 10px rgba(10, 155, 74, 0.28);
 	white-space: nowrap;
 }
 .btnAddHeader:hover {
-	box-shadow: 0 5px 16px rgba(46, 184, 122, 0.4);
+	box-shadow: 0 5px 16px rgba(10, 155, 74, 0.4);
 	transform: translateY(-1px);
 }
 .btnAddHeader svg {
@@ -206,8 +206,8 @@
 	width: 42px;
 	height: 42px;
 	border-radius: var(--radius-lg);
-	background: #e1f5ee;
-	color: #085041;
+	background: #e1f5ea;
+	color: #085028;
 	display: flex;
 	align-items: center;
 	justify-content: center;
@@ -309,7 +309,7 @@
 .formInput:focus {
 	border-color: var(--color-primary);
 	background: var(--color-white);
-	box-shadow: 0 0 0 3px rgba(46, 184, 122, 0.1);
+	box-shadow: 0 0 0 3px rgba(10, 155, 74, 0.1);
 }
 .formTextarea {
 	width: 100%;
@@ -328,7 +328,7 @@
 .formTextarea:focus {
 	border-color: var(--color-primary);
 	background: var(--color-white);
-	box-shadow: 0 0 0 3px rgba(46, 184, 122, 0.1);
+	box-shadow: 0 0 0 3px rgba(10, 155, 74, 0.1);
 }
 .inputError {
 	border-color: #e24b4a !important;
@@ -405,10 +405,10 @@
 	color: var(--color-white);
 	cursor: pointer;
 	transition: all var(--transition-base);
-	box-shadow: 0 3px 10px rgba(46, 184, 122, 0.28);
+	box-shadow: 0 3px 10px rgba(10, 155, 74, 0.28);
 }
 .btnConfirm:hover {
-	box-shadow: 0 5px 16px rgba(46, 184, 122, 0.4);
+	box-shadow: 0 5px 16px rgba(10, 155, 74, 0.4);
 	transform: translateY(-1px);
 }
 .btnConfirm:disabled {
@@ -531,7 +531,7 @@
 }
 .pageSizeSelect:focus {
 	border-color: var(--color-primary);
-	box-shadow: 0 0 0 3px rgba(46, 184, 122, 0.1);
+	box-shadow: 0 0 0 3px rgba(10, 155, 74, 0.1);
 }
 
 /* ── TAG PICKER (multi-select chương trình đào tạo cho bài học) ─────────── */
@@ -552,7 +552,7 @@
 .tagBox:focus-within {
 	border-color: var(--color-primary);
 	background: var(--color-white);
-	box-shadow: 0 0 0 3px rgba(46, 184, 122, 0.1);
+	box-shadow: 0 0 0 3px rgba(10, 155, 74, 0.1);
 }
 .tagPill {
 	display: inline-flex;
@@ -560,7 +560,7 @@
 	gap: 6px;
 	padding: 4px 6px 4px 10px;
 	border-radius: var(--radius-full);
-	background: var(--color-primary-pale, #e1f5ee);
+	background: var(--color-primary-pale, #e1f5ea);
 	color: var(--color-primary-dark);
 	font-size: 12px;
 	font-weight: var(--font-weight-semibold);

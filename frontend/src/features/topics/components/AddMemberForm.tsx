@@ -140,7 +140,7 @@ export function AddMemberForm({
 												borderBottom: '1px solid var(--color-gray-100)',
 											}}
 											onMouseEnter={(e) =>
-												(e.currentTarget.style.background = '#f0fbf6')
+												(e.currentTarget.style.background = '#f0fbf5')
 											}
 											onMouseLeave={(e) =>
 												(e.currentTarget.style.background = '')

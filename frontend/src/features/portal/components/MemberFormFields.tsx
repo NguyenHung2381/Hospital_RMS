@@ -157,7 +157,7 @@ export default function MemberFormFields({
 									}}
 									onMouseEnter={(e) => {
 										(e.currentTarget as HTMLDivElement).style.background =
-											'#f0fbf6';
+											'#f0fbf5';
 									}}
 									onMouseLeave={(e) => {
 										(e.currentTarget as HTMLDivElement).style.background = '';

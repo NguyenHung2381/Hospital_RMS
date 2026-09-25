@@ -62,7 +62,7 @@ thead th.checkCol {
 }
 
 .checkbox:focus-visible {
-	box-shadow: 0 0 0 3px rgba(46, 184, 122, 0.25);
+	box-shadow: 0 0 0 3px rgba(10, 155, 74, 0.25);
 }
 
 .checkbox:active {

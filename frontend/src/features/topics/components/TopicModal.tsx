@@ -423,7 +423,7 @@ export function TopicModal({
 												m.form.status === s
 													? 'rgba(255,255,255,0.8)'
 													: s === 'approved'
-														? '#2eb87a'
+														? '#0a9b4a'
 														: s === 'submitted'
 															? '#ef9f27'
 															: s === 'rejected'

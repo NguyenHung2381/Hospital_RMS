@@ -82,7 +82,7 @@
 .searchInput:focus {
 	border-color: var(--color-primary);
 	background: var(--color-white);
-	box-shadow: 0 0 0 3px rgba(46, 184, 122, 0.1);
+	box-shadow: 0 0 0 3px rgba(10, 155, 74, 0.1);
 }
 
 .searchClear {
@@ -243,11 +243,11 @@
 	font-weight: var(--font-weight-bold);
 	cursor: pointer;
 	transition: all var(--transition-base);
-	box-shadow: 0 3px 10px rgba(46, 184, 122, 0.28);
+	box-shadow: 0 3px 10px rgba(10, 155, 74, 0.28);
 	white-space: nowrap;
 }
 .btnAddHeader:hover {
-	box-shadow: 0 5px 16px rgba(46, 184, 122, 0.4);
+	box-shadow: 0 5px 16px rgba(10, 155, 74, 0.4);
 	transform: translateY(-1px);
 }
 .btnAddHeader svg {
@@ -294,8 +294,8 @@
 	width: 42px;
 	height: 42px;
 	border-radius: var(--radius-lg);
-	background: #e1f5ee;
-	color: #085041;
+	background: #e1f5ea;
+	color: #085028;
 	display: flex;
 	align-items: center;
 	justify-content: center;
@@ -397,7 +397,7 @@
 .formInput:focus {
 	border-color: var(--color-primary);
 	background: var(--color-white);
-	box-shadow: 0 0 0 3px rgba(46, 184, 122, 0.1);
+	box-shadow: 0 0 0 3px rgba(10, 155, 74, 0.1);
 }
 .inputError {
 	border-color: #e24b4a !important;
@@ -424,7 +424,7 @@
 .formTextarea:focus {
 	border-color: var(--color-primary);
 	background: var(--color-white);
-	box-shadow: 0 0 0 3px rgba(46, 184, 122, 0.1);
+	box-shadow: 0 0 0 3px rgba(10, 155, 74, 0.1);
 }
 
 .deleteDesc {
@@ -481,10 +481,10 @@
 	color: var(--color-white);
 	cursor: pointer;
 	transition: all var(--transition-base);
-	box-shadow: 0 3px 10px rgba(46, 184, 122, 0.28);
+	box-shadow: 0 3px 10px rgba(10, 155, 74, 0.28);
 }
 .btnConfirm:hover {
-	box-shadow: 0 5px 16px rgba(46, 184, 122, 0.4);
+	box-shadow: 0 5px 16px rgba(10, 155, 74, 0.4);
 	transform: translateY(-1px);
 }
 .btnConfirm:disabled {
@@ -609,7 +609,7 @@
 }
 .pageSizeSelect:focus {
 	border-color: var(--color-primary);
-	box-shadow: 0 0 0 3px rgba(46, 184, 122, 0.1);
+	box-shadow: 0 0 0 3px rgba(10, 155, 74, 0.1);
 }
 
 /* ── PAGINATION ──────────────────────────── */
@@ -652,7 +652,7 @@
 .pageBtn:hover:not(:disabled) {
 	border-color: var(--color-primary);
 	color: var(--color-primary-dark);
-	background: #f0fbf6;
+	background: #f0fbf5;
 }
 .pageBtn:disabled {
 	opacity: 0.35;

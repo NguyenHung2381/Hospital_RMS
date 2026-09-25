@@ -7,7 +7,7 @@
 	justify-content: center;
 	gap: var(--space-6);
 	background:
-		radial-gradient(circle, rgba(46, 184, 122, 0.08) 1px, transparent 1px),
+		radial-gradient(circle, rgba(10, 155, 74, 0.08) 1px, transparent 1px),
 		var(--color-gray-50);
 	background-size:
 		28px 28px,
@@ -25,7 +25,7 @@
 .glowOrb:nth-child(1) {
 	width: 320px;
 	height: 320px;
-	background: rgba(46, 184, 122, 0.18);
+	background: rgba(10, 155, 74, 0.18);
 	top: -100px;
 	right: -100px;
 }

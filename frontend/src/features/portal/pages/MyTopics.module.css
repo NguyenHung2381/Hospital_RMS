@@ -25,13 +25,13 @@
 
 .categoryCard:hover {
 	border-color: var(--color-primary);
-	box-shadow: 0 4px 16px rgba(46, 184, 122, 0.12);
+	box-shadow: 0 4px 16px rgba(10, 155, 74, 0.12);
 }
 
 .categoryCardActive {
 	border-color: var(--color-primary);
 	background: #f0fdf7;
-	box-shadow: 0 4px 16px rgba(46, 184, 122, 0.15);
+	box-shadow: 0 4px 16px rgba(10, 155, 74, 0.15);
 }
 
 .categoryIcon {
@@ -53,7 +53,7 @@
 }
 
 .categoryIconActive {
-	background: rgba(46, 184, 122, 0.15);
+	background: rgba(10, 155, 74, 0.15);
 	color: var(--color-primary);
 }
 
@@ -135,7 +135,7 @@
 
 .statCard:hover {
 	transform: translateY(-2px);
-	box-shadow: 0 4px 16px rgba(46, 184, 122, 0.1);
+	box-shadow: 0 4px 16px rgba(10, 155, 74, 0.1);
 	border-color: var(--color-gray-300);
 }
 
@@ -315,7 +315,7 @@
 .listSearchInput:focus {
 	border-color: var(--color-primary);
 	background: var(--color-white);
-	box-shadow: 0 0 0 3px rgba(46, 184, 122, 0.1);
+	box-shadow: 0 0 0 3px rgba(10, 155, 74, 0.1);
 }
 
 .listTabs {
@@ -953,7 +953,7 @@
 	padding: 6px 14px;
 	background: var(--color-primary-pale);
 	color: var(--color-primary-dark);
-	border: 1.5px solid rgba(46, 184, 122, 0.2);
+	border: 1.5px solid rgba(10, 155, 74, 0.2);
 	border-radius: var(--radius-lg);
 	font-size: 12px;
 	font-weight: var(--font-weight-bold);
@@ -969,7 +969,7 @@
 	color: var(--color-white);
 	border-color: var(--color-primary);
 	transform: translateY(-1px);
-	box-shadow: 0 4px 10px rgba(46, 184, 122, 0.2);
+	box-shadow: 0 4px 10px rgba(10, 155, 74, 0.2);
 }
 
 .btnFileView svg {
@@ -998,7 +998,7 @@
 	border-color: var(--color-primary);
 	background: var(--color-primary);
 	transform: scale(1.05);
-	box-shadow: 0 4px 8px rgba(46, 184, 122, 0.25);
+	box-shadow: 0 4px 8px rgba(10, 155, 74, 0.25);
 }
 
 .btnFileDownload svg {
@@ -1037,7 +1037,7 @@
 
 .processedApproved {
 	background: var(--color-primary-pale);
-	border: 1px solid rgba(46, 184, 122, 0.2);
+	border: 1px solid rgba(10, 155, 74, 0.2);
 	color: var(--color-primary-dark);
 }
 
@@ -1285,7 +1285,7 @@
 .editInput:focus,
 .editSelect:focus {
 	border-color: var(--color-primary);
-	box-shadow: 0 0 0 3px rgba(46, 184, 122, 0.1);
+	box-shadow: 0 0 0 3px rgba(10, 155, 74, 0.1);
 }
 
 .editInput:disabled,
@@ -1313,7 +1313,7 @@
 
 .editTextarea:focus {
 	border-color: var(--color-primary);
-	box-shadow: 0 0 0 3px rgba(46, 184, 122, 0.1);
+	box-shadow: 0 0 0 3px rgba(10, 155, 74, 0.1);
 }
 
 .editTextarea:disabled {
@@ -1370,7 +1370,7 @@
 	left: 0;
 	right: 0;
 	bottom: 0;
-	background: linear-gradient(135deg, rgba(46, 184, 122, 0.03) 0%, rgba(52, 184, 216, 0.03) 100%);
+	background: linear-gradient(135deg, rgba(10, 155, 74, 0.03) 0%, rgba(52, 184, 216, 0.03) 100%);
 	opacity: 0;
 	transition: opacity var(--transition-base);
 	pointer-events: none;
@@ -1509,7 +1509,7 @@
 .batchNoteInput:focus {
 	border-color: var(--color-primary);
 	background: var(--color-white);
-	box-shadow: 0 0 0 3px rgba(46, 184, 122, 0.15);
+	box-shadow: 0 0 0 3px rgba(10, 155, 74, 0.15);
 }
 
 .batchNoteInput::placeholder {
@@ -1538,12 +1538,12 @@
 	transition: all var(--transition-fast);
 	white-space: nowrap;
 	width: 100%;
-	box-shadow: 0 1px 4px rgba(46, 184, 122, 0.3);
+	box-shadow: 0 1px 4px rgba(10, 155, 74, 0.3);
 }
 
 .btnUpload:hover:not(:disabled) {
 	background: var(--color-primary-dark);
-	box-shadow: 0 2px 8px rgba(46, 184, 122, 0.4);
+	box-shadow: 0 2px 8px rgba(10, 155, 74, 0.4);
 }
 
 .btnUpload:disabled {

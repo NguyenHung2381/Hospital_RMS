@@ -221,7 +221,7 @@ export function ExportExcelModal({
 											: 'var(--color-gray-700)',
 									boxShadow:
 										scope === opt.value
-											? '0 4px 12px rgba(46, 184, 122, 0.12)'
+											? '0 4px 12px rgba(10, 155, 74, 0.12)'
 											: 'none',
 								}}
 							>

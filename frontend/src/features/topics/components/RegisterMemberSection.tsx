@@ -426,7 +426,7 @@ export function RegisterMemberSection({
 											height: 34,
 											borderRadius: '50%',
 											background: 'var(--color-primary-pale, #ecfdf5)',
-											border: '1.5px solid rgba(46, 184, 122, 0.25)',
+											border: '1.5px solid rgba(10, 155, 74, 0.25)',
 											display: 'flex',
 											alignItems: 'center',
 											justifyContent: 'center',

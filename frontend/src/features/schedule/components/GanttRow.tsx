@@ -131,7 +131,7 @@ export function GanttRow({
 				{round.topic_total > 0 && (
 					<div className={styles.topicStats}>
 						<span className={styles.topicStat}>
-							<span className={styles.topicStatDot} style={{ background: '#2eb87a' }} />
+							<span className={styles.topicStatDot} style={{ background: '#0a9b4a' }} />
 							{round.topic_active} mở
 						</span>
 						{round.topic_pending > 0 && (

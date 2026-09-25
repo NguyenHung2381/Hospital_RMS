@@ -27,7 +27,7 @@ import styles from './TrainingCatalog.module.css';
 const PAGE_SIZE_OPTIONS = [5, 10, 25, 50, 0] as const;
 
 const ITEM_COLORS = [
-	{ bg: '#e1f5ee', color: '#085041' },
+	{ bg: '#e1f5ea', color: '#085028' },
 	{ bg: '#e6f1fb', color: '#0c447c' },
 	{ bg: '#eeedfe', color: '#3c3489' },
 	{ bg: '#faeeda', color: '#633806' },

@@ -42,7 +42,7 @@
 	background: linear-gradient(
 		160deg,
 		#ffffff 55%,
-		rgba(46, 184, 122, 0.06) 100%
+		rgba(10, 155, 74, 0.06) 100%
 	);
 }
 .metricCard.accentGreen::before {
@@ -79,7 +79,7 @@
 	background: linear-gradient(
 		160deg,
 		#ffffff 55%,
-		rgba(232, 69, 122, 0.06) 100%
+		rgba(223, 9, 132, 0.06) 100%
 	);
 }
 .metricCard.accentPink::before {
@@ -123,7 +123,7 @@
 .iconGreen {
 	background: var(--color-primary-pale);
 	color: var(--color-primary-dark);
-	box-shadow: 0 2px 8px rgba(46, 184, 122, 0.25);
+	box-shadow: 0 2px 8px rgba(10, 155, 74, 0.25);
 }
 .iconBlue {
 	background: #e6f1fb;
@@ -136,9 +136,9 @@
 	box-shadow: 0 2px 8px rgba(239, 159, 39, 0.25);
 }
 .iconPink {
-	background: rgba(232, 69, 122, 0.1);
+	background: rgba(223, 9, 132, 0.1);
 	color: var(--color-accent-dark);
-	box-shadow: 0 2px 8px rgba(232, 69, 122, 0.25);
+	box-shadow: 0 2px 8px rgba(223, 9, 132, 0.25);
 }
 
 .metricValue {
@@ -532,7 +532,7 @@
 .searchInput:focus {
 	border-color: var(--color-primary);
 	background: var(--color-white);
-	box-shadow: 0 0 0 3px rgba(46, 184, 122, 0.12);
+	box-shadow: 0 0 0 3px rgba(10, 155, 74, 0.12);
 	width: 240px;
 }
 
@@ -555,7 +555,7 @@
 .filterSelect:focus {
 	border-color: var(--color-primary);
 	background: var(--color-white);
-	box-shadow: 0 0 0 3px rgba(46, 184, 122, 0.12);
+	box-shadow: 0 0 0 3px rgba(10, 155, 74, 0.12);
 }
 
 /* Tabs */
@@ -885,7 +885,7 @@
 	font-weight: var(--font-weight-bold);
 	color: var(--color-primary-dark);
 	flex-shrink: 0;
-	border: 1px solid rgba(46, 184, 122, 0.2);
+	border: 1px solid rgba(10, 155, 74, 0.2);
 }
 
 .approvalInfo {

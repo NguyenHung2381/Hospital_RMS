@@ -394,7 +394,7 @@
 	z-index: 2000;
 }
 .toast svg { width: 15px; height: 15px; }
-.toastSuccess { background: #12805c; }
+.toastSuccess { background: #096c35; }
 .toastError { background: #b42318; }
 
 .regHead {
@@ -435,7 +435,7 @@
 	margin-bottom: var(--space-3);
 }
 .noticeBox svg { width: 16px; height: 16px; flex-shrink: 0; margin-top: 2px; }
-.noticeOk { background: #e1f5ee; border-color: #b6e3d4; color: #085041; }
+.noticeOk { background: #e1f5ea; border-color: #b6e3ca; color: #085028; }
 .noticeWarn { background: #faeeda; border-color: #f0d9b5; color: #633806; }
 
 .warnList {

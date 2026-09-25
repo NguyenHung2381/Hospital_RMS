@@ -16,10 +16,10 @@
 	position: relative;
 	background: linear-gradient(
 		135deg,
-		#115e3b 0%,
-		#167a4d 38%,
-		#1e9460 72%,
-		#28a76f 100%
+		#115e34 0%,
+		#096b35 38%,
+		#087c3b 72%,
+		#0c994c 100%
 	);
 	border-radius: var(--radius-2xl, 24px);
 	padding: 28px 32px;
@@ -31,7 +31,7 @@
 	color: #fff;
 	overflow: hidden;
 	box-shadow:
-		0 12px 36px -6px rgba(17, 94, 59, 0.35),
+		0 12px 36px -6px rgba(17, 94, 52, 0.35),
 		0 2px 8px rgba(0, 0, 0, 0.06);
 	border: 1px solid rgba(255, 255, 255, 0.18);
 }
@@ -68,8 +68,8 @@
 	border-radius: 50%;
 	background: radial-gradient(
 		circle,
-		rgba(79, 212, 154, 0.22) 0%,
-		rgba(79, 212, 154, 0) 70%
+		rgba(79, 196, 126, 0.22) 0%,
+		rgba(79, 196, 126, 0) 70%
 	);
 }
 
@@ -129,7 +129,7 @@
 	height: 13px;
 	border-radius: 50%;
 	background: #10b981;
-	border: 2px solid #167a4d;
+	border: 2px solid #096b35;
 	box-shadow: 0 0 8px rgba(16, 185, 129, 0.8);
 }
 
@@ -308,7 +308,7 @@
 	margin-top: 4px;
 	padding: 8px 16px;
 	background: #ffffff;
-	color: #115e3b;
+	color: #115e34;
 	border: none;
 	border-radius: var(--radius-lg, 12px);
 	font-size: 12.5px;
@@ -319,8 +319,8 @@
 }
 
 .bannerRegisterBtn:hover {
-	background: #e8f8f2;
-	color: #0d4a2e;
+	background: #e7f5ed;
+	color: #0d4a28;
 	transform: translateY(-1px);
 	box-shadow: 0 6px 16px rgba(0, 0, 0, 0.16);
 }
@@ -361,12 +361,12 @@
 	box-shadow:
 		0 12px 28px -4px rgba(13, 24, 32, 0.08),
 		0 4px 12px rgba(13, 24, 32, 0.03);
-	border-color: var(--color-primary, #2eb87a);
+	border-color: var(--color-primary, #0a9b4a);
 }
 
 .statCard:focus-visible {
-	border-color: var(--color-primary, #2eb87a);
-	box-shadow: 0 0 0 3px var(--color-primary-pale, #e8f8f2);
+	border-color: var(--color-primary, #0a9b4a);
+	box-shadow: 0 0 0 3px var(--color-primary-pale, #e7f5ed);
 }
 
 .statTopRow {
@@ -441,7 +441,7 @@
 }
 
 .statCard:hover .statArrow {
-	color: var(--color-primary, #2eb87a);
+	color: var(--color-primary, #0a9b4a);
 	transform: translateX(0);
 	opacity: 1;
 }
@@ -500,7 +500,7 @@
 .cardHeaderIcon {
 	width: 18px;
 	height: 18px;
-	color: var(--color-primary, #2eb87a);
+	color: var(--color-primary, #0a9b4a);
 }
 
 .badgeCount {
@@ -513,8 +513,8 @@
 	border-radius: var(--radius-full, 9999px);
 	font-size: 11px;
 	font-weight: var(--font-weight-extrabold, 800);
-	background: var(--color-primary-pale, #e8f8f2);
-	color: var(--color-primary-dark, #1e9460);
+	background: var(--color-primary-pale, #e7f5ed);
+	color: var(--color-primary-dark, #087c3b);
 }
 
 .cardLink {
@@ -522,7 +522,7 @@
 	align-items: center;
 	gap: 4px;
 	font-size: 13.5px;
-	color: var(--color-primary-dark, #1e9460);
+	color: var(--color-primary-dark, #087c3b);
 	font-weight: var(--font-weight-semibold, 600);
 	background: none;
 	border: none;
@@ -533,8 +533,8 @@
 }
 
 .cardLink:hover {
-	color: #115e3b;
-	background: var(--color-primary-pale, #e8f8f2);
+	color: #115e34;
+	background: var(--color-primary-pale, #e7f5ed);
 }
 
 .cardLink svg {
@@ -642,7 +642,7 @@
 }
 
 .topicItem:hover .topicTitle {
-	color: var(--color-primary-dark, #1e9460);
+	color: var(--color-primary-dark, #087c3b);
 }
 
 /* Topic Meta row: Round, Members, Date */
@@ -705,8 +705,8 @@
 	border-radius: var(--radius-full, 9999px);
 	background: linear-gradient(
 		90deg,
-		var(--color-primary, #2eb87a) 0%,
-		var(--color-primary-dark, #1e9460) 100%
+		var(--color-primary, #0a9b4a) 0%,
+		var(--color-primary-dark, #087c3b) 100%
 	);
 	transition: width 0.4s ease;
 }
@@ -726,8 +726,8 @@
 	width: 56px;
 	height: 56px;
 	border-radius: 50%;
-	background: var(--color-primary-pale, #e8f8f2);
-	color: var(--color-primary-dark, #1e9460);
+	background: var(--color-primary-pale, #e7f5ed);
+	color: var(--color-primary-dark, #087c3b);
 	display: flex;
 	align-items: center;
 	justify-content: center;
@@ -760,21 +760,21 @@
 	gap: 6px;
 	margin-top: 8px;
 	padding: 9px 18px;
-	background: var(--color-primary-dark, #1e9460);
+	background: var(--color-primary-dark, #087c3b);
 	color: #fff;
 	border: none;
 	border-radius: var(--radius-lg, 12px);
 	font-size: 13.5px;
 	font-weight: var(--font-weight-bold, 700);
 	cursor: pointer;
-	box-shadow: 0 4px 12px rgba(30, 148, 96, 0.25);
+	box-shadow: 0 4px 12px rgba(8, 124, 59, 0.25);
 	transition: all 0.2s ease;
 }
 
 .emptyBtn:hover {
-	background: #157347;
+	background: #086532;
 	transform: translateY(-1px);
-	box-shadow: 0 6px 16px rgba(30, 148, 96, 0.32);
+	box-shadow: 0 6px 16px rgba(8, 124, 59, 0.32);
 }
 
 .emptyBtn svg {
@@ -814,11 +814,11 @@
 }
 
 .actionBtnFeatured {
-	background: #f4fbf8;
+	background: #f4fbf7;
 }
 
 .actionBtnFeatured:hover {
-	background: #ebf8f2;
+	background: #ebf8f1;
 }
 
 .actionIcon {
@@ -896,7 +896,7 @@
 }
 
 .actionBtn:hover .actionArrow {
-	color: var(--color-primary-dark, #1e9460);
+	color: var(--color-primary-dark, #087c3b);
 	transform: translateX(1px);
 }
 
@@ -931,8 +931,8 @@
 	width: 22px;
 	height: 22px;
 	border-radius: 50%;
-	background: var(--color-primary-pale, #e8f8f2);
-	color: var(--color-primary-dark, #1e9460);
+	background: var(--color-primary-pale, #e7f5ed);
+	color: var(--color-primary-dark, #087c3b);
 	font-size: 11px;
 	font-weight: var(--font-weight-extrabold, 800);
 	display: flex;
@@ -948,7 +948,7 @@
 }
 
 .contactBox {
-	background: linear-gradient(135deg, #f0fdf4 0%, #e6f7ef 100%);
+	background: linear-gradient(135deg, #f0fdf4 0%, #e6f7ee 100%);
 	border: 1px solid #bbf7d0;
 	border-radius: var(--radius-lg, 12px);
 	padding: 16px;

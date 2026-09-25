@@ -53,7 +53,7 @@ select.control {
 }
 .control:focus {
 	border-color: var(--color-primary);
-	box-shadow: 0 0 0 3px rgba(46, 184, 122, 0.12);
+	box-shadow: 0 0 0 3px rgba(10, 155, 74, 0.12);
 }
 .control::placeholder {
 	color: var(--color-gray-400);
@@ -90,7 +90,7 @@ select.control {
 .search input:focus {
 	border-color: var(--color-primary);
 	background: var(--color-white);
-	box-shadow: 0 0 0 3px rgba(46, 184, 122, 0.12);
+	box-shadow: 0 0 0 3px rgba(10, 155, 74, 0.12);
 }
 .searchIcon {
 	position: absolute;

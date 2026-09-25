@@ -38,7 +38,7 @@
 .select:focus,
 .textarea:focus {
 	border-color: var(--color-primary);
-	box-shadow: 0 0 0 3px rgba(46, 184, 122, 0.1);
+	box-shadow: 0 0 0 3px rgba(10, 155, 74, 0.1);
 }
 .textarea {
 	resize: vertical;
@@ -71,7 +71,7 @@
 }
 .courseCardActive {
 	border-color: var(--color-primary);
-	background: rgba(46, 184, 122, 0.05);
+	background: rgba(10, 155, 74, 0.05);
 }
 .courseName {
 	font-weight: var(--font-weight-semibold);
@@ -166,8 +166,8 @@
 	color: #791f1f;
 }
 .alertSuccess {
-	background: #e1f5ee;
-	color: #085041;
+	background: #e1f5ea;
+	color: #085028;
 }
 
 .searchRow {

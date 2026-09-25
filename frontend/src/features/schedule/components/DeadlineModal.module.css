@@ -83,7 +83,7 @@
 .input:focus {
 	outline: none;
 	border-color: var(--color-primary);
-	box-shadow: 0 0 0 3px rgba(46, 184, 122, 0.15);
+	box-shadow: 0 0 0 3px rgba(10, 155, 74, 0.15);
 }
 .formErr {
 	font-size: var(--font-size-xs);

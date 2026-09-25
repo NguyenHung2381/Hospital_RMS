@@ -124,7 +124,7 @@ export function RoundCard({
 						<div className={styles.progressTrack}>
 							<div
 								className={styles.progressFill}
-								style={{ width: `${topicPct}%`, background: '#2EB87A' }}
+								style={{ width: `${topicPct}%`, background: '#0A9B4A' }}
 							/>
 						</div>
 					</div>
@@ -148,7 +148,7 @@ export function RoundCard({
 						<div
 							className={styles.cardStatVal}
 							style={{
-								color: round.topic_completed > 0 ? '#085041' : 'inherit',
+								color: round.topic_completed > 0 ? '#085028' : 'inherit',
 							}}
 						>
 							{round.topic_completed}

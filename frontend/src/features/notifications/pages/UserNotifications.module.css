@@ -94,7 +94,7 @@
 	padding: 6px 14px;
 	border: 1.5px solid var(--color-primary);
 	border-radius: var(--radius-lg);
-	background: #e1f5ee;
+	background: #e1f5ea;
 	color: #065f46;
 	font-family: var(--font-body);
 	font-size: var(--font-size-sm);
@@ -143,7 +143,7 @@
 	transition: background var(--transition-fast);
 }
 .item:last-child { border-bottom: none; }
-.item:hover { background: #f8fdfb; }
+.item:hover { background: #f8fdfa; }
 .item.unread { background: #f6fef9; }
 .item.unread:hover { background: #edfaf3; }
 
@@ -170,7 +170,7 @@
 	margin-left: 14px;
 }
 .itemIcon svg { width: 18px; height: 18px; }
-.iconApproval { background: #e1f5ee; color: #065f46; }
+.iconApproval { background: #e1f5ea; color: #065f46; }
 .iconTopic { background: #ede9fe; color: #5b21b6; }
 .iconSystem { background: #e0f2fe; color: #0369a1; }
 .iconWarning { background: #fef3c7; color: #92400e; }
@@ -206,11 +206,11 @@
 	flex-shrink: 0;
 }
 .type_system { background: #e0f2fe; color: #0369a1; }
-.type_approval { background: #e1f5ee; color: #065f46; }
+.type_approval { background: #e1f5ea; color: #065f46; }
 .type_warning { background: #fef3c7; color: #92400e; }
 .type_topic { background: #ede9fe; color: #5b21b6; }
 /* Màu riêng theo từng loại thông báo; thiếu loại nào thì rơi về màu category ở trên */
-.type_topic_approved { background: #e1f5ee; color: #065f46; }
+.type_topic_approved { background: #e1f5ea; color: #065f46; }
 .type_topic_rejected { background: #fee2e2; color: #b91c1c; }
 .type_topic_submitted { background: #e0f2fe; color: #0369a1; }
 .type_topic_supplement_requested { background: #fef3c7; color: #92400e; }

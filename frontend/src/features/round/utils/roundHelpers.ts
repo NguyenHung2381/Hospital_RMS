@@ -44,7 +44,7 @@ export function calcDaysLeft(end: string): number {
 export function getProgressColor(pct: number) {
 	if (pct >= 80) return '#EF9F27';
 	if (pct >= 50) return '#378ADD';
-	return '#2EB87A';
+	return '#0A9B4A';
 }
 
 export function uniqueYears(rounds: ResearchRound[]) {

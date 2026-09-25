@@ -85,8 +85,8 @@
 }
 
 .iconGreen {
-	background: #e1f5ee;
-	color: #085041;
+	background: #e1f5ea;
+	color: #085028;
 }
 .iconBlue {
 	background: #e6f1fb;
@@ -219,8 +219,8 @@
 	white-space: nowrap;
 }
 .chipCreate {
-	background: #e1f5ee;
-	color: #085041;
+	background: #e1f5ea;
+	color: #085028;
 }
 .chipRead {
 	background: #e6f1fb;
@@ -327,11 +327,11 @@
 	font-weight: var(--font-weight-bold);
 	cursor: pointer;
 	transition: all var(--transition-base);
-	box-shadow: 0 3px 10px rgba(46, 184, 122, 0.28);
+	box-shadow: 0 3px 10px rgba(10, 155, 74, 0.28);
 	white-space: nowrap;
 }
 .btnAddHeader:hover {
-	box-shadow: 0 5px 16px rgba(46, 184, 122, 0.4);
+	box-shadow: 0 5px 16px rgba(10, 155, 74, 0.4);
 	transform: translateY(-1px);
 }
 .btnAddHeader svg {
@@ -481,7 +481,7 @@
 .formInput:focus {
 	border-color: var(--color-primary);
 	background: var(--color-white);
-	box-shadow: 0 0 0 3px rgba(46, 184, 122, 0.1);
+	box-shadow: 0 0 0 3px rgba(10, 155, 74, 0.1);
 }
 .inputError {
 	border-color: #e24b4a !important;
@@ -508,7 +508,7 @@
 .formTextarea:focus {
 	border-color: var(--color-primary);
 	background: var(--color-white);
-	box-shadow: 0 0 0 3px rgba(46, 184, 122, 0.1);
+	box-shadow: 0 0 0 3px rgba(10, 155, 74, 0.1);
 }
 
 /* ── PERMISSION SECTION IN MODAL ─────────── */
@@ -538,7 +538,7 @@
 	border-bottom: none;
 }
 .permRow:hover {
-	background: #f8fdfb;
+	background: #f8fdfa;
 }
 
 .permInfo {
@@ -574,9 +574,9 @@
 	color: var(--color-gray-400);
 }
 .permChipToggle.active {
-	background: #e1f5ee;
-	color: #085041;
-	border-color: #a7e8cb;
+	background: #e1f5ea;
+	color: #085028;
+	border-color: #a7e8c4;
 }
 .permChipToggle:hover:not(.active) {
 	background: var(--color-gray-200);
@@ -654,10 +654,10 @@
 	color: var(--color-white);
 	cursor: pointer;
 	transition: all var(--transition-base);
-	box-shadow: 0 3px 10px rgba(46, 184, 122, 0.28);
+	box-shadow: 0 3px 10px rgba(10, 155, 74, 0.28);
 }
 .btnSave:hover {
-	box-shadow: 0 5px 16px rgba(46, 184, 122, 0.4);
+	box-shadow: 0 5px 16px rgba(10, 155, 74, 0.4);
 	transform: translateY(-1px);
 }
 .btnSave:disabled {
@@ -781,7 +781,7 @@
 }
 .pageSizeSelect:focus {
 	border-color: var(--color-primary);
-	box-shadow: 0 0 0 3px rgba(46, 184, 122, 0.1);
+	box-shadow: 0 0 0 3px rgba(10, 155, 74, 0.1);
 }
 
 /* ── PAGINATION ──────────────────────────── */
@@ -825,7 +825,7 @@
 .pageBtn:hover:not(:disabled) {
 	border-color: var(--color-primary);
 	color: var(--color-primary-dark);
-	background: #f0fbf6;
+	background: #f0fbf5;
 }
 .pageBtn:disabled {
 	opacity: 0.35;
@@ -914,7 +914,7 @@
 	border-bottom: none;
 }
 .permMatrix tbody tr:hover {
-	background: #f8fdfb;
+	background: #f8fdfa;
 }
 
 /* Cell nhãn resource */
@@ -1045,12 +1045,12 @@
 	white-space: nowrap;
 }
 .permSelectAll:hover {
-	background: #e1f5ee;
+	background: #e1f5ea;
 	border-color: var(--color-primary);
 	color: var(--color-primary-dark);
 }
 .permSelectAll.allSelected {
-	background: #e1f5ee;
+	background: #e1f5ea;
 	border-color: var(--color-primary);
 	color: var(--color-primary-dark);
 }
@@ -1198,8 +1198,8 @@
 	gap: 4px;
 	padding: 2px 8px;
 	border-radius: var(--radius-full);
-	background: #e1f5ee;
-	color: #1d6b48;
+	background: #e1f5ea;
+	color: #086532;
 	font-size: 11px;
 	font-weight: 600;
 	white-space: nowrap;

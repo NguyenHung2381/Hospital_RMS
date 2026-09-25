@@ -390,8 +390,8 @@
 }
 .monthBandCurrent {
 	color: #15803d;
-	background: color-mix(in srgb, #2eb87a 14%, transparent);
-	box-shadow: inset 0 -2px 0 color-mix(in srgb, #2eb87a 45%, transparent);
+	background: color-mix(in srgb, #0a9b4a 14%, transparent);
+	box-shadow: inset 0 -2px 0 color-mix(in srgb, #0a9b4a 45%, transparent);
 	font-weight: var(--font-weight-bold);
 }
 

@@ -43,7 +43,7 @@
 .backBtn:hover {
 	border-color: var(--color-primary);
 	color: var(--color-primary);
-	background: rgba(46, 184, 122, 0.06);
+	background: rgba(10, 155, 74, 0.06);
 }
 
 .backBtn svg {
@@ -74,7 +74,7 @@
 	display: inline-flex;
 	align-items: center;
 	padding: 2px 10px;
-	background: rgba(46, 184, 122, 0.1);
+	background: rgba(10, 155, 74, 0.1);
 	color: var(--color-primary-dark);
 	border-radius: var(--radius-full);
 	font-size: 11px;
@@ -333,7 +333,7 @@
 	font-size: 13px;
 	font-weight: var(--font-weight-bold);
 	flex-shrink: 0;
-	box-shadow: 0 2px 6px rgba(46, 184, 122, 0.3);
+	box-shadow: 0 2px 6px rgba(10, 155, 74, 0.3);
 }
 
 .memberInfo {
@@ -407,7 +407,7 @@
 	left: 0;
 	right: 0;
 	bottom: 0;
-	background: linear-gradient(135deg, rgba(46, 184, 122, 0.03) 0%, rgba(52, 184, 216, 0.03) 100%);
+	background: linear-gradient(135deg, rgba(10, 155, 74, 0.03) 0%, rgba(52, 184, 216, 0.03) 100%);
 	opacity: 0;
 	transition: opacity var(--transition-base);
 	pointer-events: none;
@@ -468,7 +468,7 @@
 	color: var(--color-primary);
 	font-weight: var(--font-weight-bold);
 	text-decoration: none;
-	border-bottom: 2px solid rgba(46, 184, 122, 0.3);
+	border-bottom: 2px solid rgba(10, 155, 74, 0.3);
 	padding-bottom: 1px;
 	transition: all var(--transition-fast);
 }
@@ -507,7 +507,7 @@
 }
 
 .uploadZone:hover .formatBadge {
-	border-color: rgba(46, 184, 122, 0.2);
+	border-color: rgba(10, 155, 74, 0.2);
 	color: var(--color-primary-dark);
 }
 
@@ -693,7 +693,7 @@
 .noteInput:focus {
 	border-color: var(--color-primary);
 	background: var(--color-white);
-	box-shadow: 0 0 0 3px rgba(46, 184, 122, 0.15);
+	box-shadow: 0 0 0 3px rgba(10, 155, 74, 0.15);
 }
 
 .uploadError {
@@ -746,11 +746,11 @@
 	align-items: center;
 	gap: var(--space-3);
 	background: var(--color-primary-pale);
-	border: 1.5px solid rgba(46, 184, 122, 0.25);
+	border: 1.5px solid rgba(10, 155, 74, 0.25);
 	border-radius: var(--radius-xl);
 	padding: 10px 16px;
 	margin-bottom: var(--space-4);
-	box-shadow: 0 4px 12px rgba(46, 184, 122, 0.05);
+	box-shadow: 0 4px 12px rgba(10, 155, 74, 0.05);
 	animation: slideUp 0.2s ease both;
 }
 
@@ -766,7 +766,7 @@
 	align-items: center;
 	gap: 6px;
 	padding: 6px 14px;
-	border: 1.5px solid rgba(46, 184, 122, 0.2);
+	border: 1.5px solid rgba(10, 155, 74, 0.2);
 	background: var(--color-white);
 	border-radius: var(--radius-lg);
 	font-size: 12px;
@@ -782,7 +782,7 @@
 	color: var(--color-white);
 	border-color: var(--color-primary);
 	transform: translateY(-1px);
-	box-shadow: 0 4px 10px rgba(46, 184, 122, 0.2);
+	box-shadow: 0 4px 10px rgba(10, 155, 74, 0.2);
 }
 
 .bulkBtn svg {
@@ -828,7 +828,7 @@
 
 .fileRowSelected {
 	background: var(--color-primary-pale) !important;
-	border-color: rgba(46, 184, 122, 0.35) !important;
+	border-color: rgba(10, 155, 74, 0.35) !important;
 }
 
 .fileExt {
@@ -902,7 +902,7 @@
 	color: var(--color-white);
 	background: var(--color-primary);
 	transform: scale(1.05);
-	box-shadow: 0 4px 8px rgba(46, 184, 122, 0.25);
+	box-shadow: 0 4px 8px rgba(10, 155, 74, 0.25);
 }
 
 .fileActionBtn svg {
@@ -963,12 +963,12 @@
 	transition: all var(--transition-fast);
 	white-space: nowrap;
 	width: 100%;
-	box-shadow: 0 1px 4px rgba(46, 184, 122, 0.3);
+	box-shadow: 0 1px 4px rgba(10, 155, 74, 0.3);
 }
 
 .btnPrimary:hover:not(:disabled) {
 	background: var(--color-primary-dark);
-	box-shadow: 0 2px 8px rgba(46, 184, 122, 0.4);
+	box-shadow: 0 2px 8px rgba(10, 155, 74, 0.4);
 }
 
 .btnPrimary:disabled {
@@ -1053,7 +1053,7 @@
 
 .formInput:focus {
 	border-color: var(--color-primary);
-	box-shadow: 0 0 0 3px rgba(46, 184, 122, 0.1);
+	box-shadow: 0 0 0 3px rgba(10, 155, 74, 0.1);
 }
 
 /* ── STATES ── */

@@ -43,7 +43,7 @@ export default function AttendanceCheckIn() {
 							padding: '10px 12px',
 							borderRadius: 10,
 							border: mode === 'course' ? '2px solid var(--color-primary)' : '1.5px solid var(--color-gray-200)',
-							background: mode === 'course' ? 'rgba(46,184,122,0.08)' : 'var(--color-white)',
+							background: mode === 'course' ? 'rgba(10,155,74,0.08)' : 'var(--color-white)',
 							fontWeight: 600,
 							fontSize: 13,
 							cursor: 'pointer',
@@ -59,7 +59,7 @@ export default function AttendanceCheckIn() {
 							padding: '10px 12px',
 							borderRadius: 10,
 							border: mode === 'seminar' ? '2px solid var(--color-primary)' : '1.5px solid var(--color-gray-200)',
-							background: mode === 'seminar' ? 'rgba(46,184,122,0.08)' : 'var(--color-white)',
+							background: mode === 'seminar' ? 'rgba(10,155,74,0.08)' : 'var(--color-white)',
 							fontWeight: 600,
 							fontSize: 13,
 							cursor: 'pointer',
@@ -80,8 +80,8 @@ export default function AttendanceCheckIn() {
 							marginBottom: 12,
 							fontSize: 13,
 							fontWeight: 600,
-							background: result.type === 'success' ? '#e1f5ee' : '#fcebeb',
-							color: result.type === 'success' ? '#085041' : '#791f1f',
+							background: result.type === 'success' ? '#e1f5ea' : '#fcebeb',
+							color: result.type === 'success' ? '#085028' : '#791f1f',
 						}}
 					>
 						{result.type === 'success' ? <CheckSvg /> : <XSvg />}

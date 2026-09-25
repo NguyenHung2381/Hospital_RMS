@@ -6,7 +6,7 @@
 name: hospital_rms_dev
 
 services:
-  server:
+  backend:
     build:
       context: ./backend
       target: dev
@@ -40,12 +40,12 @@ services:
     depends_on:
       - redis
 
-  client:
+  frontend:
     build:
       context: ./frontend
       target: dev
     environment:
-      VITE_API_HOST: server
+      VITE_API_HOST: backend
       VITE_API_PORT: "3000"
       CHOKIDAR_USEPOLLING: "true"
       NODE_OPTIONS: "--max-old-space-size=512"
@@ -58,7 +58,7 @@ services:
       - ./frontend:/app
       - /app/node_modules
     depends_on:
-      - server
+      - backend
 
   # ─── Cache: Redis cho dashboard aggregates + danh mục/lookup (departments,
   # roles, categories, levels, round_types...) — cache-aside, không dùng làm

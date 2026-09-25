@@ -46,7 +46,7 @@
 
 .statCard:hover {
 	transform: translateY(-2px);
-	box-shadow: 0 4px 16px rgba(46, 184, 122, 0.1);
+	box-shadow: 0 4px 16px rgba(10, 155, 74, 0.1);
 	border-color: var(--color-gray-300);
 }
 
@@ -232,7 +232,7 @@
 .listSearchInput:focus {
 	border-color: var(--color-primary);
 	background: var(--color-white);
-	box-shadow: 0 0 0 3px rgba(46, 184, 122, 0.1);
+	box-shadow: 0 0 0 3px rgba(10, 155, 74, 0.1);
 }
 
 /* Tabs */
@@ -490,8 +490,8 @@
 /* Hover trên checkCol */
 .checkCol:hover .customCheck {
 	border-color: var(--color-primary);
-	background: #f0fbf6;
-	box-shadow: 0 0 0 3px rgba(46, 184, 122, 0.12);
+	background: #f0fbf5;
+	box-shadow: 0 0 0 3px rgba(10, 155, 74, 0.12);
 }
 
 /* Trạng thái đã chọn */
@@ -525,7 +525,7 @@
 	font-weight: var(--font-weight-bold);
 	color: var(--color-primary-dark);
 	background: var(--color-primary-pale);
-	border: 1px solid #b8e8d4;
+	border: 1px solid #b8e8ce;
 	padding: 2px 8px;
 	border-radius: var(--radius-full);
 	white-space: nowrap;
@@ -542,8 +542,8 @@
 	align-items: center;
 	gap: var(--space-2);
 	padding: var(--space-2) var(--space-3);
-	background: #f0fbf6;
-	border: 1px solid #c8ead8;
+	background: #f0fbf5;
+	border: 1px solid #c8ead7;
 	border-radius: var(--radius-lg);
 	animation: bulkSlideIn 150ms ease both;
 }
@@ -652,7 +652,7 @@
 
 /* Item được chọn: nền xanh nhạt, không thêm ::before (tránh conflict với listItemSelected) */
 .listItemChecked {
-	background: #f0fbf6 !important;
+	background: #f0fbf5 !important;
 }
 
 /* Khi vừa checked vừa selected: selected thắng */
@@ -897,7 +897,7 @@
 .commentTextarea:focus {
 	border-color: var(--color-primary);
 	background: var(--color-white);
-	box-shadow: 0 0 0 3px rgba(46, 184, 122, 0.1);
+	box-shadow: 0 0 0 3px rgba(10, 155, 74, 0.1);
 }
 
 .charCount {
@@ -934,11 +934,11 @@
 	color: var(--color-white);
 	cursor: pointer;
 	transition: all var(--transition-base);
-	box-shadow: 0 3px 10px rgba(46, 184, 122, 0.28);
+	box-shadow: 0 3px 10px rgba(10, 155, 74, 0.28);
 }
 
 .btnApprove:hover {
-	box-shadow: 0 5px 16px rgba(46, 184, 122, 0.4);
+	box-shadow: 0 5px 16px rgba(10, 155, 74, 0.4);
 	transform: translateY(-1px);
 }
 .btnApprove:active {
@@ -1032,7 +1032,7 @@
 
 .processedApproved {
 	background: var(--color-primary-pale);
-	border: 1px solid rgba(46, 184, 122, 0.2);
+	border: 1px solid rgba(10, 155, 74, 0.2);
 	color: var(--color-primary-dark);
 }
 
@@ -1159,7 +1159,7 @@
 .modalComment:focus {
 	border-color: var(--color-primary);
 	background: var(--color-white);
-	box-shadow: 0 0 0 3px rgba(46, 184, 122, 0.1);
+	box-shadow: 0 0 0 3px rgba(10, 155, 74, 0.1);
 }
 
 .modalFooter {
@@ -1210,11 +1210,11 @@
 	color: var(--color-white);
 	cursor: pointer;
 	transition: all var(--transition-base);
-	box-shadow: 0 3px 10px rgba(46, 184, 122, 0.28);
+	box-shadow: 0 3px 10px rgba(10, 155, 74, 0.28);
 }
 
 .btnConfirmApprove:hover {
-	box-shadow: 0 5px 16px rgba(46, 184, 122, 0.4);
+	box-shadow: 0 5px 16px rgba(10, 155, 74, 0.4);
 	transform: translateY(-1px);
 }
 .btnConfirmApprove:disabled {
@@ -1589,7 +1589,7 @@
 	padding: 4px 10px;
 	background: var(--color-primary-pale);
 	color: var(--color-primary-dark);
-	border: 1px solid rgba(46, 184, 122, 0.2);
+	border: 1px solid rgba(10, 155, 74, 0.2);
 	border-radius: var(--radius-md);
 	font-size: 11px;
 	font-weight: 600;

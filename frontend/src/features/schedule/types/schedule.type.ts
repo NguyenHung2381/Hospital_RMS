@@ -26,13 +26,13 @@ export const ZOOM_LEVELS = [1, 2, 4, 8] as const;
 export type ZoomLevel = (typeof ZOOM_LEVELS)[number];
 
 export const STATUS_CFG = {
-	active: { label: 'Đang mở', color: '#2eb87a' },
+	active: { label: 'Đang mở', color: '#0a9b4a' },
 	draft:  { label: 'Nháp',    color: '#ef9f27' },
 	closed: { label: 'Đã đóng', color: '#9ca3af' },
 } as const;
 
 export const DEADLINE_COLORS: Record<string, string> = {
-	topic_registration: '#2eb87a',
+	topic_registration: '#0a9b4a',
 	report_submission:  '#e05252',
 	supplement:         '#e09d52',
 	edit:               '#52a9e0',
@@ -40,7 +40,7 @@ export const DEADLINE_COLORS: Record<string, string> = {
 };
 
 export const COLOR_PRESETS = [
-	'#e05252', '#e09d52', '#ef9f27', '#2eb87a', '#378add',
+	'#e05252', '#e09d52', '#ef9f27', '#0a9b4a', '#378add',
 	'#7c52e0', '#52a9e0', '#e05298', '#64748b',
 ];
 

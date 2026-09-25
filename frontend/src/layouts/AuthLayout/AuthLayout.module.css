@@ -19,7 +19,7 @@
 		),
 		radial-gradient(
 			ellipse at 80% 20%,
-			rgba(91, 232, 168, 0.35) 0%,
+			rgba(91, 232, 154, 0.35) 0%,
 			transparent 55%
 		),
 		radial-gradient(
@@ -31,8 +31,8 @@
 			155deg,
 			var(--color-primary-dark) 0%,
 			var(--color-primary) 50%,
-			#3dd68c 80%,
-			#5be8a8 100%
+			#3dd682 80%,
+			#5be89a 100%
 		);
 	display: flex;
 	flex-direction: column;
@@ -118,7 +118,7 @@
 .glowOrb:nth-of-type(4) {
 	width: 280px;
 	height: 280px;
-	background: rgba(91, 232, 168, 0.2);
+	background: rgba(91, 232, 154, 0.2);
 	top: -60px;
 	right: -60px;
 }
@@ -251,7 +251,7 @@
 	font-size: 0.65rem;
 	font-weight: var(--font-weight-bold);
 	flex-shrink: 0;
-	color: #a8ffd6;
+	color: #a8ffcf;
 }
 
 .panelDivider {
@@ -274,7 +274,7 @@
 	justify-content: center;
 	padding: var(--space-12) var(--space-10);
 	background:
-		radial-gradient(circle, rgba(46, 184, 122, 0.07) 1px, transparent 1px),
+		radial-gradient(circle, rgba(10, 155, 74, 0.07) 1px, transparent 1px),
 		var(--color-gray-50);
 	background-size:
 		28px 28px,
@@ -293,7 +293,7 @@
 	height: 380px;
 	background: radial-gradient(
 		circle,
-		rgba(46, 184, 122, 0.13) 0%,
+		rgba(10, 155, 74, 0.13) 0%,
 		transparent 65%
 	);
 	pointer-events: none;
@@ -309,7 +309,7 @@
 	height: 300px;
 	background: radial-gradient(
 		circle,
-		rgba(46, 184, 122, 0.09) 0%,
+		rgba(10, 155, 74, 0.09) 0%,
 		transparent 65%
 	);
 	pointer-events: none;
@@ -320,7 +320,7 @@
 	position: absolute;
 	border-radius: 50%;
 	pointer-events: none;
-	border: 1px solid rgba(46, 184, 122, 0.12);
+	border: 1px solid rgba(10, 155, 74, 0.12);
 }
 
 .rightRing:nth-of-type(1) {
@@ -342,7 +342,7 @@
 	height: 120px;
 	bottom: 100px;
 	right: var(--space-10);
-	border-color: rgba(46, 184, 122, 0.08);
+	border-color: rgba(10, 155, 74, 0.08);
 }
 
 .formWrapper {

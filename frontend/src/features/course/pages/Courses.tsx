@@ -182,7 +182,7 @@ export default function Courses() {
 													className={styles.badge}
 													style={
 														c.is_public_registration
-															? { background: '#e1f5ee', color: '#085041' }
+															? { background: '#e1f5ea', color: '#085028' }
 															: { background: 'var(--color-gray-100)', color: 'var(--color-gray-600)' }
 													}
 												>
@@ -196,7 +196,7 @@ export default function Courses() {
 													? `${formatDate(c.enrollment_start_date) ?? '—'} — ${formatDate(c.enrollment_end_date) ?? '—'}`
 													: 'Luôn mở'}
 												{' · '}
-												<span style={{ color: c.enrollment_open ? '#085041' : '#791f1f' }}>
+												<span style={{ color: c.enrollment_open ? '#085028' : '#791f1f' }}>
 													{c.enrollment_open ? 'Đang mở' : 'Đã đóng'}
 												</span>
 											</span>
