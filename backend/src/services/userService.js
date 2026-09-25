@@ -9,6 +9,7 @@ const { paging } = require('../utils/paging');
 // department_id/role_id nhận danh sách phân tách bởi dấu phẩy (multi-select trên UI)
 const { splitList, inClause } = require('../utils/sqlFilters');
 const { ROLE, requireRoleId } = require('./roleCodes');
+const { generateTempPassword } = require('../utils/passwordPolicy');
 
 // ─── Cache thống kê toàn bảng (global_stats) ─────────────────────────────────
 // global_stats không phụ thuộc filter/phân trang nên trước đây bị quét lại toàn
@@ -197,8 +198,9 @@ const create = async (data, actorId) => {
       DECLARE @new_id VARCHAR(20);
       SET @new_id = 'NV' + LEFT(REPLACE(NEWID(), '-', ''), 8);
       EXEC sp_set_actor @actor_id;
-      INSERT INTO users (id, username, password, staff_number, full_name, email, department_id, role_id, created_by)
-      VALUES (@new_id, @username, @password, @staff_number, @full_name, @email, @department_id, @role_id, @actor_id);
+      -- Mật khẩu do quản trị đặt ⇒ người dùng phải tự đổi ở lần đăng nhập đầu
+      INSERT INTO users (id, username, password, staff_number, full_name, email, department_id, role_id, created_by, must_change_password)
+      VALUES (@new_id, @username, @password, @staff_number, @full_name, @email, @department_id, @role_id, @actor_id, 1);
       SELECT @new_id AS id;
     `);
 
@@ -330,9 +332,13 @@ const remove = async (id, actorId) => {
 // Reset mật khẩu bởi người quản lý: thu hồi toàn bộ phiên của tài khoản đích
 // (refresh token + token_version) — người đang giữ phiên cũ (có thể chính là
 // kẻ đã chiếm tài khoản) bị đăng xuất ngay, phải đăng nhập bằng mật khẩu mới.
+// Không truyền newPassword ⇒ sinh mật khẩu tạm ngẫu nhiên. Trả về
+// { temporary_password } (chỉ khi tự sinh) để hiển thị cho quản trị đúng 1 lần.
+// Mật khẩu này đã qua tay người khác nên luôn bắt đổi ở lần đăng nhập tới.
 const resetPassword = async (id, newPassword, actorId, ip = null) => {
 	const pool = await getPool();
-	const hashed = await bcrypt.hash(newPassword, 12);
+	const generated = newPassword ? null : generateTempPassword();
+	const hashed = await bcrypt.hash(newPassword || generated, 12);
 	await pool
 		.request()
 		.input('id', sql.VarChar(20), id)
@@ -340,7 +346,8 @@ const resetPassword = async (id, newPassword, actorId, ip = null) => {
 		.input('actor_id', sql.VarChar(20), actorId)
 		.query(
 			`EXEC sp_set_actor @actor_id;
-			 UPDATE users SET password=@password, password_changed_at=GETDATE(), updated_at=GETDATE(), updated_by=@actor_id WHERE id=@id;
+			 UPDATE users SET password=@password, password_changed_at=GETDATE(), must_change_password=1,
+			   updated_at=GETDATE(), updated_by=@actor_id WHERE id=@id;
 			 DELETE FROM refresh_tokens WHERE user_id=@id;`,
 		);
 	// Thu hồi ngay cả access token đang lưu hành (không chờ hết hạn 8h)
@@ -354,6 +361,7 @@ const resetPassword = async (id, newPassword, actorId, ip = null) => {
 	});
 	invalidateStatsCache();
 	broadcast('update', { entity: 'user' });
+	return generated ? { temporary_password: generated } : null;
 };
 
 const searchForMember = async ({ q, department_id, limit = 10 }) => {

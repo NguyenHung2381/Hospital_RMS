@@ -3,6 +3,7 @@ const path = require('path');
 const fs = require('fs');
 const crypto = require('crypto');
 const { isAllowedExtension } = require('./fileTypeAllowlist');
+const { secureUpload } = require('./secureUpload');
 
 const UPLOADS_ROOT = path.resolve(process.env.UPLOADS_DIR || 'uploads');
 const SAFE_ID = /^[A-Za-z0-9_-]{1,20}$/;
@@ -29,9 +30,11 @@ const storage = multer.diskStorage({
 	},
 });
 
-const upload = multer({
+// Hồ sơ đề tài (tài liệu, bản scan...): mặc định 50MB/file (trước đây 150MB),
+// đổi bằng TOPIC_UPLOAD_MAX_MB. secureUpload: kiểm tra nội dung + quét virus + hạn mức.
+const upload = secureUpload(multer({
 	storage,
-	limits: { fileSize: 150 * 1024 * 1024 }, // 150 MB per file
+	limits: { fileSize: (Number(process.env.TOPIC_UPLOAD_MAX_MB) || 50) * 1024 * 1024 },
 	fileFilter: (_req, file, cb) => {
 		if (!isAllowedExtension(file.originalname)) {
 			return cb(
@@ -42,6 +45,6 @@ const upload = multer({
 		}
 		cb(null, true);
 	},
-});
+}));
 
 module.exports = upload;

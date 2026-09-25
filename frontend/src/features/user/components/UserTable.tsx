@@ -237,7 +237,7 @@ export function UserTable({
 											</div>
 											<div
 												className={styles.actionBtn}
-												title='Đặt lại mật khẩu về 123456'
+												title='Đặt lại mật khẩu (tạo mật khẩu tạm ngẫu nhiên)'
 												onClick={() => setResetUser(u)}
 												style={{ color: '#b45309' }}
 											>

@@ -1,20 +1,24 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const { signToken, verifyToken, ISSUER } = require('../utils/keys');
 const crypto = require('crypto');
 const otplib = require('otplib');
 const { getPool, sql } = require('../config/db');
 const permCache = require('../middlewares/permissionCache');
+const userStatusCache = require('../middlewares/userStatusCache');
+const { twoFactorState } = require('../permissions/twoFactorPolicy');
 const { currentTokenVersion, bumpTokenVersion } = require('./sessionVersion');
 const { v4: uuidv4 } = require('uuid');
 const securityEvents = require('./securityEventService');
 const trustedDevices = require('./trustedDeviceService');
+const secretBox = require('../utils/secretBox');
+const { consumeOnce } = require('../utils/oneTimeToken');
 
 // Token trung gian giữa bước 1 (mật khẩu đúng) và bước 2 (mã OTP) của tài
 // khoản đã bật 2FA — KHÔNG phải access token thật, không mang quyền, chỉ xác
 // nhận "đã qua bước mật khẩu cho user này", mirror captcha.js (ký JWT ngắn
 // hạn, không cần lưu DB). Hết hạn nhanh (5 phút) vì người dùng nhập mã ngay.
 const PRE_AUTH_2FA_TTL = '5m';
-const PRE_AUTH_2FA_PURPOSE = '2fa_pre_auth';
 
 // epochTolerance=1 cho phép lệch đồng hồ ±1 bước (±30s) giữa app xác thực và
 // server — người dùng thường không kịp nhập mã đúng khung 30s hiện tại.
@@ -124,6 +128,18 @@ const isRepeatedWrongPassword = (userId, password) => {
 	return false;
 };
 
+// ── Chống dò tài khoản (user enumeration) ───────────────────────
+// Sai username / sai mật khẩu phải trả CÙNG thông báo và CÙNG thời gian xử lý
+// — nếu không, kẻ tấn công lọc được danh sách username thật (vốn đoán được:
+// chữ cái đầu + mã NV) rồi mới rải mật khẩu. Username không tồn tại vẫn chạy
+// bcrypt với 1 hash giả cùng cost để thời gian phản hồi không khác.
+const INVALID_CREDENTIALS = {
+	statusCode: 401,
+	message: 'Tên đăng nhập hoặc mật khẩu không đúng',
+};
+let _dummyHash = null;
+const dummyHash = () => (_dummyHash ??= bcrypt.hash(crypto.randomBytes(16).toString('hex'), 12));
+
 const lockedError = (lockedUntil) => {
 	const secondsLeft = Math.max(
 		1,
@@ -136,7 +152,16 @@ const lockedError = (lockedUntil) => {
 	};
 };
 
-const login = async (username, password, ip = null, userAgent = null, deviceToken = null) => {
+// remember = "Ghi nhớ đăng nhập": refresh token sống 30 ngày thay vì 7 ngày
+// (sp_create_refresh_token) và cookie tồn tại qua lần đóng trình duyệt.
+const login = async (
+	username,
+	password,
+	ip = null,
+	userAgent = null,
+	deviceToken = null,
+	remember = false,
+) => {
 	const pool = await getPool();
 
 	const result = await pool
@@ -145,7 +170,7 @@ const login = async (username, password, ip = null, userAgent = null, deviceToke
       SELECT u.id, u.username, u.password, u.full_name, u.email, u.staff_number,
              u.role_id, u.is_active, u.department_id,
              u.account_expires_at, u.failed_login_count, u.locked_until,
-             u.totp_enabled, u.password_changed_at,
+             u.totp_enabled, u.password_changed_at, u.must_change_password, u.twofa_required_since,
              r.name AS role_name
       FROM users u
       LEFT JOIN roles r ON r.id = u.role_id
@@ -153,23 +178,19 @@ const login = async (username, password, ip = null, userAgent = null, deviceToke
     `);
 
 	const user = result.recordset[0];
-	if (!user)
-		throw {
-			statusCode: 401,
-			message: 'Tên đăng nhập hoặc mật khẩu không đúng',
-		};
-	// is_active = 0 bao gồm cả TK bị vô hiệu hóa thủ công lẫn TK hết hạn
-	// (sp_deactivate_expired_accounts set is_active=0 mỗi đêm)
-	if (!user.is_active)
-		throw {
-			statusCode: 403,
-			message: 'Tài khoản đã bị vô hiệu hóa hoặc hết hạn sử dụng',
-		};
+	if (!user) {
+		await bcrypt.compare(password, await dummyHash());
+		throw INVALID_CREDENTIALS;
+	}
 
 	// Thiết bị quen không bị khoá tạm tài khoản chặn — kẻ tấn công cố tình nhập
 	// sai từ máy khác không khoá được chủ tài khoản trên máy của họ.
 	const device = await trustedDevices.verifyDeviceToken(deviceToken, user);
 
+	// Báo khoá TRƯỚC khi so mật khẩu (đánh đổi có chủ đích): nếu chỉ báo khoá khi
+	// mật khẩu đúng, kẻ tấn công vẫn dò tiếp được trong thời gian khoá và nhận
+	// ra mật khẩu đúng qua thông báo khác đi. Cái giá: lộ việc tài khoản tồn tại
+	// — chỉ với tài khoản đang bị khoá.
 	if (!device && isLocked(user)) {
 		throw lockedError(user.locked_until);
 	}
@@ -186,11 +207,18 @@ const login = async (username, password, ip = null, userAgent = null, deviceToke
 				if (lockedUntil) throw lockedError(lockedUntil);
 			}
 		}
-		throw {
-			statusCode: 401,
-			message: 'Tên đăng nhập hoặc mật khẩu không đúng',
-		};
+		throw INVALID_CREDENTIALS;
 	}
+
+	// is_active = 0 bao gồm cả TK bị vô hiệu hóa thủ công lẫn TK hết hạn
+	// (sp_deactivate_expired_accounts set is_active=0 mỗi đêm). Chỉ báo SAU khi
+	// mật khẩu đúng — người không biết mật khẩu không phân biệt được tài khoản
+	// bị vô hiệu hoá với tài khoản không tồn tại.
+	if (!user.is_active)
+		throw {
+			statusCode: 403,
+			message: 'Tài khoản đã bị vô hiệu hóa hoặc hết hạn sử dụng',
+		};
 
 	// Đăng nhập đúng trên thiết bị quen không xoá bộ đếm/khoá của thiết bị lạ
 	// — nếu không, kẻ tấn công được làm lại từ đầu mỗi khi chủ tài khoản đăng
@@ -200,69 +228,101 @@ const login = async (username, password, ip = null, userAgent = null, deviceToke
 	// Tài khoản đã bật 2FA: dừng lại ở đây, KHÔNG phát token thật — chỉ trả 1
 	// pre-auth token ngắn hạn để client gọi tiếp /auth/2fa/verify kèm mã OTP.
 	if (user.totp_enabled) {
-		const preAuthToken = jwt.sign(
-			{ id: user.id, purpose: PRE_AUTH_2FA_PURPOSE },
-			process.env.JWT_SECRET,
-			{ expiresIn: PRE_AUTH_2FA_TTL },
+		// Khoá riêng 'pre-auth-2fa' (utils/keys.js): token này không bao giờ được
+		// chấp nhận như access token. `rm` giữ lựa chọn "ghi nhớ" sang bước 2.
+		const preAuthToken = signToken(
+			'pre-auth-2fa',
+			{ id: user.id, rm: remember ? 1 : 0, jti: uuidv4() },
+			PRE_AUTH_2FA_TTL,
 		);
 		return { requires_2fa: true, pre_auth_token: preAuthToken };
 	}
 
-	return issueTokens(pool, user, ip, userAgent, device);
+	return issueTokens(pool, user, ip, userAgent, device, remember);
 };
 
-// Ký cặp access + refresh token cho một phiên mới và lưu refresh token (hash).
-// Access token mang `tv` = users.token_version hiện tại (xem sessionVersion.js).
-const signSession = async (pool, user, ip, userAgent) => {
-	const payload = {
-		id: user.id,
-		username: user.username,
-		full_name: user.full_name,
-		staff_number: user.staff_number ? String(user.staff_number) : null,
-		role_id: user.role_id,
-		department_id: user.department_id,
-		account_expires_at: user.account_expires_at
-			? new Date(user.account_expires_at).toISOString().split('T')[0]
-			: null,
-		tv: await currentTokenVersion(user.id, pool),
-	};
+// Access token sống ngắn (mặc định 15 phút, trước đây 8 giờ): lộ ra (XSS, log,
+// máy dùng chung) thì chỉ dùng được ít phút; client tự làm mới bằng refresh
+// token nằm trong cookie HttpOnly (utils/authCookie.js).
+const ACCESS_TOKEN_TTL = () => process.env.JWT_EXPIRES_IN || '15m';
 
-	const accessToken = jwt.sign(payload, process.env.JWT_SECRET, {
-		expiresIn: process.env.JWT_EXPIRES_IN || '8h',
-	});
+const signAccessToken = (user, tv) =>
+	signToken(
+		'access',
+		{
+			id: user.id,
+			username: user.username,
+			full_name: user.full_name,
+			staff_number: user.staff_number ? String(user.staff_number) : null,
+			role_id: user.role_id,
+			department_id: user.department_id,
+			account_expires_at: user.account_expires_at
+				? new Date(user.account_expires_at).toISOString().split('T')[0]
+				: null,
+			tv,
+		},
+		ACCESS_TOKEN_TTL(),
+	);
+
+// Ký cặp access + refresh token và lưu refresh token (hash). Access token mang
+// `tv` = users.token_version hiện tại (xem sessionVersion.js).
+//   familyId: "họ" token — mọi refresh token sinh ra từ cùng 1 lần đăng nhập
+//     (qua các lần xoay) cùng họ; phát hiện dùng lại thì thu hồi cả họ.
+//     Không truyền = phiên mới (họ mới).
+const signSession = async (pool, user, ip, userAgent, { remember = false, familyId = null } = {}) => {
+	const accessToken = signAccessToken(user, await currentTokenVersion(user.id, pool));
 
 	// jti ngẫu nhiên: payload chỉ có {id} + JWT iat chỉ chính xác tới giây, nên
 	// 2 lần sign trong cùng 1 giây (không hiếm với round-trip DB nhanh) cho ra
 	// CHUỖI TOKEN GIỐNG NHAU — phá vỡ bảo đảm "token cũ sau rotate bị từ chối".
+	// Hạn JWT khớp hạn trong DB (sp_create_refresh_token: 30 ngày nếu ghi nhớ).
 	const refreshToken = jwt.sign(
 		{ id: user.id, jti: uuidv4() },
 		process.env.JWT_REFRESH_SECRET,
 		{
-			expiresIn: process.env.JWT_REFRESH_EXPIRES_IN || '7d',
+			algorithm: 'HS256',
+			expiresIn: remember ? '30d' : process.env.JWT_REFRESH_EXPIRES_IN || '7d',
+			issuer: ISSUER,
+			audience: 'refresh',
 		},
 	);
 
 	// Store refresh token via SP (handles id generation + remember_me)
-	await pool
+	const created = await pool
 		.request()
 		.input('user_id', sql.VarChar(20), user.id)
 		.input('token', sql.VarChar(64), hashToken(refreshToken))
-		.input('remember_me', sql.Bit, 0)
+		.input('remember_me', sql.Bit, remember ? 1 : 0)
 		.execute('sp_create_refresh_token');
 
-	await tagRefreshTokenSession(pool, hashToken(refreshToken), ip, userAgent);
-	return { accessToken, refreshToken };
+	await tagRefreshTokenSession(
+		pool,
+		hashToken(refreshToken),
+		ip,
+		userAgent,
+		familyId || created.recordset?.[0]?.id || uuidv4(),
+	);
+	return { accessToken, refreshToken, remember: !!remember };
 };
 
 // Phát access/refresh token thật + device token (thiết bị quen) + trả về
 // profile đầy đủ — dùng chung cho login() thường và verify2FALogin() (bước 2
-// sau khi xác minh mã OTP).
-const issueTokens = async (pool, user, ip, userAgent, device = null) => {
+// sau khi xác minh mã OTP). refresh_token + remember KHÔNG gửi cho client trong
+// body — controller chuyển vào cookie HttpOnly.
+const issueTokens = async (pool, user, ip, userAgent, device = null, remember = false) => {
 	const { permissions, permission_scopes } = await loadPermissions(user.role_id);
-	const { accessToken, refreshToken } = await signSession(pool, user, ip, userAgent);
+	const { accessToken, refreshToken } = await signSession(pool, user, ip, userAgent, { remember });
+	// Tài khoản quản trị chưa bật 2FA: 'grace' (nhắc, kèm hạn) hoặc 'required'
+	// (quá hạn — client chuyển thẳng tới màn bật 2FA; server tự chặn API khác).
+	const twoFa = await twoFactorState(
+		{ userId: user.id, totpEnabled: !!user.totp_enabled, requiredSince: user.twofa_required_since },
+		new Set(permissions),
+	);
 
 	return {
 		user: {
+			twofa_state: twoFa.state,
+			twofa_deadline: twoFa.deadline ? twoFa.deadline.toISOString() : null,
 			id: user.id,
 			username: user.username,
 			staff_number: user.staff_number ? String(user.staff_number) : null,
@@ -273,15 +333,117 @@ const issueTokens = async (pool, user, ip, userAgent, device = null) => {
 			department_id: user.department_id,
 			permissions,
 			permission_scopes,
+			// Client chuyển thẳng tới màn đổi mật khẩu; server vẫn tự chặn
+			// (middlewares/auth.js) nên cờ này chỉ để điều hướng.
+			must_change_password: !!user.must_change_password,
 		},
 		access_token: accessToken,
 		refresh_token: refreshToken,
+		remember: !!remember,
 		device_token: trustedDevices.issueDeviceToken(user, device),
 	};
 };
 
-// Bước 2 của đăng nhập 2FA: tiêu thụ pre-auth token (bước 1, mật khẩu đúng) +
-// xác minh mã OTP, phát token thật nếu khớp.
+// ─── 2FA: dùng chung ────────────────────────────────────────────────────────
+// Secret TOTP lưu mã hoá (utils/secretBox.js). Giá trị cũ chưa mã hoá vẫn đọc
+// được; lần dùng thành công kế tiếp sẽ mã hoá lại (reencryptIfLegacy).
+const readSecret = (stored) => secretBox.decrypt(stored);
+
+const reencryptIfLegacy = async (pool, userId, stored) => {
+	if (!stored || secretBox.isEncrypted(stored)) return;
+	await pool
+		.request()
+		.input('id', sql.VarChar(20), userId)
+		.input('secret', sql.NVarChar(255), secretBox.encrypt(stored))
+		.query('UPDATE users SET totp_secret = @secret WHERE id = @id');
+};
+
+// Ghi nhận bước thời gian của mã vừa dùng — nguyên tử: chỉ thành công khi bước
+// này MỚI HƠN bước đã dùng. Trả false = mã đã được dùng (bị nhìn trộm / chặn
+// bắt rồi phát lại trong khung ±30 giây).
+const claimTotpStep = async (pool, userId, step) => {
+	const r = await pool
+		.request()
+		.input('id', sql.VarChar(20), userId)
+		.input('step', sql.BigInt, step).query(`
+			-- OUTPUT ... INTO: bảng users có trigger audit, OUTPUT trần không được phép
+			DECLARE @r TABLE (id VARCHAR(20));
+			UPDATE users SET totp_last_step = @step
+			OUTPUT INSERTED.id INTO @r
+			WHERE id = @id AND (totp_last_step IS NULL OR totp_last_step < @step);
+			SELECT COUNT(*) AS n FROM @r;
+		`);
+	return r.recordset[0].n === 1;
+};
+
+// Mã 6 số từ ứng dụng xác thực: đúng + chưa từng dùng.
+const checkTotp = async (pool, user, code) => {
+	if (!/^\d{6}$/.test(code)) return false;
+	const { valid, timeStep } = await verifyTotp(readSecret(user.totp_secret), code);
+	return valid && (await claimTotpStep(pool, user.id, timeStep));
+};
+
+// ── Mã khôi phục (khi mất điện thoại) ──
+// 10 mã dạng "xxxx-xxxx" (~40 bit), mỗi mã dùng 1 lần, lưu HMAC có khoá ngoài DB.
+const BACKUP_CODE_COUNT = 10;
+const BACKUP_ALPHABET = 'abcdefghjkmnpqrstuvwxyz23456789';
+const normalizeBackupCode = (code) => String(code).toLowerCase().replace(/[^a-z0-9]/g, '');
+const isBackupCodeShape = (code) => normalizeBackupCode(code).length === 8;
+
+const generateBackupCodes = () =>
+	Array.from({ length: BACKUP_CODE_COUNT }, () => {
+		let s = '';
+		for (let i = 0; i < 8; i++) s += BACKUP_ALPHABET[crypto.randomInt(BACKUP_ALPHABET.length)];
+		return `${s.slice(0, 4)}-${s.slice(4)}`;
+	});
+
+// Thay toàn bộ mã khôi phục của user bằng bộ mới, trả mã gốc (hiển thị 1 lần).
+const replaceBackupCodes = async (pool, userId) => {
+	const codes = generateBackupCodes();
+	const req = pool.request().input('user_id', sql.VarChar(20), userId);
+	codes.forEach((c, i) => req.input(`h${i}`, sql.Char(64), secretBox.keyedHash(normalizeBackupCode(c))));
+	await req.query(`
+		DELETE FROM user_backup_codes WHERE user_id = @user_id;
+		INSERT INTO user_backup_codes (user_id, code_hash)
+		VALUES ${codes.map((_, i) => `(@user_id, @h${i})`).join(', ')};
+	`);
+	return codes;
+};
+
+// Dùng 1 mã khôi phục — nguyên tử (2 request cùng mã thì chỉ 1 thành công).
+const consumeBackupCode = async (pool, userId, code) => {
+	if (!isBackupCodeShape(code)) return false;
+	const r = await pool
+		.request()
+		.input('user_id', sql.VarChar(20), userId)
+		.input('hash', sql.Char(64), secretBox.keyedHash(normalizeBackupCode(code))).query(`
+			UPDATE user_backup_codes SET used_at = SYSUTCDATETIME()
+			OUTPUT INSERTED.id
+			WHERE user_id = @user_id AND code_hash = @hash AND used_at IS NULL
+		`);
+	return r.recordset.length === 1;
+};
+
+const countBackupCodes = async (pool, userId) =>
+	(
+		await pool
+			.request()
+			.input('user_id', sql.VarChar(20), userId)
+			.query('SELECT COUNT(*) AS n FROM user_backup_codes WHERE user_id = @user_id AND used_at IS NULL')
+	).recordset[0].n;
+
+const assertPassword = async (pool, userId, password) => {
+	const user = (
+		await pool.request().input('id', sql.VarChar(20), userId).query('SELECT password FROM users WHERE id = @id')
+	).recordset[0];
+	if (!user) throw { statusCode: 404, message: 'Người dùng không tồn tại' };
+	if (!(await bcrypt.compare(String(password ?? ''), user.password)))
+		throw { statusCode: 400, message: 'Mật khẩu không đúng' };
+};
+
+// Bước 2 của đăng nhập 2FA: pre-auth token (bước 1, mật khẩu đúng) + mã OTP
+// 6 số HOẶC 1 mã khôi phục. Pre-auth token chỉ dùng được cho 1 lần đăng nhập
+// thành công (nhập sai mã thì vẫn thử lại được với token đó).
 const verify2FALogin = async (
 	preAuthToken,
 	code,
@@ -291,12 +453,10 @@ const verify2FALogin = async (
 ) => {
 	let decoded;
 	try {
-		decoded = jwt.verify(preAuthToken, process.env.JWT_SECRET);
+		decoded = verifyToken('pre-auth-2fa', preAuthToken);
 	} catch {
 		throw { statusCode: 401, message: 'Phiên đăng nhập đã hết hạn, vui lòng đăng nhập lại' };
 	}
-	if (decoded.purpose !== PRE_AUTH_2FA_PURPOSE)
-		throw { statusCode: 401, message: 'Token không hợp lệ' };
 
 	const pool = await getPool();
 	const result = await pool
@@ -305,6 +465,7 @@ const verify2FALogin = async (
       SELECT u.id, u.username, u.full_name, u.email, u.staff_number, u.role_id,
              u.department_id, u.account_expires_at, u.totp_secret, u.totp_enabled,
              u.failed_login_count, u.locked_until, u.password_changed_at,
+             u.must_change_password, u.is_active,
              r.name AS role_name
       FROM users u
       LEFT JOIN roles r ON r.id = u.role_id
@@ -313,11 +474,20 @@ const verify2FALogin = async (
 	const user = result.recordset[0];
 	if (!user || !user.totp_enabled || !user.totp_secret)
 		throw { statusCode: 401, message: 'Tài khoản chưa bật xác thực 2 lớp' };
+	// Tài khoản có thể bị vô hiệu hoá trong 5 phút giữa bước mật khẩu và bước OTP
+	if (!user.is_active)
+		throw { statusCode: 403, message: 'Tài khoản đã bị vô hiệu hóa hoặc hết hạn sử dụng' };
 
 	const device = await trustedDevices.verifyDeviceToken(deviceToken, user);
 	if (!device && isLocked(user)) throw lockedError(user.locked_until);
 
-	const { valid } = await verifyTotp(user.totp_secret, code);
+	const input = String(code ?? '').trim();
+	let usedBackupCode = false;
+	let valid = await checkTotp(pool, user, input);
+	if (!valid && (await consumeBackupCode(pool, user.id, input))) {
+		valid = true;
+		usedBackupCode = true;
+	}
 	if (!valid) {
 		await securityEvents.log({
 			eventType: 'login_2fa_failed',
@@ -325,7 +495,7 @@ const verify2FALogin = async (
 			targetType: 'user',
 			targetId: user.id,
 			ip,
-			detail: 'Sai mã xác thực 2 lớp lúc đăng nhập',
+			detail: 'Sai (hoặc dùng lại) mã xác thực 2 lớp lúc đăng nhập',
 		});
 		// Sai OTP cũng tính vào bộ đếm khoá (của thiết bị quen, hoặc của tài
 		// khoản với thiết bị lạ) — chặn dò mã 6 số từ nhiều IP.
@@ -335,31 +505,56 @@ const verify2FALogin = async (
 			const lockedUntil = await recordFailedLogin(pool, user, ip, 'sai mã 2FA');
 			if (lockedUntil) throw lockedError(lockedUntil);
 		}
-		throw { statusCode: 401, message: 'Mã xác thực không đúng hoặc đã hết hạn' };
+		throw { statusCode: 401, message: 'Mã xác thực không đúng, đã hết hạn hoặc đã được sử dụng' };
 	}
 
+	// Pre-auth token + mã đúng chỉ đổi lấy phiên đăng nhập đúng 1 lần
+	if (!(await consumeOnce('pre-auth-2fa', decoded.jti, 10 * 60)))
+		throw { statusCode: 401, message: 'Phiên đăng nhập đã hết hạn, vui lòng đăng nhập lại' };
+
+	if (usedBackupCode) {
+		await securityEvents.log({
+			eventType: '2fa_backup_code_used',
+			actorId: user.id,
+			targetType: 'user',
+			targetId: user.id,
+			ip,
+			detail: `Đăng nhập bằng mã khôi phục — còn ${await countBackupCodes(pool, user.id)} mã`,
+		});
+	}
+	await reencryptIfLegacy(pool, user.id, user.totp_secret);
 	if (!device) await resetFailedLogins(pool, user);
-	return issueTokens(pool, user, ip, userAgent, device);
+	return issueTokens(pool, user, ip, userAgent, device, decoded.rm === 1);
 };
 
 // ─── 2FA: thiết lập / xác nhận / tắt (Hồ sơ cá nhân) ────────────────────────
-// Sinh secret mới + lưu NGAY (totp_enabled vẫn = 0 — "đang chờ xác nhận"),
-// tránh phải giữ secret ở phía client giữa 2 bước setup/verify-setup.
+// Sinh secret mới + lưu NGAY (mã hoá, totp_enabled vẫn = 0 — "đang chờ xác
+// nhận"), tránh phải giữ secret ở phía client giữa 2 bước setup/verify-setup.
 const setup2FA = async (userId) => {
 	const pool = await getPool();
 	const userRes = await pool
 		.request()
 		.input('id', sql.VarChar(20), userId)
-		.query('SELECT username FROM users WHERE id = @id');
+		.query('SELECT username, totp_enabled FROM users WHERE id = @id');
 	const user = userRes.recordset[0];
 	if (!user) throw { statusCode: 404, message: 'Người dùng không tồn tại' };
+	// Đang bật 2FA thì KHÔNG cho thiết lập lại: bước dưới đặt totp_enabled = 0,
+	// tức là tắt 2FA — chỉ cần access token (không mật khẩu, không OTP) là kẻ
+	// chiếm được phiên tắt được 2FA và gắn authenticator của chính họ. Muốn đổi
+	// thiết bị xác thực thì tắt trước qua /2fa/disable (yêu cầu mật khẩu).
+	if (user.totp_enabled)
+		throw {
+			statusCode: 409,
+			message: 'Xác thực 2 lớp đang bật. Hãy tắt trước (cần nhập mật khẩu) rồi thiết lập lại.',
+		};
 
 	const secret = await otplib.generateSecret();
 	await pool
 		.request()
 		.input('id', sql.VarChar(20), userId)
-		.input('secret', sql.NVarChar(255), secret)
-		.query('UPDATE users SET totp_secret = @secret, totp_enabled = 0, totp_verified_at = NULL WHERE id = @id');
+		.input('secret', sql.NVarChar(255), secretBox.encrypt(secret))
+		.query(`UPDATE users SET totp_secret = @secret, totp_enabled = 0, totp_verified_at = NULL,
+		          totp_last_step = NULL WHERE id = @id`);
 
 	const otpauthUri = otplib.generateURI({
 		issuer: 'RMS Hospital',
@@ -371,23 +566,29 @@ const setup2FA = async (userId) => {
 };
 
 // Xác nhận mã OTP đầu tiên sau setup2FA() → chính thức bật 2FA cho tài khoản.
+// Trả về bộ mã khôi phục (chỉ hiển thị 1 lần này).
 const confirm2FASetup = async (userId, code) => {
 	const pool = await getPool();
 	const userRes = await pool
 		.request()
 		.input('id', sql.VarChar(20), userId)
-		.query('SELECT totp_secret FROM users WHERE id = @id');
+		.query('SELECT id, totp_secret, totp_enabled FROM users WHERE id = @id');
 	const user = userRes.recordset[0];
 	if (!user || !user.totp_secret)
 		throw { statusCode: 400, message: 'Chưa khởi tạo thiết lập 2FA, vui lòng bắt đầu lại' };
+	if (user.totp_enabled) throw { statusCode: 409, message: 'Xác thực 2 lớp đã được bật' };
 
-	const { valid } = await verifyTotp(user.totp_secret, code);
-	if (!valid) throw { statusCode: 400, message: 'Mã xác thực không đúng' };
+	// Ghi nhận bước của mã này luôn: cùng mã không dùng lại được để đăng nhập
+	if (!(await checkTotp(pool, user, String(code ?? '').trim())))
+		throw { statusCode: 400, message: 'Mã xác thực không đúng' };
 
 	await pool
 		.request()
 		.input('id', sql.VarChar(20), userId)
 		.query('UPDATE users SET totp_enabled = 1, totp_verified_at = GETDATE() WHERE id = @id');
+	// Middleware auth đọc totp_enabled qua cache — xoá để hết bị chặn / nhắc ngay
+	userStatusCache.clear(userId);
+	const backupCodes = await replaceBackupCodes(pool, userId);
 
 	await securityEvents.log({
 		eventType: '2fa_enabled',
@@ -395,25 +596,40 @@ const confirm2FASetup = async (userId, code) => {
 		targetType: 'user',
 		targetId: userId,
 	});
+	return { backup_codes: backupCodes };
+};
+
+// Tạo lại bộ mã khôi phục (bộ cũ mất hiệu lực) — yêu cầu nhập lại mật khẩu.
+const regenerateBackupCodes = async (userId, password) => {
+	const pool = await getPool();
+	await assertPassword(pool, userId, password);
+	const enabled = (
+		await pool.request().input('id', sql.VarChar(20), userId).query('SELECT totp_enabled FROM users WHERE id = @id')
+	).recordset[0]?.totp_enabled;
+	if (!enabled) throw { statusCode: 400, message: 'Chưa bật xác thực 2 lớp' };
+
+	const backupCodes = await replaceBackupCodes(pool, userId);
+	await securityEvents.log({
+		eventType: '2fa_backup_codes_regenerated',
+		actorId: userId,
+		targetType: 'user',
+		targetId: userId,
+	});
+	return { backup_codes: backupCodes };
 };
 
 // Tắt 2FA — yêu cầu nhập lại mật khẩu (hành động nhạy cảm, giống đổi mật khẩu).
 const disable2FA = async (userId, password) => {
 	const pool = await getPool();
-	const userRes = await pool
-		.request()
-		.input('id', sql.VarChar(20), userId)
-		.query('SELECT password FROM users WHERE id = @id');
-	const user = userRes.recordset[0];
-	if (!user) throw { statusCode: 404, message: 'Người dùng không tồn tại' };
-
-	const isMatch = await bcrypt.compare(password, user.password);
-	if (!isMatch) throw { statusCode: 400, message: 'Mật khẩu không đúng' };
+	await assertPassword(pool, userId, password);
 
 	await pool
 		.request()
 		.input('id', sql.VarChar(20), userId)
-		.query('UPDATE users SET totp_secret = NULL, totp_enabled = 0, totp_verified_at = NULL WHERE id = @id');
+		.query(`UPDATE users SET totp_secret = NULL, totp_enabled = 0, totp_verified_at = NULL,
+		          totp_last_step = NULL WHERE id = @id;
+		        DELETE FROM user_backup_codes WHERE user_id = @id;`);
+	userStatusCache.clear(userId);
 
 	await securityEvents.log({
 		eventType: '2fa_disabled',
@@ -429,7 +645,11 @@ const get2FAStatus = async (userId) => {
 		.request()
 		.input('id', sql.VarChar(20), userId)
 		.query('SELECT totp_enabled FROM users WHERE id = @id');
-	return { enabled: !!result.recordset[0]?.totp_enabled };
+	const enabled = !!result.recordset[0]?.totp_enabled;
+	return {
+		enabled,
+		backup_codes_remaining: enabled ? await countBackupCodes(pool, userId) : 0,
+	};
 };
 
 // Gắn IP/thiết bị vào dòng refresh_tokens vừa tạo — làm ở bước riêng (UPDATE
@@ -437,15 +657,19 @@ const get2FAStatus = async (userId) => {
 // không nằm trong repo (thuộc schema nền chưa có migration gốc) nên không an
 // toàn để CREATE OR ALTER lại mà không biết nó đang làm gì bên trong.
 // `tokenHash` = hashToken(token gốc) — refresh_tokens.token lưu hash (xem hashToken).
-const tagRefreshTokenSession = async (pool, tokenHash, ip, userAgent) => {
+// Lỗi ở đây chỉ ghi log: dòng thiếu family_id vẫn hoạt động (lúc xoay, id của
+// chính dòng đó được dùng làm họ — xem refreshAccessToken).
+const tagRefreshTokenSession = async (pool, tokenHash, ip, userAgent, familyId) => {
 	try {
 		await pool
 			.request()
 			.input('token', sql.VarChar(64), tokenHash)
 			.input('ip_address', sql.VarChar(64), ip)
 			.input('user_agent', sql.NVarChar(255), userAgent ? String(userAgent).slice(0, 255) : null)
+			.input('family_id', sql.VarChar(60), familyId)
 			.query(
-				`UPDATE refresh_tokens SET ip_address = @ip_address, user_agent = @user_agent WHERE token = @token`,
+				`UPDATE refresh_tokens SET ip_address = @ip_address, user_agent = @user_agent,
+				   family_id = @family_id WHERE token = @token`,
 			);
 	} catch (err) {
 		console.error('❌ tagRefreshTokenSession failed:', err.message);
@@ -463,104 +687,145 @@ const loadPermissions = async (roleId) => {
 	};
 };
 
-// Xoay refresh token ở mỗi lần làm mới: phát hành token mới, xoá ngay token
-// cũ. Trước đây 1 refresh token sống nguyên tới khi hết hạn (mặc định 7
-// ngày) hoặc logout thủ công — lộ token là lộ quyền truy cập suốt 7 ngày.
-// Rotate xong, token cũ dùng lại sẽ bị từ chối ngay ở bước SELECT bên dưới.
+// ─── Xoay refresh token + phát hiện dùng lại ────────────────────────────────
+// Mỗi lần làm mới: token đang dùng bị đánh dấu thu hồi (revoked_at, KHÔNG xoá)
+// và được thay bằng token mới cùng họ (family_id). Bước "nhận" token là 1 câu
+// UPDATE nguyên tử — 2 request cùng mang 1 token thì chỉ 1 bên thắng (trước
+// đây SELECT rồi mới DELETE nên cả 2 cùng qua được).
+//
+// Token ĐÃ thu hồi mà vẫn được dùng lại:
+//   - trong REFRESH_RACE_GRACE_MS: gần như chắc chắn là 2 tab cùng làm mới —
+//     báo REFRESH_RACE, client thử lại (cookie đã là token mới của tab kia);
+//   - quá thời gian đó: token đã bị sao chép (đánh cắp) — kẻ tấn công hoặc chủ
+//     tài khoản đang dùng bản cũ. Thu hồi cả họ token + mọi access token đang
+//     lưu hành (token_version); thiết bị khác của người dùng (họ token khác)
+//     tự làm mới lại được, còn kẻ tấn công mất phiên.
+const REFRESH_RACE_GRACE_MS = 30 * 1000;
+
+const invalidRefresh = () => ({
+	statusCode: 401,
+	message: 'Refresh token không hợp lệ hoặc đã hết hạn',
+});
+
 const refreshAccessToken = async (refreshToken, ip = null, userAgent = null) => {
 	let decoded;
 	try {
-		decoded = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET);
+		// Chưa bắt buộc iss/aud: refresh token phát hành trước bản này không có
+		// 2 claim đó (sống tới 30 ngày). Bảo đảm chính là dòng hash trong DB.
+		decoded = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET, { algorithms: ['HS256'] });
 	} catch {
-		throw {
-			statusCode: 401,
-			message: 'Refresh token không hợp lệ hoặc đã hết hạn',
-		};
+		throw invalidRefresh();
 	}
 
 	const pool = await getPool();
 	const tokenHash = hashToken(refreshToken);
-	const rt = await pool
-		.request()
-		.input('token', sql.VarChar(64), tokenHash)
-		.query(
-			`SELECT * FROM refresh_tokens WHERE token = @token AND expires_at > GETDATE()`,
-		);
+	const claimed = (
+		await pool
+			.request()
+			.input('token', sql.VarChar(64), tokenHash)
+			.query(`
+				UPDATE refresh_tokens SET revoked_at = SYSUTCDATETIME()
+				OUTPUT INSERTED.id, INSERTED.user_id, INSERTED.family_id, INSERTED.remember_me
+				WHERE token = @token AND revoked_at IS NULL AND expires_at > GETDATE()
+			`)
+	).recordset[0];
 
-	const existing = rt.recordset[0];
-	if (!existing)
-		throw { statusCode: 401, message: 'Refresh token không hợp lệ' };
+	if (!claimed) {
+		const prior = (
+			await pool
+				.request()
+				.input('token', sql.VarChar(64), tokenHash)
+				.query('SELECT id, user_id, family_id, revoked_at FROM refresh_tokens WHERE token = @token')
+		).recordset[0];
+		if (prior?.revoked_at) {
+			if (Date.now() - new Date(prior.revoked_at).getTime() < REFRESH_RACE_GRACE_MS) {
+				throw {
+					statusCode: 401,
+					code: 'REFRESH_RACE',
+					message: 'Phiên đang được làm mới ở tab khác, vui lòng thử lại',
+				};
+			}
+			await revokeFamily(pool, prior.family_id || prior.id, prior.user_id, ip);
+		}
+		throw invalidRefresh();
+	}
 
 	const userResult = await pool
 		.request()
-		.input('id', sql.VarChar(20), decoded.id)
+		.input('id', sql.VarChar(20), claimed.user_id)
 		.query(
 			`SELECT u.*, r.name AS role_name FROM users u LEFT JOIN roles r ON r.id=u.role_id WHERE u.id=@id`,
 		);
 
 	const user = userResult.recordset[0];
-	if (!user) throw { statusCode: 401, message: 'Người dùng không tồn tại' };
+	if (!user || user.id !== decoded.id) throw invalidRefresh();
 
 	// Cùng điều kiện với login(): tài khoản bị vô hiệu hoá / hết hạn không được
-	// làm mới phiên — thu hồi luôn refresh token để không thử lại được nữa.
+	// làm mới phiên — token vừa bị thu hồi ở bước trên nên không thử lại được.
 	const accountExpiresAt = user.account_expires_at
 		? new Date(user.account_expires_at).toISOString().split('T')[0]
 		: null;
 	if (!user.is_active || (accountExpiresAt && new Date(accountExpiresAt) < new Date())) {
-		await pool
-			.request()
-			.input('token', sql.VarChar(64), tokenHash)
-			.query(`DELETE FROM refresh_tokens WHERE token = @token`);
 		throw {
 			statusCode: 401,
 			message: 'Tài khoản đã bị vô hiệu hóa hoặc hết hạn sử dụng',
 		};
 	}
 
-	const payload = {
-		id: user.id,
-		username: user.username,
-		full_name: user.full_name,
-		staff_number: user.staff_number ? String(user.staff_number) : null,
-		role_id: user.role_id,
-		department_id: user.department_id,
-		account_expires_at: accountExpiresAt,
-		tv: user.token_version ?? 0,
-	};
-	const newAccessToken = jwt.sign(payload, process.env.JWT_SECRET, {
-		expiresIn: process.env.JWT_EXPIRES_IN || '8h',
+	const remember = !!claimed.remember_me;
+	const { accessToken, refreshToken: newRefreshToken } = await signSession(pool, user, ip, userAgent, {
+		remember,
+		// Dòng tạo trước khi có cột family_id: lấy id của chính nó làm họ
+		familyId: claimed.family_id || claimed.id,
 	});
 
-	const newRefreshToken = jwt.sign(
-		{ id: user.id, jti: uuidv4() }, // xem ghi chú jti ở login()
-		process.env.JWT_REFRESH_SECRET,
-		{
-			expiresIn: process.env.JWT_REFRESH_EXPIRES_IN || '7d',
-		},
-	);
-
-	await pool
-		.request()
-		.input('user_id', sql.VarChar(20), user.id)
-		.input('token', sql.VarChar(64), hashToken(newRefreshToken))
-		.input('remember_me', sql.Bit, existing.remember_me ?? 0)
-		.execute('sp_create_refresh_token');
-	await tagRefreshTokenSession(pool, hashToken(newRefreshToken), ip, userAgent);
-
-	await pool
-		.request()
-		.input('token', sql.VarChar(64), tokenHash)
-		.query(`DELETE FROM refresh_tokens WHERE token = @token`);
-
-	return { access_token: newAccessToken, refresh_token: newRefreshToken };
+	return { access_token: accessToken, refresh_token: newRefreshToken, remember };
 };
 
+// Refresh token bị dùng lại sau khi đã xoay ⇒ coi như bị đánh cắp.
+const revokeFamily = async (pool, familyId, userId, ip) => {
+	await pool
+		.request()
+		.input('family', sql.VarChar(60), familyId)
+		.query('DELETE FROM refresh_tokens WHERE family_id = @family OR id = @family');
+	await bumpTokenVersion(userId, pool);
+	await securityEvents.log({
+		eventType: 'refresh_token_reuse',
+		actorId: userId,
+		targetType: 'user',
+		targetId: userId,
+		ip,
+		detail: 'Refresh token đã thu hồi bị dùng lại — thu hồi cả phiên đăng nhập và mọi access token',
+	});
+};
+
+// Đăng xuất phiên hiện tại: xoá cả họ token của phiên (kể cả các token đã xoay
+// trước đó), không đụng tới phiên trên thiết bị khác.
 const logout = async (refreshToken) => {
+	if (!refreshToken) return;
 	const pool = await getPool();
 	await pool
 		.request()
 		.input('token', sql.VarChar(64), hashToken(refreshToken))
-		.query(`DELETE FROM refresh_tokens WHERE token = @token`);
+		.query(`
+			DECLARE @family VARCHAR(60) =
+				(SELECT TOP 1 ISNULL(family_id, id) FROM refresh_tokens WHERE token = @token);
+			DELETE FROM refresh_tokens WHERE token = @token OR family_id = @family OR id = @family;
+		`);
+};
+
+// "Ghi nhớ đăng nhập" của phiên đang giữ refresh token này (để phiên cấp lại sau
+// khi đổi mật khẩu giữ nguyên lựa chọn). Không tìm thấy = không ghi nhớ.
+const isRememberedSession = async (refreshToken) => {
+	if (!refreshToken) return false;
+	const pool = await getPool();
+	const row = (
+		await pool
+			.request()
+			.input('token', sql.VarChar(64), hashToken(refreshToken))
+			.query('SELECT remember_me FROM refresh_tokens WHERE token = @token')
+	).recordset[0];
+	return !!row?.remember_me;
 };
 
 // Đăng xuất khỏi mọi thiết bị: xoá toàn bộ refresh token của người dùng và
@@ -596,7 +861,7 @@ const listSessions = async (userId) => {
 		.query(`
 			SELECT *
 			FROM refresh_tokens
-			WHERE user_id = @user_id AND expires_at > GETDATE()
+			WHERE user_id = @user_id AND expires_at > GETDATE() AND revoked_at IS NULL
 			ORDER BY expires_at DESC
 		`);
 	return result.recordset.map((r) => ({
@@ -611,7 +876,14 @@ const listSessions = async (userId) => {
 // Tự đổi mật khẩu: đăng xuất MỌI phiên khác (thu hồi refresh token + tăng
 // token_version), rồi cấp cặp token mới cho chính phiên đang đổi để người
 // dùng không bị đá ra. Trả về { access_token, refresh_token } cho client lưu lại.
-const changePassword = async (userId, oldPassword, newPassword, ip = null, userAgent = null) => {
+const changePassword = async (
+	userId,
+	oldPassword,
+	newPassword,
+	ip = null,
+	userAgent = null,
+	remember = false,
+) => {
 	const pool = await getPool();
 	const result = await pool
 		.request()
@@ -623,6 +895,9 @@ const changePassword = async (userId, oldPassword, newPassword, ip = null, userA
 
 	const isMatch = await bcrypt.compare(oldPassword, user.password);
 	if (!isMatch) throw { statusCode: 400, message: 'Mật khẩu cũ không đúng' };
+	// Mật khẩu tạm do quản trị cấp phải được thay thật sự, không "đổi" sang chính nó
+	if (oldPassword === newPassword)
+		throw { statusCode: 400, message: 'Mật khẩu mới phải khác mật khẩu hiện tại' };
 
 	const hashed = await bcrypt.hash(newPassword, 12);
 	await pool
@@ -630,7 +905,8 @@ const changePassword = async (userId, oldPassword, newPassword, ip = null, userA
 		.input('id', sql.VarChar(20), userId)
 		.input('password', sql.VarChar(255), hashed)
 		.query(
-			`UPDATE users SET password = @password, password_changed_at = GETDATE(), updated_at = GETDATE(), updated_by = @id WHERE id = @id`,
+			`UPDATE users SET password = @password, password_changed_at = GETDATE(), must_change_password = 0,
+			 updated_at = GETDATE(), updated_by = @id WHERE id = @id`,
 		);
 
 	// Thu hồi mọi refresh token hiện có: đổi mật khẩu thường vì nghi lộ, nên
@@ -644,8 +920,8 @@ const changePassword = async (userId, oldPassword, newPassword, ip = null, userA
 	const fresh = (
 		await pool.request().input('id', sql.VarChar(20), userId).query('SELECT * FROM users WHERE id = @id')
 	).recordset[0];
-	const { accessToken, refreshToken } = await signSession(pool, fresh, ip, userAgent);
-	return { access_token: accessToken, refresh_token: refreshToken };
+	const { accessToken, refreshToken } = await signSession(pool, fresh, ip, userAgent, { remember });
+	return { access_token: accessToken, refresh_token: refreshToken, remember };
 };
 
 module.exports = {
@@ -655,9 +931,11 @@ module.exports = {
 	logoutAll,
 	listSessions,
 	changePassword,
+	isRememberedSession,
 	verify2FALogin,
 	setup2FA,
 	confirm2FASetup,
+	regenerateBackupCodes,
 	disable2FA,
 	get2FAStatus,
 };

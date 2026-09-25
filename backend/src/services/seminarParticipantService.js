@@ -5,7 +5,7 @@
  * tục cho mọi hội nghị trong năm; sang năm mới reset. Cấp nhiều người một lần
  * thì cấp tuần tự trong 1 transaction để giữ dãy liền mạch.
  */
-const jwt = require('jsonwebtoken');
+const { signToken, verifyToken } = require('../utils/keys');
 const { getPool, sql } = require('../config/db');
 const { broadcast } = require('./eventService');
 const personService = require('./personService');
@@ -343,14 +343,12 @@ const setCmeStatus = async (seminarId, ids, status, actorId) => {
 // tạo participant mới nếu chưa có trong danh sách (tránh lộ khả năng "tự đăng
 // ký tham dự" qua đường quét QR).
 const generateCheckInQrToken = (seminarId) =>
-	jwt.sign({ seminar_id: seminarId, purpose: CHECKIN_QR_PURPOSE }, process.env.JWT_SECRET, {
-		expiresIn: CHECKIN_QR_TTL,
-	});
+	signToken('seminar-qr', { seminar_id: seminarId, purpose: CHECKIN_QR_PURPOSE }, CHECKIN_QR_TTL);
 
 const checkInSelf = async (token, actor) => {
 	let decoded;
 	try {
-		decoded = jwt.verify(token, process.env.JWT_SECRET);
+		decoded = verifyToken('seminar-qr', token);
 	} catch {
 		const err = new Error('Mã QR đã hết hạn, vui lòng thử lại.');
 		err.statusCode = 401;

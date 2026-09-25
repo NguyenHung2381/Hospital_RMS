@@ -1,4 +1,4 @@
-const jwt = require('jsonwebtoken');
+const { signToken, verifyToken } = require('../utils/keys');
 const { getPool, sql } = require('../config/db');
 const { broadcast } = require('./eventService');
 const { paging } = require('../utils/paging');
@@ -781,9 +781,7 @@ const bulkSetAttendance = async (sessionId, records, actorId) => {
 // authorizePermission courses:update ở route) hiển thị lên màn hình lớp,
 // học viên tự quét bằng tài khoản đã đăng nhập (checkInSelf).
 const generateAttendanceQrToken = (sessionId) =>
-	jwt.sign({ session_id: sessionId, purpose: ATTENDANCE_QR_PURPOSE }, process.env.JWT_SECRET, {
-		expiresIn: ATTENDANCE_QR_TTL,
-	});
+	signToken('attendance-qr', { session_id: sessionId, purpose: ATTENDANCE_QR_PURPOSE }, ATTENDANCE_QR_TTL);
 
 // Học viên tự điểm danh bằng mã QR vừa quét — actor phải là tài khoản đã được
 // cấp cho 1 trainee (trainees.user_id, xem D0) có ghi danh 'approved' vào
@@ -791,7 +789,7 @@ const generateAttendanceQrToken = (sessionId) =>
 const checkInSelf = async (token, actor) => {
 	let decoded;
 	try {
-		decoded = jwt.verify(token, process.env.JWT_SECRET);
+		decoded = verifyToken('attendance-qr', token);
 	} catch {
 		const err = new Error('Mã QR đã hết hạn, vui lòng thử lại.');
 		err.statusCode = 401;

@@ -57,7 +57,8 @@ export interface UserListState {
 	handleCreate: (form: UserForm) => Promise<void>;
 	handleEdit: (form: UserForm) => Promise<void>;
 	handleDelete: () => Promise<void>;
-	handleResetPassword: () => Promise<void>;
+	/** Trả về mật khẩu tạm do server sinh — modal hiển thị cho quản trị 1 lần */
+	handleResetPassword: () => Promise<string>;
 	handleToggleActive: (id: string) => Promise<void>;
 	handleBulkDelete: (ids: string[]) => Promise<void>;
 	handleBulkEdit: (ids: string[], payload: UpdateUserPayload) => Promise<void>;
@@ -271,14 +272,13 @@ export function useUserList(): UserListState {
 		showToast(`Đã xoá tài khoản ${deleteUser.full_name}`, 'info');
 	}, [deleteUser, showToast, refreshData]);
 
-	const handleResetPassword = useCallback(async (): Promise<void> => {
-		if (!resetUser) return;
-		await resetUserPassword(resetUser.id, '123456');
-		setResetUser(null);
-		showToast(
-			`Đã đặt lại mật khẩu của ${resetUser.full_name} về mặc định`,
-			'info',
-		);
+	// Server sinh mật khẩu tạm ngẫu nhiên (thay cho '123456' dùng chung); modal
+	// giữ mở để hiển thị mật khẩu, người dùng phải đổi ở lần đăng nhập tới.
+	const handleResetPassword = useCallback(async (): Promise<string> => {
+		if (!resetUser) return '';
+		const result = await resetUserPassword(resetUser.id);
+		showToast(`Đã đặt lại mật khẩu của ${resetUser.full_name}`, 'info');
+		return result?.temporary_password ?? '';
 	}, [resetUser, showToast]);
 
 	const handleToggleActive = useCallback(

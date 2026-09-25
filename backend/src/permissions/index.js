@@ -25,6 +25,12 @@ const REQUIRED_COLUMNS = [
 	['roles', 'code', '20260924_02_token_version_role_codes.sql'],
 	['roles', 'is_system', '20260924_02_token_version_role_codes.sql'],
 	['roles', 'is_superuser', '20260924_02_token_version_role_codes.sql'],
+	['users', 'must_change_password', '2026-10-09_must_change_password.sql'],
+	['refresh_tokens', 'family_id', '2026-10-10_refresh_token_family.sql'],
+	['refresh_tokens', 'revoked_at', '2026-10-10_refresh_token_family.sql'],
+	['users', 'totp_last_step', '2026-10-11_2fa_hardening.sql'],
+	['users', 'twofa_required_since', '2026-10-11_2fa_hardening.sql'],
+	['user_backup_codes', 'code_hash', '2026-10-11_2fa_hardening.sql'],
 ];
 
 // Danh sách vấn đề (rỗng = CSDL đã sẵn sàng cho mô hình phân quyền mới).

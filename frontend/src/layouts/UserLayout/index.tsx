@@ -9,7 +9,8 @@ import { toNotif } from '../../features/notifications/utils/notifUtils';
 import { usePermission } from '../../shared/hooks/usePermission';
 import { scopeOf } from '../../shared/utils/permissions';
 import { getInitials } from '../../shared/utils/helper';
-import { clearAuth } from '../../shared/utils/storage';
+import { logout } from '../../features/auth/api/authApi';
+import TwoFactorReminder from '../../shared/components/TwoFactorReminder';
 import styles from './UserLayout.module.css';
 import { Icon } from './icons';
 
@@ -159,8 +160,9 @@ export default function UserLayout({
 	// ── Mobile drawer ─────────────────────────
 	const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
-	const handleLogout = useCallback(() => {
-		clearAuth();
+	// Thu hồi phiên trên server (refresh token trong cookie) rồi mới rời trang
+	const handleLogout = useCallback(async () => {
+		await logout();
 		navigate('/login');
 	}, [navigate]);
 
@@ -426,6 +428,7 @@ export default function UserLayout({
 						</div>
 					)}
 
+					<TwoFactorReminder />
 					{children}
 				</div>
 			</main>

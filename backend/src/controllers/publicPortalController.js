@@ -1,6 +1,7 @@
 const service = require('../services/publicPortalService');
 const { generateCaptcha, verifyCaptcha } = require('../utils/captcha');
 const { success, created, error } = require('../utils/response');
+const attempts = require('../utils/attemptLimiter');
 
 const getCaptcha = (req, res) => {
 	success(res, generateCaptcha());
@@ -22,9 +23,19 @@ const getTraineeTypes = async (req, res, next) => {
 	}
 };
 
+// Tra cứu kết quả học tập: phải khớp CẢ số CCCD lẫn ngày sinh — chỉ có CCCD
+// (12 số, có cấu trúc: mã tỉnh, giới tính, năm sinh) thì dò quét được họ tên,
+// điểm, số chứng chỉ của người khác. Ngoài giới hạn theo IP ở route, mỗi số
+// CCCD chỉ được tra LOOKUP_PER_ID_MAX lần/giờ dù đổi IP.
+const LOOKUP_PER_ID_MAX = 5;
+
 const lookup = async (req, res, next) => {
 	try {
-		success(res, await service.lookupResults(req.query.national_id));
+		const nationalId = String(req.query.national_id).trim();
+		if (!(await attempts.hit('public-lookup', nationalId, LOOKUP_PER_ID_MAX, 60 * 60))) {
+			return error(res, 'Số CCCD/CMND này đã được tra cứu quá nhiều lần. Vui lòng thử lại sau 1 giờ.', 429);
+		}
+		success(res, await service.lookupResults(nationalId, req.query.dob));
 	} catch (err) {
 		next(err);
 	}
@@ -38,7 +49,7 @@ const register = async (req, res, next) => {
 		if (req.body.website) {
 			return success(res, { trainee_id: null, enrollment_id: null }, 'Đăng ký thành công', 201);
 		}
-		if (!verifyCaptcha(req.body.captcha_token, req.body.captcha_answer)) {
+		if (!(await verifyCaptcha(req.body.captcha_token, req.body.captcha_answer, req.ip))) {
 			return error(res, 'Mã xác nhận không đúng hoặc đã hết hạn, vui lòng thử lại.', 400);
 		}
 		const result = await service.register(req.body);
@@ -87,7 +98,7 @@ const registerTopic = async (req, res, next) => {
 		if (req.body.website) {
 			return success(res, { topic_id: null }, 'Đăng ký thành công', 201);
 		}
-		if (!verifyCaptcha(req.body.captcha_token, req.body.captcha_answer)) {
+		if (!(await verifyCaptcha(req.body.captcha_token, req.body.captcha_answer, req.ip))) {
 			return error(res, 'Mã xác nhận không đúng hoặc đã hết hạn, vui lòng thử lại.', 400);
 		}
 		const result = await service.registerTopic(req.body);

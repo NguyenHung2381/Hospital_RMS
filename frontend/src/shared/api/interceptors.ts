@@ -1,32 +1,49 @@
-import { clearAuth, replaceTokens } from '../utils/storage';
+import {
+	clearAuth,
+	getStoredUser,
+	LEGACY_REFRESH_KEY,
+	replaceAccessToken,
+} from '../utils/storage';
 import { BASE_URL } from './endpoints';
 
 let isRefreshing = false;
 let refreshQueue: Array<(token: string | null) => void> = [];
 
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+// Làm mới access token bằng refresh token trong cookie HttpOnly — trình duyệt
+// tự gửi cookie (cùng origin), JS không cần và không đọc được token đó.
 export async function tryRefresh(): Promise<string | null> {
-	const refreshToken =
-		localStorage.getItem('refresh_token') ??
-		sessionStorage.getItem('refresh_token');
-	if (!refreshToken) return null;
+	// Chưa từng đăng nhập ở trình duyệt này thì không gọi (tránh 401 thừa)
+	if (!getStoredUser()) return null;
 
-	const res = await fetch(`${BASE_URL}/api/v1/auth/refresh`, {
-		method: 'POST',
-		headers: { 'Content-Type': 'application/json' },
-		body: JSON.stringify({ refresh_token: refreshToken }),
-	});
+	// Phiên mở từ bản cũ còn refresh token trong storage: gửi 1 lần để server
+	// chuyển sang cookie, rồi xoá khỏi storage.
+	const legacy =
+		localStorage.getItem(LEGACY_REFRESH_KEY) ?? sessionStorage.getItem(LEGACY_REFRESH_KEY);
 
-	if (!res.ok) return null;
+	for (let attempt = 0; attempt < 3; attempt++) {
+		const res = await fetch(`${BASE_URL}/api/v1/auth/refresh`, {
+			method: 'POST',
+			credentials: 'same-origin',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify(legacy ? { refresh_token: legacy } : {}),
+		});
+		const json = await res.json().catch(() => null);
 
-	const json = await res.json();
-	if (!json.success || !json.data?.access_token) return null;
+		// Tab khác vừa làm mới bằng cùng cookie — chờ chút, cookie mới đã về
+		if (res.status === 401 && json?.code === 'REFRESH_RACE') {
+			await sleep(800 * (attempt + 1));
+			continue;
+		}
+		if (!res.ok || !json?.success || !json.data?.access_token) return null;
 
-	// Backend xoay (rotate) refresh token ở mỗi lần làm mới — token cũ bị xoá
-	// ngay sau khi cấp token mới, nên phải lưu lại token mới nếu không lần
-	// refresh kế tiếp sẽ thất bại (token cũ trong storage đã vô hiệu).
-	replaceTokens(json.data.access_token, json.data.refresh_token);
-
-	return json.data.access_token as string;
+		localStorage.removeItem(LEGACY_REFRESH_KEY);
+		sessionStorage.removeItem(LEGACY_REFRESH_KEY);
+		replaceAccessToken(json.data.access_token);
+		return json.data.access_token as string;
+	}
+	return null;
 }
 
 // Đảm bảo nhiều request 401 đồng thời chỉ gọi /auth/refresh 1 lần — request nào

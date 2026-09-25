@@ -21,6 +21,12 @@ for (const envPath of envCandidates) {
 	}
 }
 
+const isProduction = process.env.NODE_ENV === 'production';
+
+// Swagger UI liệt kê toàn bộ API + cho gọi thử — tắt ở production, trừ khi bật
+// có chủ đích (SWAGGER_ENABLED=true, vd tạm thời khi tích hợp với hệ thống khác).
+const swaggerEnabled = !isProduction || process.env.SWAGGER_ENABLED === 'true';
+
 // Bắt buộc phải có các biến môi trường nhạy cảm — không cho phép fail-open
 // bằng giá trị mặc định đoán được (vd 'admin'/'123'/'secret').
 const REQUIRED_ENV = [
@@ -28,8 +34,7 @@ const REQUIRED_ENV = [
 	'DB_PASSWORD',
 	'JWT_SECRET',
 	'JWT_REFRESH_SECRET',
-	'SWAGGER_USER',
-	'SWAGGER_PASS',
+	...(swaggerEnabled ? ['SWAGGER_USER', 'SWAGGER_PASS'] : []),
 ];
 const missingEnv = REQUIRED_ENV.filter((key) => !process.env[key]);
 if (missingEnv.length > 0) {
@@ -73,7 +78,7 @@ if (process.env.NODE_ENV === 'production') {
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
-const rateLimit = require('express-rate-limit');
+const rateLimit = require('./utils/rateLimit');
 const { errorHandler } = require('./middlewares/errorHandler');
 const swaggerUi = require('swagger-ui-express');
 const swaggerSpec = require('./config/swagger');
@@ -118,10 +123,29 @@ app.use(express.urlencoded({ extended: true }));
 // Chỉ phục vụ link có chữ ký còn hạn — link được ký ở signUploadUrlsInJson
 // khi API (đã qua kiểm tra quyền) trả đường dẫn file. Xem utils/signedUpload.js.
 const UPLOADS_ROOT = path.resolve(process.env.UPLOADS_DIR || 'uploads');
+// Chỉ ảnh / PDF / video / audio được mở thẳng trên trình duyệt (xem trước,
+// <img>, <video>); còn lại (Office, zip, txt...) luôn tải xuống. File người dùng
+// tải lên không bao giờ được chạy như trang web: CSP sandbox + không script.
+// PDF không gắn CSP — trình xem PDF tích hợp của trình duyệt không chạy được
+// dưới sandbox; nội dung PDF đã được kiểm tra đúng định dạng lúc upload.
+const INLINE_UPLOAD_EXT = new Set([
+	'.png', '.jpg', '.jpeg', '.gif', '.webp', '.bmp', '.pdf',
+	'.mp4', '.m4v', '.mov', '.webm', '.mkv', '.avi', '.mp3', '.wav', '.m4a', '.aac',
+]);
+const setUploadHeaders = (res, filePath) => {
+	const ext = path.extname(filePath).toLowerCase();
+	if (!INLINE_UPLOAD_EXT.has(ext)) res.setHeader('Content-Disposition', 'attachment');
+	if (ext !== '.pdf') res.setHeader('Content-Security-Policy', "sandbox; default-src 'none'");
+};
 app.use(
 	'/uploads',
 	verifyUploadSignature,
-	express.static(UPLOADS_ROOT, { cacheControl: false, index: false, dotfiles: 'deny' }),
+	express.static(UPLOADS_ROOT, {
+		cacheControl: false,
+		index: false,
+		dotfiles: 'deny',
+		setHeaders: setUploadHeaders,
+	}),
 );
 
 // ─── Health check ─────────────────────────────────────────────────────────────
@@ -130,27 +154,30 @@ app.use('/health', require('./routes/health'));
 // ─── Swagger UI (chỉ admin mới truy cập được) ────────────────────────────────
 // Basic Auth không có khoá tài khoản như /auth/login — chặn brute-force
 // SWAGGER_PASS bằng rate-limit theo IP.
-const swaggerLimiter = rateLimit({
-	windowMs: 15 * 60 * 1000,
-	limit: 20,
-	standardHeaders: true,
-	legacyHeaders: false,
-	message: 'Quá nhiều lần đăng nhập thất bại. Vui lòng thử lại sau ít phút.',
-});
-app.use(
-	'/api-docs',
-	swaggerLimiter,
-	swaggerAuth,
-	swaggerUi.serve,
-	swaggerUi.setup(swaggerSpec, {
-		customSiteTitle: 'RMS Hospital API Docs',
-		swaggerOptions: {
-			persistAuthorization: true, // giữ token sau khi reload
-			docExpansion: 'none', // đóng gọn tất cả endpoint mặc định
-			filter: true, // ô tìm kiếm endpoint
-		},
-	}),
-);
+if (swaggerEnabled) {
+	const swaggerLimiter = rateLimit({
+		name: 'swagger',
+		windowMs: 15 * 60 * 1000,
+		limit: 20,
+		standardHeaders: true,
+		legacyHeaders: false,
+		message: 'Quá nhiều lần đăng nhập thất bại. Vui lòng thử lại sau ít phút.',
+	});
+	app.use(
+		'/api-docs',
+		swaggerLimiter,
+		swaggerAuth,
+		swaggerUi.serve,
+		swaggerUi.setup(swaggerSpec, {
+			customSiteTitle: 'RMS Hospital API Docs',
+			swaggerOptions: {
+				persistAuthorization: true, // giữ token sau khi reload
+				docExpansion: 'none', // đóng gọn tất cả endpoint mặc định
+				filter: true, // ô tìm kiếm endpoint
+			},
+		}),
+	);
+}
 
 // ─── Routes ───────────────────────────────────────────────────────────────────
 const API = '/api/v1';
@@ -164,6 +191,27 @@ app.use(API, (req, res, next) => {
 	res.set('Expires', '0');
 	next();
 });
+
+// Production chạy sau reverse proxy HTTPS: request tới API mà không được báo là
+// https (X-Forwarded-Proto qua nginx + TRUST_PROXY) nghĩa là chuỗi proxy cấu
+// hình sai — các bước sau (cookie Secure...) sẽ hỏng âm thầm. Cảnh báo 1 lần.
+if (isProduction) {
+	let warnedInsecure = false;
+	app.use(API, (req, _res, next) => {
+		if (!warnedInsecure && !req.secure) {
+			warnedInsecure = true;
+			console.warn(
+				`⚠️  Request ${req.method} ${req.path} tới qua ${req.protocol}, không phải https — ` +
+					'kiểm tra proxy HTTPS gửi X-Forwarded-Proto, TRUSTED_PROXIES (frontend) và TRUST_PROXY (backend).',
+			);
+		}
+		next();
+	});
+}
+
+// Báo cáo CSP từ trình duyệt — đặt trước activityLogger để không ghi vào nhật
+// ký tác động của người dùng.
+app.use(`${API}/csp-report`, require('./routes/cspReport'));
 
 // Ký link /uploads trước activityLogger để nhật ký không lưu chữ ký.
 app.use(API, signUploadUrlsInJson);

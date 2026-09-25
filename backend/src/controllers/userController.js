@@ -114,13 +114,13 @@ const resetPassword = async (req, res, next) => {
 	try {
 		const target = await loadManageableTarget(req.user, req.params.id);
 		if (!target) return notFound(res);
-		await userService.resetPassword(
+		const data = await userService.resetPassword(
 			req.params.id,
-			req.body.new_password,
+			req.body.new_password || null,
 			req.user.id,
 			req.ip,
 		);
-		return success(res, null, 'Reset mật khẩu thành công');
+		return success(res, data, 'Reset mật khẩu thành công');
 	} catch (err) {
 		next(err);
 	}

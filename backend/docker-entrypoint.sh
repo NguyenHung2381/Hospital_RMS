@@ -40,4 +40,42 @@ elif is_placeholder "$JWT_SECRET" || is_placeholder "$JWT_REFRESH_SECRET"; then
 	fi
 fi
 
+# Mật khẩu Redis do container redis tự sinh (docker-compose.prod.yml, volume
+# redis_secret — chỉ root đọc được nên phải đọc ở đây, trước khi hạ quyền).
+# Redis khởi động cùng lúc nên chờ file tối đa 15s; không có thì chạy tiếp —
+# Redis chỉ là cache phụ, app tự đọc thẳng DB khi không kết nối được.
+if [ -z "${REDIS_PASSWORD:-}" ] && [ -n "${REDIS_PASSWORD_FILE:-}" ]; then
+	i=0
+	while [ ! -s "$REDIS_PASSWORD_FILE" ] && [ "$i" -lt 15 ]; do
+		sleep 1
+		i=$((i + 1))
+	done
+	if [ -s "$REDIS_PASSWORD_FILE" ]; then
+		REDIS_PASSWORD="$(cat "$REDIS_PASSWORD_FILE")"
+		export REDIS_PASSWORD
+	else
+		echo "docker-entrypoint: không đọc được $REDIS_PASSWORD_FILE — chạy không có cache Redis" >&2
+	fi
+fi
+
+# Production: chạy app bằng user thường `node` thay vì root — lỗ hổng trong app
+# (RCE qua thư viện, upload...) không kéo theo quyền root trong container.
+# Entrypoint vẫn khởi động bằng root để sửa quyền các volume dữ liệu: volume tạo
+# từ các bản trước (uploads, logs, secrets) đang thuộc root, node không ghi được.
+# Chỉ chown -R khi thư mục gốc chưa thuộc node (lần đầu nâng cấp) — uploads có
+# thể rất lớn, không quét lại mỗi lần khởi động.
+# Dev (bind mount ./backend từ máy host) giữ nguyên root để không vướng quyền file.
+if [ "${NODE_ENV:-}" = "production" ] && [ "$(id -u)" = "0" ]; then
+	for dir in /app/uploads /app/logs /app/secrets; do
+		mkdir -p "$dir"
+		if [ "$(stat -c %U "$dir")" != "node" ]; then
+			echo "docker-entrypoint: chuyển quyền $dir cho user node"
+			chown -R node:node "$dir"
+		fi
+	done
+	# jwt.env có thể vừa được sinh (bằng root) ở bước trên
+	chown -R node:node /app/secrets
+	exec su-exec node "$@"
+fi
+
 exec "$@"

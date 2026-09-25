@@ -1,5 +1,4 @@
 const router = require('express').Router();
-const multer = require('multer');
 const { body } = require('express-validator');
 const ctrl = require('../controllers/traineeController');
 const { authenticate, authorizePermission } = require('../middlewares/auth');
@@ -7,7 +6,7 @@ const { validate } = require('../middlewares/errorHandler');
 const { createTrainingUpload } = require('../middlewares/uploadTraining');
 
 const uploadTraineeDoc = createTrainingUpload('trainee_document');
-const uploadExcel = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
+const uploadExcel = require('../middlewares/uploadExcel');
 
 /**
  * @swagger
@@ -60,7 +59,7 @@ router.post(
  * @swagger
  * /trainees/grant-accounts:
  *   post:
- *     summary: Cấp tài khoản đăng nhập cho học viên (mật khẩu mặc định 123456)
+ *     summary: Cấp tài khoản đăng nhập cho học viên (mật khẩu tạm ngẫu nhiên, bắt đổi ở lần đăng nhập đầu)
  *     tags: [Trainees]
  *     requestBody:
  *       content:

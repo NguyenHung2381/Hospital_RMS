@@ -1,5 +1,4 @@
 const router = require('express').Router();
-const multer = require('multer');
 const { body } = require('express-validator');
 const ctrl = require('../controllers/councilController');
 const exportCtrl = require('../controllers/councilExportController');
@@ -101,10 +100,7 @@ router.post(
  *       400:
  *         description: File không hợp lệ hoặc thiếu cột bắt buộc
  */
-const uploadExcel = multer({
-	storage: multer.memoryStorage(),
-	limits: { fileSize: 10 * 1024 * 1024 },
-});
+const uploadExcel = require('../middlewares/uploadExcel');
 router.post(
 	'/import-excel',
 	authorizePermission(['councils', 'create']),

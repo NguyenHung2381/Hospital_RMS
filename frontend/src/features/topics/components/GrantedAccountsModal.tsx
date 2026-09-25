@@ -81,8 +81,9 @@ export function GrantedAccountsModal({
 					>
 						<IcWarn />
 						<span>
-							Lưu thông tin ngay — mật khẩu chỉ hiển thị{' '}
-							<strong>một lần duy nhất</strong>.
+							Lưu thông tin ngay — mật khẩu tạm chỉ hiển thị{' '}
+							<strong>một lần duy nhất</strong>. Người dùng phải đổi mật khẩu ở
+							lần đăng nhập đầu.
 						</span>
 					</div>
 
@@ -111,18 +112,35 @@ export function GrantedAccountsModal({
 								</div>
 								<div className={styles.grantCredentialRow}>
 									<span className={styles.grantCredentialLabel}>Mật khẩu</span>
-									<span
-										className={`${styles.grantCredentialValue} ${styles.grantCredentialPassword}`}
-									>
-										{acc.password_plain}
-									</span>
-									<button
-										className={styles.grantCopyBtn}
-										onClick={() => copy(acc.password_plain, `p-${acc.user_id}`)}
-									>
-										{copied === `p-${acc.user_id}` ? '✓' : 'Sao chép'}
-									</button>
+									{acc.password_plain ? (
+										<>
+											<span
+												className={`${styles.grantCredentialValue} ${styles.grantCredentialPassword}`}
+											>
+												{acc.password_plain}
+											</span>
+											<button
+												className={styles.grantCopyBtn}
+												onClick={() => copy(acc.password_plain ?? '', `p-${acc.user_id}`)}
+											>
+												{copied === `p-${acc.user_id}` ? '✓' : 'Sao chép'}
+											</button>
+										</>
+									) : (
+										// Tài khoản đã có từ trước — server không đổi mật khẩu
+										<span className={styles.grantCredentialValue}>
+											Giữ mật khẩu hiện tại
+										</span>
+									)}
 								</div>
+								{acc.note && (
+									<div
+										className={styles.grantCredentialRow}
+										style={{ color: '#92400e', fontSize: 12 }}
+									>
+										{acc.note}
+									</div>
+								)}
 							</div>
 						))}
 					</div>

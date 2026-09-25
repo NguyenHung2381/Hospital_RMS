@@ -8,6 +8,7 @@ import styles from './PublicPortal.module.css';
 
 export default function PublicLookup() {
 	const [nationalId, setNationalId] = useState('');
+	const [dob, setDob] = useState('');
 	const [results, setResults] = useState<LookupResult[] | null>(null);
 	const [loading, setLoading] = useState(false);
 	const [error, setError] = useState('');
@@ -15,11 +16,12 @@ export default function PublicLookup() {
 	const handleSearch = async (e: React.FormEvent) => {
 		e.preventDefault();
 		if (!nationalId.trim()) return;
+		if (!dob) return setError('Vui lòng nhập ngày sinh');
 		setLoading(true);
 		setError('');
 		setResults(null);
 		try {
-			setResults(await lookupByNationalId(nationalId.trim()));
+			setResults(await lookupByNationalId(nationalId.trim(), dob));
 		} catch (err) {
 			setError(err instanceof Error ? err.message : 'Tra cứu thất bại, vui lòng thử lại');
 		} finally {
@@ -30,7 +32,7 @@ export default function PublicLookup() {
 	return (
 		<PublicLayout
 			title='Tra cứu kết quả học tập & chứng chỉ'
-			subtitle='Nhập số CCCD/CMND đã dùng khi đăng ký để tra cứu tình trạng đăng ký, kết quả học tập và chứng chỉ.'
+			subtitle='Nhập số CCCD/CMND và ngày sinh đã dùng khi đăng ký để tra cứu tình trạng đăng ký, kết quả học tập và chứng chỉ.'
 		>
 			{error && (
 				<div className={`${styles.alertBox} ${styles.alertError}`}>
@@ -48,6 +50,15 @@ export default function PublicLookup() {
 					onChange={(e) => setNationalId(e.target.value)}
 					placeholder='Nhập số CCCD/CMND...'
 				/>
+				<input
+					type='date'
+					className={styles.input}
+					style={{ flex: '0 0 170px' }}
+					value={dob}
+					onChange={(e) => setDob(e.target.value)}
+					aria-label='Ngày sinh'
+					title='Ngày sinh'
+				/>
 				<button
 					type='submit'
 					className={styles.searchBtn}
@@ -60,7 +71,7 @@ export default function PublicLookup() {
 			{results && (
 				<>
 					{results.length === 0 ? (
-						<div className={styles.emptyNotice}>Không tìm thấy dữ liệu đăng ký nào với CCCD/CMND này.</div>
+						<div className={styles.emptyNotice}>Không tìm thấy dữ liệu đăng ký khớp số CCCD/CMND và ngày sinh đã nhập.</div>
 					) : (
 						<div style={{ overflowX: 'auto' }}>
 							<table className={styles.resultTable}>

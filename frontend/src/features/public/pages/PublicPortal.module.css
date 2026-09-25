@@ -172,10 +172,12 @@
 
 .searchRow {
 	display: flex;
+	flex-wrap: wrap;
 	gap: var(--space-3);
 }
 .searchRow .input {
 	flex: 1;
+	min-width: 160px;
 }
 .searchBtn {
 	padding: var(--space-2) var(--space-5);

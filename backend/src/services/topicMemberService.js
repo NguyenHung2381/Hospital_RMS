@@ -4,6 +4,8 @@ const notifSvc = require('./notificationService');
 const { broadcast } = require('./eventService');
 const personService = require('./personService');
 const { ROLE, requireRoleId } = require('./roleCodes');
+const { generateTempPassword } = require('../utils/passwordPolicy');
+const userStatusCache = require('../middlewares/userStatusCache');
 
 const getMembers = async (topicId) => {
 	const pool = await getPool();
@@ -249,8 +251,6 @@ const grantAccountsNoEmail = async (topicId, memberIds, actorId) => {
 		throw err;
 	}
 
-	const DEFAULT_PASSWORD = '123456';
-	const defaultHash = await bcrypt.hash(DEFAULT_PASSWORD, 12);
 	const credentials = [];
 	const skipped = [];
 
@@ -281,19 +281,25 @@ const grantAccountsNoEmail = async (topicId, memberIds, actorId) => {
 				.input('member_id', sql.VarChar(22), member.id)
 				.input('staff_number', sql.Int, staffNumber)
 				.input('email', sql.VarChar(255), member.email || null).query(`
-					SELECT TOP 1 id
-					FROM users
-					WHERE topic_member_id = @member_id
-					   OR staff_number = @staff_number
-					   OR (@email IS NOT NULL AND email = @email)
-					ORDER BY CASE WHEN topic_member_id = @member_id THEN 0 ELSE 1 END,
-					         CASE WHEN staff_number = @staff_number THEN 0 ELSE 1 END,
-					         CASE WHEN @email IS NOT NULL AND email = @email THEN 0 ELSE 1 END
+					SELECT TOP 1 u.id, u.username, u.role_id, u.is_active, u.account_expires_at,
+					       r.code AS role_code
+					FROM users u
+					LEFT JOIN roles r ON r.id = u.role_id
+					WHERE u.topic_member_id = @member_id
+					   OR u.staff_number = @staff_number
+					   OR (@email IS NOT NULL AND u.email = @email)
+					ORDER BY CASE WHEN u.topic_member_id = @member_id THEN 0 ELSE 1 END,
+					         CASE WHEN u.staff_number = @staff_number THEN 0 ELSE 1 END,
+					         CASE WHEN @email IS NOT NULL AND u.email = @email THEN 0 ELSE 1 END
 				`);
 			const existingUser = existingUserResult.recordset[0];
 
 			let userId = existingUser?.id;
-			if (!userId) {
+			let username = existingUser?.username;
+			let tempPassword = null;
+			let note = null;
+
+			if (!existingUser) {
 				// Khóa "sinh mã" chỉ được giữ tới khi tx ngắn này commit (vài ms sau).
 				userId = await genUserIdInTx(tx, deptCode);
 				if (!userId) {
@@ -301,61 +307,95 @@ const grantAccountsNoEmail = async (topicId, memberIds, actorId) => {
 					err.statusCode = 500;
 					throw err;
 				}
-			}
+				username = await ensureUniqueUsername(tx, baseUsername, userId);
+				const storedEmail =
+					member.email && String(member.email).trim()
+						? String(member.email).trim()
+						: `${String(userId).toLowerCase()}@member.local`;
 
-			const username = await ensureUniqueUsername(tx, baseUsername, userId);
-			const storedEmail =
-				member.email && String(member.email).trim()
-					? String(member.email).trim()
-					: `${String(userId).toLowerCase()}@member.local`;
-
-			const writeReq = new sql.Request(tx)
-				.input('uid', sql.VarChar(20), userId)
-				.input('username', sql.VarChar(100), username)
-				.input('password', sql.VarChar(255), defaultHash)
-				.input('full_name', sql.NVarChar(255), member.ho_ten)
-				.input('staff_number', sql.Int, staffNumber)
-				.input('email', sql.VarChar(255), storedEmail)
-				.input('phone_number', sql.VarChar(10), member.phone_number || null)
-				.input('position_detail', sql.NVarChar(255), member.position || null)
-				.input('department_id', sql.VarChar(20), deptId)
-				.input('role_id', sql.VarChar(6), roleId)
-				.input('topic_member_id', sql.VarChar(22), member.id)
-				.input('expires_at', sql.Date, member.end_date)
-				.input('actor_id', sql.VarChar(20), actorId);
-
-			if (existingUser) {
-				await writeReq.query(`
-					UPDATE users
-					SET username = @username,
-					    password = @password,
-					    full_name = @full_name,
-					    staff_number = @staff_number,
-					    email = @email,
-					    phone_number = @phone_number,
-					    position_detail = @position_detail,
-					    department_id = @department_id,
-					    role_id = @role_id,
-					    is_active = 1,
-					    topic_member_id = @topic_member_id,
-					    account_expires_at = @expires_at,
-					    updated_at = GETDATE(),
-					    updated_by = @actor_id
-					WHERE id = @uid
-				`);
-			} else {
-				await writeReq.query(`
+				// Mật khẩu tạm ngẫu nhiên riêng từng người (thay cho '123456' dùng
+				// chung + username đoán được), bắt đổi ở lần đăng nhập đầu.
+				tempPassword = generateTempPassword();
+				await new sql.Request(tx)
+					.input('uid', sql.VarChar(20), userId)
+					.input('username', sql.VarChar(100), username)
+					.input('password', sql.VarChar(255), await bcrypt.hash(tempPassword, 12))
+					.input('full_name', sql.NVarChar(255), member.ho_ten)
+					.input('staff_number', sql.Int, staffNumber)
+					.input('email', sql.VarChar(255), storedEmail)
+					.input('phone_number', sql.VarChar(10), member.phone_number || null)
+					.input('position_detail', sql.NVarChar(255), member.position || null)
+					.input('department_id', sql.VarChar(20), deptId)
+					.input('role_id', sql.VarChar(6), roleId)
+					.input('topic_member_id', sql.VarChar(22), member.id)
+					.input('expires_at', sql.Date, member.end_date)
+					.input('actor_id', sql.VarChar(20), actorId).query(`
 					INSERT INTO users (
 						id, username, password, full_name, staff_number, email,
 						phone_number, position_detail, department_id, role_id,
-						topic_member_id, account_expires_at, created_by
+						topic_member_id, account_expires_at, created_by, must_change_password
 					)
 					VALUES (
 						@uid, @username, @password, @full_name, @staff_number, @email,
 						@phone_number, @position_detail, @department_id, @role_id,
-						@topic_member_id, @expires_at, @actor_id
+						@topic_member_id, @expires_at, @actor_id, 1
 					)
 				`);
+			} else {
+				// Tài khoản ĐÃ CÓ (khớp mã NV / email — dữ liệu người thêm thành viên tự
+				// nhập): trước đây bị ghi đè mật khẩu, vai trò, khoa, username, hạn dùng
+				// và bật lại is_active ⇒ người cấp tài khoản chiếm / hạ quyền / đặt hạn
+				// hết hiệu lực được cho BẤT KỲ tài khoản nào, kể cả quản trị. Giờ:
+				//   - Không bao giờ đổi mật khẩu, username, khoa, họ tên, email.
+				//   - Chỉ tài khoản đề tài (member / topic_leader) mới được nâng lên chủ
+				//     nhiệm (không hạ), gia hạn (chỉ kéo dài) và mở lại khi đã HẾT HẠN.
+				//     Tài khoản bị quản trị khoá tay thì giữ nguyên — cần quản trị mở.
+				//   - Vai trò khác (quản trị, trưởng khoa, hội đồng...): chỉ liên kết.
+				const isTopicAccount = [ROLE.MEMBER, ROLE.TOPIC_LEADER].includes(existingUser.role_code);
+				const expired =
+					!!existingUser.account_expires_at && new Date(existingUser.account_expires_at) < new Date();
+				const req = new sql.Request(tx)
+					.input('uid', sql.VarChar(20), userId)
+					.input('topic_member_id', sql.VarChar(22), member.id)
+					.input('staff_number', sql.Int, staffNumber)
+					.input('phone_number', sql.VarChar(10), member.phone_number || null)
+					.input('position_detail', sql.NVarChar(255), member.position || null)
+					.input('actor_id', sql.VarChar(20), actorId);
+
+				if (isTopicAccount) {
+					const nextRoleId = member.role === 'leader' ? roleId : existingUser.role_id;
+					await req
+						.input('role_id', sql.VarChar(6), nextRoleId)
+						.input('expires_at', sql.Date, member.end_date).query(`
+						UPDATE users
+						SET role_id = @role_id,
+						    is_active = CASE
+						        WHEN is_active = 0 AND account_expires_at < CAST(GETDATE() AS DATE) THEN 1
+						        ELSE is_active END,
+						    account_expires_at = CASE
+						        WHEN account_expires_at IS NULL OR @expires_at IS NULL THEN account_expires_at
+						        WHEN @expires_at > account_expires_at THEN @expires_at
+						        ELSE account_expires_at END,
+						    topic_member_id = @topic_member_id,
+						    staff_number = ISNULL(staff_number, @staff_number),
+						    phone_number = ISNULL(phone_number, @phone_number),
+						    position_detail = ISNULL(position_detail, @position_detail),
+						    updated_at = GETDATE(),
+						    updated_by = @actor_id
+						WHERE id = @uid
+					`);
+					if (!existingUser.is_active && !expired)
+						note = 'Tài khoản đang bị khoá — cần quản trị kích hoạt lại';
+				} else {
+					await req.query(`
+						UPDATE users
+						SET topic_member_id = @topic_member_id,
+						    updated_at = GETDATE(),
+						    updated_by = @actor_id
+						WHERE id = @uid
+					`);
+					note = 'Dùng tài khoản có sẵn — giữ nguyên vai trò, khoa và trạng thái';
+				}
 			}
 
 			await new sql.Request(tx)
@@ -372,6 +412,8 @@ const grantAccountsNoEmail = async (topicId, memberIds, actorId) => {
 				`);
 
 			await tx.commit();
+			// Vai trò / trạng thái có thể vừa đổi — middleware auth đọc lại ngay
+			if (existingUser) userStatusCache.clear(userId);
 
 			// thành viên và tài khoản vừa cấp phải trỏ cùng 1 person (không ném lỗi)
 			await personService.linkTopicMemberToUser(member.id, userId, { actorId });
@@ -381,7 +423,9 @@ const grantAccountsNoEmail = async (topicId, memberIds, actorId) => {
 				user_id: userId,
 				username,
 				full_name: member.ho_ten,
-				password_plain: DEFAULT_PASSWORD,
+				// null = tài khoản đã có từ trước, giữ nguyên mật khẩu hiện tại
+				password_plain: tempPassword,
+				note,
 			});
 		} catch (err) {
 			if (began) {
@@ -426,7 +470,7 @@ const grantAccountsNoEmail = async (topicId, memberIds, actorId) => {
 			'Tài khoản hệ thống đã được cấp',
 			newUserIds,
 			{
-				message: `Tài khoản đã được cấp để tham gia đề tài ${topicId}. Vui lòng đăng nhập với mật khẩu mặc định (123456) và đổi mật khẩu ngay.`,
+				message: `Tài khoản đã được cấp để tham gia đề tài ${topicId}. Vui lòng đăng nhập bằng mật khẩu tạm do khoa/phòng cung cấp — hệ thống sẽ yêu cầu đổi mật khẩu ở lần đăng nhập đầu.`,
 				refId: topicId,
 				refType: 'topic',
 			},

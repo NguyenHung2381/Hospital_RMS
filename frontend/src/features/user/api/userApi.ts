@@ -81,7 +81,9 @@ export const updateUser = (id: string, data: UpdateUserPayload) =>
 export const deleteUser = (id: string) =>
 	apiClient.delete<null>(`/users/${id}`);
 
-export const resetUserPassword = (id: string, newPassword: string) =>
-	apiClient.post<null>(`/users/${id}/reset-password`, {
-		new_password: newPassword,
+// Không truyền newPassword ⇒ server sinh mật khẩu tạm ngẫu nhiên, trả về đúng 1
+// lần trong temporary_password. Cả hai cách, người dùng đều phải đổi ở lần đăng nhập tới.
+export const resetUserPassword = (id: string, newPassword?: string) =>
+	apiClient.post<{ temporary_password: string } | null>(`/users/${id}/reset-password`, {
+		...(newPassword ? { new_password: newPassword } : {}),
 	});

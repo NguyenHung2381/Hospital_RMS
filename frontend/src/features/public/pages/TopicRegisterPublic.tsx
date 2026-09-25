@@ -1,18 +1,17 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { AlertSvg, CheckSvg } from '@/assets/icons';
 import PublicLayout from '../../../layouts/PublicLayout';
 import {
-	getCaptcha,
 	getOpenTopicRounds,
 	getPublicCategories,
 	getPublicDepartments,
 	getPublicLevels,
 	registerTopic,
-	type Captcha,
 	type PublicTopicRound,
 	type SimpleOption,
 } from '../api/publicApi';
+import { useCaptcha } from '../hooks/useCaptcha';
 import styles from './PublicPortal.module.css';
 
 const EMPTY_FORM = {
@@ -26,7 +25,6 @@ const EMPTY_FORM = {
 	department_id: '',
 	category_id: '',
 	level_id: '',
-	captcha_answer: '',
 	website: '', // honeypot
 };
 
@@ -35,7 +33,7 @@ export default function TopicRegisterPublic() {
 	const [categories, setCategories] = useState<SimpleOption[]>([]);
 	const [departments, setDepartments] = useState<SimpleOption[]>([]);
 	const [levels, setLevels] = useState<SimpleOption[]>([]);
-	const [captcha, setCaptcha] = useState<Captcha | null>(null);
+	const captcha = useCaptcha();
 	const [form, setForm] = useState(EMPTY_FORM);
 	const [loading, setLoading] = useState(true);
 	const [submitting, setSubmitting] = useState(false);
@@ -43,12 +41,6 @@ export default function TopicRegisterPublic() {
 	const [success, setSuccess] = useState('');
 	const [registeredId, setRegisteredId] = useState('');
 	const [copied, setCopied] = useState(false);
-
-	const loadCaptcha = useCallback(() => {
-		getCaptcha()
-			.then(setCaptcha)
-			.catch(() => setCaptcha(null));
-	}, []);
 
 	useEffect(() => {
 		Promise.all([getOpenTopicRounds(), getPublicCategories(), getPublicDepartments()])
@@ -59,8 +51,7 @@ export default function TopicRegisterPublic() {
 			})
 			.catch((err) => setError(err instanceof Error ? err.message : 'Không thể tải dữ liệu'))
 			.finally(() => setLoading(false));
-		loadCaptcha();
-	}, [loadCaptcha]);
+	}, []);
 
 	// Cấp độ phụ thuộc đợt đã chọn (mỗi loại đợt cho phép cấp độ khác nhau) —
 	// chọn đợt xong thì tải lại danh sách cấp độ và reset lựa chọn cũ.
@@ -84,20 +75,20 @@ export default function TopicRegisterPublic() {
 		if (!form.round_id) return setError('Vui lòng chọn đợt đăng ký đề tài');
 		if (!form.department_id) return setError('Vui lòng chọn khoa/phòng');
 		if (!form.level_id) return setError('Vui lòng chọn cấp độ đề tài');
-		if (!captcha || !form.captcha_answer) return setError('Vui lòng nhập mã xác nhận');
+		if (!captcha.payload) return setError('Vui lòng hoàn tất bước xác nhận');
 
 		setSubmitting(true);
 		try {
-			const result = await registerTopic({ ...form, captcha_token: captcha.token });
+			const result = await registerTopic({ ...form, ...captcha.payload });
 			setSuccess('Đăng ký đề tài thành công! Khoa/phòng và hội đồng sẽ xem xét và duyệt hồ sơ của bạn.');
 			setRegisteredId(result.topic_id ?? '');
 			setCopied(false);
 			setForm(EMPTY_FORM);
-			loadCaptcha();
 		} catch (err) {
 			setError(err instanceof Error ? err.message : 'Đăng ký thất bại, vui lòng thử lại');
-			loadCaptcha();
 		} finally {
+			// Mã xác nhận chỉ dùng 1 lần (đúng hay sai) — luôn lấy mã mới
+			captcha.reload();
 			setSubmitting(false);
 		}
 	};
@@ -314,26 +305,7 @@ export default function TopicRegisterPublic() {
 				</div>
 
 				<div className={styles.sectionTitle}>Xác nhận</div>
-				<div className={styles.formGroup}>
-					<label className={styles.label}>Nhập kết quả phép tính bên dưới</label>
-					<div className={styles.captchaRow}>
-						<span className={styles.captchaQuestion}>{captcha?.question ?? '...'}</span>
-						<button
-							type='button'
-							className={styles.captchaRefresh}
-							onClick={loadCaptcha}
-						>
-							Đổi câu hỏi
-						</button>
-					</div>
-					<input
-						className={styles.input}
-						value={form.captcha_answer}
-						onChange={set('captcha_answer')}
-						placeholder='Nhập đáp án'
-						style={{ marginTop: 8, maxWidth: 200 }}
-					/>
-				</div>
+				{captcha.field}
 
 				<button
 					type='submit'

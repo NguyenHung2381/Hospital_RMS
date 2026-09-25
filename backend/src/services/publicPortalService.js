@@ -37,12 +37,16 @@ const getTraineeTypes = async () => {
 	return result.recordset;
 };
 
-// Tra cứu kết quả học tập/chứng chỉ theo đúng số CCCD người dùng tự nhập —
-// không tìm gần đúng, không liệt kê theo tên, để giảm rủi ro dò quét hàng loạt
-// (kết hợp rate-limit chặt ở tầng route).
-const lookupResults = async (nationalId) => {
+// Tra cứu kết quả học tập/chứng chỉ theo đúng số CCCD + ngày sinh người dùng tự
+// nhập — không tìm gần đúng, không liệt kê theo tên. Sai 1 trong 2 thì trả danh
+// sách rỗng như không có dữ liệu (không lộ CCCD có tồn tại hay không). Kết hợp
+// rate-limit theo IP (route) và theo từng CCCD (controller).
+const lookupResults = async (nationalId, dob) => {
 	const pool = await getPool();
-	const result = await pool.request().input('national_id', sql.VarChar(20), nationalId).query(`
+	const result = await pool
+		.request()
+		.input('national_id', sql.VarChar(20), nationalId)
+		.input('dob', sql.Date, String(dob).slice(0, 10)).query(`
     SELECT t.full_name, c.name AS course_name, e.status AS enrollment_status,
            g.result, g.score, cert.cert_no, cert.issue_date
     FROM trainees t
@@ -50,10 +54,17 @@ const lookupResults = async (nationalId) => {
     JOIN courses c ON c.id = e.course_id
     LEFT JOIN grades g ON g.enrollment_id = e.id AND g.subject_id IS NULL
     LEFT JOIN certificates cert ON cert.enrollment_id = e.id
-    WHERE t.national_id = @national_id
+    WHERE t.national_id = @national_id AND CAST(t.dob AS DATE) = @dob
     ORDER BY e.registered_at DESC
   `);
 	return result.recordset;
+};
+
+// 'YYYY-MM-DD' của cột DATE (driver trả Date lúc 00:00 UTC) hoặc chuỗi ISO từ form
+const toDateKey = (v) => {
+	if (!v) return null;
+	const d = v instanceof Date ? v : new Date(String(v).slice(0, 10));
+	return Number.isNaN(d.getTime()) ? null : d.toISOString().slice(0, 10);
 };
 
 // Đăng ký khóa học công khai: tự tìm học viên đã có theo CCCD (tránh tạo
@@ -81,6 +92,17 @@ const register = async (data) => {
 			.input('national_id', sql.VarChar(20), data.national_id)
 			.query('SELECT TOP 1 * FROM trainees WHERE national_id = @national_id ORDER BY created_at DESC');
 		trainee = existing.recordset[0] || null;
+		// Người đăng ký phải là chủ hồ sơ: ngày sinh khớp hồ sơ đã có. Trước đây
+		// chỉ cần biết số CCCD của người khác là ghi danh được họ vào khoá học.
+		// Hồ sơ cũ chưa có ngày sinh (nhập tay/import thiếu) thì không đối chiếu
+		// được — vẫn cho ghi danh vì đăng ký công khai đều phải chờ duyệt.
+		if (trainee?.dob && toDateKey(trainee.dob) !== toDateKey(data.dob)) {
+			const err = new Error(
+				'Thông tin không khớp với hồ sơ học viên đã có. Vui lòng kiểm tra lại ngày sinh hoặc liên hệ phòng Đào tạo.',
+			);
+			err.statusCode = 409;
+			throw err;
+		}
 	}
 	if (!trainee) {
 		trainee = await traineeService.create(

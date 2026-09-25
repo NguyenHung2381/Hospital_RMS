@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { CheckSvg, EditSvg, InfoSvg, XSvg } from '@/assets/icons';
 import type { FormErrors, User } from '../../user/types/user.type';
 import type { EditForm } from '../utils/deptAccountsHelpers';
+import { checkPassword, generateTempPassword } from '../../../shared/utils/password';
 import styles from '../pages/DepartmentAccounts.module.css';
 
 function Toggle({ on, onChange }: { on: boolean; onChange: () => void }) {
@@ -90,8 +91,9 @@ export function DeptAccountsEditModal({
 			e.staff_number = 'Vui lòng nhập mã nhân viên';
 		if (form.email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email))
 			e.email = 'Email không hợp lệ';
-		if (form.password && form.password.length < 5)
-			e.password = 'Mật khẩu ít nhất 5 ký tự';
+		const pwdError = form.password ? checkPassword(form.password, user.username) : null;
+		if (pwdError)
+			e.password = pwdError;
 		setErrors(e);
 		return Object.keys(e).length === 0;
 	};
@@ -206,7 +208,7 @@ export function DeptAccountsEditModal({
 							id='password'
 							label='Đặt lại mật khẩu'
 							error={errors.password}
-							hint='Để trống nếu không muốn đổi mật khẩu'
+							hint='Để trống nếu không muốn đổi. Người dùng phải đổi lại ở lần đăng nhập tới.'
 						>
 							<div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
 								<div style={{ position: 'relative', flex: 1 }}>
@@ -240,7 +242,10 @@ export function DeptAccountsEditModal({
 								</div>
 								<button
 									type='button'
-									onClick={() => set('password', '123456')}
+									onClick={() => {
+										set('password', generateTempPassword());
+										setShowPwd(true);
+									}}
 									style={{
 										flexShrink: 0,
 										height: 38,
@@ -255,7 +260,7 @@ export function DeptAccountsEditModal({
 										whiteSpace: 'nowrap',
 									}}
 								>
-									Mặc định
+									Tạo ngẫu nhiên
 								</button>
 							</div>
 						</Field>

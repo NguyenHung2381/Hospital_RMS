@@ -10,10 +10,13 @@
 // trong suốt khung đó (trình duyệt cache được ảnh, React không re-render vô
 // ích). Link luôn còn sống ít nhất TTL và tối đa 2×TTL.
 const crypto = require('crypto');
+const { keyFor } = require('./keys');
 
 const TTL_SEC = Number(process.env.UPLOAD_URL_TTL_SEC) || 4 * 60 * 60;
 
-const secret = () => process.env.UPLOAD_URL_SECRET || process.env.JWT_SECRET;
+// Không đặt UPLOAD_URL_SECRET thì dùng khoá dẫn xuất riêng (utils/keys.js), không
+// dùng thẳng JWT_SECRET — chữ ký link file không được trùng khoá với token khác.
+const secret = () => process.env.UPLOAD_URL_SECRET || keyFor('upload-url');
 
 const hmac = (pathname, exp) =>
 	crypto

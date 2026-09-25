@@ -20,10 +20,17 @@ CMD ["npm", "run", "dev"]
 
 FROM node:22-alpine AS prod
 WORKDIR /app
+# su-exec: entrypoint hạ quyền từ root xuống user `node` trước khi chạy app
+# (xem docker-entrypoint.sh) — nhỏ hơn gosu/sudo, exec thẳng không để tiến trình cha.
+RUN apk upgrade --no-cache && apk add --no-cache su-exec
 COPY package*.json ./
 RUN --mount=type=cache,target=/root/.npm \
     npm ci --omit=dev --no-audit --no-fund --fetch-timeout=600000 --fetch-retries=5 --fetch-retry-maxtimeout=120000
 COPY . .
+# Mã nguồn thuộc root, chỉ đọc với user node — app không tự sửa được code của
+# chính nó. Thư mục dữ liệu tạo sẵn cho node (volume mới được khởi tạo theo quyền này).
+RUN mkdir -p /app/uploads /app/logs /app/secrets \
+    && chown node:node /app/uploads /app/logs /app/secrets
 ENV NODE_ENV=production
 # Entrypoint tự sinh JWT secret nếu thiếu (xem docker-entrypoint.sh). Đặt ngoài
 # /app để bind mount ./backend:/app ở bản dev không che mất; tr bỏ CR (CRLF) phòng

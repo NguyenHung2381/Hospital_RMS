@@ -21,4 +21,11 @@ RUN npm run build
 FROM nginx:alpine AS prod
 COPY --from=build /app/dist /usr/share/nginx/html
 COPY nginx.conf /etc/nginx/conf.d/default.conf
+# Sinh danh sách proxy tin cậy từ TRUSTED_PROXIES lúc khởi động (entrypoint của
+# image nginx tự chạy mọi file /docker-entrypoint.d/*.sh). tr bỏ CR phòng khi
+# file bị checkout CRLF trên Windows.
+COPY docker/40-trusted-proxies.sh /tmp/40-trusted-proxies.sh
+RUN tr -d '\r' < /tmp/40-trusted-proxies.sh > /docker-entrypoint.d/40-trusted-proxies.sh \
+    && chmod +x /docker-entrypoint.d/40-trusted-proxies.sh \
+    && rm /tmp/40-trusted-proxies.sh
 EXPOSE 80

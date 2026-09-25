@@ -1,5 +1,5 @@
 import { BASE_URL } from '../../../shared/api/axios';
-import { getDeviceToken, saveDeviceToken } from '../../../shared/utils/storage';
+import { clearAuth, getDeviceToken, saveDeviceToken } from '../../../shared/utils/storage';
 
 export interface LoginUser {
 	id: string;
@@ -12,12 +12,15 @@ export interface LoginUser {
 	permissions: string[];
 	permission_scopes?: Record<string, string>;
 	department_id: string | null;
+	must_change_password?: boolean;
+	// Tài khoản quản trị chưa bật 2FA: grace = nhắc (kèm hạn), required = bị chặn
+	twofa_state?: 'grace' | 'required' | null;
+	twofa_deadline?: string | null;
 }
 
 export interface LoginResponse {
 	user: LoginUser;
 	access_token: string;
-	refresh_token: string;
 	device_token?: string;
 }
 
@@ -40,14 +43,19 @@ export class LoginLockedError extends Error {
 export async function loginApi(
 	username: string,
 	password: string,
+	rememberMe = false,
 ): Promise<LoginResponse | Requires2FAResponse> {
+	// Refresh token về trong cookie HttpOnly (Set-Cookie) — không có trong body.
+	// remember_me: cookie sống 30 ngày thay vì mất khi đóng trình duyệt.
 	const res = await fetch(`${BASE_URL}/api/v1/auth/login`, {
 		method: 'POST',
+		credentials: 'same-origin',
 		headers: { 'Content-Type': 'application/json' },
 		body: JSON.stringify({
 			username,
 			password,
 			device_token: getDeviceToken(username),
+			remember_me: rememberMe,
 		}),
 	});
 
@@ -101,13 +109,37 @@ export interface TwoFaSetup {
 	otpauth_uri: string;
 }
 
-export async function get2FAStatusApi(accessToken: string): Promise<{ enabled: boolean }> {
+export interface TwoFaStatus {
+	enabled: boolean;
+	/** Số mã khôi phục chưa dùng */
+	backup_codes_remaining: number;
+}
+
+export async function get2FAStatusApi(accessToken: string): Promise<TwoFaStatus> {
 	const res = await fetch(`${BASE_URL}/api/v1/auth/2fa/status`, {
 		headers: { Authorization: `Bearer ${accessToken}` },
 	});
 	const json = await res.json();
 	if (!res.ok || !json.success) throw new Error(json.message ?? 'Có lỗi xảy ra, vui lòng thử lại');
-	return json.data as { enabled: boolean };
+	return json.data as TwoFaStatus;
+}
+
+// Tạo lại bộ mã khôi phục (bộ cũ mất hiệu lực) — cần nhập lại mật khẩu.
+export async function regenerateBackupCodesApi(
+	accessToken: string,
+	password: string,
+): Promise<string[]> {
+	const res = await fetch(`${BASE_URL}/api/v1/auth/2fa/backup-codes`, {
+		method: 'POST',
+		headers: {
+			'Content-Type': 'application/json',
+			Authorization: `Bearer ${accessToken}`,
+		},
+		body: JSON.stringify({ password }),
+	});
+	const json = await res.json();
+	if (!res.ok || !json.success) throw new Error(json.message ?? 'Có lỗi xảy ra, vui lòng thử lại');
+	return json.data.backup_codes as string[];
 }
 
 export async function setup2FAApi(accessToken: string): Promise<TwoFaSetup> {
@@ -120,7 +152,8 @@ export async function setup2FAApi(accessToken: string): Promise<TwoFaSetup> {
 	return json.data as TwoFaSetup;
 }
 
-export async function verifySetup2FAApi(accessToken: string, code: string): Promise<void> {
+// Bật 2FA — trả bộ mã khôi phục (server chỉ trả đúng 1 lần này).
+export async function verifySetup2FAApi(accessToken: string, code: string): Promise<string[]> {
 	const res = await fetch(`${BASE_URL}/api/v1/auth/2fa/verify-setup`, {
 		method: 'POST',
 		headers: {
@@ -131,6 +164,7 @@ export async function verifySetup2FAApi(accessToken: string, code: string): Prom
 	});
 	const json = await res.json();
 	if (!res.ok || !json.success) throw new Error(json.message ?? 'Mã xác thực không đúng');
+	return (json.data?.backup_codes as string[]) ?? [];
 }
 
 export async function disable2FAApi(accessToken: string, password: string): Promise<void> {
@@ -152,6 +186,23 @@ export interface SessionInfo {
 	user_agent: string | null;
 	created_at: string | null;
 	expires_at: string;
+}
+
+// Đăng xuất thật: server thu hồi phiên (refresh token trong cookie) và xoá
+// cookie; sau đó mới xoá dữ liệu phía trình duyệt. Lỗi mạng vẫn xoá dữ liệu
+// cục bộ — người dùng bấm đăng xuất thì luôn phải ra khỏi hệ thống.
+export async function logout(): Promise<void> {
+	try {
+		await fetch(`${BASE_URL}/api/v1/auth/logout`, {
+			method: 'POST',
+			credentials: 'same-origin',
+			headers: { 'Content-Type': 'application/json' },
+			body: '{}',
+		});
+	} catch {
+		// bỏ qua — vẫn xoá phiên phía trình duyệt bên dưới
+	}
+	clearAuth();
 }
 
 export async function logoutAllApi(accessToken: string): Promise<void> {

@@ -5,12 +5,16 @@ import {
 	clearAuth,
 	getStoredUser,
 	getToken,
-	replaceTokens,
+	replaceAccessToken,
+	updateStoredUser,
+	type StoredUser,
 } from '../../../shared/utils/storage';
+import { checkPassword } from '../../../shared/utils/password';
 import {
 	disable2FAApi,
 	get2FAStatusApi,
 	logoutAllApi,
+	regenerateBackupCodesApi,
 	setup2FAApi,
 	verifySetup2FAApi,
 	type TwoFaSetup,
@@ -98,8 +102,13 @@ export function useProfile() {
 			setPwdError('Vui lòng nhập mật khẩu hiện tại.');
 			return;
 		}
-		if (newPwd.length < 8 || !/[A-Za-z]/.test(newPwd) || !/[0-9]/.test(newPwd)) {
-			setPwdError('Mật khẩu mới phải có ít nhất 8 ký tự, gồm cả chữ và số.');
+		const policyError = checkPassword(newPwd, getStoredUser<StoredUser>()?.username);
+		if (policyError) {
+			setPwdError(policyError);
+			return;
+		}
+		if (newPwd === oldPwd) {
+			setPwdError('Mật khẩu mới phải khác mật khẩu hiện tại.');
 			return;
 		}
 		if (newPwd !== confirmPwd) {
@@ -110,11 +119,11 @@ export function useProfile() {
 		try {
 			// Server thu hồi mọi phiên (kể cả token đang dùng) rồi trả cặp token mới
 			// cho phiên này — phải lưu lại, nếu không request kế tiếp sẽ bị 401.
-			const tokens = await apiClient.post<{ access_token: string; refresh_token: string } | null>(
+			const tokens = await apiClient.post<{ access_token: string } | null>(
 				'/auth/change-password',
 				{ old_password: oldPwd, new_password: newPwd },
 			);
-			if (tokens?.access_token) replaceTokens(tokens.access_token, tokens.refresh_token);
+			if (tokens?.access_token) replaceAccessToken(tokens.access_token);
 			setOldPwd('');
 			setNewPwd('');
 			setConfirmPwd('');
@@ -136,12 +145,20 @@ export function useProfile() {
 	const [twoFaError, setTwoFaError] = useState('');
 	const [disablePwd, setDisablePwd] = useState('');
 	const [showDisable2Fa, setShowDisable2Fa] = useState(false);
+	// Mã khôi phục vừa sinh — server chỉ trả 1 lần, hiển thị tới khi người dùng đóng
+	const [backupCodes, setBackupCodes] = useState<string[] | null>(null);
+	const [backupRemaining, setBackupRemaining] = useState(0);
+	const [showRegenBackup, setShowRegenBackup] = useState(false);
+	const [regenPwd, setRegenPwd] = useState('');
 
 	useEffect(() => {
 		const token = getToken();
 		if (!token) return;
 		get2FAStatusApi(token)
-			.then((r) => setTwoFaEnabled(r.enabled))
+			.then((r) => {
+				setTwoFaEnabled(r.enabled);
+				setBackupRemaining(r.backup_codes_remaining ?? 0);
+			})
 			.catch(() => setTwoFaEnabled(false));
 	}, []);
 
@@ -173,8 +190,12 @@ export function useProfile() {
 		setTwoFaError('');
 		setTwoFaSaving(true);
 		try {
-			await verifySetup2FAApi(token, twoFaCode.trim());
+			const codes = await verifySetup2FAApi(token, twoFaCode.trim());
+			setBackupCodes(codes);
+			setBackupRemaining(codes.length);
 			setTwoFaEnabled(true);
+			// Hết diện bắt buộc bật 2FA — tắt banner nhắc
+			updateStoredUser({ twofa_state: null, twofa_deadline: null });
 			setTwoFaSetup(null);
 			setTwoFaCode('');
 			showToast('Đã bật xác thực 2 lớp!', 'success');
@@ -193,9 +214,30 @@ export function useProfile() {
 		try {
 			await disable2FAApi(token, disablePwd);
 			setTwoFaEnabled(false);
+			setBackupCodes(null);
+			setBackupRemaining(0);
 			setShowDisable2Fa(false);
 			setDisablePwd('');
 			showToast('Đã tắt xác thực 2 lớp', 'success');
+		} catch (e: unknown) {
+			setTwoFaError(e instanceof Error ? e.message : 'Mật khẩu không đúng');
+		} finally {
+			setTwoFaSaving(false);
+		}
+	}
+
+	async function handleRegenerateBackupCodes() {
+		const token = getToken();
+		if (!token || !regenPwd) return;
+		setTwoFaError('');
+		setTwoFaSaving(true);
+		try {
+			const codes = await regenerateBackupCodesApi(token, regenPwd);
+			setBackupCodes(codes);
+			setBackupRemaining(codes.length);
+			setShowRegenBackup(false);
+			setRegenPwd('');
+			showToast('Đã tạo bộ mã khôi phục mới — bộ cũ đã mất hiệu lực', 'success');
 		} catch (e: unknown) {
 			setTwoFaError(e instanceof Error ? e.message : 'Mật khẩu không đúng');
 		} finally {
@@ -260,5 +302,13 @@ export function useProfile() {
 		handleCancel2FASetup,
 		handleConfirm2FASetup,
 		handleDisable2FA,
+		backupCodes,
+		backupRemaining,
+		showRegenBackup,
+		regenPwd,
+		setShowRegenBackup,
+		setRegenPwd,
+		dismissBackupCodes: () => setBackupCodes(null),
+		handleRegenerateBackupCodes,
 	};
 }

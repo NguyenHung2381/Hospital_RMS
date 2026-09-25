@@ -134,13 +134,13 @@ Xem đầy đủ các biến và chú thích trong [`backend/.env.example`](back
 
 | Nhóm | Biến | Ghi chú |
 |---|---|---|
-| **Bắt buộc** | `DB_USER`, `DB_PASSWORD`, `JWT_SECRET`, `JWT_REFRESH_SECRET`, `SWAGGER_USER`, `SWAGGER_PASS` | Server thoát ngay khi khởi động nếu thiếu biến nào. Secret nên là chuỗi ngẫu nhiên dài (`openssl rand -hex 32`). |
+| **Bắt buộc** | `DB_USER`, `DB_PASSWORD`, `JWT_SECRET`, `JWT_REFRESH_SECRET` (+ `SWAGGER_USER`, `SWAGGER_PASS` khi Swagger bật) | Server thoát ngay khi khởi động nếu thiếu biến nào. Swagger tắt ở production, trừ khi đặt `SWAGGER_ENABLED=true`. Secret nên là chuỗi ngẫu nhiên dài (`openssl rand -hex 32`). |
 | SQL Server | `DB_SERVER`, `DB_PORT`, `DB_DATABASE`, `DB_ENCRYPT`, `DB_TRUST_SERVER_CERT` | Production: không dùng `sa`, nên tạo login riêng chỉ có quyền trên `RMS_HOSPITAL` và bật `DB_ENCRYPT=true`. |
-| HTTP | `PORT`, `CORS_ORIGIN`, `TRUST_PROXY` | `CORS_ORIGIN` bắt buộc ở production. `TRUST_PROXY` phải đặt đúng khi chạy sau reverse proxy, nếu không rate-limit đăng nhập sẽ không hoạt động đúng. |
-| Upload | `UPLOAD_URL_SECRET`, `UPLOAD_URL_TTL_SEC`, `TRAINING_UPLOAD_MAX_MB`, `TRAINING_MEDIA_MAX_MB` | Link tải file được ký HMAC. Đổi secret thì mọi link cũ mất hiệu lực. |
+| HTTP | `PORT`, `CORS_ORIGIN`, `TRUST_PROXY` | `CORS_ORIGIN` bắt buộc ở production. `TRUST_PROXY` = số proxy đứng ngay trước backend (thường là `1`). Không dùng `uniquelocal`: người dùng có IP nội bộ sẽ tự khai được IP giả để vượt rate-limit đăng nhập. |
+| Upload | `UPLOAD_URL_SECRET`, `UPLOAD_URL_TTL_SEC`, `TOPIC_UPLOAD_MAX_MB`, `TRAINING_UPLOAD_MAX_MB`, `TRAINING_MEDIA_MAX_MB`, `UPLOAD_DAILY_QUOTA_MB`, `CLAMAV_HOST` | Link tải file được ký HMAC. Đổi secret thì mọi link cũ mất hiệu lực. Xem [Bảo mật upload](#bảo-mật-upload). |
 | Log | `LOG_DIR`, `LOG_RETENTION_FILES`, `LOG_STDOUT`, `AUDIT_LOG_METHODS` | Xem phần [logging](#tác-vụ-nền-cache--logging). |
 | Email | `MAIL_ENABLED`, `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM` | Mặc định tắt, email chỉ in ra console. |
-| Redis | `REDIS_HOST`, `REDIS_PORT` | Mặc định `localhost:6379`. |
+| Redis | `REDIS_HOST`, `REDIS_PORT`, `REDIS_PASSWORD` | Mặc định `localhost:6379`, không mật khẩu. Docker prod tự sinh mật khẩu (volume `redis_secret`). |
 | Cron | `JOBS_ENABLED`, `CRON_TZ` | `JOBS_ENABLED=false` để tắt job nền (môi trường test, hoặc các instance phụ). |
 | Danh tính | `PERSON_DUAL_WRITE` | Đặt `false` để tắt khẩn cấp đồng bộ `persons`. |
 
@@ -215,7 +215,7 @@ Source code được bind mount vào container. Sửa code trên máy là contai
    | `NODE_ENV` | `development` | |
    | `DB_SERVER` | `host.docker.internal` | Trỏ về SQL Server trên máy host (`extra_hosts: host-gateway` để chạy được cả trên Linux) |
    | `REDIS_HOST` / `REDIS_PORT` | `redis` / `6379` | Tên service trong mạng Docker |
-   | `TRUST_PROXY` | `loopback, uniquelocal` | Tin Vite proxy trong mạng Docker, để `req.ip` là IP thật của máy khách chứ không phải IP container `client` |
+   | `TRUST_PROXY` | `1` | Tin đúng 1 proxy liền trước (Vite), để `req.ip` là IP thật của máy khách chứ không phải IP container `frontend` |
    | `LOG_RETENTION_FILES` | `100` | Giữ ít nhất khoảng 3 tháng log |
    | `VITE_API_HOST` / `VITE_API_PORT` | `server` / `3000` | Đích proxy của Vite |
    | `CHOKIDAR_USEPOLLING` | `true` | Bind mount qua Docker Desktop không phát fs-events, phải polling (chu kỳ 1 giây) |
@@ -252,10 +252,13 @@ docker compose up -d --build --renew-anon-volumes backend  # hoặc frontend
 ### Production (`docker-compose.prod.yml`)
 
 ```
-Trình duyệt ──► :8084 ──► frontend (Nginx, file tĩnh)
+Trình duyệt ──https──► Reverse proxy HTTPS (IIS / nginx host…, giữ chứng chỉ)
+                              │ http + X-Forwarded-For / X-Forwarded-Proto
+                              ▼
+                        :8084 frontend (Nginx, file tĩnh + header bảo mật)
                               │  /api/, /uploads/, /api/v1/events (SSE)
                               ▼
-                          backend:3001 ──► redis:6379
+                          backend:3001 ──► redis:6379 (có mật khẩu)
                               │
                               ▼
                           SQL Server (DB_SERVER, ngoài Docker)
@@ -265,9 +268,9 @@ Trình duyệt ──► :8084 ──► frontend (Nginx, file tĩnh)
 
 | Service | Port trên máy host | Ghi chú |
 |---|---|---|
-| `frontend` | `8084` → `80` | Nginx phục vụ `frontend/dist` và reverse proxy tới `backend:3001`. `mem_limit: 64m` |
-| `backend` | `127.0.0.1:3001` | Chỉ mở trên loopback để IIS / reverse proxy cùng máy gọi được. Không lộ ra mạng. `mem_limit: 512m` |
-| `redis` | – | Không publish port, chỉ dùng trong mạng Docker |
+| `frontend` | `${FRONTEND_BIND:-8084}` → `80` | Nginx phục vụ `frontend/dist` và reverse proxy tới `backend:3001`. `mem_limit: 64m` |
+| `backend` | `127.0.0.1:3001` | Chỉ mở trên loopback để IIS / reverse proxy cùng máy gọi được. Không lộ ra mạng. Chạy bằng user `node` (không phải root). `mem_limit: 512m` |
+| `redis` | – | Không publish port, chỉ dùng trong mạng Docker. Bắt buộc mật khẩu, tự sinh lần đầu vào volume `redis_secret` |
 
 Mọi service đều có `restart: unless-stopped`, tự khởi động lại cùng Docker.
 
@@ -309,15 +312,36 @@ Các biến sau được đặt cứng trong `docker-compose.prod.yml` và **lu�
 | `DB_ENCRYPT` | `true` | Luôn mã hoá kết nối tới SQL Server. SQL Server chưa cài chứng chỉ thì dùng chứng chỉ tự ký, cần `DB_TRUST_SERVER_CERT=true`. Có chứng chỉ CA thật thì đặt `false` |
 | `PORT` | `3001` | Phải khớp `proxy_pass http://backend:3001` trong `frontend/nginx.conf` |
 | `REDIS_HOST` / `REDIS_PORT` | `redis` / `6379` | |
-| `TRUST_PROXY` | `loopback, uniquelocal` | Tin Nginx trong mạng Docker, để rate-limit đăng nhập tính theo IP thật của máy khách |
-| `CORS_ORIGIN` | `http://nckh.bvnghean.vn:8084,…` | Bắt buộc ở production |
+| `TRUST_PROXY` | `1` | Tin đúng 1 proxy liền trước backend (nginx container). Nginx đã tự lọc IP thật và **ghi đè** `X-Forwarded-For`, nên rate-limit đăng nhập tính theo IP thật |
+| `CORS_ORIGIN` | `${CORS_ORIGIN:-https://nckh.bvnghean.vn}` | Bắt buộc ở production |
+| `REDIS_PASSWORD_FILE` | `/run/redis-secret/pass` | Entrypoint đọc mật khẩu Redis do container `redis` tự sinh |
 | `NODE_OPTIONS` | `--max-old-space-size=384` | Heap nhỏ hơn `mem_limit` để còn chỗ cho buffer upload và xuất Excel |
 
-**Đổi domain hoặc port** thì phải sửa đồng bộ ba chỗ:
+**Đổi domain** thì sửa đồng bộ: `CORS_ORIGIN` (origin chính xác trình duyệt dùng, gồm scheme và port nếu có) và `server_name` trong `frontend/nginx.conf`.
 
-1. `CORS_ORIGIN` trong `docker-compose.prod.yml`: origin chính xác mà trình duyệt dùng, gồm cả scheme và port.
-2. `server_name` trong `frontend/nginx.conf`.
-3. `ports: "8084:80"` của service `frontend`.
+#### Bước 3b: Nối với reverse proxy HTTPS
+
+HTTPS kết thúc ở reverse proxy đứng trước cổng `8084` (IIS ARR, nginx trên host…). Container chỉ nhận HTTP từ proxy đó. Các biến dưới đây đặt trong file `.env` **cạnh `docker-compose.prod.yml`** (file biến của Compose, khác `backend/.env`):
+
+| Biến | Mặc định | Ý nghĩa |
+|---|---|---|
+| `TRUSTED_PROXIES` | mọi IP nội bộ (`127.0.0.1/32 10.0.0.0/8 172.16.0.0/12 192.168.0.0/16`) | IP/CIDR của reverse proxy. Chỉ request đến từ các địa chỉ này mới được tin `X-Forwarded-For` (IP thật) và `X-Forwarded-Proto` (https) |
+| `FRONTEND_BIND` | `8084` | Địa chỉ publish cổng frontend |
+| `CORS_ORIGIN` | `https://nckh.bvnghean.vn` | |
+
+Mặc định chạy được với proxy ở bất kỳ đâu trong mạng nội bộ, nhưng **máy khác trong LAN gọi thẳng `http://<server>:8084` vẫn tự khai được IP giả**. Nên thu hẹp lại:
+
+- Proxy **cùng máy** với Docker: đặt `FRONTEND_BIND=127.0.0.1:8084` (chỉ proxy trên máy đó gọi được). Muốn chặt hơn nữa thì đặt `TRUSTED_PROXIES` bằng IP gateway của mạng Docker (xem bằng `docker network inspect hospital_rms_default`, thường là `172.x.0.1`).
+- Proxy **ở máy khác**: đặt `TRUSTED_PROXIES=<IP proxy>` và dùng firewall chỉ cho IP proxy vào cổng `8084`.
+
+Reverse proxy phải gửi `X-Forwarded-Proto: https`. IIS ARR mặc định **không** gửi header này: thêm server variable `HTTP_X_FORWARDED_PROTO` = `https` trong rule URL Rewrite. Nếu thiếu, backend in cảnh báo `Request ... tới qua http, không phải https` trong log, và trình duyệt không nhận HSTS.
+
+Kiểm tra sau khi cấu hình (trên máy có proxy):
+
+```bash
+curl -sI https://nckh.bvnghean.vn/ | grep -i strict-transport   # phải có HSTS
+docker compose -f docker-compose.prod.yml logs frontend | tail  # cột đầu = IP thật người dùng, không phải IP proxy
+```
 
 #### Bước 4: Build và chạy
 
@@ -334,7 +358,7 @@ curl http://127.0.0.1:3001/health     # backend
 curl -I http://localhost:8084         # frontend
 ```
 
-Swagger UI ở prod chỉ truy cập được từ chính máy server: `http://127.0.0.1:3001/api-docs`.
+Swagger UI **tắt ở production**. Cần tạm thời thì đặt `SWAGGER_ENABLED=true` (kèm `SWAGGER_USER` / `SWAGGER_PASS`) trong `backend/.env.production`, rồi truy cập từ chính máy server: `http://127.0.0.1:3001/api-docs`. Xong việc nhớ tắt lại.
 
 #### Cập nhật phiên bản
 
@@ -351,8 +375,11 @@ Người dùng không bị đăng xuất khi redeploy vì JWT secret được gi
 | Volume | Nội dung |
 |---|---|
 | `server_uploads` | Toàn bộ file người dùng upload (hồ sơ đề tài, tài liệu, video khoá học…) |
-| `server_secrets` | JWT secret tự sinh (`/app/secrets/jwt.env`) |
+| `server_secrets` | JWT secret tự sinh (`/app/secrets/jwt.env`) và **khoá mã hoá secret 2FA** (`/app/secrets/totp.key`). **Bắt buộc sao lưu cùng DB**: mất `totp.key` thì mọi người dùng đã bật 2FA phải tắt và thiết lập lại (không giải mã được secret) |
 | `server_logs` | Log hoạt động `audit-*.log` (`/app/logs`), nguồn dữ liệu của trang Nhật ký hoạt động |
+| `redis_secret` | Mật khẩu Redis tự sinh. Xoá volume này thì lần chạy sau sinh mật khẩu mới, không mất dữ liệu (Redis chỉ là cache) |
+
+Backend chạy bằng user `node`. Lần đầu nâng cấp từ bản chạy root, entrypoint tự chuyển quyền các volume `server_uploads` / `server_logs` / `server_secrets` cho `node` (có thể mất vài phút nếu nhiều file upload).
 
 > ⚠️ **Không chạy `docker compose -f docker-compose.prod.yml down -v`.** Cờ `-v` xoá các volume trên: mất toàn bộ file upload, nhật ký hoạt động, và mọi người dùng bị đăng xuất.
 
@@ -363,7 +390,7 @@ docker run --rm -v hospital_rms_server_uploads:/data -v "$PWD":/backup alpine \
   tar czf /backup/uploads-$(date +%F).tar.gz -C /data .
 ```
 
-Sao lưu log hoạt động cũng làm tương tự với volume `hospital_rms_server_logs`.
+Sao lưu log hoạt động cũng làm tương tự với volume `hospital_rms_server_logs`. **Volume `hospital_rms_server_secrets` (chứa khoá 2FA) phải sao lưu cùng lịch với DB** và cất ở nơi an toàn như mật khẩu — ai có cả bản sao DB lẫn khoá này sinh được mã 2FA của người dùng.
 
 #### Nginx
 
@@ -371,10 +398,13 @@ Sao lưu log hoạt động cũng làm tương tự với volume `hospital_rms_s
 
 - `client_max_body_size 300m`, khớp giới hạn `TRAINING_MEDIA_MAX_MB`.
 - `/api/v1/events` (SSE) tách riêng: tắt buffering và gzip, `proxy_read_timeout 1h`.
-- `/api/` và `/uploads/` proxy tới backend, kèm `X-Forwarded-For` / `X-Forwarded-Proto`.
-- Các đường dẫn còn lại trả `index.html` cho SPA.
+- `/api/` và `/uploads/` proxy tới backend. `X-Forwarded-For` bị **ghi đè** bằng IP thật (module `real_ip`, chỉ tin proxy trong `TRUSTED_PROXIES`, sinh lúc khởi động bởi `frontend/docker/40-trusted-proxies.sh`). `X-Forwarded-Proto` chỉ lấy từ proxy tin cậy.
+- Các đường dẫn còn lại trả `index.html` cho SPA, kèm header bảo mật: HSTS (chỉ khi người dùng vào bằng HTTPS), `X-Frame-Options`, `X-Content-Type-Options`, `Referrer-Policy`, `Permissions-Policy`, CSP.
+- `server_tokens off` (không lộ phiên bản nginx).
 
-Nginx trong container chỉ nghe HTTP. Để chạy HTTPS, đặt một reverse proxy (IIS ARR, Nginx trên host…) phía trước cổng `8084` để lo chứng chỉ TLS, rồi thêm origin `https://…` vào `CORS_ORIGIN`.
+**CSP đang ở chế độ chỉ báo cáo** (`Content-Security-Policy-Report-Only`): không chặn gì, trình duyệt gửi vi phạm về `/api/v1/csp-report` và backend ghi log dòng `[CSP] vi phạm …`. Theo dõi khoảng 1 tuần bằng `docker compose -f docker-compose.prod.yml logs backend | grep CSP`. Vi phạm hợp lệ (tài nguyên hệ thống cần) thì bổ sung vào CSP. Khi không còn vi phạm hợp lệ, đổi tên header thành `Content-Security-Policy` trong `frontend/nginx.conf` để chặn thật.
+
+Nginx trong container chỉ nghe HTTP. HTTPS do reverse proxy phía trước lo, xem [Bước 3b](#bước-3b-nối-với-reverse-proxy-https).
 
 ---
 
@@ -405,13 +435,20 @@ Log ghi tại `logs/jwt-rotate.log`.
 | Hiện tượng | Nguyên nhân / cách xử lý |
 |---|---|
 | Backend báo `Failed to connect to host.docker.internal:1433` | SQL Server chưa bật TCP/IP, chưa mở firewall port `1433`, hoặc instance có tên (`SQLEXPRESS`) đang dùng port động. Đặt port cố định `1433` trong SQL Server Configuration Manager rồi khởi động lại dịch vụ SQL Server. |
-| Backend thoát ngay, log báo thiếu biến | Thiếu `DB_USER`, `DB_PASSWORD`, `SWAGGER_USER` hoặc `SWAGGER_PASS` trong `backend/.env` / `.env.production`. |
+| Backend thoát ngay, log báo thiếu biến | Thiếu `DB_USER`, `DB_PASSWORD` (hoặc `SWAGGER_USER` / `SWAGGER_PASS` khi bật Swagger) trong `backend/.env` / `.env.production`. |
+| Log backend: `tới qua http, không phải https` | Reverse proxy không gửi `X-Forwarded-Proto: https`, hoặc IP proxy không nằm trong `TRUSTED_PROXIES`. Xem [Bước 3b](#bước-3b-nối-với-reverse-proxy-https). |
+| Mọi người dùng bị khoá đăng nhập theo IP cùng lúc | Nginx đang thấy mọi request đến từ IP proxy: proxy không gửi `X-Forwarded-For`, hoặc không nằm trong `TRUSTED_PROXIES`. |
+| Log backend: `không đọc được /run/redis-secret/pass` | Container `redis` chưa sinh kịp mật khẩu. Chạy lại `up -d`. App vẫn hoạt động, chỉ tạm không có cache. |
+| Backend báo `EACCES` khi ghi upload / log | Quyền volume chưa chuyển cho user `node`: xem log dòng `docker-entrypoint: chuyển quyền …`, hoặc chạy `docker compose -f docker-compose.prod.yml up -d --force-recreate backend`. |
 | Prod báo lỗi CORS trên trình duyệt | Origin trình duyệt đang dùng (scheme + domain + port) chưa có trong `CORS_ORIGIN` của `docker-compose.prod.yml`. |
 | Compose báo lỗi ở `env_file` | Docker Compose cũ hơn v2.24. Cập nhật Docker Desktop / plugin compose. |
 | Dev: sửa code không thấy cập nhật | Kiểm tra `docker compose logs frontend`. Polling có độ trễ khoảng 1 giây. Nếu vừa thêm package thì chạy lại với `--renew-anon-volumes`. |
 | Dev: lỗi `Cannot find module` sau khi `git pull` | `package.json` đã đổi nhưng `node_modules` trong volume còn cũ. Chạy `docker compose up -d --build --renew-anon-volumes`. |
 | `npm ci` lỗi `EIDLETIMEOUT` khi build | Mạng chập chờn. Chạy lại lệnh build, cache npm được giữ nên không phải tải lại từ đầu. |
 | Upload file lớn bị lỗi `413` ở prod | Vượt `client_max_body_size 300m` trong `frontend/nginx.conf` hoặc giới hạn `TRAINING_*_MAX_MB` của backend. |
+| Upload bị từ chối "nội dung không đúng định dạng" | File bị đổi đuôi (vd ảnh chụp lưu thành `.pdf`) hoặc hỏng. Mở file bằng phần mềm tương ứng rồi lưu lại đúng định dạng. |
+| Upload bị từ chối `429` "vượt hạn mức" | Tài khoản đã upload quá `UPLOAD_DAILY_QUOTA_MB` (mặc định 2048MB) trong ngày. Tăng hạn mức hoặc chờ sang ngày. |
+| Upload bị từ chối `503` "quét virus" | Đã bật ClamAV (`CLAMAV_HOST`) nhưng container `clamav` chưa sẵn sàng (lần đầu tải CSDL virus mất vài phút) hoặc đã dừng. Xem `docker compose -f docker-compose.prod.yml logs clamav`. |
 | Docker Desktop ngốn RAM | Mỗi service đã có `mem_limit`. Tắt profile `logs` nếu không dùng Loki. |
 
 ---
@@ -482,7 +519,7 @@ Hospital_RMS/
 
 ## API
 
-- **Swagger UI:** `http://localhost:3000/api-docs` (Basic Auth: `SWAGGER_USER` / `SWAGGER_PASS`)
+- **Swagger UI:** `http://localhost:3000/api-docs` (Basic Auth: `SWAGGER_USER` / `SWAGGER_PASS`). Tắt ở production trừ khi đặt `SWAGGER_ENABLED=true`.
 - **Base URL:** `/api/v1` · **Health check:** `GET /health`
 - **Response:** `{ "success": true, "message": "...", "data": {} }`
 - **Xác thực:** header `Authorization: Bearer <access_token>`, trừ `/auth/login`, `/auth/refresh` và `/public/*`.
@@ -495,7 +532,7 @@ Hospital_RMS/
 | Nghiên cứu | `/topics`, `/councils`, `/files`, `/workflows` |
 | Hội thảo & CME | `/seminars`, `/cme-records`, `/staff-licenses` |
 | Đào tạo | `/trainees`, `/lecturers`, `/courses`, `/training-programs`, `/training-plans`, `/exams`, `/surveys` |
-| Tổng hợp | `/dashboard`, `/my-tasks`, `/notifications`, `/events` (SSE, `?token=`) |
+| Tổng hợp | `/dashboard`, `/my-tasks`, `/notifications`, `/events` (SSE, vé dùng 1 lần `?ticket=` lấy từ `POST /events/ticket`) |
 | Hệ thống | `/activity-logs`, `/security-events`, `/system-settings`, `/persons/merge-candidates` |
 | Công khai | `/public`: captcha, khoá học mở, đăng ký, tra cứu trạng thái đề tài, đề tài tiêu biểu |
 | Danh mục | `/departments`, `/categories`, `/levels`, `/roles`, `/research-rounds`, `/round-types`… (CRUD chuẩn) |
@@ -504,9 +541,17 @@ Hospital_RMS/
 
 ## Xác thực & phân quyền
 
-- **JWT**: access token ngắn hạn + refresh token dài hạn. Frontend tự refresh khi gặp `401`. Người dùng có thể xem các phiên đăng nhập và đăng xuất khỏi mọi thiết bị.
-- **2FA** TOTP (tuỳ chọn cho từng người dùng).
-- **Chống dò mật khẩu**: rate-limit đăng nhập, tạm khoá tài khoản sau nhiều lần sai, ghi lại sự kiện bảo mật (API `/security-events`).
+- **JWT**: access token 15 phút (`JWT_EXPIRES_IN`) + refresh token 7 ngày (30 ngày nếu "Ghi nhớ đăng nhập"). Refresh token nằm trong **cookie HttpOnly** `rms_rt` (`SameSite=Strict`, `Path=/api/v1/auth`, `Secure` ở production — `utils/authCookie.js`), JavaScript không đọc được; access token do frontend giữ. Frontend tự làm mới khi gặp `401`. Người dùng có thể xem các phiên đăng nhập và đăng xuất khỏi mọi thiết bị.
+  - **Xoay refresh token có phát hiện dùng lại**: mỗi lần làm mới, token cũ bị đánh dấu `revoked_at` và token mới cùng `family_id`. Token đã thu hồi bị dùng lại sau 30 giây (không phải 2 tab làm mới cùng lúc) ⇒ coi như bị đánh cắp: xoá cả họ token, tăng `token_version`, ghi sự kiện `refresh_token_reuse`.
+  - **Khoá riêng theo mục đích** (`utils/keys.js`): access token, pre-auth 2FA, vé SSE, captcha, QR điểm danh, link `/uploads` ký bằng các khoá dẫn xuất (HKDF) khác nhau từ `JWT_SECRET`, kèm `iss`/`aud` — token loại này không dùng thay loại kia được.
+- **2FA** TOTP (tuỳ chọn cho từng người dùng):
+  - Secret TOTP lưu **mã hoá AES-256-GCM** (`utils/secretBox.js`), khoá nằm ngoài DB: biến `TOTP_ENC_KEY` hoặc file `secrets/totp.key` tự sinh. Khoá này **không** đổi khi xoay JWT secret.
+  - Chống dùng lại mã: lưu bước thời gian của mã dùng gần nhất (`users.totp_last_step`), mã đã dùng bị từ chối.
+  - 10 **mã khôi phục** dùng 1 lần (bảng `user_backup_codes`, lưu HMAC) khi mất điện thoại; hiển thị 1 lần lúc bật 2FA, tạo lại ở Hồ sơ (cần mật khẩu).
+  - Pre-auth token (giữa bước mật khẩu và bước mã) chỉ đổi được 1 phiên đăng nhập.
+  - **Bắt buộc với tài khoản quản trị** (`permissions/twoFactorPolicy.js`): superuser hoặc vai trò có quyền `critical`. Lần đầu thuộc diện có 14 ngày (`TWOFA_GRACE_DAYS`) — banner nhắc trên giao diện; quá hạn thì API khác trả `403 TWO_FACTOR_REQUIRED` và giao diện chuyển tới `/bat-2fa`. Tắt bằng `REQUIRE_2FA_FOR_ADMINS=false`.
+- **Cổng công khai**: tra cứu kết quả học tập cần **CCCD + ngày sinh**, giới hạn theo IP và theo từng số CCCD (5 lần/giờ). Đăng ký khoá học với CCCD đã có hồ sơ phải khớp ngày sinh. Chống bot: captcha phép tính (mặc định) hoặc **Cloudflare Turnstile** khi đặt `TURNSTILE_SITE_KEY` + `TURNSTILE_SECRET_KEY`; mỗi mã dùng 1 lần.
+- **Chống dò mật khẩu**: rate-limit đăng nhập (đếm trên Redis để dùng chung giữa các instance và không mất khi khởi động lại; Redis lỗi thì tự đếm trong bộ nhớ — `utils/rateLimit.js`), tạm khoá tài khoản sau nhiều lần sai, ghi lại sự kiện bảo mật (API `/security-events`).
 - **Bảo trì tài khoản**: job hằng đêm vô hiệu hoá tài khoản hết hạn và cảnh báo mật khẩu cũ.
 - **Phân quyền theo permission** gắn với vai trò, dạng `resource:action` (vd `topics:create`, `persons:merge`):
   - **Danh mục quyền nằm trong code**: `backend/src/permissions/catalog.js` là nguồn duy nhất (module → resource → quyền, kèm tên/mô tả tiếng Việt). Server đồng bộ danh mục vào bảng `permissions` mỗi lần khởi động: thêm quyền mới, cập nhật tên/nhóm, không xoá quyền nào. Quyền tách ra từ quyền cũ khai báo `seedFrom` để vai trò đang có quyền cũ được cấp sẵn quyền mới.
@@ -578,7 +623,7 @@ Hospital_RMS/
 ## Quy ước phát triển
 
 ### Realtime: một kết nối SSE cho mỗi tab
-Luôn dùng `useRealtimeUpdate(entities, callback)` ([`frontend/src/layouts/hooks/useRealtime.ts`](frontend/src/layouts/hooks/useRealtime.ts)). Hook này đăng ký vào **một** `EventSource` dùng chung tới `GET /api/v1/events?token=<jwt>`. Không tự tạo `EventSource`: mỗi panel mở một kết nối riêng sẽ vượt giới hạn 6 kết nối HTTP/1.1 mỗi origin của trình duyệt và làm treo các request khác.
+Luôn dùng `useRealtimeUpdate(entities, callback)` ([`frontend/src/layouts/hooks/useRealtime.ts`](frontend/src/layouts/hooks/useRealtime.ts)). Hook này đăng ký vào **một** `EventSource` dùng chung tới `GET /api/v1/events?ticket=<vé>` (vé sống 60 giây, dùng 1 lần, xin qua `POST /api/v1/events/ticket` — không đưa access token lên URL vì URL bị ghi vào access log). Không tự tạo `EventSource`: mỗi panel mở một kết nối riêng sẽ vượt giới hạn 6 kết nối HTTP/1.1 mỗi origin của trình duyệt và làm treo các request khác.
 
 ### UI kit dùng chung (`frontend/src/shared/components`)
 Import qua barrel: `import { Badge, EmptyState, Pagination } from '@/shared/components'`.
@@ -595,6 +640,17 @@ Import qua barrel: `import { Badge, EmptyState, Pagination } from '@/shared/comp
 - Không tự viết lại Badge, phân trang hay empty-state trong feature. Nếu cần biến thể, truyền `className`/`style` vào component dùng chung.
 - `docx-preview` và `RichTextEditor` nặng nên import trực tiếp theo đường dẫn, không import qua barrel.
 - `animation: spin` không dùng được trong CSS Module (keyframe bị scope hoá). Dùng `Loading` / `InlineLoading` có sẵn.
+
+### Bảo mật upload
+Mọi route upload dùng middleware trong `backend/src/middlewares/` (`upload`, `uploadImage`, `uploadTraining`, `uploadExcel`), đều bọc bởi `secureUpload`. **Route upload mới phải dùng các middleware này, không tự khai `multer`.** Mỗi file qua các lớp:
+
+1. **Đuôi file** trong danh sách cho phép (`fileTypeAllowlist.js`; ảnh nhận xét chỉ PNG/JPEG/GIF/WEBP; import chỉ `.xlsx`).
+2. **Dung lượng**: hồ sơ đề tài `TOPIC_UPLOAD_MAX_MB` (50), hồ sơ đào tạo `TRAINING_UPLOAD_MAX_MB` (20), video bài giảng `TRAINING_MEDIA_MAX_MB` (300), Excel 10MB.
+3. **Nội dung khớp đuôi** (magic bytes, `utils/fileSignature.js`) — file đổi đuôi (exe → pdf, HTML → png) bị từ chối và xoá ngay.
+4. **Quét virus** bằng ClamAV nếu bật `CLAMAV_HOST` (`utils/clamav.js`, service `clamav`, profile `av`). File nhiễm bị xoá và ghi sự kiện bảo mật `upload_malware_blocked`. ClamAV lỗi thì từ chối upload, trừ khi đặt `CLAMAV_FAIL_OPEN=true`. File lớn hơn `CLAMAV_MAX_MB` (25) không quét.
+5. **Hạn mức/ngày** mỗi tài khoản `UPLOAD_DAILY_QUOTA_MB` (2048; `0` = không giới hạn).
+
+Khi tải về (`/uploads`): chỉ ảnh, PDF, video, audio được mở trên trình duyệt; còn lại luôn tải xuống (`Content-Disposition: attachment`). Mọi file trừ PDF kèm `Content-Security-Policy: sandbox`, nên không file nào chạy được như trang web.
 
 ### Dữ liệu nhạy cảm
 Các script trong `scripts/` dùng để import dữ liệu từ hệ thống cũ. Báo cáo chúng sinh ra (`*_CHUA_MAT_KHAU.csv`, `staff_license_import_unmatched.csv`) chứa thông tin cá nhân thật hoặc mật khẩu tạm và đã được `.gitignore`. **Không bao giờ commit các file này.**

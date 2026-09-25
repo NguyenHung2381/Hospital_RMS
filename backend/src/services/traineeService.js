@@ -11,6 +11,7 @@ const {
 	genUserIdInTx,
 } = require('./topicMemberService');
 const { ROLE, requireRoleId } = require('./roleCodes');
+const { generateTempPassword } = require('../utils/passwordPolicy');
 
 const traineeSelect = `
   SELECT t.*, tt.name AS trainee_type_name, d.name AS department_name
@@ -263,13 +264,14 @@ const removeDocument = async (docId, actorId) => {
 // Khác topic_members ở chỗ học viên không thuộc 1 khoa/phòng thống nhất (mỗi
 // học viên tự có department_id riêng, có thể null) nên mã NV dùng mã khoa của
 // CHÍNH học viên đó, hoặc tiền tố chung 'HV' nếu học viên không gắn khoa nào.
-const DEFAULT_TRAINEE_PASSWORD = '123456';
+// Mỗi học viên 1 mật khẩu tạm ngẫu nhiên (thay cho '123456' dùng chung), bắt
+// đổi ở lần đăng nhập đầu (users.must_change_password).
 
 const grantAccounts = async (traineeIds, actorId) => {
 	const pool = await getPool();
 
 	const traineesResult = await pool.request().query(`
-    SELECT t.id, t.full_name, t.email, t.phone, t.national_id, t.department_id,
+    SELECT t.id, t.full_name, t.email, t.phone, t.department_id,
            d.code AS department_code
     FROM trainees t
     LEFT JOIN departments d ON d.id = t.department_id
@@ -283,17 +285,22 @@ const grantAccounts = async (traineeIds, actorId) => {
 		? traineesResult.recordset.filter((row) => filterIds.has(row.id))
 		: traineesResult.recordset;
 
-	const defaultHash = await bcrypt.hash(DEFAULT_TRAINEE_PASSWORD, 12);
 	const traineeRoleId = await requireRoleId(ROLE.TRAINEE);
 	const credentials = [];
 	const skipped = [];
 
 	for (const trainee of traineesToProcess) {
-		const usernameSeed = trainee.national_id
-			? trainee.national_id.slice(-4)
-			: trainee.id.slice(-4);
+		// Hậu tố lấy từ mã học viên, KHÔNG lấy từ CCCD: username hiển thị khắp nơi
+		// (danh sách, nhật ký, hội đồng...) nên 4 số cuối CCCD trong đó là lộ dữ
+		// liệu cá nhân, và giúp đoán username từ CCCD. Trùng thì ensureUniqueUsername
+		// tự thêm hậu tố.
+		const usernameSeed = String(trainee.id).slice(-4);
 		const baseUsername = buildMemberUsername(trainee.full_name, usernameSeed);
 		const deptCode = trainee.department_code || 'HV';
+
+		// Hash TRƯỚC khi mở transaction — bcrypt ~0,2s, không giữ applock sinh mã lâu hơn cần
+		const tempPassword = generateTempPassword();
+		const passwordHash = await bcrypt.hash(tempPassword, 12);
 
 		const tx = new sql.Transaction(pool);
 		let began = false;
@@ -319,7 +326,7 @@ const grantAccounts = async (traineeIds, actorId) => {
 			await new sql.Request(tx)
 				.input('uid', sql.VarChar(20), userId)
 				.input('username', sql.VarChar(100), username)
-				.input('password', sql.VarChar(255), defaultHash)
+				.input('password', sql.VarChar(255), passwordHash)
 				.input('full_name', sql.NVarChar(255), trainee.full_name)
 				.input('email', sql.VarChar(255), storedEmail)
 				.input('phone_number', sql.VarChar(10), trainee.phone || null)
@@ -328,11 +335,11 @@ const grantAccounts = async (traineeIds, actorId) => {
 				.input('actor_id', sql.VarChar(20), actorId).query(`
           INSERT INTO users (
             id, username, password, full_name, email,
-            phone_number, department_id, role_id, created_by
+            phone_number, department_id, role_id, created_by, must_change_password
           )
           VALUES (
             @uid, @username, @password, @full_name, @email,
-            @phone_number, @department_id, @role_id, @actor_id
+            @phone_number, @department_id, @role_id, @actor_id, 1
           )
         `);
 
@@ -353,7 +360,7 @@ const grantAccounts = async (traineeIds, actorId) => {
 				user_id: userId,
 				username,
 				full_name: trainee.full_name,
-				password_plain: DEFAULT_TRAINEE_PASSWORD,
+				password_plain: tempPassword,
 			});
 		} catch (err) {
 			if (began) {

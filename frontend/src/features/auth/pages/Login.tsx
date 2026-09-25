@@ -1,7 +1,11 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { canAccessAdminPanel } from '../../../app/router/authHelpers';
+import {
+	canAccessAdminPanel,
+	FORCE_PASSWORD_PATH,
+	TWO_FACTOR_SETUP_PATH,
+} from '../../../app/router/authHelpers';
 import AuthLayout from '../../../layouts/AuthLayout';
 import { saveAuth } from '../../../shared/utils/storage';
 import { getMyProgress } from '../../council/api/councilApi';
@@ -155,6 +159,16 @@ export default function Login() {
 	// minh mã OTP thành công (bước 2 của tài khoản đã bật 2FA).
 	const completeLogin = async (data: LoginResponse) => {
 		saveAuth(data, form.remember);
+		// Mật khẩu tạm do quản trị / khoa cấp: đổi trước, mọi API khác đang bị chặn
+		if (data.user.must_change_password) {
+			navigate(FORCE_PASSWORD_PATH, { replace: true });
+			return;
+		}
+		// Tài khoản quản trị quá hạn bật 2FA — các chức năng khác đang bị chặn
+		if (data.user.twofa_state === 'required') {
+			navigate(TWO_FACTOR_SETUP_PATH, { replace: true });
+			return;
+		}
 		const from = searchParams.get('from');
 		const dest = from || (canAccessAdminPanel(data.user) ? '/admin' : '/user');
 
@@ -182,7 +196,7 @@ export default function Login() {
 		setApiError(null);
 
 		try {
-			const data = await loginApi(form.username, form.password);
+			const data = await loginApi(form.username, form.password, form.remember);
 			if ('requires_2fa' in data) {
 				setPreAuthToken(data.pre_auth_token);
 				return;
@@ -262,13 +276,13 @@ export default function Login() {
 								<input
 									id='otp'
 									type='text'
-									inputMode='numeric'
-									maxLength={6}
+									// Mã 6 số từ ứng dụng xác thực, hoặc mã khôi phục dạng xxxx-xxxx
+									maxLength={9}
 									className={styles.inputField}
-									placeholder='000000'
+									placeholder='Mã 6 số hoặc mã khôi phục'
 									value={otpCode}
 									onChange={(e) => {
-										setOtpCode(e.target.value.replace(/\D/g, ''));
+										setOtpCode(e.target.value.replace(/[^0-9a-zA-Z-]/g, ''));
 										if (otpError) setOtpError(null);
 									}}
 									autoComplete='one-time-code'
@@ -316,16 +330,9 @@ export default function Login() {
 		<AuthLayout>
 			{/* Header */}
 			<div className={styles.loginHeader}>
-				<div className={styles.loginTag}>
-					<span />
-					Hệ thống nội bộ
-				</div>
 				<h2 className={styles.loginTitle}>
 					Đăng nhập <span>nghiên cứu</span>
 				</h2>
-				<p className={styles.loginSubtitle}>
-					Sử dụng tài khoản được cấp bởi Phòng CNTT để truy cập hệ thống
-				</p>
 			</div>
 
 			{/* Form card */}

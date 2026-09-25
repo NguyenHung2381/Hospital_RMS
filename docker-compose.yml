@@ -12,9 +12,9 @@ services:
       target: dev
     environment:
       NODE_ENV: development
-      # Tin proxy nội bộ (Vite/nginx trong mạng Docker) để req.ip = IP máy khách
-      # qua X-Forwarded-For, thay vì IP container frontend (172.x).
-      TRUST_PROXY: "loopback, uniquelocal"
+      # Tin đúng 1 hop proxy liền trước (Vite, xfwd: true) để req.ip = IP máy khách
+      # (địa chỉ cuối trong X-Forwarded-For), thay vì IP container frontend (172.x).
+      TRUST_PROXY: "1"
       DB_SERVER: host.docker.internal
       REDIS_HOST: redis
       REDIS_PORT: "6379"

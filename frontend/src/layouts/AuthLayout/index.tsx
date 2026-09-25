@@ -13,10 +13,11 @@ const stats = [
 ];
 
 const features = [
-	'Quản lý đề tài nghiên cứu khoa học',
-	'Báo cáo & thống kê thông minh',
-	'Phân quyền linh hoạt theo vai trò',
-	'Chuẩn hóa quy trình nghiên cứu y tế',
+	'Quản lý đề tài NCKH & hội đồng xét duyệt, nghiệm thu',
+	'Đào tạo liên tục: chương trình, kế hoạch, khóa học',
+	'Quản lý học viên, giảng viên, lịch học & điểm danh',
+	'Tổ chức thi, hội nghị – hội thảo và khảo sát',
+	'Báo cáo, thống kê & phân quyền theo vai trò',
 ];
 
 export default function AuthLayout({ children }: AuthLayoutProps) {
@@ -52,8 +53,8 @@ export default function AuthLayout({ children }: AuthLayoutProps) {
 							Nghệ An
 						</h1>
 						<p className={styles.panelSubtitle}>
-							Hệ thống Quản lý Nghiên cứu Khoa học
-							<br />— Nơi tri thức y học được kiến tạo
+							Hệ thống Quản lý Nghiên cứu Khoa học & Đào tạo
+							<br />— Nơi tri thức y học được kiến tạo và lan tỏa
 						</p>
 					</div>
 

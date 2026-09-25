@@ -1,7 +1,9 @@
 const router = require('express').Router();
-const jwt = require('jsonwebtoken');
+const crypto = require('crypto');
 const { addClient, removeClient } = require('../services/eventService');
-const userStatusCache = require('../middlewares/userStatusCache');
+const { authenticate, verifySession } = require('../middlewares/auth');
+const { signToken, verifyToken } = require('../utils/keys');
+const { consumeOnce } = require('../utils/oneTimeToken');
 
 // 15 giây — dưới ngưỡng idle-timeout thấp nhất thường gặp của proxy đứng trước
 // (nginx proxy_read_timeout mặc định 60s, IIS ARR 120s, Cloudflare 100s...).
@@ -18,30 +20,46 @@ const RETRY_MS = 10_000;
 // để xả bộ đệm ngay khi mở kết nối.
 const FLUSH_PADDING = `:${' '.repeat(2048)}\n\n`;
 
-router.get('/', async (req, res, next) => {
-	const token = req.query.token;
-	if (!token) {
-		return res.status(401).json({ success: false, message: 'Unauthorized' });
-	}
+// Kết nối SSE sống hàng giờ — kiểm tra lại phiên định kỳ để tài khoản bị vô
+// hiệu hoá / "đăng xuất mọi thiết bị" / đổi mật khẩu bị ngắt luồng, không tiếp
+// tục nhận sự kiện tới khi tự đóng tab. Cùng nhịp TTL của userStatusCache (60s).
+const RECHECK_EVERY_BEATS = 4;
 
-	let decoded;
+// ─── Vé mở kết nối ───────────────────────────────────────────────────────────
+// EventSource không gắn được header Authorization nên thông tin xác thực phải
+// nằm trên URL — và URL bị ghi vào access log của nginx/proxy, lịch sử trình
+// duyệt. Trước đây đó là access token thật; giờ là VÉ: ký bằng khoá riêng
+// (không dùng làm access token được), sống 60 giây, chỉ dùng được 1 lần.
+const TICKET_TTL_SEC = 60;
+
+router.post('/ticket', authenticate, (req, res) => {
+	const ticket = signToken(
+		'sse-ticket',
+		{ id: req.user.id, tv: req.user.tv ?? 0, jti: crypto.randomUUID() },
+		TICKET_TTL_SEC,
+	);
+	res.json({ success: true, data: { ticket } });
+});
+
+router.get('/', async (req, res, next) => {
+	let claims;
 	try {
-		decoded = jwt.verify(token, process.env.JWT_SECRET);
+		claims = verifyToken('sse-ticket', String(req.query.ticket || ''));
 	} catch {
-		return res.status(401).json({ success: false, message: 'Invalid token' });
+		return res.status(401).json({ success: false, message: 'Vé kết nối không hợp lệ hoặc đã hết hạn' });
 	}
-	// Chỉ nhận access token (xem middlewares/auth.js): token có "purpose" (pre-auth
-	// 2FA, QR điểm danh, captcha...) cũng ký bằng JWT_SECRET nhưng không phải phiên.
-	if (decoded.purpose || !decoded.id) {
-		return res.status(401).json({ success: false, message: 'Invalid token' });
-	}
+	let checked;
 	try {
-		const status = await userStatusCache.load(decoded.id);
-		if (!status.isActive) {
-			return res.status(401).json({ success: false, message: 'Unauthorized' });
+		if (!(await consumeOnce('sse-ticket', claims.jti, TICKET_TTL_SEC))) {
+			return res.status(401).json({ success: false, message: 'Vé kết nối đã được sử dụng' });
 		}
+		// Kiểm tra y hệt middlewares/auth.js (trạng thái, token_version, hạn tài khoản)
+		checked = await verifySession(claims.id, claims.tv);
 	} catch (err) {
 		return next(err);
+	}
+	if (checked.error) {
+		return res.status(401).json({ success: false, message: checked.error });
 	}
 
 	// Kết nối sống lâu: bỏ timeout socket, tắt Nagle để ping/sự kiện đi ngay
@@ -55,7 +73,8 @@ router.get('/', async (req, res, next) => {
 		// buffer dữ liệu, sự kiện không tới client cho tới khi kết nối đóng.
 		'Cache-Control': 'no-cache, no-transform',
 		Connection: 'keep-alive',
-		'Access-Control-Allow-Origin': '*',
+		// Không đặt Access-Control-Allow-Origin riêng — middleware cors ở app.js
+		// đã áp CORS_ORIGIN cho mọi route, kể cả luồng này.
 		'X-Accel-Buffering': 'no', // tắt nginx buffering để SSE qua được proxy
 	});
 
@@ -66,12 +85,25 @@ router.get('/', async (req, res, next) => {
 	addClient(res);
 
 	// Gửi ping định kỳ để giữ kết nối qua proxy/firewall
-	const heartbeat = setInterval(() => {
+	let beats = 0;
+	const close = () => {
+		clearInterval(heartbeat);
+		removeClient(res);
+		res.end();
+	};
+	const heartbeat = setInterval(async () => {
 		try {
 			res.write(':ping\n\n');
 		} catch {
 			clearInterval(heartbeat);
 			removeClient(res);
+			return;
+		}
+		if (++beats % RECHECK_EVERY_BEATS !== 0) return;
+		try {
+			if ((await verifySession(claims.id, claims.tv)).error) close();
+		} catch {
+			// Lỗi DB tạm thời — giữ kết nối, lần kiểm tra sau thử lại
 		}
 	}, HEARTBEAT_MS);
 

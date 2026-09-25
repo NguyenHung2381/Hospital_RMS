@@ -150,7 +150,10 @@ export interface GrantedAccount {
 	user_id: string;
 	username: string;
 	full_name: string;
-	password_plain: string;
+	/** null = tài khoản đã có từ trước, giữ nguyên mật khẩu */
+	password_plain: string | null;
+	/** Ghi chú khi dùng tài khoản có sẵn (vd giữ nguyên vai trò, tài khoản đang bị khoá) */
+	note?: string | null;
 }
 
 export interface GrantAccountsResult {

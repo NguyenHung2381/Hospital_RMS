@@ -2,9 +2,20 @@
 import type { RouteObject } from 'react-router-dom';
 import { LazyRoute } from './LazyRoute';
 import { lazyRoute as lazy } from './routePrefetch';
-import { RedirectIfLoggedIn, RequireAuth, RootRedirect } from './guards';
+import { FORCE_PASSWORD_PATH, TWO_FACTOR_SETUP_PATH } from './authHelpers';
+import {
+	RedirectIfLoggedIn,
+	RequireAuth,
+	RequirePasswordChange,
+	RequireTwoFactorSetup,
+	RootRedirect,
+} from './guards';
 
 const Login = lazy(() => import('../../features/auth/pages/Login'));
+const ForceChangePassword = lazy(
+	() => import('../../features/auth/pages/ForceChangePassword'),
+);
+const SetupTwoFactor = lazy(() => import('../../features/auth/pages/SetupTwoFactor'));
 const TopicRegister = lazy(
 	() => import('../../features/topics/pages/TopicRegister'),
 );
@@ -38,6 +49,26 @@ export const publicRoutes: RouteObject[] = [
 					<Login />
 				</LazyRoute>
 			</RedirectIfLoggedIn>
+		),
+	},
+	{
+		path: FORCE_PASSWORD_PATH,
+		element: (
+			<RequirePasswordChange>
+				<LazyRoute title='Đổi mật khẩu'>
+					<ForceChangePassword />
+				</LazyRoute>
+			</RequirePasswordChange>
+		),
+	},
+	{
+		path: TWO_FACTOR_SETUP_PATH,
+		element: (
+			<RequireTwoFactorSetup>
+				<LazyRoute title='Bật xác thực 2 lớp'>
+					<SetupTwoFactor />
+				</LazyRoute>
+			</RequireTwoFactorSetup>
 		),
 	},
 	{

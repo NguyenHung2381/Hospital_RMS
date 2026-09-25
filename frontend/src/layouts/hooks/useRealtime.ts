@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useRef } from 'react';
 import { BASE_URL, invalidateApiCache } from '../../shared/api/axios';
+import { refreshQueued } from '../../shared/api/interceptors';
 import { getToken } from '../../shared/utils/storage';
 
 /**
@@ -59,7 +60,7 @@ function scheduleReconnect() {
 	reconnectTimer = setTimeout(() => {
 		reconnectTimer = null;
 		closeConnection();
-		ensureConnection();
+		void ensureConnection();
 	}, reconnectDelay);
 	reconnectDelay = Math.min(reconnectDelay * 2, RECONNECT_MAX_MS);
 }
@@ -73,23 +74,57 @@ function closeConnection() {
 	sourceToken = null;
 }
 
-/** Mở kết nối SSE chia sẻ nếu chưa có, hoặc mở lại khi token đã đổi. */
-function ensureConnection() {
+// Xin vé mở kết nối (POST /events/ticket, sống 60s, dùng 1 lần). EventSource
+// không gắn được header Authorization nên thông tin xác thực phải nằm trên URL
+// — URL bị ghi vào access log của proxy, nên đưa vé dùng 1 lần thay vì access
+// token thật. Access token hết hạn (401) thì làm mới rồi thử lại 1 lần.
+async function fetchTicket(): Promise<string | null> {
+	for (let attempt = 0; attempt < 2; attempt++) {
+		const token = attempt === 0 ? getToken() : await refreshQueued();
+		if (!token) return null;
+		const res = await fetch(`${BASE_URL}/api/v1/events/ticket`, {
+			method: 'POST',
+			headers: { Authorization: `Bearer ${token}` },
+		});
+		if (res.status === 401) continue;
+		if (!res.ok) return null;
+		const json = await res.json().catch(() => null);
+		return (json?.data?.ticket as string) ?? null;
+	}
+	return null;
+}
+
+let connecting = false;
+
+/** Mở kết nối SSE chia sẻ nếu chưa có, hoặc mở lại khi phiên đã đổi. */
+async function ensureConnection() {
 	const token = getToken();
 	if (!token) {
 		closeConnection();
 		return;
 	}
-	if (source && sourceToken === token) return;
+	if ((source && sourceToken === token) || connecting) return;
 
 	closeConnection();
+	connecting = true;
+	let ticket: string | null = null;
+	try {
+		ticket = await fetchTicket();
+	} catch {
+		ticket = null;
+	} finally {
+		connecting = false;
+	}
+	// Trong lúc chờ vé: không còn ai đăng ký, hoặc tab khác đã mở kết nối
+	if (subscribers.size === 0 || source) return;
+	if (!ticket) {
+		scheduleReconnect();
+		return;
+	}
 
-	// ponytail: token nằm trong query string vì EventSource không cho set header
-	// Authorization — có thể lộ token qua access log của server/proxy. Nếu cần
-	// siết chặt hơn, nâng cấp sang cơ chế ticket ngắn hạn (endpoint riêng cấp
-	// 1 ticket dùng 1 lần cho /events) thay vì access token thật.
-	source = new EventSource(`${BASE_URL}/api/v1/events?token=${token}`);
-	sourceToken = token;
+	source = new EventSource(`${BASE_URL}/api/v1/events?ticket=${encodeURIComponent(ticket)}`);
+	// Nhận diện phiên theo access token hiện tại (có thể vừa được làm mới)
+	sourceToken = getToken();
 	source.addEventListener('update', handleUpdate as EventListener);
 	source.onopen = () => {
 		reconnectDelay = RECONNECT_MIN_MS;
@@ -118,7 +153,7 @@ export function useRealtimeUpdate(
 			notify: () => callbackRef.current(),
 		};
 		subscribers.add(sub);
-		ensureConnection();
+		void ensureConnection();
 
 		return () => {
 			subscribers.delete(sub);

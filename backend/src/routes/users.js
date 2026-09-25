@@ -3,6 +3,7 @@ const { body } = require('express-validator');
 const ctrl = require('../controllers/userController');
 const { authenticate, authorizePermission } = require('../middlewares/auth');
 const { validate } = require('../middlewares/errorHandler');
+const { passwordRule } = require('../utils/passwordPolicy');
 
 router.use(authenticate);
 
@@ -96,8 +97,8 @@ router.get('/:id', ctrl.getById);
  *                 example: "nguyen.van.a"
  *               password:
  *                 type: string
- *                 minLength: 6
- *                 example: "pass123"
+ *                 minLength: 10
+ *                 example: "Tamthoi2026x"
  *               full_name:
  *                 type: string
  *                 example: "Nguyễn Văn A"
@@ -112,7 +113,7 @@ router.post(
 	authorizePermission(['users', 'create']),
 	[
 		body('username').notEmpty(),
-		body('password').isLength({ min: 6 }),
+		body('password').custom(passwordRule('username')),
 		body('full_name').notEmpty(),
 	],
 	validate,
@@ -196,12 +197,12 @@ router.delete('/:id', authorizePermission(['users', 'delete']), ctrl.removeOne);
  *         application/json:
  *           schema:
  *             type: object
- *             required: [new_password]
+ *             description: Bỏ trống new_password để server tự sinh mật khẩu tạm (trả về trong data.temporary_password)
  *             properties:
  *               new_password:
  *                 type: string
- *                 minLength: 6
- *                 example: "newpass123"
+ *                 minLength: 10
+ *                 example: "Newpass2026x"
  *     responses:
  *       200:
  *         description: Đặt lại mật khẩu thành công
@@ -211,7 +212,9 @@ router.delete('/:id', authorizePermission(['users', 'delete']), ctrl.removeOne);
 router.post(
 	'/:id/reset-password',
 	authorizePermission(['users', 'update']),
-	[body('new_password').isLength({ min: 5 })],
+	// Bỏ trống new_password ⇒ server tự sinh mật khẩu tạm ngẫu nhiên và trả về 1
+	// lần. Dù đặt tay hay tự sinh, người dùng đều phải đổi ở lần đăng nhập tới.
+	[body('new_password').optional({ values: 'falsy' }).custom(passwordRule())],
 	validate,
 	ctrl.resetPassword,
 );

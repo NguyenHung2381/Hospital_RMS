@@ -1,9 +1,10 @@
-const jwt = require('jsonwebtoken');
+const { verifyToken } = require('../utils/keys');
 const { unauthorized } = require('../utils/response');
 const permCache = require('./permissionCache');
 const userStatusCache = require('./userStatusCache');
 const { isKnownKey } = require('../permissions/catalog');
 const { scopeRank } = require('../permissions/scopes');
+const { twoFactorState } = require('../permissions/twoFactorPolicy');
 
 // Xác thực 2 lớp cho mọi API cần token:
 //   Lớp 1 — JWT: chữ ký hợp lệ + chưa hết hạn (stateless, không biết được
@@ -20,46 +21,85 @@ const { scopeRank } = require('../permissions/scopes');
 // Sau đó mới nạp tập quyền của vai trò vào req.user.permissions (+ phạm vi
 // dữ liệu vào req.user.permissionScopes) qua permCache (cache 5 phút/role) nên
 // tổng chi phí không đáng kể.
-const authenticate = async (req, res, next) => {
-	const authHeader = req.headers['authorization'];
-	const token = authHeader && authHeader.split(' ')[1]; // Bearer <token>
-
-	if (!token) return unauthorized(res, 'Token không được cung cấp');
+// Xác minh access token (lớp 1 + lớp 2 ở trên), dùng chung cho authenticate và
+// các kênh không đi qua header Authorization (SSE /events). Trả về
+// { decoded, status } nếu phiên còn hiệu lực, ngược lại { error } (thông báo 401).
+// Lỗi DB được ném ra cho nơi gọi xử lý.
+const verifyAccessToken = async (token) => {
+	if (!token) return { error: 'Token không được cung cấp' };
 
 	let decoded;
 	try {
-		decoded = jwt.verify(token, process.env.JWT_SECRET);
+		// Khoá riêng của access token (utils/keys.js): token loại khác (pre-auth
+		// 2FA, captcha, QR điểm danh...) ký bằng khoá khác nên không bao giờ lọt qua.
+		decoded = verifyToken('access', token);
 	} catch (err) {
-		if (err.name === 'TokenExpiredError')
-			return unauthorized(res, 'Token đã hết hạn');
-		return unauthorized(res, 'Token không hợp lệ');
+		if (err.name === 'TokenExpiredError') return { error: 'Token đã hết hạn' };
+		return { error: 'Token không hợp lệ' };
 	}
+	if (!decoded.id) return { error: 'Token không hợp lệ' };
 
-	// Token có "purpose" (pre-auth 2FA, QR điểm danh...) cũng ký bằng
-	// JWT_SECRET nhưng KHÔNG phải access token — nếu nhận, pre-auth token (chỉ
-	// cần mật khẩu) gọi được /auth/2fa/setup để ghi đè secret và tắt 2FA.
-	if (decoded.purpose) return unauthorized(res, 'Token không hợp lệ');
+	const session = await verifySession(decoded.id, decoded.tv);
+	return session.error ? session : { decoded, status: session.status };
+};
 
-	let status;
-	try {
-		status = await userStatusCache.load(decoded.id);
-	} catch (err) {
-		return next(err);
-	}
+// Lớp 2 — trạng thái tài khoản hiện tại trong DB cho user `id` với phiên bản
+// phiên `tv` ghi trong token. Dùng chung cho access token và vé SSE.
+const verifySession = async (id, tv) => {
+	const status = await userStatusCache.load(id);
 	if (!status.isActive) {
-		return unauthorized(res, 'Tài khoản đã bị vô hiệu hóa hoặc hết hạn sử dụng');
+		return { error: 'Tài khoản đã bị vô hiệu hóa hoặc hết hạn sử dụng' };
 	}
 	// users.token_version tăng (reset mật khẩu, đăng xuất mọi thiết bị, tự đổi
 	// mật khẩu) ⇒ mọi access token phát hành trước đó hết hiệu lực NGAY, không
 	// phải chờ tới hạn 8h. Token cũ không có `tv` được coi là phiên bản 0.
-	if ((decoded.tv ?? 0) !== status.tokenVersion) {
-		return unauthorized(res, 'Phiên đăng nhập đã hết hiệu lực, vui lòng đăng nhập lại');
+	if ((tv ?? 0) !== status.tokenVersion) {
+		return { error: 'Phiên đăng nhập đã hết hiệu lực, vui lòng đăng nhập lại' };
 	}
 	if (status.accountExpiresAt && new Date(status.accountExpiresAt) < new Date()) {
-		return unauthorized(
-			res,
-			'Tài khoản đã hết hạn sử dụng (đợt nghiên cứu đã kết thúc)',
-		);
+		return { error: 'Tài khoản đã hết hạn sử dụng (đợt nghiên cứu đã kết thúc)' };
+	}
+	return { status };
+};
+
+// Tài khoản đang dùng mật khẩu do người khác cấp (users.must_change_password)
+// chỉ được gọi các API này cho tới khi tự đặt mật khẩu mới — mật khẩu tạm đã
+// qua tay quản trị / file danh sách tài khoản, không được dùng làm mật khẩu thật.
+const PASSWORD_CHANGE_ALLOWED = new Set([
+	'/api/v1/auth/change-password',
+	'/api/v1/auth/logout-all',
+	'/api/v1/auth/sessions',
+	'/api/v1/auth/2fa/status',
+]);
+const PASSWORD_CHANGE_REQUIRED = 'PASSWORD_CHANGE_REQUIRED';
+
+// Quá hạn bắt buộc 2FA: chỉ còn các API để bật 2FA (và đổi mật khẩu / đăng xuất)
+const TWO_FACTOR_SETUP_ALLOWED = new Set([
+	...PASSWORD_CHANGE_ALLOWED,
+	'/api/v1/auth/2fa/setup',
+	'/api/v1/auth/2fa/verify-setup',
+]);
+const TWO_FACTOR_REQUIRED = 'TWO_FACTOR_REQUIRED';
+
+const authenticate = async (req, res, next) => {
+	const authHeader = req.headers['authorization'];
+	const token = authHeader && authHeader.split(' ')[1]; // Bearer <token>
+
+	let result;
+	try {
+		result = await verifyAccessToken(token);
+	} catch (err) {
+		return next(err);
+	}
+	if (result.error) return unauthorized(res, result.error);
+	const { decoded, status } = result;
+
+	if (status.mustChangePassword && !PASSWORD_CHANGE_ALLOWED.has(req.originalUrl.split('?')[0])) {
+		return res.status(403).json({
+			success: false,
+			code: PASSWORD_CHANGE_REQUIRED,
+			message: 'Bạn cần đổi mật khẩu trước khi tiếp tục sử dụng hệ thống',
+		});
 	}
 
 	// Các field quyết định phân quyền lấy từ DB (userStatusCache), đè lên giá
@@ -76,6 +116,24 @@ const authenticate = async (req, res, next) => {
 			: { keys: new Set(), scopes: new Map() };
 		req.user.permissions = perms.keys; // Set<"resource:action">
 		req.user.permissionScopes = perms.scopes; // Map<"resource:action", scope>
+
+		// Tài khoản quản trị quá hạn chuyển tiếp mà chưa bật 2FA: chỉ được gọi
+		// các API để bật 2FA (permissions/twoFactorPolicy.js).
+		const twoFa = await twoFactorState(
+			{
+				userId: decoded.id,
+				totpEnabled: status.totpEnabled,
+				requiredSince: status.twofaRequiredSince,
+			},
+			perms.keys,
+		);
+		if (twoFa.state === 'required' && !TWO_FACTOR_SETUP_ALLOWED.has(req.originalUrl.split('?')[0])) {
+			return res.status(403).json({
+				success: false,
+				code: TWO_FACTOR_REQUIRED,
+				message: 'Tài khoản quản trị phải bật xác thực 2 lớp trước khi tiếp tục sử dụng hệ thống',
+			});
+		}
 	} catch (err) {
 		return next(err);
 	}
@@ -145,6 +203,10 @@ const authorizePermission = (...pairs) => {
 };
 
 module.exports = {
+	verifyAccessToken,
+	verifySession,
+	PASSWORD_CHANGE_REQUIRED,
+	TWO_FACTOR_REQUIRED,
 	authenticate,
 	authorizePermission,
 	hasPermission,

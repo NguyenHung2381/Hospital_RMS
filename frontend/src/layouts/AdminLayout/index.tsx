@@ -2,7 +2,8 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import type { PermissionKey } from '@/shared/types/permissions.generated';
 import { useLocation, useNavigate } from 'react-router-dom';
 import Logo from '../../assets/logo.png';
-import type { LoginUser } from '../../features/auth/api/authApi';
+import { logout, type LoginUser } from '../../features/auth/api/authApi';
+import TwoFactorReminder from '../../shared/components/TwoFactorReminder';
 import { NotificationPanel } from '../../features/notifications/components/NotificationPanel';
 import { useNotifications } from '../../features/notifications/hooks/useNotifications';
 import { toNotif } from '../../features/notifications/utils/notifUtils';
@@ -10,7 +11,7 @@ import { getTopics } from '../../features/topics/api/topicApi';
 import { getMyTasks } from '../../features/my-tasks/api/myTasksApi';
 import { usePermission } from '../../shared/hooks/usePermission';
 import { getInitials } from '../../shared/utils/helper';
-import { clearAuth, getStoredUser } from '../../shared/utils/storage';
+import { getStoredUser } from '../../shared/utils/storage';
 import { useRealtimeUpdate } from '../hooks/useRealtime';
 import styles from './AdminLayout.module.css';
 import { Icon } from './icons';
@@ -371,8 +372,9 @@ export default function AdminLayout({
 		});
 	}, []);
 
-	const handleLogout = useCallback(() => {
-		clearAuth();
+	// Thu hồi phiên trên server (refresh token trong cookie) rồi mới rời trang
+	const handleLogout = useCallback(async () => {
+		await logout();
 		navigate('/login');
 	}, [navigate]);
 
@@ -672,6 +674,7 @@ export default function AdminLayout({
 						</div>
 					)}
 
+					<TwoFactorReminder />
 					{children}
 				</main>
 			</div>

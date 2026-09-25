@@ -1,16 +1,15 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { AlertSvg, CheckSvg } from '@/assets/icons';
 import PublicLayout from '../../../layouts/PublicLayout';
 import { formatDateOr } from '../../../shared/utils/formatDate';
 import {
-	getCaptcha,
 	getOpenCourses,
 	getTraineeTypes,
 	registerCourse,
-	type Captcha,
 	type PublicCourse,
 	type TraineeTypeOption,
 } from '../api/publicApi';
+import { useCaptcha } from '../hooks/useCaptcha';
 import styles from './PublicPortal.module.css';
 
 const GENDER_OPTIONS = [
@@ -29,7 +28,6 @@ const EMPTY_FORM = {
 	email: '',
 	address: '',
 	trainee_type_id: '',
-	captcha_answer: '',
 	website: '', // honeypot
 };
 
@@ -37,18 +35,12 @@ export default function CourseRegisterPublic() {
 	const [courses, setCourses] = useState<PublicCourse[]>([]);
 	const [traineeTypes, setTraineeTypes] = useState<TraineeTypeOption[]>([]);
 	const [courseId, setCourseId] = useState('');
-	const [captcha, setCaptcha] = useState<Captcha | null>(null);
+	const captcha = useCaptcha();
 	const [form, setForm] = useState(EMPTY_FORM);
 	const [loading, setLoading] = useState(true);
 	const [submitting, setSubmitting] = useState(false);
 	const [error, setError] = useState('');
 	const [success, setSuccess] = useState('');
-
-	const loadCaptcha = useCallback(() => {
-		getCaptcha()
-			.then(setCaptcha)
-			.catch(() => setCaptcha(null));
-	}, []);
 
 	useEffect(() => {
 		Promise.all([getOpenCourses(), getTraineeTypes()])
@@ -58,8 +50,7 @@ export default function CourseRegisterPublic() {
 			})
 			.catch((err) => setError(err instanceof Error ? err.message : 'Không thể tải dữ liệu'))
 			.finally(() => setLoading(false));
-		loadCaptcha();
-	}, [loadCaptcha]);
+	}, []);
 
 	const set = (field: keyof typeof EMPTY_FORM) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
 		setForm((f) => ({ ...f, [field]: e.target.value }));
@@ -70,23 +61,25 @@ export default function CourseRegisterPublic() {
 		setSuccess('');
 		if (!form.full_name.trim()) return setError('Vui lòng nhập họ tên');
 		if (!courseId) return setError('Vui lòng chọn khóa học muốn đăng ký');
-		if (!captcha || !form.captcha_answer) return setError('Vui lòng nhập mã xác nhận');
+		// Server đối chiếu ngày sinh khi CCCD đã có hồ sơ — bắt nhập cùng lúc
+		if (form.national_id.trim() && !form.dob) return setError('Vui lòng nhập ngày sinh kèm số CCCD/CMND');
+		if (!captcha.payload) return setError('Vui lòng hoàn tất bước xác nhận');
 
 		setSubmitting(true);
 		try {
 			await registerCourse({
 				...form,
 				course_id: courseId,
-				captcha_token: captcha.token,
+				...captcha.payload,
 			});
 			setSuccess('Đăng ký thành công! Nhà trường sẽ liên hệ hoặc bạn có thể tra cứu kết quả bằng CCCD sau khi được duyệt.');
 			setForm(EMPTY_FORM);
 			setCourseId('');
-			loadCaptcha();
 		} catch (err) {
 			setError(err instanceof Error ? err.message : 'Đăng ký thất bại, vui lòng thử lại');
-			loadCaptcha();
 		} finally {
+			// Mã xác nhận chỉ dùng 1 lần (đúng hay sai) — luôn lấy mã mới
+			captcha.reload();
 			setSubmitting(false);
 		}
 	};
@@ -165,7 +158,7 @@ export default function CourseRegisterPublic() {
 						/>
 					</div>
 					<div className={styles.formGroup}>
-						<label className={styles.label}>Ngày sinh</label>
+						<label className={styles.label}>Ngày sinh {form.national_id.trim() && <span style={{ color: '#dc2626' }}>*</span>}</label>
 						<input
 							type='date'
 							className={styles.input}
@@ -245,26 +238,7 @@ export default function CourseRegisterPublic() {
 				</div>
 
 				<div className={styles.sectionTitle}>Xác nhận</div>
-				<div className={styles.formGroup}>
-					<label className={styles.label}>Nhập kết quả phép tính bên dưới</label>
-					<div className={styles.captchaRow}>
-						<span className={styles.captchaQuestion}>{captcha?.question ?? '...'}</span>
-						<button
-							type='button'
-							className={styles.captchaRefresh}
-							onClick={loadCaptcha}
-						>
-							Đổi câu hỏi
-						</button>
-					</div>
-					<input
-						className={styles.input}
-						value={form.captcha_answer}
-						onChange={set('captcha_answer')}
-						placeholder='Nhập đáp án'
-						style={{ marginTop: 8, maxWidth: 200 }}
-					/>
-				</div>
+				{captcha.field}
 
 				<button
 					type='submit'

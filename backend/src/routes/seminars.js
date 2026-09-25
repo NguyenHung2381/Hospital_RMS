@@ -1,16 +1,12 @@
 const router = require('express').Router();
 const { body } = require('express-validator');
-const multer = require('multer');
 const ctrl = require('../controllers/seminarController');
 const cmeRequirementService = require('../services/cmeRequirementService');
 const { authenticate, authorizePermission } = require('../middlewares/auth');
 const { validate } = require('../middlewares/errorHandler');
 const { success, created } = require('../utils/response');
 
-const uploadExcel = multer({
-	storage: multer.memoryStorage(),
-	limits: { fileSize: 10 * 1024 * 1024 },
-});
+const uploadExcel = require('../middlewares/uploadExcel');
 
 /**
  * @swagger

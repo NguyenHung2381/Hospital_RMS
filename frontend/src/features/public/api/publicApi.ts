@@ -30,10 +30,11 @@ export interface TraineeTypeOption {
 	name: string;
 }
 
-export interface Captcha {
-	token: string;
-	question: string;
-}
+// Server chọn chế độ (backend utils/captcha.js): phép tính mặc định, hoặc
+// Cloudflare Turnstile khi đã cấu hình khoá.
+export type Captcha =
+	| { provider: 'math'; token: string; question: string }
+	| { provider: 'turnstile'; site_key: string };
 
 export const getOpenCourses = () => request<PublicCourse[]>('/courses');
 export const getTraineeTypes = () => request<TraineeTypeOption[]>('/trainee-types');
@@ -70,8 +71,10 @@ export interface LookupResult {
 	issue_date: string | null;
 }
 
-export const lookupByNationalId = (nationalId: string) =>
-	request<LookupResult[]>(`/lookup?national_id=${encodeURIComponent(nationalId)}`);
+export const lookupByNationalId = (nationalId: string, dob: string) =>
+	request<LookupResult[]>(
+		`/lookup?national_id=${encodeURIComponent(nationalId)}&dob=${encodeURIComponent(dob)}`,
+	);
 
 // ─── Đăng ký đề tài công khai ────────────────────────────────────────────────
 export interface PublicTopicRound {

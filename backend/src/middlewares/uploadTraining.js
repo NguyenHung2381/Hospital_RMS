@@ -3,6 +3,7 @@ const path = require('path');
 const fs = require('fs');
 const crypto = require('crypto');
 const { isAllowedExtension } = require('./fileTypeAllowlist');
+const { secureUpload } = require('./secureUpload');
 
 const UPLOADS_ROOT = path.resolve(process.env.UPLOADS_DIR || 'uploads');
 const SAFE_ID = /^[A-Za-z0-9_-]{1,20}$/;
@@ -19,7 +20,8 @@ const SAFE_ID = /^[A-Za-z0-9_-]{1,20}$/;
 const createTrainingUpload = (entityType, options = {}) => {
 	const maxSizeMB = options.maxSizeMB ?? Number(process.env.TRAINING_UPLOAD_MAX_MB || 20);
 	const allowMedia = options.allowMedia ?? false;
-	return multer({
+	// secureUpload: kiểm tra nội dung + quét virus + hạn mức dung lượng/ngày
+	return secureUpload(multer({
 		storage: multer.diskStorage({
 			destination: (req, _file, cb) => {
 				const id = req.params.id;
@@ -53,7 +55,7 @@ const createTrainingUpload = (entityType, options = {}) => {
 			}
 			cb(null, true);
 		},
-	});
+	}));
 };
 
 module.exports = { createTrainingUpload };

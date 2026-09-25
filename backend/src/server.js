@@ -6,8 +6,12 @@ const jobs = require('./jobs');
 process.on('unhandledRejection', (reason) => {
 	console.error('❌ Unhandled Promise Rejection:', reason);
 });
+// Exception không ai bắt = tiến trình đang ở trạng thái không xác định (kết nối,
+// khoá, dữ liệu ghi dở...) — chạy tiếp có thể phục vụ sai hoặc lộ dữ liệu. Ghi
+// log rồi thoát; Docker (restart: unless-stopped) / nodemon tự khởi động lại.
 process.on('uncaughtException', (err) => {
-	console.error('❌ Uncaught Exception:', err.message, err.stack);
+	console.error('❌ Uncaught Exception — dừng tiến trình:', err.message, err.stack);
+	process.exit(1);
 });
 
 // ─── Start server (tự động chuyển port nếu bị chiếm) ────────────────────────
@@ -73,9 +77,11 @@ function getNetworkIp() {
 			}
 
 			// Tự động đồng bộ Port sang file .env của Frontend (Client)
-			// Chỉ áp dụng khi chạy native cùng máy với client — bỏ qua nếu
-			// thư mục frontend không tồn tại cạnh backend (vd: chạy trong Docker container riêng)
-			try {
+			// Chỉ áp dụng khi chạy native cùng máy với client (dev) — bỏ qua ở
+			// production và khi thư mục frontend không tồn tại cạnh backend (vd:
+			// chạy trong Docker container riêng): server không được tự ghi file
+			// cấu hình ngoài thư mục của mình trên máy chủ thật.
+			if (process.env.NODE_ENV !== 'production') try {
 				const fs = require('fs');
 				const clientEnvPath = path.resolve(__dirname, '../../frontend/.env');
 				if (fs.existsSync(path.dirname(clientEnvPath))) {
@@ -110,7 +116,8 @@ function getNetworkIp() {
 			console.log(`   > Local:   http://localhost:${PORT}`);
 			console.log(`   > Network: http://${networkIp}:${PORT}`);
 			console.log(`   Environment: ${process.env.NODE_ENV || 'development'}`);
-			console.log(`📚 Swagger UI:  http://localhost:${PORT}/api-docs`);
+			if (process.env.NODE_ENV !== 'production' || process.env.SWAGGER_ENABLED === 'true')
+				console.log(`📚 Swagger UI:  http://localhost:${PORT}/api-docs`);
 
 			jobs.start();
 		});

@@ -29,12 +29,23 @@ services:
       # trong frontend/nginx.conf.
       PORT: "3001"
       REDIS_HOST: redis
-      # Tin proxy nội bộ (Vite/nginx trong mạng Docker) để req.ip = IP máy khách
-      # qua X-Forwarded-For, thay vì IP container frontend (172.x).
-      TRUST_PROXY: "loopback, uniquelocal"
       REDIS_PORT: "6379"
+      # Mật khẩu Redis do container redis tự sinh vào volume redis_secret;
+      # docker-entrypoint.sh đọc file này khi REDIS_PASSWORD không được đặt.
+      REDIS_PASSWORD_FILE: /run/redis-secret/pass
+      # Quét virus file upload (tuỳ chọn): đặt CLAMAV_HOST=clamav trong file .env
+      # cạnh compose và chạy kèm `--profile av` (service clamav bên dưới).
+      CLAMAV_HOST: "${CLAMAV_HOST:-}"
+      # Chỉ tin ĐÚNG 1 hop proxy liền trước (nginx container, hoặc proxy trên
+      # host gọi thẳng 127.0.0.1:3001): req.ip = địa chỉ CUỐI trong
+      # X-Forwarded-For do proxy đó ghi. nginx đã tự lọc IP thật theo
+      # TRUSTED_PROXIES và GHI ĐÈ header (xem frontend/nginx.conf).
+      # Cấu hình cũ "loopback, uniquelocal" bỏ qua mọi IP nội bộ — người dùng
+      # bệnh viện đều có IP nội bộ nên tự khai X-Forwarded-For là vượt được
+      # rate-limit đăng nhập.
+      TRUST_PROXY: "1"
       # Origin trình duyệt dùng để truy cập web (ghi đè CORS_ORIGIN trong backend/.env)
-      CORS_ORIGIN: "http://nckh.bvnghean.vn:8084,http://bvnghean.vn:8084,http://www.bvnghean.vn:8084"
+      CORS_ORIGIN: "${CORS_ORIGIN:-https://nckh.bvnghean.vn}"
       # Heap V8 < mem_limit để còn chỗ cho buffer (upload/xuất Excel) + stack.
       NODE_OPTIONS: "--max-old-space-size=384"
     mem_limit: 512m
@@ -52,6 +63,7 @@ services:
       # Log hoạt động (audit-*.log) — nguồn dữ liệu của trang /activity-logs,
       # phải nằm ngoài container để không mất khi redeploy/tạo lại container.
       - server_logs:/app/logs
+      - redis_secret:/run/redis-secret:ro
     depends_on:
       - redis
     restart: unless-stopped
@@ -60,29 +72,65 @@ services:
     build:
       context: ./frontend
       target: prod
-    # http://nckh.bvnghean.vn:8084 → nginx (port 80 trong container)
+    # https://nckh.bvnghean.vn (reverse proxy HTTPS) → :8084 → nginx (port 80).
+    # Proxy HTTPS ở CÙNG máy thì đặt FRONTEND_BIND=127.0.0.1:8084 (file .env cạnh
+    # compose) để máy khác trong LAN không gọi thẳng HTTP 8084 được nữa; proxy ở
+    # máy khác thì giữ mặc định và chặn 8084 bằng firewall, chỉ mở cho IP proxy.
     ports:
-      - "8084:80"
+      - "${FRONTEND_BIND:-8084}:80"
+    environment:
+      # IP/CIDR của reverse proxy HTTPS, phân cách dấu cách hoặc phẩy. Để trống
+      # = mọi IP nội bộ (chạy được với proxy ở bất kỳ đâu trong LAN). Biết IP
+      # proxy thì đặt hẹp lại — xem frontend/docker/40-trusted-proxies.sh.
+      TRUSTED_PROXIES: "${TRUSTED_PROXIES:-}"
     mem_limit: 64m
     depends_on:
       - backend
     restart: unless-stopped
 
   # Xem docker-compose.yml (dev) để biết lý do tắt persistence + allkeys-lru.
+  # Bắt buộc mật khẩu: container khác trong mạng Docker (vd frontend nếu bị
+  # chiếm) không đọc/ghi được cache và kênh pub/sub xoá cache phân quyền.
+  # Mật khẩu tự sinh 1 lần vào volume redis_secret (chỉ root đọc được), sau đó
+  # chạy entrypoint gốc của image — entrypoint này tự hạ quyền xuống user redis.
   redis:
     image: redis:7-alpine
     command:
-      [
-        "redis-server",
-        "--maxmemory", "128mb",
-        "--maxmemory-policy", "allkeys-lru",
-        "--save", "",
-        "--appendonly", "no",
-      ]
+      - sh
+      - -c
+      - |
+        set -e
+        if [ ! -s /run/redis-secret/pass ]; then
+          umask 077
+          head -c 32 /dev/urandom | od -An -tx1 | tr -d ' \n' > /run/redis-secret/pass
+        fi
+        exec docker-entrypoint.sh redis-server \
+          --requirepass "$$(cat /run/redis-secret/pass)" \
+          --maxmemory 128mb --maxmemory-policy allkeys-lru \
+          --save "" --appendonly no
+    volumes:
+      - redis_secret:/run/redis-secret
     mem_limit: 160m
     restart: unless-stopped
 
+  # Quét virus file upload — TUỲ CHỌN, không chạy mặc định (cần ~1,5GB RAM và
+  # Internet để tải cơ sở dữ liệu virus). Bật:
+  #   CLAMAV_HOST=clamav (file .env cạnh compose), rồi
+  #   docker compose -f docker-compose.prod.yml --profile av up -d
+  # Lần đầu tải CSDL virus mất vài phút; trong lúc đó upload bị từ chối (503)
+  # vì backend mặc định không nhận file chưa quét được (CLAMAV_FAIL_OPEN).
+  clamav:
+    profiles: ["av"]
+    image: clamav/clamav:stable
+    mem_limit: 2g
+    volumes:
+      # CSDL virus — giữ qua lần tạo lại container, không phải tải lại từ đầu
+      - clamav_db:/var/lib/clamav
+    restart: unless-stopped
+
 volumes:
+  clamav_db:
   server_uploads:
   server_secrets:
   server_logs:
+  redis_secret:

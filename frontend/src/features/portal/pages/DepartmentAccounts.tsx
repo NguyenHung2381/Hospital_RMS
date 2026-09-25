@@ -395,7 +395,7 @@ export default function DepartmentAccounts() {
 												{canUpdate && (
 													<button
 														className={styles.actionBtn}
-														title='Đặt lại mật khẩu về 123456'
+														title='Đặt lại mật khẩu (tạo mật khẩu tạm ngẫu nhiên)'
 														onClick={() => d.setResetUser(u)}
 														style={{ color: '#b45309' }}
 													>

@@ -1,7 +1,26 @@
 import { trackRequest } from '../utils/feedback';
-import { clearAuth, getToken } from '../utils/storage';
+import { clearAuth, getToken, updateStoredUser } from '../utils/storage';
 import { BASE_URL } from './endpoints';
 import { handle401, refreshQueued } from './interceptors';
+
+// Khớp FORCE_PASSWORD_PATH (app/router/authHelpers.ts) — không import từ router
+// để tầng API không phụ thuộc tầng điều hướng.
+const FORCE_PASSWORD_PATH = '/doi-mat-khau';
+const TWO_FACTOR_SETUP_PATH = '/bat-2fa'; // khớp app/router/authHelpers.ts
+
+// Server trả 403 kèm code khi tài khoản phải xử lý trước khi dùng tiếp (vd quản
+// trị vừa đặt lại mật khẩu, hoặc tài khoản quản trị quá hạn bật 2FA lúc phiên
+// này đang mở) — ghi cờ để router chặn các trang khác, rồi chuyển màn.
+function checkPasswordChangeRequired(status: number, json: { code?: string } | null) {
+	if (status !== 403) return;
+	if (json?.code === 'PASSWORD_CHANGE_REQUIRED') {
+		updateStoredUser({ must_change_password: true });
+		if (window.location.pathname !== FORCE_PASSWORD_PATH) window.location.href = FORCE_PASSWORD_PATH;
+	} else if (json?.code === 'TWO_FACTOR_REQUIRED') {
+		updateStoredUser({ twofa_state: 'required' });
+		if (window.location.pathname !== TWO_FACTOR_SETUP_PATH) window.location.href = TWO_FACTOR_SETUP_PATH;
+	}
+}
 
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 	const token = getToken();
@@ -19,6 +38,7 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 	if (res.status === 401) {
 		return handle401<T>(path, options);
 	}
+	checkPasswordChangeRequired(res.status, json);
 
 	if (!res.ok || !json.success) {
 		throw new Error(json.message ?? 'Có lỗi xảy ra, vui lòng thử lại');
@@ -103,6 +123,7 @@ async function requestForm<T>(path: string, body: FormData): Promise<T> {
 	}
 
 	const json = await res.json();
+	checkPasswordChangeRequired(res.status, json);
 
 	if (!res.ok || !json.success) {
 		throw new Error(json.message ?? 'Có lỗi xảy ra, vui lòng thử lại');

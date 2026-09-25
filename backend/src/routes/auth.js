@@ -1,11 +1,14 @@
 const router = require('express').Router();
 const { body } = require('express-validator');
-const rateLimit = require('express-rate-limit');
+// Đếm trên Redis, tự rơi về bộ nhớ khi Redis lỗi (utils/rateLimit.js)
+const rateLimit = require('../utils/rateLimit');
 const authController = require('../controllers/authController');
 const { authenticate } = require('../middlewares/auth');
 const { validate } = require('../middlewares/errorHandler');
+const { checkPassword } = require('../utils/passwordPolicy');
 
 const loginLimiter = rateLimit({
+	name: 'login',
 	windowMs: 15 * 60 * 1000, // 15 phút
 	limit: 10, // tối đa 10 lần thử đăng nhập / IP / cửa sổ thời gian
 	standardHeaders: true,
@@ -27,6 +30,7 @@ const loginLimiter = rateLimit({
 // Refresh được gọi tự động (nhiều tab/thiết bị cùng lúc) nên giới hạn rộng hơn
 // login — mục tiêu chỉ là chặn spam/dò refresh token, không chặn dùng bình thường.
 const refreshLimiter = rateLimit({
+	name: 'refresh',
 	windowMs: 15 * 60 * 1000,
 	limit: 30,
 	standardHeaders: true,
@@ -38,6 +42,7 @@ const refreshLimiter = rateLimit({
 });
 
 const changePasswordLimiter = rateLimit({
+	name: 'changePassword',
 	windowMs: 15 * 60 * 1000,
 	limit: 5,
 	standardHeaders: true,
@@ -51,6 +56,7 @@ const changePasswordLimiter = rateLimit({
 // Xác minh mã OTP là bước cuối cùng của đăng nhập — chặn dò mã 6 số tương tự
 // loginLimiter, tách riêng vì đây là 1 route khác (/auth/2fa/verify).
 const twoFaVerifyLimiter = rateLimit({
+	name: 'twoFaVerify',
 	windowMs: 15 * 60 * 1000,
 	limit: 10,
 	standardHeaders: true,
@@ -61,7 +67,22 @@ const twoFaVerifyLimiter = rateLimit({
 	},
 });
 
+// Thiết lập / xác nhận / tắt 2FA — thao tác nhạy cảm trên phiên đã đăng nhập;
+// giới hạn để phiên bị chiếm không dò được mã OTP hay mật khẩu (disable) liên tục.
+const twoFaManageLimiter = rateLimit({
+	name: 'twoFaManage',
+	windowMs: 15 * 60 * 1000,
+	limit: 10,
+	standardHeaders: true,
+	legacyHeaders: false,
+	message: {
+		success: false,
+		message: 'Quá nhiều thao tác xác thực 2 lớp. Vui lòng thử lại sau ít phút.',
+	},
+});
+
 const logoutAllLimiter = rateLimit({
+	name: 'logoutAll',
 	windowMs: 15 * 60 * 1000,
 	limit: 10,
 	standardHeaders: true,
@@ -100,9 +121,12 @@ const logoutAllLimiter = rateLimit({
  *               password:
  *                 type: string
  *                 example: "admin"
+ *               remember_me:
+ *                 type: boolean
+ *                 description: Ghi nhớ đăng nhập — cookie phiên 30 ngày thay vì cookie tạm
  *     responses:
  *       200:
- *         description: Đăng nhập thành công, trả về access token và refresh token
+ *         description: Đăng nhập thành công — access token trong body, refresh token trong cookie HttpOnly rms_rt
  *       401:
  *         description: Sai tài khoản hoặc mật khẩu
  */
@@ -121,17 +145,10 @@ router.post(
  *     summary: Làm mới access token
  *     tags: [Auth]
  *     security: []
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required: [refresh_token]
- *             properties:
- *               refresh_token:
- *                 type: string
- *                 example: "eyJhbGci..."
+ *     description: >
+ *       Refresh token đọc từ cookie HttpOnly `rms_rt` (đặt lúc đăng nhập). Trường
+ *       `refresh_token` trong body chỉ còn để tương thích bản frontend cũ. Trả
+ *       `code: REFRESH_RACE` khi tab khác vừa làm mới — client thử lại sau giây lát.
  *     responses:
  *       200:
  *         description: Trả về access token mới
@@ -141,8 +158,7 @@ router.post(
 router.post(
 	'/refresh',
 	refreshLimiter,
-	[body('refresh_token').notEmpty()],
-	validate,
+	// Không bắt buộc body: token nằm trong cookie (utils/authCookie.js)
 	authController.refresh,
 );
 
@@ -215,13 +231,11 @@ router.post(
 	authenticate,
 	[
 		body('old_password').notEmpty(),
-		body('new_password')
-			.isLength({ min: 8 })
-			.withMessage('Mật khẩu mới phải có ít nhất 8 ký tự')
-			.matches(/[A-Za-z]/)
-			.withMessage('Mật khẩu mới phải có ít nhất 1 chữ cái')
-			.matches(/[0-9]/)
-			.withMessage('Mật khẩu mới phải có ít nhất 1 chữ số'),
+		body('new_password').custom((value, { req }) => {
+			const msg = checkPassword(value, { username: req.user?.username });
+			if (msg) throw new Error(msg);
+			return true;
+		}),
 	],
 	validate,
 	authController.changePassword,
@@ -258,7 +272,7 @@ router.post(
  *       200:
  *         description: Trả về secret và otpauth_uri (chưa bật, chờ xác nhận mã đầu tiên)
  */
-router.post('/2fa/setup', authenticate, authController.setup2FA);
+router.post('/2fa/setup', twoFaManageLimiter, authenticate, authController.setup2FA);
 
 /**
  * @swagger
@@ -268,14 +282,34 @@ router.post('/2fa/setup', authenticate, authController.setup2FA);
  *     tags: [Auth]
  *     responses:
  *       200:
- *         description: Đã bật xác thực 2 lớp
+ *         description: "Đã bật xác thực 2 lớp — trả { backup_codes: string[] } (chỉ hiển thị 1 lần)"
  */
 router.post(
 	'/2fa/verify-setup',
+	twoFaManageLimiter,
 	authenticate,
 	[body('code').notEmpty()],
 	validate,
 	authController.verifySetup2FA,
+);
+
+/**
+ * @swagger
+ * /auth/2fa/backup-codes:
+ *   post:
+ *     summary: Tạo lại bộ mã khôi phục 2FA (bộ cũ mất hiệu lực) — yêu cầu nhập lại mật khẩu
+ *     tags: [Auth]
+ *     responses:
+ *       200:
+ *         description: "{ backup_codes: string[] } — chỉ hiển thị 1 lần"
+ */
+router.post(
+	'/2fa/backup-codes',
+	twoFaManageLimiter,
+	authenticate,
+	[body('password').notEmpty()],
+	validate,
+	authController.regenerateBackupCodes,
 );
 
 /**
@@ -290,6 +324,7 @@ router.post(
  */
 router.post(
 	'/2fa/disable',
+	twoFaManageLimiter,
 	authenticate,
 	[body('password').notEmpty()],
 	validate,

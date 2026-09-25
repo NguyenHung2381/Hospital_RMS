@@ -7,6 +7,9 @@ const Redis = require('ioredis');
 const redis = new Redis({
 	host: process.env.REDIS_HOST || 'localhost',
 	port: parseInt(process.env.REDIS_PORT) || 6379,
+	// Khớp --requirepass của container redis (docker-compose.prod.yml). Không đặt
+	// = không xác thực (dev). duplicate() ở utils/cacheBus.js kế thừa luôn.
+	password: process.env.REDIS_PASSWORD || undefined,
 	// Đừng để 1 request chờ retry Redis lâu — thử 1 lần, lỗi thì fallback DB ngay.
 	maxRetriesPerRequest: 1,
 	// Mất kết nối thì reject ngay thay vì xếp hàng chờ (mặc định ioredis sẽ

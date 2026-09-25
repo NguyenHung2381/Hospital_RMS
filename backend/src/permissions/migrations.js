@@ -162,11 +162,33 @@ const migrateRolesAndSessions = async ({ dryRun = false } = {}) => {
 		['roles', 'code', `ALTER TABLE roles ADD code VARCHAR(30) NULL`],
 		['roles', 'is_system', `ALTER TABLE roles ADD is_system BIT NOT NULL CONSTRAINT DF_roles_is_system DEFAULT 0`],
 		['roles', 'is_superuser', `ALTER TABLE roles ADD is_superuser BIT NOT NULL CONSTRAINT DF_roles_is_superuser DEFAULT 0`],
+		// Tài khoản đang dùng mật khẩu do người khác cấp (tạo mới / đặt lại) —
+		// bắt đổi trước khi dùng hệ thống. Tương đương 2026-10-09_must_change_password.sql.
+		['users', 'must_change_password', `ALTER TABLE users ADD must_change_password BIT NOT NULL CONSTRAINT DF_users_must_change_password DEFAULT 0`],
+		// Xoay refresh token có phát hiện dùng lại: token cũ được đánh dấu thu hồi
+		// (không xoá) và cùng "họ" (family) với token mới. Tương đương
+		// 2026-10-10_refresh_token_family.sql.
+		['refresh_tokens', 'family_id', `ALTER TABLE refresh_tokens ADD family_id VARCHAR(60) NULL`],
+		['refresh_tokens', 'revoked_at', `ALTER TABLE refresh_tokens ADD revoked_at DATETIME2 NULL`],
+		// Bước thời gian (30s) của mã TOTP dùng gần nhất — mã cùng bước hoặc cũ
+		// hơn bị từ chối (chống dùng lại mã). Tương đương 2026-10-11_2fa_hardening.sql.
+		['users', 'totp_last_step', `ALTER TABLE users ADD totp_last_step BIGINT NULL`],
+		// Mốc bắt đầu thời gian chuyển tiếp bắt buộc 2FA (permissions/twoFactorPolicy.js)
+		['users', 'twofa_required_since', `ALTER TABLE users ADD twofa_required_since DATETIME2 NULL`],
 	];
 	for (const [t, c, stmt] of ddl) {
 		if (await colLen(t, c)) continue;
 		report.addedColumns.push(`${t}.${c}`);
 		if (!dryRun) await pool.request().query(stmt);
+	}
+	// CHỈ lần đầu thêm cột: tài khoản chưa từng tự đổi mật khẩu (password_changed_at
+	// NULL — gồm mọi tài khoản cấp hàng loạt với mật khẩu chung '123456') phải đổi
+	// ở lần đăng nhập tới. Chạy trong batch riêng vì cột vừa ALTER xong.
+	if (!dryRun && report.addedColumns.includes('users.must_change_password')) {
+		const r = await pool
+			.request()
+			.query('UPDATE users SET must_change_password = 1 WHERE password_changed_at IS NULL');
+		report.forcedPasswordChange = r.rowsAffected[0] ?? 0;
 	}
 	if (report.addedColumns.length && !dryRun) schema.reset();
 	if (dryRun && report.addedColumns.length) return report; // chưa có cột thì chưa tính tiếp được
@@ -174,6 +196,25 @@ const migrateRolesAndSessions = async ({ dryRun = false } = {}) => {
 		await pool.request().query(`
       IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'UX_roles_code' AND object_id = OBJECT_ID('roles'))
         CREATE UNIQUE INDEX UX_roles_code ON roles(code) WHERE code IS NOT NULL
+    `);
+		await pool.request().query(`
+      IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_rt_family' AND object_id = OBJECT_ID('refresh_tokens'))
+        CREATE INDEX IX_rt_family ON refresh_tokens(family_id) WHERE family_id IS NOT NULL
+    `);
+		// Mã khôi phục 2FA (dùng 1 lần, lưu HMAC — utils/secretBox.keyedHash)
+		await pool.request().query(`
+      IF OBJECT_ID('user_backup_codes', 'U') IS NULL
+      BEGIN
+        CREATE TABLE user_backup_codes (
+          id         INT IDENTITY(1,1) NOT NULL PRIMARY KEY,
+          user_id    VARCHAR(20) NOT NULL
+                     CONSTRAINT FK_backup_codes_user REFERENCES users(id) ON DELETE CASCADE,
+          code_hash  CHAR(64)    NOT NULL,
+          used_at    DATETIME2   NULL,
+          created_at DATETIME2   NOT NULL CONSTRAINT DF_backup_codes_created DEFAULT SYSUTCDATETIME()
+        );
+        CREATE INDEX IX_backup_codes_user ON user_backup_codes(user_id, code_hash);
+      END
     `);
 	}
 
@@ -233,6 +274,9 @@ const migrateRolesAndSessions = async ({ dryRun = false } = {}) => {
 const summarizeRoles = (report) => {
 	const parts = [];
 	if (report.addedColumns.length) parts.push(`thêm cột ${report.addedColumns.join(', ')}`);
+	if (report.forcedPasswordChange) {
+		parts.push(`${report.forcedPasswordChange} tài khoản chưa từng đổi mật khẩu phải đổi ở lần đăng nhập tới`);
+	}
 	if (report.codedRoles.length) parts.push(`gán mã ${report.codedRoles.join(', ')}`);
 	if (report.removedSystemManage) {
 		parts.push(`superuser chuyển thành cờ vai trò (${report.superuserRoles.join(', ') || 'không vai trò nào'}), bỏ quyền system:manage`);

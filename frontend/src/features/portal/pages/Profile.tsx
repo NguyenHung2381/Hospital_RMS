@@ -14,6 +14,7 @@ import {
 import { QRCode } from 'antd';
 import UserLayout from '../../../layouts/UserLayout';
 import { InlineLoading } from '@/shared/components';
+import { PASSWORD_HINT } from '@/shared/utils/password';
 import { fmtDate, useProfile } from '../hooks/useProfile';
 import styles from './Profile.module.css';
 
@@ -208,7 +209,7 @@ export default function Profile() {
 							<div>
 								<div className={styles.detailCardTitle}>Đổi mật khẩu</div>
 								<div className={styles.detailCardSub}>
-									Mật khẩu mới phải có ít nhất 8 ký tự, gồm cả chữ và số
+									{PASSWORD_HINT}; không chứa tên đăng nhập
 								</div>
 							</div>
 						</div>
@@ -433,7 +434,117 @@ export default function Profile() {
 							</div>
 						) : d.twoFaEnabled ? (
 							<div className={styles.pwdForm}>
-								{!d.showDisable2Fa ? (
+								{/* Mã khôi phục: dùng khi mất điện thoại — mỗi mã 1 lần */}
+								{d.backupCodes ? (
+									<div
+										style={{
+											border: '1px solid #fde68a',
+											background: '#fefce8',
+											borderRadius: 8,
+											padding: 12,
+										}}
+									>
+										<div className={styles.formLabel} style={{ color: '#92400e', marginBottom: 8 }}>
+											Lưu các mã khôi phục dưới đây ở nơi an toàn (in ra hoặc lưu vào trình quản lý
+											mật khẩu). Mất điện thoại thì dùng 1 mã thay cho mã 6 số — mỗi mã chỉ dùng
+											được 1 lần. Các mã <strong>chỉ hiển thị lần này</strong>.
+										</div>
+										<div
+											style={{
+												display: 'grid',
+												gridTemplateColumns: 'repeat(auto-fill, minmax(110px, 1fr))',
+												gap: 6,
+												fontFamily: 'monospace',
+												fontSize: 15,
+												userSelect: 'all',
+											}}
+										>
+											{d.backupCodes.map((c) => (
+												<span key={c}>{c}</span>
+											))}
+										</div>
+										<div className={styles.pwdFooter}>
+											<button
+												type='button'
+												className={styles.btnPrimary}
+												onClick={() => void navigator.clipboard?.writeText(d.backupCodes?.join('\n') ?? '')}
+											>
+												Sao chép
+											</button>
+											<button
+												type='button'
+												className={styles.btnPrimary}
+												style={{ background: 'var(--color-gray-400)' }}
+												onClick={d.dismissBackupCodes}
+											>
+												Đã lưu, đóng lại
+											</button>
+										</div>
+									</div>
+								) : d.showRegenBackup ? (
+									<>
+										<div className={styles.formGroup}>
+											<label className={styles.formLabel}>
+												Nhập mật khẩu để tạo bộ mã khôi phục mới (bộ cũ sẽ mất hiệu lực)
+											</label>
+											<input
+												type='password'
+												className={styles.formInput}
+												placeholder='Mật khẩu hiện tại...'
+												value={d.regenPwd}
+												onChange={(e) => d.setRegenPwd(e.target.value)}
+											/>
+										</div>
+										{d.twoFaError && (
+											<div className={styles.errorMsg}>
+												<AlertSvg /> {d.twoFaError}
+											</div>
+										)}
+										<div className={styles.pwdFooter}>
+											<button
+												type='button'
+												className={styles.btnPrimary}
+												onClick={() => void d.handleRegenerateBackupCodes()}
+												disabled={d.twoFaSaving || !d.regenPwd}
+											>
+												Tạo mã mới
+											</button>
+											<button
+												type='button'
+												className={styles.btnPrimary}
+												style={{ background: 'var(--color-gray-400)' }}
+												onClick={() => {
+													d.setShowRegenBackup(false);
+													d.setRegenPwd('');
+												}}
+												disabled={d.twoFaSaving}
+											>
+												Huỷ
+											</button>
+										</div>
+									</>
+								) : (
+									!d.showDisable2Fa && (
+										<div className={styles.formLabel}>
+											Còn <strong>{d.backupRemaining}</strong> mã khôi phục chưa dùng.{' '}
+											<button
+												type='button'
+												onClick={() => d.setShowRegenBackup(true)}
+												style={{
+													background: 'none',
+													border: 'none',
+													padding: 0,
+													color: 'var(--color-primary)',
+													cursor: 'pointer',
+													textDecoration: 'underline',
+												}}
+											>
+												Tạo lại mã khôi phục
+											</button>
+										</div>
+									)
+								)}
+								{d.backupCodes || d.showRegenBackup ? null : !d.showDisable2Fa ? (
 									<div className={styles.pwdFooter}>
 										<button
 											type='button'

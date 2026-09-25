@@ -5,6 +5,11 @@ import styles from '../pages/UserList.module.css';
 import type { FormErrors, User, UserForm } from '../types/user.type';
 import { getInitials } from '../../../shared/utils/helper';
 import { suggestUsername } from '../utils/userHelpers';
+import {
+	checkPassword,
+	generateTempPassword,
+	PASSWORD_HINT,
+} from '../../../shared/utils/password';
 
 function Field({
 	id,
@@ -97,11 +102,12 @@ export function UserModal({
 		department_id: user?.department_id ?? defaultDeptId ?? '',
 		role_id: user?.role_id ?? '',
 		is_active: user?.is_active ?? true,
-		password: mode === 'create' ? '123456' : '',
+		// Mật khẩu tạm ngẫu nhiên — người dùng phải đổi ở lần đăng nhập đầu
+		password: mode === 'create' ? generateTempPassword() : '',
 	});
 	const [errors, setErrors] = useState<FormErrors>({});
 	const [loading, setLoading] = useState(false);
-	const [showPwd, setShowPwd] = useState(false);
+	const [showPwd, setShowPwd] = useState(mode === 'create');
 	const [usernameTouched, setUsernameTouched] = useState(mode === 'edit');
 	const [saveError, setSaveError] = useState<string | null>(null);
 
@@ -144,8 +150,10 @@ export function UserModal({
 		if (!form.role_id) e.role_id = 'Vui lòng chọn vai trò';
 		if (mode === 'create' && !form.password)
 			e.password = 'Vui lòng nhập mật khẩu';
-		else if (form.password && form.password.length < 5)
-			e.password = 'Mật khẩu ít nhất 5 ký tự';
+		else if (form.password) {
+			const pwdError = checkPassword(form.password, form.username);
+			if (pwdError) e.password = pwdError;
+		}
 		setErrors(e);
 		return Object.keys(e).length === 0;
 	};
@@ -288,7 +296,7 @@ export function UserModal({
 							hint={
 								mode === 'edit'
 									? 'Để trống nếu không muốn đổi mật khẩu'
-									: 'Mật khẩu mặc định: 123456'
+									: 'Mật khẩu tạm — người dùng phải đổi ở lần đăng nhập đầu'
 							}
 						>
 							<div style={{ position: 'relative' }}>
@@ -298,7 +306,7 @@ export function UserModal({
 									className={`${styles.formInput} ${errors.password ? styles.inputError : ''}`}
 									placeholder={
 										mode === 'create'
-											? 'Tối thiểu 5 ký tự'
+											? PASSWORD_HINT
 											: '(để trống = giữ nguyên)'
 									}
 									value={form.password}

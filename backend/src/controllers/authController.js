@@ -1,17 +1,36 @@
 const authService = require('../services/authService');
-const { success } = require('../utils/response');
+const { success, error } = require('../utils/response');
+const {
+	setRefreshCookie,
+	clearRefreshCookie,
+	readRefreshCookie,
+	isAllowedOrigin,
+} = require('../utils/authCookie');
+
+// Refresh token chỉ đi qua cookie HttpOnly (utils/authCookie.js) — tách khỏi
+// dữ liệu trả về để không bao giờ nằm trong body JSON (JS đọc được).
+const withRefreshCookie = (res, data) => {
+	const { refresh_token, remember, ...body } = data;
+	if (refresh_token) setRefreshCookie(res, refresh_token, remember);
+	return body;
+};
+
+// Refresh token của request: cookie trước; body chỉ còn để tương thích bản
+// frontend cũ (lưu token trong localStorage) trong giai đoạn chuyển đổi.
+const refreshTokenOf = (req) => readRefreshCookie(req) || req.body?.refresh_token || null;
 
 const login = async (req, res, next) => {
 	try {
-		const { username, password, device_token } = req.body;
+		const { username, password, device_token, remember_me } = req.body;
 		const data = await authService.login(
 			username,
 			password,
 			req.ip,
 			req.get('user-agent'),
 			device_token,
+			remember_me === true,
 		);
-		return success(res, data, 'Đăng nhập thành công');
+		return success(res, withRefreshCookie(res, data), 'Đăng nhập thành công');
 	} catch (err) {
 		next(err);
 	}
@@ -19,22 +38,28 @@ const login = async (req, res, next) => {
 
 const refresh = async (req, res, next) => {
 	try {
-		const { refresh_token } = req.body;
-		const data = await authService.refreshAccessToken(
-			refresh_token,
-			req.ip,
-			req.get('user-agent'),
-		);
-		return success(res, data, 'Làm mới token thành công');
+		if (!isAllowedOrigin(req)) return error(res, 'Nguồn yêu cầu không hợp lệ', 403);
+		const token = refreshTokenOf(req);
+		if (!token) return error(res, 'Không có phiên đăng nhập để làm mới', 401);
+		const data = await authService.refreshAccessToken(token, req.ip, req.get('user-agent'));
+		return success(res, withRefreshCookie(res, data), 'Làm mới token thành công');
 	} catch (err) {
+		// Phiên hỏng thật (không phải 2 tab cùng làm mới) thì xoá cookie luôn
+		if (err.statusCode === 401 && err.code !== 'REFRESH_RACE') clearRefreshCookie(res);
+		if (err.code) {
+			return res
+				.status(err.statusCode || 500)
+				.json({ success: false, code: err.code, message: err.message });
+		}
 		next(err);
 	}
 };
 
 const logout = async (req, res, next) => {
 	try {
-		const { refresh_token } = req.body;
-		await authService.logout(refresh_token);
+		if (!isAllowedOrigin(req)) return error(res, 'Nguồn yêu cầu không hợp lệ', 403);
+		await authService.logout(refreshTokenOf(req));
+		clearRefreshCookie(res);
 		return success(res, null, 'Đăng xuất thành công');
 	} catch (err) {
 		next(err);
@@ -44,6 +69,7 @@ const logout = async (req, res, next) => {
 const logoutAll = async (req, res, next) => {
 	try {
 		await authService.logoutAll(req.user.id, req.ip);
+		clearRefreshCookie(res);
 		return success(res, null, 'Đã đăng xuất khỏi mọi thiết bị');
 	} catch (err) {
 		next(err);
@@ -62,17 +88,20 @@ const sessions = async (req, res, next) => {
 const changePassword = async (req, res, next) => {
 	try {
 		const { old_password, new_password } = req.body;
-		// Trả cặp token mới cho phiên này — token cũ vừa bị thu hồi cùng mọi phiên khác
+		// Cấp phiên mới cho chính thiết bị này — mọi phiên khác vừa bị thu hồi.
+		// Giữ lựa chọn "ghi nhớ đăng nhập" của phiên hiện tại.
+		const remember = await authService.isRememberedSession(refreshTokenOf(req));
 		const tokens = await authService.changePassword(
 			req.user.id,
 			old_password,
 			new_password,
 			req.ip,
 			req.headers['user-agent'],
+			remember,
 		);
 		return success(
 			res,
-			tokens,
+			withRefreshCookie(res, tokens),
 			'Đổi mật khẩu thành công. Các thiết bị khác đã bị đăng xuất.',
 		);
 	} catch (err) {
@@ -90,7 +119,7 @@ const verify2FA = async (req, res, next) => {
 			req.get('user-agent'),
 			device_token,
 		);
-		return success(res, data, 'Đăng nhập thành công');
+		return success(res, withRefreshCookie(res, data), 'Đăng nhập thành công');
 	} catch (err) {
 		next(err);
 	}
@@ -107,8 +136,18 @@ const setup2FA = async (req, res, next) => {
 
 const verifySetup2FA = async (req, res, next) => {
 	try {
-		await authService.confirm2FASetup(req.user.id, req.body.code);
-		return success(res, null, 'Đã bật xác thực 2 lớp');
+		// Trả bộ mã khôi phục — chỉ hiển thị 1 lần này
+		const data = await authService.confirm2FASetup(req.user.id, req.body.code);
+		return success(res, data, 'Đã bật xác thực 2 lớp');
+	} catch (err) {
+		next(err);
+	}
+};
+
+const regenerateBackupCodes = async (req, res, next) => {
+	try {
+		const data = await authService.regenerateBackupCodes(req.user.id, req.body.password);
+		return success(res, data, 'Đã tạo bộ mã khôi phục mới');
 	} catch (err) {
 		next(err);
 	}
@@ -142,6 +181,7 @@ module.exports = {
 	verify2FA,
 	setup2FA,
 	verifySetup2FA,
+	regenerateBackupCodes,
 	disable2FA,
 	status2FA,
 };

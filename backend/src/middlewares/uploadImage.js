@@ -4,10 +4,12 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 const crypto = require('crypto');
+const { secureUpload } = require('./secureUpload');
 
 const UPLOADS_ROOT = path.resolve(process.env.UPLOADS_DIR || 'uploads');
 const SAFE_ID = /^[A-Za-z0-9_-]{1,20}$/;
 
+const ALLOWED_EXT = new Set(['.png', '.jpg', '.jpeg', '.gif', '.webp']);
 const ALLOWED_MIME = new Set([
 	'image/png',
 	'image/jpeg',
@@ -36,11 +38,15 @@ const storage = multer.diskStorage({
 	},
 });
 
-const uploadImage = multer({
+const uploadImage = secureUpload(multer({
 	storage,
 	limits: { fileSize: 5 * 1024 * 1024 }, // 5 MB
+	// Kiểm tra CẢ đuôi file: tên lưu trên đĩa giữ đuôi gốc, nên chỉ xét MIME (do
+	// client tự khai) thì "anh.html" khai image/png sẽ được lưu và phục vụ như
+	// trang HTML. Nội dung thật còn được kiểm tra thêm ở secureUpload.
 	fileFilter: (_req, file, cb) => {
-		if (!ALLOWED_MIME.has(file.mimetype)) {
+		const ext = path.extname(file.originalname).toLowerCase();
+		if (!ALLOWED_MIME.has(file.mimetype) || !ALLOWED_EXT.has(ext)) {
 			return cb(
 				Object.assign(new Error('Chỉ chấp nhận ảnh PNG, JPEG, GIF hoặc WEBP'), {
 					statusCode: 400,
@@ -49,6 +55,6 @@ const uploadImage = multer({
 		}
 		cb(null, true);
 	},
-});
+}));
 
 module.exports = uploadImage;
