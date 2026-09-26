@@ -6,6 +6,7 @@ const mailService = require('./mailService');
 const trainingFileService = require('./trainingFileService');
 const { scopeOf } = require('../middlewares/auth');
 const { ROLE, roleIdOf, inputRoleId } = require('./roleCodes');
+const { assertHttpUrl } = require('../utils/safeUrl');
 
 // Mã QR điểm danh: JWT ngắn hạn ký chính session_id (mirror utils/captcha.js)
 // — không trạng thái, không cần lưu DB, hết hạn nhanh. FE làm mới QR mỗi 28s;
@@ -917,7 +918,7 @@ const addDocument = async (courseId, data, file, actorId) => {
 		.input('title', sql.NVarChar(255), data.title || (file ? trainingFileService.decodeOriginalName(file.originalname) : 'Liên kết'))
 		.input('source_type', sql.VarChar(10), sourceType)
 		.input('file_id', sql.VarChar(20), fileId)
-		.input('external_url', sql.NVarChar(500), sourceType === 'link' ? data.external_url : null)
+		.input('external_url', sql.NVarChar(500), sourceType === 'link' ? assertHttpUrl(data.external_url, 'Liên kết') : null)
 		.input('is_public', sql.Bit, data.is_public === 'false' || data.is_public === false ? 0 : 1)
 		.input('exam_type', sql.VarChar(20), data.exam_type || null)
 		.input('actor_id', sql.VarChar(20), actorId)

@@ -1,6 +1,6 @@
 const router = require('express').Router();
 const crypto = require('crypto');
-const { addClient, removeClient } = require('../services/eventService');
+const { addClient, removeClient, MAX_PER_USER } = require('../services/eventService');
 const { authenticate, verifySession } = require('../middlewares/auth');
 const { signToken, verifyToken } = require('../utils/keys');
 const { consumeOnce } = require('../utils/oneTimeToken');
@@ -61,6 +61,14 @@ router.get('/', async (req, res, next) => {
 	if (checked.error) {
 		return res.status(401).json({ success: false, message: checked.error });
 	}
+	// Đăng ký trước khi mở luồng: đã đủ số kết nối cho phép thì trả 429 thay vì
+	// giữ thêm socket. Trình duyệt tự thử lại sau `retry` (khi tab khác đóng).
+	if (!addClient(res, claims.id)) {
+		return res.status(429).json({
+			success: false,
+			message: `Mỗi tài khoản chỉ mở tối đa ${MAX_PER_USER} kết nối realtime cùng lúc`,
+		});
+	}
 
 	// Kết nối sống lâu: bỏ timeout socket, tắt Nagle để ping/sự kiện đi ngay
 	req.socket.setTimeout(0);
@@ -81,8 +89,6 @@ router.get('/', async (req, res, next) => {
 	res.write(FLUSH_PADDING);
 	res.write(`retry: ${RETRY_MS}\n`);
 	res.write('data: {"message": "connected"}\n\n');
-
-	addClient(res);
 
 	// Gửi ping định kỳ để giữ kết nối qua proxy/firewall
 	let beats = 0;

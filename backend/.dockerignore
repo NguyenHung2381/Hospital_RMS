@@ -1,6 +1,9 @@
 node_modules
 uploads
-.env
-.env.*
+# **/ để chặn cả file .env nằm trong thư mục con (vd src/.env) — mẫu không có
+# **/ chỉ khớp ở thư mục gốc của build context.
+**/.env
+**/.env.*
+!**/.env.example
 *.log
 secrets

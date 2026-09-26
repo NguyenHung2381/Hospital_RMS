@@ -53,7 +53,18 @@ function getNetworkIp() {
 	return null;
 }
 
-(async () => {
+// Worker do src/cluster.js tạo: primary đã chạy initPermissions và chọn port —
+// worker chỉ nghe đúng PORT được giao (các worker dùng chung 1 port qua cluster).
+const isClusterWorker = process.env.CLUSTER_WORKER === '1';
+
+const startWorker = () => {
+	const PORT = parseInt(process.env.PORT);
+	app.listen(PORT, '0.0.0.0', () => {
+		jobs.start();
+	});
+};
+
+const startStandalone = async () => {
 	try {
 		// Nâng cấp / kiểm tra CSDL phân quyền + đồng bộ danh mục quyền trước khi
 		// nhận request (xem permissions/index.js). CSDL chưa ở mô hình mới thì
@@ -125,4 +136,7 @@ function getNetworkIp() {
 		console.error(`❌ Không thể khởi động server: ${err.message}`);
 		process.exit(1);
 	}
-})();
+};
+
+if (isClusterWorker) startWorker();
+else startStandalone();

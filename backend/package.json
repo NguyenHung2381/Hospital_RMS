@@ -18,7 +18,7 @@
     "dump:db-objects": "node scripts/dump-db-objects.js"
   },
   "dependencies": {
-    "bcryptjs": "^2.4.3",
+    "bcrypt": "^6.0.0",
     "cors": "^2.8.5",
     "cross-env": "^10.1.0",
     "dotenv": "^16.4.5",
@@ -43,7 +43,6 @@
     "zod": "^3.24.1"
   },
   "devDependencies": {
-    "@types/bcryptjs": "^2.4.6",
     "@types/cors": "^2.8.17",
     "@types/express": "^4.17.21",
     "@types/jsonwebtoken": "^9.0.7",

@@ -86,6 +86,8 @@ export default function Login() {
 	const [errors, setErrors] = useState<FormErrors>({});
 	const [showPassword, setShowPassword] = useState(false);
 	const [isLoading, setIsLoading] = useState(false);
+	// Server yêu cầu giải thử thách chống dò mật khẩu (xem loginApi)
+	const [isVerifying, setIsVerifying] = useState(false);
 	const [apiError, setApiError] = useState<string | null>(null);
 	// Popup chọn nơi vào cho tài khoản có ghế trong hội đồng chấm đề tài
 	const [councilPrompt, setCouncilPrompt] = useState<{
@@ -196,7 +198,9 @@ export default function Login() {
 		setApiError(null);
 
 		try {
-			const data = await loginApi(form.username, form.password, form.remember);
+			const data = await loginApi(form.username, form.password, form.remember, () =>
+				setIsVerifying(true),
+			);
 			if ('requires_2fa' in data) {
 				setPreAuthToken(data.pre_auth_token);
 				return;
@@ -212,6 +216,7 @@ export default function Login() {
 			);
 		} finally {
 			setIsLoading(false);
+			setIsVerifying(false);
 		}
 	};
 
@@ -469,7 +474,7 @@ export default function Login() {
 						{isLoading ? (
 							<>
 								<span className={styles.btnSpinner} />
-								Đang xác thực...
+								{isVerifying ? 'Đang kiểm tra bảo mật...' : 'Đang xác thực...'}
 							</>
 						) : isLocked ? (
 							`Thử lại sau ${countdown}`

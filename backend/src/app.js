@@ -1,25 +1,6 @@
-const fs = require('fs');
 const path = require('path');
-const dotenv = require('dotenv');
 
-// Nạp biến môi trường dựa trên NODE_ENV. File .env nên nằm ở thư mục gốc của
-// server (cạnh .env.example và docker-compose). Vẫn hỗ trợ src/.env để không
-// vỡ nếu file bị đặt nhầm chỗ. dotenv KHÔNG ghi đè biến đã có sẵn, nên thứ tự
-// dưới đây chính là thứ tự ưu tiên.
-const SERVER_DIR = path.resolve(__dirname, '..');
-const envFile =
-	process.env.NODE_ENV === 'production' ? '.env.production' : '.env';
-const envCandidates = [
-	path.resolve(SERVER_DIR, envFile),
-	path.resolve(SERVER_DIR, '.env'),
-	path.resolve(__dirname, envFile),
-	path.resolve(__dirname, '.env'),
-];
-for (const envPath of envCandidates) {
-	if (fs.existsSync(envPath)) {
-		dotenv.config({ path: envPath });
-	}
-}
+require('./config/loadEnv');
 
 const isProduction = process.env.NODE_ENV === 'production';
 
@@ -42,6 +23,24 @@ if (missingEnv.length > 0) {
 		`❌ Thiếu biến môi trường bắt buộc: ${missingEnv.join(', ')}. Xem backend/.env.example.`,
 	);
 	process.exit(1);
+}
+
+// Ở production, secret JWT phải đủ dài (HS256 cần ≥ 256 bit entropy — script
+// gen-jwt-secrets sinh 64 byte hex = 128 ký tự) và 2 secret phải khác nhau:
+// dùng chung thì lộ 1 là lộ cả access lẫn refresh token.
+if (isProduction) {
+	const MIN_SECRET_LEN = 64;
+	const { JWT_SECRET, JWT_REFRESH_SECRET } = process.env;
+	if (JWT_SECRET.length < MIN_SECRET_LEN || JWT_REFRESH_SECRET.length < MIN_SECRET_LEN) {
+		console.error(
+			`❌ JWT_SECRET / JWT_REFRESH_SECRET phải dài ít nhất ${MIN_SECRET_LEN} ký tự ở production (npm run gen:jwt).`,
+		);
+		process.exit(1);
+	}
+	if (JWT_SECRET === JWT_REFRESH_SECRET) {
+		console.error('❌ JWT_SECRET và JWT_REFRESH_SECRET không được trùng nhau.');
+		process.exit(1);
+	}
 }
 
 // Ở production, không cho phép CORS mở cho mọi origin bằng cách im lặng quên
@@ -212,6 +211,24 @@ if (isProduction) {
 // Báo cáo CSP từ trình duyệt — đặt trước activityLogger để không ghi vào nhật
 // ký tác động của người dùng.
 app.use(`${API}/csp-report`, require('./routes/cspReport'));
+
+// Giới hạn tổng theo IP cho mọi API — lưới an toàn phía sau limit_req của
+// nginx (frontend/nginx.conf), chặn cả request gọi thẳng 127.0.0.1:3001 bỏ qua
+// nginx. Đủ rộng cho người dùng thật (1200/phút = 20 req/s kéo dài); nhiều máy
+// đi chung 1 IP NAT thì nâng API_RATE_LIMIT. Kết nối SSE /events sống lâu,
+// đã có giới hạn riêng theo user (routes/events.js) nên không tính ở đây.
+app.use(
+	API,
+	rateLimit({
+		name: 'api',
+		windowMs: 60 * 1000,
+		limit: Number(process.env.API_RATE_LIMIT) || 1200,
+		standardHeaders: true,
+		legacyHeaders: false,
+		skip: (req) => req.method === 'GET' && req.path === '/events',
+		message: { success: false, message: 'Quá nhiều yêu cầu. Vui lòng thử lại sau ít phút.' },
+	}),
+);
 
 // Ký link /uploads trước activityLogger để nhật ký không lưu chữ ký.
 app.use(API, signUploadUrlsInJson);

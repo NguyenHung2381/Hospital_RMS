@@ -18,7 +18,9 @@ const dbConfig = {
 	},
 
 	pool: {
-		max: 10,
+		// Mỗi worker (src/cluster.js) có pool riêng: tổng kết nối tới SQL Server
+		// = WEB_CONCURRENCY × DB_POOL_MAX.
+		max: Number(process.env.DB_POOL_MAX) || 10,
 		min: 2, // Giữ 2 connection ấm — tránh cold-start
 		idleTimeoutMillis: 60000, // 1 phút mới đóng connection nhàn rỗi (cũ: 30s)
 		acquireTimeoutMillis: 30000, // 30s chờ lấy connection từ pool

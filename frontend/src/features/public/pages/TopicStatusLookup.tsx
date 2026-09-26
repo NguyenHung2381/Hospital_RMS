@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { AlertSvg, SearchSvg } from '@/assets/icons';
+import { SearchSvg } from '@/assets/icons';
 import { Badge } from '@/shared/components';
 import PublicLayout from '../../../layouts/PublicLayout';
 import { formatDateOr } from '../../../shared/utils/formatDate';
@@ -8,41 +8,30 @@ import { STATUS_CFG } from '../../topics/utils/topicHelpers';
 import { getTopicStatus, type TopicStatus } from '../api/publicApi';
 import styles from './PublicPortal.module.css';
 
+// Tra cứu cần mã hồ sơ + email/SĐT của 1 thành viên đề tài: chỉ mã thì người
+// ngoài dò được tiêu đề mọi đề tài (mã sinh theo thứ tự NCKH_2026_001...).
 export default function TopicStatusLookup() {
 	const { maTraCuu } = useParams<{ maTraCuu?: string }>();
 	const [code, setCode] = useState(maTraCuu ?? '');
+	const [contact, setContact] = useState('');
 	const [topic, setTopic] = useState<TopicStatus | null>(null);
-	const [notFound, setNotFound] = useState(false);
+	const [notFound, setNotFound] = useState('');
 	const [loading, setLoading] = useState(false);
-	const [error, setError] = useState('');
 
-	const search = async (value: string) => {
-		if (!value.trim()) return;
+	const handleSearch = async (e: React.FormEvent) => {
+		e.preventDefault();
+		if (!code.trim() || !contact.trim()) return;
 		setLoading(true);
-		setError('');
 		setTopic(null);
-		setNotFound(false);
+		setNotFound('');
 		try {
-			setTopic(await getTopicStatus(value.trim()));
-		} catch {
-			// Không phân biệt "sai mã" với lỗi khác cho người dùng — tránh dò quét mã.
-			setNotFound(true);
+			setTopic(await getTopicStatus(code.trim(), contact.trim()));
+		} catch (err) {
+			// Không phân biệt "sai mã" với "sai liên hệ" — tránh dò quét mã.
+			setNotFound(err instanceof Error ? err.message : 'Không tìm thấy hồ sơ.');
 		} finally {
 			setLoading(false);
 		}
-	};
-
-	useEffect(() => {
-		if (!maTraCuu) return;
-		const run = async () => {
-			await search(maTraCuu);
-		};
-		void run();
-	}, [maTraCuu]);
-
-	const handleSearch = (e: React.FormEvent) => {
-		e.preventDefault();
-		void search(code);
 	};
 
 	const cfg = topic ? STATUS_CFG[topic.status] : null;
@@ -50,23 +39,30 @@ export default function TopicStatusLookup() {
 	return (
 		<PublicLayout
 			title='Tra cứu hồ sơ đề tài đã nộp'
-			subtitle='Nhập mã hồ sơ được cấp khi đăng ký đề tài qua cổng công khai để xem trạng thái xét duyệt.'
+			subtitle='Nhập mã hồ sơ được cấp khi đăng ký đề tài, kèm email hoặc số điện thoại đã khai trong hồ sơ, để xem trạng thái xét duyệt.'
 		>
-			{error && (
-				<div className={`${styles.alertBox} ${styles.alertError}`}>
-					<AlertSvg /> {error}
-				</div>
-			)}
-
 			<form
-				onSubmit={handleSearch}
+				onSubmit={(e) => void handleSearch(e)}
 				className={styles.searchRow}
 			>
 				<input
 					className={styles.input}
 					value={code}
 					onChange={(e) => setCode(e.target.value)}
-					placeholder='Nhập mã hồ sơ (vd: NCKH_2026_001)...'
+					placeholder='Mã hồ sơ (vd: NCKH_2026_001)'
+					aria-label='Mã hồ sơ'
+					maxLength={15}
+					required
+				/>
+				<input
+					className={styles.input}
+					value={contact}
+					onChange={(e) => setContact(e.target.value)}
+					placeholder='Email hoặc số điện thoại trong hồ sơ'
+					aria-label='Email hoặc số điện thoại'
+					maxLength={100}
+					autoComplete='email'
+					required
 				/>
 				<button
 					type='submit'
@@ -77,7 +73,7 @@ export default function TopicStatusLookup() {
 				</button>
 			</form>
 
-			{notFound && <div className={styles.emptyNotice}>Không tìm thấy hồ sơ với mã này.</div>}
+			{notFound && <div className={styles.emptyNotice}>{notFound}</div>}
 
 			{topic && (
 				<div style={{ marginTop: 24 }}>

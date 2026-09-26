@@ -1,6 +1,6 @@
 // CSDL giả cho luồng đăng nhập / refresh token: 1 user + bảng refresh_tokens
 // trong bộ nhớ. Dùng chung cho refreshRotation.test.js và authCookie.test.js.
-const bcrypt = require('bcryptjs');
+const bcrypt = require('bcrypt');
 const { install } = require('./fakeDb');
 
 const PASSWORD = 'Dung#matkhau2026';

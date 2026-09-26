@@ -133,7 +133,14 @@ const logoutAllLimiter = rateLimit({
 router.post(
 	'/login',
 	loginLimiter,
-	[body('username').notEmpty(), body('password').notEmpty()],
+	// Chặn rẻ trước mọi bước tốn kém: username khớp cột VARCHAR(50), mật khẩu
+	// tối đa 128 ký tự như passwordPolicy (bcrypt chỉ dùng 72 byte đầu).
+	[
+		body('username').isString().notEmpty().isLength({ max: 50 }),
+		body('password').isString().notEmpty().isLength({ max: 128 }),
+		body('pow_token').optional().isString().isLength({ max: 2048 }),
+		body('pow_nonce').optional().isString().isLength({ max: 24 }),
+	],
 	validate,
 	authController.login,
 );

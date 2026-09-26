@@ -1,5 +1,6 @@
 import { BASE_URL } from '../../../shared/api/axios';
 import { clearAuth, getDeviceToken, saveDeviceToken } from '../../../shared/utils/storage';
+import { type LoginChallenge, solveChallenge } from '../utils/solveChallenge';
 
 export interface LoginUser {
 	id: string;
@@ -40,26 +41,41 @@ export class LoginLockedError extends Error {
 	}
 }
 
+// Server đang nghi bị dò mật khẩu (backend/src/utils/loginShield.js) thì trả 428
+// kèm thử thách — trình duyệt tự giải rồi gửi lại, người dùng chỉ thấy đăng
+// nhập chậm hơn một chút. Tối đa 2 lần (độ khó có thể tăng giữa 2 lượt gửi).
+const MAX_CHALLENGE_ROUNDS = 2;
+
 export async function loginApi(
 	username: string,
 	password: string,
 	rememberMe = false,
+	onVerifying?: () => void,
 ): Promise<LoginResponse | Requires2FAResponse> {
-	// Refresh token về trong cookie HttpOnly (Set-Cookie) — không có trong body.
-	// remember_me: cookie sống 30 ngày thay vì mất khi đóng trình duyệt.
-	const res = await fetch(`${BASE_URL}/api/v1/auth/login`, {
-		method: 'POST',
-		credentials: 'same-origin',
-		headers: { 'Content-Type': 'application/json' },
-		body: JSON.stringify({
-			username,
-			password,
-			device_token: getDeviceToken(username),
-			remember_me: rememberMe,
-		}),
-	});
-
-	const json = await res.json();
+	let pow: { pow_token: string; pow_nonce: string } | undefined;
+	let res: Response;
+	let json;
+	for (let round = 0; ; round++) {
+		// Refresh token về trong cookie HttpOnly (Set-Cookie) — không có trong body.
+		// remember_me: cookie sống 30 ngày thay vì mất khi đóng trình duyệt.
+		res = await fetch(`${BASE_URL}/api/v1/auth/login`, {
+			method: 'POST',
+			credentials: 'same-origin',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({
+				username,
+				password,
+				device_token: getDeviceToken(username),
+				remember_me: rememberMe,
+				...pow,
+			}),
+		});
+		json = await res.json();
+		if (res.status !== 428 || json.code !== 'LOGIN_CHALLENGE' || round >= MAX_CHALLENGE_ROUNDS) break;
+		onVerifying?.();
+		const challenge = json.challenge as LoginChallenge;
+		pow = { pow_token: challenge.token, pow_nonce: await solveChallenge(challenge) };
+	}
 
 	if (!res.ok || !json.success) {
 		const message = json.message ?? 'Có lỗi xảy ra, vui lòng thử lại';

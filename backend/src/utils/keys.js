@@ -14,6 +14,7 @@ const PURPOSES = new Set([
 	'pre-auth-2fa', // bước giữa mật khẩu và mã OTP
 	'sse-ticket', // vé mở kết nối /events
 	'captcha',
+	'login-pow', // thử thách proof-of-work khi đăng nhập bị dội (utils/loginShield.js)
 	'attendance-qr', // QR điểm danh buổi học
 	'seminar-qr', // QR điểm danh hội thảo
 	'upload-url', // chữ ký link /uploads (khi không đặt UPLOAD_URL_SECRET)

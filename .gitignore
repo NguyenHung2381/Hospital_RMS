@@ -14,6 +14,9 @@ docs/
 .env.staging
 *.env
 .env.bak
+# Bản backup do scripts/gen-jwt-secrets.js --force tạo (vd .env.production.bak) — chứa secret
+.env.*.bak
+*.env.bak
 
 # Logs
 logs/

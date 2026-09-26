@@ -7,7 +7,7 @@ process.env.JWT_SECRET = 'test-secret';
 process.env.JWT_REFRESH_SECRET = 'test-refresh-secret';
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const bcrypt = require('bcryptjs');
+const bcrypt = require('bcrypt');
 const { install } = require('./fakeDb');
 
 const HASH = bcrypt.hashSync('Dung#matkhau2026', 4);

@@ -9,12 +9,19 @@
 # (vd ai đó gọi thẳng cổng 8084 trong LAN) thì header tự khai bị bỏ qua — không
 # giả được IP để vượt rate-limit đăng nhập, không giả được "đang dùng HTTPS".
 #
-# Mặc định = loopback + các dải IP nội bộ: chạy đúng với proxy ở bất kỳ đâu
-# trong mạng nội bộ. Biết IP proxy thì đặt hẹp lại (vd "172.17.0.1" khi proxy
-# ở cùng máy Docker) để máy khác trong LAN gọi thẳng 8084 không giả được IP.
+# Mặc định (biến trống) = loopback + dải mạng Docker 172.16.0.0/12: đúng khi
+# proxy HTTPS chạy CÙNG máy (kết nối tới container đi qua gateway Docker).
+# Trước đây mặc định tin cả 10.0.0.0/8 và 192.168.0.0/16 — mọi máy trong LAN
+# bệnh viện gọi thẳng cổng 8084 đều tự khai được X-Forwarded-For để lách
+# rate-limit đăng nhập. Proxy đặt ở MÁY KHÁC thì BẮT BUỘC khai IP của nó, nếu
+# không mọi người dùng sẽ bị coi là cùng 1 IP (IP của proxy).
 set -eu
 
-TRUSTED_PROXIES="${TRUSTED_PROXIES:-127.0.0.1/32 10.0.0.0/8 172.16.0.0/12 192.168.0.0/16}"
+if [ -z "${TRUSTED_PROXIES:-}" ]; then
+	echo "40-trusted-proxies: CẢNH BÁO — TRUSTED_PROXIES trống, chỉ tin 127.0.0.1 + mạng Docker." >&2
+	echo "40-trusted-proxies: proxy HTTPS ở máy khác thì đặt TRUSTED_PROXIES=<IP proxy> trong .env cạnh compose." >&2
+fi
+TRUSTED_PROXIES="${TRUSTED_PROXIES:-127.0.0.1/32 172.16.0.0/12}"
 OUT=/etc/nginx/conf.d/00-trusted-proxies.conf
 
 list=$(echo "$TRUSTED_PROXIES" | tr ',' ' ')

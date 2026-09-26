@@ -74,8 +74,11 @@ services:
         "--save", "",
         "--appendonly", "no",
       ]
+    # Chỉ mở trên loopback (cho backend chạy native `npm run dev`): Redis dev
+    # không đặt mật khẩu, mở 0.0.0.0 thì máy khác trong LAN xoá được bộ đếm
+    # rate-limit / bắn lệnh xoá cache phân quyền.
     ports:
-      - "6379:6379"
+      - "127.0.0.1:6379:6379"
     mem_limit: 160m
     restart: unless-stopped
 

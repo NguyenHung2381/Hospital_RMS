@@ -1,4 +1,5 @@
 const authService = require('../services/authService');
+const loginShield = require('../utils/loginShield');
 const { success, error } = require('../utils/response');
 const {
 	setRefreshCookie,
@@ -20,16 +21,37 @@ const withRefreshCookie = (res, data) => {
 const refreshTokenOf = (req) => readRefreshCookie(req) || req.body?.refresh_token || null;
 
 const login = async (req, res, next) => {
+	const { username, password, device_token, remember_me, pow_token, pow_nonce } = req.body;
+	const userAgent = req.get('user-agent');
 	try {
-		const { username, password, device_token, remember_me } = req.body;
-		const data = await authService.login(
-			username,
-			password,
-			req.ip,
-			req.get('user-agent'),
-			device_token,
-			remember_me === true,
-		);
+		// Lá chắn đăng nhập (utils/loginShield.js): đang có dấu hiệu dò thì phải
+		// kèm lời giải thử thách hợp lệ — kiểm tra TRƯỚC khi truy vấn DB / bcrypt.
+		const { bits } = await loginShield.assess({ ip: req.ip, username });
+		if (
+			bits > 0 &&
+			!(await loginShield.verifyChallenge({ token: pow_token, nonce: pow_nonce, username, requiredBits: bits }))
+		) {
+			return res.status(428).json({
+				success: false,
+				code: 'LOGIN_CHALLENGE',
+				message: 'Cần xác minh bảo mật trước khi đăng nhập',
+				challenge: loginShield.issueChallenge({ username, bits }),
+			});
+		}
+
+		let data;
+		try {
+			data = await authService.login(username, password, req.ip, userAgent, device_token, remember_me === true);
+		} catch (err) {
+			// Sai tài khoản/mật khẩu (401) hoặc bị khoá tạm (kèm retryAfterSeconds)
+			// = 1 lần dò. Lỗi khác (503 quá tải, 403 tài khoản vô hiệu hoá sau khi
+			// ĐÚNG mật khẩu...) không tính.
+			if (err?.statusCode === 401 || (err?.statusCode === 403 && err.retryAfterSeconds)) {
+				await loginShield.recordFailure({ ip: req.ip, username, userAgent });
+			}
+			throw err;
+		}
+		await loginShield.recordSuccess({ username });
 		return success(res, withRefreshCookie(res, data), 'Đăng nhập thành công');
 	} catch (err) {
 		next(err);

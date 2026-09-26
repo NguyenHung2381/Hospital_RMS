@@ -1,7 +1,7 @@
 const router = require('express').Router();
 // Đếm trên Redis, tự rơi về bộ nhớ khi Redis lỗi (utils/rateLimit.js)
 const rateLimit = require('../utils/rateLimit');
-const { body, query } = require('express-validator');
+const { body, param, query } = require('express-validator');
 const { validate } = require('../middlewares/errorHandler');
 const ctrl = require('../controllers/publicPortalController');
 
@@ -113,7 +113,16 @@ router.post(
 );
 
 // ─── Tra cứu hồ sơ đề tài theo mã ────────────────────────────────────────────
-router.get('/topics/:id/status', codeLookupLimiter, ctrl.getTopicStatus);
+router.get(
+	'/topics/:id/status',
+	codeLookupLimiter,
+	[
+		param('id').isString().isLength({ min: 1, max: 15 }),
+		query('contact').isString().trim().isLength({ min: 9, max: 100 }),
+	],
+	validate,
+	ctrl.getTopicStatus,
+);
 
 // ─── Thư viện đề tài công khai ───────────────────────────────────────────────
 router.get('/featured-topics', ctrl.getFeaturedTopics);

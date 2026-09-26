@@ -43,4 +43,5 @@ ENTRYPOINT ["docker-entrypoint.sh"]
 EXPOSE 3001
 # Gọi thẳng node (NODE_ENV đã set ở trên): `npm run` giữ thêm 1 tiến trình npm
 # ~60-75MB RSS suốt đời container, và nuốt SIGTERM khiến tắt container chậm.
-CMD ["node", "src/server.js"]
+# src/cluster.js: chạy WEB_CONCURRENCY worker để dùng hết các core CPU.
+CMD ["node", "src/cluster.js"]

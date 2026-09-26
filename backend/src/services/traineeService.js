@@ -1,4 +1,4 @@
-const bcrypt = require('bcryptjs');
+const bcrypt = require('bcrypt');
 const { getPool, sql } = require('../config/db');
 const { broadcast } = require('./eventService');
 const { paging } = require('../utils/paging');

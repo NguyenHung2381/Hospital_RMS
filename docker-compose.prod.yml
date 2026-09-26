@@ -46,9 +46,26 @@ services:
       TRUST_PROXY: "1"
       # Origin trình duyệt dùng để truy cập web (ghi đè CORS_ORIGIN trong backend/.env)
       CORS_ORIGIN: "${CORS_ORIGIN:-https://nckh.bvnghean.vn}"
-      # Heap V8 < mem_limit để còn chỗ cho buffer (upload/xuất Excel) + stack.
-      NODE_OPTIONS: "--max-old-space-size=384"
-    mem_limit: 512m
+      # Access token ngắn hạn (frontend tự làm mới qua refresh cookie). Ghim ở
+      # đây để một dòng JWT_EXPIRES_IN lạc trong file .env không kéo dài token.
+      JWT_EXPIRES_IN: "15m"
+      # Số worker của src/cluster.js. Server 8 core: 6 worker, chừa 2 core cho SQL
+      # Server (cùng máy, host.docker.internal) + nginx + Redis. Mỗi worker
+      # có pool DB riêng: tổng kết nối SQL Server = WEB_CONCURRENCY × DB_POOL_MAX.
+      WEB_CONCURRENCY: "${WEB_CONCURRENCY:-6}"
+      DB_POOL_MAX: "${DB_POOL_MAX:-10}"
+      # bcrypt (native) chạy trên threadpool libuv, ~200ms CPU/lượt. Mỗi worker
+      # chỉ chạy 1 bcrypt cùng lúc (utils/cpuGate.js) → tối đa 6 core cho đăng
+      # nhập (~30 lượt/s), bị dội đăng nhập vẫn còn 2 core cho SQL Server. Hàng
+      # đợi 20/worker ≈ chờ tối đa ~4s, quá thì 503.
+      UV_THREADPOOL_SIZE: "4"
+      LOGIN_MAX_CONCURRENT: "1"
+      LOGIN_MAX_QUEUE: "20"
+      # Heap V8 cho TỪNG tiến trình (primary + mỗi worker); tổng vẫn dưới
+      # mem_limit, chừa chỗ cho buffer (upload/xuất Excel) + stack.
+      NODE_OPTIONS: "--max-old-space-size=256"
+    # ~300MB/worker × 6 + primary. Đổi WEB_CONCURRENCY thì chỉnh theo.
+    mem_limit: 2304m
     extra_hosts:
       - "host.docker.internal:host-gateway"
     # Mở localhost:3001 trên máy server (chỉ loopback, không lộ ra mạng) để

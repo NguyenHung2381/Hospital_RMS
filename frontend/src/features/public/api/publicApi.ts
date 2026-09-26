@@ -129,8 +129,11 @@ export interface TopicStatus {
 	updated_at: string | null;
 }
 
-export const getTopicStatus = (topicId: string) =>
-	request<TopicStatus>(`/topics/${encodeURIComponent(topicId)}/status`);
+// contact: email hoặc số điện thoại của 1 thành viên đề tài (đã nhập khi nộp hồ sơ)
+export const getTopicStatus = (topicId: string, contact: string) =>
+	request<TopicStatus>(
+		`/topics/${encodeURIComponent(topicId)}/status?contact=${encodeURIComponent(contact)}`,
+	);
 
 // ─── Thư viện đề tài công khai ───────────────────────────────────────────────
 export interface FeaturedTopic {

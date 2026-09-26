@@ -21,6 +21,7 @@ const IMMEDIATE = {
 	'2fa_disabled': 'Tắt xác thực 2 lớp',
 	device_untrusted: 'Thu hồi thiết bị quen do nhập sai nhiều lần',
 	password_reset_by_admin: 'Quản trị đặt lại mật khẩu người dùng',
+	login_attack_mode: 'Phát hiện dội đăng nhập — bật chế độ chống tấn công (utils/loginShield.js)',
 };
 
 // Sự kiện chỉ cảnh báo khi xảy ra DỒN DẬP (dấu hiệu dò mật khẩu hàng loạt):

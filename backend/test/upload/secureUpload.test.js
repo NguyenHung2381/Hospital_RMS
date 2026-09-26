@@ -70,7 +70,9 @@ test('import Excel: file không phải .xlsx thật bị từ chối', async () 
 });
 
 test('vượt hạn mức dung lượng/ngày thì bị chặn (429)', async () => {
-	userId = 'U-QUOTA';
+	// Hạn mức đếm theo ngày trên Redis thật (nếu có) — id riêng mỗi lượt chạy,
+	// không thì lượt chạy thứ 2 trong ngày cộng dồn dung lượng của lượt trước.
+	userId = `U-QUOTA-${Date.now()}`;
 	const big = Buffer.concat([PDF, Buffer.alloc(700 * 1024)]);
 	assert.equal((await send('/t/DT4/files', [['files', 'a.pdf', big]])).status, 200);
 	assert.equal((await send('/t/DT4/files', [['files', 'b.pdf', big]])).status, 429);

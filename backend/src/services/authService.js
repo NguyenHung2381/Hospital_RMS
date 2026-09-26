@@ -1,4 +1,4 @@
-const bcrypt = require('bcryptjs');
+const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const { signToken, verifyToken, ISSUER } = require('../utils/keys');
 const crypto = require('crypto');
@@ -13,6 +13,35 @@ const securityEvents = require('./securityEventService');
 const trustedDevices = require('./trustedDeviceService');
 const secretBox = require('../utils/secretBox');
 const { consumeOnce } = require('../utils/oneTimeToken');
+const { passwordGate, BUSY_ERROR } = require('../utils/cpuGate');
+
+// Mọi lần so / băm mật khẩu theo yêu cầu của người dùng đi qua passwordGate
+// (utils/cpuGate.js) — giới hạn số bcrypt chạy cùng lúc, quá tải trả 503.
+const hashPassword = (plain) => passwordGate.run(() => bcrypt.hash(plain, 12));
+
+// Thời gian trung bình (EWMA) của 1 lần so mật khẩu THẬT, tính cả thời gian chờ
+// trong passwordGate — để phản hồi cho username không tồn tại kéo dài đúng
+// bằng như vậy (chống dò tài khoản qua thời gian phản hồi) mà KHÔNG chạy bcrypt:
+// trước đây mỗi username bịa ra tốn ~200ms CPU cho 1 bcrypt giả, dội username
+// ngẫu nhiên là đủ đánh sập server.
+let compareMsAvg = 250;
+const EWMA_WEIGHT = 0.1;
+
+const comparePassword = async (plain, hash) => {
+	const start = performance.now();
+	try {
+		return await passwordGate.run(() => bcrypt.compare(plain, hash));
+	} finally {
+		compareMsAvg += (performance.now() - start - compareMsAvg) * EWMA_WEIGHT;
+	}
+};
+
+// Chờ như 1 lần so mật khẩu thật (±15% ngẫu nhiên), không tốn CPU. Cổng đang
+// đầy thì trả 503 giống hệt comparePassword — không để lộ username tồn tại.
+const fakeCompareDelay = () => {
+	if (passwordGate.saturated()) return Promise.reject(BUSY_ERROR);
+	return new Promise((resolve) => setTimeout(resolve, compareMsAvg * (0.85 + Math.random() * 0.3)));
+};
 
 // Token trung gian giữa bước 1 (mật khẩu đúng) và bước 2 (mã OTP) của tài
 // khoản đã bật 2FA — KHÔNG phải access token thật, không mang quyền, chỉ xác
@@ -131,14 +160,12 @@ const isRepeatedWrongPassword = (userId, password) => {
 // ── Chống dò tài khoản (user enumeration) ───────────────────────
 // Sai username / sai mật khẩu phải trả CÙNG thông báo và CÙNG thời gian xử lý
 // — nếu không, kẻ tấn công lọc được danh sách username thật (vốn đoán được:
-// chữ cái đầu + mã NV) rồi mới rải mật khẩu. Username không tồn tại vẫn chạy
-// bcrypt với 1 hash giả cùng cost để thời gian phản hồi không khác.
+// chữ cái đầu + mã NV) rồi mới rải mật khẩu. Username không tồn tại thì chờ
+// bằng thời gian 1 lần so mật khẩu thật (fakeCompareDelay) — không chạy bcrypt.
 const INVALID_CREDENTIALS = {
 	statusCode: 401,
 	message: 'Tên đăng nhập hoặc mật khẩu không đúng',
 };
-let _dummyHash = null;
-const dummyHash = () => (_dummyHash ??= bcrypt.hash(crypto.randomBytes(16).toString('hex'), 12));
 
 const lockedError = (lockedUntil) => {
 	const secondsLeft = Math.max(
@@ -179,7 +206,7 @@ const login = async (
 
 	const user = result.recordset[0];
 	if (!user) {
-		await bcrypt.compare(password, await dummyHash());
+		await fakeCompareDelay();
 		throw INVALID_CREDENTIALS;
 	}
 
@@ -195,7 +222,7 @@ const login = async (
 		throw lockedError(user.locked_until);
 	}
 
-	const isMatch = await bcrypt.compare(password, user.password);
+	const isMatch = await comparePassword(password, user.password);
 	if (!isMatch) {
 		if (!isRepeatedWrongPassword(user.id, password)) {
 			if (device) {
@@ -437,7 +464,7 @@ const assertPassword = async (pool, userId, password) => {
 		await pool.request().input('id', sql.VarChar(20), userId).query('SELECT password FROM users WHERE id = @id')
 	).recordset[0];
 	if (!user) throw { statusCode: 404, message: 'Người dùng không tồn tại' };
-	if (!(await bcrypt.compare(String(password ?? ''), user.password)))
+	if (!(await comparePassword(String(password ?? ''), user.password)))
 		throw { statusCode: 400, message: 'Mật khẩu không đúng' };
 };
 
@@ -893,13 +920,13 @@ const changePassword = async (
 	const user = result.recordset[0];
 	if (!user) throw { statusCode: 404, message: 'Người dùng không tồn tại' };
 
-	const isMatch = await bcrypt.compare(oldPassword, user.password);
+	const isMatch = await comparePassword(oldPassword, user.password);
 	if (!isMatch) throw { statusCode: 400, message: 'Mật khẩu cũ không đúng' };
 	// Mật khẩu tạm do quản trị cấp phải được thay thật sự, không "đổi" sang chính nó
 	if (oldPassword === newPassword)
 		throw { statusCode: 400, message: 'Mật khẩu mới phải khác mật khẩu hiện tại' };
 
-	const hashed = await bcrypt.hash(newPassword, 12);
+	const hashed = await hashPassword(newPassword);
 	await pool
 		.request()
 		.input('id', sql.VarChar(20), userId)

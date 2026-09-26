@@ -2,6 +2,7 @@ const { getPool, sql } = require('../config/db');
 const { broadcast } = require('./eventService');
 const { paging } = require('../utils/paging');
 const trainingFileService = require('./trainingFileService');
+const { assertHttpUrl } = require('../utils/safeUrl');
 
 const programSelect = `
   SELECT p.*, d.name AS department_name, tt.name AS trainee_type_name, tp.name AS training_type_name
@@ -465,7 +466,7 @@ const addLessonDocument = async (lessonId, data, file, actorId) => {
 		.input('title', sql.NVarChar(255), data.title || (file ? trainingFileService.decodeOriginalName(file.originalname) : 'Liên kết'))
 		.input('source_type', sql.VarChar(10), sourceType)
 		.input('file_id', sql.VarChar(20), fileId)
-		.input('external_url', sql.NVarChar(500), sourceType === 'link' ? data.external_url : null)
+		.input('external_url', sql.NVarChar(500), sourceType === 'link' ? assertHttpUrl(data.external_url, 'Liên kết') : null)
 		.input('is_public', sql.Bit, data.is_public === 'false' || data.is_public === false ? 0 : 1)
 		.input('actor_id', sql.VarChar(20), actorId)
 		.query(`

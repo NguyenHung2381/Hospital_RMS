@@ -9,7 +9,7 @@
 const path = require('path');
 require('dotenv').config({ path: path.join(__dirname, '../.env'), quiet: true });
 
-const bcrypt = require('bcryptjs');
+const bcrypt = require('bcrypt');
 const { getPool, sql } = require('../src/config/db');
 
 const DEFAULT_PASSWORDS = ['123456'];

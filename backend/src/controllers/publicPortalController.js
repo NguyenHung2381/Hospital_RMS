@@ -116,10 +116,17 @@ const getFeaturedTopics = async (req, res, next) => {
 	}
 };
 
+// Giới hạn theo từng MÃ hồ sơ (ngoài rate-limit theo IP ở route): chặn đoán
+// email/SĐT của 1 hồ sơ bằng cách đổi IP liên tục.
+const TOPIC_STATUS_PER_ID_MAX = 10;
+
 const getTopicStatus = async (req, res, next) => {
 	try {
-		const topic = await service.getTopicStatus(req.params.id);
-		if (!topic) return error(res, 'Không tìm thấy hồ sơ với mã này.', 404);
+		if (!(await attempts.hit('topic-status', req.params.id, TOPIC_STATUS_PER_ID_MAX, 60 * 60))) {
+			return error(res, 'Mã hồ sơ này đã được tra cứu quá nhiều lần. Vui lòng thử lại sau 1 giờ.', 429);
+		}
+		const topic = await service.getTopicStatus(req.params.id, req.query.contact);
+		if (!topic) return error(res, 'Không tìm thấy hồ sơ khớp với mã và thông tin liên hệ đã nhập.', 404);
 		success(res, topic);
 	} catch (err) {
 		next(err);

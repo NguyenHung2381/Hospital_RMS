@@ -1,4 +1,5 @@
 const { getPool, sql } = require('../config/db');
+const { remember } = require('../utils/cache');
 const traineeService = require('./traineeService');
 const courseService = require('./courseService');
 const researchRoundService = require('./roundService');
@@ -249,26 +250,65 @@ const getFeaturedTopics = async () => {
 // Tra cứu trạng thái hồ sơ đề tài đã nộp qua cổng công khai bằng chính mã đề
 // tài trả về lúc đăng ký (registerTopic ở trên) — chỉ trả tối thiểu, không
 // JOIN thành viên/file/khoa phòng.
-const getTopicStatus = async (topicId) => {
-	const pool = await getPool();
-	const result = await pool.request().input('id', sql.VarChar(15), topicId).query(`
-    SELECT id, title, status, created_at, updated_at
-    FROM topics
-    WHERE id = @id
-  `);
-	return result.recordset[0] || null;
+// Tra cứu trạng thái hồ sơ theo mã + email HOẶC số điện thoại của 1 thành viên
+// đề tài (người đăng ký đã tự nhập lúc nộp). Trước đây chỉ cần mã — mã sinh
+// theo thứ tự (<LOẠI>_<năm>_001...) nên người ngoài dò được tiêu đề của mọi đề
+// tài, kể cả đề tài nháp / bị từ chối. Sai mã hay sai liên hệ đều trả null như
+// nhau (không lộ mã nào tồn tại).
+const normalizeEmail = (v) => String(v ?? '').trim().toLowerCase();
+const normalizePhone = (v) => {
+	const digits = String(v ?? '').replace(/\D/g, '');
+	// 0912345678 ≡ 84912345678 ≡ +84 912 345 678
+	return digits.startsWith('84') ? `0${digits.slice(2)}` : digits;
 };
 
+const getTopicStatus = async (topicId, contact) => {
+	const email = normalizeEmail(contact);
+	const phone = normalizePhone(contact);
+	if (!email.includes('@') && phone.length < 9) return null;
+
+	const pool = await getPool();
+	const result = await pool.request().input('id', sql.VarChar(15), topicId).query(`
+    SELECT t.id, t.title, t.status, t.created_at, t.updated_at, tm.email, tm.phone_number
+    FROM topics t
+    JOIN topic_members tm ON tm.topic_id = t.id
+    WHERE t.id = @id
+  `);
+	const rows = result.recordset;
+	const matched = rows.some((r) =>
+		email.includes('@')
+			? normalizeEmail(r.email) === email
+			: !!r.phone_number && normalizePhone(r.phone_number) === phone,
+	);
+	if (!matched) return null;
+	const { id, title, status, created_at, updated_at } = rows[0];
+	return { id, title, status, created_at, updated_at };
+};
+
+// Danh sách công khai (không cần đăng nhập, không rate-limit) — trước đây mỗi
+// request truy vấn thẳng SQL Server, ai cũng dội được vào DB. Cache Redis ngắn
+// (utils/cache.js, Redis lỗi thì đọc DB như cũ): dữ liệu đổi (gắn cờ đề tài
+// nổi bật, mở đợt, sửa danh mục...) hiện ra trang công khai chậm tối đa 60s.
+const PUBLIC_TTL_SEC = 60;
+const cached = (name, fn) => () => remember(`public:${name}`, PUBLIC_TTL_SEC, fn);
+
+// roundId do người ngoài tự gửi: chỉ cache id đúng dạng (VarChar(10)), tránh
+// bị nhồi key rác vào Redis; id lạ vẫn trả kết quả, chỉ không cache.
+const getPublicLevelsCached = (roundId) =>
+	!roundId || /^[\w-]{1,10}$/.test(roundId)
+		? remember(`public:levels:${roundId || ''}`, PUBLIC_TTL_SEC, () => getPublicLevels(roundId))
+		: getPublicLevels(roundId);
+
 module.exports = {
-	getOpenCourses,
-	getTraineeTypes,
+	getOpenCourses: cached('open-courses', getOpenCourses),
+	getTraineeTypes: cached('trainee-types', getTraineeTypes),
 	lookupResults,
 	register,
-	getOpenTopicRounds,
-	getPublicCategories,
-	getPublicDepartments,
-	getPublicLevels,
+	getOpenTopicRounds: cached('open-topic-rounds', getOpenTopicRounds),
+	getPublicCategories: cached('categories', getPublicCategories),
+	getPublicDepartments: cached('departments', getPublicDepartments),
+	getPublicLevels: getPublicLevelsCached,
 	registerTopic,
 	getTopicStatus,
-	getFeaturedTopics,
+	getFeaturedTopics: cached('featured-topics', getFeaturedTopics),
 };
