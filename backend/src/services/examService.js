@@ -408,21 +408,43 @@ const startAttempt = async (paperId, actor) => {
 
 // Nộp bài — chấm ngay câu trắc nghiệm, câu tự luận để score_awarded NULL chờ
 // chấm tay. Nếu đề không có câu tự luận nào, hoàn tất luôn (không chờ ai chấm).
+// Cho nộp trễ tối đa chừng này sau khi hết giờ (độ trễ mạng / trình duyệt tự nộp)
+const SUBMIT_GRACE_SEC = 120;
+
 const submitAttempt = async (paperId, answers, actor) => {
 	const pool = await getPool();
 	const info = await assertEnrollment(pool, paperId, actor);
 
-	const attemptRes = await pool
-		.request()
-		.input('paper_id', sql.VarChar(20), paperId)
-		.input('enrollment_id', sql.VarChar(20), info.enrollment_id)
-		.query("SELECT id, status FROM exam_attempts WHERE paper_id = @paper_id AND enrollment_id = @enrollment_id");
-	const attempt = attemptRes.recordset[0];
-	if (!attempt || attempt.status !== 'in_progress') {
+	// "Nhận" lượt làm bài NGUYÊN TỬ: chỉ 1 request đổi được in_progress → submitted.
+	// Trước đây SELECT rồi mới UPDATE — nộp 2 lần song song thì cả 2 cùng ghi đáp án.
+	// Đồng thời tính trễ hạn theo giờ SQL Server (không tin đồng hồ trình duyệt):
+	// quá started_at + thời lượng + SUBMIT_GRACE_SEC thì đáp án không được tính.
+	const claimed = (
+		await pool
+			.request()
+			.input('paper_id', sql.VarChar(20), paperId)
+			.input('enrollment_id', sql.VarChar(20), info.enrollment_id)
+			.input('limit_sec', sql.Int, (Number(info.duration_minutes) || 0) * 60 + SUBMIT_GRACE_SEC).query(`
+				DECLARE @r TABLE (id VARCHAR(20), late BIT);
+				UPDATE exam_attempts SET status = 'submitted', submitted_at = GETDATE()
+				OUTPUT INSERTED.id,
+				       CASE WHEN @limit_sec > ${SUBMIT_GRACE_SEC}
+				             AND INSERTED.submitted_at > DATEADD(SECOND, @limit_sec, INSERTED.started_at)
+				            THEN 1 ELSE 0 END
+				INTO @r
+				WHERE paper_id = @paper_id AND enrollment_id = @enrollment_id AND status = 'in_progress';
+				SELECT id, late FROM @r;
+			`)
+	).recordset[0];
+	if (!claimed) {
 		const err = new Error('Không tìm thấy lượt làm bài đang mở, hoặc bạn đã nộp rồi.');
 		err.statusCode = 409;
 		throw err;
 	}
+	const attempt = { id: claimed.id };
+	const late = !!claimed.late;
+	// Nộp quá giờ: vẫn đóng lượt làm bài (không làm lại được) nhưng bỏ đáp án
+	if (late) answers = [];
 
 	const questionsRes = await pool.request().input('paper_id', sql.VarChar(20), paperId).query(`
     SELECT q.id, q.question_type, q.correct_option, q.points
@@ -472,7 +494,7 @@ const submitAttempt = async (paperId, answers, actor) => {
 		await courseService.upsertGrade(info.enrollment_id, paperRes.recordset[0]?.subject_id || null, { score: autoScore }, actor.id);
 	}
 
-	return { attempt_id: attempt.id, auto_score: autoScore, has_essay: hasEssay };
+	return { attempt_id: attempt.id, auto_score: autoScore, has_essay: hasEssay, late };
 };
 
 module.exports = {

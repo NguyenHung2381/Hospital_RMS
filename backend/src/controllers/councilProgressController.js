@@ -62,6 +62,24 @@ const requireSecretary = async (req, res, next) => {
 	}
 };
 
+// Middleware chạy TRƯỚC multer cho ảnh chèn nhận xét: phải có ghế trong hội
+// đồng của đề tài. Trước đây chỉ kiểm tra SAU khi multer đã ghi file — người
+// không có ghế vẫn ghi được ảnh vào thư mục của đề tài bất kỳ (bị trả 403
+// nhưng file đã nằm trên đĩa).
+const requireCouncilSeat = async (req, res, next) => {
+	try {
+		const roles = await progressService.getRolesForTopic(req.params.topic_id, req.user.id);
+		if (!roles.length) {
+			return res
+				.status(403)
+				.json({ success: false, message: 'Bạn không có ghế trong hội đồng đánh giá đề tài này.' });
+		}
+		next();
+	} catch (err) {
+		next(err);
+	}
+};
+
 const filesFromRequest = (req) =>
 	req.files.map((f) => ({
 		file_name: Buffer.from(f.originalname, 'latin1').toString('utf8'),
@@ -158,6 +176,7 @@ module.exports = {
 	upsertReview,
 	upsertResult,
 	requireSecretary,
+	requireCouncilSeat,
 	uploadFiles,
 	deleteFile,
 	uploadMinutesFiles,

@@ -66,7 +66,7 @@ export const examApi = {
 	listAvailable: () => apiClient.get<AvailablePaper[]>('/exams/available'),
 	startAttempt: (paperId: string) => apiClient.post<StartAttemptResult>(`/exams/papers/${paperId}/start`, {}),
 	submitAttempt: (paperId: string, answers: AnswerPayload[]) =>
-		apiClient.post<{ attempt_id: string; auto_score: number; has_essay: boolean }>(
+		apiClient.post<{ attempt_id: string; auto_score: number; has_essay: boolean; late?: boolean }>(
 			`/exams/papers/${paperId}/submit`,
 			{ answers },
 		),

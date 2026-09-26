@@ -14,7 +14,8 @@
     "gen:perm-types": "node scripts/gen-permission-types.js",
     "migrate:permissions": "node scripts/migrate-permissions.js",
     "flag:default-passwords": "node scripts/flag-default-passwords.js",
-    "rename:trainee-usernames": "node scripts/rename-trainee-usernames.js"
+    "rename:trainee-usernames": "node scripts/rename-trainee-usernames.js",
+    "dump:db-objects": "node scripts/dump-db-objects.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",

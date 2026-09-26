@@ -7,8 +7,25 @@ const fileCtrl = require('../controllers/fileController');
 const { authenticate, authorizePermission } = require('../middlewares/auth');
 const { validate } = require('../middlewares/errorHandler');
 const upload = require('../middlewares/upload');
+const topicService = require('../services/topicService');
 
 router.use(authenticate);
+
+// Chống IDOR: MỌI route có mã đề tài (:id / :topic_id) chỉ chạy khi đề tài nằm
+// trong phạm vi của người gọi (own = thành viên, department = cùng khoa, all).
+// authorizePermission chỉ kiểm tra "có quyền topics:xxx", không kiểm tra đề tài
+// cụ thể — trước đây phạm vi khoa thao tác được thành viên / file / tác giả /
+// nộp / xoá đề tài của khoa khác.
+const topicScopeParam = async (req, _res, next, topicId) => {
+	try {
+		await topicService.assertTopicInScope(topicId, req.user);
+		next();
+	} catch (err) {
+		next(err);
+	}
+};
+router.param('id', topicScopeParam);
+router.param('topic_id', topicScopeParam);
 
 /**
  * @swagger

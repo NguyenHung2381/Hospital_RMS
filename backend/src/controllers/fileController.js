@@ -1,4 +1,5 @@
 const fileService = require('../services/fileService');
+const topicService = require('../services/topicService');
 const { success, created } = require('../utils/response');
 const { getPool, sql } = require('../config/db');
 const { assertTopicActionWindow } = require('../services/deadlineGuard');
@@ -12,14 +13,15 @@ const checkUploadWindow = async (req, res, next) => {
 		next();
 	} catch (err) {
 		return res
-			.status(err.status || 403)
+			.status(err.statusCode || err.status || 403)
 			.json({ success: false, message: err.message });
 	}
 };
 
 // Middleware xoá file: chỉ cho phép trong cửa sổ "Sửa" hoặc "Bổ sung" (có mục Tài liệu).
+// Mọi vai trò: file phải thuộc đề tài trong phạm vi của người xoá (chống IDOR —
+// trước đây phạm vi khoa xoá được file của đề tài khoa khác theo file_id).
 const checkDeleteWindow = async (req, res, next) => {
-	if (!isDeadlineBound(req.user)) return next();
 	try {
 		const pool = await getPool();
 		const { recordset } = await pool
@@ -33,6 +35,8 @@ const checkDeleteWindow = async (req, res, next) => {
 				.status(404)
 				.json({ success: false, message: 'Không tìm thấy file' });
 		}
+		await topicService.assertTopicInScope(recordset[0].topic_id, req.user);
+		if (!isDeadlineBound(req.user)) return next();
 		await assertTopicActionWindow(
 			recordset[0].topic_id,
 			req.user.id,
@@ -41,7 +45,7 @@ const checkDeleteWindow = async (req, res, next) => {
 		next();
 	} catch (err) {
 		return res
-			.status(err.status || 403)
+			.status(err.statusCode || err.status || 403)
 			.json({ success: false, message: err.message });
 	}
 };

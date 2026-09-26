@@ -181,7 +181,8 @@ const exportData = async (req, res, next) => {
 	try {
 		const { ids } = req.body;
 		if (!Array.isArray(ids) || ids.length === 0) return success(res, []);
-		const data = await topicService.getForExport(ids);
+		// Chỉ xuất đề tài trong phạm vi người gọi (danh sách mã do client gửi lên)
+		const data = await topicService.getForExport(await topicService.idsInScope(ids, req.user));
 		return success(res, data);
 	} catch (err) {
 		next(err);

@@ -43,7 +43,10 @@ function ExamTaking({
 		submittedRef.current = true;
 		setSubmitting(true);
 		try {
-			await examApi.submitAttempt(paperId, Object.values(answers));
+			const result = await examApi.submitAttempt(paperId, Object.values(answers));
+			// Server tính giờ theo đồng hồ của mình — nộp quá hạn (kể cả thời gian ân
+			// hạn) thì đóng bài nhưng không ghi nhận đáp án
+			if (result.late) window.alert('Bài nộp quá thời gian làm bài nên đáp án không được ghi nhận.');
 			onDone();
 		} catch (err) {
 			setError(err instanceof Error ? err.message : 'Nộp bài thất bại');

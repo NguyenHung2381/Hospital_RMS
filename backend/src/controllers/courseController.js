@@ -130,6 +130,11 @@ const decideEnrollment = async (req, res, next) => {
 
 const bulkDecideEnrollments = async (req, res, next) => {
 	try {
+		// Danh sách mã do client gửi — mọi đăng ký phải thuộc khoá học trong phạm
+		// vi người duyệt (router.param không áp cho body)
+		for (const id of Array.isArray(req.body.ids) ? req.body.ids : []) {
+			await courseService.assertCourseChildInScope('enrollmentId', id, req.user);
+		}
 		const results = await courseService.bulkDecideEnrollments(
 			req.body.ids,
 			req.body.status,

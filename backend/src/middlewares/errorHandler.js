@@ -33,7 +33,11 @@ const errorHandler = (err, req, res, next) => {
 	}
 
 	console.error(`❌ Error on ${req.method} ${req.path}:`, err.message);
-	const statusCode = err.statusCode || 500;
+	// Nhiều service ném lỗi nghiệp vụ chỉ kèm `status` (không có `statusCode`) —
+	// trước đây rơi xuống 500 ("Lỗi server nội bộ"), kể cả lỗi từ chối quyền 403.
+	const legacyStatus =
+		Number.isInteger(err.status) && err.status >= 400 && err.status < 600 ? err.status : null;
+	const statusCode = err.statusCode || legacyStatus || 500;
 	// statusCode < 500 = lỗi nghiệp vụ chủ động ném ra (message an toàn để hiển
 	// thị); >= 500 = lỗi không lường trước, ở production chỉ trả thông điệp
 	// chung chung, tránh lộ stack/chi tiết nội bộ cho client.

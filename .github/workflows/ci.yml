@@ -1,0 +1,79 @@
+# Kiểm tra tự động cho mọi push / pull request vào main.
+# Không cần SQL Server hay Redis: test backend dùng CSDL giả (test/**/fakeDb.js)
+# và tự rơi về bộ nhớ khi không có Redis.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  # Chạy lại hằng tuần để phát hiện lỗ hổng mới công bố trong thư viện đang dùng,
+  # kể cả khi không có ai push code.
+  schedule:
+    - cron: '0 1 * * 1'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    name: Backend
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - run: npm ci --no-fund
+      # Test đơn vị + tích hợp (auth, 2FA, refresh token, upload, IDOR, cổng công khai...)
+      - run: npm test
+      # Mọi route mới phải khai báo quyền (authorizePermission) hoặc có lý do trong routePolicy
+      - run: npm run check:routes
+      - run: npm run typecheck
+      # Chặn merge khi thư viện chạy production có lỗ hổng mức high trở lên
+      - run: npm audit --omit=dev --audit-level=high
+
+  frontend:
+    name: Frontend
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci --no-fund
+      - run: npx tsc -b
+      - run: npm run lint
+      - run: npm run build
+      - run: npm audit --omit=dev --audit-level=high
+
+  # Chặn commit nhầm bí mật / dữ liệu cá nhân (file .env, khoá, bản dump...).
+  secrets:
+    name: Không commit bí mật
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: File không được có trong repo
+        run: |
+          bad=$(git ls-files | grep -E '(^|/)\.env(\.[a-z]+)?$|(^|/)secrets/|\.key$|\.pem$|_CHUA_MAT_KHAU\.csv$|staff_license_import_unmatched\.csv$' | grep -v '\.env\.example$' || true)
+          if [ -n "$bad" ]; then echo "::error::File nhạy cảm bị commit:"; echo "$bad"; exit 1; fi
+      - name: Chuỗi bí mật trong mã nguồn
+        run: |
+          # Hash bcrypt thật, khoá riêng, chuỗi kết nối có mật khẩu
+          hits=$(git grep -nE '\$2[aby]\$[0-9]{2}\$[./A-Za-z0-9]{53}|-----BEGIN [A-Z ]*PRIVATE KEY-----|(Password|Pwd)=[^;{$ ]{4,};' -- . ':!**/package-lock.json' || true)
+          if [ -n "$hits" ]; then echo "::error::Có chuỗi giống bí mật:"; echo "$hits"; exit 1; fi

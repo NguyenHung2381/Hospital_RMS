@@ -10,6 +10,50 @@ const { findActiveUserIdsWhere } = require('./permissionService');
 // Phạm vi xem đề tài: không có quyền topics nào ⇒ chỉ đề tài mình tham gia.
 const topicScope = (actor) => scopeOf(actor, 'topics') ?? 'own';
 
+// ─── Kiểm tra theo bản ghi (chống IDOR) ─────────────────────────────────────
+// authorizePermission ở route chỉ biết actor CÓ quyền topics:xxx, không biết
+// đề tài cụ thể có nằm trong phạm vi của họ không: 'department' = cùng khoa,
+// 'own' = là thành viên, 'all' = mọi đề tài. Mọi API thao tác theo mã đề tài
+// phải qua 1 trong 2 hàm dưới (routes/topics.js gắn qua router.param).
+const assertTopicInScope = async (topicId, actor) => {
+	const scope = topicScope(actor);
+	if (scope === 'all') return;
+	const pool = await getPool();
+	const row = (
+		await pool
+			.request()
+			.input('id', sql.VarChar(15), String(topicId))
+			.input('uid', sql.VarChar(20), actor.id).query(`
+				SELECT t.department_id,
+				       CASE WHEN EXISTS (SELECT 1 FROM topic_members
+				                         WHERE topic_id = t.id AND user_id = @uid)
+				            THEN 1 ELSE 0 END AS is_member
+				FROM topics t WHERE t.id = @id
+			`)
+	).recordset[0];
+	if (!row) throw Object.assign(new Error('Đề tài không tồn tại.'), { statusCode: 404 });
+	const allowed = scope === 'department' ? row.department_id === actor.department_id : row.is_member === 1;
+	if (!allowed) {
+		throw Object.assign(new Error('Không có quyền thao tác trên đề tài này'), { statusCode: 403 });
+	}
+};
+
+// Lọc danh sách mã đề tài (xuất dữ liệu theo lô) — chỉ giữ đề tài trong phạm vi.
+const idsInScope = async (ids, actor) => {
+	const list = [...new Set((Array.isArray(ids) ? ids : []).map(String))].slice(0, 2000);
+	if (!list.length || topicScope(actor) === 'all') return list;
+	const allowed = [];
+	for (const id of list) {
+		try {
+			await assertTopicInScope(id, actor);
+			allowed.push(id);
+		} catch {
+			// ngoài phạm vi / không tồn tại — bỏ qua, không báo lỗi cho cả lô
+		}
+	}
+	return allowed;
+};
+
 // Danh sách hành động hợp lệ cho đề tài theo status + quyền của actor — nguồn
 // chân lý duy nhất để frontend ẩn/hiện nút phê duyệt/từ chối/bổ sung/nộp lại/
 // cấp tài khoản, thay vì tự suy luận theo topic.status rải rác ở nhiều nơi
@@ -345,16 +389,32 @@ const create = async (data, actorId) => {
 const update = async (id, data, actorId, actor = null) => {
 	const pool = await getPool();
 
-	const current = await getById(id);
+	// actor có thể là object (req.user), true (bỏ qua kiểm tra), hoặc null.
+	const bypass = actor === true;
+	const scope = bypass ? 'all' : topicScope(actor);
+
+	// Chỉ sửa được đề tài mình XEM được (cùng quy tắc phạm vi với getById):
+	// 'own' phải là thành viên, 'department' phải cùng khoa. Trước đây gọi
+	// getById(id) không kèm actor — chỉ 5 trường (tên, mô tả, loại, cấp, khoa)
+	// có kiểm tra thành viên qua mốc thời gian, còn lại (đợt, kinh phí, tạp
+	// chí...) ai có topics:update cũng sửa được đề tài BẤT KỲ theo id (IDOR).
+	const current = await getById(id, bypass ? null : actor);
 	if (!current)
 		throw Object.assign(new Error('Đề tài không tồn tại.'), {
 			status: 404,
 			statusCode: 404,
 		});
-
-	// actor có thể là object (req.user), true (bỏ qua kiểm tra), hoặc null.
-	const bypass = actor === true;
-	const scope = bypass ? 'all' : topicScope(actor);
+	// Phạm vi khoa không được chuyển đề tài sang khoa khác (ra ngoài phạm vi mình)
+	if (
+		scope === 'department' &&
+		data.department_id !== undefined &&
+		data.department_id !== actor.department_id
+	) {
+		throw Object.assign(new Error('Không thể chuyển đề tài sang khoa/phòng khác.'), {
+			status: 403,
+			statusCode: 403,
+		});
+	}
 
 	// BR04: không cho đổi status qua đường PUT chung trừ khi actor thực sự có
 	// quyền topics:approve — trước đây bất kỳ ai có topics:update (kể cả
@@ -707,6 +767,8 @@ const getForExport = async (topicIds) => {
 module.exports = {
 	getAll,
 	getById,
+	assertTopicInScope,
+	idsInScope,
 	create,
 	update,
 	remove,

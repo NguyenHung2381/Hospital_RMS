@@ -50,7 +50,7 @@ module.exports = {
 		[`GET ${API}/auth/2fa/status`]: '2FA của chính mình',
 		[`GET ${API}/users/me`]: 'Hồ sơ + quyền của chính mình',
 		[`GET ${API}/users/:id`]: 'Controller: chính mình, hoặc cần users:read + cùng khoa (userController.getById)',
-		[`GET ${API}/users/search`]: 'Tìm người để thêm làm thành viên đề tài (TODO: cân nhắc bỏ email khỏi kết quả)',
+		[`GET ${API}/users/search`]: 'Tìm người để thêm làm thành viên đề tài — bắt buộc từ khoá, tối đa 20 kết quả (có email để điền sẵn)',
 		[`GET ${API}/notifications/`]: 'Thông báo của chính mình',
 		[`GET ${API}/notifications/unread-count`]: 'Thông báo của chính mình',
 		[`PUT ${API}/notifications/read-all`]: 'Thông báo của chính mình',
@@ -80,7 +80,7 @@ module.exports = {
 		[`POST ${API}/surveys/:id/respond`]: 'Trả lời khảo sát',
 
 		[`GET ${API}/workflows/status/:entityId`]:
-			'TODO: chưa giới hạn theo phạm vi đề tài — ai đăng nhập cũng xem được tiến trình duyệt của mọi đề tài',
+			'Controller: đề tài phải trong phạm vi người gọi (topicService.assertTopicInScope)',
 
 		// Danh mục dùng cho dropdown ở mọi màn hình (không chứa dữ liệu nhạy cảm)
 		[`GET ${API}/departments/:id`]: 'Danh mục dropdown',

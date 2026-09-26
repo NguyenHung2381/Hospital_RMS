@@ -87,6 +87,16 @@ const updateOne = async (req, res, next) => {
 		if (!isSuperuser(actor)) {
 			for (const field of PRIVILEGED_FIELDS) delete data[field];
 		}
+		// Phạm vi khoa không được chuyển tài khoản sang khoa khác: tài khoản có
+		// phạm vi dữ liệu theo khoa sẽ nhìn thấy dữ liệu của khoa mới — tức là
+		// quản lý khoa A tự mở quyền xem khoa B cho người của mình.
+		if (
+			isDeptScoped(actor) &&
+			data.department_id !== undefined &&
+			data.department_id !== actor.department_id
+		) {
+			return forbidden(res, 'Bạn không thể chuyển tài khoản sang khoa/phòng khác');
+		}
 		const item = await userService.update(req.params.id, data, actor.id);
 		if (!item) return notFound(res);
 		return success(res, item, 'Cập nhật thành công');
@@ -144,10 +154,16 @@ const getMe = async (req, res, next) => {
 const searchMembers = async (req, res, next) => {
 	try {
 		const { q = '', department_id, limit = 10 } = req.query;
+		// Mở cho mọi tài khoản đăng nhập (chọn người khi thêm thành viên) và có trả
+		// email — bắt buộc có từ khoá + tối đa 20 kết quả, không để tải cả danh bạ
+		// nhân viên bằng 1 request (trước đây limit không giới hạn, q rỗng trả tất cả).
+		if (!String(q).trim()) {
+			return success(res, { data: [], pagination: { page: 1, limit: 0, total: 0 } });
+		}
 		const result = await userService.searchForMember({
-			q,
+			q: String(q),
 			department_id,
-			limit,
+			limit: Math.min(Math.max(Number(limit) || 10, 1), 20),
 		});
 		return success(res, result);
 	} catch (err) {

@@ -208,7 +208,8 @@ async function exportExcel(req, res, next) {
 				.json({ success: false, message: 'Danh sách đề tài trống' });
 		}
 
-		const data = await topicService.getForExport(ids);
+		// Chỉ xuất đề tài trong phạm vi người gọi (danh sách mã do client gửi lên)
+		const data = await topicService.getForExport(await topicService.idsInScope(ids, req.user));
 
 		const wb = new ExcelJS.Workbook();
 		wb.creator = 'RMS Hospital';

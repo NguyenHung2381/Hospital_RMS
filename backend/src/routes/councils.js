@@ -348,6 +348,7 @@ router.delete(
  */
 router.post(
 	'/progress/:topic_id/comment-image',
+	progressCtrl.requireCouncilSeat,
 	uploadImage.single('image'),
 	progressCtrl.uploadCommentImage,
 );

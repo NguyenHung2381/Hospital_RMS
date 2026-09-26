@@ -249,13 +249,26 @@ const advance = async (resource, entityId, decision, actor, comment) => {
 		throw err;
 	}
 
-	await pool
+	// Chỉ ghi quyết định khi bước vẫn đang chờ — 2 người bấm duyệt cùng lúc thì
+	// người sau nhận 409, không đẩy quy trình đi thêm 1 bước ngoài ý muốn.
+	// OUTPUT ... INTO: an toàn cả khi bảng có trigger.
+	const decided = await pool
 		.request()
 		.input('id', sql.VarChar(20), task.id)
 		.input('status', sql.VarChar(20), decision)
 		.input('decided_by', sql.VarChar(20), actor.id)
-		.input('comment', sql.NVarChar(sql.MAX), comment || null)
-		.query('UPDATE workflow_tasks SET status = @status, decided_by = @decided_by, decided_at = GETDATE(), comment = @comment WHERE id = @id');
+		.input('comment', sql.NVarChar(sql.MAX), comment || null).query(`
+			DECLARE @r TABLE (id VARCHAR(20));
+			UPDATE workflow_tasks SET status = @status, decided_by = @decided_by, decided_at = GETDATE(), comment = @comment
+			OUTPUT INSERTED.id INTO @r
+			WHERE id = @id AND status = 'pending';
+			SELECT COUNT(*) AS n FROM @r;
+		`);
+	if (decided.recordset[0].n !== 1) {
+		const err = new Error('Bước duyệt này vừa được người khác xử lý, vui lòng tải lại.');
+		err.statusCode = 409;
+		throw err;
+	}
 
 	if (decision === 'rejected') {
 		await pool

@@ -45,7 +45,13 @@ desktop.ini
 *.njsproj
 *.sln
 *.sw?
+# File .sql ngoài repo (script tạo login có mật khẩu, bản dump dữ liệu...) — KHÔNG commit.
 *.sql
+# Ngoại lệ: migration schema + định nghĩa stored procedure / trigger / view đã
+# được rà không chứa mật khẩu hay dữ liệu cá nhân — phải nằm trong git để review
+# và tái lập môi trường.
+!backend/migrations/*.sql
+!backend/db/**/*.sql
 
 # Lock files (keep only one, remove if you prefer to commit these)
 # package-lock.json

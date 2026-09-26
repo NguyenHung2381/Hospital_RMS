@@ -577,7 +577,9 @@ Hospital_RMS/
 
 **Engine:** Microsoft SQL Server · **Database:** `RMS_HOSPITAL` · **Pool:** min 2, max 10.
 
-> Mọi file `*.sql` đều bị `.gitignore` loại khỏi repo, gồm dump schema, migration và script bảo trì. Hãy lấy bộ script khởi tạo và migration từ nhóm phát triển. Chạy migration bằng `sqlcmd -I` theo thứ tự tên file, vì các bảng có index lọc hoặc cột tính toán cần `QUOTED_IDENTIFIER ON`.
+> **Trong git:** migration schema (`backend/migrations/*.sql`) và định nghĩa stored procedure / function / trigger / view (`backend/db/`). Mọi file `*.sql` khác vẫn bị `.gitignore` loại (script tạo login có mật khẩu, dump dữ liệu, script khởi tạo schema gốc) — lấy từ nhóm phát triển. Chạy migration bằng `sqlcmd -I` theo thứ tự tên file, vì các bảng có index lọc hoặc cột tính toán cần `QUOTED_IDENTIFIER ON`.
+>
+> **Sửa stored procedure / trigger trong DB** thì chạy `npm run dump:db-objects` (thư mục `backend`) rồi commit thay đổi trong `backend/db/`. Script chỉ đọc DB, bỏ qua object sơ đồ của SSMS và **từ chối xuất** object có vẻ chứa mật khẩu / hash / chuỗi kết nối. `-- --check` chỉ báo khác biệt.
 
 ### Stored procedures chính
 
@@ -585,7 +587,7 @@ Hospital_RMS/
 |---|---|
 | `sp_set_actor` | Đặt `user_id` vào session context trước mỗi lệnh ghi (phục vụ audit) |
 | `sp_gen_topic_id`, `sp_gen_user_id`, `sp_gen_member_id`, `sp_gen_batch_id`, `sp_gen_file_id` | Sinh mã đề tài / người dùng / thành viên / batch / file |
-| `sp_grant_member_accounts` | Cấp tài khoản đăng nhập cho thành viên đề tài |
+| `sp_grant_member_accounts` | **Không còn dùng** — ứng dụng cấp tài khoản qua `topicMemberService` (mật khẩu tạm ngẫu nhiên). Nên xoá khỏi DB |
 | `sp_approve_topic` | Luồng duyệt đề tài một bước |
 | `sp_upload_files` | Ghi nhiều file trong một batch |
 
@@ -621,6 +623,30 @@ Hospital_RMS/
 ---
 
 ## Quy ước phát triển
+
+### CI (GitHub Actions)
+`.github/workflows/ci.yml` chạy ở mỗi push / pull request vào `main` và mỗi thứ Hai (bắt lỗ hổng thư viện mới công bố). Không cần SQL Server / Redis — test dùng CSDL giả.
+
+| Job | Kiểm tra |
+|---|---|
+| Backend | `npm test`, `check:routes` (route mới phải khai báo quyền), `typecheck`, `npm audit --audit-level=high` |
+| Frontend | `tsc -b`, `lint`, `build`, `npm audit --audit-level=high` |
+| Không commit bí mật | Không có file `.env`, `secrets/`, khoá, file danh sách mật khẩu tạm; không có hash bcrypt thật / khoá riêng / chuỗi kết nối có mật khẩu trong mã |
+
+Nên bật **branch protection** cho `main` (Settings → Branches) và bắt buộc 3 job trên xanh trước khi merge.
+
+### Kiểm tra quyền theo bản ghi (chống IDOR)
+`authorizePermission` ở route chỉ biết người gọi **có** quyền `resource:action`, không biết bản ghi cụ thể có thuộc phạm vi của họ không. API nhận mã đối tượng (`:id`, danh sách mã trong body) phải kiểm tra thêm theo phạm vi (`scopeOf`):
+- Đề tài: `topicService.assertTopicInScope` / `idsInScope` — `routes/topics.js` gắn sẵn qua `router.param('id' | 'topic_id')`, nên route mới trong router này tự được kiểm tra.
+- Khoá học: `courseService.assertCourseInScope` / `assertCourseChildInScope` — `routes/courses.js` gắn qua `router.param` cho `:id` và mọi mã bản ghi con (`sessionId`, `enrollmentId`, `docId`, `gradeId`, `certId`, `linkId`, `assignmentId`). **Route mới dùng tham số mã con khác phải thêm vào `CHILD_COURSE_SQL`** (có test tự phát hiện).
+- Người dùng: `privilegeGuard.assertCanManageUser`; phạm vi khoa không chuyển được tài khoản sang khoa khác.
+- Cổng hội đồng: kiểm tra ghế **trước** khi multer ghi file. Tiến trình duyệt (`/workflows/status`): đề tài phải trong phạm vi.
+- Danh sách mã trong body (xuất dữ liệu, duyệt hàng loạt) không đi qua `router.param` — phải tự lọc / kiểm tra từng mã.
+- Tài nguyên không có phạm vi (học viên, hội thảo, hội đồng, giảng viên, CME, chương trình đào tạo): quyền là toàn viện theo thiết kế — muốn giới hạn theo khoa thì thêm vào `permissions/scopes.js` rồi áp dụng như trên.
+- Test mẫu: `backend/test/permissions/topicObjectAccess.test.js`, `courseObjectAccess.test.js`.
+
+### Cảnh báo bảo mật qua email
+`securityEventService.log` tự gọi `securityAlertService.notify`. Gửi ngay khi: refresh token bị dùng lại, chặn file mã độc, đổi / sao chép phân quyền vai trò, tắt 2FA, thu hồi thiết bị quen, quản trị đặt lại mật khẩu. Gửi khi dồn dập: ≥5 tài khoản bị khoá hoặc ≥10 lần sai mã 2FA trong 15 phút. Mỗi loại tối đa 1 email / 30 phút. Người nhận: `ALERT_EMAILS`, không đặt thì mọi superuser có email. Cần bật kênh email (`MAIL_ENABLED`).
 
 ### Realtime: một kết nối SSE cho mỗi tab
 Luôn dùng `useRealtimeUpdate(entities, callback)` ([`frontend/src/layouts/hooks/useRealtime.ts`](frontend/src/layouts/hooks/useRealtime.ts)). Hook này đăng ký vào **một** `EventSource` dùng chung tới `GET /api/v1/events?ticket=<vé>` (vé sống 60 giây, dùng 1 lần, xin qua `POST /api/v1/events/ticket` — không đưa access token lên URL vì URL bị ghi vào access log). Không tự tạo `EventSource`: mỗi panel mở một kết nối riêng sẽ vượt giới hạn 6 kết nối HTTP/1.1 mỗi origin của trình duyệt và làm treo các request khác.

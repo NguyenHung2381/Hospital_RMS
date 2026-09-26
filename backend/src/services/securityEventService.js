@@ -32,6 +32,11 @@ const log = async ({
 	} catch (err) {
 		console.error('❌ security_events insert failed:', err.message);
 	}
+	// Email cảnh báo cho sự kiện quan trọng — chạy nền, không chờ (không làm chậm
+	// luồng đăng nhập / upload). require trễ để tránh vòng phụ thuộc lúc nạp module.
+	require('./securityAlertService')
+		.notify({ eventType, actorId, targetType, targetId, ip, detail })
+		.catch(() => {});
 };
 
 // Keyset pagination theo id giảm dần — cùng kiểu với activityLogService.
