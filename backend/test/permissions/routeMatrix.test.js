@@ -10,6 +10,8 @@ const path = require('path');
 
 process.env.NODE_ENV = process.env.NODE_ENV || 'test';
 require('dotenv').config({ path: path.join(__dirname, '../../.env'), quiet: true });
+// Không có .env (CI) thì điền giá trị giữ chỗ — app.js dừng nếu thiếu biến bắt buộc
+require('../../scripts/lib/static-check-env');
 
 const app = require('../../src/app');
 const { hasPermission } = require('../../src/middlewares/auth');
