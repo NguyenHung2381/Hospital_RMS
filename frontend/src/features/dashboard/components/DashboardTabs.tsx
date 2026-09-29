@@ -5,9 +5,10 @@ const TABS = [
 	{ to: '/admin', label: 'Tổng quan chung' },
 	{ to: '/admin/dashboard/research', label: 'Nghiên cứu khoa học' },
 	{ to: '/admin/dashboard/training', label: 'Đào tạo' },
+	{ to: '/admin/dashboard/seminar', label: 'Hội thảo - CME' },
 ];
 
-// Thanh chuyển nhanh giữa 3 dashboard, đặt đầu mỗi trang dashboard.
+// Thanh chuyển nhanh giữa 4 dashboard, đặt đầu mỗi trang dashboard.
 export function DashboardTabs() {
 	return (
 		<nav

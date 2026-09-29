@@ -17,6 +17,8 @@ import {
 	DocSvg,
 	DownloadSvg,
 	FileSvg,
+	FileTextSvg,
+	HelpSvg,
 	HistorySvg,
 	InfoSvg,
 	LayersSvg,
@@ -78,6 +80,8 @@ export const Icon = {
 	Lecturer: () => <UserCheckSvg {...nav} />,
 	TrainingCatalog: () => <ClipboardSvg {...nav} />,
 	Course: () => <ClipboardCheckSvg {...nav} />,
+	Lesson: () => <FileTextSvg {...nav} />,
+	QuestionBank: () => <HelpSvg {...nav} />,
 	// ─── UI icons ─────────────────────────────
 	Bell: () => <BellSvg />,
 	Search: () => <SearchSvg />,

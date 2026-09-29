@@ -160,6 +160,8 @@ export function useSeminars() {
 		deleting,
 		setDeleting,
 		toast,
+		showToast,
+		refresh,
 		handleAdd,
 		handleEdit,
 		handleDelete,

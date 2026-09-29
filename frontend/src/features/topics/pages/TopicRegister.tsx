@@ -1,10 +1,14 @@
 import {
 	AlertSvg,
+	BuildingSvg,
 	CalendarSvg,
 	CheckSvg,
 	ChevRSvg,
 	FileTextSvg,
+	LayersSvg,
 	ListSvg,
+	LockSvg,
+	RefreshSvg,
 } from '@/assets/icons';
 import UserLayout from '../../../layouts/UserLayout';
 import { InlineLoading } from '../../../shared/components/Loading';
@@ -28,6 +32,7 @@ export default function TopicRegister() {
 		rounds,
 		categories,
 		levels,
+		autoLevel,
 		depts,
 		myTopics,
 		loadingRef,
@@ -363,54 +368,34 @@ export default function TopicRegister() {
 								Phân loại &amp; Vòng nghiên cứu
 							</div>
 
-							<div className={styles.formRow}>
-								<div className={styles.formGroup}>
-									<span className={styles.formLabel}>
-										Vòng nghiên cứu{' '}
-										<span className={styles.formRequired}>*</span>
+							<div className={styles.roundCard}>
+								<span className={styles.roundCardIcon}>
+									<CalendarSvg />
+								</span>
+								<div className={styles.roundCardBody}>
+									<span className={styles.roundCardLabel}>
+										Vòng nghiên cứu
 									</span>
-									<div className={styles.roundLockedRow}>
-										<div
-											className={styles.deptLocked}
-											style={{ flex: 1 }}
-										>
-											{pickedRound.name}
-										</div>
-										{!lockedRound && (
-											<button
-												type='button'
-												className={styles.changeRoundBtn}
-												onClick={resetRound}
-											>
-												Đổi đợt
-											</button>
-										)}
-									</div>
-								</div>
-								<div className={styles.formGroup}>
-									<label
-										className={styles.formLabel}
-										htmlFor='reg-cat'
+									<span
+										className={styles.roundCardName}
+										title={pickedRound.name}
 									>
-										Danh mục
-									</label>
-									<select
-										id='reg-cat'
-										className={styles.formSelect}
-										value={form.category_id}
-										onChange={(e) => setField('category_id', e.target.value)}
-									>
-										<option value=''>-- Chọn phân loại danh mục --</option>
-										{categories.map((c) => (
-											<option
-												key={c.id}
-												value={c.id}
-											>
-												{c.name}
-											</option>
-										))}
-									</select>
+										{pickedRound.name}
+									</span>
 								</div>
+								{lockedRound ? (
+									<span className={styles.lockedHint}>
+										<LockSvg /> Theo liên kết đăng ký
+									</span>
+								) : (
+									<button
+										type='button'
+										className={styles.changeRoundBtn}
+										onClick={resetRound}
+									>
+										<RefreshSvg /> Đổi đợt
+									</button>
+								)}
 							</div>
 
 							<div className={styles.formRow}>
@@ -422,22 +407,35 @@ export default function TopicRegister() {
 										>
 											Cấp độ <span className={styles.formRequired}>*</span>
 										</label>
-										<select
-											id='reg-level'
-											className={`${styles.formSelect} ${errors.level_id ? styles.hasError : ''}`}
-											value={form.level_id}
-											onChange={(e) => setField('level_id', e.target.value)}
-										>
-											<option value=''>-- Chọn cấp đề tài --</option>
-											{levels.map((l) => (
-												<option
-													key={l.id}
-													value={l.id}
-												>
-													{l.name}
-												</option>
-											))}
-										</select>
+										{autoLevel ? (
+											<div
+												className={styles.lockedField}
+												title='Đợt này chỉ cho phép một cấp độ — tự gán theo cấu hình đợt'
+											>
+												<LayersSvg className={styles.lockedFieldIcon} />
+												<span className={styles.lockedFieldText}>
+													{autoLevel.name}
+												</span>
+												<span className={styles.lockedFieldTag}>Theo đợt</span>
+											</div>
+										) : (
+											<select
+												id='reg-level'
+												className={`${styles.formSelect} ${errors.level_id ? styles.hasError : ''}`}
+												value={form.level_id}
+												onChange={(e) => setField('level_id', e.target.value)}
+											>
+												<option value=''>-- Chọn cấp đề tài --</option>
+												{levels.map((l) => (
+													<option
+														key={l.id}
+														value={l.id}
+													>
+														{l.name}
+													</option>
+												))}
+											</select>
+										)}
 										{errors.level_id && (
 											<div className={styles.formError}>
 												<AlertSvg /> {errors.level_id}
@@ -453,7 +451,16 @@ export default function TopicRegister() {
 										Khoa phòng <span className={styles.formRequired}>*</span>
 									</label>
 									{currentDeptId ? (
-										<div className={styles.deptLocked}>{currentDeptName}</div>
+										<div
+											className={styles.lockedField}
+											title='Theo tài khoản khoa/phòng đang đăng nhập'
+										>
+											<BuildingSvg className={styles.lockedFieldIcon} />
+											<span className={styles.lockedFieldText}>
+												{currentDeptName}
+											</span>
+											<LockSvg className={styles.lockedFieldLock} />
+										</div>
 									) : (
 										<select
 											id='reg-dept'
@@ -477,6 +484,32 @@ export default function TopicRegister() {
 											<AlertSvg /> {errors.department_id}
 										</div>
 									)}
+								</div>
+								<div
+									className={`${styles.formGroup} ${isPaper ? '' : styles.formRowFull}`}
+								>
+									<label
+										className={styles.formLabel}
+										htmlFor='reg-cat'
+									>
+										Danh mục
+									</label>
+									<select
+										id='reg-cat'
+										className={styles.formSelect}
+										value={form.category_id}
+										onChange={(e) => setField('category_id', e.target.value)}
+									>
+										<option value=''>-- Chọn phân loại danh mục --</option>
+										{categories.map((c) => (
+											<option
+												key={c.id}
+												value={c.id}
+											>
+												{c.name}
+											</option>
+										))}
+									</select>
 								</div>
 							</div>
 

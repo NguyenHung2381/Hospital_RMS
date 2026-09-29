@@ -97,6 +97,7 @@ export function RoundModal({
 							duplicateRound={duplicateRound}
 							years={years}
 							roundTypes={roundTypes}
+							showDeadlines={mode === 'create'}
 						/>
 					)}
 

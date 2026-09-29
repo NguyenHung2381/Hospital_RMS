@@ -263,6 +263,35 @@ const load = useCallback(() => {
 		[load],
 	);
 
+	/** Duyệt/từ chối nhiều đăng ký. Gọi tuần tự để backend kiểm tra sĩ số theo đúng thứ tự;
+	 *  lỗi ở một đăng ký không chặn các đăng ký còn lại. Trả về danh sách id xử lý thất bại. */
+	const decideEnrollmentsBulk = useCallback(
+		async (enrollmentIds: string[], status: EnrollmentStatus) => {
+			setBusy(true);
+			setError('');
+			const failed: string[] = [];
+			let firstError = '';
+			for (const id of enrollmentIds) {
+				try {
+					await apiDecideEnrollment(id, status);
+				} catch (err) {
+					failed.push(id);
+					if (!firstError) firstError = err instanceof Error ? err.message : 'Cập nhật thất bại';
+				}
+			}
+			if (failed.length) {
+				setError(`${failed.length}/${enrollmentIds.length} đăng ký không cập nhật được: ${firstError}`);
+			}
+			try {
+				await load();
+			} finally {
+				setBusy(false);
+			}
+			return failed;
+		},
+		[load],
+	);
+
 	const removeEnrollment = useCallback(
 		async (enrollmentId: string) => {
 			setBusy(true);
@@ -512,6 +541,7 @@ const load = useCallback(() => {
 		removeProgramLink,
 		registerTrainee,
 		decideEnrollment,
+		decideEnrollmentsBulk,
 		removeEnrollment,
 		assignLecturer,
 		removeAssignment,

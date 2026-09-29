@@ -5,9 +5,14 @@ import { BASE_URL } from '../../../shared/api/axios';
 // với các trang không cần đăng nhập này (mirror cách features/auth/api/authApi.ts
 // gọi thẳng fetch tới /auth/login).
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
+	// FormData: để trình duyệt tự đặt Content-Type multipart kèm boundary
+	const isForm = options.body instanceof FormData;
 	const res = await fetch(`${BASE_URL}/api/v1/public${path}`, {
 		...options,
-		headers: { 'Content-Type': 'application/json', ...(options.headers ?? {}) },
+		headers: {
+			...(isForm ? {} : { 'Content-Type': 'application/json' }),
+			...(options.headers ?? {}),
+		},
 	});
 	const json = await res.json();
 	if (!res.ok || !json.success) {
@@ -15,6 +20,22 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 	}
 	return json.data as T;
 }
+
+// Có file đính kèm ⇒ gửi multipart: field `data` = JSON form (giữ cấu trúc lồng
+// nhau như members[]), `files` = các file (backend middlewares/uploadPublic.js).
+const buildBody = (data: object, files?: File[]): BodyInit => {
+	if (!files?.length) return JSON.stringify(data);
+	const form = new FormData();
+	form.append('data', JSON.stringify(data));
+	files.forEach((f) => form.append('files', f));
+	return form;
+};
+
+/** Giới hạn file đính kèm trên cổng công khai — khớp PUBLIC_UPLOAD_MAX_MB / MAX_FILES ở backend */
+export const PUBLIC_UPLOAD_MAX_MB = 20;
+export const PUBLIC_UPLOAD_MAX_FILES = 10;
+export const PUBLIC_UPLOAD_ACCEPT =
+	'.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.rtf,.odt,.ods,.odp,.zip,.rar,.7z,.png,.jpg,.jpeg,.gif,.webp,.bmp';
 
 export interface PublicCourse {
 	id: string;
@@ -30,11 +51,11 @@ export interface TraineeTypeOption {
 	name: string;
 }
 
-// Server chọn chế độ (backend utils/captcha.js): phép tính mặc định, hoặc
-// Cloudflare Turnstile khi đã cấu hình khoá.
+// Server chọn chế độ (backend utils/captcha.js): proof-of-work mặc định (trình
+// duyệt tự giải ngầm), hoặc Cloudflare Turnstile khi đã cấu hình khoá.
 export type Captcha =
-	| { provider: 'math'; token: string; question: string }
-	| { provider: 'turnstile'; site_key: string };
+	| { provider: 'pow'; token: string; bits: number; expires_in: number }
+	| { provider: 'turnstile'; site_key: string; action: string };
 
 export const getOpenCourses = () => request<PublicCourse[]>('/courses');
 export const getTraineeTypes = () => request<TraineeTypeOption[]>('/trainee-types');
@@ -50,15 +71,19 @@ export interface RegisterPayload {
 	address?: string;
 	trainee_type_id?: string;
 	course_id: string;
+	/** Loại hồ sơ của từng file đính kèm, cùng thứ tự với `files` */
+	doc_types?: TraineeDocType[];
 	captcha_token: string;
 	captcha_answer: string;
 	website?: string; // honeypot — luôn để trống, ẩn khỏi người dùng thật bằng CSS
 }
 
-export const registerCourse = (data: RegisterPayload) =>
+export type TraineeDocType = 'national_id' | 'degree' | 'other';
+
+export const registerCourse = (data: RegisterPayload, files?: File[]) =>
 	request<{ trainee_id: string | null; enrollment_id: string | null }>('/course-registration', {
 		method: 'POST',
-		body: JSON.stringify(data),
+		body: buildBody(data, files),
 	});
 
 export interface LookupResult {
@@ -71,9 +96,9 @@ export interface LookupResult {
 	issue_date: string | null;
 }
 
-export const lookupByNationalId = (nationalId: string, dob: string) =>
+export const lookupByNationalId = (nationalId: string, dob: string, fullName: string) =>
 	request<LookupResult[]>(
-		`/lookup?national_id=${encodeURIComponent(nationalId)}&dob=${encodeURIComponent(dob)}`,
+		`/lookup?national_id=${encodeURIComponent(nationalId)}&dob=${encodeURIComponent(dob)}&full_name=${encodeURIComponent(fullName)}`,
 	);
 
 // ─── Đăng ký đề tài công khai ────────────────────────────────────────────────
@@ -92,32 +117,58 @@ export interface SimpleOption {
 	name: string;
 }
 
+export interface TokenTopicRound extends PublicTopicRound {
+	status: string;
+	registration_open: boolean;
+}
+
 export const getOpenTopicRounds = () => request<PublicTopicRound[]>('/topic-rounds');
+// Đợt theo public_token trong link đăng ký (?token=) — dùng cho cả cổng công
+// khai lẫn form khoa/phòng. Token sai ⇒ throw với thông báo của server.
+export const getTopicRoundByToken = (token: string) =>
+	request<TokenTopicRound>(`/topic-rounds/by-token/${encodeURIComponent(token)}`);
 export const getPublicCategories = () => request<SimpleOption[]>('/categories');
 export const getPublicDepartments = () => request<SimpleOption[]>('/departments');
 export const getPublicLevels = (roundId: string) =>
 	request<SimpleOption[]>(`/levels?round_id=${encodeURIComponent(roundId)}`);
 
-export interface TopicRegisterPayload {
+export interface TopicRegisterMember {
 	full_name: string;
+	role: 'secretary' | 'member';
+	staff_number: string;
+	phone: string;
+	/** Chức danh chuyên môn */
+	position: string;
+	department_id?: string;
 	email?: string;
-	phone?: string;
-	position?: string;
+}
+
+export interface TopicRegisterPayload {
+	/** Người đăng ký = chủ nhiệm đề tài */
+	full_name: string;
+	staff_number: string;
+	phone: string;
+	position: string;
+	/** Khoa phòng của chủ nhiệm — trống thì lấy khoa/phòng của đề tài */
+	member_department_id?: string;
+	email?: string;
 	title: string;
 	description?: string;
 	round_id: string;
 	department_id: string;
-	category_id?: string;
-	level_id: string;
+	category_id: string;
+	/** Chỉ cần khi đợt cho nhiều cấp độ — đợt 1 cấp độ thì server tự gán */
+	level_id?: string;
+	members?: TopicRegisterMember[];
 	captcha_token: string;
 	captcha_answer: string;
 	website?: string; // honeypot — luôn để trống
 }
 
-export const registerTopic = (data: TopicRegisterPayload) =>
+export const registerTopic = (data: TopicRegisterPayload, files?: File[]) =>
 	request<{ topic_id: string | null }>('/topic-registration', {
 		method: 'POST',
-		body: JSON.stringify(data),
+		body: buildBody(data, files),
 	});
 
 // ─── Tra cứu hồ sơ đề tài theo mã ────────────────────────────────────────────
@@ -131,9 +182,7 @@ export interface TopicStatus {
 
 // contact: email hoặc số điện thoại của 1 thành viên đề tài (đã nhập khi nộp hồ sơ)
 export const getTopicStatus = (topicId: string, contact: string) =>
-	request<TopicStatus>(
-		`/topics/${encodeURIComponent(topicId)}/status?contact=${encodeURIComponent(contact)}`,
-	);
+	request<TopicStatus>(`/topics/${encodeURIComponent(topicId)}/status?contact=${encodeURIComponent(contact)}`);
 
 // ─── Thư viện đề tài công khai ───────────────────────────────────────────────
 export interface FeaturedTopic {

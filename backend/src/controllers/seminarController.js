@@ -6,6 +6,7 @@
 const seminarService = require('../services/seminarService');
 const partService = require('../services/seminarParticipantService');
 const importService = require('../services/seminarImportService');
+const listExcelService = require('../services/seminarListExcelService');
 const { createCrudController } = require('./crudController');
 const { success, created, notFound } = require('../utils/response');
 
@@ -164,6 +165,7 @@ const importParticipants = async (req, res, next) => {
 				seminar_id: req.params.id,
 				dry_run: req.body.dry_run === '1' || req.body.dry_run === 'true',
 				issue_cme: req.body.issue_cme === '1' || req.body.issue_cme === 'true',
+				credits_by_role: req.body.credits_by_role,
 			},
 			req.user.id,
 		);
@@ -181,8 +183,74 @@ const importParticipants = async (req, res, next) => {
 	}
 };
 
+// ─── Nhập / xuất Excel danh sách hội thảo ────────────────────────────────────
+const sendWorkbook = async (res, wb, fileName) => {
+	res.setHeader(
+		'Content-Type',
+		'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+	);
+	res.setHeader(
+		'Content-Disposition',
+		`attachment; filename*=UTF-8''${encodeURIComponent(fileName)}`,
+	);
+	await wb.xlsx.write(res);
+	res.end();
+};
+
+const exportListExcel = async (req, res, next) => {
+	try {
+		const { search, scope, event_type, year, grants_cme } = req.body || {};
+		const wb = await listExcelService.exportWorkbook({ search, scope, event_type, year, grants_cme });
+		return sendWorkbook(res, wb, `hoi-thao-hoi-nghi${year ? `-${year}` : ''}.xlsx`);
+	} catch (e) {
+		next(e);
+	}
+};
+
+const importListTemplate = async (req, res, next) => {
+	try {
+		return sendWorkbook(res, await listExcelService.templateWorkbook(), 'mau-nhap-hoi-thao.xlsx');
+	} catch (e) {
+		next(e);
+	}
+};
+
+const participantImportTemplate = async (req, res, next) => {
+	try {
+		return sendWorkbook(res, importService.templateWorkbook(), 'mau-nhap-nguoi-tham-du.xlsx');
+	} catch (e) {
+		next(e);
+	}
+};
+
+const importListExcel = async (req, res, next) => {
+	try {
+		if (!req.file) {
+			return res.status(400).json({ success: false, message: 'Chưa chọn file Excel.' });
+		}
+		const out = await listExcelService.importExcel(
+			{
+				buffer: req.file.buffer,
+				dry_run: req.body.dry_run === '1' || req.body.dry_run === 'true',
+			},
+			req.user.id,
+		);
+		return success(
+			res,
+			out,
+			out.dry_run ? 'Đã đọc file — kiểm tra trước khi nhập' : `Đã nhập ${out.inserted} sự kiện`,
+		);
+	} catch (e) {
+		next(e);
+	}
+};
+
 module.exports = {
 	...base,
+	exportListExcel,
+	importListTemplate,
+	importListExcel,
+	participantImportTemplate,
 	statsHosted,
 	cmeStats,
 	cmeRegister,

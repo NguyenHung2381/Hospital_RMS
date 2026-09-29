@@ -1,5 +1,5 @@
 const router = require('express').Router();
-const { body } = require('express-validator');
+const { body, query } = require('express-validator');
 const ctrl = require('../controllers/courseController');
 const { authenticate, authorizePermission } = require('../middlewares/auth');
 const { validate } = require('../middlewares/errorHandler');
@@ -43,6 +43,17 @@ router.get('/', authorizePermission(['courses', 'read']), ctrl.getAll);
 // Nhân viên nội viện chưa có hồ sơ học viên — để ghi danh thẳng vào khóa (phải
 // khai báo trước '/:id').
 router.get('/staff-candidates', authorizePermission(['courses', 'create']), ctrl.listStaffCandidates);
+// Lịch học toàn hệ thống theo khoảng ngày (phải khai báo trước '/:id').
+router.get(
+	'/sessions/calendar',
+	authorizePermission(['courses', 'read']),
+	[
+		query('from').isISO8601().withMessage('Ngày bắt đầu không hợp lệ'),
+		query('to').isISO8601().withMessage('Ngày kết thúc không hợp lệ'),
+	],
+	validate,
+	ctrl.listSessionsInRange,
+);
 router.get('/:id', authorizePermission(['courses', 'read']), ctrl.getById);
 
 router.post(

@@ -106,6 +106,14 @@ const getStats = async () => remember('dash:stats', 90, async () => {
     LEFT JOIN departments d ON d.id = t.department_id
     WHERE pr.progress_percent IS NOT NULL
     GROUP BY d.name;
+
+    -- Tóm tắt nhanh riêng NCKH: đợt, hội đồng, đề tài trong năm
+    SELECT
+      (SELECT COUNT(*) FROM topics WHERE YEAR(created_at) = YEAR(GETDATE())) AS topics_this_year,
+      (SELECT COUNT(*) FROM research_rounds WHERE status = 'active') AS rounds_active,
+      (SELECT COUNT(*) FROM councils) AS councils_total,
+      (SELECT COUNT(*) FROM councils
+         WHERE defense_date >= CAST(GETDATE() AS DATE)) AS councils_upcoming;
   `);
 
 	const statusRows = result.recordsets[0];
@@ -130,6 +138,7 @@ const getStats = async () => remember('dash:stats', 90, async () => {
 
 	return {
 		overview: { total, by_status: byStatus },
+		summary: result.recordsets[11][0],
 		by_department: (() => {
 			const deptMap = {};
 			for (const row of result.recordsets[1]) {
@@ -215,6 +224,21 @@ const getStats = async () => remember('dash:stats', 90, async () => {
 	};
 });
 
+// courses.status chỉ còn giữ cờ 'cancelled' — trạng thái thật suy ra từ ngày
+// tháng. Đây là bản SQL của courseService.computeDisplayStatus (ngày giờ VN).
+const VN_TODAY = 'CAST(DATEADD(HOUR, 7, GETUTCDATE()) AS DATE)';
+const COURSE_DISPLAY_STATUS = `CASE
+    WHEN c.status = 'cancelled' THEN 'cancelled'
+    WHEN c.end_date IS NOT NULL AND ${VN_TODAY} > c.end_date THEN 'completed'
+    WHEN c.start_date IS NOT NULL AND ${VN_TODAY} >= c.start_date THEN 'in_progress'
+    WHEN (c.enrollment_start_date IS NULL OR ${VN_TODAY} >= c.enrollment_start_date)
+     AND (c.enrollment_end_date IS NULL OR ${VN_TODAY} <= c.enrollment_end_date) THEN 'enrolling'
+    ELSE 'upcoming'
+  END`;
+// Khóa "đang mở" = đang nhận đăng ký hoặc đang diễn ra.
+const COURSES_OPEN_SQL = `(SELECT COUNT(*) FROM courses c
+      WHERE ${COURSE_DISPLAY_STATUS} IN ('enrolling', 'in_progress'))`;
+
 // Dashboard riêng cho Đào tạo (course/trainee/lecturer/class_sessions) — tách
 // khỏi getStats() vì đó chỉ phục vụ NCKH (topics/councils).
 const getTrainingStats = async () => remember('dash:training-stats', 90, async () => {
@@ -222,12 +246,19 @@ const getTrainingStats = async () => remember('dash:training-stats', 90, async (
 	const result = await pool.request().query(`
     -- KPI tổng quan
     SELECT
-      (SELECT COUNT(*) FROM courses WHERE status = 'open') AS open_courses,
+      ${COURSES_OPEN_SQL} AS open_courses,
       (SELECT COUNT(*) FROM courses) AS total_courses,
       (SELECT COUNT(*) FROM trainees WHERE is_active = 1) AS total_trainees,
       (SELECT COUNT(*) FROM lecturers WHERE is_active = 1) AS total_lecturers,
       (SELECT COUNT(*) FROM course_enrollments WHERE status = 'pending') AS pending_enrollments,
-      (SELECT COUNT(*) FROM certificates WHERE status = 'active') AS certificates_issued;
+      (SELECT COUNT(*) FROM certificates WHERE status = 'active') AS certificates_issued,
+      (SELECT COUNT(*) FROM certificates WHERE status = 'active'
+         AND expiry_date >= CAST(GETDATE() AS DATE)
+         AND expiry_date <= DATEADD(DAY, 30, CAST(GETDATE() AS DATE))) AS certificates_expiring,
+      (SELECT COUNT(*) FROM trainees WHERE YEAR(created_at) = YEAR(GETDATE())) AS trainees_this_year,
+      (SELECT COUNT(*) FROM class_sessions
+         WHERE session_date >= CAST(GETDATE() AS DATE)
+           AND session_date <= DATEADD(DAY, 7, CAST(GETDATE() AS DATE))) AS sessions_next_7_days;
 
     -- Lịch học 7 ngày tới
     SELECT TOP 20 sess.id, sess.session_date, sess.start_time, sess.end_time, sess.room,
@@ -260,10 +291,17 @@ const getTrainingStats = async () => remember('dash:training-stats', 90, async (
     WHERE registered_at >= DATEADD(MONTH, -11, CAST(GETDATE() AS DATE))
     GROUP BY FORMAT(registered_at, 'yyyy-MM')
     ORDER BY month;
+
+    -- Khóa học theo trạng thái hiển thị (suy ra từ ngày tháng)
+    SELECT status, COUNT(*) AS cnt
+    FROM (SELECT ${COURSE_DISPLAY_STATUS} AS status FROM courses c) x
+    GROUP BY status
+    ORDER BY cnt DESC;
   `);
 
 	return {
 		kpi: result.recordsets[0][0],
+		courses_by_status: result.recordsets[5],
 		upcoming_sessions: result.recordsets[1],
 		top_full_courses: result.recordsets[2].map((c) => ({
 			...c,
@@ -295,7 +333,7 @@ const getOverviewStats = async () => remember('dash:overview-stats', 90, async (
       (SELECT COUNT(*) FROM research_rounds WHERE status = 'active') AS rounds_active,
       (SELECT COUNT(*) FROM councils) AS councils_total,
       (SELECT COUNT(*) FROM courses) AS courses_total,
-      (SELECT COUNT(*) FROM courses WHERE status = 'open') AS courses_open,
+      ${COURSES_OPEN_SQL} AS courses_open,
       (SELECT COUNT(*) FROM trainees WHERE is_active = 1) AS trainees_active,
       (SELECT COUNT(*) FROM lecturers WHERE is_active = 1) AS lecturers_active,
       (SELECT COUNT(*) FROM course_enrollments WHERE status = 'pending') AS enrollments_pending,
@@ -367,4 +405,85 @@ const getOverviewStats = async () => remember('dash:overview-stats', 90, async (
 	};
 });
 
-module.exports = { getStats, getTrainingStats, getOverviewStats };
+// Dashboard riêng cho Hội thảo - Hội nghị & CME (theo năm hiện tại — nghiệp vụ
+// CME đếm theo năm, SQĐ reset mỗi năm).
+const getSeminarStats = async () => remember('dash:seminar-stats', 90, async () => {
+	const pool = await getPool();
+	const result = await pool.request().query(`
+    DECLARE @year INT = YEAR(GETDATE());
+    DECLARE @today DATE = CAST(GETDATE() AS DATE);
+
+    -- KPI trong năm
+    SELECT
+      (SELECT COUNT(*) FROM seminars WHERE event_year = @year) AS seminars_this_year,
+      (SELECT COUNT(*) FROM seminars WHERE event_year = @year AND scope = 'hosted') AS hosted_this_year,
+      (SELECT COUNT(*) FROM seminars WHERE event_year = @year AND scope = 'external') AS external_this_year,
+      (SELECT COUNT(*) FROM seminars WHERE event_year = @year AND grants_cme = 1) AS cme_seminars_this_year,
+      (SELECT COUNT(*) FROM seminars WHERE start_date >= @today) AS upcoming_total,
+      (SELECT COUNT(*) FROM seminar_participants sp
+         INNER JOIN seminars s ON s.id = sp.seminar_id
+         WHERE s.event_year = @year) AS participants_this_year,
+      (SELECT COUNT(*) FROM seminar_participants sp
+         INNER JOIN seminars s ON s.id = sp.seminar_id
+         WHERE s.event_year = @year AND sp.source = 'internal') AS internal_participants_this_year,
+      (SELECT COUNT(*) FROM seminar_participants
+         WHERE cme_year = @year AND cme_status IN ('issued', 'signed')) AS cme_issued_this_year,
+      (SELECT COUNT(*) FROM seminar_participants WHERE cme_status = 'pending') AS cme_pending,
+      (SELECT ISNULL(SUM(cme_credits), 0) FROM seminar_participants
+         WHERE cme_year = @year AND cme_status IN ('issued', 'signed')) AS cme_credits_this_year,
+      @year AS current_year;
+
+    -- Sự kiện trong năm theo loại hình
+    SELECT event_type, COUNT(*) AS cnt
+    FROM seminars
+    WHERE event_year = @year
+    GROUP BY event_type
+    ORDER BY cnt DESC;
+
+    -- Sự kiện & lượt tham dự theo tháng trong năm
+    SELECT MONTH(s.start_date) AS m,
+      COUNT(DISTINCT s.id) AS seminars,
+      COUNT(sp.id) AS participants
+    FROM seminars s
+    LEFT JOIN seminar_participants sp ON sp.seminar_id = s.id
+    WHERE s.start_date IS NOT NULL AND YEAR(s.start_date) = @year
+    GROUP BY MONTH(s.start_date);
+
+    -- Hội thảo sắp diễn ra
+    SELECT TOP 8 s.id, s.title, s.start_date, s.end_date, s.location, s.scope, s.grants_cme,
+      (SELECT COUNT(*) FROM seminar_participants sp WHERE sp.seminar_id = s.id) AS participant_count
+    FROM seminars s
+    WHERE s.start_date >= @today
+    ORDER BY s.start_date ASC;
+
+    -- Khoa/phòng có nhiều lượt tham dự nhất trong năm (nhân sự nội viện)
+    SELECT TOP 8 ISNULL(NULLIF(LTRIM(RTRIM(sp.department_raw)), ''), N'Chưa xác định') AS name,
+      COUNT(*) AS cnt,
+      SUM(CASE WHEN sp.cme_status IN ('issued', 'signed') THEN 1 ELSE 0 END) AS cme_cnt
+    FROM seminar_participants sp
+    INNER JOIN seminars s ON s.id = sp.seminar_id
+    WHERE s.event_year = @year AND sp.source = 'internal'
+    GROUP BY ISNULL(NULLIF(LTRIM(RTRIM(sp.department_raw)), ''), N'Chưa xác định')
+    ORDER BY cnt DESC;
+  `);
+
+	const byMonth = Object.fromEntries(result.recordsets[2].map((r) => [r.m, r]));
+	const monthly = [];
+	for (let m = 1; m <= 12; m++) {
+		monthly.push({
+			month: m,
+			seminars: byMonth[m]?.seminars ?? 0,
+			participants: byMonth[m]?.participants ?? 0,
+		});
+	}
+
+	return {
+		kpi: { ...result.recordsets[0][0], cme_credits_this_year: Number(result.recordsets[0][0].cme_credits_this_year) },
+		by_event_type: result.recordsets[1],
+		monthly,
+		upcoming: result.recordsets[3],
+		top_departments: result.recordsets[4],
+	};
+});
+
+module.exports = { getStats, getTrainingStats, getOverviewStats, getSeminarStats };

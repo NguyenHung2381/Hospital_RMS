@@ -7,6 +7,7 @@
 const ExcelJS = require('exceljs');
 const { getPool } = require('../config/db');
 const { norm, normDept } = require('../utils/vietnameseText');
+const { normalizeGender } = require('../utils/gender');
 const traineeService = require('./traineeService');
 
 const COLUMN_MATCHERS = [
@@ -67,12 +68,8 @@ const parseDob = (cell) => {
 	return { dob: null, dob_text: raw };
 };
 
-const normGender = (s) => {
-	const n = norm(s);
-	if (n.startsWith('nam')) return 'Nam';
-	if (n.startsWith('nu')) return 'Nữ';
-	return null;
-};
+// Nhận "Nam"/"Nữ"/"Khác" trong file → mã lưu DB (xem utils/gender).
+const normGender = normalizeGender;
 
 const findHeader = (workbook) => {
 	for (const ws of workbook.worksheets) {

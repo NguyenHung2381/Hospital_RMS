@@ -1,5 +1,7 @@
 import { apiClient } from '../../../shared/api/axios';
 import type {
+	ParticipationType,
+	SeminarListImportResult,
 	CmeRegister,
 	CmeStats,
 	ParticipantForm,
@@ -125,16 +127,22 @@ export const importParticipantsExcel = (
 	file: File,
 	dryRun: boolean,
 	issueCme: boolean,
+	/** Số tín chỉ cho dòng để trống cột "Số tín chỉ", theo vai trò. */
+	creditsByRole?: Partial<Record<ParticipationType, number>>,
 ) => {
 	const form = new FormData();
 	form.append('dry_run', dryRun ? '1' : '0');
 	form.append('issue_cme', issueCme ? '1' : '0');
+	if (creditsByRole) form.append('credits_by_role', JSON.stringify(creditsByRole));
 	form.append('file', file);
 	return apiClient.postForm<ParticipantImportResult>(
 		`/seminars/${seminarId}/participants/import-excel`,
 		form,
 	);
 };
+
+export const downloadParticipantImportTemplate = () =>
+	apiClient.postBlob('/seminars/participant-import-template', {});
 
 // ─── CME ─────────────────────────────────────────────────────────────────────
 export interface IssueCmeResult {
@@ -193,3 +201,25 @@ export const updateCmeRegisterSeq = (year: number, lastSeq: number) =>
 		`/seminars/cme/register/${year}`,
 		{ last_seq: lastSeq },
 	);
+
+// ─── Nhập / xuất Excel danh sách hội thảo ────────────────────────────────────
+export interface SeminarExportFilters {
+	search?: string;
+	scope?: string;
+	event_type?: string;
+	year?: string;
+	grants_cme?: '1';
+}
+
+export const exportSeminarsExcel = (filters: SeminarExportFilters) =>
+	apiClient.postBlob('/seminars/export-excel', filters);
+
+export const downloadSeminarImportTemplate = () =>
+	apiClient.postBlob('/seminars/import-template', {});
+
+export const importSeminarsExcel = (file: File, dryRun: boolean) => {
+	const form = new FormData();
+	form.append('dry_run', dryRun ? '1' : '0');
+	form.append('file', file);
+	return apiClient.postForm<SeminarListImportResult>('/seminars/import-excel', form);
+};

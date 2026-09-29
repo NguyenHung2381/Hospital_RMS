@@ -1,6 +1,6 @@
 import type { RoundDeadline } from '../../round/types/round.type';
 import type { DayEventItem, MonthData, PopoverData } from '../types/calendarView.type';
-import type { RoundRow } from '../types/schedule.type';
+import { MONTHS_LONG, type RoundRow } from '../types/schedule.type';
 import { computeWeekEventsForDays, DOW, DOW_SHORT } from '../utils/calendarViewHelpers';
 import styles from './CalendarView.module.css';
 
@@ -8,6 +8,8 @@ interface MonthCardProps {
 	data: MonthData;
 	monthName: string;
 	isSingleMonthView: boolean;
+	/** Chế độ tuần: 1 hàng, ô cao hơn, hiện nhiều mốc hơn, tiêu đề cột kèm ngày */
+	isWeekView?: boolean;
 	isMobileWindow: boolean;
 	rows: RoundRow[];
 	onSelectMonth?: (month: number) => void;
@@ -20,6 +22,7 @@ export function MonthCard({
 	data: { month, weeks, deadlinesByDay, monthDeadlines, eventBars },
 	monthName,
 	isSingleMonthView,
+	isWeekView = false,
 	isMobileWindow,
 	rows,
 	onSelectMonth,
@@ -45,9 +48,15 @@ export function MonthCard({
 
 			<div className={`${styles.calGrid}${isSingleMonthView ? ` ${styles.googleCalGrid}` : ''}`}>
 				<div className={styles.dowRow}>
-					{(isSingleMonthView && !isMobileWindow ? DOW : DOW_SHORT).map((d) => (
-						<div key={d} className={styles.dowCell}>{d}</div>
-					))}
+					{(isSingleMonthView && !isMobileWindow ? DOW : DOW_SHORT).map((d, i) => {
+						const wd = isWeekView ? weeks[0]?.[i] : undefined;
+						return (
+							<div key={d} className={`${styles.dowCell}${wd?.isToday ? ` ${styles.dowCellToday}` : ''}`}>
+								{d}
+								{wd && <span className={styles.dowDate}>{wd.dayNum}/{wd.month + 1}</span>}
+							</div>
+						);
+					})}
 				</div>
 
 				{weeks.map((weekDays, wi) => {
@@ -73,7 +82,7 @@ export function MonthCard({
 									].filter(Boolean).join(' ');
 
 									if (isSingleMonthView) {
-										const maxVisible = isMobileWindow ? 1 : 3;
+										const maxVisible = isWeekView ? (isMobileWindow ? 3 : 8) : (isMobileWindow ? 1 : 3);
 										const visibleEvs = evs.slice(0, maxVisible);
 										const hiddenCount = evs.length - visibleEvs.length;
 
@@ -119,7 +128,7 @@ export function MonthCard({
 															onClick={(e) => {
 																e.stopPropagation();
 																onOpenPopover({
-																	title: `Ngày ${day.dayNum} ${monthName}, ${day.year}`,
+																	title: `Ngày ${day.dayNum} ${MONTHS_LONG[day.month]}, ${day.year}`,
 																	events: evs,
 																	roundForAdd: rows[0],
 																});

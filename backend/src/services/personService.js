@@ -1,4 +1,5 @@
 const { getPool, sql } = require('../config/db');
+const { normalizeGender } = require('../utils/gender');
 
 /**
  * Dual-write danh tính (GĐ 1 / bước 2) — giữ bảng `persons` đồng bộ với 6 bảng nguồn.
@@ -156,7 +157,7 @@ const bindPerson = (req, row) =>
 		.input('email', sql.VarChar(255), cleanEmail(row.email))
 		.input('phone', sql.VarChar(40), cleanPhone(row.phone))
 		.input('dob', sql.Date, row.dob || null)
-		.input('gender', sql.VarChar(10), clean(row.gender))
+		.input('gender', sql.VarChar(10), normalizeGender(row.gender))
 		.input('national_id', sql.VarChar(20), clean(row.national_id))
 		.input('staff', sql.Int, row.staff_number ?? null)
 		.input('internal', sql.Bit, row.is_internal == null ? null : !!row.is_internal);

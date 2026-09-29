@@ -151,6 +151,18 @@ const migratePermissionScopes = async ({ dryRun = false } = {}) => {
 const { LEGACY_ROLE_IDS } = require('../services/roleCodes');
 const schema = require('../utils/schema');
 
+const GENDER_CODES_SQL = ['trainees', 'lecturers', 'persons', 'seminar_participants']
+	.map(
+		(t) => `
+      UPDATE ${t} SET gender = CASE
+          WHEN gender IN ('Nam', 'nam') THEN 'male'
+          WHEN gender IN ('N?', 'n?', N'Nữ', 'Nu', 'nu') THEN 'female'
+          WHEN gender IN ('Kh?c', N'Khác', 'Khac', 'khac') THEN 'other'
+        END${t === 'seminar_participants' ? ', updated_at = updated_at' : ''}
+      WHERE gender IN ('Nam', 'nam', 'N?', 'n?', N'Nữ', 'Nu', 'nu', 'Kh?c', N'Khác', 'Khac', 'khac');`,
+	)
+	.join('\n');
+
 const migrateRolesAndSessions = async ({ dryRun = false } = {}) => {
 	const pool = await getPool();
 	const report = { addedColumns: [], codedRoles: [], superuserRoles: [], removedSystemManage: false };
@@ -215,6 +227,58 @@ const migrateRolesAndSessions = async ({ dryRun = false } = {}) => {
         );
         CREATE INDEX IX_backup_codes_user ON user_backup_codes(user_id, code_hash);
       END
+    `);
+		// Cấp độ đề tài cấu hình riêng theo từng đợt (chọn ngay khi tạo đợt).
+		// Tương đương 2026-10-17_research_round_levels.sql — kiểu cột khoá lấy
+		// theo cột id thật để FK không lệch độ dài.
+		await pool.request().query(`
+      IF OBJECT_ID('research_round_levels', 'U') IS NULL
+      BEGIN
+        DECLARE @rl INT = COL_LENGTH('research_rounds', 'id'), @ll INT = COL_LENGTH('levels', 'id');
+        DECLARE @ddl NVARCHAR(MAX) = N'
+          CREATE TABLE research_round_levels (
+            round_id   VARCHAR(' + CAST(@rl AS NVARCHAR(5)) + N') NOT NULL,
+            level_id   VARCHAR(' + CAST(@ll AS NVARCHAR(5)) + N') NOT NULL,
+            created_at DATETIME2(7) NOT NULL CONSTRAINT DF_rrl_created_at DEFAULT GETDATE(),
+            CONSTRAINT PK_research_round_levels PRIMARY KEY (round_id, level_id),
+            CONSTRAINT FK_rrl_round FOREIGN KEY (round_id) REFERENCES research_rounds (id) ON DELETE CASCADE,
+            CONSTRAINT FK_rrl_level FOREIGN KEY (level_id) REFERENCES levels (id) ON DELETE CASCADE
+          );
+          CREATE NONCLUSTERED INDEX idx_rrl_level ON research_round_levels (level_id);';
+        EXEC sp_executesql @ddl;
+      END
+    `);
+		// Đăng ký đề tài trên cổng công khai không có tài khoản đứng sau ⇒
+		// created_by = NULL. Tương đương 2026-10-16_public_topic_null_creator.sql.
+		await pool.request().query(`
+      SET XACT_ABORT ON;
+      IF EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('topics') AND name = 'created_by' AND is_nullable = 0)
+      BEGIN
+        BEGIN TRANSACTION;
+        IF EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'idx_topics_created_by' AND object_id = OBJECT_ID('topics'))
+          DROP INDEX idx_topics_created_by ON topics;
+        IF EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'idx_topics_round_status' AND object_id = OBJECT_ID('topics'))
+          DROP INDEX idx_topics_round_status ON topics;
+        ALTER TABLE topics ALTER COLUMN created_by VARCHAR(20) NULL;
+        CREATE NONCLUSTERED INDEX idx_topics_created_by ON topics(created_by);
+        CREATE NONCLUSTERED INDEX idx_topics_round_status ON topics(round_id, status)
+          INCLUDE (title, department_id, category_id, level_id, created_by, created_at);
+        COMMIT TRANSACTION;
+      END
+      IF EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('topic_members') AND name = 'created_by' AND is_nullable = 0)
+        ALTER TABLE topic_members ALTER COLUMN created_by VARCHAR(20) NULL;
+      IF EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('approvals') AND name = 'created_by' AND is_nullable = 0)
+        ALTER TABLE approvals ALTER COLUMN created_by VARCHAR(20) NULL;
+    `);
+		// Giới tính lưu mã ASCII male/female/other (utils/gender.js). Dữ liệu cũ
+		// ghi nhãn "Nam"/"Nữ" vào cột VARCHAR nên "Nữ" đã mất dấu thành "N?".
+		// Tương đương 2026-10-18_gender_codes.sql. Idempotent.
+		await pool.request().query(GENDER_CODES_SQL);
+		// Loại đề thi trắc nghiệm / tự luận. Tương đương 2026-10-19_exam_paper_type.sql.
+		await pool.request().query(`
+      IF OBJECT_ID('exam_papers', 'U') IS NOT NULL AND COL_LENGTH('exam_papers', 'paper_type') IS NULL
+        ALTER TABLE exam_papers ADD paper_type VARCHAR(20) NULL
+          CONSTRAINT CHK_exampapers_type CHECK (paper_type IN ('multiple_choice', 'essay'));
     `);
 	}
 

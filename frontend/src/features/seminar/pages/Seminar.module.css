@@ -457,3 +457,170 @@
 .importPreview .table { font-size: 12px; }
 .importPreview .table thead th { position: sticky; top: 0; background: var(--color-white); z-index: 1; }
 .rowWarn { color: #b42318; font-size: 11px; margin-top: 2px; }
+
+/* ── Danh sách ghi nhận CME độc lập ─────────────────────────────────────── */
+.thCenter {
+	composes: thCenter from '../../../shared/components/Table/Table.module.css';
+}
+.tdCenter {
+	composes: tdCenter from '../../../shared/components/Table/Table.module.css';
+}
+.tdActions {
+	composes: tdActions from '../../../shared/components/Table/Table.module.css';
+}
+.cmeFilterWide { max-width: 200px; overflow: hidden; text-overflow: ellipsis; }
+.cmeCellMain { color: var(--color-gray-800); font-weight: var(--font-weight-semibold); line-height: 1.35; }
+.cmeCellSub {
+	margin-top: 2px;
+	font-size: 12px;
+	color: var(--color-gray-500);
+	line-height: 1.35;
+	max-width: 320px;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+.cmeCategory {
+	display: inline-block;
+	max-width: 260px;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	vertical-align: middle;
+}
+.cmeNowrap { white-space: nowrap; }
+.cmeCredits {
+	display: inline-block;
+	min-width: 36px;
+	padding: 2px 8px;
+	border-radius: 999px;
+	background: #ecfdf3;
+	color: #067647;
+	font-weight: var(--font-weight-semibold);
+	text-align: center;
+}
+.cmeEvidence {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 28px;
+	height: 28px;
+	border-radius: var(--radius-md);
+	color: var(--color-primary);
+	background: var(--color-gray-50);
+	border: 1px solid var(--color-gray-200);
+}
+.cmeEvidence:hover { background: #ecfdf3; border-color: var(--color-primary); }
+.cmeEvidence svg { width: 14px; height: 14px; }
+
+/* Chọn năm dạng ‹ Năm 2026 › */
+.yearStepper {
+	display: inline-flex;
+	align-items: center;
+	border: 1.5px solid var(--color-gray-200);
+	border-radius: var(--radius-lg);
+	background: var(--color-gray-50);
+	overflow: hidden;
+}
+.yearStepper:focus-within { border-color: var(--color-primary); background: var(--color-white); }
+.yearStepper > button {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 30px;
+	align-self: stretch;
+	border: none;
+	background: transparent;
+	color: var(--color-gray-500);
+	cursor: pointer;
+}
+.yearStepper > button:hover:not(:disabled) { background: var(--color-gray-100); color: var(--color-primary); }
+.yearStepper > button:disabled { opacity: 0.35; cursor: not-allowed; }
+.yearStepper > button svg { width: 14px; height: 14px; }
+.yearStepperValue {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+	padding: var(--space-2) 2px;
+	font-size: var(--font-size-sm);
+	color: var(--color-gray-500);
+	cursor: text;
+}
+.yearStepperValue input {
+	width: 40px;
+	border: none;
+	outline: none;
+	background: transparent;
+	font: inherit;
+	font-weight: var(--font-weight-semibold);
+	color: var(--color-gray-800);
+	text-align: center;
+	padding: 0;
+}
+.yearStepper > .yearStepperToday {
+	width: auto;
+	padding: 0 var(--space-3);
+	border-left: 1px solid var(--color-gray-200);
+	font-size: 12px;
+	font-weight: var(--font-weight-semibold);
+	color: var(--color-primary);
+	white-space: nowrap;
+}
+
+/* Lọc năm: [Tất cả năm | Theo năm] + stepper */
+.yearFilter { display: inline-flex; align-items: center; gap: var(--space-2); }
+.yearMode {
+	display: inline-flex;
+	padding: 2px;
+	border: 1.5px solid var(--color-gray-200);
+	border-radius: var(--radius-lg);
+	background: var(--color-gray-50);
+}
+.yearMode > button {
+	padding: 5px var(--space-3);
+	border: none;
+	border-radius: calc(var(--radius-lg) - 3px);
+	background: transparent;
+	font-family: var(--font-body);
+	font-size: var(--font-size-sm);
+	color: var(--color-gray-500);
+	white-space: nowrap;
+	cursor: pointer;
+	transition: background var(--transition-fast), color var(--transition-fast);
+}
+.yearMode > button:hover:not(.yearModeActive) { color: var(--color-gray-800); }
+.yearMode > .yearModeActive {
+	background: var(--color-white);
+	color: var(--color-primary);
+	font-weight: var(--font-weight-semibold);
+	box-shadow: 0 1px 3px rgba(15, 23, 42, 0.12);
+}
+
+/* ── Nhập người tham dự: số tín chỉ mặc định theo vai trò ── */
+.creditsBox {
+	margin-top: 12px;
+	padding: var(--space-3) var(--space-4);
+	border: 1px solid var(--color-gray-200);
+	border-radius: var(--radius-lg);
+	background: var(--color-gray-50);
+	display: flex;
+	flex-direction: column;
+	gap: var(--space-2);
+}
+.creditsTitle {
+	font-size: var(--font-size-sm);
+	font-weight: var(--font-weight-semibold);
+	color: var(--color-gray-800);
+}
+.creditsGrid {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+	gap: var(--space-2) var(--space-3);
+}
+.creditsItem {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+	font-size: 13px;
+	color: var(--color-gray-700);
+}

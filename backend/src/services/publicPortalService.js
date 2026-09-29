@@ -5,6 +5,14 @@ const courseService = require('./courseService');
 const researchRoundService = require('./roundService');
 const topicService = require('./topicService');
 const topicMemberService = require('./topicMemberService');
+const { norm } = require('../utils/vietnameseText');
+const fileService = require('./fileService');
+const trainingFileService = require('./trainingFileService');
+const path = require('path');
+const fs = require('fs');
+const { moveUploadedFiles, UPLOADS_ROOT } = require('../middlewares/uploadPublic');
+
+const hasFiles = (files) => Array.isArray(files) && files.length > 0;
 
 // ─── Cổng công khai (không đăng nhập) ───────────────────────────────────────
 // Chỉ lộ ra tối thiểu dữ liệu cần thiết cho người ngoài hệ thống: danh sách
@@ -19,7 +27,7 @@ const getOpenCourses = async () => {
            c.capacity,
            (SELECT STRING_AGG(tp.name, ', ') FROM course_programs cp JOIN training_programs tp ON tp.id = cp.program_id WHERE cp.course_id = c.id) AS program_name
     FROM courses c
-    WHERE c.status = 'open' AND c.is_public_registration = 1
+    WHERE c.status <> 'cancelled' AND c.is_public_registration = 1
     ORDER BY c.start_date ASC
   `);
 
@@ -38,11 +46,14 @@ const getTraineeTypes = async () => {
 	return result.recordset;
 };
 
-// Tra cứu kết quả học tập/chứng chỉ theo đúng số CCCD + ngày sinh người dùng tự
-// nhập — không tìm gần đúng, không liệt kê theo tên. Sai 1 trong 2 thì trả danh
-// sách rỗng như không có dữ liệu (không lộ CCCD có tồn tại hay không). Kết hợp
-// rate-limit theo IP (route) và theo từng CCCD (controller).
-const lookupResults = async (nationalId, dob) => {
+// Tra cứu kết quả học tập/chứng chỉ theo đúng số CCCD + ngày sinh + họ tên người
+// dùng tự nhập — không tìm gần đúng, không liệt kê theo tên. Họ tên so khớp bỏ
+// qua hoa/thường, dấu và khoảng trắng thừa. Sai 1 trong 3 thì trả danh sách rỗng
+// như không có dữ liệu (không lộ CCCD có tồn tại hay không). Kết hợp rate-limit
+// theo IP (route) và theo từng CCCD (controller).
+const lookupResults = async (nationalId, dob, fullName) => {
+	const nameKey = norm(fullName);
+	if (!nameKey) return [];
 	const pool = await getPool();
 	const result = await pool
 		.request()
@@ -58,7 +69,7 @@ const lookupResults = async (nationalId, dob) => {
     WHERE t.national_id = @national_id AND CAST(t.dob AS DATE) = @dob
     ORDER BY e.registered_at DESC
   `);
-	return result.recordset;
+	return result.recordset.filter((row) => norm(row.full_name) === nameKey);
 };
 
 // 'YYYY-MM-DD' của cột DATE (driver trả Date lúc 00:00 UTC) hoặc chuỗi ISO từ form
@@ -72,9 +83,11 @@ const toDateKey = (v) => {
 // trùng nếu học viên đã từng đăng ký khóa khác), nếu chưa có thì tạo mới với
 // actor_id = NULL (không có tài khoản đứng sau thao tác này — cột created_by
 // cho phép NULL, giống các trường hợp import/nguồn ngoài khác).
-const register = async (data) => {
+const register = async (data, files) => {
 	const course = await courseService.getById(data.course_id);
-	if (!course || course.status !== 'open') {
+	// courses.status giờ chỉ còn cờ 'cancelled' (trạng thái hiển thị tự suy từ
+	// ngày tháng — courseService.computeDisplayStatus), cửa sổ đăng ký xét ở dưới.
+	if (!course || course.status === 'cancelled' || !course.is_public_registration) {
 		const err = new Error('Khóa học không tồn tại hoặc đã đóng đăng ký.');
 		err.statusCode = 404;
 		throw err;
@@ -122,6 +135,7 @@ const register = async (data) => {
 	}
 
 	const enrollment = await courseService.registerTrainee(data.course_id, trainee.id, null);
+	if (hasFiles(files)) await attachTraineeDocuments(trainee.id, files, data.doc_types);
 	return { trainee_id: trainee.id, enrollment_id: enrollment.id };
 };
 
@@ -129,10 +143,11 @@ const register = async (data) => {
 // Chỉ nhận loại "đề tài" (không hỗ trợ "bài báo") để giữ form ngắn gọn. Đề tài
 // được tạo thẳng ở trạng thái 'submitted' (chờ duyệt), created_by = NULL —
 // mirror cách trainees/courses cho phép actor NULL khi không có tài khoản đứng
-// sau thao tác (xem register() ở trên). Người nộp được lưu thành một
-// topic_member vai trò 'leader' để khoa/phòng và admin có thông tin liên hệ;
-// không cấp tài khoản tự động, không đụng tới workflow thành viên/file phức
-// tạp của form nội bộ.
+// sau thao tác (xem register() ở trên; cột cho phép NULL từ migration
+// 2026-10-16_public_topic_null_creator). Người nộp được lưu thành topic_member
+// vai trò 'leader' (chủ nhiệm), kèm thư ký (tối đa 1) / thành viên tùy chọn
+// trong data.members; không cấp tài khoản tự động, không đụng tới workflow
+// file phức tạp của form nội bộ.
 
 const getOpenTopicRounds = async () => {
 	const { data } = await researchRoundService.getAll({ status: 'active', limit: 0 });
@@ -149,6 +164,28 @@ const getOpenTopicRounds = async () => {
 		}));
 };
 
+// Link đăng ký kèm ?token=<public_token> của đợt (tab "Nâng cao" của đợt) —
+// dùng chung cho cổng công khai (/de-xuat-de-tai) và form khoa/phòng
+// (/dang-ky-de-tai): tài khoản khoa/phòng thường không có quyền rounds:read nên
+// không tra qua /research-rounds được. Trả cả đợt chưa mở/đã đóng để trang báo
+// lý do cụ thể thay vì "không tìm thấy"; null khi token sai.
+const getTopicRoundByToken = async (token) => {
+	const { data } = await researchRoundService.getAll({ public_token: token, limit: 1 });
+	const r = data.find((x) => x.public_token === token);
+	if (!r) return null;
+	return {
+		id: r.id,
+		name: r.name,
+		year: r.year,
+		round_type_id: r.round_type_id,
+		round_type_name: r.round_type_name,
+		registration_start: r.registration_start,
+		registration_end: r.registration_end,
+		status: r.status,
+		registration_open: r.status === 'active' && !!r.registration_open,
+	};
+};
+
 const getPublicCategories = async () => {
 	const pool = await getPool();
 	const result = await pool.request().query('SELECT id, name FROM categories ORDER BY name');
@@ -161,32 +198,49 @@ const getPublicDepartments = async () => {
 	return result.recordset;
 };
 
-// Cấp độ hợp lệ theo loại đợt (round_type_levels); loại đợt chưa cấu hình cấp
-// độ nào hoặc bảng chưa tồn tại (migration chưa chạy) ⇒ trả tất cả (fallback),
-// mirror logic ở routes/lookups.js (GET /levels).
+// Cấp độ hợp lệ theo đợt (research_round_levels → round_type_levels); chưa
+// cấu hình gì ⇒ trả tất cả (fallback), mirror logic ở routes/lookups.js (GET /levels).
 const getPublicLevels = async (roundId) => {
 	const pool = await getPool();
 	const all = await pool.request().query('SELECT id, name FROM levels ORDER BY name');
 	if (!roundId) return all.recordset;
-	try {
-		const rt = await pool
-			.request()
-			.input('rid', sql.VarChar(10), roundId)
-			.query('SELECT round_type_id FROM research_rounds WHERE id = @rid');
-		const rtId = rt.recordset[0]?.round_type_id;
-		if (!rtId) return all.recordset;
-		const allowed = await pool
-			.request()
-			.input('rt', sql.VarChar(6), rtId)
-			.query('SELECT level_id FROM round_type_levels WHERE round_type_id = @rt');
-		const ids = allowed.recordset.map((x) => x.level_id);
-		return ids.length ? all.recordset.filter((l) => ids.includes(l.id)) : all.recordset;
-	} catch {
-		return all.recordset;
+	const ids = await researchRoundService.getAllowedLevelIds(roundId);
+	return ids.length ? all.recordset.filter((l) => ids.includes(l.id)) : all.recordset;
+};
+
+// Hồ sơ học viên đính kèm khi đăng ký khoá học (CCCD, bằng cấp...) — cùng chỗ
+// lưu với tab "Hồ sơ" của học viên (traineeService.addDocument).
+const attachTraineeDocuments = async (traineeId, files, docTypes) => {
+	const dir = path.join(UPLOADS_ROOT, 'training', 'trainee_document', traineeId);
+	const moved = await moveUploadedFiles(files, dir);
+	const types = Array.isArray(docTypes) ? docTypes : [];
+	for (const [i, f] of moved.entries()) {
+		await traineeService.addDocument(traineeId, types[i] || 'other', f, null);
 	}
 };
 
-const registerTopic = async (data) => {
+// Tài liệu đề tài nộp kèm: 1 đợt file (file_batches) giống upload nội bộ.
+const attachTopicFiles = async (topicId, files) => {
+	const moved = await moveUploadedFiles(files, path.join(UPLOADS_ROOT, 'topics', topicId));
+	try {
+		await fileService.uploadFiles(
+			topicId,
+			moved.map((f) => ({
+				file_name: trainingFileService.decodeOriginalName(f.originalname),
+				file_url: `/uploads/topics/${topicId}/${f.filename}`,
+				file_size: f.size,
+				mime_type: f.mimetype,
+			})),
+			'Hồ sơ nộp kèm khi đăng ký trên cổng công khai',
+			null,
+		);
+	} catch (err) {
+		await Promise.all(moved.map((f) => fs.promises.unlink(f.path).catch(() => {})));
+		throw err;
+	}
+};
+
+const registerTopic = async (data, files) => {
 	const round = await researchRoundService.getById(data.round_id);
 	if (!round || round.status !== 'active') {
 		const err = new Error('Đợt nghiên cứu không tồn tại hoặc đã đóng.');
@@ -198,7 +252,21 @@ const registerTopic = async (data) => {
 		err.statusCode = 403;
 		throw err;
 	}
-	await topicService.assertLevelForRound(data.round_id, data.level_id, 'de_tai');
+	// Cấp độ ăn theo đợt: đợt chỉ cấu hình 1 cấp độ thì tự gán (form không hỏi);
+	// nhiều cấp độ thì người đăng ký chọn 1 trong số đó.
+	const allowedLevels = await researchRoundService.getAllowedLevelIds(data.round_id);
+	const levelId = allowedLevels.length === 1 ? allowedLevels[0] : data.level_id;
+	await topicService.assertLevelForRound(data.round_id, levelId, 'de_tai');
+	if (!levelId) throw Object.assign(new Error('Vui lòng chọn cấp độ đề tài.'), { statusCode: 400 });
+
+	// Người đăng ký = chủ nhiệm; thư ký/thành viên khác nhập thêm (tùy chọn).
+	const extras = (Array.isArray(data.members) ? data.members : [])
+		.filter((m) => m && String(m.full_name ?? '').trim())
+		.map((m) => ({ ...m, role: m.role === 'secretary' ? 'secretary' : 'member' }));
+	const badRequest = (msg) => Object.assign(new Error(msg), { statusCode: 400 });
+	if (extras.filter((m) => m.role === 'secretary').length > 1) throw badRequest('Mỗi đề tài chỉ có 1 thư ký.');
+	const mnvs = [data.staff_number, ...extras.map((m) => m.staff_number)].map((v) => String(v ?? '').trim());
+	if (new Set(mnvs).size !== mnvs.length) throw badRequest('Có mã nhân viên bị trùng giữa các thành viên đề tài.');
 
 	const topic = await topicService.create(
 		{
@@ -206,25 +274,47 @@ const registerTopic = async (data) => {
 			description: data.description,
 			round_id: data.round_id,
 			category_id: data.category_id,
-			level_id: data.level_id,
+			level_id: levelId,
 			department_id: data.department_id,
 			article_type: 'de_tai',
 		},
 		null,
 	);
 
-	await topicMemberService.addMember(
-		topic.id,
+	const people = [
 		{
-			ho_ten: data.full_name,
+			full_name: data.full_name,
+			staff_number: data.staff_number,
 			email: data.email,
-			so_dien_thoai: data.phone,
-			chuc_vu: data.position,
-			department_id: data.department_id,
+			phone: data.phone,
+			position: data.position,
+			department_id: data.member_department_id,
 			role: 'leader',
 		},
-		null,
-	);
+		...extras,
+	];
+	try {
+		for (const m of people) {
+			await topicMemberService.addMember(
+				topic.id,
+				{
+					ho_ten: String(m.full_name).trim(),
+					staff_number: m.staff_number,
+					email: m.email,
+					so_dien_thoai: m.phone,
+					chuc_vu: m.position,
+					department_id: m.department_id || data.department_id,
+					role: m.role,
+				},
+				null,
+			);
+		}
+		if (hasFiles(files)) await attachTopicFiles(topic.id, files);
+	} catch (err) {
+		// Không để lại đề tài "mồ côi" thiếu chủ nhiệm/thành viên/tài liệu khi lỗi giữa chừng
+		await topicService.remove(topic.id, null).catch(() => {});
+		throw err;
+	}
 
 	return { topic_id: topic.id };
 };
@@ -305,6 +395,7 @@ module.exports = {
 	lookupResults,
 	register,
 	getOpenTopicRounds: cached('open-topic-rounds', getOpenTopicRounds),
+	getTopicRoundByToken,
 	getPublicCategories: cached('categories', getPublicCategories),
 	getPublicDepartments: cached('departments', getPublicDepartments),
 	getPublicLevels: getPublicLevelsCached,

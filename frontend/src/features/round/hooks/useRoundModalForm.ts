@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { getRoundTypeLevelIds } from '../api/roundApi';
 import type {
 	FormErrors,
 	ResearchRound,
@@ -36,12 +37,32 @@ export function useRoundModalForm({
 		start_date: round?.start_date ?? '',
 		end_date: round?.end_date ?? '',
 		status: round?.status ?? 'draft',
+		level_ids: round?.level_ids ?? [],
+		deadlines: [],
 	});
 	const [errors, setErrors] = useState<FormErrors>({});
 	const [loading, setLoading] = useState(false);
 	const [saveError, setSaveError] = useState('');
 
+	// Tạo mới: chọn loại đợt ⇒ gợi ý sẵn cấp độ đã cấu hình cho loại đợt đó,
+	// cho tới khi người dùng tự tick/bỏ tick cấp độ.
+	const levelsTouched = useRef(!!round);
+	useEffect(() => {
+		if (levelsTouched.current || !form.round_type_id) return;
+		let cancelled = false;
+		getRoundTypeLevelIds(form.round_type_id)
+			.then((ids) => {
+				if (!cancelled && !levelsTouched.current)
+					setForm((p) => ({ ...p, level_ids: ids }));
+			})
+			.catch(() => {});
+		return () => {
+			cancelled = true;
+		};
+	}, [form.round_type_id]);
+
 	const set = <K extends keyof RoundForm>(field: K, val: RoundForm[K]) => {
+		if (field === 'level_ids') levelsTouched.current = true;
 		setForm((p) => {
 			const next = { ...p, [field]: val };
 			if (
@@ -83,6 +104,17 @@ export function useRoundModalForm({
 		const s = parseDate(form.start_date),
 			e2 = parseDate(form.end_date);
 		if (s && e2 && e2 <= s) e.end_date = 'Ngày kết thúc phải sau ngày bắt đầu';
+		if (s && e2) {
+			const outside = form.deadlines.some((d) =>
+				[d.start_date, d.deadline_date].some((x) => {
+					const dt = x ? parseDate(x) : null;
+					return dt && (dt < s || dt > e2);
+				}),
+			);
+			if (outside)
+				e.deadlines =
+					'Có mốc thời gian nằm ngoài khoảng thời gian của đợt — hãy sửa lại mốc hoặc ngày của đợt';
+		}
 		if (duplicateRound)
 			e.round_number = `Đợt ${form.round_number} năm ${form.year} đã tồn tại`;
 		setErrors(e);

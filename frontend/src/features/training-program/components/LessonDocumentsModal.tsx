@@ -1,5 +1,5 @@
 import { notify } from '../../../shared/utils/feedback';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { DocSvg, DownloadSvg, PlusSvg, TrashSvg, XSvg } from '@/assets/icons';
 import {
 	addLessonDocument,
@@ -9,6 +9,7 @@ import {
 	type LessonDocumentSource,
 } from '../api/trainingProgramApi';
 import type { LessonDocument, SourceType } from '../types/trainingProgram.type';
+import { FileDropzone } from '@/shared/components';
 import styles from '../pages/TrainingPrograms.module.css';
 
 // Chỉ cần id + title — tài liệu gắn theo lesson_id (nội dung dùng chung),
@@ -24,7 +25,7 @@ export function LessonDocumentsModal({
 	const [loading, setLoading] = useState(true);
 	const [busy, setBusy] = useState(false);
 	const [error, setError] = useState('');
-	const fileInputRef = useRef<HTMLInputElement>(null);
+	const [file, setFile] = useState<File | null>(null);
 	const [form, setForm] = useState<{ title: string; isPublic: boolean; sourceType: SourceType; externalUrl: string }>({
 		title: '',
 		isPublic: true,
@@ -47,7 +48,6 @@ export function LessonDocumentsModal({
 		if (!form.title.trim()) return;
 		let source: LessonDocumentSource;
 		if (form.sourceType === 'file') {
-			const file = fileInputRef.current?.files?.[0];
 			if (!file) return;
 			source = { type: 'file', file };
 		} else {
@@ -60,7 +60,7 @@ export function LessonDocumentsModal({
 			await addLessonDocument(lesson.id, source, { title: form.title, is_public: form.isPublic });
 			notify.success('Đã thêm tài liệu');
 			setForm({ title: '', isPublic: true, sourceType: 'file', externalUrl: '' });
-			if (fileInputRef.current) fileInputRef.current.value = '';
+			setFile(null);
 			await load();
 		} catch (err) {
 			setError(err instanceof Error ? err.message : 'Thêm tài liệu thất bại');
@@ -136,10 +136,12 @@ export function LessonDocumentsModal({
 							<option value='link'>Dán link</option>
 						</select>
 						{form.sourceType === 'file' ? (
-							<input
-								type='file'
-								ref={fileInputRef}
-								className={styles.subInput}
+							<FileDropzone
+								compact
+								value={file}
+								onChange={setFile}
+								disabled={busy}
+								className={styles.subDropzone}
 							/>
 						) : (
 							<input

@@ -69,6 +69,8 @@ export interface ResearchRound {
 	registration_open?: boolean;
 	registration_start?: string | null; // dd/mm/yyyy
 	registration_end?: string | null; // dd/mm/yyyy
+	/** Cấp độ đề tài cấu hình riêng cho đợt. [] ⇒ theo loại đợt / cho phép tất cả. */
+	level_ids?: string[];
 }
 
 export interface RoundForm {
@@ -79,6 +81,15 @@ export interface RoundForm {
 	start_date: string;
 	end_date: string;
 	status: RoundStatus;
+	/** Cấp độ đề tài được phép trong đợt. */
+	level_ids: string[];
+	/** Mốc thời gian nhập ngay khi tạo đợt (chưa lưu, ngày dd/mm/yyyy). */
+	deadlines: RoundDeadline[];
+}
+
+export interface LevelOption {
+	id: string;
+	name: string;
 }
 
 export interface RoundType {

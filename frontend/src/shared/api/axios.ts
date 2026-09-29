@@ -150,6 +150,7 @@ const LOOKUP_RESOURCES = new Set([
 	'permissions',
 	'job-titles',
 	'cme-credit-categories',
+	'cme-credit-groups',
 	'trainee-types',
 	'training-forms',
 	'training-types',

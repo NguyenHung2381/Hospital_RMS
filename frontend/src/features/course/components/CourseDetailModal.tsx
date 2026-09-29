@@ -14,15 +14,15 @@ import {
 	UsersSvg,
 	XSvg,
 } from '@/assets/icons';
-import { SearchableSelect } from '@/shared/components';
 import { VenueSelect } from '../../venue/components/VenueSelect';
 import { useCourseDetail, type DetailTab } from '../hooks/useCourseDetail';
-import { ENROLLMENT_STATUS_CFG, type Course } from '../types/course.type';
+import type { Course } from '../types/course.type';
 import { groupGradesByProgram } from '../utils/gradeStats';
 import { AttendanceModal } from './AttendanceModal';
 import { CourseDocumentsTab } from './CourseDocumentsTab';
 import { LecturerOptions } from './LecturerOptions';
 import { ProgramLinksTab } from './ProgramLinksTab';
+import { EnrollmentsTab } from './EnrollmentsTab';
 import { ExamsTab } from './ExamsTab';
 import styles from '../pages/Courses.module.css';
 
@@ -49,7 +49,6 @@ export function CourseDetailModal({
 	onClose: () => void;
 }) {
 	const d = useCourseDetail(course.id, initialTab);
-	const [newTraineeId, setNewTraineeId] = useState('');
 	const [newLecturerId, setNewLecturerId] = useState('');
 	const [newAssignSubjectId, setNewAssignSubjectId] = useState('');
 	const [sessionForm, setSessionForm] = useState({
@@ -128,82 +127,15 @@ export function CourseDetailModal({
 							onRemove={d.removeProgramLink}
 						/>
 					) : d.tab === 'enrollments' ? (
-						<>
-							<div className={styles.subToolbar}>
-								<SearchableSelect
-									className={styles.subSearch}
-									options={d.trainees.filter((t) => !d.enrollments.some((e) => e.trainee_id === t.id))}
-									value={newTraineeId}
-									onChange={setNewTraineeId}
-									placeholder='-- Chọn học viên / nhân viên nội viện (gõ tên để tìm) --'
-								/>
-								<button
-									className={styles.btnGhost}
-									disabled={!newTraineeId || d.busy}
-									onClick={() => {
-										d.registerTrainee(newTraineeId);
-										setNewTraineeId('');
-									}}
-								>
-									<PlusSvg /> Thêm đăng ký
-								</button>
-							</div>
-
-							{d.enrollments.length === 0 ? (
-								<div className={styles.subEmpty}>Chưa có học viên nào đăng ký khóa học này.</div>
-							) : (
-								<div className={styles.subList}>
-									{d.enrollments.map((en) => {
-										const cfg = ENROLLMENT_STATUS_CFG[en.status];
-										return (
-											<div
-												key={en.id}
-												className={styles.subRow}
-											>
-												<div className={styles.subRowMain}>
-													<div className={styles.subRowName}>{en.trainee_name}</div>
-													<div className={styles.subRowMeta}>
-														{en.trainee_phone ?? en.trainee_email ?? '—'}
-													</div>
-												</div>
-												<span
-													className={styles.badge}
-													style={{ background: cfg.bg, color: cfg.color }}
-												>
-													{cfg.label}
-												</span>
-												{en.status === 'pending' && (
-													<>
-														<button
-															className={`${styles.btnSmall} ${styles.btnSmallApprove}`}
-															disabled={d.busy}
-															onClick={() => d.decideEnrollment(en.id, 'approved')}
-														>
-															Duyệt
-														</button>
-														<button
-															className={`${styles.btnSmall} ${styles.btnSmallReject}`}
-															disabled={d.busy}
-															onClick={() => d.decideEnrollment(en.id, 'rejected')}
-														>
-															Từ chối
-														</button>
-													</>
-												)}
-												<button
-													className={styles.actionBtn}
-													title='Xoá đăng ký'
-													disabled={d.busy}
-													onClick={() => d.removeEnrollment(en.id)}
-												>
-													<TrashSvg />
-												</button>
-											</div>
-										);
-									})}
-								</div>
-							)}
-						</>
+						<EnrollmentsTab
+							enrollments={d.enrollments}
+							trainees={d.trainees}
+							busy={d.busy}
+							onRegister={d.registerTrainee}
+							onDecide={d.decideEnrollment}
+							onDecideBulk={d.decideEnrollmentsBulk}
+							onRemove={d.removeEnrollment}
+						/>
 					) : d.tab === 'lecturers' ? (
 						<>
 							<div className={styles.subToolbar}>

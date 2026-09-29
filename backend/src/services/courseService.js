@@ -656,6 +656,42 @@ const removeAssignment = async (assignmentId) => {
 };
 
 // ─── Buổi học ────────────────────────────────────────────────────────────
+// Lịch học toàn hệ thống (trang /admin/class-schedule): mọi buổi học trong
+// khoảng [from, to] kèm tên khoá, cùng các khoá có thời gian học giao khoảng
+// đó (để vẽ thanh thời gian khoá học). Giảng viên phạm vi 'assigned' chỉ thấy
+// khoá mình được phân công.
+const listSessionsInRange = async ({ from, to, course_id } = {}, actor = null) => {
+	const pool = await getPool();
+	const req = pool.request().input('from', sql.Date, from).input('to', sql.Date, to);
+	const where = [];
+	if (course_id) {
+		where.push('c.id = @course_id');
+		req.input('course_id', sql.VarChar(20), course_id);
+	}
+	if (actor && scopeOf(actor, 'courses') === 'assigned') {
+		where.push(ASSIGNED_EXISTS_SQL);
+		req.input('actor_id', sql.VarChar(20), actor.id);
+	}
+	const extra = where.length ? ` AND ${where.join(' AND ')}` : '';
+	const result = await req.query(`
+    SELECT sess.id, sess.course_id, c.name AS course_name, sess.subject_id, s.name AS subject_name,
+           sess.lecturer_id, l.full_name AS lecturer_name,
+           sess.session_date, sess.start_time, sess.end_time, sess.room
+    FROM class_sessions sess
+    INNER JOIN courses c ON c.id = sess.course_id
+    LEFT JOIN subjects s ON s.id = sess.subject_id
+    LEFT JOIN lecturers l ON l.id = sess.lecturer_id
+    WHERE sess.session_date BETWEEN @from AND @to${extra}
+    ORDER BY sess.session_date, sess.start_time;
+    SELECT c.id, c.name, c.start_date, c.end_date, c.status
+    FROM courses c
+    WHERE c.start_date IS NOT NULL AND c.end_date IS NOT NULL
+      AND c.start_date <= @to AND c.end_date >= @from${extra}
+    ORDER BY c.start_date;
+  `);
+	return { sessions: result.recordsets[0], courses: result.recordsets[1] };
+};
+
 const listSessions = async (courseId) => {
 	const pool = await getPool();
 	const r = await pool.request().input('course_id', sql.VarChar(20), courseId).query(`
@@ -1195,6 +1231,7 @@ module.exports = {
 	assignLecturer,
 	removeAssignment,
 	listSessions,
+	listSessionsInRange,
 	createSession,
 	createSessionsBulk,
 	updateSession,

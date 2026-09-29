@@ -1,6 +1,8 @@
 import { formatDateVN } from '../../../shared/utils/formatDate';
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { BadgeSvg, BookOpenSvg, ClockSvg, UserCheckSvg, UsersSvg } from '@/assets/icons';
+import { DISPLAY_STATUS_CFG } from '@/features/course/types/course.type';
 import AdminLayout from '../../../layouts/AdminLayout';
 import { useRealtimeUpdate } from '../../../layouts/hooks/useRealtime';
 import { getTrainingStats } from '../api/trainingDashboardApi';
@@ -18,9 +20,22 @@ const EMPTY_KPI: TrainingStats['kpi'] = {
 	total_lecturers: 0,
 	pending_enrollments: 0,
 	certificates_issued: 0,
+	certificates_expiring: 0,
+	trainees_this_year: 0,
+	sessions_next_7_days: 0,
+};
+
+// Trạng thái hiển thị suy ra từ ngày tháng — cùng nhãn với màn Khóa học (DISPLAY_STATUS_CFG).
+const COURSE_STATUS: Record<string, { label: string; color: string }> = {
+	upcoming: { label: DISPLAY_STATUS_CFG.upcoming.label, color: '#EF9F27' },
+	enrolling: { label: DISPLAY_STATUS_CFG.enrolling.label, color: '#0A9B4A' },
+	in_progress: { label: DISPLAY_STATUS_CFG.in_progress.label, color: '#7F77DD' },
+	completed: { label: DISPLAY_STATUS_CFG.completed.label, color: '#378ADD' },
+	cancelled: { label: DISPLAY_STATUS_CFG.cancelled.label, color: '#E24B4A' },
 };
 
 export default function TrainingDashboard() {
+	const navigate = useNavigate();
 	const [stats, setStats] = useState<TrainingStats | null>(null);
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState(false);
@@ -49,6 +64,15 @@ export default function TrainingDashboard() {
 	}));
 	const pieColors = Object.fromEntries(pieData.map((d, i) => [d.key, CHART_COLORS[i % CHART_COLORS.length]]));
 
+	const courseStatusPie = (stats?.courses_by_status ?? []).map((c) => ({
+		name: COURSE_STATUS[c.status]?.label ?? c.status,
+		value: c.cnt,
+		key: c.status,
+	}));
+	const courseStatusColors = Object.fromEntries(
+		courseStatusPie.map((d) => [d.key, COURSE_STATUS[d.key]?.color ?? '#9CA3AF']),
+	);
+
 	const trendRows = (stats?.enrollment_trend ?? []).map((r) => ({ month: r.month, 'Lượt đăng ký': r.cnt }));
 
 	return (
@@ -70,15 +94,17 @@ export default function TrainingDashboard() {
 					accent='accentGreen'
 				/>
 				<MetricCard
-					label='Tổng học viên'
+					label='Học viên đang hoạt động'
 					value={kpi.total_trainees}
 					loading={loading}
+					delta={`${kpi.trainees_this_year} học viên mới năm ${new Date().getFullYear()}`}
+					deltaType='neutral'
 					icon={<UsersSvg />}
 					iconClass='iconBlue'
 					accent='accentBlue'
 				/>
 				<MetricCard
-					label='Tổng giảng viên'
+					label='Giảng viên / BCV'
 					value={kpi.total_lecturers}
 					loading={loading}
 					icon={<UserCheckSvg />}
@@ -95,9 +121,15 @@ export default function TrainingDashboard() {
 					accent='accentAmber'
 				/>
 				<MetricCard
-					label='Chứng chỉ đã cấp'
+					label='Chứng chỉ còn hiệu lực'
 					value={kpi.certificates_issued}
 					loading={loading}
+					delta={
+						kpi.certificates_expiring > 0
+							? `${kpi.certificates_expiring} hết hạn trong 30 ngày`
+							: undefined
+					}
+					deltaType='down'
 					icon={<BadgeSvg />}
 					iconClass='iconGreen'
 					accent='accentGreen'
@@ -129,13 +161,31 @@ export default function TrainingDashboard() {
 			</div>
 
 			<div className={styles.chartsGridSection}>
-				<div className={styles.chartsGridPair}>
+				<div className={styles.moduleGrid}>
+					<StatusPieChart
+						pieData={courseStatusPie}
+						loading={loading}
+						error={error}
+						title='Khóa học theo trạng thái'
+						subtitle='Toàn bộ khóa đào tạo trong hệ thống'
+						colors={courseStatusColors}
+						centerLabel='khóa học'
+					/>
 					<div className={styles.chartCard}>
 						<div className={styles.chartCardHeader}>
 							<div>
 								<div className={styles.chartTitle}>Lịch học 7 ngày tới</div>
-								<div className={styles.chartSubtitle}>Các buổi học sắp diễn ra</div>
+								<div className={styles.chartSubtitle}>
+									{loading ? 'Các buổi học sắp diễn ra' : `${kpi.sessions_next_7_days} buổi học sắp diễn ra`}
+								</div>
 							</div>
+							<button
+								type='button'
+								className={styles.moduleLink}
+								onClick={() => navigate('/admin/class-schedule')}
+							>
+								Lịch học →
+							</button>
 						</div>
 						{loading ? (
 							<div className={styles.skeleton} style={{ height: 200, borderRadius: 12 }} />
@@ -180,6 +230,13 @@ export default function TrainingDashboard() {
 								<div className={styles.chartTitle}>Top khóa đầy chỗ nhất</div>
 								<div className={styles.chartSubtitle}>Tỷ lệ lấp đầy theo sĩ số tối đa</div>
 							</div>
+							<button
+								type='button'
+								className={styles.moduleLink}
+								onClick={() => navigate('/admin/courses')}
+							>
+								Khóa học →
+							</button>
 						</div>
 						{loading ? (
 							<div className={styles.skeleton} style={{ height: 200, borderRadius: 12 }} />

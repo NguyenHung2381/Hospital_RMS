@@ -3,11 +3,11 @@ import { DEADLINE_TYPE_LABELS, type RoundDeadline } from '../../round/types/roun
 import { MONTHS_LONG, STATUS_CFG, DEADLINE_COLORS } from '../types/schedule.type';
 import type { RoundRow } from '../types/schedule.type';
 import type {
-	CalView,
+	CalMode,
 	EventDetailData,
 	PopoverData,
 } from '../types/calendarView.type';
-import { computeMonthsData, GRID_COLS } from '../utils/calendarViewHelpers';
+import { addDays, computeMonthsData, computeWeekData, GRID_COLS } from '../utils/calendarViewHelpers';
 import { EventDetailModal } from './EventDetailModal';
 import { EventPopover } from './EventPopover';
 import { MonthCard } from './MonthCard';
@@ -19,17 +19,23 @@ interface CalendarViewProps {
 	gc:             (key: string, fallback: string) => string;
 	onEditDeadline: (round: RoundRow, deadline: RoundDeadline) => void;
 	onAddDeadline:  (round: RoundRow) => void;
-	view?:          CalView;
+	mode?:          CalMode;
 	startMonth?:    number;
+	/** Thứ 2 của tuần đang xem (chế độ tuần) */
+	weekStart?:     Date;
 	onPrev?:        () => void;
 	onNext?:        () => void;
+	canPrev?:       boolean;
+	canNext?:       boolean;
 	onSelectMonth?: (month: number) => void;
 }
 
 export function CalendarView({
 	rows, year, gc, onEditDeadline, onAddDeadline,
-	view = 12, startMonth = 0, onPrev, onNext, onSelectMonth,
+	mode = 'year', startMonth = 0, weekStart, onPrev, onNext, canPrev = true, canNext = true, onSelectMonth,
 }: CalendarViewProps) {
+	const isWeek = mode === 'week' && !!weekStart;
+	const view = mode === 'year' ? 12 : 1;
 	const [popover, setPopover] = useState<PopoverData | null>(null);
 	const [detailModal, setDetailModal] = useState<EventDetailData | null>(null);
 	const containerRef = useRef<HTMLDivElement>(null);
@@ -45,13 +51,13 @@ export function CalendarView({
 		return () => window.removeEventListener('resize', handleResize);
 	}, []);
 
-	// CHỈ kích hoạt lăn chuột chuyển tháng ở chế độ xem 1 tháng (view === 1)
+	// CHỈ kích hoạt lăn chuột chuyển kỳ ở chế độ tuần / tháng (view === 1)
 	useEffect(() => {
 		const el = containerRef.current;
 		if (!el) return;
 
 		const handleWheel = (e: WheelEvent) => {
-			if (view !== 1) return; // Chế độ 3, 6, 12 tháng giữ nguyên cuộn trang tự nhiên
+			if (view !== 1) return; // Chế độ năm giữ nguyên cuộn trang tự nhiên
 
 			e.preventDefault();
 			const now = Date.now();
@@ -75,17 +81,29 @@ export function CalendarView({
 	}, [view, onPrev, onNext]);
 
 	const monthsData = useMemo(
-		() => computeMonthsData(rows, year, gc, view),
-		[rows, year, gc, view],
+		() => (isWeek ? [] : computeMonthsData(rows, year, gc, view)),
+		[isWeek, rows, year, gc, view],
+	);
+	const weekData = useMemo(
+		() => (isWeek ? computeWeekData(rows, weekStart!, gc) : null),
+		[isWeek, rows, weekStart, gc],
 	);
 
-	const visibleMonths = monthsData.slice(startMonth, startMonth + view);
-	const canPrev = startMonth > 0 || year > (new Date().getFullYear() - 1);
-	const canNext = startMonth + view < 12 || year < (new Date().getFullYear() + 1);
+	const visibleMonths = weekData ? [weekData] : monthsData.slice(startMonth, startMonth + view);
 
-	const navLabel = view === 1
-		? `${MONTHS_LONG[startMonth]}, ${year}`
-		: `${MONTHS_LONG[startMonth]} — ${MONTHS_LONG[Math.min(startMonth + view - 1, 11)]}, ${year}`;
+	const navLabel = (() => {
+		if (isWeek) {
+			const s = weekStart!;
+			const e = addDays(s, 6);
+			const fmt = (d: Date) => `${d.getDate()}/${d.getMonth() + 1}`;
+			return s.getFullYear() === e.getFullYear()
+				? `${fmt(s)} – ${fmt(e)}/${e.getFullYear()}`
+				: `${fmt(s)}/${s.getFullYear()} – ${fmt(e)}/${e.getFullYear()}`;
+		}
+		return `${MONTHS_LONG[startMonth]}, ${year}`;
+	})();
+	const prevLabel = isWeek ? 'Tuần trước' : 'Tháng trước';
+	const nextLabel = isWeek ? 'Tuần sau' : 'Tháng sau';
 
 	const isSingleMonthView = view === 1;
 
@@ -121,23 +139,24 @@ export function CalendarView({
 	};
 
 	return (
-		<div ref={containerRef} className={styles.wrapper} data-view={view}>
+		<div ref={containerRef} className={styles.wrapper} data-view={view} data-mode={mode}>
 			{/* Navigation Header */}
 			{view < 12 && (
 				<div className={styles.navBar}>
-					<button className={styles.navBtn} onClick={onPrev} disabled={!canPrev} aria-label='Tháng trước'>‹</button>
-					<span className={styles.navLabel}>{navLabel}</span>
-					<button className={styles.navBtn} onClick={onNext} disabled={!canNext} aria-label='Tháng sau'>›</button>
+					<button className={styles.navBtn} onClick={onPrev} disabled={!canPrev} aria-label={prevLabel} title={prevLabel}>‹</button>
+					<span className={styles.navLabel}>{isWeek && <span className={styles.navKicker}>Tuần</span>}{navLabel}</span>
+					<button className={styles.navBtn} onClick={onNext} disabled={!canNext} aria-label={nextLabel} title={nextLabel}>›</button>
 				</div>
 			)}
 
 			<div className={styles.grid} data-grid-view={view} style={{ gridTemplateColumns: GRID_COLS[view] }}>
 				{visibleMonths.map((monthData) => (
 					<MonthCard
-						key={monthData.month}
+						key={isWeek ? 'week' : monthData.month}
 						data={monthData}
 						monthName={MONTHS_LONG[monthData.month]}
 						isSingleMonthView={isSingleMonthView}
+						isWeekView={isWeek}
 						isMobileWindow={isMobileWindow}
 						rows={rows}
 						onSelectMonth={onSelectMonth}

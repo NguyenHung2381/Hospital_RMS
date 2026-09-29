@@ -1286,3 +1286,94 @@
 		grid-template-columns: 1fr;
 	}
 }
+
+/* ── Dải tóm tắt nhanh (số liệu phụ của từng dashboard) ── */
+.summaryStrip {
+	display: grid;
+	grid-template-columns: repeat(4, 1fr);
+	background: var(--color-white);
+	border: 1px solid var(--color-gray-200);
+	border-radius: var(--radius-lg, 12px);
+	overflow: hidden;
+}
+
+.summaryItem {
+	display: flex;
+	flex-direction: column;
+	align-items: flex-start;
+	gap: 2px;
+	padding: var(--space-3) var(--space-4);
+	background: none;
+	border: none;
+	border-right: 1px solid var(--color-gray-100);
+	text-align: left;
+	cursor: pointer;
+	font: inherit;
+}
+
+.summaryItem:last-child {
+	border-right: none;
+}
+
+.summaryItem:hover {
+	background: var(--color-gray-50);
+}
+
+.summaryValue {
+	font-size: var(--font-size-lg);
+	font-weight: var(--font-weight-semibold);
+	color: var(--color-gray-800);
+	font-variant-numeric: tabular-nums;
+}
+
+.summaryLabel {
+	font-size: var(--font-size-xs);
+	color: var(--color-gray-500);
+}
+
+.listRow {
+	display: flex;
+	justify-content: space-between;
+	gap: var(--space-3);
+	padding: 8px 4px;
+	border-bottom: 1px solid var(--color-gray-100);
+	font-size: 13px;
+}
+
+.listRow:last-child {
+	border-bottom: none;
+}
+
+.listRowTitle {
+	font-weight: 600;
+	color: var(--color-gray-800);
+}
+
+.listRowMeta {
+	color: var(--color-gray-500);
+	font-size: 12px;
+}
+
+.listRowSide {
+	text-align: right;
+	color: var(--color-gray-600);
+	white-space: nowrap;
+}
+
+.emptyNote {
+	padding: 16px;
+	color: var(--color-gray-400);
+	font-size: 13px;
+}
+
+@media (max-width: 768px) {
+	.summaryStrip {
+		grid-template-columns: repeat(2, 1fr);
+	}
+	.summaryItem:nth-child(2n) {
+		border-right: none;
+	}
+	.summaryItem:nth-child(-n + 2) {
+		border-bottom: 1px solid var(--color-gray-100);
+	}
+}

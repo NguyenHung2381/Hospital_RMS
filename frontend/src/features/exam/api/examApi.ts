@@ -6,6 +6,7 @@ import type {
 	ExamAttemptSummary,
 	ExamPaper,
 	ExamQuestion,
+	PaperType,
 	QuestionType,
 	StartAttemptResult,
 } from '../types/exam.type';
@@ -23,6 +24,7 @@ export interface PaperPayload {
 	course_id?: string;
 	subject_id?: string | null;
 	title: string;
+	paper_type?: PaperType;
 	duration_minutes?: number;
 	status?: string;
 	question_ids?: string[];
@@ -36,14 +38,17 @@ export interface AnswerPayload {
 
 export const examApi = {
 	// Ngân hàng câu hỏi
-	listQuestions: (params: { subject_id?: string; search?: string } = {}) => {
+	listQuestions: (params: { subject_id?: string; search?: string; question_type?: QuestionType } = {}) => {
 		const qs = new URLSearchParams();
 		if (params.subject_id) qs.set('subject_id', params.subject_id);
 		if (params.search) qs.set('search', params.search);
+		if (params.question_type) qs.set('question_type', params.question_type);
 		const q = qs.toString();
 		return apiClient.get<ExamQuestion[]>(`/exams/questions${q ? `?${q}` : ''}`);
 	},
 	createQuestion: (payload: QuestionPayload) => apiClient.post<ExamQuestion>('/exams/questions', payload),
+	createQuestionsBulk: (questions: QuestionPayload[]) =>
+		apiClient.post<{ created: number }>('/exams/questions/bulk', { questions }),
 	updateQuestion: (id: string, payload: Partial<QuestionPayload>) =>
 		apiClient.put<ExamQuestion>(`/exams/questions/${id}`, payload),
 	removeQuestion: (id: string) => apiClient.delete<null>(`/exams/questions/${id}`),

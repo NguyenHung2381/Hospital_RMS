@@ -183,6 +183,15 @@ const removeAssignment = async (req, res, next) => {
 };
 
 // ─── Class sessions ───────────────────────────────────────────────────────
+const listSessionsInRange = async (req, res, next) => {
+	try {
+		const { from, to, course_id } = req.query;
+		return success(res, await courseService.listSessionsInRange({ from, to, course_id }, req.user));
+	} catch (err) {
+		next(err);
+	}
+};
+
 const listSessions = async (req, res, next) => {
 	try {
 		return success(res, await courseService.listSessions(req.params.id));
@@ -382,6 +391,7 @@ module.exports = {
 	assignLecturer,
 	removeAssignment,
 	listSessions,
+	listSessionsInRange,
 	createSession,
 	createSessionsBulk,
 	updateSession,

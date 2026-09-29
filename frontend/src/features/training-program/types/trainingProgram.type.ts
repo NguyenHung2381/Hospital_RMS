@@ -13,6 +13,8 @@ export interface TrainingProgram {
 	display_order: number;
 	description: string | null;
 	created_at: string;
+	course_count?: number;
+	lesson_count?: number;
 }
 
 export interface TrainingProgramFormData {
@@ -135,3 +137,16 @@ export const EMPTY_FORM: TrainingProgramFormData = {
 	display_order: '0',
 	description: '',
 };
+
+// Chương trình không có cột trạng thái trong DB — suy ra từ việc đã mở khóa học
+// nào theo chương trình hay chưa.
+export type ProgramStatus = 'active' | 'unused';
+export type ProgramStatusFilter = 'all' | ProgramStatus;
+
+export const PROGRAM_STATUS_LABELS: Record<ProgramStatus, string> = {
+	active: 'Đang triển khai',
+	unused: 'Chưa triển khai',
+};
+
+export const getProgramStatus = (p: Pick<TrainingProgram, 'course_count'>): ProgramStatus =>
+	(p.course_count ?? 0) > 0 ? 'active' : 'unused';

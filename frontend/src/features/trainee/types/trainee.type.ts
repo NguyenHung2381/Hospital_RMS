@@ -95,11 +95,7 @@ export const EMPTY_FORM: TraineeFormData = {
 	is_employee: false,
 };
 
-export const GENDER_OPTIONS = [
-	{ value: 'male', label: 'Nam' },
-	{ value: 'female', label: 'Nữ' },
-	{ value: 'other', label: 'Khác' },
-] as const;
+export { GENDER_OPTIONS } from '../../../shared/utils/gender';
 
 export interface TraineeImportRow {
 	row: number;

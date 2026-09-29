@@ -314,8 +314,7 @@ export default function Login() {
 
 						<button
 							type='button'
-							className={styles.passwordToggle}
-							style={{ margin: '12px auto 0', display: 'block' }}
+							className={styles.backLink}
 							onClick={() => {
 								setPreAuthToken(null);
 								setOtpCode('');

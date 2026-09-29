@@ -42,6 +42,27 @@ router.post(
 	validate,
 	ctrl.createQuestion,
 );
+router.post(
+	'/questions/bulk',
+	canManage,
+	[
+		body('questions').isArray({ min: 1, max: 500 }).withMessage('Danh sách câu hỏi phải có 1–500 câu'),
+		body('questions.*.question_text').isString().trim().notEmpty().withMessage('Có câu hỏi bị trống nội dung'),
+		body('questions.*.question_type').isIn(['single_choice', 'essay']),
+		body('questions.*.points').optional().isFloat({ min: 0.1, max: 999 }),
+		body('questions.*.options').optional().isArray({ max: 20 }),
+		body('questions.*.correct_option')
+			.optional({ values: 'null' })
+			.isString()
+			.isLength({ max: 255 })
+			.withMessage('Đáp án quá dài (tối đa 255 ký tự)'),
+		body('questions').custom((qs) =>
+			qs.every((q) => q.question_type === 'essay' || (Array.isArray(q.options) && q.options.includes(q.correct_option))),
+		).withMessage('Câu trắc nghiệm phải có đáp án đúng nằm trong các phương án'),
+	],
+	validate,
+	ctrl.createQuestionsBulk,
+);
 router.put('/questions/:id', canManage, ctrl.updateQuestion);
 router.delete('/questions/:id', canManage, ctrl.removeQuestion);
 
@@ -54,6 +75,7 @@ router.post(
 	[
 		body('course_id').notEmpty().withMessage('Vui lòng chọn khóa học'),
 		body('title').trim().notEmpty().withMessage('Tên đề thi không được để trống'),
+		body('paper_type').optional().isIn(['multiple_choice', 'essay']),
 		body('duration_minutes').optional().isInt({ min: 1 }),
 		body('status').optional().isIn(['draft', 'published', 'closed']),
 		body('question_ids').optional().isArray(),
@@ -66,6 +88,7 @@ router.put(
 	canManage,
 	[
 		body('title').optional().trim().notEmpty(),
+		body('paper_type').optional().isIn(['multiple_choice', 'essay']),
 		body('duration_minutes').optional().isInt({ min: 1 }),
 		body('status').optional().isIn(['draft', 'published', 'closed']),
 		body('question_ids').optional().isArray(),

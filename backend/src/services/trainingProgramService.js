@@ -5,7 +5,9 @@ const trainingFileService = require('./trainingFileService');
 const { assertHttpUrl } = require('../utils/safeUrl');
 
 const programSelect = `
-  SELECT p.*, d.name AS department_name, tt.name AS trainee_type_name, tp.name AS training_type_name
+  SELECT p.*, d.name AS department_name, tt.name AS trainee_type_name, tp.name AS training_type_name,
+         (SELECT COUNT(*) FROM course_programs cp WHERE cp.program_id = p.id) AS course_count,
+         (SELECT COUNT(*) FROM lesson_programs lp WHERE lp.program_id = p.id) AS lesson_count
   FROM training_programs p
   LEFT JOIN departments d ON d.id = p.department_id
   LEFT JOIN trainee_types tt ON tt.id = p.trainee_type_id
@@ -19,7 +21,7 @@ const getAll = async ({ page = 1, limit = 20, search, department_id } = {}) => {
 	const req = pool.request().input('offset', sql.Int, pg.offset).input('limit', sql.Int, pg.limit);
 
 	if (search) {
-		where.push('(p.name LIKE @search OR p.description LIKE @search)');
+		where.push('(p.name LIKE @search OR p.code LIKE @search OR p.description LIKE @search)');
 		req.input('search', sql.NVarChar, `%${search}%`);
 	}
 	if (department_id) {

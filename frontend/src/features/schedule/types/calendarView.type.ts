@@ -1,7 +1,11 @@
 import type { RoundDeadline } from '../../round/types/round.type';
 import type { RoundRow } from './schedule.type';
 
-export type CalView = 1 | 3 | 6 | 12;
+/** Chế độ xem lịch: 1 tuần, 1 tháng hoặc cả năm (12 thẻ tháng) */
+export type CalMode = 'week' | 'month' | 'year';
+
+/** Số tháng hiển thị trên lưới: 1 (tuần/tháng) hoặc 12 (năm) */
+export type CalView = 1 | 12;
 
 export interface CalDay {
 	date: Date;
@@ -38,8 +42,8 @@ export interface EventBar {
 	isRoundPeriod?: boolean;
 }
 
-export interface WeekEvent {
-	bar: EventBar;
+export interface WeekEvent<B = EventBar> {
+	bar: B;
 	lane: number;
 	colL: number;
 	colR: number;

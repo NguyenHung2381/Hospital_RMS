@@ -1,11 +1,16 @@
+import { useEffect, useState } from 'react';
+import { CheckSvg } from '@/assets/icons';
+import { getAllLevels } from '../api/roundApi';
 import type {
 	FormErrors,
+	LevelOption,
 	RoundForm,
 	RoundStatus,
 	RoundType,
 } from '../types/round.type';
 import { STATUS_CFG, STATUS_OPTIONS, fromInputDate, toInputDate } from '../utils/roundHelpers';
-import { FormField } from './DeadlineManager';
+import { DeadlineManager, FormField } from './DeadlineManager';
+import dmStyles from './DeadlineManager.module.css';
 import styles from '../pages/Round.module.css';
 import { Badge } from '@/shared/components';
 import { DatePicker } from '../../../shared/components/Input/DatePicker';
@@ -17,6 +22,8 @@ interface RoundInfoTabProps {
 	duplicateRound: boolean;
 	years: number[];
 	roundTypes: RoundType[];
+	/** Tạo mới: nhập luôn các mốc thời gian (lưu cùng lúc tạo đợt). */
+	showDeadlines?: boolean;
 }
 
 export function RoundInfoTab({
@@ -26,7 +33,23 @@ export function RoundInfoTab({
 	duplicateRound,
 	years,
 	roundTypes,
+	showDeadlines,
 }: RoundInfoTabProps) {
+	const [levels, setLevels] = useState<LevelOption[]>([]);
+	useEffect(() => {
+		getAllLevels()
+			.then(setLevels)
+			.catch(() => setLevels([]));
+	}, []);
+
+	const toggleLevel = (id: string, checked: boolean) =>
+		set(
+			'level_ids',
+			checked
+				? [...form.level_ids, id]
+				: form.level_ids.filter((x) => x !== id),
+		);
+
 	return (
 		<>
 			<div className={styles.formSection}>Thông tin đợt nghiên cứu</div>
@@ -99,6 +122,41 @@ export function RoundInfoTab({
 				</select>
 			</FormField>
 			<FormField
+				id='level_ids'
+				label='Cấp độ đề tài được đăng ký'
+				hint={
+					form.level_ids.length
+						? `Đã chọn ${form.level_ids.length} cấp độ — form đăng ký đề tài của đợt chỉ hiện các cấp độ này`
+						: 'Không chọn ⇒ dùng cấp độ cấu hình cho loại đợt (chưa cấu hình thì cho phép tất cả)'
+				}
+			>
+				<div className={dmStyles.chipsContainer}>
+					{levels.length === 0 && (
+						<span className={styles.formHint}>Chưa có cấp độ nào trong danh mục</span>
+					)}
+					{levels.map((lv) => {
+						const checked = form.level_ids.includes(lv.id);
+						return (
+							<label
+								key={lv.id}
+								className={`${dmStyles.chipLabel} ${checked ? dmStyles.chipLabelActive : ''}`}
+							>
+								<input
+									type='checkbox'
+									className={dmStyles.hiddenCheckbox}
+									checked={checked}
+									onChange={(e) => toggleLevel(lv.id, e.target.checked)}
+								/>
+								<span className={dmStyles.customCheckbox}>
+									{checked && <CheckSvg style={{ width: 10, height: 10 }} />}
+								</span>
+								<span>{lv.name}</span>
+							</label>
+						);
+					})}
+				</div>
+			</FormField>
+			<FormField
 				id='name'
 				label='Tên đợt nghiên cứu'
 				required
@@ -144,6 +202,26 @@ export function RoundInfoTab({
 					/>
 				</FormField>
 			</div>
+			{showDeadlines && (
+				<>
+					<div className={styles.formSection}>Mốc thời gian &amp; Hạn nộp</div>
+					{errors.deadlines && (
+						<div className={dmStyles.errorMessage}>{errors.deadlines}</div>
+					)}
+					{form.start_date && form.end_date ? (
+						<DeadlineManager
+							drafts={form.deadlines}
+							onDraftsChange={(next) => set('deadlines', next)}
+							roundStart={toInputDate(form.start_date)}
+							roundEnd={toInputDate(form.end_date)}
+						/>
+					) : (
+						<div className={dmStyles.emptyTimelineNotice}>
+							Chọn ngày bắt đầu và ngày kết thúc của đợt để thêm mốc thời gian.
+						</div>
+					)}
+				</>
+			)}
 			<div className={styles.formSection}>Trạng thái đợt</div>
 			<div className={styles.statusSelector}>
 				{STATUS_OPTIONS.map(({ value, label, desc }) => {

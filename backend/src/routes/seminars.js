@@ -20,6 +20,7 @@ const canCreate = authorizePermission(['seminars', 'create']);
 const canUpdate = authorizePermission(['seminars', 'update']);
 const canDelete = authorizePermission(['seminars', 'delete']);
 const canImport = authorizePermission(['seminars', 'import']);
+const canExport = authorizePermission(['seminars', 'export']);
 const canCme = authorizePermission(['seminars', 'cme_manage']);
 
 // Số liệu tổng hợp nhập tay — cho phép để trống, nếu có phải là số nguyên ≥ 0.
@@ -174,6 +175,61 @@ router.post(
 
 /**
  * @swagger
+ * /seminars/export-excel:
+ *   post:
+ *     summary: Xuất Excel danh sách hội thảo/hội nghị theo bộ lọc của trang danh sách
+ *     tags: [Seminars]
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               search: { type: string }
+ *               scope: { type: string, enum: [external, hosted] }
+ *               event_type: { type: string }
+ *               year: { type: integer }
+ *               grants_cme: { type: string, enum: ["1"] }
+ *     responses:
+ *       200: { description: File .xlsx }
+ * /seminars/import-template:
+ *   post:
+ *     summary: Tải file mẫu nhập danh sách hội thảo/hội nghị
+ *     tags: [Seminars]
+ *     responses:
+ *       200: { description: File .xlsx }
+ * /seminars/import-excel:
+ *   post:
+ *     summary: Nhập danh sách hội thảo/hội nghị từ Excel (dry_run=1 để xem trước)
+ *     tags: [Seminars]
+ *     description: >
+ *       Tự dò dòng tiêu đề (bắt buộc cột "Tên hội thảo/hội nghị"). Bỏ qua dòng
+ *       trùng tên + năm với dữ liệu đã có và dòng có lỗi dữ liệu.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             required: [file]
+ *             properties:
+ *               dry_run: { type: string, enum: ["0", "1"] }
+ *               file: { type: string, format: binary }
+ */
+router.post('/export-excel', authenticate, canExport, ctrl.exportListExcel);
+router.post('/import-template', authenticate, canImport, ctrl.importListTemplate);
+// File mẫu nhập người tham dự (dùng chung mọi hội thảo, đặt trước /:id)
+router.post('/participant-import-template', authenticate, canImport, ctrl.participantImportTemplate);
+router.post(
+	'/import-excel',
+	authenticate,
+	canImport,
+	uploadExcel.single('file'),
+	ctrl.importListExcel,
+);
+
+/**
+ * @swagger
  * /seminars/cme-requirements:
  *   get:
  *     summary: Ngưỡng tín chỉ CME theo năm (toàn viện hoặc theo khoa/phòng)
@@ -322,6 +378,7 @@ router.post(
  *               file: { type: string, format: binary, description: File .xlsx }
  *               dry_run: { type: string, enum: ['0', '1'], description: '1 = chỉ xem trước' }
  *               issue_cme: { type: string, enum: ['0', '1'], description: '1 = cấp số CME ngay sau khi nhập' }
+ *               credits_by_role: { type: string, description: 'JSON { attendee: 3, speaker: 6, ... } — số tín chỉ cho dòng để trống cột Số tín chỉ, theo vai trò' }
  *     responses:
  *       200:
  *         description: "dry_run: { rows[], summary, warnings[] }; commit: { inserted, cme_issued, cme_from, cme_to, cme_year, warnings[] }"

@@ -526,6 +526,11 @@
 	font-size: 13px;
 	background: var(--color-gray-50);
 }
+/* Ô chọn file gọn trong toolbar — chiếm chỗ như .subInput */
+.subDropzone {
+	flex: 1;
+	min-width: 180px;
+}
 .subInput {
 	flex: 1;
 	min-width: 160px;

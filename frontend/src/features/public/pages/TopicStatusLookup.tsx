@@ -43,27 +43,35 @@ export default function TopicStatusLookup() {
 		>
 			<form
 				onSubmit={(e) => void handleSearch(e)}
-				className={styles.searchRow}
+				className={`${styles.searchRow} ${styles.searchRowLabeled}`}
 			>
-				<input
-					className={styles.input}
-					value={code}
-					onChange={(e) => setCode(e.target.value)}
-					placeholder='Mã hồ sơ (vd: NCKH_2026_001)'
-					aria-label='Mã hồ sơ'
-					maxLength={15}
-					required
-				/>
-				<input
-					className={styles.input}
-					value={contact}
-					onChange={(e) => setContact(e.target.value)}
-					placeholder='Email hoặc số điện thoại trong hồ sơ'
-					aria-label='Email hoặc số điện thoại'
-					maxLength={100}
-					autoComplete='email'
-					required
-				/>
+				<label className={styles.searchField}>
+					<span className={styles.label}>
+						Mã hồ sơ <span className={styles.required}>*</span>
+					</span>
+					<input
+						className={styles.input}
+						value={code}
+						onChange={(e) => setCode(e.target.value)}
+						placeholder='VD: NCKH_2026_001'
+						maxLength={15}
+						required
+					/>
+				</label>
+				<label className={styles.searchField}>
+					<span className={styles.label}>
+						Email hoặc số điện thoại <span className={styles.required}>*</span>
+					</span>
+					<input
+						className={styles.input}
+						value={contact}
+						onChange={(e) => setContact(e.target.value)}
+						placeholder='Email/SĐT của 1 thành viên đã khai trong hồ sơ'
+						maxLength={100}
+						autoComplete='email'
+						required
+					/>
+				</label>
 				<button
 					type='submit'
 					className={styles.searchBtn}
@@ -72,6 +80,8 @@ export default function TopicStatusLookup() {
 					<SearchSvg /> {loading ? 'Đang tra cứu...' : 'Tra cứu'}
 				</button>
 			</form>
+
+			<p className={styles.searchHint}>Mã hồ sơ được cấp ngay sau khi gửi đăng ký đề tài thành công.</p>
 
 			{notFound && <div className={styles.emptyNotice}>{notFound}</div>}
 

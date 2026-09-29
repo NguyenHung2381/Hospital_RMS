@@ -829,3 +829,60 @@
 		display: none !important;
 	}
 }
+
+/* ─── Chế độ tuần ────────────────────────────────────────────────────────── */
+.navKicker {
+	display: inline-block;
+	margin-right: 8px;
+	padding: 2px 8px;
+	border-radius: 999px;
+	background: color-mix(in srgb, var(--color-primary) 10%, transparent);
+	color: var(--color-primary);
+	font-size: 11px;
+	font-weight: 700;
+	letter-spacing: 0.04em;
+	text-transform: uppercase;
+	vertical-align: 2px;
+}
+
+.dowDate {
+	display: block;
+	margin-top: 3px;
+	font-size: 15px;
+	font-weight: 700;
+	color: var(--color-gray-800);
+	text-transform: none;
+	letter-spacing: 0;
+	font-variant-numeric: tabular-nums;
+}
+.dowCellToday {
+	color: var(--color-primary) !important;
+	background: color-mix(in srgb, var(--color-primary) 5%, var(--color-white));
+}
+.dowCellToday .dowDate {
+	color: var(--color-primary);
+}
+
+/* Ngày đã có ở tiêu đề cột → ẩn số ngày trong ô cho gọn */
+[data-mode="week"] .dayCellHead {
+	display: none;
+}
+[data-mode="week"] .dayCell {
+	min-height: 320px;
+	padding: 10px 6px;
+}
+/* Thanh kéo dài (thời gian đợt, mốc nhiều ngày) đặt lên trên như hàng "cả ngày" */
+[data-mode="week"] .weekBarsOverlay {
+	order: -1;
+	margin: 6px 0;
+}
+
+@media (max-width: 768px) {
+	[data-mode="week"] .dayCell {
+		min-height: 200px;
+		padding: 6px 3px;
+	}
+	.dowDate {
+		font-size: 13px;
+	}
+}

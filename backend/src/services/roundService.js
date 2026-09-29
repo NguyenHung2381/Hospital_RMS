@@ -1,6 +1,7 @@
 const { getPool, sql } = require('../config/db');
 const { broadcast } = require('./eventService');
 const { paging } = require('../utils/paging');
+const deadlineService = require('./deadlineService');
 
 const VN_OFFSET_MS = 7 * 60 * 60 * 1000; // UTC+7 (Asia/Ho_Chi_Minh)
 
@@ -36,7 +37,9 @@ const REG_WINDOW_COLS = `
                              OR rd.start_date <= CAST(DATEADD(HOUR, 7, GETUTCDATE()) AS DATE))
                         AND rd.deadline_date >= CAST(DATEADD(HOUR, 7, GETUTCDATE()) AS DATE)) THEN 1
          ELSE 0
-       END AS BIT)                                                                  AS registration_open`;
+       END AS BIT)                                                                  AS registration_open,
+       (SELECT STRING_AGG(rl.level_id, ',') FROM research_round_levels rl
+          WHERE rl.round_id = r.id)                                                  AS level_ids`;
 
 const normalize = (r) => {
 	const s =
@@ -53,7 +56,44 @@ const normalize = (r) => {
 			? fmtDate(r.registration_start)
 			: null,
 		registration_end: r.registration_end ? fmtDate(r.registration_end) : null,
+		level_ids: r.level_ids ? String(r.level_ids).split(',') : [],
 	};
+};
+
+// ─── Cấp độ đề tài theo đợt ──────────────────────────────────────────────────
+// Ghi đè danh sách cấp độ của đợt (research_round_levels). `request` là hàm
+// trả về sql.Request mới (của pool hoặc transaction). Id không tồn tại bị bỏ qua.
+const writeLevels = async (request, roundId, levelIds) => {
+	const ids = [...new Set((levelIds || []).filter(Boolean).map(String))];
+	await request()
+		.input('rid', sql.VarChar(10), roundId)
+		.query('DELETE FROM research_round_levels WHERE round_id = @rid');
+	for (const lid of ids) {
+		await request()
+			.input('rid', sql.VarChar(10), roundId)
+			.input('lid', sql.VarChar(5), lid).query(`
+				IF EXISTS (SELECT 1 FROM levels WHERE id = @lid)
+				INSERT INTO research_round_levels (round_id, level_id) VALUES (@rid, @lid)`);
+	}
+};
+
+// Cấp độ hợp lệ cho đề tài của một đợt: cấu hình riêng của đợt nếu có, không
+// thì theo loại đợt (round_type_levels). [] ⇒ chưa giới hạn (cho phép tất cả).
+const getAllowedLevelIds = async (roundId) => {
+	if (!roundId) return [];
+	const pool = await getPool();
+	try {
+		const r = await pool.request().input('rid', sql.VarChar(10), roundId).query(`
+			SELECT level_id FROM research_round_levels WHERE round_id = @rid;
+			SELECT rtl.level_id
+			FROM research_rounds r
+			JOIN round_type_levels rtl ON rtl.round_type_id = r.round_type_id
+			WHERE r.id = @rid;`);
+		const own = r.recordsets[0].map((x) => x.level_id);
+		return own.length ? own : r.recordsets[1].map((x) => x.level_id);
+	} catch {
+		return []; // bảng chưa tồn tại (migration chưa chạy)
+	}
 };
 
 const getAll = async ({
@@ -77,7 +117,8 @@ const getAll = async ({
 	}
 	if (status) {
 		where += ' AND r.status = @status';
-		req.input('status', sql.VarChar(10), status);
+		// Front dùng 'active', DB lưu 'open' — phải đổi ngược khi lọc
+		req.input('status', sql.VarChar(10), STATUS_TO_DB[status] ?? status);
 	}
 	if (public_token) {
 		where += ' AND r.public_token = @public_token';
@@ -147,8 +188,17 @@ const create = async (data, actorId) => {
 		throw err;
 	}
 
-	const req = pool
-		.request()
+	// Mốc thời gian gửi kèm: kiểm tra hết trước khi ghi (ngày 'yyyy-mm-dd').
+	const deadlineRows = deadlineService.prepareBatch(
+		data.deadlines,
+		String(data.start_date || '').slice(0, 10),
+		String(data.end_date || '').slice(0, 10),
+	);
+
+	// Đợt + cấp độ + mốc thời gian ghi trong cùng một transaction.
+	const tx = new sql.Transaction(pool);
+	await tx.begin();
+	const req = new sql.Request(tx)
 		.input('actor_id', sql.VarChar(20), actorId)
 		.input('id', sql.VarChar(10), id)
 		.input('name', sql.NVarChar(200), data.name)
@@ -163,14 +213,23 @@ const create = async (data, actorId) => {
 			STATUS_TO_DB[data.status] ?? data.status ?? 'draft',
 		);
 
-	await req.query(`
-      EXEC sp_set_actor @actor_id;
-      INSERT INTO research_rounds
-        (id, name, year, round_number, round_type_id, start_date, end_date, status, public_token, created_by)
-      VALUES
-        (@id, @name, @year, @round_number, @round_type_id, @start_date, @end_date, @status,
-         LOWER(REPLACE(NEWID(),'-','')), @actor_id);
-    `);
+	try {
+		await req.query(`
+        EXEC sp_set_actor @actor_id;
+        INSERT INTO research_rounds
+          (id, name, year, round_number, round_type_id, start_date, end_date, status, public_token, created_by)
+        VALUES
+          (@id, @name, @year, @round_number, @round_type_id, @start_date, @end_date, @status,
+           LOWER(REPLACE(NEWID(),'-','')), @actor_id);
+      `);
+		if (Array.isArray(data.level_ids) && data.level_ids.length)
+			await writeLevels(() => new sql.Request(tx), id, data.level_ids);
+		await deadlineService.insertBatch(tx, id, deadlineRows, actorId);
+		await tx.commit();
+	} catch (err) {
+		await tx.rollback().catch(() => {});
+		throw err;
+	}
 
 	const round = await getById(id);
 	broadcast('update', { entity: 'round' });
@@ -220,6 +279,8 @@ const update = async (id, data, actorId) => {
 	await req.query(
 		`EXEC sp_set_actor @actor_id; UPDATE research_rounds SET ${sets.join(', ')} WHERE id = @id`,
 	);
+	if (Array.isArray(data.level_ids))
+		await writeLevels(() => pool.request(), id, data.level_ids);
 	const round = await getById(id);
 	broadcast('update', { entity: 'round' });
 	return round;
@@ -260,6 +321,7 @@ const remove = async (id, actorId) => {
 module.exports = {
 	getAll,
 	getById,
+	getAllowedLevelIds,
 	create,
 	update,
 	remove,

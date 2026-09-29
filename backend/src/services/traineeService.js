@@ -4,6 +4,7 @@ const { broadcast } = require('./eventService');
 const { paging } = require('../utils/paging');
 const trainingFileService = require('./trainingFileService');
 const personService = require('./personService');
+const { normalizeGender } = require('../utils/gender');
 const { hasPermission } = require('../middlewares/auth');
 const {
 	buildMemberUsername,
@@ -80,7 +81,7 @@ const create = async (data, actorId, { fetch = true } = {}) => {
 		.input('actor_id', sql.VarChar(20), actorId)
 		.input('full_name', sql.NVarChar(150), data.full_name)
 		.input('dob', sql.Date, data.dob || null)
-		.input('gender', sql.VarChar(10), data.gender || null)
+		.input('gender', sql.VarChar(10), normalizeGender(data.gender))
 		.input('national_id', sql.VarChar(20), data.national_id || null)
 		.input('phone', sql.VarChar(20), data.phone || null)
 		.input('email', sql.VarChar(100), data.email || null)
@@ -130,7 +131,6 @@ const update = async (id, data, actorId) => {
 
 	const simpleFields = [
 		['full_name', sql.NVarChar(150)],
-		['gender', sql.VarChar(10)],
 		['national_id', sql.VarChar(20)],
 		['phone', sql.VarChar(20)],
 		['email', sql.VarChar(100)],
@@ -151,6 +151,10 @@ const update = async (id, data, actorId) => {
 			sets.push(`${field} = @${field}`);
 			req.input(field, type, data[field] || null);
 		}
+	}
+	if (data.gender !== undefined) {
+		sets.push('gender = @gender');
+		req.input('gender', sql.VarChar(10), normalizeGender(data.gender));
 	}
 	if (data.is_active !== undefined) {
 		sets.push('is_active = @is_active');

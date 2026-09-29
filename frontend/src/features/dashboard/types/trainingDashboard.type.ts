@@ -5,6 +5,9 @@ export interface TrainingKpi {
 	total_lecturers: number;
 	pending_enrollments: number;
 	certificates_issued: number;
+	certificates_expiring: number;
+	trainees_this_year: number;
+	sessions_next_7_days: number;
 }
 
 export interface UpcomingSession {
@@ -32,4 +35,5 @@ export interface TrainingStats {
 	top_full_courses: TopFullCourse[];
 	trainees_by_type: { name: string; cnt: number }[];
 	enrollment_trend: { month: string; cnt: number }[];
+	courses_by_status: { status: string; cnt: number }[];
 }

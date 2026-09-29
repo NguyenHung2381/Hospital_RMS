@@ -1,0 +1,179 @@
+.tableCard {
+	composes: tableCard from '../../../shared/components/Table/Table.module.css';
+}
+.tableHeader {
+	composes: tableHeader from '../../../shared/components/Table/Table.module.css';
+}
+.tableHeaderLeft {
+	composes: tableHeaderLeft from '../../../shared/components/Table/Table.module.css';
+}
+.tableTitle {
+	composes: tableTitle from '../../../shared/components/Table/Table.module.css';
+}
+.tableCount {
+	composes: tableCount from '../../../shared/components/Table/Table.module.css';
+}
+.tableControls {
+	composes: tableControls from '../../../shared/components/Table/Table.module.css';
+}
+.searchBox {
+	composes: searchWrap from '../../../shared/components/Table/Table.module.css';
+}
+.searchIcon {
+	composes: searchIcon from '../../../shared/components/Table/Table.module.css';
+}
+.searchInput {
+	composes: searchInput from '../../../shared/components/Table/Table.module.css';
+}
+.tableWrap {
+	overflow-x: auto;
+}
+.table {
+	composes: table from '../../../shared/components/Table/Table.module.css';
+}
+.th {
+	composes: th from '../../../shared/components/Table/Table.module.css';
+}
+.thRight {
+	composes: thRight from '../../../shared/components/Table/Table.module.css';
+}
+.tr {
+	composes: tr from '../../../shared/components/Table/Table.module.css';
+}
+.td {
+	composes: td from '../../../shared/components/Table/Table.module.css';
+}
+.tdIdx {
+	composes: tdIdx from '../../../shared/components/Table/Table.module.css';
+}
+.tdActions {
+	composes: tdActions from '../../../shared/components/Table/Table.module.css';
+}
+.actionBtns {
+	composes: actionBtns from '../../../shared/components/Table/Table.module.css';
+	justify-content: flex-end;
+}
+.actionBtn {
+	composes: actionBtn from '../../../shared/components/Table/Table.module.css';
+}
+.emptyState {
+	composes: emptyState from '../../../shared/components/Table/Table.module.css';
+}
+.emptyTitle {
+	composes: emptyTitle from '../../../shared/components/Table/Table.module.css';
+}
+.emptyDesc {
+	composes: emptyDesc from '../../../shared/components/Table/Table.module.css';
+}
+
+.select {
+	padding: 6px 10px;
+	border: 1.5px solid var(--color-gray-200);
+	border-radius: var(--radius-lg);
+	font-family: var(--font-body);
+	font-size: var(--font-size-sm);
+	background: var(--color-white);
+}
+
+.questionText {
+	font-weight: var(--font-weight-semibold);
+	color: var(--color-gray-800);
+	white-space: pre-wrap;
+	max-width: 560px;
+}
+.optionList {
+	margin: 4px 0 0;
+	padding-left: 18px;
+	font-size: 12px;
+	color: var(--color-gray-500);
+}
+.optionCorrect {
+	color: var(--color-primary-dark);
+	font-weight: var(--font-weight-bold);
+}
+.muted {
+	font-size: 12px;
+	color: var(--color-gray-500);
+}
+
+/* ── FORM (trong Modal) ── */
+.form {
+	display: flex;
+	flex-direction: column;
+	gap: var(--space-4);
+}
+.row2 {
+	display: grid;
+	grid-template-columns: 1fr 1fr;
+	gap: var(--space-4);
+}
+.field {
+	display: flex;
+	flex-direction: column;
+	gap: var(--space-1);
+	font-size: var(--font-size-sm);
+	font-weight: var(--font-weight-semibold);
+	color: var(--color-gray-700);
+}
+.input {
+	width: 100%;
+	box-sizing: border-box;
+	padding: var(--space-2) var(--space-3);
+	border: 1.5px solid var(--color-gray-200);
+	border-radius: var(--radius-lg);
+	font-family: var(--font-body);
+	font-size: var(--font-size-sm);
+	font-weight: normal;
+	color: var(--color-gray-800);
+	background: var(--color-gray-50);
+	outline: none;
+}
+.input:focus {
+	border-color: var(--color-primary);
+	background: var(--color-white);
+}
+.optionRow {
+	display: flex;
+	align-items: center;
+	gap: var(--space-2);
+}
+.hint {
+	font-size: 12px;
+	font-weight: normal;
+	color: var(--color-gray-500);
+}
+.error {
+	font-size: 12px;
+	color: #e24b4a;
+}
+.linkBtn {
+	align-self: flex-start;
+	background: none;
+	border: none;
+	padding: 0;
+	color: var(--color-primary);
+	font-size: var(--font-size-sm);
+	font-weight: var(--font-weight-semibold);
+	cursor: pointer;
+}
+
+.importItem {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+	padding: var(--space-3);
+	border: 1px solid var(--color-gray-200);
+	border-radius: var(--radius-lg);
+}
+pre.hint {
+	white-space: pre-wrap;
+	background: var(--color-gray-50);
+	padding: var(--space-3);
+	border-radius: var(--radius-md);
+}
+
+@media (max-width: 700px) {
+	.row2 {
+		grid-template-columns: 1fr;
+	}
+}

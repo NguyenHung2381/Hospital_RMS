@@ -403,6 +403,7 @@ export default function SeminarDetail() {
 					seminarId={sem.id}
 					grantsCme={sem.grants_cme}
 					eventYear={sem.event_year}
+					defaultCredits={sem.cme_default_credits}
 					onClose={() => setImportOpen(false)}
 					onDone={() => d.refresh()}
 				/>

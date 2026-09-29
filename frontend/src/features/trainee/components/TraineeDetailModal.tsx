@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useState } from 'react';
 import {
 	BookOpenSvg,
 	EditSvg,
@@ -9,8 +9,10 @@ import {
 	XSvg,
 } from '@/assets/icons';
 import { type DetailTab, useTraineeDetail } from '../hooks/useTraineeDetail';
-import { GENDER_OPTIONS, type EnrollmentStatus, type Trainee } from '../types/trainee.type';
+import { type EnrollmentStatus, type Trainee } from '../types/trainee.type';
 import { formatDate } from '../../../shared/utils/formatDate';
+import { genderLabel } from '../../../shared/utils/gender';
+import { FileDropzone } from '@/shared/components';
 import styles from '../pages/Trainees.module.css';
 
 const TABS: { key: DetailTab; label: string; icon: React.ReactNode }[] = [
@@ -54,9 +56,8 @@ export function TraineeDetailModal({
 }) {
 	const d = useTraineeDetail(trainee.id, initialTab);
 	const [docType, setDocType] = useState('national_id');
-	const fileInputRef = useRef<HTMLInputElement>(null);
+	const [docFile, setDocFile] = useState<File | null>(null);
 
-	const genderLabel = GENDER_OPTIONS.find((g) => g.value === trainee.gender)?.label;
 
 	return (
 		<div
@@ -107,7 +108,7 @@ export function TraineeDetailModal({
 										label='Ngày sinh'
 										value={trainee.dob ? formatDate(trainee.dob) : undefined}
 									/>
-									<InfoItem label='Giới tính' value={genderLabel} />
+									<InfoItem label='Giới tính' value={genderLabel(trainee.gender)} />
 									<InfoItem label='Số CCCD/CMND' value={trainee.national_id} />
 									<InfoItem
 										label='Ngày cấp'
@@ -189,20 +190,21 @@ export function TraineeDetailModal({
 									<option value='degree'>Bằng cấp</option>
 									<option value='other'>Khác</option>
 								</select>
-								<input
-									type='file'
-									ref={fileInputRef}
-									className={styles.subInput}
+								<FileDropzone
+									compact
+									value={docFile}
+									onChange={setDocFile}
+									disabled={d.busy}
+									className={styles.subDropzone}
 								/>
 								<button
 									className={styles.btnCancel}
 									style={{ flex: 'unset', padding: '7px 14px' }}
 									disabled={d.busy}
 									onClick={async () => {
-										const file = fileInputRef.current?.files?.[0];
-										if (!file) return;
-										await d.addDocument(file, docType);
-										if (fileInputRef.current) fileInputRef.current.value = '';
+										if (!docFile) return;
+										await d.addDocument(docFile, docType);
+										setDocFile(null);
 									}}
 								>
 									<PlusSvg /> Tải lên

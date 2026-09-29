@@ -22,6 +22,7 @@ export type { DataTableProps, DataTablePagination } from './DataTable';
 export { DatePicker } from './Input/DatePicker';
 export { MultiSelect } from './Input/MultiSelect';
 export { SearchableSelect } from './Input/SearchableSelect';
+export { FileDropzone } from './Input/FileDropzone';
 
 export { Pagination } from './Table/Pagination';
 export {

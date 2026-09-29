@@ -414,43 +414,10 @@
 }
 
 /* =============================================
-   YEAR FILTER BAR
+   YEAR FILTER (MultiSelect nhiều năm)
 ============================================= */
-.yearBar {
-	display: flex;
-	align-items: center;
-	gap: var(--space-2);
-	flex-wrap: wrap;
-}
-
-.yearChip {
-	padding: var(--space-1) var(--space-4);
-	border: 1.5px solid var(--color-gray-200);
-	border-radius: var(--radius-full);
-	font-size: var(--font-size-sm);
-	font-weight: var(--font-weight-semibold);
-	color: var(--color-gray-600);
-	cursor: pointer;
-	background: var(--color-white);
-	transition: all var(--transition-fast);
-}
-
-.yearChip:hover {
-	border-color: var(--color-primary);
-	color: var(--color-primary-dark);
-	background: var(--color-primary-pale);
-}
-
-.yearChipActive {
-	border-color: var(--color-primary);
-	background: var(--color-primary);
-	color: #fff;
-}
-
-.yearChipActive:hover {
-	background: var(--color-primary-dark);
-	border-color: var(--color-primary-dark);
-	color: #fff;
+.yearSelectWrap {
+	display: inline-block;
 }
 
 /* Badges: dùng <Badge tone> ở @/shared/components */

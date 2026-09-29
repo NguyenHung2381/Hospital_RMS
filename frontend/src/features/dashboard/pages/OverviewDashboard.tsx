@@ -219,6 +219,7 @@ export default function OverviewDashboard() {
 						{ label: 'Đề tài đã phê duyệt', value: kpi.topics_approved },
 						{ label: 'Đợt nghiên cứu đang mở', value: kpi.rounds_active },
 						{ label: 'Hội đồng khoa học', value: kpi.councils_total },
+						{ label: `Đề tài đăng ký năm ${year}`, value: kpi.topics_this_year },
 					]}
 				/>
 				<ModuleCard
@@ -228,6 +229,7 @@ export default function OverviewDashboard() {
 					linkLabel='Dashboard Đào tạo'
 					onOpen={() => navigate('/admin/dashboard/training')}
 					rows={[
+						{ label: 'Học viên đang đào tạo', value: kpi.trainees_active },
 						{ label: 'Khóa học đang mở', value: kpi.courses_open },
 						{ label: 'Giảng viên', value: kpi.lecturers_active },
 						{ label: 'Đăng ký chờ duyệt', value: kpi.enrollments_pending },
@@ -238,8 +240,8 @@ export default function OverviewDashboard() {
 					title={`Hội thảo - CME ${year}`}
 					subtitle='Hội nghị, hội thảo & tín chỉ CME trong năm'
 					loading={loading}
-					linkLabel='Hội thảo'
-					onOpen={() => navigate('/admin/seminars')}
+					linkLabel='Dashboard Hội thảo'
+					onOpen={() => navigate('/admin/dashboard/seminar')}
 					rows={[
 						{ label: 'Hội thảo - Hội nghị', value: kpi.seminars_this_year },
 						{ label: 'Lượt tham dự', value: kpi.participants_this_year },

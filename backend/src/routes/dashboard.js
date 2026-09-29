@@ -105,6 +105,23 @@ router.get('/training-stats', authorizePermission(['reports', 'read']), async (r
 
 /**
  * @swagger
+ * /dashboard/seminar-stats:
+ *   get:
+ *     summary: Thống kê Hội thảo - Hội nghị & CME trong năm hiện tại
+ *     tags: [Dashboard]
+ *     security:
+ *       - bearerAuth: []
+ */
+router.get('/seminar-stats', authorizePermission(['reports', 'read']), async (req, res, next) => {
+	try {
+		success(res, await dashboardService.getSeminarStats());
+	} catch (err) {
+		next(err);
+	}
+});
+
+/**
+ * @swagger
  * /dashboard/training-report:
  *   get:
  *     summary: 3 báo cáo Đào tạo (theo khóa+chương trình, DS học viên+kết quả, thống kê tổng)

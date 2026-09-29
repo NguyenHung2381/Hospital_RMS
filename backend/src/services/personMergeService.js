@@ -2,6 +2,7 @@ const { getPool, sql } = require('../config/db');
 const { paging } = require('../utils/paging');
 const { broadcast } = require('./eventService');
 const personService = require('./personService');
+const { normalizeGender } = require('../utils/gender');
 
 /**
  * Duyệt gộp danh tính (FR-C02): hàng đợi person_merge_candidates → gộp / bỏ qua / mở lại.
@@ -288,7 +289,7 @@ const mergeCandidate = async (id, { keep, fields = {}, note } = {}, actorId) => 
 			.input('actor', sql.VarChar(20), actorId || null)
 			.input('full_name', sql.NVarChar(255), finalVal.full_name)
 			.input('dob', sql.Date, finalVal.date_of_birth || null)
-			.input('gender', sql.VarChar(10), finalVal.gender || null)
+			.input('gender', sql.VarChar(10), normalizeGender(finalVal.gender))
 			.input('national_id', sql.VarChar(20), finalVal.national_id || null)
 			.input('email', sql.VarChar(255), finalVal.email || null)
 			.input('phone', sql.VarChar(20), finalVal.phone || null)

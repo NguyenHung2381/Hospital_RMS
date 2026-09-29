@@ -11,11 +11,11 @@ import {
 	TrendBarChart,
 } from '../components/DashboardCharts';
 import { MetricCard } from '../components/MetricCard';
-import { ModuleOverviewChart } from '../components/ModuleOverviewChart';
+import { HorizontalBarChart } from '../components/HorizontalBarChart';
 import { TopicTable } from '../components/TopicTable';
 import { UpcomingCouncilsTable } from '../components/UpcomingCouncilsTable';
 import { useDashboard } from '../hooks/useDashboard';
-import { useModuleOverview } from '../hooks/useModuleOverview';
+import { useUpcomingCouncils } from '../hooks/useUpcomingCouncils';
 import {
 	APPROVAL_CONFIG,
 	DEPT_COLORS,
@@ -28,13 +28,8 @@ type TableMode = 'topics' | 'councils';
 export default function ResearchDashboard() {
 	const navigate = useNavigate();
 	const [tableMode, setTableMode] = useState<TableMode>('topics');
-	const {
-		items: moduleItems,
-		loading: moduleLoading,
-		upcomingCouncils,
-		councilsLoading,
-		councilsError,
-	} = useModuleOverview();
+	const { upcomingCouncils, councilsLoading, councilsError } =
+		useUpcomingCouncils();
 	const {
 		stats,
 		statsLoading,
@@ -65,14 +60,21 @@ export default function ResearchDashboard() {
 	const kpi = stats?.overview ?? {
 		total: 0,
 		by_status: {
-			draft: 0,
 			submitted: 0,
 			approved: 0,
 			rejected: 0,
 			supplement: 0,
-			completed: 0,
+			cancelled: 0,
 		},
 	};
+
+	const summary = stats?.summary;
+	const articleCount = (type: 'de_tai' | 'bai_bao') =>
+		stats?.by_article_type?.find((a) => a.type === type)?.count ?? 0;
+	const levelData = (stats?.by_level ?? []).map((l) => ({
+		label: l.name,
+		value: l.count,
+	}));
 
 	return (
 		<AdminLayout
@@ -87,8 +89,15 @@ export default function ResearchDashboard() {
 					label='Tổng số đề tài NCKH'
 					value={kpi.total}
 					loading={statsLoading}
+					delta={
+						summary ? `${summary.topics_this_year} đăng ký năm ${new Date().getFullYear()}` : undefined
+					}
 					deltaType='neutral'
-					compare={statsError ? 'Lỗi tải dữ liệu' : undefined}
+					compare={
+						statsError
+							? 'Lỗi tải dữ liệu'
+							: `${articleCount('de_tai')} đề tài · ${articleCount('bai_bao')} bài báo`
+					}
 					icon={<DocSvg />}
 					iconClass='iconGreen'
 					accent='accentGreen'
@@ -137,6 +146,28 @@ export default function ResearchDashboard() {
 				/>
 			</div>
 
+			{/* Đợt nghiên cứu & Hội đồng */}
+			<div className={styles.summaryStrip}>
+				{[
+					{ label: 'Đợt nghiên cứu đang mở', value: summary?.rounds_active, to: '/admin/rounds' },
+					{ label: 'Hội đồng khoa học', value: summary?.councils_total, to: '/admin/councils' },
+					{ label: 'Hội đồng sắp bảo vệ', value: summary?.councils_upcoming, to: '/admin/councils' },
+					{ label: 'Đề tài đã hủy', value: kpi.by_status.cancelled, to: '/admin/topics' },
+				].map((it) => (
+					<button
+						key={it.label}
+						type='button'
+						className={styles.summaryItem}
+						onClick={() => navigate(it.to)}
+					>
+						<span className={styles.summaryValue}>
+							{statsLoading ? '…' : (it.value ?? 0).toLocaleString('vi-VN')}
+						</span>
+						<span className={styles.summaryLabel}>{it.label}</span>
+					</button>
+				))}
+			</div>
+
 			{/* Tiến độ đánh giá của Hội đồng Khoa học */}
 			<CouncilProgressStrip
 				data={stats?.council_progress}
@@ -161,7 +192,7 @@ export default function ResearchDashboard() {
 					/>
 				</div>
 
-				{/* Hàng 2: Phân bố theo Khoa/Phòng & Quy mô dữ liệu các phân hệ */}
+				{/* Hàng 2: Phân bố theo Khoa/Phòng & theo cấp quản lý */}
 				<div className={styles.chartsGridPairReverse}>
 					<DeptBarChart
 						deptBarData={deptBarData}
@@ -169,11 +200,13 @@ export default function ResearchDashboard() {
 						loading={statsLoading}
 						error={statsError}
 					/>
-					<ModuleOverviewChart
-						topicsTotal={kpi.total}
-						topicsLoading={statsLoading}
-						items={moduleItems}
-						loading={moduleLoading}
+					<HorizontalBarChart
+						title='Đề tài theo cấp quản lý'
+						subtitle='Số đề tài NCKH theo cấp (cơ sở, tỉnh, bộ...)'
+						data={levelData}
+						loading={statsLoading}
+						error={statsError}
+						unitLabel='đề tài'
 					/>
 				</div>
 			</div>

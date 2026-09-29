@@ -259,18 +259,31 @@ function RowForm({
 	);
 }
 
+type DeadlineManagerProps = {
+	/** Round period bounds in 'YYYY-MM-DD' — milestone dates are clamped to this range */
+	roundStart?: string;
+	roundEnd?: string;
+} & (
+	| { roundId: string; drafts?: never; onDraftsChange?: never }
+	| {
+			/** Chế độ nháp (tạo đợt mới): mốc giữ trong form, lưu cùng lúc tạo đợt. */
+			roundId?: never;
+			drafts: RoundDeadline[];
+			onDraftsChange: (next: RoundDeadline[]) => void;
+		}
+);
+
 export function DeadlineManager({
 	roundId,
 	roundStart,
 	roundEnd,
-}: {
-	roundId: string;
-	/** Round period bounds in 'YYYY-MM-DD' — milestone dates are clamped to this range */
-	roundStart?: string;
-	roundEnd?: string;
-}) {
-	const [deadlines, setDeadlines] = useState<RoundDeadline[]>([]);
-	const [isLoading, setIsLoading] = useState(true);
+	drafts,
+	onDraftsChange,
+}: DeadlineManagerProps) {
+	const isDraft = !!onDraftsChange;
+	const [remoteDeadlines, setDeadlines] = useState<RoundDeadline[]>([]);
+	const deadlines = isDraft ? drafts : remoteDeadlines;
+	const [isLoading, setIsLoading] = useState(!isDraft);
 	const [newRow, setNewRow] = useState<DeadlineRowState | null>(null);
 	const [editPhase, setEditPhase] = useState<number | null>(null);
 	const [editRow, setEditRow] = useState<DeadlineRowState | null>(null);
@@ -278,6 +291,7 @@ export function DeadlineManager({
 	const [err, setErr] = useState('');
 
 	useEffect(() => {
+		if (!roundId) return;
 		getDeadlines(roundId)
 			.then(setDeadlines)
 			.catch(() => setErr('Không thể tải hạn nộp'))
@@ -306,6 +320,30 @@ export function DeadlineManager({
 			setErr('Mốc thời gian phải nằm trong khoảng thời gian của đợt');
 			return;
 		}
+		if (isDraft) {
+			const draft: RoundDeadline = {
+				id: `draft-${phase}`,
+				round_id: '',
+				phase,
+				name: row.name.trim(),
+				start_date: row.start_date ? fromInputDate(row.start_date) : null,
+				deadline_date: fromInputDate(row.date),
+				deadline_type: row.deadline_type || null,
+				supplement_fields:
+					row.deadline_type === 'supplement' ? row.supplement_fields : null,
+			};
+			onDraftsChange(
+				[...drafts.filter((d) => d.phase !== phase), draft].sort(
+					(a, b) => a.phase - b.phase,
+				),
+			);
+			setErr('');
+			setNewRow(null);
+			setEditPhase(null);
+			setEditRow(null);
+			return;
+		}
+		if (!roundId) return;
 		setSaving(true);
 		setErr('');
 		try {
@@ -336,6 +374,16 @@ export function DeadlineManager({
 	};
 
 	const handleRemove = async (phase: number) => {
+		if (isDraft) {
+			// Nháp: đánh lại số giai đoạn liên tục 1..n (server cũng đánh như vậy).
+			onDraftsChange(
+				drafts
+					.filter((d) => d.phase !== phase)
+					.map((d, i) => ({ ...d, phase: i + 1, id: `draft-${i + 1}` })),
+			);
+			return;
+		}
+		if (!roundId) return;
 		try {
 			await deleteDeadline(roundId, phase);
 			setDeadlines((p) => p.filter((d) => d.phase !== phase));
@@ -368,7 +416,9 @@ export function DeadlineManager({
 
 			{deadlines.length === 0 && !newRow && (
 				<div className={styles.emptyTimelineNotice}>
-					Chưa thiết lập mốc thời gian nào cho đợt này.
+					{isDraft
+						? 'Chưa có mốc thời gian — có thể thêm ngay bây giờ hoặc sau khi tạo đợt.'
+						: 'Chưa thiết lập mốc thời gian nào cho đợt này.'}
 				</div>
 			)}
 

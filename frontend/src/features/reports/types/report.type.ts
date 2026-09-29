@@ -47,8 +47,16 @@ export interface CouncilProgressStat {
 	by_rating: { rating: ProgressRating; count: number }[];
 }
 
+export interface ResearchSummary {
+	topics_this_year: number;
+	rounds_active: number;
+	councils_total: number;
+	councils_upcoming: number;
+}
+
 export interface DashboardStats {
 	overview: { total: number; by_status: StatusCounts };
+	summary?: ResearchSummary;
 	by_department: DeptStat[];
 	by_article_type: ArticleTypeCount[];
 	by_category: NameCount[];

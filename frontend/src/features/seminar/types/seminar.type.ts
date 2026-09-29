@@ -257,6 +257,8 @@ export interface ParticipantImportRow {
 	staff_number: number | null;
 	qualification_raw: string | null;
 	cme_credits: number | null;
+	/** Nguồn số tín chỉ: ô trong file, mặc định theo vai trò, hoặc chưa có. */
+	credits_source?: 'file' | 'default' | null;
 	participation_type: ParticipationType;
 	source: ParticipantSource;
 	is_foreign: boolean;
@@ -284,4 +286,32 @@ export interface ParticipantImportResult {
 	cme_to?: number | null;
 	cme_year?: number | null;
 	warnings: string[];
+}
+
+// ─── Nhập Excel danh sách hội thảo ───────────────────────────────────────────
+export interface SeminarListImportRow {
+	row: number;
+	title: string;
+	event_type: SeminarEventType;
+	event_type_raw: string | null;
+	scope: SeminarScope;
+	start_date: string | null;
+	end_date: string | null;
+	date_text: string | null;
+	event_year: number | null;
+	location: string | null;
+	grants_cme: boolean;
+	cme_default_credits: number | null;
+	manual_participant_count: number | null;
+	warnings: string[];
+	errors: string[];
+	duplicate: boolean;
+}
+
+export interface SeminarListImportResult {
+	dry_run: boolean;
+	summary: { total: number; importable: number; duplicates: number; invalid: number };
+	rows?: SeminarListImportRow[];
+	inserted?: number;
+	failures?: string[];
 }

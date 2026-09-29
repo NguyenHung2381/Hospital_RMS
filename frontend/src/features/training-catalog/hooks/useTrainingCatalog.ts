@@ -36,11 +36,6 @@ export const TAB_CONFIG: Record<
 		subtitle: 'Danh mục môn học dùng trong các chương trình đào tạo',
 		placeholder: 'VD: Cấp cứu cơ bản',
 	},
-	'cme-credit-categories': {
-		label: 'Danh mục quy đổi CME',
-		subtitle: 'Danh mục quy đổi tín chỉ đào tạo y khoa liên tục',
-		placeholder: 'VD: Hội thảo chuyên đề',
-	},
 };
 
 const TAB_ORDER: TrainingCatalogTab[] = [
@@ -48,17 +43,15 @@ const TAB_ORDER: TrainingCatalogTab[] = [
 	'training-forms',
 	'training-types',
 	'subjects',
-	'cme-credit-categories',
 ];
 
 // entity realtime khớp với cách services/crudService.js tự sinh tên (số ít
-// thô bằng cách bỏ 's' cuối) — cme-credit-categories -> cme_credit_categorie.
+// thô bằng cách bỏ 's' cuối) — subjects -> subject.
 const REALTIME_ENTITY: Record<TrainingCatalogTab, string> = {
 	'trainee-types': 'trainee_type',
 	'training-forms': 'training_form',
 	'training-types': 'training_type',
 	subjects: 'subject',
-	'cme-credit-categories': 'cme_credit_categorie',
 };
 
 export function useTrainingCatalog() {

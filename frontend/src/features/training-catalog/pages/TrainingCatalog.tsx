@@ -1,6 +1,5 @@
 import {
 	CheckSvg,
-	ClipboardCheckSvg,
 	BookOpenSvg,
 	EditSvg,
 	LayersSvg,
@@ -51,7 +50,6 @@ const TAB_ICON: Record<TrainingCatalogTab, React.ReactNode> = {
 	'training-forms': <LayersSvg />,
 	'training-types': <TagSvg />,
 	subjects: <BookOpenSvg />,
-	'cme-credit-categories': <ClipboardCheckSvg />,
 };
 
 export default function TrainingCatalog() {

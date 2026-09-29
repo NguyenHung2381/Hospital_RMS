@@ -1,12 +1,21 @@
-import { useCallback, useEffect, useState } from 'react';
-import { AlertSvg, CheckSvg, PlusSvg, TrashSvg, WarnSvg } from '@/assets/icons';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { AlertSvg, CheckSvg, EditSvg, PlusSvg, SearchSvg, TrashSvg, XSvg } from '@/assets/icons';
 import AdminLayout from '../../../layouts/AdminLayout';
 import { apiClient } from '../../../shared/api/axios';
+import {
+	Badge,
+	Button,
+	Modal,
+	Pagination,
+	SearchableSelect,
+	SkeletonTable,
+} from '@/shared/components';
 import {
 	createCmeRequirement,
 	deleteCmeRequirement,
 	getCmeCompliance,
 	getCmeRequirements,
+	updateCmeRequirement,
 	type CmeComplianceRow,
 	type CmeRequirement,
 } from '../api/cmeRequirementApi';
@@ -19,16 +28,92 @@ interface SimpleItem {
 
 const CURRENT_YEAR = new Date().getFullYear();
 const YEAR_OPTIONS = [CURRENT_YEAR + 1, CURRENT_YEAR, CURRENT_YEAR - 1, CURRENT_YEAR - 2];
+const PAGE_SIZE_OPTIONS = [10, 25, 50, 100] as const;
+
+type TabKey = 'compliance' | 'requirements';
+
+const EMPTY_FORM = { department_id: '', required_credits: '', note: '' };
+
+const norm = (s: string | null | undefined) =>
+	(s ?? '')
+		.normalize('NFD')
+		.replace(/[̀-ͯ]/g, '')
+		.replace(/đ/gi, 'd')
+		.toLowerCase();
+
+/** Lọc theo từ khoá + cắt trang phía client (API trả về toàn bộ danh sách theo năm). */
+function usePagedList<T>(
+	items: T[],
+	getText: (item: T) => string,
+	resetKey: unknown,
+	extraFilter?: (item: T) => boolean,
+) {
+	const [search, setSearch] = useState('');
+	const [page, setPage] = useState(1);
+	const [pageSize, setPageSize] = useState<number>(25);
+
+	const filtered = useMemo(() => {
+		const q = norm(search.trim());
+		return items.filter(
+			(i) => (!extraFilter || extraFilter(i)) && (!q || norm(getText(i)).includes(q)),
+		);
+	}, [items, search, getText, extraFilter]);
+
+	// Đổi từ khoá / năm thì quay về trang đầu (điều chỉnh khi render, không dùng effect)
+	const key = `${search}|${String(resetKey)}`;
+	const [prevKey, setPrevKey] = useState(key);
+	if (prevKey !== key) {
+		setPrevKey(key);
+		setPage(1);
+	}
+
+	const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+	const safePage = Math.min(page, totalPages);
+	const paged = filtered.slice((safePage - 1) * pageSize, safePage * pageSize);
+
+	return {
+		search,
+		setSearch,
+		paged,
+		total: filtered.length,
+		pagination: {
+			page: safePage,
+			totalPages,
+			total: filtered.length,
+			rowsPerPage: pageSize,
+			pageSizeOptions: PAGE_SIZE_OPTIONS,
+			onPageChange: setPage,
+			onRowsPerPageChange: (n: number) => {
+				setPageSize(n);
+				setPage(1);
+			},
+		},
+	};
+}
+
+const complianceText = (r: CmeComplianceRow) => `${r.full_name} ${r.department_name ?? ''}`;
+const requirementText = (r: CmeRequirement) => `${r.department_name ?? 'Toàn viện'} ${r.note ?? ''}`;
 
 export default function CmeCompliance() {
 	const [year, setYear] = useState(CURRENT_YEAR);
+	const [tab, setTab] = useState<TabKey>('compliance');
 	const [requirements, setRequirements] = useState<CmeRequirement[]>([]);
 	const [compliance, setCompliance] = useState<CmeComplianceRow[]>([]);
 	const [departments, setDepartments] = useState<SimpleItem[]>([]);
 	const [loading, setLoading] = useState(true);
 	const [saving, setSaving] = useState(false);
 	const [error, setError] = useState('');
-	const [form, setForm] = useState({ department_id: '', required_credits: '', note: '' });
+	const [toast, setToast] = useState<{ type: 'success' | 'error'; msg: string } | null>(null);
+
+	// Modal thêm / sửa ngưỡng: null = đóng, 'new' = thêm mới, còn lại = đang sửa
+	const [editing, setEditing] = useState<CmeRequirement | 'new' | null>(null);
+	const [form, setForm] = useState(EMPTY_FORM);
+	const [formError, setFormError] = useState('');
+
+	const showToast = (type: 'success' | 'error', msg: string) => {
+		setToast({ type, msg });
+		setTimeout(() => setToast(null), 3000);
+	};
 
 	const load = useCallback(() => {
 		Promise.all([getCmeRequirements(year), getCmeCompliance(year)])
@@ -49,37 +134,156 @@ export default function CmeCompliance() {
 			.catch(() => {});
 	}, []);
 
-	const handleAdd = async () => {
-		if (!form.required_credits) return;
+	// Bộ lọc bảng: khoa (tab nhân sự) và phạm vi áp dụng (tab ngưỡng)
+	const [compDept, setCompDept] = useState('');
+	const [reqScope, setReqScope] = useState<'' | 'hospital' | 'department'>('');
+
+	const compFilter = useCallback(
+		(r: CmeComplianceRow) => !compDept || r.department_id === compDept,
+		[compDept],
+	);
+	const reqFilter = useCallback(
+		(r: CmeRequirement) =>
+			!reqScope || (reqScope === 'hospital' ? !r.department_id : !!r.department_id),
+		[reqScope],
+	);
+
+	const compList = usePagedList(compliance, complianceText, `${year}|${compDept}`, compFilter);
+	const reqList = usePagedList(requirements, requirementText, `${year}|${reqScope}`, reqFilter);
+
+	// Chỉ đưa vào bộ lọc những khoa thực sự có nhân sự chưa đạt
+	const compDeptOptions = useMemo(() => {
+		const map = new Map<string, string>();
+		compliance.forEach((r) => {
+			if (r.department_id) map.set(r.department_id, r.department_name ?? r.department_id);
+		});
+		return [...map.entries()]
+			.map(([id, name]) => ({ id, name }))
+			.sort((a, b) => a.name.localeCompare(b.name, 'vi'));
+	}, [compliance]);
+
+	const changeYear = (y: number) => {
+		setLoading(true);
+		setYear(y);
+		setCompDept('');
+	};
+
+	const yearSelect = (
+		<select
+			className={styles.filterSelect}
+			value={year}
+			onChange={(e) => changeYear(Number(e.target.value))}
+			title='Năm'
+		>
+			{YEAR_OPTIONS.map((y) => (
+				<option
+					key={y}
+					value={y}
+				>
+					Năm {y}
+				</option>
+			))}
+		</select>
+	);
+
+	const openCreate = () => {
+		setForm(EMPTY_FORM);
+		setFormError('');
+		setEditing('new');
+	};
+
+	const openEdit = (r: CmeRequirement) => {
+		setForm({
+			department_id: r.department_id ?? '',
+			required_credits: String(r.required_credits),
+			note: r.note ?? '',
+		});
+		setFormError('');
+		setEditing(r);
+	};
+
+	const handleSave = async () => {
+		const credits = Number(form.required_credits);
+		if (!form.required_credits.trim() || !Number.isFinite(credits) || credits <= 0) {
+			setFormError('Số tín chỉ yêu cầu phải là số lớn hơn 0');
+			return;
+		}
 		setSaving(true);
-		setError('');
 		try {
-			await createCmeRequirement({
-				year,
-				required_credits: Number(form.required_credits),
-				department_id: form.department_id || undefined,
-				note: form.note || undefined,
-			});
-			setForm({ department_id: '', required_credits: '', note: '' });
+			if (editing === 'new') {
+				await createCmeRequirement({
+					year,
+					required_credits: credits,
+					department_id: form.department_id || undefined,
+					note: form.note.trim() || undefined,
+				});
+				showToast('success', 'Đã thêm ngưỡng CME');
+			} else if (editing) {
+				await updateCmeRequirement(editing.id, {
+					required_credits: credits,
+					note: form.note.trim(),
+				});
+				showToast('success', 'Đã cập nhật ngưỡng CME');
+			}
+			setEditing(null);
 			load();
 		} catch (err) {
-			setError(err instanceof Error ? err.message : 'Thêm thất bại');
+			setFormError(err instanceof Error ? err.message : 'Lưu thất bại');
 		} finally {
 			setSaving(false);
 		}
 	};
 
-	const handleDelete = async (id: string) => {
+	const handleDelete = async (r: CmeRequirement) => {
+		if (!window.confirm(`Xoá ngưỡng CME của "${r.department_name ?? 'Toàn viện'}" năm ${year}?`))
+			return;
 		setSaving(true);
 		try {
-			await deleteCmeRequirement(id);
+			await deleteCmeRequirement(r.id);
+			showToast('success', 'Đã xoá ngưỡng CME');
 			load();
 		} catch (err) {
-			setError(err instanceof Error ? err.message : 'Xoá thất bại');
+			showToast('error', err instanceof Error ? err.message : 'Xoá thất bại');
 		} finally {
 			setSaving(false);
 		}
 	};
+
+	const renderSearch = (value: string, onChange: (v: string) => void, placeholder: string) => (
+		<div className={styles.searchBox}>
+			<SearchSvg className={styles.searchIcon} />
+			<input
+				className={styles.searchInput}
+				placeholder={placeholder}
+				value={value}
+				onChange={(e) => onChange(e.target.value)}
+			/>
+			{value && (
+				<button
+					className={styles.searchClear}
+					onClick={() => onChange('')}
+				>
+					<XSvg />
+				</button>
+			)}
+		</div>
+	);
+
+	const emptyRow = (colSpan: number, title: string, desc?: string, icon?: boolean) => (
+		<tr>
+			<td colSpan={colSpan}>
+				<div className={styles.emptyState}>
+					{icon && (
+						<CheckSvg
+							style={{ width: 32, height: 32, color: 'var(--color-primary)', marginBottom: 8 }}
+						/>
+					)}
+					<div className={styles.emptyTitle}>{title}</div>
+					{desc && <div className={styles.emptyDesc}>{desc}</div>}
+				</div>
+			</td>
+		</tr>
+	);
 
 	return (
 		<AdminLayout
@@ -87,176 +291,306 @@ export default function CmeCompliance() {
 			pageSubtitle='Ngưỡng tín chỉ đào tạo y khoa liên tục theo năm và danh sách nhân sự chưa đạt'
 			breadcrumbs={[{ label: 'Hội nghị & CME' }]}
 		>
-			<div className={styles.toolbar}>
-				<span className={styles.formLabel}>Năm</span>
-				<select
-					className={styles.filterSelect}
-					value={year}
-					onChange={(e) => setYear(Number(e.target.value))}
-				>
-					{YEAR_OPTIONS.map((y) => (
-						<option
-							key={y}
-							value={y}
-						>
-							{y}
-						</option>
-					))}
-				</select>
-			</div>
-
 			{error && (
 				<div className={`${styles.noticeBox} ${styles.noticeWarn}`}>
 					<AlertSvg /> {error}
 				</div>
 			)}
 
-			<div className={styles.infoCard}>
-				<div className={styles.modalTitle}>Ngưỡng tín chỉ CME năm {year}</div>
-				<div className={styles.formGrid}>
-					<div className={styles.formGroup}>
-						<label className={styles.formLabel}>Khoa / Phòng</label>
-						<select
-							className={styles.formTextarea}
-							value={form.department_id}
-							onChange={(e) => setForm((f) => ({ ...f, department_id: e.target.value }))}
-						>
-							<option value=''>-- Toàn viện --</option>
-							{departments.map((d) => (
-								<option
-									key={d.id}
-									value={d.id}
-								>
-									{d.name}
-								</option>
-							))}
-						</select>
+			<div className={styles.tabs}>
+				{(
+					[
+						{ key: 'compliance', label: `Nhân sự chưa đạt (${compliance.length})` },
+						{ key: 'requirements', label: `Cấu hình ngưỡng (${requirements.length})` },
+					] as { key: TabKey; label: string }[]
+				).map((t) => (
+					<button
+						key={t.key}
+						type='button'
+						className={`${styles.tab} ${tab === t.key ? styles.tabActive : ''}`}
+						onClick={() => setTab(t.key)}
+					>
+						{t.label}
+					</button>
+				))}
+			</div>
+
+			{tab === 'compliance' && (
+				<div className={styles.tableCard}>
+					<div className={styles.tableHeader}>
+						<div className={styles.tableHeaderLeft}>
+							<span className={styles.tableTitle}>Nhân sự chưa đạt ngưỡng năm {year}</span>
+							<span className={styles.tableCount}>{compList.total} người</span>
+						</div>
+						<div className={styles.tableControls}>
+							{renderSearch(compList.search, compList.setSearch, 'Tìm theo họ tên, khoa/phòng...')}
+							{yearSelect}
+							<select
+								className={styles.filterSelect}
+								value={compDept}
+								onChange={(e) => setCompDept(e.target.value)}
+								title='Khoa / Phòng'
+							>
+								<option value=''>Tất cả khoa/phòng</option>
+								{compDeptOptions.map((d) => (
+									<option
+										key={d.id}
+										value={d.id}
+									>
+										{d.name}
+									</option>
+								))}
+							</select>
+						</div>
 					</div>
-					<div className={styles.formGroup}>
-						<label className={styles.formLabel}>Số tín chỉ yêu cầu</label>
+
+					<div className={styles.tableWrap}>
+						<table className={styles.table}>
+							<thead>
+								<tr>
+									<th>Họ tên</th>
+									<th>Khoa / Phòng</th>
+									<th>Đã đạt</th>
+									<th>Yêu cầu</th>
+									<th>Còn thiếu</th>
+								</tr>
+							</thead>
+							<tbody>
+								{loading ? (
+									<SkeletonTable
+										rows={6}
+										cols={5}
+									/>
+								) : compList.total === 0 ? (
+									compList.search || compDept ? (
+										emptyRow(5, 'Không tìm thấy nhân sự phù hợp', 'Thử đổi từ khoá hoặc bộ lọc')
+									) : requirements.length === 0 ? (
+										emptyRow(
+											5,
+											`Chưa cấu hình ngưỡng CME cho năm ${year}`,
+											'Thêm ngưỡng ở tab "Cấu hình ngưỡng" để hệ thống đối chiếu',
+										)
+									) : (
+										emptyRow(5, 'Tất cả nhân sự đã đạt ngưỡng CME', undefined, true)
+									)
+								) : (
+									compList.paged.map((row) => (
+										<tr key={row.id}>
+											<td>{row.full_name}</td>
+											<td className={styles.muted}>{row.department_name ?? '—'}</td>
+											<td>{row.earned_credits}</td>
+											<td>{row.required_credits}</td>
+											<td>
+												<Badge tone='red'>
+													{(row.required_credits - row.earned_credits).toFixed(1)} tín chỉ
+												</Badge>
+											</td>
+										</tr>
+									))
+								)}
+							</tbody>
+						</table>
+					</div>
+
+					{compList.total > 0 && (
+						<Pagination
+							{...compList.pagination}
+							itemLabel='nhân sự'
+						/>
+					)}
+				</div>
+			)}
+
+			{tab === 'requirements' && (
+				<div className={styles.tableCard}>
+					<div className={styles.tableHeader}>
+						<div className={styles.tableHeaderLeft}>
+							<span className={styles.tableTitle}>Ngưỡng tín chỉ CME năm {year}</span>
+							<span className={styles.tableCount}>{reqList.total} ngưỡng</span>
+						</div>
+						<div className={styles.tableControls}>
+							{renderSearch(reqList.search, reqList.setSearch, 'Tìm theo khoa/phòng, ghi chú...')}
+							{yearSelect}
+							<select
+								className={styles.filterSelect}
+								value={reqScope}
+								onChange={(e) => setReqScope(e.target.value as typeof reqScope)}
+								title='Phạm vi áp dụng'
+							>
+								<option value=''>Mọi phạm vi</option>
+								<option value='hospital'>Toàn viện</option>
+								<option value='department'>Theo khoa/phòng</option>
+							</select>
+							<Button
+								size='sm'
+								icon={<PlusSvg />}
+								onClick={openCreate}
+							>
+								Thêm ngưỡng
+							</Button>
+						</div>
+					</div>
+
+					<div className={styles.tableWrap}>
+						<table className={styles.table}>
+							<thead>
+								<tr>
+									<th>Phạm vi</th>
+									<th>Tín chỉ yêu cầu</th>
+									<th>Ghi chú</th>
+									<th className={styles.thRight}>Thao tác</th>
+								</tr>
+							</thead>
+							<tbody>
+								{loading ? (
+									<SkeletonTable
+										rows={4}
+										cols={4}
+									/>
+								) : reqList.total === 0 ? (
+									reqList.search || reqScope ? (
+										emptyRow(4, 'Không tìm thấy ngưỡng phù hợp', 'Thử đổi từ khoá hoặc bộ lọc')
+									) : (
+										emptyRow(
+											4,
+											`Chưa cấu hình ngưỡng CME cho năm ${year}`,
+											'Bấm "Thêm ngưỡng" để đặt số tín chỉ tối thiểu cho toàn viện hoặc từng khoa',
+										)
+									)
+								) : (
+									reqList.paged.map((r) => (
+										<tr key={r.id}>
+											<td>{r.department_name ?? <Badge tone='blue'>Toàn viện</Badge>}</td>
+											<td>
+												<strong>{r.required_credits}</strong> tín chỉ
+											</td>
+											<td className={styles.muted}>{r.note || '—'}</td>
+											<td className={styles.tdRight}>
+												<div className={styles.actionBtns}>
+													<button
+														className={styles.actionBtn}
+														title='Sửa ngưỡng'
+														disabled={saving}
+														onClick={() => openEdit(r)}
+													>
+														<EditSvg />
+													</button>
+													<button
+														className={`${styles.actionBtn} ${styles.danger}`}
+														title='Xoá ngưỡng'
+														disabled={saving}
+														onClick={() => handleDelete(r)}
+													>
+														<TrashSvg />
+													</button>
+												</div>
+											</td>
+										</tr>
+									))
+								)}
+							</tbody>
+						</table>
+					</div>
+
+					{reqList.total > 0 && (
+						<Pagination
+							{...reqList.pagination}
+							itemLabel='ngưỡng'
+						/>
+					)}
+				</div>
+			)}
+
+			<Modal
+				open={editing !== null}
+				onClose={() => !saving && setEditing(null)}
+				title={editing === 'new' ? `Thêm ngưỡng CME năm ${year}` : `Sửa ngưỡng CME năm ${year}`}
+				size='sm'
+				closeOnBackdrop={!saving}
+				footer={
+					<>
+						<Button
+							variant='ghost'
+							onClick={() => setEditing(null)}
+							disabled={saving}
+						>
+							Huỷ
+						</Button>
+						<Button
+							icon={<CheckSvg />}
+							onClick={handleSave}
+							loading={saving}
+						>
+							{editing === 'new' ? 'Thêm ngưỡng' : 'Lưu thay đổi'}
+						</Button>
+					</>
+				}
+			>
+				<div className={styles.formGrid}>
+					<div className={`${styles.formGroup} ${styles.full}`}>
+						<label className={styles.formLabel}>Khoa / Phòng</label>
+						{editing === 'new' ? (
+							<SearchableSelect
+								options={[{ id: '', name: 'Toàn viện' }, ...departments]}
+								value={form.department_id}
+								onChange={(id) => setForm((f) => ({ ...f, department_id: id }))}
+								placeholder='Toàn viện'
+							/>
+						) : (
+							<input
+								className={styles.formInput}
+								value={editing?.department_name ?? 'Toàn viện'}
+								disabled
+							/>
+						)}
+					</div>
+					<div className={`${styles.formGroup} ${styles.full}`}>
+						<label className={styles.formLabel}>
+							Số tín chỉ yêu cầu <span className={styles.required}>*</span>
+						</label>
 						<input
 							type='number'
 							step='0.1'
-							className={styles.formTextarea}
+							min='0'
+							className={styles.formInput}
 							value={form.required_credits}
-							onChange={(e) => setForm((f) => ({ ...f, required_credits: e.target.value }))}
+							onChange={(e) => {
+								setForm((f) => ({ ...f, required_credits: e.target.value }));
+								setFormError('');
+							}}
 							placeholder='VD: 48'
+							autoFocus
 						/>
 					</div>
 					<div className={`${styles.formGroup} ${styles.full}`}>
 						<label className={styles.formLabel}>Ghi chú</label>
-						<input
+						<textarea
 							className={styles.formTextarea}
+							rows={2}
 							value={form.note}
 							onChange={(e) => setForm((f) => ({ ...f, note: e.target.value }))}
+							placeholder='Căn cứ văn bản, phạm vi áp dụng...'
 						/>
 					</div>
 				</div>
-				<button
-					className={styles.btnPrimary}
-					disabled={saving || !form.required_credits}
-					onClick={handleAdd}
-					style={{ marginTop: 12 }}
+				{formError && (
+					<div
+						className={`${styles.noticeBox} ${styles.noticeWarn}`}
+						style={{ marginTop: 12 }}
+					>
+						<AlertSvg /> {formError}
+					</div>
+				)}
+			</Modal>
+
+			{toast && (
+				<div
+					className={`${styles.toast} ${toast.type === 'success' ? styles.toastSuccess : styles.toastError}`}
 				>
-					<PlusSvg /> Thêm ngưỡng
-				</button>
-
-				<div className={styles.tableWrap} style={{ marginTop: 16 }}>
-					<table className={styles.table}>
-						<thead>
-							<tr>
-								<th>Phạm vi</th>
-								<th>Tín chỉ yêu cầu</th>
-								<th>Ghi chú</th>
-								<th className={styles.thRight}>Thao tác</th>
-							</tr>
-						</thead>
-						<tbody>
-							{requirements.length === 0 ? (
-								<tr>
-									<td colSpan={4}>
-										<div className={styles.emptyState}>
-											<div className={styles.emptyTitle}>Chưa cấu hình ngưỡng CME cho năm {year}</div>
-										</div>
-									</td>
-								</tr>
-							) : (
-								requirements.map((r) => (
-									<tr key={r.id}>
-										<td>{r.department_name ?? 'Toàn viện'}</td>
-										<td>{r.required_credits}</td>
-										<td className={styles.muted}>{r.note ?? '—'}</td>
-										<td className={styles.tdRight}>
-											<button
-												className={styles.actionBtn}
-												disabled={saving}
-												onClick={() => handleDelete(r.id)}
-											>
-												<TrashSvg />
-											</button>
-										</td>
-									</tr>
-								))
-							)}
-						</tbody>
-					</table>
+					{toast.type === 'success' ? <CheckSvg /> : <XSvg />}
+					{toast.msg}
 				</div>
-			</div>
-
-			<div
-				className={styles.infoCard}
-				style={{ marginTop: 20 }}
-			>
-				<div className={styles.modalTitle}>
-					<WarnSvg style={{ width: 16, height: 16, marginRight: 6 }} />
-					Nhân sự chưa đạt ngưỡng CME năm {year} ({compliance.length})
-				</div>
-				<div className={styles.tableWrap} style={{ marginTop: 12 }}>
-					<table className={styles.table}>
-						<thead>
-							<tr>
-								<th>Họ tên</th>
-								<th>Khoa / Phòng</th>
-								<th>Đã đạt</th>
-								<th>Yêu cầu</th>
-								<th>Còn thiếu</th>
-							</tr>
-						</thead>
-						<tbody>
-							{loading ? (
-								<tr>
-									<td colSpan={5}>
-										<div className={styles.emptyState}>
-											<div className={styles.emptyTitle}>Đang tải...</div>
-										</div>
-									</td>
-								</tr>
-							) : compliance.length === 0 ? (
-								<tr>
-									<td colSpan={5}>
-										<div className={styles.emptyState}>
-											<CheckSvg className={styles.emptyIcon} />
-											<div className={styles.emptyTitle}>Tất cả nhân sự đã đạt ngưỡng CME</div>
-										</div>
-									</td>
-								</tr>
-							) : (
-								compliance.map((row) => (
-									<tr key={row.id}>
-										<td>{row.full_name}</td>
-										<td className={styles.muted}>{row.department_name ?? '—'}</td>
-										<td>{row.earned_credits}</td>
-										<td>{row.required_credits}</td>
-										<td style={{ color: '#b42318', fontWeight: 700 }}>
-											{(row.required_credits - row.earned_credits).toFixed(1)}
-										</td>
-									</tr>
-								))
-							)}
-						</tbody>
-					</table>
-				</div>
-			</div>
+			)}
 		</AdminLayout>
 	);
 }

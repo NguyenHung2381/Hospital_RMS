@@ -7,6 +7,7 @@ import { lookupByNationalId, type LookupResult } from '../api/publicApi';
 import styles from './PublicPortal.module.css';
 
 export default function PublicLookup() {
+	const [fullName, setFullName] = useState('');
 	const [nationalId, setNationalId] = useState('');
 	const [dob, setDob] = useState('');
 	const [results, setResults] = useState<LookupResult[] | null>(null);
@@ -15,13 +16,14 @@ export default function PublicLookup() {
 
 	const handleSearch = async (e: React.FormEvent) => {
 		e.preventDefault();
-		if (!nationalId.trim()) return;
+		if (!fullName.trim()) return setError('Vui lòng nhập họ và tên');
+		if (!nationalId.trim()) return setError('Vui lòng nhập số CCCD/CMND');
 		if (!dob) return setError('Vui lòng nhập ngày sinh');
 		setLoading(true);
 		setError('');
 		setResults(null);
 		try {
-			setResults(await lookupByNationalId(nationalId.trim(), dob));
+			setResults(await lookupByNationalId(nationalId.trim(), dob, fullName.trim()));
 		} catch (err) {
 			setError(err instanceof Error ? err.message : 'Tra cứu thất bại, vui lòng thử lại');
 		} finally {
@@ -32,7 +34,7 @@ export default function PublicLookup() {
 	return (
 		<PublicLayout
 			title='Tra cứu kết quả học tập & chứng chỉ'
-			subtitle='Nhập số CCCD/CMND và ngày sinh đã dùng khi đăng ký để tra cứu tình trạng đăng ký, kết quả học tập và chứng chỉ.'
+			subtitle='Nhập họ tên, số CCCD/CMND và ngày sinh đã dùng khi đăng ký để tra cứu tình trạng đăng ký, kết quả học tập và chứng chỉ.'
 		>
 			{error && (
 				<div className={`${styles.alertBox} ${styles.alertError}`}>
@@ -42,23 +44,46 @@ export default function PublicLookup() {
 
 			<form
 				onSubmit={handleSearch}
-				className={styles.searchRow}
+				className={`${styles.searchRow} ${styles.searchRowLabeled}`}
 			>
-				<input
-					className={styles.input}
-					value={nationalId}
-					onChange={(e) => setNationalId(e.target.value)}
-					placeholder='Nhập số CCCD/CMND...'
-				/>
-				<input
-					type='date'
-					className={styles.input}
-					style={{ flex: '0 0 170px' }}
-					value={dob}
-					onChange={(e) => setDob(e.target.value)}
-					aria-label='Ngày sinh'
-					title='Ngày sinh'
-				/>
+				<label className={styles.searchField}>
+					<span className={styles.label}>
+						Họ và tên <span className={styles.required}>*</span>
+					</span>
+					<input
+						className={styles.input}
+						value={fullName}
+						onChange={(e) => setFullName(e.target.value)}
+						placeholder='VD: Nguyễn Văn An'
+						autoComplete='name'
+						maxLength={150}
+					/>
+				</label>
+				<label className={styles.searchField}>
+					<span className={styles.label}>
+						Số CCCD/CMND <span className={styles.required}>*</span>
+					</span>
+					<input
+						className={styles.input}
+						value={nationalId}
+						onChange={(e) => setNationalId(e.target.value)}
+						placeholder='Nhập số CCCD/CMND...'
+						inputMode='numeric'
+					/>
+				</label>
+				<label className={`${styles.searchField} ${styles.searchFieldDate}`}>
+					<span className={styles.label}>
+						Ngày sinh <span className={styles.required}>*</span>
+					</span>
+					<input
+						type='date'
+						className={styles.input}
+						value={dob}
+						onChange={(e) => setDob(e.target.value)}
+						max={new Date().toISOString().slice(0, 10)}
+						title='Ngày sinh (ngày/tháng/năm)'
+					/>
+				</label>
 				<button
 					type='submit'
 					className={styles.searchBtn}
@@ -67,11 +92,14 @@ export default function PublicLookup() {
 					<SearchSvg /> {loading ? 'Đang tra cứu...' : 'Tra cứu'}
 				</button>
 			</form>
+			<p className={styles.searchHint}>
+				Nhập họ tên, số CCCD/CMND và ngày sinh (ngày/tháng/năm) trùng với thông tin đã khai khi đăng ký khóa học. Họ tên không phân biệt chữ hoa/thường.
+			</p>
 
 			{results && (
 				<>
 					{results.length === 0 ? (
-						<div className={styles.emptyNotice}>Không tìm thấy dữ liệu đăng ký khớp số CCCD/CMND và ngày sinh đã nhập.</div>
+						<div className={styles.emptyNotice}>Không tìm thấy dữ liệu đăng ký khớp họ tên, số CCCD/CMND và ngày sinh đã nhập.</div>
 					) : (
 						<div style={{ overflowX: 'auto' }}>
 							<table className={styles.resultTable}>

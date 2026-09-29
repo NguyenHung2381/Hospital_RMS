@@ -3,6 +3,9 @@ const { broadcast } = require('./eventService');
 const courseService = require('./courseService');
 
 const QUESTION_TYPES = ['single_choice', 'essay'];
+// Loại đề → loại câu hỏi được phép đưa vào. paper_type NULL = đề cũ (hỗn hợp),
+// không lọc — giữ nguyên câu tự luận của đề tạo trước khi có cột này.
+const PAPER_QUESTION_TYPE = { multiple_choice: 'single_choice', essay: 'essay' };
 
 const parseOptions = (row) => {
 	if (row.options === undefined) return row;
@@ -16,7 +19,7 @@ const parseOptions = (row) => {
 };
 
 // ─── Ngân hàng câu hỏi ───────────────────────────────────────────────────────
-const listQuestions = async ({ subject_id, search } = {}) => {
+const listQuestions = async ({ subject_id, search, question_type } = {}) => {
 	const pool = await getPool();
 	const where = ['1=1'];
 	const req = pool.request();
@@ -24,12 +27,17 @@ const listQuestions = async ({ subject_id, search } = {}) => {
 		where.push('q.subject_id = @subject_id');
 		req.input('subject_id', sql.VarChar(20), subject_id);
 	}
+	if (question_type) {
+		where.push('q.question_type = @question_type');
+		req.input('question_type', sql.VarChar(20), question_type);
+	}
 	if (search) {
 		where.push('q.question_text LIKE @search');
 		req.input('search', sql.NVarChar, `%${search}%`);
 	}
 	const r = await req.query(`
-    SELECT q.*, s.name AS subject_name
+    SELECT q.*, s.name AS subject_name,
+           (SELECT COUNT(*) FROM exam_paper_questions epq WHERE epq.question_id = q.id) AS used_count
     FROM question_bank q
     LEFT JOIN subjects s ON s.id = q.subject_id
     WHERE ${where.join(' AND ')}
@@ -44,11 +52,10 @@ const getQuestion = async (id) => {
 	return r.recordset[0] ? parseOptions(r.recordset[0]) : null;
 };
 
-const createQuestion = async (data, actorId) => {
-	const pool = await getPool();
+// request: pool.request() hoặc transaction.request() — dùng chung cho tạo lẻ và nhập hàng loạt
+const insertQuestion = async (request, data, actorId) => {
 	const type = QUESTION_TYPES.includes(data.question_type) ? data.question_type : 'single_choice';
-	const result = await pool
-		.request()
+	const result = await request
 		.input('subject_id', sql.VarChar(20), data.subject_id || null)
 		.input('question_type', sql.VarChar(20), type)
 		.input('question_text', sql.NVarChar(sql.MAX), data.question_text)
@@ -61,8 +68,30 @@ const createQuestion = async (data, actorId) => {
       VALUES (@new_id, @subject_id, @question_type, @question_text, @options, @correct_option, @points, @actor_id);
       SELECT @new_id AS id;
     `);
+	return result.recordset[0].id;
+};
+
+const createQuestion = async (data, actorId) => {
+	const pool = await getPool();
+	const id = await insertQuestion(pool.request(), data, actorId);
 	broadcast('update', { entity: 'question_bank' });
-	return getQuestion(result.recordset[0].id);
+	return getQuestion(id);
+};
+
+// Nhập hàng loạt (từ file Word/PDF đã tách câu ở trình duyệt) — tất cả hoặc không
+const createQuestionsBulk = async (items, actorId) => {
+	const pool = await getPool();
+	const tx = new sql.Transaction(pool);
+	await tx.begin();
+	try {
+		for (const item of items) await insertQuestion(tx.request(), item, actorId);
+		await tx.commit();
+	} catch (err) {
+		await tx.rollback();
+		throw err;
+	}
+	broadcast('update', { entity: 'question_bank' });
+	return { created: items.length };
 };
 
 const updateQuestion = async (id, data, actorId) => {
@@ -105,7 +134,19 @@ const updateQuestion = async (id, data, actorId) => {
 
 const removeQuestion = async (id) => {
 	const pool = await getPool();
-	await pool.request().input('id', sql.VarChar(20), id).query('DELETE FROM question_bank WHERE id = @id');
+	// FK exam_paper_questions/exam_answers không cascade — báo rõ thay vì lỗi SQL 547
+	const r = await pool.request().input('id', sql.VarChar(20), id).query(`
+    IF EXISTS (SELECT 1 FROM exam_paper_questions WHERE question_id = @id)
+       OR EXISTS (SELECT 1 FROM exam_answers WHERE question_id = @id)
+      SELECT 1 AS in_use
+    ELSE
+      DELETE FROM question_bank WHERE id = @id;
+  `);
+	if (r.recordset?.[0]?.in_use) {
+		const err = new Error('Câu hỏi đang được dùng trong đề thi, không thể xoá. Hãy bỏ câu hỏi khỏi các đề trước.');
+		err.statusCode = 409;
+		throw err;
+	}
 	broadcast('update', { entity: 'question_bank' });
 };
 
@@ -155,6 +196,10 @@ const getPaper = async (id) => {
 const setPaperQuestions = async (paperId, questionIds, actorId) => {
 	void actorId;
 	const pool = await getPool();
+	const paperType = (
+		await pool.request().input('id', sql.VarChar(20), paperId).query('SELECT paper_type FROM exam_papers WHERE id = @id')
+	).recordset[0]?.paper_type;
+	const onlyType = PAPER_QUESTION_TYPE[paperType] || null;
 	await pool.request().input('paper_id', sql.VarChar(20), paperId).query('DELETE FROM exam_paper_questions WHERE paper_id = @paper_id');
 	const ids = [...new Set((questionIds || []).filter(Boolean))];
 	for (let i = 0; i < ids.length; i++) {
@@ -162,8 +207,9 @@ const setPaperQuestions = async (paperId, questionIds, actorId) => {
 			.request()
 			.input('paper_id', sql.VarChar(20), paperId)
 			.input('question_id', sql.VarChar(20), ids[i])
+			.input('only_type', sql.VarChar(20), onlyType)
 			.input('sort_order', sql.Int, i).query(`
-        IF EXISTS (SELECT 1 FROM question_bank WHERE id = @question_id)
+        IF EXISTS (SELECT 1 FROM question_bank WHERE id = @question_id AND (@only_type IS NULL OR question_type = @only_type))
         BEGIN
           DECLARE @new_id VARCHAR(20) = 'EPQ' + LEFT(REPLACE(NEWID(),'-',''), 17);
           INSERT INTO exam_paper_questions (id, paper_id, question_id, sort_order)
@@ -182,12 +228,13 @@ const createPaper = async (data, actorId) => {
 		.input('course_id', sql.VarChar(20), data.course_id)
 		.input('subject_id', sql.VarChar(20), data.subject_id || null)
 		.input('title', sql.NVarChar(255), data.title)
+		.input('paper_type', sql.VarChar(20), data.paper_type || 'multiple_choice')
 		.input('duration_minutes', sql.Int, data.duration_minutes || 45)
 		.input('status', sql.VarChar(20), data.status || 'draft')
 		.input('actor_id', sql.VarChar(20), actorId).query(`
       DECLARE @new_id VARCHAR(20) = 'EP' + LEFT(REPLACE(NEWID(),'-',''), 18);
-      INSERT INTO exam_papers (id, course_id, subject_id, title, duration_minutes, status, created_by)
-      VALUES (@new_id, @course_id, @subject_id, @title, @duration_minutes, @status, @actor_id);
+      INSERT INTO exam_papers (id, course_id, subject_id, title, paper_type, duration_minutes, status, created_by)
+      VALUES (@new_id, @course_id, @subject_id, @title, @paper_type, @duration_minutes, @status, @actor_id);
       SELECT @new_id AS id;
     `);
 	const id = result.recordset[0].id;
@@ -217,9 +264,19 @@ const updatePaper = async (id, data, actorId) => {
 		sets.push('status = @status');
 		req.input('status', sql.VarChar(20), data.status);
 	}
+	if (data.paper_type !== undefined) {
+		sets.push('paper_type = @paper_type');
+		req.input('paper_type', sql.VarChar(20), data.paper_type);
+	}
 
+	// Đổi loại đề mà không gửi danh sách câu → lọc lại câu hiện có theo loại mới
+	const questionIds = Array.isArray(data.question_ids)
+		? data.question_ids
+		: data.paper_type !== undefined
+			? (await listPaperQuestionsFull(id)).map((q) => q.id)
+			: null;
 	if (sets.length > 2) await req.query(`UPDATE exam_papers SET ${sets.join(', ')} WHERE id = @id`);
-	if (Array.isArray(data.question_ids)) await setPaperQuestions(id, data.question_ids, actorId);
+	if (questionIds) await setPaperQuestions(id, questionIds, actorId);
 	broadcast('update', { entity: 'exam_paper' });
 	return getPaper(id);
 };
@@ -501,6 +558,7 @@ module.exports = {
 	listQuestions,
 	getQuestion,
 	createQuestion,
+	createQuestionsBulk,
 	updateQuestion,
 	removeQuestion,
 	listPapers,

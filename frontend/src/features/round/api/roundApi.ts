@@ -1,6 +1,7 @@
 import { apiClient } from '../../../shared/api/axios';
 import type {
 	DeadlineType,
+	LevelOption,
 	ResearchRound,
 	RoundDeadline,
 	RoundForm,
@@ -30,6 +31,9 @@ export interface CreateRoundPayload {
 	start_date: string; // yyyy-mm-dd
 	end_date: string; // yyyy-mm-dd
 	status?: RoundStatus;
+	level_ids?: string[];
+	/** Mốc thời gian tạo cùng lúc với đợt (giai đoạn đánh số theo thứ tự). */
+	deadlines?: DeadlinePayload[];
 }
 
 export interface UpdateRoundPayload {
@@ -40,6 +44,7 @@ export interface UpdateRoundPayload {
 	start_date?: string; // yyyy-mm-dd
 	end_date?: string; // yyyy-mm-dd
 	status?: RoundStatus;
+	level_ids?: string[];
 }
 
 export interface DeadlinePayload {
@@ -67,6 +72,22 @@ export function formToPayload(form: RoundForm): CreateRoundPayload {
 		start_date: toApiDate(form.start_date),
 		end_date: toApiDate(form.end_date),
 		status: form.status,
+		level_ids: form.level_ids,
+		// Chỉ có khi tạo mới — khi sửa, mốc được quản lý ở tab "Cài đặt".
+		...(form.deadlines.length
+			? {
+					deadlines: form.deadlines.map((d) => ({
+						name: d.name,
+						start_date: d.start_date ? toApiDate(d.start_date) : null,
+						deadline_date: toApiDate(d.deadline_date),
+						deadline_type: d.deadline_type ?? null,
+						supplement_fields:
+							d.deadline_type === 'supplement'
+								? (d.supplement_fields ?? null)
+								: null,
+					})),
+				}
+			: {}),
 	};
 }
 
@@ -97,12 +118,15 @@ export const getRoundTypes = () =>
 		.get<{ data: RoundType[]; pagination: unknown }>('/round-types?limit=0')
 		.then((res) => res.data);
 
-export const getRoundByPublicToken = (token: string) =>
+// ─── Cấp độ đề tài ─────────────────────────────────────────────────────────────
+export const getAllLevels = () =>
 	apiClient
-		.get<RoundListResponse>(
-			`/research-rounds?public_token=${encodeURIComponent(token)}&limit=1`,
-		)
-		.then((res) => res.data.find((r) => r.public_token === token) ?? null);
+		.get<{ data: LevelOption[] }>('/levels?limit=0')
+		.then((res) => res.data);
+
+/** Cấp độ mặc định của loại đợt — gợi ý sẵn khi tạo đợt. */
+export const getRoundTypeLevelIds = (roundTypeId: string) =>
+	apiClient.get<string[]>(`/round-types/${roundTypeId}/levels`);
 
 // ─── Deadline API ──────────────────────────────────────────────────────────────
 export const getDeadlines = (roundId: string) =>

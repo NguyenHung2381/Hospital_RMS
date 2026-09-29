@@ -10,6 +10,7 @@ import {
 	type ParticipationType,
 	type SeminarParticipant,
 } from '../types/seminar.type';
+import { GENDER_OPTIONS } from '../../../shared/utils/gender';
 import styles from '../pages/Seminar.module.css';
 
 function toForm(p: SeminarParticipant): ParticipantForm {
@@ -238,8 +239,14 @@ export function ParticipantFormModal({
 								onChange={set('gender')}
 							>
 								<option value=''>—</option>
-								<option value='Nam'>Nam</option>
-								<option value='Nữ'>Nữ</option>
+								{GENDER_OPTIONS.map((g) => (
+									<option
+										key={g.value}
+										value={g.value}
+									>
+										{g.label}
+									</option>
+								))}
 							</select>
 						</div>
 

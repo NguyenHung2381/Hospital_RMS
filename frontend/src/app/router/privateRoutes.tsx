@@ -16,6 +16,9 @@ const ResearchDashboard = lazy(
 const TrainingDashboard = lazy(
 	() => import('../../features/dashboard/pages/TrainingDashboard'),
 );
+const SeminarDashboard = lazy(
+	() => import('../../features/dashboard/pages/SeminarDashboard'),
+);
 const Departments = lazy(
 	() => import('../../features/department/pages/Departments'),
 );
@@ -26,6 +29,9 @@ const ExternalReviewers = lazy(
 	() => import('../../features/council/pages/ExternalReviewers'),
 );
 const Seminars = lazy(() => import('../../features/seminar/pages/Seminars'));
+const CmeCreditCatalog = lazy(
+	() => import('../../features/seminar/pages/CmeCreditCatalog'),
+);
 const SeminarDetail = lazy(
 	() => import('../../features/seminar/pages/SeminarDetail'),
 );
@@ -37,8 +43,7 @@ const CmeCompliance = lazy(
 );
 const CmeManualRecords = lazy(
 	() => import('../../features/seminar/pages/CmeManualRecords'),
-);
-const Approvals = lazy(() => import('../../features/approval/pages/Approval'));
+);const Approvals = lazy(() => import('../../features/approval/pages/Approval'));
 const Catalog = lazy(() => import('../../features/catalog/pages/Catalog'));
 const Users = lazy(() => import('../../features/user/pages/UserList'));
 const Roles = lazy(() => import('../../features/roles/pages/Roles'));
@@ -72,8 +77,12 @@ const AttendanceCheckIn = lazy(
 	() => import('../../features/attendance-checkin/pages/AttendanceCheckIn'),
 );
 const UserExams = lazy(() => import('../../features/exam/pages/UserExams'));
+const QuestionBank = lazy(() => import('../../features/exam/pages/QuestionBank'));
 const Lecturers = lazy(() => import('../../features/lecturer/pages/Lecturers'));
 const Courses = lazy(() => import('../../features/course/pages/Courses'));
+const ClassSchedule = lazy(
+	() => import('../../features/class-schedule/pages/ClassSchedule'),
+);
 const PersonMerge = lazy(
 	() => import('../../features/person-merge/pages/PersonMerge'),
 );
@@ -127,6 +136,10 @@ export const adminRoutes: RouteObject[] = [
 		element: admin('Tổng quan Đào tạo', <TrainingDashboard />),
 	},
 	{
+		path: '/admin/dashboard/seminar',
+		element: admin('Tổng quan Hội thảo - CME', <SeminarDashboard />),
+	},
+	{
 		path: '/admin/viec-cua-toi',
 		element: admin('Việc của tôi', <MyTasks />),
 	},
@@ -163,8 +176,7 @@ export const adminRoutes: RouteObject[] = [
 	{
 		path: '/admin/cme-records',
 		element: admin('Ghi nhận CME độc lập', <CmeManualRecords />),
-	},
-	{
+	},	{
 		path: '/admin/departments',
 		element: admin('Khoa / Phòng ban', <Departments />),
 	},
@@ -240,6 +252,22 @@ export const adminRoutes: RouteObject[] = [
 		element: admin('Quản lý Khóa học', <Courses />),
 	},
 	{
+		path: '/admin/question-bank',
+		element: (
+			<RequirePermission perm='exams:manage'>
+				{admin('Ngân hàng câu hỏi', <QuestionBank />)}
+			</RequirePermission>
+		),
+	},
+	{
+		path: '/admin/class-schedule',
+		element: (
+			<RequirePermission perm='courses:read'>
+				{admin('Lịch học', <ClassSchedule />)}
+			</RequirePermission>
+		),
+	},
+	{
 		path: '/admin/trainee-types',
 		element: admin('Đối tượng học viên', <TrainingCatalog />),
 	},
@@ -257,7 +285,11 @@ export const adminRoutes: RouteObject[] = [
 	},
 	{
 		path: '/admin/cme-credit-categories',
-		element: admin('Danh mục quy đổi CME', <TrainingCatalog />),
+		element: (
+			<RequirePermission perm='training_catalog:read'>
+				{admin('Danh mục quy đổi CME', <CmeCreditCatalog />)}
+			</RequirePermission>
+		),
 	},
 	{
 		path: '/admin/surveys',

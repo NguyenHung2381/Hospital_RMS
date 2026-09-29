@@ -6,6 +6,7 @@ import {
 	PlusSvg,
 } from '@/assets/icons';
 import AdminLayout from '../../../layouts/AdminLayout';
+import { MultiSelect } from '../../../shared/components/Input/MultiSelect';
 import { SkeletonCard } from '../../../shared/components/Loading';
 import { RoundCard } from '../components/RoundCard';
 import { RoundDeleteModal } from '../components/RoundDeleteModal';
@@ -112,13 +113,22 @@ export default function Round() {
 						</div>
 						<div className={styles.sectionSub}>
 							{d.filtered.length} đợt
-							{d.viewTab === 'current' && d.yearFilter !== 'all' ? ` — Năm ${d.yearFilter}` : ''}
+							{d.viewTab === 'current' && d.yearFilter.size > 0
+								? ` — Năm ${[...d.yearFilter].sort((a, b) => Number(b) - Number(a)).join(', ')}`
+								: ''}
 							{' · '}
 							{d.stats.topicSum} đề tài
 						</div>
 					</div>
 					{d.viewTab === 'current' && (
 						<div className={styles.sectionRight}>
+							<MultiSelect
+								className={styles.yearSelectWrap}
+								options={d.years.map((y) => ({ id: String(y), label: `Năm ${y}` }))}
+								selected={d.yearFilter}
+								onChange={d.setYearFilter}
+								placeholder='Tất cả năm'
+							/>
 							<select
 								className={styles.filterSelect}
 								value={d.typeFilter}
@@ -149,29 +159,6 @@ export default function Round() {
 					)}
 				</div>
 
-				{d.viewTab === 'current' && (
-					<div
-						className={styles.yearBar}
-						style={{ marginBottom: 'var(--space-5)' }}
-					>
-						<button
-							className={`${styles.yearChip} ${d.yearFilter === 'all' ? styles.yearChipActive : ''}`}
-							onClick={() => d.setYearFilter('all')}
-						>
-							Tất cả năm
-						</button>
-						{d.years.map((y) => (
-							<button
-								key={y}
-								className={`${styles.yearChip} ${d.yearFilter === y ? styles.yearChipActive : ''}`}
-								onClick={() => d.setYearFilter(y)}
-							>
-								{y}
-							</button>
-						))}
-					</div>
-				)}
-
 				{d.isLoadingData ? (
 					<div className={styles.roundsGrid}>
 						<SkeletonCard count={3} />
@@ -193,7 +180,7 @@ export default function Round() {
 							Thử thay đổi bộ lọc hoặc tạo đợt mới
 						</p>
 					</div>
-				) : d.viewTab === 'current' && d.yearFilter === 'all' ? (
+				) : d.viewTab === 'current' ? (
 					d.years.map((y) => {
 						const group = d.filtered.filter((r) => r.year === y);
 						if (group.length === 0) return null;

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { CheckSvg, EditSvg, ListSvg, PlusSvg, SearchSvg, TrashSvg, XSvg } from '@/assets/icons';
 import AdminLayout from '../../../layouts/AdminLayout';
+import { Badge } from '../../../shared/components';
 import { SkeletonTable } from '../../../shared/components/Loading';
 import { Pagination } from '../../../shared/components/Table/Pagination';
 import sel from '../../../shared/components/Table/RowSelect.module.css';
@@ -10,6 +11,7 @@ import { TrainingProgramDeleteModal } from '../components/TrainingProgramDeleteM
 import { TrainingProgramDetailModal } from '../components/TrainingProgramDetailModal';
 import { TrainingProgramFormModal } from '../components/TrainingProgramFormModal';
 import { useTrainingPrograms } from '../hooks/useTrainingPrograms';
+import { getProgramStatus, PROGRAM_STATUS_LABELS, type ProgramStatusFilter } from '../types/trainingProgram.type';
 import styles from './TrainingPrograms.module.css';
 
 const PAGE_SIZE_OPTIONS = [5, 10, 25, 50, 0] as const;
@@ -85,7 +87,7 @@ export default function TrainingPrograms() {
 							<SearchSvg className={styles.searchIcon} />
 							<input
 								className={styles.searchInput}
-								placeholder='Tìm theo tên chương trình...'
+								placeholder='Tìm theo mã, tên chương trình...'
 								value={d.search}
 								onChange={(e) => d.handleSearch(e.target.value)}
 							/>
@@ -98,6 +100,62 @@ export default function TrainingPrograms() {
 								</button>
 							)}
 						</div>
+						<select
+							className={`${styles.filterSelect} ${d.departmentFilter !== 'all' ? styles.filterActive : ''}`}
+							value={d.departmentFilter}
+							onChange={(e) => d.handleDepartmentFilter(e.target.value)}
+						>
+							<option value='all'>Tất cả khoa / phòng</option>
+							{d.departmentOptions.map((dep) => (
+								<option
+									key={dep.id}
+									value={dep.id}
+								>
+									{dep.name}
+								</option>
+							))}
+							<option value='none'>Chưa gán khoa</option>
+						</select>
+						<select
+							className={`${styles.filterSelect} ${d.traineeTypeFilter !== 'all' ? styles.filterActive : ''}`}
+							value={d.traineeTypeFilter}
+							onChange={(e) => d.handleTraineeTypeFilter(e.target.value)}
+						>
+							<option value='all'>Tất cả đối tượng</option>
+							{d.traineeTypes.map((t) => (
+								<option
+									key={t.id}
+									value={t.id}
+								>
+									{t.name}
+								</option>
+							))}
+							<option value='none'>Chưa gán đối tượng</option>
+						</select>
+						<select
+							className={`${styles.filterSelect} ${d.statusFilter !== 'all' ? styles.filterActive : ''}`}
+							value={d.statusFilter}
+							onChange={(e) => d.handleStatusFilter(e.target.value as ProgramStatusFilter)}
+						>
+							<option value='all'>Tất cả trạng thái</option>
+							{Object.entries(PROGRAM_STATUS_LABELS).map(([v, label]) => (
+								<option
+									key={v}
+									value={v}
+								>
+									{label}
+								</option>
+							))}
+						</select>
+						{d.hasActiveFilter && (
+							<button
+								type='button'
+								className={styles.clearSelectionBtn}
+								onClick={d.clearFilters}
+							>
+								Xoá lọc
+							</button>
+						)}
 						<div className={styles.pageSizeWrap}>
 							<label className={styles.pageSizeLabel}>Hiển thị</label>
 							<select
@@ -133,6 +191,7 @@ export default function TrainingPrograms() {
 							<th className={styles.th}>Chương trình</th>
 							<th className={styles.th}>Khoa / Phòng</th>
 							<th className={styles.th}>Đối tượng</th>
+							<th className={styles.th}>Trạng thái</th>
 							<th className={`${styles.th} ${styles.thRight}`}>Thao tác</th>
 						</tr>
 					</thead>
@@ -140,17 +199,17 @@ export default function TrainingPrograms() {
 						{d.isLoadingData ? (
 							<SkeletonTable
 								rows={d.pageSize || 8}
-								cols={7}
+								cols={8}
 							/>
 						) : d.filtered.length === 0 ? (
 							<tr>
-								<td colSpan={7}>
+								<td colSpan={8}>
 									<div className={styles.emptyState}>
 										<div className={styles.emptyTitle}>
 											Không tìm thấy chương trình đào tạo
 										</div>
 										<div className={styles.emptyDesc}>
-											{d.search ? 'Thử thay đổi từ khoá tìm kiếm' : 'Chưa có chương trình nào'}
+											{d.hasActiveFilter ? 'Thử thay đổi từ khoá hoặc bộ lọc' : 'Chưa có chương trình nào'}
 										</div>
 									</div>
 								</td>
@@ -198,6 +257,23 @@ export default function TrainingPrograms() {
 												<span className={styles.badge}>{p.trainee_type_name}</span>
 											) : (
 												'—'
+											)}
+										</td>
+										<td className={styles.td}>
+											{getProgramStatus(p) === 'active' ? (
+												<Badge
+													tone='green'
+													dot
+												>
+													{PROGRAM_STATUS_LABELS.active} · {p.course_count} khoá
+												</Badge>
+											) : (
+												<Badge
+													tone='gray'
+													dot
+												>
+													{PROGRAM_STATUS_LABELS.unused}
+												</Badge>
 											)}
 										</td>
 										<td className={`${styles.td} ${styles.tdActions}`}>

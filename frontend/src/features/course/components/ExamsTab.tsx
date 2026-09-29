@@ -9,8 +9,10 @@ import type {
 	ExamPaperQuestion,
 	ExamQuestion,
 	PaperStatus,
+	PaperType,
 	QuestionType,
 } from '../../exam/types/exam.type';
+import { PAPER_QUESTION_TYPE } from '../../exam/types/exam.type';
 import { SearchableSelect } from '../../../shared/components/Input/SearchableSelect';
 import styles from '../pages/Courses.module.css';
 
@@ -18,6 +20,10 @@ const STATUS_LABEL: Record<PaperStatus, string> = {
 	draft: 'Nháp',
 	published: 'Đang mở',
 	closed: 'Đã đóng',
+};
+const PAPER_TYPE_LABEL: Record<PaperType, string> = {
+	multiple_choice: 'Trắc nghiệm',
+	essay: 'Tự luận',
 };
 const ATTEMPT_STATUS_LABEL: Record<AttemptStatus, string> = {
 	in_progress: 'Đang làm',
@@ -80,9 +86,14 @@ export function ExamsTab({ courseId }: { courseId: string }) {
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [courseId]);
 
-	const openBuilder = (paper: ExamPaper | null) => {
-		setEditingPaper(paper);
-		setView('builder');
+	const openBuilder = async (paper: ExamPaper | null) => {
+		try {
+			// Dòng danh sách không kèm câu hỏi — lưu với questions rỗng sẽ xoá sạch đề
+			setEditingPaper(paper ? await examApi.getPaper(paper.id) : null);
+			setView('builder');
+		} catch {
+			setError('Không thể tải đề thi');
+		}
 	};
 
 	const openAttempts = async (paper: ExamPaper) => {
@@ -177,7 +188,7 @@ export function ExamsTab({ courseId }: { courseId: string }) {
 			<div className={styles.subToolbar}>
 				<button
 					className={styles.btnGhost}
-					onClick={() => openBuilder(null)}
+					onClick={() => void openBuilder(null)}
 				>
 					<IcPlus /> Tạo đề thi mới
 				</button>
@@ -197,7 +208,8 @@ export function ExamsTab({ courseId }: { courseId: string }) {
 							<div className={styles.subRowMain}>
 								<div className={styles.subRowName}>{p.title}</div>
 								<div style={{ fontSize: 12, color: 'var(--color-gray-500)' }}>
-									{STATUS_LABEL[p.status]} · {p.question_count} câu · {p.duration_minutes} phút ·{' '}
+									{p.paper_type ? PAPER_TYPE_LABEL[p.paper_type] : 'Hỗn hợp'} · {STATUS_LABEL[p.status]} ·{' '}
+									{p.question_count} câu · {p.duration_minutes} phút ·{' '}
 									{p.attempt_count} lượt làm
 								</div>
 							</div>
@@ -210,7 +222,7 @@ export function ExamsTab({ courseId }: { courseId: string }) {
 								</button>
 								<button
 									className={styles.btnGhost}
-									onClick={() => openBuilder(p)}
+									onClick={() => void openBuilder(p)}
 								>
 									Sửa
 								</button>
@@ -249,6 +261,9 @@ function ExamBuilder({
 	const [title, setTitle] = useState(paper?.title ?? '');
 	const [duration, setDuration] = useState(String(paper?.duration_minutes ?? 45));
 	const [status, setStatus] = useState<PaperStatus>(paper?.status ?? 'draft');
+	// null chỉ xảy ra với đề cũ (hỗn hợp) — đề mới luôn chọn 1 loại
+	const [paperType, setPaperType] = useState<PaperType | null>(paper ? paper.paper_type : 'multiple_choice');
+	const allowedType = paperType ? PAPER_QUESTION_TYPE[paperType] : null;
 	const [questions, setQuestions] = useState<DraftQuestion[]>(
 		(paper?.questions ?? []).map(toDraft),
 	);
@@ -260,7 +275,7 @@ function ExamBuilder({
 	const [showNewForm, setShowNewForm] = useState(false);
 	const [newQ, setNewQ] = useState<DraftQuestion>({
 		tempId: '',
-		question_type: 'single_choice',
+		question_type: allowedType ?? 'single_choice',
 		question_text: '',
 		options: [''],
 		correct_option: '',
@@ -274,8 +289,15 @@ function ExamBuilder({
 			.catch(() => {});
 	}, []);
 
+	const changePaperType = (t: PaperType) => {
+		setPaperType(t);
+		setQuestions((prev) => prev.filter((q) => q.question_type === PAPER_QUESTION_TYPE[t]));
+		setNewQ((f) => ({ ...f, question_type: PAPER_QUESTION_TYPE[t] }));
+		setPickId('');
+	};
+
 	const bankOptions = bank
-		.filter((b) => !questions.some((q) => q.id === b.id))
+		.filter((b) => (!allowedType || b.question_type === allowedType) && !questions.some((q) => q.id === b.id))
 		.map((b) => ({ id: b.id, name: `${b.question_text.slice(0, 60)}${b.question_text.length > 60 ? '…' : ''}` }));
 
 	const addFromBank = () => {
@@ -308,7 +330,7 @@ function ExamBuilder({
 			});
 			setQuestions((prev) => [...prev, toDraft({ ...created, link_id: created.id, sort_order: 0 })]);
 			setBank((prev) => [created, ...prev]);
-			setNewQ({ tempId: '', question_type: 'single_choice', question_text: '', options: [''], correct_option: '', points: '1' });
+			setNewQ({ tempId: '', question_type: allowedType ?? 'single_choice', question_text: '', options: [''], correct_option: '', points: '1' });
 			setShowNewForm(false);
 		} catch (err) {
 			setError(err instanceof Error ? err.message : 'Tạo câu hỏi thất bại');
@@ -326,9 +348,11 @@ function ExamBuilder({
 		setError('');
 		try {
 			const question_ids = questions.map((q) => q.id).filter((id): id is string => !!id);
+			const paper_type = paperType ?? undefined;
 			if (paper) {
 				await examApi.updatePaper(paper.id, {
 					title: title.trim(),
+					paper_type,
 					duration_minutes: Number(duration) || 45,
 					status,
 					question_ids,
@@ -337,6 +361,7 @@ function ExamBuilder({
 				await examApi.createPaper({
 					course_id: courseId,
 					title: title.trim(),
+					paper_type,
 					duration_minutes: Number(duration) || 45,
 					status,
 					question_ids,
@@ -368,6 +393,23 @@ function ExamBuilder({
 					onChange={(e) => setTitle(e.target.value)}
 					style={{ flex: 2 }}
 				/>
+				<select
+					className={styles.subSelect}
+					value={paperType ?? ''}
+					onChange={(e) => changePaperType(e.target.value as PaperType)}
+					title='Loại đề — chỉ nhận câu hỏi cùng loại'
+				>
+					{!paperType && (
+						<option
+							value=''
+							disabled
+						>
+							Hỗn hợp (đề cũ)
+						</option>
+					)}
+					<option value='multiple_choice'>Đề trắc nghiệm</option>
+					<option value='essay'>Đề tự luận</option>
+				</select>
 				<input
 					className={styles.subInput}
 					type='number'
@@ -455,6 +497,7 @@ function ExamBuilder({
 						<select
 							className={styles.subSelect}
 							value={newQ.question_type}
+							disabled={!!allowedType}
 							onChange={(e) =>
 								setNewQ((f) => ({ ...f, question_type: e.target.value as QuestionType }))
 							}

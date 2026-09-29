@@ -6,6 +6,7 @@ const { splitList, inClause, buildWhere } = require('../utils/sqlFilters');
 const { assertTopicActionWindow } = require('./deadlineGuard');
 const { scopeOf, hasPermission } = require('../middlewares/auth');
 const { findActiveUserIdsWhere } = require('./permissionService');
+const roundService = require('./roundService');
 
 // Phạm vi xem đề tài: không có quyền topics nào ⇒ chỉ đề tài mình tham gia.
 const topicScope = (actor) => scopeOf(actor, 'topics') ?? 'own';
@@ -317,32 +318,11 @@ const setRelatedDepartments = async (topicId, ids) => {
   `);
 };
 
-// "Cấp độ ăn theo đợt": cấp độ đề tài phải thuộc danh sách cấu hình cho loại
-// đợt của round. Loại đợt chưa cấu hình cấp độ nào ⇒ bỏ qua (fallback).
+// "Cấp độ ăn theo đợt": cấp độ đề tài phải thuộc danh sách cấu hình của đợt
+// (hoặc của loại đợt nếu đợt chưa cấu hình). Chưa cấu hình gì ⇒ bỏ qua (fallback).
 const assertLevelForRound = async (roundId, levelId, articleType) => {
 	if (articleType === 'bai_bao') return; // bài báo không có cấp độ
-	const pool = await getPool();
-	const rtId = (
-		await pool
-			.request()
-			.input('rid', sql.VarChar(10), roundId)
-			.query('SELECT round_type_id FROM research_rounds WHERE id = @rid')
-	).recordset[0]?.round_type_id;
-	let allowed = [];
-	if (rtId) {
-		try {
-			allowed = (
-				await pool
-					.request()
-					.input('rt', sql.VarChar(6), rtId)
-					.query(
-						'SELECT level_id FROM round_type_levels WHERE round_type_id = @rt',
-					)
-			).recordset.map((x) => x.level_id);
-		} catch {
-			return; // bảng chưa tồn tại (migration chưa chạy)
-		}
-	}
+	const allowed = await roundService.getAllowedLevelIds(roundId);
 	if (allowed.length === 0) return;
 	if (!levelId || !allowed.includes(levelId)) {
 		const err = new Error('Vui lòng chọn cấp độ đề tài hợp lệ cho đợt này.');

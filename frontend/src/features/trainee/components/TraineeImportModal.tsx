@@ -1,5 +1,6 @@
-import { useRef, useState } from 'react';
+import { useState } from 'react';
 import { CheckSvg, InfoSvg, UploadSvg, XSvg } from '@/assets/icons';
+import { FileDropzone } from '@/shared/components';
 import { InlineLoading } from '@/shared/components/Loading';
 import { importTraineesExcel } from '../api/traineeApi';
 import type { TraineeImportResult } from '../types/trainee.type';
@@ -14,7 +15,6 @@ export function TraineeImportModal({ onClose, onDone }: { onClose: () => void; o
 	const [error, setError] = useState('');
 	const [preview, setPreview] = useState<TraineeImportResult | null>(null);
 	const [result, setResult] = useState<TraineeImportResult | null>(null);
-	const fileInputRef = useRef<HTMLInputElement>(null);
 
 	const runDryRun = async (f: File) => {
 		setLoading(true);
@@ -81,12 +81,11 @@ export function TraineeImportModal({ onClose, onDone }: { onClose: () => void; o
 
 							<div className={styles.formGroup}>
 								<label className={styles.formLabel}>File Excel (.xlsx)</label>
-								<input
-									ref={fileInputRef}
-									type='file'
+								<FileDropzone
+									value={file}
+									onChange={onPickFile}
 									accept='.xlsx'
-									className={styles.formInput}
-									onChange={(e) => onPickFile(e.target.files?.[0] ?? null)}
+									disabled={loading}
 								/>
 							</div>
 

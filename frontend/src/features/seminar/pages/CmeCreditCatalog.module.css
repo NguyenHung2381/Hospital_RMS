@@ -1,0 +1,215 @@
+/* Bảng/modal/form dùng lại từ training-catalog/pages/TrainingCatalog.module.css —
+ * file này chỉ chứa phần riêng của trang Danh mục quy đổi CME. */
+
+.headerActions {
+	display: flex;
+	gap: var(--space-2);
+	flex-wrap: wrap;
+}
+
+.btnOutline {
+	display: flex;
+	align-items: center;
+	gap: var(--space-2);
+	padding: var(--space-2) var(--space-4);
+	background: var(--color-white);
+	color: var(--color-primary-dark);
+	border: 1px solid var(--color-primary);
+	border-radius: var(--radius-lg);
+	font-family: var(--font-body);
+	font-size: var(--font-size-sm);
+	font-weight: var(--font-weight-bold);
+	cursor: pointer;
+	white-space: nowrap;
+}
+.btnOutline:hover {
+	background: var(--color-primary-pale);
+}
+.btnOutline svg {
+	width: 15px;
+	height: 15px;
+}
+
+.toolbarCard,
+.groupCard {
+	margin-bottom: var(--space-4);
+}
+
+/* ── Khối nhóm ─────────────────────────── */
+.groupHeader {
+	display: flex;
+	align-items: center;
+	gap: var(--space-3);
+	padding: var(--space-3) var(--space-4);
+	border-bottom: 1px solid var(--color-gray-100);
+	background: var(--color-gray-50);
+}
+.groupIdx {
+	flex-shrink: 0;
+	width: 30px;
+	height: 30px;
+	border-radius: var(--radius-lg);
+	background: var(--color-primary-pale);
+	color: var(--color-primary-dark);
+	font-weight: var(--font-weight-bold);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+.groupInfo {
+	flex: 1;
+	min-width: 0;
+}
+.groupName {
+	font-weight: var(--font-weight-bold);
+	color: var(--color-gray-800);
+}
+.groupMeta {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--space-2);
+	margin-top: 2px;
+	font-size: 12px;
+	color: var(--color-gray-500);
+}
+.groupDesc {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	max-width: 420px;
+}
+
+.btnAddInline {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+	height: 30px;
+	padding: 0 var(--space-3);
+	border: 1px dashed var(--color-primary);
+	border-radius: var(--radius-md);
+	background: transparent;
+	color: var(--color-primary-dark);
+	font-size: 12px;
+	font-weight: var(--font-weight-bold);
+	cursor: pointer;
+	white-space: nowrap;
+}
+.btnAddInline:hover {
+	background: var(--color-primary-pale);
+}
+.btnAddInline svg {
+	width: 13px;
+	height: 13px;
+}
+
+/* ── Bảng ──────────────────────────────── */
+.code {
+	display: inline-block;
+	padding: 1px 6px;
+	border-radius: var(--radius-sm);
+	background: var(--color-gray-100);
+	color: var(--color-gray-700);
+	font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+	font-size: 11.5px;
+	white-space: nowrap;
+}
+.colCode {
+	width: 170px;
+}
+.colMethod {
+	width: 130px;
+}
+.colValue {
+	width: 150px;
+}
+.subText {
+	margin-top: 2px;
+	font-size: 12px;
+	color: var(--color-gray-500);
+}
+.tdValue {
+	text-align: right;
+	font-weight: var(--font-weight-bold);
+	font-variant-numeric: tabular-nums;
+	white-space: nowrap;
+	color: var(--color-gray-800);
+}
+.muted {
+	font-weight: normal;
+	font-style: italic;
+	color: var(--color-gray-400);
+}
+.emptyRow {
+	text-align: center;
+	color: var(--color-gray-400);
+	font-size: 13px;
+}
+
+/* ── Form ──────────────────────────────── */
+.modalWide {
+	max-width: 600px;
+}
+.formRow {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: var(--space-3);
+}
+.codeInput {
+	font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+	text-transform: uppercase;
+}
+.codeInput::placeholder {
+	font-family: var(--font-body);
+	text-transform: none;
+}
+
+.methodGroup {
+	display: grid;
+	grid-template-columns: repeat(3, 1fr);
+	gap: var(--space-2);
+}
+.methodBtn {
+	height: 38px;
+	border: 1px solid var(--color-gray-200);
+	border-radius: var(--radius-md);
+	background: var(--color-white);
+	color: var(--color-gray-700);
+	font-family: var(--font-body);
+	font-size: 13px;
+	cursor: pointer;
+}
+.methodBtn:hover {
+	border-color: var(--color-primary);
+}
+.methodBtnActive {
+	border-color: var(--color-primary);
+	background: var(--color-primary-pale);
+	color: var(--color-primary-dark);
+	font-weight: var(--font-weight-bold);
+}
+.hint {
+	margin-top: 6px;
+	font-size: 12px;
+	color: var(--color-gray-500);
+}
+.preview {
+	margin: calc(var(--space-2) * -1) 0 var(--space-4);
+	padding: var(--space-2) var(--space-3);
+	border-radius: var(--radius-md);
+	background: var(--color-primary-pale);
+	color: var(--color-primary-dark);
+	font-size: 12.5px;
+}
+
+@media (max-width: 560px) {
+	.formRow {
+		grid-template-columns: 1fr;
+	}
+	.groupHeader {
+		flex-wrap: wrap;
+	}
+	.groupDesc {
+		max-width: 100%;
+	}
+}

@@ -11,7 +11,9 @@ import {
 import type { DetailTab } from '../components/TrainingProgramDetailModal';
 import {
 	EMPTY_FORM,
+	getProgramStatus,
 	type ModalType,
+	type ProgramStatusFilter,
 	type TrainingProgram,
 	type TrainingProgramFormData,
 } from '../types/trainingProgram.type';
@@ -27,6 +29,9 @@ export function useTrainingPrograms() {
 	const [traineeTypes, setTraineeTypes] = useState<SimpleItem[]>([]);
 	const [isLoadingData, setIsLoadingData] = useState(true);
 	const [search, setSearch] = useState('');
+	const [departmentFilter, setDepartmentFilter] = useState('all');
+	const [traineeTypeFilter, setTraineeTypeFilter] = useState('all');
+	const [statusFilter, setStatusFilter] = useState<ProgramStatusFilter>('all');
 	const [modal, setModal] = useState<ModalType>(null);
 	const [editingProgram, setEditingProgram] = useState<TrainingProgram | null>(null);
 	const [deletingProgram, setDeletingProgram] = useState<TrainingProgram | null>(null);
@@ -58,13 +63,35 @@ export function useTrainingPrograms() {
 		apiClient.get<{ data: SimpleItem[] }>('/trainee-types?limit=0').then((r) => setTraineeTypes(r.data)).catch(() => {});
 	}, []);
 
+	// Chỉ đưa vào dropdown các khoa đang thực sự phụ trách ít nhất 1 chương trình,
+	// tránh danh sách dài toàn bộ phòng ban.
+	const departmentOptions = useMemo(() => {
+		const map = new Map<string, string>();
+		for (const p of programs) if (p.department_id) map.set(p.department_id, p.department_name ?? p.department_id);
+		return [...map].map(([id, name]) => ({ id, name })).sort((a, b) => a.name.localeCompare(b.name, 'vi'));
+	}, [programs]);
+
 	const filtered = useMemo(() => {
-		if (!search.trim()) return programs;
-		const q = search.toLowerCase();
-		return programs.filter(
-			(p) => p.name.toLowerCase().includes(q) || (p.description ?? '').toLowerCase().includes(q),
-		);
-	}, [programs, search]);
+		const q = search.trim().toLowerCase();
+		return programs.filter((p) => {
+			if (
+				q &&
+				!p.name.toLowerCase().includes(q) &&
+				!(p.code ?? '').toLowerCase().includes(q) &&
+				!(p.description ?? '').toLowerCase().includes(q)
+			)
+				return false;
+			if (departmentFilter === 'none' ? p.department_id : departmentFilter !== 'all' && p.department_id !== departmentFilter)
+				return false;
+			if (traineeTypeFilter === 'none' ? p.trainee_type_id : traineeTypeFilter !== 'all' && p.trainee_type_id !== traineeTypeFilter)
+				return false;
+			if (statusFilter !== 'all' && getProgramStatus(p) !== statusFilter) return false;
+			return true;
+		});
+	}, [programs, search, departmentFilter, traineeTypeFilter, statusFilter]);
+
+	const hasActiveFilter =
+		!!search.trim() || departmentFilter !== 'all' || traineeTypeFilter !== 'all' || statusFilter !== 'all';
 
 	const totalPages = pageSize === 0 ? 1 : Math.ceil(filtered.length / pageSize);
 	const safePage = Math.min(page, totalPages || 1);
@@ -77,6 +104,29 @@ export function useTrainingPrograms() {
 
 	const handleSearch = useCallback((v: string) => {
 		setSearch(v);
+		setPage(1);
+	}, []);
+
+	const handleDepartmentFilter = useCallback((v: string) => {
+		setDepartmentFilter(v);
+		setPage(1);
+	}, []);
+
+	const handleTraineeTypeFilter = useCallback((v: string) => {
+		setTraineeTypeFilter(v);
+		setPage(1);
+	}, []);
+
+	const handleStatusFilter = useCallback((v: ProgramStatusFilter) => {
+		setStatusFilter(v);
+		setPage(1);
+	}, []);
+
+	const clearFilters = useCallback(() => {
+		setSearch('');
+		setDepartmentFilter('all');
+		setTraineeTypeFilter('all');
+		setStatusFilter('all');
 		setPage(1);
 	}, []);
 
@@ -167,6 +217,11 @@ export function useTrainingPrograms() {
 		traineeTypes,
 		isLoadingData,
 		search,
+		departmentFilter,
+		traineeTypeFilter,
+		statusFilter,
+		departmentOptions,
+		hasActiveFilter,
 		modal,
 		editingProgram,
 		deletingProgram,
@@ -189,6 +244,10 @@ export function useTrainingPrograms() {
 		openDetail,
 		setPage,
 		handleSearch,
+		handleDepartmentFilter,
+		handleTraineeTypeFilter,
+		handleStatusFilter,
+		clearFilters,
 		handlePageSize,
 		handleAdd,
 		handleEdit,

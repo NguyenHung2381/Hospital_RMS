@@ -8,43 +8,45 @@ import {
 	XAxis,
 	YAxis,
 } from 'recharts';
-import type { ModuleOverviewItem } from '../hooks/useModuleOverview';
 import { CHART_COLORS } from '../utils/dashboardHelpers';
 import styles from '../pages/Dashboard.module.css';
 
-interface ModuleOverviewChartProps {
-	topicsTotal: number;
-	topicsLoading: boolean;
-	items: ModuleOverviewItem[];
+interface HorizontalBarChartProps {
+	title: string;
+	subtitle?: string;
+	data: { label: string; value: number }[];
 	loading: boolean;
+	error?: boolean;
+	unitLabel?: string;
+	labelWidth?: number;
 }
 
-export function ModuleOverviewChart({
-	topicsTotal,
-	topicsLoading,
-	items,
+// Biểu đồ cột ngang xếp hạng 1 chuỗi số liệu (vd. đề tài theo cấp quản lý).
+export function HorizontalBarChart({
+	title,
+	subtitle,
+	data,
 	loading,
-}: ModuleOverviewChartProps) {
-	const data = [{ label: 'Đề tài NCKH', value: topicsTotal }, ...items];
-	const isLoading = loading || topicsLoading;
+	error,
+	unitLabel = 'bản ghi',
+	labelWidth = 150,
+}: HorizontalBarChartProps) {
 	const hasData = data.some((d) => d.value > 0);
 
 	return (
 		<div className={styles.chartCard}>
 			<div className={styles.chartCardHeader}>
 				<div>
-					<div className={styles.chartTitle}>Quy mô dữ liệu các phân hệ nghiệp vụ</div>
-					<div className={styles.chartSubtitle}>
-						Tổng hợp khối lượng dữ liệu đề tài, đào tạo và nhân sự y tế
-					</div>
+					<div className={styles.chartTitle}>{title}</div>
+					{subtitle && <div className={styles.chartSubtitle}>{subtitle}</div>}
 				</div>
 			</div>
-			{isLoading ? (
+			{loading ? (
 				<div
 					className={styles.skeleton}
 					style={{ height: 260, borderRadius: 12 }}
 				/>
-			) : !hasData ? (
+			) : error || !hasData ? (
 				<div
 					style={{
 						height: 260,
@@ -55,7 +57,7 @@ export function ModuleOverviewChart({
 						fontSize: 13,
 					}}
 				>
-					Chưa có dữ liệu
+					{error ? 'Không tải được dữ liệu' : 'Chưa có dữ liệu'}
 				</div>
 			) : (
 				<ResponsiveContainer
@@ -82,13 +84,13 @@ export function ModuleOverviewChart({
 						<YAxis
 							type='category'
 							dataKey='label'
-							width={150}
+							width={labelWidth}
 							tick={{ fontSize: 12, fill: '#374151' }}
 							axisLine={false}
 							tickLine={false}
 						/>
 						<Tooltip
-							formatter={(v) => [`${v} bản ghi`, 'Số lượng']}
+							formatter={(v) => [`${v} ${unitLabel}`, 'Số lượng']}
 							contentStyle={{
 								borderRadius: 8,
 								fontSize: 12,

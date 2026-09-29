@@ -23,7 +23,7 @@ const getTraineeTypes = async (req, res, next) => {
 	}
 };
 
-// Tra cứu kết quả học tập: phải khớp CẢ số CCCD lẫn ngày sinh — chỉ có CCCD
+// Tra cứu kết quả học tập: phải khớp CẢ số CCCD, ngày sinh lẫn họ tên — chỉ có CCCD
 // (12 số, có cấu trúc: mã tỉnh, giới tính, năm sinh) thì dò quét được họ tên,
 // điểm, số chứng chỉ của người khác. Ngoài giới hạn theo IP ở route, mỗi số
 // CCCD chỉ được tra LOOKUP_PER_ID_MAX lần/giờ dù đổi IP.
@@ -35,7 +35,7 @@ const lookup = async (req, res, next) => {
 		if (!(await attempts.hit('public-lookup', nationalId, LOOKUP_PER_ID_MAX, 60 * 60))) {
 			return error(res, 'Số CCCD/CMND này đã được tra cứu quá nhiều lần. Vui lòng thử lại sau 1 giờ.', 429);
 		}
-		success(res, await service.lookupResults(nationalId, req.query.dob));
+		success(res, await service.lookupResults(nationalId, req.query.dob, req.query.full_name));
 	} catch (err) {
 		next(err);
 	}
@@ -52,7 +52,7 @@ const register = async (req, res, next) => {
 		if (!(await verifyCaptcha(req.body.captcha_token, req.body.captcha_answer, req.ip))) {
 			return error(res, 'Mã xác nhận không đúng hoặc đã hết hạn, vui lòng thử lại.', 400);
 		}
-		const result = await service.register(req.body);
+		const result = await service.register(req.body, req.files);
 		created(res, result, 'Đăng ký khóa học thành công, vui lòng chờ duyệt.');
 	} catch (err) {
 		next(err);
@@ -62,6 +62,16 @@ const register = async (req, res, next) => {
 const getOpenTopicRounds = async (req, res, next) => {
 	try {
 		success(res, await service.getOpenTopicRounds());
+	} catch (err) {
+		next(err);
+	}
+};
+
+const getTopicRoundByToken = async (req, res, next) => {
+	try {
+		const round = await service.getTopicRoundByToken(req.params.token);
+		if (!round) return error(res, 'Liên kết đăng ký không hợp lệ hoặc đợt đã bị xoá.', 404);
+		success(res, round);
 	} catch (err) {
 		next(err);
 	}
@@ -101,7 +111,7 @@ const registerTopic = async (req, res, next) => {
 		if (!(await verifyCaptcha(req.body.captcha_token, req.body.captcha_answer, req.ip))) {
 			return error(res, 'Mã xác nhận không đúng hoặc đã hết hạn, vui lòng thử lại.', 400);
 		}
-		const result = await service.registerTopic(req.body);
+		const result = await service.registerTopic(req.body, req.files);
 		created(res, result, 'Đăng ký đề tài thành công, vui lòng chờ khoa/phòng và hội đồng xét duyệt.');
 	} catch (err) {
 		next(err);
@@ -140,6 +150,7 @@ module.exports = {
 	lookup,
 	register,
 	getOpenTopicRounds,
+	getTopicRoundByToken,
 	getPublicCategories,
 	getPublicDepartments,
 	getPublicLevels,

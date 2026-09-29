@@ -1,11 +1,13 @@
-import { useRef, useState } from 'react';
-import { CheckSvg, InfoSvg, UploadSvg, XSvg } from '@/assets/icons';
-import { Badge } from '@/shared/components';
-import { importParticipantsExcel } from '../api/seminarApi';
+import { useState } from 'react';
+import { CheckSvg, DownloadSvg, InfoSvg, UploadSvg, XSvg } from '@/assets/icons';
+import { Badge, FileDropzone } from '@/shared/components';
+import { downloadParticipantImportTemplate, importParticipantsExcel } from '../api/seminarApi';
+import { saveBlob } from '../utils/saveBlob';
 import {
 	PARTICIPATION_LABELS,
 	SOURCE_LABELS,
 	type ParticipantImportResult,
+	type ParticipationType,
 } from '../types/seminar.type';
 import styles from '../pages/Seminar.module.css';
 
@@ -30,12 +32,14 @@ export function ParticipantImportModal({
 	seminarId,
 	grantsCme,
 	eventYear,
+	defaultCredits,
 	onClose,
 	onDone,
 }: {
 	seminarId: string;
 	grantsCme: boolean;
 	eventYear: number | null;
+	defaultCredits: number | null;
 	onClose: () => void;
 	onDone: () => void;
 }) {
@@ -45,14 +49,27 @@ export function ParticipantImportModal({
 	const [error, setError] = useState('');
 	const [preview, setPreview] = useState<ParticipantImportResult | null>(null);
 	const [result, setResult] = useState<ParticipantImportResult | null>(null);
-	const fileInputRef = useRef<HTMLInputElement>(null);
+	const [downloading, setDownloading] = useState(false);
+	// Số tín chỉ (chuỗi đang gõ) cho các dòng để trống cột "Số tín chỉ", theo vai trò
+	const [roleCredits, setRoleCredits] = useState<Partial<Record<ParticipationType, string>>>({});
 
 	const runDryRun = async (f: File, issue: boolean) => {
 		setLoading(true);
 		setError('');
 		setPreview(null);
 		try {
-			setPreview(await importParticipantsExcel(seminarId, f, true, issue));
+			const res = await importParticipantsExcel(seminarId, f, true, issue);
+			setPreview(res);
+			// Điền sẵn tín chỉ mặc định của hội thảo cho vai trò mới xuất hiện (giữ số đã sửa)
+			setRoleCredits((prev) => {
+				const next = { ...prev };
+				for (const r of res.rows ?? []) {
+					if (r.cme_credits == null && next[r.participation_type] === undefined) {
+						next[r.participation_type] = defaultCredits != null ? String(defaultCredits) : '';
+					}
+				}
+				return next;
+			});
 		} catch (e) {
 			setError(e instanceof Error ? e.message : 'Đọc file thất bại');
 		} finally {
@@ -64,6 +81,21 @@ export function ParticipantImportModal({
 		setFile(f);
 		setResult(null);
 		if (f) runDryRun(f, issueCme);
+		else {
+			setPreview(null);
+			setError('');
+		}
+	};
+
+	const downloadTemplate = async () => {
+		setDownloading(true);
+		try {
+			saveBlob(await downloadParticipantImportTemplate(), 'mau-nhap-nguoi-tham-du.xlsx');
+		} catch (e) {
+			setError(e instanceof Error ? e.message : 'Tải file mẫu thất bại');
+		} finally {
+			setDownloading(false);
+		}
 	};
 
 	const onToggleIssue = (next: boolean) => {
@@ -77,7 +109,13 @@ export function ParticipantImportModal({
 		setLoading(true);
 		setError('');
 		try {
-			const res = await importParticipantsExcel(seminarId, file, false, issueCme);
+			const res = await importParticipantsExcel(
+				seminarId,
+				file,
+				false,
+				issueCme,
+				creditsPayload,
+			);
 			setResult(res);
 			onDone();
 		} catch (e) {
@@ -89,6 +127,28 @@ export function ParticipantImportModal({
 
 	const rows = preview?.rows ?? [];
 	const s = preview?.summary;
+
+	const parseCredit = (v: string | undefined) => {
+		const n = Number(String(v ?? '').replace(',', '.').trim());
+		return v != null && v.trim() !== '' && Number.isFinite(n) && n >= 0 && n < 1000 ? n : null;
+	};
+	// Vai trò có dòng để trống tín chỉ trong file → cần nhập mặc định
+	const blankByRole = rows.reduce<Partial<Record<ParticipationType, number>>>((acc, r) => {
+		if (r.cme_credits == null) acc[r.participation_type] = (acc[r.participation_type] ?? 0) + 1;
+		return acc;
+	}, {});
+	const blankRoles = Object.keys(blankByRole) as ParticipationType[];
+	const creditsPayload = Object.fromEntries(
+		blankRoles
+			.map((role) => [role, parseCredit(roleCredits[role])] as const)
+			.filter(([, n]) => n != null),
+	) as Partial<Record<ParticipationType, number>>;
+	const invalidCredit = blankRoles.some(
+		(role) => (roleCredits[role] ?? '').trim() !== '' && parseCredit(roleCredits[role]) == null,
+	);
+	const effectiveCredits = (r: (typeof rows)[number]) =>
+		r.cme_credits ?? creditsPayload[r.participation_type] ?? null;
+	const withCredits = rows.filter((r) => effectiveCredits(r) != null).length;
 
 	return (
 		<div
@@ -119,17 +179,29 @@ export function ParticipantImportModal({
 									sinh, Giới tính, Đơn vị công tác, Khoa/phòng, MNV, TĐCM, Số tín
 									chỉ (chấp nhận "3,5"), Vai trò, Ghi chú. Cán bộ nội viện tự khớp
 									theo MNV rồi họ tên; không khớp được sẽ lưu dạng ngoại viện.
+									Mỗi người có thể có <b>số tín chỉ riêng</b> — ô để trống sẽ lấy
+									mặc định theo vai trò bên dưới.
 								</span>
 							</div>
 
+							<button
+								type='button'
+								className={styles.btnGhost}
+								onClick={downloadTemplate}
+								disabled={downloading}
+								style={{ marginBottom: 12 }}
+							>
+								{downloading ? <span className={styles.spinner} /> : <DownloadSvg />}
+								Tải file mẫu
+							</button>
+
 							<div className={styles.formGroup}>
 								<label className={styles.formLabel}>File Excel (.xlsx)</label>
-								<input
-									ref={fileInputRef}
-									type='file'
+								<FileDropzone
+									value={file}
+									onChange={onPickFile}
 									accept='.xlsx'
-									className={styles.formInput}
-									onChange={(e) => onPickFile(e.target.files?.[0] ?? null)}
+									disabled={loading}
 								/>
 							</div>
 
@@ -169,9 +241,55 @@ export function ParticipantImportModal({
 										<span>
 											Đọc được <b>{s.total}</b> người · {s.matched} khớp cán bộ
 											nội viện · {s.internal} nội viện · {s.external} ngoại viện
-											· {s.with_credits} dòng có số tín chỉ.
+											· {withCredits}/{s.total} người có số tín chỉ.
 										</span>
 									</div>
+
+									{blankRoles.length > 0 && (
+										<div className={styles.creditsBox}>
+											<div className={styles.creditsTitle}>
+												Số tín chỉ cho người để trống cột "Số tín chỉ"
+											</div>
+											<div className={styles.creditsGrid}>
+												{blankRoles.map((role) => {
+													const v = roleCredits[role] ?? '';
+													const bad = v.trim() !== '' && parseCredit(v) == null;
+													return (
+														<label
+															key={role}
+															className={styles.creditsItem}
+														>
+															<span>
+																{PARTICIPATION_LABELS[role]}{' '}
+																<span className={styles.muted}>({blankByRole[role]} người)</span>
+															</span>
+															<input
+																className={`${styles.formInput} ${bad ? styles.inputError : ''}`}
+																inputMode='decimal'
+																placeholder='Để trống'
+																value={v}
+																onChange={(e) =>
+																	setRoleCredits((m) => ({ ...m, [role]: e.target.value }))
+																}
+															/>
+														</label>
+													);
+												})}
+											</div>
+											<div className={styles.modalSub}>
+												Người đã có số tín chỉ trong file giữ nguyên số của mình. Để trống = chưa
+												ghi tín chỉ{issueCme && defaultCredits != null
+													? ` (khi cấp CME sẽ lấy mặc định của hội thảo: ${defaultCredits})`
+													: ''}
+												.
+											</div>
+											{invalidCredit && (
+												<div className={styles.fieldError}>
+													Số tín chỉ phải là số ≥ 0 (VD: 3 hoặc 3,5).
+												</div>
+											)}
+										</div>
+									)}
 
 									{preview!.warnings.length > 0 && (
 										<ul className={styles.warnList}>
@@ -240,7 +358,14 @@ export function ParticipantImportModal({
 														</td>
 														<td>{fmtDob(r)}</td>
 														<td>
-															{r.cme_credits ?? (
+															{r.cme_credits != null ? (
+																r.cme_credits
+															) : effectiveCredits(r) != null ? (
+																<span title='Mặc định theo vai trò'>
+																	{effectiveCredits(r)}{' '}
+																	<span className={styles.muted}>(mặc định)</span>
+																</span>
+															) : (
 																<span className={styles.muted}>—</span>
 															)}
 														</td>
@@ -298,7 +423,7 @@ export function ParticipantImportModal({
 						<button
 							className={styles.btnPrimary}
 							onClick={commit}
-							disabled={loading || !preview || rows.length === 0}
+							disabled={loading || !preview || rows.length === 0 || invalidCredit}
 						>
 							{loading ? <span className={styles.spinner} /> : <UploadSvg />}
 							Nhập {rows.length || ''} người

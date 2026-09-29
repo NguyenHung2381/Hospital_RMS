@@ -1,21 +1,25 @@
 .formGrid {
 	display: grid;
-	grid-template-columns: 1fr 1fr;
-	gap: var(--space-4);
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: var(--space-5) var(--space-6);
 }
 
 .formGroup {
 	display: flex;
 	flex-direction: column;
-	gap: var(--space-1);
+	gap: 6px;
+	min-width: 0;
 }
 .formGroup.full {
 	grid-column: 1 / -1;
 }
+.formGroup.span2 {
+	grid-column: span 2;
+}
 
 .label {
 	font-size: var(--font-size-sm);
-	font-weight: var(--font-weight-medium);
+	font-weight: var(--font-weight-semibold);
 	color: var(--color-gray-700);
 }
 .required {
@@ -33,6 +37,13 @@
 	color: var(--color-gray-800);
 	background: var(--color-white);
 	outline: none;
+	min-height: 42px;
+	box-sizing: border-box;
+	width: 100%;
+}
+.input::placeholder,
+.textarea::placeholder {
+	color: var(--color-gray-400);
 }
 .input:focus,
 .select:focus,
@@ -42,11 +53,200 @@
 }
 .textarea {
 	resize: vertical;
-	min-height: 70px;
+	min-height: 96px;
+	line-height: 1.5;
+}
+
+/* ── Khối (bước) của form đăng ký ─────────────── */
+.section {
+	margin-bottom: var(--space-6);
+	border: 1px solid var(--color-gray-200);
+	border-radius: var(--radius-xl, 14px);
+	background: var(--color-white);
+	overflow: hidden;
+}
+.sectionHead {
+	display: flex;
+	align-items: flex-start;
+	gap: var(--space-3);
+	padding: var(--space-4) var(--space-6);
+	background: var(--color-gray-50, #f9fafb);
+	border-bottom: 1px solid var(--color-gray-100);
+}
+.stepNo {
+	flex: none;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 28px;
+	height: 28px;
+	border-radius: 50%;
+	background: var(--color-primary);
+	color: var(--color-white);
+	font-size: var(--font-size-sm);
+	font-weight: var(--font-weight-bold);
+}
+.sectionHeading {
+	display: flex;
+	align-items: center;
+	flex-wrap: wrap;
+	gap: var(--space-2);
+	margin: 3px 0 0;
+	font-size: var(--font-size-base);
+	font-weight: var(--font-weight-bold);
+	color: var(--color-gray-900);
+}
+.sectionDesc {
+	margin: var(--space-1) 0 0;
+	font-size: var(--font-size-sm);
+	color: var(--color-gray-500);
+	line-height: 1.5;
+}
+.optionalTag {
+	padding: 1px var(--space-2);
+	border-radius: var(--radius-full, 999px);
+	background: var(--color-gray-100);
+	color: var(--color-gray-600);
+	font-size: var(--font-size-xs);
+	font-weight: var(--font-weight-medium);
+}
+.sectionBody {
+	padding: var(--space-6);
+}
+/* Nhóm con trong 1 khối (VD: "Thông tin cá nhân" / "Thông tin liên hệ") */
+.subGroup + .subGroup {
+	margin-top: var(--space-6);
+	padding-top: var(--space-5);
+	border-top: 1px dashed var(--color-gray-200);
+}
+.subTitle {
+	margin-bottom: var(--space-4);
+	font-size: var(--font-size-xs);
+	font-weight: var(--font-weight-bold);
+	letter-spacing: 0.04em;
+	text-transform: uppercase;
+	color: var(--color-primary);
+}
+
+/* ── File đính kèm ────────────────────────────── */
+.dropzone {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: var(--space-1);
+	padding: var(--space-6) var(--space-4);
+	border: 2px dashed var(--color-gray-200);
+	border-radius: var(--radius-lg);
+	background: var(--color-gray-50, #f9fafb);
+	text-align: center;
+	cursor: pointer;
+	transition: border-color 0.15s, background 0.15s;
+}
+.dropzone:hover,
+.dropzoneActive {
+	border-color: var(--color-primary);
+	background: rgba(10, 155, 74, 0.04);
+}
+.dropzone:focus-visible {
+	outline: 2px solid var(--color-primary);
+	outline-offset: 2px;
+}
+.dropzoneIcon {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 44px;
+	height: 44px;
+	margin-bottom: var(--space-2);
+	border-radius: 50%;
+	background: rgba(10, 155, 74, 0.1);
+	color: var(--color-primary);
+}
+.dropzoneIcon svg {
+	width: 22px;
+	height: 22px;
+}
+.dropzoneText {
+	font-size: var(--font-size-sm);
+	color: var(--color-gray-700);
+}
+.dropzoneText strong {
+	color: var(--color-primary);
+}
+.dropzoneHint {
+	font-size: var(--font-size-xs);
+	color: var(--color-gray-500);
+}
+.fileList {
+	display: flex;
+	flex-direction: column;
+	gap: var(--space-2);
+	margin: var(--space-4) 0 0;
+	padding: 0;
+	list-style: none;
+}
+.fileItem {
+	display: flex;
+	align-items: center;
+	gap: var(--space-3);
+	padding: var(--space-2) var(--space-3);
+	border: 1px solid var(--color-gray-200);
+	border-radius: var(--radius-lg);
+}
+.fileIcon {
+	flex: none;
+	display: inline-flex;
+	color: var(--color-primary);
+}
+.fileIcon svg {
+	width: 20px;
+	height: 20px;
+}
+.fileInfo {
+	flex: 1;
+	min-width: 0;
+}
+.fileName {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	font-size: var(--font-size-sm);
+	font-weight: var(--font-weight-medium);
+	color: var(--color-gray-800);
+}
+.fileSize {
+	font-size: var(--font-size-xs);
+	color: var(--color-gray-500);
+}
+.select.fileType {
+	flex: none;
+	width: 170px;
+	min-height: 36px;
+}
+.fileRemove {
+	flex: none;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 34px;
+	height: 34px;
+	border: none;
+	border-radius: var(--radius-md, 8px);
+	background: none;
+	color: var(--color-gray-500);
+	cursor: pointer;
+}
+.fileRemove:hover {
+	background: #fcebeb;
+	color: var(--color-danger, #d92d20);
+}
+.fileRemove svg {
+	width: 18px;
+	height: 18px;
 }
 
 .sectionTitle {
-	font-size: var(--font-size-sm);
+	font-size: var(--font-size-base);
 	font-weight: var(--font-weight-bold);
 	color: var(--color-gray-800);
 	margin: var(--space-6) 0 var(--space-3);
@@ -66,6 +266,13 @@
 	border-radius: var(--radius-lg);
 	cursor: pointer;
 }
+.courseCard {
+	transition: border-color 0.15s, background 0.15s;
+}
+.courseCard:focus-visible {
+	outline: 2px solid var(--color-primary);
+	outline-offset: 2px;
+}
 .courseCard:hover {
 	border-color: var(--color-primary);
 }
@@ -83,11 +290,12 @@
 	color: var(--color-gray-500);
 }
 .courseList {
-	display: flex;
-	flex-direction: column;
-	gap: var(--space-2);
-	max-height: 260px;
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+	gap: var(--space-3);
+	max-height: 320px;
 	overflow-y: auto;
+	padding: 2px;
 }
 .emptyNotice {
 	font-size: var(--font-size-sm);
@@ -98,22 +306,6 @@
 	border-radius: var(--radius-lg);
 }
 
-.captchaRow {
-	display: flex;
-	align-items: center;
-	gap: var(--space-3);
-}
-.captchaQuestion {
-	font-family: var(--font-heading);
-	font-weight: var(--font-weight-bold);
-	font-size: var(--font-size-lg);
-	color: var(--color-gray-800);
-	background: var(--color-gray-100);
-	padding: var(--space-2) var(--space-4);
-	border-radius: var(--radius-lg);
-	user-select: none;
-	letter-spacing: 0.05em;
-}
 .captchaRefresh {
 	background: none;
 	border: none;
@@ -121,6 +313,109 @@
 	font-size: var(--font-size-sm);
 	cursor: pointer;
 	text-decoration: underline;
+}
+
+.input:disabled {
+	background: var(--color-gray-50, #f9fafb);
+	color: var(--color-gray-600);
+}
+.inputError,
+.inputError:focus {
+	border-color: var(--color-danger, #d92d20);
+}
+.fieldError {
+	font-size: var(--font-size-xs, 12px);
+	color: var(--color-danger, #d92d20);
+}
+
+/* Thành viên đề tài (ngoài chủ nhiệm) trên form đăng ký công khai */
+.sectionHint {
+	margin: calc(-1 * var(--space-2)) 0 var(--space-3);
+	font-size: var(--font-size-xs, 12px);
+	color: var(--color-gray-500);
+}
+.memberCard {
+	margin-bottom: var(--space-4);
+	border: 1px solid var(--color-gray-200);
+	border-left: 3px solid var(--color-primary);
+	border-radius: var(--radius-lg);
+	overflow: hidden;
+}
+.memberHead {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--space-3);
+	padding: var(--space-3) var(--space-5);
+	background: var(--color-gray-50, #f9fafb);
+	border-bottom: 1px solid var(--color-gray-100);
+	font-size: var(--font-size-sm);
+}
+.memberTitle {
+	display: flex;
+	align-items: center;
+	gap: var(--space-2);
+	min-width: 0;
+	font-weight: var(--font-weight-semibold);
+	color: var(--color-gray-900);
+}
+.memberName {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	font-weight: var(--font-weight-medium);
+	color: var(--color-gray-500);
+}
+.roleChip {
+	flex: none;
+	padding: 1px var(--space-2);
+	border-radius: var(--radius-full, 999px);
+	background: rgba(10, 155, 74, 0.1);
+	color: var(--color-primary-dark, #087a3a);
+	font-size: var(--font-size-xs);
+	font-weight: var(--font-weight-semibold);
+}
+.memberBody {
+	padding: var(--space-5);
+}
+.memberRemove {
+	flex: none;
+	display: inline-flex;
+	align-items: center;
+	gap: var(--space-1);
+	padding: var(--space-1) var(--space-2);
+	border: none;
+	border-radius: var(--radius-md, 8px);
+	background: none;
+	color: var(--color-danger, #d92d20);
+	font-size: var(--font-size-sm);
+	cursor: pointer;
+}
+.memberRemove:hover {
+	background: #fcebeb;
+}
+.memberRemove svg {
+	width: 16px;
+	height: 16px;
+}
+.memberEmpty {
+	margin-bottom: var(--space-4);
+	font-size: var(--font-size-sm);
+	color: var(--color-gray-500);
+}
+.addMemberBtn {
+	width: 100%;
+	padding: var(--space-3);
+	background: none;
+	border: 1.5px dashed var(--color-gray-300, #d0d5dd);
+	border-radius: var(--radius-lg);
+	color: var(--color-primary);
+	font-size: var(--font-size-sm);
+	font-weight: var(--font-weight-medium);
+	cursor: pointer;
+}
+.addMemberBtn:hover {
+	border-color: var(--color-primary);
 }
 
 /* Honeypot — chỉ bot mới "thấy" & điền vào field này */
@@ -132,10 +427,30 @@
 	overflow: hidden;
 }
 
+/* Hàng cuối form: ô xác minh bên trái, nút gửi bên phải */
+.formFooter {
+	display: flex;
+	align-items: flex-end;
+	justify-content: space-between;
+	gap: var(--space-4);
+	flex-wrap: wrap;
+	padding: var(--space-5) var(--space-6);
+	border: 1px solid var(--color-gray-200);
+	border-radius: var(--radius-xl, 14px);
+	background: var(--color-gray-50, #f9fafb);
+}
+.formFooter .formGroup {
+	flex: 1 1 320px;
+}
+.formFooter .submitBtn {
+	margin-top: 0;
+	width: auto;
+	min-width: 220px;
+}
 .submitBtn {
 	margin-top: var(--space-6);
 	width: 100%;
-	padding: var(--space-3);
+	padding: var(--space-3) var(--space-6);
 	background: var(--color-primary);
 	color: var(--color-white);
 	border: none;
@@ -179,7 +494,37 @@
 	flex: 1;
 	min-width: 160px;
 }
+.searchRow .searchField .input {
+	min-width: 0;
+}
+.searchRowLabeled {
+	align-items: flex-end;
+}
+.searchField {
+	display: flex;
+	flex-direction: column;
+	gap: var(--space-1);
+	flex: 1;
+	min-width: 200px;
+}
+.searchField .input {
+	width: 100%;
+}
+.searchFieldDate {
+	flex: 0 0 180px;
+	min-width: 0;
+}
+.searchHint {
+	margin: var(--space-2) 0 var(--space-4);
+	font-size: var(--font-size-xs);
+	color: var(--color-gray-500);
+}
 .searchBtn {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	gap: var(--space-2);
+	min-height: 38px;
 	padding: var(--space-2) var(--space-5);
 	background: var(--color-primary);
 	color: var(--color-white);
@@ -226,13 +571,46 @@
 	.formGrid {
 		grid-template-columns: 1fr;
 	}
+	.formGroup.span2 {
+		grid-column: 1 / -1;
+	}
+	.sectionHead {
+		padding: var(--space-3) var(--space-4);
+	}
+	.sectionBody,
+	.formFooter,
+	.memberBody {
+		padding: var(--space-4);
+	}
+	.fileItem {
+		flex-wrap: wrap;
+	}
+	.select.fileType {
+		order: 3;
+		width: 100%;
+	}
+	.courseList {
+		grid-template-columns: 1fr;
+	}
+	.searchFieldDate {
+		flex: 1 1 100%;
+	}
+	.searchBtn,
+	.formFooter .submitBtn {
+		width: 100%;
+	}
 }
 
 /* ── THƯ VIỆN ĐỀ TÀI ─────────────────────────── */
 .libraryList {
-	display: flex;
-	flex-direction: column;
-	gap: var(--space-3);
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(420px, 1fr));
+	gap: var(--space-4);
+}
+@media (max-width: 640px) {
+	.libraryList {
+		grid-template-columns: 1fr;
+	}
 }
 .libraryCard {
 	display: flex;

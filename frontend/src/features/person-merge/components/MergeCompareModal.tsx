@@ -4,6 +4,7 @@ import { Button } from '../../../shared/components/Button';
 import { InlineLoading } from '../../../shared/components/Loading/Skeleton';
 import { Modal } from '../../../shared/components/Modal';
 import { formatDateTimeVN, formatDateVN } from '../../../shared/utils/formatDate';
+import { genderLabel } from '../../../shared/utils/gender';
 import { getMergeCandidate } from '../api/personMergeApi';
 import {
 	type FieldChoice,
@@ -37,8 +38,6 @@ const FIELD_LABEL: Record<MergeField, string> = {
 	is_internal: 'Nội / ngoại viện',
 };
 
-const GENDER_LABEL: Record<string, string> = { male: 'Nam', female: 'Nữ', other: 'Khác', nam: 'Nam', nữ: 'Nữ', nu: 'Nữ' };
-
 const fieldValue = (p: PersonSummary, f: MergeField): string | null => {
 	switch (f) {
 		case 'date_of_birth':
@@ -46,7 +45,7 @@ const fieldValue = (p: PersonSummary, f: MergeField): string | null => {
 		case 'is_internal':
 			return p.is_internal == null ? null : p.is_internal ? 'Nội viện' : 'Ngoài viện';
 		case 'gender':
-			return p.gender ? (GENDER_LABEL[p.gender.toLowerCase()] ?? p.gender) : null;
+			return genderLabel(p.gender);
 		default:
 			return (p[f] as string | null) || null;
 	}

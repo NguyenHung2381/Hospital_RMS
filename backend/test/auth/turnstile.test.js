@@ -3,6 +3,7 @@
 process.env.JWT_SECRET = 'test-secret';
 process.env.TURNSTILE_SITE_KEY = 'site-key-test';
 process.env.TURNSTILE_SECRET_KEY = 'secret-key-test';
+process.env.TURNSTILE_HOSTNAMES = 'rms.benhvien.vn, localhost';
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { generateCaptcha, verifyCaptcha } = require('../../src/utils/captcha');
@@ -16,11 +17,11 @@ const mockFetch = (impl) => {
 };
 
 test('trả site key cho client, không có câu hỏi phép tính', () => {
-	assert.deepEqual(generateCaptcha(), { provider: 'turnstile', site_key: 'site-key-test' });
+	assert.deepEqual(generateCaptcha(), { provider: 'turnstile', site_key: 'site-key-test', action: 'public-form' });
 });
 
 test('Cloudflare xác nhận → qua; gửi kèm secret + IP người dùng', async () => {
-	mockFetch(() => ({ json: async () => ({ success: true }) }));
+	mockFetch(() => ({ json: async () => ({ success: true, action: 'public-form', hostname: 'localhost' }) }));
 	assert.equal(await verifyCaptcha('cf-token', undefined, '10.1.2.3'), true);
 	const last = calls.at(-1);
 	assert.match(last.url, /challenges\.cloudflare\.com\/turnstile\/v0\/siteverify/);
@@ -30,6 +31,25 @@ test('Cloudflare xác nhận → qua; gửi kèm secret + IP người dùng', as
 test('Cloudflare từ chối (token dùng lại / giả) → không qua', async () => {
 	mockFetch(() => ({ json: async () => ({ success: false, 'error-codes': ['timeout-or-duplicate'] }) }));
 	assert.equal(await verifyCaptcha('cf-token', undefined, '10.1.2.3'), false);
+});
+
+test('token của widget khác (sai action) → không qua', async () => {
+	mockFetch(() => ({ json: async () => ({ success: true, action: 'login', hostname: 'localhost' }) }));
+	assert.equal(await verifyCaptcha('cf-token', undefined, '10.1.2.3'), false);
+});
+
+test('token sinh trên tên miền lạ → không qua', async () => {
+	mockFetch(() => ({ json: async () => ({ success: true, action: 'public-form', hostname: 'evil.example' }) }));
+	assert.equal(await verifyCaptcha('cf-token', undefined, '10.1.2.3'), false);
+});
+
+test('lỗi mạng thoáng qua → thử lại 1 lần rồi qua', async () => {
+	let n = 0;
+	mockFetch(() => {
+		if (n++ === 0) throw new Error('ECONNRESET');
+		return { json: async () => ({ success: true, action: 'public-form', hostname: 'localhost' }) };
+	});
+	assert.equal(await verifyCaptcha('cf-token', undefined, '10.1.2.3'), true);
 });
 
 test('không gọi được Cloudflare → từ chối (không bỏ qua kiểm tra)', async () => {

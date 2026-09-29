@@ -288,6 +288,37 @@
 	text-decoration: underline;
 }
 
+/* Nút "Quay lại đăng nhập" ở bước 2FA */
+.backLink {
+	align-self: center;
+	display: inline-flex;
+	align-items: center;
+	gap: var(--space-1);
+	margin-top: calc(var(--space-1) * -1);
+	padding: var(--space-2) var(--space-3);
+	background: none;
+	border: none;
+	border-radius: var(--radius-md);
+	font-family: inherit;
+	font-size: var(--font-size-sm);
+	font-weight: var(--font-weight-semibold);
+	color: var(--color-gray-500);
+	cursor: pointer;
+	transition:
+		color var(--transition-fast),
+		background var(--transition-fast);
+}
+
+.backLink:hover:not(:disabled) {
+	color: var(--color-primary);
+	background: var(--color-primary-pale);
+}
+
+.backLink:disabled {
+	opacity: 0.5;
+	cursor: not-allowed;
+}
+
 /* === ALERT === */
 .alertBox {
 	display: flex;

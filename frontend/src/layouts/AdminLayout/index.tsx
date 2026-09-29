@@ -25,6 +25,7 @@ const KEY_TO_PATH: Record<string, string> = {
 	dashboard: '/admin',
 	researchDashboard: '/admin/dashboard/research',
 	trainingDashboard: '/admin/dashboard/training',
+	seminarDashboard: '/admin/dashboard/seminar',
 	topics: '/admin/topics',
 	rounds: '/admin/rounds',
 	councils: '/admin/councils',
@@ -47,8 +48,10 @@ const KEY_TO_PATH: Record<string, string> = {
 	lecturers: '/admin/lecturers',
 	trainingCatalog: '/admin/trainee-types',
 	courses: '/admin/courses',
+	classSchedule: '/admin/class-schedule',
+	questionBank: '/admin/question-bank',
 	cmeCompliance: '/admin/cme-compliance',
-	cmeRecords: '/admin/cme-records',
+	cmeRecords: '/admin/cme-records',	cmeCreditCatalog: '/admin/cme-credit-categories',
 	users: '/admin/users',
 	roles: '/admin/roles',
 	reports: '/admin/reports',
@@ -64,14 +67,12 @@ const KEY_TO_PATH: Record<string, string> = {
 const PATH_TO_KEY: Record<string, string> = Object.fromEntries(
 	Object.entries(KEY_TO_PATH).map(([k, v]) => [v, k]),
 );
-// Danh mục Đào tạo gộp 5 tab dưới 1 mục sidebar — các path còn lại (ngoài
+// Danh mục Đào tạo gộp 4 tab dưới 1 mục sidebar — các path còn lại (ngoài
 // path mặc định /admin/trainee-types) cần trỏ ngược thủ công để vẫn highlight
 // đúng mục khi đang ở tab khác.
-['/admin/training-forms', '/admin/training-types', '/admin/subjects', '/admin/cme-credit-categories'].forEach(
-	(p) => {
-		PATH_TO_KEY[p] = 'trainingCatalog';
-	},
-);
+['/admin/training-forms', '/admin/training-types', '/admin/subjects'].forEach((p) => {
+	PATH_TO_KEY[p] = 'trainingCatalog';
+});
 
 // ─── NAV CONFIG ───────────────────────────
 interface NavItem {
@@ -94,6 +95,7 @@ const NAV_GROUPS: NavGroup[] = [
 			{ key: 'dashboard', label: 'Tổng quan chung', icon: <Icon.Dashboard /> },
 			{ key: 'researchDashboard', label: 'Tổng quan NCKH', icon: <Icon.Dashboard /> },
 			{ key: 'trainingDashboard', label: 'Tổng quan Đào tạo', icon: <Icon.Dashboard /> },
+			{ key: 'seminarDashboard', label: 'Tổng quan Hội thảo - CME', icon: <Icon.Dashboard /> },
 			{ key: 'myTasks', label: 'Việc của tôi', icon: <Icon.Approval /> },
 		],
 	},
@@ -187,6 +189,11 @@ const NAV_GROUPS: NavGroup[] = [
 				label: 'Ghi nhận CME độc lập',
 				icon: <Icon.Cme />,
 				perm: 'cme_records:manage',
+			},			{
+				key: 'cmeCreditCatalog',
+				label: 'Danh mục quy đổi CME',
+				icon: <Icon.List />,
+				perm: 'training_catalog:read',
 			},
 		],
 	},
@@ -195,17 +202,12 @@ const NAV_GROUPS: NavGroup[] = [
 		// trên nên không cần phân biệt nữa.
 		section: 'Đào tạo',
 		items: [
+			// Theo luồng: lập kế hoạch → nội dung → vận hành lớp → con người → danh mục.
 			{
-				key: 'courses',
-				label: 'Khóa học',
-				icon: <Icon.Course />,
-				perm: 'courses:read',
-			},
-			{
-				key: 'trainees',
-				label: 'Học viên',
-				icon: <Icon.Trainee />,
-				perm: 'trainees:read',
+				key: 'trainingPlans',
+				label: 'Kế hoạch đào tạo',
+				icon: <Icon.TrainingPlan />,
+				perm: 'training_plans:manage',
 			},
 			{
 				key: 'trainingPrograms',
@@ -216,14 +218,32 @@ const NAV_GROUPS: NavGroup[] = [
 			{
 				key: 'lessons',
 				label: 'Bài học',
-				icon: <Icon.List />,
+				icon: <Icon.Lesson />,
 				perm: 'training_programs:read',
 			},
 			{
-				key: 'trainingPlans',
-				label: 'Kế hoạch đào tạo',
-				icon: <Icon.TrainingPlan />,
-				perm: 'training_plans:manage',
+				key: 'courses',
+				label: 'Khóa học',
+				icon: <Icon.Course />,
+				perm: 'courses:read',
+			},
+			{
+				key: 'classSchedule',
+				label: 'Lịch học',
+				icon: <Icon.Schedule />,
+				perm: 'courses:read',
+			},
+			{
+				key: 'questionBank',
+				label: 'Ngân hàng câu hỏi',
+				icon: <Icon.QuestionBank />,
+				perm: 'exams:manage',
+			},
+			{
+				key: 'trainees',
+				label: 'Học viên',
+				icon: <Icon.Trainee />,
+				perm: 'trainees:read',
 			},
 			{
 				key: 'lecturers',

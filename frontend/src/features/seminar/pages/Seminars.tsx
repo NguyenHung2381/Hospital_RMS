@@ -1,10 +1,13 @@
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
 	CheckSvg,
+	DownloadSvg,
 	EditSvg,
 	PlusSvg,
 	SearchSvg,
 	TrashSvg,
+	UploadSvg,
 	UsersSvg,
 	XSvg,
 } from '@/assets/icons';
@@ -14,6 +17,10 @@ import { SkeletonTable } from '../../../shared/components/Loading';
 import { Pagination } from '../../../shared/components/Table/Pagination';
 import { SeminarDeleteModal } from '../components/SeminarDeleteModal';
 import { SeminarFormModal } from '../components/SeminarFormModal';
+import { SeminarListImportModal } from '../components/SeminarListImportModal';
+import { exportSeminarsExcel } from '../api/seminarApi';
+import { saveBlob } from '../utils/saveBlob';
+import { useSeminarPerms } from '../utils/perms';
 import { useSeminars } from '../hooks/useSeminars';
 import { EVENT_TYPE_LABELS, type SeminarEventType } from '../types/seminar.type';
 import styles from './Seminar.module.css';
@@ -33,10 +40,50 @@ export default function Seminars() {
 	const s = useSeminars();
 	const navigate = useNavigate();
 
+	const perms = useSeminarPerms();
+	const [importOpen, setImportOpen] = useState(false);
+	const [exporting, setExporting] = useState(false);
+
+	// Xuất đúng tập đang lọc trên bảng (mọi trang, không chỉ trang hiện tại)
+	const handleExport = async () => {
+		setExporting(true);
+		try {
+			const blob = await exportSeminarsExcel({
+				search: s.search.trim() || undefined,
+				scope: s.scope || undefined,
+				event_type: s.eventType || undefined,
+				year: s.year || undefined,
+				grants_cme: s.onlyCme ? '1' : undefined,
+			});
+			saveBlob(blob, `hoi-thao-hoi-nghi${s.year ? `-${s.year}` : ''}.xlsx`);
+		} catch (e) {
+			s.showToast('error', e instanceof Error ? e.message : 'Xuất Excel thất bại');
+		} finally {
+			setExporting(false);
+		}
+	};
+
 	const headerActions = (
-		<button className={styles.btnAddHeader} onClick={() => s.setModal('add')}>
-			<PlusSvg /> Thêm hội thảo
-		</button>
+		<div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+			{perms.canImport && (
+				<button className={styles.btnGhost} onClick={() => setImportOpen(true)}>
+					<UploadSvg /> Nhập Excel
+				</button>
+			)}
+			{perms.canExport && (
+				<button
+					className={styles.btnGhost}
+					onClick={handleExport}
+					disabled={exporting || s.total === 0}
+					title={s.total === 0 ? 'Không có sự kiện nào để xuất' : 'Xuất các sự kiện đang lọc'}
+				>
+					{exporting ? <span className={styles.spinner} /> : <DownloadSvg />} Xuất Excel
+				</button>
+			)}
+			<button className={styles.btnAddHeader} onClick={() => s.setModal('add')}>
+				<PlusSvg /> Thêm hội thảo
+			</button>
+		</div>
 	);
 
 	return (
@@ -246,6 +293,16 @@ export default function Seminars() {
 					/>
 				)}
 			</div>
+
+			{importOpen && (
+				<SeminarListImportModal
+					onClose={() => setImportOpen(false)}
+					onDone={() => {
+						s.refresh();
+						s.showToast('success', 'Đã nhập danh sách hội thảo từ Excel');
+					}}
+				/>
+			)}
 
 			{s.modal === 'add' && (
 				<SeminarFormModal

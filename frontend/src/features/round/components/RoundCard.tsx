@@ -162,7 +162,7 @@ export function RoundCard({
 				<div
 					className={styles.linkRow}
 					onClick={() => onCopyLink(round.public_token)}
-					title='Sao chép link đăng ký đề tài'
+					title='Sao chép link đăng ký đề tài theo khoa/phòng (link công khai xem trong chi tiết đợt → Nâng cao)'
 				>
 					<LinkSvg />
 					<span className={styles.linkRowText}>

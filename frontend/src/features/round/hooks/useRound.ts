@@ -22,7 +22,8 @@ export function useRound() {
 	const [roundTypes, setRoundTypes] = useState<RoundType[]>([]);
 	const [isLoadingData, setIsLoadingData] = useState(true);
 	const [loadError, setLoadError] = useState('');
-	const [yearFilter, setYearFilter] = useState<number | 'all'>('all');
+	// Rỗng = tất cả năm; chọn được nhiều năm cùng lúc
+	const [yearFilter, setYearFilter] = useState<Set<string>>(new Set());
 	const [statusFilter, setStatusFilter] = useState<RoundStatus | 'all'>('all');
 	const [typeFilter, setTypeFilter] = useState<string | 'all'>('all');
 	const [viewTab, setViewTab] = useState<'current' | 'scheduled'>('current');
@@ -76,7 +77,7 @@ export function useRound() {
 						return false;
 					if (viewTab === 'scheduled') return r.status === 'draft';
 					if (r.status === 'draft') return false;
-					if (yearFilter !== 'all' && r.year !== yearFilter) return false;
+					if (yearFilter.size > 0 && !yearFilter.has(String(r.year))) return false;
 					if (statusFilter !== 'all' && r.status !== statusFilter) return false;
 					return true;
 				})

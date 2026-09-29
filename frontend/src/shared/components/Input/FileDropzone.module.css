@@ -1,0 +1,226 @@
+.wrap {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+	min-width: 0;
+}
+
+.nativeInput {
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	opacity: 0;
+	pointer-events: none;
+}
+
+.root {
+	position: relative;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	gap: var(--space-2);
+	padding: var(--space-6) var(--space-4);
+	border: 1.5px dashed var(--color-gray-300);
+	border-radius: var(--radius-xl);
+	background: var(--color-gray-50);
+	text-align: center;
+	cursor: pointer;
+	transition:
+		border-color 0.15s,
+		background 0.15s,
+		box-shadow 0.15s;
+}
+.root:hover,
+.root:focus-within {
+	border-color: var(--color-primary);
+	background: var(--color-primary-pale);
+}
+.dragOver {
+	border-color: var(--color-primary);
+	border-style: solid;
+	background: var(--color-primary-pale);
+	box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary) 18%, transparent);
+}
+
+.uploadIcon {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 44px;
+	height: 44px;
+	border-radius: var(--radius-full);
+	background: var(--color-white, #fff);
+	color: var(--color-primary);
+	box-shadow: var(--shadow-sm);
+}
+.uploadIcon svg {
+	width: 20px;
+	height: 20px;
+}
+
+.texts {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+	min-width: 0;
+}
+.title {
+	font-size: var(--font-size-sm);
+	color: var(--color-gray-600);
+}
+.title b {
+	color: var(--color-primary-dark);
+	font-weight: var(--font-weight-semibold);
+}
+.hint {
+	font-size: var(--font-size-xs);
+	color: var(--color-gray-400);
+}
+
+/* ── Đã chọn file ── */
+.hasFile {
+	flex-direction: row;
+	justify-content: flex-start;
+	gap: var(--space-3);
+	padding: var(--space-3) var(--space-4);
+	border-style: solid;
+	border-color: var(--color-gray-200);
+	background: var(--color-white, #fff);
+	text-align: left;
+	cursor: default;
+}
+.hasFile:hover,
+.hasFile:focus-within {
+	border-color: var(--color-gray-300);
+	background: var(--color-white, #fff);
+}
+
+.fileIcon {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	flex-shrink: 0;
+	width: 36px;
+	height: 36px;
+	border-radius: var(--radius-lg);
+	background: var(--color-primary-pale);
+	color: var(--color-primary-dark);
+}
+.fileIcon svg {
+	width: 18px;
+	height: 18px;
+}
+.fileInfo {
+	display: flex;
+	flex-direction: column;
+	flex: 1;
+	min-width: 0;
+}
+.fileName {
+	font-size: var(--font-size-sm);
+	font-weight: var(--font-weight-semibold);
+	color: var(--color-gray-800);
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+.fileMeta {
+	font-size: var(--font-size-xs);
+	color: var(--color-gray-400);
+}
+
+.linkBtn {
+	flex-shrink: 0;
+	padding: 4px 8px;
+	border: none;
+	border-radius: var(--radius-md);
+	background: none;
+	color: var(--color-primary-dark);
+	font-family: var(--font-body);
+	font-size: var(--font-size-xs);
+	font-weight: var(--font-weight-semibold);
+	cursor: pointer;
+}
+.linkBtn:hover {
+	background: var(--color-primary-pale);
+}
+.removeBtn {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	flex-shrink: 0;
+	width: 28px;
+	height: 28px;
+	border: none;
+	border-radius: var(--radius-md);
+	background: none;
+	color: var(--color-gray-400);
+	cursor: pointer;
+}
+.removeBtn:hover {
+	background: #fef3f2;
+	color: var(--color-error, #d92d20);
+}
+.removeBtn svg {
+	width: 14px;
+	height: 14px;
+}
+
+/* ── Gọn 1 dòng (trong toolbar) ── */
+.compact {
+	flex-direction: row;
+	gap: var(--space-2);
+	padding: 5px 10px;
+	border-radius: var(--radius-lg);
+	min-width: 180px;
+}
+.compact .uploadIcon {
+	width: 24px;
+	height: 24px;
+	box-shadow: none;
+	background: transparent;
+}
+.compact .uploadIcon svg {
+	width: 15px;
+	height: 15px;
+}
+.compact .title {
+	font-size: 13px;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+.compact.hasFile {
+	padding: 4px 6px 4px 8px;
+	gap: var(--space-2);
+}
+.compact .fileIcon {
+	width: 24px;
+	height: 24px;
+	border-radius: var(--radius-md);
+}
+.compact .fileIcon svg {
+	width: 13px;
+	height: 13px;
+}
+.compact .fileName {
+	font-size: 13px;
+}
+.compact .fileMeta {
+	display: none;
+}
+.compact .linkBtn {
+	display: none;
+}
+
+.disabled {
+	opacity: 0.6;
+	cursor: not-allowed;
+	pointer-events: none;
+}
+
+.error {
+	font-size: var(--font-size-xs);
+	color: var(--color-error, #d92d20);
+}

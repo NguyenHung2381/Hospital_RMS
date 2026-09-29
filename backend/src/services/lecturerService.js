@@ -2,6 +2,7 @@ const { getPool, sql } = require('../config/db');
 const { broadcast } = require('./eventService');
 const { paging } = require('../utils/paging');
 const personService = require('./personService');
+const { normalizeGender } = require('../utils/gender');
 const { ROLE, roleIdOf } = require('./roleCodes');
 
 const lecturerSelect = `
@@ -71,7 +72,7 @@ const create = async (data, actorId) => {
 		.input('academic_degree', sql.NVarChar(50), data.academic_degree || null)
 		.input('academic_rank', sql.NVarChar(50), data.academic_rank || null)
 		.input('dob', sql.Date, data.dob || null)
-		.input('gender', sql.VarChar(10), data.gender || null)
+		.input('gender', sql.VarChar(10), normalizeGender(data.gender))
 		.input('avatar_url', sql.NVarChar(500), data.avatar_url || null)
 		.query(`
       DECLARE @new_id VARCHAR(20) = 'GV' + LEFT(REPLACE(NEWID(),'-',''), 18);
@@ -134,7 +135,7 @@ const update = async (id, data, actorId) => {
 	}
 	if (data.gender !== undefined) {
 		sets.push('gender = @gender');
-		req.input('gender', sql.VarChar(10), data.gender || null);
+		req.input('gender', sql.VarChar(10), normalizeGender(data.gender));
 	}
 	if (data.avatar_url !== undefined) {
 		sets.push('avatar_url = @avatar_url');

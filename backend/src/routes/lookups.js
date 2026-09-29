@@ -6,6 +6,7 @@ const { authenticate, authorizePermission } = require('../middlewares/auth');
 const { validate } = require('../middlewares/errorHandler');
 const roundCtrl    = require('../controllers/roundController');
 const deadlineSvc  = require('../services/deadlineService');
+const roundService = require('../services/roundService');
 const deptService = require('../services/departmentService');
 const extReviewerService = require('../services/externalReviewerService');
 const permService = require('../services/permissionService');
@@ -346,16 +347,6 @@ const getLevelIdsForRoundType = async (roundTypeId) => {
 	}
 };
 
-const getRoundTypeIdForRound = async (roundId) => {
-	if (!roundId) return null;
-	const pool = await getPool();
-	const r = await pool
-		.request()
-		.input('rid', sql.VarChar(10), roundId)
-		.query('SELECT round_type_id FROM research_rounds WHERE id = @rid');
-	return r.recordset[0]?.round_type_id ?? null;
-};
-
 const _lvlBase = createCrudService('levels', 4, 'CD', [
   { table: 'topics', column: 'level_id', label: 'đề tài' },
 ]);
@@ -418,9 +409,10 @@ router.get('/levels', authenticate, async (req, res, next) => {
 		const { round_id, round_type_id } = req.query;
 		if (!round_id && !round_type_id) return lvlCtrl.getAll(req, res, next);
 
-		const rtId =
-			round_type_id || (await getRoundTypeIdForRound(round_id));
-		const allowed = rtId ? await getLevelIdsForRoundType(rtId) : [];
+		// Theo đợt: cấu hình riêng của đợt, không có thì theo loại đợt.
+		const allowed = round_id
+			? await roundService.getAllowedLevelIds(round_id)
+			: await getLevelIdsForRoundType(round_type_id);
 		const all = await lvlService.getAll({ limit: 0 });
 		const data = allowed.length
 			? all.data.filter((lv) => allowed.includes(lv.id))
@@ -639,13 +631,11 @@ router.put(
 
 // ─── Danh mục Đào tạo (trainee_types, training_forms, training_types, subjects, cme_credit_categories, cme_credit_groups) ──
 // Shape id/name/description/audit giống categories/levels ⇒ dùng thẳng crudService(), không cần override.
-// cme_credit_categories có thêm cột công thức quy đổi (2026-09-14_cme_credit_conversion)
-// ⇒ khai báo qua extraFields để create/update cùng đi qua crudService thay vì viết service riêng.
+// 2 bảng CME có thêm cột (công thức quy đổi, thứ tự) + mã tự đặt ⇒ khai báo riêng bên dưới.
 const TRAINING_CATALOG_TABLES = {
 	'trainee-types': 'trainee_types',
 	'training-forms': 'training_forms',
 	'training-types': 'training_types',
-	'cme-credit-groups': 'cme_credit_groups',
 	subjects: 'subjects',
 };
 
@@ -684,47 +674,84 @@ for (const [path, table] of Object.entries(TRAINING_CATALOG_TABLES)) {
 	);
 }
 
-// cme-credit-categories: cùng shape name/description nhưng có thêm công thức quy
-// đổi tín chỉ (group_id/conversion_method/conversion_value/unit_label) — dùng
-// extraFields thay vì lặp lại loop ở trên để giữ khai báo cột tường minh.
+// Danh mục quy đổi CME = 2 bảng cme_credit_groups (nhóm hoạt động) +
+// cme_credit_categories (loại hình, có công thức quy đổi group_id/
+// conversion_method/conversion_value/unit_label). Mã do admin tự đặt (DT_KHOAHOC,
+// CME_DAOTAO...) giống seed 2026-10-15; bỏ trống thì sinh ngẫu nhiên.
 {
-	const svc = createCrudService('cme_credit_categories', 20, '', [], CME_CATEGORY_EXTRA_FIELDS);
-	const ctrl = createCrudController(svc);
+	const CME_CODE_RE = /^[A-Za-z0-9_]{1,20}$/;
+	const codeRule = body('id')
+		.optional({ values: 'falsy' })
+		.trim()
+		.matches(CME_CODE_RE)
+		.withMessage('Mã chỉ gồm chữ không dấu, số, dấu gạch dưới (tối đa 20 ký tự)')
+		.customSanitizer((v) => v.toUpperCase());
+	const nameRule = (isCreate) =>
+		isCreate
+			? body('name').trim().notEmpty().withMessage('Tên không được để trống')
+			: body('name').optional().trim().notEmpty().withMessage('Tên không được để trống');
 
-	router.get('/cme-credit-categories', authenticate, ctrl.getAll);
-	router.get('/cme-credit-categories/:id', authenticate, ctrl.getById);
-	router.post(
-		'/cme-credit-categories',
-		authenticate,
-		authorizePermission(['training_catalog', 'create']),
+	const mount = (path, svc, rules) => {
+		const ctrl = createCrudController(svc);
+		router.get(`/${path}`, authenticate, ctrl.getAll);
+		router.get(`/${path}/:id`, authenticate, ctrl.getById);
+		router.post(
+			`/${path}`,
+			authenticate,
+			authorizePermission(['training_catalog', 'create']),
+			[codeRule, nameRule(true), ...rules],
+			validate,
+			ctrl.createOne,
+		);
+		router.put(
+			`/${path}/:id`,
+			authenticate,
+			authorizePermission(['training_catalog', 'update']),
+			[nameRule(false), ...rules],
+			validate,
+			ctrl.updateOne,
+		);
+		router.delete(
+			`/${path}/:id`,
+			authenticate,
+			authorizePermission(['training_catalog', 'delete']),
+			ctrl.removeOne,
+		);
+	};
+
+	mount(
+		'cme-credit-groups',
+		createCrudService(
+			'cme_credit_groups',
+			20,
+			'',
+			[{ table: 'cme_credit_categories', column: 'group_id', label: 'loại hình quy đổi' }],
+			[{ column: 'sort_order', sqlType: sql.Int, default: 0 }],
+			{ allowCustomId: true },
+		),
+		[body('sort_order').optional().isInt({ min: 0 }).withMessage('Thứ tự phải là số nguyên ≥ 0')],
+	);
+
+	mount(
+		'cme-credit-categories',
+		createCrudService(
+			'cme_credit_categories',
+			20,
+			'',
+			[{ table: 'cme_records', column: 'category_id', label: 'bản ghi CME' }],
+			CME_CATEGORY_EXTRA_FIELDS,
+			{ allowCustomId: true },
+		),
 		[
-			body('name').trim().notEmpty().withMessage('Tên không được để trống'),
 			body('conversion_method')
 				.optional()
 				.isIn(['per_session', 'fixed', 'per_year'])
 				.withMessage('Cách quy đổi không hợp lệ'),
+			body('conversion_value')
+				.optional({ values: 'null' })
+				.isFloat({ min: 0, max: 9999 })
+				.withMessage('Số giờ quy đổi phải là số ≥ 0'),
 		],
-		validate,
-		ctrl.createOne,
-	);
-	router.put(
-		'/cme-credit-categories/:id',
-		authenticate,
-		authorizePermission(['training_catalog', 'update']),
-		[
-			body('conversion_method')
-				.optional()
-				.isIn(['per_session', 'fixed', 'per_year'])
-				.withMessage('Cách quy đổi không hợp lệ'),
-		],
-		validate,
-		ctrl.updateOne,
-	);
-	router.delete(
-		'/cme-credit-categories/:id',
-		authenticate,
-		authorizePermission(['training_catalog', 'delete']),
-		ctrl.removeOne,
 	);
 }
 
@@ -950,6 +977,12 @@ router.post(
 		body('status')
 			.optional()
 			.isIn(['draft', 'active', 'open', 'closed', 'cancelled']),
+		// Cấu hình luôn khi tạo: cấp độ đề tài của đợt + các mốc thời gian.
+		body('level_ids').optional().isArray().withMessage('level_ids phải là mảng'),
+		body('deadlines')
+			.optional()
+			.isArray({ max: 9 })
+			.withMessage('Tối đa 9 mốc thời gian'),
 	],
 	validate,
 	roundCtrl.createOne,
@@ -1028,6 +1061,7 @@ router.put(
 			.withMessage('Loại đợt không hợp lệ'),
 		body('start_date').optional().notEmpty(),
 		body('end_date').optional().notEmpty(),
+		body('level_ids').optional().isArray().withMessage('level_ids phải là mảng'),
 	],
 	validate,
 	roundCtrl.updateOne,

@@ -11,8 +11,10 @@
 const ExcelJS = require('exceljs');
 const { getPool, sql } = require('../config/db');
 const { norm, normDept, stripQualification } = require('../utils/vietnameseText');
+const { normalizeGender } = require('../utils/gender');
 const partService = require('./seminarParticipantService');
 const { ROLE, inputRoleId } = require('./roleCodes');
+const xl = require('../utils/excelTemplate');
 
 // ─── Khớp tên cột: header đã norm() → field nội bộ ──────────────────────────
 // Duyệt từ mẫu cụ thể tới chung chung; chỉ nhận cột ĐẦU TIÊN match mỗi field.
@@ -185,12 +187,8 @@ const parseStaffNumber = (s) => {
 	return Number.isFinite(n) ? n : null;
 };
 
-const normGender = (s) => {
-	const n = norm(s);
-	if (n.startsWith('nam')) return 'Nam';
-	if (n.startsWith('nu')) return 'Nữ';
-	return null;
-};
+// Nhận "Nam"/"Nữ"/"Khác" trong file → mã lưu DB (xem utils/gender).
+const normGender = normalizeGender;
 
 // Tách "Ông Nguyễn Văn A" / "Bà. Trần Thị B" → { title_prefix, full_name }
 const splitTitlePrefix = (name, prefixCol) => {
@@ -283,6 +281,9 @@ const parseWorkbook = async (buffer) => {
 			continue;
 		}
 		emptyStreak = 0;
+
+		// Dòng ví dụ của file mẫu (ghi chú "Dòng ví dụ…") — bỏ qua nếu quên xoá
+		if (/^dong vi du/.test(norm(get(row, 'notes')))) continue;
 
 		const { title_prefix, full_name } = splitTitlePrefix(
 			rawName,
@@ -414,6 +415,7 @@ const buildPreview = (rows, db) => {
 			participation_type: row.participation_type,
 			source,
 			is_foreign: row.is_foreign,
+			notes: row.notes,
 			matched_user: match.user
 				? {
 						id: match.user.id,
@@ -445,7 +447,29 @@ const previewToParticipant = (p) => ({
 });
 
 // ─── API chính ─────────────────────────────────────────────────────────────
-const importExcel = async ({ buffer, seminar_id, dry_run, issue_cme }, actorId) => {
+// Chuẩn hoá { vai_trò: số tín chỉ } gửi từ client — bỏ key lạ / giá trị không hợp lệ
+const normalizeCreditsByRole = (raw) => {
+	let obj = raw;
+	if (typeof raw === 'string') {
+		try {
+			obj = JSON.parse(raw);
+		} catch {
+			obj = null;
+		}
+	}
+	const out = {};
+	if (!obj || typeof obj !== 'object') return out;
+	for (const role of Object.values(ROLE_BY_NORM)) {
+		const n = parseCredits(obj[role]);
+		if (n != null && n >= 0 && n < 1000) out[role] = n;
+	}
+	return out;
+};
+
+const importExcel = async (
+	{ buffer, seminar_id, dry_run, issue_cme, credits_by_role },
+	actorId,
+) => {
 	const pool = await getPool();
 	const semRes = await pool
 		.request()
@@ -463,6 +487,17 @@ const importExcel = async ({ buffer, seminar_id, dry_run, issue_cme }, actorId) 
 	const { rows: rawRows } = await parseWorkbook(buffer);
 	const db = await loadUsers();
 	const preview = buildPreview(rawRows, db);
+
+	// Số tín chỉ: ô trong file được ưu tiên; ô trống lấy mặc định theo vai trò
+	// người dùng nhập ở màn hình nhập (VD đại biểu 3, báo cáo viên 6).
+	const creditsByRole = normalizeCreditsByRole(credits_by_role);
+	for (const p of preview) {
+		if (p.cme_credits != null) p.credits_source = 'file';
+		else if (creditsByRole[p.participation_type] != null) {
+			p.cme_credits = creditsByRole[p.participation_type];
+			p.credits_source = 'default';
+		} else p.credits_source = null;
+	}
 
 	const warnings = [];
 	for (const p of preview) {
@@ -526,5 +561,72 @@ const importExcel = async ({ buffer, seminar_id, dry_run, issue_cme }, actorId) 
 	};
 };
 
-module.exports = { importExcel };
+// ─── File mẫu ───────────────────────────────────────────────────────────────
+// Tiêu đề cột khớp COLUMN_MATCHERS ở trên → tải mẫu, điền, nhập lại được ngay.
+const TEMPLATE_COLUMNS = [
+	{ key: 'stt', header: 'STT', width: 5 },
+	{ key: 'title_prefix', header: 'Ông/Bà', width: 8 },
+	{ key: 'full_name', header: 'Họ và tên', width: 26 },
+	{ key: 'dob', header: 'Ngày sinh', width: 12 },
+	{ key: 'gender', header: 'Giới tính', width: 9 },
+	{ key: 'organization', header: 'Đơn vị công tác', width: 26 },
+	{ key: 'department_raw', header: 'Khoa/phòng', width: 18 },
+	{ key: 'staff_number', header: 'MNV', width: 8 },
+	{ key: 'qualification_raw', header: 'TĐCM', width: 10 },
+	{ key: 'participation_type', header: 'Vai trò', width: 14 },
+	{ key: 'source', header: 'Nguồn', width: 11 },
+	{ key: 'is_foreign', header: 'Quốc tịch', width: 11 },
+	{ key: 'cme_credits', header: 'Số tín chỉ', width: 9 },
+	{ key: 'notes', header: 'Ghi chú', width: 22 },
+];
+
+const templateWorkbook = () => {
+	const wb = new ExcelJS.Workbook();
+	const ws = xl.buildSheet(wb, {
+		sheetName: 'Người tham dự',
+		title: 'MẪU NHẬP DANH SÁCH NGƯỜI THAM DỰ HỘI THẢO / HỘI NGHỊ',
+		subtitle:
+			'Bắt buộc: Họ và tên. Cán bộ nội viện nên ghi MNV để tự khớp. Ngày sinh dd/mm/yyyy (hoặc chỉ năm). Số tín chỉ để trống sẽ lấy mặc định theo vai trò chọn khi nhập. Quốc tịch để trống = Việt Nam. Xoá 2 dòng ví dụ trước khi nhập.',
+		columns: TEMPLATE_COLUMNS,
+	});
+	ws.getRow(2).height = 30;
+	const note = 'Dòng ví dụ — xoá trước khi nhập';
+	ws.addRow({
+		stt: 1,
+		title_prefix: 'Ông',
+		full_name: 'Nguyễn Văn A',
+		dob: '12/09/1984',
+		gender: 'Nam',
+		department_raw: 'Khoa Nội tim mạch',
+		staff_number: 1234,
+		qualification_raw: 'BSCKII',
+		participation_type: 'Báo cáo viên',
+		source: 'Nội viện',
+		cme_credits: 6,
+		notes: note,
+	});
+	ws.addRow({
+		stt: 2,
+		title_prefix: 'Bà',
+		full_name: 'Trần Thị B',
+		dob: '1990',
+		gender: 'Nữ',
+		organization: 'Bệnh viện Đa khoa tỉnh X',
+		qualification_raw: 'ThS',
+		participation_type: 'Đại biểu',
+		source: 'Ngoại viện',
+		notes: note,
+	});
+	xl.styleBody(ws);
+	[4, 5].forEach((r) => (ws.getRow(r).font = { italic: true, color: { argb: 'FF6B7280' } }));
+	xl.addDropdowns(ws, TEMPLATE_COLUMNS, {
+		title_prefix: ['Ông', 'Bà'],
+		gender: ['Nam', 'Nữ'],
+		participation_type: ['Đại biểu', 'Báo cáo viên', 'Chủ tọa', 'Ban tổ chức', 'Học viên'],
+		source: ['Nội viện', 'Ngoại viện'],
+	});
+	return wb;
+};
+
+module.exports = { importExcel, templateWorkbook };
 module.exports._internal = { parseWorkbook, buildPreview, findHeader };

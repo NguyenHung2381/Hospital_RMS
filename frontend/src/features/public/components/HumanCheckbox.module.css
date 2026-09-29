@@ -1,0 +1,155 @@
+/* Ô xác minh kiểu reCAPTCHA / Turnstile — màu cố định như widget của Google /
+   Cloudflare để người dùng nhận ra ngay. */
+.box {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	width: 100%;
+	max-width: 320px;
+	min-height: 74px;
+	padding: 10px 12px 10px 14px;
+	background: #f9f9f9;
+	border: 1px solid #d3d3d3;
+	border-radius: 4px;
+	box-shadow: 0 0 4px 1px rgba(0, 0, 0, 0.08);
+	box-sizing: border-box;
+	font-family: Roboto, 'Segoe UI', Arial, sans-serif;
+}
+.box[data-state='error'] {
+	border-color: #f1a7a7;
+	background: #fff6f6;
+}
+
+.check {
+	flex: none;
+	position: relative;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 28px;
+	height: 28px;
+	padding: 0;
+	background: #fff;
+	border: 2px solid #c1c1c1;
+	border-radius: 3px;
+	cursor: pointer;
+	transition:
+		border-color 0.15s,
+		border-radius 0.2s,
+		background 0.2s;
+}
+.check:hover:not(:disabled) {
+	border-color: #b2b2b2;
+	box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.1);
+}
+.check:focus-visible {
+	outline: 2px solid #4d90fe;
+	outline-offset: 2px;
+}
+.check:disabled {
+	cursor: default;
+}
+.box[data-state='verifying'] .check {
+	border-color: transparent;
+	background: transparent;
+}
+.box[data-state='verified'] .check {
+	border-color: transparent;
+	background: transparent;
+}
+.box[data-state='error'] .check {
+	border-color: #d93025;
+}
+
+.spinner {
+	width: 26px;
+	height: 26px;
+	border: 3px solid #d7e3fc;
+	border-top-color: #1a73e8;
+	border-radius: 50%;
+	animation: hcSpin 0.8s linear infinite;
+	box-sizing: border-box;
+}
+
+.tick {
+	width: 30px;
+	height: 30px;
+	fill: none;
+	stroke: #0a9b4a;
+	stroke-width: 3.2;
+	stroke-linecap: round;
+	stroke-linejoin: round;
+	stroke-dasharray: 26;
+	stroke-dashoffset: 26;
+	animation: hcDraw 0.35s ease-out forwards;
+}
+
+.text {
+	flex: 1;
+	min-width: 0;
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+}
+.label {
+	font-size: 14px;
+	color: #222;
+	line-height: 1.3;
+}
+.box[data-state='error'] .label {
+	color: #d93025;
+}
+.retry {
+	align-self: flex-start;
+	padding: 0;
+	background: none;
+	border: none;
+	color: #1a73e8;
+	font-size: 12px;
+	cursor: pointer;
+	text-decoration: underline;
+}
+
+.brand {
+	flex: none;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 1px;
+	width: 70px;
+	text-align: center;
+}
+.logo {
+	width: 30px;
+	height: 30px;
+	fill: #0a9b4a;
+}
+.logoTick {
+	fill: none;
+	stroke: #fff;
+	stroke-width: 2;
+	stroke-linecap: round;
+	stroke-linejoin: round;
+}
+.brandName {
+	font-size: 10px;
+	font-weight: 600;
+	color: #555;
+	white-space: nowrap;
+}
+.brandSub {
+	font-size: 8px;
+	color: #888;
+	white-space: nowrap;
+}
+
+@keyframes hcSpin {
+	to {
+		transform: rotate(360deg);
+	}
+}
+@keyframes hcDraw {
+	to {
+		stroke-dashoffset: 0;
+	}
+}

@@ -7,10 +7,12 @@ import { ContextMenu } from '../components/ContextMenu';
 import { DeadlineModal } from '../components/DeadlineModal';
 import { GanttRow } from '../components/GanttRow';
 import { ScheduleListView } from '../components/ScheduleListView';
+import { YearPicker } from '../components/YearPicker';
 import { InlineLoading } from '@/shared/components';
 import { useDrag } from '../hooks/useDrag';
 import { useGanttTimeline } from '../hooks/useGanttTimeline';
 import { useScheduleData } from '../hooks/useScheduleData';
+import { CAL_MODES, useCalendarNav } from '../hooks/useCalendarNav';
 import {
 	BAR_DEFAULT_COLORS,
 	DEADLINE_COLORS,
@@ -32,15 +34,17 @@ const LEGEND = [
 ];
 
 export default function Schedule() {
-	const now         = useMemo(() => new Date(), []);
-	const currentYear = now.getFullYear();
+	const {
+		currentYear, minYear, maxYear,
+		year, calMode, calStart, calWeekStart,
+		handleCalMode, handleYearChange, handleSelectMonth,
+		calPrev, calNext, calGoToday,
+		calCanPrev, calCanNext, calShowsToday, todayTitle,
+	} = useCalendarNav('year');
 
 	const [viewMode, setViewMode]       = useState<'gantt' | 'list' | 'calendar'>('calendar');
-	const [year, setYear]               = useState(currentYear);
 	const [zoom, setZoom]               = useState<ZoomLevel>(1);
 	const [filterRoundId, setFilterRoundId] = useState('');
-	const [calView, setCalView]         = useState<1 | 3 | 6 | 12>(12);
-	const [calStart, setCalStart]       = useState(0);
 	const [modal, setModal]             = useState<ModalState | null>(null);
 	const [ctxMenu, setCtxMenu]         = useState<CtxMenuState | null>(null);
 	const [colorPicker, setColorPicker] = useState<ColorPickerState | null>(null);
@@ -197,44 +201,9 @@ export default function Schedule() {
 		if (ctxTarget) setModal({ round: ctxTarget.round, deadline: null });
 	}, [ctxTarget]);
 
-	// ── Calendar view controls ─────────────────────────────────────────────────
-	const handleCalView = useCallback((v: 1 | 3 | 6 | 12) => {
-		setCalView(v);
-		if (v === 12) {
-			setCalStart(0);
-		} else {
-			const cm = year === currentYear ? now.getMonth() : 0;
-			setCalStart(Math.max(0, Math.min(12 - v, cm - Math.floor(v / 2))));
-		}
-	}, [year, currentYear, now]);
-
-	const handleSelectMonth = useCallback((m: number) => {
-		setCalView(1);
-		setCalStart(m);
-	}, []);
-
-	const calPrev = useCallback(() => {
-		if (calStart > 0) {
-			setCalStart((s) => Math.max(0, s - calView));
-		} else if (year > currentYear - 1) {
-			setYear((y) => y - 1);
-			setCalStart(12 - calView);
-		}
-	}, [calStart, calView, year, currentYear]);
-
-	const calNext = useCallback(() => {
-		if (calStart + calView < 12) {
-			setCalStart((s) => Math.min(12 - calView, s + calView));
-		} else if (year < currentYear + 1) {
-			setYear((y) => y + 1);
-			setCalStart(0);
-		}
-	}, [calStart, calView, year, currentYear]);
-
 	// ── Derived ────────────────────────────────────────────────────────────────
 	const displayedRows = filterRoundId ? rows.filter((r) => r.id === filterRoundId) : rows;
 	const timelineW     = Math.max(containerWidth * zoom, 700 * zoom);
-	const years         = [currentYear - 1, currentYear, currentYear + 1];
 
 	// ── Render ─────────────────────────────────────────────────────────────────
 	return (
@@ -262,20 +231,16 @@ export default function Schedule() {
 							className={`${styles.viewBtn}${viewMode === 'calendar' ? ` ${styles.viewBtnActive}` : ''}`}
 							onClick={() => setViewMode('calendar')}
 						>
-							🗓 Lịch tháng
+							🗓 Lịch
 						</button>
 					</div>
-					<div className={styles.yearTabs}>
-						{years.map((y) => (
-							<button
-								key={y}
-								className={`${styles.yearTab}${y === year ? ` ${styles.yearTabActive}` : ''}`}
-								onClick={() => setYear(y)}
-							>
-								{y}
-							</button>
-						))}
-					</div>
+					<YearPicker
+						value={year}
+						onChange={handleYearChange}
+						min={minYear}
+						max={maxYear}
+						currentYear={currentYear}
+					/>
 					<select
 						className={styles.roundFilter}
 						value={filterRoundId}
@@ -288,16 +253,30 @@ export default function Schedule() {
 						))}
 					</select>
 					{viewMode === 'calendar' && (
-						<div className={styles.calViewGroup}>
-							{([1, 3, 6, 12] as const).map((v) => (
+						<div className={styles.actionGroup}>
+							<div className={styles.calViewGroup} role='tablist' aria-label='Chế độ xem lịch'>
+								{CAL_MODES.map(({ key, label }) => (
+									<button
+										key={key}
+										role='tab'
+										aria-selected={calMode === key}
+										className={`${styles.calViewBtn}${calMode === key ? ` ${styles.calViewBtnActive}` : ''}`}
+										onClick={() => handleCalMode(key)}
+									>
+										{label}
+									</button>
+								))}
+							</div>
+							{!calShowsToday && (
 								<button
-									key={v}
-									className={`${styles.calViewBtn}${calView === v ? ` ${styles.calViewBtnActive}` : ''}`}
-									onClick={() => handleCalView(v)}
+									className={styles.todayBtn}
+									onClick={calGoToday}
+									title={todayTitle}
 								>
-									{v === 12 ? 'Cả năm' : `${v} tháng`}
+									<span className={styles.todayDot} />
+									Hôm nay
 								</button>
-							))}
+							)}
 						</div>
 					)}
 					{viewMode === 'gantt' && (
@@ -354,10 +333,13 @@ export default function Schedule() {
 						gc={gc}
 						onAddDeadline={(round) => setModal({ round, deadline: null })}
 						onEditDeadline={(round, deadline) => setModal({ round, deadline })}
-						view={calView}
-						startMonth={calStart}
+						mode={calMode}
+						startMonth={calMode === 'year' ? 0 : calStart}
+						weekStart={calWeekStart}
 						onPrev={calPrev}
 						onNext={calNext}
+						canPrev={calCanPrev}
+						canNext={calCanNext}
 						onSelectMonth={handleSelectMonth}
 					/>
 				) : viewMode === 'list' ? (

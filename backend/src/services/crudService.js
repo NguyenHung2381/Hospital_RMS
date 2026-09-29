@@ -10,7 +10,17 @@ const { remember, invalidate } = require('../utils/cache');
 // extraFields: [{ column, sqlType }] — cột phụ ngoài name/description (vd:
 //   cme_credit_categories.group_id/conversion_method/conversion_value/unit_label)
 //   được set/update cùng lúc, giá trị mặc định NULL nếu không truyền.
-const createCrudService = (tableName, idLength = 20, idPrefix = '', deleteGuards = [], extraFields = []) => {
+// options.allowCustomId: cho phép client tự đặt mã (data.id, vd DT_KHOAHOC của
+//   danh mục quy đổi CME); bỏ trống thì vẫn sinh ngẫu nhiên như cũ. Trùng mã ⇒
+//   SQL 2627, errorHandler trả 409.
+const createCrudService = (
+	tableName,
+	idLength = 20,
+	idPrefix = '',
+	deleteGuards = [],
+	extraFields = [],
+	options = {},
+) => {
 	// Thực thể để phát tín hiệu (vd: roles -> role)
 	const entity = tableName.endsWith('s') ? tableName.slice(0, -1) : tableName;
 	// Prefix cache riêng theo bảng — invalidate(cachePrefix) sau mỗi lần ghi sẽ
@@ -59,11 +69,15 @@ const createCrudService = (tableName, idLength = 20, idPrefix = '', deleteGuards
 	const create = async (data, actorId) => {
 		const pool = await getPool();
 		const suffixLen = idLength - idPrefix.length;
-		const idExpr = idPrefix
-			? `'${idPrefix}' + LEFT(REPLACE(NEWID(),'-',''), ${suffixLen})`
-			: `LEFT(REPLACE(NEWID(),'-',''), ${idLength})`;
+		const customId = options.allowCustomId && data.id ? String(data.id).trim() : '';
+		const idExpr = customId
+			? '@custom_id'
+			: idPrefix
+				? `'${idPrefix}' + LEFT(REPLACE(NEWID(),'-',''), ${suffixLen})`
+				: `LEFT(REPLACE(NEWID(),'-',''), ${idLength})`;
 		const req = pool
 			.request()
+			.input('custom_id', sql.VarChar(idLength), customId || null)
 			.input('actor_id', sql.VarChar(20), actorId)
 			.input('name', sql.NVarChar(500), data.name)
 			.input('description', sql.NVarChar(sql.MAX), data.description || null);

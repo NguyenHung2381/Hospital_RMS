@@ -1,5 +1,12 @@
 export type QuestionType = 'single_choice' | 'essay';
+/** null = đề cũ, hỗn hợp cả 2 loại câu */
+export type PaperType = 'multiple_choice' | 'essay';
 export type PaperStatus = 'draft' | 'published' | 'closed';
+
+export const PAPER_QUESTION_TYPE: Record<PaperType, QuestionType> = {
+	multiple_choice: 'single_choice',
+	essay: 'essay',
+};
 export type AttemptStatus = 'in_progress' | 'submitted' | 'graded';
 
 export interface ExamQuestion {
@@ -11,6 +18,7 @@ export interface ExamQuestion {
 	options: string[];
 	correct_option: string | null;
 	points: number;
+	used_count?: number;
 }
 
 export interface ExamPaperQuestion extends ExamQuestion {
@@ -25,6 +33,7 @@ export interface ExamPaper {
 	subject_id: string | null;
 	subject_name?: string | null;
 	title: string;
+	paper_type: PaperType | null;
 	duration_minutes: number;
 	status: PaperStatus;
 	question_count: number;

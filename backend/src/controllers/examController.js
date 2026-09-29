@@ -18,6 +18,15 @@ const createQuestion = async (req, res, next) => {
 	}
 };
 
+const createQuestionsBulk = async (req, res, next) => {
+	try {
+		const result = await examService.createQuestionsBulk(req.body.questions, req.user.id);
+		return created(res, result, `Đã nhập ${result.created} câu hỏi`);
+	} catch (err) {
+		next(err);
+	}
+};
+
 const updateQuestion = async (req, res, next) => {
 	try {
 		const item = await examService.updateQuestion(req.params.id, req.body, req.user.id);
@@ -148,6 +157,7 @@ const submitAttempt = async (req, res, next) => {
 module.exports = {
 	listQuestions,
 	createQuestion,
+	createQuestionsBulk,
 	updateQuestion,
 	removeQuestion,
 	listPapers,

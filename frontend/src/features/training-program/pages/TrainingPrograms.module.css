@@ -21,6 +21,13 @@
 	composes: clearSelectionBtn from '../../../shared/components/Table/Table.module.css';
 }
 
+.filterSelect {
+	composes: filterSelect from '../../../shared/components/Table/Table.module.css';
+}
+.filterActive {
+	composes: filterActive from '../../../shared/components/Table/Table.module.css';
+}
+
 .searchBox {
 	composes: searchWrap from '../../../shared/components/Table/Table.module.css';
 }
@@ -660,6 +667,11 @@
 	font-family: var(--font-body);
 	font-size: 13px;
 	background: var(--color-gray-50);
+}
+/* Ô chọn file gọn trong toolbar — chiếm chỗ như .subInput */
+.subDropzone {
+	flex: 1;
+	min-width: 180px;
 }
 .subInput {
 	flex: 1;

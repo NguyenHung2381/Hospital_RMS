@@ -2,8 +2,7 @@ export type TrainingCatalogTab =
 	| 'trainee-types'
 	| 'training-forms'
 	| 'training-types'
-	| 'subjects'
-	| 'cme-credit-categories';
+	| 'subjects';
 
 export type ModalType = 'add' | 'edit' | 'delete' | null;
 

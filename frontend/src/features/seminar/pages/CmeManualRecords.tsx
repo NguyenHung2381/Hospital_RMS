@@ -1,9 +1,21 @@
 import { formatDateVN } from '../../../shared/utils/formatDate';
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { CheckSvg, InfoSvg, PaperclipSvg, PlusSvg, SearchSvg, TrashSvg, UploadSvg } from '@/assets/icons';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import {
+	CheckSvg,
+	ChevLSvg,
+	ChevRSvg,
+	EditSvg,
+	InfoSvg,
+	PaperclipSvg,
+	PlusSvg,
+	SearchSvg,
+	TrashSvg,
+	UploadSvg,
+	XSvg,
+} from '@/assets/icons';
 import AdminLayout from '../../../layouts/AdminLayout';
 import { useRealtimeUpdate } from '../../../layouts/hooks/useRealtime';
-import { Badge, Modal } from '@/shared/components';
+import { Badge, FileDropzone, Modal } from '@/shared/components';
 import { InlineLoading } from '../../../shared/components/Loading';
 import { apiClient } from '../../../shared/api/axios';
 import {
@@ -26,7 +38,83 @@ import {
 import styles from './Seminar.module.css';
 
 const THIS_YEAR = new Date().getFullYear();
-const YEARS = Array.from({ length: 6 }, (_, i) => THIS_YEAR + 1 - i);
+const MIN_YEAR = 2000;
+const MAX_YEAR = THIS_YEAR + 1;
+const NO_CATEGORY = '__none__';
+
+/** Chọn năm dạng ‹ 2026 › — bấm mũi tên, phím ↑/↓ hoặc gõ thẳng năm, thay cho dropdown dài. */
+function YearStepper({ value, onChange }: { value: number; onChange: (y: number) => void }) {
+	// null = không đang gõ → hiển thị theo value
+	const [draft, setDraft] = useState<string | null>(null);
+
+	const go = (y: number) => {
+		setDraft(null);
+		onChange(Math.min(MAX_YEAR, Math.max(MIN_YEAR, y)));
+	};
+	const commit = () => {
+		const y = Number(draft);
+		if (draft?.length === 4 && y >= MIN_YEAR && y <= MAX_YEAR) onChange(y);
+		setDraft(null);
+	};
+
+	return (
+		<div className={styles.yearStepper}>
+			<button type='button' title='Năm trước' disabled={value <= MIN_YEAR} onClick={() => go(value - 1)}>
+				<ChevLSvg />
+			</button>
+			<label className={styles.yearStepperValue} title='Gõ năm rồi nhấn Enter'>
+				<span>Năm</span>
+				<input
+					inputMode='numeric'
+					maxLength={4}
+					value={draft ?? String(value)}
+					onChange={(e) => setDraft(e.target.value.replace(/\D/g, ''))}
+					onBlur={commit}
+					onKeyDown={(e) => {
+						if (e.key === 'Enter') commit();
+						else if (e.key === 'ArrowUp') { e.preventDefault(); go(value + 1); }
+						else if (e.key === 'ArrowDown') { e.preventDefault(); go(value - 1); }
+					}}
+				/>
+			</label>
+			<button type='button' title='Năm sau' disabled={value >= MAX_YEAR} onClick={() => go(value + 1)}>
+				<ChevRSvg />
+			</button>
+			{value !== THIS_YEAR && (
+				<button type='button' className={styles.yearStepperToday} onClick={() => onChange(THIS_YEAR)}>
+					Năm nay
+				</button>
+			)}
+		</div>
+	);
+}
+
+/** Lọc năm: "Tất cả" (null) hoặc "Theo năm" + YearStepper. Nhớ năm đã chọn gần nhất khi bật lại. */
+function YearFilter({ value, onChange }: { value: number | null; onChange: (y: number | null) => void }) {
+	const [lastYear, setLastYear] = useState(value ?? THIS_YEAR);
+	const pickYear = (y: number) => {
+		setLastYear(y);
+		onChange(y);
+	};
+
+	return (
+		<div className={styles.yearFilter}>
+			<div className={styles.yearMode} role='group' aria-label='Phạm vi năm'>
+				<button type='button' className={value === null ? styles.yearModeActive : ''} onClick={() => onChange(null)}>
+					Tất cả năm
+				</button>
+				<button type='button' className={value !== null ? styles.yearModeActive : ''} onClick={() => onChange(lastYear)}>
+					Theo năm
+				</button>
+			</div>
+			{value !== null && <YearStepper value={value} onChange={pickYear} />}
+		</div>
+	);
+}
+
+function formatCredits(n: number): string {
+	return Number(n).toLocaleString('vi-VN', { maximumFractionDigits: 2 });
+}
 
 interface SimpleUser {
 	id: string;
@@ -68,7 +156,7 @@ function RecordFormModal({
 	);
 	const [busy, setBusy] = useState(false);
 	const [error, setError] = useState('');
-	const fileInputRef = useRef<HTMLInputElement>(null);
+	const [evidence, setEvidence] = useState<File | null>(null);
 
 	const save = async () => {
 		if (!form.user_id || !form.title.trim() || !form.activity_date || !form.credits) return;
@@ -76,8 +164,7 @@ function RecordFormModal({
 		setError('');
 		try {
 			const saved = record ? await updateCmeRecord(record.id, form) : await createCmeRecord(form);
-			const file = fileInputRef.current?.files?.[0];
-			if (file) await addCmeRecordEvidence(saved.id, file);
+			if (evidence) await addCmeRecordEvidence(saved.id, evidence);
 			onSaved();
 			onClose();
 		} catch (e) {
@@ -181,7 +268,12 @@ function RecordFormModal({
 			</div>
 			<div className={styles.formGroup}>
 				<label className={styles.formLabel}>Minh chứng đính kèm</label>
-				<input ref={fileInputRef} type='file' className={styles.formInput} />
+				<FileDropzone
+					value={evidence}
+					onChange={setEvidence}
+					hint={record?.evidence_file_url ? 'Chọn file mới để thay minh chứng hiện có' : 'PDF, Word, Excel, ảnh…'}
+					disabled={busy}
+				/>
 				{record?.evidence_file_url && (
 					<div className={styles.modalSub}>
 						Hiện có: <a href={record.evidence_file_url} target='_blank' rel='noreferrer'>{record.evidence_file_name}</a>
@@ -259,16 +351,14 @@ function ImportModal({ onClose, onDone }: { onClose: () => void; onDone: () => v
 					</div>
 					<div className={styles.formGroup}>
 						<label className={styles.formLabel}>File Excel (.xlsx)</label>
-						<input
-							type='file'
-							accept='.xlsx'
-							className={styles.formInput}
-							onChange={(e) => {
-								const f = e.target.files?.[0] ?? null;
+						<FileDropzone
+							value={file}
+							onChange={(f) => {
 								setFile(f);
 								setResult(null);
 								if (f) runDryRun(f);
 							}}
+							accept='.xlsx'
 						/>
 					</div>
 					{loading && <InlineLoading label='Đang đọc file…' />}
@@ -334,11 +424,15 @@ function ImportModal({ onClose, onDone }: { onClose: () => void; onDone: () => v
 
 export default function CmeManualRecords() {
 	const perms = useSeminarPerms();
-	const [year, setYear] = useState(THIS_YEAR);
+	// null = tất cả các năm
+	const [year, setYear] = useState<number | null>(THIS_YEAR);
 	const [records, setRecords] = useState<CmeRecord[]>([]);
 	const [users, setUsers] = useState<SimpleUser[]>([]);
 	const [categories, setCategories] = useState<CmeCreditCategory[]>([]);
 	const [search, setSearch] = useState('');
+	const [deptFilter, setDeptFilter] = useState('');
+	const [categoryFilter, setCategoryFilter] = useState('');
+	const [evidenceFilter, setEvidenceFilter] = useState<'' | 'yes' | 'no'>('');
 	const [loading, setLoading] = useState(true);
 	const [editing, setEditing] = useState<CmeRecord | null | 'new'>(null);
 	const [showImport, setShowImport] = useState(false);
@@ -355,14 +449,42 @@ export default function CmeManualRecords() {
 	useEffect(() => {
 		const load = () => {
 			setLoading(true);
-			getCmeRecords({ year })
+			getCmeRecords({ year: year ?? undefined })
 				.then((r) => setRecords(r.data))
 				.finally(() => setLoading(false));
 		};
 		load();
 	}, [year, refreshKey]);
 
-	const filtered = records.filter((r) => !search || r.user_name.toLowerCase().includes(search.toLowerCase()));
+	const departments = useMemo(
+		() =>
+			Array.from(new Set(records.map((r) => r.department_name).filter((d): d is string => !!d))).sort((a, b) =>
+				a.localeCompare(b, 'vi'),
+			),
+		[records],
+	);
+
+	const filtered = useMemo(() => {
+		const q = search.trim().toLowerCase();
+		return records.filter((r) => {
+			if (q && !r.user_name.toLowerCase().includes(q) && !r.title.toLowerCase().includes(q)) return false;
+			if (deptFilter && r.department_name !== deptFilter) return false;
+			if (categoryFilter === NO_CATEGORY && r.category_id) return false;
+			if (categoryFilter && categoryFilter !== NO_CATEGORY && r.category_id !== categoryFilter) return false;
+			if (evidenceFilter === 'yes' && !r.evidence_file_url) return false;
+			if (evidenceFilter === 'no' && r.evidence_file_url) return false;
+			return true;
+		});
+	}, [records, search, deptFilter, categoryFilter, evidenceFilter]);
+
+	const totalCredits = filtered.reduce((sum, r) => sum + Number(r.credits || 0), 0);
+	const hasFilter = !!(search || deptFilter || categoryFilter || evidenceFilter);
+	const clearFilters = () => {
+		setSearch('');
+		setDeptFilter('');
+		setCategoryFilter('');
+		setEvidenceFilter('');
+	};
 
 	const handleDelete = async (id: string) => {
 		await deleteCmeRecord(id);
@@ -392,25 +514,65 @@ export default function CmeManualRecords() {
 				<div className={styles.tableHeader}>
 					<div className={styles.tableHeaderLeft}>
 						<span className={styles.tableTitle}>Danh sách ghi nhận CME</span>
-						<span className={styles.tableCount}>{filtered.length} bản ghi</span>
+						<span className={styles.tableCount}>
+							{filtered.length} bản ghi · {formatCredits(totalCredits)} tín chỉ
+						</span>
 					</div>
 					<div className={styles.tableControls}>
 						<div className={styles.searchBox}>
 							<SearchSvg className={styles.searchIcon} />
 							<input
 								className={styles.searchInput}
-								placeholder='Tìm theo tên nhân viên...'
+								placeholder='Tìm nhân viên, nội dung...'
 								value={search}
 								onChange={(e) => setSearch(e.target.value)}
 							/>
+							{search && (
+								<button className={styles.searchClear} onClick={() => setSearch('')}>
+									<XSvg />
+								</button>
+							)}
 						</div>
-						<select className={styles.formInput} value={year} onChange={(e) => setYear(Number(e.target.value))}>
-							{YEARS.map((y) => (
-								<option key={y} value={y}>
-									Năm {y}
+						<select
+							className={`${styles.filterSelect} ${styles.cmeFilterWide}`}
+							value={deptFilter}
+							onChange={(e) => setDeptFilter(e.target.value)}
+						>
+							<option value=''>Mọi khoa/phòng</option>
+							{departments.map((d) => (
+								<option key={d} value={d}>
+									{d}
 								</option>
 							))}
 						</select>
+						<select
+							className={`${styles.filterSelect} ${styles.cmeFilterWide}`}
+							value={categoryFilter}
+							onChange={(e) => setCategoryFilter(e.target.value)}
+						>
+							<option value=''>Mọi danh mục</option>
+							<option value={NO_CATEGORY}>Không thuộc danh mục</option>
+							{categories.map((c) => (
+								<option key={c.id} value={c.id}>
+									{c.name}
+								</option>
+							))}
+						</select>
+						<select
+							className={styles.filterSelect}
+							value={evidenceFilter}
+							onChange={(e) => setEvidenceFilter(e.target.value as '' | 'yes' | 'no')}
+						>
+							<option value=''>Minh chứng: tất cả</option>
+							<option value='yes'>Có minh chứng</option>
+							<option value='no'>Chưa có minh chứng</option>
+						</select>
+						<YearFilter value={year} onChange={setYear} />
+						{hasFilter && (
+							<button className={styles.clearSelectionBtn} onClick={clearFilters}>
+								Xoá lọc
+							</button>
+						)}
 					</div>
 				</div>
 
@@ -418,45 +580,71 @@ export default function CmeManualRecords() {
 					<InlineLoading />
 				) : filtered.length === 0 ? (
 					<div className={styles.emptyState}>
-						<div className={styles.emptyTitle}>Chưa có ghi nhận CME nào</div>
+						<div className={styles.emptyTitle}>
+							{hasFilter
+								? 'Không có ghi nhận nào khớp bộ lọc'
+								: year === null
+									? 'Chưa có ghi nhận CME nào'
+									: `Chưa có ghi nhận CME nào trong năm ${year}`}
+						</div>
 					</div>
 				) : (
 					<table className={styles.table}>
 						<thead>
 							<tr>
 								<th>Nhân viên</th>
-								<th>Khoa/phòng</th>
-								<th>Nội dung</th>
+								<th>Nội dung hoạt động</th>
 								<th>Danh mục</th>
 								<th>Ngày</th>
-								<th>Tín chỉ</th>
-								<th>Minh chứng</th>
+								<th className={styles.thRight}>Tín chỉ</th>
+								<th className={styles.thCenter}>Minh chứng</th>
 								<th />
 							</tr>
 						</thead>
 						<tbody>
 							{filtered.map((r) => (
 								<tr key={r.id} className={styles.tr}>
-									<td>{r.user_name}</td>
-									<td>{r.department_name ?? '—'}</td>
-									<td>{r.title}</td>
-									<td>{r.category_name ? <Badge tone='blue'>{r.category_name}</Badge> : '—'}</td>
-									<td>{formatDateVN(r.activity_date)}</td>
-									<td>{r.credits}</td>
 									<td>
+										<div className={styles.cmeCellMain}>{r.user_name}</div>
+										<div className={styles.cmeCellSub}>{r.department_name ?? '—'}</div>
+									</td>
+									<td>
+										<div className={styles.cmeCellMain}>{r.title}</div>
+										{r.note && <div className={styles.cmeCellSub}>{r.note}</div>}
+									</td>
+									<td>
+										{r.category_name ? (
+											<Badge tone='blue' className={styles.cmeCategory} title={r.category_name}>
+												{r.category_name}
+											</Badge>
+										) : (
+											<span className={styles.muted}>—</span>
+										)}
+									</td>
+									<td className={styles.cmeNowrap}>{formatDateVN(r.activity_date)}</td>
+									<td className={styles.tdRight}>
+										<span className={styles.cmeCredits}>{formatCredits(r.credits)}</span>
+									</td>
+									<td className={styles.tdCenter}>
 										{r.evidence_file_url ? (
-											<a href={r.evidence_file_url} target='_blank' rel='noreferrer'>
+											<a
+												className={styles.cmeEvidence}
+												href={r.evidence_file_url}
+												target='_blank'
+												rel='noreferrer'
+												title={r.evidence_file_name ?? 'Xem minh chứng'}
+											>
 												<PaperclipSvg />
 											</a>
 										) : (
-											'—'
+											<span className={styles.muted}>—</span>
 										)}
 									</td>
 									<td className={styles.tdActions}>
 										{perms.canCme && (
 											<div className={styles.actionBtns}>
 												<div className={styles.actionBtn} title='Sửa' onClick={() => setEditing(r)}>
-													<CheckSvg />
+													<EditSvg />
 												</div>
 												<div
 													className={`${styles.actionBtn} ${styles.danger}`}

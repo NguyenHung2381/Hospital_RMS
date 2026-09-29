@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { getStoredUser } from '../../../shared/utils/storage';
-import { getRoundByPublicToken } from '../../round/api/roundApi';
+import { getTopicRoundByToken } from '../../public/api/publicApi';
 import {
 	addTopicMember,
 	createTopic,
@@ -55,6 +55,8 @@ export interface TopicRegisterState {
 	rounds: SimpleItem[];
 	categories: SimpleItem[];
 	levels: SimpleItem[];
+	/** Đợt chỉ cho 1 cấp độ ⇒ cấp độ đó (tự gán, không cho chọn). */
+	autoLevel: SimpleItem | null;
 	depts: SimpleItem[];
 	myTopics: MyTopic[];
 	loadingRef: boolean;
@@ -195,39 +197,51 @@ export function useTopicRegister(): TopicRegisterState {
 
 	// Load reference data
 	useEffect(() => {
+		// Cấp độ KHÔNG tải ở đây: effect theo round_id bên dưới lo — tải song song
+		// "tất cả cấp độ" dễ về sau và ghi đè danh sách đã lọc theo đợt.
 		const base = Promise.all([
 			getRounds(),
 			getCategories(),
-			getLevels(),
 			getDepts(),
-		]).then(([r, c, l, d]) => {
+		]).then(([r, c, d]) => {
 			setRounds(r.data);
 			setCategories(c.data);
-			setLevels(l.data);
 			setDepts(d.data);
 		});
 		const tokenLoad = publicToken
-			? getRoundByPublicToken(publicToken).then((round) => {
-					if (round) {
+			? getTopicRoundByToken(publicToken)
+					.then((round) => {
+						if (!round.registration_open) {
+							setToast({
+								msg: `Đợt "${round.name}" hiện không nhận đăng ký đề tài.`,
+								type: 'error',
+							});
+							return;
+						}
 						setLockedRound({
 							id: round.id,
 							name: round.name,
 						});
 						setPickedRoundId(round.id);
 						setFormState((prev) => ({ ...prev, round_id: round.id }));
-					}
-				})
+					})
+					.catch((err: unknown) =>
+						setToast({
+							msg: err instanceof Error ? err.message : 'Liên kết đăng ký không hợp lệ.',
+							type: 'error',
+						}),
+					)
 			: Promise.resolve();
 		Promise.all([base, tokenLoad]).finally(() => setLoadingRef(false));
 	}, [publicToken]);
 
-	// Cấp độ "ăn theo" đợt: mỗi khi đổi vòng nghiên cứu, tải lại danh sách cấp độ
-	// được phép cho loại đợt đó. Nếu cấp độ đang chọn không còn hợp lệ → bỏ chọn.
+	// Cấp độ "ăn theo" đợt (cấu hình ở đợt / loại đợt): mỗi khi đổi vòng nghiên
+	// cứu, tải lại danh sách cấp độ được phép. Nếu cấp độ đang chọn không còn hợp
+	// lệ → bỏ chọn. Chưa chọn đợt ⇒ tất cả cấp độ.
 	useEffect(() => {
 		const roundId = form.round_id;
-		if (!roundId) return;
 		let alive = true;
-		getLevels({ round_id: roundId })
+		getLevels(roundId ? { round_id: roundId } : undefined)
 			.then((res) => {
 				if (!alive) return;
 				setLevels(res.data);
@@ -439,7 +453,11 @@ export function useTopicRegister(): TopicRegisterState {
 		setFileError('');
 	}, [lockedRound, pickedRoundId, currentDeptId]);
 
+	// Đợt chỉ cho 1 cấp độ ⇒ tự gán, không hỏi (giống cổng đăng ký công khai).
+	const autoLevel = form.round_id && levels.length === 1 ? levels[0] : null;
+
 	const addTopicToList = useCallback(() => {
+		const levelId = form.level_id || autoLevel?.id || '';
 		const e: FormErrors = {};
 		if (!form.title.trim())
 			e.title =
@@ -447,7 +465,7 @@ export function useTopicRegister(): TopicRegisterState {
 					? 'Tiêu đề bài báo là bắt buộc'
 					: 'Tiêu đề đề tài là bắt buộc';
 		if (!form.round_id) e.round_id = 'Vui lòng chọn vòng nghiên cứu';
-		if (form.article_type !== 'bai_bao' && !form.level_id)
+		if (form.article_type !== 'bai_bao' && !levelId)
 			e.level_id = 'Vui lòng chọn cấp độ đề tài';
 		if (!form.department_id) e.department_id = 'Vui lòng chọn khoa phòng';
 		if (Object.keys(e).length) {
@@ -464,7 +482,7 @@ export function useTopicRegister(): TopicRegisterState {
 				staff_number: form.staff_number.trim(),
 				round_id: form.round_id,
 				category_id: form.category_id,
-				level_id: form.level_id,
+				level_id: form.article_type === 'bai_bao' ? '' : levelId,
 				department_id: form.department_id,
 				doi: form.doi.trim(),
 				publish_date: form.publish_date,
@@ -501,7 +519,7 @@ export function useTopicRegister(): TopicRegisterState {
 		setManualErrors({});
 		setAttachments([]);
 		setFileError('');
-	}, [form, pendingMembers, attachments]);
+	}, [form, autoLevel, pendingMembers, attachments]);
 
 	const removeTopicFromList = useCallback(
 		(localId: string) =>
@@ -590,6 +608,7 @@ export function useTopicRegister(): TopicRegisterState {
 		rounds,
 		categories,
 		levels,
+		autoLevel,
 		depts,
 		myTopics,
 		loadingRef,

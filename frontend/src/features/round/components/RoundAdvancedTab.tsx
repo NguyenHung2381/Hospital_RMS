@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import type React from 'react';
 import {
 	ActivitySvg,
 	CheckCircleSvg,
@@ -17,30 +18,40 @@ interface RoundAdvancedTabProps {
 	round: ResearchRound;
 }
 
+// Hai kiểu đăng ký đề tài dùng chung public_token của đợt:
+// - Công khai (/de-xuat-de-tai): không cần tài khoản, form rút gọn + captcha.
+// - Khoa/phòng (/dang-ky-de-tai): tài khoản khoa/phòng đăng nhập, form đầy đủ
+//   (thành viên, file đính kèm, nhiều đề tài/lần).
+const REGISTER_LINKS = [
+	{
+		key: 'public',
+		path: '/de-xuat-de-tai',
+		label: 'Liên kết đăng ký công khai',
+		hint: 'Ai cũng mở được, không cần tài khoản — điền form rút gọn và xác nhận captcha.',
+	},
+	{
+		key: 'department',
+		path: '/dang-ky-de-tai',
+		label: 'Liên kết đăng ký theo khoa/phòng',
+		hint: 'Yêu cầu đăng nhập tài khoản khoa/phòng — form đầy đủ: thành viên, file đính kèm, nộp nhiều đề tài.',
+	},
+] as const;
+
 export function RoundAdvancedTab({ round }: RoundAdvancedTabProps) {
-	const [tokenCopied, setTokenCopied] = useState(false);
-	const [linkCopied, setLinkCopied] = useState(false);
+	const [copiedKey, setCopiedKey] = useState<string | null>(null);
 
-	const handleCopyToken = async (token: string) => {
+	const copy = async (key: string, text: string) => {
 		try {
-			await navigator.clipboard.writeText(token);
-			setTokenCopied(true);
-			setTimeout(() => setTokenCopied(false), 2000);
+			await navigator.clipboard.writeText(text);
+			setCopiedKey(key);
+			setTimeout(() => setCopiedKey((k) => (k === key ? null : k)), 2000);
 		} catch (err) {
 			console.error('Copy failed', err);
 		}
 	};
 
-	const handleCopyLink = async (token: string) => {
-		try {
-			const link = `${window.location.origin}/portal?token=${token}`;
-			await navigator.clipboard.writeText(link);
-			setLinkCopied(true);
-			setTimeout(() => setLinkCopied(false), 2000);
-		} catch (err) {
-			console.error('Copy failed', err);
-		}
-	};
+	const buildLink = (path: string) =>
+		`${window.location.origin}${path}?token=${round.public_token}`;
 
 	const topicTotal = round.topic_total || 0;
 	const topicActive = round.topic_active || 0;
@@ -51,65 +62,63 @@ export function RoundAdvancedTab({ round }: RoundAdvancedTabProps) {
 	const completedPct = topicTotal ? Math.round((topicCompleted / topicTotal) * 100) : 0;
 	const otherPct = topicTotal ? Math.round((topicOther / topicTotal) * 100) : 0;
 
+	const copyButton = (key: string, text: string, idleIcon: React.ReactNode, idleLabel: string) => (
+		<button
+			type='button'
+			className={`${styles.btnCopy} ${copiedKey === key ? styles.btnCopySuccess : ''}`}
+			onClick={() => void copy(key, text)}
+		>
+			{copiedKey === key ? (
+				<>
+					<CheckSvg style={{ width: 14, height: 14 }} />
+					<span>Đã chép!</span>
+				</>
+			) : (
+				<>
+					{idleIcon}
+					<span>{idleLabel}</span>
+				</>
+			)}
+		</button>
+	);
+
 	return (
 		<>
 			<div className={styles.formSection}>
-				Mã truy cập &amp; Liên kết đăng ký công khai
+				Mã truy cập &amp; Liên kết đăng ký đề tài
 			</div>
 
 			<div className={styles.tokenAccessCard}>
 				<div className={styles.tokenHeader}>
 					<KeySvg />
-					<span>Cài đặt bảo mật &amp; Truy cập công khai</span>
+					<span>Cài đặt bảo mật &amp; Truy cập</span>
 				</div>
 				<div className={styles.tokenBody}>
 					<span className={styles.tokenWarningText}>
-						Cung cấp mã khóa này hoặc liên kết trực tiếp cho các khoa/phòng để họ có thể tự đăng ký đề tài nghiên cứu mà không cần phải có tài khoản hệ thống.
+						Đợt này có 2 cách đăng ký đề tài: công khai (không cần tài khoản) hoặc theo khoa/phòng (đăng nhập tài khoản khoa/phòng). Cả hai liên kết đều tự chọn sẵn đợt này.
 					</span>
 					<div className={styles.tokenRow}>
 						<div className={styles.tokenValueBox} title='Mã token'>
 							{round.public_token}
 						</div>
-						<button
-							type='button'
-							className={`${styles.btnCopy} ${tokenCopied ? styles.btnCopySuccess : ''}`}
-							onClick={() => void handleCopyToken(round.public_token)}
-						>
-							{tokenCopied ? (
-								<>
-									<CheckSvg style={{ width: 14, height: 14 }} />
-									<span>Đã chép!</span>
-								</>
-							) : (
-								<>
-									<CopySvg style={{ width: 14, height: 14 }} />
-									<span>Sao chép mã</span>
-								</>
-							)}
-						</button>
+						{copyButton('token', round.public_token, <CopySvg style={{ width: 14, height: 14 }} />, 'Sao chép mã')}
 					</div>
-					<div className={styles.tokenRow}>
-						<div className={styles.tokenValueBox} title='Đường dẫn đăng ký đề tài'>
-							{`${window.location.origin}/portal?token=${round.public_token}`}
-						</div>
-						<button
-							type='button'
-							className={`${styles.btnCopy} ${linkCopied ? styles.btnCopySuccess : ''}`}
-							onClick={() => void handleCopyLink(round.public_token)}
-						>
-							{linkCopied ? (
-								<>
-									<CheckSvg style={{ width: 14, height: 14 }} />
-									<span>Đã chép!</span>
-								</>
-							) : (
-								<>
-									<LinkSvg style={{ width: 14, height: 14 }} />
-									<span>Sao chép liên kết</span>
-								</>
-							)}
-						</button>
-					</div>
+					{REGISTER_LINKS.map((l) => {
+						const link = buildLink(l.path);
+						return (
+							<div key={l.key}>
+								<span className={styles.tokenWarningText}>
+									<strong>{l.label}:</strong> {l.hint}
+								</span>
+								<div className={styles.tokenRow}>
+									<div className={styles.tokenValueBox} title={l.label}>
+										{link}
+									</div>
+									{copyButton(l.key, link, <LinkSvg style={{ width: 14, height: 14 }} />, 'Sao chép liên kết')}
+								</div>
+							</div>
+						);
+					})}
 				</div>
 			</div>
 

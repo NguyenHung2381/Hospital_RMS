@@ -28,37 +28,6 @@
 }
 
 /* Year tabs */
-.yearTabs {
-	display: flex;
-	gap: 2px;
-	background: var(--color-gray-100);
-	border: 1px solid var(--color-gray-200);
-	border-radius: var(--radius-lg);
-	padding: 3px;
-}
-.yearTab {
-	padding: 6px 14px;
-	border-radius: calc(var(--radius-lg) - 2px);
-	border: none;
-	background: transparent;
-	font-size: var(--font-size-sm);
-	font-weight: var(--font-weight-semibold);
-	color: var(--color-gray-600);
-	cursor: pointer;
-	transition: all 0.15s ease;
-	font-family: var(--font-body);
-	line-height: 1.3;
-}
-.yearTab:hover:not(.yearTabActive) {
-	background: rgba(255, 255, 255, 0.6);
-	color: var(--color-gray-800);
-}
-.yearTabActive {
-	background: var(--color-primary);
-	color: #ffffff;
-	box-shadow: 0 2px 4px color-mix(in srgb, var(--color-primary) 30%, transparent);
-}
-
 /* View Switcher */
 .viewSwitcher {
 	display: flex;
@@ -725,7 +694,6 @@
 		white-space: nowrap !important;
 	}
 
-	.yearTabs,
 	.calViewGroup {
 		width: 100% !important;
 		display: flex !important;
@@ -733,7 +701,6 @@
 		-webkit-overflow-scrolling: touch !important;
 	}
 
-	.yearTab,
 	.calViewBtn {
 		flex: 1 !important;
 		text-align: center !important;

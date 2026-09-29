@@ -162,4 +162,73 @@ const remove = async (roundId, phase, actorId) => {
 	broadcast('update', { entity: 'round' });
 };
 
-module.exports = { getByRoundId, upsert, remove };
+// ─── Tạo mốc hàng loạt khi tạo đợt ──────────────────────────────────────────
+// Chuẩn hoá + kiểm tra danh sách mốc gửi kèm lúc tạo đợt (ngày dạng
+// 'yyyy-mm-dd', phải nằm trong [roundStart, roundEnd]). Giai đoạn đánh số lại
+// 1..n theo thứ tự gửi lên. Lỗi ⇒ throw 400 trước khi ghi gì vào DB.
+const MAX_PHASE = 9;
+const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
+
+const prepareBatch = (list, roundStart, roundEnd) => {
+	if (list == null) return [];
+	const fail = (msg) => {
+		const err = new Error(msg);
+		err.statusCode = 400;
+		throw err;
+	};
+	if (!Array.isArray(list)) fail('Danh sách mốc thời gian không hợp lệ');
+	if (list.length > MAX_PHASE) fail(`Tối đa ${MAX_PHASE} mốc thời gian cho một đợt`);
+	return list.map((d, i) => {
+		const label = `Mốc ${i + 1}`;
+		const name = String(d?.name ?? '').trim();
+		const start = d?.start_date ? String(d.start_date) : null;
+		const end = d?.deadline_date ? String(d.deadline_date) : '';
+		if (!name) fail(`${label}: chưa nhập tên`);
+		if (!ISO_DATE.test(end)) fail(`${label}: chưa chọn hạn cuối`);
+		if (start && !ISO_DATE.test(start)) fail(`${label}: ngày bắt đầu không hợp lệ`);
+		if (start && start > end) fail(`${label}: ngày bắt đầu phải trước hạn cuối`);
+		if ([start, end].some((x) => x && ((roundStart && x < roundStart) || (roundEnd && x > roundEnd))))
+			fail(`${label}: phải nằm trong khoảng thời gian của đợt`);
+		const deadlineType = ALLOWED_DEADLINE_TYPES.includes(d.deadline_type)
+			? d.deadline_type
+			: 'edit';
+		const supplementFields =
+			deadlineType === 'supplement'
+				? parseSupplementFields(
+						Array.isArray(d.supplement_fields)
+							? d.supplement_fields.join(',')
+							: d.supplement_fields,
+					)
+				: null;
+		return {
+			phase: i + 1,
+			name: name.slice(0, 255),
+			start_date: start,
+			deadline_date: end,
+			deadline_type: deadlineType,
+			supplement_fields: supplementFields ? supplementFields.join(',') : null,
+		};
+	});
+};
+
+// Ghi các mốc đã prepareBatch vào DB trong transaction của người gọi.
+const insertBatch = async (tx, roundId, rows, actorId) => {
+	for (const row of rows) {
+		await new sql.Request(tx)
+			.input('actor_id', sql.VarChar(20), actorId)
+			.input('id', sql.VarChar(12), genId(roundId, row.deadline_type, row.phase))
+			.input('round_id', sql.VarChar(10), roundId)
+			.input('phase', sql.TinyInt, row.phase)
+			.input('name', sql.NVarChar(255), row.name)
+			.input('start_date', sql.Date, row.start_date ? new Date(row.start_date) : null)
+			.input('deadline_date', sql.Date, new Date(row.deadline_date))
+			.input('deadline_type', sql.VarChar(30), row.deadline_type)
+			.input('supplement_fields', sql.VarChar(120), row.supplement_fields).query(`
+        EXEC sp_set_actor @actor_id;
+        INSERT INTO round_deadlines (id, round_id, phase, name, start_date, deadline_date, deadline_type, supplement_fields, created_by)
+        VALUES (@id, @round_id, @phase, @name, @start_date, @deadline_date, @deadline_type, @supplement_fields, @actor_id);
+      `);
+	}
+};
+
+module.exports = { getByRoundId, upsert, remove, prepareBatch, insertBatch };

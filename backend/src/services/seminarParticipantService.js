@@ -9,6 +9,7 @@ const { signToken, verifyToken } = require('../utils/keys');
 const { getPool, sql } = require('../config/db');
 const { broadcast } = require('./eventService');
 const personService = require('./personService');
+const { normalizeGender } = require('../utils/gender');
 
 // Mã QR điểm danh hội thảo — JWT ngắn hạn ký seminar_id (mirror
 // courseService.generateAttendanceQrToken / utils/captcha.js).
@@ -66,7 +67,7 @@ const bindInsert = (req, idVar, seminarId, data) => {
 		.input('full_name', sql.NVarChar(255), data.full_name)
 		.input('dob', sql.Date, data.dob || null)
 		.input('dob_text', sql.NVarChar(50), data.dob_text || null)
-		.input('gender', sql.VarChar(10), data.gender || null)
+		.input('gender', sql.VarChar(10), normalizeGender(data.gender))
 		.input('organization', sql.NVarChar(255), data.organization || null)
 		.input('department_raw', sql.NVarChar(255), data.department_raw || null)
 		.input('staff_number', sql.Int, data.staff_number ?? null)
@@ -151,7 +152,6 @@ const UPDATABLE = {
 	full_name: sql.NVarChar(255),
 	dob: sql.Date,
 	dob_text: sql.NVarChar(50),
-	gender: sql.VarChar(10),
 	organization: sql.NVarChar(255),
 	department_raw: sql.NVarChar(255),
 	staff_number: sql.Int,
@@ -175,6 +175,10 @@ const update = async (seminarId, pid, data, actorId) => {
 			sets.push(`${k} = @${k}`);
 			req.input(k, t, data[k] === '' ? null : data[k]);
 		}
+	}
+	if (data.gender !== undefined) {
+		sets.push('gender = @gender');
+		req.input('gender', sql.VarChar(10), normalizeGender(data.gender));
 	}
 	if (data.user_id !== undefined) {
 		sets.push('user_id = @user_id');
