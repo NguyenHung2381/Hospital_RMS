@@ -61,6 +61,20 @@ export default function TopicRegisterPublic() {
 	const token = searchParams.get('token');
 	const [lockedRoundId, setLockedRoundId] = useState('');
 
+	// Cấp độ ăn theo đợt (cấu hình ở đợt / loại đợt): đợt chỉ có 1 cấp độ thì tự
+	// gán, không hỏi; đợt cho nhiều cấp độ mới hiện ô chọn trong số đó.
+	const pickRound = (roundId: string) => {
+		if (lockedRoundId && roundId !== lockedRoundId) return;
+		setForm((f) => ({ ...f, round_id: roundId, level_id: '' }));
+		setLevels([]);
+		getPublicLevels(roundId)
+			.then((ls) => {
+				setLevels(ls);
+				if (ls.length === 1) setForm((f) => (f.round_id === roundId ? { ...f, level_id: ls[0].id } : f));
+			})
+			.catch(() => setLevels([]));
+	};
+
 	useEffect(() => {
 		const roundsLoad = token
 			? getTopicRoundByToken(token).then((r) => {
@@ -86,20 +100,6 @@ export default function TopicRegisterPublic() {
 			.finally(() => setLoading(false));
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [token]);
-
-	// Cấp độ ăn theo đợt (cấu hình ở đợt / loại đợt): đợt chỉ có 1 cấp độ thì tự
-	// gán, không hỏi; đợt cho nhiều cấp độ mới hiện ô chọn trong số đó.
-	const pickRound = (roundId: string) => {
-		if (lockedRoundId && roundId !== lockedRoundId) return;
-		setForm((f) => ({ ...f, round_id: roundId, level_id: '' }));
-		setLevels([]);
-		getPublicLevels(roundId)
-			.then((ls) => {
-				setLevels(ls);
-				if (ls.length === 1) setForm((f) => (f.round_id === roundId ? { ...f, level_id: ls[0].id } : f));
-			})
-			.catch(() => setLevels([]));
-	};
 	const mustPickLevel = !!form.round_id && levels.length > 1;
 
 	const set =

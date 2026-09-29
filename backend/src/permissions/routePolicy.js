@@ -27,6 +27,7 @@ module.exports = {
 		[`GET ${API}/public/lookup`]: 'Cổng công khai — tra cứu trạng thái đăng ký',
 		[`POST ${API}/public/course-registration`]: 'Cổng công khai — đăng ký khoá học (có captcha)',
 		[`GET ${API}/public/topic-rounds`]: 'Cổng công khai — đợt đang mở',
+		[`GET ${API}/public/topic-rounds/by-token/:token`]: 'Cổng công khai — đợt theo link đăng ký (có rate-limit)',
 		[`GET ${API}/public/categories`]: 'Cổng công khai — danh mục cho form đăng ký',
 		[`GET ${API}/public/departments`]: 'Cổng công khai — danh mục cho form đăng ký',
 		[`GET ${API}/public/levels`]: 'Cổng công khai — danh mục cho form đăng ký',
