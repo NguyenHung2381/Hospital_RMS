@@ -8,7 +8,7 @@
     "start:prod": "cross-env NODE_ENV=production node src/server.js",
     "dev": "cross-env NODE_ENV=development nodemon --trace-deprecation src/server.js",
     "typecheck": "tsc --noEmit",
-    "test": "node --test --test-force-exit \"test/**/*.test.js\"",
+    "test": "cross-env REDIS_HOST=127.0.0.1 REDIS_PORT=1 node --test --test-force-exit \"test/**/*.test.js\"",
     "gen:jwt": "node scripts/gen-jwt-secrets.js",
     "check:routes": "node scripts/check-route-permissions.js",
     "gen:perm-types": "node scripts/gen-permission-types.js",

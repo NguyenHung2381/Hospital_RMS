@@ -21,53 +21,110 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  backend:
-    name: Backend
+  # Mỗi thư mục con của backend/test/ (auth, permissions, security, upload...)
+  # là một nhóm chức năng, chạy thành một check riêng. Thêm thư mục mới là tự có
+  # check mới, không phải sửa file này.
+  backend-areas:
+    name: Backend · liệt kê nhóm test
     runs-on: ubuntu-latest
+    outputs:
+      areas: ${{ steps.list.outputs.areas }}
+    steps:
+      - uses: actions/checkout@v5
+      - id: list
+        working-directory: backend/test
+        run: echo "areas=$(ls -d */ | tr -d / | jq -R . | jq -sc .)" >> "$GITHUB_OUTPUT"
+
+  backend-test:
+    name: Backend · test ${{ matrix.area }}
+    needs: backend-areas
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false # nhóm này hỏng vẫn chạy hết nhóm khác để thấy toàn cảnh
+      matrix:
+        area: ${{ fromJson(needs.backend-areas.outputs.areas) }}
+    # Giống `npm test`: không dùng Redis thật (rate-limit tính trong bộ nhớ)
+    env:
+      REDIS_HOST: 127.0.0.1
+      REDIS_PORT: 1
     defaults:
       run:
         working-directory: backend
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: 22
           cache: npm
           cache-dependency-path: backend/package-lock.json
       - run: npm ci --no-fund
-      # Test đơn vị + tích hợp (auth, 2FA, refresh token, upload, IDOR, cổng công khai...)
-      - run: npm test
-      # Mọi route mới phải khai báo quyền (authorizePermission) hoặc có lý do trong routePolicy
-      - run: npm run check:routes
-      - run: npm run typecheck
-      # Chặn merge khi thư viện chạy production có lỗ hổng mức high trở lên
-      - run: npm audit --omit=dev --audit-level=high
+      # Kết quả từng test in ra log và ghi vào trang Summary của lần chạy
+      - name: Test ${{ matrix.area }}
+        run: |
+          set -o pipefail
+          node --test --test-force-exit --test-reporter=spec "test/${{ matrix.area }}/**/*.test.js" | tee result.txt
+      - name: Tóm tắt
+        if: always()
+        run: |
+          {
+            echo "### Backend · ${{ matrix.area }}"
+            echo '```'
+            cat result.txt 2>/dev/null || echo "không có kết quả"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  backend-static:
+    name: Backend · kiểm tra tĩnh
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - run: npm ci --no-fund
+      - name: Phân quyền route
+        # Mọi route mới phải khai báo quyền (authorizePermission) hoặc có lý do trong routePolicy
+        run: npm run check:routes
+      - name: Kiểu dữ liệu (tsc)
+        run: npm run typecheck
+      - name: Lỗ hổng thư viện
+        # Chặn merge khi thư viện chạy production có lỗ hổng mức high trở lên
+        run: npm audit --omit=dev --audit-level=high
 
   frontend:
-    name: Frontend
+    name: Frontend · kiểm tra tĩnh + build
     runs-on: ubuntu-latest
     defaults:
       run:
         working-directory: frontend
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: 22
           cache: npm
           cache-dependency-path: frontend/package-lock.json
       - run: npm ci --no-fund
-      - run: npx tsc -b
-      - run: npm run lint
-      - run: npm run build
-      - run: npm audit --omit=dev --audit-level=high
+      - name: Kiểu dữ liệu (tsc)
+        run: npx tsc -b
+      - name: Lint (ESLint + react-hooks)
+        run: npm run lint
+      - name: Build production
+        run: npm run build
+      - name: Lỗ hổng thư viện
+        run: npm audit --omit=dev --audit-level=high
 
   # Chặn commit nhầm bí mật / dữ liệu cá nhân (file .env, khoá, bản dump...).
   secrets:
     name: Không commit bí mật
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: File không được có trong repo
         run: |
           bad=$(git ls-files | grep -E '(^|/)\.env(\.[a-z]+)?$|(^|/)secrets/|\.key$|\.pem$|_CHUA_MAT_KHAU\.csv$|staff_license_import_unmatched\.csv$' | grep -v '\.env\.example$' || true)
