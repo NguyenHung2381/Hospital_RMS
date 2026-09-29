@@ -7,7 +7,7 @@
  *                 0000 — xem topicMemberService — nên không đụng nhau)
  *   - username  = LOWER(code)            vd: cls44, pcn8
  *   - full_name = N'Tài khoản ' + tên khoa
- *   - password  = mật khẩu mặc định của các tài khoản khoa cũ (bcrypt),
+ *   - password  = sao chép hash từ tài khoản khoa cũ còn mật khẩu mặc định,
  *                 must_change_password = 1 ⇒ bắt đổi ở lần đăng nhập đầu
  *   - role      = VT07 Trưởng khoa; riêng PCN1 Ban Giám đốc = VT02 Giám đốc,
  *                 PCN4 Trung tâm Đào tạo = VT03 Quản lý NCKH (như trước)
@@ -21,8 +21,17 @@ SET NOCOUNT ON;
 SET XACT_ABORT ON;
 BEGIN TRANSACTION;
 
+-- Không để hash trong repo (CI chặn): lấy từ một tài khoản khoa cũ còn mật
+-- khẩu mặc định (chưa đổi ⇒ must_change_password = 1).
 DECLARE @default_pw VARCHAR(255) =
-    '$2b$12$H1Xozi1kRUqWzpkg3/GIvOWG1KdKC.PcoQbpstJaWxX56BTy5sJcK';
+    (SELECT TOP 1 u.[password]
+     FROM [dbo].[departments] d
+     JOIN [dbo].[users] u ON u.[id] = d.[dept_account_id]
+     WHERE u.[must_change_password] = 1
+     ORDER BY u.[created_at]);
+
+IF @default_pw IS NULL
+    THROW 50001, N'Không tìm thấy tài khoản khoa cũ còn mật khẩu mặc định để sao chép.', 1;
 
 DECLARE @acc TABLE (dept_id VARCHAR(20), user_id VARCHAR(20),
                     username VARCHAR(100), full_name NVARCHAR(255), role_id VARCHAR(6));
