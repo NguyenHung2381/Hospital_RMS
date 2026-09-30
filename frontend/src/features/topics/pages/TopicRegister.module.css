@@ -218,8 +218,15 @@
 	transform: translateY(-50%);
 	width: 15px;
 	height: 15px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
 	color: var(--color-gray-400);
 	pointer-events: none;
+}
+.memberSearchIcon svg {
+	width: 100%;
+	height: 100%;
 }
 
 .suggestionsBox {

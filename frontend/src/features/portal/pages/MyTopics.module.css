@@ -1008,12 +1008,17 @@
 
 /* ── ACTION PANEL (bottom of detail) ── */
 .actionPanel {
+	display: flex;
+	align-items: center;
+	flex-wrap: wrap;
+	gap: var(--space-3);
 	border-top: 1px solid var(--color-gray-100);
 	padding: var(--space-4) var(--space-6);
 	flex-shrink: 0;
 }
 
 .processedNotice {
+	flex: 1 1 280px;
 	display: flex;
 	align-items: center;
 	gap: var(--space-3);
@@ -1027,6 +1032,16 @@
 	width: 18px;
 	height: 18px;
 	flex-shrink: 0;
+}
+
+.noticeTitle {
+	font-weight: 700;
+	font-size: 13px;
+}
+
+.noticeSub {
+	font-size: 12px;
+	margin-top: 2px;
 }
 
 .processedAmber {
@@ -1120,18 +1135,11 @@
 }
 
 /* ── SUPPLEMENT: ACTIONS BAR ── */
-.supplementActions {
-	display: flex;
-	align-items: center;
-	gap: 10px;
-	flex-wrap: wrap;
-}
-
 .btnEdit {
 	display: inline-flex;
 	align-items: center;
 	gap: 6px;
-	padding: 7px 14px;
+	padding: 9px 16px;
 	background: #7c3aed;
 	color: #fff;
 	border: none;

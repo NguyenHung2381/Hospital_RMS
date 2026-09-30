@@ -16,96 +16,56 @@ export function TopicStatusActionPanel({
 	canEditTopic,
 	openEdit,
 }: TopicStatusActionPanelProps) {
+	const approver = latestApproval?.approver_name ?? latestApproval?.created_by;
+	const decidedAt = formatDate(latestApproval?.created_at ?? detailTopic.updated_at);
+	// "Phê duyệt bởi A · 28/09/2026" — không có người duyệt thì chỉ hiện ngày
+	const decidedLine = (prefix: string) =>
+		approver ? `${prefix} ${approver} · ${decidedAt}` : `Ngày ${decidedAt}`;
+
 	return (
 		<div className={styles.actionPanel}>
 			{detailTopic.status === 'submitted' && (
-				<div
-					className={`${styles.processedNotice} ${styles.processedAmber}`}
-				>
+				<div className={`${styles.processedNotice} ${styles.processedAmber}`}>
 					<ClockSvg />
 					<div>
-						<div style={{ fontWeight: 700, fontSize: 13 }}>
-							Đề tài đang chờ phê duyệt
-						</div>
-						<div style={{ fontSize: 12, marginTop: 2 }}>
+						<div className={styles.noticeTitle}>Đề tài đang chờ phê duyệt</div>
+						<div className={styles.noticeSub}>
 							Hồ sơ đã được nộp và đang chờ Ban Quản lý khoa học xem xét.
 						</div>
 					</div>
 				</div>
 			)}
 			{detailTopic.status === 'approved' && (
-				<div
-					className={`${styles.processedNotice} ${styles.processedApproved}`}
-				>
+				<div className={`${styles.processedNotice} ${styles.processedApproved}`}>
 					<CheckCircleSvg />
 					<div>
-						<div style={{ fontWeight: 700, fontSize: 13 }}>
-							Đề tài đã được phê duyệt
-						</div>
-						<div style={{ fontSize: 12, marginTop: 2 }}>
-							Phê duyệt bởi{' '}
-							{latestApproval?.approver_name ??
-								latestApproval?.created_by ??
-								'—'}{' '}
-							·{' '}
-							{formatDate(
-								latestApproval?.created_at ?? detailTopic.updated_at,
-							)}
-						</div>
+						<div className={styles.noticeTitle}>Đề tài đã được phê duyệt</div>
+						<div className={styles.noticeSub}>{decidedLine('Phê duyệt bởi')}</div>
 					</div>
 				</div>
 			)}
 			{detailTopic.status === 'rejected' && (
-				<div
-					className={`${styles.processedNotice} ${styles.processedRejected}`}
-				>
+				<div className={`${styles.processedNotice} ${styles.processedRejected}`}>
 					<XCircleSvg />
 					<div>
-						<div style={{ fontWeight: 700, fontSize: 13 }}>
-							Đề tài không được phê duyệt
-						</div>
-						<div style={{ fontSize: 12, marginTop: 2 }}>
-							Bởi{' '}
-							{latestApproval?.approver_name ??
-								latestApproval?.created_by ??
-								'—'}{' '}
-							·{' '}
-							{formatDate(
-								latestApproval?.created_at ?? detailTopic.updated_at,
-							)}
-						</div>
+						<div className={styles.noticeTitle}>Đề tài không được phê duyệt</div>
+						<div className={styles.noticeSub}>{decidedLine('Bởi')}</div>
 					</div>
 				</div>
 			)}
 			{detailTopic.status === 'supplement' && (
-				<div className={styles.supplementActions}>
-					<div
-						className={`${styles.processedNotice} ${styles.processedBlue}`}
-						style={{ flex: 1 }}
-					>
-						<MessageSvg />
-						<div>
-							<div style={{ fontWeight: 700, fontSize: 13 }}>
-								Cần bổ sung hồ sơ
-							</div>
-							<div style={{ fontSize: 12, marginTop: 2 }}>
-								Hội đồng yêu cầu bổ sung thêm thông tin. Vui lòng cập
-								nhật thông tin và tài liệu.
-							</div>
+				<div className={`${styles.processedNotice} ${styles.processedBlue}`}>
+					<MessageSvg />
+					<div>
+						<div className={styles.noticeTitle}>Cần bổ sung hồ sơ</div>
+						<div className={styles.noticeSub}>
+							Hội đồng yêu cầu bổ sung thêm thông tin. Vui lòng cập nhật thông
+							tin và tài liệu.
 						</div>
 					</div>
-					{canEditTopic && (
-						<button
-							className={styles.btnEdit}
-							onClick={openEdit}
-						>
-							<EditSvg />
-							Chỉnh sửa đề tài
-						</button>
-					)}
 				</div>
 			)}
-			{canEditTopic && detailTopic.status !== 'supplement' && (
+			{canEditTopic && (
 				<button
 					className={styles.btnEdit}
 					onClick={openEdit}

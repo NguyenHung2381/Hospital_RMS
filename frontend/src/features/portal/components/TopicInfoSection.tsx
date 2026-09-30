@@ -88,8 +88,8 @@ export function TopicInfoSection({ detailTopic, latestApproval }: TopicInfoSecti
 							{formatDate(
 								latestApproval?.created_at ?? detailTopic.updated_at,
 							)}
-							{latestApproval &&
-								` · ${latestApproval.approver_name ?? latestApproval.created_by}`}
+							{(latestApproval?.approver_name ?? latestApproval?.created_by) &&
+								` · ${latestApproval?.approver_name ?? latestApproval?.created_by}`}
 						</div>
 					</div>
 				)}

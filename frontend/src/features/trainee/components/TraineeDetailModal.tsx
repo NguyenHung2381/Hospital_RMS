@@ -13,7 +13,11 @@ import { type EnrollmentStatus, type Trainee } from '../types/trainee.type';
 import { formatDate } from '../../../shared/utils/formatDate';
 import { genderLabel } from '../../../shared/utils/gender';
 import { FileDropzone } from '@/shared/components';
+import { FileViewerModal } from '@/shared/components/FileViewerModal';
 import styles from '../pages/Trainees.module.css';
+
+// Xem trực tiếp trên web; đuôi khác (.doc, .xlsx...) vẫn mở/tải như cũ.
+const PREVIEWABLE = /\.(pdf|docx|png|jpe?g|gif|webp|bmp)$/i;
 
 const TABS: { key: DetailTab; label: string; icon: React.ReactNode }[] = [
 	{ key: 'general', label: 'Thông tin chung', icon: <UserCheckSvg /> },
@@ -57,6 +61,7 @@ export function TraineeDetailModal({
 	const d = useTraineeDetail(trainee.id, initialTab);
 	const [docType, setDocType] = useState('national_id');
 	const [docFile, setDocFile] = useState<File | null>(null);
+	const [viewer, setViewer] = useState<{ url: string; name: string; isWord: boolean } | null>(null);
 
 
 	return (
@@ -228,6 +233,15 @@ export function TraineeDetailModal({
 													target='_blank'
 													rel='noreferrer'
 													className={styles.docLink}
+													onClick={(e) => {
+														if (!PREVIEWABLE.test(doc.file_name)) return;
+														e.preventDefault();
+														setViewer({
+															url: doc.file_url,
+															name: doc.file_name,
+															isWord: /\.docx$/i.test(doc.file_name),
+														});
+													}}
 												>
 													{doc.file_name}
 												</a>
@@ -286,6 +300,12 @@ export function TraineeDetailModal({
 					)}
 				</div>
 			</div>
+			{viewer && (
+				<FileViewerModal
+					file={viewer}
+					onClose={() => setViewer(null)}
+				/>
+			)}
 		</div>
 	);
 }

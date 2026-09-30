@@ -223,8 +223,6 @@ export function useTopicModal({
 		const e: FormErrors = {};
 		const isPaper = form.article_type === 'bai_bao';
 		if (!form.title.trim()) e.title = 'Vui lòng nhập tên đề tài';
-		else if (form.title.length < 10)
-			e.title = 'Tên đề tài quá ngắn (ít nhất 10 ký tự)';
 		if (!form.round_id) e.round_id = 'Vui lòng chọn đợt nghiên cứu';
 		if (!form.category_id) e.category_id = 'Vui lòng chọn phân loại';
 		if (!isPaper && !form.level_id) e.level_id = 'Vui lòng chọn cấp độ';

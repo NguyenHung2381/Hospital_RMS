@@ -178,7 +178,7 @@ export function useTopicRegister(): TopicRegisterState {
 	const [suggestions, setSuggestions] = useState<UserSuggestion[]>([]);
 	const [showSuggestions, setShowSuggestions] = useState(false);
 	const [isSearching, setIsSearching] = useState(false);
-	const [addRole, setAddRole] = useState<MemberRole>('member');
+	const [addRole, setAddRole] = useState<MemberRole>('leader');
 	const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
 	const [showManualForm, setShowManualForm] = useState(false);
@@ -349,6 +349,8 @@ export function useTopicRegister(): TopicRegisterState {
 					role: addRole,
 				},
 			]);
+			// Đã có chủ nhiệm → người thêm tiếp theo mặc định là thành viên
+			if (addRole === 'leader') setAddRole('member');
 			setMemberQuery('');
 			setSuggestions([]);
 			setShowSuggestions(false);
@@ -445,6 +447,7 @@ export function useTopicRegister(): TopicRegisterState {
 		}));
 		setErrors({});
 		setPendingMembers([]);
+		setAddRole('leader');
 		setMemberQuery('');
 		setSuggestions([]);
 		setShowManualForm(false);
@@ -511,6 +514,7 @@ export function useTopicRegister(): TopicRegisterState {
 		});
 		setErrors({});
 		setPendingMembers([]);
+		setAddRole('leader');
 		setMemberQuery('');
 		setSuggestions([]);
 		setShowSuggestions(false);

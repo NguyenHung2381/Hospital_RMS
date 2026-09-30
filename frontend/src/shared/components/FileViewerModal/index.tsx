@@ -15,6 +15,7 @@ export function FileViewerModal({ file, onClose }: FileViewerModalProps) {
 		'loading',
 	);
 	const [pdfBlobUrl, setPdfBlobUrl] = useState<string | null>(null);
+	const [imageBlobUrl, setImageBlobUrl] = useState<string | null>(null);
 
 	useEffect(() => {
 		let cancelled = false;
@@ -29,10 +30,15 @@ export function FileViewerModal({ file, onClose }: FileViewerModalProps) {
 					headers: token ? { Authorization: `Bearer ${token}` } : {},
 				});
 				if (!response.ok) throw new Error(`${response.status}`);
+				const contentType = response.headers.get('content-type') ?? '';
 				const buffer = await response.arrayBuffer();
 				if (cancelled) return;
 
-				if (file.isWord) {
+				if (contentType.startsWith('image/')) {
+					const url = URL.createObjectURL(new Blob([buffer], { type: contentType }));
+					blobUrlRef.current = url;
+					setImageBlobUrl(url);
+				} else if (file.isWord) {
 					const { renderAsync } = await import('docx-preview');
 					if (containerRef.current) {
 						containerRef.current.innerHTML = '';
@@ -99,7 +105,17 @@ export function FileViewerModal({ file, onClose }: FileViewerModalProps) {
 					</div>
 				)}
 
-				{file.isWord && (
+				{imageBlobUrl && (
+					<div className={styles.viewerDocxWrap}>
+						<img
+							src={imageBlobUrl}
+							alt={file.name}
+							style={{ display: 'block', maxWidth: '100%', margin: '0 auto' }}
+						/>
+					</div>
+				)}
+
+				{file.isWord && !imageBlobUrl && (
 					<div
 						className={styles.viewerDocxWrap}
 						style={{ display: renderState === 'done' ? 'block' : 'none' }}
