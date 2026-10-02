@@ -595,6 +595,13 @@ export default function AdminLayout({
 							<div className={styles.userDropdown}>
 								<button
 									className={styles.userDropdownItem}
+									onClick={() => navigate('/admin/profile')}
+								>
+									<Icon.Account />
+									<span>Cài đặt tài khoản</span>
+								</button>
+								<button
+									className={styles.userDropdownItem}
 									onClick={handleLogout}
 								>
 									<Icon.LogOut />

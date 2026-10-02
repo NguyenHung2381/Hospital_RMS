@@ -144,7 +144,7 @@ const getCheckInQrToken = (req, res) => {
 
 const checkInSelf = async (req, res, next) => {
 	try {
-		const result = await partService.checkInSelf(req.body.token, req.user);
+		const result = await partService.checkInSelf(req.body.token, req.body.device_id, req.user);
 		return success(res, result, 'Điểm danh thành công');
 	} catch (e) {
 		next(e);

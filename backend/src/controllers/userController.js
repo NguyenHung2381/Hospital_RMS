@@ -151,6 +151,21 @@ const getMe = async (req, res, next) => {
 	}
 };
 
+// Chỉ lấy đúng các trường người dùng được tự sửa — không nhận role/khoa/trạng thái.
+const updateMe = async (req, res, next) => {
+	try {
+		const item = await userService.update(
+			req.user.id,
+			{ full_name: req.body.full_name },
+			req.user.id,
+		);
+		if (!item) return notFound(res);
+		return success(res, item, 'Cập nhật thành công');
+	} catch (err) {
+		next(err);
+	}
+};
+
 const searchMembers = async (req, res, next) => {
 	try {
 		const { q = '', department_id, limit = 10 } = req.query;
@@ -180,5 +195,6 @@ module.exports = {
 	removeOne,
 	resetPassword,
 	getMe,
+	updateMe,
 	searchMembers,
 };

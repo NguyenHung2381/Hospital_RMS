@@ -24,12 +24,12 @@ import {
 	type SimpleItem,
 } from '../../topics/api/topicApi';
 import type {
-	MemberRole,
 	Topic,
 	TopicFile,
 } from '../../topics/types/topic.type';
 import { formatFileSize } from '../../topics/utils/topicHelpers';
 import { getTopicPermissions } from '../services/topicDetailService';
+import { useTopicMembers } from './useTopicMembers';
 import {
 	type CategoryTab,
 	type FilterTab,
@@ -78,7 +78,12 @@ export function useMyTopics() {
 	} | null>(null);
 	const [refreshKey, setRefreshKey] = useState(0);
 	const [roundDeadlines, setRoundDeadlines] = useState<RoundDeadline[]>([]);
-	const [myRole, setMyRole] = useState<MemberRole | null>(null);
+	const memberCtl = useTopicMembers(detailTopic?.id);
+	const { members, setMembers } = memberCtl;
+	const myRole = useMemo(
+		() => members.find((m) => m.user_id === currentUserId)?.role ?? null,
+		[members, currentUserId],
+	);
 
 	const [editOpen, setEditOpen] = useState(false);
 	const [editForm, setEditForm] = useState({
@@ -208,7 +213,7 @@ export function useMyTopics() {
 				setEditError('');
 			}
 			setRoundDeadlines([]);
-			setMyRole(null);
+			setMembers([]);
 			if (!selectedId) {
 				setDetailTopic(null);
 				setDetailFiles([]);
@@ -239,9 +244,7 @@ export function useMyTopics() {
 				setDetailFiles(files.data ?? []);
 				setDetailHistory(history);
 				setRoundDeadlines(dl);
-				setMyRole(
-					mem.find((m) => m.user_id === currentUserId)?.role ?? null,
-				);
+				setMembers(mem);
 			} catch {
 				if (!cancelled) {
 					setDetailTopic(null);
@@ -255,7 +258,7 @@ export function useMyTopics() {
 		return () => {
 			cancelled = true;
 		};
-	}, [selectedId, refreshKey, currentUserId]);
+	}, [selectedId, refreshKey, currentUserId, setMembers]);
 
 	useEffect(() => {
 		if (!editOpen || refData !== null || refDataLoading) return;
@@ -289,6 +292,7 @@ export function useMyTopics() {
 	const canUploadFiles = perms.canAddFiles;
 	const canEditTitle = perms.canEditTitle;
 	const canEditInfo = perms.canEditInfo;
+	const canEditMembers = perms.canEditMembers;
 
 	function openEdit() {
 		if (!detailTopic) return;
@@ -300,6 +304,9 @@ export function useMyTopics() {
 			department_id: detailTopic.department_id ?? '',
 		});
 		setEditError('');
+		memberCtl.setAddingMember(false);
+		memberCtl.setEditingMemberId(null);
+		memberCtl.setMemberErr('');
 		setEditOpen(true);
 	}
 
@@ -398,6 +405,8 @@ export function useMyTopics() {
 		canUploadFiles,
 		canEditTitle,
 		canEditInfo,
+		canEditMembers,
+		...memberCtl,
 		// file viewer
 		fileViewer,
 		setFileViewer,

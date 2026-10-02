@@ -78,7 +78,7 @@ export default function UserHome() {
 						<div className={styles.welcomeContent}>
 							<div className={styles.greetingTag}>
 								<ActivitySvg />
-								Cổng Nghiên cứu Khoa học
+								Cổng người dùng
 							</div>
 							<h2 className={styles.welcomeTitle}>
 								{d.greetingTime}, {d.fullName}!
@@ -535,6 +535,46 @@ export default function UserHome() {
 										</div>
 										<div className={styles.actionDesc}>
 											Cập nhật tiến độ đề tài đang thực hiện
+										</div>
+									</div>
+									<ChevRSvg className={styles.actionArrow} />
+								</button>
+
+								<button
+									type='button'
+									className={styles.actionBtn}
+									onClick={() => d.navigate('/user/khoa-hoc')}
+								>
+									<div
+										className={styles.actionIcon}
+										style={{ background: '#ccfbf1', color: '#0f766e' }}
+									>
+										<BookOpenSvg />
+									</div>
+									<div className={styles.actionText}>
+										<div className={styles.actionName}>Khóa học của tôi</div>
+										<div className={styles.actionDesc}>
+											Lịch học, kết quả, chứng chỉ và đăng ký khóa mới
+										</div>
+									</div>
+									<ChevRSvg className={styles.actionArrow} />
+								</button>
+
+								<button
+									type='button'
+									className={styles.actionBtn}
+									onClick={() => d.navigate('/user/cme')}
+								>
+									<div
+										className={styles.actionIcon}
+										style={{ background: '#fee2e2', color: '#b91c1c' }}
+									>
+										<CalendarSvg />
+									</div>
+									<div className={styles.actionText}>
+										<div className={styles.actionName}>CME của tôi</div>
+										<div className={styles.actionDesc}>
+											Tín chỉ tích luỹ trong năm so với yêu cầu
 										</div>
 									</div>
 									<ChevRSvg className={styles.actionArrow} />

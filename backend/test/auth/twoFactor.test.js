@@ -122,3 +122,16 @@ test('mã sai định dạng / sai giá trị bị từ chối', async () => {
 	await assert.rejects(authService.verify2FALogin(preAuth(), '000000'), (e) => e.statusCode === 401);
 	await assert.rejects(authService.verify2FALogin(preAuth(), 'zzzz-zzzz'), (e) => e.statusCode === 401);
 });
+
+test('khoá mã hoá đã đổi: báo lỗi rõ ràng (409), không phải 500', async () => {
+	const secret = await otplib.generateSecret();
+	await setSecret(secretBox.encrypt(secret));
+	process.env.TOTP_ENC_KEY = crypto.randomBytes(32).toString('hex');
+	secretBox.reset();
+	try {
+		await assert.rejects(authService.verify2FALogin(preAuth(), '123456'), (e) => e.statusCode === 409);
+	} finally {
+		delete process.env.TOTP_ENC_KEY;
+		secretBox.reset();
+	}
+});

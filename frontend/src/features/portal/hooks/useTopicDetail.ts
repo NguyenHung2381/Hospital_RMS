@@ -8,9 +8,7 @@ import { getStoredUser } from '../../../shared/utils/storage';
 import { getDeadlines } from '../../round/api/roundApi';
 import type { RoundDeadline } from '../../round/types/round.type';
 import {
-	addTopicMember,
 	deleteTopicFile,
-	deleteTopicMember,
 	getCategories,
 	getDepts,
 	getLevels,
@@ -19,20 +17,17 @@ import {
 	getTopicFiles,
 	getTopicMembers,
 	updateTopic,
-	updateTopicMember,
 	uploadTopicFiles,
 	type SimpleItem,
 } from '../../topics/api/topicApi';
 import type {
 	Topic,
 	TopicFile,
-	TopicMember,
 } from '../../topics/types/topic.type';
 import { getTopicPermissions } from '../services/topicDetailService';
+import { useTopicMembers } from './useTopicMembers';
 import {
-	blankMember,
 	type InfoForm,
-	type MemberFormState,
 } from '../types/topicDetail.type';
 
 export function useTopicDetail() {
@@ -71,7 +66,8 @@ export function useTopicDetail() {
 		rounds: SimpleItem[];
 		departments: SimpleItem[];
 	}>({ categories: [], levels: [], rounds: [], departments: [] });
-	const [members, setMembers] = useState<TopicMember[]>([]);
+	const memberCtl = useTopicMembers(id);
+	const { members, setMembers } = memberCtl;
 	const [files, setFiles] = useState<TopicFile[]>([]);
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState('');
@@ -86,15 +82,6 @@ export function useTopicDetail() {
 	});
 	const [savingInfo, setSavingInfo] = useState(false);
 	const [infoErr, setInfoErr] = useState('');
-
-	// ── Member edit state ──
-	const [addingMember, setAddingMember] = useState(false);
-	const [newMember, setNewMember] = useState<MemberFormState>(blankMember);
-	const [editingMemberId, setEditingMemberId] = useState<string | null>(null);
-	const [editMemberForm, setEditMemberForm] =
-		useState<MemberFormState>(blankMember);
-	const [savingMember, setSavingMember] = useState(false);
-	const [memberErr, setMemberErr] = useState('');
 
 	// ── File upload state ──
 	const fileInputRef = useRef<HTMLInputElement>(null);
@@ -174,7 +161,7 @@ export function useTopicDetail() {
 		getTopicFiles(id)
 			.then((r) => setFiles(r.data))
 			.catch(() => setFiles([]));
-	}, [id, refreshKey]);
+	}, [id, refreshKey, setMembers]);
 
 	// ── Handlers ──
 	const startEditInfo = () => {
@@ -216,83 +203,6 @@ export function useTopicDetail() {
 			setInfoErr(e instanceof Error ? e.message : 'Lưu thất bại');
 		} finally {
 			setSavingInfo(false);
-		}
-	};
-
-	const handleAddMember = async () => {
-		if (!topic || !newMember.ho_ten.trim()) {
-			setMemberErr('Họ tên không được để trống.');
-			return;
-		}
-		setSavingMember(true);
-		setMemberErr('');
-		try {
-			await addTopicMember(topic.id, {
-				ho_ten: newMember.ho_ten.trim(),
-				email: newMember.email.trim() || undefined,
-				so_dien_thoai: newMember.so_dien_thoai.trim() || undefined,
-				chuc_vu: newMember.chuc_vu.trim() || undefined,
-				staff_number: newMember.staff_number.trim() || undefined,
-				role: newMember.role,
-			});
-			setMembers(await getTopicMembers(topic.id));
-			setNewMember(blankMember);
-			setAddingMember(false);
-			notify.success('Đã thêm thành viên');
-		} catch (e) {
-			setMemberErr(e instanceof Error ? e.message : 'Thêm thất bại');
-		} finally {
-			setSavingMember(false);
-		}
-	};
-
-	const startEditMember = (m: TopicMember) => {
-		setEditingMemberId(m.id);
-		setEditMemberForm({
-			ho_ten: m.ho_ten,
-			email: m.email ?? '',
-			so_dien_thoai: m.so_dien_thoai ?? '',
-			chuc_vu: m.chuc_vu ?? '',
-			staff_number: m.staff_number != null ? String(m.staff_number) : '',
-			role: m.role,
-		});
-		setMemberErr('');
-	};
-
-	const handleSaveMember = async () => {
-		if (!topic || !editingMemberId || !editMemberForm.ho_ten.trim()) {
-			setMemberErr('Họ tên không được để trống.');
-			return;
-		}
-		setSavingMember(true);
-		setMemberErr('');
-		try {
-			await updateTopicMember(topic.id, editingMemberId, {
-				ho_ten: editMemberForm.ho_ten.trim(),
-				email: editMemberForm.email.trim() || undefined,
-				so_dien_thoai: editMemberForm.so_dien_thoai.trim() || undefined,
-				chuc_vu: editMemberForm.chuc_vu.trim() || undefined,
-				staff_number: editMemberForm.staff_number.trim() || undefined,
-				role: editMemberForm.role,
-			});
-			setMembers(await getTopicMembers(topic.id));
-			setEditingMemberId(null);
-			notify.success('Đã cập nhật thành viên');
-		} catch (e) {
-			setMemberErr(e instanceof Error ? e.message : 'Lưu thất bại');
-		} finally {
-			setSavingMember(false);
-		}
-	};
-
-	const handleDeleteMember = async (memberId: string) => {
-		if (!topic) return;
-		try {
-			await deleteTopicMember(topic.id, memberId);
-			setMembers((p) => p.filter((m) => m.id !== memberId));
-			notify.success('Đã xoá thành viên');
-		} catch (e) {
-			setMemberErr(e instanceof Error ? e.message : 'Xoá thất bại');
 		}
 	};
 
@@ -377,7 +287,6 @@ export function useTopicDetail() {
 		initials,
 		topic,
 		meta,
-		members,
 		files,
 		loading,
 		error,
@@ -395,21 +304,7 @@ export function useTopicDetail() {
 		infoErr,
 		startEditInfo,
 		handleSaveInfo,
-		addingMember,
-		setAddingMember,
-		newMember,
-		setNewMember,
-		editingMemberId,
-		setEditingMemberId,
-		editMemberForm,
-		setEditMemberForm,
-		savingMember,
-		memberErr,
-		setMemberErr,
-		handleAddMember,
-		startEditMember,
-		handleSaveMember,
-		handleDeleteMember,
+		...memberCtl,
 		fileInputRef,
 		pendingFiles,
 		setPendingFiles,

@@ -399,3 +399,35 @@
 	font-size: var(--font-size-sm);
 	color: var(--color-gray-400);
 }
+
+/* ── Mobile ──────────────────────────────────────────────────────────────── */
+@media (max-width: 640px) {
+	.tableHeader {
+		padding: var(--space-3) var(--space-4);
+	}
+
+	.tableControls,
+	.searchWrap,
+	.searchInput,
+	.searchInput:focus {
+		width: 100%;
+	}
+
+	.filterSelectWrap,
+	.filterSelect {
+		max-width: 100%;
+	}
+
+	.filterSelect {
+		overflow: hidden;
+		text-overflow: ellipsis;
+	}
+
+	/* Bảng rộng cuộn ngang: giữ thông báo rỗng trong khung nhìn thay vì giữa bảng */
+	.emptyState {
+		position: sticky;
+		left: 0;
+		width: calc(100vw - 2 * var(--space-4));
+		padding: 40px 16px;
+	}
+}

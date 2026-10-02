@@ -1610,6 +1610,7 @@
 	}
 	.sectionRight {
 		width: 100%;
+		flex-wrap: wrap;
 	}
 	.sectionRight .formSelect {
 		width: 100% !important;
@@ -1618,7 +1619,7 @@
 
 @media (max-width: 480px) {
 	.statsRow {
-		grid-template-columns: 1fr;
+		grid-template-columns: repeat(2, minmax(0, 1fr));
 	}
 	.roundCardFooter {
 		flex-direction: column;

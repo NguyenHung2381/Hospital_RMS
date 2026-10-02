@@ -335,7 +335,7 @@ export default function Login() {
 			{/* Header */}
 			<div className={styles.loginHeader}>
 				<h2 className={styles.loginTitle}>
-					Đăng nhập <span>nghiên cứu</span>
+					Đăng nhập <span>NCKH & Đào tạo</span>
 				</h2>
 			</div>
 

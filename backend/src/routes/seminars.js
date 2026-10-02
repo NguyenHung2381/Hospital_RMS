@@ -403,7 +403,7 @@ router.get('/:id/checkin-qr', authenticate, canUpdate, ctrl.getCheckInQrToken);
 router.post(
 	'/checkin',
 	authenticate,
-	[body('token').notEmpty()],
+	[body('token').notEmpty(), body('device_id').isString().isLength({ min: 16, max: 64 })],
 	validate,
 	ctrl.checkInSelf,
 );

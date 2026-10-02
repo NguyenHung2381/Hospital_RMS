@@ -84,13 +84,15 @@
 		opacity 200ms ease;
 }
 
-.logoToggleWrap:hover .sidebarLogo {
-	opacity: 0;
-}
+@media (hover: hover) {
+	.logoToggleWrap:hover .sidebarLogo {
+		opacity: 0;
+	}
 
-.logoToggleWrap:hover .collapseBtn {
-	opacity: 1;
-	pointer-events: auto;
+	.logoToggleWrap:hover .collapseBtn {
+		opacity: 1;
+		pointer-events: auto;
+	}
 }
 
 .sidebarLogo img {
@@ -1303,11 +1305,12 @@
 		z-index: 1000;
 		transform: translateX(-100%);
 		transition: transform 300ms cubic-bezier(0.4, 0, 0.2, 1);
-		box-shadow: 4px 0 24px rgba(0, 0, 0, 0.25);
+		box-shadow: none;
 	}
 
 	.sidebar.mobileDrawerOpen {
 		transform: translateX(0);
+		box-shadow: 4px 0 24px rgba(0, 0, 0, 0.25);
 	}
 
 	.sidebarHeader {
@@ -1420,7 +1423,8 @@
 		letter-spacing: -0.01em;
 	}
 
-	.pageHeaderRight {
+	.pageHeaderRight,
+	.pageHeaderRight > div {
 		flex-wrap: wrap;
 		justify-content: flex-start;
 	}

@@ -280,6 +280,13 @@ const migrateRolesAndSessions = async ({ dryRun = false } = {}) => {
         ALTER TABLE exam_papers ADD paper_type VARCHAR(20) NULL
           CONSTRAINT CHK_exampapers_type CHECK (paper_type IN ('multiple_choice', 'essay'));
     `);
+		// Điểm danh QR ràng buộc thiết bị. Tương đương 2026-10-20_checkin_device.sql.
+		await pool.request().query(`
+      IF OBJECT_ID('attendance', 'U') IS NOT NULL AND COL_LENGTH('attendance', 'checkin_device_id') IS NULL
+        ALTER TABLE attendance ADD checkin_device_id VARCHAR(64) NULL;
+      IF OBJECT_ID('seminar_participants', 'U') IS NOT NULL AND COL_LENGTH('seminar_participants', 'checkin_device_id') IS NULL
+        ALTER TABLE seminar_participants ADD checkin_device_id VARCHAR(64) NULL;
+    `);
 	}
 
 	const sysPerm = (

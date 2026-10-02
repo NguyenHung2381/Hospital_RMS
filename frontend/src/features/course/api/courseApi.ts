@@ -1,4 +1,5 @@
 import { apiClient } from '../../../shared/api/axios';
+import { getCheckInDeviceId } from '../../../shared/utils/storage';
 import type {
 	AttendanceRow,
 	Certificate,
@@ -129,7 +130,10 @@ export const getAttendanceQrToken = (sessionId: string) =>
 	apiClient.get<{ token: string }>(`/courses/sessions/${sessionId}/attendance-qr`);
 
 export const checkInAttendance = (token: string) =>
-	apiClient.post<{ session_id: string }>('/courses/attendance/check-in', { token });
+	apiClient.post<{ session_id: string }>('/courses/attendance/check-in', {
+		token,
+		device_id: getCheckInDeviceId(),
+	});
 
 // ─── Documents (tài liệu & bài kiểm tra) ────────────────────────────────────
 export const getDocuments = (courseId: string) =>

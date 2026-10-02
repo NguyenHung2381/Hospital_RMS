@@ -1,4 +1,5 @@
 import { apiClient } from '../../../shared/api/axios';
+import { getCheckInDeviceId } from '../../../shared/utils/storage';
 import type {
 	ParticipationType,
 	SeminarListImportResult,
@@ -101,7 +102,10 @@ export const getCheckInQrToken = (seminarId: string) =>
 	apiClient.get<{ token: string }>(`/seminars/${seminarId}/checkin-qr`);
 
 export const checkInSeminar = (token: string) =>
-	apiClient.post<{ seminar_id: string }>('/seminars/checkin', { token });
+	apiClient.post<{ seminar_id: string }>('/seminars/checkin', {
+		token,
+		device_id: getCheckInDeviceId(),
+	});
 
 export const addParticipant = (seminarId: string, form: ParticipantForm) =>
 	apiClient.post<SeminarParticipant>(

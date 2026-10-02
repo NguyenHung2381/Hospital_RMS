@@ -110,6 +110,31 @@ export function saveDeviceToken(username: string, token: string): void {
 	}
 }
 
+// Mã thiết bị cho điểm danh QR — backend chặn 1 thiết bị điểm danh cho nhiều
+// tài khoản trong cùng buổi (checkin_device_id). Cũng không nằm trong KEYS:
+// đăng xuất rồi đăng nhập tài khoản khác vẫn giữ nguyên mã. Dùng
+// getRandomValues thay randomUUID vì randomUUID cần HTTPS.
+// ponytail: xoá dữ liệu trình duyệt / tab ẩn danh là có mã mới — chỉ nâng rào,
+// chặn chắc hơn thì kết hợp giới hạn IP mạng nội bộ.
+const CHECKIN_DEVICE_KEY = 'rms_checkin_device';
+
+export function getCheckInDeviceId(): string {
+	let id: string | null = null;
+	try {
+		id = localStorage.getItem(CHECKIN_DEVICE_KEY);
+	} catch {
+		// localStorage bị chặn — mỗi lần quét 1 mã mới
+	}
+	if (id) return id;
+	id = Array.from(crypto.getRandomValues(new Uint8Array(16)), (b) => b.toString(16).padStart(2, '0')).join('');
+	try {
+		localStorage.setItem(CHECKIN_DEVICE_KEY, id);
+	} catch {
+		// như trên
+	}
+	return id;
+}
+
 // Chỉ xoá dữ liệu phía trình duyệt. Đăng xuất thật (thu hồi phiên trên server +
 // xoá cookie refresh) dùng logout() ở features/auth/api/authApi.ts.
 export function clearAuth(): void {

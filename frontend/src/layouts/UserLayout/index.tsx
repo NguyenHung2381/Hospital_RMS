@@ -9,6 +9,7 @@ import { toNotif } from '../../features/notifications/utils/notifUtils';
 import { usePermission } from '../../shared/hooks/usePermission';
 import { scopeOf } from '../../shared/utils/permissions';
 import { getInitials } from '../../shared/utils/helper';
+import { getStoredUser, type StoredUser } from '../../shared/utils/storage';
 import { logout } from '../../features/auth/api/authApi';
 import TwoFactorReminder from '../../shared/components/TwoFactorReminder';
 import styles from './UserLayout.module.css';
@@ -23,7 +24,8 @@ const KEY_TO_PATH: Record<string, string> = {
 	surveys: '/user/khao-sat',
 	myTasks: '/user/viec-cua-toi',
 	attendanceCheckIn: '/user/diem-danh',
-	userExams: '/user/thi-online',
+	myTraining: '/user/khoa-hoc',
+	myCme: '/user/cme',
 	profile: '/user/profile',
 	deptAccounts: '/user/department-accounts',
 	notifications: '/user/notifications',
@@ -48,8 +50,10 @@ interface NavItem {
 
 // Cổng người dùng ít mục → thanh điều hướng NGANG thay cho sidebar dọc.
 // Mục chính nằm trên thanh; mục "tài khoản" gom vào menu avatar.
+// Thứ tự theo mảng nghiệp vụ: chung → NCKH → Đào tạo → CME → Khảo sát.
 const PRIMARY_NAV: NavItem[] = [
 	{ key: 'home', label: 'Trang chủ', icon: <Icon.Dashboard /> },
+	{ key: 'myTasks', label: 'Việc của tôi', icon: <Icon.Grading /> },
 	{ key: 'myTopics', label: 'Đề tài của tôi', icon: <Icon.Topic /> },
 	{
 		key: 'registerTopic',
@@ -64,10 +68,10 @@ const PRIMARY_NAV: NavItem[] = [
 		icon: <Icon.Grading />,
 		councilOnly: true,
 	},
-	{ key: 'surveys', label: 'Khảo sát', icon: <Icon.Survey /> },
-	{ key: 'myTasks', label: 'Việc của tôi', icon: <Icon.Grading /> },
+	{ key: 'myTraining', label: 'Khóa học của tôi', icon: <Icon.Course /> },
 	{ key: 'attendanceCheckIn', label: 'Điểm danh QR', icon: <Icon.AttendanceCheckIn /> },
-	{ key: 'userExams', label: 'Thi online', icon: <Icon.UserExams /> },
+	{ key: 'myCme', label: 'CME của tôi', icon: <Icon.Cme /> },
+	{ key: 'surveys', label: 'Khảo sát', icon: <Icon.Survey /> },
 ];
 
 const ACCOUNT_NAV: NavItem[] = [
@@ -102,15 +106,27 @@ export default function UserLayout({
 	pageSubtitle,
 	breadcrumbs,
 	headerActions,
-	userName = 'Người dùng',
-	userRole = 'Thành viên',
+	userName,
+	userRole,
 	userInitials,
 	hideSidebar = false,
 }: UserLayoutProps) {
 	const navigate = useNavigate();
 	const location = useLocation();
 
-	const activePage = PATH_TO_KEY[location.pathname] ?? 'home';
+	// Trang không truyền tên/vai trò (Thi online, Khảo sát, Việc của tôi...) thì lấy
+	// từ phiên đăng nhập — tránh chip tài khoản hiện "Người dùng" chung chung.
+	const stored = getStoredUser<StoredUser>();
+	userName ??= stored?.full_name ?? stored?.username ?? 'Người dùng';
+	userRole ??= stored?.role_name ?? stored?.role ?? 'Thành viên';
+
+	// Trang con (/user/khoa-hoc/:id, /user/my-topics/:id) sáng mục cha.
+	const activePage =
+		PATH_TO_KEY[location.pathname] ??
+		Object.keys(KEY_TO_PATH).find(
+			(k) => KEY_TO_PATH[k] !== '/user' && location.pathname.startsWith(`${KEY_TO_PATH[k]}/`),
+		) ??
+		'home';
 
 	const { has, user } = usePermission();
 	// "restrictMember": ẩn với vai trò chỉ tham gia đề tài (không tạo được đề tài).
@@ -258,12 +274,6 @@ export default function UserLayout({
 					</button>
 
 					<div className={styles.topbarRight}>
-						{/* Round indicator */}
-						<div className={styles.roundIndicator}>
-							<span className={styles.roundDot} />
-							Đợt 1 — 2026
-						</div>
-
 						{showNav && (
 							<NotificationPanel
 								open={notifOpen}

@@ -1,0 +1,401 @@
+/* Dùng chung cho "Khóa học của tôi" và "CME của tôi". */
+.stack {
+	display: flex;
+	flex-direction: column;
+	gap: 20px;
+}
+
+.list {
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+}
+
+.item {
+	border: 1px solid var(--color-gray-200);
+	border-radius: 10px;
+	padding: 12px 14px;
+	background: var(--color-white);
+}
+
+.clickable {
+	display: block;
+	width: 100%;
+	text-align: left;
+	font: inherit;
+	cursor: pointer;
+	transition:
+		border-color 0.15s,
+		box-shadow 0.15s;
+}
+
+.clickable:hover {
+	border-color: var(--color-primary);
+	box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08);
+}
+
+/* ── Chi tiết khóa học: thẻ tóm tắt + tab ── */
+.summary {
+	display: flex;
+	gap: 20px;
+	align-items: center;
+	justify-content: space-between;
+	flex-wrap: wrap;
+}
+
+.summaryInfo {
+	flex: 1 1 280px;
+	min-width: 0;
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+}
+
+.summaryDates {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	font-size: 13px;
+	font-weight: 600;
+	color: #334155;
+}
+
+.summaryDates svg {
+	width: 15px;
+	height: 15px;
+	color: #64748b;
+}
+
+.stats {
+	display: grid;
+	grid-template-columns: repeat(3, minmax(110px, 1fr));
+	gap: 10px;
+	flex: 0 1 460px;
+}
+
+.stat {
+	display: flex;
+	flex-direction: column;
+	align-items: flex-start;
+	gap: 2px;
+	padding: 10px 14px;
+	border: 1px solid var(--color-gray-200);
+	border-radius: 10px;
+	background: #f8fafc;
+	font: inherit;
+	text-align: left;
+	cursor: pointer;
+	transition: border-color 0.15s;
+}
+
+.stat:hover {
+	border-color: var(--color-primary);
+}
+
+.stat strong {
+	font-size: 22px;
+	line-height: 1.1;
+	color: #0f172a;
+}
+
+.stat span {
+	font-size: 12px;
+	color: #64748b;
+}
+
+.statAlert {
+	background: #fef2f2;
+	border-color: #fecaca;
+}
+
+.statAlert strong {
+	color: #b91c1c;
+}
+
+.tabs {
+	display: flex;
+	gap: 4px;
+	padding: 0 12px;
+	border-bottom: 1px solid var(--color-gray-200);
+	overflow-x: auto;
+}
+
+.tab {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	padding: 12px 14px;
+	border: 0;
+	border-bottom: 2px solid transparent;
+	margin-bottom: -1px;
+	background: none;
+	font: inherit;
+	font-size: 14px;
+	font-weight: 600;
+	color: #64748b;
+	white-space: nowrap;
+	cursor: pointer;
+}
+
+.tab svg {
+	width: 16px;
+	height: 16px;
+}
+
+.tab:hover {
+	color: #0f172a;
+}
+
+.tabActive {
+	color: var(--color-primary);
+	border-bottom-color: var(--color-primary);
+}
+
+.tabCount {
+	min-width: 20px;
+	padding: 1px 7px;
+	border-radius: 999px;
+	background: #f1f5f9;
+	color: #475569;
+	font-size: 12px;
+	text-align: center;
+}
+
+.tabCountAlert {
+	background: #fee2e2;
+	color: #b91c1c;
+}
+
+@media (max-width: 560px) {
+	.stats {
+		grid-template-columns: repeat(3, 1fr);
+		flex-basis: 100%;
+	}
+
+	.lessonBody {
+		margin-left: 0;
+	}
+}
+
+.group + .group {
+	margin-top: 18px;
+}
+
+.groupTitle {
+	font-weight: 700;
+	font-size: 13px;
+	color: #096b35;
+	text-transform: uppercase;
+	letter-spacing: 0.03em;
+	margin-bottom: 8px;
+}
+
+/* Bài học: hàng bấm mở/đóng */
+.lessonHead {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	width: 100%;
+	padding: 0;
+	border: 0;
+	background: none;
+	font: inherit;
+	text-align: left;
+	cursor: pointer;
+}
+
+.lessonNo {
+	flex: 0 0 28px;
+	height: 28px;
+	border-radius: 50%;
+	background: #f0fdf4;
+	color: #096b35;
+	font-weight: 700;
+	font-size: 12px;
+	display: grid;
+	place-items: center;
+}
+
+.lessonMain {
+	flex: 1;
+	min-width: 0;
+	display: flex;
+	flex-direction: column;
+}
+
+.lessonMain .meta {
+	margin-top: 2px;
+}
+
+.chev {
+	flex: 0 0 16px;
+	width: 16px;
+	height: 16px;
+	color: #94a3b8;
+	transition: transform 0.15s;
+}
+
+.chevOpen {
+	transform: rotate(180deg);
+}
+
+.lessonBody {
+	margin: 10px 0 0 40px;
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+}
+
+.lessonDesc {
+	margin: 0 0 4px;
+	font-size: 13px;
+	color: #334155;
+	white-space: pre-line;
+}
+
+.docLink {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	flex-wrap: wrap;
+	padding: 8px 10px;
+	border: 1px solid var(--color-gray-200);
+	border-radius: 8px;
+	background: #f8fafc;
+	font: inherit;
+	font-size: 13px;
+	color: #0f172a;
+	text-align: left;
+	cursor: pointer;
+}
+
+.docLink:hover {
+	border-color: var(--color-primary);
+}
+
+.docLink svg {
+	width: 15px;
+	height: 15px;
+	color: #64748b;
+}
+
+.docMeta {
+	color: #64748b;
+	font-size: 12px;
+}
+
+.itemHead {
+	display: flex;
+	align-items: flex-start;
+	justify-content: space-between;
+	gap: 12px;
+	flex-wrap: wrap;
+}
+
+.itemTitle {
+	font-weight: 600;
+	color: #0f172a;
+}
+
+.badges {
+	display: flex;
+	gap: 6px;
+	flex-wrap: wrap;
+}
+
+.meta {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 4px 16px;
+	margin-top: 6px;
+	font-size: 13px;
+	color: #64748b;
+}
+
+.meta b {
+	color: #334155;
+	font-weight: 600;
+}
+
+/* Lịch học: cột ngày + nội dung */
+.session {
+	display: flex;
+	gap: 14px;
+	align-items: center;
+}
+
+.dateBox {
+	flex: 0 0 56px;
+	text-align: center;
+	border-radius: 8px;
+	background: #f0fdf4;
+	color: #096b35;
+	padding: 6px 0;
+	line-height: 1.2;
+}
+
+.dateBox strong {
+	display: block;
+	font-size: 18px;
+}
+
+.dateBox span {
+	font-size: 11px;
+}
+
+.tableWrap {
+	composes: tableWrap from '../../../shared/components/Table/Table.module.css';
+	overflow-x: auto;
+	margin: 10px 0 0;
+	box-shadow: none;
+}
+
+.table {
+	composes: table from '../../../shared/components/Table/Table.module.css';
+}
+
+/* Tiến độ tín chỉ CME */
+.progressRow {
+	display: flex;
+	align-items: baseline;
+	justify-content: space-between;
+	gap: 12px;
+	flex-wrap: wrap;
+}
+
+.bigNumber {
+	font-size: 28px;
+	font-weight: 700;
+	color: #0f172a;
+}
+
+.progressTrack {
+	height: 10px;
+	border-radius: 999px;
+	background: #e2e8f0;
+	overflow: hidden;
+	margin-top: 10px;
+}
+
+.progressBar {
+	height: 100%;
+	border-radius: 999px;
+	background: var(--color-primary);
+	transition: width 0.3s;
+}
+
+.progressDone {
+	background: #16a34a;
+}
+
+.progressLow {
+	background: #d97706;
+}
+
+.yearSelect {
+	border: 1px solid var(--color-gray-200);
+	border-radius: 8px;
+	padding: 6px 10px;
+	font-size: 13px;
+	background: var(--color-white);
+}

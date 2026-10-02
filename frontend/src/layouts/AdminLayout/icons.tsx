@@ -96,6 +96,7 @@ export const Icon = {
 	IcInfo: () => <InfoSvg />,
 	IcWarn: () => <WarnSvg />,
 	IcDoc: () => <DocSvg />,
+	Account: () => <UserSvg />,
 	LogOut: () => <LogoutSvg />,
 	Menu: () => <MenuSvg />,
 };

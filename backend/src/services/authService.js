@@ -374,7 +374,19 @@ const issueTokens = async (pool, user, ip, userAgent, device = null, remember = 
 // ─── 2FA: dùng chung ────────────────────────────────────────────────────────
 // Secret TOTP lưu mã hoá (utils/secretBox.js). Giá trị cũ chưa mã hoá vẫn đọc
 // được; lần dùng thành công kế tiếp sẽ mã hoá lại (reencryptIfLegacy).
-const readSecret = (stored) => secretBox.decrypt(stored);
+// Giải mã lỗi = khoá (TOTP_ENC_KEY / secrets/totp.key) đã đổi so với lúc lưu
+// secret: không sinh được mã nữa, người dùng phải được quản trị đặt lại 2FA.
+const readSecret = (stored) => {
+	try {
+		return secretBox.decrypt(stored);
+	} catch (err) {
+		console.error('❌ Không giải mã được secret 2FA — khoá mã hoá không khớp:', err.message);
+		throw {
+			statusCode: 409,
+			message: 'Không đọc được cấu hình xác thực 2 lớp của tài khoản. Vui lòng liên hệ quản trị viên để đặt lại 2FA.',
+		};
+	}
+};
 
 const reencryptIfLegacy = async (pool, userId, stored) => {
 	if (!stored || secretBox.isEncrypted(stored)) return;

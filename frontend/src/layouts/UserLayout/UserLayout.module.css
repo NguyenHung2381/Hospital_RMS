@@ -171,38 +171,6 @@
 	margin-left: auto;
 }
 
-.roundIndicator {
-	display: flex;
-	align-items: center;
-	gap: var(--space-2);
-	padding: var(--space-2) var(--space-3);
-	background: rgba(255, 255, 255, 0.14);
-	border: 1px solid rgba(255, 255, 255, 0.24);
-	border-radius: var(--radius-full);
-	font-size: var(--font-size-xs);
-	font-weight: var(--font-weight-semibold);
-	color: #fff;
-	white-space: nowrap;
-}
-
-.roundDot {
-	width: 6px;
-	height: 6px;
-	border-radius: 50%;
-	background: #fff;
-	animation: blink-green 2s ease-in-out infinite;
-}
-
-@keyframes blink-green {
-	0%,
-	100% {
-		opacity: 1;
-	}
-	50% {
-		opacity: 0.3;
-	}
-}
-
 /* ── User chip + dropdown ── */
 .userMenuWrap {
 	position: relative;
@@ -915,11 +883,27 @@
 		display: none;
 	}
 
-	.roundIndicator {
-		display: none;
-	}
-
 	.topbarInner {
 		padding: 0 var(--space-4);
+	}
+
+	/* Tên BV dài đẩy nút tài khoản ra ngoài màn hình: cho brand co lại + cắt chữ */
+	.brand {
+		flex-shrink: 1;
+		min-width: 0;
+	}
+
+	.brandText {
+		min-width: 0;
+		overflow: hidden;
+	}
+
+	.brandName {
+		overflow: hidden;
+		text-overflow: ellipsis;
+	}
+
+	.userChevron {
+		display: none;
 	}
 }

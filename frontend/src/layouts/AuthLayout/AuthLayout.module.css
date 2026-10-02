@@ -373,6 +373,36 @@
 	color: var(--color-gray-400);
 }
 
+/* Panel giới thiệu: logo → tên → mô tả → tính năng xuất hiện lần lượt */
+.panelContent > * {
+	animation: fadeInUp 0.6s ease backwards;
+}
+.panelContent > :nth-child(2) {
+	animation-delay: 0.12s;
+}
+.panelContent > :nth-child(3) {
+	animation-delay: 0.24s;
+}
+.panelContent > :nth-child(n + 4) {
+	animation-delay: 0.36s;
+}
+/* Logo vừa trượt vào vừa bồng bềnh: gộp 2 animation, float chạy sau khi vào xong */
+.panelContent > .panelLogo {
+	animation:
+		fadeInUp 0.6s ease backwards,
+		float 5s ease-in-out 0.6s infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.panelContent > *,
+	.panelContent > .panelLogo,
+	.panelLogo,
+	.formWrapper,
+	.rightRing {
+		animation: none !important;
+	}
+}
+
 /* === RESPONSIVE === */
 @media (max-width: 1024px) {
 	.authWrapper {
@@ -410,8 +440,46 @@
 	}
 }
 
-@media (max-width: 480px) {
+/* Điện thoại: rút panel giới thiệu (logo nhỏ + tên BV + mô tả) để form nằm ngay màn hình đầu */
+@media (max-width: 640px) {
+	.panelLeft {
+		padding: var(--space-5) var(--space-4);
+	}
+
+	.panelContent {
+		gap: var(--space-2);
+	}
+
+	.panelLogo {
+		width: 64px;
+		height: 64px;
+		padding: 4px;
+	}
+
+	.panelTitle {
+		font-size: var(--font-size-xl);
+	}
+
+	.panelSubtitle {
+		font-size: var(--font-size-sm);
+		line-height: 1.5;
+	}
+
+	.desktopOnly,
+	.panelFeatures,
+	.panelDivider,
+	.glowOrb {
+		display: none;
+	}
+
 	.panelRight {
+		justify-content: flex-start;
 		padding: var(--space-6) var(--space-4);
+	}
+
+	/* Footer tuyệt đối đè lên dòng link cuối form khi màn hình thấp */
+	.authFooter {
+		position: static;
+		margin-top: var(--space-6);
 	}
 }

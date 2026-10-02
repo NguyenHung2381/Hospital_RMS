@@ -1,4 +1,4 @@
-import type { Dispatch, SetStateAction } from 'react';
+import type { Dispatch, ReactNode, SetStateAction } from 'react';
 import type { SimpleItem } from '../../topics/api/topicApi';
 import { InlineLoading } from '@/shared/components';
 import styles from '../pages/MyTopics.module.css';
@@ -26,6 +26,8 @@ interface EditTopicModalProps {
 	refDataLoading: boolean;
 	onClose: () => void;
 	onSave: () => void;
+	/** Phần sửa thành viên (hiện khi mốc cho phép). */
+	children?: ReactNode;
 }
 
 export function EditTopicModal({
@@ -39,6 +41,7 @@ export function EditTopicModal({
 	refDataLoading,
 	onClose,
 	onSave,
+	children,
 }: EditTopicModalProps) {
 	return (
 		<div
@@ -169,6 +172,8 @@ export function EditTopicModal({
 							</div>
 
 							{editError && <div className={styles.editError}>{editError}</div>}
+
+							{children}
 						</>
 					)}
 				</div>

@@ -11,6 +11,7 @@ import {
 import UserLayout from '../../../layouts/UserLayout';
 import { InlineLoading } from '@/shared/components';
 import { EditTopicModal } from '../components/EditTopicModal';
+import MembersTab from '../components/MembersTab';
 import { FileViewerModal } from '@/shared/components/FileViewerModal';
 import { MyTopicsDetailPanel } from '../components/MyTopicsDetailPanel';
 import { MyTopicsListPanel } from '../components/MyTopicsListPanel';
@@ -197,7 +198,7 @@ export default function MyTopics() {
 							detailHistory={d.detailHistory}
 							latestApproval={d.latestApproval}
 							canUploadFiles={d.canUploadFiles}
-							canEditTopic={d.canEditTitle || d.canEditInfo}
+							canEditTopic={d.canEditTitle || d.canEditInfo || d.canEditMembers}
 							setFileViewer={d.setFileViewer}
 							fileInputRef={d.fileInputRef}
 							pendingFiles={d.pendingFiles}
@@ -226,7 +227,29 @@ export default function MyTopics() {
 					refDataLoading={d.refDataLoading}
 					onClose={() => d.setEditOpen(false)}
 					onSave={() => void d.handleSaveEdit()}
-				/>
+				>
+					{d.canEditMembers && (
+						<MembersTab
+							members={d.members}
+							canEditMembers
+							addingMember={d.addingMember}
+							setAddingMember={d.setAddingMember}
+							newMember={d.newMember}
+							setNewMember={d.setNewMember}
+							editingMemberId={d.editingMemberId}
+							setEditingMemberId={d.setEditingMemberId}
+							editMemberForm={d.editMemberForm}
+							setEditMemberForm={d.setEditMemberForm}
+							savingMember={d.savingMember}
+							memberErr={d.memberErr}
+							setMemberErr={d.setMemberErr}
+							handleAddMember={d.handleAddMember}
+							startEditMember={d.startEditMember}
+							handleSaveMember={d.handleSaveMember}
+							handleDeleteMember={d.handleDeleteMember}
+						/>
+					)}
+				</EditTopicModal>
 			)}
 
 			{d.fileViewer && (

@@ -50,6 +50,7 @@ module.exports = {
 		[`POST ${API}/auth/2fa/backup-codes`]: '2FA của chính mình — tạo lại mã khôi phục (cần mật khẩu)',
 		[`GET ${API}/auth/2fa/status`]: '2FA của chính mình',
 		[`GET ${API}/users/me`]: 'Hồ sơ + quyền của chính mình',
+		[`PATCH ${API}/users/me`]: 'Tự sửa họ tên (controller chỉ nhận full_name)',
 		[`GET ${API}/users/:id`]: 'Controller: chính mình, hoặc cần users:read + cùng khoa (userController.getById)',
 		[`GET ${API}/users/search`]: 'Tìm người để thêm làm thành viên đề tài — bắt buộc từ khoá, tối đa 20 kết quả (có email để điền sẵn)',
 		[`GET ${API}/notifications/`]: 'Thông báo của chính mình',
@@ -57,6 +58,12 @@ module.exports = {
 		[`PUT ${API}/notifications/read-all`]: 'Thông báo của chính mình',
 		[`PUT ${API}/notifications/:id/read`]: 'Thông báo của chính mình',
 		[`GET ${API}/my-tasks/`]: 'Việc cần làm của chính mình',
+		[`GET ${API}/me/training`]: 'Khóa học mình học/dạy + lịch học của chính mình (lọc theo user_id)',
+		[`GET ${API}/me/courses/:id`]: 'Chi tiết khóa mình đang học — service chỉ trả khi có ghi danh; tài liệu/đề thi chỉ khi đã duyệt',
+		[`PATCH ${API}/me/documents/:docId/download`]: 'Tăng lượt tải tài liệu — service kiểm tra tài liệu công khai + ghi danh đã duyệt',
+		[`PATCH ${API}/me/lesson-documents/:docId/download`]: 'Tăng lượt tải tài liệu bài học — service kiểm tra tài liệu công khai + bài học thuộc khóa đã được duyệt',
+		[`POST ${API}/me/courses/:id/register`]: 'Tự đăng ký khóa học — service chỉ nhận khóa bật đăng ký công khai, trong cửa sổ đăng ký, trạng thái chờ duyệt',
+		[`GET ${API}/me/cme`]: 'Tín chỉ CME của chính mình (lọc theo user_id)',
 
 		// Thành viên hội đồng — service kiểm tra ghế trong council_members
 		// (assertSecretary / assertChairman, councilProgressService.js)

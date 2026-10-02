@@ -1,7 +1,7 @@
 /* eslint-disable react-refresh/only-export-components */
 // @refresh reset
 import React from 'react';
-import type { RouteObject } from 'react-router-dom';
+import { Navigate, type RouteObject } from 'react-router-dom';
 import { LazyRoute } from './LazyRoute';
 import { lazyRoute as lazy } from './routePrefetch';
 import { RequireAdmin, RequireAuth, RequirePermission } from './guards';
@@ -76,7 +76,6 @@ const MyTasks = lazy(() => import('../../features/my-tasks/pages/MyTasks'));
 const AttendanceCheckIn = lazy(
 	() => import('../../features/attendance-checkin/pages/AttendanceCheckIn'),
 );
-const UserExams = lazy(() => import('../../features/exam/pages/UserExams'));
 const QuestionBank = lazy(() => import('../../features/exam/pages/QuestionBank'));
 const Lecturers = lazy(() => import('../../features/lecturer/pages/Lecturers'));
 const Courses = lazy(() => import('../../features/course/pages/Courses'));
@@ -103,6 +102,9 @@ const DepartmentAccounts = lazy(
 const TopicRegister = lazy(
 	() => import('../../features/topics/pages/TopicRegister'),
 );
+const UserMyTraining = lazy(() => import('../../features/portal/pages/MyTraining'));
+const UserMyCourseDetail = lazy(() => import('../../features/portal/pages/MyCourseDetail'));
+const UserMyCme = lazy(() => import('../../features/portal/pages/MyCme'));
 const UserNotifications = lazy(
 	() => import('../../features/notifications/pages/UserNotifications'),
 );
@@ -139,6 +141,7 @@ export const adminRoutes: RouteObject[] = [
 		path: '/admin/dashboard/seminar',
 		element: admin('Tổng quan Hội thảo - CME', <SeminarDashboard />),
 	},
+	{ path: '/admin/profile', element: admin('Hồ sơ cá nhân', <UserProfile />) },
 	{
 		path: '/admin/viec-cua-toi',
 		element: admin('Việc của tôi', <MyTasks />),
@@ -349,8 +352,21 @@ export const userRoutes: RouteObject[] = [
 		element: user('Điểm danh QR', <AttendanceCheckIn />),
 	},
 	{
+		path: '/user/khoa-hoc',
+		element: user('Khóa học của tôi', <UserMyTraining />),
+	},
+	{
+		path: '/user/khoa-hoc/:id',
+		element: user('Chi tiết khóa học', <UserMyCourseDetail />),
+	},
+	{
+		path: '/user/cme',
+		element: user('CME của tôi', <UserMyCme />),
+	},
+	{
 		path: '/user/thi-online',
-		element: user('Thi online', <UserExams />),
+		// Thi online đã gộp vào chi tiết khóa học — giữ đường dẫn cũ cho link/bookmark.
+		element: <Navigate to='/user/khoa-hoc' replace />,
 	},
 	{
 		path: '/user/register-topic',

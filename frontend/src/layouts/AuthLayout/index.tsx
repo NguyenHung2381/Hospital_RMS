@@ -46,15 +46,15 @@ export default function AuthLayout({ children }: AuthLayoutProps) {
 					{/* Tiêu đề */}
 					<div>
 						<h1 className={styles.panelTitle}>
-							Bệnh viện
-							<br />
-							Hữu Nghị Đa Khoa
-							<br />
+							Bệnh viện <br />
+							Hữu Nghị Đa Khoa <br className={styles.desktopOnly} />
 							Nghệ An
 						</h1>
 						<p className={styles.panelSubtitle}>
 							Hệ thống Quản lý Nghiên cứu Khoa học & Đào tạo
-							<br />— Nơi tri thức y học được kiến tạo và lan tỏa
+							<span className={styles.desktopOnly}>
+								<br />— Nơi tri thức y học được kiến tạo và lan tỏa
+							</span>
 						</p>
 					</div>
 

@@ -14,6 +14,8 @@ const { assertHttpUrl } = require('../utils/safeUrl');
 // mã QR" (mở camera → chụp → xác nhận → tải lên) khi không có HTTPS để quét trực tiếp.
 const ATTENDANCE_QR_TTL = '75s';
 const ATTENDANCE_QR_PURPOSE = 'course_attendance_qr';
+const DEVICE_TAKEN_MSG =
+	'Thiết bị này đã dùng để điểm danh cho người khác trong buổi này. Vui lòng dùng thiết bị của chính bạn hoặc liên hệ giảng viên.';
 
 // Mỗi khóa học tự có cửa sổ đăng ký riêng (enrollment_start/end_date) và tự
 // quyết định có công khai trên cổng đăng ký không cần đăng nhập hay không
@@ -867,7 +869,7 @@ const generateAttendanceQrToken = (sessionId) =>
 // Học viên tự điểm danh bằng mã QR vừa quét — actor phải là tài khoản đã được
 // cấp cho 1 trainee (trainees.user_id, xem D0) có ghi danh 'approved' vào
 // khóa của buổi học này.
-const checkInSelf = async (token, actor) => {
+const checkInSelf = async (token, deviceId, actor) => {
 	let decoded;
 	try {
 		decoded = verifyToken('attendance-qr', token);
@@ -900,23 +902,39 @@ const checkInSelf = async (token, actor) => {
 		throw err;
 	}
 
-	await pool
+	// 1 thiết bị chỉ điểm danh cho 1 học viên mỗi buổi — chặn cầm máy đăng nhập
+	// lần lượt tài khoản người khác để điểm danh hộ. Chính học viên quét lại
+	// (kể cả từ máy khác) vẫn được, ghi đè mã thiết bị.
+	const res = await pool
 		.request()
 		.input('session_id', sql.VarChar(20), decoded.session_id)
 		.input('enrollment_id', sql.VarChar(20), enrollment.enrollment_id)
+		.input('device_id', sql.VarChar(64), deviceId)
 		.input('actor_id', sql.VarChar(20), actor.id).query(`
-      IF EXISTS (SELECT 1 FROM attendance WHERE session_id = @session_id AND enrollment_id = @enrollment_id)
-        UPDATE attendance SET status = 'present', method = 'qr', checked_in_at = GETDATE(),
-               updated_at = GETDATE(), updated_by = @actor_id
-        WHERE session_id = @session_id AND enrollment_id = @enrollment_id;
+      IF EXISTS (SELECT 1 FROM attendance WHERE session_id = @session_id
+                 AND checkin_device_id = @device_id AND enrollment_id <> @enrollment_id)
+        SELECT CAST(1 AS BIT) AS device_taken;
       ELSE
       BEGIN
-        DECLARE @new_id VARCHAR(20);
-        EXEC sp_gen_attendance_id @actor_id = @actor_id, @new_id = @new_id OUTPUT;
-        INSERT INTO attendance (id, session_id, enrollment_id, status, method, checked_in_at, updated_by, updated_at)
-        VALUES (@new_id, @session_id, @enrollment_id, 'present', 'qr', GETDATE(), @actor_id, GETDATE());
+        IF EXISTS (SELECT 1 FROM attendance WHERE session_id = @session_id AND enrollment_id = @enrollment_id)
+          UPDATE attendance SET status = 'present', method = 'qr', checked_in_at = GETDATE(),
+                 checkin_device_id = @device_id, updated_at = GETDATE(), updated_by = @actor_id
+          WHERE session_id = @session_id AND enrollment_id = @enrollment_id;
+        ELSE
+        BEGIN
+          DECLARE @new_id VARCHAR(20);
+          EXEC sp_gen_attendance_id @actor_id = @actor_id, @new_id = @new_id OUTPUT;
+          INSERT INTO attendance (id, session_id, enrollment_id, status, method, checked_in_at, checkin_device_id, updated_by, updated_at)
+          VALUES (@new_id, @session_id, @enrollment_id, 'present', 'qr', GETDATE(), @device_id, @actor_id, GETDATE());
+        END
+        SELECT CAST(0 AS BIT) AS device_taken;
       END
     `);
+	if (res.recordset[0].device_taken) {
+		const err = new Error(DEVICE_TAKEN_MSG);
+		err.statusCode = 403;
+		throw err;
+	}
 	broadcast('update', { entity: 'attendance' });
 	return { session_id: decoded.session_id };
 };
@@ -1213,6 +1231,7 @@ module.exports = {
 	update,
 	remove,
 	isEnrollmentOpenRow,
+	computeDisplayStatus,
 	listProgramLinks,
 	addProgramLink,
 	assertCourseInScope,

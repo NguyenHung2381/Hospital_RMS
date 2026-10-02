@@ -48,6 +48,26 @@
 
 .loginTitle span {
 	color: var(--color-primary);
+	/* Ánh sáng chạy qua chữ; color ở trên là fallback khi không hỗ trợ background-clip */
+	background: linear-gradient(
+		90deg,
+		var(--color-primary) 0%,
+		var(--color-primary-dark) 35%,
+		#34d399 50%,
+		var(--color-primary-dark) 65%,
+		var(--color-primary) 100%
+	);
+	background-size: 200% auto;
+	-webkit-background-clip: text;
+	background-clip: text;
+	-webkit-text-fill-color: transparent;
+	animation: textShine 4s linear infinite;
+}
+
+@keyframes textShine {
+	to {
+		background-position: -200% center;
+	}
 }
 
 .loginSubtitle {
@@ -394,6 +414,39 @@
 	opacity: 1;
 }
 
+/* Vệt sáng lướt qua nút theo chu kỳ */
+.submitBtn::after {
+	content: '';
+	position: absolute;
+	top: 0;
+	left: -60%;
+	width: 40%;
+	height: 100%;
+	background: linear-gradient(
+		100deg,
+		transparent,
+		rgba(255, 255, 255, 0.28),
+		transparent
+	);
+	transform: skewX(-20deg);
+	animation: btnShine 3.5s ease-in-out 1.2s infinite;
+	pointer-events: none;
+}
+
+.submitBtn:disabled::after {
+	display: none;
+}
+
+@keyframes btnShine {
+	0% {
+		left: -60%;
+	}
+	40%,
+	100% {
+		left: 130%;
+	}
+}
+
 .submitBtn:active {
 	transform: translateY(0);
 	box-shadow: 0 2px 10px rgba(10, 155, 74, 0.3);
@@ -584,4 +637,58 @@
 
 .destOptionSecondary:hover {
 	background: var(--color-gray-50, #f8fafc);
+}
+
+@media (max-width: 640px) {
+	.loginHeader {
+		margin-bottom: var(--space-4);
+	}
+
+	.loginTitle {
+		font-size: var(--font-size-2xl);
+	}
+
+	/* Thông tin liên hệ CNTT: ẩn trên điện thoại cho gọn form */
+	.supportBox {
+		display: none;
+	}
+}
+
+/* Các trường của form trượt lên lần lượt sau khi khung form vào */
+.loginHeader,
+.loginForm > * {
+	animation: fadeUp 0.5s ease backwards;
+}
+.loginForm > :nth-child(1) {
+	animation-delay: 0.15s;
+}
+.loginForm > :nth-child(2) {
+	animation-delay: 0.25s;
+}
+.loginForm > :nth-child(3) {
+	animation-delay: 0.35s;
+}
+.loginForm > :nth-child(n + 4) {
+	animation-delay: 0.45s;
+}
+
+@keyframes fadeUp {
+	from {
+		opacity: 0;
+		transform: translateY(12px);
+	}
+	to {
+		opacity: 1;
+		transform: none;
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.loginHeader,
+	.loginForm > *,
+	.loginTitle span,
+	.submitBtn::after,
+	.loginTag span {
+		animation: none !important;
+	}
 }

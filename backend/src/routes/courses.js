@@ -189,7 +189,7 @@ router.get(
 );
 router.post(
 	'/attendance/check-in',
-	[body('token').notEmpty()],
+	[body('token').notEmpty(), body('device_id').isString().isLength({ min: 16, max: 64 })],
 	validate,
 	ctrl.checkInSelf,
 );

@@ -30,6 +30,23 @@ router.get('/me', ctrl.getMe);
 
 /**
  * @swagger
+ * /users/me:
+ *   patch:
+ *     summary: Tự cập nhật thông tin tài khoản (hiện chỉ họ tên)
+ *     tags: [Users]
+ *     responses:
+ *       200:
+ *         description: Cập nhật thành công
+ */
+router.patch(
+	'/me',
+	[body('full_name').isString().trim().notEmpty().isLength({ max: 200 })],
+	validate,
+	ctrl.updateMe,
+);
+
+/**
+ * @swagger
  * /users:
  *   get:
  *     summary: Lấy danh sách người dùng

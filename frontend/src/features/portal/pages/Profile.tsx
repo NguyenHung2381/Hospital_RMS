@@ -7,28 +7,48 @@ import {
 	EyeSvg,
 	KeySvg,
 	LockSvg,
+	LogoutSvg,
 	MailSvg,
 	ShieldSvg,
 	UserSvg,
 } from '@/assets/icons';
 import { QRCode } from 'antd';
+import { useLocation } from 'react-router-dom';
+import AdminLayout from '../../../layouts/AdminLayout';
 import UserLayout from '../../../layouts/UserLayout';
 import { InlineLoading } from '@/shared/components';
 import { PASSWORD_HINT } from '@/shared/utils/password';
 import { fmtDate, useProfile } from '../hooks/useProfile';
 import styles from './Profile.module.css';
 
+const SPINNER = (
+	<span
+		className={styles.spinner}
+		style={{
+			width: 14,
+			height: 14,
+			border: '2px solid rgba(255,255,255,0.4)',
+			borderTopColor: '#fff',
+		}}
+	/>
+);
+
 export default function Profile() {
 	const d = useProfile();
+	// Dùng chung 2 cổng như MyTasks: vào từ /admin/... thì giữ layout admin.
+	const isAdmin = useLocation().pathname.startsWith('/admin');
+	const Layout = isAdmin ? AdminLayout : UserLayout;
 
 	return (
-		<UserLayout
+		<Layout
 			pageTitle='Hồ sơ cá nhân'
 			pageSubtitle='Xem và quản lý thông tin tài khoản của bạn'
 			breadcrumbs={[{ label: 'Hồ sơ cá nhân' }]}
-			userName={d.fullName}
-			userRole={d.userRole}
-			userInitials={d.initials}
+			{...(!isAdmin && {
+				userName: d.fullName,
+				userRole: d.userRole,
+				userInitials: d.initials,
+			})}
 		>
 			<div className={styles.pageGrid}>
 				{/* ── LEFT COL ── */}
@@ -141,9 +161,45 @@ export default function Profile() {
 							<div className={styles.detailGrid}>
 								<div className={styles.detailItem}>
 									<div className={styles.detailLabel}>Họ và tên</div>
-									<div className={styles.detailValue}>
-										{d.profile.full_name}
-									</div>
+									{d.nameDraft === null ? (
+										<div className={styles.detailValue}>
+											{d.profile.full_name}{' '}
+											<button
+												type='button'
+												className={styles.linkBtn}
+												onClick={() => d.setNameDraft(d.profile!.full_name)}
+											>
+												Sửa
+											</button>
+										</div>
+									) : (
+										<form
+											style={{ display: 'flex', gap: 8 }}
+											onSubmit={(e) => {
+												e.preventDefault();
+												d.handleSaveName();
+											}}
+										>
+											<input
+												className={styles.pwdInput}
+												value={d.nameDraft}
+												maxLength={200}
+												autoFocus
+												aria-label='Họ và tên'
+												onChange={(e) => d.setNameDraft(e.target.value)}
+											/>
+											<button className={styles.btnPrimary} disabled={d.nameSaving}>
+												Lưu
+											</button>
+											<button
+												type='button'
+												className={styles.linkBtn}
+												onClick={() => d.setNameDraft(null)}
+											>
+												Huỷ
+											</button>
+										</form>
+									)}
 								</div>
 								<div className={styles.detailItem}>
 									<div className={styles.detailLabel}>Tên đăng nhập</div>
@@ -353,21 +409,48 @@ export default function Profile() {
 
 					{/* 2FA (TOTP) */}
 					<div className={styles.detailCard}>
-						<div className={styles.detailCardHeader}>
+						<div
+							className={`${styles.detailCardHeader} ${d.twoFaEnabled === false && !d.twoFaSetup ? styles.headerOnly : ''}`}
+						>
 							<div
 								className={styles.detailCardIcon}
 								style={{ background: '#e0e7ff', color: '#4338ca' }}
 							>
 								<KeySvg />
 							</div>
-							<div>
-								<div className={styles.detailCardTitle}>Xác thực 2 lớp (2FA)</div>
+							<div className={styles.headerText}>
+								<div className={styles.detailCardTitle}>
+									Xác thực 2 lớp (2FA)
+									{d.twoFaEnabled !== null && (
+										<span
+											className={styles.statusChip}
+											style={
+												d.twoFaEnabled
+													? { background: '#dcfce7', color: '#166534' }
+													: { background: 'var(--color-gray-100)', color: 'var(--color-gray-600)' }
+											}
+										>
+											{d.twoFaEnabled ? 'Đang bật' : 'Chưa bật'}
+										</span>
+									)}
+								</div>
 								<div className={styles.detailCardSub}>
 									{d.twoFaEnabled
-										? 'Đang bật — mỗi lần đăng nhập cần thêm mã từ ứng dụng xác thực'
-										: 'Tự nguyện — bảo vệ tài khoản bằng mã OTP từ Google Authenticator...'}
+										? 'Mỗi lần đăng nhập cần thêm mã từ ứng dụng xác thực'
+										: 'Bảo vệ tài khoản bằng mã OTP từ Google Authenticator hoặc ứng dụng tương tự'}
 								</div>
 							</div>
+							{d.twoFaEnabled === false && !d.twoFaSetup && (
+								<button
+									type='button'
+									className={`${styles.btnPrimary} ${styles.headerAction}`}
+									onClick={() => void d.handleStart2FASetup()}
+									disabled={d.twoFaSaving}
+								>
+									{d.twoFaSaving ? SPINNER : <KeySvg />}
+									Bật xác thực 2 lớp
+								</button>
+							)}
 						</div>
 
 						{d.twoFaEnabled === null ? null : d.twoFaSetup ? (
@@ -598,75 +681,32 @@ export default function Profile() {
 									</>
 								)}
 							</div>
-						) : (
-							<div className={styles.pwdFooter}>
-								<button
-									type='button'
-									className={styles.btnPrimary}
-									onClick={() => void d.handleStart2FASetup()}
-									disabled={d.twoFaSaving}
-								>
-									{d.twoFaSaving ? (
-										<span
-											className={styles.spinner}
-											style={{
-												width: 14,
-												height: 14,
-												border: '2px solid rgba(255,255,255,0.4)',
-												borderTopColor: '#fff',
-											}}
-										/>
-									) : (
-										<KeySvg />
-									)}
-									Bật xác thực 2 lớp
-								</button>
-							</div>
-						)}
+						) : null}
 					</div>
 
 					{/* Security: revoke all sessions */}
 					<div className={styles.detailCard}>
-						<div className={styles.detailCardHeader}>
+						<div className={`${styles.detailCardHeader} ${styles.headerOnly}`}>
 							<div
 								className={styles.detailCardIcon}
-								style={{ background: '#e0e7ff', color: '#4338ca' }}
+								style={{ background: '#fee2e2', color: '#dc2626' }}
 							>
 								<ShieldSvg />
 							</div>
-							<div>
-								<div className={styles.detailCardTitle}>Bảo mật</div>
+							<div className={styles.headerText}>
+								<div className={styles.detailCardTitle}>Phiên đăng nhập</div>
 								<div className={styles.detailCardSub}>
-									Đăng xuất khỏi tất cả thiết bị đang đăng nhập bằng tài khoản
-									này (kể cả thiết bị này)
+									Đăng xuất khỏi tất cả thiết bị đang dùng tài khoản này, kể cả thiết bị hiện tại
 								</div>
 							</div>
-						</div>
-
-						<div className={styles.pwdFooter}>
 							<button
 								type='button'
-								className={styles.btnPrimary}
-								style={{ background: '#dc2626' }}
+								className={`${styles.btnDangerOutline} ${styles.headerAction}`}
 								onClick={() => void d.handleLogoutAll()}
 								disabled={d.loggingOutAll}
 							>
-								{d.loggingOutAll ? (
-									<span
-										className={styles.spinner}
-										style={{
-											width: 14,
-											height: 14,
-											border: '2px solid rgba(255,255,255,0.4)',
-											borderTopColor: '#fff',
-										}}
-									/>
-								) : (
-									<ShieldSvg />
-								)}
-								{d.loggingOutAll
-									? 'Đang đăng xuất...'
-									: 'Đăng xuất khỏi mọi thiết bị'}
+								<LogoutSvg />
+								{d.loggingOutAll ? 'Đang đăng xuất...' : 'Đăng xuất mọi thiết bị'}
 							</button>
 						</div>
 					</div>
@@ -681,6 +721,6 @@ export default function Profile() {
 					{d.toast.msg}
 				</div>
 			)}
-		</UserLayout>
+		</Layout>
 	);
 }

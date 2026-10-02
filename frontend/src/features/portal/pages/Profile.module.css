@@ -437,3 +437,67 @@
 		flex-direction: column;
 	}
 }
+
+.linkBtn {
+	background: none;
+	border: none;
+	padding: 0 4px;
+	color: #1a6abd;
+	font-size: 13px;
+	cursor: pointer;
+}
+
+.linkBtn:hover {
+	text-decoration: underline;
+}
+
+/* Thẻ chỉ có 1 thao tác: nút nằm ngay trên hàng tiêu đề, không để thân thẻ trống */
+.headerOnly {
+	border-bottom: none;
+	flex-wrap: wrap;
+}
+
+.headerText {
+	flex: 1;
+	min-width: 200px;
+}
+
+.headerText .detailCardTitle {
+	display: flex;
+	align-items: center;
+	gap: var(--space-2);
+}
+
+.headerAction {
+	flex-shrink: 0;
+	margin-left: auto;
+}
+
+.btnDangerOutline {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--space-2);
+	padding: 9px 18px;
+	background: #fff;
+	color: #dc2626;
+	border: 1px solid #fca5a5;
+	border-radius: var(--radius-lg);
+	font-size: var(--font-size-sm);
+	font-weight: 600;
+	cursor: pointer;
+	transition: background 0.15s;
+}
+
+.btnDangerOutline:hover:not(:disabled) {
+	background: #fef2f2;
+}
+
+.btnDangerOutline:disabled {
+	opacity: 0.6;
+	cursor: not-allowed;
+}
+
+.btnDangerOutline svg {
+	width: 16px;
+	height: 16px;
+}

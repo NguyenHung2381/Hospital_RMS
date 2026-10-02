@@ -47,12 +47,12 @@ export function fmtDate(iso: string | null) {
 export function useProfile() {
 	const storedUser = useMemo(() => getStoredUser<Record<string, string>>(), []);
 
+	const [profile, setProfile] = useState<ProfileData | null>(null);
+
 	const fullName =
-		storedUser?.full_name ?? storedUser?.username ?? 'Người dùng';
+		profile?.full_name || storedUser?.full_name || storedUser?.username || 'Người dùng';
 	const userRole = storedUser?.role ?? storedUser?.role_name ?? 'Thành viên';
 	const initials = getInitials(fullName);
-
-	const [profile, setProfile] = useState<ProfileData | null>(null);
 	const [loadingProfile, setLoadingProfile] = useState(true);
 
 	useEffect(() => {
@@ -94,6 +94,30 @@ export function useProfile() {
 	function showToast(msg: string, type: 'success' | 'error') {
 		setToast({ msg, type });
 		setTimeout(() => setToast(null), 3500);
+	}
+
+	// null = không đang sửa
+	const [nameDraft, setNameDraft] = useState<string | null>(null);
+	const [nameSaving, setNameSaving] = useState(false);
+
+	async function handleSaveName() {
+		const full_name = nameDraft?.trim() ?? '';
+		if (!full_name) {
+			showToast('Họ và tên không được để trống.', 'error');
+			return;
+		}
+		setNameSaving(true);
+		try {
+			await apiClient.patch('/users/me', { full_name });
+			setProfile((p) => (p ? { ...p, full_name } : p));
+			updateStoredUser({ full_name });
+			setNameDraft(null);
+			showToast('Đã cập nhật họ và tên.', 'success');
+		} catch (err) {
+			showToast(err instanceof Error ? err.message : 'Có lỗi xảy ra.', 'error');
+		} finally {
+			setNameSaving(false);
+		}
 	}
 
 	async function handleChangePassword() {
@@ -310,5 +334,9 @@ export function useProfile() {
 		setRegenPwd,
 		dismissBackupCodes: () => setBackupCodes(null),
 		handleRegenerateBackupCodes,
+		nameDraft,
+		nameSaving,
+		setNameDraft,
+		handleSaveName,
 	};
 }

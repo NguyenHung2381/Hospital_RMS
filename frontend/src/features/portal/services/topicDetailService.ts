@@ -61,16 +61,35 @@ export function getTopicPermissions(
 	const today = new Date();
 	today.setHours(0, 0, 0, 0);
 
-	const active = deadlines.find(
-		(d) =>
-			(d.deadline_type === 'edit' ||
-				d.deadline_type === 'supplement' ||
-				d.deadline_type === 'report_submission') &&
-			isWithin(d, today),
-	);
-	if (!active || !active.deadline_type) return NO_TOPIC_PERMISSIONS;
+	// Nhiều mốc có thể mở cùng lúc (vd "Nộp báo cáo" trùng "Sửa") — gộp quyền
+	// của tất cả, giống deadlineGuard phía server. Banner lấy mốc rộng nhất.
+	const perms = deadlines
+		.filter(
+			(d) =>
+				(d.deadline_type === 'edit' ||
+					d.deadline_type === 'supplement' ||
+					d.deadline_type === 'report_submission') &&
+				isWithin(d, today),
+		)
+		.map(windowPermissions);
+	if (!perms.length) return NO_TOPIC_PERMISSIONS;
 
-	const type = active.deadline_type;
+	const primary =
+		perms.find((p) => p.activeType === 'edit') ??
+		perms.find((p) => p.activeType === 'supplement') ??
+		perms[0];
+	return {
+		...primary,
+		canEditTitle: perms.some((p) => p.canEditTitle),
+		canEditInfo: perms.some((p) => p.canEditInfo),
+		canEditMembers: perms.some((p) => p.canEditMembers),
+		canAddFiles: perms.some((p) => p.canAddFiles),
+		canDeleteFiles: perms.some((p) => p.canDeleteFiles),
+	};
+}
+
+function windowPermissions(active: RoundDeadline): TopicPermissions {
+	const type = active.deadline_type!;
 	const style = EDIT_BANNER_STYLE[type];
 
 	if (type === 'edit') {

@@ -251,6 +251,7 @@ app.use(`${API}/training-programs`, require('./routes/trainingPrograms'));
 app.use(`${API}/training-plans`, require('./routes/trainingPlans'));
 app.use(`${API}/surveys`, require('./routes/surveys'));
 app.use(`${API}/my-tasks`, require('./routes/myTasks'));
+app.use(`${API}/me`, require('./routes/me'));
 app.use(`${API}/exams`, require('./routes/exams'));
 app.use(`${API}/workflows`, require('./routes/workflows'));
 app.use(`${API}/lecturers`, require('./routes/lecturers'));

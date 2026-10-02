@@ -30,7 +30,7 @@ export default function TwoFactorReminder() {
 				fontSize: 14,
 			}}
 		>
-			<span style={{ flex: 1, minWidth: 220 }}>
+			<span style={{ flex: 1, minWidth: 'min(100%, 320px)' }}>
 				Tài khoản quản trị phải bật <strong>xác thực 2 lớp</strong>
 				{deadline && (
 					<>

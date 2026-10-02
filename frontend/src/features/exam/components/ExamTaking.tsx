@@ -1,17 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { CheckSvg, ClockSvg } from '@/assets/icons';
-import { InlineLoading } from '@/shared/components';
-import UserLayout from '../../../layouts/UserLayout';
 import { examApi } from '../api/examApi';
 import type { AnswerPayload } from '../api/examApi';
-import type { AttemptQuestion, AvailablePaper, StartAttemptResult } from '../types/exam.type';
-import styles from './UserExams.module.css';
-
-const ATTEMPT_STATUS_LABEL: Record<string, string> = {
-	in_progress: 'Đang làm dở — bấm để tiếp tục',
-	submitted: 'Đã nộp — chờ chấm tự luận',
-	graded: 'Đã có điểm',
-};
+import type { AttemptQuestion, StartAttemptResult } from '../types/exam.type';
+import styles from './ExamTaking.module.css';
 
 function fmtClock(ms: number) {
 	const total = Math.max(0, Math.floor(ms / 1000));
@@ -20,7 +12,8 @@ function fmtClock(ms: number) {
 	return `${m}:${s}`;
 }
 
-function ExamTaking({
+/** Màn làm bài: đếm ngược, tự nộp khi hết giờ. Dùng trong chi tiết khóa học ở cổng người dùng. */
+export default function ExamTaking({
 	paperId,
 	data,
 	onDone,
@@ -142,100 +135,5 @@ function ExamTaking({
 				</button>
 			</div>
 		</div>
-	);
-}
-
-export default function UserExams() {
-	const [papers, setPapers] = useState<AvailablePaper[] | null>(null);
-	const [error, setError] = useState('');
-	const [taking, setTaking] = useState<{ paperId: string; data: StartAttemptResult } | null>(null);
-	const [doneMsg, setDoneMsg] = useState('');
-
-	const load = () => {
-		examApi
-			.listAvailable()
-			.then(setPapers)
-			.catch(() => setError('Không thể tải danh sách đề thi'));
-	};
-
-	useEffect(() => {
-		load();
-	}, []);
-
-	const start = async (paperId: string) => {
-		setError('');
-		try {
-			const data = await examApi.startAttempt(paperId);
-			setTaking({ paperId, data });
-		} catch (err) {
-			setError(err instanceof Error ? err.message : 'Không thể bắt đầu làm bài');
-		}
-	};
-
-	if (taking) {
-		return (
-			<UserLayout
-				pageTitle='Bài thi'
-				pageSubtitle='Làm bài trong thời gian quy định'
-			>
-				<ExamTaking
-					paperId={taking.paperId}
-					data={taking.data}
-					onCancel={() => setTaking(null)}
-					onDone={() => {
-						setTaking(null);
-						setDoneMsg('Đã nộp bài thi thành công.');
-						load();
-					}}
-				/>
-			</UserLayout>
-		);
-	}
-
-	return (
-		<UserLayout
-			pageTitle='Thi online'
-			pageSubtitle='Danh sách đề thi thuộc các khóa học bạn đang tham gia'
-		>
-			{doneMsg && (
-				<div className={`${styles.toast} ${styles.toastSuccess}`}>
-					<CheckSvg /> {doneMsg}
-				</div>
-			)}
-			{error && <div className={styles.errorBanner}>{error}</div>}
-			{!papers && !error && <InlineLoading />}
-			{papers && papers.length === 0 && (
-				<div className={styles.emptyState}>
-					<div className={styles.emptyTitle}>Chưa có đề thi nào</div>
-					<div className={styles.emptyDesc}>Khi giảng viên mở đề thi cho khóa học của bạn, đề sẽ hiện ở đây.</div>
-				</div>
-			)}
-			{papers && papers.length > 0 && (
-				<div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-					{papers.map((p) => (
-						<div
-							key={p.id}
-							className={styles.paperCard}
-						>
-							<div>
-								<div className={styles.paperTitle}>{p.title}</div>
-								<div className={styles.paperMeta}>
-									{p.course_name} · {p.duration_minutes} phút
-									{p.attempt_status && ` · ${ATTEMPT_STATUS_LABEL[p.attempt_status]}`}
-								</div>
-							</div>
-							{(!p.attempt_status || p.attempt_status === 'in_progress') && (
-								<button
-									className={styles.btnConfirm}
-									onClick={() => void start(p.id)}
-								>
-									{p.attempt_status === 'in_progress' ? 'Tiếp tục làm bài' : 'Bắt đầu làm bài'}
-								</button>
-							)}
-						</div>
-					))}
-				</div>
-			)}
-		</UserLayout>
 	);
 }

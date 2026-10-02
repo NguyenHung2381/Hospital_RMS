@@ -134,7 +134,7 @@ export default function MembersTab({
 						setMemberErr('');
 						setAddingMember(true);
 					}}
-					style={{ marginTop: 12 }}
+					style={{ marginTop: 12, alignSelf: 'flex-start' }}
 				>
 					+ Thêm thành viên
 				</button>
