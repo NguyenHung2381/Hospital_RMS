@@ -1,9 +1,9 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
-import { QRCode } from 'antd';
 import { AlertSvg, CheckSvg } from '@/assets/icons';
+import { BrandedQrCode, useBrandedQrImage } from '@/shared/components/BrandedQr';
 import PublicLayout from '../../../layouts/PublicLayout';
-import { downloadQrPng } from '../../../shared/utils/qrPng';
+import { publicUrl } from '../../../shared/utils/publicUrl';
 import { formatDateTimeVN } from '../../../shared/utils/formatDate';
 import { getSeminarTicket, submitSeminarTest, type SeminarTicket as Ticket } from '../api/publicApi';
 import { FormSection } from '../components/FormSection';
@@ -17,7 +17,6 @@ export default function SeminarTicket() {
 	const { code = '' } = useParams();
 	const location = useLocation();
 	const navigate = useNavigate();
-	const qrRef = useRef<HTMLDivElement>(null);
 	const [ticket, setTicket] = useState<Ticket | null>(null);
 	const [error, setError] = useState('');
 	const [loading, setLoading] = useState(false);
@@ -47,24 +46,28 @@ export default function SeminarTicket() {
 		void fetchTicket().finally(() => setLoading(false));
 	};
 
-	const download = useCallback(() => {
-		if (!ticket) return;
-		downloadQrPng(
-			qrRef.current,
-			[`${ticket.title_prefix ? `${ticket.title_prefix} ` : ''}${ticket.full_name}`, ticket.seminar.title],
-			`ve-hoi-nghi-${ticket.full_name}`,
-		);
-	}, [ticket]);
+	const ticketUrl = publicUrl(`/hoi-nghi/ve/${code}`);
+	const holder = ticket ? `${ticket.title_prefix ? `${ticket.title_prefix} ` : ''}${ticket.full_name}` : '';
+	const qrImage = useBrandedQrImage(
+		ticket
+			? {
+					value: ticketUrl,
+					title: holder,
+					lines: [ticket.seminar.title, seminarWhen(ticket.seminar)],
+					caption: 'Vé tham dự hội nghị — đưa mã này cho ban tổ chức quét để điểm danh',
+					filename: `ve-hoi-nghi-${ticket.full_name}`,
+				}
+			: null,
+	);
 
-	// Vừa đăng ký xong: tự lưu ảnh QR về máy 1 lần (xoá state để tải lại trang không lưu nữa)
+	// Vừa đăng ký xong: tự lưu ảnh QR về máy 1 lần (xoá state để tải lại trang không lưu nữa).
+	// iOS không tự tải được — hiện ảnh để nhấn giữ lưu.
+	const { ready: qrReady, save: saveQr } = qrImage;
 	useEffect(() => {
-		if (!ticket || !justRegistered) return;
-		const t = window.setTimeout(() => {
-			download();
-			navigate(location.pathname, { replace: true, state: null });
-		}, 300); // chờ antd vẽ xong canvas QR
-		return () => window.clearTimeout(t);
-	}, [ticket, justRegistered, download, navigate, location.pathname]);
+		if (!justRegistered || !qrReady) return;
+		saveQr(true);
+		navigate(location.pathname, { replace: true, state: null });
+	}, [justRegistered, qrReady, saveQr, navigate, location.pathname]);
 
 	const questions = ticket?.test.questions ?? null;
 
@@ -110,7 +113,7 @@ export default function SeminarTicket() {
 		>
 			{welcome && (
 				<div className={`${styles.alertBox} ${styles.alertSuccess}`}>
-					<CheckSvg /> Đăng ký thành công! Ảnh mã QR đã được lưu về máy — nếu chưa thấy, bấm "Tải mã QR" hoặc chụp
+					<CheckSvg /> Đăng ký thành công! Hãy lưu ảnh mã QR về máy — nếu chưa thấy ảnh, bấm "Tải mã QR" hoặc chụp
 					màn hình.
 				</div>
 			)}
@@ -125,18 +128,8 @@ export default function SeminarTicket() {
 					className={styles.sectionBody}
 					style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, textAlign: 'center' }}
 				>
-					<div ref={qrRef}>
-						<QRCode
-							type='canvas'
-							value={`${window.location.origin}/hoi-nghi/ve/${code}`}
-							size={240}
-							bgColor='#fff'
-						/>
-					</div>
-					<div className={styles.courseName}>
-						{ticket.title_prefix ? `${ticket.title_prefix} ` : ''}
-						{ticket.full_name}
-					</div>
+					<BrandedQrCode value={ticketUrl} />
+					<div className={styles.courseName}>{holder}</div>
 					<div className={styles.courseMeta}>
 						{ticket.seminar.title}
 						<br />
@@ -146,7 +139,8 @@ export default function SeminarTicket() {
 					<button
 						type='button'
 						className={styles.submitBtn}
-						onClick={download}
+						onClick={() => qrImage.save()}
+						disabled={!qrImage.ready}
 					>
 						Tải mã QR
 					</button>
@@ -259,6 +253,7 @@ export default function SeminarTicket() {
 					)}
 				</FormSection>
 			)}
+			{qrImage.sheet}
 		</PublicLayout>
 	);
 }

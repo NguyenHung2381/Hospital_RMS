@@ -1,0 +1,131 @@
+.screen {
+	position: fixed;
+	inset: 0;
+	z-index: 3000;
+	display: flex;
+	flex-direction: column;
+	background: linear-gradient(180deg, var(--color-primary-pale, #e7f5ed) 0%, #fff 60%);
+	color: var(--color-gray-900, #111827);
+	overflow: auto;
+}
+
+.header {
+	display: flex;
+	align-items: center;
+	gap: 16px;
+	padding: 16px 32px;
+	background: linear-gradient(90deg, var(--color-primary, #0a9b4a), var(--color-primary-dark, #087c3b));
+	color: #fff;
+	flex-shrink: 0;
+}
+
+.logo {
+	width: 56px;
+	height: 56px;
+	border-radius: 50%;
+	background: #fff;
+	padding: 4px;
+	object-fit: contain;
+}
+
+.hospital {
+	font-family: var(--font-heading);
+	font-size: clamp(16px, 2.2vw, 26px);
+	font-weight: 700;
+	text-transform: uppercase;
+	letter-spacing: 0.02em;
+}
+
+.sub {
+	font-size: clamp(12px, 1.3vw, 16px);
+	opacity: 0.88;
+}
+
+.actions {
+	margin-left: auto;
+	display: flex;
+	gap: 8px;
+}
+
+.action {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	padding: 8px 14px;
+	border: 1.5px solid rgba(255, 255, 255, 0.55);
+	border-radius: 8px;
+	background: rgba(255, 255, 255, 0.12);
+	color: #fff;
+	font: inherit;
+	font-size: 14px;
+	font-weight: 600;
+	cursor: pointer;
+}
+
+.action:hover {
+	background: rgba(255, 255, 255, 0.24);
+}
+
+.action svg {
+	width: 16px;
+	height: 16px;
+}
+
+.body {
+	flex: 1;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	gap: clamp(8px, 1.6vh, 18px);
+	padding: 16px 24px 24px;
+	text-align: center;
+}
+
+.title {
+	margin: 0;
+	max-width: 1200px;
+	font-family: var(--font-heading);
+	font-size: clamp(20px, 3.2vw, 44px);
+	line-height: 1.25;
+	font-weight: 800;
+	color: var(--color-primary-dark, #087c3b);
+}
+
+.meta {
+	font-size: clamp(14px, 1.6vw, 22px);
+	color: var(--color-gray-600, #4b5563);
+}
+
+.qrCard {
+	padding: clamp(10px, 1.6vw, 24px);
+	background: #fff;
+	border-radius: 24px;
+	box-shadow: 0 12px 40px rgba(6, 77, 38, 0.14);
+	line-height: 0;
+}
+
+.cta {
+	font-size: clamp(18px, 2.4vw, 34px);
+	font-weight: 700;
+	color: var(--color-gray-900, #111827);
+}
+
+.url {
+	font-family: var(--font-mono, monospace);
+	font-size: clamp(12px, 1.2vw, 16px);
+	color: var(--color-gray-500, #6b7280);
+	word-break: break-all;
+}
+
+@media (max-width: 640px) {
+	.header {
+		flex-wrap: wrap;
+		padding: 12px 16px;
+	}
+
+	.actions {
+		width: 100%;
+		justify-content: flex-end;
+	}
+}

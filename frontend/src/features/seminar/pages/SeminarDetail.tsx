@@ -7,6 +7,7 @@ import {
 	ClipboardCheckSvg,
 	EditSvg,
 	FileTextSvg,
+	MonitorSvg,
 	PlusSvg,
 	QrSvg,
 	TrashSvg,
@@ -26,6 +27,7 @@ import { IssueCmeModal } from '../components/IssueCmeModal';
 import { ParticipantFormModal } from '../components/ParticipantFormModal';
 import { ParticipantImportModal } from '../components/ParticipantImportModal';
 import { SeminarCheckInQrModal } from '../components/SeminarCheckInQrModal';
+import { SeminarQrPresentation } from '../components/SeminarQrPresentation';
 import { SeminarRegistrationQrModal } from '../components/SeminarRegistrationQrModal';
 import { SeminarTestModal } from '../components/SeminarTestModal';
 import { TicketCheckInModal } from '../components/TicketCheckInModal';
@@ -77,6 +79,7 @@ export default function SeminarDetail() {
 	// ?qr=1: vừa tạo hội nghị → mở luôn QR đăng ký để tải về
 	const [searchParams, setSearchParams] = useSearchParams();
 	const [regQrOpen, setRegQrOpen] = useState(searchParams.get('qr') === '1');
+	const [presentOpen, setPresentOpen] = useState(false);
 	const [ticketScanOpen, setTicketScanOpen] = useState(false);
 	const [testOpen, setTestOpen] = useState(false);
 
@@ -218,6 +221,12 @@ export default function SeminarDetail() {
 											onClick={() => setRegQrOpen(true)}
 										>
 											<QrSvg /> QR đăng ký
+										</button>
+										<button
+											className={styles.btnGhost}
+											onClick={() => setPresentOpen(true)}
+										>
+											<MonitorSvg /> Trình chiếu QR
 										</button>
 										<button
 											className={styles.btnGhost}
@@ -468,6 +477,18 @@ export default function SeminarDetail() {
 						setRegQrOpen(false);
 						if (searchParams.has('qr')) setSearchParams({}, { replace: true });
 					}}
+					onPresent={() => {
+						setRegQrOpen(false);
+						if (searchParams.has('qr')) setSearchParams({}, { replace: true });
+						setPresentOpen(true);
+					}}
+				/>
+			)}
+
+			{presentOpen && sem && (
+				<SeminarQrPresentation
+					seminar={sem}
+					onClose={() => setPresentOpen(false)}
 				/>
 			)}
 

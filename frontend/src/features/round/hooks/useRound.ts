@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRealtimeUpdate } from '../../../layouts/hooks/useRealtime';
 import { notify } from '../../../shared/utils/feedback';
+import { publicUrl } from '../../../shared/utils/publicUrl';
 import {
 	createRound,
 	deleteRound as deleteRoundApi,
@@ -114,7 +115,7 @@ export function useRound() {
 	}, [deleteRound]);
 
 	const handleCopyLink = useCallback((token: string) => {
-		const link = `${window.location.origin}/dang-ky-de-tai?token=${token}`;
+		const link = publicUrl(`/dang-ky-de-tai?token=${token}`);
 		const fallback = (text: string) => {
 			const ta = document.createElement('textarea');
 			ta.value = text;

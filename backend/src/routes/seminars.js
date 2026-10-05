@@ -2,6 +2,7 @@ const router = require('express').Router();
 const { body } = require('express-validator');
 const ctrl = require('../controllers/seminarController');
 const cmeRequirementService = require('../services/cmeRequirementService');
+const cmePersonalExport = require('../controllers/cmePersonalExportController');
 const { authenticate, authorizePermission } = require('../middlewares/auth');
 const { validate } = require('../middlewares/errorHandler');
 const { success, created } = require('../utils/response');
@@ -304,6 +305,27 @@ router.get('/cme-compliance', authenticate, canCme, async (req, res, next) => {
 		next(e);
 	}
 });
+
+/**
+ * @swagger
+ * /seminars/cme-personal/{userId}/export-excel:
+ *   post:
+ *     summary: Xuất phiếu theo dõi tín chỉ CME của 1 nhân sự (Excel, kèm tổng hợp 5 năm)
+ *     tags: [Seminars]
+ *     parameters:
+ *       - in: path
+ *         name: userId
+ *         required: true
+ *         schema: { type: string }
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               year: { type: integer }
+ */
+router.post('/cme-personal/:userId/export-excel', authenticate, canCme, cmePersonalExport.exportPerson);
 
 /**
  * @swagger

@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useState } from 'react';
-import { BarChartSvg, CalendarSvg, FileTextSvg } from '@/assets/icons';
-import { Badge, Card, EmptyState, InlineLoading } from '@/shared/components';
+import { BarChartSvg, CalendarSvg, DownloadSvg, FileTextSvg } from '@/assets/icons';
+import { Badge, Button, Card, EmptyState, InlineLoading } from '@/shared/components';
 import { formatDateVN } from '@/shared/utils/formatDate';
 import UserLayout from '../../../layouts/UserLayout';
 import { useRealtimeUpdate } from '../../../layouts/hooks/useRealtime';
 import { CME_STATUS_LABELS, EVENT_TYPE_LABELS, PARTICIPATION_LABELS } from '../../seminar/types/seminar.type';
-import { getMyCme, type MyCme as Data } from '../api/meApi';
+import { saveBlob } from '../../seminar/utils/saveBlob';
+import { exportMyCmeExcel, getMyCme, type MyCme as Data } from '../api/meApi';
 import styles from './SelfService.module.css';
 
 const THIS_YEAR = new Date().getFullYear();
@@ -15,6 +16,8 @@ export default function MyCme() {
 	const [year, setYear] = useState(THIS_YEAR);
 	const [data, setData] = useState<Data | null>(null);
 	const [error, setError] = useState('');
+	const [exporting, setExporting] = useState(false);
+	const [exportError, setExportError] = useState('');
 
 	const load = useCallback(() => {
 		getMyCme(year)
@@ -23,6 +26,18 @@ export default function MyCme() {
 	}, [year]);
 	useEffect(load, [load]);
 	useRealtimeUpdate(['seminar', 'cme_record', 'cme_requirement'], load);
+
+	const handleExport = async () => {
+		setExporting(true);
+		setExportError('');
+		try {
+			saveBlob(await exportMyCmeExcel(year), `phieu-cme-${year}.xlsx`);
+		} catch (err) {
+			setExportError(err instanceof Error ? err.message : 'Xuất Excel thất bại');
+		} finally {
+			setExporting(false);
+		}
+	};
 
 	const req = data?.required_credits != null ? Number(data.required_credits) : null;
 	const pct = data && req ? Math.min(100, (data.earned_credits / req) * 100) : 0;
@@ -33,21 +48,35 @@ export default function MyCme() {
 			pageTitle='CME của tôi'
 			pageSubtitle='Tín chỉ đào tạo liên tục tích luỹ qua hội thảo, hội nghị và ghi nhận độc lập'
 			headerActions={
-				<select
-					className={styles.yearSelect}
-					value={year}
-					onChange={(e) => setYear(Number(e.target.value))}
-					aria-label='Chọn năm'
-				>
-					{YEARS.map((y) => (
-						<option
-							key={y}
-							value={y}
-						>
-							Năm {y}
-						</option>
-					))}
-				</select>
+				<div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+					{exportError && <Badge tone='red'>{exportError}</Badge>}
+					<select
+						className={styles.yearSelect}
+						value={year}
+						onChange={(e) => setYear(Number(e.target.value))}
+						aria-label='Chọn năm'
+					>
+						{YEARS.map((y) => (
+							<option
+								key={y}
+								value={y}
+							>
+								Năm {y}
+							</option>
+						))}
+					</select>
+					<Button
+						size='sm'
+						variant='secondary'
+						icon={<DownloadSvg />}
+						loading={exporting}
+						disabled={!data}
+						onClick={handleExport}
+						title='Phiếu theo dõi CME năm đang chọn, kèm tổng hợp 5 năm gần nhất'
+					>
+						Xuất Excel
+					</Button>
+				</div>
 			}
 		>
 			{error && (

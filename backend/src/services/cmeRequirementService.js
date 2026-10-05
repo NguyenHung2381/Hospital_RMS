@@ -98,4 +98,68 @@ const getComplianceReport = async (year) => {
 	return result.recordset;
 };
 
-module.exports = { getAll, create, update, remove, getComplianceReport };
+// Thông tin đầu phiếu CME cá nhân: nhân sự + hồ sơ CCHN (nếu có). null nếu không tồn tại.
+const getPersonProfile = async (userId) => {
+	const pool = await getPool();
+	const result = await pool.request().input('uid', sql.VarChar(20), userId).query(`
+    SELECT u.id, u.full_name, u.staff_number, d.name AS department_name,
+           sl.license_no, sl.issued_date AS license_issued_date, sl.title, sl.qualification,
+           sl.primary_specialty, sl.cme_specialty
+    FROM users u
+    LEFT JOIN departments d ON d.id = u.department_id
+    LEFT JOIN staff_practice_licenses sl ON sl.user_id = u.id
+    WHERE u.id = @uid
+  `);
+	return result.recordset[0] ?? null;
+};
+
+// Tín chỉ CME của 1 nhân sự theo từng năm [fromYear..toYear] — cùng cách cộng
+// dồn với getComplianceReport (cme_year của seminar + cme_records.year), ngưỡng
+// ưu tiên theo khoa rồi toàn viện. Năm không có dữ liệu vẫn trả 1 dòng (= 0).
+const getPersonYearlySummary = async (userId, fromYear, toYear) => {
+	const pool = await getPool();
+	const result = await pool
+		.request()
+		.input('uid', sql.VarChar(20), userId)
+		.input('from', sql.Int, fromYear)
+		.input('to', sql.Int, toYear).query(`
+    WITH years AS (
+      SELECT @from AS y
+      UNION ALL SELECT y + 1 FROM years WHERE y < @to
+    )
+    SELECT yr.y AS year,
+           ISNULL(sp.cnt, 0) AS seminar_count, ISNULL(sp.credits, 0) AS seminar_credits,
+           ISNULL(cr.cnt, 0) AS record_count, ISNULL(cr.credits, 0) AS record_credits,
+           req.required_credits
+    FROM years yr
+    CROSS JOIN users u
+    OUTER APPLY (
+      SELECT COUNT(*) AS cnt, SUM(p.cme_credits) AS credits
+      FROM seminar_participants p
+      WHERE p.user_id = u.id AND p.cme_year = yr.y AND ISNULL(p.cme_credits, 0) > 0
+    ) sp
+    OUTER APPLY (
+      SELECT COUNT(*) AS cnt, SUM(r.credits) AS credits
+      FROM cme_records r WHERE r.user_id = u.id AND r.year = yr.y
+    ) cr
+    OUTER APPLY (
+      SELECT TOP 1 required_credits
+      FROM cme_requirements
+      WHERE year = yr.y AND (department_id = u.department_id OR department_id IS NULL)
+      ORDER BY CASE WHEN department_id IS NOT NULL THEN 0 ELSE 1 END
+    ) req
+    WHERE u.id = @uid
+    ORDER BY yr.y
+  `);
+	return result.recordset;
+};
+
+module.exports = {
+	getAll,
+	create,
+	update,
+	remove,
+	getComplianceReport,
+	getPersonProfile,
+	getPersonYearlySummary,
+};

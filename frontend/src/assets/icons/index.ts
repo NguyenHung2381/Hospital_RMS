@@ -72,3 +72,4 @@ export { default as MenuSvg } from '../svg/menu.svg?react';
 export { default as CameraSvg } from '../svg/camera.svg?react';
 export { default as ImageSvg } from '../svg/image.svg?react';
 export { default as QrSvg } from '../svg/qr.svg?react';
+export { default as MonitorSvg } from '../svg/monitor.svg?react';

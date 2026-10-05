@@ -7,3 +7,13 @@ export const saveBlob = (blob: Blob, fileName: string) => {
 	a.click();
 	URL.revokeObjectURL(url);
 };
+
+// Tên file an toàn, không dấu: "Nguyễn Văn A" → "nguyen-van-a".
+export const fileSlug = (s: string) =>
+	s
+		.normalize('NFD')
+		.replace(/[̀-ͯ]/g, '')
+		.replace(/đ/gi, 'd')
+		.toLowerCase()
+		.replace(/[^a-z0-9]+/g, '-')
+		.replace(/^-+|-+$/g, '');

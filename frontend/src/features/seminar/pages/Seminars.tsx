@@ -5,6 +5,7 @@ import {
 	DownloadSvg,
 	EditSvg,
 	PlusSvg,
+	QrSvg,
 	SearchSvg,
 	TrashSvg,
 	UploadSvg,
@@ -18,11 +19,13 @@ import { Pagination } from '../../../shared/components/Table/Pagination';
 import { SeminarDeleteModal } from '../components/SeminarDeleteModal';
 import { SeminarFormModal } from '../components/SeminarFormModal';
 import { SeminarListImportModal } from '../components/SeminarListImportModal';
+import { SeminarQrPresentation } from '../components/SeminarQrPresentation';
+import { SeminarRegistrationQrModal } from '../components/SeminarRegistrationQrModal';
 import { exportSeminarsExcel } from '../api/seminarApi';
 import { saveBlob } from '../utils/saveBlob';
 import { useSeminarPerms } from '../utils/perms';
 import { useSeminars } from '../hooks/useSeminars';
-import { EVENT_TYPE_LABELS, type SeminarEventType } from '../types/seminar.type';
+import { EVENT_TYPE_LABELS, type Seminar, type SeminarEventType } from '../types/seminar.type';
 import styles from './Seminar.module.css';
 
 const PAGE_SIZE_OPTIONS = [10, 25, 50, 100] as const;
@@ -43,6 +46,9 @@ export default function Seminars() {
 	const perms = useSeminarPerms();
 	const [importOpen, setImportOpen] = useState(false);
 	const [exporting, setExporting] = useState(false);
+	// QR đăng ký của sự kiện BV tổ chức: xem/tải (modal) hoặc chiếu toàn màn hình
+	const [qrSeminar, setQrSeminar] = useState<Seminar | null>(null);
+	const [presenting, setPresenting] = useState<Seminar | null>(null);
 
 	// Xuất đúng tập đang lọc trên bảng (mọi trang, không chỉ trang hiện tại)
 	const handleExport = async () => {
@@ -241,6 +247,15 @@ export default function Seminars() {
 									</td>
 									<td className={styles.tdRight}>
 										<div className={styles.actionBtns}>
+											{row.scope === 'hosted' && row.public_token && (
+												<button
+													className={styles.actionBtn}
+													title='Mã QR đăng ký (tải / trình chiếu)'
+													onClick={() => setQrSeminar(row)}
+												>
+													<QrSvg />
+												</button>
+											)}
 											<button
 												className={styles.actionBtn}
 												title='Người tham dự & cấp CME'
@@ -293,6 +308,24 @@ export default function Seminars() {
 					/>
 				)}
 			</div>
+
+			{qrSeminar && (
+				<SeminarRegistrationQrModal
+					seminar={qrSeminar}
+					onClose={() => setQrSeminar(null)}
+					onPresent={() => {
+						setPresenting(qrSeminar);
+						setQrSeminar(null);
+					}}
+				/>
+			)}
+
+			{presenting && (
+				<SeminarQrPresentation
+					seminar={presenting}
+					onClose={() => setPresenting(null)}
+				/>
+			)}
 
 			{importOpen && (
 				<SeminarListImportModal

@@ -36,3 +36,7 @@ export const deleteCmeRequirement = (id: string) =>
 
 export const getCmeCompliance = (year: number) =>
 	apiClient.get<CmeComplianceRow[]>(`/seminars/cme-compliance?year=${year}`);
+
+/** Phiếu theo dõi CME của 1 nhân sự (Excel): năm được chọn + tổng hợp 5 năm. */
+export const exportPersonalCmeExcel = (userId: string, year: number) =>
+	apiClient.postBlob(`/seminars/cme-personal/${encodeURIComponent(userId)}/export-excel`, { year });

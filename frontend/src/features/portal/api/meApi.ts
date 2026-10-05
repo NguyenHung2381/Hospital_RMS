@@ -160,3 +160,5 @@ export const markDocumentOpened = (docId: string, kind: 'course' | 'lesson' = 'c
 export const getMyTraining = () => apiClient.get<MyTraining>('/me/training');
 export const registerMyCourse = (courseId: string) => apiClient.post(`/me/courses/${courseId}/register`, {});
 export const getMyCme = (year: number) => apiClient.get<MyCme>(`/me/cme?year=${year}`);
+/** Phiếu theo dõi CME cá nhân (Excel): năm được chọn + tổng hợp 5 năm. */
+export const exportMyCmeExcel = (year: number) => apiClient.postBlob('/me/cme/export-excel', { year });

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { AlertSvg, CheckSvg, EditSvg, PlusSvg, SearchSvg, TrashSvg, XSvg } from '@/assets/icons';
+import { AlertSvg, CheckSvg, DownloadSvg, EditSvg, PlusSvg, SearchSvg, TrashSvg, XSvg } from '@/assets/icons';
 import AdminLayout from '../../../layouts/AdminLayout';
 import { apiClient } from '../../../shared/api/axios';
 import {
@@ -13,12 +13,14 @@ import {
 import {
 	createCmeRequirement,
 	deleteCmeRequirement,
+	exportPersonalCmeExcel,
 	getCmeCompliance,
 	getCmeRequirements,
 	updateCmeRequirement,
 	type CmeComplianceRow,
 	type CmeRequirement,
 } from '../api/cmeRequirementApi';
+import { fileSlug, saveBlob } from '../utils/saveBlob';
 import styles from './Seminar.module.css';
 
 interface SimpleItem {
@@ -110,6 +112,12 @@ export default function CmeCompliance() {
 	const [form, setForm] = useState(EMPTY_FORM);
 	const [formError, setFormError] = useState('');
 
+	// Xuất phiếu CME cá nhân: exportingId = user đang xuất; modal chọn nhân sự bất kỳ
+	const [exportingId, setExportingId] = useState<string | null>(null);
+	const [personModal, setPersonModal] = useState(false);
+	const [personForm, setPersonForm] = useState({ user_id: '', year: CURRENT_YEAR });
+	const [users, setUsers] = useState<SimpleItem[]>([]);
+
 	const showToast = (type: 'success' | 'error', msg: string) => {
 		setToast({ type, msg });
 		setTimeout(() => setToast(null), 3000);
@@ -185,6 +193,36 @@ export default function CmeCompliance() {
 			))}
 		</select>
 	);
+
+	const exportPerson = async (userId: string, fullName: string, y: number) => {
+		setExportingId(userId);
+		try {
+			saveBlob(await exportPersonalCmeExcel(userId, y), `cme-${y}-${fileSlug(fullName) || userId}.xlsx`);
+			return true;
+		} catch (err) {
+			showToast('error', err instanceof Error ? err.message : 'Xuất Excel thất bại');
+			return false;
+		} finally {
+			setExportingId(null);
+		}
+	};
+
+	const openPersonModal = () => {
+		setPersonForm({ user_id: '', year });
+		setPersonModal(true);
+		if (users.length === 0) {
+			apiClient
+				.get<{ data: { id: string; full_name: string }[] }>('/users?limit=0')
+				.then((r) => setUsers(r.data.map((u) => ({ id: u.id, name: u.full_name }))))
+				.catch(() => showToast('error', 'Không tải được danh sách nhân sự'));
+		}
+	};
+
+	const handlePersonExport = async () => {
+		const u = users.find((x) => x.id === personForm.user_id);
+		if (!u) return;
+		if (await exportPerson(u.id, u.name, personForm.year)) setPersonModal(false);
+	};
 
 	const openCreate = () => {
 		setForm(EMPTY_FORM);
@@ -290,6 +328,16 @@ export default function CmeCompliance() {
 			pageTitle='Cảnh báo tín chỉ CME'
 			pageSubtitle='Ngưỡng tín chỉ đào tạo y khoa liên tục theo năm và danh sách nhân sự chưa đạt'
 			breadcrumbs={[{ label: 'Hội nghị & CME' }]}
+			headerActions={
+				<Button
+					variant='secondary'
+					icon={<DownloadSvg />}
+					onClick={openPersonModal}
+					title='Xuất phiếu theo dõi CME (Excel) của một nhân sự bất kỳ'
+				>
+					Xuất CME cá nhân
+				</Button>
+			}
 		>
 			{error && (
 				<div className={`${styles.noticeBox} ${styles.noticeWarn}`}>
@@ -353,25 +401,26 @@ export default function CmeCompliance() {
 									<th>Đã đạt</th>
 									<th>Yêu cầu</th>
 									<th>Còn thiếu</th>
+									<th className={styles.thRight}>Thao tác</th>
 								</tr>
 							</thead>
 							<tbody>
 								{loading ? (
 									<SkeletonTable
 										rows={6}
-										cols={5}
+										cols={6}
 									/>
 								) : compList.total === 0 ? (
 									compList.search || compDept ? (
-										emptyRow(5, 'Không tìm thấy nhân sự phù hợp', 'Thử đổi từ khoá hoặc bộ lọc')
+										emptyRow(6, 'Không tìm thấy nhân sự phù hợp', 'Thử đổi từ khoá hoặc bộ lọc')
 									) : requirements.length === 0 ? (
 										emptyRow(
-											5,
+											6,
 											`Chưa cấu hình ngưỡng CME cho năm ${year}`,
 											'Thêm ngưỡng ở tab "Cấu hình ngưỡng" để hệ thống đối chiếu',
 										)
 									) : (
-										emptyRow(5, 'Tất cả nhân sự đã đạt ngưỡng CME', undefined, true)
+										emptyRow(6, 'Tất cả nhân sự đã đạt ngưỡng CME', undefined, true)
 									)
 								) : (
 									compList.paged.map((row) => (
@@ -384,6 +433,18 @@ export default function CmeCompliance() {
 												<Badge tone='red'>
 													{(row.required_credits - row.earned_credits).toFixed(1)} tín chỉ
 												</Badge>
+											</td>
+											<td className={styles.tdRight}>
+												<div className={styles.actionBtns}>
+													<button
+														className={styles.actionBtn}
+														title='Xuất phiếu CME cá nhân (Excel)'
+														disabled={exportingId !== null}
+														onClick={() => exportPerson(row.id, row.full_name, year)}
+													>
+														{exportingId === row.id ? <span className={styles.spinner} /> : <DownloadSvg />}
+													</button>
+												</div>
 											</td>
 										</tr>
 									))
@@ -581,6 +642,71 @@ export default function CmeCompliance() {
 						<AlertSvg /> {formError}
 					</div>
 				)}
+			</Modal>
+
+			<Modal
+				open={personModal}
+				onClose={() => !exportingId && setPersonModal(false)}
+				title='Xuất phiếu CME cá nhân'
+				size='sm'
+				closeOnBackdrop={!exportingId}
+				footer={
+					<>
+						<Button
+							variant='ghost'
+							onClick={() => setPersonModal(false)}
+							disabled={!!exportingId}
+						>
+							Huỷ
+						</Button>
+						<Button
+							icon={<DownloadSvg />}
+							onClick={handlePersonExport}
+							loading={!!exportingId}
+							disabled={!personForm.user_id}
+						>
+							Xuất Excel
+						</Button>
+					</>
+				}
+			>
+				<div className={styles.formGrid}>
+					<div className={`${styles.formGroup} ${styles.full}`}>
+						<label className={styles.formLabel}>
+							Nhân sự <span className={styles.required}>*</span>
+						</label>
+						<SearchableSelect
+							options={users}
+							value={personForm.user_id}
+							onChange={(id) => setPersonForm((f) => ({ ...f, user_id: id }))}
+							placeholder={users.length ? 'Chọn nhân sự' : 'Đang tải danh sách...'}
+						/>
+					</div>
+					<div className={`${styles.formGroup} ${styles.full}`}>
+						<label className={styles.formLabel}>Năm</label>
+						<select
+							className={styles.formInput}
+							value={personForm.year}
+							onChange={(e) => setPersonForm((f) => ({ ...f, year: Number(e.target.value) }))}
+						>
+							{YEAR_OPTIONS.map((y) => (
+								<option
+									key={y}
+									value={y}
+								>
+									Năm {y}
+								</option>
+							))}
+						</select>
+					</div>
+				</div>
+				<div
+					className={styles.muted}
+					style={{ marginTop: 12, fontSize: 13 }}
+				>
+					File gồm phiếu theo dõi tín chỉ của năm đã chọn (hội thảo, hội nghị, ghi nhận khác, so với ngưỡng) và
+					bảng tổng hợp 5 năm gần nhất.
+				</div>
 			</Modal>
 
 			{toast && (

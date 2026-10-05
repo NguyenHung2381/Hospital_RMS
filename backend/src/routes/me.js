@@ -1,5 +1,6 @@
 const router = require('express').Router();
 const portalService = require('../services/portalService');
+const cmePersonalExport = require('../controllers/cmePersonalExportController');
 const { authenticate } = require('../middlewares/auth');
 const { success, created } = require('../utils/response');
 
@@ -60,5 +61,8 @@ router.get('/cme', async (req, res, next) => {
 		next(err);
 	}
 });
+
+// Phiếu theo dõi CME cá nhân (Excel) của chính mình — Body: { year }
+router.post('/cme/export-excel', cmePersonalExport.exportMine);
 
 module.exports = router;

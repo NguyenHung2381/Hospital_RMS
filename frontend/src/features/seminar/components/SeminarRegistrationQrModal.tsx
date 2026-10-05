@@ -1,16 +1,31 @@
-import { useRef, useState } from 'react';
-import { QRCode } from 'antd';
-import { CopySvg, DownloadSvg, XSvg } from '@/assets/icons';
-import { downloadQrPng } from '../../../shared/utils/qrPng';
+import { useState } from 'react';
+import { CopySvg, DownloadSvg, MonitorSvg, XSvg } from '@/assets/icons';
+import { BrandedQrCode, useBrandedQrImage } from '@/shared/components/BrandedQr';
+import { isLoopbackOrigin, publicUrl } from '../../../shared/utils/publicUrl';
 import type { Seminar } from '../types/seminar.type';
 import styles from '../pages/Seminar.module.css';
 
 // QR đăng ký tham dự (cố định, không hết hạn) — ban tổ chức tải ảnh về gắn vào
 // văn bản/giấy mời. Khác SeminarCheckInQrModal (QR điểm danh động cho tài khoản nội bộ).
-export function SeminarRegistrationQrModal({ seminar, onClose }: { seminar: Seminar; onClose: () => void }) {
-	const qrRef = useRef<HTMLDivElement>(null);
+export function SeminarRegistrationQrModal({
+	seminar,
+	onClose,
+	onPresent,
+}: {
+	seminar: Seminar;
+	onClose: () => void;
+	/** Chuyển sang chiếu toàn màn hình (SeminarQrPresentation) */
+	onPresent?: () => void;
+}) {
 	const [copied, setCopied] = useState(false);
-	const url = `${window.location.origin}/hoi-nghi/${seminar.public_token}`;
+	const url = publicUrl(`/hoi-nghi/${seminar.public_token}`);
+	const qrImage = useBrandedQrImage({
+		value: url,
+		title: 'Quét mã để đăng ký tham dự',
+		lines: [seminar.title],
+		caption: url,
+		filename: `qr-dang-ky-${seminar.id}`,
+	});
 
 	return (
 		<div
@@ -34,14 +49,10 @@ export function SeminarRegistrationQrModal({ seminar, onClose }: { seminar: Semi
 					className={styles.modalBody}
 					style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}
 				>
-					<div ref={qrRef}>
-						<QRCode
-							type='canvas'
-							value={url}
-							size={260}
-							bgColor='#fff'
-						/>
-					</div>
+					<BrandedQrCode
+						value={url}
+						size={260}
+					/>
 					<a
 						href={url}
 						target='_blank'
@@ -51,6 +62,12 @@ export function SeminarRegistrationQrModal({ seminar, onClose }: { seminar: Semi
 					>
 						{url}
 					</a>
+					{isLoopbackOrigin() && (
+						<div style={{ fontSize: 12, color: 'var(--color-danger, #d4380d)', textAlign: 'center' }}>
+							Link đang trỏ tới localhost — thiết bị khác không mở được. Đặt VITE_PUBLIC_APP_URL (vd
+							http://&lt;IP-máy-chủ&gt;:5173) hoặc mở trang quản trị bằng địa chỉ IP/domain rồi tạo lại QR.
+						</div>
+					)}
 					<div style={{ fontSize: 12, color: 'var(--color-gray-500)', textAlign: 'center' }}>
 						Người tham dự quét mã → điền thông tin → nhận vé QR cá nhân (tự lưu về máy). Đến hội nghị, dùng
 						"Quét vé điểm danh" để điểm danh; cuối buổi mở "Bài test".
@@ -68,14 +85,24 @@ export function SeminarRegistrationQrModal({ seminar, onClose }: { seminar: Semi
 					>
 						<CopySvg /> {copied ? 'Đã sao chép' : 'Sao chép link'}
 					</button>
+					{onPresent && (
+						<button
+							className={styles.btnGhost}
+							onClick={onPresent}
+						>
+							<MonitorSvg /> Trình chiếu
+						</button>
+					)}
 					<button
 						className={styles.btnPrimary}
-						onClick={() => downloadQrPng(qrRef.current, ['Quét mã để đăng ký tham dự', seminar.title], `qr-dang-ky-${seminar.id}`)}
+						onClick={() => qrImage.save()}
+						disabled={!qrImage.ready}
 					>
 						<DownloadSvg /> Tải ảnh QR
 					</button>
 				</div>
 			</div>
+			{qrImage.sheet}
 		</div>
 	);
 }

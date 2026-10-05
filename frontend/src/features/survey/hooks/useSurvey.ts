@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRealtimeUpdate } from '../../../layouts/hooks/useRealtime';
+import { publicUrl } from '../../../shared/utils/publicUrl';
 import { bulkToast, runBulk } from '../../../shared/utils/runBulk';
 import { surveyApi, type SimpleRole } from '../api/surveyApi';
 import type { ModalType, Survey, SurveyFormData, SurveyResults } from '../types/survey.type';
@@ -185,7 +186,7 @@ export function useSurvey() {
 
 	const copyRespondLink = useCallback(
 		async (survey: Survey) => {
-			const link = `${window.location.origin}/user/khao-sat/${survey.id}`;
+			const link = publicUrl(`/user/khao-sat/${survey.id}`);
 			try {
 				await navigator.clipboard.writeText(link);
 				showToast(

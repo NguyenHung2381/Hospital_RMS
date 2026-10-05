@@ -204,12 +204,13 @@ const registerCourse = async (courseId, actor) => {
 
 // CME của tôi trong 1 năm: 2 nguồn cộng dồn giống
 // cmeRequirementService.getComplianceReport (tham dự hội thảo + ghi nhận độc lập),
-// ngưỡng ưu tiên theo khoa rồi toàn viện.
-const getMyCme = async (actor, year) => {
+// ngưỡng ưu tiên theo khoa rồi toàn viện. getUserCme dùng chung cho file Excel
+// CME cá nhân (cmePersonalExportController.js) — caller tự kiểm tra quyền.
+const getUserCme = async (userId, year) => {
 	const pool = await getPool();
 	const r = await pool
 		.request()
-		.input('uid', sql.VarChar(20), actor.id)
+		.input('uid', sql.VarChar(20), userId)
 		.input('year', sql.Int, year).query(`
     SELECT p.id, p.seminar_id, s.title AS seminar_title, s.event_type, s.scope, s.location,
            s.start_date, s.end_date, s.date_text, p.participation_type,
@@ -220,7 +221,8 @@ const getMyCme = async (actor, year) => {
       AND (p.cme_year = @year OR (p.cme_year IS NULL AND ISNULL(s.event_year, YEAR(s.start_date)) = @year))
     ORDER BY s.start_date DESC;
 
-    SELECT r.id, r.title, r.activity_date, r.credits, c.name AS category_name
+    SELECT r.id, r.title, r.activity_date, r.credits, r.note, c.name AS category_name,
+           CAST(CASE WHEN r.evidence_file_id IS NULL THEN 0 ELSE 1 END AS BIT) AS has_evidence
     FROM cme_records r
     LEFT JOIN cme_credit_categories c ON c.id = r.category_id
     WHERE r.user_id = @uid AND r.year = @year
@@ -246,4 +248,6 @@ const getMyCme = async (actor, year) => {
 	};
 };
 
-module.exports = { getMyTraining, getMyCourse, openDocument, registerCourse, getMyCme };
+const getMyCme = (actor, year) => getUserCme(actor.id, year);
+
+module.exports = { getMyTraining, getMyCourse, openDocument, registerCourse, getMyCme, getUserCme };

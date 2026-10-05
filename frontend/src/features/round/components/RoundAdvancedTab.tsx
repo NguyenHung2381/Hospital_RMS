@@ -9,6 +9,7 @@ import {
 	KeySvg,
 	LinkSvg,
 } from '@/assets/icons';
+import { publicUrl } from '../../../shared/utils/publicUrl';
 import type { ResearchRound } from '../types/round.type';
 import { toInputDate } from '../utils/roundHelpers';
 import { DeadlineManager } from './DeadlineManager';
@@ -50,8 +51,7 @@ export function RoundAdvancedTab({ round }: RoundAdvancedTabProps) {
 		}
 	};
 
-	const buildLink = (path: string) =>
-		`${window.location.origin}${path}?token=${round.public_token}`;
+	const buildLink = (path: string) => publicUrl(`${path}?token=${round.public_token}`);
 
 	const topicTotal = round.topic_total || 0;
 	const topicActive = round.topic_active || 0;
