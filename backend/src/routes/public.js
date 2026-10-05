@@ -159,6 +159,49 @@ router.get(
 	ctrl.getTopicStatus,
 );
 
+// ─── Hội nghị: đăng ký qua QR, vé QR, bài test cuối buổi ───────────────────
+// Người tham dự thường dùng chung wifi hội trường (cùng IP) — giới hạn nới hơn
+// các form khác. Mã token/vé là 128-bit ngẫu nhiên nên không lo dò quét.
+const seminarLimiter = rateLimit({
+	name: 'seminar',
+	windowMs: 15 * 60 * 1000,
+	limit: 2000,
+	standardHeaders: true,
+	legacyHeaders: false,
+	message: { success: false, message: 'Quá nhiều yêu cầu. Vui lòng thử lại sau ít phút.' },
+});
+const seminarToken = param('token').isString().matches(/^[a-f0-9]{32}$/).withMessage('Link đăng ký không đúng');
+const ticketCode = param('code').isString().matches(/^[a-f0-9]{32}$/).withMessage('Mã vé không đúng');
+
+router.get('/seminars/:token', seminarLimiter, [seminarToken], validate, ctrl.getSeminar);
+router.post(
+	'/seminars/:token/register',
+	seminarLimiter,
+	[
+		seminarToken,
+		body('full_name').trim().notEmpty().withMessage('Họ tên không được để trống').isLength({ max: 255 }),
+		body('phone').trim().matches(/^[0-9+ .-]{8,20}$/).withMessage('Số điện thoại không hợp lệ'),
+		body('email').optional({ checkFalsy: true }).trim().isEmail().withMessage('Email không hợp lệ').isLength({ max: 255 }),
+		body('dob').optional({ checkFalsy: true }).isISO8601().withMessage('Ngày sinh không hợp lệ'),
+		body('organization').trim().notEmpty().withMessage('Vui lòng nhập đơn vị công tác').isLength({ max: 255 }),
+		body('department_raw').optional().isString().isLength({ max: 255 }),
+		body('qualification_raw').optional().isString().isLength({ max: 100 }),
+		body('title_prefix').optional().isString().isLength({ max: 10 }),
+		body('source').isIn(['internal', 'external']).withMessage('Vui lòng chọn nội viện / ngoại viện'),
+		body('captcha_token').notEmpty().withMessage('Thiếu mã xác nhận'),
+	],
+	validate,
+	ctrl.registerSeminar,
+);
+router.get('/seminar-tickets/:code', seminarLimiter, [ticketCode], validate, ctrl.getSeminarTicket);
+router.post(
+	'/seminar-tickets/:code/test',
+	seminarLimiter,
+	[ticketCode, body('answers').isArray({ max: 200 })],
+	validate,
+	ctrl.submitSeminarTest,
+);
+
 // ─── Thư viện đề tài công khai ───────────────────────────────────────────────
 router.get('/featured-topics', ctrl.getFeaturedTopics);
 

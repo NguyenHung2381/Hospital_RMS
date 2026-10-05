@@ -122,6 +122,28 @@ const yearOf = (data) => {
 	return m ? parseInt(m[1], 10) : null;
 };
 
+// Bài test cuối buổi: [{ q, options: [..≥2], answer: index }] — trắc nghiệm 1
+// đáp án, chấm tự động khi nộp (seminarParticipantService.submitTest).
+const badQuestions = (msg) => Object.assign(new Error(msg), { statusCode: 400 });
+const normalizeTestQuestions = (raw) => {
+	if (raw === null || raw === '') return null;
+	if (!Array.isArray(raw)) throw badQuestions('Danh sách câu hỏi không hợp lệ.');
+	if (!raw.length) return null;
+	const out = raw.map((x, i) => {
+		const q = String(x?.q ?? '').trim();
+		const options = (Array.isArray(x?.options) ? x.options : []).map((o) => String(o ?? '').trim());
+		const answer = Number(x?.answer);
+		if (!q) throw badQuestions(`Câu ${i + 1}: chưa nhập nội dung câu hỏi.`);
+		if (options.length < 2) throw badQuestions(`Câu ${i + 1}: cần ít nhất 2 phương án.`);
+		// Không tự lọc phương án trống — lọc sẽ làm lệch chỉ số đáp án đúng
+		if (options.some((o) => !o)) throw badQuestions(`Câu ${i + 1}: có phương án để trống.`);
+		if (!Number.isInteger(answer) || answer < 0 || answer >= options.length)
+			throw badQuestions(`Câu ${i + 1}: chưa chọn đáp án đúng.`);
+		return { q, options, answer };
+	});
+	return JSON.stringify(out);
+};
+
 const create = async (data, actorId) => {
 	const pool = await getPool();
 	const result = await pool
@@ -157,13 +179,14 @@ const create = async (data, actorId) => {
          date_text, event_year, host_chair, speakers, permit_doc_no, co_organizers,
          grants_cme, cme_default_credits, coordinator, notes,
          manual_participant_count, manual_internal_count, manual_external_count,
-         manual_foreign_count, manual_cme_count, created_by)
+         manual_foreign_count, manual_cme_count, public_token, created_by)
       VALUES
         (@new_id, @title, @event_type, @event_type_raw, @scope, @location, @start_date, @end_date,
          @date_text, @event_year, @host_chair, @speakers, @permit_doc_no, @co_organizers,
          @grants_cme, @cme_default_credits, @coordinator, @notes,
          @manual_participant_count, @manual_internal_count, @manual_external_count,
-         @manual_foreign_count, @manual_cme_count, @actor_id);
+         @manual_foreign_count, @manual_cme_count,
+         LOWER(REPLACE(CONVERT(VARCHAR(36), NEWID()), '-', '')), @actor_id);
       SELECT @new_id AS id;
     `);
 	broadcast('update', { entity: 'seminar' });
@@ -216,6 +239,14 @@ const update = async (id, data, actorId) => {
 	if (data.grants_cme !== undefined) {
 		sets.push('grants_cme = @grants_cme');
 		req.input('grants_cme', sql.Bit, data.grants_cme ? 1 : 0);
+	}
+	if (data.test_open !== undefined) {
+		sets.push('test_open = @test_open');
+		req.input('test_open', sql.Bit, data.test_open ? 1 : 0);
+	}
+	if (data.test_questions !== undefined) {
+		sets.push('test_questions = @test_questions');
+		req.input('test_questions', sql.NVarChar(sql.MAX), normalizeTestQuestions(data.test_questions));
 	}
 	if (data.event_year !== undefined || data.start_date !== undefined) {
 		sets.push('event_year = @event_year');

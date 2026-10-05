@@ -1,4 +1,5 @@
 const service = require('../services/publicPortalService');
+const seminarParticipants = require('../services/seminarParticipantService');
 const { generateCaptcha, verifyCaptcha } = require('../utils/captcha');
 const { success, created, error } = require('../utils/response');
 const attempts = require('../utils/attemptLimiter');
@@ -143,7 +144,50 @@ const getTopicStatus = async (req, res, next) => {
 	}
 };
 
+// ─── Hội nghị: đăng ký qua QR, vé, bài test ─────────────────────────────────
+const getSeminar = async (req, res, next) => {
+	try {
+		const { scope, ...s } = await seminarParticipants.getPublicSeminar(req.params.token);
+		success(res, s);
+	} catch (err) {
+		next(err);
+	}
+};
+
+// Honeypot + captcha giống register()
+const registerSeminar = async (req, res, next) => {
+	try {
+		if (req.body.website) return success(res, { ticket_code: null }, 'Đăng ký thành công', 201);
+		if (!(await verifyCaptcha(req.body.captcha_token, req.body.captcha_answer, req.ip))) {
+			return error(res, 'Mã xác nhận không đúng hoặc đã hết hạn, vui lòng thử lại.', 400);
+		}
+		created(res, await seminarParticipants.registerPublic(req.params.token, req.body), 'Đăng ký thành công');
+	} catch (err) {
+		next(err);
+	}
+};
+
+const getSeminarTicket = async (req, res, next) => {
+	try {
+		success(res, await seminarParticipants.getTicket(req.params.code));
+	} catch (err) {
+		next(err);
+	}
+};
+
+const submitSeminarTest = async (req, res, next) => {
+	try {
+		success(res, await seminarParticipants.submitTest(req.params.code, req.body.answers), 'Đã nộp bài test');
+	} catch (err) {
+		next(err);
+	}
+};
+
 module.exports = {
+	getSeminar,
+	registerSeminar,
+	getSeminarTicket,
+	submitSeminarTest,
 	getCaptcha,
 	getOpenCourses,
 	getTraineeTypes,

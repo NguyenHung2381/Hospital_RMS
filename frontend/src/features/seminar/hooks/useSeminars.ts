@@ -89,8 +89,10 @@ export function useSeminars() {
 				setModal(null);
 				showToast('success', `Đã thêm "${s.title}"`);
 				refresh();
+				return s;
 			} catch (e) {
 				showToast('error', e instanceof Error ? e.message : 'Thêm thất bại');
+				return null;
 			} finally {
 				setLoading(false);
 			}

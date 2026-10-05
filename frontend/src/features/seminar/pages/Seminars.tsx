@@ -309,7 +309,11 @@ export default function Seminars() {
 					mode='add'
 					loading={s.loading}
 					onClose={() => s.setModal(null)}
-					onSave={s.handleAdd}
+					onSave={async (form) => {
+						// BV tổ chức → sang trang chi tiết, mở sẵn QR đăng ký để tải về
+						const created = await s.handleAdd(form);
+						if (created?.scope === 'hosted') navigate(`/admin/seminars/${created.id}?qr=1`);
+					}}
 				/>
 			)}
 			{s.modal === 'edit' && s.editing && (

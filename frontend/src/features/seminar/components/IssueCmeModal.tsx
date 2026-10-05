@@ -5,6 +5,7 @@ import styles from '../pages/Seminar.module.css';
 
 export function IssueCmeModal({
 	targets,
+	notEligible = 0,
 	defaultYear,
 	registerLastSeq,
 	loading,
@@ -12,6 +13,8 @@ export function IssueCmeModal({
 	onConfirm,
 }: {
 	targets: SeminarParticipant[];
+	/** Số người đã chọn nhưng chưa điểm danh / chưa làm bài test — bị bỏ qua */
+	notEligible?: number;
 	defaultYear: number | null;
 	registerLastSeq: number | null;
 	loading: boolean;
@@ -53,9 +56,14 @@ export function IssueCmeModal({
 							inputMode='numeric'
 						/>
 					</div>
+					{notEligible > 0 && (
+						<p className={styles.muted}>
+							Bỏ qua {notEligible} người tự đăng ký chưa điểm danh hoặc chưa làm bài test.
+						</p>
+					)}
 					{pending.length === 0 ? (
 						<p className={styles.muted}>
-							Tất cả người đã chọn đều đã có số CME.
+							Không có người nào cần / đủ điều kiện cấp số CME.
 						</p>
 					) : (
 						<p>

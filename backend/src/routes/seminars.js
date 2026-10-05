@@ -408,6 +408,16 @@ router.post(
 	ctrl.checkInSelf,
 );
 
+// Ban tổ chức quét vé QR (cá nhân) của người tự đăng ký qua link công khai
+router.post(
+	'/:id/checkin-ticket',
+	authenticate,
+	canUpdate,
+	[body('code').isString().matches(/^[a-f0-9]{32}$/).withMessage('Mã QR không phải vé hội nghị hợp lệ.')],
+	validate,
+	ctrl.checkInTicket,
+);
+
 // ─── Cấp CME ─────────────────────────────────────────────────────────────────
 
 /**

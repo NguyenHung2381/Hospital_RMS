@@ -134,9 +134,10 @@ export function useSeminarDetail(id: string) {
 				const res = await issueCme(id, ids, year);
 				showToast(
 					'success',
-					res.issued
+					(res.issued
 						? `Đã cấp ${res.issued} số CME (${String(res.from).padStart(4, '0')}–${String(res.to).padStart(4, '0')} / ${res.year})`
-						: 'Không có người nào cần cấp số',
+						: 'Không có người nào được cấp số') +
+						(res.skipped ? ` · ${res.skipped} người chưa điểm danh / chưa làm bài test` : ''),
 				);
 				refresh();
 				return true;

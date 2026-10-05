@@ -74,6 +74,14 @@ export interface SeminarParticipant {
 	cme_status: CmeStatus;
 	cme_issued_date: string | null;
 	notes: string | null;
+	phone: string | null;
+	email: string | null;
+	/** Có = tự đăng ký qua QR (phải điểm danh + làm bài test mới được cấp CME) */
+	ticket_code: string | null;
+	checked_in_at: string | null;
+	test_correct: number | null;
+	test_total: number | null;
+	test_submitted_at: string | null;
 	user_full_name?: string | null;
 	user_staff_number?: number | null;
 	user_department_name?: string | null;
@@ -103,6 +111,11 @@ export interface Seminar {
 	manual_external_count: number | null;
 	manual_foreign_count: number | null;
 	manual_cme_count: number | null;
+	/** Mã trong link/QR đăng ký công khai /hoi-nghi/<public_token> */
+	public_token: string | null;
+	/** JSON SeminarTestQuestion[] */
+	test_questions: string | null;
+	test_open: boolean;
 	created_at: string;
 	participant_count?: number;
 	cme_issued_count?: number;
@@ -110,6 +123,13 @@ export interface Seminar {
 	external_count?: number;
 	foreign_count?: number;
 	participants?: SeminarParticipant[];
+}
+
+export interface SeminarTestQuestion {
+	q: string;
+	options: string[];
+	/** Chỉ số phương án đúng */
+	answer: number;
 }
 
 export interface SeminarListResponse {

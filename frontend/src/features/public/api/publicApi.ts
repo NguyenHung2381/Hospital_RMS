@@ -199,3 +199,65 @@ export interface FeaturedTopic {
 }
 
 export const getFeaturedTopics = () => request<FeaturedTopic[]>('/featured-topics');
+
+// ─── Hội nghị: đăng ký qua QR, vé QR, bài test cuối buổi ─────────────────────
+export interface PublicSeminar {
+	id: string;
+	title: string;
+	location: string | null;
+	start_date: string | null;
+	end_date: string | null;
+	date_text: string | null;
+	grants_cme: boolean;
+	cme_default_credits: number | null;
+	registration_open: boolean;
+}
+
+export interface SeminarRegisterPayload {
+	title_prefix?: string;
+	full_name: string;
+	dob?: string;
+	gender?: string;
+	phone: string;
+	email?: string;
+	organization: string;
+	department_raw?: string;
+	qualification_raw?: string;
+	source: 'internal' | 'external';
+	captcha_token: string;
+	captcha_answer: string;
+	website?: string; // honeypot
+}
+
+export interface SeminarTicket {
+	title_prefix: string | null;
+	full_name: string;
+	organization: string | null;
+	checked_in_at: string | null;
+	seminar: Pick<PublicSeminar, 'title' | 'location' | 'start_date' | 'end_date' | 'date_text' | 'grants_cme'>;
+	test: {
+		has_test: boolean;
+		open: boolean;
+		submitted_at: string | null;
+		correct: number | null;
+		total: number | null;
+		/** Chỉ có khi đã điểm danh + bài test đang mở + chưa nộp */
+		questions: { q: string; options: string[] }[] | null;
+	};
+	cme: { certificate_no: string; year: number; credits: number | null } | null;
+}
+
+export const getPublicSeminar = (token: string) =>
+	request<PublicSeminar>(`/seminars/${encodeURIComponent(token)}`);
+export const registerSeminar = (token: string, data: SeminarRegisterPayload) =>
+	request<{ ticket_code: string | null }>(`/seminars/${encodeURIComponent(token)}/register`, {
+		method: 'POST',
+		body: JSON.stringify(data),
+	});
+export const getSeminarTicket = (code: string) =>
+	request<SeminarTicket>(`/seminar-tickets/${encodeURIComponent(code)}`);
+export const submitSeminarTest = (code: string, answers: number[]) =>
+	request<{ correct: number; total: number }>(`/seminar-tickets/${encodeURIComponent(code)}/test`, {
+		method: 'POST',
+		body: JSON.stringify({ answers }),
+	});

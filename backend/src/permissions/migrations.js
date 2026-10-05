@@ -287,6 +287,31 @@ const migrateRolesAndSessions = async ({ dryRun = false } = {}) => {
       IF OBJECT_ID('seminar_participants', 'U') IS NOT NULL AND COL_LENGTH('seminar_participants', 'checkin_device_id') IS NULL
         ALTER TABLE seminar_participants ADD checkin_device_id VARCHAR(64) NULL;
     `);
+		// Đăng ký hội nghị qua QR + vé + bài test. Tương đương 2026-10-21_seminar_registration.sql.
+		await pool.request().query(`
+      IF OBJECT_ID('seminars', 'U') IS NOT NULL AND COL_LENGTH('seminars', 'public_token') IS NULL
+        ALTER TABLE seminars ADD public_token VARCHAR(32) NULL;
+      IF OBJECT_ID('seminars', 'U') IS NOT NULL AND COL_LENGTH('seminars', 'test_questions') IS NULL
+        ALTER TABLE seminars ADD test_questions NVARCHAR(MAX) NULL;
+      IF OBJECT_ID('seminars', 'U') IS NOT NULL AND COL_LENGTH('seminars', 'test_open') IS NULL
+        ALTER TABLE seminars ADD test_open BIT NOT NULL CONSTRAINT DF_seminars_test_open DEFAULT (0);
+      IF OBJECT_ID('seminar_participants', 'U') IS NOT NULL AND COL_LENGTH('seminar_participants', 'ticket_code') IS NULL
+        ALTER TABLE seminar_participants ADD ticket_code VARCHAR(32) NULL, phone VARCHAR(20) NULL,
+          email NVARCHAR(255) NULL, test_answers NVARCHAR(MAX) NULL, test_correct INT NULL,
+          test_total INT NULL, test_submitted_at DATETIME NULL;
+    `);
+		await pool.request().query(`
+      IF OBJECT_ID('seminars', 'U') IS NOT NULL
+      BEGIN
+        UPDATE seminars SET public_token = LOWER(REPLACE(CONVERT(VARCHAR(36), NEWID()), '-', ''))
+        WHERE public_token IS NULL;
+        IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'UX_seminars_public_token' AND object_id = OBJECT_ID('seminars'))
+          CREATE UNIQUE NONCLUSTERED INDEX UX_seminars_public_token ON seminars (public_token) WHERE public_token IS NOT NULL;
+      END
+      IF OBJECT_ID('seminar_participants', 'U') IS NOT NULL
+        AND NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'UX_sp_ticket_code' AND object_id = OBJECT_ID('seminar_participants'))
+        CREATE UNIQUE NONCLUSTERED INDEX UX_sp_ticket_code ON seminar_participants (ticket_code) WHERE ticket_code IS NOT NULL;
+    `);
 	}
 
 	const sysPerm = (

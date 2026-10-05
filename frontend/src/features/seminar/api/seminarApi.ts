@@ -11,6 +11,7 @@ import type {
 	SeminarForm,
 	SeminarListResponse,
 	SeminarParticipant,
+	SeminarTestQuestion,
 } from '../types/seminar.type';
 
 export interface SeminarListParams {
@@ -107,6 +108,23 @@ export const checkInSeminar = (token: string) =>
 		device_id: getCheckInDeviceId(),
 	});
 
+export interface TicketCheckIn {
+	id: string;
+	title_prefix: string | null;
+	full_name: string;
+	organization: string | null;
+	checked_in_at: string;
+	already: boolean;
+}
+
+export const checkInTicket = (seminarId: string, code: string) =>
+	apiClient.post<TicketCheckIn>(`/seminars/${seminarId}/checkin-ticket`, { code });
+
+export const updateSeminarTest = (
+	id: string,
+	data: { test_questions?: SeminarTestQuestion[] | null; test_open?: boolean },
+) => apiClient.put<Seminar>(`/seminars/${id}`, data);
+
 export const addParticipant = (seminarId: string, form: ParticipantForm) =>
 	apiClient.post<SeminarParticipant>(
 		`/seminars/${seminarId}/participants`,
@@ -154,6 +172,8 @@ export interface IssueCmeResult {
 	from: number | null;
 	to: number | null;
 	year: number;
+	/** Người tự đăng ký chưa điểm danh / chưa làm bài test — không được cấp */
+	skipped: number;
 }
 
 export const issueCme = (

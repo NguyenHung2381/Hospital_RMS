@@ -5,6 +5,7 @@
  * tục cho mọi hội nghị trong năm; sang năm mới reset. Cấp nhiều người một lần
  * thì cấp tuần tự trong 1 transaction để giữ dãy liền mạch.
  */
+const crypto = require('crypto');
 const { signToken, verifyToken } = require('../utils/keys');
 const { getPool, sql } = require('../config/db');
 const { broadcast } = require('./eventService');
@@ -80,18 +81,21 @@ const bindInsert = (req, idVar, seminarId, data) => {
 		.input('cme_credits', sql.Decimal(4, 1), data.cme_credits ?? null)
 		.input('cme_status', sql.VarChar(15), data.cme_status || 'none')
 		.input('cme_issued_date', sql.Date, data.cme_issued_date || null)
-		.input('notes', sql.NVarChar(255), data.notes || null);
+		.input('notes', sql.NVarChar(255), data.notes || null)
+		.input('phone', sql.VarChar(20), data.phone || null)
+		.input('email', sql.NVarChar(255), data.email || null)
+		.input('ticket_code', sql.VarChar(32), data.ticket_code || null);
 	return `
     INSERT INTO seminar_participants
       (id, seminar_id, user_id, title_prefix, full_name, dob, dob_text, gender,
        organization, department_raw, staff_number, qualification_raw, source,
        is_foreign, participation_type, cme_year, cme_seq, cme_credits, cme_status,
-       cme_issued_date, notes, created_by)
+       cme_issued_date, notes, phone, email, ticket_code, created_by)
     VALUES
       (${idVar}, @seminar_id, @user_id, @title_prefix, @full_name, @dob, @dob_text, @gender,
        @organization, @department_raw, @staff_number, @qualification_raw, @source,
        @is_foreign, @participation_type, @cme_year, @cme_seq, @cme_credits, @cme_status,
-       @cme_issued_date, @notes, @actor_id);`;
+       @cme_issued_date, @notes, @phone, @email, @ticket_code, @actor_id);`;
 };
 
 const add = async (seminarId, data, actorId) => {
@@ -224,6 +228,11 @@ const remove = async (seminarId, pid, actorId) => {
 
 // ─── CME ─────────────────────────────────────────────────────────────────────
 
+// Điều kiện cấp CME (p = seminar_participants, s = seminars). Người do ban tổ
+// chức thêm/nhập Excel (không có vé) giữ nghiệp vụ cũ: BTC tự chịu trách nhiệm.
+const CME_ELIGIBLE_SQL = `CAST(CASE WHEN p.ticket_code IS NULL OR (p.checked_in_at IS NOT NULL
+  AND (p.test_submitted_at IS NOT NULL OR s.test_questions IS NULL)) THEN 1 ELSE 0 END AS BIT)`;
+
 // Cấp số CME cho 1 hoặc nhiều người (tuần tự, giữ dãy liền mạch).
 const issueCme = async (seminarId, participantIds, actorId, { year } = {}) => {
 	const pool = await getPool();
@@ -237,7 +246,7 @@ const issueCme = async (seminarId, participantIds, actorId, { year } = {}) => {
 		throw err;
 	}
 	const ids = (participantIds || []).filter(Boolean);
-	if (!ids.length) return { issued: 0, from: null, to: null, year: cmeYear };
+	if (!ids.length) return { issued: 0, from: null, to: null, year: cmeYear, skipped: 0 };
 
 	const tx = new sql.Transaction(pool);
 	await tx.begin();
@@ -246,7 +255,9 @@ const issueCme = async (seminarId, participantIds, actorId, { year } = {}) => {
 			.input('actor_id', sql.VarChar(20), actorId)
 			.query('EXEC sp_set_actor @actor_id');
 
-		// chỉ người chưa có số, giữ đúng thứ tự gửi lên
+		// chỉ người chưa có số, giữ đúng thứ tự gửi lên. Người tự đăng ký qua QR
+		// (có ticket_code) phải điểm danh + nộp bài test (nếu hội nghị có bài
+		// test) mới đủ điều kiện — còn lại bỏ qua, báo về `skipped`.
 		const listReq = new sql.Request(tx).input('sid', sql.VarChar(20), seminarId);
 		const inParams = ids
 			.map((id, i) => {
@@ -255,10 +266,12 @@ const issueCme = async (seminarId, participantIds, actorId, { year } = {}) => {
 			})
 			.join(',');
 		const pending = await listReq.query(`
-      SELECT id FROM seminar_participants
-      WHERE seminar_id = @sid AND cme_seq IS NULL AND id IN (${inParams});
+      SELECT p.id, ${CME_ELIGIBLE_SQL} AS eligible
+      FROM seminar_participants p JOIN seminars s ON s.id = p.seminar_id
+      WHERE p.seminar_id = @sid AND p.cme_seq IS NULL AND p.id IN (${inParams});
     `);
-		const pendingSet = new Set(pending.recordset.map((r) => r.id));
+		const pendingSet = new Set(pending.recordset.filter((r) => r.eligible).map((r) => r.id));
+		const skipped = pending.recordset.length - pendingSet.size;
 		const ordered = ids.filter((id) => pendingSet.has(id));
 
 		let first = null;
@@ -287,7 +300,7 @@ const issueCme = async (seminarId, participantIds, actorId, { year } = {}) => {
 		}
 		await tx.commit();
 		broadcast('update', { entity: 'seminar' });
-		return { issued: ordered.length, from: first, to: last, year: cmeYear };
+		return { issued: ordered.length, from: first, to: last, year: cmeYear, skipped };
 	} catch (err) {
 		await tx.rollback();
 		throw err;
@@ -398,7 +411,193 @@ const checkInSelf = async (token, deviceId, actor) => {
 	return { seminar_id: decoded.seminar_id };
 };
 
+// ─── Đăng ký công khai qua QR → vé QR → điểm danh → bài test ─────────────────
+// QR đăng ký mang link /hoi-nghi/<seminars.public_token>. Đăng ký xong người
+// tham dự giữ vé QR mang link /hoi-nghi/ve/<ticket_code>: ban tổ chức quét vé
+// để điểm danh (checkInTicket), người tham dự mở chính link đó để làm bài test.
+// Mã 128-bit ngẫu nhiên — không dò được, nên không cần đăng nhập.
+const httpError = (status, msg) => Object.assign(new Error(msg), { statusCode: status });
+const parseQuestions = (json) => {
+	try {
+		return JSON.parse(json || '[]');
+	} catch {
+		return [];
+	}
+};
+
+const SEMINAR_PUBLIC_COLS = `s.id, s.title, s.location, s.start_date, s.end_date, s.date_text,
+  s.grants_cme, s.cme_default_credits, s.scope`;
+// Hết hạn đăng ký sau ngày kết thúc (không có ngày kết thúc thì theo ngày bắt đầu)
+const REG_OPEN_SQL = `CAST(CASE WHEN s.scope = 'hosted' AND COALESCE(s.end_date, s.start_date, '9999-12-31')
+  >= CAST(GETDATE() AS DATE) THEN 1 ELSE 0 END AS BIT)`;
+
+const getPublicSeminar = async (token) => {
+	const pool = await getPool();
+	const r = await pool
+		.request()
+		.input('token', sql.VarChar(32), token)
+		.query(`SELECT ${SEMINAR_PUBLIC_COLS}, ${REG_OPEN_SQL} AS registration_open
+            FROM seminars s WHERE s.public_token = @token`);
+	const row = r.recordset[0];
+	if (!row || row.scope !== 'hosted') throw httpError(404, 'Không tìm thấy hội nghị — link đăng ký không đúng.');
+	return row;
+};
+
+const registerPublic = async (token, data) => {
+	const seminar = await getPublicSeminar(token);
+	if (!seminar.registration_open) throw httpError(409, 'Hội nghị đã kết thúc, không nhận đăng ký.');
+	const pool = await getPool();
+	const dup = await pool
+		.request()
+		.input('sid', sql.VarChar(20), seminar.id)
+		.input('phone', sql.VarChar(20), data.phone)
+		.query('SELECT 1 FROM seminar_participants WHERE seminar_id = @sid AND phone = @phone');
+	if (dup.recordset.length)
+		throw httpError(409, 'Số điện thoại này đã đăng ký hội nghị. Nếu mất mã QR, vui lòng liên hệ ban tổ chức.');
+
+	const ticketCode = crypto.randomBytes(16).toString('hex');
+	await add(
+		seminar.id,
+		{
+			title_prefix: data.title_prefix,
+			full_name: String(data.full_name).trim(),
+			dob: data.dob,
+			gender: data.gender,
+			organization: data.organization,
+			department_raw: data.department_raw,
+			qualification_raw: data.qualification_raw,
+			source: data.source,
+			phone: data.phone,
+			email: data.email,
+			participation_type: 'attendee',
+			ticket_code: ticketCode,
+		},
+		null,
+	);
+	return { ticket_code: ticketCode };
+};
+
+const getTicket = async (code) => {
+	const pool = await getPool();
+	const r = await pool
+		.request()
+		.input('code', sql.VarChar(32), code)
+		.query(`
+      SELECT p.title_prefix, p.full_name, p.organization, p.checked_in_at,
+             p.test_submitted_at, p.test_correct, p.test_total,
+             p.cme_certificate_no, p.cme_year, p.cme_credits,
+             s.test_questions, s.test_open, ${SEMINAR_PUBLIC_COLS}
+      FROM seminar_participants p JOIN seminars s ON s.id = p.seminar_id
+      WHERE p.ticket_code = @code;
+    `);
+	const row = r.recordset[0];
+	if (!row) throw httpError(404, 'Mã vé không tồn tại.');
+	const questions = parseQuestions(row.test_questions);
+	const canTakeTest = !!(questions.length && row.test_open && row.checked_in_at && !row.test_submitted_at);
+	return {
+		title_prefix: row.title_prefix,
+		full_name: row.full_name,
+		organization: row.organization,
+		checked_in_at: row.checked_in_at,
+		seminar: {
+			title: row.title,
+			location: row.location,
+			start_date: row.start_date,
+			end_date: row.end_date,
+			date_text: row.date_text,
+			grants_cme: row.grants_cme,
+		},
+		test: {
+			has_test: questions.length > 0,
+			open: !!row.test_open,
+			submitted_at: row.test_submitted_at,
+			correct: row.test_correct,
+			total: row.test_total,
+			// Không bao giờ gửi đáp án đúng ra cổng công khai
+			questions: canTakeTest ? questions.map(({ q, options }) => ({ q, options })) : null,
+		},
+		cme: row.cme_certificate_no
+			? { certificate_no: row.cme_certificate_no, year: row.cme_year, credits: row.cme_credits }
+			: null,
+	};
+};
+
+const submitTest = async (code, answers) => {
+	const pool = await getPool();
+	const r = await pool
+		.request()
+		.input('code', sql.VarChar(32), code)
+		.query(`
+      SELECT p.id, p.checked_in_at, p.test_submitted_at, s.test_questions, s.test_open
+      FROM seminar_participants p JOIN seminars s ON s.id = p.seminar_id
+      WHERE p.ticket_code = @code;
+    `);
+	const row = r.recordset[0];
+	if (!row) throw httpError(404, 'Mã vé không tồn tại.');
+	const questions = parseQuestions(row.test_questions);
+	if (!questions.length) throw httpError(409, 'Hội nghị này không có bài test.');
+	if (!row.checked_in_at)
+		throw httpError(409, 'Bạn chưa được điểm danh — vui lòng đưa mã QR cho ban tổ chức quét trước.');
+	if (!row.test_open) throw httpError(409, 'Bài test chưa mở hoặc đã đóng.');
+	if (row.test_submitted_at) throw httpError(409, 'Bạn đã nộp bài test rồi.');
+	const picked = Array.isArray(answers) ? answers.map((a) => (Number.isInteger(a) ? a : null)) : [];
+	if (picked.length !== questions.length || picked.includes(null))
+		throw httpError(400, 'Vui lòng trả lời đủ tất cả câu hỏi.');
+	const correct = questions.filter((q, i) => q.answer === picked[i]).length;
+
+	// WHERE test_submitted_at IS NULL: 2 lần bấm nộp song song chỉ ghi 1 lần
+	const u = await pool
+		.request()
+		.input('id', sql.VarChar(24), row.id)
+		.input('answers', sql.NVarChar(sql.MAX), JSON.stringify(picked))
+		.input('correct', sql.Int, correct)
+		.input('total', sql.Int, questions.length)
+		.query(`
+      UPDATE seminar_participants
+      SET test_answers = @answers, test_correct = @correct, test_total = @total, test_submitted_at = GETDATE()
+      WHERE id = @id AND test_submitted_at IS NULL;
+      SELECT @@ROWCOUNT AS n;
+    `);
+	if (!u.recordset[0].n) throw httpError(409, 'Bạn đã nộp bài test rồi.');
+	broadcast('update', { entity: 'seminar' });
+	return { correct, total: questions.length };
+};
+
+// Ban tổ chức quét vé QR của người tham dự. Quét lại người đã điểm danh thì
+// giữ giờ cũ, báo `already` để màn quét hiện cảnh báo.
+const checkInTicket = async (seminarId, code, actorId) => {
+	const pool = await getPool();
+	const r = await pool
+		.request()
+		.input('sid', sql.VarChar(20), seminarId)
+		.input('code', sql.VarChar(32), code)
+		.input('actor_id', sql.VarChar(20), actorId)
+		.query(`
+      DECLARE @prev DATETIME, @pid VARCHAR(24), @psid VARCHAR(20);
+      SELECT @pid = id, @psid = seminar_id, @prev = checked_in_at
+      FROM seminar_participants WHERE ticket_code = @code;
+      IF @pid IS NOT NULL AND @psid = @sid AND @prev IS NULL
+      BEGIN
+        EXEC sp_set_actor @actor_id;
+        UPDATE seminar_participants SET checked_in_at = GETDATE() WHERE id = @pid;
+      END
+      SELECT p.id, p.seminar_id, p.title_prefix, p.full_name, p.organization, p.checked_in_at,
+             CAST(CASE WHEN @prev IS NULL THEN 0 ELSE 1 END AS BIT) AS already
+      FROM seminar_participants p WHERE p.id = @pid;
+    `);
+	const row = r.recordset[0];
+	if (!row) throw httpError(404, 'Mã QR không phải vé hội nghị hợp lệ.');
+	if (row.seminar_id !== seminarId) throw httpError(409, `Vé của ${row.full_name} thuộc hội nghị khác.`);
+	if (!row.already) broadcast('update', { entity: 'seminar' });
+	return row;
+};
+
 module.exports = {
+	getPublicSeminar,
+	registerPublic,
+	getTicket,
+	submitTest,
+	checkInTicket,
 	listBySeminar,
 	add,
 	bulkAdd,

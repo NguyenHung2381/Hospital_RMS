@@ -107,7 +107,9 @@ const issueCme = async (req, res, next) => {
 			out,
 			out.issued
 				? `Đã cấp ${out.issued} số CME (${String(out.from).padStart(4, '0')}–${String(out.to).padStart(4, '0')} / ${out.year})`
-				: 'Không có người nào cần cấp số CME',
+				: out.skipped
+					? `${out.skipped} người chưa đủ điều kiện (chưa điểm danh / chưa làm bài test)`
+					: 'Không có người nào cần cấp số CME',
 		);
 	} catch (e) {
 		next(e);
@@ -146,6 +148,15 @@ const checkInSelf = async (req, res, next) => {
 	try {
 		const result = await partService.checkInSelf(req.body.token, req.body.device_id, req.user);
 		return success(res, result, 'Điểm danh thành công');
+	} catch (e) {
+		next(e);
+	}
+};
+
+const checkInTicket = async (req, res, next) => {
+	try {
+		const row = await partService.checkInTicket(req.params.id, req.body.code, req.user.id);
+		return success(res, row, row.already ? 'Người này đã điểm danh trước đó' : 'Điểm danh thành công');
 	} catch (e) {
 		next(e);
 	}
@@ -265,4 +276,5 @@ module.exports = {
 	importParticipants,
 	getCheckInQrToken,
 	checkInSelf,
+	checkInTicket,
 };

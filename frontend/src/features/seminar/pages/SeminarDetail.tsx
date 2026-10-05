@@ -1,12 +1,14 @@
 import { useMemo, useState, type ReactNode } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import {
 	BadgeSvg,
 	CheckSvg,
 	ChevLSvg,
 	ClipboardCheckSvg,
 	EditSvg,
+	FileTextSvg,
 	PlusSvg,
+	QrSvg,
 	TrashSvg,
 	UploadSvg,
 	XSvg,
@@ -19,10 +21,14 @@ import {
 	SelectCheckbox,
 } from '../../../shared/components/Table/RowSelect';
 import { useRowSelection } from '../../../shared/hooks/useRowSelection';
+import { formatDateTimeVN } from '../../../shared/utils/formatDate';
 import { IssueCmeModal } from '../components/IssueCmeModal';
 import { ParticipantFormModal } from '../components/ParticipantFormModal';
 import { ParticipantImportModal } from '../components/ParticipantImportModal';
 import { SeminarCheckInQrModal } from '../components/SeminarCheckInQrModal';
+import { SeminarRegistrationQrModal } from '../components/SeminarRegistrationQrModal';
+import { SeminarTestModal } from '../components/SeminarTestModal';
+import { TicketCheckInModal } from '../components/TicketCheckInModal';
 import { useSeminarDetail } from '../hooks/useSeminarDetail';
 import { useSeminarPerms } from '../utils/perms';
 import {
@@ -42,6 +48,11 @@ const TABS: { key: 'all' | ParticipationType; label: string }[] = [
 	{ key: 'speaker', label: 'Báo cáo viên' },
 	{ key: 'trainee', label: 'Học viên' },
 ];
+
+// Người tự đăng ký qua QR (có vé) phải điểm danh + nộp bài test (nếu có) mới
+// được cấp CME — khớp CME_ELIGIBLE_SQL ở backend seminarParticipantService.
+const cmeEligible = (p: SeminarParticipant, hasTest: boolean) =>
+	!p.ticket_code || (!!p.checked_in_at && (!!p.test_submitted_at || !hasTest));
 
 const fmtDate = (s: string | null) => {
 	if (!s) return '';
@@ -63,6 +74,11 @@ export default function SeminarDetail() {
 	const [issueOpen, setIssueOpen] = useState(false);
 	const [importOpen, setImportOpen] = useState(false);
 	const [checkInQrOpen, setCheckInQrOpen] = useState(false);
+	// ?qr=1: vừa tạo hội nghị → mở luôn QR đăng ký để tải về
+	const [searchParams, setSearchParams] = useSearchParams();
+	const [regQrOpen, setRegQrOpen] = useState(searchParams.get('qr') === '1');
+	const [ticketScanOpen, setTicketScanOpen] = useState(false);
+	const [testOpen, setTestOpen] = useState(false);
 
 	const filtered = useMemo(
 		() =>
@@ -73,6 +89,10 @@ export default function SeminarDetail() {
 	);
 	const rowSel = useRowSelection(filtered.map((p) => p.id));
 	const selected = filtered.filter((p) => rowSel.isSelected(p.id));
+	const hasTest = !!d.seminar?.test_questions;
+	const issuable = selected.filter((p) => p.cme_seq == null && cmeEligible(p, hasTest));
+	const notEligible = selected.filter((p) => p.cme_seq == null).length - issuable.length;
+	const hosted = d.seminar?.scope === 'hosted';
 
 	if (d.notFound) {
 		return (
@@ -191,6 +211,28 @@ export default function SeminarDetail() {
 										<UploadSvg /> Nhập Excel
 									</button>
 								)}
+								{perms.canUpdate && hosted && (
+									<>
+										<button
+											className={styles.btnGhost}
+											onClick={() => setRegQrOpen(true)}
+										>
+											<QrSvg /> QR đăng ký
+										</button>
+										<button
+											className={styles.btnGhost}
+											onClick={() => setTicketScanOpen(true)}
+										>
+											<ClipboardCheckSvg /> Quét vé điểm danh
+										</button>
+										<button
+											className={styles.btnGhost}
+											onClick={() => setTestOpen(true)}
+										>
+											<FileTextSvg /> Bài test{sem.test_open ? ' (đang mở)' : ''}
+										</button>
+									</>
+								)}
 								{perms.canUpdate && (
 									<button
 										className={styles.btnGhost}
@@ -202,7 +244,7 @@ export default function SeminarDetail() {
 								{perms.canCme && sem.grants_cme && selected.length > 0 && (
 									<>
 										<button className={styles.btnGhost} onClick={() => setIssueOpen(true)}>
-											<BadgeSvg /> Cấp CME ({selected.filter((p) => p.cme_seq == null).length})
+											<BadgeSvg /> Cấp CME ({issuable.length})
 										</button>
 										<button
 											className={styles.btnGhost}
@@ -258,6 +300,8 @@ export default function SeminarDetail() {
 									<th>Vai trò</th>
 									<th>Nguồn</th>
 									<th>Đơn vị / Khoa</th>
+									{hosted && <th>Điểm danh</th>}
+									{hosted && hasTest && <th>Bài test</th>}
 									{sem.grants_cme && <th>SQĐ</th>}
 									{sem.grants_cme && <th>Tín chỉ</th>}
 									{sem.grants_cme && <th>CME</th>}
@@ -267,7 +311,7 @@ export default function SeminarDetail() {
 							<tbody>
 								{filtered.length === 0 ? (
 									<tr>
-										<td colSpan={11}>
+										<td colSpan={13}>
 											<div className={styles.emptyState}>
 												<div className={styles.emptyDesc}>Chưa có người nào</div>
 											</div>
@@ -287,6 +331,7 @@ export default function SeminarDetail() {
 											<td>
 												{p.title_prefix ? `${p.title_prefix} ` : ''}
 												{p.full_name}
+												{p.phone && <div className={styles.muted}>{p.phone}</div>}
 												{p.is_foreign && (
 													<Badge
 														tone='amber'
@@ -303,6 +348,24 @@ export default function SeminarDetail() {
 													p.user_department_name ||
 													p.department_raw || <span className={styles.muted}>—</span>}
 											</td>
+											{hosted && (
+												<td>
+													{p.checked_in_at ? (
+														<Badge tone='green'>{formatDateTimeVN(p.checked_in_at)}</Badge>
+													) : (
+														<span className={styles.muted}>—</span>
+													)}
+												</td>
+											)}
+											{hosted && hasTest && (
+												<td>
+													{p.test_submitted_at ? (
+														`${p.test_correct}/${p.test_total}`
+													) : (
+														<span className={styles.muted}>—</span>
+													)}
+												</td>
+											)}
 											{sem.grants_cme && (
 												<td className={styles.mono}>
 													{p.cme_certificate_no || <span className={styles.muted}>—</span>}
@@ -398,6 +461,31 @@ export default function SeminarDetail() {
 				/>
 			)}
 
+			{regQrOpen && sem && (
+				<SeminarRegistrationQrModal
+					seminar={sem}
+					onClose={() => {
+						setRegQrOpen(false);
+						if (searchParams.has('qr')) setSearchParams({}, { replace: true });
+					}}
+				/>
+			)}
+
+			{ticketScanOpen && sem && (
+				<TicketCheckInModal
+					seminarId={sem.id}
+					onClose={() => setTicketScanOpen(false)}
+				/>
+			)}
+
+			{testOpen && sem && (
+				<SeminarTestModal
+					seminar={sem}
+					onClose={() => setTestOpen(false)}
+					onSaved={d.refresh}
+				/>
+			)}
+
 			{importOpen && sem && (
 				<ParticipantImportModal
 					seminarId={sem.id}
@@ -411,14 +499,15 @@ export default function SeminarDetail() {
 
 			{issueOpen && sem && (
 				<IssueCmeModal
-					targets={selected}
+					targets={issuable}
+					notEligible={notEligible}
 					defaultYear={sem.event_year}
 					registerLastSeq={null}
 					loading={d.loading}
 					onClose={() => setIssueOpen(false)}
 					onConfirm={async (year) => {
 						const ok = await d.issue(
-							selected.filter((p) => p.cme_seq == null).map((p) => p.id),
+							issuable.map((p) => p.id),
 							year,
 						);
 						if (ok) {

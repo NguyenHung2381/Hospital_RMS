@@ -34,6 +34,10 @@ const TopicStatusLookup = lazy(
 const TopicLibrary = lazy(
 	() => import('../../features/public/pages/TopicLibrary'),
 );
+const SeminarRegisterPublic = lazy(
+	() => import('../../features/public/pages/SeminarRegisterPublic'),
+);
+const SeminarTicket = lazy(() => import('../../features/public/pages/SeminarTicket'));
 const NotFound = lazy(() => import('../../shared/pages/NotFound'));
 
 export const publicRoutes: RouteObject[] = [
@@ -120,6 +124,24 @@ export const publicRoutes: RouteObject[] = [
 		element: (
 			<LazyRoute title='Thư viện đề tài'>
 				<TopicLibrary />
+			</LazyRoute>
+		),
+	},
+	{
+		// Link trong QR đăng ký hội nghị (seminars.public_token)
+		path: '/hoi-nghi/:token',
+		element: (
+			<LazyRoute title='Đăng ký hội nghị'>
+				<SeminarRegisterPublic />
+			</LazyRoute>
+		),
+	},
+	{
+		// Vé QR cá nhân: BTC quét để điểm danh, người tham dự mở để làm bài test
+		path: '/hoi-nghi/ve/:code',
+		element: (
+			<LazyRoute title='Vé hội nghị'>
+				<SeminarTicket />
 			</LazyRoute>
 		),
 	},
