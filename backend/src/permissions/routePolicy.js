@@ -34,6 +34,10 @@ module.exports = {
 		[`POST ${API}/public/topic-registration`]: 'Cổng công khai — đăng ký đề tài (có captcha)',
 		[`GET ${API}/public/topics/:id/status`]: 'Cổng công khai — tra cứu trạng thái đề tài',
 		[`GET ${API}/public/featured-topics`]: 'Cổng công khai — đề tài tiêu biểu',
+		[`GET ${API}/public/seminars/:token`]: 'Cổng công khai — hội nghị theo link QR (token 128-bit, có rate-limit)',
+		[`POST ${API}/public/seminars/:token/register`]: 'Cổng công khai — đăng ký hội nghị qua QR (có captcha, rate-limit)',
+		[`GET ${API}/public/seminar-tickets/:code`]: 'Cổng công khai — xem vé QR (mã vé 128-bit, có rate-limit)',
+		[`POST ${API}/public/seminar-tickets/:code/test`]: 'Cổng công khai — nộp bài test cuối buổi bằng mã vé (có rate-limit)',
 	},
 
 	// ─── Chỉ cần đăng nhập ───────────────────────────────────────────────────
