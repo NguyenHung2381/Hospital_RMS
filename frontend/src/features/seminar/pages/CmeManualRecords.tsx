@@ -4,6 +4,7 @@ import {
 	CheckSvg,
 	ChevLSvg,
 	ChevRSvg,
+	DownloadSvg,
 	EditSvg,
 	InfoSvg,
 	PaperclipSvg,
@@ -15,19 +16,22 @@ import {
 } from '@/assets/icons';
 import AdminLayout from '../../../layouts/AdminLayout';
 import { useRealtimeUpdate } from '../../../layouts/hooks/useRealtime';
-import { Badge, FileDropzone, Modal } from '@/shared/components';
+import { Badge, FileDropzone, Modal, Pagination, SearchableSelect } from '@/shared/components';
 import { InlineLoading } from '../../../shared/components/Loading';
 import { apiClient } from '../../../shared/api/axios';
 import {
 	addCmeRecordEvidence,
 	createCmeRecord,
 	deleteCmeRecord,
+	downloadCmeRecordImportTemplate,
+	exportCmeRecordsExcel,
 	getCmeCreditCategories,
 	getCmeRecords,
 	importCmeRecordsExcel,
 	updateCmeRecord,
 } from '../api/cmeRecordApi';
 import { useSeminarPerms } from '../utils/perms';
+import { saveBlob } from '../utils/saveBlob';
 import {
 	EMPTY_CME_RECORD_FORM,
 	type CmeCreditCategory,
@@ -41,6 +45,7 @@ const THIS_YEAR = new Date().getFullYear();
 const MIN_YEAR = 2000;
 const MAX_YEAR = THIS_YEAR + 1;
 const NO_CATEGORY = '__none__';
+const PAGE_SIZE_OPTIONS = [10, 20, 50, 100] as const;
 
 /** Chọn năm dạng ‹ 2026 › — bấm mũi tên, phím ↑/↓ hoặc gõ thẳng năm, thay cho dropdown dài. */
 function YearStepper({ value, onChange }: { value: number; onChange: (y: number) => void }) {
@@ -119,6 +124,7 @@ function formatCredits(n: number): string {
 interface SimpleUser {
 	id: string;
 	full_name: string;
+	staff_number?: string | number | null;
 }
 
 function suggestCredits(category: CmeCreditCategory | undefined): string {
@@ -148,18 +154,26 @@ function RecordFormModal({
 					user_id: record.user_id,
 					category_id: record.category_id ?? '',
 					title: record.title,
-					activity_date: record.activity_date,
+					activity_date: record.activity_date?.slice(0, 10) ?? '',
+					end_date: record.end_date?.slice(0, 10) ?? '',
+					year: String(record.year),
+					role: record.role ?? '',
+					quantity: record.quantity == null ? '' : String(record.quantity),
 					credits: String(record.credits),
 					note: record.note ?? '',
 				}
 			: EMPTY_CME_RECORD_FORM,
+	);
+	const userOptions = useMemo(
+		() => users.map((u) => ({ id: u.id, name: u.staff_number ? `${u.full_name} (${u.staff_number})` : u.full_name })),
+		[users],
 	);
 	const [busy, setBusy] = useState(false);
 	const [error, setError] = useState('');
 	const [evidence, setEvidence] = useState<File | null>(null);
 
 	const save = async () => {
-		if (!form.user_id || !form.title.trim() || !form.activity_date || !form.credits) return;
+		if (!form.user_id || !form.title.trim() || !form.year || !form.credits) return;
 		setBusy(true);
 		setError('');
 		try {
@@ -192,93 +206,128 @@ function RecordFormModal({
 			}
 		>
 			{error && <div className={styles.fieldError}>{error}</div>}
-			<div className={styles.formGroup}>
-				<label className={styles.formLabel}>Nhân viên *</label>
-				<select
-					className={styles.formInput}
-					value={form.user_id}
-					onChange={(e) => setForm((f) => ({ ...f, user_id: e.target.value }))}
-				>
-					<option value=''>-- Chọn nhân viên --</option>
-					{users.map((u) => (
-						<option key={u.id} value={u.id}>
-							{u.full_name}
-						</option>
-					))}
-				</select>
-			</div>
-			<div className={styles.formGroup}>
-				<label className={styles.formLabel}>Danh mục quy đổi</label>
-				<select
-					className={styles.formInput}
-					value={form.category_id}
-					onChange={(e) => {
-						const catId = e.target.value;
-						const cat = categories.find((c) => c.id === catId);
-						setForm((f) => ({
-							...f,
-							category_id: catId,
-							credits: f.credits || suggestCredits(cat),
-						}));
-					}}
-				>
-					<option value=''>-- Không thuộc danh mục --</option>
-					{categories.map((c) => (
-						<option key={c.id} value={c.id}>
-							{c.name}
-						</option>
-					))}
-				</select>
-			</div>
-			<div className={styles.formGroup}>
-				<label className={styles.formLabel}>Nội dung hoạt động *</label>
-				<input
-					className={styles.formInput}
-					value={form.title}
-					onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
-					placeholder='VD: Tự học chuyên đề X'
-				/>
-			</div>
-			<div className={styles.formGroup}>
-				<label className={styles.formLabel}>Ngày hoạt động *</label>
-				<input
-					type='date'
-					className={styles.formInput}
-					value={form.activity_date}
-					onChange={(e) => setForm((f) => ({ ...f, activity_date: e.target.value }))}
-				/>
-			</div>
-			<div className={styles.formGroup}>
-				<label className={styles.formLabel}>Số tín chỉ *</label>
-				<input
-					type='number'
-					step='0.1'
-					className={styles.formInput}
-					value={form.credits}
-					onChange={(e) => setForm((f) => ({ ...f, credits: e.target.value }))}
-				/>
-			</div>
-			<div className={styles.formGroup}>
-				<label className={styles.formLabel}>Ghi chú</label>
-				<input
-					className={styles.formInput}
-					value={form.note}
-					onChange={(e) => setForm((f) => ({ ...f, note: e.target.value }))}
-				/>
-			</div>
-			<div className={styles.formGroup}>
-				<label className={styles.formLabel}>Minh chứng đính kèm</label>
-				<FileDropzone
-					value={evidence}
-					onChange={setEvidence}
-					hint={record?.evidence_file_url ? 'Chọn file mới để thay minh chứng hiện có' : 'PDF, Word, Excel, ảnh…'}
-					disabled={busy}
-				/>
-				{record?.evidence_file_url && (
-					<div className={styles.modalSub}>
-						Hiện có: <a href={record.evidence_file_url} target='_blank' rel='noreferrer'>{record.evidence_file_name}</a>
-					</div>
-				)}
+			<div className={styles.formGrid}>
+				<div className={`${styles.formGroup} ${styles.full}`}>
+					<label className={styles.formLabel}>Nhân viên *</label>
+					<SearchableSelect
+						options={userOptions}
+						value={form.user_id}
+						onChange={(id) => setForm((f) => ({ ...f, user_id: id }))}
+						placeholder='Gõ tên hoặc MNV để tìm nhân viên'
+					/>
+				</div>
+				<div className={`${styles.formGroup} ${styles.full}`}>
+					<label className={styles.formLabel}>Danh mục quy đổi</label>
+					<select
+						className={styles.formInput}
+						value={form.category_id}
+						onChange={(e) => {
+							const catId = e.target.value;
+							const cat = categories.find((c) => c.id === catId);
+							setForm((f) => ({
+								...f,
+								category_id: catId,
+								credits: f.credits || suggestCredits(cat),
+							}));
+						}}
+					>
+						<option value=''>-- Không thuộc danh mục --</option>
+						{categories.map((c) => (
+							<option key={c.id} value={c.id}>
+								{c.name}
+							</option>
+						))}
+					</select>
+				</div>
+				<div className={`${styles.formGroup} ${styles.full}`}>
+					<label className={styles.formLabel}>Nội dung hoạt động *</label>
+					<input
+						className={styles.formInput}
+						value={form.title}
+						onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
+						placeholder='VD: Tự học chuyên đề X'
+					/>
+				</div>
+				<div className={styles.formGroup}>
+					<label className={styles.formLabel}>Năm *</label>
+					<input
+						type='number'
+						className={styles.formInput}
+						value={form.year}
+						onChange={(e) => setForm((f) => ({ ...f, year: e.target.value }))}
+					/>
+				</div>
+				<div className={styles.formGroup}>
+					<label className={styles.formLabel}>Số tín chỉ *</label>
+					<input
+						type='number'
+						step='0.1'
+						className={styles.formInput}
+						value={form.credits}
+						onChange={(e) => setForm((f) => ({ ...f, credits: e.target.value }))}
+					/>
+				</div>
+				<div className={styles.formGroup}>
+					<label className={styles.formLabel}>Từ ngày</label>
+					<input
+						type='date'
+						className={styles.formInput}
+						value={form.activity_date}
+						onChange={(e) =>
+							setForm((f) => ({ ...f, activity_date: e.target.value, year: e.target.value.slice(0, 4) || f.year }))
+						}
+					/>
+				</div>
+				<div className={styles.formGroup}>
+					<label className={styles.formLabel}>Đến ngày</label>
+					<input
+						type='date'
+						className={styles.formInput}
+						value={form.end_date}
+						onChange={(e) => setForm((f) => ({ ...f, end_date: e.target.value }))}
+					/>
+				</div>
+				<div className={styles.formGroup}>
+					<label className={styles.formLabel}>Vai trò</label>
+					<input
+						className={styles.formInput}
+						value={form.role}
+						onChange={(e) => setForm((f) => ({ ...f, role: e.target.value }))}
+						placeholder='VD: Đại biểu, Báo cáo viên'
+					/>
+				</div>
+				<div className={styles.formGroup}>
+					<label className={styles.formLabel}>Số lượng</label>
+					<input
+						type='number'
+						step='0.1'
+						className={styles.formInput}
+						value={form.quantity}
+						onChange={(e) => setForm((f) => ({ ...f, quantity: e.target.value }))}
+					/>
+				</div>
+				<div className={`${styles.formGroup} ${styles.full}`}>
+					<label className={styles.formLabel}>Ghi chú</label>
+					<input
+						className={styles.formInput}
+						value={form.note}
+						onChange={(e) => setForm((f) => ({ ...f, note: e.target.value }))}
+					/>
+				</div>
+				<div className={`${styles.formGroup} ${styles.full}`}>
+					<label className={styles.formLabel}>Minh chứng đính kèm</label>
+					<FileDropzone
+						value={evidence}
+						onChange={setEvidence}
+						hint={record?.evidence_file_url ? 'Chọn file mới để thay minh chứng hiện có' : 'PDF, Word, Excel, ảnh…'}
+						disabled={busy}
+					/>
+					{record?.evidence_file_url && (
+						<div className={styles.modalSub}>
+							Hiện có: <a href={record.evidence_file_url} target='_blank' rel='noreferrer'>{record.evidence_file_name}</a>
+						</div>
+					)}
+				</div>
 			</div>
 		</Modal>
 	);
@@ -290,6 +339,18 @@ function ImportModal({ onClose, onDone }: { onClose: () => void; onDone: () => v
 	const [error, setError] = useState('');
 	const [preview, setPreview] = useState<CmeRecordImportResult | null>(null);
 	const [result, setResult] = useState<CmeRecordImportResult | null>(null);
+	const [downloading, setDownloading] = useState(false);
+
+	const downloadTemplate = async () => {
+		setDownloading(true);
+		try {
+			saveBlob(await downloadCmeRecordImportTemplate(), 'mau-nhap-ghi-nhan-cme.xlsx');
+		} catch (e) {
+			setError(e instanceof Error ? e.message : 'Tải file mẫu thất bại');
+		} finally {
+			setDownloading(false);
+		}
+	};
 
 	const runDryRun = async (f: File) => {
 		setLoading(true);
@@ -349,6 +410,16 @@ function ImportModal({ onClose, onDone }: { onClose: () => void; onDone: () => v
 							chú. Chỉ nhập các dòng khớp được nhân viên và có đủ ngày + số tín chỉ.
 						</span>
 					</div>
+					<button
+						type='button'
+						className={styles.btnGhost}
+						onClick={downloadTemplate}
+						disabled={downloading}
+						style={{ marginBottom: 12 }}
+					>
+						{downloading ? <span className={styles.spinner} /> : <DownloadSvg />}
+						Tải file mẫu
+					</button>
 					<div className={styles.formGroup}>
 						<label className={styles.formLabel}>File Excel (.xlsx)</label>
 						<FileDropzone
@@ -387,6 +458,8 @@ function ImportModal({ onClose, onDone }: { onClose: () => void; onDone: () => v
 										<th>#</th>
 										<th>Nhân viên</th>
 										<th>Nội dung</th>
+										<th>Năm</th>
+										<th>Vai trò</th>
 										<th>Ngày</th>
 										<th>Tín chỉ</th>
 									</tr>
@@ -400,7 +473,9 @@ function ImportModal({ onClose, onDone }: { onClose: () => void; onDone: () => v
 												{!r.valid && <div className={styles.rowWarn}>Sẽ bị bỏ qua</div>}
 											</td>
 											<td>{r.title}</td>
-											<td>{r.activity_date || '—'}</td>
+											<td>{r.year ?? '—'}</td>
+											<td>{r.role || '—'}</td>
+											<td>{r.activity_date ? `${r.activity_date}${r.end_date ? ` → ${r.end_date}` : ''}` : '—'}</td>
 											<td>{r.credits ?? '—'}</td>
 										</tr>
 									))}
@@ -477,6 +552,19 @@ export default function CmeManualRecords() {
 		});
 	}, [records, search, deptFilter, categoryFilter, evidenceFilter]);
 
+	const [page, setPage] = useState(1);
+	const [pageSize, setPageSize] = useState<number>(20);
+	// Đổi bộ lọc / năm thì quay về trang đầu (điều chỉnh khi render, không dùng effect)
+	const filterKey = `${search}|${deptFilter}|${categoryFilter}|${evidenceFilter}|${year}`;
+	const [prevFilterKey, setPrevFilterKey] = useState(filterKey);
+	if (prevFilterKey !== filterKey) {
+		setPrevFilterKey(filterKey);
+		setPage(1);
+	}
+	const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+	const safePage = Math.min(page, totalPages);
+	const paged = filtered.slice((safePage - 1) * pageSize, safePage * pageSize);
+
 	const totalCredits = filtered.reduce((sum, r) => sum + Number(r.credits || 0), 0);
 	const hasFilter = !!(search || deptFilter || categoryFilter || evidenceFilter);
 	const clearFilters = () => {
@@ -484,6 +572,25 @@ export default function CmeManualRecords() {
 		setDeptFilter('');
 		setCategoryFilter('');
 		setEvidenceFilter('');
+	};
+
+	const [exporting, setExporting] = useState(false);
+	const handleExport = async () => {
+		setExporting(true);
+		try {
+			const blob = await exportCmeRecordsExcel({
+				year: year ?? undefined,
+				search: search.trim() || undefined,
+				department: deptFilter || undefined,
+				category_id: categoryFilter || undefined,
+				evidence: evidenceFilter || undefined,
+			});
+			saveBlob(blob, `ghi-nhan-cme${year ? `-${year}` : ''}.xlsx`);
+		} catch (e) {
+			alert(e instanceof Error ? e.message : 'Xuất Excel thất bại');
+		} finally {
+			setExporting(false);
+		}
 	};
 
 	const handleDelete = async (id: string) => {
@@ -500,6 +607,9 @@ export default function CmeManualRecords() {
 			headerActions={
 				perms.canCme ? (
 					<div style={{ display: 'flex', gap: 8 }}>
+						<button className={styles.btnGhost} onClick={handleExport} disabled={exporting}>
+							{exporting ? <span className={styles.spinner} /> : <DownloadSvg />} Xuất Excel
+						</button>
 						<button className={styles.btnGhost} onClick={() => setShowImport(true)}>
 							<UploadSvg /> Nhập từ Excel
 						</button>
@@ -592,18 +702,25 @@ export default function CmeManualRecords() {
 					<table className={styles.table}>
 						<thead>
 							<tr>
+								<th>STT</th>
+								<th>Mã NV</th>
 								<th>Nhân viên</th>
 								<th>Nội dung hoạt động</th>
-								<th>Danh mục</th>
-								<th>Ngày</th>
+								<th>Năm</th>
+								<th>Nhóm / Loại hình thức</th>
+								<th>Vai trò</th>
+								<th className={styles.thRight}>SL</th>
+								<th>Thời gian</th>
 								<th className={styles.thRight}>Tín chỉ</th>
 								<th className={styles.thCenter}>Minh chứng</th>
 								<th />
 							</tr>
 						</thead>
 						<tbody>
-							{filtered.map((r) => (
+							{paged.map((r, i) => (
 								<tr key={r.id} className={styles.tr}>
+									<td className={styles.tdIdx}>{(safePage - 1) * pageSize + i + 1}</td>
+									<td>{r.staff_number ?? <span className={styles.muted}>—</span>}</td>
 									<td>
 										<div className={styles.cmeCellMain}>{r.user_name}</div>
 										<div className={styles.cmeCellSub}>{r.department_name ?? '—'}</div>
@@ -612,7 +729,9 @@ export default function CmeManualRecords() {
 										<div className={styles.cmeCellMain}>{r.title}</div>
 										{r.note && <div className={styles.cmeCellSub}>{r.note}</div>}
 									</td>
+									<td>{r.year}</td>
 									<td>
+										{r.group_name && <div className={styles.cmeCellSub}>{r.group_name}</div>}
 										{r.category_name ? (
 											<Badge tone='blue' className={styles.cmeCategory} title={r.category_name}>
 												{r.category_name}
@@ -621,7 +740,18 @@ export default function CmeManualRecords() {
 											<span className={styles.muted}>—</span>
 										)}
 									</td>
-									<td className={styles.cmeNowrap}>{formatDateVN(r.activity_date)}</td>
+									<td>{r.role || <span className={styles.muted}>—</span>}</td>
+									<td className={styles.tdRight}>{r.quantity ?? <span className={styles.muted}>—</span>}</td>
+									<td className={styles.cmeNowrap}>
+										{r.activity_date ? (
+											<>
+												{formatDateVN(r.activity_date)}
+												{r.end_date && ` → ${formatDateVN(r.end_date)}`}
+											</>
+										) : (
+											`Năm ${r.year}`
+										)}
+									</td>
 									<td className={styles.tdRight}>
 										<span className={styles.cmeCredits}>{formatCredits(r.credits)}</span>
 									</td>
@@ -660,6 +790,22 @@ export default function CmeManualRecords() {
 							))}
 						</tbody>
 					</table>
+				)}
+
+				{!loading && filtered.length > 0 && (
+					<Pagination
+						page={safePage}
+						totalPages={totalPages}
+						total={filtered.length}
+						rowsPerPage={pageSize}
+						pageSizeOptions={PAGE_SIZE_OPTIONS}
+						onPageChange={setPage}
+						onRowsPerPageChange={(n) => {
+							setPageSize(n);
+							setPage(1);
+						}}
+						itemLabel='bản ghi'
+					/>
 				)}
 			</div>
 

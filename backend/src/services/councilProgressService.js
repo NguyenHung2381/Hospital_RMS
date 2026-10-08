@@ -198,12 +198,12 @@ const upsertReview = async (
 		.input('comment', sql.NVarChar(sql.MAX), sanitizeComment(comment)).query(`
       UPDATE council_progress_reviews
       SET progress_percent = @progress_percent, rating = @rating,
-          comment = @comment, role = @role, updated_at = GETDATE()
+          comment = @comment, role = @role, updated_at = GETDATE(), updated_by = @user_id
       WHERE topic_id = @topic_id AND user_id = @user_id;
       IF @@ROWCOUNT = 0
         INSERT INTO council_progress_reviews
-          (topic_id, user_id, role, progress_percent, rating, comment)
-        VALUES (@topic_id, @user_id, @role, @progress_percent, @rating, @comment);
+          (topic_id, user_id, role, progress_percent, rating, comment, created_by)
+        VALUES (@topic_id, @user_id, @role, @progress_percent, @rating, @comment, @user_id);
     `);
 };
 
@@ -251,12 +251,12 @@ const upsertResult = async (
 		).query(`
       UPDATE council_topic_results
       SET conclusion = @conclusion, general_comment = @general_comment,
-          decided_by = @user_id, updated_at = GETDATE()
+          decided_by = @user_id, updated_at = GETDATE(), updated_by = @user_id
       WHERE topic_id = @topic_id;
       IF @@ROWCOUNT = 0
         INSERT INTO council_topic_results
-          (topic_id, conclusion, general_comment, decided_by, updated_at)
-        VALUES (@topic_id, @conclusion, @general_comment, @user_id, GETDATE());
+          (topic_id, conclusion, general_comment, decided_by, updated_at, created_by, updated_by)
+        VALUES (@topic_id, @conclusion, @general_comment, @user_id, GETDATE(), @user_id, @user_id);
     `);
 };
 

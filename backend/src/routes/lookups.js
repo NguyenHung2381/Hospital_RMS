@@ -199,7 +199,7 @@ router.put(
 );
 
 router.delete('/external-reviewers/:id', authenticate, authorizePermission(['councils', 'delete']), async (req, res, next) => {
-  try { await extReviewerService.remove(req.params.id); return success(res, null, 'Xóa thành công'); } catch (e) { next(e); }
+  try { await extReviewerService.remove(req.params.id, req.user.id); return success(res, null, 'Xóa thành công'); } catch (e) { next(e); }
 });
 
 // Constraint CHK_cat_id yêu cầu id LIKE 'LDT[0-9][0-9]' → LDT01, LDT02, ...

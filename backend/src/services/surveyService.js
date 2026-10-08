@@ -70,7 +70,6 @@ const getById = async (id) => {
 };
 
 const setQuestions = async (surveyId, questions, actorId) => {
-	void actorId;
 	const pool = await getPool();
 	await pool.request().input('survey_id', sql.VarChar(20), surveyId).query('DELETE FROM survey_questions WHERE survey_id = @survey_id');
 	let order = 0;
@@ -83,10 +82,11 @@ const setQuestions = async (surveyId, questions, actorId) => {
 			.input('question_text', sql.NVarChar(500), q.question_text)
 			.input('question_type', sql.VarChar(20), q.question_type)
 			.input('options', sql.NVarChar(sql.MAX), options)
+			.input('actor_id', sql.VarChar(20), actorId || null)
 			.input('sort_order', sql.Int, order).query(`
         DECLARE @new_id VARCHAR(20) = 'CH' + LEFT(REPLACE(NEWID(),'-',''), 18);
-        INSERT INTO survey_questions (id, survey_id, question_text, question_type, options, sort_order)
-        VALUES (@new_id, @survey_id, @question_text, @question_type, @options, @sort_order);
+        INSERT INTO survey_questions (id, survey_id, question_text, question_type, options, sort_order, created_by)
+        VALUES (@new_id, @survey_id, @question_text, @question_type, @options, @sort_order, @actor_id);
       `);
 		order += 1;
 	}
@@ -262,8 +262,8 @@ const submitResponse = async (surveyId, answers, actor) => {
 		.input('user_id', sql.VarChar(20), actor.id)
 		.query(`
       DECLARE @new_id VARCHAR(20) = 'PH' + LEFT(REPLACE(NEWID(),'-',''), 18);
-      INSERT INTO survey_responses (id, survey_id, respondent_user_id)
-      VALUES (@new_id, @survey_id, @user_id);
+      INSERT INTO survey_responses (id, survey_id, respondent_user_id, created_by)
+      VALUES (@new_id, @survey_id, @user_id, @user_id);
       SELECT @new_id AS id;
     `)
 		.catch((err) => {

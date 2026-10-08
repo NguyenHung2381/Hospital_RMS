@@ -19,7 +19,11 @@ const toPayload = (form: CmeRecordFormData) => ({
 	user_id: form.user_id,
 	category_id: form.category_id || null,
 	title: form.title,
-	activity_date: form.activity_date,
+	activity_date: form.activity_date || null,
+	end_date: form.end_date || null,
+	year: Number(form.year) || null,
+	role: form.role || null,
+	quantity: form.quantity === '' ? null : Number(form.quantity),
 	credits: Number(form.credits),
 	note: form.note || null,
 });
@@ -44,6 +48,19 @@ export const importCmeRecordsExcel = (file: File, dryRun: boolean) => {
 	form.append('file', file);
 	return apiClient.postForm<CmeRecordImportResult>('/cme-records/import-excel', form);
 };
+
+export const downloadCmeRecordImportTemplate = () => apiClient.postBlob('/cme-records/import-template', {});
+
+export interface CmeRecordExportFilters {
+	year?: number;
+	search?: string;
+	department?: string;
+	category_id?: string;
+	evidence?: 'yes' | 'no';
+}
+
+export const exportCmeRecordsExcel = (filters: CmeRecordExportFilters) =>
+	apiClient.postBlob('/cme-records/export-excel', filters);
 
 export const getCmeCreditCategories = () =>
 	apiClient.get<{ data: CmeCreditCategory[] }>('/cme-credit-categories?limit=0');

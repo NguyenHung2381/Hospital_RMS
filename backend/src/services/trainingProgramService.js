@@ -362,7 +362,7 @@ const reorderLessons = async (programId, linkIds, actorId) => {
 			.input('program_id', sql.VarChar(20), programId)
 			.input('display_order', sql.Int, i)
 			.input('actor_id', sql.VarChar(20), actorId)
-			.query('UPDATE lesson_programs SET display_order = @display_order WHERE id = @id AND program_id = @program_id');
+			.query('UPDATE lesson_programs SET display_order = @display_order, updated_at = GETDATE(), updated_by = @actor_id WHERE id = @id AND program_id = @program_id');
 	}
 	broadcast('update', { entity: 'program_lesson' });
 	return listLessons(programId);
@@ -378,7 +378,7 @@ const updateLessonLink = async (linkId, data, actorId) => {
 		.input('id', sql.VarChar(20), linkId)
 		.input('display_order', sql.Int, data.display_order)
 		.input('actor_id', sql.VarChar(20), actorId)
-		.query('UPDATE lesson_programs SET display_order = @display_order WHERE id = @id');
+		.query('UPDATE lesson_programs SET display_order = @display_order, updated_at = GETDATE(), updated_by = @actor_id WHERE id = @id');
 	broadcast('update', { entity: 'program_lesson' });
 };
 

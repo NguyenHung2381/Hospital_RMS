@@ -428,7 +428,7 @@ const updateRegisterSeq = async (year, lastSeq, actorId) => {
       MERGE cme_year_register AS t
       USING (SELECT @year AS y) AS s ON t.[year] = s.y
       WHEN MATCHED THEN UPDATE SET last_seq = @seq, updated_at = GETDATE(), updated_by = @actor_id
-      WHEN NOT MATCHED THEN INSERT ([year], last_seq, updated_by) VALUES (@year, @seq, @actor_id);
+      WHEN NOT MATCHED THEN INSERT ([year], last_seq, created_by, updated_by) VALUES (@year, @seq, @actor_id, @actor_id);
     `);
 	broadcast('update', { entity: 'seminar' });
 	return { year: y, last_seq: seq };

@@ -52,7 +52,7 @@ const update = async (key, value, actorId) => {
       MERGE system_settings AS tgt
       USING (SELECT @key AS setting_key) AS src ON tgt.setting_key = src.setting_key
       WHEN MATCHED THEN UPDATE SET value = @value, updated_at = GETDATE(), updated_by = @actor_id
-      WHEN NOT MATCHED THEN INSERT (setting_key, value, updated_by) VALUES (@key, @value, @actor_id);
+      WHEN NOT MATCHED THEN INSERT (setting_key, value, created_by, updated_by) VALUES (@key, @value, @actor_id, @actor_id);
     `);
 	broadcast('update', { entity: 'system_setting' });
 	return getById(key);

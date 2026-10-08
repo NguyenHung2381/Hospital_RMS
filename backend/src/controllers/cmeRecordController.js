@@ -73,4 +73,39 @@ const importExcel = async (req, res, next) => {
 	}
 };
 
-module.exports = { getAll, getById, createOne, updateOne, removeOne, addEvidence, importExcel };
+const sendWorkbook = async (res, wb, fileName) => {
+	res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+	res.setHeader('Content-Disposition', `attachment; filename*=UTF-8''${encodeURIComponent(fileName)}`);
+	await wb.xlsx.write(res);
+	res.end();
+};
+
+const importTemplate = async (req, res, next) => {
+	try {
+		return sendWorkbook(res, await cmeRecordImportService.templateWorkbook(), 'mau-nhap-ghi-nhan-cme.xlsx');
+	} catch (err) {
+		next(err);
+	}
+};
+
+const exportExcel = async (req, res, next) => {
+	try {
+		const { year, search, department, category_id, evidence } = req.body || {};
+		const wb = await cmeRecordImportService.exportWorkbook({ year, search, department, category_id, evidence });
+		return sendWorkbook(res, wb, `ghi-nhan-cme${year ? `-${year}` : ''}.xlsx`);
+	} catch (err) {
+		next(err);
+	}
+};
+
+module.exports = {
+	getAll,
+	getById,
+	createOne,
+	updateOne,
+	removeOne,
+	addEvidence,
+	importExcel,
+	importTemplate,
+	exportExcel,
+};

@@ -194,8 +194,7 @@ const getPaper = async (id) => {
 };
 
 const setPaperQuestions = async (paperId, questionIds, actorId) => {
-	void actorId;
-	const pool = await getPool();
+		const pool = await getPool();
 	const paperType = (
 		await pool.request().input('id', sql.VarChar(20), paperId).query('SELECT paper_type FROM exam_papers WHERE id = @id')
 	).recordset[0]?.paper_type;
@@ -208,12 +207,13 @@ const setPaperQuestions = async (paperId, questionIds, actorId) => {
 			.input('paper_id', sql.VarChar(20), paperId)
 			.input('question_id', sql.VarChar(20), ids[i])
 			.input('only_type', sql.VarChar(20), onlyType)
+			.input('actor_id', sql.VarChar(20), actorId || null)
 			.input('sort_order', sql.Int, i).query(`
         IF EXISTS (SELECT 1 FROM question_bank WHERE id = @question_id AND (@only_type IS NULL OR question_type = @only_type))
         BEGIN
           DECLARE @new_id VARCHAR(20) = 'EPQ' + LEFT(REPLACE(NEWID(),'-',''), 17);
-          INSERT INTO exam_paper_questions (id, paper_id, question_id, sort_order)
-          VALUES (@new_id, @paper_id, @question_id, @sort_order);
+          INSERT INTO exam_paper_questions (id, paper_id, question_id, sort_order, created_by)
+          VALUES (@new_id, @paper_id, @question_id, @sort_order, @actor_id);
         END
       `);
 	}
@@ -368,7 +368,8 @@ const finalizeAttemptIfComplete = async (attemptId, actorId) => {
 		.request()
 		.input('id', sql.VarChar(20), attemptId)
 		.input('manual_score', sql.Decimal(6, 2), total)
-		.query("UPDATE exam_attempts SET manual_score = @manual_score, status = 'graded' WHERE id = @id");
+		.input('actor_id', sql.VarChar(20), actorId || null)
+		.query("UPDATE exam_attempts SET manual_score = @manual_score, status = 'graded', updated_at = GETDATE(), updated_by = @actor_id WHERE id = @id");
 
 	if (attempt) {
 		await courseService.upsertGrade(attempt.enrollment_id, attempt.subject_id, { score: total }, actorId);
@@ -436,9 +437,10 @@ const startAttempt = async (paperId, actor) => {
 		const created = await pool
 			.request()
 			.input('paper_id', sql.VarChar(20), paperId)
-			.input('enrollment_id', sql.VarChar(20), info.enrollment_id).query(`
+			.input('enrollment_id', sql.VarChar(20), info.enrollment_id)
+			.input('actor_id', sql.VarChar(20), actor.id).query(`
         DECLARE @new_id VARCHAR(20) = 'EA' + LEFT(REPLACE(NEWID(),'-',''), 18);
-        INSERT INTO exam_attempts (id, paper_id, enrollment_id) VALUES (@new_id, @paper_id, @enrollment_id);
+        INSERT INTO exam_attempts (id, paper_id, enrollment_id, created_by) VALUES (@new_id, @paper_id, @enrollment_id, @actor_id);
         SELECT @new_id AS id;
       `);
 		attemptId = created.recordset[0].id;
@@ -481,9 +483,10 @@ const submitAttempt = async (paperId, answers, actor) => {
 			.request()
 			.input('paper_id', sql.VarChar(20), paperId)
 			.input('enrollment_id', sql.VarChar(20), info.enrollment_id)
+			.input('actor_id', sql.VarChar(20), actor.id)
 			.input('limit_sec', sql.Int, (Number(info.duration_minutes) || 0) * 60 + SUBMIT_GRACE_SEC).query(`
 				DECLARE @r TABLE (id VARCHAR(20), late BIT);
-				UPDATE exam_attempts SET status = 'submitted', submitted_at = GETDATE()
+				UPDATE exam_attempts SET status = 'submitted', submitted_at = GETDATE(), updated_at = GETDATE(), updated_by = @actor_id
 				OUTPUT INSERTED.id,
 				       CASE WHEN @limit_sec > ${SUBMIT_GRACE_SEC}
 				             AND INSERTED.submitted_at > DATEADD(SECOND, @limit_sec, INSERTED.started_at)
@@ -539,8 +542,10 @@ const submitAttempt = async (paperId, answers, actor) => {
 		.request()
 		.input('id', sql.VarChar(20), attempt.id)
 		.input('auto_score', sql.Decimal(6, 2), autoScore)
+		.input('actor_id', sql.VarChar(20), actor.id)
 		.input('status', sql.VarChar(20), hasEssay ? 'submitted' : 'graded').query(`
-      UPDATE exam_attempts SET submitted_at = GETDATE(), auto_score = @auto_score, status = @status WHERE id = @id
+      UPDATE exam_attempts SET submitted_at = GETDATE(), auto_score = @auto_score, status = @status,
+        updated_at = GETDATE(), updated_by = @actor_id WHERE id = @id
     `);
 
 	broadcast('update', { entity: 'exam_attempt' });

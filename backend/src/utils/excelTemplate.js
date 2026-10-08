@@ -21,19 +21,42 @@ const colLetter = (n) => {
  * Tạo sheet: dòng 1 tiêu đề, dòng 2 mô tả, dòng 3 header. Dữ liệu bắt đầu từ dòng 4.
  * columns: [{ key, header, width }]
  */
-const buildSheet = (wb, { sheetName, title, subtitle, columns }) => {
-	const ws = wb.addWorksheet(sheetName, { views: [{ state: 'frozen', ySplit: 3 }] });
+const buildSheet = (wb, { sheetName, title, subtitle, columns, letterhead = false }) => {
+	// letterhead: thêm 3 dòng đầu (tên bệnh viện + quốc hiệu) — dòng tiêu đề/header/dữ liệu dịch xuống
+	const top = letterhead ? 3 : 0;
+	const headRow = top + 3;
+	const ws = wb.addWorksheet(sheetName, { views: [{ state: 'frozen', ySplit: headRow }] });
+	ws.headRow = headRow;
 	ws.columns = columns.map((c) => ({ key: c.key, width: c.width }));
 
-	ws.mergeCells(1, 1, 1, columns.length);
-	ws.getCell(1, 1).value = title;
-	ws.getCell(1, 1).font = { bold: true, size: 14 };
-	ws.mergeCells(2, 1, 2, columns.length);
-	ws.getCell(2, 1).value = subtitle;
-	ws.getCell(2, 1).font = { italic: true, size: 10, color: { argb: 'FF6B7280' } };
-	ws.getCell(2, 1).alignment = { wrapText: true, vertical: 'top' };
+	if (letterhead) {
+		// Quốc hiệu căn giữa ở khoảng giữa-phải bảng; đơn vị chủ quản căn giữa bên trái
+		const rEnd = columns.length - 4;
+		const rStart = Math.max(6, rEnd - 3);
+		const block = (c1, c2, row, text, font) => {
+			ws.mergeCells(row, c1, row, c2);
+			const cell = ws.getCell(row, c1);
+			cell.value = text;
+			cell.font = font;
+			cell.alignment = { horizontal: 'center', vertical: 'middle' };
+		};
+		block(1, 4, 1, 'SỞ Y TẾ NGHỆ AN', { size: 11 });
+		block(1, 4, 2, 'BỆNH VIỆN HỮU NGHỊ ĐA KHOA NGHỆ AN', { bold: true, size: 11 });
+		block(rStart, rEnd, 1, 'CỘNG HOÀ XÃ HỘI CHỦ NGHĨA VIỆT NAM', { bold: true, size: 11 });
+		block(rStart, rEnd, 2, 'Độc lập - Tự do - Hạnh phúc', { bold: true, size: 11, underline: true });
+		[1, 2, 3].forEach((r) => (ws.getRow(r).height = 22));
+	}
 
-	const head = ws.getRow(3);
+	ws.mergeCells(top + 1, 1, top + 1, columns.length);
+	ws.getCell(top + 1, 1).value = title;
+	ws.getCell(top + 1, 1).font = { bold: true, size: 14 };
+	ws.getCell(top + 1, 1).alignment = letterhead ? { horizontal: 'center', vertical: 'middle' } : undefined;
+	ws.mergeCells(top + 2, 1, top + 2, columns.length);
+	ws.getCell(top + 2, 1).value = subtitle;
+	ws.getCell(top + 2, 1).font = { italic: true, size: 10, color: { argb: 'FF6B7280' } };
+	ws.getCell(top + 2, 1).alignment = { wrapText: true, vertical: 'top', ...(letterhead && { horizontal: 'center' }) };
+
+	const head = ws.getRow(headRow);
 	columns.forEach((c, i) => {
 		const cell = head.getCell(i + 1);
 		cell.value = c.header;
@@ -46,7 +69,7 @@ const buildSheet = (wb, { sheetName, title, subtitle, columns }) => {
 	return ws;
 };
 
-const styleBody = (ws, fromRow = 4) => {
+const styleBody = (ws, fromRow = (ws.headRow || 3) + 1) => {
 	for (let r = fromRow; r <= ws.rowCount; r++) {
 		ws.getRow(r).eachCell({ includeEmpty: true }, (cell) => {
 			cell.border = border;
@@ -62,7 +85,7 @@ const styleBody = (ws, fromRow = 4) => {
  * - { range }: danh sách dài lấy từ sheet khác (xem addLookupSheet). freeText=true
  *   → tắt hẳn cảnh báo: vừa chọn được từ danh sách, vừa gõ tự do (VD người ngoài viện).
  */
-const addDropdowns = (ws, columns, dropdowns, fromRow = 4) => {
+const addDropdowns = (ws, columns, dropdowns, fromRow = (ws.headRow || 3) + 1) => {
 	const toRow = Math.max(ws.rowCount, fromRow) + DROPDOWN_EXTRA_ROWS;
 	for (const [key, spec] of Object.entries(dropdowns)) {
 		const idx = columns.findIndex((c) => c.key === key);

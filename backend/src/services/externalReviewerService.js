@@ -98,7 +98,8 @@ const update = async (id, data, actorId) => {
 	}
 	if (!sets.length) return getById(id);
 
-	await req.query(`UPDATE external_reviewers SET ${sets.join(', ')} WHERE id = @id`);
+	req.input('actor_id', sql.VarChar(20), actorId);
+	await req.query(`UPDATE external_reviewers SET ${sets.join(', ')}, updated_at = GETDATE(), updated_by = @actor_id WHERE id = @id`);
 	await personService.syncPerson('external_reviewers', id, { actorId });
 	const reviewer = await getById(id);
 	broadcast('update', { entity: 'external_reviewer' });
@@ -107,7 +108,7 @@ const update = async (id, data, actorId) => {
 
 // Xoá cứng chỉ khi chưa từng ngồi ghế nào; nếu đã có lịch sử, chỉ vô hiệu hoá
 // (is_active = 0) để giữ nguyên tên hiển thị trên các hội đồng cũ.
-const remove = async (id) => {
+const remove = async (id, actorId) => {
 	const pool = await getPool();
 	const used = await pool
 		.request()
@@ -117,7 +118,8 @@ const remove = async (id) => {
 		await pool
 			.request()
 			.input('id', sql.VarChar(20), id)
-			.query('UPDATE external_reviewers SET is_active = 0 WHERE id = @id');
+			.input('actor_id', sql.VarChar(20), actorId || null)
+			.query('UPDATE external_reviewers SET is_active = 0, updated_at = GETDATE(), updated_by = @actor_id WHERE id = @id');
 	} else {
 		await pool
 			.request()

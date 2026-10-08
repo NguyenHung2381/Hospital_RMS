@@ -43,14 +43,15 @@ const getById = async (fileId) => {
 };
 
 // Soft-delete trong DB + xoá file vật lý (bỏ qua lỗi nếu file không tồn tại).
-const softDelete = async (fileId) => {
+const softDelete = async (fileId, actorId) => {
 	const pool = await getPool();
 	const file = await getById(fileId);
 	if (!file) return;
 	await pool
 		.request()
 		.input('id', sql.VarChar(20), fileId)
-		.query('UPDATE training_files SET is_deleted = 1 WHERE id = @id');
+		.input('actor_id', sql.VarChar(20), actorId || null)
+		.query('UPDATE training_files SET is_deleted = 1, updated_at = GETDATE(), updated_by = @actor_id WHERE id = @id');
 	if (file.file_url?.startsWith('/uploads/')) {
 		const diskPath = path.join(UPLOADS_ROOT, file.file_url.replace('/uploads/', ''));
 		fs.unlink(diskPath, () => {});

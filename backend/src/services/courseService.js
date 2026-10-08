@@ -399,8 +399,8 @@ const registerTrainee = async (courseId, traineeId, actorId, { bypassWindow = fa
       END
       DECLARE @new_id VARCHAR(20);
       EXEC sp_gen_course_enrollment_id @actor_id = @actor_id, @new_id = @new_id OUTPUT;
-      INSERT INTO course_enrollments (id, course_id, trainee_id, status)
-      VALUES (@new_id, @course_id, @trainee_id, 'pending');
+      INSERT INTO course_enrollments (id, course_id, trainee_id, status, created_by)
+      VALUES (@new_id, @course_id, @trainee_id, 'pending', @actor_id);
       SELECT @new_id AS id;
     `)
 		.catch((err) => {
@@ -526,7 +526,8 @@ const decideEnrollment = async (enrollmentId, decision, actorId, note) => {
 		.input('note', sql.NVarChar(500), note || null)
 		.query(`
       UPDATE course_enrollments
-      SET status = @status, decided_by = @decided_by, decided_at = GETDATE(), note = @note
+      SET status = @status, decided_by = @decided_by, decided_at = GETDATE(), note = @note,
+          updated_at = GETDATE(), updated_by = @decided_by
       WHERE id = @id
     `);
 
@@ -847,8 +848,8 @@ const setAttendance = async (sessionId, enrollmentId, status, note, actorId) => 
       BEGIN
         DECLARE @new_id VARCHAR(20);
         EXEC sp_gen_attendance_id @actor_id = @actor_id, @new_id = @new_id OUTPUT;
-        INSERT INTO attendance (id, session_id, enrollment_id, status, note, updated_by, updated_at)
-        VALUES (@new_id, @session_id, @enrollment_id, @status, @note, @actor_id, GETDATE());
+        INSERT INTO attendance (id, session_id, enrollment_id, status, note, created_by, updated_by, updated_at)
+        VALUES (@new_id, @session_id, @enrollment_id, @status, @note, @actor_id, @actor_id, GETDATE());
       END
     `);
 	broadcast('update', { entity: 'attendance' });
@@ -924,8 +925,8 @@ const checkInSelf = async (token, deviceId, actor) => {
         BEGIN
           DECLARE @new_id VARCHAR(20);
           EXEC sp_gen_attendance_id @actor_id = @actor_id, @new_id = @new_id OUTPUT;
-          INSERT INTO attendance (id, session_id, enrollment_id, status, method, checked_in_at, checkin_device_id, updated_by, updated_at)
-          VALUES (@new_id, @session_id, @enrollment_id, 'present', 'qr', GETDATE(), @device_id, @actor_id, GETDATE());
+          INSERT INTO attendance (id, session_id, enrollment_id, status, method, checked_in_at, checkin_device_id, created_by, updated_by, updated_at)
+          VALUES (@new_id, @session_id, @enrollment_id, 'present', 'qr', GETDATE(), @device_id, @actor_id, @actor_id, GETDATE());
         END
         SELECT CAST(0 AS BIT) AS device_taken;
       END
@@ -1212,7 +1213,8 @@ const revokeCertificate = async (certId, reason, actorId) => {
 		.input('actor_id', sql.VarChar(20), actorId)
 		.query(`
       UPDATE certificates
-      SET status = 'revoked', revoked_at = GETDATE(), revoked_by = @actor_id, revoke_reason = @reason
+      SET status = 'revoked', revoked_at = GETDATE(), revoked_by = @actor_id, revoke_reason = @reason,
+          updated_at = GETDATE(), updated_by = @actor_id
       WHERE id = @id AND status <> 'revoked';
       SELECT @@ROWCOUNT AS affected;
     `);

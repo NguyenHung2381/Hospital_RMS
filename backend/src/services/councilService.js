@@ -302,7 +302,7 @@ const updateMember = async (councilId, memberId, data, actorId) => {
 	if (!sets.length) return getMemberById(memberId);
 
 	await req.query(
-		`EXEC sp_set_actor @actor_id; UPDATE council_members SET ${sets.join(', ')} WHERE id = @id AND council_id = @council_id`,
+		`EXEC sp_set_actor @actor_id; UPDATE council_members SET ${sets.join(', ')}, updated_at = GETDATE(), updated_by = @actor_id WHERE id = @id AND council_id = @council_id`,
 	);
 	broadcast('update', { entity: 'council' });
 	return getMemberById(memberId);

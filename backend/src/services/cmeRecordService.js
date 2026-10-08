@@ -11,12 +11,13 @@ const { paging } = require('../utils/paging');
 const trainingFileService = require('./trainingFileService');
 
 const recordSelect = `
-  SELECT r.*, u.full_name AS user_name, u.department_id, d.name AS department_name,
-         c.name AS category_name, f.file_name AS evidence_file_name, f.file_url AS evidence_file_url
+  SELECT r.*, u.full_name AS user_name, u.staff_number, u.department_id, d.name AS department_name,
+         c.name AS category_name, g.name AS group_name, f.file_name AS evidence_file_name, f.file_url AS evidence_file_url
   FROM cme_records r
   JOIN users u ON u.id = r.user_id
   LEFT JOIN departments d ON d.id = u.department_id
   LEFT JOIN cme_credit_categories c ON c.id = r.category_id
+  LEFT JOIN cme_credit_groups g ON g.id = c.group_id
   LEFT JOIN training_files f ON f.id = r.evidence_file_id AND f.is_deleted = 0
 `;
 
@@ -69,10 +70,14 @@ const create = async (data, actorId, { fetch = true } = {}) => {
 		.input('activity_date', sql.Date, data.activity_date)
 		.input('credits', sql.Decimal(6, 2), Number(data.credits))
 		.input('note', sql.NVarChar(500), data.note || null)
+		.input('role', sql.NVarChar(100), data.role || null)
+		.input('quantity', sql.Decimal(8, 2), data.quantity ?? null)
+		.input('end_date', sql.Date, data.end_date || null)
+		.input('year', sql.Int, Number(data.year) || new Date(data.activity_date).getUTCFullYear())
 		.query(`
       DECLARE @new_id VARCHAR(20) = 'CM' + LEFT(REPLACE(NEWID(),'-',''), 18);
-      INSERT INTO cme_records (id, user_id, category_id, title, activity_date, credits, note, created_by)
-      VALUES (@new_id, @user_id, @category_id, @title, @activity_date, @credits, @note, @actor_id);
+      INSERT INTO cme_records (id, user_id, category_id, title, activity_date, end_date, year, role, quantity, credits, note, created_by)
+      VALUES (@new_id, @user_id, @category_id, @title, @activity_date, @end_date, @year, @role, @quantity, @credits, @note, @actor_id);
       SELECT @new_id AS id;
     `);
 	const id = result.recordset[0].id;
@@ -92,7 +97,13 @@ const update = async (id, data, actorId) => {
 		activity_date: sql.Date,
 		credits: sql.Decimal(6, 2),
 		note: sql.NVarChar(500),
+		role: sql.NVarChar(100),
+		quantity: sql.Decimal(8, 2),
+		end_date: sql.Date,
 	};
+	// year là cột thường: đổi ngày hoạt động thì cập nhật theo, trừ khi truyền year rõ ràng
+	if (data.year === undefined && data.activity_date) data = { ...data, year: new Date(data.activity_date).getUTCFullYear() };
+	fieldMap.year = sql.Int;
 	for (const [field, type] of Object.entries(fieldMap)) {
 		if (data[field] !== undefined) {
 			sets.push(`${field} = @${field}`);

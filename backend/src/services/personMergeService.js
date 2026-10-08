@@ -319,7 +319,7 @@ const mergeCandidate = async (id, { keep, fields = {}, note } = {}, actorId) => 
 				  AND ((person_a_id = @k AND person_b_id = @l) OR (person_a_id = @l AND person_b_id = @k));
 
 				-- cặp chờ giữa hồ sơ bị gộp và người thứ ba → chuyển sang hồ sơ giữ lại (nếu chưa có)
-				INSERT INTO dbo.person_merge_candidates (person_a_id, person_b_id, reason, note)
+				INSERT INTO dbo.person_merge_candidates (person_a_id, person_b_id, reason, note, created_by)
 				SELECT CASE WHEN o.other < @k THEN o.other ELSE @k END, CASE WHEN o.other < @k THEN @k ELSE o.other END,
 				       o.reason, N'Chuyển từ hồ sơ đã gộp ' + @l
 				FROM (SELECT CASE WHEN c.person_a_id = @l THEN c.person_b_id ELSE c.person_a_id END AS other, c.reason
@@ -370,7 +370,8 @@ const rejectCandidate = async (id, note, actorId) => {
 			.input('note', sql.NVarChar(500), note || null)
 			.input('actor', sql.VarChar(20), actorId || null)
 			.query(`UPDATE dbo.person_merge_candidates SET status = 'REJECTED', reviewed_by = @actor,
-			               reviewed_at = SYSDATETIME(), note = COALESCE(@note, note) WHERE id = @id`);
+			               reviewed_at = SYSDATETIME(), note = COALESCE(@note, note),
+			               updated_at = SYSDATETIME(), updated_by = @actor WHERE id = @id`);
 	});
 	broadcast('update', { entity: 'person_merge' });
 	return { id, status: 'REJECTED' };
@@ -389,7 +390,9 @@ const reopenCandidate = async (id, actorId) => {
 		if (p.recordset[0].n !== 2) throw httpErr(409, 'Một trong hai hồ sơ đã được gộp — không thể mở lại.');
 		await new sql.Request(tx)
 			.input('id', sql.Int, id)
-			.query(`UPDATE dbo.person_merge_candidates SET status = 'PENDING', reviewed_by = NULL, reviewed_at = NULL WHERE id = @id`);
+			.input('actor', sql.VarChar(20), actorId || null)
+			.query(`UPDATE dbo.person_merge_candidates SET status = 'PENDING', reviewed_by = NULL, reviewed_at = NULL,
+			               updated_at = SYSDATETIME(), updated_by = @actor WHERE id = @id`);
 	});
 	broadcast('update', { entity: 'person_merge' });
 	return { id, status: 'PENDING' };

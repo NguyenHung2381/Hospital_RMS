@@ -73,7 +73,7 @@ const getDefinition = async (id) => {
 	return def;
 };
 
-const setSteps = async (definitionId, steps) => {
+const setSteps = async (definitionId, steps, actorId) => {
 	const pool = await getPool();
 	await pool.request().input('definition_id', sql.VarChar(20), definitionId).query('DELETE FROM workflow_steps WHERE definition_id = @definition_id');
 	let order = 0;
@@ -86,10 +86,11 @@ const setSteps = async (definitionId, steps) => {
 			.input('step_order', sql.Int, order)
 			.input('name', sql.NVarChar(255), s.name)
 			.input('approver_role_id', sql.VarChar(20), s.approver_role_id || null)
-			.input('sla_days', sql.Int, s.sla_days || null).query(`
+			.input('sla_days', sql.Int, s.sla_days || null)
+			.input('actor_id', sql.VarChar(20), actorId || null).query(`
         DECLARE @new_id VARCHAR(20) = 'WFS' + LEFT(REPLACE(NEWID(),'-',''), 17);
-        INSERT INTO workflow_steps (id, definition_id, step_order, name, approver_role_id, sla_days)
-        VALUES (@new_id, @definition_id, @step_order, @name, @approver_role_id, @sla_days);
+        INSERT INTO workflow_steps (id, definition_id, step_order, name, approver_role_id, sla_days, created_by)
+        VALUES (@new_id, @definition_id, @step_order, @name, @approver_role_id, @sla_days, @actor_id);
       `);
 	}
 	broadcast('update', { entity: 'workflow_definition' });
@@ -113,7 +114,7 @@ const createDefinition = async (data, actorId) => {
     `);
 	const id = result.recordset[0].id;
 	if (data.is_active) await deactivateOthers(id, data.resource);
-	if (Array.isArray(data.steps)) await setSteps(id, data.steps);
+	if (Array.isArray(data.steps)) await setSteps(id, data.steps, actorId);
 	broadcast('update', { entity: 'workflow_definition' });
 	return getDefinition(id);
 };
@@ -143,7 +144,7 @@ const updateDefinition = async (id, data, actorId) => {
 	}
 	await req.query(`UPDATE workflow_definitions SET ${sets.join(', ')} WHERE id = @id`);
 	if (data.is_active) await deactivateOthers(id, current.resource);
-	if (Array.isArray(data.steps)) await setSteps(id, data.steps);
+	if (Array.isArray(data.steps)) await setSteps(id, data.steps, actorId);
 	broadcast('update', { entity: 'workflow_definition' });
 	return getDefinition(id);
 };
@@ -168,9 +169,10 @@ const getOrCreateInstance = async (definition, entityId, actorId) => {
 	const created = await pool
 		.request()
 		.input('definition_id', sql.VarChar(20), definition.id)
-		.input('entity_id', sql.VarChar(20), entityId).query(`
+		.input('entity_id', sql.VarChar(20), entityId)
+		.input('actor_id', sql.VarChar(20), actorId || null).query(`
       DECLARE @new_id VARCHAR(20) = 'WFI' + LEFT(REPLACE(NEWID(),'-',''), 17);
-      INSERT INTO workflow_instances (id, definition_id, entity_id) VALUES (@new_id, @definition_id, @entity_id);
+      INSERT INTO workflow_instances (id, definition_id, entity_id, created_by) VALUES (@new_id, @definition_id, @entity_id, @actor_id);
       SELECT @new_id AS id;
     `);
 	const instanceId = created.recordset[0].id;
@@ -180,15 +182,15 @@ const getOrCreateInstance = async (definition, entityId, actorId) => {
 			.request()
 			.input('instance_id', sql.VarChar(20), instanceId)
 			.input('step_id', sql.VarChar(20), firstStep.id)
-			.input('assignee_role_id', sql.VarChar(20), firstStep.approver_role_id || null).query(`
+			.input('assignee_role_id', sql.VarChar(20), firstStep.approver_role_id || null)
+			.input('actor_id', sql.VarChar(20), actorId || null).query(`
         DECLARE @new_id VARCHAR(20) = 'WFT' + LEFT(REPLACE(NEWID(),'-',''), 17);
-        INSERT INTO workflow_tasks (id, instance_id, step_id, assignee_role_id)
-        VALUES (@new_id, @instance_id, @step_id, @assignee_role_id);
+        INSERT INTO workflow_tasks (id, instance_id, step_id, assignee_role_id, created_by)
+        VALUES (@new_id, @instance_id, @step_id, @assignee_role_id, @actor_id);
       `);
 	}
 
 	const instRes = await pool.request().input('id', sql.VarChar(20), instanceId).query('SELECT * FROM workflow_instances WHERE id = @id');
-	void actorId;
 	return instRes.recordset[0];
 };
 
@@ -259,7 +261,8 @@ const advance = async (resource, entityId, decision, actor, comment) => {
 		.input('decided_by', sql.VarChar(20), actor.id)
 		.input('comment', sql.NVarChar(sql.MAX), comment || null).query(`
 			DECLARE @r TABLE (id VARCHAR(20));
-			UPDATE workflow_tasks SET status = @status, decided_by = @decided_by, decided_at = GETDATE(), comment = @comment
+			UPDATE workflow_tasks SET status = @status, decided_by = @decided_by, decided_at = GETDATE(), comment = @comment,
+				updated_at = GETDATE(), updated_by = @decided_by
 			OUTPUT INSERTED.id INTO @r
 			WHERE id = @id AND status = 'pending';
 			SELECT COUNT(*) AS n FROM @r;
@@ -274,7 +277,8 @@ const advance = async (resource, entityId, decision, actor, comment) => {
 		await pool
 			.request()
 			.input('id', sql.VarChar(20), instance.id)
-			.query("UPDATE workflow_instances SET status = 'rejected', updated_at = GETDATE() WHERE id = @id");
+			.input('actor_id', sql.VarChar(20), actor.id)
+			.query("UPDATE workflow_instances SET status = 'rejected', updated_at = GETDATE(), updated_by = @actor_id WHERE id = @id");
 		await applyOutcomeToEntity(resource, entityId, 'rejected', actor.id);
 		broadcast('update', { entity: 'workflow_instance' });
 		return { instance_id: instance.id, status: 'rejected', current_step: instance.current_step, total_steps: definition.steps.length };
@@ -285,7 +289,8 @@ const advance = async (resource, entityId, decision, actor, comment) => {
 		await pool
 			.request()
 			.input('id', sql.VarChar(20), instance.id)
-			.query("UPDATE workflow_instances SET status = 'approved', updated_at = GETDATE() WHERE id = @id");
+			.input('actor_id', sql.VarChar(20), actor.id)
+			.query("UPDATE workflow_instances SET status = 'approved', updated_at = GETDATE(), updated_by = @actor_id WHERE id = @id");
 		await applyOutcomeToEntity(resource, entityId, 'approved', actor.id);
 		broadcast('update', { entity: 'workflow_instance' });
 		return { instance_id: instance.id, status: 'approved', current_step: instance.current_step, total_steps: definition.steps.length };
@@ -295,15 +300,17 @@ const advance = async (resource, entityId, decision, actor, comment) => {
 		.request()
 		.input('id', sql.VarChar(20), instance.id)
 		.input('step', sql.Int, nextStep.step_order)
-		.query('UPDATE workflow_instances SET current_step = @step, updated_at = GETDATE() WHERE id = @id');
+		.input('actor_id', sql.VarChar(20), actor.id)
+		.query('UPDATE workflow_instances SET current_step = @step, updated_at = GETDATE(), updated_by = @actor_id WHERE id = @id');
 	await pool
 		.request()
 		.input('instance_id', sql.VarChar(20), instance.id)
 		.input('step_id', sql.VarChar(20), nextStep.id)
-		.input('assignee_role_id', sql.VarChar(20), nextStep.approver_role_id || null).query(`
+		.input('assignee_role_id', sql.VarChar(20), nextStep.approver_role_id || null)
+		.input('actor_id', sql.VarChar(20), actor.id).query(`
       DECLARE @new_id VARCHAR(20) = 'WFT' + LEFT(REPLACE(NEWID(),'-',''), 17);
-      INSERT INTO workflow_tasks (id, instance_id, step_id, assignee_role_id)
-      VALUES (@new_id, @instance_id, @step_id, @assignee_role_id);
+      INSERT INTO workflow_tasks (id, instance_id, step_id, assignee_role_id, created_by)
+      VALUES (@new_id, @instance_id, @step_id, @assignee_role_id, @actor_id);
     `);
 	broadcast('update', { entity: 'workflow_instance' });
 	return { instance_id: instance.id, status: 'in_progress', current_step: nextStep.step_order, total_steps: definition.steps.length };
