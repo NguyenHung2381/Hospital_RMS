@@ -22,7 +22,7 @@
 	flex-wrap: wrap;
 }
 .label {
-	font-size: 12px;
+	font-size: var(--font-size-xs);
 	font-weight: var(--font-weight-semibold);
 	color: var(--color-gray-600);
 }
@@ -49,7 +49,7 @@
 	border-radius: var(--radius-md);
 	background: transparent;
 	font-family: var(--font-body);
-	font-size: 13px;
+	font-size: var(--font-size-compact);
 	font-weight: var(--font-weight-semibold);
 	color: var(--color-gray-600);
 	cursor: pointer;
@@ -57,7 +57,7 @@
 }
 .segmentSm .segBtn {
 	padding: 4px 10px;
-	font-size: 12px;
+	font-size: var(--font-size-xs);
 }
 .segBtn svg {
 	width: 13px;
@@ -79,7 +79,7 @@
 	border: 1.5px solid var(--color-gray-200);
 	border-radius: var(--radius-lg);
 	font-family: var(--font-body);
-	font-size: 13px;
+	font-size: var(--font-size-compact);
 	background: var(--color-gray-50);
 }
 .input:focus {
@@ -113,12 +113,12 @@
 	color: var(--color-primary-dark);
 }
 .dropTitle {
-	font-size: 13px;
+	font-size: var(--font-size-compact);
 	font-weight: var(--font-weight-semibold);
 	color: var(--color-gray-700);
 }
 .dropHint {
-	font-size: 12px;
+	font-size: var(--font-size-xs);
 	color: var(--color-gray-400);
 }
 
@@ -142,7 +142,7 @@
 	min-width: 0;
 }
 .fileChipName {
-	font-size: 13px;
+	font-size: var(--font-size-compact);
 	font-weight: var(--font-weight-semibold);
 	color: var(--color-gray-800);
 	overflow: hidden;
@@ -150,7 +150,7 @@
 	white-space: nowrap;
 }
 .fileChipMeta {
-	font-size: 12px;
+	font-size: var(--font-size-xs);
 	color: var(--color-gray-500);
 }
 
@@ -166,12 +166,12 @@
 	display: inline-flex;
 	align-items: center;
 	gap: 6px;
-	font-size: 13px;
+	font-size: var(--font-size-compact);
 	color: var(--color-gray-700);
 	cursor: pointer;
 }
 .formError {
-	font-size: 12px;
+	font-size: var(--font-size-xs);
 	color: #b42318;
 }
 .submitBtn {
@@ -184,7 +184,7 @@
 	border-radius: var(--radius-lg);
 	background: linear-gradient(135deg, var(--color-primary), var(--color-primary-dark));
 	font-family: var(--font-body);
-	font-size: 13px;
+	font-size: var(--font-size-compact);
 	font-weight: var(--font-weight-bold);
 	color: var(--color-white);
 	cursor: pointer;
@@ -215,7 +215,7 @@
 	border-radius: var(--radius-full);
 	background: var(--color-white);
 	font-family: var(--font-body);
-	font-size: 12px;
+	font-size: var(--font-size-xs);
 	font-weight: var(--font-weight-semibold);
 	color: var(--color-gray-600);
 	cursor: pointer;
@@ -230,7 +230,7 @@
 	padding: 0 5px;
 	border-radius: var(--radius-full);
 	background: var(--color-gray-100);
-	font-size: 11px;
+	font-size: var(--font-size-2xs);
 	text-align: center;
 }
 
@@ -270,7 +270,7 @@
 .rowTitle {
 	color: var(--color-primary-dark);
 	font-weight: var(--font-weight-semibold);
-	font-size: 13px;
+	font-size: var(--font-size-compact);
 	text-decoration: none;
 }
 .rowTitle:hover {
@@ -282,7 +282,7 @@
 	gap: 6px;
 	flex-wrap: wrap;
 	margin-top: 4px;
-	font-size: 12px;
+	font-size: var(--font-size-xs);
 	color: var(--color-gray-500);
 }
 .downloads {
@@ -319,5 +319,5 @@
 	text-align: center;
 	padding: var(--space-6);
 	color: var(--color-gray-400);
-	font-size: 13px;
+	font-size: var(--font-size-compact);
 }

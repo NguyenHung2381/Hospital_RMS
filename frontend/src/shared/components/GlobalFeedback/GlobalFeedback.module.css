@@ -172,7 +172,7 @@
 	border: 0;
 	background: none;
 	padding: 0 2px;
-	font-size: 18px;
+	font-size: var(--font-size-lg);
 	line-height: 1;
 	color: var(--color-gray-400);
 	cursor: pointer;

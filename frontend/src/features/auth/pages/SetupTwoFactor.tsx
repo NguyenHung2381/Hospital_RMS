@@ -91,7 +91,7 @@ export default function SetupTwoFactor() {
 								display: 'grid',
 								gridTemplateColumns: 'repeat(2, 1fr)',
 								gap: 6,
-								fontFamily: 'monospace',
+								fontFamily: 'var(--font-mono)',
 								fontSize: 16,
 								userSelect: 'all',
 							}}

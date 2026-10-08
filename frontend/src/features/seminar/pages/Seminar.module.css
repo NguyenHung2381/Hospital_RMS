@@ -189,7 +189,7 @@
 }
 .infoItem { display: flex; flex-direction: column; gap: 2px; }
 .infoLabel {
-	font-size: 12px;
+	font-size: var(--font-size-xs);
 	text-transform: uppercase;
 	letter-spacing: 0.03em;
 	color: var(--color-gray-400);
@@ -210,8 +210,8 @@
 	border-radius: var(--radius-lg);
 	padding: var(--space-3) var(--space-4);
 }
-.statValue { font-size: 22px; font-weight: var(--font-weight-bold); color: var(--color-gray-800); }
-.statLabel { font-size: 12px; color: var(--color-gray-500); }
+.statValue { font-size: var(--font-size-2xl); font-weight: var(--font-weight-bold); color: var(--color-gray-800); }
+.statLabel { font-size: var(--font-size-xs); color: var(--color-gray-500); }
 
 .tabs {
 	display: flex;
@@ -315,8 +315,8 @@
 .formInput:focus,
 .formTextarea:focus { border-color: var(--color-primary); }
 .inputError { border-color: #f2b8b5; }
-.fieldError { color: #b42318; font-size: 12px; }
-.hint { color: var(--color-gray-400); font-size: 12px; }
+.fieldError { color: #b42318; font-size: var(--font-size-xs); }
+.hint { color: var(--color-gray-400); font-size: var(--font-size-xs); }
 
 .btnCancel {
 	padding: var(--space-2) var(--space-4);
@@ -376,7 +376,7 @@
 	cursor: pointer;
 }
 .acItem:hover { background: var(--color-gray-50); }
-.acMeta { color: var(--color-gray-400); font-size: 12px; }
+.acMeta { color: var(--color-gray-400); font-size: var(--font-size-xs); }
 
 /* ── Toast ── */
 .toast {
@@ -441,7 +441,7 @@
 .warnList {
 	margin: 0 0 var(--space-3);
 	padding-left: var(--space-4);
-	font-size: 12px;
+	font-size: var(--font-size-xs);
 	color: #633806;
 	max-height: 140px;
 	overflow: auto;
@@ -454,9 +454,9 @@
 	border: 1px solid var(--color-gray-100);
 	border-radius: var(--radius-lg);
 }
-.importPreview .table { font-size: 12px; }
+.importPreview .table { font-size: var(--font-size-xs); }
 .importPreview .table thead th { position: sticky; top: 0; background: var(--color-white); z-index: 1; }
-.rowWarn { color: #b42318; font-size: 11px; margin-top: 2px; }
+.rowWarn { color: #b42318; font-size: var(--font-size-2xs); margin-top: 2px; }
 
 /* ── Danh sách ghi nhận CME độc lập ─────────────────────────────────────── */
 .thCenter {
@@ -472,7 +472,7 @@
 .cmeCellMain { color: var(--color-gray-800); font-weight: var(--font-weight-semibold); line-height: 1.35; }
 .cmeCellSub {
 	margin-top: 2px;
-	font-size: 12px;
+	font-size: var(--font-size-xs);
 	color: var(--color-gray-500);
 	line-height: 1.35;
 	max-width: 320px;
@@ -561,7 +561,7 @@
 	width: auto;
 	padding: 0 var(--space-3);
 	border-left: 1px solid var(--color-gray-200);
-	font-size: 12px;
+	font-size: var(--font-size-xs);
 	font-weight: var(--font-weight-semibold);
 	color: var(--color-primary);
 	white-space: nowrap;
@@ -621,6 +621,6 @@
 	display: flex;
 	flex-direction: column;
 	gap: 4px;
-	font-size: 13px;
+	font-size: var(--font-size-compact);
 	color: var(--color-gray-700);
 }

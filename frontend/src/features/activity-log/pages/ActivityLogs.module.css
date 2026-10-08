@@ -71,7 +71,7 @@
 	align-items: center;
 	padding: 2px 8px;
 	border-radius: var(--radius-full);
-	font-size: 11px;
+	font-size: var(--font-size-2xs);
 	font-weight: var(--font-weight-bold);
 	white-space: nowrap;
 }
@@ -91,14 +91,14 @@
 
 .path {
 	font-family: var(--font-mono);
-	font-size: 12.5px;
+	font-size: var(--font-size-xs);
 }
 .actorName {
 	font-weight: var(--font-weight-medium);
 	color: var(--color-gray-800);
 }
 .actorId {
-	font-size: 11px;
+	font-size: var(--font-size-2xs);
 	color: var(--color-gray-400);
 	font-family: var(--font-mono);
 }
@@ -111,7 +111,7 @@
 	font-weight: var(--font-weight-semibold);
 }
 .timeText {
-	font-size: 12px;
+	font-size: var(--font-size-xs);
 	color: var(--color-gray-400);
 	white-space: nowrap;
 }
@@ -124,7 +124,7 @@
 .truncatedNote {
 	padding: var(--space-2) var(--space-6);
 	border-top: 1px solid var(--color-gray-100);
-	font-size: 12px;
+	font-size: var(--font-size-xs);
 	color: #b54708;
 }
 
@@ -142,12 +142,12 @@
 	padding: 14px 16px;
 }
 .kpiLabel {
-	font-size: 12px;
+	font-size: var(--font-size-xs);
 	color: var(--color-gray-500);
 	font-weight: var(--font-weight-medium);
 }
 .kpiValue {
-	font-size: 22px;
+	font-size: var(--font-size-2xl);
 	font-weight: var(--font-weight-bold);
 	color: var(--color-gray-800);
 	margin-top: 4px;
@@ -157,7 +157,7 @@
 	color: #b42318;
 }
 .kpiSub {
-	font-size: 11.5px;
+	font-size: var(--font-size-2xs);
 	color: var(--color-gray-400);
 	margin-top: 2px;
 }
@@ -172,7 +172,7 @@
 	border-radius: var(--radius-md);
 	background: transparent;
 	font-family: var(--font-body);
-	font-size: 12.5px;
+	font-size: var(--font-size-xs);
 	font-weight: var(--font-weight-semibold);
 	color: var(--color-gray-600);
 	cursor: pointer;
@@ -239,7 +239,7 @@
 }
 .summary {
 	margin-top: 4px;
-	font-size: 13px;
+	font-size: var(--font-size-compact);
 	color: var(--color-gray-700);
 	max-width: 320px;
 }
@@ -254,16 +254,16 @@
 }
 .pathSmall {
 	font-family: var(--font-mono);
-	font-size: 11px;
+	font-size: var(--font-size-2xs);
 	color: var(--color-gray-500);
 	word-break: break-all;
 }
 .ip {
 	font-family: var(--font-mono);
-	font-size: 12.5px;
+	font-size: var(--font-size-xs);
 }
 .errorText {
-	font-size: 11.5px;
+	font-size: var(--font-size-2xs);
 	color: #b42318;
 	max-width: 220px;
 	overflow: hidden;
@@ -279,7 +279,7 @@
 	display: inline-flex;
 	padding: 2px 8px;
 	border-radius: var(--radius-full);
-	font-size: 11px;
+	font-size: var(--font-size-2xs);
 	font-weight: var(--font-weight-bold);
 	white-space: nowrap;
 	background: var(--color-gray-100);
@@ -309,7 +309,7 @@
 .duration {
 	font-variant-numeric: tabular-nums;
 	white-space: nowrap;
-	font-size: 12.5px;
+	font-size: var(--font-size-xs);
 }
 .dur_fast {
 	color: var(--color-gray-500);
@@ -332,7 +332,7 @@
 /* ── Phiên / thống kê ───────────────────────────────────────────────────── */
 .panelNote {
 	padding: var(--space-3) var(--space-6);
-	font-size: 12.5px;
+	font-size: var(--font-size-xs);
 	color: var(--color-gray-500);
 	background: var(--color-gray-50);
 	border-bottom: 1px solid var(--color-gray-100);
@@ -346,7 +346,7 @@
 	padding: 2px 8px;
 	border-radius: var(--radius-full);
 	background: var(--color-gray-100);
-	font-size: 11.5px;
+	font-size: var(--font-size-2xs);
 	color: var(--color-gray-600);
 	white-space: nowrap;
 }
@@ -400,7 +400,7 @@
 	position: absolute;
 	bottom: -18px;
 	left: 0;
-	font-size: 10.5px;
+	font-size: var(--font-size-2xs);
 	color: var(--color-gray-400);
 }
 .rankList {
@@ -418,7 +418,7 @@
 	display: flex;
 	justify-content: space-between;
 	gap: var(--space-2);
-	font-size: 13px;
+	font-size: var(--font-size-compact);
 }
 .rankLabel {
 	color: var(--color-gray-800);
@@ -445,18 +445,18 @@
 	border-radius: var(--radius-full);
 }
 .rankSub {
-	font-size: 11px;
+	font-size: var(--font-size-2xs);
 	color: var(--color-gray-400);
 	margin-top: 2px;
 }
 .miniTable {
 	width: 100%;
 	border-collapse: collapse;
-	font-size: 12.5px;
+	font-size: var(--font-size-xs);
 }
 .miniTable th {
 	text-align: left;
-	font-size: 11px;
+	font-size: var(--font-size-2xs);
 	font-weight: 700;
 	color: var(--color-gray-500);
 	text-transform: uppercase;
@@ -486,13 +486,13 @@
 	min-width: 0;
 }
 .dHeroTitle {
-	font-size: 15px;
+	font-size: var(--font-size-base);
 	font-weight: var(--font-weight-bold);
 	color: var(--color-gray-800);
 	word-break: break-word;
 }
 .dHeroSub {
-	font-size: 12.5px;
+	font-size: var(--font-size-xs);
 	color: var(--color-gray-500);
 	margin-top: 2px;
 }
@@ -502,11 +502,11 @@
 	border-radius: var(--radius-md);
 	background: #fef3f2;
 	color: #912018;
-	font-size: 13px;
+	font-size: var(--font-size-compact);
 }
 .dSection {
 	margin: var(--space-4) 0 var(--space-2);
-	font-size: 12px;
+	font-size: var(--font-size-xs);
 	font-weight: var(--font-weight-bold);
 	text-transform: uppercase;
 	letter-spacing: 0.04em;
@@ -522,27 +522,27 @@
 	min-width: 0;
 }
 .dLabel {
-	font-size: 11.5px;
+	font-size: var(--font-size-2xs);
 	color: var(--color-gray-400);
 }
 .dValue {
-	font-size: 13.5px;
+	font-size: var(--font-size-compact);
 	color: var(--color-gray-800);
 	word-break: break-word;
 }
 .dMuted {
 	color: var(--color-gray-400);
-	font-size: 12.5px;
+	font-size: var(--font-size-xs);
 }
 .dHint {
 	margin-top: var(--space-2);
-	font-size: 11.5px;
+	font-size: var(--font-size-2xs);
 	color: var(--color-gray-400);
 	font-style: italic;
 }
 .codeInline {
 	font-family: var(--font-mono);
-	font-size: 12px;
+	font-size: var(--font-size-xs);
 	background: var(--color-gray-50);
 	padding: 2px 6px;
 	border-radius: var(--radius-sm);
@@ -557,14 +557,14 @@
 	color: #e2e8f0;
 	border-radius: var(--radius-md);
 	font-family: var(--font-mono);
-	font-size: 12px;
+	font-size: var(--font-size-xs);
 	line-height: 1.5;
 	white-space: pre-wrap;
 	word-break: break-word;
 }
 .kvTable {
 	border-collapse: collapse;
-	font-size: 12.5px;
+	font-size: var(--font-size-xs);
 	margin-top: 2px;
 }
 .kvTable td {
@@ -596,7 +596,7 @@
 	background: transparent;
 	padding: 0;
 	font-family: var(--font-body);
-	font-size: 12.5px;
+	font-size: var(--font-size-xs);
 	font-weight: var(--font-weight-semibold);
 	color: var(--color-primary-dark);
 	cursor: pointer;
@@ -613,7 +613,7 @@
 }
 @media (max-width: 640px) {
 	.tableWrap {
-		font-size: 12px;
+		font-size: var(--font-size-xs);
 	}
 	.tabBar {
 		padding-left: var(--space-4);

@@ -51,7 +51,7 @@
 .placeholderText {
 	margin: 0;
 	max-width: 280px;
-	font-size: 13px;
+	font-size: var(--font-size-compact);
 	line-height: 1.5;
 	color: var(--color-gray-600);
 }
@@ -63,7 +63,7 @@
 	gap: 8px;
 	padding: 10px 12px;
 	border-radius: 10px;
-	font-size: 13px;
+	font-size: var(--font-size-compact);
 	line-height: 1.5;
 }
 .notice {
@@ -97,7 +97,7 @@
 	min-height: 46px;
 	padding: 10px 16px;
 	border-radius: 10px;
-	font-size: 14px;
+	font-size: var(--font-size-sm);
 	font-weight: 600;
 	cursor: pointer;
 	transition: background 0.15s, opacity 0.15s;

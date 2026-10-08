@@ -84,7 +84,7 @@
 }
 
 .statValue {
-	font-size: 26px;
+	font-size: var(--font-size-2xl);
 	font-weight: var(--font-weight-bold);
 	color: var(--color-gray-800);
 	line-height: 1.1;
@@ -323,13 +323,13 @@
 .councilName {
 	font-weight: var(--font-weight-bold);
 	color: var(--color-gray-800);
-	font-size: 15px;
+	font-size: var(--font-size-base);
 }
 
 /* Beautiful tag style for IDs */
 .councilSub {
 	font-family: var(--font-mono);
-	font-size: 10px;
+	font-size: var(--font-size-2xs);
 	color: var(--color-gray-500);
 	background: var(--color-gray-100);
 	padding: 2px 6px;
@@ -461,7 +461,7 @@
 
 .groupCell {
 	padding: 14px var(--space-5);
-	font-size: 14px;
+	font-size: var(--font-size-sm);
 	font-weight: var(--font-weight-extrabold);
 	color: var(--color-gray-800);
 	border-bottom: 1px solid var(--color-gray-200);
@@ -509,7 +509,7 @@
 .groupCount {
 	margin-left: var(--space-3);
 	font-weight: var(--font-weight-bold);
-	font-size: 11px;
+	font-size: var(--font-size-2xs);
 	color: var(--color-primary-dark);
 	background: var(--color-primary-pale);
 	padding: 2px 8px;
@@ -528,7 +528,7 @@
 	background: #f0fdf4;
 	color: #15803d;
 	font-family: var(--font-body);
-	font-size: 11px;
+	font-size: var(--font-size-2xs);
 	font-weight: var(--font-weight-bold);
 	cursor: pointer;
 	white-space: nowrap;
@@ -655,7 +655,7 @@
 }
 
 .modalTitle {
-	font-size: 18px;
+	font-size: var(--font-size-lg);
 	font-weight: var(--font-weight-extrabold);
 	color: var(--color-gray-800);
 }
@@ -856,7 +856,7 @@ select.formInput:focus {
 	appearance: none;
 	-webkit-appearance: none;
 	width: auto;
-	font-size: 12px;
+	font-size: var(--font-size-xs);
 	padding: 4px 26px 4px 10px;
 	border: 1.5px solid var(--color-gray-200);
 	border-radius: var(--radius-md);
@@ -1079,7 +1079,7 @@ select.formInput:focus {
 
 /* ── DETAIL MODAL: SEAT GRID ─────────────── */
 .sectionTitle {
-	font-size: 14px;
+	font-size: var(--font-size-sm);
 	font-weight: var(--font-weight-bold);
 	color: var(--color-gray-800);
 	margin-bottom: var(--space-4);
@@ -1148,7 +1148,7 @@ select.formInput:focus {
 }
 
 .seatRole {
-	font-size: 10px;
+	font-size: var(--font-size-2xs);
 	font-weight: var(--font-weight-extrabold);
 	color: var(--color-gray-400);
 	text-transform: uppercase;
@@ -1174,7 +1174,7 @@ select.formInput:focus {
 }
 
 .seatDept {
-	font-size: 12px;
+	font-size: var(--font-size-xs);
 	color: var(--color-gray-500);
 	margin-top: 4px;
 	display: block;
@@ -1258,7 +1258,7 @@ select.formInput:focus {
 }
 
 .topicDept {
-	font-size: 10px;
+	font-size: var(--font-size-2xs);
 	font-weight: var(--font-weight-bold);
 	color: var(--color-gray-500);
 	background: var(--color-gray-100);
@@ -1338,7 +1338,7 @@ select.formInput:focus {
 }
 
 .resultAssigned {
-	font-size: 15px;
+	font-size: var(--font-size-base);
 	font-weight: var(--font-weight-extrabold);
 	color: var(--color-primary-dark);
 }
@@ -1354,7 +1354,7 @@ select.formInput:focus {
 }
 
 .unassignableItem {
-	font-size: 12px;
+	font-size: var(--font-size-xs);
 	color: #633806;
 	padding: 10px 14px;
 	background: #fffbeb;
@@ -1436,12 +1436,12 @@ select.formInput:focus {
 
 .createdCouncilName {
 	font-weight: var(--font-weight-extrabold);
-	font-size: 15px;
+	font-size: var(--font-size-base);
 	color: var(--color-gray-800);
 }
 
 .createdCouncilGroup {
-	font-size: 10px;
+	font-size: var(--font-size-2xs);
 	font-weight: var(--font-weight-bold);
 	color: var(--color-primary-dark);
 	background: var(--color-primary-pale);
@@ -1468,21 +1468,21 @@ select.formInput:focus {
 	font-weight: var(--font-weight-bold);
 	color: var(--color-gray-400);
 	text-transform: uppercase;
-	font-size: 9px;
+	font-size: var(--font-size-2xs);
 	letter-spacing: 0.05em;
 }
 
 .createdMemberName {
 	font-weight: var(--font-weight-extrabold);
 	color: var(--color-gray-700);
-	font-size: 12px;
+	font-size: var(--font-size-xs);
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
 }
 
 .createdMemberDept {
-	font-size: 10px;
+	font-size: var(--font-size-2xs);
 	color: var(--color-gray-400);
 	overflow: hidden;
 	text-overflow: ellipsis;

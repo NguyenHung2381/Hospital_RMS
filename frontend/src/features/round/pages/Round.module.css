@@ -100,7 +100,7 @@
 }
 
 .statValue {
-	font-size: 28px;
+	font-size: var(--font-size-3xl);
 	font-weight: var(--font-weight-extrabold);
 	color: var(--color-gray-800);
 	line-height: 1;
@@ -203,7 +203,7 @@
 }
 
 .roundCardId {
-	font-size: 11px;
+	font-size: var(--font-size-2xs);
 	font-family: var(--font-mono);
 	color: var(--color-gray-400);
 	font-weight: var(--font-weight-medium);
@@ -304,7 +304,7 @@
 }
 
 .cardStatLbl {
-	font-size: 10px;
+	font-size: var(--font-size-2xs);
 	color: var(--color-gray-400);
 	font-weight: var(--font-weight-medium);
 	margin-top: 3px;
@@ -337,7 +337,7 @@
 	border: 1px solid rgba(10, 155, 74, 0.3);
 	border-radius: var(--radius-md);
 	padding: 5px var(--space-3);
-	font-size: 11px;
+	font-size: var(--font-size-2xs);
 	font-family: var(--font-mono);
 	color: var(--color-primary-dark);
 	flex: 1;
@@ -368,7 +368,7 @@
 
 .linkRowHint {
 	font-family: var(--font-body);
-	font-size: 10px;
+	font-size: var(--font-size-2xs);
 	font-weight: var(--font-weight-bold);
 	color: var(--color-primary);
 	flex-shrink: 0;
@@ -629,7 +629,7 @@
 
 .formRequired {
 	color: var(--color-accent);
-	font-size: 15px;
+	font-size: var(--font-size-base);
 	line-height: 1;
 }
 
@@ -730,7 +730,7 @@
 
 .tokenCode {
 	font-family: var(--font-mono);
-	font-size: 12px;
+	font-size: var(--font-size-xs);
 	background: rgba(10, 155, 74, 0.15);
 	padding: 2px 8px;
 	border-radius: var(--radius-sm);
@@ -760,7 +760,7 @@
 }
 
 .statusInfoLbl {
-	font-size: 10px;
+	font-size: var(--font-size-2xs);
 	color: var(--color-gray-400);
 	font-weight: var(--font-weight-semibold);
 	text-transform: uppercase;
@@ -1018,7 +1018,7 @@
 }
 
 .statusOptionDesc {
-	font-size: 11px;
+	font-size: var(--font-size-2xs);
 	color: var(--color-gray-500);
 	font-weight: var(--font-weight-medium);
 }
@@ -1030,7 +1030,7 @@
 	display: flex;
 	align-items: center;
 	gap: 6px;
-	font-size: 12px;
+	font-size: var(--font-size-xs);
 	color: #0c447c;
 	background: #e6f1fb;
 	border: 1px solid rgba(55, 138, 221, 0.25);
@@ -1100,7 +1100,7 @@
 .tokenValueBox {
 	flex: 1;
 	font-family: var(--font-mono);
-	font-size: 13px;
+	font-size: var(--font-size-compact);
 	background: var(--color-white);
 	border: 1.5px solid var(--color-gray-200);
 	border-radius: var(--radius-lg);
@@ -1123,7 +1123,7 @@
 	border-radius: var(--radius-lg);
 	background: var(--color-white);
 	color: var(--color-gray-700);
-	font-size: 12px;
+	font-size: var(--font-size-xs);
 	font-weight: var(--font-weight-semibold);
 	cursor: pointer;
 	transition: all var(--transition-fast);
@@ -1143,7 +1143,7 @@
 }
 
 .tokenWarningText {
-	font-size: 11px;
+	font-size: var(--font-size-2xs);
 	color: var(--color-gray-500);
 	line-height: var(--line-height-base);
 }
@@ -1232,7 +1232,7 @@
 }
 
 .modalStatLabel {
-	font-size: 11px;
+	font-size: var(--font-size-2xs);
 	color: var(--color-gray-500);
 	font-weight: var(--font-weight-semibold);
 	margin-top: 2px;
@@ -1254,13 +1254,13 @@
 }
 
 .progressTitle {
-	font-size: 12px;
+	font-size: var(--font-size-xs);
 	font-weight: var(--font-weight-bold);
 	color: var(--color-gray-700);
 }
 
 .progressPercent {
-	font-size: 12px;
+	font-size: var(--font-size-xs);
 	font-weight: var(--font-weight-extrabold);
 	color: var(--color-primary-dark);
 }
@@ -1301,7 +1301,7 @@
 	display: flex;
 	align-items: center;
 	gap: 6px;
-	font-size: 11px;
+	font-size: var(--font-size-2xs);
 	color: var(--color-gray-600);
 	font-weight: var(--font-weight-medium);
 }
@@ -1355,7 +1355,7 @@
 	align-items: center;
 	justify-content: center;
 	z-index: 2;
-	font-size: 10px;
+	font-size: var(--font-size-2xs);
 	font-weight: var(--font-weight-extrabold);
 	color: var(--color-gray-400);
 	transition: all var(--transition-base);
@@ -1388,12 +1388,12 @@
 .timelineTitle {
 	font-weight: var(--font-weight-bold);
 	color: var(--color-gray-800);
-	font-size: 13px;
+	font-size: var(--font-size-compact);
 	flex: 1;
 }
 
 .timelineBadge {
-	font-size: 10px;
+	font-size: var(--font-size-2xs);
 	padding: 2px 8px;
 	border-radius: var(--radius-full);
 	font-weight: var(--font-weight-bold);
@@ -1417,7 +1417,7 @@
 	display: flex;
 	align-items: center;
 	gap: 6px;
-	font-size: 12px;
+	font-size: var(--font-size-xs);
 	color: var(--color-gray-500);
 	font-weight: var(--font-weight-medium);
 }

@@ -55,7 +55,7 @@
 	display: flex;
 	align-items: center;
 	gap: 6px;
-	font-size: 13px;
+	font-size: var(--font-size-compact);
 	font-weight: 600;
 	color: #334155;
 }
@@ -93,13 +93,13 @@
 }
 
 .stat strong {
-	font-size: 22px;
+	font-size: var(--font-size-2xl);
 	line-height: 1.1;
 	color: #0f172a;
 }
 
 .stat span {
-	font-size: 12px;
+	font-size: var(--font-size-xs);
 	color: #64748b;
 }
 
@@ -130,7 +130,7 @@
 	margin-bottom: -1px;
 	background: none;
 	font: inherit;
-	font-size: 14px;
+	font-size: var(--font-size-sm);
 	font-weight: 600;
 	color: #64748b;
 	white-space: nowrap;
@@ -157,7 +157,7 @@
 	border-radius: 999px;
 	background: #f1f5f9;
 	color: #475569;
-	font-size: 12px;
+	font-size: var(--font-size-xs);
 	text-align: center;
 }
 
@@ -183,7 +183,7 @@
 
 .groupTitle {
 	font-weight: 700;
-	font-size: 13px;
+	font-size: var(--font-size-compact);
 	color: #096b35;
 	text-transform: uppercase;
 	letter-spacing: 0.03em;
@@ -211,7 +211,7 @@
 	background: #f0fdf4;
 	color: #096b35;
 	font-weight: 700;
-	font-size: 12px;
+	font-size: var(--font-size-xs);
 	display: grid;
 	place-items: center;
 }
@@ -248,7 +248,7 @@
 
 .lessonDesc {
 	margin: 0 0 4px;
-	font-size: 13px;
+	font-size: var(--font-size-compact);
 	color: #334155;
 	white-space: pre-line;
 }
@@ -263,7 +263,7 @@
 	border-radius: 8px;
 	background: #f8fafc;
 	font: inherit;
-	font-size: 13px;
+	font-size: var(--font-size-compact);
 	color: #0f172a;
 	text-align: left;
 	cursor: pointer;
@@ -281,7 +281,7 @@
 
 .docMeta {
 	color: #64748b;
-	font-size: 12px;
+	font-size: var(--font-size-xs);
 }
 
 .itemHead {
@@ -308,7 +308,7 @@
 	flex-wrap: wrap;
 	gap: 4px 16px;
 	margin-top: 6px;
-	font-size: 13px;
+	font-size: var(--font-size-compact);
 	color: #64748b;
 }
 
@@ -336,11 +336,11 @@
 
 .dateBox strong {
 	display: block;
-	font-size: 18px;
+	font-size: var(--font-size-lg);
 }
 
 .dateBox span {
-	font-size: 11px;
+	font-size: var(--font-size-2xs);
 }
 
 .tableWrap {
@@ -364,7 +364,7 @@
 }
 
 .bigNumber {
-	font-size: 28px;
+	font-size: var(--font-size-3xl);
 	font-weight: 700;
 	color: #0f172a;
 }
@@ -396,6 +396,6 @@
 	border: 1px solid var(--color-gray-200);
 	border-radius: 8px;
 	padding: 6px 10px;
-	font-size: 13px;
+	font-size: var(--font-size-compact);
 	background: var(--color-white);
 }

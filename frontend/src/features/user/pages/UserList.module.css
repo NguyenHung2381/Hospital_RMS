@@ -79,7 +79,7 @@
 }
 
 .statValue {
-	font-size: 28px;
+	font-size: var(--font-size-3xl);
 	font-weight: var(--font-weight-extrabold);
 	color: var(--color-gray-800);
 	line-height: 1;
@@ -87,14 +87,14 @@
 }
 
 .statLabel {
-	font-size: 12px;
+	font-size: var(--font-size-xs);
 	color: var(--color-gray-400);
 	font-weight: var(--font-weight-medium);
 	margin-top: 4px;
 }
 
 .statDelta {
-	font-size: 11px;
+	font-size: var(--font-size-2xs);
 	margin-top: 2px;
 	font-weight: var(--font-weight-semibold);
 }
@@ -178,7 +178,7 @@
 }
 
 .roundTopicCount {
-	font-size: 11px;
+	font-size: var(--font-size-2xs);
 	font-weight: var(--font-weight-semibold);
 	color: var(--color-gray-400);
 	background: var(--color-gray-100);
@@ -292,7 +292,7 @@
 	display: flex;
 	align-items: center;
 	gap: 4px;
-	font-size: 12px;
+	font-size: var(--font-size-xs);
 	font-weight: var(--font-weight-semibold);
 	color: var(--color-gray-400);
 	white-space: nowrap;
@@ -407,7 +407,7 @@
 }
 
 .bannerStatValue {
-	font-size: 30px;
+	font-size: var(--font-size-3xl);
 	font-weight: var(--font-weight-extrabold);
 	color: var(--color-gray-800);
 	line-height: 1;
@@ -415,7 +415,7 @@
 }
 
 .bannerStatLabel {
-	font-size: 12px;
+	font-size: var(--font-size-xs);
 	color: var(--color-gray-400);
 	font-weight: var(--font-weight-medium);
 	white-space: nowrap;
@@ -548,21 +548,21 @@
 }
 
 .memberId {
-	font-size: 11px;
+	font-size: var(--font-size-2xs);
 	font-family: var(--font-mono);
 	color: var(--color-gray-400);
 	margin-top: 2px;
 }
 
 .usernameText {
-	font-size: 13px;
+	font-size: var(--font-size-compact);
 	font-weight: var(--font-weight-semibold);
 	color: var(--color-gray-700);
 	font-family: var(--font-mono);
 }
 
 .staffNum {
-	font-size: 11px;
+	font-size: var(--font-size-2xs);
 	color: var(--color-gray-400);
 	font-family: var(--font-mono);
 	letter-spacing: 0.3px;
@@ -570,12 +570,12 @@
 }
 
 .roleText {
-	font-size: 13px;
+	font-size: var(--font-size-compact);
 	color: var(--color-gray-600);
 }
 
 .dateText {
-	font-size: 12px;
+	font-size: var(--font-size-xs);
 	color: var(--color-gray-500);
 }
 
@@ -615,17 +615,17 @@
 .avatarSm {
 	width: 28px;
 	height: 28px;
-	font-size: 10px;
+	font-size: var(--font-size-2xs);
 }
 .avatarMd {
 	width: 40px;
 	height: 40px;
-	font-size: 14px;
+	font-size: var(--font-size-sm);
 }
 .avatarLg {
 	width: 44px;
 	height: 44px;
-	font-size: 16px;
+	font-size: var(--font-size-base);
 }
 
 .avatarGreen {
@@ -878,7 +878,7 @@
 
 /* Form sections */
 .formSection {
-	font-size: 11px;
+	font-size: var(--font-size-2xs);
 	font-weight: var(--font-weight-bold);
 	text-transform: uppercase;
 	letter-spacing: 0.08em;
@@ -942,13 +942,13 @@
 }
 
 .fieldError {
-	font-size: 11px;
+	font-size: var(--font-size-2xs);
 	color: #e24b4a;
 	margin-top: 2px;
 }
 
 .formHint {
-	font-size: 11px;
+	font-size: var(--font-size-2xs);
 	color: var(--color-gray-400);
 	margin-top: 2px;
 }
@@ -1008,7 +1008,7 @@
 }
 
 .formToggleSub {
-	font-size: 12px;
+	font-size: var(--font-size-xs);
 	color: var(--color-gray-400);
 	margin-top: 2px;
 }

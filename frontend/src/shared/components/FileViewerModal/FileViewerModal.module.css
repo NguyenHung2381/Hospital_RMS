@@ -53,7 +53,7 @@
 	border: 1.5px solid var(--color-gray-200);
 	background: transparent;
 	color: var(--color-gray-600);
-	font-size: 14px;
+	font-size: var(--font-size-sm);
 	cursor: pointer;
 	flex-shrink: 0;
 	transition: all var(--transition-fast);

@@ -537,7 +537,7 @@ export default function Profile() {
 												display: 'grid',
 												gridTemplateColumns: 'repeat(auto-fill, minmax(110px, 1fr))',
 												gap: 6,
-												fontFamily: 'monospace',
+												fontFamily: 'var(--font-mono)',
 												fontSize: 15,
 												userSelect: 'all',
 											}}

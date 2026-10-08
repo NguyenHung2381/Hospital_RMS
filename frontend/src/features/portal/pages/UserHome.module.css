@@ -115,7 +115,7 @@
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	font-size: 20px;
+	font-size: var(--font-size-xl);
 	font-weight: var(--font-weight-extrabold, 800);
 	color: #fff;
 	letter-spacing: 0.02em;
@@ -144,7 +144,7 @@
 	display: inline-flex;
 	align-items: center;
 	gap: 6px;
-	font-size: 11px;
+	font-size: var(--font-size-2xs);
 	font-weight: var(--font-weight-bold, 700);
 	text-transform: uppercase;
 	letter-spacing: 0.08em;
@@ -182,7 +182,7 @@
 	display: inline-flex;
 	align-items: center;
 	gap: 6px;
-	font-size: 12px;
+	font-size: var(--font-size-xs);
 	font-weight: var(--font-weight-medium, 500);
 	color: rgba(255, 255, 255, 0.95);
 	background: rgba(0, 0, 0, 0.18);
@@ -229,7 +229,7 @@
 	display: inline-flex;
 	align-items: center;
 	gap: 6px;
-	font-size: 11px;
+	font-size: var(--font-size-2xs);
 	font-weight: var(--font-weight-bold, 700);
 	color: #fff;
 	background: rgba(16, 185, 129, 0.3);
@@ -261,7 +261,7 @@
 }
 
 .roundName {
-	font-size: 13.5px;
+	font-size: var(--font-size-compact);
 	font-weight: var(--font-weight-bold, 700);
 	color: #fff;
 	line-height: 1.35;
@@ -280,7 +280,7 @@
 	display: inline-flex;
 	align-items: center;
 	gap: 5px;
-	font-size: 11.5px;
+	font-size: var(--font-size-2xs);
 	color: rgba(255, 255, 255, 0.85);
 }
 
@@ -290,7 +290,7 @@
 }
 
 .daysLeftPill {
-	font-size: 11px;
+	font-size: var(--font-size-2xs);
 	font-weight: var(--font-weight-extrabold, 800);
 	color: #fff;
 	background: rgba(245, 158, 11, 0.35);
@@ -311,7 +311,7 @@
 	color: #115e34;
 	border: none;
 	border-radius: var(--radius-lg, 12px);
-	font-size: 12.5px;
+	font-size: var(--font-size-xs);
 	font-weight: var(--font-weight-bold, 700);
 	cursor: pointer;
 	box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
@@ -396,7 +396,7 @@
 }
 
 .statPill {
-	font-size: 11px;
+	font-size: var(--font-size-2xs);
 	font-weight: var(--font-weight-bold, 700);
 	padding: 2px 8px;
 	border-radius: var(--radius-full, 9999px);
@@ -424,7 +424,7 @@
 }
 
 .statLabel {
-	font-size: 12px;
+	font-size: var(--font-size-xs);
 	color: var(--color-gray-500, #6b8090);
 	font-weight: var(--font-weight-semibold, 600);
 	margin-top: 6px;
@@ -487,7 +487,7 @@
 }
 
 .cardTitle {
-	font-size: 15px;
+	font-size: var(--font-size-base);
 	font-weight: var(--font-weight-bold, 700);
 	color: var(--color-gray-800, #1a2a35);
 	letter-spacing: -0.01em;
@@ -511,7 +511,7 @@
 	height: 22px;
 	padding: 0 6px;
 	border-radius: var(--radius-full, 9999px);
-	font-size: 11px;
+	font-size: var(--font-size-2xs);
 	font-weight: var(--font-weight-extrabold, 800);
 	background: var(--color-primary-pale, #e7f5ed);
 	color: var(--color-primary-dark, #087c3b);
@@ -521,7 +521,7 @@
 	display: inline-flex;
 	align-items: center;
 	gap: 4px;
-	font-size: 13.5px;
+	font-size: var(--font-size-compact);
 	color: var(--color-primary-dark, #087c3b);
 	font-weight: var(--font-weight-semibold, 600);
 	background: none;
@@ -591,8 +591,8 @@
 }
 
 .topicCodeBadge {
-	font-family: var(--font-mono, monospace);
-	font-size: 11px;
+	font-family: var(--font-mono);
+	font-size: var(--font-size-2xs);
 	font-weight: var(--font-weight-bold, 700);
 	color: #0f766e;
 	background: #f0fdfa;
@@ -603,7 +603,7 @@
 }
 
 .topicRoleBadge {
-	font-size: 11px;
+	font-size: var(--font-size-2xs);
 	font-weight: var(--font-weight-bold, 700);
 	padding: 2px 8px;
 	border-radius: var(--radius-full, 9999px);
@@ -613,7 +613,7 @@
 	display: inline-flex;
 	align-items: center;
 	gap: 5px;
-	font-size: 11px;
+	font-size: var(--font-size-2xs);
 	font-weight: var(--font-weight-bold, 700);
 	padding: 3px 10px;
 	border-radius: var(--radius-full, 9999px);
@@ -630,7 +630,7 @@
 
 /* Topic Title */
 .topicTitle {
-	font-size: 14.5px;
+	font-size: var(--font-size-sm);
 	font-weight: var(--font-weight-bold, 700);
 	color: var(--color-gray-800, #1a2a35);
 	line-height: 1.45;
@@ -651,7 +651,7 @@
 	align-items: center;
 	flex-wrap: wrap;
 	gap: 16px;
-	font-size: 12px;
+	font-size: var(--font-size-xs);
 	color: var(--color-gray-500, #6b8090);
 }
 
@@ -679,7 +679,7 @@
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
-	font-size: 11.5px;
+	font-size: var(--font-size-2xs);
 }
 
 .progressLabel {
@@ -740,14 +740,14 @@
 }
 
 .emptyTitle {
-	font-size: 15px;
+	font-size: var(--font-size-base);
 	font-weight: var(--font-weight-bold, 700);
 	color: var(--color-gray-800, #1a2a35);
 	margin: 0;
 }
 
 .emptyDesc {
-	font-size: 13.5px;
+	font-size: var(--font-size-compact);
 	color: var(--color-gray-500, #6b8090);
 	max-width: 360px;
 	line-height: 1.5;
@@ -764,7 +764,7 @@
 	color: #fff;
 	border: none;
 	border-radius: var(--radius-lg, 12px);
-	font-size: 13.5px;
+	font-size: var(--font-size-compact);
 	font-weight: var(--font-weight-bold, 700);
 	cursor: pointer;
 	box-shadow: 0 4px 12px rgba(8, 124, 59, 0.25);
@@ -853,14 +853,14 @@
 }
 
 .actionName {
-	font-size: 13.5px;
+	font-size: var(--font-size-compact);
 	font-weight: var(--font-weight-bold, 700);
 	color: var(--color-gray-800, #1a2a35);
 	line-height: 1.3;
 }
 
 .actionBadge {
-	font-size: 10px;
+	font-size: var(--font-size-2xs);
 	font-weight: var(--font-weight-extrabold, 800);
 	color: #047857;
 	background: #d1fae5;
@@ -871,7 +871,7 @@
 }
 
 .actionNotifBadge {
-	font-size: 10px;
+	font-size: var(--font-size-2xs);
 	font-weight: var(--font-weight-extrabold, 800);
 	color: #b91c1c;
 	background: #fee2e2;
@@ -880,7 +880,7 @@
 }
 
 .actionDesc {
-	font-size: 11.5px;
+	font-size: var(--font-size-2xs);
 	color: var(--color-gray-500, #6b8090);
 	margin-top: 2px;
 	line-height: 1.3;
@@ -933,7 +933,7 @@
 	border-radius: 50%;
 	background: var(--color-primary-pale, #e7f5ed);
 	color: var(--color-primary-dark, #087c3b);
-	font-size: 11px;
+	font-size: var(--font-size-2xs);
 	font-weight: var(--font-weight-extrabold, 800);
 	display: flex;
 	align-items: center;
@@ -941,7 +941,7 @@
 }
 
 .stepTitle {
-	font-size: 11.5px;
+	font-size: var(--font-size-2xs);
 	font-weight: var(--font-weight-bold, 700);
 	color: var(--color-gray-700, #2d4050);
 	line-height: 1.2;
@@ -961,7 +961,7 @@
 	display: flex;
 	align-items: center;
 	gap: 6px;
-	font-size: 12px;
+	font-size: var(--font-size-xs);
 	font-weight: var(--font-weight-bold, 700);
 	color: #166534;
 }
@@ -975,7 +975,7 @@
 	display: flex;
 	flex-direction: column;
 	gap: 4px;
-	font-size: 11.5px;
+	font-size: var(--font-size-2xs);
 	color: #14532d;
 	line-height: 1.4;
 }
@@ -1045,10 +1045,10 @@
 	.welcomeAvatar {
 		width: 52px;
 		height: 52px;
-		font-size: 17px;
+		font-size: var(--font-size-lg);
 	}
 
 	.welcomeTitle {
-		font-size: 1.25rem;
+		font-size: var(--font-size-xl);
 	}
 }

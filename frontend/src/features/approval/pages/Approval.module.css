@@ -105,7 +105,7 @@
 }
 
 .statValue {
-	font-size: 28px;
+	font-size: var(--font-size-3xl);
 	font-weight: var(--font-weight-extrabold);
 	color: var(--color-gray-800);
 	line-height: 1;
@@ -278,7 +278,7 @@
 }
 
 .tabCount {
-	font-size: 10px;
+	font-size: var(--font-size-2xs);
 	padding: 1px 5px;
 	border-radius: var(--radius-full);
 	font-weight: var(--font-weight-bold);
@@ -373,7 +373,7 @@
 }
 
 .listItemTopicId {
-	font-size: 10px;
+	font-size: var(--font-size-2xs);
 	font-family: var(--font-mono);
 	color: var(--color-gray-400);
 	margin-bottom: 2px;
@@ -390,7 +390,7 @@
 }
 
 .listItemMeta {
-	font-size: 11px;
+	font-size: var(--font-size-2xs);
 	color: var(--color-gray-400);
 	display: flex;
 	align-items: center;
@@ -407,7 +407,7 @@
 }
 
 .listItemDate {
-	font-size: 11px;
+	font-size: var(--font-size-2xs);
 	color: var(--color-gray-400);
 	white-space: nowrap;
 }
@@ -521,7 +521,7 @@
 	display: inline-flex;
 	align-items: center;
 	gap: 4px;
-	font-size: 11px;
+	font-size: var(--font-size-2xs);
 	font-weight: var(--font-weight-bold);
 	color: var(--color-primary-dark);
 	background: var(--color-primary-pale);
@@ -569,7 +569,7 @@
 	border: none;
 	border-radius: var(--radius-lg);
 	font-family: var(--font-body);
-	font-size: 12px;
+	font-size: var(--font-size-xs);
 	font-weight: var(--font-weight-bold);
 	cursor: pointer;
 	transition: background var(--transition-fast);
@@ -595,7 +595,7 @@
 	border: none;
 	border-radius: var(--radius-lg);
 	font-family: var(--font-body);
-	font-size: 12px;
+	font-size: var(--font-size-xs);
 	font-weight: var(--font-weight-bold);
 	cursor: pointer;
 	transition: background var(--transition-fast);
@@ -621,7 +621,7 @@
 	border: 1.5px solid var(--color-gray-200);
 	border-radius: var(--radius-lg);
 	font-family: var(--font-body);
-	font-size: 12px;
+	font-size: var(--font-size-xs);
 	font-weight: var(--font-weight-semibold);
 	cursor: pointer;
 	transition: all var(--transition-fast);
@@ -707,7 +707,7 @@
 }
 
 .detailTopicId {
-	font-size: 11px;
+	font-size: var(--font-size-2xs);
 	font-family: var(--font-mono);
 	color: var(--color-gray-400);
 	margin-bottom: var(--space-2);
@@ -832,12 +832,12 @@
 }
 
 .historyDate {
-	font-size: 11px;
+	font-size: var(--font-size-2xs);
 	color: var(--color-gray-400);
 }
 
 .historyComment {
-	font-size: 12px;
+	font-size: var(--font-size-xs);
 	color: var(--color-gray-600);
 	line-height: 1.55;
 	font-style: italic;
@@ -901,7 +901,7 @@
 }
 
 .charCount {
-	font-size: 11px;
+	font-size: var(--font-size-2xs);
 	color: var(--color-gray-400);
 	text-align: right;
 }
@@ -1357,7 +1357,7 @@
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	font-size: 12px;
+	font-size: var(--font-size-xs);
 	font-weight: 700;
 	flex-shrink: 0;
 	letter-spacing: 0.02em;
@@ -1393,7 +1393,7 @@
 }
 
 .memberName {
-	font-size: 13px;
+	font-size: var(--font-size-compact);
 	font-weight: 600;
 	color: var(--color-gray-800, #1f2937);
 	white-space: nowrap;
@@ -1410,7 +1410,7 @@
 }
 
 .roleBadgeLead {
-	font-size: 10.5px;
+	font-size: var(--font-size-2xs);
 	font-weight: 700;
 	padding: 2px 8px;
 	border-radius: var(--radius-full, 9999px);
@@ -1421,7 +1421,7 @@
 }
 
 .roleBadgeSecretary {
-	font-size: 10.5px;
+	font-size: var(--font-size-2xs);
 	font-weight: 700;
 	padding: 2px 8px;
 	border-radius: var(--radius-full, 9999px);
@@ -1432,7 +1432,7 @@
 }
 
 .roleBadgeAdvisor {
-	font-size: 10.5px;
+	font-size: var(--font-size-2xs);
 	font-weight: 700;
 	padding: 2px 8px;
 	border-radius: var(--radius-full, 9999px);
@@ -1443,7 +1443,7 @@
 }
 
 .roleBadgeMember {
-	font-size: 10.5px;
+	font-size: var(--font-size-2xs);
 	font-weight: 700;
 	padding: 2px 8px;
 	border-radius: var(--radius-full, 9999px);
@@ -1454,7 +1454,7 @@
 }
 
 .memberDept {
-	font-size: 11px;
+	font-size: var(--font-size-2xs);
 	color: var(--color-gray-500, #6b7280);
 	white-space: nowrap;
 	overflow: hidden;
@@ -1462,7 +1462,7 @@
 }
 
 .memberDept {
-	font-size: 10px;
+	font-size: var(--font-size-2xs);
 	color: var(--color-gray-400);
 	white-space: nowrap;
 	overflow: hidden;
@@ -1549,7 +1549,7 @@
 }
 
 .fileName {
-	font-size: 12px;
+	font-size: var(--font-size-xs);
 	font-weight: 600;
 	color: var(--color-gray-800);
 	white-space: nowrap;
@@ -1558,7 +1558,7 @@
 }
 
 .fileMeta {
-	font-size: 10px;
+	font-size: var(--font-size-2xs);
 	color: var(--color-gray-400);
 	margin-top: 2px;
 	display: flex;
@@ -1568,7 +1568,7 @@
 }
 
 .fileTypeBadge {
-	font-size: 9px;
+	font-size: var(--font-size-2xs);
 	font-weight: 700;
 	padding: 1px 5px;
 	border-radius: var(--radius-full);
@@ -1591,7 +1591,7 @@
 	color: var(--color-primary-dark);
 	border: 1px solid rgba(10, 155, 74, 0.2);
 	border-radius: var(--radius-md);
-	font-size: 11px;
+	font-size: var(--font-size-2xs);
 	font-weight: 600;
 	cursor: pointer;
 	transition: all var(--transition-fast);
@@ -1682,13 +1682,13 @@
 		height: 18px !important;
 	}
 	.statValue {
-		font-size: 22px !important;
+		font-size: var(--font-size-2xl) !important;
 	}
 	.statLabel {
-		font-size: 11px !important;
+		font-size: var(--font-size-2xs) !important;
 	}
 	.statHint {
-		font-size: 10.5px !important;
+		font-size: var(--font-size-2xs) !important;
 	}
 	.listTabs {
 		display: flex !important;
@@ -1703,7 +1703,7 @@
 	.listTab {
 		flex: none !important;
 		padding: 10px 14px !important;
-		font-size: 12px !important;
+		font-size: var(--font-size-xs) !important;
 		white-space: nowrap !important;
 	}
 	.infoGrid {

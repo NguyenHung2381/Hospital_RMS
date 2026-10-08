@@ -84,7 +84,7 @@
 .optionList {
 	margin: 4px 0 0;
 	padding-left: 18px;
-	font-size: 12px;
+	font-size: var(--font-size-xs);
 	color: var(--color-gray-500);
 }
 .optionCorrect {
@@ -92,7 +92,7 @@
 	font-weight: var(--font-weight-bold);
 }
 .muted {
-	font-size: 12px;
+	font-size: var(--font-size-xs);
 	color: var(--color-gray-500);
 }
 
@@ -138,12 +138,12 @@
 	gap: var(--space-2);
 }
 .hint {
-	font-size: 12px;
+	font-size: var(--font-size-xs);
 	font-weight: normal;
 	color: var(--color-gray-500);
 }
 .error {
-	font-size: 12px;
+	font-size: var(--font-size-xs);
 	color: #e24b4a;
 }
 .linkBtn {

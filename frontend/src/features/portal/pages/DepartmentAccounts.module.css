@@ -84,7 +84,7 @@
 }
 
 .statValue {
-	font-size: 28px;
+	font-size: var(--font-size-3xl);
 	font-weight: var(--font-weight-extrabold);
 	color: var(--color-gray-800);
 	line-height: 1;
@@ -92,7 +92,7 @@
 }
 
 .statLabel {
-	font-size: 12px;
+	font-size: var(--font-size-xs);
 	color: var(--color-gray-400);
 	font-weight: var(--font-weight-medium);
 	margin-top: 4px;
@@ -164,7 +164,7 @@
 	flex: 1;
 	border: none;
 	background: transparent;
-	font-size: 13px;
+	font-size: var(--font-size-compact);
 	color: var(--color-gray-700);
 	outline: none;
 	min-width: 0;
@@ -205,7 +205,7 @@
 	border: 1px solid var(--color-gray-200);
 	border-radius: var(--radius-lg);
 	padding: 4px 11px;
-	font-size: 12px;
+	font-size: var(--font-size-xs);
 	font-weight: var(--font-weight-medium);
 	color: var(--color-gray-500);
 	cursor: pointer;
@@ -232,7 +232,7 @@
 	color: var(--color-gray-500);
 	border-radius: 999px;
 	padding: 0 6px;
-	font-size: 11px;
+	font-size: var(--font-size-2xs);
 	font-weight: var(--font-weight-semibold);
 }
 
@@ -242,7 +242,7 @@
 }
 
 .resultCount {
-	font-size: 12px;
+	font-size: var(--font-size-xs);
 	color: var(--color-gray-400);
 	font-weight: var(--font-weight-medium);
 	white-space: nowrap;
@@ -284,11 +284,11 @@
 .memberName {
 	font-weight: var(--font-weight-semibold);
 	color: var(--color-gray-800);
-	font-size: 13px;
+	font-size: var(--font-size-compact);
 }
 
 .memberId {
-	font-size: 11px;
+	font-size: var(--font-size-2xs);
 	color: var(--color-gray-400);
 	margin-top: 1px;
 }
@@ -296,24 +296,24 @@
 .usernameText {
 	font-weight: var(--font-weight-medium);
 	color: var(--color-gray-700);
-	font-family: var(--font-mono, monospace);
-	font-size: 12px;
+	font-family: var(--font-mono);
+	font-size: var(--font-size-xs);
 }
 
 .staffNum {
-	font-size: 11px;
+	font-size: var(--font-size-2xs);
 	color: var(--color-gray-400);
 	margin-top: 2px;
 }
 
 .roleText {
-	font-size: 12px;
+	font-size: var(--font-size-xs);
 	color: var(--color-gray-600);
 	font-weight: var(--font-weight-medium);
 }
 
 .dateText {
-	font-size: 12px;
+	font-size: var(--font-size-xs);
 	color: var(--color-gray-400);
 }
 
@@ -331,12 +331,12 @@
 .avatarSm {
 	width: 28px;
 	height: 28px;
-	font-size: 10px;
+	font-size: var(--font-size-2xs);
 }
 .avatarMd {
 	width: 36px;
 	height: 36px;
-	font-size: 13px;
+	font-size: var(--font-size-compact);
 }
 
 .avatarPurple {
@@ -514,13 +514,13 @@
 }
 
 .modalTitle {
-	font-size: 16px;
+	font-size: var(--font-size-base);
 	font-weight: var(--font-weight-bold);
 	color: var(--color-gray-900);
 }
 
 .modalSubtitle {
-	font-size: 13px;
+	font-size: var(--font-size-compact);
 	color: var(--color-gray-500);
 	margin-top: 2px;
 }
@@ -570,7 +570,7 @@
 
 /* ── FORM ───────────────────────────────── */
 .formSection {
-	font-size: 11px;
+	font-size: var(--font-size-2xs);
 	font-weight: var(--font-weight-bold);
 	text-transform: uppercase;
 	letter-spacing: 0.08em;
@@ -597,7 +597,7 @@
 }
 
 .formLabel {
-	font-size: 12px;
+	font-size: var(--font-size-xs);
 	font-weight: var(--font-weight-semibold);
 	color: var(--color-gray-600);
 }
@@ -611,7 +611,7 @@
 	border: 1px solid var(--color-gray-200);
 	border-radius: var(--radius-lg);
 	padding: 8px 12px;
-	font-size: 13px;
+	font-size: var(--font-size-compact);
 	color: var(--color-gray-700);
 	background: var(--color-white);
 	transition:
@@ -647,7 +647,7 @@
 	border: 1px solid var(--color-gray-200);
 	border-radius: var(--radius-lg);
 	padding: 8px 36px 8px 12px;
-	font-size: 13px;
+	font-size: var(--font-size-compact);
 	color: var(--color-gray-700);
 	background: var(--color-white);
 	appearance: none;
@@ -674,12 +674,12 @@
 }
 
 .formHint {
-	font-size: 11px;
+	font-size: var(--font-size-2xs);
 	color: var(--color-gray-400);
 }
 
 .fieldError {
-	font-size: 11px;
+	font-size: var(--font-size-2xs);
 	color: #e24b4a;
 	font-weight: var(--font-weight-medium);
 }
@@ -695,13 +695,13 @@
 }
 
 .formToggleLabel {
-	font-size: 13px;
+	font-size: var(--font-size-compact);
 	font-weight: var(--font-weight-semibold);
 	color: var(--color-gray-700);
 }
 
 .formToggleSub {
-	font-size: 11px;
+	font-size: var(--font-size-2xs);
 	color: var(--color-gray-400);
 	margin-top: 2px;
 }
@@ -711,7 +711,7 @@
 	background: var(--color-gray-50);
 	border: 1px solid var(--color-gray-200);
 	border-radius: var(--radius-lg);
-	font-size: 13px;
+	font-size: var(--font-size-compact);
 	color: var(--color-gray-500);
 	font-weight: var(--font-weight-medium);
 }
@@ -722,7 +722,7 @@
 	border: 1px solid var(--color-gray-200);
 	border-radius: var(--radius-lg);
 	padding: 8px 18px;
-	font-size: 13px;
+	font-size: var(--font-size-compact);
 	font-weight: var(--font-weight-medium);
 	color: var(--color-gray-600);
 	cursor: pointer;
@@ -739,7 +739,7 @@
 	border: 1px solid var(--color-primary);
 	border-radius: var(--radius-lg);
 	padding: 8px 20px;
-	font-size: 13px;
+	font-size: var(--font-size-compact);
 	font-weight: var(--font-weight-semibold);
 	color: #fff;
 	cursor: pointer;
@@ -766,7 +766,7 @@
 	border: 1px solid #e24b4a;
 	border-radius: var(--radius-lg);
 	padding: 8px 20px;
-	font-size: 13px;
+	font-size: var(--font-size-compact);
 	font-weight: var(--font-weight-semibold);
 	color: #fff;
 	cursor: pointer;
@@ -810,7 +810,7 @@
 	gap: 10px;
 	padding: 12px 20px;
 	border-radius: var(--radius-xl);
-	font-size: 13px;
+	font-size: var(--font-size-compact);
 	font-weight: var(--font-weight-semibold);
 	box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
 	animation: slideUp 0.25s ease-out;

@@ -69,7 +69,7 @@
 .colorHex {
 	font-size: var(--font-size-xs);
 	color: var(--color-gray-500);
-	font-family: monospace;
+	font-family: var(--font-mono);
 	letter-spacing: 0.04em;
 }
 

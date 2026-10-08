@@ -66,7 +66,7 @@
 	border-radius: var(--radius-md);
 	background: transparent;
 	font-family: var(--font-body);
-	font-size: 12px;
+	font-size: var(--font-size-xs);
 	cursor: pointer;
 	opacity: 0.8;
 }
@@ -97,7 +97,7 @@
 	color: var(--color-gray-800);
 }
 .statsSectionSub {
-	font-size: 12px;
+	font-size: var(--font-size-xs);
 	color: var(--color-gray-400);
 }
 
@@ -129,7 +129,7 @@
 	gap: var(--space-2);
 }
 .completionValue {
-	font-size: 40px;
+	font-size: var(--font-size-4xl);
 	font-weight: var(--font-weight-bold);
 	color: var(--color-primary-dark);
 	line-height: 1;
@@ -141,7 +141,7 @@
 	color: var(--color-gray-800);
 }
 .completionSub {
-	font-size: 12px;
+	font-size: var(--font-size-xs);
 	color: var(--color-gray-400);
 }
 .completionBreakdown {
@@ -154,7 +154,7 @@
 	display: flex;
 	align-items: center;
 	gap: 5px;
-	font-size: 12px;
+	font-size: var(--font-size-xs);
 	color: var(--color-gray-600);
 }
 .completionDot {
@@ -180,12 +180,12 @@
 	gap: 4px;
 }
 .statValue {
-	font-size: 28px;
+	font-size: var(--font-size-3xl);
 	font-weight: var(--font-weight-bold);
 	line-height: 1;
 }
 .statLabel {
-	font-size: 12px;
+	font-size: var(--font-size-xs);
 	color: var(--color-gray-500);
 	font-weight: var(--font-weight-medium);
 }
@@ -254,7 +254,7 @@
 }
 .statsCardHead {
 	padding: var(--space-3) var(--space-5);
-	font-size: 11px;
+	font-size: var(--font-size-2xs);
 	font-weight: var(--font-weight-semibold);
 	color: var(--color-gray-500);
 	text-transform: uppercase;
@@ -266,7 +266,7 @@
 	padding: var(--space-4) var(--space-5);
 }
 .statsEmpty {
-	font-size: 13px;
+	font-size: var(--font-size-compact);
 	color: var(--color-gray-400);
 	text-align: center;
 	padding: var(--space-6) 0;
@@ -280,7 +280,7 @@
 }
 .dtTh {
 	text-align: left;
-	font-size: 11px;
+	font-size: var(--font-size-2xs);
 	font-weight: var(--font-weight-semibold);
 	color: var(--color-gray-400);
 	text-transform: uppercase;
@@ -316,7 +316,7 @@
 }
 .dtTd {
 	padding: 7px 8px;
-	font-size: 13px;
+	font-size: var(--font-size-compact);
 	color: var(--color-gray-700);
 	border-bottom: 1px solid var(--color-gray-50);
 }
@@ -333,7 +333,7 @@
 	max-width: 120px;
 }
 .rateText {
-	font-size: 12px;
+	font-size: var(--font-size-xs);
 	font-weight: var(--font-weight-semibold);
 	color: var(--color-gray-600);
 	white-space: nowrap;
@@ -377,11 +377,11 @@
 	align-items: baseline;
 }
 .barName {
-	font-size: 13px;
+	font-size: var(--font-size-compact);
 	color: var(--color-gray-700);
 }
 .barCount {
-	font-size: 12px;
+	font-size: var(--font-size-xs);
 	font-weight: var(--font-weight-semibold);
 	color: var(--color-gray-500);
 }
@@ -406,14 +406,14 @@
 .approvalTitle {
 	flex: 1;
 	min-width: 0;
-	font-size: 13px;
+	font-size: var(--font-size-compact);
 	color: var(--color-gray-700);
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
 }
 .approvalMeta {
-	font-size: 11px;
+	font-size: var(--font-size-2xs);
 	color: var(--color-gray-400);
 	white-space: nowrap;
 	flex-shrink: 0;
@@ -450,7 +450,7 @@
 	gap: 5px;
 }
 .fl {
-	font-size: 11px;
+	font-size: var(--font-size-2xs);
 	font-weight: var(--font-weight-semibold);
 	color: var(--color-gray-500);
 	text-transform: uppercase;
@@ -484,14 +484,14 @@
 	border-top: 1px solid var(--color-gray-100);
 }
 .countText {
-	font-size: 13px;
+	font-size: var(--font-size-compact);
 	color: var(--color-gray-500);
 }
 .countLoading {
 	display: flex;
 	align-items: center;
 	gap: var(--space-2);
-	font-size: 13px;
+	font-size: var(--font-size-compact);
 	color: var(--color-gray-400);
 }
 .dotSpin {
@@ -579,7 +579,7 @@
 	margin-bottom: 3px;
 }
 .typeDesc {
-	font-size: 12px;
+	font-size: var(--font-size-xs);
 	color: var(--color-gray-500);
 	line-height: 1.4;
 }
@@ -631,7 +631,7 @@
 	flex-direction: column;
 }
 .optSectionLabel {
-	font-size: 11px;
+	font-size: var(--font-size-2xs);
 	font-weight: var(--font-weight-semibold);
 	color: var(--color-gray-500);
 	text-transform: uppercase;
@@ -653,7 +653,7 @@
 	border: 1.5px solid var(--color-gray-200);
 	border-radius: var(--radius-full);
 	cursor: pointer;
-	font-size: 12px;
+	font-size: var(--font-size-xs);
 	color: var(--color-gray-600);
 	transition: all var(--transition-fast);
 	user-select: none;
@@ -704,7 +704,7 @@
 	text-transform: none;
 	letter-spacing: 0;
 	color: var(--color-gray-400);
-	font-size: 11px;
+	font-size: var(--font-size-2xs);
 }
 .fileRow {
 	display: flex;
@@ -712,7 +712,7 @@
 	gap: var(--space-2);
 }
 .fileExt {
-	font-size: 12px;
+	font-size: var(--font-size-xs);
 	color: var(--color-gray-400);
 	white-space: nowrap;
 	font-weight: 500;
@@ -744,7 +744,7 @@
 	background: #f0fdf4;
 }
 .sectionCheckLabel {
-	font-size: 13px;
+	font-size: var(--font-size-compact);
 	font-weight: var(--font-weight-medium);
 	color: var(--color-gray-700);
 }
@@ -768,7 +768,7 @@
 	gap: var(--space-2);
 }
 .fmtLabel {
-	font-size: 13px;
+	font-size: var(--font-size-compact);
 	color: var(--color-gray-500);
 	font-weight: 500;
 }
@@ -781,7 +781,7 @@
 	border-radius: var(--radius-lg);
 	background: var(--color-white);
 	font-family: var(--font-body);
-	font-size: 13px;
+	font-size: var(--font-size-compact);
 	font-weight: var(--font-weight-semibold);
 	color: var(--color-gray-500);
 	cursor: pointer;
@@ -802,7 +802,7 @@
 	gap: var(--space-3);
 }
 .errMsg {
-	font-size: 12px;
+	font-size: var(--font-size-xs);
 	color: #b91c1c;
 	display: flex;
 	align-items: center;

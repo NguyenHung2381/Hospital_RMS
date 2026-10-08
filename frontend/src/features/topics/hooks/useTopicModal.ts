@@ -123,7 +123,12 @@ export function useTopicModal({
 	const selectUser = (u: UserSuggestion) => {
 		if (pendingMembers.some((m) => m.staff_number === (u.staff_number ?? '')))
 			return;
-		if (!isAddRoleAllowed(pendingMembers, addRole)) return;
+		// Vai trò đang chọn không hợp lệ (vd. danh sách trống nhưng đang để Thành viên) → dùng vai trò hợp lệ thay vì bỏ qua im lặng
+		const role: MemberRole = isAddRoleAllowed(pendingMembers, addRole)
+			? addRole
+			: pendingMembers.length === 0
+				? 'leader'
+				: 'member';
 		setPendingMembers((prev) => [
 			...prev,
 			{
@@ -134,7 +139,7 @@ export function useTopicModal({
 				username: u.username,
 				department_id: u.department_id,
 				department_name: deptName(u.department_id),
-				role: addRole,
+				role,
 			},
 		]);
 		setMemberQuery('');

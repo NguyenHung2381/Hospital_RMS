@@ -46,7 +46,7 @@
 
 .title {
 	margin: 0;
-	font-size: 15px;
+	font-size: var(--font-size-base);
 	font-weight: 600;
 	color: var(--color-gray-800, #1f2937);
 }

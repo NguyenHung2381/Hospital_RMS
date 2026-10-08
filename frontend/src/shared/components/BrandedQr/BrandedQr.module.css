@@ -24,7 +24,7 @@
 }
 
 .hint {
-	font-size: 14px;
+	font-size: var(--font-size-sm);
 	text-align: center;
 	color: #374151;
 }

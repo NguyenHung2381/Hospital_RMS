@@ -14,7 +14,7 @@ const theme = {
 		colorInfo: '#34b8d8',
 		colorLink: '#0a9b4a',
 		borderRadius: 8,
-		fontFamily: "'Mulish', 'Be Vietnam Pro', sans-serif",
+		fontFamily: 'var(--font-body)',
 	},
 };
 

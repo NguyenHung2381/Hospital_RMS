@@ -97,7 +97,7 @@
 }
 
 .metricLabel {
-	font-size: 11px;
+	font-size: var(--font-size-2xs);
 	color: var(--color-gray-500);
 	font-weight: var(--font-weight-semibold);
 	line-height: 1.3;
@@ -142,7 +142,7 @@
 }
 
 .metricValue {
-	font-size: 36px;
+	font-size: var(--font-size-4xl);
 	font-weight: var(--font-weight-extrabold);
 	color: var(--color-gray-800);
 	line-height: 1;
@@ -482,7 +482,7 @@
 }
 
 .tableCount {
-	font-size: 11px;
+	font-size: var(--font-size-2xs);
 	color: var(--color-primary-dark);
 	background: var(--color-primary-pale);
 	padding: 3px var(--space-2);
@@ -594,7 +594,7 @@
 }
 
 .tabCount {
-	font-size: 11px;
+	font-size: var(--font-size-2xs);
 	background: var(--color-gray-100);
 	color: var(--color-gray-600);
 	padding: 1px 6px;
@@ -663,7 +663,7 @@
 
 /* Topic cells */
 .topicId {
-	font-size: 11px;
+	font-size: var(--font-size-2xs);
 	color: var(--color-gray-600);
 	font-family: var(--font-mono);
 	font-weight: var(--font-weight-semibold);
@@ -689,7 +689,7 @@
 }
 
 .topicMeta {
-	font-size: 11px;
+	font-size: var(--font-size-2xs);
 	color: var(--color-gray-400);
 	white-space: nowrap;
 	overflow: hidden;
@@ -721,7 +721,7 @@
 }
 
 .progressPct {
-	font-size: 11px;
+	font-size: var(--font-size-2xs);
 	color: var(--color-gray-500);
 	font-weight: var(--font-weight-semibold);
 	min-width: 30px;
@@ -881,7 +881,7 @@
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	font-size: 12px;
+	font-size: var(--font-size-xs);
 	font-weight: var(--font-weight-bold);
 	color: var(--color-primary-dark);
 	flex-shrink: 0;
@@ -894,7 +894,7 @@
 }
 
 .approvalTopicId {
-	font-size: 10px;
+	font-size: var(--font-size-2xs);
 	color: var(--color-gray-400);
 	font-family: var(--font-mono);
 	margin-bottom: 2px;
@@ -912,7 +912,7 @@
 }
 
 .approvalMeta {
-	font-size: 11px;
+	font-size: var(--font-size-2xs);
 	color: var(--color-gray-500);
 	margin-top: 2px;
 }
@@ -926,7 +926,7 @@
 }
 
 .approvalDate {
-	font-size: 10px;
+	font-size: var(--font-size-2xs);
 	color: var(--color-gray-400);
 }
 
@@ -960,7 +960,7 @@
 }
 
 .deptRank {
-	font-size: 11px;
+	font-size: var(--font-size-2xs);
 	font-weight: var(--font-weight-bold);
 	color: var(--color-gray-400);
 	width: 18px;
@@ -1011,7 +1011,7 @@
 }
 
 .deptCount {
-	font-size: 12px;
+	font-size: var(--font-size-xs);
 	font-weight: var(--font-weight-bold);
 	color: var(--color-primary-dark);
 	min-width: 24px;
@@ -1155,7 +1155,7 @@
 	}
 
 	.metricValue {
-		font-size: 28px;
+		font-size: var(--font-size-3xl);
 	}
 
 	.approvalItem {
@@ -1337,7 +1337,7 @@
 	gap: var(--space-3);
 	padding: 8px 4px;
 	border-bottom: 1px solid var(--color-gray-100);
-	font-size: 13px;
+	font-size: var(--font-size-compact);
 }
 
 .listRow:last-child {
@@ -1351,7 +1351,7 @@
 
 .listRowMeta {
 	color: var(--color-gray-500);
-	font-size: 12px;
+	font-size: var(--font-size-xs);
 }
 
 .listRowSide {
@@ -1363,7 +1363,7 @@
 .emptyNote {
 	padding: 16px;
 	color: var(--color-gray-400);
-	font-size: 13px;
+	font-size: var(--font-size-compact);
 }
 
 @media (max-width: 768px) {

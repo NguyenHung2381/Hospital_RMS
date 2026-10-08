@@ -178,7 +178,7 @@
 	border: none;
 	background: transparent;
 	border-radius: var(--radius-md);
-	font-size: 16px;
+	font-size: var(--font-size-base);
 	font-weight: 700;
 	color: var(--color-gray-700);
 	cursor: pointer;
@@ -257,7 +257,7 @@
 	background: rgba(255, 255, 255, 0.95);
 	backdrop-filter: blur(4px);
 	color: var(--color-gray-700);
-	font-size: 22px;
+	font-size: var(--font-size-2xl);
 	line-height: 1;
 	cursor: pointer;
 	display: flex;
@@ -327,7 +327,7 @@
 	box-shadow: 3px 0 10px rgba(0,0,0,0.06);
 }
 .labelColTitle {
-	font-size: 11px;
+	font-size: var(--font-size-2xs);
 	font-weight: var(--font-weight-bold);
 	color: var(--color-gray-500);
 	text-transform: uppercase;
@@ -348,7 +348,7 @@
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	font-size: 12px;
+	font-size: var(--font-size-xs);
 	font-weight: var(--font-weight-semibold);
 	color: var(--color-gray-600);
 	border-left: 1px solid var(--color-gray-200);
@@ -372,7 +372,7 @@
 	height: 22px;
 	display: flex;
 	align-items: center;
-	font-size: 10px;
+	font-size: var(--font-size-2xs);
 	font-weight: var(--font-weight-medium);
 	color: var(--color-gray-500);
 	border-left: 1px solid var(--color-gray-200);
@@ -407,14 +407,14 @@
 }
 
 .roundId {
-	font-size: 11px;
+	font-size: var(--font-size-2xs);
 	color: var(--color-primary);
-	font-family: monospace;
+	font-family: var(--font-mono);
 	font-weight: var(--font-weight-bold);
 	letter-spacing: 0.04em;
 }
 .roundName {
-	font-size: 13.5px;
+	font-size: var(--font-size-compact);
 	font-weight: var(--font-weight-bold);
 	color: var(--color-gray-900);
 	line-height: 1.35;
@@ -423,13 +423,13 @@
 	-webkit-line-clamp: 2;
 	overflow: hidden;
 }
-.roundMeta { font-size: 11px; color: var(--color-gray-500); font-weight: var(--font-weight-medium); }
+.roundMeta { font-size: var(--font-size-2xs); color: var(--color-gray-500); font-weight: var(--font-weight-medium); }
 .statusBadge {
 	display: inline-block;
 	margin-top: 2px;
 	padding: 3px 8px;
 	border-radius: var(--radius-full);
-	font-size: 10px;
+	font-size: var(--font-size-2xs);
 	font-weight: var(--font-weight-bold);
 	background: color-mix(in srgb, var(--status-color) 14%, transparent);
 	color: var(--status-color);
@@ -440,9 +440,9 @@
 
 /* Topic mini-stats */
 .topicStats { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 2px; }
-.topicStat  { display: flex; align-items: center; gap: 4px; font-size: 11px; color: var(--color-gray-500); line-height: 1; }
+.topicStat  { display: flex; align-items: center; gap: 4px; font-size: var(--font-size-2xs); color: var(--color-gray-500); line-height: 1; }
 .topicStatDot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
-.topicStatDivider { color: var(--color-gray-300); font-size: 11px; }
+.topicStatDivider { color: var(--color-gray-300); font-size: var(--font-size-2xs); }
 
 .addBtn {
 	display: inline-flex;
@@ -453,7 +453,7 @@
 	border-radius: var(--radius-md);
 	border: 1px dashed var(--color-gray-300);
 	background: var(--color-gray-50);
-	font-size: 11px;
+	font-size: var(--font-size-2xs);
 	font-weight: var(--font-weight-semibold);
 	color: var(--color-gray-600);
 	cursor: pointer;
@@ -535,7 +535,7 @@
 	display: flex;
 	align-items: center;
 	padding: 0 9px;
-	font-size: 10px;
+	font-size: var(--font-size-2xs);
 	font-weight: 700;
 	color: rgba(255, 255, 255, 0.97);
 	white-space: nowrap;
@@ -606,7 +606,7 @@
 	left: 0;
 	width: 24px;
 	text-align: center;
-	font-size: 9px;
+	font-size: var(--font-size-2xs);
 	font-weight: 800;
 	line-height: 1;
 	pointer-events: none;
@@ -616,7 +616,7 @@
 	position: absolute;
 	top: 34px;
 	left: 14px;
-	font-size: 10px;
+	font-size: var(--font-size-2xs);
 	font-weight: var(--font-weight-bold);
 	white-space: nowrap;
 	pointer-events: none;
@@ -659,7 +659,7 @@
 	z-index: 400;
 	background: rgba(15, 23, 42, 0.92);
 	color: #ffffff;
-	font-size: 11px;
+	font-size: var(--font-size-2xs);
 	font-weight: var(--font-weight-semibold);
 	font-family: var(--font-body);
 	padding: 5px 10px;
@@ -690,7 +690,7 @@
 		flex: 1 !important;
 		justify-content: center !important;
 		padding: 8px 4px !important;
-		font-size: 12px !important;
+		font-size: var(--font-size-xs) !important;
 		white-space: nowrap !important;
 	}
 
@@ -734,7 +734,7 @@
 		padding: var(--space-2);
 	}
 	.roundName {
-		font-size: 12px;
+		font-size: var(--font-size-xs);
 	}
 	.scrollArrow {
 		display: none; /* Hide floating arrows on touch mobile in favor of native scroll */
@@ -748,6 +748,6 @@
 		padding: 6px;
 	}
 	.roundName {
-		font-size: 11px;
+		font-size: var(--font-size-2xs);
 	}
 }

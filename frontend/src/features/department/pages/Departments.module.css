@@ -93,7 +93,7 @@
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	font-size: 11px;
+	font-size: var(--font-size-2xs);
 	font-weight: var(--font-weight-bold);
 	flex-shrink: 0;
 	letter-spacing: 0.02em;
@@ -107,7 +107,7 @@
 /* Code tag */
 .codeTag {
 	font-family: var(--font-mono);
-	font-size: 11px;
+	font-size: var(--font-size-2xs);
 	font-weight: var(--font-weight-bold);
 	color: var(--color-primary-dark);
 	background: #e1f5ea;
@@ -124,7 +124,7 @@
 
 /* Description */
 .descText {
-	font-size: 12px;
+	font-size: var(--font-size-xs);
 	color: var(--color-gray-500);
 	max-width: 300px;
 	display: -webkit-box;
@@ -358,7 +358,7 @@
 	border-color: #e24b4a !important;
 }
 .fieldError {
-	font-size: 11px;
+	font-size: var(--font-size-2xs);
 	color: #e24b4a;
 }
 

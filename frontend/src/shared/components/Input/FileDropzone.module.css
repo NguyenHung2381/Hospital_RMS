@@ -186,7 +186,7 @@
 	height: 15px;
 }
 .compact .title {
-	font-size: 13px;
+	font-size: var(--font-size-compact);
 	white-space: nowrap;
 	overflow: hidden;
 	text-overflow: ellipsis;
@@ -205,7 +205,7 @@
 	height: 13px;
 }
 .compact .fileName {
-	font-size: 13px;
+	font-size: var(--font-size-compact);
 }
 .compact .fileMeta {
 	display: none;

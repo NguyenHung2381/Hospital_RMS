@@ -40,12 +40,12 @@
 	height: 20px;
 }
 .formCardTitle {
-	font-size: 16px;
+	font-size: var(--font-size-base);
 	font-weight: 700;
 	color: var(--color-gray-800);
 }
 .formCardSub {
-	font-size: 12px;
+	font-size: var(--font-size-xs);
 	color: var(--color-gray-400);
 	margin-top: 2px;
 }
@@ -57,7 +57,7 @@
 }
 
 .formSection {
-	font-size: 11.5px;
+	font-size: var(--font-size-2xs);
 	font-weight: 700;
 	color: var(--color-gray-400);
 	text-transform: uppercase;
@@ -74,7 +74,7 @@
 }
 
 .formLabel {
-	font-size: 13px;
+	font-size: var(--font-size-compact);
 	font-weight: 600;
 	color: var(--color-gray-700);
 }
@@ -88,7 +88,7 @@
 	padding: 9px 12px;
 	border: 1.5px solid var(--color-gray-200);
 	border-radius: var(--radius-lg);
-	font-size: 13.5px;
+	font-size: var(--font-size-compact);
 	color: var(--color-gray-800);
 	background: var(--color-white);
 	outline: none;
@@ -110,7 +110,7 @@
 	padding: 9px 34px 9px 12px;
 	border: 1.5px solid var(--color-gray-200);
 	border-radius: var(--radius-lg);
-	font-size: 13.5px;
+	font-size: var(--font-size-compact);
 	color: var(--color-gray-800);
 	/* appearance: none ẩn mũi tên gốc ⇒ vẽ lại chevron để nhận ra là ô chọn */
 	background: var(--color-white)
@@ -139,7 +139,7 @@
 }
 
 .formError {
-	font-size: 11.5px;
+	font-size: var(--font-size-2xs);
 	color: #ef4444;
 	display: flex;
 	align-items: center;
@@ -152,7 +152,7 @@
 	flex-shrink: 0;
 }
 .formHint {
-	font-size: 11.5px;
+	font-size: var(--font-size-2xs);
 	color: var(--color-gray-400);
 }
 
@@ -169,7 +169,7 @@
 	gap: 6px;
 	padding: 6px 14px;
 	border-radius: 20px;
-	font-size: 13px;
+	font-size: var(--font-size-compact);
 	font-weight: 600;
 	cursor: pointer;
 	transition: all 0.15s;
@@ -199,7 +199,7 @@
 	padding: 9px 12px 9px 36px;
 	border: 1.5px solid var(--color-gray-200);
 	border-radius: var(--radius-lg);
-	font-size: 13.5px;
+	font-size: var(--font-size-compact);
 	color: var(--color-gray-800);
 	background: var(--color-white);
 	outline: none;
@@ -276,27 +276,27 @@
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	font-size: 11px;
+	font-size: var(--font-size-2xs);
 	font-weight: 700;
 	flex-shrink: 0;
 }
 
 .suggName {
-	font-size: 13px;
+	font-size: var(--font-size-compact);
 	font-weight: 600;
 	color: var(--color-gray-800);
 }
 .suggMeta {
-	font-size: 11px;
+	font-size: var(--font-size-2xs);
 	color: var(--color-gray-400);
 }
 .suggAdded {
-	font-size: 11px;
+	font-size: var(--font-size-2xs);
 	color: #1a6abd;
 	font-weight: 600;
 }
 .suggAdd {
-	font-size: 12px;
+	font-size: var(--font-size-xs);
 	color: #1a6abd;
 	font-weight: 600;
 }
@@ -307,7 +307,7 @@
 	align-items: center;
 	justify-content: space-between;
 	gap: 8px;
-	font-size: 13px;
+	font-size: var(--font-size-compact);
 	color: var(--color-gray-400);
 }
 
@@ -322,7 +322,7 @@
 }
 
 .manualAddTitle {
-	font-size: 12.5px;
+	font-size: var(--font-size-xs);
 	font-weight: 700;
 	color: #1a6abd;
 }
@@ -362,7 +362,7 @@
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	font-size: 11px;
+	font-size: var(--font-size-2xs);
 	font-weight: 700;
 	flex-shrink: 0;
 }
@@ -372,12 +372,12 @@
 	min-width: 0;
 }
 .memberName {
-	font-size: 13px;
+	font-size: var(--font-size-compact);
 	font-weight: 600;
 	color: var(--color-gray-800);
 }
 .memberMeta {
-	font-size: 11px;
+	font-size: var(--font-size-2xs);
 	color: var(--color-gray-400);
 }
 
@@ -430,7 +430,7 @@
 .lockedFieldText {
 	flex: 1;
 	min-width: 0;
-	font-size: 13.5px;
+	font-size: var(--font-size-compact);
 	font-weight: 600;
 	color: var(--color-gray-800);
 	white-space: nowrap;
@@ -449,7 +449,7 @@
 	flex-shrink: 0;
 	padding: 2px 8px;
 	border-radius: 999px;
-	font-size: 11px;
+	font-size: var(--font-size-2xs);
 	font-weight: 600;
 	color: #1a6abd;
 	background: #e8f1fb;
@@ -506,7 +506,7 @@
 }
 
 .roundPickerItemName {
-	font-size: 14px;
+	font-size: var(--font-size-sm);
 	font-weight: 700;
 	color: var(--color-gray-800);
 	display: flex;
@@ -516,7 +516,7 @@
 }
 
 .roundPickerItemYear {
-	font-size: 11px;
+	font-size: var(--font-size-2xs);
 	font-weight: 600;
 	color: var(--color-gray-500);
 	background: var(--color-gray-100);
@@ -528,7 +528,7 @@
 	display: flex;
 	align-items: center;
 	gap: 6px;
-	font-size: 12px;
+	font-size: var(--font-size-xs);
 	color: var(--color-gray-500);
 }
 
@@ -542,7 +542,7 @@
 	display: inline-flex;
 	align-items: center;
 	gap: 4px;
-	font-size: 12.5px;
+	font-size: var(--font-size-xs);
 	font-weight: 700;
 	color: #1a6abd;
 	flex-shrink: 0;
@@ -590,14 +590,14 @@
 }
 
 .roundCardLabel {
-	font-size: 11.5px;
+	font-size: var(--font-size-2xs);
 	font-weight: 600;
 	letter-spacing: 0.02em;
 	color: var(--color-gray-500);
 }
 
 .roundCardName {
-	font-size: 14.5px;
+	font-size: var(--font-size-sm);
 	font-weight: 700;
 	color: var(--color-gray-800);
 	white-space: nowrap;
@@ -610,7 +610,7 @@
 	align-items: center;
 	gap: 5px;
 	flex-shrink: 0;
-	font-size: 12px;
+	font-size: var(--font-size-xs);
 	color: var(--color-gray-500);
 }
 
@@ -627,7 +627,7 @@
 	padding: 7px 12px;
 	border: 1.5px solid var(--color-gray-200);
 	border-radius: var(--radius-lg);
-	font-size: 12.5px;
+	font-size: var(--font-size-xs);
 	font-weight: 600;
 	color: var(--color-gray-600);
 	background: var(--color-white);
@@ -654,7 +654,7 @@
 	padding: 7px 14px;
 	border: 1.5px dashed var(--color-gray-300);
 	border-radius: var(--radius-lg);
-	font-size: 13px;
+	font-size: var(--font-size-compact);
 	font-weight: 600;
 	color: var(--color-gray-500);
 	background: none;
@@ -692,7 +692,7 @@
 	padding: var(--space-4) var(--space-6);
 	border-bottom: 1px solid var(--color-gray-100);
 	border-radius: var(--radius-xl) var(--radius-xl) 0 0;
-	font-size: 14px;
+	font-size: var(--font-size-sm);
 	font-weight: 700;
 	color: var(--color-gray-700);
 	display: flex;
@@ -710,7 +710,7 @@
 	border-radius: 999px;
 	background: #1a6abd;
 	color: #fff;
-	font-size: 11px;
+	font-size: var(--font-size-2xs);
 	font-weight: 700;
 }
 
@@ -737,7 +737,7 @@
 	border-radius: 50%;
 	background: #dbeafe;
 	color: #1a6abd;
-	font-size: 12px;
+	font-size: var(--font-size-xs);
 	font-weight: 700;
 	display: flex;
 	align-items: center;
@@ -750,7 +750,7 @@
 	min-width: 0;
 }
 .pendingTitle {
-	font-size: 13.5px;
+	font-size: var(--font-size-compact);
 	font-weight: 600;
 	color: var(--color-gray-800);
 	white-space: nowrap;
@@ -758,7 +758,7 @@
 	text-overflow: ellipsis;
 }
 .pendingMeta {
-	font-size: 11.5px;
+	font-size: var(--font-size-2xs);
 	color: var(--color-gray-400);
 }
 
@@ -803,12 +803,12 @@
 	height: 26px;
 }
 .emptyTitle {
-	font-size: 17px;
+	font-size: var(--font-size-lg);
 	font-weight: 700;
 	color: var(--color-gray-700);
 }
 .emptyDesc {
-	font-size: 13.5px;
+	font-size: var(--font-size-compact);
 	color: var(--color-gray-400);
 }
 
@@ -832,7 +832,7 @@
 	color: #fff;
 	border: none;
 	border-radius: var(--radius-lg);
-	font-size: 14px;
+	font-size: var(--font-size-sm);
 	font-weight: 600;
 	cursor: pointer;
 	transition: background var(--transition-fast);
@@ -859,7 +859,7 @@
 	color: var(--color-gray-700);
 	border: 1.5px solid var(--color-gray-200);
 	border-radius: var(--radius-lg);
-	font-size: 14px;
+	font-size: var(--font-size-sm);
 	font-weight: 600;
 	cursor: pointer;
 	transition: all var(--transition-fast);
@@ -882,7 +882,7 @@
 }
 
 .saveError {
-	font-size: 12px;
+	font-size: var(--font-size-xs);
 	color: #ef4444;
 	flex: 1;
 	display: flex;
@@ -908,7 +908,7 @@
 .sideCardHeader {
 	padding: 14px var(--space-5);
 	border-bottom: 1px solid var(--color-gray-100);
-	font-size: 13px;
+	font-size: var(--font-size-compact);
 	font-weight: 700;
 	color: var(--color-gray-700);
 	display: flex;
@@ -941,7 +941,7 @@
 }
 
 .myTopicTitle {
-	font-size: 13px;
+	font-size: var(--font-size-compact);
 	font-weight: 600;
 	color: var(--color-gray-800);
 	display: -webkit-box;
@@ -952,7 +952,7 @@
 	line-height: 1.4;
 }
 .myTopicMeta {
-	font-size: 11.5px;
+	font-size: var(--font-size-2xs);
 	color: var(--color-gray-400);
 	display: flex;
 	align-items: center;
@@ -977,7 +977,7 @@
 	border-radius: 50%;
 	background: #dbeafe;
 	color: #1a6abd;
-	font-size: 11px;
+	font-size: var(--font-size-2xs);
 	font-weight: 800;
 	display: flex;
 	align-items: center;
@@ -987,7 +987,7 @@
 }
 
 .guideText {
-	font-size: 12.5px;
+	font-size: var(--font-size-xs);
 	color: var(--color-gray-600);
 	line-height: 1.5;
 }
@@ -1003,7 +1003,7 @@
 	right: 24px;
 	padding: 12px 18px;
 	border-radius: var(--radius-lg);
-	font-size: 13.5px;
+	font-size: var(--font-size-compact);
 	font-weight: 600;
 	display: flex;
 	align-items: center;
@@ -1082,7 +1082,7 @@
 }
 
 .dropZoneText {
-	font-size: 13.5px;
+	font-size: var(--font-size-compact);
 	color: var(--color-gray-600);
 	font-weight: 500;
 }
@@ -1094,7 +1094,7 @@
 }
 
 .dropZoneHint {
-	font-size: 11.5px;
+	font-size: var(--font-size-2xs);
 	color: var(--color-gray-400);
 }
 
@@ -1131,7 +1131,7 @@
 
 .fileItemName {
 	flex: 1;
-	font-size: 13px;
+	font-size: var(--font-size-compact);
 	color: var(--color-gray-800);
 	white-space: nowrap;
 	overflow: hidden;
@@ -1140,7 +1140,7 @@
 }
 
 .fileItemSize {
-	font-size: 11.5px;
+	font-size: var(--font-size-2xs);
 	color: var(--color-gray-400);
 	white-space: nowrap;
 	flex-shrink: 0;

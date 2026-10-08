@@ -194,7 +194,7 @@
 }
 
 .statValue {
-	font-size: 28px;
+	font-size: var(--font-size-3xl);
 	font-weight: var(--font-weight-extrabold);
 	color: var(--color-gray-800);
 	line-height: 1;
@@ -351,7 +351,7 @@
 }
 
 .tabCount {
-	font-size: 10px;
+	font-size: var(--font-size-2xs);
 	padding: 1px 5px;
 	border-radius: var(--radius-full);
 	font-weight: var(--font-weight-bold);
@@ -425,7 +425,7 @@
 }
 
 .listItemTopicId {
-	font-size: 10px;
+	font-size: var(--font-size-2xs);
 	font-family: var(--font-mono);
 	color: var(--color-gray-400);
 	margin-bottom: 2px;
@@ -442,7 +442,7 @@
 }
 
 .listItemMeta {
-	font-size: 11px;
+	font-size: var(--font-size-2xs);
 	color: var(--color-gray-400);
 	display: flex;
 	align-items: center;
@@ -548,7 +548,7 @@
 }
 
 .detailTopicId {
-	font-size: 11px;
+	font-size: var(--font-size-2xs);
 	font-family: var(--font-mono);
 	color: var(--color-gray-400);
 	margin-bottom: var(--space-2);
@@ -671,7 +671,7 @@
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	font-size: 12px;
+	font-size: var(--font-size-xs);
 	font-weight: 700;
 	flex-shrink: 0;
 	letter-spacing: 0.02em;
@@ -701,7 +701,7 @@
 }
 
 .memberName {
-	font-size: 13px;
+	font-size: var(--font-size-compact);
 	font-weight: 600;
 	color: var(--color-gray-800, #1f2937);
 	white-space: nowrap;
@@ -718,7 +718,7 @@
 }
 
 .roleBadgeLead {
-	font-size: 10.5px;
+	font-size: var(--font-size-2xs);
 	font-weight: 700;
 	padding: 2px 8px;
 	border-radius: var(--radius-full, 9999px);
@@ -729,7 +729,7 @@
 }
 
 .roleBadgeSecretary {
-	font-size: 10.5px;
+	font-size: var(--font-size-2xs);
 	font-weight: 700;
 	padding: 2px 8px;
 	border-radius: var(--radius-full, 9999px);
@@ -740,7 +740,7 @@
 }
 
 .roleBadgeMember {
-	font-size: 10.5px;
+	font-size: var(--font-size-2xs);
 	font-weight: 700;
 	padding: 2px 8px;
 	border-radius: var(--radius-full, 9999px);
@@ -751,7 +751,7 @@
 }
 
 .memberDept {
-	font-size: 11px;
+	font-size: var(--font-size-2xs);
 	color: var(--color-gray-500, #6b7280);
 	white-space: nowrap;
 	overflow: hidden;
@@ -789,12 +789,12 @@
 }
 
 .historyDate {
-	font-size: 11px;
+	font-size: var(--font-size-2xs);
 	color: var(--color-gray-400);
 }
 
 .historyComment {
-	font-size: 12px;
+	font-size: var(--font-size-xs);
 	color: var(--color-gray-600);
 	line-height: 1.55;
 	font-style: italic;
@@ -900,7 +900,7 @@
 }
 
 .fileMeta {
-	font-size: 11px;
+	font-size: var(--font-size-2xs);
 	color: var(--color-gray-400);
 	margin-top: 4px;
 	display: flex;
@@ -910,7 +910,7 @@
 }
 
 .fileTypeBadge {
-	font-size: 9px;
+	font-size: var(--font-size-2xs);
 	font-weight: var(--font-weight-bold);
 	padding: 1px 6px;
 	border-radius: var(--radius-sm);
@@ -955,7 +955,7 @@
 	color: var(--color-primary-dark);
 	border: 1.5px solid rgba(10, 155, 74, 0.2);
 	border-radius: var(--radius-lg);
-	font-size: 12px;
+	font-size: var(--font-size-xs);
 	font-weight: var(--font-weight-bold);
 	cursor: pointer;
 	transition: all var(--transition-fast);
@@ -1036,11 +1036,11 @@
 
 .noticeTitle {
 	font-weight: 700;
-	font-size: 13px;
+	font-size: var(--font-size-compact);
 }
 
 .noticeSub {
-	font-size: 12px;
+	font-size: var(--font-size-xs);
 	margin-top: 2px;
 }
 
@@ -1120,7 +1120,7 @@
 .viewerClose {
 	background: none;
 	border: none;
-	font-size: 18px;
+	font-size: var(--font-size-lg);
 	color: var(--color-gray-400);
 	cursor: pointer;
 	padding: 2px 6px;

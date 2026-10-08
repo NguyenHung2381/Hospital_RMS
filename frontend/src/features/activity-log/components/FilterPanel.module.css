@@ -22,7 +22,7 @@
 }
 .arrow {
 	color: var(--color-gray-400);
-	font-size: 13px;
+	font-size: var(--font-size-compact);
 }
 .date {
 	width: 150px;
@@ -129,7 +129,7 @@ select.control {
 	border-radius: var(--radius-full);
 	background: var(--color-primary);
 	color: #fff;
-	font-size: 11px;
+	font-size: var(--font-size-2xs);
 	line-height: 18px;
 	text-align: center;
 }
@@ -144,7 +144,7 @@ select.control {
 }
 .quickLabel {
 	margin-right: 4px;
-	font-size: 11.5px;
+	font-size: var(--font-size-2xs);
 	font-weight: var(--font-weight-bold);
 	text-transform: uppercase;
 	letter-spacing: 0.04em;
@@ -158,7 +158,7 @@ select.control {
 	border-radius: var(--radius-full);
 	background: var(--color-white);
 	font-family: var(--font-body);
-	font-size: 12.5px;
+	font-size: var(--font-size-xs);
 	font-weight: var(--font-weight-medium);
 	color: var(--color-gray-600);
 	cursor: pointer;
@@ -199,7 +199,7 @@ select.control {
 	justify-content: flex-end;
 }
 .label {
-	font-size: 12px;
+	font-size: var(--font-size-xs);
 	font-weight: var(--font-weight-semibold);
 	color: var(--color-gray-600);
 }
@@ -247,7 +247,7 @@ select.control {
 	border-radius: var(--radius-full);
 	background: var(--color-primary-pale);
 	color: var(--color-primary-dark);
-	font-size: 12px;
+	font-size: var(--font-size-xs);
 	font-weight: var(--font-weight-medium);
 	max-width: 320px;
 }
@@ -271,7 +271,7 @@ select.control {
 	border: none;
 	background: transparent;
 	font-family: var(--font-body);
-	font-size: 12.5px;
+	font-size: var(--font-size-xs);
 	font-weight: var(--font-weight-semibold);
 	color: #b42318;
 	cursor: pointer;

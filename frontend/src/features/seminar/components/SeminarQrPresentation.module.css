@@ -57,7 +57,7 @@
 	background: rgba(255, 255, 255, 0.12);
 	color: #fff;
 	font: inherit;
-	font-size: 14px;
+	font-size: var(--font-size-sm);
 	font-weight: 600;
 	cursor: pointer;
 }
@@ -112,7 +112,7 @@
 }
 
 .url {
-	font-family: var(--font-mono, monospace);
+	font-family: var(--font-mono);
 	font-size: clamp(12px, 1.2vw, 16px);
 	color: var(--color-gray-500, #6b7280);
 	word-break: break-all;

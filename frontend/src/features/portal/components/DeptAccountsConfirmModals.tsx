@@ -173,7 +173,7 @@ export function DeptAccountsResetPasswordModal({
 							<div
 								style={{
 									marginTop: 12,
-									fontFamily: 'monospace',
+									fontFamily: 'var(--font-mono)',
 									fontSize: 18,
 									letterSpacing: 1,
 									background: '#f3f4f6',
