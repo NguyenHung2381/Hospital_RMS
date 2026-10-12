@@ -19,6 +19,8 @@ module.exports = {
 		[`POST ${API}/auth/refresh`]: 'Làm mới phiên bằng refresh token',
 		[`POST ${API}/auth/logout`]: 'Đăng xuất bằng refresh token',
 		[`POST ${API}/auth/2fa/verify`]: 'Bước 2 đăng nhập — xác thực bằng pre-auth token',
+		[`POST ${API}/auth/forgot-password`]: 'Quên mật khẩu — gửi OTP qua email, luôn trả thành công (có rate-limit)',
+		[`POST ${API}/auth/reset-password`]: 'Đặt mật khẩu mới bằng OTP 6 số (có rate-limit)',
 		[`GET ${API}/events/`]: 'SSE — tự xác thực bằng vé dùng 1 lần ?ticket= (EventSource không gửi header)',
 		[`POST ${API}/csp-report/`]: 'Trình duyệt gửi báo cáo vi phạm CSP (không kèm token) — chỉ ghi log, có rate-limit',
 		[`GET ${API}/public/captcha`]: 'Cổng công khai',
@@ -69,6 +71,12 @@ module.exports = {
 		[`POST ${API}/me/courses/:id/register`]: 'Tự đăng ký khóa học — service chỉ nhận khóa bật đăng ký công khai, trong cửa sổ đăng ký, trạng thái chờ duyệt',
 		[`GET ${API}/me/cme`]: 'Tín chỉ CME của chính mình (lọc theo user_id)',
 		[`POST ${API}/me/cme/export-excel`]: 'Xuất Excel phiếu CME của chính mình (dùng req.user.id, không nhận user_id từ client)',
+		[`GET ${API}/me/cme-categories`]: 'Danh mục loại CME cho form tự khai',
+		[`POST ${API}/me/cme-records`]: 'Tự khai CME — service gán user_id = req.user.id, trạng thái chờ duyệt',
+		[`PUT ${API}/me/cme-records/:id`]: 'Service: chỉ bản ghi của chính mình, chưa duyệt (assertEditableMine)',
+		[`DELETE ${API}/me/cme-records/:id`]: 'Service: chỉ bản ghi của chính mình, chưa duyệt (assertEditableMine)',
+		[`POST ${API}/me/cme-records/:id/evidence`]: 'Chỉ bản ghi của chính mình, chưa duyệt — kiểm tra trước khi multer ghi file',
+		[`GET ${API}/modules/`]: 'Module nào đang bật — để ẩn/hiện menu',
 
 		// Thành viên hội đồng — service kiểm tra ghế trong council_members
 		// (assertSecretary / assertChairman, councilProgressService.js)
