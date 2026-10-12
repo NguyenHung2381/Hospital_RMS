@@ -55,9 +55,7 @@ const AdminNotifications = lazy(
 const ActivityLogs = lazy(
 	() => import('../../features/activity-log/pages/ActivityLogs'),
 );
-const TrainingCatalog = lazy(
-	() => import('../../features/training-catalog/pages/TrainingCatalog'),
-);
+const SystemSettings = lazy(() => import('../../features/settings/pages/SystemSettings'));
 const Venues = lazy(() => import('../../features/venue/pages/Venues'));
 const Trainees = lazy(() => import('../../features/trainee/pages/Trainees'));
 const TrainingPrograms = lazy(
@@ -191,6 +189,14 @@ export const adminRoutes: RouteObject[] = [
 			</RequirePermission>
 		),
 	},
+	{
+		path: '/admin/settings',
+		element: (
+			<RequirePermission perm='system_settings:manage'>
+				{admin('Cấu hình hệ thống', <SystemSettings />)}
+			</RequirePermission>
+		),
+	},
 	{ path: '/admin/users', element: admin('Người dùng', <Users />) },
 	{ path: '/admin/roles', element: admin('Phân quyền', <Roles />) },
 	{
@@ -199,12 +205,12 @@ export const adminRoutes: RouteObject[] = [
 	},
 	{
 		path: '/admin/categories',
-		element: admin('Phân loại đề tài', <Catalog />),
+		element: admin('Phân loại đề tài', <Catalog group='research' />),
 	},
-	{ path: '/admin/levels', element: admin('Cấp độ đề tài', <Catalog />) },
+	{ path: '/admin/levels', element: admin('Cấp độ đề tài', <Catalog group='research' />) },
 	{
 		path: '/admin/round-types',
-		element: admin('Loại đợt nghiên cứu', <Catalog />),
+		element: admin('Loại đợt nghiên cứu', <Catalog group='research' />),
 	},
 	{
 		path: '/admin/schedule',
@@ -272,19 +278,19 @@ export const adminRoutes: RouteObject[] = [
 	},
 	{
 		path: '/admin/trainee-types',
-		element: admin('Đối tượng học viên', <TrainingCatalog />),
+		element: admin('Đối tượng học viên', <Catalog group='training' />),
 	},
 	{
 		path: '/admin/training-forms',
-		element: admin('Hình thức học', <TrainingCatalog />),
+		element: admin('Hình thức học', <Catalog group='training' />),
 	},
 	{
 		path: '/admin/training-types',
-		element: admin('Loại hình đào tạo', <TrainingCatalog />),
+		element: admin('Loại hình đào tạo', <Catalog group='training' />),
 	},
 	{
 		path: '/admin/subjects',
-		element: admin('Môn học', <TrainingCatalog />),
+		element: admin('Môn học', <Catalog group='training' />),
 	},
 	{
 		path: '/admin/cme-credit-categories',

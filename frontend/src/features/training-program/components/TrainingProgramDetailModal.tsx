@@ -1,3 +1,4 @@
+import { FormField } from '@/shared/components/Input/FormField';
 import { useEffect, useState } from 'react';
 import { BadgeSvg, EditSvg, InfoSvg, LayersSvg, ListSvg, XSvg } from '@/assets/icons';
 import { getProgramResults } from '../api/trainingProgramApi';
@@ -15,10 +16,9 @@ const TABS: { key: DetailTab; label: string; icon: React.ReactNode }[] = [
 
 function InfoRow({ label, value }: { label: string; value: React.ReactNode }) {
 	return (
-		<div className={styles.formGroup}>
-			<label className={styles.formLabel}>{label}</label>
+		<FormField label={label}>
 			<div className={styles.subRowMeta}>{value ?? '—'}</div>
-		</div>
+		</FormField>
 	);
 }
 

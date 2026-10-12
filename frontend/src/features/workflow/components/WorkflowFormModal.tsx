@@ -1,5 +1,7 @@
+import { FormField } from '@/shared/components/Input/FormField';
+import { Modal, ModalActions } from '@/shared/components';
 import { useState } from 'react';
-import { CheckSvg, PlusSvg, TrashSvg, XSvg } from '@/assets/icons';
+import { PlusSvg, TrashSvg } from '@/assets/icons';
 import type { SimpleRole } from '../api/workflowApi';
 import type { StepFormData, WorkflowDefinition, WorkflowFormData } from '../types/workflow.type';
 import { EMPTY_FORM } from '../hooks/useWorkflow';
@@ -81,175 +83,144 @@ export function WorkflowFormModal({
 	};
 
 	return (
-		<div
-			className={styles.modalBackdrop}
-			onClick={(e) => e.target === e.currentTarget && onClose()}
+		<Modal
+			open
+			onClose={onClose}
+			title={mode === 'add' ? 'Tạo workflow duyệt' : 'Chỉnh sửa workflow duyệt'}
+			subtitle={mode === 'add' ? 'Thiết lập quy trình duyệt nhiều bước' : `Cập nhật — ${item?.name}`}
+			className={`${styles.modal} ${styles.modalLg}`}
+			bodyClassName={styles.modalBody}
+			footer={
+				<ModalActions
+					onCancel={onClose}
+					onConfirm={handleSave}
+					loading={loading}
+					confirmLabel={mode === 'add' ? 'Tạo workflow' : 'Lưu thay đổi'}
+				/>
+			}
 		>
-			<div className={`${styles.modal} ${styles.modalLg}`}>
-				<div className={styles.modalHeader}>
-					<div>
-						<div className={styles.modalTitle}>
-							{mode === 'add' ? 'Tạo workflow duyệt' : 'Chỉnh sửa workflow duyệt'}
-						</div>
-						<div className={styles.modalSub}>
-							{mode === 'add'
-								? 'Thiết lập quy trình duyệt nhiều bước'
-								: `Cập nhật — ${item?.name}`}
-						</div>
-					</div>
-					<button
-						className={styles.modalClose}
-						onClick={onClose}
+			<FormField
+				label='Tên workflow'
+				required
+				error={errors.name}
+			>
+				<input
+					className={`${styles.formInput} ${errors.name ? styles.inputError : ''}`}
+					value={form.name}
+					onChange={(e) => setField('name', e.target.value)}
+					placeholder='VD: Duyệt đề tài 2 cấp (Khoa → Phòng NCKH)'
+				/>
+			</FormField>
+
+			<div className={styles.formRow}>
+				<FormField label='Áp dụng cho'>
+					<select
+						className={styles.formInput}
+						value={form.resource}
+						onChange={(e) => setField('resource', e.target.value)}
 					>
-						<XSvg />
-					</button>
-				</div>
-
-				<div className={styles.modalBody}>
-					<div className={styles.formGroup}>
-						<label className={styles.formLabel}>
-							Tên workflow <span className={styles.required}>*</span>
-						</label>
+						{RESOURCE_OPTIONS.map((r) => (
+							<option
+								key={r.value}
+								value={r.value}
+							>
+								{r.label}
+							</option>
+						))}
+					</select>
+				</FormField>
+				<FormField label='Trạng thái'>
+					<label
+						style={{
+							display: 'flex',
+							alignItems: 'center',
+							gap: 8,
+							height: 38,
+							fontSize: 13,
+							cursor: 'pointer',
+						}}
+					>
 						<input
-							className={`${styles.formInput} ${errors.name ? styles.inputError : ''}`}
-							value={form.name}
-							onChange={(e) => setField('name', e.target.value)}
-							placeholder='VD: Duyệt đề tài 2 cấp (Khoa → Phòng NCKH)'
+							type='checkbox'
+							checked={form.is_active}
+							onChange={(e) => setField('is_active', e.target.checked)}
 						/>
-						{errors.name && <div className={styles.fieldError}>{errors.name}</div>}
-					</div>
+						Bật (thay thế mọi workflow khác đang bật cho cùng loại đối tượng)
+					</label>
+				</FormField>
+			</div>
 
-					<div className={styles.formRow}>
-						<div className={styles.formGroup}>
-							<label className={styles.formLabel}>Áp dụng cho</label>
+			<div className={styles.itemsSection}>
+				<div className={styles.itemsSectionHeader}>
+					<label className={styles.formLabel}>Các bước duyệt (theo thứ tự)</label>
+				</div>
+				{form.steps.length === 0 && <div className={styles.emptyItems}>Chưa có bước nào</div>}
+				{form.steps.map((s, i) => (
+					<div
+						key={s.tempId}
+						className={styles.questionCard}
+					>
+						<div className={styles.questionHeadRow}>
+							<input
+								className={styles.formInput}
+								placeholder={`Bước ${i + 1}: tên bước`}
+								value={s.name}
+								onChange={(e) => updateStep(s.tempId, { name: e.target.value })}
+							/>
 							<select
 								className={styles.formInput}
-								value={form.resource}
-								onChange={(e) => setField('resource', e.target.value)}
+								value={s.approver_role_id}
+								onChange={(e) => updateStep(s.tempId, { approver_role_id: e.target.value })}
 							>
-								{RESOURCE_OPTIONS.map((r) => (
+								<option value=''>— Bất kỳ ai có quyền duyệt —</option>
+								{roles.map((r) => (
 									<option
-										key={r.value}
-										value={r.value}
+										key={r.id}
+										value={r.id}
 									>
-										{r.label}
+										{r.name}
 									</option>
 								))}
 							</select>
-						</div>
-						<div className={styles.formGroup}>
-							<label className={styles.formLabel}>Trạng thái</label>
-							<label
-								style={{
-									display: 'flex',
-									alignItems: 'center',
-									gap: 8,
-									height: 38,
-									fontSize: 13,
-									cursor: 'pointer',
-								}}
-							>
-								<input
-									type='checkbox'
-									checked={form.is_active}
-									onChange={(e) => setField('is_active', e.target.checked)}
-								/>
-								Bật (thay thế mọi workflow khác đang bật cho cùng loại đối tượng)
-							</label>
-						</div>
-					</div>
-
-					<div className={styles.itemsSection}>
-						<div className={styles.itemsSectionHeader}>
-							<label className={styles.formLabel}>Các bước duyệt (theo thứ tự)</label>
-						</div>
-						{form.steps.length === 0 && <div className={styles.emptyItems}>Chưa có bước nào</div>}
-						{form.steps.map((s, i) => (
-							<div
-								key={s.tempId}
-								className={styles.questionCard}
-							>
-								<div className={styles.questionHeadRow}>
-									<input
-										className={styles.formInput}
-										placeholder={`Bước ${i + 1}: tên bước`}
-										value={s.name}
-										onChange={(e) => updateStep(s.tempId, { name: e.target.value })}
-									/>
-									<select
-										className={styles.formInput}
-										value={s.approver_role_id}
-										onChange={(e) => updateStep(s.tempId, { approver_role_id: e.target.value })}
-									>
-										<option value=''>— Bất kỳ ai có quyền duyệt —</option>
-										{roles.map((r) => (
-											<option
-												key={r.id}
-												value={r.id}
-											>
-												{r.name}
-											</option>
-										))}
-									</select>
-									<div style={{ display: 'flex', gap: 4 }}>
-										<button
-											type='button'
-											className={styles.itemRemoveBtn}
-											onClick={() => moveStep(i, -1)}
-											disabled={i === 0}
-											title='Lên'
-										>
-											↑
-										</button>
-										<button
-											type='button'
-											className={styles.itemRemoveBtn}
-											onClick={() => moveStep(i, 1)}
-											disabled={i === form.steps.length - 1}
-											title='Xuống'
-										>
-											↓
-										</button>
-										<button
-											type='button'
-											className={styles.itemRemoveBtn}
-											onClick={() => removeStep(s.tempId)}
-											title='Xoá bước'
-										>
-											<TrashSvg />
-										</button>
-									</div>
-								</div>
+							<div style={{ display: 'flex', gap: 4 }}>
+								<button
+									type='button'
+									className={styles.itemRemoveBtn}
+									onClick={() => moveStep(i, -1)}
+									disabled={i === 0}
+									title='Lên'
+								>
+									↑
+								</button>
+								<button
+									type='button'
+									className={styles.itemRemoveBtn}
+									onClick={() => moveStep(i, 1)}
+									disabled={i === form.steps.length - 1}
+									title='Xuống'
+								>
+									↓
+								</button>
+								<button
+									type='button'
+									className={styles.itemRemoveBtn}
+									onClick={() => removeStep(s.tempId)}
+									title='Xoá bước'
+								>
+									<TrashSvg />
+								</button>
 							</div>
-						))}
-						<button
-							type='button'
-							className={styles.addItemBtn}
-							onClick={addStep}
-						>
-							<PlusSvg /> Thêm bước
-						</button>
+						</div>
 					</div>
-				</div>
-
-				<div className={styles.modalFooter}>
-					<button
-						className={styles.btnCancel}
-						onClick={onClose}
-						disabled={loading}
-					>
-						Huỷ
-					</button>
-					<button
-						className={styles.btnConfirm}
-						onClick={handleSave}
-						disabled={loading}
-					>
-						{loading ? <span className={styles.spinner} /> : <CheckSvg />}
-						{mode === 'add' ? 'Tạo workflow' : 'Lưu thay đổi'}
-					</button>
-				</div>
+				))}
+				<button
+					type='button'
+					className={styles.addItemBtn}
+					onClick={addStep}
+				>
+					<PlusSvg /> Thêm bước
+				</button>
 			</div>
-		</div>
+		</Modal>
 	);
 }

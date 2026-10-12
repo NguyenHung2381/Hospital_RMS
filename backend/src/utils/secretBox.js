@@ -56,7 +56,8 @@ const encrypt = (plain) => {
 const decrypt = (value) => {
 	if (!isEncrypted(value)) return value;
 	const buf = Buffer.from(value.slice(PREFIX.length), 'base64');
-	const decipher = crypto.createDecipheriv('aes-256-gcm', loadKey(), buf.subarray(0, 12));
+	// Ghim tag 16 byte: không có thì chuỗi bị cắt ngắn được kiểm bằng tag ngắn hơn (dễ giả mạo)
+	const decipher = crypto.createDecipheriv('aes-256-gcm', loadKey(), buf.subarray(0, 12), { authTagLength: 16 });
 	decipher.setAuthTag(buf.subarray(12, 28));
 	return Buffer.concat([decipher.update(buf.subarray(28)), decipher.final()]).toString('utf8');
 };

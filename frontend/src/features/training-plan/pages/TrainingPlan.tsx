@@ -1,18 +1,16 @@
-import { CheckSvg, EditSvg, PlusSvg, SearchSvg, TrashSvg, XSvg } from '@/assets/icons';
-import { useState } from 'react';
+import { SearchInput, PageSizeSelect, SelectionCount, RowActions } from '@/shared/components/Table/TableToolbar';
+import { PlusSvg } from '@/assets/icons';
 import AdminLayout from '../../../layouts/AdminLayout';
 import { SkeletonTable } from '../../../shared/components/Loading';
 import { Pagination } from '../../../shared/components/Table/Pagination';
 import sel from '../../../shared/components/Table/RowSelect.module.css';
-import { BulkButton, BulkDeleteModal, SelectCheckbox } from '../../../shared/components/Table/RowSelect';
+import { SelectCheckbox } from '../../../shared/components/Table/RowSelect';
 import { useRowSelection } from '../../../shared/hooks/useRowSelection';
 import { TrainingPlanDeleteModal } from '../components/TrainingPlanDeleteModal';
 import { TrainingPlanFormModal } from '../components/TrainingPlanFormModal';
 import { useTrainingPlan } from '../hooks/useTrainingPlan';
 import type { TrainingPlanStatus } from '../types/trainingPlan.type';
 import styles from './TrainingPlan.module.css';
-
-const PAGE_SIZE_OPTIONS = [5, 10, 25, 50, 0] as const;
 
 const STATUS_CLASS: Record<TrainingPlanStatus, string> = {
 	draft: 'statusDraft',
@@ -24,7 +22,6 @@ const STATUS_CLASS: Record<TrainingPlanStatus, string> = {
 export default function TrainingPlan() {
 	const d = useTrainingPlan();
 	const rowSel = useRowSelection(d.paged.map((x) => x.id));
-	const [confirmBulkDelete, setConfirmBulkDelete] = useState(false);
 
 	const headerActions = (
 		<button
@@ -46,60 +43,25 @@ export default function TrainingPlan() {
 				<div className={styles.tableHeader}>
 					<div className={styles.tableHeaderLeft}>
 						<span className={styles.tableTitle}>Danh sách kế hoạch</span>
-						{rowSel.selectedCount > 0 ? (
-							<span className={styles.tableCount}>
-								Đã chọn {rowSel.selectedCount}
-								<BulkButton
-									danger
-									onClick={() => setConfirmBulkDelete(true)}
-								>
-									<TrashSvg /> Xoá đã chọn
-								</BulkButton>
-								<button
-									type='button'
-									className={styles.clearSelectionBtn}
-									onClick={rowSel.clearSelection}
-								>
-									Bỏ chọn
-								</button>
-							</span>
-						) : (
-							<span className={styles.tableCount}>{d.filtered.length} kế hoạch</span>
-						)}
+						<SelectionCount
+							rowSel={rowSel}
+							itemLabel='kế hoạch'
+							loading={d.loading}
+							onBulkDelete={d.handleBulkDelete}
+						>
+							{d.filtered.length} kế hoạch
+						</SelectionCount>
 					</div>
 					<div className={styles.tableControls}>
-						<div className={styles.searchBox}>
-							<SearchSvg className={styles.searchIcon} />
-							<input
-								className={styles.searchInput}
-								placeholder='Tìm theo tên, năm, khoa...'
-								value={d.search}
-								onChange={(e) => d.handleSearch(e.target.value)}
-							/>
-							{d.search && (
-								<button
-									className={styles.searchClear}
-									onClick={() => d.handleSearch('')}
-								>
-									<XSvg />
-								</button>
-							)}
-						</div>
-						<div className={styles.pageSizeWrap}>
-							<label className={styles.pageSizeLabel}>Hiển thị</label>
-							<select
-								className={styles.pageSizeSelect}
-								value={d.pageSize}
-								onChange={(e) => d.handlePageSize(Number(e.target.value))}
-							>
-								<option value={5}>5</option>
-								<option value={10}>10</option>
-								<option value={25}>25</option>
-								<option value={50}>50</option>
-								<option value={0}>Tất cả</option>
-							</select>
-							<span className={styles.pageSizeLabel}>dòng</span>
-						</div>
+						<SearchInput
+							value={d.search}
+							onChange={d.handleSearch}
+							placeholder='Tìm theo tên, năm, khoa...'
+						/>
+						<PageSizeSelect
+							value={d.pageSize}
+							onChange={d.handlePageSize}
+						/>
 					</div>
 				</div>
 
@@ -172,28 +134,16 @@ export default function TrainingPlan() {
 												</span>
 											</td>
 											<td className={`${styles.td} ${styles.tdActions}`}>
-												<div className={styles.actionBtns}>
-													<div
-														className={styles.actionBtn}
-														title='Chỉnh sửa'
-														onClick={() => {
-															d.setEditingItem(plan);
-															d.setModal('edit');
-														}}
-													>
-														<EditSvg />
-													</div>
-													<div
-														className={`${styles.actionBtn} ${styles.danger}`}
-														title='Xoá'
-														onClick={() => {
-															d.setDeletingItem(plan);
-															d.setModal('delete');
-														}}
-													>
-														<TrashSvg />
-													</div>
-												</div>
+												<RowActions
+													onEdit={() => {
+														d.setEditingItem(plan);
+														d.setModal('edit');
+													}}
+													onDelete={() => {
+														d.setDeletingItem(plan);
+														d.setModal('delete');
+													}}
+												/>
 											</td>
 										</tr>
 									);
@@ -209,27 +159,13 @@ export default function TrainingPlan() {
 						totalPages={d.totalPages}
 						total={d.filtered.length}
 						rowsPerPage={d.pageSize}
-						pageSizeOptions={PAGE_SIZE_OPTIONS}
 						onPageChange={d.setPage}
-						onRowsPerPageChange={d.handlePageSize}
 						itemLabel='kế hoạch'
 						hideSizeSelect
 					/>
 				)}
 			</div>
 
-			<BulkDeleteModal
-				open={confirmBulkDelete}
-				count={rowSel.selectedCount}
-				itemLabel='kế hoạch'
-				loading={d.loading}
-				onClose={() => setConfirmBulkDelete(false)}
-				onConfirm={async () => {
-					await d.handleBulkDelete([...rowSel.selectedIds]);
-					rowSel.clearSelection();
-					setConfirmBulkDelete(false);
-				}}
-			/>
 
 			{d.modal === 'add' && (
 				<TrainingPlanFormModal
@@ -265,18 +201,6 @@ export default function TrainingPlan() {
 				/>
 			)}
 
-			{d.toast && (
-				<div
-					className={`${styles.toast} ${
-						styles[
-							`toast${d.toast.type.charAt(0).toUpperCase() + d.toast.type.slice(1)}` as keyof typeof styles
-						]
-					}`}
-				>
-					{d.toast.type === 'success' ? <CheckSvg /> : <XSvg />}
-					{d.toast.msg}
-				</div>
-			)}
 		</AdminLayout>
 	);
 }

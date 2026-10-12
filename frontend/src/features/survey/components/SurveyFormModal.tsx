@@ -1,5 +1,7 @@
+import { FormField } from '@/shared/components/Input/FormField';
+import { Modal, ModalActions } from '@/shared/components';
 import { useState } from 'react';
-import { CheckSvg, PlusSvg, TrashSvg, XSvg } from '@/assets/icons';
+import { PlusSvg, TrashSvg } from '@/assets/icons';
 import type { SimpleRole } from '../api/surveyApi';
 import type {
 	QuestionFormData,
@@ -115,201 +117,171 @@ export function SurveyFormModal({
 	};
 
 	return (
-		<div
-			className={styles.modalBackdrop}
-			onClick={(e) => e.target === e.currentTarget && onClose()}
+		<Modal
+			open
+			onClose={onClose}
+			title={mode === 'add' ? 'Tạo khảo sát mới' : 'Chỉnh sửa khảo sát'}
+			subtitle={mode === 'add' ? 'Thiết lập câu hỏi khảo sát' : `Cập nhật — ${item?.title}`}
+			className={`${styles.modal} ${styles.modalLg}`}
+			bodyClassName={styles.modalBody}
+			footer={
+				<ModalActions
+					onCancel={onClose}
+					onConfirm={handleSave}
+					loading={loading}
+					confirmLabel={mode === 'add' ? 'Tạo khảo sát' : 'Lưu thay đổi'}
+				/>
+			}
 		>
-			<div className={`${styles.modal} ${styles.modalLg}`}>
-				<div className={styles.modalHeader}>
-					<div>
-						<div className={styles.modalTitle}>
-							{mode === 'add' ? 'Tạo khảo sát mới' : 'Chỉnh sửa khảo sát'}
-						</div>
-						<div className={styles.modalSub}>
-							{mode === 'add' ? 'Thiết lập câu hỏi khảo sát' : `Cập nhật — ${item?.title}`}
-						</div>
-					</div>
-					<button
-						className={styles.modalClose}
-						onClick={onClose}
+			<FormField
+				label='Tên khảo sát'
+				required
+				error={errors.title}
+			>
+				<input
+					className={`${styles.formInput} ${errors.title ? styles.inputError : ''}`}
+					value={form.title}
+					onChange={(e) => setField('title', e.target.value)}
+					placeholder='VD: Khảo sát mức độ hài lòng khóa đào tạo'
+				/>
+			</FormField>
+
+			<div className={styles.formRow}>
+				<FormField label='Trạng thái'>
+					<select
+						className={styles.formInput}
+						value={form.status}
+						onChange={(e) => setField('status', e.target.value as SurveyStatus)}
 					>
-						<XSvg />
-					</button>
+						{STATUS_OPTIONS.map((s) => (
+							<option
+								key={s.value}
+								value={s.value}
+							>
+								{s.label}
+							</option>
+						))}
+					</select>
+				</FormField>
+				<FormField label='Đối tượng (vai trò)'>
+					<select
+						className={styles.formInput}
+						value={form.target_role}
+						onChange={(e) => setField('target_role', e.target.value)}
+					>
+						<option value=''>— Tất cả mọi người —</option>
+						{roles.map((r) => (
+							<option
+								key={r.id}
+								value={r.id}
+							>
+								{r.name}
+							</option>
+						))}
+					</select>
+				</FormField>
+			</div>
+
+			<FormField label='Mô tả'>
+				<textarea
+					className={styles.formTextarea}
+					value={form.description}
+					onChange={(e) => setField('description', e.target.value)}
+					rows={2}
+					placeholder='Mục đích, hướng dẫn thêm...'
+				/>
+			</FormField>
+
+			<div className={styles.itemsSection}>
+				<div className={styles.itemsSectionHeader}>
+					<label className={styles.formLabel}>Câu hỏi</label>
 				</div>
-
-				<div className={styles.modalBody}>
-					<div className={styles.formGroup}>
-						<label className={styles.formLabel}>
-							Tên khảo sát <span className={styles.required}>*</span>
-						</label>
-						<input
-							className={`${styles.formInput} ${errors.title ? styles.inputError : ''}`}
-							value={form.title}
-							onChange={(e) => setField('title', e.target.value)}
-							placeholder='VD: Khảo sát mức độ hài lòng khóa đào tạo'
-						/>
-						{errors.title && <div className={styles.fieldError}>{errors.title}</div>}
-					</div>
-
-					<div className={styles.formRow}>
-						<div className={styles.formGroup}>
-							<label className={styles.formLabel}>Trạng thái</label>
+				{form.questions.length === 0 && (
+					<div className={styles.emptyItems}>Chưa có câu hỏi nào</div>
+				)}
+				{form.questions.map((q, qi) => (
+					<div
+						key={q.tempId}
+						className={styles.questionCard}
+					>
+						<div className={styles.questionHeadRow}>
+							<input
+								className={styles.formInput}
+								placeholder={`Câu hỏi ${qi + 1}`}
+								value={q.question_text}
+								onChange={(e) => updateQuestion(q.tempId, { question_text: e.target.value })}
+							/>
 							<select
 								className={styles.formInput}
-								value={form.status}
-								onChange={(e) => setField('status', e.target.value as SurveyStatus)}
+								value={q.question_type}
+								onChange={(e) =>
+									updateQuestion(q.tempId, {
+										question_type: e.target.value as QuestionType,
+										options: e.target.value === 'text' ? [] : q.options.length ? q.options : [''],
+									})
+								}
 							>
-								{STATUS_OPTIONS.map((s) => (
+								{QUESTION_TYPE_OPTIONS.map((t) => (
 									<option
-										key={s.value}
-										value={s.value}
+										key={t.value}
+										value={t.value}
 									>
-										{s.label}
+										{t.label}
 									</option>
 								))}
 							</select>
-						</div>
-						<div className={styles.formGroup}>
-							<label className={styles.formLabel}>Đối tượng (vai trò)</label>
-							<select
-								className={styles.formInput}
-								value={form.target_role}
-								onChange={(e) => setField('target_role', e.target.value)}
+							<button
+								type='button'
+								className={styles.itemRemoveBtn}
+								onClick={() => removeQuestion(q.tempId)}
+								title='Xoá câu hỏi'
 							>
-								<option value=''>— Tất cả mọi người —</option>
-								{roles.map((r) => (
-									<option
-										key={r.id}
-										value={r.id}
-									>
-										{r.name}
-									</option>
-								))}
-							</select>
+								<TrashSvg />
+							</button>
 						</div>
-					</div>
 
-					<div className={styles.formGroup}>
-						<label className={styles.formLabel}>Mô tả</label>
-						<textarea
-							className={styles.formTextarea}
-							value={form.description}
-							onChange={(e) => setField('description', e.target.value)}
-							rows={2}
-							placeholder='Mục đích, hướng dẫn thêm...'
-						/>
-					</div>
-
-					<div className={styles.itemsSection}>
-						<div className={styles.itemsSectionHeader}>
-							<label className={styles.formLabel}>Câu hỏi</label>
-						</div>
-						{form.questions.length === 0 && (
-							<div className={styles.emptyItems}>Chưa có câu hỏi nào</div>
-						)}
-						{form.questions.map((q, qi) => (
-							<div
-								key={q.tempId}
-								className={styles.questionCard}
-							>
-								<div className={styles.questionHeadRow}>
-									<input
-										className={styles.formInput}
-										placeholder={`Câu hỏi ${qi + 1}`}
-										value={q.question_text}
-										onChange={(e) => updateQuestion(q.tempId, { question_text: e.target.value })}
-									/>
-									<select
-										className={styles.formInput}
-										value={q.question_type}
-										onChange={(e) =>
-											updateQuestion(q.tempId, {
-												question_type: e.target.value as QuestionType,
-												options: e.target.value === 'text' ? [] : q.options.length ? q.options : [''],
-											})
-										}
+						{q.question_type !== 'text' && (
+							<div className={styles.optionsList}>
+								{q.options.map((opt, oi) => (
+									<div
+										key={oi}
+										className={styles.optionRow}
 									>
-										{QUESTION_TYPE_OPTIONS.map((t) => (
-											<option
-												key={t.value}
-												value={t.value}
-											>
-												{t.label}
-											</option>
-										))}
-									</select>
-									<button
-										type='button'
-										className={styles.itemRemoveBtn}
-										onClick={() => removeQuestion(q.tempId)}
-										title='Xoá câu hỏi'
-									>
-										<TrashSvg />
-									</button>
-								</div>
-
-								{q.question_type !== 'text' && (
-									<div className={styles.optionsList}>
-										{q.options.map((opt, oi) => (
-											<div
-												key={oi}
-												className={styles.optionRow}
-											>
-												<input
-													className={styles.formInput}
-													placeholder={`Lựa chọn ${oi + 1}`}
-													value={opt}
-													onChange={(e) => setOption(q.tempId, oi, e.target.value)}
-												/>
-												<button
-													type='button'
-													className={styles.itemRemoveBtn}
-													onClick={() => removeOption(q.tempId, oi)}
-													title='Xoá lựa chọn'
-												>
-													<TrashSvg />
-												</button>
-											</div>
-										))}
+										<input
+											className={styles.formInput}
+											placeholder={`Lựa chọn ${oi + 1}`}
+											value={opt}
+											onChange={(e) => setOption(q.tempId, oi, e.target.value)}
+										/>
 										<button
 											type='button'
-											className={styles.addOptionBtn}
-											onClick={() => addOption(q.tempId)}
+											className={styles.itemRemoveBtn}
+											onClick={() => removeOption(q.tempId, oi)}
+											title='Xoá lựa chọn'
 										>
-											+ Thêm lựa chọn
+											<TrashSvg />
 										</button>
 									</div>
-								)}
+								))}
+								<button
+									type='button'
+									className={styles.addOptionBtn}
+									onClick={() => addOption(q.tempId)}
+								>
+									+ Thêm lựa chọn
+								</button>
 							</div>
-						))}
-						<button
-							type='button'
-							className={styles.addItemBtn}
-							onClick={addQuestion}
-						>
-							<PlusSvg /> Thêm câu hỏi
-						</button>
+						)}
 					</div>
-				</div>
-
-				<div className={styles.modalFooter}>
-					<button
-						className={styles.btnCancel}
-						onClick={onClose}
-						disabled={loading}
-					>
-						Huỷ
-					</button>
-					<button
-						className={styles.btnConfirm}
-						onClick={handleSave}
-						disabled={loading}
-					>
-						{loading ? <span className={styles.spinner} /> : <CheckSvg />}
-						{mode === 'add' ? 'Tạo khảo sát' : 'Lưu thay đổi'}
-					</button>
-				</div>
+				))}
+				<button
+					type='button'
+					className={styles.addItemBtn}
+					onClick={addQuestion}
+				>
+					<PlusSvg /> Thêm câu hỏi
+				</button>
 			</div>
-		</div>
+		</Modal>
 	);
 }

@@ -8,9 +8,10 @@
  * chọn "cấp CME" thì sinh dải số quyết định (SQĐ) tuần tự cho toàn bộ người vừa
  * nhập (qua seminarParticipantService.issueCme).
  */
-const ExcelJS = require('exceljs');
 const { getPool, sql } = require('../config/db');
 const { norm, normDept, stripQualification } = require('../utils/vietnameseText');
+const ExcelJS = require('exceljs');
+const { parseDob, parseCredits, parseStaffNumber, readSheet } = require('../utils/excelImport');
 const { normalizeGender } = require('../utils/gender');
 const partService = require('./seminarParticipantService');
 const { ROLE, inputRoleId } = require('./roleCodes');
@@ -125,68 +126,6 @@ const ROLE_BY_NORM = {
 	'to chuc': 'organizer',
 };
 
-const cellText = (cell) => {
-	if (!cell) return '';
-	try {
-		return String(cell.text ?? '').replace(/\s+/g, ' ').trim();
-	} catch {
-		return '';
-	}
-};
-
-// ─── Parse giá trị từng ô ───────────────────────────────────────────────────
-const pad2 = (n) => String(n).padStart(2, '0');
-
-// Trả { dob: 'YYYY-MM-DD'|null, dob_text: string|null }. Nguồn rất tạp: ô ngày
-// thật, "12/9/1984", chỉ có năm "1989", "tháng 3/1990"…
-const parseDob = (cell) => {
-	if (!cell) return { dob: null, dob_text: null };
-	const v = cell.value;
-	if (v instanceof Date && !Number.isNaN(v.getTime())) {
-		// exceljs lưu ngày ở UTC — đọc theo UTC để giữ đúng ngày lịch.
-		return {
-			dob: `${v.getUTCFullYear()}-${pad2(v.getUTCMonth() + 1)}-${pad2(v.getUTCDate())}`,
-			dob_text: null,
-		};
-	}
-	// Excel hay chèn dấu ' đầu ô để ép kiểu chữ; bỏ trước khi parse.
-	const raw = cellText(cell).replace(/^['"\s]+/, '').trim();
-	if (!raw) return { dob: null, dob_text: null };
-
-	// dd/mm/yyyy hoặc d-m-yyyy
-	let m = raw.match(/^(\d{1,2})[/\-.](\d{1,2})[/\-.](\d{4})$/);
-	if (m) {
-		const d = +m[1];
-		const mo = +m[2];
-		const y = +m[3];
-		if (d >= 1 && d <= 31 && mo >= 1 && mo <= 12) {
-			return { dob: `${y}-${pad2(mo)}-${pad2(d)}`, dob_text: null };
-		}
-	}
-	// mm/yyyy → không đủ ngày
-	m = raw.match(/(\d{1,2})[/\-.](\d{4})$/);
-	if (m) return { dob: null, dob_text: raw };
-	// chỉ năm
-	if (/^\d{4}$/.test(raw)) return { dob: null, dob_text: raw };
-
-	return { dob: null, dob_text: raw };
-};
-
-// "3,5" / "3.5" / "3" → number; rỗng → null
-const parseCredits = (s) => {
-	const t = String(s || '').replace(',', '.').trim();
-	if (!t) return null;
-	const n = parseFloat(t);
-	return Number.isFinite(n) ? n : null;
-};
-
-const parseStaffNumber = (s) => {
-	const t = String(s || '').replace(/\D+/g, '');
-	if (!t) return null;
-	const n = parseInt(t, 10);
-	return Number.isFinite(n) ? n : null;
-};
-
 // Nhận "Nam"/"Nữ"/"Khác" trong file → mã lưu DB (xem utils/gender).
 const normGender = normalizeGender;
 
@@ -221,66 +160,19 @@ const isForeignValue = (s) => {
 	return true;
 };
 
-// ─── Dò dòng tiêu đề ───────────────────────────────────────────────────────
-const findHeader = (workbook) => {
-	for (const ws of workbook.worksheets) {
-		const scanMax = Math.min(ws.actualRowCount || ws.rowCount || 0, 30);
-		for (let r = 1; r <= scanMax; r++) {
-			const row = ws.getRow(r);
-			const cols = {};
-			row.eachCell({ includeEmpty: false }, (cell, col) => {
-				const h = norm(cellText(cell));
-				if (!h) return;
-				for (const [field, test] of COLUMN_MATCHERS) {
-					if (cols[field] == null && test(h)) {
-						cols[field] = col;
-						break;
-					}
-				}
-			});
-			// Cần tối thiểu cột họ tên để coi là dòng tiêu đề hợp lệ.
-			if (cols.full_name) {
-				return { ws, headerRow: r, cols };
-			}
-		}
-	}
-	return null;
-};
-
 // ─── Đọc toàn bộ file → mảng dòng thô ──────────────────────────────────────
 const parseWorkbook = async (buffer) => {
-	const workbook = new ExcelJS.Workbook();
-	try {
-		await workbook.xlsx.load(buffer);
-	} catch {
-		throw Object.assign(
-			new Error('File không đọc được — cần file .xlsx hợp lệ.'),
-			{ statusCode: 400 },
-		);
-	}
-	const header = findHeader(workbook);
-	if (!header) {
-		throw Object.assign(
-			new Error(
-				'Không tìm thấy dòng tiêu đề (cần ít nhất cột "Họ và tên"; các cột nhận diện: SQĐ, Ông/Bà, Ngày sinh, Giới tính, Đơn vị công tác, Khoa/phòng, MNV, Số tín chỉ, Vai trò, Ghi chú).',
-			),
-			{ statusCode: 400 },
-		);
-	}
-	const { ws, headerRow, cols } = header;
-	const get = (row, field) => (cols[field] ? cellText(row.getCell(cols[field])) : '');
+	const { cols, rows: sheetRows } = await readSheet(buffer, {
+		matchers: COLUMN_MATCHERS,
+		isValid: (c) => !!c.full_name,
+		headerError:
+			'Không tìm thấy dòng tiêu đề (cần ít nhất cột "Họ và tên"; các cột nhận diện: SQĐ, Ông/Bà, Ngày sinh, Giới tính, Đơn vị công tác, Khoa/phòng, MNV, Số tín chỉ, Vai trò, Ghi chú).',
+		isEmpty: (get, row) => !get(row, 'full_name'),
+	});
 
 	const rows = [];
-	let emptyStreak = 0;
-	const maxRow = ws.actualRowCount || ws.rowCount || headerRow;
-	for (let r = headerRow + 1; r <= maxRow && emptyStreak < 25; r++) {
-		const row = ws.getRow(r);
+	for (const { r, row, get } of sheetRows) {
 		const rawName = get(row, 'full_name');
-		if (!rawName) {
-			emptyStreak++;
-			continue;
-		}
-		emptyStreak = 0;
 
 		// Dòng ví dụ của file mẫu (ghi chú "Dòng ví dụ…") — bỏ qua nếu quên xoá
 		if (/^dong vi du/.test(norm(get(row, 'notes')))) continue;
@@ -629,4 +521,3 @@ const templateWorkbook = () => {
 };
 
 module.exports = { importExcel, templateWorkbook };
-module.exports._internal = { parseWorkbook, buildPreview, findHeader };

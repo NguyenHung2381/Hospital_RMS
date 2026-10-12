@@ -9,7 +9,8 @@ import type {
 	RoundType,
 } from '../types/round.type';
 import { STATUS_CFG, STATUS_OPTIONS, fromInputDate, toInputDate } from '../utils/roundHelpers';
-import { DeadlineManager, FormField } from './DeadlineManager';
+import { FormField } from '@/shared/components/Input/FormField';
+import { DeadlineManager } from './DeadlineManager';
 import dmStyles from './DeadlineManager.module.css';
 import styles from '../pages/Round.module.css';
 import { Badge } from '@/shared/components';
@@ -55,7 +56,7 @@ export function RoundInfoTab({
 			<div className={styles.formSection}>Thông tin đợt nghiên cứu</div>
 			<div className={styles.formRow}>
 				<FormField
-					id='year'
+					htmlFor='year'
 					label='Năm'
 					required
 					error={errors.year as string}
@@ -77,7 +78,7 @@ export function RoundInfoTab({
 					</select>
 				</FormField>
 				<FormField
-					id='round_number'
+					htmlFor='round_number'
 					label='Số đợt trong năm'
 					required
 					error={
@@ -98,7 +99,7 @@ export function RoundInfoTab({
 				</FormField>
 			</div>
 			<FormField
-				id='round_type_id'
+				htmlFor='round_type_id'
 				label='Loại đợt'
 				required
 				error={errors.round_type_id as string}
@@ -122,7 +123,7 @@ export function RoundInfoTab({
 				</select>
 			</FormField>
 			<FormField
-				id='level_ids'
+				htmlFor='level_ids'
 				label='Cấp độ đề tài được đăng ký'
 				hint={
 					form.level_ids.length
@@ -157,7 +158,7 @@ export function RoundInfoTab({
 				</div>
 			</FormField>
 			<FormField
-				id='name'
+				htmlFor='name'
 				label='Tên đợt nghiên cứu'
 				required
 				error={errors.name}
@@ -174,7 +175,7 @@ export function RoundInfoTab({
 			<div className={styles.formSection}>Thời gian thực hiện</div>
 			<div className={styles.formRow}>
 				<FormField
-					id='start_date'
+					htmlFor='start_date'
 					label='Ngày bắt đầu'
 					required
 					error={errors.start_date}
@@ -188,7 +189,7 @@ export function RoundInfoTab({
 					/>
 				</FormField>
 				<FormField
-					id='end_date'
+					htmlFor='end_date'
 					label='Ngày kết thúc'
 					required
 					error={errors.end_date}

@@ -1,3 +1,4 @@
+import { showToast } from '@/shared/utils/feedback';
 import { useCallback, useEffect, useState } from 'react';
 import { useRealtimeUpdate } from '../../../layouts/hooks/useRealtime';
 import { bulkToast, runBulk } from '../../../shared/utils/runBulk';
@@ -20,18 +21,12 @@ export function useLecturers() {
 	const [editingLecturer, setEditingLecturer] = useState<Lecturer | null>(null);
 	const [deletingLecturer, setDeletingLecturer] = useState<Lecturer | null>(null);
 	const [loading, setLoading] = useState(false);
-	const [toast, setToast] = useState<{ type: 'success' | 'error'; msg: string } | null>(null);
 	const [pageSize, setPageSize] = useState(10);
 	const [page, setPage] = useState(1);
 	const [refreshKey, setRefreshKey] = useState(0);
 
 	const refreshData = useCallback(() => setRefreshKey((prev) => prev + 1), []);
 	useRealtimeUpdate('lecturer', refreshData);
-
-	const showToast = useCallback((type: 'success' | 'error', msg: string) => {
-		setToast({ type, msg });
-		setTimeout(() => setToast(null), 3000);
-	}, []);
 
 	// Debounce ô tìm kiếm 300ms rồi mới gọi API
 	useEffect(() => {
@@ -63,7 +58,7 @@ export function useLecturers() {
 			}
 		})();
 		return () => controller.abort();
-	}, [page, pageSize, debouncedSearch, refreshKey, showToast]);
+	}, [page, pageSize, debouncedSearch, refreshKey]);
 
 	const totalPages = pageSize === 0 ? 1 : Math.max(1, Math.ceil(total / pageSize));
 	const safePage = Math.min(page, totalPages);
@@ -92,7 +87,7 @@ export function useLecturers() {
 				setLoading(false);
 			}
 		},
-		[showToast, refreshData],
+		[refreshData],
 	);
 
 	const handleEdit = useCallback(
@@ -111,7 +106,7 @@ export function useLecturers() {
 				setLoading(false);
 			}
 		},
-		[editingLecturer, showToast, refreshData],
+		[editingLecturer, refreshData],
 	);
 
 	const handleDelete = useCallback(async () => {
@@ -128,7 +123,7 @@ export function useLecturers() {
 		} finally {
 			setLoading(false);
 		}
-	}, [deletingLecturer, showToast, refreshData]);
+	}, [deletingLecturer, refreshData]);
 
 	const handleBulkDelete = useCallback(
 		async (ids: string[]) => {
@@ -143,7 +138,7 @@ export function useLecturers() {
 				setLoading(false);
 			}
 		},
-		[showToast, refreshData],
+		[refreshData],
 	);
 
 	return {
@@ -154,7 +149,6 @@ export function useLecturers() {
 		editingLecturer,
 		deletingLecturer,
 		loading,
-		toast,
 		pageSize,
 		page,
 		total,

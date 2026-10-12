@@ -9,10 +9,8 @@ export { EmptyState, TableEmpty } from './EmptyState';
 export { Card } from './Card';
 
 export { Button } from './Button';
-export { Modal } from './Modal';
+export { Modal, ModalActions, ConfirmDeleteModal } from './Modal';
 export { Can } from './Can';
-export { DataTable } from './DataTable';
-export type { DataTableProps, DataTablePagination } from './DataTable';
 
 /* Nặng (docx-preview / dompurify / html5-qrcode) — import trực tiếp theo đường dẫn, không qua barrel:
  *   import { FileViewerModal } from '@/shared/components/FileViewerModal';
@@ -33,6 +31,7 @@ export {
 	BulkBar,
 } from './Table/RowSelect';
 export type { RowSelectionLike } from './Table/RowSelect';
+export { SearchInput, PageSizeSelect, SelectionCount, RowAction, RowActions } from './Table/TableToolbar';
 
 export {
 	Skeleton,

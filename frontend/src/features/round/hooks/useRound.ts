@@ -1,3 +1,4 @@
+import { showToast } from '@/shared/utils/feedback';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRealtimeUpdate } from '../../../layouts/hooks/useRealtime';
 import { notify } from '../../../shared/utils/feedback';
@@ -31,7 +32,6 @@ export function useRound() {
 	const [showCreate, setShowCreate] = useState(false);
 	const [editRound, setEditRound] = useState<ResearchRound | null>(null);
 	const [deleteRound, setDeleteRound] = useState<ResearchRound | null>(null);
-	const [toast, setToast] = useState<string | null>(null);
 	const [refreshKey, setRefreshKey] = useState(0);
 
 	const refreshData = useCallback(() => setRefreshKey((k) => k + 1), []);
@@ -50,12 +50,6 @@ export function useRound() {
 			.then(setRoundTypes)
 			.catch(() => setRoundTypes([]));
 	}, [refreshKey]);
-
-	useEffect(() => {
-		if (!toast) return;
-		const t = setTimeout(() => setToast(null), 2500);
-		return () => clearTimeout(t);
-	}, [toast]);
 
 	const stats = useMemo(
 		() => ({
@@ -125,11 +119,11 @@ export function useRound() {
 			ta.select();
 			const ok = document.execCommand('copy');
 			document.body.removeChild(ta);
-			setToast(ok ? 'Đã sao chép link đăng ký vào clipboard' : `Link: ${text}`);
+			showToast(ok ? 'success' : 'info', ok ? 'Đã sao chép link đăng ký vào clipboard' : `Link: ${text}`);
 		};
 		if (navigator.clipboard) {
 			navigator.clipboard.writeText(link).then(
-				() => setToast('Đã sao chép link đăng ký vào clipboard'),
+				() => showToast('success', 'Đã sao chép link đăng ký vào clipboard'),
 				() => fallback(link),
 			);
 		} else {
@@ -150,7 +144,6 @@ export function useRound() {
 		showCreate,
 		editRound,
 		deleteRound,
-		toast,
 		stats,
 		years,
 		filtered,

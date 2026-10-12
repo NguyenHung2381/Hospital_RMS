@@ -1,11 +1,10 @@
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
-const crypto = require('crypto');
 const { isAllowedExtension } = require('./fileTypeAllowlist');
 const { secureUpload } = require('./secureUpload');
 
-const UPLOADS_ROOT = path.resolve(process.env.UPLOADS_DIR || 'uploads');
+const { UPLOADS_ROOT, uniqueFilename } = require('../utils/uploadPaths');
 // Chưa có mã đề tài/học viên lúc nhận file (bản ghi tạo sau khi qua captcha +
 // kiểm tra nghiệp vụ) ⇒ ghi tạm vào _tmp/public, service chuyển sang thư mục
 // chính thức (uploads/topics/<id>, uploads/training/trainee_document/<id>).
@@ -22,14 +21,7 @@ const instance = multer({
 			fs.mkdirSync(TMP_DIR, { recursive: true });
 			cb(null, TMP_DIR);
 		},
-		filename: (_req, file, cb) => {
-			const ext = path.extname(file.originalname);
-			const base = path
-				.basename(file.originalname, ext)
-				.replace(/\s+/g, '_')
-				.replace(/[^a-zA-Z0-9_\-.]/g, '');
-			cb(null, `${base}-${crypto.randomBytes(16).toString('hex')}${ext}`);
-		},
+		filename: (_req, file, cb) => cb(null, uniqueFilename(file.originalname)),
 	}),
 	limits: { fileSize: maxSizeMB() * 1024 * 1024, files: MAX_FILES, fields: 20 },
 	fileFilter: (_req, file, cb) => {

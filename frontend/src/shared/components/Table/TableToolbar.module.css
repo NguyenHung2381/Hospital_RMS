@@ -1,0 +1,89 @@
+/* Style cho TableToolbar.tsx — phần nền lấy từ Table.module.css */
+
+.count {
+	composes: tableCount from './Table.module.css';
+}
+.clearBtn {
+	composes: clearSelectionBtn from './Table.module.css';
+}
+
+/* ── Ô tìm kiếm ─────────────────────────── */
+.searchBox {
+	composes: searchWrap from './Table.module.css';
+}
+.searchIcon {
+	composes: searchIcon from './Table.module.css';
+}
+.searchInput {
+	composes: searchInput from './Table.module.css';
+	padding-right: var(--space-8);
+}
+.searchClear {
+	position: absolute;
+	right: 8px;
+	width: 18px;
+	height: 18px;
+	border-radius: 50%;
+	background: var(--color-gray-200);
+	border: none;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	cursor: pointer;
+	color: var(--color-gray-500);
+}
+.searchClear svg {
+	width: 10px;
+	height: 10px;
+}
+
+/* ── Chọn số dòng / trang ───────────────── */
+.pageSizeWrap {
+	display: flex;
+	align-items: center;
+	gap: var(--space-2);
+}
+.pageSizeLabel {
+	font-size: var(--font-size-sm);
+	color: var(--color-gray-500);
+	white-space: nowrap;
+}
+.pageSizeSelect {
+	appearance: none;
+	padding: 5px 28px 5px 10px;
+	border: 1.5px solid var(--color-gray-200);
+	border-radius: var(--radius-lg);
+	font-family: var(--font-body);
+	font-size: var(--font-size-sm);
+	color: var(--color-gray-700);
+	background: var(--color-white)
+		url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%239ca3af' stroke-width='2.5' stroke-linecap='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E")
+		no-repeat right 8px center;
+	cursor: pointer;
+	outline: none;
+	transition: all var(--transition-fast);
+}
+.pageSizeSelect:focus {
+	border-color: var(--color-primary);
+	box-shadow: 0 0 0 3px rgba(10, 155, 74, 0.1);
+}
+
+/* ── Nút sửa / xoá trong hàng ───────────── */
+.actions {
+	composes: actionBtns from './Table.module.css';
+	justify-content: flex-end;
+}
+.action {
+	composes: actionBtn from './Table.module.css';
+}
+.actionDanger:hover {
+	background: #fcebeb;
+	border-color: #f09595;
+	color: #791f1f;
+}
+
+@media (max-width: 900px) {
+	.searchBox {
+		width: 100%;
+	}
+}

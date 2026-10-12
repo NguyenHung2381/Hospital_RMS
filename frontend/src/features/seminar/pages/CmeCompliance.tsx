@@ -1,3 +1,5 @@
+import { RowAction, RowActions } from '@/shared/components/Table/TableToolbar';
+import { showToast } from '@/shared/utils/feedback';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { AlertSvg, CheckSvg, DownloadSvg, EditSvg, PlusSvg, SearchSvg, TrashSvg, XSvg } from '@/assets/icons';
 import AdminLayout from '../../../layouts/AdminLayout';
@@ -105,7 +107,6 @@ export default function CmeCompliance() {
 	const [loading, setLoading] = useState(true);
 	const [saving, setSaving] = useState(false);
 	const [error, setError] = useState('');
-	const [toast, setToast] = useState<{ type: 'success' | 'error'; msg: string } | null>(null);
 
 	// Modal thêm / sửa ngưỡng: null = đóng, 'new' = thêm mới, còn lại = đang sửa
 	const [editing, setEditing] = useState<CmeRequirement | 'new' | null>(null);
@@ -117,11 +118,6 @@ export default function CmeCompliance() {
 	const [personModal, setPersonModal] = useState(false);
 	const [personForm, setPersonForm] = useState({ user_id: '', year: CURRENT_YEAR });
 	const [users, setUsers] = useState<SimpleItem[]>([]);
-
-	const showToast = (type: 'success' | 'error', msg: string) => {
-		setToast({ type, msg });
-		setTimeout(() => setToast(null), 3000);
-	};
 
 	const load = useCallback(() => {
 		Promise.all([getCmeRequirements(year), getCmeCompliance(year)])
@@ -527,24 +523,23 @@ export default function CmeCompliance() {
 											</td>
 											<td className={styles.muted}>{r.note || '—'}</td>
 											<td className={styles.tdRight}>
-												<div className={styles.actionBtns}>
-													<button
-														className={styles.actionBtn}
+												<RowActions>
+													<RowAction
 														title='Sửa ngưỡng'
 														disabled={saving}
 														onClick={() => openEdit(r)}
 													>
 														<EditSvg />
-													</button>
-													<button
-														className={`${styles.actionBtn} ${styles.danger}`}
+													</RowAction>
+													<RowAction
 														title='Xoá ngưỡng'
+														danger
 														disabled={saving}
 														onClick={() => handleDelete(r)}
 													>
 														<TrashSvg />
-													</button>
-												</div>
+													</RowAction>
+												</RowActions>
 											</td>
 										</tr>
 									))
@@ -709,14 +704,6 @@ export default function CmeCompliance() {
 				</div>
 			</Modal>
 
-			{toast && (
-				<div
-					className={`${styles.toast} ${toast.type === 'success' ? styles.toastSuccess : styles.toastError}`}
-				>
-					{toast.type === 'success' ? <CheckSvg /> : <XSvg />}
-					{toast.msg}
-				</div>
-			)}
 		</AdminLayout>
 	);
 }

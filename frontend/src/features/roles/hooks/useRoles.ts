@@ -1,3 +1,4 @@
+import { showToast } from '@/shared/utils/feedback';
 import { useCallback, useEffect, useState } from 'react';
 import { useRealtimeUpdate } from '../../../layouts/hooks/useRealtime';
 import { bulkToast, runBulk } from '../../../shared/utils/runBulk';
@@ -24,17 +25,8 @@ export function useRoles() {
 	const [loading, setLoading] = useState(false);
 	const [pageSize, setPageSize] = useState(10);
 	const [page, setPage] = useState(1);
-	const [toast, setToast] = useState<{
-		type: 'success' | 'error';
-		msg: string;
-	} | null>(null);
 	const [refreshKey, setRefreshKey] = useState(0);
 	const [permCountMap, setPermCountMap] = useState<Record<string, number>>({});
-
-	const showToast = useCallback((type: 'success' | 'error', msg: string) => {
-		setToast({ type, msg });
-		setTimeout(() => setToast(null), 3000);
-	}, []);
 
 	const refreshData = useCallback(() => {
 		setRefreshKey((prev) => prev + 1);
@@ -67,7 +59,7 @@ export function useRoles() {
 			}
 		})();
 		return () => controller.abort();
-	}, [page, pageSize, debouncedSearch, refreshKey, showToast]);
+	}, [page, pageSize, debouncedSearch, refreshKey]);
 
 	const totalPages = pageSize === 0 ? 1 : Math.max(1, Math.ceil(total / pageSize));
 	const safePage = Math.min(page, totalPages);
@@ -89,7 +81,7 @@ export function useRoles() {
 				setLoading(false);
 			}
 		},
-		[showToast, refreshData],
+		[refreshData],
 	);
 
 	const handleEdit = useCallback(
@@ -111,7 +103,7 @@ export function useRoles() {
 				setLoading(false);
 			}
 		},
-		[editingRole, showToast, refreshData],
+		[editingRole, refreshData],
 	);
 
 	const handleDelete = useCallback(async () => {
@@ -128,7 +120,7 @@ export function useRoles() {
 		} finally {
 			setLoading(false);
 		}
-	}, [deletingRole, showToast, refreshData]);
+	}, [deletingRole, refreshData]);
 
 	const handleBulkDelete = useCallback(
 		async (ids: string[]) => {
@@ -146,7 +138,7 @@ export function useRoles() {
 				setLoading(false);
 			}
 		},
-		[showToast, refreshData],
+		[refreshData],
 	);
 
 	const handleClone = useCallback(
@@ -165,7 +157,7 @@ export function useRoles() {
 				setLoading(false);
 			}
 		},
-		[actionRole, showToast, refreshData],
+		[actionRole, refreshData],
 	);
 
 	const handlePermSaved = useCallback(
@@ -173,7 +165,7 @@ export function useRoles() {
 			setPermCountMap((prev) => ({ ...prev, [roleId]: ids.length }));
 			showToast('success', 'Đã lưu phân quyền thành công');
 		},
-		[showToast],
+		[],
 	);
 
 	return {
@@ -196,7 +188,6 @@ export function useRoles() {
 		setPageSize,
 		page,
 		setPage,
-		toast,
 		permCountMap,
 		total,
 		totalPages,

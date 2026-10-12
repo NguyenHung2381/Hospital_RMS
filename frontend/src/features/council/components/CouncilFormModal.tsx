@@ -1,5 +1,6 @@
+import { Modal, ModalActions } from '@/shared/components';
 import React, { useState } from 'react';
-import { CheckSvg, ClipboardCheckSvg, XSvg } from '@/assets/icons';
+import { ClipboardCheckSvg } from '@/assets/icons';
 import type { ResearchRound } from '../../round/types/round.type';
 import {
 	EMPTY_FORM,
@@ -57,148 +58,117 @@ export function CouncilFormModal({
 	};
 
 	return (
-		<div
-			className={styles.modalBackdrop}
-			onClick={(e) => e.target === e.currentTarget && onClose()}
+		<Modal
+			open
+			onClose={onClose}
+			icon={<ClipboardCheckSvg />}
+			title={mode === 'add' ? 'Tạo hội đồng' : 'Chỉnh sửa hội đồng'}
+			subtitle={mode === 'add' ? 'Tạo hội đồng chấm đề cương mới' : `Cập nhật — ${council?.id}`}
+			className={styles.modal}
+			bodyClassName={styles.modalBody}
+			footer={
+				<ModalActions
+					onCancel={onClose}
+					onConfirm={() => validate() && onSave(form)}
+					loading={loading}
+					confirmLabel={mode === 'add' ? 'Tạo hội đồng' : 'Lưu thay đổi'}
+				/>
+			}
 		>
-			<div className={styles.modal}>
-				<div className={styles.modalHeader}>
-					<div className={styles.modalHeaderIcon}>
-						<ClipboardCheckSvg />
-					</div>
-					<div>
-						<div className={styles.modalTitle}>
-							{mode === 'add' ? 'Tạo hội đồng' : 'Chỉnh sửa hội đồng'}
-						</div>
-						<div className={styles.modalSub}>
-							{mode === 'add'
-								? 'Tạo hội đồng chấm đề cương mới'
-								: `Cập nhật — ${council?.id}`}
-						</div>
-					</div>
-					<button
-						className={styles.modalClose}
-						onClick={onClose}
-					>
-						<XSvg />
-					</button>
-				</div>
-
-				<div className={styles.modalBody}>
-					<div
-						className={styles.formGroup}
-						style={{ gridColumn: '1 / -1' }}
-					>
-						<label className={styles.formLabel}>
-							Đợt nghiên cứu <span className={styles.required}>*</span>
-						</label>
-						<select
-							className={`${styles.formInput} ${errors.round_id ? styles.inputError : ''}`}
-							value={form.round_id}
-							onChange={set('round_id')}
-							disabled={mode === 'edit'}
+			<div
+				className={styles.formGroup}
+				style={{ gridColumn: '1 / -1' }}
+			>
+				<label className={styles.formLabel}>
+					Đợt nghiên cứu <span className={styles.required}>*</span>
+				</label>
+				<select
+					className={`${styles.formInput} ${errors.round_id ? styles.inputError : ''}`}
+					value={form.round_id}
+					onChange={set('round_id')}
+					disabled={mode === 'edit'}
+				>
+					<option value=''>-- Chọn đợt --</option>
+					{rounds.map((r) => (
+						<option
+							key={r.id}
+							value={r.id}
 						>
-							<option value=''>-- Chọn đợt --</option>
-							{rounds.map((r) => (
-								<option
-									key={r.id}
-									value={r.id}
-								>
-									{r.name} ({r.year})
-								</option>
-							))}
-						</select>
-						{errors.round_id && (
-							<div className={styles.fieldError}>{errors.round_id}</div>
-						)}
-					</div>
+							{r.name} ({r.year})
+						</option>
+					))}
+				</select>
+				{errors.round_id && (
+					<div className={styles.fieldError}>{errors.round_id}</div>
+				)}
+			</div>
 
-					<div className={styles.formGroup}>
-						<label className={styles.formLabel}>
-							Tên hội đồng <span className={styles.required}>*</span>
-						</label>
-						<input
-							className={`${styles.formInput} ${errors.name ? styles.inputError : ''}`}
-							value={form.name}
-							onChange={set('name')}
-							placeholder='VD: Hội đồng 1 - Khoa Bỏng'
-						/>
-						{errors.name && (
-							<div className={styles.fieldError}>{errors.name}</div>
-						)}
-					</div>
+			<div className={styles.formGroup}>
+				<label className={styles.formLabel}>
+					Tên hội đồng <span className={styles.required}>*</span>
+				</label>
+				<input
+					className={`${styles.formInput} ${errors.name ? styles.inputError : ''}`}
+					value={form.name}
+					onChange={set('name')}
+					placeholder='VD: Hội đồng 1 - Khoa Bỏng'
+				/>
+				{errors.name && (
+					<div className={styles.fieldError}>{errors.name}</div>
+				)}
+			</div>
 
-					<div className={styles.formGrid2}>
-						<div className={styles.formGroup}>
-							<label className={styles.formLabel}>Hệ chuyên môn</label>
-							<input
-								className={styles.formInput}
-								value={form.specialty_group}
-								onChange={set('specialty_group')}
-								placeholder='VD: Ngoại CT-Bỏng-Cột sống'
-							/>
-						</div>
-						<div className={styles.formGroup}>
-							<label className={styles.formLabel}>Địa điểm</label>
-							<VenueSelect
-								scope='defense'
-								className={styles.formInput}
-								value={form.location}
-								onChange={(location) => setForm((f) => ({ ...f, location }))}
-							/>
-						</div>
-					</div>
-
-					<div className={styles.formGroup}>
-						<label className={styles.formLabel}>Ngày bảo vệ</label>
-						<DatePicker
-							value={form.defense_date}
-							onChange={(val) =>
-								setForm((prev) => ({ ...prev, defense_date: val }))
-							}
-							placeholder='Chọn ngày bảo vệ...'
-						/>
-					</div>
-
-					{mode === 'edit' && (
-						<div className={styles.formGroup}>
-							<label className={styles.formLabel}>Trạng thái</label>
-							<select
-								className={styles.formInput}
-								value={form.status}
-								onChange={set('status')}
-							>
-								{Object.entries(STATUS_LABELS).map(([v, label]) => (
-									<option
-										key={v}
-										value={v}
-									>
-										{label}
-									</option>
-								))}
-							</select>
-						</div>
-					)}
+			<div className={styles.formGrid2}>
+				<div className={styles.formGroup}>
+					<label className={styles.formLabel}>Hệ chuyên môn</label>
+					<input
+						className={styles.formInput}
+						value={form.specialty_group}
+						onChange={set('specialty_group')}
+						placeholder='VD: Ngoại CT-Bỏng-Cột sống'
+					/>
 				</div>
-
-				<div className={styles.modalFooter}>
-					<button
-						className={styles.btnCancel}
-						onClick={onClose}
-						disabled={loading}
-					>
-						Huỷ
-					</button>
-					<button
-						className={styles.btnConfirmApprove}
-						onClick={() => validate() && onSave(form)}
-						disabled={loading}
-					>
-						{loading ? <span className={styles.spinner} /> : <CheckSvg />}
-						{mode === 'add' ? 'Tạo hội đồng' : 'Lưu thay đổi'}
-					</button>
+				<div className={styles.formGroup}>
+					<label className={styles.formLabel}>Địa điểm</label>
+					<VenueSelect
+						scope='defense'
+						className={styles.formInput}
+						value={form.location}
+						onChange={(location) => setForm((f) => ({ ...f, location }))}
+					/>
 				</div>
 			</div>
-		</div>
+
+			<div className={styles.formGroup}>
+				<label className={styles.formLabel}>Ngày bảo vệ</label>
+				<DatePicker
+					value={form.defense_date}
+					onChange={(val) =>
+						setForm((prev) => ({ ...prev, defense_date: val }))
+					}
+					placeholder='Chọn ngày bảo vệ...'
+				/>
+			</div>
+
+			{mode === 'edit' && (
+				<div className={styles.formGroup}>
+					<label className={styles.formLabel}>Trạng thái</label>
+					<select
+						className={styles.formInput}
+						value={form.status}
+						onChange={set('status')}
+					>
+						{Object.entries(STATUS_LABELS).map(([v, label]) => (
+							<option
+								key={v}
+								value={v}
+							>
+								{label}
+							</option>
+						))}
+					</select>
+				</div>
+			)}
+		</Modal>
 	);
 }

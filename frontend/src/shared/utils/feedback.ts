@@ -66,3 +66,6 @@ export const notify = {
 	error: (msg: string) => push('error', msg),
 	info: (msg: string) => push('info', msg),
 };
+
+/** Dạng (loại, nội dung) — tiện khi loại toast tính động, vd `showToast(failed ? 'error' : 'success', msg)`. */
+export const showToast = (type: ToastItem['type'], msg: string) => push(type, msg);

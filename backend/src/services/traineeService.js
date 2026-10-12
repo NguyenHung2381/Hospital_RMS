@@ -35,7 +35,7 @@ const canReadSensitive = (actor) => hasPermission(actor, 'trainees', 'read_sensi
 const getAll = async ({ page = 1, limit = 20, search, trainee_type_id, department_id } = {}, actor = null) => {
 	const pool = await getPool();
 	const pg = paging(page, limit, 100);
-	const where = ['1=1'];
+	const where = ['t.hidden_at IS NULL'];
 	const req = pool.request().input('offset', sql.Int, pg.offset).input('limit', sql.Int, pg.limit);
 
 	if (search) {
@@ -185,11 +185,12 @@ const update = async (id, data, actorId) => {
 
 const remove = async (id, actorId) => {
 	const pool = await getPool();
+	// Chỉ ẩn khỏi danh sách: học viên còn FK từ course_enrollments... nên không DELETE cứng.
 	await pool
 		.request()
 		.input('id', sql.VarChar(20), id)
 		.input('actor_id', sql.VarChar(20), actorId)
-		.query('EXEC sp_set_actor @actor_id; DELETE FROM trainees WHERE id = @id');
+		.query('EXEC sp_set_actor @actor_id; UPDATE trainees SET hidden_at = SYSDATETIME() WHERE id = @id');
 	broadcast('update', { entity: 'trainee' });
 };
 

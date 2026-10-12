@@ -1,3 +1,4 @@
+import { RowAction, RowActions } from '@/shared/components/Table/TableToolbar';
 import { useEffect, useMemo, useState } from 'react';
 import { EditSvg, PlusSvg, SearchSvg, TrashSvg, UploadSvg } from '@/assets/icons';
 import AdminLayout from '../../../layouts/AdminLayout';
@@ -315,22 +316,20 @@ export default function QuestionBank() {
 											<span className={styles.muted}>{q.used_count ? `${q.used_count} đề` : 'Chưa dùng'}</span>
 										</td>
 										<td className={`${styles.td} ${styles.tdActions}`}>
-											<div className={styles.actionBtns}>
-												<div
-													className={styles.actionBtn}
+											<RowActions>
+												<RowAction
 													title='Chỉnh sửa'
 													onClick={() => setEditing(q)}
 												>
 													<EditSvg />
-												</div>
-												<div
-													className={styles.actionBtn}
+												</RowAction>
+												<RowAction
 													title='Xoá'
 													onClick={() => setDeleting(q)}
 												>
 													<TrashSvg />
-												</div>
-											</div>
+												</RowAction>
+											</RowActions>
 										</td>
 									</tr>
 								))

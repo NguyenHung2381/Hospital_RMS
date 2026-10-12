@@ -1,7 +1,6 @@
 import {
 	CalendarSvg,
 	CheckCircleSvg,
-	CheckSvg,
 	ClockSvg,
 	PlusSvg,
 } from '@/assets/icons';
@@ -244,13 +243,6 @@ export default function Round() {
 				/>
 			)}
 
-			{/* ── TOAST ── */}
-			{d.toast && (
-				<div className={styles.toast}>
-					<CheckSvg style={{ width: 14, height: 14 }} />
-					{d.toast}
-				</div>
-			)}
 		</AdminLayout>
 	);
 }

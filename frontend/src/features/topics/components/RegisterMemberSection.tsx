@@ -3,7 +3,6 @@ import {
 	PlusSvg,
 	SearchSvg,
 	UserPlusSvg,
-	XSvg,
 } from '@/assets/icons';
 import type { SimpleItem, UserSuggestion } from '../api/topicApi';
 import type { ManualForm } from '../hooks/useTopicRegister';
@@ -11,6 +10,7 @@ import type { MemberRole } from '../types/topic.type';
 import type { PendingMember } from '../types/topicregister.type';
 import { getInitials } from '../../../shared/utils/helper';
 import styles from '../pages/TopicRegister.module.css';
+import { PendingMemberRow } from './PendingMemberList';
 import { RoleSelectPill } from './RoleSelectPill';
 
 interface RegisterMemberSectionProps {
@@ -396,128 +396,21 @@ export function RegisterMemberSection({
 				<div className={styles.manualBox} style={{ marginTop: 10 }}>
 					<div className={styles.memberList} style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
 						{pendingMembers.map((m) => (
-							<div
+							<PendingMemberRow
 								key={m.id}
-								style={{
-									display: 'flex',
-									alignItems: 'center',
-									justifyContent: 'space-between',
-									gap: 12,
-									padding: '8px 12px',
-									background: '#ffffff',
-									border: '1px solid var(--color-gray-200, #e5e7eb)',
-									borderRadius: 10,
-									transition: 'all 0.15s ease',
-									boxShadow: '0 1px 3px rgba(0,0,0,0.02)',
-								}}
-							>
-								<div
-									style={{
-										display: 'flex',
-										alignItems: 'center',
-										gap: 10,
-										flex: 1,
-										minWidth: 0,
-									}}
-								>
-									<div
-										style={{
-											width: 34,
-											height: 34,
-											borderRadius: '50%',
-											background: 'var(--color-primary-pale, #ecfdf5)',
-											border: '1.5px solid rgba(10, 155, 74, 0.25)',
-											display: 'flex',
-											alignItems: 'center',
-											justifyContent: 'center',
-											fontSize: 11.5,
-											fontWeight: 700,
-											color: 'var(--color-primary-dark, #047857)',
-											flexShrink: 0,
-										}}
-									>
-										{getInitials(m.ho_ten)}
-									</div>
-									<div style={{ flex: 1, minWidth: 0 }}>
-										<div
-											style={{
-												fontSize: 13,
-												fontWeight: 600,
-												color: 'var(--color-gray-800, #1f2937)',
-												whiteSpace: 'nowrap',
-												overflow: 'hidden',
-												textOverflow: 'ellipsis',
-											}}
-										>
-											{m.ho_ten}
-										</div>
-										<div
-											style={{
-												fontSize: 11,
-												color: 'var(--color-gray-500, #6b7280)',
-												display: 'flex',
-												alignItems: 'center',
-												gap: 4,
-												flexWrap: 'wrap',
-												marginTop: 1,
-											}}
-										>
-											{m.staff_number && <span>MNV: {m.staff_number}</span>}
-											{m.staff_number && (m.chuc_vu || m.phone_number || m.email) && <span>·</span>}
-											{m.chuc_vu && <span>{m.chuc_vu}</span>}
-											{m.chuc_vu && (m.phone_number || m.email) && <span>·</span>}
-											{m.phone_number ? (
-												<span>{m.phone_number}</span>
-											) : m.email ? (
-												<span>{m.email}</span>
-											) : null}
-										</div>
-									</div>
-								</div>
-
-								<div
-									style={{
-										display: 'flex',
-										alignItems: 'center',
-										gap: 8,
-										flexShrink: 0,
-									}}
-								>
+								name={m.ho_ten}
+								details={[m.staff_number && `MNV: ${m.staff_number}`, m.chuc_vu, m.phone_number || m.email]}
+								onRemove={() => removeMember(m.id)}
+								removeTitle='Xóa'
+								rolePill={
 									<RoleSelectPill
 										value={m.role}
 										onChange={(role) => changeRole(m.id, role)}
 										allowedRoles={roleKeys}
 										roleLabels={roleCfg}
 									/>
-									<button
-										type='button'
-										onClick={() => removeMember(m.id)}
-										style={{
-											background: 'transparent',
-											border: 'none',
-											cursor: 'pointer',
-											color: 'var(--color-gray-400, #9ca3af)',
-											padding: 5,
-											borderRadius: 6,
-											display: 'inline-flex',
-											alignItems: 'center',
-											justifyContent: 'center',
-											transition: 'all 0.15s ease',
-										}}
-										onMouseEnter={(e) => {
-											e.currentTarget.style.background = '#fee2e2';
-											e.currentTarget.style.color = '#dc2626';
-										}}
-										onMouseLeave={(e) => {
-											e.currentTarget.style.background = 'transparent';
-											e.currentTarget.style.color = 'var(--color-gray-400, #9ca3af)';
-										}}
-										title='Xóa'
-									>
-										<XSvg style={{ width: 14, height: 14 }} />
-									</button>
-								</div>
-							</div>
+								}
+							/>
 						))}
 					</div>
 				</div>

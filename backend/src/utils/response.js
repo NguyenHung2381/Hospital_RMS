@@ -29,4 +29,12 @@ const forbidden = (res, message = 'Truy cập bị từ chối') => {
 	return res.status(403).json({ success: false, message });
 };
 
-module.exports = { success, created, error, notFound, unauthorized, forbidden };
+// Trả file .xlsx (exceljs Workbook) để trình duyệt tải về với tên tiếng Việt giữ nguyên.
+const sendWorkbook = async (res, wb, fileName) => {
+	res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+	res.setHeader('Content-Disposition', `attachment; filename*=UTF-8''${encodeURIComponent(fileName)}`);
+	await wb.xlsx.write(res);
+	res.end();
+};
+
+module.exports = { success, created, error, notFound, unauthorized, forbidden, sendWorkbook };

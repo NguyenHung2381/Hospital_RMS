@@ -1,11 +1,9 @@
 import {
 	CheckCircleSvg,
-	CheckSvg,
 	ClockSvg,
 	MessageSvg,
 	WarnSvg,
 	XCircleSvg,
-	XSvg,
 } from '@/assets/icons';
 import AdminLayout from '../../../layouts/AdminLayout';
 import { ApprovalDetailPanel } from '../components/ApprovalDetailPanel';
@@ -28,7 +26,6 @@ export default function Approval() {
 		listLoading,
 		detailLoading,
 		error,
-		toast,
 		checkedIds,
 		bulkModal,
 		bulkComment,
@@ -255,17 +252,6 @@ export default function Approval() {
 				/>
 			)}
 
-			{/* Toast */}
-			{toast && (
-				<div
-					className={`${styles.toast} ${styles[`toast${toast.type.charAt(0).toUpperCase() + toast.type.slice(1)}` as keyof typeof styles]}`}
-				>
-					{toast.type === 'approve' && <CheckSvg />}
-					{toast.type === 'reject' && <XSvg />}
-					{toast.type === 'request' && <CheckCircleSvg />}
-					{toast.msg}
-				</div>
-			)}
 		</AdminLayout>
 	);
 }

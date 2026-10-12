@@ -1,0 +1,46 @@
+.summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: var(--space-3); margin-bottom: var(--space-5); }
+.stat { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-3) var(--space-4); background: #fff; border: 1px solid var(--color-gray-200, #e5e7eb); border-radius: var(--radius-xl); }
+.dot { width: 10px; height: 10px; border-radius: 50%; background: #d1d5db; flex: none; }
+.dotOn { background: #16a34a; box-shadow: 0 0 0 4px rgba(22, 163, 74, 0.15); }
+.statLabel { font-size: var(--font-size-xs); color: var(--color-gray-500, #6b7280); }
+.statValue { font-size: var(--font-size-sm); font-weight: var(--font-weight-bold); color: var(--color-gray-800); }
+
+.layout { display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: var(--space-5); align-items: start; }
+.tabs { display: flex; flex-direction: column; gap: 4px; position: sticky; top: var(--space-4); }
+.tab { display: flex; flex-direction: column; text-align: left; gap: 2px; padding: 10px 14px; border: 1px solid transparent; border-radius: var(--radius-lg); background: transparent; cursor: pointer; font: inherit; }
+.tab:hover { background: var(--color-gray-100, #f3f4f6); }
+.tabActive { background: #fff; border-color: var(--color-gray-200, #e5e7eb); box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04); }
+.tabTitle { font-size: var(--font-size-sm); font-weight: var(--font-weight-bold); color: var(--color-gray-800); display: flex; align-items: center; justify-content: space-between; }
+.tabSub { font-size: var(--font-size-xs); color: var(--color-gray-500, #6b7280); }
+.changed { width: 8px; height: 8px; border-radius: 50%; background: #f59e0b; }
+
+.group { margin-bottom: var(--space-4); }
+.groupTitle { font-size: var(--font-size-xs); font-weight: var(--font-weight-bold); text-transform: uppercase; letter-spacing: 0.04em; color: var(--color-gray-500, #6b7280); margin: var(--space-2) 0; }
+.row { display: grid; grid-template-columns: minmax(180px, 260px) 1fr; gap: var(--space-4); align-items: center; padding: var(--space-3) 0; border-bottom: 1px solid var(--color-gray-100, #f3f4f6); }
+.row:last-child { border-bottom: 0; }
+.label { font-size: var(--font-size-sm); font-weight: var(--font-weight-bold); color: var(--color-gray-700); }
+.hint { display: block; margin-top: 2px; font-weight: normal; font-size: var(--font-size-xs); color: var(--color-gray-500, #6b7280); line-height: 1.4; }
+.input { width: 100%; padding: 9px 12px; border: 1px solid var(--color-gray-300, #d1d5db); border-radius: var(--radius-lg); font-size: var(--font-size-sm); background: #fff; }
+.input:focus { outline: 2px solid rgba(0, 135, 70, 0.25); border-color: #008746; }
+.inline { display: flex; gap: var(--space-2); align-items: center; }
+.src { font-size: var(--font-size-xs); color: #b45309; background: #fef3c7; border-radius: 999px; padding: 2px 8px; white-space: nowrap; }
+
+.switch { display: inline-flex; align-items: center; gap: var(--space-3); cursor: pointer; font-size: var(--font-size-sm); color: var(--color-gray-700); }
+.switch input { position: absolute; opacity: 0; width: 0; height: 0; }
+.track { width: 42px; height: 24px; border-radius: 999px; background: #d1d5db; position: relative; transition: background 0.15s; flex: none; }
+.track::after { content: ''; position: absolute; top: 3px; left: 3px; width: 18px; height: 18px; border-radius: 50%; background: #fff; transition: transform 0.15s; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3); }
+.switch input:checked + .track { background: #008746; }
+.switch input:checked + .track::after { transform: translateX(18px); }
+.switch input:focus-visible + .track { outline: 2px solid #008746; outline-offset: 2px; }
+
+.testBox { margin-top: var(--space-3); padding: var(--space-4); background: var(--color-gray-50, #f9fafb); border: 1px dashed var(--color-gray-300, #d1d5db); border-radius: var(--radius-lg); }
+
+.saveBar { position: sticky; bottom: 0; display: flex; align-items: center; gap: var(--space-3); margin-top: var(--space-4); padding: var(--space-3) var(--space-4); background: #fff; border: 1px solid var(--color-gray-200, #e5e7eb); border-radius: var(--radius-xl); box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.05); }
+.saveText { flex: 1; font-size: var(--font-size-sm); color: var(--color-gray-600, #4b5563); }
+
+@media (max-width: 860px) {
+	.layout { grid-template-columns: 1fr; }
+	.tabs { flex-direction: row; overflow-x: auto; position: static; }
+	.tab { min-width: 150px; }
+	.row { grid-template-columns: 1fr; gap: var(--space-2); }
+}

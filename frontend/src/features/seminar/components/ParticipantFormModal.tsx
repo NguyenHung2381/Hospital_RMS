@@ -1,5 +1,6 @@
+import { Modal } from '@/shared/components';
 import { useEffect, useState } from 'react';
-import { CheckSvg, UsersSvg, XSvg } from '@/assets/icons';
+import { CheckSvg, UsersSvg } from '@/assets/icons';
 import { searchUsers, type UserSuggestion } from '../../topics/api/topicApi';
 import {
 	EMPTY_PARTICIPANT_FORM,
@@ -110,238 +111,16 @@ export function ParticipantFormModal({
 	};
 
 	return (
-		<div
-			className={styles.modalBackdrop}
-			onClick={(e) => e.target === e.currentTarget && onClose()}
-		>
-			<div className={styles.modal}>
-				<div className={styles.modalHeader}>
-					<UsersSvg />
-					<div>
-						<div className={styles.modalTitle}>
-							{mode === 'add' ? 'Thêm người tham dự' : 'Sửa người tham dự'}
-						</div>
-						<div className={styles.modalSub}>
-							Nội viện: chọn từ danh bạ cán bộ · Ngoại viện: nhập tay
-						</div>
-					</div>
-					<button className={styles.modalClose} onClick={onClose}>
-						<XSvg />
-					</button>
-				</div>
-
-				<div className={styles.modalBody}>
-					<div className={styles.formGrid}>
-						<div className={styles.formGroup}>
-							<label className={styles.formLabel}>Nguồn</label>
-							<select
-								className={styles.formInput}
-								value={form.source}
-								onChange={(e) => {
-									const source = e.target.value as ParticipantSource;
-									setForm((f) => ({
-										...f,
-										source,
-										user_id: source === 'external' ? null : f.user_id,
-									}));
-								}}
-							>
-								{(Object.keys(SOURCE_LABELS) as ParticipantSource[]).map((s) => (
-									<option key={s} value={s}>
-										{SOURCE_LABELS[s]}
-									</option>
-								))}
-							</select>
-						</div>
-						<div className={styles.formGroup}>
-							<label className={styles.formLabel}>Vai trò</label>
-							<select
-								className={styles.formInput}
-								value={form.participation_type}
-								onChange={set('participation_type')}
-							>
-								{(Object.keys(PARTICIPATION_LABELS) as ParticipationType[]).map(
-									(t) => (
-										<option key={t} value={t}>
-											{PARTICIPATION_LABELS[t]}
-										</option>
-									),
-								)}
-							</select>
-						</div>
-
-						{form.source === 'internal' && !form.user_id && mode === 'add' && (
-							<div className={`${styles.formGroup} ${styles.full} ${styles.acWrap}`}>
-								<label className={styles.formLabel}>Tìm cán bộ</label>
-								<input
-									className={styles.formInput}
-									value={q}
-									onChange={(e) => setQ(e.target.value)}
-									placeholder='Tên hoặc mã nhân viên...'
-									onFocus={() => sugs.length && setShowSugs(true)}
-								/>
-								{showSugs && sugs.length > 0 && (
-									<div className={styles.acList}>
-										{sugs.map((u) => (
-											<div
-												key={u.id}
-												className={styles.acItem}
-												onClick={() => pickUser(u)}
-											>
-												{u.full_name}{' '}
-												<span className={styles.acMeta}>
-													#{u.staff_number ?? '—'}
-												</span>
-											</div>
-										))}
-									</div>
-								)}
-							</div>
-						)}
-
-						<div className={`${styles.formGroup} ${styles.full}`}>
-							<label className={styles.formLabel}>
-								Họ tên <span className={styles.required}>*</span>
-								{form.user_id && (
-									<button
-										type='button'
-										className={styles.hint}
-										style={{ marginLeft: 8, cursor: 'pointer' }}
-										onClick={clearUser}
-									>
-										(bỏ liên kết cán bộ)
-									</button>
-								)}
-							</label>
-							<input
-								className={`${styles.formInput} ${err ? styles.inputError : ''}`}
-								value={form.full_name}
-								onChange={set('full_name')}
-								disabled={!!form.user_id}
-							/>
-							{err && <div className={styles.fieldError}>{err}</div>}
-						</div>
-
-						<div className={styles.formGroup}>
-							<label className={styles.formLabel}>Danh xưng</label>
-							<input
-								className={styles.formInput}
-								value={form.title_prefix}
-								onChange={set('title_prefix')}
-								placeholder='Ông / Bà'
-							/>
-						</div>
-						<div className={styles.formGroup}>
-							<label className={styles.formLabel}>Giới tính</label>
-							<select
-								className={styles.formInput}
-								value={form.gender}
-								onChange={set('gender')}
-							>
-								<option value=''>—</option>
-								{GENDER_OPTIONS.map((g) => (
-									<option
-										key={g.value}
-										value={g.value}
-									>
-										{g.label}
-									</option>
-								))}
-							</select>
-						</div>
-
-						<div className={styles.formGroup}>
-							<label className={styles.formLabel}>Ngày sinh</label>
-							<input
-								type='date'
-								className={styles.formInput}
-								value={form.dob}
-								onChange={set('dob')}
-							/>
-						</div>
-						<div className={styles.formGroup}>
-							<label className={styles.formLabel}>Ngày sinh (dạng chữ)</label>
-							<input
-								className={styles.formInput}
-								value={form.dob_text}
-								onChange={set('dob_text')}
-								placeholder='VD: 1989'
-							/>
-						</div>
-
-						{form.source === 'external' ? (
-							<div className={`${styles.formGroup} ${styles.full}`}>
-								<label className={styles.formLabel}>Đơn vị công tác</label>
-								<input
-									className={styles.formInput}
-									value={form.organization}
-									onChange={set('organization')}
-								/>
-							</div>
-						) : (
-							<div className={`${styles.formGroup} ${styles.full}`}>
-								<label className={styles.formLabel}>
-									Khoa/phòng (ghi trong danh sách)
-								</label>
-								<input
-									className={styles.formInput}
-									value={form.department_raw}
-									onChange={set('department_raw')}
-								/>
-							</div>
-						)}
-
-						<div className={styles.formGroup}>
-							<label className={styles.formLabel}>Mã nhân viên</label>
-							<input
-								className={styles.formInput}
-								value={form.staff_number}
-								onChange={set('staff_number')}
-								inputMode='numeric'
-							/>
-						</div>
-						<div className={styles.formGroup}>
-							<label className={styles.formLabel}>Trình độ chuyên môn</label>
-							<input
-								className={styles.formInput}
-								value={form.qualification_raw}
-								onChange={set('qualification_raw')}
-							/>
-						</div>
-
-						<div className={styles.formGroup}>
-							<label className={styles.checkFilter}>
-								<input
-									type='checkbox'
-									checked={form.is_foreign}
-									onChange={set('is_foreign')}
-								/>
-								Đại biểu nước ngoài
-							</label>
-						</div>
-						<div className={styles.formGroup}>
-							<label className={styles.formLabel}>Tín chỉ CME</label>
-							<input
-								className={styles.formInput}
-								value={form.cme_credits}
-								onChange={set('cme_credits')}
-								inputMode='decimal'
-								placeholder='VD: 3 hoặc 3.5'
-							/>
-						</div>
-
-						<div className={`${styles.formGroup} ${styles.full}`}>
-							<label className={styles.formLabel}>Ghi chú</label>
-							<input
-								className={styles.formInput}
-								value={form.notes}
-								onChange={set('notes')}
-							/>
-						</div>
-					</div>
-				</div>
-
-				<div className={styles.modalFooter}>
+		<Modal
+			open
+			onClose={onClose}
+			icon={<UsersSvg />}
+			title={mode === 'add' ? 'Thêm người tham dự' : 'Sửa người tham dự'}
+			subtitle='Nội viện: chọn từ danh bạ cán bộ · Ngoại viện: nhập tay'
+			className={styles.modal}
+			bodyClassName={styles.modalBody}
+			footer={
+				<>
 					<button
 						className={styles.btnCancel}
 						onClick={onClose}
@@ -357,8 +136,217 @@ export function ParticipantFormModal({
 						{loading ? <span className={styles.spinner} /> : <CheckSvg />}
 						{mode === 'add' ? 'Thêm' : 'Lưu'}
 					</button>
+				</>
+			}
+		>
+			<div className={styles.formGrid}>
+				<div className={styles.formGroup}>
+					<label className={styles.formLabel}>Nguồn</label>
+					<select
+						className={styles.formInput}
+						value={form.source}
+						onChange={(e) => {
+							const source = e.target.value as ParticipantSource;
+							setForm((f) => ({
+								...f,
+								source,
+								user_id: source === 'external' ? null : f.user_id,
+							}));
+						}}
+					>
+						{(Object.keys(SOURCE_LABELS) as ParticipantSource[]).map((s) => (
+							<option key={s} value={s}>
+								{SOURCE_LABELS[s]}
+							</option>
+						))}
+					</select>
+				</div>
+				<div className={styles.formGroup}>
+					<label className={styles.formLabel}>Vai trò</label>
+					<select
+						className={styles.formInput}
+						value={form.participation_type}
+						onChange={set('participation_type')}
+					>
+						{(Object.keys(PARTICIPATION_LABELS) as ParticipationType[]).map(
+							(t) => (
+								<option key={t} value={t}>
+									{PARTICIPATION_LABELS[t]}
+								</option>
+							),
+						)}
+					</select>
+				</div>
+
+				{form.source === 'internal' && !form.user_id && mode === 'add' && (
+					<div className={`${styles.formGroup} ${styles.full} ${styles.acWrap}`}>
+						<label className={styles.formLabel}>Tìm cán bộ</label>
+						<input
+							className={styles.formInput}
+							value={q}
+							onChange={(e) => setQ(e.target.value)}
+							placeholder='Tên hoặc mã nhân viên...'
+							onFocus={() => sugs.length && setShowSugs(true)}
+						/>
+						{showSugs && sugs.length > 0 && (
+							<div className={styles.acList}>
+								{sugs.map((u) => (
+									<div
+										key={u.id}
+										className={styles.acItem}
+										onClick={() => pickUser(u)}
+									>
+										{u.full_name}{' '}
+										<span className={styles.acMeta}>
+											#{u.staff_number ?? '—'}
+										</span>
+									</div>
+								))}
+							</div>
+						)}
+					</div>
+				)}
+
+				<div className={`${styles.formGroup} ${styles.full}`}>
+					<label className={styles.formLabel}>
+						Họ tên <span className={styles.required}>*</span>
+						{form.user_id && (
+							<button
+								type='button'
+								className={styles.hint}
+								style={{ marginLeft: 8, cursor: 'pointer' }}
+								onClick={clearUser}
+							>
+								(bỏ liên kết cán bộ)
+							</button>
+						)}
+					</label>
+					<input
+						className={`${styles.formInput} ${err ? styles.inputError : ''}`}
+						value={form.full_name}
+						onChange={set('full_name')}
+						disabled={!!form.user_id}
+					/>
+					{err && <div className={styles.fieldError}>{err}</div>}
+				</div>
+
+				<div className={styles.formGroup}>
+					<label className={styles.formLabel}>Danh xưng</label>
+					<input
+						className={styles.formInput}
+						value={form.title_prefix}
+						onChange={set('title_prefix')}
+						placeholder='Ông / Bà'
+					/>
+				</div>
+				<div className={styles.formGroup}>
+					<label className={styles.formLabel}>Giới tính</label>
+					<select
+						className={styles.formInput}
+						value={form.gender}
+						onChange={set('gender')}
+					>
+						<option value=''>—</option>
+						{GENDER_OPTIONS.map((g) => (
+							<option
+								key={g.value}
+								value={g.value}
+							>
+								{g.label}
+							</option>
+						))}
+					</select>
+				</div>
+
+				<div className={styles.formGroup}>
+					<label className={styles.formLabel}>Ngày sinh</label>
+					<input
+						type='date'
+						className={styles.formInput}
+						value={form.dob}
+						onChange={set('dob')}
+					/>
+				</div>
+				<div className={styles.formGroup}>
+					<label className={styles.formLabel}>Ngày sinh (dạng chữ)</label>
+					<input
+						className={styles.formInput}
+						value={form.dob_text}
+						onChange={set('dob_text')}
+						placeholder='VD: 1989'
+					/>
+				</div>
+
+				{form.source === 'external' ? (
+					<div className={`${styles.formGroup} ${styles.full}`}>
+						<label className={styles.formLabel}>Đơn vị công tác</label>
+						<input
+							className={styles.formInput}
+							value={form.organization}
+							onChange={set('organization')}
+						/>
+					</div>
+				) : (
+					<div className={`${styles.formGroup} ${styles.full}`}>
+						<label className={styles.formLabel}>
+							Khoa/phòng (ghi trong danh sách)
+						</label>
+						<input
+							className={styles.formInput}
+							value={form.department_raw}
+							onChange={set('department_raw')}
+						/>
+					</div>
+				)}
+
+				<div className={styles.formGroup}>
+					<label className={styles.formLabel}>Mã nhân viên</label>
+					<input
+						className={styles.formInput}
+						value={form.staff_number}
+						onChange={set('staff_number')}
+						inputMode='numeric'
+					/>
+				</div>
+				<div className={styles.formGroup}>
+					<label className={styles.formLabel}>Trình độ chuyên môn</label>
+					<input
+						className={styles.formInput}
+						value={form.qualification_raw}
+						onChange={set('qualification_raw')}
+					/>
+				</div>
+
+				<div className={styles.formGroup}>
+					<label className={styles.checkFilter}>
+						<input
+							type='checkbox'
+							checked={form.is_foreign}
+							onChange={set('is_foreign')}
+						/>
+						Đại biểu nước ngoài
+					</label>
+				</div>
+				<div className={styles.formGroup}>
+					<label className={styles.formLabel}>Tín chỉ CME</label>
+					<input
+						className={styles.formInput}
+						value={form.cme_credits}
+						onChange={set('cme_credits')}
+						inputMode='decimal'
+						placeholder='VD: 3 hoặc 3.5'
+					/>
+				</div>
+
+				<div className={`${styles.formGroup} ${styles.full}`}>
+					<label className={styles.formLabel}>Ghi chú</label>
+					<input
+						className={styles.formInput}
+						value={form.notes}
+						onChange={set('notes')}
+					/>
 				</div>
 			</div>
-		</div>
+		</Modal>
 	);
 }

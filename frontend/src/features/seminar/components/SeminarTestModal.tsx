@@ -1,3 +1,4 @@
+import { Modal } from '@/shared/components';
 import { useState } from 'react';
 import { CheckSvg, PlusSvg, TrashSvg, XSvg } from '@/assets/icons';
 import { updateSeminarTest } from '../api/seminarApi';
@@ -54,118 +55,15 @@ export function SeminarTestModal({
 	};
 
 	return (
-		<div
-			className={styles.modalBackdrop}
-			onClick={(e) => e.target === e.currentTarget && onClose()}
-		>
-			<div className={styles.modal}>
-				<div className={styles.modalHeader}>
-					<div>
-						<div className={styles.modalTitle}>Bài test cuối buổi</div>
-						<div className={styles.modalSub}>
-							Trắc nghiệm 1 đáp án · chọn ô tròn cạnh phương án đúng · chấm tự động
-						</div>
-					</div>
-					<button
-						className={styles.modalClose}
-						onClick={onClose}
-					>
-						<XSvg />
-					</button>
-				</div>
-				<div className={styles.modalBody}>
-					<label className={styles.checkFilter} style={{ marginBottom: 12 }}>
-						<input
-							type='checkbox'
-							checked={open}
-							onChange={(e) => setOpen(e.target.checked)}
-						/>
-						Mở bài test (người đã điểm danh làm được ngay trên vé QR của mình)
-					</label>
-					{error && <div className={`${styles.noticeBox} ${styles.noticeWarn}`}>{error}</div>}
-
-					{questions.map((q, i) => (
-						<div
-							key={i}
-							className={styles.infoCard}
-							style={{ marginBottom: 12 }}
-						>
-							<div className={styles.formGroup}>
-								<div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-									<label className={styles.formLabel}>Câu {i + 1}</label>
-									<button
-										type='button'
-										className={`${styles.actionBtn} ${styles.danger}`}
-										title='Xoá câu hỏi'
-										onClick={() => setQuestions((qs) => qs.filter((_, k) => k !== i))}
-									>
-										<TrashSvg />
-									</button>
-								</div>
-								<textarea
-									className={styles.formTextarea}
-									rows={2}
-									value={q.q}
-									onChange={(e) => patch(i, { q: e.target.value })}
-									placeholder='Nội dung câu hỏi'
-								/>
-							</div>
-							{q.options.map((o, j) => (
-								<div
-									key={j}
-									style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 6 }}
-								>
-									<input
-										type='radio'
-										name={`answer-${i}`}
-										title='Đáp án đúng'
-										checked={q.answer === j}
-										onChange={() => patch(i, { answer: j })}
-									/>
-									<input
-										className={styles.formInput}
-										value={o}
-										onChange={(e) =>
-											patch(i, { options: q.options.map((x, k) => (k === j ? e.target.value : x)) })
-										}
-										placeholder={`Phương án ${String.fromCharCode(65 + j)}`}
-									/>
-									{q.options.length > 2 && (
-										<button
-											type='button'
-											className={styles.actionBtn}
-											title='Xoá phương án'
-											onClick={() =>
-												patch(i, {
-													options: q.options.filter((_, k) => k !== j),
-													answer: q.answer === j ? -1 : q.answer > j ? q.answer - 1 : q.answer,
-												})
-											}
-										>
-											<XSvg />
-										</button>
-									)}
-								</div>
-							))}
-							<button
-								type='button'
-								className={styles.btnGhost}
-								style={{ marginTop: 8 }}
-								onClick={() => patch(i, { options: [...q.options, ''] })}
-							>
-								<PlusSvg /> Thêm phương án
-							</button>
-						</div>
-					))}
-					<button
-						type='button'
-						className={styles.btnGhost}
-						onClick={() => setQuestions((qs) => [...qs, blank()])}
-					>
-						<PlusSvg /> Thêm câu hỏi
-					</button>
-				</div>
-				<div className={styles.modalFooter}>
+		<Modal
+			open
+			onClose={onClose}
+			title='Bài test cuối buổi'
+			subtitle='Trắc nghiệm 1 đáp án · chọn ô tròn cạnh phương án đúng · chấm tự động'
+			className={styles.modal}
+			bodyClassName={styles.modalBody}
+			footer={
+				<>
 					<button
 						className={styles.btnCancel}
 						onClick={onClose}
@@ -181,8 +79,99 @@ export function SeminarTestModal({
 						{saving ? <span className={styles.spinner} /> : <CheckSvg />}
 						Lưu
 					</button>
+				</>
+			}
+		>
+			<label className={styles.checkFilter} style={{ marginBottom: 12 }}>
+				<input
+					type='checkbox'
+					checked={open}
+					onChange={(e) => setOpen(e.target.checked)}
+				/>
+				Mở bài test (người đã điểm danh làm được ngay trên vé QR của mình)
+			</label>
+			{error && <div className={`${styles.noticeBox} ${styles.noticeWarn}`}>{error}</div>}
+
+			{questions.map((q, i) => (
+				<div
+					key={i}
+					className={styles.infoCard}
+					style={{ marginBottom: 12 }}
+				>
+					<div className={styles.formGroup}>
+						<div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+							<label className={styles.formLabel}>Câu {i + 1}</label>
+							<button
+								type='button'
+								className={`${styles.actionBtn} ${styles.danger}`}
+								title='Xoá câu hỏi'
+								onClick={() => setQuestions((qs) => qs.filter((_, k) => k !== i))}
+							>
+								<TrashSvg />
+							</button>
+						</div>
+						<textarea
+							className={styles.formTextarea}
+							rows={2}
+							value={q.q}
+							onChange={(e) => patch(i, { q: e.target.value })}
+							placeholder='Nội dung câu hỏi'
+						/>
+					</div>
+					{q.options.map((o, j) => (
+						<div
+							key={j}
+							style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 6 }}
+						>
+							<input
+								type='radio'
+								name={`answer-${i}`}
+								title='Đáp án đúng'
+								checked={q.answer === j}
+								onChange={() => patch(i, { answer: j })}
+							/>
+							<input
+								className={styles.formInput}
+								value={o}
+								onChange={(e) =>
+									patch(i, { options: q.options.map((x, k) => (k === j ? e.target.value : x)) })
+								}
+								placeholder={`Phương án ${String.fromCharCode(65 + j)}`}
+							/>
+							{q.options.length > 2 && (
+								<button
+									type='button'
+									className={styles.actionBtn}
+									title='Xoá phương án'
+									onClick={() =>
+										patch(i, {
+											options: q.options.filter((_, k) => k !== j),
+											answer: q.answer === j ? -1 : q.answer > j ? q.answer - 1 : q.answer,
+										})
+									}
+								>
+									<XSvg />
+								</button>
+							)}
+						</div>
+					))}
+					<button
+						type='button'
+						className={styles.btnGhost}
+						style={{ marginTop: 8 }}
+						onClick={() => patch(i, { options: [...q.options, ''] })}
+					>
+						<PlusSvg /> Thêm phương án
+					</button>
 				</div>
-			</div>
-		</div>
+			))}
+			<button
+				type='button'
+				className={styles.btnGhost}
+				onClick={() => setQuestions((qs) => [...qs, blank()])}
+			>
+				<PlusSvg /> Thêm câu hỏi
+			</button>
+		</Modal>
 	);
 }

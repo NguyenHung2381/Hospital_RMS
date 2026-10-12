@@ -1,3 +1,4 @@
+import { Modal } from '@/shared/components';
 import { useEffect, useState } from 'react';
 import { CheckSvg, SearchSvg, UserCheckSvg, XSvg } from '@/assets/icons';
 import { getEligibleUsers } from '../api/councilApi';
@@ -75,166 +76,16 @@ export function MemberSeatModal({
 	};
 
 	return (
-		<div
-			className={styles.modalBackdrop}
-			onClick={(e) => e.target === e.currentTarget && onClose()}
-		>
-			<div className={`${styles.modal} ${styles.modalSm}`}>
-				<div className={styles.modalHeader}>
-					<div className={styles.modalHeaderIcon}>
-						<UserCheckSvg />
-					</div>
-					<div>
-						<div className={styles.modalTitle}>
-							{member ? 'Đổi người' : 'Chọn người'} — {SEAT_ROLE_LABELS[role]}
-						</div>
-						<div className={styles.modalSub}>
-							Tìm theo tên hoặc mã cán bộ
-						</div>
-					</div>
-					<button
-						className={styles.modalClose}
-						onClick={onClose}
-					>
-						<XSvg />
-					</button>
-				</div>
-
-				<div className={styles.modalBody}>
-					{member && !selected && (
-						<div className={`${styles.seatCard} ${styles.seatCardFilled}`}>
-							<div>
-								<div className={styles.seatRole}>Hiện tại</div>
-								<div className={styles.seatName}>
-									{member.full_name}
-									{member.is_external && (
-										<span className={styles.topicDept} style={{ marginLeft: 6 }}>
-											Ngoài viện
-										</span>
-									)}
-								</div>
-								{(member.is_external ? member.ext_organization : member.department_name) && (
-									<div className={styles.seatDept}>
-										{member.is_external ? member.ext_organization : member.department_name}
-									</div>
-								)}
-							</div>
-						</div>
-					)}
-
-					<div className={styles.formGroup}>
-						<label className={styles.formLabel}>
-							{selected ? 'Đã chọn' : 'Tìm cán bộ'}
-						</label>
-						{selected ? (
-							<div className={`${styles.seatCard} ${styles.seatCardFilled}`}>
-								<div>
-									<div className={styles.seatName}>{selected.full_name}</div>
-									<div className={styles.seatDept}>
-										{selected.is_external
-											? (selected.organization ?? 'Ngoài viện')
-											: selected.username}
-									</div>
-								</div>
-								<button
-									className={styles.seatBtn}
-									onClick={() => {
-										setSelected(null);
-										setError('');
-									}}
-								>
-									<XSvg />
-								</button>
-							</div>
-						) : (
-							<>
-								{allowExternal && (
-									<div style={{ display: 'flex', gap: 6, marginBottom: 8 }}>
-										<button
-											type='button'
-											className={`${styles.specialtyChip} ${candidateType === 'internal' ? styles.specialtyChipActive : ''}`}
-											onClick={() => setCandidateType('internal')}
-										>
-											Trong viện
-										</button>
-										<button
-											type='button'
-											className={`${styles.specialtyChip} ${candidateType === 'external' ? styles.specialtyChipActive : ''}`}
-											onClick={() => setCandidateType('external')}
-										>
-											Ngoài viện
-										</button>
-									</div>
-								)}
-								<input
-									className={styles.formInput}
-									placeholder={
-										candidateType === 'external'
-											? 'Nhập tên hoặc đơn vị...'
-											: 'Nhập tên hoặc mã cán bộ...'
-									}
-									value={search}
-									onChange={(e) => setSearch(e.target.value)}
-									autoFocus
-								/>
-								{searching && (
-									<div style={{ fontSize: 12, color: 'var(--color-gray-400)' }}>
-										Đang tìm...
-									</div>
-								)}
-								{displayResults.length > 0 && (
-									<div className={styles.checkList}>
-										{displayResults.map((u) => (
-											<div
-												key={u.id}
-												className={styles.checkRow}
-												onClick={() => {
-													setSelected(u);
-													setError('');
-												}}
-											>
-												<SearchSvg style={{ width: 12, height: 12, flexShrink: 0 }} />
-												<div>
-													<div>
-														{!u.is_external && u.qualification ? `${u.qualification}. ` : ''}
-														{u.full_name}
-														{!u.is_external && u.can_chair_council ? ' · CTHĐ' : ''}
-													</div>
-													<div style={{ fontSize: 11, color: 'var(--color-gray-400)' }}>
-														{u.is_external
-															? [u.organization, u.specialty_group, u.phone]
-																	.filter(Boolean)
-																	.join(' · ')
-															: [
-																	u.username,
-																	u.staff_number,
-																	u.department_name,
-																	u.specialty_group,
-																].filter(Boolean)
-																	.join(' · ')}
-													</div>
-													{conflictLabel(u) && (
-														<div style={{ fontSize: 11, color: 'var(--color-red-500, #dc2626)' }}>
-															⚠ {conflictLabel(u)}
-														</div>
-													)}
-													{roleWarning(u, role) && (
-														<div style={{ fontSize: 11, color: 'var(--color-orange-500, #ea580c)' }}>
-															⚠ {roleWarning(u, role)}
-														</div>
-													)}
-												</div>
-											</div>
-										))}
-									</div>
-								)}
-							</>
-						)}
-						{error && <div className={styles.fieldError}>{error}</div>}
-					</div>
-				</div>
-
-				<div className={styles.modalFooter}>
+		<Modal
+			open
+			onClose={onClose}
+			icon={<UserCheckSvg />}
+			title={<>{member ? 'Đổi người' : 'Chọn người'} — {SEAT_ROLE_LABELS[role]}</>}
+			subtitle='Tìm theo tên hoặc mã cán bộ'
+			className={`${styles.modal} ${styles.modalSm}`}
+			bodyClassName={styles.modalBody}
+			footer={
+				<>
 					{member && onRemove ? (
 						<button
 							className={styles.btnDanger}
@@ -260,8 +111,140 @@ export function MemberSeatModal({
 						{loading ? <span className={styles.spinner} /> : <CheckSvg />}
 						Lưu
 					</button>
+				</>
+			}
+		>
+			{member && !selected && (
+				<div className={`${styles.seatCard} ${styles.seatCardFilled}`}>
+					<div>
+						<div className={styles.seatRole}>Hiện tại</div>
+						<div className={styles.seatName}>
+							{member.full_name}
+							{member.is_external && (
+								<span className={styles.topicDept} style={{ marginLeft: 6 }}>
+									Ngoài viện
+								</span>
+							)}
+						</div>
+						{(member.is_external ? member.ext_organization : member.department_name) && (
+							<div className={styles.seatDept}>
+								{member.is_external ? member.ext_organization : member.department_name}
+							</div>
+						)}
+					</div>
 				</div>
+			)}
+
+			<div className={styles.formGroup}>
+				<label className={styles.formLabel}>
+					{selected ? 'Đã chọn' : 'Tìm cán bộ'}
+				</label>
+				{selected ? (
+					<div className={`${styles.seatCard} ${styles.seatCardFilled}`}>
+						<div>
+							<div className={styles.seatName}>{selected.full_name}</div>
+							<div className={styles.seatDept}>
+								{selected.is_external
+									? (selected.organization ?? 'Ngoài viện')
+									: selected.username}
+							</div>
+						</div>
+						<button
+							className={styles.seatBtn}
+							onClick={() => {
+								setSelected(null);
+								setError('');
+							}}
+						>
+							<XSvg />
+						</button>
+					</div>
+				) : (
+					<>
+						{allowExternal && (
+							<div style={{ display: 'flex', gap: 6, marginBottom: 8 }}>
+								<button
+									type='button'
+									className={`${styles.specialtyChip} ${candidateType === 'internal' ? styles.specialtyChipActive : ''}`}
+									onClick={() => setCandidateType('internal')}
+								>
+									Trong viện
+								</button>
+								<button
+									type='button'
+									className={`${styles.specialtyChip} ${candidateType === 'external' ? styles.specialtyChipActive : ''}`}
+									onClick={() => setCandidateType('external')}
+								>
+									Ngoài viện
+								</button>
+							</div>
+						)}
+						<input
+							className={styles.formInput}
+							placeholder={
+								candidateType === 'external'
+									? 'Nhập tên hoặc đơn vị...'
+									: 'Nhập tên hoặc mã cán bộ...'
+							}
+							value={search}
+							onChange={(e) => setSearch(e.target.value)}
+							autoFocus
+						/>
+						{searching && (
+							<div style={{ fontSize: 12, color: 'var(--color-gray-400)' }}>
+								Đang tìm...
+							</div>
+						)}
+						{displayResults.length > 0 && (
+							<div className={styles.checkList}>
+								{displayResults.map((u) => (
+									<div
+										key={u.id}
+										className={styles.checkRow}
+										onClick={() => {
+											setSelected(u);
+											setError('');
+										}}
+									>
+										<SearchSvg style={{ width: 12, height: 12, flexShrink: 0 }} />
+										<div>
+											<div>
+												{!u.is_external && u.qualification ? `${u.qualification}. ` : ''}
+												{u.full_name}
+												{!u.is_external && u.can_chair_council ? ' · CTHĐ' : ''}
+											</div>
+											<div style={{ fontSize: 11, color: 'var(--color-gray-400)' }}>
+												{u.is_external
+													? [u.organization, u.specialty_group, u.phone]
+															.filter(Boolean)
+															.join(' · ')
+													: [
+															u.username,
+															u.staff_number,
+															u.department_name,
+															u.specialty_group,
+														].filter(Boolean)
+															.join(' · ')}
+											</div>
+											{conflictLabel(u) && (
+												<div style={{ fontSize: 11, color: 'var(--color-red-500, #dc2626)' }}>
+													⚠ {conflictLabel(u)}
+												</div>
+											)}
+											{roleWarning(u, role) && (
+												<div style={{ fontSize: 11, color: 'var(--color-orange-500, #ea580c)' }}>
+													⚠ {roleWarning(u, role)}
+												</div>
+											)}
+										</div>
+									</div>
+								))}
+							</div>
+						)}
+					</>
+				)}
+				{error && <div className={styles.fieldError}>{error}</div>}
 			</div>
-		</div>
+		</Modal>
 	);
 }

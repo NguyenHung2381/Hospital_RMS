@@ -1,0 +1,5 @@
+# Người review bắt buộc (bật "Require review from Code Owners" ở branch protection).
+# Thêm người theo vùng code khi nhóm lớn hơn, vd: /backend/migrations/ @dba-github-user
+*                     @NguyenHung2381
+/.github/             @NguyenHung2381
+/scripts/deploy.ps1   @NguyenHung2381

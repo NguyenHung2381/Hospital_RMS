@@ -24,6 +24,7 @@
 const ExcelJS = require('exceljs');
 const topicService = require('../services/topicService');
 const { fnt, al, sf, bAll } = require('../utils/excelStyle');
+const { sendWorkbook } = require('../utils/response');
 
 // ── Palette ──────────────────────────────────────────────────────────────────
 const C = {
@@ -68,13 +69,6 @@ const ROLE_LABELS = {
 };
 
 // ── Style helpers ─────────────────────────────────────────────────────────────
-const bMedium = {
-	top: { style: 'medium', color: { argb: 'FF000000' } },
-	left: { style: 'medium', color: { argb: 'FF000000' } },
-	bottom: { style: 'medium', color: { argb: 'FF000000' } },
-	right: { style: 'medium', color: { argb: 'FF000000' } },
-};
-
 function fmtDate(iso) {
 	if (!iso) return '';
 	const d = new Date(iso);
@@ -227,140 +221,44 @@ function buildOverviewSheet(ws, topics, opts) {
 	}
 	cur++; // blank row
 
-	// ── II. Theo phân loại ─────────────────────────────────────────────────
-	const catMap = new Map();
-	topics.forEach((t) => {
-		const k = t.category_name || '(Chưa phân loại)';
-		catMap.set(k, (catMap.get(k) || 0) + 1);
-	});
-	const catRows = [...catMap.entries()].sort((a, b) => b[1] - a[1]);
-
-	secHeader('II. THEO PHÂN LOẠI ĐỀ TÀI');
-	// sub-header
-	['STT', 'Phân loại', '', '', '', 'Số đề tài', '', 'Tỷ lệ (%)'].forEach(
-		(h, i) => {
-			Object.assign(ws.getCell(cur, i + 1), {
-				value: h,
-				font: fnt({ bold: true, size: 10, color: 'FFFFFF' }),
-				fill: sf(C.accent),
-				alignment: al('center', true),
-				border: bAll,
-			});
-		},
-	);
-	ws.mergeCells(`B${cur}:E${cur}`);
-	ws.mergeCells(`F${cur}:G${cur}`);
-	ws.getRow(cur).height = 20;
-	cur++;
-
-	catRows.forEach(([name, cnt], i) => {
-		const bg = i % 2 === 0 ? C.rowA : C.rowB;
-		const pct =
-			topics.length > 0 ? ((cnt / topics.length) * 100).toFixed(1) + '%' : '0%';
-		[i + 1, name, '', '', '', cnt, '', pct].forEach((v, ci) => {
-			Object.assign(ws.getCell(cur, ci + 1), {
-				value: v,
-				font: fnt({ size: 10 }),
-				fill: sf(bg),
-				alignment: al(ci === 0 || ci >= 5 ? 'center' : 'left', true),
-				border: bAll,
-			});
+	// ── II–IV. Đếm đề tài theo nhóm (bảng STT / tên / số đề tài / tỷ lệ) ───
+	const countSection = (title, label, keyOf, limit = Infinity) => {
+		const counts = new Map();
+		topics.forEach((t) => {
+			const k = keyOf(t);
+			counts.set(k, (counts.get(k) || 0) + 1);
 		});
-		ws.mergeCells(`B${cur}:E${cur}`);
-		ws.mergeCells(`F${cur}:G${cur}`);
-		ws.getRow(cur).height = 20;
-		cur++;
-	});
-	cur++;
+		const rows = [...counts.entries()].sort((a, b) => b[1] - a[1]).slice(0, limit);
 
-	// ── III. Theo cấp độ ───────────────────────────────────────────────────
-	const lvlMap = new Map();
-	topics.forEach((t) => {
-		const k = t.level_name || '(Chưa xác định)';
-		lvlMap.set(k, (lvlMap.get(k) || 0) + 1);
-	});
-	const lvlRows = [...lvlMap.entries()].sort((a, b) => b[1] - a[1]);
+		const tableRow = (values, style) => {
+			values.forEach((v, ci) => Object.assign(ws.getCell(cur, ci + 1), { value: v, border: bAll, ...style(ci) }));
+			ws.mergeCells(`B${cur}:E${cur}`);
+			ws.mergeCells(`F${cur}:G${cur}`);
+			ws.getRow(cur).height = 20;
+			cur++;
+		};
 
-	secHeader('III. THEO CẤP ĐỘ');
-	['STT', 'Cấp độ', '', '', '', 'Số đề tài', '', 'Tỷ lệ (%)'].forEach(
-		(h, i) => {
-			Object.assign(ws.getCell(cur, i + 1), {
-				value: h,
-				font: fnt({ bold: true, size: 10, color: 'FFFFFF' }),
-				fill: sf(C.accent),
-				alignment: al('center', true),
-				border: bAll,
-			});
-		},
-	);
-	ws.mergeCells(`B${cur}:E${cur}`);
-	ws.mergeCells(`F${cur}:G${cur}`);
-	ws.getRow(cur).height = 20;
-	cur++;
-
-	lvlRows.forEach(([name, cnt], i) => {
-		const bg = i % 2 === 0 ? C.rowA : C.rowB;
-		const pct =
-			topics.length > 0 ? ((cnt / topics.length) * 100).toFixed(1) + '%' : '0%';
-		[i + 1, name, '', '', '', cnt, '', pct].forEach((v, ci) => {
-			Object.assign(ws.getCell(cur, ci + 1), {
-				value: v,
+		secHeader(title);
+		tableRow(['STT', label, '', '', '', 'Số đề tài', '', 'Tỷ lệ (%)'], () => ({
+			font: fnt({ bold: true, size: 10, color: 'FFFFFF' }),
+			fill: sf(C.accent),
+			alignment: al('center', true),
+		}));
+		rows.forEach(([name, cnt], i) => {
+			const pct = topics.length > 0 ? ((cnt / topics.length) * 100).toFixed(1) + '%' : '0%';
+			tableRow([i + 1, name, '', '', '', cnt, '', pct], (ci) => ({
 				font: fnt({ size: 10 }),
-				fill: sf(bg),
+				fill: sf(i % 2 === 0 ? C.rowA : C.rowB),
 				alignment: al(ci === 0 || ci >= 5 ? 'center' : 'left', true),
-				border: bAll,
-			});
+			}));
 		});
-		ws.mergeCells(`B${cur}:E${cur}`);
-		ws.mergeCells(`F${cur}:G${cur}`);
-		ws.getRow(cur).height = 20;
-		cur++;
-	});
+	};
+
+	countSection('II. THEO PHÂN LOẠI ĐỀ TÀI', 'Phân loại', (t) => t.category_name || '(Chưa phân loại)');
 	cur++;
-
-	// ── IV. Theo phòng ban ─────────────────────────────────────────────────
-	const deptMap = new Map();
-	topics.forEach((t) => {
-		const k = t.department_name || '(Chưa phân)';
-		deptMap.set(k, (deptMap.get(k) || 0) + 1);
-	});
-	const deptRows = [...deptMap.entries()].sort((a, b) => b[1] - a[1]);
-
-	secHeader('IV. THEO PHÒNG BAN (TOP 20)');
-	['STT', 'Phòng ban / Khoa', '', '', '', 'Số đề tài', '', 'Tỷ lệ (%)'].forEach(
-		(h, i) => {
-			Object.assign(ws.getCell(cur, i + 1), {
-				value: h,
-				font: fnt({ bold: true, size: 10, color: 'FFFFFF' }),
-				fill: sf(C.accent),
-				alignment: al('center', true),
-				border: bAll,
-			});
-		},
-	);
-	ws.mergeCells(`B${cur}:E${cur}`);
-	ws.mergeCells(`F${cur}:G${cur}`);
-	ws.getRow(cur).height = 20;
+	countSection('III. THEO CẤP ĐỘ', 'Cấp độ', (t) => t.level_name || '(Chưa xác định)');
 	cur++;
-
-	deptRows.slice(0, 20).forEach(([name, cnt], i) => {
-		const bg = i % 2 === 0 ? C.rowA : C.rowB;
-		const pct =
-			topics.length > 0 ? ((cnt / topics.length) * 100).toFixed(1) + '%' : '0%';
-		[i + 1, name, '', '', '', cnt, '', pct].forEach((v, ci) => {
-			Object.assign(ws.getCell(cur, ci + 1), {
-				value: v,
-				font: fnt({ size: 10 }),
-				fill: sf(bg),
-				alignment: al(ci === 0 || ci >= 5 ? 'center' : 'left', true),
-				border: bAll,
-			});
-		});
-		ws.mergeCells(`B${cur}:E${cur}`);
-		ws.mergeCells(`F${cur}:G${cur}`);
-		ws.getRow(cur).height = 20;
-		cur++;
-	});
+	countSection('IV. THEO PHÒNG BAN (TOP 20)', 'Phòng ban / Khoa', (t) => t.department_name || '(Chưa phân)', 20);
 
 	// Footer note
 	cur++;
@@ -785,16 +683,7 @@ async function exportReport(req, res, next) {
 			(fileName || 'bao-cao-nckh').replace(/[/\\?%*:|"<>]/g, '').trim() ||
 			'bao-cao-nckh';
 
-		res.setHeader(
-			'Content-Type',
-			'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-		);
-		res.setHeader(
-			'Content-Disposition',
-			`attachment; filename*=UTF-8''${encodeURIComponent(safeName + '.xlsx')}`,
-		);
-		await wb.xlsx.write(res);
-		res.end();
+		await sendWorkbook(res, wb, safeName + '.xlsx');
 	} catch (err) {
 		next(err);
 	}

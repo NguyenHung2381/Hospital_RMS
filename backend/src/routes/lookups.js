@@ -347,33 +347,37 @@ const getLevelIdsForRoundType = async (roundTypeId) => {
 	}
 };
 
+// create() cho bảng có CHECK id dạng <PREFIX>NN (CD01, RT02…) — crudService mặc
+// định sinh id hex nên phải tự cấp số tiếp theo. table/prefix là hằng trong file.
+const createWithSeqId = (table, prefix, errNo, limitMsg, entity) => async (data, actorId) => {
+	const pool = await getPool();
+	const result = await pool
+		.request()
+		.input('actor_id', sql.VarChar(20), actorId)
+		.input('name', sql.NVarChar(500), data.name)
+		.input('description', sql.NVarChar(sql.MAX), data.description || null)
+		.query(`
+			DECLARE @seq INT;
+			SELECT @seq = ISNULL(MAX(CAST(RIGHT(id, 2) AS INT)), 0) + 1
+			FROM ${table}
+			WHERE id LIKE '${prefix}[0-9][0-9]';
+			IF @seq > 99 THROW ${errNo}, '${limitMsg}', 1;
+			DECLARE @new_id VARCHAR(20) = '${prefix}' + RIGHT('0' + CAST(@seq AS VARCHAR(2)), 2);
+			EXEC sp_set_actor @actor_id;
+			INSERT INTO ${table} (id, name, description, created_by)
+			VALUES (@new_id, @name, @description, @actor_id);
+			SELECT * FROM ${table} WHERE id = @new_id;
+		`);
+	broadcast('update', { entity });
+	return result.recordset[0];
+};
+
 const _lvlBase = createCrudService('levels', 4, 'CD', [
   { table: 'topics', column: 'level_id', label: 'đề tài' },
 ]);
 const lvlService = {
 	..._lvlBase,
-	create: async (data, actorId) => {
-		const pool = await getPool();
-		const result = await pool
-			.request()
-			.input('actor_id', sql.VarChar(20), actorId)
-			.input('name', sql.NVarChar(500), data.name)
-			.input('description', sql.NVarChar(sql.MAX), data.description || null)
-			.query(`
-				DECLARE @seq INT;
-				SELECT @seq = ISNULL(MAX(CAST(RIGHT(id, 2) AS INT)), 0) + 1
-				FROM levels
-				WHERE id LIKE 'CD[0-9][0-9]';
-				IF @seq > 99 THROW 50001, 'Đã đạt giới hạn 99 cấp độ', 1;
-				DECLARE @new_id VARCHAR(4) = 'CD' + RIGHT('0' + CAST(@seq AS VARCHAR(2)), 2);
-				EXEC sp_set_actor @actor_id;
-				INSERT INTO levels (id, name, description, created_by)
-				VALUES (@new_id, @name, @description, @actor_id);
-				SELECT * FROM levels WHERE id = @new_id;
-			`);
-		broadcast('update', { entity: 'level' });
-		return result.recordset[0];
-	},
+	create: createWithSeqId('levels', 'CD', 50001, 'Đã đạt giới hạn 99 cấp độ', 'level'),
 };
 const lvlCtrl = createCrudController(lvlService);
 
@@ -488,28 +492,7 @@ router.delete(
 const _rtBase = createCrudService('round_types', 6, 'RT');
 const rtService = {
 	..._rtBase,
-	create: async (data, actorId) => {
-		const pool = await getPool();
-		const result = await pool
-			.request()
-			.input('actor_id', sql.VarChar(20), actorId)
-			.input('name', sql.NVarChar(500), data.name)
-			.input('description', sql.NVarChar(sql.MAX), data.description || null)
-			.query(`
-				DECLARE @seq INT;
-				SELECT @seq = ISNULL(MAX(CAST(RIGHT(id, 2) AS INT)), 0) + 1
-				FROM round_types
-				WHERE id LIKE 'RT[0-9][0-9]';
-				IF @seq > 99 THROW 50002, 'Đã đạt giới hạn 99 loại đợt', 1;
-				DECLARE @new_id VARCHAR(6) = 'RT' + RIGHT('0' + CAST(@seq AS VARCHAR(2)), 2);
-				EXEC sp_set_actor @actor_id;
-				INSERT INTO round_types (id, name, description, created_by)
-				VALUES (@new_id, @name, @description, @actor_id);
-				SELECT * FROM round_types WHERE id = @new_id;
-			`);
-		broadcast('update', { entity: 'round_type' });
-		return result.recordset[0];
-	},
+	create: createWithSeqId('round_types', 'RT', 50002, 'Đã đạt giới hạn 99 loại đợt', 'round_type'),
 };
 const rtCtrl = createCrudController(rtService);
 

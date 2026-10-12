@@ -1,40 +1,20 @@
-import { useState } from 'react';
-import { CheckSvg, EditSvg, PlusSvg, SearchSvg, TrashSvg, XSvg } from '@/assets/icons';
+import { avatarColor, getInitials } from '@/shared/utils';
+import { SearchInput, PageSizeSelect, SelectionCount, RowActions } from '@/shared/components/Table/TableToolbar';
+import { PlusSvg } from '@/assets/icons';
 import AdminLayout from '../../../layouts/AdminLayout';
 import { SkeletonTable } from '../../../shared/components/Loading';
 import { Pagination } from '../../../shared/components/Table/Pagination';
 import sel from '../../../shared/components/Table/RowSelect.module.css';
-import { BulkButton, BulkDeleteModal, SelectCheckbox } from '../../../shared/components/Table/RowSelect';
+import { SelectCheckbox } from '../../../shared/components/Table/RowSelect';
 import { useRowSelection } from '../../../shared/hooks/useRowSelection';
 import { LecturerDeleteModal } from '../components/LecturerDeleteModal';
 import { LecturerFormModal } from '../components/LecturerFormModal';
 import { useLecturers } from '../hooks/useLecturers';
 import styles from './Lecturers.module.css';
 
-const PAGE_SIZE_OPTIONS = [5, 10, 25, 50, 0] as const;
-
-const COLORS = [
-	{ bg: '#e1f5ea', color: '#085028' },
-	{ bg: '#e6f1fb', color: '#0c447c' },
-	{ bg: '#eeedfe', color: '#3c3489' },
-	{ bg: '#faeeda', color: '#633806' },
-	{ bg: '#fce8fb', color: '#6b1a69' },
-];
-function getColor(id: string) {
-	let hash = 0;
-	for (let i = 0; i < id.length; i++) hash = id.charCodeAt(i) + ((hash << 5) - hash);
-	return COLORS[Math.abs(hash) % COLORS.length];
-}
-function getInitials(s: string) {
-	const parts = s.trim().split(/\s+/);
-	if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
-	return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
-}
-
 export default function Lecturers() {
 	const d = useLecturers();
 	const rowSel = useRowSelection(d.paged.map((x) => x.id));
-	const [confirmBulkDelete, setConfirmBulkDelete] = useState(false);
 
 	const headerActions = (
 		<button
@@ -56,62 +36,25 @@ export default function Lecturers() {
 				<div className={styles.tableHeader}>
 					<div className={styles.tableHeaderLeft}>
 						<span className={styles.tableTitle}>Danh sách giảng viên</span>
-						{rowSel.selectedCount > 0 ? (
-							<span className={styles.tableCount}>
-								Đã chọn {rowSel.selectedCount}
-								<BulkButton
-									danger
-									onClick={() => setConfirmBulkDelete(true)}
-								>
-									<TrashSvg /> Xoá đã chọn
-								</BulkButton>
-								<button
-									type='button'
-									className={styles.clearSelectionBtn}
-									onClick={rowSel.clearSelection}
-								>
-									Bỏ chọn
-								</button>
-							</span>
-						) : (
-							<span className={styles.tableCount}>
-								{d.total} giảng viên
-							</span>
-						)}
+						<SelectionCount
+							rowSel={rowSel}
+							itemLabel='giảng viên'
+							loading={d.loading}
+							onBulkDelete={d.handleBulkDelete}
+						>
+							{d.total} giảng viên
+						</SelectionCount>
 					</div>
 					<div className={styles.tableControls}>
-						<div className={styles.searchBox}>
-							<SearchSvg className={styles.searchIcon} />
-							<input
-								className={styles.searchInput}
-								placeholder='Tìm theo tên, chuyên môn, email...'
-								value={d.search}
-								onChange={(e) => d.handleSearch(e.target.value)}
-							/>
-							{d.search && (
-								<button
-									className={styles.searchClear}
-									onClick={() => d.handleSearch('')}
-								>
-									<XSvg />
-								</button>
-							)}
-						</div>
-						<div className={styles.pageSizeWrap}>
-							<label className={styles.pageSizeLabel}>Hiển thị</label>
-							<select
-								className={styles.pageSizeSelect}
-								value={d.pageSize}
-								onChange={(e) => d.handlePageSize(Number(e.target.value))}
-							>
-								<option value={5}>5</option>
-								<option value={10}>10</option>
-								<option value={25}>25</option>
-								<option value={50}>50</option>
-								<option value={0}>Tất cả</option>
-							</select>
-							<span className={styles.pageSizeLabel}>dòng</span>
-						</div>
+						<SearchInput
+							value={d.search}
+							onChange={d.handleSearch}
+							placeholder='Tìm theo tên, chuyên môn, email...'
+						/>
+						<PageSizeSelect
+							value={d.pageSize}
+							onChange={d.handlePageSize}
+						/>
 					</div>
 				</div>
 
@@ -154,7 +97,7 @@ export default function Lecturers() {
 							</tr>
 						) : (
 							d.paged.map((l, i) => {
-								const c = getColor(l.id);
+								const c = avatarColor(l.id);
 								const rowNum = (d.safePage - 1) * (d.pageSize || d.total) + i + 1;
 								return (
 									<tr
@@ -201,28 +144,16 @@ export default function Lecturers() {
 											</span>
 										</td>
 										<td className={`${styles.td} ${styles.tdActions}`}>
-											<div className={styles.actionBtns}>
-												<div
-													className={styles.actionBtn}
-													title='Chỉnh sửa'
-													onClick={() => {
-														d.setEditingLecturer(l);
-														d.setModal('edit');
-													}}
-												>
-													<EditSvg />
-												</div>
-												<div
-													className={`${styles.actionBtn} ${styles.danger}`}
-													title='Xoá'
-													onClick={() => {
-														d.setDeletingLecturer(l);
-														d.setModal('delete');
-													}}
-												>
-													<TrashSvg />
-												</div>
-											</div>
+											<RowActions
+												onEdit={() => {
+													d.setEditingLecturer(l);
+													d.setModal('edit');
+												}}
+												onDelete={() => {
+													d.setDeletingLecturer(l);
+													d.setModal('delete');
+												}}
+											/>
 										</td>
 									</tr>
 								);
@@ -238,27 +169,13 @@ export default function Lecturers() {
 						totalPages={d.totalPages}
 						total={d.total}
 						rowsPerPage={d.pageSize}
-						pageSizeOptions={PAGE_SIZE_OPTIONS}
 						onPageChange={d.setPage}
-						onRowsPerPageChange={d.handlePageSize}
 						itemLabel='giảng viên'
 						hideSizeSelect
 					/>
 				)}
 			</div>
 
-			<BulkDeleteModal
-				open={confirmBulkDelete}
-				count={rowSel.selectedCount}
-				itemLabel='giảng viên'
-				loading={d.loading}
-				onClose={() => setConfirmBulkDelete(false)}
-				onConfirm={async () => {
-					await d.handleBulkDelete([...rowSel.selectedIds]);
-					rowSel.clearSelection();
-					setConfirmBulkDelete(false);
-				}}
-			/>
 
 			{d.modal === 'add' && (
 				<LecturerFormModal
@@ -292,18 +209,6 @@ export default function Lecturers() {
 				/>
 			)}
 
-			{d.toast && (
-				<div
-					className={`${styles.toast} ${
-						styles[
-							`toast${d.toast.type.charAt(0).toUpperCase() + d.toast.type.slice(1)}` as keyof typeof styles
-						]
-					}`}
-				>
-					{d.toast.type === 'success' ? <CheckSvg /> : <XSvg />}
-					{d.toast.msg}
-				</div>
-			)}
 		</AdminLayout>
 	);
 }

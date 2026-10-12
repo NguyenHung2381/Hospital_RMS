@@ -1,11 +1,10 @@
 import { lazy, type ComponentType } from 'react';
 
-type Mod = { default: ComponentType<unknown> };
-
 const thunks: Array<() => Promise<unknown>> = [];
 
 // Như React.lazy nhưng ghi lại thunk import để prefetch nền sau này.
-export function lazyRoute<T extends Mod>(imp: () => Promise<T>) {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- giống chữ ký của React.lazy
+export function lazyRoute<T extends ComponentType<any>>(imp: () => Promise<{ default: T }>) {
 	thunks.push(imp);
 	return lazy(imp);
 }

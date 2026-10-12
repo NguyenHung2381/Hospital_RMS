@@ -1,14 +1,11 @@
+import { FormField } from '@/shared/components/Input/FormField';
 import React, { useEffect, useState } from 'react';
-import { CalendarSvg, CheckSvg, LayersSvg, TagSvg, XSvg } from '@/assets/icons';
-import type {
-	CatalogFormData,
-	CatalogItem,
-	CatalogTab,
-	LevelOption,
-} from '../types/catalog.type';
-import { EMPTY_FORM, TAB_CONFIG } from '../hooks/useCatalog';
+import { Modal, ModalActions } from '@/shared/components';
+import m from '@/shared/components/Modal/Modal.module.css';
 import { catalogApi } from '../api/catalogApi';
-import styles from '../pages/Catalog.module.css';
+import { EMPTY_FORM, TAB_CONFIG } from '../hooks/useCatalog';
+import type { CatalogFormData, CatalogItem, CatalogTab, LevelOption } from '../types/catalog.type';
+import styles from './CatalogFormModal.module.css';
 
 export function CatalogFormModal({
 	mode,
@@ -26,11 +23,10 @@ export function CatalogFormModal({
 	loading: boolean;
 }) {
 	const cfg = TAB_CONFIG[tab];
+	const label = cfg.label.toLowerCase();
 	const isRoundType = tab === 'round-types';
 	const [form, setForm] = useState<CatalogFormData>(
-		item
-			? { name: item.name, description: item.description ?? '' }
-			: EMPTY_FORM,
+		item ? { name: item.name, description: item.description ?? '' } : EMPTY_FORM,
 	);
 	const [errors, setErrors] = useState<Partial<CatalogFormData>>({});
 
@@ -57,9 +53,7 @@ export function CatalogFormModal({
 	}, [isRoundType, mode, item]);
 
 	const toggleLevel = (id: string) =>
-		setLevelIds((prev) =>
-			prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
-		);
+		setLevelIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
 
 	const set =
 		(k: keyof CatalogFormData) =>
@@ -68,150 +62,78 @@ export function CatalogFormModal({
 			setErrors((er) => ({ ...er, [k]: '' }));
 		};
 
-	const validate = () => {
-		const err: Partial<CatalogFormData> = {};
-		if (!form.name.trim())
-			err.name = `Vui lòng nhập tên ${cfg.label.toLowerCase()}`;
-		setErrors(err);
-		return Object.keys(err).length === 0;
-	};
-
 	const handleSave = () => {
-		if (!validate()) return;
+		if (!form.name.trim()) {
+			setErrors({ name: `Vui lòng nhập tên ${label}` });
+			return;
+		}
 		onSave(isRoundType ? { ...form, level_ids: levelIds } : form);
 	};
 
 	return (
-		<div
-			className={styles.modalBackdrop}
-			onClick={(e) => e.target === e.currentTarget && onClose()}
+		<Modal
+			open
+			onClose={onClose}
+			icon={<cfg.icon />}
+			title={mode === 'add' ? `Thêm ${label}` : `Chỉnh sửa ${label}`}
+			subtitle={mode === 'add' ? `Thêm ${label} mới vào hệ thống` : `Cập nhật — ${item?.name}`}
+			footer={
+				<ModalActions
+					onCancel={onClose}
+					onConfirm={handleSave}
+					loading={loading}
+					confirmLabel={mode === 'add' ? `Thêm ${label}` : 'Lưu thay đổi'}
+				/>
+			}
 		>
-			<div className={styles.modal}>
-				<div className={styles.modalHeader}>
-					<div className={styles.modalHeaderIcon}>
-						{tab === 'categories' ? (
-							<TagSvg />
-						) : tab === 'round-types' ? (
-							<CalendarSvg />
-						) : (
-							<LayersSvg />
-						)}
-					</div>
-					<div>
-						<div className={styles.modalTitle}>
-							{mode === 'add'
-								? `Thêm ${cfg.label.toLowerCase()}`
-								: `Chỉnh sửa ${cfg.label.toLowerCase()}`}
-						</div>
-						<div className={styles.modalSub}>
-							{mode === 'add'
-								? `Thêm ${cfg.label.toLowerCase()} mới vào hệ thống`
-								: `Cập nhật — ${item?.name}`}
-						</div>
-					</div>
-					<button
-						className={styles.modalClose}
-						onClick={onClose}
-					>
-						<XSvg />
-					</button>
-				</div>
+			<div className={m.stack}>
+				<FormField
+					label={<>Tên {label}</>}
+					required
+					error={errors.name}
+				>
+					<input
+						className={`${m.formInput} ${errors.name ? m.inputError : ''}`}
+						value={form.name}
+						onChange={set('name')}
+						placeholder={cfg.placeholder}
+					/>
+				</FormField>
+				<FormField label='Mô tả'>
+					<textarea
+						className={m.formTextarea}
+						value={form.description}
+						onChange={set('description')}
+						rows={3}
+						placeholder='Mô tả ngắn...'
+					/>
+				</FormField>
 
-				<div className={styles.modalBody}>
-					<div className={styles.formGroup}>
-						<label className={styles.formLabel}>
-							Tên {cfg.label.toLowerCase()}{' '}
-							<span className={styles.required}>*</span>
-						</label>
-						<input
-							className={`${styles.formInput} ${errors.name ? styles.inputError : ''}`}
-							value={form.name}
-							onChange={set('name')}
-							placeholder={cfg.placeholder}
-						/>
-						{errors.name && (
-							<div className={styles.fieldError}>{errors.name}</div>
-						)}
-					</div>
-					<div className={styles.formGroup}>
-						<label className={styles.formLabel}>Mô tả</label>
-						<textarea
-							className={styles.formTextarea}
-							value={form.description}
-							onChange={set('description')}
-							rows={3}
-							placeholder='Mô tả ngắn...'
-						/>
-					</div>
-
-					{isRoundType && (
-						<div className={styles.formGroup}>
-							<label className={styles.formLabel}>
-								Cấp độ đề tài cho phép
-							</label>
-							<div className={styles.fieldError} style={{ color: 'var(--color-gray-500)', marginBottom: 6 }}>
-								Form đăng ký đề tài chỉ hiện các cấp độ được tick ở đây. Bỏ trống
-								= cho phép tất cả.
-							</div>
-							<div
-								style={{
-									display: 'flex',
-									flexWrap: 'wrap',
-									gap: 10,
-								}}
-							>
-								{levels.length === 0 && (
-									<span style={{ fontSize: 13, color: 'var(--color-gray-400)' }}>
-										Chưa có cấp độ nào trong hệ thống.
-									</span>
-								)}
-								{levels.map((lv) => (
-									<label
-										key={lv.id}
-										style={{
-											display: 'flex',
-											alignItems: 'center',
-											gap: 6,
-											fontSize: 13,
-											cursor: 'pointer',
-											padding: '4px 10px',
-											borderRadius: 8,
-											border: '1px solid var(--color-gray-200)',
-										}}
-									>
-										<input
-											type='checkbox'
-											checked={levelIds.includes(lv.id)}
-											onChange={() => toggleLevel(lv.id)}
-										/>
-										{lv.name}
-									</label>
-								))}
-							</div>
+				{isRoundType && (
+					<div className={m.formGroup}>
+						<label className={m.formLabel}>Cấp độ đề tài cho phép</label>
+						<div className={styles.hint}>
+							Form đăng ký đề tài chỉ hiện các cấp độ được tick ở đây. Bỏ trống = cho phép tất cả.
 						</div>
-					)}
-				</div>
-
-				<div className={styles.modalFooter}>
-					<button
-						className={styles.btnCancel}
-						onClick={onClose}
-						disabled={loading}
-					>
-						Huỷ
-					</button>
-					<button
-						className={styles.btnConfirm}
-						onClick={handleSave}
-						disabled={loading}
-					>
-						{loading ? <span className={styles.spinner} /> : <CheckSvg />}
-						{mode === 'add'
-							? `Thêm ${cfg.label.toLowerCase()}`
-							: 'Lưu thay đổi'}
-					</button>
-				</div>
+						<div className={styles.levels}>
+							{levels.length === 0 && <span className={styles.empty}>Chưa có cấp độ nào trong hệ thống.</span>}
+							{levels.map((lv) => (
+								<label
+									key={lv.id}
+									className={styles.level}
+								>
+									<input
+										type='checkbox'
+										checked={levelIds.includes(lv.id)}
+										onChange={() => toggleLevel(lv.id)}
+									/>
+									{lv.name}
+								</label>
+							))}
+						</div>
+					</div>
+				)}
 			</div>
-		</div>
+		</Modal>
 	);
 }

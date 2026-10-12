@@ -62,6 +62,64 @@ router.get('/cme', async (req, res, next) => {
 	}
 });
 
+// Tự khai CME (chờ admin duyệt). Chỉ thao tác trên bản ghi của chính mình.
+const cmeRecordService = require('../services/cmeRecordService');
+const { body } = require('express-validator');
+const { validate } = require('../middlewares/errorHandler');
+const { createTrainingUpload } = require('../middlewares/uploadTraining');
+const uploadEvidence = createTrainingUpload('cme_evidence');
+const handle = (fn) => async (req, res, next) => {
+	try {
+		return await fn(req, res);
+	} catch (err) {
+		next(err);
+	}
+};
+
+router.get('/cme-categories', handle(async (_req, res) => success(res, await portalService.getCmeCategories())));
+router.post(
+	'/cme-records',
+	[
+		body('title').trim().notEmpty().withMessage('Vui lòng nhập nội dung hoạt động'),
+		body('year').custom((v, { req }) => !!v || !!req.body.activity_date).withMessage('Vui lòng nhập năm hoặc ngày hoạt động'),
+		body('credits').isFloat({ min: 0 }).withMessage('Số tín chỉ không hợp lệ'),
+	],
+	validate,
+	handle(async (req, res) => created(res, await cmeRecordService.createMine(req.body, req.user.id), 'Đã gửi, chờ duyệt')),
+);
+router.put(
+	'/cme-records/:id',
+	handle(async (req, res) => success(res, await cmeRecordService.updateMine(req.params.id, req.body, req.user.id), 'Đã gửi lại, chờ duyệt')),
+);
+router.delete(
+	'/cme-records/:id',
+	handle(async (req, res) => {
+		await cmeRecordService.removeMine(req.params.id, req.user.id);
+		return success(res, null, 'Đã xoá');
+	}),
+);
+// kiểm tra quyền sở hữu TRƯỚC khi nhận file (multer ghi đĩa ngay)
+const ownPendingRecord = async (req, res, next) => {
+	try {
+		const rec = await cmeRecordService.getById(req.params.id);
+		if (!rec || rec.user_id !== req.user.id || rec.approval_status === 'approved') {
+			return res.status(404).json({ success: false, message: 'Không tìm thấy ghi nhận CME' });
+		}
+		next();
+	} catch (err) {
+		next(err);
+	}
+};
+router.post(
+	'/cme-records/:id/evidence',
+	ownPendingRecord,
+	uploadEvidence.single('file'),
+	handle(async (req, res) => {
+		if (!req.file) return res.status(400).json({ success: false, message: 'Vui lòng chọn file minh chứng' });
+		return success(res, await cmeRecordService.addEvidenceMine(req.params.id, req.file, req.user.id));
+	}),
+);
+
 // Phiếu theo dõi CME cá nhân (Excel) của chính mình — Body: { year }
 router.post('/cme/export-excel', cmePersonalExport.exportMine);
 

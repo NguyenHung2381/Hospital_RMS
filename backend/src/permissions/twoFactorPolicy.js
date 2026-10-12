@@ -1,6 +1,7 @@
 const { getPool, sql } = require('../config/db');
 const { ALL_PERMISSIONS } = require('./catalog');
 const userStatusCache = require('../middlewares/userStatusCache');
+const systemSettingService = require('../services/systemSettingService');
 
 // Bắt buộc xác thực 2 lớp cho tài khoản quản trị: superuser, hoặc vai trò có
 // ít nhất 1 quyền đánh dấu `critical` trong catalog (tạo / sửa người dùng, sửa
@@ -10,18 +11,18 @@ const userStatusCache = require('../middlewares/userStatusCache');
 // Chuyển tiếp: lần đầu hệ thống thấy tài khoản thuộc diện bắt buộc mà chưa bật
 // 2FA, ghi users.twofa_required_since; trong TWOFA_GRACE_DAYS ngày (mặc định 14)
 // chỉ nhắc, quá hạn thì chặn mọi API trừ các API để bật 2FA.
-// Tắt hẳn: REQUIRE_2FA_FOR_ADMINS=false.
+// Tắt hẳn: REQUIRE_2FA_FOR_ADMINS=false — đặt ở màn Cấu hình hệ thống (ưu tiên) hoặc .env.
 const CRITICAL_KEYS = new Set(ALL_PERMISSIONS.filter((p) => p.critical).map((p) => p.key));
 const SUPERUSER_KEY = 'system:manage';
 
-const enabled = () => process.env.REQUIRE_2FA_FOR_ADMINS !== 'false';
-const graceDays = () => {
-	const n = Number(process.env.TWOFA_GRACE_DAYS);
+const envEnabled = () => process.env.REQUIRE_2FA_FOR_ADMINS !== 'false';
+const graceDays = (raw = process.env.TWOFA_GRACE_DAYS) => {
+	const n = raw === undefined || raw === '' ? NaN : Number(raw);
 	return Number.isFinite(n) && n >= 0 ? n : 14;
 };
 
-const requiresTwoFactor = (permissionKeys) => {
-	if (!enabled() || !permissionKeys) return false;
+const requiresTwoFactor = (permissionKeys, enabled = envEnabled()) => {
+	if (!enabled || !permissionKeys) return false;
 	if (permissionKeys.has(SUPERUSER_KEY)) return true;
 	for (const key of permissionKeys) if (CRITICAL_KEYS.has(key)) return true;
 	return false;
@@ -33,7 +34,11 @@ const requiresTwoFactor = (permissionKeys) => {
 //   { state: 'required', deadline: Date }        — đã quá hạn, bị chặn tới khi bật
 // Lần đầu thuộc diện: ghi mốc bắt đầu (nguyên tử, không ghi đè mốc cũ).
 const twoFactorState = async ({ userId, totpEnabled, requiredSince }, permissionKeys) => {
-	if (totpEnabled || !requiresTwoFactor(permissionKeys)) return { state: null };
+	const [on, days] = await Promise.all([
+		systemSettingService.getValue('REQUIRE_2FA_FOR_ADMINS'),
+		systemSettingService.getValue('TWOFA_GRACE_DAYS'),
+	]);
+	if (totpEnabled || !requiresTwoFactor(permissionKeys, on !== 'false')) return { state: null };
 
 	let since = requiredSince ? new Date(requiredSince) : null;
 	if (!since) {
@@ -48,7 +53,7 @@ const twoFactorState = async ({ userId, totpEnabled, requiredSince }, permission
 		since = new Date(r.recordset[0]?.twofa_required_since ?? Date.now());
 		userStatusCache.clear(userId);
 	}
-	const deadline = new Date(since.getTime() + graceDays() * 24 * 60 * 60 * 1000);
+	const deadline = new Date(since.getTime() + graceDays(days) * 24 * 60 * 60 * 1000);
 	return { state: Date.now() >= deadline.getTime() ? 'required' : 'grace', deadline };
 };
 

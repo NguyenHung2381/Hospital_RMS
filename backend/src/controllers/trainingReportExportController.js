@@ -5,9 +5,9 @@
  */
 const ExcelJS = require('exceljs');
 const trainingReportService = require('../services/trainingReportService');
-const { fnt, al, sf, bAll } = require('../utils/excelStyle');
+const { fnt, al, headerRow, dataRow } = require('../utils/excelStyle');
+const { sendWorkbook } = require('../utils/response');
 
-const C = { hdrBlue: 'FF1F4E79', rowA: 'FFEBF3FB', rowB: 'FFF7FBFF', totalBg: 'FFD9E1F2' };
 const CONTENT_START = 4;
 
 function sheetTitle(ws, title, lastCol) {
@@ -19,31 +19,6 @@ function sheetTitle(ws, title, lastCol) {
 	});
 	ws.getRow(1).height = 28;
 	ws.getRow(2).height = 6;
-}
-
-function headerRow(ws, row, labels) {
-	labels.forEach((label, i) => {
-		Object.assign(ws.getCell(row, i + 1), {
-			value: label,
-			font: fnt({ bold: true, size: 10, color: 'FFFFFF' }),
-			fill: sf(C.hdrBlue),
-			alignment: al('center', true),
-			border: bAll,
-		});
-	});
-	ws.getRow(row).height = 22;
-}
-
-function dataRow(ws, row, values) {
-	values.forEach((v, i) => {
-		Object.assign(ws.getCell(row, i + 1), {
-			value: v ?? '',
-			font: fnt({ size: 10 }),
-			fill: sf(row % 2 === 0 ? C.rowA : C.rowB),
-			alignment: al(typeof v === 'number' ? 'center' : 'left', true),
-			border: bAll,
-		});
-	});
 }
 
 async function exportTrainingReport(req, res, next) {
@@ -115,13 +90,7 @@ async function exportTrainingReport(req, res, next) {
 		ws3.getColumn(1).width = 28;
 		ws3.getColumn(2).width = 14;
 
-		res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-		res.setHeader(
-			'Content-Disposition',
-			`attachment; filename*=UTF-8''${encodeURIComponent('bao-cao-dao-tao.xlsx')}`,
-		);
-		await wb.xlsx.write(res);
-		res.end();
+		await sendWorkbook(res, wb, 'bao-cao-dao-tao.xlsx');
 	} catch (err) {
 		next(err);
 	}

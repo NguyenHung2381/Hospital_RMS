@@ -1,6 +1,6 @@
-import { InfoSvg, TrashSvg, XSvg } from '@/assets/icons';
+import { ConfirmDeleteModal } from '@/shared/components';
+import { InfoSvg } from '@/assets/icons';
 import type { Department } from '../types/department.type';
-import styles from '../pages/Departments.module.css';
 
 export function DeptDeleteModal({
 	dept,
@@ -13,74 +13,30 @@ export function DeptDeleteModal({
 	onConfirm: () => void;
 	loading: boolean;
 }) {
+	const users = dept.user_count ?? 0;
+	const topics = dept.topic_count ?? 0;
 	return (
-		<div
-			className={styles.modalBackdrop}
-			onClick={(e) => e.target === e.currentTarget && onClose()}
+		<ConfirmDeleteModal
+			title='Xoá khoa phòng'
+			subtitle={dept.name}
+			onClose={onClose}
+			onConfirm={onConfirm}
+			loading={loading}
+			warning={
+				(users > 0 || topics > 0) && (
+					<>
+						<InfoSvg />
+						<span>
+							Có {users > 0 && <strong>{users} người dùng</strong>}
+							{users > 0 && topics > 0 && ' và '}
+							{topics > 0 && <strong>{topics} đề tài</strong>} đang liên kết với khoa phòng này.
+							Khi xoá, các bản ghi này sẽ được gỡ liên kết (không bị xoá theo).
+						</span>
+					</>
+				)
+			}
 		>
-			<div className={`${styles.modal} ${styles.modalSm}`}>
-				<div className={styles.modalHeader}>
-					<div className={styles.modalHeaderIconDanger}>
-						<TrashSvg />
-					</div>
-					<div>
-						<div className={styles.modalTitle}>Xoá khoa phòng</div>
-						<div className={styles.modalSub}>{dept.name}</div>
-					</div>
-					<button
-						className={styles.modalClose}
-						onClick={onClose}
-					>
-						<XSvg />
-					</button>
-				</div>
-				<div className={styles.modalBody}>
-					<p className={styles.deleteDesc}>
-						Bạn có chắc muốn xoá <strong>{dept.name}</strong> ({dept.abbreviation})
-						khỏi hệ thống?
-					</p>
-					{((dept.topic_count ?? 0) > 0 || (dept.user_count ?? 0) > 0) && (
-						<div className={styles.warnBox}>
-							<InfoSvg />
-							<span>
-								Có{' '}
-								{(dept.user_count ?? 0) > 0 && (
-									<strong>{dept.user_count} người dùng</strong>
-								)}
-								{(dept.user_count ?? 0) > 0 &&
-									(dept.topic_count ?? 0) > 0 &&
-									' và '}
-								{(dept.topic_count ?? 0) > 0 && (
-									<strong>{dept.topic_count} đề tài</strong>
-								)}{' '}
-								đang liên kết với khoa phòng này. Khi xoá, các bản ghi này sẽ
-								được gỡ liên kết (không bị xoá theo).
-							</span>
-						</div>
-					)}
-				</div>
-				<div className={styles.modalFooter}>
-					<button
-						className={styles.btnCancel}
-						onClick={onClose}
-						disabled={loading}
-					>
-						Huỷ
-					</button>
-					<button
-						className={styles.btnDanger}
-						onClick={onConfirm}
-						disabled={loading}
-					>
-						{loading ? (
-							<span className={`${styles.spinner} ${styles.spinnerDark}`} />
-						) : (
-							<TrashSvg />
-						)}
-						Xác nhận xoá
-					</button>
-				</div>
-			</div>
-		</div>
+			Bạn có chắc muốn xoá <strong>{dept.name}</strong> ({dept.abbreviation}) khỏi hệ thống?
+		</ConfirmDeleteModal>
 	);
 }

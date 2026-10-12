@@ -1,5 +1,5 @@
 import { BASE_URL } from '../../../shared/api/axios';
-import { clearAuth, getDeviceToken, saveDeviceToken } from '../../../shared/utils/storage';
+import { broadcastLogout, clearAuth, getDeviceToken, saveDeviceToken } from '../../../shared/utils/storage';
 import { type LoginChallenge, solveChallenge } from '../utils/solveChallenge';
 
 export interface LoginUser {
@@ -196,14 +196,6 @@ export async function disable2FAApi(accessToken: string, password: string): Prom
 	if (!res.ok || !json.success) throw new Error(json.message ?? 'Có lỗi xảy ra, vui lòng thử lại');
 }
 
-export interface SessionInfo {
-	id: string;
-	ip_address: string | null;
-	user_agent: string | null;
-	created_at: string | null;
-	expires_at: string;
-}
-
 // Đăng xuất thật: server thu hồi phiên (refresh token trong cookie) và xoá
 // cookie; sau đó mới xoá dữ liệu phía trình duyệt. Lỗi mạng vẫn xoá dữ liệu
 // cục bộ — người dùng bấm đăng xuất thì luôn phải ra khỏi hệ thống.
@@ -219,6 +211,7 @@ export async function logout(): Promise<void> {
 		// bỏ qua — vẫn xoá phiên phía trình duyệt bên dưới
 	}
 	clearAuth();
+	broadcastLogout();
 }
 
 export async function logoutAllApi(accessToken: string): Promise<void> {
@@ -234,3 +227,22 @@ export async function logoutAllApi(accessToken: string): Promise<void> {
 		throw new Error(json.message ?? 'Có lỗi xảy ra, vui lòng thử lại');
 	}
 }
+
+async function postPublic(path: string, body: object): Promise<string> {
+	const res = await fetch(`${BASE_URL}/api/v1/auth/${path}`, {
+		method: 'POST',
+		headers: { 'Content-Type': 'application/json' },
+		body: JSON.stringify(body),
+	});
+	const json = await res.json();
+	if (!res.ok || !json.success) {
+		const detail = json.errors?.[0]?.message ?? json.errors?.[0]?.msg;
+		throw new Error(detail ?? json.message ?? 'Có lỗi xảy ra, vui lòng thử lại');
+	}
+	return json.message as string;
+}
+
+export const forgotPasswordApi = (username: string) => postPublic('forgot-password', { username });
+
+export const resetPasswordApi = (username: string, code: string, newPassword: string) =>
+	postPublic('reset-password', { username, code, new_password: newPassword });

@@ -1,3 +1,4 @@
+import { showToast } from '@/shared/utils/feedback';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRealtimeUpdate } from '../../../layouts/hooks/useRealtime';
 import { getStoredUser, type StoredUser } from '../../../shared/utils/storage';
@@ -31,23 +32,6 @@ export function useDepartmentAccounts() {
 	const [editUser, setEditUser] = useState<User | null>(null);
 	const [deleteUser, setDeleteUser] = useState<User | null>(null);
 	const [resetUser, setResetUser] = useState<User | null>(null);
-	const [toast, setToast] = useState<{
-		msg: string;
-		type: 'success' | 'error' | 'info';
-	} | null>(null);
-
-	const showToast = useCallback(
-		(msg: string, type: 'success' | 'error' | 'info' = 'success') => {
-			setToast({ msg, type });
-		},
-		[],
-	);
-
-	useEffect(() => {
-		if (!toast) return;
-		const t = setTimeout(() => setToast(null), 3000);
-		return () => clearTimeout(t);
-	}, [toast]);
 
 	const refreshData = useCallback(() => setRefreshKey((k) => k + 1), []);
 	useRealtimeUpdate('user', refreshData);
@@ -124,9 +108,9 @@ export function useDepartmentAccounts() {
 			if (form.password) await resetUserPassword(editUser.id, form.password);
 			setUsers((prev) => prev.map((u) => (u.id === editUser.id ? updated : u)));
 			setEditUser(null);
-			showToast('Đã cập nhật thông tin tài khoản');
+			showToast('success', 'Đã cập nhật thông tin tài khoản');
 		},
-		[editUser, showToast],
+		[editUser],
 	);
 
 	const handleDelete = useCallback(async (): Promise<void> => {
@@ -134,17 +118,17 @@ export function useDepartmentAccounts() {
 		await deleteUserApi(deleteUser.id);
 		setUsers((prev) => prev.filter((u) => u.id !== deleteUser.id));
 		setDeleteUser(null);
-		showToast(`Đã xoá tài khoản ${deleteUser.full_name}`, 'info');
-	}, [deleteUser, showToast]);
+		showToast('info', `Đã xoá tài khoản ${deleteUser.full_name}`);
+	}, [deleteUser]);
 
 	// Server sinh mật khẩu tạm ngẫu nhiên (thay cho '123456' dùng chung); modal
 	// giữ mở để hiển thị mật khẩu, người dùng phải đổi ở lần đăng nhập tới.
 	const handleResetPassword = useCallback(async (): Promise<string> => {
 		if (!resetUser) return '';
 		const result = await resetUserPassword(resetUser.id);
-		showToast(`Đã đặt lại mật khẩu của ${resetUser.full_name}`, 'info');
+		showToast('info', `Đã đặt lại mật khẩu của ${resetUser.full_name}`);
 		return result?.temporary_password ?? '';
-	}, [resetUser, showToast]);
+	}, [resetUser]);
 
 	const handleToggleActive = useCallback(
 		async (id: string) => {
@@ -155,15 +139,12 @@ export function useDepartmentAccounts() {
 					is_active: !target.is_active,
 				});
 				setUsers((prev) => prev.map((u) => (u.id === id ? updated : u)));
-				showToast(
-					updated.is_active ? 'Đã kích hoạt tài khoản' : 'Đã khoá tài khoản',
-					'info',
-				);
+				showToast('info', updated.is_active ? 'Đã kích hoạt tài khoản' : 'Đã khoá tài khoản');
 			} catch {
-				showToast('Không thể cập nhật trạng thái', 'error');
+				showToast('error', 'Không thể cập nhật trạng thái');
 			}
 		},
-		[users, showToast],
+		[users],
 	);
 
 	const handleBulkDelete = useCallback(
@@ -171,12 +152,9 @@ export function useDepartmentAccounts() {
 			if (!ids.length) return;
 			const { okIds, failedCount } = await runBulk(ids, deleteUserApi);
 			setUsers((prev) => prev.filter((u) => !okIds.has(u.id)));
-			showToast(
-				bulkToast('xoá', okIds.size, failedCount, 'tài khoản'),
-				failedCount ? 'error' : 'info',
-			);
+			showToast(failedCount ? 'error' : 'info', bulkToast('xoá', okIds.size, failedCount, 'tài khoản'));
 		},
-		[showToast],
+		[],
 	);
 
 	const handleBulkSetActive = useCallback(
@@ -188,17 +166,14 @@ export function useDepartmentAccounts() {
 			setUsers((prev) =>
 				prev.map((u) => (okIds.has(u.id) ? { ...u, is_active: isActive } : u)),
 			);
-			showToast(
-				bulkToast(
+			showToast(failedCount ? 'error' : 'info', bulkToast(
 					isActive ? 'kích hoạt' : 'khoá',
 					okIds.size,
 					failedCount,
 					'tài khoản',
-				),
-				failedCount ? 'error' : 'info',
-			);
+				));
 		},
-		[showToast],
+		[],
 	);
 
 	return {
@@ -221,7 +196,6 @@ export function useDepartmentAccounts() {
 		setDeleteUser,
 		resetUser,
 		setResetUser,
-		toast,
 		getRoleName,
 		handleEdit,
 		handleDelete,

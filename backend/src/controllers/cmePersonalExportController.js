@@ -374,10 +374,12 @@ async function buildWorkbook(userId, year) {
 	if (!profile) throw Object.assign(new Error('Không tìm thấy nhân sự'), { statusCode: 404 });
 
 	const fromYear = year - CYCLE_YEARS + 1;
-	const [data, yearly] = await Promise.all([
+	const [raw, yearly] = await Promise.all([
 		portalService.getUserCme(userId, year),
 		cmeRequirementService.getPersonYearlySummary(userId, fromYear, year),
 	]);
+	// phiếu chỉ ghi nhận các khai báo đã được duyệt
+	const data = { ...raw, records: raw.records.filter((x) => x.approval_status === 'approved') };
 
 	const wb = new ExcelJS.Workbook();
 	wb.creator = 'RMS Hospital';

@@ -1,10 +1,10 @@
-import { BarChartSvg, CheckSvg, EditSvg, LinkSvg, PlusSvg, SearchSvg, TrashSvg, XSvg } from '@/assets/icons';
-import { useState } from 'react';
+import { SearchInput, PageSizeSelect, SelectionCount, RowAction, RowActions } from '@/shared/components/Table/TableToolbar';
+import { BarChartSvg, LinkSvg, PlusSvg } from '@/assets/icons';
 import AdminLayout from '../../../layouts/AdminLayout';
 import { SkeletonTable } from '../../../shared/components/Loading';
 import { Pagination } from '../../../shared/components/Table/Pagination';
 import sel from '../../../shared/components/Table/RowSelect.module.css';
-import { BulkButton, BulkDeleteModal, SelectCheckbox } from '../../../shared/components/Table/RowSelect';
+import { SelectCheckbox } from '../../../shared/components/Table/RowSelect';
 import { useRowSelection } from '../../../shared/hooks/useRowSelection';
 import { surveyApi } from '../api/surveyApi';
 import { SurveyDeleteModal } from '../components/SurveyDeleteModal';
@@ -13,8 +13,6 @@ import { SurveyResultsModal } from '../components/SurveyResultsModal';
 import { useSurvey } from '../hooks/useSurvey';
 import type { SurveyStatus } from '../types/survey.type';
 import styles from './Survey.module.css';
-
-const PAGE_SIZE_OPTIONS = [5, 10, 25, 50, 0] as const;
 
 const STATUS_CLASS: Record<SurveyStatus, string> = {
 	draft: 'statusDraft',
@@ -25,7 +23,6 @@ const STATUS_CLASS: Record<SurveyStatus, string> = {
 export default function Survey() {
 	const d = useSurvey();
 	const rowSel = useRowSelection(d.paged.map((x) => x.id));
-	const [confirmBulkDelete, setConfirmBulkDelete] = useState(false);
 
 	const headerActions = (
 		<button
@@ -47,60 +44,25 @@ export default function Survey() {
 				<div className={styles.tableHeader}>
 					<div className={styles.tableHeaderLeft}>
 						<span className={styles.tableTitle}>Danh sách khảo sát</span>
-						{rowSel.selectedCount > 0 ? (
-							<span className={styles.tableCount}>
-								Đã chọn {rowSel.selectedCount}
-								<BulkButton
-									danger
-									onClick={() => setConfirmBulkDelete(true)}
-								>
-									<TrashSvg /> Xoá đã chọn
-								</BulkButton>
-								<button
-									type='button'
-									className={styles.clearSelectionBtn}
-									onClick={rowSel.clearSelection}
-								>
-									Bỏ chọn
-								</button>
-							</span>
-						) : (
-							<span className={styles.tableCount}>{d.filtered.length} khảo sát</span>
-						)}
+						<SelectionCount
+							rowSel={rowSel}
+							itemLabel='khảo sát'
+							loading={d.loading}
+							onBulkDelete={d.handleBulkDelete}
+						>
+							{d.filtered.length} khảo sát
+						</SelectionCount>
 					</div>
 					<div className={styles.tableControls}>
-						<div className={styles.searchBox}>
-							<SearchSvg className={styles.searchIcon} />
-							<input
-								className={styles.searchInput}
-								placeholder='Tìm theo tên...'
-								value={d.search}
-								onChange={(e) => d.handleSearch(e.target.value)}
-							/>
-							{d.search && (
-								<button
-									className={styles.searchClear}
-									onClick={() => d.handleSearch('')}
-								>
-									<XSvg />
-								</button>
-							)}
-						</div>
-						<div className={styles.pageSizeWrap}>
-							<label className={styles.pageSizeLabel}>Hiển thị</label>
-							<select
-								className={styles.pageSizeSelect}
-								value={d.pageSize}
-								onChange={(e) => d.handlePageSize(Number(e.target.value))}
-							>
-								<option value={5}>5</option>
-								<option value={10}>10</option>
-								<option value={25}>25</option>
-								<option value={50}>50</option>
-								<option value={0}>Tất cả</option>
-							</select>
-							<span className={styles.pageSizeLabel}>dòng</span>
-						</div>
+						<SearchInput
+							value={d.search}
+							onChange={d.handleSearch}
+							placeholder='Tìm theo tên...'
+						/>
+						<PageSizeSelect
+							value={d.pageSize}
+							onChange={d.handlePageSize}
+						/>
 					</div>
 				</div>
 
@@ -173,43 +135,30 @@ export default function Survey() {
 												</span>
 											</td>
 											<td className={`${styles.td} ${styles.tdActions}`}>
-												<div className={styles.actionBtns}>
-													<div
-														className={styles.actionBtn}
+												<RowActions
+													onEdit={async () => {
+														const full = await surveyApi.getById(survey.id);
+														d.setEditingItem(full);
+														d.setModal('edit');
+													}}
+													onDelete={() => {
+														d.setDeletingItem(survey);
+														d.setModal('delete');
+													}}
+												>
+													<RowAction
 														title='Xem kết quả'
 														onClick={() => d.openResults(survey)}
 													>
 														<BarChartSvg />
-													</div>
-													<div
-														className={styles.actionBtn}
+													</RowAction>
+													<RowAction
 														title='Sao chép link trả lời khảo sát'
 														onClick={() => d.copyRespondLink(survey)}
 													>
 														<LinkSvg />
-													</div>
-													<div
-														className={styles.actionBtn}
-														title='Chỉnh sửa'
-														onClick={async () => {
-															const full = await surveyApi.getById(survey.id);
-															d.setEditingItem(full);
-															d.setModal('edit');
-														}}
-													>
-														<EditSvg />
-													</div>
-													<div
-														className={`${styles.actionBtn} ${styles.danger}`}
-														title='Xoá'
-														onClick={() => {
-															d.setDeletingItem(survey);
-															d.setModal('delete');
-														}}
-													>
-														<TrashSvg />
-													</div>
-												</div>
+													</RowAction>
+												</RowActions>
 											</td>
 										</tr>
 									);
@@ -225,27 +174,13 @@ export default function Survey() {
 						totalPages={d.totalPages}
 						total={d.filtered.length}
 						rowsPerPage={d.pageSize}
-						pageSizeOptions={PAGE_SIZE_OPTIONS}
 						onPageChange={d.setPage}
-						onRowsPerPageChange={d.handlePageSize}
 						itemLabel='khảo sát'
 						hideSizeSelect
 					/>
 				)}
 			</div>
 
-			<BulkDeleteModal
-				open={confirmBulkDelete}
-				count={rowSel.selectedCount}
-				itemLabel='khảo sát'
-				loading={d.loading}
-				onClose={() => setConfirmBulkDelete(false)}
-				onConfirm={async () => {
-					await d.handleBulkDelete([...rowSel.selectedIds]);
-					rowSel.clearSelection();
-					setConfirmBulkDelete(false);
-				}}
-			/>
 
 			{d.modal === 'add' && (
 				<SurveyFormModal
@@ -287,18 +222,6 @@ export default function Survey() {
 				/>
 			)}
 
-			{d.toast && (
-				<div
-					className={`${styles.toast} ${
-						styles[
-							`toast${d.toast.type.charAt(0).toUpperCase() + d.toast.type.slice(1)}` as keyof typeof styles
-						]
-					}`}
-				>
-					{d.toast.type === 'success' ? <CheckSvg /> : <XSvg />}
-					{d.toast.msg}
-				</div>
-			)}
 		</AdminLayout>
 	);
 }

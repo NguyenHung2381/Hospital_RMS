@@ -1,5 +1,6 @@
+import { Modal } from '@/shared/components';
 import { useState } from 'react';
-import { BadgeSvg, CheckSvg, XSvg } from '@/assets/icons';
+import { BadgeSvg, CheckSvg } from '@/assets/icons';
 import type { SeminarParticipant } from '../types/seminar.type';
 import styles from '../pages/Seminar.module.css';
 
@@ -29,53 +30,16 @@ export function IssueCmeModal({
 	const to = from + pending.length - 1;
 
 	return (
-		<div
-			className={styles.modalBackdrop}
-			onClick={(e) => e.target === e.currentTarget && onClose()}
-		>
-			<div className={`${styles.modal} ${styles.modalSm}`}>
-				<div className={styles.modalHeader}>
-					<BadgeSvg />
-					<div>
-						<div className={styles.modalTitle}>Cấp số quyết định CME</div>
-						<div className={styles.modalSub}>
-							Số chạy liên tục theo năm, không tự dồn khi thu hồi
-						</div>
-					</div>
-					<button className={styles.modalClose} onClick={onClose}>
-						<XSvg />
-					</button>
-				</div>
-				<div className={styles.modalBody}>
-					<div className={styles.formGroup} style={{ marginBottom: 12 }}>
-						<label className={styles.formLabel}>Năm chu trình CME</label>
-						<input
-							className={styles.formInput}
-							value={year}
-							onChange={(e) => setYear(e.target.value)}
-							inputMode='numeric'
-						/>
-					</div>
-					{notEligible > 0 && (
-						<p className={styles.muted}>
-							Bỏ qua {notEligible} người tự đăng ký chưa điểm danh hoặc chưa làm bài test.
-						</p>
-					)}
-					{pending.length === 0 ? (
-						<p className={styles.muted}>
-							Không có người nào cần / đủ điều kiện cấp số CME.
-						</p>
-					) : (
-						<p>
-							Cấp cho <strong>{pending.length}</strong> người — dải số dự kiến{' '}
-							<strong className={styles.mono}>
-								{String(from).padStart(4, '0')}–{String(to).padStart(4, '0')}
-							</strong>{' '}
-							/ {year}.
-						</p>
-					)}
-				</div>
-				<div className={styles.modalFooter}>
+		<Modal
+			open
+			onClose={onClose}
+			icon={<BadgeSvg />}
+			title='Cấp số quyết định CME'
+			subtitle='Số chạy liên tục theo năm, không tự dồn khi thu hồi'
+			className={`${styles.modal} ${styles.modalSm}`}
+			bodyClassName={styles.modalBody}
+			footer={
+				<>
 					<button
 						className={styles.btnCancel}
 						onClick={onClose}
@@ -91,8 +55,36 @@ export function IssueCmeModal({
 						{loading ? <span className={styles.spinner} /> : <CheckSvg />}
 						Cấp {pending.length || ''} số
 					</button>
-				</div>
+				</>
+			}
+		>
+			<div className={styles.formGroup} style={{ marginBottom: 12 }}>
+				<label className={styles.formLabel}>Năm chu trình CME</label>
+				<input
+					className={styles.formInput}
+					value={year}
+					onChange={(e) => setYear(e.target.value)}
+					inputMode='numeric'
+				/>
 			</div>
-		</div>
+			{notEligible > 0 && (
+				<p className={styles.muted}>
+					Bỏ qua {notEligible} người tự đăng ký chưa điểm danh hoặc chưa làm bài test.
+				</p>
+			)}
+			{pending.length === 0 ? (
+				<p className={styles.muted}>
+					Không có người nào cần / đủ điều kiện cấp số CME.
+				</p>
+			) : (
+				<p>
+					Cấp cho <strong>{pending.length}</strong> người — dải số dự kiến{' '}
+					<strong className={styles.mono}>
+						{String(from).padStart(4, '0')}–{String(to).padStart(4, '0')}
+					</strong>{' '}
+					/ {year}.
+				</p>
+			)}
+		</Modal>
 	);
 }

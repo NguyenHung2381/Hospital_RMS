@@ -72,9 +72,6 @@ export const getApprovalTopics = (params?: {
 export const getApprovalTopicDetail = (topicId: string) =>
 	apiClient.get<TopicApprovalDetail>(`/topics/${topicId}`);
 
-export const submitTopicForApproval = (topicId: string) =>
-	apiClient.post<Topic>(`/topics/${topicId}/submit`, {});
-
 export const updateTopicApproval = (
 	topicId: string,
 	payload: ApprovalPayload,

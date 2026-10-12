@@ -110,9 +110,6 @@ export const updateRound = (id: string, payload: UpdateRoundPayload) =>
 export const deleteRound = (id: string) =>
 	apiClient.delete<null>(`/research-rounds/${id}`);
 
-export const getRoundById = (id: string) =>
-	apiClient.get<ResearchRound>(`/research-rounds/${id}`);
-
 export const getRoundTypes = () =>
 	apiClient
 		.get<{ data: RoundType[]; pagination: unknown }>('/round-types?limit=0')

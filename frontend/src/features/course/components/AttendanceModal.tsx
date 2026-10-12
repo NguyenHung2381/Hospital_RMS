@@ -1,7 +1,8 @@
+import { Modal, ModalActions } from '@/shared/components';
 import { formatDateVN } from '../../../shared/utils/formatDate';
 import { notify } from '../../../shared/utils/feedback';
 import { useEffect, useState } from 'react';
-import { CheckSvg, ClipboardCheckSvg, XSvg } from '@/assets/icons';
+import { ClipboardCheckSvg } from '@/assets/icons';
 import { getAttendance, saveAttendance } from '../api/courseApi';
 import type { AttendanceRow, AttendanceStatus, ClassSession } from '../types/course.type';
 import { AttendanceQrDisplay } from './AttendanceQrDisplay';
@@ -64,108 +65,80 @@ export function AttendanceModal({ session, onClose }: { session: ClassSession; o
 	};
 
 	return (
-		<div
-			className={styles.modalBackdrop}
-			onClick={(e) => e.target === e.currentTarget && onClose()}
+		<Modal
+			open
+			onClose={onClose}
+			icon={<ClipboardCheckSvg />}
+			title='Điểm danh buổi học'
+			subtitle={<>{formatDateVN(session.session_date)} {session.start_time ? ` · ${session.start_time}-${session.end_time ?? ''}` : ''} {session.room ? ` · ${session.room}` : ''}</>}
+			className={styles.modal}
+			bodyClassName={styles.modalBody}
+			footer={
+				<ModalActions
+					onCancel={onClose}
+					onConfirm={handleSave}
+					loading={saving}
+					disabled={loading || rows.length === 0}
+					confirmLabel='Lưu điểm danh'
+				/>
+			}
 		>
-			<div className={styles.modal}>
-				<div className={styles.modalHeader}>
-					<div className={styles.modalHeaderIcon}>
-						<ClipboardCheckSvg />
-					</div>
-					<div>
-						<div className={styles.modalTitle}>Điểm danh buổi học</div>
-						<div className={styles.modalSub}>
-							{formatDateVN(session.session_date)}
-							{session.start_time ? ` · ${session.start_time}-${session.end_time ?? ''}` : ''}
-							{session.room ? ` · ${session.room}` : ''}
-						</div>
-					</div>
-					<button
-						className={styles.modalClose}
-						onClick={onClose}
-					>
-						<XSvg />
-					</button>
-				</div>
+			<button
+				type='button'
+				onClick={() => setShowQr((v) => !v)}
+				style={{
+					alignSelf: 'flex-start',
+					background: 'transparent',
+					border: '1.5px solid var(--color-gray-200)',
+					borderRadius: 8,
+					padding: '6px 12px',
+					fontSize: 13,
+					fontWeight: 600,
+					cursor: 'pointer',
+					marginBottom: 8,
+				}}
+			>
+				{showQr ? 'Ẩn mã QR điểm danh' : 'Hiện mã QR điểm danh'}
+			</button>
+			{showQr && <AttendanceQrDisplay sessionId={session.id} />}
 
-				<div className={styles.modalBody}>
-					<button
-						type='button'
-						onClick={() => setShowQr((v) => !v)}
-						style={{
-							alignSelf: 'flex-start',
-							background: 'transparent',
-							border: '1.5px solid var(--color-gray-200)',
-							borderRadius: 8,
-							padding: '6px 12px',
-							fontSize: 13,
-							fontWeight: 600,
-							cursor: 'pointer',
-							marginBottom: 8,
-						}}
-					>
-						{showQr ? 'Ẩn mã QR điểm danh' : 'Hiện mã QR điểm danh'}
-					</button>
-					{showQr && <AttendanceQrDisplay sessionId={session.id} />}
-
-					{error && <div className={styles.errorBanner}>{error}</div>}
-					{loading ? (
-						<div className={styles.subEmpty}>Đang tải...</div>
-					) : rows.length === 0 ? (
-						<div className={styles.subEmpty}>
-							Chưa có học viên nào được duyệt tham gia khóa học này.
-						</div>
-					) : (
-						<div className={styles.subList}>
-							{rows.map((r) => (
-								<div
-									key={r.enrollment_id}
-									className={styles.subRow}
-								>
-									<div className={styles.subRowMain}>
-										<div className={styles.subRowName}>{r.trainee_name}</div>
-									</div>
-									<div className={styles.attGrid}>
-										{ATT_OPTIONS.map((opt) => (
-											<label
-												key={opt.value}
-												className={`${styles.attRadio} ${r.status === opt.value ? styles[opt.cls as keyof typeof styles] : ''}`}
-											>
-												<input
-													type='radio'
-													name={`att-${r.enrollment_id}`}
-													checked={r.status === opt.value}
-													onChange={() => setStatus(r.enrollment_id, opt.value)}
-												/>
-												{opt.label}
-											</label>
-										))}
-									</div>
-								</div>
-							))}
-						</div>
-					)}
+			{error && <div className={styles.errorBanner}>{error}</div>}
+			{loading ? (
+				<div className={styles.subEmpty}>Đang tải...</div>
+			) : rows.length === 0 ? (
+				<div className={styles.subEmpty}>
+					Chưa có học viên nào được duyệt tham gia khóa học này.
 				</div>
-
-				<div className={styles.modalFooter}>
-					<button
-						className={styles.btnCancel}
-						onClick={onClose}
-						disabled={saving}
-					>
-						Huỷ
-					</button>
-					<button
-						className={styles.btnConfirm}
-						onClick={handleSave}
-						disabled={saving || loading || rows.length === 0}
-					>
-						{saving ? <span className={styles.spinner} /> : <CheckSvg />}
-						Lưu điểm danh
-					</button>
+			) : (
+				<div className={styles.subList}>
+					{rows.map((r) => (
+						<div
+							key={r.enrollment_id}
+							className={styles.subRow}
+						>
+							<div className={styles.subRowMain}>
+								<div className={styles.subRowName}>{r.trainee_name}</div>
+							</div>
+							<div className={styles.attGrid}>
+								{ATT_OPTIONS.map((opt) => (
+									<label
+										key={opt.value}
+										className={`${styles.attRadio} ${r.status === opt.value ? styles[opt.cls as keyof typeof styles] : ''}`}
+									>
+										<input
+											type='radio'
+											name={`att-${r.enrollment_id}`}
+											checked={r.status === opt.value}
+											onChange={() => setStatus(r.enrollment_id, opt.value)}
+										/>
+										{opt.label}
+									</label>
+								))}
+							</div>
+						</div>
+					))}
 				</div>
-			</div>
-		</div>
+			)}
+		</Modal>
 	);
 }

@@ -2,15 +2,6 @@
 .tableCard {
 	composes: tableCard from '../../../shared/components/Table/Table.module.css';
 }
-.tableHeader {
-	composes: tableHeader from '../../../shared/components/Table/Table.module.css';
-}
-.tableHeaderLeft {
-	composes: tableHeaderLeft from '../../../shared/components/Table/Table.module.css';
-}
-.tableTitle {
-	composes: tableTitle from '../../../shared/components/Table/Table.module.css';
-}
 .tableCount {
 	composes: tableCount from '../../../shared/components/Table/Table.module.css';
 }
@@ -35,7 +26,6 @@
 	background: var(--color-gray-50);
 	color: var(--color-gray-700);
 }
-
 
 .emptyState {
 	display: flex;

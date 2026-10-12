@@ -1,4 +1,5 @@
 const { getPool, sql } = require('../config/db');
+const { parseJsonArray } = require('../utils/sqlFilters');
 const { broadcast } = require('./eventService');
 const { paging } = require('../utils/paging');
 
@@ -12,16 +13,7 @@ const surveySelect = `
   LEFT JOIN roles r ON r.id = s.target_role
 `;
 
-const parseOptions = (row) => {
-	if (row.options === undefined) return row;
-	let options = [];
-	try {
-		options = row.options ? JSON.parse(row.options) : [];
-	} catch {
-		options = [];
-	}
-	return { ...row, options };
-};
+const parseOptions = (row) => (row.options === undefined ? row : { ...row, options: parseJsonArray(row.options) });
 
 // ─── Quản trị (admin) ────────────────────────────────────────────────────────
 const getAll = async ({ page = 1, limit = 20, search, status } = {}) => {
@@ -176,13 +168,7 @@ const getResults = async (surveyId) => {
 			counts[opt] = 0;
 		});
 		qAnswers.forEach((a) => {
-			let selected = [];
-			try {
-				selected = a.answer_options ? JSON.parse(a.answer_options) : [];
-			} catch {
-				selected = [];
-			}
-			selected.forEach((opt) => {
+			parseJsonArray(a.answer_options).forEach((opt) => {
 				counts[opt] = (counts[opt] || 0) + 1;
 			});
 		});

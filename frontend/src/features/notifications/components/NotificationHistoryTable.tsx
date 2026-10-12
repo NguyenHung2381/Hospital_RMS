@@ -18,7 +18,6 @@ import {
 	Pagination,
 	SelectCheckbox,
 } from '@/shared/components';
-import { PAGE_SIZE_OPTIONS } from '@/shared/utils';
 import sel from '@/shared/components/Table/RowSelect.module.css';
 import { useRowSelection } from '@/shared/hooks/useRowSelection';
 import styles from '../pages/AdminNotifications.module.css';
@@ -283,9 +282,7 @@ export function NotificationHistoryTable({
 					totalPages={totalPages}
 					total={total}
 					rowsPerPage={Math.ceil(total / totalPages) || total}
-					pageSizeOptions={PAGE_SIZE_OPTIONS}
 					onPageChange={(p) => setPage(() => p)}
-					onRowsPerPageChange={() => {}}
 					itemLabel='mục'
 					hideSizeSelect
 				/>

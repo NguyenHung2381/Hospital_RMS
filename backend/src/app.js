@@ -1,6 +1,7 @@
 const path = require('path');
 
 require('./config/loadEnv');
+const { requireModule } = require('./middlewares/moduleGuard');
 
 const isProduction = process.env.NODE_ENV === 'production';
 
@@ -234,28 +235,29 @@ app.use(
 app.use(API, signUploadUrlsInJson);
 app.use(API, activityLogger);
 
+app.use(`${API}/modules`, require('./routes/modules'));
 app.use(`${API}/auth`, require('./routes/auth'));
 app.use(`${API}/users`, require('./routes/users'));
-app.use(`${API}/topics`, require('./routes/topics'));
-app.use(`${API}/councils`, require('./routes/councils'));
+app.use(`${API}/topics`, requireModule('RESEARCH'), require('./routes/topics'));
+app.use(`${API}/councils`, requireModule('RESEARCH'), require('./routes/councils'));
 app.use(`${API}/files`, require('./routes/files'));
 app.use(`${API}/dashboard`, require('./routes/dashboard'));
 app.use(`${API}/notifications`, require('./routes/notifications'));
 app.use(`${API}/events`, require('./routes/events'));
 app.use(`${API}/activity-logs`, require('./routes/activityLogs'));
 app.use(`${API}/security-events`, require('./routes/securityEvents'));
-app.use(`${API}/seminars`, require('./routes/seminars'));
-app.use(`${API}/cme-records`, require('./routes/cmeRecords'));
-app.use(`${API}/trainees`, require('./routes/trainees'));
-app.use(`${API}/training-programs`, require('./routes/trainingPrograms'));
-app.use(`${API}/training-plans`, require('./routes/trainingPlans'));
-app.use(`${API}/surveys`, require('./routes/surveys'));
+app.use(`${API}/seminars`, requireModule('SEMINAR'), require('./routes/seminars'));
+app.use(`${API}/cme-records`, requireModule('SEMINAR'), require('./routes/cmeRecords'));
+app.use(`${API}/trainees`, requireModule('TRAINING'), require('./routes/trainees'));
+app.use(`${API}/training-programs`, requireModule('TRAINING'), require('./routes/trainingPrograms'));
+app.use(`${API}/training-plans`, requireModule('TRAINING'), require('./routes/trainingPlans'));
+app.use(`${API}/surveys`, requireModule('SURVEY'), require('./routes/surveys'));
 app.use(`${API}/my-tasks`, require('./routes/myTasks'));
 app.use(`${API}/me`, require('./routes/me'));
-app.use(`${API}/exams`, require('./routes/exams'));
+app.use(`${API}/exams`, requireModule('TRAINING'), require('./routes/exams'));
 app.use(`${API}/workflows`, require('./routes/workflows'));
-app.use(`${API}/lecturers`, require('./routes/lecturers'));
-app.use(`${API}/courses`, require('./routes/courses'));
+app.use(`${API}/lecturers`, requireModule('TRAINING'), require('./routes/lecturers'));
+app.use(`${API}/courses`, requireModule('TRAINING'), require('./routes/courses'));
 app.use(`${API}/staff-licenses`, require('./routes/staffLicenses'));
 app.use(`${API}/system-settings`, require('./routes/systemSettings'));
 app.use(`${API}/persons`, require('./routes/persons'));

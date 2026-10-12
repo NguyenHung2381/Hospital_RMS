@@ -1,5 +1,6 @@
+import { Modal, ModalActions } from '@/shared/components';
 import { useState } from 'react';
-import { CheckSvg, EditSvg, InfoSvg, TrashSvg, XSvg } from '@/assets/icons';
+import { EditSvg, InfoSvg, TrashSvg } from '@/assets/icons';
 import type { UpdateCouncilPayload } from '../api/councilApi';
 import { STATUS_LABELS, type CouncilStatus } from '../types/council.type';
 import styles from '../pages/Council.module.css';
@@ -29,92 +30,68 @@ export function CouncilBulkEditModal({
 	const hasChange = Object.keys(payload).length > 0;
 
 	return (
-		<div
-			className={styles.modalBackdrop}
-			onClick={(e) => e.target === e.currentTarget && onClose()}
+		<Modal
+			open
+			onClose={onClose}
+			icon={<EditSvg />}
+			title='Sửa đồng loạt'
+			subtitle={<>{count} hội đồng đã chọn</>}
+			className={`${styles.modal} ${styles.modalSm}`}
+			bodyClassName={styles.modalBody}
+			footer={
+				<ModalActions
+					onCancel={onClose}
+					onConfirm={() => onSave(payload)}
+					loading={loading}
+					disabled={!hasChange}
+					confirmLabel={<>Áp dụng cho {count} hội đồng</>}
+				/>
+			}
 		>
-			<div className={`${styles.modal} ${styles.modalSm}`}>
-				<div className={styles.modalHeader}>
-					<div className={styles.modalHeaderIcon}>
-						<EditSvg />
-					</div>
-					<div>
-						<div className={styles.modalTitle}>Sửa đồng loạt</div>
-						<div className={styles.modalSub}>{count} hội đồng đã chọn</div>
-					</div>
-					<button
-						className={styles.modalClose}
-						onClick={onClose}
+			<div className={styles.warnBox}>
+				<InfoSvg />
+				<span>Trường bỏ trống sẽ được giữ nguyên, không bị ghi đè.</span>
+			</div>
+			<div className={styles.formGrid2}>
+				<div className={styles.formGroup}>
+					<label className={styles.formLabel}>Trạng thái</label>
+					<select
+						className={styles.formInput}
+						value={status}
+						onChange={(e) => setStatus(e.target.value as CouncilStatus | '')}
 					>
-						<XSvg />
-					</button>
-				</div>
-
-				<div className={styles.modalBody}>
-					<div className={styles.warnBox}>
-						<InfoSvg />
-						<span>Trường bỏ trống sẽ được giữ nguyên, không bị ghi đè.</span>
-					</div>
-					<div className={styles.formGrid2}>
-						<div className={styles.formGroup}>
-							<label className={styles.formLabel}>Trạng thái</label>
-							<select
-								className={styles.formInput}
-								value={status}
-								onChange={(e) => setStatus(e.target.value as CouncilStatus | '')}
+						<option value=''>-- Giữ nguyên --</option>
+						{Object.entries(STATUS_LABELS).map(([v, label]) => (
+							<option
+								key={v}
+								value={v}
 							>
-								<option value=''>-- Giữ nguyên --</option>
-								{Object.entries(STATUS_LABELS).map(([v, label]) => (
-									<option
-										key={v}
-										value={v}
-									>
-										{label}
-									</option>
-								))}
-							</select>
-						</div>
-					</div>
-					<div className={styles.formGrid2}>
-						<div className={styles.formGroup}>
-							<label className={styles.formLabel}>Địa điểm</label>
-							<input
-								className={styles.formInput}
-								value={location}
-								onChange={(e) => setLocation(e.target.value)}
-								placeholder='Giữ nguyên'
-							/>
-						</div>
-						<div className={styles.formGroup}>
-							<label className={styles.formLabel}>Ngày bảo vệ</label>
-							<DatePicker
-								value={defenseDate}
-								onChange={setDefenseDate}
-								placeholder='Chọn ngày bảo vệ'
-							/>
-						</div>
-					</div>
-				</div>
-
-				<div className={styles.modalFooter}>
-					<button
-						className={styles.btnCancel}
-						onClick={onClose}
-						disabled={loading}
-					>
-						Huỷ
-					</button>
-					<button
-						className={styles.btnConfirmApprove}
-						onClick={() => onSave(payload)}
-						disabled={loading || !hasChange}
-					>
-						{loading ? <span className={styles.spinner} /> : <CheckSvg />}
-						Áp dụng cho {count} hội đồng
-					</button>
+								{label}
+							</option>
+						))}
+					</select>
 				</div>
 			</div>
-		</div>
+			<div className={styles.formGrid2}>
+				<div className={styles.formGroup}>
+					<label className={styles.formLabel}>Địa điểm</label>
+					<input
+						className={styles.formInput}
+						value={location}
+						onChange={(e) => setLocation(e.target.value)}
+						placeholder='Giữ nguyên'
+					/>
+				</div>
+				<div className={styles.formGroup}>
+					<label className={styles.formLabel}>Ngày bảo vệ</label>
+					<DatePicker
+						value={defenseDate}
+						onChange={setDefenseDate}
+						placeholder='Chọn ngày bảo vệ'
+					/>
+				</div>
+			</div>
+		</Modal>
 	);
 }
 
@@ -130,39 +107,17 @@ export function CouncilBulkDeleteModal({
 	loading: boolean;
 }) {
 	return (
-		<div
-			className={styles.modalBackdrop}
-			onClick={(e) => e.target === e.currentTarget && onClose()}
-		>
-			<div className={`${styles.modal} ${styles.modalSm}`}>
-				<div className={styles.modalHeader}>
-					<div className={styles.modalHeaderIconDanger}>
-						<TrashSvg />
-					</div>
-					<div>
-						<div className={styles.modalTitle}>Xoá hàng loạt</div>
-						<div className={styles.modalSub}>{count} hội đồng đã chọn</div>
-					</div>
-					<button
-						className={styles.modalClose}
-						onClick={onClose}
-					>
-						<XSvg />
-					</button>
-				</div>
-				<div className={styles.modalBody}>
-					<p className={styles.deleteDesc}>
-						Bạn có chắc muốn xoá <strong>{count} hội đồng</strong> khỏi hệ thống?
-					</p>
-					<div className={styles.warnBox}>
-						<InfoSvg />
-						<span>
-							Đề tài đang gán cho các hội đồng này sẽ tự động bỏ gán, và toàn bộ
-							thành viên hội đồng sẽ bị xoá.
-						</span>
-					</div>
-				</div>
-				<div className={styles.modalFooter}>
+		<Modal
+			open
+			onClose={onClose}
+			icon={<TrashSvg />}
+			tone='danger'
+			title='Xoá hàng loạt'
+			subtitle={<>{count} hội đồng đã chọn</>}
+			className={`${styles.modal} ${styles.modalSm}`}
+			bodyClassName={styles.modalBody}
+			footer={
+				<>
 					<button
 						className={styles.btnCancel}
 						onClick={onClose}
@@ -182,8 +137,19 @@ export function CouncilBulkDeleteModal({
 						)}
 						Xoá {count} hội đồng
 					</button>
-				</div>
+				</>
+			}
+		>
+			<p className={styles.deleteDesc}>
+				Bạn có chắc muốn xoá <strong>{count} hội đồng</strong> khỏi hệ thống?
+			</p>
+			<div className={styles.warnBox}>
+				<InfoSvg />
+				<span>
+					Đề tài đang gán cho các hội đồng này sẽ tự động bỏ gán, và toàn bộ
+					thành viên hội đồng sẽ bị xoá.
+				</span>
 			</div>
-		</div>
+		</Modal>
 	);
 }

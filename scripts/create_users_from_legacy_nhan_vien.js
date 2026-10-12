@@ -55,7 +55,7 @@ if (!filePath) {
 	process.exit(1);
 }
 
-const PASSWORD_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789';
+const PASSWORD_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789'; // gitleaks:allow (bảng ký tự, không phải secret)
 const genPassword = (len = 10) =>
 	Array.from(crypto.randomBytes(len))
 		.map((b) => PASSWORD_CHARS[b % PASSWORD_CHARS.length])

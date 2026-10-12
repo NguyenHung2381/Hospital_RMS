@@ -9,7 +9,6 @@ import {
 	WarnSvg,
 } from '@/assets/icons';
 import { EmptyState, Pagination } from '@/shared/components';
-import { PAGE_SIZE_OPTIONS } from '@/shared/utils';
 import UserLayout from '../../../layouts/UserLayout';
 import { getStoredUser } from '../../../shared/utils/storage';
 import type { StoredUser } from '../../../shared/utils/storage';
@@ -245,9 +244,7 @@ export default function UserNotifications() {
 						totalPages={totalPages}
 						total={total}
 						rowsPerPage={LIMIT}
-						pageSizeOptions={PAGE_SIZE_OPTIONS}
 						onPageChange={setPage}
-						onRowsPerPageChange={() => {}}
 						itemLabel='thông báo'
 						hideSizeSelect
 					/>

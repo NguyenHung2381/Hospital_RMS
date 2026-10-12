@@ -13,9 +13,6 @@
 .formGroup.full {
 	grid-column: 1 / -1;
 }
-.formGroup.span2 {
-	grid-column: span 2;
-}
 
 .label {
 	font-size: var(--font-size-sm);
@@ -329,11 +326,6 @@
 }
 
 /* Thành viên đề tài (ngoài chủ nhiệm) trên form đăng ký công khai */
-.sectionHint {
-	margin: calc(-1 * var(--space-2)) 0 var(--space-3);
-	font-size: var(--font-size-xs, 12px);
-	color: var(--color-gray-500);
-}
 .memberCard {
 	margin-bottom: var(--space-4);
 	border: 1px solid var(--color-gray-200);
@@ -570,9 +562,6 @@
 @media (max-width: 640px) {
 	.formGrid {
 		grid-template-columns: 1fr;
-	}
-	.formGroup.span2 {
-		grid-column: 1 / -1;
 	}
 	.sectionHead {
 		padding: var(--space-3) var(--space-4);

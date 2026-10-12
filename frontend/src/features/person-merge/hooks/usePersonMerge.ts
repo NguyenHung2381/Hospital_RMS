@@ -1,3 +1,4 @@
+import { showToast } from '@/shared/utils/feedback';
 import { useCallback, useEffect, useState } from 'react';
 import { useRealtimeUpdate } from '../../../layouts/hooks/useRealtime';
 import {
@@ -32,12 +33,6 @@ export function usePersonMerge() {
 
 	const [openId, setOpenId] = useState<number | null>(null);
 	const [busy, setBusy] = useState(false);
-	const [toast, setToast] = useState<{ type: 'success' | 'error'; msg: string } | null>(null);
-
-	const showToast = useCallback((type: 'success' | 'error', msg: string) => {
-		setToast({ type, msg });
-		setTimeout(() => setToast(null), 3500);
-	}, []);
 
 	const refresh = useCallback(() => setRefreshKey((k) => k + 1), []);
 	useRealtimeUpdate('person_merge', refresh);
@@ -73,7 +68,7 @@ export function usePersonMerge() {
 			}
 		})();
 		return () => controller.abort();
-	}, [status, reason, debouncedSearch, page, pageSize, refreshKey, showToast]);
+	}, [status, reason, debouncedSearch, page, pageSize, refreshKey]);
 
 	useEffect(() => {
 		void getMergeStats()
@@ -112,7 +107,7 @@ export function usePersonMerge() {
 				setBusy(false);
 			}
 		},
-		[refresh, showToast],
+		[refresh],
 	);
 
 	const doMerge = useCallback(
@@ -156,7 +151,6 @@ export function usePersonMerge() {
 		isLoading,
 		openId,
 		busy,
-		toast,
 		setPage,
 		setOpenId,
 		changeStatus,

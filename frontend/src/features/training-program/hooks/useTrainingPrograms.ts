@@ -1,3 +1,5 @@
+import { useClientPaging } from '@/shared/hooks/useClientPaging';
+import { showToast } from '@/shared/utils/feedback';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { apiClient } from '../../../shared/api/axios';
 import { useRealtimeUpdate } from '../../../layouts/hooks/useRealtime';
@@ -38,25 +40,17 @@ export function useTrainingPrograms() {
 	const [detailProgram, setDetailProgram] = useState<TrainingProgram | null>(null);
 	const [detailTab, setDetailTab] = useState<DetailTab>('info');
 	const [loading, setLoading] = useState(false);
-	const [toast, setToast] = useState<{ type: 'success' | 'error'; msg: string } | null>(null);
-	const [pageSize, setPageSize] = useState(10);
-	const [page, setPage] = useState(1);
 	const [refreshKey, setRefreshKey] = useState(0);
 
 	const refreshData = useCallback(() => setRefreshKey((prev) => prev + 1), []);
 	useRealtimeUpdate('training_program', refreshData);
-
-	const showToast = useCallback((type: 'success' | 'error', msg: string) => {
-		setToast({ type, msg });
-		setTimeout(() => setToast(null), 3000);
-	}, []);
 
 	useEffect(() => {
 		getTrainingPrograms()
 			.then((res) => setPrograms(res.data))
 			.catch(() => showToast('error', 'Không thể tải danh sách chương trình đào tạo'))
 			.finally(() => setIsLoadingData(false));
-	}, [showToast, refreshKey]);
+	}, [refreshKey]);
 
 	useEffect(() => {
 		apiClient.get<{ data: SimpleItem[] }>('/departments?limit=0').then((r) => setDepartments(r.data)).catch(() => {});
@@ -93,34 +87,28 @@ export function useTrainingPrograms() {
 	const hasActiveFilter =
 		!!search.trim() || departmentFilter !== 'all' || traineeTypeFilter !== 'all' || statusFilter !== 'all';
 
-	const totalPages = pageSize === 0 ? 1 : Math.ceil(filtered.length / pageSize);
-	const safePage = Math.min(page, totalPages || 1);
-
-	const paged = useMemo(() => {
-		if (pageSize === 0) return filtered;
-		const start = (safePage - 1) * pageSize;
-		return filtered.slice(start, start + pageSize);
-	}, [filtered, safePage, pageSize]);
+	const { page, setPage, pageSize, handlePageSize, totalPages, safePage, paged } =
+		useClientPaging(filtered);
 
 	const handleSearch = useCallback((v: string) => {
 		setSearch(v);
 		setPage(1);
-	}, []);
+	}, [setPage]);
 
 	const handleDepartmentFilter = useCallback((v: string) => {
 		setDepartmentFilter(v);
 		setPage(1);
-	}, []);
+	}, [setPage]);
 
 	const handleTraineeTypeFilter = useCallback((v: string) => {
 		setTraineeTypeFilter(v);
 		setPage(1);
-	}, []);
+	}, [setPage]);
 
 	const handleStatusFilter = useCallback((v: ProgramStatusFilter) => {
 		setStatusFilter(v);
 		setPage(1);
-	}, []);
+	}, [setPage]);
 
 	const clearFilters = useCallback(() => {
 		setSearch('');
@@ -128,12 +116,8 @@ export function useTrainingPrograms() {
 		setTraineeTypeFilter('all');
 		setStatusFilter('all');
 		setPage(1);
-	}, []);
+	}, [setPage]);
 
-	const handlePageSize = useCallback((v: number) => {
-		setPageSize(v);
-		setPage(1);
-	}, []);
 
 	const handleAdd = useCallback(
 		async (data: TrainingProgramFormData) => {
@@ -149,7 +133,7 @@ export function useTrainingPrograms() {
 				setLoading(false);
 			}
 		},
-		[showToast],
+		[],
 	);
 
 	const handleEdit = useCallback(
@@ -168,7 +152,7 @@ export function useTrainingPrograms() {
 				setLoading(false);
 			}
 		},
-		[editingProgram, showToast],
+		[editingProgram],
 	);
 
 	const handleDelete = useCallback(async () => {
@@ -185,7 +169,7 @@ export function useTrainingPrograms() {
 		} finally {
 			setLoading(false);
 		}
-	}, [deletingProgram, showToast]);
+	}, [deletingProgram]);
 
 	const handleBulkDelete = useCallback(
 		async (ids: string[]) => {
@@ -203,7 +187,7 @@ export function useTrainingPrograms() {
 				setLoading(false);
 			}
 		},
-		[showToast],
+		[],
 	);
 
 	const openDetail = useCallback((program: TrainingProgram, tab: DetailTab = 'info') => {
@@ -228,7 +212,6 @@ export function useTrainingPrograms() {
 		detailProgram,
 		detailTab,
 		loading,
-		toast,
 		pageSize,
 		page,
 		filtered,

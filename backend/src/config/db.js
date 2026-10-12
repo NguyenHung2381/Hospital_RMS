@@ -74,4 +74,4 @@ const getPool = async () => {
 	return poolPromise;
 };
 
-module.exports = { getPool, sql };
+module.exports = { getPool, sql, dbConfig };

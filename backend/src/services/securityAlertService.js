@@ -1,3 +1,4 @@
+const systemSettingService = require('./systemSettingService');
 const { getPool, sql } = require('../config/db');
 const mailService = require('./mailService');
 const { consumeOnce } = require('../utils/oneTimeToken');
@@ -35,8 +36,9 @@ const escapeHtml = (s) =>
 	String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 
 const recipients = async () => {
-	if (process.env.ALERT_EMAILS) {
-		return process.env.ALERT_EMAILS.split(',').map((e) => e.trim()).filter(Boolean);
+	const configured = await systemSettingService.getValue('ALERT_EMAILS');
+	if (configured) {
+		return configured.split(',').map((e) => e.trim()).filter(Boolean);
 	}
 	const pool = await getPool();
 	const rows = (

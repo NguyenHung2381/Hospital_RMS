@@ -228,6 +228,18 @@ const migrateRolesAndSessions = async ({ dryRun = false } = {}) => {
         CREATE INDEX IX_backup_codes_user ON user_backup_codes(user_id, code_hash);
       END
     `);
+		// OTP quên mật khẩu (1 mã/người dùng). Tương đương 2026-10-24_password_reset_otp.sql.
+		await pool.request().query(`
+      IF OBJECT_ID('password_reset_otps', 'U') IS NULL
+        CREATE TABLE password_reset_otps (
+          user_id    VARCHAR(20) NOT NULL PRIMARY KEY
+                     CONSTRAINT FK_pwreset_user REFERENCES users(id) ON DELETE CASCADE,
+          code_hash  CHAR(64)    NOT NULL,
+          attempts   INT         NOT NULL CONSTRAINT DF_pwreset_attempts DEFAULT 0,
+          expires_at DATETIME2   NOT NULL,
+          created_at DATETIME2   NOT NULL CONSTRAINT DF_pwreset_created DEFAULT SYSUTCDATETIME()
+        );
+    `);
 		// Cấp độ đề tài cấu hình riêng theo từng đợt (chọn ngay khi tạo đợt).
 		// Tương đương 2026-10-17_research_round_levels.sql — kiểu cột khoá lấy
 		// theo cột id thật để FK không lệch độ dài.
@@ -286,6 +298,20 @@ const migrateRolesAndSessions = async ({ dryRun = false } = {}) => {
         ALTER TABLE attendance ADD checkin_device_id VARCHAR(64) NULL;
       IF OBJECT_ID('seminar_participants', 'U') IS NOT NULL AND COL_LENGTH('seminar_participants', 'checkin_device_id') IS NULL
         ALTER TABLE seminar_participants ADD checkin_device_id VARCHAR(64) NULL;
+    `);
+		// Xoá học viên = ẩn khỏi danh sách (giữ lịch sử đăng ký/điểm). Tương đương 2026-10-22_trainee_hidden.sql.
+		await pool.request().query(`
+      IF OBJECT_ID('trainees', 'U') IS NOT NULL AND COL_LENGTH('trainees', 'hidden_at') IS NULL
+        ALTER TABLE trainees ADD hidden_at DATETIME2 NULL;
+    `);
+		// CME tự khai chờ duyệt. Tương đương 2026-10-23_cme_record_approval.sql.
+		await pool.request().query(`
+      IF OBJECT_ID('cme_records', 'U') IS NOT NULL AND COL_LENGTH('cme_records', 'approval_status') IS NULL
+        ALTER TABLE cme_records ADD approval_status VARCHAR(20) NOT NULL
+          CONSTRAINT DF_cme_records_approval DEFAULT 'approved'
+          CONSTRAINT CHK_cme_records_approval CHECK (approval_status IN ('pending','approved','rejected'));
+      IF OBJECT_ID('cme_records', 'U') IS NOT NULL AND COL_LENGTH('cme_records', 'reviewed_by') IS NULL
+        ALTER TABLE cme_records ADD reviewed_by VARCHAR(20) NULL, reviewed_at DATETIME NULL, reject_reason NVARCHAR(500) NULL;
     `);
 		// Đăng ký hội nghị qua QR + vé + bài test. Tương đương 2026-10-21_seminar_registration.sql.
 		await pool.request().query(`

@@ -20,6 +20,8 @@ export interface CmeRecord {
 	evidence_file_name: string | null;
 	evidence_file_url: string | null;
 	note: string | null;
+	approval_status: 'pending' | 'approved' | 'rejected';
+	reject_reason: string | null;
 }
 
 export interface CmeRecordFormData {

@@ -174,8 +174,6 @@ export const upsertGrade = (data: {
 	note?: string;
 }) => apiClient.post<{ id: string }>('/courses/grades', data);
 
-export const removeGrade = (gradeId: string) => apiClient.delete<null>(`/courses/grades/${gradeId}`);
-
 // ─── Certificates ───────────────────────────────────────────────────────────
 export const getCertificates = (courseId: string) =>
 	apiClient.get<Certificate[]>(`/courses/${courseId}/certificates`);

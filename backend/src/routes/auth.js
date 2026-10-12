@@ -3,6 +3,7 @@ const { body } = require('express-validator');
 // Đếm trên Redis, tự rơi về bộ nhớ khi Redis lỗi (utils/rateLimit.js)
 const rateLimit = require('../utils/rateLimit');
 const authController = require('../controllers/authController');
+const passwordResetController = require('../controllers/passwordResetController');
 const { authenticate } = require('../middlewares/auth');
 const { validate } = require('../middlewares/errorHandler');
 const { checkPassword } = require('../utils/passwordPolicy');
@@ -91,6 +92,16 @@ const logoutAllLimiter = rateLimit({
 		success: false,
 		message: 'Quá nhiều yêu cầu. Vui lòng thử lại sau ít phút.',
 	},
+});
+
+// Quên mật khẩu: giới hạn theo IP để không spam mail / dò OTP 6 số.
+const forgotLimiter = rateLimit({
+	name: 'forgotPassword',
+	windowMs: 15 * 60 * 1000,
+	limit: 5,
+	standardHeaders: true,
+	legacyHeaders: false,
+	message: { success: false, message: 'Quá nhiều yêu cầu. Vui lòng thử lại sau ít phút.' },
 });
 
 /**
@@ -349,5 +360,45 @@ router.post(
  *         description: "{ enabled: boolean }"
  */
 router.get('/2fa/status', authenticate, authController.status2FA);
+
+/**
+ * @swagger
+ * /auth/forgot-password:
+ *   post:
+ *     summary: Gửi OTP đặt lại mật khẩu tới email của tài khoản (luôn trả thành công)
+ *     tags: [Auth]
+ *     security: []
+ */
+router.post(
+	'/forgot-password',
+	forgotLimiter,
+	[body('username').isString().notEmpty().isLength({ max: 50 })],
+	validate,
+	passwordResetController.forgot,
+);
+
+/**
+ * @swagger
+ * /auth/reset-password:
+ *   post:
+ *     summary: Đặt mật khẩu mới bằng OTP nhận qua email
+ *     tags: [Auth]
+ *     security: []
+ */
+router.post(
+	'/reset-password',
+	forgotLimiter,
+	[
+		body('username').isString().notEmpty().isLength({ max: 50 }),
+		body('code').isString().matches(/^\d{6}$/).withMessage('Mã OTP gồm 6 chữ số'),
+		body('new_password').custom((value, { req }) => {
+			const msg = checkPassword(value, { username: req.body?.username });
+			if (msg) throw new Error(msg);
+			return true;
+		}),
+	],
+	validate,
+	passwordResetController.reset,
+);
 
 module.exports = router;

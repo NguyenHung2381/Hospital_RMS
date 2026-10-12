@@ -1,0 +1,3 @@
+# Báo nhầm của gitleaks (fingerprint = commit:file:rule:dòng). Mỗi dòng phải kèm lý do.
+# PASSWORD_CHARS: bảng ký tự để sinh mật khẩu tạm, không phải secret
+5a7d1cea1ca62de7a0f2546d41a0fbe7bfaa8d47:scripts/create_users_from_legacy_nhan_vien.js:generic-api-key:58

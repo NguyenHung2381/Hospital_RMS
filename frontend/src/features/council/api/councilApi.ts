@@ -74,10 +74,6 @@ export const updateCouncil = (id: string, payload: UpdateCouncilPayload) =>
 export const deleteCouncil = (id: string) =>
 	apiClient.delete<null>(`/councils/${id}`);
 
-// ─── Members ──────────────────────────────────────────────────────────────
-export const getCouncilMembers = (councilId: string) =>
-	apiClient.get<CouncilMember[]>(`/councils/${councilId}/members`);
-
 export const addCouncilMember = (
 	councilId: string,
 	payload: { user_id?: string | null; external_reviewer_id?: string | null; role: SeatRole },
@@ -113,9 +109,6 @@ export const getUnassignedTopics = (roundId: string) =>
 	apiClient.get<CouncilTopic[]>(
 		`/councils/unassigned-topics?round_id=${encodeURIComponent(roundId)}`,
 	);
-
-export const getCouncilTopics = (councilId: string) =>
-	apiClient.get<CouncilTopic[]>(`/councils/${councilId}/topics`);
 
 export const assignCouncilTopics = (councilId: string, topicIds: string[]) =>
 	apiClient.post<{ assigned: number }>(`/councils/${councilId}/topics`, {

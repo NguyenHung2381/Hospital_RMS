@@ -1,6 +1,6 @@
 import { notify } from '../../../shared/utils/feedback';
 import { useCallback, useEffect, useState } from 'react';
-import { DocSvg, DownloadSvg, PlusSvg, TrashSvg, XSvg } from '@/assets/icons';
+import { DocSvg, DownloadSvg, PlusSvg, TrashSvg } from '@/assets/icons';
 import {
 	addLessonDocument,
 	getLessonDocuments,
@@ -9,7 +9,7 @@ import {
 	type LessonDocumentSource,
 } from '../api/trainingProgramApi';
 import type { LessonDocument, SourceType } from '../types/trainingProgram.type';
-import { FileDropzone } from '@/shared/components';
+import { FileDropzone, Modal } from '@/shared/components';
 import styles from '../pages/TrainingPrograms.module.css';
 
 // Chỉ cần id + title — tài liệu gắn theo lesson_id (nội dung dùng chung),
@@ -88,120 +88,105 @@ export function LessonDocumentsModal({
 	};
 
 	return (
-		<div
-			className={styles.modalBackdrop}
-			onClick={(e) => e.target === e.currentTarget && onClose()}
+		<Modal
+			open
+			onClose={onClose}
+			icon={<DocSvg />}
+			title='Tài liệu bài học'
+			subtitle={lesson.title}
+			className={`${styles.modal} ${styles.modalWide}`}
+			bodyClassName={styles.modalBody}
 		>
-			<div className={`${styles.modal} ${styles.modalWide}`}>
-				<div className={styles.modalHeader}>
-					<div className={styles.modalHeaderIcon}>
-						<DocSvg />
-					</div>
-					<div>
-						<div className={styles.modalTitle}>Tài liệu bài học</div>
-						<div className={styles.modalSub}>{lesson.title}</div>
-					</div>
-					<button
-						className={styles.modalClose}
-						onClick={onClose}
-					>
-						<XSvg />
-					</button>
-				</div>
+			{error && <div className={styles.errorBanner}>{error}</div>}
 
-				<div className={styles.modalBody}>
-					{error && <div className={styles.errorBanner}>{error}</div>}
-
-					<div className={styles.subToolbar}>
-						<input
-							className={styles.subInput}
-							placeholder='Tiêu đề'
-							value={form.title}
-							onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
-						/>
-						<label className={styles.attRadio}>
-							<input
-								type='checkbox'
-								checked={form.isPublic}
-								onChange={(e) => setForm((f) => ({ ...f, isPublic: e.target.checked }))}
-							/>
-							Công khai
-						</label>
-						<select
-							className={styles.subSelect}
-							value={form.sourceType}
-							onChange={(e) => setForm((f) => ({ ...f, sourceType: e.target.value as SourceType }))}
-						>
-							<option value='file'>Tải file lên</option>
-							<option value='link'>Dán link</option>
-						</select>
-						{form.sourceType === 'file' ? (
-							<FileDropzone
-								compact
-								value={file}
-								onChange={setFile}
-								disabled={busy}
-								className={styles.subDropzone}
-							/>
-						) : (
-							<input
-								className={styles.subInput}
-								placeholder='https://...'
-								value={form.externalUrl}
-								onChange={(e) => setForm((f) => ({ ...f, externalUrl: e.target.value }))}
-							/>
-						)}
-						<button
-							className={styles.btnGhost}
-							disabled={busy || !form.title.trim()}
-							onClick={handleAdd}
-						>
-							<PlusSvg /> Thêm tài liệu
-						</button>
-					</div>
-
-					{loading ? (
-						<div className={styles.subEmpty}>Đang tải...</div>
-					) : docs.length === 0 ? (
-						<div className={styles.subEmpty}>Chưa có tài liệu nào.</div>
-					) : (
-						<div className={styles.subList}>
-							{docs.map((doc) => (
-								<div
-									key={doc.id}
-									className={styles.subRow}
-								>
-									<div className={styles.subRowMain}>
-										<a
-											href={doc.source_type === 'link' ? (doc.external_url ?? '#') : (doc.file_url ?? '#')}
-											target='_blank'
-											rel='noreferrer'
-											className={styles.docLink}
-											onClick={() => handleDownloadClick(doc.id)}
-										>
-											{doc.title}
-										</a>
-										<div className={styles.subRowMeta}>
-											{doc.source_type === 'link' ? 'Liên kết ngoài' : doc.file_name}
-											{!doc.is_public ? ' · Chưa công khai' : ''}
-											{' · '}
-											<DownloadSvg /> {doc.download_count}
-										</div>
-									</div>
-									<button
-										className={styles.actionBtn}
-										title='Xoá'
-										disabled={busy}
-										onClick={() => handleRemove(doc.id)}
-									>
-										<TrashSvg />
-									</button>
-								</div>
-							))}
-						</div>
-					)}
-				</div>
+			<div className={styles.subToolbar}>
+				<input
+					className={styles.subInput}
+					placeholder='Tiêu đề'
+					value={form.title}
+					onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
+				/>
+				<label className={styles.attRadio}>
+					<input
+						type='checkbox'
+						checked={form.isPublic}
+						onChange={(e) => setForm((f) => ({ ...f, isPublic: e.target.checked }))}
+					/>
+					Công khai
+				</label>
+				<select
+					className={styles.subSelect}
+					value={form.sourceType}
+					onChange={(e) => setForm((f) => ({ ...f, sourceType: e.target.value as SourceType }))}
+				>
+					<option value='file'>Tải file lên</option>
+					<option value='link'>Dán link</option>
+				</select>
+				{form.sourceType === 'file' ? (
+					<FileDropzone
+						compact
+						value={file}
+						onChange={setFile}
+						disabled={busy}
+						className={styles.subDropzone}
+					/>
+				) : (
+					<input
+						className={styles.subInput}
+						placeholder='https://...'
+						value={form.externalUrl}
+						onChange={(e) => setForm((f) => ({ ...f, externalUrl: e.target.value }))}
+					/>
+				)}
+				<button
+					className={styles.btnGhost}
+					disabled={busy || !form.title.trim()}
+					onClick={handleAdd}
+				>
+					<PlusSvg /> Thêm tài liệu
+				</button>
 			</div>
-		</div>
+
+			{loading ? (
+				<div className={styles.subEmpty}>Đang tải...</div>
+			) : docs.length === 0 ? (
+				<div className={styles.subEmpty}>Chưa có tài liệu nào.</div>
+			) : (
+				<div className={styles.subList}>
+					{docs.map((doc) => (
+						<div
+							key={doc.id}
+							className={styles.subRow}
+						>
+							<div className={styles.subRowMain}>
+								<a
+									href={doc.source_type === 'link' ? (doc.external_url ?? '#') : (doc.file_url ?? '#')}
+									target='_blank'
+									rel='noreferrer'
+									className={styles.docLink}
+									onClick={() => handleDownloadClick(doc.id)}
+								>
+									{doc.title}
+								</a>
+								<div className={styles.subRowMeta}>
+									{doc.source_type === 'link' ? 'Liên kết ngoài' : doc.file_name}
+									{!doc.is_public ? ' · Chưa công khai' : ''}
+									{' · '}
+									<DownloadSvg /> {doc.download_count}
+								</div>
+							</div>
+							<button
+								className={styles.actionBtn}
+								title='Xoá'
+								disabled={busy}
+								onClick={() => handleRemove(doc.id)}
+							>
+								<TrashSvg />
+							</button>
+						</div>
+					))}
+				</div>
+			)}
+		</Modal>
 	);
 }

@@ -72,13 +72,6 @@ export const getLessonPrograms = (lessonId: string) =>
 export const setLessonPrograms = (lessonId: string, programIds: string[]) =>
 	apiClient.put<string[]>(`/training-programs/lessons/${lessonId}/programs`, { program_ids: programIds });
 
-// Gắn 1 bài học ĐÃ CÓ (đang thuộc chương trình khác) vào thêm chương trình này
-export const linkLesson = (programId: string, lessonId: string, displayOrder: number) =>
-	apiClient.post<{ id: string }>(`/training-programs/${programId}/lessons/link`, {
-		lesson_id: lessonId,
-		display_order: displayOrder,
-	});
-
 // Đính kèm NHIỀU bài học có sẵn cùng lúc (checkbox multi-select)
 export const linkLessons = (programId: string, lessonIds: string[]) =>
 	apiClient.post<{ linked: number }>(`/training-programs/${programId}/lessons/link-many`, {
@@ -90,10 +83,6 @@ export const reorderLessons = (programId: string, linkIds: string[]) =>
 	apiClient.put<ProgramLessonLink[]>(`/training-programs/${programId}/lessons/reorder`, {
 		link_ids: linkIds,
 	});
-
-// Đổi thứ tự hiển thị của 1 LƯỢT GẮN (không ảnh hưởng chương trình khác)
-export const updateLessonLink = (linkId: string, displayOrder: number) =>
-	apiClient.put<null>(`/training-programs/lesson-links/${linkId}`, { display_order: displayOrder });
 
 // Gỡ bài học khỏi 1 chương trình (không xoá nội dung nếu còn chương trình
 // khác đang dùng chung — server tự dọn khi đây là lượt gắn cuối cùng)

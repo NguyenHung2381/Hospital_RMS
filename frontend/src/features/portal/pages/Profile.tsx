@@ -713,14 +713,6 @@ export default function Profile() {
 				</div>
 			</div>
 
-			{d.toast && (
-				<div
-					className={`${styles.toast} ${d.toast.type === 'success' ? styles.toastSuccess : styles.toastError}`}
-				>
-					{d.toast.type === 'success' ? <CheckSvg /> : <AlertSvg />}
-					{d.toast.msg}
-				</div>
-			)}
 		</Layout>
 	);
 }

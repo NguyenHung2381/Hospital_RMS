@@ -1,23 +1,17 @@
+import { TopicFileList } from '@/features/topics/components/TopicFileItem';
 import {
 	CheckCircleSvg,
-	DownloadSvg,
-	EyeSvg,
-	FileTextSvg,
 	MessageSvg,
 	WarnSvg,
 	XCircleSvg,
 } from '@/assets/icons';
 import { Badge } from '@/shared/components';
-import { formatDate } from '../../../shared/utils/formatDate';
 import { getInitials } from '../../../shared/utils/helper';
-import { formatFileSize } from '../../topics/utils/topicHelpers';
 import type { TopicFile } from '../../topics/types/topic.type';
 import type { ApprovalRecord, ModalType } from '../types/approval.type';
 import {
 	APV_HISTORY_CFG,
 	getLevelStyle,
-	getFileTypeMeta,
-	getFileViewerUrl,
 	STATUS_CFG,
 } from '../utils/approvalHelpers';
 import styles from '../pages/Approval.module.css';
@@ -300,73 +294,10 @@ export function ApprovalDetailPanel({
 									<div className={styles.sectionLabel}>
 										Tài liệu đính kèm ({files.length} tệp)
 									</div>
-									{files.length === 0 ? (
-										<div className={styles.filesEmpty}>
-											Chưa có tài liệu nào được đính kèm
-										</div>
-									) : (
-										<div className={styles.filesList}>
-											{files.map((f) => {
-												const meta = getFileTypeMeta(f);
-												const viewerUrl = getFileViewerUrl(f);
-												return (
-													<div
-														key={f.id}
-														className={styles.fileItem}
-													>
-														<div
-															className={`${styles.fileIcon} ${styles[meta.cls as keyof typeof styles]}`}
-														>
-															<FileTextSvg />
-														</div>
-														<div className={styles.fileInfo}>
-															<div
-																className={styles.fileName}
-																title={f.file_name}
-															>
-																{f.file_name}
-															</div>
-															<div className={styles.fileMeta}>
-																<span
-																	className={`${styles.fileTypeBadge} ${styles[meta.cls as keyof typeof styles]}`}
-																>
-																	{meta.label}
-																</span>
-																· {formatFileSize(f.file_size)} ·{' '}
-																{f.uploaded_by_name} ·{' '}
-																{formatDate(f.created_at)}
-															</div>
-														</div>
-														<div className={styles.fileActions}>
-															{viewerUrl && (
-																<button
-																	className={styles.btnFileView}
-																	onClick={() =>
-																		setFileViewer({
-																			url: viewerUrl,
-																			name: f.file_name,
-																			isWord: meta.label !== 'PDF',
-																		})
-																	}
-																>
-																	<EyeSvg /> Xem
-																</button>
-															)}
-															<a
-																className={styles.btnFileDownload}
-																href={f.file_url}
-																download={f.file_name}
-																target='_blank'
-																rel='noreferrer'
-															>
-																<DownloadSvg />
-															</a>
-														</div>
-													</div>
-												);
-											})}
-										</div>
-									)}
+									<TopicFileList
+										files={files}
+										onView={setFileViewer}
+									/>
 								</div>
 							);
 						})()}

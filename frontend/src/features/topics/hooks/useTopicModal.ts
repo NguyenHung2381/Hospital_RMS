@@ -75,7 +75,7 @@ export function useTopicModal({
 	const [suggestions, setSuggestions] = useState<UserSuggestion[]>([]);
 	const [isSearching, setIsSearching] = useState(false);
 	const [showSuggestions, setShowSuggestions] = useState(false);
-	const [addRole, setAddRole] = useState<MemberRole>('member');
+	const [addRole, setAddRole] = useState<MemberRole>('leader');
 	const [isManualAdd, setIsManualAdd] = useState(false);
 	const [manualForm, setManualForm] = useState<ManualMemberForm>({
 		ho_ten: '',
@@ -85,7 +85,7 @@ export function useTopicModal({
 		chuc_vu: '',
 		department_id: '',
 	});
-	const [manualRole, setManualRole] = useState<MemberRole>('member');
+	const [manualRole, setManualRole] = useState<MemberRole>('leader');
 	const [manualError, setManualError] = useState('');
 	const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 

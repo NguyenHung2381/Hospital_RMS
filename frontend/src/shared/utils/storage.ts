@@ -35,11 +35,43 @@ type AuthData = {
 	user: StoredUser;
 };
 
+// Refresh token là 1 cookie dùng chung cả trình duyệt nên chỉ cho 1 tài khoản
+// mỗi trình duyệt: đăng nhập tài khoản khác / đăng xuất ở một tab thì các tab
+// còn lại đang giữ phiên cũ bị đưa về /login (nếu không, lần refresh tới sẽ
+// nhận token của người kia trong khi giao diện vẫn hiện người cũ).
+const authChannel = typeof BroadcastChannel === 'undefined' ? null : new BroadcastChannel('rms_auth');
+
+if (authChannel) {
+	authChannel.onmessage = (e: MessageEvent<{ type: 'login' | 'logout'; id?: string }>) => {
+		const mine = getStoredUser<StoredUser>();
+		if (!mine) return;
+		if (e.data.type === 'login' && e.data.id === mine.id) return;
+		clearAuth();
+		if (window.location.pathname !== '/login') window.location.href = '/login';
+	};
+}
+
+export function broadcastLogout(): void {
+	authChannel?.postMessage({ type: 'logout' });
+}
+
 export function saveAuth(data: AuthData, rememberMe: boolean): void {
 	clearAuth();
 	const storage = rememberMe ? localStorage : sessionStorage;
 	storage.setItem(KEYS.token, data.access_token);
 	storage.setItem(KEYS.user, JSON.stringify(data.user));
+	authChannel?.postMessage({ type: 'login', id: data.user.id });
+}
+
+// id người dùng trong access token (JWT) — để phát hiện token làm mới thuộc về
+// tài khoản khác với tài khoản đang hiển thị.
+export function tokenUserId(token: string): string | null {
+	try {
+		const b64 = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+		return JSON.parse(atob(b64)).id ?? null;
+	} catch {
+		return null;
+	}
 }
 
 // Thay access token của phiên hiện tại (làm mới, đổi mật khẩu...) — ghi vào

@@ -6,8 +6,7 @@ const fs = require('fs');
 const crypto = require('crypto');
 const { secureUpload } = require('./secureUpload');
 
-const UPLOADS_ROOT = path.resolve(process.env.UPLOADS_DIR || 'uploads');
-const SAFE_ID = /^[A-Za-z0-9_-]{1,20}$/;
+const { UPLOADS_ROOT, SAFE_ID } = require('../utils/uploadPaths');
 
 const ALLOWED_EXT = new Set(['.png', '.jpg', '.jpeg', '.gif', '.webp']);
 const ALLOWED_MIME = new Set([

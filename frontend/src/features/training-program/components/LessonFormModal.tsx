@@ -1,6 +1,8 @@
+import { FormField } from '@/shared/components/Input/FormField';
+import { Modal, ModalActions } from '@/shared/components';
 import { notify } from '../../../shared/utils/feedback';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { CheckSvg, ListSvg, XSvg } from '@/assets/icons';
+import { ListSvg, XSvg } from '@/assets/icons';
 import {
 	createLesson,
 	getLessonPrograms,
@@ -125,216 +127,184 @@ export function LessonFormModal({
 	};
 
 	return (
-		<div
-			className={styles.modalBackdrop}
-			onClick={(e) => e.target === e.currentTarget && onClose()}
+		<Modal
+			open
+			onClose={onClose}
+			icon={<ListSvg />}
+			title={mode === 'add' ? 'Thêm bài học' : 'Sửa bài học'}
+			className={`${styles.modal} ${styles.modalWide}`}
+			bodyClassName={styles.modalBody}
+			footer={
+				<ModalActions
+					onCancel={onClose}
+					onConfirm={handleSave}
+					loading={saving}
+					confirmLabel={mode === 'add' ? 'Thêm bài học' : 'Lưu thay đổi'}
+				/>
+			}
 		>
-			<div className={`${styles.modal} ${styles.modalWide}`}>
-				<div className={styles.modalHeader}>
-					<div className={styles.modalHeaderIcon}>
-						<ListSvg />
-					</div>
-					<div>
-						<div className={styles.modalTitle}>{mode === 'add' ? 'Thêm bài học' : 'Sửa bài học'}</div>
-					</div>
-					<button
-						className={styles.modalClose}
-						onClick={onClose}
+			{error && <div className={styles.errorBanner}>{error}</div>}
+
+			<div className={styles.formGrid2}>
+				<FormField
+					label='Mã bài học'
+					required
+					error={errors.code}
+				>
+					<input
+						className={`${styles.formInput} ${errors.code ? styles.inputError : ''}`}
+						value={form.code}
+						onChange={(e) => {
+							setForm((f) => ({ ...f, code: e.target.value }));
+							setErrors((er) => ({ ...er, code: '' }));
+						}}
+						placeholder='VD: TH_BS_RHM'
+					/>
+				</FormField>
+				<FormField label='Trạng thái'>
+					<select
+						className={styles.formInput}
+						value={form.is_active ? '1' : '0'}
+						onChange={(e) => setForm((f) => ({ ...f, is_active: e.target.value === '1' }))}
 					>
-						<XSvg />
-					</button>
+						<option value='1'>Hoạt động</option>
+						<option value='0'>Ngưng hoạt động</option>
+					</select>
+				</FormField>
+
+				<FormField
+					label='Tên bài học'
+					required
+					error={errors.title}
+					style={{ gridColumn: '1 / -1' }}
+				>
+					<input
+						className={`${styles.formInput} ${errors.title ? styles.inputError : ''}`}
+						value={form.title}
+						onChange={(e) => {
+							setForm((f) => ({ ...f, title: e.target.value }));
+							setErrors((er) => ({ ...er, title: '' }));
+						}}
+						placeholder='VD: Thực hành vòng Răng hàm mặt'
+					/>
+				</FormField>
+
+				<div
+					className={styles.formGroup}
+					style={{ gridColumn: '1 / -1', display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 'var(--space-4)' }}
+				>
+					<FormField label='Số tiết lý thuyết'>
+						<input
+							type='number'
+							min={0}
+							className={styles.formInput}
+							value={form.theory_hours}
+							onChange={(e) => setForm((f) => ({ ...f, theory_hours: e.target.value }))}
+						/>
+					</FormField>
+					<FormField label='Số tiết thực hành'>
+						<input
+							type='number'
+							min={0}
+							className={styles.formInput}
+							value={form.practice_hours}
+							onChange={(e) => setForm((f) => ({ ...f, practice_hours: e.target.value }))}
+						/>
+					</FormField>
+					<div className={styles.formGroup}>
+						<label className={styles.formLabel}>Tổng số tiết</label>
+						<input
+							className={styles.formInput}
+							value={totalHours}
+							disabled
+							style={{ opacity: 0.7 }}
+						/>
+						<div className={styles.hint}>Tự tính từ lý thuyết + thực hành</div>
+					</div>
 				</div>
 
-				<div className={styles.modalBody}>
-					{error && <div className={styles.errorBanner}>{error}</div>}
+				<FormField label='Số tín chỉ'>
+					<input
+						type='number'
+						min={0}
+						className={styles.formInput}
+						value={form.credits}
+						onChange={(e) => setForm((f) => ({ ...f, credits: e.target.value }))}
+					/>
+				</FormField>
 
-					<div className={styles.formGrid2}>
-						<div className={styles.formGroup}>
-							<label className={styles.formLabel}>
-								Mã bài học <span className={styles.required}>*</span>
-							</label>
-							<input
-								className={`${styles.formInput} ${errors.code ? styles.inputError : ''}`}
-								value={form.code}
-								onChange={(e) => {
-									setForm((f) => ({ ...f, code: e.target.value }));
-									setErrors((er) => ({ ...er, code: '' }));
-								}}
-								placeholder='VD: TH_BS_RHM'
-							/>
-							{errors.code && <div className={styles.fieldError}>{errors.code}</div>}
-						</div>
-						<div className={styles.formGroup}>
-							<label className={styles.formLabel}>Trạng thái</label>
-							<select
-								className={styles.formInput}
-								value={form.is_active ? '1' : '0'}
-								onChange={(e) => setForm((f) => ({ ...f, is_active: e.target.value === '1' }))}
+				<div
+					className={styles.formGroup}
+					style={{ gridColumn: '1 / -1' }}
+				>
+					<label className={styles.formLabel}>Thuộc chương trình đào tạo (gõ để tìm, 1 bài có thể thuộc nhiều CTĐT)</label>
+					<div
+						className={styles.tagBox}
+						ref={boxRef}
+					>
+						{selectedPrograms.map((p) => (
+							<span
+								key={p.id}
+								className={styles.tagPill}
 							>
-								<option value='1'>Hoạt động</option>
-								<option value='0'>Ngưng hoạt động</option>
-							</select>
-						</div>
-
-						<div
-							className={styles.formGroup}
-							style={{ gridColumn: '1 / -1' }}
-						>
-							<label className={styles.formLabel}>
-								Tên bài học <span className={styles.required}>*</span>
-							</label>
-							<input
-								className={`${styles.formInput} ${errors.title ? styles.inputError : ''}`}
-								value={form.title}
-								onChange={(e) => {
-									setForm((f) => ({ ...f, title: e.target.value }));
-									setErrors((er) => ({ ...er, title: '' }));
-								}}
-								placeholder='VD: Thực hành vòng Răng hàm mặt'
-							/>
-							{errors.title && <div className={styles.fieldError}>{errors.title}</div>}
-						</div>
-
-						<div
-							className={styles.formGroup}
-							style={{ gridColumn: '1 / -1', display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 'var(--space-4)' }}
-						>
-							<div className={styles.formGroup}>
-								<label className={styles.formLabel}>Số tiết lý thuyết</label>
-								<input
-									type='number'
-									min={0}
-									className={styles.formInput}
-									value={form.theory_hours}
-									onChange={(e) => setForm((f) => ({ ...f, theory_hours: e.target.value }))}
-								/>
-							</div>
-							<div className={styles.formGroup}>
-								<label className={styles.formLabel}>Số tiết thực hành</label>
-								<input
-									type='number'
-									min={0}
-									className={styles.formInput}
-									value={form.practice_hours}
-									onChange={(e) => setForm((f) => ({ ...f, practice_hours: e.target.value }))}
-								/>
-							</div>
-							<div className={styles.formGroup}>
-								<label className={styles.formLabel}>Tổng số tiết</label>
-								<input
-									className={styles.formInput}
-									value={totalHours}
-									disabled
-									style={{ opacity: 0.7 }}
-								/>
-								<div className={styles.hint}>Tự tính từ lý thuyết + thực hành</div>
-							</div>
-						</div>
-
-						<div className={styles.formGroup}>
-							<label className={styles.formLabel}>Số tín chỉ</label>
-							<input
-								type='number'
-								min={0}
-								className={styles.formInput}
-								value={form.credits}
-								onChange={(e) => setForm((f) => ({ ...f, credits: e.target.value }))}
-							/>
-						</div>
-
-						<div
-							className={styles.formGroup}
-							style={{ gridColumn: '1 / -1' }}
-						>
-							<label className={styles.formLabel}>Thuộc chương trình đào tạo (gõ để tìm, 1 bài có thể thuộc nhiều CTĐT)</label>
-							<div
-								className={styles.tagBox}
-								ref={boxRef}
-							>
-								{selectedPrograms.map((p) => (
-									<span
-										key={p.id}
-										className={styles.tagPill}
-									>
-										{p.code ? `${p.code} - ${p.name}` : p.name}
-										<button
-											type='button'
-											className={styles.tagRemove}
-											onClick={() => removeProgram(p.id)}
+								{p.code ? `${p.code} - ${p.name}` : p.name}
+								<button
+									type='button'
+									className={styles.tagRemove}
+									onClick={() => removeProgram(p.id)}
+								>
+									<XSvg style={{ width: 10, height: 10 }} />
+								</button>
+							</span>
+						))}
+						<input
+							className={styles.tagInput}
+							placeholder='Gõ mã hoặc tên chương trình...'
+							value={query}
+							onChange={(e) => {
+								setQuery(e.target.value);
+								setShowSuggestions(true);
+							}}
+							onFocus={() => setShowSuggestions(true)}
+							onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
+						/>
+						{showSuggestions && query.trim() && (
+							<div className={styles.tagSuggestions}>
+								{suggestions.length === 0 ? (
+									<div className={styles.tagSuggestionEmpty}>Không tìm thấy chương trình phù hợp</div>
+								) : (
+									suggestions.map((p) => (
+										<div
+											key={p.id}
+											className={styles.tagSuggestionItem}
+											onMouseDown={() => addProgram(p.id)}
 										>
-											<XSvg style={{ width: 10, height: 10 }} />
-										</button>
-									</span>
-								))}
-								<input
-									className={styles.tagInput}
-									placeholder='Gõ mã hoặc tên chương trình...'
-									value={query}
-									onChange={(e) => {
-										setQuery(e.target.value);
-										setShowSuggestions(true);
-									}}
-									onFocus={() => setShowSuggestions(true)}
-									onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
-								/>
-								{showSuggestions && query.trim() && (
-									<div className={styles.tagSuggestions}>
-										{suggestions.length === 0 ? (
-											<div className={styles.tagSuggestionEmpty}>Không tìm thấy chương trình phù hợp</div>
-										) : (
-											suggestions.map((p) => (
-												<div
-													key={p.id}
-													className={styles.tagSuggestionItem}
-													onMouseDown={() => addProgram(p.id)}
-												>
-													{p.code ? `${p.code} - ${p.name}` : p.name}
-												</div>
-											))
-										)}
-									</div>
+											{p.code ? `${p.code} - ${p.name}` : p.name}
+										</div>
+									))
 								)}
 							</div>
-							<div className={styles.hint}>
-								{loadingPrograms
-									? 'Đang tải danh sách chương trình đã gắn...'
-									: 'Gõ vào ô trên rồi chọn chương trình từ danh sách gợi ý. Bấm × để bỏ.'}
-							</div>
-						</div>
-
-						<div
-							className={styles.formGroup}
-							style={{ gridColumn: '1 / -1' }}
-						>
-							<label className={styles.formLabel}>Mô tả</label>
-							<textarea
-								className={styles.formTextarea}
-								rows={3}
-								value={form.description}
-								onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
-							/>
-						</div>
+						)}
+					</div>
+					<div className={styles.hint}>
+						{loadingPrograms
+							? 'Đang tải danh sách chương trình đã gắn...'
+							: 'Gõ vào ô trên rồi chọn chương trình từ danh sách gợi ý. Bấm × để bỏ.'}
 					</div>
 				</div>
 
-				<div className={styles.modalFooter}>
-					<button
-						className={styles.btnCancel}
-						onClick={onClose}
-						disabled={saving}
-					>
-						Huỷ
-					</button>
-					<button
-						className={styles.btnConfirm}
-						onClick={handleSave}
-						disabled={saving}
-					>
-						{saving ? <span className={styles.spinner} /> : <CheckSvg />}
-						{mode === 'add' ? 'Thêm bài học' : 'Lưu thay đổi'}
-					</button>
-				</div>
+				<FormField
+					label='Mô tả'
+					style={{ gridColumn: '1 / -1' }}
+				>
+					<textarea
+						className={styles.formTextarea}
+						rows={3}
+						value={form.description}
+						onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
+					/>
+				</FormField>
 			</div>
-		</div>
+		</Modal>
 	);
 }

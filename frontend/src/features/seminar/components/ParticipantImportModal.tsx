@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { CheckSvg, DownloadSvg, InfoSvg, UploadSvg, XSvg } from '@/assets/icons';
-import { Badge, FileDropzone } from '@/shared/components';
+import { CheckSvg, DownloadSvg, InfoSvg, UploadSvg } from '@/assets/icons';
+import { Badge, FileDropzone, Modal } from '@/shared/components';
 import { downloadParticipantImportTemplate, importParticipantsExcel } from '../api/seminarApi';
 import { saveBlob } from '../utils/saveBlob';
 import {
@@ -151,267 +151,16 @@ export function ParticipantImportModal({
 	const withCredits = rows.filter((r) => effectiveCredits(r) != null).length;
 
 	return (
-		<div
-			className={styles.modalBackdrop}
-			onClick={(e) => e.target === e.currentTarget && onClose()}
-		>
-			<div className={styles.modal}>
-				<div className={styles.modalHeader}>
-					<UploadSvg />
-					<div>
-						<div className={styles.modalTitle}>Nhập người tham dự từ Excel</div>
-						<div className={styles.modalSub}>
-							Tự dò tiêu đề cột — mẫu "Danh sách cấp CME nội/ngoại viện"
-						</div>
-					</div>
-					<button className={styles.modalClose} onClick={onClose}>
-						<XSvg />
-					</button>
-				</div>
-
-				<div className={styles.modalBody}>
-					{!result && (
-						<>
-							<div className={styles.noticeBox}>
-								<InfoSvg />
-								<span>
-									Cột nhận diện: <b>Họ và tên</b> (bắt buộc), SQĐ, Ông/Bà, Ngày
-									sinh, Giới tính, Đơn vị công tác, Khoa/phòng, MNV, TĐCM, Số tín
-									chỉ (chấp nhận "3,5"), Vai trò, Ghi chú. Cán bộ nội viện tự khớp
-									theo MNV rồi họ tên; không khớp được sẽ lưu dạng ngoại viện.
-									Mỗi người có thể có <b>số tín chỉ riêng</b> — ô để trống sẽ lấy
-									mặc định theo vai trò bên dưới.
-								</span>
-							</div>
-
-							<button
-								type='button'
-								className={styles.btnGhost}
-								onClick={downloadTemplate}
-								disabled={downloading}
-								style={{ marginBottom: 12 }}
-							>
-								{downloading ? <span className={styles.spinner} /> : <DownloadSvg />}
-								Tải file mẫu
-							</button>
-
-							<div className={styles.formGroup}>
-								<label className={styles.formLabel}>File Excel (.xlsx)</label>
-								<FileDropzone
-									value={file}
-									onChange={onPickFile}
-									accept='.xlsx'
-									disabled={loading}
-								/>
-							</div>
-
-							{grantsCme && (
-								<label
-									className={styles.checkFilter}
-									style={{ marginTop: 10 }}
-								>
-									<input
-										type='checkbox'
-										checked={issueCme}
-										onChange={(e) => onToggleIssue(e.target.checked)}
-									/>
-									Cấp số quyết định CME ngay sau khi nhập
-									{issueCme && !eventYear && (
-										<span className={styles.rowWarn} style={{ marginLeft: 6 }}>
-											(cần đặt "Năm sự kiện" cho hội nghị)
-										</span>
-									)}
-								</label>
-							)}
-
-							{loading && (
-								<div className={styles.modalSub} style={{ marginTop: 10 }}>
-									<span className={styles.spinner} /> Đang đọc file…
-								</div>
-							)}
-							{error && <div className={styles.fieldError}>{error}</div>}
-
-							{s && (
-								<>
-									<div
-										className={`${styles.noticeBox} ${styles.noticeOk}`}
-										style={{ marginTop: 12 }}
-									>
-										<CheckSvg />
-										<span>
-											Đọc được <b>{s.total}</b> người · {s.matched} khớp cán bộ
-											nội viện · {s.internal} nội viện · {s.external} ngoại viện
-											· {withCredits}/{s.total} người có số tín chỉ.
-										</span>
-									</div>
-
-									{blankRoles.length > 0 && (
-										<div className={styles.creditsBox}>
-											<div className={styles.creditsTitle}>
-												Số tín chỉ cho người để trống cột "Số tín chỉ"
-											</div>
-											<div className={styles.creditsGrid}>
-												{blankRoles.map((role) => {
-													const v = roleCredits[role] ?? '';
-													const bad = v.trim() !== '' && parseCredit(v) == null;
-													return (
-														<label
-															key={role}
-															className={styles.creditsItem}
-														>
-															<span>
-																{PARTICIPATION_LABELS[role]}{' '}
-																<span className={styles.muted}>({blankByRole[role]} người)</span>
-															</span>
-															<input
-																className={`${styles.formInput} ${bad ? styles.inputError : ''}`}
-																inputMode='decimal'
-																placeholder='Để trống'
-																value={v}
-																onChange={(e) =>
-																	setRoleCredits((m) => ({ ...m, [role]: e.target.value }))
-																}
-															/>
-														</label>
-													);
-												})}
-											</div>
-											<div className={styles.modalSub}>
-												Người đã có số tín chỉ trong file giữ nguyên số của mình. Để trống = chưa
-												ghi tín chỉ{issueCme && defaultCredits != null
-													? ` (khi cấp CME sẽ lấy mặc định của hội thảo: ${defaultCredits})`
-													: ''}
-												.
-											</div>
-											{invalidCredit && (
-												<div className={styles.fieldError}>
-													Số tín chỉ phải là số ≥ 0 (VD: 3 hoặc 3,5).
-												</div>
-											)}
-										</div>
-									)}
-
-									{preview!.warnings.length > 0 && (
-										<ul className={styles.warnList}>
-											{preview!.warnings.slice(0, 50).map((w, i) => (
-												<li key={i}>{w}</li>
-											))}
-											{preview!.warnings.length > 50 && (
-												<li>…và {preview!.warnings.length - 50} cảnh báo khác</li>
-											)}
-										</ul>
-									)}
-
-									<div className={styles.importPreview}>
-										<table className={styles.table}>
-											<thead>
-												<tr>
-													<th>#</th>
-													<th>Họ tên</th>
-													<th>Vai trò</th>
-													<th>Nguồn</th>
-													<th>Đơn vị / Khoa</th>
-													<th>Ngày sinh</th>
-													<th>Tín chỉ</th>
-												</tr>
-											</thead>
-											<tbody>
-												{rows.map((r, i) => (
-													<tr key={r.row}>
-														<td className={styles.tdIdx}>{i + 1}</td>
-														<td>
-															{r.title_prefix ? `${r.title_prefix} ` : ''}
-															{r.full_name}
-															{r.is_foreign && (
-																<Badge
-																	tone='amber'
-																	style={{ marginLeft: 6 }}
-																>
-																	NN
-																</Badge>
-															)}
-															{r.matched_user && (
-																<Badge
-																	tone='green'
-																	style={{ marginLeft: 6 }}
-																	title={r.matched_user.department_name || ''}
-																>
-																	đã khớp
-																</Badge>
-															)}
-															{r.warnings.map((w, j) => (
-																<div key={j} className={styles.rowWarn}>
-																	{w}
-																</div>
-															))}
-														</td>
-														<td>
-															{PARTICIPATION_LABELS[r.participation_type]}
-														</td>
-														<td>{SOURCE_LABELS[r.source]}</td>
-														<td>
-															{r.organization ||
-																r.department_raw ||
-																(r.matched_user?.department_name ?? (
-																	<span className={styles.muted}>—</span>
-																))}
-														</td>
-														<td>{fmtDob(r)}</td>
-														<td>
-															{r.cme_credits != null ? (
-																r.cme_credits
-															) : effectiveCredits(r) != null ? (
-																<span title='Mặc định theo vai trò'>
-																	{effectiveCredits(r)}{' '}
-																	<span className={styles.muted}>(mặc định)</span>
-																</span>
-															) : (
-																<span className={styles.muted}>—</span>
-															)}
-														</td>
-													</tr>
-												))}
-											</tbody>
-										</table>
-									</div>
-								</>
-							)}
-						</>
-					)}
-
-					{result && (
-						<>
-							<div className={`${styles.noticeBox} ${styles.noticeOk}`}>
-								<CheckSvg />
-								<span>
-									Đã nhập <b>{result.inserted}</b> người
-									{result.cme_issued ? (
-										<>
-											{' '}
-											và cấp <b>{result.cme_issued}</b> số CME (
-											<span className={styles.mono}>
-												{String(result.cme_from).padStart(4, '0')}–
-												{String(result.cme_to).padStart(4, '0')}
-											</span>{' '}
-											/ {result.cme_year}).
-										</>
-									) : (
-										'.'
-									)}
-								</span>
-							</div>
-							{result.warnings.length > 0 && (
-								<ul className={styles.warnList}>
-									{result.warnings.slice(0, 50).map((w, i) => (
-										<li key={i}>{w}</li>
-									))}
-								</ul>
-							)}
-						</>
-					)}
-				</div>
-
-				<div className={styles.modalFooter}>
+		<Modal
+			open
+			onClose={onClose}
+			icon={<UploadSvg />}
+			title='Nhập người tham dự từ Excel'
+			subtitle='Tự dò tiêu đề cột — mẫu "Danh sách cấp CME nội/ngoại viện"'
+			className={styles.modal}
+			bodyClassName={styles.modalBody}
+			footer={
+				<>
 					<button
 						className={styles.btnCancel}
 						onClick={onClose}
@@ -429,8 +178,248 @@ export function ParticipantImportModal({
 							Nhập {rows.length || ''} người
 						</button>
 					)}
-				</div>
-			</div>
-		</div>
+				</>
+			}
+		>
+			{!result && (
+				<>
+					<div className={styles.noticeBox}>
+						<InfoSvg />
+						<span>
+							Cột nhận diện: <b>Họ và tên</b> (bắt buộc), SQĐ, Ông/Bà, Ngày
+							sinh, Giới tính, Đơn vị công tác, Khoa/phòng, MNV, TĐCM, Số tín
+							chỉ (chấp nhận "3,5"), Vai trò, Ghi chú. Cán bộ nội viện tự khớp
+							theo MNV rồi họ tên; không khớp được sẽ lưu dạng ngoại viện.
+							Mỗi người có thể có <b>số tín chỉ riêng</b> — ô để trống sẽ lấy
+							mặc định theo vai trò bên dưới.
+						</span>
+					</div>
+
+					<button
+						type='button'
+						className={styles.btnGhost}
+						onClick={downloadTemplate}
+						disabled={downloading}
+						style={{ marginBottom: 12 }}
+					>
+						{downloading ? <span className={styles.spinner} /> : <DownloadSvg />}
+						Tải file mẫu
+					</button>
+
+					<div className={styles.formGroup}>
+						<label className={styles.formLabel}>File Excel (.xlsx)</label>
+						<FileDropzone
+							value={file}
+							onChange={onPickFile}
+							accept='.xlsx'
+							disabled={loading}
+						/>
+					</div>
+
+					{grantsCme && (
+						<label
+							className={styles.checkFilter}
+							style={{ marginTop: 10 }}
+						>
+							<input
+								type='checkbox'
+								checked={issueCme}
+								onChange={(e) => onToggleIssue(e.target.checked)}
+							/>
+							Cấp số quyết định CME ngay sau khi nhập
+							{issueCme && !eventYear && (
+								<span className={styles.rowWarn} style={{ marginLeft: 6 }}>
+									(cần đặt "Năm sự kiện" cho hội nghị)
+								</span>
+							)}
+						</label>
+					)}
+
+					{loading && (
+						<div className={styles.modalSub} style={{ marginTop: 10 }}>
+							<span className={styles.spinner} /> Đang đọc file…
+						</div>
+					)}
+					{error && <div className={styles.fieldError}>{error}</div>}
+
+					{s && (
+						<>
+							<div
+								className={`${styles.noticeBox} ${styles.noticeOk}`}
+								style={{ marginTop: 12 }}
+							>
+								<CheckSvg />
+								<span>
+									Đọc được <b>{s.total}</b> người · {s.matched} khớp cán bộ
+									nội viện · {s.internal} nội viện · {s.external} ngoại viện
+									· {withCredits}/{s.total} người có số tín chỉ.
+								</span>
+							</div>
+
+							{blankRoles.length > 0 && (
+								<div className={styles.creditsBox}>
+									<div className={styles.creditsTitle}>
+										Số tín chỉ cho người để trống cột "Số tín chỉ"
+									</div>
+									<div className={styles.creditsGrid}>
+										{blankRoles.map((role) => {
+											const v = roleCredits[role] ?? '';
+											const bad = v.trim() !== '' && parseCredit(v) == null;
+											return (
+												<label
+													key={role}
+													className={styles.creditsItem}
+												>
+													<span>
+														{PARTICIPATION_LABELS[role]}{' '}
+														<span className={styles.muted}>({blankByRole[role]} người)</span>
+													</span>
+													<input
+														className={`${styles.formInput} ${bad ? styles.inputError : ''}`}
+														inputMode='decimal'
+														placeholder='Để trống'
+														value={v}
+														onChange={(e) =>
+															setRoleCredits((m) => ({ ...m, [role]: e.target.value }))
+														}
+													/>
+												</label>
+											);
+										})}
+									</div>
+									<div className={styles.modalSub}>
+										Người đã có số tín chỉ trong file giữ nguyên số của mình. Để trống = chưa
+										ghi tín chỉ{issueCme && defaultCredits != null
+											? ` (khi cấp CME sẽ lấy mặc định của hội thảo: ${defaultCredits})`
+											: ''}
+										.
+									</div>
+									{invalidCredit && (
+										<div className={styles.fieldError}>
+											Số tín chỉ phải là số ≥ 0 (VD: 3 hoặc 3,5).
+										</div>
+									)}
+								</div>
+							)}
+
+							{preview!.warnings.length > 0 && (
+								<ul className={styles.warnList}>
+									{preview!.warnings.slice(0, 50).map((w, i) => (
+										<li key={i}>{w}</li>
+									))}
+									{preview!.warnings.length > 50 && (
+										<li>…và {preview!.warnings.length - 50} cảnh báo khác</li>
+									)}
+								</ul>
+							)}
+
+							<div className={styles.importPreview}>
+								<table className={styles.table}>
+									<thead>
+										<tr>
+											<th>#</th>
+											<th>Họ tên</th>
+											<th>Vai trò</th>
+											<th>Nguồn</th>
+											<th>Đơn vị / Khoa</th>
+											<th>Ngày sinh</th>
+											<th>Tín chỉ</th>
+										</tr>
+									</thead>
+									<tbody>
+										{rows.map((r, i) => (
+											<tr key={r.row}>
+												<td className={styles.tdIdx}>{i + 1}</td>
+												<td>
+													{r.title_prefix ? `${r.title_prefix} ` : ''}
+													{r.full_name}
+													{r.is_foreign && (
+														<Badge
+															tone='amber'
+															style={{ marginLeft: 6 }}
+														>
+															NN
+														</Badge>
+													)}
+													{r.matched_user && (
+														<Badge
+															tone='green'
+															style={{ marginLeft: 6 }}
+															title={r.matched_user.department_name || ''}
+														>
+															đã khớp
+														</Badge>
+													)}
+													{r.warnings.map((w, j) => (
+														<div key={j} className={styles.rowWarn}>
+															{w}
+														</div>
+													))}
+												</td>
+												<td>
+													{PARTICIPATION_LABELS[r.participation_type]}
+												</td>
+												<td>{SOURCE_LABELS[r.source]}</td>
+												<td>
+													{r.organization ||
+														r.department_raw ||
+														(r.matched_user?.department_name ?? (
+															<span className={styles.muted}>—</span>
+														))}
+												</td>
+												<td>{fmtDob(r)}</td>
+												<td>
+													{r.cme_credits != null ? (
+														r.cme_credits
+													) : effectiveCredits(r) != null ? (
+														<span title='Mặc định theo vai trò'>
+															{effectiveCredits(r)}{' '}
+															<span className={styles.muted}>(mặc định)</span>
+														</span>
+													) : (
+														<span className={styles.muted}>—</span>
+													)}
+												</td>
+											</tr>
+										))}
+									</tbody>
+								</table>
+							</div>
+						</>
+					)}
+				</>
+			)}
+
+			{result && (
+				<>
+					<div className={`${styles.noticeBox} ${styles.noticeOk}`}>
+						<CheckSvg />
+						<span>
+							Đã nhập <b>{result.inserted}</b> người
+							{result.cme_issued ? (
+								<>
+									{' '}
+									và cấp <b>{result.cme_issued}</b> số CME (
+									<span className={styles.mono}>
+										{String(result.cme_from).padStart(4, '0')}–
+										{String(result.cme_to).padStart(4, '0')}
+									</span>{' '}
+									/ {result.cme_year}).
+								</>
+							) : (
+								'.'
+							)}
+						</span>
+					</div>
+					{result.warnings.length > 0 && (
+						<ul className={styles.warnList}>
+							{result.warnings.slice(0, 50).map((w, i) => (
+								<li key={i}>{w}</li>
+							))}
+						</ul>
+					)}
+				</>
+			)}
+		</Modal>
 	);
 }

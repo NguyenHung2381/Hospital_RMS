@@ -5,6 +5,14 @@ const { broadcast } = require('./eventService');
 // giá trị nghiệp vụ hay đổi. value NULL = "chưa cấu hình qua UI, dùng .env"
 // (mailService.js/cmeRequirementService.js tự fallback process.env).
 const SECRET_KEYS = new Set(['SMTP_PASS']);
+// Whitelist — PUT /:key không được tạo key tuỳ ý. Thêm key mới = thêm ở đây +
+// trang cấu hình frontend (features/settings).
+const KEYS = [
+	'MAIL_ENABLED', 'SMTP_HOST', 'SMTP_PORT', 'SMTP_SECURE', 'SMTP_USER', 'SMTP_PASS', 'SMTP_FROM_NAME',
+	'PUBLIC_BASE_URL', 'CME_CYCLE_YEARS', 'CME_MIN_HOURS', 'REQUIRE_2FA_FOR_ADMINS', 'TWOFA_GRACE_DAYS', 'ALERT_EMAILS', 'PASSWORD_RESET_ENABLED',
+	'MODULE_RESEARCH', 'MODULE_TRAINING', 'MODULE_SEMINAR', 'MODULE_SURVEY',
+];
+const isKey = (key) => KEYS.includes(key);
 const MASK = '••••••';
 
 // Không bao giờ trả plaintext secret ra ngoài — chỉ báo "đã đặt" hay chưa.
@@ -16,20 +24,20 @@ const maskRow = (row) => {
 	return { ...row, has_value: row.value !== null && row.value !== '' };
 };
 
-const getAll = async () => {
+// Cache 15s/worker: getValue được gọi mỗi request (chính sách 2FA) — không để mỗi
+// lần chạm DB. update() xoá cache của worker xử lý; worker khác tự hết hạn sau TTL.
+const TTL_MS = 15000;
+let cache = null;
+const loadRows = async () => {
+	if (cache && Date.now() - cache.at < TTL_MS) return cache.rows;
 	const pool = await getPool();
-	const result = await pool.request().query('SELECT * FROM system_settings ORDER BY setting_key');
-	return result.recordset.map(maskRow);
+	const result = await pool.request().query('SELECT * FROM system_settings');
+	const rows = new Map(result.recordset.map((r) => [r.setting_key, r]));
+	cache = { at: Date.now(), rows };
+	return rows;
 };
 
-const getRaw = async (key) => {
-	const pool = await getPool();
-	const result = await pool
-		.request()
-		.input('key', sql.VarChar(50), key)
-		.query('SELECT * FROM system_settings WHERE setting_key = @key');
-	return result.recordset[0] || null;
-};
+const getRaw = async (key) => (await loadRows()).get(key) || null;
 
 // Đọc giá trị đã cấu hình qua UI, fallback về .env nếu bảng trống/NULL —
 // dùng ở mailService.js, cmeRequirementService.js... không phải ở route.
@@ -39,9 +47,21 @@ const getValue = async (key, envFallback) => {
 	return envFallback !== undefined ? envFallback : process.env[key];
 };
 
+// Mỗi key trong whitelist 1 dòng; `effective` = giá trị đang áp dụng (UI hoặc .env),
+// không trả cho secret.
+const getAll = async () =>
+	Promise.all(
+		KEYS.map(async (key) => {
+			const row = maskRow((await getRaw(key)) || { setting_key: key, value: null });
+			return SECRET_KEYS.has(key) ? row : { ...row, effective: (await getValue(key)) ?? null };
+		}),
+	);
+
 const getById = async (key) => maskRow(await getRaw(key));
 
 const update = async (key, value, actorId) => {
+	// UI gửi lại MASK khi admin không đổi secret → giữ nguyên giá trị cũ.
+	if (SECRET_KEYS.has(key) && value === MASK) return getById(key);
 	const pool = await getPool();
 	await pool
 		.request()
@@ -54,8 +74,9 @@ const update = async (key, value, actorId) => {
       WHEN MATCHED THEN UPDATE SET value = @value, updated_at = GETDATE(), updated_by = @actor_id
       WHEN NOT MATCHED THEN INSERT (setting_key, value, created_by, updated_by) VALUES (@key, @value, @actor_id, @actor_id);
     `);
+	cache = null;
 	broadcast('update', { entity: 'system_setting' });
 	return getById(key);
 };
 
-module.exports = { getAll, getById, getValue, update };
+module.exports = { getAll, getById, getValue, update, isKey };

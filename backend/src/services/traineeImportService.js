@@ -4,9 +4,9 @@
  * dry_run trả preview, commit mới ghi DB) — đối chiếu QLNCKHDTCDT-main
  * (DM_HocVien::importExcel) vốn có tính năng này nhưng RMS trước đây chưa có.
  */
-const ExcelJS = require('exceljs');
 const { getPool } = require('../config/db');
 const { norm, normDept } = require('../utils/vietnameseText');
+const { parseDob, readSheet } = require('../utils/excelImport');
 const { normalizeGender } = require('../utils/gender');
 const traineeService = require('./traineeService');
 
@@ -36,93 +36,21 @@ const parseIsEmployee = (raw) => {
 	return !NEGATIVE_TEXT.has(v);
 };
 
-const cellText = (cell) => {
-	if (!cell) return '';
-	try {
-		return String(cell.text ?? '').replace(/\s+/g, ' ').trim();
-	} catch {
-		return '';
-	}
-};
-
-const pad2 = (n) => String(n).padStart(2, '0');
-
-const parseDob = (cell) => {
-	if (!cell) return { dob: null, dob_text: null };
-	const v = cell.value;
-	if (v instanceof Date && !Number.isNaN(v.getTime())) {
-		return { dob: `${v.getUTCFullYear()}-${pad2(v.getUTCMonth() + 1)}-${pad2(v.getUTCDate())}`, dob_text: null };
-	}
-	const raw = cellText(cell).replace(/^['"\s]+/, '').trim();
-	if (!raw) return { dob: null, dob_text: null };
-	const m = raw.match(/^(\d{1,2})[/\-.](\d{1,2})[/\-.](\d{4})$/);
-	if (m) {
-		const d = +m[1];
-		const mo = +m[2];
-		const y = +m[3];
-		if (d >= 1 && d <= 31 && mo >= 1 && mo <= 12) {
-			return { dob: `${y}-${pad2(mo)}-${pad2(d)}`, dob_text: null };
-		}
-	}
-	if (/^\d{4}$/.test(raw)) return { dob: null, dob_text: raw };
-	return { dob: null, dob_text: raw };
-};
-
 // Nhận "Nam"/"Nữ"/"Khác" trong file → mã lưu DB (xem utils/gender).
 const normGender = normalizeGender;
 
-const findHeader = (workbook) => {
-	for (const ws of workbook.worksheets) {
-		const scanMax = Math.min(ws.actualRowCount || ws.rowCount || 0, 30);
-		for (let r = 1; r <= scanMax; r++) {
-			const row = ws.getRow(r);
-			const cols = {};
-			row.eachCell({ includeEmpty: false }, (cell, col) => {
-				const h = norm(cellText(cell));
-				if (!h) return;
-				for (const [field, test] of COLUMN_MATCHERS) {
-					if (cols[field] == null && test(h)) {
-						cols[field] = col;
-						break;
-					}
-				}
-			});
-			if (cols.full_name) return { ws, headerRow: r, cols };
-		}
-	}
-	return null;
-};
-
 const parseWorkbook = async (buffer) => {
-	const workbook = new ExcelJS.Workbook();
-	try {
-		await workbook.xlsx.load(buffer);
-	} catch {
-		throw Object.assign(new Error('File không đọc được — cần file .xlsx hợp lệ.'), { statusCode: 400 });
-	}
-	const header = findHeader(workbook);
-	if (!header) {
-		throw Object.assign(
-			new Error(
-				'Không tìm thấy dòng tiêu đề (cần ít nhất cột "Họ và tên"; các cột nhận diện: Ngày sinh, Giới tính, CCCD, SĐT, Email, Địa chỉ, Đối tượng học viên, Khoa/phòng, Trình độ, Trường đào tạo, Năm tốt nghiệp, Ghi chú).',
-			),
-			{ statusCode: 400 },
-		);
-	}
-	const { ws, headerRow, cols } = header;
-	const get = (row, field) => (cols[field] ? cellText(row.getCell(cols[field])) : '');
+	const { cols, rows: sheetRows } = await readSheet(buffer, {
+		matchers: COLUMN_MATCHERS,
+		isValid: (c) => !!c.full_name,
+		headerError:
+			'Không tìm thấy dòng tiêu đề (cần ít nhất cột "Họ và tên"; các cột nhận diện: Ngày sinh, Giới tính, CCCD, SĐT, Email, Địa chỉ, Đối tượng học viên, Khoa/phòng, Trình độ, Trường đào tạo, Năm tốt nghiệp, Ghi chú).',
+		isEmpty: (get, row) => !get(row, 'full_name'),
+	});
 
 	const rows = [];
-	let emptyStreak = 0;
-	const maxRow = ws.actualRowCount || ws.rowCount || headerRow;
-	for (let r = headerRow + 1; r <= maxRow && emptyStreak < 25; r++) {
-		const row = ws.getRow(r);
+	for (const { r, row, get } of sheetRows) {
 		const fullName = get(row, 'full_name');
-		if (!fullName) {
-			emptyStreak++;
-			continue;
-		}
-		emptyStreak = 0;
 		const { dob, dob_text } = parseDob(cols.dob ? row.getCell(cols.dob) : null);
 		const graduatedYearRaw = get(row, 'graduated_year');
 		rows.push({

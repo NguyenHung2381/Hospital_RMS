@@ -82,63 +82,18 @@ export function MemberSearchBox({
 					size='md'
 				/>
 			</div>
-			{pendingMembers.length === 0 && (
-				<div
-					style={{
-						fontSize: 11,
-						color: 'var(--color-gray-400)',
-						marginTop: -2,
-						marginBottom: 6,
-					}}
-				>
-					Người đầu tiên được thêm sẽ là Chủ nhiệm
-				</div>
-			)}
-
-			{!isManualAdd && (
-				<button
-					type='button'
-					className={styles.btnSecondary}
-					style={{
-						fontSize: 12,
-						padding: '6px 12px',
-						marginBottom: 8,
-						alignSelf: 'flex-start',
-						display: 'inline-flex',
-						alignItems: 'center',
-						gap: 6,
-						cursor: 'pointer',
-						boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
-						border: '1.5px dashed var(--color-gray-300)',
-						color: 'var(--color-gray-500)',
-						background: 'none',
-						transition: 'all 0.15s ease',
-					}}
-					onClick={startManualAdd}
-					onMouseEnter={(e) => {
-						e.currentTarget.style.borderColor = 'var(--color-primary)';
-						e.currentTarget.style.color = 'var(--color-primary-dark)';
-						e.currentTarget.style.background = 'var(--color-primary-pale)';
-					}}
-					onMouseLeave={(e) => {
-						e.currentTarget.style.borderColor = 'var(--color-gray-300)';
-						e.currentTarget.style.color = 'var(--color-gray-500)';
-						e.currentTarget.style.background = 'none';
-					}}
-				>
-					<PlusSvg style={{ width: 12, height: 12 }} />
-					Thêm thủ công
-				</button>
-			)}
-
 			{showSuggestions && memberQuery.trim().length >= 2 && (
 				<div
+					// Mục này nằm cuối thân modal (có cuộn) → kéo danh sách gợi ý vào tầm nhìn
+					ref={(el) => el?.scrollIntoView({ block: 'nearest', behavior: 'smooth' })}
 					style={{
 						border: '1px solid var(--color-gray-200)',
 						borderRadius: 8,
 						marginBottom: 8,
 						maxHeight: '240px',
 						overflowY: 'auto',
+						// Thân modal là flex cột: có overflow thì min-height = 0 → bị co còn 2px
+						flexShrink: 0,
 						boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
 						background: 'var(--color-white)',
 					}}
@@ -310,6 +265,55 @@ export function MemberSearchBox({
 					)}
 				</div>
 			)}
+			{pendingMembers.length === 0 && (
+				<div
+					style={{
+						fontSize: 11,
+						color: 'var(--color-gray-400)',
+						marginTop: -2,
+						marginBottom: 6,
+					}}
+				>
+					Người đầu tiên được thêm sẽ là Chủ nhiệm
+				</div>
+			)}
+
+			{!isManualAdd && (
+				<button
+					type='button'
+					className={styles.btnSecondary}
+					style={{
+						fontSize: 12,
+						padding: '6px 12px',
+						marginBottom: 8,
+						alignSelf: 'flex-start',
+						display: 'inline-flex',
+						alignItems: 'center',
+						gap: 6,
+						cursor: 'pointer',
+						boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
+						border: '1.5px dashed var(--color-gray-300)',
+						color: 'var(--color-gray-500)',
+						background: 'none',
+						transition: 'all 0.15s ease',
+					}}
+					onClick={startManualAdd}
+					onMouseEnter={(e) => {
+						e.currentTarget.style.borderColor = 'var(--color-primary)';
+						e.currentTarget.style.color = 'var(--color-primary-dark)';
+						e.currentTarget.style.background = 'var(--color-primary-pale)';
+					}}
+					onMouseLeave={(e) => {
+						e.currentTarget.style.borderColor = 'var(--color-gray-300)';
+						e.currentTarget.style.color = 'var(--color-gray-500)';
+						e.currentTarget.style.background = 'none';
+					}}
+				>
+					<PlusSvg style={{ width: 12, height: 12 }} />
+					Thêm thủ công
+				</button>
+			)}
+
 		</>
 	);
 }

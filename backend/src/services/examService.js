@@ -1,4 +1,5 @@
 const { getPool, sql } = require('../config/db');
+const { parseJsonArray } = require('../utils/sqlFilters');
 const { broadcast } = require('./eventService');
 const courseService = require('./courseService');
 
@@ -7,16 +8,7 @@ const QUESTION_TYPES = ['single_choice', 'essay'];
 // không lọc — giữ nguyên câu tự luận của đề tạo trước khi có cột này.
 const PAPER_QUESTION_TYPE = { multiple_choice: 'single_choice', essay: 'essay' };
 
-const parseOptions = (row) => {
-	if (row.options === undefined) return row;
-	let options = [];
-	try {
-		options = row.options ? JSON.parse(row.options) : [];
-	} catch {
-		options = [];
-	}
-	return { ...row, options };
-};
+const parseOptions = (row) => (row.options === undefined ? row : { ...row, options: parseJsonArray(row.options) });
 
 // ─── Ngân hàng câu hỏi ───────────────────────────────────────────────────────
 const listQuestions = async ({ subject_id, search, question_type } = {}) => {

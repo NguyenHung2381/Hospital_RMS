@@ -1,5 +1,6 @@
+import { Modal } from '@/shared/components';
 import { useState } from 'react';
-import { CheckSvg as IcCheck, XSvg as IcX } from '@/assets/icons';
+import { CheckSvg as IcCheck } from '@/assets/icons';
 import styles from '../pages/Topic.module.css';
 import type { SimpleItem } from '../api/topicApi';
 import type { TopicBulkPatch } from '../hooks/useTopicPage';
@@ -38,114 +39,15 @@ export function TopicBulkEditModal({
 	const hasChange = Object.keys(patch).length > 0;
 
 	return (
-		<div
-			className={styles.modalBackdrop}
-			onClick={(e) => {
-				if (e.target === e.currentTarget) onClose();
-			}}
-		>
-			<div
-				className={styles.modal}
-				role='dialog'
-				aria-modal='true'
-			>
-				<div className={styles.modalHeader}>
-					<div>
-						<h2 className={styles.modalTitle}>Sửa đồng loạt</h2>
-						<p className={styles.modalSubtitle}>{count} đề tài đã chọn</p>
-					</div>
-					<button
-						className={styles.modalCloseBtn}
-						onClick={onClose}
-						aria-label='Đóng'
-					>
-						<IcX />
-					</button>
-				</div>
-
-				<div className={styles.modalBody}>
-					<p className={styles.modalSubtitle} style={{ marginTop: 0 }}>
-						Trường để "Giữ nguyên" sẽ không bị ghi đè.
-					</p>
-					<div className={styles.formRow}>
-						<label>
-							<div className={styles.formSection}>Trạng thái</div>
-							<select
-								className={styles.formSelect}
-								value={status}
-								onChange={(e) => setStatus(e.target.value as TopicStatus | '')}
-							>
-								<option value=''>— Giữ nguyên —</option>
-								{(Object.keys(STATUS_CFG) as TopicStatus[]).map((s) => (
-									<option
-										key={s}
-										value={s}
-									>
-										{STATUS_CFG[s].label}
-									</option>
-								))}
-							</select>
-						</label>
-						<label>
-							<div className={styles.formSection}>Phân loại</div>
-							<select
-								className={styles.formSelect}
-								value={categoryId}
-								onChange={(e) => setCategoryId(e.target.value)}
-							>
-								<option value=''>— Giữ nguyên —</option>
-								{categories.map((c) => (
-									<option
-										key={c.id}
-										value={c.id}
-									>
-										{c.name}
-									</option>
-								))}
-							</select>
-						</label>
-					</div>
-					<div className={styles.formRow}>
-						<label>
-							<div className={styles.formSection}>Cấp độ</div>
-							<select
-								className={styles.formSelect}
-								value={levelId}
-								onChange={(e) => setLevelId(e.target.value)}
-							>
-								<option value=''>— Giữ nguyên —</option>
-								{levels.map((l) => (
-									<option
-										key={l.id}
-										value={l.id}
-									>
-										{l.name}
-									</option>
-								))}
-							</select>
-						</label>
-						<label>
-							<div className={styles.formSection}>Khoa / Phòng</div>
-							<select
-								className={styles.formSelect}
-								value={departmentId}
-								onChange={(e) => setDepartmentId(e.target.value)}
-							>
-								<option value=''>— Giữ nguyên —</option>
-								{departments.map((dp) => (
-									<option
-										key={dp.id}
-										value={dp.id}
-									>
-										{dp.name}
-									</option>
-								))}
-							</select>
-						</label>
-					</div>
-				</div>
-
-				<div className={styles.modalFooter}>
+		<Modal
+			open
+			onClose={onClose}
+			title='Sửa đồng loạt'
+			subtitle={<>{count} đề tài đã chọn</>}
+			className={styles.modal}
+			bodyClassName={styles.modalBody}
+			footer={
+				<>
 					<button
 						className={styles.btnSecondary}
 						onClick={onClose}
@@ -170,8 +72,88 @@ export function TopicBulkEditModal({
 							</>
 						)}
 					</button>
-				</div>
+				</>
+			}
+		>
+			<p className={styles.modalSubtitle} style={{ marginTop: 0 }}>
+				Trường để "Giữ nguyên" sẽ không bị ghi đè.
+			</p>
+			<div className={styles.formRow}>
+				<label>
+					<div className={styles.formSection}>Trạng thái</div>
+					<select
+						className={styles.formSelect}
+						value={status}
+						onChange={(e) => setStatus(e.target.value as TopicStatus | '')}
+					>
+						<option value=''>— Giữ nguyên —</option>
+						{(Object.keys(STATUS_CFG) as TopicStatus[]).map((s) => (
+							<option
+								key={s}
+								value={s}
+							>
+								{STATUS_CFG[s].label}
+							</option>
+						))}
+					</select>
+				</label>
+				<label>
+					<div className={styles.formSection}>Phân loại</div>
+					<select
+						className={styles.formSelect}
+						value={categoryId}
+						onChange={(e) => setCategoryId(e.target.value)}
+					>
+						<option value=''>— Giữ nguyên —</option>
+						{categories.map((c) => (
+							<option
+								key={c.id}
+								value={c.id}
+							>
+								{c.name}
+							</option>
+						))}
+					</select>
+				</label>
 			</div>
-		</div>
+			<div className={styles.formRow}>
+				<label>
+					<div className={styles.formSection}>Cấp độ</div>
+					<select
+						className={styles.formSelect}
+						value={levelId}
+						onChange={(e) => setLevelId(e.target.value)}
+					>
+						<option value=''>— Giữ nguyên —</option>
+						{levels.map((l) => (
+							<option
+								key={l.id}
+								value={l.id}
+							>
+								{l.name}
+							</option>
+						))}
+					</select>
+				</label>
+				<label>
+					<div className={styles.formSection}>Khoa / Phòng</div>
+					<select
+						className={styles.formSelect}
+						value={departmentId}
+						onChange={(e) => setDepartmentId(e.target.value)}
+					>
+						<option value=''>— Giữ nguyên —</option>
+						{departments.map((dp) => (
+							<option
+								key={dp.id}
+								value={dp.id}
+							>
+								{dp.name}
+							</option>
+						))}
+					</select>
+				</label>
+			</div>
+		</Modal>
 	);
 }

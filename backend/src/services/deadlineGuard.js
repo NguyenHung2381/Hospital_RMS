@@ -1,14 +1,5 @@
 const { getPool, sql } = require('../config/db');
-
-const VN_OFFSET_MS = 7 * 60 * 60 * 1000; // UTC+7
-
-function todayVN() {
-	const now = new Date();
-	const vnNow = new Date(now.getTime() + VN_OFFSET_MS);
-	return new Date(
-		Date.UTC(vnNow.getUTCFullYear(), vnNow.getUTCMonth(), vnNow.getUTCDate()),
-	);
-}
+const { todayVN } = require('../utils/vnDate');
 
 const SUPPLEMENT_FIELDS = ['title', 'description', 'members', 'files'];
 

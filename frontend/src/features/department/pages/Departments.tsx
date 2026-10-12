@@ -1,30 +1,19 @@
-import { useState } from 'react';
+import { SearchInput, PageSizeSelect, SelectionCount, RowActions } from '@/shared/components/Table/TableToolbar';
 import {
 	BookOpenSvg,
-	CheckSvg,
-	EditSvg,
 	PlusSvg,
-	SearchSvg,
-	TrashSvg,
 	UsersSvg,
-	XSvg,
 } from '@/assets/icons';
 import AdminLayout from '../../../layouts/AdminLayout';
 import { SkeletonTable } from '../../../shared/components/Loading';
 import { Pagination } from '../../../shared/components/Table/Pagination';
 import sel from '../../../shared/components/Table/RowSelect.module.css';
-import {
-	BulkButton,
-	BulkDeleteModal,
-	SelectCheckbox,
-} from '../../../shared/components/Table/RowSelect';
+import { SelectCheckbox } from '../../../shared/components/Table/RowSelect';
 import { useRowSelection } from '../../../shared/hooks/useRowSelection';
 import { DeptDeleteModal } from '../components/DeptDeleteModal';
 import { DeptFormModal } from '../components/DeptFormModal';
 import { useDepartments } from '../hooks/useDepartments';
 import styles from './Departments.module.css';
-
-const PAGE_SIZE_OPTIONS = [5, 10, 25, 50, 0] as const;
 
 const DEPT_COLORS = [
 	{ bg: '#e1f5ea', color: '#085028' },
@@ -49,7 +38,6 @@ function getInitials(s: string) {
 export default function Departments() {
 	const d = useDepartments();
 	const rowSel = useRowSelection(d.paged.map((x) => x.id));
-	const [confirmBulkDelete, setConfirmBulkDelete] = useState(false);
 
 	const headerActions = (
 		<button
@@ -71,62 +59,25 @@ export default function Departments() {
 				<div className={styles.tableHeader}>
 					<div className={styles.tableHeaderLeft}>
 						<span className={styles.tableTitle}>Danh sách khoa phòng</span>
-						{rowSel.selectedCount > 0 ? (
-							<span className={styles.tableCount}>
-								Đã chọn {rowSel.selectedCount}
-								<BulkButton
-									danger
-									onClick={() => setConfirmBulkDelete(true)}
-								>
-									<TrashSvg /> Xoá đã chọn
-								</BulkButton>
-								<button
-									type='button'
-									className={styles.clearSelectionBtn}
-									onClick={rowSel.clearSelection}
-								>
-									Bỏ chọn
-								</button>
-							</span>
-						) : (
-							<span className={styles.tableCount}>
-								{d.total} khoa phòng
-							</span>
-						)}
+						<SelectionCount
+							rowSel={rowSel}
+							itemLabel='khoa phòng'
+							loading={d.loading}
+							onBulkDelete={d.handleBulkDelete}
+						>
+							{d.total} khoa phòng
+						</SelectionCount>
 					</div>
 					<div className={styles.tableControls}>
-						<div className={styles.searchBox}>
-							<SearchSvg className={styles.searchIcon} />
-							<input
-								className={styles.searchInput}
-								placeholder='Tìm theo tên, mã, viết tắt...'
-								value={d.search}
-								onChange={(e) => d.handleSearch(e.target.value)}
-							/>
-							{d.search && (
-								<button
-									className={styles.searchClear}
-									onClick={() => d.handleSearch('')}
-								>
-									<XSvg />
-								</button>
-							)}
-						</div>
-						<div className={styles.pageSizeWrap}>
-							<label className={styles.pageSizeLabel}>Hiển thị</label>
-							<select
-								className={styles.pageSizeSelect}
-								value={d.pageSize}
-								onChange={(e) => d.handlePageSize(Number(e.target.value))}
-							>
-								<option value={5}>5</option>
-								<option value={10}>10</option>
-								<option value={25}>25</option>
-								<option value={50}>50</option>
-								<option value={0}>Tất cả</option>
-							</select>
-							<span className={styles.pageSizeLabel}>dòng</span>
-						</div>
+						<SearchInput
+							value={d.search}
+							onChange={d.handleSearch}
+							placeholder='Tìm theo tên, mã, viết tắt...'
+						/>
+						<PageSizeSelect
+							value={d.pageSize}
+							onChange={d.handlePageSize}
+						/>
 					</div>
 				</div>
 
@@ -214,28 +165,16 @@ export default function Departments() {
 												</div>
 											</td>
 											<td className={`${styles.td} ${styles.tdActions}`}>
-												<div className={styles.actionBtns}>
-													<div
-														className={styles.actionBtn}
-														title='Chỉnh sửa'
-														onClick={() => {
-															d.setEditingDept(dept);
-															d.setModal('edit');
-														}}
-													>
-														<EditSvg />
-													</div>
-													<div
-														className={`${styles.actionBtn} ${styles.danger}`}
-														title='Xoá'
-														onClick={() => {
-															d.setDeletingDept(dept);
-															d.setModal('delete');
-														}}
-													>
-														<TrashSvg />
-													</div>
-												</div>
+												<RowActions
+													onEdit={() => {
+														d.setEditingDept(dept);
+														d.setModal('edit');
+													}}
+													onDelete={() => {
+														d.setDeletingDept(dept);
+														d.setModal('delete');
+													}}
+												/>
 											</td>
 										</tr>
 									);
@@ -250,26 +189,12 @@ export default function Departments() {
 					totalPages={d.totalPages}
 					total={d.total}
 					rowsPerPage={d.pageSize}
-					pageSizeOptions={PAGE_SIZE_OPTIONS}
 					onPageChange={d.setPage}
-					onRowsPerPageChange={d.handlePageSize}
 					itemLabel='khoa phòng'
 					hideSizeSelect
 				/>
 			</div>
 
-			<BulkDeleteModal
-				open={confirmBulkDelete}
-				count={rowSel.selectedCount}
-				itemLabel='khoa phòng'
-				loading={d.loading}
-				onClose={() => setConfirmBulkDelete(false)}
-				onConfirm={async () => {
-					await d.handleBulkDelete([...rowSel.selectedIds]);
-					rowSel.clearSelection();
-					setConfirmBulkDelete(false);
-				}}
-			/>
 
 			{/* ── MODALS ── */}
 			{d.modal === 'add' && (
@@ -304,15 +229,6 @@ export default function Departments() {
 				/>
 			)}
 
-			{/* ── TOAST ── */}
-			{d.toast && (
-				<div
-					className={`${styles.toast} ${styles[`toast${d.toast.type.charAt(0).toUpperCase() + d.toast.type.slice(1)}` as keyof typeof styles]}`}
-				>
-					{d.toast.type === 'success' ? <CheckSvg /> : <XSvg />}
-					{d.toast.msg}
-				</div>
-			)}
 		</AdminLayout>
 	);
 }

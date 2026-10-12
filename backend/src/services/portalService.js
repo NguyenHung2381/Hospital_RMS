@@ -221,12 +221,15 @@ const getUserCme = async (userId, year) => {
       AND (p.cme_year = @year OR (p.cme_year IS NULL AND ISNULL(s.event_year, YEAR(s.start_date)) = @year))
     ORDER BY s.start_date DESC;
 
-    SELECT r.id, r.title, r.activity_date, r.credits, r.note, c.name AS category_name,
+    SELECT r.id, r.title, r.activity_date, r.end_date, r.year, r.role, r.quantity, r.credits, r.note,
+           r.category_id, c.name AS category_name, r.approval_status, r.reject_reason,
+           f.file_name AS evidence_file_name, f.file_url AS evidence_file_url,
            CAST(CASE WHEN r.evidence_file_id IS NULL THEN 0 ELSE 1 END AS BIT) AS has_evidence
     FROM cme_records r
     LEFT JOIN cme_credit_categories c ON c.id = r.category_id
+    LEFT JOIN training_files f ON f.id = r.evidence_file_id AND f.is_deleted = 0
     WHERE r.user_id = @uid AND r.year = @year
-    ORDER BY r.activity_date DESC;
+    ORDER BY r.activity_date DESC, r.created_at DESC;
 
     SELECT TOP 1 req.required_credits
     FROM users u
@@ -238,7 +241,8 @@ const getUserCme = async (userId, year) => {
 	const [seminars, records, req] = r.recordsets;
 	const sum = (rows, key) => rows.reduce((t, x) => t + Number(x[key] || 0), 0);
 	const earned =
-		sum(seminars.filter((p) => p.cme_year === year), 'cme_credits') + sum(records, 'credits');
+		sum(seminars.filter((p) => p.cme_year === year), 'cme_credits') +
+		sum(records.filter((x) => x.approval_status === 'approved'), 'credits');
 	return {
 		year,
 		required_credits: req[0]?.required_credits ?? null,
@@ -250,4 +254,15 @@ const getUserCme = async (userId, year) => {
 
 const getMyCme = (actor, year) => getUserCme(actor.id, year);
 
-module.exports = { getMyTraining, getMyCourse, openDocument, registerCourse, getMyCme, getUserCme };
+// Danh mục quy đổi để người dùng chọn khi tự khai CME
+const getCmeCategories = async () => {
+	const pool = await getPool();
+	return (
+		await pool.request().query(`
+    SELECT c.id, c.name, g.name AS group_name, c.conversion_method, c.conversion_value, c.unit_label
+    FROM cme_credit_categories c LEFT JOIN cme_credit_groups g ON g.id = c.group_id
+    ORDER BY g.name, c.name`)
+	).recordset;
+};
+
+module.exports = { getMyTraining, getMyCourse, openDocument, registerCourse, getMyCme, getUserCme, getCmeCategories };

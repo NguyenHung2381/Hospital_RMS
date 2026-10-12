@@ -28,4 +28,33 @@ const bNoBot = border('top', 'left', 'right');
 const bNoTop = border('bottom', 'left', 'right');
 const bSides = border('left', 'right');
 
-module.exports = { fnt, al, sf, border, bAll, bNoBot, bNoTop, bSides };
+// Bảng báo cáo: dòng tiêu đề nền xanh đậm + dòng dữ liệu kẻ sọc.
+const TABLE = { hdrBlue: 'FF1F4E79', rowA: 'FFEBF3FB', rowB: 'FFF7FBFF' };
+
+function headerRow(ws, row, labels) {
+	labels.forEach((label, i) => {
+		Object.assign(ws.getCell(row, i + 1), {
+			value: label,
+			font: fnt({ bold: true, size: 10, color: 'FFFFFF' }),
+			fill: sf(TABLE.hdrBlue),
+			alignment: al('center', true),
+			border: bAll,
+		});
+	});
+	ws.getRow(row).height = 22;
+}
+
+// Số căn giữa, chữ căn trái; bg mặc định sọc theo số dòng.
+function dataRow(ws, row, values, { bg, boldFirst = false } = {}) {
+	values.forEach((v, i) => {
+		Object.assign(ws.getCell(row, i + 1), {
+			value: v ?? '',
+			font: fnt({ size: 10, bold: boldFirst && i === 0 }),
+			fill: sf(bg || (row % 2 === 0 ? TABLE.rowA : TABLE.rowB)),
+			alignment: al(typeof v === 'number' ? 'center' : 'left', true),
+			border: bAll,
+		});
+	});
+}
+
+module.exports = { fnt, al, sf, border, bAll, bNoBot, bNoTop, bSides, headerRow, dataRow };

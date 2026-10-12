@@ -1,3 +1,4 @@
+import { showToast } from '@/shared/utils/feedback';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRealtimeUpdate } from '../../../layouts/hooks/useRealtime';
 import {
@@ -29,16 +30,10 @@ export function useSeminars() {
 	const [modal, setModal] = useState<SeminarModal>(null);
 	const [editing, setEditing] = useState<Seminar | null>(null);
 	const [deleting, setDeleting] = useState<Seminar | null>(null);
-	const [toast, setToast] = useState<{ type: 'success' | 'error'; msg: string } | null>(null);
 	const [refreshKey, setRefreshKey] = useState(0);
 
 	const refresh = useCallback(() => setRefreshKey((k) => k + 1), []);
 	useRealtimeUpdate('seminar', refresh);
-
-	const showToast = useCallback((type: 'success' | 'error', msg: string) => {
-		setToast({ type, msg });
-		setTimeout(() => setToast(null), 3000);
-	}, []);
 
 	// debounce tìm kiếm
 	const searchTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
@@ -77,7 +72,7 @@ export function useSeminars() {
 		return () => {
 			alive = false;
 		};
-	}, [page, pageSize, debouncedSearch, scope, eventType, year, onlyCme, refreshKey, showToast]);
+	}, [page, pageSize, debouncedSearch, scope, eventType, year, onlyCme, refreshKey]);
 
 	const totalPages = Math.max(1, Math.ceil(total / pageSize));
 
@@ -97,7 +92,7 @@ export function useSeminars() {
 				setLoading(false);
 			}
 		},
-		[showToast, refresh],
+		[refresh],
 	);
 
 	const handleEdit = useCallback(
@@ -116,7 +111,7 @@ export function useSeminars() {
 				setLoading(false);
 			}
 		},
-		[editing, showToast, refresh],
+		[editing, refresh],
 	);
 
 	const handleDelete = useCallback(async () => {
@@ -133,7 +128,7 @@ export function useSeminars() {
 		} finally {
 			setLoading(false);
 		}
-	}, [deleting, showToast, refresh]);
+	}, [deleting, refresh]);
 
 	return {
 		rows,
@@ -161,8 +156,6 @@ export function useSeminars() {
 		setEditing,
 		deleting,
 		setDeleting,
-		toast,
-		showToast,
 		refresh,
 		handleAdd,
 		handleEdit,

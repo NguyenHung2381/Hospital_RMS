@@ -1,8 +1,5 @@
 const { getPool, sql } = require('../config/db');
-const fs = require('fs');
-const path = require('path');
-
-const UPLOADS_ROOT = path.resolve(process.env.UPLOADS_DIR || 'uploads');
+const { removeUploadedFile } = require('../utils/uploadPaths');
 
 // multer/busboy đọc tên file từ header multipart bằng latin1 theo mặc định,
 // nên tên có dấu (UTF-8) bị lỗi (mojibake) nếu không giải mã lại — cùng lỗi
@@ -52,10 +49,7 @@ const softDelete = async (fileId, actorId) => {
 		.input('id', sql.VarChar(20), fileId)
 		.input('actor_id', sql.VarChar(20), actorId || null)
 		.query('UPDATE training_files SET is_deleted = 1, updated_at = GETDATE(), updated_by = @actor_id WHERE id = @id');
-	if (file.file_url?.startsWith('/uploads/')) {
-		const diskPath = path.join(UPLOADS_ROOT, file.file_url.replace('/uploads/', ''));
-		fs.unlink(diskPath, () => {});
-	}
+	removeUploadedFile(file.file_url);
 };
 
 module.exports = { saveUploadedFile, getById, softDelete, decodeOriginalName };

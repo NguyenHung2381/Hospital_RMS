@@ -15,6 +15,7 @@ const Login = lazy(() => import('../../features/auth/pages/Login'));
 const ForceChangePassword = lazy(
 	() => import('../../features/auth/pages/ForceChangePassword'),
 );
+const ForgotPassword = lazy(() => import('../../features/auth/pages/ForgotPassword'));
 const SetupTwoFactor = lazy(() => import('../../features/auth/pages/SetupTwoFactor'));
 const TopicRegister = lazy(
 	() => import('../../features/topics/pages/TopicRegister'),
@@ -51,6 +52,16 @@ export const publicRoutes: RouteObject[] = [
 			<RedirectIfLoggedIn>
 				<LazyRoute title='Đăng nhập'>
 					<Login />
+				</LazyRoute>
+			</RedirectIfLoggedIn>
+		),
+	},
+	{
+		path: '/quen-mat-khau',
+		element: (
+			<RedirectIfLoggedIn>
+				<LazyRoute title='Quên mật khẩu'>
+					<ForgotPassword />
 				</LazyRoute>
 			</RedirectIfLoggedIn>
 		),

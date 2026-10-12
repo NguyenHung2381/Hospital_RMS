@@ -3,13 +3,6 @@ import { removeDiacritics as stripDiacritics } from '../../../shared/utils/helpe
 // Màu / nhãn vai trò: dùng roleCfg ở shared/utils/roleDisplay.ts (tra theo mã vai trò).
 
 
-export function isPasswordOld(dateStr: string | null): boolean {
-	if (!dateStr) return true;
-	const d = new Date(dateStr);
-	if (isNaN(d.getTime())) return true;
-	return (Date.now() - d.getTime()) / (1000 * 60 * 60 * 24) > 90;
-}
-
 function removeDiacritics(str: string): string {
 	return stripDiacritics(str).toLowerCase();
 }

@@ -11,14 +11,8 @@
 .tableTitle {
 	composes: tableTitle from '../../../shared/components/Table/Table.module.css';
 }
-.tableCount {
-	composes: tableCount from '../../../shared/components/Table/Table.module.css';
-}
 .tableControls {
 	composes: tableControls from '../../../shared/components/Table/Table.module.css';
-}
-.clearSelectionBtn {
-	composes: clearSelectionBtn from '../../../shared/components/Table/Table.module.css';
 }
 
 .searchBox {
@@ -202,43 +196,6 @@
 	color: var(--color-gray-500);
 }
 
-/* ── PERMISSION CHIPS ────────────────────── */
-.permChipWrap {
-	display: flex;
-	flex-wrap: wrap;
-	gap: 5px;
-}
-.permChip {
-	display: inline-flex;
-	align-items: center;
-	gap: 4px;
-	padding: 3px 9px;
-	border-radius: var(--radius-full);
-	font-size: var(--font-size-2xs);
-	font-weight: var(--font-weight-semibold);
-	white-space: nowrap;
-}
-.chipCreate {
-	background: #e1f5ea;
-	color: #085028;
-}
-.chipRead {
-	background: #e6f1fb;
-	color: #0c447c;
-}
-.chipUpdate {
-	background: #faeeda;
-	color: #633806;
-}
-.chipDelete {
-	background: #fcebeb;
-	color: #791f1f;
-}
-.chipManage {
-	background: #eeedfe;
-	color: #3c3489;
-}
-
 /* ── ACTION BUTTONS ──────────────────────── */
 .actionBtns {
 	composes: actionBtns from '../../../shared/components/Table/Table.module.css';
@@ -341,16 +298,7 @@
 
 /* ── MODAL ───────────────────────────────── */
 .modalBackdrop {
-	position: fixed;
-	inset: 0;
-	background: rgba(26, 40, 53, 0.45);
-	backdrop-filter: blur(3px);
-	z-index: 500;
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	padding: var(--space-4);
-	animation: modalFadeIn 200ms ease both;
+	composes: modalBackdrop from '../../../shared/components/Modal/Modal.module.css';
 }
 
 .modal {
@@ -363,15 +311,11 @@
 	overflow: hidden;
 }
 .modalSm {
-	max-width: 440px;
+	composes: modalSm from '../../../shared/components/Modal/Modal.module.css';
 }
 
 .modalHeader {
-	display: flex;
-	align-items: center;
-	gap: var(--space-4);
-	padding: var(--space-5) var(--space-6);
-	border-bottom: 1px solid var(--color-gray-100);
+	composes: modalHeader from '../../../shared/components/Modal/Modal.module.css';
 }
 
 .modalHeaderIcon {
@@ -390,197 +334,30 @@
 	height: 20px;
 }
 
-.modalHeaderIconDanger {
-	width: 42px;
-	height: 42px;
-	border-radius: var(--radius-lg);
-	background: #fcebeb;
-	color: #791f1f;
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	flex-shrink: 0;
-}
-.modalHeaderIconDanger svg {
-	width: 20px;
-	height: 20px;
-}
-
 .modalTitle {
-	font-size: var(--font-size-base);
-	font-weight: var(--font-weight-bold);
-	color: var(--color-gray-800);
+	composes: modalTitle from '../../../shared/components/Modal/Modal.module.css';
 }
 .modalSub {
-	font-size: var(--font-size-sm);
-	color: var(--color-gray-400);
-	margin-top: 2px;
+	composes: modalSub from '../../../shared/components/Modal/Modal.module.css';
 }
 
 .modalClose {
-	margin-left: auto;
-	width: 32px;
-	height: 32px;
-	border-radius: var(--radius-md);
-	border: 1px solid var(--color-gray-200);
-	background: transparent;
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	cursor: pointer;
-	color: var(--color-gray-400);
-	transition: all var(--transition-fast);
-	flex-shrink: 0;
-}
-.modalClose:hover {
-	background: var(--color-gray-100);
-	color: var(--color-gray-700);
-}
-.modalClose svg {
-	width: 14px;
-	height: 14px;
+	composes: modalClose from '../../../shared/components/Modal/Modal.module.css';
 }
 
 .modalBody {
-	padding: var(--space-6);
-	display: flex;
-	flex-direction: column;
-	gap: var(--space-4);
-}
-
-.formGroup {
-	display: flex;
-	flex-direction: column;
-	gap: var(--space-1);
-}
-.formLabel {
-	font-size: var(--font-size-sm);
-	font-weight: var(--font-weight-semibold);
-	color: var(--color-gray-700);
-}
-.required {
-	color: #e24b4a;
+	composes: modalBody from '../../../shared/components/Modal/Modal.module.css';
 }
 
 .formInput {
-	width: 100%;
-	padding: var(--space-2) var(--space-3);
-	border: 1.5px solid var(--color-gray-200);
-	border-radius: var(--radius-lg);
-	font-family: var(--font-body);
-	font-size: var(--font-size-sm);
-	color: var(--color-gray-800);
-	background: var(--color-gray-50);
-	outline: none;
-	transition: all var(--transition-fast);
-	box-sizing: border-box;
-}
-.formInput::placeholder {
-	color: var(--color-gray-400);
-}
-.formInput:focus {
-	border-color: var(--color-primary);
-	background: var(--color-white);
-	box-shadow: 0 0 0 3px rgba(10, 155, 74, 0.1);
+	composes: formInput from '../../../shared/components/Modal/Modal.module.css';
 }
 .inputError {
-	border-color: #e24b4a !important;
-}
-.fieldError {
-	font-size: var(--font-size-2xs);
-	color: #e24b4a;
+	composes: inputError from '../../../shared/components/Modal/Modal.module.css';
 }
 
 .formTextarea {
-	width: 100%;
-	padding: var(--space-2) var(--space-3);
-	border: 1.5px solid var(--color-gray-200);
-	border-radius: var(--radius-lg);
-	font-family: var(--font-body);
-	font-size: var(--font-size-sm);
-	color: var(--color-gray-800);
-	background: var(--color-gray-50);
-	outline: none;
-	resize: vertical;
-	transition: all var(--transition-fast);
-	box-sizing: border-box;
-}
-.formTextarea:focus {
-	border-color: var(--color-primary);
-	background: var(--color-white);
-	box-shadow: 0 0 0 3px rgba(10, 155, 74, 0.1);
-}
-
-/* ── PERMISSION SECTION IN MODAL ─────────── */
-.permSection {
-	border: 1.5px solid var(--color-gray-100);
-	border-radius: var(--radius-lg);
-	overflow: hidden;
-}
-.permSectionHeader {
-	padding: var(--space-3) var(--space-4);
-	background: var(--color-gray-50);
-	border-bottom: 1px solid var(--color-gray-100);
-	font-size: var(--font-size-2xs);
-	font-weight: var(--font-weight-bold);
-	color: var(--color-gray-500);
-	text-transform: uppercase;
-	letter-spacing: 0.06em;
-}
-.permRow {
-	display: flex;
-	align-items: center;
-	justify-content: space-between;
-	padding: var(--space-3) var(--space-4);
-	border-bottom: 1px solid var(--color-gray-100);
-}
-.permRow:last-child {
-	border-bottom: none;
-}
-.permRow:hover {
-	background: #f8fdfa;
-}
-
-.permInfo {
-	flex: 1;
-	min-width: 0;
-}
-.permName {
-	font-size: var(--font-size-sm);
-	font-weight: var(--font-weight-semibold);
-	color: var(--color-gray-800);
-}
-.permDesc {
-	font-size: var(--font-size-2xs);
-	color: var(--color-gray-400);
-	margin-top: 1px;
-}
-
-.permActions {
-	display: flex;
-	gap: var(--space-1);
-	flex-shrink: 0;
-}
-
-.permChipToggle {
-	padding: 4px 10px;
-	border-radius: var(--radius-full);
-	font-size: var(--font-size-2xs);
-	font-weight: var(--font-weight-semibold);
-	cursor: pointer;
-	border: 1.5px solid transparent;
-	transition: all var(--transition-fast);
-	background: var(--color-gray-100);
-	color: var(--color-gray-400);
-}
-.permChipToggle.active {
-	background: #e1f5ea;
-	color: #085028;
-	border-color: #a7e8c4;
-}
-.permChipToggle:hover:not(.active) {
-	background: var(--color-gray-200);
-	color: var(--color-gray-600);
+	composes: formTextarea from '../../../shared/components/Modal/Modal.module.css';
 }
 
 /* ── DELETE MODAL ────────────────────────── */
@@ -591,47 +368,15 @@
 	margin: 0 0 var(--space-3) 0;
 }
 .warnBox {
-	display: flex;
-	align-items: center;
-	gap: var(--space-3);
-	padding: var(--space-3) var(--space-4);
-	background: #faeeda;
-	border: 1px solid #ef9f27;
-	border-radius: var(--radius-lg);
-	font-size: var(--font-size-sm);
-	color: #633806;
-}
-.warnBox svg {
-	width: 16px;
-	height: 16px;
-	flex-shrink: 0;
+	composes: warnBox from '../../../shared/components/Modal/Modal.module.css';
 }
 
 .modalFooter {
-	padding: var(--space-4) var(--space-6);
-	border-top: 1px solid var(--color-gray-100);
-	display: flex;
-	gap: var(--space-3);
+	composes: modalFooter from '../../../shared/components/Modal/Modal.module.css';
 }
 
 .btnCancel {
-	flex: 1;
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	padding: var(--space-3);
-	border: 1.5px solid var(--color-gray-200);
-	border-radius: var(--radius-lg);
-	background: var(--color-white);
-	font-family: var(--font-body);
-	font-size: var(--font-size-sm);
-	font-weight: var(--font-weight-semibold);
-	color: var(--color-gray-700);
-	cursor: pointer;
-	transition: all var(--transition-fast);
-}
-.btnCancel:hover {
-	background: var(--color-gray-50);
+	composes: btnCancel from '../../../shared/components/Modal/Modal.module.css';
 }
 
 .btnSave {
@@ -671,86 +416,15 @@
 }
 
 .btnDanger {
-	flex: 1;
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	gap: var(--space-2);
-	padding: var(--space-3);
-	background: #fcebeb;
-	border: 1.5px solid #f09595;
-	border-radius: var(--radius-lg);
-	font-family: var(--font-body);
-	font-size: var(--font-size-sm);
-	font-weight: var(--font-weight-bold);
-	color: #791f1f;
-	cursor: pointer;
-	transition: all var(--transition-fast);
-}
-.btnDanger:hover {
-	background: #f7c1c1;
-	border-color: #e24b4a;
-}
-.btnDanger:disabled {
-	opacity: 0.65;
-	cursor: not-allowed;
-}
-.btnDanger svg {
-	width: 15px;
-	height: 15px;
+	composes: btnDanger from '../../../shared/components/Modal/Modal.module.css';
 }
 
 /* ── SPINNER ─────────────────────────────── */
 .spinner {
-	width: 14px;
-	height: 14px;
-	border: 2px solid rgba(255, 255, 255, 0.35);
-	border-top-color: #fff;
-	border-radius: 50%;
-	animation: spin 0.65s linear infinite;
-	flex-shrink: 0;
+	composes: spinner from '../../../shared/components/Modal/Modal.module.css';
 }
 .spinnerDark {
-	border-color: rgba(121, 31, 31, 0.25);
-	border-top-color: #791f1f;
-}
-
-/* ── TOAST ───────────────────────────────── */
-.toast {
-	position: fixed;
-	bottom: 28px;
-	right: 28px;
-	color: #fff;
-	padding: var(--space-3) var(--space-5);
-	border-radius: var(--radius-xl);
-	font-size: var(--font-size-sm);
-	font-weight: var(--font-weight-semibold);
-	z-index: 999;
-	display: flex;
-	align-items: center;
-	gap: var(--space-2);
-	box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
-	animation: toastIn 250ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
-}
-.toastSuccess {
-	background: var(--color-primary-dark);
-}
-.toastError {
-	background: #7f1d1d;
-}
-@keyframes toastIn {
-	from {
-		opacity: 0;
-		transform: translateY(12px) scale(0.95);
-	}
-	to {
-		opacity: 1;
-		transform: translateY(0) scale(1);
-	}
-}
-.toast svg {
-	width: 15px;
-	height: 15px;
+	composes: spinnerDark from '../../../shared/components/Modal/Modal.module.css';
 }
 
 /* ── PAGE SIZE ───────────────────────────── */
@@ -790,63 +464,6 @@
 	align-items: center;
 	justify-content: space-between;
 	margin-top: var(--space-4);
-}
-.paginationInfo {
-	font-size: var(--font-size-sm);
-	color: var(--color-gray-400);
-}
-.paginationControls {
-	display: flex;
-	align-items: center;
-	gap: var(--space-1);
-}
-
-.pageBtn {
-	min-width: 34px;
-	height: 34px;
-	padding: 0 var(--space-2);
-	border: 1.5px solid var(--color-gray-200);
-	border-radius: var(--radius-md);
-	background: var(--color-white);
-	font-family: var(--font-body);
-	font-size: var(--font-size-sm);
-	font-weight: var(--font-weight-semibold);
-	color: var(--color-gray-600);
-	cursor: pointer;
-	display: inline-flex;
-	align-items: center;
-	justify-content: center;
-	transition: all var(--transition-fast);
-}
-.pageBtn svg {
-	width: 14px;
-	height: 14px;
-}
-.pageBtn:hover:not(:disabled) {
-	border-color: var(--color-primary);
-	color: var(--color-primary-dark);
-	background: #f0fbf5;
-}
-.pageBtn:disabled {
-	opacity: 0.35;
-	cursor: not-allowed;
-}
-.pageBtnActive {
-	background: var(--color-primary);
-	border-color: var(--color-primary);
-	color: var(--color-white);
-}
-.pageBtnActive:hover:not(:disabled) {
-	background: var(--color-primary-dark);
-	border-color: var(--color-primary-dark);
-	color: var(--color-white);
-}
-.pageEllipsis {
-	width: 28px;
-	text-align: center;
-	color: var(--color-gray-400);
-	font-size: var(--font-size-sm);
-	user-select: none;
 }
 
 /* ── PERMISSION MODAL ────────────────────── */

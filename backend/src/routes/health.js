@@ -42,6 +42,8 @@ router.get('/', (req, res) => {
 			external: formatBytes(mem.external),
 		},
 		node: process.version,
+		// Commit SHA của image (build-arg GIT_SHA) — pipeline deploy so khớp để chắc bản mới đã chạy
+		version: process.env.GIT_SHA || null,
 	});
 });
 

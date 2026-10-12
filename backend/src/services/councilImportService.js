@@ -12,6 +12,7 @@ const { getPool, sql } = require('../config/db');
 const councilService = require('./councilService');
 const councilAssignmentService = require('./councilAssignmentService');
 const { ROLE, inputRoleId } = require('./roleCodes');
+const { norm, normDept, stripQualification, dice } = require('../utils/vietnameseText');
 
 const SEAT_ORDER = ['chairman', 'secretary', 'reviewer1', 'reviewer2', 'member'];
 const ROLE_BY_NORM = {
@@ -21,58 +22,6 @@ const ROLE_BY_NORM = {
 	'phan bien 1': 'reviewer1',
 	'phan bien 2': 'reviewer2',
 	'thanh vien': 'member',
-};
-
-// ─── Chuẩn hoá chuỗi (port từ gen_council_seed_2026.py) ──────────────────────
-const stripDiacritics = (s) =>
-	String(s)
-		.normalize('NFD')
-		.replace(/[̀-ͯ]/g, '')
-		.replace(/đ/g, 'd')
-		.replace(/Đ/g, 'D');
-
-const norm = (s) => {
-	if (!s) return '';
-	return stripDiacritics(s)
-		.toLowerCase()
-		.replace(/[^a-z0-9]+/g, ' ')
-		.trim();
-};
-
-// Bỏ tiền tố Khoa/Phòng/TT... để "Khoa Bỏng" == "Bỏng"
-const normDept = (s) =>
-	norm(s).replace(/^(khoa|phong|trung tam|tt|don vi|vp khoa)\s+/, '');
-
-// "PGS.TS. Nguyễn Văn A" / "BSCK2. X" → phần tên sau học vị
-const stripQualification = (s) => {
-	const t = String(s || '').trim();
-	const lastDot = t.lastIndexOf('.');
-	const name = lastDot >= 0 ? t.slice(lastDot + 1) : t;
-	return name.replace(/^\s*(GS|PGS|TS|ThS|BSCKII|BSCKI|BSCK2|BSCK1|BSNT|BS|KS|CN|CĐ|DS|ĐD)\s+/i, '').trim();
-};
-
-// Dice coefficient trên bigram — fuzzy match tên đề tài gõ lệch nhẹ
-const bigrams = (s) => {
-	const set = new Map();
-	for (let i = 0; i < s.length - 1; i++) {
-		const b = s.slice(i, i + 2);
-		set.set(b, (set.get(b) || 0) + 1);
-	}
-	return set;
-};
-const dice = (a, b) => {
-	if (!a.length || !b.length) return 0;
-	if (a === b) return 1;
-	const ba = bigrams(a);
-	const bb = bigrams(b);
-	let overlap = 0;
-	let total = 0;
-	for (const [g, n] of ba) {
-		total += n;
-		if (bb.has(g)) overlap += Math.min(n, bb.get(g));
-	}
-	for (const [, n] of bb) total += n;
-	return (2 * overlap) / total;
 };
 
 // ─── Đọc file Excel ──────────────────────────────────────────────────────────
@@ -544,4 +493,3 @@ const importExcel = async ({ buffer, round_id, dry_run }, actorId) => {
 
 module.exports = { importExcel };
 // ponytail: xuất nội bộ chỉ để test parse offline (test/importParse.test.js)
-module.exports._internal = { parseWorkbook, buildPreview, norm, normDept, stripQualification, dice };

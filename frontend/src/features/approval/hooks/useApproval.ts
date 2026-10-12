@@ -1,3 +1,4 @@
+import { notify } from '@/shared/utils/feedback';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRealtimeUpdate } from '../../../layouts/hooks/useRealtime';
 import { getTopicFiles } from '../../topics/api/topicApi';
@@ -39,7 +40,6 @@ export interface ApprovalState {
 	listLoading: boolean;
 	detailLoading: boolean;
 	error: string | null;
-	toast: { msg: string; type: 'approve' | 'reject' | 'request' } | null;
 	checkedIds: Set<string>;
 	bulkModal: 'bulkApprove' | 'bulkReject' | null;
 	bulkComment: string;
@@ -100,10 +100,6 @@ export function useApproval(): ApprovalState {
 	const [listLoading, setListLoading] = useState(true);
 	const [detailLoading, setDetailLoading] = useState(false);
 	const [error, setError] = useState<string | null>(null);
-	const [toast, setToast] = useState<{
-		msg: string;
-		type: 'approve' | 'reject' | 'request';
-	} | null>(null);
 	const [checkedIds, setCheckedIds] = useState<Set<string>>(new Set());
 	const [bulkModal, setBulkModal] = useState<
 		'bulkApprove' | 'bulkReject' | null
@@ -127,13 +123,6 @@ export function useApproval(): ApprovalState {
 			selectedId ? (records.find((r) => r.id === selectedId) ?? null) : null,
 		[selectedId, records],
 	);
-
-	// Auto-dismiss toast
-	useEffect(() => {
-		if (!toast) return;
-		const t = setTimeout(() => setToast(null), 2800);
-		return () => clearTimeout(t);
-	}, [toast]);
 
 	// Debounce ô tìm kiếm 300ms rồi mới gọi API
 	useEffect(() => {
@@ -206,13 +195,11 @@ export function useApproval(): ApprovalState {
 				);
 			} catch (err) {
 				if (!cancelled)
-					setToast({
-						msg:
-							err instanceof Error
-								? err.message
-								: 'Không thể tải chi tiết đề tài',
-						type: 'reject',
-					});
+					notify.error(
+						err instanceof Error
+							? err.message
+							: 'Không thể tải chi tiết đề tài',
+					);
 			} finally {
 				if (!cancelled) setDetailLoading(false);
 			}
@@ -324,31 +311,22 @@ export function useApproval(): ApprovalState {
 						: r,
 				),
 			);
-			setToast({
-				msg:
-					modal === 'approve'
-						? 'Đã phê duyệt đề tài thành công'
-						: modal === 'request'
-							? 'Đã gửi yêu cầu bổ sung tới chủ nhiệm đề tài'
-							: 'Đã không phê duyệt đề tài',
-				type: modal,
-			});
+			notify.success(
+				modal === 'approve'
+					? 'Đã phê duyệt đề tài thành công'
+					: modal === 'request'
+						? 'Đã gửi yêu cầu bổ sung tới chủ nhiệm đề tài'
+						: 'Đã không phê duyệt đề tài',
+			);
 			setModal(null);
 			setComment('');
 			setActiveTab(newStatus);
 		} catch (err) {
-			setToast({
-				msg:
-					err instanceof Error
-						? err.message
-						: 'Có lỗi xảy ra, vui lòng thử lại sau.',
-				type:
-					modal === 'approve'
-						? 'approve'
-						: modal === 'request'
-							? 'request'
-							: 'reject',
-			});
+			notify.error(
+				err instanceof Error
+					? err.message
+					: 'Có lỗi xảy ra, vui lòng thử lại sau.',
+			);
 		} finally {
 			setLoading(false);
 		}
@@ -390,16 +368,12 @@ export function useApproval(): ApprovalState {
 		setBulkModal(null);
 		setBulkComment('');
 		if (okIds.size > 0) setActiveTab(newStatus);
-		setToast({
-			msg: failedCount
-				? `Đã ${action === 'approve' ? 'phê duyệt' : 'từ chối'} ${okIds.size} đề tài, ${failedCount} đề tài lỗi`
-				: `Đã ${action === 'approve' ? 'phê duyệt' : 'từ chối'} ${okIds.size} đề tài`,
-			type: failedCount
-				? 'reject'
-				: action === 'approve'
-					? 'approve'
-					: 'reject',
-		});
+		const verb = action === 'approve' ? 'phê duyệt' : 'từ chối';
+		if (failedCount)
+			notify.error(
+				`Đã ${verb} ${okIds.size} đề tài, ${failedCount} đề tài lỗi`,
+			);
+		else notify.success(`Đã ${verb} ${okIds.size} đề tài`);
 		setLoading(false);
 	}, [bulkModal, bulkComment, filtered, checkedIds]);
 
@@ -415,7 +389,6 @@ export function useApproval(): ApprovalState {
 		listLoading,
 		detailLoading,
 		error,
-		toast,
 		checkedIds,
 		bulkModal,
 		bulkComment,

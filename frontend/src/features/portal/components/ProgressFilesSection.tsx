@@ -1,8 +1,11 @@
+import type { ReactNode } from 'react';
 import { formatDateTimeVN } from '../../../shared/utils/formatDate';
 import type { ProgressTopic } from '../../council/api/councilApi';
 import { BASE_URL } from '../../../shared/api/axios';
 import { fmtSize, getFileIcon } from '../utils/councilProgressHelpers';
 import styles from '../pages/CouncilProgress.module.css';
+
+type ProgressFile = ProgressTopic['topic_files'][number];
 
 interface ProgressFilesSectionProps {
 	topic: ProgressTopic;
@@ -18,6 +21,93 @@ interface ProgressFilesSectionProps {
 	onUploadMinutes: (t: ProgressTopic, files: FileList | null) => void;
 	onDeleteMinutes: (t: ProgressTopic, fileId: string) => void;
 }
+
+/** Khung danh sách file có tiêu đề, nút tải lên (tuỳ chọn) và nút xoá từng file (tuỳ chọn). */
+function FileBox({
+	title,
+	emptyText,
+	files,
+	upload,
+	bindInput,
+	onDelete,
+	deleteTitle,
+}: {
+	title: string;
+	emptyText: string;
+	files: ProgressFile[];
+	/** Nút tải lên (chỉ thư ký). */
+	upload?: {
+		onFiles: (files: FileList | null) => void;
+		onClick: () => void;
+		uploading: boolean;
+		label: string;
+	};
+	bindInput?: (el: HTMLInputElement | null) => void;
+	onDelete?: (fileId: string) => void;
+	deleteTitle?: string;
+}) {
+	return (
+		<div className={styles.filesBox}>
+			<div className={styles.filesTitle}>
+				<span>{title}</span>
+				{upload && (
+					<>
+						<input
+							ref={bindInput}
+							type='file'
+							multiple
+							hidden
+							onChange={(e) => upload.onFiles(e.target.files)}
+						/>
+						<button
+							className={styles.uploadBtn}
+							disabled={upload.uploading}
+							onClick={upload.onClick}
+						>
+							{upload.uploading ? 'Đang tải lên…' : upload.label}
+						</button>
+					</>
+				)}
+			</div>
+			{files.length === 0 ? (
+				<div className={styles.noFiles}>{emptyText}</div>
+			) : (
+				<div className={styles.fileList}>
+					{files.map((f) => (
+						<div
+							key={f.id}
+							className={styles.fileRow}
+						>
+							<a
+								href={`${BASE_URL}${f.file_url}`}
+								target='_blank'
+								rel='noreferrer'
+								className={styles.fileName}
+							>
+								<span className={styles.fileIcon}>{getFileIcon(f.file_name)}</span>
+								<span className={styles.fileText}>{f.file_name}</span>
+							</a>
+							<span className={styles.fileMeta}>
+								{fmtSize(f.file_size)} · {f.uploaded_by_name ?? ''} · {formatDateTimeVN(f.created_at)}
+							</span>
+							{onDelete && (
+								<button
+									className={styles.fileDelete}
+									title={deleteTitle}
+									onClick={() => onDelete(f.id)}
+								>
+									✕
+								</button>
+							)}
+						</div>
+					))}
+				</div>
+			)}
+		</div>
+	);
+}
+
+const Row = ({ children }: { children: ReactNode }) => <div className={styles.filesRow}>{children}</div>;
 
 export function ProgressFilesSection({
 	topic: t,
@@ -35,181 +125,62 @@ export function ProgressFilesSection({
 }: ProgressFilesSectionProps) {
 	return (
 		<>
-			{/* ── Tài liệu đề tài (thuyết minh, hồ sơ... do chủ nhiệm tải lên) ── */}
-			<div className={styles.filesRow}>
-				<div className={styles.filesBox}>
-					<div className={styles.filesTitle}>
-						<span>📎 Tài liệu đề tài</span>
-					</div>
-					{t.topic_files.length === 0 ? (
-						<div className={styles.noFiles}>
-							Chưa có tài liệu đề tài nào được tải lên.
-						</div>
-					) : (
-						<div className={styles.fileList}>
-							{t.topic_files.map((f) => (
-								<div
-									key={f.id}
-									className={styles.fileRow}
-								>
-									<a
-										href={`${BASE_URL}${f.file_url}`}
-										target='_blank'
-										rel='noreferrer'
-										className={styles.fileName}
-									>
-										<span className={styles.fileIcon}>
-											{getFileIcon(f.file_name)}
-										</span>
-										<span className={styles.fileText}>{f.file_name}</span>
-									</a>
-									<span className={styles.fileMeta}>
-										{fmtSize(f.file_size)} · {f.uploaded_by_name ?? ''} ·{' '}
-										{formatDateTimeVN(f.created_at)}
-									</span>
-								</div>
-							))}
-						</div>
-					)}
-				</div>
-			</div>
+			{/* Tài liệu đề tài (thuyết minh, hồ sơ... do chủ nhiệm tải lên) */}
+			<Row>
+				<FileBox
+					title='📎 Tài liệu đề tài'
+					emptyText='Chưa có tài liệu đề tài nào được tải lên.'
+					files={t.topic_files}
+				/>
+			</Row>
 
-			{/* ── File đánh giá & Biên bản (Always visible at the bottom to fill empty space) ── */}
-			<div className={styles.filesRow}>
-				{/* File đánh giá */}
-				<div className={styles.filesBox}>
-					<div className={styles.filesTitle}>
-						<span>📁 File đánh giá</span>
-						{isSecretary && (
-							<>
-								<input
-									ref={(el) => setFileInputRef(t.id, el)}
-									type='file'
-									multiple
-									hidden
-									onChange={(e) => onUpload(t, e.target.files)}
-								/>
-								<button
-									className={styles.uploadBtn}
-									disabled={uploadingId === t.id}
-									onClick={() => clickFileInput(t.id)}
-								>
-									{uploadingId === t.id ? 'Đang tải lên…' : '+ Tải file lên'}
-								</button>
-							</>
-						)}
-					</div>
-					{t.evaluation_files.length === 0 ? (
-						<div className={styles.noFiles}>
-							{isSecretary
-								? 'Chưa có file — thư ký tải file đánh giá lên tại đây.'
-								: 'Thư ký chưa tải file đánh giá lên.'}
-						</div>
-					) : (
-						<div className={styles.fileList}>
-							{t.evaluation_files.map((f) => (
-								<div
-									key={f.id}
-									className={styles.fileRow}
-								>
-									<a
-										href={`${BASE_URL}${f.file_url}`}
-										target='_blank'
-										rel='noreferrer'
-										className={styles.fileName}
-									>
-										<span className={styles.fileIcon}>
-											{getFileIcon(f.file_name)}
-										</span>
-										<span className={styles.fileText}>{f.file_name}</span>
-									</a>
-									<span className={styles.fileMeta}>
-										{fmtSize(f.file_size)} · {f.uploaded_by_name ?? ''} ·{' '}
-										{formatDateTimeVN(f.created_at)}
-									</span>
-									{isSecretary && (
-										<button
-											className={styles.fileDelete}
-											title='Xóa file'
-											onClick={() => onDeleteFile(t, f.id)}
-										>
-											✕
-										</button>
-									)}
-								</div>
-							))}
-						</div>
-					)}
-				</div>
-
-				{/* Biên bản hội đồng */}
-				<div className={styles.filesBox}>
-					<div className={styles.filesTitle}>
-						<span>🗂️ Biên bản hội đồng</span>
-						{isSecretary && (
-							<>
-								<input
-									ref={(el) => setMinutesInputRef(t.id, el)}
-									type='file'
-									multiple
-									hidden
-									onChange={(e) => onUploadMinutes(t, e.target.files)}
-								/>
-								<button
-									className={styles.uploadBtn}
-									disabled={uploadingMinutesId === t.id}
-									onClick={() => clickMinutesInput(t.id)}
-								>
-									{uploadingMinutesId === t.id
-										? 'Đang tải lên…'
-										: '+ Tải biên bản'}
-								</button>
-							</>
-						)}
-					</div>
-					{t.minutes_files.length === 0 ? (
-						<div className={styles.noFiles}>
-							{isSecretary
-								? 'Chưa có biên bản — thư ký tải biên bản họp lên tại đây.'
-								: 'Thư ký chưa tải biên bản lên.'}
-						</div>
-					) : (
-						<div className={styles.fileList}>
-							{t.minutes_files.map((f) => (
-								<div
-									key={f.id}
-									className={styles.fileRow}
-								>
-									<a
-										href={`${BASE_URL}${f.file_url}`}
-										target='_blank'
-										rel='noreferrer'
-										className={styles.fileName}
-									>
-										<span className={styles.fileIcon}>
-											{getFileIcon(f.file_name)}
-										</span>
-										<span className={styles.fileText}>{f.file_name}</span>
-									</a>
-									<span className={styles.fileMeta}>
-										{fmtSize(f.file_size)} · {f.uploaded_by_name ?? ''} ·{' '}
-										{formatDateTimeVN(f.created_at)}
-									</span>
-									{isSecretary && (
-										<button
-											className={styles.fileDelete}
-											title='Xóa biên bản'
-											onClick={() => onDeleteMinutes(t, f.id)}
-										>
-											✕
-										</button>
-									)}
-								</div>
-							))}
-						</div>
-					)}
-				</div>
-			</div>
+			{/* File đánh giá & Biên bản — chỉ thư ký được tải lên / xoá */}
+			<Row>
+				<FileBox
+					title='📁 File đánh giá'
+					emptyText={
+						isSecretary
+							? 'Chưa có file — thư ký tải file đánh giá lên tại đây.'
+							: 'Thư ký chưa tải file đánh giá lên.'
+					}
+					files={t.evaluation_files}
+					bindInput={(el) => setFileInputRef(t.id, el)}
+					upload={
+						isSecretary
+							? {
+									onFiles: (files) => onUpload(t, files),
+									onClick: () => clickFileInput(t.id),
+									uploading: uploadingId === t.id,
+									label: '+ Tải file lên',
+								}
+							: undefined
+					}
+					onDelete={isSecretary ? (id) => onDeleteFile(t, id) : undefined}
+					deleteTitle='Xóa file'
+				/>
+				<FileBox
+					title='🗂️ Biên bản hội đồng'
+					emptyText={
+						isSecretary
+							? 'Chưa có biên bản — thư ký tải biên bản họp lên tại đây.'
+							: 'Thư ký chưa tải biên bản lên.'
+					}
+					files={t.minutes_files}
+					bindInput={(el) => setMinutesInputRef(t.id, el)}
+					upload={
+						isSecretary
+							? {
+									onFiles: (files) => onUploadMinutes(t, files),
+									onClick: () => clickMinutesInput(t.id),
+									uploading: uploadingMinutesId === t.id,
+									label: '+ Tải biên bản',
+								}
+							: undefined
+					}
+					onDelete={isSecretary ? (id) => onDeleteMinutes(t, id) : undefined}
+					deleteTitle='Xóa biên bản'
+				/>
+			</Row>
 		</>
 	);
 }

@@ -1,4 +1,5 @@
 import { ChevLSvg, ChevRSvg } from '@/assets/icons';
+import { PAGE_SIZE_OPTIONS } from '../../utils/constants';
 import styles from './Pagination.module.css';
 
 interface PaginationProps {
@@ -6,9 +7,9 @@ interface PaginationProps {
 	totalPages: number;
 	total: number;
 	rowsPerPage: number;
-	pageSizeOptions: readonly number[];
+	pageSizeOptions?: readonly number[];
 	onPageChange: (page: number) => void;
-	onRowsPerPageChange: (n: number) => void;
+	onRowsPerPageChange?: (n: number) => void;
 	itemLabel?: string;
 	// Ẩn dropdown chọn số dòng/trang khi trang đã có control riêng ở nơi khác.
 	hideSizeSelect?: boolean;
@@ -21,7 +22,7 @@ export function Pagination({
 	totalPages,
 	total,
 	rowsPerPage,
-	pageSizeOptions,
+	pageSizeOptions = PAGE_SIZE_OPTIONS,
 	onPageChange,
 	onRowsPerPageChange,
 	itemLabel = 'mục',
@@ -52,7 +53,7 @@ export function Pagination({
 				<select
 					className={styles.sizeSelect}
 					value={rowsPerPage}
-					onChange={(e) => onRowsPerPageChange(Number(e.target.value))}
+					onChange={(e) => onRowsPerPageChange?.(Number(e.target.value))}
 				>
 					{pageSizeOptions.map((n) => (
 						<option

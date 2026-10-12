@@ -2,20 +2,7 @@ const { getPool, sql } = require('../config/db');
 const { broadcast } = require('./eventService');
 const { paging } = require('../utils/paging');
 const deadlineService = require('./deadlineService');
-
-const VN_OFFSET_MS = 7 * 60 * 60 * 1000; // UTC+7 (Asia/Ho_Chi_Minh)
-
-const fmtDate = (d) => {
-	if (!d) return '';
-	const dt = d instanceof Date ? d : new Date(d);
-	if (isNaN(dt.getTime())) return '';
-	// Shift to Vietnam local time then read with UTC getters so the result
-	// is correct regardless of the Node.js server's own timezone setting.
-	const vnDt = new Date(dt.getTime() + VN_OFFSET_MS);
-	const dd = String(vnDt.getUTCDate()).padStart(2, '0');
-	const mm = String(vnDt.getUTCMonth() + 1).padStart(2, '0');
-	return `${dd}/${mm}/${vnDt.getUTCFullYear()}`;
-};
+const { fmtDateVN: fmtDate } = require('../utils/vnDate');
 
 const STATUS_TO_FRONT = { open: 'active' };
 const STATUS_TO_DB = { active: 'open' };

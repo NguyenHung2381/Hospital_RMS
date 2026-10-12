@@ -1,3 +1,4 @@
+import { showToast } from '@/shared/utils/feedback';
 import { useCallback, useEffect, useState } from 'react';
 import { useRealtimeUpdate } from '../../../layouts/hooks/useRealtime';
 import {
@@ -30,7 +31,6 @@ export interface UserListState {
 	editUser: User | null;
 	deleteUser: User | null;
 	resetUser: User | null;
-	toast: { msg: string; type: 'success' | 'error' | 'info' } | null;
 	globalStats: {
 		total: number;
 		active: number;
@@ -85,10 +85,6 @@ export function useUserList(): UserListState {
 	const [editUser, setEditUser] = useState<User | null>(null);
 	const [deleteUser, setDeleteUser] = useState<User | null>(null);
 	const [resetUser, setResetUser] = useState<User | null>(null);
-	const [toast, setToast] = useState<{
-		msg: string;
-		type: 'success' | 'error' | 'info';
-	} | null>(null);
 	const [globalStats, setGlobalStats] = useState({
 		total: 0,
 		active: 0,
@@ -107,18 +103,6 @@ export function useUserList(): UserListState {
 		setCurrentPageRaw(1);
 	}, []);
 	const setCurrentPage = setCurrentPageRaw;
-
-	const showToast = useCallback(
-		(msg: string, type: 'success' | 'error' | 'info' = 'success') =>
-			setToast({ msg, type }),
-		[],
-	);
-
-	useEffect(() => {
-		if (!toast) return;
-		const t = setTimeout(() => setToast(null), 3000);
-		return () => clearTimeout(t);
-	}, [toast]);
 
 	const refreshData = useCallback(() => setRefreshKey((k) => k + 1), []);
 	useRealtimeUpdate('user', refreshData);
@@ -239,9 +223,9 @@ export function useUserList(): UserListState {
 			});
 			setShowCreate(false);
 			refreshData();
-			showToast(`Đã cấp tài khoản cho ${newUser.full_name}`);
+			showToast('success', `Đã cấp tài khoản cho ${newUser.full_name}`);
 		},
-		[showToast, refreshData],
+		[refreshData],
 	);
 
 	const handleEdit = useCallback(
@@ -259,9 +243,9 @@ export function useUserList(): UserListState {
 			if (form.password) await resetUserPassword(editUser.id, form.password);
 			setEditUser(null);
 			refreshData();
-			showToast('Đã cập nhật thông tin tài khoản');
+			showToast('success', 'Đã cập nhật thông tin tài khoản');
 		},
-		[editUser, showToast, refreshData],
+		[editUser, refreshData],
 	);
 
 	const handleDelete = useCallback(async (): Promise<void> => {
@@ -269,17 +253,17 @@ export function useUserList(): UserListState {
 		await deleteUserApi(deleteUser.id);
 		setDeleteUser(null);
 		refreshData();
-		showToast(`Đã xoá tài khoản ${deleteUser.full_name}`, 'info');
-	}, [deleteUser, showToast, refreshData]);
+		showToast('info', `Đã xoá tài khoản ${deleteUser.full_name}`);
+	}, [deleteUser, refreshData]);
 
 	// Server sinh mật khẩu tạm ngẫu nhiên (thay cho '123456' dùng chung); modal
 	// giữ mở để hiển thị mật khẩu, người dùng phải đổi ở lần đăng nhập tới.
 	const handleResetPassword = useCallback(async (): Promise<string> => {
 		if (!resetUser) return '';
 		const result = await resetUserPassword(resetUser.id);
-		showToast(`Đã đặt lại mật khẩu của ${resetUser.full_name}`, 'info');
+		showToast('info', `Đã đặt lại mật khẩu của ${resetUser.full_name}`);
 		return result?.temporary_password ?? '';
-	}, [resetUser, showToast]);
+	}, [resetUser]);
 
 	const handleToggleActive = useCallback(
 		async (id: string) => {
@@ -291,15 +275,12 @@ export function useUserList(): UserListState {
 				});
 				setUsers((prev) => prev.map((u) => (u.id === id ? updated : u)));
 				refreshData();
-				showToast(
-					updated.is_active ? 'Đã kích hoạt tài khoản' : 'Đã khoá tài khoản',
-					'info',
-				);
+				showToast('info', updated.is_active ? 'Đã kích hoạt tài khoản' : 'Đã khoá tài khoản');
 			} catch {
-				showToast('Không thể cập nhật trạng thái', 'error');
+				showToast('error', 'Không thể cập nhật trạng thái');
 			}
 		},
-		[users, showToast, refreshData],
+		[users, refreshData],
 	);
 
 	const handleBulkDelete = useCallback(
@@ -307,12 +288,9 @@ export function useUserList(): UserListState {
 			if (!ids.length) return;
 			const { okIds, failedCount } = await runBulk(ids, deleteUserApi);
 			refreshData();
-			showToast(
-				bulkToast('xoá', okIds.size, failedCount, 'tài khoản'),
-				failedCount ? 'error' : 'info',
-			);
+			showToast(failedCount ? 'error' : 'info', bulkToast('xoá', okIds.size, failedCount, 'tài khoản'));
 		},
-		[showToast, refreshData],
+		[refreshData],
 	);
 
 	const handleBulkEdit = useCallback(
@@ -322,12 +300,9 @@ export function useUserList(): UserListState {
 				updateUserApi(id, payload),
 			);
 			refreshData();
-			showToast(
-				bulkToast('cập nhật', okIds.size, failedCount, 'tài khoản'),
-				failedCount ? 'error' : 'success',
-			);
+			showToast(failedCount ? 'error' : 'success', bulkToast('cập nhật', okIds.size, failedCount, 'tài khoản'));
 		},
-		[showToast, refreshData],
+		[refreshData],
 	);
 
 	return {
@@ -346,7 +321,6 @@ export function useUserList(): UserListState {
 		editUser,
 		deleteUser,
 		resetUser,
-		toast,
 		globalStats,
 		totalCount,
 		roleCounts,

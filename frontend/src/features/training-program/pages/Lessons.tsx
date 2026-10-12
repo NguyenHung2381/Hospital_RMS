@@ -1,22 +1,21 @@
+import { Modal } from '@/shared/components';
+import { SearchInput, PageSizeSelect, SelectionCount, RowAction, RowActions } from '@/shared/components/Table/TableToolbar';
 import { useState } from 'react';
-import { CheckSvg, DocSvg, EditSvg, PlusSvg, SearchSvg, TrashSvg, XSvg } from '@/assets/icons';
+import { DocSvg, PlusSvg, TrashSvg } from '@/assets/icons';
 import AdminLayout from '../../../layouts/AdminLayout';
 import { SkeletonTable } from '../../../shared/components/Loading';
 import { Pagination } from '../../../shared/components/Table/Pagination';
 import sel from '../../../shared/components/Table/RowSelect.module.css';
-import { BulkButton, BulkDeleteModal, SelectCheckbox } from '../../../shared/components/Table/RowSelect';
+import { SelectCheckbox } from '../../../shared/components/Table/RowSelect';
 import { useRowSelection } from '../../../shared/hooks/useRowSelection';
 import { LessonDocumentsModal } from '../components/LessonDocumentsModal';
 import { LessonFormModal } from '../components/LessonFormModal';
 import { useLessons } from '../hooks/useLessons';
 import styles from './TrainingPrograms.module.css';
 
-const PAGE_SIZE_OPTIONS = [5, 10, 25, 50, 0] as const;
-
 export default function Lessons() {
 	const d = useLessons();
 	const rowSel = useRowSelection(d.paged.map((x) => x.id));
-	const [confirmBulkDelete, setConfirmBulkDelete] = useState(false);
 	const [docsLesson, setDocsLesson] = useState<{ id: string; title: string } | null>(null);
 
 	const headerActions = (
@@ -39,60 +38,25 @@ export default function Lessons() {
 				<div className={styles.tableHeader}>
 					<div className={styles.tableHeaderLeft}>
 						<span className={styles.tableTitle}>Danh sách bài học</span>
-						{rowSel.selectedCount > 0 ? (
-							<span className={styles.tableCount}>
-								Đã chọn {rowSel.selectedCount}
-								<BulkButton
-									danger
-									onClick={() => setConfirmBulkDelete(true)}
-								>
-									<TrashSvg /> Xoá đã chọn
-								</BulkButton>
-								<button
-									type='button'
-									className={styles.clearSelectionBtn}
-									onClick={rowSel.clearSelection}
-								>
-									Bỏ chọn
-								</button>
-							</span>
-						) : (
-							<span className={styles.tableCount}>{d.filtered.length} bài học</span>
-						)}
+						<SelectionCount
+							rowSel={rowSel}
+							itemLabel='bài học'
+							loading={d.loading}
+							onBulkDelete={d.handleBulkDelete}
+						>
+							{d.filtered.length} bài học
+						</SelectionCount>
 					</div>
 					<div className={styles.tableControls}>
-						<div className={styles.searchBox}>
-							<SearchSvg className={styles.searchIcon} />
-							<input
-								className={styles.searchInput}
-								placeholder='Tìm theo tên/mã bài học...'
-								value={d.search}
-								onChange={(e) => d.handleSearch(e.target.value)}
-							/>
-							{d.search && (
-								<button
-									className={styles.searchClear}
-									onClick={() => d.handleSearch('')}
-								>
-									<XSvg />
-								</button>
-							)}
-						</div>
-						<div className={styles.pageSizeWrap}>
-							<label className={styles.pageSizeLabel}>Hiển thị</label>
-							<select
-								className={styles.pageSizeSelect}
-								value={d.pageSize}
-								onChange={(e) => d.handlePageSize(Number(e.target.value))}
-							>
-								<option value={5}>5</option>
-								<option value={10}>10</option>
-								<option value={25}>25</option>
-								<option value={50}>50</option>
-								<option value={0}>Tất cả</option>
-							</select>
-							<span className={styles.pageSizeLabel}>dòng</span>
-						</div>
+						<SearchInput
+							value={d.search}
+							onChange={d.handleSearch}
+							placeholder='Tìm theo tên/mã bài học...'
+						/>
+						<PageSizeSelect
+							value={d.pageSize}
+							onChange={d.handlePageSize}
+						/>
 					</div>
 				</div>
 
@@ -177,29 +141,17 @@ export default function Lessons() {
 												)}
 											</td>
 											<td className={`${styles.td} ${styles.tdActions}`}>
-												<div className={styles.actionBtns}>
-													<div
-														className={styles.actionBtn}
+												<RowActions
+													onEdit={() => d.setFormModal({ mode: 'edit', lesson: l })}
+													onDelete={() => d.setDeletingLesson(l)}
+												>
+													<RowAction
 														title='Tài liệu'
 														onClick={() => setDocsLesson({ id: l.id, title: l.title })}
 													>
 														<DocSvg />
-													</div>
-													<div
-														className={styles.actionBtn}
-														title='Chỉnh sửa'
-														onClick={() => d.setFormModal({ mode: 'edit', lesson: l })}
-													>
-														<EditSvg />
-													</div>
-													<div
-														className={`${styles.actionBtn} ${styles.danger}`}
-														title='Xoá'
-														onClick={() => d.setDeletingLesson(l)}
-													>
-														<TrashSvg />
-													</div>
-												</div>
+													</RowAction>
+												</RowActions>
 											</td>
 										</tr>
 									);
@@ -215,28 +167,13 @@ export default function Lessons() {
 						totalPages={d.totalPages}
 						total={d.filtered.length}
 						rowsPerPage={d.pageSize}
-						pageSizeOptions={PAGE_SIZE_OPTIONS}
 						onPageChange={d.setPage}
-						onRowsPerPageChange={d.handlePageSize}
 						itemLabel='bài học'
 						hideSizeSelect
 					/>
 				)}
 			</div>
 
-			<BulkDeleteModal
-				open={confirmBulkDelete}
-				count={rowSel.selectedCount}
-				itemLabel='bài học'
-				loading={d.loading}
-				note='Bài học đang được nhiều chương trình dùng chung sẽ bị gỡ khỏi tất cả các chương trình đó.'
-				onClose={() => setConfirmBulkDelete(false)}
-				onConfirm={async () => {
-					await d.handleBulkDelete([...rowSel.selectedIds]);
-					rowSel.clearSelection();
-					setConfirmBulkDelete(false);
-				}}
-			/>
 
 			{d.formModal && (
 				<LessonFormModal
@@ -262,33 +199,17 @@ export default function Lessons() {
 			)}
 
 			{d.deletingLesson && (
-				<div
-					className={styles.modalBackdrop}
-					onClick={(e) => e.target === e.currentTarget && d.setDeletingLesson(null)}
-				>
-					<div className={`${styles.modal} ${styles.modalSm}`}>
-						<div className={styles.modalHeader}>
-							<div className={styles.modalHeaderIconDanger}>
-								<TrashSvg />
-							</div>
-							<div>
-								<div className={styles.modalTitle}>Xoá bài học</div>
-								<div className={styles.modalSub}>{d.deletingLesson.title}</div>
-							</div>
-							<button
-								className={styles.modalClose}
-								onClick={() => d.setDeletingLesson(null)}
-							>
-								<XSvg />
-							</button>
-						</div>
-						<div className={styles.modalBody}>
-							<p className={styles.deleteDesc}>
-								Bài học sẽ bị xoá hẳn khỏi mọi chương trình đào tạo đang dùng chung (nếu có). Thao tác này không thể
-								hoàn tác.
-							</p>
-						</div>
-						<div className={styles.modalFooter}>
+				<Modal
+					open
+					onClose={() => d.setDeletingLesson(null)}
+					icon={<TrashSvg />}
+					tone='danger'
+					title='Xoá bài học'
+					subtitle={d.deletingLesson.title}
+					className={`${styles.modal} ${styles.modalSm}`}
+					bodyClassName={styles.modalBody}
+					footer={
+						<>
 							<button
 								className={styles.btnCancel}
 								onClick={() => d.setDeletingLesson(null)}
@@ -304,9 +225,14 @@ export default function Lessons() {
 								{d.loading ? <span className={`${styles.spinner} ${styles.spinnerDark}`} /> : <TrashSvg />}
 								Xoá bài học
 							</button>
-						</div>
-					</div>
-				</div>
+						</>
+					}
+				>
+					<p className={styles.deleteDesc}>
+						Bài học sẽ bị xoá hẳn khỏi mọi chương trình đào tạo đang dùng chung (nếu có). Thao tác này không thể
+						hoàn tác.
+					</p>
+				</Modal>
 			)}
 
 			{docsLesson && (
@@ -316,16 +242,6 @@ export default function Lessons() {
 				/>
 			)}
 
-			{d.toast && (
-				<div
-					className={`${styles.toast} ${
-						styles[`toast${d.toast.type.charAt(0).toUpperCase() + d.toast.type.slice(1)}` as keyof typeof styles]
-					}`}
-				>
-					{d.toast.type === 'success' ? <CheckSvg /> : <XSvg />}
-					{d.toast.msg}
-				</div>
-			)}
 		</AdminLayout>
 	);
 }

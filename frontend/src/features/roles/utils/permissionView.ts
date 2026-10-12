@@ -2,7 +2,6 @@ import type {
 	CatalogModule,
 	CatalogPermission,
 	CatalogResource,
-	PermissionCatalog,
 	RoleGrant,
 } from '../types/role.type';
 
@@ -13,16 +12,6 @@ export interface PermissionEntry {
 	perm: CatalogPermission;
 	resource: CatalogResource;
 	module: CatalogModule;
-}
-
-export function indexCatalog(catalog: PermissionCatalog): Map<string, PermissionEntry> {
-	const byId = new Map<string, PermissionEntry>();
-	for (const module of catalog.modules) {
-		for (const resource of module.resources) {
-			for (const perm of resource.permissions) byId.set(perm.id, { perm, resource, module });
-		}
-	}
-	return byId;
 }
 
 // Nhãn phạm vi dữ liệu của một lượt cấp ("Trong khoa", "Toàn viện"...), '' nếu

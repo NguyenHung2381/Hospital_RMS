@@ -7,3 +7,5 @@ uploads
 !**/.env.example
 *.log
 secrets
+# Log hoạt động của máy build (audit-*.log chứa dữ liệu người dùng) — không đưa vào image
+logs

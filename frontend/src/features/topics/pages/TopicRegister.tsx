@@ -2,7 +2,6 @@ import {
 	AlertSvg,
 	BuildingSvg,
 	CalendarSvg,
-	CheckSvg,
 	ChevRSvg,
 	FileTextSvg,
 	LayersSvg,
@@ -78,7 +77,6 @@ export default function TopicRegister() {
 		handleFiles,
 		removeAttachment,
 		setIsDragging,
-		toast,
 		navigate,
 		clearForm,
 	} = useTopicRegister();
@@ -645,14 +643,6 @@ export default function TopicRegister() {
 				/>
 			</div>
 
-			{toast && (
-				<div
-					className={`${styles.toast} ${toast.type === 'success' ? styles.toastSuccess : styles.toastError}`}
-				>
-					{toast.type === 'success' ? <CheckSvg /> : <AlertSvg />}
-					{toast.msg}
-				</div>
-			)}
 		</UserLayout>
 	);
 }

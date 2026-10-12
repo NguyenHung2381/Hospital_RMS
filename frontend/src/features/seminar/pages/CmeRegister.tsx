@@ -1,6 +1,8 @@
+import { SearchInput } from '@/shared/components/Table/TableToolbar';
+import { showToast } from '@/shared/utils/feedback';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { CheckSvg, SearchSvg, TrashSvg, UsersSvg, XSvg } from '@/assets/icons';
+import { CheckSvg, TrashSvg, UsersSvg, XSvg } from '@/assets/icons';
 import AdminLayout from '../../../layouts/AdminLayout';
 import { useRealtimeUpdate } from '../../../layouts/hooks/useRealtime';
 import { Badge, Button, Modal } from '@/shared/components';
@@ -58,7 +60,6 @@ export default function CmeRegister() {
 	const [revokeAllBusy, setRevokeAllBusy] = useState(false);
 	const [revokeAllDone, setRevokeAllDone] = useState(0);
 	const [confirmText, setConfirmText] = useState('');
-	const [toast, setToast] = useState<{ type: 'success' | 'error'; msg: string } | null>(null);
 	const [refreshKey, setRefreshKey] = useState(0);
 
 	const [search, setSearch] = useState('');
@@ -73,11 +74,6 @@ export default function CmeRegister() {
 
 	const refresh = useCallback(() => setRefreshKey((k) => k + 1), []);
 	useRealtimeUpdate('seminar', refresh);
-
-	const showToast = (type: 'success' | 'error', msg: string) => {
-		setToast({ type, msg });
-		setTimeout(() => setToast(null), 3000);
-	};
 
 	// Debounce ô tìm kiếm 300ms rồi mới gọi API
 	useEffect(() => {
@@ -329,20 +325,11 @@ export default function CmeRegister() {
 						<span className={styles.tableCount}>{total} lượt cấp</span>
 					</div>
 					<div className={styles.tableControls}>
-						<div className={styles.searchBox}>
-							<SearchSvg className={styles.searchIcon} />
-							<input
-								className={styles.searchInput}
-								placeholder='Tìm theo SQĐ, họ tên, đơn vị, hội nghị...'
-								value={search}
-								onChange={(e) => setSearch(e.target.value)}
-							/>
-							{search && (
-								<button className={styles.searchClear} onClick={() => setSearch('')}>
-									<XSvg />
-								</button>
-							)}
-						</div>
+						<SearchInput
+							value={search}
+							onChange={setSearch}
+							placeholder='Tìm theo SQĐ, họ tên, đơn vị, hội nghị...'
+						/>
 						{perms.canCme && total > 0 && (
 							<Button
 								variant='danger'
@@ -568,14 +555,6 @@ export default function CmeRegister() {
 				)}
 			</Modal>
 
-			{toast && (
-				<div
-					className={`${styles.toast} ${toast.type === 'success' ? styles.toastSuccess : styles.toastError}`}
-				>
-					{toast.type === 'success' ? <CheckSvg /> : <XSvg />}
-					{toast.msg}
-				</div>
-			)}
 		</AdminLayout>
 	);
 }

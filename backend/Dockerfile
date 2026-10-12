@@ -32,6 +32,9 @@ COPY . .
 RUN mkdir -p /app/uploads /app/logs /app/secrets \
     && chown node:node /app/uploads /app/logs /app/secrets
 ENV NODE_ENV=production
+# Commit SHA do CI truyền vào (--build-arg) — hiện ở /health, ghi vào schema_migrations
+ARG GIT_SHA
+ENV GIT_SHA=$GIT_SHA
 # Entrypoint tự sinh JWT secret nếu thiếu (xem docker-entrypoint.sh). Đặt ngoài
 # /app để bind mount ./backend:/app ở bản dev không che mất; tr bỏ CR (CRLF) phòng
 # khi file bị checkout trên Windows.

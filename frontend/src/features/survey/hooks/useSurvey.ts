@@ -1,3 +1,5 @@
+import { useClientPaging } from '@/shared/hooks/useClientPaging';
+import { showToast } from '@/shared/utils/feedback';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRealtimeUpdate } from '../../../layouts/hooks/useRealtime';
 import { publicUrl } from '../../../shared/utils/publicUrl';
@@ -29,18 +31,10 @@ export function useSurvey() {
 	const [deletingItem, setDeletingItem] = useState<Survey | null>(null);
 	const [results, setResults] = useState<SurveyResults | null>(null);
 	const [loading, setLoading] = useState(false);
-	const [toast, setToast] = useState<{ type: 'success' | 'error'; msg: string } | null>(null);
-	const [pageSize, setPageSize] = useState(10);
-	const [page, setPage] = useState(1);
 	const [refreshKey, setRefreshKey] = useState(0);
 
 	const refreshData = useCallback(() => setRefreshKey((k) => k + 1), []);
 	useRealtimeUpdate('survey', refreshData);
-
-	const showToast = useCallback((type: 'success' | 'error', msg: string) => {
-		setToast({ type, msg });
-		setTimeout(() => setToast(null), 3000);
-	}, []);
 
 	useEffect(() => {
 		surveyApi
@@ -48,7 +42,7 @@ export function useSurvey() {
 			.then((res) => setItems(res.data))
 			.catch(() => showToast('error', 'Không thể tải danh sách khảo sát'))
 			.finally(() => setIsLoadingData(false));
-	}, [showToast, refreshKey]);
+	}, [refreshKey]);
 
 	useEffect(() => {
 		surveyApi
@@ -66,24 +60,14 @@ export function useSurvey() {
 		);
 	}, [items, search]);
 
-	const totalPages = pageSize === 0 ? 1 : Math.ceil(filtered.length / pageSize);
-	const safePage = Math.min(page, totalPages || 1);
-
-	const paged = useMemo(() => {
-		if (pageSize === 0) return filtered;
-		const start = (safePage - 1) * pageSize;
-		return filtered.slice(start, start + pageSize);
-	}, [filtered, safePage, pageSize]);
+	const { page, setPage, pageSize, handlePageSize, totalPages, safePage, paged } =
+		useClientPaging(filtered);
 
 	const handleSearch = useCallback((v: string) => {
 		setSearch(v);
 		setPage(1);
-	}, []);
+	}, [setPage]);
 
-	const handlePageSize = useCallback((v: number) => {
-		setPageSize(v);
-		setPage(1);
-	}, []);
 
 	const toPayload = (data: SurveyFormData) => ({
 		title: data.title.trim(),
@@ -113,7 +97,7 @@ export function useSurvey() {
 				setLoading(false);
 			}
 		},
-		[showToast],
+		[],
 	);
 
 	const handleEdit = useCallback(
@@ -132,7 +116,7 @@ export function useSurvey() {
 				setLoading(false);
 			}
 		},
-		[editingItem, showToast],
+		[editingItem],
 	);
 
 	const handleDelete = useCallback(async () => {
@@ -149,7 +133,7 @@ export function useSurvey() {
 		} finally {
 			setLoading(false);
 		}
-	}, [deletingItem, showToast]);
+	}, [deletingItem]);
 
 	const handleBulkDelete = useCallback(
 		async (ids: string[]) => {
@@ -167,7 +151,7 @@ export function useSurvey() {
 				setLoading(false);
 			}
 		},
-		[showToast],
+		[],
 	);
 
 	const openResults = useCallback(
@@ -181,7 +165,7 @@ export function useSurvey() {
 				setModal(null);
 			}
 		},
-		[showToast],
+		[],
 	);
 
 	const copyRespondLink = useCallback(
@@ -199,7 +183,7 @@ export function useSurvey() {
 				showToast('error', `Không sao chép được, link: ${link}`);
 			}
 		},
-		[showToast],
+		[],
 	);
 
 	return {
@@ -212,7 +196,6 @@ export function useSurvey() {
 		deletingItem,
 		results,
 		loading,
-		toast,
 		pageSize,
 		page,
 		filtered,

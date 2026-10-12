@@ -1,6 +1,5 @@
 import { DocSvg, SearchSvg } from '@/assets/icons';
 import { Badge, Pagination, SkeletonTable, TableEmpty } from '@/shared/components';
-import { PAGE_SIZE_OPTIONS } from '@/shared/utils';
 import type { SimpleItem } from '../../topics/api/topicApi';
 import type { DashboardStats } from '../types/dashboard.type';
 import {
@@ -230,9 +229,7 @@ export function TopicTable({
 				totalPages={totalPages}
 				total={total}
 				rowsPerPage={ROWS_PER_PAGE}
-				pageSizeOptions={PAGE_SIZE_OPTIONS}
 				onPageChange={onPageChange}
-				onRowsPerPageChange={() => {}}
 				itemLabel='đề tài'
 				hideSizeSelect
 			/>

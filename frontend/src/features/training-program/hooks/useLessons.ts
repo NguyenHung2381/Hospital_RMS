@@ -1,3 +1,5 @@
+import { useClientPaging } from '@/shared/hooks/useClientPaging';
+import { showToast } from '@/shared/utils/feedback';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRealtimeUpdate } from '../../../layouts/hooks/useRealtime';
 import { bulkToast, runBulk } from '../../../shared/utils/runBulk';
@@ -12,25 +14,17 @@ export function useLessons() {
 	const [formModal, setFormModal] = useState<{ mode: 'add' | 'edit'; lesson?: Lesson } | null>(null);
 	const [deletingLesson, setDeletingLesson] = useState<Lesson | null>(null);
 	const [loading, setLoading] = useState(false);
-	const [toast, setToast] = useState<{ type: 'success' | 'error'; msg: string } | null>(null);
-	const [pageSize, setPageSize] = useState(10);
-	const [page, setPage] = useState(1);
 	const [refreshKey, setRefreshKey] = useState(0);
 
 	const refreshData = useCallback(() => setRefreshKey((prev) => prev + 1), []);
 	useRealtimeUpdate('program_lesson', refreshData);
-
-	const showToast = useCallback((type: 'success' | 'error', msg: string) => {
-		setToast({ type, msg });
-		setTimeout(() => setToast(null), 3000);
-	}, []);
 
 	const load = useCallback(() => {
 		return getAllLessons()
 			.then(setLessons)
 			.catch(() => showToast('error', 'Không thể tải danh sách bài học'))
 			.finally(() => setIsLoadingData(false));
-	}, [showToast]);
+	}, []);
 
 	useEffect(() => {
 		load();
@@ -50,24 +44,14 @@ export function useLessons() {
 		);
 	}, [lessons, search]);
 
-	const totalPages = pageSize === 0 ? 1 : Math.ceil(filtered.length / pageSize);
-	const safePage = Math.min(page, totalPages || 1);
-
-	const paged = useMemo(() => {
-		if (pageSize === 0) return filtered;
-		const start = (safePage - 1) * pageSize;
-		return filtered.slice(start, start + pageSize);
-	}, [filtered, safePage, pageSize]);
+	const { page, setPage, pageSize, handlePageSize, totalPages, safePage, paged } =
+		useClientPaging(filtered);
 
 	const handleSearch = useCallback((v: string) => {
 		setSearch(v);
 		setPage(1);
-	}, []);
+	}, [setPage]);
 
-	const handlePageSize = useCallback((v: number) => {
-		setPageSize(v);
-		setPage(1);
-	}, []);
 
 	const handleDelete = useCallback(async () => {
 		if (!deletingLesson) return;
@@ -82,7 +66,7 @@ export function useLessons() {
 		} finally {
 			setLoading(false);
 		}
-	}, [deletingLesson, showToast, load]);
+	}, [deletingLesson, load]);
 
 	const handleBulkDelete = useCallback(
 		async (ids: string[]) => {
@@ -96,7 +80,7 @@ export function useLessons() {
 				setLoading(false);
 			}
 		},
-		[showToast, load],
+		[load],
 	);
 
 	return {
@@ -107,7 +91,6 @@ export function useLessons() {
 		formModal,
 		deletingLesson,
 		loading,
-		toast,
 		pageSize,
 		page,
 		filtered,

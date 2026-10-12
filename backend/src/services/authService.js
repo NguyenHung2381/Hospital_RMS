@@ -970,6 +970,7 @@ module.exports = {
 	logoutAll,
 	listSessions,
 	changePassword,
+	hashPassword,
 	isRememberedSession,
 	verify2FALogin,
 	setup2FA,

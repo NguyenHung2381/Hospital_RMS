@@ -1,3 +1,5 @@
+import { useClientPaging } from '@/shared/hooks/useClientPaging';
+import { showToast } from '@/shared/utils/feedback';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRealtimeUpdate } from '../../../layouts/hooks/useRealtime';
 import { bulkToast, runBulk } from '../../../shared/utils/runBulk';
@@ -29,18 +31,10 @@ export function useTrainingPlan() {
 	const [editingItem, setEditingItem] = useState<TrainingPlan | null>(null);
 	const [deletingItem, setDeletingItem] = useState<TrainingPlan | null>(null);
 	const [loading, setLoading] = useState(false);
-	const [toast, setToast] = useState<{ type: 'success' | 'error'; msg: string } | null>(null);
-	const [pageSize, setPageSize] = useState(10);
-	const [page, setPage] = useState(1);
 	const [refreshKey, setRefreshKey] = useState(0);
 
 	const refreshData = useCallback(() => setRefreshKey((k) => k + 1), []);
 	useRealtimeUpdate('training_plan', refreshData);
-
-	const showToast = useCallback((type: 'success' | 'error', msg: string) => {
-		setToast({ type, msg });
-		setTimeout(() => setToast(null), 3000);
-	}, []);
 
 	useEffect(() => {
 		trainingPlanApi
@@ -48,7 +42,7 @@ export function useTrainingPlan() {
 			.then((res) => setItems(res.data))
 			.catch(() => showToast('error', 'Không thể tải danh sách kế hoạch đào tạo'))
 			.finally(() => setIsLoadingData(false));
-	}, [showToast, refreshKey]);
+	}, [refreshKey]);
 
 	useEffect(() => {
 		trainingPlanApi
@@ -69,24 +63,14 @@ export function useTrainingPlan() {
 		);
 	}, [items, search]);
 
-	const totalPages = pageSize === 0 ? 1 : Math.ceil(filtered.length / pageSize);
-	const safePage = Math.min(page, totalPages || 1);
-
-	const paged = useMemo(() => {
-		if (pageSize === 0) return filtered;
-		const start = (safePage - 1) * pageSize;
-		return filtered.slice(start, start + pageSize);
-	}, [filtered, safePage, pageSize]);
+	const { page, setPage, pageSize, handlePageSize, totalPages, safePage, paged } =
+		useClientPaging(filtered);
 
 	const handleSearch = useCallback((v: string) => {
 		setSearch(v);
 		setPage(1);
-	}, []);
+	}, [setPage]);
 
-	const handlePageSize = useCallback((v: number) => {
-		setPageSize(v);
-		setPage(1);
-	}, []);
 
 	const toPayload = (data: TrainingPlanFormData) => ({
 		department_id: data.department_id || null,
@@ -118,7 +102,7 @@ export function useTrainingPlan() {
 				setLoading(false);
 			}
 		},
-		[showToast],
+		[],
 	);
 
 	const handleEdit = useCallback(
@@ -137,7 +121,7 @@ export function useTrainingPlan() {
 				setLoading(false);
 			}
 		},
-		[editingItem, showToast],
+		[editingItem],
 	);
 
 	const handleDelete = useCallback(async () => {
@@ -154,7 +138,7 @@ export function useTrainingPlan() {
 		} finally {
 			setLoading(false);
 		}
-	}, [deletingItem, showToast]);
+	}, [deletingItem]);
 
 	const handleBulkDelete = useCallback(
 		async (ids: string[]) => {
@@ -172,7 +156,7 @@ export function useTrainingPlan() {
 				setLoading(false);
 			}
 		},
-		[showToast],
+		[],
 	);
 
 	return {
@@ -184,7 +168,6 @@ export function useTrainingPlan() {
 		editingItem,
 		deletingItem,
 		loading,
-		toast,
 		pageSize,
 		page,
 		filtered,

@@ -135,6 +135,18 @@ const getRolePermissions = async (roleId) => {
 	return grants.map(({ permission_id, scope }) => ({ permission_id, scope }));
 };
 
+// Ghi các lượt cấp quyền (permission_id + scope) cho 1 vai trò trong transaction đang mở.
+const insertGrants = async (transaction, roleId, grants, actorId) => {
+	for (const g of grants) {
+		await new sql.Request(transaction)
+			.input('role_id', sql.VarChar(20), roleId)
+			.input('permission_id', sql.VarChar(20), g.permission_id)
+			.input('scope', sql.VarChar(20), g.scope)
+			.input('created_by', sql.VarChar(20), actorId)
+			.query('INSERT INTO role_permissions (role_id, permission_id, scope, created_by) VALUES (@role_id, @permission_id, @scope, @created_by)');
+	}
+};
+
 // Thay toàn bộ quyền của vai trò bằng `grants` = [{ permission_id, scope }].
 // scope bắt buộc (và phải hợp lệ) với resource có phạm vi, phải bỏ trống với
 // resource khác.
@@ -179,16 +191,7 @@ const setRolePermissions = async (roleId, grants, actor, ip = null) => {
 			.input('role_id', sql.VarChar(20), roleId)
 			.query('DELETE FROM role_permissions WHERE role_id = @role_id');
 
-		for (const g of newGrants) {
-			await new sql.Request(transaction)
-				.input('role_id', sql.VarChar(20), roleId)
-				.input('permission_id', sql.VarChar(20), g.permission_id)
-				.input('scope', sql.VarChar(20), g.scope)
-				.input('created_by', sql.VarChar(20), actor.id).query(`
-          INSERT INTO role_permissions (role_id, permission_id, scope, created_by)
-          VALUES (@role_id, @permission_id, @scope, @created_by)
-        `);
-		}
+		await insertGrants(transaction, roleId, newGrants, actor.id);
 		await transaction.commit();
 	} catch (err) {
 		await transaction.rollback();
@@ -233,16 +236,7 @@ const cloneRole = async (sourceId, data, actor, ip = null) => {
 		const transaction = new sql.Transaction(pool);
 		await transaction.begin();
 		try {
-			for (const g of grants) {
-				await new sql.Request(transaction)
-					.input('role_id', sql.VarChar(20), role.id)
-					.input('permission_id', sql.VarChar(20), g.permission_id)
-					.input('scope', sql.VarChar(20), g.scope)
-					.input('created_by', sql.VarChar(20), actor.id).query(`
-            INSERT INTO role_permissions (role_id, permission_id, scope, created_by)
-            VALUES (@role_id, @permission_id, @scope, @created_by)
-          `);
-			}
+			await insertGrants(transaction, role.id, grants, actor.id);
 			await transaction.commit();
 		} catch (err) {
 			await transaction.rollback();

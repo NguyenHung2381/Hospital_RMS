@@ -47,13 +47,3 @@ export function toRoman(n: number): string {
 	}
 	return result;
 }
-
-/** Escape HTML entities (dùng khi build HTML string động) */
-export function escHtml(str: string): string {
-	return str
-		.replace(/&/g, '&amp;')
-		.replace(/</g, '&lt;')
-		.replace(/>/g, '&gt;')
-		.replace(/"/g, '&quot;')
-		.replace(/'/g, '&#039;');
-}

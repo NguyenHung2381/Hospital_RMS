@@ -49,10 +49,6 @@
 .tdActions {
 	composes: tdActions from '../../../shared/components/Table/Table.module.css';
 }
-.actionBtns {
-	composes: actionBtns from '../../../shared/components/Table/Table.module.css';
-	justify-content: flex-end;
-}
 .actionBtn {
 	composes: actionBtn from '../../../shared/components/Table/Table.module.css';
 }

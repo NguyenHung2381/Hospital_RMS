@@ -1,3 +1,4 @@
+import { showToast } from '@/shared/utils/feedback';
 import { useCallback, useEffect, useState } from 'react';
 import { useRealtimeUpdate } from '../../../layouts/hooks/useRealtime';
 import { bulkToast, runBulk } from '../../../shared/utils/runBulk';
@@ -25,21 +26,12 @@ export function useDepartments() {
 	const [editingDept, setEditingDept] = useState<Department | null>(null);
 	const [deletingDept, setDeletingDept] = useState<Department | null>(null);
 	const [loading, setLoading] = useState(false);
-	const [toast, setToast] = useState<{
-		type: 'success' | 'error';
-		msg: string;
-	} | null>(null);
 	const [pageSize, setPageSize] = useState<number>(10);
 	const [page, setPage] = useState(1);
 	const [refreshKey, setRefreshKey] = useState(0);
 
 	const refreshData = useCallback(() => setRefreshKey((prev) => prev + 1), []);
 	useRealtimeUpdate('department', refreshData);
-
-	const showToast = useCallback((type: 'success' | 'error', msg: string) => {
-		setToast({ type, msg });
-		setTimeout(() => setToast(null), 3000);
-	}, []);
 
 	// Debounce ô tìm kiếm 300ms rồi mới gọi API
 	useEffect(() => {
@@ -65,7 +57,7 @@ export function useDepartments() {
 			}
 		})();
 		return () => controller.abort();
-	}, [page, pageSize, debouncedSearch, refreshKey, showToast]);
+	}, [page, pageSize, debouncedSearch, refreshKey]);
 
 	const totalPages = pageSize === 0 ? 1 : Math.max(1, Math.ceil(total / pageSize));
 	const safePage = Math.min(page, totalPages);
@@ -97,7 +89,7 @@ export function useDepartments() {
 				setLoading(false);
 			}
 		},
-		[showToast, refreshData],
+		[refreshData],
 	);
 
 	const handleEdit = useCallback(
@@ -119,7 +111,7 @@ export function useDepartments() {
 				setLoading(false);
 			}
 		},
-		[editingDept, showToast, refreshData],
+		[editingDept, refreshData],
 	);
 
 	const handleDelete = useCallback(async () => {
@@ -136,7 +128,7 @@ export function useDepartments() {
 		} finally {
 			setLoading(false);
 		}
-	}, [deletingDept, showToast, refreshData]);
+	}, [deletingDept, refreshData]);
 
 	const handleBulkDelete = useCallback(
 		async (ids: string[]) => {
@@ -154,7 +146,7 @@ export function useDepartments() {
 				setLoading(false);
 			}
 		},
-		[showToast, refreshData],
+		[refreshData],
 	);
 
 	return {
@@ -165,7 +157,6 @@ export function useDepartments() {
 		editingDept,
 		deletingDept,
 		loading,
-		toast,
 		pageSize,
 		page,
 		total,

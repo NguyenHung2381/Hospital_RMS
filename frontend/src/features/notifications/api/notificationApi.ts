@@ -66,9 +66,6 @@ export const getNotifications = (params?: {
 	return apiClient.get<NotifListResponse>(`/notifications${toQS(params ?? {})}`);
 };
 
-export const getUnreadCount = () =>
-	apiClient.get<{ count: number }>('/notifications/unread-count');
-
 export const markNotificationRead = (id: string) =>
 	apiClient.put<null>(`/notifications/${id}/read`, {});
 

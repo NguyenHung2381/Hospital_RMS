@@ -12,7 +12,8 @@
 
 const ExcelJS = require('exceljs');
 const dashboardService = require('../services/dashboardService');
-const { fnt, al, sf, bAll } = require('../utils/excelStyle');
+const { fnt, al, headerRow, dataRow } = require('../utils/excelStyle');
+const { sendWorkbook } = require('../utils/response');
 
 const C = {
 	hdrBlue: 'FF1F4E79',
@@ -101,31 +102,6 @@ function sheetTitle(ws, title, lastCol) {
 	});
 	ws.getRow(4).height = 30;
 	ws.getRow(5).height = 6;
-}
-
-function headerRow(ws, row, labels) {
-	labels.forEach((label, i) => {
-		Object.assign(ws.getCell(row, i + 1), {
-			value: label,
-			font: fnt({ bold: true, size: 10, color: 'FFFFFF' }),
-			fill: sf(C.hdrBlue),
-			alignment: al('center', true),
-			border: bAll,
-		});
-	});
-	ws.getRow(row).height = 22;
-}
-
-function dataRow(ws, row, values, { bg, boldFirst = false } = {}) {
-	values.forEach((v, i) => {
-		Object.assign(ws.getCell(row, i + 1), {
-			value: v,
-			font: fnt({ size: 10, bold: boldFirst && i === 0 }),
-			fill: sf(bg || (row % 2 === 0 ? C.rowA : C.rowB)),
-			alignment: al(typeof v === 'number' ? 'center' : 'left', true),
-			border: bAll,
-		});
-	});
 }
 
 // ── Sheet: Tổng quan ─────────────────────────────────────────────────────────
@@ -351,16 +327,7 @@ async function exportStats(req, res, next) {
 			buildOverviewSheet(wb.addWorksheet('Tổng quan'), stats, year);
 		}
 
-		res.setHeader(
-			'Content-Type',
-			'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-		);
-		res.setHeader(
-			'Content-Disposition',
-			`attachment; filename*=UTF-8''${encodeURIComponent(`thong-ke-de-tai-${year}.xlsx`)}`,
-		);
-		await wb.xlsx.write(res);
-		res.end();
+		await sendWorkbook(res, wb, `thong-ke-de-tai-${year}.xlsx`);
 	} catch (err) {
 		next(err);
 	}

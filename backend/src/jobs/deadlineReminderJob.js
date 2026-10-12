@@ -1,17 +1,13 @@
 const { getPool, sql } = require('../config/db');
 const notificationService = require('../services/notificationService');
 const { markOnce } = require('./dedupe');
+const { todayVN } = require('../utils/vnDate');
 
 // Job nền: quét round_deadlines mỗi ngày, chủ động nhắc TRƯỚC khi tới hạn
 // (thay vì chỉ chặn PHẢN ỨNG như deadlineGuard.js) — mirror
 // cron_nckh_nhac_viec.php của hệ thống NCKH bệnh viện.
-const VN_OFFSET_MS = 7 * 60 * 60 * 1000; // UTC+7
 const UPCOMING_DAYS_BEFORE = 3;
 
-const todayVN = () => {
-	const vn = new Date(Date.now() + VN_OFFSET_MS);
-	return new Date(Date.UTC(vn.getUTCFullYear(), vn.getUTCMonth(), vn.getUTCDate()));
-};
 const addDays = (d, n) => new Date(d.getTime() + n * 86400000);
 const dateOnly = (d) => {
 	const dt = d instanceof Date ? d : new Date(d);

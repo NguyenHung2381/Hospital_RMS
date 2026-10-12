@@ -1,5 +1,3 @@
-/* ══ Hội thảo / Hội nghị & CME ═══════════════════════════════════════════════ */
-
 /* ── CARD + HEADER (chuẩn tham chiếu: trang Đề tài) ─────────────────────── */
 .tableCard {
 	composes: tableCard from '../../../shared/components/Table/Table.module.css';
@@ -22,14 +20,6 @@
 }
 .clearSelectionBtn {
 	composes: clearSelectionBtn from '../../../shared/components/Table/Table.module.css';
-}
-
-.toolbar {
-	display: flex;
-	flex-wrap: wrap;
-	align-items: center;
-	gap: var(--space-3);
-	margin-bottom: var(--space-4);
 }
 
 .searchBox {
@@ -70,12 +60,6 @@
 	color: var(--color-gray-700);
 	cursor: pointer;
 	user-select: none;
-}
-
-.resultCount {
-	font-size: var(--font-size-sm);
-	color: var(--color-gray-500);
-	margin-left: auto;
 }
 
 .btnAddHeader,
@@ -232,14 +216,6 @@
 }
 .tabActive { color: var(--color-primary-dark); border-bottom-color: var(--color-primary); }
 
-.partToolbar {
-	display: flex;
-	flex-wrap: wrap;
-	align-items: center;
-	gap: var(--space-2);
-	margin-bottom: var(--space-3);
-}
-
 /* ── Modal ── */
 .modalBackdrop {
 	position: fixed;
@@ -379,23 +355,6 @@
 .acMeta { color: var(--color-gray-400); font-size: var(--font-size-xs); }
 
 /* ── Toast ── */
-.toast {
-	position: fixed;
-	bottom: var(--space-6);
-	right: var(--space-6);
-	display: flex;
-	align-items: center;
-	gap: var(--space-2);
-	padding: var(--space-3) var(--space-4);
-	border-radius: var(--radius-lg);
-	color: #fff;
-	font-size: var(--font-size-sm);
-	box-shadow: 0 12px 30px rgba(0, 0, 0, 0.2);
-	z-index: 2000;
-}
-.toast svg { width: 15px; height: 15px; }
-.toastSuccess { background: #096c35; }
-.toastError { background: #b42318; }
 
 .regHead {
 	display: flex;

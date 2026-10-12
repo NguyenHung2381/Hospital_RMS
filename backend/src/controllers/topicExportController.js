@@ -1,6 +1,7 @@
 const ExcelJS = require('exceljs');
 const topicService = require('../services/topicService');
 const { fnt, al, sf, bAll, bNoBot, bNoTop, bSides } = require('../utils/excelStyle');
+const { sendWorkbook } = require('../utils/response');
 
 const ROLE_LABELS = {
 	leader: 'Chủ nhiệm',
@@ -225,17 +226,7 @@ async function exportExcel(req, res, next) {
 			(fileName || 'lich-bao-ve-de-tai').replace(/[/\\?%*:|"<>]/g, '').trim() ||
 			'lich-bao-ve-de-tai';
 
-		res.setHeader(
-			'Content-Type',
-			'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-		);
-		res.setHeader(
-			'Content-Disposition',
-			`attachment; filename*=UTF-8''${encodeURIComponent(safeName + '.xlsx')}`,
-		);
-
-		await wb.xlsx.write(res);
-		res.end();
+		await sendWorkbook(res, wb, safeName + '.xlsx');
 	} catch (err) {
 		next(err);
 	}

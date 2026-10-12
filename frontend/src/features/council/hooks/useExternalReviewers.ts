@@ -1,3 +1,4 @@
+import { showToast } from '@/shared/utils/feedback';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRealtimeUpdate } from '../../../layouts/hooks/useRealtime';
 import { bulkToast, runBulk } from '../../../shared/utils/runBulk';
@@ -25,23 +26,17 @@ export function useExternalReviewers() {
 	const [editingReviewer, setEditingReviewer] = useState<ExternalReviewer | null>(null);
 	const [deletingReviewer, setDeletingReviewer] = useState<ExternalReviewer | null>(null);
 	const [loading, setLoading] = useState(false);
-	const [toast, setToast] = useState<{ type: 'success' | 'error'; msg: string } | null>(null);
 	const [refreshKey, setRefreshKey] = useState(0);
 
 	const refreshData = useCallback(() => setRefreshKey((prev) => prev + 1), []);
 	useRealtimeUpdate('external_reviewer', refreshData);
-
-	const showToast = useCallback((type: 'success' | 'error', msg: string) => {
-		setToast({ type, msg });
-		setTimeout(() => setToast(null), 3000);
-	}, []);
 
 	useEffect(() => {
 		getExternalReviewers({ active_only: false })
 			.then(setReviewers)
 			.catch(() => showToast('error', 'Không thể tải danh sách người ngoài viện'))
 			.finally(() => setIsLoadingData(false));
-	}, [showToast, refreshKey]);
+	}, [refreshKey]);
 
 	const filtered = useMemo(() => {
 		if (!search.trim()) return reviewers;
@@ -68,7 +63,7 @@ export function useExternalReviewers() {
 				setLoading(false);
 			}
 		},
-		[showToast],
+		[],
 	);
 
 	const handleEdit = useCallback(
@@ -87,7 +82,7 @@ export function useExternalReviewers() {
 				setLoading(false);
 			}
 		},
-		[editingReviewer, showToast],
+		[editingReviewer],
 	);
 
 	const handleDelete = useCallback(async () => {
@@ -104,7 +99,7 @@ export function useExternalReviewers() {
 		} finally {
 			setLoading(false);
 		}
-	}, [deletingReviewer, showToast, refreshData]);
+	}, [deletingReviewer, refreshData]);
 
 	const handleBulkDelete = useCallback(
 		async (ids: string[]) => {
@@ -125,7 +120,7 @@ export function useExternalReviewers() {
 				setLoading(false);
 			}
 		},
-		[showToast, refreshData],
+		[refreshData],
 	);
 
 	const handleBulkEdit = useCallback(
@@ -146,7 +141,7 @@ export function useExternalReviewers() {
 				setLoading(false);
 			}
 		},
-		[showToast, refreshData],
+		[refreshData],
 	);
 
 	return {
@@ -161,7 +156,6 @@ export function useExternalReviewers() {
 		deletingReviewer,
 		setDeletingReviewer,
 		loading,
-		toast,
 		filtered,
 		EMPTY_EXTERNAL_REVIEWER_FORM,
 		handleAdd,

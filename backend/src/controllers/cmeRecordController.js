@@ -73,6 +73,18 @@ const importExcel = async (req, res, next) => {
 	}
 };
 
+const reviewWith = (approve) => async (req, res, next) => {
+	try {
+		const item = await cmeRecordService.review(req.params.id, approve, req.body?.reason, req.user.id);
+		if (!item) return notFound(res);
+		return success(res, item, approve ? 'Đã duyệt' : 'Đã từ chối');
+	} catch (err) {
+		next(err);
+	}
+};
+const approve = reviewWith(true);
+const reject = reviewWith(false);
+
 const sendWorkbook = async (res, wb, fileName) => {
 	res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
 	res.setHeader('Content-Disposition', `attachment; filename*=UTF-8''${encodeURIComponent(fileName)}`);
@@ -105,6 +117,8 @@ module.exports = {
 	updateOne,
 	removeOne,
 	addEvidence,
+	approve,
+	reject,
 	importExcel,
 	importTemplate,
 	exportExcel,

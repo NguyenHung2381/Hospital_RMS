@@ -477,8 +477,7 @@ Hospital_RMS/
 ├── backend/src/
 │   ├── server.js               # bootstrap: tự chọn port, đồng bộ port sang frontend/.env
 │   ├── app.js                  # nạp & kiểm tra .env, middleware, mount routes
-│   ├── config/                 # db, redis, swagger, auditLogger, env
-│   ├── core/                   # db (gọi stored procedure), errors (AppError)
+│   ├── config/                 # db, redis, swagger, auditLogger, loadEnv
 │   ├── routes/                 # định nghĩa endpoint + validation
 │   ├── controllers/            # request/response, các controller export Excel
 │   ├── services/               # business logic

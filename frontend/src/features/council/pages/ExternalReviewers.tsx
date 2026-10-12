@@ -1,5 +1,6 @@
+import { RowActions } from '@/shared/components/Table/TableToolbar';
 import { useState } from 'react';
-import { CheckSvg, EditSvg, PlusSvg, SearchSvg, TrashSvg, XSvg } from '@/assets/icons';
+import { EditSvg, PlusSvg, SearchSvg, TrashSvg } from '@/assets/icons';
 import AdminLayout from '../../../layouts/AdminLayout';
 import { Badge } from '@/shared/components';
 import { SkeletonTable } from '../../../shared/components/Loading';
@@ -152,28 +153,16 @@ export default function ExternalReviewers() {
 										</Badge>
 									</td>
 									<td className={`${styles.td} ${styles.tdActions}`}>
-										<div className={styles.actionBtns}>
-											<div
-												className={styles.actionBtn}
-												title='Chỉnh sửa'
-												onClick={() => {
-													d.setEditingReviewer(r);
-													d.setModal('edit');
-												}}
-											>
-												<EditSvg />
-											</div>
-											<div
-												className={`${styles.actionBtn} ${styles.danger}`}
-												title='Xoá'
-												onClick={() => {
-													d.setDeletingReviewer(r);
-													d.setModal('delete');
-												}}
-											>
-												<TrashSvg />
-											</div>
-										</div>
+										<RowActions
+											onEdit={() => {
+												d.setEditingReviewer(r);
+												d.setModal('edit');
+											}}
+											onDelete={() => {
+												d.setDeletingReviewer(r);
+												d.setModal('delete');
+											}}
+										/>
 									</td>
 								</tr>
 							))
@@ -241,14 +230,6 @@ export default function ExternalReviewers() {
 				/>
 			)}
 
-			{d.toast && (
-				<div
-					className={`${styles.toast} ${d.toast.type === 'success' ? styles.toastSuccess : styles.toastError}`}
-				>
-					{d.toast.type === 'success' ? <CheckSvg /> : <XSvg />}
-					{d.toast.msg}
-				</div>
-			)}
 		</AdminLayout>
 	);
 }

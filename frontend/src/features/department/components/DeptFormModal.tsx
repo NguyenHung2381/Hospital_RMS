@@ -1,5 +1,7 @@
+import { FormField } from '@/shared/components/Input/FormField';
+import { Modal, ModalActions } from '@/shared/components';
 import React, { useState } from 'react';
-import { BookOpenSvg, CheckSvg, XSvg } from '@/assets/icons';
+import { BookOpenSvg } from '@/assets/icons';
 import {
 	EMPTY_FORM,
 	SPECIALTY_GROUPS,
@@ -75,135 +77,94 @@ export function DeptFormModal({
 	};
 
 	return (
-		<div
-			className={styles.modalBackdrop}
-			onClick={(e) => e.target === e.currentTarget && onClose()}
+		<Modal
+			open
+			onClose={onClose}
+			icon={<BookOpenSvg />}
+			title={mode === 'add' ? 'Thêm khoa phòng' : 'Chỉnh sửa khoa phòng'}
+			subtitle={mode === 'add' ? 'Thêm đơn vị mới vào hệ thống' : `Cập nhật — ${dept?.code}`}
+			className={styles.modal}
+			bodyClassName={styles.modalBody}
+			footer={
+				<ModalActions
+					onCancel={onClose}
+					onConfirm={() => validate() && onSave(form)}
+					loading={loading}
+					confirmLabel={mode === 'add' ? 'Thêm khoa phòng' : 'Lưu thay đổi'}
+				/>
+			}
 		>
-			<div className={styles.modal}>
-				<div className={styles.modalHeader}>
-					<div className={styles.modalHeaderIcon}>
-						<BookOpenSvg />
-					</div>
-					<div>
-						<div className={styles.modalTitle}>
-							{mode === 'add' ? 'Thêm khoa phòng' : 'Chỉnh sửa khoa phòng'}
-						</div>
-						<div className={styles.modalSub}>
-							{mode === 'add'
-								? 'Thêm đơn vị mới vào hệ thống'
-								: `Cập nhật — ${dept?.code}`}
-						</div>
-					</div>
-					<button
-						className={styles.modalClose}
-						onClick={onClose}
+			<div className={styles.formGrid2}>
+				<FormField
+					label='Tên khoa phòng'
+					required
+					error={errors.name}
+					style={{ gridColumn: '1 / -1' }}
+				>
+					<input
+						className={`${styles.formInput} ${errors.name ? styles.inputError : ''}`}
+						value={form.name}
+						onChange={handleNameChange}
+						placeholder='VD: Khoa Nội Tim mạch'
+					/>
+				</FormField>
+				<FormField
+					label='Mã khoa'
+					required
+					error={errors.code}
+				>
+					<input
+						className={`${styles.formInput} ${errors.code ? styles.inputError : ''}`}
+						value={form.code}
+						onChange={set('code')}
+						placeholder='VD: NOI-TIM'
+					/>
+				</FormField>
+				<FormField
+					label='Viết tắt'
+					required
+					error={errors.abbreviation}
+				>
+					<input
+						className={`${styles.formInput} ${errors.abbreviation ? styles.inputError : ''}`}
+						value={form.abbreviation}
+						onChange={set('abbreviation')}
+						placeholder='VD: Tim mạch'
+					/>
+				</FormField>
+				<FormField
+					label='Hệ chuyên môn'
+					style={{ gridColumn: '1 / -1' }}
+				>
+					<select
+						className={styles.formInput}
+						value={form.specialty_group}
+						onChange={set('specialty_group')}
 					>
-						<XSvg />
-					</button>
-				</div>
-
-				<div className={styles.modalBody}>
-					<div className={styles.formGrid2}>
-						<div
-							className={styles.formGroup}
-							style={{ gridColumn: '1 / -1' }}
-						>
-							<label className={styles.formLabel}>
-								Tên khoa phòng <span className={styles.required}>*</span>
-							</label>
-							<input
-								className={`${styles.formInput} ${errors.name ? styles.inputError : ''}`}
-								value={form.name}
-								onChange={handleNameChange}
-								placeholder='VD: Khoa Nội Tim mạch'
-							/>
-							{errors.name && (
-								<div className={styles.fieldError}>{errors.name}</div>
-							)}
-						</div>
-						<div className={styles.formGroup}>
-							<label className={styles.formLabel}>
-								Mã khoa <span className={styles.required}>*</span>
-							</label>
-							<input
-								className={`${styles.formInput} ${errors.code ? styles.inputError : ''}`}
-								value={form.code}
-								onChange={set('code')}
-								placeholder='VD: NOI-TIM'
-							/>
-							{errors.code && (
-								<div className={styles.fieldError}>{errors.code}</div>
-							)}
-						</div>
-						<div className={styles.formGroup}>
-							<label className={styles.formLabel}>
-								Viết tắt <span className={styles.required}>*</span>
-							</label>
-							<input
-								className={`${styles.formInput} ${errors.abbreviation ? styles.inputError : ''}`}
-								value={form.abbreviation}
-								onChange={set('abbreviation')}
-								placeholder='VD: Tim mạch'
-							/>
-							{errors.abbreviation && (
-								<div className={styles.fieldError}>{errors.abbreviation}</div>
-							)}
-						</div>
-						<div
-							className={styles.formGroup}
-							style={{ gridColumn: '1 / -1' }}
-						>
-							<label className={styles.formLabel}>Hệ chuyên môn</label>
-							<select
-								className={styles.formInput}
-								value={form.specialty_group}
-								onChange={set('specialty_group')}
+						<option value=''>-- Chưa gán hệ --</option>
+						{SPECIALTY_GROUPS.map((g) => (
+							<option
+								key={g}
+								value={g}
 							>
-								<option value=''>-- Chưa gán hệ --</option>
-								{SPECIALTY_GROUPS.map((g) => (
-									<option
-										key={g}
-										value={g}
-									>
-										{g}
-									</option>
-								))}
-							</select>
-						</div>
-						<div
-							className={styles.formGroup}
-							style={{ gridColumn: '1 / -1' }}
-						>
-							<label className={styles.formLabel}>Mô tả</label>
-							<textarea
-								className={styles.formTextarea}
-								value={form.description}
-								onChange={set('description')}
-								rows={3}
-								placeholder='Mô tả ngắn về chức năng khoa phòng...'
-							/>
-						</div>
-					</div>
-				</div>
-
-				<div className={styles.modalFooter}>
-					<button
-						className={styles.btnCancel}
-						onClick={onClose}
-						disabled={loading}
-					>
-						Huỷ
-					</button>
-					<button
-						className={styles.btnConfirmApprove}
-						onClick={() => validate() && onSave(form)}
-						disabled={loading}
-					>
-						{loading ? <span className={styles.spinner} /> : <CheckSvg />}
-						{mode === 'add' ? 'Thêm khoa phòng' : 'Lưu thay đổi'}
-					</button>
-				</div>
+								{g}
+							</option>
+						))}
+					</select>
+				</FormField>
+				<FormField
+					label='Mô tả'
+					style={{ gridColumn: '1 / -1' }}
+				>
+					<textarea
+						className={styles.formTextarea}
+						value={form.description}
+						onChange={set('description')}
+						rows={3}
+						placeholder='Mô tả ngắn về chức năng khoa phòng...'
+					/>
+				</FormField>
 			</div>
-		</div>
+		</Modal>
 	);
 }

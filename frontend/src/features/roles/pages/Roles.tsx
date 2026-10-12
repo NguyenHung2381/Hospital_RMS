@@ -1,8 +1,7 @@
-import { useState } from 'react';
+import { SelectionCount } from '@/shared/components/Table/TableToolbar';
 import { Badge } from '@/shared/components';
 import AdminLayout from '../../../layouts/AdminLayout';
 import {
-	CheckSvg,
 	CopySvg,
 	EditSvg,
 	KeySvg,
@@ -19,11 +18,7 @@ import { usePermission } from '../../../shared/hooks/usePermission';
 import { SkeletonTable } from '../../../shared/components/Loading';
 import { Pagination } from '../../../shared/components/Table/Pagination';
 import sel from '../../../shared/components/Table/RowSelect.module.css';
-import {
-	BulkButton,
-	BulkDeleteModal,
-	SelectCheckbox,
-} from '../../../shared/components/Table/RowSelect';
+import { SelectCheckbox } from '../../../shared/components/Table/RowSelect';
 import { useRowSelection } from '../../../shared/hooks/useRowSelection';
 import { RoleDeleteModal, RoleFormModal } from '../components/RoleModals';
 import { RolePermissionModal } from '../components/RolePermissionModal';
@@ -34,8 +29,6 @@ import { useRoles } from '../hooks/useRoles';
 import { formatDateVN } from '../../../shared/utils/formatDate';
 import styles from './Roles.module.css';
 
-const PAGE_SIZE_OPTIONS = [5, 10, 25, 0] as const;
-
 function getInitials(name: string) {
 	const parts = name.trim().split(/\s+/);
 	if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
@@ -45,7 +38,6 @@ function getInitials(name: string) {
 export default function Roles() {
 	const r = useRoles();
 	const rowSel = useRowSelection(r.paged.map((x) => x.id));
-	const [confirmBulkDelete, setConfirmBulkDelete] = useState(false);
 	const { has } = usePermission();
 	// Nhân bản = tạo vai trò + cấp quyền cho nó → cần cả 2 quyền (khớp backend)
 	const canClone = has('roles:create') && has('roles:manage');
@@ -111,28 +103,14 @@ export default function Roles() {
 				<div className={styles.tableHeader}>
 					<div className={styles.tableHeaderLeft}>
 						<span className={styles.tableTitle}>Danh sách vai trò</span>
-						{rowSel.selectedCount > 0 ? (
-							<span className={styles.tableCount}>
-								Đã chọn {rowSel.selectedCount}
-								<BulkButton
-									danger
-									onClick={() => setConfirmBulkDelete(true)}
-								>
-									<TrashSvg /> Xoá đã chọn
-								</BulkButton>
-								<button
-									type='button'
-									className={styles.clearSelectionBtn}
-									onClick={rowSel.clearSelection}
-								>
-									Bỏ chọn
-								</button>
-							</span>
-						) : (
-							<span className={styles.tableCount}>
-								{r.total} vai trò
-							</span>
-						)}
+						<SelectionCount
+							rowSel={rowSel}
+							itemLabel='vai trò'
+							loading={r.loading}
+							onBulkDelete={r.handleBulkDelete}
+						>
+							{r.total} vai trò
+						</SelectionCount>
 					</div>
 					<div className={styles.tableControls}>
 						<div className={styles.searchBox}>
@@ -389,7 +367,6 @@ export default function Roles() {
 						totalPages={r.totalPages}
 						total={r.total}
 						rowsPerPage={r.pageSize}
-						pageSizeOptions={PAGE_SIZE_OPTIONS}
 						onPageChange={r.setPage}
 						onRowsPerPageChange={(n) => {
 							r.setPageSize(n);
@@ -401,18 +378,6 @@ export default function Roles() {
 				)}
 			</div>
 
-			<BulkDeleteModal
-				open={confirmBulkDelete}
-				count={rowSel.selectedCount}
-				itemLabel='vai trò'
-				loading={r.loading}
-				onClose={() => setConfirmBulkDelete(false)}
-				onConfirm={async () => {
-					await r.handleBulkDelete([...rowSel.selectedIds]);
-					rowSel.clearSelection();
-					setConfirmBulkDelete(false);
-				}}
-			/>
 
 			{/* Modals */}
 			{r.modal === 'add' && (
@@ -483,15 +448,6 @@ export default function Roles() {
 				<UserPermissionsModal onClose={() => r.setModal(null)} />
 			)}
 
-			{/* Toast */}
-			{r.toast && (
-				<div
-					className={`${styles.toast} ${styles[`toast${r.toast.type.charAt(0).toUpperCase() + r.toast.type.slice(1)}` as keyof typeof styles]}`}
-				>
-					{r.toast.type === 'success' ? <CheckSvg /> : <XSvg />}
-					{r.toast.msg}
-				</div>
-			)}
 		</AdminLayout>
 	);
 }

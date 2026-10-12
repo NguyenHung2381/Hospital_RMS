@@ -1,3 +1,4 @@
+import { Toggle } from '@/shared/components/Input/Toggle';
 import React from 'react';
 import {
 	CheckSvg,
@@ -19,10 +20,8 @@ import {
 	SelectionBar,
 } from '../../../shared/components/Table/RowSelect';
 import { useRowSelection } from '../../../shared/hooks/useRowSelection';
-import {
-	DeptAccountsDeleteModal,
-	DeptAccountsResetPasswordModal,
-} from '../components/DeptAccountsConfirmModals';
+import { ResetPasswordModal } from '../../user/components/ResetPasswordModal';
+import { UserDeleteModal } from '../../user/components/UserDeleteModal';
 import { DeptAccountsEditModal } from '../components/DeptAccountsEditModal';
 import { useDepartmentAccounts } from '../hooks/useDepartmentAccounts';
 import { getInitials } from '../../../shared/utils/helper';
@@ -47,29 +46,6 @@ function Avatar({
 		>
 			{getInitials(name)}
 		</div>
-	);
-}
-
-function Toggle({
-	on,
-	onChange,
-	disabled,
-}: {
-	on: boolean;
-	onChange: () => void;
-	disabled?: boolean;
-}) {
-	return (
-		<button
-			type='button'
-			className={`${styles.toggleTrack} ${on ? styles.on : ''}`}
-			onClick={onChange}
-			aria-pressed={on}
-			disabled={disabled}
-			style={disabled ? { cursor: 'not-allowed', opacity: 0.6 } : undefined}
-		>
-			<span className={styles.toggleThumb} />
-		</button>
 	);
 }
 
@@ -432,14 +408,14 @@ export default function DepartmentAccounts() {
 				/>
 			)}
 			{d.deleteUser && (
-				<DeptAccountsDeleteModal
+				<UserDeleteModal
 					user={d.deleteUser}
 					onClose={() => d.setDeleteUser(null)}
 					onConfirm={d.handleDelete}
 				/>
 			)}
 			{d.resetUser && (
-				<DeptAccountsResetPasswordModal
+				<ResetPasswordModal
 					user={d.resetUser}
 					onClose={() => d.setResetUser(null)}
 					onConfirm={d.handleResetPassword}
@@ -458,17 +434,6 @@ export default function DepartmentAccounts() {
 				}
 			/>
 
-			{/* Toast */}
-			{d.toast && (
-				<div
-					className={`${styles.toast} ${styles[`toast${d.toast.type.charAt(0).toUpperCase() + d.toast.type.slice(1)}` as keyof typeof styles]}`}
-				>
-					{d.toast.type === 'success' && <CheckSvg />}
-					{d.toast.type === 'error' && <XSvg />}
-					{d.toast.type === 'info' && <InfoSvg />}
-					{d.toast.msg}
-				</div>
-			)}
 		</UserLayout>
 	);
 }

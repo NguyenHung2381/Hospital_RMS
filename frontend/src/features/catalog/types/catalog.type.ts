@@ -1,4 +1,15 @@
-export type CatalogTab = 'categories' | 'levels' | 'round-types';
+/** Nhóm trang danh mục: NCKH (/admin/categories…) và Đào tạo (/admin/trainee-types…). */
+export type CatalogGroup = 'research' | 'training';
+
+export type CatalogTab =
+	| 'categories'
+	| 'levels'
+	| 'round-types'
+	| 'trainee-types'
+	| 'training-forms'
+	| 'training-types'
+	| 'subjects';
+
 export type ModalType = 'add' | 'edit' | 'delete' | null;
 
 export interface CatalogItem {

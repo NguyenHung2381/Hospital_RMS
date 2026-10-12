@@ -34,6 +34,8 @@ router.post(
 	ctrl.createOne,
 );
 
+router.post('/:id/approve', canManage, ctrl.approve);
+router.post('/:id/reject', canManage, ctrl.reject);
 router.put('/:id', canManage, ctrl.updateOne);
 router.delete('/:id', canManage, ctrl.removeOne);
 router.post('/:id/evidence', canManage, uploadEvidence.single('file'), ctrl.addEvidence);

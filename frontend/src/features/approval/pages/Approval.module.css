@@ -412,8 +412,6 @@
 	white-space: nowrap;
 }
 
-/* ── MULTI-SELECT & INLINE BULK ACTIONS ──── */
-
 /* Header left/right split */
 .listHeaderLeft {
 	display: flex;
@@ -450,8 +448,6 @@
 	accent-color: var(--color-primary);
 	flex-shrink: 0;
 }
-
-/* ── CUSTOM CHECKBOX (list items) ───────── */
 
 /* Wrapper click area — bao gồm cả checkbox lẫn urgentPip */
 .checkCol {
@@ -640,15 +636,6 @@
 }
 
 /* (unused - kept for safety) */
-.checkboxWrap {
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	width: 18px;
-	height: 18px;
-	flex-shrink: 0;
-	margin-top: 3px;
-}
 
 /* Item được chọn: nền xanh nhạt, không thêm ::before (tránh conflict với listItemSelected) */
 .listItemChecked {
@@ -868,44 +855,6 @@
 	line-height: 1.5;
 }
 
-/* Comment textarea */
-.commentWrap {
-	display: flex;
-	flex-direction: column;
-	gap: var(--space-2);
-}
-
-.commentTextarea {
-	width: 100%;
-	padding: var(--space-3) var(--space-4);
-	border: 1.5px solid var(--color-gray-200);
-	border-radius: var(--radius-lg);
-	font-family: var(--font-body);
-	font-size: var(--font-size-sm);
-	color: var(--color-gray-800);
-	background: var(--color-gray-50);
-	resize: vertical;
-	min-height: 80px;
-	outline: none;
-	transition: all var(--transition-fast);
-}
-
-.commentTextarea::placeholder {
-	color: var(--color-gray-400);
-}
-
-.commentTextarea:focus {
-	border-color: var(--color-primary);
-	background: var(--color-white);
-	box-shadow: 0 0 0 3px rgba(10, 155, 74, 0.1);
-}
-
-.charCount {
-	font-size: var(--font-size-2xs);
-	color: var(--color-gray-400);
-	text-align: right;
-}
-
 /* Action buttons row */
 .actionBtns {
 	display: flex;
@@ -1059,22 +1008,11 @@
 	flex-shrink: 0;
 }
 
-/* Badge trạng thái: dùng <Badge tone> ở @/shared/components */
-
 /* =============================================
    CONFIRM MODAL
 ============================================= */
 .modalBackdrop {
-	position: fixed;
-	inset: 0;
-	background: rgba(26, 40, 53, 0.45);
-	backdrop-filter: blur(3px);
-	z-index: 500;
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	padding: var(--space-4);
-	animation: modalFadeIn 200ms ease both;
+	composes: modalBackdrop from '../../../shared/components/Modal/Modal.module.css';
 }
 
 .modal {
@@ -1163,31 +1101,11 @@
 }
 
 .modalFooter {
-	padding: var(--space-4) var(--space-6);
-	border-top: 1px solid var(--color-gray-100);
-	display: flex;
-	gap: var(--space-3);
+	composes: modalFooter from '../../../shared/components/Modal/Modal.module.css';
 }
 
 .btnCancel {
-	flex: 1;
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	padding: var(--space-3);
-	border: 1.5px solid var(--color-gray-200);
-	border-radius: var(--radius-lg);
-	background: var(--color-white);
-	font-family: var(--font-body);
-	font-size: var(--font-size-sm);
-	font-weight: var(--font-weight-semibold);
-	color: var(--color-gray-700);
-	cursor: pointer;
-	transition: all var(--transition-fast);
-}
-
-.btnCancel:hover {
-	background: var(--color-gray-50);
+	composes: btnCancel from '../../../shared/components/Modal/Modal.module.css';
 }
 
 .btnConfirmApprove {
@@ -1274,52 +1192,6 @@
 .btnConfirmRequest:disabled {
 	opacity: 0.65;
 	cursor: not-allowed;
-}
-
-/* =============================================
-   TOAST
-============================================= */
-.toast {
-	position: fixed;
-	bottom: 28px;
-	right: 28px;
-	color: #fff;
-	padding: var(--space-3) var(--space-5);
-	border-radius: var(--radius-xl);
-	font-size: var(--font-size-sm);
-	font-weight: var(--font-weight-semibold);
-	z-index: 999;
-	display: flex;
-	align-items: center;
-	gap: var(--space-2);
-	box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
-	animation: toastIn 250ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
-}
-
-.toastApproved {
-	background: var(--color-primary-dark);
-}
-.toastRejected {
-	background: #7f1d1d;
-}
-.toastRequest {
-	background: #633806;
-}
-
-@keyframes toastIn {
-	from {
-		opacity: 0;
-		transform: translateY(12px) scale(0.95);
-	}
-	to {
-		opacity: 1;
-		transform: translateY(0) scale(1);
-	}
-}
-
-.toast svg {
-	width: 15px;
-	height: 15px;
 }
 
 /* =============================================
@@ -1472,81 +1344,6 @@
 /* =============================================
    FILES SECTION
 ============================================= */
-.filesEmpty {
-	font-size: var(--font-size-sm);
-	color: var(--color-gray-400);
-	padding: var(--space-3) var(--space-4);
-	background: var(--color-gray-50);
-	border-radius: var(--radius-lg);
-	border: 1px solid var(--color-gray-100);
-}
-
-.filesList {
-	display: flex;
-	flex-direction: column;
-	gap: 6px;
-}
-
-.fileItem {
-	display: flex;
-	align-items: center;
-	gap: 10px;
-	padding: 8px 12px;
-	background: var(--color-gray-50);
-	border: 1px solid var(--color-gray-100);
-	border-radius: var(--radius-lg);
-	transition: background var(--transition-fast);
-}
-
-.fileItem:hover {
-	background: var(--color-white);
-	border-color: var(--color-gray-200);
-}
-
-.fileIcon {
-	width: 32px;
-	height: 32px;
-	border-radius: var(--radius-md);
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	flex-shrink: 0;
-}
-
-.fileIcon svg {
-	width: 15px;
-	height: 15px;
-}
-
-.fileIconPdf {
-	background: #fde8e8;
-	color: #b91c1c;
-}
-
-.fileIconWord {
-	background: #dbeafe;
-	color: #1d4ed8;
-}
-
-.fileIconExcel {
-	background: #dcfce7;
-	color: #166534;
-}
-
-.fileIconImage {
-	background: #fef3c7;
-	color: #92400e;
-}
-
-.fileIconOther {
-	background: var(--color-gray-100);
-	color: var(--color-gray-500);
-}
-
-.fileInfo {
-	flex: 1;
-	min-width: 0;
-}
 
 .fileName {
 	font-size: var(--font-size-xs);
@@ -1555,85 +1352,6 @@
 	white-space: nowrap;
 	overflow: hidden;
 	text-overflow: ellipsis;
-}
-
-.fileMeta {
-	font-size: var(--font-size-2xs);
-	color: var(--color-gray-400);
-	margin-top: 2px;
-	display: flex;
-	align-items: center;
-	gap: 4px;
-	flex-wrap: wrap;
-}
-
-.fileTypeBadge {
-	font-size: var(--font-size-2xs);
-	font-weight: 700;
-	padding: 1px 5px;
-	border-radius: var(--radius-full);
-	letter-spacing: 0.04em;
-}
-
-.fileActions {
-	display: flex;
-	align-items: center;
-	gap: 4px;
-	flex-shrink: 0;
-}
-
-.btnFileView {
-	display: inline-flex;
-	align-items: center;
-	gap: 4px;
-	padding: 4px 10px;
-	background: var(--color-primary-pale);
-	color: var(--color-primary-dark);
-	border: 1px solid rgba(10, 155, 74, 0.2);
-	border-radius: var(--radius-md);
-	font-size: var(--font-size-2xs);
-	font-weight: 600;
-	cursor: pointer;
-	transition: all var(--transition-fast);
-	white-space: nowrap;
-	font-family: var(--font-body);
-}
-
-.btnFileView:hover {
-	background: var(--color-primary);
-	color: var(--color-white);
-	border-color: var(--color-primary);
-}
-
-.btnFileView svg {
-	width: 11px;
-	height: 11px;
-}
-
-.btnFileDownload {
-	display: inline-flex;
-	align-items: center;
-	justify-content: center;
-	width: 26px;
-	height: 26px;
-	background: transparent;
-	color: var(--color-gray-400);
-	border: 1px solid var(--color-gray-200);
-	border-radius: var(--radius-md);
-	cursor: pointer;
-	transition: all var(--transition-fast);
-	text-decoration: none;
-}
-
-.btnFileDownload:hover {
-	color: var(--color-gray-700);
-	border-color: var(--color-gray-300);
-	background: var(--color-gray-50);
-}
-
-.btnFileDownload svg {
-	width: 12px;
-	height: 12px;
 }
 
 /* =============================================
@@ -1711,16 +1429,6 @@
 	}
 	.membersGrid {
 		grid-template-columns: 1fr;
-	}
-	.filterRow {
-		flex-direction: column;
-		align-items: stretch;
-		gap: var(--space-2);
-	}
-	.roundFilter,
-	.typeFilter {
-		width: 100%;
-		max-width: 100%;
 	}
 	.bulkActions {
 		flex-wrap: wrap;

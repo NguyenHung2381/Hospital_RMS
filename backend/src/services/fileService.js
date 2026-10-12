@@ -1,9 +1,6 @@
 const { getPool, sql } = require('../config/db');
 const { broadcast } = require('./eventService');
-const fs = require('fs');
-const path = require('path');
-
-const UPLOADS_ROOT = path.resolve(process.env.UPLOADS_DIR || 'uploads');
+const { removeUploadedFile } = require('../utils/uploadPaths');
 
 const uploadFiles = async (topicId, filesData, batchNote, actorId) => {
 	const pool = await getPool();
@@ -80,11 +77,7 @@ const deleteFile = async (fileId, actorId) => {
     `);
 
 	// Xoá file vật lý (file_url dạng /uploads/topics/xxx/filename.pdf)
-	const fileUrl = fileRow.recordset[0].file_url;
-	if (fileUrl && fileUrl.startsWith('/uploads/')) {
-		const diskPath = path.join(UPLOADS_ROOT, fileUrl.replace('/uploads/', ''));
-		fs.unlink(diskPath, () => {}); // bỏ qua lỗi nếu file không tồn tại
-	}
+	removeUploadedFile(fileRow.recordset[0].file_url);
 	broadcast('update', { entity: 'file' });
 };
 

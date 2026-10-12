@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { CheckSvg, ClipboardCheckSvg } from '@/assets/icons';
 import { InlineLoading } from '@/shared/components';
+import { notify } from '@/shared/utils/feedback';
 import UserLayout from '../../../layouts/UserLayout';
 import { surveyApi } from '../api/surveyApi';
 import type { ActiveSurvey, AnswerPayload, SurveyToRespond } from '../types/survey.type';
@@ -142,7 +143,6 @@ export default function UserSurveys() {
 	// Kết quả mở khảo sát, gắn với id đã tải để khi URL đổi không hiện nhầm dữ liệu cũ.
 	const [opened, setOpened] = useState<{ id: string; survey?: SurveyToRespond; error?: string } | null>(null);
 	const [listError, setListError] = useState('');
-	const [doneMsg, setDoneMsg] = useState('');
 
 	const current = id && opened?.id === id ? opened : null;
 	const selected = current?.survey ?? null;
@@ -180,7 +180,6 @@ export default function UserSurveys() {
 	const showList = !id || !!current;
 
 	const openSurvey = (surveyId: string) => {
-		setDoneMsg('');
 		navigate(`/user/khao-sat/${surveyId}`);
 	};
 
@@ -194,7 +193,7 @@ export default function UserSurveys() {
 					survey={selected}
 					onCancel={() => navigate('/user/khao-sat')}
 					onDone={() => {
-						setDoneMsg('Đã nộp khảo sát, cảm ơn bạn đã phản hồi.');
+						notify.success('Đã nộp khảo sát, cảm ơn bạn đã phản hồi.');
 						navigate('/user/khao-sat');
 					}}
 				/>
@@ -207,11 +206,6 @@ export default function UserSurveys() {
 			pageTitle='Khảo sát'
 			pageSubtitle='Các khảo sát đang mở dành cho bạn'
 		>
-			{doneMsg && (
-				<div className={`${styles.toast} ${styles.toastSuccess}`}>
-					<CheckSvg /> {doneMsg}
-				</div>
-			)}
 			{error && <div className={styles.emptyState}>{error}</div>}
 
 			{!surveys && !error && !id && <InlineLoading />}

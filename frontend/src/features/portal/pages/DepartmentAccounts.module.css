@@ -1,9 +1,3 @@
-/* =============================================
-   DepartmentAccounts.module.css
-   Quản lý Tài khoản Khoa — RMS Hospital
-   Bệnh viện Hữu Nghị Đa Khoa Nghệ An
-============================================= */
-
 /* ── STATS ROW ──────────────────────────── */
 .statsRow {
 	display: grid;
@@ -368,41 +362,7 @@
 	color: #0f6d63;
 }
 
-/* ── BADGE: dùng <Badge tone> ở @/shared/components ── */
-
 /* ── TOGGLE ─────────────────────────────── */
-.toggleTrack {
-	width: 36px;
-	height: 20px;
-	border-radius: 999px;
-	background: var(--color-gray-200);
-	border: none;
-	cursor: pointer;
-	position: relative;
-	transition: background 0.2s;
-	padding: 0;
-	flex-shrink: 0;
-}
-
-.toggleTrack.on {
-	background: var(--color-primary);
-}
-
-.toggleThumb {
-	position: absolute;
-	top: 3px;
-	left: 3px;
-	width: 14px;
-	height: 14px;
-	border-radius: 50%;
-	background: #fff;
-	box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
-	transition: transform 0.2s;
-}
-
-.toggleTrack.on .toggleThumb {
-	transform: translateX(16px);
-}
 
 .statusToggle {
 	display: flex;
@@ -457,17 +417,6 @@
 }
 
 /* ── MODAL ──────────────────────────────── */
-.modalBackdrop {
-	position: fixed;
-	inset: 0;
-	background: rgba(15, 23, 42, 0.45);
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	z-index: 1000;
-	padding: 16px;
-	backdrop-filter: blur(2px);
-}
 
 .modal {
 	background: var(--color-white);
@@ -481,75 +430,6 @@
 	overflow: hidden;
 }
 
-.modalSm {
-	max-width: 400px;
-}
-
-.modalHeader {
-	display: flex;
-	align-items: flex-start;
-	gap: var(--space-4);
-	padding: var(--space-5) var(--space-6);
-	border-bottom: 1px solid var(--color-gray-100);
-}
-
-.modalHeaderIcon {
-	width: 42px;
-	height: 42px;
-	border-radius: var(--radius-xl);
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	flex-shrink: 0;
-}
-
-.modalHeaderIcon svg {
-	width: 20px;
-	height: 20px;
-}
-
-.iconDanger {
-	background: #fcebeb;
-	color: #791f1f;
-}
-
-.modalTitle {
-	font-size: var(--font-size-base);
-	font-weight: var(--font-weight-bold);
-	color: var(--color-gray-900);
-}
-
-.modalSubtitle {
-	font-size: var(--font-size-compact);
-	color: var(--color-gray-500);
-	margin-top: 2px;
-}
-
-.modalClose {
-	background: none;
-	border: none;
-	cursor: pointer;
-	color: var(--color-gray-400);
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	width: 32px;
-	height: 32px;
-	border-radius: var(--radius-md);
-	margin-left: auto;
-	flex-shrink: 0;
-	transition: all 0.15s;
-}
-
-.modalClose:hover {
-	background: var(--color-gray-100);
-	color: var(--color-gray-600);
-}
-.modalClose svg {
-	width: 16px;
-	height: 16px;
-}
-
 .modalBody {
 	flex: 1;
 	overflow-y: auto;
@@ -557,15 +437,6 @@
 	display: flex;
 	flex-direction: column;
 	gap: var(--space-4);
-}
-
-.modalFooter {
-	display: flex;
-	align-items: center;
-	justify-content: flex-end;
-	gap: var(--space-3);
-	padding: var(--space-4) var(--space-6);
-	border-top: 1px solid var(--color-gray-100);
 }
 
 /* ── FORM ───────────────────────────────── */
@@ -581,25 +452,11 @@
 }
 
 .formRow {
-	display: grid;
-	grid-template-columns: 1fr 1fr;
-	gap: var(--space-4);
+	composes: formRow from '../../../shared/components/Modal/Modal.module.css';
 }
 
 .formRowFull {
 	grid-column: 1 / -1;
-}
-
-.formGroup {
-	display: flex;
-	flex-direction: column;
-	gap: 5px;
-}
-
-.formLabel {
-	font-size: var(--font-size-xs);
-	font-weight: var(--font-weight-semibold);
-	color: var(--color-gray-600);
 }
 
 .required {
@@ -634,48 +491,7 @@
 }
 
 .inputError {
-	border-color: #e24b4a !important;
-}
-
-.selectWrapper {
-	position: relative;
-	display: flex;
-	align-items: center;
-}
-
-.formSelect {
-	border: 1px solid var(--color-gray-200);
-	border-radius: var(--radius-lg);
-	padding: 8px 36px 8px 12px;
-	font-size: var(--font-size-compact);
-	color: var(--color-gray-700);
-	background: var(--color-white);
-	appearance: none;
-	width: 100%;
-	outline: none;
-	transition:
-		border-color 0.15s,
-		box-shadow 0.15s;
-	cursor: pointer;
-}
-
-.formSelect:focus {
-	border-color: var(--color-primary);
-	box-shadow: 0 0 0 3px var(--color-primary-pale);
-}
-
-.selectWrapper svg {
-	position: absolute;
-	right: 10px;
-	width: 14px;
-	height: 14px;
-	color: var(--color-gray-400);
-	pointer-events: none;
-}
-
-.formHint {
-	font-size: var(--font-size-2xs);
-	color: var(--color-gray-400);
+	composes: inputError from '../../../shared/components/Modal/Modal.module.css';
 }
 
 .fieldError {
@@ -761,33 +577,6 @@
 	height: 15px;
 }
 
-.btnDanger {
-	background: #e24b4a;
-	border: 1px solid #e24b4a;
-	border-radius: var(--radius-lg);
-	padding: 8px 20px;
-	font-size: var(--font-size-compact);
-	font-weight: var(--font-weight-semibold);
-	color: #fff;
-	cursor: pointer;
-	display: flex;
-	align-items: center;
-	gap: 6px;
-	transition: all 0.15s;
-}
-
-.btnDanger:hover {
-	filter: brightness(1.08);
-}
-.btnDanger:disabled {
-	opacity: 0.6;
-	cursor: not-allowed;
-}
-.btnDanger svg {
-	width: 15px;
-	height: 15px;
-}
-
 /* ── SPINNER ────────────────────────────── */
 .spinner {
 	width: 14px;
@@ -797,51 +586,4 @@
 	border-radius: 50%;
 	animation: spin 0.6s linear infinite;
 	display: inline-block;
-}
-
-/* ── TOAST ──────────────────────────────── */
-.toast {
-	position: fixed;
-	bottom: 28px;
-	right: 28px;
-	z-index: 2000;
-	display: flex;
-	align-items: center;
-	gap: 10px;
-	padding: 12px 20px;
-	border-radius: var(--radius-xl);
-	font-size: var(--font-size-compact);
-	font-weight: var(--font-weight-semibold);
-	box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
-	animation: slideUp 0.25s ease-out;
-}
-
-.toast svg {
-	width: 16px;
-	height: 16px;
-	flex-shrink: 0;
-}
-
-.toastSuccess {
-	background: var(--color-primary);
-	color: #fff;
-}
-.toastError {
-	background: #e24b4a;
-	color: #fff;
-}
-.toastInfo {
-	background: var(--color-gray-700);
-	color: #fff;
-}
-
-@keyframes slideUp {
-	from {
-		opacity: 0;
-		transform: translateY(8px);
-	}
-	to {
-		opacity: 1;
-		transform: translateY(0);
-	}
 }

@@ -8,11 +8,3 @@ export interface PaginatedResponse<T> {
 	page: number;
 	limit: number;
 }
-
-export interface ApiResponse<T> {
-	success: boolean;
-	data: T;
-	message?: string;
-}
-
-export type SortOrder = 'asc' | 'desc';

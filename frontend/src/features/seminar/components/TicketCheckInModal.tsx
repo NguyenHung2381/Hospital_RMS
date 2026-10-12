@@ -1,5 +1,5 @@
+import { Modal } from '@/shared/components';
 import { useState } from 'react';
-import { XSvg } from '@/assets/icons';
 import { QrScanner } from '@/shared/components/QrScanner';
 import { checkInTicket, type TicketCheckIn } from '../api/seminarApi';
 import styles from '../pages/Seminar.module.css';
@@ -37,56 +37,44 @@ export function TicketCheckInModal({ seminarId, onClose }: { seminarId: string; 
 	};
 
 	return (
-		<div
-			className={styles.modalBackdrop}
-			onClick={(e) => e.target === e.currentTarget && onClose()}
+		<Modal
+			open
+			onClose={onClose}
+			title='Quét vé điểm danh'
+			subtitle='Quét mã QR cá nhân người tham dự đưa ra'
+			className={`${styles.modal} ${styles.modalSm}`}
+			bodyClassName={styles.modalBody}
 		>
-			<div className={`${styles.modal} ${styles.modalSm}`}>
-				<div className={styles.modalHeader}>
-					<div>
-						<div className={styles.modalTitle}>Quét vé điểm danh</div>
-						<div className={styles.modalSub}>Quét mã QR cá nhân người tham dự đưa ra</div>
-					</div>
-					<button
-						className={styles.modalClose}
-						onClick={onClose}
-					>
-						<XSvg />
-					</button>
-				</div>
-				<div className={styles.modalBody}>
-					<QrScanner
-						onScan={(t) => void handleScan(t)}
-						paused={busy}
-					/>
-					<div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 12 }}>
-						{results.map((r, i) =>
-							r.ok ? (
-								<div
-									key={i}
-									className={`${styles.noticeBox} ${r.row.already ? styles.noticeWarn : styles.noticeOk}`}
-								>
-									<strong>
-										{r.row.title_prefix ? `${r.row.title_prefix} ` : ''}
-										{r.row.full_name}
-									</strong>
-									{r.row.organization ? ` · ${r.row.organization}` : ''} —{' '}
-									{r.row.already
-										? `đã điểm danh trước đó (${new Date(r.row.checked_in_at).toLocaleTimeString('vi-VN')})`
-										: 'điểm danh thành công'}
-								</div>
-							) : (
-								<div
-									key={i}
-									className={`${styles.noticeBox} ${styles.noticeWarn}`}
-								>
-									{r.msg}
-								</div>
-							),
-						)}
-					</div>
-				</div>
+			<QrScanner
+				onScan={(t) => void handleScan(t)}
+				paused={busy}
+			/>
+			<div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 12 }}>
+				{results.map((r, i) =>
+					r.ok ? (
+						<div
+							key={i}
+							className={`${styles.noticeBox} ${r.row.already ? styles.noticeWarn : styles.noticeOk}`}
+						>
+							<strong>
+								{r.row.title_prefix ? `${r.row.title_prefix} ` : ''}
+								{r.row.full_name}
+							</strong>
+							{r.row.organization ? ` · ${r.row.organization}` : ''} —{' '}
+							{r.row.already
+								? `đã điểm danh trước đó (${new Date(r.row.checked_in_at).toLocaleTimeString('vi-VN')})`
+								: 'điểm danh thành công'}
+						</div>
+					) : (
+						<div
+							key={i}
+							className={`${styles.noticeBox} ${styles.noticeWarn}`}
+						>
+							{r.msg}
+						</div>
+					),
+				)}
 			</div>
-		</div>
+		</Modal>
 	);
 }

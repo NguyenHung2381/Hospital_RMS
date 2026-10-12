@@ -1,3 +1,4 @@
+import { showToast } from '@/shared/utils/feedback';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { apiClient } from '../../../shared/api/axios';
 import { useRealtimeUpdate } from '../../../layouts/hooks/useRealtime';
@@ -30,7 +31,6 @@ export function useTrainees() {
 	const [viewingTrainee, setViewingTrainee] = useState<Trainee | null>(null);
 	const [viewingTab, setViewingTab] = useState<DetailTab>('general');
 	const [loading, setLoading] = useState(false);
-	const [toast, setToast] = useState<{ type: 'success' | 'error'; msg: string } | null>(null);
 	const [pageSize, setPageSize] = useState(10);
 	const [page, setPage] = useState(1);
 	const [refreshKey, setRefreshKey] = useState(0);
@@ -40,17 +40,12 @@ export function useTrainees() {
 	const refreshData = useCallback(() => setRefreshKey((prev) => prev + 1), []);
 	useRealtimeUpdate('trainee', refreshData);
 
-	const showToast = useCallback((type: 'success' | 'error', msg: string) => {
-		setToast({ type, msg });
-		setTimeout(() => setToast(null), 3000);
-	}, []);
-
 	useEffect(() => {
 		getTrainees()
 			.then((res) => setTrainees(res.data))
 			.catch(() => showToast('error', 'Không thể tải danh sách học viên'))
 			.finally(() => setIsLoadingData(false));
-	}, [showToast, refreshKey]);
+	}, [refreshKey]);
 
 	useEffect(() => {
 		apiClient
@@ -113,7 +108,7 @@ export function useTrainees() {
 				setLoading(false);
 			}
 		},
-		[showToast],
+		[],
 	);
 
 	const handleEdit = useCallback(
@@ -132,7 +127,7 @@ export function useTrainees() {
 				setLoading(false);
 			}
 		},
-		[editingTrainee, showToast],
+		[editingTrainee],
 	);
 
 	const handleDelete = useCallback(async () => {
@@ -149,7 +144,7 @@ export function useTrainees() {
 		} finally {
 			setLoading(false);
 		}
-	}, [deletingTrainee, showToast]);
+	}, [deletingTrainee]);
 
 	const handleBulkDelete = useCallback(
 		async (ids: string[]) => {
@@ -164,7 +159,7 @@ export function useTrainees() {
 				setLoading(false);
 			}
 		},
-		[showToast],
+		[],
 	);
 
 	const handleGrantAccounts = useCallback(
@@ -195,7 +190,7 @@ export function useTrainees() {
 				setGranting(false);
 			}
 		},
-		[showToast],
+		[],
 	);
 
 	return {
@@ -210,7 +205,6 @@ export function useTrainees() {
 		viewingTrainee,
 		viewingTab,
 		loading,
-		toast,
 		pageSize,
 		page,
 		filtered,

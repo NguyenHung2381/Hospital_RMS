@@ -1,11 +1,13 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { CheckSvg, EditSvg, LayersSvg, PlusSvg, SearchSvg, TrashSvg, XSvg } from '@/assets/icons';
+import { Modal } from '@/shared/components';
+import { showToast } from '@/shared/utils/feedback';
+import { useEffect, useMemo, useState } from 'react';
+import { EditSvg, LayersSvg, PlusSvg, SearchSvg, TrashSvg, XSvg } from '@/assets/icons';
 import AdminLayout from '../../../layouts/AdminLayout';
 import { useRealtimeUpdate } from '../../../layouts/hooks/useRealtime';
 import { Badge } from '../../../shared/components';
 import { SkeletonTable } from '../../../shared/components/Loading';
 import { usePermission } from '../../../shared/hooks/usePermission';
-import base from '../../training-catalog/pages/TrainingCatalog.module.css';
+import base from '@/shared/components/Table/CrudPage.module.css';
 import { cmeCatalogApi } from '../api/cmeCatalogApi';
 import { CmeCategoryFormModal } from '../components/CmeCategoryFormModal';
 import { CmeGroupFormModal } from '../components/CmeGroupFormModal';
@@ -41,13 +43,7 @@ export default function CmeCreditCatalog() {
 	>(null);
 	const [deleting, setDeleting] = useState<Deleting | null>(null);
 	const [loading, setLoading] = useState(false);
-	const [toast, setToast] = useState<{ type: 'success' | 'error'; msg: string } | null>(null);
 	const [refreshKey, setRefreshKey] = useState(0);
-
-	const showToast = useCallback((type: 'success' | 'error', msg: string) => {
-		setToast({ type, msg });
-		setTimeout(() => setToast(null), 3000);
-	}, []);
 
 	useRealtimeUpdate(['cme_credit_group', 'cme_credit_categorie'], () => setRefreshKey((k) => k + 1));
 
@@ -59,7 +55,7 @@ export default function CmeCreditCatalog() {
 			})
 			.catch(() => showToast('error', 'Không thể tải danh mục quy đổi CME'))
 			.finally(() => setIsLoadingData(false));
-	}, [showToast, refreshKey]);
+	}, [refreshKey]);
 
 	const sortedGroups = useMemo(
 		() =>
@@ -402,44 +398,17 @@ export default function CmeCreditCatalog() {
 			)}
 
 			{deleting && (
-				<div
-					className={base.modalBackdrop}
-					onClick={(e) => e.target === e.currentTarget && setDeleting(null)}
-				>
-					<div className={`${base.modal} ${base.modalSm}`}>
-						<div className={base.modalHeader}>
-							<div className={base.modalHeaderIconDanger}>
-								<TrashSvg />
-							</div>
-							<div>
-								<div className={base.modalTitle}>
-									{deleting.kind === 'group' ? 'Xoá nhóm hoạt động' : 'Xoá loại hình quy đổi'}
-								</div>
-								<div className={base.modalSub}>{deleting.item.name}</div>
-							</div>
-							<button
-								className={base.modalClose}
-								onClick={() => setDeleting(null)}
-							>
-								<XSvg />
-							</button>
-						</div>
-						<div className={base.modalBody}>
-							<p className={base.deleteDesc}>
-								{deleting.kind === 'group' ? (
-									<>
-										Xoá nhóm <strong>{deleting.item.name}</strong>? Chỉ xoá được khi nhóm không còn
-										loại hình nào — hãy chuyển hoặc xoá các loại hình trong nhóm trước.
-									</>
-								) : (
-									<>
-										Xoá <strong>{deleting.item.name}</strong> khỏi danh mục? Không xoá được nếu đã có
-										bản ghi CME dùng loại hình này.
-									</>
-								)}
-							</p>
-						</div>
-						<div className={base.modalFooter}>
+				<Modal
+					open
+					onClose={() => setDeleting(null)}
+					icon={<TrashSvg />}
+					tone='danger'
+					title={deleting.kind === 'group' ? 'Xoá nhóm hoạt động' : 'Xoá loại hình quy đổi'}
+					subtitle={deleting.item.name}
+					className={`${base.modal} ${base.modalSm}`}
+					bodyClassName={base.modalBody}
+					footer={
+						<>
 							<button
 								className={base.btnCancel}
 								onClick={() => setDeleting(null)}
@@ -455,19 +424,25 @@ export default function CmeCreditCatalog() {
 								{loading ? <span className={`${base.spinner} ${base.spinnerDark}`} /> : <TrashSvg />}
 								Xác nhận xoá
 							</button>
-						</div>
-					</div>
-				</div>
+						</>
+					}
+				>
+					<p className={base.deleteDesc}>
+						{deleting.kind === 'group' ? (
+							<>
+								Xoá nhóm <strong>{deleting.item.name}</strong>? Chỉ xoá được khi nhóm không còn
+								loại hình nào — hãy chuyển hoặc xoá các loại hình trong nhóm trước.
+							</>
+						) : (
+							<>
+								Xoá <strong>{deleting.item.name}</strong> khỏi danh mục? Không xoá được nếu đã có
+								bản ghi CME dùng loại hình này.
+							</>
+						)}
+					</p>
+				</Modal>
 			)}
 
-			{toast && (
-				<div
-					className={`${base.toast} ${toast.type === 'success' ? base.toastSuccess : base.toastError}`}
-				>
-					{toast.type === 'success' ? <CheckSvg /> : <XSvg />}
-					{toast.msg}
-				</div>
-			)}
 		</AdminLayout>
 	);
 }

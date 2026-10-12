@@ -364,48 +364,6 @@
 	flex-shrink: 0;
 }
 
-/* Toast */
-.toast {
-	position: fixed;
-	bottom: 24px;
-	right: 24px;
-	padding: 12px 18px;
-	border-radius: var(--radius-lg);
-	font-size: var(--font-size-compact);
-	font-weight: var(--font-weight-semibold);
-	display: flex;
-	align-items: center;
-	gap: var(--space-2);
-	box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
-	z-index: 9999;
-	animation: slideUp 0.25s ease;
-}
-
-.toastSuccess {
-	background: #1a6abd;
-	color: #fff;
-}
-.toastError {
-	background: #ef4444;
-	color: #fff;
-}
-
-.toast svg {
-	width: 16px;
-	height: 16px;
-}
-
-@keyframes slideUp {
-	from {
-		transform: translateY(20px);
-		opacity: 0;
-	}
-	to {
-		transform: translateY(0);
-		opacity: 1;
-	}
-}
-
 /* ── RESPONSIVE ── */
 @media (max-width: 1024px) {
 	.pageGrid {

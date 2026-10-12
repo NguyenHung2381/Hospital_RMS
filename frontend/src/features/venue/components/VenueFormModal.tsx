@@ -1,6 +1,7 @@
+import { Modal, ModalActions } from '@/shared/components';
+import { FormField } from '@/shared/components/Input/FormField';
 import React, { useState } from 'react';
-import { CheckSvg, XSvg } from '@/assets/icons';
-import base from '../../training-catalog/pages/TrainingCatalog.module.css';
+import base from '@/shared/components/Table/CrudPage.module.css';
 import styles from '../pages/Venues.module.css';
 import { SCOPE_LABEL } from '../utils/venueScope';
 import type { Venue, VenueFormData, VenueScope } from '../types/venue.type';
@@ -57,127 +58,99 @@ export function VenueFormModal({
 	};
 
 	return (
-		<div
-			className={base.modalBackdrop}
-			onClick={(e) => e.target === e.currentTarget && onClose()}
+		<Modal
+			open
+			onClose={onClose}
+			title={item ? 'Chỉnh sửa địa điểm' : 'Thêm địa điểm'}
+			subtitle={item ? `Cập nhật — ${item.name}` : 'Phòng họp bảo vệ đề cương, hội trường, phòng học...'}
+			className={base.modal}
+			bodyClassName={base.modalBody}
+			footer={
+				<ModalActions
+					onCancel={onClose}
+					onConfirm={handleSave}
+					loading={loading}
+					confirmLabel={item ? 'Lưu thay đổi' : 'Thêm địa điểm'}
+				/>
+			}
 		>
-			<div className={base.modal}>
-				<div className={base.modalHeader}>
-					<div>
-						<div className={base.modalTitle}>{item ? 'Chỉnh sửa địa điểm' : 'Thêm địa điểm'}</div>
-						<div className={base.modalSub}>
-							{item ? `Cập nhật — ${item.name}` : 'Phòng họp bảo vệ đề cương, hội trường, phòng học...'}
-						</div>
-					</div>
-					<button
-						className={base.modalClose}
-						onClick={onClose}
-					>
-						<XSvg />
-					</button>
-				</div>
+			<FormField
+				label='Tên địa điểm'
+				required
+				error={errors.name}
+			>
+				<input
+					className={`${base.formInput} ${errors.name ? base.inputError : ''}`}
+					value={form.name}
+					onChange={set('name')}
+					placeholder='VD: Hội trường A'
+					autoFocus
+				/>
+			</FormField>
 
-				<div className={base.modalBody}>
-					<div className={base.formGroup}>
-						<label className={base.formLabel}>
-							Tên địa điểm <span className={base.required}>*</span>
-						</label>
-						<input
-							className={`${base.formInput} ${errors.name ? base.inputError : ''}`}
-							value={form.name}
-							onChange={set('name')}
-							placeholder='VD: Hội trường A'
-							autoFocus
-						/>
-						{errors.name && <div className={base.fieldError}>{errors.name}</div>}
-					</div>
-
-					<div className={styles.formRow}>
-						<div className={base.formGroup}>
-							<label className={base.formLabel}>Vị trí</label>
-							<input
-								className={base.formInput}
-								value={form.address}
-								onChange={set('address')}
-								placeholder='VD: Tầng 3, nhà B'
-							/>
-						</div>
-						<div className={base.formGroup}>
-							<label className={base.formLabel}>Sức chứa (người)</label>
-							<input
-								className={`${base.formInput} ${errors.capacity ? base.inputError : ''}`}
-								value={form.capacity}
-								onChange={set('capacity')}
-								inputMode='numeric'
-								placeholder='VD: 50'
-							/>
-							{errors.capacity && <div className={base.fieldError}>{errors.capacity}</div>}
-						</div>
-					</div>
-
-					<div className={styles.formRow}>
-						<div className={base.formGroup}>
-							<label className={base.formLabel}>Dùng cho</label>
-							<select
-								className={base.formInput}
-								value={form.usage_scope}
-								onChange={(e) =>
-									setForm((f) => ({ ...f, usage_scope: e.target.value as VenueScope }))
-								}
-							>
-								{(Object.keys(SCOPE_LABEL) as VenueScope[]).map((s) => (
-									<option
-										key={s}
-										value={s}
-									>
-										{SCOPE_LABEL[s].label}
-									</option>
-								))}
-							</select>
-						</div>
-						<div className={base.formGroup}>
-							<label className={base.formLabel}>Trạng thái</label>
-							<label className={styles.checkLabel}>
-								<input
-									type='checkbox'
-									checked={form.is_active}
-									onChange={(e) => setForm((f) => ({ ...f, is_active: e.target.checked }))}
-								/>
-								Đang sử dụng
-							</label>
-						</div>
-					</div>
-
-					<div className={base.formGroup}>
-						<label className={base.formLabel}>Ghi chú</label>
-						<textarea
-							className={base.formTextarea}
-							value={form.description}
-							onChange={set('description')}
-							rows={3}
-							placeholder='Trang thiết bị, lưu ý khi đặt phòng...'
-						/>
-					</div>
-				</div>
-
-				<div className={base.modalFooter}>
-					<button
-						className={base.btnCancel}
-						onClick={onClose}
-						disabled={loading}
-					>
-						Huỷ
-					</button>
-					<button
-						className={base.btnConfirm}
-						onClick={handleSave}
-						disabled={loading}
-					>
-						{loading ? <span className={base.spinner} /> : <CheckSvg />}
-						{item ? 'Lưu thay đổi' : 'Thêm địa điểm'}
-					</button>
-				</div>
+			<div className={styles.formRow}>
+				<FormField label='Vị trí'>
+					<input
+						className={base.formInput}
+						value={form.address}
+						onChange={set('address')}
+						placeholder='VD: Tầng 3, nhà B'
+					/>
+				</FormField>
+				<FormField
+					label='Sức chứa (người)'
+					error={errors.capacity}
+				>
+					<input
+						className={`${base.formInput} ${errors.capacity ? base.inputError : ''}`}
+						value={form.capacity}
+						onChange={set('capacity')}
+						inputMode='numeric'
+						placeholder='VD: 50'
+					/>
+				</FormField>
 			</div>
-		</div>
+
+			<div className={styles.formRow}>
+				<FormField label='Dùng cho'>
+					<select
+						className={base.formInput}
+						value={form.usage_scope}
+						onChange={(e) =>
+							setForm((f) => ({ ...f, usage_scope: e.target.value as VenueScope }))
+						}
+					>
+						{(Object.keys(SCOPE_LABEL) as VenueScope[]).map((s) => (
+							<option
+								key={s}
+								value={s}
+							>
+								{SCOPE_LABEL[s].label}
+							</option>
+						))}
+					</select>
+				</FormField>
+				<FormField label='Trạng thái'>
+					<label className={styles.checkLabel}>
+						<input
+							type='checkbox'
+							checked={form.is_active}
+							onChange={(e) => setForm((f) => ({ ...f, is_active: e.target.checked }))}
+						/>
+						Đang sử dụng
+					</label>
+				</FormField>
+			</div>
+
+			<FormField label='Ghi chú'>
+				<textarea
+					className={base.formTextarea}
+					value={form.description}
+					onChange={set('description')}
+					rows={3}
+					placeholder='Trang thiết bị, lưu ý khi đặt phòng...'
+				/>
+			</FormField>
+		</Modal>
 	);
 }

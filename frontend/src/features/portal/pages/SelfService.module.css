@@ -399,3 +399,39 @@
 	font-size: var(--font-size-compact);
 	background: var(--color-white);
 }
+
+.formGrid {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: 12px;
+}
+.formGrid label {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+	font-size: 13px;
+	font-weight: 600;
+}
+.formGrid input,
+.formGrid select {
+	width: 100%;
+	box-sizing: border-box;
+	padding: 8px 10px;
+	border: 1px solid #cbd5e1;
+	border-radius: 8px;
+	font: inherit;
+	font-weight: 400;
+}
+.formFull {
+	grid-column: 1 / -1;
+}
+.formError {
+	color: #b91c1c;
+	font-size: 13px;
+	margin-bottom: 8px;
+}
+@media (max-width: 600px) {
+	.formGrid {
+		grid-template-columns: minmax(0, 1fr);
+	}
+}

@@ -1,11 +1,12 @@
-import { useState } from 'react';
-import { CheckSvg, EditSvg, ListSvg, PlusSvg, SearchSvg, TrashSvg, XSvg } from '@/assets/icons';
+import { avatarColor, getInitials } from '@/shared/utils';
+import { SearchInput, PageSizeSelect, SelectionCount, RowAction, RowActions } from '@/shared/components/Table/TableToolbar';
+import { ListSvg, PlusSvg } from '@/assets/icons';
 import AdminLayout from '../../../layouts/AdminLayout';
 import { Badge } from '../../../shared/components';
 import { SkeletonTable } from '../../../shared/components/Loading';
 import { Pagination } from '../../../shared/components/Table/Pagination';
 import sel from '../../../shared/components/Table/RowSelect.module.css';
-import { BulkButton, BulkDeleteModal, SelectCheckbox } from '../../../shared/components/Table/RowSelect';
+import { SelectCheckbox } from '../../../shared/components/Table/RowSelect';
 import { useRowSelection } from '../../../shared/hooks/useRowSelection';
 import { TrainingProgramDeleteModal } from '../components/TrainingProgramDeleteModal';
 import { TrainingProgramDetailModal } from '../components/TrainingProgramDetailModal';
@@ -14,30 +15,9 @@ import { useTrainingPrograms } from '../hooks/useTrainingPrograms';
 import { getProgramStatus, PROGRAM_STATUS_LABELS, type ProgramStatusFilter } from '../types/trainingProgram.type';
 import styles from './TrainingPrograms.module.css';
 
-const PAGE_SIZE_OPTIONS = [5, 10, 25, 50, 0] as const;
-
-const COLORS = [
-	{ bg: '#e1f5ea', color: '#085028' },
-	{ bg: '#e6f1fb', color: '#0c447c' },
-	{ bg: '#eeedfe', color: '#3c3489' },
-	{ bg: '#faeeda', color: '#633806' },
-	{ bg: '#fce8fb', color: '#6b1a69' },
-];
-function getColor(id: string) {
-	let hash = 0;
-	for (let i = 0; i < id.length; i++) hash = id.charCodeAt(i) + ((hash << 5) - hash);
-	return COLORS[Math.abs(hash) % COLORS.length];
-}
-function getInitials(s: string) {
-	const parts = s.trim().split(/\s+/);
-	if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
-	return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
-}
-
 export default function TrainingPrograms() {
 	const d = useTrainingPrograms();
 	const rowSel = useRowSelection(d.paged.map((x) => x.id));
-	const [confirmBulkDelete, setConfirmBulkDelete] = useState(false);
 
 	const headerActions = (
 		<button
@@ -59,47 +39,21 @@ export default function TrainingPrograms() {
 				<div className={styles.tableHeader}>
 					<div className={styles.tableHeaderLeft}>
 						<span className={styles.tableTitle}>Danh sách chương trình</span>
-						{rowSel.selectedCount > 0 ? (
-							<span className={styles.tableCount}>
-								Đã chọn {rowSel.selectedCount}
-								<BulkButton
-									danger
-									onClick={() => setConfirmBulkDelete(true)}
-								>
-									<TrashSvg /> Xoá đã chọn
-								</BulkButton>
-								<button
-									type='button'
-									className={styles.clearSelectionBtn}
-									onClick={rowSel.clearSelection}
-								>
-									Bỏ chọn
-								</button>
-							</span>
-						) : (
-							<span className={styles.tableCount}>
-								{d.filtered.length} chương trình
-							</span>
-						)}
+						<SelectionCount
+							rowSel={rowSel}
+							itemLabel='chương trình'
+							loading={d.loading}
+							onBulkDelete={d.handleBulkDelete}
+						>
+							{d.filtered.length} chương trình
+						</SelectionCount>
 					</div>
 					<div className={styles.tableControls}>
-						<div className={styles.searchBox}>
-							<SearchSvg className={styles.searchIcon} />
-							<input
-								className={styles.searchInput}
-								placeholder='Tìm theo mã, tên chương trình...'
-								value={d.search}
-								onChange={(e) => d.handleSearch(e.target.value)}
-							/>
-							{d.search && (
-								<button
-									className={styles.searchClear}
-									onClick={() => d.handleSearch('')}
-								>
-									<XSvg />
-								</button>
-							)}
-						</div>
+						<SearchInput
+							value={d.search}
+							onChange={d.handleSearch}
+							placeholder='Tìm theo mã, tên chương trình...'
+						/>
 						<select
 							className={`${styles.filterSelect} ${d.departmentFilter !== 'all' ? styles.filterActive : ''}`}
 							value={d.departmentFilter}
@@ -156,21 +110,10 @@ export default function TrainingPrograms() {
 								Xoá lọc
 							</button>
 						)}
-						<div className={styles.pageSizeWrap}>
-							<label className={styles.pageSizeLabel}>Hiển thị</label>
-							<select
-								className={styles.pageSizeSelect}
-								value={d.pageSize}
-								onChange={(e) => d.handlePageSize(Number(e.target.value))}
-							>
-								<option value={5}>5</option>
-								<option value={10}>10</option>
-								<option value={25}>25</option>
-								<option value={50}>50</option>
-								<option value={0}>Tất cả</option>
-							</select>
-							<span className={styles.pageSizeLabel}>dòng</span>
-						</div>
+						<PageSizeSelect
+							value={d.pageSize}
+							onChange={d.handlePageSize}
+						/>
 					</div>
 				</div>
 
@@ -216,7 +159,7 @@ export default function TrainingPrograms() {
 							</tr>
 						) : (
 							d.paged.map((p, i) => {
-								const c = getColor(p.id);
+								const c = avatarColor(p.id);
 								const rowNum = (d.safePage - 1) * (d.pageSize || d.filtered.length) + i + 1;
 								return (
 									<tr
@@ -277,35 +220,23 @@ export default function TrainingPrograms() {
 											)}
 										</td>
 										<td className={`${styles.td} ${styles.tdActions}`}>
-											<div className={styles.actionBtns}>
-												<div
-													className={styles.actionBtn}
+											<RowActions
+												onEdit={() => {
+													d.setEditingProgram(p);
+													d.setModal('edit');
+												}}
+												onDelete={() => {
+													d.setDeletingProgram(p);
+													d.setModal('delete');
+												}}
+											>
+												<RowAction
 													title='Bài học'
 													onClick={() => d.openDetail(p, 'lessons')}
 												>
 													<ListSvg />
-												</div>
-												<div
-													className={styles.actionBtn}
-													title='Chỉnh sửa'
-													onClick={() => {
-														d.setEditingProgram(p);
-														d.setModal('edit');
-													}}
-												>
-													<EditSvg />
-												</div>
-												<div
-													className={`${styles.actionBtn} ${styles.danger}`}
-													title='Xoá'
-													onClick={() => {
-														d.setDeletingProgram(p);
-														d.setModal('delete');
-													}}
-												>
-													<TrashSvg />
-												</div>
-											</div>
+												</RowAction>
+											</RowActions>
 										</td>
 									</tr>
 								);
@@ -321,27 +252,13 @@ export default function TrainingPrograms() {
 						totalPages={d.totalPages}
 						total={d.filtered.length}
 						rowsPerPage={d.pageSize}
-						pageSizeOptions={PAGE_SIZE_OPTIONS}
 						onPageChange={d.setPage}
-						onRowsPerPageChange={d.handlePageSize}
 						itemLabel='chương trình'
 						hideSizeSelect
 					/>
 				)}
 			</div>
 
-			<BulkDeleteModal
-				open={confirmBulkDelete}
-				count={rowSel.selectedCount}
-				itemLabel='chương trình'
-				loading={d.loading}
-				onClose={() => setConfirmBulkDelete(false)}
-				onConfirm={async () => {
-					await d.handleBulkDelete([...rowSel.selectedIds]);
-					rowSel.clearSelection();
-					setConfirmBulkDelete(false);
-				}}
-			/>
 
 			{d.modal === 'add' && (
 				<TrainingProgramFormModal
@@ -393,18 +310,6 @@ export default function TrainingPrograms() {
 				/>
 			)}
 
-			{d.toast && (
-				<div
-					className={`${styles.toast} ${
-						styles[
-							`toast${d.toast.type.charAt(0).toUpperCase() + d.toast.type.slice(1)}` as keyof typeof styles
-						]
-					}`}
-				>
-					{d.toast.type === 'success' ? <CheckSvg /> : <XSvg />}
-					{d.toast.msg}
-				</div>
-			)}
 		</AdminLayout>
 	);
 }

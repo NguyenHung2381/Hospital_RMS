@@ -1,4 +1,4 @@
-import { CheckCircleSvg, SendSvg, WarnSvg } from '@/assets/icons';
+import { SendSvg } from '@/assets/icons';
 import AdminLayout from '../../../layouts/AdminLayout';
 import { NotificationDeleteModal } from '../components/NotificationDeleteModal';
 import { NotificationHistoryTable } from '../components/NotificationHistoryTable';
@@ -18,7 +18,6 @@ export default function AdminNotifications() {
 		setUserSearch,
 		loadingUsers,
 		sending,
-		toast,
 		showSendModal,
 		setShowSendModal,
 		topicSearch,
@@ -145,18 +144,6 @@ export default function AdminNotifications() {
 				/>
 			)}
 
-			{toast && (
-				<div
-					className={`${styles.toast} ${toast.ok ? styles.toastOk : styles.toastErr}`}
-				>
-					{toast.ok ? (
-						<CheckCircleSvg style={{ width: 15, height: 15 }} />
-					) : (
-						<WarnSvg style={{ width: 15, height: 15 }} />
-					)}
-					{toast.msg}
-				</div>
-			)}
 		</AdminLayout>
 	);
 }

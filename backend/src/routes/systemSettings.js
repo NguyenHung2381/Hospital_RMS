@@ -3,7 +3,8 @@ const { body } = require('express-validator');
 const systemSettingService = require('../services/systemSettingService');
 const { authenticate, authorizePermission } = require('../middlewares/auth');
 const { validate } = require('../middlewares/errorHandler');
-const { success, notFound } = require('../utils/response');
+const mailService = require('../services/mailService');
+const { success, notFound, error } = require('../utils/response');
 
 /**
  * @swagger
@@ -25,8 +26,19 @@ router.get('/', async (req, res, next) => {
 	}
 });
 
+// Gửi thử bằng cấu hình SMTP hiện tại (đã lưu) — báo lỗi thật thay vì nuốt như send().
+router.post('/test-mail', [body('to').isEmail()], validate, async (req, res, next) => {
+	try {
+		await mailService.sendTest(req.body.to);
+		return success(res, null, `Đã gửi email thử tới ${req.body.to}`);
+	} catch (err) {
+		return error(res, `Gửi thử thất bại: ${err.message}`, 400);
+	}
+});
+
 router.get('/:key', async (req, res, next) => {
 	try {
+		if (!systemSettingService.isKey(req.params.key)) return notFound(res);
 		const item = await systemSettingService.getById(req.params.key);
 		if (!item) return notFound(res);
 		return success(res, item);
@@ -41,6 +53,7 @@ router.put(
 	validate,
 	async (req, res, next) => {
 		try {
+			if (!systemSettingService.isKey(req.params.key)) return notFound(res);
 			const item = await systemSettingService.update(req.params.key, req.body.value ?? null, req.user.id);
 			return success(res, item, 'Đã cập nhật cấu hình');
 		} catch (err) {

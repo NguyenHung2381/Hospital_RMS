@@ -1,9 +1,7 @@
+import { TopicFileList } from '@/features/topics/components/TopicFileItem';
 import type { Dispatch, RefObject, SetStateAction } from 'react';
-import { DownloadSvg, EyeSvg, FileTextSvg, UploadSvg, XSvg } from '@/assets/icons';
-import { BASE_URL } from '../../../shared/api/axios';
-import { formatDate } from '../../../shared/utils/formatDate';
+import { FileTextSvg, UploadSvg, XSvg } from '@/assets/icons';
 import type { TopicFile } from '../../topics/types/topic.type';
-import { getFileTypeMeta, getFileViewerUrl } from '../utils/myTopicsHelpers';
 import styles from '../pages/MyTopics.module.css';
 
 interface TopicFilesSectionProps {
@@ -142,73 +140,10 @@ export function TopicFilesSection({
 				</div>
 			)}
 
-			{detailFiles.length === 0 ? (
-				<div className={styles.filesEmpty}>
-					Chưa có tài liệu nào được đính kèm
-				</div>
-			) : (
-				<div className={styles.filesList}>
-					{detailFiles.map((f) => {
-						const meta = getFileTypeMeta(f);
-						const viewerUrl = getFileViewerUrl(f);
-						return (
-							<div
-								key={f.id}
-								className={styles.fileItem}
-							>
-								<div
-									className={`${styles.fileIcon} ${styles[meta.cls as keyof typeof styles]}`}
-								>
-									<FileTextSvg />
-								</div>
-								<div className={styles.fileInfo}>
-									<div
-										className={styles.fileName}
-										title={f.file_name}
-									>
-										{f.file_name}
-									</div>
-									<div className={styles.fileMeta}>
-										<span
-											className={`${styles.fileTypeBadge} ${styles[meta.cls as keyof typeof styles]}`}
-										>
-											{meta.label}
-										</span>
-										· {formatFileSize(f.file_size)} ·{' '}
-										{f.uploaded_by_name} ·{' '}
-										{formatDate(f.created_at)}
-									</div>
-								</div>
-								<div className={styles.fileActions}>
-									{viewerUrl && (
-										<button
-											className={styles.btnFileView}
-											onClick={() =>
-												setFileViewer({
-													url: viewerUrl,
-													name: f.file_name,
-													isWord: meta.label !== 'PDF',
-												})
-											}
-										>
-											<EyeSvg /> Xem
-										</button>
-									)}
-									<a
-										className={styles.btnFileDownload}
-										href={`${BASE_URL}${f.file_url}`}
-										download={f.file_name}
-										target='_blank'
-										rel='noreferrer'
-									>
-										<DownloadSvg />
-									</a>
-								</div>
-							</div>
-						);
-					})}
-				</div>
-			)}
+			<TopicFileList
+				files={detailFiles}
+				onView={setFileViewer}
+			/>
 		</div>
 	);
 }

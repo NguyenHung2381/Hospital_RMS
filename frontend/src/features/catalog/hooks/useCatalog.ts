@@ -1,3 +1,7 @@
+import type { ComponentType } from 'react';
+import { BookOpenSvg, CalendarSvg, LayersSvg, TagSvg, UserCheckSvg } from '@/assets/icons';
+import { useClientPaging } from '@/shared/hooks/useClientPaging';
+import { showToast } from '@/shared/utils/feedback';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useRealtimeUpdate } from '../../../layouts/hooks/useRealtime';
@@ -5,6 +9,7 @@ import { bulkToast, runBulk } from '../../../shared/utils/runBulk';
 import { catalogApi } from '../api/catalogApi';
 import type {
 	CatalogFormData,
+	CatalogGroup,
 	CatalogItem,
 	CatalogTab,
 	ModalType,
@@ -12,35 +17,76 @@ import type {
 
 export const EMPTY_FORM: CatalogFormData = { name: '', description: '' };
 
+// realtime: tên entity mà services/crudService.js phát ra (số ít, bỏ 's' cuối)
 export const TAB_CONFIG: Record<
 	CatalogTab,
-	{ label: string; subtitle: string; placeholder: string }
+	{ label: string; subtitle: string; placeholder: string; realtime: string; icon: ComponentType }
 > = {
 	categories: {
 		label: 'Phân loại',
 		subtitle: 'Danh mục phân loại đề tài nghiên cứu',
 		placeholder: 'VD: Nghiên cứu lâm sàng',
+		realtime: 'category',
+		icon: TagSvg,
 	},
 	levels: {
 		label: 'Cấp độ',
 		subtitle: 'Danh mục cấp độ đề tài nghiên cứu',
 		placeholder: 'VD: Cấp tỉnh',
+		realtime: 'level',
+		icon: LayersSvg,
 	},
 	'round-types': {
 		label: 'Loại đợt',
 		subtitle: 'Danh mục loại đợt nghiên cứu',
 		placeholder: 'VD: Nghiên cứu khoa học',
+		realtime: 'round_type',
+		icon: CalendarSvg,
+	},
+	'trainee-types': {
+		label: 'Đối tượng học viên',
+		subtitle: 'Danh mục đối tượng học viên (nội viện, ngoại viện...)',
+		placeholder: 'VD: Nhân viên y tế',
+		realtime: 'trainee_type',
+		icon: UserCheckSvg,
+	},
+	'training-forms': {
+		label: 'Hình thức học',
+		subtitle: 'Danh mục hình thức học (trực tiếp, trực tuyến...)',
+		placeholder: 'VD: Trực tuyến',
+		realtime: 'training_form',
+		icon: LayersSvg,
+	},
+	'training-types': {
+		label: 'Loại hình đào tạo',
+		subtitle: 'Danh mục loại hình đào tạo',
+		placeholder: 'VD: Đào tạo liên tục',
+		realtime: 'training_type',
+		icon: TagSvg,
+	},
+	subjects: {
+		label: 'Môn học',
+		subtitle: 'Danh mục môn học dùng trong các chương trình đào tạo',
+		placeholder: 'VD: Cấp cứu cơ bản',
+		realtime: 'subject',
+		icon: BookOpenSvg,
 	},
 };
 
-export function useCatalog() {
+export const CATALOG_GROUPS: Record<CatalogGroup, { title: string; tabs: CatalogTab[]; breadcrumb?: string }> = {
+	research: { title: 'Quản lý Danh mục', tabs: ['categories', 'levels', 'round-types'] },
+	training: {
+		title: 'Danh mục Đào tạo',
+		tabs: ['trainee-types', 'training-forms', 'training-types', 'subjects'],
+		breadcrumb: 'Đào tạo',
+	},
+};
+
+export function useCatalog(group: CatalogGroup) {
 	const location = useLocation();
 	const navigate = useNavigate();
-	const tab: CatalogTab = location.pathname.includes('round-types')
-		? 'round-types'
-		: location.pathname.includes('levels')
-			? 'levels'
-			: 'categories';
+	const tabs = CATALOG_GROUPS[group].tabs;
+	const tab = tabs.find((t) => location.pathname.endsWith('/' + t)) ?? tabs[0];
 
 	const [items, setItems] = useState<CatalogItem[]>([]);
 	const [isLoadingData, setIsLoadingData] = useState(true);
@@ -49,25 +95,12 @@ export function useCatalog() {
 	const [editingItem, setEditingItem] = useState<CatalogItem | null>(null);
 	const [deletingItem, setDeletingItem] = useState<CatalogItem | null>(null);
 	const [loading, setLoading] = useState(false);
-	const [toast, setToast] = useState<{
-		type: 'success' | 'error';
-		msg: string;
-	} | null>(null);
-	const [pageSize, setPageSize] = useState(10);
-	const [page, setPage] = useState(1);
 	const [refreshKey, setRefreshKey] = useState(0);
 
 	const cfg = TAB_CONFIG[tab];
 
 	const refreshData = useCallback(() => setRefreshKey((k) => k + 1), []);
-	useRealtimeUpdate('category', refreshData);
-	useRealtimeUpdate('level', refreshData);
-	useRealtimeUpdate('round_type', refreshData);
-
-	const showToast = useCallback((type: 'success' | 'error', msg: string) => {
-		setToast({ type, msg });
-		setTimeout(() => setToast(null), 3000);
-	}, []);
+	useRealtimeUpdate(cfg.realtime, refreshData);
 
 	useEffect(() => {
 		catalogApi
@@ -80,7 +113,20 @@ export function useCatalog() {
 				),
 			)
 			.finally(() => setIsLoadingData(false));
-	}, [tab, showToast, refreshKey]);
+	}, [tab, refreshKey]);
+
+	const filtered = useMemo(() => {
+		if (!search.trim()) return items;
+		const q = search.toLowerCase();
+		return items.filter(
+			(d) =>
+				d.name.toLowerCase().includes(q) ||
+				(d.description ?? '').toLowerCase().includes(q),
+		);
+	}, [items, search]);
+
+	const { page, setPage, pageSize, handlePageSize, totalPages, safePage, paged } =
+		useClientPaging(filtered);
 
 	const handleTabChange = useCallback(
 		(next: CatalogTab) => {
@@ -94,37 +140,14 @@ export function useCatalog() {
 			setDeletingItem(null);
 			navigate(`/admin/${next}`);
 		},
-		[tab, navigate],
+		[tab, navigate, setPage],
 	);
-
-	const filtered = useMemo(() => {
-		if (!search.trim()) return items;
-		const q = search.toLowerCase();
-		return items.filter(
-			(d) =>
-				d.name.toLowerCase().includes(q) ||
-				(d.description ?? '').toLowerCase().includes(q),
-		);
-	}, [items, search]);
-
-	const totalPages = pageSize === 0 ? 1 : Math.ceil(filtered.length / pageSize);
-	const safePage = Math.min(page, totalPages || 1);
-
-	const paged = useMemo(() => {
-		if (pageSize === 0) return filtered;
-		const start = (safePage - 1) * pageSize;
-		return filtered.slice(start, start + pageSize);
-	}, [filtered, safePage, pageSize]);
 
 	const handleSearch = useCallback((v: string) => {
 		setSearch(v);
 		setPage(1);
-	}, []);
+	}, [setPage]);
 
-	const handlePageSize = useCallback((v: number) => {
-		setPageSize(v);
-		setPage(1);
-	}, []);
 
 	const handleAdd = useCallback(
 		async (data: CatalogFormData) => {
@@ -145,7 +168,7 @@ export function useCatalog() {
 				setLoading(false);
 			}
 		},
-		[tab, showToast],
+		[tab],
 	);
 
 	const handleEdit = useCallback(
@@ -174,7 +197,7 @@ export function useCatalog() {
 				setLoading(false);
 			}
 		},
-		[tab, editingItem, showToast],
+		[tab, editingItem],
 	);
 
 	const handleDelete = useCallback(async () => {
@@ -191,7 +214,7 @@ export function useCatalog() {
 		} finally {
 			setLoading(false);
 		}
-	}, [tab, deletingItem, showToast]);
+	}, [tab, deletingItem]);
 
 	const handleBulkDelete = useCallback(
 		async (ids: string[]) => {
@@ -211,11 +234,12 @@ export function useCatalog() {
 				setLoading(false);
 			}
 		},
-		[tab, cfg.label, showToast],
+		[tab, cfg.label],
 	);
 
 	return {
 		tab,
+		tabs,
 		cfg,
 		items,
 		isLoadingData,
@@ -224,7 +248,6 @@ export function useCatalog() {
 		editingItem,
 		deletingItem,
 		loading,
-		toast,
 		pageSize,
 		page,
 		filtered,

@@ -1,3 +1,4 @@
+import { RowAction, RowActions } from '@/shared/components/Table/TableToolbar';
 import { useState } from 'react';
 import {
 	ApproveSvg,
@@ -403,32 +404,20 @@ export default function TopicPage() {
 												</span>
 											</td>
 											<td>
-												<div className={styles.actionBtns}>
-													<div
-														className={styles.actionBtn}
+												<RowActions
+													onEdit={() => {
+														d.setEditTopic(t);
+														d.setViewTopic(null);
+													}}
+													onDelete={() => d.setDeleteTopic(t)}
+												>
+													<RowAction
 														title='Xem chi tiết'
 														onClick={() => d.setViewTopic(t)}
 													>
 														<EyeSvg />
-													</div>
-													<div
-														className={styles.actionBtn}
-														title='Chỉnh sửa'
-														onClick={() => {
-															d.setEditTopic(t);
-															d.setViewTopic(null);
-														}}
-													>
-														<EditSvg />
-													</div>
-													<div
-														className={`${styles.actionBtn} ${styles.danger}`}
-														title='Xoá'
-														onClick={() => d.setDeleteTopic(t)}
-													>
-														<TrashSvg />
-													</div>
-												</div>
+													</RowAction>
+												</RowActions>
 											</td>
 										</tr>
 									);

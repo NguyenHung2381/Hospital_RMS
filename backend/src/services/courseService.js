@@ -7,6 +7,7 @@ const trainingFileService = require('./trainingFileService');
 const { scopeOf } = require('../middlewares/auth');
 const { ROLE, roleIdOf, inputRoleId } = require('./roleCodes');
 const { assertHttpUrl } = require('../utils/safeUrl');
+const { todayVN } = require('../utils/vnDate');
 
 // Mã QR điểm danh: JWT ngắn hạn ký chính session_id (mirror utils/captcha.js)
 // — không trạng thái, không cần lưu DB, hết hạn nhanh. FE làm mới QR mỗi 28s;
@@ -21,13 +22,6 @@ const DEVICE_TAKEN_MSG =
 // quyết định có công khai trên cổng đăng ký không cần đăng nhập hay không
 // (is_public_registration) — xem 2026-09-15_course_enrollment_window và
 // 2026-09-20_drop_training_rounds.
-const VN_OFFSET_MS = 7 * 60 * 60 * 1000;
-
-const todayVN = () => {
-	const vn = new Date(Date.now() + VN_OFFSET_MS);
-	return new Date(Date.UTC(vn.getUTCFullYear(), vn.getUTCMonth(), vn.getUTCDate()));
-};
-
 const isEnrollmentOpenRow = (c) => {
 	if (!c.enrollment_start_date && !c.enrollment_end_date) return true; // chưa cấu hình = mở
 	const today = todayVN();

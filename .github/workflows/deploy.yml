@@ -1,0 +1,73 @@
+# Triển khai 1 image ĐÃ BUILD SẴN (tag = commit SHA) lên 1 môi trường.
+#  - ci.yml gọi tự động sau khi build image trên main (staging → production).
+#  - Chạy tay (Actions → Deploy → Run workflow) để ROLLBACK: chọn môi trường,
+#    nhập SHA của bản cũ (xem tab Environments hoặc logs/deploy-history.log).
+# Production cần người duyệt (Environment protection rules, xem .github/CICD.md).
+name: Deploy
+
+on:
+  workflow_call:
+    inputs:
+      environment:
+        type: string
+        required: true
+      tag:
+        type: string
+        required: true
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Môi trường
+        type: environment
+        required: true
+      tag:
+        description: Commit SHA đầy đủ (40 ký tự) của bản cần triển khai
+        type: string
+        required: true
+
+permissions:
+  contents: read
+  packages: read
+
+jobs:
+  deploy:
+    name: Deploy ${{ inputs.environment }}
+    # Runner cài trên chính server (mạng nội bộ bệnh viện, GitHub không gọi vào
+    # được) — runner tự kết nối ra ngoài để nhận job. Mỗi môi trường 1 nhãn.
+    runs-on: [self-hosted, 'rms-${{ inputs.environment }}']
+    environment:
+      name: ${{ inputs.environment }}
+      url: ${{ vars.APP_URL }}
+    # Không bao giờ chạy 2 lần deploy cùng môi trường; bản mới chờ bản đang chạy
+    concurrency:
+      group: deploy-${{ inputs.environment }}
+      cancel-in-progress: false
+    timeout-minutes: 30
+    defaults:
+      run:
+        shell: powershell
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ inputs.tag }}
+      - name: Đăng nhập registry
+        env:
+          TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: $env:TOKEN | docker login ghcr.io -u $env:GITHUB_ACTOR --password-stdin
+      - name: Triển khai + smoke test (tự rollback khi hỏng)
+        env:
+          TAG: ${{ inputs.tag }}
+          REGISTRY: ghcr.io/${{ github.repository_owner }}
+          DEPLOY_DIR: ${{ vars.DEPLOY_DIR }}
+          COMPOSE_PROJECT: ${{ vars.COMPOSE_PROJECT || 'hospital_rms' }}
+          BACKEND_URL: ${{ vars.BACKEND_URL || 'http://127.0.0.1:3001' }}
+          FRONTEND_URL: ${{ vars.FRONTEND_URL || 'http://127.0.0.1:8084' }}
+          MIGRATION_BACKUP_DIR: ${{ vars.MIGRATION_BACKUP_DIR }}
+          MIGRATION_DB_USER: ${{ secrets.MIGRATION_DB_USER }}
+          MIGRATION_DB_PASSWORD: ${{ secrets.MIGRATION_DB_PASSWORD }}
+        run: >-
+          .\scripts\deploy.ps1 -Tag $env:TAG -Registry $env:REGISTRY -ProjectDir $env:DEPLOY_DIR
+          -Project $env:COMPOSE_PROJECT -BackendUrl $env:BACKEND_URL -FrontendUrl $env:FRONTEND_URL
+      - name: Đăng xuất registry
+        if: always()
+        run: docker logout ghcr.io

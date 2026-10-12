@@ -1,3 +1,4 @@
+import { showToast } from '@/shared/utils/feedback';
 import { useCallback, useEffect, useState } from 'react';
 import { useRealtimeUpdate } from '../../../layouts/hooks/useRealtime';
 import { workflowApi, type SimpleRole } from '../api/workflowApi';
@@ -18,16 +19,10 @@ export function useWorkflow() {
 	const [editingItem, setEditingItem] = useState<WorkflowDefinition | null>(null);
 	const [deletingItem, setDeletingItem] = useState<WorkflowDefinition | null>(null);
 	const [loading, setLoading] = useState(false);
-	const [toast, setToast] = useState<{ type: 'success' | 'error'; msg: string } | null>(null);
 	const [refreshKey, setRefreshKey] = useState(0);
 
 	const refreshData = useCallback(() => setRefreshKey((k) => k + 1), []);
 	useRealtimeUpdate('workflow_definition', refreshData);
-
-	const showToast = useCallback((type: 'success' | 'error', msg: string) => {
-		setToast({ type, msg });
-		setTimeout(() => setToast(null), 3000);
-	}, []);
 
 	useEffect(() => {
 		workflowApi
@@ -35,7 +30,7 @@ export function useWorkflow() {
 			.then(setItems)
 			.catch(() => showToast('error', 'Không thể tải danh sách workflow'))
 			.finally(() => setIsLoadingData(false));
-	}, [showToast, refreshKey]);
+	}, [refreshKey]);
 
 	useEffect(() => {
 		workflowApi
@@ -71,7 +66,7 @@ export function useWorkflow() {
 				setLoading(false);
 			}
 		},
-		[showToast],
+		[],
 	);
 
 	const handleEdit = useCallback(
@@ -90,7 +85,7 @@ export function useWorkflow() {
 				setLoading(false);
 			}
 		},
-		[editingItem, showToast],
+		[editingItem],
 	);
 
 	const handleDelete = useCallback(async () => {
@@ -107,7 +102,7 @@ export function useWorkflow() {
 		} finally {
 			setLoading(false);
 		}
-	}, [deletingItem, showToast]);
+	}, [deletingItem]);
 
 	return {
 		items,
@@ -117,7 +112,6 @@ export function useWorkflow() {
 		editingItem,
 		deletingItem,
 		loading,
-		toast,
 		setModal,
 		setEditingItem,
 		setDeletingItem,

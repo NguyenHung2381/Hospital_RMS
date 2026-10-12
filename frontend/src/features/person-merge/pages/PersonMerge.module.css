@@ -123,41 +123,6 @@
 	margin-bottom: var(--space-1);
 }
 
-.loadingRow {
-	padding: var(--space-12);
-	display: flex;
-	justify-content: center;
-}
-
-/* Toast (cùng kiểu các trang khác) */
-.toast {
-	position: fixed;
-	bottom: 28px;
-	right: 28px;
-	color: #fff;
-	padding: var(--space-3) var(--space-5);
-	border-radius: var(--radius-xl);
-	font-size: var(--font-size-sm);
-	font-weight: var(--font-weight-semibold);
-	z-index: var(--z-toast, 999);
-	display: flex;
-	align-items: center;
-	gap: var(--space-2);
-	box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
-	max-width: min(420px, calc(100vw - 32px));
-}
-.toastSuccess {
-	background: var(--color-primary-dark);
-}
-.toastError {
-	background: #7f1d1d;
-}
-.toast svg {
-	width: 15px;
-	height: 15px;
-	flex: none;
-}
-
 /* Thẻ giải thích ngắn đầu trang */
 .hint {
 	display: flex;

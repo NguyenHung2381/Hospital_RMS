@@ -1,3 +1,4 @@
+/* Style nền cho trang danh mục CRUD (tab + bảng + modal) — catalog, venue, CME… dùng chung. */
 /* ── TABS ─────────────────────────────────── */
 .tabs {
 	display: flex;
@@ -44,35 +45,32 @@
 
 /* ── CARD + HEADER (chuẩn tham chiếu: trang Đề tài) ─────────────────────── */
 .tableCard {
-	composes: tableCard from '../../../shared/components/Table/Table.module.css';
+	composes: tableCard from './Table.module.css';
 }
 .tableHeader {
-	composes: tableHeader from '../../../shared/components/Table/Table.module.css';
+	composes: tableHeader from './Table.module.css';
 }
 .tableHeaderLeft {
-	composes: tableHeaderLeft from '../../../shared/components/Table/Table.module.css';
+	composes: tableHeaderLeft from './Table.module.css';
 }
 .tableTitle {
-	composes: tableTitle from '../../../shared/components/Table/Table.module.css';
+	composes: tableTitle from './Table.module.css';
 }
 .tableCount {
-	composes: tableCount from '../../../shared/components/Table/Table.module.css';
+	composes: tableCount from './Table.module.css';
 }
 .tableControls {
-	composes: tableControls from '../../../shared/components/Table/Table.module.css';
-}
-.clearSelectionBtn {
-	composes: clearSelectionBtn from '../../../shared/components/Table/Table.module.css';
+	composes: tableControls from './Table.module.css';
 }
 
 .searchBox {
-	composes: searchWrap from '../../../shared/components/Table/Table.module.css';
+	composes: searchWrap from './Table.module.css';
 }
 .searchIcon {
-	composes: searchIcon from '../../../shared/components/Table/Table.module.css';
+	composes: searchIcon from './Table.module.css';
 }
 .searchInput {
-	composes: searchInput from '../../../shared/components/Table/Table.module.css';
+	composes: searchInput from './Table.module.css';
 	padding-right: var(--space-8);
 }
 
@@ -100,25 +98,25 @@
 	overflow-x: auto;
 }
 .table {
-	composes: table from '../../../shared/components/Table/Table.module.css';
+	composes: table from './Table.module.css';
 }
 .th {
-	composes: th from '../../../shared/components/Table/Table.module.css';
+	composes: th from './Table.module.css';
 }
 .thRight {
-	composes: thRight from '../../../shared/components/Table/Table.module.css';
+	composes: thRight from './Table.module.css';
 }
 .tr {
-	composes: tr from '../../../shared/components/Table/Table.module.css';
+	composes: tr from './Table.module.css';
 }
 .td {
-	composes: td from '../../../shared/components/Table/Table.module.css';
+	composes: td from './Table.module.css';
 }
 .tdIdx {
-	composes: tdIdx from '../../../shared/components/Table/Table.module.css';
+	composes: tdIdx from './Table.module.css';
 }
 .tdActions {
-	composes: tdActions from '../../../shared/components/Table/Table.module.css';
+	composes: tdActions from './Table.module.css';
 }
 
 /* Item cell */
@@ -159,11 +157,11 @@
 
 /* ── ACTION BUTTONS ──────────────────────── */
 .actionBtns {
-	composes: actionBtns from '../../../shared/components/Table/Table.module.css';
+	composes: actionBtns from './Table.module.css';
 	justify-content: flex-end;
 }
 .actionBtn {
-	composes: actionBtn from '../../../shared/components/Table/Table.module.css';
+	composes: actionBtn from './Table.module.css';
 }
 .actionBtn.danger:hover {
 	background: #fcebeb;
@@ -173,361 +171,69 @@
 
 /* ── EMPTY STATE ─────────────────────────── */
 .emptyState {
-	composes: emptyState from '../../../shared/components/Table/Table.module.css';
+	composes: emptyState from './Table.module.css';
 }
 .emptyTitle {
-	composes: emptyTitle from '../../../shared/components/Table/Table.module.css';
+	composes: emptyTitle from './Table.module.css';
 }
 .emptyDesc {
-	composes: emptyDesc from '../../../shared/components/Table/Table.module.css';
+	composes: emptyDesc from './Table.module.css';
 }
 
 /* ── HEADER BUTTON ───────────────────────── */
 .btnAddHeader {
-	display: flex;
-	align-items: center;
-	gap: var(--space-2);
-	padding: var(--space-2) var(--space-5);
-	background: linear-gradient(135deg, var(--color-primary), var(--color-primary-dark));
-	color: var(--color-white);
-	border: none;
-	border-radius: var(--radius-lg);
-	font-family: var(--font-body);
-	font-size: var(--font-size-sm);
-	font-weight: var(--font-weight-bold);
-	cursor: pointer;
-	transition: all var(--transition-base);
-	box-shadow: 0 3px 10px rgba(10, 155, 74, 0.28);
-	white-space: nowrap;
-}
-.btnAddHeader:hover {
-	box-shadow: 0 5px 16px rgba(10, 155, 74, 0.4);
-	transform: translateY(-1px);
-}
-.btnAddHeader svg {
-	width: 15px;
-	height: 15px;
+	composes: btnAddHeader from '../Modal/Modal.module.css';
 }
 
 /* ── MODAL ───────────────────────────────── */
-.modalBackdrop {
-	position: fixed;
-	inset: 0;
-	background: rgba(26, 40, 53, 0.45);
-	backdrop-filter: blur(3px);
-	z-index: 500;
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	padding: var(--space-4);
-	animation: modalFadeIn 200ms ease both;
-}
 
 .modal {
-	background: var(--color-white);
-	border-radius: var(--radius-2xl);
-	box-shadow: 0 20px 60px rgba(0, 0, 0, 0.18);
-	width: 100%;
-	max-width: 480px;
-	animation: modalPopIn 220ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
-	overflow: hidden;
+	composes: modal from '../Modal/Modal.module.css';
 }
 .modalSm {
 	max-width: 420px;
 }
 
-.modalHeader {
-	display: flex;
-	align-items: center;
-	gap: var(--space-4);
-	padding: var(--space-5) var(--space-6);
-	border-bottom: 1px solid var(--color-gray-100);
-}
-
-.modalHeaderIcon {
-	width: 42px;
-	height: 42px;
-	border-radius: var(--radius-lg);
-	background: #e1f5ea;
-	color: #085028;
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	flex-shrink: 0;
-}
-.modalHeaderIcon svg {
-	width: 20px;
-	height: 20px;
-}
-
-.modalHeaderIconDanger {
-	width: 42px;
-	height: 42px;
-	border-radius: var(--radius-lg);
-	background: #fcebeb;
-	color: #791f1f;
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	flex-shrink: 0;
-}
-.modalHeaderIconDanger svg {
-	width: 20px;
-	height: 20px;
-}
-
-.modalTitle {
-	font-size: var(--font-size-base);
-	font-weight: var(--font-weight-bold);
-	color: var(--color-gray-800);
-}
-.modalSub {
-	font-size: var(--font-size-sm);
-	color: var(--color-gray-400);
-	margin-top: 2px;
-}
-
-.modalClose {
-	margin-left: auto;
-	width: 32px;
-	height: 32px;
-	border-radius: var(--radius-md);
-	border: 1px solid var(--color-gray-200);
-	background: transparent;
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	cursor: pointer;
-	color: var(--color-gray-400);
-	transition: all var(--transition-fast);
-	flex-shrink: 0;
-}
-.modalClose:hover {
-	background: var(--color-gray-100);
-	color: var(--color-gray-700);
-}
-.modalClose svg {
-	width: 14px;
-	height: 14px;
-}
-
 .modalBody {
-	padding: var(--space-6);
-	display: flex;
-	flex-direction: column;
-	gap: var(--space-4);
+	composes: modalBody from '../Modal/Modal.module.css';
 }
 
 .formGroup {
-	display: flex;
-	flex-direction: column;
-	gap: var(--space-1);
+	composes: formGroup from '../Modal/Modal.module.css';
 }
 .formLabel {
-	font-size: var(--font-size-sm);
-	font-weight: var(--font-weight-semibold);
-	color: var(--color-gray-700);
-}
-.required {
-	color: #e24b4a;
+	composes: formLabel from '../Modal/Modal.module.css';
 }
 
 .formInput {
-	width: 100%;
-	padding: var(--space-2) var(--space-3);
-	border: 1.5px solid var(--color-gray-200);
-	border-radius: var(--radius-lg);
-	font-family: var(--font-body);
-	font-size: var(--font-size-sm);
-	color: var(--color-gray-800);
-	background: var(--color-gray-50);
-	outline: none;
-	transition: all var(--transition-fast);
-	box-sizing: border-box;
-}
-.formInput::placeholder {
-	color: var(--color-gray-400);
-}
-.formInput:focus {
-	border-color: var(--color-primary);
-	background: var(--color-white);
-	box-shadow: 0 0 0 3px rgba(10, 155, 74, 0.1);
+	composes: formInput from '../Modal/Modal.module.css';
 }
 .inputError {
-	border-color: #e24b4a !important;
-}
-.fieldError {
-	font-size: var(--font-size-2xs);
-	color: #e24b4a;
+	composes: inputError from '../Modal/Modal.module.css';
 }
 
 .formTextarea {
-	width: 100%;
-	padding: var(--space-2) var(--space-3);
-	border: 1.5px solid var(--color-gray-200);
-	border-radius: var(--radius-lg);
-	font-family: var(--font-body);
-	font-size: var(--font-size-sm);
-	color: var(--color-gray-800);
-	background: var(--color-gray-50);
-	outline: none;
-	resize: vertical;
-	transition: all var(--transition-fast);
-	box-sizing: border-box;
-}
-.formTextarea:focus {
-	border-color: var(--color-primary);
-	background: var(--color-white);
-	box-shadow: 0 0 0 3px rgba(10, 155, 74, 0.1);
+	composes: formTextarea from '../Modal/Modal.module.css';
 }
 
 .deleteDesc {
-	font-size: var(--font-size-sm);
-	color: var(--color-gray-600);
-	line-height: 1.6;
-	margin: 0;
-}
-
-.modalFooter {
-	padding: var(--space-4) var(--space-6);
-	border-top: 1px solid var(--color-gray-100);
-	display: flex;
-	gap: var(--space-3);
+	composes: deleteDesc from '../Modal/Modal.module.css';
 }
 
 .btnCancel {
-	flex: 1;
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	padding: var(--space-3);
-	border: 1.5px solid var(--color-gray-200);
-	border-radius: var(--radius-lg);
-	background: var(--color-white);
-	font-family: var(--font-body);
-	font-size: var(--font-size-sm);
-	font-weight: var(--font-weight-semibold);
-	color: var(--color-gray-700);
-	cursor: pointer;
-	transition: all var(--transition-fast);
-}
-.btnCancel:hover {
-	background: var(--color-gray-50);
-}
-
-.btnConfirm {
-	flex: 1;
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	gap: var(--space-2);
-	padding: var(--space-3);
-	background: linear-gradient(135deg, var(--color-primary), var(--color-primary-dark));
-	border: none;
-	border-radius: var(--radius-lg);
-	font-family: var(--font-body);
-	font-size: var(--font-size-sm);
-	font-weight: var(--font-weight-bold);
-	color: var(--color-white);
-	cursor: pointer;
-	transition: all var(--transition-base);
-	box-shadow: 0 3px 10px rgba(10, 155, 74, 0.28);
-}
-.btnConfirm:hover {
-	box-shadow: 0 5px 16px rgba(10, 155, 74, 0.4);
-	transform: translateY(-1px);
-}
-.btnConfirm:disabled {
-	opacity: 0.65;
-	cursor: not-allowed;
-	transform: none;
-}
-.btnConfirm svg {
-	width: 15px;
-	height: 15px;
+	composes: btnCancel from '../Modal/Modal.module.css';
 }
 
 .btnDanger {
-	flex: 1;
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	gap: var(--space-2);
-	padding: var(--space-3);
-	background: #fcebeb;
-	border: 1.5px solid #f09595;
-	border-radius: var(--radius-lg);
-	font-family: var(--font-body);
-	font-size: var(--font-size-sm);
-	font-weight: var(--font-weight-bold);
-	color: #791f1f;
-	cursor: pointer;
-	transition: all var(--transition-fast);
-}
-.btnDanger:hover {
-	background: #f7c1c1;
-	border-color: #e24b4a;
-}
-.btnDanger:disabled {
-	opacity: 0.65;
-	cursor: not-allowed;
-}
-.btnDanger svg {
-	width: 15px;
-	height: 15px;
+	composes: btnDanger from '../Modal/Modal.module.css';
 }
 
 /* ── SPINNER ─────────────────────────────── */
 .spinner {
-	width: 14px;
-	height: 14px;
-	border: 2px solid rgba(255, 255, 255, 0.35);
-	border-top-color: #fff;
-	border-radius: 50%;
-	animation: spin 0.65s linear infinite;
-	flex-shrink: 0;
+	composes: spinner from '../Modal/Modal.module.css';
 }
 .spinnerDark {
-	border-color: rgba(121, 31, 31, 0.25);
-	border-top-color: #791f1f;
-}
-
-/* ── TOAST ───────────────────────────────── */
-.toast {
-	position: fixed;
-	bottom: 28px;
-	right: 28px;
-	color: #fff;
-	padding: var(--space-3) var(--space-5);
-	border-radius: var(--radius-xl);
-	font-size: var(--font-size-sm);
-	font-weight: var(--font-weight-semibold);
-	z-index: 999;
-	display: flex;
-	align-items: center;
-	gap: var(--space-2);
-	box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
-	animation: toastIn 250ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
-}
-.toastSuccess {
-	background: var(--color-primary-dark);
-}
-.toastError {
-	background: #7f1d1d;
-}
-@keyframes toastIn {
-	from {
-		opacity: 0;
-		transform: translateY(12px) scale(0.95);
-	}
-	to {
-		opacity: 1;
-		transform: translateY(0) scale(1);
-	}
-}
-.toast svg {
-	width: 15px;
-	height: 15px;
+	composes: spinnerDark from '../Modal/Modal.module.css';
 }
 
 /* ── PAGE SIZE SELECTOR ──────────────────── */

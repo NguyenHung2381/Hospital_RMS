@@ -539,14 +539,6 @@ export default function SeminarDetail() {
 				/>
 			)}
 
-			{d.toast && (
-				<div
-					className={`${styles.toast} ${d.toast.type === 'success' ? styles.toastSuccess : styles.toastError}`}
-				>
-					{d.toast.type === 'success' ? <CheckSvg /> : <XSvg />}
-					{d.toast.msg}
-				</div>
-			)}
 		</AdminLayout>
 	);
 }

@@ -1,3 +1,4 @@
+import { showToast } from '@/shared/utils/feedback';
 import { useCallback, useEffect, useState } from 'react';
 import { useRealtimeUpdate } from '../../../layouts/hooks/useRealtime';
 import { runBulk } from '../../../shared/utils/runBulk';
@@ -21,16 +22,10 @@ export function useSeminarDetail(id: string) {
 	const [loadingData, setLoadingData] = useState(true);
 	const [loading, setLoading] = useState(false);
 	const [notFound, setNotFound] = useState(false);
-	const [toast, setToast] = useState<{ type: 'success' | 'error'; msg: string } | null>(null);
 	const [refreshKey, setRefreshKey] = useState(0);
 
 	const refresh = useCallback(() => setRefreshKey((k) => k + 1), []);
 	useRealtimeUpdate('seminar', refresh);
-
-	const showToast = useCallback((type: 'success' | 'error', msg: string) => {
-		setToast({ type, msg });
-		setTimeout(() => setToast(null), 3500);
-	}, []);
 
 	useEffect(() => {
 		let alive = true;
@@ -68,7 +63,7 @@ export function useSeminarDetail(id: string) {
 				setLoading(false);
 			}
 		},
-		[id, showToast, refresh],
+		[id, refresh],
 	);
 
 	const editOne = useCallback(
@@ -86,7 +81,7 @@ export function useSeminarDetail(id: string) {
 				setLoading(false);
 			}
 		},
-		[id, showToast, refresh],
+		[id, refresh],
 	);
 
 	const removeOne = useCallback(
@@ -102,7 +97,7 @@ export function useSeminarDetail(id: string) {
 				setLoading(false);
 			}
 		},
-		[id, showToast, refresh],
+		[id, refresh],
 	);
 
 	const removeMany = useCallback(
@@ -124,7 +119,7 @@ export function useSeminarDetail(id: string) {
 				setLoading(false);
 			}
 		},
-		[id, showToast, refresh],
+		[id, refresh],
 	);
 
 	const issue = useCallback(
@@ -148,7 +143,7 @@ export function useSeminarDetail(id: string) {
 				setLoading(false);
 			}
 		},
-		[id, showToast, refresh],
+		[id, refresh],
 	);
 
 	const revoke = useCallback(
@@ -164,7 +159,7 @@ export function useSeminarDetail(id: string) {
 				setLoading(false);
 			}
 		},
-		[id, showToast, refresh],
+		[id, refresh],
 	);
 
 	const setStatus = useCallback(
@@ -181,7 +176,7 @@ export function useSeminarDetail(id: string) {
 				setLoading(false);
 			}
 		},
-		[id, showToast, refresh],
+		[id, refresh],
 	);
 
 	return {
@@ -190,7 +185,6 @@ export function useSeminarDetail(id: string) {
 		loadingData,
 		loading,
 		notFound,
-		toast,
 		refresh,
 		addOne,
 		editOne,

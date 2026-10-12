@@ -1,10 +1,8 @@
+import { SearchInput } from '@/shared/components/Table/TableToolbar';
 import {
-	CheckSvg,
 	ChevDSvg,
 	InfoSvg,
 	KeySvg,
-	SearchSvg,
-	XSvg,
 } from '@/assets/icons';
 import { EmptyState } from '@/shared/components';
 import AdminLayout from '../../../layouts/AdminLayout';
@@ -70,23 +68,11 @@ export default function UserList() {
 						</span>
 					</div>
 					<div className={styles.tableControls}>
-						<div className={styles.searchBox}>
-							<SearchSvg className={styles.searchIcon} />
-							<input
-								className={styles.searchInput}
-								placeholder='Tìm theo tên, username, email...'
-								value={d.search}
-								onChange={(e) => d.setSearch(e.target.value)}
-							/>
-							{d.search && (
-								<button
-									className={styles.searchClear}
-									onClick={() => d.setSearch('')}
-								>
-									<XSvg />
-								</button>
-							)}
-						</div>
+						<SearchInput
+							value={d.search}
+							onChange={d.setSearch}
+							placeholder='Tìm theo tên, username, email...'
+						/>
 
 						{/* Multi-select Dept */}
 						<div
@@ -289,17 +275,6 @@ export default function UserList() {
 				/>
 			)}
 
-			{/* ── TOAST ── */}
-			{d.toast && (
-				<div
-					className={`${styles.toast} ${styles[`toast${d.toast.type.charAt(0).toUpperCase() + d.toast.type.slice(1)}` as keyof typeof styles]}`}
-				>
-					{d.toast.type === 'success' && <CheckSvg />}
-					{d.toast.type === 'error' && <XSvg />}
-					{d.toast.type === 'info' && <InfoSvg />}
-					{d.toast.msg}
-				</div>
-			)}
 		</AdminLayout>
 	);
 }

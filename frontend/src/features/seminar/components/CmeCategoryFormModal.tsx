@@ -1,6 +1,7 @@
+import { Modal, ModalActions } from '@/shared/components';
+import { FormField } from '@/shared/components/Input/FormField';
 import React, { useState } from 'react';
-import { CheckSvg, XSvg } from '@/assets/icons';
-import base from '../../training-catalog/pages/TrainingCatalog.module.css';
+import base from '@/shared/components/Table/CrudPage.module.css';
 import styles from '../pages/CmeCreditCatalog.module.css';
 import type {
 	CmeCategoryFormData,
@@ -91,156 +92,129 @@ export function CmeCategoryFormModal({
 			: `Ví dụ: ${qty} ${unit} × ${numValue} giờ = ${+(qty * numValue).toFixed(2)} giờ CME`;
 
 	return (
-		<div
-			className={base.modalBackdrop}
-			onClick={(e) => e.target === e.currentTarget && onClose()}
+		<Modal
+			open
+			onClose={onClose}
+			title={item ? 'Chỉnh sửa loại hình quy đổi' : 'Thêm loại hình quy đổi'}
+			subtitle={item ? `Cập nhật — ${item.name}` : 'Loại hoạt động và công thức quy đổi ra giờ CME'}
+			className={`${base.modal} ${styles.modalWide}`}
+			bodyClassName={base.modalBody}
+			footer={
+				<ModalActions
+					onCancel={onClose}
+					onConfirm={handleSave}
+					loading={loading}
+					confirmLabel={item ? 'Lưu thay đổi' : 'Thêm loại hình'}
+				/>
+			}
 		>
-			<div className={`${base.modal} ${styles.modalWide}`}>
-				<div className={base.modalHeader}>
-					<div>
-						<div className={base.modalTitle}>{item ? 'Chỉnh sửa loại hình quy đổi' : 'Thêm loại hình quy đổi'}</div>
-						<div className={base.modalSub}>
-							{item ? `Cập nhật — ${item.name}` : 'Loại hoạt động và công thức quy đổi ra giờ CME'}
-						</div>
-					</div>
-					<button
-						className={base.modalClose}
-						onClick={onClose}
+			<div className={styles.formRow}>
+				<FormField
+					label='Mã loại hình'
+					error={errors.id}
+				>
+					<input
+						className={`${base.formInput} ${styles.codeInput} ${errors.id ? base.inputError : ''}`}
+						value={form.id}
+						onChange={set('id')}
+						placeholder='VD: HT_CHUTRI (bỏ trống để tự sinh)'
+						disabled={!!item}
+					/>
+				</FormField>
+				<FormField label='Nhóm hoạt động'>
+					<select
+						className={base.formInput}
+						value={form.group_id}
+						onChange={set('group_id')}
 					>
-						<XSvg />
-					</button>
-				</div>
-
-				<div className={base.modalBody}>
-					<div className={styles.formRow}>
-						<div className={base.formGroup}>
-							<label className={base.formLabel}>Mã loại hình</label>
-							<input
-								className={`${base.formInput} ${styles.codeInput} ${errors.id ? base.inputError : ''}`}
-								value={form.id}
-								onChange={set('id')}
-								placeholder='VD: HT_CHUTRI (bỏ trống để tự sinh)'
-								disabled={!!item}
-							/>
-							{errors.id && <div className={base.fieldError}>{errors.id}</div>}
-						</div>
-						<div className={base.formGroup}>
-							<label className={base.formLabel}>Nhóm hoạt động</label>
-							<select
-								className={base.formInput}
-								value={form.group_id}
-								onChange={set('group_id')}
+						<option value=''>— Chưa phân nhóm —</option>
+						{groups.map((g) => (
+							<option
+								key={g.id}
+								value={g.id}
 							>
-								<option value=''>— Chưa phân nhóm —</option>
-								{groups.map((g) => (
-									<option
-										key={g.id}
-										value={g.id}
-									>
-										{g.name}
-									</option>
-								))}
-							</select>
-						</div>
-					</div>
+								{g.name}
+							</option>
+						))}
+					</select>
+				</FormField>
+			</div>
 
-					<div className={base.formGroup}>
-						<label className={base.formLabel}>
-							Tên loại hình <span className={base.required}>*</span>
-						</label>
-						<input
-							className={`${base.formInput} ${errors.name ? base.inputError : ''}`}
-							value={form.name}
-							onChange={set('name')}
-							placeholder='VD: Hội nghị, hội thảo — Báo cáo viên'
-							autoFocus
-						/>
-						{errors.name && <div className={base.fieldError}>{errors.name}</div>}
-					</div>
+			<FormField
+				label='Tên loại hình'
+				required
+				error={errors.name}
+			>
+				<input
+					className={`${base.formInput} ${errors.name ? base.inputError : ''}`}
+					value={form.name}
+					onChange={set('name')}
+					placeholder='VD: Hội nghị, hội thảo — Báo cáo viên'
+					autoFocus
+				/>
+			</FormField>
 
-					<div className={base.formGroup}>
-						<label className={base.formLabel}>Cách quy đổi</label>
-						<div className={styles.methodGroup}>
-							{(Object.keys(CONVERSION_METHOD) as CmeConversionMethod[]).map((m) => (
-								<button
-									key={m}
-									type='button'
-									className={`${styles.methodBtn} ${form.conversion_method === m ? styles.methodBtnActive : ''}`}
-									onClick={() => setMethod(m)}
-								>
-									{CONVERSION_METHOD[m].label}
-								</button>
-							))}
-						</div>
-						<div className={styles.hint}>{CONVERSION_METHOD[form.conversion_method].hint}</div>
-					</div>
-
-					<div className={styles.formRow}>
-						<div className={base.formGroup}>
-							<label className={base.formLabel}>Số giờ quy đổi</label>
-							<input
-								className={`${base.formInput} ${errors.conversion_value ? base.inputError : ''}`}
-								value={form.conversion_value}
-								onChange={set('conversion_value')}
-								inputMode='decimal'
-								placeholder='VD: 1.5'
-							/>
-							{errors.conversion_value && (
-								<div className={base.fieldError}>{errors.conversion_value}</div>
-							)}
-						</div>
-						<div className={base.formGroup}>
-							<label className={base.formLabel}>Đơn vị tính (giờ / …)</label>
-							<input
-								className={base.formInput}
-								value={form.unit_label}
-								onChange={set('unit_label')}
-								list='cme-unit-suggestions'
-								maxLength={40}
-								placeholder='VD: buổi'
-							/>
-							<datalist id='cme-unit-suggestions'>
-								{UNIT_SUGGESTIONS.map((u) => (
-									<option
-										key={u}
-										value={u}
-									/>
-								))}
-							</datalist>
-						</div>
-					</div>
-					<div className={styles.preview}>{preview}</div>
-
-					<div className={base.formGroup}>
-						<label className={base.formLabel}>Ghi chú</label>
-						<textarea
-							className={base.formTextarea}
-							value={form.description}
-							onChange={set('description')}
-							rows={2}
-							placeholder='Điều kiện áp dụng, minh chứng cần có...'
-						/>
-					</div>
+			<div className={base.formGroup}>
+				<label className={base.formLabel}>Cách quy đổi</label>
+				<div className={styles.methodGroup}>
+					{(Object.keys(CONVERSION_METHOD) as CmeConversionMethod[]).map((m) => (
+						<button
+							key={m}
+							type='button'
+							className={`${styles.methodBtn} ${form.conversion_method === m ? styles.methodBtnActive : ''}`}
+							onClick={() => setMethod(m)}
+						>
+							{CONVERSION_METHOD[m].label}
+						</button>
+					))}
 				</div>
+				<div className={styles.hint}>{CONVERSION_METHOD[form.conversion_method].hint}</div>
+			</div>
 
-				<div className={base.modalFooter}>
-					<button
-						className={base.btnCancel}
-						onClick={onClose}
-						disabled={loading}
-					>
-						Huỷ
-					</button>
-					<button
-						className={base.btnConfirm}
-						onClick={handleSave}
-						disabled={loading}
-					>
-						{loading ? <span className={base.spinner} /> : <CheckSvg />}
-						{item ? 'Lưu thay đổi' : 'Thêm loại hình'}
-					</button>
+			<div className={styles.formRow}>
+				<FormField
+					label='Số giờ quy đổi'
+					error={errors.conversion_value}
+				>
+					<input
+						className={`${base.formInput} ${errors.conversion_value ? base.inputError : ''}`}
+						value={form.conversion_value}
+						onChange={set('conversion_value')}
+						inputMode='decimal'
+						placeholder='VD: 1.5'
+					/>
+				</FormField>
+				<div className={base.formGroup}>
+					<label className={base.formLabel}>Đơn vị tính (giờ / …)</label>
+					<input
+						className={base.formInput}
+						value={form.unit_label}
+						onChange={set('unit_label')}
+						list='cme-unit-suggestions'
+						maxLength={40}
+						placeholder='VD: buổi'
+					/>
+					<datalist id='cme-unit-suggestions'>
+						{UNIT_SUGGESTIONS.map((u) => (
+							<option
+								key={u}
+								value={u}
+							/>
+						))}
+					</datalist>
 				</div>
 			</div>
-		</div>
+			<div className={styles.preview}>{preview}</div>
+
+			<FormField label='Ghi chú'>
+				<textarea
+					className={base.formTextarea}
+					value={form.description}
+					onChange={set('description')}
+					rows={2}
+					placeholder='Điều kiện áp dụng, minh chứng cần có...'
+				/>
+			</FormField>
+		</Modal>
 	);
 }

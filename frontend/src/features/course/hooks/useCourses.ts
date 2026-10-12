@@ -1,3 +1,4 @@
+import { showToast } from '@/shared/utils/feedback';
 import { useCallback, useEffect, useState } from 'react';
 import { apiClient } from '../../../shared/api/axios';
 import { useRealtimeUpdate } from '../../../layouts/hooks/useRealtime';
@@ -24,18 +25,12 @@ export function useCourses() {
 	const [deletingCourse, setDeletingCourse] = useState<Course | null>(null);
 	const [detailCourse, setDetailCourse] = useState<Course | null>(null);
 	const [loading, setLoading] = useState(false);
-	const [toast, setToast] = useState<{ type: 'success' | 'error'; msg: string } | null>(null);
 	const [pageSize, setPageSize] = useState(10);
 	const [page, setPage] = useState(1);
 	const [refreshKey, setRefreshKey] = useState(0);
 
 	const refreshData = useCallback(() => setRefreshKey((prev) => prev + 1), []);
 	useRealtimeUpdate('course', refreshData);
-
-	const showToast = useCallback((type: 'success' | 'error', msg: string) => {
-		setToast({ type, msg });
-		setTimeout(() => setToast(null), 3000);
-	}, []);
 
 	// Debounce ô tìm kiếm 300ms rồi mới gọi API
 	useEffect(() => {
@@ -61,7 +56,7 @@ export function useCourses() {
 			}
 		})();
 		return () => controller.abort();
-	}, [page, pageSize, debouncedSearch, refreshKey, showToast]);
+	}, [page, pageSize, debouncedSearch, refreshKey]);
 
 	useEffect(() => {
 		apiClient.get<{ data: SimpleItem[] }>('/training-programs?limit=0').then((r) => setPrograms(r.data)).catch(() => {});
@@ -95,7 +90,7 @@ export function useCourses() {
 				setLoading(false);
 			}
 		},
-		[showToast, refreshData],
+		[refreshData],
 	);
 
 	const handleEdit = useCallback(
@@ -114,7 +109,7 @@ export function useCourses() {
 				setLoading(false);
 			}
 		},
-		[editingCourse, showToast, refreshData],
+		[editingCourse, refreshData],
 	);
 
 	const handleDelete = useCallback(async () => {
@@ -131,7 +126,7 @@ export function useCourses() {
 		} finally {
 			setLoading(false);
 		}
-	}, [deletingCourse, showToast, refreshData]);
+	}, [deletingCourse, refreshData]);
 
 	const handleBulkDelete = useCallback(
 		async (ids: string[]) => {
@@ -146,7 +141,7 @@ export function useCourses() {
 				setLoading(false);
 			}
 		},
-		[showToast, refreshData],
+		[refreshData],
 	);
 
 	return {
@@ -160,7 +155,6 @@ export function useCourses() {
 		deletingCourse,
 		detailCourse,
 		loading,
-		toast,
 		pageSize,
 		page,
 		total,

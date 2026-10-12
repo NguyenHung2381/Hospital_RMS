@@ -341,12 +341,6 @@
 	gap: var(--space-5);
 }
 
-.chartsRow {
-	display: grid;
-	grid-template-columns: 1fr 1.3fr 1fr;
-	gap: var(--space-5);
-}
-
 .chartCard {
 	background: var(--color-white);
 	border: 1px solid var(--color-gray-200);
@@ -651,14 +645,8 @@
 .colStatus {
 	width: 130px;
 }
-.colProgress {
-	width: 130px;
-}
 .colDate {
 	width: 110px;
-}
-.colActions {
-	width: 80px;
 }
 
 /* Topic cells */
@@ -697,71 +685,6 @@
 	max-width: 320px;
 }
 
-/* Badge trạng thái: dùng <Badge> ở @/shared/components */
-
-/* Progress bar */
-.progressWrap {
-	display: flex;
-	align-items: center;
-	gap: var(--space-2);
-}
-
-.progressTrack {
-	flex: 1;
-	height: 5px;
-	background: var(--color-gray-200);
-	border-radius: var(--radius-full);
-	overflow: hidden;
-}
-
-.progressFill {
-	height: 100%;
-	border-radius: var(--radius-full);
-	transition: width var(--transition-slow);
-}
-
-.progressPct {
-	font-size: var(--font-size-2xs);
-	color: var(--color-gray-500);
-	font-weight: var(--font-weight-semibold);
-	min-width: 30px;
-	text-align: right;
-}
-
-/* Action buttons */
-.actionBtns {
-	display: flex;
-	align-items: center;
-	gap: var(--space-1);
-}
-
-.actionBtn {
-	width: 28px;
-	height: 28px;
-	border: 1px solid var(--color-gray-200);
-	border-radius: var(--radius-md);
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	cursor: pointer;
-	background: var(--color-white);
-	transition: all var(--transition-fast);
-	color: var(--color-gray-500);
-}
-
-.actionBtn:hover {
-	background: var(--color-primary-pale);
-	border-color: var(--color-primary-light);
-	color: var(--color-primary-dark);
-}
-
-.actionBtn svg {
-	width: 13px;
-	height: 13px;
-}
-
-/* Phân trang: dùng <Pagination> ở @/shared/components */
-
 /* =============================================
    OPERATIONS GRID (Main table + Sidebar logs)
 ============================================= */
@@ -792,15 +715,6 @@
 	min-height: 0;
 	grid-column: 2;
 	grid-row: 2;
-}
-
-/* =============================================
-   BOTTOM ROW — Recent Approvals + Dept Summary
-============================================= */
-.bottomRow {
-	display: grid;
-	grid-template-columns: 1fr 340px;
-	gap: var(--space-5);
 }
 
 /* Approval list */
@@ -1051,7 +965,6 @@
 	.metricsGrid {
 		grid-template-columns: repeat(2, 1fr);
 	}
-	.chartsRow,
 	.chartsGridPair,
 	.chartsGridPairReverse {
 		grid-template-columns: 1fr;
@@ -1067,9 +980,6 @@
 	.operationsSidebar {
 		grid-column: 1;
 		grid-row: 3;
-	}
-	.bottomRow {
-		grid-template-columns: 1fr;
 	}
 	.quickAccessGrid {
 		grid-template-columns: repeat(4, 1fr);
@@ -1135,13 +1045,6 @@
 		white-space: nowrap;
 		padding: 0 var(--space-4);
 		-webkit-overflow-scrolling: touch;
-	}
-
-	.pagination {
-		flex-direction: column;
-		gap: var(--space-3);
-		align-items: center;
-		padding: var(--space-4);
 	}
 }
 

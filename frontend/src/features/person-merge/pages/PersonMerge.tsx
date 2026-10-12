@@ -1,4 +1,4 @@
-import { CheckSvg, InfoSvg, SearchSvg, XSvg } from '@/assets/icons';
+import { InfoSvg, SearchSvg } from '@/assets/icons';
 import AdminLayout from '../../../layouts/AdminLayout';
 import { Badge } from '../../../shared/components/Badge';
 import { SkeletonTable } from '../../../shared/components/Loading';
@@ -171,9 +171,7 @@ export default function PersonMerge() {
 						totalPages={d.totalPages}
 						total={d.total}
 						rowsPerPage={d.pageSize}
-						pageSizeOptions={[20]}
 						onPageChange={d.setPage}
-						onRowsPerPageChange={() => undefined}
 						itemLabel='cặp'
 						hideSizeSelect
 					/>
@@ -192,12 +190,6 @@ export default function PersonMerge() {
 				/>
 			)}
 
-			{d.toast && (
-				<div className={`${styles.toast} ${d.toast.type === 'success' ? styles.toastSuccess : styles.toastError}`}>
-					{d.toast.type === 'success' ? <CheckSvg /> : <XSvg />}
-					{d.toast.msg}
-				</div>
-			)}
 		</AdminLayout>
 	);
 }

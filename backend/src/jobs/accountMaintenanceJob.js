@@ -1,17 +1,12 @@
 const { getPool, sql } = require('../config/db');
 const notificationService = require('../services/notificationService');
 const { markOnce } = require('./dedupe');
+const { todayKeyVN } = require('../utils/vnDate');
 
 // Job nền bảo trì tài khoản:
 //  1. Gọi sp_deactivate_expired_accounts — stored proc đã tồn tại từ trước
 //     nhưng CHƯA có gì gọi tới (gap đã xác nhận khi khảo sát code).
 //  2. Cảnh báo người dùng có mật khẩu quá hạn lâu ngày chưa đổi.
-const VN_OFFSET_MS = 7 * 60 * 60 * 1000;
-const todayKeyVN = () => {
-	const vn = new Date(Date.now() + VN_OFFSET_MS);
-	return `${vn.getUTCFullYear()}-${String(vn.getUTCMonth() + 1).padStart(2, '0')}-${String(vn.getUTCDate()).padStart(2, '0')}`;
-};
-
 const PASSWORD_MAX_AGE_DAYS = 90;
 const PASSWORD_WARNING_INTERVAL_DAYS = 30; // nhắc lại mỗi 30 ngày, không phải mỗi ngày
 

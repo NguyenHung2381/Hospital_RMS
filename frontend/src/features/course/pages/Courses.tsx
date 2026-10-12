@@ -1,10 +1,11 @@
+import { SearchInput, PageSizeSelect, SelectionCount, RowAction, RowActions } from '@/shared/components/Table/TableToolbar';
 import { useState } from 'react';
-import { CalendarSvg, CheckSvg, EditSvg, EyeSvg, PlusSvg, SearchSvg, TrashSvg, XSvg } from '@/assets/icons';
+import { CalendarSvg, EyeSvg, PlusSvg } from '@/assets/icons';
 import AdminLayout from '../../../layouts/AdminLayout';
 import { SkeletonTable } from '../../../shared/components/Loading';
 import { Pagination } from '../../../shared/components/Table/Pagination';
 import sel from '../../../shared/components/Table/RowSelect.module.css';
-import { BulkButton, BulkDeleteModal, SelectCheckbox } from '../../../shared/components/Table/RowSelect';
+import { SelectCheckbox } from '../../../shared/components/Table/RowSelect';
 import { useRowSelection } from '../../../shared/hooks/useRowSelection';
 import { formatDate } from '../../../shared/utils/formatDate';
 import { CourseDeleteModal } from '../components/CourseDeleteModal';
@@ -15,13 +16,10 @@ import type { DetailTab } from '../hooks/useCourseDetail';
 import { DISPLAY_STATUS_CFG } from '../types/course.type';
 import styles from './Courses.module.css';
 
-const PAGE_SIZE_OPTIONS = [5, 10, 25, 50, 0] as const;
-
 export default function Courses() {
 	const d = useCourses();
 	const [detailTab, setDetailTab] = useState<DetailTab>('enrollments');
 	const rowSel = useRowSelection(d.paged.map((x) => x.id));
-	const [confirmBulkDelete, setConfirmBulkDelete] = useState(false);
 
 	const headerActions = (
 		<button
@@ -43,62 +41,25 @@ export default function Courses() {
 				<div className={styles.tableHeader}>
 					<div className={styles.tableHeaderLeft}>
 						<span className={styles.tableTitle}>Danh sách khóa học</span>
-						{rowSel.selectedCount > 0 ? (
-							<span className={styles.tableCount}>
-								Đã chọn {rowSel.selectedCount}
-								<BulkButton
-									danger
-									onClick={() => setConfirmBulkDelete(true)}
-								>
-									<TrashSvg /> Xoá đã chọn
-								</BulkButton>
-								<button
-									type='button'
-									className={styles.clearSelectionBtn}
-									onClick={rowSel.clearSelection}
-								>
-									Bỏ chọn
-								</button>
-							</span>
-						) : (
-							<span className={styles.tableCount}>
-								{d.total} khóa học
-							</span>
-						)}
+						<SelectionCount
+							rowSel={rowSel}
+							itemLabel='khóa học'
+							loading={d.loading}
+							onBulkDelete={d.handleBulkDelete}
+						>
+							{d.total} khóa học
+						</SelectionCount>
 					</div>
 					<div className={styles.tableControls}>
-						<div className={styles.searchBox}>
-							<SearchSvg className={styles.searchIcon} />
-							<input
-								className={styles.searchInput}
-								placeholder='Tìm theo tên khóa học...'
-								value={d.search}
-								onChange={(e) => d.handleSearch(e.target.value)}
-							/>
-							{d.search && (
-								<button
-									className={styles.searchClear}
-									onClick={() => d.handleSearch('')}
-								>
-									<XSvg />
-								</button>
-							)}
-						</div>
-						<div className={styles.pageSizeWrap}>
-							<label className={styles.pageSizeLabel}>Hiển thị</label>
-							<select
-								className={styles.pageSizeSelect}
-								value={d.pageSize}
-								onChange={(e) => d.handlePageSize(Number(e.target.value))}
-							>
-								<option value={5}>5</option>
-								<option value={10}>10</option>
-								<option value={25}>25</option>
-								<option value={50}>50</option>
-								<option value={0}>Tất cả</option>
-							</select>
-							<span className={styles.pageSizeLabel}>dòng</span>
-						</div>
+						<SearchInput
+							value={d.search}
+							onChange={d.handleSearch}
+							placeholder='Tìm theo tên khóa học...'
+						/>
+						<PageSizeSelect
+							value={d.pageSize}
+							onChange={d.handlePageSize}
+						/>
 					</div>
 				</div>
 
@@ -216,9 +177,17 @@ export default function Courses() {
 											</span>
 										</td>
 										<td className={`${styles.td} ${styles.tdActions}`}>
-											<div className={styles.actionBtns}>
-												<div
-													className={styles.actionBtn}
+											<RowActions
+												onEdit={() => {
+													d.setEditingCourse(c);
+													d.setModal('edit');
+												}}
+												onDelete={() => {
+													d.setDeletingCourse(c);
+													d.setModal('delete');
+												}}
+											>
+												<RowAction
 													title='Lịch học & điểm danh (QR)'
 													onClick={() => {
 														setDetailTab('sessions');
@@ -226,9 +195,8 @@ export default function Courses() {
 													}}
 												>
 													<CalendarSvg />
-												</div>
-												<div
-													className={styles.actionBtn}
+												</RowAction>
+												<RowAction
 													title='Chi tiết khóa học (học viên, giảng viên, tài liệu, kết quả…)'
 													onClick={() => {
 														setDetailTab('enrollments');
@@ -236,28 +204,8 @@ export default function Courses() {
 													}}
 												>
 													<EyeSvg />
-												</div>
-												<div
-													className={styles.actionBtn}
-													title='Chỉnh sửa'
-													onClick={() => {
-														d.setEditingCourse(c);
-														d.setModal('edit');
-													}}
-												>
-													<EditSvg />
-												</div>
-												<div
-													className={`${styles.actionBtn} ${styles.danger}`}
-													title='Xoá'
-													onClick={() => {
-														d.setDeletingCourse(c);
-														d.setModal('delete');
-													}}
-												>
-													<TrashSvg />
-												</div>
-											</div>
+												</RowAction>
+											</RowActions>
 										</td>
 									</tr>
 								);
@@ -273,27 +221,13 @@ export default function Courses() {
 						totalPages={d.totalPages}
 						total={d.total}
 						rowsPerPage={d.pageSize}
-						pageSizeOptions={PAGE_SIZE_OPTIONS}
 						onPageChange={d.setPage}
-						onRowsPerPageChange={d.handlePageSize}
 						itemLabel='khóa học'
 						hideSizeSelect
 					/>
 				)}
 			</div>
 
-			<BulkDeleteModal
-				open={confirmBulkDelete}
-				count={rowSel.selectedCount}
-				itemLabel='khóa học'
-				loading={d.loading}
-				onClose={() => setConfirmBulkDelete(false)}
-				onConfirm={async () => {
-					await d.handleBulkDelete([...rowSel.selectedIds]);
-					rowSel.clearSelection();
-					setConfirmBulkDelete(false);
-				}}
-			/>
 
 			{d.modal === 'add' && (
 				<CourseFormModal
@@ -336,18 +270,6 @@ export default function Courses() {
 				/>
 			)}
 
-			{d.toast && (
-				<div
-					className={`${styles.toast} ${
-						styles[
-							`toast${d.toast.type.charAt(0).toUpperCase() + d.toast.type.slice(1)}` as keyof typeof styles
-						]
-					}`}
-				>
-					{d.toast.type === 'success' ? <CheckSvg /> : <XSvg />}
-					{d.toast.msg}
-				</div>
-			)}
 		</AdminLayout>
 	);
 }

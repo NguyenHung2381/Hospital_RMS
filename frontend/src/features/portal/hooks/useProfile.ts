@@ -1,3 +1,4 @@
+import { showToast } from '@/shared/utils/feedback';
 import { useEffect, useMemo, useState } from 'react';
 import { apiClient } from '../../../shared/api/axios';
 import { getInitials } from '../../../shared/utils/helper';
@@ -86,15 +87,6 @@ export function useProfile() {
 	const [showConfirm, setShowConfirm] = useState(false);
 	const [pwdError, setPwdError] = useState('');
 	const [pwdSaving, setPwdSaving] = useState(false);
-	const [toast, setToast] = useState<{
-		msg: string;
-		type: 'success' | 'error';
-	} | null>(null);
-
-	function showToast(msg: string, type: 'success' | 'error') {
-		setToast({ msg, type });
-		setTimeout(() => setToast(null), 3500);
-	}
 
 	// null = không đang sửa
 	const [nameDraft, setNameDraft] = useState<string | null>(null);
@@ -103,7 +95,7 @@ export function useProfile() {
 	async function handleSaveName() {
 		const full_name = nameDraft?.trim() ?? '';
 		if (!full_name) {
-			showToast('Họ và tên không được để trống.', 'error');
+			showToast('error', 'Họ và tên không được để trống.');
 			return;
 		}
 		setNameSaving(true);
@@ -112,9 +104,9 @@ export function useProfile() {
 			setProfile((p) => (p ? { ...p, full_name } : p));
 			updateStoredUser({ full_name });
 			setNameDraft(null);
-			showToast('Đã cập nhật họ và tên.', 'success');
+			showToast('success', 'Đã cập nhật họ và tên.');
 		} catch (err) {
-			showToast(err instanceof Error ? err.message : 'Có lỗi xảy ra.', 'error');
+			showToast('error', err instanceof Error ? err.message : 'Có lỗi xảy ra.');
 		} finally {
 			setNameSaving(false);
 		}
@@ -151,11 +143,11 @@ export function useProfile() {
 			setOldPwd('');
 			setNewPwd('');
 			setConfirmPwd('');
-			showToast('Đổi mật khẩu thành công! Các thiết bị khác đã bị đăng xuất.', 'success');
+			showToast('success', 'Đổi mật khẩu thành công! Các thiết bị khác đã bị đăng xuất.');
 		} catch (e: unknown) {
 			const msg =
 				e instanceof Error ? e.message : 'Có lỗi xảy ra, vui lòng thử lại.';
-			showToast(msg, 'error');
+			showToast('error', msg);
 		} finally {
 			setPwdSaving(false);
 		}
@@ -196,7 +188,7 @@ export function useProfile() {
 		} catch (e: unknown) {
 			// Lỗi ở bước NÀY xảy ra trước khi panel setup (có ô hiện twoFaError)
 			// kịp mở — dùng toast chung thay vì twoFaError để người dùng thấy được.
-			showToast(e instanceof Error ? e.message : 'Không thể khởi tạo 2FA', 'error');
+			showToast('error', e instanceof Error ? e.message : 'Không thể khởi tạo 2FA');
 		} finally {
 			setTwoFaSaving(false);
 		}
@@ -222,7 +214,7 @@ export function useProfile() {
 			updateStoredUser({ twofa_state: null, twofa_deadline: null });
 			setTwoFaSetup(null);
 			setTwoFaCode('');
-			showToast('Đã bật xác thực 2 lớp!', 'success');
+			showToast('success', 'Đã bật xác thực 2 lớp!');
 		} catch (e: unknown) {
 			setTwoFaError(e instanceof Error ? e.message : 'Mã xác thực không đúng');
 		} finally {
@@ -242,7 +234,7 @@ export function useProfile() {
 			setBackupRemaining(0);
 			setShowDisable2Fa(false);
 			setDisablePwd('');
-			showToast('Đã tắt xác thực 2 lớp', 'success');
+			showToast('success', 'Đã tắt xác thực 2 lớp');
 		} catch (e: unknown) {
 			setTwoFaError(e instanceof Error ? e.message : 'Mật khẩu không đúng');
 		} finally {
@@ -261,7 +253,7 @@ export function useProfile() {
 			setBackupRemaining(codes.length);
 			setShowRegenBackup(false);
 			setRegenPwd('');
-			showToast('Đã tạo bộ mã khôi phục mới — bộ cũ đã mất hiệu lực', 'success');
+			showToast('success', 'Đã tạo bộ mã khôi phục mới — bộ cũ đã mất hiệu lực');
 		} catch (e: unknown) {
 			setTwoFaError(e instanceof Error ? e.message : 'Mật khẩu không đúng');
 		} finally {
@@ -282,7 +274,7 @@ export function useProfile() {
 		} catch (e: unknown) {
 			const msg =
 				e instanceof Error ? e.message : 'Có lỗi xảy ra, vui lòng thử lại.';
-			showToast(msg, 'error');
+			showToast('error', msg);
 			setLoggingOutAll(false);
 		}
 	}
@@ -301,7 +293,6 @@ export function useProfile() {
 		showConfirm,
 		pwdError,
 		pwdSaving,
-		toast,
 		loggingOutAll,
 		setOldPwd,
 		setNewPwd,

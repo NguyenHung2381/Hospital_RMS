@@ -9,6 +9,9 @@ name: hospital_rms
 
 services:
   backend:
+    # CI/CD đặt BACKEND_IMAGE = ghcr.io/...:<commit SHA> (scripts/deploy.ps1) và
+    # chạy `up --no-build`; build tay trên server thì giữ tên mặc định như cũ.
+    image: ${BACKEND_IMAGE:-hospital_rms-backend}
     build:
       context: ./backend
       target: prod
@@ -71,8 +74,9 @@ services:
     # Mở localhost:3001 trên máy server (chỉ loopback, không lộ ra mạng) để
     # reverse proxy/IIS trên cùng máy gọi được API; nginx (client) vẫn gọi
     # backend:3001 qua mạng nội bộ Docker.
+    # BACKEND_BIND: đổi cổng khi chạy thêm bản staging trên cùng máy.
     ports:
-      - "127.0.0.1:3001:3001"
+      - "${BACKEND_BIND:-127.0.0.1:3001}:3001"
     volumes:
       - server_uploads:/app/uploads
       # JWT secret tự sinh khi thiếu (docker-entrypoint.sh) — giữ qua restart/redeploy
@@ -86,6 +90,7 @@ services:
     restart: unless-stopped
 
   frontend:
+    image: ${FRONTEND_IMAGE:-hospital_rms-frontend}
     build:
       context: ./frontend
       target: prod

@@ -95,10 +95,6 @@ export const updateSeminar = (id: string, form: SeminarForm) =>
 export const deleteSeminar = (id: string) =>
 	apiClient.delete<null>(`/seminars/${id}`);
 
-// ─── Participants ────────────────────────────────────────────────────────────
-export const getParticipants = (seminarId: string) =>
-	apiClient.get<SeminarParticipant[]>(`/seminars/${seminarId}/participants`);
-
 export const getCheckInQrToken = (seminarId: string) =>
 	apiClient.get<{ token: string }>(`/seminars/${seminarId}/checkin-qr`);
 

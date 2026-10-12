@@ -1,16 +1,15 @@
+import { SearchInput } from '@/shared/components/Table/TableToolbar';
+import { showToast } from '@/shared/utils/feedback';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-	CheckSvg,
 	DownloadSvg,
 	EditSvg,
 	PlusSvg,
 	QrSvg,
-	SearchSvg,
 	TrashSvg,
 	UploadSvg,
 	UsersSvg,
-	XSvg,
 } from '@/assets/icons';
 import AdminLayout from '../../../layouts/AdminLayout';
 import { Badge } from '@/shared/components';
@@ -63,7 +62,7 @@ export default function Seminars() {
 			});
 			saveBlob(blob, `hoi-thao-hoi-nghi${s.year ? `-${s.year}` : ''}.xlsx`);
 		} catch (e) {
-			s.showToast('error', e instanceof Error ? e.message : 'Xuất Excel thất bại');
+			showToast('error', e instanceof Error ? e.message : 'Xuất Excel thất bại');
 		} finally {
 			setExporting(false);
 		}
@@ -105,20 +104,11 @@ export default function Seminars() {
 						<span className={styles.tableCount}>{s.total} sự kiện</span>
 					</div>
 					<div className={styles.tableControls}>
-						<div className={styles.searchBox}>
-							<SearchSvg className={styles.searchIcon} />
-							<input
-								className={styles.searchInput}
-								placeholder='Tìm theo tên, địa điểm, báo cáo viên...'
-								value={s.search}
-								onChange={(e) => s.setSearch(e.target.value)}
-							/>
-							{s.search && (
-								<button className={styles.searchClear} onClick={() => s.setSearch('')}>
-									<XSvg />
-								</button>
-							)}
-						</div>
+						<SearchInput
+							value={s.search}
+							onChange={s.setSearch}
+							placeholder='Tìm theo tên, địa điểm, báo cáo viên...'
+						/>
 
 						<select
 							className={styles.filterSelect}
@@ -332,7 +322,7 @@ export default function Seminars() {
 					onClose={() => setImportOpen(false)}
 					onDone={() => {
 						s.refresh();
-						s.showToast('success', 'Đã nhập danh sách hội thảo từ Excel');
+						showToast('success', 'Đã nhập danh sách hội thảo từ Excel');
 					}}
 				/>
 			)}
@@ -373,14 +363,6 @@ export default function Seminars() {
 				/>
 			)}
 
-			{s.toast && (
-				<div
-					className={`${styles.toast} ${s.toast.type === 'success' ? styles.toastSuccess : styles.toastError}`}
-				>
-					{s.toast.type === 'success' ? <CheckSvg /> : <XSvg />}
-					{s.toast.msg}
-				</div>
-			)}
 		</AdminLayout>
 	);
 }

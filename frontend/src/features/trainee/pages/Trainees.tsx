@@ -1,5 +1,7 @@
+import { avatarColor, getInitials } from '@/shared/utils';
+import { SearchInput, PageSizeSelect, RowAction, RowActions } from '@/shared/components/Table/TableToolbar';
 import { useState } from 'react';
-import { BookOpenSvg, CheckSvg, EditSvg, FileTextSvg, KeySvg, PlusSvg, SearchSvg, TrashSvg, UploadSvg, XSvg } from '@/assets/icons';
+import { BookOpenSvg, FileTextSvg, KeySvg, PlusSvg, TrashSvg, UploadSvg } from '@/assets/icons';
 import { Badge } from '@/shared/components';
 import AdminLayout from '../../../layouts/AdminLayout';
 import { SkeletonTable } from '../../../shared/components/Loading';
@@ -15,26 +17,6 @@ import { TraineeImportModal } from '../components/TraineeImportModal';
 import { useTrainees } from '../hooks/useTrainees';
 import { formatDate } from '../../../shared/utils/formatDate';
 import styles from './Trainees.module.css';
-
-const PAGE_SIZE_OPTIONS = [5, 10, 25, 50, 0] as const;
-
-const COLORS = [
-	{ bg: '#e1f5ea', color: '#085028' },
-	{ bg: '#e6f1fb', color: '#0c447c' },
-	{ bg: '#eeedfe', color: '#3c3489' },
-	{ bg: '#faeeda', color: '#633806' },
-	{ bg: '#fce8fb', color: '#6b1a69' },
-];
-function getColor(id: string) {
-	let hash = 0;
-	for (let i = 0; i < id.length; i++) hash = id.charCodeAt(i) + ((hash << 5) - hash);
-	return COLORS[Math.abs(hash) % COLORS.length];
-}
-function getInitials(s: string) {
-	const parts = s.trim().split(/\s+/);
-	if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
-	return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
-}
 
 export default function Trainees() {
 	const d = useTrainees();
@@ -100,38 +82,15 @@ export default function Trainees() {
 						)}
 					</div>
 					<div className={styles.tableControls}>
-						<div className={styles.searchBox}>
-							<SearchSvg className={styles.searchIcon} />
-							<input
-								className={styles.searchInput}
-								placeholder='Tìm theo tên, CCCD, điện thoại, email...'
-								value={d.search}
-								onChange={(e) => d.handleSearch(e.target.value)}
-							/>
-							{d.search && (
-								<button
-									className={styles.searchClear}
-									onClick={() => d.handleSearch('')}
-								>
-									<XSvg />
-								</button>
-							)}
-						</div>
-						<div className={styles.pageSizeWrap}>
-							<label className={styles.pageSizeLabel}>Hiển thị</label>
-							<select
-								className={styles.pageSizeSelect}
-								value={d.pageSize}
-								onChange={(e) => d.handlePageSize(Number(e.target.value))}
-							>
-								<option value={5}>5</option>
-								<option value={10}>10</option>
-								<option value={25}>25</option>
-								<option value={50}>50</option>
-								<option value={0}>Tất cả</option>
-							</select>
-							<span className={styles.pageSizeLabel}>dòng</span>
-						</div>
+						<SearchInput
+							value={d.search}
+							onChange={d.handleSearch}
+							placeholder='Tìm theo tên, CCCD, điện thoại, email...'
+						/>
+						<PageSizeSelect
+							value={d.pageSize}
+							onChange={d.handlePageSize}
+						/>
 					</div>
 				</div>
 
@@ -175,7 +134,7 @@ export default function Trainees() {
 							</tr>
 						) : (
 							d.paged.map((t, i) => {
-								const c = getColor(t.id);
+								const c = avatarColor(t.id);
 								const rowNum = (d.safePage - 1) * (d.pageSize || d.filtered.length) + i + 1;
 								return (
 									<tr
@@ -245,42 +204,29 @@ export default function Trainees() {
 											<span className={styles.descText}>{t.department_name ?? '—'}</span>
 										</td>
 										<td className={`${styles.td} ${styles.tdActions}`}>
-											<div className={styles.actionBtns}>
-												<div
-													className={styles.actionBtn}
+											<RowActions
+												onEdit={() => {
+													d.setEditingTrainee(t);
+													d.setModal('edit');
+												}}
+												onDelete={() => {
+													d.setDeletingTrainee(t);
+													d.setModal('delete');
+												}}
+											>
+												<RowAction
 													title='Hồ sơ đính kèm'
 													onClick={() => d.openDetail(t, 'documents')}
 												>
 													<FileTextSvg />
-												</div>
-												<div
-													className={styles.actionBtn}
+												</RowAction>
+												<RowAction
 													title='Chương trình đào tạo đã đăng ký'
 													onClick={() => d.openDetail(t, 'enrollments')}
 												>
 													<BookOpenSvg />
-												</div>
-												<div
-													className={styles.actionBtn}
-													title='Chỉnh sửa'
-													onClick={() => {
-														d.setEditingTrainee(t);
-														d.setModal('edit');
-													}}
-												>
-													<EditSvg />
-												</div>
-												<div
-													className={`${styles.actionBtn} ${styles.danger}`}
-													title='Xoá'
-													onClick={() => {
-														d.setDeletingTrainee(t);
-														d.setModal('delete');
-													}}
-												>
-													<TrashSvg />
-												</div>
-											</div>
+												</RowAction>
+											</RowActions>
 										</td>
 									</tr>
 								);
@@ -296,9 +242,7 @@ export default function Trainees() {
 						totalPages={d.totalPages}
 						total={d.filtered.length}
 						rowsPerPage={d.pageSize}
-						pageSizeOptions={PAGE_SIZE_OPTIONS}
 						onPageChange={d.setPage}
-						onRowsPerPageChange={d.handlePageSize}
 						itemLabel='học viên'
 						hideSizeSelect
 					/>
@@ -387,18 +331,6 @@ export default function Trainees() {
 					);
 				})()}
 
-			{d.toast && (
-				<div
-					className={`${styles.toast} ${
-						styles[
-							`toast${d.toast.type.charAt(0).toUpperCase() + d.toast.type.slice(1)}` as keyof typeof styles
-						]
-					}`}
-				>
-					{d.toast.type === 'success' ? <CheckSvg /> : <XSvg />}
-					{d.toast.msg}
-				</div>
-			)}
 		</AdminLayout>
 	);
 }

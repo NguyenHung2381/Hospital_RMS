@@ -1,3 +1,4 @@
+import { showToast } from '@/shared/utils/feedback';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { getStoredUser } from '../../../shared/utils/storage';
@@ -121,9 +122,6 @@ export interface TopicRegisterState {
 	removeAttachment: (name: string) => void;
 	setIsDragging: (v: boolean) => void;
 
-	// Toast
-	toast: { msg: string; type: 'success' | 'error' } | null;
-	setToast: (v: { msg: string; type: 'success' | 'error' } | null) => void;
 
 	// Nav
 	navigate: ReturnType<typeof useNavigate>;
@@ -190,10 +188,6 @@ export function useTopicRegister(): TopicRegisterState {
 	const [isDragging, setIsDragging] = useState(false);
 	const fileInputRef = useRef<HTMLInputElement>(null);
 
-	const [toast, setToast] = useState<{
-		msg: string;
-		type: 'success' | 'error';
-	} | null>(null);
 
 	// Load reference data
 	useEffect(() => {
@@ -212,10 +206,7 @@ export function useTopicRegister(): TopicRegisterState {
 			? getTopicRoundByToken(publicToken)
 					.then((round) => {
 						if (!round.registration_open) {
-							setToast({
-								msg: `Đợt "${round.name}" hiện không nhận đăng ký đề tài.`,
-								type: 'error',
-							});
+							showToast('error', `Đợt "${round.name}" hiện không nhận đăng ký đề tài.`);
 							return;
 						}
 						setLockedRound({
@@ -226,10 +217,7 @@ export function useTopicRegister(): TopicRegisterState {
 						setFormState((prev) => ({ ...prev, round_id: round.id }));
 					})
 					.catch((err: unknown) =>
-						setToast({
-							msg: err instanceof Error ? err.message : 'Liên kết đăng ký không hợp lệ.',
-							type: 'error',
-						}),
+						showToast('error', err instanceof Error ? err.message : 'Liên kết đăng ký không hợp lệ.'),
 					)
 			: Promise.resolve();
 		Promise.all([base, tokenLoad]).finally(() => setLoadingRef(false));
@@ -294,13 +282,6 @@ export function useTopicRegister(): TopicRegisterState {
 			if (debounceRef.current) clearTimeout(debounceRef.current);
 		};
 	}, [memberQuery]);
-
-	// Auto-hide toast
-	useEffect(() => {
-		if (!toast) return;
-		const t = setTimeout(() => setToast(null), 3500);
-		return () => clearTimeout(t);
-	}, [toast]);
 
 	const setField = useCallback(
 		<K extends keyof RegisterForm>(key: K, val: RegisterForm[K]) => {
@@ -388,7 +369,7 @@ export function useTopicRegister(): TopicRegisterState {
 				(m) => m.staff_number === manualForm.staff_number.trim(),
 			)
 		) {
-			setToast({ msg: 'Thành viên này đã được thêm.', type: 'error' });
+			showToast('error', 'Thành viên này đã được thêm.');
 			return;
 		}
 		setPendingMembers((prev) => [
@@ -493,13 +474,7 @@ export function useTopicRegister(): TopicRegisterState {
 				attachments,
 			},
 		]);
-		setToast({
-			msg:
-				form.article_type === 'bai_bao'
-					? 'Đã thêm bài báo vào danh sách.'
-					: 'Đã thêm đề tài vào danh sách.',
-			type: 'success',
-		});
+		showToast('success', form.article_type === 'bai_bao' ? 'Đã thêm bài báo vào danh sách.' : 'Đã thêm đề tài vào danh sách.');
 		setFormState({
 			article_type: form.article_type,
 			title: '',
@@ -534,7 +509,7 @@ export function useTopicRegister(): TopicRegisterState {
 	const submitAll = useCallback(
 		async (status: TopicStatus) => {
 			if (pendingTopics.length === 0) {
-				setToast({ msg: 'Chưa có đề tài nào trong danh sách.', type: 'error' });
+				showToast('error', 'Chưa có đề tài nào trong danh sách.');
 				return;
 			}
 			setSubmittingAll(true);
@@ -586,18 +561,12 @@ export function useTopicRegister(): TopicRegisterState {
 			setPendingTopics((prev) => prev.filter((t) => !succeededIds.has(t.localId)));
 			setSubmittingAll(false);
 			if (failedCount === 0) {
-				setToast({
-					msg: `Đã gửi ${succeededIds.size} mục để phê duyệt!`,
-					type: 'success',
-				});
+				showToast('success', `Đã gửi ${succeededIds.size} mục để phê duyệt!`);
 				setTimeout(() => navigate('/user/my-topics'), 1800);
 			} else if (succeededIds.size === 0) {
 				setSubmitError('Có lỗi xảy ra, vui lòng thử lại.');
 			} else {
-				setToast({
-					msg: `Đã gửi ${succeededIds.size} mục, ${failedCount} mục lỗi. Vui lòng thử lại các mục còn trong danh sách.`,
-					type: 'error',
-				});
+				showToast('error', `Đã gửi ${succeededIds.size} mục, ${failedCount} mục lỗi. Vui lòng thử lại các mục còn trong danh sách.`);
 			}
 		},
 		[pendingTopics, navigate],
@@ -658,8 +627,6 @@ export function useTopicRegister(): TopicRegisterState {
 		handleFiles,
 		removeAttachment,
 		setIsDragging,
-		toast,
-		setToast,
 		navigate,
 		clearForm,
 	};

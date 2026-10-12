@@ -3,6 +3,7 @@ import {
 	getStoredUser,
 	LEGACY_REFRESH_KEY,
 	replaceAccessToken,
+	tokenUserId,
 } from '../utils/storage';
 import { BASE_URL } from './endpoints';
 
@@ -40,6 +41,11 @@ export async function tryRefresh(): Promise<string | null> {
 
 		localStorage.removeItem(LEGACY_REFRESH_KEY);
 		sessionStorage.removeItem(LEGACY_REFRESH_KEY);
+		// Cookie đã thuộc tài khoản khác (đăng nhập ở tab/cửa sổ khác lúc tab này
+		// không nhận được thông báo) — không trộn token của họ vào giao diện này.
+		const storedId = getStoredUser<{ id?: string }>()?.id;
+		const newId = tokenUserId(json.data.access_token);
+		if (storedId && newId && storedId !== newId) return null;
 		replaceAccessToken(json.data.access_token);
 		return json.data.access_token as string;
 	}

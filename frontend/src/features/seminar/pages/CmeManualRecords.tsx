@@ -1,3 +1,4 @@
+import { SearchInput } from '@/shared/components/Table/TableToolbar';
 import { formatDateVN } from '../../../shared/utils/formatDate';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
@@ -9,7 +10,6 @@ import {
 	InfoSvg,
 	PaperclipSvg,
 	PlusSvg,
-	SearchSvg,
 	TrashSvg,
 	UploadSvg,
 	XSvg,
@@ -18,14 +18,20 @@ import AdminLayout from '../../../layouts/AdminLayout';
 import { useRealtimeUpdate } from '../../../layouts/hooks/useRealtime';
 import { Badge, FileDropzone, Modal, Pagination, SearchableSelect } from '@/shared/components';
 import { InlineLoading } from '../../../shared/components/Loading';
+import sel from '@/shared/components/Table/RowSelect.module.css';
+import { BulkButton, SelectCheckbox, SelectionBar } from '@/shared/components/Table/RowSelect';
+import { useRowSelection } from '@/shared/hooks/useRowSelection';
 import { apiClient } from '../../../shared/api/axios';
 import {
 	addCmeRecordEvidence,
+	approveCmeRecord,
+	rejectCmeRecord,
 	createCmeRecord,
 	deleteCmeRecord,
 	downloadCmeRecordImportTemplate,
 	exportCmeRecordsExcel,
 	getCmeCreditCategories,
+	getCmeCreditGroups,
 	getCmeRecords,
 	importCmeRecordsExcel,
 	updateCmeRecord,
@@ -127,24 +133,26 @@ interface SimpleUser {
 	staff_number?: string | number | null;
 }
 
-function suggestCredits(category: CmeCreditCategory | undefined): string {
-	if (!category || category.conversion_value == null) return '';
-	if (category.conversion_method === 'fixed' || category.conversion_method === 'per_year') {
-		return String(category.conversion_value);
-	}
-	return '';
+const NO_GROUP = '__none__';
+
+// Tín chỉ = định mức của danh mục × số lượng (định mức 0 = "Khác" → nhập tay)
+function calcCredits(category: CmeCreditCategory | undefined, quantity: string): string | null {
+	if (!category?.conversion_value) return null;
+	return String(+(category.conversion_value * (quantity === '' ? 1 : Number(quantity))).toFixed(2));
 }
 
 function RecordFormModal({
 	record,
 	users,
 	categories,
+	groups,
 	onClose,
 	onSaved,
 }: {
 	record: CmeRecord | null;
 	users: SimpleUser[];
 	categories: CmeCreditCategory[];
+	groups: { id: string; name: string }[];
 	onClose: () => void;
 	onSaved: () => void;
 }) {
@@ -168,6 +176,23 @@ function RecordFormModal({
 		() => users.map((u) => ({ id: u.id, name: u.staff_number ? `${u.full_name} (${u.staff_number})` : u.full_name })),
 		[users],
 	);
+	const groupOf = (id: string) => categories.find((c) => c.id === id)?.group_id ?? NO_GROUP;
+	const [group, setGroup] = useState(() => (record?.category_id ? groupOf(record.category_id) : ''));
+	const groupIds = Array.from(new Set(categories.map((c) => c.group_id ?? NO_GROUP)));
+	const inGroup = categories.filter((c) => (c.group_id ?? NO_GROUP) === group);
+	const unit = categories.find((c) => c.id === form.category_id)?.unit_label;
+	const pickCategory = (category_id: string) =>
+		setForm((f) => {
+			const quantity = category_id && f.quantity === '' ? '1' : f.quantity;
+			const cat = categories.find((c) => c.id === category_id);
+			return { ...f, category_id, quantity, credits: calcCredits(cat, quantity) ?? f.credits };
+		});
+	const pickQuantity = (quantity: string) =>
+		setForm((f) => ({
+			...f,
+			quantity,
+			credits: calcCredits(categories.find((c) => c.id === f.category_id), quantity) ?? f.credits,
+		}));
 	const [busy, setBusy] = useState(false);
 	const [error, setError] = useState('');
 	const [evidence, setEvidence] = useState<File | null>(null);
@@ -216,23 +241,34 @@ function RecordFormModal({
 						placeholder='Gõ tên hoặc MNV để tìm nhân viên'
 					/>
 				</div>
-				<div className={`${styles.formGroup} ${styles.full}`}>
-					<label className={styles.formLabel}>Danh mục quy đổi</label>
+				<div className={styles.formGroup}>
+					<label className={styles.formLabel}>Nhóm hoạt động</label>
 					<select
 						className={styles.formInput}
-						value={form.category_id}
+						value={group}
 						onChange={(e) => {
-							const catId = e.target.value;
-							const cat = categories.find((c) => c.id === catId);
-							setForm((f) => ({
-								...f,
-								category_id: catId,
-								credits: f.credits || suggestCredits(cat),
-							}));
+							setGroup(e.target.value);
+							pickCategory('');
 						}}
 					>
 						<option value=''>-- Không thuộc danh mục --</option>
-						{categories.map((c) => (
+						{groupIds.map((g) => (
+							<option key={g} value={g}>
+								{g === NO_GROUP ? 'Khác' : (groups.find((x) => x.id === g)?.name ?? g)}
+							</option>
+						))}
+					</select>
+				</div>
+				<div className={styles.formGroup}>
+					<label className={styles.formLabel}>Hình thức / danh mục</label>
+					<select
+						className={styles.formInput}
+						value={form.category_id}
+						onChange={(e) => pickCategory(e.target.value)}
+						disabled={!group}
+					>
+						<option value=''>-- Chọn --</option>
+						{inGroup.map((c) => (
 							<option key={c.id} value={c.id}>
 								{c.name}
 							</option>
@@ -249,22 +285,22 @@ function RecordFormModal({
 					/>
 				</div>
 				<div className={styles.formGroup}>
-					<label className={styles.formLabel}>Năm *</label>
+					<label className={styles.formLabel}>Vai trò</label>
 					<input
-						type='number'
 						className={styles.formInput}
-						value={form.year}
-						onChange={(e) => setForm((f) => ({ ...f, year: e.target.value }))}
+						value={form.role}
+						onChange={(e) => setForm((f) => ({ ...f, role: e.target.value }))}
+						placeholder='VD: Đại biểu, Báo cáo viên'
 					/>
 				</div>
 				<div className={styles.formGroup}>
-					<label className={styles.formLabel}>Số tín chỉ *</label>
+					<label className={styles.formLabel}>Số lượng{unit ? ` (${unit})` : ''}</label>
 					<input
 						type='number'
 						step='0.1'
 						className={styles.formInput}
-						value={form.credits}
-						onChange={(e) => setForm((f) => ({ ...f, credits: e.target.value }))}
+						value={form.quantity}
+						onChange={(e) => pickQuantity(e.target.value)}
 					/>
 				</div>
 				<div className={styles.formGroup}>
@@ -288,22 +324,22 @@ function RecordFormModal({
 					/>
 				</div>
 				<div className={styles.formGroup}>
-					<label className={styles.formLabel}>Vai trò</label>
+					<label className={styles.formLabel}>Năm *</label>
 					<input
+						type='number'
 						className={styles.formInput}
-						value={form.role}
-						onChange={(e) => setForm((f) => ({ ...f, role: e.target.value }))}
-						placeholder='VD: Đại biểu, Báo cáo viên'
+						value={form.year}
+						onChange={(e) => setForm((f) => ({ ...f, year: e.target.value }))}
 					/>
 				</div>
 				<div className={styles.formGroup}>
-					<label className={styles.formLabel}>Số lượng</label>
+					<label className={styles.formLabel}>Số tín chỉ *</label>
 					<input
 						type='number'
 						step='0.1'
 						className={styles.formInput}
-						value={form.quantity}
-						onChange={(e) => setForm((f) => ({ ...f, quantity: e.target.value }))}
+						value={form.credits}
+						onChange={(e) => setForm((f) => ({ ...f, credits: e.target.value }))}
 					/>
 				</div>
 				<div className={`${styles.formGroup} ${styles.full}`}>
@@ -504,10 +540,15 @@ export default function CmeManualRecords() {
 	const [records, setRecords] = useState<CmeRecord[]>([]);
 	const [users, setUsers] = useState<SimpleUser[]>([]);
 	const [categories, setCategories] = useState<CmeCreditCategory[]>([]);
+	const [groups, setGroups] = useState<{ id: string; name: string }[]>([]);
 	const [search, setSearch] = useState('');
 	const [deptFilter, setDeptFilter] = useState('');
 	const [categoryFilter, setCategoryFilter] = useState('');
 	const [evidenceFilter, setEvidenceFilter] = useState<'' | 'yes' | 'no'>('');
+	const [statusFilter, setStatusFilter] = useState<'' | CmeRecord['approval_status']>('');
+	const [tab, setTab] = useState<'open' | 'approved'>('open');
+	const [rejecting, setRejecting] = useState<CmeRecord | null>(null);
+	const [rejectReason, setRejectReason] = useState('');
 	const [loading, setLoading] = useState(true);
 	const [editing, setEditing] = useState<CmeRecord | null | 'new'>(null);
 	const [showImport, setShowImport] = useState(false);
@@ -519,6 +560,7 @@ export default function CmeManualRecords() {
 	useEffect(() => {
 		apiClient.get<{ data: SimpleUser[] }>('/users?limit=0').then((r) => setUsers(r.data)).catch(() => {});
 		getCmeCreditCategories().then((r) => setCategories(r.data)).catch(() => {});
+		getCmeCreditGroups().then((r) => setGroups(r.data)).catch(() => {});
 	}, []);
 
 	useEffect(() => {
@@ -542,20 +584,22 @@ export default function CmeManualRecords() {
 	const filtered = useMemo(() => {
 		const q = search.trim().toLowerCase();
 		return records.filter((r) => {
+			if ((r.approval_status === 'approved') !== (tab === 'approved')) return false;
 			if (q && !r.user_name.toLowerCase().includes(q) && !r.title.toLowerCase().includes(q)) return false;
 			if (deptFilter && r.department_name !== deptFilter) return false;
 			if (categoryFilter === NO_CATEGORY && r.category_id) return false;
 			if (categoryFilter && categoryFilter !== NO_CATEGORY && r.category_id !== categoryFilter) return false;
 			if (evidenceFilter === 'yes' && !r.evidence_file_url) return false;
 			if (evidenceFilter === 'no' && r.evidence_file_url) return false;
+			if (statusFilter && r.approval_status !== statusFilter) return false;
 			return true;
 		});
-	}, [records, search, deptFilter, categoryFilter, evidenceFilter]);
+	}, [records, tab, search, deptFilter, categoryFilter, evidenceFilter, statusFilter]);
 
 	const [page, setPage] = useState(1);
 	const [pageSize, setPageSize] = useState<number>(20);
 	// Đổi bộ lọc / năm thì quay về trang đầu (điều chỉnh khi render, không dùng effect)
-	const filterKey = `${search}|${deptFilter}|${categoryFilter}|${evidenceFilter}|${year}`;
+	const filterKey = `${search}|${deptFilter}|${categoryFilter}|${evidenceFilter}|${statusFilter}|${year}|${tab}`;
 	const [prevFilterKey, setPrevFilterKey] = useState(filterKey);
 	if (prevFilterKey !== filterKey) {
 		setPrevFilterKey(filterKey);
@@ -565,13 +609,16 @@ export default function CmeManualRecords() {
 	const safePage = Math.min(page, totalPages);
 	const paged = filtered.slice((safePage - 1) * pageSize, safePage * pageSize);
 
-	const totalCredits = filtered.reduce((sum, r) => sum + Number(r.credits || 0), 0);
-	const hasFilter = !!(search || deptFilter || categoryFilter || evidenceFilter);
+	const totalCredits = filtered.reduce((sum, r) => sum + (r.approval_status === 'approved' ? Number(r.credits || 0) : 0), 0);
+	const approvedCount = records.filter((r) => r.approval_status === 'approved').length;
+	const openCount = records.length - approvedCount;
+	const hasFilter = !!(search || deptFilter || categoryFilter || evidenceFilter || statusFilter);
 	const clearFilters = () => {
 		setSearch('');
 		setDeptFilter('');
 		setCategoryFilter('');
 		setEvidenceFilter('');
+		setStatusFilter('');
 	};
 
 	const [exporting, setExporting] = useState(false);
@@ -590,6 +637,54 @@ export default function CmeManualRecords() {
 			alert(e instanceof Error ? e.message : 'Xuất Excel thất bại');
 		} finally {
 			setExporting(false);
+		}
+	};
+
+	// Duyệt / từ chối đồng loạt: chọn theo id (giữ khi đổi trang), bỏ qua bản ghi
+	// đã ở trạng thái đích. Bản ghi lỗi được giữ lại trong lựa chọn để thử lại.
+	const rowSel = useRowSelection(useMemo(() => paged.map((r) => r.id), [paged]));
+	const selectedRecs = records.filter((r) => rowSel.selectedIds.has(r.id));
+	const toApprove = selectedRecs.filter((r) => r.approval_status !== 'approved');
+	const toReject = selectedRecs.filter((r) => r.approval_status !== 'rejected');
+	const [bulkRejecting, setBulkRejecting] = useState(false);
+	const [bulkBusy, setBulkBusy] = useState(false);
+
+	const runBulk = async (recs: CmeRecord[], fn: (id: string) => Promise<unknown>) => {
+		setBulkBusy(true);
+		const results = await Promise.allSettled(recs.map((r) => fn(r.id)));
+		setBulkBusy(false);
+		rowSel.clearSelection();
+		const failed = recs.filter((_, i) => results[i].status === 'rejected');
+		failed.forEach((r) => rowSel.toggleSelect(r.id));
+		if (failed.length) alert(`${failed.length}/${recs.length} bản ghi xử lý thất bại, đã giữ lại trong danh sách chọn.`);
+		refresh();
+	};
+	const handleBulkApprove = () => {
+		if (window.confirm(`Duyệt ${toApprove.length} ghi nhận đã chọn?`)) runBulk(toApprove, approveCmeRecord);
+	};
+	const handleBulkReject = async () => {
+		await runBulk(toReject, (id) => rejectCmeRecord(id, rejectReason));
+		setBulkRejecting(false);
+		setRejectReason('');
+	};
+
+	const handleApprove = async (id: string) => {
+		try {
+			await approveCmeRecord(id);
+			refresh();
+		} catch (e) {
+			alert(e instanceof Error ? e.message : 'Duyệt thất bại');
+		}
+	};
+	const handleReject = async () => {
+		if (!rejecting) return;
+		try {
+			await rejectCmeRecord(rejecting.id, rejectReason);
+			setRejecting(null);
+			setRejectReason('');
+			refresh();
+		} catch (e) {
+			alert(e instanceof Error ? e.message : 'Từ chối thất bại');
 		}
 	};
 
@@ -620,29 +715,41 @@ export default function CmeManualRecords() {
 				) : undefined
 			}
 		>
-			<div className={styles.tableCard}>
+				<div className={styles.tabs}>
+					{(
+						[
+							{ key: 'approved', label: `Đã phê duyệt (${approvedCount})` },
+							{ key: 'open', label: `Chưa phê duyệt (${openCount})` },
+						] as const
+					).map((t) => (
+						<button
+							key={t.key}
+							type='button'
+							className={`${styles.tab} ${tab === t.key ? styles.tabActive : ''}`}
+							onClick={() => {
+								setTab(t.key);
+								setStatusFilter('');
+							}}
+						>
+							{t.label}
+						</button>
+					))}
+				</div>
+
+				<div className={styles.tableCard}>
 				<div className={styles.tableHeader}>
 					<div className={styles.tableHeaderLeft}>
 						<span className={styles.tableTitle}>Danh sách ghi nhận CME</span>
 						<span className={styles.tableCount}>
-							{filtered.length} bản ghi · {formatCredits(totalCredits)} tín chỉ
+							{filtered.length} bản ghi{tab === 'approved' && ` · ${formatCredits(totalCredits)} tín chỉ`}
 						</span>
 					</div>
 					<div className={styles.tableControls}>
-						<div className={styles.searchBox}>
-							<SearchSvg className={styles.searchIcon} />
-							<input
-								className={styles.searchInput}
-								placeholder='Tìm nhân viên, nội dung...'
-								value={search}
-								onChange={(e) => setSearch(e.target.value)}
-							/>
-							{search && (
-								<button className={styles.searchClear} onClick={() => setSearch('')}>
-									<XSvg />
-								</button>
-							)}
-						</div>
+						<SearchInput
+							value={search}
+							onChange={setSearch}
+							placeholder='Tìm nhân viên, nội dung...'
+						/>
 						<select
 							className={`${styles.filterSelect} ${styles.cmeFilterWide}`}
 							value={deptFilter}
@@ -677,6 +784,17 @@ export default function CmeManualRecords() {
 							<option value='yes'>Có minh chứng</option>
 							<option value='no'>Chưa có minh chứng</option>
 						</select>
+							{tab === 'open' && (
+								<select
+									className={styles.filterSelect}
+									value={statusFilter}
+									onChange={(e) => setStatusFilter(e.target.value as typeof statusFilter)}
+								>
+									<option value=''>Chờ duyệt + từ chối</option>
+									<option value='pending'>Chờ duyệt</option>
+									<option value='rejected'>Bị từ chối</option>
+								</select>
+							)}
 						<YearFilter value={year} onChange={setYear} />
 						{hasFilter && (
 							<button className={styles.clearSelectionBtn} onClick={clearFilters}>
@@ -699,37 +817,76 @@ export default function CmeManualRecords() {
 						</div>
 					</div>
 				) : (
+					<>
+					{perms.canCme && (
+						<SelectionBar
+							count={selectedRecs.length}
+							onClear={rowSel.clearSelection}
+							itemLabel='ghi nhận'
+							actions={
+								<>
+									<BulkButton disabled={bulkBusy || toApprove.length === 0} onClick={handleBulkApprove}>
+										<CheckSvg /> Duyệt đã chọn ({toApprove.length})
+									</BulkButton>
+									<BulkButton
+										danger
+										disabled={bulkBusy || toReject.length === 0}
+										onClick={() => {
+											setRejectReason('');
+											setBulkRejecting(true);
+										}}
+									>
+										<XSvg /> Từ chối đã chọn ({toReject.length})
+									</BulkButton>
+								</>
+							}
+						/>
+					)}
 					<table className={styles.table}>
 						<thead>
 							<tr>
+								{perms.canCme && (
+									<th className={sel.checkCol}>
+										<SelectCheckbox
+											title='Chọn tất cả bản ghi đang hiển thị'
+											checked={rowSel.allPageSelected}
+											indeterminate={rowSel.somePageSelected}
+											onChange={rowSel.toggleSelectAll}
+										/>
+									</th>
+								)}
 								<th>STT</th>
-								<th>Mã NV</th>
 								<th>Nhân viên</th>
 								<th>Nội dung hoạt động</th>
-								<th>Năm</th>
-								<th>Nhóm / Loại hình thức</th>
-								<th>Vai trò</th>
-								<th className={styles.thRight}>SL</th>
+								<th>Nhóm / Hình thức · Vai trò</th>
 								<th>Thời gian</th>
 								<th className={styles.thRight}>Tín chỉ</th>
 								<th className={styles.thCenter}>Minh chứng</th>
+								<th>Duyệt</th>
 								<th />
 							</tr>
 						</thead>
 						<tbody>
 							{paged.map((r, i) => (
 								<tr key={r.id} className={styles.tr}>
+									{perms.canCme && (
+										<td className={sel.checkCol}>
+											<SelectCheckbox
+												title={`Chọn ${r.user_name}`}
+												checked={rowSel.isSelected(r.id)}
+												onChange={() => rowSel.toggleSelect(r.id)}
+											/>
+										</td>
+									)}
 									<td className={styles.tdIdx}>{(safePage - 1) * pageSize + i + 1}</td>
-									<td>{r.staff_number ?? <span className={styles.muted}>—</span>}</td>
 									<td>
 										<div className={styles.cmeCellMain}>{r.user_name}</div>
-										<div className={styles.cmeCellSub}>{r.department_name ?? '—'}</div>
+										<div className={styles.cmeCellSub}>{[r.staff_number, r.department_name].filter(Boolean).join(' · ') || '—'}</div>
 									</td>
 									<td>
 										<div className={styles.cmeCellMain}>{r.title}</div>
 										{r.note && <div className={styles.cmeCellSub}>{r.note}</div>}
 									</td>
-									<td>{r.year}</td>
 									<td>
 										{r.group_name && <div className={styles.cmeCellSub}>{r.group_name}</div>}
 										{r.category_name ? (
@@ -739,9 +896,12 @@ export default function CmeManualRecords() {
 										) : (
 											<span className={styles.muted}>—</span>
 										)}
-									</td>
-									<td>{r.role || <span className={styles.muted}>—</span>}</td>
-									<td className={styles.tdRight}>{r.quantity ?? <span className={styles.muted}>—</span>}</td>
+											{(r.role || r.quantity != null) && (
+												<div className={styles.cmeCellSub}>
+													{[r.role, r.quantity != null && `SL: ${r.quantity}`].filter(Boolean).join(' · ')}
+												</div>
+											)}
+										</td>
 									<td className={styles.cmeNowrap}>
 										{r.activity_date ? (
 											<>
@@ -770,9 +930,32 @@ export default function CmeManualRecords() {
 											<span className={styles.muted}>—</span>
 										)}
 									</td>
+									<td>
+	<Badge tone={r.approval_status === 'approved' ? 'green' : r.approval_status === 'rejected' ? 'red' : 'amber'}>
+		{r.approval_status === 'approved' ? 'Đã duyệt' : r.approval_status === 'rejected' ? 'Từ chối' : 'Chờ duyệt'}
+	</Badge>
+	{r.approval_status === 'rejected' && r.reject_reason && <div className={styles.cmeCellSub}>{r.reject_reason}</div>}
+</td>
 									<td className={styles.tdActions}>
 										{perms.canCme && (
 											<div className={styles.actionBtns}>
+	{r.approval_status !== 'approved' && (
+		<div className={styles.actionBtn} title='Duyệt' onClick={() => handleApprove(r.id)}>
+			<CheckSvg />
+		</div>
+	)}
+	{r.approval_status !== 'rejected' && (
+		<div
+			className={`${styles.actionBtn} ${styles.danger}`}
+			title='Từ chối'
+			onClick={() => {
+				setRejecting(r);
+				setRejectReason('');
+			}}
+		>
+			<XSvg />
+		</div>
+	)}
 												<div className={styles.actionBtn} title='Sửa' onClick={() => setEditing(r)}>
 													<EditSvg />
 												</div>
@@ -790,6 +973,7 @@ export default function CmeManualRecords() {
 							))}
 						</tbody>
 					</table>
+					</>
 				)}
 
 				{!loading && filtered.length > 0 && (
@@ -814,11 +998,44 @@ export default function CmeManualRecords() {
 					record={editing === 'new' ? null : editing}
 					users={users}
 					categories={categories}
+					groups={groups}
 					onClose={() => setEditing(null)}
 					onSaved={refresh}
 				/>
 			)}
 			{showImport && <ImportModal onClose={() => setShowImport(false)} onDone={refresh} />}
+
+			<Modal
+	open={!!rejecting || bulkRejecting}
+	onClose={() => {
+		setRejecting(null);
+		setBulkRejecting(false);
+	}}
+	title={bulkRejecting ? `Từ chối ${toReject.length} ghi nhận CME` : 'Từ chối ghi nhận CME'}
+	footer={
+		<>
+			<button
+				className={styles.btnCancel}
+				onClick={() => {
+					setRejecting(null);
+					setBulkRejecting(false);
+				}}
+			>
+				Huỷ
+			</button>
+			<button
+				className={styles.btnDanger}
+				onClick={bulkRejecting ? handleBulkReject : handleReject}
+				disabled={!rejectReason.trim() || bulkBusy}
+			>
+				Từ chối
+			</button>
+		</>
+	}
+>
+	<label className={styles.formLabel}>Lý do từ chối * (người dùng sẽ thấy để sửa và gửi lại)</label>
+	<input className={styles.formInput} value={rejectReason} onChange={(e) => setRejectReason(e.target.value)} autoFocus />
+</Modal>
 
 			<Modal
 				open={!!deletingId}

@@ -1,5 +1,7 @@
+import { FormField } from '@/shared/components/Input/FormField';
+import { Modal, ModalActions } from '@/shared/components';
 import React, { useState } from 'react';
-import { CheckSvg, UserCheckSvg, XSvg } from '@/assets/icons';
+import { UserCheckSvg } from '@/assets/icons';
 import { EMPTY_FORM, GENDER_OPTIONS, type Trainee, type TraineeFormData } from '../types/trainee.type';
 import type { SimpleItem } from '../hooks/useTrainees';
 import styles from '../pages/Trainees.module.css';
@@ -67,277 +69,230 @@ export function TraineeFormModal({
 	};
 
 	return (
-		<div
-			className={styles.modalBackdrop}
-			onClick={(e) => e.target === e.currentTarget && onClose()}
+		<Modal
+			open
+			onClose={onClose}
+			icon={<UserCheckSvg />}
+			title={mode === 'add' ? 'Thêm học viên' : 'Chỉnh sửa học viên'}
+			subtitle={mode === 'add' ? 'Thêm hồ sơ học viên mới' : `Cập nhật — ${trainee?.full_name}`}
+			className={styles.modal}
+			bodyClassName={styles.modalBody}
+			footer={
+				<ModalActions
+					onCancel={onClose}
+					onConfirm={() => validate() && onSave(form)}
+					loading={loading}
+					confirmLabel={mode === 'add' ? 'Thêm học viên' : 'Lưu thay đổi'}
+				/>
+			}
 		>
-			<div className={styles.modal}>
-				<div className={styles.modalHeader}>
-					<div className={styles.modalHeaderIcon}>
-						<UserCheckSvg />
-					</div>
-					<div>
-						<div className={styles.modalTitle}>
-							{mode === 'add' ? 'Thêm học viên' : 'Chỉnh sửa học viên'}
-						</div>
-						<div className={styles.modalSub}>
-							{mode === 'add' ? 'Thêm hồ sơ học viên mới' : `Cập nhật — ${trainee?.full_name}`}
-						</div>
-					</div>
-					<button
-						className={styles.modalClose}
-						onClick={onClose}
+			<div className={styles.formGrid2}>
+				<FormField
+					label='Họ và tên'
+					required
+					error={errors.full_name}
+					style={{ gridColumn: '1 / -1' }}
+				>
+					<input
+						className={`${styles.formInput} ${errors.full_name ? styles.inputError : ''}`}
+						value={form.full_name}
+						onChange={set('full_name')}
+						placeholder='VD: Nguyễn Văn A'
+					/>
+				</FormField>
+				<FormField label='Trạng thái'>
+					<select
+						className={styles.formInput}
+						value={form.is_active ? '1' : '0'}
+						onChange={(e) => setForm((f) => ({ ...f, is_active: e.target.value === '1' }))}
 					>
-						<XSvg />
-					</button>
-				</div>
-
-				<div className={styles.modalBody}>
-					<div className={styles.formGrid2}>
-						<div
-							className={styles.formGroup}
-							style={{ gridColumn: '1 / -1' }}
-						>
-							<label className={styles.formLabel}>
-								Họ và tên <span className={styles.required}>*</span>
-							</label>
-							<input
-								className={`${styles.formInput} ${errors.full_name ? styles.inputError : ''}`}
-								value={form.full_name}
-								onChange={set('full_name')}
-								placeholder='VD: Nguyễn Văn A'
-							/>
-							{errors.full_name && <div className={styles.fieldError}>{errors.full_name}</div>}
-						</div>
-						<div className={styles.formGroup}>
-							<label className={styles.formLabel}>Trạng thái</label>
-							<select
-								className={styles.formInput}
-								value={form.is_active ? '1' : '0'}
-								onChange={(e) => setForm((f) => ({ ...f, is_active: e.target.value === '1' }))}
-							>
-								<option value='1'>Hoạt động</option>
-								<option value='0'>Ngừng hoạt động</option>
-							</select>
-						</div>
-						<div className={styles.formGroup}>
-							<label className={styles.formLabel}>Ngày sinh</label>
-							<input
-								type='date'
-								className={styles.formInput}
-								value={form.dob}
-								onChange={set('dob')}
-							/>
-						</div>
-						<div className={styles.formGroup}>
-							<label className={styles.formLabel}>Giới tính</label>
-							<select
-								className={styles.formInput}
-								value={form.gender}
-								onChange={set('gender')}
-							>
-								<option value=''>-- Chọn --</option>
-								{GENDER_OPTIONS.map((g) => (
-									<option
-										key={g.value}
-										value={g.value}
-									>
-										{g.label}
-									</option>
-								))}
-							</select>
-						</div>
-						<div className={styles.formGroup}>
-							<label className={styles.formLabel}>Trình độ chuyên môn</label>
-							<input
-								className={styles.formInput}
-								value={form.qualification}
-								onChange={set('qualification')}
-								placeholder='VD: Cử nhân điều dưỡng'
-							/>
-						</div>
-						<div className={styles.formGroup}>
-							<label className={styles.formLabel}>Số CCCD/CMND</label>
-							<input
-								className={`${styles.formInput} ${errors.national_id ? styles.inputError : ''}`}
-								value={form.national_id}
-								onChange={set('national_id')}
-								placeholder='VD: 038201012345'
-							/>
-							{errors.national_id && (
-								<div className={styles.fieldError}>{errors.national_id}</div>
-							)}
-						</div>
-						<div className={styles.formGroup}>
-							<label className={styles.formLabel}>Ngày cấp CCCD</label>
-							<input
-								type='date'
-								className={styles.formInput}
-								value={form.national_id_issued_date}
-								onChange={set('national_id_issued_date')}
-							/>
-						</div>
-						<div className={styles.formGroup}>
-							<label className={styles.formLabel}>Nơi cấp CCCD</label>
-							<input
-								className={styles.formInput}
-								value={form.national_id_issued_place}
-								onChange={set('national_id_issued_place')}
-								placeholder='VD: Cục CSQLHC về TTXH'
-							/>
-						</div>
-						<div className={styles.formGroup}>
-							<label className={styles.formLabel}>Điện thoại</label>
-							<input
-								className={styles.formInput}
-								value={form.phone}
-								onChange={set('phone')}
-								placeholder='VD: 0912345678'
-							/>
-						</div>
-						<div className={styles.formGroup}>
-							<label className={styles.formLabel}>Email</label>
-							<input
-								className={`${styles.formInput} ${errors.email ? styles.inputError : ''}`}
-								value={form.email}
-								onChange={set('email')}
-								placeholder='email@example.com'
-							/>
-							{errors.email && <div className={styles.fieldError}>{errors.email}</div>}
-						</div>
-						<div className={styles.formGroup}>
-							<label className={styles.formLabel}>Đối tượng học viên</label>
-							<select
-								className={styles.formInput}
-								value={form.trainee_type_id}
-								onChange={set('trainee_type_id')}
-							>
-								<option value=''>-- Chọn --</option>
-								{traineeTypes.map((t) => (
-									<option
-										key={t.id}
-										value={t.id}
-									>
-										{t.name}
-									</option>
-								))}
-							</select>
-						</div>
-						<div className={styles.formGroup}>
-							<label className={styles.formLabel}>Khoa / Phòng (nếu là nhân viên)</label>
-							<select
-								className={styles.formInput}
-								value={form.department_id}
-								onChange={set('department_id')}
-							>
-								<option value=''>-- Không thuộc khoa/phòng --</option>
-								{departments.map((d) => (
-									<option
-										key={d.id}
-										value={d.id}
-									>
-										{d.name}
-									</option>
-								))}
-							</select>
-						</div>
-						<div className={styles.formGroup}>
-							<label className={styles.checkboxRow}>
-								<input
-									type='checkbox'
-									checked={form.is_employee}
-									onChange={(e) => setForm((f) => ({ ...f, is_employee: e.target.checked }))}
-								/>
-								Là nhân viên của bệnh viện
-							</label>
-						</div>
-						<div className={styles.formGroup}>
-							<label className={styles.formLabel}>Đơn vị công tác</label>
-							<input
-								className={styles.formInput}
-								value={form.workplace}
-								onChange={set('workplace')}
-								placeholder='VD: Bệnh viện Y học cổ truyền Nghệ An'
-							/>
-						</div>
-						<div className={styles.formGroup}>
-							<label className={styles.formLabel}>Chức vụ</label>
-							<input
-								className={styles.formInput}
-								value={form.position}
-								onChange={set('position')}
-							/>
-						</div>
-						<div className={styles.formGroup}>
-							<label className={styles.formLabel}>Trường đào tạo</label>
-							<input
-								className={styles.formInput}
-								value={form.graduated_school}
-								onChange={set('graduated_school')}
-							/>
-						</div>
-						<div className={styles.formGroup}>
-							<label className={styles.formLabel}>Năm tốt nghiệp</label>
-							<input
-								type='number'
-								className={styles.formInput}
-								value={form.graduated_year}
-								onChange={set('graduated_year')}
-								placeholder='VD: 2025'
-							/>
-						</div>
-						<div className={styles.formGroup}>
-							<label className={styles.formLabel}>Địa chỉ</label>
-							<input
-								className={styles.formInput}
-								value={form.address}
-								onChange={set('address')}
-								placeholder='Địa chỉ liên hệ...'
-							/>
-						</div>
-						<div className={styles.formGroup}>
-							<label className={styles.formLabel}>Địa chỉ thường trú</label>
-							<input
-								className={styles.formInput}
-								value={form.permanent_address}
-								onChange={set('permanent_address')}
-								placeholder='Địa chỉ thường trú...'
-							/>
-						</div>
-						<div
-							className={styles.formGroup}
-							style={{ gridColumn: '1 / -1' }}
-						>
-							<label className={styles.formLabel}>Ghi chú</label>
-							<textarea
-								className={styles.formInput}
-								rows={3}
-								value={form.notes}
-								onChange={set('notes')}
-								placeholder='Ghi chú thêm (nếu có)...'
-							/>
-						</div>
-					</div>
-				</div>
-
-				<div className={styles.modalFooter}>
-					<button
-						className={styles.btnCancel}
-						onClick={onClose}
-						disabled={loading}
+						<option value='1'>Hoạt động</option>
+						<option value='0'>Ngừng hoạt động</option>
+					</select>
+				</FormField>
+				<FormField label='Ngày sinh'>
+					<input
+						type='date'
+						className={styles.formInput}
+						value={form.dob}
+						onChange={set('dob')}
+					/>
+				</FormField>
+				<FormField label='Giới tính'>
+					<select
+						className={styles.formInput}
+						value={form.gender}
+						onChange={set('gender')}
 					>
-						Huỷ
-					</button>
-					<button
-						className={styles.btnConfirm}
-						onClick={() => validate() && onSave(form)}
-						disabled={loading}
+						<option value=''>-- Chọn --</option>
+						{GENDER_OPTIONS.map((g) => (
+							<option
+								key={g.value}
+								value={g.value}
+							>
+								{g.label}
+							</option>
+						))}
+					</select>
+				</FormField>
+				<FormField label='Trình độ chuyên môn'>
+					<input
+						className={styles.formInput}
+						value={form.qualification}
+						onChange={set('qualification')}
+						placeholder='VD: Cử nhân điều dưỡng'
+					/>
+				</FormField>
+				<FormField
+					label='Số CCCD/CMND'
+					error={errors.national_id}
+				>
+					<input
+						className={`${styles.formInput} ${errors.national_id ? styles.inputError : ''}`}
+						value={form.national_id}
+						onChange={set('national_id')}
+						placeholder='VD: 038201012345'
+					/>
+				</FormField>
+				<FormField label='Ngày cấp CCCD'>
+					<input
+						type='date'
+						className={styles.formInput}
+						value={form.national_id_issued_date}
+						onChange={set('national_id_issued_date')}
+					/>
+				</FormField>
+				<FormField label='Nơi cấp CCCD'>
+					<input
+						className={styles.formInput}
+						value={form.national_id_issued_place}
+						onChange={set('national_id_issued_place')}
+						placeholder='VD: Cục CSQLHC về TTXH'
+					/>
+				</FormField>
+				<FormField label='Điện thoại'>
+					<input
+						className={styles.formInput}
+						value={form.phone}
+						onChange={set('phone')}
+						placeholder='VD: 0912345678'
+					/>
+				</FormField>
+				<FormField
+					label='Email'
+					error={errors.email}
+				>
+					<input
+						className={`${styles.formInput} ${errors.email ? styles.inputError : ''}`}
+						value={form.email}
+						onChange={set('email')}
+						placeholder='email@example.com'
+					/>
+				</FormField>
+				<FormField label='Đối tượng học viên'>
+					<select
+						className={styles.formInput}
+						value={form.trainee_type_id}
+						onChange={set('trainee_type_id')}
 					>
-						{loading ? <span className={styles.spinner} /> : <CheckSvg />}
-						{mode === 'add' ? 'Thêm học viên' : 'Lưu thay đổi'}
-					</button>
+						<option value=''>-- Chọn --</option>
+						{traineeTypes.map((t) => (
+							<option
+								key={t.id}
+								value={t.id}
+							>
+								{t.name}
+							</option>
+						))}
+					</select>
+				</FormField>
+				<FormField label='Khoa / Phòng (nếu là nhân viên)'>
+					<select
+						className={styles.formInput}
+						value={form.department_id}
+						onChange={set('department_id')}
+					>
+						<option value=''>-- Không thuộc khoa/phòng --</option>
+						{departments.map((d) => (
+							<option
+								key={d.id}
+								value={d.id}
+							>
+								{d.name}
+							</option>
+						))}
+					</select>
+				</FormField>
+				<div className={styles.formGroup}>
+					<label className={styles.checkboxRow}>
+						<input
+							type='checkbox'
+							checked={form.is_employee}
+							onChange={(e) => setForm((f) => ({ ...f, is_employee: e.target.checked }))}
+						/>
+						Là nhân viên của bệnh viện
+					</label>
 				</div>
+				<FormField label='Đơn vị công tác'>
+					<input
+						className={styles.formInput}
+						value={form.workplace}
+						onChange={set('workplace')}
+						placeholder='VD: Bệnh viện Y học cổ truyền Nghệ An'
+					/>
+				</FormField>
+				<FormField label='Chức vụ'>
+					<input
+						className={styles.formInput}
+						value={form.position}
+						onChange={set('position')}
+					/>
+				</FormField>
+				<FormField label='Trường đào tạo'>
+					<input
+						className={styles.formInput}
+						value={form.graduated_school}
+						onChange={set('graduated_school')}
+					/>
+				</FormField>
+				<FormField label='Năm tốt nghiệp'>
+					<input
+						type='number'
+						className={styles.formInput}
+						value={form.graduated_year}
+						onChange={set('graduated_year')}
+						placeholder='VD: 2025'
+					/>
+				</FormField>
+				<FormField label='Địa chỉ'>
+					<input
+						className={styles.formInput}
+						value={form.address}
+						onChange={set('address')}
+						placeholder='Địa chỉ liên hệ...'
+					/>
+				</FormField>
+				<FormField label='Địa chỉ thường trú'>
+					<input
+						className={styles.formInput}
+						value={form.permanent_address}
+						onChange={set('permanent_address')}
+						placeholder='Địa chỉ thường trú...'
+					/>
+				</FormField>
+				<FormField
+					label='Ghi chú'
+					style={{ gridColumn: '1 / -1' }}
+				>
+					<textarea
+						className={styles.formInput}
+						rows={3}
+						value={form.notes}
+						onChange={set('notes')}
+						placeholder='Ghi chú thêm (nếu có)...'
+					/>
+				</FormField>
 			</div>
-		</div>
+		</Modal>
 	);
 }

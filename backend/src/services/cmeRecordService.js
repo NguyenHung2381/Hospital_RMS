@@ -21,7 +21,7 @@ const recordSelect = `
   LEFT JOIN training_files f ON f.id = r.evidence_file_id AND f.is_deleted = 0
 `;
 
-const getAll = async ({ page = 1, limit = 20, user_id, year, category_id } = {}) => {
+const getAll = async ({ page = 1, limit = 20, user_id, year, category_id, approval_status } = {}) => {
 	const pool = await getPool();
 	const pg = paging(page, limit, 100);
 	const where = ['1=1'];
@@ -38,6 +38,10 @@ const getAll = async ({ page = 1, limit = 20, user_id, year, category_id } = {})
 	if (category_id) {
 		where.push('r.category_id = @category_id');
 		req.input('category_id', sql.VarChar(20), category_id);
+	}
+	if (approval_status) {
+		where.push('r.approval_status = @approval_status');
+		req.input('approval_status', sql.VarChar(20), approval_status);
 	}
 	const whereSql = `WHERE ${where.join(' AND ')}`;
 
@@ -142,4 +146,76 @@ const addEvidence = async (id, file, actorId) => {
 	return getById(id);
 };
 
-module.exports = { getAll, getById, create, update, remove, addEvidence };
+// ── Người dùng tự khai (chờ admin duyệt) ──────────────────────────────────────
+// Chỉ bản ghi approval_status='approved' mới được cộng vào tín chỉ CME.
+const httpErr = (message, statusCode) => Object.assign(new Error(message), { statusCode });
+
+// Bản ghi phải của chính user và chưa được duyệt (đã duyệt thì khoá, tránh đổi tín chỉ sau duyệt)
+const assertEditableMine = async (id, userId) => {
+	const rec = await getById(id);
+	if (!rec || rec.user_id !== userId) throw httpErr('Không tìm thấy ghi nhận CME', 404);
+	if (rec.approval_status === 'approved') throw httpErr('Ghi nhận đã được duyệt, không thể sửa hoặc xoá', 409);
+	return rec;
+};
+
+const createMine = async (data, userId) => {
+	const rec = await create({ ...data, user_id: userId }, userId);
+	// create() luôn để mặc định 'approved' → chuyển về chờ duyệt
+	const pool = await getPool();
+	await pool.request().input('id', sql.VarChar(20), rec.id).query("UPDATE cme_records SET approval_status = 'pending' WHERE id = @id");
+	return getById(rec.id);
+};
+
+// Sửa xong → quay lại 'pending' (kể cả bản đã bị từ chối = nộp lại)
+const updateMine = async (id, data, userId) => {
+	await assertEditableMine(id, userId);
+	const { user_id: _ignored, ...safe } = data;
+	await update(id, safe, userId);
+	const pool = await getPool();
+	await pool
+		.request()
+		.input('id', sql.VarChar(20), id)
+		.query("UPDATE cme_records SET approval_status = 'pending', reviewed_by = NULL, reviewed_at = NULL, reject_reason = NULL WHERE id = @id");
+	return getById(id);
+};
+
+const removeMine = async (id, userId) => {
+	await assertEditableMine(id, userId);
+	return remove(id, userId);
+};
+
+const addEvidenceMine = async (id, file, userId) => {
+	await assertEditableMine(id, userId);
+	return addEvidence(id, file, userId);
+};
+
+// Admin duyệt / từ chối
+const review = async (id, approve, reason, actorId) => {
+	if (!approve && !String(reason || '').trim()) throw httpErr('Vui lòng nhập lý do từ chối', 400);
+	const pool = await getPool();
+	const r = await pool
+		.request()
+		.input('id', sql.VarChar(20), id)
+		.input('status', sql.VarChar(20), approve ? 'approved' : 'rejected')
+		.input('reason', sql.NVarChar(500), approve ? null : String(reason).trim())
+		.input('actor', sql.VarChar(20), actorId)
+		.query(`UPDATE cme_records SET approval_status = @status, reject_reason = @reason, reviewed_by = @actor,
+		        reviewed_at = GETDATE() WHERE id = @id`);
+	if (!r.rowsAffected[0]) return null;
+	broadcast('update', { entity: 'cme_record' });
+	return getById(id);
+};
+
+module.exports = {
+	getAll,
+	getById,
+	create,
+	update,
+	remove,
+	addEvidence,
+	createMine,
+	updateMine,
+	removeMine,
+	addEvidenceMine,
+	review,
+};

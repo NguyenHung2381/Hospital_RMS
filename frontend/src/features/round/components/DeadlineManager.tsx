@@ -2,7 +2,6 @@ import { formatDateVN } from '../../../shared/utils/formatDate';
 import { notify } from '../../../shared/utils/feedback';
 import React, { useEffect, useState } from 'react';
 import {
-	AlertSvg,
 	CalendarSvg,
 	CheckSvg,
 	EditSvg,
@@ -22,7 +21,6 @@ import {
 	SUPPLEMENT_FIELD_LABELS,
 } from '../types/round.type';
 import { fromInputDate, toIso } from '../utils/roundHelpers';
-import roundStyles from '../pages/Round.module.css';
 import styles from './DeadlineManager.module.css';
 import { DatePicker } from '../../../shared/components/Input/DatePicker';
 import { InlineLoading } from '../../../shared/components';
@@ -553,45 +551,6 @@ export function DeadlineManager({
 						</button>
 					</div>
 				)
-			)}
-		</div>
-	);
-}
-
-// re-export FormField for use in RoundModal
-export function FormField({
-	id,
-	label,
-	required,
-	error,
-	hint,
-	children,
-}: {
-	id: string;
-	label: string;
-	required?: boolean;
-	error?: string;
-	hint?: string;
-	children: React.ReactNode;
-}) {
-	return (
-		<div className={roundStyles.formGroup}>
-			<label
-				htmlFor={id}
-				className={roundStyles.formLabel}
-			>
-				{label}
-				{required && <span className={roundStyles.formRequired}>*</span>}
-			</label>
-			{children}
-			{error && (
-				<span className={roundStyles.formError}>
-					<AlertSvg style={{ width: 12, height: 12 }} />
-					{error}
-				</span>
-			)}
-			{!error && hint && (
-				<span className={roundStyles.formHint}>{hint}</span>
 			)}
 		</div>
 	);

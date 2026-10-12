@@ -5,9 +5,10 @@
  * mục quy đổi theo tên — không đính kèm minh chứng qua import (thêm sau ở
  * từng dòng nếu cần, qua addEvidence).
  */
-const ExcelJS = require('exceljs');
 const { getPool } = require('../config/db');
 const { norm, stripQualification } = require('../utils/vietnameseText');
+const ExcelJS = require('exceljs');
+const { pad2, parseDateCell, parseCredits, parseStaffNumber, readSheet } = require('../utils/excelImport');
 const cmeRecordService = require('./cmeRecordService');
 const { ROLE, inputRoleId } = require('./roleCodes');
 const xl = require('../utils/excelTemplate');
@@ -139,101 +140,19 @@ const COLUMN_MATCHERS = [
 	['notes', (h) => h === 'ghi chu'],
 ];
 
-const cellText = (cell) => {
-	if (!cell) return '';
-	try {
-		return String(cell.text ?? '').replace(/\s+/g, ' ').trim();
-	} catch {
-		return '';
-	}
-};
-
-const pad2 = (n) => String(n).padStart(2, '0');
-
-const parseDate = (cell) => {
-	if (!cell) return null;
-	const v = cell.value;
-	if (v instanceof Date && !Number.isNaN(v.getTime())) {
-		return `${v.getUTCFullYear()}-${pad2(v.getUTCMonth() + 1)}-${pad2(v.getUTCDate())}`;
-	}
-	const raw = cellText(cell).trim();
-	const m = raw.match(/^(\d{1,2})[/\-.](\d{1,2})[/\-.](\d{4})$/);
-	if (m) {
-		const d = +m[1];
-		const mo = +m[2];
-		const y = +m[3];
-		if (d >= 1 && d <= 31 && mo >= 1 && mo <= 12) return `${y}-${pad2(mo)}-${pad2(d)}`;
-	}
-	return null;
-};
-
-const parseCredits = (s) => {
-	const t = String(s || '').replace(',', '.').trim();
-	if (!t) return null;
-	const n = parseFloat(t);
-	return Number.isFinite(n) ? n : null;
-};
-
-const parseStaffNumber = (s) => {
-	const t = String(s || '').replace(/\D+/g, '');
-	if (!t) return null;
-	const n = parseInt(t, 10);
-	return Number.isFinite(n) ? n : null;
-};
-
-const findHeader = (workbook) => {
-	for (const ws of workbook.worksheets) {
-		const scanMax = Math.min(ws.actualRowCount || ws.rowCount || 0, 30);
-		for (let r = 1; r <= scanMax; r++) {
-			const row = ws.getRow(r);
-			const cols = {};
-			row.eachCell({ includeEmpty: false }, (cell, col) => {
-				const h = norm(cellText(cell));
-				if (!h) return;
-				for (const [field, test] of COLUMN_MATCHERS) {
-					if (cols[field] == null && test(h)) {
-						cols[field] = col;
-						break;
-					}
-				}
-			});
-			if (cols.full_name || cols.staff_number) return { ws, headerRow: r, cols };
-		}
-	}
-	return null;
-};
-
 const parseWorkbook = async (buffer) => {
-	const workbook = new ExcelJS.Workbook();
-	try {
-		await workbook.xlsx.load(buffer);
-	} catch {
-		throw Object.assign(new Error('File không đọc được — cần file .xlsx hợp lệ.'), { statusCode: 400 });
-	}
-	const header = findHeader(workbook);
-	if (!header) {
-		throw Object.assign(
-			new Error(
-				'Không tìm thấy dòng tiêu đề (cần cột "MNV" hoặc "Họ và tên"; các cột nhận diện: Danh mục, Nội dung, Ngày hoạt động, Số tín chỉ, Ghi chú).',
-			),
-			{ statusCode: 400 },
-		);
-	}
-	const { ws, headerRow, cols } = header;
-	const get = (row, field) => (cols[field] ? cellText(row.getCell(cols[field])) : '');
+	const { cols, rows: sheetRows } = await readSheet(buffer, {
+		matchers: COLUMN_MATCHERS,
+		isValid: (c) => !!(c.full_name || c.staff_number),
+		headerError:
+			'Không tìm thấy dòng tiêu đề (cần cột "MNV" hoặc "Họ và tên"; các cột nhận diện: Danh mục, Nội dung, Ngày hoạt động, Số tín chỉ, Ghi chú).',
+		isEmpty: (get, row) => !get(row, 'full_name') && !parseStaffNumber(get(row, 'staff_number')),
+	});
 
 	const rows = [];
-	let emptyStreak = 0;
-	const maxRow = ws.rowCount || headerRow;
-	for (let r = headerRow + 1; r <= maxRow && emptyStreak < 25; r++) {
-		const row = ws.getRow(r);
+	for (const { r, row, get } of sheetRows) {
 		const fullName = get(row, 'full_name');
 		const staffNumber = parseStaffNumber(get(row, 'staff_number'));
-		if (!fullName && !staffNumber) {
-			emptyStreak++;
-			continue;
-		}
-		emptyStreak = 0;
 		// Bỏ dòng ví dụ trong file mẫu nếu người dùng quên xoá
 		if (/\(ví dụ\)\s*$/i.test(get(row, 'title'))) continue;
 		rows.push({
@@ -245,9 +164,9 @@ const parseWorkbook = async (buffer) => {
 			year: parseInt(get(row, 'year'), 10) || null,
 			role: get(row, 'role') || null,
 			quantity: parseCredits(get(row, 'quantity')),
-			end_date: parseDate(cols.end_date ? row.getCell(cols.end_date) : null),
+			end_date: parseDateCell(cols.end_date ? row.getCell(cols.end_date) : null),
 			title: get(row, 'title') || 'Hoạt động CME',
-			activity_date: parseDate(cols.activity_date ? row.getCell(cols.activity_date) : null),
+			activity_date: parseDateCell(cols.activity_date ? row.getCell(cols.activity_date) : null),
 			credits: parseCredits(get(row, 'credits')),
 			notes: get(row, 'notes') || null,
 		});

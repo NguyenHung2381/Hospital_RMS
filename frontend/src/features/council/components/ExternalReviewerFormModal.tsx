@@ -1,5 +1,6 @@
+import { Modal, ModalActions } from '@/shared/components';
 import React, { useState } from 'react';
-import { CheckSvg, UserPlusSvg, XSvg } from '@/assets/icons';
+import { UserPlusSvg } from '@/assets/icons';
 import { SPECIALTY_GROUPS } from '../../department/types/department.type';
 import {
 	EMPTY_EXTERNAL_REVIEWER_FORM,
@@ -50,126 +51,97 @@ export function ExternalReviewerFormModal({
 	};
 
 	return (
-		<div
-			className={styles.modalBackdrop}
-			onClick={(e) => e.target === e.currentTarget && onClose()}
+		<Modal
+			open
+			onClose={onClose}
+			icon={<UserPlusSvg />}
+			title={mode === 'add' ? 'Thêm người ngoài viện' : 'Chỉnh sửa người ngoài viện'}
+			subtitle='Chuyên gia mời ngoài tham gia hội đồng chấm, không cần tài khoản đăng nhập'
+			className={styles.modal}
+			bodyClassName={styles.modalBody}
+			footer={
+				<ModalActions
+					onCancel={onClose}
+					onConfirm={() => validate() && onSave(form)}
+					loading={loading}
+					confirmLabel={mode === 'add' ? 'Thêm' : 'Lưu thay đổi'}
+				/>
+			}
 		>
-			<div className={styles.modal}>
-				<div className={styles.modalHeader}>
-					<div className={styles.modalHeaderIcon}>
-						<UserPlusSvg />
-					</div>
-					<div>
-						<div className={styles.modalTitle}>
-							{mode === 'add' ? 'Thêm người ngoài viện' : 'Chỉnh sửa người ngoài viện'}
-						</div>
-						<div className={styles.modalSub}>
-							Chuyên gia mời ngoài tham gia hội đồng chấm, không cần tài khoản đăng nhập
-						</div>
-					</div>
-					<button
-						className={styles.modalClose}
-						onClick={onClose}
-					>
-						<XSvg />
-					</button>
+			<div className={styles.formGrid2}>
+				<div
+					className={styles.formGroup}
+					style={{ gridColumn: '1 / -1' }}
+				>
+					<label className={styles.formLabel}>
+						Họ tên <span className={styles.required}>*</span>
+					</label>
+					<input
+						className={`${styles.formInput} ${errors.full_name ? styles.inputError : ''}`}
+						value={form.full_name}
+						onChange={set('full_name')}
+						placeholder='VD: PGS.TS Nguyễn Văn A'
+					/>
+					{errors.full_name && (
+						<div className={styles.fieldError}>{errors.full_name}</div>
+					)}
 				</div>
-
-				<div className={styles.modalBody}>
-					<div className={styles.formGrid2}>
-						<div
-							className={styles.formGroup}
-							style={{ gridColumn: '1 / -1' }}
-						>
-							<label className={styles.formLabel}>
-								Họ tên <span className={styles.required}>*</span>
-							</label>
-							<input
-								className={`${styles.formInput} ${errors.full_name ? styles.inputError : ''}`}
-								value={form.full_name}
-								onChange={set('full_name')}
-								placeholder='VD: PGS.TS Nguyễn Văn A'
-							/>
-							{errors.full_name && (
-								<div className={styles.fieldError}>{errors.full_name}</div>
-							)}
-						</div>
-						<div className={styles.formGroup}>
-							<label className={styles.formLabel}>Đơn vị công tác</label>
-							<input
-								className={styles.formInput}
-								value={form.organization}
-								onChange={set('organization')}
-								placeholder='VD: BV Bạch Mai'
-							/>
-						</div>
-						<div className={styles.formGroup}>
-							<label className={styles.formLabel}>Hệ chuyên môn</label>
-							<select
-								className={styles.formInput}
-								value={form.specialty_group}
-								onChange={set('specialty_group')}
+				<div className={styles.formGroup}>
+					<label className={styles.formLabel}>Đơn vị công tác</label>
+					<input
+						className={styles.formInput}
+						value={form.organization}
+						onChange={set('organization')}
+						placeholder='VD: BV Bạch Mai'
+					/>
+				</div>
+				<div className={styles.formGroup}>
+					<label className={styles.formLabel}>Hệ chuyên môn</label>
+					<select
+						className={styles.formInput}
+						value={form.specialty_group}
+						onChange={set('specialty_group')}
+					>
+						<option value=''>-- Chưa gán hệ --</option>
+						{SPECIALTY_GROUPS.map((g) => (
+							<option
+								key={g}
+								value={g}
 							>
-								<option value=''>-- Chưa gán hệ --</option>
-								{SPECIALTY_GROUPS.map((g) => (
-									<option
-										key={g}
-										value={g}
-									>
-										{g}
-									</option>
-								))}
-							</select>
-						</div>
-						<div className={styles.formGroup}>
-							<label className={styles.formLabel}>Số điện thoại</label>
-							<input
-								className={styles.formInput}
-								value={form.phone}
-								onChange={set('phone')}
-							/>
-						</div>
-						<div className={styles.formGroup}>
-							<label className={styles.formLabel}>Email</label>
-							<input
-								className={styles.formInput}
-								value={form.email}
-								onChange={set('email')}
-							/>
-						</div>
-						<div
-							className={styles.formGroup}
-							style={{ gridColumn: '1 / -1' }}
-						>
-							<label className={styles.formLabel}>Ghi chú</label>
-							<textarea
-								className={styles.formTextarea}
-								value={form.note}
-								onChange={set('note')}
-								rows={2}
-							/>
-						</div>
-					</div>
+								{g}
+							</option>
+						))}
+					</select>
 				</div>
-
-				<div className={styles.modalFooter}>
-					<button
-						className={styles.btnCancel}
-						onClick={onClose}
-						disabled={loading}
-					>
-						Huỷ
-					</button>
-					<button
-						className={styles.btnConfirmApprove}
-						onClick={() => validate() && onSave(form)}
-						disabled={loading}
-					>
-						{loading ? <span className={styles.spinner} /> : <CheckSvg />}
-						{mode === 'add' ? 'Thêm' : 'Lưu thay đổi'}
-					</button>
+				<div className={styles.formGroup}>
+					<label className={styles.formLabel}>Số điện thoại</label>
+					<input
+						className={styles.formInput}
+						value={form.phone}
+						onChange={set('phone')}
+					/>
+				</div>
+				<div className={styles.formGroup}>
+					<label className={styles.formLabel}>Email</label>
+					<input
+						className={styles.formInput}
+						value={form.email}
+						onChange={set('email')}
+					/>
+				</div>
+				<div
+					className={styles.formGroup}
+					style={{ gridColumn: '1 / -1' }}
+				>
+					<label className={styles.formLabel}>Ghi chú</label>
+					<textarea
+						className={styles.formTextarea}
+						value={form.note}
+						onChange={set('note')}
+						rows={2}
+					/>
 				</div>
 			</div>
-		</div>
+		</Modal>
 	);
 }

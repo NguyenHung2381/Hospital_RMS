@@ -247,9 +247,6 @@
 }
 
 /* ── Dropdown lọc (MultiSelect) ──────────────────────────────────────────── */
-.filterSelectWrap {
-	display: inline-block;
-}
 
 .filterSelect {
 	display: flex;
@@ -360,12 +357,6 @@
 	color: var(--color-primary-dark);
 }
 
-.actionBtn.danger:hover {
-	background: #fcebeb;
-	border-color: #f09595;
-	color: #791f1f;
-}
-
 .actionBtn svg {
 	width: 13px;
 	height: 13px;
@@ -413,7 +404,6 @@
 		width: 100%;
 	}
 
-	.filterSelectWrap,
 	.filterSelect {
 		max-width: 100%;
 	}

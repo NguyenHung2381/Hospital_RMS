@@ -34,6 +34,10 @@ export const createCmeRecord = (form: CmeRecordFormData) =>
 export const updateCmeRecord = (id: string, form: CmeRecordFormData) =>
 	apiClient.put<CmeRecord>(`/cme-records/${id}`, toPayload(form));
 
+export const approveCmeRecord = (id: string) => apiClient.post<CmeRecord>(`/cme-records/${id}/approve`, {});
+export const rejectCmeRecord = (id: string, reason: string) =>
+	apiClient.post<CmeRecord>(`/cme-records/${id}/reject`, { reason });
+
 export const deleteCmeRecord = (id: string) => apiClient.delete<null>(`/cme-records/${id}`);
 
 export const addCmeRecordEvidence = (id: string, file: File) => {
@@ -62,5 +66,7 @@ export interface CmeRecordExportFilters {
 export const exportCmeRecordsExcel = (filters: CmeRecordExportFilters) =>
 	apiClient.postBlob('/cme-records/export-excel', filters);
 
+export const getCmeCreditGroups = () =>
+	apiClient.get<{ data: { id: string; name: string }[] }>('/cme-credit-groups?limit=0');
 export const getCmeCreditCategories = () =>
 	apiClient.get<{ data: CmeCreditCategory[] }>('/cme-credit-categories?limit=0');

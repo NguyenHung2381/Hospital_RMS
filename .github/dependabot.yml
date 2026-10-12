@@ -1,0 +1,19 @@
+# PR cập nhật thư viện / GitHub Actions / base image hằng tuần. Bản minor + patch
+# gộp 1 PR mỗi nơi cho đỡ ồn; major tách riêng để review kỹ. PR vẫn phải qua CI.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directories: ['/', '/backend', '/frontend']
+    schedule:
+      interval: weekly
+    groups:
+      minor-patch:
+        update-types: [minor, patch]
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+  - package-ecosystem: docker
+    directories: ['/backend', '/frontend']
+    schedule:
+      interval: weekly

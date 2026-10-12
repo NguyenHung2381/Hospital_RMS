@@ -1,3 +1,4 @@
+import { RowActions } from '@/shared/components/Table/TableToolbar';
 import { Fragment, useMemo, useState } from 'react';
 import {
 	CheckSvg,
@@ -11,7 +12,6 @@ import {
 	TrashSvg,
 	UploadSvg,
 	UserSvg,
-	XSvg,
 } from '@/assets/icons';
 import AdminLayout from '../../../layouts/AdminLayout';
 import { Badge } from '@/shared/components';
@@ -403,28 +403,16 @@ export default function Council() {
 										className={`${styles.td} ${styles.tdActions}`}
 										onClick={(e) => e.stopPropagation()}
 									>
-										<div className={styles.actionBtns}>
-											<div
-												className={styles.actionBtn}
-												title='Chỉnh sửa'
-												onClick={() => {
-													d.setActiveCouncil(c);
-													d.setModal('edit');
-												}}
-											>
-												<EditSvg />
-											</div>
-											<div
-												className={`${styles.actionBtn} ${styles.danger}`}
-												title='Xoá'
-												onClick={() => {
-													d.setActiveCouncil(c);
-													d.setModal('delete');
-												}}
-											>
-												<TrashSvg />
-											</div>
-										</div>
+										<RowActions
+											onEdit={() => {
+												d.setActiveCouncil(c);
+												d.setModal('edit');
+											}}
+											onDelete={() => {
+												d.setActiveCouncil(c);
+												d.setModal('delete');
+											}}
+										/>
 									</td>
 								</tr>
 											))}
@@ -511,15 +499,6 @@ export default function Council() {
 					onConfirm={d.handleBulkDelete}
 					loading={d.loading}
 				/>
-			)}
-			{/* ── TOAST ── */}
-			{d.toast && (
-				<div
-					className={`${styles.toast} ${d.toast.type === 'success' ? styles.toastSuccess : styles.toastError}`}
-				>
-					{d.toast.type === 'success' ? <CheckSvg /> : <XSvg />}
-					{d.toast.msg}
-				</div>
 			)}
 		</AdminLayout>
 	);

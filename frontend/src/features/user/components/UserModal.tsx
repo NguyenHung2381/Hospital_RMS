@@ -1,5 +1,8 @@
-﻿import { CheckSvg, ChevDSvg, EditSvg, InfoSvg, KeySvg, XSvg } from '@/assets/icons';
-import React, { useState } from 'react';
+import { Toggle } from '@/shared/components/Input/Toggle';
+import { FormField } from '@/shared/components/Input/FormField';
+import { Modal } from '@/shared/components';
+import { CheckSvg, ChevDSvg, EditSvg, InfoSvg, KeySvg } from '@/assets/icons';
+import { useState } from 'react';
 import type { SimpleItem } from '../api/userApi';
 import styles from '../pages/UserList.module.css';
 import type { FormErrors, User, UserForm } from '../types/user.type';
@@ -10,50 +13,6 @@ import {
 	generateTempPassword,
 	PASSWORD_HINT,
 } from '../../../shared/utils/password';
-
-function Field({
-	id,
-	label,
-	required,
-	error,
-	hint,
-	children,
-}: {
-	id: string;
-	label: string;
-	required?: boolean;
-	error?: string;
-	hint?: string;
-	children: React.ReactNode;
-}) {
-	return (
-		<div className={styles.formGroup}>
-			<label
-				htmlFor={id}
-				className={styles.formLabel}
-			>
-				{label}
-				{required && <span className={styles.required}>*</span>}
-			</label>
-			{children}
-			{error && <span className={styles.fieldError}>{error}</span>}
-			{!error && hint && <span className={styles.formHint}>{hint}</span>}
-		</div>
-	);
-}
-
-function Toggle({ on, onChange }: { on: boolean; onChange: () => void }) {
-	return (
-		<button
-			type='button'
-			className={`${styles.toggleTrack} ${on ? styles.on : ''}`}
-			onClick={onChange}
-			aria-pressed={on}
-		>
-			<span className={styles.toggleThumb} />
-		</button>
-	);
-}
 
 function Avatar({
 	name,
@@ -171,243 +130,21 @@ export function UserModal({
 	};
 
 	return (
-		<div
-			className={styles.modalBackdrop}
-			onClick={(e) => {
-				if (e.target === e.currentTarget) onClose();
-			}}
-		>
-			<div
-				className={styles.modal}
-				role='dialog'
-				aria-modal='true'
-			>
-				<div className={styles.modalHeader}>
-					<div
-						className={styles.modalHeaderIcon}
-						style={
-							mode === 'create'
-								? { background: '#faeeda', color: '#633806' }
-								: { background: '#e6f1fb', color: '#0c447c' }
-						}
-					>
-						{mode === 'create' ? <KeySvg /> : <EditSvg />}
-					</div>
-					<div>
-						<div className={styles.modalTitle}>
-							{mode === 'create' ? 'Cấp tài khoản mới' : 'Chỉnh sửa tài khoản'}
-						</div>
-						<div className={styles.modalSubtitle}>
-							{mode === 'create'
-								? 'Tạo tài khoản cho cán bộ / nhân viên'
-								: `Cập nhật thông tin — ${user?.id}`}
-						</div>
-					</div>
-					<button
-						className={styles.modalClose}
-						onClick={onClose}
-						aria-label='Đóng'
-					>
-						<XSvg />
-					</button>
-				</div>
-
-				<div className={styles.modalBody}>
-					<div className={styles.formSection}>Thông tin cá nhân</div>
-					<div className={styles.formRow}>
-						<Field
-							id='full_name'
-							label='Họ và tên'
-							required
-							error={errors.full_name}
-						>
-							<input
-								id='full_name'
-								className={`${styles.formInput} ${errors.full_name ? styles.inputError : ''}`}
-								placeholder='Nguyễn Văn A'
-								value={form.full_name}
-								onChange={(e) => set('full_name', e.target.value)}
-							/>
-						</Field>
-						<Field
-							id='staff_number'
-							label='Mã nhân viên'
-							required
-							error={errors.staff_number}
-							hint='Mã định danh nhân viên trong bệnh viện'
-						>
-							<input
-								id='staff_number'
-								className={`${styles.formInput} ${errors.staff_number ? styles.inputError : ''}`}
-								placeholder='vd: BV001234'
-								value={form.staff_number}
-								onChange={(e) => set('staff_number', e.target.value.trim())}
-							/>
-						</Field>
-					</div>
-					<div className={styles.formRow}>
-						<div className={styles.formRowFull}>
-							<Field
-								id='email'
-								label='Email'
-								error={errors.email}
-							>
-								<input
-									id='email'
-									type='email'
-									className={`${styles.formInput} ${errors.email ? styles.inputError : ''}`}
-									placeholder='email@bvhndk.vn'
-									value={form.email}
-									onChange={(e) => set('email', e.target.value)}
-								/>
-							</Field>
-						</div>
-					</div>
-
-					<div className={styles.formSection}>Thông tin tài khoản</div>
-					<div className={styles.formRow}>
-						<Field
-							id='username'
-							label='Tên đăng nhập'
-							required
-							error={errors.username}
-							hint='Chỉ gồm chữ, số, dấu gạch dưới'
-						>
-							<input
-								id='username'
-								className={`${styles.formInput} ${errors.username ? styles.inputError : ''}`}
-								placeholder='vd: bsnguyen_a'
-								value={form.username}
-								onChange={(e) =>
-									set(
-										'username',
-										e.target.value.toLowerCase().replace(/\s/g, ''),
-									)
-								}
-								disabled={mode === 'edit'}
-								style={mode === 'edit' ? { opacity: 0.6 } : {}}
-							/>
-						</Field>
-						<Field
-							id='password'
-							label={mode === 'create' ? 'Mật khẩu' : 'Mật khẩu mới'}
-							required={mode === 'create'}
-							error={errors.password}
-							hint={
-								mode === 'edit'
-									? 'Để trống nếu không muốn đổi mật khẩu'
-									: 'Mật khẩu tạm — người dùng phải đổi ở lần đăng nhập đầu'
-							}
-						>
-							<div style={{ position: 'relative' }}>
-								<input
-									id='password'
-									type={showPwd ? 'text' : 'password'}
-									className={`${styles.formInput} ${errors.password ? styles.inputError : ''}`}
-									placeholder={
-										mode === 'create'
-											? PASSWORD_HINT
-											: '(để trống = giữ nguyên)'
-									}
-									value={form.password}
-									onChange={(e) => set('password', e.target.value)}
-									style={{ paddingRight: 40 }}
-								/>
-								<button
-									type='button'
-									onClick={() => setShowPwd((v) => !v)}
-									style={{
-										position: 'absolute',
-										right: 10,
-										top: '50%',
-										transform: 'translateY(-50%)',
-										background: 'none',
-										border: 'none',
-										cursor: 'pointer',
-										color: 'var(--color-gray-400)',
-										display: 'flex',
-									}}
-									aria-label={showPwd ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
-								>
-									<InfoSvg />
-								</button>
-							</div>
-						</Field>
-					</div>
-
-					<div className={styles.formSection}>Phân công &amp; Vai trò</div>
-					<div className={styles.formRow}>
-						<Field
-							id='department_id'
-							label='Phòng ban / Khoa'
-							required
-							error={errors.department_id}
-						>
-							<div className={styles.selectWrapper}>
-								<select
-									id='department_id'
-									className={styles.formSelect}
-									value={form.department_id}
-									onChange={(e) => set('department_id', e.target.value)}
-								>
-									<option value=''>— Chọn phòng ban —</option>
-									{departments.map((d) => (
-										<option
-											key={d.id}
-											value={d.id}
-										>
-											{d.name}
-										</option>
-									))}
-								</select>
-								<ChevDSvg />
-							</div>
-						</Field>
-						<Field
-							id='role_id'
-							label='Vai trò'
-							required
-							error={errors.role_id}
-						>
-							<div className={styles.selectWrapper}>
-								<select
-									id='role_id'
-									className={styles.formSelect}
-									value={form.role_id}
-									onChange={(e) => set('role_id', e.target.value)}
-								>
-									<option value=''>— Chọn vai trò —</option>
-									{roles.map((r) => (
-										<option
-											key={r.id}
-											value={r.id}
-										>
-											{r.name}
-										</option>
-									))}
-								</select>
-								<ChevDSvg />
-							</div>
-						</Field>
-					</div>
-
-					<div className={styles.formToggleRow}>
-						<div>
-							<div className={styles.formToggleLabel}>Trạng thái tài khoản</div>
-							<div className={styles.formToggleSub}>
-								{form.is_active
-									? 'Tài khoản đang hoạt động'
-									: 'Tài khoản bị tạm khoá'}
-							</div>
-						</div>
-						<Toggle
-							on={form.is_active}
-							onChange={() => set('is_active', !form.is_active)}
-						/>
-					</div>
-				</div>
-
-				<div className={styles.modalFooter}>
+		<Modal
+			open
+			onClose={onClose}
+			icon={mode === 'create' ? <KeySvg /> : <EditSvg />}
+			iconStyle={
+				mode === 'create'
+					? { background: '#faeeda', color: '#633806' }
+					: { background: '#e6f1fb', color: '#0c447c' }
+			}
+			title={mode === 'create' ? 'Cấp tài khoản mới' : 'Chỉnh sửa tài khoản'}
+			subtitle={mode === 'create' ? 'Tạo tài khoản cho cán bộ / nhân viên' : `Cập nhật thông tin — ${user?.id}`}
+			className={styles.modal}
+			bodyClassName={styles.modalBody}
+			footer={
+				<>
 					{saveError && (
 						<span
 							className={styles.fieldError}
@@ -446,9 +183,202 @@ export function UserModal({
 							</>
 						)}
 					</button>
+				</>
+			}
+		>
+			<div className={styles.formSection}>Thông tin cá nhân</div>
+			<div className={styles.formRow}>
+				<FormField
+					htmlFor='full_name'
+					label='Họ và tên'
+					required
+					error={errors.full_name}
+				>
+					<input
+						id='full_name'
+						className={`${styles.formInput} ${errors.full_name ? styles.inputError : ''}`}
+						placeholder='Nguyễn Văn A'
+						value={form.full_name}
+						onChange={(e) => set('full_name', e.target.value)}
+					/>
+				</FormField>
+				<FormField
+					htmlFor='staff_number'
+					label='Mã nhân viên'
+					required
+					error={errors.staff_number}
+					hint='Mã định danh nhân viên trong bệnh viện'
+				>
+					<input
+						id='staff_number'
+						className={`${styles.formInput} ${errors.staff_number ? styles.inputError : ''}`}
+						placeholder='vd: BV001234'
+						value={form.staff_number}
+						onChange={(e) => set('staff_number', e.target.value.trim())}
+					/>
+				</FormField>
+			</div>
+			<div className={styles.formRow}>
+				<div className={styles.formRowFull}>
+					<FormField
+						htmlFor='email'
+						label='Email'
+						error={errors.email}
+					>
+						<input
+							id='email'
+							type='email'
+							className={`${styles.formInput} ${errors.email ? styles.inputError : ''}`}
+							placeholder='email@bvhndk.vn'
+							value={form.email}
+							onChange={(e) => set('email', e.target.value)}
+						/>
+					</FormField>
 				</div>
 			</div>
-		</div>
+
+			<div className={styles.formSection}>Thông tin tài khoản</div>
+			<div className={styles.formRow}>
+				<FormField
+					htmlFor='username'
+					label='Tên đăng nhập'
+					required
+					error={errors.username}
+					hint='Chỉ gồm chữ, số, dấu gạch dưới'
+				>
+					<input
+						id='username'
+						className={`${styles.formInput} ${errors.username ? styles.inputError : ''}`}
+						placeholder='vd: bsnguyen_a'
+						value={form.username}
+						onChange={(e) =>
+							set(
+								'username',
+								e.target.value.toLowerCase().replace(/\s/g, ''),
+							)
+						}
+						disabled={mode === 'edit'}
+						style={mode === 'edit' ? { opacity: 0.6 } : {}}
+					/>
+				</FormField>
+				<FormField
+					htmlFor='password'
+					label={mode === 'create' ? 'Mật khẩu' : 'Mật khẩu mới'}
+					required={mode === 'create'}
+					error={errors.password}
+					hint={
+						mode === 'edit'
+							? 'Để trống nếu không muốn đổi mật khẩu'
+							: 'Mật khẩu tạm — người dùng phải đổi ở lần đăng nhập đầu'
+					}
+				>
+					<div style={{ position: 'relative' }}>
+						<input
+							id='password'
+							type={showPwd ? 'text' : 'password'}
+							className={`${styles.formInput} ${errors.password ? styles.inputError : ''}`}
+							placeholder={
+								mode === 'create'
+									? PASSWORD_HINT
+									: '(để trống = giữ nguyên)'
+							}
+							value={form.password}
+							onChange={(e) => set('password', e.target.value)}
+							style={{ paddingRight: 40 }}
+						/>
+						<button
+							type='button'
+							onClick={() => setShowPwd((v) => !v)}
+							style={{
+								position: 'absolute',
+								right: 10,
+								top: '50%',
+								transform: 'translateY(-50%)',
+								background: 'none',
+								border: 'none',
+								cursor: 'pointer',
+								color: 'var(--color-gray-400)',
+								display: 'flex',
+							}}
+							aria-label={showPwd ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
+						>
+							<InfoSvg />
+						</button>
+					</div>
+				</FormField>
+			</div>
+
+			<div className={styles.formSection}>Phân công &amp; Vai trò</div>
+			<div className={styles.formRow}>
+				<FormField
+					htmlFor='department_id'
+					label='Phòng ban / Khoa'
+					required
+					error={errors.department_id}
+				>
+					<div className={styles.selectWrapper}>
+						<select
+							id='department_id'
+							className={styles.formSelect}
+							value={form.department_id}
+							onChange={(e) => set('department_id', e.target.value)}
+						>
+							<option value=''>— Chọn phòng ban —</option>
+							{departments.map((d) => (
+								<option
+									key={d.id}
+									value={d.id}
+								>
+									{d.name}
+								</option>
+							))}
+						</select>
+						<ChevDSvg />
+					</div>
+				</FormField>
+				<FormField
+					htmlFor='role_id'
+					label='Vai trò'
+					required
+					error={errors.role_id}
+				>
+					<div className={styles.selectWrapper}>
+						<select
+							id='role_id'
+							className={styles.formSelect}
+							value={form.role_id}
+							onChange={(e) => set('role_id', e.target.value)}
+						>
+							<option value=''>— Chọn vai trò —</option>
+							{roles.map((r) => (
+								<option
+									key={r.id}
+									value={r.id}
+								>
+									{r.name}
+								</option>
+							))}
+						</select>
+						<ChevDSvg />
+					</div>
+				</FormField>
+			</div>
+
+			<div className={styles.formToggleRow}>
+				<div>
+					<div className={styles.formToggleLabel}>Trạng thái tài khoản</div>
+					<div className={styles.formToggleSub}>
+						{form.is_active
+							? 'Tài khoản đang hoạt động'
+							: 'Tài khoản bị tạm khoá'}
+					</div>
+				</div>
+				<Toggle
+					on={form.is_active}
+					onChange={() => set('is_active', !form.is_active)}
+				/>
+			</div>
+		</Modal>
 	);
 }
 

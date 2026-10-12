@@ -1,258 +1,181 @@
-import {
-	CalendarSvg,
-	CheckSvg,
-	EditSvg,
-	LayersSvg,
-	PlusSvg,
-	SearchSvg,
-	TagSvg,
-	TrashSvg,
-	XSvg,
-} from '@/assets/icons';
+import { PlusSvg } from '@/assets/icons';
+import { PageSizeSelect, RowActions, SearchInput, SelectionCount } from '@/shared/components/Table/TableToolbar';
+import styles from '@/shared/components/Table/CrudPage.module.css';
+import { avatarColor, getInitials } from '@/shared/utils';
 import AdminLayout from '../../../layouts/AdminLayout';
 import { SkeletonTable } from '../../../shared/components/Loading';
 import { Pagination } from '../../../shared/components/Table/Pagination';
 import sel from '../../../shared/components/Table/RowSelect.module.css';
-import {
-	BulkBar,
-	SelectCheckbox,
-} from '../../../shared/components/Table/RowSelect';
+import { SelectCheckbox } from '../../../shared/components/Table/RowSelect';
 import { useRowSelection } from '../../../shared/hooks/useRowSelection';
 import { CatalogDeleteModal } from '../components/CatalogDeleteModal';
 import { CatalogFormModal } from '../components/CatalogFormModal';
-import { useCatalog } from '../hooks/useCatalog';
-import styles from './Catalog.module.css';
+import { CATALOG_GROUPS, TAB_CONFIG, useCatalog } from '../hooks/useCatalog';
+import type { CatalogGroup } from '../types/catalog.type';
 
-const PAGE_SIZE_OPTIONS = [5, 10, 25, 50, 0] as const;
-
-const ITEM_COLORS = [
-	{ bg: '#e1f5ea', color: '#085028' },
-	{ bg: '#e6f1fb', color: '#0c447c' },
-	{ bg: '#eeedfe', color: '#3c3489' },
-	{ bg: '#faeeda', color: '#633806' },
-	{ bg: '#fce8fb', color: '#6b1a69' },
-	{ bg: '#f1efe8', color: '#444441' },
-];
-
-function getItemColor(id: string) {
-	let hash = 0;
-	for (let i = 0; i < id.length; i++)
-		hash = id.charCodeAt(i) + ((hash << 5) - hash);
-	return ITEM_COLORS[Math.abs(hash) % ITEM_COLORS.length];
-}
-
-function getInitials(s: string) {
-	const parts = s.trim().split(/\s+/);
-	if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
-	return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
-}
-
-export default function Catalog() {
-	const d = useCatalog();
+/** Trang danh mục đơn giản (tên + mô tả) — dùng cho cả danh mục NCKH và Đào tạo. */
+export default function Catalog({ group }: { group: CatalogGroup }) {
+	const d = useCatalog(group);
 	const rowSel = useRowSelection(d.paged.map((x) => x.id));
+	const groupCfg = CATALOG_GROUPS[group];
+	const label = d.cfg.label.toLowerCase();
 
 	const headerActions = (
 		<button
 			className={styles.btnAddHeader}
 			onClick={() => d.setModal('add')}
 		>
-			<PlusSvg /> Thêm {d.cfg.label.toLowerCase()}
+			<PlusSvg /> Thêm {label}
 		</button>
 	);
 
 	return (
 		<AdminLayout
-			pageTitle='Quản lý Danh mục'
+			pageTitle={groupCfg.title}
 			pageSubtitle={d.cfg.subtitle}
+			breadcrumbs={groupCfg.breadcrumb ? [{ label: groupCfg.breadcrumb }] : undefined}
 			headerActions={headerActions}
 		>
-			{/* ── TABS ── */}
 			<div className={styles.tabs}>
-				<button
-					className={`${styles.tabBtn} ${d.tab === 'categories' ? styles.tabBtnActive : ''}`}
-					onClick={() => d.handleTabChange('categories')}
-				>
-					<TagSvg /> Phân loại
-				</button>
-				<button
-					className={`${styles.tabBtn} ${d.tab === 'levels' ? styles.tabBtnActive : ''}`}
-					onClick={() => d.handleTabChange('levels')}
-				>
-					<LayersSvg /> Cấp độ
-				</button>
-				<button
-					className={`${styles.tabBtn} ${d.tab === 'round-types' ? styles.tabBtnActive : ''}`}
-					onClick={() => d.handleTabChange('round-types')}
-				>
-					<CalendarSvg /> Loại đợt
-				</button>
-			</div>
-
-			{/* ── TOOLBAR ── */}
-			<div className={styles.toolbar}>
-				<div className={styles.searchBox}>
-					<SearchSvg />
-					<input
-						className={styles.searchInput}
-						placeholder='Tìm theo tên, mô tả...'
-						value={d.search}
-						onChange={(e) => d.handleSearch(e.target.value)}
-					/>
-					{d.search && (
+				{d.tabs.map((t) => {
+					const { icon: Icon, label: tabLabel } = TAB_CONFIG[t];
+					return (
 						<button
-							className={styles.searchClear}
-							onClick={() => d.handleSearch('')}
+							key={t}
+							className={`${styles.tabBtn} ${d.tab === t ? styles.tabBtnActive : ''}`}
+							onClick={() => d.handleTabChange(t)}
 						>
-							<XSvg />
+							<Icon /> {tabLabel}
 						</button>
-					)}
-				</div>
-				<span className={styles.resultCount}>
-					{d.filtered.length} {d.cfg.label.toLowerCase()}
-				</span>
-				<div className={styles.pageSizeWrap}>
-					<label className={styles.pageSizeLabel}>Hiển thị</label>
-					<select
-						className={styles.pageSizeSelect}
-						value={d.pageSize}
-						onChange={(e) => d.handlePageSize(Number(e.target.value))}
-					>
-						<option value={5}>5</option>
-						<option value={10}>10</option>
-						<option value={25}>25</option>
-						<option value={50}>50</option>
-						<option value={0}>Tất cả</option>
-					</select>
-					<span className={styles.pageSizeLabel}>dòng</span>
-				</div>
+					);
+				})}
 			</div>
 
-			{/* ── TABLE ── */}
-			<div className={styles.tableWrap}>
-				<BulkBar
-					rowSel={rowSel}
-					itemLabel={d.cfg.label.toLowerCase()}
-					loading={d.loading}
-					onBulkDelete={d.handleBulkDelete}
-				/>
-				<table className={styles.table}>
-					<thead>
-						<tr>
-							<th className={sel.checkCol}>
-								<SelectCheckbox
-									title='Chọn tất cả'
-									checked={rowSel.allPageSelected}
-									indeterminate={rowSel.somePageSelected}
-									onChange={rowSel.toggleSelectAll}
-								/>
-							</th>
-							<th className={styles.th}>#</th>
-							<th className={styles.th}>{d.cfg.label}</th>
-							<th className={styles.th}>Mô tả</th>
-							<th className={`${styles.th} ${styles.thRight}`}>Thao tác</th>
-						</tr>
-					</thead>
-					<tbody>
-						{d.isLoadingData ? (
-							<SkeletonTable
-								rows={d.pageSize || 8}
-								cols={5}
-							/>
-						) : d.filtered.length === 0 ? (
+			<div className={styles.tableCard}>
+				<div className={styles.tableHeader}>
+					<div className={styles.tableHeaderLeft}>
+						<span className={styles.tableTitle}>Danh sách {label}</span>
+						<SelectionCount
+							rowSel={rowSel}
+							itemLabel={label}
+							loading={d.loading}
+							onBulkDelete={d.handleBulkDelete}
+						>
+							{d.filtered.length} {label}
+						</SelectionCount>
+					</div>
+					<div className={styles.tableControls}>
+						<SearchInput
+							value={d.search}
+							onChange={d.handleSearch}
+							placeholder='Tìm theo tên, mô tả...'
+						/>
+						<PageSizeSelect
+							value={d.pageSize}
+							onChange={d.handlePageSize}
+						/>
+					</div>
+				</div>
+
+				<div className={styles.tableWrap}>
+					<table className={styles.table}>
+						<thead>
 							<tr>
-								<td colSpan={5}>
-									<div className={styles.emptyState}>
-										<div className={styles.emptyTitle}>
-											Không tìm thấy {d.cfg.label.toLowerCase()}
-										</div>
-										<div className={styles.emptyDesc}>
-											{d.search
-												? 'Thử thay đổi từ khoá tìm kiếm'
-												: `Chưa có ${d.cfg.label.toLowerCase()} nào`}
-										</div>
-									</div>
-								</td>
+								<th className={sel.checkCol}>
+									<SelectCheckbox
+										title='Chọn tất cả'
+										checked={rowSel.allPageSelected}
+										indeterminate={rowSel.somePageSelected}
+										onChange={rowSel.toggleSelectAll}
+									/>
+								</th>
+								<th className={styles.th}>#</th>
+								<th className={styles.th}>{d.cfg.label}</th>
+								<th className={styles.th}>Mô tả</th>
+								<th className={`${styles.th} ${styles.thRight}`}>Thao tác</th>
 							</tr>
-						) : (
-							d.paged.map((item, i) => {
-								const c = getItemColor(item.id);
-								const rowNum =
-									(d.safePage - 1) * (d.pageSize || d.filtered.length) + i + 1;
-								return (
-									<tr
-										key={item.id}
-										className={`${styles.tr} ${rowSel.isSelected(item.id) ? sel.rowSelected : ''}`}
-									>
-										<td className={sel.checkCol}>
-											<SelectCheckbox
-												title='Chọn dòng'
-												checked={rowSel.isSelected(item.id)}
-												onChange={() => rowSel.toggleSelect(item.id)}
-											/>
-										</td>
-										<td className={`${styles.td} ${styles.tdIdx}`}>{rowNum}</td>
-										<td className={styles.td}>
-											<div className={styles.itemCell}>
-												<div
-													className={styles.itemAvatar}
-													style={{ background: c.bg, color: c.color }}
-												>
-													{getInitials(item.name)}
-												</div>
-												<span className={styles.itemName}>{item.name}</span>
+						</thead>
+						<tbody>
+							{d.isLoadingData ? (
+								<SkeletonTable
+									rows={d.pageSize || 8}
+									cols={5}
+								/>
+							) : d.filtered.length === 0 ? (
+								<tr>
+									<td colSpan={5}>
+										<div className={styles.emptyState}>
+											<div className={styles.emptyTitle}>Không tìm thấy {label}</div>
+											<div className={styles.emptyDesc}>
+												{d.search ? 'Thử thay đổi từ khoá tìm kiếm' : `Chưa có ${label} nào`}
 											</div>
-										</td>
-										<td className={styles.td}>
-											<span className={styles.descText}>
-												{item.description ?? '—'}
-											</span>
-										</td>
-										<td className={`${styles.td} ${styles.tdActions}`}>
-											<button
-												className={`${styles.actionBtn} ${styles.actionEdit}`}
-												title='Chỉnh sửa'
-												onClick={() => {
-													d.setEditingItem(item);
-													d.setModal('edit');
-												}}
-											>
-												<EditSvg />
-											</button>
-											<button
-												className={`${styles.actionBtn} ${styles.actionDelete}`}
-												title='Xoá'
-												onClick={() => {
-													d.setDeletingItem(item);
-													d.setModal('delete');
-												}}
-											>
-												<TrashSvg />
-											</button>
-										</td>
-									</tr>
-								);
-							})
-						)}
-					</tbody>
-				</table>
+										</div>
+									</td>
+								</tr>
+							) : (
+								d.paged.map((item, i) => {
+									const c = avatarColor(item.id);
+									const rowNum = (d.safePage - 1) * (d.pageSize || d.filtered.length) + i + 1;
+									return (
+										<tr
+											key={item.id}
+											className={`${styles.tr} ${rowSel.isSelected(item.id) ? sel.rowSelected : ''}`}
+										>
+											<td className={sel.checkCol}>
+												<SelectCheckbox
+													title='Chọn dòng'
+													checked={rowSel.isSelected(item.id)}
+													onChange={() => rowSel.toggleSelect(item.id)}
+												/>
+											</td>
+											<td className={`${styles.td} ${styles.tdIdx}`}>{rowNum}</td>
+											<td className={styles.td}>
+												<div className={styles.itemCell}>
+													<div
+														className={styles.itemAvatar}
+														style={{ background: c.bg, color: c.color }}
+													>
+														{getInitials(item.name)}
+													</div>
+													<span className={styles.itemName}>{item.name}</span>
+												</div>
+											</td>
+											<td className={styles.td}>
+												<span className={styles.descText}>{item.description ?? '—'}</span>
+											</td>
+											<td className={`${styles.td} ${styles.tdActions}`}>
+												<RowActions
+													onEdit={() => {
+														d.setEditingItem(item);
+														d.setModal('edit');
+													}}
+													onDelete={() => {
+														d.setDeletingItem(item);
+														d.setModal('delete');
+													}}
+												/>
+											</td>
+										</tr>
+									);
+								})
+							)}
+						</tbody>
+					</table>
+				</div>
+
+				{d.filtered.length > 0 && d.totalPages > 1 && (
+					<Pagination
+						page={d.safePage}
+						totalPages={d.totalPages}
+						total={d.filtered.length}
+						rowsPerPage={d.pageSize}
+						onPageChange={d.setPage}
+						itemLabel={label}
+						hideSizeSelect
+					/>
+				)}
 			</div>
 
-			{/* ── PAGINATION ── */}
-			{d.filtered.length > 0 && d.totalPages > 1 && (
-				<Pagination
-					page={d.safePage}
-					totalPages={d.totalPages}
-					total={d.filtered.length}
-					rowsPerPage={d.pageSize}
-					pageSizeOptions={PAGE_SIZE_OPTIONS}
-					onPageChange={d.setPage}
-					onRowsPerPageChange={d.handlePageSize}
-					itemLabel={d.cfg.label.toLowerCase()}
-					hideSizeSelect
-				/>
-			)}
-
-			{/* ── MODALS ── */}
 			{d.modal === 'add' && (
 				<CatalogFormModal
 					mode='add'
@@ -286,22 +209,6 @@ export default function Catalog() {
 					onConfirm={d.handleDelete}
 					loading={d.loading}
 				/>
-			)}
-
-			{/* ── TOAST ── */}
-			{d.toast && (
-				<div
-					className={`${styles.toast} ${
-						styles[
-							`toast${
-								d.toast.type.charAt(0).toUpperCase() + d.toast.type.slice(1)
-							}` as keyof typeof styles
-						]
-					}`}
-				>
-					{d.toast.type === 'success' ? <CheckSvg /> : <XSvg />}
-					{d.toast.msg}
-				</div>
 			)}
 		</AdminLayout>
 	);

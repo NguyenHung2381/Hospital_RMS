@@ -86,12 +86,33 @@ export interface MyCmeSeminar {
 	cme_status: CmeStatus;
 }
 
+export type CmeApprovalStatus = 'pending' | 'approved' | 'rejected';
+
 export interface MyCmeRecord {
 	id: string;
 	title: string;
-	activity_date: string;
+	activity_date: string | null;
+	end_date: string | null;
+	year: number;
+	role: string | null;
+	quantity: number | null;
 	credits: number;
+	note: string | null;
+	category_id: string | null;
 	category_name: string | null;
+	approval_status: CmeApprovalStatus;
+	reject_reason: string | null;
+	evidence_file_name: string | null;
+	evidence_file_url: string | null;
+}
+
+export interface MyCmeCategory {
+	id: string;
+	name: string;
+	group_name: string | null;
+	conversion_method: 'per_session' | 'fixed' | 'per_year' | null;
+	conversion_value: number | null;
+	unit_label: string | null;
 }
 
 export interface MyCme {
@@ -162,3 +183,38 @@ export const registerMyCourse = (courseId: string) => apiClient.post(`/me/course
 export const getMyCme = (year: number) => apiClient.get<MyCme>(`/me/cme?year=${year}`);
 /** Phiếu theo dõi CME cá nhân (Excel): năm được chọn + tổng hợp 5 năm. */
 export const exportMyCmeExcel = (year: number) => apiClient.postBlob('/me/cme/export-excel', { year });
+
+export interface MyCmeRecordForm {
+	category_id: string;
+	title: string;
+	activity_date: string;
+	end_date: string;
+	year: string;
+	role: string;
+	quantity: string;
+	credits: string;
+	note: string;
+}
+
+const toPayload = (f: MyCmeRecordForm) => ({
+	category_id: f.category_id || null,
+	title: f.title,
+	activity_date: f.activity_date || null,
+	end_date: f.end_date || null,
+	year: Number(f.year) || null,
+	role: f.role || null,
+	quantity: f.quantity === '' ? null : Number(f.quantity),
+	credits: Number(f.credits),
+	note: f.note || null,
+});
+
+export const getMyCmeCategories = () => apiClient.get<MyCmeCategory[]>('/me/cme-categories');
+export const createMyCmeRecord = (f: MyCmeRecordForm) => apiClient.post<{ id: string }>('/me/cme-records', toPayload(f));
+export const updateMyCmeRecord = (id: string, f: MyCmeRecordForm) =>
+	apiClient.put<{ id: string }>(`/me/cme-records/${id}`, toPayload(f));
+export const deleteMyCmeRecord = (id: string) => apiClient.delete<null>(`/me/cme-records/${id}`);
+export const addMyCmeEvidence = (id: string, file: File) => {
+	const form = new FormData();
+	form.append('file', file);
+	return apiClient.postForm<{ id: string }>(`/me/cme-records/${id}/evidence`, form);
+};

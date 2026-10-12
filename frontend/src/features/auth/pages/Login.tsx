@@ -462,6 +462,9 @@ export default function Login() {
 							/>
 							<span className={styles.checkboxText}>Ghi nhớ đăng nhập</span>
 						</label>
+						<Link to='/quen-mat-khau' className={styles.forgotLink}>
+							Quên mật khẩu?
+						</Link>
 					</div>
 
 					{/* Nút đăng nhập */}

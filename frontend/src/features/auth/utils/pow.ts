@@ -87,20 +87,6 @@ export function leadingZeroBits(state: Uint32Array): number {
 
 const encoder = new TextEncoder();
 
-// SHA-256 đầy đủ — dùng cho kiểm thử, trả hex
-export function sha256Hex(message: string): string {
-	const state = hashBytes(encoder.encode(message));
-	return Array.from(state, (w) => (w >>> 0).toString(16).padStart(8, '0')).join('');
-}
-
-function hashBytes(bytes: Uint8Array): Uint32Array {
-	const state = new Uint32Array(INIT);
-	const full = bytes.length - (bytes.length % 64);
-	for (let off = 0; off < full; off += 64) compress(state, bytes, off);
-	finish(state, bytes.subarray(full), bytes.length);
-	return state;
-}
-
 const tailBuf = new Uint8Array(128);
 
 // Băm phần cuối + padding; totalLen = độ dài toàn bộ thông điệp

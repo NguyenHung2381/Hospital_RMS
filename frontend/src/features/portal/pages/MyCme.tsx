@@ -1,15 +1,27 @@
 import { useCallback, useEffect, useState } from 'react';
-import { BarChartSvg, CalendarSvg, DownloadSvg, FileTextSvg } from '@/assets/icons';
+import { BarChartSvg, CalendarSvg, DownloadSvg, EditSvg, FileTextSvg, PaperclipSvg, PlusSvg, TrashSvg } from '@/assets/icons';
 import { Badge, Button, Card, EmptyState, InlineLoading } from '@/shared/components';
 import { formatDateVN } from '@/shared/utils/formatDate';
 import UserLayout from '../../../layouts/UserLayout';
 import { useRealtimeUpdate } from '../../../layouts/hooks/useRealtime';
 import { CME_STATUS_LABELS, EVENT_TYPE_LABELS, PARTICIPATION_LABELS } from '../../seminar/types/seminar.type';
 import { saveBlob } from '../../seminar/utils/saveBlob';
-import { exportMyCmeExcel, getMyCme, type MyCme as Data } from '../api/meApi';
+import MyCmeRecordModal from '../components/MyCmeRecordModal';
+import {
+	deleteMyCmeRecord,
+	exportMyCmeExcel,
+	getMyCme,
+	getMyCmeCategories,
+	type CmeApprovalStatus,
+	type MyCme as Data,
+	type MyCmeCategory,
+	type MyCmeRecord,
+} from '../api/meApi';
 import styles from './SelfService.module.css';
 
 const THIS_YEAR = new Date().getFullYear();
+const APPROVAL_LABEL: Record<CmeApprovalStatus, string> = { pending: 'Chờ duyệt', approved: 'Đã duyệt', rejected: 'Bị từ chối' };
+const APPROVAL_TONE = { pending: 'amber', approved: 'green', rejected: 'red' } as const;
 const YEARS = Array.from({ length: 5 }, (_, i) => THIS_YEAR - i);
 
 export default function MyCme() {
@@ -18,6 +30,11 @@ export default function MyCme() {
 	const [error, setError] = useState('');
 	const [exporting, setExporting] = useState(false);
 	const [exportError, setExportError] = useState('');
+	const [editing, setEditing] = useState<MyCmeRecord | null | 'new'>(null);
+	const [categories, setCategories] = useState<MyCmeCategory[]>([]);
+	useEffect(() => {
+		getMyCmeCategories().then(setCategories).catch(() => {});
+	}, []);
 
 	const load = useCallback(() => {
 		getMyCme(year)
@@ -26,6 +43,16 @@ export default function MyCme() {
 	}, [year]);
 	useEffect(load, [load]);
 	useRealtimeUpdate(['seminar', 'cme_record', 'cme_requirement'], load);
+
+	const handleDelete = async (id: string) => {
+		if (!window.confirm('Xoá khai báo CME này?')) return;
+		try {
+			await deleteMyCmeRecord(id);
+			load();
+		} catch (err) {
+			setExportError(err instanceof Error ? err.message : 'Xoá thất bại');
+		}
+	};
 
 	const handleExport = async () => {
 		setExporting(true);
@@ -169,40 +196,81 @@ export default function MyCme() {
 						</Card.Body>
 					</Card>
 
-					{data.records.length > 0 && (
-						<Card>
+					<Card>
 							<Card.Header
 								icon={<FileTextSvg />}
 								title='Ghi nhận CME khác'
-								sub='Tự học, học trực tuyến, hoạt động được quy đổi'
+								sub='Tự khai báo — chỉ được tính vào tín chỉ sau khi quản lý phê duyệt'
+								actions={
+									<Button size='sm' icon={<PlusSvg />} onClick={() => setEditing('new')}>
+										Khai báo CME
+									</Button>
+								}
 							/>
 							<Card.Body>
-								<div className={styles.tableWrap}>
-									<table className={styles.table}>
-										<thead>
-											<tr>
-												<th>Nội dung</th>
-												<th>Ngày</th>
-												<th>Loại hoạt động</th>
-												<th>Tín chỉ</th>
-											</tr>
-										</thead>
-										<tbody>
-											{data.records.map((r) => (
-												<tr key={r.id}>
-													<td>{r.title}</td>
-													<td>{formatDateVN(r.activity_date)}</td>
-													<td>{r.category_name ?? '—'}</td>
-													<td>{r.credits}</td>
+								{data.records.length === 0 ? (
+									<EmptyState title='Chưa có khai báo nào trong năm' />
+								) : (
+									<div className={styles.tableWrap}>
+										<table className={styles.table}>
+											<thead>
+												<tr>
+													<th>Nội dung</th>
+													<th>Ngày</th>
+													<th>Loại hoạt động</th>
+													<th>Tín chỉ</th>
+													<th>Trạng thái</th>
+													<th />
 												</tr>
-											))}
-										</tbody>
-									</table>
-								</div>
+											</thead>
+											<tbody>
+												{data.records.map((r) => (
+													<tr key={r.id}>
+														<td>
+															{r.title}
+															{r.evidence_file_url && (
+																<a href={r.evidence_file_url} target='_blank' rel='noreferrer' title={r.evidence_file_name ?? 'Minh chứng'}>
+																	{' '}
+																	<PaperclipSvg />
+																</a>
+															)}
+														</td>
+														<td>{r.activity_date ? formatDateVN(r.activity_date) : `Năm ${r.year}`}</td>
+														<td>{r.category_name ?? '—'}</td>
+														<td>{r.credits}</td>
+														<td>
+															<Badge tone={APPROVAL_TONE[r.approval_status]}>{APPROVAL_LABEL[r.approval_status]}</Badge>
+															{r.approval_status === 'rejected' && r.reject_reason && (
+																<div style={{ fontSize: 12, color: '#b91c1c' }}>{r.reject_reason}</div>
+															)}
+														</td>
+														<td>
+															{r.approval_status !== 'approved' && (
+																<div style={{ display: 'flex', gap: 6 }}>
+																	<Button size='sm' variant='secondary' icon={<EditSvg />} onClick={() => setEditing(r)} title='Sửa' />
+																	<Button size='sm' variant='secondary' icon={<TrashSvg />} onClick={() => handleDelete(r.id)} title='Xoá' />
+																</div>
+															)}
+														</td>
+													</tr>
+												))}
+											</tbody>
+										</table>
+									</div>
+								)}
 							</Card.Body>
 						</Card>
-					)}
+					
 				</div>
+			)}
+			{editing && (
+				<MyCmeRecordModal
+					record={editing === 'new' ? null : editing}
+					categories={categories}
+					defaultYear={year}
+					onClose={() => setEditing(null)}
+					onSaved={load}
+				/>
 			)}
 		</UserLayout>
 	);

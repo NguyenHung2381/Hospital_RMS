@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { CheckSvg, DownloadSvg, InfoSvg, UploadSvg, XSvg } from '@/assets/icons';
-import { Badge, FileDropzone } from '@/shared/components';
+import { CheckSvg, DownloadSvg, InfoSvg, UploadSvg } from '@/assets/icons';
+import { Badge, FileDropzone, Modal } from '@/shared/components';
 import { downloadSeminarImportTemplate, importSeminarsExcel } from '../api/seminarApi';
 import {
 	EVENT_TYPE_LABELS,
@@ -86,170 +86,16 @@ export function SeminarListImportModal({
 	const s = preview?.summary;
 
 	return (
-		<div
-			className={styles.modalBackdrop}
-			onClick={(e) => e.target === e.currentTarget && !loading && onClose()}
-		>
-			<div className={styles.modal}>
-				<div className={styles.modalHeader}>
-					<UploadSvg />
-					<div>
-						<div className={styles.modalTitle}>Nhập hội thảo / hội nghị từ Excel</div>
-						<div className={styles.modalSub}>
-							Dùng file mẫu hoặc file "Xuất Excel" của hệ thống — tự dò tiêu đề cột
-						</div>
-					</div>
-					<button
-						className={styles.modalClose}
-						onClick={onClose}
-					>
-						<XSvg />
-					</button>
-				</div>
-
-				<div className={styles.modalBody}>
-					{!result && (
-						<>
-							<div className={styles.noticeBox}>
-								<InfoSvg />
-								<span>
-									Cột bắt buộc: <b>Tên hội thảo/hội nghị</b>. Các cột khác: Hình thức, Phạm vi,
-									Ngày bắt đầu/kết thúc (dd/mm/yyyy), Năm, Địa điểm, Chủ trì, Báo cáo viên, Cấp
-									CME (Có/Không), Số tín chỉ, số người dự… Dòng <b>trùng tên + năm</b> với dữ liệu
-									đã có hoặc <b>có lỗi</b> sẽ bị bỏ qua.
-								</span>
-							</div>
-
-							<button
-								type='button'
-								className={styles.btnGhost}
-								onClick={downloadTemplate}
-								disabled={downloading}
-								style={{ marginBottom: 12 }}
-							>
-								{downloading ? <span className={styles.spinner} /> : <DownloadSvg />}
-								Tải file mẫu
-							</button>
-
-							<div className={styles.formGroup}>
-								<label className={styles.formLabel}>File Excel (.xlsx)</label>
-								<FileDropzone
-									value={file}
-									onChange={onPickFile}
-									accept='.xlsx'
-									disabled={loading}
-								/>
-							</div>
-
-							{loading && (
-								<div
-									className={styles.modalSub}
-									style={{ marginTop: 10 }}
-								>
-									<span className={styles.spinner} /> Đang đọc file…
-								</div>
-							)}
-							{error && <div className={styles.fieldError}>{error}</div>}
-
-							{s && (
-								<>
-									<div
-										className={`${styles.noticeBox} ${s.importable > 0 ? styles.noticeOk : styles.noticeWarn}`}
-										style={{ marginTop: 12 }}
-									>
-										<CheckSvg />
-										<span>
-											Đọc được <b>{s.total}</b> dòng · <b>{s.importable}</b> sẽ được nhập
-											{s.duplicates > 0 && <> · {s.duplicates} trùng</>}
-											{s.invalid > 0 && <> · {s.invalid} có lỗi</>}
-										</span>
-									</div>
-
-									<div className={styles.importPreview}>
-										<table className={styles.table}>
-											<thead>
-												<tr>
-													<th>Dòng</th>
-													<th>Tên hội thảo / hội nghị</th>
-													<th>Hình thức</th>
-													<th>Thời gian</th>
-													<th>Địa điểm</th>
-													<th>CME</th>
-													<th>Trạng thái</th>
-												</tr>
-											</thead>
-											<tbody>
-												{rows.map((r) => {
-													const bad = r.errors.length > 0;
-													return (
-														<tr
-															key={r.row}
-															style={bad || r.duplicate ? { opacity: 0.65 } : undefined}
-														>
-															<td className={styles.tdIdx}>{r.row}</td>
-															<td>
-																{r.title}
-																{[...r.errors, ...r.warnings].map((w, j) => (
-																	<div
-																		key={j}
-																		className={styles.rowWarn}
-																	>
-																		{w}
-																	</div>
-																))}
-															</td>
-															<td>{EVENT_TYPE_LABELS[r.event_type]}</td>
-															<td>{fmtTime(r)}</td>
-															<td>{r.location || <span className={styles.muted}>—</span>}</td>
-															<td>
-																{r.grants_cme ? (
-																	`Có${r.cme_default_credits != null ? ` · ${r.cme_default_credits} TC` : ''}`
-																) : (
-																	<span className={styles.muted}>—</span>
-																)}
-															</td>
-															<td>
-																{bad ? (
-																	<Badge tone='red'>Lỗi</Badge>
-																) : r.duplicate ? (
-																	<Badge tone='amber'>Trùng</Badge>
-																) : (
-																	<Badge tone='green'>Hợp lệ</Badge>
-																)}
-															</td>
-														</tr>
-													);
-												})}
-											</tbody>
-										</table>
-									</div>
-								</>
-							)}
-						</>
-					)}
-
-					{result && (
-						<>
-							<div className={`${styles.noticeBox} ${styles.noticeOk}`}>
-								<CheckSvg />
-								<span>
-									Đã nhập <b>{result.inserted}</b> sự kiện
-									{result.summary.duplicates > 0 && <>, bỏ qua {result.summary.duplicates} dòng trùng</>}
-									{result.summary.invalid > 0 && <>, {result.summary.invalid} dòng lỗi</>}.
-								</span>
-							</div>
-							{result.failures && result.failures.length > 0 && (
-								<ul className={styles.warnList}>
-									{result.failures.map((w, i) => (
-										<li key={i}>{w}</li>
-									))}
-								</ul>
-							)}
-						</>
-					)}
-				</div>
-
-				<div className={styles.modalFooter}>
+		<Modal
+			open
+			onClose={onClose}
+			icon={<UploadSvg />}
+			title='Nhập hội thảo / hội nghị từ Excel'
+			subtitle='Dùng file mẫu hoặc file "Xuất Excel" của hệ thống — tự dò tiêu đề cột'
+			className={styles.modal}
+			bodyClassName={styles.modalBody}
+			footer={
+				<>
 					<button
 						className={styles.btnCancel}
 						onClick={onClose}
@@ -267,8 +113,148 @@ export function SeminarListImportModal({
 							Nhập {s?.importable || ''} sự kiện
 						</button>
 					)}
-				</div>
-			</div>
-		</div>
+				</>
+			}
+		>
+			{!result && (
+				<>
+					<div className={styles.noticeBox}>
+						<InfoSvg />
+						<span>
+							Cột bắt buộc: <b>Tên hội thảo/hội nghị</b>. Các cột khác: Hình thức, Phạm vi,
+							Ngày bắt đầu/kết thúc (dd/mm/yyyy), Năm, Địa điểm, Chủ trì, Báo cáo viên, Cấp
+							CME (Có/Không), Số tín chỉ, số người dự… Dòng <b>trùng tên + năm</b> với dữ liệu
+							đã có hoặc <b>có lỗi</b> sẽ bị bỏ qua.
+						</span>
+					</div>
+
+					<button
+						type='button'
+						className={styles.btnGhost}
+						onClick={downloadTemplate}
+						disabled={downloading}
+						style={{ marginBottom: 12 }}
+					>
+						{downloading ? <span className={styles.spinner} /> : <DownloadSvg />}
+						Tải file mẫu
+					</button>
+
+					<div className={styles.formGroup}>
+						<label className={styles.formLabel}>File Excel (.xlsx)</label>
+						<FileDropzone
+							value={file}
+							onChange={onPickFile}
+							accept='.xlsx'
+							disabled={loading}
+						/>
+					</div>
+
+					{loading && (
+						<div
+							className={styles.modalSub}
+							style={{ marginTop: 10 }}
+						>
+							<span className={styles.spinner} /> Đang đọc file…
+						</div>
+					)}
+					{error && <div className={styles.fieldError}>{error}</div>}
+
+					{s && (
+						<>
+							<div
+								className={`${styles.noticeBox} ${s.importable > 0 ? styles.noticeOk : styles.noticeWarn}`}
+								style={{ marginTop: 12 }}
+							>
+								<CheckSvg />
+								<span>
+									Đọc được <b>{s.total}</b> dòng · <b>{s.importable}</b> sẽ được nhập
+									{s.duplicates > 0 && <> · {s.duplicates} trùng</>}
+									{s.invalid > 0 && <> · {s.invalid} có lỗi</>}
+								</span>
+							</div>
+
+							<div className={styles.importPreview}>
+								<table className={styles.table}>
+									<thead>
+										<tr>
+											<th>Dòng</th>
+											<th>Tên hội thảo / hội nghị</th>
+											<th>Hình thức</th>
+											<th>Thời gian</th>
+											<th>Địa điểm</th>
+											<th>CME</th>
+											<th>Trạng thái</th>
+										</tr>
+									</thead>
+									<tbody>
+										{rows.map((r) => {
+											const bad = r.errors.length > 0;
+											return (
+												<tr
+													key={r.row}
+													style={bad || r.duplicate ? { opacity: 0.65 } : undefined}
+												>
+													<td className={styles.tdIdx}>{r.row}</td>
+													<td>
+														{r.title}
+														{[...r.errors, ...r.warnings].map((w, j) => (
+															<div
+																key={j}
+																className={styles.rowWarn}
+															>
+																{w}
+															</div>
+														))}
+													</td>
+													<td>{EVENT_TYPE_LABELS[r.event_type]}</td>
+													<td>{fmtTime(r)}</td>
+													<td>{r.location || <span className={styles.muted}>—</span>}</td>
+													<td>
+														{r.grants_cme ? (
+															`Có${r.cme_default_credits != null ? ` · ${r.cme_default_credits} TC` : ''}`
+														) : (
+															<span className={styles.muted}>—</span>
+														)}
+													</td>
+													<td>
+														{bad ? (
+															<Badge tone='red'>Lỗi</Badge>
+														) : r.duplicate ? (
+															<Badge tone='amber'>Trùng</Badge>
+														) : (
+															<Badge tone='green'>Hợp lệ</Badge>
+														)}
+													</td>
+												</tr>
+											);
+										})}
+									</tbody>
+								</table>
+							</div>
+						</>
+					)}
+				</>
+			)}
+
+			{result && (
+				<>
+					<div className={`${styles.noticeBox} ${styles.noticeOk}`}>
+						<CheckSvg />
+						<span>
+							Đã nhập <b>{result.inserted}</b> sự kiện
+							{result.summary.duplicates > 0 && <>, bỏ qua {result.summary.duplicates} dòng trùng</>}
+							{result.summary.invalid > 0 && <>, {result.summary.invalid} dòng lỗi</>}.
+						</span>
+					</div>
+					{result.failures && result.failures.length > 0 && (
+						<ul className={styles.warnList}>
+							{result.failures.map((w, i) => (
+								<li key={i}>{w}</li>
+							))}
+						</ul>
+					)}
+				</>
+			)}
+		</Modal>
 	);
 }

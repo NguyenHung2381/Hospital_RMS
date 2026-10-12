@@ -1,3 +1,4 @@
+import { showToast } from '@/shared/utils/feedback';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRealtimeUpdate } from '../../../layouts/hooks/useRealtime';
 import { getRounds } from '../../round/api/roundApi';
@@ -32,17 +33,11 @@ export function useCouncils() {
 	const [modal, setModal] = useState<ModalType>(null);
 	const [activeCouncil, setActiveCouncil] = useState<Council | null>(null);
 	const [loading, setLoading] = useState(false);
-	const [toast, setToast] = useState<{ type: 'success' | 'error'; msg: string } | null>(null);
 	const [refreshKey, setRefreshKey] = useState(0);
 	const [selected, setSelected] = useState<Set<string>>(new Set());
 
 	const refreshData = useCallback(() => setRefreshKey((k) => k + 1), []);
 	useRealtimeUpdate(['council', 'topic'], refreshData);
-
-	const showToast = useCallback((type: 'success' | 'error', msg: string) => {
-		setToast({ type, msg });
-		setTimeout(() => setToast(null), 3000);
-	}, []);
 
 	useEffect(() => {
 		getRounds({ limit: 0 })
@@ -58,7 +53,7 @@ export function useCouncils() {
 			})
 			.catch(() => showToast('error', 'Không thể tải danh sách hội đồng'))
 			.finally(() => setIsLoadingData(false));
-	}, [refreshKey, showToast]);
+	}, [refreshKey]);
 
 	const filtered = useMemo(
 		() => {
@@ -91,7 +86,7 @@ export function useCouncils() {
 				setLoading(false);
 			}
 		},
-		[showToast, refreshData],
+		[refreshData],
 	);
 
 	const handleEdit = useCallback(
@@ -119,7 +114,7 @@ export function useCouncils() {
 				setLoading(false);
 			}
 		},
-		[activeCouncil, showToast, refreshData],
+		[activeCouncil, refreshData],
 	);
 
 	const allSelected =
@@ -169,7 +164,7 @@ export function useCouncils() {
 				: `Đã xoá ${okIds.size} hội đồng`,
 		);
 		refreshData();
-	}, [selected, showToast, refreshData]);
+	}, [selected, refreshData]);
 
 	const handleBulkEdit = useCallback(
 		async (payload: UpdateCouncilPayload) => {
@@ -196,7 +191,7 @@ export function useCouncils() {
 			);
 			refreshData();
 		},
-		[selected, showToast, refreshData],
+		[selected, refreshData],
 	);
 
 	const handleDelete = useCallback(async () => {
@@ -214,7 +209,7 @@ export function useCouncils() {
 		} finally {
 			setLoading(false);
 		}
-	}, [activeCouncil, showToast, refreshData]);
+	}, [activeCouncil, refreshData]);
 
 	return {
 		councils: filtered,
@@ -226,7 +221,6 @@ export function useCouncils() {
 		modal,
 		activeCouncil,
 		loading,
-		toast,
 		stats,
 		setRoundFilter,
 		setStatusFilter,

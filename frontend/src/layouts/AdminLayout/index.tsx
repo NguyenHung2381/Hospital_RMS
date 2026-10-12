@@ -9,6 +9,7 @@ import { useNotifications } from '../../features/notifications/hooks/useNotifica
 import { toNotif } from '../../features/notifications/utils/notifUtils';
 import { getTopics } from '../../features/topics/api/topicApi';
 import { getMyTasks } from '../../features/my-tasks/api/myTasksApi';
+import { useModules, type ModuleKey } from '../../shared/hooks/useModules';
 import { usePermission } from '../../shared/hooks/usePermission';
 import { getInitials } from '../../shared/utils/helper';
 import { getStoredUser } from '../../shared/utils/storage';
@@ -36,6 +37,7 @@ const KEY_TO_PATH: Record<string, string> = {
 	files: '/admin/files',
 	departments: '/admin/departments',
 	venues: '/admin/venues',
+	settings: '/admin/settings',
 	externalReviewers: '/admin/external-reviewers',
 	categories: '/admin/categories',
 	levels: '/admin/levels',
@@ -321,6 +323,12 @@ const NAV_GROUPS: NavGroup[] = [
 				perm: 'workflows:manage',
 			},
 			{
+				key: 'settings',
+				label: 'Cấu hình hệ thống',
+				icon: <Icon.Settings />,
+				perm: 'system_settings:manage',
+			},
+			{
 				key: 'reports',
 				label: 'Báo cáo & Xuất',
 				icon: <Icon.Report />,
@@ -329,6 +337,20 @@ const NAV_GROUPS: NavGroup[] = [
 		],
 	},
 ];
+
+// Module nghiệp vụ có thể tắt ở Cấu hình hệ thống (theo nhóm menu / từng mục tổng quan).
+const MODULE_BY_SECTION: Record<string, ModuleKey> = {
+	'Nghiên cứu khoa học': 'research',
+	'Hội nghị & CME': 'seminar',
+	'Đào tạo': 'training',
+};
+const MODULE_BY_KEY: Record<string, ModuleKey> = {
+	researchDashboard: 'research',
+	trainingDashboard: 'training',
+	seminarDashboard: 'seminar',
+	surveys: 'survey',
+};
+const moduleOf = (section: string, key: string) => MODULE_BY_KEY[key] ?? MODULE_BY_SECTION[section];
 
 // ─── PROPS ────────────────────────────────
 export interface AdminLayoutProps {
@@ -355,10 +377,14 @@ export default function AdminLayout({
 
 	// Lọc menu theo quyền của vai trò (giữ nhóm nếu còn ít nhất 1 mục).
 	const { has } = usePermission();
+	const modules = useModules();
 	const navGroups = NAV_GROUPS.map((g) => ({
 		...g,
-		items: g.items.filter((it) => has(it.perm)),
+		items: g.items.filter((it) => has(it.perm) && modules[moduleOf(g.section, it.key)] !== false),
 	})).filter((g) => g.items.length > 0);
+	const moduleOff = NAV_GROUPS.flatMap((g) =>
+		g.items.filter((it) => modules[moduleOf(g.section, it.key)] === false).map((it) => KEY_TO_PATH[it.key]),
+	).some((p) => p && (location.pathname === p || location.pathname.startsWith(`${p}/`)));
 
 	// Tự detect activePage từ URL hiện tại
 	const activePage = PATH_TO_KEY[location.pathname] ?? 'dashboard';
@@ -702,7 +728,13 @@ export default function AdminLayout({
 					)}
 
 					<TwoFactorReminder />
-					{children}
+					{moduleOff ? (
+						<div style={{ padding: 48, textAlign: 'center', color: '#6b7280' }}>
+							Chức năng này đã được quản trị viên tắt.
+						</div>
+					) : (
+						children
+					)}
 				</main>
 			</div>
 		</div>

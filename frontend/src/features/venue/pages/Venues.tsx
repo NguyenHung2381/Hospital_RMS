@@ -1,19 +1,19 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { BuildingSvg, CheckSvg, EditSvg, PlusSvg, SearchSvg, TrashSvg, XSvg } from '@/assets/icons';
+import { Modal } from '@/shared/components';
+import { showToast } from '@/shared/utils/feedback';
+import { useEffect, useMemo, useState } from 'react';
+import { BuildingSvg, EditSvg, PlusSvg, SearchSvg, TrashSvg, XSvg } from '@/assets/icons';
 import AdminLayout from '../../../layouts/AdminLayout';
 import { useRealtimeUpdate } from '../../../layouts/hooks/useRealtime';
 import { Badge } from '../../../shared/components';
 import { SkeletonTable } from '../../../shared/components/Loading';
 import { Pagination } from '../../../shared/components/Table/Pagination';
 import { usePermission } from '../../../shared/hooks/usePermission';
-import base from '../../training-catalog/pages/TrainingCatalog.module.css';
+import base from '@/shared/components/Table/CrudPage.module.css';
 import { venueApi } from '../api/venueApi';
 import { VenueFormModal } from '../components/VenueFormModal';
 import type { Venue, VenueFormData, VenueScope } from '../types/venue.type';
 import { SCOPE_LABEL } from '../utils/venueScope';
 import styles from './Venues.module.css';
-
-const PAGE_SIZE_OPTIONS = [10, 25, 50, 0] as const;
 
 export default function Venues() {
 	const { has } = usePermission();
@@ -30,13 +30,7 @@ export default function Venues() {
 	const [editing, setEditing] = useState<Venue | 'new' | null>(null);
 	const [deleting, setDeleting] = useState<Venue | null>(null);
 	const [loading, setLoading] = useState(false);
-	const [toast, setToast] = useState<{ type: 'success' | 'error'; msg: string } | null>(null);
 	const [refreshKey, setRefreshKey] = useState(0);
-
-	const showToast = useCallback((type: 'success' | 'error', msg: string) => {
-		setToast({ type, msg });
-		setTimeout(() => setToast(null), 3000);
-	}, []);
 
 	useRealtimeUpdate('venue', () => setRefreshKey((k) => k + 1));
 
@@ -46,7 +40,7 @@ export default function Venues() {
 			.then((res) => setItems(res.data))
 			.catch(() => showToast('error', 'Không thể tải danh sách địa điểm'))
 			.finally(() => setIsLoadingData(false));
-	}, [showToast, refreshKey]);
+	}, [refreshKey]);
 
 	const filtered = useMemo(() => {
 		const q = search.trim().toLowerCase();
@@ -291,7 +285,6 @@ export default function Venues() {
 						totalPages={totalPages}
 						total={filtered.length}
 						rowsPerPage={pageSize}
-						pageSizeOptions={PAGE_SIZE_OPTIONS}
 						onPageChange={setPage}
 						onRowsPerPageChange={(n) => {
 							setPageSize(n);
@@ -313,34 +306,17 @@ export default function Venues() {
 			)}
 
 			{deleting && (
-				<div
-					className={base.modalBackdrop}
-					onClick={(e) => e.target === e.currentTarget && setDeleting(null)}
-				>
-					<div className={`${base.modal} ${base.modalSm}`}>
-						<div className={base.modalHeader}>
-							<div className={base.modalHeaderIconDanger}>
-								<TrashSvg />
-							</div>
-							<div>
-								<div className={base.modalTitle}>Xoá địa điểm</div>
-								<div className={base.modalSub}>{deleting.name}</div>
-							</div>
-							<button
-								className={base.modalClose}
-								onClick={() => setDeleting(null)}
-							>
-								<XSvg />
-							</button>
-						</div>
-						<div className={base.modalBody}>
-							<p className={base.deleteDesc}>
-								Xoá <strong>{deleting.name}</strong> khỏi danh mục? Hội đồng / buổi học đã xếp ở
-								địa điểm này vẫn giữ nguyên tên địa điểm. Nếu chỉ tạm không dùng, hãy chuyển
-								sang <strong>Ngưng sử dụng</strong> thay vì xoá.
-							</p>
-						</div>
-						<div className={base.modalFooter}>
+				<Modal
+					open
+					onClose={() => setDeleting(null)}
+					icon={<TrashSvg />}
+					tone='danger'
+					title='Xoá địa điểm'
+					subtitle={deleting.name}
+					className={`${base.modal} ${base.modalSm}`}
+					bodyClassName={base.modalBody}
+					footer={
+						<>
 							<button
 								className={base.btnCancel}
 								onClick={() => setDeleting(null)}
@@ -356,19 +332,17 @@ export default function Venues() {
 								{loading ? <span className={`${base.spinner} ${base.spinnerDark}`} /> : <TrashSvg />}
 								Xác nhận xoá
 							</button>
-						</div>
-					</div>
-				</div>
+						</>
+					}
+				>
+					<p className={base.deleteDesc}>
+						Xoá <strong>{deleting.name}</strong> khỏi danh mục? Hội đồng / buổi học đã xếp ở
+						địa điểm này vẫn giữ nguyên tên địa điểm. Nếu chỉ tạm không dùng, hãy chuyển
+						sang <strong>Ngưng sử dụng</strong> thay vì xoá.
+					</p>
+				</Modal>
 			)}
 
-			{toast && (
-				<div
-					className={`${base.toast} ${toast.type === 'success' ? base.toastSuccess : base.toastError}`}
-				>
-					{toast.type === 'success' ? <CheckSvg /> : <XSvg />}
-					{toast.msg}
-				</div>
-			)}
 		</AdminLayout>
 	);
 }

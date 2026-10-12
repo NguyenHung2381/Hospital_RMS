@@ -19,7 +19,18 @@ const inClause = (req, col, prefix, values, sqlType) => {
 const buildWhere = (clauses) =>
 	`WHERE ${['1=1', ...clauses.filter(Boolean)].join(' AND ')}`;
 
-module.exports = { splitList, inClause, buildWhere };
+// Cột NVARCHAR chứa mảng JSON (options, answer_options…) → mảng; rỗng/hỏng → [].
+const parseJsonArray = (text) => {
+	if (!text) return [];
+	try {
+		const v = JSON.parse(text);
+		return Array.isArray(v) ? v : [];
+	} catch {
+		return [];
+	}
+};
+
+module.exports = { splitList, inClause, buildWhere, parseJsonArray };
 
 // Self-check: node src/utils/sqlFilters.js
 if (require.main === module) {

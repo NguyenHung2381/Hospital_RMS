@@ -358,12 +358,6 @@
 	color: #b91c1c;
 }
 
-.alertSuccess {
-	background: var(--color-primary-pale);
-	border-left-color: var(--color-primary);
-	color: var(--color-primary-dark);
-}
-
 /* === SUBMIT BUTTON === */
 .submitBtn {
 	width: 100%;
@@ -470,27 +464,6 @@
 	flex-shrink: 0;
 }
 
-/* === DIVIDER === */
-.divider {
-	display: flex;
-	align-items: center;
-	gap: var(--space-4);
-	margin: var(--space-4) 0;
-}
-
-.dividerLine {
-	flex: 1;
-	height: 1px;
-	background: var(--color-gray-200);
-}
-
-.dividerText {
-	font-size: var(--font-size-xs);
-	color: var(--color-gray-400);
-	white-space: nowrap;
-	font-weight: var(--font-weight-medium);
-}
-
 /* === SUPPORT INFO === */
 .supportBox {
 	background: var(--color-primary-pale);
@@ -531,28 +504,6 @@
 .supportText a {
 	color: var(--color-primary);
 	font-weight: var(--font-weight-semibold);
-}
-
-/* === SECURITY BADGES === */
-.securityBadges {
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	gap: var(--space-4);
-	flex-wrap: wrap;
-}
-
-.secBadge {
-	display: flex;
-	align-items: center;
-	gap: var(--space-1);
-	font-size: var(--font-size-xs);
-	color: var(--color-gray-400);
-	font-weight: var(--font-weight-medium);
-}
-
-.secBadge svg {
-	color: var(--color-primary);
 }
 
 /* === POPUP CHỌN NƠI VÀO — cho tài khoản có ghế trong hội đồng === */

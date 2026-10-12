@@ -9,6 +9,7 @@
  */
 const ExcelJS = require('exceljs');
 const { getPool, sql } = require('../config/db');
+const { sendWorkbook } = require('../utils/response');
 
 const HD_ROLES = [
 	['chairman', 'Chủ tịch'],
@@ -253,16 +254,7 @@ async function exportExcel(req, res, next) {
 				.replace(/[/\\?%*:|"<>]/g, '')
 				.trim() || 'lich-bao-ve';
 
-		res.setHeader(
-			'Content-Type',
-			'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-		);
-		res.setHeader(
-			'Content-Disposition',
-			`attachment; filename*=UTF-8''${encodeURIComponent(safeName + '.xlsx')}`,
-		);
-		await wb.xlsx.write(res);
-		res.end();
+		await sendWorkbook(res, wb, safeName + '.xlsx');
 	} catch (err) {
 		next(err);
 	}

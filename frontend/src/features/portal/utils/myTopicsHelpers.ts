@@ -1,6 +1,6 @@
 import { STATUS_CFG as BASE_STATUS_CFG } from '../../topics/utils/topicHelpers';
 import { scopeOf, type PermissionUser } from '@/shared/utils/permissions';
-import type { TopicFile, TopicStatus } from '../../topics/types/topic.type';
+import type { TopicStatus } from '../../topics/types/topic.type';
 import type { BadgeTone } from '@/shared/components/Badge/badgeTone';
 
 export type FilterTab = TopicStatus;
@@ -74,40 +74,3 @@ export function canSeeDeptTopics(user: PermissionUser | null | undefined): boole
 	return scope === 'department' || scope === 'all';
 }
 
-
-export function getFileViewerUrl(file: TopicFile): string | null {
-	const name = file.file_name.toLowerCase();
-	const mime = file.mime_type ?? '';
-	if (mime === 'application/pdf' || name.endsWith('.pdf')) return file.file_url;
-	if (
-		mime.includes('wordprocessingml') ||
-		name.endsWith('.docx') ||
-		name.endsWith('.doc')
-	)
-		return file.file_url;
-	return null;
-}
-
-export function getFileTypeMeta(file: TopicFile): {
-	label: string;
-	cls: string;
-} {
-	const name = file.file_name.toLowerCase();
-	const mime = file.mime_type ?? '';
-	if (mime === 'application/pdf' || name.endsWith('.pdf'))
-		return { label: 'PDF', cls: 'fileIconPdf' };
-	if (
-		mime.includes('wordprocessingml') ||
-		name.endsWith('.docx') ||
-		name.endsWith('.doc')
-	)
-		return { label: 'DOCX', cls: 'fileIconWord' };
-	if (
-		mime.includes('spreadsheetml') ||
-		name.endsWith('.xlsx') ||
-		name.endsWith('.xls')
-	)
-		return { label: 'XLSX', cls: 'fileIconExcel' };
-	if (mime.startsWith('image/')) return { label: 'IMG', cls: 'fileIconImage' };
-	return { label: 'FILE', cls: 'fileIconOther' };
-}

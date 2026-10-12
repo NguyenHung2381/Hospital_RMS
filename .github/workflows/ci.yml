@@ -1,4 +1,9 @@
-# Kiểm tra tự động cho mọi push / pull request vào main.
+# Pipeline CI/CD — đối chiếu checklist ở .github/CICD.md.
+#  - Mọi push / pull request vào main: test, kiểm tra tĩnh, quét bảo mật.
+#  - Push vào main đã qua hết kiểm tra: build image 1 lần (tag = commit SHA),
+#    quét image, đẩy lên GHCR kèm SBOM + provenance → deploy staging (nếu bật)
+#    → deploy production (tự động có duyệt, hoặc chạy tay deploy.yml). Kiểm tra
+#    nào hỏng thì dừng.
 # Không cần SQL Server hay Redis: test backend dùng CSDL giả (test/**/fakeDb.js)
 # và tự rơi về bộ nhớ khi không có Redis.
 name: CI
@@ -16,8 +21,10 @@ on:
 permissions:
   contents: read
 
+# PR: push mới huỷ lần chạy cũ. main: mỗi commit 1 nhóm riêng, KHÔNG huỷ nhau —
+# commit nào cũng có kết quả + image; deploy tự xếp hàng theo môi trường.
 concurrency:
-  group: ci-${{ github.ref }}
+  group: ci-${{ github.ref }}-${{ github.event_name == 'pull_request' && 'pr' || github.sha }}
   cancel-in-progress: true
 
 jobs:
@@ -26,6 +33,7 @@ jobs:
   # check mới, không phải sửa file này.
   backend-areas:
     name: Backend · liệt kê nhóm test
+    timeout-minutes: 5
     runs-on: ubuntu-latest
     outputs:
       areas: ${{ steps.list.outputs.areas }}
@@ -37,6 +45,7 @@ jobs:
 
   backend-test:
     name: Backend · test ${{ matrix.area }}
+    timeout-minutes: 15
     needs: backend-areas
     runs-on: ubuntu-latest
     strategy:
@@ -74,7 +83,8 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
   backend-static:
-    name: Backend · kiểm tra tĩnh
+    name: Backend · kiểm tra tĩnh + coverage
+    timeout-minutes: 15
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -95,9 +105,20 @@ jobs:
       - name: Lỗ hổng thư viện
         # Chặn merge khi thư viện chạy production có lỗ hổng mức high trở lên
         run: npm audit --omit=dev --audit-level=high
+      - name: Coverage (ngưỡng tối thiểu)
+        # Ngưỡng ≈ mức hiện tại (~49% dòng) — chỉ được nâng lên khi thêm test
+        env:
+          REDIS_HOST: 127.0.0.1
+          REDIS_PORT: 1
+        run: |
+          set -o pipefail
+          node --test --test-force-exit --experimental-test-coverage \
+            --test-coverage-include='src/**' --test-coverage-lines=45 --test-coverage-functions=20 \
+            "test/**/*.test.js" | grep -E '^# (all files|tests|pass|fail)' | tee -a "$GITHUB_STEP_SUMMARY"
 
   frontend:
     name: Frontend · kiểm tra tĩnh + build
+    timeout-minutes: 15
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -123,8 +144,11 @@ jobs:
   secrets:
     name: Không commit bí mật
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0 # gitleaks cần lịch sử commit
       - name: File không được có trong repo
         run: |
           bad=$(git ls-files | grep -E '(^|/)\.env(\.[a-z]+)?$|(^|/)secrets/|\.key$|\.pem$|_CHUA_MAT_KHAU\.csv$|staff_license_import_unmatched\.csv$' | grep -v '\.env\.example$' || true)
@@ -134,3 +158,153 @@ jobs:
           # Hash bcrypt thật, khoá riêng, chuỗi kết nối có mật khẩu
           hits=$(git grep -nE '\$2[aby]\$[0-9]{2}\$[./A-Za-z0-9]{53}|-----BEGIN [A-Z ]*PRIVATE KEY-----|(Password|Pwd)=[^;{$ ]{4,};' -- . ':!**/package-lock.json' || true)
           if [ -n "$hits" ]; then echo "::error::Có chuỗi giống bí mật:"; echo "$hits"; exit 1; fi
+      - name: Gitleaks (các commit mới)
+        # PR/push: chỉ quét commit mới. Lịch tuần: quét toàn bộ lịch sử.
+        env:
+          EVENT: ${{ github.event_name }}
+          PR_RANGE: ${{ github.event.pull_request.base.sha }}..${{ github.event.pull_request.head.sha }}
+          PUSH_RANGE: ${{ github.event.before }}..${{ github.sha }}
+        run: |
+          case "$EVENT" in
+            pull_request) range="$PR_RANGE" ;;
+            push) range="$PUSH_RANGE" ;;
+            *) range="" ;;
+          esac
+          docker run --rm --user "$(id -u):$(id -g)" -v "$PWD:/repo" zricethezav/gitleaks:v8.21.2 \
+            git /repo --redact --no-banner ${range:+--log-opts=$range}
+
+  # SAST: quét lỗ hổng trong mã nguồn (injection, XSS, path traversal...).
+  # Chỉ chặn mức ERROR. Bỏ rule hardcoded_secrets của njsscan (báo nhầm mọi
+  # chuỗi có chữ "password") — secret đã do gitleaks ở job secrets lo.
+  sast:
+    name: SAST (Semgrep)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+      - name: Semgrep
+        run: |
+          docker run --rm -v "$PWD:/src" -w /src semgrep/semgrep:1.95.0 semgrep scan \
+            --config p/javascript --config p/typescript --config p/nodejsscan \
+            --metrics off --severity ERROR --error             --exclude-rule ajinabraham.njsscan.generic.hardcoded_secrets.node_password             --exclude-rule ajinabraham.njsscan.generic.hardcoded_secrets.node_secret             --exclude-rule ajinabraham.njsscan.generic.hardcoded_secrets.node_username             --exclude-rule ajinabraham.njsscan.generic.hardcoded_secrets.node_api_key
+
+  # Build image 1 LẦN cho mọi môi trường (staging/production dùng chung image,
+  # không build lại). Tag = commit SHA → truy vết production về commit + lần chạy CI.
+  image:
+    name: Image · ${{ matrix.app }}
+    needs: [backend-test, backend-static, frontend, secrets, sast]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      matrix:
+        app: [backend, frontend]
+    steps:
+      - uses: actions/checkout@v5
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - id: name
+        run: echo "image=ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/hospital_rms-${{ matrix.app }}:${{ github.sha }}" >> "$GITHUB_OUTPUT"
+      - name: Build
+        uses: docker/build-push-action@v6
+        with:
+          context: ${{ matrix.app }}
+          target: prod
+          build-args: GIT_SHA=${{ github.sha }}
+          labels: |
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.url=${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          tags: ${{ steps.name.outputs.image }}
+          load: true
+          cache-from: type=gha,scope=${{ matrix.app }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.app }}
+      - name: Quét image (Trivy)
+        # In mọi lỗ hổng HIGH+, chỉ chặn CRITICAL đã có bản vá
+        env:
+          IMAGE: ${{ steps.name.outputs.image }}
+        run: |
+          trivy() { docker run --rm -v /var/run/docker.sock:/var/run/docker.sock -v trivy-cache:/root/.cache \
+            aquasec/trivy:0.57.1 image --no-progress --ignore-unfixed "$@" "$IMAGE"; }
+          trivy --severity HIGH,CRITICAL --exit-code 0
+          trivy --severity CRITICAL --exit-code 1 --quiet
+      - name: Push (kèm SBOM + provenance)
+        # Cùng tham số với bước Build → dùng lại cache, không build khác đi
+        uses: docker/build-push-action@v6
+        with:
+          context: ${{ matrix.app }}
+          target: prod
+          build-args: GIT_SHA=${{ github.sha }}
+          labels: |
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.url=${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          tags: ${{ steps.name.outputs.image }}
+          push: true
+          sbom: true
+          provenance: mode=max
+          cache-from: type=gha,scope=${{ matrix.app }}
+      - name: Tóm tắt
+        env:
+          IMAGE: ${{ steps.name.outputs.image }}
+        run: echo "- Image $IMAGE" >> "$GITHUB_STEP_SUMMARY"
+
+  # Staging tuỳ chọn: bật bằng biến repo ENABLE_STAGING=true khi đã có runner rms-staging
+  deploy-staging:
+    name: Deploy staging
+    needs: image
+    if: vars.ENABLE_STAGING == 'true'
+    uses: ./.github/workflows/deploy.yml
+    permissions:
+      contents: read
+      packages: read
+    with:
+      environment: staging
+      tag: ${{ github.sha }}
+
+  # Chỉ tự deploy khi AUTO_DEPLOY_PRODUCTION=true VÀ environment production đã có
+  # người duyệt (required reviewers). Mặc định: deploy production bằng tay qua
+  # workflow Deploy — xem .github/CICD.md.
+  deploy-production:
+    name: Deploy production
+    needs: [image, deploy-staging]
+    if: >-
+      always() && vars.AUTO_DEPLOY_PRODUCTION == 'true' && needs.image.result == 'success' &&
+      (needs.deploy-staging.result == 'success' || needs.deploy-staging.result == 'skipped')
+    uses: ./.github/workflows/deploy.yml
+    permissions:
+      contents: read
+      packages: read
+    with:
+      environment: production
+      tag: ${{ github.sha }}
+
+  # Pipeline trên main / lịch tuần hỏng → mở issue giao cho người kích hoạt
+  # (GitHub cũng gửi email). PR hỏng thì tác giả đã thấy ngay trên PR.
+  notify:
+    name: Báo lỗi pipeline
+    needs: [backend-test, backend-static, frontend, secrets, sast, image, deploy-staging, deploy-production]
+    if: failure() && github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      issues: write
+    steps:
+      - env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          gh issue create --repo "$GITHUB_REPOSITORY" --assignee "$GITHUB_ACTOR" \
+            --title "CI/CD hỏng: ${GITHUB_SHA::7} ($GITHUB_EVENT_NAME)" \
+            --body "Lần chạy: $RUN_URL
+          Commit: $GITHUB_SHA
+          Người kích hoạt: @$GITHUB_ACTOR
+
+          Người nhận xử lý hoặc chuyển đúng người (.github/CICD.md → Trách nhiệm)."

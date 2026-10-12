@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
-import { CheckSvg, DocPlusSvg, XSvg } from '@/assets/icons';
+import { DocPlusSvg } from '@/assets/icons';
 import { getUnassignedTopics } from '../api/councilApi';
 import type { Council, CouncilTopic } from '../types/council.type';
-import { InlineLoading } from '@/shared/components';
+import { InlineLoading, Modal, ModalActions } from '@/shared/components';
 import styles from '../pages/Council.module.css';
 
 export function AssignTopicsModal({
@@ -46,79 +46,55 @@ export function AssignTopicsModal({
 	};
 
 	return (
-		<div
-			className={styles.modalBackdrop}
-			onClick={(e) => e.target === e.currentTarget && onClose()}
+		<Modal
+			open
+			onClose={onClose}
+			icon={<DocPlusSvg />}
+			title='Gán đề tài vào hội đồng'
+			subtitle={council.name}
+			className={styles.modal}
+			bodyClassName={styles.modalBody}
+			footer={
+				<ModalActions
+					onCancel={onClose}
+					onConfirm={handleSave}
+					loading={loading}
+					disabled={topics.length === 0}
+					confirmLabel={<>Gán {selected.size > 0 ? `(${selected.size})` : ''}</>}
+				/>
+			}
 		>
-			<div className={styles.modal}>
-				<div className={styles.modalHeader}>
-					<div className={styles.modalHeaderIcon}>
-						<DocPlusSvg />
+			{isLoading ? (
+				<InlineLoading label='Đang tải…' />
+			) : topics.length === 0 ? (
+				<div className={styles.emptyState}>
+					<div className={styles.emptyDesc}>
+						Không còn đề tài nào chưa gán trong đợt này.
 					</div>
-					<div>
-						<div className={styles.modalTitle}>Gán đề tài vào hội đồng</div>
-						<div className={styles.modalSub}>{council.name}</div>
-					</div>
-					<button
-						className={styles.modalClose}
-						onClick={onClose}
-					>
-						<XSvg />
-					</button>
 				</div>
-
-				<div className={styles.modalBody}>
-					{isLoading ? (
-						<InlineLoading label='Đang tải…' />
-					) : topics.length === 0 ? (
-						<div className={styles.emptyState}>
-							<div className={styles.emptyDesc}>
-								Không còn đề tài nào chưa gán trong đợt này.
+			) : (
+				<div className={styles.checkList}>
+					{topics.map((t) => (
+						<label
+							key={t.id}
+							className={styles.checkRow}
+						>
+							<input
+								type='checkbox'
+								checked={selected.has(t.id)}
+								onChange={() => toggle(t.id)}
+							/>
+							<div style={{ minWidth: 0 }}>
+								<div className={styles.topicTitle}>{t.title}</div>
+								<div className={styles.topicDept}>
+									{t.department_name ?? ''}
+								</div>
 							</div>
-						</div>
-					) : (
-						<div className={styles.checkList}>
-							{topics.map((t) => (
-								<label
-									key={t.id}
-									className={styles.checkRow}
-								>
-									<input
-										type='checkbox'
-										checked={selected.has(t.id)}
-										onChange={() => toggle(t.id)}
-									/>
-									<div style={{ minWidth: 0 }}>
-										<div className={styles.topicTitle}>{t.title}</div>
-										<div className={styles.topicDept}>
-											{t.department_name ?? ''}
-										</div>
-									</div>
-								</label>
-							))}
-						</div>
-					)}
-					{error && <div className={styles.fieldError}>{error}</div>}
+						</label>
+					))}
 				</div>
-
-				<div className={styles.modalFooter}>
-					<button
-						className={styles.btnCancel}
-						onClick={onClose}
-						disabled={loading}
-					>
-						Huỷ
-					</button>
-					<button
-						className={styles.btnConfirmApprove}
-						onClick={handleSave}
-						disabled={loading || topics.length === 0}
-					>
-						{loading ? <span className={styles.spinner} /> : <CheckSvg />}
-						Gán {selected.size > 0 ? `(${selected.size})` : ''}
-					</button>
-				</div>
-			</div>
-		</div>
+			)}
+			{error && <div className={styles.fieldError}>{error}</div>}
+		</Modal>
 	);
 }

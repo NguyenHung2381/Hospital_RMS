@@ -8,7 +8,7 @@ const partService = require('../services/seminarParticipantService');
 const importService = require('../services/seminarImportService');
 const listExcelService = require('../services/seminarListExcelService');
 const { createCrudController } = require('./crudController');
-const { success, created, notFound } = require('../utils/response');
+const { success, created, notFound, sendWorkbook } = require('../utils/response');
 
 const base = createCrudController(seminarService);
 
@@ -195,19 +195,6 @@ const importParticipants = async (req, res, next) => {
 };
 
 // ─── Nhập / xuất Excel danh sách hội thảo ────────────────────────────────────
-const sendWorkbook = async (res, wb, fileName) => {
-	res.setHeader(
-		'Content-Type',
-		'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-	);
-	res.setHeader(
-		'Content-Disposition',
-		`attachment; filename*=UTF-8''${encodeURIComponent(fileName)}`,
-	);
-	await wb.xlsx.write(res);
-	res.end();
-};
-
 const exportListExcel = async (req, res, next) => {
 	try {
 		const { search, scope, event_type, year, grants_cme } = req.body || {};

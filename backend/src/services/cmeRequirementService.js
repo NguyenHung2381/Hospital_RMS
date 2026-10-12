@@ -81,7 +81,7 @@ const getComplianceReport = async (year) => {
     LEFT JOIN departments d ON d.id = u.department_id
     LEFT JOIN seminar_participants p ON p.user_id = u.id
     OUTER APPLY (
-      SELECT SUM(credits) AS manual_credits FROM cme_records WHERE user_id = u.id AND year = @year
+      SELECT SUM(credits) AS manual_credits FROM cme_records WHERE user_id = u.id AND year = @year AND approval_status = 'approved'
     ) cr
     OUTER APPLY (
       SELECT TOP 1 required_credits
@@ -140,7 +140,7 @@ const getPersonYearlySummary = async (userId, fromYear, toYear) => {
     ) sp
     OUTER APPLY (
       SELECT COUNT(*) AS cnt, SUM(r.credits) AS credits
-      FROM cme_records r WHERE r.user_id = u.id AND r.year = yr.y
+      FROM cme_records r WHERE r.user_id = u.id AND r.year = yr.y AND r.approval_status = 'approved'
     ) cr
     OUTER APPLY (
       SELECT TOP 1 required_credits

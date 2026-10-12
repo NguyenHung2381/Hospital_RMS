@@ -1,6 +1,5 @@
 import { formatDate } from '../../../shared/utils/formatDate';
 import type { BadgeTone } from '@/shared/components/Badge/badgeTone';
-import type { TopicFile } from '../../topics/types/topic.type';
 import type {
 	ApprovalRecord,
 	ApvHistoryItem,
@@ -74,39 +73,6 @@ export function isUrgentTopic(createdAt?: string, status?: ApvStatus) {
 	const created = new Date(createdAt);
 	if (Number.isNaN(created.getTime())) return false;
 	return Date.now() - created.getTime() > 3 * 24 * 60 * 60 * 1000;
-}
-
-interface FileTypeMeta {
-	label: string;
-	cls: string;
-}
-
-export function getFileTypeMeta(file: TopicFile): FileTypeMeta {
-	const mime = file.mime_type ?? '';
-	const name = file.file_name.toLowerCase();
-	if (mime === 'application/pdf' || name.endsWith('.pdf'))
-		return { label: 'PDF', cls: 'fileTypePdf' };
-	if (
-		mime.includes('wordprocessingml') ||
-		name.endsWith('.docx') ||
-		name.endsWith('.doc')
-	)
-		return { label: 'Word', cls: 'fileTypeWord' };
-	if (
-		mime.includes('spreadsheetml') ||
-		name.endsWith('.xlsx') ||
-		name.endsWith('.xls')
-	)
-		return { label: 'Excel', cls: 'fileTypeExcel' };
-	if (mime.startsWith('image/')) return { label: 'Ảnh', cls: 'fileTypeImage' };
-	return { label: 'Tệp', cls: 'fileTypeOther' };
-}
-
-export function getFileViewerUrl(file: TopicFile): string | null {
-	const meta = getFileTypeMeta(file);
-	if (meta.label === 'PDF' || meta.label === 'Word') return file.file_url;
-	if (meta.label === 'Ảnh') return file.file_url;
-	return null;
 }
 
 export function mapHistoryItem(item: ApprovalHistory): ApvHistoryItem {

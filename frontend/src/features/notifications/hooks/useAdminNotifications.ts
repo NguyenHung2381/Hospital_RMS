@@ -1,3 +1,4 @@
+import { showToast } from '@/shared/utils/feedback';
 import { useEffect, useMemo, useState } from 'react';
 import { getDepartments } from '../../department/api/departmentApi';
 import type { Department } from '../../department/types/department.type';
@@ -37,7 +38,6 @@ export function useAdminNotifications() {
 	const [userSearch, setUserSearch] = useState('');
 	const [loadingUsers, setLoadingUsers] = useState(true);
 	const [sending, setSending] = useState(false);
-	const [toast, setToast] = useState<{ msg: string; ok: boolean } | null>(null);
 	const [showSendModal, setShowSendModal] = useState(false);
 
 	// ── Đề tài liên quan (ref_type/ref_id) ────
@@ -156,11 +156,6 @@ export function useAdminNotifications() {
 	>({});
 	const [loadingRecipients, setLoadingRecipients] = useState<string | null>(null);
 
-	const showToast = (msg: string, ok = true) => {
-		setToast({ msg, ok });
-		setTimeout(() => setToast(null), 3000);
-	};
-
 	useEffect(() => {
 		getDepartments()
 			.then((res) => setDepts(res.data))
@@ -225,7 +220,7 @@ export function useAdminNotifications() {
 
 	const handleSend = async () => {
 		if (!form.title.trim()) {
-			showToast('Vui lòng nhập tiêu đề', false);
+			showToast('error', 'Vui lòng nhập tiêu đề');
 			return;
 		}
 		const target_ids = form.target_ids;
@@ -233,7 +228,7 @@ export function useAdminNotifications() {
 			(form.target_type === 'users' || form.target_type === 'department') &&
 			!target_ids.length
 		) {
-			showToast('Vui lòng chọn ít nhất một người nhận', false);
+			showToast('error', 'Vui lòng chọn ít nhất một người nhận');
 			return;
 		}
 		setSending(true);
@@ -250,7 +245,7 @@ export function useAdminNotifications() {
 				target_type: effectiveTargetType,
 				target_ids,
 			});
-			showToast(`Đã gửi thành công tới ${res.sent} người dùng`);
+			showToast('success', `Đã gửi thành công tới ${res.sent} người dùng`);
 			setForm(EMPTY_FORM);
 			setDeptSearch('');
 			setUserSearch('');
@@ -260,7 +255,7 @@ export function useAdminNotifications() {
 			setShowSendModal(false);
 			setRefreshKey((k) => k + 1);
 		} catch (err: unknown) {
-			showToast(err instanceof Error ? err.message : 'Gửi thất bại', false);
+			showToast('error', err instanceof Error ? err.message : 'Gửi thất bại');
 		} finally {
 			setSending(false);
 		}
@@ -271,11 +266,11 @@ export function useAdminNotifications() {
 		setDeletingBatch(true);
 		try {
 			await deleteNotificationBatch(pendingDelete.batch_key);
-			showToast('Đã xoá thông báo');
+			showToast('success', 'Đã xoá thông báo');
 			setPendingDelete(null);
 			setRefreshKey((k) => k + 1);
 		} catch {
-			showToast('Xoá thất bại', false);
+			showToast('error', 'Xoá thất bại');
 		} finally {
 			setDeletingBatch(false);
 		}
@@ -289,10 +284,7 @@ export function useAdminNotifications() {
 				batchKeys,
 				deleteNotificationBatch,
 			);
-			showToast(
-				bulkToast('xoá', okIds.size, failedCount, 'thông báo'),
-				!failedCount,
-			);
+			showToast(failedCount ? 'error' : 'success', bulkToast('xoá', okIds.size, failedCount, 'thông báo'));
 			setRefreshKey((k) => k + 1);
 		} finally {
 			setDeletingBatch(false);
@@ -327,7 +319,6 @@ export function useAdminNotifications() {
 		setUserSearch,
 		loadingUsers,
 		sending,
-		toast,
 		showSendModal,
 		setShowSendModal,
 		topicSearch,

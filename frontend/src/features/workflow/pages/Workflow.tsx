@@ -1,4 +1,5 @@
-import { CheckSvg, EditSvg, PlusSvg, TrashSvg, XSvg } from '@/assets/icons';
+import { RowActions } from '@/shared/components/Table/TableToolbar';
+import { PlusSvg } from '@/assets/icons';
 import AdminLayout from '../../../layouts/AdminLayout';
 import { SkeletonTable } from '../../../shared/components/Loading';
 import { workflowApi } from '../api/workflowApi';
@@ -84,29 +85,17 @@ export default function Workflow() {
 											</span>
 										</td>
 										<td className={`${styles.td} ${styles.tdActions}`}>
-											<div className={styles.actionBtns}>
-												<div
-													className={styles.actionBtn}
-													title='Chỉnh sửa'
-													onClick={async () => {
-														const full = await workflowApi.getById(w.id);
-														d.setEditingItem(full);
-														d.setModal('edit');
-													}}
-												>
-													<EditSvg />
-												</div>
-												<div
-													className={`${styles.actionBtn} ${styles.danger}`}
-													title='Xoá'
-													onClick={() => {
-														d.setDeletingItem(w);
-														d.setModal('delete');
-													}}
-												>
-													<TrashSvg />
-												</div>
-											</div>
+											<RowActions
+												onEdit={async () => {
+													const full = await workflowApi.getById(w.id);
+													d.setEditingItem(full);
+													d.setModal('edit');
+												}}
+												onDelete={() => {
+													d.setDeletingItem(w);
+													d.setModal('delete');
+												}}
+											/>
 										</td>
 									</tr>
 								))
@@ -150,18 +139,6 @@ export default function Workflow() {
 				/>
 			)}
 
-			{d.toast && (
-				<div
-					className={`${styles.toast} ${
-						styles[
-							`toast${d.toast.type.charAt(0).toUpperCase() + d.toast.type.slice(1)}` as keyof typeof styles
-						]
-					}`}
-				>
-					{d.toast.type === 'success' ? <CheckSvg /> : <XSvg />}
-					{d.toast.msg}
-				</div>
-			)}
 		</AdminLayout>
 	);
 }
