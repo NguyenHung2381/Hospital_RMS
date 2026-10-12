@@ -213,7 +213,7 @@ jobs:
       - id: name
         run: echo "image=ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/hospital_rms-${{ matrix.app }}:${{ github.sha }}" >> "$GITHUB_OUTPUT"
       - name: Build
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: ${{ matrix.app }}
           target: prod
@@ -237,7 +237,7 @@ jobs:
           trivy --severity CRITICAL --exit-code 1 --quiet
       - name: Push (kèm SBOM + provenance)
         # Cùng tham số với bước Build → dùng lại cache, không build khác đi
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: ${{ matrix.app }}
           target: prod
