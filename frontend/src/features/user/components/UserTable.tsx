@@ -18,6 +18,7 @@ import type { User } from '../types/user.type';
 import { roleCfg } from '@/shared/utils/roleDisplay';
 import { Avatar, Toggle } from './UserModal';
 import { UserBulkEditModal } from './UserBulkEditModal';
+import tbl from '@/shared/components/Table/Table.module.css';
 
 interface UserTableProps {
 	users: User[];
@@ -132,7 +133,7 @@ export function UserTable({
 									onChange={rowSel.toggleSelectAll}
 								/>
 							</th>
-							<th className={styles.th}>#</th>
+							<th className={`${styles.th} ${tbl.thIdx}`}>STT</th>
 							<th className={styles.th}>Người dùng</th>
 							<th className={styles.th}>Khoa / Phòng</th>
 							<th className={styles.th}>Đăng nhập / Mã NV</th>
@@ -270,18 +271,15 @@ export function UserTable({
 					/>
 				</div>
 			) : (
-				totalCount > 0 && (
-					<Pagination
-						page={currentPage}
-						totalPages={totalPages}
-						total={totalCount}
-						rowsPerPage={pageSize}
-						pageSizeOptions={[10, 20, 50, 100]}
-						onPageChange={setCurrentPage}
-						onRowsPerPageChange={setPageSize}
-						itemLabel='bản ghi'
-					/>
-				)
+				<Pagination
+					page={currentPage}
+					totalPages={totalPages}
+					total={totalCount}
+					rowsPerPage={pageSize}
+					onPageChange={setCurrentPage}
+					onRowsPerPageChange={setPageSize}
+					itemLabel='bản ghi'
+				/>
 			)}
 		</div>
 	);

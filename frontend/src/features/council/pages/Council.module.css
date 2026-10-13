@@ -215,20 +215,9 @@
 	cursor: pointer;
 }
 
-/* Row highlights when selected */
-.tr.trSelected {
-	background-color: rgba(10, 155, 74, 0.06);
-	border-left: 3px solid var(--color-primary);
-}
 
 .td {
 	composes: td from '../../../shared/components/Table/Table.module.css';
-}
-
-.thCheck {
-	width: 48px;
-	text-align: center;
-	vertical-align: middle;
 }
 
 .rowCheckbox {
@@ -287,16 +276,12 @@
 }
 
 .councilName {
-	font-weight: var(--font-weight-bold);
-	color: var(--color-gray-800);
-	font-size: var(--font-size-base);
+	composes: cellTitle from '../../../shared/components/Table/Table.module.css';
 }
 
 /* Beautiful tag style for IDs */
 .councilSub {
-	font-family: var(--font-mono);
-	font-size: var(--font-size-2xs);
-	color: var(--color-gray-500);
+	composes: cellCode from '../../../shared/components/Table/Table.module.css';
 	background: var(--color-gray-100);
 	padding: 2px 6px;
 	border-radius: 4px;

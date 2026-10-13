@@ -31,7 +31,7 @@ export {
 	BulkBar,
 } from './Table/RowSelect';
 export type { RowSelectionLike } from './Table/RowSelect';
-export { SearchInput, PageSizeSelect, SelectionCount, RowAction, RowActions } from './Table/TableToolbar';
+export { SearchInput, SelectionCount, RowAction, RowActions } from './Table/TableToolbar';
 
 export {
 	Skeleton,

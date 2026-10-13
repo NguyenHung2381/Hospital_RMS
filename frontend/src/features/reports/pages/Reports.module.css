@@ -274,21 +274,13 @@
 	border-collapse: collapse;
 }
 .dtTh {
-	text-align: left;
-	font-size: var(--font-size-2xs);
-	font-weight: var(--font-weight-semibold);
-	color: var(--color-gray-400);
-	text-transform: uppercase;
-	letter-spacing: 0.4px;
-	padding: 6px 8px;
-	border-bottom: 1px solid var(--color-gray-100);
+	composes: th from '../../../shared/components/Table/Table.module.css';
 }
 .dtThIdx {
-	width: 4%;
-	text-align: center;
+	composes: thIdx from '../../../shared/components/Table/Table.module.css';
 }
 .dtIdx {
-	text-align: center;
+	composes: tdIdx from '../../../shared/components/Table/Table.module.css';
 }
 .dtThName {
 	width: 20%;
@@ -304,16 +296,10 @@
 	width: 20%;
 }
 .dtRow {
-	transition: background var(--transition-fast);
-}
-.dtRow:hover {
-	background: var(--color-gray-50);
+	composes: tr from '../../../shared/components/Table/Table.module.css';
 }
 .dtTd {
-	padding: 7px 8px;
-	font-size: var(--font-size-compact);
-	color: var(--color-gray-700);
-	border-bottom: 1px solid var(--color-gray-50);
+	composes: td from '../../../shared/components/Table/Table.module.css';
 }
 .dtNum {
 	text-align: right;

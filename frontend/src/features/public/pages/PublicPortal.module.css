@@ -533,22 +533,8 @@
 }
 
 .resultTable {
-	width: 100%;
-	border-collapse: collapse;
+	composes: table from '../../../shared/components/Table/Table.module.css';
 	margin-top: var(--space-5);
-	font-size: var(--font-size-sm);
-}
-.resultTable th,
-.resultTable td {
-	padding: var(--space-3);
-	text-align: left;
-	border-bottom: 1px solid var(--color-gray-100);
-}
-.resultTable th {
-	color: var(--color-gray-500);
-	font-weight: var(--font-weight-medium);
-	font-size: var(--font-size-xs);
-	text-transform: uppercase;
 }
 
 .badge {

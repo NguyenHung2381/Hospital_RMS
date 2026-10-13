@@ -43,6 +43,8 @@ export default function AdminNotifications() {
 		setPage,
 		total,
 		totalPages,
+		pageSize,
+		setPageSize,
 		search,
 		setSearch,
 		filterType,
@@ -84,6 +86,11 @@ export default function AdminNotifications() {
 					page={page}
 					setPage={setPage}
 					totalPages={totalPages}
+					pageSize={pageSize}
+					onPageSizeChange={(n) => {
+						setPageSize(n);
+						setPage(1);
+					}}
 					search={search}
 					setSearch={setSearch}
 					filterType={filterType}

@@ -9,6 +9,9 @@ import {
 } from '../types/seminar.type';
 import { saveBlob } from '../utils/saveBlob';
 import styles from '../pages/Seminar.module.css';
+import tbl from '@/shared/components/Table/Table.module.css';
+import { useClientPaging } from '@/shared/hooks/useClientPaging';
+import { Pagination } from '@/shared/components/Table/Pagination';
 
 const fmtDate = (s: string | null) => {
 	if (!s) return '';
@@ -83,6 +86,7 @@ export function SeminarListImportModal({
 	};
 
 	const rows = preview?.rows ?? [];
+	const pg = useClientPaging(rows);
 	const s = preview?.summary;
 
 	return (
@@ -177,7 +181,7 @@ export function SeminarListImportModal({
 								<table className={styles.table}>
 									<thead>
 										<tr>
-											<th>Dòng</th>
+											<th className={tbl.thIdx}>Dòng</th>
 											<th>Tên hội thảo / hội nghị</th>
 											<th>Hình thức</th>
 											<th>Thời gian</th>
@@ -187,7 +191,7 @@ export function SeminarListImportModal({
 										</tr>
 									</thead>
 									<tbody>
-										{rows.map((r) => {
+										{pg.paged.map((r) => {
 											const bad = r.errors.length > 0;
 											return (
 												<tr
@@ -196,7 +200,7 @@ export function SeminarListImportModal({
 												>
 													<td className={styles.tdIdx}>{r.row}</td>
 													<td>
-														{r.title}
+														<span className={tbl.cellTitle}>{r.title}</span>
 														{[...r.errors, ...r.warnings].map((w, j) => (
 															<div
 																key={j}
@@ -231,6 +235,10 @@ export function SeminarListImportModal({
 									</tbody>
 								</table>
 							</div>
+							<Pagination
+								{...pg.pagination}
+								itemLabel='dòng'
+							/>
 						</>
 					)}
 				</>

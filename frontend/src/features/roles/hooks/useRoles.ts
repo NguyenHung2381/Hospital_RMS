@@ -4,6 +4,7 @@ import { useRealtimeUpdate } from '../../../layouts/hooks/useRealtime';
 import { bulkToast, runBulk } from '../../../shared/utils/runBulk';
 import { cloneRole, createRole, deleteRole, getRoles, updateRole } from '../api/roleApi';
 import type { ModalType, Role, RoleFormData, RoleStats } from '../types/role.type';
+import { DEFAULT_PAGE_SIZE } from '@/shared/utils/constants';
 
 const EMPTY_STATS: RoleStats = { total: 0, withUsers: 0, totalUsers: 0 };
 
@@ -23,7 +24,7 @@ export function useRoles() {
 	// Vai trò đang được nhân bản / xem danh sách người dùng
 	const [actionRole, setActionRole] = useState<Role | null>(null);
 	const [loading, setLoading] = useState(false);
-	const [pageSize, setPageSize] = useState(10);
+	const [pageSize, setPageSize] = useState<number>(DEFAULT_PAGE_SIZE);
 	const [page, setPage] = useState(1);
 	const [refreshKey, setRefreshKey] = useState(0);
 	const [permCountMap, setPermCountMap] = useState<Record<string, number>>({});

@@ -1,4 +1,5 @@
 import { showToast } from '@/shared/utils/feedback';
+import { DEFAULT_PAGE_SIZE } from '@/shared/utils/constants';
 import { useCallback, useEffect, useState } from 'react';
 import { useRealtimeUpdate } from '../../../layouts/hooks/useRealtime';
 import {
@@ -23,7 +24,7 @@ export function usePersonMerge() {
 	const [search, setSearch] = useState('');
 	const [debouncedSearch, setDebouncedSearch] = useState('');
 	const [page, setPage] = useState(1);
-	const [pageSize] = useState(20);
+	const [pageSize, setPageSize] = useState<number>(DEFAULT_PAGE_SIZE);
 
 	const [rows, setRows] = useState<MergeCandidate[]>([]);
 	const [total, setTotal] = useState(0);
@@ -144,6 +145,7 @@ export function usePersonMerge() {
 		search,
 		page,
 		pageSize,
+		setPageSize,
 		rows,
 		total,
 		totalPages,

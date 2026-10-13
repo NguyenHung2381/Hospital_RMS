@@ -29,6 +29,13 @@ export function isAddRoleAllowed(
 	return true;
 }
 
+/** Vai trò mặc định cho người thêm tiếp theo: lần lượt Chủ nhiệm → Thư ký → Thành viên. */
+export function nextAddRole(pendingMembers: { role: MemberRole }[]): MemberRole {
+	if (!pendingMembers.some((m) => m.role === 'leader')) return 'leader';
+	if (!pendingMembers.some((m) => m.role === 'secretary')) return 'secretary';
+	return 'member';
+}
+
 export function isEditRoleAllowed(
 	pendingMembers: { tempId: string; role: MemberRole }[],
 	tempId: string,

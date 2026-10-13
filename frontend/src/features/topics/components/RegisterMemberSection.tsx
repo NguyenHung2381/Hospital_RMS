@@ -12,6 +12,7 @@ import { getInitials } from '../../../shared/utils/helper';
 import styles from '../pages/TopicRegister.module.css';
 import { PendingMemberRow } from './PendingMemberList';
 import { RoleSelectPill } from './RoleSelectPill';
+import { nextAddRole } from '../utils/topicHelpers';
 
 interface RegisterMemberSectionProps {
 	depts: SimpleItem[];
@@ -212,7 +213,7 @@ export function RegisterMemberSection({
 							phone_number: '',
 							chuc_vu: '',
 							department_id: '',
-							role: pendingMembers.length === 0 ? 'leader' : 'member',
+							role: nextAddRole(pendingMembers),
 						});
 						setShowManualForm(true);
 					}}

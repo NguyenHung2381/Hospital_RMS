@@ -378,7 +378,11 @@ const grantAccounts = async (traineeIds, actorId) => {
 			skipped.push({
 				trainee_id: trainee.id,
 				full_name: trainee.full_name,
-				reason: err instanceof Error ? err.message : 'Lỗi không xác định',
+				reason: /U[QX]_users_email/.test(err?.message)
+					? `Email ${trainee.email} đã được dùng cho tài khoản khác (có thể học viên đã có tài khoản nhân viên)`
+					: err instanceof Error
+						? err.message
+						: 'Lỗi không xác định',
 			});
 		}
 	}

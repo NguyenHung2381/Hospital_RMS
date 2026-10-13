@@ -77,8 +77,7 @@
 	min-width: 0;
 }
 .personName {
-	font-weight: var(--font-weight-semibold);
-	color: var(--color-gray-800);
+	composes: cellTitle from '../../../shared/components/Table/Table.module.css';
 }
 .personSub {
 	font-size: var(--font-size-xs);

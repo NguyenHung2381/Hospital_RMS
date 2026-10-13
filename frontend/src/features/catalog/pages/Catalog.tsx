@@ -1,5 +1,5 @@
 import { PlusSvg } from '@/assets/icons';
-import { PageSizeSelect, RowActions, SearchInput, SelectionCount } from '@/shared/components/Table/TableToolbar';
+import { RowActions, SearchInput, SelectionCount } from '@/shared/components/Table/TableToolbar';
 import styles from '@/shared/components/Table/CrudPage.module.css';
 import { avatarColor, getInitials } from '@/shared/utils';
 import AdminLayout from '../../../layouts/AdminLayout';
@@ -12,6 +12,7 @@ import { CatalogDeleteModal } from '../components/CatalogDeleteModal';
 import { CatalogFormModal } from '../components/CatalogFormModal';
 import { CATALOG_GROUPS, TAB_CONFIG, useCatalog } from '../hooks/useCatalog';
 import type { CatalogGroup } from '../types/catalog.type';
+import tbl from '@/shared/components/Table/Table.module.css';
 
 /** Trang danh mục đơn giản (tên + mô tả) — dùng cho cả danh mục NCKH và Đào tạo. */
 export default function Catalog({ group }: { group: CatalogGroup }) {
@@ -70,10 +71,6 @@ export default function Catalog({ group }: { group: CatalogGroup }) {
 							onChange={d.handleSearch}
 							placeholder='Tìm theo tên, mô tả...'
 						/>
-						<PageSizeSelect
-							value={d.pageSize}
-							onChange={d.handlePageSize}
-						/>
 					</div>
 				</div>
 
@@ -89,7 +86,7 @@ export default function Catalog({ group }: { group: CatalogGroup }) {
 										onChange={rowSel.toggleSelectAll}
 									/>
 								</th>
-								<th className={styles.th}>#</th>
+								<th className={`${styles.th} ${tbl.thIdx}`}>STT</th>
 								<th className={styles.th}>{d.cfg.label}</th>
 								<th className={styles.th}>Mô tả</th>
 								<th className={`${styles.th} ${styles.thRight}`}>Thao tác</th>
@@ -163,17 +160,15 @@ export default function Catalog({ group }: { group: CatalogGroup }) {
 					</table>
 				</div>
 
-				{d.filtered.length > 0 && d.totalPages > 1 && (
-					<Pagination
-						page={d.safePage}
-						totalPages={d.totalPages}
-						total={d.filtered.length}
-						rowsPerPage={d.pageSize}
-						onPageChange={d.setPage}
-						itemLabel={label}
-						hideSizeSelect
-					/>
-				)}
+								<Pagination
+					page={d.safePage}
+					totalPages={d.totalPages}
+					total={d.filtered.length}
+					rowsPerPage={d.pageSize}
+					onPageChange={d.setPage}
+					itemLabel={label}
+					onRowsPerPageChange={d.handlePageSize}
+				/>
 			</div>
 
 			{d.modal === 'add' && (

@@ -10,6 +10,9 @@ import {
 	type ParticipationType,
 } from '../types/seminar.type';
 import styles from '../pages/Seminar.module.css';
+import tbl from '@/shared/components/Table/Table.module.css';
+import { useClientPaging } from '@/shared/hooks/useClientPaging';
+import { Pagination } from '@/shared/components/Table/Pagination';
 
 const fmtDob = (row: { dob: string | null; dob_text: string | null }) => {
 	if (row.dob) {
@@ -126,6 +129,7 @@ export function ParticipantImportModal({
 	};
 
 	const rows = preview?.rows ?? [];
+	const pg = useClientPaging(rows);
 	const s = preview?.summary;
 
 	const parseCredit = (v: string | undefined) => {
@@ -317,7 +321,7 @@ export function ParticipantImportModal({
 								<table className={styles.table}>
 									<thead>
 										<tr>
-											<th>#</th>
+											<th className={tbl.thIdx}>STT</th>
 											<th>Họ tên</th>
 											<th>Vai trò</th>
 											<th>Nguồn</th>
@@ -327,12 +331,14 @@ export function ParticipantImportModal({
 										</tr>
 									</thead>
 									<tbody>
-										{rows.map((r, i) => (
+										{pg.paged.map((r, i) => (
 											<tr key={r.row}>
-												<td className={styles.tdIdx}>{i + 1}</td>
+												<td className={styles.tdIdx}>{pg.offset + i + 1}</td>
 												<td>
-													{r.title_prefix ? `${r.title_prefix} ` : ''}
-													{r.full_name}
+													<span className={tbl.cellTitle}>
+														{r.title_prefix ? `${r.title_prefix} ` : ''}
+														{r.full_name}
+													</span>
 													{r.is_foreign && (
 														<Badge
 															tone='amber'
@@ -385,6 +391,10 @@ export function ParticipantImportModal({
 									</tbody>
 								</table>
 							</div>
+							<Pagination
+								{...pg.pagination}
+								itemLabel='dòng'
+							/>
 						</>
 					)}
 				</>

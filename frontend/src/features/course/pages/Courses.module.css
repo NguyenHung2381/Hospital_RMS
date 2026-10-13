@@ -70,8 +70,7 @@
 	composes: tdActions from '../../../shared/components/Table/Table.module.css';
 }
 .itemName {
-	font-weight: var(--font-weight-semibold);
-	color: var(--color-primary-dark);
+	composes: cellLink from '../../../shared/components/Table/Table.module.css';
 	cursor: pointer;
 }
 .itemName:hover {
@@ -79,8 +78,7 @@
 	text-decoration: underline;
 }
 .descText {
-	font-size: var(--font-size-xs);
-	color: var(--color-gray-500);
+	composes: cellSub from '../../../shared/components/Table/Table.module.css';
 }
 .badge {
 	font-size: var(--font-size-2xs);
@@ -378,13 +376,10 @@
 	min-width: 0;
 }
 .subRowName {
-	font-weight: var(--font-weight-semibold);
-	font-size: var(--font-size-compact);
-	color: var(--color-gray-800);
+	composes: cellTitle from '../../../shared/components/Table/Table.module.css';
 }
 .subRowMeta {
-	font-size: var(--font-size-xs);
-	color: var(--color-gray-500);
+	composes: cellSub from '../../../shared/components/Table/Table.module.css';
 	margin-top: 2px;
 }
 .subEmpty {

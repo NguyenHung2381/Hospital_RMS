@@ -9,6 +9,7 @@ import {
 	updateLecturer,
 } from '../api/lecturerApi';
 import { EMPTY_FORM, type Lecturer, type LecturerFormData, type ModalType } from '../types/lecturer.type';
+import { DEFAULT_PAGE_SIZE } from '@/shared/utils/constants';
 
 export function useLecturers() {
 	// Chỉ chứa các dòng của TRANG hiện tại — server lo tìm kiếm & phân trang
@@ -21,7 +22,7 @@ export function useLecturers() {
 	const [editingLecturer, setEditingLecturer] = useState<Lecturer | null>(null);
 	const [deletingLecturer, setDeletingLecturer] = useState<Lecturer | null>(null);
 	const [loading, setLoading] = useState(false);
-	const [pageSize, setPageSize] = useState(10);
+	const [pageSize, setPageSize] = useState<number>(DEFAULT_PAGE_SIZE);
 	const [page, setPage] = useState(1);
 	const [refreshKey, setRefreshKey] = useState(0);
 

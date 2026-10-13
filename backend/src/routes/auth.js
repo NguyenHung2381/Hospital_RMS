@@ -144,10 +144,10 @@ const forgotLimiter = rateLimit({
 router.post(
 	'/login',
 	loginLimiter,
-	// Chặn rẻ trước mọi bước tốn kém: username khớp cột VARCHAR(50), mật khẩu
+	// Chặn rẻ trước mọi bước tốn kém: username hoặc email (VARCHAR(100)), mật khẩu
 	// tối đa 128 ký tự như passwordPolicy (bcrypt chỉ dùng 72 byte đầu).
 	[
-		body('username').isString().notEmpty().isLength({ max: 50 }),
+		body('username').isString().notEmpty().isLength({ max: 100 }),
 		body('password').isString().notEmpty().isLength({ max: 128 }),
 		body('pow_token').optional().isString().isLength({ max: 2048 }),
 		body('pow_nonce').optional().isString().isLength({ max: 24 }),
@@ -372,7 +372,7 @@ router.get('/2fa/status', authenticate, authController.status2FA);
 router.post(
 	'/forgot-password',
 	forgotLimiter,
-	[body('username').isString().notEmpty().isLength({ max: 50 })],
+	[body('username').isString().notEmpty().isLength({ max: 100 })],
 	validate,
 	passwordResetController.forgot,
 );
@@ -389,7 +389,7 @@ router.post(
 	'/reset-password',
 	forgotLimiter,
 	[
-		body('username').isString().notEmpty().isLength({ max: 50 }),
+		body('username').isString().notEmpty().isLength({ max: 100 }),
 		body('code').isString().matches(/^\d{6}$/).withMessage('Mã OTP gồm 6 chữ số'),
 		body('new_password').custom((value, { req }) => {
 			const msg = checkPassword(value, { username: req.body?.username });

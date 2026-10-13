@@ -1,4 +1,4 @@
-import { SearchInput, PageSizeSelect, SelectionCount, RowAction, RowActions } from '@/shared/components/Table/TableToolbar';
+import { SearchInput, SelectionCount, RowAction, RowActions } from '@/shared/components/Table/TableToolbar';
 import { useState } from 'react';
 import { CalendarSvg, EyeSvg, PlusSvg } from '@/assets/icons';
 import AdminLayout from '../../../layouts/AdminLayout';
@@ -15,6 +15,7 @@ import { useCourses } from '../hooks/useCourses';
 import type { DetailTab } from '../hooks/useCourseDetail';
 import { DISPLAY_STATUS_CFG } from '../types/course.type';
 import styles from './Courses.module.css';
+import tbl from '@/shared/components/Table/Table.module.css';
 
 export default function Courses() {
 	const d = useCourses();
@@ -56,10 +57,6 @@ export default function Courses() {
 							onChange={d.handleSearch}
 							placeholder='Tìm theo tên khóa học...'
 						/>
-						<PageSizeSelect
-							value={d.pageSize}
-							onChange={d.handlePageSize}
-						/>
 					</div>
 				</div>
 
@@ -75,7 +72,7 @@ export default function Courses() {
 									onChange={rowSel.toggleSelectAll}
 								/>
 							</th>
-							<th className={styles.th}>#</th>
+							<th className={`${styles.th} ${tbl.thIdx}`}>STT</th>
 							<th className={styles.th}>Khóa học</th>
 							<th className={styles.th}>Chương trình</th>
 							<th className={styles.th}>Đăng ký</th>
@@ -215,17 +212,15 @@ export default function Courses() {
 				</table>
 				</div>
 
-				{d.total > 0 && d.totalPages > 1 && (
-					<Pagination
-						page={d.safePage}
-						totalPages={d.totalPages}
-						total={d.total}
-						rowsPerPage={d.pageSize}
-						onPageChange={d.setPage}
-						itemLabel='khóa học'
-						hideSizeSelect
-					/>
-				)}
+								<Pagination
+					page={d.safePage}
+					totalPages={d.totalPages}
+					total={d.total}
+					rowsPerPage={d.pageSize}
+					onPageChange={d.setPage}
+					itemLabel='khóa học'
+					onRowsPerPageChange={d.handlePageSize}
+				/>
 			</div>
 
 

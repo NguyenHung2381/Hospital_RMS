@@ -21,6 +21,7 @@ import {
 	BulkBar,
 	SelectCheckbox,
 } from '../../../shared/components/Table/RowSelect';
+import sel from '../../../shared/components/Table/RowSelect.module.css';
 import { useRowSelection } from '../../../shared/hooks/useRowSelection';
 import { formatDateTimeVN } from '../../../shared/utils/formatDate';
 import { IssueCmeModal } from '../components/IssueCmeModal';
@@ -43,6 +44,9 @@ import {
 	type SeminarParticipant,
 } from '../types/seminar.type';
 import styles from './Seminar.module.css';
+import tbl from '@/shared/components/Table/Table.module.css';
+import { useClientPaging } from '@/shared/hooks/useClientPaging';
+import { Pagination } from '@/shared/components/Table/Pagination';
 
 const TABS: { key: 'all' | ParticipationType; label: string }[] = [
 	{ key: 'all', label: 'Tất cả' },
@@ -90,7 +94,8 @@ export default function SeminarDetail() {
 				: d.participants.filter((p) => p.participation_type === tab),
 		[d.participants, tab],
 	);
-	const rowSel = useRowSelection(filtered.map((p) => p.id));
+	const pg = useClientPaging(filtered);
+	const rowSel = useRowSelection(pg.paged.map((p) => p.id));
 	const selected = filtered.filter((p) => rowSel.isSelected(p.id));
 	const hasTest = !!d.seminar?.test_questions;
 	const issuable = selected.filter((p) => p.cme_seq == null && cmeEligible(p, hasTest));
@@ -296,7 +301,7 @@ export default function SeminarDetail() {
 						<table className={styles.table}>
 							<thead>
 								<tr>
-									<th style={{ width: 36 }}>
+									<th className={sel.checkCol}>
 										<SelectCheckbox
 											title='Chọn tất cả'
 											checked={rowSel.allPageSelected}
@@ -304,7 +309,7 @@ export default function SeminarDetail() {
 											onChange={rowSel.toggleSelectAll}
 										/>
 									</th>
-									<th>#</th>
+									<th className={tbl.thIdx}>STT</th>
 									<th>Họ tên</th>
 									<th>Vai trò</th>
 									<th>Nguồn</th>
@@ -327,19 +332,24 @@ export default function SeminarDetail() {
 										</td>
 									</tr>
 								) : (
-									filtered.map((p, i) => (
-										<tr key={p.id}>
-											<td>
+									pg.paged.map((p, i) => (
+										<tr
+											key={p.id}
+											className={rowSel.isSelected(p.id) ? sel.rowSelected : undefined}
+										>
+											<td className={sel.checkCol}>
 												<SelectCheckbox
 													title='Chọn'
 													checked={rowSel.isSelected(p.id)}
 													onChange={() => rowSel.toggleSelect(p.id)}
 												/>
 											</td>
-											<td className={styles.tdIdx}>{i + 1}</td>
+											<td className={styles.tdIdx}>{pg.offset + i + 1}</td>
 											<td>
-												{p.title_prefix ? `${p.title_prefix} ` : ''}
-												{p.full_name}
+												<span className={tbl.cellTitle}>
+													{p.title_prefix ? `${p.title_prefix} ` : ''}
+													{p.full_name}
+												</span>
 												{p.phone && <div className={styles.muted}>{p.phone}</div>}
 												{p.is_foreign && (
 													<Badge
@@ -438,6 +448,10 @@ export default function SeminarDetail() {
 							</tbody>
 						</table>
 						</div>
+						<Pagination
+							{...pg.pagination}
+							itemLabel='người'
+						/>
 					</div>
 				</>
 			)}

@@ -191,7 +191,7 @@ const create = async (data, actorId) => {
 				: null,
 		)
 		.input('full_name', sql.NVarChar(200), data.full_name)
-		.input('email', sql.VarChar(100), data.email || null)
+		.input('email', sql.VarChar(100), data.email?.trim() || null)
 		.input('department_id', sql.VarChar(20), data.department_id || null)
 		.input('role_id', sql.VarChar(20), data.role_id || (await requireRoleId(ROLE.MEMBER)))
 		.query(`
@@ -236,7 +236,8 @@ const update = async (id, data, actorId) => {
 	}
 	if (data.email !== undefined) {
 		sets.push('email = @email');
-		req.input('email', sql.VarChar(100), data.email);
+		// '' → NULL: unique index trên email chỉ bỏ qua NULL
+		req.input('email', sql.VarChar(100), data.email?.trim() || null);
 	}
 	if (data.department_id !== undefined) {
 		sets.push('department_id = @department_id');

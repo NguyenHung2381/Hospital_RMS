@@ -1,4 +1,4 @@
-import { SearchInput, PageSizeSelect, SelectionCount, RowAction, RowActions } from '@/shared/components/Table/TableToolbar';
+import { SearchInput, SelectionCount, RowAction, RowActions } from '@/shared/components/Table/TableToolbar';
 import { BarChartSvg, LinkSvg, PlusSvg } from '@/assets/icons';
 import AdminLayout from '../../../layouts/AdminLayout';
 import { SkeletonTable } from '../../../shared/components/Loading';
@@ -13,6 +13,7 @@ import { SurveyResultsModal } from '../components/SurveyResultsModal';
 import { useSurvey } from '../hooks/useSurvey';
 import type { SurveyStatus } from '../types/survey.type';
 import styles from './Survey.module.css';
+import tbl from '@/shared/components/Table/Table.module.css';
 
 const STATUS_CLASS: Record<SurveyStatus, string> = {
 	draft: 'statusDraft',
@@ -59,10 +60,6 @@ export default function Survey() {
 							onChange={d.handleSearch}
 							placeholder='Tìm theo tên...'
 						/>
-						<PageSizeSelect
-							value={d.pageSize}
-							onChange={d.handlePageSize}
-						/>
 					</div>
 				</div>
 
@@ -78,7 +75,7 @@ export default function Survey() {
 										onChange={rowSel.toggleSelectAll}
 									/>
 								</th>
-								<th className={styles.th}>#</th>
+								<th className={`${styles.th} ${tbl.thIdx}`}>STT</th>
 								<th className={styles.th}>Khảo sát</th>
 								<th className={styles.th}>Đối tượng</th>
 								<th className={styles.th}>Câu hỏi</th>
@@ -168,17 +165,15 @@ export default function Survey() {
 					</table>
 				</div>
 
-				{d.filtered.length > 0 && d.totalPages > 1 && (
-					<Pagination
-						page={d.safePage}
-						totalPages={d.totalPages}
-						total={d.filtered.length}
-						rowsPerPage={d.pageSize}
-						onPageChange={d.setPage}
-						itemLabel='khảo sát'
-						hideSizeSelect
-					/>
-				)}
+								<Pagination
+					page={d.safePage}
+					totalPages={d.totalPages}
+					total={d.filtered.length}
+					rowsPerPage={d.pageSize}
+					onPageChange={d.setPage}
+					itemLabel='khảo sát'
+					onRowsPerPageChange={d.handlePageSize}
+				/>
 			</div>
 
 

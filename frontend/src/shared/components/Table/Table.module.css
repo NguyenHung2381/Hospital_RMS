@@ -37,7 +37,7 @@
 	text-align: left;
 	font-size: var(--font-size-2xs);
 	font-weight: 700;
-	color: #1e293b;
+	color: var(--color-gray-800);
 	text-transform: uppercase;
 	letter-spacing: 0.05em;
 	background: #f1f5f9;
@@ -60,7 +60,7 @@
 .table tbody td {
 	padding: 13px 18px;
 	font-size: var(--font-size-sm);
-	color: #334155;
+	color: var(--color-gray-700);
 	vertical-align: middle;
 }
 
@@ -70,7 +70,7 @@
 	text-align: left;
 	font-size: var(--font-size-2xs);
 	font-weight: 700;
-	color: #1e293b;
+	color: var(--color-gray-800);
 	text-transform: uppercase;
 	letter-spacing: 0.05em;
 	background: #f1f5f9;
@@ -109,17 +109,53 @@
 .td {
 	padding: 13px 18px;
 	font-size: var(--font-size-sm);
-	color: #334155;
+	color: var(--color-gray-700);
 	vertical-align: middle;
 }
 
-/* Cột số thứ tự */
-.tdIdx {
-	font-size: var(--font-size-xs);
-	color: #64748b;
-	font-weight: 600;
-	width: 48px;
+/* Cột số thứ tự — header "STT" dùng .thIdx, ô dùng .tdIdx. Nhân đôi class để
+ * thắng `.table tbody td` ở các bảng dùng <td> trần. */
+.thIdx.thIdx {
+	width: 56px;
 	text-align: center;
+}
+.tdIdx.tdIdx {
+	font-size: var(--font-size-xs);
+	color: var(--color-gray-500);
+	font-weight: 600;
+	width: 56px;
+	text-align: center;
+}
+
+/* ── Chữ trong ô — 3 kiểu duy nhất, feature `composes` thay vì tự đặt màu/cỡ ── */
+/* Thông tin chính của dòng (tên, tiêu đề): in đậm, xám đậm */
+.cellTitle {
+	font-size: var(--font-size-sm);
+	font-weight: var(--font-weight-bold);
+	color: var(--color-gray-800);
+}
+/* Tên bấm được để mở chi tiết: cùng kiểu, chỉ đổi màu khi rê chuột */
+.cellLink {
+	composes: cellTitle;
+	cursor: pointer;
+	transition: color var(--transition-fast);
+}
+.cellLink:hover {
+	color: var(--color-primary-dark);
+	text-decoration: underline;
+}
+/* Chữ phụ dưới tên / mô tả ngắn / ngày tháng */
+.cellSub,
+.dateText {
+	font-size: var(--font-size-xs);
+	font-weight: var(--font-weight-normal);
+	color: var(--color-gray-500);
+}
+/* Mã định danh (ID, mã NV…) */
+.cellCode {
+	font-family: var(--font-mono);
+	font-size: var(--font-size-2xs);
+	color: var(--color-gray-500);
 }
 
 /* Cột thao tác (nút icon căn phải) */

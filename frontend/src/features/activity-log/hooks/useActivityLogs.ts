@@ -6,8 +6,8 @@ import {
 	type ActivityLogFilters,
 	type ActivityStats,
 } from '../api/activityLogApi';
+import { DEFAULT_PAGE_SIZE } from '@/shared/utils/constants';
 
-export const PAGE_SIZE_OPTIONS = [20, 50, 100, 200] as const;
 
 // exact = khung giờ chính xác của 1 phiên truy cập (bấm từ tab Phiên).
 export type RangePreset = '1h' | 'today' | '24h' | '7d' | '30d' | 'custom' | 'exact';
@@ -93,7 +93,7 @@ export function useActivityLogs() {
 	const [filters, setFilters] = useState<FilterState>(DEFAULT_FILTERS);
 	const [rows, setRows] = useState<ActivityLog[]>([]);
 	const [page, setPage] = useState(1);
-	const [pageSize, setPageSize] = useState<number>(20);
+	const [pageSize, setPageSize] = useState<number>(DEFAULT_PAGE_SIZE);
 	const [total, setTotal] = useState(0);
 	const [totalPages, setTotalPages] = useState(1);
 	const [truncated, setTruncated] = useState(false);

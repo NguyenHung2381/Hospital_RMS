@@ -1,5 +1,5 @@
 import { avatarColor, getInitials } from '@/shared/utils';
-import { SearchInput, PageSizeSelect, RowAction, RowActions } from '@/shared/components/Table/TableToolbar';
+import { SearchInput, RowAction, RowActions } from '@/shared/components/Table/TableToolbar';
 import { useState } from 'react';
 import { BookOpenSvg, FileTextSvg, KeySvg, PlusSvg, TrashSvg, UploadSvg } from '@/assets/icons';
 import { Badge } from '@/shared/components';
@@ -17,6 +17,7 @@ import { TraineeImportModal } from '../components/TraineeImportModal';
 import { useTrainees } from '../hooks/useTrainees';
 import { formatDate } from '../../../shared/utils/formatDate';
 import styles from './Trainees.module.css';
+import tbl from '@/shared/components/Table/Table.module.css';
 
 export default function Trainees() {
 	const d = useTrainees();
@@ -87,10 +88,6 @@ export default function Trainees() {
 							onChange={d.handleSearch}
 							placeholder='Tìm theo tên, CCCD, điện thoại, email...'
 						/>
-						<PageSizeSelect
-							value={d.pageSize}
-							onChange={d.handlePageSize}
-						/>
 					</div>
 				</div>
 
@@ -106,7 +103,7 @@ export default function Trainees() {
 									onChange={rowSel.toggleSelectAll}
 								/>
 							</th>
-							<th className={styles.th}>#</th>
+							<th className={`${styles.th} ${tbl.thIdx}`}>STT</th>
 							<th className={styles.th}>Học viên</th>
 							<th className={styles.th}>CCCD/CMND</th>
 							<th className={styles.th}>Liên hệ</th>
@@ -236,17 +233,15 @@ export default function Trainees() {
 				</table>
 				</div>
 
-				{d.filtered.length > 0 && d.totalPages > 1 && (
-					<Pagination
-						page={d.safePage}
-						totalPages={d.totalPages}
-						total={d.filtered.length}
-						rowsPerPage={d.pageSize}
-						onPageChange={d.setPage}
-						itemLabel='học viên'
-						hideSizeSelect
-					/>
-				)}
+								<Pagination
+					page={d.safePage}
+					totalPages={d.totalPages}
+					total={d.filtered.length}
+					rowsPerPage={d.pageSize}
+					onPageChange={d.setPage}
+					itemLabel='học viên'
+					onRowsPerPageChange={d.handlePageSize}
+				/>
 			</div>
 
 			<BulkDeleteModal

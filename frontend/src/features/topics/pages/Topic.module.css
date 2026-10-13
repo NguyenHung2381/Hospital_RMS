@@ -329,16 +329,11 @@
 
 /* Topic cell */
 .topicId {
-	font-size: var(--font-size-2xs);
-	font-family: var(--font-mono);
-	color: var(--color-gray-400);
-	font-weight: var(--font-weight-medium);
+	composes: cellCode from '../../../shared/components/Table/Table.module.css';
 }
 
 .topicTitle {
-	font-size: var(--font-size-sm);
-	font-weight: var(--font-weight-semibold);
-	color: var(--color-gray-800);
+	composes: cellLink from '../../../shared/components/Table/Table.module.css';
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
@@ -352,8 +347,7 @@
 }
 
 .topicMeta {
-	font-size: var(--font-size-2xs);
-	color: var(--color-gray-400);
+	composes: cellSub from '../../../shared/components/Table/Table.module.css';
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
@@ -361,8 +355,7 @@
 
 /* Date text */
 .dateText {
-	font-size: var(--font-size-xs);
-	color: var(--color-gray-500);
+	composes: dateText from '../../../shared/components/Table/Table.module.css';
 }
 
 /* Action buttons */

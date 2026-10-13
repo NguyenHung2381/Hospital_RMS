@@ -14,6 +14,7 @@ import {
 	type DeptFormData,
 	type ModalType,
 } from '../types/department.type';
+import { DEFAULT_PAGE_SIZE } from '@/shared/utils/constants';
 
 export function useDepartments() {
 	// Chỉ chứa các dòng của TRANG hiện tại — server lo tìm kiếm & phân trang
@@ -26,7 +27,7 @@ export function useDepartments() {
 	const [editingDept, setEditingDept] = useState<Department | null>(null);
 	const [deletingDept, setDeletingDept] = useState<Department | null>(null);
 	const [loading, setLoading] = useState(false);
-	const [pageSize, setPageSize] = useState<number>(10);
+	const [pageSize, setPageSize] = useState<number>(DEFAULT_PAGE_SIZE);
 	const [page, setPage] = useState(1);
 	const [refreshKey, setRefreshKey] = useState(0);
 

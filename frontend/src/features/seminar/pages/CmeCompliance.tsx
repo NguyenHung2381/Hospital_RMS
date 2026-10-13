@@ -24,6 +24,8 @@ import {
 } from '../api/cmeRequirementApi';
 import { fileSlug, saveBlob } from '../utils/saveBlob';
 import styles from './Seminar.module.css';
+import tbl from '@/shared/components/Table/Table.module.css';
+import { DEFAULT_PAGE_SIZE } from '@/shared/utils/constants';
 
 interface SimpleItem {
 	id: string;
@@ -32,7 +34,6 @@ interface SimpleItem {
 
 const CURRENT_YEAR = new Date().getFullYear();
 const YEAR_OPTIONS = [CURRENT_YEAR + 1, CURRENT_YEAR, CURRENT_YEAR - 1, CURRENT_YEAR - 2];
-const PAGE_SIZE_OPTIONS = [10, 25, 50, 100] as const;
 
 type TabKey = 'compliance' | 'requirements';
 
@@ -54,7 +55,7 @@ function usePagedList<T>(
 ) {
 	const [search, setSearch] = useState('');
 	const [page, setPage] = useState(1);
-	const [pageSize, setPageSize] = useState<number>(25);
+	const [pageSize, setPageSize] = useState<number>(DEFAULT_PAGE_SIZE);
 
 	const filtered = useMemo(() => {
 		const q = norm(search.trim());
@@ -85,7 +86,6 @@ function usePagedList<T>(
 			totalPages,
 			total: filtered.length,
 			rowsPerPage: pageSize,
-			pageSizeOptions: PAGE_SIZE_OPTIONS,
 			onPageChange: setPage,
 			onRowsPerPageChange: (n: number) => {
 				setPageSize(n);
@@ -392,6 +392,7 @@ export default function CmeCompliance() {
 						<table className={styles.table}>
 							<thead>
 								<tr>
+									<th className={tbl.thIdx}>STT</th>
 									<th>Họ tên</th>
 									<th>Khoa / Phòng</th>
 									<th>Đã đạt</th>
@@ -404,24 +405,25 @@ export default function CmeCompliance() {
 								{loading ? (
 									<SkeletonTable
 										rows={6}
-										cols={6}
+										cols={7}
 									/>
 								) : compList.total === 0 ? (
 									compList.search || compDept ? (
-										emptyRow(6, 'Không tìm thấy nhân sự phù hợp', 'Thử đổi từ khoá hoặc bộ lọc')
+										emptyRow(7, 'Không tìm thấy nhân sự phù hợp', 'Thử đổi từ khoá hoặc bộ lọc')
 									) : requirements.length === 0 ? (
 										emptyRow(
-											6,
+											7,
 											`Chưa cấu hình ngưỡng CME cho năm ${year}`,
 											'Thêm ngưỡng ở tab "Cấu hình ngưỡng" để hệ thống đối chiếu',
 										)
 									) : (
-										emptyRow(6, 'Tất cả nhân sự đã đạt ngưỡng CME', undefined, true)
+										emptyRow(7, 'Tất cả nhân sự đã đạt ngưỡng CME', undefined, true)
 									)
 								) : (
-									compList.paged.map((row) => (
+									compList.paged.map((row, i) => (
 										<tr key={row.id}>
-											<td>{row.full_name}</td>
+											<td className={tbl.tdIdx}>{(compList.pagination.page - 1) * compList.pagination.rowsPerPage + i + 1}</td>
+											<td><span className={tbl.cellTitle}>{row.full_name}</span></td>
 											<td className={styles.muted}>{row.department_name ?? '—'}</td>
 											<td>{row.earned_credits}</td>
 											<td>{row.required_credits}</td>
@@ -449,12 +451,10 @@ export default function CmeCompliance() {
 						</table>
 					</div>
 
-					{compList.total > 0 && (
-						<Pagination
-							{...compList.pagination}
-							itemLabel='nhân sự'
-						/>
-					)}
+										<Pagination
+						{...compList.pagination}
+						itemLabel='nhân sự'
+					/>
 				</div>
 			)}
 
@@ -492,6 +492,7 @@ export default function CmeCompliance() {
 						<table className={styles.table}>
 							<thead>
 								<tr>
+									<th className={tbl.thIdx}>STT</th>
 									<th>Phạm vi</th>
 									<th>Tín chỉ yêu cầu</th>
 									<th>Ghi chú</th>
@@ -502,21 +503,22 @@ export default function CmeCompliance() {
 								{loading ? (
 									<SkeletonTable
 										rows={4}
-										cols={4}
+										cols={5}
 									/>
 								) : reqList.total === 0 ? (
 									reqList.search || reqScope ? (
-										emptyRow(4, 'Không tìm thấy ngưỡng phù hợp', 'Thử đổi từ khoá hoặc bộ lọc')
+										emptyRow(5, 'Không tìm thấy ngưỡng phù hợp', 'Thử đổi từ khoá hoặc bộ lọc')
 									) : (
 										emptyRow(
-											4,
+											5,
 											`Chưa cấu hình ngưỡng CME cho năm ${year}`,
 											'Bấm "Thêm ngưỡng" để đặt số tín chỉ tối thiểu cho toàn viện hoặc từng khoa',
 										)
 									)
 								) : (
-									reqList.paged.map((r) => (
+									reqList.paged.map((r, i) => (
 										<tr key={r.id}>
+											<td className={tbl.tdIdx}>{(reqList.pagination.page - 1) * reqList.pagination.rowsPerPage + i + 1}</td>
 											<td>{r.department_name ?? <Badge tone='blue'>Toàn viện</Badge>}</td>
 											<td>
 												<strong>{r.required_credits}</strong> tín chỉ
@@ -548,12 +550,10 @@ export default function CmeCompliance() {
 						</table>
 					</div>
 
-					{reqList.total > 0 && (
-						<Pagination
-							{...reqList.pagination}
-							itemLabel='ngưỡng'
-						/>
-					)}
+										<Pagination
+						{...reqList.pagination}
+						itemLabel='ngưỡng'
+					/>
 				</div>
 			)}
 

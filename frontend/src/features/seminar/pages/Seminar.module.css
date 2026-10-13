@@ -115,13 +115,12 @@
 	composes: tdIdx from '../../../shared/components/Table/Table.module.css';
 }
 .linkTitle {
-	color: var(--color-primary-dark);
-	font-weight: var(--font-weight-semibold);
+	composes: cellLink from '../../../shared/components/Table/Table.module.css';
 	cursor: pointer;
 	text-decoration: none;
 }
 .linkTitle:hover { text-decoration: underline; }
-.muted { color: var(--color-gray-400); }
+.muted { color: var(--color-gray-500); }
 .mono { font-family: var(--font-mono); }
 
 /* Badge: dùng <Badge tone> ở @/shared/components */
@@ -413,8 +412,7 @@
 	border: 1px solid var(--color-gray-100);
 	border-radius: var(--radius-lg);
 }
-.importPreview .table { font-size: var(--font-size-xs); }
-.importPreview .table thead th { position: sticky; top: 0; background: var(--color-white); z-index: 1; }
+.importPreview .table thead th { position: sticky; top: 0; z-index: 1; }
 .rowWarn { color: #b42318; font-size: var(--font-size-2xs); margin-top: 2px; }
 
 /* ── Danh sách ghi nhận CME độc lập ─────────────────────────────────────── */
@@ -428,11 +426,12 @@
 	composes: tdActions from '../../../shared/components/Table/Table.module.css';
 }
 .cmeFilterWide { max-width: 200px; overflow: hidden; text-overflow: ellipsis; }
-.cmeCellMain { color: var(--color-gray-800); font-weight: var(--font-weight-semibold); line-height: 1.35; }
+.cmeCellMain {
+	composes: cellTitle from '../../../shared/components/Table/Table.module.css';
+}
 .cmeCellSub {
+	composes: cellSub from '../../../shared/components/Table/Table.module.css';
 	margin-top: 2px;
-	font-size: var(--font-size-xs);
-	color: var(--color-gray-500);
 	line-height: 1.35;
 	max-width: 320px;
 	overflow: hidden;

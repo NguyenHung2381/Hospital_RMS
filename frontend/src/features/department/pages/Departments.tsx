@@ -1,4 +1,4 @@
-import { SearchInput, PageSizeSelect, SelectionCount, RowActions } from '@/shared/components/Table/TableToolbar';
+import { SearchInput, SelectionCount, RowActions } from '@/shared/components/Table/TableToolbar';
 import {
 	BookOpenSvg,
 	PlusSvg,
@@ -14,6 +14,7 @@ import { DeptDeleteModal } from '../components/DeptDeleteModal';
 import { DeptFormModal } from '../components/DeptFormModal';
 import { useDepartments } from '../hooks/useDepartments';
 import styles from './Departments.module.css';
+import tbl from '@/shared/components/Table/Table.module.css';
 
 const DEPT_COLORS = [
 	{ bg: '#e1f5ea', color: '#085028' },
@@ -74,10 +75,6 @@ export default function Departments() {
 							onChange={d.handleSearch}
 							placeholder='Tìm theo tên, mã, viết tắt...'
 						/>
-						<PageSizeSelect
-							value={d.pageSize}
-							onChange={d.handlePageSize}
-						/>
 					</div>
 				</div>
 
@@ -93,7 +90,7 @@ export default function Departments() {
 										onChange={rowSel.toggleSelectAll}
 									/>
 								</th>
-								<th className={styles.th}>#</th>
+								<th className={`${styles.th} ${tbl.thIdx}`}>STT</th>
 								<th className={styles.th}>Khoa phòng</th>
 								<th className={styles.th}>Mã</th>
 								<th className={styles.th}>Nhân sự</th>
@@ -191,7 +188,7 @@ export default function Departments() {
 					rowsPerPage={d.pageSize}
 					onPageChange={d.setPage}
 					itemLabel='khoa phòng'
-					hideSizeSelect
+					onRowsPerPageChange={d.handlePageSize}
 				/>
 			</div>
 

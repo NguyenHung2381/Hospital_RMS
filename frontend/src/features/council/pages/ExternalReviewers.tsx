@@ -16,10 +16,14 @@ import { ExternalReviewerDeleteModal } from '../components/ExternalReviewerDelet
 import { ExternalReviewerFormModal } from '../components/ExternalReviewerFormModal';
 import { useExternalReviewers } from '../hooks/useExternalReviewers';
 import styles from './Council.module.css';
+import tbl from '@/shared/components/Table/Table.module.css';
+import { useClientPaging } from '@/shared/hooks/useClientPaging';
+import { Pagination } from '@/shared/components/Table/Pagination';
 
 export default function ExternalReviewers() {
 	const d = useExternalReviewers();
-	const rowSel = useRowSelection(d.filtered.map((x) => x.id));
+	const pg = useClientPaging(d.filtered);
+	const rowSel = useRowSelection(pg.paged.map((x) => x.id));
 	const [bulkEditOpen, setBulkEditOpen] = useState(false);
 	const [confirmBulkDelete, setConfirmBulkDelete] = useState(false);
 
@@ -93,6 +97,7 @@ export default function ExternalReviewers() {
 									onChange={rowSel.toggleSelectAll}
 								/>
 							</th>
+							<th className={`${styles.th} ${tbl.thIdx}`}>STT</th>
 							<th className={styles.th}>Họ tên</th>
 							<th className={styles.th}>Đơn vị công tác</th>
 							<th className={styles.th}>Hệ chuyên môn</th>
@@ -105,11 +110,11 @@ export default function ExternalReviewers() {
 						{d.isLoadingData ? (
 							<SkeletonTable
 								rows={8}
-								cols={7}
+								cols={8}
 							/>
 						) : d.filtered.length === 0 ? (
 							<tr>
-								<td colSpan={7}>
+								<td colSpan={8}>
 									<div className={styles.emptyState}>
 										<div className={styles.emptyTitle}>Chưa có người ngoài viện nào</div>
 										<div className={styles.emptyDesc}>
@@ -119,7 +124,7 @@ export default function ExternalReviewers() {
 								</td>
 							</tr>
 						) : (
-							d.filtered.map((r) => (
+							pg.paged.map((r, i) => (
 								<tr
 									key={r.id}
 									className={`${styles.tr} ${rowSel.isSelected(r.id) ? sel.rowSelected : ''}`}
@@ -131,6 +136,7 @@ export default function ExternalReviewers() {
 											onChange={() => rowSel.toggleSelect(r.id)}
 										/>
 									</td>
+									<td className={`${styles.td} ${tbl.tdIdx}`}>{pg.offset + i + 1}</td>
 									<td className={styles.td}>
 										<div className={styles.councilName}>{r.full_name}</div>
 									</td>
@@ -170,6 +176,10 @@ export default function ExternalReviewers() {
 					</tbody>
 				</table>
 				</div>
+				<Pagination
+					{...pg.pagination}
+					itemLabel='người'
+				/>
 			</div>
 
 			<BulkDeleteModal

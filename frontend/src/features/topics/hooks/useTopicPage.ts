@@ -17,6 +17,7 @@ import type { Topic, TopicForm, TopicStatus } from '../types/topic.type';
 import { bulkToast, runBulk } from '../../../shared/utils/runBulk';
 import { notify } from '../../../shared/utils/feedback';
 import type { UpdateTopicPayload } from '../api/topicApi';
+import { DEFAULT_PAGE_SIZE } from '@/shared/utils/constants';
 
 export type TopicBulkPatch = Pick<
 	UpdateTopicPayload,
@@ -24,7 +25,6 @@ export type TopicBulkPatch = Pick<
 >;
 
 type TabKey = 'all' | TopicStatus;
-const PAGE_SIZE_OPTIONS = [10, 20, 50, 100] as const;
 
 const EMPTY_STATS = {
 	total: 0,
@@ -61,7 +61,7 @@ export function useTopicPage() {
 	);
 	const [activeTab, setActiveTab] = useState<TabKey>('all');
 	const [page, setPage] = useState(1);
-	const [rowsPerPage, setRowsPerPageRaw] = useState<number>(20);
+	const [rowsPerPage, setRowsPerPageRaw] = useState<number>(DEFAULT_PAGE_SIZE);
 
 	// Đổi số dòng/trang → về trang 1, tránh đứng ở trang không còn tồn tại
 	const setRowsPerPage = useCallback((n: number) => {
@@ -393,7 +393,6 @@ export function useTopicPage() {
 		totalPages,
 		safePage,
 		pageSlice,
-		PAGE_SIZE_OPTIONS,
 		setSearch,
 		setYearFilters,
 		setRoundFilters: filterSetter(setRoundFiltersRaw),

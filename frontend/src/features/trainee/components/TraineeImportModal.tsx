@@ -6,6 +6,9 @@ import { InlineLoading } from '@/shared/components/Loading';
 import { importTraineesExcel } from '../api/traineeApi';
 import type { TraineeImportResult } from '../types/trainee.type';
 import styles from '../pages/Trainees.module.css';
+import tbl from '@/shared/components/Table/Table.module.css';
+import { useClientPaging } from '@/shared/hooks/useClientPaging';
+import { Pagination } from '@/shared/components/Table/Pagination';
 
 // Nhập học viên hàng loạt từ Excel: chọn file → dry-run xem trước từng dòng
 // (khớp đối tượng học viên/khoa phòng) → xác nhận nhập. Mirror
@@ -52,6 +55,7 @@ export function TraineeImportModal({ onClose, onDone }: { onClose: () => void; o
 	};
 
 	const rows = preview?.rows ?? [];
+	const pg = useClientPaging(rows);
 	const s = preview?.summary;
 
 	return (
@@ -125,7 +129,7 @@ export function TraineeImportModal({ onClose, onDone }: { onClose: () => void; o
 								<table className={styles.table}>
 									<thead>
 										<tr>
-											<th>#</th>
+											<th className={tbl.thIdx}>STT</th>
 											<th>Họ tên</th>
 											<th>Đối tượng</th>
 											<th>Khoa/phòng</th>
@@ -134,11 +138,11 @@ export function TraineeImportModal({ onClose, onDone }: { onClose: () => void; o
 										</tr>
 									</thead>
 									<tbody>
-										{rows.map((r, i) => (
+										{pg.paged.map((r, i) => (
 											<tr key={r.row}>
-												<td className={styles.tdIdx}>{i + 1}</td>
+												<td className={styles.tdIdx}>{pg.offset + i + 1}</td>
 												<td>
-													{r.full_name}
+													<span className={tbl.cellTitle}>{r.full_name}</span>
 													{r.warnings.map((w, j) => (
 														<div key={j} className={styles.rowWarn}>
 															{w}
@@ -154,6 +158,10 @@ export function TraineeImportModal({ onClose, onDone }: { onClose: () => void; o
 									</tbody>
 								</table>
 							</div>
+							<Pagination
+								{...pg.pagination}
+								itemLabel='dòng'
+							/>
 						</>
 					)}
 				</>

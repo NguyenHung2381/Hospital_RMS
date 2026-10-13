@@ -32,6 +32,7 @@ import { TopicModal } from '../components/TopicModal';
 import { useTopicPage } from '../hooks/useTopicPage';
 import { STATUS_CFG, lookup } from '../utils/topicHelpers';
 import styles from './Topic.module.css';
+import tbl from '@/shared/components/Table/Table.module.css';
 
 
 export default function TopicPage() {
@@ -275,6 +276,7 @@ export default function TopicPage() {
 										onChange={rowSel.toggleSelectAll}
 									/>
 								</th>
+								<th className={tbl.thIdx}>STT</th>
 								<th className={styles.colId}>Mã đề tài</th>
 								<th className={styles.colTitle}>Tên đề tài</th>
 								<th className={styles.colRound}>Đợt NC</th>
@@ -288,11 +290,11 @@ export default function TopicPage() {
 						</thead>
 						<tbody>
 							{d.isLoadingData ? (
-								<SkeletonTable rows={10} cols={10} />
+								<SkeletonTable rows={10} cols={11} />
 							) : d.loadError ? (
 								<tr>
 									<td
-										colSpan={10}
+										colSpan={11}
 										style={{
 											textAlign: 'center',
 											padding: '40px',
@@ -305,7 +307,7 @@ export default function TopicPage() {
 								</tr>
 							) : d.pageSlice.length === 0 ? (
 								<tr>
-									<td colSpan={10}>
+									<td colSpan={11}>
 										<div className={styles.emptyState}>
 											<DocSvg className={styles.emptyIcon} />
 											<p className={styles.emptyTitle}>
@@ -318,7 +320,7 @@ export default function TopicPage() {
 									</td>
 								</tr>
 							) : (
-								d.pageSlice.map((t) => {
+								d.pageSlice.map((t, i) => {
 									const sc = STATUS_CFG[t.status];
 									return (
 										<tr
@@ -333,6 +335,9 @@ export default function TopicPage() {
 													checked={rowSel.isSelected(t.id)}
 													onChange={() => rowSel.toggleSelect(t.id)}
 												/>
+											</td>
+											<td className={tbl.tdIdx}>
+												{(d.safePage - 1) * d.rowsPerPage + i + 1}
 											</td>
 											<td>
 												<div className={styles.topicId}>{t.id}</div>
@@ -372,19 +377,10 @@ export default function TopicPage() {
 												</Badge>
 											</td>
 											<td>
-												<span
-													style={{
-														fontSize: 12,
-														color: 'var(--color-gray-600)',
-													}}
-												>
-													{lookup(d.categories, t.category_id)}
-												</span>
+												{lookup(d.categories, t.category_id)}
 											</td>
 											<td>
-												<span style={{ fontSize: 12 }}>
-													{lookup(d.departments, t.department_id)}
-												</span>
+												{lookup(d.departments, t.department_id)}
 											</td>
 											<td>
 												<Badge
@@ -432,7 +428,6 @@ export default function TopicPage() {
 					totalPages={d.totalPages}
 					total={d.total}
 					rowsPerPage={d.rowsPerPage}
-					pageSizeOptions={d.PAGE_SIZE_OPTIONS}
 					onPageChange={d.setPage}
 					onRowsPerPageChange={(n) => {
 						d.setRowsPerPage(n);

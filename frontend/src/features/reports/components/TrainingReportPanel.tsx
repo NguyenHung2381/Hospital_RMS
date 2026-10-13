@@ -3,12 +3,16 @@ import { DownloadSvg } from '@/assets/icons';
 import { InlineLoading } from '../../../shared/components/Loading';
 import { exportTrainingReport, getTrainingReport, type TrainingReport } from '../api/reportApi';
 import styles from '../pages/Reports.module.css';
+import tbl from '@/shared/components/Table/Table.module.css';
+import { useClientPaging } from '@/shared/hooks/useClientPaging';
+import { Pagination } from '@/shared/components/Table/Pagination';
 
 // Báo cáo Đào tạo — 3 báo cáo (theo khóa+chương trình, DS học viên+kết quả,
 // thống kê tổng), đối chiếu QLNCKHDTCDT-main (BAO_CAO_BUS) mà RMS trước đây
 // chưa có báo cáo chuyên biệt cho mảng Đào tạo.
 export function TrainingReportPanel() {
 	const [report, setReport] = useState<TrainingReport | null>(null);
+	const pg = useClientPaging(report?.by_course_program ?? []);
 	const [loading, setLoading] = useState(true);
 	const [exporting, setExporting] = useState(false);
 	const [from, setFrom] = useState('');
@@ -92,32 +96,38 @@ export function TrainingReportPanel() {
 							<span className={styles.optHeadTitle}>Theo khóa học & chương trình</span>
 						</div>
 						<div style={{ overflowX: 'auto' }}>
-							<table style={{ width: '100%', fontSize: 13 }}>
+							<table className={tbl.table}>
 								<thead>
 									<tr>
-										<th style={{ textAlign: 'left', padding: 8 }}>Khóa học</th>
-										<th style={{ textAlign: 'left', padding: 8 }}>Chương trình</th>
-										<th style={{ padding: 8 }}>Đăng ký</th>
-										<th style={{ padding: 8 }}>Đã duyệt</th>
-										<th style={{ padding: 8 }}>Điểm TB</th>
-										<th style={{ padding: 8 }}>Chứng chỉ</th>
+										<th className={tbl.thIdx}>STT</th>
+										<th>Khóa học</th>
+										<th>Chương trình</th>
+										<th className={tbl.thCenter}>Đăng ký</th>
+										<th className={tbl.thCenter}>Đã duyệt</th>
+										<th className={tbl.thCenter}>Điểm TB</th>
+										<th className={tbl.thCenter}>Chứng chỉ</th>
 									</tr>
 								</thead>
 								<tbody>
-									{report.by_course_program.map((r, i) => (
-										<tr key={`${r.course_id}-${i}`} style={{ borderTop: '1px solid var(--color-gray-100)' }}>
-											<td style={{ padding: 8 }}>{r.course_name}</td>
-											<td style={{ padding: 8 }}>{r.program_name ?? '—'}</td>
-											<td style={{ padding: 8, textAlign: 'center' }}>{r.total_enrollments}</td>
-											<td style={{ padding: 8, textAlign: 'center' }}>{r.approved_count}</td>
-											<td style={{ padding: 8, textAlign: 'center' }}>
+									{pg.paged.map((r, i) => (
+										<tr key={`${r.course_id}-${i}`}>
+											<td className={tbl.tdIdx}>{pg.offset + i + 1}</td>
+											<td><span className={tbl.cellTitle}>{r.course_name}</span></td>
+											<td>{r.program_name ?? '—'}</td>
+											<td className={tbl.tdCenter}>{r.total_enrollments}</td>
+											<td className={tbl.tdCenter}>{r.approved_count}</td>
+											<td className={tbl.tdCenter}>
 												{r.avg_score != null ? r.avg_score.toFixed(2) : '—'}
 											</td>
-											<td style={{ padding: 8, textAlign: 'center' }}>{r.certificate_count}</td>
+											<td className={tbl.tdCenter}>{r.certificate_count}</td>
 										</tr>
 									))}
 								</tbody>
 							</table>
+							<Pagination
+								{...pg.pagination}
+								itemLabel='khóa học'
+							/>
 						</div>
 					</div>
 				</>

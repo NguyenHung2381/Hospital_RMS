@@ -2,6 +2,8 @@ import type { ActivityStats, EndpointStat } from '../api/activityLogApi';
 import styles from '../pages/ActivityLogs.module.css';
 import { relativeTime } from '../../../shared/utils/formatDate';
 import { actorDisplay, formatDuration } from '../utils';
+import { useClientPaging } from '@/shared/hooks/useClientPaging';
+import { Pagination } from '@/shared/components/Table/Pagination';
 
 interface Props {
 	stats: ActivityStats;
@@ -52,8 +54,10 @@ function RankList<T>({
 }
 
 function EndpointTable({ items, mode }: { items: EndpointStat[]; mode: 'slow' | 'error' }) {
+	const pg = useClientPaging(items);
 	if (!items.length) return <div className={styles.dMuted}>Không có dữ liệu</div>;
 	return (
+		<>
 		<table className={styles.miniTable}>
 			<thead>
 				<tr>
@@ -71,7 +75,7 @@ function EndpointTable({ items, mode }: { items: EndpointStat[]; mode: 'slow' | 
 				</tr>
 			</thead>
 			<tbody>
-				{items.map((e) => (
+				{pg.paged.map((e) => (
 					<tr key={e.endpoint}>
 						<td>
 							<div className={styles.rankLabel}>{e.summary}</div>
@@ -95,6 +99,11 @@ function EndpointTable({ items, mode }: { items: EndpointStat[]; mode: 'slow' | 
 				))}
 			</tbody>
 		</table>
+		<Pagination
+			{...pg.pagination}
+			itemLabel='API'
+		/>
+		</>
 	);
 }
 

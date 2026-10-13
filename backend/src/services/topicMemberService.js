@@ -6,6 +6,7 @@ const personService = require('./personService');
 const { ROLE, requireRoleId } = require('./roleCodes');
 const { generateTempPassword } = require('../utils/passwordPolicy');
 const userStatusCache = require('../middlewares/userStatusCache');
+const { stripDiacritics, stripQualification } = require('../utils/vietnameseText');
 
 const getMembers = async (topicId) => {
 	const pool = await getPool();
@@ -72,21 +73,18 @@ const addMember = async (topicId, memberData, actorId) => {
 	return result.recordset[0];
 };
 
-// Generate username from Vietnamese full name + staff_number
-// e.g. "Nguyễn Văn A" + "123" → "NVA_0123"
+// Username = chữ cái đầu của họ tên (bỏ học vị, bỏ dấu) + "_" + MNV đệm 4 số.
+// "Nguyễn Văn An" + 123 → "NVA_0123"; không có MNV → "NVA". Trùng thì ensureUniqueUsername thêm _1, _2...
 const buildMemberUsername = (fullName, staffNumber) => {
-	const initials = fullName
-		.replace(
-			/^(BS\.|TS\.|PGS\.|GS\.|ĐD\.|DS\.|CN\.|KS\.|ThS\.|BSCK\d*\.)\s*/i,
-			'',
-		)
-		.split(/\s+/)
-		.map((w) => w.charAt(0))
-		.filter(Boolean)
-		.join('')
-		.toUpperCase();
-	const padded = String(staffNumber).padStart(4, '0');
-	return `${initials}_${padded}`;
+	const initials =
+		stripDiacritics(stripQualification(fullName))
+			.split(/\s+/)
+			.map((w) => w.charAt(0))
+			.join('')
+			.toUpperCase()
+			.replace(/[^A-Z0-9]/g, '') || 'NV';
+	const code = staffNumber == null ? '' : String(staffNumber).trim();
+	return code ? `${initials}_${code.padStart(4, '0')}` : initials;
 };
 
 // executor có thể là pool hoặc sql.Transaction — cả hai đều expose .request().
@@ -258,10 +256,7 @@ const grantAccountsNoEmail = async (topicId, memberIds, actorId) => {
 	for (const member of membersToProcess) {
 		const staffNumber =
 			member.staff_number != null ? Number(member.staff_number) : null;
-		const baseUsername = buildMemberUsername(
-			member.ho_ten,
-			staffNumber != null ? staffNumber : '0000',
-		);
+		const baseUsername = buildMemberUsername(member.ho_ten, staffNumber);
 		const deptId = member.member_department_id || member.topic_department_id;
 		const roleId = await requireRoleId(member.role === 'leader' ? ROLE.TOPIC_LEADER : ROLE.MEMBER);
 

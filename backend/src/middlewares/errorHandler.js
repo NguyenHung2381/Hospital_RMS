@@ -20,6 +20,8 @@ const errorHandler = (err, req, res, next) => {
 			err.message,
 		);
 		if (err.number === 2627 || err.number === 2601) {
+			if (/U[QX]_users_email/.test(err.message))
+				return error(res, 'Email này đã được dùng cho tài khoản khác', 409);
 			return error(res, 'Dữ liệu đã tồn tại (vi phạm ràng buộc unique)', 409);
 		}
 		if (err.number === 547) {

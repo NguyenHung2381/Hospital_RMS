@@ -15,6 +15,7 @@ import {
 	STATUS_TABS,
 } from '../types/personMerge.type';
 import styles from './PersonMerge.module.css';
+import tbl from '@/shared/components/Table/Table.module.css';
 
 const REASON_OPTIONS = Object.keys(REASON_LABEL) as MergeReason[];
 
@@ -110,7 +111,7 @@ export default function PersonMerge() {
 					<table className={styles.table}>
 						<thead>
 							<tr>
-								<th className={styles.th}>#</th>
+								<th className={`${styles.th} ${tbl.thIdx}`}>STT</th>
 								<th className={styles.th}>Hồ sơ A</th>
 								<th className={styles.th}>Hồ sơ B</th>
 								<th className={styles.th}>Lý do nghi trùng</th>
@@ -165,17 +166,18 @@ export default function PersonMerge() {
 					</table>
 				</div>
 
-				{d.total > 0 && d.totalPages > 1 && (
-					<Pagination
-						page={d.page}
-						totalPages={d.totalPages}
-						total={d.total}
-						rowsPerPage={d.pageSize}
-						onPageChange={d.setPage}
-						itemLabel='cặp'
-						hideSizeSelect
-					/>
-				)}
+								<Pagination
+					page={d.page}
+					totalPages={d.totalPages}
+					total={d.total}
+					rowsPerPage={d.pageSize}
+					onPageChange={d.setPage}
+					itemLabel='cặp'
+					onRowsPerPageChange={(n) => {
+						d.setPageSize(n);
+						d.setPage(1);
+					}}
+				/>
 			</div>
 
 			{d.openId !== null && (

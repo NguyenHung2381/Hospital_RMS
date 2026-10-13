@@ -12,6 +12,7 @@ import type {
 	SeminarForm,
 	SeminarModal,
 } from '../types/seminar.type';
+import { DEFAULT_PAGE_SIZE } from '@/shared/utils/constants';
 
 export function useSeminars() {
 	const [rows, setRows] = useState<Seminar[]>([]);
@@ -25,7 +26,7 @@ export function useSeminars() {
 	const [year, setYear] = useState('');
 	const [onlyCme, setOnlyCme] = useState(false);
 	const [page, setPage] = useState(1);
-	const [pageSize, setPageSize] = useState(10);
+	const [pageSize, setPageSize] = useState<number>(DEFAULT_PAGE_SIZE);
 
 	const [modal, setModal] = useState<SeminarModal>(null);
 	const [editing, setEditing] = useState<Seminar | null>(null);

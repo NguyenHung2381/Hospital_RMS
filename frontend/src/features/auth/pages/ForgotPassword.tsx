@@ -6,7 +6,7 @@ import { forgotPasswordApi, resetPasswordApi } from '../api/authApi';
 import styles from './Login.module.css';
 import { AlertSvg } from '@/assets/icons';
 
-// Bước 1: nhập tên đăng nhập → server gửi OTP tới email của tài khoản.
+// Bước 1: nhập tên đăng nhập hoặc email → server gửi OTP tới email của tài khoản.
 // Bước 2: nhập OTP + mật khẩu mới.
 export default function ForgotPassword() {
 	const navigate = useNavigate();
@@ -35,7 +35,7 @@ export default function ForgotPassword() {
 
 	const sendOtp = (e?: React.FormEvent) => {
 		e?.preventDefault();
-		if (!username.trim()) return setError('Vui lòng nhập tên đăng nhập.');
+		if (!username.trim()) return setError('Vui lòng nhập tên đăng nhập hoặc email.');
 		void run(async () => {
 			setInfo(await forgotPasswordApi(username.trim()));
 			setStep(2);
@@ -76,7 +76,7 @@ export default function ForgotPassword() {
 				<h2 className={styles.loginTitle}>Quên <span>mật khẩu</span></h2>
 				<p className={styles.loginSubtitle}>
 					{step === 1
-						? 'Nhập tên đăng nhập, mã OTP sẽ được gửi tới email của tài khoản.'
+						? 'Nhập tên đăng nhập hoặc email, mã OTP sẽ được gửi tới email của tài khoản.'
 						: 'Nhập mã OTP trong email và đặt mật khẩu mới.'}
 				</p>
 			</div>
@@ -90,7 +90,7 @@ export default function ForgotPassword() {
 				{step === 2 && info && <p className={styles.loginSubtitle}>{info}</p>}
 				<form onSubmit={step === 1 ? sendOtp : submitReset} className={styles.loginForm} noValidate>
 					{step === 1 ? (
-						input('username', 'Tên đăng nhập', username, setUsername, { autoFocus: true, autoComplete: 'username' })
+						input('username', 'Tên đăng nhập hoặc email', username, setUsername, { autoFocus: true, autoComplete: 'username', placeholder: 'VD: NVA_0123 hoặc ten@benhvien.vn' })
 					) : (
 						<>
 							{input('otp', 'Mã OTP (6 số)', code, setCode, { inputMode: 'numeric', maxLength: 6, autoComplete: 'one-time-code', autoFocus: true })}

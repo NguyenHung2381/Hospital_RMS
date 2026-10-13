@@ -65,6 +65,7 @@ export interface UserListState {
 }
 
 import type React from 'react';
+import { DEFAULT_PAGE_SIZE } from '@/shared/utils/constants';
 
 export function useUserList(): UserListState {
 	const [users, setUsers] = useState<User[]>([]);
@@ -78,7 +79,7 @@ export function useUserList(): UserListState {
 	const [roleFilters, setRoleFilters] = useState<string[]>([]);
 	const [deptFilters, setDeptFilters] = useState<string[]>([]);
 	const [isDeptDropdownOpen, setIsDeptDropdownOpen] = useState(false);
-	const [pageSize, setPageSizeRaw] = useState(20);
+	const [pageSize, setPageSizeRaw] = useState<number>(DEFAULT_PAGE_SIZE);
 	const [currentPage, setCurrentPageRaw] = useState(1);
 	const [refreshKey, setRefreshKey] = useState(0);
 	const [showCreate, setShowCreate] = useState(false);

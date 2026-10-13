@@ -140,13 +140,11 @@
 }
 
 .itemName {
-	font-weight: var(--font-weight-semibold);
-	color: var(--color-gray-800);
+	composes: cellTitle from './Table.module.css';
 }
 
 .descText {
-	font-size: var(--font-size-xs);
-	color: var(--color-gray-500);
+	composes: cellSub from './Table.module.css';
 	max-width: 400px;
 	display: -webkit-box;
 	-webkit-box-orient: vertical;
@@ -237,16 +235,6 @@
 }
 
 /* ── PAGE SIZE SELECTOR ──────────────────── */
-.pageSizeWrap {
-	display: flex;
-	align-items: center;
-	gap: var(--space-2);
-}
-.pageSizeLabel {
-	font-size: var(--font-size-sm);
-	color: var(--color-gray-500);
-	white-space: nowrap;
-}
 .pageSizeSelect {
 	appearance: none;
 	padding: 5px 28px 5px 10px;

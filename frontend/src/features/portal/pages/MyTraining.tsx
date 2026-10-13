@@ -9,6 +9,9 @@ import { useRealtimeUpdate } from '../../../layouts/hooks/useRealtime';
 import { DISPLAY_STATUS_CFG, ENROLLMENT_STATUS_CFG } from '../../course/types/course.type';
 import { getMyTraining, registerMyCourse, type MyEnrolledCourse, type MyTraining as Data } from '../api/meApi';
 import styles from './SelfService.module.css';
+import tbl from '@/shared/components/Table/Table.module.css';
+import { useClientPaging } from '@/shared/hooks/useClientPaging';
+import { Pagination } from '@/shared/components/Table/Pagination';
 
 const WEEKDAYS = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
 const cfgBadge = (cfg?: { label: string; color: string; bg: string }) =>
@@ -21,6 +24,7 @@ const num = (v: number | null) => (v == null ? '—' : v);
 function EnrolledItem({ c }: { c: MyEnrolledCourse }) {
 	const navigate = useNavigate();
 	const grades = c.grades.filter((g) => g.score != null || g.final_score != null || g.result);
+	const pg = useClientPaging(grades);
 	return (
 		<div
 			className={`${styles.item} ${styles.clickable}`}
@@ -71,6 +75,7 @@ function EnrolledItem({ c }: { c: MyEnrolledCourse }) {
 					<table className={styles.table}>
 						<thead>
 							<tr>
+								<th className={tbl.thIdx}>STT</th>
 								<th>Môn học</th>
 								<th>Thường xuyên</th>
 								<th>Giữa kỳ</th>
@@ -80,9 +85,10 @@ function EnrolledItem({ c }: { c: MyEnrolledCourse }) {
 							</tr>
 						</thead>
 						<tbody>
-							{grades.map((g, i) => (
+							{pg.paged.map((g, i) => (
 								<tr key={i}>
-									<td>{g.subject_name ?? 'Toàn khóa'}</td>
+									<td className={tbl.tdIdx}>{pg.offset + i + 1}</td>
+									<td><span className={tbl.cellTitle}>{g.subject_name ?? 'Toàn khóa'}</span></td>
 									<td>{num(g.regular_score)}</td>
 									<td>{num(g.midterm_score)}</td>
 									<td>{num(g.final_score)}</td>
@@ -94,6 +100,10 @@ function EnrolledItem({ c }: { c: MyEnrolledCourse }) {
 							))}
 						</tbody>
 					</table>
+					<Pagination
+						{...pg.pagination}
+						itemLabel='môn'
+					/>
 				</div>
 			)}
 		</div>

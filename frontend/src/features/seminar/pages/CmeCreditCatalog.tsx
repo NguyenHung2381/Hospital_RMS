@@ -1,6 +1,6 @@
 import { Modal } from '@/shared/components';
 import { showToast } from '@/shared/utils/feedback';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { EditSvg, LayersSvg, PlusSvg, SearchSvg, TrashSvg, XSvg } from '@/assets/icons';
 import AdminLayout from '../../../layouts/AdminLayout';
 import { useRealtimeUpdate } from '../../../layouts/hooks/useRealtime';
@@ -19,12 +19,21 @@ import type {
 } from '../types/cmeCatalog.type';
 import { CONVERSION_METHOD, formatConversion } from '../utils/cmeConversion';
 import styles from './CmeCreditCatalog.module.css';
+import tbl from '@/shared/components/Table/Table.module.css';
+import { useClientPaging } from '@/shared/hooks/useClientPaging';
+import { Pagination } from '@/shared/components/Table/Pagination';
 
 const UNGROUPED = '__none__';
 
 type Deleting =
 	| { kind: 'group'; item: CmeCreditGroup }
 	| { kind: 'category'; item: CmeCreditCategoryItem };
+
+/** Mỗi nhóm là một bảng riêng → mỗi bảng tự phân trang (render-prop để giữ nguyên closure của trang). */
+function PagedGroup<T>({ items, children }: { items: T[]; children: (pg: ReturnType<typeof useClientPaging<T>>) => ReactNode }) {
+	const pg = useClientPaging(items);
+	return <>{children(pg)}</>;
+}
 
 export default function CmeCreditCatalog() {
 	const { has } = usePermission();
@@ -156,7 +165,7 @@ export default function CmeCreditCatalog() {
 	};
 
 	const showActions = canUpdate || canDelete;
-	const colCount = showActions ? 5 : 4;
+	const colCount = showActions ? 6 : 5;
 	const nextSortOrder = groups.reduce((m, g) => Math.max(m, g.sort_order ?? 0), 0) + 1;
 
 	return (
@@ -298,10 +307,14 @@ export default function CmeCreditCatalog() {
 							</div>
 						</div>
 
+						<PagedGroup items={items}>
+						{(pg) => (
+						<>
 						<div className={base.tableWrap}>
 							<table className={base.table}>
 								<thead>
 									<tr>
+										<th className={`${base.th} ${tbl.thIdx}`}>STT</th>
 										<th className={`${base.th} ${styles.colCode}`}>Mã</th>
 										<th className={base.th}>Loại hình hoạt động</th>
 										<th className={`${base.th} ${styles.colMethod}`}>Cách quy đổi</th>
@@ -320,7 +333,7 @@ export default function CmeCreditCatalog() {
 											</td>
 										</tr>
 									) : (
-										items.map((c) => {
+										pg.paged.map((c, i) => {
 											const m = CONVERSION_METHOD[c.conversion_method] ?? CONVERSION_METHOD.fixed;
 											const direct = !Number(c.conversion_value);
 											return (
@@ -328,6 +341,7 @@ export default function CmeCreditCatalog() {
 													key={c.id}
 													className={base.tr}
 												>
+													<td className={`${base.td} ${tbl.tdIdx}`}>{pg.offset + i + 1}</td>
 													<td className={base.td}>
 														<span className={styles.code}>{c.id}</span>
 													</td>
@@ -372,6 +386,13 @@ export default function CmeCreditCatalog() {
 								</tbody>
 							</table>
 						</div>
+						<Pagination
+							{...pg.pagination}
+							itemLabel='loại hình'
+						/>
+						</>
+						)}
+						</PagedGroup>
 					</div>
 				))
 			)}

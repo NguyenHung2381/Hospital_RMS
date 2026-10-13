@@ -13,6 +13,9 @@ import { htmlToPlainText, sanitizeCommentHtml } from '../../../shared/utils/sani
 import type { ResultDraft } from '../types/councilProgress.type';
 import { CONCLUSION_CLASS, RATING_CLASS } from '../utils/councilProgressHelpers';
 import styles from '../pages/CouncilProgress.module.css';
+import tbl from '@/shared/components/Table/Table.module.css';
+import { useClientPaging } from '@/shared/hooks/useClientPaging';
+import { Pagination } from '@/shared/components/Table/Pagination';
 
 interface ProgressConclusionTabProps {
 	topic: ProgressTopic;
@@ -37,6 +40,7 @@ export function ProgressConclusionTab({
 	savedResultId,
 	onSaveResult,
 }: ProgressConclusionTabProps) {
+	const pg = useClientPaging(others);
 	return (
 		<div className={styles.conclusionTabWrapper}>
 			{/* Table of other members' reviews */}
@@ -52,6 +56,7 @@ export function ProgressConclusionTab({
 						<table className={styles.othersTable}>
 							<thead>
 								<tr>
+									<th className={tbl.thIdx}>STT</th>
 									<th>Thành viên</th>
 									<th>Vai trò</th>
 									<th>Tiến độ</th>
@@ -60,8 +65,9 @@ export function ProgressConclusionTab({
 								</tr>
 							</thead>
 							<tbody>
-								{others.map((r) => (
+								{pg.paged.map((r, i) => (
 									<tr key={r.user_id}>
+										<td className={tbl.tdIdx}>{pg.offset + i + 1}</td>
 										<td className={styles.othersTableName}>{r.full_name}</td>
 										<td className={styles.othersTableRole}>
 											{SEAT_ROLE_LABELS[r.role]}
@@ -100,6 +106,10 @@ export function ProgressConclusionTab({
 								))}
 							</tbody>
 						</table>
+						<Pagination
+							{...pg.pagination}
+							itemLabel='ý kiến'
+						/>
 					</div>
 				) : (
 					<div className={styles.emptyTableState}>

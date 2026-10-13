@@ -84,13 +84,10 @@
 	font-size: var(--font-size-xs);
 }
 .actorName {
-	font-weight: var(--font-weight-medium);
-	color: var(--color-gray-800);
+	composes: cellTitle from '../../../shared/components/Table/Table.module.css';
 }
 .actorId {
-	font-size: var(--font-size-2xs);
-	color: var(--color-gray-400);
-	font-family: var(--font-mono);
+	composes: cellCode from '../../../shared/components/Table/Table.module.css';
 }
 .statusOk {
 	color: #065f46;
@@ -101,8 +98,7 @@
 	font-weight: var(--font-weight-semibold);
 }
 .timeText {
-	font-size: var(--font-size-xs);
-	color: var(--color-gray-400);
+	composes: cellSub from '../../../shared/components/Table/Table.module.css';
 	white-space: nowrap;
 }
 
@@ -440,28 +436,8 @@
 	margin-top: 2px;
 }
 .miniTable {
-	width: 100%;
-	border-collapse: collapse;
-	font-size: var(--font-size-xs);
-}
-.miniTable th {
-	text-align: left;
-	font-size: var(--font-size-2xs);
-	font-weight: 700;
-	color: var(--color-gray-500);
-	text-transform: uppercase;
-	padding: 6px 8px;
-	border-bottom: 1px solid var(--color-gray-200);
-	white-space: nowrap;
-}
-.miniTable td {
-	padding: 8px;
-	border-bottom: 1px solid var(--color-gray-100);
-	vertical-align: top;
+	composes: table from '../../../shared/components/Table/Table.module.css';
 	font-variant-numeric: tabular-nums;
-}
-.miniTable tr:last-child td {
-	border-bottom: none;
 }
 
 /* ── Modal chi tiết ─────────────────────────────────────────────────────── */

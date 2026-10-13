@@ -5,6 +5,9 @@ import { getUsers } from '../../user/api/userApi';
 import type { User } from '../../user/types/user.type';
 import type { Role } from '../types/role.type';
 import styles from '../pages/Roles.module.css';
+import tbl from '@/shared/components/Table/Table.module.css';
+import { useClientPaging } from '@/shared/hooks/useClientPaging';
+import { Pagination } from '@/shared/components/Table/Pagination';
 
 const LIMIT = 200;
 
@@ -18,6 +21,7 @@ interface RoleUsersModalProps {
 // phạm vi users của người xem (trong khoa / toàn viện).
 export function RoleUsersModal({ role, onClose }: RoleUsersModalProps) {
 	const [users, setUsers] = useState<User[]>([]);
+	const pg = useClientPaging(users);
 	const [total, setTotal] = useState(0);
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState('');
@@ -61,9 +65,11 @@ export function RoleUsersModal({ role, onClose }: RoleUsersModalProps) {
 					) : users.length === 0 ? (
 						<div className={styles.viewEmpty}>Chưa có tài khoản nào mang vai trò này.</div>
 					) : (
-						<table className={styles.permMatrix}>
+						<>
+						<table className={tbl.table}>
 							<thead>
 								<tr>
+									<th className={tbl.thIdx}>STT</th>
 									<th>Họ tên</th>
 									<th>Tài khoản</th>
 									<th>Mã NV</th>
@@ -71,20 +77,26 @@ export function RoleUsersModal({ role, onClose }: RoleUsersModalProps) {
 								</tr>
 							</thead>
 							<tbody>
-								{users.map((u) => (
+								{pg.paged.map((u, i) => (
 									<tr key={u.id}>
-										<td className={styles.permResourceCell}>
+										<td className={tbl.tdIdx}>{pg.offset + i + 1}</td>
+										<td>
 											<div className={styles.permResourceName}>{u.full_name}</div>
 										</td>
-										<td className={styles.viewCell}>{u.username}</td>
-										<td className={styles.viewCell}>{u.staff_number ?? '—'}</td>
-										<td className={styles.viewCell}>
+										<td>{u.username}</td>
+										<td>{u.staff_number ?? '—'}</td>
+										<td>
 											{u.is_active ? 'Hoạt động' : 'Ngừng hoạt động'}
 										</td>
 									</tr>
 								))}
 							</tbody>
 						</table>
+						<Pagination
+							{...pg.pagination}
+							itemLabel='tài khoản'
+						/>
+						</>
 					)}
 					{total > users.length && (
 						<div className={styles.viewEmpty}>

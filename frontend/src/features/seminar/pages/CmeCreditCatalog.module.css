@@ -105,13 +105,11 @@
 
 /* ── Bảng ──────────────────────────────── */
 .code {
+	composes: cellCode from '../../../shared/components/Table/Table.module.css';
 	display: inline-block;
 	padding: 1px 6px;
 	border-radius: var(--radius-sm);
 	background: var(--color-gray-100);
-	color: var(--color-gray-700);
-	font-family: var(--font-mono);
-	font-size: var(--font-size-2xs);
 	white-space: nowrap;
 }
 .colCode {
@@ -124,9 +122,8 @@
 	width: 150px;
 }
 .subText {
+	composes: cellSub from '../../../shared/components/Table/Table.module.css';
 	margin-top: 2px;
-	font-size: var(--font-size-xs);
-	color: var(--color-gray-500);
 }
 .tdValue {
 	text-align: right;
@@ -138,7 +135,7 @@
 .muted {
 	font-weight: normal;
 	font-style: italic;
-	color: var(--color-gray-400);
+	color: var(--color-gray-500);
 }
 .emptyRow {
 	text-align: center;

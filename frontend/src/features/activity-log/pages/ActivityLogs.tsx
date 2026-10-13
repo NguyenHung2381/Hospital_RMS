@@ -7,7 +7,7 @@ import { ActivityDetailModal } from '../components/ActivityDetailModal';
 import { SessionsPanel } from '../components/SessionsPanel';
 import { StatsPanel } from '../components/StatsPanel';
 import { FilterPanel } from '../components/FilterPanel';
-import { PAGE_SIZE_OPTIONS, useActivityLogs } from '../hooks/useActivityLogs';
+import { useActivityLogs } from '../hooks/useActivityLogs';
 import {
 	actorDisplay,
 	durationLevel,
@@ -18,6 +18,7 @@ import {
 	parseUserAgent,
 } from '../utils';
 import styles from './ActivityLogs.module.css';
+import tbl from '@/shared/components/Table/Table.module.css';
 
 type Tab = 'logs' | 'sessions' | 'stats';
 
@@ -199,6 +200,7 @@ export default function ActivityLogs() {
 							<table className={styles.table}>
 								<thead>
 									<tr>
+										<th className={`${styles.th} ${tbl.thIdx}`}>STT</th>
 										<th className={styles.th}>Thời gian</th>
 										<th className={styles.th}>Người dùng</th>
 										<th className={styles.th}>Hành động</th>
@@ -209,7 +211,7 @@ export default function ActivityLogs() {
 									</tr>
 								</thead>
 								<tbody>
-									{rows.map((row) => {
+									{rows.map((row, i) => {
 										const ua = parseUserAgent(row.user_agent);
 										const code = row.status_code ?? 0;
 										return (
@@ -218,6 +220,7 @@ export default function ActivityLogs() {
 												className={`${styles.tr} ${styles.clickable} ${code >= 400 ? styles.rowErr : ''}`}
 												onClick={() => setSelected(row)}
 											>
+												<td className={`${styles.td} ${tbl.tdIdx}`}>{(page - 1) * pageSize + i + 1}</td>
 												<td className={styles.td}>
 													<div className={styles.timeMain}>{formatTimeOnly(row.created_at)}</div>
 													<div className={styles.timeText}>{formatDayOnly(row.created_at)}</div>
@@ -293,7 +296,6 @@ export default function ActivityLogs() {
 							totalPages={totalPages}
 							total={total}
 							rowsPerPage={pageSize}
-							pageSizeOptions={PAGE_SIZE_OPTIONS}
 							onPageChange={setPage}
 							onRowsPerPageChange={setPageSize}
 							itemLabel='thao tác'

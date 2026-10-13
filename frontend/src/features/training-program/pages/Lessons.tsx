@@ -1,5 +1,5 @@
 import { Modal } from '@/shared/components';
-import { SearchInput, PageSizeSelect, SelectionCount, RowAction, RowActions } from '@/shared/components/Table/TableToolbar';
+import { SearchInput, SelectionCount, RowAction, RowActions } from '@/shared/components/Table/TableToolbar';
 import { useState } from 'react';
 import { DocSvg, PlusSvg, TrashSvg } from '@/assets/icons';
 import AdminLayout from '../../../layouts/AdminLayout';
@@ -12,6 +12,7 @@ import { LessonDocumentsModal } from '../components/LessonDocumentsModal';
 import { LessonFormModal } from '../components/LessonFormModal';
 import { useLessons } from '../hooks/useLessons';
 import styles from './TrainingPrograms.module.css';
+import tbl from '@/shared/components/Table/Table.module.css';
 
 export default function Lessons() {
 	const d = useLessons();
@@ -53,10 +54,6 @@ export default function Lessons() {
 							onChange={d.handleSearch}
 							placeholder='Tìm theo tên/mã bài học...'
 						/>
-						<PageSizeSelect
-							value={d.pageSize}
-							onChange={d.handlePageSize}
-						/>
 					</div>
 				</div>
 
@@ -72,7 +69,7 @@ export default function Lessons() {
 										onChange={rowSel.toggleSelectAll}
 									/>
 								</th>
-								<th className={styles.th}>#</th>
+								<th className={`${styles.th} ${tbl.thIdx}`}>STT</th>
 								<th className={styles.th}>Mã</th>
 								<th className={styles.th}>Bài học</th>
 								<th className={styles.th}>Chương trình đang dùng</th>
@@ -161,17 +158,15 @@ export default function Lessons() {
 					</table>
 				</div>
 
-				{d.filtered.length > 0 && d.totalPages > 1 && (
-					<Pagination
-						page={d.safePage}
-						totalPages={d.totalPages}
-						total={d.filtered.length}
-						rowsPerPage={d.pageSize}
-						onPageChange={d.setPage}
-						itemLabel='bài học'
-						hideSizeSelect
-					/>
-				)}
+								<Pagination
+					page={d.safePage}
+					totalPages={d.totalPages}
+					total={d.filtered.length}
+					rowsPerPage={d.pageSize}
+					onPageChange={d.setPage}
+					itemLabel='bài học'
+					onRowsPerPageChange={d.handlePageSize}
+				/>
 			</div>
 
 

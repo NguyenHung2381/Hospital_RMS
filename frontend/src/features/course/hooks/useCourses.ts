@@ -5,6 +5,7 @@ import { useRealtimeUpdate } from '../../../layouts/hooks/useRealtime';
 import { bulkToast, runBulk } from '../../../shared/utils/runBulk';
 import { createCourse, deleteCourse, getCourses, updateCourse } from '../api/courseApi';
 import { EMPTY_FORM, type Course, type CourseFormData, type ModalType } from '../types/course.type';
+import { DEFAULT_PAGE_SIZE } from '@/shared/utils/constants';
 
 export interface SimpleItem {
 	id: string;
@@ -25,7 +26,7 @@ export function useCourses() {
 	const [deletingCourse, setDeletingCourse] = useState<Course | null>(null);
 	const [detailCourse, setDetailCourse] = useState<Course | null>(null);
 	const [loading, setLoading] = useState(false);
-	const [pageSize, setPageSize] = useState(10);
+	const [pageSize, setPageSize] = useState<number>(DEFAULT_PAGE_SIZE);
 	const [page, setPage] = useState(1);
 	const [refreshKey, setRefreshKey] = useState(0);
 

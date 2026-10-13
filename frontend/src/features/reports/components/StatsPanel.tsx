@@ -10,6 +10,9 @@ import { PROGRESS_RATING_LABELS } from '../../council/api/councilApi';
 import type { DashboardStats, ProgressRating } from '../types/report.type';
 import { fmtDate, STATUS_LABELS } from '../utils/reportHelpers';
 import styles from '../pages/Reports.module.css';
+import tbl from '@/shared/components/Table/Table.module.css';
+import { useClientPaging } from '@/shared/hooks/useClientPaging';
+import { Pagination } from '@/shared/components/Table/Pagination';
 
 const IcAlert = () => (
 	<AlertSvg
@@ -39,6 +42,7 @@ export function StatsPanel({
 	error,
 	onRetry,
 }: StatsPanelProps) {
+	const deptPg = useClientPaging(stats?.by_department ?? []);
 	if (loading) return <InlineLoading label='Đang tải thống kê…' />;
 	if (error)
 		return (
@@ -218,7 +222,7 @@ export function StatsPanel({
 									<thead>
 										<tr>
 											<th className={`${styles.dtTh} ${styles.dtThIdx}`}>
-												#
+												STT
 											</th>
 											<th className={`${styles.dtTh} ${styles.dtThName}`}>
 												Khoa / Phòng / Trung tâm
@@ -247,7 +251,7 @@ export function StatsPanel({
 										</tr>
 									</thead>
 									<tbody>
-										{by_department.map((d, i) => {
+										{deptPg.paged.map((d, i) => {
 											const otherStatuses = DEPT_STATUS_KEYS.filter(
 												(k) => d.by_status[k] > 0,
 											);
@@ -257,9 +261,9 @@ export function StatsPanel({
 													className={styles.dtRow}
 												>
 													<td className={`${styles.dtTd} ${styles.dtIdx}`}>
-														{i + 1}
+														{deptPg.offset + i + 1}
 													</td>
-													<td className={styles.dtTd}>{d.name}</td>
+													<td className={styles.dtTd}><span className={tbl.cellTitle}>{d.name}</span></td>
 													<td className={`${styles.dtTd} ${styles.dtNum}`}>
 														{d.de_tai}
 													</td>
@@ -354,6 +358,10 @@ export function StatsPanel({
 										})}
 									</tbody>
 								</table>
+								<Pagination
+									{...deptPg.pagination}
+									itemLabel='khoa phòng'
+								/>
 							</div>
 						)}
 					</div>

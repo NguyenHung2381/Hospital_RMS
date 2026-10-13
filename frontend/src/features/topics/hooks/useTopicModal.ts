@@ -10,7 +10,7 @@ import type {
 	Topic,
 	TopicForm,
 } from '../types/topic.type';
-import { isAddRoleAllowed, isEditRoleAllowed } from '../utils/topicHelpers';
+import { isAddRoleAllowed, isEditRoleAllowed, nextAddRole } from '../utils/topicHelpers';
 
 export interface PendingMember {
 	tempId: string;
@@ -107,14 +107,14 @@ export function useTopicModal({
 		};
 	}, [memberQuery]);
 
-	// Chủ nhiệm phải được chọn đầu tiên; hết lượt Chủ nhiệm/Thư ký thì mặc định về Thành viên.
-	// Chuẩn hoá ngay khi render mỗi lần danh sách thành viên đổi (tránh cascading render từ effect).
+	// Mỗi lần danh sách thành viên đổi → vai trò mặc định nhảy lần lượt Chủ nhiệm → Thư ký → Thành viên.
+	// Chuẩn hoá ngay khi render (tránh cascading render từ effect).
 	const [prevPending, setPrevPending] = useState(pendingMembers);
 	if (prevPending !== pendingMembers) {
 		setPrevPending(pendingMembers);
-		const fallback: MemberRole = pendingMembers.length === 0 ? 'leader' : 'member';
-		if (!isAddRoleAllowed(pendingMembers, addRole)) setAddRole(fallback);
-		if (!isAddRoleAllowed(pendingMembers, manualRole)) setManualRole(fallback);
+		const next = nextAddRole(pendingMembers);
+		setAddRole(next);
+		setManualRole(next);
 	}
 
 	const deptName = (id: string) =>

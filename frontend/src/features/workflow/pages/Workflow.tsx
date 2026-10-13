@@ -7,9 +7,13 @@ import { WorkflowDeleteModal } from '../components/WorkflowDeleteModal';
 import { WorkflowFormModal } from '../components/WorkflowFormModal';
 import { useWorkflow } from '../hooks/useWorkflow';
 import styles from './Workflow.module.css';
+import tbl from '@/shared/components/Table/Table.module.css';
+import { useClientPaging } from '@/shared/hooks/useClientPaging';
+import { Pagination } from '@/shared/components/Table/Pagination';
 
 export default function Workflow() {
 	const d = useWorkflow();
+	const pg = useClientPaging(d.items);
 
 	const headerActions = (
 		<button
@@ -39,7 +43,7 @@ export default function Workflow() {
 					<table className={styles.table}>
 						<thead>
 							<tr>
-								<th className={styles.th}>#</th>
+								<th className={`${styles.th} ${tbl.thIdx}`}>STT</th>
 								<th className={styles.th}>Tên workflow</th>
 								<th className={styles.th}>Áp dụng cho</th>
 								<th className={styles.th}>Số bước</th>
@@ -66,12 +70,12 @@ export default function Workflow() {
 									</td>
 								</tr>
 							) : (
-								d.items.map((w, i) => (
+								pg.paged.map((w, i) => (
 									<tr
 										key={w.id}
 										className={styles.tr}
 									>
-										<td className={`${styles.td} ${styles.tdIdx}`}>{i + 1}</td>
+										<td className={`${styles.td} ${styles.tdIdx}`}>{pg.offset + i + 1}</td>
 										<td className={styles.td}>
 											<div className={styles.itemName}>{w.name}</div>
 										</td>
@@ -103,6 +107,10 @@ export default function Workflow() {
 						</tbody>
 					</table>
 				</div>
+				<Pagination
+					{...pg.pagination}
+					itemLabel='workflow'
+				/>
 			</div>
 
 			{d.modal === 'add' && (

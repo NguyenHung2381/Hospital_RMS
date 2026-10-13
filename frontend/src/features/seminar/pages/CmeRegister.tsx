@@ -32,10 +32,11 @@ import {
 	type CmeStats,
 } from '../types/seminar.type';
 import styles from './Seminar.module.css';
+import tbl from '@/shared/components/Table/Table.module.css';
+import { DEFAULT_PAGE_SIZE } from '@/shared/utils/constants';
 
 const THIS_YEAR = new Date().getFullYear();
 const YEARS = Array.from({ length: 8 }, (_, i) => THIS_YEAR + 1 - i);
-const PAGE_SIZE_OPTIONS = [10, 25, 50, 100] as const;
 
 const fmtDate = (s: string | null) => {
 	if (!s) return '';
@@ -65,7 +66,7 @@ export default function CmeRegister() {
 	const [search, setSearch] = useState('');
 	const [debouncedSearch, setDebouncedSearch] = useState('');
 	const [page, setPage] = useState(1);
-	const [pageSize, setPageSize] = useState<number>(25);
+	const [pageSize, setPageSize] = useState<number>(DEFAULT_PAGE_SIZE);
 
 	// id → entry, gom dần theo từng trang đã tải — cần vì bulk-action (đánh dấu
 	// ký nhận/thu hồi) cần seminar_id của dòng, mà lựa chọn có thể trải qua nhiều
@@ -377,6 +378,7 @@ export default function CmeRegister() {
 									/>
 								</th>
 							)}
+							<th className={tbl.thIdx}>STT</th>
 							<th>SQĐ</th>
 							<th>Họ và tên</th>
 							<th>Ngày sinh</th>
@@ -393,11 +395,11 @@ export default function CmeRegister() {
 						{loading ? (
 							<SkeletonTable
 								rows={8}
-								cols={perms.canCme ? 11 : 10}
+								cols={perms.canCme ? 12 : 11}
 							/>
 						) : total === 0 ? (
 							<tr>
-								<td colSpan={perms.canCme ? 11 : 10}>
+								<td colSpan={perms.canCme ? 12 : 11}>
 									<div className={styles.emptyState}>
 										<div className={styles.emptyTitle}>
 											{search
@@ -413,7 +415,7 @@ export default function CmeRegister() {
 								</td>
 							</tr>
 						) : (
-							paged.map((e) => (
+							paged.map((e, i) => (
 								<tr
 									key={e.id}
 									className={rowSel.isSelected(e.id) ? sel.rowSelected : undefined}
@@ -427,10 +429,13 @@ export default function CmeRegister() {
 											/>
 										</td>
 									)}
+									<td className={tbl.tdIdx}>{(safePage - 1) * pageSize + i + 1}</td>
 									<td className={styles.mono}>{e.cme_certificate_no}</td>
 									<td>
-										{e.title_prefix ? `${e.title_prefix} ` : ''}
-										{e.full_name}
+										<span className={tbl.cellTitle}>
+											{e.title_prefix ? `${e.title_prefix} ` : ''}
+											{e.full_name}
+										</span>
 									</td>
 									<td>
 										{e.dob_text || fmtDate(e.dob) || <span className={styles.muted}>—</span>}
@@ -482,21 +487,18 @@ export default function CmeRegister() {
 				</table>
 				</div>
 
-				{total > 0 && (
-					<Pagination
-						page={safePage}
-						totalPages={totalPages}
-						total={total}
-						rowsPerPage={pageSize}
-						pageSizeOptions={PAGE_SIZE_OPTIONS}
-						onPageChange={setPage}
-						onRowsPerPageChange={(n) => {
-							setPageSize(n);
-							setPage(1);
-						}}
-						itemLabel='lượt cấp'
-					/>
-				)}
+								<Pagination
+					page={safePage}
+					totalPages={totalPages}
+					total={total}
+					rowsPerPage={pageSize}
+					onPageChange={setPage}
+					onRowsPerPageChange={(n) => {
+						setPageSize(n);
+						setPage(1);
+					}}
+					itemLabel='lượt cấp'
+				/>
 			</div>
 
 			<Modal

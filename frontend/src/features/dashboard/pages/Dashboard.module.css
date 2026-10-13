@@ -663,10 +663,8 @@
 }
 
 .topicTitleText {
-	font-weight: var(--font-weight-semibold);
-	color: var(--color-gray-800);
+	composes: cellTitle from '../../../shared/components/Table/Table.module.css';
 	margin-bottom: 2px;
-	font-size: var(--font-size-sm);
 	line-height: 1.45;
 	display: -webkit-box;
 	-webkit-line-clamp: 2;
@@ -677,8 +675,7 @@
 }
 
 .topicMeta {
-	font-size: var(--font-size-2xs);
-	color: var(--color-gray-400);
+	composes: cellSub from '../../../shared/components/Table/Table.module.css';
 	white-space: nowrap;
 	overflow: hidden;
 	text-overflow: ellipsis;
@@ -1158,24 +1155,7 @@
 }
 
 .deptTable {
-	width: 100%;
-	border-collapse: collapse;
-	font-size: var(--font-size-sm);
-}
-
-.deptTable th {
-	text-align: left;
-	font-weight: var(--font-weight-medium);
-	color: var(--color-gray-500);
-	font-size: var(--font-size-xs);
-	padding: var(--space-2) var(--space-2);
-	border-bottom: 1px solid var(--color-gray-200);
-}
-
-.deptTable td {
-	padding: var(--space-2) var(--space-2);
-	border-bottom: 1px solid var(--color-gray-100);
-	color: var(--color-gray-700);
+	composes: table from '../../../shared/components/Table/Table.module.css';
 }
 
 .deptTable th.num,

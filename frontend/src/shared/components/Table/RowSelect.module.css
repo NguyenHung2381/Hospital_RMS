@@ -1,4 +1,5 @@
-.checkCol {
+/* Nhân đôi class để thắng padding của `.table thead th`/`.table tbody td`. */
+.checkCol.checkCol {
 	width: 48px;
 	min-width: 48px;
 	text-align: center;

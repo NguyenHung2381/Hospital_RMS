@@ -18,6 +18,9 @@ import {
 	type MyCmeRecord,
 } from '../api/meApi';
 import styles from './SelfService.module.css';
+import tbl from '@/shared/components/Table/Table.module.css';
+import { useClientPaging } from '@/shared/hooks/useClientPaging';
+import { Pagination } from '@/shared/components/Table/Pagination';
 
 const THIS_YEAR = new Date().getFullYear();
 const APPROVAL_LABEL: Record<CmeApprovalStatus, string> = { pending: 'Chờ duyệt', approved: 'Đã duyệt', rejected: 'Bị từ chối' };
@@ -27,6 +30,8 @@ const YEARS = Array.from({ length: 5 }, (_, i) => THIS_YEAR - i);
 export default function MyCme() {
 	const [year, setYear] = useState(THIS_YEAR);
 	const [data, setData] = useState<Data | null>(null);
+	const semPg = useClientPaging(data?.seminars ?? []);
+	const recPg = useClientPaging(data?.records ?? []);
 	const [error, setError] = useState('');
 	const [exporting, setExporting] = useState(false);
 	const [exportError, setExportError] = useState('');
@@ -160,6 +165,7 @@ export default function MyCme() {
 									<table className={styles.table}>
 										<thead>
 											<tr>
+												<th className={tbl.thIdx}>STT</th>
 												<th>Sự kiện</th>
 												<th>Thời gian</th>
 												<th>Vai trò</th>
@@ -169,11 +175,12 @@ export default function MyCme() {
 											</tr>
 										</thead>
 										<tbody>
-											{data.seminars.map((s) => (
+											{semPg.paged.map((s, i) => (
 												<tr key={s.id}>
+													<td className={tbl.tdIdx}>{semPg.offset + i + 1}</td>
 													<td>
-														<b>{s.seminar_title}</b>
-														<div style={{ fontSize: 12, color: '#64748b' }}>
+														<div className={tbl.cellTitle}>{s.seminar_title}</div>
+														<div className={tbl.dateText}>
 															{EVENT_TYPE_LABELS[s.event_type]}
 															{s.location && ` · ${s.location}`}
 														</div>
@@ -191,6 +198,10 @@ export default function MyCme() {
 											))}
 										</tbody>
 									</table>
+									<Pagination
+										{...semPg.pagination}
+										itemLabel='sự kiện'
+									/>
 								</div>
 							)}
 						</Card.Body>
@@ -215,6 +226,7 @@ export default function MyCme() {
 										<table className={styles.table}>
 											<thead>
 												<tr>
+													<th className={tbl.thIdx}>STT</th>
 													<th>Nội dung</th>
 													<th>Ngày</th>
 													<th>Loại hoạt động</th>
@@ -224,10 +236,11 @@ export default function MyCme() {
 												</tr>
 											</thead>
 											<tbody>
-												{data.records.map((r) => (
+												{recPg.paged.map((r, i) => (
 													<tr key={r.id}>
+														<td className={tbl.tdIdx}>{recPg.offset + i + 1}</td>
 														<td>
-															{r.title}
+															<span className={tbl.cellTitle}>{r.title}</span>
 															{r.evidence_file_url && (
 																<a href={r.evidence_file_url} target='_blank' rel='noreferrer' title={r.evidence_file_name ?? 'Minh chứng'}>
 																	{' '}
@@ -241,7 +254,7 @@ export default function MyCme() {
 														<td>
 															<Badge tone={APPROVAL_TONE[r.approval_status]}>{APPROVAL_LABEL[r.approval_status]}</Badge>
 															{r.approval_status === 'rejected' && r.reject_reason && (
-																<div style={{ fontSize: 12, color: '#b91c1c' }}>{r.reject_reason}</div>
+																<div className={tbl.dateText} style={{ color: '#b91c1c' }}>{r.reject_reason}</div>
 															)}
 														</td>
 														<td>
@@ -256,6 +269,10 @@ export default function MyCme() {
 												))}
 											</tbody>
 										</table>
+										<Pagination
+											{...recPg.pagination}
+											itemLabel='hoạt động'
+										/>
 									</div>
 								)}
 							</Card.Body>

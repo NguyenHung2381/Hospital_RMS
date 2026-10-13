@@ -26,8 +26,8 @@ import { useSeminarPerms } from '../utils/perms';
 import { useSeminars } from '../hooks/useSeminars';
 import { EVENT_TYPE_LABELS, type Seminar, type SeminarEventType } from '../types/seminar.type';
 import styles from './Seminar.module.css';
+import tbl from '@/shared/components/Table/Table.module.css';
 
-const PAGE_SIZE_OPTIONS = [10, 25, 50, 100] as const;
 
 const fmtDate = (s: string | null, text: string | null) => {
 	if (text) return text;
@@ -169,14 +169,14 @@ export default function Seminars() {
 				<table className={styles.table}>
 					<thead>
 						<tr>
-							<th>#</th>
+							<th className={tbl.thIdx}>STT</th>
 							<th>Tên / Nội dung</th>
 							<th>Hình thức</th>
 							<th>Phạm vi</th>
 							<th>Thời gian</th>
 							<th>Địa điểm</th>
-							<th style={{ textAlign: 'center' }}>Người dự</th>
-							<th style={{ textAlign: 'center' }}>CME</th>
+							<th className={styles.thCenter}>Người dự</th>
+							<th className={styles.thCenter}>CME</th>
 							<th className={styles.thRight}>Thao tác</th>
 						</tr>
 					</thead>
@@ -223,10 +223,10 @@ export default function Seminars() {
 									</td>
 									<td>{fmtDate(row.start_date, row.date_text) || <span className={styles.muted}>—</span>}</td>
 									<td>{row.location || <span className={styles.muted}>—</span>}</td>
-									<td style={{ textAlign: 'center' }}>
+									<td className={styles.tdCenter}>
 										{row.manual_participant_count ?? row.participant_count ?? 0}
 									</td>
-									<td style={{ textAlign: 'center' }}>
+									<td className={styles.tdCenter}>
 										{row.grants_cme ? (
 											<Badge tone='green'>
 												{row.manual_cme_count ?? row.cme_issued_count ?? 0}
@@ -282,21 +282,18 @@ export default function Seminars() {
 				</table>
 				</div>
 
-				{s.total > 0 && (
-					<Pagination
-						page={s.page}
-						totalPages={s.totalPages}
-						total={s.total}
-						rowsPerPage={s.pageSize}
-						pageSizeOptions={PAGE_SIZE_OPTIONS}
-						onPageChange={s.setPage}
-						onRowsPerPageChange={(n) => {
-							s.setPageSize(n);
-							s.setPage(1);
-						}}
-						itemLabel='sự kiện'
-					/>
-				)}
+								<Pagination
+					page={s.page}
+					totalPages={s.totalPages}
+					total={s.total}
+					rowsPerPage={s.pageSize}
+					onPageChange={s.setPage}
+					onRowsPerPageChange={(n) => {
+						s.setPageSize(n);
+						s.setPage(1);
+					}}
+					itemLabel='sự kiện'
+				/>
 			</div>
 
 			{qrSeminar && (

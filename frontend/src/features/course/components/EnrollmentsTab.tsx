@@ -8,6 +8,9 @@ import { formatDateOr } from '@/shared/utils';
 import type { SimpleItem } from '../hooks/useCourseDetail';
 import { ENROLLMENT_STATUS_CFG, type Enrollment, type EnrollmentStatus } from '../types/course.type';
 import styles from '../pages/Courses.module.css';
+import tbl from '@/shared/components/Table/Table.module.css';
+import { useClientPaging } from '@/shared/hooks/useClientPaging';
+import { Pagination } from '@/shared/components/Table/Pagination';
 
 /** Bỏ dấu + chữ thường để tìm "nguyen van" khớp "Nguyễn Văn". */
 const normalize = (s: string) =>
@@ -50,10 +53,11 @@ export function EnrollmentsTab({
 		);
 	}, [enrollments, search, statusFilter]);
 
+	const pg = useClientPaging(filtered);
 	// Chỉ đăng ký "chờ duyệt" mới chọn được; "chọn tất cả" áp dụng cho các dòng đang hiển thị.
 	const visiblePendingIds = useMemo(
-		() => filtered.filter((e) => e.status === 'pending').map((e) => e.id),
-		[filtered],
+		() => pg.paged.filter((e) => e.status === 'pending').map((e) => e.id),
+		[pg.paged],
 	);
 	const rowSel = useRowSelection(visiblePendingIds);
 	// Loại id đã được xử lý/xoá (không còn "chờ duyệt") khỏi lựa chọn.
@@ -168,7 +172,7 @@ export function EnrollmentsTab({
 									onChange={rowSel.toggleSelectAll}
 								/>
 							</th>
-							<th className={styles.th}>#</th>
+							<th className={`${styles.th} ${tbl.thIdx}`}>STT</th>
 							<th className={styles.th}>Học viên</th>
 							<th className={styles.th}>Liên hệ</th>
 							<th className={styles.th}>Ngày đăng ký</th>
@@ -188,7 +192,7 @@ export function EnrollmentsTab({
 								</td>
 							</tr>
 						) : (
-							filtered.map((en, idx) => {
+							pg.paged.map((en, idx) => {
 								const cfg = ENROLLMENT_STATUS_CFG[en.status];
 								const isPending = en.status === 'pending';
 								return (
@@ -205,7 +209,7 @@ export function EnrollmentsTab({
 												/>
 											)}
 										</td>
-										<td className={`${styles.td} ${styles.tdIdx}`}>{idx + 1}</td>
+										<td className={`${styles.td} ${styles.tdIdx}`}>{pg.offset + idx + 1}</td>
 										<td className={styles.td}>
 											<div className={styles.subRowName}>{en.trainee_name}</div>
 										</td>
@@ -260,6 +264,10 @@ export function EnrollmentsTab({
 					</tbody>
 				</table>
 			</div>
+			<Pagination
+				{...pg.pagination}
+				itemLabel='đăng ký'
+			/>
 		</>
 	);
 }

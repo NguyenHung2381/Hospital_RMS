@@ -15,7 +15,9 @@ import {
 } from '@/assets/icons';
 import AdminLayout from '../../../layouts/AdminLayout';
 import { Badge } from '@/shared/components';
-import { BulkButton } from '../../../shared/components/Table/RowSelect';
+import { BulkButton, SelectCheckbox } from '../../../shared/components/Table/RowSelect';
+import sel from '../../../shared/components/Table/RowSelect.module.css';
+import tbl from '@/shared/components/Table/Table.module.css';
 import { SkeletonTable } from '../../../shared/components/Loading';
 import { AutoAssignModal } from '../components/AutoAssignModal';
 import {
@@ -30,6 +32,8 @@ import { exportCouncilSchedule } from '../api/councilApi';
 import { useCouncils } from '../hooks/useCouncils';
 import { SEAT_ROLES, STATUS_LABELS, type Council } from '../types/council.type';
 import styles from './Council.module.css';
+import { useClientPaging } from '@/shared/hooks/useClientPaging';
+import { Pagination } from '@/shared/components/Table/Pagination';
 
 export default function Council() {
 	const d = useCouncils();
@@ -59,6 +63,8 @@ export default function Council() {
 				);
 			});
 	}, [d.councils, d.rounds]);
+	// Phân trang theo đợt: mỗi đợt là một nhóm hàng, không cắt đôi nhóm giữa 2 trang
+	const pg = useClientPaging(groups);
 
 	const [exportingRound, setExportingRound] = useState<string | null>(null);
 	const exportRound = async (roundId: string) => {
@@ -211,15 +217,15 @@ export default function Council() {
 				<table className={styles.table}>
 					<thead>
 						<tr>
-							<th className={`${styles.th} ${styles.thCheck}`}>
-								<input
-									type='checkbox'
-									className={styles.rowCheckbox}
+							<th className={`${styles.th} ${sel.checkCol}`}>
+								<SelectCheckbox
 									title='Chọn tất cả'
 									checked={d.allSelected}
+									indeterminate={d.selected.size > 0}
 									onChange={d.toggleSelectAll}
 								/>
 							</th>
+							<th className={`${styles.th} ${tbl.thIdx}`}>STT</th>
 							<th className={styles.th}>Hội đồng</th>
 							<th className={styles.th}>Hệ chuyên môn</th>
 							<th className={styles.th}>Địa điểm</th>
@@ -233,11 +239,11 @@ export default function Council() {
 						{d.isLoadingData ? (
 							<SkeletonTable
 								rows={8}
-								cols={8}
+								cols={9}
 							/>
 						) : d.councils.length === 0 ? (
 							<tr>
-								<td colSpan={8}>
+								<td colSpan={9}>
 									<div className={styles.emptyState}>
 										<div className={styles.emptyTitle}>
 											Chưa có hội đồng nào
@@ -249,7 +255,7 @@ export default function Council() {
 								</td>
 							</tr>
 						) : (
-							groups.map((g) => {
+							pg.paged.map((g) => {
 								const open = expanded.has(g.roundId);
 								const allInRound = g.items.every((c) =>
 									d.selected.has(c.id),
@@ -261,12 +267,10 @@ export default function Council() {
 											onClick={() => toggleExpand(g.roundId)}
 										>
 											<td
-												className={`${styles.td} ${styles.thCheck}`}
+												className={`${styles.td} ${sel.checkCol}`}
 												onClick={(e) => e.stopPropagation()}
 											>
-												<input
-													type='checkbox'
-													className={styles.rowCheckbox}
+												<SelectCheckbox
 													title='Chọn cả đợt'
 													checked={allInRound}
 													onChange={() =>
@@ -278,7 +282,7 @@ export default function Council() {
 												/>
 											</td>
 											<td
-												colSpan={7}
+												colSpan={8}
 												className={styles.groupCell}
 											>
 												<span
@@ -310,26 +314,25 @@ export default function Council() {
 											</td>
 										</tr>
 										{open &&
-											g.items.map((c) => (
+											g.items.map((c, i) => (
 								<tr
 									key={c.id}
-									className={`${styles.tr} ${d.selected.has(c.id) ? styles.trSelected : ''}`}
+									className={`${styles.tr} ${d.selected.has(c.id) ? sel.rowSelected : ''}`}
 									onClick={() => {
 										d.setActiveCouncil(c);
 										d.setModal('detail');
 									}}
 								>
 									<td
-										className={`${styles.td} ${styles.thCheck}`}
+										className={`${styles.td} ${sel.checkCol}`}
 										onClick={(e) => e.stopPropagation()}
 									>
-										<input
-											type='checkbox'
-											className={styles.rowCheckbox}
+										<SelectCheckbox
 											checked={d.selected.has(c.id)}
 											onChange={() => d.toggleSelect(c.id)}
 										/>
 									</td>
+									<td className={`${styles.td} ${tbl.tdIdx}`}>{i + 1}</td>
 									<td className={styles.td}>
 										<div className={styles.councilName}>{c.name}</div>
 										<div className={styles.councilSub}>{c.id}</div>
@@ -423,6 +426,10 @@ export default function Council() {
 					</tbody>
 				</table>
 				</div>
+				<Pagination
+					{...pg.pagination}
+					itemLabel='đợt'
+				/>
 			</div>
 
 			{/* ── MODALS ── */}

@@ -191,20 +191,24 @@ const login = async (
 ) => {
 	const pool = await getPool();
 
+	// Có "@" → đăng nhập bằng email (username không bao giờ chứa "@"). users.email
+	// chưa UNIQUE nên lấy 2 dòng: email dùng chung cho nhiều tài khoản thì không
+	// biết là ai → coi như sai thông tin, người dùng phải đăng nhập bằng username.
+	const byEmail = String(username).includes('@');
 	const result = await pool
 		.request()
-		.input('username', sql.VarChar(50), username).query(`
-      SELECT u.id, u.username, u.password, u.full_name, u.email, u.staff_number,
+		.input('login', sql.VarChar(100), String(username).trim()).query(`
+      SELECT TOP 2 u.id, u.username, u.password, u.full_name, u.email, u.staff_number,
              u.role_id, u.is_active, u.department_id,
              u.account_expires_at, u.failed_login_count, u.locked_until,
              u.totp_enabled, u.password_changed_at, u.must_change_password, u.twofa_required_since,
              r.name AS role_name
       FROM users u
       LEFT JOIN roles r ON r.id = u.role_id
-      WHERE u.username = @username
+      WHERE ${byEmail ? 'u.email' : 'u.username'} = @login
     `);
 
-	const user = result.recordset[0];
+	const user = result.recordset.length === 1 ? result.recordset[0] : null;
 	if (!user) {
 		await fakeCompareDelay();
 		throw INVALID_CREDENTIALS;

@@ -11,9 +11,8 @@
 }
 
 .subText {
+	composes: cellSub from '../../../shared/components/Table/Table.module.css';
 	margin-top: 2px;
-	font-size: var(--font-size-xs);
-	color: var(--color-gray-500);
 	max-width: 320px;
 	overflow: hidden;
 	text-overflow: ellipsis;

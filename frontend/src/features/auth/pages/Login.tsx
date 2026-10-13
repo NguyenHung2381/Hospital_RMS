@@ -128,7 +128,7 @@ export default function Login() {
 		const newErrors: FormErrors = {};
 
 		if (!form.username.trim()) {
-			newErrors.username = 'Vui lòng nhập tên đăng nhập';
+			newErrors.username = 'Vui lòng nhập tên đăng nhập hoặc email';
 		} else if (form.username.trim().length < 3) {
 			newErrors.username = 'Tên đăng nhập ít nhất 3 ký tự';
 		}
@@ -371,7 +371,7 @@ export default function Login() {
 							htmlFor='username'
 							className={styles.inputLabel}
 						>
-							Tên đăng nhập <span className={styles.inputRequired}>*</span>
+							Tên đăng nhập hoặc email <span className={styles.inputRequired}>*</span>
 						</label>
 						<div className={styles.inputWrapper}>
 							<span className={styles.inputIcon}>
@@ -381,7 +381,7 @@ export default function Login() {
 								id='username'
 								type='text'
 								className={`${styles.inputField} ${errors.username ? styles.hasError : ''}`}
-								placeholder='Nhập tên đăng nhập...'
+								placeholder='VD: NVA_0123 hoặc ten@benhvien.vn'
 								value={form.username}
 								onChange={handleChange('username')}
 								autoComplete='username'

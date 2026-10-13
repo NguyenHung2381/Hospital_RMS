@@ -54,6 +54,8 @@ export default function ResearchDashboard() {
 		handleSearchInput,
 		handleTab,
 		handlePageChange,
+		handlePageSizeChange,
+		pageSize,
 		handleFilter,
 	} = useDashboard();
 
@@ -252,6 +254,8 @@ export default function ResearchDashboard() {
 							onFilter={handleFilter}
 							onTab={handleTab}
 							onPageChange={handlePageChange}
+							pageSize={pageSize}
+							onPageSizeChange={handlePageSizeChange}
 						/>
 					) : (
 						<UpcomingCouncilsTable

@@ -5,6 +5,9 @@ import { getProgramResults } from '../api/trainingProgramApi';
 import type { ProgramResultRow, TrainingProgram } from '../types/trainingProgram.type';
 import { ProgramLessonsPanel } from './ProgramLessonsPanel';
 import styles from '../pages/TrainingPrograms.module.css';
+import tbl from '@/shared/components/Table/Table.module.css';
+import { useClientPaging } from '@/shared/hooks/useClientPaging';
+import { Pagination } from '@/shared/components/Table/Pagination';
 
 export type DetailTab = 'info' | 'lessons' | 'results';
 
@@ -24,6 +27,7 @@ function InfoRow({ label, value }: { label: string; value: React.ReactNode }) {
 
 function ResultsPanel({ programId }: { programId: string }) {
 	const [rows, setRows] = useState<ProgramResultRow[]>([]);
+	const pg = useClientPaging(rows);
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState('');
 
@@ -56,35 +60,38 @@ function ResultsPanel({ programId }: { programId: string }) {
 
 	return (
 		<div style={{ overflowX: 'auto' }}>
-			<table style={{ width: '100%', fontSize: 13, borderCollapse: 'collapse' }}>
+			<table className={tbl.table}>
 				<thead>
 					<tr>
-						<th style={{ textAlign: 'left', padding: 8 }}>Học viên</th>
-						<th style={{ textAlign: 'left', padding: 8 }}>Khóa học</th>
-						<th style={{ padding: 8 }}>TX</th>
-						<th style={{ padding: 8 }}>GK</th>
-						<th style={{ padding: 8 }}>CK</th>
-						<th style={{ padding: 8 }}>Xếp loại</th>
-						<th style={{ padding: 8 }}>Kết quả</th>
+						<th className={tbl.thIdx}>STT</th>
+						<th>Học viên</th>
+						<th>Khóa học</th>
+						<th className={tbl.thCenter}>TX</th>
+						<th className={tbl.thCenter}>GK</th>
+						<th className={tbl.thCenter}>CK</th>
+						<th className={tbl.thCenter}>Xếp loại</th>
+						<th className={tbl.thCenter}>Kết quả</th>
 					</tr>
 				</thead>
 				<tbody>
-					{rows.map((r) => (
-						<tr
-							key={r.id}
-							style={{ borderTop: '1px solid var(--color-gray-100)' }}
-						>
-							<td style={{ padding: 8 }}>{r.trainee_name}</td>
-							<td style={{ padding: 8 }}>{r.course_name}</td>
-							<td style={{ padding: 8, textAlign: 'center' }}>{r.regular_score ?? '—'}</td>
-							<td style={{ padding: 8, textAlign: 'center' }}>{r.midterm_score ?? '—'}</td>
-							<td style={{ padding: 8, textAlign: 'center' }}>{r.final_score ?? r.score ?? '—'}</td>
-							<td style={{ padding: 8, textAlign: 'center' }}>{r.classification ?? '—'}</td>
-							<td style={{ padding: 8, textAlign: 'center' }}>{r.result ?? '—'}</td>
+					{pg.paged.map((r, i) => (
+						<tr key={r.id}>
+							<td className={tbl.tdIdx}>{pg.offset + i + 1}</td>
+							<td><span className={tbl.cellTitle}>{r.trainee_name}</span></td>
+							<td>{r.course_name}</td>
+							<td className={tbl.tdCenter}>{r.regular_score ?? '—'}</td>
+							<td className={tbl.tdCenter}>{r.midterm_score ?? '—'}</td>
+							<td className={tbl.tdCenter}>{r.final_score ?? r.score ?? '—'}</td>
+							<td className={tbl.tdCenter}>{r.classification ?? '—'}</td>
+							<td className={tbl.tdCenter}>{r.result ?? '—'}</td>
 						</tr>
 					))}
 				</tbody>
 			</table>
+			<Pagination
+				{...pg.pagination}
+				itemLabel='kết quả'
+			/>
 		</div>
 	);
 }

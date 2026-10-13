@@ -4,6 +4,9 @@ import { ShieldSvg } from '@/assets/icons';
 import { SkeletonTable, TableEmpty } from '@/shared/components';
 import type { Council } from '@/features/council/types/council.type';
 import styles from '../pages/Dashboard.module.css';
+import tbl from '@/shared/components/Table/Table.module.css';
+import { useClientPaging } from '@/shared/hooks/useClientPaging';
+import { Pagination } from '@/shared/components/Table/Pagination';
 
 interface UpcomingCouncilsTableProps {
 	councils: Council[];
@@ -17,6 +20,7 @@ export function UpcomingCouncilsTable({
 	error,
 }: UpcomingCouncilsTableProps) {
 	const navigate = useNavigate();
+	const pg = useClientPaging(councils);
 
 	return (
 		<div className={styles.tableSection}>
@@ -33,6 +37,7 @@ export function UpcomingCouncilsTable({
 				<table className={styles.table}>
 					<thead>
 						<tr>
+							<th className={tbl.thIdx}>STT</th>
 							<th>Hội đồng Khoa học</th>
 							<th>Đợt nghiên cứu / Khóa</th>
 							<th>Thời gian tổ chức</th>
@@ -44,40 +49,41 @@ export function UpcomingCouncilsTable({
 						{loading ? (
 							<SkeletonTable
 								rows={5}
-								cols={5}
+								cols={6}
 							/>
 						) : error ? (
 							<TableEmpty
-								colSpan={5}
+								colSpan={6}
 								icon={<ShieldSvg />}
 								title='Không thể tải lịch hội đồng khoa học. Vui lòng thử lại.'
 							/>
 						) : councils.length === 0 ? (
 							<TableEmpty
-								colSpan={5}
+								colSpan={6}
 								icon={<ShieldSvg />}
 								title='Hiện chưa có lịch họp bảo vệ hoặc đánh giá hội đồng nào sắp diễn ra.'
 							/>
 						) : (
-							councils.map((c) => (
+							pg.paged.map((c, i) => (
 								<tr
 									key={c.id}
 									onClick={() => navigate('/admin/councils')}
 								>
+									<td className={tbl.tdIdx}>{pg.offset + i + 1}</td>
 									<td>
 										<span className={styles.topicTitleText}>{c.name}</span>
 									</td>
 									<td>
-										<span style={{ fontSize: 13 }}>{c.round_name ?? '—'}</span>
+										{c.round_name ?? '—'}
 									</td>
 									<td>
-										<span style={{ fontSize: 13 }}>{c.defense_date ? formatDateVN(c.defense_date) : "—"}</span>
+										{c.defense_date ? formatDateVN(c.defense_date) : '—'}
 									</td>
 									<td>
-										<span style={{ fontSize: 13 }}>{c.chairman_name ?? '—'}</span>
+										{c.chairman_name ?? '—'}
 									</td>
 									<td>
-										<span style={{ fontSize: 13 }}>{c.topic_count ?? 0}</span>
+										{c.topic_count ?? 0}
 									</td>
 								</tr>
 							))
@@ -85,6 +91,10 @@ export function UpcomingCouncilsTable({
 					</tbody>
 				</table>
 			</div>
+			<Pagination
+				{...pg.pagination}
+				itemLabel='hội đồng'
+			/>
 		</div>
 	);
 }

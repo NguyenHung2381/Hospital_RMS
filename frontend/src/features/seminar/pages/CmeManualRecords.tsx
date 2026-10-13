@@ -46,12 +46,14 @@ import {
 	type CmeRecordImportResult,
 } from '../types/cmeRecord.type';
 import styles from './Seminar.module.css';
+import tbl from '@/shared/components/Table/Table.module.css';
+import { DEFAULT_PAGE_SIZE } from '@/shared/utils/constants';
+import { useClientPaging } from '@/shared/hooks/useClientPaging';
 
 const THIS_YEAR = new Date().getFullYear();
 const MIN_YEAR = 2000;
 const MAX_YEAR = THIS_YEAR + 1;
 const NO_CATEGORY = '__none__';
-const PAGE_SIZE_OPTIONS = [10, 20, 50, 100] as const;
 
 /** Chọn năm dạng ‹ 2026 › — bấm mũi tên, phím ↑/↓ hoặc gõ thẳng năm, thay cho dropdown dài. */
 function YearStepper({ value, onChange }: { value: number; onChange: (y: number) => void }) {
@@ -417,6 +419,7 @@ function ImportModal({ onClose, onDone }: { onClose: () => void; onDone: () => v
 	};
 
 	const rows = preview?.rows ?? [];
+	const pg = useClientPaging(rows);
 
 	return (
 		<Modal
@@ -491,7 +494,7 @@ function ImportModal({ onClose, onDone }: { onClose: () => void; onDone: () => v
 							<table className={styles.table}>
 								<thead>
 									<tr>
-										<th>#</th>
+										<th className={tbl.thIdx}>STT</th>
 										<th>Nhân viên</th>
 										<th>Nội dung</th>
 										<th>Năm</th>
@@ -501,9 +504,9 @@ function ImportModal({ onClose, onDone }: { onClose: () => void; onDone: () => v
 									</tr>
 								</thead>
 								<tbody>
-									{rows.map((r, i) => (
+									{pg.paged.map((r, i) => (
 										<tr key={r.row}>
-											<td className={styles.tdIdx}>{i + 1}</td>
+											<td className={styles.tdIdx}>{pg.offset + i + 1}</td>
 											<td>
 												{r.matched_user_name || r.full_name_raw || '—'}
 												{!r.valid && <div className={styles.rowWarn}>Sẽ bị bỏ qua</div>}
@@ -518,6 +521,12 @@ function ImportModal({ onClose, onDone }: { onClose: () => void; onDone: () => v
 								</tbody>
 							</table>
 						</div>
+					)}
+					{rows.length > 0 && (
+						<Pagination
+							{...pg.pagination}
+							itemLabel='dòng'
+						/>
 					)}
 				</>
 			)}
@@ -597,7 +606,7 @@ export default function CmeManualRecords() {
 	}, [records, tab, search, deptFilter, categoryFilter, evidenceFilter, statusFilter]);
 
 	const [page, setPage] = useState(1);
-	const [pageSize, setPageSize] = useState<number>(20);
+	const [pageSize, setPageSize] = useState<number>(DEFAULT_PAGE_SIZE);
 	// Đổi bộ lọc / năm thì quay về trang đầu (điều chỉnh khi render, không dùng effect)
 	const filterKey = `${search}|${deptFilter}|${categoryFilter}|${evidenceFilter}|${statusFilter}|${year}|${tab}`;
 	const [prevFilterKey, setPrevFilterKey] = useState(filterKey);
@@ -976,13 +985,12 @@ export default function CmeManualRecords() {
 					</>
 				)}
 
-				{!loading && filtered.length > 0 && (
+				{!loading && (
 					<Pagination
 						page={safePage}
 						totalPages={totalPages}
 						total={filtered.length}
 						rowsPerPage={pageSize}
-						pageSizeOptions={PAGE_SIZE_OPTIONS}
 						onPageChange={setPage}
 						onRowsPerPageChange={(n) => {
 							setPageSize(n);

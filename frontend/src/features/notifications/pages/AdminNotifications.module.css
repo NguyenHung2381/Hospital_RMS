@@ -567,13 +567,11 @@
 }
 
 .rowTitle {
-	font-weight: var(--font-weight-semibold);
-	color: var(--color-gray-800);
+	composes: cellTitle from '../../../shared/components/Table/Table.module.css';
 	margin-bottom: 2px;
 }
 .rowMsg {
-	font-size: var(--font-size-xs);
-	color: var(--color-gray-500);
+	composes: cellSub from '../../../shared/components/Table/Table.module.css';
 	display: -webkit-box;
 	-webkit-box-orient: vertical;
 	-webkit-line-clamp: 2;
@@ -582,8 +580,7 @@
 }
 
 .recipientName {
-	font-weight: var(--font-weight-medium);
-	color: var(--color-gray-800);
+	composes: cellTitle from '../../../shared/components/Table/Table.module.css';
 }
 
 .readBadge,
@@ -606,8 +603,7 @@
 }
 
 .timeText {
-	font-size: var(--font-size-xs);
-	color: var(--color-gray-400);
+	composes: cellSub from '../../../shared/components/Table/Table.module.css';
 	white-space: nowrap;
 }
 

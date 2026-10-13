@@ -7,6 +7,9 @@ import {
 	formatTimeOnly,
 	parseUserAgent,
 } from '../utils';
+import tbl from '@/shared/components/Table/Table.module.css';
+import { useClientPaging } from '@/shared/hooks/useClientPaging';
+import { Pagination } from '@/shared/components/Table/Pagination';
 
 interface Props {
 	sessions: ActivitySession[];
@@ -15,6 +18,7 @@ interface Props {
 }
 
 export function SessionsPanel({ sessions, gapMinutes, onOpen }: Props) {
+	const pg = useClientPaging(sessions);
 	if (!sessions.length)
 		return <div className={styles.emptyState}>Không có phiên truy cập nào trong khoảng đã chọn</div>;
 
@@ -28,6 +32,7 @@ export function SessionsPanel({ sessions, gapMinutes, onOpen }: Props) {
 				<table className={styles.table}>
 					<thead>
 						<tr>
+							<th className={`${styles.th} ${tbl.thIdx}`}>STT</th>
 							<th className={styles.th}>Người dùng</th>
 							<th className={styles.th}>Bắt đầu → Kết thúc</th>
 							<th className={styles.th}>Thời lượng</th>
@@ -39,7 +44,7 @@ export function SessionsPanel({ sessions, gapMinutes, onOpen }: Props) {
 						</tr>
 					</thead>
 					<tbody>
-						{sessions.map((s) => {
+						{pg.paged.map((s, i) => {
 							const ua = parseUserAgent(s.user_agents[0]);
 							return (
 								<tr
@@ -47,6 +52,7 @@ export function SessionsPanel({ sessions, gapMinutes, onOpen }: Props) {
 									className={`${styles.tr} ${styles.clickable}`}
 									onClick={() => onOpen(s)}
 								>
+									<td className={`${styles.td} ${tbl.tdIdx}`}>{pg.offset + i + 1}</td>
 									<td className={styles.td}>
 										<div className={styles.actorName}>{actorDisplay(s)}</div>
 										<div className={styles.actorId}>
@@ -104,6 +110,10 @@ export function SessionsPanel({ sessions, gapMinutes, onOpen }: Props) {
 					</tbody>
 				</table>
 			</div>
+			<Pagination
+				{...pg.pagination}
+				itemLabel='phiên'
+			/>
 		</>
 	);
 }

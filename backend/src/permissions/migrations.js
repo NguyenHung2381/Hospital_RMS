@@ -240,6 +240,32 @@ const migrateRolesAndSessions = async ({ dryRun = false } = {}) => {
           created_at DATETIME2   NOT NULL CONSTRAINT DF_pwreset_created DEFAULT SYSUTCDATETIME()
         );
     `);
+		// Email không trùng giữa các tài khoản (đăng nhập / quên mật khẩu bằng email).
+		// Tương đương 2026-10-25_users_email_unique.sql. Schema gốc có thể đã có sẵn
+		// UQ_users_email (ngoài repo) → chỉ tạo khi users.email chưa có unique index nào.
+		// Dữ liệu đang có email trùng thì CHƯA tạo (tạo sẽ lỗi, chặn server khởi
+		// động) — báo ra log để quản trị gộp/sửa.
+		const emailIdx = (
+			await pool.request().query(`
+      IF NOT EXISTS (
+        SELECT 1 FROM sys.indexes i
+        JOIN sys.index_columns ic ON ic.object_id = i.object_id AND ic.index_id = i.index_id AND ic.key_ordinal = 1
+        WHERE i.object_id = OBJECT_ID('users') AND i.is_unique = 1
+          AND COL_NAME(ic.object_id, ic.column_id) = 'email'
+          AND (SELECT COUNT(*) FROM sys.index_columns x WHERE x.object_id = i.object_id AND x.index_id = i.index_id AND x.key_ordinal > 0) = 1
+      )
+      BEGIN
+        IF EXISTS (SELECT 1 FROM users WHERE email <> '' GROUP BY email HAVING COUNT(*) > 1)
+          SELECT email, COUNT(*) AS n FROM users WHERE email <> '' GROUP BY email HAVING COUNT(*) > 1;
+        ELSE
+          CREATE UNIQUE INDEX UX_users_email ON users(email) WHERE email IS NOT NULL AND email <> '';
+      END
+    `)
+		).recordset;
+		if (emailIdx?.length)
+			console.warn(
+				`⚠️  Chưa bật ràng buộc email không trùng: ${emailIdx.length} email đang dùng cho nhiều tài khoản: ${emailIdx.map((r) => `${r.email} (${r.n})`).join(', ')}`,
+			);
 		// Cấp độ đề tài cấu hình riêng theo từng đợt (chọn ngay khi tạo đợt).
 		// Tương đương 2026-10-17_research_round_levels.sql — kiểu cột khoá lấy
 		// theo cột id thật để FK không lệch độ dài.

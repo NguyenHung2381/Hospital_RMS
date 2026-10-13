@@ -1,4 +1,5 @@
 import { showToast } from '@/shared/utils/feedback';
+import { DEFAULT_PAGE_SIZE } from '@/shared/utils/constants';
 import { useEffect, useMemo, useState } from 'react';
 import { getDepartments } from '../../department/api/departmentApi';
 import type { Department } from '../../department/types/department.type';
@@ -27,7 +28,6 @@ const EMPTY_FORM = {
 	ref_type: '',
 };
 
-const LIMIT = 20;
 
 export function useAdminNotifications() {
 	// ── Send form state ──────────────────────
@@ -141,6 +141,7 @@ export function useAdminNotifications() {
 	// ── History state ────────────────────────
 	const [rows, setRows] = useState<AdminNotification[]>([]);
 	const [page, setPage] = useState(1);
+	const [pageSize, setPageSize] = useState<number>(DEFAULT_PAGE_SIZE);
 	const [total, setTotal] = useState(0);
 	const [search, setSearch] = useState('');
 	const [filterType, setFilterType] = useState('');
@@ -199,7 +200,7 @@ export function useAdminNotifications() {
 			try {
 				const res = await adminGetNotifications({
 					page,
-					limit: LIMIT,
+					limit: pageSize,
 					type: filterType || undefined,
 					search: search || undefined,
 				});
@@ -216,7 +217,7 @@ export function useAdminNotifications() {
 		return () => {
 			cancelled = true;
 		};
-	}, [page, filterType, search, refreshKey]);
+	}, [page, pageSize, filterType, search, refreshKey]);
 
 	const handleSend = async () => {
 		if (!form.title.trim()) {
@@ -306,7 +307,7 @@ export function useAdminNotifications() {
 		}
 	};
 
-	const totalPages = Math.ceil(total / LIMIT);
+	const totalPages = Math.max(1, Math.ceil(total / pageSize));
 
 	return {
 		form,
@@ -344,6 +345,8 @@ export function useAdminNotifications() {
 		setPage,
 		total,
 		totalPages,
+		pageSize,
+		setPageSize,
 		search,
 		setSearch,
 		filterType,

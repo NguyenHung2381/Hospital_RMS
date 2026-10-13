@@ -4,7 +4,6 @@ import type { SimpleItem } from '../../topics/api/topicApi';
 import type { DashboardStats } from '../types/dashboard.type';
 import {
 	formatDate,
-	ROWS_PER_PAGE,
 	STATUS_CONFIG,
 	TABS,
 	VISIBLE_ROWS,
@@ -12,6 +11,7 @@ import {
 	type TopicRow,
 } from '../utils/dashboardHelpers';
 import styles from '../pages/Dashboard.module.css';
+import tbl from '@/shared/components/Table/Table.module.css';
 
 function StatusBadge({ status }: { status: string }) {
 	const cfg = STATUS_CONFIG[status] ?? { label: status, tone: 'gray' as const };
@@ -43,6 +43,8 @@ interface TopicTableProps {
 	onFilter: (field: 'dept' | 'level', val: string) => void;
 	onTab: (tab: TabKey) => void;
 	onPageChange: (p: number) => void;
+	pageSize: number;
+	onPageSizeChange: (n: number) => void;
 }
 
 export function TopicTable({
@@ -63,6 +65,8 @@ export function TopicTable({
 	onFilter,
 	onTab,
 	onPageChange,
+	pageSize,
+	onPageSizeChange,
 }: TopicTableProps) {
 	const kpi = stats?.overview;
 	const tabCount = (tab: TabKey) => {
@@ -142,6 +146,7 @@ export function TopicTable({
 				<table className={styles.table}>
 					<thead>
 						<tr>
+							<th className={tbl.thIdx}>STT</th>
 							<th className={styles.colId}>Mã đề tài</th>
 							<th className={styles.colTitle}>Tên đề tài & Chủ nhiệm</th>
 							<th className={styles.colLevel}>Cấp quản lý</th>
@@ -155,23 +160,24 @@ export function TopicTable({
 						{loading ? (
 							<SkeletonTable
 								rows={VISIBLE_ROWS}
-								cols={7}
+								cols={8}
 							/>
 						) : error ? (
 							<TableEmpty
-								colSpan={7}
+								colSpan={8}
 								icon={<DocSvg />}
 								title='Không thể tải danh mục đề tài nghiên cứu. Vui lòng thử lại.'
 							/>
 						) : topics.length === 0 ? (
 							<TableEmpty
-								colSpan={7}
+								colSpan={8}
 								icon={<DocSvg />}
 								title='Không có đề tài nào phù hợp với điều kiện tìm kiếm và bộ lọc.'
 							/>
 						) : (
-							topics.map((t) => (
+							topics.map((t, i) => (
 								<tr key={t.id}>
+									<td className={tbl.tdIdx}>{(safePage - 1) * pageSize + i + 1}</td>
 									<td>
 										<span className={styles.topicId}>{t.id}</span>
 									</td>
@@ -189,31 +195,19 @@ export function TopicTable({
 										)}
 									</td>
 									<td>
-										<span
-											style={{ fontSize: 12, color: 'var(--color-gray-600)' }}
-										>
-											{t.level_name ?? '—'}
-										</span>
+										{t.level_name ?? '—'}
 									</td>
 									<td>
-										<span
-											style={{ fontSize: 12, color: 'var(--color-gray-600)' }}
-										>
-											{t.category_name ?? '—'}
-										</span>
+										{t.category_name ?? '—'}
 									</td>
 									<td>
-										<span style={{ fontSize: 13 }}>
-											{t.department_name ?? '—'}
-										</span>
+										{t.department_name ?? '—'}
 									</td>
 									<td>
 										<StatusBadge status={t.status} />
 									</td>
 									<td>
-										<span
-											style={{ fontSize: 12, color: 'var(--color-gray-500)' }}
-										>
+										<span className={tbl.dateText}>
 											{formatDate(t.created_at)}
 										</span>
 									</td>
@@ -228,10 +222,10 @@ export function TopicTable({
 				page={safePage}
 				totalPages={totalPages}
 				total={total}
-				rowsPerPage={ROWS_PER_PAGE}
+				rowsPerPage={pageSize}
 				onPageChange={onPageChange}
+				onRowsPerPageChange={onPageSizeChange}
 				itemLabel='đề tài'
-				hideSizeSelect
 			/>
 		</div>
 	);

@@ -12,14 +12,15 @@ const { install } = require('./fakeDb');
 
 const HASH = bcrypt.hashSync('Dung#matkhau2026', 4);
 const USERS = {
-	active: { id: 'U1', username: 'active', password: HASH, is_active: 1, role_id: null, totp_enabled: 0, failed_login_count: 0, locked_until: null },
-	disabled: { id: 'U2', username: 'disabled', password: HASH, is_active: 0, role_id: null, totp_enabled: 0, failed_login_count: 0, locked_until: null },
-	twofa: { id: 'U3', username: 'twofa', password: HASH, is_active: 1, totp_enabled: 1 },
+	active: { id: 'U1', username: 'active', email: 'active@bv.vn', password: HASH, is_active: 1, role_id: null, totp_enabled: 0, failed_login_count: 0, locked_until: null },
+	disabled: { id: 'U2', username: 'disabled', email: 'chung@bv.vn', password: HASH, is_active: 0, role_id: null, totp_enabled: 0, failed_login_count: 0, locked_until: null },
+	twofa: { id: 'U3', username: 'twofa', email: 'chung@bv.vn', password: HASH, is_active: 1, totp_enabled: 1 },
 };
 const byId = Object.fromEntries(Object.values(USERS).map((u) => [u.id, u]));
 
 const log = install(async (text, inputs) => {
-	if (/WHERE u\.username = @username/.test(text)) return USERS[inputs.username] ? [USERS[inputs.username]] : [];
+	if (/WHERE u\.username = @login/.test(text)) return USERS[inputs.login] ? [USERS[inputs.login]] : [];
+	if (/WHERE u\.email = @login/.test(text)) return Object.values(USERS).filter((u) => u.email === inputs.login);
 	if (/SELECT username, totp_enabled FROM users/.test(text)) return [byId[inputs.id]];
 	if (/SELECT password FROM users WHERE id = @id/.test(text)) return [byId[inputs.id]];
 	if (/COUNT\(\*\) AS locks/.test(text)) return [{ locks: 0 }];
@@ -40,6 +41,12 @@ test('sai username và sai mật khẩu trả cùng một lỗi 401', async () =
 	const b = await authService.login('active', 'Sai#matkhau2').catch((e) => e);
 	assert.equal(a.statusCode, 401);
 	assert.deepEqual({ s: a.statusCode, m: a.message }, { s: b.statusCode, m: b.message });
+});
+
+test('đăng nhập bằng email; email dùng chung nhiều tài khoản → lỗi chung 401', async () => {
+	const ok = await authService.login('active@bv.vn', 'Dung#matkhau2026');
+	assert.equal(ok.user?.username, 'active');
+	await rejectsWith(authService.login('chung@bv.vn', 'Dung#matkhau2026'), 401, /không đúng/);
 });
 
 test('tài khoản bị vô hiệu hoá: sai mật khẩu → lỗi chung, đúng mật khẩu → mới báo vô hiệu hoá', async () => {

@@ -14,6 +14,8 @@ import { VenueFormModal } from '../components/VenueFormModal';
 import type { Venue, VenueFormData, VenueScope } from '../types/venue.type';
 import { SCOPE_LABEL } from '../utils/venueScope';
 import styles from './Venues.module.css';
+import tbl from '@/shared/components/Table/Table.module.css';
+import { DEFAULT_PAGE_SIZE } from '@/shared/utils/constants';
 
 export default function Venues() {
 	const { has } = usePermission();
@@ -25,7 +27,7 @@ export default function Venues() {
 	const [isLoadingData, setIsLoadingData] = useState(true);
 	const [search, setSearch] = useState('');
 	const [scopeFilter, setScopeFilter] = useState<VenueScope | ''>('');
-	const [pageSize, setPageSize] = useState(10);
+	const [pageSize, setPageSize] = useState<number>(DEFAULT_PAGE_SIZE);
 	const [page, setPage] = useState(1);
 	const [editing, setEditing] = useState<Venue | 'new' | null>(null);
 	const [deleting, setDeleting] = useState<Venue | null>(null);
@@ -159,23 +161,6 @@ export default function Venues() {
 								</option>
 							))}
 						</select>
-						<div className={base.pageSizeWrap}>
-							<label className={base.pageSizeLabel}>Hiển thị</label>
-							<select
-								className={base.pageSizeSelect}
-								value={pageSize}
-								onChange={(e) => {
-									setPageSize(Number(e.target.value));
-									setPage(1);
-								}}
-							>
-								<option value={10}>10</option>
-								<option value={25}>25</option>
-								<option value={50}>50</option>
-								<option value={0}>Tất cả</option>
-							</select>
-							<span className={base.pageSizeLabel}>dòng</span>
-						</div>
 					</div>
 				</div>
 
@@ -183,7 +168,7 @@ export default function Venues() {
 					<table className={base.table}>
 						<thead>
 							<tr>
-								<th className={base.th}>#</th>
+								<th className={`${base.th} ${tbl.thIdx}`}>STT</th>
 								<th className={base.th}>Địa điểm</th>
 								<th className={base.th}>Vị trí</th>
 								<th className={`${base.th} ${base.thRight}`}>Sức chứa</th>
@@ -279,21 +264,18 @@ export default function Venues() {
 					</table>
 				</div>
 
-				{filtered.length > 0 && totalPages > 1 && (
-					<Pagination
-						page={safePage}
-						totalPages={totalPages}
-						total={filtered.length}
-						rowsPerPage={pageSize}
-						onPageChange={setPage}
-						onRowsPerPageChange={(n) => {
-							setPageSize(n);
-							setPage(1);
-						}}
-						itemLabel='địa điểm'
-						hideSizeSelect
-					/>
-				)}
+								<Pagination
+					page={safePage}
+					totalPages={totalPages}
+					total={filtered.length}
+					rowsPerPage={pageSize}
+					onPageChange={setPage}
+					onRowsPerPageChange={(n) => {
+						setPageSize(n);
+						setPage(1);
+					}}
+					itemLabel='địa điểm'
+				/>
 			</div>
 
 			{editing && (

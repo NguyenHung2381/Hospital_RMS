@@ -29,6 +29,9 @@ import { roleCfg } from '@/shared/utils/roleDisplay';
 import { usePermission } from '../../../shared/hooks/usePermission';
 import { Badge } from '@/shared/components';
 import styles from './DepartmentAccounts.module.css';
+import tbl from '@/shared/components/Table/Table.module.css';
+import { useClientPaging } from '@/shared/hooks/useClientPaging';
+import { Pagination } from '@/shared/components/Table/Pagination';
 
 function Avatar({
 	name,
@@ -57,7 +60,8 @@ export default function DepartmentAccounts() {
 	const { has } = usePermission();
 	const canUpdate = has('users:update');
 	const canDelete = has('users:delete');
-	const rowSel = useRowSelection((d.filteredUsers ?? []).map((u) => u.id));
+	const pg = useClientPaging(d.filteredUsers ?? []);
+	const rowSel = useRowSelection(pg.paged.map((u) => u.id));
 	const [bulkDeleteOpen, setBulkDeleteOpen] = React.useState(false);
 	const [bulkBusy, setBulkBusy] = React.useState(false);
 	const runBulkAction = async (fn: () => Promise<void>) => {
@@ -268,7 +272,7 @@ export default function DepartmentAccounts() {
 											onChange={rowSel.toggleSelectAll}
 										/>
 									</th>
-									<th className={styles.th}>#</th>
+									<th className={`${styles.th} ${tbl.thIdx}`}>STT</th>
 									<th className={styles.th}>Người dùng</th>
 									<th className={styles.th}>Đăng nhập / Mã NV</th>
 									<th className={styles.th}>Vai trò</th>
@@ -279,7 +283,7 @@ export default function DepartmentAccounts() {
 								</tr>
 							</thead>
 							<tbody>
-								{d.filteredUsers.map((u, i) => {
+								{pg.paged.map((u, i) => {
 									const typeCfg = roleCfg(u);
 									return (
 										<tr
@@ -294,7 +298,7 @@ export default function DepartmentAccounts() {
 												/>
 											</td>
 											<td className={`${styles.td} ${styles.tdIdx}`}>
-												{i + 1}
+												{pg.offset + i + 1}
 											</td>
 											<td className={styles.td}>
 												<div className={styles.memberCell}>
@@ -393,6 +397,10 @@ export default function DepartmentAccounts() {
 								})}
 							</tbody>
 						</table>
+						<Pagination
+							{...pg.pagination}
+							itemLabel='tài khoản'
+						/>
 						</>
 					)}
 				</div>

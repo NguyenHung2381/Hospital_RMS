@@ -25,6 +25,7 @@ import type {
 } from '../types/topicregister.type';
 import { getInitials } from '../../../shared/utils/helper';
 import { MAX_FILE_SIZE } from '../utils/topicRegisterHelpers';
+import { nextAddRole } from '../utils/topicHelpers';
 
 export interface ManualForm {
 	ho_ten: string;
@@ -319,8 +320,8 @@ export function useTopicRegister(): TopicRegisterState {
 	const addMember = useCallback(
 		(u: UserSuggestion) => {
 			if (pendingMembers.some((m) => m.id === u.id)) return;
-			setPendingMembers((prev) => [
-				...prev,
+			const next = [
+				...pendingMembers,
 				{
 					id: u.id,
 					ho_ten: u.full_name,
@@ -329,9 +330,10 @@ export function useTopicRegister(): TopicRegisterState {
 					chuc_vu: '',
 					role: addRole,
 				},
-			]);
-			// Đã có chủ nhiệm → người thêm tiếp theo mặc định là thành viên
-			if (addRole === 'leader') setAddRole('member');
+			];
+			setPendingMembers(next);
+			// Người thêm tiếp theo mặc định lần lượt Chủ nhiệm → Thư ký → Thành viên
+			setAddRole(nextAddRole(next));
 			setMemberQuery('');
 			setSuggestions([]);
 			setShowSuggestions(false);

@@ -36,38 +36,6 @@ export function SearchInput({
 	);
 }
 
-/** "Hiển thị [n] dòng" — giá trị 0 nghĩa là tất cả. */
-export function PageSizeSelect({
-	value,
-	onChange,
-	options = [5, 10, 25, 50, 0],
-}: {
-	value: number;
-	onChange: (v: number) => void;
-	options?: readonly number[];
-}) {
-	return (
-		<div className={styles.pageSizeWrap}>
-			<label className={styles.pageSizeLabel}>Hiển thị</label>
-			<select
-				className={styles.pageSizeSelect}
-				value={value}
-				onChange={(e) => onChange(Number(e.target.value))}
-			>
-				{options.map((n) => (
-					<option
-						key={n}
-						value={n}
-					>
-						{n === 0 ? 'Tất cả' : n}
-					</option>
-				))}
-			</select>
-			<span className={styles.pageSizeLabel}>dòng</span>
-		</div>
-	);
-}
-
 /**
  * Nhãn đếm cạnh tiêu đề bảng. Khi đang chọn dòng thì đổi thành
  * "Đã chọn N · Xoá đã chọn · Bỏ chọn" kèm hộp thoại xác nhận xoá hàng loạt.

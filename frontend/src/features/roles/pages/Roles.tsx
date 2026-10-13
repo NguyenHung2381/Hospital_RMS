@@ -28,6 +28,7 @@ import { UserPermissionsModal } from '../components/UserPermissionsModal';
 import { useRoles } from '../hooks/useRoles';
 import { formatDateVN } from '../../../shared/utils/formatDate';
 import styles from './Roles.module.css';
+import tbl from '@/shared/components/Table/Table.module.css';
 
 function getInitials(name: string) {
 	const parts = name.trim().split(/\s+/);
@@ -136,23 +137,6 @@ export default function Roles() {
 								</button>
 							)}
 						</div>
-						<div className={styles.pageSizeWrap}>
-							<label className={styles.pageSizeLabel}>Hiển thị</label>
-							<select
-								className={styles.pageSizeSelect}
-								value={r.pageSize}
-								onChange={(e) => {
-									r.setPageSize(Number(e.target.value));
-									r.setPage(1);
-								}}
-							>
-								<option value={5}>5</option>
-								<option value={10}>10</option>
-								<option value={25}>25</option>
-								<option value={0}>Tất cả</option>
-							</select>
-							<span className={styles.pageSizeLabel}>dòng</span>
-						</div>
 					</div>
 				</div>
 
@@ -168,7 +152,7 @@ export default function Roles() {
 									onChange={rowSel.toggleSelectAll}
 								/>
 							</th>
-							<th className={styles.th}>#</th>
+							<th className={`${styles.th} ${tbl.thIdx}`}>STT</th>
 							<th className={styles.th}>Vai trò</th>
 							<th className={styles.th}>Mô tả</th>
 							<th className={styles.th}>Người dùng</th>
@@ -361,21 +345,18 @@ export default function Roles() {
 				</table>
 				</div>
 
-				{r.total > 0 && r.totalPages > 1 && (
-					<Pagination
-						page={r.safePage}
-						totalPages={r.totalPages}
-						total={r.total}
-						rowsPerPage={r.pageSize}
-						onPageChange={r.setPage}
-						onRowsPerPageChange={(n) => {
-							r.setPageSize(n);
-							r.setPage(1);
-						}}
-						itemLabel='vai trò'
-						hideSizeSelect
-					/>
-				)}
+								<Pagination
+					page={r.safePage}
+					totalPages={r.totalPages}
+					total={r.total}
+					rowsPerPage={r.pageSize}
+					onPageChange={r.setPage}
+					onRowsPerPageChange={(n) => {
+						r.setPageSize(n);
+						r.setPage(1);
+					}}
+					itemLabel='vai trò'
+				/>
 			</div>
 
 

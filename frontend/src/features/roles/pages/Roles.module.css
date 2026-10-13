@@ -156,19 +156,15 @@
 }
 
 .roleName {
-	font-weight: var(--font-weight-semibold);
-	color: var(--color-gray-800);
+	composes: cellTitle from '../../../shared/components/Table/Table.module.css';
 }
 .roleId {
-	font-size: var(--font-size-2xs);
-	color: var(--color-gray-400);
-	font-family: var(--font-mono);
+	composes: cellCode from '../../../shared/components/Table/Table.module.css';
 	margin-top: 2px;
 }
 
 .descText {
-	font-size: var(--font-size-xs);
-	color: var(--color-gray-500);
+	composes: cellSub from '../../../shared/components/Table/Table.module.css';
 	max-width: 360px;
 	display: -webkit-box;
 	-webkit-box-orient: vertical;
@@ -192,8 +188,7 @@
 }
 
 .dateText {
-	font-size: var(--font-size-xs);
-	color: var(--color-gray-500);
+	composes: dateText from '../../../shared/components/Table/Table.module.css';
 }
 
 /* ── ACTION BUTTONS ──────────────────────── */
@@ -428,35 +423,6 @@
 }
 
 /* ── PAGE SIZE ───────────────────────────── */
-.pageSizeWrap {
-	display: flex;
-	align-items: center;
-	gap: var(--space-2);
-}
-.pageSizeLabel {
-	font-size: var(--font-size-sm);
-	color: var(--color-gray-500);
-	white-space: nowrap;
-}
-.pageSizeSelect {
-	appearance: none;
-	padding: 5px 28px 5px 10px;
-	border: 1.5px solid var(--color-gray-200);
-	border-radius: var(--radius-lg);
-	font-family: var(--font-body);
-	font-size: var(--font-size-sm);
-	color: var(--color-gray-700);
-	background: var(--color-white)
-		url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%239ca3af' stroke-width='2.5' stroke-linecap='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E")
-		no-repeat right 8px center;
-	cursor: pointer;
-	outline: none;
-	transition: all var(--transition-fast);
-}
-.pageSizeSelect:focus {
-	border-color: var(--color-primary);
-	box-shadow: 0 0 0 3px rgba(10, 155, 74, 0.1);
-}
 
 /* ── PAGINATION ──────────────────────────── */
 .pagination {
@@ -493,24 +459,15 @@
 }
 
 /* Ma trận quyền */
+/* Màu/chữ/viền lấy từ bảng chuẩn; ở đây chỉ thêm ghim header + bố cục cột. */
 .permMatrix {
-	width: 100%;
-	border-collapse: collapse;
+	composes: table from '../../../shared/components/Table/Table.module.css';
 }
 
 .permMatrix thead th {
 	position: sticky;
 	top: 0;
 	z-index: 1;
-	padding: var(--space-3) var(--space-4);
-	background: var(--color-gray-200);
-	border-bottom: 1.5px solid var(--color-gray-300);
-	font-size: var(--font-size-2xs);
-	font-weight: var(--font-weight-bold);
-	color: var(--color-gray-500);
-	text-transform: uppercase;
-	letter-spacing: 0.05em;
-	white-space: nowrap;
 }
 
 .permMatrix thead th:first-child {
@@ -523,19 +480,8 @@
 	width: 80px;
 }
 
-.permMatrix tbody tr {
-	border-bottom: 1px solid var(--color-gray-100);
-	transition: background var(--transition-fast);
-}
-.permMatrix tbody tr:last-child {
-	border-bottom: none;
-}
-.permMatrix tbody tr:hover {
-	background: #f8fdfa;
-}
-
 /* Cell nhãn resource */
-.permModuleRow td {
+.permMatrix .permModuleRow td {
 	padding: var(--space-2) var(--space-5);
 	background: var(--color-gray-50);
 	font-size: var(--font-size-xs);
@@ -555,9 +501,7 @@
 	vertical-align: middle;
 }
 .permResourceName {
-	font-size: var(--font-size-sm);
-	font-weight: var(--font-weight-semibold);
-	color: var(--color-gray-800);
+	composes: cellTitle from '../../../shared/components/Table/Table.module.css';
 	display: flex;
 	align-items: center;
 	gap: var(--space-2);
@@ -570,7 +514,7 @@
 }
 
 /* Cell checkbox */
-.permCell {
+.permMatrix .permCell {
 	text-align: center;
 	padding: var(--space-3) var(--space-2);
 	vertical-align: middle;
@@ -885,7 +829,7 @@
 }
 .permMatrix thead th:first-child {
 	z-index: 3;
-	background: var(--color-gray-200);
+	background: #f1f5f9;
 }
 /* Ô gộp colSpan không "dính" được — cho nhãn bên trong dính trái khi cuộn ngang */
 .permModuleLabel {

@@ -5,12 +5,16 @@ import { ENROLLMENT_STATUS_CFG, type EnrollmentStatus } from '../../course/types
 import { formatDateOr } from '../../../shared/utils/formatDate';
 import { lookupByNationalId, type LookupResult } from '../api/publicApi';
 import styles from './PublicPortal.module.css';
+import tbl from '@/shared/components/Table/Table.module.css';
+import { useClientPaging } from '@/shared/hooks/useClientPaging';
+import { Pagination } from '@/shared/components/Table/Pagination';
 
 export default function PublicLookup() {
 	const [fullName, setFullName] = useState('');
 	const [nationalId, setNationalId] = useState('');
 	const [dob, setDob] = useState('');
 	const [results, setResults] = useState<LookupResult[] | null>(null);
+	const pg = useClientPaging(results ?? []);
 	const [loading, setLoading] = useState(false);
 	const [error, setError] = useState('');
 
@@ -105,6 +109,7 @@ export default function PublicLookup() {
 							<table className={styles.resultTable}>
 								<thead>
 									<tr>
+										<th className={tbl.thIdx}>STT</th>
 										<th>Họ tên</th>
 										<th>Khóa học</th>
 										<th>Trạng thái</th>
@@ -113,11 +118,12 @@ export default function PublicLookup() {
 									</tr>
 								</thead>
 								<tbody>
-									{results.map((r, i) => {
+									{pg.paged.map((r, i) => {
 										const cfg = ENROLLMENT_STATUS_CFG[r.enrollment_status as EnrollmentStatus];
 										return (
 											<tr key={i}>
-												<td>{r.full_name}</td>
+												<td className={tbl.tdIdx}>{pg.offset + i + 1}</td>
+												<td><span className={tbl.cellTitle}>{r.full_name}</span></td>
 												<td>{r.course_name}</td>
 												<td>
 													{cfg ? (
@@ -137,7 +143,7 @@ export default function PublicLookup() {
 														<>
 															{r.cert_no}
 															{r.issue_date && (
-																<div style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-gray-500)' }}>
+																<div className={tbl.dateText}>
 																	Cấp ngày {formatDateOr(r.issue_date)}
 																</div>
 															)}
@@ -151,6 +157,10 @@ export default function PublicLookup() {
 									})}
 								</tbody>
 							</table>
+							<Pagination
+								{...pg.pagination}
+								itemLabel='kết quả'
+							/>
 						</div>
 					)}
 				</>

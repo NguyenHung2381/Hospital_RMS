@@ -11,6 +11,9 @@ import { QuickAccess } from '../components/QuickAccess';
 import type { OverviewKpi, OverviewStats } from '../types/overviewDashboard.type';
 import { CHART_COLORS } from '../utils/dashboardHelpers';
 import styles from './Dashboard.module.css';
+import tbl from '@/shared/components/Table/Table.module.css';
+import { useClientPaging } from '@/shared/hooks/useClientPaging';
+import { Pagination } from '@/shared/components/Table/Pagination';
 
 const EMPTY_KPI: OverviewKpi = {
 	users_total: 0,
@@ -93,6 +96,7 @@ function ModuleCard({ title, subtitle, rows, loading, linkLabel, onOpen }: Modul
 export default function OverviewDashboard() {
 	const navigate = useNavigate();
 	const [stats, setStats] = useState<OverviewStats | null>(null);
+	const deptPg = useClientPaging(stats?.top_departments ?? []);
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState(false);
 	const [refreshKey, setRefreshKey] = useState(0);
@@ -307,23 +311,27 @@ export default function OverviewDashboard() {
 						<table className={styles.deptTable}>
 							<thead>
 								<tr>
-									<th>#</th>
+									<th className={tbl.thIdx}>STT</th>
 									<th>Khoa / Phòng</th>
 									<th className={styles.num}>Đề tài NCKH</th>
 									<th className={styles.num}>Tài khoản</th>
 								</tr>
 							</thead>
 							<tbody>
-								{stats.top_departments.map((d, i) => (
+								{deptPg.paged.map((d, i) => (
 									<tr key={d.name}>
-										<td>{i + 1}</td>
-										<td>{d.name}</td>
+										<td className={tbl.tdIdx}>{deptPg.offset + i + 1}</td>
+										<td><span className={tbl.cellTitle}>{d.name}</span></td>
 										<td className={styles.num}>{fmt(d.topics_cnt)}</td>
 										<td className={styles.num}>{fmt(d.users_cnt)}</td>
 									</tr>
 								))}
 							</tbody>
 						</table>
+						<Pagination
+							{...deptPg.pagination}
+							itemLabel='khoa phòng'
+						/>
 					</div>
 				)}
 			</div>

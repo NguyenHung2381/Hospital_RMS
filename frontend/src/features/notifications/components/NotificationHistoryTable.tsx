@@ -21,6 +21,7 @@ import {
 import sel from '@/shared/components/Table/RowSelect.module.css';
 import { useRowSelection } from '@/shared/hooks/useRowSelection';
 import styles from '../pages/AdminNotifications.module.css';
+import tbl from '@/shared/components/Table/Table.module.css';
 
 interface NotificationHistoryTableProps {
 	total: number;
@@ -28,6 +29,8 @@ interface NotificationHistoryTableProps {
 	page: number;
 	setPage: (updater: (p: number) => number) => void;
 	totalPages: number;
+	pageSize: number;
+	onPageSizeChange: (n: number) => void;
 	search: string;
 	setSearch: (v: string) => void;
 	filterType: string;
@@ -49,6 +52,8 @@ export function NotificationHistoryTable({
 	page,
 	setPage,
 	totalPages,
+	pageSize,
+	onPageSizeChange,
 	search,
 	setSearch,
 	filterType,
@@ -143,6 +148,7 @@ export function NotificationHistoryTable({
 										onChange={rowSel.toggleSelectAll}
 									/>
 								</th>
+								<th className={`${styles.th} ${tbl.thIdx}`}>STT</th>
 								<th className={styles.th} />
 								<th className={styles.th}>Loại</th>
 								<th className={styles.th}>Tiêu đề / Nội dung</th>
@@ -153,7 +159,7 @@ export function NotificationHistoryTable({
 							</tr>
 						</thead>
 						<tbody>
-							{rows.map((row) => {
+							{rows.map((row, i) => {
 								const category = NOTIF_TYPE_MAP[row.type] ?? 'system';
 								const isExpanded = expandedBatch === row.batch_key;
 								const allRead = row.read_count >= row.recipient_count;
@@ -169,6 +175,9 @@ export function NotificationHistoryTable({
 													checked={rowSel.isSelected(row.batch_key)}
 													onChange={() => rowSel.toggleSelect(row.batch_key)}
 												/>
+											</td>
+											<td className={`${styles.td} ${tbl.tdIdx}`}>
+												{(page - 1) * pageSize + i + 1}
 											</td>
 											<td className={styles.td}>
 												<button
@@ -233,7 +242,7 @@ export function NotificationHistoryTable({
 											<tr className={styles.recipientsRow}>
 												<td
 													className={styles.td}
-													colSpan={8}
+													colSpan={9}
 												>
 													{loadingRecipients === row.batch_key ? (
 														<div className={styles.recipientsLoading}>
@@ -276,17 +285,15 @@ export function NotificationHistoryTable({
 				</div>
 			)}
 
-			{totalPages > 1 && (
-				<Pagination
-					page={page}
-					totalPages={totalPages}
-					total={total}
-					rowsPerPage={Math.ceil(total / totalPages) || total}
-					onPageChange={(p) => setPage(() => p)}
-					itemLabel='mục'
-					hideSizeSelect
-				/>
-			)}
+						<Pagination
+				page={page}
+				totalPages={totalPages}
+				total={total}
+				rowsPerPage={pageSize}
+				onPageChange={(p) => setPage(() => p)}
+				onRowsPerPageChange={onPageSizeChange}
+				itemLabel='thông báo'
+			/>
 		</div>
 	);
 }

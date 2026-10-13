@@ -36,6 +36,7 @@ export interface DashboardState {
 	levelFilter: string;
 	activeTab: TabKey;
 	currentPage: number;
+	pageSize: number;
 
 	// Derived
 	totalPages: number;
@@ -50,6 +51,7 @@ export interface DashboardState {
 	handleSearchInput: (v: string) => void;
 	handleTab: (tab: TabKey) => void;
 	handlePageChange: (page: number) => void;
+	handlePageSizeChange: (n: number) => void;
 	handleFilter: (field: 'dept' | 'level', val: string) => void;
 }
 
@@ -76,6 +78,7 @@ export function useDashboard(): DashboardState {
 	const [levelFilter, setLevelFilter] = useState('');
 	const [activeTab, setActiveTab] = useState<TabKey>('all');
 	const [currentPage, setCurrentPage] = useState(1);
+	const [pageSize, setPageSize] = useState<number>(ROWS_PER_PAGE);
 
 	// Debounce search
 	const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -125,7 +128,7 @@ export function useDashboard(): DashboardState {
 		let cancelled = false;
 		getTopics({
 			page: currentPage,
-			limit: ROWS_PER_PAGE,
+			limit: pageSize,
 			search: searchTerm || undefined,
 			department_id: deptFilter || undefined,
 			level_id: levelFilter || undefined,
@@ -148,7 +151,7 @@ export function useDashboard(): DashboardState {
 		return () => {
 			cancelled = true;
 		};
-	}, [currentPage, searchTerm, deptFilter, levelFilter, activeTab]);
+	}, [currentPage, pageSize, searchTerm, deptFilter, levelFilter, activeTab]);
 
 	// Manual refresh
 	const refreshAll = useCallback(() => {
@@ -169,7 +172,7 @@ export function useDashboard(): DashboardState {
 		setTopicsError(false);
 		getTopics({
 			page: currentPage,
-			limit: ROWS_PER_PAGE,
+			limit: pageSize,
 			search: searchTerm || undefined,
 			department_id: deptFilter || undefined,
 			level_id: levelFilter || undefined,
@@ -185,7 +188,7 @@ export function useDashboard(): DashboardState {
 			.finally(() => {
 				setTopicsLoading(false);
 			});
-	}, [currentPage, searchTerm, deptFilter, levelFilter, activeTab]);
+	}, [currentPage, pageSize, searchTerm, deptFilter, levelFilter, activeTab]);
 
 	useRealtimeUpdate(
 		['topic', 'user', 'department', 'round', 'category', 'level'],
@@ -198,6 +201,11 @@ export function useDashboard(): DashboardState {
 		setActiveTab(tab);
 		setCurrentPage(1);
 	};
+	const handlePageSizeChange = (n: number) => {
+		setPageSize(n);
+		setCurrentPage(1);
+	};
+
 	const handlePageChange = (page: number) => {
 		setTopicsLoading(true);
 		setCurrentPage(page);
@@ -225,7 +233,7 @@ export function useDashboard(): DashboardState {
 			cancelled: 0,
 		},
 	};
-	const totalPages = Math.max(1, Math.ceil(topicsTotal / ROWS_PER_PAGE));
+	const totalPages = Math.max(1, Math.ceil(topicsTotal / pageSize));
 	const safePage = Math.min(currentPage, totalPages);
 
 	const pieData = stats
@@ -272,6 +280,7 @@ export function useDashboard(): DashboardState {
 		levelFilter,
 		activeTab,
 		currentPage,
+		pageSize,
 		totalPages,
 		safePage,
 		pieData,
@@ -282,6 +291,7 @@ export function useDashboard(): DashboardState {
 		handleSearchInput,
 		handleTab,
 		handlePageChange,
+		handlePageSizeChange,
 		handleFilter,
 	};
 }

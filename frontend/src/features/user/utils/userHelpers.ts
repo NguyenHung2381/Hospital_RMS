@@ -1,21 +1,16 @@
-import { removeDiacritics as stripDiacritics } from '../../../shared/utils/helper';
+import { removeDiacritics } from '../../../shared/utils/helper';
 
 // Màu / nhãn vai trò: dùng roleCfg ở shared/utils/roleDisplay.ts (tra theo mã vai trò).
 
-
-function removeDiacritics(str: string): string {
-	return stripDiacritics(str).toLowerCase();
-}
-
+// Khớp buildMemberUsername ở backend: "Nguyễn Văn An" + "123" → "NVA_0123"; không có MNV → "NVA".
 export function suggestUsername(fullName: string, staffNumber: string): string {
-	const words = fullName.trim().split(/\s+/).filter(Boolean);
-	if (!words.length) return '';
-	const last = removeDiacritics(words[words.length - 1]);
-	const initials = words
-		.slice(0, -1)
-		.map((w) => removeDiacritics(w)[0] ?? '')
-		.join('');
-	const base = (last + initials).replace(/[^a-z0-9]/g, '');
-	const code = staffNumber.replace(/[^a-z0-9]/gi, '').toLowerCase();
-	return code ? `${base}_${code}` : base;
+	const name = fullName.slice(fullName.lastIndexOf('.') + 1); // bỏ học vị "PGS.TS."
+	const initials = removeDiacritics(name)
+		.split(/\s+/)
+		.map((w) => w.charAt(0))
+		.join('')
+		.toUpperCase()
+		.replace(/[^A-Z0-9]/g, '');
+	const code = staffNumber.trim();
+	return initials && code ? `${initials}_${code.padStart(4, '0')}` : initials;
 }

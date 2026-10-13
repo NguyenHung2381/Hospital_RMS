@@ -5,13 +5,14 @@ import AdminLayout from '../../../layouts/AdminLayout';
 import { Badge, BulkBar, Button, Modal, Pagination, SelectCheckbox, SkeletonTable } from '../../../shared/components';
 import sel from '../../../shared/components/Table/RowSelect.module.css';
 import { useRowSelection } from '../../../shared/hooks/useRowSelection';
-import { DEFAULT_PAGE_SIZE, PAGE_SIZE_OPTIONS } from '../../../shared/utils/constants';
+import { DEFAULT_PAGE_SIZE } from '../../../shared/utils/constants';
 import { bulkToast, runBulk } from '../../../shared/utils/runBulk';
 import { notify } from '../../../shared/utils/feedback';
 import { examApi, type QuestionPayload } from '../api/examApi';
 import { ImportQuestionsModal } from '../components/ImportQuestionsModal';
 import type { ExamQuestion, QuestionType } from '../types/exam.type';
 import styles from './QuestionBank.module.css';
+import tbl from '@/shared/components/Table/Table.module.css';
 
 const TYPE_LABEL: Record<QuestionType, string> = { single_choice: 'Trắc nghiệm', essay: 'Tự luận' };
 const NO_SUBJECT = '__none__';
@@ -249,7 +250,7 @@ export default function QuestionBank() {
 										onChange={rowSel.toggleSelectAll}
 									/>
 								</th>
-								<th className={styles.th}>#</th>
+								<th className={`${styles.th} ${tbl.thIdx}`}>STT</th>
 								<th className={styles.th}>Câu hỏi</th>
 								<th className={styles.th}>Loại</th>
 								<th className={styles.th}>Điểm</th>
@@ -344,7 +345,6 @@ export default function QuestionBank() {
 						totalPages={totalPages}
 						total={filtered.length}
 						rowsPerPage={pageSize}
-						pageSizeOptions={PAGE_SIZE_OPTIONS}
 						onPageChange={setPage}
 						onRowsPerPageChange={(n) => {
 							setPageSize(n);

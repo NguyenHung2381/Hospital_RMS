@@ -63,8 +63,7 @@
 }
 
 .deptName {
-	font-weight: var(--font-weight-semibold);
-	color: var(--color-gray-800);
+	composes: cellTitle from '../../../shared/components/Table/Table.module.css';
 }
 
 /* Code tag */

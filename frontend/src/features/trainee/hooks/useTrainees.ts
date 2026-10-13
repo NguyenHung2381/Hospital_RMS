@@ -13,6 +13,7 @@ import {
 } from '../api/traineeApi';
 import type { DetailTab } from './useTraineeDetail';
 import { EMPTY_FORM, type ModalType, type Trainee, type TraineeFormData } from '../types/trainee.type';
+import { DEFAULT_PAGE_SIZE } from '@/shared/utils/constants';
 
 export interface SimpleItem {
 	id: string;
@@ -31,7 +32,7 @@ export function useTrainees() {
 	const [viewingTrainee, setViewingTrainee] = useState<Trainee | null>(null);
 	const [viewingTab, setViewingTab] = useState<DetailTab>('general');
 	const [loading, setLoading] = useState(false);
-	const [pageSize, setPageSize] = useState(10);
+	const [pageSize, setPageSize] = useState<number>(DEFAULT_PAGE_SIZE);
 	const [page, setPage] = useState(1);
 	const [refreshKey, setRefreshKey] = useState(0);
 	const [grantedAccounts, setGrantedAccounts] = useState<GrantedTraineeAccount[]>([]);

@@ -1,4 +1,4 @@
-import { SearchInput, PageSizeSelect, SelectionCount, RowActions } from '@/shared/components/Table/TableToolbar';
+import { SearchInput, SelectionCount, RowActions } from '@/shared/components/Table/TableToolbar';
 import { PlusSvg } from '@/assets/icons';
 import AdminLayout from '../../../layouts/AdminLayout';
 import { SkeletonTable } from '../../../shared/components/Loading';
@@ -11,6 +11,7 @@ import { TrainingPlanFormModal } from '../components/TrainingPlanFormModal';
 import { useTrainingPlan } from '../hooks/useTrainingPlan';
 import type { TrainingPlanStatus } from '../types/trainingPlan.type';
 import styles from './TrainingPlan.module.css';
+import tbl from '@/shared/components/Table/Table.module.css';
 
 const STATUS_CLASS: Record<TrainingPlanStatus, string> = {
 	draft: 'statusDraft',
@@ -58,10 +59,6 @@ export default function TrainingPlan() {
 							onChange={d.handleSearch}
 							placeholder='Tìm theo tên, năm, khoa...'
 						/>
-						<PageSizeSelect
-							value={d.pageSize}
-							onChange={d.handlePageSize}
-						/>
 					</div>
 				</div>
 
@@ -77,7 +74,7 @@ export default function TrainingPlan() {
 										onChange={rowSel.toggleSelectAll}
 									/>
 								</th>
-								<th className={styles.th}>#</th>
+								<th className={`${styles.th} ${tbl.thIdx}`}>STT</th>
 								<th className={styles.th}>Kế hoạch</th>
 								<th className={styles.th}>Năm</th>
 								<th className={styles.th}>Khoa / Phòng ban</th>
@@ -153,17 +150,15 @@ export default function TrainingPlan() {
 					</table>
 				</div>
 
-				{d.filtered.length > 0 && d.totalPages > 1 && (
-					<Pagination
-						page={d.safePage}
-						totalPages={d.totalPages}
-						total={d.filtered.length}
-						rowsPerPage={d.pageSize}
-						onPageChange={d.setPage}
-						itemLabel='kế hoạch'
-						hideSizeSelect
-					/>
-				)}
+								<Pagination
+					page={d.safePage}
+					totalPages={d.totalPages}
+					total={d.filtered.length}
+					rowsPerPage={d.pageSize}
+					onPageChange={d.setPage}
+					itemLabel='kế hoạch'
+					onRowsPerPageChange={d.handlePageSize}
+				/>
 			</div>
 
 
