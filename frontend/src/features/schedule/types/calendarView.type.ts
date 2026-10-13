@@ -30,39 +30,11 @@ export interface MonthDeadlineSummary {
 	color: string;
 }
 
-export interface EventBar {
-	id: string;
-	label: string;
-	color: string;
-	startDate: Date;
-	endDate: Date;
-	thin: boolean;
-	round: RoundRow;
-	deadline?: RoundDeadline;
-	isRoundPeriod?: boolean;
-}
-
-export interface WeekEvent<B = EventBar> {
-	bar: B;
-	lane: number;
-	colL: number;
-	colR: number;
-	contL: boolean;
-	contR: boolean;
-}
-
 export interface MonthData {
 	month: number;
 	weeks: CalDay[][];
 	deadlinesByDay: Map<string, DayEventItem[]>;
 	monthDeadlines: MonthDeadlineSummary[];
-	eventBars: EventBar[];
-}
-
-export interface PopoverData {
-	title: string;
-	events: DayEventItem[];
-	roundForAdd?: RoundRow;
 }
 
 export interface EventDetailData {

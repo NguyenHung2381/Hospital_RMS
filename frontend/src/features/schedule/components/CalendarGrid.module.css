@@ -1,0 +1,427 @@
+/* Lưới lịch kiểu Google Calendar (tháng + tuần) — xem CalendarGrid.tsx.
+   Chiều cao ô cố định theo màn hình; các hằng số SLOT_H / DAY_HEAD_H ở TSX
+   phải khớp với kích thước chip bên dưới. */
+
+/* ─── Chung ─────────────────────────────────────────────────────────────── */
+.month,
+.week {
+	background: var(--color-white);
+	border: 1px solid var(--color-gray-200);
+	border-radius: 12px;
+	overflow: hidden;
+	box-sizing: border-box;
+	width: 100%;
+	min-width: 0;
+}
+
+.today {
+	background: var(--color-primary);
+	color: var(--color-white) !important;
+}
+
+.clickable {
+	cursor: pointer;
+}
+
+/* ─── Chip sự kiện ──────────────────────────────────────────────────────── */
+.slot {
+	position: absolute;
+	z-index: 1;
+	display: flex;
+}
+
+.chip {
+	display: flex;
+	align-items: center;
+	gap: 4px;
+	width: 100%;
+	height: 20px;
+	min-width: 0;
+	padding: 0 6px;
+	border: none;
+	border-radius: 4px;
+	font-family: var(--font-body);
+	font-size: var(--font-size-2xs);
+	line-height: 20px;
+	text-align: left;
+	cursor: pointer;
+	box-sizing: border-box;
+	overflow: hidden;
+}
+.chipFilled {
+	color: var(--color-white);
+	font-weight: 600;
+}
+.chipFilled:hover {
+	filter: brightness(0.92);
+}
+.chipMuted {
+	opacity: 0.7;
+}
+.chipMuted:hover {
+	opacity: 0.9;
+}
+.chipTimed {
+	background: transparent;
+	color: var(--color-gray-800);
+}
+.chipTimed:hover {
+	background: var(--color-gray-100);
+}
+.chipFlatL {
+	border-top-left-radius: 0;
+	border-bottom-left-radius: 0;
+}
+.chipFlatR {
+	border-top-right-radius: 0;
+	border-bottom-right-radius: 0;
+}
+.chipDot {
+	width: 8px;
+	height: 8px;
+	border-radius: 50%;
+	flex-shrink: 0;
+}
+.chipTime {
+	flex-shrink: 0;
+	color: var(--color-gray-600);
+}
+.chipTitle {
+	flex: 1;
+	min-width: 0;
+	overflow: hidden;
+	white-space: nowrap;
+	text-overflow: ellipsis;
+}
+.chipTimed .chipTitle {
+	font-weight: 600;
+}
+
+.moreBtn {
+	width: 100%;
+	height: 20px;
+	padding: 0 6px;
+	border: none;
+	border-radius: 4px;
+	background: transparent;
+	font-family: var(--font-body);
+	font-size: var(--font-size-2xs);
+	font-weight: 700;
+	color: var(--color-gray-700);
+	text-align: left;
+	cursor: pointer;
+	white-space: nowrap;
+}
+.moreBtn:hover {
+	background: var(--color-gray-100);
+}
+
+/* ─── Tháng ─────────────────────────────────────────────────────────────── */
+.month {
+	display: grid;
+}
+
+.dowRow,
+.weekRow {
+	display: grid;
+	grid-template-columns: repeat(7, minmax(0, 1fr));
+}
+
+.dowCell {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	font-size: var(--font-size-2xs);
+	font-weight: 700;
+	color: var(--color-gray-500);
+	text-transform: uppercase;
+	letter-spacing: 0.04em;
+	border-bottom: 1px solid var(--color-gray-200);
+	white-space: nowrap;
+	overflow: hidden;
+}
+
+.weekRow {
+	position: relative;
+	min-height: 0;
+	overflow: hidden;
+	border-bottom: 1px solid var(--color-gray-200);
+}
+.weekRow:last-child {
+	border-bottom: none;
+}
+
+.dayCell {
+	display: flex;
+	justify-content: center;
+	padding-top: 2px;
+	border-right: 1px solid var(--color-gray-200);
+	min-width: 0;
+}
+.dayCell:last-child {
+	border-right: none;
+}
+.dayCell.clickable:hover {
+	background: var(--color-gray-50);
+}
+.otherMonth {
+	background: var(--color-gray-50);
+}
+.otherMonth .dayNum {
+	color: var(--color-gray-400);
+}
+
+.dayNum {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 22px;
+	height: 22px;
+	border-radius: 50%;
+	font-size: var(--font-size-xs);
+	font-weight: 600;
+	color: var(--color-gray-700);
+}
+
+/* ─── Popover "+N khác" ─────────────────────────────────────────────────── */
+.popOverlay {
+	position: fixed;
+	inset: 0;
+	z-index: 999;
+}
+
+.pop {
+	position: fixed;
+	max-height: 360px;
+	display: flex;
+	flex-direction: column;
+	padding: 12px;
+	background: var(--color-white);
+	border-radius: 10px;
+	box-shadow: 0 8px 28px rgba(0, 0, 0, 0.18), 0 1px 3px rgba(0, 0, 0, 0.08);
+	box-sizing: border-box;
+}
+
+.popClose {
+	position: absolute;
+	top: 6px;
+	right: 6px;
+	width: 26px;
+	height: 26px;
+	border: none;
+	border-radius: 50%;
+	background: none;
+	color: var(--color-gray-500);
+	cursor: pointer;
+}
+.popClose:hover {
+	background: var(--color-gray-100);
+}
+
+.popHead {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 2px;
+	margin-bottom: 8px;
+}
+.popDow {
+	font-size: var(--font-size-2xs);
+	font-weight: 700;
+	color: var(--color-gray-500);
+	text-transform: uppercase;
+}
+.popDayNum {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 40px;
+	height: 40px;
+	border-radius: 50%;
+	font-size: var(--font-size-xl);
+	font-weight: 600;
+	color: var(--color-gray-800);
+}
+
+.popList {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+	overflow-y: auto;
+	min-height: 0;
+}
+.popRow {
+	display: flex;
+}
+
+.popAdd {
+	margin-top: 10px;
+	padding: 7px;
+	border: none;
+	border-radius: 8px;
+	background: var(--color-primary);
+	color: var(--color-white);
+	font-family: var(--font-body);
+	font-size: var(--font-size-compact);
+	font-weight: 700;
+	cursor: pointer;
+}
+
+/* ─── Tuần ──────────────────────────────────────────────────────────────── */
+.week {
+	display: flex;
+	flex-direction: column;
+}
+
+.weekHead,
+.timeGrid {
+	display: grid;
+}
+
+.weekHead {
+	border-bottom: 1px solid var(--color-gray-200);
+}
+.weekHeadCell {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	gap: 2px;
+	min-width: 0;
+}
+.weekHeadDow {
+	font-size: var(--font-size-2xs);
+	font-weight: 700;
+	color: var(--color-gray-500);
+	text-transform: uppercase;
+	white-space: nowrap;
+}
+.weekHeadToday .weekHeadDow {
+	color: var(--color-primary);
+}
+.weekHeadNum {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 30px;
+	height: 30px;
+	border-radius: 50%;
+	font-size: var(--font-size-lg);
+	font-weight: 600;
+	color: var(--color-gray-800);
+}
+
+.allDayRow {
+	display: grid;
+	flex-shrink: 0;
+	border-bottom: 2px solid var(--color-gray-200);
+}
+.gutterLabel {
+	display: flex;
+	align-items: center;
+	justify-content: flex-end;
+	padding-right: 8px;
+	font-size: var(--font-size-2xs);
+	color: var(--color-gray-500);
+	white-space: nowrap;
+}
+.allDayBody {
+	position: relative;
+}
+.allDayCell {
+	position: absolute;
+	top: 0;
+	bottom: 0;
+	border-left: 1px solid var(--color-gray-200);
+}
+
+.hourGutter {
+	display: flex;
+	flex-direction: column;
+}
+.hourLabel {
+	box-sizing: border-box;
+	padding-right: 8px;
+	text-align: right;
+	font-size: var(--font-size-2xs);
+	color: var(--color-gray-500);
+	transform: translateY(-0.6em);
+}
+
+.dayCol {
+	position: relative;
+	border-left: 1px solid var(--color-gray-200);
+	min-width: 0;
+	/* Vạch giờ: backgroundSize được set theo chiều cao 1 giờ */
+	background-image: linear-gradient(to bottom, var(--color-gray-200) 1px, transparent 1px);
+}
+
+.timedEvent {
+	position: absolute;
+	z-index: 1;
+	display: flex;
+	flex-direction: column;
+	align-items: flex-start;
+	padding: 2px 6px;
+	border: 1px solid var(--color-white);
+	border-radius: 6px;
+	color: var(--color-white);
+	font-family: var(--font-body);
+	font-size: var(--font-size-2xs);
+	line-height: 1.3;
+	text-align: left;
+	cursor: pointer;
+	overflow: hidden;
+	box-sizing: border-box;
+}
+.timedEvent:hover {
+	filter: brightness(0.92);
+	z-index: 2;
+}
+.timedTitle,
+.timedMeta {
+	max-width: 100%;
+	overflow: hidden;
+	white-space: nowrap;
+	text-overflow: ellipsis;
+}
+.timedTitle {
+	font-weight: 700;
+}
+.timedMeta {
+	opacity: 0.9;
+}
+
+.nowLine {
+	position: absolute;
+	left: 0;
+	right: 0;
+	z-index: 3;
+	height: 2px;
+	background: var(--color-danger, #ea4335);
+	pointer-events: none;
+}
+.nowLine::before {
+	content: '';
+	position: absolute;
+	left: -6px;
+	top: -5px;
+	width: 12px;
+	height: 12px;
+	border-radius: 50%;
+	background: inherit;
+}
+
+@media (max-width: 767px) {
+	.chip,
+	.moreBtn {
+		padding: 0 3px;
+	}
+	.chipTime,
+	.chipDot {
+		display: none;
+	}
+	.timedEvent {
+		padding: 1px 3px;
+	}
+}

@@ -367,16 +367,32 @@ const getOverviewStats = async () => remember('dash:overview-stats', 90, async (
     GROUP BY COALESCE(r.description, r.name, N'Chưa gán vai trò')
     ORDER BY cnt DESC;
 
-    -- Khoa/Phòng: số tài khoản + số đề tài NCKH (bỏ đơn vị chưa có số liệu)
-    SELECT TOP 10 name, users_cnt, topics_cnt
-    FROM (
-      SELECT d.name,
-        (SELECT COUNT(*) FROM users u WHERE u.department_id = d.id AND u.is_active = 1) AS users_cnt,
-        (SELECT COUNT(*) FROM topics t WHERE t.department_id = d.id) AS topics_cnt
-      FROM departments d
-    ) x
-    WHERE users_cnt > 0 OR topics_cnt > 0
-    ORDER BY topics_cnt DESC, users_cnt DESC;
+    -- Khoa/Phòng (đủ mọi đơn vị): tài khoản, NCKH, Đào tạo, Hội thảo-CME trong năm.
+    -- Người tham dự hội thảo gắn khoa qua tài khoản; không có tài khoản thì khớp
+    -- department_raw với tên khoa.
+    SELECT d.name,
+      (SELECT COUNT(*) FROM users u WHERE u.department_id = d.id AND u.is_active = 1) AS users_cnt,
+      (SELECT COUNT(*) FROM topics t WHERE t.department_id = d.id) AS topics_cnt,
+      (SELECT COUNT(*) FROM trainees tr WHERE tr.department_id = d.id AND tr.is_active = 1) AS trainees_cnt,
+      (SELECT COUNT(*) FROM certificates c
+         INNER JOIN course_enrollments e ON e.id = c.enrollment_id
+         INNER JOIN trainees tr ON tr.id = e.trainee_id
+         WHERE tr.department_id = d.id AND c.status = 'active') AS certificates_cnt,
+      ISNULL(sp.participants_cnt, 0) AS participants_cnt,
+      ISNULL(sp.cme_cnt, 0) AS cme_cnt
+    FROM departments d
+    LEFT JOIN (
+      SELECT COALESCE(u.department_id, dr.id) AS dept_id,
+        SUM(CASE WHEN s.event_year = @year THEN 1 ELSE 0 END) AS participants_cnt,
+        SUM(CASE WHEN p.cme_year = @year AND p.cme_status IN ('issued', 'signed') THEN 1 ELSE 0 END) AS cme_cnt
+      FROM seminar_participants p
+      INNER JOIN seminars s ON s.id = p.seminar_id
+      LEFT JOIN users u ON u.id = p.user_id
+      LEFT JOIN departments dr ON u.department_id IS NULL AND dr.name = LTRIM(RTRIM(p.department_raw))
+      WHERE s.event_year = @year OR p.cme_year = @year
+      GROUP BY COALESCE(u.department_id, dr.id)
+    ) sp ON sp.dept_id = d.id
+    ORDER BY topics_cnt DESC, users_cnt DESC, d.name;
   `);
 
 	// Ghép 3 chuỗi theo tháng thành 1 dãy 12 tháng liên tục (tháng trống = 0).

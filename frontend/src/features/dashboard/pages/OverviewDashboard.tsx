@@ -284,9 +284,9 @@ export default function OverviewDashboard() {
 			<div className={styles.chartCard}>
 				<div className={styles.chartCardHeader}>
 					<div>
-						<div className={styles.chartTitle}>Khoa / Phòng hoạt động nổi bật</div>
+						<div className={styles.chartTitle}>Hoạt động theo Khoa / Phòng</div>
 						<div className={styles.chartSubtitle}>
-							Top 10 đơn vị theo số đề tài NCKH và tài khoản đang hoạt động
+							Tài khoản, đề tài NCKH, đào tạo và hội thảo - CME năm {year} của từng đơn vị
 						</div>
 					</div>
 					<button
@@ -313,8 +313,12 @@ export default function OverviewDashboard() {
 								<tr>
 									<th className={tbl.thIdx}>STT</th>
 									<th>Khoa / Phòng</th>
-									<th className={styles.num}>Đề tài NCKH</th>
 									<th className={styles.num}>Tài khoản</th>
+									<th className={styles.num}>Đề tài NCKH</th>
+									<th className={styles.num}>Học viên</th>
+									<th className={styles.num}>Chứng chỉ</th>
+									<th className={styles.num}>Lượt dự HT {year}</th>
+									<th className={styles.num}>CME {year}</th>
 								</tr>
 							</thead>
 							<tbody>
@@ -322,8 +326,12 @@ export default function OverviewDashboard() {
 									<tr key={d.name}>
 										<td className={tbl.tdIdx}>{deptPg.offset + i + 1}</td>
 										<td><span className={tbl.cellTitle}>{d.name}</span></td>
-										<td className={styles.num}>{fmt(d.topics_cnt)}</td>
 										<td className={styles.num}>{fmt(d.users_cnt)}</td>
+										<td className={styles.num}>{fmt(d.topics_cnt)}</td>
+										<td className={styles.num}>{fmt(d.trainees_cnt)}</td>
+										<td className={styles.num}>{fmt(d.certificates_cnt)}</td>
+										<td className={styles.num}>{fmt(d.participants_cnt)}</td>
+										<td className={styles.num}>{fmt(d.cme_cnt)}</td>
 									</tr>
 								))}
 							</tbody>

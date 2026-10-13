@@ -3,21 +3,17 @@ import type { CalMode } from '../../schedule/types/calendarView.type';
 import { MONTHS_LONG } from '../../schedule/types/schedule.type';
 import {
 	addDays,
-	computeWeekEventsForDays,
-	DOW,
+	buildMonthWeeks,
+	buildWeekDays,
 	DOW_SHORT,
 	GRID_COLS,
 } from '../../schedule/utils/calendarViewHelpers';
+import { MonthGrid, WeekGrid, type CalItem } from '../../schedule/components/CalendarGrid';
 import styles from '../../schedule/components/CalendarView.module.css';
-import { formatDateVN } from '../../../shared/utils/formatDate';
-import type {
-	CalendarCourse,
-	CalendarSession,
-	SessionEvent,
-} from '../types/classSchedule.type';
+import { formatDateVN, parseDate } from '../../../shared/utils/formatDate';
+import type { CalendarCourse, CalendarSession } from '../types/classSchedule.type';
 import {
 	computeClassMonths,
-	computeClassWeek,
 	courseColor,
 	dayKey,
 	sessionTime,
@@ -45,39 +41,20 @@ type Detail =
 	| { kind: 'session'; session: CalendarSession }
 	| { kind: 'course'; course: CalendarCourse };
 
-interface PopoverState {
-	title: string;
-	events: SessionEvent[];
-}
-
-const BAR_HEIGHT = 18;
-const BAR_GAP = 2;
-
 /**
- * Lịch học tuần / tháng / năm — cùng giao diện với lịch trình nghiên cứu
- * (dùng lại CalendarView.module.css), nhưng sự kiện là buổi học và thanh dài
- * là thời gian học của khoá.
+ * Lịch học tuần / tháng / năm — cùng giao diện với lịch trình nghiên cứu:
+ * tuần/tháng dùng lưới kiểu Google (CalendarGrid), năm dùng thẻ tháng nhỏ.
+ * Sự kiện là buổi học, thanh nhạt màu là thời gian học của khoá.
  */
 export function ClassCalendarView({
 	sessions, courses, year, mode, startMonth, weekStart,
 	onPrev, onNext, canPrev, canNext, onSelectMonth, onOpenCourse,
 }: ClassCalendarViewProps) {
 	const isWeek = mode === 'week';
-	const view = mode === 'year' ? 12 : 1;
-	const isSingle = view === 1;
-	const [popover, setPopover] = useState<PopoverState | null>(null);
+	const isSingle = mode !== 'year';
 	const [detail, setDetail] = useState<Detail | null>(null);
 	const containerRef = useRef<HTMLDivElement>(null);
 	const lastScrollTimeRef = useRef(0);
-
-	const [isMobileWindow, setIsMobileWindow] = useState(() =>
-		typeof window !== 'undefined' ? window.innerWidth <= 1024 : false,
-	);
-	useEffect(() => {
-		const handleResize = () => setIsMobileWindow(window.innerWidth <= 1024);
-		window.addEventListener('resize', handleResize);
-		return () => window.removeEventListener('resize', handleResize);
-	}, []);
 
 	// Lăn chuột chuyển kỳ CHỈ ở chế độ tuần / tháng — chế độ năm giữ cuộn trang tự nhiên
 	useEffect(() => {
@@ -96,14 +73,42 @@ export function ClassCalendarView({
 	}, [isSingle, onPrev, onNext]);
 
 	const monthsData = useMemo(
-		() => (isWeek ? [] : computeClassMonths(sessions, courses, year, isSingle)),
-		[isWeek, sessions, courses, year, isSingle],
+		() => (isSingle ? [] : computeClassMonths(sessions, year)),
+		[isSingle, sessions, year],
 	);
-	const weekData = useMemo(
-		() => (isWeek ? computeClassWeek(sessions, courses, weekStart) : null),
-		[isWeek, sessions, courses, weekStart],
-	);
-	const visibleMonths = weekData ? [weekData] : monthsData.slice(startMonth, startMonth + view);
+
+	const items: CalItem[] = !isSingle ? [] : [
+		...courses.flatMap((c): CalItem[] => {
+			const s = parseDate(c.start_date);
+			const e = parseDate(c.end_date);
+			if (!s || !e) return [];
+			return [{
+				id:       `course-${c.id}`,
+				title:    c.name,
+				color:    courseColor(c.id),
+				start:    s,
+				end:      e,
+				subtitle: 'Thời gian khoá học',
+				muted:    true,
+				onClick:  () => setDetail({ kind: 'course', course: c }),
+			}];
+		}),
+		...sessions.flatMap((session): CalItem[] => {
+			const d = parseDate(session.session_date);
+			if (!d) return [];
+			return [{
+				id:        session.id,
+				title:     sessionTitle(session),
+				color:     courseColor(session.course_id),
+				start:     d,
+				end:       d,
+				startTime: session.start_time ?? undefined,
+				endTime:   session.end_time ?? undefined,
+				subtitle:  `${session.course_name}${session.room ? ` · ${session.room}` : ''}`,
+				onClick:   () => setDetail({ kind: 'session', session }),
+			}];
+		}),
+	];
 
 	const navLabel = (() => {
 		if (isWeek) {
@@ -118,197 +123,83 @@ export function ClassCalendarView({
 	const prevLabel = isWeek ? 'Tuần trước' : 'Tháng trước';
 	const nextLabel = isWeek ? 'Tuần sau' : 'Tháng sau';
 
-	const openSession = (session: CalendarSession) => {
-		setPopover(null);
-		setDetail({ kind: 'session', session });
-	};
+	const renderYearCard = ({ month, weeks, sessionsByDay, courseSummary }: ClassMonthData) => (
+		<div key={month} className={styles.card} onClick={() => onSelectMonth(month)}>
+			<div className={styles.cardHead}>
+				<span className={styles.cardTitle}>{MONTHS_LONG[month]}</span>
+				<span className={styles.zoomHint} title='Nhấp để phóng to tháng này'>🔍 Xem tháng</span>
+			</div>
 
-	const renderCard = (data: ClassMonthData) => {
-		const { month, weeks, sessionsByDay, courseSummary, courseBars } = data;
-		return (
-			<div
-				key={isWeek ? 'week' : month}
-				className={`${styles.card}${isSingle ? ` ${styles.googleCalCard}` : ''}`}
-				onClick={() => { if (!isSingle) onSelectMonth(month); }}
-			>
-				{!isSingle && (
-					<div className={styles.cardHead}>
-						<span className={styles.cardTitle}>{MONTHS_LONG[month]}</span>
-						<span className={styles.zoomHint} title='Nhấp để phóng to tháng này'>🔍 Xem tháng</span>
-					</div>
-				)}
-
-				<div className={`${styles.calGrid}${isSingle ? ` ${styles.googleCalGrid}` : ''}`}>
-					<div className={styles.dowRow}>
-						{(isSingle && !isMobileWindow ? DOW : DOW_SHORT).map((d, i) => {
-							const wd = isWeek ? weeks[0]?.[i] : undefined;
-							return (
-								<div key={d} className={`${styles.dowCell}${wd?.isToday ? ` ${styles.dowCellToday}` : ''}`}>
-									{d}
-									{wd && <span className={styles.dowDate}>{wd.dayNum}/{wd.month + 1}</span>}
-								</div>
-							);
-						})}
-					</div>
-
-					{weeks.map((weekDays, wi) => {
-						const weekEvents = isSingle ? computeWeekEventsForDays(weekDays, courseBars) : [];
-						const lanes = weekEvents.length ? Math.max(...weekEvents.map((e) => e.lane)) + 1 : 0;
-
-						return (
-							<div key={wi} className={styles.weekRow}>
-								<div className={styles.weekDaysGrid}>
-									{weekDays.map((day) => {
-										const evs = sessionsByDay.get(dayKey(day.date)) ?? [];
-										const cellClasses = [
-											styles.dayCell,
-											!day.isCurrentMonth && styles.dayCellOtherMonth,
-											day.isToday && styles.dayCellToday,
-										].filter(Boolean).join(' ');
-
-										if (!isSingle) {
-											return (
-												<div key={day.key} className={cellClasses}>
-													<span className={`${styles.dayNum}${day.isToday ? ` ${styles.dayNumBadge}` : ''}`}>
-														{day.dayNum}
-													</span>
-													{evs.length > 0 && (
-														<div className={styles.dotRow}>
-															{evs.slice(0, 3).map((ev) => (
-																<button
-																	key={ev.session.id}
-																	className={styles.dot}
-																	style={{ background: ev.color }}
-																	title={`${sessionTime(ev.session)} ${sessionTitle(ev.session)} (${ev.session.course_name})`}
-																	onClick={(e) => {
-																		e.stopPropagation();
-																		openSession(ev.session);
-																	}}
-																/>
-															))}
-															{evs.length > 3 && <span className={styles.dotMore}>+</span>}
-														</div>
-													)}
-												</div>
-											);
-										}
-
-										const maxVisible = isWeek ? (isMobileWindow ? 3 : 8) : (isMobileWindow ? 1 : 3);
-										const visibleEvs = evs.slice(0, maxVisible);
-										const hiddenCount = evs.length - visibleEvs.length;
-
-										return (
-											<div key={day.key} className={cellClasses}>
-												<div className={styles.dayCellHead}>
-													<span className={`${styles.dayNum}${day.isToday ? ` ${styles.dayNumBadge}` : ''}`}>
-														{day.dayNum}
-													</span>
-												</div>
-												<div className={styles.eventChipList}>
-													{visibleEvs.map((ev) => {
-														const time = sessionTime(ev.session);
-														return (
-															<button
-																key={ev.session.id}
-																className={styles.eventChip}
-																style={{ borderLeftColor: ev.color, background: `${ev.color}14` }}
-																title={`${time} ${sessionTitle(ev.session)} — ${ev.session.course_name}${ev.session.room ? ` · ${ev.session.room}` : ''}`}
-																onClick={(e) => {
-																	e.stopPropagation();
-																	openSession(ev.session);
-																}}
-															>
-																<span className={styles.chipDot} style={{ background: ev.color }} />
-																<span className={styles.chipTitle}>
-																	{ev.session.start_time && <strong>{ev.session.start_time} </strong>}
-																	{sessionTitle(ev.session)}
-																</span>
-															</button>
-														);
-													})}
-													{hiddenCount > 0 && (
-														<button
-															className={styles.moreBtn}
-															onClick={(e) => {
-																e.stopPropagation();
-																setPopover({
-																	title: `Ngày ${day.dayNum} ${MONTHS_LONG[day.month]}, ${day.year}`,
-																	events: evs,
-																});
-															}}
-														>
-															+{hiddenCount} buổi khác
-														</button>
-													)}
-												</div>
-											</div>
-										);
-									})}
-								</div>
-
-								{lanes > 0 && (
-									<div
-										className={styles.weekBarsOverlay}
-										style={{ height: lanes * (BAR_HEIGHT + BAR_GAP) - BAR_GAP }}
-									>
-										{weekEvents.map(({ bar, lane, colL, colR, contL, contR }) => (
-											<div
-												key={bar.id}
-												className={[
-													styles.weekBar,
-													styles.weekBarThin,
-													contL && styles.weekBarContL,
-													contR && styles.weekBarContR,
-												].filter(Boolean).join(' ')}
-												style={{
-													left:       `calc(${(colL / 7) * 100}% + 2px)`,
-													width:      `calc(${((colR - colL + 1) / 7) * 100}% - 4px)`,
-													top:        lane * (BAR_HEIGHT + BAR_GAP),
-													height:     BAR_HEIGHT,
-													background: bar.color,
-												}}
-												title={`Thời gian khoá học: ${bar.label}`}
-												onClick={(e) => {
-													e.stopPropagation();
-													setDetail({ kind: 'course', course: bar.course });
-												}}
-											>
-												<span className={styles.weekBarLabel}>{bar.label}</span>
-											</div>
-										))}
-									</div>
-								)}
-							</div>
-						);
-					})}
+			<div className={styles.calGrid}>
+				<div className={styles.dowRow}>
+					{DOW_SHORT.map((d) => <div key={d} className={styles.dowCell}>{d}</div>)}
 				</div>
 
-				{!isSingle && courseSummary.length > 0 && (
-					<div className={styles.dlList}>
-						{courseSummary.map(({ course, count, color }) => (
-							<button
-								key={course.id}
-								className={styles.dlItem}
-								title={`${course.name}: ${count} buổi học trong tháng`}
-								onClick={(e) => {
-									e.stopPropagation();
-									onOpenCourse(course.id);
-								}}
-							>
-								<span className={styles.dlDay}>{count}</span>
-								<span className={styles.dlDot} style={{ background: color }} />
-								<span className={styles.dlName}>{course.name}</span>
-								<span className={styles.dlRound}>buổi</span>
-							</button>
-						))}
+				{weeks.map((weekDays, wi) => (
+					<div key={wi} className={styles.weekRow}>
+						<div className={styles.weekDaysGrid}>
+							{weekDays.map((day) => {
+								const evs = sessionsByDay.get(dayKey(day.date)) ?? [];
+								const cellClasses = [
+									styles.dayCell,
+									!day.isCurrentMonth && styles.dayCellOtherMonth,
+									day.isToday && styles.dayCellToday,
+								].filter(Boolean).join(' ');
+								return (
+									<div key={day.key} className={cellClasses}>
+										<span className={`${styles.dayNum}${day.isToday ? ` ${styles.dayNumBadge}` : ''}`}>
+											{day.dayNum}
+										</span>
+										{evs.length > 0 && (
+											<div className={styles.dotRow}>
+												{evs.slice(0, 3).map((ev) => (
+													<button
+														key={ev.session.id}
+														className={styles.dot}
+														style={{ background: ev.color }}
+														title={`${sessionTime(ev.session)} ${sessionTitle(ev.session)} (${ev.session.course_name})`}
+														onClick={(e) => {
+															e.stopPropagation();
+															setDetail({ kind: 'session', session: ev.session });
+														}}
+													/>
+												))}
+												{evs.length > 3 && <span className={styles.dotMore}>+</span>}
+											</div>
+										)}
+									</div>
+								);
+							})}
+						</div>
 					</div>
-				)}
+				))}
 			</div>
-		);
-	};
+
+			{courseSummary.length > 0 && (
+				<div className={styles.dlList}>
+					{courseSummary.map(({ course, count, color }) => (
+						<button
+							key={course.id}
+							className={styles.dlItem}
+							title={`${course.name}: ${count} buổi học trong tháng`}
+							onClick={(e) => {
+								e.stopPropagation();
+								onOpenCourse(course.id);
+							}}
+						>
+							<span className={styles.dlDay}>{count}</span>
+							<span className={styles.dlDot} style={{ background: color }} />
+							<span className={styles.dlName}>{course.name}</span>
+							<span className={styles.dlRound}>buổi</span>
+						</button>
+					))}
+				</div>
+			)}
+		</div>
+	);
 
 	return (
-		<div ref={containerRef} className={styles.wrapper} data-view={view} data-mode={mode}>
+		<div ref={containerRef} className={styles.wrapper} data-view={isSingle ? 1 : 12} data-mode={mode}>
 			{isSingle && (
 				<div className={styles.navBar}>
 					<button className={styles.navBtn} onClick={onPrev} disabled={!canPrev} aria-label={prevLabel} title={prevLabel}>‹</button>
@@ -317,31 +208,13 @@ export function ClassCalendarView({
 				</div>
 			)}
 
-			<div className={styles.grid} data-grid-view={view} style={{ gridTemplateColumns: GRID_COLS[view] }}>
-				{visibleMonths.map(renderCard)}
-			</div>
-
-			{popover && (
-				<div className={styles.popoverOverlay} onClick={() => setPopover(null)}>
-					<div className={styles.popoverCard} onClick={(e) => e.stopPropagation()}>
-						<div className={styles.popoverHead}>
-							<h4 className={styles.popoverTitle}>{popover.title}</h4>
-							<button className={styles.popoverClose} onClick={() => setPopover(null)}>✕</button>
-						</div>
-						<div className={styles.popoverBody}>
-							{popover.events.map((ev) => (
-								<button key={ev.session.id} className={styles.popoverItem} onClick={() => openSession(ev.session)}>
-									<span className={styles.popoverDot} style={{ background: ev.color }} />
-									<div className={styles.popoverItemInfo}>
-										<span className={styles.popoverItemName}>
-											{sessionTime(ev.session) && `${sessionTime(ev.session)} · `}{sessionTitle(ev.session)}
-										</span>
-										<span className={styles.popoverItemRound}>Khoá: {ev.session.course_name}</span>
-									</div>
-								</button>
-							))}
-						</div>
-					</div>
+			{isWeek ? (
+				<WeekGrid days={buildWeekDays(weekStart)} items={items} />
+			) : isSingle ? (
+				<MonthGrid weeks={buildMonthWeeks(year, startMonth)} items={items} />
+			) : (
+				<div className={styles.grid} data-grid-view={12} style={{ gridTemplateColumns: GRID_COLS[12] }}>
+					{monthsData.map(renderYearCard)}
 				</div>
 			)}
 

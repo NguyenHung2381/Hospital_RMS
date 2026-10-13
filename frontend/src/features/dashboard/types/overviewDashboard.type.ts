@@ -32,5 +32,13 @@ export interface OverviewStats {
 	kpi: OverviewKpi;
 	monthly_activity: MonthlyActivity[];
 	users_by_role: { name: string; cnt: number }[];
-	top_departments: { name: string; users_cnt: number; topics_cnt: number }[];
+	top_departments: {
+		name: string;
+		users_cnt: number;
+		topics_cnt: number;
+		trainees_cnt: number;
+		certificates_cnt: number;
+		participants_cnt: number;
+		cme_cnt: number;
+	}[];
 }

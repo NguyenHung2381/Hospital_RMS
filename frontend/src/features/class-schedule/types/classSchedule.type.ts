@@ -24,15 +24,6 @@ export interface SessionEvent {
 	color: string;
 }
 
-export interface CourseBar {
-	id: string;
-	label: string;
-	color: string;
-	startDate: Date;
-	endDate: Date;
-	course: CalendarCourse;
-}
-
 export interface CourseMonthSummary {
 	course: { id: string; name: string };
 	count: number;

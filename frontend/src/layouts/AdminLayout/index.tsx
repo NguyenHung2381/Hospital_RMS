@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { PermissionKey } from '@/shared/types/permissions.generated';
 import { useLocation, useNavigate } from 'react-router-dom';
 import Logo from '../../assets/logo.png';
@@ -19,6 +19,7 @@ import { Icon } from './icons';
 
 // ─── STORAGE KEY ──────────────────────────
 const SIDEBAR_KEY = 'rms_sidebar_collapsed';
+const NAV_SCROLL_KEY = 'rms_sidebar_scroll';
 
 // ─── ROUTE MAP ────────────────────────────
 // Map từ nav key → đường dẫn URL thực tế
@@ -516,9 +517,12 @@ export default function AdminLayout({
 	};
 
 	// Mỗi trang tự bọc AdminLayout riêng nên sidebar bị remount khi chuyển tab
-	// (mất vị trí cuộn). Cuộn ngay tới mục đang active để menu không nhảy về đầu.
+	// (mất vị trí cuộn). Khôi phục scrollTop đã lưu trước khi paint; nếu mục
+	// active vẫn nằm ngoài khung (vd vào trang bằng link khác) thì cuộn tới nó.
+	const navRef = useRef<HTMLElement>(null);
 	const activeItemRef = useRef<HTMLButtonElement>(null);
-	useEffect(() => {
+	useLayoutEffect(() => {
+		if (navRef.current) navRef.current.scrollTop = Number(sessionStorage.getItem(NAV_SCROLL_KEY)) || 0;
 		activeItemRef.current?.scrollIntoView({ block: 'nearest' });
 	}, []);
 
@@ -575,7 +579,9 @@ export default function AdminLayout({
 
 				{/* Nav */}
 				<nav
+					ref={navRef}
 					className={`${styles.sidebarNav} ${mobileNavOpen ? styles.mobileOpen : ''}`}
+					onScroll={(e) => sessionStorage.setItem(NAV_SCROLL_KEY, String(e.currentTarget.scrollTop))}
 				>
 					{navGroups.map((group) => (
 						<React.Fragment key={group.section}>
@@ -588,6 +594,10 @@ export default function AdminLayout({
 									className={`${styles.navItem} ${activePage === item.key ? styles.active : ''}`}
 									data-label={item.label}
 									onClick={() => handleNavClick(item.key)}
+									onMouseEnter={(e) => {
+										const r = e.currentTarget.getBoundingClientRect();
+										e.currentTarget.style.setProperty('--tip-y', `${r.top + r.height / 2}px`);
+									}}
 									title={collapsed ? item.label : undefined}
 								>
 									{item.icon}

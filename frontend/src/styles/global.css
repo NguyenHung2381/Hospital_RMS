@@ -161,6 +161,11 @@ video {
 	background: var(--color-primary-light);
 }
 
+/* Modal bo góc tự cuộn: Chrome không cắt thanh cuộn theo border-radius → lùi track khỏi 2 góc */
+div[class*='modal' i]::-webkit-scrollbar-track {
+	margin-block: var(--radius-2xl);
+}
+
 /* === SELECTION === */
 ::selection {
 	background: rgba(10, 155, 74, 0.2);

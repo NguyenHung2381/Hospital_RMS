@@ -1,13 +1,6 @@
 import type { RoundDeadline } from '../../round/types/round.type';
-import { DEADLINE_COLORS, STATUS_CFG, type RoundRow } from '../types/schedule.type';
-import type {
-	CalDay,
-	CalView,
-	DayEventItem,
-	EventBar,
-	MonthData,
-	WeekEvent,
-} from '../types/calendarView.type';
+import { DEADLINE_COLORS, type RoundRow } from '../types/schedule.type';
+import type { CalDay, CalView, DayEventItem, MonthData } from '../types/calendarView.type';
 import { parseDate } from './scheduleUtils';
 
 export const DOW = ['Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7', 'Chủ nhật'];
@@ -26,51 +19,7 @@ export function isSameDay(d1: Date, d2: Date): boolean {
 	);
 }
 
-/** Xếp làn cho các thanh kéo dài giao với 1 tuần — dùng chung cho mọi loại thanh (đợt NCKH, khoá học...). */
-export function computeWeekEventsForDays<B extends { startDate: Date; endDate: Date } = EventBar>(
-	weekDays: CalDay[],
-	bars: B[],
-): WeekEvent<B>[] {
-	if (!weekDays.length) return [];
-	const weekStart = new Date(weekDays[0].date.getFullYear(), weekDays[0].date.getMonth(), weekDays[0].date.getDate(), 0, 0, 0);
-	const weekEnd   = new Date(weekDays[6].date.getFullYear(), weekDays[6].date.getMonth(), weekDays[6].date.getDate(), 23, 59, 59);
-
-	const relevant = bars.filter(b => b.endDate >= weekStart && b.startDate <= weekEnd);
-
-	const laneEnds: Date[] = [];
-	return relevant.map(bar => {
-		let colL = 0;
-		while (colL < 7 && weekDays[colL].date < bar.startDate && !isSameDay(weekDays[colL].date, bar.startDate)) {
-			colL++;
-		}
-		if (colL >= 7) colL = 0;
-
-		let colR = 6;
-		while (colR >= 0 && weekDays[colR].date > bar.endDate && !isSameDay(weekDays[colR].date, bar.endDate)) {
-			colR--;
-		}
-		if (colR < 0) colR = 6;
-
-		let lane = laneEnds.findIndex(e => e < bar.startDate);
-		if (lane === -1) {
-			lane = laneEnds.length;
-			laneEnds.push(bar.endDate);
-		} else {
-			laneEnds[lane] = bar.endDate;
-		}
-
-		return {
-			bar,
-			lane,
-			colL:  Math.min(colL, colR),
-			colR:  Math.max(colL, colR),
-			contL: bar.startDate < weekStart,
-			contR: bar.endDate > weekEnd,
-		};
-	});
-}
-
-function deadlineColor(dl: RoundDeadline, gc: (key: string, fallback: string) => string): string {
+export function deadlineColor(dl: RoundDeadline, gc: (key: string, fallback: string) => string): string {
 	return gc(`deadline-${dl.id}`, DEADLINE_COLORS[dl.deadline_type ?? ''] ?? '#888888');
 }
 
@@ -101,52 +50,6 @@ function buildDeadlinesByDay(
 		});
 	});
 	return byDay;
-}
-
-/** Thanh kéo dài (thời gian đợt + mốc nhiều ngày) giao với khoảng [rangeStart, rangeEnd]. */
-function buildEventBars(
-	rows: RoundRow[],
-	gc: (key: string, fallback: string) => string,
-	rangeStart: Date,
-	rangeEnd: Date,
-): EventBar[] {
-	const bars: EventBar[] = [];
-	rows.forEach((r) => {
-		const s = parseDate(r.start_date);
-		const e = parseDate(r.end_date);
-		if (!s || !e || s > rangeEnd || e < rangeStart) return;
-		const cfg = STATUS_CFG[r.status as keyof typeof STATUS_CFG] ?? STATUS_CFG.closed;
-		bars.push({
-			id:            `round-${r.id}`,
-			label:         `${r.id} — ${r.name}`,
-			color:         cfg.color,
-			startDate:     s,
-			endDate:       e,
-			thin:          true,
-			round:         r,
-			isRoundPeriod: true,
-		});
-	});
-
-	rows.forEach((r) => {
-		r.deadlines.forEach((dl: RoundDeadline) => {
-			if (!dl.start_date) return;
-			const s = parseDate(dl.start_date);
-			const e = parseDate(dl.deadline_date);
-			if (!s || !e || s > rangeEnd || e < rangeStart || isSameDay(s, e)) return;
-			bars.push({
-				id:        `dl-${dl.id}`,
-				label:     dl.name,
-				color:     deadlineColor(dl, gc),
-				startDate: s,
-				endDate:   e,
-				thin:      false,
-				round:     r,
-				deadline:  dl,
-			});
-		});
-	});
-	return bars;
 }
 
 /** Thứ 2 của tuần chứa ngày `d` (00:00). */
@@ -244,30 +147,10 @@ export function buildMonthWeeks(year: number, m: number): CalDay[][] {
 	return weeks;
 }
 
-/** Dữ liệu 1 tuần, dùng lại MonthData để render bằng MonthCard (1 hàng tuần). */
-export function computeWeekData(
-	rows: RoundRow[],
-	weekStart: Date,
-	gc: (key: string, fallback: string) => string,
-): MonthData {
-	const days = buildWeekDays(weekStart);
-	const weekEnd = addDays(weekStart, 6);
-	weekEnd.setHours(23, 59, 59);
-
-	return {
-		month:          addDays(weekStart, 3).getMonth(),
-		weeks:          [days],
-		deadlinesByDay: buildDeadlinesByDay(rows, gc),
-		monthDeadlines: [],
-		eventBars:      buildEventBars(rows, gc, weekStart, weekEnd),
-	};
-}
-
 export function computeMonthsData(
 	rows: RoundRow[],
 	year: number,
 	gc: (key: string, fallback: string) => string,
-	view: CalView,
 ): MonthData[] {
 	const deadlinesByDay = buildDeadlinesByDay(rows, gc);
 	return Array.from({ length: 12 }, (_, m) => {
@@ -288,11 +171,6 @@ export function computeMonthsData(
 
 		monthDeadlines.sort((a, b) => a.day - b.day);
 
-		// Thanh kéo dài CHỈ tính toán khi hiển thị 1 tháng
-		const eventBars = view === 1
-			? buildEventBars(rows, gc, new Date(year, m, 1), new Date(year, m + 1, 0, 23, 59, 59))
-			: [];
-
-		return { month: m, weeks, deadlinesByDay, monthDeadlines, eventBars };
+		return { month: m, weeks, deadlinesByDay, monthDeadlines };
 	});
 }

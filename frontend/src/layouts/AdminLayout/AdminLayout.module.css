@@ -189,10 +189,6 @@
 	overflow-x: hidden;
 }
 
-.sidebar.collapsed .sidebarNav {
-	overflow: visible;
-}
-
 .sidebarNav::-webkit-scrollbar {
 	width: 0;
 }
@@ -328,12 +324,13 @@
 	background: rgba(255, 255, 255, 0.22);
 }
 
-/* Tooltip khi thu gọn */
+/* Tooltip khi thu gọn — position: fixed để thoát khỏi vùng cuộn của nav
+   (absolute sẽ bị overflow cắt mất); --tip-y được set lúc hover trong JSX. */
 .sidebar.collapsed .navItem::after {
 	content: attr(data-label);
-	position: absolute;
-	left: calc(100% + 10px);
-	top: 50%;
+	position: fixed;
+	left: 78px;
+	top: var(--tip-y, 50%);
 	transform: translateY(-50%);
 	background: var(--color-gray-800);
 	color: #fff;

@@ -164,7 +164,7 @@ export default function ClassSchedule() {
 
 				{viewMode === 'calendar' && !loading && !error && (
 					<p className={styles.hint}>
-						Mỗi khoá học một màu · Thanh mảnh là thời gian học của khoá · Nhấp vào buổi học để xem chi tiết · Lăn chuột để chuyển tuần/tháng
+						Mỗi khoá học một màu · Thanh nhạt màu là thời gian học của khoá · Nhấp vào buổi học để xem chi tiết · Lăn chuột để chuyển tuần/tháng
 					</p>
 				)}
 			</div>

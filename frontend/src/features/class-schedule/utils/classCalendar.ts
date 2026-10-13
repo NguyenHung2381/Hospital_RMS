@@ -1,11 +1,9 @@
 import { COLOR_PRESETS } from '../../schedule/types/schedule.type';
 import type { CalDay } from '../../schedule/types/calendarView.type';
-import { addDays, buildMonthWeeks, buildWeekDays } from '../../schedule/utils/calendarViewHelpers';
+import { buildMonthWeeks } from '../../schedule/utils/calendarViewHelpers';
 import { parseDate } from '../../../shared/utils/formatDate';
 import type {
-	CalendarCourse,
 	CalendarSession,
-	CourseBar,
 	CourseMonthSummary,
 	SessionEvent,
 } from '../types/classSchedule.type';
@@ -15,7 +13,6 @@ export interface ClassMonthData {
 	weeks: CalDay[][];
 	sessionsByDay: Map<string, SessionEvent[]>;
 	courseSummary: CourseMonthSummary[];
-	courseBars: CourseBar[];
 }
 
 export const dayKey = (d: Date) => `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
@@ -48,24 +45,6 @@ function buildSessionsByDay(sessions: CalendarSession[]): Map<string, SessionEve
 	return byDay;
 }
 
-function buildCourseBars(courses: CalendarCourse[], rangeStart: Date, rangeEnd: Date): CourseBar[] {
-	const bars: CourseBar[] = [];
-	courses.forEach((c) => {
-		const s = parseDate(c.start_date);
-		const e = parseDate(c.end_date);
-		if (!s || !e || s > rangeEnd || e < rangeStart) return;
-		bars.push({
-			id:        `course-${c.id}`,
-			label:     c.name,
-			color:     courseColor(c.id),
-			startDate: s,
-			endDate:   e,
-			course:    c,
-		});
-	});
-	return bars;
-}
-
 function summarizeMonth(sessions: CalendarSession[], year: number, m: number): CourseMonthSummary[] {
 	const byCourse = new Map<string, CourseMonthSummary>();
 	sessions.forEach((s) => {
@@ -82,37 +61,13 @@ function summarizeMonth(sessions: CalendarSession[], year: number, m: number): C
 	return [...byCourse.values()].sort((a, b) => b.count - a.count);
 }
 
-export function computeClassMonths(
-	sessions: CalendarSession[],
-	courses: CalendarCourse[],
-	year: number,
-	singleMonth: boolean,
-): ClassMonthData[] {
+/** 12 thẻ tháng cho chế độ Năm (chấm buổi học + tóm tắt số buổi theo khoá). */
+export function computeClassMonths(sessions: CalendarSession[], year: number): ClassMonthData[] {
 	const sessionsByDay = buildSessionsByDay(sessions);
 	return Array.from({ length: 12 }, (_, m) => ({
 		month:         m,
 		weeks:         buildMonthWeeks(year, m),
 		sessionsByDay,
-		courseSummary: singleMonth ? [] : summarizeMonth(sessions, year, m),
-		// Thanh thời gian khoá học CHỈ hiển thị khi xem 1 tháng
-		courseBars:    singleMonth
-			? buildCourseBars(courses, new Date(year, m, 1), new Date(year, m + 1, 0, 23, 59, 59))
-			: [],
+		courseSummary: summarizeMonth(sessions, year, m),
 	}));
-}
-
-export function computeClassWeek(
-	sessions: CalendarSession[],
-	courses: CalendarCourse[],
-	weekStart: Date,
-): ClassMonthData {
-	const weekEnd = addDays(weekStart, 6);
-	weekEnd.setHours(23, 59, 59);
-	return {
-		month:         addDays(weekStart, 3).getMonth(),
-		weeks:         [buildWeekDays(weekStart)],
-		sessionsByDay: buildSessionsByDay(sessions),
-		courseSummary: [],
-		courseBars:    buildCourseBars(courses, weekStart, weekEnd),
-	};
 }

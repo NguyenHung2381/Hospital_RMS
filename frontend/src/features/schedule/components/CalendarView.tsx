@@ -2,14 +2,18 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { DEADLINE_TYPE_LABELS, type RoundDeadline } from '../../round/types/round.type';
 import { MONTHS_LONG, STATUS_CFG, DEADLINE_COLORS } from '../types/schedule.type';
 import type { RoundRow } from '../types/schedule.type';
-import type {
-	CalMode,
-	EventDetailData,
-	PopoverData,
-} from '../types/calendarView.type';
-import { addDays, computeMonthsData, computeWeekData, GRID_COLS } from '../utils/calendarViewHelpers';
+import type { CalMode, EventDetailData } from '../types/calendarView.type';
+import {
+	addDays,
+	buildMonthWeeks,
+	buildWeekDays,
+	computeMonthsData,
+	deadlineColor,
+	GRID_COLS,
+} from '../utils/calendarViewHelpers';
+import { parseDate } from '../utils/scheduleUtils';
+import { MonthGrid, WeekGrid, type CalItem } from './CalendarGrid';
 import { EventDetailModal } from './EventDetailModal';
-import { EventPopover } from './EventPopover';
 import { MonthCard } from './MonthCard';
 import styles from './CalendarView.module.css';
 
@@ -36,20 +40,9 @@ export function CalendarView({
 }: CalendarViewProps) {
 	const isWeek = mode === 'week' && !!weekStart;
 	const view = mode === 'year' ? 12 : 1;
-	const [popover, setPopover] = useState<PopoverData | null>(null);
 	const [detailModal, setDetailModal] = useState<EventDetailData | null>(null);
 	const containerRef = useRef<HTMLDivElement>(null);
 	const lastScrollTimeRef = useRef<number>(0);
-
-	const [isMobileWindow, setIsMobileWindow] = useState(() =>
-		typeof window !== 'undefined' ? window.innerWidth <= 1024 : false,
-	);
-
-	useEffect(() => {
-		const handleResize = () => setIsMobileWindow(window.innerWidth <= 1024);
-		window.addEventListener('resize', handleResize);
-		return () => window.removeEventListener('resize', handleResize);
-	}, []);
 
 	// CHỈ kích hoạt lăn chuột chuyển kỳ ở chế độ tuần / tháng (view === 1)
 	useEffect(() => {
@@ -81,15 +74,9 @@ export function CalendarView({
 	}, [view, onPrev, onNext]);
 
 	const monthsData = useMemo(
-		() => (isWeek ? [] : computeMonthsData(rows, year, gc, view)),
-		[isWeek, rows, year, gc, view],
+		() => (view === 12 ? computeMonthsData(rows, year, gc) : []),
+		[view, rows, year, gc],
 	);
-	const weekData = useMemo(
-		() => (isWeek ? computeWeekData(rows, weekStart!, gc) : null),
-		[isWeek, rows, weekStart, gc],
-	);
-
-	const visibleMonths = weekData ? [weekData] : monthsData.slice(startMonth, startMonth + view);
 
 	const navLabel = (() => {
 		if (isWeek) {
@@ -104,8 +91,6 @@ export function CalendarView({
 	})();
 	const prevLabel = isWeek ? 'Tuần trước' : 'Tháng trước';
 	const nextLabel = isWeek ? 'Tuần sau' : 'Tháng sau';
-
-	const isSingleMonthView = view === 1;
 
 	const openEventDetail = (round: RoundRow, deadline?: RoundDeadline, isRoundBar?: boolean, customColor?: string) => {
 		if (deadline) {
@@ -138,6 +123,44 @@ export function CalendarView({
 		}
 	};
 
+	// Thời gian đợt (thanh nhạt) + các mốc (1 ngày hoặc nhiều ngày) cho lưới tuần/tháng
+	const items: CalItem[] = view === 12 ? [] : rows.flatMap((r) => {
+		const out: CalItem[] = [];
+		const s = parseDate(r.start_date);
+		const e = parseDate(r.end_date);
+		if (s && e) {
+			const cfg = STATUS_CFG[r.status as keyof typeof STATUS_CFG] ?? STATUS_CFG.closed;
+			out.push({
+				id:       `round-${r.id}`,
+				title:    `${r.id} — ${r.name}`,
+				color:    cfg.color,
+				start:    s,
+				end:      e,
+				subtitle: `Thời gian đợt · ${cfg.label}`,
+				muted:    true,
+				onClick:  () => openEventDetail(r, undefined, true),
+			});
+		}
+		r.deadlines.forEach((dl) => {
+			const end = parseDate(dl.deadline_date);
+			if (!end) return;
+			const start = parseDate(dl.start_date);
+			const color = deadlineColor(dl, gc);
+			out.push({
+				id:       `dl-${dl.id}`,
+				title:    dl.name,
+				color,
+				start:    start && start < end ? start : end,
+				end,
+				subtitle: `Đợt: ${r.id} — ${r.name}`,
+				onClick:  () => openEventDetail(r, dl, false, color),
+			});
+		});
+		return out;
+	});
+	// Bấm ô trống → thêm mốc cho đợt đầu tiên (giữ hành vi cũ)
+	const onAdd = rows.length > 0 ? () => onAddDeadline(rows[0]) : undefined;
+
 	return (
 		<div ref={containerRef} className={styles.wrapper} data-view={view} data-mode={mode}>
 			{/* Navigation Header */}
@@ -149,34 +172,24 @@ export function CalendarView({
 				</div>
 			)}
 
-			<div className={styles.grid} data-grid-view={view} style={{ gridTemplateColumns: GRID_COLS[view] }}>
-				{visibleMonths.map((monthData) => (
-					<MonthCard
-						key={isWeek ? 'week' : monthData.month}
-						data={monthData}
-						monthName={MONTHS_LONG[monthData.month]}
-						isSingleMonthView={isSingleMonthView}
-						isWeekView={isWeek}
-						isMobileWindow={isMobileWindow}
-						rows={rows}
-						onSelectMonth={onSelectMonth}
-						onAddDeadline={onAddDeadline}
-						onOpenEventDetail={openEventDetail}
-						onOpenPopover={setPopover}
-					/>
-				))}
-			</div>
-
-			{popover && (
-				<EventPopover
-					popover={popover}
-					onClose={() => setPopover(null)}
-					onSelectEvent={(round, deadline, color) => {
-						setPopover(null);
-						openEventDetail(round, deadline, false, color);
-					}}
-					onAddDeadline={onAddDeadline}
-				/>
+			{isWeek ? (
+				<WeekGrid days={buildWeekDays(weekStart!)} items={items} onAdd={onAdd} />
+			) : view === 1 ? (
+				<MonthGrid weeks={buildMonthWeeks(year, startMonth)} items={items} onAdd={onAdd} />
+			) : (
+				<div className={styles.grid} data-grid-view={view} style={{ gridTemplateColumns: GRID_COLS[view] }}>
+					{monthsData.map((monthData) => (
+						<MonthCard
+							key={monthData.month}
+							data={monthData}
+							monthName={MONTHS_LONG[monthData.month]}
+							rows={rows}
+							onSelectMonth={onSelectMonth}
+							onAddDeadline={onAddDeadline}
+							onOpenEventDetail={openEventDetail}
+						/>
+					))}
+				</div>
 			)}
 
 			{detailModal && (
