@@ -301,6 +301,7 @@
 	flex-shrink: 0;
 	/* 7 tab nhãn dài — cho cuộn ngang thay vì bị cắt mất tab (vd "Lịch học") trên màn hẹp. */
 	overflow-x: auto;
+	overflow-y: hidden;
 	scrollbar-width: thin;
 }
 .detailTabBtn {

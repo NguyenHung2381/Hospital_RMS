@@ -580,6 +580,7 @@
 	.roleFilters {
 		width: 100%;
 		overflow-x: auto;
+		overflow-y: hidden;
 		flex-wrap: nowrap;
 		-webkit-overflow-scrolling: touch;
 		padding: 4px;

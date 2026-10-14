@@ -13,13 +13,11 @@ const cmeRecordService = require('./cmeRecordService');
 const { ROLE, inputRoleId } = require('./roleCodes');
 const xl = require('../utils/excelTemplate');
 
-// Cột file mẫu nhập — header khớp COLUMN_MATCHERS.
-// Khoa/phòng, Minh chứng chỉ để xem, khi nhập bị bỏ qua.
+// Cột file mẫu nhập — header khớp COLUMN_MATCHERS. Nhân viên khớp theo Mã NV
+// (file cũ còn cột Họ tên vẫn nhập được). Minh chứng chỉ để xem, khi nhập bị bỏ qua.
 const SHEET_COLUMNS = [
 	{ key: 'stt', header: 'STT', width: 6 },
 	{ key: 'staff_number', header: 'Mã NV', width: 9 },
-	{ key: 'full_name', header: 'Họ tên', width: 26 },
-	{ key: 'department', header: 'Khoa/Phòng', width: 26 },
 	{ key: 'year', header: 'Năm', width: 8 },
 	{ key: 'group', header: 'Nhóm hình thức', width: 40 },
 	{ key: 'category', header: 'Loại hình thức', width: 38 },
@@ -33,15 +31,66 @@ const SHEET_COLUMNS = [
 	{ key: 'notes', header: 'Ghi chú', width: 26 },
 ];
 
+const colOf = (key) => `$${xl.colLetter(SHEET_COLUMNS.findIndex((c) => c.key === key) + 1)}`;
+
 const buildSheet = (wb, title, subtitle) =>
 	xl.buildSheet(wb, { sheetName: 'Ghi nhận CME', title, subtitle, columns: SHEET_COLUMNS, letterhead: true });
 
-// Dropdown "Danh mục quy đổi" lấy từ sheet ẩn (danh sách dài, vượt giới hạn 255 ký tự)
+// Dropdown Nhóm / Loại hình thức lấy từ sheet ẩn (danh sách dài, vượt giới hạn 255 ký tự).
+// Loại lọc theo Nhóm cùng dòng: sheet DS_DanhMuc cột A=nhóm, B=loại (xếp theo nhóm cho liền
+// khối → OFFSET/MATCH/COUNTIF cắt đúng khối); Nhóm trống → cột C = mọi loại.
+// Cột D = giờ quy đổi của loại → cột Giờ tín chỉ có sẵn công thức = giờ quy đổi × Số lượng
+// (gõ đè số khác vẫn được; loại "Khác" quy đổi 0 → để trống, nhập tay).
 const applyCategoryDropdown = async (wb, ws) => {
 	const pool = await getPool();
-	const r = await pool.request().query('SELECT name FROM cme_credit_categories ORDER BY name');
-	const range = xl.addLookupSheet(wb, 'DS_DanhMuc', 'Danh mục quy đổi (tự sinh — không sửa)', r.recordset.map((c) => c.name));
-	xl.addDropdowns(ws, SHEET_COLUMNS, { category: range && { range } });
+	const [groups, cats, all] = await Promise.all([
+		pool.request().query('SELECT name FROM cme_credit_groups ORDER BY name'),
+		pool
+			.request()
+			.query(
+				'SELECT g.name AS group_name, c.name, c.conversion_value FROM cme_credit_categories c JOIN cme_credit_groups g ON g.id = c.group_id ORDER BY g.name, c.name',
+			),
+		pool.request().query('SELECT DISTINCT name FROM cme_credit_categories ORDER BY name'),
+	]);
+	const groupRange = xl.addLookupSheet(wb, 'DS_Nhom', 'Nhóm hình thức (tự sinh — không sửa)', groups.recordset.map((g) => g.name));
+	const allCats = all.recordset;
+
+	let catFormula = null;
+	if (allCats.length) {
+		const lk = wb.addWorksheet('DS_DanhMuc', { state: 'hidden' });
+		lk.getRow(1).values = ['Nhóm (tự sinh — không sửa)', 'Loại hình thức', 'Tất cả loại', 'Giờ quy đổi'];
+		cats.recordset.forEach((c, i) => {
+			lk.getCell(i + 2, 1).value = c.group_name;
+			lk.getCell(i + 2, 2).value = c.name;
+			lk.getCell(i + 2, 4).value = Number(c.conversion_value) || 0;
+		});
+		allCats.forEach((c, i) => {
+			lk.getCell(i + 2, 3).value = c.name;
+		});
+		const s = "'DS_DanhMuc'!";
+		// Công thức tương đối theo ô đầu vùng validation (dòng đầu dữ liệu)
+		const g = `${colOf('group')}${ws.headRow + 1}`;
+		catFormula =
+			`IF(${g}="",${s}$C$2:$C$${allCats.length + 1},` +
+			`OFFSET(${s}$B$1,MATCH(${g},${s}$A:$A,0)-1,0,COUNTIF(${s}$A:$A,${g}),1))`;
+
+		const toRow = Math.max(ws.rowCount, ws.headRow + 1) + 1000;
+		const creditCol = SHEET_COLUMNS.findIndex((c) => c.key === 'credits') + 1;
+		for (let r = ws.headRow + 1; r <= toRow; r++) {
+			const cell = ws.getCell(r, creditCol);
+			if (cell.value != null) continue;
+			const [gr, ca, qty] = [`${colOf('group')}${r}`, `${colOf('category')}${r}`, `${colOf('quantity')}${r}`];
+			const v =
+				`IF(${gr}="",IFERROR(INDEX(${s}$D:$D,MATCH(${ca},${s}$B:$B,0)),0),` +
+				`SUMIFS(${s}$D:$D,${s}$A:$A,${gr},${s}$B:$B,${ca}))`;
+			cell.value = { formula: `IF(${ca}="","",IF(${v}=0,"",${v}*IF(${qty}="",1,${qty})))` };
+		}
+		wb.calcProperties.fullCalcOnLoad = true;
+	}
+	xl.addDropdowns(ws, SHEET_COLUMNS, {
+		group: groupRange && { range: groupRange },
+		category: catFormula && { range: catFormula },
+	});
 };
 
 const templateWorkbook = async () => {
@@ -49,13 +98,12 @@ const templateWorkbook = async () => {
 	const ws = buildSheet(
 		wb,
 		'MẪU NHẬP GHI NHẬN CME ĐỘC LẬP',
-		'Bắt buộc: MNV hoặc Họ và tên (ưu tiên MNV), Năm hoặc Từ ngày (dd/mm/yyyy), Số tín chỉ. Danh mục: chọn từ danh sách, để trống nếu không thuộc danh mục. Cột Khoa/Phòng, Minh chứng không cần điền; Nhóm hình thức chỉ cần khi Loại hình thức bị trùng tên (vd "Khác"). Xoá dòng ví dụ trước khi nhập.',
+		'Bắt buộc: Mã NV, Năm hoặc Từ ngày (dd/mm/yyyy). Giờ tín chỉ tự tính = giờ quy đổi của Loại hình thức × Số lượng (gõ đè nếu cần; loại "Khác" thì nhập tay). Nhóm / Loại hình thức: chọn từ danh sách, để trống nếu không thuộc danh mục; Nhóm hình thức chỉ cần khi Loại hình thức bị trùng tên (vd "Khác"). Cột Minh chứng không cần điền. Xoá dòng ví dụ trước khi nhập.',
 	);
 	ws.getRow(5).height = 30;
 	ws.addRow({
 		stt: 1,
 		staff_number: 1234,
-		full_name: 'Nguyễn Văn A',
 		title: 'Tự học chuyên đề X (ví dụ)',
 		role: 'Đại biểu',
 		quantity: 1,
@@ -130,7 +178,7 @@ const loadLookups = async () => {
 			'SELECT id, full_name, staff_number FROM users WHERE is_active = 1 AND role_id <> @dept_head_role',
 		),
 		pool.request().query(
-			'SELECT c.id, c.name, g.name AS group_name FROM cme_credit_categories c LEFT JOIN cme_credit_groups g ON g.id = c.group_id',
+			'SELECT c.id, c.name, c.conversion_value, g.name AS group_name FROM cme_credit_categories c LEFT JOIN cme_credit_groups g ON g.id = c.group_id',
 		),
 	]);
 	const byStaff = new Map();
@@ -150,7 +198,8 @@ const loadLookups = async () => {
 		categoryByName.get(k).push(c.id);
 		categoryByGroup.set(`${norm(c.group_name || '')}|${k}`, c.id);
 	}
-	return { byStaff, byName, categoryByName, categoryByGroup };
+	const conversionById = new Map(categories.recordset.map((c) => [c.id, Number(c.conversion_value) || 0]));
+	return { byStaff, byName, categoryByName, categoryByGroup, conversionById };
 };
 
 const matchUser = (row, lookups) => {
@@ -177,7 +226,10 @@ const buildPreview = (rows, lookups) => {
 		// Có cột Năm thì không bắt buộc ngày; không có thì suy ra năm từ ngày hoạt động
 		const year = row.year || (row.activity_date ? +row.activity_date.slice(0, 4) : null);
 		if (!year) warnings.push('Thiếu Năm và Ngày hoạt động — bỏ qua dòng này khi nhập.');
-		if (row.credits == null) warnings.push('Số tín chỉ không hợp lệ — bỏ qua dòng này khi nhập.');
+		// Trống Giờ tín chỉ → tự tính = giờ quy đổi của loại × Số lượng (loại "Khác" quy đổi 0 → phải nhập tay)
+		const conv = categoryId ? lookups.conversionById.get(categoryId) : 0;
+		const credits = row.credits ?? (conv > 0 ? conv * (row.quantity ?? 1) : null);
+		if (credits == null) warnings.push('Thiếu Giờ tín chỉ (không tự tính được từ Loại hình thức) — bỏ qua dòng này khi nhập.');
 
 		return {
 			row: row.row,
@@ -193,10 +245,10 @@ const buildPreview = (rows, lookups) => {
 			year,
 			role: row.role,
 			quantity: row.quantity,
-			credits: row.credits,
+			credits,
 			notes: row.notes,
 			warnings,
-			valid: !!user && !!year && row.credits != null,
+			valid: !!user && !!year && credits != null,
 		};
 	});
 };

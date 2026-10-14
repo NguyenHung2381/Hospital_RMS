@@ -183,6 +183,7 @@
 	display: flex;
 	gap: var(--space-1);
 	overflow-x: auto;
+	overflow-y: hidden;
 }
 .tab {
 	display: inline-flex;

@@ -40,7 +40,7 @@
 
 @media (max-width: 860px) {
 	.layout { grid-template-columns: 1fr; }
-	.tabs { flex-direction: row; overflow-x: auto; position: static; }
+	.tabs { flex-direction: row; overflow-x: auto; overflow-y: hidden; position: static; }
 	.tab { min-width: 150px; }
 	.row { grid-template-columns: 1fr; gap: var(--space-2); }
 }

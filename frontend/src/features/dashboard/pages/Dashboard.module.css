@@ -1038,6 +1038,7 @@
 
 	.tabsRow {
 		overflow-x: auto;
+		overflow-y: hidden;
 		flex-wrap: nowrap;
 		white-space: nowrap;
 		padding: 0 var(--space-4);

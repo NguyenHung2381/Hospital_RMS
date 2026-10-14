@@ -698,6 +698,7 @@
 		width: 100% !important;
 		display: flex !important;
 		overflow-x: auto !important;
+		overflow-y: hidden !important;
 		-webkit-overflow-scrolling: touch !important;
 	}
 
@@ -721,6 +722,7 @@
 	.legend {
 		width: 100% !important;
 		overflow-x: auto !important;
+		overflow-y: hidden !important;
 		flex-wrap: nowrap !important;
 		white-space: nowrap !important;
 		-webkit-overflow-scrolling: touch !important;
