@@ -8,6 +8,7 @@ const { bumpTokenVersion } = require('./sessionVersion');
 const { paging } = require('../utils/paging');
 // department_id/role_id nhận danh sách phân tách bởi dấu phẩy (multi-select trên UI)
 const { splitList, inClause } = require('../utils/sqlFilters');
+const { isDeptAccountSql } = require('../utils/deptAccount');
 const { ROLE, requireRoleId } = require('./roleCodes');
 const { defaultPassword } = require('../utils/passwordPolicy');
 
@@ -109,6 +110,7 @@ const getAll = async ({
            u.role_id, r.name AS role_name, r.code AS role_code,
            u.can_sit_council, u.can_chair_council,
            u.password_changed_at, u.created_at, u.updated_at,
+           CAST(CASE WHEN ${isDeptAccountSql('u')} THEN 1 ELSE 0 END AS BIT) AS is_dept_account,
            COUNT(*) OVER() AS _total
     FROM users u
     LEFT JOIN departments d ON d.id = u.department_id
@@ -178,35 +180,59 @@ const create = async (data, actorId) => {
 	const pool = await getPool();
 	// Không truyền mật khẩu ⇒ mặc định = tên đăng nhập (bắt đổi ở lần đăng nhập đầu)
 	const hashed = await bcrypt.hash(data.password || defaultPassword(data.username), 12);
+	// require muộn: topicMemberService nạp nhiều service khác
+	const { genUserIdInTx } = require('./topicMemberService');
+	const roleId = data.role_id || (await requireRoleId(ROLE.MEMBER));
 
-	const result = await pool
-		.request()
-		.input('actor_id', sql.VarChar(20), actorId)
-		.input('username', sql.VarChar(50), data.username)
-		.input('password', sql.VarChar(255), hashed)
-		.input(
-			'staff_number',
-			sql.Int,
-			data.staff_number != null && data.staff_number !== ''
-				? parseInt(String(data.staff_number), 10)
-				: null,
-		)
-		.input('full_name', sql.NVarChar(200), data.full_name)
-		.input('email', sql.VarChar(100), data.email?.trim() || null)
-		.input('department_id', sql.VarChar(20), data.department_id || null)
-		.input('role_id', sql.VarChar(20), data.role_id || (await requireRoleId(ROLE.MEMBER)))
-		.query(`
-      DECLARE @new_id VARCHAR(20);
-      SET @new_id = 'NV' + LEFT(REPLACE(NEWID(), '-', ''), 8);
+	// Mã người dùng 'NV' + mã khoa + NNNN như các luồng cấp tài khoản khác (sp_gen_user_id).
+	// sp_gen_user_id giữ applock sinh mã tới khi commit ⇒ transaction ngắn: sinh mã → INSERT → commit.
+	const tx = new sql.Transaction(pool);
+	await tx.begin();
+	let newId;
+	try {
+		const dept = data.department_id
+			? (
+					await new sql.Request(tx)
+						.input('dept', sql.VarChar(20), data.department_id)
+						.query('SELECT code FROM departments WHERE id = @dept')
+				).recordset[0]
+			: null;
+		newId = await genUserIdInTx(tx, dept?.code || '');
+		if (!newId) throw new Error('Không sinh được mã nhân viên mới');
+		await new sql.Request(tx)
+			.input('new_id', sql.VarChar(20), newId)
+			.input('actor_id', sql.VarChar(20), actorId)
+			.input('username', sql.VarChar(50), data.username)
+			.input('password', sql.VarChar(255), hashed)
+			.input(
+				'staff_number',
+				sql.Int,
+				data.staff_number != null && data.staff_number !== ''
+					? parseInt(String(data.staff_number), 10)
+					: null,
+			)
+			.input('full_name', sql.NVarChar(200), data.full_name)
+			.input('email', sql.VarChar(100), data.email?.trim() || null)
+			.input('department_id', sql.VarChar(20), data.department_id || null)
+			.input('role_id', sql.VarChar(20), roleId)
+			.query(`
       EXEC sp_set_actor @actor_id;
       -- Mật khẩu do quản trị đặt ⇒ người dùng phải tự đổi ở lần đăng nhập đầu
       INSERT INTO users (id, username, password, staff_number, full_name, email, department_id, role_id, created_by, must_change_password)
       VALUES (@new_id, @username, @password, @staff_number, @full_name, @email, @department_id, @role_id, @actor_id, 1);
-      SELECT @new_id AS id;
     `);
+		await tx.commit();
+	} catch (err) {
+		try {
+			await tx.rollback();
+		} catch {
+			// transaction đã bị abort
+		}
+		throw err;
+	}
 
-	await personService.syncPerson('users', result.recordset[0].id, { actorId });
-	const user = await getById(result.recordset[0].id);
+	await personService.syncPerson('users', newId, { actorId });
+	const user = await getById(newId);
 	invalidateStatsCache();
 	broadcast('update', { entity: 'user' });
 	return user;
@@ -295,7 +321,10 @@ const remove = async (id, actorId) => {
 			(SELECT COUNT(*) FROM council_members WHERE user_id = @id)
 			  + (SELECT COUNT(*) FROM council_progress_reviews WHERE user_id = @id)
 			  + (SELECT COUNT(*) FROM council_seat_substitutes WHERE user_id = @id) AS council_seats,
-			(SELECT COUNT(*) FROM departments WHERE dept_account_id = @id) AS dept_accounts
+			(SELECT COUNT(*) FROM departments WHERE dept_account_id = @id) AS dept_accounts,
+			(SELECT COUNT(*) FROM cme_records WHERE user_id = @id) AS cme_records,
+			(SELECT COUNT(*) FROM seminar_participants WHERE user_id = @id) AS seminar_participations,
+			(SELECT COUNT(*) FROM survey_responses WHERE respondent_user_id = @id) AS survey_responses
 	`);
 	const c = check.recordset[0];
 	const blockers = [];
@@ -307,6 +336,9 @@ const remove = async (id, actorId) => {
 	if (c.results_decided) blockers.push(`${c.results_decided} kết luận hội đồng`);
 	if (c.council_seats) blockers.push(`${c.council_seats} lượt tham gia hội đồng`);
 	if (c.dept_accounts) blockers.push(`${c.dept_accounts} khoa (tài khoản liên hệ)`);
+	if (c.cme_records) blockers.push(`${c.cme_records} bản ghi CME`);
+	if (c.seminar_participations) blockers.push(`${c.seminar_participations} lượt tham dự hội thảo`);
+	if (c.survey_responses) blockers.push(`${c.survey_responses} phiếu khảo sát`);
 
 	if (blockers.length) {
 		const err = new Error(
@@ -316,6 +348,8 @@ const remove = async (id, actorId) => {
 		throw err;
 	}
 
+	// Lấy trước khi xoá — sau khi xoá thì dọn person (bảng persons không có FK tới users)
+	const personId = await personService.personIdOf('users', id);
 	await pool
 		.request()
 		.input('id', sql.VarChar(20), id)
@@ -324,8 +358,11 @@ const remove = async (id, actorId) => {
 			UPDATE topic_members SET user_id = NULL, account_granted = 0, account_granted_at = NULL WHERE user_id = @id;
 			UPDATE trainees SET user_id = NULL, account_granted = 0, account_granted_at = NULL WHERE user_id = @id;
 			UPDATE round_deadlines SET created_by = @actor_id WHERE created_by = @id;
+			UPDATE departments SET head_user_id = NULL WHERE head_user_id = @id;
+			UPDATE lecturers SET user_id = NULL WHERE user_id = @id;
 			DELETE FROM users WHERE id = @id;
 		`);
+	await personService.releasePerson('users', id, personId, { actorId });
 	userStatusCache.clear(id);
 	invalidateStatsCache();
 	broadcast('update', { entity: 'user' });
@@ -421,13 +458,15 @@ const searchForMember = async ({ q, department_id, limit = 10 }) => {
 // Tạo nhân viên mới từ file nhập (vd ghi nhận CME có Mã NV chưa có trong hệ thống).
 // Cùng quy ước với cấp tài khoản thành viên đề tài (topicMemberService): mã
 // 'NV' + mã khoa + NNNN, username = chữ cái đầu họ tên + "_" + MNV, vai trò Thành viên.
-// Chưa biết họ tên (file chỉ có Mã NV) → caller truyền username_base (vd "NV_2224").
+// Bắt buộc có họ tên (tên đăng nhập sinh từ họ tên).
 // Mật khẩu mặc định = tên đăng nhập, bắt đổi ở lần đăng nhập đầu.
 // Caller tự kiểm tra quyền users:create. Trả { id, username }.
 const createStaffAccount = async (
-	{ full_name, staff_number, department_id, department_code, username_base },
+	{ full_name, staff_number, department_id, department_code },
 	actorId,
 ) => {
+	full_name = String(full_name || '').trim();
+	if (!full_name) throw Object.assign(new Error('Vui lòng nhập họ và tên'), { statusCode: 400 });
 	// require muộn: topicMemberService nạp nhiều service khác, chỉ cần ở luồng này
 	const { buildMemberUsername, ensureUniqueUsername, genUserIdInTx } = require('./topicMemberService');
 	const pool = await getPool();
@@ -441,7 +480,7 @@ const createStaffAccount = async (
 		await new sql.Request(tx).input('actor_id', sql.VarChar(20), actorId).query('EXEC sp_set_actor @actor_id');
 		userId = await genUserIdInTx(tx, department_code || '');
 		if (!userId) throw new Error('Không sinh được mã nhân viên mới');
-		username = await ensureUniqueUsername(tx, username_base || buildMemberUsername(full_name, staff_number), userId);
+		username = await ensureUniqueUsername(tx, buildMemberUsername(full_name, staff_number), userId);
 		const passwordHash = await bcrypt.hash(defaultPassword(username), 12);
 		await new sql.Request(tx)
 			.input('uid', sql.VarChar(20), userId)

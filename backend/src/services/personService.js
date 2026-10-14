@@ -307,6 +307,7 @@ const deleteOrphanPerson = async (tx, personId) => {
 		  AND NOT EXISTS (SELECT 1 FROM dbo.topic_members x WHERE x.person_id = p.id)
 		  AND NOT EXISTS (SELECT 1 FROM dbo.seminar_participants x WHERE x.person_id = p.id)
 		  AND NOT EXISTS (SELECT 1 FROM dbo.person_merge_candidates c WHERE c.person_a_id = p.id OR c.person_b_id = p.id)
+		  AND NOT EXISTS (SELECT 1 FROM dbo.person_merge_log l WHERE l.kept_id = p.id OR l.merged_id = p.id)
 		  AND NOT EXISTS (SELECT 1 FROM dbo.persons c WHERE c.merged_into_id = p.id)`);
 };
 
@@ -451,6 +452,72 @@ const syncPending = async (source, { limit = 500, actorId } = {}) => {
 	}
 };
 
+/** person_id hiện tại của 1 dòng nguồn — gọi TRƯỚC khi xoá dòng đó rồi truyền cho releasePerson. KHÔNG ném lỗi. */
+const personIdOf = async (source, id) => {
+	if (!isEnabled() || !SOURCES[source] || !id) return null;
+	try {
+		const pool = await getPool();
+		if (!(await checkSchema(pool))) return null;
+		const r = await pool
+			.request()
+			.input('id', sql.VarChar(30), id)
+			.query(`SELECT person_id FROM dbo.${SOURCES[source].table} WHERE id = @id`);
+		return r.recordset[0]?.person_id || null;
+	} catch (err) {
+		logFailure(`personIdOf(${source}, ${id})`, err);
+		return null;
+	}
+};
+
+/**
+ * Sau khi XOÁ 1 dòng nguồn (vd xoá tài khoản): person của dòng đó (personId, hoặc person có
+ * nguồn gốc là dòng đó) không còn gì trỏ tới thì xoá; còn bản ghi nguồn khác trỏ tới (vd thành
+ * viên đề tài của cùng người) thì chuyển nguồn gốc sang bản ghi đó. KHÔNG bao giờ ném lỗi.
+ */
+const releasePerson = async (source, id, personId, { actorId } = {}) => {
+	if (!isEnabled() || !SOURCES[source] || !id) return;
+	try {
+		const pool = await getPool();
+		if (!(await checkSchema(pool))) return;
+		await withTx(pool, async (tx) => {
+			const r = await new sql.Request(tx)
+				.input('pid', sql.VarChar(20), personId || null)
+				.input('src', sql.VarChar(40), source)
+				.input('id', sql.VarChar(30), id)
+				.query(`SELECT id FROM dbo.persons WHERE id = @pid OR (origin_table = @src AND origin_id = @id)`);
+			for (const { id: pid } of r.recordset) {
+				await deleteOrphanPerson(tx, pid);
+				const cur = (
+					await new sql.Request(tx)
+						.input('pid', sql.VarChar(20), pid)
+						.query('SELECT origin_table, origin_id FROM dbo.persons WHERE id = @pid')
+				).recordset[0];
+				if (!cur || cur.origin_table !== source || cur.origin_id !== id) continue;
+				// Còn bản ghi khác trỏ tới → bản ghi đó thành nguồn gốc mới
+				for (const next of SOURCE_ORDER) {
+					const other = (
+						await new sql.Request(tx)
+							.input('pid', sql.VarChar(20), pid)
+							.query(`SELECT TOP 1 id FROM dbo.${SOURCES[next].table} WHERE person_id = @pid ORDER BY id`)
+					).recordset[0];
+					if (!other) continue;
+					await new sql.Request(tx)
+						.input('pid', sql.VarChar(20), pid)
+						.input('src', sql.VarChar(40), next)
+						.input('oid', sql.VarChar(30), other.id)
+						.input('actor', sql.VarChar(20), actorId || null)
+						.query(`UPDATE dbo.persons SET origin_table = @src, origin_id = @oid,
+						               updated_at = SYSDATETIME(), updated_by = @actor
+						        WHERE id = @pid`);
+					break;
+				}
+			}
+		});
+	} catch (err) {
+		logFailure(`releasePerson(${source}, ${id})`, err);
+	}
+};
+
 /**
  * Sau khi cấp tài khoản cho thành viên đề tài: thành viên và tài khoản phải trỏ CÙNG 1 person.
  * KHÔNG bao giờ ném lỗi.
@@ -501,6 +568,8 @@ module.exports = {
 	syncPersons,
 	syncPending,
 	linkTopicMemberToUser,
+	personIdOf,
+	releasePerson,
 	isEnabled,
 	withTx, // giao dịch có giữ khóa person_sync — dùng chung với personMergeService
 	SOURCE_ORDER,

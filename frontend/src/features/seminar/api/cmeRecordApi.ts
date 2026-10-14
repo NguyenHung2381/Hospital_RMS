@@ -62,12 +62,18 @@ export interface CmeRecordImportDefaults {
 	create_missing?: boolean;
 	/** Khoa/Phòng cho nhân viên mới khi file không có cột Khoa/Phòng */
 	new_department_id?: string;
+	/** Khoa chọn riêng cho từng nhân viên mới ở bước xem trước: { [Mã NV]: department_id } */
+	staff_departments?: Record<number, string>;
+	/** Họ tên nhập ở bước xem trước cho nhân viên mới mà file / hệ thống chưa có: { [Mã NV]: họ tên } */
+	staff_names?: Record<number, string>;
 }
 
 export const importCmeRecordsExcel = (file: File, dryRun: boolean, defaults: CmeRecordImportDefaults) => {
 	const form = new FormData();
 	form.append('dry_run', dryRun ? '1' : '0');
-	for (const [k, v] of Object.entries(defaults)) if (v) form.append(k, v === true ? '1' : String(v));
+	for (const [k, v] of Object.entries(defaults)) {
+		if (v) form.append(k, v === true ? '1' : typeof v === 'object' ? JSON.stringify(v) : String(v));
+	}
 	form.append('file', file);
 	return apiClient.postForm<CmeRecordImportResult>('/cme-records/import-excel', form);
 };

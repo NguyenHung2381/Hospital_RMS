@@ -127,6 +127,7 @@ const authenticate = async (req, res, next) => {
 			},
 			perms.keys,
 		);
+		req.user.twoFactor = twoFa; // GET /users/me trả về để client làm mới trạng thái
 		if (twoFa.state === 'required' && !TWO_FACTOR_SETUP_ALLOWED.has(req.originalUrl.split('?')[0])) {
 			return res.status(403).json({
 				success: false,

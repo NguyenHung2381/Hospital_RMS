@@ -82,6 +82,22 @@ const createStaff = async (req, res, next) => {
 	}
 };
 
+// staff_departments / staff_names (multipart → chuỗi JSON) { "Mã NV": department_id | họ tên }:
+// khoa / họ tên nhập riêng cho từng nhân viên mới ở bước xem trước. Sai định dạng thì bỏ qua.
+const parseStaffMap = (raw) => {
+	try {
+		const obj = JSON.parse(raw || '{}');
+		const out = {};
+		for (const [k, v] of Object.entries(obj && typeof obj === 'object' ? obj : {})) {
+			const val = typeof v === 'string' ? v.trim() : '';
+			if (/^\d+$/.test(k) && val) out[Number(k)] = val;
+		}
+		return out;
+	} catch {
+		return {};
+	}
+};
+
 const importExcel = async (req, res, next) => {
 	try {
 		if (!req.file) {
@@ -105,6 +121,8 @@ const importExcel = async (req, res, next) => {
 					quantity: Number(req.body.quantity) > 0 ? Number(req.body.quantity) : null,
 					create_missing: createMissing,
 					new_department_id: req.body.new_department_id || null,
+					staff_departments: parseStaffMap(req.body.staff_departments),
+					staff_names: parseStaffMap(req.body.staff_names),
 					can_create_staff: canCreateStaff,
 				},
 			},

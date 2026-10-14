@@ -36,7 +36,7 @@ const templateWorkbook = async () => {
 		sheetName: 'Ghi nhận CME',
 		title: 'MẪU NHẬP GHI NHẬN CME ĐỘC LẬP',
 		subtitle:
-			'Bắt buộc: Mã NV. Mã NV chưa có trong hệ thống sẽ được tạo nhân viên + tài khoản (Họ và tên, Khoa/Phòng không bắt buộc — có thì điền để hồ sơ đầy đủ). Năm, Nhóm/Loại hình thức chọn ở hộp thoại nhập. Hoạt động để trống → lấy Tên hoạt động mặc định. Loại hình thức có giờ quy đổi: bắt buộc có Số lượng (để trống → lấy Số lượng mặc định), hệ thống tự tính Giờ tín chỉ = Số lượng × giờ quy đổi. Loại "Khác": bỏ trống Số lượng, điền Giờ tín chỉ. Ngày: dd/mm/yyyy.',
+			'Bắt buộc: Mã NV. Mã NV chưa có trong hệ thống sẽ được tạo nhân viên + tài khoản — cần Họ và tên (điền trong file hoặc nhập ở bước xem trước), Khoa/Phòng không bắt buộc. Năm, Nhóm/Loại hình thức chọn ở hộp thoại nhập. Hoạt động để trống → lấy Tên hoạt động mặc định. Loại hình thức có giờ quy đổi: bắt buộc có Số lượng (để trống → lấy Số lượng mặc định), hệ thống tự tính Giờ tín chỉ = Số lượng × giờ quy đổi. Loại "Khác": bỏ trống Số lượng, điền Giờ tín chỉ. Ngày: dd/mm/yyyy.',
 		columns: SHEET_COLUMNS,
 		letterhead: true,
 	});
@@ -183,21 +183,21 @@ const matchUser = (row, lookups) => {
 	return cands.length === 1 ? cands[0] : null;
 };
 
-// Tên tạm khi không tìm được họ tên ở đâu — dễ nhận ra để bổ sung ở màn Người dùng
-const placeholderName = (staffNumber) => `Chưa cập nhật tên (MNV ${staffNumber})`;
-
 const matchDept = (raw, lookups) =>
 	raw ? lookups.deptByKey.get(norm(raw)) || lookups.deptByKey.get(normDept(raw)) || null : null;
 
 // Mã NV chưa có trong hệ thống → kế hoạch tạo nhân viên + tài khoản mới (create_missing,
-// mặc định bật). Chỉ cần Mã NV; họ tên / khoa lấy lần lượt từ:
+// mặc định bật). Họ tên / khoa lấy lần lượt từ:
 //   1. cột Họ và tên / Khoa/Phòng trong file
 //   2. dữ liệu đã có trong hệ thống: thành viên đề tài, người tham dự hội thảo nội viện
 //   3. khoa: khoa mặc định chọn ở hộp thoại
-// Không có họ tên → tên tạm placeholderName(), không có khoa → để trống (bổ sung sau).
+// Họ tên / khoa nhập riêng cho từng Mã NV ở bước xem trước (defaults.staff_names /
+// staff_departments) đè lên tất cả.
+// Không có họ tên → missing_name, dòng không hợp lệ (không tạo tài khoản); không có khoa →
+// để trống (bổ sung sau).
 // Cùng 1 Mã NV nhiều dòng → dùng chung kế hoạch của dòng đầu.
 // Trả { staff, note } hoặc { reason } (lý do không tạo được).
-const planNewStaff = (row, lookups, defaults, planned) => {
+const planNewStaff = (row, lookups, defaults, planned, fileNames) => {
 	if (row.staff_number == null) return { reason: 'Không có Mã NV nên không tạo được nhân viên mới' };
 	const taken = lookups.takenStaff.get(row.staff_number);
 	if (taken === false) {
@@ -218,20 +218,31 @@ const planNewStaff = (row, lookups, defaults, planned) => {
 
 	const known = lookups.knownStaff.get(row.staff_number);
 	const notes = [];
-	let fullName = String(row.full_name || '').trim();
-	let nameSource = 'file';
+	// Họ tên nhập riêng cho Mã NV này ở bước xem trước — ưu tiên hơn mọi nguồn khác
+	let fullName = String(defaults.staff_names?.[row.staff_number] || '').trim();
+	let nameSource = 'input';
+	if (!fullName) {
+		// Dòng này trống họ tên nhưng dòng khác cùng Mã NV có → dùng họ tên đó
+		fullName = String(row.full_name || '').trim() || fileNames.get(row.staff_number) || '';
+		nameSource = 'file';
+	}
 	if (!fullName && known) {
 		fullName = known.full_name.trim();
 		nameSource = 'system';
 	}
+	// Chưa có họ tên thì KHÔNG tạo tài khoản (tên đăng nhập sinh từ họ tên) — dòng bị bỏ qua
+	// tới khi nhập họ tên ở bước xem trước.
 	if (!fullName) {
-		fullName = placeholderName(row.staff_number);
-		nameSource = 'placeholder';
-		notes.push(`Chưa có họ tên — tạm đặt "${fullName}", bổ sung ở màn Người dùng`);
+		nameSource = null;
+		notes.push('Chưa có họ tên — nhập họ tên ở bảng nhân viên mới, nếu không sẽ bỏ qua dòng này khi nhập');
 	}
 
-	let dept = matchDept(row.department_raw, lookups);
-	if (row.department_raw && !dept) notes.push(`Không khớp khoa/phòng "${row.department_raw}"`);
+	// Khoa chọn riêng cho Mã NV này ở bước xem trước — ưu tiên hơn mọi nguồn khác
+	let dept = lookups.deptById.get(defaults.staff_departments?.[row.staff_number]) || null;
+	if (!dept) {
+		dept = matchDept(row.department_raw, lookups);
+		if (row.department_raw && !dept) notes.push(`Không khớp khoa/phòng "${row.department_raw}"`);
+	}
 	if (!dept && known) dept = lookups.deptById.get(known.department_id) || matchDept(known.department_raw, lookups);
 	if (!dept && defaults.new_department_id) dept = lookups.deptById.get(defaults.new_department_id) || null;
 	if (!dept) notes.push('Chưa có khoa/phòng — bổ sung ở màn Người dùng');
@@ -240,7 +251,7 @@ const planNewStaff = (row, lookups, defaults, planned) => {
 		staff_number: row.staff_number,
 		full_name: fullName,
 		name_source: nameSource,
-		missing_name: nameSource === 'placeholder',
+		missing_name: !fullName,
 		department_id: dept?.id || null,
 		department_code: dept?.code || null,
 		department_name: dept?.name || null,
@@ -250,15 +261,21 @@ const planNewStaff = (row, lookups, defaults, planned) => {
 };
 
 // defaults = giá trị chọn ở hộp thoại nhập { year, group_id, category_id, title, quantity,
-// create_missing, new_department_id }: chỉ dùng khi ô tương ứng trong file để trống.
+// create_missing, new_department_id, staff_departments, staff_names }: chỉ dùng khi ô tương
+// ứng trong file để trống (riêng staff_departments / staff_names { [Mã NV]: … } luôn được ưu tiên).
 const buildPreview = (rows, lookups, defaults = {}) => {
 	const planned = new Map();
+	const fileNames = new Map();
+	for (const r of rows) {
+		const name = String(r.full_name || '').trim();
+		if (r.staff_number != null && name && !fileNames.has(r.staff_number)) fileNames.set(r.staff_number, name);
+	}
 	return rows.map((row) => {
 		const warnings = [];
 		const user = matchUser(row, lookups);
 		let newStaff = null;
 		if (!user && defaults.create_missing) {
-			const plan = planNewStaff(row, lookups, defaults, planned);
+			const plan = planNewStaff(row, lookups, defaults, planned, fileNames);
 			newStaff = plan.staff || null;
 			if (plan.note) warnings.push(plan.note);
 			if (!newStaff) warnings.push(`${plan.reason} — bỏ qua dòng này khi nhập.`);
@@ -314,7 +331,7 @@ const buildPreview = (rows, lookups, defaults = {}) => {
 			credits,
 			notes: row.notes,
 			warnings,
-			valid: (!!user || !!newStaff) && !!year && credits != null,
+			valid: (!!user || (!!newStaff && !newStaff.missing_name)) && !!year && credits != null,
 		};
 	});
 };
@@ -352,14 +369,7 @@ const importExcel = async ({ buffer, dry_run, defaults }, actorId) => {
 	const failedStaff = new Set();
 	for (const st of newStaff.values()) {
 		try {
-			const u = await userService.createStaffAccount(
-				{
-					...st,
-					// Chưa biết họ tên → username theo Mã NV thay vì chữ cái đầu của tên tạm
-					username_base: st.missing_name ? `NV_${String(st.staff_number).padStart(4, '0')}` : undefined,
-				},
-				actorId,
-			);
+			const u = await userService.createStaffAccount(st, actorId);
 			st.user_id = u.id;
 			created_staff.push({
 				id: u.id,

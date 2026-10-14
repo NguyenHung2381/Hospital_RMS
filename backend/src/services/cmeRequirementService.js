@@ -1,5 +1,6 @@
 const { getPool, sql } = require('../config/db');
 const { broadcast } = require('./eventService');
+const { isDeptAccountSql } = require('../utils/deptAccount');
 
 // Ngưỡng tín chỉ CME theo năm — toàn viện (department_id NULL) hoặc riêng
 // theo khoa/phòng (ghi đè ngưỡng toàn viện cho khoa đó).
@@ -90,6 +91,8 @@ const getComplianceReport = async (year) => {
       ORDER BY CASE WHEN department_id IS NOT NULL THEN 0 ELSE 1 END
     ) req
     WHERE u.is_active = 1 AND req.required_credits IS NOT NULL
+      -- Bỏ tài khoản khoa/phòng: tài khoản dùng chung, không phải nhân sự
+      AND NOT ${isDeptAccountSql('u')}
     GROUP BY u.id, u.full_name, u.department_id, d.name, req.required_credits, cr.manual_credits
     HAVING ISNULL(SUM(CASE WHEN p.cme_year = @year THEN p.cme_credits ELSE 0 END), 0)
              + ISNULL(cr.manual_credits, 0) < req.required_credits

@@ -1136,3 +1136,9 @@
 		height: 320px;
 	}
 }
+
+@keyframes spin {
+	to {
+		transform: rotate(360deg);
+	}
+}

@@ -72,8 +72,9 @@ export interface CmeRecordImportRow {
 	new_staff: {
 		staff_number: number;
 		full_name: string;
+		department_id: string | null;
 		department_name: string | null;
-		/** Không tìm được họ tên — dùng tên tạm "Chưa cập nhật tên (MNV …)" */
+		/** Không tìm được họ tên — phải nhập ở bước xem trước, chưa nhập thì không tạo tài khoản */
 		missing_name: boolean;
 	} | null;
 	full_name_raw: string | null;

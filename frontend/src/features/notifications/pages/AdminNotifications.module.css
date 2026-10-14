@@ -725,3 +725,9 @@
 	color: var(--color-gray-400);
 	font-size: var(--font-size-sm);
 }
+
+@keyframes spin {
+	to {
+		transform: rotate(360deg);
+	}
+}

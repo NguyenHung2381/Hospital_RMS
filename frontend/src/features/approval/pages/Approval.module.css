@@ -1455,3 +1455,9 @@
 		gap: 8px !important;
 	}
 }
+
+@keyframes spin {
+	to {
+		transform: rotate(360deg);
+	}
+}

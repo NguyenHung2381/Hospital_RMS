@@ -145,6 +145,10 @@ const getMe = async (req, res, next) => {
 			...user,
 			permissions: [...(req.user.permissions ?? [])],
 			permission_scopes: Object.fromEntries(req.user.permissionScopes ?? []),
+			// Trạng thái 2FA bắt buộc tính lại theo cấu hình hiện tại — bản lưu lúc
+			// đăng nhập sẽ cũ nếu quản trị vừa bật/tắt "Bắt buộc 2FA cho quản trị".
+			twofa_state: req.user.twoFactor?.state ?? null,
+			twofa_deadline: req.user.twoFactor?.deadline ? req.user.twoFactor.deadline.toISOString() : null,
 		});
 	} catch (err) {
 		next(err);

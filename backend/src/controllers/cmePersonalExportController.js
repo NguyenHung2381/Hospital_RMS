@@ -16,6 +16,7 @@ async function buildWorkbook(userId, year) {
 	const wb = cmeReportService.buildWorkbook(data, {
 		title: `BÁO CÁO TÍN CHỈ CME NĂM ${year}`,
 		subtitle: [profile.full_name, profile.staff_number, profile.department_name].filter(Boolean).join(' · '),
+		personal: true,
 	});
 	return { wb, profile };
 }

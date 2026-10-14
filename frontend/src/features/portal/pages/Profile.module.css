@@ -459,3 +459,9 @@
 	width: 16px;
 	height: 16px;
 }
+
+@keyframes spin {
+	to {
+		transform: rotate(360deg);
+	}
+}

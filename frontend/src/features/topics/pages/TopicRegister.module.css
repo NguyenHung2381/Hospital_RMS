@@ -1092,3 +1092,9 @@
 		padding: var(--space-5) var(--space-3);
 	}
 }
+
+@keyframes spin {
+	to {
+		transform: rotate(360deg);
+	}
+}

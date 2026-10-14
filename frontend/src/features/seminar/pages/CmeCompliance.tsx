@@ -208,8 +208,9 @@ export default function CmeCompliance() {
 		setPersonModal(true);
 		if (users.length === 0) {
 			apiClient
-				.get<{ data: { id: string; full_name: string }[] }>('/users?limit=0')
-				.then((r) => setUsers(r.data.map((u) => ({ id: u.id, name: u.full_name }))))
+				.get<{ data: { id: string; full_name: string; is_dept_account?: boolean }[] }>('/users?limit=0')
+				// Bỏ tài khoản khoa/phòng — tài khoản dùng chung, không phải nhân sự
+				.then((r) => setUsers(r.data.filter((u) => !u.is_dept_account).map((u) => ({ id: u.id, name: u.full_name }))))
 				.catch(() => showToast('error', 'Không tải được danh sách nhân sự'));
 		}
 	};

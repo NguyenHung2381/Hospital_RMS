@@ -877,3 +877,9 @@
 		grid-template-columns: repeat(2, 1fr);
 	}
 }
+
+@keyframes spin {
+	to {
+		transform: rotate(360deg);
+	}
+}
