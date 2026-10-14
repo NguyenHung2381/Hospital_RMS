@@ -110,6 +110,7 @@ const notify = async (event) => {
 			return;
 		}
 		await mailService.send({
+			event: 'SECURITY_ALERT',
 			to: to.join(', '),
 			subject: `[RMS - Cảnh báo bảo mật] ${title}`,
 			html: render(title, [

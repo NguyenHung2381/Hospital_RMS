@@ -329,7 +329,7 @@ export default function CmeCompliance() {
 					variant='secondary'
 					icon={<DownloadSvg />}
 					onClick={openPersonModal}
-					title='Xuất phiếu theo dõi CME (Excel) của một nhân sự bất kỳ'
+					title='Xuất báo cáo CME (Excel) của một nhân sự bất kỳ'
 				>
 					Xuất CME cá nhân
 				</Button>
@@ -699,8 +699,7 @@ export default function CmeCompliance() {
 					className={styles.muted}
 					style={{ marginTop: 12, fontSize: 13 }}
 				>
-					File gồm phiếu theo dõi tín chỉ của năm đã chọn (hội thảo, hội nghị, ghi nhận khác, so với ngưỡng) và
-					bảng tổng hợp 5 năm gần nhất.
+					File gồm 2 sheet: BC tổng (tổng số tiết của năm) và BC chi tiết (số tiết theo từng hình thức CME).
 				</div>
 			</Modal>
 

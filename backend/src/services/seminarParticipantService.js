@@ -11,6 +11,9 @@ const { getPool, sql } = require('../config/db');
 const { broadcast } = require('./eventService');
 const personService = require('./personService');
 const { normalizeGender } = require('../utils/gender');
+const QRCode = require('qrcode');
+const mailService = require('./mailService');
+const { renderSeminarBadgePng } = require('../utils/seminarBadgeImage');
 
 // Mã QR điểm danh hội thảo — JWT ngắn hạn ký seminar_id (mirror
 // courseService.generateAttendanceQrToken / utils/captcha.js).
@@ -474,7 +477,49 @@ const registerPublic = async (token, data) => {
 		},
 		null,
 	);
+	// Không chờ SMTP — đăng ký đã ghi xong, email chậm/lỗi không chặn phản hồi.
+	if (data.email) sendBadgeMail(seminar, data, ticketCode).catch((e) => console.error('[mail] thẻ đại biểu:', e.message));
 	return { ticket_code: ticketCode };
+};
+
+// DATE từ mssql (useUTC mặc định) là 00:00 UTC → định dạng theo UTC để không lệch ngày
+const fmtDate = (d) => (d ? new Date(d).toLocaleDateString('vi-VN', { timeZone: 'UTC' }) : null);
+
+const sendBadgeMail = async (seminar, data, code) => {
+	if (!(await mailService.isEnabled('SEMINAR_BADGE'))) return; // khỏi vẽ ảnh thẻ khi không gửi
+	const appUrl = (process.env.APP_URL || 'http://localhost:5173').replace(/\/$/, '');
+	const ticketUrl = `${appUrl}/hoi-nghi/ve/${code}`;
+	const holder = `${data.title_prefix ? `${data.title_prefix} ` : ''}${String(data.full_name).trim()}`;
+	const when =
+		seminar.date_text ||
+		[seminar.start_date, +seminar.end_date !== +seminar.start_date ? seminar.end_date : null]
+			.map(fmtDate)
+			.filter(Boolean)
+			.join(' – ');
+	const badge = {
+		holder,
+		organization: data.organization,
+		seminarTitle: seminar.title,
+		when,
+		location: seminar.location,
+		ticketUrl,
+		code,
+	};
+	await mailService.send({
+		event: 'SEMINAR_BADGE',
+		to: data.email,
+		subject: `Thẻ đại biểu — ${seminar.title}`,
+		html: mailService.renderSeminarBadgeEmail(badge),
+		attachments: [
+			{ filename: 'the-dai-bieu.png', content: await renderSeminarBadgePng(badge) },
+			mailService.LOGO_ATTACHMENT,
+			{
+				filename: 'ma-qr-diem-danh.png',
+				content: await QRCode.toBuffer(ticketUrl, { type: 'png', width: 400, margin: 2, color: { dark: '#064d26' } }),
+				cid: 'ticket-qr',
+			},
+		],
+	});
 };
 
 const getTicket = async (code) => {

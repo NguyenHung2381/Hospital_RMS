@@ -166,6 +166,17 @@
 	color: #b91c1c;
 }
 
+.tabToolbar {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 12px;
+	flex-wrap: wrap;
+	margin-bottom: 16px;
+	font-size: var(--font-size-sm);
+	color: #64748b;
+}
+
 @media (max-width: 560px) {
 	.stats {
 		grid-template-columns: repeat(3, 1fr);

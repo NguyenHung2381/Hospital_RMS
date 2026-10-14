@@ -206,6 +206,13 @@
 	.groupHeader {
 		flex-wrap: wrap;
 	}
+	/* Tên nhóm chiếm hết hàng, cụm nút xuống hàng dưới căn phải */
+	.groupInfo {
+		flex-basis: calc(100% - 42px);
+	}
+	.groupHeader > :last-child {
+		margin-left: auto;
+	}
 	.groupDesc {
 		max-width: 100%;
 	}

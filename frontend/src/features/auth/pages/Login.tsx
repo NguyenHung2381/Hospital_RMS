@@ -381,7 +381,7 @@ export default function Login() {
 								id='username'
 								type='text'
 								className={`${styles.inputField} ${errors.username ? styles.hasError : ''}`}
-								placeholder='VD: NVA_0123 hoặc ten@benhvien.vn'
+								placeholder='Email hoặc tài khoản'
 								value={form.username}
 								onChange={handleChange('username')}
 								autoComplete='username'

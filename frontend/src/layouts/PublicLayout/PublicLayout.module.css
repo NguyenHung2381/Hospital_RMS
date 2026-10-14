@@ -19,12 +19,11 @@
 	padding: var(--space-3) var(--space-6);
 	display: flex;
 	align-items: center;
-	justify-content: space-between;
 	gap: var(--space-4);
-	flex-wrap: wrap;
 }
 
 .brand {
+	min-width: 0;
 	display: flex;
 	align-items: center;
 	gap: var(--space-3);
@@ -51,23 +50,34 @@
 	color: var(--color-gray-500);
 }
 
+.brandText {
+	min-width: 0;
+}
+
 .nav {
+	order: 1;
+	margin-left: auto;
 	display: flex;
 	align-items: center;
 	gap: var(--space-5);
 }
 
 .navLink {
+	white-space: nowrap;
 	font-size: var(--font-size-sm);
 	font-weight: var(--font-weight-medium);
 	color: var(--color-gray-600);
 	text-decoration: none;
 }
-.navLink:hover {
+.navLink:hover,
+.navLinkActive {
 	color: var(--color-primary);
 }
 
 .navLinkPrimary {
+	order: 2;
+	flex: none;
+	white-space: nowrap;
 	font-size: var(--font-size-sm);
 	font-weight: var(--font-weight-semibold);
 	color: var(--color-white);
@@ -119,17 +129,83 @@
 	padding: var(--space-6);
 }
 
-@media (max-width: 640px) {
-	.main {
-		padding: var(--space-6) var(--space-4);
+/* Điện thoại: hàng 1 = logo + nút đăng nhập, hàng 2 = menu dạng chip cuộn
+   ngang (không để 4 link tự xuống dòng thành từng cột chữ). Bỏ khung card
+   ngoài để form tận dụng hết bề ngang màn hình. */
+@media (max-width: 768px) {
+	.headerInner {
+		flex-wrap: wrap;
+		padding: var(--space-2) var(--space-4) 0;
+		gap: var(--space-2) var(--space-3);
 	}
-	.card {
-		padding: var(--space-5);
+	.brand {
+		flex: 1;
+		gap: var(--space-2);
 	}
-	.nav {
-		gap: var(--space-3);
+	.brandLogo {
+		width: 34px;
+		height: 34px;
+	}
+	.brandName {
+		font-size: var(--font-size-compact);
+		line-height: 1.3;
 	}
 	.brandSub {
+		display: none;
+	}
+	.navLinkPrimary {
+		order: 0;
+		padding: var(--space-2) var(--space-3);
+		font-size: var(--font-size-compact);
+	}
+	.nav {
+		order: 3;
+		flex: 1 1 100%;
+		margin: 0 calc(-1 * var(--space-4));
+		padding: var(--space-1) var(--space-4) var(--space-2);
+		gap: var(--space-2);
+		overflow-x: auto;
+		scrollbar-width: none;
+	}
+	.nav::-webkit-scrollbar {
+		display: none;
+	}
+	.navLink {
+		display: inline-flex;
+		align-items: center;
+		padding: 0 var(--space-3);
+		border: 1px solid var(--color-gray-200);
+		border-radius: var(--radius-full);
+		font-size: var(--font-size-compact);
+		min-height: 34px;
+	}
+	.navLinkActive {
+		background: var(--color-primary-pale);
+		border-color: var(--color-primary);
+	}
+	.main {
+		padding: 0;
+	}
+	.card {
+		max-width: none;
+		border: none;
+		border-radius: 0;
+		box-shadow: none;
+		padding: var(--space-5) var(--space-4) var(--space-6);
+	}
+	.title {
+		font-size: var(--font-size-xl);
+	}
+	.subtitle {
+		margin-bottom: var(--space-4);
+	}
+	.footer {
+		padding: var(--space-4);
+	}
+}
+
+@media (max-width: 380px) {
+	.hideXs {
 		display: none;
 	}
 }

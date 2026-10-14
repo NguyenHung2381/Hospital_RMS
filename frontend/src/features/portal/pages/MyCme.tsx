@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { BarChartSvg, CalendarSvg, DownloadSvg, EditSvg, FileTextSvg, PaperclipSvg, PlusSvg, TrashSvg } from '@/assets/icons';
 import { Badge, Button, Card, EmptyState, InlineLoading } from '@/shared/components';
 import { formatDateVN } from '@/shared/utils/formatDate';
@@ -27,7 +28,13 @@ const APPROVAL_LABEL: Record<CmeApprovalStatus, string> = { pending: 'Chờ duy�
 const APPROVAL_TONE = { pending: 'amber', approved: 'green', rejected: 'red' } as const;
 const YEARS = Array.from({ length: 5 }, (_, i) => THIS_YEAR - i);
 
+type Tab = 'seminars' | 'records';
+
 export default function MyCme() {
+	// Tab giữ trên URL (?tab=) — tải lại / quay lại vẫn đúng tab đang xem.
+	const [params, setParams] = useSearchParams();
+	const tab: Tab = params.get('tab') === 'records' ? 'records' : 'seminars';
+	const setTab = (t: Tab) => setParams({ tab: t }, { replace: true });
 	const [year, setYear] = useState(THIS_YEAR);
 	const [data, setData] = useState<Data | null>(null);
 	const semPg = useClientPaging(data?.seminars ?? []);
@@ -63,7 +70,7 @@ export default function MyCme() {
 		setExporting(true);
 		setExportError('');
 		try {
-			saveBlob(await exportMyCmeExcel(year), `phieu-cme-${year}.xlsx`);
+			saveBlob(await exportMyCmeExcel(year), `bao-cao-cme-${year}.xlsx`);
 		} catch (err) {
 			setExportError(err instanceof Error ? err.message : 'Xuất Excel thất bại');
 		} finally {
@@ -74,6 +81,7 @@ export default function MyCme() {
 	const req = data?.required_credits != null ? Number(data.required_credits) : null;
 	const pct = data && req ? Math.min(100, (data.earned_credits / req) * 100) : 0;
 	const done = req != null && data != null && data.earned_credits >= req;
+	const rejected = data?.records.filter((r) => r.approval_status === 'rejected').length ?? 0;
 
 	return (
 		<UserLayout
@@ -152,73 +160,87 @@ export default function MyCme() {
 					</Card>
 
 					<Card>
-						<Card.Header
-							icon={<CalendarSvg />}
-							title='Hội thảo, hội nghị đã tham dự'
-							sub={`${data.seminars.length} sự kiện`}
-						/>
-						<Card.Body>
-							{data.seminars.length === 0 ? (
-								<EmptyState title='Chưa có sự kiện nào trong năm' />
-							) : (
-								<div className={styles.tableWrap}>
-									<table className={styles.table}>
-										<thead>
-											<tr>
-												<th className={tbl.thIdx}>STT</th>
-												<th>Sự kiện</th>
-												<th>Thời gian</th>
-												<th>Vai trò</th>
-												<th>SQĐ</th>
-												<th>Tín chỉ</th>
-												<th>Trạng thái</th>
-											</tr>
-										</thead>
-										<tbody>
-											{semPg.paged.map((s, i) => (
-												<tr key={s.id}>
-													<td className={tbl.tdIdx}>{semPg.offset + i + 1}</td>
-													<td>
-														<div className={tbl.cellTitle}>{s.seminar_title}</div>
-														<div className={tbl.dateText}>
-															{EVENT_TYPE_LABELS[s.event_type]}
-															{s.location && ` · ${s.location}`}
-														</div>
-													</td>
-													<td>{s.date_text || formatDateVN(s.start_date) || '—'}</td>
-													<td>{PARTICIPATION_LABELS[s.participation_type]}</td>
-													<td>{s.cme_certificate_no ?? '—'}</td>
-													<td>{s.cme_credits ?? '—'}</td>
-													<td>
-														<Badge tone={s.cme_status === 'none' ? 'gray' : s.cme_status === 'pending' ? 'amber' : 'green'}>
-															{CME_STATUS_LABELS[s.cme_status]}
-														</Badge>
-													</td>
+						<div
+							className={styles.tabs}
+							role='tablist'
+						>
+							{[
+								{ key: 'seminars' as Tab, label: 'Hội thảo, hội nghị đã tham dự', icon: <CalendarSvg />, count: data.seminars.length },
+								{ key: 'records' as Tab, label: 'Ghi nhận CME khác', icon: <FileTextSvg />, count: data.records.length, alert: rejected > 0 },
+							].map((t) => (
+								<button
+									key={t.key}
+									type='button'
+									role='tab'
+									aria-selected={tab === t.key}
+									className={`${styles.tab} ${tab === t.key ? styles.tabActive : ''}`}
+									onClick={() => setTab(t.key)}
+								>
+									{t.icon}
+									{t.label}
+									<span className={`${styles.tabCount} ${t.alert ? styles.tabCountAlert : ''}`}>{t.count}</span>
+								</button>
+							))}
+						</div>
+						{tab === 'seminars' && (
+							<Card.Body>
+								{data.seminars.length === 0 ? (
+									<EmptyState title='Chưa có sự kiện nào trong năm' />
+								) : (
+									<div className={styles.tableWrap}>
+										<table className={styles.table}>
+											<thead>
+												<tr>
+													<th className={tbl.thIdx}>STT</th>
+													<th>Sự kiện</th>
+													<th>Thời gian</th>
+													<th>Vai trò</th>
+													<th>SQĐ</th>
+													<th>Tín chỉ</th>
+													<th>Trạng thái</th>
 												</tr>
-											))}
-										</tbody>
-									</table>
-									<Pagination
-										{...semPg.pagination}
-										itemLabel='sự kiện'
-									/>
-								</div>
-							)}
-						</Card.Body>
-					</Card>
+											</thead>
+											<tbody>
+												{semPg.paged.map((s, i) => (
+													<tr key={s.id}>
+														<td className={tbl.tdIdx}>{semPg.offset + i + 1}</td>
+														<td>
+															<div className={tbl.cellTitle}>{s.seminar_title}</div>
+															<div className={tbl.dateText}>
+																{EVENT_TYPE_LABELS[s.event_type]}
+																{s.location && ` · ${s.location}`}
+															</div>
+														</td>
+														<td>{s.date_text || formatDateVN(s.start_date) || '—'}</td>
+														<td>{PARTICIPATION_LABELS[s.participation_type]}</td>
+														<td>{s.cme_certificate_no ?? '—'}</td>
+														<td>{s.cme_credits ?? '—'}</td>
+														<td>
+															<Badge tone={s.cme_status === 'none' ? 'gray' : s.cme_status === 'pending' ? 'amber' : 'green'}>
+																{CME_STATUS_LABELS[s.cme_status]}
+															</Badge>
+														</td>
+													</tr>
+												))}
+											</tbody>
+										</table>
+										<Pagination
+											{...semPg.pagination}
+											itemLabel='sự kiện'
+										/>
+									</div>
+								)}
+							</Card.Body>
+						)}
 
-					<Card>
-							<Card.Header
-								icon={<FileTextSvg />}
-								title='Ghi nhận CME khác'
-								sub='Tự khai báo — chỉ được tính vào tín chỉ sau khi quản lý phê duyệt'
-								actions={
+						{tab === 'records' && (
+							<Card.Body>
+								<div className={styles.tabToolbar}>
+									<span>Tự khai báo — chỉ được tính vào tín chỉ sau khi quản lý phê duyệt</span>
 									<Button size='sm' icon={<PlusSvg />} onClick={() => setEditing('new')}>
 										Khai báo CME
 									</Button>
-								}
-							/>
-							<Card.Body>
+								</div>
 								{data.records.length === 0 ? (
 									<EmptyState title='Chưa có khai báo nào trong năm' />
 								) : (
@@ -276,8 +298,8 @@ export default function MyCme() {
 									</div>
 								)}
 							</Card.Body>
-						</Card>
-					
+						)}
+					</Card>
 				</div>
 			)}
 			{editing && (

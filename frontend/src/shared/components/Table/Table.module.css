@@ -449,8 +449,9 @@
 		text-overflow: ellipsis;
 	}
 
-	/* Bảng rộng cuộn ngang: giữ thông báo rỗng trong khung nhìn thay vì giữa bảng */
-	.emptyState {
+	/* Bảng rộng cuộn ngang: giữ thông báo rỗng trong khung nhìn thay vì giữa bảng.
+	   Chỉ áp trong <td> — EmptyState đặt trong card thường mà rộng 100vw thì lệch phải. */
+	td .emptyState {
 		position: sticky;
 		left: 0;
 		width: calc(100vw - 2 * var(--space-4));

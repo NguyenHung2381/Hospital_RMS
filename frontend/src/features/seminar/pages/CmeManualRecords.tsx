@@ -634,14 +634,13 @@ export default function CmeManualRecords() {
 	const handleExport = async () => {
 		setExporting(true);
 		try {
+			// Báo cáo tổng hợp theo nhân sự (BC tổng + BC chi tiết theo hình thức), lọc theo năm/khoa/từ khoá
 			const blob = await exportCmeRecordsExcel({
 				year: year ?? undefined,
 				search: search.trim() || undefined,
 				department: deptFilter || undefined,
-				category_id: categoryFilter || undefined,
-				evidence: evidenceFilter || undefined,
 			});
-			saveBlob(blob, `ghi-nhan-cme${year ? `-${year}` : ''}.xlsx`);
+			saveBlob(blob, `bao-cao-cme${year ? `-${year}` : ''}.xlsx`);
 		} catch (e) {
 			alert(e instanceof Error ? e.message : 'Xuất Excel thất bại');
 		} finally {
@@ -711,8 +710,13 @@ export default function CmeManualRecords() {
 			headerActions={
 				perms.canCme ? (
 					<div style={{ display: 'flex', gap: 8 }}>
-						<button className={styles.btnGhost} onClick={handleExport} disabled={exporting}>
-							{exporting ? <span className={styles.spinner} /> : <DownloadSvg />} Xuất Excel
+						<button
+							className={styles.btnGhost}
+							onClick={handleExport}
+							disabled={exporting}
+							title='Báo cáo tín chỉ CME theo nhân sự: BC tổng + BC chi tiết theo hình thức (gồm cả hội thảo đã cấp CME)'
+						>
+							{exporting ? <span className={styles.spinner} /> : <DownloadSvg />} Xuất báo cáo
 						</button>
 						<button className={styles.btnGhost} onClick={() => setShowImport(true)}>
 							<UploadSvg /> Nhập từ Excel
@@ -851,137 +855,139 @@ export default function CmeManualRecords() {
 							}
 						/>
 					)}
-					<table className={styles.table}>
-						<thead>
-							<tr>
-								{perms.canCme && (
-									<th className={sel.checkCol}>
-										<SelectCheckbox
-											title='Chọn tất cả bản ghi đang hiển thị'
-											checked={rowSel.allPageSelected}
-											indeterminate={rowSel.somePageSelected}
-											onChange={rowSel.toggleSelectAll}
-										/>
-									</th>
-								)}
-								<th>STT</th>
-								<th>Nhân viên</th>
-								<th>Nội dung hoạt động</th>
-								<th>Nhóm / Hình thức · Vai trò</th>
-								<th>Thời gian</th>
-								<th className={styles.thRight}>Tín chỉ</th>
-								<th className={styles.thCenter}>Minh chứng</th>
-								<th>Duyệt</th>
-								<th />
-							</tr>
-						</thead>
-						<tbody>
-							{paged.map((r, i) => (
-								<tr key={r.id} className={styles.tr}>
+					<div className={styles.tableWrap}>
+						<table className={styles.table}>
+							<thead>
+								<tr>
 									{perms.canCme && (
-										<td className={sel.checkCol}>
+										<th className={sel.checkCol}>
 											<SelectCheckbox
-												title={`Chọn ${r.user_name}`}
-												checked={rowSel.isSelected(r.id)}
-												onChange={() => rowSel.toggleSelect(r.id)}
+												title='Chọn tất cả bản ghi đang hiển thị'
+												checked={rowSel.allPageSelected}
+												indeterminate={rowSel.somePageSelected}
+												onChange={rowSel.toggleSelectAll}
 											/>
-										</td>
+										</th>
 									)}
-									<td className={styles.tdIdx}>{(safePage - 1) * pageSize + i + 1}</td>
-									<td>
-										<div className={styles.cmeCellMain}>{r.user_name}</div>
-										<div className={styles.cmeCellSub}>{[r.staff_number, r.department_name].filter(Boolean).join(' · ') || '—'}</div>
-									</td>
-									<td>
-										<div className={styles.cmeCellMain}>{r.title}</div>
-										{r.note && <div className={styles.cmeCellSub}>{r.note}</div>}
-									</td>
-									<td>
-										{r.group_name && <div className={styles.cmeCellSub}>{r.group_name}</div>}
-										{r.category_name ? (
-											<Badge tone='blue' className={styles.cmeCategory} title={r.category_name}>
-												{r.category_name}
-											</Badge>
-										) : (
-											<span className={styles.muted}>—</span>
+									<th>STT</th>
+									<th>Nhân viên</th>
+									<th>Nội dung hoạt động</th>
+									<th>Nhóm / Hình thức · Vai trò</th>
+									<th>Thời gian</th>
+									<th className={styles.thRight}>Tín chỉ</th>
+									<th className={styles.thCenter}>Minh chứng</th>
+									<th>Duyệt</th>
+									<th />
+								</tr>
+							</thead>
+							<tbody>
+								{paged.map((r, i) => (
+									<tr key={r.id} className={styles.tr}>
+										{perms.canCme && (
+											<td className={sel.checkCol}>
+												<SelectCheckbox
+													title={`Chọn ${r.user_name}`}
+													checked={rowSel.isSelected(r.id)}
+													onChange={() => rowSel.toggleSelect(r.id)}
+												/>
+											</td>
 										)}
-											{(r.role || r.quantity != null) && (
-												<div className={styles.cmeCellSub}>
-													{[r.role, r.quantity != null && `SL: ${r.quantity}`].filter(Boolean).join(' · ')}
+										<td className={styles.tdIdx}>{(safePage - 1) * pageSize + i + 1}</td>
+										<td>
+											<div className={styles.cmeCellMain}>{r.user_name}</div>
+											<div className={styles.cmeCellSub}>{[r.staff_number, r.department_name].filter(Boolean).join(' · ') || '—'}</div>
+										</td>
+										<td>
+											<div className={styles.cmeCellMain}>{r.title}</div>
+											{r.note && <div className={styles.cmeCellSub}>{r.note}</div>}
+										</td>
+										<td>
+											{r.group_name && <div className={styles.cmeCellSub}>{r.group_name}</div>}
+											{r.category_name ? (
+												<Badge tone='blue' className={styles.cmeCategory} title={r.category_name}>
+													{r.category_name}
+												</Badge>
+											) : (
+												<span className={styles.muted}>—</span>
+											)}
+												{(r.role || r.quantity != null) && (
+													<div className={styles.cmeCellSub}>
+														{[r.role, r.quantity != null && `SL: ${r.quantity}`].filter(Boolean).join(' · ')}
+													</div>
+												)}
+											</td>
+										<td className={styles.cmeNowrap}>
+											{r.activity_date ? (
+												<>
+													{formatDateVN(r.activity_date)}
+													{r.end_date && ` → ${formatDateVN(r.end_date)}`}
+												</>
+											) : (
+												`Năm ${r.year}`
+											)}
+										</td>
+										<td className={styles.tdRight}>
+											<span className={styles.cmeCredits}>{formatCredits(r.credits)}</span>
+										</td>
+										<td className={styles.tdCenter}>
+											{r.evidence_file_url ? (
+												<a
+													className={styles.cmeEvidence}
+													href={r.evidence_file_url}
+													target='_blank'
+													rel='noreferrer'
+													title={r.evidence_file_name ?? 'Xem minh chứng'}
+												>
+													<PaperclipSvg />
+												</a>
+											) : (
+												<span className={styles.muted}>—</span>
+											)}
+										</td>
+										<td>
+		<Badge tone={r.approval_status === 'approved' ? 'green' : r.approval_status === 'rejected' ? 'red' : 'amber'}>
+			{r.approval_status === 'approved' ? 'Đã duyệt' : r.approval_status === 'rejected' ? 'Từ chối' : 'Chờ duyệt'}
+		</Badge>
+		{r.approval_status === 'rejected' && r.reject_reason && <div className={styles.cmeCellSub}>{r.reject_reason}</div>}
+</td>
+										<td className={styles.tdActions}>
+											{perms.canCme && (
+												<div className={styles.actionBtns}>
+		{r.approval_status !== 'approved' && (
+			<div className={styles.actionBtn} title='Duyệt' onClick={() => handleApprove(r.id)}>
+				<CheckSvg />
+			</div>
+		)}
+		{r.approval_status !== 'rejected' && (
+			<div
+				className={`${styles.actionBtn} ${styles.danger}`}
+				title='Từ chối'
+				onClick={() => {
+					setRejecting(r);
+					setRejectReason('');
+				}}
+			>
+				<XSvg />
+			</div>
+		)}
+													<div className={styles.actionBtn} title='Sửa' onClick={() => setEditing(r)}>
+														<EditSvg />
+													</div>
+													<div
+														className={`${styles.actionBtn} ${styles.danger}`}
+														title='Xoá'
+														onClick={() => setDeletingId(r.id)}
+													>
+														<TrashSvg />
+													</div>
 												</div>
 											)}
 										</td>
-									<td className={styles.cmeNowrap}>
-										{r.activity_date ? (
-											<>
-												{formatDateVN(r.activity_date)}
-												{r.end_date && ` → ${formatDateVN(r.end_date)}`}
-											</>
-										) : (
-											`Năm ${r.year}`
-										)}
-									</td>
-									<td className={styles.tdRight}>
-										<span className={styles.cmeCredits}>{formatCredits(r.credits)}</span>
-									</td>
-									<td className={styles.tdCenter}>
-										{r.evidence_file_url ? (
-											<a
-												className={styles.cmeEvidence}
-												href={r.evidence_file_url}
-												target='_blank'
-												rel='noreferrer'
-												title={r.evidence_file_name ?? 'Xem minh chứng'}
-											>
-												<PaperclipSvg />
-											</a>
-										) : (
-											<span className={styles.muted}>—</span>
-										)}
-									</td>
-									<td>
-	<Badge tone={r.approval_status === 'approved' ? 'green' : r.approval_status === 'rejected' ? 'red' : 'amber'}>
-		{r.approval_status === 'approved' ? 'Đã duyệt' : r.approval_status === 'rejected' ? 'Từ chối' : 'Chờ duyệt'}
-	</Badge>
-	{r.approval_status === 'rejected' && r.reject_reason && <div className={styles.cmeCellSub}>{r.reject_reason}</div>}
-</td>
-									<td className={styles.tdActions}>
-										{perms.canCme && (
-											<div className={styles.actionBtns}>
-	{r.approval_status !== 'approved' && (
-		<div className={styles.actionBtn} title='Duyệt' onClick={() => handleApprove(r.id)}>
-			<CheckSvg />
-		</div>
-	)}
-	{r.approval_status !== 'rejected' && (
-		<div
-			className={`${styles.actionBtn} ${styles.danger}`}
-			title='Từ chối'
-			onClick={() => {
-				setRejecting(r);
-				setRejectReason('');
-			}}
-		>
-			<XSvg />
-		</div>
-	)}
-												<div className={styles.actionBtn} title='Sửa' onClick={() => setEditing(r)}>
-													<EditSvg />
-												</div>
-												<div
-													className={`${styles.actionBtn} ${styles.danger}`}
-													title='Xoá'
-													onClick={() => setDeletingId(r.id)}
-												>
-													<TrashSvg />
-												</div>
-											</div>
-										)}
-									</td>
-								</tr>
-							))}
-						</tbody>
-					</table>
+									</tr>
+								))}
+							</tbody>
+						</table>
+					</div>
 					</>
 				)}
 

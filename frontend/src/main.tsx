@@ -2,6 +2,7 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 
 import App from './app/App';
+import { initMobileTableCards } from './shared/utils/mobileTableCards';
 import './styles/global.css';
 
 // Stylesheet chèn bằng JS không chặn vẽ trang: Google Fonts chậm/bị chặn thì
@@ -30,6 +31,8 @@ window.addEventListener('unhandledrejection', (event) => {
 	window.location.reload();
 });
 sessionStorage.removeItem(RELOAD_FLAG);
+
+initMobileTableCards();
 
 createRoot(rootElement).render(
 	<StrictMode>

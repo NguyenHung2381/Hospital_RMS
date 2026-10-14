@@ -1,5 +1,6 @@
 const cmeRecordService = require('../services/cmeRecordService');
 const cmeRecordImportService = require('../services/cmeRecordImportService');
+const cmeReportService = require('../services/cmeReportService');
 const { success, created, notFound } = require('../utils/response');
 
 const getAll = async (req, res, next) => {
@@ -102,9 +103,16 @@ const importTemplate = async (req, res, next) => {
 
 const exportExcel = async (req, res, next) => {
 	try {
-		const { year, search, department, category_id, evidence } = req.body || {};
-		const wb = await cmeRecordImportService.exportWorkbook({ year, search, department, category_id, evidence });
-		return sendWorkbook(res, wb, `ghi-nhan-cme${year ? `-${year}` : ''}.xlsx`);
+		const { year, search, department } = req.body || {};
+		const data = await cmeReportService.getData({ year, search, department });
+		const d = new Date();
+		const wb = cmeReportService.buildWorkbook(data, {
+			title: `BÁO CÁO TÍN CHỈ CME ${year ? `NĂM ${year}` : 'TẤT CẢ CÁC NĂM'}`,
+			subtitle: [department, `${data.people.length} nhân sự`, `Xuất ngày ${d.getDate()}/${d.getMonth() + 1}/${d.getFullYear()}`]
+				.filter(Boolean)
+				.join(' · '),
+		});
+		return sendWorkbook(res, wb, `bao-cao-cme${year ? `-${year}` : ''}.xlsx`);
 	} catch (err) {
 		next(err);
 	}

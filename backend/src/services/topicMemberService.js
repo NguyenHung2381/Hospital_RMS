@@ -460,7 +460,7 @@ const grantAccountsNoEmail = async (topicId, memberIds, actorId) => {
 	// --- 4. Thông báo (ngoài transaction; lỗi ở đây không ảnh hưởng việc cấp) ---
 	try {
 		const newUserIds = credentials.map((c) => c.user_id);
-		await notifSvc.push(
+		await notifSvc.pushWithEmail(
 			'account_granted',
 			'Tài khoản hệ thống đã được cấp',
 			newUserIds,
@@ -468,6 +468,7 @@ const grantAccountsNoEmail = async (topicId, memberIds, actorId) => {
 				message: `Tài khoản đã được cấp để tham gia đề tài ${topicId}. Vui lòng đăng nhập bằng mật khẩu tạm do khoa/phòng cung cấp — hệ thống sẽ yêu cầu đổi mật khẩu ở lần đăng nhập đầu.`,
 				refId: topicId,
 				refType: 'topic',
+				mailEvent: 'ACCOUNT_GRANTED',
 			},
 		);
 
@@ -499,7 +500,7 @@ const grantAccountsNoEmail = async (topicId, memberIds, actorId) => {
 			`);
 		const deptUserIds = deptResult.recordset.map((r) => r.id);
 		if (deptUserIds.length > 0) {
-			await notifSvc.push(
+			await notifSvc.pushWithEmail(
 				'account_granted',
 				'Cấp tài khoản thành viên đề tài',
 				deptUserIds,
@@ -507,6 +508,7 @@ const grantAccountsNoEmail = async (topicId, memberIds, actorId) => {
 					message: `Đã cấp ${credentials.length} tài khoản cho thành viên đề tài ${topicId}. Thành viên mới có thể đăng nhập hệ thống.`,
 					refId: topicId,
 					refType: 'topic',
+					mailEvent: 'ACCOUNT_GRANTED',
 				},
 			);
 		}

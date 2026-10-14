@@ -541,6 +541,7 @@ const decideEnrollment = async (enrollmentId, decision, actorId, note) => {
 					? 'Đăng ký khóa học đang chờ (danh sách chờ)'
 					: 'Đăng ký khóa học bị từ chối';
 		await mailService.send({
+			event: 'COURSE_ENROLLMENT',
 			to: traineeEmail,
 			subject: title,
 			html: mailService.renderNotificationEmail({

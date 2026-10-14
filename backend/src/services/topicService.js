@@ -624,6 +624,7 @@ const approve = async (topicId, status, comment, actorId) => {
 		message: comment || null,
 		refId: topicId,
 		refType: 'topic',
+		mailEvent: 'TOPIC_RESULT',
 	});
 
 	broadcast('update', { entity: 'topic' });
@@ -650,9 +651,10 @@ const submit = async (topicId, actorId) => {
 	const ids = await findActiveUserIdsWhere(
 		(u) => hasPermission(u, 'topics', 'approve') || scopeOf(u, 'topics') === 'all',
 	);
-	await notifSvc.push('topic_submitted', 'Có đề tài mới cần xét duyệt', ids, {
+	await notifSvc.pushWithEmail('topic_submitted', 'Có đề tài mới cần xét duyệt', ids, {
 		refId: topicId,
 		refType: 'topic',
+		mailEvent: 'TOPIC_SUBMITTED',
 	});
 
 	const topic = await getById(topicId);

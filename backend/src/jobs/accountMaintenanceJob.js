@@ -44,6 +44,7 @@ const warnStalePasswords = async (pool) => {
 			[user.id],
 			{
 				message: `Mật khẩu tài khoản của bạn chưa đổi hơn ${PASSWORD_MAX_AGE_DAYS} ngày. Vui lòng đổi mật khẩu mới để đảm bảo an toàn tài khoản.`,
+				mailEvent: 'PASSWORD_EXPIRY',
 			},
 		);
 	}

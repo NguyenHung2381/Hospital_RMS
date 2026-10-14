@@ -395,6 +395,50 @@
 	color: #a32d2d;
 }
 
+/* Điện thoại: mọi hộp thoại (kể cả modal tự viết trong feature có
+   `composes: modalBackdrop`) thành bottom-sheet tràn ngang, bo góc trên, cuộn
+   trong khung — thay vì hộp nổi giữa màn hình bị ép hẹp, nút bấm khó với tới. */
+@media (max-width: 640px) {
+	.modalBackdrop {
+		align-items: flex-end;
+		padding: 0;
+	}
+	.modalBackdrop > * {
+		width: 100% !important;
+		max-width: none !important;
+		max-height: 92dvh !important;
+		margin: 0 !important;
+		border-radius: 20px 20px 0 0 !important;
+		overflow-y: auto !important;
+		animation: modalSheetUp 240ms cubic-bezier(0.32, 0.72, 0, 1) both !important;
+	}
+	.modalHeader {
+		padding: var(--space-4);
+		gap: var(--space-3);
+	}
+	.modalHeaderIcon,
+	.modalHeaderIconDanger {
+		width: 36px;
+		height: 36px;
+	}
+	.modalBody,
+	.body {
+		padding: var(--space-4);
+	}
+	.modalFooter {
+		padding: var(--space-3) var(--space-4) calc(var(--space-3) + env(safe-area-inset-bottom));
+		flex-wrap: wrap;
+	}
+	.footerEnd > * {
+		flex: 1 1 auto;
+		justify-content: center;
+	}
+	.formGrid2,
+	.formRow {
+		grid-template-columns: 1fr;
+	}
+}
+
 /* CSS Modules đổi tên animation theo từng file — keyframes phải khai báo ngay tại đây */
 @keyframes modalFadeIn {
 	from {
@@ -417,5 +461,13 @@
 @keyframes spin {
 	to {
 		transform: rotate(360deg);
+	}
+}
+@keyframes modalSheetUp {
+	from {
+		transform: translateY(100%);
+	}
+	to {
+		transform: translateY(0);
 	}
 }

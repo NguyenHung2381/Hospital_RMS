@@ -59,3 +59,26 @@
 .body {
 	padding: var(--space-6);
 }
+
+/* Điện thoại: thu padding, nút hành động header xuống dòng thay vì ép tiêu đề */
+@media (max-width: 560px) {
+	.header {
+		flex-wrap: wrap;
+		gap: var(--space-3);
+		padding: var(--space-4);
+	}
+	.headerIcon {
+		width: 34px;
+		height: 34px;
+	}
+	.headerText {
+		flex-basis: 0;
+		min-width: 60%;
+	}
+	.actions {
+		flex-wrap: wrap;
+	}
+	.body {
+		padding: var(--space-4);
+	}
+}

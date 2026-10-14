@@ -8,12 +8,12 @@
 const { getPool } = require('../config/db');
 const { norm, stripQualification } = require('../utils/vietnameseText');
 const ExcelJS = require('exceljs');
-const { pad2, parseDateCell, parseCredits, parseStaffNumber, readSheet } = require('../utils/excelImport');
+const { parseDateCell, parseCredits, parseStaffNumber, readSheet } = require('../utils/excelImport');
 const cmeRecordService = require('./cmeRecordService');
 const { ROLE, inputRoleId } = require('./roleCodes');
 const xl = require('../utils/excelTemplate');
 
-// Cột file mẫu / file xuất — header khớp COLUMN_MATCHERS nên file xuất nhập lại được.
+// Cột file mẫu nhập — header khớp COLUMN_MATCHERS.
 // Khoa/phòng, Minh chứng chỉ để xem, khi nhập bị bỏ qua.
 const SHEET_COLUMNS = [
 	{ key: 'stt', header: 'STT', width: 6 },
@@ -32,13 +32,6 @@ const SHEET_COLUMNS = [
 	{ key: 'evidence', header: 'Minh chứng', width: 28 },
 	{ key: 'notes', header: 'Ghi chú', width: 26 },
 ];
-
-const fmtDate = (d) => {
-	if (!d) return '';
-	const x = d instanceof Date ? d : new Date(d);
-	if (Number.isNaN(x.getTime())) return '';
-	return `${pad2(x.getUTCDate())}/${pad2(x.getUTCMonth() + 1)}/${x.getUTCFullYear()}`;
-};
 
 const buildSheet = (wb, title, subtitle) =>
 	xl.buildSheet(wb, { sheetName: 'Ghi nhận CME', title, subtitle, columns: SHEET_COLUMNS, letterhead: true });
@@ -72,54 +65,6 @@ const templateWorkbook = async () => {
 	});
 	xl.styleBody(ws);
 	ws.getRow(ws.headRow + 1).font = { italic: true, color: { argb: 'FF6B7280' } };
-	await applyCategoryDropdown(wb, ws);
-	return wb;
-};
-
-const NO_CATEGORY = '__none__';
-
-// filters khớp bộ lọc trang danh sách: year, search, department, category_id (NO_CATEGORY = không thuộc danh mục), evidence ('yes'|'no')
-const exportWorkbook = async ({ year, search, department, category_id, evidence } = {}) => {
-	const { data } = await cmeRecordService.getAll({ year, limit: 0 });
-	const q = String(search || '').trim().toLowerCase();
-	const rows = data.filter((r) => {
-		if (q && !r.user_name.toLowerCase().includes(q) && !r.title.toLowerCase().includes(q)) return false;
-		if (department && r.department_name !== department) return false;
-		if (category_id === NO_CATEGORY && r.category_id) return false;
-		if (category_id && category_id !== NO_CATEGORY && r.category_id !== category_id) return false;
-		if (evidence === 'yes' && !r.evidence_file_url) return false;
-		if (evidence === 'no' && r.evidence_file_url) return false;
-		return true;
-	});
-
-	const wb = new ExcelJS.Workbook();
-	const total = rows.reduce((s, r) => s + Number(r.credits || 0), 0);
-	const subtitle = [
-		year ? `Năm ${year}` : 'Tất cả các năm',
-		`Xuất ngày ${fmtDate(new Date())}`,
-		`${rows.length} bản ghi · ${total.toLocaleString('vi-VN', { maximumFractionDigits: 2 })} tín chỉ`,
-	].join(' · ');
-	const ws = buildSheet(wb, year ? `SỔ THEO DÕI TÍN CHỈ CME năm ${year}` : 'SỔ THEO DÕI TÍN CHỈ CME', subtitle);
-	rows.forEach((r, i) => {
-		ws.addRow({
-			stt: i + 1,
-			staff_number: r.staff_number ?? '',
-			full_name: r.user_name,
-			department: r.department_name ?? '',
-			group: r.group_name ?? '',
-			category: r.category_name ?? '',
-			title: r.title,
-			role: r.role ?? '',
-			quantity: r.quantity ?? '',
-			year: r.year,
-			activity_date: fmtDate(r.activity_date),
-			end_date: fmtDate(r.end_date),
-			credits: Number(r.credits),
-			notes: r.note ?? '',
-			evidence: r.evidence_file_name ?? '',
-		});
-	});
-	xl.styleBody(ws);
 	await applyCategoryDropdown(wb, ws);
 	return wb;
 };
@@ -310,4 +255,4 @@ const importExcel = async ({ buffer, dry_run }, actorId) => {
 	return { dry_run: false, inserted, warnings };
 };
 
-module.exports = { importExcel, templateWorkbook, exportWorkbook };
+module.exports = { importExcel, templateWorkbook };

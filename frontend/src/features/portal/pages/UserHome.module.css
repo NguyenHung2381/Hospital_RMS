@@ -1038,14 +1038,36 @@
 		padding: 16px;
 	}
 
+	/* Giữ 2 cột thẻ thống kê (1 cột = 4 thẻ cao cuộn mãi) — thu gọn nội dung thẻ */
 	.statsGrid {
-		grid-template-columns: 1fr;
+		gap: 10px;
 	}
 
+	.statCard {
+		padding: 14px;
+		gap: 10px;
+	}
+
+	.statIconBox {
+		width: 36px;
+		height: 36px;
+	}
+
+	.statValue {
+		font-size: var(--font-size-2xl);
+	}
+
+	.statLabel {
+		white-space: normal;
+	}
+
+	.statArrow {
+		display: none;
+	}
+
+	/* Avatar đã có trên thanh trên cùng — bỏ ở banner cho gọn */
 	.welcomeAvatar {
-		width: 52px;
-		height: 52px;
-		font-size: var(--font-size-lg);
+		display: none;
 	}
 
 	.welcomeTitle {

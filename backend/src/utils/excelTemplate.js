@@ -30,20 +30,25 @@ const buildSheet = (wb, { sheetName, title, subtitle, columns, letterhead = fals
 	ws.columns = columns.map((c) => ({ key: c.key, width: c.width }));
 
 	if (letterhead) {
-		// Quốc hiệu căn giữa ở khoảng giữa-phải bảng; đơn vị chủ quản căn giữa bên trái
-		const rEnd = columns.length - 4;
-		const rStart = Math.max(6, rEnd - 3);
+		// Đơn vị chủ quản căn giữa bên trái; quốc hiệu ở khoảng giữa-phải bảng.
+		// Bảng hẹp (< 8 cột) không đủ chỗ cho quốc hiệu → chỉ in tên đơn vị.
+		const n = columns.length;
 		const block = (c1, c2, row, text, font) => {
-			ws.mergeCells(row, c1, row, c2);
+			if (c2 > c1) ws.mergeCells(row, c1, row, c2);
 			const cell = ws.getCell(row, c1);
 			cell.value = text;
 			cell.font = font;
 			cell.alignment = { horizontal: 'center', vertical: 'middle' };
 		};
-		block(1, 4, 1, 'SỞ Y TẾ NGHỆ AN', { size: 11 });
-		block(1, 4, 2, 'BỆNH VIỆN HỮU NGHỊ ĐA KHOA NGHỆ AN', { bold: true, size: 11 });
-		block(rStart, rEnd, 1, 'CỘNG HOÀ XÃ HỘI CHỦ NGHĨA VIỆT NAM', { bold: true, size: 11 });
-		block(rStart, rEnd, 2, 'Độc lập - Tự do - Hạnh phúc', { bold: true, size: 11, underline: true });
+		const lEnd = n >= 8 ? 4 : Math.max(1, n - 1);
+		block(1, lEnd, 1, 'SỞ Y TẾ NGHỆ AN', { size: 11 });
+		block(1, lEnd, 2, 'BỆNH VIỆN HỮU NGHỊ ĐA KHOA NGHỆ AN', { bold: true, size: 11 });
+		if (n >= 8) {
+			const rEnd = n >= 10 ? n - 4 : n;
+			const rStart = n >= 10 ? Math.max(6, rEnd - 3) : 5;
+			block(rStart, rEnd, 1, 'CỘNG HOÀ XÃ HỘI CHỦ NGHĨA VIỆT NAM', { bold: true, size: 11 });
+			block(rStart, rEnd, 2, 'Độc lập - Tự do - Hạnh phúc', { bold: true, size: 11, underline: true });
+		}
 		[1, 2, 3].forEach((r) => (ws.getRow(r).height = 22));
 	}
 

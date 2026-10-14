@@ -35,6 +35,9 @@ const CmeCreditCatalog = lazy(
 const SeminarDetail = lazy(
 	() => import('../../features/seminar/pages/SeminarDetail'),
 );
+const TicketScan = lazy(
+	() => import('../../features/seminar/pages/TicketScan'),
+);
 const CmeRegister = lazy(
 	() => import('../../features/seminar/pages/CmeRegister'),
 );
@@ -177,7 +180,18 @@ export const adminRoutes: RouteObject[] = [
 	{
 		path: '/admin/cme-records',
 		element: admin('Ghi nhận CME độc lập', <CmeManualRecords />),
-	},	{
+	},	// Trang quét vé riêng cho điện thoại (không có AdminLayout) — ban tổ chức đứng ở cửa hội trường
+	...['/admin/quet-ve', '/admin/quet-ve/:id'].map((path) => ({
+		path,
+		element: (
+			<RequirePermission perm='seminars:update'>
+				<LazyRoute title='Quét vé điểm danh'>
+					<TicketScan />
+				</LazyRoute>
+			</RequirePermission>
+		),
+	})),
+	{
 		path: '/admin/departments',
 		element: admin('Khoa / Phòng ban', <Departments />),
 	},

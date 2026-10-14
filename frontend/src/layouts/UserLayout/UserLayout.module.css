@@ -906,4 +906,20 @@
 	.userChevron {
 		display: none;
 	}
+
+	/* Nút hành động xuống dòng dưới tiêu đề — đứng cạnh nhau thì ép tiêu đề/mô tả
+	   thành cột chữ hẹp */
+	.pageHeader {
+		flex-direction: column;
+		align-items: stretch;
+		gap: var(--space-3);
+	}
+
+	.pageHeaderRight {
+		flex-wrap: wrap;
+	}
+
+	.pageTitle {
+		font-size: var(--font-size-xl);
+	}
 }

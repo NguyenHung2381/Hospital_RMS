@@ -93,20 +93,23 @@ const push = async (
 
 /**
  * Giống push(), nhưng gửi thêm email cho những người nhận có địa chỉ email
- * (nếu MAIL_ENABLED=true — xem services/mailService.js). Dùng cho các sự
- * kiện quan trọng (duyệt/từ chối đề tài, nhắc deadline) thay vì mọi loại
- * notification để tránh spam hộp thư cho các thông báo vặt.
+ * nếu email bật cho chức năng `mailEvent` (xem mailService.EVENT_DEFAULTS —
+ * admin chọn ở Cấu hình hệ thống). Dùng cho các sự kiện quan trọng thay vì
+ * mọi loại notification để tránh spam hộp thư cho các thông báo vặt.
  */
 const pushWithEmail = async (
 	type,
 	title,
 	userIds,
-	{ message = null, refId = null, refType = null } = {},
+	{ message = null, refId = null, refType = null, mailEvent } = {},
 ) => {
 	await push(type, title, userIds, { message, refId, refType });
-	if (!userIds?.length || !(await mailService.isEnabled())) return;
+	if (!userIds?.length || !(await mailService.isEnabled(mailEvent))) return;
 
-	try {
+	// Không chờ SMTP — gửi tuần tự ở nền: thông báo chung có thể tới hàng trăm
+	// người, mở song song từng ấy kết nối sẽ bị Gmail chặn.
+	// ponytail: Gmail giới hạn ~500 thư/ngày/tài khoản, cần hàng đợi + SMTP riêng nếu vượt.
+	(async () => {
 		const pool = await getPool();
 		const res = await pool
 			.request()
@@ -116,22 +119,14 @@ const pushWithEmail = async (
 				WHERE id IN (SELECT [value] FROM OPENJSON(@user_ids))
 				  AND email IS NOT NULL AND email <> ''
 			`);
-		await Promise.all(
-			res.recordset.map((u) =>
-				mailService.send({
-					to: u.email,
-					subject: title,
-					html: mailService.renderNotificationEmail({
-						fullName: u.full_name,
-						title,
-						message,
-					}),
-				}),
-			),
-		);
-	} catch (err) {
-		console.error('[notification] pushWithEmail failed:', err.message);
-	}
+		for (const u of res.recordset) {
+			await mailService.send({
+				to: u.email,
+				subject: title,
+				html: mailService.renderNotificationEmail({ fullName: u.full_name, title, message }),
+			});
+		}
+	})().catch((err) => console.error('[notification] pushWithEmail failed:', err.message));
 };
 
 const getUsersByTarget = async (targetType, targetIds = []) => {
@@ -167,7 +162,7 @@ const sendBroadcast = async ({
 }) => {
 	const userIds = await getUsersByTarget(targetType, targetIds ?? []);
 	if (!userIds.length) return { sent: 0 };
-	await push(type, title, userIds, { message, refId, refType });
+	await pushWithEmail(type, title, userIds, { message, refId, refType, mailEvent: 'BROADCAST' });
 	return { sent: userIds.length };
 };
 

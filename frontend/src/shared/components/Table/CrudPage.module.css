@@ -268,3 +268,11 @@
 		overflow-x: auto;
 	}
 }
+
+/* Select lọc dùng chung class pageSizeSelect: option dài không được đẩy rộng quá màn hình */
+@media (max-width: 640px) {
+	.pageSizeSelect {
+		max-width: 100%;
+		text-overflow: ellipsis;
+	}
+}

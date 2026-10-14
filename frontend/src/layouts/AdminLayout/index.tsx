@@ -32,6 +32,7 @@ const KEY_TO_PATH: Record<string, string> = {
 	rounds: '/admin/rounds',
 	councils: '/admin/councils',
 	seminars: '/admin/seminars',
+	ticketScan: '/admin/quet-ve',
 	cmeRegister: '/admin/cme-register',
 	approvals: '/admin/approvals',
 	progress: '/admin/progress',
@@ -174,6 +175,12 @@ const NAV_GROUPS: NavGroup[] = [
 				label: 'Hội thảo & Hội nghị',
 				icon: <Icon.Seminar />,
 				perm: 'seminars:read',
+			},
+			{
+				key: 'ticketScan',
+				label: 'Quét vé điểm danh',
+				icon: <Icon.Qr />,
+				perm: 'seminars:update',
 			},
 			{
 				key: 'cmeRegister',

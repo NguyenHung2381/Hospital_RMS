@@ -84,6 +84,7 @@ const run = async () => {
 			message,
 			refId: dl.round_id,
 			refType: 'round',
+			mailEvent: 'DEADLINE_REMINDER',
 		});
 		sentCount += userIds.length;
 	}

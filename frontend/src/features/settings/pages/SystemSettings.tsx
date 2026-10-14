@@ -86,12 +86,37 @@ const SECTIONS: Section[] = [
 					{
 						key: 'MAIL_ENABLED',
 						label: 'Bật gửi email',
-						hint: 'Tắt = chỉ ghi log máy chủ, không gửi thật (thông báo, nhắc deadline, OTP).',
+						hint: 'Công tắc tổng. Tắt = chỉ ghi log máy chủ, không gửi thật cho mọi chức năng (kể cả OTP).',
 						type: 'bool',
 						onText: 'Đang bật',
 						offText: 'Đang tắt',
 					},
 				],
+			},
+			{
+				title: 'Gửi email cho chức năng',
+				// Mặc định khớp backend mailService.EVENT_DEFAULTS
+				fields: (
+					[
+						['TOPIC_RESULT', 'Kết quả duyệt đề tài', 'Phê duyệt / từ chối / yêu cầu bổ sung — gửi chủ nhiệm và thành viên.', true],
+						['TOPIC_SUBMITTED', 'Có đề tài mới cần duyệt', 'Gửi người có quyền duyệt khi đề tài được nộp.', false],
+						['ACCOUNT_GRANTED', 'Cấp tài khoản thành viên đề tài', 'Báo thành viên mới, khoa và chủ nhiệm (không kèm mật khẩu).', false],
+						['DEADLINE_REMINDER', 'Nhắc deadline đợt NCKH', 'Trước hạn và khi quá hạn các mốc của đợt.', true],
+						['COURSE_ENROLLMENT', 'Kết quả đăng ký khóa học', 'Gửi học viên khi đăng ký được duyệt / chờ / từ chối.', true],
+						['SEMINAR_BADGE', 'Thẻ đại biểu hội nghị', 'Gửi kèm QR điểm danh sau khi đăng ký hội nghị công khai.', true],
+						['PASSWORD_EXPIRY', 'Nhắc đổi mật khẩu', 'Khi mật khẩu lâu chưa đổi.', true],
+						['SECURITY_ALERT', 'Cảnh báo bảo mật', 'Gửi tới "Email nhận cảnh báo bảo mật" (tab Bảo mật).', true],
+						['BROADCAST', 'Thông báo chung', 'Thông báo quản trị gửi tới toàn viện / khoa / cá nhân.', false],
+					] as const
+				).map(([k, label, hint, defaultOn]) => ({
+					key: `MAIL_EVENT_${k}`,
+					label,
+					hint,
+					type: 'bool' as const,
+					defaultOn,
+					onText: 'Gửi email',
+					offText: 'Không gửi email',
+				})),
 			},
 			{
 				title: 'Máy chủ',

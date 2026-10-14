@@ -90,7 +90,7 @@ export default function ForgotPassword() {
 				{step === 2 && info && <p className={styles.loginSubtitle}>{info}</p>}
 				<form onSubmit={step === 1 ? sendOtp : submitReset} className={styles.loginForm} noValidate>
 					{step === 1 ? (
-						input('username', 'Tên đăng nhập hoặc email', username, setUsername, { autoFocus: true, autoComplete: 'username', placeholder: 'VD: NVA_0123 hoặc ten@benhvien.vn' })
+						input('username', 'Tên đăng nhập hoặc email', username, setUsername, { autoFocus: true, autoComplete: 'username', placeholder: 'Email hoặc tài khoản' })
 					) : (
 						<>
 							{input('otp', 'Mã OTP (6 số)', code, setCode, { inputMode: 'numeric', maxLength: 6, autoComplete: 'one-time-code', autoFocus: true })}

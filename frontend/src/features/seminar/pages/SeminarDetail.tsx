@@ -31,7 +31,6 @@ import { SeminarCheckInQrModal } from '../components/SeminarCheckInQrModal';
 import { SeminarQrPresentation } from '../components/SeminarQrPresentation';
 import { SeminarRegistrationQrModal } from '../components/SeminarRegistrationQrModal';
 import { SeminarTestModal } from '../components/SeminarTestModal';
-import { TicketCheckInModal } from '../components/TicketCheckInModal';
 import { useSeminarDetail } from '../hooks/useSeminarDetail';
 import { useSeminarPerms } from '../utils/perms';
 import {
@@ -84,7 +83,6 @@ export default function SeminarDetail() {
 	const [searchParams, setSearchParams] = useSearchParams();
 	const [regQrOpen, setRegQrOpen] = useState(searchParams.get('qr') === '1');
 	const [presentOpen, setPresentOpen] = useState(false);
-	const [ticketScanOpen, setTicketScanOpen] = useState(false);
 	const [testOpen, setTestOpen] = useState(false);
 
 	const filtered = useMemo(
@@ -235,7 +233,7 @@ export default function SeminarDetail() {
 										</button>
 										<button
 											className={styles.btnGhost}
-											onClick={() => setTicketScanOpen(true)}
+											onClick={() => navigate(`/admin/quet-ve/${sem.id}`)}
 										>
 											<ClipboardCheckSvg /> Quét vé điểm danh
 										</button>
@@ -506,12 +504,6 @@ export default function SeminarDetail() {
 				/>
 			)}
 
-			{ticketScanOpen && sem && (
-				<TicketCheckInModal
-					seminarId={sem.id}
-					onClose={() => setTicketScanOpen(false)}
-				/>
-			)}
 
 			{testOpen && sem && (
 				<SeminarTestModal

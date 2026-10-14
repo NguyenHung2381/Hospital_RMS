@@ -1,7 +1,14 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
+import { Link, NavLink } from 'react-router-dom';
 import Logo from '../../assets/logo.png';
 import styles from './PublicLayout.module.css';
+
+const NAV = [
+	['/dang-ky-khoa-hoc', 'Đăng ký khóa học'],
+	['/de-xuat-de-tai', 'Đăng ký đề tài'],
+	['/tra-cuu-ket-qua', 'Tra cứu kết quả'],
+	['/tra-cuu-ho-so', 'Tra cứu hồ sơ đề tài'],
+] as const;
 
 interface PublicLayoutProps {
 	title: string;
@@ -26,42 +33,29 @@ export default function PublicLayout({ title, subtitle, children }: PublicLayout
 							alt='Logo'
 							className={styles.brandLogo}
 						/>
-						<div>
+						<div className={styles.brandText}>
 							<div className={styles.brandName}>Bệnh viện Hữu Nghị Đa Khoa Nghệ An</div>
 							<div className={styles.brandSub}>Cổng thông tin Đào tạo</div>
 						</div>
 					</Link>
+					<Link
+						to='/login'
+						className={styles.navLinkPrimary}
+					>
+						Đăng nhập<span className={styles.hideXs}> hệ thống</span>
+					</Link>
 					<nav className={styles.nav}>
-						<Link
-							to='/dang-ky-khoa-hoc'
-							className={styles.navLink}
-						>
-							Đăng ký khóa học
-						</Link>
-						<Link
-							to='/de-xuat-de-tai'
-							className={styles.navLink}
-						>
-							Đăng ký đề tài
-						</Link>
-						<Link
-							to='/tra-cuu-ket-qua'
-							className={styles.navLink}
-						>
-							Tra cứu kết quả
-						</Link>
-						<Link
-							to='/tra-cuu-ho-so'
-							className={styles.navLink}
-						>
-							Tra cứu hồ sơ đề tài
-						</Link>
-						<Link
-							to='/login'
-							className={styles.navLinkPrimary}
-						>
-							Đăng nhập hệ thống
-						</Link>
+						{NAV.map(([to, label]) => (
+							<NavLink
+								key={to}
+								to={to}
+								className={({ isActive }) =>
+									isActive ? `${styles.navLink} ${styles.navLinkActive}` : styles.navLink
+								}
+							>
+								{label}
+							</NavLink>
+						))}
 					</nav>
 				</div>
 			</header>
