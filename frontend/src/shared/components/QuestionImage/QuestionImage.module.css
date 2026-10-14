@@ -1,0 +1,164 @@
+.field {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+	min-width: 0;
+}
+
+.nativeInput {
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	opacity: 0;
+	pointer-events: none;
+}
+
+.zone {
+	display: flex;
+	align-items: center;
+	gap: var(--space-2);
+	width: 100%;
+	padding: 10px 12px;
+	border: 1.5px dashed var(--color-gray-300);
+	border-radius: var(--radius-lg);
+	background: var(--color-gray-50);
+	color: var(--color-gray-600);
+	font-size: var(--font-size-sm);
+	text-align: left;
+	cursor: pointer;
+	transition:
+		border-color 0.15s,
+		background 0.15s;
+}
+.zone:hover:not(:disabled),
+.zone:focus-visible,
+.dragOver {
+	border-color: var(--color-primary);
+	background: var(--color-primary-pale);
+	outline: none;
+}
+.zone:disabled {
+	cursor: default;
+	opacity: 0.7;
+}
+.zone svg {
+	width: 18px;
+	height: 18px;
+	flex-shrink: 0;
+}
+.hint {
+	color: var(--color-gray-500);
+	font-size: var(--font-size-xs);
+}
+
+.preview {
+	display: flex;
+	align-items: flex-start;
+	gap: var(--space-3);
+	flex-wrap: wrap;
+}
+.previewActions {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+}
+.btn {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	padding: 5px 10px;
+	border: 1px solid var(--color-gray-200);
+	border-radius: var(--radius-md);
+	background: var(--color-white);
+	color: var(--color-gray-700);
+	font-size: var(--font-size-xs);
+	cursor: pointer;
+}
+.btn:hover:not(:disabled) {
+	border-color: var(--color-primary);
+	color: var(--color-primary);
+}
+.btn:disabled {
+	cursor: default;
+	opacity: 0.6;
+}
+.btn svg {
+	width: 14px;
+	height: 14px;
+}
+.danger:hover:not(:disabled) {
+	border-color: var(--color-error);
+	color: var(--color-error);
+}
+
+.view {
+	display: inline-block;
+	max-width: 100%;
+	border: 1px solid var(--color-gray-200);
+	border-radius: var(--radius-md);
+	background: var(--color-white);
+	overflow: hidden;
+	line-height: 0;
+	cursor: zoom-in;
+}
+.view img {
+	display: block;
+	max-width: 100%;
+	max-height: 320px;
+	object-fit: contain;
+}
+.compact {
+	margin-top: 6px;
+}
+.compact img {
+	max-height: 120px;
+}
+
+.error {
+	color: var(--color-error);
+	font-size: var(--font-size-xs);
+}
+
+.spinner {
+	width: 16px;
+	height: 16px;
+	border: 2px solid var(--color-gray-300);
+	border-top-color: var(--color-primary);
+	border-radius: 50%;
+	animation: qimgSpin 0.7s linear infinite;
+	flex-shrink: 0;
+}
+@keyframes qimgSpin {
+	to {
+		transform: rotate(360deg);
+	}
+}
+
+/* QuestionText — bảng trong nội dung câu hỏi */
+.textPart {
+	white-space: pre-wrap;
+}
+.tableWrap {
+	max-width: 100%;
+	margin: 6px 0;
+	/* viền ngoài của bảng border-collapse tràn nửa px → hiện thanh cuộn thừa */
+	padding: 1px;
+	overflow-x: auto;
+	white-space: normal;
+}
+.table {
+	border-collapse: collapse;
+	font-size: var(--font-size-sm);
+	font-weight: 400;
+}
+.table th,
+.table td {
+	padding: 4px 10px;
+	border: 1px solid var(--color-gray-300);
+	text-align: left;
+	vertical-align: top;
+}
+.table th {
+	background: var(--color-gray-50);
+	font-weight: 600;
+}

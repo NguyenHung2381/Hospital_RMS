@@ -27,6 +27,11 @@ const createQuestionsBulk = async (req, res, next) => {
 	}
 };
 
+const uploadQuestionImage = (req, res) => {
+	if (!req.file) return res.status(400).json({ success: false, message: 'Chưa chọn ảnh' });
+	return created(res, { url: `/uploads/questions/${req.file.filename}` });
+};
+
 const updateQuestion = async (req, res, next) => {
 	try {
 		const item = await examService.updateQuestion(req.params.id, req.body, req.user.id);
@@ -158,6 +163,7 @@ module.exports = {
 	listQuestions,
 	createQuestion,
 	createQuestionsBulk,
+	uploadQuestionImage,
 	updateQuestion,
 	removeQuestion,
 	listPapers,

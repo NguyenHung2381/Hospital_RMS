@@ -2,7 +2,19 @@ import { RowAction, RowActions } from '@/shared/components/Table/TableToolbar';
 import { useEffect, useMemo, useState } from 'react';
 import { EditSvg, PlusSvg, SearchSvg, TrashSvg, UploadSvg } from '@/assets/icons';
 import AdminLayout from '../../../layouts/AdminLayout';
-import { Badge, BulkBar, Button, DeleteAllButton, Modal, Pagination, SelectCheckbox, SkeletonTable } from '../../../shared/components';
+import {
+	Badge,
+	BulkBar,
+	Button,
+	DeleteAllButton,
+	Modal,
+	Pagination,
+	QuestionImageField,
+	QuestionImageView,
+	QuestionText,
+	SelectCheckbox,
+	SkeletonTable,
+} from '../../../shared/components';
 import sel from '../../../shared/components/Table/RowSelect.module.css';
 import { useRowSelection } from '../../../shared/hooks/useRowSelection';
 import { DEFAULT_PAGE_SIZE } from '../../../shared/utils/constants';
@@ -299,7 +311,13 @@ export default function QuestionBank() {
 										</td>
 										<td className={`${styles.td} ${styles.tdIdx}`}>{(safePage - 1) * pageSize + i + 1}</td>
 										<td className={styles.td}>
-											<div className={styles.questionText}>{q.question_text}</div>
+											<div className={styles.questionText}>
+												<QuestionText text={q.question_text} />
+											</div>
+											<QuestionImageView
+												url={q.image_url}
+												compact
+											/>
 											{q.question_type === 'single_choice' && (
 												<ol
 													type='A'
@@ -367,7 +385,20 @@ export default function QuestionBank() {
 			{importing && (
 				<ImportQuestionsModal
 					onClose={() => setImporting(false)}
-					onImported={() => {
+					onImport={async (questions) => {
+						const payload: QuestionPayload[] = [];
+						for (const q of questions) {
+							payload.push({
+								question_type: q.question_type,
+								question_text: q.question_text,
+								options: q.options,
+								correct_option: q.correctIndex != null ? q.options[q.correctIndex] : null,
+								points: q.points,
+								image_url: q.image ? (await examApi.uploadQuestionImage(q.image)).url : null,
+							});
+						}
+						const res = await examApi.createQuestionsBulk(payload);
+						notify.success(`Đã nhập ${res.created} câu hỏi`);
 						setImporting(false);
 						void load();
 					}}
@@ -465,6 +496,7 @@ function QuestionFormModal({
 	const [correct, setCorrect] = useState(
 		question ? Math.max(0, question.options.indexOf(question.correct_option ?? '')) : 0,
 	);
+	const [image, setImage] = useState<string | null>(question?.image_url ?? null);
 	const [error, setError] = useState('');
 
 	const submit = () => {
@@ -485,6 +517,7 @@ function QuestionFormModal({
 			points: Number(points),
 			options: type === 'single_choice' ? opts.filter(Boolean) : [],
 			correct_option: type === 'single_choice' ? opts[correct] : null,
+			image_url: image,
 		});
 	};
 
@@ -546,6 +579,15 @@ function QuestionFormModal({
 						onChange={(e) => setText(e.target.value)}
 					/>
 				</label>
+				<div className={styles.field}>
+					Hình minh hoạ <span className={styles.hint}>(không bắt buộc)</span>
+					<QuestionImageField
+						value={image}
+						onChange={setImage}
+						upload={examApi.uploadQuestionImage}
+						disabled={busy}
+					/>
+				</div>
 				{type === 'single_choice' ? (
 					<div className={styles.field}>
 						Phương án <span className={styles.hint}>(chọn ô tròn ở phương án đúng)</span>

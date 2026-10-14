@@ -18,6 +18,7 @@ export interface QuestionPayload {
 	options?: string[];
 	correct_option?: string | null;
 	points?: number;
+	image_url?: string | null;
 }
 
 export interface PaperPayload {
@@ -49,6 +50,11 @@ export const examApi = {
 	createQuestion: (payload: QuestionPayload) => apiClient.post<ExamQuestion>('/exams/questions', payload),
 	createQuestionsBulk: (questions: QuestionPayload[]) =>
 		apiClient.post<{ created: number }>('/exams/questions/bulk', { questions }),
+	uploadQuestionImage: (file: File) => {
+		const form = new FormData();
+		form.append('image', file);
+		return apiClient.postForm<{ url: string }>('/exams/questions/image', form);
+	},
 	updateQuestion: (id: string, payload: Partial<QuestionPayload>) =>
 		apiClient.put<ExamQuestion>(`/exams/questions/${id}`, payload),
 	removeQuestion: (id: string) => apiClient.delete<null>(`/exams/questions/${id}`),

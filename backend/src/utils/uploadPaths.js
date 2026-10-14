@@ -30,4 +30,17 @@ const removeUploadedFile = (fileUrl) => {
 	fs.unlink(diskPath, () => {});
 };
 
-module.exports = { UPLOADS_ROOT, SAFE_ID, uniqueFilename, removeUploadedFile };
+// Link ảnh client gửi lại (thường là link đã ký lấy từ response trước) → đường
+// dẫn gốc để lưu DB. Chỉ nhận file nằm ngay dưới `prefix` — không cho trỏ sang
+// file khác trong /uploads (vd tài liệu đề tài) rồi nhận link ký qua API khác.
+const toStoredUploadPath = (url, prefix) => {
+	if (!url) return null;
+	const pathname = String(url).split(/[?#]/)[0];
+	const name = pathname.slice(prefix.length);
+	if (!pathname.startsWith(prefix) || !/^[A-Za-z0-9_-]+\.[A-Za-z0-9]+$/.test(name)) {
+		throw Object.assign(new Error('Đường dẫn ảnh không hợp lệ — vui lòng tải ảnh lên lại.'), { statusCode: 400 });
+	}
+	return pathname;
+};
+
+module.exports = { UPLOADS_ROOT, SAFE_ID, uniqueFilename, removeUploadedFile, toStoredUploadPath };

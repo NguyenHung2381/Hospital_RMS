@@ -44,6 +44,9 @@
 	margin-bottom: var(--space-2);
 	font-size: var(--font-size-sm);
 }
+.questionImage {
+	margin-bottom: var(--space-2);
+}
 .optionChoice {
 	display: flex;
 	align-items: center;

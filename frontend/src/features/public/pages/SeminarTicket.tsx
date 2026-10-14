@@ -2,6 +2,8 @@ import { useCallback, useEffect, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { AlertSvg, CheckSvg } from '@/assets/icons';
 import { BrandedQrCode, useBrandedQrImage } from '@/shared/components/BrandedQr';
+import { QuestionImageView } from '@/shared/components/QuestionImage';
+import { QuestionText } from '@/shared/components/QuestionImage/QuestionText';
 import PublicLayout from '../../../layouts/PublicLayout';
 import { publicUrl } from '../../../shared/utils/publicUrl';
 import { formatDateTimeVN } from '../../../shared/utils/formatDate';
@@ -182,8 +184,13 @@ export default function SeminarTicket() {
 									style={{ border: 0, padding: 0, margin: '0 0 16px' }}
 								>
 									<legend className={styles.label}>
-										Câu {i + 1}. {q.q}
+										Câu {i + 1}. <QuestionText text={q.q} />
 									</legend>
+									{q.image && (
+										<div style={{ margin: '4px 0 8px' }}>
+											<QuestionImageView url={q.image} />
+										</div>
+									)}
 									{q.options.map((o, j) => (
 										<label
 											key={j}

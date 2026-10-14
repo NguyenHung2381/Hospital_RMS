@@ -1,28 +1,57 @@
 import { useState } from 'react';
-import { Badge, Button, FileDropzone, Modal } from '../../../shared/components';
+import { Badge, Button, FileDropzone, Modal, QuestionImageView, QuestionText } from '../../../shared/components';
 import { notify } from '../../../shared/utils/feedback';
-import { examApi } from '../api/examApi';
 import { parseQuestions, type ParsedQuestion } from '../utils/parseQuestions';
-import { readQuestionFile } from '../utils/readQuestionFile';
+import { dataUrlToFile, readQuestionFile } from '../utils/readQuestionFile';
 import styles from '../pages/QuestionBank.module.css';
 
 interface Row extends ParsedQuestion {
 	include: boolean;
 }
 
+/** Câu đã chọn để nhập — image là File (hình trích từ Word), người gọi tự tải lên. */
+export interface ImportedQuestion {
+	question_type: ParsedQuestion['question_type'];
+	question_text: string;
+	options: string[];
+	correctIndex: number | null;
+	points: number;
+	image: File | null;
+}
+
 const FORMAT_HINT = `Câu 1: Nội dung câu hỏi (2 điểm)
+[hình minh hoạ — chèn ngay dưới câu hỏi, tuỳ chọn]
 A. Phương án    B. Phương án
 C. Phương án    D. Phương án
 Đáp án: B
 
 Câu 2: Câu tự luận (không có A/B/C/D)`;
 
-export function ImportQuestionsModal({ onClose, onImported }: { onClose: () => void; onImported: () => void }) {
+/**
+ * Đọc câu hỏi từ file Word/PDF ngay trên trình duyệt, cho xem lại / chọn đáp án,
+ * rồi trả danh sách câu đã chọn cho onImport (ném lỗi = giữ modal mở).
+ * Dùng cho ngân hàng câu hỏi Đào tạo và bài test cuối buổi Hội nghị.
+ */
+export function ImportQuestionsModal({
+	onClose,
+	onImport,
+	multipleChoiceOnly = false,
+	withPoints = true,
+}: {
+	onClose: () => void;
+	onImport: (questions: ImportedQuestion[]) => Promise<void>;
+	/** Chỉ nhận câu trắc nghiệm (bài test hội nghị) — câu tự luận trong file bị bỏ qua */
+	multipleChoiceOnly?: boolean;
+	/** Có điểm từng câu không (bài test hội nghị chỉ đếm số câu đúng) */
+	withPoints?: boolean;
+}) {
 	const [file, setFile] = useState<File | null>(null);
 	const [rows, setRows] = useState<Row[] | null>(null);
 	const [reading, setReading] = useState(false);
 	const [saving, setSaving] = useState(false);
 	const [defaultPoints, setDefaultPoints] = useState('1');
+
+	const allowed = (q: ParsedQuestion) => !multipleChoiceOnly || q.question_type === 'single_choice';
 
 	const pick = async (f: File | null) => {
 		setFile(f);
@@ -32,7 +61,7 @@ export function ImportQuestionsModal({ onClose, onImported }: { onClose: () => v
 		try {
 			const parsed = parseQuestions(await readQuestionFile(f));
 			if (!parsed.length) notify.error('Không tìm thấy câu hỏi nào — kiểm tra lại định dạng "Câu 1: ..." trong file');
-			setRows(parsed.map((q) => ({ ...q, include: !!q.question_text })));
+			setRows(parsed.map((q) => ({ ...q, include: !!q.question_text && allowed(q) })));
 		} catch (e) {
 			notify.error((e as Error).message || 'Không đọc được file');
 		} finally {
@@ -45,21 +74,22 @@ export function ImportQuestionsModal({ onClose, onImported }: { onClose: () => v
 
 	const chosen = rows?.filter((r) => r.include) ?? [];
 	const missingAnswer = chosen.filter((r) => r.question_type === 'single_choice' && r.correctIndex == null).length;
+	const skipped = rows?.filter((r) => !allowed(r)).length ?? 0;
+	const imageCount = chosen.filter((r) => r.image).length;
 
 	const save = async () => {
 		setSaving(true);
 		try {
-			const res = await examApi.createQuestionsBulk(
-				chosen.map((r) => ({
+			await onImport(
+				chosen.map((r, i) => ({
 					question_type: r.question_type,
 					question_text: r.question_text,
 					options: r.options,
-					correct_option: r.correctIndex != null ? r.options[r.correctIndex] : null,
+					correctIndex: r.correctIndex,
 					points: r.points ?? (Number(defaultPoints) || 1),
+					image: r.image ? dataUrlToFile(r.image, `cau-${r.number ?? i + 1}`) : null,
 				})),
 			);
-			notify.success(`Đã nhập ${res.created} câu hỏi`);
-			onImported();
 		} catch (e) {
 			notify.error((e as Error).message);
 		} finally {
@@ -70,7 +100,7 @@ export function ImportQuestionsModal({ onClose, onImported }: { onClose: () => v
 	return (
 		<Modal
 			open
-			onClose={onClose}
+			onClose={saving ? () => {} : onClose}
 			title='Nhập câu hỏi từ file Word / PDF'
 			size='xl'
 			closeOnBackdrop={false}
@@ -79,6 +109,7 @@ export function ImportQuestionsModal({ onClose, onImported }: { onClose: () => v
 					<Button
 						variant='secondary'
 						onClick={onClose}
+						disabled={saving}
 					>
 						Huỷ
 					</Button>
@@ -97,17 +128,21 @@ export function ImportQuestionsModal({ onClose, onImported }: { onClose: () => v
 					value={file}
 					onChange={(f) => void pick(f)}
 					accept='.docx,.pdf'
-					hint='File .docx hoặc .pdf, tối đa 20MB — file được đọc ngay trên máy, không tải lên server'
+					hint='File .docx hoặc .pdf, tối đa 20MB — file được đọc ngay trên máy, chỉ hình minh hoạ được tải lên khi bấm Nhập'
 					maxSizeMB={20}
 				/>
 				{!rows && !reading && (
 					<details>
 						<summary className={styles.hint}>Định dạng file được hỗ trợ</summary>
-						<pre className={styles.hint}>{FORMAT_HINT}</pre>
+						<pre className={styles.hint}>
+							{multipleChoiceOnly ? FORMAT_HINT.split('\n\nCâu 2')[0] : FORMAT_HINT}
+						</pre>
 						<div className={styles.hint}>
 							Đáp án đúng có thể ghi bằng dòng "Đáp án: B", dấu * trước phương án (*B.), bảng "ĐÁP ÁN" cuối file
 							(1-A 2-C ...), hoặc in đậm/gạch chân phương án đúng trong Word. Đánh số câu/phương án phải gõ tay (không
-							dùng numbering tự động của Word). PDF dạng ảnh scan không đọc được.
+							dùng numbering tự động của Word). Hình chèn trong Word (PNG/JPEG/GIF) được lấy làm hình minh hoạ của câu
+							chứa nó — PDF không lấy được hình. PDF dạng ảnh scan không đọc được.
+							{multipleChoiceOnly && ' Bài test chỉ nhận câu trắc nghiệm — câu tự luận trong file sẽ bị bỏ qua.'}
 						</div>
 					</details>
 				)}
@@ -115,24 +150,28 @@ export function ImportQuestionsModal({ onClose, onImported }: { onClose: () => v
 
 				{rows && rows.length > 0 && (
 					<>
-						<div className={styles.row2}>
+						<div className={withPoints ? styles.row2 : undefined}>
 							<div className={styles.hint}>
 								Tìm thấy {rows.length} câu · đã chọn {chosen.length}
+								{imageCount > 0 && ` · ${imageCount} câu có hình`}
+								{skipped > 0 && ` · bỏ qua ${skipped} câu tự luận`}
 								{missingAnswer > 0 && (
 									<span className={styles.error}> · {missingAnswer} câu trắc nghiệm chưa có đáp án — chọn đáp án hoặc bỏ chọn câu</span>
 								)}
 							</div>
-							<label className={styles.field}>
-								Điểm mặc định (câu không ghi điểm)
-								<input
-									className={styles.input}
-									type='number'
-									min={0.5}
-									step={0.5}
-									value={defaultPoints}
-									onChange={(e) => setDefaultPoints(e.target.value)}
-								/>
-							</label>
+							{withPoints && (
+								<label className={styles.field}>
+									Điểm mặc định (câu không ghi điểm)
+									<input
+										className={styles.input}
+										type='number'
+										min={0.5}
+										step={0.5}
+										value={defaultPoints}
+										onChange={(e) => setDefaultPoints(e.target.value)}
+									/>
+								</label>
+							)}
 						</div>
 						<div style={{ maxHeight: '55vh', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 10 }}>
 							{rows.map((r, i) => (
@@ -145,6 +184,7 @@ export function ImportQuestionsModal({ onClose, onImported }: { onClose: () => v
 										<input
 											type='checkbox'
 											checked={r.include}
+											disabled={!allowed(r)}
 											onChange={(e) => update(i, { include: e.target.checked })}
 											aria-label='Chọn nhập câu này'
 										/>
@@ -152,12 +192,30 @@ export function ImportQuestionsModal({ onClose, onImported }: { onClose: () => v
 										<Badge tone={r.question_type === 'essay' ? 'purple' : 'blue'}>
 											{r.question_type === 'essay' ? 'Tự luận' : 'Trắc nghiệm'}
 										</Badge>
-										{r.points != null && <span className={styles.muted}>{r.points} điểm</span>}
+										{withPoints && r.points != null && <span className={styles.muted}>{r.points} điểm</span>}
+										{!allowed(r) && <Badge tone='gray'>Bỏ qua — bài test chỉ nhận trắc nghiệm</Badge>}
 										{r.include && r.question_type === 'single_choice' && r.correctIndex == null && (
 											<Badge tone='red'>Chưa có đáp án</Badge>
 										)}
 									</div>
-									<div className={styles.questionText}>{r.question_text || <em>(trống)</em>}</div>
+									<div className={styles.questionText}>{r.question_text ? <QuestionText text={r.question_text} /> : <em>(trống)</em>}</div>
+									{r.image && (
+										<div className={styles.optionRow}>
+											<QuestionImageView
+												url={r.image}
+												compact
+											/>
+											{r.include && (
+												<button
+													type='button'
+													className={styles.linkBtn}
+													onClick={() => update(i, { image: null })}
+												>
+													Bỏ hình
+												</button>
+											)}
+										</div>
+									)}
 									{r.options.map((o, oi) => (
 										<label
 											key={oi}

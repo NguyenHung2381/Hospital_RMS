@@ -3,6 +3,10 @@ const { body } = require('express-validator');
 const ctrl = require('../controllers/examController');
 const { authenticate, authorizePermission } = require('../middlewares/auth');
 const { validate } = require('../middlewares/errorHandler');
+const { makeImageUpload } = require('../middlewares/uploadImage');
+
+// Ảnh minh hoạ câu hỏi — dùng chung thư mục vì 1 câu hỏi nằm được trong nhiều đề
+const uploadQuestionImage = makeImageUpload(() => ['questions']);
 
 /**
  * @swagger
@@ -63,6 +67,8 @@ router.post(
 	validate,
 	ctrl.createQuestionsBulk,
 );
+// Tải ảnh minh hoạ trước, rồi gửi `image_url` trả về trong body tạo/sửa câu hỏi
+router.post('/questions/image', canManage, uploadQuestionImage.single('image'), ctrl.uploadQuestionImage);
 router.put('/questions/:id', canManage, ctrl.updateQuestion);
 router.delete('/questions/:id', canManage, ctrl.removeQuestion);
 

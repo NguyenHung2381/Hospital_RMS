@@ -18,6 +18,8 @@ export interface ExamQuestion {
 	options: string[];
 	correct_option: string | null;
 	points: number;
+	/** Ảnh minh hoạ (link /uploads đã ký) — null = không có hình */
+	image_url: string | null;
 	used_count?: number;
 }
 
@@ -66,6 +68,7 @@ export interface ExamAttemptAnswer {
 	options: string[];
 	correct_option: string | null;
 	points: number;
+	image_url: string | null;
 	sort_order: number;
 }
 
@@ -94,6 +97,7 @@ export interface AttemptQuestion {
 	question_text: string;
 	options: string[];
 	points: number;
+	image_url: string | null;
 	sort_order: number;
 }
 

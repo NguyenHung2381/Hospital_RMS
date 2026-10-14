@@ -14,6 +14,7 @@ import type {
 } from '../../exam/types/exam.type';
 import { PAPER_QUESTION_TYPE } from '../../exam/types/exam.type';
 import { SearchableSelect } from '../../../shared/components/Input/SearchableSelect';
+import { QuestionImageField, QuestionImageView, QuestionText } from '../../../shared/components';
 import styles from '../pages/Courses.module.css';
 
 const STATUS_LABEL: Record<PaperStatus, string> = {
@@ -42,6 +43,7 @@ interface DraftQuestion {
 	options: string[];
 	correct_option: string;
 	points: string;
+	image_url: string | null;
 }
 
 function toDraft(q: ExamPaperQuestion): DraftQuestion {
@@ -53,6 +55,7 @@ function toDraft(q: ExamPaperQuestion): DraftQuestion {
 		options: q.options.length ? q.options : [''],
 		correct_option: q.correct_option ?? '',
 		points: String(q.points),
+		image_url: q.image_url ?? null,
 	};
 }
 
@@ -273,14 +276,16 @@ function ExamBuilder({
 	const [bank, setBank] = useState<ExamQuestion[]>([]);
 	const [pickId, setPickId] = useState('');
 	const [showNewForm, setShowNewForm] = useState(false);
-	const [newQ, setNewQ] = useState<DraftQuestion>({
+	const emptyNewQ = (): DraftQuestion => ({
 		tempId: '',
 		question_type: allowedType ?? 'single_choice',
 		question_text: '',
 		options: [''],
 		correct_option: '',
 		points: '1',
+		image_url: null,
 	});
+	const [newQ, setNewQ] = useState<DraftQuestion>(emptyNewQ);
 
 	useEffect(() => {
 		examApi
@@ -313,6 +318,7 @@ function ExamBuilder({
 				options: q.options,
 				correct_option: q.correct_option ?? '',
 				points: String(q.points),
+				image_url: q.image_url ?? null,
 			},
 		]);
 		setPickId('');
@@ -327,10 +333,11 @@ function ExamBuilder({
 				options: newQ.question_type === 'single_choice' ? newQ.options.filter((o) => o.trim()) : [],
 				correct_option: newQ.question_type === 'single_choice' ? newQ.correct_option || null : null,
 				points: Number(newQ.points) || 1,
+				image_url: newQ.image_url,
 			});
 			setQuestions((prev) => [...prev, toDraft({ ...created, link_id: created.id, sort_order: 0 })]);
 			setBank((prev) => [created, ...prev]);
-			setNewQ({ tempId: '', question_type: allowedType ?? 'single_choice', question_text: '', options: [''], correct_option: '', points: '1' });
+			setNewQ(emptyNewQ());
 			setShowNewForm(false);
 		} catch (err) {
 			setError(err instanceof Error ? err.message : 'Tạo câu hỏi thất bại');
@@ -446,8 +453,12 @@ function ExamBuilder({
 					>
 						<div className={styles.subRowMain}>
 							<div className={styles.subRowName}>
-								{i + 1}. {q.question_text} ({q.points} điểm)
+								{i + 1}. <QuestionText text={q.question_text} /> ({q.points} điểm)
 							</div>
+							<QuestionImageView
+								url={q.image_url}
+								compact
+							/>
 							<div style={{ fontSize: 12, color: 'var(--color-gray-500)' }}>
 								{q.question_type === 'essay' ? 'Tự luận' : `Trắc nghiệm — đáp án: ${q.correct_option}`}
 							</div>
@@ -522,6 +533,11 @@ function ExamBuilder({
 						value={newQ.question_text}
 						onChange={(e) => setNewQ((f) => ({ ...f, question_text: e.target.value }))}
 						rows={2}
+					/>
+					<QuestionImageField
+						value={newQ.image_url}
+						onChange={(url) => setNewQ((f) => ({ ...f, image_url: url }))}
+						upload={examApi.uploadQuestionImage}
 					/>
 					{newQ.question_type === 'single_choice' && (
 						<>
@@ -642,8 +658,9 @@ function GradingPanel({
 						style={{ flexDirection: 'column', alignItems: 'stretch', gap: 6 }}
 					>
 						<div className={styles.subRowName}>
-							{i + 1}. {a.question_text} ({a.points} điểm)
+							{i + 1}. <QuestionText text={a.question_text} /> ({a.points} điểm)
 						</div>
+						<QuestionImageView url={a.image_url} />
 						{a.question_type === 'single_choice' ? (
 							<div style={{ fontSize: 13 }}>
 								Học viên chọn: <strong>{a.selected_option ?? '—'}</strong> · Đáp án đúng:{' '}

@@ -242,7 +242,7 @@ export interface SeminarTicket {
 		correct: number | null;
 		total: number | null;
 		/** Chỉ có khi đã điểm danh + bài test đang mở + chưa nộp */
-		questions: { q: string; options: string[] }[] | null;
+		questions: { q: string; image: string | null; options: string[] }[] | null;
 	};
 	cme: { certificate_no: string; year: number; credits: number | null } | null;
 }

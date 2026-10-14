@@ -559,7 +559,7 @@ const getTicket = async (code) => {
 			correct: row.test_correct,
 			total: row.test_total,
 			// Không bao giờ gửi đáp án đúng ra cổng công khai
-			questions: canTakeTest ? questions.map(({ q, options }) => ({ q, options })) : null,
+			questions: canTakeTest ? questions.map(({ q, image, options }) => ({ q, image: image || null, options })) : null,
 		},
 		cme: row.cme_certificate_no
 			? { certificate_no: row.cme_certificate_no, year: row.cme_year, credits: row.cme_credits }

@@ -2,6 +2,7 @@ const { getPool, sql } = require('../config/db');
 const { parseJsonArray } = require('../utils/sqlFilters');
 const { broadcast } = require('./eventService');
 const courseService = require('./courseService');
+const { removeUploadedFile, toStoredUploadPath } = require('../utils/uploadPaths');
 
 const QUESTION_TYPES = ['single_choice', 'essay'];
 // Loại đề → loại câu hỏi được phép đưa vào. paper_type NULL = đề cũ (hỗn hợp),
@@ -9,6 +10,10 @@ const QUESTION_TYPES = ['single_choice', 'essay'];
 const PAPER_QUESTION_TYPE = { multiple_choice: 'single_choice', essay: 'essay' };
 
 const parseOptions = (row) => (row.options === undefined ? row : { ...row, options: parseJsonArray(row.options) });
+
+// Ảnh minh hoạ câu hỏi — tải lên qua POST /exams/questions/image (routes/exams.js)
+const QUESTION_IMAGE_DIR = '/uploads/questions/';
+const imagePath = (url) => toStoredUploadPath(url, QUESTION_IMAGE_DIR);
 
 // ─── Ngân hàng câu hỏi ───────────────────────────────────────────────────────
 const listQuestions = async ({ subject_id, search, question_type } = {}) => {
@@ -54,10 +59,11 @@ const insertQuestion = async (request, data, actorId) => {
 		.input('options', sql.NVarChar(sql.MAX), type === 'essay' ? null : JSON.stringify((data.options || []).filter(Boolean)))
 		.input('correct_option', sql.NVarChar(255), type === 'essay' ? null : data.correct_option || null)
 		.input('points', sql.Decimal(4, 1), data.points || 1)
+		.input('image_url', sql.NVarChar(500), imagePath(data.image_url))
 		.input('actor_id', sql.VarChar(20), actorId).query(`
       DECLARE @new_id VARCHAR(20) = 'QB' + LEFT(REPLACE(NEWID(),'-',''), 18);
-      INSERT INTO question_bank (id, subject_id, question_type, question_text, options, correct_option, points, created_by)
-      VALUES (@new_id, @subject_id, @question_type, @question_text, @options, @correct_option, @points, @actor_id);
+      INSERT INTO question_bank (id, subject_id, question_type, question_text, options, correct_option, points, image_url, created_by)
+      VALUES (@new_id, @subject_id, @question_type, @question_text, @options, @correct_option, @points, @image_url, @actor_id);
       SELECT @new_id AS id;
     `);
 	return result.recordset[0].id;
@@ -118,8 +124,15 @@ const updateQuestion = async (id, data, actorId) => {
 		sets.push('points = @points');
 		req.input('points', sql.Decimal(4, 1), data.points);
 	}
+	const newImage = data.image_url !== undefined ? imagePath(data.image_url) : current.image_url;
+	if (data.image_url !== undefined) {
+		sets.push('image_url = @image_url');
+		req.input('image_url', sql.NVarChar(500), newImage);
+	}
 
 	await req.query(`UPDATE question_bank SET ${sets.join(', ')} WHERE id = @id`);
+	// Đổi / bỏ ảnh → xoá file ảnh cũ (mỗi ảnh chỉ thuộc 1 câu hỏi)
+	if (current.image_url && current.image_url !== newImage) removeUploadedFile(current.image_url);
 	broadcast('update', { entity: 'question_bank' });
 	return getQuestion(id);
 };
@@ -132,13 +145,14 @@ const removeQuestion = async (id) => {
        OR EXISTS (SELECT 1 FROM exam_answers WHERE question_id = @id)
       SELECT 1 AS in_use
     ELSE
-      DELETE FROM question_bank WHERE id = @id;
+      DELETE FROM question_bank OUTPUT DELETED.image_url WHERE id = @id;
   `);
 	if (r.recordset?.[0]?.in_use) {
 		const err = new Error('Câu hỏi đang được dùng trong đề thi, không thể xoá. Hãy bỏ câu hỏi khỏi các đề trước.');
 		err.statusCode = 409;
 		throw err;
 	}
+	removeUploadedFile(r.recordset?.[0]?.image_url);
 	broadcast('update', { entity: 'question_bank' });
 };
 
@@ -310,7 +324,7 @@ const getAttemptForGrading = async (attemptId) => {
 		.request()
 		.input('attempt_id', sql.VarChar(20), attemptId)
 		.input('paper_id', sql.VarChar(20), attempt.paper_id).query(`
-    SELECT ans.*, q.question_text, q.question_type, q.options, q.correct_option, q.points, epq.sort_order
+    SELECT ans.*, q.question_text, q.question_type, q.options, q.correct_option, q.points, q.image_url, epq.sort_order
     FROM exam_answers ans
     JOIN question_bank q ON q.id = ans.question_id
     JOIN exam_paper_questions epq ON epq.paper_id = @paper_id AND epq.question_id = q.id
@@ -444,7 +458,7 @@ const startAttempt = async (paperId, actor) => {
 
 	const attemptRes = await pool.request().input('id', sql.VarChar(20), attemptId).query('SELECT * FROM exam_attempts WHERE id = @id');
 	const questionsRes = await pool.request().input('paper_id', sql.VarChar(20), paperId).query(`
-    SELECT q.id, q.question_type, q.question_text, q.options, q.points, epq.sort_order
+    SELECT q.id, q.question_type, q.question_text, q.options, q.points, q.image_url, epq.sort_order
     FROM exam_paper_questions epq
     JOIN question_bank q ON q.id = epq.question_id
     WHERE epq.paper_id = @paper_id

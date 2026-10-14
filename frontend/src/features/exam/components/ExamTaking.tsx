@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { CheckSvg, ClockSvg } from '@/assets/icons';
+import { QuestionImageView, QuestionText } from '@/shared/components';
 import { examApi } from '../api/examApi';
 import type { AnswerPayload } from '../api/examApi';
 import type { AttemptQuestion, StartAttemptResult } from '../types/exam.type';
@@ -88,8 +89,13 @@ export default function ExamTaking({
 					className={styles.questionBlock}
 				>
 					<div className={styles.questionLabel}>
-						{qi + 1}. {q.question_text} ({q.points} điểm)
+						{qi + 1}. <QuestionText text={q.question_text} /> ({q.points} điểm)
 					</div>
+					{q.image_url && (
+						<div className={styles.questionImage}>
+							<QuestionImageView url={q.image_url} />
+						</div>
+					)}
 					{q.question_type === 'essay' ? (
 						<textarea
 							className={styles.formTextarea}

@@ -8,6 +8,10 @@ const { validate } = require('../middlewares/errorHandler');
 const { success, created } = require('../utils/response');
 
 const uploadExcel = require('../middlewares/uploadExcel');
+const { makeImageUpload, safeParam } = require('../middlewares/uploadImage');
+
+// Ảnh minh hoạ câu hỏi bài test cuối buổi — uploads/seminars/<id>/test/
+const uploadTestImage = makeImageUpload((req) => ['seminars', safeParam(req, 'id'), 'test']);
 
 /**
  * @swagger
@@ -348,6 +352,11 @@ router.post('/cme-personal/:userId/export-excel', authenticate, canCme, cmePerso
 router.get('/:id', authenticate, canRead, ctrl.getById);
 router.put('/:id', authenticate, canUpdate, countFields, validate, ctrl.updateOne);
 router.delete('/:id', authenticate, canDelete, ctrl.removeOne);
+// Tải ảnh trước, rồi gửi `image` trả về trong test_questions khi lưu bài test
+router.post('/:id/test-image', authenticate, canUpdate, uploadTestImage.single('image'), (req, res) => {
+	if (!req.file) return res.status(400).json({ success: false, message: 'Chưa chọn ảnh' });
+	return created(res, { url: `/uploads/seminars/${req.params.id}/test/${req.file.filename}` });
+});
 
 // ─── Người tham dự ───────────────────────────────────────────────────────────
 

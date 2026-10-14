@@ -121,6 +121,12 @@ export const updateSeminarTest = (
 	data: { test_questions?: SeminarTestQuestion[] | null; test_open?: boolean },
 ) => apiClient.put<Seminar>(`/seminars/${id}`, data);
 
+export const uploadSeminarTestImage = (id: string, file: File) => {
+	const form = new FormData();
+	form.append('image', file);
+	return apiClient.postForm<{ url: string }>(`/seminars/${id}/test-image`, form);
+};
+
 export const addParticipant = (seminarId: string, form: ParticipantForm) =>
 	apiClient.post<SeminarParticipant>(
 		`/seminars/${seminarId}/participants`,

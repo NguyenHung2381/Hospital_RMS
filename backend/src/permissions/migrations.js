@@ -372,6 +372,11 @@ const migrateRolesAndSessions = async ({ dryRun = false } = {}) => {
       IF OBJECT_ID('system_settings', 'U') IS NOT NULL AND COL_LENGTH('system_settings', 'created_by') IS NULL
         ALTER TABLE system_settings ADD created_by VARCHAR(20) NULL;
     `);
+		// Ảnh minh hoạ câu hỏi. Tương đương 2026-10-27_question_image.sql.
+		await pool.request().query(`
+      IF OBJECT_ID('question_bank', 'U') IS NOT NULL AND COL_LENGTH('question_bank', 'image_url') IS NULL
+        ALTER TABLE question_bank ADD image_url NVARCHAR(500) NULL;
+    `);
 	}
 
 	const sysPerm = (

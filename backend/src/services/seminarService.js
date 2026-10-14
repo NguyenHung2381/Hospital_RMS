@@ -8,6 +8,9 @@ const { getPool, sql } = require('../config/db');
 const { broadcast } = require('./eventService');
 const { paging } = require('../utils/paging');
 const { splitList, inClause, buildWhere } = require('../utils/sqlFilters');
+const fs = require('fs');
+const path = require('path');
+const { UPLOADS_ROOT, SAFE_ID, removeUploadedFile, toStoredUploadPath } = require('../utils/uploadPaths');
 
 const EVENT_TYPES = [
 	'conference',
@@ -122,10 +125,19 @@ const yearOf = (data) => {
 	return m ? parseInt(m[1], 10) : null;
 };
 
-// Bài test cuối buổi: [{ q, options: [..≥2], answer: index }] — trắc nghiệm 1
-// đáp án, chấm tự động khi nộp (seminarParticipantService.submitTest).
+// Bài test cuối buổi: [{ q, image?, options: [..≥2], answer: index }] — trắc
+// nghiệm 1 đáp án, chấm tự động khi nộp (seminarParticipantService.submitTest).
+// image: ảnh minh hoạ, tải lên qua POST /seminars/:id/test-image.
 const badQuestions = (msg) => Object.assign(new Error(msg), { statusCode: 400 });
-const normalizeTestQuestions = (raw) => {
+const testImageDir = (seminarId) => `/uploads/seminars/${seminarId}/test/`;
+const testImages = (json) => {
+	try {
+		return (JSON.parse(json || '[]') || []).map((x) => x?.image).filter(Boolean);
+	} catch {
+		return [];
+	}
+};
+const normalizeTestQuestions = (raw, seminarId) => {
 	if (raw === null || raw === '') return null;
 	if (!Array.isArray(raw)) throw badQuestions('Danh sách câu hỏi không hợp lệ.');
 	if (!raw.length) return null;
@@ -139,7 +151,8 @@ const normalizeTestQuestions = (raw) => {
 		if (options.some((o) => !o)) throw badQuestions(`Câu ${i + 1}: có phương án để trống.`);
 		if (!Number.isInteger(answer) || answer < 0 || answer >= options.length)
 			throw badQuestions(`Câu ${i + 1}: chưa chọn đáp án đúng.`);
-		return { q, options, answer };
+		const image = toStoredUploadPath(x?.image, testImageDir(seminarId));
+		return image ? { q, image, options, answer } : { q, options, answer };
 	});
 	return JSON.stringify(out);
 };
@@ -244,9 +257,16 @@ const update = async (id, data, actorId) => {
 		sets.push('test_open = @test_open');
 		req.input('test_open', sql.Bit, data.test_open ? 1 : 0);
 	}
+	let removedImages = [];
 	if (data.test_questions !== undefined) {
+		const next = normalizeTestQuestions(data.test_questions, id);
+		const prev = (
+			await pool.request().input('id', sql.VarChar(20), id).query('SELECT test_questions FROM seminars WHERE id = @id')
+		).recordset[0]?.test_questions;
+		const kept = new Set(testImages(next));
+		removedImages = testImages(prev).filter((img) => !kept.has(img));
 		sets.push('test_questions = @test_questions');
-		req.input('test_questions', sql.NVarChar(sql.MAX), normalizeTestQuestions(data.test_questions));
+		req.input('test_questions', sql.NVarChar(sql.MAX), next);
 	}
 	if (data.event_year !== undefined || data.start_date !== undefined) {
 		sets.push('event_year = @event_year');
@@ -256,6 +276,7 @@ const update = async (id, data, actorId) => {
 	await req.query(
 		`EXEC sp_set_actor @actor_id; UPDATE seminars SET ${sets.join(', ')} WHERE id = @id`,
 	);
+	removedImages.forEach(removeUploadedFile);
 	broadcast('update', { entity: 'seminar' });
 	return getById(id);
 };
@@ -283,6 +304,8 @@ const remove = async (id, actorId) => {
 		.query(
 			`EXEC sp_set_actor @actor_id; DELETE FROM seminars WHERE id = @id`,
 		);
+	// Ảnh bài test của sự kiện (uploads/seminars/<id>/)
+	if (SAFE_ID.test(id)) fs.rm(path.join(UPLOADS_ROOT, 'seminars', id), { recursive: true, force: true }, () => {});
 	broadcast('update', { entity: 'seminar' });
 };
 

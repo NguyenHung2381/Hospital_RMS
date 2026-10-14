@@ -127,6 +127,8 @@ export interface Seminar {
 
 export interface SeminarTestQuestion {
 	q: string;
+	/** Ảnh minh hoạ (link /uploads đã ký) */
+	image?: string | null;
 	options: string[];
 	/** Chỉ số phương án đúng */
 	answer: number;

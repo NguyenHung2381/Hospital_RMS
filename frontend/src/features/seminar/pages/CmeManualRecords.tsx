@@ -1167,7 +1167,7 @@ function ImportModal({
 						<div className={styles.accountsHeader}>
 							<span className={styles.formLabel}>
 								Tài khoản vừa tạo ({accounts.length}) — mật khẩu ban đầu là tên đăng nhập, bắt đổi khi đăng nhập
-								lần đầu
+								lần đầu. Đã gửi thông báo tới từng tài khoản mới; danh sách cũng lưu trong mục Thông báo của bạn.
 							</span>
 							<div style={{ display: 'flex', gap: 6 }}>
 								{canUpdateStaff && incomplete.length > 0 && (

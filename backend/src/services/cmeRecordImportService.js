@@ -11,6 +11,7 @@ const ExcelJS = require('exceljs');
 const { parseDateCell, parseCredits, parseStaffNumber, readSheet } = require('../utils/excelImport');
 const cmeRecordService = require('./cmeRecordService');
 const userService = require('./userService');
+const notificationService = require('./notificationService');
 const { ROLE, inputRoleId } = require('./roleCodes');
 const xl = require('../utils/excelTemplate');
 
@@ -336,6 +337,37 @@ const buildPreview = (rows, lookups, defaults = {}) => {
 	});
 };
 
+// Báo tài khoản vừa tạo: người được tạo (thấy khi đăng nhập; kèm email nếu bật
+// ACCOUNT_GRANTED) và người nhập (xem lại danh sách sau khi đã đóng hộp thoại).
+// push tự nuốt lỗi → thông báo hỏng không ảnh hưởng việc nhập.
+const notifyCreatedStaff = async (staff, actorId) => {
+	if (!staff.length) return;
+	await notificationService.pushWithEmail(
+		'account_granted',
+		'Tài khoản hệ thống đã được cấp',
+		staff.map((s) => s.id),
+		{
+			message:
+				'Tài khoản được tạo khi nhập ghi nhận CME. Mật khẩu ban đầu do khoa/phòng cung cấp — hệ thống sẽ yêu cầu đổi mật khẩu ở lần đăng nhập đầu.',
+			mailEvent: 'ACCOUNT_GRANTED',
+		},
+	);
+	const incomplete = staff.filter((s) => s.missing_name || s.missing_department).length;
+	const list = staff
+		.map((s) => `${s.full_name} (MNV ${s.staff_number}, ${s.department_name || 'chưa có khoa'}) — TĐN: ${s.username}`)
+		.join('; ');
+	await notificationService.push(
+		'account_granted',
+		`Đã tạo ${staff.length} tài khoản nhân viên mới khi nhập CME`,
+		[actorId],
+		{
+			message: `Mật khẩu ban đầu = tên đăng nhập, bắt đổi khi đăng nhập lần đầu.${
+				incomplete ? ` ${incomplete} người cần bổ sung thông tin ở màn Người dùng.` : ''
+			} ${list}`,
+		},
+	);
+};
+
 const importExcel = async ({ buffer, dry_run, defaults }, actorId) => {
 	const { rows: rawRows } = await parseWorkbook(buffer);
 	const lookups = await loadLookups();
@@ -427,6 +459,8 @@ const importExcel = async ({ buffer, dry_run, defaults }, actorId) => {
 		.filter((p) => !insertedRows.has(p.row))
 		.map(({ warnings: w, ...p }) => ({ ...p, missing_user: !p.user_id, warnings: w }));
 
+	await notifyCreatedStaff(created_staff, actorId);
+
 	return { dry_run: false, inserted, created_staff, skipped_rows, warnings };
 };
 
@@ -464,7 +498,7 @@ const createMissingStaff = async ({ staff_number, full_name, department_id }, ac
 		{ full_name: name, staff_number: staffNumber, department_id: dept.id, department_code: dept.code },
 		actorId,
 	);
-	return {
+	const staff = {
 		id: u.id,
 		username: u.username,
 		full_name: name,
@@ -473,6 +507,8 @@ const createMissingStaff = async ({ staff_number, full_name, department_id }, ac
 		missing_name: false,
 		missing_department: false,
 	};
+	await notifyCreatedStaff([staff], actorId);
+	return staff;
 };
 
 module.exports = { importExcel, templateWorkbook, createMissingStaff };
