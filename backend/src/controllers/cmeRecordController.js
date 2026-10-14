@@ -65,7 +65,16 @@ const importExcel = async (req, res, next) => {
 			return res.status(400).json({ success: false, message: 'Chưa chọn file Excel.' });
 		}
 		const out = await cmeRecordImportService.importExcel(
-			{ buffer: req.file.buffer, dry_run: req.body.dry_run === '1' || req.body.dry_run === 'true' },
+			{
+				buffer: req.file.buffer,
+				dry_run: req.body.dry_run === '1' || req.body.dry_run === 'true',
+				defaults: {
+					year: parseInt(req.body.year, 10) || null,
+					group_id: req.body.group_id || null,
+					category_id: req.body.category_id || null,
+					title: String(req.body.title || '').trim() || null,
+				},
+			},
 			req.user.id,
 		);
 		return success(res, out);

@@ -46,9 +46,18 @@ export const addCmeRecordEvidence = (id: string, file: File) => {
 	return apiClient.postForm<CmeRecord>(`/cme-records/${id}/evidence`, form);
 };
 
-export const importCmeRecordsExcel = (file: File, dryRun: boolean) => {
+// Giá trị mặc định chọn ở hộp thoại — áp cho dòng để trống ô tương ứng trong file
+export interface CmeRecordImportDefaults {
+	year: number;
+	group_id?: string;
+	category_id?: string;
+	title?: string;
+}
+
+export const importCmeRecordsExcel = (file: File, dryRun: boolean, defaults: CmeRecordImportDefaults) => {
 	const form = new FormData();
 	form.append('dry_run', dryRun ? '1' : '0');
+	for (const [k, v] of Object.entries(defaults)) if (v) form.append(k, String(v));
 	form.append('file', file);
 	return apiClient.postForm<CmeRecordImportResult>('/cme-records/import-excel', form);
 };

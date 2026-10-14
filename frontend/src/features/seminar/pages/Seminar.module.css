@@ -269,6 +269,13 @@
 }
 .formGroup { display: flex; flex-direction: column; gap: 4px; }
 .full { grid-column: 1 / -1; }
+/* Hộp thoại nhập CME: Năm / Nhóm / Loại 3 cột, hẹp thì tự xuống hàng */
+.importDefaults {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+	gap: var(--space-3) var(--space-4);
+	margin-bottom: var(--space-3);
+}
 .formLabel {
 	font-size: var(--font-size-sm);
 	font-weight: var(--font-weight-medium);

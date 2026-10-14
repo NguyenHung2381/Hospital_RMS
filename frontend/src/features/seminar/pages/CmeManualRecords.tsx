@@ -371,13 +371,35 @@ function RecordFormModal({
 	);
 }
 
-function ImportModal({ onClose, onDone }: { onClose: () => void; onDone: () => void }) {
+function ImportModal({
+	categories,
+	groups,
+	onClose,
+	onDone,
+}: {
+	categories: CmeCreditCategory[];
+	groups: { id: string; name: string }[];
+	onClose: () => void;
+	onDone: () => void;
+}) {
 	const [file, setFile] = useState<File | null>(null);
 	const [loading, setLoading] = useState(false);
 	const [error, setError] = useState('');
 	const [preview, setPreview] = useState<CmeRecordImportResult | null>(null);
 	const [result, setResult] = useState<CmeRecordImportResult | null>(null);
 	const [downloading, setDownloading] = useState(false);
+	// Mặc định áp cho dòng để trống ô tương ứng trong file
+	const [year, setYear] = useState(String(THIS_YEAR));
+	const [group, setGroup] = useState('');
+	const [categoryId, setCategoryId] = useState('');
+	const [title, setTitle] = useState('');
+	const inGroup = group ? categories.filter((c) => c.group_id === group) : categories;
+	const category = categories.find((c) => c.id === categoryId);
+	const yearOk = /^\d{4}$/.test(year);
+	const defaults = useMemo(
+		() => ({ year: Number(year), group_id: group, category_id: categoryId, title: title.trim() }),
+		[year, group, categoryId, title],
+	);
 
 	const downloadTemplate = async () => {
 		setDownloading(true);
@@ -390,25 +412,37 @@ function ImportModal({ onClose, onDone }: { onClose: () => void; onDone: () => v
 		}
 	};
 
-	const runDryRun = async (f: File) => {
-		setLoading(true);
-		setError('');
-		setPreview(null);
-		try {
-			setPreview(await importCmeRecordsExcel(f, true));
-		} catch (e) {
-			setError(e instanceof Error ? e.message : 'Đọc file thất bại');
-		} finally {
-			setLoading(false);
-		}
-	};
+	// Đọc thử lại mỗi khi đổi file hoặc giá trị mặc định (trễ 400ms khi đang gõ tên hoạt động)
+	useEffect(() => {
+		if (!file || !yearOk) return;
+		let stale = false;
+		const t = setTimeout(async () => {
+			setLoading(true);
+			setError('');
+			try {
+				const res = await importCmeRecordsExcel(file, true, defaults);
+				if (!stale) setPreview(res);
+			} catch (e) {
+				if (!stale) {
+					setPreview(null);
+					setError(e instanceof Error ? e.message : 'Đọc file thất bại');
+				}
+			} finally {
+				setLoading(false);
+			}
+		}, 400);
+		return () => {
+			stale = true;
+			clearTimeout(t);
+		};
+	}, [file, yearOk, defaults]);
 
 	const commit = async () => {
-		if (!file) return;
+		if (!file || !yearOk) return;
 		setLoading(true);
 		setError('');
 		try {
-			const res = await importCmeRecordsExcel(file, false);
+			const res = await importCmeRecordsExcel(file, false, defaults);
 			setResult(res);
 			onDone();
 		} catch (e) {
@@ -433,7 +467,7 @@ function ImportModal({ onClose, onDone }: { onClose: () => void; onDone: () => v
 						{result ? 'Đóng' : 'Huỷ'}
 					</button>
 					{!result && (
-						<button className={styles.btnPrimary} onClick={commit} disabled={loading || !preview || rows.length === 0}>
+						<button className={styles.btnPrimary} onClick={commit} disabled={loading || !yearOk || !preview || rows.length === 0}>
 							{loading ? <span className={styles.spinner} /> : <UploadSvg />} Nhập {preview?.summary?.valid || ''} dòng hợp lệ
 						</button>
 					)}
@@ -445,9 +479,65 @@ function ImportModal({ onClose, onDone }: { onClose: () => void; onDone: () => v
 					<div className={styles.noticeBox}>
 						<InfoSvg />
 						<span>
-							Cột nhận diện: MNV hoặc <b>Họ và tên</b>, Danh mục, Nội dung, Ngày hoạt động, Số tín chỉ, Ghi
-							chú. Chỉ nhập các dòng khớp được nhân viên và có đủ ngày + số tín chỉ.
+							Nhân viên khớp theo <b>Mã NV</b>. Năm, Nhóm/Loại hình thức chọn dưới đây áp cho cả file. Tên hoạt
+							động mặc định dùng cho dòng để trống cột Hoạt động.
 						</span>
+					</div>
+					<div className={styles.importDefaults}>
+						<div className={styles.formGroup}>
+							<label className={styles.formLabel}>
+								Năm <span className={styles.required}>*</span>
+							</label>
+							<input
+								type='number'
+								className={`${styles.formInput} ${yearOk ? '' : styles.inputError}`}
+								value={year}
+								onChange={(e) => setYear(e.target.value)}
+							/>
+						</div>
+						<div className={styles.formGroup}>
+							<label className={styles.formLabel}>Nhóm hình thức (tùy chọn)</label>
+							<select
+								className={styles.formInput}
+								value={group}
+								onChange={(e) => {
+									setGroup(e.target.value);
+									setCategoryId('');
+								}}
+							>
+								<option value=''>-- Không chọn --</option>
+								{groups.map((g) => (
+									<option key={g.id} value={g.id}>
+										{g.name}
+									</option>
+								))}
+							</select>
+						</div>
+						<div className={styles.formGroup}>
+							<label className={styles.formLabel}>Loại hình thức (tùy chọn)</label>
+							<select className={styles.formInput} value={categoryId} onChange={(e) => setCategoryId(e.target.value)}>
+								<option value=''>-- Không chọn --</option>
+								{inGroup.map((c) => (
+									<option key={c.id} value={c.id}>
+										{c.name}
+									</option>
+								))}
+							</select>
+						</div>
+						<div className={`${styles.hint} ${styles.full}`}>
+							{category?.conversion_value
+								? `Giờ tín chỉ = Số lượng × ${category.conversion_value} giờ/${category.unit_label || 'lần'} — bắt buộc cột Số lượng (trống thì bỏ qua dòng), cột Giờ tín chỉ trong file không dùng.`
+								: 'Không có giờ quy đổi (loại "Khác" hoặc không chọn loại): không cần Số lượng, lấy cột Giờ tín chỉ trong file.'}
+						</div>
+						<div className={`${styles.formGroup} ${styles.full}`}>
+							<label className={styles.formLabel}>Tên hoạt động mặc định</label>
+							<input
+								className={styles.formInput}
+								value={title}
+								onChange={(e) => setTitle(e.target.value)}
+								placeholder="Dùng khi cột 'Hoạt động' trong file để trống"
+							/>
+						</div>
 					</div>
 					<button
 						type='button'
@@ -466,7 +556,7 @@ function ImportModal({ onClose, onDone }: { onClose: () => void; onDone: () => v
 							onChange={(f) => {
 								setFile(f);
 								setResult(null);
-								if (f) runDryRun(f);
+								setPreview(null);
 							}}
 							accept='.xlsx'
 						/>
@@ -500,6 +590,7 @@ function ImportModal({ onClose, onDone }: { onClose: () => void; onDone: () => v
 										<th>Năm</th>
 										<th>Vai trò</th>
 										<th>Ngày</th>
+										<th>Số lượng</th>
 										<th>Tín chỉ</th>
 									</tr>
 								</thead>
@@ -515,6 +606,7 @@ function ImportModal({ onClose, onDone }: { onClose: () => void; onDone: () => v
 											<td>{r.year ?? '—'}</td>
 											<td>{r.role || '—'}</td>
 											<td>{r.activity_date ? `${r.activity_date}${r.end_date ? ` → ${r.end_date}` : ''}` : '—'}</td>
+											<td>{r.quantity ?? '—'}</td>
 											<td>{r.credits ?? '—'}</td>
 										</tr>
 									))}
@@ -1017,7 +1109,7 @@ export default function CmeManualRecords() {
 					onSaved={refresh}
 				/>
 			)}
-			{showImport && <ImportModal onClose={() => setShowImport(false)} onDone={refresh} />}
+			{showImport && <ImportModal categories={categories} groups={groups} onClose={() => setShowImport(false)} onDone={refresh} />}
 
 			<Modal
 	open={!!rejecting || bulkRejecting}
