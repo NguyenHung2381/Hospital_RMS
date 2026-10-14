@@ -364,6 +364,14 @@ const migrateRolesAndSessions = async ({ dryRun = false } = {}) => {
         AND NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'UX_sp_ticket_code' AND object_id = OBJECT_ID('seminar_participants'))
         CREATE UNIQUE NONCLUSTERED INDEX UX_sp_ticket_code ON seminar_participants (ticket_code) WHERE ticket_code IS NOT NULL;
     `);
+		// systemSettingService.update() ghi created_by. Tương đương 2026-10-26_system_settings_created.sql.
+		await pool.request().query(`
+      IF OBJECT_ID('system_settings', 'U') IS NOT NULL AND COL_LENGTH('system_settings', 'created_at') IS NULL
+        ALTER TABLE system_settings ADD created_at DATETIME NOT NULL
+          CONSTRAINT DF_system_settings_created_at DEFAULT (GETDATE());
+      IF OBJECT_ID('system_settings', 'U') IS NOT NULL AND COL_LENGTH('system_settings', 'created_by') IS NULL
+        ALTER TABLE system_settings ADD created_by VARCHAR(20) NULL;
+    `);
 	}
 
 	const sysPerm = (

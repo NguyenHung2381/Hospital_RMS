@@ -71,14 +71,13 @@ export function ResetPasswordModal({
 					</div>
 					{tempPassword ? (
 						<div>
-							<div className={styles.modalTitle}>Mật khẩu tạm mới</div>
+							<div className={styles.modalTitle}>Đã đặt lại mật khẩu</div>
 							<div
 								className={styles.modalSubtitle}
 								style={{ marginTop: 6 }}
 							>
-								Gửi mật khẩu này cho <strong>{user.full_name}</strong> (
-								{user.username}). Mật khẩu chỉ hiển thị một lần; người dùng
-								phải đổi mật khẩu ở lần đăng nhập tới.
+								Mật khẩu của <strong>{user.full_name}</strong> đã được đặt về
+								tên đăng nhập. Người dùng phải đổi mật khẩu ở lần đăng nhập tới.
 							</div>
 							<div
 								style={{
@@ -102,9 +101,9 @@ export function ResetPasswordModal({
 								className={styles.modalSubtitle}
 								style={{ marginTop: 6 }}
 							>
-								Hệ thống sẽ tạo mật khẩu tạm ngẫu nhiên cho{' '}
-								<strong>{user.full_name}</strong> ({user.username}) và đăng
-								xuất tài khoản khỏi mọi thiết bị.
+								Mật khẩu của{' '}
+								<strong>{user.full_name}</strong> sẽ được đặt về tên đăng nhập (
+								{user.username}) và tài khoản bị đăng xuất khỏi mọi thiết bị.
 							</div>
 						</div>
 					)}

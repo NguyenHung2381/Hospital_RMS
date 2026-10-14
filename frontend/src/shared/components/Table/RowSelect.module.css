@@ -156,6 +156,39 @@ thead th.checkCol {
 	border-color: #ef4444;
 }
 
+/* Nút "Xoá tất cả" trong tableControls — cao bằng ô lọc */
+.deleteAllBtn {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	white-space: nowrap;
+	padding: var(--space-2) var(--space-3);
+	border: 1.5px solid #fca5a5;
+	border-radius: var(--radius-lg);
+	background: #fef2f2;
+	font-family: var(--font-body);
+	font-size: var(--font-size-sm);
+	font-weight: var(--font-weight-semibold, 600);
+	color: #991b1b;
+	cursor: pointer;
+	transition: all 0.15s ease;
+}
+
+.deleteAllBtn:hover:not(:disabled) {
+	background: #fee2e2;
+	border-color: #ef4444;
+}
+
+.deleteAllBtn:disabled {
+	opacity: 0.5;
+	cursor: not-allowed;
+}
+
+.deleteAllBtn svg {
+	width: 14px;
+	height: 14px;
+}
+
 .deleteText {
 	margin: 0;
 	font-size: var(--font-size-sm);

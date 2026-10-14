@@ -152,6 +152,100 @@ export function BulkDeleteModal({
 	);
 }
 
+interface DeleteAllButtonProps {
+	/** Số bản ghi khớp bộ lọc hiện tại (mọi trang). 0 thì ẩn nút. */
+	count: number;
+	itemLabel: string;
+	/** Lấy id toàn bộ bản ghi khớp bộ lọc — bảng phân trang server thì gọi API lấy hết. */
+	getIds: () => string[] | Promise<string[]>;
+	/** Thường dùng lại handler "Xoá đã chọn" của trang (tự toast + tải lại). */
+	onDelete: (ids: string[]) => Promise<unknown> | unknown;
+	/** Gọi sau khi xoá xong, vd bỏ chọn dòng. */
+	onDone?: () => void;
+	/** Cảnh báo hệ quả hiển thị trong hộp thoại. */
+	note?: ReactNode;
+	disabled?: boolean;
+}
+
+/**
+ * Nút "Xoá tất cả (N)" đặt cuối `tableControls`: xoá mọi bản ghi khớp bộ lọc
+ * hiện tại trên tất cả các trang, có hộp thoại xác nhận số lượng.
+ */
+export function DeleteAllButton({
+	count,
+	itemLabel,
+	getIds,
+	onDelete,
+	onDone,
+	note,
+	disabled,
+}: DeleteAllButtonProps) {
+	const [open, setOpen] = useState(false);
+	const [busy, setBusy] = useState(false);
+	if (count <= 0) return null;
+
+	const handleConfirm = async () => {
+		setBusy(true);
+		try {
+			const ids = await getIds();
+			if (ids.length) await onDelete(ids);
+			onDone?.();
+			setOpen(false);
+		} catch (e) {
+			alert(e instanceof Error ? e.message : 'Xoá thất bại');
+		} finally {
+			setBusy(false);
+		}
+	};
+
+	return (
+		<>
+			<button
+				type='button'
+				className={styles.deleteAllBtn}
+				onClick={() => setOpen(true)}
+				disabled={disabled || busy}
+				title={`Xoá toàn bộ ${itemLabel} đang khớp bộ lọc (mọi trang)`}
+			>
+				<TrashSvg /> Xoá tất cả ({count})
+			</button>
+			<Modal
+				open={open}
+				onClose={() => !busy && setOpen(false)}
+				title='Xoá tất cả'
+				size='sm'
+				footer={
+					<>
+						<Button
+							variant='ghost'
+							onClick={() => setOpen(false)}
+							disabled={busy}
+						>
+							Huỷ
+						</Button>
+						<Button
+							variant='danger'
+							onClick={handleConfirm}
+							loading={busy}
+						>
+							Xoá {count} {itemLabel}
+						</Button>
+					</>
+				}
+			>
+				<p className={styles.deleteText}>
+					Bạn có chắc muốn xoá vĩnh viễn{' '}
+					<strong>
+						toàn bộ {count} {itemLabel}
+					</strong>{' '}
+					đang khớp bộ lọc hiện tại (trên mọi trang)? Thao tác này không thể hoàn tác.
+				</p>
+				{note && <div className={styles.deleteNote}>{note}</div>}
+			</Modal>
+		</>
+	);
+}
+
 /** Phần API từ `useRowSelection` mà `BulkBar` cần. */
 export interface RowSelectionLike {
 	selectedIds: Set<string>;

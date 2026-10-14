@@ -13,7 +13,22 @@ import { getStoredUser, type StoredUser } from '../../shared/utils/storage';
 import { logout } from '../../features/auth/api/authApi';
 import TwoFactorReminder from '../../shared/components/TwoFactorReminder';
 import styles from './UserLayout.module.css';
-import { Icon } from './icons';
+import {
+	BadgeSvg,
+	BarChartSvg,
+	BellSvg,
+	BookOpenSvg,
+	ClipboardCheckSvg,
+	ClipboardSvg,
+	DashboardSvg,
+	DocPlusSvg,
+	LogoutSvg,
+	MenuSvg,
+	MoreVSvg,
+	TopicSvg,
+	UserSvg,
+	UsersSvg,
+} from '@/assets/icons';
 
 // ─── ROUTE MAP ────────────────────────────
 const KEY_TO_PATH: Record<string, string> = {
@@ -52,37 +67,37 @@ interface NavItem {
 // Mục chính nằm trên thanh; mục "tài khoản" gom vào menu avatar.
 // Thứ tự theo mảng nghiệp vụ: chung → NCKH → Đào tạo → CME → Khảo sát.
 const PRIMARY_NAV: NavItem[] = [
-	{ key: 'home', label: 'Trang chủ', icon: <Icon.Dashboard /> },
-	{ key: 'myTasks', label: 'Việc của tôi', icon: <Icon.Grading /> },
-	{ key: 'myTopics', label: 'Đề tài của tôi', icon: <Icon.Topic /> },
+	{ key: 'home', label: 'Trang chủ', icon: <DashboardSvg className={styles.navIcon} /> },
+	{ key: 'myTasks', label: 'Việc của tôi', icon: <ClipboardCheckSvg className={styles.navIcon} /> },
+	{ key: 'myTopics', label: 'Đề tài của tôi', icon: <TopicSvg className={styles.navIcon} /> },
 	{
 		key: 'registerTopic',
 		label: 'Đăng ký đề tài',
-		icon: <Icon.Register />,
+		icon: <DocPlusSvg className={styles.navIcon} />,
 		restrictMember: true,
 		needsRegistrationWindow: true,
 	},
 	{
 		key: 'councilProgress',
 		label: 'Đánh giá tiến độ',
-		icon: <Icon.Grading />,
+		icon: <ClipboardCheckSvg className={styles.navIcon} />,
 		councilOnly: true,
 	},
-	{ key: 'myTraining', label: 'Khóa học của tôi', icon: <Icon.Course /> },
-	{ key: 'attendanceCheckIn', label: 'Điểm danh QR', icon: <Icon.AttendanceCheckIn /> },
-	{ key: 'myCme', label: 'CME của tôi', icon: <Icon.Cme /> },
-	{ key: 'surveys', label: 'Khảo sát', icon: <Icon.Survey /> },
+	{ key: 'myTraining', label: 'Khóa học của tôi', icon: <BookOpenSvg className={styles.navIcon} /> },
+	{ key: 'attendanceCheckIn', label: 'Điểm danh QR', icon: <BadgeSvg className={styles.navIcon} /> },
+	{ key: 'myCme', label: 'CME của tôi', icon: <BarChartSvg className={styles.navIcon} /> },
+	{ key: 'surveys', label: 'Khảo sát', icon: <ClipboardSvg className={styles.navIcon} /> },
 ];
 
 const ACCOUNT_NAV: NavItem[] = [
-	{ key: 'profile', label: 'Hồ sơ cá nhân', icon: <Icon.Profile /> },
+	{ key: 'profile', label: 'Hồ sơ cá nhân', icon: <UserSvg className={styles.navIcon} /> },
 	{
 		key: 'deptAccounts',
 		label: 'Tài khoản trong khoa',
-		icon: <Icon.Users />,
+		icon: <UsersSvg className={styles.navIcon} />,
 		managerOnly: true,
 	},
-	{ key: 'notifications', label: 'Thông báo', icon: <Icon.Notif /> },
+	{ key: 'notifications', label: 'Thông báo', icon: <BellSvg className={styles.navIcon} /> },
 ];
 
 // ─── PROPS ────────────────────────────────
@@ -253,7 +268,7 @@ export default function UserLayout({
 							aria-label='Mở menu'
 							aria-expanded={mobileNavOpen}
 						>
-							<Icon.Menu />
+							<MenuSvg />
 						</button>
 					)}
 
@@ -304,7 +319,7 @@ export default function UserLayout({
 									<span className={styles.userRole}>{userRole}</span>
 								</span>
 								<span className={styles.userChevron}>
-									<Icon.MoreV />
+									<MoreVSvg style={{ width: 14, height: 14 }} />
 								</span>
 							</button>
 
@@ -330,7 +345,7 @@ export default function UserLayout({
 										onClick={handleLogout}
 										role='menuitem'
 									>
-										<Icon.LogOut />
+										<LogoutSvg />
 										<span>Đăng xuất</span>
 									</button>
 								</div>
@@ -378,7 +393,7 @@ export default function UserLayout({
 							className={`${styles.mobileNavItem} ${styles.userDropdownDanger}`}
 							onClick={handleLogout}
 						>
-							<Icon.LogOut />
+							<LogoutSvg />
 							<span>Đăng xuất</span>
 						</button>
 					</div>

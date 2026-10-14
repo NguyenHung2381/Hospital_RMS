@@ -12,7 +12,7 @@ const {
 	genUserIdInTx,
 } = require('./topicMemberService');
 const { ROLE, requireRoleId } = require('./roleCodes');
-const { generateTempPassword } = require('../utils/passwordPolicy');
+const { defaultPassword } = require('../utils/passwordPolicy');
 
 const traineeSelect = `
   SELECT t.*, tt.name AS trainee_type_name, d.name AS department_name
@@ -269,8 +269,8 @@ const removeDocument = async (docId, actorId) => {
 // Khác topic_members ở chỗ học viên không thuộc 1 khoa/phòng thống nhất (mỗi
 // học viên tự có department_id riêng, có thể null) nên mã NV dùng mã khoa của
 // CHÍNH học viên đó, hoặc tiền tố chung 'HV' nếu học viên không gắn khoa nào.
-// Mỗi học viên 1 mật khẩu tạm ngẫu nhiên (thay cho '123456' dùng chung), bắt
-// đổi ở lần đăng nhập đầu (users.must_change_password).
+// Mật khẩu mặc định = tên đăng nhập, bắt đổi ở lần đăng nhập đầu
+// (users.must_change_password).
 
 const grantAccounts = async (traineeIds, actorId) => {
 	const pool = await getPool();
@@ -303,10 +303,6 @@ const grantAccounts = async (traineeIds, actorId) => {
 		const baseUsername = buildMemberUsername(trainee.full_name, usernameSeed);
 		const deptCode = trainee.department_code || 'HV';
 
-		// Hash TRƯỚC khi mở transaction — bcrypt ~0,2s, không giữ applock sinh mã lâu hơn cần
-		const tempPassword = generateTempPassword();
-		const passwordHash = await bcrypt.hash(tempPassword, 12);
-
 		const tx = new sql.Transaction(pool);
 		let began = false;
 		try {
@@ -323,6 +319,8 @@ const grantAccounts = async (traineeIds, actorId) => {
 			}
 
 			const username = await ensureUniqueUsername(tx, baseUsername, userId);
+			const tempPassword = defaultPassword(username);
+			const passwordHash = await bcrypt.hash(tempPassword, 12);
 			const storedEmail =
 				trainee.email && trainee.email.trim()
 					? trainee.email.trim()

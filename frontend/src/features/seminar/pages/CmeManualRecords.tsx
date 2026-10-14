@@ -19,15 +19,18 @@ import { useRealtimeUpdate } from '../../../layouts/hooks/useRealtime';
 import { Badge, FileDropzone, Modal, Pagination, SearchableSelect } from '@/shared/components';
 import { InlineLoading } from '../../../shared/components/Loading';
 import sel from '@/shared/components/Table/RowSelect.module.css';
-import { BulkButton, SelectCheckbox, SelectionBar } from '@/shared/components/Table/RowSelect';
+import { BulkButton, BulkDeleteModal, DeleteAllButton, SelectCheckbox, SelectionBar } from '@/shared/components/Table/RowSelect';
 import { useRowSelection } from '@/shared/hooks/useRowSelection';
 import { apiClient } from '../../../shared/api/axios';
 import {
 	addCmeRecordEvidence,
 	approveCmeRecord,
 	rejectCmeRecord,
+	createCmeImportStaff,
 	createCmeRecord,
+	createCmeRecordFromImportRow,
 	deleteCmeRecord,
+	deleteCmeRecords,
 	downloadCmeRecordImportTemplate,
 	exportCmeRecordsExcel,
 	getCmeCreditCategories,
@@ -37,12 +40,14 @@ import {
 	updateCmeRecord,
 } from '../api/cmeRecordApi';
 import { useSeminarPerms } from '../utils/perms';
+import { usePermission } from '@/shared/hooks/usePermission';
 import { saveBlob } from '../utils/saveBlob';
 import {
 	EMPTY_CME_RECORD_FORM,
 	type CmeCreditCategory,
 	type CmeRecord,
 	type CmeRecordFormData,
+	type CmeImportCreatedStaff,
 	type CmeRecordImportResult,
 } from '../types/cmeRecord.type';
 import styles from './Seminar.module.css';
@@ -371,6 +376,90 @@ function RecordFormModal({
 	);
 }
 
+/** Nút "Thêm NV" trong hộp thoại nhập: thêm nhân viên cho Mã NV chưa có trong hệ thống. */
+function AddStaffModal({
+	staffNumber,
+	fullName,
+	departments,
+	onClose,
+	onCreated,
+}: {
+	staffNumber: number;
+	fullName: string;
+	departments: { id: string; name: string }[];
+	onClose: () => void;
+	onCreated: (staff: CmeImportCreatedStaff) => Promise<void> | void;
+}) {
+	const [name, setName] = useState(fullName);
+	const [deptId, setDeptId] = useState('');
+	const [busy, setBusy] = useState(false);
+	const [error, setError] = useState('');
+
+	const save = async () => {
+		if (!name.trim() || !deptId) {
+			setError('Vui lòng nhập họ tên và chọn khoa/phòng');
+			return;
+		}
+		setBusy(true);
+		setError('');
+		try {
+			const staff = await createCmeImportStaff({ staff_number: staffNumber, full_name: name.trim(), department_id: deptId });
+			await onCreated(staff);
+			onClose();
+		} catch (e) {
+			setError(e instanceof Error ? e.message : 'Thêm nhân viên thất bại');
+		} finally {
+			setBusy(false);
+		}
+	};
+
+	return (
+		<Modal
+			open
+			onClose={() => !busy && onClose()}
+			title={`Thêm nhân viên Mã NV ${staffNumber}`}
+			size='sm'
+			footer={
+				<>
+					<button className={styles.btnCancel} onClick={onClose} disabled={busy}>
+						Huỷ
+					</button>
+					<button className={styles.btnPrimary} onClick={save} disabled={busy}>
+						{busy ? <span className={styles.spinner} /> : <PlusSvg />} Thêm nhân viên
+					</button>
+				</>
+			}
+		>
+			{error && <div className={styles.fieldError}>{error}</div>}
+			<div className={styles.formGroup}>
+				<label className={styles.formLabel}>Mã NV</label>
+				<input className={styles.formInput} value={staffNumber} disabled />
+			</div>
+			<div className={styles.formGroup}>
+				<label className={styles.formLabel}>
+					Họ và tên <span className={styles.required}>*</span>
+				</label>
+				<input className={styles.formInput} value={name} onChange={(e) => setName(e.target.value)} autoFocus />
+			</div>
+			<div className={styles.formGroup}>
+				<label className={styles.formLabel}>
+					Khoa / Phòng <span className={styles.required}>*</span>
+				</label>
+				<SearchableSelect
+					options={departments}
+					value={deptId}
+					onChange={setDeptId}
+					placeholder={departments.length ? 'Chọn khoa/phòng' : 'Đang tải danh sách...'}
+				/>
+			</div>
+			<div className={styles.hint}>
+				Tạo luôn tài khoản vai trò Thành viên: mật khẩu ban đầu là <b>tên đăng nhập</b>, bắt đổi ở lần đăng nhập
+				đầu.
+			</div>
+		</Modal>
+	);
+}
+
 function ImportModal({
 	categories,
 	groups,
@@ -393,12 +482,46 @@ function ImportModal({
 	const [group, setGroup] = useState('');
 	const [categoryId, setCategoryId] = useState('');
 	const [title, setTitle] = useState('');
+	const [quantity, setQuantity] = useState('');
+	// Mã NV chưa có trong hệ thống → tạo nhân viên mới (tạo tài khoản ⇒ cần users:create)
+	const canCreateStaff = usePermission().has('users:create');
+	// Mặc định bật: file thường chỉ có Mã NV, người chưa có trong hệ thống được tạo luôn
+	const [createMissing, setCreateMissing] = useState(canCreateStaff);
+	// Tài khoản tạo bằng nút "Thêm NV" (gộp với result.created_staff để hiển thị chung)
+	const [manualAccounts, setManualAccounts] = useState<CmeImportCreatedStaff[]>([]);
+	const [newDeptId, setNewDeptId] = useState('');
+	const [departments, setDepartments] = useState<{ id: string; name: string }[]>([]);
+	// Nút "Thêm NV": phase 'preview' → đọc lại file; 'result' → nhập tiếp các dòng đã bỏ qua
+	const [adding, setAdding] = useState<{ staffNumber: number; fullName: string; phase: 'preview' | 'result' } | null>(
+		null,
+	);
+	const [previewKey, setPreviewKey] = useState(0);
+	const [addedAfter, setAddedAfter] = useState<
+		Record<number, { staff: CmeImportCreatedStaff; imported: number; failed: number }>
+	>({});
+	useEffect(() => {
+		if ((!createMissing && !adding) || departments.length) return;
+		apiClient
+			.get<{ data: { id: string; name: string }[] }>('/departments?limit=0')
+			.then((r) => setDepartments(r.data))
+			.catch(() => setError('Không tải được danh sách khoa/phòng'));
+	}, [createMissing, adding, departments.length]);
 	const inGroup = group ? categories.filter((c) => c.group_id === group) : categories;
 	const category = categories.find((c) => c.id === categoryId);
 	const yearOk = /^\d{4}$/.test(year);
+	const quantityNum = quantity.trim() === '' ? undefined : Number(quantity);
+	const quantityOk = quantityNum === undefined || (Number.isFinite(quantityNum) && quantityNum > 0);
 	const defaults = useMemo(
-		() => ({ year: Number(year), group_id: group, category_id: categoryId, title: title.trim() }),
-		[year, group, categoryId, title],
+		() => ({
+			year: Number(year),
+			group_id: group,
+			category_id: categoryId,
+			title: title.trim(),
+			quantity: quantityOk ? quantityNum : undefined,
+			create_missing: createMissing,
+			new_department_id: createMissing ? newDeptId : undefined,
+		}),
+		[year, group, categoryId, title, quantityOk, quantityNum, createMissing, newDeptId],
 	);
 
 	const downloadTemplate = async () => {
@@ -435,10 +558,10 @@ function ImportModal({
 			stale = true;
 			clearTimeout(t);
 		};
-	}, [file, yearOk, defaults]);
+	}, [file, yearOk, defaults, previewKey]);
 
 	const commit = async () => {
-		if (!file || !yearOk) return;
+		if (!file || !yearOk || !quantityOk) return;
 		setLoading(true);
 		setError('');
 		try {
@@ -452,185 +575,462 @@ function ImportModal({
 		}
 	};
 
+	// Dòng đã bỏ qua vì chưa có nhân viên, gom theo Mã NV (màn kết quả)
+	const missingGroups = useMemo(() => {
+		const map = new Map<
+			number,
+			{ staffNumber: number; fullName: string; rows: NonNullable<CmeRecordImportResult['skipped_rows']> }
+		>();
+		for (const r of result?.skipped_rows ?? []) {
+			if (!r.missing_user || r.staff_number == null) continue;
+			const g = map.get(r.staff_number) ?? { staffNumber: r.staff_number, fullName: r.full_name_raw ?? '', rows: [] };
+			if (!g.fullName && r.full_name_raw) g.fullName = r.full_name_raw;
+			g.rows.push(r);
+			map.set(r.staff_number, g);
+		}
+		return [...map.values()];
+	}, [result]);
+
+	const onStaffCreated = async (staff: CmeImportCreatedStaff) => {
+		setManualAccounts((a) => [...a, staff]);
+		if (adding?.phase === 'preview') {
+			setPreviewKey((k) => k + 1); // đọc lại file → dòng của Mã NV này khớp nhân viên vừa thêm
+			return;
+		}
+		// Màn kết quả: nhập tiếp các dòng của Mã NV này (dòng thiếu năm/tín chỉ vẫn bỏ qua)
+		const group = missingGroups.find((g) => g.staffNumber === staff.staff_number);
+		let imported = 0;
+		let failed = 0;
+		for (const r of group?.rows ?? []) {
+			if (!r.year || r.credits == null) {
+				failed++;
+				continue;
+			}
+			try {
+				await createCmeRecordFromImportRow(r, staff.id);
+				imported++;
+			} catch {
+				failed++;
+			}
+		}
+		setAddedAfter((m) => ({ ...m, [staff.staff_number]: { staff, imported, failed } }));
+		onDone();
+	};
+
+	const accounts = [...(result?.created_staff ?? []), ...manualAccounts];
+	// Danh sách tài khoản để phát cho nhân viên — CSV có BOM để Excel đọc đúng tiếng Việt
+	const downloadAccounts = () => {
+		const esc = (v: unknown) => `"${String(v ?? '').replace(/"/g, '""')}"`;
+		const lines = [
+			['Mã NV', 'Họ và tên', 'Khoa/Phòng', 'Tên đăng nhập', 'Mật khẩu ban đầu', 'Ghi chú'],
+			...accounts.map((u) => [
+				u.staff_number,
+				u.full_name,
+				u.department_name ?? '',
+				u.username,
+				u.username,
+				[u.missing_name && 'Cần bổ sung tên', u.missing_department && 'Cần bổ sung khoa'].filter(Boolean).join('; '),
+			]),
+		].map((r) => r.map(esc).join(','));
+		saveBlob(
+			new Blob(['\uFEFF' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8' }),
+			`tai-khoan-nhan-vien-moi-${new Date().toISOString().slice(0, 10)}.csv`,
+		);
+	};
+
 	const rows = preview?.rows ?? [];
 	const pg = useClientPaging(rows);
 
 	return (
-		<Modal
-			open
-			onClose={onClose}
-			title='Nhập ghi nhận CME từ Excel'
-			size='lg'
-			footer={
-				<>
-					<button className={styles.btnCancel} onClick={onClose} disabled={loading}>
-						{result ? 'Đóng' : 'Huỷ'}
-					</button>
-					{!result && (
-						<button className={styles.btnPrimary} onClick={commit} disabled={loading || !yearOk || !preview || rows.length === 0}>
-							{loading ? <span className={styles.spinner} /> : <UploadSvg />} Nhập {preview?.summary?.valid || ''} dòng hợp lệ
+		<>
+			<Modal
+				open
+				onClose={() => !adding && onClose()}
+				title='Nhập ghi nhận CME từ Excel'
+				size='lg'
+				footer={
+					<>
+						<button className={styles.btnCancel} onClick={onClose} disabled={loading}>
+							{result ? 'Đóng' : 'Huỷ'}
 						</button>
-					)}
-				</>
-			}
-		>
-			{!result && (
-				<>
-					<div className={styles.noticeBox}>
-						<InfoSvg />
-						<span>
-							Nhân viên khớp theo <b>Mã NV</b>. Năm, Nhóm/Loại hình thức chọn dưới đây áp cho cả file. Tên hoạt
-							động mặc định dùng cho dòng để trống cột Hoạt động.
-						</span>
-					</div>
-					<div className={styles.importDefaults}>
-						<div className={styles.formGroup}>
-							<label className={styles.formLabel}>
-								Năm <span className={styles.required}>*</span>
-							</label>
-							<input
-								type='number'
-								className={`${styles.formInput} ${yearOk ? '' : styles.inputError}`}
-								value={year}
-								onChange={(e) => setYear(e.target.value)}
-							/>
-						</div>
-						<div className={styles.formGroup}>
-							<label className={styles.formLabel}>Nhóm hình thức (tùy chọn)</label>
-							<select
-								className={styles.formInput}
-								value={group}
-								onChange={(e) => {
-									setGroup(e.target.value);
-									setCategoryId('');
-								}}
-							>
-								<option value=''>-- Không chọn --</option>
-								{groups.map((g) => (
-									<option key={g.id} value={g.id}>
-										{g.name}
-									</option>
-								))}
-							</select>
-						</div>
-						<div className={styles.formGroup}>
-							<label className={styles.formLabel}>Loại hình thức (tùy chọn)</label>
-							<select className={styles.formInput} value={categoryId} onChange={(e) => setCategoryId(e.target.value)}>
-								<option value=''>-- Không chọn --</option>
-								{inGroup.map((c) => (
-									<option key={c.id} value={c.id}>
-										{c.name}
-									</option>
-								))}
-							</select>
-						</div>
-						<div className={`${styles.hint} ${styles.full}`}>
-							{category?.conversion_value
-								? `Giờ tín chỉ = Số lượng × ${category.conversion_value} giờ/${category.unit_label || 'lần'} — bắt buộc cột Số lượng (trống thì bỏ qua dòng), cột Giờ tín chỉ trong file không dùng.`
-								: 'Không có giờ quy đổi (loại "Khác" hoặc không chọn loại): không cần Số lượng, lấy cột Giờ tín chỉ trong file.'}
-						</div>
-						<div className={`${styles.formGroup} ${styles.full}`}>
-							<label className={styles.formLabel}>Tên hoạt động mặc định</label>
-							<input
-								className={styles.formInput}
-								value={title}
-								onChange={(e) => setTitle(e.target.value)}
-								placeholder="Dùng khi cột 'Hoạt động' trong file để trống"
-							/>
-						</div>
-					</div>
-					<button
-						type='button'
-						className={styles.btnGhost}
-						onClick={downloadTemplate}
-						disabled={downloading}
-						style={{ marginBottom: 12 }}
-					>
-						{downloading ? <span className={styles.spinner} /> : <DownloadSvg />}
-						Tải file mẫu
-					</button>
-					<div className={styles.formGroup}>
-						<label className={styles.formLabel}>File Excel (.xlsx)</label>
-						<FileDropzone
-							value={file}
-							onChange={(f) => {
-								setFile(f);
-								setResult(null);
-								setPreview(null);
-							}}
-							accept='.xlsx'
-						/>
-					</div>
-					{loading && <InlineLoading label='Đang đọc file…' />}
-					{error && <div className={styles.fieldError}>{error}</div>}
-					{preview?.summary && (
-						<div className={`${styles.noticeBox} ${styles.noticeOk}`}>
-							<CheckSvg />
+						{!result && (
+							<button className={styles.btnPrimary} onClick={commit} disabled={loading || !yearOk || !quantityOk || !preview || rows.length === 0}>
+								{loading ? <span className={styles.spinner} /> : <UploadSvg />} Nhập {preview?.summary?.valid || ''} dòng hợp lệ
+							</button>
+						)}
+					</>
+				}
+			>
+				{!result && (
+					<>
+						<div className={styles.noticeBox}>
+							<InfoSvg />
 							<span>
-								Đọc được <b>{preview.summary.total}</b> dòng · {preview.summary.matched} khớp nhân viên ·{' '}
-								{preview.summary.valid} hợp lệ để nhập.
+								Nhân viên khớp theo <b>Mã NV</b>. Năm, Nhóm/Loại hình thức chọn dưới đây áp cho cả file. Số lượng
+								và Tên hoạt động mặc định dùng cho dòng để trống cột tương ứng.
 							</span>
 						</div>
-					)}
-					{preview && preview.warnings.length > 0 && (
-						<ul className={styles.warnList}>
-							{preview.warnings.slice(0, 50).map((w, i) => (
-								<li key={i}>{w}</li>
-							))}
-						</ul>
-					)}
-					{rows.length > 0 && (
+						<div className={styles.importDefaults}>
+							<div className={styles.formGroup}>
+								<label className={styles.formLabel}>
+									Năm <span className={styles.required}>*</span>
+								</label>
+								<input
+									type='number'
+									className={`${styles.formInput} ${yearOk ? '' : styles.inputError}`}
+									value={year}
+									onChange={(e) => setYear(e.target.value)}
+								/>
+							</div>
+							<div className={styles.formGroup}>
+								<label className={styles.formLabel}>Nhóm hình thức (tùy chọn)</label>
+								<select
+									className={styles.formInput}
+									value={group}
+									onChange={(e) => {
+										setGroup(e.target.value);
+										setCategoryId('');
+									}}
+								>
+									<option value=''>-- Không chọn --</option>
+									{groups.map((g) => (
+										<option key={g.id} value={g.id}>
+											{g.name}
+										</option>
+									))}
+								</select>
+							</div>
+							<div className={styles.formGroup}>
+								<label className={styles.formLabel}>Loại hình thức (tùy chọn)</label>
+								<select className={styles.formInput} value={categoryId} onChange={(e) => setCategoryId(e.target.value)}>
+									<option value=''>-- Không chọn --</option>
+									{inGroup.map((c) => (
+										<option key={c.id} value={c.id}>
+											{c.name}
+										</option>
+									))}
+								</select>
+							</div>
+							<div className={`${styles.hint} ${styles.full}`}>
+								{category?.conversion_value
+									? `Giờ tín chỉ = Số lượng × ${category.conversion_value} giờ/${category.unit_label || 'lần'} — bắt buộc có Số lượng (ô trống lấy Số lượng mặc định, không có thì bỏ qua dòng), cột Giờ tín chỉ trong file không dùng.`
+									: 'Không có giờ quy đổi (loại "Khác" hoặc không chọn loại): không cần Số lượng, lấy cột Giờ tín chỉ trong file.'}
+							</div>
+							<div className={`${styles.full} ${styles.importDefaultsRow}`}>
+								<div className={styles.formGroup}>
+									<label className={styles.formLabel}>
+										Số lượng mặc định{category?.unit_label ? ` (${category.unit_label})` : ''}
+									</label>
+									<input
+										type='number'
+										min='0'
+										step='0.5'
+										className={`${styles.formInput} ${quantityOk ? '' : styles.inputError}`}
+										value={quantity}
+										onChange={(e) => setQuantity(e.target.value)}
+										placeholder='VD: 1'
+									/>
+								</div>
+								<div className={styles.formGroup}>
+									<label className={styles.formLabel}>Tên hoạt động mặc định</label>
+									<input
+										className={styles.formInput}
+										value={title}
+										onChange={(e) => setTitle(e.target.value)}
+										placeholder="Dùng khi cột 'Hoạt động' trong file để trống"
+									/>
+								</div>
+							</div>
+							{canCreateStaff && (
+								<div className={`${styles.full} ${styles.newStaffBox}`}>
+									<label className={styles.checkFilter}>
+										<input
+											type='checkbox'
+											checked={createMissing}
+											onChange={(e) => setCreateMissing(e.target.checked)}
+										/>
+										Tự tạo nhân viên + tài khoản cho Mã NV chưa có trong hệ thống
+									</label>
+									{createMissing && (
+										<>
+											<div className={styles.formGroup}>
+												<label className={styles.formLabel}>Khoa/Phòng cho nhân viên mới (khi không tìm được)</label>
+												<SearchableSelect
+													options={[{ id: '', name: '-- Để trống, bổ sung sau --' }, ...departments]}
+													value={newDeptId}
+													onChange={setNewDeptId}
+													placeholder='-- Để trống, bổ sung sau --'
+												/>
+											</div>
+											<div className={styles.hint}>
+												Chỉ cần <b>Mã NV</b>. Họ tên và khoa lấy lần lượt từ: cột <b>Họ và tên</b> / <b>Khoa/Phòng</b>{' '}
+												trong file → dữ liệu đề tài, hội thảo đã có trong hệ thống → khoa chọn ở trên. Không tìm được họ tên
+												thì tạm đặt &quot;Chưa cập nhật tên (MNV …)&quot; để bổ sung sau ở <b>Hệ thống → Người dùng</b>.
+												Tài khoản vai trò Thành viên, mật khẩu ban đầu là <b>tên đăng nhập</b>, bắt đổi ở lần đăng nhập đầu.
+											</div>
+										</>
+									)}
+								</div>
+							)}
+						</div>
+						<button
+							type='button'
+							className={styles.btnGhost}
+							onClick={downloadTemplate}
+							disabled={downloading}
+							style={{ marginBottom: 12 }}
+						>
+							{downloading ? <span className={styles.spinner} /> : <DownloadSvg />}
+							Tải file mẫu
+						</button>
+						<div className={styles.formGroup}>
+							<label className={styles.formLabel}>File Excel (.xlsx)</label>
+							<FileDropzone
+								value={file}
+								onChange={(f) => {
+									setFile(f);
+									setResult(null);
+									setPreview(null);
+								}}
+								accept='.xlsx'
+							/>
+						</div>
+						{loading && <InlineLoading label='Đang đọc file…' />}
+						{error && <div className={styles.fieldError}>{error}</div>}
+						{preview?.summary && (
+							<div className={`${styles.noticeBox} ${styles.noticeOk}`}>
+								<CheckSvg />
+								<span>
+									Đọc được <b>{preview.summary.total}</b> dòng · {preview.summary.matched} khớp nhân viên ·{' '}
+									{preview.summary.valid} hợp lệ để nhập
+									{preview.summary.new_staff > 0 && (
+										<>
+											{' '}
+											· sẽ tạo <b>{preview.summary.new_staff}</b> nhân viên mới
+										</>
+									)}
+									.
+								</span>
+							</div>
+						)}
+						{preview && preview.warnings.length > 0 && (
+							<ul className={styles.warnList}>
+								{preview.warnings.slice(0, 50).map((w, i) => (
+									<li key={i}>{w}</li>
+								))}
+							</ul>
+						)}
+						{rows.length > 0 && (
+							<div className={styles.importPreview}>
+								<table className={styles.table}>
+									<thead>
+										<tr>
+											<th className={tbl.thIdx}>STT</th>
+											<th>Nhân viên</th>
+											<th>Nội dung</th>
+											<th>Năm</th>
+											<th>Vai trò</th>
+											<th>Ngày</th>
+											<th>Số lượng</th>
+											<th>Tín chỉ</th>
+										</tr>
+									</thead>
+									<tbody>
+										{pg.paged.map((r, i) => (
+											<tr key={r.row}>
+												<td className={styles.tdIdx}>{pg.offset + i + 1}</td>
+												<td>
+													{r.matched_user_name || r.full_name_raw || '—'}
+													{r.new_staff && (
+														<div>
+															<Badge tone='blue'>NV mới</Badge>{' '}
+															<span className={styles.muted}>
+																MNV {r.new_staff.staff_number} · {r.new_staff.department_name ?? 'chưa có khoa'}
+															</span>
+															{r.new_staff.missing_name && (
+																<>
+																	{' '}
+																	<Badge tone='amber'>Chưa có tên</Badge>
+																</>
+															)}
+														</div>
+													)}
+													{!r.valid && <div className={styles.rowWarn}>Sẽ bị bỏ qua</div>}
+													{canCreateStaff && !r.user_id && !r.new_staff && r.staff_number != null && (
+														<button
+															type='button'
+															className={styles.btnGhost}
+															style={{ marginTop: 4, padding: '2px 8px', fontSize: 12 }}
+															onClick={() =>
+																setAdding({ staffNumber: r.staff_number!, fullName: r.full_name_raw ?? '', phase: 'preview' })
+															}
+														>
+															<PlusSvg /> Thêm NV
+														</button>
+													)}
+												</td>
+												<td>{r.title}</td>
+												<td>{r.year ?? '—'}</td>
+												<td>{r.role || '—'}</td>
+												<td>{r.activity_date ? `${r.activity_date}${r.end_date ? ` → ${r.end_date}` : ''}` : '—'}</td>
+												<td>{r.quantity ?? '—'}</td>
+												<td>{r.credits ?? '—'}</td>
+											</tr>
+										))}
+									</tbody>
+								</table>
+							</div>
+						)}
+						{rows.length > 0 && (
+							<Pagination
+								{...pg.pagination}
+								itemLabel='dòng'
+							/>
+						)}
+					</>
+				)}
+				{result && (
+					<div className={`${styles.noticeBox} ${styles.noticeOk}`}>
+						<CheckSvg />
+						<span>
+							Đã nhập <b>{result.inserted}</b> ghi nhận
+							{!!result.created_staff?.length && (
+								<>
+									{' '}
+									và tạo <b>{result.created_staff.length}</b> nhân viên mới
+								</>
+							)}
+							.
+						</span>
+					</div>
+				)}
+				{accounts.length > 0 && (
+					<>
+						<div className={styles.accountsHeader}>
+							<span className={styles.formLabel}>
+								Tài khoản vừa tạo ({accounts.length}) — mật khẩu ban đầu là tên đăng nhập, bắt đổi khi đăng nhập
+								lần đầu
+							</span>
+							<button
+								type='button'
+								className={styles.btnGhost}
+								style={{ padding: '2px 8px', fontSize: 12 }}
+								onClick={downloadAccounts}
+							>
+								<DownloadSvg /> Tải danh sách (.csv)
+							</button>
+						</div>
 						<div className={styles.importPreview}>
 							<table className={styles.table}>
 								<thead>
 									<tr>
-										<th className={tbl.thIdx}>STT</th>
-										<th>Nhân viên</th>
-										<th>Nội dung</th>
-										<th>Năm</th>
-										<th>Vai trò</th>
-										<th>Ngày</th>
-										<th>Số lượng</th>
-										<th>Tín chỉ</th>
+										<th>Mã NV</th>
+										<th>Họ và tên</th>
+										<th>Khoa/Phòng</th>
+										<th>Tên đăng nhập</th>
+										<th>Mật khẩu ban đầu</th>
 									</tr>
 								</thead>
 								<tbody>
-									{pg.paged.map((r, i) => (
-										<tr key={r.row}>
-											<td className={styles.tdIdx}>{pg.offset + i + 1}</td>
+									{accounts.map((u) => (
+										<tr key={u.id}>
+											<td>{u.staff_number}</td>
 											<td>
-												{r.matched_user_name || r.full_name_raw || '—'}
-												{!r.valid && <div className={styles.rowWarn}>Sẽ bị bỏ qua</div>}
+												{u.full_name}
+												{u.missing_name && (
+													<>
+														{' '}
+														<Badge tone='amber'>Cần bổ sung tên</Badge>
+													</>
+												)}
 											</td>
-											<td>{r.title}</td>
-											<td>{r.year ?? '—'}</td>
-											<td>{r.role || '—'}</td>
-											<td>{r.activity_date ? `${r.activity_date}${r.end_date ? ` → ${r.end_date}` : ''}` : '—'}</td>
-											<td>{r.quantity ?? '—'}</td>
-											<td>{r.credits ?? '—'}</td>
+											<td>{u.department_name ?? <Badge tone='amber'>Cần bổ sung khoa</Badge>}</td>
+											<td>{u.username}</td>
+											<td>{u.username}</td>
 										</tr>
 									))}
 								</tbody>
 							</table>
 						</div>
-					)}
-					{rows.length > 0 && (
-						<Pagination
-							{...pg.pagination}
-							itemLabel='dòng'
-						/>
-					)}
-				</>
+					</>
+				)}
+				{result && missingGroups.length > 0 && (
+					<>
+						<div className={`${styles.noticeBox} ${styles.noticeWarn}`}>
+							<InfoSvg />
+							<span>
+								<b>{missingGroups.length}</b> Mã NV chưa có trong hệ thống nên các dòng của họ chưa được nhập.{' '}
+								{canCreateStaff
+									? 'Bấm "Thêm NV & nhập" để thêm nhân viên rồi nhập tiếp đúng các dòng đó (không cần nhập lại file).'
+									: 'Cần quyền "Thêm người dùng" để thêm nhân viên — liên hệ quản trị hệ thống.'}
+							</span>
+						</div>
+						<div className={styles.importPreview}>
+							<table className={styles.table}>
+								<thead>
+									<tr>
+										<th>Mã NV</th>
+										<th>Họ tên trong file</th>
+										<th>Số dòng</th>
+										<th>Tín chỉ</th>
+										<th className={styles.thRight}>Thao tác</th>
+									</tr>
+								</thead>
+								<tbody>
+									{missingGroups.map((g) => {
+										const done = addedAfter[g.staffNumber];
+										return (
+											<tr key={g.staffNumber}>
+												<td>{g.staffNumber}</td>
+												<td>{done ? done.staff.full_name : g.fullName || '—'}</td>
+												<td>{g.rows.length}</td>
+												<td>{formatCredits(g.rows.reduce((t, r) => t + Number(r.credits || 0), 0))}</td>
+												<td className={styles.tdRight}>
+													{done ? (
+														<Badge tone={done.failed ? 'amber' : 'green'}>
+															Đã thêm · nhập {done.imported} dòng{done.failed ? `, lỗi ${done.failed}` : ''}
+														</Badge>
+													) : (
+														canCreateStaff && (
+															<button
+																type='button'
+																className={styles.btnGhost}
+																style={{ padding: '2px 8px', fontSize: 12 }}
+																onClick={() =>
+																	setAdding({ staffNumber: g.staffNumber, fullName: g.fullName, phase: 'result' })
+																}
+															>
+																<PlusSvg /> Thêm NV & nhập
+															</button>
+														)
+													)}
+												</td>
+											</tr>
+										);
+									})}
+								</tbody>
+							</table>
+						</div>
+					</>
+				)}
+				{result && result.warnings.length > 0 && (
+					<ul className={styles.warnList}>
+						{result.warnings.slice(0, 50).map((w, i) => (
+							<li key={i}>{w}</li>
+						))}
+					</ul>
+				)}
+			</Modal>
+			{adding && (
+				<AddStaffModal
+					staffNumber={adding.staffNumber}
+					fullName={adding.fullName}
+					departments={departments}
+					onClose={() => setAdding(null)}
+					onCreated={onStaffCreated}
+				/>
 			)}
-			{result && (
-				<div className={`${styles.noticeBox} ${styles.noticeOk}`}>
-					<CheckSvg />
-					<span>
-						Đã nhập <b>{result.inserted}</b> ghi nhận.
-					</span>
-				</div>
-			)}
-		</Modal>
+		</>
 	);
 }
 
@@ -647,7 +1047,7 @@ export default function CmeManualRecords() {
 	const [categoryFilter, setCategoryFilter] = useState('');
 	const [evidenceFilter, setEvidenceFilter] = useState<'' | 'yes' | 'no'>('');
 	const [statusFilter, setStatusFilter] = useState<'' | CmeRecord['approval_status']>('');
-	const [tab, setTab] = useState<'open' | 'approved'>('open');
+	const [tab, setTab] = useState<'open' | 'approved'>('approved');
 	const [rejecting, setRejecting] = useState<CmeRecord | null>(null);
 	const [rejectReason, setRejectReason] = useState('');
 	const [loading, setLoading] = useState(true);
@@ -748,6 +1148,7 @@ export default function CmeManualRecords() {
 	const toReject = selectedRecs.filter((r) => r.approval_status !== 'rejected');
 	const [bulkRejecting, setBulkRejecting] = useState(false);
 	const [bulkBusy, setBulkBusy] = useState(false);
+	const [bulkDeleting, setBulkDeleting] = useState(false);
 
 	const runBulk = async (recs: CmeRecord[], fn: (id: string) => Promise<unknown>) => {
 		setBulkBusy(true);
@@ -766,6 +1167,10 @@ export default function CmeManualRecords() {
 		await runBulk(toReject, (id) => rejectCmeRecord(id, rejectReason));
 		setBulkRejecting(false);
 		setRejectReason('');
+	};
+	const handleBulkDelete = async () => {
+		await runBulk(selectedRecs, deleteCmeRecord);
+		setBulkDeleting(false);
 	};
 
 	const handleApprove = async (id: string) => {
@@ -906,6 +1311,26 @@ export default function CmeManualRecords() {
 								Xoá lọc
 							</button>
 						)}
+						{perms.canCme && (
+							<DeleteAllButton
+								count={filtered.length}
+								itemLabel='ghi nhận CME'
+								getIds={() => filtered.map((r) => r.id)}
+								// Một request duy nhất (API bulk-delete) thay vì gọi lần lượt
+								onDelete={deleteCmeRecords}
+								onDone={() => {
+									rowSel.clearSelection();
+									refresh();
+								}}
+								disabled={bulkBusy}
+								note={
+									<>
+										Áp dụng cho tab {tab === 'approved' ? '"Đã phê duyệt"' : '"Chưa phê duyệt"'}
+										{year !== null && `, năm ${year}`}. File minh chứng đính kèm cũng bị gỡ.
+									</>
+								}
+							/>
+						)}
 					</div>
 				</div>
 
@@ -942,6 +1367,9 @@ export default function CmeManualRecords() {
 										}}
 									>
 										<XSvg /> Từ chối đã chọn ({toReject.length})
+									</BulkButton>
+									<BulkButton danger disabled={bulkBusy} onClick={() => setBulkDeleting(true)}>
+										<TrashSvg /> Xoá đã chọn ({selectedRecs.length})
 									</BulkButton>
 								</>
 							}
@@ -1142,6 +1570,15 @@ export default function CmeManualRecords() {
 	<label className={styles.formLabel}>Lý do từ chối * (người dùng sẽ thấy để sửa và gửi lại)</label>
 	<input className={styles.formInput} value={rejectReason} onChange={(e) => setRejectReason(e.target.value)} autoFocus />
 </Modal>
+
+			<BulkDeleteModal
+				open={bulkDeleting}
+				count={selectedRecs.length}
+				itemLabel='ghi nhận CME'
+				loading={bulkBusy}
+				onClose={() => setBulkDeleting(false)}
+				onConfirm={handleBulkDelete}
+			/>
 
 			<Modal
 				open={!!deletingId}

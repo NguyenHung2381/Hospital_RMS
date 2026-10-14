@@ -132,6 +132,24 @@ const remove = async (id, actorId) => {
 	broadcast('update', { entity: 'cme_record' });
 };
 
+// Xoá hàng loạt (nút "Xoá tất cả theo bộ lọc") — một câu DELETE, rồi gỡ file minh chứng kèm theo.
+const removeMany = async (ids, actorId) => {
+	const list = [...new Set((ids || []).filter((id) => typeof id === 'string' && id))];
+	if (!list.length) return { deleted: 0 };
+	const pool = await getPool();
+	const result = await pool
+		.request()
+		.input('ids', sql.NVarChar(sql.MAX), JSON.stringify(list))
+		.query(
+			'DELETE FROM cme_records OUTPUT deleted.evidence_file_id WHERE id IN (SELECT [value] FROM OPENJSON(@ids))',
+		);
+	for (const { evidence_file_id } of result.recordset) {
+		if (evidence_file_id) await trainingFileService.softDelete(evidence_file_id, actorId);
+	}
+	broadcast('update', { entity: 'cme_record' });
+	return { deleted: result.recordset.length };
+};
+
 // Đính kèm minh chứng — tách thành bước riêng (id ghi nhận phải tồn tại
 // trước, đúng convention thư mục upload dùng entity id — xem uploadTraining.js).
 const addEvidence = async (id, file, actorId) => {
@@ -212,6 +230,7 @@ module.exports = {
 	create,
 	update,
 	remove,
+	removeMany,
 	addEvidence,
 	createMine,
 	updateMine,

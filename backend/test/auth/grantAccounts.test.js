@@ -84,11 +84,12 @@ test('tài khoản thành viên bị khoá tay (chưa hết hạn): báo cần q
 	assert.match(credentials[0].note, /khoá/);
 });
 
-test('thành viên chưa có tài khoản: tạo mới với mật khẩu tạm ngẫu nhiên, bắt đổi', async () => {
+test('thành viên chưa có tài khoản: tạo mới với mật khẩu mặc định = tên đăng nhập, bắt đổi', async () => {
 	members = [member('TM4', 400)];
 	const from = log.length;
 	const { credentials } = await grantAccounts('DT1', null, 'ACTOR');
 	const [w] = writesFor(from, 'NVK10999');
 	assert.match(w.text, /INSERT INTO users[\s\S]*must_change_password/);
-	assert.ok(credentials[0].password_plain && credentials[0].password_plain !== '123456');
+	assert.ok(credentials[0].username);
+	assert.equal(credentials[0].password_plain, credentials[0].username);
 });

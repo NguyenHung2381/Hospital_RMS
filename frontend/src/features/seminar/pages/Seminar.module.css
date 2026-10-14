@@ -276,6 +276,30 @@
 	gap: var(--space-3) var(--space-4);
 	margin-bottom: var(--space-3);
 }
+/* Khối "Tạo nhân viên mới" trong hộp thoại nhập CME */
+.newStaffBox {
+	display: flex;
+	flex-direction: column;
+	gap: var(--space-2);
+	padding: var(--space-3);
+	border: 1px dashed var(--color-gray-200);
+	border-radius: 8px;
+}
+/* Tiêu đề + nút tải của bảng "Tài khoản vừa tạo" */
+.accountsHeader {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--space-2);
+	flex-wrap: wrap;
+	margin: var(--space-3) 0 var(--space-2);
+}
+/* Số lượng (hẹp) + Tên hoạt động (rộng) trên cùng 1 hàng */
+.importDefaultsRow {
+	display: grid;
+	grid-template-columns: minmax(120px, 180px) 1fr;
+	gap: var(--space-3) var(--space-4);
+}
 .formLabel {
 	font-size: var(--font-size-sm);
 	font-weight: var(--font-weight-medium);

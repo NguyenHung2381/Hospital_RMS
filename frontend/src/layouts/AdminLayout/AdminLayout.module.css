@@ -121,6 +121,13 @@
 	white-space: normal;
 }
 
+.sidebarBrandLine {
+	display: block;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
 .sidebarBrandSub {
 	font-size: var(--font-size-2xs);
 	color: rgba(255, 255, 255, 0.65);
@@ -1131,10 +1138,6 @@
 	.sidebarBrandText {
 		display: block !important;
 		opacity: 1 !important;
-	}
-
-	.sidebarBrandName {
-		font-size: var(--font-size-xs) !important;
 	}
 
 	/* Ẩn nút thu gọn desktop, hiện nút đóng drawer */

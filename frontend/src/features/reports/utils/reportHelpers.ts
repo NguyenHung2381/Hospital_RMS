@@ -183,7 +183,7 @@ export function openPrint(
 	win.document.write(
 		`<!DOCTYPE html><html lang="vi"><head><meta charset="UTF-8"><title>${esc(title)}</title>` +
 			`<style>${BASE_CSS}@page{size:A4 ${orient};margin:15mm}</style></head><body>` +
-			`${body}<p class="foot">Xuất ngày ${now} — Hệ thống Quản lý NCKH</p>` +
+			`${body}<p class="foot">Xuất ngày ${now} — Hệ thống Quản lý NCKH – Đào tạo – CME</p>` +
 			`<script>window.onload=function(){setTimeout(function(){window.print();},350)}</` +
 			`script>` +
 			`</body></html>`,

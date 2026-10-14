@@ -142,8 +142,15 @@ export function useLecturers() {
 		[refreshData],
 	);
 
+	// Id toàn bộ bản ghi khớp từ khoá (mọi trang, limit=0) — cho nút "Xoá tất cả"
+	const fetchAllIds = useCallback(
+		async () => (await getLecturers({ search: debouncedSearch || undefined, active_only: false })).data.map((x) => x.id),
+		[debouncedSearch],
+	);
+
 	return {
 		lecturers,
+		fetchAllIds,
 		isLoadingData,
 		search,
 		modal,

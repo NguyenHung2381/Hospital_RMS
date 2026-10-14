@@ -130,7 +130,8 @@ router.post(
 	authorizePermission(['users', 'create']),
 	[
 		body('username').notEmpty(),
-		body('password').custom(passwordRule('username')),
+		// Bỏ trống ⇒ mật khẩu mặc định = tên đăng nhập (userService.create)
+		body('password').optional({ values: 'falsy' }).custom(passwordRule('username')),
 		body('full_name').notEmpty(),
 	],
 	validate,

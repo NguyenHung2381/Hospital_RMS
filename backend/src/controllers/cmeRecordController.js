@@ -2,6 +2,7 @@ const cmeRecordService = require('../services/cmeRecordService');
 const cmeRecordImportService = require('../services/cmeRecordImportService');
 const cmeReportService = require('../services/cmeReportService');
 const { success, created, notFound } = require('../utils/response');
+const { hasPermission } = require('../middlewares/auth');
 
 const getAll = async (req, res, next) => {
 	try {
@@ -48,6 +49,15 @@ const removeOne = async (req, res, next) => {
 	}
 };
 
+const removeMany = async (req, res, next) => {
+	try {
+		const out = await cmeRecordService.removeMany(req.body.ids, req.user.id);
+		return success(res, out, `Đã xoá ${out.deleted} ghi nhận CME`);
+	} catch (err) {
+		next(err);
+	}
+};
+
 const addEvidence = async (req, res, next) => {
 	try {
 		if (!req.file) {
@@ -59,10 +69,29 @@ const addEvidence = async (req, res, next) => {
 	}
 };
 
+// POST /cme-records/staff — nút "Thêm NV" trong hộp thoại nhập: tạo tài khoản
+// người dùng ⇒ ngoài cme_records:manage (route) cần thêm users:create.
+const createStaff = async (req, res, next) => {
+	try {
+		if (!hasPermission(req.user, 'users', 'create')) {
+			return res.status(403).json({ success: false, message: 'Cần quyền "Thêm người dùng" để thêm nhân viên mới.' });
+		}
+		return created(res, await cmeRecordImportService.createMissingStaff(req.body || {}, req.user.id), 'Đã thêm nhân viên');
+	} catch (err) {
+		next(err);
+	}
+};
+
 const importExcel = async (req, res, next) => {
 	try {
 		if (!req.file) {
 			return res.status(400).json({ success: false, message: 'Chưa chọn file Excel.' });
+		}
+		// Tạo nhân viên mới từ file = tạo tài khoản người dùng → cần thêm quyền users:create
+		const canCreateStaff = hasPermission(req.user, 'users', 'create');
+		const createMissing = req.body.create_missing === '1' || req.body.create_missing === 'true';
+		if (createMissing && !canCreateStaff) {
+			return res.status(403).json({ success: false, message: 'Cần quyền "Thêm người dùng" để tạo nhân viên mới khi nhập.' });
 		}
 		const out = await cmeRecordImportService.importExcel(
 			{
@@ -73,6 +102,10 @@ const importExcel = async (req, res, next) => {
 					group_id: req.body.group_id || null,
 					category_id: req.body.category_id || null,
 					title: String(req.body.title || '').trim() || null,
+					quantity: Number(req.body.quantity) > 0 ? Number(req.body.quantity) : null,
+					create_missing: createMissing,
+					new_department_id: req.body.new_department_id || null,
+					can_create_staff: canCreateStaff,
 				},
 			},
 			req.user.id,
@@ -133,10 +166,12 @@ module.exports = {
 	createOne,
 	updateOne,
 	removeOne,
+	removeMany,
 	addEvidence,
 	approve,
 	reject,
 	importExcel,
 	importTemplate,
 	exportExcel,
+	createStaff,
 };

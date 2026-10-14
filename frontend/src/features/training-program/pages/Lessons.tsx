@@ -6,7 +6,7 @@ import AdminLayout from '../../../layouts/AdminLayout';
 import { SkeletonTable } from '../../../shared/components/Loading';
 import { Pagination } from '../../../shared/components/Table/Pagination';
 import sel from '../../../shared/components/Table/RowSelect.module.css';
-import { SelectCheckbox } from '../../../shared/components/Table/RowSelect';
+import { DeleteAllButton, SelectCheckbox } from '../../../shared/components/Table/RowSelect';
 import { useRowSelection } from '../../../shared/hooks/useRowSelection';
 import { LessonDocumentsModal } from '../components/LessonDocumentsModal';
 import { LessonFormModal } from '../components/LessonFormModal';
@@ -53,6 +53,14 @@ export default function Lessons() {
 							value={d.search}
 							onChange={d.handleSearch}
 							placeholder='Tìm theo tên/mã bài học...'
+						/>
+						<DeleteAllButton
+							count={d.filtered.length}
+							itemLabel='bài học'
+							getIds={() => d.filtered.map((x) => x.id)}
+							onDelete={d.handleBulkDelete}
+							onDone={rowSel.clearSelection}
+							disabled={d.loading}
 						/>
 					</div>
 				</div>

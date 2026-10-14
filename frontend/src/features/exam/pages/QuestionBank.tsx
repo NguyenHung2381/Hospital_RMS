@@ -2,7 +2,7 @@ import { RowAction, RowActions } from '@/shared/components/Table/TableToolbar';
 import { useEffect, useMemo, useState } from 'react';
 import { EditSvg, PlusSvg, SearchSvg, TrashSvg, UploadSvg } from '@/assets/icons';
 import AdminLayout from '../../../layouts/AdminLayout';
-import { Badge, BulkBar, Button, Modal, Pagination, SelectCheckbox, SkeletonTable } from '../../../shared/components';
+import { Badge, BulkBar, Button, DeleteAllButton, Modal, Pagination, SelectCheckbox, SkeletonTable } from '../../../shared/components';
 import sel from '../../../shared/components/Table/RowSelect.module.css';
 import { useRowSelection } from '../../../shared/hooks/useRowSelection';
 import { DEFAULT_PAGE_SIZE } from '../../../shared/utils/constants';
@@ -227,6 +227,15 @@ export default function QuestionBank() {
 								Xoá lọc
 							</Button>
 						)}
+						<DeleteAllButton
+							count={filtered.length}
+							itemLabel='câu hỏi'
+							getIds={() => filtered.map((x) => x.id)}
+							onDelete={handleBulkDelete}
+							onDone={rowSel.clearSelection}
+							disabled={busy}
+							note='Câu hỏi đang nằm trong đề kiểm tra sẽ không xoá được và được báo lỗi riêng.'
+						/>
 					</div>
 				</div>
 

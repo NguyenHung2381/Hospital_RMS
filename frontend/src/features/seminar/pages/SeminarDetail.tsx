@@ -19,6 +19,7 @@ import { Badge } from '@/shared/components';
 import { InlineLoading } from '../../../shared/components/Loading';
 import {
 	BulkBar,
+	DeleteAllButton,
 	SelectCheckbox,
 } from '../../../shared/components/Table/RowSelect';
 import sel from '../../../shared/components/Table/RowSelect.module.css';
@@ -270,6 +271,16 @@ export default function SeminarDetail() {
 											<CheckSvg /> Đánh dấu đã ký
 										</button>
 									</>
+								)}
+								{perms.canUpdate && (
+									<DeleteAllButton
+										count={filtered.length}
+										itemLabel='người tham dự'
+										getIds={() => filtered.map((p) => p.id)}
+										onDelete={d.removeMany}
+										onDone={rowSel.clearSelection}
+										disabled={d.loading}
+									/>
 								)}
 							</div>
 						</div>

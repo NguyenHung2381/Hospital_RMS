@@ -145,8 +145,15 @@ export function useCourses() {
 		[refreshData],
 	);
 
+	// Id toàn bộ bản ghi khớp từ khoá (mọi trang, limit=0) — cho nút "Xoá tất cả"
+	const fetchAllIds = useCallback(
+		async () => (await getCourses({ search: debouncedSearch || undefined })).data.map((x) => x.id),
+		[debouncedSearch],
+	);
+
 	return {
 		courses,
+		fetchAllIds,
 		programs,
 		forms,
 		isLoadingData,

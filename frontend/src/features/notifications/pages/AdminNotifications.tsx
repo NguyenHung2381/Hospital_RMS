@@ -61,6 +61,7 @@ export default function AdminNotifications() {
 		handleSend,
 		confirmDelete,
 		handleBulkDelete,
+		fetchAllBatchKeys,
 	} = useAdminNotifications();
 
 	const headerActions = (
@@ -103,6 +104,7 @@ export default function AdminNotifications() {
 					onRefresh={() => setRefreshKey((k) => k + 1)}
 					onDeleteRequest={setPendingDelete}
 					onBulkDelete={handleBulkDelete}
+					fetchAllBatchKeys={fetchAllBatchKeys}
 					onFilterChange={() => setPage(1)}
 				/>
 			</div>

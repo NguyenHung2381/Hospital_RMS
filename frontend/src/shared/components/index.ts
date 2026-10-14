@@ -29,6 +29,7 @@ export {
 	BulkButton,
 	BulkDeleteModal,
 	BulkBar,
+	DeleteAllButton,
 } from './Table/RowSelect';
 export type { RowSelectionLike } from './Table/RowSelect';
 export { SearchInput, SelectionCount, RowAction, RowActions } from './Table/TableToolbar';

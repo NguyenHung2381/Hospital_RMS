@@ -34,12 +34,21 @@ router.post(
 	ctrl.createOne,
 );
 
+router.post(
+	'/bulk-delete',
+	canManage,
+	[body('ids').isArray({ min: 1 }).withMessage('Chưa chọn ghi nhận nào để xoá')],
+	validate,
+	ctrl.removeMany,
+);
 router.post('/:id/approve', canManage, ctrl.approve);
 router.post('/:id/reject', canManage, ctrl.reject);
 router.put('/:id', canManage, ctrl.updateOne);
 router.delete('/:id', canManage, ctrl.removeOne);
 router.post('/:id/evidence', canManage, uploadEvidence.single('file'), ctrl.addEvidence);
 router.post('/import-excel', canManage, uploadExcel.single('file'), ctrl.importExcel);
+// Nút "Thêm NV" trong hộp thoại nhập — controller kiểm tra thêm users:create
+router.post('/staff', canManage, ctrl.createStaff);
 router.post('/import-template', canManage, ctrl.importTemplate);
 router.post('/export-excel', canManage, ctrl.exportExcel);
 

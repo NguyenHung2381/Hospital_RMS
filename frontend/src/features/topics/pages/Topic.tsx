@@ -19,6 +19,7 @@ import sel from '../../../shared/components/Table/RowSelect.module.css';
 import {
 	BulkButton,
 	BulkDeleteModal,
+	DeleteAllButton,
 	SelectCheckbox,
 } from '../../../shared/components/Table/RowSelect';
 import { useRowSelection } from '../../../shared/hooks/useRowSelection';
@@ -244,6 +245,14 @@ export default function TopicPage() {
 								d.setPage(1);
 							}}
 							placeholder='Loại'
+						/>
+						<DeleteAllButton
+							count={d.total}
+							itemLabel='đề tài'
+							getIds={() => d.fetchExportIds('filtered')}
+							onDelete={d.handleBulkDelete}
+							onDone={rowSel.clearSelection}
+							note='Thành viên, file và dữ liệu liên quan của các đề tài này cũng bị xoá theo.'
 						/>
 					</div>
 				</div>

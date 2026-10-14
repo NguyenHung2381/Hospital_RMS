@@ -4,7 +4,7 @@ const notifSvc = require('./notificationService');
 const { broadcast } = require('./eventService');
 const personService = require('./personService');
 const { ROLE, requireRoleId } = require('./roleCodes');
-const { generateTempPassword } = require('../utils/passwordPolicy');
+const { defaultPassword } = require('../utils/passwordPolicy');
 const userStatusCache = require('../middlewares/userStatusCache');
 const { stripDiacritics, stripQualification } = require('../utils/vietnameseText');
 
@@ -308,9 +308,8 @@ const grantAccountsNoEmail = async (topicId, memberIds, actorId) => {
 						? String(member.email).trim()
 						: `${String(userId).toLowerCase()}@member.local`;
 
-				// Mật khẩu tạm ngẫu nhiên riêng từng người (thay cho '123456' dùng
-				// chung + username đoán được), bắt đổi ở lần đăng nhập đầu.
-				tempPassword = generateTempPassword();
+				// Mật khẩu mặc định = tên đăng nhập, bắt đổi ở lần đăng nhập đầu.
+				tempPassword = defaultPassword(username);
 				await new sql.Request(tx)
 					.input('uid', sql.VarChar(20), userId)
 					.input('username', sql.VarChar(100), username)

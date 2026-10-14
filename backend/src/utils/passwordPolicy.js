@@ -1,5 +1,3 @@
-const crypto = require('crypto');
-
 // Chính sách mật khẩu dùng chung cho MỌI nơi đặt mật khẩu: tự đổi mật khẩu,
 // quản trị tạo tài khoản / đặt lại mật khẩu. Trước đây mỗi nơi một kiểu (5, 6
 // hoặc 8 ký tự) nên quản trị đặt được mật khẩu yếu hơn người dùng tự đặt.
@@ -42,17 +40,9 @@ const passwordRule = (usernameField) => (value, { req }) => {
 	return true;
 };
 
-// Mật khẩu tạm cấp cho tài khoản mới / đặt lại mật khẩu — ngẫu nhiên từng
-// người (thay cho '123456' dùng chung). Bỏ ký tự dễ nhầm (0/O, 1/l/I).
-const TEMP_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789';
-const TEMP_LENGTH = 12;
+// Mật khẩu mặc định khi TẠO tài khoản mới hoặc quản trị ĐẶT LẠI mật khẩu = đúng
+// tên đăng nhập. Không qua checkPassword (thường < 10 ký tự, chứa username) nên
+// mọi luồng dùng nó phải đặt must_change_password = 1 để bắt đổi ở lần đăng nhập đầu.
+const defaultPassword = (username) => String(username);
 
-const generateTempPassword = () => {
-	for (;;) {
-		let out = '';
-		for (let i = 0; i < TEMP_LENGTH; i++) out += TEMP_ALPHABET[crypto.randomInt(TEMP_ALPHABET.length)];
-		if (!checkPassword(out)) return out;
-	}
-};
-
-module.exports = { MIN_LENGTH, checkPassword, passwordRule, generateTempPassword };
+module.exports = { MIN_LENGTH, checkPassword, passwordRule, defaultPassword };

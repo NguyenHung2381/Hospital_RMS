@@ -320,10 +320,18 @@
 	padding: 0 var(--space-6);
 	overflow-x: auto;
 	overflow-y: hidden;
+	scrollbar-width: thin;
+	scrollbar-color: var(--color-gray-300) transparent;
 }
 
+/* Thanh cuộn mảnh nhưng vẫn hiện — chuột thường không cuộn ngang được nếu ẩn hẳn */
 .tabsRow::-webkit-scrollbar {
-	height: 0;
+	height: 4px;
+}
+
+.tabsRow::-webkit-scrollbar-thumb {
+	background: var(--color-gray-300);
+	border-radius: var(--radius-full, 9999px);
 }
 
 .tab {
@@ -339,6 +347,7 @@
 	align-items: center;
 	gap: var(--space-2);
 	white-space: nowrap;
+	flex-shrink: 0;
 }
 
 .tab:hover {

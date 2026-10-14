@@ -1,9 +1,11 @@
 import { apiClient } from '../../../shared/api/axios';
 import type {
 	CmeCreditCategory,
+	CmeImportCreatedStaff,
 	CmeRecord,
 	CmeRecordFormData,
 	CmeRecordImportResult,
+	CmeRecordImportRow,
 	CmeRecordListResponse,
 } from '../types/cmeRecord.type';
 
@@ -39,6 +41,8 @@ export const rejectCmeRecord = (id: string, reason: string) =>
 	apiClient.post<CmeRecord>(`/cme-records/${id}/reject`, { reason });
 
 export const deleteCmeRecord = (id: string) => apiClient.delete<null>(`/cme-records/${id}`);
+export const deleteCmeRecords = (ids: string[]) =>
+	apiClient.post<{ deleted: number }>('/cme-records/bulk-delete', { ids });
 
 export const addCmeRecordEvidence = (id: string, file: File) => {
 	const form = new FormData();
@@ -52,15 +56,40 @@ export interface CmeRecordImportDefaults {
 	group_id?: string;
 	category_id?: string;
 	title?: string;
+	/** Dùng cho dòng để trống cột Số lượng */
+	quantity?: number;
+	/** Tạo nhân viên mới cho Mã NV chưa có trong hệ thống (cần quyền users:create) */
+	create_missing?: boolean;
+	/** Khoa/Phòng cho nhân viên mới khi file không có cột Khoa/Phòng */
+	new_department_id?: string;
 }
 
 export const importCmeRecordsExcel = (file: File, dryRun: boolean, defaults: CmeRecordImportDefaults) => {
 	const form = new FormData();
 	form.append('dry_run', dryRun ? '1' : '0');
-	for (const [k, v] of Object.entries(defaults)) if (v) form.append(k, String(v));
+	for (const [k, v] of Object.entries(defaults)) if (v) form.append(k, v === true ? '1' : String(v));
 	form.append('file', file);
 	return apiClient.postForm<CmeRecordImportResult>('/cme-records/import-excel', form);
 };
+
+/** Nút "Thêm NV" trong hộp thoại nhập — cần thêm quyền users:create */
+export const createCmeImportStaff = (data: { staff_number: number; full_name: string; department_id: string }) =>
+	apiClient.post<CmeImportCreatedStaff>('/cme-records/staff', data);
+
+/** Nhập 1 dòng đã bị bỏ qua (sau khi thêm nhân viên) — dùng nguyên dữ liệu đã đọc từ file */
+export const createCmeRecordFromImportRow = (row: CmeRecordImportRow, userId: string) =>
+	apiClient.post<CmeRecord>('/cme-records', {
+		user_id: userId,
+		category_id: row.category_id,
+		title: row.title,
+		activity_date: row.activity_date,
+		end_date: row.end_date,
+		year: row.year,
+		role: row.role,
+		quantity: row.quantity,
+		credits: row.credits,
+		note: row.notes,
+	});
 
 export const downloadCmeRecordImportTemplate = () => apiClient.postBlob('/cme-records/import-template', {});
 

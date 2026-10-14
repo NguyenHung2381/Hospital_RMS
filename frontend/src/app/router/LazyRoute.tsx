@@ -8,7 +8,7 @@ interface LazyRouteProps {
 
 export function LazyRoute({ children, title }: LazyRouteProps) {
 	useEffect(() => {
-		document.title = title ? `${title} | Quản lý NCKH` : 'Quản lý NCKH';
+		document.title = title ? `${title} | NCKH – Đào tạo – CME` : 'NCKH – Đào tạo – CME';
 	}, [title]);
 	return <Suspense fallback={<PageLoading />}>{children}</Suspense>;
 }

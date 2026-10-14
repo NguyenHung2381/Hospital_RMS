@@ -9,7 +9,7 @@ const { paging } = require('../utils/paging');
 // department_id/role_id nhận danh sách phân tách bởi dấu phẩy (multi-select trên UI)
 const { splitList, inClause } = require('../utils/sqlFilters');
 const { ROLE, requireRoleId } = require('./roleCodes');
-const { generateTempPassword } = require('../utils/passwordPolicy');
+const { defaultPassword } = require('../utils/passwordPolicy');
 
 // ─── Cache thống kê toàn bảng (global_stats) ─────────────────────────────────
 // global_stats không phụ thuộc filter/phân trang nên trước đây bị quét lại toàn
@@ -176,7 +176,8 @@ const getById = async (id) => {
 
 const create = async (data, actorId) => {
 	const pool = await getPool();
-	const hashed = await bcrypt.hash(data.password, 12);
+	// Không truyền mật khẩu ⇒ mặc định = tên đăng nhập (bắt đổi ở lần đăng nhập đầu)
+	const hashed = await bcrypt.hash(data.password || defaultPassword(data.username), 12);
 
 	const result = await pool
 		.request()
@@ -333,12 +334,25 @@ const remove = async (id, actorId) => {
 // Reset mật khẩu bởi người quản lý: thu hồi toàn bộ phiên của tài khoản đích
 // (refresh token + token_version) — người đang giữ phiên cũ (có thể chính là
 // kẻ đã chiếm tài khoản) bị đăng xuất ngay, phải đăng nhập bằng mật khẩu mới.
-// Không truyền newPassword ⇒ sinh mật khẩu tạm ngẫu nhiên. Trả về
-// { temporary_password } (chỉ khi tự sinh) để hiển thị cho quản trị đúng 1 lần.
+// Không truyền newPassword ⇒ về mật khẩu mặc định = tên đăng nhập. Trả về
+// { temporary_password } (chỉ khi tự đặt) để hiển thị cho quản trị.
 // Mật khẩu này đã qua tay người khác nên luôn bắt đổi ở lần đăng nhập tới.
 const resetPassword = async (id, newPassword, actorId, ip = null) => {
 	const pool = await getPool();
-	const generated = newPassword ? null : generateTempPassword();
+	let generated = null;
+	if (!newPassword) {
+		const found = await pool
+			.request()
+			.input('id', sql.VarChar(20), id)
+			.query('SELECT username FROM users WHERE id=@id');
+		const username = found.recordset[0]?.username;
+		if (!username) {
+			const err = new Error('Không tìm thấy người dùng');
+			err.statusCode = 404;
+			throw err;
+		}
+		generated = defaultPassword(username);
+	}
 	const hashed = await bcrypt.hash(newPassword || generated, 12);
 	await pool
 		.request()
@@ -404,6 +418,59 @@ const searchForMember = async ({ q, department_id, limit = 10 }) => {
 	};
 };
 
+// Tạo nhân viên mới từ file nhập (vd ghi nhận CME có Mã NV chưa có trong hệ thống).
+// Cùng quy ước với cấp tài khoản thành viên đề tài (topicMemberService): mã
+// 'NV' + mã khoa + NNNN, username = chữ cái đầu họ tên + "_" + MNV, vai trò Thành viên.
+// Chưa biết họ tên (file chỉ có Mã NV) → caller truyền username_base (vd "NV_2224").
+// Mật khẩu mặc định = tên đăng nhập, bắt đổi ở lần đăng nhập đầu.
+// Caller tự kiểm tra quyền users:create. Trả { id, username }.
+const createStaffAccount = async (
+	{ full_name, staff_number, department_id, department_code, username_base },
+	actorId,
+) => {
+	// require muộn: topicMemberService nạp nhiều service khác, chỉ cần ở luồng này
+	const { buildMemberUsername, ensureUniqueUsername, genUserIdInTx } = require('./topicMemberService');
+	const pool = await getPool();
+	const roleId = await requireRoleId(ROLE.MEMBER);
+
+	const tx = new sql.Transaction(pool);
+	await tx.begin();
+	let userId;
+	let username;
+	try {
+		await new sql.Request(tx).input('actor_id', sql.VarChar(20), actorId).query('EXEC sp_set_actor @actor_id');
+		userId = await genUserIdInTx(tx, department_code || '');
+		if (!userId) throw new Error('Không sinh được mã nhân viên mới');
+		username = await ensureUniqueUsername(tx, username_base || buildMemberUsername(full_name, staff_number), userId);
+		const passwordHash = await bcrypt.hash(defaultPassword(username), 12);
+		await new sql.Request(tx)
+			.input('uid', sql.VarChar(20), userId)
+			.input('username', sql.VarChar(100), username)
+			.input('password', sql.VarChar(255), passwordHash)
+			.input('full_name', sql.NVarChar(255), full_name)
+			.input('staff_number', sql.Int, staff_number)
+			.input('department_id', sql.VarChar(20), department_id)
+			.input('role_id', sql.VarChar(20), roleId)
+			.input('actor_id', sql.VarChar(20), actorId).query(`
+        INSERT INTO users (id, username, password, full_name, staff_number, department_id, role_id, created_by, must_change_password)
+        VALUES (@uid, @username, @password, @full_name, @staff_number, @department_id, @role_id, @actor_id, 1)
+      `);
+		await tx.commit();
+	} catch (err) {
+		try {
+			await tx.rollback();
+		} catch {
+			// transaction đã bị abort
+		}
+		throw err;
+	}
+
+	await personService.syncPerson('users', userId, { actorId });
+	invalidateStatsCache();
+	broadcast('update', { entity: 'user' });
+	return { id: userId, username };
+};
+
 module.exports = {
 	getAll,
 	getById,
@@ -412,4 +479,5 @@ module.exports = {
 	remove,
 	resetPassword,
 	searchForMember,
+	createStaffAccount,
 };

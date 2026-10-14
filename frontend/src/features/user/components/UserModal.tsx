@@ -8,11 +8,7 @@ import styles from '../pages/UserList.module.css';
 import type { FormErrors, User, UserForm } from '../types/user.type';
 import { getInitials } from '../../../shared/utils/helper';
 import { suggestUsername } from '../utils/userHelpers';
-import {
-	checkPassword,
-	generateTempPassword,
-	PASSWORD_HINT,
-} from '../../../shared/utils/password';
+import { checkPassword } from '../../../shared/utils/password';
 
 function Avatar({
 	name,
@@ -61,12 +57,12 @@ export function UserModal({
 		department_id: user?.department_id ?? defaultDeptId ?? '',
 		role_id: user?.role_id ?? '',
 		is_active: user?.is_active ?? true,
-		// Mật khẩu tạm ngẫu nhiên — người dùng phải đổi ở lần đăng nhập đầu
-		password: mode === 'create' ? generateTempPassword() : '',
+		// Tạo mới: server đặt mật khẩu mặc định = tên đăng nhập
+		password: '',
 	});
 	const [errors, setErrors] = useState<FormErrors>({});
 	const [loading, setLoading] = useState(false);
-	const [showPwd, setShowPwd] = useState(mode === 'create');
+	const [showPwd, setShowPwd] = useState(false);
 	const [usernameTouched, setUsernameTouched] = useState(mode === 'edit');
 	const [saveError, setSaveError] = useState<string | null>(null);
 
@@ -107,9 +103,7 @@ export function UserModal({
 			e.email = 'Email không hợp lệ';
 		if (!form.department_id) e.department_id = 'Vui lòng chọn phòng ban';
 		if (!form.role_id) e.role_id = 'Vui lòng chọn vai trò';
-		if (mode === 'create' && !form.password)
-			e.password = 'Vui lòng nhập mật khẩu';
-		else if (form.password) {
+		if (form.password) {
 			const pwdError = checkPassword(form.password, form.username);
 			if (pwdError) e.password = pwdError;
 		}
@@ -244,7 +238,11 @@ export function UserModal({
 					label='Tên đăng nhập'
 					required
 					error={errors.username}
-					hint='Chỉ gồm chữ, số, dấu gạch dưới'
+					hint={
+						mode === 'create'
+							? 'Chỉ gồm chữ, số, dấu gạch dưới. Mật khẩu mặc định = tên đăng nhập, người dùng phải đổi ở lần đăng nhập đầu'
+							: 'Chỉ gồm chữ, số, dấu gạch dưới'
+					}
 				>
 					<input
 						id='username'
@@ -261,51 +259,44 @@ export function UserModal({
 						style={mode === 'edit' ? { opacity: 0.6 } : {}}
 					/>
 				</FormField>
-				<FormField
-					htmlFor='password'
-					label={mode === 'create' ? 'Mật khẩu' : 'Mật khẩu mới'}
-					required={mode === 'create'}
-					error={errors.password}
-					hint={
-						mode === 'edit'
-							? 'Để trống nếu không muốn đổi mật khẩu'
-							: 'Mật khẩu tạm — người dùng phải đổi ở lần đăng nhập đầu'
-					}
-				>
-					<div style={{ position: 'relative' }}>
-						<input
-							id='password'
-							type={showPwd ? 'text' : 'password'}
-							className={`${styles.formInput} ${errors.password ? styles.inputError : ''}`}
-							placeholder={
-								mode === 'create'
-									? PASSWORD_HINT
-									: '(để trống = giữ nguyên)'
-							}
-							value={form.password}
-							onChange={(e) => set('password', e.target.value)}
-							style={{ paddingRight: 40 }}
-						/>
-						<button
-							type='button'
-							onClick={() => setShowPwd((v) => !v)}
-							style={{
-								position: 'absolute',
-								right: 10,
-								top: '50%',
-								transform: 'translateY(-50%)',
-								background: 'none',
-								border: 'none',
-								cursor: 'pointer',
-								color: 'var(--color-gray-400)',
-								display: 'flex',
-							}}
-							aria-label={showPwd ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
-						>
-							<InfoSvg />
-						</button>
-					</div>
-				</FormField>
+				{mode === 'edit' && (
+					<FormField
+						htmlFor='password'
+						label='Mật khẩu mới'
+						error={errors.password}
+						hint='Để trống nếu không muốn đổi mật khẩu'
+					>
+						<div style={{ position: 'relative' }}>
+							<input
+								id='password'
+								type={showPwd ? 'text' : 'password'}
+								className={`${styles.formInput} ${errors.password ? styles.inputError : ''}`}
+								placeholder='(để trống = giữ nguyên)'
+								value={form.password}
+								onChange={(e) => set('password', e.target.value)}
+								style={{ paddingRight: 40 }}
+							/>
+							<button
+								type='button'
+								onClick={() => setShowPwd((v) => !v)}
+								style={{
+									position: 'absolute',
+									right: 10,
+									top: '50%',
+									transform: 'translateY(-50%)',
+									background: 'none',
+									border: 'none',
+									cursor: 'pointer',
+									color: 'var(--color-gray-400)',
+									display: 'flex',
+								}}
+								aria-label={showPwd ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
+							>
+								<InfoSvg />
+							</button>
+						</div>
+					</FormField>
+				)}
 			</div>
 
 			<div className={styles.formSection}>Phân công &amp; Vai trò</div>

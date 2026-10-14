@@ -68,6 +68,14 @@ export interface CmeRecordImportRow {
 	row: number;
 	user_id: string | null;
 	matched_user_name: string | null;
+	/** Mã NV chưa có trong hệ thống — sẽ tạo nhân viên mới khi nhập */
+	new_staff: {
+		staff_number: number;
+		full_name: string;
+		department_name: string | null;
+		/** Không tìm được họ tên — dùng tên tạm "Chưa cập nhật tên (MNV …)" */
+		missing_name: boolean;
+	} | null;
 	full_name_raw: string | null;
 	staff_number: number | null;
 	category_id: string | null;
@@ -87,7 +95,20 @@ export interface CmeRecordImportRow {
 export interface CmeRecordImportResult {
 	dry_run: boolean;
 	rows?: CmeRecordImportRow[];
-	summary?: { total: number; matched: number; valid: number };
+	summary?: { total: number; matched: number; valid: number; new_staff: number };
 	inserted?: number;
+	created_staff?: CmeImportCreatedStaff[];
+	/** Dòng không nhập được (chỉ khi nhập thật) — missing_user: chưa khớp nhân viên */
+	skipped_rows?: (CmeRecordImportRow & { missing_user: boolean })[];
 	warnings: string[];
+}
+
+export interface CmeImportCreatedStaff {
+	id: string;
+	username: string;
+	full_name: string;
+	staff_number: number;
+	department_name: string | null;
+	missing_name: boolean;
+	missing_department: boolean;
 }

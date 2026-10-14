@@ -1,21 +1,60 @@
-import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import {
+	ApproveSvg,
+	BadgeSvg,
+	BarChartSvg,
+	BellSvg,
+	BookOpenSvg,
+	BuildingSvg,
+	CalendarSvg,
+	ChevLSvg,
+	ClipboardCheckSvg,
+	ClipboardSvg,
+	DashboardSvg,
+	DeptSvg,
+	DownloadSvg,
+	FileTextSvg,
+	HelpSvg,
+	HistorySvg,
+	LayersSvg,
+	LinkSvg,
+	ListSvg,
+	LogoutSvg,
+	MenuSvg,
+	MoreVSvg,
+	QrSvg,
+	RoleSvg,
+	ShieldSvg,
+	TagSvg,
+	TopicSvg,
+	UserCheckSvg,
+	UserPlusSvg,
+	UserSvg,
+	UsersSvg,
+	XSvg,
+} from '@/assets/icons';
 import type { PermissionKey } from '@/shared/types/permissions.generated';
+import React, {
+	useCallback,
+	useEffect,
+	useLayoutEffect,
+	useRef,
+	useState,
+} from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import Logo from '../../assets/logo.png';
 import { logout, type LoginUser } from '../../features/auth/api/authApi';
-import TwoFactorReminder from '../../shared/components/TwoFactorReminder';
+import { getMyTasks } from '../../features/my-tasks/api/myTasksApi';
 import { NotificationPanel } from '../../features/notifications/components/NotificationPanel';
 import { useNotifications } from '../../features/notifications/hooks/useNotifications';
 import { toNotif } from '../../features/notifications/utils/notifUtils';
 import { getTopics } from '../../features/topics/api/topicApi';
-import { getMyTasks } from '../../features/my-tasks/api/myTasksApi';
+import TwoFactorReminder from '../../shared/components/TwoFactorReminder';
 import { useModules, type ModuleKey } from '../../shared/hooks/useModules';
 import { usePermission } from '../../shared/hooks/usePermission';
 import { getInitials } from '../../shared/utils/helper';
 import { getStoredUser } from '../../shared/utils/storage';
 import { useRealtimeUpdate } from '../hooks/useRealtime';
 import styles from './AdminLayout.module.css';
-import { Icon } from './icons';
 
 // ─── STORAGE KEY ──────────────────────────
 const SIDEBAR_KEY = 'rms_sidebar_collapsed';
@@ -47,15 +86,16 @@ const KEY_TO_PATH: Record<string, string> = {
 	trainees: '/admin/trainees',
 	trainingPrograms: '/admin/training-programs',
 	lessons: '/admin/lessons',
+	classSchedule: '/admin/class-schedule',
 	trainingPlans: '/admin/training-plans',
 	myTasks: '/admin/viec-cua-toi',
 	lecturers: '/admin/lecturers',
 	trainingCatalog: '/admin/trainee-types',
 	courses: '/admin/courses',
-	classSchedule: '/admin/class-schedule',
 	questionBank: '/admin/question-bank',
 	cmeCompliance: '/admin/cme-compliance',
-	cmeRecords: '/admin/cme-records',	cmeCreditCatalog: '/admin/cme-credit-categories',
+	cmeRecords: '/admin/cme-records',
+	cmeCreditCatalog: '/admin/cme-credit-categories',
 	users: '/admin/users',
 	roles: '/admin/roles',
 	reports: '/admin/reports',
@@ -74,9 +114,11 @@ const PATH_TO_KEY: Record<string, string> = Object.fromEntries(
 // Danh mục Đào tạo gộp 4 tab dưới 1 mục sidebar — các path còn lại (ngoài
 // path mặc định /admin/trainee-types) cần trỏ ngược thủ công để vẫn highlight
 // đúng mục khi đang ở tab khác.
-['/admin/training-forms', '/admin/training-types', '/admin/subjects'].forEach((p) => {
-	PATH_TO_KEY[p] = 'trainingCatalog';
-});
+['/admin/training-forms', '/admin/training-types', '/admin/subjects'].forEach(
+	(p) => {
+		PATH_TO_KEY[p] = 'trainingCatalog';
+	},
+);
 
 // ─── NAV CONFIG ───────────────────────────
 interface NavItem {
@@ -96,11 +138,31 @@ const NAV_GROUPS: NavGroup[] = [
 	{
 		section: 'Tổng quan',
 		items: [
-			{ key: 'dashboard', label: 'Tổng quan chung', icon: <Icon.Dashboard /> },
-			{ key: 'researchDashboard', label: 'Tổng quan NCKH', icon: <Icon.Dashboard /> },
-			{ key: 'trainingDashboard', label: 'Tổng quan Đào tạo', icon: <Icon.Dashboard /> },
-			{ key: 'seminarDashboard', label: 'Tổng quan Hội thảo - CME', icon: <Icon.Dashboard /> },
-			{ key: 'myTasks', label: 'Việc của tôi', icon: <Icon.Approval /> },
+			{
+				key: 'dashboard',
+				label: 'Tổng quan chung',
+				icon: <DashboardSvg className={styles.navIcon} />,
+			},
+			{
+				key: 'researchDashboard',
+				label: 'Tổng quan NCKH',
+				icon: <DashboardSvg className={styles.navIcon} />,
+			},
+			{
+				key: 'trainingDashboard',
+				label: 'Tổng quan Đào tạo',
+				icon: <DashboardSvg className={styles.navIcon} />,
+			},
+			{
+				key: 'seminarDashboard',
+				label: 'Tổng quan Hội thảo - CME',
+				icon: <DashboardSvg className={styles.navIcon} />,
+			},
+			{
+				key: 'myTasks',
+				label: 'Việc của tôi',
+				icon: <ApproveSvg className={styles.navIcon} />,
+			},
 		],
 	},
 	{
@@ -112,55 +174,55 @@ const NAV_GROUPS: NavGroup[] = [
 			{
 				key: 'topics',
 				label: 'Đề tài nghiên cứu',
-				icon: <Icon.Topic />,
+				icon: <TopicSvg className={styles.navIcon} />,
 				perm: 'topics:read',
 			},
 			{
 				key: 'rounds',
 				label: 'Đợt nghiên cứu',
-				icon: <Icon.Round />,
+				icon: <HistorySvg className={styles.navIcon} />,
 				perm: 'rounds:read',
 			},
 			{
 				key: 'councils',
 				label: 'Hội đồng chấm',
-				icon: <Icon.Council />,
+				icon: <ClipboardCheckSvg className={styles.navIcon} />,
 				perm: 'councils:read',
 			},
 			{
 				key: 'schedule',
 				label: 'Lịch trình',
-				icon: <Icon.Schedule />,
+				icon: <CalendarSvg className={styles.navIcon} />,
 				perm: 'rounds:read',
 			},
 			{
 				key: 'approvals',
 				label: 'Phê duyệt',
-				icon: <Icon.Approval />,
+				icon: <ApproveSvg className={styles.navIcon} />,
 				perm: 'topics:approve',
 			},
 			{
 				key: 'externalReviewers',
 				label: 'Người ngoài viện',
-				icon: <Icon.ExternalReviewer />,
+				icon: <UserPlusSvg className={styles.navIcon} />,
 				perm: 'councils:read',
 			},
 			{
 				key: 'categories',
 				label: 'Phân loại đề tài',
-				icon: <Icon.Category />,
+				icon: <TagSvg className={styles.navIcon} />,
 				perm: 'catalog:read',
 			},
 			{
 				key: 'levels',
 				label: 'Cấp độ đề tài',
-				icon: <Icon.Level />,
+				icon: <LayersSvg className={styles.navIcon} />,
 				perm: 'catalog:read',
 			},
 			{
 				key: 'roundTypes',
 				label: 'Loại đợt',
-				icon: <Icon.Round />,
+				icon: <HistorySvg className={styles.navIcon} />,
 				perm: 'catalog:read',
 			},
 		],
@@ -173,36 +235,37 @@ const NAV_GROUPS: NavGroup[] = [
 			{
 				key: 'seminars',
 				label: 'Hội thảo & Hội nghị',
-				icon: <Icon.Seminar />,
+				icon: <CalendarSvg className={styles.navIcon} />,
 				perm: 'seminars:read',
 			},
 			{
 				key: 'ticketScan',
 				label: 'Quét vé điểm danh',
-				icon: <Icon.Qr />,
+				icon: <QrSvg className={styles.navIcon} />,
 				perm: 'seminars:update',
 			},
 			{
 				key: 'cmeRegister',
 				label: 'Sổ cấp CME',
-				icon: <Icon.Cme />,
+				icon: <BadgeSvg className={styles.navIcon} />,
 				perm: 'seminars:read',
 			},
 			{
 				key: 'cmeCompliance',
 				label: 'Cảnh báo tín chỉ CME',
-				icon: <Icon.Cme />,
+				icon: <BadgeSvg className={styles.navIcon} />,
 				perm: 'seminars:cme_manage',
 			},
 			{
 				key: 'cmeRecords',
 				label: 'Ghi nhận CME độc lập',
-				icon: <Icon.Cme />,
+				icon: <BadgeSvg className={styles.navIcon} />,
 				perm: 'cme_records:manage',
-			},			{
+			},
+			{
 				key: 'cmeCreditCatalog',
 				label: 'Danh mục quy đổi CME',
-				icon: <Icon.List />,
+				icon: <ListSvg className={styles.navIcon} />,
 				perm: 'training_catalog:read',
 			},
 		],
@@ -216,55 +279,55 @@ const NAV_GROUPS: NavGroup[] = [
 			{
 				key: 'trainingPlans',
 				label: 'Kế hoạch đào tạo',
-				icon: <Icon.TrainingPlan />,
+				icon: <BarChartSvg className={styles.navIcon} />,
 				perm: 'training_plans:manage',
 			},
 			{
 				key: 'trainingPrograms',
 				label: 'Chương trình đào tạo',
-				icon: <Icon.TrainingProgram />,
+				icon: <BookOpenSvg className={styles.navIcon} />,
 				perm: 'training_programs:read',
 			},
 			{
 				key: 'lessons',
 				label: 'Bài học',
-				icon: <Icon.Lesson />,
+				icon: <FileTextSvg className={styles.navIcon} />,
 				perm: 'training_programs:read',
 			},
 			{
 				key: 'courses',
 				label: 'Khóa học',
-				icon: <Icon.Course />,
+				icon: <ClipboardCheckSvg className={styles.navIcon} />,
 				perm: 'courses:read',
 			},
 			{
 				key: 'classSchedule',
 				label: 'Lịch học',
-				icon: <Icon.Schedule />,
+				icon: <CalendarSvg className={styles.navIcon} />,
 				perm: 'courses:read',
 			},
 			{
 				key: 'questionBank',
 				label: 'Ngân hàng câu hỏi',
-				icon: <Icon.QuestionBank />,
+				icon: <HelpSvg className={styles.navIcon} />,
 				perm: 'exams:manage',
 			},
 			{
 				key: 'trainees',
 				label: 'Học viên',
-				icon: <Icon.Trainee />,
+				icon: <UsersSvg className={styles.navIcon} />,
 				perm: 'trainees:read',
 			},
 			{
 				key: 'lecturers',
 				label: 'Giảng viên',
-				icon: <Icon.Lecturer />,
+				icon: <UserCheckSvg className={styles.navIcon} />,
 				perm: 'lecturers:read',
 			},
 			{
 				key: 'trainingCatalog',
 				label: 'Danh mục đào tạo',
-				icon: <Icon.TrainingCatalog />,
+				icon: <ClipboardSvg className={styles.navIcon} />,
 				perm: 'training_catalog:read',
 			},
 		],
@@ -279,67 +342,67 @@ const NAV_GROUPS: NavGroup[] = [
 			{
 				key: 'users',
 				label: 'Người dùng',
-				icon: <Icon.User />,
+				icon: <UserSvg className={styles.navIcon} />,
 				perm: 'users:read',
 			},
 			{
 				key: 'roles',
 				label: 'Vai trò & Quyền',
-				icon: <Icon.Role />,
+				icon: <RoleSvg className={styles.navIcon} />,
 				perm: 'roles:read',
 			},
 			{
 				key: 'departments',
 				label: 'Khoa / Phòng ban',
-				icon: <Icon.Dept />,
+				icon: <DeptSvg className={styles.navIcon} />,
 				perm: 'departments:read',
 			},
 			{
 				key: 'venues',
 				label: 'Địa điểm / Phòng họp',
-				icon: <Icon.Venue />,
+				icon: <BuildingSvg className={styles.navIcon} />,
 				perm: 'venues:read',
 			},
 			{
 				key: 'notifications',
 				label: 'Thông báo',
-				icon: <Icon.Notif />,
+				icon: <BellSvg className={styles.navIcon} />,
 				perm: 'notifications:read',
 			},
 			{
 				key: 'personMerge',
 				label: 'Duyệt trùng danh tính',
-				icon: <Icon.PersonMerge />,
+				icon: <UsersSvg className={styles.navIcon} />,
 				perm: 'persons:read',
 			},
 			{
 				key: 'activityLogs',
 				label: 'Nhật ký hoạt động',
-				icon: <Icon.List />,
+				icon: <ListSvg className={styles.navIcon} />,
 				perm: 'activity_logs:read',
 			},
 			{
 				key: 'surveys',
 				label: 'Khảo sát',
-				icon: <Icon.Survey />,
+				icon: <ClipboardSvg className={styles.navIcon} />,
 				perm: 'surveys:manage',
 			},
 			{
 				key: 'workflows',
 				label: 'Workflow duyệt',
-				icon: <Icon.Workflow />,
+				icon: <LinkSvg className={styles.navIcon} />,
 				perm: 'workflows:manage',
 			},
 			{
 				key: 'settings',
 				label: 'Cấu hình hệ thống',
-				icon: <Icon.Settings />,
+				icon: <ShieldSvg className={styles.navIcon} />,
 				perm: 'system_settings:manage',
 			},
 			{
 				key: 'reports',
 				label: 'Báo cáo & Xuất',
-				icon: <Icon.Report />,
+				icon: <DownloadSvg className={styles.navIcon} />,
 				perm: 'reports:read',
 			},
 		],
@@ -358,7 +421,8 @@ const MODULE_BY_KEY: Record<string, ModuleKey> = {
 	seminarDashboard: 'seminar',
 	surveys: 'survey',
 };
-const moduleOf = (section: string, key: string) => MODULE_BY_KEY[key] ?? MODULE_BY_SECTION[section];
+const moduleOf = (section: string, key: string) =>
+	MODULE_BY_KEY[key] ?? MODULE_BY_SECTION[section];
 
 // ─── PROPS ────────────────────────────────
 export interface AdminLayoutProps {
@@ -388,11 +452,18 @@ export default function AdminLayout({
 	const modules = useModules();
 	const navGroups = NAV_GROUPS.map((g) => ({
 		...g,
-		items: g.items.filter((it) => has(it.perm) && modules[moduleOf(g.section, it.key)] !== false),
+		items: g.items.filter(
+			(it) => has(it.perm) && modules[moduleOf(g.section, it.key)] !== false,
+		),
 	})).filter((g) => g.items.length > 0);
 	const moduleOff = NAV_GROUPS.flatMap((g) =>
-		g.items.filter((it) => modules[moduleOf(g.section, it.key)] === false).map((it) => KEY_TO_PATH[it.key]),
-	).some((p) => p && (location.pathname === p || location.pathname.startsWith(`${p}/`)));
+		g.items
+			.filter((it) => modules[moduleOf(g.section, it.key)] === false)
+			.map((it) => KEY_TO_PATH[it.key]),
+	).some(
+		(p) =>
+			p && (location.pathname === p || location.pathname.startsWith(`${p}/`)),
+	);
 
 	// Tự detect activePage từ URL hiện tại
 	const activePage = PATH_TO_KEY[location.pathname] ?? 'dashboard';
@@ -529,7 +600,9 @@ export default function AdminLayout({
 	const navRef = useRef<HTMLElement>(null);
 	const activeItemRef = useRef<HTMLButtonElement>(null);
 	useLayoutEffect(() => {
-		if (navRef.current) navRef.current.scrollTop = Number(sessionStorage.getItem(NAV_SCROLL_KEY)) || 0;
+		if (navRef.current)
+			navRef.current.scrollTop =
+				Number(sessionStorage.getItem(NAV_SCROLL_KEY)) || 0;
 		activeItemRef.current?.scrollIntoView({ block: 'nearest' });
 	}, []);
 
@@ -565,14 +638,17 @@ export default function AdminLayout({
 								}
 								title={effectiveCollapsed ? 'Mở rộng' : 'Thu gọn'}
 							>
-								<Icon.ChevronL />
+								<ChevLSvg />
 							</button>
 						</div>
 						<div className={styles.sidebarBrandText}>
 							<div className={styles.sidebarBrandName}>
-								Bệnh viện Hữu nghị Đa khoa Nghệ An
+								<span className={styles.sidebarBrandLine}>Bệnh viện</span>
+								<span className={styles.sidebarBrandLine}>
+									Hữu nghị Đa khoa Nghệ An
+								</span>
 							</div>
-							<div className={styles.sidebarBrandSub}>Quản lý NCKH</div>
+							<div className={styles.sidebarBrandSub}>NCKH – Đào tạo – CME</div>
 						</div>
 					</div>
 					<button
@@ -580,7 +656,7 @@ export default function AdminLayout({
 						onClick={() => setMobileNavOpen(false)}
 						aria-label='Đóng menu'
 					>
-						<Icon.X />
+						<XSvg />
 					</button>
 				</div>
 
@@ -588,7 +664,12 @@ export default function AdminLayout({
 				<nav
 					ref={navRef}
 					className={`${styles.sidebarNav} ${mobileNavOpen ? styles.mobileOpen : ''}`}
-					onScroll={(e) => sessionStorage.setItem(NAV_SCROLL_KEY, String(e.currentTarget.scrollTop))}
+					onScroll={(e) =>
+						sessionStorage.setItem(
+							NAV_SCROLL_KEY,
+							String(e.currentTarget.scrollTop),
+						)
+					}
 				>
 					{navGroups.map((group) => (
 						<React.Fragment key={group.section}>
@@ -603,7 +684,10 @@ export default function AdminLayout({
 									onClick={() => handleNavClick(item.key)}
 									onMouseEnter={(e) => {
 										const r = e.currentTarget.getBoundingClientRect();
-										e.currentTarget.style.setProperty('--tip-y', `${r.top + r.height / 2}px`);
+										e.currentTarget.style.setProperty(
+											'--tip-y',
+											`${r.top + r.height / 2}px`,
+										);
 									}}
 									title={collapsed ? item.label : undefined}
 								>
@@ -640,14 +724,14 @@ export default function AdminLayout({
 									className={styles.userDropdownItem}
 									onClick={() => navigate('/admin/profile')}
 								>
-									<Icon.Account />
+									<UserSvg />
 									<span>Cài đặt tài khoản</span>
 								</button>
 								<button
 									className={styles.userDropdownItem}
 									onClick={handleLogout}
 								>
-									<Icon.LogOut />
+									<LogoutSvg />
 									<span>Đăng xuất</span>
 								</button>
 							</div>
@@ -663,7 +747,7 @@ export default function AdminLayout({
 								<div className={styles.userRole}>{userRole}</div>
 							</div>
 							<span className={styles.userMenuIcon}>
-								<Icon.MoreV />
+								<MoreVSvg style={{ width: 14, height: 14 }} />
 							</span>
 						</div>
 					</div>
@@ -680,7 +764,7 @@ export default function AdminLayout({
 							onClick={() => setMobileNavOpen(true)}
 							aria-label='Mở menu'
 						>
-							<Icon.Menu />
+							<MenuSvg />
 						</button>
 						<div className={styles.mobileHeaderBrand}>
 							<img

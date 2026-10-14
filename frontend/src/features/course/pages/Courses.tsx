@@ -5,7 +5,7 @@ import AdminLayout from '../../../layouts/AdminLayout';
 import { SkeletonTable } from '../../../shared/components/Loading';
 import { Pagination } from '../../../shared/components/Table/Pagination';
 import sel from '../../../shared/components/Table/RowSelect.module.css';
-import { SelectCheckbox } from '../../../shared/components/Table/RowSelect';
+import { DeleteAllButton, SelectCheckbox } from '../../../shared/components/Table/RowSelect';
 import { useRowSelection } from '../../../shared/hooks/useRowSelection';
 import { formatDate } from '../../../shared/utils/formatDate';
 import { CourseDeleteModal } from '../components/CourseDeleteModal';
@@ -56,6 +56,14 @@ export default function Courses() {
 							value={d.search}
 							onChange={d.handleSearch}
 							placeholder='Tìm theo tên khóa học...'
+						/>
+						<DeleteAllButton
+							count={d.total}
+							itemLabel='khóa học'
+							getIds={d.fetchAllIds}
+							onDelete={d.handleBulkDelete}
+							onDone={rowSel.clearSelection}
+							disabled={d.loading}
 						/>
 					</div>
 				</div>

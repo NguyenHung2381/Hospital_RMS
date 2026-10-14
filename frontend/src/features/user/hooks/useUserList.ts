@@ -214,7 +214,6 @@ export function useUserList(): UserListState {
 		async (form: UserForm): Promise<void> => {
 			const newUser = await createUser({
 				username: form.username,
-				password: form.password,
 				staff_number: form.staff_number || undefined,
 				full_name: form.full_name,
 				email: form.email || undefined,
@@ -257,7 +256,7 @@ export function useUserList(): UserListState {
 		showToast('info', `Đã xoá tài khoản ${deleteUser.full_name}`);
 	}, [deleteUser, refreshData]);
 
-	// Server sinh mật khẩu tạm ngẫu nhiên (thay cho '123456' dùng chung); modal
+	// Server đặt về mật khẩu mặc định = tên đăng nhập; modal
 	// giữ mở để hiển thị mật khẩu, người dùng phải đổi ở lần đăng nhập tới.
 	const handleResetPassword = useCallback(async (): Promise<string> => {
 		if (!resetUser) return '';
