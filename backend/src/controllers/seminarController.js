@@ -7,6 +7,7 @@ const seminarService = require('../services/seminarService');
 const partService = require('../services/seminarParticipantService');
 const importService = require('../services/seminarImportService');
 const listExcelService = require('../services/seminarListExcelService');
+const detailExcelService = require('../services/seminarDetailExcelService');
 const { createCrudController } = require('./crudController');
 const { success, created, notFound, sendWorkbook } = require('../utils/response');
 
@@ -205,6 +206,19 @@ const exportListExcel = async (req, res, next) => {
 	}
 };
 
+// Xuất Excel 1 hội nghị: thông tin + người tham dự + bài học (parts để chọn bớt)
+const exportDetailExcel = async (req, res, next) => {
+	try {
+		const parts = Array.isArray(req.body?.parts) ? req.body.parts : undefined;
+		const out = await detailExcelService.exportWorkbook(req.params.id, parts);
+		if (!out) return notFound(res);
+		const year = out.seminar.event_year ? `-${out.seminar.event_year}` : '';
+		return sendWorkbook(res, out.wb, `hoi-nghi-${out.seminar.id}${year}.xlsx`);
+	} catch (e) {
+		next(e);
+	}
+};
+
 const importListTemplate = async (req, res, next) => {
 	try {
 		return sendWorkbook(res, await listExcelService.templateWorkbook(), 'mau-nhap-hoi-thao.xlsx');
@@ -246,6 +260,7 @@ const importListExcel = async (req, res, next) => {
 module.exports = {
 	...base,
 	exportListExcel,
+	exportDetailExcel,
 	importListTemplate,
 	importListExcel,
 	participantImportTemplate,

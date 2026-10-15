@@ -9,7 +9,7 @@ import { publicUrl } from '../../../shared/utils/publicUrl';
 import { formatDateTimeVN } from '../../../shared/utils/formatDate';
 import { getSeminarTicket, submitSeminarTest, type SeminarTicket as Ticket } from '../api/publicApi';
 import { FormSection } from '../components/FormSection';
-import { seminarWhen } from '../utils/seminarWhen';
+import { seminarWhen, testWindowText } from '../utils/seminarWhen';
 import styles from './PublicPortal.module.css';
 
 // Vé cá nhân của người đã đăng ký hội nghị. QR trên vé chứa chính link trang
@@ -226,7 +226,11 @@ export default function SeminarTicket() {
 							<span className={styles.sectionDesc}>
 								{!ticket.checked_in_at
 									? 'Cần điểm danh trước khi làm bài test.'
-									: 'Bài test chưa mở — ban tổ chức sẽ mở vào cuối buổi.'}
+									: test.state === 'closed'
+										? 'Đã hết giờ làm bài test.'
+										: test.window
+											? `Bài test chưa mở — thời gian làm bài: ${testWindowText(test.window)}.`
+											: 'Bài test chưa mở — ban tổ chức sẽ mở vào cuối buổi.'}
 							</span>
 							<button
 								type='button'

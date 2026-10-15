@@ -10,6 +10,7 @@ import type {
 	Seminar,
 	SeminarForm,
 	SeminarListResponse,
+	SeminarAgendaItem,
 	SeminarParticipant,
 	SeminarTestQuestion,
 } from '../types/seminar.type';
@@ -44,6 +45,8 @@ const formToPayload = (f: SeminarForm) => ({
 	location: f.location || null,
 	start_date: f.start_date || null,
 	end_date: f.end_date || null,
+	start_time: f.start_time || null,
+	end_time: f.end_time || null,
 	date_text: f.date_text || null,
 	event_year: f.event_year ? Number(f.event_year) : null,
 	host_chair: f.host_chair || null,
@@ -118,8 +121,21 @@ export const checkInTicket = (seminarId: string, code: string) =>
 
 export const updateSeminarTest = (
 	id: string,
-	data: { test_questions?: SeminarTestQuestion[] | null; test_open?: boolean },
+	data: {
+		test_questions?: SeminarTestQuestion[] | null;
+		test_open?: boolean;
+		test_date?: string | null;
+		test_start_time?: string | null;
+		test_end_time?: string | null;
+	},
 ) => apiClient.put<Seminar>(`/seminars/${id}`, data);
+
+export const updateSeminarAgenda = (id: string, agenda: SeminarAgendaItem[] | null) =>
+	apiClient.put<Seminar>(`/seminars/${id}`, { agenda });
+
+/** Xuất Excel 1 hội nghị — parts trống = cả người tham dự lẫn bài học */
+export const exportSeminarDetailExcel = (id: string, parts?: ('participants' | 'agenda')[]) =>
+	apiClient.postBlob(`/seminars/${id}/export-excel`, { parts });
 
 export const uploadSeminarTestImage = (id: string, file: File) => {
 	const form = new FormData();

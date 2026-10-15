@@ -1,0 +1,154 @@
+.mono {
+	font-variant-numeric: tabular-nums;
+}
+.chips {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 4px;
+}
+.weekGrid {
+	display: grid;
+	grid-template-columns: repeat(7, minmax(56px, 1fr));
+	gap: 4px;
+	font-size: var(--font-size-xs);
+}
+.weekDay {
+	display: flex;
+	flex-direction: column;
+	gap: 3px;
+	align-items: flex-start;
+}
+.weekLabel {
+	font-weight: 600;
+	color: var(--color-gray-500);
+}
+.off {
+	color: var(--color-gray-400);
+}
+.linkBtn {
+	border: none;
+	background: none;
+	padding: 0;
+	color: var(--color-primary);
+	font: inherit;
+	cursor: pointer;
+}
+
+/* ── Form ───────────────────────────────── */
+.formGrid {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: 12px 16px;
+}
+.full {
+	grid-column: 1 / -1;
+}
+.colors {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 6px;
+}
+.colorBtn {
+	border: 2px solid transparent;
+	border-radius: 999px;
+	padding: 2px;
+	background: none;
+	cursor: pointer;
+}
+.colorOn {
+	border-color: var(--color-gray-700);
+}
+.checkRow {
+	display: flex;
+	align-items: flex-start;
+	gap: 8px;
+	cursor: pointer;
+}
+.dayRow {
+	display: grid;
+	grid-template-columns: 80px 1fr;
+	align-items: center;
+	gap: 10px;
+	padding: 6px 0;
+	border-bottom: 1px solid var(--color-gray-100);
+}
+.dayRow:last-child {
+	border-bottom: none;
+}
+.pick {
+	padding: 4px 10px;
+	border: 1px solid var(--color-gray-300);
+	border-radius: 999px;
+	background: var(--color-white);
+	color: var(--color-gray-600);
+	font-size: var(--font-size-sm);
+	cursor: pointer;
+}
+.pickOn {
+	border-color: var(--color-primary);
+	background: var(--color-primary);
+	color: #fff;
+}
+
+/* ── Chọn người áp dụng ─────────────────── */
+.userFilters {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+	align-items: center;
+}
+.userFilters > :first-child {
+	flex: 1 1 200px;
+}
+.userFilters > :first-child input {
+	width: 100%;
+}
+.userFilters select {
+	max-width: 220px;
+}
+.userFilters label,
+.userSummary label {
+	align-items: center;
+	white-space: nowrap;
+}
+.userList {
+	max-height: 50vh;
+	overflow-y: auto;
+	border: 1px solid var(--color-gray-200);
+	border-radius: 8px;
+}
+.userRow {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	padding: 8px 12px;
+	border-bottom: 1px solid var(--color-gray-100);
+	cursor: pointer;
+}
+.userRow:last-child {
+	border-bottom: none;
+}
+.userRow:hover {
+	background: var(--color-gray-50);
+}
+.userMain {
+	flex: 1;
+	min-width: 0;
+}
+.userSummary {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	gap: 8px;
+	font-size: var(--font-size-sm);
+	color: var(--color-gray-600);
+}
+
+@media (max-width: 640px) {
+	.formGrid {
+		grid-template-columns: 1fr;
+	}
+	.weekGrid {
+		grid-template-columns: repeat(4, minmax(56px, 1fr));
+	}
+}

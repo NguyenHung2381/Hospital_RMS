@@ -22,6 +22,8 @@ function toForm(s: Seminar): SeminarForm {
 		location: s.location ?? '',
 		start_date: s.start_date ? s.start_date.slice(0, 10) : '',
 		end_date: s.end_date ? s.end_date.slice(0, 10) : '',
+		start_time: s.start_time ?? '',
+		end_time: s.end_time ?? '',
 		date_text: s.date_text ?? '',
 		event_year: s.event_year ? String(s.event_year) : '',
 		host_chair: s.host_chair ?? '',
@@ -58,6 +60,7 @@ export function SeminarFormModal({
 		seminar ? toForm(seminar) : EMPTY_SEMINAR_FORM,
 	);
 	const [err, setErr] = useState<string>('');
+	const [timeErr, setTimeErr] = useState<string>('');
 
 	const set =
 		<K extends keyof SeminarForm>(k: K) =>
@@ -72,11 +75,18 @@ export function SeminarFormModal({
 					: e.target.value;
 			setForm((f) => ({ ...f, [k]: v }));
 			setErr('');
+			setTimeErr('');
 		};
 
 	const submit = () => {
 		if (!form.title.trim()) {
 			setErr('Vui lòng nhập tên hội thảo/hội nghị');
+			return;
+		}
+		// Cùng một ngày thì giờ kết thúc phải sau giờ bắt đầu
+		const sameDay = !form.end_date || form.end_date === form.start_date;
+		if (sameDay && form.start_time && form.end_time && form.end_time <= form.start_time) {
+			setTimeErr('Giờ kết thúc phải sau giờ bắt đầu');
 			return;
 		}
 		// suy năm từ ngày bắt đầu nếu để trống
@@ -186,6 +196,29 @@ export function SeminarFormModal({
 						onChange={(val) => setForm((f) => ({ ...f, end_date: val }))}
 						min={form.start_date || undefined}
 					/>
+				</div>
+				<div className={styles.formGroup}>
+					<label className={styles.formLabel}>Giờ bắt đầu</label>
+					<input
+						type='time'
+						className={styles.formInput}
+						value={form.start_time}
+						onChange={set('start_time')}
+					/>
+				</div>
+				<div className={styles.formGroup}>
+					<label className={styles.formLabel}>Giờ kết thúc</label>
+					<input
+						type='time'
+						className={`${styles.formInput} ${timeErr ? styles.inputError : ''}`}
+						value={form.end_time}
+						onChange={set('end_time')}
+					/>
+					{timeErr ? (
+						<div className={styles.fieldError}>{timeErr}</div>
+					) : (
+						<span className={styles.hint}>Vào ngày kết thúc (trống thì tính ngày bắt đầu)</span>
+					)}
 				</div>
 
 				<div className={styles.formGroup}>

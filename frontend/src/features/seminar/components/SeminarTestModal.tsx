@@ -1,4 +1,5 @@
-import { Modal, QuestionImageField } from '@/shared/components';
+import { DatePicker, Modal, QuestionImageField } from '@/shared/components';
+import { formatDateOr } from '@/shared/utils/formatDate';
 import { useState } from 'react';
 import { CheckSvg, PlusSvg, TrashSvg, UploadSvg, XSvg } from '@/assets/icons';
 import { ImportQuestionsModal, type ImportedQuestion } from '@/features/exam/components/ImportQuestionsModal';
@@ -33,6 +34,11 @@ export function SeminarTestModal({
 		return list.length ? list : [blank()];
 	});
 	const [open, setOpen] = useState(seminar.test_open);
+	const [testDate, setTestDate] = useState(seminar.test_date?.slice(0, 10) ?? '');
+	const [startTime, setStartTime] = useState(seminar.test_start_time ?? '');
+	const [endTime, setEndTime] = useState(seminar.test_end_time ?? '');
+	// Ngày làm bài mặc định khi để trống — khớp testWindow() ở backend
+	const defaultDate = (seminar.end_date || seminar.start_date || '').slice(0, 10);
 	const [saving, setSaving] = useState(false);
 	const [error, setError] = useState('');
 	const [importing, setImporting] = useState(false);
@@ -45,9 +51,16 @@ export function SeminarTestModal({
 		// Bỏ câu để trống hoàn toàn; câu dở dang để server báo lỗi cụ thể
 		const list = questions.filter((q) => !isBlank(q));
 		if (open && !list.length) return setError('Chưa có câu hỏi nào để mở bài test.');
+		if (startTime && endTime && endTime <= startTime) return setError('Giờ đóng bài test phải sau giờ mở.');
 		setSaving(true);
 		try {
-			await updateSeminarTest(seminar.id, { test_questions: list, test_open: open });
+			await updateSeminarTest(seminar.id, {
+				test_questions: list,
+				test_open: open,
+				test_date: testDate || null,
+				test_start_time: startTime || null,
+				test_end_time: endTime || null,
+			});
 			onSaved();
 			onClose();
 		} catch (e) {
@@ -110,6 +123,41 @@ export function SeminarTestModal({
 					/>
 					Mở bài test (người đã điểm danh làm được ngay trên vé QR của mình)
 				</label>
+				<div className={styles.formGrid} style={{ marginBottom: 12 }}>
+					<div className={styles.formGroup}>
+						<label className={styles.formLabel}>Ngày làm bài</label>
+						<DatePicker
+							value={testDate}
+							onChange={setTestDate}
+						/>
+						<span className={styles.hint}>
+							Trống = {defaultDate ? `ngày kết thúc hội nghị (${formatDateOr(defaultDate)})` : 'hôm nay'}
+						</span>
+					</div>
+					<div className={styles.formGroup}>
+						<label className={styles.formLabel}>Thời gian làm bài</label>
+						<div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+							<input
+								type='time'
+								className={styles.formInput}
+								value={startTime}
+								onChange={(e) => setStartTime(e.target.value)}
+								title='Giờ mở'
+							/>
+							<span>–</span>
+							<input
+								type='time'
+								className={styles.formInput}
+								value={endTime}
+								onChange={(e) => setEndTime(e.target.value)}
+								title='Giờ đóng'
+							/>
+						</div>
+						<span className={styles.hint}>
+							Có giờ thì bài test tự mở / tự đóng theo khung giờ (vẫn cần tích "Mở bài test")
+						</span>
+					</div>
+				</div>
 				{error && <div className={`${styles.noticeBox} ${styles.noticeWarn}`}>{error}</div>}
 
 				{questions.map((q, i) => (

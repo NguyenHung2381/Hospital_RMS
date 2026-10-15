@@ -11,6 +11,7 @@ const { splitList, inClause, buildWhere } = require('../utils/sqlFilters');
 const fs = require('fs');
 const path = require('path');
 const { UPLOADS_ROOT, SAFE_ID, removeUploadedFile, toStoredUploadPath } = require('../utils/uploadPaths');
+const { normalizeTime, normalizeAgenda } = require('../utils/seminarSchedule');
 
 const EVENT_TYPES = [
 	'conference',
@@ -157,6 +158,14 @@ const normalizeTestQuestions = (raw, seminarId) => {
 	return JSON.stringify(out);
 };
 
+// Giờ 'HH:mm': hội nghị (start/end_time) và khung giờ bài test cuối buổi
+const TIME_FIELDS = {
+	start_time: 'Giờ bắt đầu',
+	end_time: 'Giờ kết thúc',
+	test_start_time: 'Giờ mở bài test',
+	test_end_time: 'Giờ đóng bài test',
+};
+
 const create = async (data, actorId) => {
 	const pool = await getPool();
 	const result = await pool
@@ -169,6 +178,8 @@ const create = async (data, actorId) => {
 		.input('location', sql.NVarChar(255), data.location || null)
 		.input('start_date', sql.Date, data.start_date || null)
 		.input('end_date', sql.Date, data.end_date || null)
+		.input('start_time', sql.VarChar(5), normalizeTime(data.start_time, TIME_FIELDS.start_time) ?? null)
+		.input('end_time', sql.VarChar(5), normalizeTime(data.end_time, TIME_FIELDS.end_time) ?? null)
 		.input('date_text', sql.NVarChar(100), data.date_text || null)
 		.input('event_year', sql.Int, yearOf(data))
 		.input('host_chair', sql.NVarChar(255), data.host_chair || null)
@@ -189,13 +200,13 @@ const create = async (data, actorId) => {
       EXEC sp_set_actor @actor_id;
       INSERT INTO seminars
         (id, title, event_type, event_type_raw, scope, location, start_date, end_date,
-         date_text, event_year, host_chair, speakers, permit_doc_no, co_organizers,
+         start_time, end_time, date_text, event_year, host_chair, speakers, permit_doc_no, co_organizers,
          grants_cme, cme_default_credits, coordinator, notes,
          manual_participant_count, manual_internal_count, manual_external_count,
          manual_foreign_count, manual_cme_count, public_token, created_by)
       VALUES
         (@new_id, @title, @event_type, @event_type_raw, @scope, @location, @start_date, @end_date,
-         @date_text, @event_year, @host_chair, @speakers, @permit_doc_no, @co_organizers,
+         @start_time, @end_time, @date_text, @event_year, @host_chair, @speakers, @permit_doc_no, @co_organizers,
          @grants_cme, @cme_default_credits, @coordinator, @notes,
          @manual_participant_count, @manual_internal_count, @manual_external_count,
          @manual_foreign_count, @manual_cme_count,
@@ -212,6 +223,7 @@ const FIELD_TYPES = {
 	location: sql.NVarChar(255),
 	start_date: sql.Date,
 	end_date: sql.Date,
+	test_date: sql.Date,
 	date_text: sql.NVarChar(100),
 	host_chair: sql.NVarChar(255),
 	speakers: sql.NVarChar(sql.MAX),
@@ -240,6 +252,21 @@ const update = async (id, data, actorId) => {
 			sets.push(`${key} = @${key}`);
 			req.input(key, type, data[key] === '' ? null : data[key]);
 		}
+	}
+	const times = {};
+	for (const [key, label] of Object.entries(TIME_FIELDS)) {
+		times[key] = normalizeTime(data[key], label);
+		if (times[key] !== undefined) {
+			sets.push(`${key} = @${key}`);
+			req.input(key, sql.VarChar(5), times[key]);
+		}
+	}
+	if (times.test_start_time && times.test_end_time && times.test_end_time <= times.test_start_time) {
+		throw Object.assign(new Error('Giờ đóng bài test phải sau giờ mở.'), { statusCode: 400 });
+	}
+	if (data.agenda !== undefined) {
+		sets.push('agenda = @agenda');
+		req.input('agenda', sql.NVarChar(sql.MAX), normalizeAgenda(data.agenda));
 	}
 	if (data.event_type !== undefined) {
 		sets.push('event_type = @event_type');

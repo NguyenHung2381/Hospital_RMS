@@ -5,6 +5,22 @@
 # JWT secret). Tên container / volume dev có tiền tố hospital_rms_dev.
 name: hospital_rms_dev
 
+# node_modules nằm trong anonymous volume (/app/node_modules) — Compose GIỮ volume
+# này khi tạo lại container, kể cả `up --build`, nên package mới thêm sau `git pull`
+# không có trong đó (lỗi "Cannot find package ..."). Trước khi chạy app, so hash
+# package.json + package-lock.json với dấu lưu trong node_modules; khác thì tự
+# `npm ci` lại (npm ci chỉ xoá nội dung, không xoá thư mục mount point).
+# Dùng: command: ["sh", "-c", *ensure-deps, "sh", <lệnh chạy app>...]
+x-ensure-deps: &ensure-deps |
+  set -e
+  hash=$$(cat package.json package-lock.json | md5sum | cut -d' ' -f1)
+  if [ "$$(cat node_modules/.deps-hash 2>/dev/null)" != "$$hash" ]; then
+    echo "[deps] package.json/package-lock.json đã đổi → npm ci ..."
+    npm ci --no-audit --no-fund --fetch-timeout=600000 --fetch-retries=5 --fetch-retry-maxtimeout=120000
+    echo "$$hash" > node_modules/.deps-hash
+  fi
+  exec "$$@"
+
 services:
   backend:
     build:
@@ -28,7 +44,9 @@ services:
     # native fs-events nên nodemon cần polling mới thấy thay đổi file.
     # Gọi thẳng nodemon bằng node thay vì `npx nodemon`: npx để lại 1 tiến trình
     # npm (~75MB RSS) nằm chờ suốt đời container mà không làm gì.
-    command: ["node", "node_modules/nodemon/bin/nodemon.js", "-L", "--trace-deprecation", "src/server.js"]
+    # sh -c chỉ chạy kiểm tra deps rồi `exec` thay thế chính nó → không để lại
+    # tiến trình bọc ngoài.
+    command: ["sh", "-c", *ensure-deps, "sh", "node", "node_modules/nodemon/bin/nodemon.js", "-L", "--trace-deprecation", "src/server.js"]
     mem_limit: 640m
     ports:
       - "3000:3000"
@@ -53,7 +71,7 @@ services:
       DEV_HTTPS: "${DEV_HTTPS:-false}"
       NODE_OPTIONS: "--max-old-space-size=512"
     # Chạy vite trực tiếp, bỏ tiến trình `npm run dev` (~60MB RSS) bọc ngoài.
-    command: ["node", "node_modules/vite/bin/vite.js"]
+    command: ["sh", "-c", *ensure-deps, "sh", "node", "node_modules/vite/bin/vite.js"]
     mem_limit: 768m
     ports:
       - "5173:5173"

@@ -364,6 +364,15 @@ const migrateRolesAndSessions = async ({ dryRun = false } = {}) => {
         AND NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'UX_sp_ticket_code' AND object_id = OBJECT_ID('seminar_participants'))
         CREATE UNIQUE NONCLUSTERED INDEX UX_sp_ticket_code ON seminar_participants (ticket_code) WHERE ticket_code IS NOT NULL;
     `);
+		// Giờ hội nghị, khung giờ bài test, chương trình. Tương đương 2026-10-31_seminar_schedule_agenda.sql.
+		await pool.request().query(`
+      IF OBJECT_ID('seminars', 'U') IS NOT NULL AND COL_LENGTH('seminars', 'start_time') IS NULL
+        ALTER TABLE seminars ADD start_time VARCHAR(5) NULL, end_time VARCHAR(5) NULL;
+      IF OBJECT_ID('seminars', 'U') IS NOT NULL AND COL_LENGTH('seminars', 'test_date') IS NULL
+        ALTER TABLE seminars ADD test_date DATE NULL, test_start_time VARCHAR(5) NULL, test_end_time VARCHAR(5) NULL;
+      IF OBJECT_ID('seminars', 'U') IS NOT NULL AND COL_LENGTH('seminars', 'agenda') IS NULL
+        ALTER TABLE seminars ADD agenda NVARCHAR(MAX) NULL;
+    `);
 		// systemSettingService.update() ghi created_by. Tương đương 2026-10-26_system_settings_created.sql.
 		await pool.request().query(`
       IF OBJECT_ID('system_settings', 'U') IS NOT NULL AND COL_LENGTH('system_settings', 'created_at') IS NULL
@@ -396,6 +405,72 @@ const migrateRolesAndSessions = async ({ dryRun = false } = {}) => {
         );
         CREATE INDEX IX_staff_attendance_date ON staff_attendance(work_date);
       END
+    `);
+		// Chấm công theo ca. Tương đương 2026-10-30_attendance_shifts.sql.
+		await pool.request().query(`
+      IF OBJECT_ID('work_shifts', 'U') IS NULL
+        CREATE TABLE work_shifts (
+          id                 INT IDENTITY(1,1) NOT NULL CONSTRAINT PK_work_shifts PRIMARY KEY,
+          name               NVARCHAR(100) NOT NULL,
+          code               NVARCHAR(10)  NOT NULL,
+          color              VARCHAR(20)   NULL,
+          start_time         CHAR(5)       NOT NULL,
+          end_time           CHAR(5)       NOT NULL,
+          checkin_before_min INT           NOT NULL CONSTRAINT DF_work_shifts_before DEFAULT 30,
+          checkout_after_min INT           NOT NULL CONSTRAINT DF_work_shifts_after DEFAULT 120,
+          grace_min          INT           NOT NULL CONSTRAINT DF_work_shifts_grace DEFAULT 5,
+          is_active          BIT           NOT NULL CONSTRAINT DF_work_shifts_active DEFAULT 1,
+          created_at         DATETIME2     NOT NULL CONSTRAINT DF_work_shifts_created DEFAULT SYSUTCDATETIME(),
+          updated_at         DATETIME2     NULL
+        );
+    `);
+		await pool.request().query(`
+      IF OBJECT_ID('shift_patterns', 'U') IS NULL
+      BEGIN
+        CREATE TABLE shift_patterns (
+          id         INT IDENTITY(1,1) NOT NULL CONSTRAINT PK_shift_patterns PRIMARY KEY,
+          name       NVARCHAR(100) NOT NULL,
+          days       NVARCHAR(MAX) NOT NULL,
+          is_default BIT           NOT NULL CONSTRAINT DF_shift_patterns_default DEFAULT 0,
+          created_at DATETIME2     NOT NULL CONSTRAINT DF_shift_patterns_created DEFAULT SYSUTCDATETIME(),
+          updated_at DATETIME2     NULL
+        );
+        CREATE UNIQUE INDEX UX_shift_patterns_default ON shift_patterns(is_default) WHERE is_default = 1;
+      END
+    `);
+		await pool.request().query(`
+      IF COL_LENGTH('users', 'shift_pattern_id') IS NULL
+        ALTER TABLE users ADD shift_pattern_id INT NULL
+          CONSTRAINT FK_users_shift_pattern REFERENCES shift_patterns(id) ON DELETE SET NULL;
+    `);
+		await pool.request().query(`
+      IF OBJECT_ID('shift_assignments', 'U') IS NULL
+      BEGIN
+        CREATE TABLE shift_assignments (
+          id         INT IDENTITY(1,1) NOT NULL CONSTRAINT PK_shift_assignments PRIMARY KEY,
+          user_id    VARCHAR(20) NOT NULL
+                     CONSTRAINT FK_shift_assignments_user REFERENCES users(id) ON DELETE CASCADE,
+          work_date  DATE        NOT NULL,
+          shift_id   INT         NULL CONSTRAINT FK_shift_assignments_shift REFERENCES work_shifts(id),
+          updated_by VARCHAR(20) NULL,
+          updated_at DATETIME2   NOT NULL CONSTRAINT DF_shift_assignments_updated DEFAULT SYSUTCDATETIME(),
+          CONSTRAINT UQ_shift_assignments UNIQUE (user_id, work_date, shift_id)
+        );
+        CREATE INDEX IX_shift_assignments_date ON shift_assignments(work_date);
+      END
+    `);
+		await pool.request().query(`
+      IF OBJECT_ID('staff_attendance', 'U') IS NOT NULL AND COL_LENGTH('staff_attendance', 'shift_id') IS NULL
+        ALTER TABLE staff_attendance ADD
+          shift_id INT NULL, shift_name NVARCHAR(100) NULL, shift_code NVARCHAR(10) NULL,
+          shift_start_at DATETIME2 NULL, shift_end_at DATETIME2 NULL, late_min INT NULL, early_min INT NULL;
+    `);
+		// Mỗi bước 1 batch: bảng/cột phải có trước khi FK/ràng buộc tham chiếu tới nó
+		await pool.request().query(`
+      IF OBJECT_ID('UQ_staff_attendance_user_date', 'UQ') IS NOT NULL
+        ALTER TABLE staff_attendance DROP CONSTRAINT UQ_staff_attendance_user_date;
+      IF OBJECT_ID('staff_attendance', 'U') IS NOT NULL AND OBJECT_ID('UQ_staff_attendance_user_date_shift', 'UQ') IS NULL
+        ALTER TABLE staff_attendance ADD CONSTRAINT UQ_staff_attendance_user_date_shift UNIQUE (user_id, work_date, shift_id);
     `);
 	}
 

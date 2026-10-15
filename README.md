@@ -241,10 +241,10 @@ docker compose down                  # dừng và xoá container (giữ volume)
 
 #### Thêm hoặc cập nhật package
 
-`node_modules` nằm trong anonymous volume (`/app/node_modules`) để không bị bind mount ghi đè. Vì vậy sau khi sửa `package.json`, phải build lại image **và** tạo lại volume đó, nếu không container vẫn dùng `node_modules` cũ:
+`node_modules` nằm trong anonymous volume (`/app/node_modules`) để không bị bind mount ghi đè — Compose giữ volume này cả khi `up --build`. Container dev tự xử lý: lúc khởi động so hash `package.json` + `package-lock.json` với dấu trong `node_modules`, khác thì tự `npm ci` (log `[deps] ... → npm ci`). Sau `git pull` hay thêm package chỉ cần khởi động lại container:
 
 ```bash
-docker compose up -d --build --renew-anon-volumes backend  # hoặc frontend
+docker compose restart backend frontend
 ```
 
 ---
@@ -442,8 +442,8 @@ Log ghi tại `logs/jwt-rotate.log`.
 | Backend báo `EACCES` khi ghi upload / log | Quyền volume chưa chuyển cho user `node`: xem log dòng `docker-entrypoint: chuyển quyền …`, hoặc chạy `docker compose -f docker-compose.prod.yml up -d --force-recreate backend`. |
 | Prod báo lỗi CORS trên trình duyệt | Origin trình duyệt đang dùng (scheme + domain + port) chưa có trong `CORS_ORIGIN` của `docker-compose.prod.yml`. |
 | Compose báo lỗi ở `env_file` | Docker Compose cũ hơn v2.24. Cập nhật Docker Desktop / plugin compose. |
-| Dev: sửa code không thấy cập nhật | Kiểm tra `docker compose logs frontend`. Polling có độ trễ khoảng 1 giây. Nếu vừa thêm package thì chạy lại với `--renew-anon-volumes`. |
-| Dev: lỗi `Cannot find module` sau khi `git pull` | `package.json` đã đổi nhưng `node_modules` trong volume còn cũ. Chạy `docker compose up -d --build --renew-anon-volumes`. |
+| Dev: sửa code không thấy cập nhật | Kiểm tra `docker compose logs frontend`. Polling có độ trễ khoảng 1 giây. Nếu vừa thêm package thì `docker compose restart frontend` để tự cài lại. |
+| Dev: lỗi `Cannot find module` sau khi `git pull` | Container tự `npm ci` khi khởi động nếu `package-lock.json` đổi — chạy `docker compose restart backend frontend`. Vẫn lỗi thì `docker compose up -d --build --renew-anon-volumes`. |
 | `npm ci` lỗi `EIDLETIMEOUT` khi build | Mạng chập chờn. Chạy lại lệnh build, cache npm được giữ nên không phải tải lại từ đầu. |
 | Upload file lớn bị lỗi `413` ở prod | Vượt `client_max_body_size 300m` trong `frontend/nginx.conf` hoặc giới hạn `TRAINING_*_MAX_MB` của backend. |
 | Upload bị từ chối "nội dung không đúng định dạng" | File bị đổi đuôi (vd ảnh chụp lưu thành `.pdf`) hoặc hỏng. Mở file bằng phần mềm tương ứng rồi lưu lại đúng định dạng. |

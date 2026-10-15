@@ -138,11 +138,14 @@ router.post(
 		body('lat').isFloat({ min: -90, max: 90 }).toFloat(),
 		body('lng').isFloat({ min: -180, max: 180 }).toFloat(),
 		body('accuracy').isFloat({ min: 0 }).toFloat(),
+		// Ca cần chấm khi lúc đó có nhiều ca mở (vd hết ca sáng, vào ca chiều); shift_id null = chấm tự do
+		body('work_date').optional({ values: 'null' }).isISO8601({ strict: true }),
+		body('shift_id').optional({ values: 'null' }).isInt({ min: 1 }).toInt(),
 	],
 	validate,
 	handle(async (req, res) => {
-		const { lat, lng, accuracy } = req.body;
-		const data = await staffAttendanceService.check(req.user.id, { ip: req.ip, lat, lng, accuracy });
+		const { lat, lng, accuracy, shift_id, work_date } = req.body;
+		const data = await staffAttendanceService.check(req.user.id, { ip: req.ip, lat, lng, accuracy, shift_id, work_date });
 		return success(res, data, data.action === 'check_in' ? 'Đã chấm công vào' : 'Đã chấm công ra');
 	}),
 );
