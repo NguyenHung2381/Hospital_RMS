@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1
-FROM node:22-alpine AS dev
+FROM node:25-alpine AS dev
 WORKDIR /app
 COPY package*.json ./
 # Cache mount giữ ~/.npm giữa các lần build → build lỗi/retry không phải tải lại
@@ -13,7 +13,7 @@ COPY . .
 EXPOSE 5173
 CMD ["node", "node_modules/vite/bin/vite.js"]
 
-FROM node:22-alpine AS build
+FROM node:25-alpine AS build
 WORKDIR /app
 COPY package*.json ./
 RUN --mount=type=cache,target=/root/.npm \
