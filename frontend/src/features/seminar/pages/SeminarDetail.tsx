@@ -5,6 +5,7 @@ import {
 	CheckSvg,
 	ChevLSvg,
 	ClipboardCheckSvg,
+	DownloadSvg,
 	EditSvg,
 	FileTextSvg,
 	MonitorSvg,
@@ -41,8 +42,14 @@ import {
 	SCOPE_LABELS,
 	SOURCE_LABELS,
 	type ParticipationType,
+	type Seminar,
 	type SeminarParticipant,
 } from '../types/seminar.type';
+import { SeminarAgendaModal } from '../components/SeminarAgendaModal';
+import { parseAgenda } from '../utils/agenda';
+import { exportSeminarDetailExcel } from '../api/seminarApi';
+import { fileSlug, saveBlob } from '../utils/saveBlob';
+import { showToast } from '@/shared/utils/feedback';
 import styles from './Seminar.module.css';
 import tbl from '@/shared/components/Table/Table.module.css';
 import { useClientPaging } from '@/shared/hooks/useClientPaging';
@@ -60,12 +67,36 @@ const TABS: { key: 'all' | ParticipationType; label: string }[] = [
 const cmeEligible = (p: SeminarParticipant, hasTest: boolean) =>
 	!p.ticket_code || (!!p.checked_in_at && (!!p.test_submitted_at || !hasTest));
 
-const fmtDate = (s: string | null) => {
+const fmtDate = (s: string | null | undefined) => {
 	if (!s) return '';
 	const d = new Date(s);
 	return Number.isNaN(d.getTime())
 		? s
 		: d.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
+};
+
+const withTime = (date: string | null, time: string | null) =>
+	[time, fmtDate(date)].filter(Boolean).join(' ');
+const timeRange = (a?: string | null, b?: string | null) =>
+	a && b ? `${a} – ${b}` : a ? `từ ${a}` : b ? `đến ${b}` : '';
+
+// "08:00 05/06/2026 – 17:00 06/06/2026"; không có ngày thì dùng chuỗi nhập tay
+const seminarWhen = (s: Seminar) => {
+	const from = withTime(s.start_date, s.start_time);
+	const to = withTime(s.end_date || (s.end_time ? s.start_date : null), s.end_time);
+	const sameDay = !s.end_date || s.end_date === s.start_date;
+	const range =
+		sameDay && s.start_time && s.end_time
+			? `${s.start_time} – ${s.end_time} ${fmtDate(s.start_date)}`
+			: [from, to && to !== from ? to : null].filter(Boolean).join(' – ');
+	return range || s.date_text || '';
+};
+
+// Khung giờ làm bài test — ngày trống = ngày kết thúc (hoặc bắt đầu), khớp backend testWindow()
+const testWhen = (s: Seminar) => {
+	if (!s.test_start_time && !s.test_end_time) return '';
+	const day = s.test_date || s.end_date || s.start_date;
+	return `${timeRange(s.test_start_time, s.test_end_time)}${day ? ` · ${fmtDate(day)}` : ''}`;
 };
 
 export default function SeminarDetail() {
@@ -85,6 +116,24 @@ export default function SeminarDetail() {
 	const [regQrOpen, setRegQrOpen] = useState(searchParams.get('qr') === '1');
 	const [presentOpen, setPresentOpen] = useState(false);
 	const [testOpen, setTestOpen] = useState(false);
+	const [agendaOpen, setAgendaOpen] = useState(false);
+	const [exporting, setExporting] = useState<'participants' | 'agenda' | null>(null);
+	const agenda = useMemo(() => parseAgenda(d.seminar?.agenda ?? null), [d.seminar?.agenda]);
+
+	// File luôn kèm sheet "Thông tin" (thời gian, khung giờ bài test...)
+	const handleExport = async (part: 'participants' | 'agenda') => {
+		if (!d.seminar) return;
+		setExporting(part);
+		try {
+			const blob = await exportSeminarDetailExcel(d.seminar.id, [part]);
+			const name = part === 'participants' ? 'nguoi-tham-du' : 'bai-hoc';
+			saveBlob(blob, `${name}-${fileSlug(d.seminar.title).slice(0, 60)}.xlsx`);
+		} catch (e) {
+			showToast('error', e instanceof Error ? e.message : 'Xuất Excel thất bại');
+		} finally {
+			setExporting(null);
+		}
+	};
 
 	const filtered = useMemo(
 		() =>
@@ -132,7 +181,13 @@ export default function SeminarDetail() {
 					<div className={styles.infoCard}>
 						<div className={styles.infoGrid}>
 							<Info label='Hình thức' value={EVENT_TYPE_LABELS[sem.event_type]} />
-							<Info label='Thời gian' value={sem.date_text || fmtDate(sem.start_date) || '—'} />
+							<Info label='Thời gian' value={seminarWhen(sem) || '—'} />
+							{sem.test_questions && (
+								<Info
+									label='Bài test cuối buổi'
+									value={`${testWhen(sem) || 'Không giới hạn giờ'} · ${sem.test_open ? 'đang bật' : 'chưa bật'}`}
+								/>
+							)}
 							<Info label='Địa điểm' value={sem.location || '—'} />
 							<Info label='Năm' value={sem.event_year ?? '—'} />
 							{sem.scope === 'hosted' && (
@@ -192,6 +247,66 @@ export default function SeminarDetail() {
 						</p>
 					)}
 
+					<div className={styles.tableCard} style={{ marginBottom: 16 }}>
+						<div className={styles.tableHeader}>
+							<div className={styles.tableHeaderLeft}>
+								<span className={styles.tableTitle}>Chương trình — Bài học</span>
+								<span className={styles.tableCount}>{agenda.length} bài</span>
+							</div>
+							<div className={styles.tableControls}>
+								{perms.canUpdate && (
+									<button
+										className={styles.btnGhost}
+										onClick={() => setAgendaOpen(true)}
+									>
+										{agenda.length ? <EditSvg /> : <PlusSvg />}{' '}
+										{agenda.length ? 'Sửa chương trình' : 'Thêm bài học'}
+									</button>
+								)}
+								{perms.canExport && (
+									<button
+										className={styles.btnGhost}
+										onClick={() => void handleExport('agenda')}
+										disabled={!!exporting || agenda.length === 0}
+									>
+										{exporting === 'agenda' ? <span className={styles.spinner} /> : <DownloadSvg />} Xuất Excel
+									</button>
+								)}
+							</div>
+						</div>
+						{agenda.length > 0 && (
+							<div className={styles.tableWrap}>
+								<table className={styles.table}>
+									<thead>
+										<tr>
+											<th className={tbl.thIdx}>STT</th>
+											<th>Thời gian</th>
+											<th>Tên bài học / bài báo cáo</th>
+											<th>Báo cáo viên</th>
+											<th>Ghi chú</th>
+										</tr>
+									</thead>
+									<tbody>
+										{agenda.map((a, i) => (
+											<tr key={i}>
+												<td className={styles.tdIdx}>{i + 1}</td>
+												<td>
+													{timeRange(a.start_time, a.end_time) || <span className={styles.muted}>—</span>}
+													{a.date && <div className={styles.muted}>{fmtDate(a.date)}</div>}
+												</td>
+												<td>
+													<span className={tbl.cellTitle}>{a.title}</span>
+												</td>
+												<td>{a.speaker || <span className={styles.muted}>—</span>}</td>
+												<td>{a.note || <span className={styles.muted}>—</span>}</td>
+											</tr>
+										))}
+									</tbody>
+								</table>
+							</div>
+						)}
+					</div>
+
 					<div className={styles.tableCard}>
 						<div className={styles.tableHeader}>
 							<div className={styles.tableHeaderLeft}>
@@ -216,6 +331,15 @@ export default function SeminarDetail() {
 										onClick={() => setImportOpen(true)}
 									>
 										<UploadSvg /> Nhập Excel
+									</button>
+								)}
+								{perms.canExport && (
+									<button
+										className={styles.btnGhost}
+										onClick={() => void handleExport('participants')}
+										disabled={!!exporting || d.participants.length === 0}
+									>
+										{exporting === 'participants' ? <span className={styles.spinner} /> : <DownloadSvg />} Xuất Excel
 									</button>
 								)}
 								{perms.canUpdate && hosted && (
@@ -520,6 +644,14 @@ export default function SeminarDetail() {
 				<SeminarTestModal
 					seminar={sem}
 					onClose={() => setTestOpen(false)}
+					onSaved={d.refresh}
+				/>
+			)}
+
+			{agendaOpen && sem && (
+				<SeminarAgendaModal
+					seminar={sem}
+					onClose={() => setAgendaOpen(false)}
 					onSaved={d.refresh}
 				/>
 			)}

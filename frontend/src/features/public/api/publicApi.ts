@@ -204,6 +204,9 @@ export interface PublicSeminar {
 	location: string | null;
 	start_date: string | null;
 	end_date: string | null;
+	/** 'HH:mm' */
+	start_time?: string | null;
+	end_time?: string | null;
 	date_text: string | null;
 	grants_cme: boolean;
 	cme_default_credits: number | null;
@@ -231,10 +234,17 @@ export interface SeminarTicket {
 	full_name: string;
 	organization: string | null;
 	checked_in_at: string | null;
-	seminar: Pick<PublicSeminar, 'title' | 'location' | 'start_date' | 'end_date' | 'date_text' | 'grants_cme'>;
+	seminar: Pick<
+		PublicSeminar,
+		'title' | 'location' | 'start_date' | 'end_date' | 'start_time' | 'end_time' | 'date_text' | 'grants_cme'
+	>;
 	test: {
 		has_test: boolean;
 		open: boolean;
+		/** off = BTC chưa bật · scheduled = chưa tới giờ · open · closed = quá giờ */
+		state?: 'off' | 'scheduled' | 'open' | 'closed';
+		/** Khung giờ làm bài (date: YYYY-MM-DD) */
+		window?: { date: string; start_time: string | null; end_time: string | null } | null;
 		submitted_at: string | null;
 		correct: number | null;
 		total: number | null;

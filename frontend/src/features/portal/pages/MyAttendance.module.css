@@ -19,9 +19,6 @@
 	gap: 8px;
 	margin: 16px 0;
 }
-.checkBtn {
-	width: 100%;
-}
 .note {
 	margin: 8px 0 0;
 	font-size: var(--font-size-sm);
@@ -34,4 +31,75 @@
 	background: var(--color-red-50, #fef2f2);
 	color: var(--color-red-700, #b91c1c);
 	font-size: var(--font-size-sm);
+}
+.idle {
+	margin: 0;
+	color: var(--color-gray-600);
+	font-size: var(--font-size-sm);
+}
+.options {
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+}
+.option {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	justify-content: space-between;
+	gap: 12px;
+	padding: 12px;
+	border: 1px solid var(--color-gray-200);
+	border-radius: 10px;
+}
+.optionInfo {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+.recent {
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+	margin-top: 16px;
+	padding-top: 16px;
+	border-top: 1px solid var(--color-gray-100);
+}
+.recentRow {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+}
+.notes {
+	display: inline-flex;
+	flex-wrap: wrap;
+	gap: 4px;
+	align-items: center;
+}
+.week {
+	display: grid;
+	grid-template-columns: repeat(7, minmax(0, 1fr));
+	gap: 8px;
+}
+.weekDay {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+	padding: 8px;
+	border-radius: 8px;
+	background: var(--color-gray-50);
+}
+.weekShift {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 4px;
+}
+@media (max-width: 640px) {
+	.week {
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+	}
+	.option > button {
+		width: 100%;
+	}
 }

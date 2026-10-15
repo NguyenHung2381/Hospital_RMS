@@ -14,6 +14,7 @@ const { normalizeGender } = require('../utils/gender');
 const QRCode = require('qrcode');
 const mailService = require('./mailService');
 const { renderSeminarBadgePng } = require('../utils/seminarBadgeImage');
+const { testState, testWindow } = require('../utils/seminarSchedule');
 
 // Mã QR điểm danh hội thảo — JWT ngắn hạn ký seminar_id (mirror
 // courseService.generateAttendanceQrToken / utils/captcha.js).
@@ -428,8 +429,10 @@ const parseQuestions = (json) => {
 	}
 };
 
-const SEMINAR_PUBLIC_COLS = `s.id, s.title, s.location, s.start_date, s.end_date, s.date_text,
-  s.grants_cme, s.cme_default_credits, s.scope`;
+const SEMINAR_PUBLIC_COLS = `s.id, s.title, s.location, s.start_date, s.end_date, s.start_time, s.end_time,
+  s.date_text, s.grants_cme, s.cme_default_credits, s.scope`;
+// Bài test: câu hỏi + công tắc mở + khung giờ (utils/seminarSchedule.testState)
+const SEMINAR_TEST_COLS = 's.test_questions, s.test_open, s.test_date, s.test_start_time, s.test_end_time';
 // Hết hạn đăng ký sau ngày kết thúc (không có ngày kết thúc thì theo ngày bắt đầu)
 const REG_OPEN_SQL = `CAST(CASE WHEN s.scope = 'hosted' AND COALESCE(s.end_date, s.start_date, '9999-12-31')
   >= CAST(GETDATE() AS DATE) THEN 1 ELSE 0 END AS BIT)`;
@@ -531,14 +534,16 @@ const getTicket = async (code) => {
       SELECT p.title_prefix, p.full_name, p.organization, p.checked_in_at,
              p.test_submitted_at, p.test_correct, p.test_total,
              p.cme_certificate_no, p.cme_year, p.cme_credits,
-             s.test_questions, s.test_open, ${SEMINAR_PUBLIC_COLS}
+             ${SEMINAR_TEST_COLS}, ${SEMINAR_PUBLIC_COLS}
       FROM seminar_participants p JOIN seminars s ON s.id = p.seminar_id
       WHERE p.ticket_code = @code;
     `);
 	const row = r.recordset[0];
 	if (!row) throw httpError(404, 'Mã vé không tồn tại.');
 	const questions = parseQuestions(row.test_questions);
-	const canTakeTest = !!(questions.length && row.test_open && row.checked_in_at && !row.test_submitted_at);
+	const state = testState(row);
+	const window = testWindow(row);
+	const canTakeTest = !!(questions.length && state === 'open' && row.checked_in_at && !row.test_submitted_at);
 	return {
 		title_prefix: row.title_prefix,
 		full_name: row.full_name,
@@ -549,12 +554,18 @@ const getTicket = async (code) => {
 			location: row.location,
 			start_date: row.start_date,
 			end_date: row.end_date,
+			start_time: row.start_time,
+			end_time: row.end_time,
 			date_text: row.date_text,
 			grants_cme: row.grants_cme,
 		},
 		test: {
 			has_test: questions.length > 0,
-			open: !!row.test_open,
+			open: state === 'open',
+			state,
+			window: window
+				? { date: window.date, start_time: row.test_start_time, end_time: row.test_end_time }
+				: null,
 			submitted_at: row.test_submitted_at,
 			correct: row.test_correct,
 			total: row.test_total,
@@ -573,7 +584,7 @@ const submitTest = async (code, answers) => {
 		.request()
 		.input('code', sql.VarChar(32), code)
 		.query(`
-      SELECT p.id, p.checked_in_at, p.test_submitted_at, s.test_questions, s.test_open
+      SELECT p.id, p.checked_in_at, p.test_submitted_at, s.start_date, s.end_date, ${SEMINAR_TEST_COLS}
       FROM seminar_participants p JOIN seminars s ON s.id = p.seminar_id
       WHERE p.ticket_code = @code;
     `);
@@ -583,7 +594,10 @@ const submitTest = async (code, answers) => {
 	if (!questions.length) throw httpError(409, 'Hội nghị này không có bài test.');
 	if (!row.checked_in_at)
 		throw httpError(409, 'Bạn chưa được điểm danh — vui lòng đưa mã QR cho ban tổ chức quét trước.');
-	if (!row.test_open) throw httpError(409, 'Bài test chưa mở hoặc đã đóng.');
+	const state = testState(row);
+	if (state === 'scheduled') throw httpError(409, `Chưa tới giờ làm bài test (mở lúc ${row.test_start_time}).`);
+	if (state === 'closed') throw httpError(409, `Đã hết giờ làm bài test (đóng lúc ${row.test_end_time}).`);
+	if (state !== 'open') throw httpError(409, 'Bài test chưa mở hoặc đã đóng.');
 	if (row.test_submitted_at) throw httpError(409, 'Bạn đã nộp bài test rồi.');
 	const picked = Array.isArray(answers) ? answers.map((a) => (Number.isInteger(a) ? a : null)) : [];
 	if (picked.length !== questions.length || picked.includes(null))

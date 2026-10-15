@@ -98,6 +98,8 @@ const KEY_TO_PATH: Record<string, string> = {
 	cmeRecords: '/admin/cme-records',
 	staffLicenses: '/admin/staff-licenses',
 	staffAttendance: '/admin/staff-attendance',
+	shifts: '/admin/shifts',
+	shiftRoster: '/admin/shift-roster',
 	cmeCreditCatalog: '/admin/cme-credit-categories',
 	users: '/admin/users',
 	roles: '/admin/roles',
@@ -391,6 +393,18 @@ const NAV_GROUPS: NavGroup[] = [
 				perm: 'staff_attendance:read',
 			},
 			{
+				key: 'shiftRoster',
+				label: 'Phân ca',
+				icon: <CalendarSvg className={styles.navIcon} />,
+				perm: 'staff_attendance:roster',
+			},
+			{
+				key: 'shifts',
+				label: 'Ca làm việc',
+				icon: <ClockSvg className={styles.navIcon} />,
+				perm: 'staff_attendance:manage',
+			},
+			{
 				key: 'activityLogs',
 				label: 'Nhật ký hoạt động',
 				icon: <ListSvg className={styles.navIcon} />,
@@ -436,6 +450,8 @@ const MODULE_BY_KEY: Record<string, ModuleKey> = {
 	seminarDashboard: 'seminar',
 	surveys: 'survey',
 	staffAttendance: 'attendance',
+	shifts: 'attendance',
+	shiftRoster: 'attendance',
 };
 const moduleOf = (section: string, key: string) =>
 	MODULE_BY_KEY[key] ?? MODULE_BY_SECTION[section];

@@ -219,18 +219,48 @@ export const addMyCmeEvidence = (id: string, file: File) => {
 	return apiClient.postForm<{ id: string }>(`/me/cme-records/${id}/evidence`, form);
 };
 
-// ─── Chấm công (IP bệnh viện + GPS) ─────────────────────────
+// ─── Chấm công theo ca (IP bệnh viện + GPS) ─────────────────
 export interface AttendanceRow {
 	id: number;
+	/** Ngày bắt đầu ca. */
 	work_date: string;
+	/** null = chấm tự do (không có lịch ca). */
+	shift_id: number | null;
+	shift_name: string | null;
+	shift_code: string | null;
+	shift_start_at: string | null;
+	shift_end_at: string | null;
 	check_in_at: string;
 	check_in_distance_m: number | null;
 	check_out_at: string | null;
 	check_out_distance_m: number | null;
+	late_min: number | null;
+	early_min: number | null;
+}
+/** Một lần làm ca (ca × ngày bắt đầu). Trường ca null = chấm tự do. */
+export interface ShiftSlot {
+	shift_id: number | null;
+	work_date: string;
+	name: string | null;
+	code: string | null;
+	color: string | null;
+	start_time: string | null;
+	end_time: string | null;
+	start_at: string | null;
+	end_at: string | null;
+}
+export interface CheckOption extends ShiftSlot {
+	action: 'check_in' | 'check_out';
 }
 export interface MyAttendance {
-	today: AttendanceRow | null;
+	/** Ca đang trong giờ được chấm (thường 0–1, có thể 2 lúc giao ca). */
+	options: CheckOption[];
+	/** Bản ghi của hôm qua + hôm nay (ca đêm hôm qua vẫn hiện). */
+	recent: AttendanceRow[];
 	history: AttendanceRow[];
+	/** Lịch ca 7 ngày tới; shifts null = không có lịch ca (chấm tự do), [] = nghỉ. */
+	week: { date: string; source: 'roster' | 'pattern' | null; shifts: ShiftSlot[] | null }[];
+	pattern_name: string | null;
 	client_ip: string | null;
 	/** IP hiện tại có thuộc mạng bệnh viện không. */
 	ip_ok: boolean;
@@ -239,5 +269,11 @@ export interface MyAttendance {
 	radius_m: number;
 }
 export const getMyAttendance = () => apiClient.get<MyAttendance>('/me/attendance');
-export const checkAttendance = (pos: { lat: number; lng: number; accuracy: number }) =>
-	apiClient.post<{ action: 'check_in' | 'check_out'; record: AttendanceRow }>('/me/attendance/check', pos);
+export const checkAttendance = (data: {
+	lat: number;
+	lng: number;
+	accuracy: number;
+	/** Ca cần chấm — bắt buộc khi có nhiều ca mở cùng lúc. */
+	shift_id?: number | null;
+	work_date?: string;
+}) => apiClient.post<{ action: 'check_in' | 'check_out'; record: AttendanceRow }>('/me/attendance/check', data);

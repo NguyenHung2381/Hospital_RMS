@@ -81,6 +81,8 @@ const QuestionBank = lazy(() => import('../../features/exam/pages/QuestionBank')
 const StaffAttendance = lazy(
 	() => import('../../features/staff-attendance/pages/StaffAttendance'),
 );
+const Shifts = lazy(() => import('../../features/staff-attendance/pages/Shifts'));
+const Roster = lazy(() => import('../../features/staff-attendance/pages/Roster'));
 const StaffLicenses = lazy(
 	() => import('../../features/staff-license/pages/StaffLicenses'),
 );
@@ -278,6 +280,22 @@ export const adminRoutes: RouteObject[] = [
 		element: (
 			<RequirePermission perm='staff_attendance:read'>
 				{admin('Bảng chấm công', <StaffAttendance />)}
+			</RequirePermission>
+		),
+	},
+	{
+		path: '/admin/shifts',
+		element: (
+			<RequirePermission perm='staff_attendance:manage'>
+				{admin('Ca làm việc', <Shifts />)}
+			</RequirePermission>
+		),
+	},
+	{
+		path: '/admin/shift-roster',
+		element: (
+			<RequirePermission perm='staff_attendance:roster'>
+				{admin('Phân ca', <Roster />)}
 			</RequirePermission>
 		),
 	},

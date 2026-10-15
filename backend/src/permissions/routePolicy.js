@@ -71,7 +71,7 @@ module.exports = {
 		[`PATCH ${API}/me/lesson-documents/:docId/download`]: 'Tăng lượt tải tài liệu bài học — service kiểm tra tài liệu công khai + bài học thuộc khóa đã được duyệt',
 		[`POST ${API}/me/courses/:id/register`]: 'Tự đăng ký khóa học — service chỉ nhận khóa bật đăng ký công khai, trong cửa sổ đăng ký, trạng thái chờ duyệt',
 		[`GET ${API}/me/attendance`]: 'Chấm công của chính mình (lọc theo user_id)',
-		[`POST ${API}/me/attendance/check`]: 'Tự chấm công — service gán user_id = req.user.id, kiểm tra IP bệnh viện + GPS trong bán kính',
+		[`POST ${API}/me/attendance/check`]: 'Tự chấm công — service gán user_id = req.user.id, kiểm tra IP bệnh viện + GPS trong bán kính + ca đang trong giờ được chấm',
 		[`GET ${API}/me/cme`]: 'Tín chỉ CME của chính mình (lọc theo user_id)',
 		[`POST ${API}/me/cme/export-excel`]: 'Xuất Excel phiếu CME của chính mình (dùng req.user.id, không nhận user_id từ client)',
 		[`GET ${API}/me/cme-categories`]: 'Danh mục loại CME cho form tự khai',
