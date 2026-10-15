@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1
-FROM node:22-alpine AS dev
+FROM node:25-alpine AS dev
 WORKDIR /app
 COPY package*.json ./
 # Cache mount giữ ~/.npm giữa các lần build → build lỗi/retry không phải tải lại
@@ -21,7 +21,7 @@ ENTRYPOINT ["docker-entrypoint.sh"]
 EXPOSE 3000
 CMD ["npm", "run", "dev"]
 
-FROM node:22-alpine AS prod
+FROM node:25-alpine AS prod
 WORKDIR /app
 # su-exec: entrypoint hạ quyền từ root xuống user `node` trước khi chạy app
 # (xem docker-entrypoint.sh) — nhỏ hơn gosu/sudo, exec thẳng không để tiến trình cha.
