@@ -95,6 +95,7 @@ const KEY_TO_PATH: Record<string, string> = {
 	questionBank: '/admin/question-bank',
 	cmeCompliance: '/admin/cme-compliance',
 	cmeRecords: '/admin/cme-records',
+	staffLicenses: '/admin/staff-licenses',
 	cmeCreditCatalog: '/admin/cme-credit-categories',
 	users: '/admin/users',
 	roles: '/admin/roles',
@@ -261,6 +262,12 @@ const NAV_GROUPS: NavGroup[] = [
 				label: 'Ghi nhận CME độc lập',
 				icon: <BadgeSvg className={styles.navIcon} />,
 				perm: 'cme_records:manage',
+			},
+			{
+				key: 'staffLicenses',
+				label: 'Chứng chỉ hành nghề',
+				icon: <ClipboardCheckSvg className={styles.navIcon} />,
+				perm: 'staff_licenses:read',
 			},
 			{
 				key: 'cmeCreditCatalog',

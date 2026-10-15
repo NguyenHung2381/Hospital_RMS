@@ -78,6 +78,9 @@ const AttendanceCheckIn = lazy(
 	() => import('../../features/attendance-checkin/pages/AttendanceCheckIn'),
 );
 const QuestionBank = lazy(() => import('../../features/exam/pages/QuestionBank'));
+const StaffLicenses = lazy(
+	() => import('../../features/staff-license/pages/StaffLicenses'),
+);
 const Lecturers = lazy(() => import('../../features/lecturer/pages/Lecturers'));
 const Courses = lazy(() => import('../../features/course/pages/Courses'));
 const ClassSchedule = lazy(
@@ -263,6 +266,14 @@ export const adminRoutes: RouteObject[] = [
 		element: (
 			<RequirePermission perm='training_plans:manage'>
 				{admin('Kế hoạch đào tạo', <TrainingPlan />)}
+			</RequirePermission>
+		),
+	},
+	{
+		path: '/admin/staff-licenses',
+		element: (
+			<RequirePermission perm='staff_licenses:read'>
+				{admin('Chứng chỉ hành nghề', <StaffLicenses />)}
 			</RequirePermission>
 		),
 	},

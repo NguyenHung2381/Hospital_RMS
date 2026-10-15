@@ -22,6 +22,9 @@ const errorHandler = (err, req, res, next) => {
 		if (err.number === 2627 || err.number === 2601) {
 			if (/U[QX]_users_email/.test(err.message))
 				return error(res, 'Email này đã được dùng cho tài khoản khác', 409);
+			if (/UQ_stafflic_user/.test(err.message)) return error(res, 'Nhân sự này đã có hồ sơ CCHN', 409);
+			if (/UQ_stafflic_license_no/.test(err.message))
+				return error(res, 'Số CCHN này đã gán cho nhân sự khác', 409);
 			return error(res, 'Dữ liệu đã tồn tại (vi phạm ràng buộc unique)', 409);
 		}
 		if (err.number === 547) {

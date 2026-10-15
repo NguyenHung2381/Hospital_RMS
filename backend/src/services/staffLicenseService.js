@@ -6,26 +6,31 @@ const { paging } = require('../utils/paging');
 // 2026-09-14_staff_practice_licenses.sql). Không tách bảng lịch sử, cập nhật
 // tại chỗ giống pattern lecturers/trainees.
 const licenseSelect = `
-  SELECT sl.*, u.full_name AS user_full_name, u.department_id, d.name AS department_name
+  SELECT sl.*, u.full_name AS user_full_name, u.staff_number, u.department_id, d.name AS department_name
   FROM staff_practice_licenses sl
   JOIN users u ON u.id = sl.user_id
   LEFT JOIN departments d ON d.id = u.department_id
 `;
 
-const getAll = async ({ page = 1, limit = 20, search, department_id } = {}) => {
+const getAll = async ({ page = 1, limit = 20, search, department_id, has_license } = {}) => {
 	const pool = await getPool();
 	const pg = paging(page, limit, 100);
 	const where = ['1=1'];
 	const req = pool.request().input('offset', sql.Int, pg.offset).input('limit', sql.Int, pg.limit);
 
 	if (search) {
-		where.push('(u.full_name LIKE @search OR sl.license_no LIKE @search OR sl.primary_specialty LIKE @search)');
+		where.push(
+			'(u.full_name LIKE @search OR sl.license_no LIKE @search OR sl.practice_scope LIKE @search OR CAST(u.staff_number AS VARCHAR(20)) = @search_exact)',
+		);
+		req.input('search_exact', sql.VarChar(20), String(search).trim());
 		req.input('search', sql.NVarChar, `%${search}%`);
 	}
 	if (department_id) {
 		where.push('u.department_id = @department_id');
 		req.input('department_id', sql.VarChar(20), department_id);
 	}
+	if (has_license === '1') where.push('sl.license_no IS NOT NULL');
+	if (has_license === '0') where.push('sl.license_no IS NULL');
 	const whereSql = `WHERE ${where.join(' AND ')}`;
 
 	const result = await req.query(`
@@ -64,6 +69,9 @@ const fieldDefs = [
 	['qualification', sql.NVarChar(150)],
 	['title', sql.NVarChar(150)],
 	['notes', sql.NVarChar(500)],
+	['scope_decision_no', sql.NVarChar(100)],
+	['adjusted_scope', sql.NVarChar(500)],
+	['scope_adjusted_date', sql.Date],
 ];
 
 const create = async (data, actorId) => {
@@ -121,4 +129,4 @@ const remove = async (id, actorId) => {
 	broadcast('update', { entity: 'staff_license' });
 };
 
-module.exports = { getAll, getById, getByUserId, create, update, remove };
+module.exports = { getAll, getById, getByUserId, create, update, remove, fieldDefs };

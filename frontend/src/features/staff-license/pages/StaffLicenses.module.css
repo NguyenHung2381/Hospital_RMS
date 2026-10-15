@@ -1,0 +1,130 @@
+/* ── CARD + BẢNG ─────────────────────────── */
+.tableCard {
+	composes: tableCard from '@/shared/components/Table/Table.module.css';
+}
+.tableHeader {
+	composes: tableHeader from '@/shared/components/Table/Table.module.css';
+}
+.tableHeaderLeft {
+	composes: tableHeaderLeft from '@/shared/components/Table/Table.module.css';
+}
+.tableTitle {
+	composes: tableTitle from '@/shared/components/Table/Table.module.css';
+}
+.tableCount {
+	composes: tableCount from '@/shared/components/Table/Table.module.css';
+}
+.tableControls {
+	composes: tableControls from '@/shared/components/Table/Table.module.css';
+}
+.filterSelect {
+	composes: filterSelect from '@/shared/components/Table/Table.module.css';
+}
+.deptFilter {
+	width: 220px;
+}
+.tableWrap {
+	overflow-x: auto;
+}
+.table {
+	composes: table from '@/shared/components/Table/Table.module.css';
+}
+.th {
+	composes: th from '@/shared/components/Table/Table.module.css';
+}
+.thRight {
+	composes: thRight from '@/shared/components/Table/Table.module.css';
+}
+.tr {
+	composes: tr from '@/shared/components/Table/Table.module.css';
+}
+.td {
+	composes: td from '@/shared/components/Table/Table.module.css';
+}
+.tdActions {
+	composes: tdActions from '@/shared/components/Table/Table.module.css';
+}
+.licenseNo {
+	font-family: var(--font-mono, monospace);
+	font-size: var(--font-size-sm);
+	font-weight: var(--font-weight-semibold);
+	color: var(--color-gray-800);
+	white-space: nowrap;
+}
+.nowrap {
+	white-space: nowrap;
+}
+.scopeCell {
+	max-width: 360px;
+	font-size: var(--font-size-sm);
+	color: var(--color-gray-700);
+}
+.emptyState {
+	composes: emptyState from '@/shared/components/Table/Table.module.css';
+}
+.emptyTitle {
+	composes: emptyTitle from '@/shared/components/Table/Table.module.css';
+}
+.emptyDesc {
+	composes: emptyDesc from '@/shared/components/Table/Table.module.css';
+}
+
+/* ── NÚT + MODAL ─────────────────────────── */
+.btnAddHeader {
+	composes: btnAddHeader from '@/shared/components/Modal/Modal.module.css';
+}
+.btnCancel {
+	composes: btnCancel from '@/shared/components/Modal/Modal.module.css';
+}
+.btnConfirm {
+	composes: btnConfirm from '@/shared/components/Modal/Modal.module.css';
+}
+.spinner {
+	composes: spinner from '@/shared/components/Modal/Modal.module.css';
+}
+.modal {
+	width: 100%;
+	max-width: 720px;
+}
+.modalWide {
+	max-width: 900px;
+}
+.modalBody {
+	composes: modalBody from '@/shared/components/Modal/Modal.module.css';
+}
+/* modalBody là flex cột: khối có overflow (bảng xem trước, danh sách cảnh báo) bị co về 0 nếu cho shrink */
+.modalBody > * {
+	flex-shrink: 0;
+}
+.formGrid2 {
+	composes: formGrid2 from '@/shared/components/Modal/Modal.module.css';
+}
+.formInput {
+	composes: formInput from '@/shared/components/Modal/Modal.module.css';
+}
+.fieldError {
+	composes: fieldError from '@/shared/components/Modal/Modal.module.css';
+}
+
+/* ── IMPORT EXCEL ────────────────────────── */
+.noticeBox {
+	composes: noticeBox from '@/features/trainee/pages/Trainees.module.css';
+}
+.noticeOk {
+	composes: noticeOk from '@/features/trainee/pages/Trainees.module.css';
+}
+.warnList {
+	composes: warnList from '@/features/trainee/pages/Trainees.module.css';
+}
+.importPreview {
+	composes: importPreview from '@/features/trainee/pages/Trainees.module.css';
+}
+
+@media (max-width: 900px) {
+	.formGrid2 {
+		grid-template-columns: 1fr;
+	}
+	.deptFilter {
+		width: 100%;
+	}
+}
