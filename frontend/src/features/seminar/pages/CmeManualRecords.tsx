@@ -1174,7 +1174,6 @@ function ImportModal({
 									<button
 										type='button'
 										className={styles.btnGhost}
-										style={{ padding: '2px 8px', fontSize: 12 }}
 										onClick={() => setCompleting(true)}
 									>
 										<EditSvg /> Bổ sung thông tin ({incomplete.length})
@@ -1183,7 +1182,6 @@ function ImportModal({
 								<button
 									type='button'
 									className={styles.btnGhost}
-									style={{ padding: '2px 8px', fontSize: 12 }}
 									onClick={downloadAccounts}
 								>
 									<DownloadSvg /> Tải danh sách (.csv)
@@ -1266,7 +1264,6 @@ function ImportModal({
 															<button
 																type='button'
 																className={styles.btnGhost}
-																style={{ padding: '2px 8px', fontSize: 12 }}
 																onClick={() =>
 																	setAdding({
 																		staffNumber: g.staffNumber,

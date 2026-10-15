@@ -1,3 +1,4 @@
+import { useUploadPolicy } from '@/shared/hooks/useUploadPolicy';
 import type { ReactNode } from 'react';
 import { formatDateTimeVN } from '../../../shared/utils/formatDate';
 import type { ProgressTopic } from '../../council/api/councilApi';
@@ -46,6 +47,7 @@ function FileBox({
 	onDelete?: (fileId: string) => void;
 	deleteTitle?: string;
 }) {
+	const uploadPolicy = useUploadPolicy();
 	return (
 		<div className={styles.filesBox}>
 			<div className={styles.filesTitle}>
@@ -55,6 +57,7 @@ function FileBox({
 						<input
 							ref={bindInput}
 							type='file'
+							accept={uploadPolicy.accept}
 							multiple
 							hidden
 							onChange={(e) => upload.onFiles(e.target.files)}

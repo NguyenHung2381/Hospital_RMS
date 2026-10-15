@@ -71,7 +71,6 @@ export function DrawerMembersTab({
 				<span>Danh sách thành viên — {members.length} người</span>
 				<button
 					className={styles.btnPrimary}
-					style={{ padding: '4px 10px', fontSize: 12 }}
 					onClick={() => {
 						setShowAddMember((v) => !v);
 						setMemberError('');

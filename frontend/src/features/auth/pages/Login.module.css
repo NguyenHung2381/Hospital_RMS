@@ -360,27 +360,8 @@
 
 /* === SUBMIT BUTTON === */
 .submitBtn {
+	composes: btn primary lg from '@/shared/components/Button/Button.module.css';
 	width: 100%;
-	padding: var(--space-4) var(--space-6);
-	background: linear-gradient(
-		135deg,
-		var(--color-primary) 0%,
-		var(--color-primary-dark) 100%
-	);
-	color: var(--color-white);
-	border: none;
-	border-radius: var(--radius-xl);
-	font-family: var(--font-heading);
-	font-size: var(--font-size-base);
-	font-weight: var(--font-weight-bold);
-	letter-spacing: 0.02em;
-	cursor: pointer;
-	transition: all var(--transition-base);
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	gap: var(--space-2);
-	box-shadow: 0 4px 16px rgba(10, 155, 74, 0.35);
 	margin-top: var(--space-2);
 	position: relative;
 	overflow: hidden;
@@ -397,11 +378,6 @@
 	);
 	opacity: 0;
 	transition: opacity var(--transition-fast);
-}
-
-.submitBtn:hover {
-	box-shadow: 0 8px 28px rgba(10, 155, 74, 0.45);
-	transform: translateY(-2px);
 }
 
 .submitBtn:hover::before {
@@ -439,18 +415,6 @@
 	100% {
 		left: 130%;
 	}
-}
-
-.submitBtn:active {
-	transform: translateY(0);
-	box-shadow: 0 2px 10px rgba(10, 155, 74, 0.3);
-}
-
-.submitBtn:disabled {
-	opacity: 0.7;
-	cursor: not-allowed;
-	transform: none;
-	box-shadow: none;
 }
 
 /* Spinner trong nút */

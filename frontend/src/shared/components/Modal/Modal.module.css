@@ -125,111 +125,22 @@
 }
 
 .btnCancel {
+	composes: btn secondary from '@/shared/components/Button/Button.module.css';
 	flex: 1;
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	padding: var(--space-3);
-	border: 1.5px solid var(--color-gray-200);
-	border-radius: var(--radius-lg);
-	background: var(--color-white);
-	font-family: var(--font-body);
-	font-size: var(--font-size-sm);
-	font-weight: var(--font-weight-semibold);
-	color: var(--color-gray-700);
-	cursor: pointer;
-	transition: all var(--transition-fast);
-}
-.btnCancel:hover {
-	background: var(--color-gray-50);
 }
 
 .btnDanger {
+	composes: btn danger from '@/shared/components/Button/Button.module.css';
 	flex: 1;
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	gap: var(--space-2);
-	padding: var(--space-3);
-	background: #fcebeb;
-	border: 1.5px solid #f09595;
-	border-radius: var(--radius-lg);
-	font-family: var(--font-body);
-	font-size: var(--font-size-sm);
-	font-weight: var(--font-weight-bold);
-	color: #791f1f;
-	cursor: pointer;
-	transition: all var(--transition-fast);
-}
-.btnDanger svg {
-	width: 15px;
-	height: 15px;
-}
-.btnDanger:disabled {
-	opacity: 0.65;
-	cursor: not-allowed;
-}
-.btnDanger:hover {
-	background: #f7c1c1;
-	border-color: #e24b4a;
 }
 
 .btnConfirm {
+	composes: btn primary from '@/shared/components/Button/Button.module.css';
 	flex: 1;
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	gap: var(--space-2);
-	padding: var(--space-3);
-	background: linear-gradient(135deg, var(--color-primary), var(--color-primary-dark));
-	border: none;
-	border-radius: var(--radius-lg);
-	font-family: var(--font-body);
-	font-size: var(--font-size-sm);
-	font-weight: var(--font-weight-bold);
-	color: var(--color-white);
-	cursor: pointer;
-	transition: all var(--transition-base);
-	box-shadow: 0 3px 10px rgba(10, 155, 74, 0.28);
-}
-.btnConfirm svg {
-	width: 15px;
-	height: 15px;
-}
-.btnConfirm:disabled {
-	opacity: 0.65;
-	cursor: not-allowed;
-	transform: none;
-}
-.btnConfirm:hover {
-	box-shadow: 0 5px 16px rgba(10, 155, 74, 0.4);
-	transform: translateY(-1px);
 }
 
 .btnAddHeader {
-	display: flex;
-	align-items: center;
-	gap: var(--space-2);
-	padding: var(--space-2) var(--space-5);
-	background: linear-gradient(135deg, var(--color-primary), var(--color-primary-dark));
-	color: var(--color-white);
-	border: none;
-	border-radius: var(--radius-lg);
-	font-family: var(--font-body);
-	font-size: var(--font-size-sm);
-	font-weight: var(--font-weight-bold);
-	cursor: pointer;
-	transition: all var(--transition-base);
-	box-shadow: 0 3px 10px rgba(10, 155, 74, 0.28);
-	white-space: nowrap;
-}
-.btnAddHeader svg {
-	width: 15px;
-	height: 15px;
-}
-.btnAddHeader:hover {
-	box-shadow: 0 5px 16px rgba(10, 155, 74, 0.4);
-	transform: translateY(-1px);
+	composes: btn primary from '@/shared/components/Button/Button.module.css';
 }
 
 .spinner {

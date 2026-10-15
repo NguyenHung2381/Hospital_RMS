@@ -1,3 +1,4 @@
+import { useUploadPolicy } from '@/shared/hooks/useUploadPolicy';
 import { useState } from 'react';
 import { Button, FileDropzone, Modal } from '@/shared/components';
 import {
@@ -32,6 +33,7 @@ export default function MyCmeRecordModal({ record, categories, defaultYear, onCl
 		note: record?.note ?? '',
 	});
 	const [evidence, setEvidence] = useState<File | null>(null);
+	const uploadPolicy = useUploadPolicy();
 	const [busy, setBusy] = useState(false);
 	const [error, setError] = useState('');
 	const set = (k: keyof MyCmeRecordForm) => (e: { target: { value: string } }) =>
@@ -160,9 +162,11 @@ export default function MyCmeRecordModal({ record, categories, defaultYear, onCl
 				</label>
 				<div className={styles.formFull}>
 					<FileDropzone
+						accept={uploadPolicy.accept}
+						maxSizeMB={uploadPolicy.maxSizeMB}
 						value={evidence}
 						onChange={setEvidence}
-						hint={record?.evidence_file_url ? 'Chọn file mới để thay minh chứng hiện có' : 'Minh chứng: PDF, Word, ảnh…'}
+						hint={record?.evidence_file_url ? 'Chọn file mới để thay minh chứng hiện có' : 'Minh chứng'}
 						disabled={busy}
 					/>
 				</div>

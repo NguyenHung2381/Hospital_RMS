@@ -373,7 +373,6 @@ export function RegisterMemberSection({
 						<button
 							type='button'
 							className={styles.btnSecondary}
-							style={{ padding: '7px 14px', fontSize: 12.5 }}
 							onClick={() => {
 								setShowManualForm(false);
 								setManualErrors({});
@@ -384,7 +383,6 @@ export function RegisterMemberSection({
 						<button
 							type='button'
 							className={styles.btnPrimary}
-							style={{ padding: '7px 14px', fontSize: 12.5 }}
 							onClick={addMemberManual}
 						>
 							Thêm thành viên

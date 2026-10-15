@@ -325,32 +325,7 @@
 }
 
 .btnPrimary {
-	display: inline-flex;
-	align-items: center;
-	gap: var(--space-2);
-	padding: 10px 22px;
-	background: var(--color-primary);
-	color: #fff;
-	border: none;
-	border-radius: var(--radius-lg);
-	font-size: var(--font-size-sm);
-	font-weight: var(--font-weight-semibold);
-	cursor: pointer;
-	transition: background var(--transition-fast);
-}
-
-.btnPrimary:hover:not(:disabled) {
-	background: var(--color-primary-dark);
-}
-
-.btnPrimary:disabled {
-	opacity: 0.65;
-	cursor: not-allowed;
-}
-
-.btnPrimary svg {
-	width: 15px;
-	height: 15px;
+	composes: btn primary from '@/shared/components/Button/Button.module.css';
 }
 
 /* Spinner */
@@ -431,33 +406,12 @@
 	margin-left: auto;
 }
 
+.btnSecondary {
+	composes: btn secondary from '@/shared/components/Button/Button.module.css';
+}
+
 .btnDangerOutline {
-	display: inline-flex;
-	align-items: center;
-	gap: var(--space-2);
-	padding: 9px 18px;
-	background: #fff;
-	color: #dc2626;
-	border: 1px solid #fca5a5;
-	border-radius: var(--radius-lg);
-	font-size: var(--font-size-sm);
-	font-weight: 600;
-	cursor: pointer;
-	transition: background 0.15s;
-}
-
-.btnDangerOutline:hover:not(:disabled) {
-	background: #fef2f2;
-}
-
-.btnDangerOutline:disabled {
-	opacity: 0.6;
-	cursor: not-allowed;
-}
-
-.btnDangerOutline svg {
-	width: 16px;
-	height: 16px;
+	composes: btn danger from '@/shared/components/Button/Button.module.css';
 }
 
 @keyframes spin {

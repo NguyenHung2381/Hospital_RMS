@@ -303,7 +303,6 @@ export interface TopicImportDefaults {
 	round_id?: string;
 	category_id?: string;
 	level_id?: string;
-	department_id?: string;
 	article_type?: ArticleType;
 	status?: 'submitted' | 'approved' | 'rejected' | 'cancelled';
 }

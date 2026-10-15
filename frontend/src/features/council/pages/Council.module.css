@@ -137,64 +137,15 @@
 }
 
 .btnCreateCouncil {
-	display: flex;
-	align-items: center;
-	gap: 8px;
-	padding: 10px 20px;
-	border: none;
-	border-radius: var(--radius-lg);
-	font-family: var(--font-body);
-	font-size: var(--font-size-sm);
-	font-weight: var(--font-weight-bold);
-	cursor: pointer;
-	transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-	white-space: nowrap;
-}
-
-.btnCreateCouncil {
-	background: #eff6ff;
-	color: #1e40af;
-	border: 1.5px solid #bfdbfe;
-	box-shadow: 0 4px 10px rgba(59, 130, 246, 0.08);
-}
-
-.btnCreateCouncil:hover {
-	background: #dbeafe;
-	border-color: #93c5fd;
-	transform: translateY(-2px);
-}
-
-.btnCreateCouncil:active {
-	transform: translateY(0);
+	composes: btn secondary from '@/shared/components/Button/Button.module.css';
 }
 
 .btnAmber {
-	background: #fff7ed;
-	color: #c2410c;
-	border-color: #fed7aa;
-	box-shadow: 0 4px 10px rgba(245, 166, 35, 0.08);
-}
-
-.btnAmber:hover {
-	background: #ffedd5;
-	border-color: #fdba74;
+	composes: btn secondary from '@/shared/components/Button/Button.module.css';
 }
 
 .btnGreen {
-	background: var(--color-primary-pale);
-	color: var(--color-primary-dark);
-	border-color: #a8e6c4;
-	box-shadow: 0 4px 10px rgba(10, 155, 74, 0.08);
-}
-
-.btnGreen:hover {
-	background: #d4f3e2;
-	border-color: var(--color-primary-light);
-}
-
-.btnCreateCouncil svg {
-	width: 14px;
-	height: 14px;
+	composes: btn primary from '@/shared/components/Button/Button.module.css';
 }
 
 /* ── MAIN DATA TABLE ─────────────────────── */
@@ -854,92 +805,18 @@ select.formInput:focus {
 
 /* ── BUTTONS IN MODAL ────────────────────── */
 .btnCancel {
+	composes: btn secondary from '@/shared/components/Button/Button.module.css';
 	flex: 1;
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	padding: var(--space-3);
-	border: 1.5px solid var(--color-gray-200);
-	border-radius: var(--radius-lg);
-	background: var(--color-white);
-	font-family: var(--font-body);
-	font-size: var(--font-size-sm);
-	font-weight: var(--font-weight-bold);
-	color: var(--color-gray-700);
-	cursor: pointer;
-	transition: all 0.2s ease;
-}
-
-.btnCancel:hover {
-	background: var(--color-gray-50);
-	border-color: var(--color-gray-300);
 }
 
 .btnConfirmApprove {
+	composes: btn primary from '@/shared/components/Button/Button.module.css';
 	flex: 1;
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	gap: 8px;
-	padding: var(--space-3);
-	background: linear-gradient(135deg, var(--color-primary), var(--color-primary-dark));
-	border: none;
-	border-radius: var(--radius-lg);
-	font-family: var(--font-body);
-	font-size: var(--font-size-sm);
-	font-weight: var(--font-weight-bold);
-	color: var(--color-white);
-	cursor: pointer;
-	box-shadow: 0 4px 12px rgba(10, 155, 74, 0.25);
-	transition: all 0.2s ease;
-}
-
-.btnConfirmApprove:hover:not(:disabled) {
-	box-shadow: 0 6px 16px rgba(10, 155, 74, 0.35);
-	transform: translateY(-1px);
-}
-
-.btnConfirmApprove:disabled {
-	opacity: 0.6;
-	cursor: not-allowed;
-	box-shadow: none;
-}
-
-.btnConfirmApprove svg,
-.btnDanger svg,
-.btnCancel svg {
-	width: 16px;
-	height: 16px;
-	flex-shrink: 0;
 }
 
 .btnDanger {
+	composes: btn danger from '@/shared/components/Button/Button.module.css';
 	flex: 1;
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	gap: 8px;
-	padding: var(--space-3);
-	background: #fee2e2;
-	border: 1.5px solid #fca5a5;
-	border-radius: var(--radius-lg);
-	font-family: var(--font-body);
-	font-size: var(--font-size-sm);
-	font-weight: var(--font-weight-bold);
-	color: #991b1b;
-	cursor: pointer;
-	transition: all 0.2s ease;
-}
-
-.btnDanger:hover:not(:disabled) {
-	background: #fca5a5;
-	color: #7f1d1d;
-	transform: translateY(-1px);
-}
-
-.btnDanger:disabled {
-	opacity: 0.65;
-	cursor: not-allowed;
 }
 
 .spinner {

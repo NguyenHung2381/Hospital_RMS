@@ -1,3 +1,4 @@
+import { useUploadPolicy } from '@/shared/hooks/useUploadPolicy';
 import { useMemo, useRef, useState } from 'react';
 import { DownloadSvg, FileSvg, LinkSvg, TrashSvg, UploadSvg, XSvg } from '@/assets/icons';
 import { Badge, type BadgeTone } from '@/shared/components';
@@ -11,11 +12,6 @@ import {
 	type SourceType,
 } from '../types/course.type';
 import styles from './CourseDocumentsTab.module.css';
-
-// Khớp fileTypeAllowlist.js (backend, allowMedia = true cho course_document).
-const ACCEPT =
-	'.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.rtf,.odt,.ods,.odp,.zip,.rar,.7z,' +
-	'.png,.jpg,.jpeg,.gif,.webp,.bmp,.mp4,.mov,.avi,.mkv,.webm,.m4v,.mp3,.wav,.m4a,.aac';
 
 const DOC_TYPE_TONE: Record<DocType, BadgeTone> = {
 	material: 'blue',
@@ -48,6 +44,8 @@ export function CourseDocumentsTab({
 	onOpen: (docId: string) => void;
 }) {
 	const fileInputRef = useRef<HTMLInputElement>(null);
+	// Tài liệu theo Cấu hình hệ thống + video/audio bài giảng (allowMedia ở backend)
+	const uploadPolicy = useUploadPolicy({ allowMedia: true });
 	const [docType, setDocType] = useState<DocType>('test_question');
 	const [examType, setExamType] = useState<ExamType | ''>('');
 	const [title, setTitle] = useState('');
@@ -180,7 +178,7 @@ export function CourseDocumentsTab({
 							<input
 								ref={fileInputRef}
 								type='file'
-								accept={ACCEPT}
+								accept={uploadPolicy.accept}
 								hidden
 								onChange={(e) => pickFile(e.target.files?.[0])}
 							/>

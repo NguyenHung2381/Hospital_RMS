@@ -137,7 +137,7 @@ Xem đầy đủ các biến và chú thích trong [`backend/.env.example`](back
 | **Bắt buộc** | `DB_USER`, `DB_PASSWORD`, `JWT_SECRET`, `JWT_REFRESH_SECRET` (+ `SWAGGER_USER`, `SWAGGER_PASS` khi Swagger bật) | Server thoát ngay khi khởi động nếu thiếu biến nào. Swagger tắt ở production, trừ khi đặt `SWAGGER_ENABLED=true`. Secret nên là chuỗi ngẫu nhiên dài (`openssl rand -hex 32`). |
 | SQL Server | `DB_SERVER`, `DB_PORT`, `DB_DATABASE`, `DB_ENCRYPT`, `DB_TRUST_SERVER_CERT` | Production: không dùng `sa`, nên tạo login riêng chỉ có quyền trên `RMS_HOSPITAL` và bật `DB_ENCRYPT=true`. |
 | HTTP | `PORT`, `CORS_ORIGIN`, `TRUST_PROXY` | `CORS_ORIGIN` bắt buộc ở production. `TRUST_PROXY` = số proxy đứng ngay trước backend (thường là `1`). Không dùng `uniquelocal`: người dùng có IP nội bộ sẽ tự khai được IP giả để vượt rate-limit đăng nhập. |
-| Upload | `UPLOAD_URL_SECRET`, `UPLOAD_URL_TTL_SEC`, `TOPIC_UPLOAD_MAX_MB`, `TRAINING_UPLOAD_MAX_MB`, `TRAINING_MEDIA_MAX_MB`, `UPLOAD_DAILY_QUOTA_MB`, `CLAMAV_HOST` | Link tải file được ký HMAC. Đổi secret thì mọi link cũ mất hiệu lực. Xem [Bảo mật upload](#bảo-mật-upload). |
+| Upload | `UPLOAD_URL_SECRET`, `UPLOAD_URL_TTL_SEC`, `UPLOAD_MAX_MB`, `UPLOAD_ALLOWED_EXTENSIONS`, `TRAINING_MEDIA_MAX_MB`, `UPLOAD_DAILY_QUOTA_MB`, `CLAMAV_HOST` | Link tải file được ký HMAC. Đổi secret thì mọi link cũ mất hiệu lực. Xem [Bảo mật upload](#bảo-mật-upload). |
 | Log | `LOG_DIR`, `LOG_RETENTION_FILES`, `LOG_STDOUT`, `AUDIT_LOG_METHODS` | Xem phần [logging](#tác-vụ-nền-cache--logging). |
 | Email | `MAIL_ENABLED`, `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM` | Mặc định tắt, email chỉ in ra console. |
 | Redis | `REDIS_HOST`, `REDIS_PORT`, `REDIS_PASSWORD` | Mặc định `localhost:6379`, không mật khẩu. Docker prod tự sinh mật khẩu (volume `redis_secret`). |
@@ -669,8 +669,8 @@ Import qua barrel: `import { Badge, EmptyState, Pagination } from '@/shared/comp
 ### Bảo mật upload
 Mọi route upload dùng middleware trong `backend/src/middlewares/` (`upload`, `uploadImage`, `uploadTraining`, `uploadExcel`), đều bọc bởi `secureUpload`. **Route upload mới phải dùng các middleware này, không tự khai `multer`.** Mỗi file qua các lớp:
 
-1. **Đuôi file** trong danh sách cho phép (`fileTypeAllowlist.js`; ảnh nhận xét chỉ PNG/JPEG/GIF/WEBP; import chỉ `.xlsx`).
-2. **Dung lượng**: hồ sơ đề tài `TOPIC_UPLOAD_MAX_MB` (50), hồ sơ đào tạo `TRAINING_UPLOAD_MAX_MB` (20), video bài giảng `TRAINING_MEDIA_MAX_MB` (300), Excel 10MB.
+1. **Đuôi file** do admin chọn ở *Cấu hình hệ thống → Tải lên* (`UPLOAD_ALLOWED_EXTENSIONS`, mặc định PDF/Word/Excel/PowerPoint/RAR/ZIP), chỉ trong tập an toàn `fileTypeAllowlist.js` (`utils/uploadPolicy.js`); ảnh nhận xét chỉ PNG/JPEG/GIF/WEBP; import chỉ `.xlsx`.
+2. **Dung lượng mỗi file**: `UPLOAD_MAX_MB` ở Cấu hình hệ thống (mặc định 50) cho mọi file tài liệu kể cả cổng công khai; video bài giảng `TRAINING_MEDIA_MAX_MB` (300), Excel 10MB.
 3. **Nội dung khớp đuôi** (magic bytes, `utils/fileSignature.js`) — file đổi đuôi (exe → pdf, HTML → png) bị từ chối và xoá ngay.
 4. **Quét virus** bằng ClamAV nếu bật `CLAMAV_HOST` (`utils/clamav.js`, service `clamav`, profile `av`). File nhiễm bị xoá và ghi sự kiện bảo mật `upload_malware_blocked`. ClamAV lỗi thì từ chối upload, trừ khi đặt `CLAMAV_FAIL_OPEN=true`. File lớn hơn `CLAMAV_MAX_MB` (25) không quét.
 5. **Hạn mức/ngày** mỗi tài khoản `UPLOAD_DAILY_QUOTA_MB` (2048; `0` = không giới hạn).

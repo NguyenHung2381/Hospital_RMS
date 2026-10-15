@@ -67,6 +67,10 @@ export const getUsers = (params?: UserListParams) => {
 	return apiClient.get<UserListResponse>(`/users${qs}`);
 };
 
+// Xuất Excel đúng tập đang lọc (mọi trang)
+export const exportUsersExcel = (filters: Pick<UserListParams, 'search' | 'department_id' | 'role_id'>) =>
+	apiClient.postBlob('/users/export-excel', filters);
+
 export const getDepts = () =>
 	apiClient.get<SimpleListResponse>('/departments?limit=0');
 

@@ -307,7 +307,7 @@ export default function CourseRegisterPublic() {
 						onChange={setAttachments}
 						typeOptions={DOC_TYPE_OPTIONS}
 						defaultType='other'
-						hint='Ảnh, PDF, Word...'
+						hint='CCCD, bằng cấp...'
 					/>
 				</FormSection>
 				<div className={styles.formFooter}>

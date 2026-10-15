@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import AdminLayout from '../../../layouts/AdminLayout';
 import { Button, Card } from '../../../shared/components';
 import { notify } from '../../../shared/utils/feedback';
+import { resetUploadPolicy } from '../../../shared/hooks/useUploadPolicy';
 import { settingsApi } from '../api/settingsApi';
 import styles from './SystemSettings.module.css';
 
@@ -9,11 +10,13 @@ type Field = {
 	key: string;
 	label: string;
 	hint?: string;
-	type?: 'bool' | 'text' | 'number' | 'password' | 'select' | 'textarea';
+	type?: 'bool' | 'text' | 'number' | 'password' | 'select' | 'textarea' | 'multi';
 	options?: [string, string][];
 	placeholder?: string;
 	/** Mặc định của backend khi chưa cấu hình gì (chỉ cho bool). */
 	defaultOn?: boolean;
+	/** Mặc định của backend khi chưa cấu hình (cho multi — danh sách phân cách dấu phẩy). */
+	defaultValue?: string;
 	/** Nhãn bên cạnh công tắc, tuỳ trạng thái. */
 	onText?: string;
 	offText?: string;
@@ -171,6 +174,39 @@ const SECTIONS: Section[] = [
 		],
 	},
 	{
+		id: 'upload',
+		title: 'Tải lên',
+		sub: 'Định dạng & dung lượng file',
+		groups: [
+			{
+				fields: [
+					{
+						key: 'UPLOAD_ALLOWED_EXTENSIONS',
+						label: 'Định dạng được nhận',
+						hint: 'Áp dụng cho hồ sơ đề tài, hồ sơ học viên, minh chứng CME, tài liệu khóa học và cổng đăng ký công khai. Video bài giảng, ảnh chèn nhận xét và file import Excel có quy định riêng.',
+						type: 'multi',
+						// Khớp backend fileTypeAllowlist.DOCUMENT_EXTENSIONS / uploadPolicy.DEFAULT_EXTENSIONS
+						options: [
+							['.pdf', 'PDF'], ['.doc', 'Word (.doc)'], ['.docx', 'Word (.docx)'],
+							['.xls', 'Excel (.xls)'], ['.xlsx', 'Excel (.xlsx)'], ['.ppt', 'PowerPoint (.ppt)'], ['.pptx', 'PowerPoint (.pptx)'],
+							['.rar', 'RAR'], ['.zip', 'ZIP'], ['.7z', '7-Zip'],
+							['.txt', 'TXT'], ['.csv', 'CSV'], ['.rtf', 'RTF'], ['.odt', 'ODT'], ['.ods', 'ODS'], ['.odp', 'ODP'],
+							['.png', 'PNG'], ['.jpg', 'JPG'], ['.jpeg', 'JPEG'], ['.gif', 'GIF'], ['.webp', 'WEBP'], ['.bmp', 'BMP'],
+						],
+						defaultValue: '.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.rar,.zip',
+					},
+					{
+						key: 'UPLOAD_MAX_MB',
+						label: 'Dung lượng tối đa mỗi file (MB)',
+						hint: 'Từ 1 đến 1024. Mặc định 50MB.',
+						type: 'number',
+						placeholder: '50',
+					},
+				],
+			},
+		],
+	},
+	{
 		id: 'cme',
 		title: 'CME',
 		sub: 'Ngưỡng tín chỉ liên tục',
@@ -209,6 +245,8 @@ export default function SystemSettings() {
 					const r = rows.find((x) => x.setting_key === f.key);
 					if (f.type === 'bool') {
 						v[f.key] = r?.effective === 'true' || r?.effective === 'false' ? r.effective : String(!!f.defaultOn);
+					} else if (f.type === 'multi') {
+						v[f.key] = r?.effective || f.defaultValue || '';
 					} else {
 						v[f.key] = r?.value ?? '';
 						if (!r?.value && r?.effective) e[f.key] = r.effective;
@@ -231,9 +269,12 @@ export default function SystemSettings() {
 	const on = (key: string) => saved[key] === 'true';
 
 	const save = async () => {
+		// Để trống = backend dùng mặc định — không phải điều admin muốn khi bỏ chọn hết
+		if (dirty.some((f) => f.type === 'multi' && !form[f.key])) return notify.error('Chọn ít nhất 1 định dạng file');
 		setSaving(true);
 		try {
 			for (const f of dirty) await settingsApi.update(f.key, form[f.key]);
+			resetUploadPolicy();
 			notify.success(`Đã lưu ${dirty.length} thay đổi`);
 			await load();
 		} catch (e) {
@@ -275,6 +316,24 @@ export default function SystemSettings() {
 					<span className={styles.track} />
 					{checked ? f.onText ?? 'Bật' : f.offText ?? 'Tắt'}
 				</label>
+			);
+		}
+		if (f.type === 'multi') {
+			const picked = new Set((form[f.key] ?? '').split(',').filter(Boolean));
+			const toggle = (v: string) => {
+				if (picked.has(v)) picked.delete(v);
+				else picked.add(v);
+				set(f.key, f.options!.map(([o]) => o).filter((o) => picked.has(o)).join(','));
+			};
+			return (
+				<div className={styles.checks}>
+					{f.options!.map(([v, l]) => (
+						<label key={v} className={styles.check}>
+							<input type='checkbox' checked={picked.has(v)} onChange={() => toggle(v)} />
+							{l}
+						</label>
+					))}
+				</div>
 			);
 		}
 		if (f.type === 'select') {

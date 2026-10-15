@@ -1,3 +1,4 @@
+import { useUploadPolicy } from '@/shared/hooks/useUploadPolicy';
 import { BASE_URL } from '../../../shared/api/axios';
 import type { TopicFile } from '../../topics/types/topic.type';
 import {
@@ -53,6 +54,7 @@ export default function FilesTab({
 	handleBulkDelete,
 	handleBulkDownload,
 }: Props) {
+	const uploadPolicy = useUploadPolicy();
 	return (
 		<>
 			{canUploadFiles ? (
@@ -60,6 +62,7 @@ export default function FilesTab({
 					<input
 						ref={fileInputRef}
 						type='file'
+						accept={uploadPolicy.accept}
 						multiple
 						style={{ display: 'none' }}
 						onChange={handleFileSelect}

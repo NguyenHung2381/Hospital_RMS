@@ -95,20 +95,7 @@
 }
 
 .reviewBtn {
-	font: inherit;
-	font-size: var(--font-size-sm);
-	font-weight: var(--font-weight-semibold);
-	padding: 6px 14px;
-	border-radius: var(--radius-lg);
-	border: 1.5px solid var(--color-primary);
-	background: var(--color-white);
-	color: var(--color-primary-dark);
-	cursor: pointer;
-	white-space: nowrap;
-}
-.reviewBtn:hover {
-	background: var(--color-primary);
-	color: var(--color-white);
+	composes: btn secondary from '@/shared/components/Button/Button.module.css';
 }
 
 .emptyBlock {

@@ -1,92 +1,128 @@
+/* Nguồn chuẩn DUY NHẤT cho nút chữ toàn hệ thống.
+   Feature cần nút → `composes: btn primary from '@/shared/components/Button/Button.module.css';`
+   (biến thể: primary | secondary | warning | danger | ghost; cỡ: sm | lg, mặc định md).
+   Chỉ thêm thuộc tính bố cục (width, flex, margin…) ở feature, không tự đặt màu/cỡ. */
 .btn {
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
 	gap: 6px;
-	border: none;
-	border-radius: 6px;
-	font-weight: 500;
-	cursor: pointer;
-	transition:
-		background 0.15s,
-		opacity 0.15s,
-		box-shadow 0.15s;
-	font-family: inherit;
+	height: 38px;
+	padding: 0 16px;
+	border: 1.5px solid transparent;
+	border-radius: var(--radius-lg);
+	font-family: var(--font-body);
+	font-size: var(--font-size-sm);
+	font-weight: var(--font-weight-semibold);
+	line-height: 1;
 	white-space: nowrap;
+	text-decoration: none;
+	cursor: pointer;
+	box-sizing: border-box;
+	transition:
+		background var(--transition-fast),
+		border-color var(--transition-fast),
+		color var(--transition-fast),
+		box-shadow var(--transition-fast);
 }
-
+.btn svg {
+	width: 15px;
+	height: 15px;
+	flex-shrink: 0;
+}
+.btn:focus-visible {
+	outline: 2px solid var(--color-primary-light);
+	outline-offset: 2px;
+}
 .btn:disabled {
-	opacity: 0.5;
+	opacity: 0.6;
 	cursor: not-allowed;
+	box-shadow: none;
 }
 
-/* Sizes */
-.sm {
-	height: 30px;
-	padding: 0 10px;
-	font-size: var(--font-size-xs);
-}
+/* Sizes (md = mặc định trong .btn) */
 .md {
-	height: 36px;
-	padding: 0 14px;
+	height: 38px;
+}
+.sm {
+	height: 32px;
+	padding: 0 12px;
 	font-size: var(--font-size-compact);
 }
+.sm svg {
+	width: 14px;
+	height: 14px;
+}
 .lg {
-	height: 42px;
-	padding: 0 20px;
-	font-size: var(--font-size-sm);
+	height: 46px;
+	padding: 0 24px;
+	font-size: var(--font-size-base);
 }
 
-/* Variants */
-.primary {
-	background: var(--color-primary, #3b82f6);
-	color: #fff;
+/* Variants — thứ tự có chủ đích: biến thể sau thắng khi ghép làm modifier
+   (vd. `bulkBtn` secondary + `bulkBtnDanger` danger). */
+.ghost {
+	background: transparent;
+	color: var(--color-gray-600);
 }
-.primary:hover:not(:disabled) {
-	background: var(--color-primary-dark, #2563eb);
+.ghost:hover:not(:disabled) {
+	background: var(--color-gray-100);
+	color: var(--color-gray-800);
 }
 
 .secondary {
-	background: var(--color-gray-100, #f3f4f6);
-	color: var(--color-gray-700, #374151);
-	border: 1px solid var(--color-border, #e2e8f0);
+	background: var(--color-white);
+	color: var(--color-gray-700);
+	border-color: var(--color-gray-200);
 }
 .secondary:hover:not(:disabled) {
-	background: var(--color-gray-200, #e5e7eb);
+	background: var(--color-gray-50);
+	border-color: var(--color-gray-300);
 }
 
-.ghost {
-	background: transparent;
-	color: var(--color-gray-600, #4b5563);
-	border: 1px solid var(--color-border, #e2e8f0);
+.warning {
+	background: #faeeda;
+	color: #633806;
+	border-color: #ef9f27;
 }
-.ghost:hover:not(:disabled) {
-	background: var(--color-gray-50, #f9fafb);
+.warning:hover:not(:disabled) {
+	background: #f7dfb5;
 }
 
 .danger {
-	background: var(--color-danger, #ef4444);
-	color: #fff;
+	background: #fcebeb;
+	color: #791f1f;
+	border-color: #f09595;
 }
 .danger:hover:not(:disabled) {
-	background: var(--color-danger-dark, #dc2626);
+	background: #f7c1c1;
+	border-color: #e24b4a;
 }
 
-/* Icon & Spinner */
+.primary {
+	background: var(--color-primary);
+	color: var(--color-white);
+	border-color: var(--color-primary);
+}
+.primary:hover:not(:disabled) {
+	background: var(--color-primary-dark);
+	border-color: var(--color-primary-dark);
+}
+
+/* Spinner (keyframes cục bộ trong module này) */
 .icon {
 	display: flex;
 	align-items: center;
 }
-
 .spinner {
 	width: 14px;
 	height: 14px;
-	border: 2px solid rgba(255, 255, 255, 0.3);
-	border-top-color: #fff;
+	border: 2px solid currentColor;
+	border-top-color: transparent;
 	border-radius: 50%;
+	opacity: 0.8;
 	animation: spin 0.7s linear infinite;
 }
-
 @keyframes spin {
 	to {
 		transform: rotate(360deg);

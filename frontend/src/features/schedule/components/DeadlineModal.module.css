@@ -109,16 +109,10 @@
 /* ─── Buttons ────────────────────────────────────────────────────────────── */
 .btnPrimary {
 	composes: btnPrimary from '../styles/shared.module.css';
-	height: 36px;
-	padding: 0 var(--space-5);
 }
 .btnSecondary {
 	composes: btnSecondary from '../styles/shared.module.css';
-	height: 36px;
-	padding: 0 var(--space-4);
 }
 .btnDanger {
 	composes: btnDanger from '../styles/shared.module.css';
-	height: 36px;
-	padding: 0 var(--space-4);
 }

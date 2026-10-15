@@ -1,7 +1,7 @@
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
-const { isAllowedExtension } = require('./fileTypeAllowlist');
+const { dynamicMulter, extensionFilter } = require('./upload');
 const { secureUpload } = require('./secureUpload');
 
 const { UPLOADS_ROOT, uniqueFilename } = require('../utils/uploadPaths');
@@ -11,44 +11,28 @@ const { UPLOADS_ROOT, uniqueFilename } = require('../utils/uploadPaths');
 const TMP_DIR = path.join(UPLOADS_ROOT, '_tmp', 'public');
 
 const MAX_FILES = 10;
-const maxSizeMB = () => Number(process.env.PUBLIC_UPLOAD_MAX_MB) || 20;
 
 const httpError = (statusCode, message) => Object.assign(new Error(message), { statusCode });
 
-const instance = multer({
-	storage: multer.diskStorage({
-		destination: (_req, _file, cb) => {
-			fs.mkdirSync(TMP_DIR, { recursive: true });
-			cb(null, TMP_DIR);
-		},
-		filename: (_req, file, cb) => cb(null, uniqueFilename(file.originalname)),
-	}),
-	limits: { fileSize: maxSizeMB() * 1024 * 1024, files: MAX_FILES, fields: 20 },
-	fileFilter: (_req, file, cb) => {
-		if (!isAllowedExtension(file.originalname)) {
-			return cb(httpError(400, 'Định dạng file không được hỗ trợ'));
-		}
-		cb(null, true);
+// Định dạng & dung lượng theo Cấu hình hệ thống (utils/uploadPolicy.js), như route nội bộ.
+const instance = dynamicMulter((policy) => ({
+	maxSizeMB: policy.maxSizeMB,
+	maxFiles: MAX_FILES,
+	options: {
+		storage: multer.diskStorage({
+			destination: (_req, _file, cb) => {
+				fs.mkdirSync(TMP_DIR, { recursive: true });
+				cb(null, TMP_DIR);
+			},
+			filename: (_req, file, cb) => cb(null, uniqueFilename(file.originalname)),
+		}),
+		limits: { fileSize: policy.maxSizeMB * 1024 * 1024, files: MAX_FILES, fields: 20 },
+		fileFilter: extensionFilter(policy.extensions, false),
 	},
-});
+}));
 
 // Không có tài khoản ⇒ không áp hạn mức/ngày (quota) — đã có rate-limit theo IP ở route.
 const [precheck, multerMw, verify] = secureUpload(instance, { quota: false }).array('files', MAX_FILES);
-
-// Lỗi multer (quá dung lượng, quá số file...) không có statusCode ⇒ đổi sang 400 dễ hiểu
-const friendlyMulter = (req, res, next) =>
-	multerMw(req, res, (err) => {
-		if (err instanceof multer.MulterError) {
-			const msg =
-				err.code === 'LIMIT_FILE_SIZE'
-					? `Mỗi file tối đa ${maxSizeMB()}MB`
-					: err.code === 'LIMIT_FILE_COUNT' || err.code === 'LIMIT_UNEXPECTED_FILE'
-						? `Tối đa ${MAX_FILES} file đính kèm`
-						: 'File đính kèm không hợp lệ';
-			return next(httpError(400, msg));
-		}
-		next(err);
-	});
 
 // File tạm chưa được service chuyển đi (lỗi validate, sai captcha, honeypot,
 // lỗi nghiệp vụ...) ⇒ xoá khi trả response. File đã chuyển thì unlink lỗi ENOENT, bỏ qua.
@@ -82,7 +66,7 @@ const parseDataField = (req, _res, next) => {
 	next();
 };
 
-const publicUpload = [cleanupTmp, precheck, friendlyMulter, verify, parseDataField];
+const publicUpload = [cleanupTmp, precheck, multerMw, verify, parseDataField];
 
 // Chuyển file tạm sang thư mục đích; trả về danh sách file đã chuyển (path mới).
 const moveUploadedFiles = async (files, destDir) => {

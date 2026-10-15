@@ -107,14 +107,12 @@ export default function MembersTab({
 										<button
 											className={styles.btnSecondary}
 											onClick={() => startEditMember(m)}
-											style={{ fontSize: 12, padding: '3px 10px' }}
 										>
 											Sửa
 										</button>
 										<button
 											className={styles.btnDanger}
 											onClick={() => handleDeleteMember(m.id)}
-											style={{ fontSize: 12, padding: '3px 10px' }}
 										>
 											Xoá
 										</button>

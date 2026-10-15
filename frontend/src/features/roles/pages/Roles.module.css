@@ -226,25 +226,7 @@
 	gap: var(--space-2);
 }
 .btnSecondaryHeader {
-	display: flex;
-	align-items: center;
-	gap: var(--space-2);
-	padding: var(--space-2) var(--space-4);
-	border: 1px solid var(--color-gray-200);
-	border-radius: var(--radius-lg);
-	background: var(--color-white);
-	color: var(--color-gray-700);
-	font-size: var(--font-size-sm);
-	font-weight: 500;
-	cursor: pointer;
-}
-.btnSecondaryHeader:hover {
-	border-color: var(--color-primary);
-	color: var(--color-primary);
-}
-.btnSecondaryHeader svg {
-	width: 15px;
-	height: 15px;
+	composes: btn secondary from '@/shared/components/Button/Button.module.css';
 }
 .statCellLink {
 	white-space: nowrap;
@@ -262,33 +244,7 @@
 	cursor: default;
 }
 .btnAddHeader {
-	display: flex;
-	align-items: center;
-	gap: var(--space-2);
-	padding: var(--space-2) var(--space-5);
-	background: linear-gradient(
-		135deg,
-		var(--color-primary),
-		var(--color-primary-dark)
-	);
-	color: var(--color-white);
-	border: none;
-	border-radius: var(--radius-lg);
-	font-family: var(--font-body);
-	font-size: var(--font-size-sm);
-	font-weight: var(--font-weight-bold);
-	cursor: pointer;
-	transition: all var(--transition-base);
-	box-shadow: 0 3px 10px rgba(10, 155, 74, 0.28);
-	white-space: nowrap;
-}
-.btnAddHeader:hover {
-	box-shadow: 0 5px 16px rgba(10, 155, 74, 0.4);
-	transform: translateY(-1px);
-}
-.btnAddHeader svg {
-	width: 15px;
-	height: 15px;
+	composes: btn primary from '@/shared/components/Button/Button.module.css';
 }
 
 /* ── MODAL ───────────────────────────────── */
@@ -375,39 +331,8 @@
 }
 
 .btnSave {
+	composes: btn primary from '@/shared/components/Button/Button.module.css';
 	flex: 1;
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	gap: var(--space-2);
-	padding: var(--space-3);
-	background: linear-gradient(
-		135deg,
-		var(--color-primary),
-		var(--color-primary-dark)
-	);
-	border: none;
-	border-radius: var(--radius-lg);
-	font-family: var(--font-body);
-	font-size: var(--font-size-sm);
-	font-weight: var(--font-weight-bold);
-	color: var(--color-white);
-	cursor: pointer;
-	transition: all var(--transition-base);
-	box-shadow: 0 3px 10px rgba(10, 155, 74, 0.28);
-}
-.btnSave:hover {
-	box-shadow: 0 5px 16px rgba(10, 155, 74, 0.4);
-	transform: translateY(-1px);
-}
-.btnSave:disabled {
-	opacity: 0.65;
-	cursor: not-allowed;
-	transform: none;
-}
-.btnSave svg {
-	width: 15px;
-	height: 15px;
 }
 
 .btnDanger {

@@ -3,9 +3,10 @@
  * Mirror cmeRecordImportService (dò tiêu đề, khớp cột gần đúng, giá trị mặc định
  * chọn ở hộp thoại, dry_run trả preview).
  *
- * Bố cục file = file "Xuất Excel" đề tài: MỖI DÒNG 1 THÀNH VIÊN, các dòng liền
- * nhau cùng Tên đề tài (hoặc để trống / gộp ô) thuộc cùng một đề tài. Thông tin
- * đề tài (khoa, thể loại, cấp độ, đợt) lấy ở dòng đầu của nhóm.
+ * Bố cục: MỖI DÒNG 1 THÀNH VIÊN; mỗi đề tài là 1 khối dòng, các cột thông tin
+ * đề tài gộp ô (file mẫu dựng sẵn khối 3 dòng: Chủ nhiệm / Thư ký / Thành viên).
+ * Vai trò theo vị trí dòng trong khối. File không gộp ô: dòng để trống / trùng
+ * Tên đề tài với dòng trên thuộc cùng đề tài (như file "Xuất Excel").
  */
 const ExcelJS = require('exceljs');
 const { getPool } = require('../config/db');
@@ -20,12 +21,10 @@ const SHEET_COLUMNS = [
 	{ key: 'department_raw', header: 'Khoa/phòng/TT', width: 22 },
 	{ key: 'title', header: 'Tên Sáng kiến/Đề tài', width: 48 },
 	{ key: 'category_raw', header: 'Thể loại', width: 18 },
-	{ key: 'level_raw', header: 'Cấp độ', width: 14 },
-	{ key: 'round_raw', header: 'Đợt NC', width: 16 },
+	{ key: 'role_label', header: 'Vai trò', width: 12 },
 	{ key: 'name', header: 'Họ và tên', width: 24 },
 	{ key: 'position', header: 'Chức vụ', width: 16 },
 	{ key: 'staff_number', header: 'MNV', width: 9 },
-	{ key: 'role_raw', header: 'Vai trò nhóm NC', width: 14 },
 ];
 
 const COLUMN_MATCHERS = [
@@ -33,27 +32,22 @@ const COLUMN_MATCHERS = [
 	['department_raw', (h) => h.startsWith('khoa') || h === 'don vi'],
 	['title', (h) => h.startsWith('ten sang kien') || h.startsWith('ten de tai') || h === 'de tai' || h === 'ten'],
 	['category_raw', (h) => h === 'the loai' || h === 'phan loai' || h === 'loai de tai'],
-	['level_raw', (h) => h === 'cap do' || h === 'cap'],
-	['round_raw', (h) => h.startsWith('dot')],
 	['name', (h) => h === 'ho va ten' || h === 'ho ten' || h === 'thanh vien'],
 	['position', (h) => h === 'chuc vu'],
 	['staff_number', (h) => h === 'mnv' || h === 'ma nv' || h.includes('ma nhan vien')],
-	['role_raw', (h) => h.startsWith('vai tro')],
 ];
 
-const ROLE_LABELS = { leader: 'Chủ nhiệm', secretary: 'Thư ký', member: 'Thành viên' };
-const parseRole = (raw) => {
-	const h = norm(raw);
-	if (h.includes('chu nhiem') || h.includes('chu tri')) return 'leader';
-	if (h.includes('thu ky')) return 'secretary';
-	return 'member';
-};
+// Vai trò theo vị trí dòng trong khối đề tài: 1 = Chủ nhiệm, 2 = Thư ký, còn lại = Thành viên
+const roleByOrder = (i) => (i === 0 ? 'leader' : i === 1 ? 'secretary' : 'member');
+const SLOT_LABELS = ['Chủ nhiệm', 'Thư ký', 'Thành viên'];
+const TEMPLATE_BLOCKS = 30;
+// Cột thông tin đề tài — gộp ô theo khối
+const TOPIC_KEYS = ['stt', 'department_raw', 'title', 'category_raw'];
 
 const templateWorkbook = async () => {
 	const pool = await getPool();
-	const [cats, lvls, depts] = await Promise.all([
+	const [cats, depts] = await Promise.all([
 		pool.request().query('SELECT name FROM categories ORDER BY name'),
-		pool.request().query('SELECT name FROM levels ORDER BY name'),
 		pool.request().query('SELECT name FROM departments ORDER BY name'),
 	]);
 	const wb = new ExcelJS.Workbook();
@@ -61,27 +55,45 @@ const templateWorkbook = async () => {
 		sheetName: 'Đề tài',
 		title: 'MẪU NHẬP DANH SÁCH ĐỀ TÀI NGHIÊN CỨU KHOA HỌC',
 		subtitle:
-			'Mỗi dòng 1 thành viên; các dòng liền nhau cùng Tên đề tài (hoặc để trống Tên đề tài) thuộc cùng một đề tài. Bắt buộc: Tên đề tài, Thể loại (hoặc chọn ở hộp thoại nhập), Họ và tên hoặc MNV. Đợt NC để trống → lấy đợt chọn ở hộp thoại. Vai trò: Chủ nhiệm / Thư ký / Thành viên.',
+			'Mỗi đề tài 1 khối 3 dòng (đã gộp ô sẵn): dòng 1 Chủ nhiệm, dòng 2 Thư ký, dòng 3 Thành viên — chỉ điền Họ và tên / Chức vụ / MNV, không cần nhập vai trò. Thêm thành viên: chèn dòng trong khối. Bắt buộc: Tên đề tài, Thể loại, Họ và tên hoặc MNV. Đợt nghiên cứu và Cấp độ chọn ở hộp thoại nhập (áp cho cả file).',
 		columns: SHEET_COLUMNS,
 		letterhead: true,
 	});
 	ws.getRow(5).height = 30;
+	// Dựng sẵn khối đề tài: cột thông tin đề tài gộp 3 dòng, cột thành viên để trống từng dòng
+	const slots = SLOT_LABELS.length;
+	const topicCols = TOPIC_KEYS.map((k) => SHEET_COLUMNS.findIndex((c) => c.key === k) + 1);
+	const roleCol = SHEET_COLUMNS.findIndex((c) => c.key === 'role_label') + 1;
+	for (let b = 0; b < TEMPLATE_BLOCKS; b++) {
+		const top = ws.headRow + 1 + b * slots;
+		for (let i = 0; i < slots; i++) {
+			const row = ws.getRow(top + i);
+			for (let c = 1; c <= SHEET_COLUMNS.length; c++) {
+				row.getCell(c).border = xl.border;
+				row.getCell(c).alignment = { vertical: 'middle', wrapText: true };
+			}
+			Object.assign(row.getCell(roleCol), { value: SLOT_LABELS[i], font: { italic: true, color: { argb: 'FF6B7280' } } });
+		}
+		for (const c of topicCols) {
+			ws.mergeCells(top, c, top + slots - 1, c);
+			ws.getCell(top, c).alignment = { vertical: 'middle', horizontal: c === topicCols[2] ? 'left' : 'center', wrapText: true };
+		}
+		ws.getCell(top, 1).value = b + 1;
+	}
 	const range = (name, header, rows) => {
 		const r = xl.addLookupSheet(wb, name, header, rows.map((x) => x.name));
 		return r ? { range: r } : null;
 	};
 	xl.addDropdowns(ws, SHEET_COLUMNS, {
 		category_raw: range('DM_TheLoai', 'Thể loại', cats.recordset),
-		level_raw: range('DM_CapDo', 'Cấp độ', lvls.recordset),
 		department_raw: range('DM_Khoa', 'Khoa/phòng', depts.recordset),
-		role_raw: Object.values(ROLE_LABELS),
 	});
 	return wb;
 };
 
-// Gom dòng thành viên → đề tài. Tên đề tài trống hoặc trùng dòng trên (ô gộp) = cùng đề tài.
+// Gom dòng thành viên → đề tài. Ô Tên đề tài gộp (merge), để trống hoặc trùng dòng trên = cùng đề tài.
 const parseWorkbook = async (buffer) => {
-	const { rows } = await readSheet(buffer, {
+	const { rows, cols } = await readSheet(buffer, {
 		matchers: COLUMN_MATCHERS,
 		isValid: (c) => !!c.title,
 		headerError: 'Không tìm thấy dòng tiêu đề (cần cột "Tên Sáng kiến/Đề tài" hoặc "Tên đề tài").',
@@ -91,14 +103,16 @@ const parseWorkbook = async (buffer) => {
 	let cur = null;
 	for (const { r, row, get } of rows) {
 		const title = get(row, 'title');
-		if (!cur || (title && norm(title) !== norm(cur.title))) {
+		// Ô Tên đề tài gộp: sang vùng gộp khác = khối đề tài mới (kể cả khi trùng tên khối trên).
+		// Dòng đầu khối có thể trống (chưa có Chủ nhiệm) nên tính theo ô gốc, không theo dòng đầu đọc được.
+		const tc = row.getCell(cols.title);
+		const block = tc.isMerged ? tc.master.row : null;
+		if (!cur || (block != null && block !== cur.row) || (title && norm(title) !== norm(cur.title))) {
 			cur = {
-				row: r,
+				row: block ?? r,
 				title,
 				department_raw: get(row, 'department_raw') || null,
 				category_raw: get(row, 'category_raw') || null,
-				level_raw: get(row, 'level_raw') || null,
-				round_raw: get(row, 'round_raw') || null,
 				members: [],
 			};
 			topics.push(cur);
@@ -111,7 +125,7 @@ const parseWorkbook = async (buffer) => {
 				name,
 				staff_number: staffNumber,
 				position: get(row, 'position') || null,
-				role: parseRole(get(row, 'role_raw')),
+				role: roleByOrder(r - cur.row),
 			});
 		}
 	}
@@ -121,14 +135,31 @@ const parseWorkbook = async (buffer) => {
 
 const loadLookups = async () => {
 	const pool = await getPool();
-	const [cats, lvls, depts, rounds, users, existing] = await Promise.all([
+	const [cats, lvls, depts, rounds, users, existing, roundLevels] = await Promise.all([
 		pool.request().query('SELECT id, name, abbr FROM categories'),
 		pool.request().query('SELECT id, name FROM levels'),
 		pool.request().query('SELECT id, name, code FROM departments'),
 		pool.request().query('SELECT id, name, year FROM research_rounds'),
 		pool.request().query('SELECT full_name, staff_number, department_id FROM users WHERE staff_number IS NOT NULL AND is_active = 1'),
 		pool.request().query('SELECT title, round_id FROM topics'),
+		// Cấp độ ăn theo đợt — cùng quy tắc roundService.getAllowedLevelIds cho mọi đợt
+		pool
+			.request()
+			.query(
+				`SELECT round_id, level_id, 0 AS src FROM research_round_levels
+				 UNION ALL
+				 SELECT r.id, rtl.level_id, 1 FROM research_rounds r JOIN round_type_levels rtl ON rtl.round_type_id = r.round_type_id`,
+			)
+			.catch(() => ({ recordset: [] })), // bảng chưa tồn tại (migration chưa chạy) ⇒ không giới hạn
 	]);
+	// Đợt có cấu hình riêng thì dùng của đợt, không thì theo loại đợt; [] ⇒ không giới hạn
+	const own = new Map();
+	const byType = new Map();
+	for (const x of roundLevels.recordset) {
+		const m = x.src ? byType : own;
+		if (!m.has(x.round_id)) m.set(x.round_id, []);
+		m.get(x.round_id).push(x.level_id);
+	}
 	const byKey = (list, ...keys) => {
 		const m = new Map();
 		for (const x of list) for (const k of keys) if (x[k]) m.set(norm(x[k]), x);
@@ -140,11 +171,9 @@ const loadLookups = async () => {
 		catById: new Map(cats.recordset.map((c) => [c.id, c])),
 		catByKey: byKey(cats.recordset, 'name', 'abbr', 'id'),
 		levelById: new Map(lvls.recordset.map((l) => [l.id, l])),
-		levelByKey: byKey(lvls.recordset, 'name', 'id'),
-		deptById: new Map(depts.recordset.map((d) => [d.id, d])),
+		allowedLevels: (roundId) => own.get(roundId) || byType.get(roundId) || [],
 		deptByKey,
 		roundById: new Map(rounds.recordset.map((r) => [r.id, r])),
-		roundByKey: byKey(rounds.recordset, 'name', 'id'),
 		userByStaff: new Map(users.recordset.map((u) => [Number(u.staff_number), u])),
 		existing: new Set(existing.recordset.map((t) => `${t.round_id}|${norm(t.title)}`)),
 	};
@@ -152,7 +181,7 @@ const loadLookups = async () => {
 
 const matchDept = (raw, lk) => (raw ? lk.deptByKey.get(norm(raw)) || lk.deptByKey.get(normDept(raw)) || null : null);
 
-// defaults = chọn ở hộp thoại { round_id, category_id, level_id, department_id, article_type }:
+// defaults = chọn ở hộp thoại { round_id, category_id, level_id, article_type, status }:
 // chỉ dùng khi ô tương ứng trong file để trống.
 const buildPreview = (topics, lk, defaults = {}) => {
 	const seen = new Set();
@@ -160,17 +189,28 @@ const buildPreview = (topics, lk, defaults = {}) => {
 		const errors = [];
 		const warnings = [];
 
-		const round = t.round_raw ? lk.roundByKey.get(norm(t.round_raw)) : lk.roundById.get(defaults.round_id);
-		if (!round) errors.push(t.round_raw ? `Không khớp đợt "${t.round_raw}"` : 'Chưa chọn đợt nghiên cứu');
+		// Đợt + cấp độ chọn ở hộp thoại, áp cho cả file
+		const round = lk.roundById.get(defaults.round_id);
+		if (!round) errors.push('Chưa chọn đợt nghiên cứu');
 
 		const cat = t.category_raw ? lk.catByKey.get(norm(t.category_raw)) : lk.catById.get(defaults.category_id);
 		if (!cat) errors.push(t.category_raw ? `Không khớp thể loại "${t.category_raw}"` : 'Thiếu thể loại');
 		else if (!cat.abbr) errors.push(`Thể loại "${cat.name}" chưa có ký hiệu viết tắt — bổ sung ở Danh mục`);
 
-		const level = t.level_raw ? lk.levelByKey.get(norm(t.level_raw)) : lk.levelById.get(defaults.level_id);
-		if (t.level_raw && !level) warnings.push(`Không khớp cấp độ "${t.level_raw}" — để trống`);
+		// Cấp độ phải thuộc danh sách cấp độ của đợt (như khi đăng ký); bài báo không có cấp độ
+		let level = null;
+		if (defaults.article_type !== 'bai_bao') {
+			level = lk.levelById.get(defaults.level_id) || null;
+			const allowed = round ? lk.allowedLevels(round.id) : [];
+			if (!level && allowed.length === 1) level = lk.levelById.get(allowed[0]);
+			const names = allowed.map((id) => lk.levelById.get(id)?.name || id).join(', ');
+			if (allowed.length && !level) errors.push(`Chưa chọn cấp độ — đợt "${round.name}" cho phép: ${names}`);
+			else if (allowed.length && !allowed.includes(level.id)) {
+				errors.push(`Cấp độ "${level.name}" không thuộc đợt "${round.name}" — đợt cho phép: ${names}`);
+			}
+		}
 
-		const dept = t.department_raw ? matchDept(t.department_raw, lk) : lk.deptById.get(defaults.department_id);
+		const dept = matchDept(t.department_raw, lk);
 		if (t.department_raw && !dept) warnings.push(`Không khớp khoa/phòng "${t.department_raw}" — để trống`);
 
 		if (!t.title) errors.push('Thiếu tên đề tài');
@@ -185,10 +225,7 @@ const buildPreview = (topics, lk, defaults = {}) => {
 			}
 			members.push({ ...m, name, department_id: user?.department_id || dept?.id || null });
 		}
-		if (members.length && !members.some((m) => m.role === 'leader')) {
-			members[0].role = 'leader';
-			warnings.push(`Không có Chủ nhiệm — lấy "${members[0].name}" làm Chủ nhiệm`);
-		}
+		if (members.length && !members.some((m) => m.role === 'leader')) warnings.push('Chưa có Chủ nhiệm (dòng đầu của khối để trống)');
 		if (!members.length) warnings.push('Chưa có thành viên');
 
 		const key = round && `${round.id}|${norm(t.title)}`;

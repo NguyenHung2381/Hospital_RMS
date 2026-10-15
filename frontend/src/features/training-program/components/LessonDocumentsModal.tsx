@@ -1,3 +1,4 @@
+import { useUploadPolicy } from '@/shared/hooks/useUploadPolicy';
 import { notify } from '../../../shared/utils/feedback';
 import { useCallback, useEffect, useState } from 'react';
 import { DocSvg, DownloadSvg, PlusSvg, TrashSvg } from '@/assets/icons';
@@ -26,7 +27,13 @@ export function LessonDocumentsModal({
 	const [busy, setBusy] = useState(false);
 	const [error, setError] = useState('');
 	const [file, setFile] = useState<File | null>(null);
-	const [form, setForm] = useState<{ title: string; isPublic: boolean; sourceType: SourceType; externalUrl: string }>({
+	const uploadPolicy = useUploadPolicy({ allowMedia: true });
+	const [form, setForm] = useState<{
+		title: string;
+		isPublic: boolean;
+		sourceType: SourceType;
+		externalUrl: string;
+	}>({
 		title: '',
 		isPublic: true,
 		sourceType: 'file',
@@ -36,7 +43,9 @@ export function LessonDocumentsModal({
 	const load = useCallback(() => {
 		return getLessonDocuments(lesson.id)
 			.then(setDocs)
-			.catch((err) => setError(err instanceof Error ? err.message : 'Không thể tải tài liệu'))
+			.catch((err) =>
+				setError(err instanceof Error ? err.message : 'Không thể tải tài liệu'),
+			)
 			.finally(() => setLoading(false));
 	}, [lesson.id]);
 
@@ -57,9 +66,17 @@ export function LessonDocumentsModal({
 		setBusy(true);
 		setError('');
 		try {
-			await addLessonDocument(lesson.id, source, { title: form.title, is_public: form.isPublic });
+			await addLessonDocument(lesson.id, source, {
+				title: form.title,
+				is_public: form.isPublic,
+			});
 			notify.success('Đã thêm tài liệu');
-			setForm({ title: '', isPublic: true, sourceType: 'file', externalUrl: '' });
+			setForm({
+				title: '',
+				isPublic: true,
+				sourceType: 'file',
+				externalUrl: '',
+			});
 			setFile(null);
 			await load();
 		} catch (err) {
@@ -84,7 +101,11 @@ export function LessonDocumentsModal({
 
 	const handleDownloadClick = (docId: string) => {
 		incrementLessonDocumentDownload(docId).catch(() => {});
-		setDocs((prev) => prev.map((d) => (d.id === docId ? { ...d, download_count: d.download_count + 1 } : d)));
+		setDocs((prev) =>
+			prev.map((d) =>
+				d.id === docId ? { ...d, download_count: d.download_count + 1 } : d,
+			),
+		);
 	};
 
 	return (
@@ -110,14 +131,18 @@ export function LessonDocumentsModal({
 					<input
 						type='checkbox'
 						checked={form.isPublic}
-						onChange={(e) => setForm((f) => ({ ...f, isPublic: e.target.checked }))}
+						onChange={(e) =>
+							setForm((f) => ({ ...f, isPublic: e.target.checked }))
+						}
 					/>
 					Công khai
 				</label>
 				<select
 					className={styles.subSelect}
 					value={form.sourceType}
-					onChange={(e) => setForm((f) => ({ ...f, sourceType: e.target.value as SourceType }))}
+					onChange={(e) =>
+						setForm((f) => ({ ...f, sourceType: e.target.value as SourceType }))
+					}
 				>
 					<option value='file'>Tải file lên</option>
 					<option value='link'>Dán link</option>
@@ -125,6 +150,7 @@ export function LessonDocumentsModal({
 				{form.sourceType === 'file' ? (
 					<FileDropzone
 						compact
+						accept={uploadPolicy.accept}
 						value={file}
 						onChange={setFile}
 						disabled={busy}
@@ -135,7 +161,9 @@ export function LessonDocumentsModal({
 						className={styles.subInput}
 						placeholder='https://...'
 						value={form.externalUrl}
-						onChange={(e) => setForm((f) => ({ ...f, externalUrl: e.target.value }))}
+						onChange={(e) =>
+							setForm((f) => ({ ...f, externalUrl: e.target.value }))
+						}
 					/>
 				)}
 				<button
@@ -160,7 +188,11 @@ export function LessonDocumentsModal({
 						>
 							<div className={styles.subRowMain}>
 								<a
-									href={doc.source_type === 'link' ? (doc.external_url ?? '#') : (doc.file_url ?? '#')}
+									href={
+										doc.source_type === 'link'
+											? (doc.external_url ?? '#')
+											: (doc.file_url ?? '#')
+									}
 									target='_blank'
 									rel='noreferrer'
 									className={styles.docLink}
@@ -169,7 +201,9 @@ export function LessonDocumentsModal({
 									{doc.title}
 								</a>
 								<div className={styles.subRowMeta}>
-									{doc.source_type === 'link' ? 'Liên kết ngoài' : doc.file_name}
+									{doc.source_type === 'link'
+										? 'Liên kết ngoài'
+										: doc.file_name}
 									{!doc.is_public ? ' · Chưa công khai' : ''}
 									{' · '}
 									<DownloadSvg /> {doc.download_count}

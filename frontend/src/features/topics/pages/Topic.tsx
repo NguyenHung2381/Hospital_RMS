@@ -467,9 +467,6 @@ export default function TopicPage() {
 			{showImport && (
 				<TopicImportModal
 					rounds={d.rounds}
-					categories={d.categories}
-					levels={d.levels}
-					departments={d.departments}
 					onClose={() => setShowImport(false)}
 					onDone={d.refreshData}
 				/>

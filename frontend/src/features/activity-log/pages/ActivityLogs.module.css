@@ -149,24 +149,7 @@
 }
 
 .btnGhost {
-	display: inline-flex;
-	align-items: center;
-	gap: 6px;
-	height: 32px;
-	padding: 0 12px;
-	border: 1.5px solid var(--color-gray-200);
-	border-radius: var(--radius-md);
-	background: transparent;
-	font-family: var(--font-body);
-	font-size: var(--font-size-xs);
-	font-weight: var(--font-weight-semibold);
-	color: var(--color-gray-600);
-	cursor: pointer;
-	white-space: nowrap;
-}
-.btnGhost:hover {
-	border-color: var(--color-primary);
-	color: var(--color-primary-dark);
+	composes: btn secondary from '@/shared/components/Button/Button.module.css';
 }
 
 /* ── Tabs ───────────────────────────────────────────────────────────────── */

@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react';
 import { FileSvg, TrashSvg, UploadSvg } from '@/assets/icons';
-import { PUBLIC_UPLOAD_ACCEPT, PUBLIC_UPLOAD_MAX_FILES, PUBLIC_UPLOAD_MAX_MB } from '../api/publicApi';
+import { useUploadPolicy } from '@/shared/hooks/useUploadPolicy';
+import { PUBLIC_UPLOAD_MAX_FILES } from '../api/publicApi';
 import styles from '../pages/PublicPortal.module.css';
 
 export interface Attachment<T extends string = string> {
@@ -19,11 +20,6 @@ interface Props<T extends string> {
 	hint?: string;
 }
 
-const ACCEPTED = new Set(PUBLIC_UPLOAD_ACCEPT.split(','));
-const extOf = (name: string) => {
-	const i = name.lastIndexOf('.');
-	return i >= 0 ? name.slice(i).toLowerCase() : '';
-};
 const formatSize = (bytes: number) =>
 	bytes >= 1048576 ? `${(bytes / 1048576).toFixed(1)} MB` : `${Math.max(1, Math.round(bytes / 1024))} KB`;
 
@@ -31,6 +27,7 @@ export function AttachmentPicker<T extends string>({ value, onChange, typeOption
 	const inputRef = useRef<HTMLInputElement>(null);
 	const [dragging, setDragging] = useState(false);
 	const [warn, setWarn] = useState('');
+	const policy = useUploadPolicy();
 
 	const addFiles = (list: FileList | null) => {
 		if (!list?.length) return;
@@ -41,12 +38,9 @@ export function AttachmentPicker<T extends string>({ value, onChange, typeOption
 				problems.push(`Chỉ đính kèm tối đa ${PUBLIC_UPLOAD_MAX_FILES} file`);
 				break;
 			}
-			if (!ACCEPTED.has(extOf(file.name))) {
-				problems.push(`"${file.name}" không đúng định dạng cho phép`);
-				continue;
-			}
-			if (file.size > PUBLIC_UPLOAD_MAX_MB * 1048576) {
-				problems.push(`"${file.name}" vượt quá ${PUBLIC_UPLOAD_MAX_MB}MB`);
+			const problem = policy.check(file);
+			if (problem) {
+				problems.push(problem);
 				continue;
 			}
 			if (next.some((a) => a.file.name === file.name && a.file.size === file.size)) continue;
@@ -91,15 +85,16 @@ export function AttachmentPicker<T extends string>({ value, onChange, typeOption
 					<strong>Bấm để chọn file</strong> hoặc kéo thả file vào đây
 				</div>
 				<div className={styles.dropzoneHint}>
-					{hint ?? 'PDF, Word, Excel, ảnh, ZIP...'} · Tối đa {PUBLIC_UPLOAD_MAX_FILES} file, mỗi file ≤{' '}
-					{PUBLIC_UPLOAD_MAX_MB}MB
+					{hint && `${hint} · `}
+					{policy.extensions.join(', ')} · Tối đa {PUBLIC_UPLOAD_MAX_FILES} file, mỗi file ≤{' '}
+					{policy.maxSizeMB}MB
 				</div>
 				<input
 					ref={inputRef}
 					type='file'
 					multiple
 					hidden
-					accept={PUBLIC_UPLOAD_ACCEPT}
+					accept={policy.accept}
 					onChange={(e) => {
 						addFiles(e.target.files);
 						e.target.value = '';

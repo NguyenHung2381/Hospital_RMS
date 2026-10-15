@@ -24,7 +24,7 @@ import type {
 	RegisterForm,
 } from '../types/topicregister.type';
 import { getInitials } from '../../../shared/utils/helper';
-import { MAX_FILE_SIZE } from '../utils/topicRegisterHelpers';
+import { useUploadPolicy } from '@/shared/hooks/useUploadPolicy';
 import { nextAddRole } from '../utils/topicHelpers';
 
 export interface ManualForm {
@@ -392,23 +392,23 @@ export function useTopicRegister(): TopicRegisterState {
 		setMemberQuery('');
 	}, [pendingMembers, manualForm]);
 
+	const uploadPolicy = useUploadPolicy();
 	const handleFiles = useCallback((files: FileList | null) => {
 		if (!files) return;
 		const toAdd: File[] = [];
-		const oversized: string[] = [];
+		const problems: string[] = [];
 		Array.from(files).forEach((f) => {
-			if (f.size > MAX_FILE_SIZE) oversized.push(f.name);
+			const problem = uploadPolicy.check(f);
+			if (problem) problems.push(problem);
 			else toAdd.push(f);
 		});
-		if (oversized.length)
-			setFileError(`File vượt quá 150MB: ${oversized.join(', ')}`);
-		else setFileError('');
+		setFileError(problems.join(' · '));
 		if (toAdd.length)
 			setAttachments((prev) => {
 				const s = new Set(prev.map((f) => f.name));
 				return [...prev, ...toAdd.filter((f) => !s.has(f.name))];
 			});
-	}, []);
+	}, [uploadPolicy]);
 
 	const removeAttachment = useCallback((name: string) => {
 		setAttachments((prev) => prev.filter((f) => f.name !== name));

@@ -1,3 +1,4 @@
+import { useUploadPolicy } from '@/shared/hooks/useUploadPolicy';
 import { useState } from 'react';
 import {
 	BookOpenSvg,
@@ -60,6 +61,7 @@ export function TraineeDetailModal({
 }) {
 	const d = useTraineeDetail(trainee.id, initialTab);
 	const [docType, setDocType] = useState('national_id');
+	const uploadPolicy = useUploadPolicy();
 	const [docFile, setDocFile] = useState<File | null>(null);
 	const [viewer, setViewer] = useState<{ url: string; name: string; isWord: boolean } | null>(null);
 
@@ -197,6 +199,8 @@ export function TraineeDetailModal({
 								</select>
 								<FileDropzone
 									compact
+									accept={uploadPolicy.accept}
+									maxSizeMB={uploadPolicy.maxSizeMB}
 									value={docFile}
 									onChange={setDocFile}
 									disabled={d.busy}
@@ -204,7 +208,7 @@ export function TraineeDetailModal({
 								/>
 								<button
 									className={styles.btnCancel}
-									style={{ flex: 'unset', padding: '7px 14px' }}
+									style={{ flex: 'unset' }}
 									disabled={d.busy}
 									onClick={async () => {
 										if (!docFile) return;

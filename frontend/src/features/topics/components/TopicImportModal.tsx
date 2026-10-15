@@ -11,6 +11,7 @@ import styles from '@/features/seminar/pages/Seminar.module.css';
 import { saveBlob } from '@/features/seminar/utils/saveBlob';
 import {
 	downloadTopicImportTemplate,
+	getLevels,
 	importTopicsExcel,
 	type SimpleItem,
 	type TopicImportDefaults,
@@ -22,16 +23,10 @@ import { MEMBER_ROLE_CFG, STATUS_CFG } from '../utils/topicHelpers';
 // chọn mặc định + file → dry-run xem trước (tự đọc lại khi đổi mặc định) → nhập dòng hợp lệ.
 export function TopicImportModal({
 	rounds,
-	categories,
-	levels,
-	departments,
 	onClose,
 	onDone,
 }: {
 	rounds: SimpleItem[];
-	categories: SimpleItem[];
-	levels: SimpleItem[];
-	departments: SimpleItem[];
 	onClose: () => void;
 	onDone: () => void;
 }) {
@@ -42,27 +37,42 @@ export function TopicImportModal({
 	const [preview, setPreview] = useState<TopicImportResult | null>(null);
 	const [result, setResult] = useState<TopicImportResult | null>(null);
 	const [downloading, setDownloading] = useState(false);
-	// Mặc định áp cho dòng để trống ô tương ứng trong file
+	// Đợt + cấp độ chọn ở đây, áp cho cả file (file không có cột Đợt / Cấp độ)
 	const [roundId, setRoundId] = useState('');
-	const [categoryId, setCategoryId] = useState('');
 	const [levelId, setLevelId] = useState('');
-	const [departmentId, setDepartmentId] = useState('');
 	const [articleType, setArticleType] = useState<'de_tai' | 'bai_bao'>('de_tai');
 	const [status, setStatus] = useState<NonNullable<TopicImportDefaults['status']>>('submitted');
+	// Cấp độ ăn theo đợt: chỉ liệt kê cấp độ của đợt đã chọn; đợt chỉ có 1 cấp độ ⇒ tự chọn
+	const [roundLevels, setRoundLevels] = useState<SimpleItem[]>([]);
+	useEffect(() => {
+		setLevelId('');
+		setRoundLevels([]);
+		if (!roundId) return;
+		let alive = true;
+		getLevels({ round_id: roundId })
+			.then((res) => {
+				if (!alive) return;
+				setRoundLevels(res.data);
+				if (res.data.length === 1) setLevelId(res.data[0].id);
+			})
+			.catch(() => alive && setError('Không tải được cấp độ của đợt'));
+		return () => {
+			alive = false;
+		};
+	}, [roundId]);
 	const defaults = useMemo<TopicImportDefaults>(
 		() => ({
 			round_id: roundId,
-			category_id: categoryId,
-			level_id: levelId,
-			department_id: departmentId,
+			level_id: articleType === 'bai_bao' ? '' : levelId,
 			article_type: articleType,
 			status,
 		}),
-		[roundId, categoryId, levelId, departmentId, articleType, status],
+		[roundId, levelId, articleType, status],
 	);
 
 	useEffect(() => {
-		if (!file) return;
+		setPreview(null);
+		if (!file || !roundId) return;
 		let stale = false;
 		const t = setTimeout(async () => {
 			setLoading(true);
@@ -83,7 +93,7 @@ export function TopicImportModal({
 			stale = true;
 			clearTimeout(t);
 		};
-	}, [file, defaults]);
+	}, [file, roundId, defaults]);
 
 	const commit = async () => {
 		if (!file) return;
@@ -139,7 +149,7 @@ export function TopicImportModal({
 						{result ? 'Đóng' : 'Huỷ'}
 					</button>
 					{!result && (
-						<button className={styles.btnPrimary} onClick={commit} disabled={loading || !s || s.importable === 0}>
+						<button className={styles.btnPrimary} onClick={commit} disabled={loading || !roundId || !s || s.importable === 0}>
 							{loading ? <span className={styles.spinner} /> : <UploadSvg />}
 							Nhập {s?.importable || ''} đề tài
 						</button>
@@ -152,9 +162,8 @@ export function TopicImportModal({
 					<div className={styles.noticeBox}>
 						<InfoSvg />
 						<span>
-							Mỗi dòng 1 thành viên; các dòng liền nhau cùng <b>Tên đề tài</b> (hoặc để trống) thuộc cùng đề tài.
-							Thành viên khớp theo <b>MNV</b> (thiếu họ tên thì lấy từ hệ thống). Giá trị dưới đây dùng cho dòng
-							để trống cột tương ứng. Đề tài <b>trùng tên trong cùng đợt</b> hoặc có lỗi sẽ bị bỏ qua.
+							Mỗi đề tài 1 khối dòng đã <b>gộp ô</b> sẵn trong file mẫu: dòng 1 <b>Chủ nhiệm</b>, dòng 2 <b>Thư ký</b>, dòng 3 Thành viên — chỉ điền Họ và tên / MNV, không cần nhập vai trò.
+							Thành viên khớp theo <b>MNV</b> (thiếu họ tên thì lấy từ hệ thống). <b>Đợt</b> và <b>Cấp độ</b> chọn dưới đây áp cho cả file. Đề tài <b>trùng tên trong cùng đợt</b> hoặc có lỗi sẽ bị bỏ qua.
 						</span>
 					</div>
 					<div className={styles.importDefaults}>
@@ -162,20 +171,22 @@ export function TopicImportModal({
 							<label className={styles.formLabel}>
 								Đợt nghiên cứu <span className={styles.required}>*</span>
 							</label>
-							{select(roundId, setRoundId, rounds, '-- Theo cột "Đợt NC" --')}
+							{select(roundId, setRoundId, rounds, '-- Chọn đợt --')}
 						</div>
-						<div className={styles.formGroup}>
-							<label className={styles.formLabel}>Thể loại</label>
-							{select(categoryId, setCategoryId, categories, '-- Theo cột "Thể loại" --')}
-						</div>
-						<div className={styles.formGroup}>
-							<label className={styles.formLabel}>Cấp độ</label>
-							{select(levelId, setLevelId, levels, '-- Theo cột "Cấp độ" --')}
-						</div>
-						<div className={styles.formGroup}>
-							<label className={styles.formLabel}>Khoa/Phòng</label>
-							{select(departmentId, setDepartmentId, departments, '-- Theo cột "Khoa/phòng" --')}
-						</div>
+						{articleType !== 'bai_bao' && (
+							<div className={styles.formGroup}>
+								<label className={styles.formLabel}>
+									Cấp độ {roundLevels.length > 0 && <span className={styles.required}>*</span>}
+								</label>
+								{roundId ? (
+									select(levelId, setLevelId, roundLevels, '-- Chọn cấp độ --')
+								) : (
+									<select className={styles.formInput} disabled>
+										<option>-- Chọn đợt trước --</option>
+									</select>
+								)}
+							</div>
+						)}
 						<div className={styles.formGroup}>
 							<label className={styles.formLabel}>Loại</label>
 							<select

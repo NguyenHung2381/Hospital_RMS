@@ -1,6 +1,7 @@
 const path = require('path');
 
-// Đuôi file được phép upload lên /uploads (phục vụ qua link có chữ ký, xem utils/signedUpload.js).
+// Đuôi file CÓ THỂ cho phép upload lên /uploads (phục vụ qua link có chữ ký, xem utils/signedUpload.js).
+// Danh sách đang áp dụng do admin chọn trong tập này (utils/uploadPolicy.js).
 // Chỉ liệt kê định dạng KHÔNG được trình duyệt tự thực thi — loại hẳn html,
 // svg, js, exe, php... để chặn stored-XSS / phát tán mã độc qua đường upload
 // tài liệu đề tài & đào tạo. Cùng nguyên tắc mà uploadImage.js đã áp dụng cho
@@ -19,9 +20,10 @@ const MEDIA_EXTENSIONS = new Set([
 	'.mp3', '.wav', '.m4a', '.aac',
 ]);
 
-const isAllowedExtension = (filename, { allowMedia = false } = {}) => {
+// allowed: danh sách đuôi tài liệu đang áp dụng (uploadPolicy.getPolicy().extensions)
+const isAllowedExtension = (filename, { allowed, allowMedia = false }) => {
 	const ext = path.extname(filename).toLowerCase();
-	return DOCUMENT_EXTENSIONS.has(ext) || (allowMedia && MEDIA_EXTENSIONS.has(ext));
+	return (DOCUMENT_EXTENSIONS.has(ext) && allowed.includes(ext)) || (allowMedia && MEDIA_EXTENSIONS.has(ext));
 };
 
 module.exports = { DOCUMENT_EXTENSIONS, MEDIA_EXTENSIONS, isAllowedExtension };

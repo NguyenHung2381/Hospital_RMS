@@ -1,8 +1,6 @@
 import type { ArticleType, MemberRole, TopicStatus } from '../types/topic.type';
 import type { BadgeTone } from '@/shared/components/Badge/badgeTone';
 
-export const MAX_FILE_SIZE = 150 * 1024 * 1024; // 150 MB
-
 export const ARTICLE_TYPE_CFG: Record<
 	ArticleType,
 	{ label: string; tabLabel: string; sub: string }

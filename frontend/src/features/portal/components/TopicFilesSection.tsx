@@ -1,3 +1,4 @@
+import { useUploadPolicy } from '@/shared/hooks/useUploadPolicy';
 import { TopicFileList } from '@/features/topics/components/TopicFileItem';
 import type { Dispatch, RefObject, SetStateAction } from 'react';
 import { FileTextSvg, UploadSvg, XSvg } from '@/assets/icons';
@@ -35,6 +36,7 @@ export function TopicFilesSection({
 	handleUpload,
 	formatFileSize,
 }: TopicFilesSectionProps) {
+	const uploadPolicy = useUploadPolicy();
 	return (
 		<div>
 			<div className={styles.sectionLabel}>
@@ -59,6 +61,7 @@ export function TopicFilesSection({
 						<input
 							ref={fileInputRef}
 							type='file'
+							accept={uploadPolicy.accept}
 							multiple
 							style={{ display: 'none' }}
 							onChange={(e) => {

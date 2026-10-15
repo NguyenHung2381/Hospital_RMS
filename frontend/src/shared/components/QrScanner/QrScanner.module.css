@@ -89,44 +89,13 @@
 
 .btnPrimary,
 .btnSecondary {
-	display: inline-flex;
-	align-items: center;
-	justify-content: center;
-	gap: 8px;
 	width: 100%;
-	min-height: 46px;
-	padding: 10px 16px;
-	border-radius: 10px;
-	font-size: var(--font-size-sm);
-	font-weight: 600;
-	cursor: pointer;
-	transition: background 0.15s, opacity 0.15s;
-}
-.btnPrimary svg,
-.btnSecondary svg {
-	width: 18px;
-	height: 18px;
 }
 .btnPrimary {
-	border: none;
-	background: var(--color-primary);
-	color: #fff;
-}
-.btnPrimary:hover:not(:disabled) {
-	background: var(--color-primary-dark);
+	composes: btn primary lg from '@/shared/components/Button/Button.module.css';
 }
 .btnSecondary {
-	border: 1.5px solid var(--color-gray-200);
-	background: var(--color-white);
-	color: var(--color-gray-800);
-}
-.btnSecondary:hover:not(:disabled) {
-	background: var(--color-gray-50);
-}
-.btnPrimary:disabled,
-.btnSecondary:disabled {
-	opacity: 0.6;
-	cursor: not-allowed;
+	composes: btn secondary lg from '@/shared/components/Button/Button.module.css';
 }
 
 .fileInput {

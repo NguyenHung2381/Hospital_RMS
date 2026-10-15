@@ -529,47 +529,11 @@
 
 /* ── BUTTONS ────────────────────────────── */
 .btnCancel {
-	background: none;
-	border: 1px solid var(--color-gray-200);
-	border-radius: var(--radius-lg);
-	padding: 8px 18px;
-	font-size: var(--font-size-compact);
-	font-weight: var(--font-weight-medium);
-	color: var(--color-gray-600);
-	cursor: pointer;
-	transition: all 0.15s;
-}
-
-.btnCancel:hover {
-	background: var(--color-gray-50);
-	border-color: var(--color-gray-300);
+	composes: btn secondary from '@/shared/components/Button/Button.module.css';
 }
 
 .btnConfirmBlue {
-	background: var(--color-primary);
-	border: 1px solid var(--color-primary);
-	border-radius: var(--radius-lg);
-	padding: 8px 20px;
-	font-size: var(--font-size-compact);
-	font-weight: var(--font-weight-semibold);
-	color: #fff;
-	cursor: pointer;
-	display: flex;
-	align-items: center;
-	gap: 6px;
-	transition: all 0.15s;
-}
-
-.btnConfirmBlue:hover {
-	filter: brightness(1.08);
-}
-.btnConfirmBlue:disabled {
-	opacity: 0.6;
-	cursor: not-allowed;
-}
-.btnConfirmBlue svg {
-	width: 15px;
-	height: 15px;
+	composes: btn primary from '@/shared/components/Button/Button.module.css';
 }
 
 /* ── SPINNER ────────────────────────────── */

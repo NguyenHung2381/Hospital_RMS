@@ -506,8 +506,7 @@ export default function Profile() {
 									</button>
 									<button
 										type='button'
-										className={styles.btnPrimary}
-										style={{ background: 'var(--color-gray-400)' }}
+										className={styles.btnSecondary}
 										onClick={d.handleCancel2FASetup}
 										disabled={d.twoFaSaving}
 									>
@@ -556,8 +555,7 @@ export default function Profile() {
 											</button>
 											<button
 												type='button'
-												className={styles.btnPrimary}
-												style={{ background: 'var(--color-gray-400)' }}
+												className={styles.btnSecondary}
 												onClick={d.dismissBackupCodes}
 											>
 												Đã lưu, đóng lại
@@ -594,8 +592,7 @@ export default function Profile() {
 											</button>
 											<button
 												type='button'
-												className={styles.btnPrimary}
-												style={{ background: 'var(--color-gray-400)' }}
+												className={styles.btnSecondary}
 												onClick={() => {
 													d.setShowRegenBackup(false);
 													d.setRegenPwd('');
@@ -631,8 +628,7 @@ export default function Profile() {
 									<div className={styles.pwdFooter}>
 										<button
 											type='button'
-											className={styles.btnPrimary}
-											style={{ background: '#dc2626' }}
+											className={styles.btnDangerOutline}
 											onClick={() => d.setShowDisable2Fa(true)}
 										>
 											Tắt xác thực 2 lớp
@@ -658,8 +654,7 @@ export default function Profile() {
 										<div className={styles.pwdFooter}>
 											<button
 												type='button'
-												className={styles.btnPrimary}
-												style={{ background: '#dc2626' }}
+												className={styles.btnDangerOutline}
 												onClick={() => void d.handleDisable2FA()}
 												disabled={d.twoFaSaving || !d.disablePwd}
 											>
@@ -667,8 +662,7 @@ export default function Profile() {
 											</button>
 											<button
 												type='button'
-												className={styles.btnPrimary}
-												style={{ background: 'var(--color-gray-400)' }}
+												className={styles.btnSecondary}
 												onClick={() => {
 													d.setShowDisable2Fa(false);
 													d.setDisablePwd('');

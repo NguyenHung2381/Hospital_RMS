@@ -12,6 +12,9 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const express = require('express');
 require('../../src/services/securityEventService').log = async () => {};
+// Cấu hình hệ thống giả (không cần DB) — test đổi được giữa chừng
+const settings = {};
+require('../../src/services/systemSettingService').getValue = async (key) => settings[key];
 const upload = require('../../src/middlewares/upload');
 const uploadExcel = require('../../src/middlewares/uploadExcel');
 const { errorHandler } = require('../../src/middlewares/errorHandler');
@@ -121,4 +124,36 @@ test('ClamAV bật nhưng không kết nối được: từ chối (503), không
 	} finally {
 		delete process.env.CLAMAV_HOST;
 	}
+});
+
+test('mặc định chỉ nhận PDF/Word/Excel/PowerPoint/RAR/ZIP — ảnh .png bị chặn', async () => {
+	const PNG = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0]);
+	const res = await send('/t/DT5/files', [['files', 'a.png', PNG]]);
+	assert.equal(res.status, 400);
+	assert.match((await res.json()).message, /Chỉ nhận: .*\.rar/);
+	settings.UPLOAD_ALLOWED_EXTENSIONS = 'pdf, png';
+	assert.equal((await send('/t/DT5/files', [['files', 'a.png', PNG]])).status, 200);
+	assert.equal((await send('/t/DT5/files', [['files', 'a.docx', Buffer.from('PK')]])).status, 400);
+	delete settings.UPLOAD_ALLOWED_EXTENSIONS;
+});
+
+test('vượt UPLOAD_MAX_MB trong Cấu hình hệ thống: 400 kèm giới hạn, không lưu file', async () => {
+	settings.UPLOAD_MAX_MB = '1';
+	process.env.UPLOAD_DAILY_QUOTA_MB = '0'; // hạn mức/ngày 1MB của test chặn trước
+	const big = Buffer.concat([PDF, Buffer.alloc(1100 * 1024)]);
+	const res = await send('/t/DT6/files', [['files', 'big.pdf', big]]);
+	assert.equal(res.status, 400);
+	assert.match((await res.json()).message, /tối đa 1MB/);
+	assert.deepEqual(fs.existsSync(topicDir('DT6')) ? fs.readdirSync(topicDir('DT6')) : [], []);
+	delete settings.UPLOAD_MAX_MB;
+	process.env.UPLOAD_DAILY_QUOTA_MB = '1';
+});
+
+test('validateSetting: chặn định dạng ngoài tập an toàn và dung lượng sai', () => {
+	const { validateSetting } = require('../../src/utils/uploadPolicy');
+	assert.equal(validateSetting('UPLOAD_ALLOWED_EXTENSIONS', '.pdf,docx,RAR'), null);
+	assert.match(validateSetting('UPLOAD_ALLOWED_EXTENSIONS', 'pdf,html,exe'), /\.html, \.exe/);
+	assert.equal(validateSetting('UPLOAD_MAX_MB', '100'), null);
+	assert.ok(validateSetting('UPLOAD_MAX_MB', '0'));
+	assert.ok(validateSetting('UPLOAD_MAX_MB', 'abc'));
 });

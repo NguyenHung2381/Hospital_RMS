@@ -75,32 +75,10 @@
 }
 
 .btnCancel {
-	padding: 10px 18px;
-	border-radius: var(--radius-lg);
-	border: 1.5px solid var(--color-gray-200);
-	background: var(--color-white);
-	font-weight: var(--font-weight-semibold);
-	font-size: var(--font-size-sm);
-	cursor: pointer;
-	color: var(--color-gray-600);
+	composes: btn secondary from '@/shared/components/Button/Button.module.css';
 }
 .btnConfirm {
-	display: inline-flex;
-	align-items: center;
-	gap: 6px;
-	padding: 10px 18px;
-	border-radius: var(--radius-lg);
-	border: none;
-	background: var(--color-primary);
-	color: #fff;
-	font-weight: var(--font-weight-semibold);
-	font-size: var(--font-size-sm);
-	cursor: pointer;
-}
-.btnConfirm:disabled,
-.btnCancel:disabled {
-	opacity: 0.6;
-	cursor: not-allowed;
+	composes: btn primary from '@/shared/components/Button/Button.module.css';
 }
 .spinner {
 	width: 14px;

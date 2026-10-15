@@ -4,6 +4,7 @@ const systemSettingService = require('../services/systemSettingService');
 const { authenticate, authorizePermission } = require('../middlewares/auth');
 const { validate } = require('../middlewares/errorHandler');
 const mailService = require('../services/mailService');
+const uploadPolicy = require('../utils/uploadPolicy');
 const { success, notFound, error } = require('../utils/response');
 
 /**
@@ -54,6 +55,8 @@ router.put(
 	async (req, res, next) => {
 		try {
 			if (!systemSettingService.isKey(req.params.key)) return notFound(res);
+			const invalid = uploadPolicy.validateSetting(req.params.key, req.body.value ?? null);
+			if (invalid) return error(res, invalid, 400);
 			const item = await systemSettingService.update(req.params.key, req.body.value ?? null, req.user.id);
 			return success(res, item, 'Đã cập nhật cấu hình');
 		} catch (err) {

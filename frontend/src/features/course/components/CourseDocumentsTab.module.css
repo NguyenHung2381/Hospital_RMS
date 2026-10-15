@@ -175,28 +175,8 @@
 	color: #b42318;
 }
 .submitBtn {
+	composes: btn primary from '@/shared/components/Button/Button.module.css';
 	margin-left: auto;
-	display: inline-flex;
-	align-items: center;
-	gap: 6px;
-	padding: 8px 18px;
-	border: none;
-	border-radius: var(--radius-lg);
-	background: linear-gradient(135deg, var(--color-primary), var(--color-primary-dark));
-	font-family: var(--font-body);
-	font-size: var(--font-size-compact);
-	font-weight: var(--font-weight-bold);
-	color: var(--color-white);
-	cursor: pointer;
-	box-shadow: 0 3px 10px rgba(10, 155, 74, 0.28);
-}
-.submitBtn svg {
-	width: 14px;
-	height: 14px;
-}
-.submitBtn:disabled {
-	opacity: 0.65;
-	cursor: not-allowed;
 }
 
 /* ── Danh sách ───────────────────────────── */

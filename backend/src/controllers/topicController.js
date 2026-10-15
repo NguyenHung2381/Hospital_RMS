@@ -257,7 +257,6 @@ const importExcel = async (req, res, next) => {
 					round_id: req.body.round_id || null,
 					category_id: req.body.category_id || null,
 					level_id: req.body.level_id || null,
-					department_id: req.body.department_id || null,
 					article_type: req.body.article_type === 'bai_bao' ? 'bai_bao' : 'de_tai',
 					status,
 				},

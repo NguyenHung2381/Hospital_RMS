@@ -47,25 +47,7 @@
 }
 
 .saveBtn {
-	padding: 9px 20px;
-	border: none;
-	border-radius: var(--radius-lg);
-	background: var(--color-primary, #2563eb);
-	color: #fff;
-	font-family: var(--font-body);
-	font-size: var(--font-size-compact);
-	font-weight: var(--font-weight-bold);
-	cursor: pointer;
-	white-space: nowrap;
-}
-
-.saveBtn:hover {
-	filter: brightness(1.08);
-}
-
-.saveBtn:disabled {
-	opacity: 0.6;
-	cursor: default;
+	composes: btn primary from '@/shared/components/Button/Button.module.css';
 }
 
 /* ── Đánh giá của hội đồng ── */

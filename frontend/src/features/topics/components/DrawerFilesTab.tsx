@@ -1,3 +1,4 @@
+import { useUploadPolicy } from '@/shared/hooks/useUploadPolicy';
 import type { ChangeEvent, Dispatch, RefObject, SetStateAction } from 'react';
 import { BASE_URL } from '../../../shared/api/axios';
 import styles from '../pages/Topic.module.css';
@@ -55,11 +56,13 @@ export function DrawerFilesTab({
 	setShowUploadConfirm,
 	setSelectedIds,
 }: DrawerFilesTabProps) {
+	const uploadPolicy = useUploadPolicy();
 	return (
 		<>
 			<input
 				ref={fileInputRef}
 				type='file'
+				accept={uploadPolicy.accept}
 				multiple
 				style={{ display: 'none' }}
 				onChange={handleFileSelect}
@@ -161,7 +164,7 @@ export function DrawerFilesTab({
 
 					<button
 						className={styles.btnPrimary}
-						style={{ width: '100%', justifyContent: 'center' }}
+						style={{ width: '100%' }}
 						onClick={() => setShowUploadConfirm(true)}
 						disabled={uploading}
 					>

@@ -286,23 +286,7 @@
 	max-width: 760px;
 }
 .btnGhost {
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	gap: 6px;
-	padding: 8px 14px;
-	border: 1.5px solid var(--color-gray-200);
-	border-radius: var(--radius-lg);
-	background: var(--color-white);
-	font-family: var(--font-body);
-	font-size: var(--font-size-compact);
-	font-weight: var(--font-weight-semibold);
-	color: var(--color-gray-700);
-	cursor: pointer;
-	transition: all var(--transition-fast);
-}
-.btnGhost:hover {
-	background: var(--color-gray-50);
+	composes: btn secondary from '@/shared/components/Button/Button.module.css';
 }
 .subToolbar {
 	display: flex;

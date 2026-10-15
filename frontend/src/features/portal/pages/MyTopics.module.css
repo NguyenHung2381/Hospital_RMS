@@ -872,27 +872,7 @@
 
 /* ── BUTTONS ── */
 .btnPrimary {
-	display: inline-flex;
-	align-items: center;
-	gap: var(--space-2);
-	padding: 10px 20px;
-	background: var(--color-primary);
-	color: #fff;
-	border: none;
-	border-radius: var(--radius-lg);
-	font-size: var(--font-size-sm);
-	font-weight: var(--font-weight-semibold);
-	cursor: pointer;
-	transition: background var(--transition-fast);
-	white-space: nowrap;
-}
-
-.btnPrimary:hover {
-	background: var(--color-primary-dark);
-}
-.btnPrimary svg {
-	width: 16px;
-	height: 16px;
+	composes: btn primary from '@/shared/components/Button/Button.module.css';
 }
 
 /* ── LOADING STATE ── */
@@ -926,56 +906,12 @@
 
 /* ── SUPPLEMENT: ACTIONS BAR ── */
 .btnEdit {
-	display: inline-flex;
-	align-items: center;
-	gap: 6px;
-	padding: 9px 16px;
-	background: #7c3aed;
-	color: #fff;
-	border: none;
-	border-radius: var(--radius-lg);
-	font-size: var(--font-size-sm);
-	font-weight: var(--font-weight-semibold);
-	font-family: var(--font-body);
-	cursor: pointer;
-	transition: background var(--transition-fast);
-	white-space: nowrap;
+	composes: btn secondary from '@/shared/components/Button/Button.module.css';
 	flex-shrink: 0;
 }
 
-.btnEdit:hover {
-	background: #6d28d9;
-}
-.btnEdit svg {
-	width: 14px;
-	height: 14px;
-}
-
 .btnSecondary {
-	display: inline-flex;
-	align-items: center;
-	gap: var(--space-2);
-	padding: 8px 16px;
-	background: var(--color-white);
-	color: var(--color-gray-700);
-	border: 1.5px solid var(--color-gray-200);
-	border-radius: var(--radius-lg);
-	font-size: var(--font-size-sm);
-	font-weight: var(--font-weight-semibold);
-	font-family: var(--font-body);
-	cursor: pointer;
-	transition: all var(--transition-fast);
-}
-
-.btnSecondary:hover {
-	background: var(--color-gray-50);
-	border-color: var(--color-gray-300);
-}
-
-.btnSecondary:disabled,
-.btnPrimary:disabled {
-	opacity: 0.55;
-	cursor: not-allowed;
+	composes: btn secondary from '@/shared/components/Button/Button.module.css';
 }
 
 /* ── SUPPLEMENT: EDIT MODAL ── */
@@ -1320,39 +1256,8 @@
 }
 
 .btnUpload {
-	display: inline-flex;
-	align-items: center;
-	justify-content: center;
-	gap: var(--space-2);
-	padding: 9px 16px;
-	background: var(--color-primary);
-	color: #fff;
-	border: none;
-	border-radius: var(--radius-lg);
-	font-size: var(--font-size-sm);
-	font-weight: var(--font-weight-semibold);
-	font-family: var(--font-body);
-	cursor: pointer;
-	transition: all var(--transition-fast);
-	white-space: nowrap;
+	composes: btn primary from '@/shared/components/Button/Button.module.css';
 	width: 100%;
-	box-shadow: 0 1px 4px rgba(10, 155, 74, 0.3);
-}
-
-.btnUpload:hover:not(:disabled) {
-	background: var(--color-primary-dark);
-	box-shadow: 0 2px 8px rgba(10, 155, 74, 0.4);
-}
-
-.btnUpload:disabled {
-	opacity: 0.6;
-	cursor: not-allowed;
-	box-shadow: none;
-}
-
-.btnUpload svg {
-	width: 14px;
-	height: 14px;
 }
 
 .spinnerSm {

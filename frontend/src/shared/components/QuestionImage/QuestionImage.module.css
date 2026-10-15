@@ -63,28 +63,7 @@
 	gap: 6px;
 }
 .btn {
-	display: inline-flex;
-	align-items: center;
-	gap: 6px;
-	padding: 5px 10px;
-	border: 1px solid var(--color-gray-200);
-	border-radius: var(--radius-md);
-	background: var(--color-white);
-	color: var(--color-gray-700);
-	font-size: var(--font-size-xs);
-	cursor: pointer;
-}
-.btn:hover:not(:disabled) {
-	border-color: var(--color-primary);
-	color: var(--color-primary);
-}
-.btn:disabled {
-	cursor: default;
-	opacity: 0.6;
-}
-.btn svg {
-	width: 14px;
-	height: 14px;
+	composes: btn secondary sm from '@/shared/components/Button/Button.module.css';
 }
 .danger:hover:not(:disabled) {
 	border-color: var(--color-error);

@@ -368,7 +368,6 @@ export function AddMemberForm({
 			>
 				<button
 					className={styles.btnSecondary}
-					style={{ padding: '4px 12px', fontSize: 12 }}
 					onClick={() => {
 						setShowAddMember(false);
 						setMemberError('');
@@ -378,7 +377,6 @@ export function AddMemberForm({
 				</button>
 				<button
 					className={styles.btnPrimary}
-					style={{ padding: '4px 12px', fontSize: 12 }}
 					onClick={handleAddMember}
 					disabled={savingMember}
 				>

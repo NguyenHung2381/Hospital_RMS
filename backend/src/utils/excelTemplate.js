@@ -131,4 +131,4 @@ const addLookupSheet = (wb, sheetName, header, values) => {
 	return `'${sheetName}'!$A$2:$A$${values.length + 1}`;
 };
 
-module.exports = { buildSheet, styleBody, addDropdowns, addLookupSheet, colLetter };
+module.exports = { buildSheet, styleBody, addDropdowns, addLookupSheet, colLetter, border };

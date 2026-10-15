@@ -556,83 +556,16 @@
 }
 
 .btnSelApprove {
-	display: inline-flex;
-	align-items: center;
-	gap: 5px;
-	padding: 5px 12px;
-	background: var(--color-primary);
-	color: var(--color-white);
-	border: none;
-	border-radius: var(--radius-lg);
-	font-family: var(--font-body);
-	font-size: var(--font-size-xs);
-	font-weight: var(--font-weight-bold);
-	cursor: pointer;
-	transition: background var(--transition-fast);
-	white-space: nowrap;
-}
-
-.btnSelApprove:hover {
-	background: var(--color-primary-dark);
-}
-
-.btnSelApprove svg {
-	width: 13px;
-	height: 13px;
+	composes: btn primary sm from '@/shared/components/Button/Button.module.css';
 }
 
 .btnSelReject {
-	display: inline-flex;
-	align-items: center;
-	gap: 5px;
-	padding: 5px 12px;
-	background: #e24b4a;
-	color: var(--color-white);
-	border: none;
-	border-radius: var(--radius-lg);
-	font-family: var(--font-body);
-	font-size: var(--font-size-xs);
-	font-weight: var(--font-weight-bold);
-	cursor: pointer;
-	transition: background var(--transition-fast);
-	white-space: nowrap;
-}
-
-.btnSelReject:hover {
-	background: #c03b3a;
-}
-
-.btnSelReject svg {
-	width: 13px;
-	height: 13px;
+	composes: btn danger sm from '@/shared/components/Button/Button.module.css';
 }
 
 .btnSelClear {
-	display: inline-flex;
-	align-items: center;
-	gap: 4px;
-	padding: 5px 9px;
-	background: transparent;
-	color: var(--color-gray-500);
-	border: 1.5px solid var(--color-gray-200);
-	border-radius: var(--radius-lg);
-	font-family: var(--font-body);
-	font-size: var(--font-size-xs);
-	font-weight: var(--font-weight-semibold);
-	cursor: pointer;
-	transition: all var(--transition-fast);
-	white-space: nowrap;
+	composes: btn secondary sm from '@/shared/components/Button/Button.module.css';
 	margin-left: auto;
-}
-
-.btnSelClear:hover {
-	color: var(--color-gray-700);
-	border-color: var(--color-gray-300);
-}
-
-.btnSelClear svg {
-	width: 11px;
-	height: 11px;
 }
 
 /* (unused - kept for safety) */
@@ -864,108 +797,19 @@
 
 /* Approve button */
 .btnApprove {
+	composes: btn primary from '@/shared/components/Button/Button.module.css';
 	flex: 1;
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	gap: var(--space-2);
-	padding: var(--space-3) var(--space-4);
-	background: linear-gradient(
-		135deg,
-		var(--color-primary),
-		var(--color-primary-dark)
-	);
-	border: none;
-	border-radius: var(--radius-lg);
-	font-family: var(--font-body);
-	font-size: var(--font-size-sm);
-	font-weight: var(--font-weight-bold);
-	color: var(--color-white);
-	cursor: pointer;
-	transition: all var(--transition-base);
-	box-shadow: 0 3px 10px rgba(10, 155, 74, 0.28);
-}
-
-.btnApprove:hover {
-	box-shadow: 0 5px 16px rgba(10, 155, 74, 0.4);
-	transform: translateY(-1px);
-}
-.btnApprove:active {
-	transform: translateY(0);
-}
-.btnApprove:disabled {
-	opacity: 0.6;
-	cursor: not-allowed;
-	transform: none;
-	box-shadow: none;
-}
-.btnApprove svg {
-	width: 16px;
-	height: 16px;
 }
 
 /* Reject button */
 .btnReject {
+	composes: btn danger from '@/shared/components/Button/Button.module.css';
 	flex: 1;
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	gap: var(--space-2);
-	padding: var(--space-3) var(--space-4);
-	background: #fcebeb;
-	border: 1.5px solid #f09595;
-	border-radius: var(--radius-lg);
-	font-family: var(--font-body);
-	font-size: var(--font-size-sm);
-	font-weight: var(--font-weight-bold);
-	color: #791f1f;
-	cursor: pointer;
-	transition: all var(--transition-fast);
-}
-
-.btnReject:hover {
-	background: #f7c1c1;
-	border-color: #e24b4a;
-}
-.btnReject:disabled {
-	opacity: 0.6;
-	cursor: not-allowed;
-}
-.btnReject svg {
-	width: 16px;
-	height: 16px;
 }
 
 /* Request more info button */
 .btnRequest {
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	gap: var(--space-2);
-	padding: var(--space-3) var(--space-4);
-	border: 1.5px solid var(--color-gray-200);
-	border-radius: var(--radius-lg);
-	background: var(--color-white);
-	font-family: var(--font-body);
-	font-size: var(--font-size-sm);
-	font-weight: var(--font-weight-semibold);
-	color: var(--color-gray-700);
-	cursor: pointer;
-	transition: all var(--transition-fast);
-	white-space: nowrap;
-}
-
-.btnRequest:hover {
-	background: var(--color-gray-50);
-	border-color: var(--color-gray-300);
-}
-.btnRequest:disabled {
-	opacity: 0.6;
-	cursor: not-allowed;
-}
-.btnRequest svg {
-	width: 14px;
-	height: 14px;
+	composes: btn secondary from '@/shared/components/Button/Button.module.css';
 }
 
 /* Already processed notice */
@@ -1109,89 +953,18 @@
 }
 
 .btnConfirmApprove {
+	composes: btn primary from '@/shared/components/Button/Button.module.css';
 	flex: 1;
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	gap: var(--space-2);
-	padding: var(--space-3);
-	background: linear-gradient(
-		135deg,
-		var(--color-primary),
-		var(--color-primary-dark)
-	);
-	border: none;
-	border-radius: var(--radius-lg);
-	font-family: var(--font-body);
-	font-size: var(--font-size-sm);
-	font-weight: var(--font-weight-bold);
-	color: var(--color-white);
-	cursor: pointer;
-	transition: all var(--transition-base);
-	box-shadow: 0 3px 10px rgba(10, 155, 74, 0.28);
-}
-
-.btnConfirmApprove:hover {
-	box-shadow: 0 5px 16px rgba(10, 155, 74, 0.4);
-	transform: translateY(-1px);
-}
-.btnConfirmApprove:disabled {
-	opacity: 0.65;
-	cursor: not-allowed;
-	transform: none;
 }
 
 .btnConfirmReject {
+	composes: btn danger from '@/shared/components/Button/Button.module.css';
 	flex: 1;
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	gap: var(--space-2);
-	padding: var(--space-3);
-	background: #fcebeb;
-	border: 1.5px solid #f09595;
-	border-radius: var(--radius-lg);
-	font-family: var(--font-body);
-	font-size: var(--font-size-sm);
-	font-weight: var(--font-weight-bold);
-	color: #791f1f;
-	cursor: pointer;
-	transition: all var(--transition-fast);
-}
-
-.btnConfirmReject:hover {
-	background: #f7c1c1;
-	border-color: #e24b4a;
-}
-.btnConfirmReject:disabled {
-	opacity: 0.65;
-	cursor: not-allowed;
 }
 
 .btnConfirmRequest {
+	composes: btn warning from '@/shared/components/Button/Button.module.css';
 	flex: 1;
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	gap: var(--space-2);
-	padding: var(--space-3);
-	background: #faeeda;
-	border: 1.5px solid #ef9f27;
-	border-radius: var(--radius-lg);
-	font-family: var(--font-body);
-	font-size: var(--font-size-sm);
-	font-weight: var(--font-weight-bold);
-	color: #633806;
-	cursor: pointer;
-	transition: all var(--transition-fast);
-}
-
-.btnConfirmRequest:hover {
-	background: #fac775;
-}
-.btnConfirmRequest:disabled {
-	opacity: 0.65;
-	cursor: not-allowed;
 }
 
 /* =============================================

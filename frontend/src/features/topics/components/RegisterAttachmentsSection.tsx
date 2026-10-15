@@ -1,5 +1,6 @@
 import type { RefObject } from 'react';
 import { AlertSvg, PaperclipSvg, UploadSvg, XSvg } from '@/assets/icons';
+import { useUploadPolicy } from '@/shared/hooks/useUploadPolicy';
 import styles from '../pages/TopicRegister.module.css';
 
 interface RegisterAttachmentsSectionProps {
@@ -21,6 +22,7 @@ export function RegisterAttachmentsSection({
 	removeAttachment,
 	setIsDragging,
 }: RegisterAttachmentsSectionProps) {
+	const policy = useUploadPolicy();
 	return (
 		<div className={styles.formGroup}>
 			<div
@@ -45,12 +47,13 @@ export function RegisterAttachmentsSection({
 					<span className={styles.dropZoneLink}>chọn tệp</span>
 				</span>
 				<span className={styles.dropZoneHint}>
-					Dung lượng tối đa: 150MB mỗi tệp
+					{policy.extensions.join(', ')} · tối đa {policy.maxSizeMB}MB mỗi tệp
 				</span>
 				<input
 					ref={fileInputRef}
 					type='file'
 					multiple
+					accept={policy.accept}
 					style={{ display: 'none' }}
 					onChange={(e) => handleFiles(e.target.files)}
 				/>

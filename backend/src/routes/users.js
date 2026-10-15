@@ -92,6 +92,8 @@ router.get('/', authorizePermission(['users', 'read']), ctrl.getAll);
  */
 router.get('/search', ctrl.searchMembers);
 
+router.post('/export-excel', authorizePermission(['users', 'read']), ctrl.exportExcel);
+
 router.get('/:id', ctrl.getById);
 
 /**

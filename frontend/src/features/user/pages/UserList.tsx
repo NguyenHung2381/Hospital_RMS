@@ -1,9 +1,9 @@
 import { SearchInput } from '@/shared/components/Table/TableToolbar';
-import {
-	ChevDSvg,
-	InfoSvg,
-	KeySvg,
-} from '@/assets/icons';
+import { ChevDSvg, DownloadSvg, InfoSvg, KeySvg } from '@/assets/icons';
+import { useState } from 'react';
+import { showToast } from '@/shared/utils/feedback';
+import { saveBlob } from '@/features/seminar/utils/saveBlob';
+import { exportUsersExcel } from '../api/userApi';
 import { EmptyState } from '@/shared/components';
 import AdminLayout from '../../../layouts/AdminLayout';
 import { ResetPasswordModal } from '../components/ResetPasswordModal';
@@ -16,16 +16,42 @@ import styles from './UserList.module.css';
 
 export default function UserList() {
 	const d = useUserList();
+	const [exporting, setExporting] = useState(false);
+
+	const handleExport = async () => {
+		setExporting(true);
+		try {
+			const blob = await exportUsersExcel({
+				search: d.search.trim() || undefined,
+				department_id: d.deptFilters.join(',') || undefined,
+				role_id: d.roleFilters.join(',') || undefined,
+			});
+			saveBlob(blob, 'danh-sach-nguoi-dung.xlsx');
+		} catch (e) {
+			showToast('error', e instanceof Error ? e.message : 'Xuất Excel thất bại');
+		} finally {
+			setExporting(false);
+		}
+	};
 
 	const headerActions = (
-		<button
-			className={styles.btnGrantHeader}
-			onClick={() => d.setShowCreate(true)}
-		>
-			<KeySvg /> Cấp tài khoản
-		</button>
+		<div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+			<button
+				className={styles.btnExportHeader}
+				onClick={handleExport}
+				disabled={exporting || d.totalCount === 0}
+				title='Xuất các tài khoản đang lọc'
+			>
+				<DownloadSvg /> {exporting ? 'Đang xuất...' : 'Xuất Excel'}
+			</button>
+			<button
+				className={styles.btnGrantHeader}
+				onClick={() => d.setShowCreate(true)}
+			>
+				<KeySvg /> Cấp tài khoản
+			</button>
+		</div>
 	);
-
 
 	if (d.loadError) {
 		return (
@@ -63,9 +89,7 @@ export default function UserList() {
 				<div className={styles.tableHeader}>
 					<div className={styles.tableHeaderLeft}>
 						<span className={styles.tableTitle}>Danh sách người dùng</span>
-						<span className={styles.tableCount}>
-							{d.totalCount} tài khoản
-						</span>
+						<span className={styles.tableCount}>{d.totalCount} tài khoản</span>
 					</div>
 					<div className={styles.tableControls}>
 						<SearchInput
@@ -205,9 +229,7 @@ export default function UserList() {
 							}}
 						>
 							{r.name}
-							<span className={styles.tabBadge}>
-								{d.roleCounts[r.id] ?? 0}
-							</span>
+							<span className={styles.tabBadge}>{d.roleCounts[r.id] ?? 0}</span>
 						</div>
 					))}
 				</div>
@@ -274,7 +296,6 @@ export default function UserList() {
 					onConfirm={d.handleResetPassword}
 				/>
 			)}
-
 		</AdminLayout>
 	);
 }

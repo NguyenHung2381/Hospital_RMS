@@ -31,11 +31,8 @@ const buildBody = (data: object, files?: File[]): BodyInit => {
 	return form;
 };
 
-/** Giới hạn file đính kèm trên cổng công khai — khớp PUBLIC_UPLOAD_MAX_MB / MAX_FILES ở backend */
-export const PUBLIC_UPLOAD_MAX_MB = 20;
+/** Số file đính kèm tối đa trên cổng công khai — khớp MAX_FILES ở backend (định dạng/dung lượng: useUploadPolicy) */
 export const PUBLIC_UPLOAD_MAX_FILES = 10;
-export const PUBLIC_UPLOAD_ACCEPT =
-	'.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.rtf,.odt,.ods,.odp,.zip,.rar,.7z,.png,.jpg,.jpeg,.gif,.webp,.bmp';
 
 export interface PublicCourse {
 	id: string;

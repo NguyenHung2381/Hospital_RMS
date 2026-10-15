@@ -269,7 +269,6 @@ export function ManualMemberForm({
 				>
 					<button
 						className={styles.btnSecondary}
-						style={{ padding: '6px 14px', fontSize: 12 }}
 						type='button'
 						onClick={closeManualAdd}
 					>
@@ -277,7 +276,6 @@ export function ManualMemberForm({
 					</button>
 					<button
 						className={styles.btnPrimary}
-						style={{ padding: '6px 14px', fontSize: 12 }}
 						type='button'
 						onClick={addManual}
 					>

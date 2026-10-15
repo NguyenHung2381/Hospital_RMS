@@ -462,7 +462,7 @@ export default function TopicRegisterPublic() {
 					<AttachmentPicker
 						value={attachments}
 						onChange={setAttachments}
-						hint='Thuyết minh, đề cương (PDF, Word...)'
+						hint='Thuyết minh, đề cương'
 					/>
 				</FormSection>
 				<div className={styles.formFooter}>

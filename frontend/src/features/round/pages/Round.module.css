@@ -656,69 +656,11 @@
    BUTTONS
 ============================================= */
 .btnSecondary {
-	display: inline-flex;
-	align-items: center;
-	justify-content: center;
-	gap: var(--space-2);
-	padding: var(--space-2) var(--space-5);
-	border: 1.5px solid var(--color-gray-200);
-	border-radius: var(--radius-lg);
-	background: var(--color-white);
-	font-family: var(--font-body);
-	font-size: var(--font-size-sm);
-	font-weight: var(--font-weight-semibold);
-	color: var(--color-gray-700);
-	cursor: pointer;
-	transition: all var(--transition-fast);
-}
-
-.btnSecondary:hover {
-	background: var(--color-gray-50);
-	border-color: var(--color-gray-300);
-}
-.btnSecondary svg {
-	width: 14px;
-	height: 14px;
+	composes: btn secondary from '@/shared/components/Button/Button.module.css';
 }
 
 .btnPrimary {
-	display: inline-flex;
-	align-items: center;
-	justify-content: center;
-	gap: var(--space-2);
-	padding: var(--space-2) var(--space-6);
-	background: linear-gradient(
-		135deg,
-		var(--color-primary),
-		var(--color-primary-dark)
-	);
-	border: none;
-	border-radius: var(--radius-lg);
-	font-family: var(--font-body);
-	font-size: var(--font-size-sm);
-	font-weight: var(--font-weight-bold);
-	color: var(--color-white);
-	cursor: pointer;
-	transition: all var(--transition-base);
-	box-shadow: 0 3px 10px rgba(10, 155, 74, 0.28);
-}
-
-.btnPrimary:hover {
-	box-shadow: 0 5px 16px rgba(10, 155, 74, 0.4);
-	transform: translateY(-1px);
-}
-.btnPrimary:active {
-	transform: translateY(0);
-}
-.btnPrimary:disabled {
-	opacity: 0.65;
-	cursor: not-allowed;
-	transform: none;
-	box-shadow: none;
-}
-.btnPrimary svg {
-	width: 14px;
-	height: 14px;
+	composes: btn primary from '@/shared/components/Button/Button.module.css';
 }
 
 .spinner {
@@ -886,26 +828,7 @@
 }
 
 .btnCopy {
-	display: inline-flex;
-	align-items: center;
-	justify-content: center;
-	gap: var(--space-2);
-	padding: var(--space-2) var(--space-4);
-	border: 1.5px solid var(--color-gray-200);
-	border-radius: var(--radius-lg);
-	background: var(--color-white);
-	color: var(--color-gray-700);
-	font-size: var(--font-size-xs);
-	font-weight: var(--font-weight-semibold);
-	cursor: pointer;
-	transition: all var(--transition-fast);
-	white-space: nowrap;
-}
-
-.btnCopy:hover {
-	border-color: var(--color-primary);
-	color: var(--color-primary-dark);
-	background: var(--color-primary-pale);
+	composes: btn secondary from '@/shared/components/Button/Button.module.css';
 }
 
 .btnCopySuccess {
@@ -1087,61 +1010,6 @@
 /* =============================================
    TIMELINE FORM CARD
 ============================================= */
-
-.btnSecondary {
-	height: 38px;
-	padding: 0 var(--space-4);
-	border-radius: var(--radius-lg);
-	border: 1px solid var(--color-gray-200);
-	background: var(--color-white);
-	color: var(--color-gray-700);
-	font-size: var(--font-size-sm);
-	font-weight: var(--font-weight-semibold);
-	cursor: pointer;
-	transition: all var(--transition-fast);
-	display: inline-flex;
-	align-items: center;
-	justify-content: center;
-}
-
-.btnSecondary:hover:not(:disabled) {
-	background: var(--color-gray-50);
-	color: var(--color-gray-900);
-	border-color: var(--color-gray-300);
-}
-
-.btnSecondary:disabled {
-	opacity: 0.5;
-	cursor: not-allowed;
-}
-
-.btnPrimary {
-	height: 38px;
-	padding: 0 var(--space-5);
-	border-radius: var(--radius-lg);
-	border: none;
-	background: var(--color-primary-dark);
-	color: var(--color-white);
-	font-size: var(--font-size-sm);
-	font-weight: var(--font-weight-bold);
-	cursor: pointer;
-	display: inline-flex;
-	align-items: center;
-	gap: var(--space-2);
-	box-shadow: 0 2px 8px rgba(8, 124, 59, 0.25);
-	transition: all var(--transition-fast);
-}
-
-.btnPrimary:hover:not(:disabled) {
-	background: #096b35;
-	transform: translateY(-1px);
-	box-shadow: 0 4px 12px rgba(8, 124, 59, 0.35);
-}
-
-.btnPrimary:disabled {
-	opacity: 0.6;
-	cursor: not-allowed;
-}
 
 .spinner {
 	width: 14px;

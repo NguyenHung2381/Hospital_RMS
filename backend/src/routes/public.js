@@ -6,6 +6,8 @@ const { validate } = require('../middlewares/errorHandler');
 const ctrl = require('../controllers/publicPortalController');
 // Hồ sơ đính kèm (multipart: field `data` = JSON form + `files`) — tùy chọn
 const { publicUpload } = require('../middlewares/uploadPublic');
+const uploadPolicy = require('../utils/uploadPolicy');
+const { success } = require('../utils/response');
 
 // Cổng công khai không đăng nhập — mọi endpoint ở đây PHẢI được rate-limit
 // theo IP, mirror loginLimiter ở routes/auth.js.
@@ -58,6 +60,14 @@ const codeLookupLimiter = rateLimit({
 router.get('/captcha', captchaLimiter, ctrl.getCaptcha);
 router.get('/courses', ctrl.getOpenCourses);
 router.get('/trainee-types', ctrl.getTraineeTypes);
+// Định dạng & dung lượng file được nhận (Cấu hình hệ thống) — dùng cho cả trang nội bộ
+router.get('/upload-policy', async (_req, res, next) => {
+	try {
+		return success(res, await uploadPolicy.getPolicy());
+	} catch (err) {
+		next(err);
+	}
+});
 
 router.get(
 	'/lookup',

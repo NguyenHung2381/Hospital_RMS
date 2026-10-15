@@ -755,31 +755,8 @@
 }
 
 .emptyBtn {
-	display: inline-flex;
-	align-items: center;
-	gap: 6px;
+	composes: btn primary from '@/shared/components/Button/Button.module.css';
 	margin-top: 8px;
-	padding: 9px 18px;
-	background: var(--color-primary-dark, #087c3b);
-	color: #fff;
-	border: none;
-	border-radius: var(--radius-lg, 12px);
-	font-size: var(--font-size-compact);
-	font-weight: var(--font-weight-bold, 700);
-	cursor: pointer;
-	box-shadow: 0 4px 12px rgba(8, 124, 59, 0.25);
-	transition: all 0.2s ease;
-}
-
-.emptyBtn:hover {
-	background: #086532;
-	transform: translateY(-1px);
-	box-shadow: 0 6px 16px rgba(8, 124, 59, 0.32);
-}
-
-.emptyBtn svg {
-	width: 15px;
-	height: 15px;
 }
 
 /* ── 5. QUICK ACTIONS LIST ── */

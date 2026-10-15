@@ -414,21 +414,7 @@
 }
 
 .detailEditBtn {
-	padding: 9px 18px;
-	background: #0a9b4a;
-	color: #ffffff;
-	border: none;
-	border-radius: 8px;
-	font-weight: 700;
-	font-size: var(--font-size-compact);
-	cursor: pointer;
-	transition: all 0.15s ease;
-	box-shadow: 0 2px 4px rgba(10, 155, 74, 0.2);
-}
-.detailEditBtn:hover {
-	background: #0b8d46;
-	transform: translateY(-1px);
-	box-shadow: 0 4px 8px rgba(10, 155, 74, 0.3);
+	composes: btn primary from '@/shared/components/Button/Button.module.css';
 }
 
 @keyframes slideUp {

@@ -1009,91 +1009,15 @@
 
 /* Buttons */
 .btnSecondary {
-	display: inline-flex;
-	align-items: center;
-	justify-content: center;
-	gap: var(--space-2);
-	padding: var(--space-2) var(--space-5);
-	border: 1.5px solid var(--color-gray-200);
-	border-radius: var(--radius-lg);
-	background: var(--color-white);
-	font-family: var(--font-body);
-	font-size: var(--font-size-sm);
-	font-weight: var(--font-weight-semibold);
-	color: var(--color-gray-700);
-	cursor: pointer;
-	transition: all var(--transition-fast);
-}
-
-.btnSecondary:hover {
-	background: var(--color-gray-50);
-	border-color: var(--color-gray-300);
-}
-.btnSecondary svg {
-	width: 14px;
-	height: 14px;
+	composes: btn secondary from '@/shared/components/Button/Button.module.css';
 }
 
 .btnPrimary {
-	display: inline-flex;
-	align-items: center;
-	justify-content: center;
-	gap: var(--space-2);
-	padding: var(--space-2) var(--space-6);
-	background: linear-gradient(
-		135deg,
-		var(--color-primary),
-		var(--color-primary-dark)
-	);
-	border: none;
-	border-radius: var(--radius-lg);
-	font-family: var(--font-body);
-	font-size: var(--font-size-sm);
-	font-weight: var(--font-weight-bold);
-	color: var(--color-white);
-	cursor: pointer;
-	transition: all var(--transition-base);
-	box-shadow: 0 3px 10px rgba(10, 155, 74, 0.28);
-}
-
-.btnPrimary:hover {
-	box-shadow: 0 5px 16px rgba(10, 155, 74, 0.4);
-	transform: translateY(-1px);
-}
-.btnPrimary:active {
-	transform: translateY(0);
-}
-.btnPrimary:disabled {
-	opacity: 0.65;
-	cursor: not-allowed;
-	transform: none;
-	box-shadow: none;
-}
-.btnPrimary svg {
-	width: 14px;
-	height: 14px;
+	composes: btn primary from '@/shared/components/Button/Button.module.css';
 }
 
 .btnDanger {
-	display: inline-flex;
-	align-items: center;
-	justify-content: center;
-	gap: var(--space-2);
-	padding: var(--space-2) var(--space-5);
-	background: #fcebeb;
-	border: 1.5px solid #f09595;
-	border-radius: var(--radius-lg);
-	font-family: var(--font-body);
-	font-size: var(--font-size-sm);
-	font-weight: var(--font-weight-semibold);
-	color: #791f1f;
-	cursor: pointer;
-	transition: all var(--transition-fast);
-}
-
-.btnDanger:hover {
-	background: #f7c1c1;
-	border-color: #e24b4a;
+	composes: btn danger from '@/shared/components/Button/Button.module.css';
 }
 
 /* Spinner */
@@ -1169,44 +1093,11 @@
 }
 
 .fileBulkBtn {
-	display: flex;
-	align-items: center;
-	gap: 6px;
-	padding: 6px 14px;
-	border-radius: var(--radius-lg);
-	border: 1.5px solid rgba(10, 155, 74, 0.2);
-	background: var(--color-white);
-	font-size: var(--font-size-xs);
-	font-weight: var(--font-weight-bold);
-	color: var(--color-primary-dark);
-	cursor: pointer;
-	transition: all var(--transition-fast);
-	box-shadow: var(--shadow-sm);
-}
-
-.fileBulkBtn:hover {
-	background: var(--color-primary);
-	color: var(--color-white);
-	border-color: var(--color-primary);
-	transform: translateY(-1px);
-	box-shadow: 0 4px 10px rgba(10, 155, 74, 0.2);
-}
-
-.fileBulkBtn svg {
-	width: 12px;
-	height: 12px;
+	composes: btn secondary sm from '@/shared/components/Button/Button.module.css';
 }
 
 .fileBulkBtnDanger {
-	color: var(--color-error);
-	border-color: rgba(232, 69, 69, 0.2);
-}
-
-.fileBulkBtnDanger:hover {
-	background: var(--color-error);
-	color: var(--color-white);
-	border-color: var(--color-error);
-	box-shadow: 0 4px 10px rgba(232, 69, 69, 0.2);
+	composes: btn danger from '@/shared/components/Button/Button.module.css';
 }
 
 .fileBulkClear {
