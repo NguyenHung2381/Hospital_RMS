@@ -11,6 +11,7 @@ import {
 	ProgressSvg,
 	SearchSvg,
 	TrashSvg,
+	UploadSvg,
 } from '@/assets/icons';
 import AdminLayout from '../../../layouts/AdminLayout';
 import { MultiSelect } from '../../../shared/components/Input/MultiSelect';
@@ -30,6 +31,9 @@ import { ExportExcelModal } from '../components/ExportExcelModal';
 import { TopicBulkEditModal } from '../components/TopicBulkEditModal';
 import { TopicDrawer } from '../components/TopicDrawer';
 import { TopicModal } from '../components/TopicModal';
+import { TopicImportModal } from '../components/TopicImportModal';
+import { usePermission } from '@/shared/hooks/usePermission';
+import { scopeOf } from '@/shared/utils/permissions';
 import { useTopicPage } from '../hooks/useTopicPage';
 import { STATUS_CFG, lookup } from '../utils/topicHelpers';
 import styles from './Topic.module.css';
@@ -40,6 +44,10 @@ export default function TopicPage() {
 	const d = useTopicPage();
 	const rowSel = useRowSelection(d.pageSlice.map((t) => t.id));
 	const [bulkModal, setBulkModal] = useState<'edit' | 'delete' | null>(null);
+	const [showImport, setShowImport] = useState(false);
+	const perm = usePermission();
+	// Nhập Excel tạo đề tài cho mọi khoa → chỉ phạm vi toàn viện (backend kiểm tra lại)
+	const canImport = perm.has('topics:create') && scopeOf(perm.user, 'topics') === 'all';
 
 	const headerActions = (
 		<>
@@ -50,6 +58,15 @@ export default function TopicPage() {
 				<DownloadSvg style={{ width: 14, height: 14 }} />
 				Xuất Excel
 			</button>
+			{canImport && (
+				<button
+					className={styles.btnSecondary}
+					onClick={() => setShowImport(true)}
+				>
+					<UploadSvg style={{ width: 14, height: 14 }} />
+					Nhập Excel
+				</button>
+			)}
 			<button
 				className={styles.btnPrimary}
 				onClick={() => d.setShowCreate(true)}
@@ -447,6 +464,16 @@ export default function TopicPage() {
 			</div>
 
 			{/* ── MODALS & DRAWER ── */}
+			{showImport && (
+				<TopicImportModal
+					rounds={d.rounds}
+					categories={d.categories}
+					levels={d.levels}
+					departments={d.departments}
+					onClose={() => setShowImport(false)}
+					onDone={d.refreshData}
+				/>
+			)}
 			{d.showExport && (
 				<ExportExcelModal
 					totalCount={d.stats.total}

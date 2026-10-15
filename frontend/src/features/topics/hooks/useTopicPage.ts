@@ -381,6 +381,7 @@ export function useTopicPage() {
 		rowsPerPage,
 		showCreate,
 		showExport,
+		refreshData,
 		editTopic,
 		deleteTopic,
 		viewTopic,

@@ -33,13 +33,28 @@ function handleUpdate(e: MessageEvent) {
 		console.error('[Realtime] Parse error:', err);
 		return;
 	}
-	// Dữ liệu trên server vừa đổi — bỏ cache GET để các trang tải lại bản mới
+	// Dữ liệu trên server vừa đổi — bỏ cache GET để các trang tải lại bản mới.
+	// Xoá sạch chứ không chỉ entity đó: danh mục nhúng dữ liệu chéo (research-rounds
+	// có số đề tài + tên loại đợt) nên xoá theo entity sẽ trả về bản cũ.
 	invalidateApiCache();
 	for (const sub of subscribers) {
-		if (entity === 'all' || sub.entities.includes(entity)) {
-			sub.notify();
-		}
+		if (entity === 'all' || sub.entities.includes(entity)) dirty.add(sub);
 	}
+	if (dirty.size && !flushTimer) flushTimer = setTimeout(flush, NOTIFY_COALESCE_MS);
+}
+
+// Một thao tác thường phát liền nhiều entity (vd 'topic' rồi 'council'); hook
+// nghe nhiều entity (useNotifications, useUserHome...) sẽ tải lại mỗi lần một
+// → gom các sự kiện tới trong cửa sổ ngắn, mỗi subscriber chỉ tải lại 1 lần.
+const NOTIFY_COALESCE_MS = 150;
+const dirty = new Set<Subscriber>();
+let flushTimer: ReturnType<typeof setTimeout> | null = null;
+
+function flush() {
+	flushTimer = null;
+	const subs = [...dirty];
+	dirty.clear();
+	for (const sub of subs) if (subscribers.has(sub)) sub.notify();
 }
 
 // Nối lại khi kết nối bị đóng hẳn (401 token hết hạn, 502 lúc backend khởi

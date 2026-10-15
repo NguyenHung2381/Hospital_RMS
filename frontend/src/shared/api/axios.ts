@@ -155,13 +155,21 @@ const LOOKUP_RESOURCES = new Set([
 	'training-forms',
 	'training-types',
 	'subjects',
+	// Dữ liệu của layout: mỗi trang tự bọc <AdminLayout>/<UserLayout> nên layout
+	// dựng lại ở MỖI lần chuyển trang và gọi lại các API này.
+	'modules',
+	'my-tasks',
+	'notifications',
 ]);
+// Badge "Đề tài" ở AdminLayout — không cache cả resource /topics (danh sách đề tài)
+const CACHED_PATHS = new Set(['/topics?limit=1']);
 
 const inflight = new Map<string, Promise<unknown>>();
 const lookupCache = new Map<string, { at: number; data: unknown }>();
 let cacheEpoch = 0;
 
-const isLookup = (path: string) => LOOKUP_RESOURCES.has(path.split(/[/?]/)[1] ?? '');
+const isLookup = (path: string) =>
+	LOOKUP_RESOURCES.has(path.split(/[/?]/)[1] ?? '') || CACHED_PATHS.has(path);
 
 // Dữ liệu dùng chung giữa nhiều nơi gọi — trả bản sao để một nơi lỡ sửa tại chỗ
 // (sort/splice mảng) không làm hỏng dữ liệu của nơi khác.

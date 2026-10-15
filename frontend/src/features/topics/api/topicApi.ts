@@ -297,3 +297,45 @@ export const searchUsers = (q: string, departmentId?: string) => {
 		`/users/search?${params.toString()}`,
 	);
 };
+
+// ─── Nhập danh sách đề tài từ Excel ──────────────────────────────────────────
+export interface TopicImportDefaults {
+	round_id?: string;
+	category_id?: string;
+	level_id?: string;
+	department_id?: string;
+	article_type?: ArticleType;
+	status?: 'submitted' | 'approved' | 'rejected' | 'cancelled';
+}
+
+export interface TopicImportRow {
+	row: number;
+	title: string;
+	round_name: string | null;
+	category_name: string | null;
+	level_name: string | null;
+	department_name: string | null;
+	members: { row: number; name: string; staff_number: number | null; role: 'leader' | 'secretary' | 'member' }[];
+	errors: string[];
+	warnings: string[];
+	duplicate: boolean;
+	valid: boolean;
+}
+
+export interface TopicImportResult {
+	dry_run: boolean;
+	summary: { total: number; importable: number; members: number; duplicates: number; invalid: number };
+	rows?: TopicImportRow[];
+	inserted?: number;
+	failures?: string[];
+}
+
+export const importTopicsExcel = (file: File, dryRun: boolean, defaults: TopicImportDefaults) => {
+	const form = new FormData();
+	form.append('dry_run', dryRun ? '1' : '0');
+	for (const [k, v] of Object.entries(defaults)) if (v) form.append(k, v);
+	form.append('file', file);
+	return apiClient.postForm<TopicImportResult>('/topics/import-excel', form);
+};
+
+export const downloadTopicImportTemplate = () => apiClient.postBlob('/topics/import-template', {});

@@ -7,6 +7,7 @@ const fileCtrl = require('../controllers/fileController');
 const { authenticate, authorizePermission } = require('../middlewares/auth');
 const { validate } = require('../middlewares/errorHandler');
 const upload = require('../middlewares/upload');
+const uploadExcel = require('../middlewares/uploadExcel');
 const topicService = require('../services/topicService');
 
 router.use(authenticate);
@@ -159,6 +160,10 @@ router.post(
 	validate,
 	fullExportCtrl.exportReport,
 );
+
+// Nhập danh sách đề tài từ Excel (dry_run=1 để xem trước) — controller chỉ cho phạm vi 'all'
+router.post('/import-template', authorizePermission(['topics', 'create']), ctrl.importTemplate);
+router.post('/import-excel', authorizePermission(['topics', 'create']), uploadExcel.single('file'), ctrl.importExcel);
 
 /**
  * @swagger

@@ -8,7 +8,9 @@ const {
 	assertTopicActionWindow,
 	assertRegistrationOpen,
 } = require('../services/deadlineGuard');
-const { isDeadlineBound } = require('../middlewares/auth');
+const { isDeadlineBound, scopeOf, hasPermission } = require('../middlewares/auth');
+const topicImportService = require('../services/topicImportService');
+const { sendWorkbook } = require('../utils/response');
 
 const base = createCrudController(topicService);
 
@@ -221,8 +223,57 @@ const setAuthors = async (req, res, next) => {
 	}
 };
 
+// Nhập Excel tạo đề tài cho mọi khoa → chỉ phạm vi 'all'
+const assertImportScope = (user) => {
+	if (scopeOf(user, 'topics') !== 'all') {
+		throw Object.assign(new Error('Chỉ tài khoản quản lý toàn viện được nhập đề tài từ Excel.'), { statusCode: 403 });
+	}
+};
+
+const importTemplate = async (req, res, next) => {
+	try {
+		assertImportScope(req.user);
+		return sendWorkbook(res, await topicImportService.templateWorkbook(), 'mau-nhap-de-tai.xlsx');
+	} catch (err) {
+		next(err);
+	}
+};
+
+const IMPORT_STATUSES = ['submitted', 'approved', 'rejected', 'cancelled'];
+
+const importExcel = async (req, res, next) => {
+	try {
+		assertImportScope(req.user);
+		if (!req.file) return res.status(400).json({ success: false, message: 'Chưa chọn file Excel.' });
+		const status = IMPORT_STATUSES.includes(req.body.status) ? req.body.status : 'submitted';
+		if (status !== 'submitted' && !hasPermission(req.user, 'topics', 'approve')) {
+			return res.status(403).json({ success: false, message: 'Cần quyền phê duyệt đề tài để nhập với trạng thái khác "Chờ duyệt".' });
+		}
+		const out = await topicImportService.importExcel(
+			{
+				buffer: req.file.buffer,
+				dry_run: req.body.dry_run === '1' || req.body.dry_run === 'true',
+				defaults: {
+					round_id: req.body.round_id || null,
+					category_id: req.body.category_id || null,
+					level_id: req.body.level_id || null,
+					department_id: req.body.department_id || null,
+					article_type: req.body.article_type === 'bai_bao' ? 'bai_bao' : 'de_tai',
+					status,
+				},
+			},
+			req.user.id,
+		);
+		return success(res, out, out.dry_run ? 'Đã đọc file — kiểm tra trước khi nhập' : `Đã nhập ${out.inserted} đề tài`);
+	} catch (err) {
+		next(err);
+	}
+};
+
 module.exports = {
 	...base,
+	importTemplate,
+	importExcel,
 	getAll,
 	getById,
 	createOne,
