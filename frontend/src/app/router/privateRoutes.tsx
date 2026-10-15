@@ -78,6 +78,9 @@ const AttendanceCheckIn = lazy(
 	() => import('../../features/attendance-checkin/pages/AttendanceCheckIn'),
 );
 const QuestionBank = lazy(() => import('../../features/exam/pages/QuestionBank'));
+const StaffAttendance = lazy(
+	() => import('../../features/staff-attendance/pages/StaffAttendance'),
+);
 const StaffLicenses = lazy(
 	() => import('../../features/staff-license/pages/StaffLicenses'),
 );
@@ -109,6 +112,7 @@ const TopicRegister = lazy(
 const UserMyTraining = lazy(() => import('../../features/portal/pages/MyTraining'));
 const UserMyCourseDetail = lazy(() => import('../../features/portal/pages/MyCourseDetail'));
 const UserMyCme = lazy(() => import('../../features/portal/pages/MyCme'));
+const UserMyAttendance = lazy(() => import('../../features/portal/pages/MyAttendance'));
 const UserNotifications = lazy(
 	() => import('../../features/notifications/pages/UserNotifications'),
 );
@@ -270,6 +274,14 @@ export const adminRoutes: RouteObject[] = [
 		),
 	},
 	{
+		path: '/admin/staff-attendance',
+		element: (
+			<RequirePermission perm='staff_attendance:read'>
+				{admin('Bảng chấm công', <StaffAttendance />)}
+			</RequirePermission>
+		),
+	},
+	{
 		path: '/admin/staff-licenses',
 		element: (
 			<RequirePermission perm='staff_licenses:read'>
@@ -389,6 +401,10 @@ export const userRoutes: RouteObject[] = [
 	{
 		path: '/user/khoa-hoc/:id',
 		element: user('Chi tiết khóa học', <UserMyCourseDetail />),
+	},
+	{
+		path: '/user/cham-cong',
+		element: user('Chấm công', <UserMyAttendance />),
 	},
 	{
 		path: '/user/cme',

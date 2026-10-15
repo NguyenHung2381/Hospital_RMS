@@ -259,6 +259,7 @@ app.use(`${API}/workflows`, require('./routes/workflows'));
 app.use(`${API}/lecturers`, requireModule('TRAINING'), require('./routes/lecturers'));
 app.use(`${API}/courses`, requireModule('TRAINING'), require('./routes/courses'));
 app.use(`${API}/staff-licenses`, require('./routes/staffLicenses'));
+app.use(`${API}/staff-attendance`, requireModule('ATTENDANCE'), require('./routes/staffAttendance'));
 app.use(`${API}/system-settings`, require('./routes/systemSettings'));
 app.use(`${API}/persons`, require('./routes/persons'));
 app.use(`${API}/public`, require('./routes/public'));

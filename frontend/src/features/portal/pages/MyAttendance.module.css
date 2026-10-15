@@ -1,0 +1,37 @@
+.times {
+	display: grid;
+	grid-template-columns: 1fr 1fr;
+	gap: 12px;
+}
+.timeLabel {
+	font-size: var(--font-size-sm);
+	color: var(--color-gray-500);
+}
+.timeValue {
+	font-size: var(--font-size-3xl);
+	font-weight: 700;
+	color: var(--color-gray-800);
+	font-variant-numeric: tabular-nums;
+}
+.conditions {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+	margin: 16px 0;
+}
+.checkBtn {
+	width: 100%;
+}
+.note {
+	margin: 8px 0 0;
+	font-size: var(--font-size-sm);
+	color: var(--color-gray-500);
+}
+.error {
+	margin: 12px 0 0;
+	padding: 10px 12px;
+	border-radius: 8px;
+	background: var(--color-red-50, #fef2f2);
+	color: var(--color-red-700, #b91c1c);
+	font-size: var(--font-size-sm);
+}

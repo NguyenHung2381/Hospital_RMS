@@ -218,3 +218,26 @@ export const addMyCmeEvidence = (id: string, file: File) => {
 	form.append('file', file);
 	return apiClient.postForm<{ id: string }>(`/me/cme-records/${id}/evidence`, form);
 };
+
+// ─── Chấm công (IP bệnh viện + GPS) ─────────────────────────
+export interface AttendanceRow {
+	id: number;
+	work_date: string;
+	check_in_at: string;
+	check_in_distance_m: number | null;
+	check_out_at: string | null;
+	check_out_distance_m: number | null;
+}
+export interface MyAttendance {
+	today: AttendanceRow | null;
+	history: AttendanceRow[];
+	client_ip: string | null;
+	/** IP hiện tại có thuộc mạng bệnh viện không. */
+	ip_ok: boolean;
+	/** Quản trị đã cấu hình đủ IP + vị trí bệnh viện chưa. */
+	configured: boolean;
+	radius_m: number;
+}
+export const getMyAttendance = () => apiClient.get<MyAttendance>('/me/attendance');
+export const checkAttendance = (pos: { lat: number; lng: number; accuracy: number }) =>
+	apiClient.post<{ action: 'check_in' | 'check_out'; record: AttendanceRow }>('/me/attendance/check', pos);

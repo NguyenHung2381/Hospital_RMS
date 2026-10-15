@@ -6,6 +6,7 @@ import { useRegistrationOpen } from '../../features/round/hooks/useRegistrationO
 import { NotificationPanel } from '../../features/notifications/components/NotificationPanel';
 import { useNotifications } from '../../features/notifications/hooks/useNotifications';
 import { toNotif } from '../../features/notifications/utils/notifUtils';
+import { useModules, type ModuleKey } from '../../shared/hooks/useModules';
 import { usePermission } from '../../shared/hooks/usePermission';
 import { scopeOf } from '../../shared/utils/permissions';
 import { getInitials } from '../../shared/utils/helper';
@@ -20,6 +21,7 @@ import {
 	BookOpenSvg,
 	ClipboardCheckSvg,
 	ClipboardSvg,
+	ClockSvg,
 	DashboardSvg,
 	DocPlusSvg,
 	LogoutSvg,
@@ -41,6 +43,7 @@ const KEY_TO_PATH: Record<string, string> = {
 	attendanceCheckIn: '/user/diem-danh',
 	myTraining: '/user/khoa-hoc',
 	myCme: '/user/cme',
+	myAttendance: '/user/cham-cong',
 	profile: '/user/profile',
 	deptAccounts: '/user/department-accounts',
 	notifications: '/user/notifications',
@@ -61,6 +64,8 @@ interface NavItem {
 	councilOnly?: boolean;
 	/** Chỉ hiện khi đang trong thời gian "Đăng ký đề tài" của một đợt đang mở. */
 	needsRegistrationWindow?: boolean;
+	/** Ẩn khi module bị tắt ở Cấu hình hệ thống. */
+	module?: ModuleKey;
 }
 
 // Cổng người dùng ít mục → thanh điều hướng NGANG thay cho sidebar dọc.
@@ -68,6 +73,7 @@ interface NavItem {
 // Thứ tự theo mảng nghiệp vụ: chung → NCKH → Đào tạo → CME → Khảo sát.
 const PRIMARY_NAV: NavItem[] = [
 	{ key: 'home', label: 'Trang chủ', icon: <DashboardSvg className={styles.navIcon} /> },
+	{ key: 'myAttendance', label: 'Chấm công', icon: <ClockSvg className={styles.navIcon} />, module: 'attendance' },
 	{ key: 'myTasks', label: 'Việc của tôi', icon: <ClipboardCheckSvg className={styles.navIcon} /> },
 	{ key: 'myTopics', label: 'Đề tài của tôi', icon: <TopicSvg className={styles.navIcon} /> },
 	{
@@ -176,7 +182,9 @@ export default function UserLayout({
 		};
 	}, [hideSidebar]);
 
+	const modules = useModules();
 	const keep = (item: NavItem) => {
+		if (item.module && !modules[item.module]) return false;
 		if (item.restrictMember && !canRegisterTopic) return false;
 		if (item.managerOnly && !isManagerAccount) return false;
 		if (item.councilOnly && !isCouncilMember) return false;

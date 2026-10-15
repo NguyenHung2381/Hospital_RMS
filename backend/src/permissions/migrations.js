@@ -377,6 +377,26 @@ const migrateRolesAndSessions = async ({ dryRun = false } = {}) => {
       IF OBJECT_ID('question_bank', 'U') IS NOT NULL AND COL_LENGTH('question_bank', 'image_url') IS NULL
         ALTER TABLE question_bank ADD image_url NVARCHAR(500) NULL;
     `);
+		// Chấm công nhân viên. Tương đương 2026-10-29_staff_attendance.sql.
+		await pool.request().query(`
+      IF OBJECT_ID('staff_attendance', 'U') IS NULL
+      BEGIN
+        CREATE TABLE staff_attendance (
+          id                   INT IDENTITY(1,1) NOT NULL CONSTRAINT PK_staff_attendance PRIMARY KEY,
+          user_id              VARCHAR(20) NOT NULL
+                               CONSTRAINT FK_staff_attendance_user REFERENCES users(id) ON DELETE CASCADE,
+          work_date            DATE        NOT NULL,
+          check_in_at          DATETIME2   NOT NULL,
+          check_in_ip          VARCHAR(45) NULL,
+          check_in_distance_m  INT         NULL,
+          check_out_at         DATETIME2   NULL,
+          check_out_ip         VARCHAR(45) NULL,
+          check_out_distance_m INT         NULL,
+          CONSTRAINT UQ_staff_attendance_user_date UNIQUE (user_id, work_date)
+        );
+        CREATE INDEX IX_staff_attendance_date ON staff_attendance(work_date);
+      END
+    `);
 	}
 
 	const sysPerm = (

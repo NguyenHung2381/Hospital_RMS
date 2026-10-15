@@ -123,4 +123,28 @@ router.post(
 // Phiếu theo dõi CME cá nhân (Excel) của chính mình — Body: { year }
 router.post('/cme/export-excel', cmePersonalExport.exportMine);
 
+// ─── Chấm công của chính mình (IP bệnh viện + GPS) — staffAttendanceService ──
+// GET không chặn theo module: trang Cấu hình cần nó để hiện IP hiện tại trước khi bật.
+const staffAttendanceService = require('../services/staffAttendanceService');
+const { requireModule } = require('../middlewares/moduleGuard');
+router.get(
+	'/attendance',
+	handle(async (req, res) => success(res, await staffAttendanceService.getMine(req.user.id, req.ip))),
+);
+router.post(
+	'/attendance/check',
+	requireModule('ATTENDANCE'),
+	[
+		body('lat').isFloat({ min: -90, max: 90 }).toFloat(),
+		body('lng').isFloat({ min: -180, max: 180 }).toFloat(),
+		body('accuracy').isFloat({ min: 0 }).toFloat(),
+	],
+	validate,
+	handle(async (req, res) => {
+		const { lat, lng, accuracy } = req.body;
+		const data = await staffAttendanceService.check(req.user.id, { ip: req.ip, lat, lng, accuracy });
+		return success(res, data, data.action === 'check_in' ? 'Đã chấm công vào' : 'Đã chấm công ra');
+	}),
+);
+
 module.exports = router;

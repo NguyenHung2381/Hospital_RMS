@@ -100,3 +100,11 @@ export function parseDate(s: string | null | undefined): Date | null {
 	return isNaN(dt.getTime()) ? null : dt;
 }
 
+
+// HH:mm theo giờ Việt Nam
+export function formatTimeVN(iso: string | null | undefined): string {
+	if (!iso) return '';
+	const d = new Date(iso);
+	if (isNaN(d.getTime())) return '';
+	return d.toLocaleTimeString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh', hour: '2-digit', minute: '2-digit', hour12: false });
+}

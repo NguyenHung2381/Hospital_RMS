@@ -90,6 +90,7 @@ export const PERMISSION_KEYS = [
 	'reports:create',
 	'reports:update',
 	'reports:delete',
+	'staff_attendance:read',
 	'activity_logs:read',
 	'security_events:read',
 	'system_settings:manage',

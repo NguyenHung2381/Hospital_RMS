@@ -307,6 +307,13 @@ const MODULES = [
 				],
 			},
 			{
+				key: 'staff_attendance',
+				label: 'Chấm công nhân viên',
+				permissions: [
+					p('PERM-STATT-READ', 'read', 'Xem bảng chấm công', 'Xem giờ vào/ra chấm công của toàn bộ nhân viên'),
+				],
+			},
+			{
 				key: 'activity_logs',
 				label: 'Nhật ký hoạt động',
 				permissions: [

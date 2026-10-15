@@ -48,6 +48,9 @@ services:
       VITE_API_HOST: backend
       VITE_API_PORT: "3000"
       CHOKIDAR_USEPOLLING: "true"
+      # DEV_HTTPS=true (trong .env cạnh file này) → https://<IP-LAN>:5173, để điện
+      # thoại quét QR bằng camera trực tiếp (Safari chặn camera trên HTTP).
+      DEV_HTTPS: "${DEV_HTTPS:-false}"
       NODE_OPTIONS: "--max-old-space-size=512"
     # Chạy vite trực tiếp, bỏ tiến trình `npm run dev` (~60MB RSS) bọc ngoài.
     command: ["node", "node_modules/vite/bin/vite.js"]

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { flushSync } from 'react-dom';
 import { Html5Qrcode, Html5QrcodeSupportedFormats } from 'html5-qrcode';
 import { CameraSvg, ImageSvg, QrSvg, WarnSvg } from '@/assets/icons';
 import styles from './QrScanner.module.css';
@@ -143,11 +144,15 @@ export function QrScanner({ onScan, paused }: QrScannerProps) {
 		const scanner = scannerRef.current;
 		if (!scanner) return;
 		setError(null);
-		setCamState('starting');
+		// Khung video phải hiện (có kích thước) TRƯỚC khi start(): thư viện đo clientWidth
+		// lúc tạo <video> và lúc sự kiện 'playing' để tính vùng quét. Safari bắn 'playing'
+		// sớm — nếu khung còn display:none thì vùng quét = 0×0 và không bao giờ nhận mã.
+		flushSync(() => setCamState('starting'));
 		try {
 			await scanner.start(
 				{ facingMode: 'environment' },
-				{ fps: 10, qrbox: { width: 240, height: 240 } },
+				// Camera sau không bị lật gương — bỏ lượt giải mã ảnh lật cho nhanh gấp đôi.
+				{ fps: 10, qrbox: { width: 240, height: 240 }, disableFlip: true },
 				(decodedText) => {
 					if (!pausedRef.current) onScanRef.current(decodedText);
 				},
@@ -190,13 +195,13 @@ export function QrScanner({ onScan, paused }: QrScannerProps) {
 
 	return (
 		<div className={styles.wrap}>
-			{/* Vùng html5-qrcode gắn <video> vào — luôn tồn tại trong DOM, chỉ ẩn khi không quét. */}
+			{/* Vùng html5-qrcode gắn <video> vào — luôn tồn tại trong DOM, chỉ ẩn khi camera tắt. */}
 			<div
 				id={elId}
-				className={scanning ? styles.viewport : styles.viewportHidden}
+				className={camState === 'idle' ? styles.viewportHidden : styles.viewport}
 			/>
 
-			{!scanning && (
+			{camState === 'idle' && (
 				<div className={styles.placeholder}>
 					<span className={styles.placeholderIcon}>
 						<QrSvg />

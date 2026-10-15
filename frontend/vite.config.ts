@@ -1,5 +1,6 @@
-import { defineConfig, type Plugin } from 'vite';
+import { createLogger, defineConfig, type Plugin } from 'vite';
 import react from '@vitejs/plugin-react';
+import basicSsl from '@vitejs/plugin-basic-ssl';
 import svgr from 'vite-plugin-svgr';
 import fs from 'fs';
 import path from 'path';
@@ -60,6 +61,18 @@ const obfuscatorPlugin = (): Plugin => ({
 	},
 });
 
+// `composes: x from './Other.module.css'` → postcss-modules chèn CSS của file kia vào
+// dạng chuỗi (mất `from`), Vite cảnh báo url() trong đó có thể bị viết sai. Các file
+// được composes (Button/Modal/Table/Badge...) không có url() nên cảnh báo vô hại — lọc
+// đúng câu này, giữ nguyên mọi cảnh báo khác. Thêm url() vào file được composes thì
+// gỡ bộ lọc này đi.
+const logger = createLogger();
+const loggerWarnOnce = logger.warnOnce;
+logger.warnOnce = (msg, opts) => {
+	if (msg.includes('did not pass the `from` option to `postcss.parse`')) return;
+	loggerWarnOnce(msg, opts);
+};
+
 const apiPort = getApiPort();
 // Host của backend — mặc định 'localhost' (chạy native cùng máy).
 // Trong Docker Compose, client và server là 2 container khác nhau nên cần
@@ -67,6 +80,7 @@ const apiPort = getApiPort();
 const apiHost = process.env.VITE_API_HOST || 'localhost';
 
 export default defineConfig({
+	customLogger: logger,
 	plugins: [
 		react(),
 		// `icon: true` buộc mọi icon `*.svg?react` có kích thước nội tại 1em
@@ -74,6 +88,10 @@ export default defineConfig({
 		// Các rule CSS `.parent svg { width/height }` sẵn có vẫn override bình thường.
 		svgr({ svgrOptions: { icon: true } }),
 		obfuscatorPlugin(),
+		// DEV_HTTPS=true → dev server chạy HTTPS chứng chỉ tự ký. Cần khi mở từ điện
+		// thoại qua IP LAN: trình duyệt (nhất là Safari iOS) chặn camera trên HTTP
+		// không phải localhost → không quét QR trực tiếp được. Mặc định vẫn HTTP.
+		process.env.DEV_HTTPS === 'true' && basicSsl(),
 	],
 	resolve: {
 		alias: {

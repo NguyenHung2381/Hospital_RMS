@@ -2,7 +2,9 @@ import { useEffect, useState } from 'react';
 import AdminLayout from '../../../layouts/AdminLayout';
 import { Button, Card } from '../../../shared/components';
 import { notify } from '../../../shared/utils/feedback';
+import { resetModules } from '../../../shared/hooks/useModules';
 import { resetUploadPolicy } from '../../../shared/hooks/useUploadPolicy';
+import { getMyAttendance } from '../../portal/api/meApi';
 import { settingsApi } from '../api/settingsApi';
 import styles from './SystemSettings.module.css';
 
@@ -27,6 +29,17 @@ type Section = {
 	title: string;
 	sub: string;
 	groups: { title?: string; fields: Field[] }[];
+};
+
+// Hiện ở cả tab "Module chức năng" lẫn tab "Chấm công" (cùng 1 key)
+const ATTENDANCE_TOGGLE: Field = {
+	key: 'MODULE_ATTENDANCE',
+	label: 'Chấm công nhân viên',
+	hint: 'Bật để hiện mục Chấm công cho nhân viên và Bảng chấm công cho quản trị. Cấu hình IP và vị trí ở tab "Chấm công" trước khi bật.',
+	type: 'bool',
+	defaultOn: false,
+	onText: 'Đang bật',
+	offText: 'Đã tắt',
 };
 
 const SECTIONS: Section[] = [
@@ -169,6 +182,7 @@ const SECTIONS: Section[] = [
 					{ key: 'MODULE_TRAINING', label: 'Đào tạo', hint: 'Kế hoạch, chương trình, khóa học, học viên, giảng viên, ngân hàng câu hỏi.', type: 'bool', defaultOn: true, onText: 'Đang bật', offText: 'Đã tắt' },
 					{ key: 'MODULE_SEMINAR', label: 'Hội nghị & CME', hint: 'Hội thảo, sổ cấp CME, ghi nhận CME độc lập.', type: 'bool', defaultOn: true, onText: 'Đang bật', offText: 'Đã tắt' },
 					{ key: 'MODULE_SURVEY', label: 'Khảo sát', type: 'bool', defaultOn: true, onText: 'Đang bật', offText: 'Đã tắt' },
+					ATTENDANCE_TOGGLE,
 				],
 			},
 		],
@@ -207,6 +221,46 @@ const SECTIONS: Section[] = [
 		],
 	},
 	{
+		id: 'attendance',
+		title: 'Chấm công',
+		sub: 'Mạng & vị trí bệnh viện',
+		groups: [
+			{ fields: [ATTENDANCE_TOGGLE] },
+			{
+				title: 'Chấm công hợp lệ khi đạt CẢ HAI điều kiện',
+				fields: [
+					{
+						key: 'ATTENDANCE_ALLOWED_IPS',
+						label: '1. IP mạng bệnh viện',
+						hint: 'IP công cộng của đường mạng bệnh viện, hoặc dải IP nội bộ nếu máy chủ đặt trong viện. Nhiều giá trị phân cách bằng dấu phẩy, nhận dạng CIDR (vd 10.0.0.0/8). Để trống = không ai chấm công được.',
+						type: 'textarea',
+						placeholder: '113.161.1.2, 10.0.0.0/8',
+					},
+					{
+						key: 'ATTENDANCE_LOCATION',
+						label: '2. Toạ độ bệnh viện',
+						hint: 'Dạng "vĩ độ, kinh độ" — chuột phải vào bệnh viện trên Google Maps để sao chép, hoặc bấm "Dùng vị trí hiện tại" bên dưới khi đang ở viện.',
+						placeholder: '10.7769, 106.7009',
+					},
+					{
+						key: 'ATTENDANCE_RADIUS_M',
+						label: 'Bán kính cho phép (m)',
+						hint: 'Nhân viên phải ở trong bán kính này quanh toạ độ bệnh viện. Mặc định 200m.',
+						type: 'number',
+						placeholder: '200',
+					},
+					{
+						key: 'ATTENDANCE_MAX_ACCURACY_M',
+						label: 'Sai số GPS tối đa (m)',
+						hint: 'Vị trí có sai số lớn hơn bị từ chối (máy tính không có GPS thường sai vài trăm mét). Trong nhà GPS hay lệch 30–100m. Mặc định 100m.',
+						type: 'number',
+						placeholder: '100',
+					},
+				],
+			},
+		],
+	},
+	{
 		id: 'cme',
 		title: 'CME',
 		sub: 'Ngưỡng tín chỉ liên tục',
@@ -221,7 +275,7 @@ const SECTIONS: Section[] = [
 	},
 ];
 
-const FIELDS = SECTIONS.flatMap((s) => s.groups.flatMap((g) => g.fields));
+const FIELDS = [...new Map(SECTIONS.flatMap((s) => s.groups.flatMap((g) => g.fields)).map((f) => [f.key, f])).values()];
 type Values = Record<string, string>;
 
 export default function SystemSettings() {
@@ -234,6 +288,8 @@ export default function SystemSettings() {
 	const [saving, setSaving] = useState(false);
 	const [testTo, setTestTo] = useState('');
 	const [testing, setTesting] = useState(false);
+	const [myIp, setMyIp] = useState<string | null>(null);
+	const [locating, setLocating] = useState(false);
 
 	const load = () =>
 		settingsApi
@@ -262,6 +318,30 @@ export default function SystemSettings() {
 	useEffect(() => {
 		load();
 	}, []);
+	useEffect(() => {
+		if (tab === 'attendance' && myIp === null) getMyAttendance().then((r) => setMyIp(r.client_ip ?? '')).catch(() => setMyIp(''));
+	}, [tab, myIp]);
+
+	const useCurrentLocation = () => {
+		if (!navigator.geolocation) return notify.error('Trình duyệt không hỗ trợ định vị (cần HTTPS)');
+		setLocating(true);
+		navigator.geolocation.getCurrentPosition(
+			({ coords }) => {
+				set('ATTENDANCE_LOCATION', `${coords.latitude.toFixed(6)}, ${coords.longitude.toFixed(6)}`);
+				notify.success(`Đã lấy vị trí (sai số ±${Math.round(coords.accuracy)}m) — nhớ bấm Lưu`);
+				setLocating(false);
+			},
+			(e) => {
+				notify.error(e.code === 1 ? 'Bạn đã chặn quyền vị trí cho trang này' : 'Không lấy được vị trí');
+				setLocating(false);
+			},
+			{ enableHighAccuracy: true, timeout: 20000, maximumAge: 0 },
+		);
+	};
+	const addMyIp = () => {
+		const cur = (form.ATTENDANCE_ALLOWED_IPS ?? '').split(/[\s,;]+/).filter(Boolean);
+		if (myIp && !cur.includes(myIp)) set('ATTENDANCE_ALLOWED_IPS', [...cur, myIp].join(', '));
+	};
 
 	const isDirty = (f: Field) => form[f.key] !== saved[f.key];
 	const dirty = FIELDS.filter(isDirty);
@@ -275,6 +355,7 @@ export default function SystemSettings() {
 		try {
 			for (const f of dirty) await settingsApi.update(f.key, form[f.key]);
 			resetUploadPolicy();
+			resetModules();
 			notify.success(`Đã lưu ${dirty.length} thay đổi`);
 			await load();
 		} catch (e) {
@@ -429,6 +510,25 @@ export default function SystemSettings() {
 									))}
 								</div>
 							))}
+
+							{section.id === 'attendance' && (
+								<div className={styles.testBox}>
+									<div className={styles.label}>
+										Hỗ trợ cấu hình
+										<span className={styles.hint}>
+											IP máy chủ đang thấy từ máy bạn: <b>{myIp || 'không rõ'}</b>. Nếu bạn đang dùng mạng bệnh viện, thêm IP này vào danh sách.
+										</span>
+									</div>
+									<div className={styles.inline} style={{ marginTop: 8 }}>
+										<Button variant='secondary' disabled={!myIp} onClick={addMyIp}>
+											Thêm IP hiện tại
+										</Button>
+										<Button variant='secondary' loading={locating} onClick={useCurrentLocation}>
+											Dùng vị trí hiện tại
+										</Button>
+									</div>
+								</div>
+							)}
 
 							{section.id === 'mail' && (
 								<div className={styles.testBox}>

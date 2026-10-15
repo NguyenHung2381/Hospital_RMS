@@ -9,6 +9,7 @@ import {
 	ChevLSvg,
 	ClipboardCheckSvg,
 	ClipboardSvg,
+	ClockSvg,
 	DashboardSvg,
 	DeptSvg,
 	DownloadSvg,
@@ -96,6 +97,7 @@ const KEY_TO_PATH: Record<string, string> = {
 	cmeCompliance: '/admin/cme-compliance',
 	cmeRecords: '/admin/cme-records',
 	staffLicenses: '/admin/staff-licenses',
+	staffAttendance: '/admin/staff-attendance',
 	cmeCreditCatalog: '/admin/cme-credit-categories',
 	users: '/admin/users',
 	roles: '/admin/roles',
@@ -383,6 +385,12 @@ const NAV_GROUPS: NavGroup[] = [
 				perm: 'persons:read',
 			},
 			{
+				key: 'staffAttendance',
+				label: 'Bảng chấm công',
+				icon: <ClockSvg className={styles.navIcon} />,
+				perm: 'staff_attendance:read',
+			},
+			{
 				key: 'activityLogs',
 				label: 'Nhật ký hoạt động',
 				icon: <ListSvg className={styles.navIcon} />,
@@ -427,6 +435,7 @@ const MODULE_BY_KEY: Record<string, ModuleKey> = {
 	trainingDashboard: 'training',
 	seminarDashboard: 'seminar',
 	surveys: 'survey',
+	staffAttendance: 'attendance',
 };
 const moduleOf = (section: string, key: string) =>
 	MODULE_BY_KEY[key] ?? MODULE_BY_SECTION[section];
