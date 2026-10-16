@@ -17,7 +17,8 @@
     "rename:trainee-usernames": "node scripts/rename-trainee-usernames.js",
     "rename:staff-usernames": "node scripts/rename-staff-usernames.js",
     "dump:db-objects": "node scripts/dump-db-objects.js",
-    "migrate": "node scripts/run-migrations.js"
+    "migrate": "node scripts/run-migrations.js",
+    "import:staff": "node scripts/import-staff.js"
   },
   "dependencies": {
     "@napi-rs/canvas": "^1.0.11",

@@ -4,8 +4,11 @@ WORKDIR /app
 COPY package*.json ./
 # Cache mount giữ ~/.npm giữa các lần build → build lỗi/retry không phải tải lại
 # từ đầu; timeout/retry nới rộng cho mạng chập chờn (EIDLETIMEOUT).
+# .deps-hash: dấu để x-ensure-deps (docker-compose.yml) biết node_modules đã khớp
+# package-lock.json — volume mới tạo từ image không phải npm ci lại.
 RUN --mount=type=cache,target=/root/.npm \
-    npm ci --no-audit --no-fund --fetch-timeout=600000 --fetch-retries=5 --fetch-retry-maxtimeout=120000
+    npm ci --no-audit --no-fund --fetch-timeout=600000 --fetch-retries=5 --fetch-retry-maxtimeout=120000 \
+    && cat package.json package-lock.json | md5sum | cut -d' ' -f1 > node_modules/.deps-hash
 COPY . .
 # Entrypoint tự sinh JWT secret nếu thiếu (xem docker-entrypoint.sh). Đặt ngoài
 # /app để bind mount ./backend:/app ở bản dev không che mất; tr bỏ CR (CRLF) phòng

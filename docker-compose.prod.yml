@@ -85,8 +85,14 @@ services:
       # phải nằm ngoài container để không mất khi redeploy/tạo lại container.
       - server_logs:/app/logs
       - redis_secret:/run/redis-secret:ro
+    # Chờ Redis trả lời PING rồi mới chạy backend — trước đây chỉ chờ container
+    # redis "started", backend nối vào lúc Redis chưa nhận kết nối nên lần nào
+    # deploy log cũng báo "[Cache] Redis không sẵn sàng". required: false — Redis
+    # chỉ là cache: hỏng hẳn thì Compose chỉ cảnh báo, backend vẫn chạy (đọc DB).
     depends_on:
-      - redis
+      redis:
+        condition: service_healthy
+        required: false
     restart: unless-stopped
 
   frontend:
@@ -132,6 +138,14 @@ services:
           --save "" --appendonly no
     volumes:
       - redis_secret:/run/redis-secret
+    # REDISCLI_AUTH thay cho -a để redis-cli không in cảnh báo lộ mật khẩu.
+    healthcheck:
+      test: ["CMD-SHELL", "REDISCLI_AUTH=\"$$(cat /run/redis-secret/pass)\" redis-cli ping | grep -q PONG"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+      start_interval: 1s
     mem_limit: 160m
     restart: unless-stopped
 

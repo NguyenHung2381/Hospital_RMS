@@ -350,6 +350,32 @@ router.post('/cme-personal/:userId/export-excel', authenticate, canCme, cmePerso
  *     tags: [Seminars]
  */
 router.get('/:id', authenticate, canRead, ctrl.getById);
+
+/**
+ * @swagger
+ * /seminars/{id}/export-excel:
+ *   post:
+ *     summary: Xuất Excel một hội nghị — thông tin, người tham dự, bài học (chương trình)
+ *     tags: [Seminars]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               parts:
+ *                 type: array
+ *                 items: { type: string, enum: [participants, agenda] }
+ *                 description: Để trống = xuất cả hai
+ *     responses:
+ *       200: { description: File .xlsx }
+ */
+router.post('/:id/export-excel', authenticate, canExport, ctrl.exportDetailExcel);
 router.put('/:id', authenticate, canUpdate, countFields, validate, ctrl.updateOne);
 router.delete('/:id', authenticate, canDelete, ctrl.removeOne);
 // Tải ảnh trước, rồi gửi `image` trả về trong test_questions khi lưu bài test

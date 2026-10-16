@@ -96,6 +96,9 @@ export interface Seminar {
 	location: string | null;
 	start_date: string | null;
 	end_date: string | null;
+	/** 'HH:mm' — giờ bắt đầu (ngày start_date) / kết thúc (ngày end_date) */
+	start_time: string | null;
+	end_time: string | null;
 	date_text: string | null;
 	event_year: number | null;
 	host_chair: string | null;
@@ -116,6 +119,12 @@ export interface Seminar {
 	/** JSON SeminarTestQuestion[] */
 	test_questions: string | null;
 	test_open: boolean;
+	/** Khung giờ làm bài test — trống ngày = ngày kết thúc (hoặc bắt đầu) hội nghị */
+	test_date: string | null;
+	test_start_time: string | null;
+	test_end_time: string | null;
+	/** JSON SeminarAgendaItem[] — chương trình / danh sách bài học */
+	agenda: string | null;
 	created_at: string;
 	participant_count?: number;
 	cme_issued_count?: number;
@@ -134,6 +143,17 @@ export interface SeminarTestQuestion {
 	answer: number;
 }
 
+/** Một bài học / bài báo cáo trong chương trình hội nghị */
+export interface SeminarAgendaItem {
+	title: string;
+	speaker?: string;
+	/** YYYY-MM-DD — hội nghị nhiều ngày */
+	date?: string;
+	start_time?: string;
+	end_time?: string;
+	note?: string;
+}
+
 export interface SeminarListResponse {
 	data: Seminar[];
 	pagination: { page: number; limit: number; total: number };
@@ -146,6 +166,8 @@ export interface SeminarForm {
 	location: string;
 	start_date: string;
 	end_date: string;
+	start_time: string;
+	end_time: string;
 	date_text: string;
 	event_year: string;
 	host_chair: string;
@@ -170,6 +192,8 @@ export const EMPTY_SEMINAR_FORM: SeminarForm = {
 	location: '',
 	start_date: '',
 	end_date: '',
+	start_time: '',
+	end_time: '',
 	date_text: '',
 	event_year: String(new Date().getFullYear()),
 	host_chair: '',

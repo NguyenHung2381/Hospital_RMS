@@ -1,0 +1,190 @@
+.controls {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+	align-items: center;
+}
+.legend {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 6px 12px;
+	align-items: center;
+	padding: 10px 20px;
+	border-bottom: 1px solid var(--color-gray-100);
+	font-size: var(--font-size-xs);
+	color: var(--color-gray-600);
+}
+.legendItem {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+}
+.fromPattern {
+	opacity: 0.45;
+}
+
+.gridWrap {
+	overflow: auto;
+	max-height: calc(100vh - 340px);
+	min-height: 240px;
+}
+.grid {
+	border-collapse: separate;
+	border-spacing: 0;
+	font-size: var(--font-size-xs);
+	user-select: none;
+}
+.grid th,
+.grid td {
+	border-right: 1px solid var(--color-gray-100);
+	border-bottom: 1px solid var(--color-gray-100);
+}
+.grid thead th {
+	position: sticky;
+	top: 0;
+	z-index: 2;
+	background: var(--color-gray-50);
+	padding: 4px 2px;
+	font-weight: 600;
+	color: var(--color-gray-600);
+	cursor: pointer;
+	min-width: 44px;
+}
+.grid thead th:first-child {
+	left: 0;
+	z-index: 3;
+	cursor: default;
+}
+.nameCell {
+	position: sticky;
+	left: 0;
+	z-index: 1;
+	min-width: 200px;
+	max-width: 220px;
+	padding: 4px 10px;
+	background: var(--color-white);
+	text-align: left;
+	cursor: pointer;
+}
+.nameCell:hover {
+	background: var(--color-gray-50);
+}
+.name {
+	font-size: var(--font-size-sm);
+	font-weight: 600;
+	color: var(--color-gray-800);
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+.sub {
+	color: var(--color-gray-500);
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+.dayNum {
+	font-size: var(--font-size-sm);
+	color: var(--color-gray-800);
+}
+.weekend {
+	background: var(--color-gray-50);
+}
+.today {
+	box-shadow: inset 0 -2px 0 var(--color-primary);
+}
+.cell {
+	height: 40px;
+	padding: 2px;
+	text-align: center;
+	vertical-align: middle;
+	cursor: pointer;
+}
+.cell:hover {
+	background: var(--color-gray-100);
+}
+.cellInner {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+	align-items: center;
+}
+.selected,
+.selected:hover {
+	background: var(--color-primary-pale);
+	box-shadow: inset 0 0 0 2px var(--color-primary);
+}
+.offMark {
+	color: var(--color-gray-500);
+	font-weight: 600;
+}
+
+.actionBar {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 8px;
+	padding: 10px 20px;
+	border-bottom: 1px solid var(--color-gray-200);
+	background: var(--color-primary-pale);
+	font-size: var(--font-size-sm);
+}
+.actionBar > :first-child {
+	margin-right: auto;
+}
+
+/* ── Hộp thoại xếp ca ───────────────────── */
+.modeRow {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 6px;
+}
+.chips {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 6px;
+}
+.pick {
+	padding: 5px 10px;
+	border: 1px solid var(--color-gray-300);
+	border-radius: 999px;
+	background: var(--color-white);
+	color: var(--color-gray-700);
+	font-size: var(--font-size-sm);
+	cursor: pointer;
+}
+.pickOn {
+	border-color: var(--color-primary);
+	background: var(--color-primary);
+	color: #fff;
+}
+.steps {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 6px;
+	align-items: center;
+	min-height: 36px;
+	padding: 6px 8px;
+	border: 1px dashed var(--color-gray-300);
+	border-radius: 8px;
+}
+.step {
+	display: inline-flex;
+	align-items: center;
+	gap: 2px;
+	padding: 2px 4px 2px 8px;
+	border-radius: 999px;
+	background: var(--color-gray-100);
+	font-size: var(--font-size-sm);
+}
+.stepX {
+	border: none;
+	background: none;
+	padding: 0 4px;
+	color: var(--color-gray-500);
+	cursor: pointer;
+}
+.preview {
+	font-size: var(--font-size-sm);
+	color: var(--color-gray-600);
+}
