@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { CheckSvg, DownloadSvg, InfoSvg, UploadSvg } from '@/assets/icons';
 import { Badge, FileDropzone, Modal } from '@/shared/components';
 import { downloadParticipantImportTemplate, importParticipantsExcel } from '../api/seminarApi';
-import { saveBlob } from '../utils/saveBlob';
+import { saveBlob } from '@/shared/utils/saveBlob';
 import {
 	PARTICIPATION_LABELS,
 	SOURCE_LABELS,

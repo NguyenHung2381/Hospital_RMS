@@ -42,7 +42,7 @@ import {
 import { useSeminarPerms } from '../utils/perms';
 import { usePermission } from '@/shared/hooks/usePermission';
 import { updateUser } from '@/features/user/api/userApi';
-import { saveBlob } from '../utils/saveBlob';
+import { saveBlob } from '@/shared/utils/saveBlob';
 import {
 	EMPTY_CME_RECORD_FORM,
 	type CmeCreditCategory,

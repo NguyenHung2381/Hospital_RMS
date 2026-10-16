@@ -14,7 +14,7 @@ import type {
 } from '../../exam/types/exam.type';
 import { PAPER_QUESTION_TYPE } from '../../exam/types/exam.type';
 import { SearchableSelect } from '../../../shared/components/Input/SearchableSelect';
-import { QuestionImageField, QuestionImageView, QuestionText } from '../../../shared/components';
+import { QuestionImageView, QuestionText } from '../../../shared/components';
 import styles from '../pages/Courses.module.css';
 
 const STATUS_LABEL: Record<PaperStatus, string> = {
@@ -275,29 +275,22 @@ function ExamBuilder({
 
 	const [bank, setBank] = useState<ExamQuestion[]>([]);
 	const [pickId, setPickId] = useState('');
-	const [showNewForm, setShowNewForm] = useState(false);
-	const emptyNewQ = (): DraftQuestion => ({
-		tempId: '',
-		question_type: allowedType ?? 'single_choice',
-		question_text: '',
-		options: [''],
-		correct_option: '',
-		points: '1',
-		image_url: null,
-	});
-	const [newQ, setNewQ] = useState<DraftQuestion>(emptyNewQ);
 
+	// Câu hỏi soạn ở Ngân hàng câu hỏi (mở tab mới) — quay lại tab này thì tải lại để thấy câu mới
 	useEffect(() => {
-		examApi
-			.listQuestions()
-			.then(setBank)
-			.catch(() => {});
+		const reload = () =>
+			examApi
+				.listQuestions()
+				.then(setBank)
+				.catch(() => {});
+		void reload();
+		window.addEventListener('focus', reload);
+		return () => window.removeEventListener('focus', reload);
 	}, []);
 
 	const changePaperType = (t: PaperType) => {
 		setPaperType(t);
 		setQuestions((prev) => prev.filter((q) => q.question_type === PAPER_QUESTION_TYPE[t]));
-		setNewQ((f) => ({ ...f, question_type: PAPER_QUESTION_TYPE[t] }));
 		setPickId('');
 	};
 
@@ -322,26 +315,6 @@ function ExamBuilder({
 			},
 		]);
 		setPickId('');
-	};
-
-	const addNewQuestion = async () => {
-		if (!newQ.question_text.trim()) return;
-		try {
-			const created = await examApi.createQuestion({
-				question_type: newQ.question_type,
-				question_text: newQ.question_text.trim(),
-				options: newQ.question_type === 'single_choice' ? newQ.options.filter((o) => o.trim()) : [],
-				correct_option: newQ.question_type === 'single_choice' ? newQ.correct_option || null : null,
-				points: Number(newQ.points) || 1,
-				image_url: newQ.image_url,
-			});
-			setQuestions((prev) => [...prev, toDraft({ ...created, link_id: created.id, sort_order: 0 })]);
-			setBank((prev) => [created, ...prev]);
-			setNewQ(emptyNewQ());
-			setShowNewForm(false);
-		} catch (err) {
-			setError(err instanceof Error ? err.message : 'Tạo câu hỏi thất bại');
-		}
 	};
 
 	const removeQuestion = (tempId: string) => setQuestions((prev) => prev.filter((q) => q.tempId !== tempId));
@@ -491,109 +464,16 @@ function ExamBuilder({
 				>
 					<IcPlus /> Thêm vào đề
 				</button>
-				<button
+				<a
 					className={styles.btnGhost}
-					onClick={() => setShowNewForm((v) => !v)}
+					href='/admin/question-bank'
+					target='_blank'
+					rel='noreferrer'
+					title='Soạn/nhập câu hỏi ở Ngân hàng câu hỏi, quay lại đây để chọn'
 				>
-					<IcPlus /> Tạo câu hỏi mới
-				</button>
+					<IcPlus /> Soạn câu hỏi mới ở Ngân hàng
+				</a>
 			</div>
-
-			{showNewForm && (
-				<div
-					className={styles.subRow}
-					style={{ flexDirection: 'column', alignItems: 'stretch', gap: 8, marginTop: 8 }}
-				>
-					<div className={styles.subToolbar}>
-						<select
-							className={styles.subSelect}
-							value={newQ.question_type}
-							disabled={!!allowedType}
-							onChange={(e) =>
-								setNewQ((f) => ({ ...f, question_type: e.target.value as QuestionType }))
-							}
-						>
-							<option value='single_choice'>Chọn 1 đáp án</option>
-							<option value='essay'>Tự luận</option>
-						</select>
-						<input
-							className={styles.subInput}
-							type='number'
-							min={0.1}
-							step={0.5}
-							placeholder='Điểm'
-							value={newQ.points}
-							onChange={(e) => setNewQ((f) => ({ ...f, points: e.target.value }))}
-							style={{ maxWidth: 100 }}
-						/>
-					</div>
-					<textarea
-						className={styles.subInput}
-						placeholder='Nội dung câu hỏi'
-						value={newQ.question_text}
-						onChange={(e) => setNewQ((f) => ({ ...f, question_text: e.target.value }))}
-						rows={2}
-					/>
-					<QuestionImageField
-						value={newQ.image_url}
-						onChange={(url) => setNewQ((f) => ({ ...f, image_url: url }))}
-						upload={examApi.uploadQuestionImage}
-					/>
-					{newQ.question_type === 'single_choice' && (
-						<>
-							{newQ.options.map((opt, oi) => (
-								<div
-									key={oi}
-									style={{ display: 'flex', gap: 6, alignItems: 'center' }}
-								>
-									<input
-										type='radio'
-										name='new-correct'
-										checked={newQ.correct_option === opt && opt !== ''}
-										onChange={() => setNewQ((f) => ({ ...f, correct_option: opt }))}
-									/>
-									<input
-										className={styles.subInput}
-										placeholder={`Lựa chọn ${oi + 1}`}
-										value={opt}
-										onChange={(e) =>
-											setNewQ((f) => {
-												const options = [...f.options];
-												const prevVal = options[oi];
-												options[oi] = e.target.value;
-												return {
-													...f,
-													options,
-													correct_option: f.correct_option === prevVal ? e.target.value : f.correct_option,
-												};
-											})
-										}
-									/>
-									<div
-										className={styles.actionBtn}
-										onClick={() => setNewQ((f) => ({ ...f, options: f.options.filter((_, i2) => i2 !== oi) }))}
-									>
-										<IcTrash />
-									</div>
-								</div>
-							))}
-							<button
-								className={styles.btnGhost}
-								onClick={() => setNewQ((f) => ({ ...f, options: [...f.options, ''] }))}
-							>
-								+ Thêm lựa chọn
-							</button>
-						</>
-					)}
-					<button
-						className={styles.btnGhost}
-						onClick={() => void addNewQuestion()}
-						disabled={!newQ.question_text.trim()}
-					>
-						<IcCheck /> Tạo & thêm vào đề
-					</button>
-				</div>
-			)}
 
 			<div style={{ marginTop: 16 }}>
 				<button

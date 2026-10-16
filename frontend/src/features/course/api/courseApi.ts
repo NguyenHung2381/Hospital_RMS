@@ -9,11 +9,9 @@ import type {
 	CourseFormData,
 	CourseListResponse,
 	CourseProgramLink,
-	CourseProgramLinkFormData,
 	DocType,
 	Enrollment,
 	EnrollmentStatus,
-	ExamType,
 	Grade,
 	LecturerAssignment,
 } from '../types/course.type';
@@ -22,6 +20,8 @@ export type DocumentSource = { type: 'file'; file: File } | { type: 'link'; exte
 
 const toPayload = (form: CourseFormData) => ({
 	name: form.name,
+	program_ids: form.program_ids,
+	plan_item_id: form.plan_item_id || null,
 	training_form_id: form.training_form_id || null,
 	start_date: form.start_date || null,
 	end_date: form.end_date || null,
@@ -57,21 +57,9 @@ export const updateCourse = (id: string, form: CourseFormData) =>
 	apiClient.put<Course>(`/courses/${id}`, toPayload(form));
 export const deleteCourse = (id: string) => apiClient.delete<null>(`/courses/${id}`);
 
-// ─── Chương trình đào tạo áp dụng (N:N) ────────────────────────────────────
+// ─── Chương trình đào tạo áp dụng (N:N, gán qua program_ids của form khóa học) ──
 export const getProgramLinks = (courseId: string) =>
 	apiClient.get<CourseProgramLink[]>(`/courses/${courseId}/programs`);
-export const addProgramLink = (courseId: string, data: CourseProgramLinkFormData) =>
-	apiClient.post<{ id: string }>(`/courses/${courseId}/programs`, {
-		...data,
-		lecturer_id: data.lecturer_id || null,
-		start_date: data.start_date || null,
-		end_date: data.end_date || null,
-		location: data.location || null,
-		external_lecturer_name: data.external_lecturer_name || null,
-	});
-export const updateProgramLink = (linkId: string, data: Partial<CourseProgramLinkFormData>) =>
-	apiClient.put<null>(`/courses/programs/${linkId}`, data);
-export const removeProgramLink = (linkId: string) => apiClient.delete<null>(`/courses/programs/${linkId}`);
 
 // ─── Enrollments ──────────────────────────────────────────────────────────
 export const getEnrollments = (courseId: string) =>
@@ -142,7 +130,7 @@ export const getDocuments = (courseId: string) =>
 export const addDocument = (
 	courseId: string,
 	source: DocumentSource,
-	data: { doc_type: DocType; title: string; is_public: boolean; exam_type?: ExamType | '' },
+	data: { doc_type: DocType; title: string; is_public: boolean },
 ) => {
 	const form = new FormData();
 	form.append('source_type', source.type);
@@ -151,7 +139,6 @@ export const addDocument = (
 	form.append('doc_type', data.doc_type);
 	form.append('title', data.title);
 	form.append('is_public', String(data.is_public));
-	if (data.exam_type) form.append('exam_type', data.exam_type);
 	return apiClient.postForm<{ id: string }>(`/courses/${courseId}/documents`, form);
 };
 

@@ -11,6 +11,9 @@ export function useLessons() {
 	const [programs, setPrograms] = useState<TrainingProgram[]>([]);
 	const [isLoadingData, setIsLoadingData] = useState(true);
 	const [search, setSearch] = useState('');
+	/** '' = tất cả, 'none' = chưa thuộc chương trình nào, còn lại = id chương trình */
+	const [programFilter, setProgramFilter] = useState('');
+	const [statusFilter, setStatusFilter] = useState<'' | 'active' | 'inactive'>('');
 	const [formModal, setFormModal] = useState<{ mode: 'add' | 'edit'; lesson?: Lesson } | null>(null);
 	const [deletingLesson, setDeletingLesson] = useState<Lesson | null>(null);
 	const [loading, setLoading] = useState(false);
@@ -37,12 +40,18 @@ export function useLessons() {
 	}, []);
 
 	const filtered = useMemo(() => {
-		if (!search.trim()) return lessons;
-		const q = search.toLowerCase();
-		return lessons.filter(
-			(l) => l.title.toLowerCase().includes(q) || (l.code ?? '').toLowerCase().includes(q),
-		);
-	}, [lessons, search]);
+		const q = search.trim().toLowerCase();
+		return lessons.filter((l) => {
+			const ids = l.program_ids ? l.program_ids.split(',') : [];
+			return (
+				(!q || l.title.toLowerCase().includes(q) || (l.code ?? '').toLowerCase().includes(q)) &&
+				(!programFilter || (programFilter === 'none' ? ids.length === 0 : ids.includes(programFilter))) &&
+				(!statusFilter || l.is_active === (statusFilter === 'active'))
+			);
+		});
+	}, [lessons, search, programFilter, statusFilter]);
+	const hasFilter = !!(search || programFilter || statusFilter);
+	const unusedCount = useMemo(() => lessons.filter((l) => !l.program_ids).length, [lessons]);
 
 	const { page, setPage, pageSize, handlePageSize, totalPages, safePage, paged } =
 		useClientPaging(filtered);
@@ -52,6 +61,27 @@ export function useLessons() {
 		setPage(1);
 	}, [setPage]);
 
+
+	const handleProgramFilter = useCallback(
+		(v: string) => {
+			setProgramFilter(v);
+			setPage(1);
+		},
+		[setPage],
+	);
+	const handleStatusFilter = useCallback(
+		(v: '' | 'active' | 'inactive') => {
+			setStatusFilter(v);
+			setPage(1);
+		},
+		[setPage],
+	);
+	const clearFilters = useCallback(() => {
+		setSearch('');
+		setProgramFilter('');
+		setStatusFilter('');
+		setPage(1);
+	}, [setPage]);
 
 	const handleDelete = useCallback(async () => {
 		if (!deletingLesson) return;
@@ -85,9 +115,17 @@ export function useLessons() {
 
 	return {
 		lessons,
+		refreshData,
 		programs,
 		isLoadingData,
 		search,
+		programFilter,
+		statusFilter,
+		hasFilter,
+		unusedCount,
+		handleProgramFilter,
+		handleStatusFilter,
+		clearFilters,
 		formModal,
 		deletingLesson,
 		loading,

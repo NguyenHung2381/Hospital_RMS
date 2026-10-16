@@ -32,6 +32,7 @@ function toForm(item?: TrainingPlan): TrainingPlanFormData {
 		status: item.status,
 		items: (item.items ?? []).map((it) => ({
 			tempId: it.id,
+			id: it.id,
 			title: it.title,
 			quarter: it.quarter ? String(it.quarter) : '',
 			target_count: it.target_count ? String(it.target_count) : '',

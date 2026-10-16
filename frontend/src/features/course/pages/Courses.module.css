@@ -126,10 +126,6 @@
 	composes: btnAddHeader from '../../../shared/components/Modal/Modal.module.css';
 }
 
-/* ── MODAL (form/delete) ─────────────────── */
-.modalBackdrop {
-	composes: modalBackdrop from '../../../shared/components/Modal/Modal.module.css';
-}
 .modal {
 	background: var(--color-white);
 	border-radius: var(--radius-2xl);
@@ -141,26 +137,6 @@
 	max-height: 90vh;
 	display: flex;
 	flex-direction: column;
-}
-.modalHeader {
-	display: flex;
-	align-items: center;
-	gap: var(--space-4);
-	padding: var(--space-5) var(--space-6);
-	border-bottom: 1px solid var(--color-gray-100);
-	flex-shrink: 0;
-}
-.modalHeaderIcon {
-	composes: modalHeaderIcon from '../../../shared/components/Modal/Modal.module.css';
-}
-.modalTitle {
-	composes: modalTitle from '../../../shared/components/Modal/Modal.module.css';
-}
-.modalSub {
-	composes: modalSub from '../../../shared/components/Modal/Modal.module.css';
-}
-.modalClose {
-	composes: modalClose from '../../../shared/components/Modal/Modal.module.css';
 }
 .modalBody {
 	padding: var(--space-6);
@@ -247,60 +223,265 @@
 	background: #fcebeb;
 }
 
-/* ── DETAIL MODAL ─────────────────────────── */
-.detailModal {
-	background: var(--color-white);
-	border-radius: var(--radius-2xl);
-	box-shadow: 0 20px 60px rgba(0, 0, 0, 0.18);
-	width: 100%;
-	/* Đủ rộng cho cả 7 tab trên desktop (thiếu thì thanh tab tự cuộn ngang). */
-	max-width: 1100px;
-	/* Chiều cao CỐ ĐỊNH thay vì co theo nội dung: tab ít dữ liệu (vd chưa có học viên)
-	 * không làm modal lùn lại, dropdown chọn học viên không bị cắt, và đổi tab không
-	 * làm modal nhảy kích thước. */
-	height: min(760px, 88vh);
-	display: flex;
-	flex-direction: column;
-	overflow: hidden;
-	animation: modalPopIn 220ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
-}
-.detailTabs {
-	display: flex;
-	gap: var(--space-2);
-	padding: 0 var(--space-6);
-	/* Dùng inset shadow thay border: vùng cuộn cắt mọi thứ tràn ra ngoài padding-box,
-	 * nên gạch chân tab active kiểu margin-bottom: -2px sẽ bị mất. */
-	box-shadow: inset 0 -2px 0 var(--color-gray-100);
-	flex-shrink: 0;
-	/* 7 tab nhãn dài — cho cuộn ngang thay vì bị cắt mất tab (vd "Lịch học") trên màn hẹp. */
-	overflow-x: auto;
-	overflow-y: hidden;
-	scrollbar-width: thin;
-}
-.detailTabBtn {
-	flex-shrink: 0;
-	white-space: nowrap;
+/* ── TRANG CHI TIẾT KHÓA HỌC ─────────────── */
+.backLink {
 	display: inline-flex;
 	align-items: center;
 	gap: 6px;
-	padding: var(--space-3) var(--space-3);
+	color: var(--color-gray-500);
+	font-size: var(--font-size-sm);
+	background: none;
 	border: none;
-	background: transparent;
+	cursor: pointer;
+	margin-bottom: var(--space-3);
+	padding: 0;
+}
+.backLink svg {
+	width: 14px;
+	height: 14px;
+}
+.infoCard {
+	background: var(--color-white);
+	border: 1px solid var(--color-gray-100);
+	border-radius: var(--radius-xl);
+	padding: var(--space-4) var(--space-5);
+	margin-bottom: var(--space-4);
+}
+.infoGrid {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+	gap: var(--space-3) var(--space-5);
+}
+.infoItem {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+	min-width: 0;
+}
+.infoLabel {
+	font-size: var(--font-size-xs);
+	text-transform: uppercase;
+	letter-spacing: 0.03em;
+	color: var(--color-gray-400);
+	font-weight: var(--font-weight-semibold);
+}
+.infoValue {
+	color: var(--color-gray-800);
+	font-size: var(--font-size-sm);
+}
+.infoDesc {
+	margin: var(--space-3) 0 0;
+	color: var(--color-gray-600);
+	font-size: var(--font-size-sm);
+}
+
+/* Thanh bước: mỗi bước là 1 tab, số tròn chuyển thành dấu ✓ khi bước đã có dữ liệu */
+.steps {
+	display: grid;
+	grid-template-columns: repeat(5, minmax(0, 1fr));
+	gap: var(--space-2);
+	margin-bottom: var(--space-3);
+}
+.step {
+	display: flex;
+	align-items: center;
+	gap: var(--space-3);
+	padding: var(--space-3);
+	border: 1.5px solid var(--color-gray-100);
+	border-radius: var(--radius-lg);
+	background: var(--color-white);
 	font-family: var(--font-body);
+	text-align: left;
+	cursor: pointer;
+	min-width: 0;
+}
+.step:hover {
+	border-color: var(--color-gray-300);
+}
+.stepActive,
+.stepActive:hover {
+	border-color: var(--color-primary);
+	background: var(--color-primary-pale, #eff6ff);
+}
+.stepNum {
+	flex-shrink: 0;
+	width: 28px;
+	height: 28px;
+	border-radius: var(--radius-full);
+	display: grid;
+	place-items: center;
+	background: var(--color-gray-100);
+	color: var(--color-gray-600);
+	font-size: var(--font-size-sm);
+	font-weight: var(--font-weight-bold);
+}
+.stepNum svg {
+	width: 14px;
+	height: 14px;
+}
+.stepActive .stepNum {
+	background: var(--color-primary);
+	color: var(--color-white);
+}
+.stepDone,
+.stepActive .stepDone {
+	background: #e1f5ea;
+	color: #085028;
+}
+.stepText {
+	display: flex;
+	flex-direction: column;
+	min-width: 0;
+}
+.stepLabel {
 	font-size: var(--font-size-sm);
 	font-weight: var(--font-weight-semibold);
+	color: var(--color-gray-800);
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+.stepMeta {
+	font-size: var(--font-size-xs);
 	color: var(--color-gray-500);
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+.stepPanel {
+	background: var(--color-white);
+	border: 1px solid var(--color-gray-100);
+	border-radius: var(--radius-xl);
+	padding: var(--space-5);
+	min-height: 320px;
+}
+
+/* Tiêu đề nhóm trong 1 bước (vd "Giảng viên phụ trách" / "Buổi học") */
+.sectionTitle {
+	display: flex;
+	align-items: center;
+	gap: var(--space-2);
+	font-size: var(--font-size-sm);
+	font-weight: var(--font-weight-bold);
+	color: var(--color-gray-800);
+	margin: var(--space-5) 0 var(--space-3);
+}
+.sectionTitle:first-child {
+	margin-top: 0;
+}
+.sectionCount {
+	font-size: var(--font-size-xs);
+	font-weight: var(--font-weight-semibold);
+	color: var(--color-gray-500);
+	background: var(--color-gray-100);
+	padding: 1px 8px;
+	border-radius: var(--radius-full);
+}
+.chipList {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--space-2);
+}
+.chip {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	padding: 5px 6px 5px 12px;
+	border: 1px solid var(--color-gray-200);
+	border-radius: var(--radius-full);
+	background: var(--color-gray-50);
+	font-size: var(--font-size-compact);
+	color: var(--color-gray-800);
+}
+.chipMeta {
+	color: var(--color-gray-500);
+}
+.chipRemove {
+	display: grid;
+	place-items: center;
+	width: 20px;
+	height: 20px;
+	border: none;
+	border-radius: var(--radius-full);
+	background: transparent;
+	color: var(--color-gray-400);
 	cursor: pointer;
-	border-bottom: 2px solid transparent;
 }
-.detailTabBtnActive {
+.chipRemove:hover:not(:disabled) {
+	background: #fcebeb;
+	color: #d63b3b;
+}
+.chipRemove svg {
+	width: 12px;
+	height: 12px;
+}
+.segment {
+	display: inline-flex;
+	gap: 4px;
+	padding: 3px;
+	border-radius: var(--radius-lg);
+	background: var(--color-gray-100);
+	margin-bottom: var(--space-3);
+}
+.segBtn {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	padding: 6px 12px;
+	border: none;
+	border-radius: var(--radius-md);
+	background: transparent;
+	font-family: var(--font-body);
+	font-size: var(--font-size-compact);
+	font-weight: var(--font-weight-semibold);
+	color: var(--color-gray-600);
+	cursor: pointer;
+}
+.segBtn svg {
+	width: 14px;
+	height: 14px;
+}
+.segBtnActive {
+	background: var(--color-white);
 	color: var(--color-primary-dark);
-	border-bottom-color: var(--color-primary);
+	box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
 }
-.detailBody {
-	padding: var(--space-5) var(--space-6);
+.weekdayGroup {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 4px;
+}
+
+/* Chọn chương trình trong form khóa học */
+.pickList {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--space-2);
+	max-height: 168px;
 	overflow-y: auto;
-	flex: 1;
+}
+.pickChip {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+	padding: 6px 12px;
+	border: 1.5px solid var(--color-gray-200);
+	border-radius: var(--radius-full);
+	background: var(--color-white);
+	font-family: var(--font-body);
+	font-size: var(--font-size-compact);
+	color: var(--color-gray-700);
+	cursor: pointer;
+}
+.pickChip svg {
+	width: 12px;
+	height: 12px;
+}
+.pickChipOn {
+	border-color: var(--color-primary);
+	background: var(--color-primary-pale, #eff6ff);
+	color: var(--color-primary-dark);
+	font-weight: var(--font-weight-semibold);
 }
 .subToolbar {
 	display: flex;
@@ -421,6 +602,14 @@
 
 /* ── RESPONSIVE ──────────────────────────── */
 @media (max-width: 900px) {
+	.steps {
+		grid-template-columns: repeat(5, minmax(150px, 1fr));
+		overflow-x: auto;
+		scrollbar-width: thin;
+	}
+	.stepPanel {
+		padding: var(--space-3);
+	}
 	.table {
 		display: block;
 		overflow-x: auto;

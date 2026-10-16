@@ -1,30 +1,21 @@
 import { showToast } from '@/shared/utils/feedback';
 import { useCallback, useEffect, useState } from 'react';
-import { apiClient } from '../../../shared/api/axios';
 import { useRealtimeUpdate } from '../../../layouts/hooks/useRealtime';
 import { bulkToast, runBulk } from '../../../shared/utils/runBulk';
 import { createCourse, deleteCourse, getCourses, updateCourse } from '../api/courseApi';
 import { EMPTY_FORM, type Course, type CourseFormData, type ModalType } from '../types/course.type';
 import { DEFAULT_PAGE_SIZE } from '@/shared/utils/constants';
 
-export interface SimpleItem {
-	id: string;
-	name: string;
-}
-
 export function useCourses() {
 	// Chỉ chứa các dòng của TRANG hiện tại — server lo tìm kiếm & phân trang
 	const [courses, setCourses] = useState<Course[]>([]);
 	const [total, setTotal] = useState(0);
-	const [programs, setPrograms] = useState<SimpleItem[]>([]);
-	const [forms, setForms] = useState<SimpleItem[]>([]);
 	const [isLoadingData, setIsLoadingData] = useState(true);
 	const [search, setSearch] = useState('');
 	const [debouncedSearch, setDebouncedSearch] = useState('');
 	const [modal, setModal] = useState<ModalType>(null);
 	const [editingCourse, setEditingCourse] = useState<Course | null>(null);
 	const [deletingCourse, setDeletingCourse] = useState<Course | null>(null);
-	const [detailCourse, setDetailCourse] = useState<Course | null>(null);
 	const [loading, setLoading] = useState(false);
 	const [pageSize, setPageSize] = useState<number>(DEFAULT_PAGE_SIZE);
 	const [page, setPage] = useState(1);
@@ -58,11 +49,6 @@ export function useCourses() {
 		})();
 		return () => controller.abort();
 	}, [page, pageSize, debouncedSearch, refreshKey]);
-
-	useEffect(() => {
-		apiClient.get<{ data: SimpleItem[] }>('/training-programs?limit=0').then((r) => setPrograms(r.data)).catch(() => {});
-		apiClient.get<{ data: SimpleItem[] }>('/training-forms?limit=0').then((r) => setForms(r.data)).catch(() => {});
-	}, []);
 
 	const totalPages = pageSize === 0 ? 1 : Math.max(1, Math.ceil(total / pageSize));
 	const safePage = Math.min(page, totalPages);
@@ -152,16 +138,14 @@ export function useCourses() {
 	);
 
 	return {
+		refreshData,
 		courses,
 		fetchAllIds,
-		programs,
-		forms,
 		isLoadingData,
 		search,
 		modal,
 		editingCourse,
 		deletingCourse,
-		detailCourse,
 		loading,
 		pageSize,
 		page,
@@ -173,7 +157,6 @@ export function useCourses() {
 		setModal,
 		setEditingCourse,
 		setDeletingCourse,
-		setDetailCourse,
 		setPage,
 		handleSearch,
 		handlePageSize,

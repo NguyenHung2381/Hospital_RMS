@@ -12,17 +12,42 @@ import { RoundDeleteModal } from '../components/RoundDeleteModal';
 import { RoundModal } from '../components/RoundModal';
 import { useRound } from '../hooks/useRound';
 import styles from './Round.module.css';
+import { ExcelActions, type ExcelColumn } from '@/shared/components/Excel';
+import type { ResearchRound } from '../types/round.type';
+import { STATUS_CFG } from '../utils/roundHelpers';
+
+const EXCEL_COLS: ExcelColumn<ResearchRound>[] = [
+	{ header: 'Năm', value: (r) => r.year },
+	{ header: 'Đợt số', value: (r) => r.round_number },
+	{ header: 'Tên đợt', value: (r) => r.name },
+	{ header: 'Loại đợt', value: (r) => r.round_type_name },
+	{ header: 'Ngày bắt đầu', value: (r) => r.start_date },
+	{ header: 'Ngày kết thúc', value: (r) => r.end_date },
+	{ header: 'Trạng thái', value: (r) => STATUS_CFG[r.status]?.label },
+	{ header: 'Tổng đề tài', value: (r) => r.topic_total },
+	{ header: 'Đang thực hiện', value: (r) => r.topic_active },
+	{ header: 'Chờ duyệt', value: (r) => r.topic_pending },
+	{ header: 'Hoàn thành', value: (r) => r.topic_completed },
+];
 
 export default function Round() {
 	const d = useRound();
 
 	const headerActions = (
-		<button
-			className={styles.btnPrimary}
-			onClick={() => d.setShowCreate(true)}
-		>
-			<PlusSvg style={{ width: 14, height: 14 }} /> Tạo đợt nghiên cứu
-		</button>
+		<div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+			<ExcelActions
+				fileName='dot-nghien-cuu'
+				itemLabel='đợt'
+				columns={EXCEL_COLS}
+				getRows={() => d.filtered}
+			/>
+			<button
+				className={styles.btnPrimary}
+				onClick={() => d.setShowCreate(true)}
+			>
+				<PlusSvg style={{ width: 14, height: 14 }} /> Tạo đợt nghiên cứu
+			</button>
+		</div>
 	);
 
 	return (

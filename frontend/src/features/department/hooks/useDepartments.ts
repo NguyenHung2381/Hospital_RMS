@@ -158,6 +158,7 @@ export function useDepartments() {
 
 	return {
 		depts,
+		refreshData,
 		fetchAllIds,
 		isLoadingData,
 		search,

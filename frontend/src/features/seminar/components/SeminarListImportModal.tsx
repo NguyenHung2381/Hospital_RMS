@@ -7,7 +7,7 @@ import {
 	type SeminarListImportResult,
 	type SeminarListImportRow,
 } from '../types/seminar.type';
-import { saveBlob } from '../utils/saveBlob';
+import { saveBlob } from '@/shared/utils/saveBlob';
 import styles from '../pages/Seminar.module.css';
 import tbl from '@/shared/components/Table/Table.module.css';
 import { useClientPaging } from '@/shared/hooks/useClientPaging';

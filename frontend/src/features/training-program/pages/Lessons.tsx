@@ -3,6 +3,10 @@ import { SearchInput, SelectionCount, RowAction, RowActions } from '@/shared/com
 import { useState } from 'react';
 import { DocSvg, PlusSvg, TrashSvg } from '@/assets/icons';
 import AdminLayout from '../../../layouts/AdminLayout';
+import { ExcelActions, type ExcelColumn } from '@/shared/components/Excel';
+import { isYes, matchLabel, nameMap, numText } from '@/shared/components/Excel/excelHelpers';
+import { createLesson, setLessonPrograms } from '../api/trainingProgramApi';
+import type { Lesson } from '../types/trainingProgram.type';
 import { SkeletonTable } from '../../../shared/components/Loading';
 import { Pagination } from '../../../shared/components/Table/Pagination';
 import sel from '../../../shared/components/Table/RowSelect.module.css';
@@ -19,19 +23,61 @@ export default function Lessons() {
 	const rowSel = useRowSelection(d.paged.map((x) => x.id));
 	const [docsLesson, setDocsLesson] = useState<{ id: string; title: string } | null>(null);
 
+	const programNames = nameMap(d.programs, (p) => p.name);
+	const excelCols: ExcelColumn<Lesson>[] = [
+		{ header: 'Mã bài học', key: 'code', required: true, value: (x) => x.code },
+		{ header: 'Tên bài học', key: 'title', required: true, value: (x) => x.title },
+		{ header: 'Giờ lý thuyết', key: 'theory_hours', value: (x) => x.theory_hours },
+		{ header: 'Giờ thực hành', key: 'practice_hours', value: (x) => x.practice_hours },
+		{ header: 'Tín chỉ', key: 'credits', value: (x) => x.credits },
+		{
+			header: 'Chương trình',
+			key: 'programs',
+			value: (x) => (x.program_ids ?? '').split(',').filter(Boolean).map((id) => programNames[id] ?? id).join('; '),
+		},
+		{ header: 'Hoạt động', key: 'is_active', value: (x) => (x.is_active ? 'Có' : 'Không') },
+		{ header: 'Mô tả', key: 'description', value: (x) => x.description },
+	];
+
 	const headerActions = (
-		<button
-			className={styles.btnAddHeader}
-			onClick={() => d.setFormModal({ mode: 'add' })}
-		>
-			<PlusSvg /> Thêm bài học
-		</button>
+		<div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+			<ExcelActions
+				fileName='bai-hoc'
+				itemLabel='bài học'
+				columns={excelCols}
+				getRows={() => d.filtered}
+				importRow={async (r) => {
+					const programIds = r.programs
+						.split(/[;\n]/)
+						.map((t) => matchLabel(programNames, t, 'Chương trình'))
+						.filter((id): id is string => !!id);
+					const { id } = await createLesson({
+						code: r.code,
+						title: r.title,
+						description: r.description,
+						is_active: isYes(r.is_active, true),
+						theory_hours: numText(r.theory_hours),
+						practice_hours: numText(r.practice_hours),
+						credits: numText(r.credits),
+						program_ids: programIds,
+					});
+					if (programIds.length) await setLessonPrograms(id, programIds);
+				}}
+				onImported={d.refreshData}
+			/>
+			<button
+				className={styles.btnAddHeader}
+				onClick={() => d.setFormModal({ mode: 'add' })}
+			>
+				<PlusSvg /> Thêm bài học
+			</button>
+		</div>
 	);
 
 	return (
 		<AdminLayout
 			pageTitle='Bài học'
-			pageSubtitle='Quản lý toàn bộ bài học dùng chung cho các chương trình đào tạo'
+			pageSubtitle='Bài học dùng chung cho các chương trình đào tạo — lọc theo chương trình để xem nội dung từng chương trình'
 			breadcrumbs={[{ label: 'Đào tạo' }]}
 			headerActions={headerActions}
 		>
@@ -46,6 +92,16 @@ export default function Lessons() {
 							onBulkDelete={d.handleBulkDelete}
 						>
 							{d.filtered.length} bài học
+							{d.unusedCount > 0 && (
+								<button
+									type='button'
+									className={styles.clearSelectionBtn}
+									title='Bài học chưa gắn vào chương trình nào'
+									onClick={() => d.handleProgramFilter('none')}
+								>
+									{d.unusedCount} chưa dùng
+								</button>
+							)}
 						</SelectionCount>
 					</div>
 					<div className={styles.tableControls}>
@@ -54,6 +110,40 @@ export default function Lessons() {
 							onChange={d.handleSearch}
 							placeholder='Tìm theo tên/mã bài học...'
 						/>
+						<select
+							className={`${styles.filterSelect} ${d.programFilter ? styles.filterActive : ''}`}
+							value={d.programFilter}
+							onChange={(e) => d.handleProgramFilter(e.target.value)}
+						>
+							<option value=''>Tất cả chương trình</option>
+							{d.programs.map((p) => (
+								<option
+									key={p.id}
+									value={p.id}
+								>
+									{p.name}
+								</option>
+							))}
+							<option value='none'>Chưa thuộc chương trình nào</option>
+						</select>
+						<select
+							className={`${styles.filterSelect} ${d.statusFilter ? styles.filterActive : ''}`}
+							value={d.statusFilter}
+							onChange={(e) => d.handleStatusFilter(e.target.value as '' | 'active' | 'inactive')}
+						>
+							<option value=''>Tất cả trạng thái</option>
+							<option value='active'>Hoạt động</option>
+							<option value='inactive'>Ngưng hoạt động</option>
+						</select>
+						{d.hasFilter && (
+							<button
+								type='button'
+								className={styles.clearSelectionBtn}
+								onClick={d.clearFilters}
+							>
+								Xoá lọc
+							</button>
+						)}
 						<DeleteAllButton
 							count={d.filtered.length}
 							itemLabel='bài học'
@@ -98,7 +188,7 @@ export default function Lessons() {
 										<div className={styles.emptyState}>
 											<div className={styles.emptyTitle}>Không tìm thấy bài học</div>
 											<div className={styles.emptyDesc}>
-												{d.search ? 'Thử thay đổi từ khoá tìm kiếm' : 'Chưa có bài học nào'}
+												{d.hasFilter ? 'Thử thay đổi từ khoá hoặc bộ lọc' : 'Chưa có bài học nào'}
 											</div>
 										</div>
 									</td>
@@ -126,7 +216,16 @@ export default function Lessons() {
 												<span className={styles.itemName}>{l.title}</span>
 											</td>
 											<td className={styles.td}>
-												<span className={styles.descText}>{l.program_names ?? '—'}</span>
+												{l.program_names ? (
+													<span className={styles.descText}>{l.program_names}</span>
+												) : (
+													<span
+														className={styles.badge}
+														style={{ background: '#faeeda', color: '#633806' }}
+													>
+														Chưa dùng
+													</span>
+												)}
 											</td>
 											<td className={styles.td}>
 												<span className={styles.descText}>

@@ -196,6 +196,7 @@ export function useTrainingPrograms() {
 	}, []);
 
 	return {
+		refreshData,
 		programs,
 		departments,
 		traineeTypes,

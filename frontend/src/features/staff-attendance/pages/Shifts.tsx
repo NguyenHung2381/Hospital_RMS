@@ -12,8 +12,21 @@ import { PatternUsersModal } from '../components/PatternUsersModal';
 import { ShiftBadge } from '../components/ShiftBadge';
 import { ShiftFormModal } from '../components/ShiftFormModal';
 import styles from './Shifts.module.css';
+import { ExcelActions, type ExcelColumn } from '@/shared/components/Excel';
 
 type Tab = 'shifts' | 'patterns';
+
+const SHIFT_EXCEL_COLS: ExcelColumn<WorkShift>[] = [
+	{ header: 'Mã ca', value: (s) => s.code },
+	{ header: 'Tên ca', value: (s) => s.name },
+	{ header: 'Giờ vào', value: (s) => s.start_time.slice(0, 5) },
+	{ header: 'Giờ ra', value: (s) => s.end_time.slice(0, 5) },
+	{ header: 'Thời lượng', value: (s) => describeDuration(s) },
+	{ header: 'Chấm vào sớm nhất (phút)', value: (s) => s.checkin_before_min },
+	{ header: 'Chấm ra muộn nhất (phút)', value: (s) => s.checkout_after_min },
+	{ header: 'Du di (phút)', value: (s) => s.grace_min },
+	{ header: 'Đang dùng', value: (s) => (s.is_active ? 'Có' : 'Không') },
+];
 
 export default function Shifts() {
 	const [tab, setTab] = useState<Tab>('shifts');
@@ -61,9 +74,14 @@ export default function Shifts() {
 			pageTitle='Ca làm việc'
 			pageSubtitle='Ca làm và mẫu ca theo tuần — nhân viên chỉ chấm công được trong giờ ca của mình'
 			headerActions={
-				<Button icon={<PlusSvg />} onClick={() => (tab === 'shifts' ? setEditShift(null) : setEditPattern(null))}>
-					{tab === 'shifts' ? 'Thêm ca' : 'Thêm mẫu ca tuần'}
-				</Button>
+				<div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+					{tab === 'shifts' && (
+						<ExcelActions fileName='ca-lam-viec' itemLabel='ca làm' columns={SHIFT_EXCEL_COLS} getRows={() => shifts} />
+					)}
+					<Button icon={<PlusSvg />} onClick={() => (tab === 'shifts' ? setEditShift(null) : setEditPattern(null))}>
+						{tab === 'shifts' ? 'Thêm ca' : 'Thêm mẫu ca tuần'}
+					</Button>
+				</div>
 			}
 		>
 			<div className={tbl.tableCard}>

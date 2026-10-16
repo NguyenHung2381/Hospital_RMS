@@ -8,7 +8,7 @@ import { usePermission } from '@/shared/hooks/usePermission';
 import tbl from '@/shared/components/Table/Table.module.css';
 // Dùng chung style hộp thoại nhập Excel với CME / hội thảo
 import styles from '@/features/seminar/pages/Seminar.module.css';
-import { saveBlob } from '@/features/seminar/utils/saveBlob';
+import { saveBlob } from '@/shared/utils/saveBlob';
 import {
 	downloadTopicImportTemplate,
 	getLevels,

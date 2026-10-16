@@ -4,7 +4,7 @@ import { venueApi } from '../api/venueApi';
 import type { Venue, VenueScope } from '../types/venue.type';
 
 // Nhiều ô chọn địa điểm có thể mount cùng lúc (vd: form thêm + các dòng sửa
-// trong ProgramLinksTab) ⇒ dùng chung 1 request thay vì mỗi ô tự gọi API.
+// trong form buổi học) ⇒ dùng chung 1 request thay vì mỗi ô tự gọi API.
 // `force` (từ realtime) bắn đồng thời ở mọi ô đang mount ⇒ gộp các lần tải lại
 // trong cùng 1 giây thành 1 request.
 let cache: Promise<Venue[]> | null = null;

@@ -146,6 +146,7 @@ export function useExternalReviewers() {
 
 	return {
 		reviewers,
+		refreshData,
 		isLoadingData,
 		search,
 		setSearch,

@@ -33,10 +33,10 @@ const listQuestions = async ({ subject_id, search, question_type } = {}) => {
 		req.input('search', sql.NVarChar, `%${search}%`);
 	}
 	const r = await req.query(`
-    SELECT q.*, s.name AS subject_name,
+    SELECT q.*, s.title AS subject_name,
            (SELECT COUNT(*) FROM exam_paper_questions epq WHERE epq.question_id = q.id) AS used_count
     FROM question_bank q
-    LEFT JOIN subjects s ON s.id = q.subject_id
+    LEFT JOIN program_lessons s ON s.id = q.subject_id
     WHERE ${where.join(' AND ')}
     ORDER BY q.created_at DESC
   `);
@@ -158,12 +158,12 @@ const removeQuestion = async (id) => {
 
 // ─── Đề thi ──────────────────────────────────────────────────────────────────
 const paperSelect = `
-  SELECT p.*, c.name AS course_name, s.name AS subject_name,
+  SELECT p.*, c.name AS course_name, s.title AS subject_name,
          (SELECT COUNT(*) FROM exam_paper_questions epq WHERE epq.paper_id = p.id) AS question_count,
          (SELECT COUNT(*) FROM exam_attempts a WHERE a.paper_id = p.id) AS attempt_count
   FROM exam_papers p
   JOIN courses c ON c.id = p.course_id
-  LEFT JOIN subjects s ON s.id = p.subject_id
+  LEFT JOIN program_lessons s ON s.id = p.subject_id
 `;
 
 const listPapers = async (courseId) => {

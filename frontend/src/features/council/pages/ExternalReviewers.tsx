@@ -17,9 +17,22 @@ import { ExternalReviewerDeleteModal } from '../components/ExternalReviewerDelet
 import { ExternalReviewerFormModal } from '../components/ExternalReviewerFormModal';
 import { useExternalReviewers } from '../hooks/useExternalReviewers';
 import styles from './Council.module.css';
+import { ExcelActions, type ExcelColumn } from '@/shared/components/Excel';
+import { createExternalReviewer } from '../api/externalReviewerApi';
+import type { ExternalReviewer } from '../types/council.type';
 import tbl from '@/shared/components/Table/Table.module.css';
 import { useClientPaging } from '@/shared/hooks/useClientPaging';
 import { Pagination } from '@/shared/components/Table/Pagination';
+
+const EXCEL_COLS: ExcelColumn<ExternalReviewer>[] = [
+	{ header: 'Họ và tên', key: 'full_name', required: true, value: (x) => x.full_name },
+	{ header: 'Đơn vị công tác', key: 'organization', value: (x) => x.organization },
+	{ header: 'Hệ chuyên môn', key: 'specialty_group', value: (x) => x.specialty_group },
+	{ header: 'Số điện thoại', key: 'phone', value: (x) => x.phone },
+	{ header: 'Email', key: 'email', value: (x) => x.email },
+	{ header: 'Ghi chú', key: 'note', value: (x) => x.note },
+	{ header: 'Trạng thái', value: (x) => (x.is_active ? 'Đang hoạt động' : 'Ngưng') },
+];
 
 export default function ExternalReviewers() {
 	const d = useExternalReviewers();
@@ -29,12 +42,31 @@ export default function ExternalReviewers() {
 	const [confirmBulkDelete, setConfirmBulkDelete] = useState(false);
 
 	const headerActions = (
-		<button
-			className={styles.btnCreateCouncil}
-			onClick={() => d.setModal('add')}
-		>
-			<PlusSvg /> Thêm người ngoài viện
-		</button>
+		<div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+			<ExcelActions
+				fileName='nguoi-ngoai-vien'
+				itemLabel='người ngoài viện'
+				columns={EXCEL_COLS}
+				getRows={() => d.filtered}
+				importRow={(r) =>
+					createExternalReviewer({
+						full_name: r.full_name,
+						organization: r.organization,
+						specialty_group: r.specialty_group,
+						phone: r.phone,
+						email: r.email,
+						note: r.note,
+					})
+				}
+				onImported={d.refreshData}
+			/>
+			<button
+				className={styles.btnCreateCouncil}
+				onClick={() => d.setModal('add')}
+			>
+				<PlusSvg /> Thêm người ngoài viện
+			</button>
+		</div>
 	);
 
 	return (

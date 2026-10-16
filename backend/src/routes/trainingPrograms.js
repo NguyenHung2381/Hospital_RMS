@@ -4,7 +4,6 @@ const ctrl = require('../controllers/trainingProgramController');
 const trainingProgramService = require('../services/trainingProgramService');
 const { authenticate, authorizePermission } = require('../middlewares/auth');
 const { validate } = require('../middlewares/errorHandler');
-const { success } = require('../utils/response');
 const { createTrainingUpload } = require('../middlewares/uploadTraining');
 
 const uploadLessonDoc = createTrainingUpload('lesson_document', {
@@ -33,7 +32,6 @@ router.post(
 		body('duration').optional({ checkFalsy: true }).trim().isLength({ max: 100 }),
 		body('max_capacity').optional({ checkFalsy: true }).isInt({ min: 1 }),
 		body('display_order').optional({ checkFalsy: true }).isInt(),
-		body('subject_ids').optional().isArray(),
 	],
 	validate,
 	ctrl.createOne,
@@ -48,37 +46,12 @@ router.put(
 		body('duration').optional({ checkFalsy: true }).trim().isLength({ max: 100 }),
 		body('max_capacity').optional({ checkFalsy: true }).isInt({ min: 1 }),
 		body('display_order').optional({ checkFalsy: true }).isInt(),
-		body('subject_ids').optional().isArray(),
 	],
 	validate,
 	ctrl.updateOne,
 );
 
 router.delete('/:id', authorizePermission(['training_programs', 'delete']), ctrl.removeOne);
-
-// Môn học của chương trình (N:N) — mirror /round-types/:id/levels
-router.get('/:id/subjects', authorizePermission(['training_programs', 'read']), async (req, res, next) => {
-	try {
-		return success(res, await trainingProgramService.getSubjectIds(req.params.id));
-	} catch (e) {
-		next(e);
-	}
-});
-
-router.put(
-	'/:id/subjects',
-	authorizePermission(['training_programs', 'update']),
-	[body('subject_ids').isArray().withMessage('subject_ids phải là mảng')],
-	validate,
-	async (req, res, next) => {
-		try {
-			const ids = await trainingProgramService.setSubjectIds(req.params.id, req.body.subject_ids);
-			return success(res, ids, 'Đã cập nhật môn học cho chương trình');
-		} catch (e) {
-			next(e);
-		}
-	},
-);
 
 // ─── Bài học (program_lessons) — nội dung dùng chung, tách khỏi lịch học cụ
 // thể của khóa (class_sessions ở module Khóa học). 1 bài học có thể gắn vào

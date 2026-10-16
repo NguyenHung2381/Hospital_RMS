@@ -3,6 +3,8 @@ import { showToast } from '@/shared/utils/feedback';
 import { useEffect, useMemo, useState } from 'react';
 import { BuildingSvg, EditSvg, PlusSvg, SearchSvg, TrashSvg, XSvg } from '@/assets/icons';
 import AdminLayout from '../../../layouts/AdminLayout';
+import { ExcelActions, type ExcelColumn } from '@/shared/components/Excel';
+import { isYes, matchLabel, numText } from '@/shared/components/Excel/excelHelpers';
 import { useRealtimeUpdate } from '../../../layouts/hooks/useRealtime';
 import { Badge } from '../../../shared/components';
 import { SkeletonTable } from '../../../shared/components/Loading';
@@ -16,6 +18,19 @@ import { SCOPE_LABEL } from '../utils/venueScope';
 import styles from './Venues.module.css';
 import tbl from '@/shared/components/Table/Table.module.css';
 import { DEFAULT_PAGE_SIZE } from '@/shared/utils/constants';
+
+const SCOPE_TEXT = Object.fromEntries(
+	Object.entries(SCOPE_LABEL).map(([k, v]) => [k, v.label]),
+) as Record<VenueScope, string>;
+
+const EXCEL_COLS: ExcelColumn<Venue>[] = [
+	{ header: 'Tên địa điểm', key: 'name', required: true, value: (x) => x.name },
+	{ header: 'Địa chỉ', key: 'address', value: (x) => x.address },
+	{ header: 'Sức chứa', key: 'capacity', value: (x) => x.capacity },
+	{ header: 'Phạm vi dùng', key: 'usage_scope', value: (x) => SCOPE_TEXT[x.usage_scope] },
+	{ header: 'Đang dùng', key: 'is_active', value: (x) => (x.is_active ? 'Có' : 'Không') },
+	{ header: 'Mô tả', key: 'description', value: (x) => x.description },
+];
 
 export default function Venues() {
 	const { has } = usePermission();
@@ -106,14 +121,36 @@ export default function Venues() {
 			pageSubtitle='Phòng họp bảo vệ đề cương, hội trường và phòng học dùng khi xếp lịch'
 			breadcrumbs={[{ label: 'Hệ thống' }]}
 			headerActions={
-				canCreate && (
-					<button
-						className={base.btnAddHeader}
-						onClick={() => setEditing('new')}
-					>
-						<PlusSvg /> Thêm địa điểm
-					</button>
-				)
+				<div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+					<ExcelActions
+						fileName='dia-diem'
+						itemLabel='địa điểm'
+						columns={EXCEL_COLS}
+						getRows={() => filtered}
+						importRow={
+							canCreate
+								? (r) =>
+										venueApi.create({
+											name: r.name,
+											address: r.address,
+											capacity: numText(r.capacity),
+											usage_scope: matchLabel(SCOPE_TEXT, r.usage_scope, 'Phạm vi dùng') ?? 'both',
+											is_active: isYes(r.is_active, true),
+											description: r.description,
+										})
+								: undefined
+						}
+						onImported={() => setRefreshKey((k) => k + 1)}
+					/>
+					{canCreate && (
+						<button
+							className={base.btnAddHeader}
+							onClick={() => setEditing('new')}
+						>
+							<PlusSvg /> Thêm địa điểm
+						</button>
+					)}
+				</div>
 			}
 		>
 			<div className={base.tableCard}>

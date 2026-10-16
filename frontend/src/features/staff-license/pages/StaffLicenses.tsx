@@ -10,8 +10,22 @@ import { formatDateOr } from '@/shared/utils';
 import { StaffLicenseFormModal } from '../components/StaffLicenseFormModal';
 import { StaffLicenseImportModal } from '../components/StaffLicenseImportModal';
 import { useStaffLicenses } from '../hooks/useStaffLicenses';
-import type { StaffLicense } from '../types/staffLicense.type';
+import { FIELD_LABELS, LICENSE_FIELDS, type LicenseField, type StaffLicense } from '../types/staffLicense.type';
+import { getStaffLicenses } from '../api/staffLicenseApi';
+import { ExcelActions, type ExcelColumn } from '@/shared/components/Excel';
+import { formatDateVN } from '@/shared/utils/formatDate';
 import styles from './StaffLicenses.module.css';
+
+const DATE_FIELDS = new Set<LicenseField>(['issued_date', 'scope_adjusted_date']);
+const EXCEL_COLS: ExcelColumn<StaffLicense>[] = [
+	{ header: 'Mã nhân viên', value: (x) => x.staff_number },
+	{ header: 'Họ và tên', value: (x) => x.user_full_name },
+	{ header: 'Khoa/phòng', value: (x) => x.department_name },
+	...LICENSE_FIELDS.map((f) => ({
+		header: FIELD_LABELS[f],
+		value: (x: StaffLicense) => (DATE_FIELDS.has(f) ? formatDateVN(x[f]) : x[f]),
+	})),
+];
 
 export default function StaffLicenses() {
 	const d = useStaffLicenses();
@@ -22,7 +36,27 @@ export default function StaffLicenses() {
 	const [showImport, setShowImport] = useState(false);
 
 	const headerActions = (
-		<div style={{ display: 'flex', gap: 8 }}>
+		<div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+			<ExcelActions
+				fileName='chung-chi-hanh-nghe'
+				itemLabel='hồ sơ'
+				columns={EXCEL_COLS}
+				getRows={async () => {
+					// API giới hạn 100 dòng/trang → lấy lần lượt đến hết
+					const all: StaffLicense[] = [];
+					for (let page = 1; ; page++) {
+						const res = await getStaffLicenses({
+							page,
+							limit: 100,
+							search: d.search,
+							department_id: d.departmentId,
+							has_license: d.hasLicense,
+						});
+						all.push(...res.data);
+						if (all.length >= res.pagination.total || !res.data.length) return all;
+					}
+				}}
+			/>
 			<Can permission='staff_licenses:update'>
 				<button className={styles.btnAddHeader} onClick={() => setShowImport(true)}>
 					<UploadSvg /> Cập nhật từ Excel

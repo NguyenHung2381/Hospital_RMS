@@ -7,8 +7,7 @@ export type CatalogTab =
 	| 'round-types'
 	| 'trainee-types'
 	| 'training-forms'
-	| 'training-types'
-	| 'subjects';
+	| 'training-types';
 
 export type ModalType = 'add' | 'edit' | 'delete' | null;
 

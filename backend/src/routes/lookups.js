@@ -612,14 +612,14 @@ router.put(
 	},
 );
 
-// ─── Danh mục Đào tạo (trainee_types, training_forms, training_types, subjects, cme_credit_categories, cme_credit_groups) ──
+// ─── Danh mục Đào tạo (trainee_types, training_forms, training_types, cme_credit_categories, cme_credit_groups) ──
+// "Môn học" (subjects) đã gộp vào Bài học (program_lessons) — xem 2026-11-01_lessons_replace_subjects.sql.
 // Shape id/name/description/audit giống categories/levels ⇒ dùng thẳng crudService(), không cần override.
 // 2 bảng CME có thêm cột (công thức quy đổi, thứ tự) + mã tự đặt ⇒ khai báo riêng bên dưới.
 const TRAINING_CATALOG_TABLES = {
 	'trainee-types': 'trainee_types',
 	'training-forms': 'training_forms',
 	'training-types': 'training_types',
-	subjects: 'subjects',
 };
 
 const CME_CATEGORY_EXTRA_FIELDS = [

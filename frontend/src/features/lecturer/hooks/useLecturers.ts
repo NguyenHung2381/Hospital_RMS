@@ -149,6 +149,7 @@ export function useLecturers() {
 	);
 
 	return {
+		refreshData,
 		lecturers,
 		fetchAllIds,
 		isLoadingData,

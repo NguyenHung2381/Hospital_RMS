@@ -472,6 +472,16 @@ const migrateRolesAndSessions = async ({ dryRun = false } = {}) => {
       IF OBJECT_ID('staff_attendance', 'U') IS NOT NULL AND OBJECT_ID('UQ_staff_attendance_user_date_shift', 'UQ') IS NULL
         ALTER TABLE staff_attendance ADD CONSTRAINT UQ_staff_attendance_user_date_shift UNIQUE (user_id, work_date, shift_id);
     `);
+		// Luồng Đào tạo (khóa học ↔ kế hoạch, môn học → bài học): chạy thẳng file
+		// migration idempotent, tách batch theo GO, bỏ USE/PRINT.
+		const flowSql = require('fs').readFileSync(
+			require('path').join(__dirname, '../../migrations/2026-11-01_training_flow.sql'),
+			'utf8',
+		);
+		for (const batch of flowSql.split(/^\s*GO\s*$/m)) {
+			const body = batch.replace(/^\s*(USE|PRINT)\b.*$/gm, '').trim();
+			if (body && !/^\/\*[\s\S]*\*\/$/.test(body)) await pool.request().query(body);
+		}
 	}
 
 	const sysPerm = (

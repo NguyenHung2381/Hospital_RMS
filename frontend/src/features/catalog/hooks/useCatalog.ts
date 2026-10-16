@@ -1,5 +1,5 @@
 import type { ComponentType } from 'react';
-import { BookOpenSvg, CalendarSvg, LayersSvg, TagSvg, UserCheckSvg } from '@/assets/icons';
+import { CalendarSvg, LayersSvg, TagSvg, UserCheckSvg } from '@/assets/icons';
 import { useClientPaging } from '@/shared/hooks/useClientPaging';
 import { showToast } from '@/shared/utils/feedback';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -64,20 +64,13 @@ export const TAB_CONFIG: Record<
 		realtime: 'training_type',
 		icon: TagSvg,
 	},
-	subjects: {
-		label: 'Môn học',
-		subtitle: 'Danh mục môn học dùng trong các chương trình đào tạo',
-		placeholder: 'VD: Cấp cứu cơ bản',
-		realtime: 'subject',
-		icon: BookOpenSvg,
-	},
 };
 
 export const CATALOG_GROUPS: Record<CatalogGroup, { title: string; tabs: CatalogTab[]; breadcrumb?: string }> = {
 	research: { title: 'Quản lý Danh mục', tabs: ['categories', 'levels', 'round-types'] },
 	training: {
 		title: 'Danh mục Đào tạo',
-		tabs: ['trainee-types', 'training-forms', 'training-types', 'subjects'],
+		tabs: ['trainee-types', 'training-forms', 'training-types'],
 		breadcrumb: 'Đào tạo',
 	},
 };
@@ -239,6 +232,7 @@ export function useCatalog(group: CatalogGroup) {
 
 	return {
 		tab,
+		refreshData,
 		tabs,
 		cfg,
 		items,

@@ -49,6 +49,8 @@ export interface Lesson {
 	total_hours: number;
 	credits: number;
 	program_names: string | null;
+	/** Id chương trình đang dùng bài học, nối bằng dấu phẩy (null = chưa thuộc chương trình nào). */
+	program_ids: string | null;
 	created_at: string;
 }
 

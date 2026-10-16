@@ -1,32 +1,16 @@
 import { useUploadPolicy } from '@/shared/hooks/useUploadPolicy';
-import { useMemo, useRef, useState } from 'react';
-import { DownloadSvg, FileSvg, LinkSvg, TrashSvg, UploadSvg, XSvg } from '@/assets/icons';
-import { Badge, type BadgeTone } from '@/shared/components';
+import { useState } from 'react';
+import { DownloadSvg, FileSvg, LinkSvg, TrashSvg, UploadSvg } from '@/assets/icons';
+import { Badge, FileDropzone } from '@/shared/components';
 import type { DocumentSource } from '../api/courseApi';
-import {
-	DOC_TYPE_CFG,
-	EXAM_TYPE_CFG,
-	type CourseDocument,
-	type DocType,
-	type ExamType,
-	type SourceType,
-} from '../types/course.type';
+import { DOC_TYPE_CFG, EXAM_TYPE_CFG, type CourseDocument, type DocType, type SourceType } from '../types/course.type';
 import styles from './CourseDocumentsTab.module.css';
-
-const DOC_TYPE_TONE: Record<DocType, BadgeTone> = {
-	material: 'blue',
-	test_question: 'amber',
-	test_answer: 'purple',
-};
-
-const DOC_TYPES = Object.keys(DOC_TYPE_CFG) as DocType[];
-const isTestDoc = (t: DocType) => t === 'test_question' || t === 'test_answer';
 
 const formatSize = (bytes: number) =>
 	bytes >= 1024 * 1024 ? `${(bytes / 1024 / 1024).toFixed(1)} MB` : `${Math.max(1, Math.round(bytes / 1024))} KB`;
 
-type DocFilter = DocType | 'all';
-
+// Chỉ còn tài liệu học tập — kiểm tra/thi làm ở bước "Thi & Kiểm tra" (đề online).
+// Đề/đáp án dạng file tải lên trước đây vẫn hiện trong danh sách, kèm nhãn.
 export function CourseDocumentsTab({
 	documents,
 	busy,
@@ -36,120 +20,48 @@ export function CourseDocumentsTab({
 }: {
 	documents: CourseDocument[];
 	busy: boolean;
-	onAdd: (
-		source: DocumentSource,
-		data: { doc_type: DocType; title: string; is_public: boolean; exam_type?: ExamType | '' },
-	) => Promise<boolean>;
+	onAdd: (source: DocumentSource, data: { doc_type: DocType; title: string; is_public: boolean }) => Promise<boolean>;
 	onRemove: (docId: string) => void;
 	onOpen: (docId: string) => void;
 }) {
-	const fileInputRef = useRef<HTMLInputElement>(null);
 	// Tài liệu theo Cấu hình hệ thống + video/audio bài giảng (allowMedia ở backend)
 	const uploadPolicy = useUploadPolicy({ allowMedia: true });
-	const [docType, setDocType] = useState<DocType>('test_question');
-	const [examType, setExamType] = useState<ExamType | ''>('');
 	const [title, setTitle] = useState('');
-	const [isPublic, setIsPublic] = useState(false);
+	const [isPublic, setIsPublic] = useState(true);
 	const [sourceType, setSourceType] = useState<SourceType>('file');
 	const [file, setFile] = useState<File | null>(null);
 	const [externalUrl, setExternalUrl] = useState('');
-	const [dragOver, setDragOver] = useState(false);
 	const [formError, setFormError] = useState('');
-	const [filter, setFilter] = useState<DocFilter>('all');
-
-	const counts = useMemo(() => {
-		const c: Record<DocFilter, number> = { all: documents.length, material: 0, test_question: 0, test_answer: 0 };
-		documents.forEach((doc) => (c[doc.doc_type] += 1));
-		return c;
-	}, [documents]);
-	const visibleDocs = filter === 'all' ? documents : documents.filter((doc) => doc.doc_type === filter);
-
-	const changeDocType = (t: DocType) => {
-		setDocType(t);
-		// Đề/đáp án mặc định không công khai để học viên không xem trước.
-		setIsPublic(!isTestDoc(t));
-		if (!isTestDoc(t)) setExamType('');
-	};
-
-	const pickFile = (f: File | undefined | null) => {
-		setFormError('');
-		setFile(f ?? null);
-	};
-
-	const clearFile = () => {
-		setFile(null);
-		if (fileInputRef.current) fileInputRef.current.value = '';
-	};
 
 	const submit = async () => {
 		setFormError('');
 		let source: DocumentSource;
 		if (sourceType === 'file') {
 			if (!file) return setFormError('Vui lòng chọn file cần tải lên.');
+			const err = uploadPolicy.check(file);
+			if (err) return setFormError(err);
 			source = { type: 'file', file };
 		} else {
 			const url = externalUrl.trim();
 			if (!/^https?:\/\//i.test(url)) return setFormError('Đường dẫn phải bắt đầu bằng http:// hoặc https://');
 			source = { type: 'link', external_url: url };
 		}
-		if (isTestDoc(docType) && !examType) return setFormError('Vui lòng chọn loại kiểm tra.');
-
 		const ok = await onAdd(source, {
-			doc_type: docType,
+			doc_type: 'material',
 			// Để trống → backend dùng tên file làm tiêu đề.
 			title: title.trim() || (sourceType === 'link' ? 'Liên kết' : ''),
 			is_public: isPublic,
-			exam_type: isTestDoc(docType) ? examType : '',
 		});
 		if (ok) {
 			setTitle('');
 			setExternalUrl('');
-			clearFile();
+			setFile(null);
 		}
 	};
 
 	return (
 		<>
 			<div className={styles.uploadCard}>
-				<div className={styles.field}>
-					<span className={styles.label}>Loại tài liệu</span>
-					<div className={styles.segment}>
-						{DOC_TYPES.map((t) => (
-							<button
-								key={t}
-								type='button'
-								className={`${styles.segBtn} ${docType === t ? styles.segBtnActive : ''}`}
-								onClick={() => changeDocType(t)}
-							>
-								{DOC_TYPE_CFG[t]}
-							</button>
-						))}
-					</div>
-				</div>
-
-				{isTestDoc(docType) && (
-					<div className={styles.field}>
-						<span className={styles.label}>
-							Loại kiểm tra <span className={styles.req}>*</span>
-						</span>
-						<div className={styles.segment}>
-							{(Object.keys(EXAM_TYPE_CFG) as ExamType[]).map((k) => (
-								<button
-									key={k}
-									type='button'
-									className={`${styles.segBtn} ${examType === k ? styles.segBtnActive : ''}`}
-									onClick={() => {
-										setExamType(k);
-										setFormError('');
-									}}
-								>
-									{EXAM_TYPE_CFG[k]}
-								</button>
-							))}
-						</div>
-					</div>
-				)}
-
 				<div className={styles.field}>
 					<div className={styles.labelRow}>
 						<span className={styles.label}>
@@ -172,54 +84,16 @@ export function CourseDocumentsTab({
 							</button>
 						</div>
 					</div>
-
 					{sourceType === 'file' ? (
-						<>
-							<input
-								ref={fileInputRef}
-								type='file'
-								accept={uploadPolicy.accept}
-								hidden
-								onChange={(e) => pickFile(e.target.files?.[0])}
-							/>
-							{file ? (
-								<div className={styles.fileChip}>
-									<FileSvg className={styles.fileChipIcon} />
-									<div className={styles.fileChipMain}>
-										<div className={styles.fileChipName}>{file.name}</div>
-										<div className={styles.fileChipMeta}>{formatSize(file.size)}</div>
-									</div>
-									<button
-										type='button'
-										className={styles.iconBtn}
-										title='Bỏ chọn file'
-										onClick={clearFile}
-									>
-										<XSvg />
-									</button>
-								</div>
-							) : (
-								<button
-									type='button'
-									className={`${styles.dropZone} ${dragOver ? styles.dropZoneActive : ''}`}
-									onClick={() => fileInputRef.current?.click()}
-									onDragOver={(e) => {
-										e.preventDefault();
-										setDragOver(true);
-									}}
-									onDragLeave={() => setDragOver(false)}
-									onDrop={(e) => {
-										e.preventDefault();
-										setDragOver(false);
-										pickFile(e.dataTransfer.files?.[0]);
-									}}
-								>
-									<UploadSvg className={styles.dropIcon} />
-									<span className={styles.dropTitle}>Kéo thả file vào đây hoặc bấm để chọn</span>
-									<span className={styles.dropHint}>PDF, Word, Excel, PowerPoint, ảnh, video, âm thanh, ZIP</span>
-								</button>
-							)}
-						</>
+						<FileDropzone
+							accept={uploadPolicy.accept}
+							value={file}
+							onChange={(f) => {
+								setFile(f);
+								setFormError('');
+							}}
+							disabled={busy}
+						/>
 					) : (
 						<input
 							className={styles.input}
@@ -237,9 +111,7 @@ export function CourseDocumentsTab({
 					<span className={styles.label}>Tiêu đề</span>
 					<input
 						className={styles.input}
-						placeholder={
-							sourceType === 'file' ? 'Để trống sẽ dùng tên file' : 'VD: Đề kiểm tra giữa kỳ - Nội khoa'
-						}
+						placeholder={sourceType === 'file' ? 'Để trống sẽ dùng tên file' : 'VD: Bài giảng Hồi sức cơ bản'}
 						value={title}
 						onChange={(e) => setTitle(e.target.value)}
 					/>
@@ -266,26 +138,11 @@ export function CourseDocumentsTab({
 				</div>
 			</div>
 
-			<div className={styles.filterBar}>
-				{(['all', ...DOC_TYPES] as DocFilter[]).map((f) => (
-					<button
-						key={f}
-						type='button'
-						className={`${styles.filterChip} ${filter === f ? styles.filterChipActive : ''}`}
-						onClick={() => setFilter(f)}
-					>
-						{f === 'all' ? 'Tất cả' : DOC_TYPE_CFG[f]} <span className={styles.filterCount}>{counts[f]}</span>
-					</button>
-				))}
-			</div>
-
-			{visibleDocs.length === 0 ? (
-				<div className={styles.empty}>
-					{filter === 'all' ? 'Chưa có tài liệu nào.' : `Chưa có ${DOC_TYPE_CFG[filter].toLowerCase()} nào.`}
-				</div>
+			{documents.length === 0 ? (
+				<div className={styles.empty}>Chưa có tài liệu nào.</div>
 			) : (
 				<div className={styles.list}>
-					{visibleDocs.map((doc) => (
+					{documents.map((doc) => (
 						<div
 							key={doc.id}
 							className={styles.row}
@@ -302,10 +159,12 @@ export function CourseDocumentsTab({
 									{doc.title}
 								</a>
 								<div className={styles.rowMeta}>
-									<Badge tone={DOC_TYPE_TONE[doc.doc_type]}>
-										{DOC_TYPE_CFG[doc.doc_type]}
-										{doc.exam_type ? ` · ${EXAM_TYPE_CFG[doc.exam_type]}` : ''}
-									</Badge>
+									{doc.doc_type !== 'material' && (
+										<Badge tone='amber'>
+											{DOC_TYPE_CFG[doc.doc_type]}
+											{doc.exam_type ? ` · ${EXAM_TYPE_CFG[doc.exam_type]}` : ''}
+										</Badge>
+									)}
 									{!doc.is_public && <Badge tone='gray'>Chưa công khai</Badge>}
 									<span>
 										{doc.source_type === 'link'

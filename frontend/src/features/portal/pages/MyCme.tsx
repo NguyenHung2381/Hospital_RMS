@@ -6,7 +6,7 @@ import { formatDateVN } from '@/shared/utils/formatDate';
 import UserLayout from '../../../layouts/UserLayout';
 import { useRealtimeUpdate } from '../../../layouts/hooks/useRealtime';
 import { CME_STATUS_LABELS, EVENT_TYPE_LABELS, PARTICIPATION_LABELS } from '../../seminar/types/seminar.type';
-import { saveBlob } from '../../seminar/utils/saveBlob';
+import { saveBlob } from '@/shared/utils/saveBlob';
 import MyCmeRecordModal from '../components/MyCmeRecordModal';
 import {
 	deleteMyCmeRecord,

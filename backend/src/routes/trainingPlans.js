@@ -16,6 +16,8 @@ const { validate } = require('../middlewares/errorHandler');
 router.use(authenticate, authorizePermission(['training_plans', 'manage']));
 
 router.get('/', ctrl.getAll);
+// Hạng mục để gắn khóa học (form khóa học) — khai báo trước '/:id'
+router.get('/item-options', ctrl.listItemOptions);
 router.get('/:id', ctrl.getById);
 
 router.post(

@@ -17,6 +17,7 @@ import type { User, UserForm } from '../types/user.type';
 
 export interface UserListState {
 	users: User[];
+	refreshData: () => void;
 	departments: SimpleItem[];
 	roles: SimpleItem[];
 	isLoadingData: boolean;
@@ -307,6 +308,7 @@ export function useUserList(): UserListState {
 
 	return {
 		users,
+		refreshData,
 		departments,
 		roles,
 		isLoadingData,

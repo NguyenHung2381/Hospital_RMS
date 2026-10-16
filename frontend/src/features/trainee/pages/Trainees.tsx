@@ -17,7 +17,31 @@ import { TraineeImportModal } from '../components/TraineeImportModal';
 import { useTrainees } from '../hooks/useTrainees';
 import { formatDate } from '../../../shared/utils/formatDate';
 import styles from './Trainees.module.css';
+import { ExcelActions, type ExcelColumn } from '@/shared/components/Excel';
+import { formatDateVN } from '@/shared/utils/formatDate';
+import { genderLabel } from '@/shared/utils/gender';
+import type { Trainee } from '../types/trainee.type';
 import tbl from '@/shared/components/Table/Table.module.css';
+
+// Tiêu đề trùng cột nhận diện của "Nhập từ Excel" để file xuất ra nhập lại được.
+const EXCEL_COLS: ExcelColumn<Trainee>[] = [
+	{ header: 'Họ và tên', value: (x) => x.full_name },
+	{ header: 'Ngày sinh', value: (x) => formatDateVN(x.dob) },
+	{ header: 'Giới tính', value: (x) => genderLabel(x.gender) },
+	{ header: 'CCCD', value: (x) => x.national_id },
+	{ header: 'SĐT', value: (x) => x.phone },
+	{ header: 'Email', value: (x) => x.email },
+	{ header: 'Địa chỉ', value: (x) => x.address },
+	{ header: 'Đối tượng học viên', value: (x) => x.trainee_type_name },
+	{ header: 'Khoa/phòng', value: (x) => x.department_name },
+	{ header: 'Trình độ', value: (x) => x.qualification },
+	{ header: 'Trường đào tạo', value: (x) => x.graduated_school },
+	{ header: 'Năm tốt nghiệp', value: (x) => x.graduated_year },
+	{ header: 'Nơi công tác', value: (x) => x.workplace },
+	{ header: 'Chức vụ', value: (x) => x.position },
+	{ header: 'Ghi chú', value: (x) => x.notes },
+	{ header: 'Tài khoản', value: (x) => (x.account_granted ? 'Đã cấp' : '') },
+];
 
 export default function Trainees() {
 	const d = useTrainees();
@@ -26,7 +50,13 @@ export default function Trainees() {
 	const [showImport, setShowImport] = useState(false);
 
 	const headerActions = (
-		<div style={{ display: 'flex', gap: 8 }}>
+		<div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+			<ExcelActions
+				fileName='hoc-vien'
+				itemLabel='học viên'
+				columns={EXCEL_COLS}
+				getRows={() => d.filtered}
+			/>
 			<button
 				className={styles.btnAddHeader}
 				onClick={() => setShowImport(true)}

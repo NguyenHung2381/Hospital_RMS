@@ -5,6 +5,9 @@ import {
 	UsersSvg,
 } from '@/assets/icons';
 import AdminLayout from '../../../layouts/AdminLayout';
+import { ExcelActions, type ExcelColumn } from '@/shared/components/Excel';
+import { createDepartment, getDepartments } from '../api/departmentApi';
+import type { Department } from '../types/department.type';
 import { SkeletonTable } from '../../../shared/components/Loading';
 import { Pagination } from '../../../shared/components/Table/Pagination';
 import sel from '../../../shared/components/Table/RowSelect.module.css';
@@ -36,17 +39,45 @@ function getInitials(s: string) {
 	return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 }
 
+const EXCEL_COLS: ExcelColumn<Department>[] = [
+	{ header: 'Tên khoa phòng', key: 'name', required: true, value: (x) => x.name },
+	{ header: 'Mã', key: 'code', required: true, value: (x) => x.code },
+	{ header: 'Viết tắt', key: 'abbreviation', value: (x) => x.abbreviation },
+	{ header: 'Hệ chuyên môn', key: 'specialty_group', value: (x) => x.specialty_group },
+	{ header: 'Mô tả', key: 'description', value: (x) => x.description },
+	{ header: 'Nhân sự', value: (x) => x.user_count ?? 0 },
+	{ header: 'Đề tài', value: (x) => x.topic_count ?? 0 },
+];
+
 export default function Departments() {
 	const d = useDepartments();
 	const rowSel = useRowSelection(d.paged.map((x) => x.id));
 
 	const headerActions = (
-		<button
-			className={styles.btnAddHeader}
-			onClick={() => d.setModal('add')}
-		>
-			<PlusSvg /> Thêm khoa phòng
-		</button>
+		<div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+			<ExcelActions
+				fileName='khoa-phong'
+				itemLabel='khoa phòng'
+				columns={EXCEL_COLS}
+				getRows={async () => (await getDepartments({ search: d.search || undefined })).data}
+				importRow={(r) =>
+					createDepartment({
+						name: r.name,
+						code: r.code,
+						abbreviation: r.abbreviation,
+						description: r.description,
+						specialty_group: r.specialty_group,
+					})
+				}
+				onImported={d.refreshData}
+			/>
+			<button
+				className={styles.btnAddHeader}
+				onClick={() => d.setModal('add')}
+			>
+				<PlusSvg /> Thêm khoa phòng
+			</button>
+		</div>
 	);
 
 	return (

@@ -8,6 +8,7 @@ import { SearchInput } from '@/shared/components/Table/TableToolbar';
 import { useClientPaging } from '@/shared/hooks/useClientPaging';
 import { toIsoDate, formatTimeVN } from '@/shared/utils/formatDate';
 import { notify } from '@/shared/utils/feedback';
+import { ExcelActions, type ExcelColumn } from '@/shared/components/Excel';
 
 interface Row {
 	key: string;
@@ -51,6 +52,22 @@ const matches = (r: Row, f: StatusFilter) =>
 
 const place = (ip?: string | null, m?: number | null) => [ip, m != null ? `${m}m` : null].filter(Boolean).join(' · ');
 
+const STATUS_TEXT: Record<Row['status'], string> = { checked: 'Đã chấm', pending: 'Chưa chấm', absent: 'Vắng' };
+const EXCEL_COLS: ExcelColumn<Row>[] = [
+	{ header: 'Mã nhân viên', value: (r) => r.staff_number },
+	{ header: 'Họ và tên', value: (r) => r.full_name },
+	{ header: 'Khoa/phòng', value: (r) => r.department_name },
+	{ header: 'Ca', value: (r) => r.shift_name },
+	{ header: 'Giờ ca', value: (r) => (r.shift_start_at ? `${formatTimeVN(r.shift_start_at)}–${formatTimeVN(r.shift_end_at)}` : '') },
+	{ header: 'Giờ vào', value: (r) => formatTimeVN(r.check_in_at) },
+	{ header: 'Giờ ra', value: (r) => formatTimeVN(r.check_out_at) },
+	{ header: 'Đi muộn (phút)', value: (r) => r.late_min || '' },
+	{ header: 'Về sớm (phút)', value: (r) => r.early_min || '' },
+	{ header: 'Trạng thái', value: (r) => STATUS_TEXT[r.status] },
+	{ header: 'Nơi chấm vào', value: (r) => place(r.check_in_ip, r.check_in_distance_m) },
+	{ header: 'Nơi chấm ra', value: (r) => place(r.check_out_ip, r.check_out_distance_m) },
+];
+
 export default function StaffAttendance() {
 	const [date, setDate] = useState(() => toIsoDate(new Date()));
 	const [rows, setRows] = useState<Row[]>([]);
@@ -93,7 +110,18 @@ export default function StaffAttendance() {
 	);
 
 	return (
-		<AdminLayout pageTitle='Bảng chấm công' pageSubtitle='Giờ vào/ra theo ca — ca qua đêm tính vào ngày bắt đầu ca'>
+		<AdminLayout
+			pageTitle='Bảng chấm công'
+			pageSubtitle='Giờ vào/ra theo ca — ca qua đêm tính vào ngày bắt đầu ca'
+			headerActions={
+				<ExcelActions
+					fileName={`cham-cong-${date}`}
+					itemLabel='lượt chấm công'
+					columns={EXCEL_COLS}
+					getRows={() => filtered}
+				/>
+			}
+		>
 			<div className={tbl.tableCard}>
 				<div className={tbl.tableHeader}>
 					<div className={tbl.tableHeaderLeft}>

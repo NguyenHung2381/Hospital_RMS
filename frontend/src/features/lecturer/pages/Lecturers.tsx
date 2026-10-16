@@ -2,6 +2,10 @@ import { avatarColor, getInitials } from '@/shared/utils';
 import { SearchInput, SelectionCount, RowActions } from '@/shared/components/Table/TableToolbar';
 import { PlusSvg } from '@/assets/icons';
 import AdminLayout from '../../../layouts/AdminLayout';
+import { ExcelActions, type ExcelColumn } from '@/shared/components/Excel';
+import { isYes } from '@/shared/components/Excel/excelHelpers';
+import { createLecturer, getLecturers } from '../api/lecturerApi';
+import type { Lecturer } from '../types/lecturer.type';
 import { SkeletonTable } from '../../../shared/components/Loading';
 import { Pagination } from '../../../shared/components/Table/Pagination';
 import sel from '../../../shared/components/Table/RowSelect.module.css';
@@ -13,17 +17,45 @@ import { useLecturers } from '../hooks/useLecturers';
 import styles from './Lecturers.module.css';
 import tbl from '@/shared/components/Table/Table.module.css';
 
+const EXCEL_COLS: ExcelColumn<Lecturer>[] = [
+	{ header: 'Họ và tên', key: 'full_name', required: true, value: (x) => x.full_name },
+	{ header: 'Chuyên môn', key: 'specialty', value: (x) => x.specialty },
+	{ header: 'Mời ngoài', key: 'is_external', value: (x) => (x.is_external ? 'Có' : 'Không') },
+	{ header: 'Số điện thoại', key: 'phone', value: (x) => x.phone },
+	{ header: 'Email', key: 'email', value: (x) => x.email },
+	{ header: 'Tài khoản', value: (x) => x.username },
+	{ header: 'Trạng thái', value: (x) => (x.is_active ? 'Đang hoạt động' : 'Đã vô hiệu') },
+];
+
 export default function Lecturers() {
 	const d = useLecturers();
 	const rowSel = useRowSelection(d.paged.map((x) => x.id));
 
 	const headerActions = (
-		<button
-			className={styles.btnAddHeader}
-			onClick={() => d.setModal('add')}
-		>
-			<PlusSvg /> Thêm giảng viên
-		</button>
+		<div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+			<ExcelActions
+				fileName='giang-vien'
+				itemLabel='giảng viên'
+				columns={EXCEL_COLS}
+				getRows={async () => (await getLecturers({ search: d.search || undefined })).data}
+				importRow={(r) =>
+					createLecturer({
+						full_name: r.full_name,
+						specialty: r.specialty,
+						is_external: isYes(r.is_external),
+						phone: r.phone,
+						email: r.email,
+					})
+				}
+				onImported={d.refreshData}
+			/>
+			<button
+				className={styles.btnAddHeader}
+				onClick={() => d.setModal('add')}
+			>
+				<PlusSvg /> Thêm giảng viên
+			</button>
+		</div>
 	);
 
 	return (

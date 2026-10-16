@@ -21,7 +21,7 @@ import { SeminarListImportModal } from '../components/SeminarListImportModal';
 import { SeminarQrPresentation } from '../components/SeminarQrPresentation';
 import { SeminarRegistrationQrModal } from '../components/SeminarRegistrationQrModal';
 import { exportSeminarsExcel } from '../api/seminarApi';
-import { saveBlob } from '../utils/saveBlob';
+import { saveBlob } from '@/shared/utils/saveBlob';
 import { useSeminarPerms } from '../utils/perms';
 import { useSeminars } from '../hooks/useSeminars';
 import { EVENT_TYPE_LABELS, type Seminar, type SeminarEventType } from '../types/seminar.type';

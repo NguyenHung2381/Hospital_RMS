@@ -2,6 +2,10 @@ import { avatarColor, getInitials } from '@/shared/utils';
 import { SearchInput, SelectionCount, RowAction, RowActions } from '@/shared/components/Table/TableToolbar';
 import { ListSvg, PlusSvg } from '@/assets/icons';
 import AdminLayout from '../../../layouts/AdminLayout';
+import { ExcelActions, type ExcelColumn } from '@/shared/components/Excel';
+import { matchLabel, nameMap, numText } from '@/shared/components/Excel/excelHelpers';
+import { createTrainingProgram } from '../api/trainingProgramApi';
+import type { TrainingProgram } from '../types/trainingProgram.type';
 import { Badge } from '../../../shared/components';
 import { SkeletonTable } from '../../../shared/components/Loading';
 import { Pagination } from '../../../shared/components/Table/Pagination';
@@ -20,19 +24,55 @@ export default function TrainingPrograms() {
 	const d = useTrainingPrograms();
 	const rowSel = useRowSelection(d.paged.map((x) => x.id));
 
+	const deptNames = nameMap(d.departments, (x) => x.name);
+	const typeNames = nameMap(d.traineeTypes, (x) => x.name);
+	const excelCols: ExcelColumn<TrainingProgram>[] = [
+		{ header: 'Mã chương trình', key: 'code', value: (x) => x.code },
+		{ header: 'Tên chương trình', key: 'name', required: true, value: (x) => x.name },
+		{ header: 'Thời lượng', key: 'duration', value: (x) => x.duration },
+		{ header: 'Khoa phòng', key: 'department', value: (x) => x.department_name },
+		{ header: 'Đối tượng học viên', key: 'trainee_type', value: (x) => x.trainee_type_name },
+		{ header: 'Sĩ số tối đa', key: 'max_capacity', value: (x) => x.max_capacity },
+		{ header: 'Thứ tự', key: 'display_order', value: (x) => x.display_order },
+		{ header: 'Mô tả', key: 'description', value: (x) => x.description },
+		{ header: 'Số bài học', value: (x) => x.lesson_count ?? 0 },
+		{ header: 'Số khóa học', value: (x) => x.course_count ?? 0 },
+	];
+
 	const headerActions = (
-		<button
-			className={styles.btnAddHeader}
-			onClick={() => d.setModal('add')}
-		>
-			<PlusSvg /> Thêm chương trình
-		</button>
+		<div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+			<ExcelActions
+				fileName='chuong-trinh-dao-tao'
+				itemLabel='chương trình'
+				columns={excelCols}
+				getRows={() => d.filtered}
+				importRow={(r) =>
+					createTrainingProgram({
+						name: r.name,
+						code: r.code,
+						duration: r.duration,
+						department_id: matchLabel(deptNames, r.department, 'Khoa phòng') ?? '',
+						trainee_type_id: matchLabel(typeNames, r.trainee_type, 'Đối tượng học viên') ?? '',
+						max_capacity: numText(r.max_capacity),
+						display_order: numText(r.display_order),
+						description: r.description,
+					})
+				}
+				onImported={d.refreshData}
+			/>
+			<button
+				className={styles.btnAddHeader}
+				onClick={() => d.setModal('add')}
+			>
+				<PlusSvg /> Thêm chương trình
+			</button>
+		</div>
 	);
 
 	return (
 		<AdminLayout
 			pageTitle='Chương trình Đào tạo'
-			pageSubtitle='Danh sách chương trình đào tạo và môn học liên quan'
+			pageSubtitle='Khung nội dung đào tạo: mỗi chương trình gồm các bài học, được áp dụng cho các khóa học'
 			breadcrumbs={[{ label: 'Đào tạo' }]}
 			headerActions={headerActions}
 		>

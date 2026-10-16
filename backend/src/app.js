@@ -241,6 +241,7 @@ app.use(`${API}/users`, require('./routes/users'));
 app.use(`${API}/topics`, requireModule('RESEARCH'), require('./routes/topics'));
 app.use(`${API}/councils`, requireModule('RESEARCH'), require('./routes/councils'));
 app.use(`${API}/files`, require('./routes/files'));
+app.use(`${API}/excel`, require('./routes/excel'));
 app.use(`${API}/dashboard`, require('./routes/dashboard'));
 app.use(`${API}/notifications`, require('./routes/notifications'));
 app.use(`${API}/events`, require('./routes/events'));

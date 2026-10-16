@@ -154,7 +154,6 @@ const LOOKUP_RESOURCES = new Set([
 	'trainee-types',
 	'training-forms',
 	'training-types',
-	'subjects',
 	// Dữ liệu của layout: mỗi trang tự bọc <AdminLayout>/<UserLayout> nên layout
 	// dựng lại ở MỖI lần chuyển trang và gọi lại các API này.
 	'modules',

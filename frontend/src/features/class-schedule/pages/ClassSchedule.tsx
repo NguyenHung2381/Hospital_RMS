@@ -1,13 +1,11 @@
 import { useCallback, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { CalendarSvg } from '@/assets/icons';
 import AdminLayout from '../../../layouts/AdminLayout';
 import { InlineLoading } from '@/shared/components';
 import { YearPicker } from '../../schedule/components/YearPicker';
 import { CAL_MODES, useCalendarNav } from '../../schedule/hooks/useCalendarNav';
 import styles from '../../schedule/pages/Schedule.module.css';
-import { getCourse } from '../../course/api/courseApi';
-import { CourseDetailModal } from '../../course/components/CourseDetailModal';
-import type { Course } from '../../course/types/course.type';
 import { ClassCalendarView } from '../components/ClassCalendarView';
 import { SessionListView } from '../components/SessionListView';
 import { useClassSchedule } from '../hooks/useClassSchedule';
@@ -24,8 +22,7 @@ export default function ClassSchedule() {
 
 	const [viewMode, setViewMode] = useState<'calendar' | 'list'>('calendar');
 	const [filterCourseId, setFilterCourseId] = useState('');
-	const [openCourse, setOpenCourse] = useState<Course | null>(null);
-	const [openError, setOpenError] = useState<string | null>(null);
+	const navigate = useNavigate();
 
 	const { sessions, courses, loading, error } = useClassSchedule(year);
 
@@ -50,12 +47,10 @@ export default function ClassSchedule() {
 		[shownSessions, year],
 	);
 
-	const handleOpenCourse = useCallback((courseId: string) => {
-		setOpenError(null);
-		getCourse(courseId)
-			.then(setOpenCourse)
-			.catch((e: Error) => setOpenError(e.message || 'Không thể mở khoá học'));
-	}, []);
+	const handleOpenCourse = useCallback(
+		(courseId: string) => navigate(`/admin/courses/${courseId}?tab=sessions`),
+		[navigate],
+	);
 
 	return (
 		<AdminLayout
@@ -121,12 +116,6 @@ export default function ClassSchedule() {
 					)}
 				</div>
 
-				{openError && (
-					<div className={styles.emptyState}>
-						<span className={styles.errorTxt}>{openError}</span>
-					</div>
-				)}
-
 				{loading ? (
 					<InlineLoading label='Đang tải lịch học…' />
 				) : error ? (
@@ -169,13 +158,6 @@ export default function ClassSchedule() {
 				)}
 			</div>
 
-			{openCourse && (
-				<CourseDetailModal
-					course={openCourse}
-					initialTab='sessions'
-					onClose={() => setOpenCourse(null)}
-				/>
-			)}
 		</AdminLayout>
 	);
 }

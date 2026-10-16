@@ -6,7 +6,7 @@ const API = '/api/v1';
 
 const catalogLookups = [
 	'categories', 'levels', 'round-types', 'trainee-types', 'training-forms',
-	'training-types', 'cme-credit-groups', 'subjects', 'cme-credit-categories',
+	'training-types', 'cme-credit-groups', 'cme-credit-categories',
 	'venues',
 ];
 
@@ -79,6 +79,8 @@ module.exports = {
 		[`PUT ${API}/me/cme-records/:id`]: 'Service: chỉ bản ghi của chính mình, chưa duyệt (assertEditableMine)',
 		[`DELETE ${API}/me/cme-records/:id`]: 'Service: chỉ bản ghi của chính mình, chưa duyệt (assertEditableMine)',
 		[`POST ${API}/me/cme-records/:id/evidence`]: 'Chỉ bản ghi của chính mình, chưa duyệt — kiểm tra trước khi multer ghi file',
+		[`POST ${API}/excel/build`]: 'Dựng file Excel từ dữ liệu client đã có quyền xem — không đọc DB',
+		[`POST ${API}/excel/parse`]: 'Đọc file Excel thành bảng chữ — không ghi DB; nhập thật đi qua API tạo mới có kiểm quyền của từng module',
 		[`GET ${API}/modules/`]: 'Module nào đang bật — để ẩn/hiện menu',
 
 		// Thành viên hội đồng — service kiểm tra ghế trong council_members

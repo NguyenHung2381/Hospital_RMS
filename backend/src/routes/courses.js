@@ -64,6 +64,7 @@ router.post(
 		body('capacity').optional({ checkFalsy: true }).isInt({ min: 1 }),
 		body('prerequisites').optional({ nullable: true }).isArray(),
 		body('objectives').optional({ nullable: true }).isArray(),
+		body('program_ids').optional().isArray(),
 	],
 	validate,
 	ctrl.createOne,
@@ -77,6 +78,7 @@ router.put(
 		body('capacity').optional({ checkFalsy: true }).isInt({ min: 1 }),
 		body('prerequisites').optional({ nullable: true }).isArray(),
 		body('objectives').optional({ nullable: true }).isArray(),
+		body('program_ids').optional().isArray(),
 	],
 	validate,
 	ctrl.updateOne,
@@ -85,16 +87,8 @@ router.put(
 router.delete('/:id', authorizePermission(['courses', 'delete']), ctrl.removeOne);
 
 // ─── Chương trình đào tạo áp dụng (N:N) ────────────────────────────────────
+// Gán/gỡ qua program_ids khi tạo/sửa khóa học
 router.get('/:id/programs', authorizePermission(['courses', 'read']), ctrl.listProgramLinks);
-router.post(
-	'/:id/programs',
-	authorizePermission(['courses', 'update']),
-	[body('program_id').notEmpty().withMessage('Vui lòng chọn chương trình đào tạo')],
-	validate,
-	ctrl.addProgramLink,
-);
-router.put('/programs/:linkId', authorizePermission(['courses', 'update']), ctrl.updateProgramLink);
-router.delete('/programs/:linkId', authorizePermission(['courses', 'update']), ctrl.removeProgramLink);
 
 // ─── Enrollments ──────────────────────────────────────────────────────────
 router.get('/:id/enrollments', authorizePermission(['courses', 'read']), ctrl.listEnrollments);

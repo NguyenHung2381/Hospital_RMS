@@ -119,7 +119,7 @@ const PATH_TO_KEY: Record<string, string> = Object.fromEntries(
 // Danh mục Đào tạo gộp 4 tab dưới 1 mục sidebar — các path còn lại (ngoài
 // path mặc định /admin/trainee-types) cần trỏ ngược thủ công để vẫn highlight
 // đúng mục khi đang ở tab khác.
-['/admin/training-forms', '/admin/training-types', '/admin/subjects'].forEach(
+['/admin/training-forms', '/admin/training-types'].forEach(
 	(p) => {
 		PATH_TO_KEY[p] = 'trainingCatalog';
 	},
@@ -498,7 +498,11 @@ export default function AdminLayout({
 	);
 
 	// Tự detect activePage từ URL hiện tại
-	const activePage = PATH_TO_KEY[location.pathname] ?? 'dashboard';
+	// Trang chi tiết (/admin/courses/:id, /admin/seminars/:id…) → mục của trang cha
+	const activePage =
+		PATH_TO_KEY[location.pathname] ??
+		PATH_TO_KEY[location.pathname.replace(/\/[^/]+$/, '')] ??
+		'dashboard';
 
 	// ── Sidebar collapsed state (persist) ───
 	const [collapsed, setCollapsed] = useState<boolean>(() => {

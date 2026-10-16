@@ -1,4 +1,4 @@
-export type ModalType = 'add' | 'edit' | 'delete' | 'detail' | null;
+export type ModalType = 'add' | 'edit' | 'delete' | null;
 // courses.status giờ chỉ còn lưu cờ huỷ ('cancelled' vs 'draft' = bình thường)
 // — mọi trạng thái khác (sắp khai giảng/đang mở đăng ký/đang học/hoàn thành)
 // được suy ra tự động từ ngày tháng, xem CourseDisplayStatus.
@@ -11,6 +11,12 @@ export interface Course {
 	id: string;
 	name: string;
 	program_names: string | null;
+	program_ids: string[];
+	/** Hạng mục kế hoạch đào tạo mà khóa được mở theo. */
+	plan_item_id: string | null;
+	plan_item_title: string | null;
+	plan_title: string | null;
+	plan_year: number | null;
 	training_form_id: string | null;
 	training_form_name: string | null;
 	start_date: string | null;
@@ -33,6 +39,8 @@ export interface Course {
 
 export interface CourseFormData {
 	name: string;
+	program_ids: string[];
+	plan_item_id: string;
 	training_form_id: string;
 	start_date: string;
 	end_date: string;
@@ -53,6 +61,8 @@ export interface CourseListResponse {
 
 export const EMPTY_FORM: CourseFormData = {
 	name: '',
+	program_ids: [],
+	plan_item_id: '',
 	training_form_id: '',
 	start_date: '',
 	end_date: '',
@@ -96,30 +106,12 @@ export interface Enrollment {
 	note: string | null;
 }
 
-export type CourseProgramStatus = 'active' | 'inactive';
-
+/** Chương trình đào tạo áp dụng cho khóa (chọn trong form khóa học). */
 export interface CourseProgramLink {
 	id: string;
 	course_id: string;
 	program_id: string;
 	program_name: string;
-	start_date: string | null;
-	end_date: string | null;
-	location: string | null;
-	lecturer_id: string | null;
-	lecturer_name: string | null;
-	external_lecturer_name: string | null;
-	status: CourseProgramStatus;
-}
-
-export interface CourseProgramLinkFormData {
-	program_id: string;
-	start_date: string;
-	end_date: string;
-	location: string;
-	lecturer_id: string;
-	external_lecturer_name: string;
-	status: CourseProgramStatus;
 }
 
 export interface LecturerAssignment {

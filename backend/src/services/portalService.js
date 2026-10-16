@@ -37,12 +37,12 @@ const getMyTraining = async (actor) => {
     LEFT JOIN certificates cert ON cert.enrollment_id = e.id
     ORDER BY c.start_date DESC;
 
-    SELECT g.enrollment_id, s.name AS subject_name, g.regular_score, g.midterm_score,
+    SELECT g.enrollment_id, s.title AS subject_name, g.regular_score, g.midterm_score,
            g.final_score, g.score, g.result, g.classification
     FROM grades g
     JOIN course_enrollments e ON e.id = g.enrollment_id
     JOIN trainees t ON t.id = e.trainee_id AND t.user_id = @uid
-    LEFT JOIN subjects s ON s.id = g.subject_id;
+    LEFT JOIN program_lessons s ON s.id = g.subject_id;
 
     SELECT c.id, c.name, c.start_date, c.end_date, c.status,
            c.enrollment_start_date, c.enrollment_end_date, x.subjects,
@@ -50,16 +50,16 @@ const getMyTraining = async (actor) => {
            (SELECT COUNT(*) FROM class_sessions WHERE course_id = c.id) AS session_count
     FROM courses c
     CROSS APPLY (
-      SELECT COUNT(*) AS n, STRING_AGG(s.name, ', ') AS subjects
+      SELECT COUNT(*) AS n, STRING_AGG(s.title, ', ') AS subjects
       FROM lecturer_assignments la
       JOIN lecturers l ON l.id = la.lecturer_id AND l.user_id = @uid
-      LEFT JOIN subjects s ON s.id = la.subject_id
+      LEFT JOIN program_lessons s ON s.id = la.subject_id
       WHERE la.course_id = c.id
     ) x
     WHERE x.n > 0
     ORDER BY c.start_date DESC;
 
-    SELECT sess.id, sess.course_id, c.name AS course_name, s.name AS subject_name,
+    SELECT sess.id, sess.course_id, c.name AS course_name, s.title AS subject_name,
            l.full_name AS lecturer_name, sess.session_date, sess.start_time, sess.end_time, sess.room,
            CASE WHEN EXISTS (
              SELECT 1 FROM lecturer_assignments la JOIN lecturers lec ON lec.id = la.lecturer_id
@@ -67,7 +67,7 @@ const getMyTraining = async (actor) => {
            ) THEN 'teaching' ELSE 'learning' END AS my_role
     FROM class_sessions sess
     JOIN courses c ON c.id = sess.course_id AND c.status <> 'cancelled'
-    LEFT JOIN subjects s ON s.id = sess.subject_id
+    LEFT JOIN program_lessons s ON s.id = sess.subject_id
     LEFT JOIN lecturers l ON l.id = sess.lecturer_id
     WHERE sess.session_date >= ${VN_TODAY}
       AND sess.session_date < DATEADD(DAY, ${UPCOMING_DAYS}, ${VN_TODAY})

@@ -9,6 +9,14 @@ const getAll = async (req, res, next) => {
 	}
 };
 
+const listItemOptions = async (req, res, next) => {
+	try {
+		return success(res, await trainingPlanService.listItemOptions());
+	} catch (err) {
+		next(err);
+	}
+};
+
 const getById = async (req, res, next) => {
 	try {
 		const item = await trainingPlanService.getById(req.params.id);
@@ -55,4 +63,4 @@ const setItems = async (req, res, next) => {
 	}
 };
 
-module.exports = { getAll, getById, createOne, updateOne, removeOne, setItems };
+module.exports = { getAll, getById, listItemOptions, createOne, updateOne, removeOne, setItems };

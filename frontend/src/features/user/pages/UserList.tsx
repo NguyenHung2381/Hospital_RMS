@@ -2,8 +2,10 @@ import { SearchInput } from '@/shared/components/Table/TableToolbar';
 import { ChevDSvg, DownloadSvg, InfoSvg, KeySvg } from '@/assets/icons';
 import { useState } from 'react';
 import { showToast } from '@/shared/utils/feedback';
-import { saveBlob } from '@/features/seminar/utils/saveBlob';
-import { exportUsersExcel } from '../api/userApi';
+import { saveBlob } from '@/shared/utils/saveBlob';
+import { createUser, exportUsersExcel } from '../api/userApi';
+import { ExcelActions, type ExcelColumn } from '@/shared/components/Excel';
+import { matchLabel, nameMap } from '@/shared/components/Excel/excelHelpers';
 import { EmptyState } from '@/shared/components';
 import AdminLayout from '../../../layouts/AdminLayout';
 import { ResetPasswordModal } from '../components/ResetPasswordModal';
@@ -13,6 +15,16 @@ import { UserStatsRow } from '../components/UserStatsRow';
 import { UserTable } from '../components/UserTable';
 import { useUserList } from '../hooks/useUserList';
 import styles from './UserList.module.css';
+
+// Chỉ nhập — xuất đã có endpoint riêng (/users/export-excel) ở nút bên cạnh.
+const USER_IMPORT_COLS: ExcelColumn<unknown>[] = [
+	{ header: 'Tên đăng nhập', key: 'username', required: true },
+	{ header: 'Họ và tên', key: 'full_name', required: true },
+	{ header: 'Mã nhân viên', key: 'staff_number' },
+	{ header: 'Email', key: 'email' },
+	{ header: 'Khoa/phòng', key: 'department' },
+	{ header: 'Vai trò', key: 'role' },
+];
 
 export default function UserList() {
 	const d = useUserList();
@@ -36,6 +48,23 @@ export default function UserList() {
 
 	const headerActions = (
 		<div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+			<ExcelActions
+				fileName='tai-khoan'
+				itemLabel='tài khoản'
+				columns={USER_IMPORT_COLS}
+				importHint='Không nhập mật khẩu qua Excel — tài khoản mới dùng mật khẩu mặc định của hệ thống và phải đổi khi đăng nhập.'
+				importRow={(r) =>
+					createUser({
+						username: r.username,
+						full_name: r.full_name,
+						staff_number: r.staff_number || undefined,
+						email: r.email || undefined,
+						department_id: matchLabel(nameMap(d.departments, (x) => x.name), r.department, 'Khoa/phòng'),
+						role_id: matchLabel(nameMap(d.roles, (x) => x.name), r.role, 'Vai trò'),
+					})
+				}
+				onImported={d.refreshData}
+			/>
 			<button
 				className={styles.btnExportHeader}
 				onClick={handleExport}

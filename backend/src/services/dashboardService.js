@@ -262,10 +262,10 @@ const getTrainingStats = async () => remember('dash:training-stats', 90, async (
 
     -- Lịch học 7 ngày tới
     SELECT TOP 20 sess.id, sess.session_date, sess.start_time, sess.end_time, sess.room,
-           c.name AS course_name, s.name AS subject_name, l.full_name AS lecturer_name
+           c.name AS course_name, s.title AS subject_name, l.full_name AS lecturer_name
     FROM class_sessions sess
     JOIN courses c ON c.id = sess.course_id
-    LEFT JOIN subjects s ON s.id = sess.subject_id
+    LEFT JOIN program_lessons s ON s.id = sess.subject_id
     LEFT JOIN lecturers l ON l.id = sess.lecturer_id
     WHERE sess.session_date >= CAST(GETDATE() AS DATE) AND sess.session_date <= DATEADD(DAY, 7, CAST(GETDATE() AS DATE))
     ORDER BY sess.session_date, sess.start_time;

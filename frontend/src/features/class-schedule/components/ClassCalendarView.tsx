@@ -248,7 +248,7 @@ function DetailModal({
 			['📅 Ngày học:', formatDateVN(detail.session.session_date)],
 			['🕐 Giờ học:', sessionTime(detail.session) || 'Chưa xếp giờ'],
 			['🎓 Khoá học:', detail.session.course_name],
-			['📚 Môn học:', detail.session.subject_name || '—'],
+			['📚 Bài học:', detail.session.subject_name || '—'],
 			['👨‍🏫 Giảng viên:', detail.session.lecturer_name || '—'],
 			['📍 Phòng học:', detail.session.room || '—'],
 		]

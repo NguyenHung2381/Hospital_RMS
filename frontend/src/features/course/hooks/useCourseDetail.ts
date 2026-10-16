@@ -3,7 +3,6 @@ import { apiClient } from '../../../shared/api/axios';
 import type { DocumentSource } from '../api/courseApi';
 import {
 	addDocument as apiAddDocument,
-	addProgramLink as apiAddProgramLink,
 	assignLecturer as apiAssignLecturer,
 	createSession as apiCreateSession,
 	createSessionsBulk as apiCreateSessionsBulk,
@@ -23,10 +22,8 @@ import {
 	removeCertificate as apiRemoveCertificate,
 	removeDocument as apiRemoveDocument,
 	removeEnrollment as apiRemoveEnrollment,
-	removeProgramLink as apiRemoveProgramLink,
 	removeSession as apiRemoveSession,
 	revokeCertificate as apiRevokeCertificate,
-	updateProgramLink as apiUpdateProgramLink,
 	upsertGrade as apiUpsertGrade,
 } from '../api/courseApi';
 import type {
@@ -34,11 +31,9 @@ import type {
 	ClassSession,
 	CourseDocument,
 	CourseProgramLink,
-	CourseProgramLinkFormData,
 	DocType,
 	Enrollment,
 	EnrollmentStatus,
-	ExamType,
 	Grade,
 	LecturerAssignment,
 } from '../types/course.type';
@@ -91,10 +86,10 @@ const toLecturerItem = (l: LecturerRow): LecturerItem => {
 	};
 };
 
-export type DetailTab = 'programs' | 'enrollments' | 'lecturers' | 'sessions' | 'documents' | 'exams' | 'results';
+/** Các bước của trang chi tiết khóa học, theo đúng thứ tự công việc. */
+export type DetailTab = 'enrollments' | 'sessions' | 'documents' | 'exams' | 'results';
 
-export function useCourseDetail(courseId: string, initialTab: DetailTab = 'enrollments') {
-	const [tab, setTab] = useState<DetailTab>(initialTab);
+export function useCourseDetail(courseId: string) {
 	const [programLinks, setProgramLinks] = useState<CourseProgramLink[]>([]);
 	const [enrollments, setEnrollments] = useState<Enrollment[]>([]);
 	const [assignments, setAssignments] = useState<LecturerAssignment[]>([]);
@@ -104,14 +99,13 @@ export function useCourseDetail(courseId: string, initialTab: DetailTab = 'enrol
 	const [certificates, setCertificates] = useState<Certificate[]>([]);
 	const [trainees, setTrainees] = useState<SimpleItem[]>([]);
 	const [lecturers, setLecturers] = useState<LecturerItem[]>([]);
-	const [subjects, setSubjects] = useState<SimpleItem[]>([]);
-	const [programs, setPrograms] = useState<SimpleItem[]>([]);
+	const [lessons, setLessons] = useState<SimpleItem[]>([]);
 	const [loading, setLoading] = useState(true);
 	const [busy, setBusy] = useState(false);
 	const [error, setError] = useState('');
 	const [attendanceSessionId, setAttendanceSessionId] = useState<string | null>(null);
 
-const load = useCallback(() => {
+	const load = useCallback(() => {
 		return Promise.all([
 			getProgramLinks(courseId),
 			getEnrollments(courseId),
@@ -170,60 +164,11 @@ const load = useCallback(() => {
 			.get<{ data: LecturerRow[] }>('/lecturers?limit=0&active_only=true')
 			.then((r) => setLecturers(r.data.map(toLecturerItem)))
 			.catch(() => {});
-		apiClient.get<{ data: SimpleItem[] }>('/subjects?limit=0').then((r) => setSubjects(r.data)).catch(() => {});
-		apiClient.get<{ data: SimpleItem[] }>('/training-programs?limit=0').then((r) => setPrograms(r.data)).catch(() => {});
+		apiClient
+			.get<{ id: string; code: string; title: string }[]>('/training-programs/lessons/all')
+			.then((r) => setLessons(r.map((l) => ({ id: l.id, name: l.code ? `${l.code} — ${l.title}` : l.title }))))
+			.catch(() => {});
 	}, [loadEnrollCandidates]);
-
-	const addProgramLink = useCallback(
-		async (data: CourseProgramLinkFormData) => {
-			setBusy(true);
-			setError('');
-			try {
-				await apiAddProgramLink(courseId, data);
-				await load();
-				return true;
-			} catch (err) {
-				setError(err instanceof Error ? err.message : 'Gán chương trình thất bại');
-				return false;
-			} finally {
-				setBusy(false);
-			}
-		},
-		[courseId, load],
-	);
-
-	const updateProgramLink = useCallback(
-		async (linkId: string, data: Partial<CourseProgramLinkFormData>) => {
-			setBusy(true);
-			setError('');
-			try {
-				await apiUpdateProgramLink(linkId, data);
-				await load();
-				return true;
-			} catch (err) {
-				setError(err instanceof Error ? err.message : 'Cập nhật thất bại');
-				return false;
-			} finally {
-				setBusy(false);
-			}
-		},
-		[load],
-	);
-
-	const removeProgramLink = useCallback(
-		async (linkId: string) => {
-			setBusy(true);
-			try {
-				await apiRemoveProgramLink(linkId);
-				await load();
-			} catch (err) {
-				setError(err instanceof Error ? err.message : 'Gỡ thất bại');
-			} finally {
-				setBusy(false);
-			}
-		},
-		[load],
-	);
 
 	const registerTrainee = useCallback(
 		async (traineeId: string) => {
@@ -406,7 +351,7 @@ const load = useCallback(() => {
 	const addDocument = useCallback(
 		async (
 			source: DocumentSource,
-			data: { doc_type: DocType; title: string; is_public: boolean; exam_type?: ExamType | '' },
+			data: { doc_type: DocType; title: string; is_public: boolean },
 		) => {
 			setBusy(true);
 			setError('');
@@ -517,10 +462,8 @@ const load = useCallback(() => {
 	);
 
 	return {
-		tab,
-		setTab,
+		reload: load,
 		programLinks,
-		programs,
 		enrollments,
 		assignments,
 		sessions,
@@ -529,16 +472,13 @@ const load = useCallback(() => {
 		certificates,
 		trainees,
 		lecturers,
-		subjects,
+		lessons,
 		loading,
 		busy,
 		error,
 		setError,
 		attendanceSessionId,
 		setAttendanceSessionId,
-		addProgramLink,
-		updateProgramLink,
-		removeProgramLink,
 		registerTrainee,
 		decideEnrollment,
 		decideEnrollmentsBulk,

@@ -22,7 +22,7 @@ import {
 	type CmeComplianceRow,
 	type CmeRequirement,
 } from '../api/cmeRequirementApi';
-import { fileSlug, saveBlob } from '../utils/saveBlob';
+import { fileSlug, saveBlob } from '@/shared/utils/saveBlob';
 import styles from './Seminar.module.css';
 import tbl from '@/shared/components/Table/Table.module.css';
 import { DEFAULT_PAGE_SIZE } from '@/shared/utils/constants';

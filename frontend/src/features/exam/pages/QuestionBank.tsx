@@ -21,6 +21,8 @@ import { DEFAULT_PAGE_SIZE } from '../../../shared/utils/constants';
 import { bulkToast, runBulk } from '../../../shared/utils/runBulk';
 import { notify } from '../../../shared/utils/feedback';
 import { examApi, type QuestionPayload } from '../api/examApi';
+import { ExcelActions, type ExcelColumn, type ExcelRecord } from '@/shared/components/Excel';
+import { matchLabel, numText } from '@/shared/components/Excel/excelHelpers';
 import { ImportQuestionsModal } from '../components/ImportQuestionsModal';
 import type { ExamQuestion, QuestionType } from '../types/exam.type';
 import styles from './QuestionBank.module.css';
@@ -28,6 +30,35 @@ import tbl from '@/shared/components/Table/Table.module.css';
 
 const TYPE_LABEL: Record<QuestionType, string> = { single_choice: 'Trắc nghiệm', essay: 'Tự luận' };
 const NO_SUBJECT = '__none__';
+const LETTERS = ['A', 'B', 'C', 'D', 'E', 'F'];
+
+const EXCEL_COLS: ExcelColumn<ExamQuestion>[] = [
+	{ header: 'Loại', key: 'type', value: (x) => TYPE_LABEL[x.question_type] },
+	{ header: 'Câu hỏi', key: 'text', required: true, value: (x) => x.question_text },
+	...LETTERS.map((l, i) => ({ header: `Phương án ${l}`, key: `opt${i}`, value: (x: ExamQuestion) => x.options[i] })),
+	{
+		header: 'Đáp án đúng',
+		key: 'correct',
+		value: (x) => (x.correct_option ? LETTERS[x.options.indexOf(x.correct_option)] : ''),
+	},
+	{ header: 'Điểm', key: 'points', value: (x) => x.points },
+	{ header: 'Bài học', value: (x) => x.subject_name },
+	{ header: 'Số đề đang dùng', value: (x) => x.used_count ?? 0 },
+];
+
+// Dòng Excel → câu hỏi: có phương án thì là trắc nghiệm (đáp án ghi chữ cái A–F hoặc nguyên văn phương án).
+const questionFromExcel = (r: ExcelRecord): QuestionPayload => {
+	const options = LETTERS.map((_, i) => r[`opt${i}`]).filter(Boolean);
+	const type = matchLabel(TYPE_LABEL, r.type, 'Loại') ?? (options.length ? 'single_choice' : 'essay');
+	const points = Number(numText(r.points) || 1);
+	if (!(points > 0)) throw new Error(`Điểm "${r.points}" không hợp lệ`);
+	if (type === 'essay') return { question_type: type, question_text: r.text, points };
+	if (options.length < 2) throw new Error('Câu trắc nghiệm cần ít nhất 2 phương án');
+	const letterIdx = LETTERS.indexOf(r.correct.trim().toUpperCase());
+	const correct = letterIdx >= 0 ? r[`opt${letterIdx}`] : options.find((o) => o === r.correct.trim());
+	if (!correct) throw new Error(`Đáp án đúng "${r.correct}" không khớp phương án nào`);
+	return { question_type: type, question_text: r.text, options, correct_option: correct, points };
+};
 
 export default function QuestionBank() {
 	const [items, setItems] = useState<ExamQuestion[]>([]);
@@ -149,7 +180,16 @@ export default function QuestionBank() {
 			pageSubtitle='Câu hỏi trắc nghiệm & tự luận dùng chung cho các đề kiểm tra của khóa học'
 			breadcrumbs={[{ label: 'Đào tạo' }]}
 			headerActions={
-				<div style={{ display: 'flex', gap: 8 }}>
+				<div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+					<ExcelActions
+						fileName='ngan-hang-cau-hoi'
+						itemLabel='câu hỏi'
+						columns={EXCEL_COLS}
+						getRows={() => filtered}
+						importHint='Có phương án → trắc nghiệm; Đáp án đúng ghi chữ cái (A–F). Điểm để trống = 1.'
+						importRow={(r) => examApi.createQuestion(questionFromExcel(r))}
+						onImported={() => void load()}
+					/>
 					<Button
 						variant='secondary'
 						icon={<UploadSvg />}
@@ -206,7 +246,7 @@ export default function QuestionBank() {
 									setPage(1);
 								}}
 							>
-								<option value=''>Tất cả môn học</option>
+								<option value=''>Tất cả bài học</option>
 								{subjects.map(([id, name]) => (
 									<option
 										key={id}
@@ -215,7 +255,7 @@ export default function QuestionBank() {
 										{name}
 									</option>
 								))}
-								<option value={NO_SUBJECT}>Chưa gán môn</option>
+								<option value={NO_SUBJECT}>Chưa gán bài học</option>
 							</select>
 						)}
 						<select

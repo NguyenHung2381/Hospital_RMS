@@ -1,6 +1,13 @@
 import { SearchInput, SelectionCount, RowAction, RowActions } from '@/shared/components/Table/TableToolbar';
-import { useState } from 'react';
-import { CalendarSvg, EyeSvg, PlusSvg } from '@/assets/icons';
+import { useNavigate } from 'react-router-dom';
+import { useMemo } from 'react';
+import { apiClient } from '@/shared/api/axios';
+import { ExcelActions, type ExcelColumn } from '@/shared/components/Excel';
+import { dateText, isYes, matchLabel, nameMap, numText } from '@/shared/components/Excel/excelHelpers';
+import { formatDateVN } from '@/shared/utils/formatDate';
+import { createCourse, getCourses } from '../api/courseApi';
+import { EMPTY_FORM, type Course } from '../types/course.type';
+import { EyeSvg, PlusSvg } from '@/assets/icons';
 import AdminLayout from '../../../layouts/AdminLayout';
 import { SkeletonTable } from '../../../shared/components/Loading';
 import { Pagination } from '../../../shared/components/Table/Pagination';
@@ -9,32 +16,89 @@ import { DeleteAllButton, SelectCheckbox } from '../../../shared/components/Tabl
 import { useRowSelection } from '../../../shared/hooks/useRowSelection';
 import { formatDate } from '../../../shared/utils/formatDate';
 import { CourseDeleteModal } from '../components/CourseDeleteModal';
-import { CourseDetailModal } from '../components/CourseDetailModal';
 import { CourseFormModal } from '../components/CourseFormModal';
 import { useCourses } from '../hooks/useCourses';
-import type { DetailTab } from '../hooks/useCourseDetail';
 import { DISPLAY_STATUS_CFG } from '../types/course.type';
 import styles from './Courses.module.css';
 import tbl from '@/shared/components/Table/Table.module.css';
 
+type Named = { id: string; name: string };
+
+const EXCEL_COLS: ExcelColumn<Course>[] = [
+	{ header: 'Tên khóa học', key: 'name', required: true, value: (x) => x.name },
+	{ header: 'Chương trình', key: 'programs', value: (x) => (x.program_names ?? '').split(/,\s*/).filter(Boolean).join('; ') },
+	{ header: 'Hình thức học', key: 'training_form', value: (x) => x.training_form_name },
+	{ header: 'Ngày bắt đầu', key: 'start_date', value: (x) => formatDateVN(x.start_date) },
+	{ header: 'Ngày kết thúc', key: 'end_date', value: (x) => formatDateVN(x.end_date) },
+	{ header: 'Mở đăng ký từ', key: 'enrollment_start_date', value: (x) => formatDateVN(x.enrollment_start_date) },
+	{ header: 'Mở đăng ký đến', key: 'enrollment_end_date', value: (x) => formatDateVN(x.enrollment_end_date) },
+	{ header: 'Sĩ số', key: 'capacity', value: (x) => x.capacity },
+	{ header: 'Đăng ký công khai', key: 'is_public_registration', value: (x) => (x.is_public_registration ? 'Có' : 'Không') },
+	{ header: 'Mô tả', key: 'description', value: (x) => x.description },
+	{ header: 'Kế hoạch', value: (x) => (x.plan_title ? `${x.plan_year} · ${x.plan_title} — ${x.plan_item_title}` : '') },
+	{ header: 'Trạng thái', value: (x) => DISPLAY_STATUS_CFG[x.display_status]?.label },
+	{ header: 'Đã duyệt', value: (x) => x.approved_count },
+	{ header: 'Chờ duyệt', value: (x) => x.pending_count },
+];
+
 export default function Courses() {
 	const d = useCourses();
-	const [detailTab, setDetailTab] = useState<DetailTab>('enrollments');
+	const navigate = useNavigate();
+	const openCourse = (id: string) => navigate(`/admin/courses/${id}`);
 	const rowSel = useRowSelection(d.paged.map((x) => x.id));
 
+	// Danh mục để khớp tên khi nhập — chỉ tải 1 lần khi bắt đầu nhập.
+	const loadLookups = useMemo(() => {
+		let p: Promise<{ forms: Record<string, string>; programs: Record<string, string> }> | null = null;
+		return () =>
+			(p ??= Promise.all([
+				apiClient.get<{ data: Named[] }>('/training-forms?limit=0'),
+				apiClient.get<{ data: Named[] }>('/training-programs?limit=0'),
+			]).then(([f, pr]) => ({ forms: nameMap(f.data, (x) => x.name), programs: nameMap(pr.data, (x) => x.name) })));
+	}, []);
+
 	const headerActions = (
-		<button
-			className={styles.btnAddHeader}
-			onClick={() => d.setModal('add')}
-		>
-			<PlusSvg /> Thêm khóa học
-		</button>
+		<div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+			<ExcelActions
+				fileName='khoa-hoc'
+				itemLabel='khóa học'
+				columns={EXCEL_COLS}
+				getRows={async () => (await getCourses({ search: d.search || undefined })).data}
+				importHint='Chương trình ghi tên, nhiều chương trình cách nhau bằng dấu chấm phẩy (;). Ngày ghi dd/mm/yyyy.'
+				importRow={async (r) => {
+					const { forms, programs } = await loadLookups();
+					return createCourse({
+						...EMPTY_FORM,
+						name: r.name,
+						program_ids: r.programs
+							.split(/[;\n]/)
+							.map((t) => matchLabel(programs, t, 'Chương trình'))
+							.filter((id): id is string => !!id),
+						training_form_id: matchLabel(forms, r.training_form, 'Hình thức học') ?? '',
+						start_date: dateText(r.start_date, 'Ngày bắt đầu'),
+						end_date: dateText(r.end_date, 'Ngày kết thúc'),
+						enrollment_start_date: dateText(r.enrollment_start_date, 'Mở đăng ký từ'),
+						enrollment_end_date: dateText(r.enrollment_end_date, 'Mở đăng ký đến'),
+						capacity: numText(r.capacity),
+						is_public_registration: isYes(r.is_public_registration),
+						description: r.description,
+					});
+				}}
+				onImported={d.refreshData}
+			/>
+			<button
+				className={styles.btnAddHeader}
+				onClick={() => d.setModal('add')}
+			>
+				<PlusSvg /> Thêm khóa học
+			</button>
+		</div>
 	);
 
 	return (
 		<AdminLayout
 			pageTitle='Quản lý Khóa học'
-			pageSubtitle='Khóa học, đăng ký học viên, phân công giảng viên, lịch học & điểm danh'
+			pageSubtitle='Mở một khóa học để làm lần lượt: ghi danh → lịch học & giảng viên → tài liệu → thi → kết quả & chứng chỉ'
 			breadcrumbs={[{ label: 'Đào tạo' }]}
 			headerActions={headerActions}
 		>
@@ -127,11 +191,8 @@ export default function Courses() {
 										<td className={styles.td}>
 											<span
 												className={styles.itemName}
-												title='Xem chi tiết khóa học'
-												onClick={() => {
-													setDetailTab('enrollments');
-													d.setDetailCourse(c);
-												}}
+												title='Mở khóa học'
+												onClick={() => openCourse(c.id)}
 											>
 												{c.name}
 											</span>
@@ -193,20 +254,8 @@ export default function Courses() {
 												}}
 											>
 												<RowAction
-													title='Lịch học & điểm danh (QR)'
-													onClick={() => {
-														setDetailTab('sessions');
-														d.setDetailCourse(c);
-													}}
-												>
-													<CalendarSvg />
-												</RowAction>
-												<RowAction
-													title='Chi tiết khóa học (học viên, giảng viên, tài liệu, kết quả…)'
-													onClick={() => {
-														setDetailTab('enrollments');
-														d.setDetailCourse(c);
-													}}
+													title='Mở khóa học'
+													onClick={() => openCourse(c.id)}
 												>
 													<EyeSvg />
 												</RowAction>
@@ -235,7 +284,6 @@ export default function Courses() {
 			{d.modal === 'add' && (
 				<CourseFormModal
 					mode='add'
-					forms={d.forms}
 					onClose={() => d.setModal(null)}
 					onSave={d.handleAdd}
 					loading={d.loading}
@@ -245,7 +293,6 @@ export default function Courses() {
 				<CourseFormModal
 					mode='edit'
 					course={d.editingCourse}
-					forms={d.forms}
 					onClose={() => {
 						d.setModal(null);
 						d.setEditingCourse(null);
@@ -263,13 +310,6 @@ export default function Courses() {
 					}}
 					onConfirm={d.handleDelete}
 					loading={d.loading}
-				/>
-			)}
-			{d.detailCourse && (
-				<CourseDetailModal
-					course={d.detailCourse}
-					initialTab={detailTab}
-					onClose={() => d.setDetailCourse(null)}
 				/>
 			)}
 

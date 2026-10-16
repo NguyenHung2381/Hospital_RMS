@@ -18,6 +18,7 @@ export interface TrainingPlanListParams {
 }
 
 export interface TrainingPlanItemPayload {
+	id?: string;
 	title: string;
 	quarter?: number | null;
 	target_count?: number | null;
@@ -47,6 +48,11 @@ export const trainingPlanApi = {
 	},
 
 	getById: (id: string) => apiClient.get<TrainingPlan>(`/training-plans/${id}`),
+
+	itemOptions: () =>
+		apiClient.get<{ id: string; title: string; quarter: number | null; plan_title: string; year: number }[]>(
+			'/training-plans/item-options',
+		),
 
 	create: (payload: TrainingPlanPayload) =>
 		apiClient.post<TrainingPlan>('/training-plans', payload),

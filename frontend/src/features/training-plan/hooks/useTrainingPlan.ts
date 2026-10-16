@@ -81,6 +81,7 @@ export function useTrainingPlan() {
 		items: data.items
 			.filter((it) => it.title.trim())
 			.map((it) => ({
+				id: it.id,
 				title: it.title.trim(),
 				quarter: it.quarter ? Number(it.quarter) : null,
 				target_count: it.target_count ? Number(it.target_count) : null,
@@ -111,7 +112,8 @@ export function useTrainingPlan() {
 			setLoading(true);
 			try {
 				const updated = await trainingPlanApi.update(editingItem.id, toPayload(data));
-				setItems((prev) => prev.map((d) => (d.id === editingItem.id ? updated : d)));
+				setItems((prev) => prev.map((d) => (d.id === editingItem.id ? { ...d, ...updated } : d)));
+				refreshData();
 				setModal(null);
 				setEditingItem(null);
 				showToast('success', `Đã cập nhật "${updated.title}"`);
@@ -121,8 +123,18 @@ export function useTrainingPlan() {
 				setLoading(false);
 			}
 		},
-		[editingItem],
+		[editingItem, refreshData],
 	);
+
+	// Danh sách không kèm hạng mục → phải tải chi tiết trước khi sửa, nếu không lưu sẽ xoá hết hạng mục
+	const openEdit = useCallback(async (plan: TrainingPlan) => {
+		try {
+			setEditingItem(await trainingPlanApi.getById(plan.id));
+			setModal('edit');
+		} catch (err) {
+			showToast('error', err instanceof Error ? err.message : 'Không thể tải kế hoạch');
+		}
+	}, []);
 
 	const handleDelete = useCallback(async () => {
 		if (!deletingItem) return;
@@ -183,6 +195,8 @@ export function useTrainingPlan() {
 		handlePageSize,
 		handleAdd,
 		handleEdit,
+		openEdit,
+		refreshData,
 		handleDelete,
 		handleBulkDelete,
 	};

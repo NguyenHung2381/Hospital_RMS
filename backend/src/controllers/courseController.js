@@ -56,32 +56,6 @@ const listProgramLinks = async (req, res, next) => {
 	}
 };
 
-const addProgramLink = async (req, res, next) => {
-	try {
-		return created(res, await courseService.addProgramLink(req.params.id, req.body, req.user.id));
-	} catch (err) {
-		next(err);
-	}
-};
-
-const updateProgramLink = async (req, res, next) => {
-	try {
-		await courseService.updateProgramLink(req.params.linkId, req.body, req.user.id);
-		return success(res, null, 'Đã cập nhật chương trình áp dụng');
-	} catch (err) {
-		next(err);
-	}
-};
-
-const removeProgramLink = async (req, res, next) => {
-	try {
-		await courseService.removeProgramLink(req.params.linkId);
-		return success(res, null, 'Đã gỡ chương trình áp dụng');
-	} catch (err) {
-		next(err);
-	}
-};
-
 // ─── Enrollments ──────────────────────────────────────────────────────────
 const listEnrollments = async (req, res, next) => {
 	try {
@@ -378,9 +352,6 @@ module.exports = {
 	updateOne,
 	removeOne,
 	listProgramLinks,
-	addProgramLink,
-	updateProgramLink,
-	removeProgramLink,
 	listEnrollments,
 	registerTrainee,
 	listStaffCandidates,

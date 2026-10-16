@@ -1,0 +1,95 @@
+.actions {
+	display: flex;
+	gap: var(--space-2);
+	flex-wrap: wrap;
+}
+.btn {
+	composes: btn secondary from '@/shared/components/Button/Button.module.css';
+}
+.btn svg {
+	width: 16px;
+	height: 16px;
+}
+.btnPrimary {
+	composes: btn primary from '@/shared/components/Button/Button.module.css';
+}
+.btnPrimary svg {
+	width: 16px;
+	height: 16px;
+}
+.btnSm {
+	composes: btn secondary sm from '@/shared/components/Button/Button.module.css';
+	align-self: flex-start;
+}
+.btnSm svg {
+	width: 14px;
+	height: 14px;
+}
+
+.modal {
+	max-width: 900px;
+}
+.body {
+	display: flex;
+	flex-direction: column;
+	gap: var(--space-4);
+}
+
+.notice {
+	display: flex;
+	gap: var(--space-2);
+	padding: var(--space-3);
+	background: var(--color-gray-50);
+	border: 1px solid var(--color-gray-200);
+	border-radius: var(--radius-lg);
+	font-size: var(--font-size-sm);
+	color: var(--color-gray-700);
+}
+.notice svg {
+	width: 16px;
+	height: 16px;
+	flex-shrink: 0;
+	margin-top: 2px;
+}
+.ok {
+	background: #e1f5ea;
+	border-color: #b6e3ca;
+	color: #085028;
+}
+.bad {
+	background: #fdecec;
+	border-color: #f5c2c0;
+	color: #8a1c1a;
+}
+
+.error {
+	composes: fieldError from '@/shared/components/Modal/Modal.module.css';
+}
+
+.errList {
+	margin: 0;
+	padding-left: var(--space-5);
+	font-size: var(--font-size-xs);
+	color: #8a1c1a;
+	max-height: 180px;
+	overflow: auto;
+}
+
+.preview {
+	composes: tableWrap from '@/shared/components/Table/Table.module.css';
+	max-height: 46vh;
+	overflow: auto;
+}
+.table {
+	composes: table from '@/shared/components/Table/Table.module.css';
+}
+.table thead th {
+	position: sticky;
+	top: 0;
+	z-index: 1;
+	white-space: nowrap;
+}
+.rowErr {
+	color: #b42318;
+	font-size: var(--font-size-2xs);
+}

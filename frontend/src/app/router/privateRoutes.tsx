@@ -88,6 +88,7 @@ const StaffLicenses = lazy(
 );
 const Lecturers = lazy(() => import('../../features/lecturer/pages/Lecturers'));
 const Courses = lazy(() => import('../../features/course/pages/Courses'));
+const CourseDetail = lazy(() => import('../../features/course/pages/CourseDetail'));
 const ClassSchedule = lazy(
 	() => import('../../features/class-schedule/pages/ClassSchedule'),
 );
@@ -316,6 +317,10 @@ export const adminRoutes: RouteObject[] = [
 		element: admin('Quản lý Khóa học', <Courses />),
 	},
 	{
+		path: '/admin/courses/:id',
+		element: admin('Chi tiết khóa học', <CourseDetail />),
+	},
+	{
 		path: '/admin/question-bank',
 		element: (
 			<RequirePermission perm='exams:manage'>
@@ -342,10 +347,6 @@ export const adminRoutes: RouteObject[] = [
 	{
 		path: '/admin/training-types',
 		element: admin('Loại hình đào tạo', <Catalog group='training' />),
-	},
-	{
-		path: '/admin/subjects',
-		element: admin('Môn học', <Catalog group='training' />),
 	},
 	{
 		path: '/admin/cme-credit-categories',

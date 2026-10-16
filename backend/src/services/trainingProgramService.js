@@ -45,36 +45,7 @@ const getById = async (id) => {
 	const pool = await getPool();
 	const result = await pool.request().input('id', sql.VarChar(20), id).query(`${programSelect} WHERE p.id = @id`);
 	const row = result.recordset[0];
-	if (!row) return null;
-	row.subject_ids = await getSubjectIds(id);
-	return row;
-};
-
-const getSubjectIds = async (programId) => {
-	const pool = await getPool();
-	const r = await pool
-		.request()
-		.input('program_id', sql.VarChar(20), programId)
-		.query('SELECT subject_id FROM program_subjects WHERE program_id = @program_id');
-	return r.recordset.map((x) => x.subject_id);
-};
-
-const setSubjectIds = async (programId, subjectIds = []) => {
-	const pool = await getPool();
-	const ids = [...new Set((subjectIds || []).filter(Boolean))];
-	await pool.request().input('program_id', sql.VarChar(20), programId)
-		.query('DELETE FROM program_subjects WHERE program_id = @program_id');
-	for (const sid of ids) {
-		await pool
-			.request()
-			.input('program_id', sql.VarChar(20), programId)
-			.input('subject_id', sql.VarChar(20), sid).query(`
-				IF EXISTS (SELECT 1 FROM subjects WHERE id = @subject_id)
-				INSERT INTO program_subjects (program_id, subject_id) VALUES (@program_id, @subject_id)
-			`);
-	}
-	broadcast('update', { entity: 'training_program' });
-	return getSubjectIds(programId);
+	return row ?? null;
 };
 
 const create = async (data, actorId) => {
@@ -105,7 +76,6 @@ const create = async (data, actorId) => {
       SELECT @new_id AS id;
     `);
 	const id = result.recordset[0].id;
-	if (Array.isArray(data.subject_ids) && data.subject_ids.length) await setSubjectIds(id, data.subject_ids);
 	broadcast('update', { entity: 'training_program' });
 	return getById(id);
 };
@@ -154,7 +124,6 @@ const update = async (id, data, actorId) => {
 
 	if (sets.length > 2)
 		await req.query(`EXEC sp_set_actor @actor_id; UPDATE training_programs SET ${sets.join(', ')} WHERE id = @id`);
-	if (Array.isArray(data.subject_ids)) await setSubjectIds(id, data.subject_ids);
 	broadcast('update', { entity: 'training_program' });
 	return getById(id);
 };
@@ -200,7 +169,8 @@ const listAllLessons = async () => {
 	const pool = await getPool();
 	const r = await pool.request().query(`
     SELECT pl.*,
-           (SELECT STRING_AGG(tp.name, ', ') FROM lesson_programs lp JOIN training_programs tp ON tp.id = lp.program_id WHERE lp.lesson_id = pl.id) AS program_names
+           (SELECT STRING_AGG(tp.name, ', ') FROM lesson_programs lp JOIN training_programs tp ON tp.id = lp.program_id WHERE lp.lesson_id = pl.id) AS program_names,
+           (SELECT STRING_AGG(lp.program_id, ',') FROM lesson_programs lp WHERE lp.lesson_id = pl.id) AS program_ids
     FROM program_lessons pl
     ORDER BY pl.title ASC
   `);
@@ -233,7 +203,7 @@ const createLesson = async (data, actorId) => {
 };
 
 // Chương trình đào tạo đang gắn với 1 bài học (danh sách id) — nguồn khởi tạo
-// cho multi-select ở form sửa (mirror getSubjectIds của training_programs).
+// cho multi-select ở form sửa.
 const getLessonProgramIds = async (lessonId) => {
 	const pool = await getPool();
 	const r = await pool
@@ -245,7 +215,7 @@ const getLessonProgramIds = async (lessonId) => {
 
 // Gán LẠI TOÀN BỘ danh sách chương trình cho 1 bài học (xoá hết rồi chèn lại,
 // display_order = vị trí trong mảng) — dùng cho multi-select ở form sửa
-// (mirror setSubjectIds). KHÔNG tự xoá bài học kể cả khi programIds rỗng —
+// KHÔNG tự xoá bài học kể cả khi programIds rỗng —
 // khác unlinkLesson (gỡ từng cái 1 ở danh sách bài học/chương trình, có dọn
 // mồ côi) vì đây là hành động sửa có chủ đích của người dùng trên chính bài
 // học, không phải gỡ ngẫu nhiên.
@@ -430,7 +400,15 @@ const removeLesson = async (lessonId, actorId) => {
 		.request()
 		.input('lesson_id', sql.VarChar(20), lessonId)
 		.query('SELECT file_id FROM lesson_documents WHERE lesson_id = @lesson_id');
-	await pool.request().input('id', sql.VarChar(20), lessonId).query('DELETE FROM program_lessons WHERE id = @id');
+	// Bài học thay cho "môn học" cũ: các cột subject_id trỏ tới bài học (FK không cascade) → gỡ trước khi xoá
+	await pool.request().input('id', sql.VarChar(20), lessonId).query(`
+    UPDATE lecturer_assignments SET subject_id = NULL WHERE subject_id = @id;
+    UPDATE class_sessions SET subject_id = NULL WHERE subject_id = @id;
+    UPDATE question_bank SET subject_id = NULL WHERE subject_id = @id;
+    UPDATE exam_papers SET subject_id = NULL WHERE subject_id = @id;
+    DELETE FROM grades WHERE subject_id = @id;
+    DELETE FROM program_lessons WHERE id = @id;
+  `);
 	for (const d of docs.recordset) {
 		if (d.file_id) await trainingFileService.softDelete(d.file_id, actorId);
 	}
@@ -535,8 +513,6 @@ module.exports = {
 	create,
 	update,
 	remove,
-	getSubjectIds,
-	setSubjectIds,
 	listLessons,
 	listAllLessons,
 	createLesson,

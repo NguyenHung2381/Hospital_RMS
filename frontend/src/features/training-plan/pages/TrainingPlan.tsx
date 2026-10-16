@@ -1,11 +1,17 @@
-import { SearchInput, SelectionCount, RowActions } from '@/shared/components/Table/TableToolbar';
-import { PlusSvg } from '@/assets/icons';
+import { useState } from 'react';
+import { SearchInput, SelectionCount, RowAction, RowActions } from '@/shared/components/Table/TableToolbar';
+import { EyeSvg, PlusSvg } from '@/assets/icons';
 import AdminLayout from '../../../layouts/AdminLayout';
+import { ExcelActions, type ExcelColumn } from '@/shared/components/Excel';
+import { matchLabel, nameMap } from '@/shared/components/Excel/excelHelpers';
+import { trainingPlanApi } from '../api/trainingPlanApi';
+import type { TrainingPlan as Plan } from '../types/trainingPlan.type';
 import { SkeletonTable } from '../../../shared/components/Loading';
 import { Pagination } from '../../../shared/components/Table/Pagination';
 import sel from '../../../shared/components/Table/RowSelect.module.css';
 import { DeleteAllButton, SelectCheckbox } from '../../../shared/components/Table/RowSelect';
 import { useRowSelection } from '../../../shared/hooks/useRowSelection';
+import { PlanDetailModal } from '../components/PlanDetailModal';
 import { TrainingPlanDeleteModal } from '../components/TrainingPlanDeleteModal';
 import { TrainingPlanFormModal } from '../components/TrainingPlanFormModal';
 import { useTrainingPlan } from '../hooks/useTrainingPlan';
@@ -23,20 +29,60 @@ const STATUS_CLASS: Record<TrainingPlanStatus, string> = {
 export default function TrainingPlan() {
 	const d = useTrainingPlan();
 	const rowSel = useRowSelection(d.paged.map((x) => x.id));
+	const [detailId, setDetailId] = useState<string | null>(null);
+
+	const deptNames = nameMap(d.departments, (x) => x.name);
+	const excelCols: ExcelColumn<Plan>[] = [
+		{ header: 'Năm', key: 'year', required: true, value: (x) => x.year },
+		{ header: 'Tên kế hoạch', key: 'title', required: true, value: (x) => x.title },
+		{ header: 'Khoa phòng', key: 'department', value: (x) => x.department_name },
+		{ header: 'Trạng thái', key: 'status', value: (x) => d.statusLabel[x.status] },
+		{ header: 'Mô tả', key: 'description', value: (x) => x.description },
+		{ header: 'Số hạng mục', value: (x) => x.item_count },
+		{ header: 'Hạng mục đã mở khóa', value: (x) => x.done_item_count },
+		// Chỉ để nhập: tên các hạng mục, cách nhau bằng dấu ;
+		{ header: 'Hạng mục', key: 'items' },
+	];
 
 	const headerActions = (
-		<button
-			className={styles.btnAddHeader}
-			onClick={() => d.setModal('add')}
-		>
-			<PlusSvg /> Thêm kế hoạch
-		</button>
+		<div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+			<ExcelActions
+				fileName='ke-hoach-dao-tao'
+				itemLabel='kế hoạch'
+				columns={excelCols}
+				getRows={() => d.filtered}
+				importHint='Cột Hạng mục ghi tên các hạng mục, cách nhau bằng dấu chấm phẩy (;).'
+				importRow={(r) => {
+					const year = Number(r.year);
+					if (!Number.isInteger(year) || year < 2000 || year > 2100) throw new Error(`Năm "${r.year}" không hợp lệ`);
+					return trainingPlanApi.create({
+						year,
+						title: r.title,
+						department_id: matchLabel(deptNames, r.department, 'Khoa phòng') ?? null,
+						status: matchLabel(d.statusLabel, r.status, 'Trạng thái') ?? 'draft',
+						description: r.description || null,
+						items: r.items
+							.split(/[;\n]/)
+							.map((t) => t.trim())
+							.filter(Boolean)
+							.map((title) => ({ title })),
+					});
+				}}
+				onImported={d.refreshData}
+			/>
+			<button
+				className={styles.btnAddHeader}
+				onClick={() => d.setModal('add')}
+			>
+				<PlusSvg /> Thêm kế hoạch
+			</button>
+		</div>
 	);
 
 	return (
 		<AdminLayout
 			pageTitle='Kế hoạch đào tạo'
-			pageSubtitle='Lập kế hoạch đào tạo theo năm và các hạng mục cần tổ chức'
+			pageSubtitle='Lập kế hoạch theo năm, mở khóa học cho từng hạng mục và theo dõi tiến độ thực hiện'
 			breadcrumbs={[{ label: 'Đào tạo' }]}
 			headerActions={headerActions}
 		>
@@ -86,7 +132,7 @@ export default function TrainingPlan() {
 								<th className={styles.th}>Kế hoạch</th>
 								<th className={styles.th}>Năm</th>
 								<th className={styles.th}>Khoa / Phòng ban</th>
-								<th className={styles.th}>Hạng mục</th>
+								<th className={styles.th}>Tiến độ</th>
 								<th className={styles.th}>Trạng thái</th>
 								<th className={`${styles.th} ${styles.thRight}`}>Thao tác</th>
 							</tr>
@@ -125,14 +171,31 @@ export default function TrainingPlan() {
 											</td>
 											<td className={`${styles.td} ${styles.tdIdx}`}>{rowNum}</td>
 											<td className={styles.td}>
-												<div className={styles.itemName}>{plan.title}</div>
+												<div
+													className={styles.itemName}
+													title='Xem hạng mục & tiến độ'
+													onClick={() => setDetailId(plan.id)}
+												>
+													{plan.title}
+												</div>
 												{plan.description && (
 													<div className={styles.descText}>{plan.description}</div>
 												)}
 											</td>
 											<td className={styles.td}>{plan.year}</td>
 											<td className={styles.td}>{plan.department_name ?? 'Toàn viện'}</td>
-											<td className={styles.td}>{plan.items?.length ?? 0}</td>
+											<td className={styles.td}>
+												<div className={styles.progressCell}>
+													<span className={styles.descText}>
+														{plan.done_item_count}/{plan.item_count} hạng mục đã mở khóa
+													</span>
+													{plan.item_count > 0 && (
+														<div className={styles.progress}>
+															<span style={{ width: `${Math.round((plan.done_item_count / plan.item_count) * 100)}%` }} />
+														</div>
+													)}
+												</div>
+											</td>
 											<td className={styles.td}>
 												<span className={`${styles.statusBadge} ${styles[STATUS_CLASS[plan.status]]}`}>
 													{d.statusLabel[plan.status]}
@@ -140,15 +203,19 @@ export default function TrainingPlan() {
 											</td>
 											<td className={`${styles.td} ${styles.tdActions}`}>
 												<RowActions
-													onEdit={() => {
-														d.setEditingItem(plan);
-														d.setModal('edit');
-													}}
+													onEdit={() => void d.openEdit(plan)}
 													onDelete={() => {
 														d.setDeletingItem(plan);
 														d.setModal('delete');
 													}}
-												/>
+												>
+													<RowAction
+														title='Hạng mục & tiến độ'
+														onClick={() => setDetailId(plan.id)}
+													>
+														<EyeSvg />
+													</RowAction>
+												</RowActions>
 											</td>
 										</tr>
 									);
@@ -190,6 +257,17 @@ export default function TrainingPlan() {
 					}}
 					onSave={d.handleEdit}
 					loading={d.loading}
+				/>
+			)}
+			{detailId && (
+				<PlanDetailModal
+					planId={detailId}
+					onClose={() => setDetailId(null)}
+					onEdit={(plan) => {
+						setDetailId(null);
+						d.setEditingItem(plan);
+						d.setModal('edit');
+					}}
 				/>
 			)}
 			{d.modal === 'delete' && d.deletingItem && (

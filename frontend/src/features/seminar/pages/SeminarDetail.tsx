@@ -48,7 +48,7 @@ import {
 import { SeminarAgendaModal } from '../components/SeminarAgendaModal';
 import { parseAgenda } from '../utils/agenda';
 import { exportSeminarDetailExcel } from '../api/seminarApi';
-import { fileSlug, saveBlob } from '../utils/saveBlob';
+import { fileSlug, saveBlob } from '@/shared/utils/saveBlob';
 import { showToast } from '@/shared/utils/feedback';
 import styles from './Seminar.module.css';
 import tbl from '@/shared/components/Table/Table.module.css';

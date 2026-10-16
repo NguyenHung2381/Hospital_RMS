@@ -3,6 +3,10 @@ import { RowActions, SearchInput, SelectionCount } from '@/shared/components/Tab
 import styles from '@/shared/components/Table/CrudPage.module.css';
 import { avatarColor, getInitials } from '@/shared/utils';
 import AdminLayout from '../../../layouts/AdminLayout';
+import { ExcelActions, type ExcelColumn } from '@/shared/components/Excel';
+import { catalogApi } from '../api/catalogApi';
+import type { CatalogItem } from '../types/catalog.type';
+import { fileSlug } from '@/shared/utils/saveBlob';
 import { SkeletonTable } from '../../../shared/components/Loading';
 import { Pagination } from '../../../shared/components/Table/Pagination';
 import sel from '../../../shared/components/Table/RowSelect.module.css';
@@ -14,6 +18,11 @@ import { CATALOG_GROUPS, TAB_CONFIG, useCatalog } from '../hooks/useCatalog';
 import type { CatalogGroup } from '../types/catalog.type';
 import tbl from '@/shared/components/Table/Table.module.css';
 
+const EXCEL_COLS: ExcelColumn<CatalogItem>[] = [
+	{ header: 'Tên', key: 'name', required: true, value: (x) => x.name },
+	{ header: 'Mô tả', key: 'description', value: (x) => x.description },
+];
+
 /** Trang danh mục đơn giản (tên + mô tả) — dùng cho cả danh mục NCKH và Đào tạo. */
 export default function Catalog({ group }: { group: CatalogGroup }) {
 	const d = useCatalog(group);
@@ -22,12 +31,23 @@ export default function Catalog({ group }: { group: CatalogGroup }) {
 	const label = d.cfg.label.toLowerCase();
 
 	const headerActions = (
-		<button
-			className={styles.btnAddHeader}
-			onClick={() => d.setModal('add')}
-		>
-			<PlusSvg /> Thêm {label}
-		</button>
+		<div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+			<ExcelActions
+				key={d.tab}
+				fileName={fileSlug(d.cfg.label)}
+				itemLabel={label}
+				columns={EXCEL_COLS}
+				getRows={() => d.filtered}
+				importRow={(r) => catalogApi.create(d.tab, { name: r.name, description: r.description })}
+				onImported={d.refreshData}
+			/>
+			<button
+				className={styles.btnAddHeader}
+				onClick={() => d.setModal('add')}
+			>
+				<PlusSvg /> Thêm {label}
+			</button>
+		</div>
 	);
 
 	return (

@@ -76,7 +76,7 @@ function EnrolledItem({ c }: { c: MyEnrolledCourse }) {
 						<thead>
 							<tr>
 								<th className={tbl.thIdx}>STT</th>
-								<th>Môn học</th>
+								<th>Bài học</th>
 								<th>Thường xuyên</th>
 								<th>Giữa kỳ</th>
 								<th>Cuối kỳ</th>
@@ -201,7 +201,7 @@ export default function MyTraining() {
 																</b>
 															</span>
 														)}
-														{s.subject_name && <span>Môn: {s.subject_name}</span>}
+														{s.subject_name && <span>Bài: {s.subject_name}</span>}
 														{s.room && <span>Phòng: {s.room}</span>}
 														{s.lecturer_name && s.my_role === 'learning' && (
 															<span>Giảng viên: {s.lecturer_name}</span>
@@ -260,7 +260,7 @@ export default function MyTraining() {
 												</span>
 												{c.subjects && (
 													<span>
-														Môn phụ trách: <b>{c.subjects}</b>
+														Bài phụ trách: <b>{c.subjects}</b>
 													</span>
 												)}
 												<span>

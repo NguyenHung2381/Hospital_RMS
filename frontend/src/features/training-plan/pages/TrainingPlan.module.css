@@ -44,7 +44,7 @@
 /* Item cell */
 
 .itemName {
-	composes: cellTitle from '../../../shared/components/Table/Table.module.css';
+	composes: cellLink from '../../../shared/components/Table/Table.module.css';
 }
 
 .descText {
@@ -198,4 +198,92 @@
 	font-size: var(--font-size-sm);
 	color: var(--color-gray-400);
 	font-style: italic;
+}
+
+/* ── CHI TIẾT KẾ HOẠCH: hạng mục → khóa học ── */
+.btnGhost {
+	composes: btn secondary from '@/shared/components/Button/Button.module.css';
+}
+.btnSmall {
+	composes: btn secondary sm from '@/shared/components/Button/Button.module.css';
+	flex-shrink: 0;
+}
+.planItems {
+	display: flex;
+	flex-direction: column;
+	gap: var(--space-3);
+}
+.planItem {
+	border: 1px solid var(--color-gray-100);
+	border-radius: var(--radius-lg);
+	background: var(--color-gray-50);
+	padding: var(--space-3) var(--space-4);
+	display: flex;
+	flex-direction: column;
+	gap: var(--space-2);
+}
+.planItemHead {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--space-3);
+}
+.planItemTitle {
+	composes: cellTitle from '../../../shared/components/Table/Table.module.css';
+	display: flex;
+	align-items: center;
+	gap: var(--space-2);
+	flex-wrap: wrap;
+}
+.quarterBadge {
+	font-size: var(--font-size-xs);
+	font-weight: var(--font-weight-semibold);
+	color: var(--color-gray-600);
+	background: var(--color-gray-100);
+	padding: 1px 8px;
+	border-radius: var(--radius-full);
+}
+.planItemMeta,
+.planItemEmpty {
+	composes: cellSub from '../../../shared/components/Table/Table.module.css';
+}
+.progress {
+	height: 6px;
+	border-radius: var(--radius-full);
+	background: var(--color-gray-200);
+	overflow: hidden;
+}
+.progress > span {
+	display: block;
+	height: 100%;
+	background: var(--color-primary);
+	border-radius: inherit;
+}
+.courseLinks {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--space-2);
+}
+.courseLink {
+	padding: 4px 10px;
+	border: 1px solid var(--color-gray-200);
+	border-radius: var(--radius-full);
+	background: var(--color-white);
+	font-family: var(--font-body);
+	font-size: var(--font-size-compact);
+	color: var(--color-primary-dark);
+	cursor: pointer;
+}
+.courseLink:hover {
+	border-color: var(--color-primary);
+}
+.courseLinkCancelled {
+	color: var(--color-gray-400);
+	text-decoration: line-through;
+}
+.progressCell {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+	min-width: 120px;
 }

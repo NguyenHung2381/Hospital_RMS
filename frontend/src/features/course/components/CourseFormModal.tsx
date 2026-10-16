@@ -1,9 +1,14 @@
 import { FormField } from '@/shared/components/Input/FormField';
-import React, { useState } from 'react';
-import { LayersSvg, PlusSvg, TrashSvg } from '@/assets/icons';
+import React, { useEffect, useState } from 'react';
+import { CheckSmSvg, LayersSvg, PlusSvg, TrashSvg } from '@/assets/icons';
 import { DatePicker, Modal, ModalActions } from '@/shared/components';
+import { apiClient } from '@/shared/api/axios';
 import { EMPTY_FORM, type Course, type CourseFormData } from '../types/course.type';
-import type { SimpleItem } from '../hooks/useCourses';
+
+interface SimpleItem {
+	id: string;
+	name: string;
+}
 import styles from '../pages/Courses.module.css';
 
 function ListEditor({
@@ -73,14 +78,15 @@ function ListEditor({
 export function CourseFormModal({
 	mode,
 	course,
-	forms,
+	initial,
 	onClose,
 	onSave,
 	loading,
 }: {
 	mode: 'add' | 'edit';
 	course?: Course;
-	forms: SimpleItem[];
+	/** Giá trị điền sẵn khi thêm mới (vd tạo khóa từ hạng mục kế hoạch). */
+	initial?: Partial<CourseFormData>;
 	onClose: () => void;
 	onSave: (d: CourseFormData) => void;
 	loading: boolean;
@@ -89,6 +95,8 @@ export function CourseFormModal({
 		course
 			? {
 					name: course.name,
+					program_ids: course.program_ids,
+					plan_item_id: course.plan_item_id ?? '',
 					training_form_id: course.training_form_id ?? '',
 					start_date: course.start_date ? course.start_date.slice(0, 10) : '',
 					end_date: course.end_date ? course.end_date.slice(0, 10) : '',
@@ -101,8 +109,30 @@ export function CourseFormModal({
 					prerequisites: course.prerequisites,
 					objectives: course.objectives,
 				}
-			: EMPTY_FORM,
+			: { ...EMPTY_FORM, ...initial },
 	);
+	const [forms, setForms] = useState<SimpleItem[]>([]);
+	const [programs, setPrograms] = useState<SimpleItem[]>([]);
+	const [planItems, setPlanItems] = useState<SimpleItem[]>([]);
+
+	useEffect(() => {
+		apiClient.get<{ data: SimpleItem[] }>('/training-forms?limit=0').then((r) => setForms(r.data)).catch(() => {});
+		apiClient.get<{ data: SimpleItem[] }>('/training-programs?limit=0').then((r) => setPrograms(r.data)).catch(() => {});
+		// Cần quyền Kế hoạch đào tạo — không có quyền thì ẩn ô chọn
+		apiClient
+			.get<{ id: string; title: string; quarter: number | null; plan_title: string; year: number }[]>(
+				'/training-plans/item-options',
+			)
+			.then((r) =>
+				setPlanItems(
+					r.map((i) => ({
+						id: i.id,
+						name: `${i.year} · ${i.plan_title} — ${i.title}${i.quarter ? ` (Q${i.quarter})` : ''}`,
+					})),
+				),
+			)
+			.catch(() => {});
+	}, []);
 	const [errors, setErrors] = useState<Partial<Record<keyof CourseFormData, string>>>({});
 
 	const set =
@@ -154,10 +184,67 @@ export function CourseFormModal({
 						placeholder='VD: Khóa Cấp cứu cơ bản K1/2026'
 					/>
 					{errors.name && <div className={styles.fieldError}>{errors.name}</div>}
-					<div className={styles.hint}>
-						Chương trình đào tạo áp dụng cho khóa học được gán sau, ở tab "Chương trình áp dụng" trong màn chi tiết khóa học (1 khóa có thể áp dụng nhiều chương trình).
-					</div>
 				</div>
+				<FormField
+					label='Chương trình đào tạo áp dụng'
+					hint='Nội dung học (bài học) lấy theo chương trình. Một khóa có thể áp dụng nhiều chương trình.'
+					style={{ gridColumn: '1 / -1' }}
+				>
+					{programs.length === 0 ? (
+						<div className={styles.hint}>Chưa có chương trình đào tạo nào.</div>
+					) : (
+						<div className={styles.pickList}>
+							{programs.map((p) => {
+								const on = form.program_ids.includes(p.id);
+								return (
+									<button
+										key={p.id}
+										type='button'
+										aria-pressed={on}
+										className={`${styles.pickChip} ${on ? styles.pickChipOn : ''}`}
+										onClick={() =>
+											setForm((f) => ({
+												...f,
+												program_ids: on ? f.program_ids.filter((x) => x !== p.id) : [...f.program_ids, p.id],
+											}))
+										}
+									>
+										{on && <CheckSmSvg />}
+										{p.name}
+									</button>
+								);
+							})}
+						</div>
+					)}
+				</FormField>
+				{(planItems.length > 0 || form.plan_item_id) && (
+					<FormField
+						label='Thuộc kế hoạch đào tạo'
+						hint='Gắn khóa vào hạng mục kế hoạch để theo dõi tiến độ thực hiện kế hoạch.'
+						style={{ gridColumn: '1 / -1' }}
+					>
+						<select
+							className={styles.formInput}
+							value={form.plan_item_id}
+							onChange={set('plan_item_id')}
+						>
+							<option value=''>-- Không thuộc kế hoạch --</option>
+							{form.plan_item_id && !planItems.some((i) => i.id === form.plan_item_id) && (
+								<option value={form.plan_item_id}>
+									{course?.plan_item_title ?? 'Hạng mục hiện tại'}
+								</option>
+							)}
+							{planItems.map((i) => (
+								<option
+									key={i.id}
+									value={i.id}
+								>
+									{i.name}
+								</option>
+							))}
+						</select>
+					</FormField>
+				)}
 				<div className={styles.formGroup}>
 					<label className={styles.formLabel}>Chế độ đăng ký</label>
 					<select
