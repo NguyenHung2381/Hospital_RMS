@@ -10,4 +10,4 @@ uploads/
 secrets/
 
 # File dữ liệu nhân sự xuất từ Sở Y tế (có thông tin cá nhân) — chỉ dùng để import, không commit
-danh-sach-nguoi-hanh-nghe-*.xlsx
+danh-sach-nguoi-hanh-nghe-*
