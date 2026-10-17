@@ -9,7 +9,7 @@ const root = fs.mkdtempSync(path.join(os.tmpdir(), 'rms-public-upload-'));
 process.env.UPLOADS_DIR = root;
 const express = require('express');
 // Cấu hình hệ thống không cần DB — dùng mặc định của utils/uploadPolicy.js
-require('../../src/services/systemSettingService').getValue = async () => undefined;
+require('../../src/modules/settings/systemSettingService').getValue = async () => undefined;
 const { publicUpload, moveUploadedFiles } = require('../../src/middlewares/uploadPublic');
 
 const PDF = Buffer.from('%PDF-1.4\n1 0 obj<<>>endobj\ntrailer<<>>\n%%EOF');

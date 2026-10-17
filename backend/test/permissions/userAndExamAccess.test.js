@@ -17,12 +17,12 @@ install(async (text) => {
 	if (/INSERT INTO exam_answers/.test(text)) writes.push('answer');
 	return [];
 });
-require('../../src/services/eventService').broadcast = () => {};
-require('../../src/services/courseService').upsertGrade = async () => {};
+require('../../src/modules/events/eventService').broadcast = () => {};
+require('../../src/modules/training/courses/courseService').upsertGrade = async () => {};
 
 // Controller người dùng: stub service + chốt quyền quản lý tài khoản
-const userService = require('../../src/services/userService');
-require('../../src/services/privilegeGuard').assertCanManageUser = async () => {};
+const userService = require('../../src/modules/users/userService');
+require('../../src/modules/access/privilegeGuard').assertCanManageUser = async () => {};
 userService.getById = async (id) => ({ id, department_id: 'K1' });
 let updated = null;
 userService.update = async (id, data) => (updated = { id, ...data });
@@ -31,8 +31,8 @@ userService.searchForMember = async (args) => {
 	searchArgs = args;
 	return { data: [], pagination: {} };
 };
-const userCtrl = require('../../src/controllers/userController');
-const examService = require('../../src/services/examService');
+const userCtrl = require('../../src/modules/users/userController');
+const examService = require('../../src/modules/training/exams/examService');
 
 const call = (handler, req) =>
 	new Promise((resolve, reject) => {

@@ -1,0 +1,750 @@
+const { getPool, sql } = require('../../config/db');
+const notifSvc = require('../notifications/notificationService');
+const { broadcast } = require('../events/eventService');
+const { paging } = require('../../utils/paging');
+const { splitList, inClause, buildWhere } = require('../../utils/sqlFilters');
+const { assertTopicActionWindow } = require('./deadlineGuard');
+const { scopeOf, hasPermission } = require('../../middlewares/auth');
+const { findActiveUserIdsWhere } = require('../access/permissionService');
+const roundService = require('../rounds/roundService');
+const { httpError } = require('../../utils/httpError');
+
+// Phạm vi xem đề tài: không có quyền topics nào ⇒ chỉ đề tài mình tham gia.
+const topicScope = (actor) => scopeOf(actor, 'topics') ?? 'own';
+
+// ─── Kiểm tra theo bản ghi (chống IDOR) ─────────────────────────────────────
+// authorizePermission ở route chỉ biết actor CÓ quyền topics:xxx, không biết
+// đề tài cụ thể có nằm trong phạm vi của họ không: 'department' = cùng khoa,
+// 'own' = là thành viên, 'all' = mọi đề tài. Mọi API thao tác theo mã đề tài
+// phải qua 1 trong 2 hàm dưới (modules/topics/topics.routes.js gắn qua router.param).
+const assertTopicInScope = async (topicId, actor) => {
+	const scope = topicScope(actor);
+	if (scope === 'all') return;
+	const pool = await getPool();
+	const row = (
+		await pool
+			.request()
+			.input('id', sql.VarChar(15), String(topicId))
+			.input('uid', sql.VarChar(20), actor.id).query(`
+				SELECT t.department_id,
+				       CASE WHEN EXISTS (SELECT 1 FROM topic_members
+				                         WHERE topic_id = t.id AND user_id = @uid)
+				            THEN 1 ELSE 0 END AS is_member
+				FROM topics t WHERE t.id = @id
+			`)
+	).recordset[0];
+	if (!row) throw httpError(404, 'Đề tài không tồn tại.');
+	const allowed = scope === 'department' ? row.department_id === actor.department_id : row.is_member === 1;
+	if (!allowed) {
+		throw httpError(403, 'Không có quyền thao tác trên đề tài này');
+	}
+};
+
+// Lọc danh sách mã đề tài (xuất dữ liệu theo lô) — chỉ giữ đề tài trong phạm vi.
+const idsInScope = async (ids, actor) => {
+	const list = [...new Set((Array.isArray(ids) ? ids : []).map(String))].slice(0, 2000);
+	if (!list.length || topicScope(actor) === 'all') return list;
+	const allowed = [];
+	for (const id of list) {
+		try {
+			await assertTopicInScope(id, actor);
+			allowed.push(id);
+		} catch {
+			// ngoài phạm vi / không tồn tại — bỏ qua, không báo lỗi cho cả lô
+		}
+	}
+	return allowed;
+};
+
+// Danh sách hành động hợp lệ cho đề tài theo status + quyền của actor — nguồn
+// chân lý duy nhất để frontend ẩn/hiện nút phê duyệt/từ chối/bổ sung/nộp lại/
+// cấp tài khoản, thay vì tự suy luận theo topic.status rải rác ở nhiều nơi
+// (ApprovalDetailPanel.tsx, useTopicDrawer.ts...). Khớp ĐÚNG điều kiện mà mỗi
+// route thật sự kiểm tra (vd 'submit' không đòi phải là leader/secretary vì
+// backend /submit cũng không kiểm tra điều đó) — allowedActions không được
+// lỏng/chặt hơn quyền thật ở route.
+const computeAllowedActions = (topic, actor) => {
+	if (!actor) return [];
+	const actions = [];
+	if (topic.status === 'submitted' && hasPermission(actor, 'topics', 'approve')) {
+		actions.push('approve', 'reject', 'request_supplement');
+	}
+	if (topic.status === 'supplement' && hasPermission(actor, 'topics', 'update')) {
+		actions.push('submit');
+	}
+	if (topic.status === 'approved' && hasPermission(actor, 'topics', 'update')) {
+		actions.push('grant_accounts');
+	}
+	return actions;
+};
+
+const getAll = async (filters, actor = null) => {
+	const {
+		page = 1,
+		limit = 20,
+		search,
+		round_id,
+		department_id,
+		status,
+		category_id,
+		level_id,
+		participant_id,
+		year,
+		article_type,
+	} = filters || {};
+
+	const pool = await getPool();
+	const pg = paging(page, limit);
+
+	const req = pool
+		.request()
+		.input('offset', sql.Int, pg.offset)
+		.input('limit', sql.Int, pg.limit);
+
+	// Giới hạn theo phạm vi vai trò — áp cho cả số liệu tổng quan (không phụ thuộc bộ lọc UI):
+	// 'department' chỉ thấy khoa mình, 'own' chỉ thấy đề tài tham gia, 'all' không giới hạn.
+	const scope = topicScope(actor);
+	const actorClauses = [];
+	if (actor) {
+		if (scope === 'department') {
+			actorClauses.push('t.department_id = @actor_dept');
+			req.input('actor_dept', sql.VarChar(20), actor.department_id);
+		} else if (scope === 'own') {
+			actorClauses.push(`EXISTS (
+        SELECT 1 FROM topic_members WHERE topic_id = t.id AND user_id = @actor_id
+      )`);
+			req.input('actor_id', sql.VarChar(20), actor.id);
+		}
+	}
+
+	// Mệnh đề dùng chung — quyền + mọi bộ lọc UI TRỪ trạng thái
+	const baseClauses = [...actorClauses];
+
+	if (search) {
+		// t.id để tìm theo mã đề tài; u.full_name để tìm theo người nộp (màn phê duyệt)
+		baseClauses.push(
+			'(t.title LIKE @search OR t.description LIKE @search OR t.id LIKE @search OR u.full_name LIKE @search)',
+		);
+		req.input('search', sql.NVarChar, `%${search}%`);
+	}
+	// scope 'all' được lọc theo participant_id tuỳ ý; các scope hẹp hơn chỉ được
+	// tự lọc theo chính mình (vd. widget "đề tài của tôi") — không được soi người khác.
+	if (participant_id && (scope === 'all' || (actor && participant_id === actor.id))) {
+		baseClauses.push(`(t.created_by = @participant_id OR EXISTS (
+      SELECT 1 FROM topic_members WHERE topic_id = t.id AND user_id = @participant_id
+    ))`);
+		req.input('participant_id', sql.VarChar(20), participant_id);
+	}
+
+	// Các bộ lọc multi-select: nhận 1 giá trị hoặc danh sách "a,b,c"
+	baseClauses.push(
+		inClause(req, 't.round_id', 'rnd', splitList(round_id), sql.VarChar(10)),
+		inClause(req, 't.category_id', 'cat', splitList(category_id), sql.VarChar(6)),
+		inClause(req, 't.level_id', 'lvl', splitList(level_id), sql.VarChar(5)),
+		inClause(
+			req,
+			't.article_type',
+			'atype',
+			splitList(article_type),
+			sql.VarChar(20),
+		),
+		inClause(
+			req,
+			'r.year',
+			'yr',
+			splitList(year).map((y) => parseInt(y, 10)),
+			sql.Int,
+		),
+	);
+	if (department_id && scope === 'all') {
+		// phạm vi 'department' đã bị khoá cứng theo khoa; chỉ 'all' mới lọc theo department_id tuỳ ý
+		baseClauses.push(
+			inClause(
+				req,
+				't.department_id',
+				'dept',
+				splitList(department_id),
+				sql.VarChar(20),
+			),
+		);
+	}
+
+	const statusClause = inClause(
+		req,
+		't.status',
+		'st',
+		splitList(status),
+		sql.VarChar(15),
+	);
+
+	const whereAll = buildWhere([...baseClauses, statusClause]);
+	// Số liệu tổng quan (thẻ thống kê + số trên tab): chỉ theo quyền, KHÔNG theo bộ lọc UI
+	// — giữ đúng hành vi cũ khi client còn tự đếm trên toàn bộ danh sách.
+	const whereGlobal = buildWhere(actorClauses);
+
+	const result = await req.query(`
+    SELECT t.id, t.title, t.description, t.status, t.created_at,
+           t.round_id, r.name AS round_name, r.year AS round_year,
+           t.category_id, c.name AS category_name,
+           t.level_id, l.name AS level_name,
+           t.department_id, d.name AS department_name,
+           t.created_by, u.full_name AS created_by_name,
+           t.article_type, t.journal_name, t.doi, t.publish_date, t.is_featured,
+           (SELECT COUNT(*) FROM topic_members tm WHERE tm.topic_id = t.id) AS member_count,
+           0 AS progress
+    FROM topics t
+    LEFT JOIN research_rounds r ON r.id = t.round_id
+    LEFT JOIN categories c ON c.id = t.category_id
+    LEFT JOIN levels l ON l.id = t.level_id
+    LEFT JOIN departments d ON d.id = t.department_id
+    LEFT JOIN users u ON u.id = t.created_by
+    ${whereAll}
+    ORDER BY t.created_at DESC
+    ${pg.fetchClause};
+
+    SELECT COUNT(*) AS total FROM topics t
+    LEFT JOIN research_rounds r ON r.id = t.round_id
+    ${whereAll};
+
+    SELECT t.status, COUNT(*) AS count FROM topics t
+    ${whereGlobal}
+    GROUP BY t.status;
+  `);
+
+	const [rows, totalRows, globalStatusRows] = result.recordsets;
+	const byStatus = Object.fromEntries(
+		globalStatusRows.map((r) => [r.status, r.count]),
+	);
+	rows.forEach((row) => {
+		row.allowed_actions = computeAllowedActions(row, actor);
+	});
+
+	return {
+		data: rows,
+		pagination: { page: pg.page, limit: pg.limit, total: totalRows[0].total },
+		// Tổng quan theo trạng thái trên toàn bộ đề tài user được thấy (bỏ qua bộ lọc UI)
+		global_stats: {
+			total: globalStatusRows.reduce((s, r) => s + r.count, 0),
+			submitted: byStatus.submitted ?? 0,
+			approved: byStatus.approved ?? 0,
+			rejected: byStatus.rejected ?? 0,
+			supplement: byStatus.supplement ?? 0,
+		},
+	};
+};
+
+const getById = async (id, actor = null) => {
+	const pool = await getPool();
+	const result = await pool.request().input('id', sql.VarChar(15), id).query(`
+      SELECT t.*, r.name AS round_name, c.name AS category_name,
+             l.name AS level_name, d.name AS department_name,
+             u.full_name AS created_by_name
+      FROM topics t
+      LEFT JOIN research_rounds r ON r.id = t.round_id
+      LEFT JOIN categories c ON c.id = t.category_id
+      LEFT JOIN levels l ON l.id = t.level_id
+      LEFT JOIN departments d ON d.id = t.department_id
+      LEFT JOIN users u ON u.id = t.created_by
+      WHERE t.id = @id
+    `);
+
+	if (!result.recordset[0]) return null;
+	const topic = result.recordset[0];
+
+	// Kiểm tra quyền xem chi tiết theo phạm vi vai trò
+	const detailScope = topicScope(actor);
+	if (actor && detailScope !== 'all') {
+		if (detailScope === 'department') {
+			if (topic.department_id !== actor.department_id) {
+				throw httpError(403, 'Không có quyền xem đề tài này');
+			}
+		} else {
+			const access = await pool
+				.request()
+				.input('topic_id', sql.VarChar(15), id)
+				.input('user_id', sql.VarChar(20), actor.id).query(`
+          SELECT 1 AS ok FROM topic_members
+          WHERE topic_id = @topic_id AND user_id = @user_id
+        `);
+			if (!access.recordset[0]) {
+				throw httpError(403, 'Không có quyền xem đề tài này');
+			}
+		}
+	}
+
+	// Get members
+	const members = await pool.request().input('topic_id', sql.VarChar(15), id)
+		.query(`
+      SELECT tm.id, tm.name AS ho_ten, tm.email, tm.phone_number AS so_dien_thoai, tm.position AS chuc_vu, tm.role,
+             tm.department_id,
+             md.name AS department_name,
+             tm.account_granted, tm.user_id
+      FROM topic_members tm
+      LEFT JOIN departments md ON md.id = tm.department_id
+      WHERE tm.topic_id = @topic_id
+    `);
+	topic.members = members.recordset;
+
+	// Chuyên ngành liên quan (đề tài liên ngành, VD kế toán tích hợp CNTT)
+	const related = await pool.request().input('topic_id', sql.VarChar(15), id)
+		.query(`
+      SELECT trd.department_id, d.name AS department_name
+      FROM topic_related_departments trd
+      LEFT JOIN departments d ON d.id = trd.department_id
+      WHERE trd.topic_id = @topic_id
+    `);
+	topic.related_departments = related.recordset;
+	topic.allowed_actions = computeAllowedActions(topic, actor);
+
+	return topic;
+};
+
+// Ghi đè danh sách chuyên ngành liên quan của đề tài
+const setRelatedDepartments = async (topicId, ids) => {
+	const pool = await getPool();
+	const req = pool.request().input('topic_id', sql.VarChar(15), topicId);
+	ids.forEach((d, i) => req.input(`d${i}`, sql.VarChar(20), d));
+	await req.query(`
+    DELETE FROM topic_related_departments WHERE topic_id = @topic_id;
+    ${
+			ids.length
+				? `INSERT INTO topic_related_departments (topic_id, department_id)
+           VALUES ${ids.map((_, i) => `(@topic_id, @d${i})`).join(', ')};`
+				: ''
+		}
+  `);
+};
+
+// "Cấp độ ăn theo đợt": cấp độ đề tài phải thuộc danh sách cấu hình của đợt
+// (hoặc của loại đợt nếu đợt chưa cấu hình). Chưa cấu hình gì ⇒ bỏ qua (fallback).
+const assertLevelForRound = async (roundId, levelId, articleType) => {
+	if (articleType === 'bai_bao') return; // bài báo không có cấp độ
+	const allowed = await roundService.getAllowedLevelIds(roundId);
+	if (allowed.length === 0) return;
+	if (!levelId || !allowed.includes(levelId)) {
+		const err = new Error('Vui lòng chọn cấp độ đề tài hợp lệ cho đợt này.');
+		err.status = 400;
+		err.statusCode = 400;
+		throw err;
+	}
+};
+
+const create = async (data, actorId) => {
+	const pool = await getPool();
+	const result = await pool
+		.request()
+		.input('actor_id', sql.VarChar(20), actorId)
+		.input('title', sql.NVarChar(500), data.title)
+		.input('description', sql.NVarChar(sql.MAX), data.description || null)
+		.input('round_id', sql.VarChar(10), data.round_id)
+		.input('category_id', sql.VarChar(6), data.category_id || null)
+		.input('level_id', sql.VarChar(5), data.level_id || null)
+		.input('department_id', sql.VarChar(20), data.department_id || null)
+		.input('article_type', sql.VarChar(20), data.article_type || 'de_tai')
+		.input('journal_name', sql.NVarChar(255), data.journal_name || null)
+		.input('doi', sql.VarChar(100), data.doi || null)
+		.input('publish_date', sql.Date, data.publish_date || null)
+		.input('budget_estimated', sql.Decimal(18, 2), data.budget_estimated ?? null)
+		.query(`
+      DECLARE @new_id VARCHAR(15);
+      EXEC sp_gen_topic_id @category_id, @round_id, @new_id OUTPUT;
+      EXEC sp_set_actor @actor_id;
+      INSERT INTO topics (id, title, description, round_id, category_id, level_id, department_id, status, created_by, article_type, journal_name, doi, publish_date, budget_estimated)
+      VALUES (@new_id, @title, @description, @round_id, @category_id, @level_id, @department_id, 'submitted', @actor_id, @article_type, @journal_name, @doi, @publish_date, @budget_estimated);
+      SELECT @new_id AS id;
+    `);
+	if (Array.isArray(data.related_department_ids) && data.related_department_ids.length)
+		await setRelatedDepartments(
+			result.recordset[0].id,
+			data.related_department_ids,
+		);
+	const topic = await getById(result.recordset[0].id);
+	broadcast('update', { entity: 'topic' });
+	return topic;
+};
+
+const update = async (id, data, actorId, actor = null) => {
+	const pool = await getPool();
+
+	// actor có thể là object (req.user), true (bỏ qua kiểm tra), hoặc null.
+	const bypass = actor === true;
+	const scope = bypass ? 'all' : topicScope(actor);
+
+	// Chỉ sửa được đề tài mình XEM được (cùng quy tắc phạm vi với getById):
+	// 'own' phải là thành viên, 'department' phải cùng khoa. Trước đây gọi
+	// getById(id) không kèm actor — chỉ 5 trường (tên, mô tả, loại, cấp, khoa)
+	// có kiểm tra thành viên qua mốc thời gian, còn lại (đợt, kinh phí, tạp
+	// chí...) ai có topics:update cũng sửa được đề tài BẤT KỲ theo id (IDOR).
+	const current = await getById(id, bypass ? null : actor);
+	if (!current)
+		throw httpError(404, 'Đề tài không tồn tại.');
+	// Phạm vi khoa không được chuyển đề tài sang khoa khác (ra ngoài phạm vi mình)
+	if (
+		scope === 'department' &&
+		data.department_id !== undefined &&
+		data.department_id !== actor.department_id
+	) {
+		throw httpError(403, 'Không thể chuyển đề tài sang khoa/phòng khác.');
+	}
+
+	// BR04: không cho đổi status qua đường PUT chung trừ khi actor thực sự có
+	// quyền topics:approve — trước đây bất kỳ ai có topics:update (kể cả
+	// phạm vi 'own'/'department') có thể set status='approved' bằng payload
+	// tự chế, bỏ qua hẳn sp_approve_topic + quyền topics:approve. Đường hợp lệ
+	// duy nhất để phê duyệt/từ chối/yêu cầu bổ sung là POST /topics/:id/approve;
+	// route này (PUT) chỉ còn dùng cho các trường hợp admin có quyền approve
+	// cần sửa trực tiếp (vd nhập liệu/data-fix qua ô chọn trạng thái ở
+	// TopicModal.tsx).
+	if (data.status !== undefined) {
+		const VALID_STATUSES = [
+			'submitted',
+			'approved',
+			'rejected',
+			'supplement',
+			'cancelled',
+		];
+		if (!VALID_STATUSES.includes(data.status)) {
+			throw httpError(400, 'Trạng thái đề tài không hợp lệ.');
+		}
+		if (!bypass && !hasPermission(actor, 'topics', 'approve')) {
+			throw Object.assign(
+				new Error(
+					'Bạn không có quyền thay đổi trạng thái đề tài trực tiếp. Dùng chức năng Phê duyệt/Yêu cầu bổ sung.',
+				),
+				{ status: 403, statusCode: 403 },
+			);
+		}
+	}
+
+	if (!bypass && scope === 'own') {
+		// Chủ nhiệm / thư ký: chỉ sửa được khi mốc "Sửa" / "Bổ sung" tương ứng đang mở.
+		if (data.title !== undefined)
+			await assertTopicActionWindow(id, actorId, 'edit-title');
+		if (
+			data.description !== undefined ||
+			data.category_id !== undefined ||
+			data.level_id !== undefined ||
+			data.department_id !== undefined
+		)
+			await assertTopicActionWindow(id, actorId, 'edit-info');
+	} else if (scope !== 'all') {
+		if (current.status !== 'submitted' && current.status !== 'supplement') {
+			throw Object.assign(
+				new Error(
+					'Chỉ có thể chỉnh sửa đề tài ở trạng thái "Chờ duyệt" hoặc "Bổ sung".',
+				),
+				{ status: 403, statusCode: 403 },
+			);
+		}
+	}
+
+	const sets = [];
+	const req = pool
+		.request()
+		.input('id', sql.VarChar(15), id)
+		.input('actor_id', sql.VarChar(20), actorId);
+
+	if (data.title !== undefined) {
+		sets.push('title = @title');
+		req.input('title', sql.NVarChar(500), data.title);
+	}
+	if (data.description !== undefined) {
+		sets.push('description = @description');
+		req.input('description', sql.NVarChar(sql.MAX), data.description);
+	}
+	if (data.category_id !== undefined) {
+		sets.push('category_id = @cat');
+		req.input('cat', sql.VarChar(6), data.category_id);
+	}
+	if (data.level_id !== undefined) {
+		sets.push('level_id = @lvl');
+		req.input('lvl', sql.VarChar(5), data.level_id);
+	}
+	if (data.department_id !== undefined) {
+		sets.push('department_id = @dept');
+		req.input('dept', sql.VarChar(20), data.department_id);
+	}
+	if (data.round_id !== undefined) {
+		sets.push('round_id = @round_id');
+		req.input('round_id', sql.VarChar(10), data.round_id);
+	}
+	if (data.status !== undefined) {
+		sets.push('status = @status');
+		req.input('status', sql.VarChar(15), data.status);
+	}
+	if (data.article_type !== undefined) {
+		sets.push('article_type = @article_type');
+		req.input('article_type', sql.VarChar(20), data.article_type);
+	}
+	if (data.journal_name !== undefined) {
+		sets.push('journal_name = @journal_name');
+		req.input('journal_name', sql.NVarChar(255), data.journal_name || null);
+	}
+	if (data.doi !== undefined) {
+		sets.push('doi = @doi');
+		req.input('doi', sql.VarChar(100), data.doi || null);
+	}
+	if (data.publish_date !== undefined) {
+		sets.push('publish_date = @publish_date');
+		req.input('publish_date', sql.Date, data.publish_date || null);
+	}
+	if (data.budget_estimated !== undefined) {
+		sets.push('budget_estimated = @budget_estimated');
+		req.input('budget_estimated', sql.Decimal(18, 2), data.budget_estimated);
+	}
+	if (data.budget_actual !== undefined) {
+		sets.push('budget_actual = @budget_actual');
+		req.input('budget_actual', sql.Decimal(18, 2), data.budget_actual);
+	}
+	if (data.approval_decision_no !== undefined) {
+		sets.push('approval_decision_no = @approval_decision_no');
+		req.input('approval_decision_no', sql.NVarChar(100), data.approval_decision_no || null);
+	}
+	if (data.approval_decision_date !== undefined) {
+		sets.push('approval_decision_date = @approval_decision_date');
+		req.input('approval_decision_date', sql.Date, data.approval_decision_date || null);
+	}
+	if (data.recognition_decision_no !== undefined) {
+		sets.push('recognition_decision_no = @recognition_decision_no');
+		req.input('recognition_decision_no', sql.NVarChar(100), data.recognition_decision_no || null);
+	}
+	if (data.recognition_decision_date !== undefined) {
+		sets.push('recognition_decision_date = @recognition_decision_date');
+		req.input('recognition_decision_date', sql.Date, data.recognition_decision_date || null);
+	}
+	if (data.is_featured !== undefined) {
+		sets.push('is_featured = @is_featured');
+		req.input('is_featured', sql.Bit, data.is_featured ? 1 : 0);
+	}
+
+	const relatedChanged = Array.isArray(data.related_department_ids);
+	if (relatedChanged)
+		await setRelatedDepartments(id, data.related_department_ids);
+
+	if (!sets.length) {
+		if (relatedChanged) broadcast('update', { entity: 'topic' });
+		return getById(id);
+	}
+	sets.push('updated_at = GETDATE()', 'updated_by = @actor_id');
+
+	// Đổi status đề tài qua đường update chung (không phải sp_approve_topic) thì
+	// đồng bộ luôn approvals.status, nếu không bảng approvals sẽ kẹt ở giá trị cũ
+	// và các chỗ đọc nó (vd card "Phê duyệt gần đây" ở Dashboard) hiển thị sai.
+	// Chỉ map trạng thái có tương ứng ở approvals (CHK: pending|approved|rejected|
+	// supplement); cancelled/completed không map ⇒ giữ nguyên bản ghi duyệt.
+	// updated_at/updated_by của approvals do trigger trg_approvals_audit tự ghi
+	// từ SESSION_CONTEXT (đã set bởi sp_set_actor trong cùng batch).
+	const APV_STATUS_BY_TOPIC = {
+		submitted: 'pending',
+		approved: 'approved',
+		rejected: 'rejected',
+		supplement: 'supplement',
+	};
+	const apvStatus =
+		data.status !== undefined ? APV_STATUS_BY_TOPIC[data.status] : undefined;
+	let apvSyncSql = '';
+	if (apvStatus) {
+		req.input('apv_status', sql.VarChar(15), apvStatus);
+		apvSyncSql =
+			' UPDATE approvals SET status = @apv_status' +
+			' WHERE topic_id = @id AND status <> @apv_status;';
+	}
+
+	await req.query(
+		`EXEC sp_set_actor @actor_id; UPDATE topics SET ${sets.join(', ')} WHERE id = @id;${apvSyncSql}`,
+	);
+	const topic = await getById(id);
+	broadcast('update', { entity: 'topic' });
+	return topic;
+};
+
+const remove = async (id, actorId) => {
+	const pool = await getPool();
+	// Phải NULL hóa FK trên users trước khi xóa topic (cascade xóa topic_members)
+	await pool.request().input('topic_id', sql.VarChar(15), id).query(`
+      UPDATE u SET u.topic_member_id = NULL
+      FROM users u
+      JOIN topic_members tm ON tm.id = u.topic_member_id
+      WHERE tm.topic_id = @topic_id
+    `);
+	await pool
+		.request()
+		.input('id', sql.VarChar(15), id)
+		.input('actor_id', sql.VarChar(20), actorId)
+		.query(`EXEC sp_set_actor @actor_id; DELETE FROM topics WHERE id = @id`);
+	broadcast('update', { entity: 'topic' });
+};
+
+const approve = async (topicId, status, comment, actorId) => {
+	const pool = await getPool();
+	const result = await pool
+		.request()
+		.input('actor_id', sql.VarChar(20), actorId)
+		.input('topic_id', sql.VarChar(15), topicId)
+		.input('decision', sql.VarChar(15), status)
+		.input('comment', sql.NVarChar(sql.MAX), comment || null)
+		.execute('sp_approve_topic');
+
+	// Notify topic creator + all members who have accounts
+	const userRes = await pool
+		.request()
+		.input('topic_id', sql.VarChar(15), topicId).query(`
+      SELECT DISTINCT uid FROM (
+        SELECT created_by AS uid FROM topics WHERE id = @topic_id
+        UNION
+        SELECT user_id FROM topic_members WHERE topic_id = @topic_id AND user_id IS NOT NULL
+      ) x
+    `);
+	const ids = userRes.recordset.map((r) => r.uid).filter(Boolean);
+	const type =
+		status === 'approved'
+			? 'topic_approved'
+			: status === 'supplement'
+				? 'topic_supplement_requested'
+				: 'topic_rejected';
+	const title =
+		status === 'approved'
+			? 'Đề tài của bạn đã được phê duyệt'
+			: status === 'supplement'
+				? 'Đề tài của bạn cần bổ sung thông tin'
+				: 'Đề tài của bạn bị từ chối';
+	await notifSvc.pushWithEmail(type, title, ids, {
+		message: comment || null,
+		refId: topicId,
+		refType: 'topic',
+		mailEvent: 'TOPIC_RESULT',
+	});
+
+	broadcast('update', { entity: 'topic' });
+	return result.recordset[0];
+};
+
+const submit = async (topicId, actorId) => {
+	const pool = await getPool();
+	await pool
+		.request()
+		.input('topic_id', sql.VarChar(15), topicId)
+		.input('actor_id', sql.VarChar(20), actorId).query(`
+      EXEC sp_set_actor @actor_id;
+      UPDATE topics SET status = 'submitted', updated_at = GETDATE(), updated_by = @actor_id
+      WHERE id = @topic_id AND status = 'supplement';
+      -- Nộp lại: reset verdict cũ, nếu không getApprovals vẫn trả kết quả duyệt lần trước
+      IF @@ROWCOUNT > 0
+        UPDATE approvals SET status = 'pending', comment = NULL,
+          updated_at = GETDATE(), updated_by = @actor_id
+        WHERE topic_id = @topic_id;
+    `);
+
+	// Thông báo cho các tài khoản có quyền duyệt / xem toàn bộ đề tài
+	const ids = await findActiveUserIdsWhere(
+		(u) => hasPermission(u, 'topics', 'approve') || scopeOf(u, 'topics') === 'all',
+	);
+	await notifSvc.pushWithEmail('topic_submitted', 'Có đề tài mới cần xét duyệt', ids, {
+		refId: topicId,
+		refType: 'topic',
+		mailEvent: 'TOPIC_SUBMITTED',
+	});
+
+	const topic = await getById(topicId);
+	broadcast('update', { entity: 'topic' });
+	return topic;
+};
+
+const getApprovals = async (topicId) => {
+	const pool = await getPool();
+	const result = await pool
+		.request()
+		.input('topic_id', sql.VarChar(15), topicId).query(`
+      SELECT a.*, u.full_name AS approver_name
+      FROM approvals a
+      LEFT JOIN users u ON u.id = a.created_by
+      WHERE a.topic_id = @topic_id
+      ORDER BY a.created_at DESC
+    `);
+	return result.recordset;
+};
+
+const getForExport = async (topicIds) => {
+	if (!topicIds || topicIds.length === 0) return [];
+	const pool = await getPool();
+
+	const req = pool.request();
+	topicIds.forEach((id, i) => req.input(`id${i}`, sql.VarChar(15), id));
+	const idParams = topicIds.map((_, i) => `@id${i}`).join(',');
+
+	const result = await req.query(`
+    SELECT
+      t.id, t.title, t.status, t.created_at,
+      t.round_id, r.name AS round_name, r.year AS round_year,
+      t.category_id, c.name AS category_name,
+      t.level_id, l.name AS level_name,
+      t.department_id, d.name AS department_name, d.specialty_group,
+      t.created_by, u.full_name AS created_by_name,
+      tm.id AS member_id, tm.name AS ho_ten, tm.role,
+      tm.position AS chuc_vu, tm.email AS member_email, tm.phone_number AS so_dien_thoai,
+      tm.staff_number
+    FROM topics t
+    LEFT JOIN research_rounds r ON r.id = t.round_id
+    LEFT JOIN categories c ON c.id = t.category_id
+    LEFT JOIN levels l ON l.id = t.level_id
+    LEFT JOIN departments d ON d.id = t.department_id
+    LEFT JOIN users u ON u.id = t.created_by
+    LEFT JOIN topic_members tm ON tm.topic_id = t.id
+    WHERE t.id IN (${idParams})
+    ORDER BY t.created_at DESC,
+      CASE tm.role WHEN 'leader' THEN 0 WHEN 'secretary' THEN 1 ELSE 2 END
+  `);
+
+	const topicsMap = new Map();
+	for (const row of result.recordset) {
+		if (!topicsMap.has(row.id)) {
+			topicsMap.set(row.id, {
+				id: row.id,
+				title: row.title,
+				status: row.status,
+				created_at: row.created_at,
+				round_id: row.round_id,
+				round_name: row.round_name,
+				round_year: row.round_year,
+				category_id: row.category_id,
+				category_name: row.category_name,
+				level_id: row.level_id,
+				level_name: row.level_name,
+				department_id: row.department_id,
+				department_name: row.department_name,
+				specialty_group: row.specialty_group,
+				created_by: row.created_by,
+				created_by_name: row.created_by_name,
+				members: [],
+			});
+		}
+		if (row.member_id) {
+			topicsMap.get(row.id).members.push({
+				id: row.member_id,
+				ho_ten: row.ho_ten,
+				staff_number: row.staff_number,
+				role: row.role,
+				chuc_vu: row.chuc_vu,
+				email: row.member_email,
+				so_dien_thoai: row.so_dien_thoai,
+			});
+		}
+	}
+
+	return topicIds.map((id) => topicsMap.get(id)).filter(Boolean);
+};
+
+module.exports = {
+	getAll,
+	getById,
+	assertTopicInScope,
+	idsInScope,
+	create,
+	update,
+	remove,
+	submit,
+	approve,
+	getApprovals,
+	getForExport,
+	assertLevelForRound,
+};

@@ -13,7 +13,7 @@
 //
 // Trạng thái dùng chung giữa các worker đã nằm trên Redis: rate-limit
 // (utils/rateLimit.js), xoá cache phân quyền (utils/cacheBus.js), vé 1 lần
-// (utils/oneTimeToken.js), sự kiện realtime SSE (services/eventService.js).
+// (utils/oneTimeToken.js), sự kiện realtime SSE (modules/events/eventService.js).
 require('./config/loadEnv');
 const cluster = require('node:cluster');
 const os = require('node:os');

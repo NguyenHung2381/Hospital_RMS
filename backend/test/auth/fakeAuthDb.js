@@ -60,7 +60,7 @@ const setup = () => {
 		if (/FROM users u LEFT JOIN roles r ON r\.id=u\.role_id WHERE u\.id=@id/.test(text)) return [user];
 		return [];
 	});
-	require('../../src/services/securityEventService').log = async (e) => events.push(e);
+	require('../../src/modules/audit/securityEventService').log = async (e) => events.push(e);
 	require('../../src/middlewares/permissionCache').load = async () => ({ keys: new Set(), scopes: new Map() });
 
 	return { user, rows, events, PASSWORD };

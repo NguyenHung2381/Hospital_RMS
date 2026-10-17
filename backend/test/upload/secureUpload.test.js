@@ -11,10 +11,10 @@ delete process.env.CLAMAV_HOST;
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const express = require('express');
-require('../../src/services/securityEventService').log = async () => {};
+require('../../src/modules/audit/securityEventService').log = async () => {};
 // Cấu hình hệ thống giả (không cần DB) — test đổi được giữa chừng
 const settings = {};
-require('../../src/services/systemSettingService').getValue = async (key) => settings[key];
+require('../../src/modules/settings/systemSettingService').getValue = async (key) => settings[key];
 const upload = require('../../src/middlewares/upload');
 const uploadExcel = require('../../src/middlewares/uploadExcel');
 const { errorHandler } = require('../../src/middlewares/errorHandler');

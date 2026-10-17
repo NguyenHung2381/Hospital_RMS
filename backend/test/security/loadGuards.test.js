@@ -1,10 +1,10 @@
 // Giới hạn chống quá tải: cổng bcrypt (utils/cpuGate.js) và số kết nối SSE mỗi
-// user (services/eventService.js).
+// user (modules/events/eventService.js).
 process.env.SSE_MAX_PER_USER = '2';
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { createGate, BUSY_ERROR } = require('../../src/utils/cpuGate');
-const events = require('../../src/services/eventService');
+const events = require('../../src/modules/events/eventService');
 
 const deferred = () => {
 	let resolve;

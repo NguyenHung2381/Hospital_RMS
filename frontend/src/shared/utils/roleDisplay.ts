@@ -4,7 +4,7 @@ import type { BadgeTone } from '@/shared/components/Badge/badgeTone';
 // kèm tài khoản dưới dạng `role_code`), không theo id 'VT0x'. Nhãn ưu tiên tên
 // vai trò thật từ API (`role_name`); bảng dưới chỉ là màu + nhãn dự phòng.
 // Vai trò tự tạo (không có mã) hiện màu xám với tên của nó.
-// Khớp mã với backend/src/services/roleCodes.js.
+// Khớp mã với backend/src/modules/access/roleCodes.js.
 const ROLE_DISPLAY: Record<string, { label: string; tone: BadgeTone; avatarCls: string }> = {
 	admin: { label: 'Quản trị', tone: 'purple', avatarCls: 'avatarPurple' },
 	director: { label: 'Giám đốc / Lãnh đạo', tone: 'red', avatarCls: 'avatarRed' },

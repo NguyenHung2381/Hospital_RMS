@@ -149,7 +149,7 @@ app.use(
 );
 
 // ─── Health check ─────────────────────────────────────────────────────────────
-app.use('/health', require('./routes/health'));
+app.use('/health', require('./modules/system/health.routes'));
 
 // ─── Swagger UI (chỉ admin mới truy cập được) ────────────────────────────────
 // Basic Auth không có khoá tài khoản như /auth/login — chặn brute-force
@@ -211,13 +211,13 @@ if (isProduction) {
 
 // Báo cáo CSP từ trình duyệt — đặt trước activityLogger để không ghi vào nhật
 // ký tác động của người dùng.
-app.use(`${API}/csp-report`, require('./routes/cspReport'));
+app.use(`${API}/csp-report`, require('./modules/system/cspReport.routes'));
 
 // Giới hạn tổng theo IP cho mọi API — lưới an toàn phía sau limit_req của
 // nginx (frontend/nginx.conf), chặn cả request gọi thẳng 127.0.0.1:3001 bỏ qua
 // nginx. Đủ rộng cho người dùng thật (1200/phút = 20 req/s kéo dài); nhiều máy
 // đi chung 1 IP NAT thì nâng API_RATE_LIMIT. Kết nối SSE /events sống lâu,
-// đã có giới hạn riêng theo user (routes/events.js) nên không tính ở đây.
+// đã có giới hạn riêng theo user (modules/events/events.routes.js) nên không tính ở đây.
 app.use(
 	API,
 	rateLimit({
@@ -235,36 +235,36 @@ app.use(
 app.use(API, signUploadUrlsInJson);
 app.use(API, activityLogger);
 
-app.use(`${API}/modules`, require('./routes/modules'));
-app.use(`${API}/auth`, require('./routes/auth'));
-app.use(`${API}/users`, require('./routes/users'));
-app.use(`${API}/topics`, requireModule('RESEARCH'), require('./routes/topics'));
-app.use(`${API}/councils`, requireModule('RESEARCH'), require('./routes/councils'));
-app.use(`${API}/files`, require('./routes/files'));
-app.use(`${API}/excel`, require('./routes/excel'));
-app.use(`${API}/dashboard`, require('./routes/dashboard'));
-app.use(`${API}/notifications`, require('./routes/notifications'));
-app.use(`${API}/events`, require('./routes/events'));
-app.use(`${API}/activity-logs`, require('./routes/activityLogs'));
-app.use(`${API}/security-events`, require('./routes/securityEvents'));
-app.use(`${API}/seminars`, requireModule('SEMINAR'), require('./routes/seminars'));
-app.use(`${API}/cme-records`, requireModule('SEMINAR'), require('./routes/cmeRecords'));
-app.use(`${API}/trainees`, requireModule('TRAINING'), require('./routes/trainees'));
-app.use(`${API}/training-programs`, requireModule('TRAINING'), require('./routes/trainingPrograms'));
-app.use(`${API}/training-plans`, requireModule('TRAINING'), require('./routes/trainingPlans'));
-app.use(`${API}/surveys`, requireModule('SURVEY'), require('./routes/surveys'));
-app.use(`${API}/my-tasks`, require('./routes/myTasks'));
-app.use(`${API}/me`, require('./routes/me'));
-app.use(`${API}/exams`, requireModule('TRAINING'), require('./routes/exams'));
-app.use(`${API}/workflows`, require('./routes/workflows'));
-app.use(`${API}/lecturers`, requireModule('TRAINING'), require('./routes/lecturers'));
-app.use(`${API}/courses`, requireModule('TRAINING'), require('./routes/courses'));
-app.use(`${API}/staff-licenses`, require('./routes/staffLicenses'));
-app.use(`${API}/staff-attendance`, requireModule('ATTENDANCE'), require('./routes/staffAttendance'));
-app.use(`${API}/system-settings`, require('./routes/systemSettings'));
-app.use(`${API}/persons`, require('./routes/persons'));
-app.use(`${API}/public`, require('./routes/public'));
-app.use(API, require('./routes/lookups'));
+app.use(`${API}/modules`, require('./modules/system/modules.routes'));
+app.use(`${API}/auth`, require('./modules/auth/auth.routes'));
+app.use(`${API}/users`, require('./modules/users/users.routes'));
+app.use(`${API}/topics`, requireModule('RESEARCH'), require('./modules/topics/topics.routes'));
+app.use(`${API}/councils`, requireModule('RESEARCH'), require('./modules/councils/councils.routes'));
+app.use(`${API}/files`, require('./modules/topics/files.routes'));
+app.use(`${API}/excel`, require('./modules/system/excel.routes'));
+app.use(`${API}/dashboard`, require('./modules/dashboard/dashboard.routes'));
+app.use(`${API}/notifications`, require('./modules/notifications/notifications.routes'));
+app.use(`${API}/events`, require('./modules/events/events.routes'));
+app.use(`${API}/activity-logs`, require('./modules/audit/activityLogs.routes'));
+app.use(`${API}/security-events`, require('./modules/audit/securityEvents.routes'));
+app.use(`${API}/seminars`, requireModule('SEMINAR'), require('./modules/seminars/seminars.routes'));
+app.use(`${API}/cme-records`, requireModule('SEMINAR'), require('./modules/cme/cmeRecords.routes'));
+app.use(`${API}/trainees`, requireModule('TRAINING'), require('./modules/training/trainees/trainees.routes'));
+app.use(`${API}/training-programs`, requireModule('TRAINING'), require('./modules/training/programs/trainingPrograms.routes'));
+app.use(`${API}/training-plans`, requireModule('TRAINING'), require('./modules/training/plans/trainingPlans.routes'));
+app.use(`${API}/surveys`, requireModule('SURVEY'), require('./modules/surveys/surveys.routes'));
+app.use(`${API}/my-tasks`, require('./modules/portal/myTasks.routes'));
+app.use(`${API}/me`, require('./modules/portal/me.routes'));
+app.use(`${API}/exams`, requireModule('TRAINING'), require('./modules/training/exams/exams.routes'));
+app.use(`${API}/workflows`, require('./modules/topics/workflows.routes'));
+app.use(`${API}/lecturers`, requireModule('TRAINING'), require('./modules/training/lecturers/lecturers.routes'));
+app.use(`${API}/courses`, requireModule('TRAINING'), require('./modules/training/courses/courses.routes'));
+app.use(`${API}/staff-licenses`, require('./modules/staffLicenses/staffLicenses.routes'));
+app.use(`${API}/staff-attendance`, requireModule('ATTENDANCE'), require('./modules/attendance/staffAttendance.routes'));
+app.use(`${API}/system-settings`, require('./modules/settings/systemSettings.routes'));
+app.use(`${API}/persons`, require('./modules/persons/persons.routes'));
+app.use(`${API}/public`, require('./modules/public/public.routes'));
+app.use(API, require('./modules/catalog/lookups.routes'));
 
 // ─── 404 handler ──────────────────────────────────────────────────────────────
 app.use((req, res) => {

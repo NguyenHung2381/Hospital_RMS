@@ -3,7 +3,7 @@ const path = require('path');
 const { readHead, matchesExtension } = require('../utils/fileSignature');
 const clamav = require('../utils/clamav');
 const quota = require('../utils/uploadQuota');
-const securityEvents = require('../services/securityEventService');
+const securityEvents = require('../modules/audit/securityEventService');
 const { httpError } = require('../utils/httpError');
 
 // Bọc 1 instance multer để mọi route upload tự có thêm 3 lớp kiểm tra:

@@ -21,17 +21,55 @@ database/                     # Migration + định nghĩa SP/trigger/view — x
 scripts/                      # CLI: migrate, sync-permissions, import, gen-jwt...
 src/
 ├── server.js / cluster.js    # Khởi động (dev: 1 tiến trình; production: cluster)
-├── app.js                    # Express app: middleware, gắn routes
+├── app.js                    # Express app: middleware, gắn route của từng module (thứ tự có ý nghĩa)
 ├── config/                   # db.js (pool + withTransaction), redis, env, swagger, log
 ├── database/                 # migrator.js (bộ chạy migration), index.js (initDatabase lúc khởi động)
 ├── permissions/              # catalog quyền, phạm vi, kiểm tra CSDL + đồng bộ — xem README.md ở đó
 ├── middlewares/              # auth, errorHandler, upload*, cache quyền / trạng thái tài khoản
-├── routes/                   # khai báo route + validate + quyền
-├── controllers/              # nhận request → gọi service → trả response
-├── services/                 # nghiệp vụ + truy vấn SQL
-├── jobs/                     # cron job nền
-└── utils/                    # hàm dùng chung: httpError, paging, sqlFilters, cache, excel*, vnDate...
+├── modules/                  # mã nghiệp vụ, mỗi thư mục một module (xem bảng dưới)
+│   └── <module>/
+│       ├── <tên>.routes.js   # khai báo route + validate + quyền (Swagger quét modules/**/*.routes.js)
+│       ├── <tên>Controller.js# nhận request → gọi service → trả response
+│       └── <tên>Service.js   # nghiệp vụ + truy vấn SQL
+├── shared/                   # crudService, crudController — factory CRUD dùng chung
+├── jobs/                     # cron job nền (gọi service của các module)
+├── assets/                   # font, logo dùng khi xuất file / gửi mail
+└── utils/                    # hàm thuần dùng chung: httpError, paging, sqlFilters, cache, excel*, vnDate...
 ```
+
+Các module trong `src/modules/`:
+
+| Module | Route gắn trong app.js | Nội dung |
+|---|---|---|
+| `auth` | `/auth` | đăng nhập, refresh token, 2FA, thiết bị tin cậy, quên mật khẩu, `sessionVersion` |
+| `users` | `/users` | tài khoản người dùng |
+| `access` | (route ở `catalog`) | vai trò, ma trận quyền, `privilegeGuard`, `roleCodes` |
+| `persons` | `/persons` | hồ sơ người (gộp trùng, liên kết tài khoản) |
+| `catalog` | gốc `/api` (gắn cuối cùng) | danh mục: khoa, phản biện ngoài, lĩnh vực, cấp, loại đợt, danh mục đào tạo/CME, địa điểm, chức danh, vai trò/quyền, đợt nghiên cứu |
+| `rounds` | (route ở `catalog`) | đợt nghiên cứu, mốc deadline |
+| `topics` | `/topics`, `/files`, `/workflows` | đề tài, thành viên, tác giả, file nộp, workflow duyệt, nhập/xuất Excel |
+| `councils` | `/councils` | hội đồng, phân công, tiến độ đánh giá |
+| `seminars` | `/seminars` | hội nghị/hội thảo, người tham dự, xuất Excel |
+| `cme` | `/cme-records` | hồ sơ CME, yêu cầu tín chỉ, báo cáo |
+| `training/` | `/courses`, `/training-programs`, `/training-plans`, `/trainees`, `/exams`, `/lecturers` | thư mục con `courses`, `programs`, `plans`, `trainees`, `exams`, `lecturers`, `reports`; `trainingFileService` dùng chung |
+| `attendance` | `/staff-attendance` | chấm công, ca làm |
+| `staffLicenses` | `/staff-licenses` | chứng chỉ hành nghề |
+| `surveys` | `/surveys` | khảo sát |
+| `notifications` | `/notifications` | thông báo trong hệ thống, `mailService` |
+| `events` | `/events` | SSE realtime (`eventService.broadcast`) |
+| `settings` | `/system-settings` | cấu hình hệ thống |
+| `audit` | `/activity-logs`, `/security-events` | nhật ký thao tác, sự kiện/cảnh báo bảo mật |
+| `dashboard` | `/dashboard` | số liệu tổng hợp, báo cáo đào tạo |
+| `portal` | `/me`, `/my-tasks` | dữ liệu "của tôi" (đọc chéo nhiều module) |
+| `public` | `/public` | cổng công khai không cần đăng nhập |
+| `system` | `/health`, `/csp-report`, `/excel`, `/modules` | route hạ tầng |
+
+Quy ước module:
+
+- Tên file controller/service giữ dạng `xxxService.js` / `xxxController.js` để grep theo tên vẫn ra; file route đặt `<tên>.routes.js`.
+- Module được phép `require` service của module khác. Hướng phụ thuộc nên đi từ module tổng hợp (`portal`, `public`, `dashboard`) xuống module nghiệp vụ, rồi xuống lõi (`events`, `access`, `notifications`, `settings`, `persons`). Không tạo `require` vòng giữa các file.
+- Thêm module mới: tạo `src/modules/<tên>/`, gắn router trong `app.js` (kèm `requireModule(...)` nếu thuộc module có thể bật/tắt), khai báo quyền trong `permissions/` rồi chạy `npm run check:routes`.
+- `npm run check:requires` nạp mọi file trong `src/` và báo đường dẫn `require` sai, kể cả `require` nằm trong thân hàm.
 
 Quy ước dùng chung:
 

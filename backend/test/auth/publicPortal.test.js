@@ -17,13 +17,13 @@ const log = install(async (text, inputs) => {
 		return inputs.national_id === TRAINEE.national_id ? [TRAINEE] : [];
 	return [];
 });
-const courseService = require('../../src/services/courseService');
+const courseService = require('../../src/modules/training/courses/courseService');
 courseService.getById = async () => ({ id: 'KH1', status: 'draft', is_public_registration: true, enrollment_open: true });
 courseService.registerTrainee = async () => ({ id: 'GD1' });
-require('../../src/services/traineeService').create = async () => ({ id: 'HV-NEW' });
+require('../../src/modules/training/trainees/traineeService').create = async () => ({ id: 'HV-NEW' });
 
 const { generateCaptcha, verifyCaptcha } = require('../../src/utils/captcha');
-const portal = require('../../src/services/publicPortalService');
+const portal = require('../../src/modules/public/publicPortalService');
 const attempts = require('../../src/utils/attemptLimiter');
 
 const { leadingZeroBits } = require('../../src/utils/loginShield');

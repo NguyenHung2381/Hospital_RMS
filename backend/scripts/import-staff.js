@@ -20,7 +20,7 @@ require('dotenv').config({ path: path.join(__dirname, '../.env'), quiet: true })
 const ExcelJS = require('exceljs');
 const { getPool, sql } = require('../src/config/db');
 const { norm, normDept } = require('../src/utils/vietnameseText');
-const { ROLE, requireRoleId } = require('../src/services/roleCodes');
+const { ROLE, requireRoleId } = require('../src/modules/access/roleCodes');
 
 const args = process.argv.slice(2);
 const apply = args.includes('--apply');
@@ -217,8 +217,8 @@ const ymd = (d) => (d ? d.toISOString().slice(0, 10) : '—');
 	}
 
 	// require muộn: các service nạp redis/event bus, không cần khi chỉ xem trước
-	const { createStaffAccount } = require('../src/services/userService');
-	const personService = require('../src/services/personService');
+	const { createStaffAccount } = require('../src/modules/users/userService');
+	const personService = require('../src/modules/persons/personService');
 	const adminRoleId = await requireRoleId(ROLE.ADMIN);
 	const actorId = (
 		await pool

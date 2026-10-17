@@ -1,4 +1,4 @@
-// Chống IDOR cho khoá học (services/courseService.js): giảng viên phạm vi
+// Chống IDOR cho khoá học (modules/training/courses/courseService.js): giảng viên phạm vi
 // 'assigned' chỉ thao tác khoá học mình được phân công — kể cả qua mã bản ghi
 // con (buổi học, đăng ký, tài liệu, điểm, chứng chỉ...).
 const test = require('node:test');
@@ -24,7 +24,7 @@ install(async (text, inputs) => {
 	const course = CHILD[`${table}:${inputs.id}`];
 	return course ? [{ course_id: course }] : [];
 });
-const courseService = require('../../src/services/courseService');
+const courseService = require('../../src/modules/training/courses/courseService');
 
 const actor = (id, grants) => ({
 	id,
@@ -57,8 +57,8 @@ test('phạm vi toàn viện: không cần tra DB', async () => {
 	assert.equal(queries.length, before);
 });
 
-test('mọi tham số mã con trong routes/courses.js đều có cách quy về khoá học', () => {
-	const src = require('fs').readFileSync(require.resolve('../../src/routes/courses.js'), 'utf8');
+test('mọi tham số mã con trong modules/training/courses/courses.routes.js đều có cách quy về khoá học', () => {
+	const src = require('fs').readFileSync(require.resolve('../../src/modules/training/courses/courses.routes.js'), 'utf8');
 	const params = new Set([...src.matchAll(/'[^']*\/:([a-zA-Z]+)/g)].map((m) => m[1]));
 	for (const p of params) {
 		if (p === 'id') continue;

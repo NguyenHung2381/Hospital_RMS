@@ -5,7 +5,7 @@ const { createDiskUpload } = require('./upload');
 //
 // options.maxSizeMB: ghi đè dung lượng của Cấu hình hệ thống (UPLOAD_MAX_MB).
 // course_document/lesson_document dùng giới hạn lớn hơn để nhận video bài giảng
-// — xem routes/courses.js, routes/trainingPrograms.js (TRAINING_MEDIA_MAX_MB).
+// — xem modules/training/courses/courses.routes.js, modules/training/programs/trainingPrograms.routes.js (TRAINING_MEDIA_MAX_MB).
 // options.allowMedia: cho phép thêm đuôi video/audio (chỉ bật ở 2 route trên).
 const createTrainingUpload = (entityType, options = {}) =>
 	createDiskUpload({

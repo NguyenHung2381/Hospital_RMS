@@ -1,4 +1,4 @@
-// Chốt chặn leo thang quyền (services/privilegeGuard.js) — quyền của vai trò
+// Chốt chặn leo thang quyền (modules/access/privilegeGuard.js) — quyền của vai trò
 // đích lấy từ permissionCache, ở đây thay bằng dữ liệu giả (không cần DB).
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -16,7 +16,7 @@ const ROLES = {
 	DEPTVIEW: perms({ 'topics:read': 'department' }),
 };
 permCache.load = async (id) => ROLES[id] ?? perms({});
-const g = require('../../src/services/privilegeGuard');
+const g = require('../../src/modules/access/privilegeGuard');
 
 const actor = (role, dept = 'K1') => ({
 	id: `u-${role}`,

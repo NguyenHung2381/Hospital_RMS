@@ -1,4 +1,4 @@
-const personService = require('../services/personService');
+const personService = require('../modules/persons/personService');
 
 // Job nền: gắn nốt person_id cho các bản ghi còn thiếu (đường ghi dual-write bị lỗi,
 // dữ liệu import bằng SQL tay, đường ghi chưa được hook...). Idempotent, an toàn chạy lại.

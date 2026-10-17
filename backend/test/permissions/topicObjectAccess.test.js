@@ -1,4 +1,4 @@
-// Chống IDOR cho đề tài (services/topicService.js): quyền topics:xxx ở route
+// Chống IDOR cho đề tài (modules/topics/topicService.js): quyền topics:xxx ở route
 // chưa đủ — đề tài cụ thể phải nằm trong phạm vi của người gọi.
 //   own        → là thành viên đề tài
 //   department → đề tài cùng khoa
@@ -22,8 +22,8 @@ install(async (text, inputs) => {
 	if (/UPDATE topics/.test(text)) writes.push(inputs.id);
 	return [];
 });
-require('../../src/services/eventService').broadcast = () => {};
-const topicService = require('../../src/services/topicService');
+require('../../src/modules/events/eventService').broadcast = () => {};
+const topicService = require('../../src/modules/topics/topicService');
 const { errorHandler } = require('../../src/middlewares/errorHandler');
 
 const actor = (id, dept, grants) => ({

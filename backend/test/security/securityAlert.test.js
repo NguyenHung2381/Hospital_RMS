@@ -1,4 +1,4 @@
-// Email cảnh báo sự kiện bảo mật (services/securityAlertService.js).
+// Email cảnh báo sự kiện bảo mật (modules/audit/securityAlertService.js).
 process.env.ALERT_EMAILS = 'it@bvnghean.vn, admin@bvnghean.vn';
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -10,8 +10,8 @@ install(async (text) => {
 	return [];
 });
 const sent = [];
-require('../../src/services/mailService').send = async (m) => sent.push(m);
-const { notify } = require('../../src/services/securityAlertService');
+require('../../src/modules/notifications/mailService').send = async (m) => sent.push(m);
+const { notify } = require('../../src/modules/audit/securityAlertService');
 
 test('sự kiện nghiêm trọng: gửi email tới ALERT_EMAILS, nội dung được escape', async () => {
 	await notify({
@@ -57,7 +57,7 @@ test('sự kiện thường (đăng nhập, bật 2FA) không gửi email', asyn
 });
 
 test('lỗi gửi email không ném ra ngoài', async () => {
-	require('../../src/services/mailService').send = async () => {
+	require('../../src/modules/notifications/mailService').send = async () => {
 		throw new Error('SMTP down');
 	};
 	await notify({ eventType: 'upload_malware_blocked', targetId: 'F1' });

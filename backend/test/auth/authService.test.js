@@ -1,4 +1,4 @@
-// services/authService.js với CSDL giả (test/auth/fakeDb.js):
+// modules/auth/authService.js với CSDL giả (test/auth/fakeDb.js):
 //   - chống dò tài khoản: sai username / sai mật khẩu / TK bị khoá mà sai mật
 //     khẩu đều trả cùng một lỗi;
 //   - /2fa/setup không được dùng để tắt 2FA đang bật (chỉ cần access token);
@@ -29,8 +29,8 @@ const log = install(async (text, inputs) => {
 	if (/SELECT \* FROM users WHERE id = @id/.test(text)) return [byId[inputs.id]];
 	return [];
 });
-require('../../src/services/securityEventService').log = async () => {};
-const authService = require('../../src/services/authService');
+require('../../src/modules/audit/securityEventService').log = async () => {};
+const authService = require('../../src/modules/auth/authService');
 
 const rejectsWith = async (p, status, msgRe) => {
 	await assert.rejects(p, (e) => e.statusCode === status && (!msgRe || msgRe.test(e.message)));

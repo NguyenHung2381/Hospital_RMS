@@ -10,7 +10,7 @@ const path = require('path');
 require('dotenv').config({ path: path.join(__dirname, '../.env'), quiet: true });
 
 const { getPool, sql } = require('../src/config/db');
-const { buildMemberUsername } = require('../src/services/topicMemberService');
+const { buildMemberUsername } = require('../src/modules/topics/topicMemberService');
 
 const apply = process.argv.includes('--apply');
 
