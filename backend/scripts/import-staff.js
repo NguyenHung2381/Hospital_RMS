@@ -20,7 +20,7 @@ require('dotenv').config({ path: path.join(__dirname, '../.env'), quiet: true })
 const ExcelJS = require('exceljs');
 const { getPool, sql } = require('../src/config/db');
 const { norm, normDept } = require('../src/utils/vietnameseText');
-const { ROLE, requireRoleId } = require('../src/services/roleCodes');
+const { ROLE, requireRoleId } = require('../src/modules/access/roleCodes');
 
 const args = process.argv.slice(2);
 const apply = args.includes('--apply');

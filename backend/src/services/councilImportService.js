@@ -11,7 +11,7 @@ const ExcelJS = require('exceljs');
 const { getPool, sql } = require('../config/db');
 const councilService = require('./councilService');
 const councilAssignmentService = require('./councilAssignmentService');
-const { ROLE, inputRoleId } = require('./roleCodes');
+const { ROLE, inputRoleId } = require('../modules/access/roleCodes');
 const { norm, normDept, stripQualification, dice } = require('../utils/vietnameseText');
 const { httpError } = require('../utils/httpError');
 

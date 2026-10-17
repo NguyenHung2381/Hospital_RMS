@@ -1,13 +1,13 @@
-const { getPool, sql, withTransaction } = require('../config/db');
-const { broadcast } = require('../modules/events/eventService');
-const permCache = require('../middlewares/permissionCache');
-const { invalidate } = require('../utils/cache');
+const { getPool, sql, withTransaction } = require('../../config/db');
+const { broadcast } = require('../events/eventService');
+const permCache = require('../../middlewares/permissionCache');
+const { invalidate } = require('../../utils/cache');
 const { assertCanEditRole, assertCanChangeGrants } = require('./privilegeGuard');
-const securityEvents = require('../modules/audit/securityEventService');
+const securityEvents = require('../audit/securityEventService');
 const roleService = require('./roleService');
-const { MODULES, ACTION_LABELS, BY_KEY, impliesOf } = require('../permissions/catalog');
-const { RESOURCE_SCOPES, SCOPE_LABELS, isScoped } = require('../permissions/scopes');
-const { httpError, badRequest } = require('../utils/httpError');
+const { MODULES, ACTION_LABELS, BY_KEY, impliesOf } = require('../../permissions/catalog');
+const { RESOURCE_SCOPES, SCOPE_LABELS, isScoped } = require('../../permissions/scopes');
+const { httpError, badRequest } = require('../../utils/httpError');
 
 // Danh mục quyền cho màn hình phân quyền: nhóm theo module → resource, kèm
 // nhãn tiếng Việt và quan hệ "đi kèm". Chỉ trả những quyền đã có trong DB (id

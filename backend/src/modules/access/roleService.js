@@ -1,10 +1,10 @@
-const { getPool, sql } = require('../config/db');
-const { createCrudService } = require('../shared/crudService');
-const { broadcast } = require('../modules/events/eventService');
-const { paging } = require('../utils/paging');
-const { remember, invalidate } = require('../utils/cache');
-const permCache = require('../middlewares/permissionCache');
-const { httpError } = require('../utils/httpError');
+const { getPool, sql } = require('../../config/db');
+const { createCrudService } = require('../../shared/crudService');
+const { broadcast } = require('../events/eventService');
+const { paging } = require('../../utils/paging');
+const { remember, invalidate } = require('../../utils/cache');
+const permCache = require('../../middlewares/permissionCache');
+const { httpError } = require('../../utils/httpError');
 
 // Cùng prefix `lookup:roles:` mà createCrudService('roles', ...) tự invalidate
 // sau update/remove — getAll/create ở dưới bị override nên tự quản cache riêng.

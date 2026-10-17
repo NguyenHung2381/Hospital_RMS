@@ -1,6 +1,6 @@
-const { getPool, sql } = require('../config/db');
-const cacheBus = require('../utils/cacheBus');
-const { httpError } = require('../utils/httpError');
+const { getPool, sql } = require('../../config/db');
+const cacheBus = require('../../utils/cacheBus');
+const { httpError } = require('../../utils/httpError');
 
 // Mã cố định của các vai trò hệ thống (roles.code). Code nghiệp vụ tham chiếu
 // vai trò qua mã này thay vì id ('VT05', 'VT08'...) — id là dữ liệu, có thể

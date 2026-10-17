@@ -12,7 +12,7 @@ const { parseDateCell, parseCredits, parseStaffNumber, readSheet } = require('..
 const cmeRecordService = require('./cmeRecordService');
 const userService = require('./userService');
 const notificationService = require('../modules/notifications/notificationService');
-const { ROLE, inputRoleId } = require('./roleCodes');
+const { ROLE, inputRoleId } = require('../modules/access/roleCodes');
 const xl = require('../utils/excelTemplate');
 const { httpError } = require('../utils/httpError');
 

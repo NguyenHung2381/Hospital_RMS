@@ -22,7 +22,7 @@ require('../../src/services/courseService').upsertGrade = async () => {};
 
 // Controller người dùng: stub service + chốt quyền quản lý tài khoản
 const userService = require('../../src/services/userService');
-require('../../src/services/privilegeGuard').assertCanManageUser = async () => {};
+require('../../src/modules/access/privilegeGuard').assertCanManageUser = async () => {};
 userService.getById = async (id) => ({ id, department_id: 'K1' });
 let updated = null;
 userService.update = async (id, data) => (updated = { id, ...data });

@@ -9,7 +9,7 @@ const { paging } = require('../utils/paging');
 // department_id/role_id nhận danh sách phân tách bởi dấu phẩy (multi-select trên UI)
 const { splitList, inClause } = require('../utils/sqlFilters');
 const { isDeptAccountSql } = require('../utils/deptAccount');
-const { ROLE, requireRoleId } = require('./roleCodes');
+const { ROLE, requireRoleId } = require('../modules/access/roleCodes');
 const { defaultPassword } = require('../utils/passwordPolicy');
 const { httpError } = require('../utils/httpError');
 

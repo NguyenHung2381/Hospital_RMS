@@ -8,7 +8,7 @@ const {
 	isSuperuser,
 	assertCanAssignRole,
 	assertCanManageUser,
-} = require('../services/privilegeGuard');
+} = require('../modules/access/privilegeGuard');
 
 const base = createCrudController(userService);
 

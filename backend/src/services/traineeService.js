@@ -11,7 +11,7 @@ const {
 	ensureUniqueUsername,
 	genUserIdInTx,
 } = require('./topicMemberService');
-const { ROLE, requireRoleId } = require('./roleCodes');
+const { ROLE, requireRoleId } = require('../modules/access/roleCodes');
 const { defaultPassword } = require('../utils/passwordPolicy');
 
 const traineeSelect = `

@@ -13,7 +13,7 @@ const { getPool } = require('../config/db');
 const { norm } = require('../utils/vietnameseText');
 const seminarService = require('./seminarService');
 const xl = require('../utils/excelTemplate');
-const { ROLE, inputRoleId } = require('./roleCodes');
+const { ROLE, inputRoleId } = require('../modules/access/roleCodes');
 const { httpError } = require('../utils/httpError');
 
 const EVENT_TYPE_LABELS = {

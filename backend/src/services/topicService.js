@@ -5,7 +5,7 @@ const { paging } = require('../utils/paging');
 const { splitList, inClause, buildWhere } = require('../utils/sqlFilters');
 const { assertTopicActionWindow } = require('./deadlineGuard');
 const { scopeOf, hasPermission } = require('../middlewares/auth');
-const { findActiveUserIdsWhere } = require('./permissionService');
+const { findActiveUserIdsWhere } = require('../modules/access/permissionService');
 const roundService = require('./roundService');
 const { httpError } = require('../utils/httpError');
 

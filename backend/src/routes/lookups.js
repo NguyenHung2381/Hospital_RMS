@@ -9,8 +9,8 @@ const deadlineSvc  = require('../services/deadlineService');
 const roundService = require('../services/roundService');
 const deptService = require('../services/departmentService');
 const extReviewerService = require('../services/externalReviewerService');
-const permService = require('../services/permissionService');
-const { assertCanEditRole } = require('../services/privilegeGuard');
+const permService = require('../modules/access/permissionService');
+const { assertCanEditRole } = require('../modules/access/privilegeGuard');
 const { success, created, notFound } = require('../utils/response');
 
 /**
@@ -791,7 +791,7 @@ for (const [path, table] of Object.entries(TRAINING_CATALOG_TABLES)) {
 }
 
 // ─── Roles ────────────────────────────────────────────────────────────────────
-const roleService = require('../services/roleService');
+const roleService = require('../modules/access/roleService');
 const roleCtrl = createCrudController(roleService);
 
 /**

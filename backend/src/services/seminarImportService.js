@@ -14,7 +14,7 @@ const ExcelJS = require('exceljs');
 const { parseDob, parseCredits, parseStaffNumber, readSheet } = require('../utils/excelImport');
 const { normalizeGender } = require('../utils/gender');
 const partService = require('./seminarParticipantService');
-const { ROLE, inputRoleId } = require('./roleCodes');
+const { ROLE, inputRoleId } = require('../modules/access/roleCodes');
 const xl = require('../utils/excelTemplate');
 const { httpError } = require('../utils/httpError');
 
