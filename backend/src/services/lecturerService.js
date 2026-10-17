@@ -1,7 +1,7 @@
 const { getPool, sql } = require('../config/db');
 const { broadcast } = require('../modules/events/eventService');
 const { paging } = require('../utils/paging');
-const personService = require('./personService');
+const personService = require('../modules/persons/personService');
 const { normalizeGender } = require('../utils/gender');
 const { ROLE, roleIdOf } = require('../modules/access/roleCodes');
 

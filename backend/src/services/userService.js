@@ -1,7 +1,7 @@
 const bcrypt = require('bcrypt');
 const { getPool, sql, withTransaction } = require('../config/db');
 const { broadcast } = require('../modules/events/eventService');
-const personService = require('./personService');
+const personService = require('../modules/persons/personService');
 const securityEvents = require('../modules/audit/securityEventService');
 const userStatusCache = require('../middlewares/userStatusCache');
 const { bumpTokenVersion } = require('../modules/auth/sessionVersion');

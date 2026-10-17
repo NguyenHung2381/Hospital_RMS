@@ -218,7 +218,7 @@ const ymd = (d) => (d ? d.toISOString().slice(0, 10) : '—');
 
 	// require muộn: các service nạp redis/event bus, không cần khi chỉ xem trước
 	const { createStaffAccount } = require('../src/services/userService');
-	const personService = require('../src/services/personService');
+	const personService = require('../src/modules/persons/personService');
 	const adminRoleId = await requireRoleId(ROLE.ADMIN);
 	const actorId = (
 		await pool

@@ -1,5 +1,5 @@
-const { getPool, sql, withTransaction } = require('../config/db');
-const { normalizeGender } = require('../utils/gender');
+const { getPool, sql, withTransaction } = require('../../config/db');
+const { normalizeGender } = require('../../utils/gender');
 
 /**
  * Dual-write danh tính (GĐ 1 / bước 2) — giữ bảng `persons` đồng bộ với 6 bảng nguồn.

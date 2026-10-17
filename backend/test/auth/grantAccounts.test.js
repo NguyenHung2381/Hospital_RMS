@@ -30,7 +30,7 @@ const log = install(async (text, inputs) => {
 	if (/EXEC sp_gen_user_id/.test(text)) return [{ new_id: 'NVK10999' }];
 	return [];
 });
-require('../../src/services/personService').linkTopicMemberToUser = async () => {};
+require('../../src/modules/persons/personService').linkTopicMemberToUser = async () => {};
 require('../../src/modules/notifications/notificationService').push = async () => {};
 require('../../src/modules/events/eventService').broadcast = () => {};
 const { grantAccounts } = require('../../src/services/topicMemberService');

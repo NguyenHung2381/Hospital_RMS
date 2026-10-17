@@ -1,9 +1,9 @@
-const { getPool, sql } = require('../config/db');
-const { paging } = require('../utils/paging');
-const { broadcast } = require('../modules/events/eventService');
+const { getPool, sql } = require('../../config/db');
+const { paging } = require('../../utils/paging');
+const { broadcast } = require('../events/eventService');
 const personService = require('./personService');
-const { normalizeGender } = require('../utils/gender');
-const { httpError } = require('../utils/httpError');
+const { normalizeGender } = require('../../utils/gender');
+const { httpError } = require('../../utils/httpError');
 
 /**
  * Duyệt gộp danh tính (FR-C02): hàng đợi person_merge_candidates → gộp / bỏ qua / mở lại.

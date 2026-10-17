@@ -1,9 +1,9 @@
 const router = require('express').Router();
 const { body, param, query } = require('express-validator');
-const personMergeService = require('../services/personMergeService');
-const { authenticate, authorizePermission } = require('../middlewares/auth');
-const { validate } = require('../middlewares/errorHandler');
-const { success } = require('../utils/response');
+const personMergeService = require('./personMergeService');
+const { authenticate, authorizePermission } = require('../../middlewares/auth');
+const { validate } = require('../../middlewares/errorHandler');
+const { success } = require('../../utils/response');
 
 /**
  * @swagger
