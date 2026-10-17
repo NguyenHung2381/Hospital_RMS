@@ -125,7 +125,7 @@ router.post('/cme/export-excel', cmePersonalExport.exportMine);
 
 // ─── Chấm công của chính mình (IP bệnh viện + GPS) — staffAttendanceService ──
 // GET không chặn theo module: trang Cấu hình cần nó để hiện IP hiện tại trước khi bật.
-const staffAttendanceService = require('../services/staffAttendanceService');
+const staffAttendanceService = require('../modules/attendance/staffAttendanceService');
 const { requireModule } = require('../middlewares/moduleGuard');
 router.get(
 	'/attendance',

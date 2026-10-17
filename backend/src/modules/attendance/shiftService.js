@@ -1,7 +1,7 @@
-const { getPool, sql, withTransaction } = require('../config/db');
-const { broadcast } = require('../modules/events/eventService');
-const { validateShift, normalizePatternDays, DATE_RE } = require('../utils/attendanceShift');
-const { httpError } = require('../utils/httpError');
+const { getPool, sql, withTransaction } = require('../../config/db');
+const { broadcast } = require('../events/eventService');
+const { validateShift, normalizePatternDays, DATE_RE } = require('../../utils/attendanceShift');
+const { httpError } = require('../../utils/httpError');
 
 // Ca làm việc, mẫu ca tuần, phân ca theo ngày (2026-10-30_attendance_shifts.sql).
 // Logic chọn ca khi chấm công ở utils/attendanceShift.js.

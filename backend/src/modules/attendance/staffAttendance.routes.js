@@ -1,10 +1,10 @@
 const router = require('express').Router();
 const { body, param, query } = require('express-validator');
-const staffAttendanceService = require('../services/staffAttendanceService');
-const shiftService = require('../services/shiftService');
-const { authenticate, authorizePermission } = require('../middlewares/auth');
-const { validate } = require('../middlewares/errorHandler');
-const { success } = require('../utils/response');
+const staffAttendanceService = require('./staffAttendanceService');
+const shiftService = require('./shiftService');
+const { authenticate, authorizePermission } = require('../../middlewares/auth');
+const { validate } = require('../../middlewares/errorHandler');
+const { success } = require('../../utils/response');
 
 /**
  * @swagger

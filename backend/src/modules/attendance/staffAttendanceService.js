@@ -1,11 +1,11 @@
-const { getPool, sql } = require('../config/db');
-const { broadcast } = require('../modules/events/eventService');
-const attendancePolicy = require('../utils/attendancePolicy');
-const shiftLogic = require('../utils/attendanceShift');
+const { getPool, sql } = require('../../config/db');
+const { broadcast } = require('../events/eventService');
+const attendancePolicy = require('../../utils/attendancePolicy');
+const shiftLogic = require('../../utils/attendanceShift');
 const shiftService = require('./shiftService');
-const { normalizeIp } = require('../utils/activityDescribe');
-const { todayKeyVN } = require('../utils/vnDate');
-const { badRequest } = require('../utils/httpError');
+const { normalizeIp } = require('../../utils/activityDescribe');
+const { todayKeyVN } = require('../../utils/vnDate');
+const { badRequest } = require('../../utils/httpError');
 
 // Chấm công theo ca (2026-10-29_staff_attendance.sql + 2026-10-30_attendance_shifts.sql):
 // 1 dòng / người / ca / ngày bắt đầu ca. Lần bấm đầu = giờ vào, các lần sau = giờ ra (lần cuối).
