@@ -1,12 +1,12 @@
 const router = require('express').Router();
 const { body } = require('express-validator');
-const staffLicenseService = require('../services/staffLicenseService');
-const { createCrudController } = require('../shared/crudController');
-const { authenticate, authorizePermission } = require('../middlewares/auth');
-const { validate } = require('../middlewares/errorHandler');
-const uploadExcel = require('../middlewares/uploadExcel');
-const staffLicenseImportService = require('../services/staffLicenseImportService');
-const { success } = require('../utils/response');
+const staffLicenseService = require('./staffLicenseService');
+const { createCrudController } = require('../../shared/crudController');
+const { authenticate, authorizePermission } = require('../../middlewares/auth');
+const { validate } = require('../../middlewares/errorHandler');
+const uploadExcel = require('../../middlewares/uploadExcel');
+const staffLicenseImportService = require('./staffLicenseImportService');
+const { success } = require('../../utils/response');
 
 /**
  * @swagger
@@ -24,7 +24,7 @@ router.get('/:id', authorizePermission(['staff_licenses', 'read']), ctrl.getById
 
 router.get('/by-user/:userId', authorizePermission(['staff_licenses', 'read']), async (req, res, next) => {
 	try {
-		const { success, notFound } = require('../utils/response');
+		const { success, notFound } = require('../../utils/response');
 		const item = await staffLicenseService.getByUserId(req.params.userId);
 		if (!item) return notFound(res);
 		return success(res, item);

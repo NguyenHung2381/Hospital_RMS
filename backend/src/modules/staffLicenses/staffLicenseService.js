@@ -1,6 +1,6 @@
-const { getPool, sql } = require('../config/db');
-const { broadcast } = require('../modules/events/eventService');
-const { paging } = require('../utils/paging');
+const { getPool, sql } = require('../../config/db');
+const { broadcast } = require('../events/eventService');
+const { paging } = require('../../utils/paging');
 
 // Hồ sơ chứng chỉ hành nghề (CCHN) — 1 user 1 hồ sơ hiện hành (xem
 // 2026-09-14_staff_practice_licenses.sql). Không tách bảng lịch sử, cập nhật

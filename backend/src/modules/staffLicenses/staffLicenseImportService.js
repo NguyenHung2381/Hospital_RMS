@@ -4,10 +4,10 @@
  * MNV ↔ users.staff_number; KHÔNG tạo tài khoản mới (MNV chưa có → bỏ qua, báo
  * lại). Chỉ ghi các cột có trong file; dry_run trả danh sách dòng mới/thay đổi.
  */
-const { getPool, sql } = require('../config/db');
-const { broadcast } = require('../modules/events/eventService');
-const { norm } = require('../utils/vietnameseText');
-const { readSheet, parseDateCell } = require('../utils/excelImport');
+const { getPool, sql } = require('../../config/db');
+const { broadcast } = require('../events/eventService');
+const { norm } = require('../../utils/vietnameseText');
+const { readSheet, parseDateCell } = require('../../utils/excelImport');
 const { fieldDefs } = require('./staffLicenseService');
 
 const COLUMN_MATCHERS = [
