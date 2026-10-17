@@ -1,5 +1,5 @@
-const roundService = require('../services/roundService');
-const { success, created, notFound } = require('../utils/response');
+const roundService = require('./roundService');
+const { success, created, notFound } = require('../../utils/response');
 
 const getAll = async (req, res, next) => {
 	try {

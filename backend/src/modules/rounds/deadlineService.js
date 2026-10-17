@@ -1,6 +1,6 @@
-const { getPool, sql } = require('../config/db');
-const { broadcast } = require('../modules/events/eventService');
-const { fmtDateVN: fmtDate } = require('../utils/vnDate');
+const { getPool, sql } = require('../../config/db');
+const { broadcast } = require('../events/eventService');
+const { fmtDateVN: fmtDate } = require('../../utils/vnDate');
 
 // Những mục chủ nhiệm/thư ký được sửa trong cửa sổ "Bổ sung".
 const SUPPLEMENT_FIELDS = ['title', 'description', 'members', 'files'];

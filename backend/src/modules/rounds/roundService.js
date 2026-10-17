@@ -1,8 +1,8 @@
-const { getPool, sql, withTransaction } = require('../config/db');
-const { broadcast } = require('../modules/events/eventService');
-const { paging } = require('../utils/paging');
+const { getPool, sql, withTransaction } = require('../../config/db');
+const { broadcast } = require('../events/eventService');
+const { paging } = require('../../utils/paging');
 const deadlineService = require('./deadlineService');
-const { fmtDateVN: fmtDate } = require('../utils/vnDate');
+const { fmtDateVN: fmtDate } = require('../../utils/vnDate');
 
 const STATUS_TO_FRONT = { open: 'active' };
 const STATUS_TO_DB = { active: 'open' };

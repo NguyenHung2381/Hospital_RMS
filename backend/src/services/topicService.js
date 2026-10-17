@@ -6,7 +6,7 @@ const { splitList, inClause, buildWhere } = require('../utils/sqlFilters');
 const { assertTopicActionWindow } = require('./deadlineGuard');
 const { scopeOf, hasPermission } = require('../middlewares/auth');
 const { findActiveUserIdsWhere } = require('../modules/access/permissionService');
-const roundService = require('./roundService');
+const roundService = require('../modules/rounds/roundService');
 const { httpError } = require('../utils/httpError');
 
 // Phạm vi xem đề tài: không có quyền topics nào ⇒ chỉ đề tài mình tham gia.
