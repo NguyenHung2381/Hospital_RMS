@@ -1,5 +1,5 @@
-const { getPool } = require('../config/db');
-const { remember } = require('../utils/cache');
+const { getPool } = require('../../config/db');
+const { remember } = require('../../utils/cache');
 
 // TTL 90s: đủ ngắn để dashboard không lệch số liệu quá lâu sau khi có đề tài
 // mới/duyệt, đủ dài để tránh chạy lại chuỗi query aggregate nặng này mỗi lần

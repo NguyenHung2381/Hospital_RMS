@@ -1,10 +1,10 @@
 const router = require('express').Router();
-const { authenticate, authorizePermission } = require('../middlewares/auth');
-const dashboardService = require('../services/dashboardService');
-const dashboardExportCtrl = require('../controllers/dashboardExportController');
-const trainingReportService = require('../modules/training/reports/trainingReportService');
-const trainingReportExportCtrl = require('../modules/training/reports/trainingReportExportController');
-const { success } = require('../utils/response');
+const { authenticate, authorizePermission } = require('../../middlewares/auth');
+const dashboardService = require('./dashboardService');
+const dashboardExportCtrl = require('./dashboardExportController');
+const trainingReportService = require('../training/reports/trainingReportService');
+const trainingReportExportCtrl = require('../training/reports/trainingReportExportController');
+const { success } = require('../../utils/response');
 
 router.use(authenticate);
 

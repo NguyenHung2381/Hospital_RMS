@@ -11,9 +11,9 @@
  */
 
 const ExcelJS = require('exceljs');
-const dashboardService = require('../services/dashboardService');
-const { fnt, al, headerRow, dataRow } = require('../utils/excelStyle');
-const { sendWorkbook } = require('../utils/response');
+const dashboardService = require('./dashboardService');
+const { fnt, al, headerRow, dataRow } = require('../../utils/excelStyle');
+const { sendWorkbook } = require('../../utils/response');
 
 const C = {
 	hdrBlue: 'FF1F4E79',

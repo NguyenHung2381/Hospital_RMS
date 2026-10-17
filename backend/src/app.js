@@ -242,7 +242,7 @@ app.use(`${API}/topics`, requireModule('RESEARCH'), require('./modules/topics/to
 app.use(`${API}/councils`, requireModule('RESEARCH'), require('./modules/councils/councils.routes'));
 app.use(`${API}/files`, require('./modules/topics/files.routes'));
 app.use(`${API}/excel`, require('./modules/system/excel.routes'));
-app.use(`${API}/dashboard`, require('./routes/dashboard'));
+app.use(`${API}/dashboard`, require('./modules/dashboard/dashboard.routes'));
 app.use(`${API}/notifications`, require('./modules/notifications/notifications.routes'));
 app.use(`${API}/events`, require('./modules/events/events.routes'));
 app.use(`${API}/activity-logs`, require('./modules/audit/activityLogs.routes'));
