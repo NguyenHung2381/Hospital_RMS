@@ -1,14 +1,14 @@
 const router = require('express').Router();
 const { body } = require('express-validator');
-const ctrl = require('../controllers/seminarController');
-const cmeRequirementService = require('../services/cmeRequirementService');
-const cmePersonalExport = require('../controllers/cmePersonalExportController');
-const { authenticate, authorizePermission } = require('../middlewares/auth');
-const { validate } = require('../middlewares/errorHandler');
-const { success, created } = require('../utils/response');
+const ctrl = require('./seminarController');
+const cmeRequirementService = require('../../services/cmeRequirementService');
+const cmePersonalExport = require('../../controllers/cmePersonalExportController');
+const { authenticate, authorizePermission } = require('../../middlewares/auth');
+const { validate } = require('../../middlewares/errorHandler');
+const { success, created } = require('../../utils/response');
 
-const uploadExcel = require('../middlewares/uploadExcel');
-const { makeImageUpload, safeParam } = require('../middlewares/uploadImage');
+const uploadExcel = require('../../middlewares/uploadExcel');
+const { makeImageUpload, safeParam } = require('../../middlewares/uploadImage');
 
 // Ảnh minh hoạ câu hỏi bài test cuối buổi — uploads/seminars/<id>/test/
 const uploadTestImage = makeImageUpload((req) => ['seminars', safeParam(req, 'id'), 'test']);

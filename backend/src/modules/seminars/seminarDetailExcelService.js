@@ -9,9 +9,9 @@
  */
 const ExcelJS = require('exceljs');
 const seminarService = require('./seminarService');
-const xl = require('../utils/excelTemplate');
-const { parseAgenda, testWindow } = require('../utils/seminarSchedule');
-const { isPassed, maxScore } = require('../utils/seminarTest');
+const xl = require('../../utils/excelTemplate');
+const { parseAgenda, testWindow } = require('../../utils/seminarSchedule');
+const { isPassed, maxScore } = require('../../utils/seminarTest');
 
 const EVENT_TYPE_LABELS = {
 	conference: 'Hội nghị',

@@ -6,16 +6,16 @@
  * thì cấp tuần tự trong 1 transaction để giữ dãy liền mạch.
  */
 const crypto = require('crypto');
-const { signToken, verifyToken } = require('../utils/keys');
-const { getPool, sql, withTransaction } = require('../config/db');
-const { broadcast } = require('../modules/events/eventService');
-const personService = require('../modules/persons/personService');
-const { normalizeGender } = require('../utils/gender');
+const { signToken, verifyToken } = require('../../utils/keys');
+const { getPool, sql, withTransaction } = require('../../config/db');
+const { broadcast } = require('../events/eventService');
+const personService = require('../persons/personService');
+const { normalizeGender } = require('../../utils/gender');
 const QRCode = require('qrcode');
-const mailService = require('../modules/notifications/mailService');
-const { renderSeminarBadgePng } = require('../utils/seminarBadgeImage');
-const { testState, testWindow } = require('../utils/seminarSchedule');
-const { httpError } = require('../utils/httpError');
+const mailService = require('../notifications/mailService');
+const { renderSeminarBadgePng } = require('../../utils/seminarBadgeImage');
+const { testState, testWindow } = require('../../utils/seminarSchedule');
+const { httpError } = require('../../utils/httpError');
 const {
 	SUBMIT_GRACE_MS,
 	attemptDeadline,
@@ -24,7 +24,7 @@ const {
 	maxScore,
 	publicQuestions,
 	testOrder,
-} = require('../utils/seminarTest');
+} = require('../../utils/seminarTest');
 
 // Mã QR điểm danh hội thảo — JWT ngắn hạn ký seminar_id (mirror
 // courseService.generateAttendanceQrToken / utils/captcha.js).

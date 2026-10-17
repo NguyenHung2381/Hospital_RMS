@@ -4,16 +4,16 @@
  * Độc lập với nghiệp vụ NCKH. Danh sách người tham dự nằm ở
  * seminarParticipantService; ở đây chỉ CRUD sự kiện + số liệu tổng hợp.
  */
-const { getPool, sql } = require('../config/db');
-const { broadcast } = require('../modules/events/eventService');
-const { paging } = require('../utils/paging');
-const { splitList, inClause, buildWhere } = require('../utils/sqlFilters');
+const { getPool, sql } = require('../../config/db');
+const { broadcast } = require('../events/eventService');
+const { paging } = require('../../utils/paging');
+const { splitList, inClause, buildWhere } = require('../../utils/sqlFilters');
 const fs = require('fs');
 const path = require('path');
-const { UPLOADS_ROOT, SAFE_ID, removeUploadedFile, toStoredUploadPath } = require('../utils/uploadPaths');
-const { normalizeTime, normalizeAgenda } = require('../utils/seminarSchedule');
-const { maxScore } = require('../utils/seminarTest');
-const { badRequest } = require('../utils/httpError');
+const { UPLOADS_ROOT, SAFE_ID, removeUploadedFile, toStoredUploadPath } = require('../../utils/uploadPaths');
+const { normalizeTime, normalizeAgenda } = require('../../utils/seminarSchedule');
+const { maxScore } = require('../../utils/seminarTest');
+const { badRequest } = require('../../utils/httpError');
 
 const EVENT_TYPES = [
 	'conference',

@@ -3,13 +3,13 @@
  * Base CRUD lấy từ createCrudController(seminarService); phần người tham dự,
  * cấp CME và thống kê xử lý riêng.
  */
-const seminarService = require('../services/seminarService');
-const partService = require('../services/seminarParticipantService');
-const importService = require('../services/seminarImportService');
-const listExcelService = require('../services/seminarListExcelService');
-const detailExcelService = require('../services/seminarDetailExcelService');
-const { createCrudController } = require('../shared/crudController');
-const { success, created, notFound, sendWorkbook } = require('../utils/response');
+const seminarService = require('./seminarService');
+const partService = require('./seminarParticipantService');
+const importService = require('./seminarImportService');
+const listExcelService = require('./seminarListExcelService');
+const detailExcelService = require('./seminarDetailExcelService');
+const { createCrudController } = require('../../shared/crudController');
+const { success, created, notFound, sendWorkbook } = require('../../utils/response');
 
 const base = createCrudController(seminarService);
 

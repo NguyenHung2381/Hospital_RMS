@@ -8,15 +8,15 @@
  * chọn "cấp CME" thì sinh dải số quyết định (SQĐ) tuần tự cho toàn bộ người vừa
  * nhập (qua seminarParticipantService.issueCme).
  */
-const { getPool, sql } = require('../config/db');
-const { norm, normDept, stripQualification } = require('../utils/vietnameseText');
+const { getPool, sql } = require('../../config/db');
+const { norm, normDept, stripQualification } = require('../../utils/vietnameseText');
 const ExcelJS = require('exceljs');
-const { parseDob, parseCredits, parseStaffNumber, readSheet } = require('../utils/excelImport');
-const { normalizeGender } = require('../utils/gender');
+const { parseDob, parseCredits, parseStaffNumber, readSheet } = require('../../utils/excelImport');
+const { normalizeGender } = require('../../utils/gender');
 const partService = require('./seminarParticipantService');
-const { ROLE, inputRoleId } = require('../modules/access/roleCodes');
-const xl = require('../utils/excelTemplate');
-const { httpError } = require('../utils/httpError');
+const { ROLE, inputRoleId } = require('../access/roleCodes');
+const xl = require('../../utils/excelTemplate');
+const { httpError } = require('../../utils/httpError');
 
 // ─── Khớp tên cột: header đã norm() → field nội bộ ──────────────────────────
 // Duyệt từ mẫu cụ thể tới chung chung; chỉ nhận cột ĐẦU TIÊN match mỗi field.

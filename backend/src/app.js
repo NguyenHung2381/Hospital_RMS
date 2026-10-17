@@ -247,7 +247,7 @@ app.use(`${API}/notifications`, require('./modules/notifications/notifications.r
 app.use(`${API}/events`, require('./modules/events/events.routes'));
 app.use(`${API}/activity-logs`, require('./modules/audit/activityLogs.routes'));
 app.use(`${API}/security-events`, require('./modules/audit/securityEvents.routes'));
-app.use(`${API}/seminars`, requireModule('SEMINAR'), require('./routes/seminars'));
+app.use(`${API}/seminars`, requireModule('SEMINAR'), require('./modules/seminars/seminars.routes'));
 app.use(`${API}/cme-records`, requireModule('SEMINAR'), require('./routes/cmeRecords'));
 app.use(`${API}/trainees`, requireModule('TRAINING'), require('./routes/trainees'));
 app.use(`${API}/training-programs`, requireModule('TRAINING'), require('./routes/trainingPrograms'));

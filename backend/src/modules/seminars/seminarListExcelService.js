@@ -9,12 +9,12 @@
  *   Bỏ qua dòng trùng (cùng tên + cùng năm) với dữ liệu đã có hoặc trong file.
  */
 const ExcelJS = require('exceljs');
-const { getPool } = require('../config/db');
-const { norm } = require('../utils/vietnameseText');
+const { getPool } = require('../../config/db');
+const { norm } = require('../../utils/vietnameseText');
 const seminarService = require('./seminarService');
-const xl = require('../utils/excelTemplate');
-const { ROLE, inputRoleId } = require('../modules/access/roleCodes');
-const { httpError } = require('../utils/httpError');
+const xl = require('../../utils/excelTemplate');
+const { ROLE, inputRoleId } = require('../access/roleCodes');
+const { httpError } = require('../../utils/httpError');
 
 const EVENT_TYPE_LABELS = {
 	conference: 'Hội nghị',

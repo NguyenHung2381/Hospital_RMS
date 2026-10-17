@@ -1,5 +1,5 @@
 const service = require('../services/publicPortalService');
-const seminarParticipants = require('../services/seminarParticipantService');
+const seminarParticipants = require('../modules/seminars/seminarParticipantService');
 const { generateCaptcha, verifyCaptcha } = require('../utils/captcha');
 const { success, created, error } = require('../utils/response');
 const attempts = require('../utils/attemptLimiter');
