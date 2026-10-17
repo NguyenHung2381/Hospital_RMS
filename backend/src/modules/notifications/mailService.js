@@ -1,6 +1,6 @@
 const path = require('path');
 const nodemailer = require('nodemailer');
-const systemSettingService = require('../modules/settings/systemSettingService');
+const systemSettingService = require('../settings/systemSettingService');
 
 // Kênh email tuỳ chọn (mirror MailHelper.php của hệ thống NCKH bệnh viện):
 // mặc định TẮT (MAIL_ENABLED khác 'true') để không phá vỡ môi trường dev/test
@@ -102,7 +102,7 @@ const renderNotificationEmail = ({ fullName, title, message }) => `
 // Logo nhúng trực tiếp (cid) — hiển thị được cả khi mail client chặn ảnh từ xa.
 const LOGO_ATTACHMENT = {
 	filename: 'logo.png',
-	path: path.join(__dirname, '../assets/mail-logo.png'),
+	path: path.join(__dirname, '../../assets/mail-logo.png'),
 	cid: 'rms-logo',
 };
 

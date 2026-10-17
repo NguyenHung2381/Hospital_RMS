@@ -1,6 +1,6 @@
 const router = require('express').Router();
-const ctrl = require('../controllers/notificationController');
-const { authenticate, authorizePermission } = require('../middlewares/auth');
+const ctrl = require('./notificationController');
+const { authenticate, authorizePermission } = require('../../middlewares/auth');
 
 // Quản trị thông báo hệ thống — tách theo thao tác.
 // authorizePermission luôn cho 'notifications:manage' đi qua nên vai trò cũ giữ nguyên quyền.

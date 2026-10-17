@@ -1,5 +1,5 @@
 const { getPool, sql } = require('../config/db');
-const notificationService = require('../services/notificationService');
+const notificationService = require('../modules/notifications/notificationService');
 const { markOnce } = require('./dedupe');
 const { todayVN } = require('../utils/vnDate');
 

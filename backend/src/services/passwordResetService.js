@@ -1,6 +1,6 @@
 const crypto = require('crypto');
 const { getPool, sql } = require('../config/db');
-const mailService = require('./mailService');
+const mailService = require('../modules/notifications/mailService');
 const secretBox = require('../utils/secretBox');
 const authService = require('./authService');
 const systemSettingService = require('../modules/settings/systemSettingService');

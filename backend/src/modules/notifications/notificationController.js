@@ -1,5 +1,5 @@
-const svc = require('../services/notificationService');
-const { success, notFound } = require('../utils/response');
+const svc = require('./notificationService');
+const { success, notFound } = require('../../utils/response');
 
 const getAll = async (req, res, next) => {
 	try {

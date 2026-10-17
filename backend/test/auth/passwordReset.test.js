@@ -38,7 +38,7 @@ install(async (text, inputs) => {
 
 require('../../src/modules/settings/systemSettingService').getValue = async () => 'true';
 require('../../src/services/sessionVersion').bumpTokenVersion = async () => {};
-const mailService = require('../../src/services/mailService');
+const mailService = require('../../src/modules/notifications/mailService');
 const sent = [];
 mailService.isEnabled = async () => true;
 mailService.renderOtpEmail = (o) => o;

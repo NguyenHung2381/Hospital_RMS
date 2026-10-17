@@ -1,4 +1,4 @@
-const { getPool, sql } = require('../config/db');
+const { getPool, sql } = require('../../config/db');
 const mailService = require('./mailService');
 
 const getForUser = async (

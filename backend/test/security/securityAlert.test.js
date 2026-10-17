@@ -10,7 +10,7 @@ install(async (text) => {
 	return [];
 });
 const sent = [];
-require('../../src/services/mailService').send = async (m) => sent.push(m);
+require('../../src/modules/notifications/mailService').send = async (m) => sent.push(m);
 const { notify } = require('../../src/services/securityAlertService');
 
 test('sự kiện nghiêm trọng: gửi email tới ALERT_EMAILS, nội dung được escape', async () => {
@@ -57,7 +57,7 @@ test('sự kiện thường (đăng nhập, bật 2FA) không gửi email', asyn
 });
 
 test('lỗi gửi email không ném ra ngoài', async () => {
-	require('../../src/services/mailService').send = async () => {
+	require('../../src/modules/notifications/mailService').send = async () => {
 		throw new Error('SMTP down');
 	};
 	await notify({ eventType: 'upload_malware_blocked', targetId: 'F1' });

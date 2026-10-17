@@ -1,6 +1,6 @@
 const { getPool, sql } = require('../config/db');
 const bcrypt = require('bcrypt');
-const notifSvc = require('./notificationService');
+const notifSvc = require('../modules/notifications/notificationService');
 const { broadcast } = require('../modules/events/eventService');
 const personService = require('./personService');
 const { ROLE, requireRoleId } = require('./roleCodes');

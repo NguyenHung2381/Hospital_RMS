@@ -31,7 +31,7 @@ const log = install(async (text, inputs) => {
 	return [];
 });
 require('../../src/services/personService').linkTopicMemberToUser = async () => {};
-require('../../src/services/notificationService').push = async () => {};
+require('../../src/modules/notifications/notificationService').push = async () => {};
 require('../../src/modules/events/eventService').broadcast = () => {};
 const { grantAccounts } = require('../../src/services/topicMemberService');
 
