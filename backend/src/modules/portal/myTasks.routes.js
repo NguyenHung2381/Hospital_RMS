@@ -1,7 +1,7 @@
 const router = require('express').Router();
-const myTasksService = require('../services/myTasksService');
-const { authenticate } = require('../middlewares/auth');
-const { success } = require('../utils/response');
+const myTasksService = require('./myTasksService');
+const { authenticate } = require('../../middlewares/auth');
+const { success } = require('../../utils/response');
 
 /**
  * @swagger

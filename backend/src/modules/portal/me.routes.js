@@ -1,8 +1,8 @@
 const router = require('express').Router();
-const portalService = require('../services/portalService');
-const cmePersonalExport = require('../controllers/cmePersonalExportController');
-const { authenticate } = require('../middlewares/auth');
-const { success, created } = require('../utils/response');
+const portalService = require('./portalService');
+const cmePersonalExport = require('../../controllers/cmePersonalExportController');
+const { authenticate } = require('../../middlewares/auth');
+const { success, created } = require('../../utils/response');
 
 /**
  * @swagger
@@ -63,10 +63,10 @@ router.get('/cme', async (req, res, next) => {
 });
 
 // Tự khai CME (chờ admin duyệt). Chỉ thao tác trên bản ghi của chính mình.
-const cmeRecordService = require('../services/cmeRecordService');
+const cmeRecordService = require('../../services/cmeRecordService');
 const { body } = require('express-validator');
-const { validate } = require('../middlewares/errorHandler');
-const { createTrainingUpload } = require('../middlewares/uploadTraining');
+const { validate } = require('../../middlewares/errorHandler');
+const { createTrainingUpload } = require('../../middlewares/uploadTraining');
 const uploadEvidence = createTrainingUpload('cme_evidence');
 const handle = (fn) => async (req, res, next) => {
 	try {
@@ -125,8 +125,8 @@ router.post('/cme/export-excel', cmePersonalExport.exportMine);
 
 // ─── Chấm công của chính mình (IP bệnh viện + GPS) — staffAttendanceService ──
 // GET không chặn theo module: trang Cấu hình cần nó để hiện IP hiện tại trước khi bật.
-const staffAttendanceService = require('../modules/attendance/staffAttendanceService');
-const { requireModule } = require('../middlewares/moduleGuard');
+const staffAttendanceService = require('../attendance/staffAttendanceService');
+const { requireModule } = require('../../middlewares/moduleGuard');
 router.get(
 	'/attendance',
 	handle(async (req, res) => success(res, await staffAttendanceService.getMine(req.user.id, req.ip))),

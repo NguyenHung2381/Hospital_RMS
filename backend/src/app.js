@@ -253,8 +253,8 @@ app.use(`${API}/trainees`, requireModule('TRAINING'), require('./modules/trainin
 app.use(`${API}/training-programs`, requireModule('TRAINING'), require('./modules/training/programs/trainingPrograms.routes'));
 app.use(`${API}/training-plans`, requireModule('TRAINING'), require('./modules/training/plans/trainingPlans.routes'));
 app.use(`${API}/surveys`, requireModule('SURVEY'), require('./modules/surveys/surveys.routes'));
-app.use(`${API}/my-tasks`, require('./routes/myTasks'));
-app.use(`${API}/me`, require('./routes/me'));
+app.use(`${API}/my-tasks`, require('./modules/portal/myTasks.routes'));
+app.use(`${API}/me`, require('./modules/portal/me.routes'));
 app.use(`${API}/exams`, requireModule('TRAINING'), require('./modules/training/exams/exams.routes'));
 app.use(`${API}/workflows`, require('./modules/topics/workflows.routes'));
 app.use(`${API}/lecturers`, requireModule('TRAINING'), require('./modules/training/lecturers/lecturers.routes'));

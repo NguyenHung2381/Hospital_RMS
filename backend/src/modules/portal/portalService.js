@@ -4,12 +4,12 @@
  * actor.id (trainees.user_id, lecturers.user_id, seminar_participants.user_id,
  * cme_records.user_id) nên không cần quyền courses:read / seminars:read.
  */
-const { getPool, sql } = require('../config/db');
-const courseService = require('../modules/training/courses/courseService');
-const publicPortalService = require('./publicPortalService');
-const examService = require('../modules/training/exams/examService');
-const trainingProgramService = require('../modules/training/programs/trainingProgramService');
-const { httpError } = require('../utils/httpError');
+const { getPool, sql } = require('../../config/db');
+const courseService = require('../training/courses/courseService');
+const publicPortalService = require('../../services/publicPortalService');
+const examService = require('../training/exams/examService');
+const trainingProgramService = require('../training/programs/trainingProgramService');
+const { httpError } = require('../../utils/httpError');
 
 const VN_TODAY = 'CAST(DATEADD(HOUR, 7, GETUTCDATE()) AS DATE)';
 const UPCOMING_DAYS = 30;
