@@ -1,14 +1,14 @@
 const router = require('express').Router();
 const { body } = require('express-validator');
-const ctrl = require('../controllers/topicController');
-const exportCtrl = require('../controllers/topicExportController');
-const fullExportCtrl = require('../controllers/topicFullExportController');
-const fileCtrl = require('../controllers/fileController');
-const { authenticate, authorizePermission } = require('../middlewares/auth');
-const { validate } = require('../middlewares/errorHandler');
-const upload = require('../middlewares/upload');
-const uploadExcel = require('../middlewares/uploadExcel');
-const topicService = require('../services/topicService');
+const ctrl = require('./topicController');
+const exportCtrl = require('./topicExportController');
+const fullExportCtrl = require('./topicFullExportController');
+const fileCtrl = require('./fileController');
+const { authenticate, authorizePermission } = require('../../middlewares/auth');
+const { validate } = require('../../middlewares/errorHandler');
+const upload = require('../../middlewares/upload');
+const uploadExcel = require('../../middlewares/uploadExcel');
+const topicService = require('./topicService');
 
 router.use(authenticate);
 

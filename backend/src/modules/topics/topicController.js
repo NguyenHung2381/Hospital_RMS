@@ -1,17 +1,17 @@
-const topicService = require('../services/topicService');
-const topicMemberService = require('../services/topicMemberService');
-const topicAuthorService = require('../services/topicAuthorService');
-const workflowEngineService = require('../services/workflowEngineService');
-const { success, created, notFound } = require('../utils/response');
-const { createCrudController } = require('../shared/crudController');
-const { httpError } = require('../utils/httpError');
+const topicService = require('./topicService');
+const topicMemberService = require('./topicMemberService');
+const topicAuthorService = require('./topicAuthorService');
+const workflowEngineService = require('./workflowEngineService');
+const { success, created, notFound } = require('../../utils/response');
+const { createCrudController } = require('../../shared/crudController');
+const { httpError } = require('../../utils/httpError');
 const {
 	assertTopicActionWindow,
 	assertRegistrationOpen,
-} = require('../services/deadlineGuard');
-const { isDeadlineBound, scopeOf, hasPermission } = require('../middlewares/auth');
-const topicImportService = require('../services/topicImportService');
-const { sendWorkbook } = require('../utils/response');
+} = require('./deadlineGuard');
+const { isDeadlineBound, scopeOf, hasPermission } = require('../../middlewares/auth');
+const topicImportService = require('./topicImportService');
+const { sendWorkbook } = require('../../utils/response');
 
 const base = createCrudController(topicService);
 

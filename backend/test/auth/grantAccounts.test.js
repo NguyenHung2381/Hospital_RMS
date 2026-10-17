@@ -33,7 +33,7 @@ const log = install(async (text, inputs) => {
 require('../../src/modules/persons/personService').linkTopicMemberToUser = async () => {};
 require('../../src/modules/notifications/notificationService').push = async () => {};
 require('../../src/modules/events/eventService').broadcast = () => {};
-const { grantAccounts } = require('../../src/services/topicMemberService');
+const { grantAccounts } = require('../../src/modules/topics/topicMemberService');
 
 const member = (id, staff_number, role = 'member') => ({
 	id,

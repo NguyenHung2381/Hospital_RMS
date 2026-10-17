@@ -9,7 +9,7 @@
  * File đánh giá tái dùng bảng files: batch có note = EVAL_NOTE.
  */
 const { getPool, sql } = require('../config/db');
-const fileService = require('./fileService');
+const fileService = require('../modules/topics/fileService');
 const sanitizeHtml = require('sanitize-html');
 const { stripUploadSignatures } = require('../utils/signedUpload');
 const { httpError } = require('../utils/httpError');

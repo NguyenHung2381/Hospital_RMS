@@ -1,5 +1,5 @@
-const { getPool, sql } = require('../config/db');
-const { broadcast } = require('../modules/events/eventService');
+const { getPool, sql } = require('../../config/db');
+const { broadcast } = require('../events/eventService');
 
 const listAuthors = async (topicId) => {
 	const pool = await getPool();

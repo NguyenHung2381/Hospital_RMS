@@ -9,13 +9,13 @@
  * Tên đề tài với dòng trên thuộc cùng đề tài (như file "Xuất Excel").
  */
 const ExcelJS = require('exceljs');
-const { getPool } = require('../config/db');
-const { norm, normDept } = require('../utils/vietnameseText');
-const { parseStaffNumber, readSheet } = require('../utils/excelImport');
-const xl = require('../utils/excelTemplate');
+const { getPool } = require('../../config/db');
+const { norm, normDept } = require('../../utils/vietnameseText');
+const { parseStaffNumber, readSheet } = require('../../utils/excelImport');
+const xl = require('../../utils/excelTemplate');
 const topicService = require('./topicService');
 const topicMemberService = require('./topicMemberService');
-const { httpError } = require('../utils/httpError');
+const { httpError } = require('../../utils/httpError');
 
 const SHEET_COLUMNS = [
 	{ key: 'stt', header: 'STT', width: 6 },

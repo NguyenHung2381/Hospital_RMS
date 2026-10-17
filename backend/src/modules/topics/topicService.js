@@ -1,13 +1,13 @@
-const { getPool, sql } = require('../config/db');
-const notifSvc = require('../modules/notifications/notificationService');
-const { broadcast } = require('../modules/events/eventService');
-const { paging } = require('../utils/paging');
-const { splitList, inClause, buildWhere } = require('../utils/sqlFilters');
+const { getPool, sql } = require('../../config/db');
+const notifSvc = require('../notifications/notificationService');
+const { broadcast } = require('../events/eventService');
+const { paging } = require('../../utils/paging');
+const { splitList, inClause, buildWhere } = require('../../utils/sqlFilters');
 const { assertTopicActionWindow } = require('./deadlineGuard');
-const { scopeOf, hasPermission } = require('../middlewares/auth');
-const { findActiveUserIdsWhere } = require('../modules/access/permissionService');
-const roundService = require('../modules/rounds/roundService');
-const { httpError } = require('../utils/httpError');
+const { scopeOf, hasPermission } = require('../../middlewares/auth');
+const { findActiveUserIdsWhere } = require('../access/permissionService');
+const roundService = require('../rounds/roundService');
+const { httpError } = require('../../utils/httpError');
 
 // Phạm vi xem đề tài: không có quyền topics nào ⇒ chỉ đề tài mình tham gia.
 const topicScope = (actor) => scopeOf(actor, 'topics') ?? 'own';

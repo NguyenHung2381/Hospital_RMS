@@ -1,12 +1,12 @@
-const { getPool, sql } = require('../config/db');
+const { getPool, sql } = require('../../config/db');
 const bcrypt = require('bcrypt');
-const notifSvc = require('../modules/notifications/notificationService');
-const { broadcast } = require('../modules/events/eventService');
-const personService = require('../modules/persons/personService');
-const { ROLE, requireRoleId } = require('../modules/access/roleCodes');
-const { defaultPassword } = require('../utils/passwordPolicy');
-const userStatusCache = require('../middlewares/userStatusCache');
-const { stripDiacritics, stripQualification } = require('../utils/vietnameseText');
+const notifSvc = require('../notifications/notificationService');
+const { broadcast } = require('../events/eventService');
+const personService = require('../persons/personService');
+const { ROLE, requireRoleId } = require('../access/roleCodes');
+const { defaultPassword } = require('../../utils/passwordPolicy');
+const userStatusCache = require('../../middlewares/userStatusCache');
+const { stripDiacritics, stripQualification } = require('../../utils/vietnameseText');
 
 const getMembers = async (topicId) => {
 	const pool = await getPool();

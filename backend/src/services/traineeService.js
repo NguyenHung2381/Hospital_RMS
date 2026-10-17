@@ -10,7 +10,7 @@ const {
 	buildMemberUsername,
 	ensureUniqueUsername,
 	genUserIdInTx,
-} = require('./topicMemberService');
+} = require('../modules/topics/topicMemberService');
 const { ROLE, requireRoleId } = require('../modules/access/roleCodes');
 const { defaultPassword } = require('../utils/passwordPolicy');
 

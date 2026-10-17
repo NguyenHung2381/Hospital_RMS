@@ -22,9 +22,9 @@
  */
 
 const ExcelJS = require('exceljs');
-const topicService = require('../services/topicService');
-const { fnt, al, sf, bAll } = require('../utils/excelStyle');
-const { sendWorkbook } = require('../utils/response');
+const topicService = require('./topicService');
+const { fnt, al, sf, bAll } = require('../../utils/excelStyle');
+const { sendWorkbook } = require('../../utils/response');
 
 // ── Palette ──────────────────────────────────────────────────────────────────
 const C = {

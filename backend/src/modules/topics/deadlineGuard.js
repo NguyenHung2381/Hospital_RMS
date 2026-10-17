@@ -1,5 +1,5 @@
-const { getPool, sql } = require('../config/db');
-const { todayVN } = require('../utils/vnDate');
+const { getPool, sql } = require('../../config/db');
+const { todayVN } = require('../../utils/vnDate');
 
 const SUPPLEMENT_FIELDS = ['title', 'description', 'members', 'files'];
 

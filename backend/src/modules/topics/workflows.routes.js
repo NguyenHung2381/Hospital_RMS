@@ -1,8 +1,8 @@
 const router = require('express').Router();
 const { body } = require('express-validator');
-const ctrl = require('../controllers/workflowController');
-const { authenticate, authorizePermission } = require('../middlewares/auth');
-const { validate } = require('../middlewares/errorHandler');
+const ctrl = require('./workflowController');
+const { authenticate, authorizePermission } = require('../../middlewares/auth');
+const { validate } = require('../../middlewares/errorHandler');
 
 /**
  * @swagger

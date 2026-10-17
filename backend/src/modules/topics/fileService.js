@@ -1,6 +1,6 @@
-const { getPool, sql } = require('../config/db');
-const { broadcast } = require('../modules/events/eventService');
-const { removeUploadedFile } = require('../utils/uploadPaths');
+const { getPool, sql } = require('../../config/db');
+const { broadcast } = require('../events/eventService');
+const { removeUploadedFile } = require('../../utils/uploadPaths');
 
 const uploadFiles = async (topicId, filesData, batchNote, actorId) => {
 	const pool = await getPool();

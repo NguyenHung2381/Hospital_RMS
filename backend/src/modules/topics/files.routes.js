@@ -1,6 +1,6 @@
 const router = require('express').Router();
-const fileCtrl = require('../controllers/fileController');
-const { authenticate, authorizePermission } = require('../middlewares/auth');
+const fileCtrl = require('./fileController');
+const { authenticate, authorizePermission } = require('../../middlewares/auth');
 
 router.use(authenticate);
 

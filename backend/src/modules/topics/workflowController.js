@@ -1,6 +1,6 @@
-const workflowEngineService = require('../services/workflowEngineService');
-const topicService = require('../services/topicService');
-const { success, created, notFound } = require('../utils/response');
+const workflowEngineService = require('./workflowEngineService');
+const topicService = require('./topicService');
+const { success, created, notFound } = require('../../utils/response');
 
 const listDefinitions = async (req, res, next) => {
 	try {

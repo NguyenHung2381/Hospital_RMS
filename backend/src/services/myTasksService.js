@@ -1,4 +1,4 @@
-const topicService = require('./topicService');
+const topicService = require('../modules/topics/topicService');
 const councilProgressService = require('./councilProgressService');
 
 // Hộp thư "Việc của tôi" — gộp 2 nguồn việc-cần-làm ĐÃ tính theo người dùng cụ

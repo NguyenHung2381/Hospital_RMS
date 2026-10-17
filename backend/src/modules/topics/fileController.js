@@ -1,9 +1,9 @@
-const fileService = require('../services/fileService');
-const topicService = require('../services/topicService');
-const { success, created } = require('../utils/response');
-const { getPool, sql } = require('../config/db');
-const { assertTopicActionWindow } = require('../services/deadlineGuard');
-const { isDeadlineBound } = require('../middlewares/auth');
+const fileService = require('./fileService');
+const topicService = require('./topicService');
+const { success, created } = require('../../utils/response');
+const { getPool, sql } = require('../../config/db');
+const { assertTopicActionWindow } = require('./deadlineGuard');
+const { isDeadlineBound } = require('../../middlewares/auth');
 
 // Middleware: chỉ áp dụng với vai trò phạm vi "own" (đơn vị/superuser không bị chặn theo mốc)
 const checkUploadWindow = async (req, res, next) => {

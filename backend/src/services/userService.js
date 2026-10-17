@@ -182,7 +182,7 @@ const create = async (data, actorId) => {
 	// Không truyền mật khẩu ⇒ mặc định = tên đăng nhập (bắt đổi ở lần đăng nhập đầu)
 	const hashed = await bcrypt.hash(data.password || defaultPassword(data.username), 12);
 	// require muộn: topicMemberService nạp nhiều service khác
-	const { genUserIdInTx } = require('./topicMemberService');
+	const { genUserIdInTx } = require('../modules/topics/topicMemberService');
 	const roleId = data.role_id || (await requireRoleId(ROLE.MEMBER));
 
 	// Mã người dùng 'NV' + mã khoa + NNNN như các luồng cấp tài khoản khác (sp_gen_user_id).
@@ -459,7 +459,7 @@ const createStaffAccount = async (
 	full_name = String(full_name || '').trim();
 	if (!full_name) throw httpError(400, 'Vui lòng nhập họ và tên');
 	// require muộn: topicMemberService nạp nhiều service khác, chỉ cần ở luồng này
-	const { buildMemberUsername, ensureUniqueUsername, genUserIdInTx } = require('./topicMemberService');
+	const { buildMemberUsername, ensureUniqueUsername, genUserIdInTx } = require('../modules/topics/topicMemberService');
 	const pool = await getPool();
 	const roleId = await requireRoleId(ROLE.MEMBER);
 

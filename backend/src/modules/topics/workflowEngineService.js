@@ -8,8 +8,8 @@
  * status thật) — muốn dùng cho resource khác cần thêm nhánh tương tự, KHÔNG
  * tự suy diễn generic vì mỗi resource có luật đổi trạng thái riêng.
  */
-const { getPool, sql } = require('../config/db');
-const { broadcast } = require('../modules/events/eventService');
+const { getPool, sql } = require('../../config/db');
+const { broadcast } = require('../events/eventService');
 
 // GỌI Ở ĐẦU MỌI LUỒNG DUYỆT (topicController.approve) — phải fail-safe tuyệt
 // đối về "không có workflow" nếu bảng chưa tồn tại (migration
@@ -240,7 +240,7 @@ const advance = async (resource, entityId, decision, actor, comment) => {
 		throw err;
 	}
 
-	const { hasPermission } = require('../middlewares/auth');
+	const { hasPermission } = require('../../middlewares/auth');
 	const authorized =
 		hasPermission(actor, 'workflows', 'manage') ||
 		!task.assignee_role_id ||

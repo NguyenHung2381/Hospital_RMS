@@ -23,7 +23,7 @@ install(async (text, inputs) => {
 	return [];
 });
 require('../../src/modules/events/eventService').broadcast = () => {};
-const topicService = require('../../src/services/topicService');
+const topicService = require('../../src/modules/topics/topicService');
 const { errorHandler } = require('../../src/middlewares/errorHandler');
 
 const actor = (id, dept, grants) => ({
