@@ -48,6 +48,20 @@ const install = (handler) => {
 			return makeRequest();
 		}
 	};
+	// withTransaction gọi getPool nội bộ của config/db (không qua db.getPool đã
+	// thay ở trên) ⇒ phải thay riêng, cùng ngữ nghĩa commit / rollback rồi ném lại.
+	db.withTransaction = async (fn) => {
+		const tx = new db.sql.Transaction();
+		await tx.begin();
+		try {
+			const result = await fn(tx);
+			await tx.commit();
+			return result;
+		} catch (err) {
+			await tx.rollback();
+			throw err;
+		}
+	};
 	return log;
 };
 

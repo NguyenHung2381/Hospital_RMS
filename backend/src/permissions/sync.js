@@ -2,7 +2,7 @@ const { getPool, sql, withTransaction } = require('../config/db');
 const permCache = require('../middlewares/permissionCache');
 const { invalidate } = require('../utils/cache');
 const { ALL_PERMISSIONS } = require('./catalog');
-const { RESOURCE_SCOPES, isScoped } = require('./scopes');
+const { RESOURCE_SCOPES, isScoped, nullScopeFill } = require('./scopes');
 
 // Đồng bộ permissions/catalog.js → bảng `permissions` lúc server khởi động.
 //   - Quyền có trong catalog, chưa có trong DB → INSERT. Nếu khai báo seedFrom:
@@ -33,14 +33,18 @@ const syncPermissions = async ({ dryRun = false } = {}) => {
 		if (!row) {
 			const clash = dbIdByKey.get(perm.key);
 			if (clash) {
-				warnings.push(`${perm.key}: DB đã có với id ${clash}, catalog khai báo id ${perm.id} — bỏ qua`);
+				warnings.push(
+					`${perm.key}: DB đã có với id ${clash}, catalog khai báo id ${perm.id} — bỏ qua`,
+				);
 				continue;
 			}
 			toInsert.push(perm);
 			continue;
 		}
 		if (row.resource !== perm.resource || row.action !== perm.action) {
-			warnings.push(`${perm.id}: DB là ${row.resource}:${row.action}, catalog là ${perm.key} — giữ nguyên DB`);
+			warnings.push(
+				`${perm.id}: DB là ${row.resource}:${row.action}, catalog là ${perm.key} — giữ nguyên DB`,
+			);
 			continue;
 		}
 		if (
@@ -55,12 +59,19 @@ const syncPermissions = async ({ dryRun = false } = {}) => {
 	const catalogIds = new Set(ALL_PERMISSIONS.map((p) => p.id));
 	for (const row of existing) {
 		if (!catalogIds.has(row.id)) {
-			warnings.push(`${row.id} (${row.resource}:${row.action}) có trong DB nhưng không có trong catalog`);
+			warnings.push(
+				`${row.id} (${row.resource}:${row.action}) có trong DB nhưng không có trong catalog`,
+			);
 		}
 	}
 
 	if (dryRun) {
-		return { inserted: toInsert.map((p) => p.key), updated: toUpdate.map((p) => p.key), seeded: 0, warnings };
+		return {
+			inserted: toInsert.map((p) => p.key),
+			updated: toUpdate.map((p) => p.key),
+			seeded: 0,
+			warnings,
+		};
 	}
 
 	let seeded = 0;
@@ -101,14 +112,15 @@ const syncPermissions = async ({ dryRun = false } = {}) => {
 				});
 				// Quyền mới có phạm vi dữ liệu → chép phạm vi RỘNG NHẤT của các quyền
 				// nguồn mà vai trò đang có (xếp hạng theo RESOURCE_SCOPES, không theo
-				// chữ cái). Quyền mới không có phạm vi → scope NULL.
+				// chữ cái); quyền nguồn không có phạm vi → nullScopeFill. Quyền mới
+				// không có phạm vi → scope NULL.
 				const ranks = isScoped(perm.resource) ? RESOURCE_SCOPES[perm.resource] : null;
 				const withScope = !!ranks;
 				const rankExpr = withScope
 					? `CASE rp.scope ${ranks.map((sc, i) => `WHEN '${sc}' THEN ${i}`).join(' ')} ELSE -1 END`
 					: null;
 				const scopeExpr = withScope
-					? `CASE MAX(${rankExpr}) ${ranks.map((sc, i) => `WHEN ${i} THEN '${sc}'`).join(' ')} ELSE '${ranks[0]}' END`
+					? `CASE MAX(${rankExpr}) ${ranks.map((sc, i) => `WHEN ${i} THEN '${sc}'`).join(' ')} ELSE '${nullScopeFill(perm.resource)}' END`
 					: null;
 				const result = await req.query(`
           INSERT INTO role_permissions (role_id, permission_id${withScope ? ', scope' : ''})
@@ -136,7 +148,12 @@ const syncPermissions = async ({ dryRun = false } = {}) => {
 				`, ${toUpdate.length} quyền cập nhật tên/nhóm`,
 		);
 	}
-	return { inserted: toInsert.map((p) => p.key), updated: toUpdate.map((p) => p.key), seeded, warnings };
+	return {
+		inserted: toInsert.map((p) => p.key),
+		updated: toUpdate.map((p) => p.key),
+		seeded,
+		warnings,
+	};
 };
 
 module.exports = { syncPermissions };

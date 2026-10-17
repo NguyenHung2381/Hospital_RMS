@@ -15,7 +15,7 @@ const { success } = require('../../utils/response');
 
 router.use(authenticate);
 
-// GET /staff-attendance?date=YYYY-MM-DD (mặc định hôm nay)
+// GET /staff-attendance?date=YYYY-MM-DD (mặc định hôm nay) — phạm vi khoa: chỉ khoa mình
 router.get(
 	'/',
 	authorizePermission(['staff_attendance', 'read']),
@@ -23,7 +23,7 @@ router.get(
 	validate,
 	async (req, res, next) => {
 		try {
-			return success(res, await staffAttendanceService.getByDate(req.query.date));
+			return success(res, await staffAttendanceService.getByDate(req.query.date, req.user));
 		} catch (err) {
 			next(err);
 		}
@@ -34,7 +34,10 @@ router.get(
 const canManage = authorizePermission(['staff_attendance', 'manage']);
 const canRoster = authorizePermission(['staff_attendance', 'roster']);
 // Danh sách ca cần cho cả người cấu hình lẫn người phân ca
-const canManageOrRoster = authorizePermission(['staff_attendance', 'manage'], ['staff_attendance', 'roster']);
+const canManageOrRoster = authorizePermission(
+	['staff_attendance', 'manage'],
+	['staff_attendance', 'roster'],
+);
 const handle = (fn) => async (req, res, next) => {
 	try {
 		await fn(req, res);
@@ -45,12 +48,20 @@ const handle = (fn) => async (req, res, next) => {
 const idParam = [param('id').isInt({ min: 1 }).toInt()];
 const minutes = (field) => body(field).isInt({ min: 0, max: 720 }).toInt();
 
-router.get('/shifts', canManageOrRoster, handle(async (req, res) => success(res, await shiftService.listShifts())));
+router.get(
+	'/shifts',
+	canManageOrRoster,
+	handle(async (req, res) => success(res, await shiftService.listShifts())),
+);
 const shiftBody = [
 	body('name').isString().trim().isLength({ min: 1, max: 100 }).withMessage('Tên ca 1–100 ký tự'),
 	body('code').isString().trim().isLength({ min: 1, max: 10 }).withMessage('Ký hiệu ca 1–10 ký tự'),
-	body('start_time').matches(/^([01]\d|2[0-3]):[0-5]\d$/).withMessage('Giờ vào phải dạng HH:mm'),
-	body('end_time').matches(/^([01]\d|2[0-3]):[0-5]\d$/).withMessage('Giờ ra phải dạng HH:mm'),
+	body('start_time')
+		.matches(/^([01]\d|2[0-3]):[0-5]\d$/)
+		.withMessage('Giờ vào phải dạng HH:mm'),
+	body('end_time')
+		.matches(/^([01]\d|2[0-3]):[0-5]\d$/)
+		.withMessage('Giờ ra phải dạng HH:mm'),
 	minutes('checkin_before_min'),
 	minutes('checkout_after_min'),
 	body('grace_min').isInt({ min: 0, max: 240 }).toInt(),
@@ -61,14 +72,18 @@ router.post(
 	canManage,
 	shiftBody,
 	validate,
-	handle(async (req, res) => success(res, await shiftService.saveShift(null, req.body), 'Đã thêm ca làm', 201)),
+	handle(async (req, res) =>
+		success(res, await shiftService.saveShift(null, req.body), 'Đã thêm ca làm', 201),
+	),
 );
 router.put(
 	'/shifts/:id',
 	canManage,
 	[...idParam, ...shiftBody],
 	validate,
-	handle(async (req, res) => success(res, await shiftService.saveShift(req.params.id, req.body), 'Đã cập nhật ca làm')),
+	handle(async (req, res) =>
+		success(res, await shiftService.saveShift(req.params.id, req.body), 'Đã cập nhật ca làm'),
+	),
 );
 router.delete(
 	'/shifts/:id',
@@ -81,8 +96,16 @@ router.delete(
 	}),
 );
 
-router.get('/patterns', canManageOrRoster, handle(async (req, res) => success(res, await shiftService.listPatterns())));
-router.get('/patterns/users', canManage, handle(async (req, res) => success(res, await shiftService.listUsers())));
+router.get(
+	'/patterns',
+	canManageOrRoster,
+	handle(async (req, res) => success(res, await shiftService.listPatterns())),
+);
+router.get(
+	'/patterns/users',
+	canManage,
+	handle(async (req, res) => success(res, await shiftService.listUsers())),
+);
 const patternBody = [
 	body('name').isString().trim().isLength({ min: 1, max: 100 }).withMessage('Tên mẫu 1–100 ký tự'),
 	body('days').isObject().withMessage('Thiếu ca theo ngày trong tuần'),
@@ -93,14 +116,22 @@ router.post(
 	canManage,
 	patternBody,
 	validate,
-	handle(async (req, res) => success(res, await shiftService.savePattern(null, req.body), 'Đã thêm mẫu ca tuần', 201)),
+	handle(async (req, res) =>
+		success(res, await shiftService.savePattern(null, req.body), 'Đã thêm mẫu ca tuần', 201),
+	),
 );
 router.put(
 	'/patterns/:id',
 	canManage,
 	[...idParam, ...patternBody],
 	validate,
-	handle(async (req, res) => success(res, await shiftService.savePattern(req.params.id, req.body), 'Đã cập nhật mẫu ca tuần')),
+	handle(async (req, res) =>
+		success(
+			res,
+			await shiftService.savePattern(req.params.id, req.body),
+			'Đã cập nhật mẫu ca tuần',
+		),
+	),
 );
 router.delete(
 	'/patterns/:id',
@@ -116,7 +147,11 @@ router.delete(
 router.put(
 	'/patterns/:id/users',
 	canManage,
-	[...idParam, body('user_ids').isArray({ max: 20000 }), body('user_ids.*').isString().isLength({ min: 1, max: 20 })],
+	[
+		...idParam,
+		body('user_ids').isArray({ max: 20000 }),
+		body('user_ids.*').isString().isLength({ min: 1, max: 20 }),
+	],
 	validate,
 	handle(async (req, res) => {
 		await shiftService.setPatternUsers(req.params.id, req.body.user_ids);
@@ -124,7 +159,8 @@ router.put(
 	}),
 );
 
-// GET /staff-attendance/roster?from=&to=&department_id= — tối đa 62 ngày
+// GET /staff-attendance/roster?from=&to=&department_id= — tối đa 62 ngày.
+// Phân ca phạm vi khoa (staff_attendance:roster@department): chỉ thấy/xếp ca khoa mình.
 router.get(
 	'/roster',
 	canRoster,
@@ -140,7 +176,7 @@ router.get(
 		query('department_id').optional({ values: 'falsy' }).isString().isLength({ max: 20 }),
 	],
 	validate,
-	handle(async (req, res) => success(res, await shiftService.getRoster(req.query))),
+	handle(async (req, res) => success(res, await shiftService.getRoster(req.query, req.user))),
 );
 // Body: { user_ids, dates: ['YYYY-MM-DD'], mode: 'shifts'|'off'|'pattern', shift_ids? }
 router.put(
@@ -156,7 +192,9 @@ router.put(
 		body('shift_ids.*').isInt({ min: 1 }).toInt(),
 	],
 	validate,
-	handle(async (req, res) => success(res, await shiftService.setRoster(req.body, req.user.id), 'Đã cập nhật phân ca')),
+	handle(async (req, res) =>
+		success(res, await shiftService.setRoster(req.body, req.user), 'Đã cập nhật phân ca'),
+	),
 );
 
 module.exports = router;

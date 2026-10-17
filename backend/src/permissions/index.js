@@ -24,7 +24,9 @@ const REQUIRED_COLUMNS = [
 // Danh sách vấn đề (rỗng = CSDL đã sẵn sàng cho mô hình phân quyền mới) — 1 round-trip.
 const findSchemaProblems = async () => {
 	const pool = await getPool();
-	const cols = REQUIRED_COLUMNS.map(([t, c], i) => `COL_LENGTH('${t}', '${c}') AS c${i}`).join(', ');
+	const cols = REQUIRED_COLUMNS.map(([t, c], i) => `COL_LENGTH('${t}', '${c}') AS c${i}`).join(
+		', ',
+	);
 	const result = await pool.request().query(`
     SELECT ${cols};
     IF OBJECT_ID('permissions', 'U') IS NOT NULL
@@ -37,7 +39,8 @@ const findSchemaProblems = async () => {
 		([table, column, file]) => `thiếu cột ${table}.${column} (${file})`,
 	);
 	const legacy = (result.recordsets[1] ?? []).map((r) => r.k);
-	if (legacy.length) problems.push(`còn quyền kiểu cũ: ${legacy.join(', ')} (2026-09-28_00_permission_scopes.sql)`);
+	if (legacy.length)
+		problems.push(`còn quyền kiểu cũ: ${legacy.join(', ')} (2026-09-28_00_permission_scopes.sql)`);
 	return problems;
 };
 

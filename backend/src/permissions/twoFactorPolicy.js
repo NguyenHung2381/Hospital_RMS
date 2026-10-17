@@ -43,9 +43,7 @@ const twoFactorState = async ({ userId, totpEnabled, requiredSince }, permission
 	let since = requiredSince ? new Date(requiredSince) : null;
 	if (!since) {
 		const pool = await getPool();
-		const r = await pool
-			.request()
-			.input('id', sql.VarChar(20), userId).query(`
+		const r = await pool.request().input('id', sql.VarChar(20), userId).query(`
 				UPDATE users SET twofa_required_since = SYSUTCDATETIME()
 				WHERE id = @id AND twofa_required_since IS NULL;
 				SELECT twofa_required_since FROM users WHERE id = @id;
