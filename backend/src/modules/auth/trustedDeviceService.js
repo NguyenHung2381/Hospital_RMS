@@ -1,8 +1,8 @@
 const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
 const { v4: uuidv4 } = require('uuid');
-const { getPool, sql } = require('../config/db');
-const securityEvents = require('../modules/audit/securityEventService');
+const { getPool, sql } = require('../../config/db');
+const securityEvents = require('../audit/securityEventService');
 
 // "Thiết bị quen" (OWASP — device cookie): trình duyệt đã đăng nhập thành công
 // vào 1 tài khoản được cấp device token (client giữ trong localStorage, gửi

@@ -30,7 +30,7 @@ const log = install(async (text, inputs) => {
 	return [];
 });
 require('../../src/modules/audit/securityEventService').log = async () => {};
-const authService = require('../../src/services/authService');
+const authService = require('../../src/modules/auth/authService');
 
 const rejectsWith = async (p, status, msgRe) => {
 	await assert.rejects(p, (e) => e.statusCode === status && (!msgRe || msgRe.test(e.message)));

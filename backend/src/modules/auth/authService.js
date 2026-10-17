@@ -1,20 +1,20 @@
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
-const { signToken, verifyToken, ISSUER } = require('../utils/keys');
+const { signToken, verifyToken, ISSUER } = require('../../utils/keys');
 const crypto = require('crypto');
 const otplib = require('otplib');
-const { getPool, sql } = require('../config/db');
-const permCache = require('../middlewares/permissionCache');
-const userStatusCache = require('../middlewares/userStatusCache');
-const { twoFactorState } = require('../permissions/twoFactorPolicy');
+const { getPool, sql } = require('../../config/db');
+const permCache = require('../../middlewares/permissionCache');
+const userStatusCache = require('../../middlewares/userStatusCache');
+const { twoFactorState } = require('../../permissions/twoFactorPolicy');
 const { currentTokenVersion, bumpTokenVersion } = require('./sessionVersion');
 const { v4: uuidv4 } = require('uuid');
-const securityEvents = require('../modules/audit/securityEventService');
+const securityEvents = require('../audit/securityEventService');
 const trustedDevices = require('./trustedDeviceService');
-const secretBox = require('../utils/secretBox');
-const { consumeOnce } = require('../utils/oneTimeToken');
-const { passwordGate, BUSY_ERROR } = require('../utils/cpuGate');
-const { httpError } = require('../utils/httpError');
+const secretBox = require('../../utils/secretBox');
+const { consumeOnce } = require('../../utils/oneTimeToken');
+const { passwordGate, BUSY_ERROR } = require('../../utils/cpuGate');
+const { httpError } = require('../../utils/httpError');
 
 // Mọi lần so / băm mật khẩu theo yêu cầu của người dùng đi qua passwordGate
 // (utils/cpuGate.js) — giới hạn số bcrypt chạy cùng lúc, quá tải trả 503.

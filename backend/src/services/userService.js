@@ -4,7 +4,7 @@ const { broadcast } = require('../modules/events/eventService');
 const personService = require('./personService');
 const securityEvents = require('../modules/audit/securityEventService');
 const userStatusCache = require('../middlewares/userStatusCache');
-const { bumpTokenVersion } = require('./sessionVersion');
+const { bumpTokenVersion } = require('../modules/auth/sessionVersion');
 const { paging } = require('../utils/paging');
 // department_id/role_id nhận danh sách phân tách bởi dấu phẩy (multi-select trên UI)
 const { splitList, inClause } = require('../utils/sqlFilters');

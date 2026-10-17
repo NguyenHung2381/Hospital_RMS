@@ -1,12 +1,12 @@
 const router = require('express').Router();
 const { body } = require('express-validator');
 // Đếm trên Redis, tự rơi về bộ nhớ khi Redis lỗi (utils/rateLimit.js)
-const rateLimit = require('../utils/rateLimit');
-const authController = require('../controllers/authController');
-const passwordResetController = require('../controllers/passwordResetController');
-const { authenticate } = require('../middlewares/auth');
-const { validate } = require('../middlewares/errorHandler');
-const { checkPassword } = require('../utils/passwordPolicy');
+const rateLimit = require('../../utils/rateLimit');
+const authController = require('./authController');
+const passwordResetController = require('./passwordResetController');
+const { authenticate } = require('../../middlewares/auth');
+const { validate } = require('../../middlewares/errorHandler');
+const { checkPassword } = require('../../utils/passwordPolicy');
 
 const loginLimiter = rateLimit({
 	name: 'login',

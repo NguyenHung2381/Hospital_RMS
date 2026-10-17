@@ -236,7 +236,7 @@ app.use(API, signUploadUrlsInJson);
 app.use(API, activityLogger);
 
 app.use(`${API}/modules`, require('./routes/modules'));
-app.use(`${API}/auth`, require('./routes/auth'));
+app.use(`${API}/auth`, require('./modules/auth/auth.routes'));
 app.use(`${API}/users`, require('./routes/users'));
 app.use(`${API}/topics`, requireModule('RESEARCH'), require('./routes/topics'));
 app.use(`${API}/councils`, requireModule('RESEARCH'), require('./routes/councils'));

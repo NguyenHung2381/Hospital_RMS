@@ -1,12 +1,12 @@
-const authService = require('../services/authService');
-const loginShield = require('../utils/loginShield');
-const { success, error } = require('../utils/response');
+const authService = require('./authService');
+const loginShield = require('../../utils/loginShield');
+const { success, error } = require('../../utils/response');
 const {
 	setRefreshCookie,
 	clearRefreshCookie,
 	readRefreshCookie,
 	isAllowedOrigin,
-} = require('../utils/authCookie');
+} = require('../../utils/authCookie');
 
 // Refresh token chỉ đi qua cookie HttpOnly (utils/authCookie.js) — tách khỏi
 // dữ liệu trả về để không bao giờ nằm trong body JSON (JS đọc được).

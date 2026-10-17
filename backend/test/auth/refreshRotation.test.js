@@ -7,7 +7,7 @@ const assert = require('node:assert/strict');
 const { setup } = require('./fakeAuthDb');
 
 const { user: USER, rows, events } = setup();
-const authService = require('../../src/services/authService');
+const authService = require('../../src/modules/auth/authService');
 
 const login = async (remember = false) =>
 	(await authService.login('nva', 'Dung#matkhau2026', '10.0.0.1', 'test', null, remember)).refresh_token;

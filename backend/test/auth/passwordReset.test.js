@@ -37,13 +37,13 @@ install(async (text, inputs) => {
 });
 
 require('../../src/modules/settings/systemSettingService').getValue = async () => 'true';
-require('../../src/services/sessionVersion').bumpTokenVersion = async () => {};
+require('../../src/modules/auth/sessionVersion').bumpTokenVersion = async () => {};
 const mailService = require('../../src/modules/notifications/mailService');
 const sent = [];
 mailService.isEnabled = async () => true;
 mailService.renderOtpEmail = (o) => o;
 mailService.send = async (m) => sent.push(m);
-const svc = require('../../src/services/passwordResetService');
+const svc = require('../../src/modules/auth/passwordResetService');
 
 test('xin mã bằng email: gửi tới đúng người, link mang username chứ không mang email', async () => {
 	await svc.requestOtp('a@bv.vn');

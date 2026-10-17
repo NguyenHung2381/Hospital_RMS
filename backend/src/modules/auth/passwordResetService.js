@@ -1,12 +1,12 @@
 const crypto = require('crypto');
-const { getPool, sql } = require('../config/db');
-const mailService = require('../modules/notifications/mailService');
-const secretBox = require('../utils/secretBox');
+const { getPool, sql } = require('../../config/db');
+const mailService = require('../notifications/mailService');
+const secretBox = require('../../utils/secretBox');
 const authService = require('./authService');
-const systemSettingService = require('../modules/settings/systemSettingService');
+const systemSettingService = require('../settings/systemSettingService');
 const { bumpTokenVersion } = require('./sessionVersion');
-const { checkPassword } = require('../utils/passwordPolicy');
-const { httpError } = require('../utils/httpError');
+const { checkPassword } = require('../../utils/passwordPolicy');
+const { httpError } = require('../../utils/httpError');
 
 const OTP_TTL_MIN = 10;
 const RESEND_COOLDOWN_SEC = 60;

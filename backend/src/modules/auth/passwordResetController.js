@@ -1,5 +1,5 @@
-const passwordResetService = require('../services/passwordResetService');
-const { success } = require('../utils/response');
+const passwordResetService = require('./passwordResetService');
+const { success } = require('../../utils/response');
 
 const forgot = async (req, res, next) => {
 	try {

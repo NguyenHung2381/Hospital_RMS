@@ -57,7 +57,7 @@ install(async (text, inputs) => {
 	return [];
 });
 require('../../src/modules/audit/securityEventService').log = async () => {};
-const authService = require('../../src/services/authService');
+const authService = require('../../src/modules/auth/authService');
 
 const preAuth = () => signToken('pre-auth-2fa', { id: 'U1', rm: 0, jti: crypto.randomUUID() }, '5m');
 const setSecret = async (stored) => {

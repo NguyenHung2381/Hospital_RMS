@@ -1,5 +1,5 @@
-const { getPool, sql } = require('../config/db');
-const userStatusCache = require('../middlewares/userStatusCache');
+const { getPool, sql } = require('../../config/db');
+const userStatusCache = require('../../middlewares/userStatusCache');
 
 // users.token_version — "phiên bản phiên đăng nhập" của tài khoản. Access token
 // mang claim `tv`; middlewares/auth.js từ chối token có tv khác giá trị hiện
