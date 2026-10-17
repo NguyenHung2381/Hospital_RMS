@@ -8,7 +8,7 @@ const { bumpTokenVersion } = require('../auth/sessionVersion');
 const { paging } = require('../../utils/paging');
 // department_id/role_id nhận danh sách phân tách bởi dấu phẩy (multi-select trên UI)
 const { splitList, inClause } = require('../../utils/sqlFilters');
-const { isDeptAccountSql } = require('../../utils/deptAccount');
+const { isDeptAccountSql, deptAccountJoinSql, isDeptAccountJoinedSql } = require('../../utils/deptAccount');
 const { ROLE, requireRoleId } = require('../access/roleCodes');
 const { defaultPassword } = require('../../utils/passwordPolicy');
 const { httpError } = require('../../utils/httpError');
@@ -102,7 +102,13 @@ const getAll = async ({
 	// Đếm theo khoa/phòng: bỏ qua bộ lọc khoa/phòng
 	const whereForDeptFacet = ['WHERE', [...baseClauses, roleClause].filter(Boolean).join(' AND ')].join(' ');
 
-	// COUNT(*) OVER() gộp tổng số vào chính câu list -> bỏ 1 lần quét bảng riêng.
+	// Đo trên DB dev (1.860 users):
+	// - limit=0 (dropdown chọn người): EXISTS dept_account_id quét lại departments cho
+	//   từng dòng (7.176 reads) + COUNT(*) OVER() spool 4.006 reads ⇒ ~17ms. Dùng dạng
+	//   JOIN và lấy total = số dòng ⇒ 98 reads, ~5ms.
+	// - Có phân trang: EXISTS chỉ tính cho trang hiện tại nên giữ; COUNT(*) OVER()
+	//   vẫn spool toàn bộ ⇒ đếm bằng câu riêng nhanh hơn (4,9 → 1,8ms; có tìm kiếm 3,7 → 3,5ms).
+	const paged = Boolean(pg.fetchClause);
 	let query = `
     SET NOCOUNT ON;
 
@@ -111,15 +117,22 @@ const getAll = async ({
            u.role_id, r.name AS role_name, r.code AS role_code,
            u.can_sit_council, u.can_chair_council,
            u.password_changed_at, u.created_at, u.updated_at,
-           CAST(CASE WHEN ${isDeptAccountSql('u')} THEN 1 ELSE 0 END AS BIT) AS is_dept_account,
-           COUNT(*) OVER() AS _total
+           CAST(CASE WHEN ${paged ? isDeptAccountSql('u') : isDeptAccountJoinedSql('u')} THEN 1 ELSE 0 END AS BIT) AS is_dept_account
     FROM users u
     LEFT JOIN departments d ON d.id = u.department_id
     LEFT JOIN roles r ON r.id = u.role_id
+    ${paged ? '' : deptAccountJoinSql('u')}
     ${whereAll}
     ORDER BY CASE WHEN u.staff_number IS NULL THEN 1 ELSE 0 END, u.staff_number
     ${pg.fetchClause};
   `;
+
+	// JOIN departments/roles là LEFT JOIN theo khoá chính ⇒ không đổi số dòng, đếm trên users là đủ.
+	if (paged) {
+		query += `
+    SELECT COUNT(*) AS total FROM users u ${whereAll};
+  `;
+	}
 
 	if (withMeta) {
 		query += `
@@ -134,9 +147,8 @@ const getAll = async ({
 	}
 
 	const result = await req.query(query);
-	const rows = result.recordsets[0];
-	const total = rows.length ? rows[0]._total : 0;
-	for (const row of rows) delete row._total;
+	const [rows, ...rest] = result.recordsets;
+	const total = paged ? rest.shift()[0].total : rows.length;
 
 	const out = {
 		data: rows,
@@ -144,7 +156,7 @@ const getAll = async ({
 	};
 
 	if (withMeta) {
-		const [, roleCountRows, deptCountRows] = result.recordsets;
+		const [roleCountRows, deptCountRows] = rest;
 		out.global_stats = await getGlobalStats(pool);
 		out.role_counts = Object.fromEntries(
 			roleCountRows
