@@ -14,7 +14,7 @@
 const ExcelJS = require('exceljs');
 const { getPool, sql } = require('../config/db');
 const xl = require('../utils/excelTemplate');
-const { isDeptAccountSql } = require('../utils/deptAccount');
+const { deptAccountJoinSql, isDeptAccountJoinedSql } = require('../utils/deptAccount');
 
 // Tín chỉ hội thảo/hội nghị thuộc nhóm "Khóa đào tạo, bồi dưỡng ngắn hạn, hội nghị, hội thảo"
 const SEMINAR_GROUP = { id: 'CME_DAOTAO', name: 'Khóa đào tạo, bồi dưỡng ngắn hạn, hội nghị, hội thảo về y khoa' };
@@ -57,10 +57,11 @@ const getData = async ({ year, userId, department, search } = {}) => {
       LEFT JOIN cme_credit_categories c ON c.id = r.category_id
       WHERE r.approval_status = 'approved' AND (@year IS NULL OR r.year = @year)
     ) x ON x.user_id = u.id
+    ${deptAccountJoinSql('u')}
     WHERE (@uid IS NULL OR u.id = @uid) AND (@dept IS NULL OR d.name = @dept)
       AND (u.is_active = 1 OR x.user_id IS NOT NULL OR @uid IS NOT NULL)
       -- Bỏ tài khoản khoa/phòng: tài khoản dùng chung, không phải nhân sự
-      AND (@uid IS NOT NULL OR NOT ${isDeptAccountSql('u')})
+      AND (@uid IS NOT NULL OR NOT ${isDeptAccountJoinedSql('u')})
     GROUP BY u.id, u.staff_number, u.full_name, u.is_active, u.department_id, d.name, x.group_id
     ORDER BY d.name, u.full_name;
 

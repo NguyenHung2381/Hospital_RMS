@@ -285,11 +285,13 @@ const getTrainingStats = async () => remember('dash:training-stats', 90, async (
     GROUP BY tt.name
     ORDER BY cnt DESC;
 
-    -- Xu hướng đăng ký theo tháng (12 tháng gần nhất)
-    SELECT FORMAT(registered_at, 'yyyy-MM') AS month, COUNT(*) AS cnt
+    -- Xu hướng đăng ký theo tháng (12 tháng gần nhất).
+    -- CONVERT(CHAR(7), x, 126) = 'yyyy-MM', không dùng FORMAT(): FORMAT chạy qua CLR,
+    -- lần gọi đầu khi CLR nguội tốn 76–1071ms (Query Store), CONVERT ~1ms.
+    SELECT CONVERT(CHAR(7), registered_at, 126) AS month, COUNT(*) AS cnt
     FROM course_enrollments
     WHERE registered_at >= DATEADD(MONTH, -11, CAST(GETDATE() AS DATE))
-    GROUP BY FORMAT(registered_at, 'yyyy-MM')
+    GROUP BY CONVERT(CHAR(7), registered_at, 126)
     ORDER BY month;
 
     -- Khóa học theo trạng thái hiển thị (suy ra từ ngày tháng)
@@ -347,17 +349,17 @@ const getOverviewStats = async () => remember('dash:overview-stats', 90, async (
 
     -- Hoạt động theo tháng (12 tháng gần nhất): đề tài mới, lượt đăng ký khóa học, hội thảo
     DECLARE @from DATE = DATEFROMPARTS(YEAR(DATEADD(MONTH, -11, GETDATE())), MONTH(DATEADD(MONTH, -11, GETDATE())), 1);
-    SELECT FORMAT(created_at, 'yyyy-MM') AS month, COUNT(*) AS cnt
+    SELECT CONVERT(CHAR(7), created_at, 126) AS month, COUNT(*) AS cnt
     FROM topics WHERE created_at >= @from
-    GROUP BY FORMAT(created_at, 'yyyy-MM');
+    GROUP BY CONVERT(CHAR(7), created_at, 126);
 
-    SELECT FORMAT(registered_at, 'yyyy-MM') AS month, COUNT(*) AS cnt
+    SELECT CONVERT(CHAR(7), registered_at, 126) AS month, COUNT(*) AS cnt
     FROM course_enrollments WHERE registered_at >= @from
-    GROUP BY FORMAT(registered_at, 'yyyy-MM');
+    GROUP BY CONVERT(CHAR(7), registered_at, 126);
 
-    SELECT FORMAT(start_date, 'yyyy-MM') AS month, COUNT(*) AS cnt
+    SELECT CONVERT(CHAR(7), start_date, 126) AS month, COUNT(*) AS cnt
     FROM seminars WHERE start_date >= @from AND start_date <= GETDATE()
-    GROUP BY FORMAT(start_date, 'yyyy-MM');
+    GROUP BY CONVERT(CHAR(7), start_date, 126);
 
     -- Tài khoản đang hoạt động theo vai trò
     SELECT COALESCE(r.description, r.name, N'Chưa gán vai trò') AS name, COUNT(*) AS cnt
