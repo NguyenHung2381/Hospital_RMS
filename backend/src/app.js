@@ -252,7 +252,7 @@ app.use(`${API}/cme-records`, requireModule('SEMINAR'), require('./routes/cmeRec
 app.use(`${API}/trainees`, requireModule('TRAINING'), require('./modules/training/trainees/trainees.routes'));
 app.use(`${API}/training-programs`, requireModule('TRAINING'), require('./modules/training/programs/trainingPrograms.routes'));
 app.use(`${API}/training-plans`, requireModule('TRAINING'), require('./modules/training/plans/trainingPlans.routes'));
-app.use(`${API}/surveys`, requireModule('SURVEY'), require('./routes/surveys'));
+app.use(`${API}/surveys`, requireModule('SURVEY'), require('./modules/surveys/surveys.routes'));
 app.use(`${API}/my-tasks`, require('./routes/myTasks'));
 app.use(`${API}/me`, require('./routes/me'));
 app.use(`${API}/exams`, requireModule('TRAINING'), require('./modules/training/exams/exams.routes'));

@@ -1,5 +1,5 @@
-const surveyService = require('../services/surveyService');
-const { success, created, notFound } = require('../utils/response');
+const surveyService = require('./surveyService');
+const { success, created, notFound } = require('../../utils/response');
 
 const getAll = async (req, res, next) => {
 	try {
