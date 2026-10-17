@@ -11,6 +11,7 @@
     "test": "cross-env REDIS_HOST=127.0.0.1 REDIS_PORT=1 node --test --test-force-exit \"test/**/*.test.js\"",
     "gen:jwt": "node scripts/gen-jwt-secrets.js",
     "check:routes": "node scripts/check-route-permissions.js",
+    "check:requires": "node scripts/check-requires.js",
     "gen:perm-types": "node scripts/gen-permission-types.js",
     "sync:permissions": "node scripts/sync-permissions.js",
     "flag:default-passwords": "node scripts/flag-default-passwords.js",
