@@ -1,17 +1,17 @@
 const router = require('express').Router();
 const { body } = require('express-validator');
-const { createCrudService } = require('../shared/crudService');
-const { createCrudController } = require('../shared/crudController');
-const { authenticate, authorizePermission } = require('../middlewares/auth');
-const { validate } = require('../middlewares/errorHandler');
-const roundCtrl    = require('../modules/rounds/roundController');
-const deadlineSvc  = require('../modules/rounds/deadlineService');
-const roundService = require('../modules/rounds/roundService');
-const deptService = require('../services/departmentService');
-const extReviewerService = require('../services/externalReviewerService');
-const permService = require('../modules/access/permissionService');
-const { assertCanEditRole } = require('../modules/access/privilegeGuard');
-const { success, created, notFound } = require('../utils/response');
+const { createCrudService } = require('../../shared/crudService');
+const { createCrudController } = require('../../shared/crudController');
+const { authenticate, authorizePermission } = require('../../middlewares/auth');
+const { validate } = require('../../middlewares/errorHandler');
+const roundCtrl    = require('../rounds/roundController');
+const deadlineSvc  = require('../rounds/deadlineService');
+const roundService = require('../rounds/roundService');
+const deptService = require('./departmentService');
+const extReviewerService = require('./externalReviewerService');
+const permService = require('../access/permissionService');
+const { assertCanEditRole } = require('../access/privilegeGuard');
+const { success, created, notFound } = require('../../utils/response');
 
 /**
  * @swagger
@@ -326,8 +326,8 @@ router.delete(
 // ─── Levels ───────────────────────────────────────────────────────────────────
 // Constraint CHK_lv_id yêu cầu id LIKE 'CD[0-9][0-9]' → CD01, CD02, ...
 // crudService dùng NEWID() (hex) nên phải override hàm create riêng.
-const { getPool, sql } = require('../config/db');
-const { broadcast } = require('../modules/events/eventService');
+const { getPool, sql } = require('../../config/db');
+const { broadcast } = require('../events/eventService');
 
 // ── round_type_levels: cấp độ được phép theo loại đợt ────────────────────────
 const getLevelIdsForRoundType = async (roundTypeId) => {
@@ -791,7 +791,7 @@ for (const [path, table] of Object.entries(TRAINING_CATALOG_TABLES)) {
 }
 
 // ─── Roles ────────────────────────────────────────────────────────────────────
-const roleService = require('../modules/access/roleService');
+const roleService = require('../access/roleService');
 const roleCtrl = createCrudController(roleService);
 
 /**

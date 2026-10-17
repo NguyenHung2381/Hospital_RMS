@@ -1,7 +1,7 @@
-const { getPool, sql } = require('../config/db');
-const { broadcast } = require('../modules/events/eventService');
-const { paging } = require('../utils/paging');
-const { remember, invalidate } = require('../utils/cache');
+const { getPool, sql } = require('../../config/db');
+const { broadcast } = require('../events/eventService');
+const { paging } = require('../../utils/paging');
+const { remember, invalidate } = require('../../utils/cache');
 
 const CACHE_PREFIX = 'lookup:departments:';
 
