@@ -1,12 +1,12 @@
 const router = require('express').Router();
 const { body } = require('express-validator');
-const ctrl = require('../controllers/cmeRecordController');
-const { authenticate, authorizePermission } = require('../middlewares/auth');
-const { validate } = require('../middlewares/errorHandler');
-const { createTrainingUpload } = require('../middlewares/uploadTraining');
+const ctrl = require('./cmeRecordController');
+const { authenticate, authorizePermission } = require('../../middlewares/auth');
+const { validate } = require('../../middlewares/errorHandler');
+const { createTrainingUpload } = require('../../middlewares/uploadTraining');
 
 const uploadEvidence = createTrainingUpload('cme_evidence');
-const uploadExcel = require('../middlewares/uploadExcel');
+const uploadExcel = require('../../middlewares/uploadExcel');
 
 /**
  * @swagger

@@ -1,6 +1,6 @@
 const router = require('express').Router();
 const portalService = require('./portalService');
-const cmePersonalExport = require('../../controllers/cmePersonalExportController');
+const cmePersonalExport = require('../cme/cmePersonalExportController');
 const { authenticate } = require('../../middlewares/auth');
 const { success, created } = require('../../utils/response');
 
@@ -63,7 +63,7 @@ router.get('/cme', async (req, res, next) => {
 });
 
 // Tự khai CME (chờ admin duyệt). Chỉ thao tác trên bản ghi của chính mình.
-const cmeRecordService = require('../../services/cmeRecordService');
+const cmeRecordService = require('../cme/cmeRecordService');
 const { body } = require('express-validator');
 const { validate } = require('../../middlewares/errorHandler');
 const { createTrainingUpload } = require('../../middlewares/uploadTraining');

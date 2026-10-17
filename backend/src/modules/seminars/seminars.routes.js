@@ -1,8 +1,8 @@
 const router = require('express').Router();
 const { body } = require('express-validator');
 const ctrl = require('./seminarController');
-const cmeRequirementService = require('../../services/cmeRequirementService');
-const cmePersonalExport = require('../../controllers/cmePersonalExportController');
+const cmeRequirementService = require('../cme/cmeRequirementService');
+const cmePersonalExport = require('../cme/cmePersonalExportController');
 const { authenticate, authorizePermission } = require('../../middlewares/auth');
 const { validate } = require('../../middlewares/errorHandler');
 const { success, created } = require('../../utils/response');

@@ -5,16 +5,16 @@
  * mục quy đổi theo tên — không đính kèm minh chứng qua import (thêm sau ở
  * từng dòng nếu cần, qua addEvidence).
  */
-const { getPool, sql } = require('../config/db');
-const { norm, normDept, stripQualification } = require('../utils/vietnameseText');
+const { getPool, sql } = require('../../config/db');
+const { norm, normDept, stripQualification } = require('../../utils/vietnameseText');
 const ExcelJS = require('exceljs');
-const { parseDateCell, parseCredits, parseStaffNumber, readSheet } = require('../utils/excelImport');
+const { parseDateCell, parseCredits, parseStaffNumber, readSheet } = require('../../utils/excelImport');
 const cmeRecordService = require('./cmeRecordService');
-const userService = require('../modules/users/userService');
-const notificationService = require('../modules/notifications/notificationService');
-const { ROLE, inputRoleId } = require('../modules/access/roleCodes');
-const xl = require('../utils/excelTemplate');
-const { httpError } = require('../utils/httpError');
+const userService = require('../users/userService');
+const notificationService = require('../notifications/notificationService');
+const { ROLE, inputRoleId } = require('../access/roleCodes');
+const xl = require('../../utils/excelTemplate');
+const { httpError } = require('../../utils/httpError');
 
 // Cột file mẫu nhập — header khớp COLUMN_MATCHERS. Năm, Nhóm/Loại hình thức chọn ở hộp
 // thoại nhập (defaults) nên không có trong mẫu; file cũ còn các cột đó (và Họ tên) vẫn nhập được.

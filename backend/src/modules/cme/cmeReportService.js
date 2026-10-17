@@ -12,9 +12,9 @@
  * Dùng cho file xuất trang Ghi nhận CME (toàn viện) và phiếu CME cá nhân (userId).
  */
 const ExcelJS = require('exceljs');
-const { getPool, sql } = require('../config/db');
-const xl = require('../utils/excelTemplate');
-const { isDeptAccountSql } = require('../utils/deptAccount');
+const { getPool, sql } = require('../../config/db');
+const xl = require('../../utils/excelTemplate');
+const { isDeptAccountSql } = require('../../utils/deptAccount');
 
 // Tín chỉ hội thảo/hội nghị thuộc nhóm "Khóa đào tạo, bồi dưỡng ngắn hạn, hội nghị, hội thảo"
 const SEMINAR_GROUP = { id: 'CME_DAOTAO', name: 'Khóa đào tạo, bồi dưỡng ngắn hạn, hội nghị, hội thảo về y khoa' };

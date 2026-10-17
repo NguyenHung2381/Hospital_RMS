@@ -5,9 +5,9 @@
  *   POST /api/v1/me/cme/export-excel                       Body: { year? } — của chính mình
  *   POST /api/v1/seminars/cme-personal/:userId/export-excel Body: { year? } — quản lý CME
  */
-const cmeRequirementService = require('../services/cmeRequirementService');
-const cmeReportService = require('../services/cmeReportService');
-const { httpError } = require('../utils/httpError');
+const cmeRequirementService = require('./cmeRequirementService');
+const cmeReportService = require('./cmeReportService');
+const { httpError } = require('../../utils/httpError');
 
 async function buildWorkbook(userId, year) {
 	const profile = await cmeRequirementService.getPersonProfile(userId);

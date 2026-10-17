@@ -1,8 +1,8 @@
-const cmeRecordService = require('../services/cmeRecordService');
-const cmeRecordImportService = require('../services/cmeRecordImportService');
-const cmeReportService = require('../services/cmeReportService');
-const { success, created, notFound } = require('../utils/response');
-const { hasPermission } = require('../middlewares/auth');
+const cmeRecordService = require('./cmeRecordService');
+const cmeRecordImportService = require('./cmeRecordImportService');
+const cmeReportService = require('./cmeReportService');
+const { success, created, notFound } = require('../../utils/response');
+const { hasPermission } = require('../../middlewares/auth');
 
 const getAll = async (req, res, next) => {
 	try {

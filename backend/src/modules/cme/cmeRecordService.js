@@ -5,11 +5,11 @@
  * 2026-09-16_cme_records.sql. Trang "Cảnh báo tín chỉ CME" (cmeRequirementService
  * .getComplianceReport) đã cộng dồn cả 2 nguồn.
  */
-const { getPool, sql } = require('../config/db');
-const { broadcast } = require('../modules/events/eventService');
-const { paging } = require('../utils/paging');
-const trainingFileService = require('../modules/training/trainingFileService');
-const { httpError } = require('../utils/httpError');
+const { getPool, sql } = require('../../config/db');
+const { broadcast } = require('../events/eventService');
+const { paging } = require('../../utils/paging');
+const trainingFileService = require('../training/trainingFileService');
+const { httpError } = require('../../utils/httpError');
 
 const recordSelect = `
   SELECT r.*, u.full_name AS user_name, u.staff_number, u.department_id, d.name AS department_name,
