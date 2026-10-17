@@ -1,5 +1,5 @@
 const { getPool, sql, withTransaction } = require('../config/db');
-const { broadcast } = require('./eventService');
+const { broadcast } = require('../modules/events/eventService');
 const permCache = require('../middlewares/permissionCache');
 const { invalidate } = require('../utils/cache');
 const { assertCanEditRole, assertCanChangeGrants } = require('./privilegeGuard');

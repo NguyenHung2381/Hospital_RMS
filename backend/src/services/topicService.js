@@ -1,6 +1,6 @@
 const { getPool, sql } = require('../config/db');
 const notifSvc = require('./notificationService');
-const { broadcast } = require('./eventService');
+const { broadcast } = require('../modules/events/eventService');
 const { paging } = require('../utils/paging');
 const { splitList, inClause, buildWhere } = require('../utils/sqlFilters');
 const { assertTopicActionWindow } = require('./deadlineGuard');

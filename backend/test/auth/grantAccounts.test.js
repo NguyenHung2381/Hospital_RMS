@@ -32,7 +32,7 @@ const log = install(async (text, inputs) => {
 });
 require('../../src/services/personService').linkTopicMemberToUser = async () => {};
 require('../../src/services/notificationService').push = async () => {};
-require('../../src/services/eventService').broadcast = () => {};
+require('../../src/modules/events/eventService').broadcast = () => {};
 const { grantAccounts } = require('../../src/services/topicMemberService');
 
 const member = (id, staff_number, role = 'member') => ({

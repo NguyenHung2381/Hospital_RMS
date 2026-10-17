@@ -5,7 +5,7 @@
  * seminarParticipantService; ở đây chỉ CRUD sự kiện + số liệu tổng hợp.
  */
 const { getPool, sql } = require('../config/db');
-const { broadcast } = require('./eventService');
+const { broadcast } = require('../modules/events/eventService');
 const { paging } = require('../utils/paging');
 const { splitList, inClause, buildWhere } = require('../utils/sqlFilters');
 const fs = require('fs');

@@ -244,7 +244,7 @@ app.use(`${API}/files`, require('./routes/files'));
 app.use(`${API}/excel`, require('./routes/excel'));
 app.use(`${API}/dashboard`, require('./routes/dashboard'));
 app.use(`${API}/notifications`, require('./routes/notifications'));
-app.use(`${API}/events`, require('./routes/events'));
+app.use(`${API}/events`, require('./modules/events/events.routes'));
 app.use(`${API}/activity-logs`, require('./routes/activityLogs'));
 app.use(`${API}/security-events`, require('./routes/securityEvents'));
 app.use(`${API}/seminars`, requireModule('SEMINAR'), require('./routes/seminars'));

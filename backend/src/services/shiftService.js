@@ -1,5 +1,5 @@
 const { getPool, sql, withTransaction } = require('../config/db');
-const { broadcast } = require('./eventService');
+const { broadcast } = require('../modules/events/eventService');
 const { validateShift, normalizePatternDays, DATE_RE } = require('../utils/attendanceShift');
 const { httpError } = require('../utils/httpError');
 

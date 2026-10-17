@@ -1,6 +1,6 @@
 const bcrypt = require('bcrypt');
 const { getPool, sql } = require('../config/db');
-const { broadcast } = require('./eventService');
+const { broadcast } = require('../modules/events/eventService');
 const { paging } = require('../utils/paging');
 const trainingFileService = require('./trainingFileService');
 const personService = require('./personService');

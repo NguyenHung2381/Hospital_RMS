@@ -1,6 +1,6 @@
 const { getPool, sql } = require('../config/db');
 const { parseJsonArray } = require('../utils/sqlFilters');
-const { broadcast } = require('./eventService');
+const { broadcast } = require('../modules/events/eventService');
 const { paging } = require('../utils/paging');
 
 const QUESTION_TYPES = ['single_choice', 'multi_choice', 'text'];

@@ -1,5 +1,5 @@
 const { getPool, sql } = require('../config/db');
-const { broadcast } = require('./eventService');
+const { broadcast } = require('../modules/events/eventService');
 const { httpError } = require('../utils/httpError');
 
 // ─── Topic assignment (many topics -> one council per round) ─────────────────

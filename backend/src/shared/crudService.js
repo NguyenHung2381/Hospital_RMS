@@ -1,5 +1,5 @@
 const { getPool, sql } = require('../config/db');
-const { broadcast } = require('../services/eventService');
+const { broadcast } = require('../modules/events/eventService');
 const { paging } = require('../utils/paging');
 const { remember, invalidate } = require('../utils/cache');
 

@@ -25,7 +25,7 @@ const options = {
 		security: [{ bearerAuth: [] }],
 	},
 	// Dùng path.join để tránh lỗi đường dẫn trên mọi OS
-	apis: [path.join(__dirname, '../routes/*.js')],
+	apis: [path.join(__dirname, '../routes/*.js'), path.join(__dirname, '../modules/**/*.routes.js')],
 };
 
 module.exports = swaggerJsdoc(options);

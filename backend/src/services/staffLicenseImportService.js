@@ -5,7 +5,7 @@
  * lại). Chỉ ghi các cột có trong file; dry_run trả danh sách dòng mới/thay đổi.
  */
 const { getPool, sql } = require('../config/db');
-const { broadcast } = require('./eventService');
+const { broadcast } = require('../modules/events/eventService');
 const { norm } = require('../utils/vietnameseText');
 const { readSheet, parseDateCell } = require('../utils/excelImport');
 const { fieldDefs } = require('./staffLicenseService');

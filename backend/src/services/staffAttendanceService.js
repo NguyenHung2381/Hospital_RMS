@@ -1,5 +1,5 @@
 const { getPool, sql } = require('../config/db');
-const { broadcast } = require('./eventService');
+const { broadcast } = require('../modules/events/eventService');
 const attendancePolicy = require('../utils/attendancePolicy');
 const shiftLogic = require('../utils/attendanceShift');
 const shiftService = require('./shiftService');

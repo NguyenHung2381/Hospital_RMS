@@ -17,7 +17,7 @@ install(async (text) => {
 	if (/INSERT INTO exam_answers/.test(text)) writes.push('answer');
 	return [];
 });
-require('../../src/services/eventService').broadcast = () => {};
+require('../../src/modules/events/eventService').broadcast = () => {};
 require('../../src/services/courseService').upsertGrade = async () => {};
 
 // Controller người dùng: stub service + chốt quyền quản lý tài khoản

@@ -1,4 +1,4 @@
-const redis = require('../config/redis');
+const redis = require('../../config/redis');
 
 // Kết nối SSE đang mở của TIẾN TRÌNH này. Chạy nhiều worker (src/cluster.js)
 // thì mỗi worker chỉ giữ client kết nối vào nó — sự kiện được phát qua Redis

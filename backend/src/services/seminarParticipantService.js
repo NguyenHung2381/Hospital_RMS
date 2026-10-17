@@ -8,7 +8,7 @@
 const crypto = require('crypto');
 const { signToken, verifyToken } = require('../utils/keys');
 const { getPool, sql, withTransaction } = require('../config/db');
-const { broadcast } = require('./eventService');
+const { broadcast } = require('../modules/events/eventService');
 const personService = require('./personService');
 const { normalizeGender } = require('../utils/gender');
 const QRCode = require('qrcode');

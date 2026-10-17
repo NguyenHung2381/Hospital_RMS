@@ -327,7 +327,7 @@ router.delete(
 // Constraint CHK_lv_id yêu cầu id LIKE 'CD[0-9][0-9]' → CD01, CD02, ...
 // crudService dùng NEWID() (hex) nên phải override hàm create riêng.
 const { getPool, sql } = require('../config/db');
-const { broadcast } = require('../services/eventService');
+const { broadcast } = require('../modules/events/eventService');
 
 // ── round_type_levels: cấp độ được phép theo loại đợt ────────────────────────
 const getLevelIdsForRoundType = async (roundTypeId) => {

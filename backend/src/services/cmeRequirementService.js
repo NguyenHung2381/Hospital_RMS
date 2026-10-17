@@ -1,5 +1,5 @@
 const { getPool, sql } = require('../config/db');
-const { broadcast } = require('./eventService');
+const { broadcast } = require('../modules/events/eventService');
 const { isDeptAccountSql } = require('../utils/deptAccount');
 
 // Ngưỡng tín chỉ CME theo năm — toàn viện (department_id NULL) hoặc riêng

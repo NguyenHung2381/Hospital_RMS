@@ -1,6 +1,6 @@
 const { signToken, verifyToken } = require('../utils/keys');
 const { getPool, sql } = require('../config/db');
-const { broadcast } = require('./eventService');
+const { broadcast } = require('../modules/events/eventService');
 const { paging } = require('../utils/paging');
 const mailService = require('./mailService');
 const trainingFileService = require('./trainingFileService');

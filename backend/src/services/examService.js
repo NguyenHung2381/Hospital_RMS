@@ -1,6 +1,6 @@
 const { getPool, sql, withTransaction } = require('../config/db');
 const { parseJsonArray } = require('../utils/sqlFilters');
-const { broadcast } = require('./eventService');
+const { broadcast } = require('../modules/events/eventService');
 const courseService = require('./courseService');
 const { removeUploadedFile, toStoredUploadPath } = require('../utils/uploadPaths');
 

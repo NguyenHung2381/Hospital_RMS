@@ -1,5 +1,5 @@
 const { getPool, sql } = require('../config/db');
-const { broadcast } = require('./eventService');
+const { broadcast } = require('../modules/events/eventService');
 const { paging } = require('../utils/paging');
 
 // Hồ sơ chứng chỉ hành nghề (CCHN) — 1 user 1 hồ sơ hiện hành (xem

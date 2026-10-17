@@ -6,7 +6,7 @@
  * .getComplianceReport) đã cộng dồn cả 2 nguồn.
  */
 const { getPool, sql } = require('../config/db');
-const { broadcast } = require('./eventService');
+const { broadcast } = require('../modules/events/eventService');
 const { paging } = require('../utils/paging');
 const trainingFileService = require('./trainingFileService');
 const { httpError } = require('../utils/httpError');

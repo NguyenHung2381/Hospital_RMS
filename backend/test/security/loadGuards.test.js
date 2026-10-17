@@ -4,7 +4,7 @@ process.env.SSE_MAX_PER_USER = '2';
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { createGate, BUSY_ERROR } = require('../../src/utils/cpuGate');
-const events = require('../../src/services/eventService');
+const events = require('../../src/modules/events/eventService');
 
 const deferred = () => {
 	let resolve;

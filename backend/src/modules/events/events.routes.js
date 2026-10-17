@@ -1,9 +1,9 @@
 const router = require('express').Router();
 const crypto = require('crypto');
-const { addClient, removeClient, MAX_PER_USER } = require('../services/eventService');
-const { authenticate, verifySession } = require('../middlewares/auth');
-const { signToken, verifyToken } = require('../utils/keys');
-const { consumeOnce } = require('../utils/oneTimeToken');
+const { addClient, removeClient, MAX_PER_USER } = require('./eventService');
+const { authenticate, verifySession } = require('../../middlewares/auth');
+const { signToken, verifyToken } = require('../../utils/keys');
+const { consumeOnce } = require('../../utils/oneTimeToken');
 
 // 15 giây — dưới ngưỡng idle-timeout thấp nhất thường gặp của proxy đứng trước
 // (nginx proxy_read_timeout mặc định 60s, IIS ARR 120s, Cloudflare 100s...).

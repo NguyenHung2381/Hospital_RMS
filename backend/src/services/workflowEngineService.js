@@ -9,7 +9,7 @@
  * tự suy diễn generic vì mỗi resource có luật đổi trạng thái riêng.
  */
 const { getPool, sql } = require('../config/db');
-const { broadcast } = require('./eventService');
+const { broadcast } = require('../modules/events/eventService');
 
 // GỌI Ở ĐẦU MỌI LUỒNG DUYỆT (topicController.approve) — phải fail-safe tuyệt
 // đối về "không có workflow" nếu bảng chưa tồn tại (migration

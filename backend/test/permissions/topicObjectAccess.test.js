@@ -22,7 +22,7 @@ install(async (text, inputs) => {
 	if (/UPDATE topics/.test(text)) writes.push(inputs.id);
 	return [];
 });
-require('../../src/services/eventService').broadcast = () => {};
+require('../../src/modules/events/eventService').broadcast = () => {};
 const topicService = require('../../src/services/topicService');
 const { errorHandler } = require('../../src/middlewares/errorHandler');
 

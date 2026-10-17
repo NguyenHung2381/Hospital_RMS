@@ -1,5 +1,5 @@
 const { getPool, sql } = require('../config/db');
-const { broadcast } = require('./eventService');
+const { broadcast } = require('../modules/events/eventService');
 const personService = require('./personService');
 
 const getAll = async ({ search, specialty_group, active_only } = {}) => {

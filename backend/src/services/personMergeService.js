@@ -1,6 +1,6 @@
 const { getPool, sql } = require('../config/db');
 const { paging } = require('../utils/paging');
-const { broadcast } = require('./eventService');
+const { broadcast } = require('../modules/events/eventService');
 const personService = require('./personService');
 const { normalizeGender } = require('../utils/gender');
 const { httpError } = require('../utils/httpError');

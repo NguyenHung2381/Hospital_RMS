@@ -1,5 +1,5 @@
 const { getPool, sql } = require('../config/db');
-const { broadcast } = require('./eventService');
+const { broadcast } = require('../modules/events/eventService');
 const { removeUploadedFile } = require('../utils/uploadPaths');
 
 const uploadFiles = async (topicId, filesData, batchNote, actorId) => {

@@ -1,5 +1,5 @@
 const { getPool, sql } = require('../config/db');
-const { broadcast } = require('./eventService');
+const { broadcast } = require('../modules/events/eventService');
 const { paging } = require('../utils/paging');
 
 // Tiến độ: hạng mục "đã triển khai" khi có ít nhất 1 khóa học (chưa huỷ) mở theo nó

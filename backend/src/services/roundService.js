@@ -1,5 +1,5 @@
 const { getPool, sql, withTransaction } = require('../config/db');
-const { broadcast } = require('./eventService');
+const { broadcast } = require('../modules/events/eventService');
 const { paging } = require('../utils/paging');
 const deadlineService = require('./deadlineService');
 const { fmtDateVN: fmtDate } = require('../utils/vnDate');
