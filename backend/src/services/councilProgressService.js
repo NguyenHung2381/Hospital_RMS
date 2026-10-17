@@ -12,6 +12,7 @@ const { getPool, sql } = require('../config/db');
 const fileService = require('./fileService');
 const sanitizeHtml = require('sanitize-html');
 const { stripUploadSignatures } = require('../utils/signedUpload');
+const { httpError } = require('../utils/httpError');
 
 const EVAL_NOTE = 'Đánh giá tiến độ của hội đồng'; // ponytail: phân biệt file đánh giá bằng note batch — thêm cột file_type nếu sau này cần chặt chẽ hơn
 const MINUTES_NOTE = 'Biên bản họp hội đồng';
@@ -176,9 +177,7 @@ const upsertReview = async (
 	{ progress_percent, rating, comment },
 ) => {
 	if (rating != null && !RATINGS.includes(rating)) {
-		throw Object.assign(new Error('Xếp loại tiến độ không hợp lệ.'), {
-			status: 400,
-		});
+		throw httpError(400, 'Xếp loại tiến độ không hợp lệ.');
 	}
 	const roles = await getRolesForTopic(topicId, userId);
 	if (!roles.length) {
@@ -233,9 +232,7 @@ const upsertResult = async (
 	{ conclusion, general_comment },
 ) => {
 	if (conclusion != null && !CONCLUSIONS.includes(conclusion)) {
-		throw Object.assign(new Error('Kết luận không hợp lệ.'), {
-			status: 400,
-		});
+		throw httpError(400, 'Kết luận không hợp lệ.');
 	}
 	await assertChairman(topicId, userId);
 	const pool = await getPool();
@@ -298,9 +295,7 @@ const deleteEvalFileByNote = async (topicId, fileId, userId, note, label) => {
         AND f.is_deleted = 0 AND fb.note = @note
     `);
 	if (!check.recordset.length) {
-		throw Object.assign(new Error(`Không tìm thấy file ${label}.`), {
-			status: 404,
-		});
+		throw httpError(404, `Không tìm thấy file ${label}.`);
 	}
 	await fileService.deleteFile(fileId, userId);
 };

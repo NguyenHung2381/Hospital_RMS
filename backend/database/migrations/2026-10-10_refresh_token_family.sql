@@ -11,8 +11,7 @@
  *   còn được dùng lại (quá vài giây — không phải 2 tab làm mới cùng lúc) ⇒
  *   xoá cả họ token + thu hồi mọi access token (users.token_version).
  *
- *   Server tự chạy bước này lúc khởi động (permissions/migrations.js) nếu login
- *   ứng dụng có quyền ALTER; không có thì DBA chạy file này. Idempotent.
+ *   Idempotent.
  * ==========================================================================*/
 USE [RMS_HOSPITAL];
 GO

@@ -14,6 +14,7 @@ const userService = require('./userService');
 const notificationService = require('./notificationService');
 const { ROLE, inputRoleId } = require('./roleCodes');
 const xl = require('../utils/excelTemplate');
+const { httpError } = require('../utils/httpError');
 
 // Cột file mẫu nhập — header khớp COLUMN_MATCHERS. Năm, Nhóm/Loại hình thức chọn ở hộp
 // thoại nhập (defaults) nên không có trong mẫu; file cũ còn các cột đó (và Họ tên) vẫn nhập được.
@@ -95,7 +96,7 @@ const parseWorkbook = async (buffer) => {
 		});
 	}
 	if (!rows.length) {
-		throw Object.assign(new Error('File không có dòng dữ liệu nào.'), { statusCode: 400 });
+		throw httpError(400, 'File không có dòng dữ liệu nào.');
 	}
 	return { rows };
 };
@@ -467,7 +468,7 @@ const importExcel = async ({ buffer, dry_run, defaults }, actorId) => {
 // Thêm 1 nhân viên từ hộp thoại nhập (nút "Thêm NV" ở dòng chưa khớp nhân viên).
 // Caller kiểm tra quyền users:create. Trả thông tin để giao diện nhập tiếp các dòng.
 const createMissingStaff = async ({ staff_number, full_name, department_id }, actorId) => {
-	const fail = (message, statusCode = 400) => Object.assign(new Error(message), { statusCode });
+	const fail = (message, statusCode = 400) => httpError(statusCode, message);
 	const staffNumber = parseStaffNumber(staff_number);
 	const name = String(full_name || '').trim();
 	if (staffNumber == null) throw fail('Mã NV không hợp lệ');

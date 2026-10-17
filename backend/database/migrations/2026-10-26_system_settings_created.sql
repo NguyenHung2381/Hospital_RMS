@@ -3,7 +3,7 @@
  * WHEN NOT MATCHED THEN INSERT) ghi created_by → lỗi "Invalid column name 'created_by'"
  * mỗi lần lưu cấu hình (SQL Server biên dịch cả nhánh INSERT dù key đã tồn tại).
  * created_by NULL được — các dòng seed sẵn không có người tạo.
- * Server tự chạy bước này lúc khởi động (permissions/migrations.js). Idempotent. */
+ * Idempotent. */
 USE [RMS_HOSPITAL];
 GO
 

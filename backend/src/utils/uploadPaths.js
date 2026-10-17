@@ -5,6 +5,7 @@
 const path = require('path');
 const fs = require('fs');
 const crypto = require('crypto');
+const { httpError } = require('./httpError');
 
 const UPLOADS_ROOT = path.resolve(process.env.UPLOADS_DIR || 'uploads');
 
@@ -38,7 +39,7 @@ const toStoredUploadPath = (url, prefix) => {
 	const pathname = String(url).split(/[?#]/)[0];
 	const name = pathname.slice(prefix.length);
 	if (!pathname.startsWith(prefix) || !/^[A-Za-z0-9_-]+\.[A-Za-z0-9]+$/.test(name)) {
-		throw Object.assign(new Error('Đường dẫn ảnh không hợp lệ — vui lòng tải ảnh lên lại.'), { statusCode: 400 });
+		throw httpError(400, 'Đường dẫn ảnh không hợp lệ — vui lòng tải ảnh lên lại.');
 	}
 	return pathname;
 };

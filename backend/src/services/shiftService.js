@@ -1,30 +1,15 @@
-const { getPool, sql } = require('../config/db');
+const { getPool, sql, withTransaction } = require('../config/db');
 const { broadcast } = require('./eventService');
 const { validateShift, normalizePatternDays, DATE_RE } = require('../utils/attendanceShift');
+const { httpError } = require('../utils/httpError');
 
 // Ca làm việc, mẫu ca tuần, phân ca theo ngày (2026-10-30_attendance_shifts.sql).
 // Logic chọn ca khi chấm công ở utils/attendanceShift.js.
 
-const httpError = (statusCode, message) => Object.assign(new Error(message), { statusCode });
 const changed = () => broadcast('update', { entity: 'work_shifts' });
 
 const dateKey = (d) => (d instanceof Date ? d.toISOString().slice(0, 10) : d);
 const parsePattern = (row) => row && { ...row, days: normalizePatternDays(JSON.parse(row.days)) };
-
-// Chạy fn(tx) trong 1 transaction
-const inTx = async (fn) => {
-	const pool = await getPool();
-	const tx = new sql.Transaction(pool);
-	await tx.begin();
-	try {
-		const result = await fn(tx);
-		await tx.commit();
-		return result;
-	} catch (err) {
-		await tx.rollback().catch(() => {});
-		throw err;
-	}
-};
 
 // ─── Ca làm ──────────────────────────────────────────────────────────────────
 const listShifts = async () => {
@@ -123,7 +108,7 @@ const savePattern = async (id, { name, days, is_default }) => {
 			.query('SELECT id FROM work_shifts WHERE id IN (SELECT value FROM OPENJSON(@ids))')).recordset.length;
 		if (found !== ids.length) throw httpError(400, 'Mẫu có ca không tồn tại');
 	}
-	const row = await inTx(async (tx) => {
+	const row = await withTransaction(async (tx) => {
 		// Bỏ mặc định cũ trước (UNIQUE index lọc is_default = 1)
 		if (is_default)
 			await new sql.Request(tx).input('id', sql.Int, id ?? 0).query('UPDATE shift_patterns SET is_default = 0 WHERE is_default = 1 AND id <> @id');
@@ -182,7 +167,7 @@ const setPatternUsers = async (id, userIds) => {
 	const pool = await getPool();
 	const exists = (await pool.request().input('id', sql.Int, id).query('SELECT 1 AS x FROM shift_patterns WHERE id = @id')).recordset[0];
 	if (!exists) throw httpError(404, 'Không tìm thấy mẫu ca');
-	await inTx((tx) =>
+	await withTransaction((tx) =>
 		new sql.Request(tx)
 			.input('id', sql.Int, id)
 			.input('ids', sql.NVarChar(sql.MAX), JSON.stringify([...new Set(userIds.map(String))]))
@@ -226,7 +211,7 @@ const setRoster = async ({ user_ids, dates, mode, shift_ids = [] }, actorId) => 
 	if (users.length * days.length > MAX_CELLS) throw httpError(400, `Tối đa ${MAX_CELLS} ô mỗi lần`);
 	const shifts = mode === 'shifts' ? [...new Set(shift_ids.map(Number))] : mode === 'off' ? [null] : [];
 	if (mode === 'shifts' && !shifts.length) throw httpError(400, 'Chọn ít nhất 1 ca');
-	await inTx(async (tx) => {
+	await withTransaction(async (tx) => {
 		const req = () =>
 			new sql.Request(tx)
 				.input('users', sql.NVarChar(sql.MAX), JSON.stringify(users))

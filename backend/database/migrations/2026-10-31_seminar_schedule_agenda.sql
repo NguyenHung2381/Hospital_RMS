@@ -10,7 +10,6 @@
  *                              test đang bật (test_open = 1) và có khung giờ thì
  *                              chỉ làm được trong khung giờ đó (tự mở / tự đóng).
  *   seminars.agenda          : JSON [{ title, speaker?, date?, start_time?, end_time?, note? }]
- *   Server cũng tự chạy tương đương lúc khởi động (permissions/migrations.js).
  * Script idempotent — chạy lại nhiều lần an toàn.
  * ==========================================================================*/
 USE [RMS_HOSPITAL];

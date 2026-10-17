@@ -568,3 +568,332 @@
 	font-size: var(--font-size-compact);
 	color: var(--color-gray-700);
 }
+
+/* ── Chi tiết hội nghị: tổng quan ─────────────────────────────────────────── */
+.overview {
+	background: var(--color-white);
+	border: 1px solid var(--color-gray-100);
+	border-radius: var(--radius-xl);
+	padding: var(--space-5);
+	margin-bottom: var(--space-4);
+	display: flex;
+	flex-direction: column;
+	gap: var(--space-4);
+}
+.overviewHead {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	gap: var(--space-3);
+	flex-wrap: wrap;
+}
+.chips { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.chip {
+	padding: 2px 10px;
+	border-radius: 999px;
+	background: var(--color-gray-50);
+	border: 1px solid var(--color-gray-100);
+	color: var(--color-gray-600);
+	font-size: var(--font-size-xs);
+	font-weight: var(--font-weight-medium);
+}
+.chipGreen {
+	background: var(--color-primary-pale);
+	border-color: transparent;
+	color: var(--color-primary-dark);
+}
+.metaRow {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--space-2) var(--space-6);
+	color: var(--color-gray-800);
+	font-weight: var(--font-weight-medium);
+}
+.metaItem { display: inline-flex; align-items: center; gap: var(--space-2); }
+.metaItem svg { width: 16px; height: 16px; color: var(--color-gray-400); flex-shrink: 0; }
+.detailGrid {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+	gap: var(--space-3) var(--space-5);
+	margin: 0;
+}
+.detailGrid dt { font-size: var(--font-size-xs); color: var(--color-gray-400); }
+.detailGrid dd { margin: 2px 0 0; font-size: var(--font-size-sm); color: var(--color-gray-800); }
+.overviewNote {
+	margin: 0;
+	font-size: var(--font-size-sm);
+	color: var(--color-gray-500);
+	white-space: pre-line;
+}
+.statStrip {
+	display: flex;
+	flex-wrap: wrap;
+	border-top: 1px solid var(--color-gray-100);
+	padding-top: var(--space-4);
+}
+.statItem {
+	flex: 1 1 110px;
+	display: flex;
+	flex-direction: column;
+	padding: 0 var(--space-4);
+	border-left: 1px solid var(--color-gray-100);
+}
+.statItem:first-child { border-left: 0; padding-left: 0; }
+.statNum { font-size: var(--font-size-xl); font-weight: var(--font-weight-bold); color: var(--color-gray-800); }
+.statNum sup { color: var(--color-gray-400); font-weight: normal; margin-left: 2px; }
+.statText { font-size: var(--font-size-xs); color: var(--color-gray-500); }
+
+/* ── Chi tiết hội nghị: công cụ tổ chức ───────────────────────────────────── */
+.orgGrid {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+	gap: var(--space-3);
+	margin-bottom: var(--space-4);
+}
+.orgTile {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+	padding: var(--space-4);
+	background: var(--color-white);
+	border: 1px solid var(--color-gray-100);
+	border-radius: var(--radius-xl);
+	text-align: left;
+	font-family: var(--font-body);
+	cursor: pointer;
+	transition: border-color 0.15s, box-shadow 0.15s;
+}
+.orgTile:hover { border-color: var(--color-primary-light); box-shadow: var(--shadow-sm); }
+.orgTile:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; }
+.orgHead { display: flex; align-items: center; gap: var(--space-2); margin-bottom: var(--space-1); }
+.orgIcon {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 32px;
+	height: 32px;
+	border-radius: var(--radius-lg);
+	background: var(--color-primary-pale);
+	color: var(--color-primary-dark);
+	flex-shrink: 0;
+}
+.orgIcon svg { width: 16px; height: 16px; }
+.orgTitle { flex: 1; font-weight: var(--font-weight-semibold); color: var(--color-gray-800); font-size: var(--font-size-sm); }
+.orgCount { font-size: var(--font-size-xl); font-weight: var(--font-weight-bold); color: var(--color-gray-800); line-height: 1; }
+.orgCount small { font-size: var(--font-size-sm); font-weight: normal; color: var(--color-gray-400); }
+.orgDesc { font-size: var(--font-size-sm); color: var(--color-gray-600); }
+.orgHint { font-size: var(--font-size-xs); color: var(--color-gray-400); }
+.orgAction {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+	margin-top: auto;
+	padding-top: var(--space-2);
+	font-size: var(--font-size-sm);
+	font-weight: var(--font-weight-medium);
+	color: var(--color-primary-dark);
+}
+.orgAction svg { width: 14px; height: 14px; }
+
+/* ── Bảng người tham dự ───────────────────────────────────────────────────── */
+.tabsRow {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--space-3);
+	border-bottom: 1px solid var(--color-gray-100);
+	margin-bottom: var(--space-3);
+	padding-right: var(--space-4);
+}
+.tabsRow .tabs { border-bottom: 0; margin-bottom: 0; overflow-x: auto; }
+.cellSub { font-size: var(--font-size-xs); color: var(--color-gray-500); margin-top: 2px; }
+.okText { display: inline-flex; align-items: center; gap: 4px; color: #087c3b; font-size: var(--font-size-sm); }
+.okText svg { width: 12px; height: 12px; }
+.badText { color: #b42318; font-size: var(--font-size-sm); }
+
+/* ── Hộp soạn bài test ────────────────────────────────────────────────────── */
+.testSwitch {
+	display: flex;
+	align-items: center;
+	gap: var(--space-3);
+	padding: var(--space-3) var(--space-4);
+	border: 1px solid var(--color-gray-100);
+	border-radius: var(--radius-lg);
+	background: var(--color-gray-50);
+	cursor: pointer;
+	margin-bottom: var(--space-4);
+}
+.testSwitch > span:last-child { display: flex; flex-direction: column; gap: 2px; font-size: var(--font-size-sm); color: var(--color-gray-800); }
+.testSwitch input { position: absolute; opacity: 0; pointer-events: none; }
+.testSwitchOn { background: var(--color-primary-pale); border-color: transparent; }
+.testSwitchTrack {
+	position: relative;
+	flex-shrink: 0;
+	width: 38px;
+	height: 22px;
+	border-radius: 999px;
+	background: var(--color-gray-300);
+	transition: background 0.15s;
+}
+.testSwitchTrack::after {
+	content: '';
+	position: absolute;
+	top: 3px;
+	left: 3px;
+	width: 16px;
+	height: 16px;
+	border-radius: 50%;
+	background: #fff;
+	box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+	transition: transform 0.15s;
+}
+.testSwitchOn .testSwitchTrack { background: var(--color-primary); }
+.testSwitchOn .testSwitchTrack::after { transform: translateX(16px); }
+.testSwitch input:focus-visible + .testSwitchTrack { outline: 2px solid var(--color-primary); outline-offset: 2px; }
+
+.testSettings {
+	display: flex;
+	flex-direction: column;
+	border: 1px solid var(--color-gray-100);
+	border-radius: var(--radius-lg);
+	margin-bottom: var(--space-5);
+}
+.testSettingRow {
+	display: grid;
+	grid-template-columns: 130px 1fr;
+	gap: var(--space-3);
+	align-items: start;
+	padding: var(--space-3) var(--space-4);
+}
+.testSettingRow + .testSettingRow { border-top: 1px solid var(--color-gray-100); }
+.testSettingLabel { padding-top: 8px; font-size: var(--font-size-sm); font-weight: var(--font-weight-medium); color: var(--color-gray-700); }
+.testSettingControl { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.testSettingInputs { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2) var(--space-4); min-height: 36px; }
+.testSettingInputs .checkFilter { gap: 6px; }
+.testDate { width: 170px; }
+.testTime { width: 110px; }
+.testNum { width: 90px; }
+.testUnit { font-size: var(--font-size-sm); color: var(--color-gray-500); margin-left: calc(var(--space-2) * -1); }
+
+.testQHeader {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	gap: var(--space-3);
+	margin-bottom: var(--space-3);
+	font-size: var(--font-size-sm);
+}
+.testQCard {
+	border: 1px solid var(--color-gray-100);
+	border-radius: var(--radius-lg);
+	padding: var(--space-3) var(--space-4);
+	margin-bottom: var(--space-3);
+}
+.testQHead { display: flex; gap: var(--space-3); align-items: flex-start; }
+.testQHead textarea { flex: 1; min-width: 0; }
+.testQNum {
+	flex-shrink: 0;
+	width: 26px;
+	height: 26px;
+	margin-top: 6px;
+	border-radius: 50%;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	background: var(--color-gray-100);
+	color: var(--color-gray-700);
+	font-size: var(--font-size-xs);
+	font-weight: var(--font-weight-bold);
+}
+.testQSide { display: flex; align-items: center; gap: var(--space-1); padding-top: 4px; }
+.testPoints {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+	font-size: var(--font-size-xs);
+	color: var(--color-gray-500);
+}
+.testPoints input {
+	width: 52px;
+	padding: 4px 6px;
+	border: 1px solid var(--color-gray-200);
+	border-radius: var(--radius-md);
+	font: inherit;
+	font-size: var(--font-size-sm);
+	text-align: center;
+	color: var(--color-gray-800);
+}
+.testPoints input:focus { outline: none; border-color: var(--color-primary); }
+.testQBody { padding-left: 38px; display: flex; flex-direction: column; gap: 6px; margin-top: var(--space-2); }
+.testOption {
+	display: flex;
+	align-items: center;
+	gap: var(--space-2);
+	padding: 2px 4px 2px 8px;
+	border-radius: var(--radius-md);
+	border: 1px solid transparent;
+}
+.testOptionCorrect { background: var(--color-primary-pale); border-color: #b6e3ca; }
+.testOption input[type='radio'] { accent-color: var(--color-primary); }
+.testOptionKey { width: 14px; font-size: var(--font-size-xs); font-weight: var(--font-weight-bold); color: var(--color-gray-500); }
+.testOptionCorrect .testOptionKey { color: var(--color-primary-dark); }
+.testOption .formInput { flex: 1; min-width: 0; }
+.testLinkBtn {
+	align-self: flex-start;
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+	padding: 4px 0;
+	background: none;
+	border: 0;
+	font: inherit;
+	font-size: var(--font-size-sm);
+	color: var(--color-primary-dark);
+	cursor: pointer;
+}
+.testLinkBtn svg, .testAddQ svg { width: 14px; height: 14px; }
+.testAddQ {
+	width: 100%;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 6px;
+	padding: var(--space-3);
+	border: 1px dashed var(--color-gray-300);
+	border-radius: var(--radius-lg);
+	background: none;
+	font: inherit;
+	font-size: var(--font-size-sm);
+	color: var(--color-gray-600);
+	cursor: pointer;
+}
+.testAddQ:hover { border-color: var(--color-primary); color: var(--color-primary-dark); }
+@media (max-width: 560px) {
+	.testSettingRow { grid-template-columns: 1fr; gap: 4px; }
+	.testSettingLabel { padding-top: 0; }
+	.testQBody { padding-left: 0; }
+}
+
+/* ── Hộp QR đăng ký ───────────────────────────────────────────────────────── */
+.qrPanel { display: flex; flex-direction: column; align-items: center; gap: var(--space-3); text-align: center; }
+.qrLink {
+	display: flex;
+	align-items: center;
+	gap: var(--space-2);
+	width: 100%;
+	padding: 4px 4px 4px var(--space-3);
+	border: 1px solid var(--color-gray-100);
+	border-radius: var(--radius-lg);
+	background: var(--color-gray-50);
+}
+.qrLink a {
+	flex: 1;
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	text-align: left;
+	font-family: var(--font-mono);
+	font-size: var(--font-size-xs);
+	color: var(--color-gray-600);
+}

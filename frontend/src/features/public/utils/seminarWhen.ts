@@ -27,6 +27,11 @@ export const seminarWhen = (s: When) => {
 /** Khung giờ làm bài test: "16:00 – 16:30 ngày 16/10/2026" (rỗng nếu chưa đặt giờ). */
 export const testWindowText = (w: SeminarTicket['test']['window']) => {
 	if (!w) return '';
+	// Dừng tiếp nhận ở ngày khác ngày mở bài
+	if (w.end_date && w.end_date !== w.date && w.end_time) {
+		const open = w.start_time ? `từ ${w.start_time} ${formatDateOr(w.date)} ` : '';
+		return `${open}đến ${w.end_time} ${formatDateOr(w.end_date)}`;
+	}
 	const range =
 		w.start_time && w.end_time ? `${w.start_time} – ${w.end_time}` : w.start_time ? `từ ${w.start_time}` : `đến ${w.end_time}`;
 	return `${range} ngày ${formatDateOr(w.date)}`;

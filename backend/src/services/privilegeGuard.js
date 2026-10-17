@@ -1,6 +1,7 @@
 const permCache = require('../middlewares/permissionCache');
 const { hasPermission, scopeOf } = require('../middlewares/auth');
 const { isScoped, scopeRank } = require('../permissions/scopes');
+const { httpError } = require('../utils/httpError');
 
 // Chốt chặn leo thang quyền — dùng chung cho quản lý vai trò và tài khoản.
 // Nguyên tắc: một người KHÔNG có system:manage chỉ được tác động lên những gì
@@ -17,7 +18,7 @@ const { isScoped, scopeRank } = require('../permissions/scopes');
 const SUPERUSER = 'system:manage';
 
 const forbiddenError = (message) =>
-	Object.assign(new Error(message), { statusCode: 403 });
+	httpError(403, message);
 
 const isSuperuser = (actor) => !!actor?.permissions?.has(SUPERUSER);
 

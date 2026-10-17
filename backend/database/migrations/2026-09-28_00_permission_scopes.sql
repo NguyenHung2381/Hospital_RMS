@@ -1,11 +1,12 @@
 /* ============================================================================
-   20260924_01_permission_scopes.sql — Nâng cấp mô hình phân quyền
-   ----------------------------------------------------------------------------
-   Tương đương permissions/migrations.js (server tự chạy lúc khởi động). Dùng
-   file này khi login của ứng dụng KHÔNG có quyền ALTER TABLE: DBA chạy một lần
-   bằng tài khoản có quyền, trước khi deploy bản mới.
+   2026-09-28_00_permission_scopes.sql — Nâng cấp mô hình phân quyền
+   (tên cũ 20260924_01_permission_scopes.sql — src/database/migrator.js tự đổi
+   tên trong schema_migrations). Phải chạy SAU 2026-09-27_courses_read_assigned_scope
+   (file đó thêm quyền kiểu cũ courses:read_assigned mà bước 3 quy đổi).
 
-     sqlcmd -S <server>,<port> -d RMS_HOSPITAL -U <user> -P <pass> -I -b -f 65001 -i 20260924_01_permission_scopes.sql
+   Chạy qua `npm run migrate`; chạy tay bằng sqlcmd:
+
+     sqlcmd -S <server>,<port> -d RMS_HOSPITAL -U <user> -P <pass> -I -b -f 65001 -i 2026-09-28_00_permission_scopes.sql
 
    -I bắt buộc (QUOTED_IDENTIFIER ON), -b dừng khi lỗi, -f 65001 đọc file UTF-8.
    sqlcmd bản ODBC 18 mặc định mã hoá kết nối: SQL Server dùng chứng chỉ tự ký

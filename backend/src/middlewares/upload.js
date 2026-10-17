@@ -5,17 +5,17 @@ const { isAllowedExtension } = require('./fileTypeAllowlist');
 const { secureUpload } = require('./secureUpload');
 const uploadPolicy = require('../utils/uploadPolicy');
 const { UPLOADS_ROOT, SAFE_ID, uniqueFilename } = require('../utils/uploadPaths');
+const { badRequest } = require('../utils/httpError');
 
-const httpError = (message) => Object.assign(new Error(message), { statusCode: 400 });
 
 // Lỗi multer không có statusCode ⇒ errorHandler trả 500 — đổi sang 400 dễ hiểu.
 const friendlyMulterError = (err, { maxSizeMB, maxFiles }) => {
 	if (!(err instanceof multer.MulterError)) return err;
-	if (err.code === 'LIMIT_FILE_SIZE') return httpError(`Mỗi file tối đa ${maxSizeMB}MB`);
+	if (err.code === 'LIMIT_FILE_SIZE') return badRequest(`Mỗi file tối đa ${maxSizeMB}MB`);
 	if (err.code === 'LIMIT_FILE_COUNT' || err.code === 'LIMIT_UNEXPECTED_FILE') {
-		return httpError(maxFiles ? `Tối đa ${maxFiles} file đính kèm` : 'Số lượng file vượt quá giới hạn');
+		return badRequest(maxFiles ? `Tối đa ${maxFiles} file đính kèm` : 'Số lượng file vượt quá giới hạn');
 	}
-	return httpError('File đính kèm không hợp lệ');
+	return badRequest('File đính kèm không hợp lệ');
 };
 
 /**
@@ -40,7 +40,7 @@ const dynamicMulter = (build) => {
 
 const extensionFilter = (allowed, allowMedia) => (_req, file, cb) => {
 	if (!isAllowedExtension(file.originalname, { allowed, allowMedia })) {
-		return cb(httpError(`Định dạng file không được hỗ trợ. Chỉ nhận: ${allowed.join(', ')}`));
+		return cb(badRequest(`Định dạng file không được hỗ trợ. Chỉ nhận: ${allowed.join(', ')}`));
 	}
 	cb(null, true);
 };
@@ -61,7 +61,7 @@ const createDiskUpload = ({ idParam, dirParts, maxSizeMB, allowMedia = false }) 
 					storage: multer.diskStorage({
 						destination: (req, _file, cb) => {
 							const id = req.params[idParam];
-							if (!SAFE_ID.test(id)) return cb(httpError(`${idParam} không hợp lệ`));
+							if (!SAFE_ID.test(id)) return cb(badRequest(`${idParam} không hợp lệ`));
 							const dir = path.join(UPLOADS_ROOT, ...dirParts(id));
 							fs.mkdirSync(dir, { recursive: true });
 							cb(null, dir);

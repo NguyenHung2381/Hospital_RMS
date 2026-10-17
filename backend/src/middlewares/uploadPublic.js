@@ -5,6 +5,7 @@ const { dynamicMulter, extensionFilter } = require('./upload');
 const { secureUpload } = require('./secureUpload');
 
 const { UPLOADS_ROOT, uniqueFilename } = require('../utils/uploadPaths');
+const { httpError } = require('../utils/httpError');
 // Chưa có mã đề tài/học viên lúc nhận file (bản ghi tạo sau khi qua captcha +
 // kiểm tra nghiệp vụ) ⇒ ghi tạm vào _tmp/public, service chuyển sang thư mục
 // chính thức (uploads/topics/<id>, uploads/training/trainee_document/<id>).
@@ -12,7 +13,6 @@ const TMP_DIR = path.join(UPLOADS_ROOT, '_tmp', 'public');
 
 const MAX_FILES = 10;
 
-const httpError = (statusCode, message) => Object.assign(new Error(message), { statusCode });
 
 // Định dạng & dung lượng theo Cấu hình hệ thống (utils/uploadPolicy.js), như route nội bộ.
 const instance = dynamicMulter((policy) => ({

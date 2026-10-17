@@ -1,4 +1,4 @@
-const { getPool, sql } = require('../config/db');
+const { getPool, sql, withTransaction } = require('../config/db');
 const { parseJsonArray } = require('../utils/sqlFilters');
 const { broadcast } = require('./eventService');
 const courseService = require('./courseService');
@@ -78,16 +78,9 @@ const createQuestion = async (data, actorId) => {
 
 // Nhập hàng loạt (từ file Word/PDF đã tách câu ở trình duyệt) — tất cả hoặc không
 const createQuestionsBulk = async (items, actorId) => {
-	const pool = await getPool();
-	const tx = new sql.Transaction(pool);
-	await tx.begin();
-	try {
+	await withTransaction(async (tx) => {
 		for (const item of items) await insertQuestion(tx.request(), item, actorId);
-		await tx.commit();
-	} catch (err) {
-		await tx.rollback();
-		throw err;
-	}
+	});
 	broadcast('update', { entity: 'question_bank' });
 	return { created: items.length };
 };

@@ -1,4 +1,4 @@
-const { getPool, sql } = require('../config/db');
+const { getPool, sql, withTransaction } = require('../config/db');
 const { broadcast } = require('./eventService');
 const permCache = require('../middlewares/permissionCache');
 const { invalidate } = require('../utils/cache');
@@ -7,6 +7,7 @@ const securityEvents = require('./securityEventService');
 const roleService = require('./roleService');
 const { MODULES, ACTION_LABELS, BY_KEY, impliesOf } = require('../permissions/catalog');
 const { RESOURCE_SCOPES, SCOPE_LABELS, isScoped } = require('../permissions/scopes');
+const { httpError, badRequest } = require('../utils/httpError');
 
 // Danh mục quyền cho màn hình phân quyền: nhóm theo module → resource, kèm
 // nhãn tiếng Việt và quan hệ "đi kèm". Chỉ trả những quyền đã có trong DB (id
@@ -112,7 +113,6 @@ const keysOf = async (pool, ids) => {
 	return new Map(result.recordset.map((r) => [r.id, `${r.resource}:${r.action}`]));
 };
 
-const badRequest = (message) => Object.assign(new Error(message), { statusCode: 400 });
 
 // Các lượt cấp quyền của vai trò: [{ permission_id, key, scope }].
 const loadGrants = async (pool, roleId) => {
@@ -184,19 +184,13 @@ const setRolePermissions = async (roleId, grants, actor, ip = null) => {
 	const oldGrants = await loadGrants(pool, roleId);
 	assertCanChangeGrants(actor, oldGrants, newGrants);
 
-	const transaction = new sql.Transaction(pool);
-	await transaction.begin();
-	try {
+	await withTransaction(async (transaction) => {
 		await new sql.Request(transaction)
 			.input('role_id', sql.VarChar(20), roleId)
 			.query('DELETE FROM role_permissions WHERE role_id = @role_id');
 
 		await insertGrants(transaction, roleId, newGrants, actor.id);
-		await transaction.commit();
-	} catch (err) {
-		await transaction.rollback();
-		throw err;
-	}
+	}, pool);
 
 	permCache.clear(roleId); // xóa cache để hiệu lực ngay
 	const label = (g) => (g.scope ? `${g.key}@${g.scope}` : g.key);
@@ -226,22 +220,14 @@ const setRolePermissions = async (roleId, grants, actor, ip = null) => {
 const cloneRole = async (sourceId, data, actor, ip = null) => {
 	const pool = await getPool();
 	const exists = await pool.request().input('id', sql.VarChar(20), sourceId).query('SELECT id FROM roles WHERE id = @id');
-	if (!exists.recordset[0]) throw Object.assign(new Error('Không tìm thấy vai trò nguồn'), { statusCode: 404 });
+	if (!exists.recordset[0]) throw httpError(404, 'Không tìm thấy vai trò nguồn');
 
 	const grants = await loadGrants(pool, sourceId);
 	assertCanChangeGrants(actor, [], grants);
 
 	const role = await roleService.create({ name: data.name, description: data.description }, actor.id);
 	try {
-		const transaction = new sql.Transaction(pool);
-		await transaction.begin();
-		try {
-			await insertGrants(transaction, role.id, grants, actor.id);
-			await transaction.commit();
-		} catch (err) {
-			await transaction.rollback();
-			throw err;
-		}
+		await withTransaction((transaction) => insertGrants(transaction, role.id, grants, actor.id), pool);
 	} catch (err) {
 		await roleService.remove(role.id, actor.id).catch(() => {}); // không để lại vai trò rỗng
 		throw err;

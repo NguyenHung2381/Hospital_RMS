@@ -5,13 +5,13 @@ const shiftLogic = require('../utils/attendanceShift');
 const shiftService = require('./shiftService');
 const { normalizeIp } = require('../utils/activityDescribe');
 const { todayKeyVN } = require('../utils/vnDate');
+const { badRequest } = require('../utils/httpError');
 
 // Chấm công theo ca (2026-10-29_staff_attendance.sql + 2026-10-30_attendance_shifts.sql):
 // 1 dòng / người / ca / ngày bắt đầu ca. Lần bấm đầu = giờ vào, các lần sau = giờ ra (lần cuối).
 // Ca nào đang được bấm: utils/attendanceShift.js. Không có lịch ca → 1 dòng/ngày (shift_id NULL).
 // Điều kiện vị trí ở utils/attendancePolicy.js (IP bệnh viện VÀ GPS trong bán kính).
 
-const badRequest = (message, reasons) => Object.assign(new Error(message), { statusCode: 400, reasons });
 const dateKey = (d) => (d instanceof Date ? d.toISOString().slice(0, 10) : d);
 const WEEK_AHEAD = 7;
 
@@ -103,7 +103,7 @@ const check = async (userId, { ip, lat, lng, accuracy, shift_id, work_date }) =>
 	} catch (err) {
 		result.reasons.unshift(err.message);
 	}
-	if (result.reasons.length) throw badRequest(result.reasons.join('. '), result.reasons);
+	if (result.reasons.length) throw badRequest(result.reasons.join('. '), { reasons: result.reasons });
 
 	const isShift = option.shift_id != null;
 	const pool = await getPool();

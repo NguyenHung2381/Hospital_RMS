@@ -2,7 +2,7 @@
  * email (authService.login, passwordResetService). Bỏ qua NULL và chuỗi rỗng.
  * So khớp theo collation của cột (thường không phân biệt hoa/thường).
  * Schema gốc có thể đã có UQ_users_email (không nằm trong repo) → khi đó bỏ qua.
- * Server tự chạy bước này lúc khởi động (permissions/migrations.js). Idempotent.
+ * Idempotent.
  * Nếu đang có email trùng, bước tạo index sẽ lỗi — liệt kê bằng:
  *   SELECT email, COUNT(*) FROM users WHERE email <> '' GROUP BY email HAVING COUNT(*) > 1; */
 USE [RMS_HOSPITAL];

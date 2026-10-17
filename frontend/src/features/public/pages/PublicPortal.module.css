@@ -582,3 +582,89 @@
 	font-size: var(--font-size-xs);
 	color: var(--color-gray-500);
 }
+
+/* Đồng hồ đếm ngược bài test hội nghị — dính đầu màn hình khi cuộn */
+.testTimer {
+	position: sticky;
+	top: 0;
+	z-index: 5;
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	gap: var(--space-3);
+	padding: var(--space-2) var(--space-4);
+	margin-bottom: var(--space-4);
+	border-radius: var(--radius-lg);
+	background: #e1f5ea;
+	color: #085028;
+	font-size: var(--font-size-sm);
+}
+.testTimerUrgent {
+	background: #fcebeb;
+	color: #791f1f;
+}
+.testTimerClock {
+	font-size: var(--font-size-lg);
+	font-weight: 700;
+	font-variant-numeric: tabular-nums;
+}
+
+/* ── Vé hội nghị ──────────────────────────────────────────────────────────── */
+.ticketCard {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: var(--space-2);
+	padding: var(--space-6) var(--space-5);
+	text-align: center;
+}
+.ticketCard .searchBtn { margin-top: var(--space-2); }
+.ticketCard .searchBtn svg { width: 16px; height: 16px; }
+.ticketHint { font-size: var(--font-size-xs); color: var(--color-gray-500); }
+.ticketSteps {
+	list-style: none;
+	padding: 0;
+	margin: 0 0 var(--space-4);
+	border: 1px solid var(--color-gray-100);
+	border-radius: var(--radius-lg);
+	background: var(--color-white);
+	overflow: hidden;
+}
+.ticketStep {
+	display: flex;
+	align-items: center;
+	gap: var(--space-3);
+	padding: var(--space-3) var(--space-4);
+}
+.ticketStep + .ticketStep { border-top: 1px solid var(--color-gray-100); }
+.ticketStepIcon {
+	flex-shrink: 0;
+	width: 22px;
+	height: 22px;
+	border-radius: 50%;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	border: 2px solid var(--color-gray-200);
+}
+.ticketStepIcon svg { width: 12px; height: 12px; }
+.ticketStepTitle { flex: 1; font-size: var(--font-size-sm); font-weight: 600; color: var(--color-gray-800); }
+.ticketStepText { font-size: var(--font-size-sm); color: var(--color-gray-500); text-align: right; }
+.ticketStep_done .ticketStepIcon { background: #0a9b4a; border-color: #0a9b4a; color: #fff; }
+.ticketStep_done .ticketStepText { color: #085028; }
+.ticketStep_fail .ticketStepIcon { background: #d92d20; border-color: #d92d20; color: #fff; }
+.ticketStep_fail .ticketStepText { color: #791f1f; }
+.testIntro { display: flex; flex-direction: column; gap: var(--space-3); }
+.testIntro .submitBtn { margin-top: 0; }
+.testFacts { display: grid; grid-template-columns: repeat(auto-fit, minmax(70px, 1fr)); gap: var(--space-2); }
+.testFacts > span {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	padding: var(--space-2);
+	border-radius: var(--radius-lg);
+	background: var(--color-gray-50, #f9fafb);
+	font-size: var(--font-size-xs);
+	color: var(--color-gray-500);
+}
+.testFacts b { font-size: var(--font-size-lg); color: var(--color-gray-800); }

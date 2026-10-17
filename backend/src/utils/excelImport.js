@@ -4,8 +4,8 @@
  */
 const ExcelJS = require('exceljs');
 const { norm } = require('./vietnameseText');
+const { badRequest } = require('./httpError');
 
-const badRequest = (message) => Object.assign(new Error(message), { statusCode: 400 });
 
 // Text hiển thị của ô (cell.text xử lý sẵn richText/formula); gộp khoảng trắng.
 const cellText = (cell) => {

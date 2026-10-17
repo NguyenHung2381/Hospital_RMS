@@ -264,6 +264,8 @@ interface BulkBarProps {
 	onBulkEdit?: () => void;
 	/** Cảnh báo hệ quả hiển thị trong hộp thoại xoá. */
 	deleteNote?: ReactNode;
+	/** Nút hàng loạt riêng của feature (dùng `BulkButton`), đặt trước "Xoá đã chọn". */
+	extraActions?: ReactNode;
 }
 
 /**
@@ -277,6 +279,7 @@ export function BulkBar({
 	onBulkDelete,
 	onBulkEdit,
 	deleteNote,
+	extraActions,
 }: BulkBarProps) {
 	const [confirmOpen, setConfirmOpen] = useState(false);
 
@@ -293,6 +296,7 @@ export function BulkBar({
 								<EditSvg /> Sửa đồng loạt
 							</BulkButton>
 						)}
+						{extraActions}
 						<BulkButton
 							danger
 							onClick={() => setConfirmOpen(true)}

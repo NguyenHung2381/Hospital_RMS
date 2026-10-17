@@ -1,4 +1,4 @@
-const { getPool, sql } = require('../config/db');
+const { getPool, sql, withTransaction } = require('../config/db');
 const permCache = require('../middlewares/permissionCache');
 const { invalidate } = require('../utils/cache');
 const { ALL_PERMISSIONS } = require('./catalog');
@@ -65,9 +65,7 @@ const syncPermissions = async ({ dryRun = false } = {}) => {
 
 	let seeded = 0;
 	if (toInsert.length || toUpdate.length) {
-		const transaction = new sql.Transaction(pool);
-		await transaction.begin();
-		try {
+		await withTransaction(async (transaction) => {
 			for (const perm of toUpdate) {
 				await new sql.Request(transaction)
 					.input('id', sql.VarChar(20), perm.id)
@@ -125,11 +123,7 @@ const syncPermissions = async ({ dryRun = false } = {}) => {
         `);
 				seeded += result.rowsAffected[0] ?? 0;
 			}
-			await transaction.commit();
-		} catch (err) {
-			await transaction.rollback();
-			throw err;
-		}
+		}, pool);
 		permCache.clear();
 		await invalidate('lookup:roles:');
 	}

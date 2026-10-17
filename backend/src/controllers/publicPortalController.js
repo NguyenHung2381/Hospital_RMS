@@ -175,6 +175,14 @@ const getSeminarTicket = async (req, res, next) => {
 	}
 };
 
+const startSeminarTest = async (req, res, next) => {
+	try {
+		success(res, await seminarParticipants.startTest(req.params.code), 'Bắt đầu làm bài');
+	} catch (err) {
+		next(err);
+	}
+};
+
 const submitSeminarTest = async (req, res, next) => {
 	try {
 		success(res, await seminarParticipants.submitTest(req.params.code, req.body.answers), 'Đã nộp bài test');
@@ -187,6 +195,7 @@ module.exports = {
 	getSeminar,
 	registerSeminar,
 	getSeminarTicket,
+	startSeminarTest,
 	submitSeminarTest,
 	getCaptcha,
 	getOpenCourses,

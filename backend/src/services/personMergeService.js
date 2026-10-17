@@ -3,6 +3,7 @@ const { paging } = require('../utils/paging');
 const { broadcast } = require('./eventService');
 const personService = require('./personService');
 const { normalizeGender } = require('../utils/gender');
+const { httpError } = require('../utils/httpError');
 
 /**
  * Duyệt gộp danh tính (FR-C02): hàng đợi person_merge_candidates → gộp / bỏ qua / mở lại.
@@ -13,7 +14,6 @@ const { normalizeGender } = require('../utils/gender');
  * chạy đồng thời với việc tạo/gắn person.
  */
 
-const httpErr = (statusCode, message) => Object.assign(new Error(message), { statusCode });
 
 const STATUSES = ['PENDING', 'MERGED', 'REJECTED'];
 const REASONS = ['SAME_NAME_DOB', 'SAME_NAME', 'SAME_PHONE', 'SAME_EMAIL', 'SAME_STAFF_NUMBER'];
@@ -93,8 +93,8 @@ const shapeCandidate = (r, canSee) => ({
 // ─── Đọc ─────────────────────────────────────────────────────────────────────
 
 const listCandidates = async ({ status = 'PENDING', reason, search, page, limit } = {}, canSee = false) => {
-	if (!STATUSES.includes(status)) throw httpErr(400, 'Trạng thái không hợp lệ.');
-	if (reason && !REASONS.includes(reason)) throw httpErr(400, 'Lý do không hợp lệ.');
+	if (!STATUSES.includes(status)) throw httpError(400, 'Trạng thái không hợp lệ.');
+	if (reason && !REASONS.includes(reason)) throw httpError(400, 'Lý do không hợp lệ.');
 
 	const pool = await getPool();
 	const pg = paging(page, limit, 20);
@@ -171,7 +171,7 @@ const getCandidate = async (id, canSee = false) => {
 		.request()
 		.input('id', sql.Int, id)
 		.query(`SELECT ${CAND_COLS} ${CAND_FROM} WHERE c.id = @id`);
-	if (!r.recordset.length) throw httpErr(404, 'Không tìm thấy cặp nghi trùng.');
+	if (!r.recordset.length) throw httpError(404, 'Không tìm thấy cặp nghi trùng.');
 	const cand = shapeCandidate(r.recordset[0], canSee);
 	const [recA, recB] = await Promise.all([recordsOf(pool, cand.a.id), recordsOf(pool, cand.b.id)]);
 	cand.a.records = recA;
@@ -202,7 +202,7 @@ const loadOpenCandidate = async (tx, id) => {
 		.input('id', sql.Int, id)
 		.query(`SELECT id, person_a_id, person_b_id, reason, status FROM dbo.person_merge_candidates WHERE id = @id`);
 	const c = r.recordset[0];
-	if (!c) throw httpErr(404, 'Không tìm thấy cặp nghi trùng.');
+	if (!c) throw httpError(404, 'Không tìm thấy cặp nghi trùng.');
 	return c;
 };
 
@@ -214,17 +214,17 @@ const setActor = (tx, actorId) =>
  * mặc định giữ giá trị của hồ sơ giữ lại, trống thì lấy của hồ sơ bị gộp.
  */
 const mergeCandidate = async (id, { keep, fields = {}, note } = {}, actorId) => {
-	if (keep !== 'A' && keep !== 'B') throw httpErr(400, 'Phải chọn hồ sơ giữ lại (A hoặc B).');
+	if (keep !== 'A' && keep !== 'B') throw httpError(400, 'Phải chọn hồ sơ giữ lại (A hoặc B).');
 	for (const [k, v] of Object.entries(fields || {})) {
-		if (!MERGE_FIELDS.includes(k)) throw httpErr(400, `Trường không hợp lệ: ${k}`);
-		if (v !== 'keep' && v !== 'lose') throw httpErr(400, `Giá trị chọn không hợp lệ cho ${k}`);
+		if (!MERGE_FIELDS.includes(k)) throw httpError(400, `Trường không hợp lệ: ${k}`);
+		if (v !== 'keep' && v !== 'lose') throw httpError(400, `Giá trị chọn không hợp lệ cho ${k}`);
 	}
 	const pool = await getPool();
 
 	const result = await personService.withTx(pool, async (tx) => {
 		await setActor(tx, actorId);
 		const cand = await loadOpenCandidate(tx, id);
-		if (cand.status !== 'PENDING') throw httpErr(409, 'Cặp này đã được xử lý.');
+		if (cand.status !== 'PENDING') throw httpError(409, 'Cặp này đã được xử lý.');
 		const keepId = keep === 'A' ? cand.person_a_id : cand.person_b_id;
 		const loseId = keep === 'A' ? cand.person_b_id : cand.person_a_id;
 
@@ -236,16 +236,16 @@ const mergeCandidate = async (id, { keep, fields = {}, note } = {}, actorId) => 
 			        FROM dbo.persons WHERE id IN (@k, @l)`);
 		const keepP = pr.recordset.find((x) => x.id === keepId);
 		const loseP = pr.recordset.find((x) => x.id === loseId);
-		if (!keepP || !loseP) throw httpErr(404, 'Không tìm thấy hồ sơ.');
+		if (!keepP || !loseP) throw httpError(404, 'Không tìm thấy hồ sơ.');
 		if (keepP.status !== 'ACTIVE' || loseP.status !== 'ACTIVE') {
-			throw httpErr(409, 'Một trong hai hồ sơ đã được gộp trước đó — hãy tải lại danh sách.');
+			throw httpError(409, 'Một trong hai hồ sơ đã được gộp trước đó — hãy tải lại danh sách.');
 		}
 		const acc = await new sql.Request(tx)
 			.input('k', sql.VarChar(20), keepId)
 			.input('l', sql.VarChar(20), loseId)
 			.query(`SELECT person_id FROM dbo.users WHERE person_id IN (@k, @l)`);
 		if (new Set(acc.recordset.map((x) => x.person_id)).size > 1) {
-			throw httpErr(409, 'Cả hai hồ sơ đều đã có tài khoản đăng nhập — không thể gộp thành một người.');
+			throw httpError(409, 'Cả hai hồ sơ đều đã có tài khoản đăng nhập — không thể gộp thành một người.');
 		}
 
 		// Giá trị cuối cùng của từng trường
@@ -364,7 +364,7 @@ const rejectCandidate = async (id, note, actorId) => {
 	const pool = await getPool();
 	await personService.withTx(pool, async (tx) => {
 		const cand = await loadOpenCandidate(tx, id);
-		if (cand.status !== 'PENDING') throw httpErr(409, 'Cặp này đã được xử lý.');
+		if (cand.status !== 'PENDING') throw httpError(409, 'Cặp này đã được xử lý.');
 		await new sql.Request(tx)
 			.input('id', sql.Int, id)
 			.input('note', sql.NVarChar(500), note || null)
@@ -382,12 +382,12 @@ const reopenCandidate = async (id, actorId) => {
 	const pool = await getPool();
 	await personService.withTx(pool, async (tx) => {
 		const cand = await loadOpenCandidate(tx, id);
-		if (cand.status !== 'REJECTED') throw httpErr(409, 'Chỉ mở lại được cặp đã bỏ qua.');
+		if (cand.status !== 'REJECTED') throw httpError(409, 'Chỉ mở lại được cặp đã bỏ qua.');
 		const p = await new sql.Request(tx)
 			.input('a', sql.VarChar(20), cand.person_a_id)
 			.input('b', sql.VarChar(20), cand.person_b_id)
 			.query(`SELECT COUNT(*) AS n FROM dbo.persons WHERE id IN (@a, @b) AND status = 'ACTIVE'`);
-		if (p.recordset[0].n !== 2) throw httpErr(409, 'Một trong hai hồ sơ đã được gộp — không thể mở lại.');
+		if (p.recordset[0].n !== 2) throw httpError(409, 'Một trong hai hồ sơ đã được gộp — không thể mở lại.');
 		await new sql.Request(tx)
 			.input('id', sql.Int, id)
 			.input('actor', sql.VarChar(20), actorId || null)

@@ -8,6 +8,7 @@ const crypto = require('crypto');
 const { secureUpload } = require('./secureUpload');
 
 const { UPLOADS_ROOT, SAFE_ID } = require('../utils/uploadPaths');
+const { badRequest } = require('../utils/httpError');
 
 const ALLOWED_EXT = new Set(['.png', '.jpg', '.jpeg', '.gif', '.webp']);
 const ALLOWED_MIME = new Set([
@@ -17,7 +18,6 @@ const ALLOWED_MIME = new Set([
 	'image/webp',
 ]);
 
-const badRequest = (message) => Object.assign(new Error(message), { statusCode: 400 });
 
 // subdir(req) → mảng thư mục con dưới UPLOADS_ROOT. Phần lấy từ req.params
 // phải qua SAFE_ID (chặn path traversal) — dùng safeParam bên dưới.

@@ -187,6 +187,23 @@ export function drawQrCode(
 	}
 }
 
+/** Chỉ mã QR (logo giữa + vùng trắng tối thiểu để quét) — để chèn vào văn bản/giấy mời */
+export async function renderPlainQr(value: string, size = 1024) {
+	const logo = await loadLogo();
+	const qr = encodeQr(value);
+	const cell = Math.max(4, Math.floor(size / (qr.size + QUIET * 2)));
+	const px = cell * (qr.size + QUIET * 2);
+	const canvas = document.createElement('canvas');
+	const ctx = canvas.getContext('2d');
+	if (!ctx) throw new Error('Trình duyệt không hỗ trợ canvas');
+	canvas.width = px;
+	canvas.height = px;
+	ctx.fillStyle = '#fff';
+	ctx.fillRect(0, 0, px, px);
+	drawQrCode(ctx, qr, QUIET * cell, QUIET * cell, cell, logo);
+	return canvas;
+}
+
 export async function renderBrandedQr({ value, title, lines = [], caption }: BrandedQrOptions) {
 	const [logo] = await Promise.all([loadLogo(), loadFonts()]);
 	const qr = encodeQr(value);

@@ -16,6 +16,7 @@ const { normalizeGender } = require('../utils/gender');
 const partService = require('./seminarParticipantService');
 const { ROLE, inputRoleId } = require('./roleCodes');
 const xl = require('../utils/excelTemplate');
+const { httpError } = require('../utils/httpError');
 
 // ─── Khớp tên cột: header đã norm() → field nội bộ ──────────────────────────
 // Duyệt từ mẫu cụ thể tới chung chung; chỉ nhận cột ĐẦU TIÊN match mỗi field.
@@ -207,9 +208,7 @@ const parseWorkbook = async (buffer) => {
 		});
 	}
 	if (!rows.length) {
-		throw Object.assign(new Error('File không có dòng dữ liệu nào.'), {
-			statusCode: 400,
-		});
+		throw httpError(400, 'File không có dòng dữ liệu nào.');
 	}
 	return { rows, matchedColumns: Object.keys(cols) };
 };
@@ -370,9 +369,7 @@ const importExcel = async (
 			'SELECT id, event_year, grants_cme, cme_default_credits FROM seminars WHERE id = @id',
 		);
 	if (!semRes.recordset.length) {
-		throw Object.assign(new Error('Hội thảo/hội nghị không tồn tại.'), {
-			statusCode: 404,
-		});
+		throw httpError(404, 'Hội thảo/hội nghị không tồn tại.');
 	}
 	const seminar = semRes.recordset[0];
 

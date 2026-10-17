@@ -5,11 +5,12 @@
  * Giờ lưu 'HH:mm' (VARCHAR(5)), ngày là DATE; quy đổi theo giờ Việt Nam (UTC+7,
  * không đổi giờ mùa hè) — không phụ thuộc múi giờ của server.
  */
+const { badRequest } = require('./httpError');
+
 const TIME_RE = /^([01]\d|2[0-3]):[0-5]\d$/;
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const VN_OFFSET_MS = 7 * 3600 * 1000;
 
-const badRequest = (msg) => Object.assign(new Error(msg), { statusCode: 400 });
 
 // DATE từ mssql là 00:00 UTC → lấy phần ngày theo UTC; chuỗi 'YYYY-MM-DD...' giữ nguyên.
 const dateKey = (d) => {
@@ -32,17 +33,19 @@ const normalizeTime = (v, label) => {
 };
 
 /**
- * Khung giờ làm bài test: { date, start, end } (Date) hoặc null khi chưa đặt giờ.
- * Ngày làm bài mặc định = ngày kết thúc (hoặc ngày bắt đầu) của hội nghị;
- * không có ngày nào thì áp dụng cho hôm nay.
+ * Khung giờ làm bài test: { date, end_date, start, end } (Date) hoặc null khi chưa đặt giờ.
+ * Ngày mở bài mặc định = ngày kết thúc (hoặc ngày bắt đầu) của hội nghị, không có
+ * ngày nào thì áp dụng cho hôm nay; ngày dừng tiếp nhận mặc định = ngày mở bài.
  */
 const testWindow = (s, now = Date.now()) => {
 	if (!s?.test_start_time && !s?.test_end_time) return null;
 	const key = dateKey(s.test_date) || dateKey(s.end_date) || dateKey(s.start_date) || vnTodayKey(now);
+	const endKey = dateKey(s.test_end_date) || key;
 	return {
 		date: key,
+		end_date: endKey,
 		start: s.test_start_time ? vnDateTime(key, s.test_start_time) : null,
-		end: s.test_end_time ? vnDateTime(key, s.test_end_time) : null,
+		end: s.test_end_time ? vnDateTime(endKey, s.test_end_time) : null,
 	};
 };
 

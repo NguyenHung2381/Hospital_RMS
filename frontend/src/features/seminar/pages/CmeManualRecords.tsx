@@ -1487,9 +1487,9 @@ export default function CmeManualRecords() {
 
 	return (
 		<AdminLayout
-			pageTitle='Ghi nhận CME độc lập'
+			pageTitle='Ghi nhận độc lập'
 			pageSubtitle='Ghi nhận tín chỉ CME không qua sự kiện hội thảo (tự học, học online, minh chứng đính kèm)'
-			breadcrumbs={[{ label: 'Hội nghị & CME' }]}
+			breadcrumbs={[{ label: 'Đào tạo liên tục' }]}
 			headerActions={
 				perms.canCme ? (
 					<div style={{ display: 'flex', gap: 8 }}>

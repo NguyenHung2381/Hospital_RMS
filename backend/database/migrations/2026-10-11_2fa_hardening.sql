@@ -11,8 +11,7 @@
  *   không cần đổi cột; giá trị cũ chưa mã hoá tự được mã hoá lại ở lần đăng
  *   nhập 2FA thành công kế tiếp.
  *
- *   Server tự chạy bước này lúc khởi động (permissions/migrations.js) nếu login
- *   ứng dụng có quyền ALTER / CREATE TABLE; không có thì DBA chạy file này. Idempotent.
+ *   Idempotent.
  * ==========================================================================*/
 USE [RMS_HOSPITAL];
 GO

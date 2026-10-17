@@ -4,6 +4,7 @@ const { readHead, matchesExtension } = require('../utils/fileSignature');
 const clamav = require('../utils/clamav');
 const quota = require('../utils/uploadQuota');
 const securityEvents = require('../services/securityEventService');
+const { httpError } = require('../utils/httpError');
 
 // Bọc 1 instance multer để mọi route upload tự có thêm 3 lớp kiểm tra:
 //   1. Hạn mức dung lượng/ngày của tài khoản (utils/uploadQuota.js) — kiểm tra
@@ -25,7 +26,6 @@ const collectFiles = (req) => {
 const removeFiles = (files) =>
 	Promise.all(files.filter((f) => f.path).map((f) => fs.unlink(f.path).catch(() => {})));
 
-const httpError = (statusCode, message) => Object.assign(new Error(message), { statusCode });
 
 const quotaPrecheck = (opts) => async (req, _res, next) => {
 	const limit = quota.quotaBytes();

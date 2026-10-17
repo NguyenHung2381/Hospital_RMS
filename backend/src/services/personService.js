@@ -1,4 +1,4 @@
-const { getPool, sql } = require('../config/db');
+const { getPool, sql, withTransaction } = require('../config/db');
 const { normalizeGender } = require('../utils/gender');
 
 /**
@@ -365,23 +365,11 @@ const resolveOne = async (tx, source, id, actorId, depth = 0) => {
 	return personId;
 };
 
-const withTx = async (pool, fn) => {
-	const tx = new sql.Transaction(pool);
-	await tx.begin();
-	try {
+const withTx = (pool, fn) =>
+	withTransaction(async (tx) => {
 		await lock(tx);
-		const out = await fn(tx);
-		await tx.commit();
-		return out;
-	} catch (err) {
-		try {
-			await tx.rollback();
-		} catch {
-			// transaction đã bị abort
-		}
-		throw err;
-	}
-};
+		return fn(tx);
+	}, pool);
 
 const logFailure = (what, err) => {
 	if (err && (err.number === 208 || err.number === 207)) {

@@ -180,7 +180,7 @@ const SECTIONS: Section[] = [
 				fields: [
 					{ key: 'MODULE_RESEARCH', label: 'Nghiên cứu khoa học', hint: 'Đề tài, đợt, hội đồng chấm, phê duyệt, danh mục phân loại.', type: 'bool', defaultOn: true, onText: 'Đang bật', offText: 'Đã tắt' },
 					{ key: 'MODULE_TRAINING', label: 'Đào tạo', hint: 'Kế hoạch, chương trình, khóa học, học viên, giảng viên, ngân hàng câu hỏi.', type: 'bool', defaultOn: true, onText: 'Đang bật', offText: 'Đã tắt' },
-					{ key: 'MODULE_SEMINAR', label: 'Hội nghị & CME', hint: 'Hội thảo, sổ cấp CME, ghi nhận CME độc lập.', type: 'bool', defaultOn: true, onText: 'Đang bật', offText: 'Đã tắt' },
+					{ key: 'MODULE_SEMINAR', label: 'Hội nghị & Đào tạo liên tục', hint: 'Hội thảo, quét vé, sổ cấp chứng nhận, ghi nhận độc lập, cảnh báo tín chỉ.', type: 'bool', defaultOn: true, onText: 'Đang bật', offText: 'Đã tắt' },
 					{ key: 'MODULE_SURVEY', label: 'Khảo sát', type: 'bool', defaultOn: true, onText: 'Đang bật', offText: 'Đã tắt' },
 					ATTENDANCE_TOGGLE,
 				],

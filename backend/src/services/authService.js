@@ -14,6 +14,7 @@ const trustedDevices = require('./trustedDeviceService');
 const secretBox = require('../utils/secretBox');
 const { consumeOnce } = require('../utils/oneTimeToken');
 const { passwordGate, BUSY_ERROR } = require('../utils/cpuGate');
+const { httpError } = require('../utils/httpError');
 
 // Mọi lần so / băm mật khẩu theo yêu cầu của người dùng đi qua passwordGate
 // (utils/cpuGate.js) — giới hạn số bcrypt chạy cùng lúc, quá tải trả 503.
@@ -246,10 +247,7 @@ const login = async (
 	// mật khẩu đúng — người không biết mật khẩu không phân biệt được tài khoản
 	// bị vô hiệu hoá với tài khoản không tồn tại.
 	if (!user.is_active)
-		throw {
-			statusCode: 403,
-			message: 'Tài khoản đã bị vô hiệu hóa hoặc hết hạn sử dụng',
-		};
+		throw httpError(403, 'Tài khoản đã bị vô hiệu hóa hoặc hết hạn sử dụng');
 
 	// Đăng nhập đúng trên thiết bị quen không xoá bộ đếm/khoá của thiết bị lạ
 	// — nếu không, kẻ tấn công được làm lại từ đầu mỗi khi chủ tài khoản đăng
@@ -385,10 +383,7 @@ const readSecret = (stored) => {
 		return secretBox.decrypt(stored);
 	} catch (err) {
 		console.error('❌ Không giải mã được secret 2FA — khoá mã hoá không khớp:', err.message);
-		throw {
-			statusCode: 409,
-			message: 'Không đọc được cấu hình xác thực 2 lớp của tài khoản. Vui lòng liên hệ quản trị viên để đặt lại 2FA.',
-		};
+		throw httpError(409, 'Không đọc được cấu hình xác thực 2 lớp của tài khoản. Vui lòng liên hệ quản trị viên để đặt lại 2FA.');
 	}
 };
 
@@ -479,9 +474,9 @@ const assertPassword = async (pool, userId, password) => {
 	const user = (
 		await pool.request().input('id', sql.VarChar(20), userId).query('SELECT password FROM users WHERE id = @id')
 	).recordset[0];
-	if (!user) throw { statusCode: 404, message: 'Người dùng không tồn tại' };
+	if (!user) throw httpError(404, 'Người dùng không tồn tại');
 	if (!(await comparePassword(String(password ?? ''), user.password)))
-		throw { statusCode: 400, message: 'Mật khẩu không đúng' };
+		throw httpError(400, 'Mật khẩu không đúng');
 };
 
 // Bước 2 của đăng nhập 2FA: pre-auth token (bước 1, mật khẩu đúng) + mã OTP
@@ -498,7 +493,7 @@ const verify2FALogin = async (
 	try {
 		decoded = verifyToken('pre-auth-2fa', preAuthToken);
 	} catch {
-		throw { statusCode: 401, message: 'Phiên đăng nhập đã hết hạn, vui lòng đăng nhập lại' };
+		throw httpError(401, 'Phiên đăng nhập đã hết hạn, vui lòng đăng nhập lại');
 	}
 
 	const pool = await getPool();
@@ -516,10 +511,10 @@ const verify2FALogin = async (
     `);
 	const user = result.recordset[0];
 	if (!user || !user.totp_enabled || !user.totp_secret)
-		throw { statusCode: 401, message: 'Tài khoản chưa bật xác thực 2 lớp' };
+		throw httpError(401, 'Tài khoản chưa bật xác thực 2 lớp');
 	// Tài khoản có thể bị vô hiệu hoá trong 5 phút giữa bước mật khẩu và bước OTP
 	if (!user.is_active)
-		throw { statusCode: 403, message: 'Tài khoản đã bị vô hiệu hóa hoặc hết hạn sử dụng' };
+		throw httpError(403, 'Tài khoản đã bị vô hiệu hóa hoặc hết hạn sử dụng');
 
 	const device = await trustedDevices.verifyDeviceToken(deviceToken, user);
 	if (!device && isLocked(user)) throw lockedError(user.locked_until);
@@ -548,12 +543,12 @@ const verify2FALogin = async (
 			const lockedUntil = await recordFailedLogin(pool, user, ip, 'sai mã 2FA');
 			if (lockedUntil) throw lockedError(lockedUntil);
 		}
-		throw { statusCode: 401, message: 'Mã xác thực không đúng, đã hết hạn hoặc đã được sử dụng' };
+		throw httpError(401, 'Mã xác thực không đúng, đã hết hạn hoặc đã được sử dụng');
 	}
 
 	// Pre-auth token + mã đúng chỉ đổi lấy phiên đăng nhập đúng 1 lần
 	if (!(await consumeOnce('pre-auth-2fa', decoded.jti, 10 * 60)))
-		throw { statusCode: 401, message: 'Phiên đăng nhập đã hết hạn, vui lòng đăng nhập lại' };
+		throw httpError(401, 'Phiên đăng nhập đã hết hạn, vui lòng đăng nhập lại');
 
 	if (usedBackupCode) {
 		await securityEvents.log({
@@ -580,16 +575,13 @@ const setup2FA = async (userId) => {
 		.input('id', sql.VarChar(20), userId)
 		.query('SELECT username, totp_enabled FROM users WHERE id = @id');
 	const user = userRes.recordset[0];
-	if (!user) throw { statusCode: 404, message: 'Người dùng không tồn tại' };
+	if (!user) throw httpError(404, 'Người dùng không tồn tại');
 	// Đang bật 2FA thì KHÔNG cho thiết lập lại: bước dưới đặt totp_enabled = 0,
 	// tức là tắt 2FA — chỉ cần access token (không mật khẩu, không OTP) là kẻ
 	// chiếm được phiên tắt được 2FA và gắn authenticator của chính họ. Muốn đổi
 	// thiết bị xác thực thì tắt trước qua /2fa/disable (yêu cầu mật khẩu).
 	if (user.totp_enabled)
-		throw {
-			statusCode: 409,
-			message: 'Xác thực 2 lớp đang bật. Hãy tắt trước (cần nhập mật khẩu) rồi thiết lập lại.',
-		};
+		throw httpError(409, 'Xác thực 2 lớp đang bật. Hãy tắt trước (cần nhập mật khẩu) rồi thiết lập lại.');
 
 	const secret = await otplib.generateSecret();
 	await pool
@@ -618,12 +610,12 @@ const confirm2FASetup = async (userId, code) => {
 		.query('SELECT id, totp_secret, totp_enabled FROM users WHERE id = @id');
 	const user = userRes.recordset[0];
 	if (!user || !user.totp_secret)
-		throw { statusCode: 400, message: 'Chưa khởi tạo thiết lập 2FA, vui lòng bắt đầu lại' };
-	if (user.totp_enabled) throw { statusCode: 409, message: 'Xác thực 2 lớp đã được bật' };
+		throw httpError(400, 'Chưa khởi tạo thiết lập 2FA, vui lòng bắt đầu lại');
+	if (user.totp_enabled) throw httpError(409, 'Xác thực 2 lớp đã được bật');
 
 	// Ghi nhận bước của mã này luôn: cùng mã không dùng lại được để đăng nhập
 	if (!(await checkTotp(pool, user, String(code ?? '').trim())))
-		throw { statusCode: 400, message: 'Mã xác thực không đúng' };
+		throw httpError(400, 'Mã xác thực không đúng');
 
 	await pool
 		.request()
@@ -649,7 +641,7 @@ const regenerateBackupCodes = async (userId, password) => {
 	const enabled = (
 		await pool.request().input('id', sql.VarChar(20), userId).query('SELECT totp_enabled FROM users WHERE id = @id')
 	).recordset[0]?.totp_enabled;
-	if (!enabled) throw { statusCode: 400, message: 'Chưa bật xác thực 2 lớp' };
+	if (!enabled) throw httpError(400, 'Chưa bật xác thực 2 lớp');
 
 	const backupCodes = await replaceBackupCodes(pool, userId);
 	await securityEvents.log({
@@ -745,10 +737,7 @@ const loadPermissions = async (roleId) => {
 //     tự làm mới lại được, còn kẻ tấn công mất phiên.
 const REFRESH_RACE_GRACE_MS = 30 * 1000;
 
-const invalidRefresh = () => ({
-	statusCode: 401,
-	message: 'Refresh token không hợp lệ hoặc đã hết hạn',
-});
+const invalidRefresh = () => httpError(401, 'Refresh token không hợp lệ hoặc đã hết hạn');
 
 const refreshAccessToken = async (refreshToken, ip = null, userAgent = null) => {
 	let decoded;
@@ -782,11 +771,7 @@ const refreshAccessToken = async (refreshToken, ip = null, userAgent = null) => 
 		).recordset[0];
 		if (prior?.revoked_at) {
 			if (Date.now() - new Date(prior.revoked_at).getTime() < REFRESH_RACE_GRACE_MS) {
-				throw {
-					statusCode: 401,
-					code: 'REFRESH_RACE',
-					message: 'Phiên đang được làm mới ở tab khác, vui lòng thử lại',
-				};
+				throw httpError(401, 'Phiên đang được làm mới ở tab khác, vui lòng thử lại', { code: 'REFRESH_RACE' });
 			}
 			await revokeFamily(pool, prior.family_id || prior.id, prior.user_id, ip);
 		}
@@ -809,10 +794,7 @@ const refreshAccessToken = async (refreshToken, ip = null, userAgent = null) => 
 		? new Date(user.account_expires_at).toISOString().split('T')[0]
 		: null;
 	if (!user.is_active || (accountExpiresAt && new Date(accountExpiresAt) < new Date())) {
-		throw {
-			statusCode: 401,
-			message: 'Tài khoản đã bị vô hiệu hóa hoặc hết hạn sử dụng',
-		};
+		throw httpError(401, 'Tài khoản đã bị vô hiệu hóa hoặc hết hạn sử dụng');
 	}
 
 	const remember = !!claimed.remember_me;
@@ -934,13 +916,13 @@ const changePassword = async (
 		.query(`SELECT password FROM users WHERE id = @id`);
 
 	const user = result.recordset[0];
-	if (!user) throw { statusCode: 404, message: 'Người dùng không tồn tại' };
+	if (!user) throw httpError(404, 'Người dùng không tồn tại');
 
 	const isMatch = await comparePassword(oldPassword, user.password);
-	if (!isMatch) throw { statusCode: 400, message: 'Mật khẩu cũ không đúng' };
+	if (!isMatch) throw httpError(400, 'Mật khẩu cũ không đúng');
 	// Mật khẩu tạm do quản trị cấp phải được thay thật sự, không "đổi" sang chính nó
 	if (oldPassword === newPassword)
-		throw { statusCode: 400, message: 'Mật khẩu mới phải khác mật khẩu hiện tại' };
+		throw httpError(400, 'Mật khẩu mới phải khác mật khẩu hiện tại');
 
 	const hashed = await hashPassword(newPassword);
 	await pool

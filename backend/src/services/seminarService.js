@@ -12,6 +12,8 @@ const fs = require('fs');
 const path = require('path');
 const { UPLOADS_ROOT, SAFE_ID, removeUploadedFile, toStoredUploadPath } = require('../utils/uploadPaths');
 const { normalizeTime, normalizeAgenda } = require('../utils/seminarSchedule');
+const { maxScore } = require('../utils/seminarTest');
+const { badRequest } = require('../utils/httpError');
 
 const EVENT_TYPES = [
 	'conference',
@@ -129,7 +131,6 @@ const yearOf = (data) => {
 // Bài test cuối buổi: [{ q, image?, options: [..≥2], answer: index }] — trắc
 // nghiệm 1 đáp án, chấm tự động khi nộp (seminarParticipantService.submitTest).
 // image: ảnh minh hoạ, tải lên qua POST /seminars/:id/test-image.
-const badQuestions = (msg) => Object.assign(new Error(msg), { statusCode: 400 });
 const testImageDir = (seminarId) => `/uploads/seminars/${seminarId}/test/`;
 const testImages = (json) => {
 	try {
@@ -140,20 +141,24 @@ const testImages = (json) => {
 };
 const normalizeTestQuestions = (raw, seminarId) => {
 	if (raw === null || raw === '') return null;
-	if (!Array.isArray(raw)) throw badQuestions('Danh sách câu hỏi không hợp lệ.');
+	if (!Array.isArray(raw)) throw badRequest('Danh sách câu hỏi không hợp lệ.');
 	if (!raw.length) return null;
 	const out = raw.map((x, i) => {
 		const q = String(x?.q ?? '').trim();
 		const options = (Array.isArray(x?.options) ? x.options : []).map((o) => String(o ?? '').trim());
 		const answer = Number(x?.answer);
-		if (!q) throw badQuestions(`Câu ${i + 1}: chưa nhập nội dung câu hỏi.`);
-		if (options.length < 2) throw badQuestions(`Câu ${i + 1}: cần ít nhất 2 phương án.`);
+		if (!q) throw badRequest(`Câu ${i + 1}: chưa nhập nội dung câu hỏi.`);
+		if (options.length < 2) throw badRequest(`Câu ${i + 1}: cần ít nhất 2 phương án.`);
 		// Không tự lọc phương án trống — lọc sẽ làm lệch chỉ số đáp án đúng
-		if (options.some((o) => !o)) throw badQuestions(`Câu ${i + 1}: có phương án để trống.`);
+		if (options.some((o) => !o)) throw badRequest(`Câu ${i + 1}: có phương án để trống.`);
 		if (!Number.isInteger(answer) || answer < 0 || answer >= options.length)
-			throw badQuestions(`Câu ${i + 1}: chưa chọn đáp án đúng.`);
+			throw badRequest(`Câu ${i + 1}: chưa chọn đáp án đúng.`);
+		const points = x?.points == null || x.points === '' ? 1 : Number(x.points);
+		if (!Number.isFinite(points) || points <= 0 || points > 1000)
+			throw badRequest(`Câu ${i + 1}: điểm phải lớn hơn 0 (tối đa 1000).`);
 		const image = toStoredUploadPath(x?.image, testImageDir(seminarId));
-		return image ? { q, image, options, answer } : { q, options, answer };
+		const out = { q, options, answer, points: Math.round(points * 100) / 100 };
+		return image ? { ...out, image } : out;
 	});
 	return JSON.stringify(out);
 };
@@ -163,7 +168,17 @@ const TIME_FIELDS = {
 	start_time: 'Giờ bắt đầu',
 	end_time: 'Giờ kết thúc',
 	test_start_time: 'Giờ mở bài test',
-	test_end_time: 'Giờ đóng bài test',
+	test_end_time: 'Giờ dừng tiếp nhận bài test',
+};
+
+// Thời gian làm bài (phút) / điểm đạt: '' / null → null; sai → 400
+const optionalNumber = (v, label, { min, max, integer = false }) => {
+	if (v === undefined) return undefined;
+	if (v === null || v === '') return null;
+	const n = Number(v);
+	if (!Number.isFinite(n) || n < min || n > max || (integer && !Number.isInteger(n)))
+		throw badRequest(`${label} phải là ${integer ? 'số nguyên' : 'số'} từ ${min} đến ${max}.`);
+	return integer ? n : Math.round(n * 100) / 100;
 };
 
 const create = async (data, actorId) => {
@@ -224,6 +239,7 @@ const FIELD_TYPES = {
 	start_date: sql.Date,
 	end_date: sql.Date,
 	test_date: sql.Date,
+	test_end_date: sql.Date,
 	date_text: sql.NVarChar(100),
 	host_chair: sql.NVarChar(255),
 	speakers: sql.NVarChar(sql.MAX),
@@ -261,8 +277,31 @@ const update = async (id, data, actorId) => {
 			req.input(key, sql.VarChar(5), times[key]);
 		}
 	}
-	if (times.test_start_time && times.test_end_time && times.test_end_time <= times.test_start_time) {
-		throw Object.assign(new Error('Giờ đóng bài test phải sau giờ mở.'), { statusCode: 400 });
+	// Ngày trống = mặc định (xem seminarSchedule.testWindow); chỉ so được khi biết ngày
+	if (times.test_start_time && times.test_end_time) {
+		const openDay = String(data.test_date || '').slice(0, 10);
+		const closeDay = String(data.test_end_date || '').slice(0, 10) || openDay;
+		if (`${closeDay} ${times.test_end_time}` <= `${openDay} ${times.test_start_time}`)
+			throw badRequest('Thời điểm dừng tiếp nhận bài test phải sau thời điểm mở bài.');
+	}
+	const duration = optionalNumber(data.test_duration_minutes, 'Thời gian làm bài (phút)', {
+		min: 1,
+		max: 1440,
+		integer: true,
+	});
+	if (duration !== undefined) {
+		sets.push('test_duration_minutes = @test_duration_minutes');
+		req.input('test_duration_minutes', sql.Int, duration);
+	}
+	const passScore = optionalNumber(data.test_pass_score, 'Điểm đạt', { min: 0, max: 100000 });
+	if (passScore !== undefined) {
+		sets.push('test_pass_score = @test_pass_score');
+		req.input('test_pass_score', sql.Decimal(7, 2), passScore);
+	}
+	for (const key of ['test_shuffle_questions', 'test_shuffle_options']) {
+		if (data[key] === undefined) continue;
+		sets.push(`${key} = @${key}`);
+		req.input(key, sql.Bit, data[key] ? 1 : 0);
 	}
 	if (data.agenda !== undefined) {
 		sets.push('agenda = @agenda');
@@ -287,6 +326,9 @@ const update = async (id, data, actorId) => {
 	let removedImages = [];
 	if (data.test_questions !== undefined) {
 		const next = normalizeTestQuestions(data.test_questions, id);
+		const max = maxScore(JSON.parse(next || '[]'));
+		if (passScore != null && next && passScore > max)
+			throw badRequest(`Điểm đạt (${passScore}) lớn hơn tổng điểm bài test (${max}).`);
 		const prev = (
 			await pool.request().input('id', sql.VarChar(20), id).query('SELECT test_questions FROM seminars WHERE id = @id')
 		).recordset[0]?.test_questions;

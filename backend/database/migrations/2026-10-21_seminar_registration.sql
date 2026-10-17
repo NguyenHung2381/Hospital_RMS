@@ -11,7 +11,6 @@
  *   test_*                   : kết quả bài test (1 lần nộp).
  *   Người có ticket_code chỉ được cấp CME khi đã điểm danh + nộp bài test
  *   (seminarParticipantService.issueCme).
- *   Server cũng tự chạy tương đương lúc khởi động (permissions/migrations.js).
  * Script idempotent — chạy lại nhiều lần an toàn.
  * ==========================================================================*/
 USE [RMS_HOSPITAL];

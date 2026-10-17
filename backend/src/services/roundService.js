@@ -1,4 +1,4 @@
-const { getPool, sql } = require('../config/db');
+const { getPool, sql, withTransaction } = require('../config/db');
 const { broadcast } = require('./eventService');
 const { paging } = require('../utils/paging');
 const deadlineService = require('./deadlineService');
@@ -183,24 +183,17 @@ const create = async (data, actorId) => {
 	);
 
 	// Đợt + cấp độ + mốc thời gian ghi trong cùng một transaction.
-	const tx = new sql.Transaction(pool);
-	await tx.begin();
-	const req = new sql.Request(tx)
-		.input('actor_id', sql.VarChar(20), actorId)
-		.input('id', sql.VarChar(10), id)
-		.input('name', sql.NVarChar(200), data.name)
-		.input('year', sql.Int, year)
-		.input('round_number', sql.TinyInt, round_number)
-		.input('round_type_id', sql.VarChar(6), data.round_type_id || null)
-		.input('start_date', sql.Date, new Date(data.start_date))
-		.input('end_date', sql.Date, new Date(data.end_date))
-		.input(
-			'status',
-			sql.VarChar(10),
-			STATUS_TO_DB[data.status] ?? data.status ?? 'draft',
-		);
-
-	try {
+	await withTransaction(async (tx) => {
+		const req = new sql.Request(tx)
+			.input('actor_id', sql.VarChar(20), actorId)
+			.input('id', sql.VarChar(10), id)
+			.input('name', sql.NVarChar(200), data.name)
+			.input('year', sql.Int, year)
+			.input('round_number', sql.TinyInt, round_number)
+			.input('round_type_id', sql.VarChar(6), data.round_type_id || null)
+			.input('start_date', sql.Date, new Date(data.start_date))
+			.input('end_date', sql.Date, new Date(data.end_date))
+			.input('status', sql.VarChar(10), STATUS_TO_DB[data.status] ?? data.status ?? 'draft');
 		await req.query(`
         EXEC sp_set_actor @actor_id;
         INSERT INTO research_rounds
@@ -212,11 +205,7 @@ const create = async (data, actorId) => {
 		if (Array.isArray(data.level_ids) && data.level_ids.length)
 			await writeLevels(() => new sql.Request(tx), id, data.level_ids);
 		await deadlineService.insertBatch(tx, id, deadlineRows, actorId);
-		await tx.commit();
-	} catch (err) {
-		await tx.rollback().catch(() => {});
-		throw err;
-	}
+	}, pool);
 
 	const round = await getById(id);
 	broadcast('update', { entity: 'round' });

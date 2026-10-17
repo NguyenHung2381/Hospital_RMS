@@ -4,6 +4,7 @@ const topicAuthorService = require('../services/topicAuthorService');
 const workflowEngineService = require('../services/workflowEngineService');
 const { success, created, notFound } = require('../utils/response');
 const { createCrudController } = require('./crudController');
+const { httpError } = require('../utils/httpError');
 const {
 	assertTopicActionWindow,
 	assertRegistrationOpen,
@@ -226,7 +227,7 @@ const setAuthors = async (req, res, next) => {
 // Nhập Excel tạo đề tài cho mọi khoa → chỉ phạm vi 'all'
 const assertImportScope = (user) => {
 	if (scopeOf(user, 'topics') !== 'all') {
-		throw Object.assign(new Error('Chỉ tài khoản quản lý toàn viện được nhập đề tài từ Excel.'), { statusCode: 403 });
+		throw httpError(403, 'Chỉ tài khoản quản lý toàn viện được nhập đề tài từ Excel.');
 	}
 };
 

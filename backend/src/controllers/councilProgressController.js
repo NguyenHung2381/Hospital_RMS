@@ -57,7 +57,7 @@ const requireSecretary = async (req, res, next) => {
 		next();
 	} catch (err) {
 		return res
-			.status(err.status || 403)
+			.status(err.statusCode || err.status || 403)
 			.json({ success: false, message: err.message });
 	}
 };

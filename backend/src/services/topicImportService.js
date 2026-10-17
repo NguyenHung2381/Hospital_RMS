@@ -15,6 +15,7 @@ const { parseStaffNumber, readSheet } = require('../utils/excelImport');
 const xl = require('../utils/excelTemplate');
 const topicService = require('./topicService');
 const topicMemberService = require('./topicMemberService');
+const { httpError } = require('../utils/httpError');
 
 const SHEET_COLUMNS = [
 	{ key: 'stt', header: 'STT', width: 6 },
@@ -129,7 +130,7 @@ const parseWorkbook = async (buffer) => {
 			});
 		}
 	}
-	if (!topics.length) throw Object.assign(new Error('File không có dòng dữ liệu nào.'), { statusCode: 400 });
+	if (!topics.length) throw httpError(400, 'File không có dòng dữ liệu nào.');
 	return topics;
 };
 

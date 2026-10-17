@@ -7,10 +7,11 @@
  */
 const cmeRequirementService = require('../services/cmeRequirementService');
 const cmeReportService = require('../services/cmeReportService');
+const { httpError } = require('../utils/httpError');
 
 async function buildWorkbook(userId, year) {
 	const profile = await cmeRequirementService.getPersonProfile(userId);
-	if (!profile) throw Object.assign(new Error('Không tìm thấy nhân sự'), { statusCode: 404 });
+	if (!profile) throw httpError(404, 'Không tìm thấy nhân sự');
 
 	const data = await cmeReportService.getData({ year, userId });
 	const wb = cmeReportService.buildWorkbook(data, {

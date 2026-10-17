@@ -9,6 +9,7 @@ const courseService = require('./courseService');
 const publicPortalService = require('./publicPortalService');
 const examService = require('./examService');
 const trainingProgramService = require('./trainingProgramService');
+const { httpError } = require('../utils/httpError');
 
 const VN_TODAY = 'CAST(DATEADD(HOUR, 7, GETUTCDATE()) AS DATE)';
 const UPCOMING_DAYS = 30;
@@ -146,7 +147,7 @@ const getMyCourse = async (courseId, actor) => {
   `);
 	const [, , lessons, lessonDocs] = r.recordsets;
 	const course = r.recordsets[0][0];
-	if (!course) throw Object.assign(new Error('Bạn không tham gia khóa học này.'), { statusCode: 404 });
+	if (!course) throw httpError(404, 'Bạn không tham gia khóa học này.');
 	const approved = course.enrollment_status === 'approved';
 	return {
 		...withStatus(course),
@@ -180,7 +181,7 @@ const openDocument = async (docId, actor, kind = 'course') => {
 	const ok = (
 		await pool.request().input('id', sql.VarChar(20), docId).input('uid', sql.VarChar(20), actor.id).query(DOC_ACCESS_SQL[kind])
 	).recordset[0];
-	if (!ok) throw Object.assign(new Error('Không tìm thấy tài liệu.'), { statusCode: 404 });
+	if (!ok) throw httpError(404, 'Không tìm thấy tài liệu.');
 	return kind === 'lesson'
 		? trainingProgramService.incrementLessonDocumentDownload(docId)
 		: courseService.incrementDocumentDownload(docId);
@@ -197,7 +198,7 @@ const registerCourse = async (courseId, actor) => {
 			.query("SELECT 1 AS ok FROM courses WHERE id = @id AND is_public_registration = 1 AND status <> 'cancelled'")
 	).recordset[0];
 	if (!row) {
-		throw Object.assign(new Error('Khóa học không mở đăng ký cho cá nhân.'), { statusCode: 403 });
+		throw httpError(403, 'Khóa học không mở đăng ký cho cá nhân.');
 	}
 	return courseService.registerStaff(courseId, actor.id, actor.id);
 };

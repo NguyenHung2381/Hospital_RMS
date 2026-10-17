@@ -4,7 +4,6 @@
  *   exam_papers.paper_type: 'multiple_choice' (chỉ câu single_choice) hoặc
  *   'essay' (chỉ câu tự luận). NULL = đề tạo trước migration này (hỗn hợp) —
  *   service không lọc loại câu cho các đề đó.
- *   Server cũng tự chạy tương đương lúc khởi động (permissions/migrations.js).
  * Script idempotent — chạy lại nhiều lần an toàn.
  * ==========================================================================*/
 USE [RMS_HOSPITAL];

@@ -11,6 +11,7 @@ const ExcelJS = require('exceljs');
 const seminarService = require('./seminarService');
 const xl = require('../utils/excelTemplate');
 const { parseAgenda, testWindow } = require('../utils/seminarSchedule');
+const { isPassed, maxScore } = require('../utils/seminarTest');
 
 const EVENT_TYPE_LABELS = {
 	conference: 'Hội nghị',
@@ -68,7 +69,8 @@ const addInfoSheet = (wb, s, agendaCount) => {
 	ws.getRow(1).height = 36;
 
 	const w = testWindow(s);
-	const questionCount = parseAgenda(s.test_questions).length; // cũng là mảng JSON
+	const questions = parseAgenda(s.test_questions); // cũng là mảng JSON
+	const questionCount = questions.length;
 	const participants = s.participants || [];
 	const rows = [
 		['Hình thức', EVENT_TYPE_LABELS[s.event_type] ?? s.event_type_raw ?? ''],
@@ -85,8 +87,11 @@ const addInfoSheet = (wb, s, agendaCount) => {
 			'Bài test cuối buổi',
 			questionCount
 				? [
-						`${questionCount} câu`,
-						w ? `làm bài ${timeRange(s.test_start_time, s.test_end_time)} ngày ${fmtDate(w.date)}` : null,
+						`${questionCount} câu · ${maxScore(questions)} điểm`,
+						w?.start ? `mở ${withTime(w.date, s.test_start_time)}` : null,
+						w?.end ? `dừng nhận bài ${withTime(w.end_date, s.test_end_time)}` : null,
+						s.test_duration_minutes ? `làm bài ${s.test_duration_minutes} phút` : null,
+						s.test_pass_score != null ? `điểm đạt ${s.test_pass_score}` : null,
 						s.test_open ? 'đang bật' : 'chưa bật',
 					]
 						.filter(Boolean)
@@ -138,7 +143,9 @@ const participantColumns = (s) => {
 					{ key: 'checked_in_at', header: 'Điểm danh lúc', width: 17 },
 					...(s.test_questions
 						? [
-								{ key: 'test_score', header: 'Bài test (đúng/tổng)', width: 12 },
+								{ key: 'test_score', header: 'Điểm bài test', width: 12 },
+								{ key: 'test_correct', header: 'Số câu đúng', width: 10 },
+								...(s.test_pass_score != null ? [{ key: 'test_passed', header: 'Kết quả', width: 10 }] : []),
 								{ key: 'test_submitted_at', header: 'Nộp bài lúc', width: 17 },
 							]
 						: []),
@@ -182,7 +189,10 @@ const addParticipantSheet = (wb, s) => {
 			phone: p.phone ?? '',
 			email: p.email ?? '',
 			checked_in_at: fmtDateTime(p.checked_in_at),
-			test_score: p.test_submitted_at ? `${p.test_correct}/${p.test_total}` : '',
+			// Bài nộp trước khi có điểm theo trọng số: mỗi câu đúng 1 điểm
+			test_score: p.test_submitted_at ? `${p.test_score ?? p.test_correct}/${p.test_max_score ?? p.test_total}` : '',
+			test_correct: p.test_submitted_at ? `${p.test_correct}/${p.test_total}` : '',
+			test_passed: p.test_submitted_at ? (isPassed(s, p.test_score ?? p.test_correct) ? 'Đạt' : 'Chưa đạt') : '',
 			test_submitted_at: fmtDateTime(p.test_submitted_at),
 			cme_certificate_no: p.cme_certificate_no ?? '',
 			cme_year: p.cme_year ?? '',

@@ -4,8 +4,8 @@
 // 1 tiến trình Node chỉ dùng được 1 core: bcrypt, xuất Excel, JSON lớn... chiếm
 // luồng chính là mọi request khác phải chờ. Primary ở đây KHÔNG nhận request,
 // chỉ:
-//   1. nạp env + chạy initPermissions() ĐÚNG 1 LẦN (tránh N worker cùng nâng
-//      cấp CSDL phân quyền một lúc),
+//   1. nạp env + chạy initDatabase() ĐÚNG 1 LẦN (migration + kiểm tra phân
+//      quyền — tránh N worker cùng làm một lúc),
 //   2. fork WEB_CONCURRENCY worker — các worker dùng chung 1 port, cluster chia
 //      kết nối vòng tròn (round-robin),
 //   3. chỉ giao cron job (jobs/index.js) cho worker đầu tiên,
@@ -35,9 +35,9 @@ process.on('unhandledRejection', (reason) => {
 
 const main = async () => {
 	try {
-		await require('./permissions').initPermissions();
+		await require('./database').initDatabase();
 	} catch (err) {
-		console.error(`❌ [permissions] ${err.message}`);
+		console.error(`❌ [db] ${err.message}`);
 		process.exit(1);
 	}
 

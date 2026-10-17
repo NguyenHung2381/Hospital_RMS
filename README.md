@@ -556,8 +556,7 @@ Hospital_RMS/
   - **Danh mục quyền nằm trong code**: `backend/src/permissions/catalog.js` là nguồn duy nhất (module → resource → quyền, kèm tên/mô tả tiếng Việt). Server đồng bộ danh mục vào bảng `permissions` mỗi lần khởi động: thêm quyền mới, cập nhật tên/nhóm, không xoá quyền nào. Quyền tách ra từ quyền cũ khai báo `seedFrom` để vai trò đang có quyền cũ được cấp sẵn quyền mới.
   - **Có đúng quyền mới được làm**: `manage` không còn là wildcard bao các action khác, nó chỉ là tên một quyền cụ thể (vd `roles:manage` = phân quyền vai trò). Riêng `system:manage` là superuser.
   - **Phạm vi dữ liệu** là thuộc tính của lượt cấp quyền (cột `role_permissions.scope`), không phải action riêng: đề tài `own` / `department` / `all`, người dùng `department` / `all`, khoá học `assigned` / `all` (`backend/src/permissions/scopes.js`). Backend đọc bằng `scopeOf(user, resource)`; màn hình phân quyền có cột "Phạm vi dữ liệu" cho các resource này.
-  - Migration SQL tương ứng nằm ở `backend/migrations/` (chạy theo thứ tự tên file, `sqlcmd -C -I -b -f 65001`). Server cũng tự chạy các bước này lúc khởi động nếu login có quyền `ALTER TABLE`.
-  - Nâng cấp từ mô hình cũ (`topics:read_all`, `users:read_department`, `courses:read_assigned`, `X:manage` dạng wildcard) chạy tự động lúc khởi động, một lần, giữ nguyên quyền hiệu lực của mọi vai trò. Xem trước: `npm run migrate:permissions -- --dry-run`. Nếu login của ứng dụng không có quyền `ALTER TABLE`, chạy `npm run migrate:permissions` bằng tài khoản có quyền; trong lúc chưa nâng cấp, hệ thống vẫn tính đúng quyền từ dữ liệu cũ nhưng không cho sửa phân quyền.
+  - Migration SQL tương ứng nằm ở `backend/database/migrations/` (`2026-09-28_00_permission_scopes.sql`, `2026-09-28_01_token_version_role_codes.sql`). CSDL còn quyền kiểu cũ (`topics:read_all`, `users:read_department`, `courses:read_assigned`, `X:manage` dạng wildcard) thì `npm run migrate` quy đổi một lần, giữ nguyên quyền hiệu lực của mọi vai trò. Chưa nâng cấp thì server dừng lúc khởi động và báo file cần chạy.
   - Backend dùng `authorizePermission([...])`, quyền được cache trong `permissionCache`. Dùng quyền không có trong catalog sẽ bị cảnh báo lúc khởi động.
   - Hướng dẫn cho lập trình viên (thêm quyền, thêm route, lọc theo phạm vi, nâng cấp CSDL): `backend/src/permissions/README.md`.
   - `npm test` (trong `backend`) chạy bộ test phân quyền: danh mục quyền, quy tắc quyền/phạm vi, chống leo thang, ma trận vai trò mẫu × route. Không cần DB.
@@ -576,9 +575,9 @@ Hospital_RMS/
 
 **Engine:** Microsoft SQL Server · **Database:** `RMS_HOSPITAL` · **Pool:** min 2, max 10.
 
-> **Trong git:** migration schema (`backend/migrations/*.sql`) và định nghĩa stored procedure / function / trigger / view (`backend/db/`). Mọi file `*.sql` khác vẫn bị `.gitignore` loại (script tạo login có mật khẩu, dump dữ liệu, script khởi tạo schema gốc) — lấy từ nhóm phát triển. Chạy migration bằng `sqlcmd -I` theo thứ tự tên file, vì các bảng có index lọc hoặc cột tính toán cần `QUOTED_IDENTIFIER ON`.
+> **Trong git:** `backend/database/`: migration (`migrations/`), script chạy tay (`manual/`) và định nghĩa stored procedure / function / trigger / view (`objects/`). Mọi file `*.sql` khác vẫn bị `.gitignore` loại (script tạo login có mật khẩu, dump dữ liệu, script khởi tạo schema gốc) — lấy từ nhóm phát triển. Chạy migration bằng `npm run migrate` (thư mục `backend`); dev tự chạy lúc khởi động server. Quy ước viết file: `backend/database/README.md`.
 >
-> **Sửa stored procedure / trigger trong DB** thì chạy `npm run dump:db-objects` (thư mục `backend`) rồi commit thay đổi trong `backend/db/`. Script chỉ đọc DB, bỏ qua object sơ đồ của SSMS và **từ chối xuất** object có vẻ chứa mật khẩu / hash / chuỗi kết nối. `-- --check` chỉ báo khác biệt.
+> **Sửa stored procedure / trigger trong DB** thì chạy `npm run dump:db-objects` (thư mục `backend`) rồi commit thay đổi trong `backend/database/objects/`. Script chỉ đọc DB, bỏ qua object sơ đồ của SSMS và **từ chối xuất** object có vẻ chứa mật khẩu / hash / chuỗi kết nối. `-- --check` chỉ báo khác biệt.
 
 ### Stored procedures chính
 

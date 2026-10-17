@@ -16,7 +16,6 @@ import TwoFactorReminder from '../../shared/components/TwoFactorReminder';
 import styles from './UserLayout.module.css';
 import {
 	BadgeSvg,
-	BarChartSvg,
 	BellSvg,
 	BookOpenSvg,
 	ClipboardCheckSvg,
@@ -27,6 +26,8 @@ import {
 	LogoutSvg,
 	MenuSvg,
 	MoreVSvg,
+	ProgressSvg,
+	QrSvg,
 	TopicSvg,
 	UserSvg,
 	UsersSvg,
@@ -70,29 +71,33 @@ interface NavItem {
 
 // Cổng người dùng ít mục → thanh điều hướng NGANG thay cho sidebar dọc.
 // Mục chính nằm trên thanh; mục "tài khoản" gom vào menu avatar.
-// Thứ tự theo mảng nghiệp vụ: chung → NCKH → Đào tạo → CME → Khảo sát.
+// Thứ tự theo mảng nghiệp vụ: chung (trang chủ, việc cần làm, điểm danh QR
+// dùng cho cả lớp học lẫn hội nghị) → NCKH → Đào tạo → CME → Khảo sát →
+// Chấm công. Mục thuộc module nào thì ẩn khi module đó bị tắt.
 const PRIMARY_NAV: NavItem[] = [
 	{ key: 'home', label: 'Trang chủ', icon: <DashboardSvg className={styles.navIcon} /> },
-	{ key: 'myAttendance', label: 'Chấm công', icon: <ClockSvg className={styles.navIcon} />, module: 'attendance' },
 	{ key: 'myTasks', label: 'Việc của tôi', icon: <ClipboardCheckSvg className={styles.navIcon} /> },
-	{ key: 'myTopics', label: 'Đề tài của tôi', icon: <TopicSvg className={styles.navIcon} /> },
+	{ key: 'attendanceCheckIn', label: 'Điểm danh QR', icon: <QrSvg className={styles.navIcon} /> },
+	{ key: 'myTopics', label: 'Đề tài của tôi', icon: <TopicSvg className={styles.navIcon} />, module: 'research' },
 	{
 		key: 'registerTopic',
 		label: 'Đăng ký đề tài',
 		icon: <DocPlusSvg className={styles.navIcon} />,
 		restrictMember: true,
 		needsRegistrationWindow: true,
+		module: 'research',
 	},
 	{
 		key: 'councilProgress',
 		label: 'Đánh giá tiến độ',
-		icon: <ClipboardCheckSvg className={styles.navIcon} />,
+		icon: <ProgressSvg className={styles.navIcon} />,
 		councilOnly: true,
+		module: 'research',
 	},
-	{ key: 'myTraining', label: 'Khóa học của tôi', icon: <BookOpenSvg className={styles.navIcon} /> },
-	{ key: 'attendanceCheckIn', label: 'Điểm danh QR', icon: <BadgeSvg className={styles.navIcon} /> },
-	{ key: 'myCme', label: 'CME của tôi', icon: <BarChartSvg className={styles.navIcon} /> },
-	{ key: 'surveys', label: 'Khảo sát', icon: <ClipboardSvg className={styles.navIcon} /> },
+	{ key: 'myTraining', label: 'Khóa học của tôi', icon: <BookOpenSvg className={styles.navIcon} />, module: 'training' },
+	{ key: 'myCme', label: 'Đào tạo liên tục', icon: <BadgeSvg className={styles.navIcon} />, module: 'seminar' },
+	{ key: 'surveys', label: 'Khảo sát', icon: <ClipboardSvg className={styles.navIcon} />, module: 'survey' },
+	{ key: 'myAttendance', label: 'Chấm công', icon: <ClockSvg className={styles.navIcon} />, module: 'attendance' },
 ];
 
 const ACCOUNT_NAV: NavItem[] = [

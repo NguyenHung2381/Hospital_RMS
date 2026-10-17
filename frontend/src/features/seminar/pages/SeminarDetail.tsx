@@ -2,13 +2,15 @@ import { useMemo, useState, type ReactNode } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import {
 	BadgeSvg,
+	BuildingSvg,
 	CheckSvg,
 	ChevLSvg,
+	ChevRSvg,
 	ClipboardCheckSvg,
+	ClockSvg,
 	DownloadSvg,
 	EditSvg,
 	FileTextSvg,
-	MonitorSvg,
 	PlusSvg,
 	QrSvg,
 	TrashSvg,
@@ -20,6 +22,7 @@ import { Badge } from '@/shared/components';
 import { InlineLoading } from '../../../shared/components/Loading';
 import {
 	BulkBar,
+	BulkButton,
 	DeleteAllButton,
 	SelectCheckbox,
 } from '../../../shared/components/Table/RowSelect';
@@ -29,7 +32,6 @@ import { formatDateTimeVN } from '../../../shared/utils/formatDate';
 import { IssueCmeModal } from '../components/IssueCmeModal';
 import { ParticipantFormModal } from '../components/ParticipantFormModal';
 import { ParticipantImportModal } from '../components/ParticipantImportModal';
-import { SeminarCheckInQrModal } from '../components/SeminarCheckInQrModal';
 import { SeminarQrPresentation } from '../components/SeminarQrPresentation';
 import { SeminarRegistrationQrModal } from '../components/SeminarRegistrationQrModal';
 import { SeminarTestModal } from '../components/SeminarTestModal';
@@ -62,10 +64,15 @@ const TABS: { key: 'all' | ParticipationType; label: string }[] = [
 	{ key: 'trainee', label: 'Học viên' },
 ];
 
-// Người tự đăng ký qua QR (có vé) phải điểm danh + nộp bài test (nếu có) mới
-// được cấp CME — khớp CME_ELIGIBLE_SQL ở backend seminarParticipantService.
-const cmeEligible = (p: SeminarParticipant, hasTest: boolean) =>
-	!p.ticket_code || (!!p.checked_in_at && (!!p.test_submitted_at || !hasTest));
+// Điểm bài test — bài nộp trước khi có điểm từng câu: mỗi câu đúng 1 điểm
+const testScore = (p: SeminarParticipant) => p.test_score ?? p.test_correct;
+const testPassed = (s: Seminar, p: SeminarParticipant) =>
+	s.test_pass_score == null || (testScore(p) ?? -1) >= s.test_pass_score;
+
+// Người tự đăng ký qua QR (có vé) phải điểm danh + nộp bài test (nếu có, và đạt
+// điểm đạt nếu đặt) mới được cấp CME — khớp CME_ELIGIBLE_SQL ở backend seminarParticipantService.
+const cmeEligible = (p: SeminarParticipant, s: Seminar) =>
+	!p.ticket_code || (!!p.checked_in_at && (!s.test_questions || (!!p.test_submitted_at && testPassed(s, p))));
 
 const fmtDate = (s: string | null | undefined) => {
 	if (!s) return '';
@@ -92,11 +99,26 @@ const seminarWhen = (s: Seminar) => {
 	return range || s.date_text || '';
 };
 
-// Khung giờ làm bài test — ngày trống = ngày kết thúc (hoặc bắt đầu), khớp backend testWindow()
+// Khung giờ làm bài test — ngày mở trống = ngày kết thúc (hoặc bắt đầu), ngày dừng
+// tiếp nhận trống = ngày mở; khớp backend testWindow()
 const testWhen = (s: Seminar) => {
 	if (!s.test_start_time && !s.test_end_time) return '';
 	const day = s.test_date || s.end_date || s.start_date;
+	const endDay = s.test_end_date || day;
+	if (s.test_end_time && endDay && endDay.slice(0, 10) !== day?.slice(0, 10))
+		return [withTime(s.test_start_time ? day : null, s.test_start_time), withTime(endDay, s.test_end_time)]
+			.filter(Boolean)
+			.join(' – ');
 	return `${timeRange(s.test_start_time, s.test_end_time)}${day ? ` · ${fmtDate(day)}` : ''}`;
+};
+
+const parseTestQuestions = (s: Seminar): { points?: number }[] => {
+	try {
+		const list = JSON.parse(s.test_questions || '[]');
+		return Array.isArray(list) ? list : [];
+	} catch {
+		return [];
+	}
 };
 
 export default function SeminarDetail() {
@@ -110,50 +132,63 @@ export default function SeminarDetail() {
 	const [editing, setEditing] = useState<SeminarParticipant | null>(null);
 	const [issueOpen, setIssueOpen] = useState(false);
 	const [importOpen, setImportOpen] = useState(false);
-	const [checkInQrOpen, setCheckInQrOpen] = useState(false);
 	// ?qr=1: vừa tạo hội nghị → mở luôn QR đăng ký để tải về
 	const [searchParams, setSearchParams] = useSearchParams();
 	const [regQrOpen, setRegQrOpen] = useState(searchParams.get('qr') === '1');
 	const [presentOpen, setPresentOpen] = useState(false);
 	const [testOpen, setTestOpen] = useState(false);
 	const [agendaOpen, setAgendaOpen] = useState(false);
-	const [exporting, setExporting] = useState<'participants' | 'agenda' | null>(null);
+	const [exporting, setExporting] = useState(false);
 	const agenda = useMemo(() => parseAgenda(d.seminar?.agenda ?? null), [d.seminar?.agenda]);
 
-	// File luôn kèm sheet "Thông tin" (thời gian, khung giờ bài test...)
-	const handleExport = async (part: 'participants' | 'agenda') => {
+	// 1 file gồm sheet Thông tin + Người tham dự + Chương trình
+	const handleExport = async () => {
 		if (!d.seminar) return;
-		setExporting(part);
+		setExporting(true);
 		try {
-			const blob = await exportSeminarDetailExcel(d.seminar.id, [part]);
-			const name = part === 'participants' ? 'nguoi-tham-du' : 'bai-hoc';
-			saveBlob(blob, `${name}-${fileSlug(d.seminar.title).slice(0, 60)}.xlsx`);
+			const blob = await exportSeminarDetailExcel(d.seminar.id);
+			saveBlob(blob, `hoi-nghi-${fileSlug(d.seminar.title).slice(0, 60)}.xlsx`);
 		} catch (e) {
 			showToast('error', e instanceof Error ? e.message : 'Xuất Excel thất bại');
 		} finally {
-			setExporting(null);
+			setExporting(false);
 		}
 	};
 
 	const filtered = useMemo(
-		() =>
-			tab === 'all'
-				? d.participants
-				: d.participants.filter((p) => p.participation_type === tab),
+		() => (tab === 'all' ? d.participants : d.participants.filter((p) => p.participation_type === tab)),
 		[d.participants, tab],
 	);
 	const pg = useClientPaging(filtered);
 	const rowSel = useRowSelection(pg.paged.map((p) => p.id));
 	const selected = filtered.filter((p) => rowSel.isSelected(p.id));
 	const hasTest = !!d.seminar?.test_questions;
-	const issuable = selected.filter((p) => p.cme_seq == null && cmeEligible(p, hasTest));
+	const issuable = selected.filter((p) => p.cme_seq == null && !!d.seminar && cmeEligible(p, d.seminar));
 	const notEligible = selected.filter((p) => p.cme_seq == null).length - issuable.length;
+	const signable = selected.filter((p) => p.cme_seq != null && p.cme_status !== 'signed');
 	const hosted = d.seminar?.scope === 'hosted';
+
+	const counts = useMemo(
+		() => ({
+			registered: d.participants.filter((p) => p.ticket_code).length,
+			checkedIn: d.participants.filter((p) => p.checked_in_at).length,
+			submitted: d.participants.filter((p) => p.test_submitted_at).length,
+		}),
+		[d.participants],
+	);
+
+	const closeRegQr = () => {
+		setRegQrOpen(false);
+		if (searchParams.has('qr')) setSearchParams({}, { replace: true });
+	};
 
 	if (d.notFound) {
 		return (
 			<AdminLayout pageTitle='Không tìm thấy'>
-				<button className={styles.backLink} onClick={() => navigate('/admin/seminars')}>
+				<button
+					className={styles.backLink}
+					onClick={() => navigate('/admin/seminars')}
+				>
 					<ChevLSvg /> Quay lại danh sách
 				</button>
 				<div className={styles.emptyState}>
@@ -164,13 +199,29 @@ export default function SeminarDetail() {
 	}
 
 	const sem = d.seminar;
+	const testQuestions = sem ? parseTestQuestions(sem) : [];
+	const testPoints =
+		Math.round(testQuestions.reduce((n, q) => n + (q.points && q.points > 0 ? q.points : 1), 0) * 100) / 100;
+	// Thông tin phụ — chỉ hiện ô có dữ liệu
+	const details = sem
+		? ([
+				['Chủ tọa', sem.host_chair],
+				['Báo cáo viên', sem.speakers],
+				['Người điều phối', sem.coordinator],
+				['Đơn vị phối hợp', sem.co_organizers],
+				['Công văn cấp phép', sem.permit_doc_no],
+			].filter(([, v]) => !!v) as [string, string][])
+		: [];
 
 	return (
 		<AdminLayout
 			pageTitle={sem?.title ?? 'Chi tiết hội thảo'}
 			pageSubtitle={sem ? SCOPE_LABELS[sem.scope] : ''}
 		>
-			<button className={styles.backLink} onClick={() => navigate('/admin/seminars')}>
+			<button
+				className={styles.backLink}
+				onClick={() => navigate('/admin/seminars')}
+			>
 				<ChevLSvg /> Danh sách hội thảo
 			</button>
 
@@ -178,101 +229,160 @@ export default function SeminarDetail() {
 				<InlineLoading />
 			) : (
 				<>
-					<div className={styles.infoCard}>
-						<div className={styles.infoGrid}>
-							<Info label='Hình thức' value={EVENT_TYPE_LABELS[sem.event_type]} />
-							<Info label='Thời gian' value={seminarWhen(sem) || '—'} />
-							{sem.test_questions && (
-								<Info
-									label='Bài test cuối buổi'
-									value={`${testWhen(sem) || 'Không giới hạn giờ'} · ${sem.test_open ? 'đang bật' : 'chưa bật'}`}
+					{/* ── Tổng quan ── */}
+					<section className={styles.overview}>
+						<div className={styles.overviewHead}>
+							<div className={styles.chips}>
+								<span className={styles.chip}>{EVENT_TYPE_LABELS[sem.event_type]}</span>
+								{sem.event_year && <span className={styles.chip}>Năm {sem.event_year}</span>}
+								{sem.grants_cme && (
+									<span className={`${styles.chip} ${styles.chipGreen}`}>
+										Cấp CME{sem.cme_default_credits ? ` · ${sem.cme_default_credits} tín chỉ` : ''}
+									</span>
+								)}
+							</div>
+							{perms.canExport && (
+								<button
+									className={styles.btnGhost}
+									onClick={() => void handleExport()}
+									disabled={exporting}
+									title='Một file gồm thông tin, người tham dự và chương trình'
+								>
+									{exporting ? <span className={styles.spinner} /> : <DownloadSvg />} Xuất Excel
+								</button>
+							)}
+						</div>
+
+						<div className={styles.metaRow}>
+							<span className={styles.metaItem}>
+								<ClockSvg /> {seminarWhen(sem) || 'Chưa có thời gian'}
+							</span>
+							{sem.location && (
+								<span className={styles.metaItem}>
+									<BuildingSvg /> {sem.location}
+								</span>
+							)}
+						</div>
+
+						{details.length > 0 && (
+							<dl className={styles.detailGrid}>
+								{details.map(([label, value]) => (
+									<div key={label}>
+										<dt>{label}</dt>
+										<dd>{value}</dd>
+									</div>
+								))}
+							</dl>
+						)}
+						{sem.notes && <p className={styles.overviewNote}>{sem.notes}</p>}
+
+						<div className={styles.statStrip}>
+							<Stat
+								label='Người tham dự'
+								value={sem.manual_participant_count ?? sem.participant_count ?? 0}
+								manual={sem.manual_participant_count != null}
+							/>
+							<Stat
+								label='Nội viện'
+								value={sem.manual_internal_count ?? sem.internal_count ?? 0}
+							/>
+							<Stat
+								label='Ngoại viện'
+								value={sem.manual_external_count ?? sem.external_count ?? 0}
+							/>
+							<Stat
+								label='Nước ngoài'
+								value={sem.manual_foreign_count ?? sem.foreign_count ?? 0}
+							/>
+							{sem.grants_cme && (
+								<Stat
+									label='Đã cấp CME'
+									value={sem.manual_cme_count ?? sem.cme_issued_count ?? 0}
+									manual={sem.manual_cme_count != null}
 								/>
 							)}
-							<Info label='Địa điểm' value={sem.location || '—'} />
-							<Info label='Năm' value={sem.event_year ?? '—'} />
-							{sem.scope === 'hosted' && (
-								<>
-									<Info label='Chủ tọa' value={sem.host_chair || '—'} />
-									<Info label='Báo cáo viên' value={sem.speakers || '—'} />
-									<Info label='Công văn cấp phép' value={sem.permit_doc_no || '—'} />
-									<Info label='Đơn vị phối hợp' value={sem.co_organizers || '—'} />
-								</>
-							)}
-							<Info label='Người điều phối' value={sem.coordinator || '—'} />
-							<Info
-								label='Cấp CME'
-								value={
-									sem.grants_cme
-										? `Có${sem.cme_default_credits ? ` · ${sem.cme_default_credits} tín chỉ` : ''}`
-										: 'Không'
-								}
-							/>
 						</div>
-						{sem.notes && (
-							<p style={{ marginTop: 12 }} className={styles.muted}>
-								{sem.notes}
+						{(sem.manual_participant_count != null || sem.manual_cme_count != null) && (
+							<p className={styles.hint}>
+								* Số liệu nhập tay — danh sách bên dưới chỉ là chi tiết bổ sung.
 							</p>
 						)}
-					</div>
+					</section>
 
-					<div className={styles.statsRow}>
-						<Stat
-							label='Người tham dự'
-							value={sem.manual_participant_count ?? sem.participant_count ?? 0}
-							hint={sem.manual_participant_count != null ? 'nhập tay' : undefined}
-						/>
-						<Stat
-							label='Nội viện'
-							value={sem.manual_internal_count ?? sem.internal_count ?? 0}
-						/>
-						<Stat
-							label='Ngoại viện'
-							value={sem.manual_external_count ?? sem.external_count ?? 0}
-						/>
-						<Stat
-							label='Nước ngoài'
-							value={sem.manual_foreign_count ?? sem.foreign_count ?? 0}
-						/>
-						<Stat
-							label='Chứng chỉ CME'
-							value={sem.manual_cme_count ?? sem.cme_issued_count ?? 0}
-							hint={sem.manual_cme_count != null ? 'nhập tay' : undefined}
-						/>
-					</div>
-					{(sem.manual_participant_count != null ||
-						sem.manual_cme_count != null) && (
-						<p className={styles.muted} style={{ marginTop: -8, marginBottom: 12 }}>
-							Đang hiển thị số liệu tổng hợp nhập tay. Danh sách bên dưới chỉ là
-							chi tiết bổ sung (có thể để trống).
-						</p>
+					{/* ── Công cụ tổ chức (hội nghị BV tổ chức) ── */}
+					{hosted && perms.canUpdate && (
+						<section className={styles.orgGrid}>
+							<OrgTile
+								icon={<QrSvg />}
+								title='Đăng ký tham dự'
+								status={<span className={styles.orgCount}>{counts.registered}</span>}
+								desc='người tự đăng ký qua QR'
+								action='Mở mã QR'
+								onClick={() => setRegQrOpen(true)}
+							/>
+							<OrgTile
+								icon={<ClipboardCheckSvg />}
+								title='Điểm danh'
+								status={
+									<span className={styles.orgCount}>
+										{counts.checkedIn}
+										<small>/{d.participants.length}</small>
+									</span>
+								}
+								desc='người đã điểm danh'
+								action='Quét vé'
+								onClick={() => navigate(`/admin/quet-ve/${sem.id}`)}
+							/>
+							<OrgTile
+								icon={<FileTextSvg />}
+								title='Bài test cuối buổi'
+								status={
+									!testQuestions.length ? (
+										<Badge tone='gray'>Chưa soạn</Badge>
+									) : sem.test_open ? (
+										<Badge tone='green'>Đang mở</Badge>
+									) : (
+										<Badge tone='amber'>Chưa bật</Badge>
+									)
+								}
+								desc={
+									testQuestions.length
+										? [
+												`${testQuestions.length} câu · ${testPoints} điểm`,
+												sem.test_duration_minutes ? `${sem.test_duration_minutes} phút` : null,
+												`${counts.submitted} đã nộp`,
+											]
+												.filter(Boolean)
+												.join(' · ')
+										: 'Soạn câu hỏi, đặt giờ mở và điểm đạt'
+								}
+								hint={testQuestions.length ? testWhen(sem) : undefined}
+								action={testQuestions.length ? 'Cấu hình' : 'Soạn bài test'}
+								onClick={() => setTestOpen(true)}
+							/>
+						</section>
 					)}
 
-					<div className={styles.tableCard} style={{ marginBottom: 16 }}>
+					{/* ── Chương trình ── */}
+					<div
+						className={styles.tableCard}
+						style={{ marginBottom: 16 }}
+					>
 						<div className={styles.tableHeader}>
 							<div className={styles.tableHeaderLeft}>
-								<span className={styles.tableTitle}>Chương trình — Bài học</span>
+								<span className={styles.tableTitle}>Chương trình</span>
 								<span className={styles.tableCount}>{agenda.length} bài</span>
 							</div>
-							<div className={styles.tableControls}>
-								{perms.canUpdate && (
+							{perms.canUpdate && (
+								<div className={styles.tableControls}>
 									<button
 										className={styles.btnGhost}
 										onClick={() => setAgendaOpen(true)}
 									>
-										{agenda.length ? <EditSvg /> : <PlusSvg />}{' '}
-										{agenda.length ? 'Sửa chương trình' : 'Thêm bài học'}
+										{agenda.length ? <EditSvg /> : <PlusSvg />} {agenda.length ? 'Sửa' : 'Thêm bài học'}
 									</button>
-								)}
-								{perms.canExport && (
-									<button
-										className={styles.btnGhost}
-										onClick={() => void handleExport('agenda')}
-										disabled={!!exporting || agenda.length === 0}
-									>
-										{exporting === 'agenda' ? <span className={styles.spinner} /> : <DownloadSvg />} Xuất Excel
-									</button>
-								)}
-							</div>
+								</div>
+							)}
 						</div>
 						{agenda.length > 0 && (
 							<div className={styles.tableWrap}>
@@ -290,9 +400,9 @@ export default function SeminarDetail() {
 										{agenda.map((a, i) => (
 											<tr key={i}>
 												<td className={styles.tdIdx}>{i + 1}</td>
-												<td>
+												<td className={styles.cmeNowrap}>
 													{timeRange(a.start_time, a.end_time) || <span className={styles.muted}>—</span>}
-													{a.date && <div className={styles.muted}>{fmtDate(a.date)}</div>}
+													{a.date && <div className={styles.cellSub}>{fmtDate(a.date)}</div>}
 												</td>
 												<td>
 													<span className={tbl.cellTitle}>{a.title}</span>
@@ -307,13 +417,22 @@ export default function SeminarDetail() {
 						)}
 					</div>
 
+					{/* ── Người tham dự ── */}
 					<div className={styles.tableCard}>
 						<div className={styles.tableHeader}>
 							<div className={styles.tableHeaderLeft}>
-								<span className={styles.tableTitle}>Danh sách người tham dự</span>
+								<span className={styles.tableTitle}>Người tham dự</span>
 								<span className={styles.tableCount}>{filtered.length} người</span>
 							</div>
 							<div className={styles.tableControls}>
+								{perms.canImport && (
+									<button
+										className={styles.btnGhost}
+										onClick={() => setImportOpen(true)}
+									>
+										<UploadSvg /> Nhập Excel
+									</button>
+								)}
 								{perms.canUpdate && (
 									<button
 										className={styles.btnPrimary}
@@ -325,261 +444,234 @@ export default function SeminarDetail() {
 										<PlusSvg /> Thêm người
 									</button>
 								)}
-								{perms.canImport && (
-									<button
-										className={styles.btnGhost}
-										onClick={() => setImportOpen(true)}
-									>
-										<UploadSvg /> Nhập Excel
-									</button>
-								)}
-								{perms.canExport && (
-									<button
-										className={styles.btnGhost}
-										onClick={() => void handleExport('participants')}
-										disabled={!!exporting || d.participants.length === 0}
-									>
-										{exporting === 'participants' ? <span className={styles.spinner} /> : <DownloadSvg />} Xuất Excel
-									</button>
-								)}
-								{perms.canUpdate && hosted && (
-									<>
-										<button
-											className={styles.btnGhost}
-											onClick={() => setRegQrOpen(true)}
-										>
-											<QrSvg /> QR đăng ký
-										</button>
-										<button
-											className={styles.btnGhost}
-											onClick={() => setPresentOpen(true)}
-										>
-											<MonitorSvg /> Trình chiếu QR
-										</button>
-										<button
-											className={styles.btnGhost}
-											onClick={() => navigate(`/admin/quet-ve/${sem.id}`)}
-										>
-											<ClipboardCheckSvg /> Quét vé điểm danh
-										</button>
-										<button
-											className={styles.btnGhost}
-											onClick={() => setTestOpen(true)}
-										>
-											<FileTextSvg /> Bài test{sem.test_open ? ' (đang mở)' : ''}
-										</button>
-									</>
-								)}
-								{perms.canUpdate && (
-									<button
-										className={styles.btnGhost}
-										onClick={() => setCheckInQrOpen(true)}
-									>
-										<ClipboardCheckSvg /> Mã QR điểm danh
-									</button>
-								)}
-								{perms.canCme && sem.grants_cme && selected.length > 0 && (
-									<>
-										<button className={styles.btnGhost} onClick={() => setIssueOpen(true)}>
-											<BadgeSvg /> Cấp CME ({issuable.length})
-										</button>
-										<button
-											className={styles.btnGhost}
-											onClick={() =>
-												d.setStatus(
-													selected.filter((p) => p.cme_seq != null).map((p) => p.id),
-													'signed',
-												)
-											}
-										>
-											<CheckSvg /> Đánh dấu đã ký
-										</button>
-									</>
-								)}
-								{perms.canUpdate && (
-									<DeleteAllButton
-										count={filtered.length}
-										itemLabel='người tham dự'
-										getIds={() => filtered.map((p) => p.id)}
-										onDelete={d.removeMany}
-										onDone={rowSel.clearSelection}
-										disabled={d.loading}
-									/>
-								)}
 							</div>
 						</div>
 
-						<div className={styles.tabs}>
-							{TABS.map((t) => (
-								<button
-									key={t.key}
-									className={`${styles.tab} ${tab === t.key ? styles.tabActive : ''}`}
-									onClick={() => {
-										setTab(t.key);
-										rowSel.clearSelection();
-									}}
-								>
-									{t.label}
-								</button>
-							))}
+						<div className={styles.tabsRow}>
+							<div className={styles.tabs}>
+								{TABS.map((t) => (
+									<button
+										key={t.key}
+										className={`${styles.tab} ${tab === t.key ? styles.tabActive : ''}`}
+										onClick={() => {
+											setTab(t.key);
+											rowSel.clearSelection();
+										}}
+									>
+										{t.label}
+									</button>
+								))}
+							</div>
+							{perms.canUpdate && (
+								<DeleteAllButton
+									count={filtered.length}
+									itemLabel='người tham dự'
+									getIds={() => filtered.map((p) => p.id)}
+									onDelete={d.removeMany}
+									onDone={rowSel.clearSelection}
+									disabled={d.loading}
+								/>
+							)}
 						</div>
 
 						<div className={styles.tableWrap}>
-						<BulkBar
-							rowSel={rowSel}
-							itemLabel='người'
-							loading={d.loading}
-							onBulkDelete={d.removeMany}
-						/>
-						<table className={styles.table}>
-							<thead>
-								<tr>
-									<th className={sel.checkCol}>
-										<SelectCheckbox
-											title='Chọn tất cả'
-											checked={rowSel.allPageSelected}
-											indeterminate={rowSel.somePageSelected && !rowSel.allPageSelected}
-											onChange={rowSel.toggleSelectAll}
-										/>
-									</th>
-									<th className={tbl.thIdx}>STT</th>
-									<th>Họ tên</th>
-									<th>Vai trò</th>
-									<th>Nguồn</th>
-									<th>Đơn vị / Khoa</th>
-									{hosted && <th>Điểm danh</th>}
-									{hosted && hasTest && <th>Bài test</th>}
-									{sem.grants_cme && <th>SQĐ</th>}
-									{sem.grants_cme && <th>Tín chỉ</th>}
-									{sem.grants_cme && <th>CME</th>}
-									<th className={styles.thRight}>Thao tác</th>
-								</tr>
-							</thead>
-							<tbody>
-								{filtered.length === 0 ? (
+							<BulkBar
+								rowSel={rowSel}
+								itemLabel='người'
+								loading={d.loading}
+								onBulkDelete={d.removeMany}
+								extraActions={
+									perms.canCme &&
+									sem.grants_cme && (
+										<>
+											<BulkButton
+												onClick={() => setIssueOpen(true)}
+												disabled={!issuable.length}
+											>
+												<BadgeSvg /> Cấp CME ({issuable.length})
+											</BulkButton>
+											<BulkButton
+												onClick={() =>
+													d.setStatus(
+														signable.map((p) => p.id),
+														'signed',
+													)
+												}
+												disabled={!signable.length}
+											>
+												<CheckSvg /> Đã ký ({signable.length})
+											</BulkButton>
+										</>
+									)
+								}
+							/>
+							<table className={styles.table}>
+								<thead>
 									<tr>
-										<td colSpan={13}>
-											<div className={styles.emptyState}>
-												<div className={styles.emptyDesc}>Chưa có người nào</div>
-											</div>
-										</td>
+										<th className={sel.checkCol}>
+											<SelectCheckbox
+												title='Chọn tất cả'
+												checked={rowSel.allPageSelected}
+												indeterminate={rowSel.somePageSelected && !rowSel.allPageSelected}
+												onChange={rowSel.toggleSelectAll}
+											/>
+										</th>
+										<th className={tbl.thIdx}>STT</th>
+										<th>Họ tên</th>
+										<th>Vai trò</th>
+										<th>Đơn vị / Khoa</th>
+										{hosted && <th>Điểm danh</th>}
+										{hosted && hasTest && <th>Bài test</th>}
+										{sem.grants_cme && <th>CME</th>}
+										<th className={styles.thRight} />
 									</tr>
-								) : (
-									pg.paged.map((p, i) => (
-										<tr
-											key={p.id}
-											className={rowSel.isSelected(p.id) ? sel.rowSelected : undefined}
-										>
-											<td className={sel.checkCol}>
-												<SelectCheckbox
-													title='Chọn'
-													checked={rowSel.isSelected(p.id)}
-													onChange={() => rowSel.toggleSelect(p.id)}
-												/>
-											</td>
-											<td className={styles.tdIdx}>{pg.offset + i + 1}</td>
-											<td>
-												<span className={tbl.cellTitle}>
-													{p.title_prefix ? `${p.title_prefix} ` : ''}
-													{p.full_name}
-												</span>
-												{p.phone && <div className={styles.muted}>{p.phone}</div>}
-												{p.is_foreign && (
-													<Badge
-														tone='amber'
-														style={{ marginLeft: 6 }}
-													>
-														NN
-													</Badge>
-												)}
-											</td>
-											<td>{PARTICIPATION_LABELS[p.participation_type]}</td>
-											<td>{SOURCE_LABELS[p.source]}</td>
-											<td>
-												{p.organization ||
-													p.user_department_name ||
-													p.department_raw || <span className={styles.muted}>—</span>}
-											</td>
-											{hosted && (
-												<td>
-													{p.checked_in_at ? (
-														<Badge tone='green'>{formatDateTimeVN(p.checked_in_at)}</Badge>
-													) : (
-														<span className={styles.muted}>—</span>
-													)}
-												</td>
-											)}
-											{hosted && hasTest && (
-												<td>
-													{p.test_submitted_at ? (
-														`${p.test_correct}/${p.test_total}`
-													) : (
-														<span className={styles.muted}>—</span>
-													)}
-												</td>
-											)}
-											{sem.grants_cme && (
-												<td className={styles.mono}>
-													{p.cme_certificate_no || <span className={styles.muted}>—</span>}
-												</td>
-											)}
-											{sem.grants_cme && (
-												<td>{p.cme_credits ?? <span className={styles.muted}>—</span>}</td>
-											)}
-											{sem.grants_cme && (
-												<td>
-													<Badge
-														tone={
-															p.cme_status === 'signed'
-																? 'green'
-																: p.cme_status === 'issued'
-																	? 'blue'
-																	: 'gray'
-														}
-													>
-														{CME_STATUS_LABELS[p.cme_status]}
-													</Badge>
-												</td>
-											)}
-											<td className={styles.tdRight}>
-												<div className={styles.actionBtns}>
-													{perms.canUpdate && (
-														<button
-															className={styles.actionBtn}
-															title='Sửa'
-															onClick={() => {
-																setEditing(p);
-																setFormModal('edit');
-															}}
-														>
-															<EditSvg />
-														</button>
-													)}
-													{perms.canCme && p.cme_seq != null && (
-														<button
-															className={styles.actionBtn}
-															title='Thu hồi số CME'
-															onClick={() => d.revoke(p.id)}
-														>
-															<XSvg />
-														</button>
-													)}
-													{perms.canUpdate && (
-														<button
-															className={`${styles.actionBtn} ${styles.danger}`}
-															title='Xoá'
-															onClick={() => d.removeOne(p.id)}
-														>
-															<TrashSvg />
-														</button>
-													)}
+								</thead>
+								<tbody>
+									{filtered.length === 0 ? (
+										<tr>
+											<td colSpan={10}>
+												<div className={styles.emptyState}>
+													<div className={styles.emptyDesc}>Chưa có người nào</div>
 												</div>
 											</td>
 										</tr>
-									))
-								)}
-							</tbody>
-						</table>
+									) : (
+										pg.paged.map((p, i) => (
+											<tr
+												key={p.id}
+												className={rowSel.isSelected(p.id) ? sel.rowSelected : undefined}
+											>
+												<td className={sel.checkCol}>
+													<SelectCheckbox
+														title='Chọn'
+														checked={rowSel.isSelected(p.id)}
+														onChange={() => rowSel.toggleSelect(p.id)}
+													/>
+												</td>
+												<td className={styles.tdIdx}>{pg.offset + i + 1}</td>
+												<td>
+													<span className={tbl.cellTitle}>
+														{p.title_prefix ? `${p.title_prefix} ` : ''}
+														{p.full_name}
+													</span>
+													{p.is_foreign && (
+														<Badge
+															tone='amber'
+															style={{ marginLeft: 6 }}
+														>
+															NN
+														</Badge>
+													)}
+													{p.phone && <div className={styles.cellSub}>{p.phone}</div>}
+												</td>
+												<td>
+													{PARTICIPATION_LABELS[p.participation_type]}
+													<div className={styles.cellSub}>{SOURCE_LABELS[p.source]}</div>
+												</td>
+												<td>
+													{p.organization || p.user_department_name || p.department_raw || (
+														<span className={styles.muted}>—</span>
+													)}
+												</td>
+												{hosted && (
+													<td className={styles.cmeNowrap}>
+														{p.checked_in_at ? (
+															<span
+																className={styles.okText}
+																title={formatDateTimeVN(p.checked_in_at)}
+															>
+																<CheckSvg /> {formatDateTimeVN(p.checked_in_at)}
+															</span>
+														) : (
+															<span className={styles.muted}>—</span>
+														)}
+													</td>
+												)}
+												{hosted && hasTest && (
+													<td className={styles.cmeNowrap}>
+														{p.test_submitted_at ? (
+															<span title={`Đúng ${p.test_correct}/${p.test_total} câu`}>
+																<b>{testScore(p)}</b>/{p.test_max_score ?? p.test_total}
+																{sem.test_pass_score != null && (
+																	<span
+																		className={testPassed(sem, p) ? styles.okText : styles.badText}
+																		style={{ marginLeft: 6 }}
+																	>
+																		{testPassed(sem, p) ? 'Đạt' : 'Chưa đạt'}
+																	</span>
+																)}
+															</span>
+														) : p.test_started_at ? (
+															<span className={styles.muted}>Đang làm</span>
+														) : (
+															<span className={styles.muted}>—</span>
+														)}
+													</td>
+												)}
+												{sem.grants_cme && (
+													<td className={styles.cmeNowrap}>
+														<Badge
+															tone={
+																p.cme_status === 'signed'
+																	? 'green'
+																	: p.cme_status === 'issued'
+																		? 'blue'
+																		: 'gray'
+															}
+														>
+															{CME_STATUS_LABELS[p.cme_status]}
+														</Badge>
+														{(p.cme_certificate_no || p.cme_credits != null) && (
+															<div className={styles.cellSub}>
+																{[
+																	p.cme_certificate_no && `Số ${p.cme_certificate_no}`,
+																	p.cme_credits != null && `${p.cme_credits} TC`,
+																]
+																	.filter(Boolean)
+																	.join(' · ')}
+															</div>
+														)}
+													</td>
+												)}
+												<td className={styles.tdRight}>
+													<div className={styles.actionBtns}>
+														{perms.canUpdate && (
+															<button
+																className={styles.actionBtn}
+																title='Sửa'
+																onClick={() => {
+																	setEditing(p);
+																	setFormModal('edit');
+																}}
+															>
+																<EditSvg />
+															</button>
+														)}
+														{perms.canCme && p.cme_seq != null && (
+															<button
+																className={styles.actionBtn}
+																title='Thu hồi số CME'
+																onClick={() => d.revoke(p.id)}
+															>
+																<XSvg />
+															</button>
+														)}
+														{perms.canUpdate && (
+															<button
+																className={`${styles.actionBtn} ${styles.danger}`}
+																title='Xoá'
+																onClick={() => d.removeOne(p.id)}
+															>
+																<TrashSvg />
+															</button>
+														)}
+													</div>
+												</td>
+											</tr>
+										))
+									)}
+								</tbody>
+							</table>
 						</div>
 						<Pagination
 							{...pg.pagination}
@@ -599,9 +691,7 @@ export default function SeminarDetail() {
 						setEditing(null);
 					}}
 					onSave={async (form) => {
-						const ok = editing
-							? await d.editOne(editing.id, form)
-							: await d.addOne(form);
+						const ok = editing ? await d.editOne(editing.id, form) : await d.addOne(form);
 						if (ok) {
 							setFormModal(null);
 							setEditing(null);
@@ -610,23 +700,12 @@ export default function SeminarDetail() {
 				/>
 			)}
 
-			{checkInQrOpen && sem && (
-				<SeminarCheckInQrModal
-					seminarId={sem.id}
-					onClose={() => setCheckInQrOpen(false)}
-				/>
-			)}
-
 			{regQrOpen && sem && (
 				<SeminarRegistrationQrModal
 					seminar={sem}
-					onClose={() => {
-						setRegQrOpen(false);
-						if (searchParams.has('qr')) setSearchParams({}, { replace: true });
-					}}
+					onClose={closeRegQr}
 					onPresent={() => {
-						setRegQrOpen(false);
-						if (searchParams.has('qr')) setSearchParams({}, { replace: true });
+						closeRegQr();
 						setPresentOpen(true);
 					}}
 				/>
@@ -638,7 +717,6 @@ export default function SeminarDetail() {
 					onClose={() => setPresentOpen(false)}
 				/>
 			)}
-
 
 			{testOpen && sem && (
 				<SeminarTestModal
@@ -687,36 +765,56 @@ export default function SeminarDetail() {
 					}}
 				/>
 			)}
-
 		</AdminLayout>
 	);
 }
 
-function Info({ label, value }: { label: string; value: ReactNode }) {
+function Stat({ label, value, manual }: { label: string; value: ReactNode; manual?: boolean }) {
 	return (
-		<div className={styles.infoItem}>
-			<span className={styles.infoLabel}>{label}</span>
-			<span className={styles.infoValue}>{value}</span>
+		<div className={styles.statItem}>
+			<span className={styles.statNum}>
+				{value}
+				{manual && <sup title='Số liệu nhập tay'>*</sup>}
+			</span>
+			<span className={styles.statText}>{label}</span>
 		</div>
 	);
 }
 
-function Stat({
-	label,
-	value,
+// Ô công cụ tổ chức: bấm cả ô để mở
+function OrgTile({
+	icon,
+	title,
+	status,
+	desc,
 	hint,
+	action,
+	onClick,
 }: {
-	label: string;
-	value: ReactNode;
+	icon: ReactNode;
+	title: string;
+	status: ReactNode;
+	desc: string;
 	hint?: string;
+	action: string;
+	onClick: () => void;
 }) {
 	return (
-		<div className={styles.statCard}>
-			<div className={styles.statValue}>{value}</div>
-			<div className={styles.statLabel}>
-				{label}
-				{hint ? ` · ${hint}` : ''}
-			</div>
-		</div>
+		<button
+			type='button'
+			className={styles.orgTile}
+			onClick={onClick}
+		>
+			<span className={styles.orgHead}>
+				<span className={styles.orgIcon}>{icon}</span>
+				<span className={styles.orgTitle}>{title}</span>
+				{status}
+			</span>
+			<span className={styles.orgDesc}>{desc}</span>
+			{hint && <span className={styles.orgHint}>{hint}</span>}
+			<span className={styles.orgAction}>
+				{action} <ChevRSvg />
+			</span>
+		</button>
 	);
 }

@@ -8,6 +8,7 @@ const { scopeOf } = require('../middlewares/auth');
 const { ROLE, roleIdOf, inputRoleId } = require('./roleCodes');
 const { assertHttpUrl } = require('../utils/safeUrl');
 const { todayVN } = require('../utils/vnDate');
+const { httpError } = require('../utils/httpError');
 
 // Mã QR điểm danh: JWT ngắn hạn ký chính session_id (mirror utils/captcha.js)
 // — không trạng thái, không cần lưu DB, hết hạn nhanh. FE làm mới QR mỗi 28s;
@@ -111,7 +112,7 @@ const assertCourseInScope = async (courseId, actor) => {
 			.query(`SELECT 1 AS ok FROM courses c WHERE c.id = @id AND ${ASSIGNED_EXISTS_SQL}`)
 	).recordset[0];
 	if (!ok) {
-		throw Object.assign(new Error('Không có quyền thao tác trên khóa học này'), { statusCode: 403 });
+		throw httpError(403, 'Không có quyền thao tác trên khóa học này');
 	}
 };
 
@@ -133,7 +134,7 @@ const assertCourseChildInScope = async (paramName, childId, actor) => {
 	const row = (
 		await pool.request().input('id', sql.VarChar(20), String(childId)).query(CHILD_COURSE_SQL[paramName])
 	).recordset[0];
-	if (!row) throw Object.assign(new Error('Không tìm thấy dữ liệu'), { statusCode: 404 });
+	if (!row) throw httpError(404, 'Không tìm thấy dữ liệu');
 	await assertCourseInScope(row.course_id, actor);
 };
 
@@ -189,10 +190,7 @@ const getById = async (id, actor = null) => {
 			.input('actor_id', sql.VarChar(20), actor.id)
 			.query(`SELECT 1 AS ok FROM courses c WHERE c.id = @id AND ${ASSIGNED_EXISTS_SQL}`);
 		if (!access.recordset[0]) {
-			throw Object.assign(new Error('Không có quyền xem khóa học này'), {
-				status: 403,
-				statusCode: 403,
-			});
+			throw httpError(403, 'Không có quyền xem khóa học này');
 		}
 	}
 	const result = await pool.request().input('id', sql.VarChar(20), id).query(`${courseSelect} WHERE c.id = @id`);

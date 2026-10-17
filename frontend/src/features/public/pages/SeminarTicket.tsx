@@ -1,16 +1,38 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
-import { AlertSvg, CheckSvg } from '@/assets/icons';
+import { AlertSvg, CheckSvg, DownloadSvg, XSvg } from '@/assets/icons';
 import { BrandedQrCode, useBrandedQrImage } from '@/shared/components/BrandedQr';
 import { QuestionImageView } from '@/shared/components/QuestionImage';
 import { QuestionText } from '@/shared/components/QuestionImage/QuestionText';
 import PublicLayout from '../../../layouts/PublicLayout';
 import { publicUrl } from '../../../shared/utils/publicUrl';
-import { formatDateTimeVN } from '../../../shared/utils/formatDate';
-import { getSeminarTicket, submitSeminarTest, type SeminarTicket as Ticket } from '../api/publicApi';
-import { FormSection } from '../components/FormSection';
+import { formatDateOr, formatDateTimeVN } from '../../../shared/utils/formatDate';
+import {
+	getSeminarTicket,
+	startSeminarTest,
+	submitSeminarTest,
+	type SeminarTicket as Ticket,
+} from '../api/publicApi';
 import { seminarWhen, testWindowText } from '../utils/seminarWhen';
 import styles from './PublicPortal.module.css';
+
+const mmss = (sec: number) => {
+	const h = Math.floor(sec / 3600);
+	const m = Math.floor((sec % 3600) / 60);
+	const pad = (n: number) => String(n).padStart(2, '0');
+	return `${h ? `${h}:${pad(m)}` : m}:${pad(sec % 60)}`;
+};
+
+// Bài làm dở lưu trong máy để tải lại trang / mất mạng không mất (thứ tự đề cố định theo vé)
+const draftKey = (code: string) => `seminar-test:${code}`;
+const loadDraft = (code: string): (number | undefined)[] => {
+	try {
+		const v = JSON.parse(localStorage.getItem(draftKey(code)) || '[]');
+		return Array.isArray(v) ? v.map((x) => (Number.isInteger(x) ? x : undefined)) : [];
+	} catch {
+		return [];
+	}
+};
 
 // Vé cá nhân của người đã đăng ký hội nghị. QR trên vé chứa chính link trang
 // này: ban tổ chức quét bằng màn "Quét vé điểm danh" để điểm danh, người tham
@@ -22,21 +44,32 @@ export default function SeminarTicket() {
 	const [ticket, setTicket] = useState<Ticket | null>(null);
 	const [error, setError] = useState('');
 	const [loading, setLoading] = useState(false);
-	const [answers, setAnswers] = useState<(number | undefined)[]>([]);
+	const [answers, setAnswers] = useState<(number | undefined)[]>(() => loadDraft(code));
 	const [submitting, setSubmitting] = useState(false);
+	const [starting, setStarting] = useState(false);
+	const [autoSubmitted, setAutoSubmitted] = useState(false);
+	// Hạn nộp theo đồng hồ máy này (server trả số giây còn lại → không lệch giờ máy)
+	const [deadline, setDeadline] = useState<number | null>(null);
+	const [now, setNow] = useState(() => Date.now());
 	const justRegistered = !!(location.state as { justRegistered?: boolean } | null)?.justRegistered;
 	// Giữ thông báo sau khi state bị xoá (tự tải QR xong)
 	const [welcome] = useState(justRegistered);
+
+	const applyTicket = useCallback((t: Ticket) => {
+		setTicket(t);
+		const left = t.test.remaining_seconds;
+		setDeadline(t.test.questions && left != null ? Date.now() + left * 1000 : null);
+	}, []);
 
 	const fetchTicket = useCallback(
 		() =>
 			getSeminarTicket(code)
 				.then((t) => {
-					setTicket(t);
+					applyTicket(t);
 					setError('');
 				})
 				.catch((e) => setError(e instanceof Error ? e.message : 'Không tải được vé')),
-		[code],
+		[code, applyTicket],
 	);
 
 	useEffect(() => {
@@ -73,21 +106,80 @@ export default function SeminarTicket() {
 
 	const questions = ticket?.test.questions ?? null;
 
-	const handleSubmitTest = async (e: React.FormEvent) => {
-		e.preventDefault();
-		if (!questions) return;
-		const missing = questions.findIndex((_, i) => answers[i] === undefined);
-		if (missing >= 0) return setError(`Bạn chưa trả lời câu ${missing + 1}`);
-		if (!window.confirm('Nộp bài? Mỗi người chỉ được nộp 1 lần.')) return;
+	useEffect(() => {
+		if (deadline == null) return;
+		const id = window.setInterval(() => setNow(Date.now()), 1000);
+		return () => window.clearInterval(id);
+	}, [deadline]);
+
+	useEffect(() => {
+		try {
+			localStorage.setItem(draftKey(code), JSON.stringify(answers));
+		} catch {
+			/* chế độ ẩn danh / bị chặn lưu trữ — vẫn làm bài bình thường */
+		}
+	}, [answers, code]);
+
+	const remaining = deadline == null ? null : Math.max(0, Math.ceil((deadline - now) / 1000));
+
+	const submit = async (auto: boolean) => {
+		if (!questions || submitting) return;
 		setSubmitting(true);
 		try {
-			await submitSeminarTest(code, answers as number[]);
+			// Câu bỏ trống gửi null (0 điểm)
+			await submitSeminarTest(
+				code,
+				questions.map((_, i) => answers[i] ?? null),
+			);
+			try {
+				localStorage.removeItem(draftKey(code));
+			} catch {
+				/* bỏ qua */
+			}
+			setAutoSubmitted(auto);
 			setError('');
 			load();
 		} catch (err) {
 			setError(err instanceof Error ? err.message : 'Nộp bài thất bại');
 		} finally {
 			setSubmitting(false);
+		}
+	};
+
+	// Hết giờ → tự nộp đúng 1 lần (kể cả các câu chưa chọn)
+	const submitRef = useRef(submit);
+	useEffect(() => {
+		submitRef.current = submit;
+	});
+	const autoFired = useRef(false);
+	useEffect(() => {
+		if (remaining !== 0 || autoFired.current) return;
+		autoFired.current = true;
+		void submitRef.current(true);
+	}, [remaining]);
+
+	const handleSubmitTest = (e: React.FormEvent) => {
+		e.preventDefault();
+		if (!questions) return;
+		const missing = questions.filter((_, i) => answers[i] === undefined).length;
+		const msg = missing
+			? `Bạn còn ${missing} câu chưa trả lời (tính 0 điểm). Vẫn nộp bài? Mỗi người chỉ được nộp 1 lần.`
+			: 'Nộp bài? Mỗi người chỉ được nộp 1 lần.';
+		if (!window.confirm(msg)) return;
+		void submit(false);
+	};
+
+	const handleStart = async () => {
+		const minutes = ticket?.test.duration_minutes;
+		if (!window.confirm(`Bắt đầu làm bài? Bạn có ${minutes} phút, hết giờ bài sẽ tự nộp.`)) return;
+		setStarting(true);
+		try {
+			applyTicket(await startSeminarTest(code));
+			setError('');
+		} catch (err) {
+			setError(err instanceof Error ? err.message : 'Không bắt đầu được bài test');
+		} finally {
+			setStarting(false);
 		}
 	};
 
@@ -107,6 +199,10 @@ export default function SeminarTicket() {
 
 	const { test } = ticket;
 	const testDone = !!test.submitted_at;
+	// Bài nộp trước khi có điểm từng câu: mỗi câu đúng 1 điểm
+	const score = test.score ?? test.correct;
+	const maxScore = test.max_score ?? test.total;
+	const testPassed = testDone && test.passed !== false;
 
 	return (
 		<PublicLayout
@@ -115,8 +211,7 @@ export default function SeminarTicket() {
 		>
 			{welcome && (
 				<div className={`${styles.alertBox} ${styles.alertSuccess}`}>
-					<CheckSvg /> Đăng ký thành công! Hãy lưu ảnh mã QR về máy — nếu chưa thấy ảnh, bấm "Tải mã QR" hoặc chụp
-					màn hình.
+					<CheckSvg /> Đăng ký thành công! Hãy lưu mã QR về máy (bấm "Tải mã QR" hoặc chụp màn hình).
 				</div>
 			)}
 			{error && (
@@ -125,58 +220,91 @@ export default function SeminarTicket() {
 				</div>
 			)}
 
-			<div className={styles.section}>
-				<div
-					className={styles.sectionBody}
-					style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, textAlign: 'center' }}
-				>
-					<BrandedQrCode value={ticketUrl} />
-					<div className={styles.courseName}>{holder}</div>
-					<div className={styles.courseMeta}>
-						{ticket.seminar.title}
-						<br />
-						{seminarWhen(ticket.seminar)}
-						{ticket.seminar.location ? ` · ${ticket.seminar.location}` : ''}
-					</div>
-					<button
-						type='button'
-						className={styles.submitBtn}
-						onClick={() => qrImage.save()}
-						disabled={!qrImage.ready}
-					>
-						Tải mã QR
-					</button>
-					<p className={styles.sectionDesc}>
-						Khi đến hội nghị, đưa mã QR này cho ban tổ chức quét để điểm danh. Cuối buổi, mở lại trang này (quét
-						chính mã QR trên) để làm bài test.
-					</p>
+			<div className={`${styles.section} ${styles.ticketCard}`}>
+				<BrandedQrCode
+					value={ticketUrl}
+					size={220}
+				/>
+				<div className={styles.courseName}>{holder}</div>
+				<div className={styles.courseMeta}>
+					{seminarWhen(ticket.seminar)}
+					{ticket.seminar.location ? ` · ${ticket.seminar.location}` : ''}
 				</div>
+				<button
+					type='button'
+					className={styles.searchBtn}
+					onClick={() => qrImage.save()}
+					disabled={!qrImage.ready}
+				>
+					<DownloadSvg /> Tải mã QR
+				</button>
+				<span className={styles.ticketHint}>Đưa mã này cho ban tổ chức quét khi đến hội nghị</span>
 			</div>
 
-			<FormSection
-				step={1}
-				title='Điểm danh'
-			>
-				{ticket.checked_in_at ? (
-					<span>
-						<CheckSvg /> Đã điểm danh lúc {formatDateTimeVN(ticket.checked_in_at)}
-					</span>
-				) : (
-					<span className={styles.sectionDesc}>Chưa điểm danh — đưa mã QR cho ban tổ chức quét khi đến hội nghị.</span>
+			<ol className={styles.ticketSteps}>
+				<TicketStep
+					state={ticket.checked_in_at ? 'done' : 'todo'}
+					title='Điểm danh'
+					text={ticket.checked_in_at ? formatDateTimeVN(ticket.checked_in_at) : 'Chưa điểm danh'}
+				/>
+				{test.has_test && (
+					<TicketStep
+						state={!testDone ? 'todo' : test.passed === false ? 'fail' : 'done'}
+						title='Bài test'
+						text={
+							testDone
+								? `${score}/${maxScore} điểm${test.pass_score != null ? (test.passed ? ' · Đạt' : ' · Chưa đạt') : ''}`
+								: 'Chưa làm'
+						}
+					/>
 				)}
-			</FormSection>
+				{ticket.seminar.grants_cme && (
+					<TicketStep
+						state={ticket.cme ? 'done' : 'todo'}
+						title='Chứng nhận CME'
+						text={
+							ticket.cme
+								? `Số ${ticket.cme.certificate_no}/${ticket.cme.year}`
+								: ticket.checked_in_at && (testPassed || !test.has_test)
+									? 'Chờ ban tổ chức cấp'
+									: 'Chưa đủ điều kiện'
+						}
+					/>
+				)}
+			</ol>
 
-			{test.has_test && (
-				<FormSection
-					step={2}
-					title='Bài test cuối buổi'
-				>
-					{testDone ? (
-						<span>
-							<CheckSvg /> Đã nộp bài lúc {formatDateTimeVN(test.submitted_at!)} — đúng {test.correct}/{test.total} câu.
-						</span>
-					) : questions ? (
+			{autoSubmitted && (
+				<div className={`${styles.alertBox} ${styles.alertSuccess}`}>
+					<CheckSvg /> Đã hết giờ — bài làm đã được tự động nộp.
+				</div>
+			)}
+			{testDone && test.pass_score != null && test.passed === false && (
+				<div className={`${styles.alertBox} ${styles.alertError}`}>
+					<AlertSvg /> Chưa đạt điểm tối thiểu ({test.pass_score} điểm) để được cấp chứng nhận CME.
+				</div>
+			)}
+
+			{test.has_test && !testDone && (
+				<section className={styles.section}>
+					<header className={styles.sectionHead}>
+						<h2 className={styles.sectionHeading}>Bài test cuối buổi</h2>
+					</header>
+					<div className={styles.sectionBody}>
+					{questions ? (
 						<form onSubmit={handleSubmitTest}>
+							{remaining != null && (
+								<div className={`${styles.testTimer} ${remaining <= 60 ? styles.testTimerUrgent : ''}`}>
+									<span>
+										{test.duration_minutes ? 'Thời gian làm bài còn' : 'Dừng nhận bài sau'}
+										{remaining === 0 && ' — đang tự nộp bài...'}
+									</span>
+									<span className={styles.testTimerClock}>{mmss(remaining)}</span>
+								</div>
+							)}
+							<p className={styles.sectionDesc}>
+								{questions.length} câu · tổng {test.max_score ?? questions.length} điểm
+								{test.pass_score != null ? ` · điểm đạt ${test.pass_score}` : ''}
+							</p>
 							{questions.map((q, i) => (
 								<fieldset
 									key={i}
@@ -184,7 +312,8 @@ export default function SeminarTicket() {
 									style={{ border: 0, padding: 0, margin: '0 0 16px' }}
 								>
 									<legend className={styles.label}>
-										Câu {i + 1}. <QuestionText text={q.q} />
+										Câu {i + 1}
+										{q.points != null ? ` (${q.points} điểm)` : ''}. <QuestionText text={q.q} />
 									</legend>
 									{q.image && (
 										<div style={{ margin: '4px 0 8px' }}>
@@ -200,6 +329,7 @@ export default function SeminarTicket() {
 												type='radio'
 												name={`q${i}`}
 												checked={answers[i] === j}
+												disabled={submitting}
 												onChange={() =>
 													setAnswers((a) => {
 														const next = [...a];
@@ -221,16 +351,51 @@ export default function SeminarTicket() {
 								{submitting ? 'Đang nộp...' : 'Nộp bài'}
 							</button>
 						</form>
+					) : test.can_start ? (
+						<div className={styles.testIntro}>
+							<div className={styles.testFacts}>
+								<span>
+									<b>{test.question_count}</b> câu
+								</span>
+								<span>
+									<b>{test.max_score}</b> điểm
+								</span>
+								<span>
+									<b>{test.duration_minutes}</b> phút
+								</span>
+								{test.pass_score != null && (
+									<span>
+										<b>≥ {test.pass_score}</b> để đạt
+									</span>
+								)}
+							</div>
+							<span className={styles.ticketHint}>
+								Đồng hồ chạy ngay khi bấm bắt đầu, hết giờ bài tự nộp
+								{test.window?.end_time
+									? ` · dừng nhận bài ${test.window.end_time} ${formatDateOr(test.window.end_date || test.window.date)}`
+									: ''}
+							</span>
+							<button
+								type='button'
+								className={styles.submitBtn}
+								onClick={() => void handleStart()}
+								disabled={starting}
+							>
+								{starting ? 'Đang mở đề...' : 'Bắt đầu làm bài'}
+							</button>
+						</div>
 					) : (
 						<div style={{ display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'flex-start' }}>
 							<span className={styles.sectionDesc}>
 								{!ticket.checked_in_at
 									? 'Cần điểm danh trước khi làm bài test.'
-									: test.state === 'closed'
-										? 'Đã hết giờ làm bài test.'
-										: test.window
-											? `Bài test chưa mở — thời gian làm bài: ${testWindowText(test.window)}.`
-											: 'Bài test chưa mở — ban tổ chức sẽ mở vào cuối buổi.'}
+									: test.expired
+										? 'Đã hết thời gian làm bài nhưng bài chưa được nộp — vui lòng liên hệ ban tổ chức.'
+										: test.state === 'closed'
+											? 'Đã hết thời gian nhận bài test.'
+											: test.window
+												? `Bài test chưa mở — thời gian làm bài: ${testWindowText(test.window)}.`
+												: 'Bài test chưa mở — ban tổ chức sẽ mở vào cuối buổi.'}
 							</span>
 							<button
 								type='button'
@@ -242,29 +407,21 @@ export default function SeminarTicket() {
 							</button>
 						</div>
 					)}
-				</FormSection>
-			)}
-
-			{ticket.seminar.grants_cme && (
-				<FormSection
-					step={test.has_test ? 3 : 2}
-					title='Chứng nhận CME'
-				>
-					{ticket.cme ? (
-						<span>
-							<CheckSvg /> Đã cấp — số {ticket.cme.certificate_no}/{ticket.cme.year}
-							{ticket.cme.credits ? ` · ${ticket.cme.credits} tín chỉ` : ''}
-						</span>
-					) : ticket.checked_in_at && (testDone || !test.has_test) ? (
-						<span className={styles.sectionDesc}>Đã đủ điều kiện — chờ ban tổ chức cấp chứng nhận.</span>
-					) : (
-						<span className={styles.sectionDesc}>
-							Chỉ được cấp khi đã điểm danh{test.has_test ? ' và làm bài test cuối buổi' : ''}.
-						</span>
-					)}
-				</FormSection>
+					</div>
+				</section>
 			)}
 			{qrImage.sheet}
 		</PublicLayout>
+	);
+}
+
+// 1 bước trong tiến trình của vé: điểm danh → bài test → CME
+function TicketStep({ state, title, text }: { state: 'done' | 'todo' | 'fail'; title: string; text: string }) {
+	return (
+		<li className={`${styles.ticketStep} ${styles[`ticketStep_${state}`]}`}>
+			<span className={styles.ticketStepIcon}>{state === 'done' ? <CheckSvg /> : state === 'fail' ? <XSvg /> : null}</span>
+			<span className={styles.ticketStepTitle}>{title}</span>
+			<span className={styles.ticketStepText}>{text}</span>
+		</li>
 	);
 }
