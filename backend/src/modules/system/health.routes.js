@@ -58,7 +58,7 @@ router.get('/db', async (req, res) => {
 
 		try {
 			// Lấy pool đang dùng trong app
-			const dbConfig = require('../config/db');
+			const dbConfig = require('../../config/db');
 			if (dbConfig.getPool) {
 				pool = await dbConfig.getPool();
 			} else {

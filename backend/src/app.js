@@ -149,7 +149,7 @@ app.use(
 );
 
 // ─── Health check ─────────────────────────────────────────────────────────────
-app.use('/health', require('./routes/health'));
+app.use('/health', require('./modules/system/health.routes'));
 
 // ─── Swagger UI (chỉ admin mới truy cập được) ────────────────────────────────
 // Basic Auth không có khoá tài khoản như /auth/login — chặn brute-force
@@ -211,7 +211,7 @@ if (isProduction) {
 
 // Báo cáo CSP từ trình duyệt — đặt trước activityLogger để không ghi vào nhật
 // ký tác động của người dùng.
-app.use(`${API}/csp-report`, require('./routes/cspReport'));
+app.use(`${API}/csp-report`, require('./modules/system/cspReport.routes'));
 
 // Giới hạn tổng theo IP cho mọi API — lưới an toàn phía sau limit_req của
 // nginx (frontend/nginx.conf), chặn cả request gọi thẳng 127.0.0.1:3001 bỏ qua
@@ -235,13 +235,13 @@ app.use(
 app.use(API, signUploadUrlsInJson);
 app.use(API, activityLogger);
 
-app.use(`${API}/modules`, require('./routes/modules'));
+app.use(`${API}/modules`, require('./modules/system/modules.routes'));
 app.use(`${API}/auth`, require('./modules/auth/auth.routes'));
 app.use(`${API}/users`, require('./routes/users'));
 app.use(`${API}/topics`, requireModule('RESEARCH'), require('./modules/topics/topics.routes'));
 app.use(`${API}/councils`, requireModule('RESEARCH'), require('./modules/councils/councils.routes'));
 app.use(`${API}/files`, require('./modules/topics/files.routes'));
-app.use(`${API}/excel`, require('./routes/excel'));
+app.use(`${API}/excel`, require('./modules/system/excel.routes'));
 app.use(`${API}/dashboard`, require('./routes/dashboard'));
 app.use(`${API}/notifications`, require('./modules/notifications/notifications.routes'));
 app.use(`${API}/events`, require('./modules/events/events.routes'));

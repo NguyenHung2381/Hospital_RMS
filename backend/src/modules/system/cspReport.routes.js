@@ -1,7 +1,7 @@
 const router = require('express').Router();
 const express = require('express');
 // Đếm trên Redis, tự rơi về bộ nhớ khi Redis lỗi (utils/rateLimit.js)
-const rateLimit = require('../utils/rateLimit');
+const rateLimit = require('../../utils/rateLimit');
 
 // Nhận báo cáo vi phạm Content-Security-Policy từ trình duyệt (header
 // Content-Security-Policy-Report-Only trong frontend/nginx.conf). Giai đoạn chỉ

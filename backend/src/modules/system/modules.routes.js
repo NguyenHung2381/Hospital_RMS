@@ -1,7 +1,7 @@
 const router = require('express').Router();
-const { authenticate } = require('../middlewares/auth');
-const { MODULES, isModuleEnabled } = require('../middlewares/moduleGuard');
-const { success } = require('../utils/response');
+const { authenticate } = require('../../middlewares/auth');
+const { MODULES, isModuleEnabled } = require('../../middlewares/moduleGuard');
+const { success } = require('../../utils/response');
 
 // Mọi người dùng đăng nhập đều cần biết module nào đang bật để ẩn menu.
 router.get('/', authenticate, async (req, res, next) => {
