@@ -2,7 +2,7 @@ const { getPool, sql } = require('../config/db');
 const permCache = require('../middlewares/permissionCache');
 const { invalidate } = require('../utils/cache');
 const { ALL_PERMISSIONS } = require('./catalog');
-const { RESOURCE_SCOPES, isScoped } = require('./scopes');
+const { RESOURCE_SCOPES, isScoped, nullScopeFill } = require('./scopes');
 
 // Đồng bộ permissions/catalog.js → bảng `permissions` lúc server khởi động.
 //   - Quyền có trong catalog, chưa có trong DB → INSERT. Nếu khai báo seedFrom:
@@ -103,14 +103,15 @@ const syncPermissions = async ({ dryRun = false } = {}) => {
 				});
 				// Quyền mới có phạm vi dữ liệu → chép phạm vi RỘNG NHẤT của các quyền
 				// nguồn mà vai trò đang có (xếp hạng theo RESOURCE_SCOPES, không theo
-				// chữ cái). Quyền mới không có phạm vi → scope NULL.
+				// chữ cái); quyền nguồn không có phạm vi → nullScopeFill. Quyền mới
+				// không có phạm vi → scope NULL.
 				const ranks = isScoped(perm.resource) ? RESOURCE_SCOPES[perm.resource] : null;
 				const withScope = !!ranks;
 				const rankExpr = withScope
 					? `CASE rp.scope ${ranks.map((sc, i) => `WHEN '${sc}' THEN ${i}`).join(' ')} ELSE -1 END`
 					: null;
 				const scopeExpr = withScope
-					? `CASE MAX(${rankExpr}) ${ranks.map((sc, i) => `WHEN ${i} THEN '${sc}'`).join(' ')} ELSE '${ranks[0]}' END`
+					? `CASE MAX(${rankExpr}) ${ranks.map((sc, i) => `WHEN ${i} THEN '${sc}'`).join(' ')} ELSE '${nullScopeFill(perm.resource)}' END`
 					: null;
 				const result = await req.query(`
           INSERT INTO role_permissions (role_id, permission_id${withScope ? ', scope' : ''})

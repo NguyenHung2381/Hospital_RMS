@@ -121,14 +121,17 @@ export default function StaffAttendance() {
 								</option>
 							))}
 						</select>
-						<select className={tbl.filterSelect} value={dept} onChange={(e) => setDept(e.target.value)} aria-label='Khoa/phòng'>
-							<option value=''>Tất cả khoa/phòng</option>
-							{departments.map((d) => (
-								<option key={d} value={d}>
-									{d}
-								</option>
-							))}
-						</select>
+						{/* Xem phạm vi khoa: server chỉ trả nhân viên khoa mình ⇒ không cần lọc khoa */}
+						{(departments.length > 1 || dept) && (
+							<select className={tbl.filterSelect} value={dept} onChange={(e) => setDept(e.target.value)} aria-label='Khoa/phòng'>
+								<option value=''>Tất cả khoa/phòng</option>
+								{departments.map((d) => (
+									<option key={d} value={d}>
+										{d}
+									</option>
+								))}
+							</select>
+						)}
 						<SearchInput value={search} onChange={setSearch} placeholder='Tìm theo tên, MNV...' />
 					</div>
 				</div>

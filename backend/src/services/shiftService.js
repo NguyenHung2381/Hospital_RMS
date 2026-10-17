@@ -1,6 +1,7 @@
 const { getPool, sql } = require('../config/db');
 const { broadcast } = require('./eventService');
 const { validateShift, normalizePatternDays, DATE_RE } = require('../utils/attendanceShift');
+const { scopeOf } = require('../middlewares/auth');
 
 // Ca làm việc, mẫu ca tuần, phân ca theo ngày (2026-10-30_attendance_shifts.sql).
 // Logic chọn ca khi chấm công ở utils/attendanceShift.js.
@@ -10,6 +11,12 @@ const changed = () => broadcast('update', { entity: 'work_shifts' });
 
 const dateKey = (d) => (d instanceof Date ? d.toISOString().slice(0, 10) : d);
 const parsePattern = (row) => row && { ...row, days: normalizePatternDays(JSON.parse(row.days)) };
+
+// Phạm vi khoa của lượt cấp staff_attendance:<action> (permissions/scopes.js):
+// undefined = toàn viện; còn lại = mã khoa duy nhất được thấy/sửa (null khi
+// người thao tác chưa thuộc khoa nào ⇒ không ai).
+const deptLimit = (actor, action) =>
+	scopeOf(actor, 'staff_attendance', action) === 'department' ? (actor.department_id ?? null) : undefined;
 
 // Chạy fn(tx) trong 1 transaction
 const inTx = async (fn) => {
@@ -197,9 +204,12 @@ const setPatternUsers = async (id, userIds) => {
 
 // ─── Phân ca theo ngày ───────────────────────────────────────────────────────
 // Dữ liệu cho lưới phân ca: người + phân ca trong khoảng ngày; client tự ghép với mẫu tuần.
-const getRoster = async ({ from, to, department_id }) => {
+// Phân ca phạm vi khoa: chỉ người cùng khoa với người thao tác (bỏ qua department_id gửi lên).
+const getRoster = async ({ from, to, department_id }, actor) => {
+	const limit = deptLimit(actor, 'roster');
+	if (limit === null) return { users: [], assignments: [] };
 	const pool = await getPool();
-	const users = await listUsers(department_id);
+	const users = await listUsers(limit ?? department_id);
 	const assignments = (
 		await pool.request().input('from', sql.Date, from).input('to', sql.Date, to).query(`
       SELECT a.user_id, a.work_date, a.shift_id FROM shift_assignments a
@@ -216,9 +226,27 @@ const getRoster = async ({ from, to, department_id }) => {
 
 const MAX_CELLS = 20000;
 
+// Phân ca phạm vi khoa: mọi người trong danh sách phải cùng khoa với người thao tác.
+const assertUsersInDept = async (userIds, limit) => {
+	if (limit === undefined) return;
+	const outside = limit === null
+		? userIds
+		: (
+				await (await getPool())
+					.request()
+					.input('users', sql.NVarChar(sql.MAX), JSON.stringify(userIds))
+					.input('dept', sql.VarChar(20), String(limit))
+					.query(`
+          SELECT j.value AS id FROM OPENJSON(@users) j
+          WHERE NOT EXISTS (SELECT 1 FROM users u WHERE u.id = j.value AND u.department_id = @dept)
+        `)
+			).recordset;
+	if (outside.length) throw httpError(403, 'Chỉ được phân ca cho nhân viên trong khoa của bạn');
+};
+
 // Đặt ô phân ca cho mọi cặp (người × ngày):
 //   mode 'shifts'  → đúng các ca shift_ids   mode 'off' → nghỉ   mode 'pattern' → bỏ phân ca, theo mẫu tuần
-const setRoster = async ({ user_ids, dates, mode, shift_ids = [] }, actorId) => {
+const setRoster = async ({ user_ids, dates, mode, shift_ids = [] }, actor) => {
 	const users = [...new Set(user_ids.map(String))];
 	const days = [...new Set(dates)];
 	if (!users.length || !days.length) throw httpError(400, 'Chọn ít nhất 1 người và 1 ngày');
@@ -226,6 +254,7 @@ const setRoster = async ({ user_ids, dates, mode, shift_ids = [] }, actorId) => 
 	if (users.length * days.length > MAX_CELLS) throw httpError(400, `Tối đa ${MAX_CELLS} ô mỗi lần`);
 	const shifts = mode === 'shifts' ? [...new Set(shift_ids.map(Number))] : mode === 'off' ? [null] : [];
 	if (mode === 'shifts' && !shifts.length) throw httpError(400, 'Chọn ít nhất 1 ca');
+	await assertUsersInDept(users, deptLimit(actor, 'roster'));
 	await inTx(async (tx) => {
 		const req = () =>
 			new sql.Request(tx)
@@ -244,7 +273,7 @@ const setRoster = async ({ user_ids, dates, mode, shift_ids = [] }, actorId) => 
 		}
 		await req()
 			.input('shifts', sql.NVarChar(sql.MAX), JSON.stringify(shifts))
-			.input('actor', sql.VarChar(20), actorId)
+			.input('actor', sql.VarChar(20), actor.id)
 			.query(`
         INSERT INTO shift_assignments (user_id, work_date, shift_id, updated_by)
         SELECT u.id, CAST(d.value AS DATE), TRY_CAST(s.value AS INT), @actor
@@ -284,11 +313,11 @@ const assignmentsForUser = async (userId, from, to) => {
 	).recordset.map((a) => ({ ...a, work_date: dateKey(a.work_date) }));
 };
 
-// Lịch ca cả viện trong 1 ngày (bảng chấm công): mẫu của từng người + phân ca ngày đó
-const planForDate = async (date) => {
+// Lịch ca trong 1 ngày (bảng chấm công) của cả viện hoặc 1 khoa: mẫu của từng người + phân ca ngày đó
+const planForDate = async (date, departmentId) => {
 	const pool = await getPool();
 	const [users, patterns, assignments, shifts] = await Promise.all([
-		listUsers(),
+		listUsers(departmentId),
 		listPatterns(),
 		pool.request().input('date', sql.Date, date).query('SELECT user_id, work_date, shift_id FROM shift_assignments WHERE work_date = @date'),
 		shiftsMap(),
@@ -303,6 +332,7 @@ const planForDate = async (date) => {
 };
 
 module.exports = {
+	deptLimit,
 	listShifts,
 	saveShift,
 	removeShift,

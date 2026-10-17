@@ -15,7 +15,7 @@ const { success } = require('../utils/response');
 
 router.use(authenticate);
 
-// GET /staff-attendance?date=YYYY-MM-DD (mặc định hôm nay)
+// GET /staff-attendance?date=YYYY-MM-DD (mặc định hôm nay) — phạm vi khoa: chỉ khoa mình
 router.get(
 	'/',
 	authorizePermission(['staff_attendance', 'read']),
@@ -23,7 +23,7 @@ router.get(
 	validate,
 	async (req, res, next) => {
 		try {
-			return success(res, await staffAttendanceService.getByDate(req.query.date));
+			return success(res, await staffAttendanceService.getByDate(req.query.date, req.user));
 		} catch (err) {
 			next(err);
 		}
@@ -124,7 +124,8 @@ router.put(
 	}),
 );
 
-// GET /staff-attendance/roster?from=&to=&department_id= — tối đa 62 ngày
+// GET /staff-attendance/roster?from=&to=&department_id= — tối đa 62 ngày.
+// Phân ca phạm vi khoa (staff_attendance:roster@department): chỉ thấy/xếp ca khoa mình.
 router.get(
 	'/roster',
 	canRoster,
@@ -140,7 +141,7 @@ router.get(
 		query('department_id').optional({ values: 'falsy' }).isString().isLength({ max: 20 }),
 	],
 	validate,
-	handle(async (req, res) => success(res, await shiftService.getRoster(req.query))),
+	handle(async (req, res) => success(res, await shiftService.getRoster(req.query, req.user))),
 );
 // Body: { user_ids, dates: ['YYYY-MM-DD'], mode: 'shifts'|'off'|'pattern', shift_ids? }
 router.put(
@@ -156,7 +157,7 @@ router.put(
 		body('shift_ids.*').isInt({ min: 1 }).toInt(),
 	],
 	validate,
-	handle(async (req, res) => success(res, await shiftService.setRoster(req.body, req.user.id), 'Đã cập nhật phân ca')),
+	handle(async (req, res) => success(res, await shiftService.setRoster(req.body, req.user), 'Đã cập nhật phân ca')),
 );
 
 module.exports = router;

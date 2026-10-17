@@ -147,22 +147,25 @@ export default function Roster() {
 						</Button>
 					</div>
 					<div className={tbl.tableControls}>
-						<select
-							className={tbl.filterSelect}
-							value={dept}
-							onChange={(e) => {
-								setDept(e.target.value);
-								pg.setPage(1);
-							}}
-							aria-label='Khoa/phòng'
-						>
-							<option value=''>Tất cả khoa/phòng</option>
-							{departments.map((d) => (
-								<option key={d} value={d}>
-									{d}
-								</option>
-							))}
-						</select>
+						{/* Phân ca phạm vi khoa: server chỉ trả người khoa mình ⇒ không cần lọc khoa */}
+						{(departments.length > 1 || dept) && (
+							<select
+								className={tbl.filterSelect}
+								value={dept}
+								onChange={(e) => {
+									setDept(e.target.value);
+									pg.setPage(1);
+								}}
+								aria-label='Khoa/phòng'
+							>
+								<option value=''>Tất cả khoa/phòng</option>
+								{departments.map((d) => (
+									<option key={d} value={d}>
+										{d}
+									</option>
+								))}
+							</select>
+						)}
 						<SearchInput value={search} onChange={setSearch} placeholder='Tìm theo tên, MNV...' />
 					</div>
 				</div>

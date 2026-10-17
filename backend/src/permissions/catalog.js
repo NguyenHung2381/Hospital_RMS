@@ -311,9 +311,9 @@ const MODULES = [
 				key: 'staff_attendance',
 				label: 'Chấm công nhân viên',
 				permissions: [
-					p('PERM-STATT-READ', 'read', 'Xem bảng chấm công', 'Xem giờ vào/ra chấm công của toàn bộ nhân viên'),
-					p('PERM-STATT-MANAGE', 'manage', 'Cấu hình ca làm việc', 'Tạo ca làm, mẫu ca theo tuần và gán mẫu ca cho nhân viên'),
-					p('PERM-STATT-ROSTER', 'roster', 'Phân ca', 'Xếp ca làm việc theo ngày cho nhân viên (ghi đè mẫu ca tuần)'),
+					p('PERM-STATT-READ', 'read', 'Xem bảng chấm công', 'Xem giờ vào/ra chấm công của nhân viên trong khoa hoặc toàn viện (theo phạm vi)'),
+					p('PERM-STATT-MANAGE', 'manage', 'Cấu hình ca làm việc', 'Tạo ca làm, mẫu ca theo tuần và gán mẫu ca cho nhân viên (luôn toàn viện, không theo phạm vi)'),
+					p('PERM-STATT-ROSTER', 'roster', 'Phân ca', 'Xếp ca làm việc theo ngày cho nhân viên trong khoa hoặc toàn viện (theo phạm vi), ghi đè mẫu ca tuần'),
 				],
 			},
 			{

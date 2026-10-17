@@ -5,7 +5,7 @@ Mô hình: mỗi tài khoản có **một vai trò**; vai trò có tập **lư�
 | Khái niệm | Ở đâu | Ghi chú |
 |---|---|---|
 | Danh mục quyền | `catalog.js` | Nguồn duy nhất. Server đồng bộ vào bảng `permissions` lúc khởi động (`sync.js`). |
-| Phạm vi dữ liệu | `scopes.js`, cột `role_permissions.scope` | `topics`: own / department / all · `users`: department / all · `courses`: assigned / all. Resource khác: `NULL`. |
+| Phạm vi dữ liệu | `scopes.js`, cột `role_permissions.scope` | `topics`: own / department / all · `users`: department / all · `courses`: assigned / all · `staff_attendance`: department / all (lượt cấp có trước khi thêm phạm vi giữ `all` — `nullScopeFill`). Resource khác: `NULL`. |
 | Superuser | cột `roles.is_superuser` | Không phải quyền trong danh mục, không cấp được qua giao diện. Trong code hiện dưới dạng key `system:manage`. |
 | Vai trò hệ thống | `roles.is_system`, `roles.code` | 8 vai trò gốc, không xoá được. Code tham chiếu qua mã (`services/roleCodes.js`), không dùng id `VT0x`. |
 | Chống leo thang | `services/privilegeGuard.js` | Chỉ cấp / gán / sửa được thứ không vượt quyền (và phạm vi) của chính mình. |

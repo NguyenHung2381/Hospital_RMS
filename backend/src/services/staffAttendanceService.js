@@ -145,18 +145,23 @@ const check = async (userId, { ip, lat, lng, accuracy, shift_id, work_date }) =>
 
 // Bảng chấm công 1 ngày (theo ngày bắt đầu ca) cho quản trị: các lượt đã chấm + các ca
 // được xếp mà chưa chấm. Lọc khoa/tìm tên làm ở client.
-const getByDate = async (dateArg) => {
+// Xem phạm vi khoa (staff_attendance:read@department): chỉ nhân viên cùng khoa với actor.
+const getByDate = async (dateArg, actor) => {
 	const date = dateArg || todayKeyVN();
+	const dept = shiftService.deptLimit(actor, 'read');
+	if (dept === null) return [];
 	const pool = await getPool();
+	const req = pool.request().input('date', sql.Date, date);
+	if (dept !== undefined) req.input('dept', sql.VarChar(20), String(dept));
 	const [records, plan] = await Promise.all([
-		pool.request().input('date', sql.Date, date).query(`
+		req.query(`
       SELECT a.*, u.full_name, u.staff_number, d.name AS department_name
       FROM staff_attendance a
       JOIN users u ON u.id = a.user_id
       LEFT JOIN departments d ON d.id = u.department_id
-      WHERE a.work_date = @date
+      WHERE a.work_date = @date${dept !== undefined ? ' AND u.department_id = @dept' : ''}
     `),
-		shiftService.planForDate(date),
+		shiftService.planForDate(date, dept),
 	]);
 	const rows = records.recordset.map((r) => ({ ...r, key: `r${r.id}`, work_date: date, status: 'checked' }));
 	const done = new Set(rows.map((r) => `${r.user_id}|${r.shift_id ?? ''}`));

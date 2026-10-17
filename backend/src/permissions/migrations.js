@@ -1,7 +1,7 @@
 const { getPool, sql } = require('../config/db');
 const permCache = require('../middlewares/permissionCache');
 const { invalidate } = require('../utils/cache');
-const { RESOURCE_SCOPES, isScoped, LEGACY_REMOVED_KEYS, normalizeLegacy } = require('./scopes');
+const { isScoped, nullScopeFill, LEGACY_REMOVED_KEYS, normalizeLegacy } = require('./scopes');
 
 // Nâng cấp mô hình phân quyền: phạm vi dữ liệu thành cột role_permissions.scope.
 // Idempotent — chạy mỗi lần khởi động (permissions/index.js), hoặc tay:
@@ -14,7 +14,8 @@ const { RESOURCE_SCOPES, isScoped, LEGACY_REMOVED_KEYS, normalizeLegacy } = requ
 //      giữ nguyên quyền hiệu lực, phạm vi ghi vào cột scope, manage-wildcard
 //      bung thành từng quyền cụ thể — rồi xoá các quyền kiểu cũ đó.
 //   3. Lượt cấp của resource có phạm vi mà scope còn NULL (vd do phiên bản cũ
-//      ghi vào) → gán phạm vi HẸP nhất.
+//      ghi vào) → gán phạm vi HẸP nhất; riêng resource thêm phạm vi về sau
+//      (staff_attendance) → 'all', giữ nguyên quyền đang có (scopes.nullScopeFill).
 // Bước 2–3 chạy trong 1 transaction: lỗi giữa chừng không để lại dữ liệu dở.
 
 const migratePermissionScopes = async ({ dryRun = false } = {}) => {
@@ -75,7 +76,7 @@ const migratePermissionScopes = async ({ dryRun = false } = {}) => {
 			for (const [key, scope] of current) {
 				const [resource] = key.split(':');
 				if (isScoped(resource) && !scope) {
-					change.scoped.push({ key, scope: RESOURCE_SCOPES[resource][0] });
+					change.scoped.push({ key, scope: nullScopeFill(resource) });
 				}
 			}
 		}

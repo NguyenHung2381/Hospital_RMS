@@ -9,12 +9,15 @@ const RESOURCE_SCOPES = {
 	topics: ['own', 'department', 'all'],
 	users: ['department', 'all'],
 	courses: ['assigned', 'all'],
+	// Phân ca / xem bảng chấm công: khoa trưởng, điều dưỡng trưởng chỉ khoa mình
+	staff_attendance: ['department', 'all'],
 };
 
 const SCOPE_LABELS = {
 	topics: { own: 'Đề tài mình tham gia', department: 'Trong khoa', all: 'Toàn viện' },
 	users: { department: 'Trong khoa', all: 'Toàn viện' },
 	courses: { assigned: 'Khóa được phân công', all: 'Tất cả khóa học' },
+	staff_attendance: { department: 'Trong khoa', all: 'Toàn viện' },
 };
 
 const isScoped = (resource) => Object.hasOwn(RESOURCE_SCOPES, resource);
@@ -22,6 +25,13 @@ const isScoped = (resource) => Object.hasOwn(RESOURCE_SCOPES, resource);
 // -1 = không hợp lệ. Resource không có phạm vi: mọi lượt cấp coi như 'all'.
 const scopeRank = (resource, scope) =>
 	isScoped(resource) ? RESOURCE_SCOPES[resource].indexOf(scope) : 0;
+
+// Lượt cấp của resource có phạm vi mà scope còn NULL (migrations.js bước 3,
+// sync.js khi seedFrom từ quyền không phạm vi) nhận phạm vi HẸP nhất — trừ
+// resource được thêm phạm vi SAU khi đã cấp quyền: lượt cấp cũ trước đó có
+// hiệu lực toàn viện, thu hẹp sẽ làm người đang dùng mất quyền.
+const NULL_SCOPE_FILL = { staff_attendance: 'all' };
+const nullScopeFill = (resource) => NULL_SCOPE_FILL[resource] ?? RESOURCE_SCOPES[resource][0];
 
 // ─── Mô hình cũ → mô hình mới ────────────────────────────────────────────────
 // CHỈ dùng cho migration (migrations.js, tương đương file SQL 20260924_01):
@@ -88,7 +98,7 @@ const normalizeLegacy = (legacyKeys) => {
 	const scopes = new Map();
 	for (const k of keys) {
 		const [r] = k.split(':');
-		if (isScoped(r)) scopes.set(k, legacyScope[r]);
+		if (isScoped(r)) scopes.set(k, legacyScope[r] ?? nullScopeFill(r));
 	}
 	return { keys, scopes };
 };
@@ -98,6 +108,7 @@ module.exports = {
 	SCOPE_LABELS,
 	isScoped,
 	scopeRank,
+	nullScopeFill,
 	LEGACY_REMOVED_KEYS,
 	normalizeLegacy,
 };
