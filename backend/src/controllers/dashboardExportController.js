@@ -158,7 +158,14 @@ function buildByHeSheet(ws, stats) {
 	}
 
 	let cur = CONTENT_START;
-	headerRow(ws, cur, ['Hệ chuyên môn', 'Đề tài NCKH', 'Bài báo', 'Tổng', 'Đã duyệt', 'Tỷ lệ duyệt (%)']);
+	headerRow(ws, cur, [
+		'Hệ chuyên môn',
+		'Đề tài NCKH',
+		'Bài báo',
+		'Tổng',
+		'Đã duyệt',
+		'Tỷ lệ duyệt (%)',
+	]);
 	cur++;
 	[...byHe.entries()]
 		.sort((a, b) => b[1].total - a[1].total)
@@ -275,7 +282,11 @@ function buildDeptDetailSheet(ws, d) {
 }
 
 function sheetNameFor(raw, used) {
-	const cleaned = raw.replace(/[\\/*?[\]:]/g, ' ').trim().slice(0, 31) || 'Khoa';
+	const cleaned =
+		raw
+			.replace(/[\\/*?[\]:]/g, ' ')
+			.trim()
+			.slice(0, 31) || 'Khoa';
 	let name = cleaned;
 	let i = 2;
 	while (used.has(name)) {

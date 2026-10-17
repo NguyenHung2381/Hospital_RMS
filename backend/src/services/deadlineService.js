@@ -19,9 +19,7 @@ const normalize = (r) => ({
 	start_date: r.start_date ? fmtDate(r.start_date) : null,
 	deadline_date: fmtDate(r.deadline_date),
 	supplement_fields:
-		r.deadline_type === 'supplement'
-			? parseSupplementFields(r.supplement_fields)
-			: null,
+		r.deadline_type === 'supplement' ? parseSupplementFields(r.supplement_fields) : null,
 	created_at: fmtDate(r.created_at),
 	updated_at: r.updated_at ? fmtDate(r.updated_at) : undefined,
 });
@@ -42,18 +40,11 @@ const getByRoundId = async (roundId) => {
 	const r = await pool
 		.request()
 		.input('round_id', sql.VarChar(10), roundId)
-		.query(
-			'SELECT * FROM round_deadlines WHERE round_id = @round_id ORDER BY phase',
-		);
+		.query('SELECT * FROM round_deadlines WHERE round_id = @round_id ORDER BY phase');
 	return r.recordset.map(normalize);
 };
 
-const ALLOWED_DEADLINE_TYPES = [
-	'topic_registration',
-	'edit',
-	'supplement',
-	'report_submission',
-];
+const ALLOWED_DEADLINE_TYPES = ['topic_registration', 'edit', 'supplement', 'report_submission'];
 
 const upsert = async (roundId, phase, data, actorId) => {
 	const pool = await getPool();
@@ -109,9 +100,7 @@ const upsert = async (roundId, phase, data, actorId) => {
 		.request()
 		.input('round_id', sql.VarChar(10), roundId)
 		.input('phase', sql.TinyInt, phase)
-		.query(
-			'SELECT * FROM round_deadlines WHERE round_id = @round_id AND phase = @phase',
-		);
+		.query('SELECT * FROM round_deadlines WHERE round_id = @round_id AND phase = @phase');
 	broadcast('update', { entity: 'round' });
 	return r.recordset[0] ? normalize(r.recordset[0]) : null;
 };
@@ -174,7 +163,9 @@ const prepareBatch = (list, roundStart, roundEnd) => {
 		if (!ISO_DATE.test(end)) fail(`${label}: chưa chọn hạn cuối`);
 		if (start && !ISO_DATE.test(start)) fail(`${label}: ngày bắt đầu không hợp lệ`);
 		if (start && start > end) fail(`${label}: ngày bắt đầu phải trước hạn cuối`);
-		if ([start, end].some((x) => x && ((roundStart && x < roundStart) || (roundEnd && x > roundEnd))))
+		if (
+			[start, end].some((x) => x && ((roundStart && x < roundStart) || (roundEnd && x > roundEnd)))
+		)
 			fail(`${label}: phải nằm trong khoảng thời gian của đợt`);
 		const deadlineType = ALLOWED_DEADLINE_TYPES.includes(d.deadline_type)
 			? d.deadline_type

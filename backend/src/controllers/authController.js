@@ -29,7 +29,12 @@ const login = async (req, res, next) => {
 		const { bits } = await loginShield.assess({ ip: req.ip, username });
 		if (
 			bits > 0 &&
-			!(await loginShield.verifyChallenge({ token: pow_token, nonce: pow_nonce, username, requiredBits: bits }))
+			!(await loginShield.verifyChallenge({
+				token: pow_token,
+				nonce: pow_nonce,
+				username,
+				requiredBits: bits,
+			}))
 		) {
 			return res.status(428).json({
 				success: false,
@@ -41,7 +46,14 @@ const login = async (req, res, next) => {
 
 		let data;
 		try {
-			data = await authService.login(username, password, req.ip, userAgent, device_token, remember_me === true);
+			data = await authService.login(
+				username,
+				password,
+				req.ip,
+				userAgent,
+				device_token,
+				remember_me === true,
+			);
 		} catch (err) {
 			// Sai tài khoản/mật khẩu (401) hoặc bị khoá tạm (kèm retryAfterSeconds)
 			// = 1 lần dò. Lỗi khác (503 quá tải, 403 tài khoản vô hiệu hoá sau khi

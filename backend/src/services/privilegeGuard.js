@@ -17,8 +17,7 @@ const { httpError } = require('../utils/httpError');
 
 const SUPERUSER = 'system:manage';
 
-const forbiddenError = (message) =>
-	httpError(403, message);
+const forbiddenError = (message) => httpError(403, message);
 
 const isSuperuser = (actor) => !!actor?.permissions?.has(SUPERUSER);
 
@@ -51,7 +50,9 @@ const assertCanAssignRole = async (actor, roleId) => {
 	}
 	const missing = missingFrom(actor, grantsOf(perms));
 	if (missing.length) {
-		throw forbiddenError(`Không thể gán vai trò có quyền cao hơn quyền của bạn (${listOf(missing)})`);
+		throw forbiddenError(
+			`Không thể gán vai trò có quyền cao hơn quyền của bạn (${listOf(missing)})`,
+		);
 	}
 };
 

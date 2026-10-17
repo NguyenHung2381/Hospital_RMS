@@ -28,7 +28,9 @@ app.use((req, _res, next) => {
 app.post('/t/:topic_id/files', upload.array('files', 30), (req, res) =>
 	res.json({ saved: req.files.map((f) => path.basename(f.path)) }),
 );
-app.post('/import', uploadExcel.single('file'), (req, res) => res.json({ size: req.file.buffer.length }));
+app.post('/import', uploadExcel.single('file'), (req, res) =>
+	res.json({ size: req.file.buffer.length }),
+);
 app.use(errorHandler);
 const server = app.listen(0);
 const base = () => `http://127.0.0.1:${server.address().port}`;
@@ -66,7 +68,10 @@ test('đuôi không được phép (.html) bị chặn ngay ở bộ lọc', asy
 });
 
 test('import Excel: file không phải .xlsx thật bị từ chối', async () => {
-	assert.equal((await send('/import', [['file', 'data.xlsx', Buffer.from('a,b,c\n')]])).status, 400);
+	assert.equal(
+		(await send('/import', [['file', 'data.xlsx', Buffer.from('a,b,c\n')]])).status,
+		400,
+	);
 	assert.equal((await send('/import', [['file', 'data.csv', Buffer.from('a,b')]])).status, 400);
 	const zip = Buffer.concat([Buffer.from([0x50, 0x4b, 0x03, 0x04]), Buffer.alloc(30)]);
 	assert.equal((await send('/import', [['file', 'data.xlsx', zip]])).status, 200);

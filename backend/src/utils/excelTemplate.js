@@ -47,7 +47,11 @@ const buildSheet = (wb, { sheetName, title, subtitle, columns, letterhead = fals
 			const rEnd = n >= 10 ? n - 4 : n;
 			const rStart = n >= 10 ? Math.max(6, rEnd - 3) : 5;
 			block(rStart, rEnd, 1, 'CỘNG HOÀ XÃ HỘI CHỦ NGHĨA VIỆT NAM', { bold: true, size: 11 });
-			block(rStart, rEnd, 2, 'Độc lập - Tự do - Hạnh phúc', { bold: true, size: 11, underline: true });
+			block(rStart, rEnd, 2, 'Độc lập - Tự do - Hạnh phúc', {
+				bold: true,
+				size: 11,
+				underline: true,
+			});
 		}
 		[1, 2, 3].forEach((r) => (ws.getRow(r).height = 22));
 	}
@@ -55,11 +59,17 @@ const buildSheet = (wb, { sheetName, title, subtitle, columns, letterhead = fals
 	ws.mergeCells(top + 1, 1, top + 1, columns.length);
 	ws.getCell(top + 1, 1).value = title;
 	ws.getCell(top + 1, 1).font = { bold: true, size: 14 };
-	ws.getCell(top + 1, 1).alignment = letterhead ? { horizontal: 'center', vertical: 'middle' } : undefined;
+	ws.getCell(top + 1, 1).alignment = letterhead
+		? { horizontal: 'center', vertical: 'middle' }
+		: undefined;
 	ws.mergeCells(top + 2, 1, top + 2, columns.length);
 	ws.getCell(top + 2, 1).value = subtitle;
 	ws.getCell(top + 2, 1).font = { italic: true, size: 10, color: { argb: 'FF6B7280' } };
-	ws.getCell(top + 2, 1).alignment = { wrapText: true, vertical: 'top', ...(letterhead && { horizontal: 'center' }) };
+	ws.getCell(top + 2, 1).alignment = {
+		wrapText: true,
+		vertical: 'top',
+		...(letterhead && { horizontal: 'center' }),
+	};
 
 	const head = ws.getRow(headRow);
 	columns.forEach((c, i) => {

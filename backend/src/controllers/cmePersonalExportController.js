@@ -16,7 +16,9 @@ async function buildWorkbook(userId, year) {
 	const data = await cmeReportService.getData({ year, userId });
 	const wb = cmeReportService.buildWorkbook(data, {
 		title: `BÁO CÁO TÍN CHỈ CME NĂM ${year}`,
-		subtitle: [profile.full_name, profile.staff_number, profile.department_name].filter(Boolean).join(' · '),
+		subtitle: [profile.full_name, profile.staff_number, profile.department_name]
+			.filter(Boolean)
+			.join(' · '),
 		personal: true,
 	});
 	return { wb, profile };
@@ -33,8 +35,14 @@ const fileNameOf = (profile, year) =>
 
 async function send(res, userId, year) {
 	const { wb, profile } = await buildWorkbook(userId, year);
-	res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-	res.setHeader('Content-Disposition', `attachment; filename*=UTF-8''${encodeURIComponent(fileNameOf(profile, year))}`);
+	res.setHeader(
+		'Content-Type',
+		'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+	);
+	res.setHeader(
+		'Content-Disposition',
+		`attachment; filename*=UTF-8''${encodeURIComponent(fileNameOf(profile, year))}`,
+	);
 	await wb.xlsx.write(res);
 	res.end();
 }

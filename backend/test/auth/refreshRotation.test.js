@@ -10,7 +10,8 @@ const { user: USER, rows, events } = setup();
 const authService = require('../../src/services/authService');
 
 const login = async (remember = false) =>
-	(await authService.login('nva', 'Dung#matkhau2026', '10.0.0.1', 'test', null, remember)).refresh_token;
+	(await authService.login('nva', 'Dung#matkhau2026', '10.0.0.1', 'test', null, remember))
+		.refresh_token;
 const rowOf = (hashOf) => rows.find((r) => r.token === hashOf);
 const hash = (t) => require('crypto').createHash('sha256').update(t).digest('hex');
 

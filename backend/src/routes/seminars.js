@@ -36,10 +36,7 @@ const countFields = [
 	'manual_foreign_count',
 	'manual_cme_count',
 ].map((f) =>
-	body(f)
-		.optional({ nullable: true })
-		.isInt({ min: 0 })
-		.withMessage(`${f} phải là số nguyên ≥ 0`),
+	body(f).optional({ nullable: true }).isInt({ min: 0 }).withMessage(`${f} phải là số nguyên ≥ 0`),
 );
 
 // ─── Thống kê & Sổ CME (đặt trước /:id) ──────────────────────────────────────
@@ -224,7 +221,12 @@ router.post(
 router.post('/export-excel', authenticate, canExport, ctrl.exportListExcel);
 router.post('/import-template', authenticate, canImport, ctrl.importListTemplate);
 // File mẫu nhập người tham dự (dùng chung mọi hội thảo, đặt trước /:id)
-router.post('/participant-import-template', authenticate, canImport, ctrl.participantImportTemplate);
+router.post(
+	'/participant-import-template',
+	authenticate,
+	canImport,
+	ctrl.participantImportTemplate,
+);
 router.post(
 	'/import-excel',
 	authenticate,
@@ -257,10 +259,7 @@ router.post(
 	'/cme-requirements',
 	authenticate,
 	canCme,
-	[
-		body('year').isInt({ min: 2000, max: 2100 }),
-		body('required_credits').isFloat({ min: 0 }),
-	],
+	[body('year').isInt({ min: 2000, max: 2100 }), body('required_credits').isFloat({ min: 0 })],
 	validate,
 	async (req, res, next) => {
 		try {
@@ -329,7 +328,12 @@ router.get('/cme-compliance', authenticate, canCme, async (req, res, next) => {
  *             properties:
  *               year: { type: integer }
  */
-router.post('/cme-personal/:userId/export-excel', authenticate, canCme, cmePersonalExport.exportPerson);
+router.post(
+	'/cme-personal/:userId/export-excel',
+	authenticate,
+	canCme,
+	cmePersonalExport.exportPerson,
+);
 
 /**
  * @swagger
@@ -379,10 +383,16 @@ router.post('/:id/export-excel', authenticate, canExport, ctrl.exportDetailExcel
 router.put('/:id', authenticate, canUpdate, countFields, validate, ctrl.updateOne);
 router.delete('/:id', authenticate, canDelete, ctrl.removeOne);
 // Tải ảnh trước, rồi gửi `image` trả về trong test_questions khi lưu bài test
-router.post('/:id/test-image', authenticate, canUpdate, uploadTestImage.single('image'), (req, res) => {
-	if (!req.file) return res.status(400).json({ success: false, message: 'Chưa chọn ảnh' });
-	return created(res, { url: `/uploads/seminars/${req.params.id}/test/${req.file.filename}` });
-});
+router.post(
+	'/:id/test-image',
+	authenticate,
+	canUpdate,
+	uploadTestImage.single('image'),
+	(req, res) => {
+		if (!req.file) return res.status(400).json({ success: false, message: 'Chưa chọn ảnh' });
+		return created(res, { url: `/uploads/seminars/${req.params.id}/test/${req.file.filename}` });
+	},
+);
 
 // ─── Người tham dự ───────────────────────────────────────────────────────────
 
@@ -470,7 +480,12 @@ router.post(
 	'/:id/checkin-ticket',
 	authenticate,
 	canUpdate,
-	[body('code').isString().matches(/^[a-f0-9]{32}$/).withMessage('Mã QR không phải vé hội nghị hợp lệ.')],
+	[
+		body('code')
+			.isString()
+			.matches(/^[a-f0-9]{32}$/)
+			.withMessage('Mã QR không phải vé hội nghị hợp lệ.'),
+	],
 	validate,
 	ctrl.checkInTicket,
 );
@@ -524,10 +539,7 @@ router.post(
 	'/:id/participants/bulk-cme',
 	authenticate,
 	canUpdate,
-	[
-		body('participant_ids').isArray({ min: 1 }),
-		body('status').isIn(['issued', 'signed']),
-	],
+	[body('participant_ids').isArray({ min: 1 }), body('status').isIn(['issued', 'signed'])],
 	validate,
 	ctrl.bulkCmeStatus,
 );

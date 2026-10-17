@@ -18,7 +18,9 @@ const dryRun = process.argv.includes('--dry-run');
 (async () => {
 	const pool = await getPool();
 	const users = (
-		await pool.request().query('SELECT id, username, password FROM users WHERE must_change_password = 0')
+		await pool
+			.request()
+			.query('SELECT id, username, password FROM users WHERE must_change_password = 0')
 	).recordset;
 	console.log(`Kiểm tra ${users.length} tài khoản...`);
 

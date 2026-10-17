@@ -8,7 +8,12 @@
 const { getPool, sql } = require('../config/db');
 const { norm, normDept, stripQualification } = require('../utils/vietnameseText');
 const ExcelJS = require('exceljs');
-const { parseDateCell, parseCredits, parseStaffNumber, readSheet } = require('../utils/excelImport');
+const {
+	parseDateCell,
+	parseCredits,
+	parseStaffNumber,
+	readSheet,
+} = require('../utils/excelImport');
 const cmeRecordService = require('./cmeRecordService');
 const userService = require('./userService');
 const notificationService = require('./notificationService');
@@ -50,16 +55,36 @@ const COLUMN_MATCHERS = [
 	['stt', (h) => h === 'stt' || h === 'tt'],
 	['staff_number', (h) => h === 'mnv' || h === 'ma nv' || h.includes('ma nhan vien')],
 	['full_name', (h) => h === 'ho va ten' || h === 'ho ten'],
-	['department_raw', (h) => h === 'khoa' || h === 'khoa phong' || h === 'don vi' || h === 'khoa phong ban'],
+	[
+		'department_raw',
+		(h) => h === 'khoa' || h === 'khoa phong' || h === 'don vi' || h === 'khoa phong ban',
+	],
 	['year', (h) => h === 'nam'],
 	['group_raw', (h) => h === 'nhom hinh thuc'],
-	['category_raw', (h) => h.includes('danh muc') || h === 'loai hinh' || h === 'hinh thuc' || h === 'loai hinh thuc'],
-	['title', (h) => h.includes('noi dung') || h === 'ten hoat dong' || h === 'hoat dong' || h === 'mo ta'],
+	[
+		'category_raw',
+		(h) =>
+			h.includes('danh muc') || h === 'loai hinh' || h === 'hinh thuc' || h === 'loai hinh thuc',
+	],
+	[
+		'title',
+		(h) => h.includes('noi dung') || h === 'ten hoat dong' || h === 'hoat dong' || h === 'mo ta',
+	],
 	['role', (h) => h === 'vai tro'],
 	['quantity', (h) => h === 'so luong'],
-	['activity_date', (h) => h.includes('ngay hoat dong') || h === 'ngay' || h === 'tu ngay' || h.includes('ngay thuc hien')],
+	[
+		'activity_date',
+		(h) =>
+			h.includes('ngay hoat dong') ||
+			h === 'ngay' ||
+			h === 'tu ngay' ||
+			h.includes('ngay thuc hien'),
+	],
 	['end_date', (h) => h === 'den ngay'],
-	['credits', (h) => h.includes('so tin chi') || h === 'gio tin chi' || h === 'tin chi' || h === 'tc'],
+	[
+		'credits',
+		(h) => h.includes('so tin chi') || h === 'gio tin chi' || h === 'tin chi' || h === 'tc',
+	],
 	['notes', (h) => h === 'ghi chu'],
 ];
 
@@ -108,12 +133,16 @@ const loadLookups = async () => {
 		(await inputRoleId(pool.request(), 'dept_head_role', ROLE.DEPT_HEAD)).query(
 			'SELECT id, full_name, staff_number FROM users WHERE is_active = 1 AND role_id <> @dept_head_role',
 		),
-		pool.request().query(
-			'SELECT c.id, c.name, c.group_id, c.conversion_value, g.name AS group_name FROM cme_credit_categories c LEFT JOIN cme_credit_groups g ON g.id = c.group_id',
-		),
+		pool
+			.request()
+			.query(
+				'SELECT c.id, c.name, c.group_id, c.conversion_value, g.name AS group_name FROM cme_credit_categories c LEFT JOIN cme_credit_groups g ON g.id = c.group_id',
+			),
 		pool.request().query('SELECT id, name, code FROM departments'),
 		// Mã NV đã thuộc tài khoản khác (kể cả đã khoá / tài khoản khoa) — không tạo trùng
-		pool.request().query('SELECT staff_number, is_active FROM users WHERE staff_number IS NOT NULL'),
+		pool
+			.request()
+			.query('SELECT staff_number, is_active FROM users WHERE staff_number IS NOT NULL'),
 		// Họ tên / khoa đã biết của Mã NV CHƯA có tài khoản — từ thành viên đề tài và người
 		// tham dự hội thảo nội viện; dùng khi file chỉ có Mã NV. Bản ghi mới nhất trước,
 		// thành viên đề tài (có department_id chuẩn) ưu tiên hơn hội thảo (khoa dạng chữ).
@@ -159,7 +188,9 @@ const loadLookups = async () => {
 		categoryByGroup.set(`${norm(c.group_name || '')}|${k}`, c.id);
 		categoryByGroup.set(`id:${c.group_id}|${k}`, c.id);
 	}
-	const conversionById = new Map(categories.recordset.map((c) => [c.id, Number(c.conversion_value) || 0]));
+	const conversionById = new Map(
+		categories.recordset.map((c) => [c.id, Number(c.conversion_value) || 0]),
+	);
 	return {
 		byStaff,
 		byName,
@@ -200,12 +231,16 @@ const matchDept = (raw, lookups) =>
 // Cùng 1 Mã NV nhiều dòng → dùng chung kế hoạch của dòng đầu.
 // Trả { staff, note } hoặc { reason } (lý do không tạo được).
 const planNewStaff = (row, lookups, defaults, planned, fileNames) => {
-	if (row.staff_number == null) return { reason: 'Không có Mã NV nên không tạo được nhân viên mới' };
+	if (row.staff_number == null)
+		return { reason: 'Không có Mã NV nên không tạo được nhân viên mới' };
 	const taken = lookups.takenStaff.get(row.staff_number);
 	if (taken === false) {
-		return { reason: `Mã NV ${row.staff_number} thuộc tài khoản đã bị khoá — mở lại ở màn Người dùng rồi nhập lại` };
+		return {
+			reason: `Mã NV ${row.staff_number} thuộc tài khoản đã bị khoá — mở lại ở màn Người dùng rồi nhập lại`,
+		};
 	}
-	if (taken === true) return { reason: `Mã NV ${row.staff_number} thuộc tài khoản khoa/phòng dùng chung` };
+	if (taken === true)
+		return { reason: `Mã NV ${row.staff_number} thuộc tài khoản khoa/phòng dùng chung` };
 	const prev = planned.get(row.staff_number);
 	if (prev) {
 		const name = (row.full_name || '').trim();
@@ -236,7 +271,9 @@ const planNewStaff = (row, lookups, defaults, planned, fileNames) => {
 	// tới khi nhập họ tên ở bước xem trước.
 	if (!fullName) {
 		nameSource = null;
-		notes.push('Chưa có họ tên — nhập họ tên ở bảng nhân viên mới, nếu không sẽ bỏ qua dòng này khi nhập');
+		notes.push(
+			'Chưa có họ tên — nhập họ tên ở bảng nhân viên mới, nếu không sẽ bỏ qua dòng này khi nhập',
+		);
 	}
 
 	// Khoa chọn riêng cho Mã NV này ở bước xem trước — ưu tiên hơn mọi nguồn khác
@@ -245,8 +282,10 @@ const planNewStaff = (row, lookups, defaults, planned, fileNames) => {
 		dept = matchDept(row.department_raw, lookups);
 		if (row.department_raw && !dept) notes.push(`Không khớp khoa/phòng "${row.department_raw}"`);
 	}
-	if (!dept && known) dept = lookups.deptById.get(known.department_id) || matchDept(known.department_raw, lookups);
-	if (!dept && defaults.new_department_id) dept = lookups.deptById.get(defaults.new_department_id) || null;
+	if (!dept && known)
+		dept = lookups.deptById.get(known.department_id) || matchDept(known.department_raw, lookups);
+	if (!dept && defaults.new_department_id)
+		dept = lookups.deptById.get(defaults.new_department_id) || null;
 	if (!dept) notes.push('Chưa có khoa/phòng — bổ sung ở màn Người dùng');
 
 	const staff = {
@@ -270,7 +309,8 @@ const buildPreview = (rows, lookups, defaults = {}) => {
 	const fileNames = new Map();
 	for (const r of rows) {
 		const name = String(r.full_name || '').trim();
-		if (r.staff_number != null && name && !fileNames.has(r.staff_number)) fileNames.set(r.staff_number, name);
+		if (r.staff_number != null && name && !fileNames.has(r.staff_number))
+			fileNames.set(r.staff_number, name);
 	}
 	return rows.map((row) => {
 		const warnings = [];
@@ -301,7 +341,8 @@ const buildPreview = (rows, lookups, defaults = {}) => {
 			if (!categoryId) warnings.push(`Không khớp danh mục "${row.category_raw}" — để trống.`);
 		}
 		// Năm luôn theo năm chọn ở hộp thoại; gọi API không kèm năm thì lấy cột Năm / năm của Từ ngày
-		const year = defaults.year || row.year || (row.activity_date ? +row.activity_date.slice(0, 4) : null);
+		const year =
+			defaults.year || row.year || (row.activity_date ? +row.activity_date.slice(0, 4) : null);
 		if (!year) warnings.push('Thiếu Năm và Ngày hoạt động — bỏ qua dòng này khi nhập.');
 		// Loại có giờ quy đổi → bắt buộc Số lượng, tín chỉ = giờ quy đổi × Số lượng (bỏ qua cột Giờ tín chỉ);
 		// loại "Khác" (quy đổi 0) / không chọn loại → lấy cột Giờ tín chỉ, không cần Số lượng.
@@ -310,9 +351,14 @@ const buildPreview = (rows, lookups, defaults = {}) => {
 		let credits = row.credits;
 		if (conv > 0) {
 			credits = quantity > 0 ? +(conv * quantity).toFixed(2) : null;
-			if (credits == null) warnings.push('Thiếu Số lượng (ô trống và chưa nhập Số lượng mặc định) — bỏ qua dòng này khi nhập.');
+			if (credits == null)
+				warnings.push(
+					'Thiếu Số lượng (ô trống và chưa nhập Số lượng mặc định) — bỏ qua dòng này khi nhập.',
+				);
 		} else if (credits == null) {
-			warnings.push('Thiếu Giờ tín chỉ (loại hình thức này phải nhập số giờ) — bỏ qua dòng này khi nhập.');
+			warnings.push(
+				'Thiếu Giờ tín chỉ (loại hình thức này phải nhập số giờ) — bỏ qua dòng này khi nhập.',
+			);
 		}
 
 		return {
@@ -355,7 +401,10 @@ const notifyCreatedStaff = async (staff, actorId) => {
 	);
 	const incomplete = staff.filter((s) => s.missing_name || s.missing_department).length;
 	const list = staff
-		.map((s) => `${s.full_name} (MNV ${s.staff_number}, ${s.department_name || 'chưa có khoa'}) — TĐN: ${s.username}`)
+		.map(
+			(s) =>
+				`${s.full_name} (MNV ${s.staff_number}, ${s.department_name || 'chưa có khoa'}) — TĐN: ${s.username}`,
+		)
 		.join('; ');
 	await notificationService.push(
 		'account_granted',
@@ -377,13 +426,16 @@ const importExcel = async ({ buffer, dry_run, defaults }, actorId) => {
 	const warnings = [];
 	for (const p of preview) {
 		for (const w of p.warnings) {
-			warnings.push(`Dòng ${p.row} (${p.matched_user_name || p.full_name_raw || p.staff_number}): ${w}`);
+			warnings.push(
+				`Dòng ${p.row} (${p.matched_user_name || p.full_name_raw || p.staff_number}): ${w}`,
+			);
 		}
 	}
 
 	// Nhân viên mới chỉ tạo cho dòng hợp lệ (dòng sẽ bị bỏ qua thì không tạo người)
 	const newStaff = new Map();
-	for (const p of preview) if (p.valid && p.new_staff) newStaff.set(p.new_staff.staff_number, p.new_staff);
+	for (const p of preview)
+		if (p.valid && p.new_staff) newStaff.set(p.new_staff.staff_number, p.new_staff);
 
 	const summary = {
 		total: preview.length,
@@ -417,7 +469,9 @@ const importExcel = async ({ buffer, dry_run, defaults }, actorId) => {
 			failedStaff.add(st.staff_number);
 			warnings.push(
 				`Không tạo được nhân viên ${st.full_name} (Mã NV ${st.staff_number}): ${
-					/UQ_users_staff_number/.test(err?.message) ? 'Mã NV vừa được dùng cho tài khoản khác' : err.message
+					/UQ_users_staff_number/.test(err?.message)
+						? 'Mã NV vừa được dùng cho tài khoản khác'
+						: err.message
 				} — bỏ qua các dòng của người này.`,
 			);
 		}
@@ -427,7 +481,9 @@ const importExcel = async ({ buffer, dry_run, defaults }, actorId) => {
 	// Id sinh bằng NEWID() nên chèn song song an toàn — chạy theo lô CONCURRENCY
 	// dòng thay vì tuần tự từng dòng (pool DB tối đa 10 kết nối).
 	const CONCURRENCY = 5;
-	const valid = preview.filter((p) => p.valid && p.user_id && !failedStaff.has(p.new_staff?.staff_number));
+	const valid = preview.filter(
+		(p) => p.valid && p.user_id && !failedStaff.has(p.new_staff?.staff_number),
+	);
 	let inserted = 0;
 	for (let i = 0; i < valid.length; i += CONCURRENCY) {
 		await Promise.all(
@@ -496,7 +552,12 @@ const createMissingStaff = async ({ staff_number, full_name, department_id }, ac
 	if (!dept) throw fail('Khoa/phòng không tồn tại');
 
 	const u = await userService.createStaffAccount(
-		{ full_name: name, staff_number: staffNumber, department_id: dept.id, department_code: dept.code },
+		{
+			full_name: name,
+			staff_number: staffNumber,
+			department_id: dept.id,
+			department_code: dept.code,
+		},
 		actorId,
 	);
 	const staff = {

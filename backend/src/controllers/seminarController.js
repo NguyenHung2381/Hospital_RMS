@@ -74,12 +74,7 @@ const addParticipant = async (req, res, next) => {
 
 const updateParticipant = async (req, res, next) => {
 	try {
-		const p = await partService.update(
-			req.params.id,
-			req.params.pid,
-			req.body,
-			req.user.id,
-		);
+		const p = await partService.update(req.params.id, req.params.pid, req.body, req.user.id);
 		if (!p) return notFound(res);
 		return success(res, p, 'Đã cập nhật');
 	} catch (e) {
@@ -157,7 +152,11 @@ const checkInSelf = async (req, res, next) => {
 const checkInTicket = async (req, res, next) => {
 	try {
 		const row = await partService.checkInTicket(req.params.id, req.body.code, req.user.id);
-		return success(res, row, row.already ? 'Người này đã điểm danh trước đó' : 'Điểm danh thành công');
+		return success(
+			res,
+			row,
+			row.already ? 'Người này đã điểm danh trước đó' : 'Điểm danh thành công',
+		);
 	} catch (e) {
 		next(e);
 	}
@@ -167,9 +166,7 @@ const checkInTicket = async (req, res, next) => {
 const importParticipants = async (req, res, next) => {
 	try {
 		if (!req.file) {
-			return res
-				.status(400)
-				.json({ success: false, message: 'Chưa chọn file Excel.' });
+			return res.status(400).json({ success: false, message: 'Chưa chọn file Excel.' });
 		}
 		const out = await importService.importExcel(
 			{
@@ -186,9 +183,7 @@ const importParticipants = async (req, res, next) => {
 			out,
 			out.dry_run
 				? 'Đã đọc file — kiểm tra trước khi nhập'
-				: `Đã nhập ${out.inserted} người${
-						out.cme_issued ? `, cấp ${out.cme_issued} số CME` : ''
-					}`,
+				: `Đã nhập ${out.inserted} người${out.cme_issued ? `, cấp ${out.cme_issued} số CME` : ''}`,
 		);
 	} catch (e) {
 		next(e);
@@ -199,7 +194,13 @@ const importParticipants = async (req, res, next) => {
 const exportListExcel = async (req, res, next) => {
 	try {
 		const { search, scope, event_type, year, grants_cme } = req.body || {};
-		const wb = await listExcelService.exportWorkbook({ search, scope, event_type, year, grants_cme });
+		const wb = await listExcelService.exportWorkbook({
+			search,
+			scope,
+			event_type,
+			year,
+			grants_cme,
+		});
 		return sendWorkbook(res, wb, `hoi-thao-hoi-nghi${year ? `-${year}` : ''}.xlsx`);
 	} catch (e) {
 		next(e);

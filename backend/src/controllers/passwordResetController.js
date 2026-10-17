@@ -4,7 +4,11 @@ const { success } = require('../utils/response');
 const forgot = async (req, res, next) => {
 	try {
 		await passwordResetService.requestOtp(req.body.username.trim());
-		return success(res, null, 'Nếu tài khoản có email, mã OTP đã được gửi. Mã có hiệu lực 10 phút.');
+		return success(
+			res,
+			null,
+			'Nếu tài khoản có email, mã OTP đã được gửi. Mã có hiệu lực 10 phút.',
+		);
 	} catch (err) {
 		next(err);
 	}

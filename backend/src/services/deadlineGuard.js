@@ -118,9 +118,7 @@ async function isRegistrationOpen(roundId) {
 /** Ném lỗi 403 nếu ngoài thời gian đăng ký đề tài của đợt. */
 async function assertRegistrationOpen(roundId) {
 	if (await isRegistrationOpen(roundId)) return;
-	const err = new Error(
-		'Hiện không trong thời gian đăng ký đề tài của đợt này.',
-	);
+	const err = new Error('Hiện không trong thời gian đăng ký đề tài của đợt này.');
 	err.status = 403;
 	err.statusCode = 403;
 	throw err;

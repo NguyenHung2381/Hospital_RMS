@@ -105,7 +105,9 @@ const register = async (data, files) => {
 		const existing = await pool
 			.request()
 			.input('national_id', sql.VarChar(20), data.national_id)
-			.query('SELECT TOP 1 * FROM trainees WHERE national_id = @national_id ORDER BY created_at DESC');
+			.query(
+				'SELECT TOP 1 * FROM trainees WHERE national_id = @national_id ORDER BY created_at DESC',
+			);
 		trainee = existing.recordset[0] || null;
 		// Người đăng ký phải là chủ hồ sơ: ngày sinh khớp hồ sơ đã có. Trước đây
 		// chỉ cần biết số CCCD của người khác là ghi danh được họ vào khoá học.
@@ -264,9 +266,13 @@ const registerTopic = async (data, files) => {
 	const extras = (Array.isArray(data.members) ? data.members : [])
 		.filter((m) => m && String(m.full_name ?? '').trim())
 		.map((m) => ({ ...m, role: m.role === 'secretary' ? 'secretary' : 'member' }));
-	if (extras.filter((m) => m.role === 'secretary').length > 1) throw badRequest('Mỗi đề tài chỉ có 1 thư ký.');
-	const mnvs = [data.staff_number, ...extras.map((m) => m.staff_number)].map((v) => String(v ?? '').trim());
-	if (new Set(mnvs).size !== mnvs.length) throw badRequest('Có mã nhân viên bị trùng giữa các thành viên đề tài.');
+	if (extras.filter((m) => m.role === 'secretary').length > 1)
+		throw badRequest('Mỗi đề tài chỉ có 1 thư ký.');
+	const mnvs = [data.staff_number, ...extras.map((m) => m.staff_number)].map((v) =>
+		String(v ?? '').trim(),
+	);
+	if (new Set(mnvs).size !== mnvs.length)
+		throw badRequest('Có mã nhân viên bị trùng giữa các thành viên đề tài.');
 
 	const topic = await topicService.create(
 		{
@@ -345,7 +351,10 @@ const getFeaturedTopics = async () => {
 // theo thứ tự (<LOẠI>_<năm>_001...) nên người ngoài dò được tiêu đề của mọi đề
 // tài, kể cả đề tài nháp / bị từ chối. Sai mã hay sai liên hệ đều trả null như
 // nhau (không lộ mã nào tồn tại).
-const normalizeEmail = (v) => String(v ?? '').trim().toLowerCase();
+const normalizeEmail = (v) =>
+	String(v ?? '')
+		.trim()
+		.toLowerCase();
 const normalizePhone = (v) => {
 	const digits = String(v ?? '').replace(/\D/g, '');
 	// 0912345678 ≡ 84912345678 ≡ +84 912 345 678

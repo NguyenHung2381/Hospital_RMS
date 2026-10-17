@@ -45,9 +45,7 @@ const register = (name, clearLocal) => {
 // Báo các instance khác xoá `key` của cache `name` (key null = xoá hết).
 const publish = (name, key = null) => {
 	if (redis.status !== 'ready') return;
-	redis
-		.publish(CHANNEL, JSON.stringify({ from: INSTANCE_ID, cache: name, key }))
-		.catch(() => {});
+	redis.publish(CHANNEL, JSON.stringify({ from: INSTANCE_ID, cache: name, key })).catch(() => {});
 };
 
 module.exports = { register, publish };

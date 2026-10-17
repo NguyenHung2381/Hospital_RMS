@@ -20,8 +20,7 @@ const saveUploadedFile = async (entityType, entityId, file, actorId) => {
 		.input('file_url', sql.NVarChar(500), relativeUrl)
 		.input('mime_type', sql.VarChar(150), file.mimetype || null)
 		.input('file_size', sql.BigInt, file.size || null)
-		.input('actor_id', sql.VarChar(20), actorId)
-		.query(`
+		.input('actor_id', sql.VarChar(20), actorId).query(`
       DECLARE @new_id VARCHAR(20) = 'TF' + LEFT(REPLACE(NEWID(),'-',''), 18);
       INSERT INTO training_files (id, entity_type, entity_id, file_name, file_url, mime_type, file_size, created_by)
       VALUES (@new_id, @entity_type, @entity_id, @file_name, @file_url, @mime_type, @file_size, @actor_id);
@@ -48,7 +47,9 @@ const softDelete = async (fileId, actorId) => {
 		.request()
 		.input('id', sql.VarChar(20), fileId)
 		.input('actor_id', sql.VarChar(20), actorId || null)
-		.query('UPDATE training_files SET is_deleted = 1, updated_at = GETDATE(), updated_by = @actor_id WHERE id = @id');
+		.query(
+			'UPDATE training_files SET is_deleted = 1, updated_at = GETDATE(), updated_by = @actor_id WHERE id = @id',
+		);
 	removeUploadedFile(file.file_url);
 };
 

@@ -48,9 +48,7 @@ if (isProduction) {
 // set biến — bắt buộc khai báo rõ domain được phép, cùng nguyên tắc fail-closed
 // như JWT_SECRET/DB_PASSWORD ở trên.
 if (process.env.NODE_ENV === 'production' && !process.env.CORS_ORIGIN) {
-	console.error(
-		'❌ Thiếu biến môi trường CORS_ORIGIN ở production. Xem backend/.env.example.',
-	);
+	console.error('❌ Thiếu biến môi trường CORS_ORIGIN ở production. Xem backend/.env.example.');
 	process.exit(1);
 }
 
@@ -84,10 +82,7 @@ const swaggerUi = require('swagger-ui-express');
 const swaggerSpec = require('./config/swagger');
 const swaggerAuth = require('./middlewares/swaggerAuth');
 const activityLogger = require('./middlewares/activityLogger');
-const {
-	signUploadUrlsInJson,
-	verifyUploadSignature,
-} = require('./utils/signedUpload');
+const { signUploadUrlsInJson, verifyUploadSignature } = require('./utils/signedUpload');
 
 const app = express();
 
@@ -129,8 +124,23 @@ const UPLOADS_ROOT = path.resolve(process.env.UPLOADS_DIR || 'uploads');
 // PDF không gắn CSP — trình xem PDF tích hợp của trình duyệt không chạy được
 // dưới sandbox; nội dung PDF đã được kiểm tra đúng định dạng lúc upload.
 const INLINE_UPLOAD_EXT = new Set([
-	'.png', '.jpg', '.jpeg', '.gif', '.webp', '.bmp', '.pdf',
-	'.mp4', '.m4v', '.mov', '.webm', '.mkv', '.avi', '.mp3', '.wav', '.m4a', '.aac',
+	'.png',
+	'.jpg',
+	'.jpeg',
+	'.gif',
+	'.webp',
+	'.bmp',
+	'.pdf',
+	'.mp4',
+	'.m4v',
+	'.mov',
+	'.webm',
+	'.mkv',
+	'.avi',
+	'.mp3',
+	'.wav',
+	'.m4a',
+	'.aac',
 ]);
 const setUploadHeaders = (res, filePath) => {
 	const ext = path.extname(filePath).toLowerCase();
@@ -183,10 +193,7 @@ if (swaggerEnabled) {
 const API = '/api/v1';
 
 app.use(API, (req, res, next) => {
-	res.set(
-		'Cache-Control',
-		'no-store, no-cache, must-revalidate, proxy-revalidate',
-	);
+	res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
 	res.set('Pragma', 'no-cache');
 	res.set('Expires', '0');
 	next();
@@ -250,7 +257,11 @@ app.use(`${API}/security-events`, require('./routes/securityEvents'));
 app.use(`${API}/seminars`, requireModule('SEMINAR'), require('./routes/seminars'));
 app.use(`${API}/cme-records`, requireModule('SEMINAR'), require('./routes/cmeRecords'));
 app.use(`${API}/trainees`, requireModule('TRAINING'), require('./routes/trainees'));
-app.use(`${API}/training-programs`, requireModule('TRAINING'), require('./routes/trainingPrograms'));
+app.use(
+	`${API}/training-programs`,
+	requireModule('TRAINING'),
+	require('./routes/trainingPrograms'),
+);
 app.use(`${API}/training-plans`, requireModule('TRAINING'), require('./routes/trainingPlans'));
 app.use(`${API}/surveys`, requireModule('SURVEY'), require('./routes/surveys'));
 app.use(`${API}/my-tasks`, require('./routes/myTasks'));
@@ -260,7 +271,11 @@ app.use(`${API}/workflows`, require('./routes/workflows'));
 app.use(`${API}/lecturers`, requireModule('TRAINING'), require('./routes/lecturers'));
 app.use(`${API}/courses`, requireModule('TRAINING'), require('./routes/courses'));
 app.use(`${API}/staff-licenses`, require('./routes/staffLicenses'));
-app.use(`${API}/staff-attendance`, requireModule('ATTENDANCE'), require('./routes/staffAttendance'));
+app.use(
+	`${API}/staff-attendance`,
+	requireModule('ATTENDANCE'),
+	require('./routes/staffAttendance'),
+);
 app.use(`${API}/system-settings`, require('./routes/systemSettings'));
 app.use(`${API}/persons`, require('./routes/persons'));
 app.use(`${API}/public`, require('./routes/public'));

@@ -20,7 +20,9 @@ install(async (text, inputs) => {
 	if (/FROM courses c WHERE c\.id = @id AND EXISTS/.test(text)) {
 		return (ASSIGNED[inputs.id] || []).includes(inputs.actor_id) ? [{ ok: 1 }] : [];
 	}
-	const table = (text.match(/FROM (class_sessions|course_enrollments|course_documents|course_programs|lecturer_assignments|grades|certificates)/) || [])[1];
+	const table = (text.match(
+		/FROM (class_sessions|course_enrollments|course_documents|course_programs|lecturer_assignments|grades|certificates)/,
+	) || [])[1];
 	const course = CHILD[`${table}:${inputs.id}`];
 	return course ? [{ course_id: course }] : [];
 });
@@ -62,6 +64,9 @@ test('mọi tham số mã con trong routes/courses.js đều có cách quy về 
 	const params = new Set([...src.matchAll(/'[^']*\/:([a-zA-Z]+)/g)].map((m) => m[1]));
 	for (const p of params) {
 		if (p === 'id') continue;
-		assert.ok(courseService.CHILD_COURSE_SQL[p], `route dùng :${p} nhưng chưa có trong CHILD_COURSE_SQL`);
+		assert.ok(
+			courseService.CHILD_COURSE_SQL[p],
+			`route dùng :${p} nhưng chưa có trong CHILD_COURSE_SQL`,
+		);
 	}
 });

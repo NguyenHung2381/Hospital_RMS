@@ -19,7 +19,9 @@ const args = process.argv.slice(2);
 const flag = (name) => args.includes(`--${name}`);
 const command = args.find((a) => !a.startsWith('--')) ?? 'up';
 
-const TEMPLATE = (name) => `/* ============================================================================
+const TEMPLATE = (
+	name,
+) => `/* ============================================================================
  * ${name.replace(/\.sql$/, '')}
  * ----------------------------------------------------------------------------
  *   <Mô tả thay đổi: bảng / cột nào, để làm gì, ai dùng>
@@ -34,25 +36,40 @@ const TEMPLATE = (name) => `/* =================================================
 `;
 
 const printStatus = (s) => {
-	if (!s.tracked) console.log('⚠️  Chưa có bảng schema_migrations (DB chưa từng chạy migration qua script)');
+	if (!s.tracked)
+		console.log('⚠️  Chưa có bảng schema_migrations (DB chưa từng chạy migration qua script)');
 	for (const f of s.files) {
 		const row = s.applied.get(f);
 		const mark = !row ? '·' : s.changed.includes(f) ? '!' : '✓';
-		const when = row?.applied_at ? new Date(row.applied_at).toISOString().slice(0, 16).replace('T', ' ') : '';
+		const when = row?.applied_at
+			? new Date(row.applied_at).toISOString().slice(0, 16).replace('T', ' ')
+			: '';
 		console.log(`  ${mark} ${f}${when ? `  (${when})` : ''}`);
 	}
-	console.log(`\n${s.files.length} file · ${s.files.length - s.pending.length} đã chạy · ${s.pending.length} chờ chạy`);
+	console.log(
+		`\n${s.files.length} file · ${s.files.length - s.pending.length} đã chạy · ${s.pending.length} chờ chạy`,
+	);
 };
 
 const warn = (s) => {
-	if (s.changed.length) console.warn(`⚠️  Đã sửa SAU khi chạy (không chạy lại — viết migration mới): ${s.changed.join(', ')}`);
-	if (s.missing.length) console.warn(`⚠️  Có trong schema_migrations nhưng không còn file: ${s.missing.join(', ')}`);
-	if (s.outOfOrder.length) console.warn(`⚠️  Chạy lệch thứ tự (đứng trước file đã chạy): ${s.outOfOrder.join(', ')}`);
+	if (s.changed.length)
+		console.warn(
+			`⚠️  Đã sửa SAU khi chạy (không chạy lại — viết migration mới): ${s.changed.join(', ')}`,
+		);
+	if (s.missing.length)
+		console.warn(`⚠️  Có trong schema_migrations nhưng không còn file: ${s.missing.join(', ')}`);
+	if (s.outOfOrder.length)
+		console.warn(`⚠️  Chạy lệch thứ tự (đứng trước file đã chạy): ${s.outOfOrder.join(', ')}`);
 };
 
 const main = async () => {
 	if (command === 'new') {
-		const name = migrator.nextFilename(args.filter((a) => !a.startsWith('--')).slice(1).join(' '));
+		const name = migrator.nextFilename(
+			args
+				.filter((a) => !a.startsWith('--'))
+				.slice(1)
+				.join(' '),
+		);
 		const file = path.join(migrator.MIGRATIONS_DIR, name);
 		fs.writeFileSync(file, TEMPLATE(name));
 		console.log(`Đã tạo ${path.relative(process.cwd(), file)}`);
@@ -76,10 +93,18 @@ const main = async () => {
 	});
 	warn(result);
 	if (dryRun || !result.ran.length) {
-		console.log(result.pending.length ? `Migration chờ chạy:\n  ${result.pending.join('\n  ')}` : 'Không có migration mới');
+		console.log(
+			result.pending.length
+				? `Migration chờ chạy:\n  ${result.pending.join('\n  ')}`
+				: 'Không có migration mới',
+		);
 		return;
 	}
-	console.log(baseline ? `Đã đánh dấu ${result.ran.length} file là đã chạy` : `Đã chạy ${result.ran.length} migration`);
+	console.log(
+		baseline
+			? `Đã đánh dấu ${result.ran.length} file là đã chạy`
+			: `Đã chạy ${result.ran.length} migration`,
+	);
 };
 
 main()

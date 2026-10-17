@@ -1,7 +1,12 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const ExcelJS = require('exceljs');
-const { readSheet, parseDob, parseCredits, parseStaffNumber } = require('../../src/utils/excelImport');
+const {
+	readSheet,
+	parseDob,
+	parseCredits,
+	parseStaffNumber,
+} = require('../../src/utils/excelImport');
 
 const MATCHERS = [
 	['full_name', (h) => h === 'ho va ten'],
@@ -31,10 +36,13 @@ test('readSheet dò header dưới tiêu đề văn bản và bỏ dòng trống
 		isEmpty: (get, row) => !get(row, 'full_name'),
 	});
 	assert.equal(cols.full_name, 2);
-	assert.deepEqual(rows.map(({ r, row, get }) => [r, get(row, 'full_name')]), [
-		[4, 'Nguyễn Văn A'],
-		[6, 'Trần Thị B'],
-	]);
+	assert.deepEqual(
+		rows.map(({ r, row, get }) => [r, get(row, 'full_name')]),
+		[
+			[4, 'Nguyễn Văn A'],
+			[6, 'Trần Thị B'],
+		],
+	);
 	assert.deepEqual(parseDob(rows[0].row.getCell(cols.dob)), { dob: '1984-09-12', dob_text: null });
 	assert.deepEqual(parseDob(rows[1].row.getCell(cols.dob)), { dob: null, dob_text: '1989' });
 });
@@ -42,7 +50,12 @@ test('readSheet dò header dưới tiêu đề văn bản và bỏ dòng trống
 test('readSheet báo lỗi 400 khi không có header', async () => {
 	const buf = await buffer([['abc'], ['def']]);
 	await assert.rejects(
-		readSheet(buf, { matchers: MATCHERS, isValid: (c) => !!c.full_name, headerError: 'no header', isEmpty: () => false }),
+		readSheet(buf, {
+			matchers: MATCHERS,
+			isValid: (c) => !!c.full_name,
+			headerError: 'no header',
+			isEmpty: () => false,
+		}),
 		(err) => err.statusCode === 400 && err.message === 'no header',
 	);
 });

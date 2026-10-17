@@ -56,20 +56,22 @@ const getCatalog = async () => {
 		modules.push({
 			key: 'other',
 			label: 'Khác (chưa khai báo trong catalog)',
-			resources: [{
-				key: 'other',
-				label: 'Khác',
-				scopes: null,
-				permissions: others.map((r) => ({
-					id: r.id,
-					key: `${r.resource}:${r.action}`,
-					action: r.action,
-					name: r.name,
-					description: r.description,
-					critical: false,
-					implies: [],
-				})),
-			}],
+			resources: [
+				{
+					key: 'other',
+					label: 'Khác',
+					scopes: null,
+					permissions: others.map((r) => ({
+						id: r.id,
+						key: `${r.resource}:${r.action}`,
+						action: r.action,
+						name: r.name,
+						description: r.description,
+						critical: false,
+						implies: [],
+					})),
+				},
+			],
 		});
 	}
 	return { actionLabels: ACTION_LABELS, modules };
@@ -113,7 +115,6 @@ const keysOf = async (pool, ids) => {
 	return new Map(result.recordset.map((r) => [r.id, `${r.resource}:${r.action}`]));
 };
 
-
 // Các lượt cấp quyền của vai trò: [{ permission_id, key, scope }].
 const loadGrants = async (pool, roleId) => {
 	const result = await pool.request().input('role_id', sql.VarChar(20), roleId).query(`
@@ -143,7 +144,9 @@ const insertGrants = async (transaction, roleId, grants, actorId) => {
 			.input('permission_id', sql.VarChar(20), g.permission_id)
 			.input('scope', sql.VarChar(20), g.scope)
 			.input('created_by', sql.VarChar(20), actorId)
-			.query('INSERT INTO role_permissions (role_id, permission_id, scope, created_by) VALUES (@role_id, @permission_id, @scope, @created_by)');
+			.query(
+				'INSERT INTO role_permissions (role_id, permission_id, scope, created_by) VALUES (@role_id, @permission_id, @scope, @created_by)',
+			);
 	}
 };
 
@@ -219,15 +222,24 @@ const setRolePermissions = async (roleId, grants, actor, ip = null) => {
 // chép (không nhân bản để "lách" chốt chặn cấp quyền).
 const cloneRole = async (sourceId, data, actor, ip = null) => {
 	const pool = await getPool();
-	const exists = await pool.request().input('id', sql.VarChar(20), sourceId).query('SELECT id FROM roles WHERE id = @id');
+	const exists = await pool
+		.request()
+		.input('id', sql.VarChar(20), sourceId)
+		.query('SELECT id FROM roles WHERE id = @id');
 	if (!exists.recordset[0]) throw httpError(404, 'Không tìm thấy vai trò nguồn');
 
 	const grants = await loadGrants(pool, sourceId);
 	assertCanChangeGrants(actor, [], grants);
 
-	const role = await roleService.create({ name: data.name, description: data.description }, actor.id);
+	const role = await roleService.create(
+		{ name: data.name, description: data.description },
+		actor.id,
+	);
 	try {
-		await withTransaction((transaction) => insertGrants(transaction, role.id, grants, actor.id), pool);
+		await withTransaction(
+			(transaction) => insertGrants(transaction, role.id, grants, actor.id),
+			pool,
+		);
 	} catch (err) {
 		await roleService.remove(role.id, actor.id).catch(() => {}); // không để lại vai trò rỗng
 		throw err;

@@ -65,13 +65,10 @@ async function exportExcel(req, res, next) {
 			.query('SELECT name, year FROM research_rounds WHERE id = @round_id');
 		const round = roundResult.recordset[0];
 		if (!round) {
-			return res
-				.status(404)
-				.json({ success: false, message: 'Không tìm thấy đợt nghiên cứu' });
+			return res.status(404).json({ success: false, message: 'Không tìm thấy đợt nghiên cứu' });
 		}
 
-		const rq = () =>
-			pool.request().input('round_id', sql.VarChar(10), round_id);
+		const rq = () => pool.request().input('round_id', sql.VarChar(10), round_id);
 
 		const topicsResult = await rq().query(`
       SELECT t.id, t.title, t.[session], t.council_id,
@@ -121,8 +118,7 @@ async function exportExcel(req, res, next) {
     `);
 		const seatsByCouncil = new Map();
 		for (const s of seatsResult.recordset) {
-			if (!seatsByCouncil.has(s.council_id))
-				seatsByCouncil.set(s.council_id, new Map());
+			if (!seatsByCouncil.has(s.council_id)) seatsByCouncil.set(s.council_id, new Map());
 			seatsByCouncil.get(s.council_id).set(s.role, s);
 		}
 
@@ -212,9 +208,7 @@ async function exportExcel(req, res, next) {
 			const members = membersByTopic.get(t.id) ?? [];
 			const subs = subsByTopic.get(t.id);
 			const baseSeats = seatsByCouncil.get(t.council_id);
-			const seats = HD_ROLES.map(
-				([role]) => subs?.get(role) ?? baseSeats?.get(role) ?? null,
-			);
+			const seats = HD_ROLES.map(([role]) => subs?.get(role) ?? baseSeats?.get(role) ?? null);
 
 			const values = [
 				idx + 1,
@@ -241,18 +235,12 @@ async function exportExcel(req, res, next) {
 				});
 			});
 			// Chiều cao ~ số dòng lớn nhất trong ô (hội đồng luôn 5 ghế, tên đề tài wrap ~45 ký tự/dòng)
-			const lines = Math.max(
-				5,
-				members.length,
-				Math.ceil((t.title ?? '').length / 45),
-			);
+			const lines = Math.max(5, members.length, Math.ceil((t.title ?? '').length / 45));
 			ws.getRow(r).height = lines * 13 + 4;
 		});
 
 		const safeName =
-			(fileName || `lich-bao-ve-${round_id}`)
-				.replace(/[/\\?%*:|"<>]/g, '')
-				.trim() || 'lich-bao-ve';
+			(fileName || `lich-bao-ve-${round_id}`).replace(/[/\\?%*:|"<>]/g, '').trim() || 'lich-bao-ve';
 
 		await sendWorkbook(res, wb, safeName + '.xlsx');
 	} catch (err) {

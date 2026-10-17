@@ -31,7 +31,9 @@ const apply = process.argv.includes('--apply');
 	});
 
 	const taken = new Set(
-		(await pool.request().query('SELECT username FROM users')).recordset.map((r) => r.username.toLowerCase()),
+		(await pool.request().query('SELECT username FROM users')).recordset.map((r) =>
+			r.username.toLowerCase(),
+		),
 	);
 	const changes = [];
 	for (const r of affected) {

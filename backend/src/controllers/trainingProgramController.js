@@ -188,7 +188,12 @@ const addLessonDocument = async (req, res, next) => {
 		}
 		return created(
 			res,
-			await trainingProgramService.addLessonDocument(req.params.id, req.body, req.file, req.user.id),
+			await trainingProgramService.addLessonDocument(
+				req.params.id,
+				req.body,
+				req.file,
+				req.user.id,
+			),
 		);
 	} catch (err) {
 		next(err);
@@ -206,7 +211,10 @@ const removeLessonDocument = async (req, res, next) => {
 
 const incrementLessonDocumentDownload = async (req, res, next) => {
 	try {
-		return success(res, await trainingProgramService.incrementLessonDocumentDownload(req.params.docId));
+		return success(
+			res,
+			await trainingProgramService.incrementLessonDocumentDownload(req.params.docId),
+		);
 	} catch (err) {
 		next(err);
 	}

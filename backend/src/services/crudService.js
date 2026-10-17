@@ -83,11 +83,21 @@ const createCrudService = (
 			.input('description', sql.NVarChar(sql.MAX), data.description || null);
 
 		for (const f of extraFields) {
-			req.input(f.column, f.sqlType, data[f.column] !== undefined ? data[f.column] : f.default ?? null);
+			req.input(
+				f.column,
+				f.sqlType,
+				data[f.column] !== undefined ? data[f.column] : (f.default ?? null),
+			);
 		}
 		const extraCols = extraFields.map((f) => f.column);
 		const insertCols = ['id', 'name', 'description', ...extraCols, 'created_by'].join(', ');
-		const insertVals = ['@new_id', '@name', '@description', ...extraCols.map((c) => `@${c}`), '@actor_id'].join(', ');
+		const insertVals = [
+			'@new_id',
+			'@name',
+			'@description',
+			...extraCols.map((c) => `@${c}`),
+			'@actor_id',
+		].join(', ');
 
 		const result = await req.query(`
         DECLARE @new_id VARCHAR(${idLength});
@@ -139,10 +149,7 @@ const createCrudService = (
 
 		if (deleteGuards.length) {
 			const selects = deleteGuards
-				.map(
-					(g, i) =>
-						`(SELECT COUNT(*) FROM ${g.table} WHERE ${g.column} = @id) AS c${i}`,
-				)
+				.map((g, i) => `(SELECT COUNT(*) FROM ${g.table} WHERE ${g.column} = @id) AS c${i}`)
 				.join(', ');
 			const res = await pool
 				.request()
@@ -165,9 +172,7 @@ const createCrudService = (
 			.request()
 			.input('id', sql.VarChar(idLength), id)
 			.input('actor_id', sql.VarChar(20), actorId)
-			.query(
-				`EXEC sp_set_actor @actor_id; DELETE FROM ${tableName} WHERE id = @id`,
-			);
+			.query(`EXEC sp_set_actor @actor_id; DELETE FROM ${tableName} WHERE id = @id`);
 		await invalidate(cachePrefix);
 		broadcast('update', { entity });
 	};

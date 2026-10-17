@@ -32,7 +32,12 @@ const ATTACK_PER_MIN = Number(process.env.LOGIN_ATTACK_THRESHOLD) || 60;
 const CHALLENGE_TTL_SEC = 120;
 
 const hashKey = (v) => crypto.createHash('sha256').update(String(v)).digest('hex').slice(0, 32);
-const userKey = (username) => hashKey(String(username ?? '').trim().toLowerCase());
+const userKey = (username) =>
+	hashKey(
+		String(username ?? '')
+			.trim()
+			.toLowerCase(),
+	);
 const minuteOf = (ms) => Math.floor(ms / 60_000);
 
 // ─── Bộ đếm (Redis, dự phòng bộ nhớ) ─────────────────────────────────────────
@@ -103,7 +108,12 @@ const globalRate = (cur, prev, now = Date.now()) => {
 const assess = async ({ ip, username }) => {
 	const now = Date.now();
 	const k = keysFor(ip, username, now);
-	const [ipFails, userFails, gCur, gPrev] = await readCounts([k.ip, k.user, k.globalCur, k.globalPrev]);
+	const [ipFails, userFails, gCur, gPrev] = await readCounts([
+		k.ip,
+		k.user,
+		k.globalCur,
+		k.globalPrev,
+	]);
 	const attack = globalRate(gCur, gPrev, now) >= ATTACK_PER_MIN;
 	const worst = Math.max(ipFails, userFails);
 
@@ -120,7 +130,11 @@ const assess = async ({ ip, username }) => {
 // Token gắn với username (không dùng lời giải của tài khoản này cho tài khoản
 // khác) và chỉ dùng được 1 lần (jti). Khoá ký riêng 'login-pow' (utils/keys.js).
 const issueChallenge = ({ username, bits }) => ({
-	token: signToken('login-pow', { u: userKey(username), d: bits, jti: crypto.randomUUID() }, CHALLENGE_TTL_SEC),
+	token: signToken(
+		'login-pow',
+		{ u: userKey(username), d: bits, jti: crypto.randomUUID() },
+		CHALLENGE_TTL_SEC,
+	),
 	bits,
 });
 
@@ -169,7 +183,11 @@ const recordFailure = async ({ ip, username, userAgent }) => {
 	// 1 lần / 10 phút cho cả cụm worker.
 	if (gCur >= ATTACK_PER_MIN && now - attackLoggedAt > ATTACK_LOG_EVERY_MS) {
 		attackLoggedAt = now;
-		const first = await consumeOnce('login-attack-log', String(Math.floor(now / ATTACK_LOG_EVERY_MS)), 600);
+		const first = await consumeOnce(
+			'login-attack-log',
+			String(Math.floor(now / ATTACK_LOG_EVERY_MS)),
+			600,
+		);
 		if (first) {
 			require('../services/securityEventService').log({
 				eventType: 'login_attack_mode',

@@ -64,7 +64,12 @@ const findHeader = (workbook) => {
 				const h = norm(cellText(cell));
 				if (h === 'stt' && !sttCol) sttCol = col;
 				else if (h === 'hoi dong' && !councilCol) councilCol = col;
-				else if (h.startsWith('ten') && (h.includes('de tai') || h.includes('sang kien')) && !titleCol) titleCol = col;
+				else if (
+					h.startsWith('ten') &&
+					(h.includes('de tai') || h.includes('sang kien')) &&
+					!titleCol
+				)
+					titleCol = col;
 				else if (h === 'phien' && !sessionCol) sessionCol = col;
 				else if (h === 'dia diem' && !locationCol) locationCol = col;
 				else if (ROLE_BY_NORM[h] && !roleCols[ROLE_BY_NORM[h]]) roleCols[ROLE_BY_NORM[h]] = col;
@@ -105,7 +110,9 @@ const parseWorkbook = async (buffer) => {
 	const header = findHeader(workbook);
 	if (!header) {
 		throw Object.assign(
-			new Error('Không tìm thấy dòng tiêu đề (cần cột STT, Tên đề tài, và cột Hội đồng hoặc 5 cột Chủ tịch/Thư ký/Phản biện 1/Phản biện 2/Thành viên).'),
+			new Error(
+				'Không tìm thấy dòng tiêu đề (cần cột STT, Tên đề tài, và cột Hội đồng hoặc 5 cột Chủ tịch/Thư ký/Phản biện 1/Phản biện 2/Thành viên).',
+			),
 			{ status: 400 },
 		);
 	}
@@ -245,7 +252,12 @@ const matchPerson = (seat, db) => {
 	if (externals.length === 1) {
 		const e = externals[0];
 		return {
-			matched: { type: 'external', id: e.id, full_name: e.full_name, department_name: e.organization },
+			matched: {
+				type: 'external',
+				id: e.id,
+				full_name: e.full_name,
+				department_name: e.organization,
+			},
 		};
 	}
 	return {
@@ -310,9 +322,7 @@ const buildPreview = (rows, db) => {
 		if (!byLocation.has(locKey)) byLocation.set(locKey, []);
 		const clusters = byLocation.get(locKey);
 		const keys = new Set(r.seats.map(seatPersonKey));
-		let target = clusters.find(
-			(cl) => cl.repKeys.filter((k) => keys.has(k)).length >= 3,
-		);
+		let target = clusters.find((cl) => cl.repKeys.filter((k) => keys.has(k)).length >= 3);
 		if (!target) {
 			target = { location: r.location || null, repKeys: [...keys], rows: [] };
 			clusters.push(target);
@@ -403,13 +413,16 @@ const importExcel = async ({ buffer, round_id, dry_run }, actorId) => {
 	const warnings = [];
 	for (const c of councils) {
 		if (c.duplicate) {
-			warnings.push(`${c.name}: đợt này đã có hội đồng với đúng bộ 5 người này — sẽ bỏ qua khi nhập.`);
+			warnings.push(
+				`${c.name}: đợt này đã có hội đồng với đúng bộ 5 người này — sẽ bỏ qua khi nhập.`,
+			);
 		}
 		for (const s of c.seats) {
 			if (s.error) warnings.push(`${c.name} — ghế ${s.role}: ${s.error}`);
 		}
 		for (const t of c.topics) {
-			if (t.warning) warnings.push(`${c.name} — dòng ${t.row} "${t.raw_title.slice(0, 60)}…": ${t.warning}`);
+			if (t.warning)
+				warnings.push(`${c.name} — dòng ${t.row} "${t.raw_title.slice(0, 60)}…": ${t.warning}`);
 			for (const s of t.substitutes) {
 				if (s.error) {
 					warnings.push(`${c.name} — dòng ${t.row}, ghế thay thế ${s.role}: ${s.error}`);
@@ -474,13 +487,22 @@ const importExcel = async ({ buffer, round_id, dry_run }, actorId) => {
 			);
 			for (const t of assignable) {
 				if (t.session) {
-					await councilAssignmentService.setTopicSession(council.id, t.matched.id, t.session, actorId);
+					await councilAssignmentService.setTopicSession(
+						council.id,
+						t.matched.id,
+						t.session,
+						actorId,
+					);
 				}
 				for (const s of t.substitutes) {
 					// Ghế thay thế chỉ hỗ trợ người trong viện (bảng chỉ có user_id)
 					if (s.matched?.type === 'user') {
 						await councilAssignmentService.setSeatSubstitute(
-							council.id, t.matched.id, s.role, s.matched.id, actorId,
+							council.id,
+							t.matched.id,
+							s.role,
+							s.matched.id,
+							actorId,
 						);
 					}
 				}
@@ -489,7 +511,12 @@ const importExcel = async ({ buffer, round_id, dry_run }, actorId) => {
 		}
 	}
 
-	return { dry_run: false, councils_created: councilsCreated, topics_assigned: topicsAssigned, warnings };
+	return {
+		dry_run: false,
+		councils_created: councilsCreated,
+		topics_assigned: topicsAssigned,
+		warnings,
+	};
 };
 
 module.exports = { importExcel };

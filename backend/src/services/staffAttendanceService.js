@@ -35,14 +35,26 @@ const loadContext = async (userId) => {
 	const pool = await getPool();
 	const [pattern, assignments, shiftsById, records] = await Promise.all([
 		shiftService.patternForUser(userId),
-		shiftService.assignmentsForUser(userId, shiftLogic.addDays(today, -2), shiftLogic.addDays(today, WEEK_AHEAD)),
+		shiftService.assignmentsForUser(
+			userId,
+			shiftLogic.addDays(today, -2),
+			shiftLogic.addDays(today, WEEK_AHEAD),
+		),
 		shiftService.shiftsMap(),
 		pool
 			.request()
 			.input('user_id', sql.VarChar(20), userId)
-			.query('SELECT TOP 60 * FROM staff_attendance WHERE user_id = @user_id ORDER BY work_date DESC, check_in_at DESC'),
+			.query(
+				'SELECT TOP 60 * FROM staff_attendance WHERE user_id = @user_id ORDER BY work_date DESC, check_in_at DESC',
+			),
 	]);
-	return { today, pattern, assignments, shiftsById, records: records.recordset.map((r) => ({ ...r, work_date: dateKey(r.work_date) })) };
+	return {
+		today,
+		pattern,
+		assignments,
+		shiftsById,
+		records: records.recordset.map((r) => ({ ...r, work_date: dateKey(r.work_date) })),
+	};
 };
 
 const getMine = async (userId, ip) => {
@@ -66,7 +78,9 @@ const getMine = async (userId, ip) => {
 		};
 	});
 	return {
-		options: shiftLogic.checkOptions({ pattern, assignments, shiftsById, records }).map(publicOption),
+		options: shiftLogic
+			.checkOptions({ pattern, assignments, shiftsById, records })
+			.map(publicOption),
 		recent: records.filter((r) => r.work_date >= shiftLogic.addDays(today, -1)),
 		history: records,
 		week,
@@ -78,18 +92,26 @@ const getMine = async (userId, ip) => {
 	};
 };
 
-const fmtTime = (o) => (o.start_time ? `${o.name} ${o.start_time}–${o.end_time}` : 'chấm công tự do');
+const fmtTime = (o) =>
+	o.start_time ? `${o.name} ${o.start_time}–${o.end_time}` : 'chấm công tự do';
 
 // Chọn ca được bấm: client gửi (shift_id, work_date) khi có nhiều lựa chọn
 const pickOption = (options, choice) => {
 	if (choice.work_date) {
-		const o = options.find((x) => x.work_date === choice.work_date && (x.shift_id ?? null) === (choice.shift_id ?? null));
-		if (!o) throw badRequest('Ca này hiện không trong giờ được chấm công. Tải lại trang để xem ca hiện có.');
+		const o = options.find(
+			(x) => x.work_date === choice.work_date && (x.shift_id ?? null) === (choice.shift_id ?? null),
+		);
+		if (!o)
+			throw badRequest(
+				'Ca này hiện không trong giờ được chấm công. Tải lại trang để xem ca hiện có.',
+			);
 		return o;
 	}
 	if (options.length === 1) return options[0];
 	if (!options.length) throw badRequest('Hiện không có ca nào trong giờ được chấm công');
-	throw badRequest(`Có ${options.length} ca có thể chấm lúc này (${options.map(fmtTime).join('; ')}) — chọn ca cần chấm`);
+	throw badRequest(
+		`Có ${options.length} ca có thể chấm lúc này (${options.map(fmtTime).join('; ')}) — chọn ca cần chấm`,
+	);
 };
 
 const check = async (userId, { ip, lat, lng, accuracy, shift_id, work_date }) => {
@@ -103,7 +125,8 @@ const check = async (userId, { ip, lat, lng, accuracy, shift_id, work_date }) =>
 	} catch (err) {
 		result.reasons.unshift(err.message);
 	}
-	if (result.reasons.length) throw badRequest(result.reasons.join('. '), { reasons: result.reasons });
+	if (result.reasons.length)
+		throw badRequest(result.reasons.join('. '), { reasons: result.reasons });
 
 	const isShift = option.shift_id != null;
 	const pool = await getPool();
@@ -123,8 +146,7 @@ const check = async (userId, { ip, lat, lng, accuracy, shift_id, work_date }) =>
 			.input('early', sql.Int, isShift ? shiftLogic.earlyMin(option, now) : null)
 			.input('now', sql.DateTime2, now)
 			.input('ip', sql.VarChar(45), normalizeIp(ip))
-			.input('distance', sql.Int, result.distance_m)
-			.query(`
+			.input('distance', sql.Int, result.distance_m).query(`
         MERGE staff_attendance WITH (HOLDLOCK) AS t
         USING (SELECT @user_id AS user_id, @work_date AS work_date, @shift_id AS shift_id) AS s
           ON t.user_id = s.user_id AND t.work_date = s.work_date
@@ -158,11 +180,22 @@ const getByDate = async (dateArg) => {
     `),
 		shiftService.planForDate(date),
 	]);
-	const rows = records.recordset.map((r) => ({ ...r, key: `r${r.id}`, work_date: date, status: 'checked' }));
+	const rows = records.recordset.map((r) => ({
+		...r,
+		key: `r${r.id}`,
+		work_date: date,
+		status: 'checked',
+	}));
 	const done = new Set(rows.map((r) => `${r.user_id}|${r.shift_id ?? ''}`));
 	for (const u of plan.users) {
-		const pattern = u.shift_pattern_id ? plan.patternsById.get(u.shift_pattern_id) : plan.defaultPattern;
-		const day = shiftLogic.shiftIdsForDay(pattern ?? null, plan.assignments.filter((a) => a.user_id === u.id), date);
+		const pattern = u.shift_pattern_id
+			? plan.patternsById.get(u.shift_pattern_id)
+			: plan.defaultPattern;
+		const day = shiftLogic.shiftIdsForDay(
+			pattern ?? null,
+			plan.assignments.filter((a) => a.user_id === u.id),
+			date,
+		);
 		for (const id of day?.shiftIds ?? []) {
 			const shift = plan.shifts.get(id);
 			if (!shift || done.has(`${u.id}|${id}`)) continue;

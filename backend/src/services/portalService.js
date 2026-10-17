@@ -84,11 +84,14 @@ const getMyTraining = async (actor) => {
 	// Đề đang mở mà mình chưa nộp — nhắc trên thẻ khóa học (tab "Thi online" đã gộp vào đây).
 	const papers = await examService.listAvailablePapersForUser(actor);
 	const openExamCount = (courseId) =>
-		papers.filter((p) => p.course_id === courseId && (!p.attempt_status || p.attempt_status === 'in_progress'))
-			.length;
+		papers.filter(
+			(p) => p.course_id === courseId && (!p.attempt_status || p.attempt_status === 'in_progress'),
+		).length;
 
 	const enrolledIds = new Set(enrolled.map((e) => e.id));
-	const openCourses = (await publicPortalService.getOpenCourses()).filter((c) => !enrolledIds.has(c.id));
+	const openCourses = (await publicPortalService.getOpenCourses()).filter(
+		(c) => !enrolledIds.has(c.id),
+	);
 
 	return {
 		enrolled: enrolled.map((e) => ({
@@ -156,7 +159,9 @@ const getMyCourse = async (courseId, actor) => {
 			? lessons.map((l) => ({ ...l, documents: lessonDocs.filter((d) => d.lesson_id === l.id) }))
 			: [],
 		papers: approved
-			? (await examService.listAvailablePapersForUser(actor)).filter((p) => p.course_id === courseId)
+			? (await examService.listAvailablePapersForUser(actor)).filter(
+					(p) => p.course_id === courseId,
+				)
 			: [],
 	};
 };
@@ -179,7 +184,11 @@ const DOC_ACCESS_SQL = {
 const openDocument = async (docId, actor, kind = 'course') => {
 	const pool = await getPool();
 	const ok = (
-		await pool.request().input('id', sql.VarChar(20), docId).input('uid', sql.VarChar(20), actor.id).query(DOC_ACCESS_SQL[kind])
+		await pool
+			.request()
+			.input('id', sql.VarChar(20), docId)
+			.input('uid', sql.VarChar(20), actor.id)
+			.query(DOC_ACCESS_SQL[kind])
 	).recordset[0];
 	if (!ok) throw httpError(404, 'Không tìm thấy tài liệu.');
 	return kind === 'lesson'
@@ -195,7 +204,9 @@ const registerCourse = async (courseId, actor) => {
 		await pool
 			.request()
 			.input('id', sql.VarChar(20), courseId)
-			.query("SELECT 1 AS ok FROM courses WHERE id = @id AND is_public_registration = 1 AND status <> 'cancelled'")
+			.query(
+				"SELECT 1 AS ok FROM courses WHERE id = @id AND is_public_registration = 1 AND status <> 'cancelled'",
+			)
 	).recordset[0];
 	if (!row) {
 		throw httpError(403, 'Khóa học không mở đăng ký cho cá nhân.');
@@ -209,10 +220,8 @@ const registerCourse = async (courseId, actor) => {
 // CME cá nhân (cmePersonalExportController.js) — caller tự kiểm tra quyền.
 const getUserCme = async (userId, year) => {
 	const pool = await getPool();
-	const r = await pool
-		.request()
-		.input('uid', sql.VarChar(20), userId)
-		.input('year', sql.Int, year).query(`
+	const r = await pool.request().input('uid', sql.VarChar(20), userId).input('year', sql.Int, year)
+		.query(`
     SELECT p.id, p.seminar_id, s.title AS seminar_title, s.event_type, s.scope, s.location,
            s.start_date, s.end_date, s.date_text, p.participation_type,
            p.cme_year, p.cme_certificate_no, p.cme_credits, p.cme_status, p.cme_issued_date
@@ -242,8 +251,14 @@ const getUserCme = async (userId, year) => {
 	const [seminars, records, req] = r.recordsets;
 	const sum = (rows, key) => rows.reduce((t, x) => t + Number(x[key] || 0), 0);
 	const earned =
-		sum(seminars.filter((p) => p.cme_year === year), 'cme_credits') +
-		sum(records.filter((x) => x.approval_status === 'approved'), 'credits');
+		sum(
+			seminars.filter((p) => p.cme_year === year),
+			'cme_credits',
+		) +
+		sum(
+			records.filter((x) => x.approval_status === 'approved'),
+			'credits',
+		);
 	return {
 		year,
 		required_credits: req[0]?.required_credits ?? null,
@@ -266,4 +281,12 @@ const getCmeCategories = async () => {
 	).recordset;
 };
 
-module.exports = { getMyTraining, getMyCourse, openDocument, registerCourse, getMyCme, getUserCme, getCmeCategories };
+module.exports = {
+	getMyTraining,
+	getMyCourse,
+	openDocument,
+	registerCourse,
+	getMyCme,
+	getUserCme,
+	getCmeCategories,
+};

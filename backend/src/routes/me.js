@@ -47,7 +47,11 @@ router.patch('/lesson-documents/:docId/download', async (req, res, next) => {
 
 router.post('/courses/:id/register', async (req, res, next) => {
 	try {
-		return created(res, await portalService.registerCourse(req.params.id, req.user), 'Đã gửi đăng ký, chờ duyệt');
+		return created(
+			res,
+			await portalService.registerCourse(req.params.id, req.user),
+			'Đã gửi đăng ký, chờ duyệt',
+		);
 	} catch (err) {
 		next(err);
 	}
@@ -76,20 +80,33 @@ const handle = (fn) => async (req, res, next) => {
 	}
 };
 
-router.get('/cme-categories', handle(async (_req, res) => success(res, await portalService.getCmeCategories())));
+router.get(
+	'/cme-categories',
+	handle(async (_req, res) => success(res, await portalService.getCmeCategories())),
+);
 router.post(
 	'/cme-records',
 	[
 		body('title').trim().notEmpty().withMessage('Vui lòng nhập nội dung hoạt động'),
-		body('year').custom((v, { req }) => !!v || !!req.body.activity_date).withMessage('Vui lòng nhập năm hoặc ngày hoạt động'),
+		body('year')
+			.custom((v, { req }) => !!v || !!req.body.activity_date)
+			.withMessage('Vui lòng nhập năm hoặc ngày hoạt động'),
 		body('credits').isFloat({ min: 0 }).withMessage('Số tín chỉ không hợp lệ'),
 	],
 	validate,
-	handle(async (req, res) => created(res, await cmeRecordService.createMine(req.body, req.user.id), 'Đã gửi, chờ duyệt')),
+	handle(async (req, res) =>
+		created(res, await cmeRecordService.createMine(req.body, req.user.id), 'Đã gửi, chờ duyệt'),
+	),
 );
 router.put(
 	'/cme-records/:id',
-	handle(async (req, res) => success(res, await cmeRecordService.updateMine(req.params.id, req.body, req.user.id), 'Đã gửi lại, chờ duyệt')),
+	handle(async (req, res) =>
+		success(
+			res,
+			await cmeRecordService.updateMine(req.params.id, req.body, req.user.id),
+			'Đã gửi lại, chờ duyệt',
+		),
+	),
 );
 router.delete(
 	'/cme-records/:id',
@@ -115,8 +132,12 @@ router.post(
 	ownPendingRecord,
 	uploadEvidence.single('file'),
 	handle(async (req, res) => {
-		if (!req.file) return res.status(400).json({ success: false, message: 'Vui lòng chọn file minh chứng' });
-		return success(res, await cmeRecordService.addEvidenceMine(req.params.id, req.file, req.user.id));
+		if (!req.file)
+			return res.status(400).json({ success: false, message: 'Vui lòng chọn file minh chứng' });
+		return success(
+			res,
+			await cmeRecordService.addEvidenceMine(req.params.id, req.file, req.user.id),
+		);
 	}),
 );
 
@@ -129,7 +150,9 @@ const staffAttendanceService = require('../services/staffAttendanceService');
 const { requireModule } = require('../middlewares/moduleGuard');
 router.get(
 	'/attendance',
-	handle(async (req, res) => success(res, await staffAttendanceService.getMine(req.user.id, req.ip))),
+	handle(async (req, res) =>
+		success(res, await staffAttendanceService.getMine(req.user.id, req.ip)),
+	),
 );
 router.post(
 	'/attendance/check',
@@ -145,7 +168,14 @@ router.post(
 	validate,
 	handle(async (req, res) => {
 		const { lat, lng, accuracy, shift_id, work_date } = req.body;
-		const data = await staffAttendanceService.check(req.user.id, { ip: req.ip, lat, lng, accuracy, shift_id, work_date });
+		const data = await staffAttendanceService.check(req.user.id, {
+			ip: req.ip,
+			lat,
+			lng,
+			accuracy,
+			shift_id,
+			work_date,
+		});
 		return success(res, data, data.action === 'check_in' ? 'Đã chấm công vào' : 'Đã chấm công ra');
 	}),
 );

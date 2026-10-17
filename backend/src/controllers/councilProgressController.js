@@ -92,9 +92,7 @@ const uploadFiles = async (req, res, next) => {
 	try {
 		const { topic_id } = req.params;
 		if (!req.files || req.files.length === 0) {
-			return res
-				.status(400)
-				.json({ success: false, message: 'Chưa có file nào được tải lên' });
+			return res.status(400).json({ success: false, message: 'Chưa có file nào được tải lên' });
 		}
 		const result = await progressService.uploadEvalFiles(
 			topic_id,
@@ -109,11 +107,7 @@ const uploadFiles = async (req, res, next) => {
 
 const deleteFile = async (req, res, next) => {
 	try {
-		await progressService.deleteEvalFile(
-			req.params.topic_id,
-			req.params.file_id,
-			req.user.id,
-		);
+		await progressService.deleteEvalFile(req.params.topic_id, req.params.file_id, req.user.id);
 		return success(res, null, 'Đã xóa file đánh giá');
 	} catch (err) {
 		next(err);
@@ -124,9 +118,7 @@ const uploadMinutesFiles = async (req, res, next) => {
 	try {
 		const { topic_id } = req.params;
 		if (!req.files || req.files.length === 0) {
-			return res
-				.status(400)
-				.json({ success: false, message: 'Chưa có file nào được tải lên' });
+			return res.status(400).json({ success: false, message: 'Chưa có file nào được tải lên' });
 		}
 		const result = await progressService.uploadMinutesFiles(
 			topic_id,
@@ -142,9 +134,7 @@ const uploadMinutesFiles = async (req, res, next) => {
 const uploadCommentImage = async (req, res, next) => {
 	try {
 		if (!req.file) {
-			return res
-				.status(400)
-				.json({ success: false, message: 'Chưa có ảnh nào được tải lên' });
+			return res.status(400).json({ success: false, message: 'Chưa có ảnh nào được tải lên' });
 		}
 		const result = await progressService.uploadCommentImage(
 			req.params.topic_id,
@@ -159,11 +149,7 @@ const uploadCommentImage = async (req, res, next) => {
 
 const deleteMinutesFile = async (req, res, next) => {
 	try {
-		await progressService.deleteMinutesFile(
-			req.params.topic_id,
-			req.params.file_id,
-			req.user.id,
-		);
+		await progressService.deleteMinutesFile(req.params.topic_id, req.params.file_id, req.user.id);
 		return success(res, null, 'Đã xóa biên bản');
 	} catch (err) {
 		next(err);

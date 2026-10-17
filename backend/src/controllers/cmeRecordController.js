@@ -74,9 +74,15 @@ const addEvidence = async (req, res, next) => {
 const createStaff = async (req, res, next) => {
 	try {
 		if (!hasPermission(req.user, 'users', 'create')) {
-			return res.status(403).json({ success: false, message: 'Cần quyền "Thêm người dùng" để thêm nhân viên mới.' });
+			return res
+				.status(403)
+				.json({ success: false, message: 'Cần quyền "Thêm người dùng" để thêm nhân viên mới.' });
 		}
-		return created(res, await cmeRecordImportService.createMissingStaff(req.body || {}, req.user.id), 'Đã thêm nhân viên');
+		return created(
+			res,
+			await cmeRecordImportService.createMissingStaff(req.body || {}, req.user.id),
+			'Đã thêm nhân viên',
+		);
 	} catch (err) {
 		next(err);
 	}
@@ -107,7 +113,10 @@ const importExcel = async (req, res, next) => {
 		const canCreateStaff = hasPermission(req.user, 'users', 'create');
 		const createMissing = req.body.create_missing === '1' || req.body.create_missing === 'true';
 		if (createMissing && !canCreateStaff) {
-			return res.status(403).json({ success: false, message: 'Cần quyền "Thêm người dùng" để tạo nhân viên mới khi nhập.' });
+			return res.status(403).json({
+				success: false,
+				message: 'Cần quyền "Thêm người dùng" để tạo nhân viên mới khi nhập.',
+			});
 		}
 		const out = await cmeRecordImportService.importExcel(
 			{
@@ -136,7 +145,12 @@ const importExcel = async (req, res, next) => {
 
 const reviewWith = (approve) => async (req, res, next) => {
 	try {
-		const item = await cmeRecordService.review(req.params.id, approve, req.body?.reason, req.user.id);
+		const item = await cmeRecordService.review(
+			req.params.id,
+			approve,
+			req.body?.reason,
+			req.user.id,
+		);
 		if (!item) return notFound(res);
 		return success(res, item, approve ? 'Đã duyệt' : 'Đã từ chối');
 	} catch (err) {
@@ -147,15 +161,25 @@ const approve = reviewWith(true);
 const reject = reviewWith(false);
 
 const sendWorkbook = async (res, wb, fileName) => {
-	res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-	res.setHeader('Content-Disposition', `attachment; filename*=UTF-8''${encodeURIComponent(fileName)}`);
+	res.setHeader(
+		'Content-Type',
+		'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+	);
+	res.setHeader(
+		'Content-Disposition',
+		`attachment; filename*=UTF-8''${encodeURIComponent(fileName)}`,
+	);
 	await wb.xlsx.write(res);
 	res.end();
 };
 
 const importTemplate = async (req, res, next) => {
 	try {
-		return sendWorkbook(res, await cmeRecordImportService.templateWorkbook(), 'mau-nhap-ghi-nhan-cme.xlsx');
+		return sendWorkbook(
+			res,
+			await cmeRecordImportService.templateWorkbook(),
+			'mau-nhap-ghi-nhan-cme.xlsx',
+		);
 	} catch (err) {
 		next(err);
 	}
@@ -168,7 +192,11 @@ const exportExcel = async (req, res, next) => {
 		const d = new Date();
 		const wb = cmeReportService.buildWorkbook(data, {
 			title: `BÁO CÁO TÍN CHỈ CME ${year ? `NĂM ${year}` : 'TẤT CẢ CÁC NĂM'}`,
-			subtitle: [department, `${data.people.length} nhân sự`, `Xuất ngày ${d.getDate()}/${d.getMonth() + 1}/${d.getFullYear()}`]
+			subtitle: [
+				department,
+				`${data.people.length} nhân sự`,
+				`Xuất ngày ${d.getDate()}/${d.getMonth() + 1}/${d.getFullYear()}`,
+			]
 				.filter(Boolean)
 				.join(' · '),
 		});

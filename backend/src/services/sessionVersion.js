@@ -19,10 +19,7 @@ const currentTokenVersion = async (userId, pool = null) => {
 // Trả về version mới.
 const bumpTokenVersion = async (userId, pool = null) => {
 	const p = pool ?? (await getPool());
-	const r = await p
-		.request()
-		.input('id', sql.VarChar(20), userId)
-		.query(`
+	const r = await p.request().input('id', sql.VarChar(20), userId).query(`
       UPDATE users SET token_version = token_version + 1 WHERE id = @id;
       SELECT token_version FROM users WHERE id = @id;
     `);

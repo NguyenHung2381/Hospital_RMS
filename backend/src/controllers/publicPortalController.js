@@ -34,7 +34,11 @@ const lookup = async (req, res, next) => {
 	try {
 		const nationalId = String(req.query.national_id).trim();
 		if (!(await attempts.hit('public-lookup', nationalId, LOOKUP_PER_ID_MAX, 60 * 60))) {
-			return error(res, 'Số CCCD/CMND này đã được tra cứu quá nhiều lần. Vui lòng thử lại sau 1 giờ.', 429);
+			return error(
+				res,
+				'Số CCCD/CMND này đã được tra cứu quá nhiều lần. Vui lòng thử lại sau 1 giờ.',
+				429,
+			);
 		}
 		success(res, await service.lookupResults(nationalId, req.query.dob, req.query.full_name));
 	} catch (err) {
@@ -113,7 +117,11 @@ const registerTopic = async (req, res, next) => {
 			return error(res, 'Mã xác nhận không đúng hoặc đã hết hạn, vui lòng thử lại.', 400);
 		}
 		const result = await service.registerTopic(req.body, req.files);
-		created(res, result, 'Đăng ký đề tài thành công, vui lòng chờ khoa/phòng và hội đồng xét duyệt.');
+		created(
+			res,
+			result,
+			'Đăng ký đề tài thành công, vui lòng chờ khoa/phòng và hội đồng xét duyệt.',
+		);
 	} catch (err) {
 		next(err);
 	}
@@ -134,10 +142,15 @@ const TOPIC_STATUS_PER_ID_MAX = 10;
 const getTopicStatus = async (req, res, next) => {
 	try {
 		if (!(await attempts.hit('topic-status', req.params.id, TOPIC_STATUS_PER_ID_MAX, 60 * 60))) {
-			return error(res, 'Mã hồ sơ này đã được tra cứu quá nhiều lần. Vui lòng thử lại sau 1 giờ.', 429);
+			return error(
+				res,
+				'Mã hồ sơ này đã được tra cứu quá nhiều lần. Vui lòng thử lại sau 1 giờ.',
+				429,
+			);
 		}
 		const topic = await service.getTopicStatus(req.params.id, req.query.contact);
-		if (!topic) return error(res, 'Không tìm thấy hồ sơ khớp với mã và thông tin liên hệ đã nhập.', 404);
+		if (!topic)
+			return error(res, 'Không tìm thấy hồ sơ khớp với mã và thông tin liên hệ đã nhập.', 404);
 		success(res, topic);
 	} catch (err) {
 		next(err);
@@ -161,7 +174,11 @@ const registerSeminar = async (req, res, next) => {
 		if (!(await verifyCaptcha(req.body.captcha_token, req.body.captcha_answer, req.ip))) {
 			return error(res, 'Mã xác nhận không đúng hoặc đã hết hạn, vui lòng thử lại.', 400);
 		}
-		created(res, await seminarParticipants.registerPublic(req.params.token, req.body), 'Đăng ký thành công');
+		created(
+			res,
+			await seminarParticipants.registerPublic(req.params.token, req.body),
+			'Đăng ký thành công',
+		);
 	} catch (err) {
 		next(err);
 	}
@@ -185,7 +202,11 @@ const startSeminarTest = async (req, res, next) => {
 
 const submitSeminarTest = async (req, res, next) => {
 	try {
-		success(res, await seminarParticipants.submitTest(req.params.code, req.body.answers), 'Đã nộp bài test');
+		success(
+			res,
+			await seminarParticipants.submitTest(req.params.code, req.body.answers),
+			'Đã nộp bài test',
+		);
 	} catch (err) {
 		next(err);
 	}

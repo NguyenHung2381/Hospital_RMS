@@ -9,7 +9,8 @@ const QUESTION_TYPES = ['single_choice', 'essay'];
 // không lọc — giữ nguyên câu tự luận của đề tạo trước khi có cột này.
 const PAPER_QUESTION_TYPE = { multiple_choice: 'single_choice', essay: 'essay' };
 
-const parseOptions = (row) => (row.options === undefined ? row : { ...row, options: parseJsonArray(row.options) });
+const parseOptions = (row) =>
+	row.options === undefined ? row : { ...row, options: parseJsonArray(row.options) };
 
 // Ảnh minh hoạ câu hỏi — tải lên qua POST /exams/questions/image (routes/exams.js)
 const QUESTION_IMAGE_DIR = '/uploads/questions/';
@@ -45,7 +46,10 @@ const listQuestions = async ({ subject_id, search, question_type } = {}) => {
 
 const getQuestion = async (id) => {
 	const pool = await getPool();
-	const r = await pool.request().input('id', sql.VarChar(20), id).query('SELECT * FROM question_bank WHERE id = @id');
+	const r = await pool
+		.request()
+		.input('id', sql.VarChar(20), id)
+		.query('SELECT * FROM question_bank WHERE id = @id');
 	return r.recordset[0] ? parseOptions(r.recordset[0]) : null;
 };
 
@@ -56,8 +60,16 @@ const insertQuestion = async (request, data, actorId) => {
 		.input('subject_id', sql.VarChar(20), data.subject_id || null)
 		.input('question_type', sql.VarChar(20), type)
 		.input('question_text', sql.NVarChar(sql.MAX), data.question_text)
-		.input('options', sql.NVarChar(sql.MAX), type === 'essay' ? null : JSON.stringify((data.options || []).filter(Boolean)))
-		.input('correct_option', sql.NVarChar(255), type === 'essay' ? null : data.correct_option || null)
+		.input(
+			'options',
+			sql.NVarChar(sql.MAX),
+			type === 'essay' ? null : JSON.stringify((data.options || []).filter(Boolean)),
+		)
+		.input(
+			'correct_option',
+			sql.NVarChar(255),
+			type === 'essay' ? null : data.correct_option || null,
+		)
 		.input('points', sql.Decimal(4, 1), data.points || 1)
 		.input('image_url', sql.NVarChar(500), imagePath(data.image_url))
 		.input('actor_id', sql.VarChar(20), actorId).query(`
@@ -89,8 +101,15 @@ const updateQuestion = async (id, data, actorId) => {
 	const pool = await getPool();
 	const current = await getQuestion(id);
 	if (!current) return null;
-	const type = data.question_type && QUESTION_TYPES.includes(data.question_type) ? data.question_type : current.question_type;
-	const sets = ['updated_at = GETDATE()', 'updated_by = @actor_id', 'question_type = @question_type'];
+	const type =
+		data.question_type && QUESTION_TYPES.includes(data.question_type)
+			? data.question_type
+			: current.question_type;
+	const sets = [
+		'updated_at = GETDATE()',
+		'updated_by = @actor_id',
+		'question_type = @question_type',
+	];
 	const req = pool
 		.request()
 		.input('id', sql.VarChar(20), id)
@@ -107,11 +126,21 @@ const updateQuestion = async (id, data, actorId) => {
 	}
 	if (data.options !== undefined || data.question_type !== undefined) {
 		sets.push('options = @options');
-		req.input('options', sql.NVarChar(sql.MAX), type === 'essay' ? null : JSON.stringify((data.options ?? current.options ?? []).filter(Boolean)));
+		req.input(
+			'options',
+			sql.NVarChar(sql.MAX),
+			type === 'essay'
+				? null
+				: JSON.stringify((data.options ?? current.options ?? []).filter(Boolean)),
+		);
 	}
 	if (data.correct_option !== undefined || data.question_type !== undefined) {
 		sets.push('correct_option = @correct_option');
-		req.input('correct_option', sql.NVarChar(255), type === 'essay' ? null : (data.correct_option ?? current.correct_option ?? null));
+		req.input(
+			'correct_option',
+			sql.NVarChar(255),
+			type === 'essay' ? null : (data.correct_option ?? current.correct_option ?? null),
+		);
 	}
 	if (data.points !== undefined) {
 		sets.push('points = @points');
@@ -141,7 +170,9 @@ const removeQuestion = async (id) => {
       DELETE FROM question_bank OUTPUT DELETED.image_url WHERE id = @id;
   `);
 	if (r.recordset?.[0]?.in_use) {
-		const err = new Error('Câu hỏi đang được dùng trong đề thi, không thể xoá. Hãy bỏ câu hỏi khỏi các đề trước.');
+		const err = new Error(
+			'Câu hỏi đang được dùng trong đề thi, không thể xoá. Hãy bỏ câu hỏi khỏi các đề trước.',
+		);
 		err.statusCode = 409;
 		throw err;
 	}
@@ -185,7 +216,10 @@ const listPaperQuestionsFull = async (paperId) => {
 
 const getPaper = async (id) => {
 	const pool = await getPool();
-	const r = await pool.request().input('id', sql.VarChar(20), id).query(`${paperSelect} WHERE p.id = @id`);
+	const r = await pool
+		.request()
+		.input('id', sql.VarChar(20), id)
+		.query(`${paperSelect} WHERE p.id = @id`);
 	const row = r.recordset[0];
 	if (!row) return null;
 	row.questions = await listPaperQuestionsFull(id);
@@ -193,12 +227,18 @@ const getPaper = async (id) => {
 };
 
 const setPaperQuestions = async (paperId, questionIds, actorId) => {
-		const pool = await getPool();
+	const pool = await getPool();
 	const paperType = (
-		await pool.request().input('id', sql.VarChar(20), paperId).query('SELECT paper_type FROM exam_papers WHERE id = @id')
+		await pool
+			.request()
+			.input('id', sql.VarChar(20), paperId)
+			.query('SELECT paper_type FROM exam_papers WHERE id = @id')
 	).recordset[0]?.paper_type;
 	const onlyType = PAPER_QUESTION_TYPE[paperType] || null;
-	await pool.request().input('paper_id', sql.VarChar(20), paperId).query('DELETE FROM exam_paper_questions WHERE paper_id = @paper_id');
+	await pool
+		.request()
+		.input('paper_id', sql.VarChar(20), paperId)
+		.query('DELETE FROM exam_paper_questions WHERE paper_id = @paper_id');
 	const ids = [...new Set((questionIds || []).filter(Boolean))];
 	for (let i = 0; i < ids.length; i++) {
 		await pool
@@ -237,7 +277,8 @@ const createPaper = async (data, actorId) => {
       SELECT @new_id AS id;
     `);
 	const id = result.recordset[0].id;
-	if (Array.isArray(data.question_ids) && data.question_ids.length) await setPaperQuestions(id, data.question_ids, actorId);
+	if (Array.isArray(data.question_ids) && data.question_ids.length)
+		await setPaperQuestions(id, data.question_ids, actorId);
 	broadcast('update', { entity: 'exam_paper' });
 	return getPaper(id);
 };
@@ -245,7 +286,10 @@ const createPaper = async (data, actorId) => {
 const updatePaper = async (id, data, actorId) => {
 	const pool = await getPool();
 	const sets = ['updated_at = GETDATE()', 'updated_by = @actor_id'];
-	const req = pool.request().input('id', sql.VarChar(20), id).input('actor_id', sql.VarChar(20), actorId);
+	const req = pool
+		.request()
+		.input('id', sql.VarChar(20), id)
+		.input('actor_id', sql.VarChar(20), actorId);
 
 	if (data.subject_id !== undefined) {
 		sets.push('subject_id = @subject_id');
@@ -282,7 +326,10 @@ const updatePaper = async (id, data, actorId) => {
 
 const removePaper = async (id) => {
 	const pool = await getPool();
-	await pool.request().input('id', sql.VarChar(20), id).query('DELETE FROM exam_papers WHERE id = @id');
+	await pool
+		.request()
+		.input('id', sql.VarChar(20), id)
+		.query('DELETE FROM exam_papers WHERE id = @id');
 	broadcast('update', { entity: 'exam_paper' });
 };
 
@@ -338,7 +385,9 @@ const gradeEssayAnswer = async (attemptId, questionId, score, actorId) => {
 		.input('attempt_id', sql.VarChar(20), attemptId)
 		.input('question_id', sql.VarChar(20), questionId)
 		.input('score', sql.Decimal(4, 1), score)
-		.query('UPDATE exam_answers SET score_awarded = @score WHERE attempt_id = @attempt_id AND question_id = @question_id');
+		.query(
+			'UPDATE exam_answers SET score_awarded = @score WHERE attempt_id = @attempt_id AND question_id = @question_id',
+		);
 
 	await finalizeAttemptIfComplete(attemptId, actorId);
 	broadcast('update', { entity: 'exam_attempt' });
@@ -350,7 +399,9 @@ const finalizeAttemptIfComplete = async (attemptId, actorId) => {
 	const pending = await pool
 		.request()
 		.input('attempt_id', sql.VarChar(20), attemptId)
-		.query('SELECT COUNT(*) AS c FROM exam_answers WHERE attempt_id = @attempt_id AND score_awarded IS NULL');
+		.query(
+			'SELECT COUNT(*) AS c FROM exam_answers WHERE attempt_id = @attempt_id AND score_awarded IS NULL',
+		);
 	if (pending.recordset[0].c > 0) return;
 
 	const totalRes = await pool.request().input('attempt_id', sql.VarChar(20), attemptId).query(`
@@ -368,10 +419,17 @@ const finalizeAttemptIfComplete = async (attemptId, actorId) => {
 		.input('id', sql.VarChar(20), attemptId)
 		.input('manual_score', sql.Decimal(6, 2), total)
 		.input('actor_id', sql.VarChar(20), actorId || null)
-		.query("UPDATE exam_attempts SET manual_score = @manual_score, status = 'graded', updated_at = GETDATE(), updated_by = @actor_id WHERE id = @id");
+		.query(
+			"UPDATE exam_attempts SET manual_score = @manual_score, status = 'graded', updated_at = GETDATE(), updated_by = @actor_id WHERE id = @id",
+		);
 
 	if (attempt) {
-		await courseService.upsertGrade(attempt.enrollment_id, attempt.subject_id, { score: total }, actorId);
+		await courseService.upsertGrade(
+			attempt.enrollment_id,
+			attempt.subject_id,
+			{ score: total },
+			actorId,
+		);
 	}
 };
 
@@ -429,7 +487,9 @@ const startAttempt = async (paperId, actor) => {
 		.request()
 		.input('paper_id', sql.VarChar(20), paperId)
 		.input('enrollment_id', sql.VarChar(20), info.enrollment_id)
-		.query('SELECT id, status FROM exam_attempts WHERE paper_id = @paper_id AND enrollment_id = @enrollment_id');
+		.query(
+			'SELECT id, status FROM exam_attempts WHERE paper_id = @paper_id AND enrollment_id = @enrollment_id',
+		);
 
 	let attemptId = existing.recordset[0]?.id;
 	if (!attemptId) {
@@ -449,7 +509,10 @@ const startAttempt = async (paperId, actor) => {
 		throw err;
 	}
 
-	const attemptRes = await pool.request().input('id', sql.VarChar(20), attemptId).query('SELECT * FROM exam_attempts WHERE id = @id');
+	const attemptRes = await pool
+		.request()
+		.input('id', sql.VarChar(20), attemptId)
+		.query('SELECT * FROM exam_attempts WHERE id = @id');
 	const questionsRes = await pool.request().input('paper_id', sql.VarChar(20), paperId).query(`
     SELECT q.id, q.question_type, q.question_text, q.options, q.points, q.image_url, epq.sort_order
     FROM exam_paper_questions epq
@@ -483,7 +546,8 @@ const submitAttempt = async (paperId, answers, actor) => {
 			.input('paper_id', sql.VarChar(20), paperId)
 			.input('enrollment_id', sql.VarChar(20), info.enrollment_id)
 			.input('actor_id', sql.VarChar(20), actor.id)
-			.input('limit_sec', sql.Int, (Number(info.duration_minutes) || 0) * 60 + SUBMIT_GRACE_SEC).query(`
+			.input('limit_sec', sql.Int, (Number(info.duration_minutes) || 0) * 60 + SUBMIT_GRACE_SEC)
+			.query(`
 				DECLARE @r TABLE (id VARCHAR(20), late BIT);
 				UPDATE exam_attempts SET status = 'submitted', submitted_at = GETDATE(), updated_at = GETDATE(), updated_by = @actor_id
 				OUTPUT INSERTED.id,
@@ -551,8 +615,16 @@ const submitAttempt = async (paperId, answers, actor) => {
 
 	if (!hasEssay) {
 		// Không có câu tự luận nào chờ chấm — hoàn tất ngay, đổ điểm luôn.
-		const paperRes = await pool.request().input('id', sql.VarChar(20), paperId).query('SELECT subject_id FROM exam_papers WHERE id = @id');
-		await courseService.upsertGrade(info.enrollment_id, paperRes.recordset[0]?.subject_id || null, { score: autoScore }, actor.id);
+		const paperRes = await pool
+			.request()
+			.input('id', sql.VarChar(20), paperId)
+			.query('SELECT subject_id FROM exam_papers WHERE id = @id');
+		await courseService.upsertGrade(
+			info.enrollment_id,
+			paperRes.recordset[0]?.subject_id || null,
+			{ score: autoScore },
+			actor.id,
+		);
 	}
 
 	return { attempt_id: attempt.id, auto_score: autoScore, has_essay: hasEssay, late };

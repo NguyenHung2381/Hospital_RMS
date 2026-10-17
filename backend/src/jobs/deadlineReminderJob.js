@@ -29,9 +29,7 @@ const getRecipients = async (pool, deadline) => {
 		`);
 		return res.recordset.map((r) => r.id);
 	}
-	const res = await pool
-		.request()
-		.input('round_id', sql.VarChar(10), deadline.round_id).query(`
+	const res = await pool.request().input('round_id', sql.VarChar(10), deadline.round_id).query(`
 			SELECT DISTINCT tm.user_id AS id
 			FROM topic_members tm
 			JOIN topics t ON t.id = tm.topic_id
@@ -73,9 +71,7 @@ const run = async () => {
 		const userIds = await getRecipients(pool, dl);
 		if (!userIds.length) continue;
 
-		const title = isUpcoming
-			? `Sắp tới hạn: ${dl.name}`
-			: `Đã quá hạn: ${dl.name}`;
+		const title = isUpcoming ? `Sắp tới hạn: ${dl.name}` : `Đã quá hạn: ${dl.name}`;
 		const message = isUpcoming
 			? `Mốc "${dl.name}" của đợt "${dl.round_name}" sẽ hết hạn trong ${UPCOMING_DAYS_BEFORE} ngày nữa.`
 			: `Mốc "${dl.name}" của đợt "${dl.round_name}" đã quá hạn từ hôm qua.`;
@@ -89,8 +85,7 @@ const run = async () => {
 		sentCount += userIds.length;
 	}
 
-	if (sentCount > 0)
-		console.log(`[job:deadline_reminder] Đã gửi ${sentCount} lượt nhắc deadline.`);
+	if (sentCount > 0) console.log(`[job:deadline_reminder] Đã gửi ${sentCount} lượt nhắc deadline.`);
 };
 
 module.exports = { run };

@@ -12,9 +12,30 @@ const ROLES = [
 ];
 // Tài khoản có sẵn, tra theo mã NV của thành viên
 const EXISTING = {
-	100: { id: 'NVADMIN01', username: 'quantri', role_id: 'VT01', role_code: 'admin', is_active: 1, account_expires_at: null },
-	200: { id: 'NVK1_0200', username: 'NVB_0200', role_id: 'VT06', role_code: 'member', is_active: 0, account_expires_at: new Date('2020-01-01') },
-	300: { id: 'NVK1_0300', username: 'NVC_0300', role_id: 'VT06', role_code: 'member', is_active: 0, account_expires_at: new Date('2999-01-01') },
+	100: {
+		id: 'NVADMIN01',
+		username: 'quantri',
+		role_id: 'VT01',
+		role_code: 'admin',
+		is_active: 1,
+		account_expires_at: null,
+	},
+	200: {
+		id: 'NVK1_0200',
+		username: 'NVB_0200',
+		role_id: 'VT06',
+		role_code: 'member',
+		is_active: 0,
+		account_expires_at: new Date('2020-01-01'),
+	},
+	300: {
+		id: 'NVK1_0300',
+		username: 'NVC_0300',
+		role_id: 'VT06',
+		role_code: 'member',
+		is_active: 0,
+		account_expires_at: new Date('2999-01-01'),
+	},
 };
 let members = [];
 
@@ -49,7 +70,9 @@ const member = (id, staff_number, role = 'member') => ({
 });
 
 const writesFor = (from, uid) =>
-	log.slice(from).filter((q) => /UPDATE users|INSERT INTO users/.test(q.text) && q.inputs.uid === uid);
+	log
+		.slice(from)
+		.filter((q) => /UPDATE users|INSERT INTO users/.test(q.text) && q.inputs.uid === uid);
 
 test('tài khoản quản trị trùng mã NV: chỉ liên kết, không đổi mật khẩu/vai trò/khoa/username', async () => {
 	members = [member('TM1', 100, 'leader')];
@@ -57,7 +80,10 @@ test('tài khoản quản trị trùng mã NV: chỉ liên kết, không đổi 
 	const { credentials } = await grantAccounts('DT1', null, 'ACTOR');
 	const writes = writesFor(from, 'NVADMIN01');
 	assert.equal(writes.length, 1);
-	assert.doesNotMatch(writes[0].text, /password|role_id|department_id|username|is_active|account_expires_at/);
+	assert.doesNotMatch(
+		writes[0].text,
+		/password|role_id|department_id|username|is_active|account_expires_at/,
+	);
 	assert.equal(credentials[0].username, 'quantri');
 	assert.equal(credentials[0].password_plain, null);
 	assert.ok(credentials[0].note);

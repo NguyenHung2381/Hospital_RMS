@@ -46,6 +46,11 @@ router.put(
 
 router.delete('/:id', ctrl.removeOne);
 
-router.put('/:id/items', [body('items').isArray().withMessage('items phải là mảng')], validate, ctrl.setItems);
+router.put(
+	'/:id/items',
+	[body('items').isArray().withMessage('items phải là mảng')],
+	validate,
+	ctrl.setItems,
+);
 
 module.exports = router;

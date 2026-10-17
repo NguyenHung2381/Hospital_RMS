@@ -91,8 +91,7 @@ const create = async (data, actorId) => {
 		.input('head_user_id', sql.VarChar(20), data.head_user_id || null)
 		.input('phone', sql.VarChar(20), data.phone || null)
 		.input('email', sql.VarChar(100), data.email || null)
-		.input('bed_count', sql.Int, data.bed_count ?? null)
-		.query(`
+		.input('bed_count', sql.Int, data.bed_count ?? null).query(`
       EXEC sp_set_actor @actor_id;
       INSERT INTO departments (id, name, code, abbreviation, description, specialty_group, unit_type, head_user_id, phone, email, bed_count, created_by)
       VALUES (@id, @name, @code, @abbreviation, @description, @specialty_group, @unit_type, @head_user_id, @phone, @email, @bed_count, @actor_id);
@@ -166,10 +165,7 @@ const update = async (id, data, actorId) => {
 // department_id NOT NULL nên phải xoá dòng. Toàn bộ chạy trong 1 transaction.
 const remove = async (id, actorId) => {
 	const pool = await getPool();
-	await pool
-		.request()
-		.input('id', sql.VarChar(20), id)
-		.input('actor_id', sql.VarChar(20), actorId)
+	await pool.request().input('id', sql.VarChar(20), id).input('actor_id', sql.VarChar(20), actorId)
 		.query(`
       BEGIN TRANSACTION;
       BEGIN TRY

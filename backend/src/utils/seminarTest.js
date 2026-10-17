@@ -44,7 +44,9 @@ const testOrder = (questions, seed, { shuffleQuestions = false, shuffleOptions =
 	const qOrder = shuffleQuestions ? shuffled(questions.length, rand) : [...questions.keys()];
 	return qOrder.map((q) => ({
 		q,
-		options: shuffleOptions ? shuffled(questions[q].options.length, rand) : [...questions[q].options.keys()],
+		options: shuffleOptions
+			? shuffled(questions[q].options.length, rand)
+			: [...questions[q].options.keys()],
 	}));
 };
 
@@ -52,7 +54,12 @@ const testOrder = (questions, seed, { shuffleQuestions = false, shuffleOptions =
 const publicQuestions = (questions, order) =>
 	order.map(({ q, options }) => {
 		const x = questions[q];
-		return { q: x.q, image: x.image || null, options: options.map((o) => x.options[o]), points: questionPoints(x) };
+		return {
+			q: x.q,
+			image: x.image || null,
+			options: options.map((o) => x.options[o]),
+			points: questionPoints(x),
+		};
 	});
 
 /**
@@ -72,7 +79,13 @@ const gradeTest = (questions, order, answers) => {
 		correct++;
 		score += questionPoints(x);
 	});
-	return { picked, correct, total: questions.length, score: roundScore(score), max_score: maxScore(questions) };
+	return {
+		picked,
+		correct,
+		total: questions.length,
+		score: roundScore(score),
+		max_score: maxScore(questions),
+	};
 };
 
 /**
@@ -90,7 +103,8 @@ const attemptDeadline = (s, elapsedSec, now = Date.now()) => {
 };
 
 /** Đạt điểm tối thiểu để được cấp CME (chưa đặt điểm đạt = nộp bài là đạt) */
-const isPassed = (s, score) => s?.test_pass_score == null || (score != null && Number(score) >= Number(s.test_pass_score));
+const isPassed = (s, score) =>
+	s?.test_pass_score == null || (score != null && Number(score) >= Number(s.test_pass_score));
 
 module.exports = {
 	SUBMIT_GRACE_MS,

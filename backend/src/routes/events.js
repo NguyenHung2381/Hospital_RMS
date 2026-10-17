@@ -46,7 +46,9 @@ router.get('/', async (req, res, next) => {
 	try {
 		claims = verifyToken('sse-ticket', String(req.query.ticket || ''));
 	} catch {
-		return res.status(401).json({ success: false, message: 'Vé kết nối không hợp lệ hoặc đã hết hạn' });
+		return res
+			.status(401)
+			.json({ success: false, message: 'Vé kết nối không hợp lệ hoặc đã hết hạn' });
 	}
 	let checked;
 	try {

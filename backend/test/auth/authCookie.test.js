@@ -51,7 +51,9 @@ test('đăng nhập: refresh token trong cookie HttpOnly/SameSite=Strict/Path, k
 });
 
 test('ghi nhớ đăng nhập: cookie có hạn 30 ngày', async () => {
-	const res = await post('/login', { body: { username: 'nva', password: PASSWORD, remember_me: true } });
+	const res = await post('/login', {
+		body: { username: 'nva', password: PASSWORD, remember_me: true },
+	});
 	assert.match(cookieOf(res), /Max-Age=2592000/);
 });
 
@@ -73,7 +75,10 @@ test('làm mới bằng cookie: access token mới + cookie mới; cookie cũ d�
 
 test('refresh từ Origin lạ bị chặn (CSRF)', async () => {
 	const login = await post('/login', { body: { username: 'nva', password: PASSWORD } });
-	const res = await post('/refresh', { cookie: valueOf(cookieOf(login)), origin: 'https://evil.example' });
+	const res = await post('/refresh', {
+		cookie: valueOf(cookieOf(login)),
+		origin: 'https://evil.example',
+	});
 	assert.equal(res.status, 403);
 });
 

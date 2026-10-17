@@ -33,14 +33,18 @@ const syncPermissions = async ({ dryRun = false } = {}) => {
 		if (!row) {
 			const clash = dbIdByKey.get(perm.key);
 			if (clash) {
-				warnings.push(`${perm.key}: DB đã có với id ${clash}, catalog khai báo id ${perm.id} — bỏ qua`);
+				warnings.push(
+					`${perm.key}: DB đã có với id ${clash}, catalog khai báo id ${perm.id} — bỏ qua`,
+				);
 				continue;
 			}
 			toInsert.push(perm);
 			continue;
 		}
 		if (row.resource !== perm.resource || row.action !== perm.action) {
-			warnings.push(`${perm.id}: DB là ${row.resource}:${row.action}, catalog là ${perm.key} — giữ nguyên DB`);
+			warnings.push(
+				`${perm.id}: DB là ${row.resource}:${row.action}, catalog là ${perm.key} — giữ nguyên DB`,
+			);
 			continue;
 		}
 		if (
@@ -55,12 +59,19 @@ const syncPermissions = async ({ dryRun = false } = {}) => {
 	const catalogIds = new Set(ALL_PERMISSIONS.map((p) => p.id));
 	for (const row of existing) {
 		if (!catalogIds.has(row.id)) {
-			warnings.push(`${row.id} (${row.resource}:${row.action}) có trong DB nhưng không có trong catalog`);
+			warnings.push(
+				`${row.id} (${row.resource}:${row.action}) có trong DB nhưng không có trong catalog`,
+			);
 		}
 	}
 
 	if (dryRun) {
-		return { inserted: toInsert.map((p) => p.key), updated: toUpdate.map((p) => p.key), seeded: 0, warnings };
+		return {
+			inserted: toInsert.map((p) => p.key),
+			updated: toUpdate.map((p) => p.key),
+			seeded: 0,
+			warnings,
+		};
 	}
 
 	let seeded = 0;
@@ -136,7 +147,12 @@ const syncPermissions = async ({ dryRun = false } = {}) => {
 				`, ${toUpdate.length} quyền cập nhật tên/nhóm`,
 		);
 	}
-	return { inserted: toInsert.map((p) => p.key), updated: toUpdate.map((p) => p.key), seeded, warnings };
+	return {
+		inserted: toInsert.map((p) => p.key),
+		updated: toUpdate.map((p) => p.key),
+		seeded,
+		warnings,
+	};
 };
 
 module.exports = { syncPermissions };

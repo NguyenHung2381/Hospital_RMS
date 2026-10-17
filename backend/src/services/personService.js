@@ -169,7 +169,8 @@ const lock = async (tx) => {
 		EXEC @rc = sp_getapplock @Resource = N'person_sync', @LockMode = N'Exclusive',
 		     @LockOwner = N'Transaction', @LockTimeout = 15000;
 		SELECT @rc AS rc`);
-	if (r.recordset[0].rc < 0) throw new Error('Không lấy được khóa person_sync (quá thời gian chờ).');
+	if (r.recordset[0].rc < 0)
+		throw new Error('Không lấy được khóa person_sync (quá thời gian chờ).');
 };
 
 // Trả về id nếu truy vấn cho ĐÚNG 1 person khác nhau; ngược lại null.
@@ -219,7 +220,11 @@ const matchExisting = async (tx, source, id, row) => {
 	}
 	// R3: email + tên
 	if (email && name) {
-		const pid = await pickUnique(tx, `${base} AND p.name_key = ${NAME_KEY('@name')} AND p.email = @email`, bind);
+		const pid = await pickUnique(
+			tx,
+			`${base} AND p.name_key = ${NAME_KEY('@name')} AND p.email = @email`,
+			bind,
+		);
 		if (pid) return pid;
 	}
 	// R4: SĐT chuẩn hóa (≥ 8 số) + tên
@@ -340,14 +345,18 @@ const resolveOne = async (tx, source, id, actorId, depth = 0) => {
 				.input('uid', sql.VarChar(20), row.linked_user_id)
 				.query('SELECT person_id FROM dbo.users WHERE id = @uid')
 		).recordset[0]?.person_id;
-		if (!userPerson) userPerson = await resolveOne(tx, 'users', row.linked_user_id, actorId, depth + 1);
+		if (!userPerson)
+			userPerson = await resolveOne(tx, 'users', row.linked_user_id, actorId, depth + 1);
 		if (userPerson && userPerson !== personId) {
 			const old = personId;
 			personId = userPerson;
 			await setSourcePerson(tx, source, id, personId);
 			const stillOwn = old
-				? (await new sql.Request(tx).input('o', sql.VarChar(20), old)
-						.query(`SELECT origin_table FROM dbo.persons WHERE id = @o`)).recordset[0]?.origin_table
+				? (
+						await new sql.Request(tx)
+							.input('o', sql.VarChar(20), old)
+							.query(`SELECT origin_table FROM dbo.persons WHERE id = @o`)
+					).recordset[0]?.origin_table
 				: null;
 			if (old && stillOwn === source) await deleteOrphanPerson(tx, old);
 		}
@@ -358,7 +367,9 @@ const resolveOne = async (tx, source, id, actorId, depth = 0) => {
 		return personId;
 	}
 
-	personId = (await matchExisting(tx, source, id, row)) || (await createPerson(tx, source, id, row, actorId));
+	personId =
+		(await matchExisting(tx, source, id, row)) ||
+		(await createPerson(tx, source, id, row, actorId));
 	await setSourcePerson(tx, source, id, personId);
 	// nếu match vào person có sẵn thì bổ sung thông tin còn thiếu
 	await updatePerson(tx, source, personId, row, actorId);
@@ -432,8 +443,14 @@ const syncPending = async (source, { limit = 500, actorId } = {}) => {
 		const r = await pool
 			.request()
 			.input('limit', sql.Int, limit)
-			.query(`SELECT TOP (@limit) id FROM dbo.${cfg.table} WHERE person_id IS NULL AND LEN(LTRIM(RTRIM(${cfg.name}))) > 0 ORDER BY id`);
-		return await syncPersons(source, r.recordset.map((x) => x.id), { actorId });
+			.query(
+				`SELECT TOP (@limit) id FROM dbo.${cfg.table} WHERE person_id IS NULL AND LEN(LTRIM(RTRIM(${cfg.name}))) > 0 ORDER BY id`,
+			);
+		return await syncPersons(
+			source,
+			r.recordset.map((x) => x.id),
+			{ actorId },
+		);
 	} catch (err) {
 		logFailure(`syncPending(${source})`, err);
 		return 0;
@@ -472,7 +489,9 @@ const releasePerson = async (source, id, personId, { actorId } = {}) => {
 				.input('pid', sql.VarChar(20), personId || null)
 				.input('src', sql.VarChar(40), source)
 				.input('id', sql.VarChar(30), id)
-				.query(`SELECT id FROM dbo.persons WHERE id = @pid OR (origin_table = @src AND origin_id = @id)`);
+				.query(
+					`SELECT id FROM dbo.persons WHERE id = @pid OR (origin_table = @src AND origin_id = @id)`,
+				);
 			for (const { id: pid } of r.recordset) {
 				await deleteOrphanPerson(tx, pid);
 				const cur = (
@@ -486,7 +505,9 @@ const releasePerson = async (source, id, personId, { actorId } = {}) => {
 					const other = (
 						await new sql.Request(tx)
 							.input('pid', sql.VarChar(20), pid)
-							.query(`SELECT TOP 1 id FROM dbo.${SOURCES[next].table} WHERE person_id = @pid ORDER BY id`)
+							.query(
+								`SELECT TOP 1 id FROM dbo.${SOURCES[next].table} WHERE person_id = @pid ORDER BY id`,
+							)
 					).recordset[0];
 					if (!other) continue;
 					await new sql.Request(tx)
@@ -536,7 +557,9 @@ const linkTopicMemberToUser = async (memberId, userId, { actorId } = {}) => {
 					.query(`UPDATE dbo.users SET person_id = @mp WHERE id = @u AND person_id IS NULL`);
 				await new sql.Request(tx)
 					.input('mp', sql.VarChar(20), mp)
-					.query(`UPDATE dbo.persons SET is_verified = 1, is_internal = 1, updated_at = SYSDATETIME() WHERE id = @mp`);
+					.query(
+						`UPDATE dbo.persons SET is_verified = 1, is_internal = 1, updated_at = SYSDATETIME() WHERE id = @mp`,
+					);
 				await resolveOne(tx, 'users', userId, actorId);
 				return mp;
 			}

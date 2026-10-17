@@ -26,23 +26,9 @@ const CONCLUSIONS = ['pass', 'fail', 'revise'];
 const sanitizeComment = (html) => {
 	if (!html) return null;
 	const clean = sanitizeHtml(html, {
-		allowedTags: [
-			'b',
-			'strong',
-			'i',
-			'em',
-			'u',
-			's',
-			'ul',
-			'ol',
-			'li',
-			'br',
-			'p',
-			'img',
-		],
+		allowedTags: ['b', 'strong', 'i', 'em', 'u', 's', 'ul', 'ol', 'li', 'br', 'p', 'img'],
 		allowedAttributes: { img: ['src', 'alt'] },
-		exclusiveFilter: (frame) =>
-			frame.tag === 'img' && !frame.attribs.src?.startsWith('/uploads/'),
+		exclusiveFilter: (frame) => frame.tag === 'img' && !frame.attribs.src?.startsWith('/uploads/'),
 	});
 	// Ảnh hiển thị trên trình soạn thảo mang src đã ký (có hạn) — lưu đường dẫn
 	// gốc, response sau sẽ ký lại.
@@ -156,8 +142,7 @@ const getMyProgress = async (userId) => {
 	}
 	const topicFilesByTopic = new Map();
 	for (const f of topicFiles) {
-		if (!topicFilesByTopic.has(f.topic_id))
-			topicFilesByTopic.set(f.topic_id, []);
+		if (!topicFilesByTopic.has(f.topic_id)) topicFilesByTopic.set(f.topic_id, []);
 		topicFilesByTopic.get(f.topic_id).push(f);
 	}
 	const resultByTopic = new Map(results.map((r) => [r.topic_id, r]));
@@ -171,20 +156,15 @@ const getMyProgress = async (userId) => {
 	}));
 };
 
-const upsertReview = async (
-	topicId,
-	userId,
-	{ progress_percent, rating, comment },
-) => {
+const upsertReview = async (topicId, userId, { progress_percent, rating, comment }) => {
 	if (rating != null && !RATINGS.includes(rating)) {
 		throw httpError(400, 'Xếp loại tiến độ không hợp lệ.');
 	}
 	const roles = await getRolesForTopic(topicId, userId);
 	if (!roles.length) {
-		throw Object.assign(
-			new Error('Bạn không có ghế trong hội đồng đánh giá đề tài này.'),
-			{ status: 403 },
-		);
+		throw Object.assign(new Error('Bạn không có ghế trong hội đồng đánh giá đề tài này.'), {
+			status: 403,
+		});
 	}
 	const pool = await getPool();
 	await pool
@@ -209,28 +189,22 @@ const upsertReview = async (
 const assertSecretary = async (topicId, userId) => {
 	const roles = await getRolesForTopic(topicId, userId);
 	if (!roles.includes('secretary')) {
-		throw Object.assign(
-			new Error('Chỉ thư ký hội đồng được thao tác file đánh giá.'),
-			{ status: 403 },
-		);
+		throw Object.assign(new Error('Chỉ thư ký hội đồng được thao tác file đánh giá.'), {
+			status: 403,
+		});
 	}
 };
 
 const assertChairman = async (topicId, userId) => {
 	const roles = await getRolesForTopic(topicId, userId);
 	if (!roles.includes('chairman')) {
-		throw Object.assign(
-			new Error('Chỉ chủ tịch hội đồng được chốt kết luận đề tài.'),
-			{ status: 403 },
-		);
+		throw Object.assign(new Error('Chỉ chủ tịch hội đồng được chốt kết luận đề tài.'), {
+			status: 403,
+		});
 	}
 };
 
-const upsertResult = async (
-	topicId,
-	userId,
-	{ conclusion, general_comment },
-) => {
+const upsertResult = async (topicId, userId, { conclusion, general_comment }) => {
 	if (conclusion != null && !CONCLUSIONS.includes(conclusion)) {
 		throw httpError(400, 'Kết luận không hợp lệ.');
 	}
@@ -241,11 +215,7 @@ const upsertResult = async (
 		.input('topic_id', sql.VarChar(15), topicId)
 		.input('user_id', sql.VarChar(20), userId)
 		.input('conclusion', sql.VarChar(15), conclusion || null)
-		.input(
-			'general_comment',
-			sql.NVarChar(sql.MAX),
-			sanitizeComment(general_comment),
-		).query(`
+		.input('general_comment', sql.NVarChar(sql.MAX), sanitizeComment(general_comment)).query(`
       UPDATE council_topic_results
       SET conclusion = @conclusion, general_comment = @general_comment,
           decided_by = @user_id, updated_at = GETDATE(), updated_by = @user_id
@@ -271,10 +241,9 @@ const uploadMinutesFiles = async (topicId, filesData, userId) => {
 const uploadCommentImage = async (topicId, userId, file) => {
 	const roles = await getRolesForTopic(topicId, userId);
 	if (!roles.length) {
-		throw Object.assign(
-			new Error('Bạn không có ghế trong hội đồng đánh giá đề tài này.'),
-			{ status: 403 },
-		);
+		throw Object.assign(new Error('Bạn không có ghế trong hội đồng đánh giá đề tài này.'), {
+			status: 403,
+		});
 	}
 	return {
 		url: `/uploads/topics/${topicId}/comments/${file.filename}`,
@@ -310,9 +279,7 @@ const deleteMinutesFile = (topicId, fileId, userId) =>
 // mục "Đánh giá tiến độ" hay không. Truy vấn nhẹ, chỉ đếm.
 const getMySeatCount = async (userId) => {
 	const pool = await getPool();
-	const result = await pool
-		.request()
-		.input('user_id', sql.VarChar(20), userId).query(`
+	const result = await pool.request().input('user_id', sql.VarChar(20), userId).query(`
       SELECT COUNT(*) AS n FROM (
         SELECT DISTINCT topic_id FROM (${SEAT_CTE}) seat
       ) x

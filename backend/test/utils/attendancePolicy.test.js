@@ -1,6 +1,11 @@
 const test = require('node:test');
 const assert = require('node:assert');
-const { evaluate, ipAllowed, validateSetting, distanceM } = require('../../src/utils/attendancePolicy');
+const {
+	evaluate,
+	ipAllowed,
+	validateSetting,
+	distanceM,
+} = require('../../src/utils/attendancePolicy');
 
 const policy = {
 	ipRanges: [
@@ -48,8 +53,14 @@ test('evaluate: chưa cấu hình thì không cho chấm', () => {
 });
 
 test('validateSetting', () => {
-	assert.strictEqual(validateSetting('ATTENDANCE_ALLOWED_IPS', '113.161.1.2, 10.0.0.0/8 2001:db8::/32'), null);
-	assert.match(validateSetting('ATTENDANCE_ALLOWED_IPS', '10.0.0.0/33, abc'), /10\.0\.0\.0\/33, abc/);
+	assert.strictEqual(
+		validateSetting('ATTENDANCE_ALLOWED_IPS', '113.161.1.2, 10.0.0.0/8 2001:db8::/32'),
+		null,
+	);
+	assert.match(
+		validateSetting('ATTENDANCE_ALLOWED_IPS', '10.0.0.0/33, abc'),
+		/10\.0\.0\.0\/33, abc/,
+	);
 	assert.strictEqual(validateSetting('ATTENDANCE_LOCATION', '10.7769, 106.7009'), null);
 	assert.ok(validateSetting('ATTENDANCE_LOCATION', '106.7, 200'));
 	assert.ok(validateSetting('ATTENDANCE_RADIUS_M', '0'));

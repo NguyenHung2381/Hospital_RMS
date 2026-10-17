@@ -69,7 +69,12 @@ test('lượt đọc bắt đầu trước invalidate không ghi bản cũ vào 
 
 test('fn() lỗi thì không cache, lần sau gọi lại được', async () => {
 	const p = uniq();
-	await assert.rejects(remember(`${p}a`, 60, async () => { throw new Error('db'); }), /db/);
+	await assert.rejects(
+		remember(`${p}a`, 60, async () => {
+			throw new Error('db');
+		}),
+		/db/,
+	);
 	assert.equal(await remember(`${p}a`, 60, async () => 'ok'), 'ok');
 });
 

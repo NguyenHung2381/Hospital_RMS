@@ -82,7 +82,13 @@ router.get('/', authorizePermission(['topics', 'read']), ctrl.getAll);
  *       200:
  *         description: Danh sách đề tài kèm thành viên
  */
-router.post('/export-data', authorizePermission(['reports', 'create']), [body('ids').isArray()], validate, ctrl.exportData);
+router.post(
+	'/export-data',
+	authorizePermission(['reports', 'create']),
+	[body('ids').isArray()],
+	validate,
+	ctrl.exportData,
+);
 
 /**
  * @swagger
@@ -163,7 +169,12 @@ router.post(
 
 // Nhập danh sách đề tài từ Excel (dry_run=1 để xem trước) — controller chỉ cho phạm vi 'all'
 router.post('/import-template', authorizePermission(['topics', 'create']), ctrl.importTemplate);
-router.post('/import-excel', authorizePermission(['topics', 'create']), uploadExcel.single('file'), ctrl.importExcel);
+router.post(
+	'/import-excel',
+	authorizePermission(['topics', 'create']),
+	uploadExcel.single('file'),
+	ctrl.importExcel,
+);
 
 /**
  * @swagger
@@ -408,7 +419,11 @@ router.put(
  *       200:
  *         description: Xoá thành viên thành công
  */
-router.delete('/:id/members/:member_id', authorizePermission(['topics', 'update']), ctrl.deleteMember);
+router.delete(
+	'/:id/members/:member_id',
+	authorizePermission(['topics', 'update']),
+	ctrl.deleteMember,
+);
 
 /**
  * @swagger
@@ -581,7 +596,13 @@ router.get('/:topic_id/files/batches', authorizePermission(['files', 'read']), f
  *       201:
  *         description: Upload thành công
  */
-router.post('/:topic_id/files', authorizePermission(['files', 'create']), fileCtrl.checkUploadWindow, upload.array('files', 30), fileCtrl.upload);
+router.post(
+	'/:topic_id/files',
+	authorizePermission(['files', 'create']),
+	fileCtrl.checkUploadWindow,
+	upload.array('files', 30),
+	fileCtrl.upload,
+);
 
 // ─── Đồng tác giả (bài báo/tập san) ──────────────────────────────────────────
 router.get('/:id/authors', authorizePermission(['topics', 'read']), ctrl.getAuthors);

@@ -52,21 +52,35 @@ const deptManager = {
 	id: 'QLK1',
 	department_id: 'K1',
 	permissions: new Set(['users:read', 'users:update']),
-	permissionScopes: new Map([['users:read', 'department'], ['users:update', 'department']]),
+	permissionScopes: new Map([
+		['users:read', 'department'],
+		['users:update', 'department'],
+	]),
 };
 
 test('quản lý phạm vi khoa: sửa được trong khoa, KHÔNG chuyển được sang khoa khác', async () => {
-	const ok = await call(userCtrl.updateOne, { user: deptManager, params: { id: 'NV1' }, body: { full_name: 'A' } });
+	const ok = await call(userCtrl.updateOne, {
+		user: deptManager,
+		params: { id: 'NV1' },
+		body: { full_name: 'A' },
+	});
 	assert.equal(ok.status, 200);
 	updated = null;
-	const r = await call(userCtrl.updateOne, { user: deptManager, params: { id: 'NV1' }, body: { department_id: 'K2' } });
+	const r = await call(userCtrl.updateOne, {
+		user: deptManager,
+		params: { id: 'NV1' },
+		body: { department_id: 'K2' },
+	});
 	assert.equal(r.status, 403);
 	assert.equal(updated, null);
 });
 
 test('tìm người: từ khoá rỗng không trả ai; limit bị chặn ở 20', async () => {
 	searchArgs = null;
-	const empty = await call(userCtrl.searchMembers, { user: deptManager, query: { q: '  ', limit: '100000' } });
+	const empty = await call(userCtrl.searchMembers, {
+		user: deptManager,
+		query: { q: '  ', limit: '100000' },
+	});
 	assert.deepEqual(empty.body.data.data, []);
 	assert.equal(searchArgs, null);
 	await call(userCtrl.searchMembers, { user: deptManager, query: { q: 'ng', limit: '100000' } });
@@ -78,19 +92,30 @@ const student = { id: 'HV-USER' };
 test('nộp bài thi: lượt đã được nộp (hoặc request song song đến sau) → 409, không ghi đáp án', async () => {
 	claimRow = null;
 	writes.length = 0;
-	await assert.rejects(examService.submitAttempt('DT1', [{ question_id: 'Q1', selected_option: 'A' }], student), (e) => e.statusCode === 409);
+	await assert.rejects(
+		examService.submitAttempt('DT1', [{ question_id: 'Q1', selected_option: 'A' }], student),
+		(e) => e.statusCode === 409,
+	);
 	assert.equal(writes.length, 0);
 });
 
 test('nộp đúng giờ: chấm điểm; quá giờ: đóng bài nhưng bỏ đáp án (late = true)', async () => {
 	claimRow = { id: 'EA1', late: false };
 	writes.length = 0;
-	const onTime = await examService.submitAttempt('DT1', [{ question_id: 'Q1', selected_option: 'A' }], student);
+	const onTime = await examService.submitAttempt(
+		'DT1',
+		[{ question_id: 'Q1', selected_option: 'A' }],
+		student,
+	);
 	assert.equal(onTime.auto_score, 10);
 	assert.equal(onTime.late, false);
 
 	claimRow = { id: 'EA2', late: true };
-	const late = await examService.submitAttempt('DT1', [{ question_id: 'Q1', selected_option: 'A' }], student);
+	const late = await examService.submitAttempt(
+		'DT1',
+		[{ question_id: 'Q1', selected_option: 'A' }],
+		student,
+	);
 	assert.equal(late.late, true);
 	assert.equal(late.auto_score, 0);
 });

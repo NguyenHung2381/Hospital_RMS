@@ -14,7 +14,11 @@ const parsePattern = (row) => row && { ...row, days: normalizePatternDays(JSON.p
 // ─── Ca làm ──────────────────────────────────────────────────────────────────
 const listShifts = async () => {
 	const pool = await getPool();
-	return (await pool.request().query('SELECT * FROM work_shifts ORDER BY is_active DESC, start_time, name')).recordset;
+	return (
+		await pool
+			.request()
+			.query('SELECT * FROM work_shifts ORDER BY is_active DESC, start_time, name')
+	).recordset;
 };
 
 const shiftInput = (b) => ({
@@ -35,7 +39,10 @@ const saveShift = async (id, body) => {
 	if (invalid) throw httpError(400, invalid);
 	const pool = await getPool();
 	const dup = (
-		await pool.request().input('code', sql.NVarChar(10), s.code).input('id', sql.Int, id ?? 0)
+		await pool
+			.request()
+			.input('code', sql.NVarChar(10), s.code)
+			.input('id', sql.Int, id ?? 0)
 			.query('SELECT name FROM work_shifts WHERE code = @code AND id <> @id')
 	).recordset[0];
 	if (dup) throw httpError(409, `Ký hiệu "${s.code}" đã dùng cho ca "${dup.name}"`);
@@ -74,13 +81,31 @@ const saveShift = async (id, body) => {
 // Ca đã dùng trong mẫu tuần / bảng phân ca thì không xoá được (bảng chấm công lưu bản chụp giờ ca nên không ảnh hưởng)
 const removeShift = async (id) => {
 	const pool = await getPool();
-	const inPattern = (await pool.request().query('SELECT name, days FROM shift_patterns')).recordset.find((p) =>
+	const inPattern = (
+		await pool.request().query('SELECT name, days FROM shift_patterns')
+	).recordset.find((p) =>
 		Object.values(normalizePatternDays(JSON.parse(p.days))).some((ids) => ids.includes(id)),
 	);
-	if (inPattern) throw httpError(409, `Ca đang dùng trong mẫu "${inPattern.name}" — bỏ khỏi mẫu trước, hoặc chuyển ca sang "Ngừng dùng"`);
-	const used = (await pool.request().input('id', sql.Int, id).query('SELECT TOP 1 1 AS x FROM shift_assignments WHERE shift_id = @id')).recordset[0];
-	if (used) throw httpError(409, 'Ca đã được xếp trong bảng phân ca — chuyển ca sang "Ngừng dùng" thay vì xoá');
-	const { rowsAffected } = await pool.request().input('id', sql.Int, id).query('DELETE FROM work_shifts WHERE id = @id');
+	if (inPattern)
+		throw httpError(
+			409,
+			`Ca đang dùng trong mẫu "${inPattern.name}" — bỏ khỏi mẫu trước, hoặc chuyển ca sang "Ngừng dùng"`,
+		);
+	const used = (
+		await pool
+			.request()
+			.input('id', sql.Int, id)
+			.query('SELECT TOP 1 1 AS x FROM shift_assignments WHERE shift_id = @id')
+	).recordset[0];
+	if (used)
+		throw httpError(
+			409,
+			'Ca đã được xếp trong bảng phân ca — chuyển ca sang "Ngừng dùng" thay vì xoá',
+		);
+	const { rowsAffected } = await pool
+		.request()
+		.input('id', sql.Int, id)
+		.query('DELETE FROM work_shifts WHERE id = @id');
 	if (!rowsAffected[0]) throw httpError(404, 'Không tìm thấy ca làm');
 	changed();
 };
@@ -104,14 +129,20 @@ const savePattern = async (id, { name, days, is_default }) => {
 	const ids = [...new Set(Object.values(norm).flat())];
 	if (ids.length) {
 		const pool = await getPool();
-		const found = (await pool.request().input('ids', sql.NVarChar(sql.MAX), JSON.stringify(ids))
-			.query('SELECT id FROM work_shifts WHERE id IN (SELECT value FROM OPENJSON(@ids))')).recordset.length;
+		const found = (
+			await pool
+				.request()
+				.input('ids', sql.NVarChar(sql.MAX), JSON.stringify(ids))
+				.query('SELECT id FROM work_shifts WHERE id IN (SELECT value FROM OPENJSON(@ids))')
+		).recordset.length;
 		if (found !== ids.length) throw httpError(400, 'Mẫu có ca không tồn tại');
 	}
 	const row = await withTransaction(async (tx) => {
 		// Bỏ mặc định cũ trước (UNIQUE index lọc is_default = 1)
 		if (is_default)
-			await new sql.Request(tx).input('id', sql.Int, id ?? 0).query('UPDATE shift_patterns SET is_default = 0 WHERE is_default = 1 AND id <> @id');
+			await new sql.Request(tx)
+				.input('id', sql.Int, id ?? 0)
+				.query('UPDATE shift_patterns SET is_default = 0 WHERE is_default = 1 AND id <> @id');
 		const req = new sql.Request(tx)
 			.input('name', sql.NVarChar(100), String(name).trim())
 			.input('days', sql.NVarChar(sql.MAX), JSON.stringify(norm))
@@ -137,7 +168,10 @@ const savePattern = async (id, { name, days, is_default }) => {
 // Người đang dùng mẫu này tự về mẫu mặc định (FK ON DELETE SET NULL)
 const removePattern = async (id) => {
 	const pool = await getPool();
-	const { rowsAffected } = await pool.request().input('id', sql.Int, id).query('DELETE FROM shift_patterns WHERE id = @id');
+	const { rowsAffected } = await pool
+		.request()
+		.input('id', sql.Int, id)
+		.query('DELETE FROM shift_patterns WHERE id = @id');
 	if (!rowsAffected[0]) throw httpError(404, 'Không tìm thấy mẫu ca');
 	changed();
 };
@@ -165,7 +199,12 @@ const listUsers = async (departmentId) => {
 // người đang ở mẫu này mà không có trong danh sách → về mẫu mặc định.
 const setPatternUsers = async (id, userIds) => {
 	const pool = await getPool();
-	const exists = (await pool.request().input('id', sql.Int, id).query('SELECT 1 AS x FROM shift_patterns WHERE id = @id')).recordset[0];
+	const exists = (
+		await pool
+			.request()
+			.input('id', sql.Int, id)
+			.query('SELECT 1 AS x FROM shift_patterns WHERE id = @id')
+	).recordset[0];
 	if (!exists) throw httpError(404, 'Không tìm thấy mẫu ca');
 	await withTransaction((tx) =>
 		new sql.Request(tx)
@@ -195,7 +234,9 @@ const getRoster = async ({ from, to, department_id }) => {
 	const ids = new Set(users.map((u) => u.id));
 	return {
 		users,
-		assignments: assignments.filter((a) => ids.has(a.user_id)).map((a) => ({ ...a, work_date: dateKey(a.work_date) })),
+		assignments: assignments
+			.filter((a) => ids.has(a.user_id))
+			.map((a) => ({ ...a, work_date: dateKey(a.work_date) })),
 	};
 };
 
@@ -209,7 +250,8 @@ const setRoster = async ({ user_ids, dates, mode, shift_ids = [] }, actorId) => 
 	if (!users.length || !days.length) throw httpError(400, 'Chọn ít nhất 1 người và 1 ngày');
 	if (days.some((d) => !DATE_RE.test(d))) throw httpError(400, 'Ngày không hợp lệ');
 	if (users.length * days.length > MAX_CELLS) throw httpError(400, `Tối đa ${MAX_CELLS} ô mỗi lần`);
-	const shifts = mode === 'shifts' ? [...new Set(shift_ids.map(Number))] : mode === 'off' ? [null] : [];
+	const shifts =
+		mode === 'shifts' ? [...new Set(shift_ids.map(Number))] : mode === 'off' ? [null] : [];
 	if (mode === 'shifts' && !shifts.length) throw httpError(400, 'Chọn ít nhất 1 ca');
 	await withTransaction(async (tx) => {
 		const req = () =>
@@ -223,14 +265,18 @@ const setRoster = async ({ user_ids, dates, mode, shift_ids = [] }, actorId) => 
 		if (!shifts.length) return;
 		const shiftIds = shifts.filter((s) => s != null);
 		if (shiftIds.length) {
-			const found = (await new sql.Request(tx).input('ids', sql.NVarChar(sql.MAX), JSON.stringify(shiftIds))
-				.query('SELECT id FROM work_shifts WHERE is_active = 1 AND id IN (SELECT value FROM OPENJSON(@ids))')).recordset.length;
+			const found = (
+				await new sql.Request(tx)
+					.input('ids', sql.NVarChar(sql.MAX), JSON.stringify(shiftIds))
+					.query(
+						'SELECT id FROM work_shifts WHERE is_active = 1 AND id IN (SELECT value FROM OPENJSON(@ids))',
+					)
+			).recordset.length;
 			if (found !== shiftIds.length) throw httpError(400, 'Có ca không tồn tại hoặc đã ngừng dùng');
 		}
 		await req()
 			.input('shifts', sql.NVarChar(sql.MAX), JSON.stringify(shifts))
-			.input('actor', sql.VarChar(20), actorId)
-			.query(`
+			.input('actor', sql.VarChar(20), actorId).query(`
         INSERT INTO shift_assignments (user_id, work_date, shift_id, updated_by)
         SELECT u.id, CAST(d.value AS DATE), TRY_CAST(s.value AS INT), @actor
         FROM users u
@@ -245,7 +291,8 @@ const setRoster = async ({ user_ids, dates, mode, shift_ids = [] }, actorId) => 
 
 // ─── Dùng khi chấm công ──────────────────────────────────────────────────────
 // Ca ngừng dùng không còn hiệu lực ở mẫu tuần lẫn bảng phân ca
-const shiftsMap = async () => new Map((await listShifts()).filter((s) => s.is_active).map((s) => [s.id, s]));
+const shiftsMap = async () =>
+	new Map((await listShifts()).filter((s) => s.is_active).map((s) => [s.id, s]));
 
 // Mẫu tuần đang áp dụng cho 1 người: mẫu riêng, không có thì mẫu mặc định, không có nữa = null
 const patternForUser = async (userId) => {
@@ -264,8 +311,14 @@ const patternForUser = async (userId) => {
 const assignmentsForUser = async (userId, from, to) => {
 	const pool = await getPool();
 	return (
-		await pool.request().input('user_id', sql.VarChar(20), userId).input('from', sql.Date, from).input('to', sql.Date, to)
-			.query('SELECT work_date, shift_id FROM shift_assignments WHERE user_id = @user_id AND work_date BETWEEN @from AND @to')
+		await pool
+			.request()
+			.input('user_id', sql.VarChar(20), userId)
+			.input('from', sql.Date, from)
+			.input('to', sql.Date, to)
+			.query(
+				'SELECT work_date, shift_id FROM shift_assignments WHERE user_id = @user_id AND work_date BETWEEN @from AND @to',
+			)
 	).recordset.map((a) => ({ ...a, work_date: dateKey(a.work_date) }));
 };
 
@@ -275,7 +328,10 @@ const planForDate = async (date) => {
 	const [users, patterns, assignments, shifts] = await Promise.all([
 		listUsers(),
 		listPatterns(),
-		pool.request().input('date', sql.Date, date).query('SELECT user_id, work_date, shift_id FROM shift_assignments WHERE work_date = @date'),
+		pool
+			.request()
+			.input('date', sql.Date, date)
+			.query('SELECT user_id, work_date, shift_id FROM shift_assignments WHERE work_date = @date'),
 		shiftsMap(),
 	]);
 	return {

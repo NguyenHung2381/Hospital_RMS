@@ -62,8 +62,13 @@ test('email dùng chung nhiều tài khoản: không gửi mã, không lỗi', a
 test('đặt lại bằng email: OTP sai bị từ chối; mật khẩu chứa username thật bị chặn; hợp lệ thì đổi', async () => {
 	const secretBox = require('../../src/utils/secretBox');
 	otps.set('U1', { code_hash: secretBox.keyedHash('123456'), attempts: 0 });
-	await assert.rejects(svc.resetPassword('a@bv.vn', '000000', 'Matkhau#2026x'), (e) => e.statusCode === 400);
-	await assert.rejects(svc.resetPassword('a@bv.vn', '123456', 'nva_0001#Abc9'), (e) => /tên đăng nhập/.test(e.message));
+	await assert.rejects(
+		svc.resetPassword('a@bv.vn', '000000', 'Matkhau#2026x'),
+		(e) => e.statusCode === 400,
+	);
+	await assert.rejects(svc.resetPassword('a@bv.vn', '123456', 'nva_0001#Abc9'), (e) =>
+		/tên đăng nhập/.test(e.message),
+	);
 	await svc.resetPassword('a@bv.vn', '123456', 'Matkhau#2026x');
 	assert.ok(newPassword);
 });

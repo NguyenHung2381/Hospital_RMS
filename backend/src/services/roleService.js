@@ -72,8 +72,7 @@ const create = async (data, actorId) => {
 		.request()
 		.input('actor_id', sql.VarChar(20), actorId)
 		.input('name', sql.NVarChar(500), data.name)
-		.input('description', sql.NVarChar(sql.MAX), data.description || null)
-		.query(`
+		.input('description', sql.NVarChar(sql.MAX), data.description || null).query(`
       DECLARE @count INT, @new_id VARCHAR(4);
       SELECT @count = COUNT(*) + 1 FROM roles;
       SET @new_id = 'VT' + RIGHT('00' + CAST(@count AS VARCHAR(2)), 2);

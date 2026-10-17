@@ -13,7 +13,8 @@ const surveySelect = `
   LEFT JOIN roles r ON r.id = s.target_role
 `;
 
-const parseOptions = (row) => (row.options === undefined ? row : { ...row, options: parseJsonArray(row.options) });
+const parseOptions = (row) =>
+	row.options === undefined ? row : { ...row, options: parseJsonArray(row.options) };
 
 // ─── Quản trị (admin) ────────────────────────────────────────────────────────
 const getAll = async ({ page = 1, limit = 20, search, status } = {}) => {
@@ -48,13 +49,18 @@ const listQuestions = async (surveyId) => {
 	const r = await pool
 		.request()
 		.input('survey_id', sql.VarChar(20), surveyId)
-		.query('SELECT * FROM survey_questions WHERE survey_id = @survey_id ORDER BY sort_order ASC, created_at ASC');
+		.query(
+			'SELECT * FROM survey_questions WHERE survey_id = @survey_id ORDER BY sort_order ASC, created_at ASC',
+		);
 	return r.recordset.map(parseOptions);
 };
 
 const getById = async (id) => {
 	const pool = await getPool();
-	const result = await pool.request().input('id', sql.VarChar(20), id).query(`${surveySelect} WHERE s.id = @id`);
+	const result = await pool
+		.request()
+		.input('id', sql.VarChar(20), id)
+		.query(`${surveySelect} WHERE s.id = @id`);
 	const row = result.recordset[0];
 	if (!row) return null;
 	row.questions = await listQuestions(id);
@@ -63,11 +69,15 @@ const getById = async (id) => {
 
 const setQuestions = async (surveyId, questions, actorId) => {
 	const pool = await getPool();
-	await pool.request().input('survey_id', sql.VarChar(20), surveyId).query('DELETE FROM survey_questions WHERE survey_id = @survey_id');
+	await pool
+		.request()
+		.input('survey_id', sql.VarChar(20), surveyId)
+		.query('DELETE FROM survey_questions WHERE survey_id = @survey_id');
 	let order = 0;
 	for (const q of questions || []) {
 		if (!q || !q.question_text || !QUESTION_TYPES.includes(q.question_type)) continue;
-		const options = q.question_type === 'text' ? null : JSON.stringify((q.options || []).filter(Boolean));
+		const options =
+			q.question_type === 'text' ? null : JSON.stringify((q.options || []).filter(Boolean));
 		await pool
 			.request()
 			.input('survey_id', sql.VarChar(20), surveyId)
@@ -94,15 +104,15 @@ const create = async (data, actorId) => {
 		.input('title', sql.NVarChar(255), data.title)
 		.input('description', sql.NVarChar(sql.MAX), data.description || null)
 		.input('status', sql.VarChar(20), data.status || 'draft')
-		.input('target_role', sql.VarChar(20), data.target_role || null)
-		.query(`
+		.input('target_role', sql.VarChar(20), data.target_role || null).query(`
       DECLARE @new_id VARCHAR(20) = 'KS' + LEFT(REPLACE(NEWID(),'-',''), 18);
       INSERT INTO surveys (id, title, description, status, target_role, created_by)
       VALUES (@new_id, @title, @description, @status, @target_role, @actor_id);
       SELECT @new_id AS id;
     `);
 	const id = result.recordset[0].id;
-	if (Array.isArray(data.questions) && data.questions.length) await setQuestions(id, data.questions, actorId);
+	if (Array.isArray(data.questions) && data.questions.length)
+		await setQuestions(id, data.questions, actorId);
 	broadcast('update', { entity: 'survey' });
 	return getById(id);
 };
@@ -110,7 +120,10 @@ const create = async (data, actorId) => {
 const update = async (id, data, actorId) => {
 	const pool = await getPool();
 	const sets = ['updated_at = GETDATE()', 'updated_by = @actor_id'];
-	const req = pool.request().input('id', sql.VarChar(20), id).input('actor_id', sql.VarChar(20), actorId);
+	const req = pool
+		.request()
+		.input('id', sql.VarChar(20), id)
+		.input('actor_id', sql.VarChar(20), actorId);
 
 	if (data.title !== undefined) {
 		sets.push('title = @title');
@@ -190,8 +203,7 @@ const listActiveForUser = async (actor) => {
 	const r = await pool
 		.request()
 		.input('role_id', sql.VarChar(20), actor.role_id || null)
-		.input('user_id', sql.VarChar(20), actor.id)
-		.query(`
+		.input('user_id', sql.VarChar(20), actor.id).query(`
       SELECT s.id, s.title, s.description, s.created_at
       FROM surveys s
       WHERE s.status = 'active'
@@ -225,7 +237,9 @@ const getForRespond = async (id, actor) => {
 		.request()
 		.input('survey_id', sql.VarChar(20), id)
 		.input('user_id', sql.VarChar(20), actor.id)
-		.query('SELECT id FROM survey_responses WHERE survey_id = @survey_id AND respondent_user_id = @user_id');
+		.query(
+			'SELECT id FROM survey_responses WHERE survey_id = @survey_id AND respondent_user_id = @user_id',
+		);
 	if (existing.recordset[0]) {
 		const err = new Error('Bạn đã nộp khảo sát này rồi.');
 		err.statusCode = 409;
@@ -246,12 +260,14 @@ const submitResponse = async (surveyId, answers, actor) => {
 		.request()
 		.input('survey_id', sql.VarChar(20), surveyId)
 		.input('user_id', sql.VarChar(20), actor.id)
-		.query(`
+		.query(
+			`
       DECLARE @new_id VARCHAR(20) = 'PH' + LEFT(REPLACE(NEWID(),'-',''), 18);
       INSERT INTO survey_responses (id, survey_id, respondent_user_id, created_by)
       VALUES (@new_id, @survey_id, @user_id, @user_id);
       SELECT @new_id AS id;
-    `)
+    `,
+		)
 		.catch((err) => {
 			if (err.number === 2627 || err.number === 2601) {
 				const e = new Error('Bạn đã nộp khảo sát này rồi.');

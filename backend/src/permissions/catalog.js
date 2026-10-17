@@ -59,7 +59,12 @@ const MODULES = [
 					p('PERM-TOP-CREATE', 'create', 'Tạo đề tài', 'Đăng ký đề tài nghiên cứu mới'),
 					p('PERM-TOP-UPDATE', 'update', 'Chỉnh sửa đề tài', 'Cập nhật thông tin đề tài'),
 					p('PERM-TOP-DELETE', 'delete', 'Xóa đề tài', 'Xóa đề tài khỏi hệ thống'),
-					p('PERM-TOP-APPROVE', 'approve', 'Phê duyệt đề tài', 'Phê duyệt hoặc từ chối đề tài nghiên cứu'),
+					p(
+						'PERM-TOP-APPROVE',
+						'approve',
+						'Phê duyệt đề tài',
+						'Phê duyệt hoặc từ chối đề tài nghiên cứu',
+					),
 				],
 			},
 			{
@@ -77,8 +82,18 @@ const MODULES = [
 				label: 'Hội đồng chấm & người ngoài viện',
 				permissions: [
 					p('PERM-CNL-READ', 'read', 'Xem hội đồng', 'Xem hội đồng chấm và người ngoài viện'),
-					p('PERM-CNL-CREATE', 'create', 'Tạo hội đồng', 'Tạo hội đồng chấm, thêm người ngoài viện'),
-					p('PERM-CNL-UPDATE', 'update', 'Cập nhật hội đồng', 'Sửa thành viên / thông tin hội đồng'),
+					p(
+						'PERM-CNL-CREATE',
+						'create',
+						'Tạo hội đồng',
+						'Tạo hội đồng chấm, thêm người ngoài viện',
+					),
+					p(
+						'PERM-CNL-UPDATE',
+						'update',
+						'Cập nhật hội đồng',
+						'Sửa thành viên / thông tin hội đồng',
+					),
 					p('PERM-CNL-DELETE', 'delete', 'Xoá hội đồng', 'Xoá hội đồng chấm khỏi hệ thống'),
 				],
 			},
@@ -96,10 +111,30 @@ const MODULES = [
 				key: 'catalog',
 				label: 'Danh mục NCKH (phân loại, cấp độ, loại đợt)',
 				permissions: [
-					p('PERM-CAT-READ', 'read', 'Xem danh mục', 'Mở màn hình quản lý phân loại, cấp độ, loại đợt nghiên cứu'),
-					p('PERM-CAT-CREATE', 'create', 'Thêm mục danh mục', 'Tạo phân loại / cấp độ / loại đợt nghiên cứu'),
-					p('PERM-CAT-UPDATE', 'update', 'Sửa mục danh mục', 'Cập nhật phân loại / cấp độ / loại đợt nghiên cứu'),
-					p('PERM-CAT-DELETE', 'delete', 'Xoá mục danh mục', 'Xoá phân loại / cấp độ / loại đợt nghiên cứu'),
+					p(
+						'PERM-CAT-READ',
+						'read',
+						'Xem danh mục',
+						'Mở màn hình quản lý phân loại, cấp độ, loại đợt nghiên cứu',
+					),
+					p(
+						'PERM-CAT-CREATE',
+						'create',
+						'Thêm mục danh mục',
+						'Tạo phân loại / cấp độ / loại đợt nghiên cứu',
+					),
+					p(
+						'PERM-CAT-UPDATE',
+						'update',
+						'Sửa mục danh mục',
+						'Cập nhật phân loại / cấp độ / loại đợt nghiên cứu',
+					),
+					p(
+						'PERM-CAT-DELETE',
+						'delete',
+						'Xoá mục danh mục',
+						'Xoá phân loại / cấp độ / loại đợt nghiên cứu',
+					),
 				],
 			},
 		],
@@ -112,20 +147,56 @@ const MODULES = [
 				key: 'seminars',
 				label: 'Hội thảo, hội nghị',
 				permissions: [
-					p('PERM-SEM-READ', 'read', 'Xem hội thảo, hội nghị', 'Xem danh sách & chi tiết hội thảo/hội nghị và người tham dự'),
+					p(
+						'PERM-SEM-READ',
+						'read',
+						'Xem hội thảo, hội nghị',
+						'Xem danh sách & chi tiết hội thảo/hội nghị và người tham dự',
+					),
 					p('PERM-SEM-CREATE', 'create', 'Thêm hội thảo, hội nghị', 'Tạo mới hội thảo/hội nghị'),
-					p('PERM-SEM-UPDATE', 'update', 'Sửa hội thảo, hội nghị', 'Cập nhật hội thảo/hội nghị và danh sách người tham dự'),
-					p('PERM-SEM-DELETE', 'delete', 'Xóa hội thảo, hội nghị', 'Xóa hội thảo/hội nghị khỏi hệ thống'),
-					p('PERM-SEM-IMPORT', 'import', 'Nhập từ Excel', 'Nhập danh sách người tham dự / CME từ file Excel'),
-					p('PERM-SEM-EXPORT', 'export', 'Xuất Excel', 'Xuất danh sách, sổ CME, thống kê hội thảo/hội nghị'),
-					p('PERM-SEM-CME-MANAGE', 'cme_manage', 'Quản lý cấp CME', 'Cấp / thu hồi số quyết định CME, chỉnh sổ cấp CME theo năm'),
+					p(
+						'PERM-SEM-UPDATE',
+						'update',
+						'Sửa hội thảo, hội nghị',
+						'Cập nhật hội thảo/hội nghị và danh sách người tham dự',
+					),
+					p(
+						'PERM-SEM-DELETE',
+						'delete',
+						'Xóa hội thảo, hội nghị',
+						'Xóa hội thảo/hội nghị khỏi hệ thống',
+					),
+					p(
+						'PERM-SEM-IMPORT',
+						'import',
+						'Nhập từ Excel',
+						'Nhập danh sách người tham dự / CME từ file Excel',
+					),
+					p(
+						'PERM-SEM-EXPORT',
+						'export',
+						'Xuất Excel',
+						'Xuất danh sách, sổ CME, thống kê hội thảo/hội nghị',
+					),
+					p(
+						'PERM-SEM-CME-MANAGE',
+						'cme_manage',
+						'Quản lý cấp CME',
+						'Cấp / thu hồi số quyết định CME, chỉnh sổ cấp CME theo năm',
+					),
 				],
 			},
 			{
 				key: 'cme_records',
 				label: 'Ghi nhận CME độc lập',
 				permissions: [
-					p('PERM-CMEREC-MANAGE', 'manage', 'Quản lý ghi nhận CME độc lập', 'Thêm / sửa / xoá / nhập Excel ghi nhận CME ngoài hội thảo của viện, kèm minh chứng', { seedFrom: ['seminars:cme_manage'] }),
+					p(
+						'PERM-CMEREC-MANAGE',
+						'manage',
+						'Quản lý ghi nhận CME độc lập',
+						'Thêm / sửa / xoá / nhập Excel ghi nhận CME ngoài hội thảo của viện, kèm minh chứng',
+						{ seedFrom: ['seminars:cme_manage'] },
+					),
 				],
 			},
 		],
@@ -139,17 +210,33 @@ const MODULES = [
 				label: 'Khóa học (đăng ký, lịch học, điểm danh)',
 				permissions: [
 					p('PERM-CRS-READ', 'read', 'Xem khóa học', 'Xem khóa học, đăng ký, lịch học, điểm danh'),
-					p('PERM-CRS-CREATE', 'create', 'Thêm khóa học', 'Tạo khóa học, phân công giảng viên, lịch học'),
+					p(
+						'PERM-CRS-CREATE',
+						'create',
+						'Thêm khóa học',
+						'Tạo khóa học, phân công giảng viên, lịch học',
+					),
 					p('PERM-CRS-UPDATE', 'update', 'Sửa khóa học', 'Cập nhật khóa học, lịch học, điểm danh'),
 					p('PERM-CRS-DELETE', 'delete', 'Xoá khóa học', 'Xoá khóa học, buổi học, phân công'),
-					p('PERM-CRS-APPROVE', 'approve', 'Duyệt đăng ký khóa học', 'Duyệt / từ chối đăng ký khóa học của học viên'),
+					p(
+						'PERM-CRS-APPROVE',
+						'approve',
+						'Duyệt đăng ký khóa học',
+						'Duyệt / từ chối đăng ký khóa học của học viên',
+					),
 				],
 			},
 			{
 				key: 'exams',
 				label: 'Thi & kiểm tra',
 				permissions: [
-					p('PERM-EXAM-MANAGE', 'manage', 'Quản lý thi & kiểm tra', 'Ngân hàng câu hỏi, đề thi, xem và chấm bài làm của học viên', { seedFrom: ['courses:update'] }),
+					p(
+						'PERM-EXAM-MANAGE',
+						'manage',
+						'Quản lý thi & kiểm tra',
+						'Ngân hàng câu hỏi, đề thi, xem và chấm bài làm của học viên',
+						{ seedFrom: ['courses:update'] },
+					),
 				],
 			},
 			{
@@ -157,21 +244,52 @@ const MODULES = [
 				label: 'Học viên',
 				permissions: [
 					p('PERM-TRN-READ', 'read', 'Xem học viên', 'Xem danh sách và chi tiết học viên'),
-					p('PERM-TRN-READSENS', 'read_sensitive', 'Xem dữ liệu nhạy cảm học viên', 'Xem đầy đủ CCCD và tệp hồ sơ nhạy cảm (không bị che)'),
+					p(
+						'PERM-TRN-READSENS',
+						'read_sensitive',
+						'Xem dữ liệu nhạy cảm học viên',
+						'Xem đầy đủ CCCD và tệp hồ sơ nhạy cảm (không bị che)',
+					),
 					p('PERM-TRN-CREATE', 'create', 'Thêm học viên', 'Tạo hồ sơ học viên mới'),
 					p('PERM-TRN-UPDATE', 'update', 'Sửa học viên', 'Cập nhật hồ sơ học viên'),
 					p('PERM-TRN-DELETE', 'delete', 'Xoá học viên', 'Xoá hồ sơ học viên'),
-					p('PERM-TRN-IMPORT', 'import', 'Nhập Excel học viên', 'Nhập danh sách học viên hàng loạt từ file Excel'),
-					p('PERM-TRN-MANAGE', 'manage', 'Cấp tài khoản học viên', 'Cấp tài khoản đăng nhập cho học viên (vai trò Học viên)', { critical: true }),
+					p(
+						'PERM-TRN-IMPORT',
+						'import',
+						'Nhập Excel học viên',
+						'Nhập danh sách học viên hàng loạt từ file Excel',
+					),
+					p(
+						'PERM-TRN-MANAGE',
+						'manage',
+						'Cấp tài khoản học viên',
+						'Cấp tài khoản đăng nhập cho học viên (vai trò Học viên)',
+						{ critical: true },
+					),
 				],
 			},
 			{
 				key: 'training_programs',
 				label: 'Chương trình đào tạo & bài học',
 				permissions: [
-					p('PERM-TRPROG-READ', 'read', 'Xem chương trình đào tạo', 'Xem chương trình đào tạo và môn học'),
-					p('PERM-TRPROG-CREATE', 'create', 'Thêm chương trình đào tạo', 'Tạo chương trình đào tạo mới'),
-					p('PERM-TRPROG-UPDATE', 'update', 'Sửa chương trình đào tạo', 'Cập nhật chương trình đào tạo'),
+					p(
+						'PERM-TRPROG-READ',
+						'read',
+						'Xem chương trình đào tạo',
+						'Xem chương trình đào tạo và môn học',
+					),
+					p(
+						'PERM-TRPROG-CREATE',
+						'create',
+						'Thêm chương trình đào tạo',
+						'Tạo chương trình đào tạo mới',
+					),
+					p(
+						'PERM-TRPROG-UPDATE',
+						'update',
+						'Sửa chương trình đào tạo',
+						'Cập nhật chương trình đào tạo',
+					),
 					p('PERM-TRPROG-DELETE', 'delete', 'Xoá chương trình đào tạo', 'Xoá chương trình đào tạo'),
 				],
 			},
@@ -179,7 +297,12 @@ const MODULES = [
 				key: 'training_plans',
 				label: 'Kế hoạch đào tạo',
 				permissions: [
-					p('PERM-TRNPLAN-MANAGE', 'manage', 'Quản lý kế hoạch đào tạo', 'Lập/sửa/xoá kế hoạch đào tạo theo năm và các hạng mục trong kế hoạch'),
+					p(
+						'PERM-TRNPLAN-MANAGE',
+						'manage',
+						'Quản lý kế hoạch đào tạo',
+						'Lập/sửa/xoá kế hoạch đào tạo theo năm và các hạng mục trong kế hoạch',
+					),
 				],
 			},
 			{
@@ -196,9 +319,24 @@ const MODULES = [
 				key: 'training_catalog',
 				label: 'Danh mục đào tạo',
 				permissions: [
-					p('PERM-TRNCAT-READ', 'read', 'Xem danh mục đào tạo', 'Xem đối tượng học viên, hình thức học, loại hình đào tạo, môn học, danh mục quy đổi CME'),
-					p('PERM-TRNCAT-CREATE', 'create', 'Thêm danh mục đào tạo', 'Tạo mục danh mục đào tạo mới'),
-					p('PERM-TRNCAT-UPDATE', 'update', 'Sửa danh mục đào tạo', 'Cập nhật mục danh mục đào tạo'),
+					p(
+						'PERM-TRNCAT-READ',
+						'read',
+						'Xem danh mục đào tạo',
+						'Xem đối tượng học viên, hình thức học, loại hình đào tạo, môn học, danh mục quy đổi CME',
+					),
+					p(
+						'PERM-TRNCAT-CREATE',
+						'create',
+						'Thêm danh mục đào tạo',
+						'Tạo mục danh mục đào tạo mới',
+					),
+					p(
+						'PERM-TRNCAT-UPDATE',
+						'update',
+						'Sửa danh mục đào tạo',
+						'Cập nhật mục danh mục đào tạo',
+					),
 					p('PERM-TRNCAT-DELETE', 'delete', 'Xoá danh mục đào tạo', 'Xoá mục danh mục đào tạo'),
 				],
 			},
@@ -230,8 +368,20 @@ const MODULES = [
 				label: 'Người dùng',
 				permissions: [
 					p('PERM-USR-READ', 'read', 'Xem người dùng', 'Xem danh sách tài khoản người dùng'),
-					p('PERM-USR-CREATE', 'create', 'Thêm người dùng', 'Tạo tài khoản mới cho cán bộ, nhân viên', { critical: true }),
-					p('PERM-USR-UPDATE', 'update', 'Chỉnh sửa người dùng', 'Cập nhật thông tin và mật khẩu người dùng', { critical: true }),
+					p(
+						'PERM-USR-CREATE',
+						'create',
+						'Thêm người dùng',
+						'Tạo tài khoản mới cho cán bộ, nhân viên',
+						{ critical: true },
+					),
+					p(
+						'PERM-USR-UPDATE',
+						'update',
+						'Chỉnh sửa người dùng',
+						'Cập nhật thông tin và mật khẩu người dùng',
+						{ critical: true },
+					),
 					p('PERM-USR-DELETE', 'delete', 'Xóa người dùng', 'Xóa tài khoản người dùng'),
 				],
 			},
@@ -241,9 +391,17 @@ const MODULES = [
 				permissions: [
 					p('PERM-ROLE-READ', 'read', 'Xem vai trò', 'Xem danh sách vai trò và phân quyền'),
 					p('PERM-ROLE-CREATE', 'create', 'Thêm vai trò', 'Tạo vai trò mới'),
-					p('PERM-ROLE-UPDATE', 'update', 'Sửa vai trò', 'Cập nhật thông tin vai trò', { critical: true }),
+					p('PERM-ROLE-UPDATE', 'update', 'Sửa vai trò', 'Cập nhật thông tin vai trò', {
+						critical: true,
+					}),
 					p('PERM-ROLE-DELETE', 'delete', 'Xóa vai trò', 'Xóa vai trò khỏi hệ thống'),
-					p('PERM-ROLE-MANAGE', 'manage', 'Phân quyền vai trò', 'Thay đổi tập quyền và phạm vi dữ liệu của vai trò', { critical: true }),
+					p(
+						'PERM-ROLE-MANAGE',
+						'manage',
+						'Phân quyền vai trò',
+						'Thay đổi tập quyền và phạm vi dữ liệu của vai trò',
+						{ critical: true },
+					),
 				],
 			},
 			{
@@ -260,7 +418,12 @@ const MODULES = [
 				key: 'venues',
 				label: 'Địa điểm, phòng họp',
 				permissions: [
-					p('PERM-VEN-READ', 'read', 'Xem địa điểm', 'Xem danh mục địa điểm (phòng họp, hội trường, phòng học)'),
+					p(
+						'PERM-VEN-READ',
+						'read',
+						'Xem địa điểm',
+						'Xem danh mục địa điểm (phòng họp, hội trường, phòng học)',
+					),
 					p('PERM-VEN-CREATE', 'create', 'Thêm địa điểm', 'Tạo địa điểm mới'),
 					p('PERM-VEN-UPDATE', 'update', 'Sửa địa điểm', 'Cập nhật thông tin địa điểm'),
 					p('PERM-VEN-DELETE', 'delete', 'Xoá địa điểm', 'Xoá địa điểm khỏi danh mục'),
@@ -270,8 +433,18 @@ const MODULES = [
 				key: 'notifications',
 				label: 'Thông báo hệ thống',
 				permissions: [
-					p('PERM-NOTIF-READ', 'read', 'Xem thông báo đã gửi', 'Xem danh sách thông báo hệ thống đã gửi và người nhận'),
-					p('PERM-NOTIF-CREATE', 'create', 'Gửi thông báo', 'Soạn và gửi thông báo tới người dùng / toàn hệ thống'),
+					p(
+						'PERM-NOTIF-READ',
+						'read',
+						'Xem thông báo đã gửi',
+						'Xem danh sách thông báo hệ thống đã gửi và người nhận',
+					),
+					p(
+						'PERM-NOTIF-CREATE',
+						'create',
+						'Gửi thông báo',
+						'Soạn và gửi thông báo tới người dùng / toàn hệ thống',
+					),
 					p('PERM-NOTIF-DELETE', 'delete', 'Xoá thông báo', 'Thu hồi / xoá thông báo đã gửi'),
 				],
 			},
@@ -279,22 +452,42 @@ const MODULES = [
 				key: 'persons',
 				label: 'Trùng danh tính',
 				permissions: [
-					p('PERM-PERSON-READ', 'read', 'Xem hàng đợi trùng danh tính', 'Xem các cặp hồ sơ nghi là cùng một người'),
-					p('PERM-PERSON-MERGE', 'merge', 'Gộp danh tính', 'Gộp hai hồ sơ người, bỏ qua hoặc mở lại cặp nghi trùng'),
+					p(
+						'PERM-PERSON-READ',
+						'read',
+						'Xem hàng đợi trùng danh tính',
+						'Xem các cặp hồ sơ nghi là cùng một người',
+					),
+					p(
+						'PERM-PERSON-MERGE',
+						'merge',
+						'Gộp danh tính',
+						'Gộp hai hồ sơ người, bỏ qua hoặc mở lại cặp nghi trùng',
+					),
 				],
 			},
 			{
 				key: 'surveys',
 				label: 'Khảo sát',
 				permissions: [
-					p('PERM-SURVEY-MANAGE', 'manage', 'Quản lý khảo sát', 'Tạo/sửa/xoá khảo sát và xem kết quả tổng hợp'),
+					p(
+						'PERM-SURVEY-MANAGE',
+						'manage',
+						'Quản lý khảo sát',
+						'Tạo/sửa/xoá khảo sát và xem kết quả tổng hợp',
+					),
 				],
 			},
 			{
 				key: 'workflows',
 				label: 'Quy trình duyệt',
 				permissions: [
-					p('PERM-WORKFLOW-MANAGE', 'manage', 'Quản lý workflow duyệt', 'Cấu hình quy trình duyệt nhiều bước cho các resource (đề tài...)'),
+					p(
+						'PERM-WORKFLOW-MANAGE',
+						'manage',
+						'Quản lý workflow duyệt',
+						'Cấu hình quy trình duyệt nhiều bước cho các resource (đề tài...)',
+					),
 				],
 			},
 			{
@@ -311,30 +504,61 @@ const MODULES = [
 				key: 'staff_attendance',
 				label: 'Chấm công nhân viên',
 				permissions: [
-					p('PERM-STATT-READ', 'read', 'Xem bảng chấm công', 'Xem giờ vào/ra chấm công của toàn bộ nhân viên'),
-					p('PERM-STATT-MANAGE', 'manage', 'Cấu hình ca làm việc', 'Tạo ca làm, mẫu ca theo tuần và gán mẫu ca cho nhân viên'),
-					p('PERM-STATT-ROSTER', 'roster', 'Phân ca', 'Xếp ca làm việc theo ngày cho nhân viên (ghi đè mẫu ca tuần)'),
+					p(
+						'PERM-STATT-READ',
+						'read',
+						'Xem bảng chấm công',
+						'Xem giờ vào/ra chấm công của toàn bộ nhân viên',
+					),
+					p(
+						'PERM-STATT-MANAGE',
+						'manage',
+						'Cấu hình ca làm việc',
+						'Tạo ca làm, mẫu ca theo tuần và gán mẫu ca cho nhân viên',
+					),
+					p(
+						'PERM-STATT-ROSTER',
+						'roster',
+						'Phân ca',
+						'Xếp ca làm việc theo ngày cho nhân viên (ghi đè mẫu ca tuần)',
+					),
 				],
 			},
 			{
 				key: 'activity_logs',
 				label: 'Nhật ký hoạt động',
 				permissions: [
-					p('PERM-ACTLOG-READ', 'read', 'Xem nhật ký hoạt động', 'Truy cập nhật ký hoạt động hệ thống'),
+					p(
+						'PERM-ACTLOG-READ',
+						'read',
+						'Xem nhật ký hoạt động',
+						'Truy cập nhật ký hoạt động hệ thống',
+					),
 				],
 			},
 			{
 				key: 'security_events',
 				label: 'Nhật ký bảo mật',
 				permissions: [
-					p('PERM-SECEVT-READ', 'read', 'Xem nhật ký bảo mật', 'Xem lịch sử khoá tài khoản, xoay phiên đăng nhập, truy cập dữ liệu nhạy cảm'),
+					p(
+						'PERM-SECEVT-READ',
+						'read',
+						'Xem nhật ký bảo mật',
+						'Xem lịch sử khoá tài khoản, xoay phiên đăng nhập, truy cập dữ liệu nhạy cảm',
+					),
 				],
 			},
 			{
 				key: 'system_settings',
 				label: 'Cấu hình hệ thống',
 				permissions: [
-					p('PERM-SETTINGS-MANAGE', 'manage', 'Quản lý cấu hình hệ thống', 'Xem và sửa cấu hình hệ thống (SMTP, ngưỡng CME, URL public)', { critical: true }),
+					p(
+						'PERM-SETTINGS-MANAGE',
+						'manage',
+						'Quản lý cấu hình hệ thống',
+						'Xem và sửa cấu hình hệ thống (SMTP, ngưỡng CME, URL public)',
+						{ critical: true },
+					),
 				],
 			},
 		],
@@ -372,7 +596,8 @@ for (const [moduleOrder, mod] of MODULES.entries()) {
 }
 for (const perm of ALL) {
 	for (const src of perm.seedFrom ?? []) {
-		if (!BY_KEY.has(src)) throw new Error(`[permissions] ${perm.key}.seedFrom trỏ tới quyền không tồn tại: ${src}`);
+		if (!BY_KEY.has(src))
+			throw new Error(`[permissions] ${perm.key}.seedFrom trỏ tới quyền không tồn tại: ${src}`);
 	}
 }
 

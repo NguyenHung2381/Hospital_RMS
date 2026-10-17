@@ -34,7 +34,8 @@ const assertTopicInScope = async (topicId, actor) => {
 			`)
 	).recordset[0];
 	if (!row) throw httpError(404, 'Đề tài không tồn tại.');
-	const allowed = scope === 'department' ? row.department_id === actor.department_id : row.is_member === 1;
+	const allowed =
+		scope === 'department' ? row.department_id === actor.department_id : row.is_member === 1;
 	if (!allowed) {
 		throw httpError(403, 'Không có quyền thao tác trên đề tài này');
 	}
@@ -96,10 +97,7 @@ const getAll = async (filters, actor = null) => {
 	const pool = await getPool();
 	const pg = paging(page, limit);
 
-	const req = pool
-		.request()
-		.input('offset', sql.Int, pg.offset)
-		.input('limit', sql.Int, pg.limit);
+	const req = pool.request().input('offset', sql.Int, pg.offset).input('limit', sql.Int, pg.limit);
 
 	// Giới hạn theo phạm vi vai trò — áp cho cả số liệu tổng quan (không phụ thuộc bộ lọc UI):
 	// 'department' chỉ thấy khoa mình, 'own' chỉ thấy đề tài tham gia, 'all' không giới hạn.
@@ -141,13 +139,7 @@ const getAll = async (filters, actor = null) => {
 		inClause(req, 't.round_id', 'rnd', splitList(round_id), sql.VarChar(10)),
 		inClause(req, 't.category_id', 'cat', splitList(category_id), sql.VarChar(6)),
 		inClause(req, 't.level_id', 'lvl', splitList(level_id), sql.VarChar(5)),
-		inClause(
-			req,
-			't.article_type',
-			'atype',
-			splitList(article_type),
-			sql.VarChar(20),
-		),
+		inClause(req, 't.article_type', 'atype', splitList(article_type), sql.VarChar(20)),
 		inClause(
 			req,
 			'r.year',
@@ -159,23 +151,11 @@ const getAll = async (filters, actor = null) => {
 	if (department_id && scope === 'all') {
 		// phạm vi 'department' đã bị khoá cứng theo khoa; chỉ 'all' mới lọc theo department_id tuỳ ý
 		baseClauses.push(
-			inClause(
-				req,
-				't.department_id',
-				'dept',
-				splitList(department_id),
-				sql.VarChar(20),
-			),
+			inClause(req, 't.department_id', 'dept', splitList(department_id), sql.VarChar(20)),
 		);
 	}
 
-	const statusClause = inClause(
-		req,
-		't.status',
-		'st',
-		splitList(status),
-		sql.VarChar(15),
-	);
+	const statusClause = inClause(req, 't.status', 'st', splitList(status), sql.VarChar(15));
 
 	const whereAll = buildWhere([...baseClauses, statusClause]);
 	// Số liệu tổng quan (thẻ thống kê + số trên tab): chỉ theo quyền, KHÔNG theo bộ lọc UI
@@ -212,9 +192,7 @@ const getAll = async (filters, actor = null) => {
   `);
 
 	const [rows, totalRows, globalStatusRows] = result.recordsets;
-	const byStatus = Object.fromEntries(
-		globalStatusRows.map((r) => [r.status, r.count]),
-	);
+	const byStatus = Object.fromEntries(globalStatusRows.map((r) => [r.status, r.count]));
 	rows.forEach((row) => {
 		row.allowed_actions = computeAllowedActions(row, actor);
 	});
@@ -273,8 +251,7 @@ const getById = async (id, actor = null) => {
 	}
 
 	// Get members
-	const members = await pool.request().input('topic_id', sql.VarChar(15), id)
-		.query(`
+	const members = await pool.request().input('topic_id', sql.VarChar(15), id).query(`
       SELECT tm.id, tm.name AS ho_ten, tm.email, tm.phone_number AS so_dien_thoai, tm.position AS chuc_vu, tm.role,
              tm.department_id,
              md.name AS department_name,
@@ -286,8 +263,7 @@ const getById = async (id, actor = null) => {
 	topic.members = members.recordset;
 
 	// Chuyên ngành liên quan (đề tài liên ngành, VD kế toán tích hợp CNTT)
-	const related = await pool.request().input('topic_id', sql.VarChar(15), id)
-		.query(`
+	const related = await pool.request().input('topic_id', sql.VarChar(15), id).query(`
       SELECT trd.department_id, d.name AS department_name
       FROM topic_related_departments trd
       LEFT JOIN departments d ON d.id = trd.department_id
@@ -344,8 +320,7 @@ const create = async (data, actorId) => {
 		.input('journal_name', sql.NVarChar(255), data.journal_name || null)
 		.input('doi', sql.VarChar(100), data.doi || null)
 		.input('publish_date', sql.Date, data.publish_date || null)
-		.input('budget_estimated', sql.Decimal(18, 2), data.budget_estimated ?? null)
-		.query(`
+		.input('budget_estimated', sql.Decimal(18, 2), data.budget_estimated ?? null).query(`
       DECLARE @new_id VARCHAR(15);
       EXEC sp_gen_topic_id @category_id, @round_id, @new_id OUTPUT;
       EXEC sp_set_actor @actor_id;
@@ -354,10 +329,7 @@ const create = async (data, actorId) => {
       SELECT @new_id AS id;
     `);
 	if (Array.isArray(data.related_department_ids) && data.related_department_ids.length)
-		await setRelatedDepartments(
-			result.recordset[0].id,
-			data.related_department_ids,
-		);
+		await setRelatedDepartments(result.recordset[0].id, data.related_department_ids);
 	const topic = await getById(result.recordset[0].id);
 	broadcast('update', { entity: 'topic' });
 	return topic;
@@ -376,8 +348,7 @@ const update = async (id, data, actorId, actor = null) => {
 	// có kiểm tra thành viên qua mốc thời gian, còn lại (đợt, kinh phí, tạp
 	// chí...) ai có topics:update cũng sửa được đề tài BẤT KỲ theo id (IDOR).
 	const current = await getById(id, bypass ? null : actor);
-	if (!current)
-		throw httpError(404, 'Đề tài không tồn tại.');
+	if (!current) throw httpError(404, 'Đề tài không tồn tại.');
 	// Phạm vi khoa không được chuyển đề tài sang khoa khác (ra ngoài phạm vi mình)
 	if (
 		scope === 'department' &&
@@ -396,13 +367,7 @@ const update = async (id, data, actorId, actor = null) => {
 	// cần sửa trực tiếp (vd nhập liệu/data-fix qua ô chọn trạng thái ở
 	// TopicModal.tsx).
 	if (data.status !== undefined) {
-		const VALID_STATUSES = [
-			'submitted',
-			'approved',
-			'rejected',
-			'supplement',
-			'cancelled',
-		];
+		const VALID_STATUSES = ['submitted', 'approved', 'rejected', 'supplement', 'cancelled'];
 		if (!VALID_STATUSES.includes(data.status)) {
 			throw httpError(400, 'Trạng thái đề tài không hợp lệ.');
 		}
@@ -418,8 +383,7 @@ const update = async (id, data, actorId, actor = null) => {
 
 	if (!bypass && scope === 'own') {
 		// Chủ nhiệm / thư ký: chỉ sửa được khi mốc "Sửa" / "Bổ sung" tương ứng đang mở.
-		if (data.title !== undefined)
-			await assertTopicActionWindow(id, actorId, 'edit-title');
+		if (data.title !== undefined) await assertTopicActionWindow(id, actorId, 'edit-title');
 		if (
 			data.description !== undefined ||
 			data.category_id !== undefined ||
@@ -430,9 +394,7 @@ const update = async (id, data, actorId, actor = null) => {
 	} else if (scope !== 'all') {
 		if (current.status !== 'submitted' && current.status !== 'supplement') {
 			throw Object.assign(
-				new Error(
-					'Chỉ có thể chỉnh sửa đề tài ở trạng thái "Chờ duyệt" hoặc "Bổ sung".',
-				),
+				new Error('Chỉ có thể chỉnh sửa đề tài ở trạng thái "Chờ duyệt" hoặc "Bổ sung".'),
 				{ status: 403, statusCode: 403 },
 			);
 		}
@@ -518,8 +480,7 @@ const update = async (id, data, actorId, actor = null) => {
 	}
 
 	const relatedChanged = Array.isArray(data.related_department_ids);
-	if (relatedChanged)
-		await setRelatedDepartments(id, data.related_department_ids);
+	if (relatedChanged) await setRelatedDepartments(id, data.related_department_ids);
 
 	if (!sets.length) {
 		if (relatedChanged) broadcast('update', { entity: 'topic' });
@@ -540,8 +501,7 @@ const update = async (id, data, actorId, actor = null) => {
 		rejected: 'rejected',
 		supplement: 'supplement',
 	};
-	const apvStatus =
-		data.status !== undefined ? APV_STATUS_BY_TOPIC[data.status] : undefined;
+	const apvStatus = data.status !== undefined ? APV_STATUS_BY_TOPIC[data.status] : undefined;
 	let apvSyncSql = '';
 	if (apvStatus) {
 		req.input('apv_status', sql.VarChar(15), apvStatus);
@@ -586,9 +546,7 @@ const approve = async (topicId, status, comment, actorId) => {
 		.execute('sp_approve_topic');
 
 	// Notify topic creator + all members who have accounts
-	const userRes = await pool
-		.request()
-		.input('topic_id', sql.VarChar(15), topicId).query(`
+	const userRes = await pool.request().input('topic_id', sql.VarChar(15), topicId).query(`
       SELECT DISTINCT uid FROM (
         SELECT created_by AS uid FROM topics WHERE id = @topic_id
         UNION
@@ -652,9 +610,7 @@ const submit = async (topicId, actorId) => {
 
 const getApprovals = async (topicId) => {
 	const pool = await getPool();
-	const result = await pool
-		.request()
-		.input('topic_id', sql.VarChar(15), topicId).query(`
+	const result = await pool.request().input('topic_id', sql.VarChar(15), topicId).query(`
       SELECT a.*, u.full_name AS approver_name
       FROM approvals a
       LEFT JOIN users u ON u.id = a.created_by

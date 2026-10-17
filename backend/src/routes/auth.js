@@ -390,7 +390,10 @@ router.post(
 	forgotLimiter,
 	[
 		body('username').isString().notEmpty().isLength({ max: 100 }),
-		body('code').isString().matches(/^\d{6}$/).withMessage('Mã OTP gồm 6 chữ số'),
+		body('code')
+			.isString()
+			.matches(/^\d{6}$/)
+			.withMessage('Mã OTP gồm 6 chữ số'),
 		body('new_password').custom((value, { req }) => {
 			const msg = checkPassword(value, { username: req.body?.username });
 			if (msg) throw new Error(msg);

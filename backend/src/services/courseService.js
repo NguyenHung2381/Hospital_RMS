@@ -132,7 +132,10 @@ const assertCourseChildInScope = async (paramName, childId, actor) => {
 	if (scopeOf(actor, 'courses') !== 'assigned') return;
 	const pool = await getPool();
 	const row = (
-		await pool.request().input('id', sql.VarChar(20), String(childId)).query(CHILD_COURSE_SQL[paramName])
+		await pool
+			.request()
+			.input('id', sql.VarChar(20), String(childId))
+			.query(CHILD_COURSE_SQL[paramName])
 	).recordset[0];
 	if (!row) throw httpError(404, 'Không tìm thấy dữ liệu');
 	await assertCourseInScope(row.course_id, actor);
@@ -153,7 +156,9 @@ const getAll = async (
 		req.input('search', sql.NVarChar, `%${search}%`);
 	}
 	if (program_id) {
-		where.push('EXISTS (SELECT 1 FROM course_programs cp WHERE cp.course_id = c.id AND cp.program_id = @program_id)');
+		where.push(
+			'EXISTS (SELECT 1 FROM course_programs cp WHERE cp.course_id = c.id AND cp.program_id = @program_id)',
+		);
 		req.input('program_id', sql.VarChar(20), program_id);
 	}
 	if (status) {
@@ -193,7 +198,10 @@ const getById = async (id, actor = null) => {
 			throw httpError(403, 'Không có quyền xem khóa học này');
 		}
 	}
-	const result = await pool.request().input('id', sql.VarChar(20), id).query(`${courseSelect} WHERE c.id = @id`);
+	const result = await pool
+		.request()
+		.input('id', sql.VarChar(20), id)
+		.query(`${courseSelect} WHERE c.id = @id`);
 	return result.recordset[0] ? normalize(result.recordset[0]) : null;
 };
 
@@ -214,8 +222,7 @@ const create = async (data, actorId) => {
 		.input('is_public_registration', sql.Bit, data.is_public_registration ? 1 : 0)
 		.input('description', sql.NVarChar(sql.MAX), data.description || null)
 		.input('prerequisites', sql.NVarChar(sql.MAX), JSON.stringify(data.prerequisites || []))
-		.input('objectives', sql.NVarChar(sql.MAX), JSON.stringify(data.objectives || []))
-		.query(`
+		.input('objectives', sql.NVarChar(sql.MAX), JSON.stringify(data.objectives || [])).query(`
       DECLARE @new_id VARCHAR(20);
       EXEC sp_gen_course_id @actor_id = @actor_id, @new_id = @new_id OUTPUT;
       EXEC sp_set_actor @actor_id;
@@ -232,7 +239,10 @@ const create = async (data, actorId) => {
 const update = async (id, data, actorId) => {
 	const pool = await getPool();
 	const sets = ['updated_at = GETDATE()', 'updated_by = @actor_id'];
-	const req = pool.request().input('id', sql.VarChar(20), id).input('actor_id', sql.VarChar(20), actorId);
+	const req = pool
+		.request()
+		.input('id', sql.VarChar(20), id)
+		.input('actor_id', sql.VarChar(20), actorId);
 
 	const fieldMap = {
 		name: sql.NVarChar(255),
@@ -262,7 +272,9 @@ const update = async (id, data, actorId) => {
 		req.input('objectives', sql.NVarChar(sql.MAX), JSON.stringify(data.objectives || []));
 	}
 
-	await req.query(`EXEC sp_set_actor @actor_id; UPDATE courses SET ${sets.join(', ')} WHERE id = @id`);
+	await req.query(
+		`EXEC sp_set_actor @actor_id; UPDATE courses SET ${sets.join(', ')} WHERE id = @id`,
+	);
 	if (Array.isArray(data.program_ids)) await setPrograms(id, data.program_ids, actorId);
 	broadcast('update', { entity: 'course' });
 	return getById(id);
@@ -302,7 +314,10 @@ const setPrograms = async (courseId, programIds, actorId) => {
 			.query('SELECT id, program_id FROM course_programs WHERE course_id = @course_id')
 	).recordset;
 	for (const link of current.filter((l) => !wanted.has(l.program_id))) {
-		await pool.request().input('id', sql.VarChar(20), link.id).query('DELETE FROM course_programs WHERE id = @id');
+		await pool
+			.request()
+			.input('id', sql.VarChar(20), link.id)
+			.query('DELETE FROM course_programs WHERE id = @id');
 	}
 	const have = new Set(current.map((l) => l.program_id));
 	for (const programId of [...wanted].filter((id) => !have.has(id))) {
@@ -359,7 +374,8 @@ const registerTrainee = async (courseId, traineeId, actorId, { bypassWindow = fa
 		.input('actor_id', sql.VarChar(20), actorId)
 		.input('course_id', sql.VarChar(20), courseId)
 		.input('trainee_id', sql.VarChar(20), traineeId)
-		.query(`
+		.query(
+			`
       IF EXISTS (SELECT 1 FROM course_enrollments WHERE course_id = @course_id AND trainee_id = @trainee_id)
       BEGIN
         THROW 51000, N'Học viên này đã đăng ký khóa học rồi.', 1;
@@ -369,7 +385,8 @@ const registerTrainee = async (courseId, traineeId, actorId, { bypassWindow = fa
       INSERT INTO course_enrollments (id, course_id, trainee_id, status, created_by)
       VALUES (@new_id, @course_id, @trainee_id, 'pending', @actor_id);
       SELECT @new_id AS id;
-    `)
+    `,
+		)
 		.catch((err) => {
 			if (err.number === 51000) {
 				const e = new Error('Học viên này đã đăng ký khóa học rồi.');
@@ -388,7 +405,9 @@ const registerTrainee = async (courseId, traineeId, actorId, { bypassWindow = fa
 // khoản do "Cấp tài khoản học viên" sinh ra — luôn đã gắn với 1 trainee).
 const listStaffCandidates = async () => {
 	const pool = await getPool();
-	const result = await (await inputRoleId(pool.request(), 'trainee_role', ROLE.TRAINEE)).query(`
+	const result = await (
+		await inputRoleId(pool.request(), 'trainee_role', ROLE.TRAINEE)
+	).query(`
     SELECT u.id, u.full_name, u.staff_number, d.name AS department_name
     FROM users u
     LEFT JOIN departments d ON d.id = u.department_id
@@ -428,7 +447,9 @@ const registerStaff = async (courseId, userId, actorId, { bypassWindow = false }
 		const userRes = await pool
 			.request()
 			.input('uid', sql.VarChar(20), userId)
-			.query('SELECT id, full_name, email, department_id FROM users WHERE id = @uid AND is_active = 1');
+			.query(
+				'SELECT id, full_name, email, department_id FROM users WHERE id = @uid AND is_active = 1',
+			);
 		const user = userRes.recordset[0];
 		if (!user) {
 			const err = new Error('Nhân viên không tồn tại hoặc đã bị khoá.');
@@ -450,8 +471,7 @@ const registerStaff = async (courseId, userId, actorId, { bypassWindow = false }
 		await pool
 			.request()
 			.input('tid', sql.VarChar(20), traineeId)
-			.input('uid', sql.VarChar(20), userId)
-			.query(`
+			.input('uid', sql.VarChar(20), userId).query(`
         UPDATE trainees
         SET user_id = @uid, account_granted = 1, account_granted_at = GETDATE()
         WHERE id = @tid
@@ -490,8 +510,7 @@ const decideEnrollment = async (enrollmentId, decision, actorId, note) => {
 		.input('id', sql.VarChar(20), enrollmentId)
 		.input('status', sql.VarChar(15), finalStatus)
 		.input('decided_by', sql.VarChar(20), actorId)
-		.input('note', sql.NVarChar(500), note || null)
-		.query(`
+		.input('note', sql.NVarChar(500), note || null).query(`
       UPDATE course_enrollments
       SET status = @status, decided_by = @decided_by, decided_at = GETDATE(), note = @note,
           updated_at = GETDATE(), updated_by = @decided_by
@@ -597,7 +616,9 @@ const assignLecturer = async (courseId, data, actorId) => {
 		throw err;
 	}
 	if (lec.enrolled > 0) {
-		const err = new Error('Người này đang là học viên của khóa học, không thể phân công làm giảng viên.');
+		const err = new Error(
+			'Người này đang là học viên của khóa học, không thể phân công làm giảng viên.',
+		);
 		err.statusCode = 400;
 		throw err;
 	}
@@ -608,8 +629,7 @@ const assignLecturer = async (courseId, data, actorId) => {
 		.input('course_id', sql.VarChar(20), courseId)
 		.input('lecturer_id', sql.VarChar(20), data.lecturer_id)
 		.input('subject_id', sql.VarChar(20), data.subject_id || null)
-		.input('note', sql.NVarChar(255), data.note || null)
-		.query(`
+		.input('note', sql.NVarChar(255), data.note || null).query(`
       DECLARE @new_id VARCHAR(20);
       EXEC sp_gen_lecturer_assignment_id @actor_id = @actor_id, @new_id = @new_id OUTPUT;
       INSERT INTO lecturer_assignments (id, course_id, lecturer_id, subject_id, note, created_by)
@@ -622,7 +642,10 @@ const assignLecturer = async (courseId, data, actorId) => {
 
 const removeAssignment = async (assignmentId) => {
 	const pool = await getPool();
-	await pool.request().input('id', sql.VarChar(20), assignmentId).query('DELETE FROM lecturer_assignments WHERE id = @id');
+	await pool
+		.request()
+		.input('id', sql.VarChar(20), assignmentId)
+		.query('DELETE FROM lecturer_assignments WHERE id = @id');
 	broadcast('update', { entity: 'lecturer_assignment' });
 };
 
@@ -687,8 +710,7 @@ const createSession = async (courseId, data, actorId) => {
 		.input('session_date', sql.Date, data.session_date)
 		.input('start_time', sql.VarChar(5), data.start_time || null)
 		.input('end_time', sql.VarChar(5), data.end_time || null)
-		.input('room', sql.NVarChar(255), data.room || null)
-		.query(`
+		.input('room', sql.NVarChar(255), data.room || null).query(`
       DECLARE @new_id VARCHAR(20);
       EXEC sp_gen_class_session_id @actor_id = @actor_id, @new_id = @new_id OUTPUT;
       INSERT INTO class_sessions (id, course_id, subject_id, lecturer_id, session_date, start_time, end_time, room, created_by)
@@ -702,7 +724,10 @@ const createSession = async (courseId, data, actorId) => {
 const updateSession = async (sessionId, data, actorId) => {
 	const pool = await getPool();
 	const sets = ['updated_at = GETDATE()', 'updated_by = @actor_id'];
-	const req = pool.request().input('id', sql.VarChar(20), sessionId).input('actor_id', sql.VarChar(20), actorId);
+	const req = pool
+		.request()
+		.input('id', sql.VarChar(20), sessionId)
+		.input('actor_id', sql.VarChar(20), actorId);
 
 	const fieldMap = {
 		subject_id: sql.VarChar(20),
@@ -724,7 +749,10 @@ const updateSession = async (sessionId, data, actorId) => {
 
 const removeSession = async (sessionId) => {
 	const pool = await getPool();
-	await pool.request().input('id', sql.VarChar(20), sessionId).query('DELETE FROM class_sessions WHERE id = @id');
+	await pool
+		.request()
+		.input('id', sql.VarChar(20), sessionId)
+		.query('DELETE FROM class_sessions WHERE id = @id');
 	broadcast('update', { entity: 'class_session' });
 };
 
@@ -734,7 +762,8 @@ const removeSession = async (sessionId) => {
 // chống trùng lịch — xem ghi chú trong migration).
 const createSessionsBulk = async (courseId, data, actorId) => {
 	const pool = await getPool();
-	const { start_date, end_date, weekdays, start_time, end_time, room, lecturer_id, subject_id } = data;
+	const { start_date, end_date, weekdays, start_time, end_time, room, lecturer_id, subject_id } =
+		data;
 	const weekdaySet = new Set((weekdays || []).map(Number));
 	const dates = [];
 	const cursor = new Date(`${start_date}T00:00:00Z`);
@@ -758,8 +787,7 @@ const createSessionsBulk = async (courseId, data, actorId) => {
 			.input('session_date', sql.Date, sessionDate)
 			.input('start_time', sql.VarChar(5), start_time || null)
 			.input('end_time', sql.VarChar(5), end_time || null)
-			.input('room', sql.NVarChar(255), room || null)
-			.query(`
+			.input('room', sql.NVarChar(255), room || null).query(`
         IF EXISTS (
           SELECT 1 FROM class_sessions
           WHERE course_id = @course_id AND session_date = @session_date
@@ -833,7 +861,11 @@ const bulkSetAttendance = async (sessionId, records, actorId) => {
 // authorizePermission courses:update ở route) hiển thị lên màn hình lớp,
 // học viên tự quét bằng tài khoản đã đăng nhập (checkInSelf).
 const generateAttendanceQrToken = (sessionId) =>
-	signToken('attendance-qr', { session_id: sessionId, purpose: ATTENDANCE_QR_PURPOSE }, ATTENDANCE_QR_TTL);
+	signToken(
+		'attendance-qr',
+		{ session_id: sessionId, purpose: ATTENDANCE_QR_PURPOSE },
+		ATTENDANCE_QR_TTL,
+	);
 
 // Học viên tự điểm danh bằng mã QR vừa quét — actor phải là tài khoản đã được
 // cấp cho 1 trainee (trainees.user_id, xem D0) có ghi danh 'approved' vào
@@ -931,21 +963,33 @@ const addDocument = async (courseId, data, file, actorId) => {
 	const sourceType = data.source_type === 'link' ? 'link' : 'file';
 	let fileId = null;
 	if (sourceType === 'file') {
-		const savedFile = await trainingFileService.saveUploadedFile('course_document', courseId, file, actorId);
+		const savedFile = await trainingFileService.saveUploadedFile(
+			'course_document',
+			courseId,
+			file,
+			actorId,
+		);
 		fileId = savedFile.id;
 	}
 	const result = await pool
 		.request()
 		.input('course_id', sql.VarChar(20), courseId)
 		.input('doc_type', sql.VarChar(20), data.doc_type || 'material')
-		.input('title', sql.NVarChar(255), data.title || (file ? trainingFileService.decodeOriginalName(file.originalname) : 'Liên kết'))
+		.input(
+			'title',
+			sql.NVarChar(255),
+			data.title || (file ? trainingFileService.decodeOriginalName(file.originalname) : 'Liên kết'),
+		)
 		.input('source_type', sql.VarChar(10), sourceType)
 		.input('file_id', sql.VarChar(20), fileId)
-		.input('external_url', sql.NVarChar(500), sourceType === 'link' ? assertHttpUrl(data.external_url, 'Liên kết') : null)
+		.input(
+			'external_url',
+			sql.NVarChar(500),
+			sourceType === 'link' ? assertHttpUrl(data.external_url, 'Liên kết') : null,
+		)
 		.input('is_public', sql.Bit, data.is_public === 'false' || data.is_public === false ? 0 : 1)
 		.input('exam_type', sql.VarChar(20), data.exam_type || null)
-		.input('actor_id', sql.VarChar(20), actorId)
-		.query(`
+		.input('actor_id', sql.VarChar(20), actorId).query(`
       DECLARE @new_id VARCHAR(20);
       EXEC sp_gen_course_document_id @actor_id = @actor_id, @new_id = @new_id OUTPUT;
       INSERT INTO course_documents (id, course_id, doc_type, title, source_type, file_id, external_url, is_public, exam_type, created_by)
@@ -979,8 +1023,12 @@ const removeDocument = async (docId, actorId) => {
 		.input('id', sql.VarChar(20), docId)
 		.query('SELECT file_id FROM course_documents WHERE id = @id');
 	if (!doc.recordset[0]) return;
-	await pool.request().input('id', sql.VarChar(20), docId).query('DELETE FROM course_documents WHERE id = @id');
-	if (doc.recordset[0].file_id) await trainingFileService.softDelete(doc.recordset[0].file_id, actorId);
+	await pool
+		.request()
+		.input('id', sql.VarChar(20), docId)
+		.query('DELETE FROM course_documents WHERE id = @id');
+	if (doc.recordset[0].file_id)
+		await trainingFileService.softDelete(doc.recordset[0].file_id, actorId);
 	broadcast('update', { entity: 'course_document' });
 };
 
@@ -1029,7 +1077,7 @@ const upsertGrade = async (enrollmentId, subjectId, data, actorId) => {
 	const midterm = data.midterm_score ?? null;
 	const finalScore = data.final_score ?? null;
 	const computedScore = computeFinalScore(regular, midterm, finalScore);
-	const score = computedScore ?? (data.score ?? null);
+	const score = computedScore ?? data.score ?? null;
 	const classification = classifyScore(score);
 	const result = data.result || (score != null ? (score >= 5 ? 'pass' : 'fail') : null);
 
@@ -1078,8 +1126,7 @@ const upsertGrade = async (enrollmentId, subjectId, data, actorId) => {
 		.input('classification', sql.NVarChar(20), classification)
 		.input('program_id', sql.VarChar(20), data.program_id || null)
 		.input('note', sql.NVarChar(255), data.note || null)
-		.input('actor_id', sql.VarChar(20), actorId)
-		.query(`
+		.input('actor_id', sql.VarChar(20), actorId).query(`
       DECLARE @new_id VARCHAR(20);
       EXEC sp_gen_grade_id @actor_id = @actor_id, @new_id = @new_id OUTPUT;
       INSERT INTO grades (id, enrollment_id, subject_id, score, result, regular_score, midterm_score, final_score, classification, program_id, note, created_by)
@@ -1092,7 +1139,10 @@ const upsertGrade = async (enrollmentId, subjectId, data, actorId) => {
 
 const removeGrade = async (gradeId) => {
 	const pool = await getPool();
-	await pool.request().input('id', sql.VarChar(20), gradeId).query('DELETE FROM grades WHERE id = @id');
+	await pool
+		.request()
+		.input('id', sql.VarChar(20), gradeId)
+		.query('DELETE FROM grades WHERE id = @id');
 	broadcast('update', { entity: 'grade' });
 };
 
@@ -1138,7 +1188,8 @@ const issueCertificate = async (enrollmentId, actorId, expiryDate) => {
 		.input('enrollment_id', sql.VarChar(20), enrollmentId)
 		.input('year', sql.VarChar(4), String(year))
 		.input('expiry_date', sql.Date, expiryDate || null)
-		.query(`
+		.query(
+			`
       IF EXISTS (SELECT 1 FROM certificates WHERE enrollment_id = @enrollment_id)
       BEGIN
         THROW 51001, N'Học viên này đã được cấp chứng chỉ cho khóa học này rồi.', 1;
@@ -1150,7 +1201,8 @@ const issueCertificate = async (enrollmentId, actorId, expiryDate) => {
       INSERT INTO certificates (id, enrollment_id, cert_no, expiry_date, created_by)
       VALUES (@new_id, @enrollment_id, @cert_no, @expiry_date, @actor_id);
       SELECT @new_id AS id, @cert_no AS cert_no;
-    `)
+    `,
+		)
 		.catch((err) => {
 			if (err.number === 51001) {
 				const e = new Error('Học viên này đã được cấp chứng chỉ cho khóa học này rồi.');
@@ -1167,7 +1219,10 @@ const issueCertificate = async (enrollmentId, actorId, expiryDate) => {
 // pháp lý của chứng chỉ đã cấp đúng, dùng revokeCertificate (thu hồi mềm).
 const removeCertificate = async (certId) => {
 	const pool = await getPool();
-	await pool.request().input('id', sql.VarChar(20), certId).query('DELETE FROM certificates WHERE id = @id');
+	await pool
+		.request()
+		.input('id', sql.VarChar(20), certId)
+		.query('DELETE FROM certificates WHERE id = @id');
 	broadcast('update', { entity: 'certificate' });
 };
 
@@ -1178,8 +1233,7 @@ const revokeCertificate = async (certId, reason, actorId) => {
 		.request()
 		.input('id', sql.VarChar(20), certId)
 		.input('reason', sql.NVarChar(255), reason || null)
-		.input('actor_id', sql.VarChar(20), actorId)
-		.query(`
+		.input('actor_id', sql.VarChar(20), actorId).query(`
       UPDATE certificates
       SET status = 'revoked', revoked_at = GETDATE(), revoked_by = @actor_id, revoke_reason = @reason,
           updated_at = GETDATE(), updated_by = @actor_id

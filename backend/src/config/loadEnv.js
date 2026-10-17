@@ -10,12 +10,8 @@ const dotenv = require('dotenv');
 // Tách khỏi app.js để src/cluster.js (tiến trình primary) nạp được env mà
 // không phải dựng cả Express app.
 const SERVER_DIR = path.resolve(__dirname, '..', '..');
-const envFile =
-	process.env.NODE_ENV === 'production' ? '.env.production' : '.env';
-const envCandidates = [
-	path.resolve(SERVER_DIR, envFile),
-	path.resolve(SERVER_DIR, '.env'),
-];
+const envFile = process.env.NODE_ENV === 'production' ? '.env.production' : '.env';
+const envCandidates = [path.resolve(SERVER_DIR, envFile), path.resolve(SERVER_DIR, '.env')];
 for (const envPath of envCandidates) {
 	if (fs.existsSync(envPath)) {
 		dotenv.config({ path: envPath });

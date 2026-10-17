@@ -16,8 +16,7 @@ const inClause = (req, col, prefix, values, sqlType) => {
 };
 
 // Ghép các mệnh đề (bỏ null) thành 'WHERE a AND b'; luôn có 1=1 để không bao giờ rỗng.
-const buildWhere = (clauses) =>
-	`WHERE ${['1=1', ...clauses.filter(Boolean)].join(' AND ')}`;
+const buildWhere = (clauses) => `WHERE ${['1=1', ...clauses.filter(Boolean)].join(' AND ')}`;
 
 // Cột NVARCHAR chứa mảng JSON (options, answer_options…) → mảng; rỗng/hỏng → [].
 const parseJsonArray = (text) => {
@@ -42,11 +41,11 @@ if (require.main === module) {
 	const calls = [];
 	const req = { input: (n, t, v) => calls.push([n, v]) };
 	assert.strictEqual(inClause(req, 't.status', 'st', [], null), null);
-	assert.strictEqual(
-		inClause(req, 't.status', 'st', ['a', 'b'], null),
-		't.status IN (@st0, @st1)',
-	);
-	assert.deepStrictEqual(calls, [['st0', 'a'], ['st1', 'b']]);
+	assert.strictEqual(inClause(req, 't.status', 'st', ['a', 'b'], null), 't.status IN (@st0, @st1)');
+	assert.deepStrictEqual(calls, [
+		['st0', 'a'],
+		['st1', 'b'],
+	]);
 	// prefix khác nhau không đụng tên tham số
 	assert.strictEqual(inClause(req, 't.x', 'cat', ['z'], null), 't.x IN (@cat0)');
 

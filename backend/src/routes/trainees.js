@@ -75,11 +75,7 @@ router.post(
  *       200:
  *         description: Cấp tài khoản thành công (kèm danh sách bị bỏ qua nếu có lỗi)
  */
-router.post(
-	'/grant-accounts',
-	authorizePermission(['trainees', 'manage']),
-	ctrl.grantAccounts,
-);
+router.post('/grant-accounts', authorizePermission(['trainees', 'manage']), ctrl.grantAccounts);
 
 /**
  * @swagger
@@ -156,13 +152,21 @@ router.get('/:id/enrollments', authorizePermission(['trainees', 'read']), ctrl.l
  *     summary: Tải lên hồ sơ học viên
  *     tags: [Trainees]
  */
-router.get('/:id/documents', authorizePermission(['trainees', 'read_sensitive']), ctrl.listDocuments);
+router.get(
+	'/:id/documents',
+	authorizePermission(['trainees', 'read_sensitive']),
+	ctrl.listDocuments,
+);
 router.post(
 	'/:id/documents',
 	authorizePermission(['trainees', 'update']),
 	uploadTraineeDoc.single('file'),
 	ctrl.addDocument,
 );
-router.delete('/documents/:docId', authorizePermission(['trainees', 'update']), ctrl.removeDocument);
+router.delete(
+	'/documents/:docId',
+	authorizePermission(['trainees', 'update']),
+	ctrl.removeDocument,
+);
 
 module.exports = router;

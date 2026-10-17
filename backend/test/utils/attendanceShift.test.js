@@ -41,15 +41,24 @@ test('weekdayOf / dateKeyVN / addDays', () => {
 });
 
 test('shiftIdsForDay: phân ca ngày ghi đè mẫu tuần; dòng NULL = nghỉ', () => {
-	assert.deepStrictEqual(s.shiftIdsForDay(hanhChinh, [], '2026-10-12'), { source: 'pattern', shiftIds: [1, 2] });
-	assert.deepStrictEqual(s.shiftIdsForDay(hanhChinh, [{ work_date: '2026-10-12', shift_id: null }], '2026-10-12'), {
-		source: 'roster',
-		shiftIds: [],
+	assert.deepStrictEqual(s.shiftIdsForDay(hanhChinh, [], '2026-10-12'), {
+		source: 'pattern',
+		shiftIds: [1, 2],
 	});
-	assert.deepStrictEqual(s.shiftIdsForDay(null, [{ work_date: '2026-10-17', shift_id: 3 }], '2026-10-17'), {
-		source: 'roster',
-		shiftIds: [3],
-	});
+	assert.deepStrictEqual(
+		s.shiftIdsForDay(hanhChinh, [{ work_date: '2026-10-12', shift_id: null }], '2026-10-12'),
+		{
+			source: 'roster',
+			shiftIds: [],
+		},
+	);
+	assert.deepStrictEqual(
+		s.shiftIdsForDay(null, [{ work_date: '2026-10-17', shift_id: 3 }], '2026-10-17'),
+		{
+			source: 'roster',
+			shiftIds: [3],
+		},
+	);
 	assert.strictEqual(s.shiftIdsForDay(null, [], '2026-10-12'), null);
 });
 
@@ -57,28 +66,47 @@ test('checkOptions: chấm vào trong khoảng cho phép, chấm ra khi đã có
 	const base = { pattern: hanhChinh, assignments: [], shiftsById, records: [] };
 	assert.deepStrictEqual(s.checkOptions({ ...base, now: vn('2026-10-12T06:00:00') }), []); // quá sớm
 	const o1 = s.checkOptions({ ...base, now: vn('2026-10-12T06:45:00') });
-	assert.deepStrictEqual(o1.map((o) => [o.shift_id, o.action]), [[1, 'check_in']]);
+	assert.deepStrictEqual(
+		o1.map((o) => [o.shift_id, o.action]),
+		[[1, 'check_in']],
+	);
 	// 12:45: ca sáng đã vào → chấm ra; ca chiều mở từ 12:30 → chấm vào. 2 lựa chọn.
 	const records = [{ work_date: '2026-10-12', shift_id: 1 }];
 	const o2 = s.checkOptions({ ...base, records, now: vn('2026-10-12T12:45:00') });
-	assert.deepStrictEqual(o2.map((o) => [o.shift_id, o.action]), [
-		[1, 'check_out'],
-		[2, 'check_in'],
-	]);
+	assert.deepStrictEqual(
+		o2.map((o) => [o.shift_id, o.action]),
+		[
+			[1, 'check_out'],
+			[2, 'check_in'],
+		],
+	);
 	// Thứ 7 mẫu không có ca → không chấm được
 	assert.deepStrictEqual(s.checkOptions({ ...base, now: vn('2026-10-17T09:00:00') }), []);
 	// Hết ca mà chưa vào → không chấm vào nữa
-	assert.deepStrictEqual(s.checkOptions({ ...base, now: vn('2026-10-12T19:30:00') }).map((o) => o.shift_id), []);
+	assert.deepStrictEqual(
+		s.checkOptions({ ...base, now: vn('2026-10-12T19:30:00') }).map((o) => o.shift_id),
+		[],
+	);
 });
 
 test('checkOptions: ca đêm chấm ra sáng hôm sau thuộc ngày bắt đầu ca', () => {
 	const assignments = [{ work_date: '2026-10-17', shift_id: 3 }];
 	const base = { pattern: hanhChinh, assignments, shiftsById };
 	const vao = s.checkOptions({ ...base, records: [], now: vn('2026-10-17T18:50:00') });
-	assert.deepStrictEqual(vao.map((o) => [o.work_date, o.shift_id, o.action]), [['2026-10-17', 3, 'check_in']]);
+	assert.deepStrictEqual(
+		vao.map((o) => [o.work_date, o.shift_id, o.action]),
+		[['2026-10-17', 3, 'check_in']],
+	);
 	// Chủ nhật 07:20: mẫu tuần CN không có ca, nhưng ca đêm thứ 7 vẫn mở để chấm ra
-	const ra = s.checkOptions({ ...base, records: [{ work_date: '2026-10-17', shift_id: 3 }], now: vn('2026-10-18T07:20:00') });
-	assert.deepStrictEqual(ra.map((o) => [o.work_date, o.shift_id, o.action]), [['2026-10-17', 3, 'check_out']]);
+	const ra = s.checkOptions({
+		...base,
+		records: [{ work_date: '2026-10-17', shift_id: 3 }],
+		now: vn('2026-10-18T07:20:00'),
+	});
+	assert.deepStrictEqual(
+		ra.map((o) => [o.work_date, o.shift_id, o.action]),
+		[['2026-10-17', 3, 'check_out']],
+	);
 });
 
 test('checkOptions: trực 24h & chấm tự do khi không có lịch ca', () => {
@@ -91,12 +119,24 @@ test('checkOptions: trực 24h & chấm tự do khi không có lịch ca', () =>
 		now: vn('2026-10-13T07:10:00'),
 	});
 	// 13/10 không có lịch ca → thêm lựa chọn chấm tự do của hôm nay
-	assert.deepStrictEqual(ra.map((o) => [o.work_date, o.shift_id, o.action]), [
-		['2026-10-12', 4, 'check_out'],
-		['2026-10-13', null, 'check_in'],
-	]);
-	const free = s.checkOptions({ pattern: null, assignments: [], shiftsById, records: [], now: vn('2026-10-12T23:00:00') });
-	assert.deepStrictEqual(free.map((o) => [o.shift_id, o.action]), [[null, 'check_in']]);
+	assert.deepStrictEqual(
+		ra.map((o) => [o.work_date, o.shift_id, o.action]),
+		[
+			['2026-10-12', 4, 'check_out'],
+			['2026-10-13', null, 'check_in'],
+		],
+	);
+	const free = s.checkOptions({
+		pattern: null,
+		assignments: [],
+		shiftsById,
+		records: [],
+		now: vn('2026-10-12T23:00:00'),
+	});
+	assert.deepStrictEqual(
+		free.map((o) => [o.shift_id, o.action]),
+		[[null, 'check_in']],
+	);
 });
 
 test('lateMin / earlyMin có du di', () => {
@@ -115,5 +155,13 @@ test('validateShift & normalizePatternDays', () => {
 	assert.match(s.validateShift({ ...sang, code: '' }), /Ký hiệu/);
 	assert.match(s.validateShift({ ...sang, start_time: '7:00' }), /HH:mm/);
 	assert.match(s.validateShift({ ...sang, checkin_before_min: -1 }), /Chấm vào sớm/);
-	assert.deepStrictEqual(s.normalizePatternDays({ 1: [2, 2, '3'], 7: 'x' }), { 1: [2, 3], 2: [], 3: [], 4: [], 5: [], 6: [], 7: [] });
+	assert.deepStrictEqual(s.normalizePatternDays({ 1: [2, 2, '3'], 7: 'x' }), {
+		1: [2, 3],
+		2: [],
+		3: [],
+		4: [],
+		5: [],
+		6: [],
+		7: [],
+	});
 });

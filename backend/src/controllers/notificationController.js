@@ -45,8 +45,7 @@ const markAll = async (req, res, next) => {
 
 const send = async (req, res, next) => {
 	try {
-		const { type, title, message, ref_id, ref_type, target_type, target_ids } =
-			req.body;
+		const { type, title, message, ref_id, ref_type, target_type, target_ids } = req.body;
 		if (!type || !title || !target_type) {
 			const err = new Error('Thiếu thông tin bắt buộc');
 			err.statusCode = 400;

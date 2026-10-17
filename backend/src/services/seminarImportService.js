@@ -91,18 +91,11 @@ const COLUMN_MATCHERS = [
 	],
 	[
 		'cme_credits',
-		(h) =>
-			h.includes('so tin chi') ||
-			h === 'tin chi' ||
-			h === 'so tc' ||
-			h === 'tc',
+		(h) => h.includes('so tin chi') || h === 'tin chi' || h === 'so tc' || h === 'tc',
 	],
 	['participation_type', (h) => h === 'vai tro' || h === 'chuc danh'],
 	['source', (h) => h === 'nguon' || h === 'pham vi' || h === 'doi tuong'],
-	[
-		'is_foreign',
-		(h) => h === 'quoc tich' || h.includes('nuoc ngoai') || h === 'quoc gia',
-	],
+	['is_foreign', (h) => h === 'quoc tich' || h.includes('nuoc ngoai') || h === 'quoc gia'],
 	[
 		'notes',
 		(h) =>
@@ -132,8 +125,12 @@ const normGender = normalizeGender;
 
 // Tách "Ông Nguyễn Văn A" / "Bà. Trần Thị B" → { title_prefix, full_name }
 const splitTitlePrefix = (name, prefixCol) => {
-	let full = String(name || '').replace(/\s+/g, ' ').trim();
-	let prefix = String(prefixCol || '').replace(/\s+/g, ' ').trim();
+	let full = String(name || '')
+		.replace(/\s+/g, ' ')
+		.trim();
+	let prefix = String(prefixCol || '')
+		.replace(/\s+/g, ' ')
+		.trim();
 	const m = full.match(/^(Ông|Bà|Ong|Ba|Anh|Chị|Chi|Bác|Bac)[\s.,]+(.+)$/i);
 	if (m) {
 		if (!prefix) prefix = /^b/i.test(m[1]) && !/^bac/i.test(m[1]) ? 'Bà' : 'Ông';
@@ -178,15 +175,10 @@ const parseWorkbook = async (buffer) => {
 		// Dòng ví dụ của file mẫu (ghi chú "Dòng ví dụ…") — bỏ qua nếu quên xoá
 		if (/^dong vi du/.test(norm(get(row, 'notes')))) continue;
 
-		const { title_prefix, full_name } = splitTitlePrefix(
-			rawName,
-			get(row, 'title_prefix'),
-		);
+		const { title_prefix, full_name } = splitTitlePrefix(rawName, get(row, 'title_prefix'));
 		if (!full_name) continue;
 
-		const { dob, dob_text } = parseDob(
-			cols.dob ? row.getCell(cols.dob) : null,
-		);
+		const { dob, dob_text } = parseDob(cols.dob ? row.getCell(cols.dob) : null);
 		rows.push({
 			row: r,
 			raw_name: rawName,
@@ -217,7 +209,9 @@ const parseWorkbook = async (buffer) => {
 const loadUsers = async () => {
 	const pool = await getPool();
 	// Loại tài khoản khoa dùng chung (vai trò dept_head) — không phải một người
-	const r = await (await inputRoleId(pool.request(), 'dept_head_role', ROLE.DEPT_HEAD)).query(`
+	const r = await (
+		await inputRoleId(pool.request(), 'dept_head_role', ROLE.DEPT_HEAD)
+	).query(`
 		SELECT u.id, u.full_name, u.staff_number, d.name AS department_name
 		FROM users u
 		LEFT JOIN departments d ON d.id = u.department_id
@@ -365,9 +359,7 @@ const importExcel = async (
 	const semRes = await pool
 		.request()
 		.input('id', sql.VarChar(20), seminar_id)
-		.query(
-			'SELECT id, event_year, grants_cme, cme_default_credits FROM seminars WHERE id = @id',
-		);
+		.query('SELECT id, event_year, grants_cme, cme_default_credits FROM seminars WHERE id = @id');
 	if (!semRes.recordset.length) {
 		throw httpError(404, 'Hội thảo/hội nghị không tồn tại.');
 	}

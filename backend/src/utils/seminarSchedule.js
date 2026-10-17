@@ -11,7 +11,6 @@ const TIME_RE = /^([01]\d|2[0-3]):[0-5]\d$/;
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const VN_OFFSET_MS = 7 * 3600 * 1000;
 
-
 // DATE từ mssql là 00:00 UTC → lấy phần ngày theo UTC; chuỗi 'YYYY-MM-DD...' giữ nguyên.
 const dateKey = (d) => {
 	if (!d) return null;
@@ -39,7 +38,8 @@ const normalizeTime = (v, label) => {
  */
 const testWindow = (s, now = Date.now()) => {
 	if (!s?.test_start_time && !s?.test_end_time) return null;
-	const key = dateKey(s.test_date) || dateKey(s.end_date) || dateKey(s.start_date) || vnTodayKey(now);
+	const key =
+		dateKey(s.test_date) || dateKey(s.end_date) || dateKey(s.start_date) || vnTodayKey(now);
 	const endKey = dateKey(s.test_end_date) || key;
 	return {
 		date: key,
@@ -83,7 +83,14 @@ const normalizeAgenda = (raw) => {
 		if (start_time && end_time && end_time < start_time)
 			throw badRequest(`${n}: giờ kết thúc phải sau giờ bắt đầu.`);
 		return JSON.parse(
-			JSON.stringify({ title, speaker: str(x?.speaker, 255), date, start_time, end_time, note: str(x?.note, 500) }),
+			JSON.stringify({
+				title,
+				speaker: str(x?.speaker, 255),
+				date,
+				start_time,
+				end_time,
+				note: str(x?.note, 500),
+			}),
 		);
 	});
 	return out.length ? JSON.stringify(out) : null;
@@ -98,4 +105,12 @@ const parseAgenda = (json) => {
 	}
 };
 
-module.exports = { TIME_RE, dateKey, normalizeTime, testWindow, testState, normalizeAgenda, parseAgenda };
+module.exports = {
+	TIME_RE,
+	dateKey,
+	normalizeTime,
+	testWindow,
+	testState,
+	normalizeAgenda,
+	parseAgenda,
+};

@@ -25,9 +25,7 @@ const invalidOtp = () => ({ statusCode: 400, message: 'Mã OTP không đúng ho�
 // UNIQUE: email dùng chung nhiều tài khoản thì không biết là ai → coi như không có.
 const findActiveUser = async (pool, login) => {
 	const rows = (
-		await pool
-			.request()
-			.input('login', sql.VarChar(100), login)
+		await pool.request().input('login', sql.VarChar(100), login)
 			.query(`SELECT TOP 2 id, username, full_name, email FROM users
 				WHERE ${login.includes('@') ? 'email' : 'username'} = @login AND is_active = 1`)
 	).recordset;
@@ -48,7 +46,9 @@ const requestOtp = async (login) => {
 			.request()
 			.input('id', sql.VarChar(20), user.id)
 			.input('sec', sql.Int, RESEND_COOLDOWN_SEC)
-			.query(`SELECT 1 AS x FROM password_reset_otps WHERE user_id = @id AND created_at > DATEADD(SECOND, -@sec, SYSUTCDATETIME())`)
+			.query(
+				`SELECT 1 AS x FROM password_reset_otps WHERE user_id = @id AND created_at > DATEADD(SECOND, -@sec, SYSUTCDATETIME())`,
+			)
 	).recordset[0];
 	if (recent) return;
 
@@ -57,8 +57,7 @@ const requestOtp = async (login) => {
 		.request()
 		.input('id', sql.VarChar(20), user.id)
 		.input('hash', sql.Char(64), secretBox.keyedHash(code))
-		.input('min', sql.Int, OTP_TTL_MIN)
-		.query(`
+		.input('min', sql.Int, OTP_TTL_MIN).query(`
 			DELETE FROM password_reset_otps WHERE user_id = @id;
 			INSERT INTO password_reset_otps (user_id, code_hash, expires_at)
 			VALUES (@id, @hash, DATEADD(MINUTE, @min, SYSUTCDATETIME()));
@@ -70,7 +69,12 @@ const requestOtp = async (login) => {
 	await mailService.send({
 		to: user.email,
 		subject: 'Mã xác nhận đặt lại mật khẩu',
-		html: mailService.renderOtpEmail({ fullName: user.full_name, code, ttlMin: OTP_TTL_MIN, resetUrl }),
+		html: mailService.renderOtpEmail({
+			fullName: user.full_name,
+			code,
+			ttlMin: OTP_TTL_MIN,
+			resetUrl,
+		}),
 		attachments: [mailService.LOGO_ATTACHMENT],
 	});
 	if (!(await mailService.isEnabled())) console.log(`[reset-otp] ${user.username}: ${code}`);
@@ -83,10 +87,7 @@ const resetPassword = async (login, code, newPassword) => {
 	const row =
 		user &&
 		(
-			await pool
-				.request()
-				.input('id', sql.VarChar(20), user.id)
-				.query(`
+			await pool.request().input('id', sql.VarChar(20), user.id).query(`
 					SELECT user_id AS id, code_hash, attempts, expires_at,
 					       CASE WHEN expires_at > SYSUTCDATETIME() THEN 1 ELSE 0 END AS alive
 					FROM password_reset_otps WHERE user_id = @id`)
@@ -112,8 +113,7 @@ const resetPassword = async (login, code, newPassword) => {
 	await pool
 		.request()
 		.input('id', sql.VarChar(20), row.id)
-		.input('password', sql.VarChar(255), hashed)
-		.query(`
+		.input('password', sql.VarChar(255), hashed).query(`
 			UPDATE users SET password = @password, password_changed_at = GETDATE(), must_change_password = 0,
 			       failed_login_count = 0, locked_until = NULL, updated_at = GETDATE(), updated_by = @id
 			WHERE id = @id;

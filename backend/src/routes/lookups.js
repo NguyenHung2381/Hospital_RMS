@@ -4,8 +4,8 @@ const { createCrudService } = require('../services/crudService');
 const { createCrudController } = require('../controllers/crudController');
 const { authenticate, authorizePermission } = require('../middlewares/auth');
 const { validate } = require('../middlewares/errorHandler');
-const roundCtrl    = require('../controllers/roundController');
-const deadlineSvc  = require('../services/deadlineService');
+const roundCtrl = require('../controllers/roundController');
+const deadlineSvc = require('../services/deadlineService');
 const roundService = require('../services/roundService');
 const deptService = require('../services/departmentService');
 const extReviewerService = require('../services/externalReviewerService');
@@ -60,19 +60,32 @@ const { success, created, notFound } = require('../utils/response');
  *       403:
  *         description: Không có quyền
  */
-router.get('/departments', authenticate, authorizePermission(['departments', 'read']), async (req, res, next) => {
-  try { return success(res, await deptService.getAll(req.query)); } catch (e) { next(e); }
-});
+router.get(
+	'/departments',
+	authenticate,
+	authorizePermission(['departments', 'read']),
+	async (req, res, next) => {
+		try {
+			return success(res, await deptService.getAll(req.query));
+		} catch (e) {
+			next(e);
+		}
+	},
+);
 
 router.post(
-  '/departments',
-  authenticate,
-  authorizePermission(['departments', 'create']),
-  [body('name').notEmpty(), body('code').notEmpty(), body('abbreviation').notEmpty()],
-  validate,
-  async (req, res, next) => {
-    try { return created(res, await deptService.create(req.body, req.user.id)); } catch (e) { next(e); }
-  },
+	'/departments',
+	authenticate,
+	authorizePermission(['departments', 'create']),
+	[body('name').notEmpty(), body('code').notEmpty(), body('abbreviation').notEmpty()],
+	validate,
+	async (req, res, next) => {
+		try {
+			return created(res, await deptService.create(req.body, req.user.id));
+		} catch (e) {
+			next(e);
+		}
+	},
 );
 
 /**
@@ -127,29 +140,43 @@ router.post(
  *         description: Xoá thành công
  */
 router.get('/departments/:id', authenticate, async (req, res, next) => {
-  try {
-    const item = await deptService.getById(req.params.id);
-    if (!item) return notFound(res);
-    return success(res, item);
-  } catch (e) { next(e); }
+	try {
+		const item = await deptService.getById(req.params.id);
+		if (!item) return notFound(res);
+		return success(res, item);
+	} catch (e) {
+		next(e);
+	}
 });
 
 router.put(
-  '/departments/:id',
-  authenticate,
-  authorizePermission(['departments', 'update']),
-  async (req, res, next) => {
-    try {
-      const item = await deptService.update(req.params.id, req.body, req.user.id);
-      if (!item) return notFound(res);
-      return success(res, item, 'Cập nhật thành công');
-    } catch (e) { next(e); }
-  },
+	'/departments/:id',
+	authenticate,
+	authorizePermission(['departments', 'update']),
+	async (req, res, next) => {
+		try {
+			const item = await deptService.update(req.params.id, req.body, req.user.id);
+			if (!item) return notFound(res);
+			return success(res, item, 'Cập nhật thành công');
+		} catch (e) {
+			next(e);
+		}
+	},
 );
 
-router.delete('/departments/:id', authenticate, authorizePermission(['departments', 'delete']), async (req, res, next) => {
-  try { await deptService.remove(req.params.id, req.user.id); return success(res, null, 'Xóa thành công'); } catch (e) { next(e); }
-});
+router.delete(
+	'/departments/:id',
+	authenticate,
+	authorizePermission(['departments', 'delete']),
+	async (req, res, next) => {
+		try {
+			await deptService.remove(req.params.id, req.user.id);
+			return success(res, null, 'Xóa thành công');
+		} catch (e) {
+			next(e);
+		}
+	},
+);
 
 // ─── External Reviewers (người ngoài viện tham gia hội đồng) ──────────────────
 
@@ -170,42 +197,67 @@ router.delete('/departments/:id', authenticate, authorizePermission(['department
  *       201:
  *         description: Tạo thành công
  */
-router.get('/external-reviewers', authenticate, authorizePermission(['councils', 'read']), async (req, res, next) => {
-  try { return success(res, await extReviewerService.getAll(req.query)); } catch (e) { next(e); }
-});
+router.get(
+	'/external-reviewers',
+	authenticate,
+	authorizePermission(['councils', 'read']),
+	async (req, res, next) => {
+		try {
+			return success(res, await extReviewerService.getAll(req.query));
+		} catch (e) {
+			next(e);
+		}
+	},
+);
 
 router.post(
-  '/external-reviewers',
-  authenticate,
-  authorizePermission(['councils', 'create']),
-  [body('full_name').notEmpty().withMessage('Họ tên không được để trống')],
-  validate,
-  async (req, res, next) => {
-    try { return created(res, await extReviewerService.create(req.body, req.user.id)); } catch (e) { next(e); }
-  },
+	'/external-reviewers',
+	authenticate,
+	authorizePermission(['councils', 'create']),
+	[body('full_name').notEmpty().withMessage('Họ tên không được để trống')],
+	validate,
+	async (req, res, next) => {
+		try {
+			return created(res, await extReviewerService.create(req.body, req.user.id));
+		} catch (e) {
+			next(e);
+		}
+	},
 );
 
 router.put(
-  '/external-reviewers/:id',
-  authenticate,
-  authorizePermission(['councils', 'update']),
-  async (req, res, next) => {
-    try {
-      const item = await extReviewerService.update(req.params.id, req.body, req.user.id);
-      if (!item) return notFound(res);
-      return success(res, item, 'Cập nhật thành công');
-    } catch (e) { next(e); }
-  },
+	'/external-reviewers/:id',
+	authenticate,
+	authorizePermission(['councils', 'update']),
+	async (req, res, next) => {
+		try {
+			const item = await extReviewerService.update(req.params.id, req.body, req.user.id);
+			if (!item) return notFound(res);
+			return success(res, item, 'Cập nhật thành công');
+		} catch (e) {
+			next(e);
+		}
+	},
 );
 
-router.delete('/external-reviewers/:id', authenticate, authorizePermission(['councils', 'delete']), async (req, res, next) => {
-  try { await extReviewerService.remove(req.params.id, req.user.id); return success(res, null, 'Xóa thành công'); } catch (e) { next(e); }
-});
+router.delete(
+	'/external-reviewers/:id',
+	authenticate,
+	authorizePermission(['councils', 'delete']),
+	async (req, res, next) => {
+		try {
+			await extReviewerService.remove(req.params.id, req.user.id);
+			return success(res, null, 'Xóa thành công');
+		} catch (e) {
+			next(e);
+		}
+	},
+);
 
 // Constraint CHK_cat_id yêu cầu id LIKE 'LDT[0-9][0-9]' → LDT01, LDT02, ...
 // crudService dùng NEWID() (hex) nên phải override hàm create riêng.
 const _catBase = createCrudService('categories', 5, 'LDT', [
-  { table: 'topics', column: 'category_id', label: 'đề tài' },
+	{ table: 'topics', column: 'category_id', label: 'đề tài' },
 ]);
 const catService = {
 	..._catBase,
@@ -216,8 +268,7 @@ const catService = {
 			.input('actor_id', sql.VarChar(20), actorId)
 			.input('name', sql.NVarChar(500), data.name)
 			.input('description', sql.NVarChar(sql.MAX), data.description || null)
-			.input('abbr', sql.VarChar(10), data.abbr || null)
-			.query(`
+			.input('abbr', sql.VarChar(10), data.abbr || null).query(`
 				DECLARE @seq INT;
 				SELECT @seq = ISNULL(MAX(CAST(RIGHT(id, 2) AS INT)), 0) + 1
 				FROM categories
@@ -261,7 +312,12 @@ const catCtrl = createCrudController(catService);
  *         description: Tạo thành công
  */
 router.get('/categories', authenticate, catCtrl.getAll);
-router.post('/categories', authenticate, authorizePermission(['catalog', 'create']), catCtrl.createOne);
+router.post(
+	'/categories',
+	authenticate,
+	authorizePermission(['catalog', 'create']),
+	catCtrl.createOne,
+);
 
 /**
  * @swagger
@@ -337,9 +393,7 @@ const getLevelIdsForRoundType = async (roundTypeId) => {
 		const r = await pool
 			.request()
 			.input('rt', sql.VarChar(6), roundTypeId)
-			.query(
-				'SELECT level_id FROM round_type_levels WHERE round_type_id = @rt',
-			);
+			.query('SELECT level_id FROM round_type_levels WHERE round_type_id = @rt');
 		return r.recordset.map((x) => x.level_id);
 	} catch {
 		// Bảng chưa tồn tại (migration chưa chạy) ⇒ coi như chưa cấu hình.
@@ -355,8 +409,7 @@ const createWithSeqId = (table, prefix, errNo, limitMsg, entity) => async (data,
 		.request()
 		.input('actor_id', sql.VarChar(20), actorId)
 		.input('name', sql.NVarChar(500), data.name)
-		.input('description', sql.NVarChar(sql.MAX), data.description || null)
-		.query(`
+		.input('description', sql.NVarChar(sql.MAX), data.description || null).query(`
 			DECLARE @seq INT;
 			SELECT @seq = ISNULL(MAX(CAST(RIGHT(id, 2) AS INT)), 0) + 1
 			FROM ${table}
@@ -373,7 +426,7 @@ const createWithSeqId = (table, prefix, errNo, limitMsg, entity) => async (data,
 };
 
 const _lvlBase = createCrudService('levels', 4, 'CD', [
-  { table: 'topics', column: 'level_id', label: 'đề tài' },
+	{ table: 'topics', column: 'level_id', label: 'đề tài' },
 ]);
 const lvlService = {
 	..._lvlBase,
@@ -418,9 +471,7 @@ router.get('/levels', authenticate, async (req, res, next) => {
 			? await roundService.getAllowedLevelIds(round_id)
 			: await getLevelIdsForRoundType(round_type_id);
 		const all = await lvlService.getAll({ limit: 0 });
-		const data = allowed.length
-			? all.data.filter((lv) => allowed.includes(lv.id))
-			: all.data;
+		const data = allowed.length ? all.data.filter((lv) => allowed.includes(lv.id)) : all.data;
 		return success(res, {
 			data,
 			pagination: { ...all.pagination, total: data.length },
@@ -478,7 +529,12 @@ router.post('/levels', authenticate, authorizePermission(['catalog', 'create']),
  *         description: Xoá thành công
  */
 router.get('/levels/:id', authenticate, lvlCtrl.getById);
-router.put('/levels/:id', authenticate, authorizePermission(['catalog', 'update']), lvlCtrl.updateOne);
+router.put(
+	'/levels/:id',
+	authenticate,
+	authorizePermission(['catalog', 'update']),
+	lvlCtrl.updateOne,
+);
 router.delete(
 	'/levels/:id',
 	authenticate,
@@ -564,8 +620,18 @@ router.post(
  *         schema: { type: string }
  */
 router.get('/round-types/:id', authenticate, rtCtrl.getById);
-router.put('/round-types/:id', authenticate, authorizePermission(['catalog', 'update']), rtCtrl.updateOne);
-router.delete('/round-types/:id', authenticate, authorizePermission(['catalog', 'delete']), rtCtrl.removeOne);
+router.put(
+	'/round-types/:id',
+	authenticate,
+	authorizePermission(['catalog', 'update']),
+	rtCtrl.updateOne,
+);
+router.delete(
+	'/round-types/:id',
+	authenticate,
+	authorizePermission(['catalog', 'delete']),
+	rtCtrl.removeOne,
+);
 
 // ── Cấp độ được phép theo loại đợt (round_type_levels) ──
 router.get('/round-types/:id/levels', authenticate, async (req, res, next) => {
@@ -592,20 +658,14 @@ router.put(
 				.input('rt', sql.VarChar(6), rtId)
 				.query('DELETE FROM round_type_levels WHERE round_type_id = @rt');
 			for (const lid of ids) {
-				await pool
-					.request()
-					.input('rt', sql.VarChar(6), rtId)
-					.input('lid', sql.VarChar(5), lid).query(`
+				await pool.request().input('rt', sql.VarChar(6), rtId).input('lid', sql.VarChar(5), lid)
+					.query(`
 						IF EXISTS (SELECT 1 FROM levels WHERE id = @lid)
 						INSERT INTO round_type_levels (round_type_id, level_id)
 						VALUES (@rt, @lid)`);
 			}
 			broadcast('update', { entity: 'round_type' });
-			return success(
-				res,
-				await getLevelIdsForRoundType(rtId),
-				'Đã cập nhật cấp độ cho loại đợt',
-			);
+			return success(res, await getLevelIdsForRoundType(rtId), 'Đã cập nhật cấp độ cho loại đợt');
 		} catch (e) {
 			next(e);
 		}
@@ -787,7 +847,12 @@ for (const [path, table] of Object.entries(TRAINING_CATALOG_TABLES)) {
 		validate,
 		ctrl.updateOne,
 	);
-	router.delete('/venues/:id', authenticate, authorizePermission(['venues', 'delete']), ctrl.removeOne);
+	router.delete(
+		'/venues/:id',
+		authenticate,
+		authorizePermission(['venues', 'delete']),
+		ctrl.removeOne,
+	);
 }
 
 // ─── Roles ────────────────────────────────────────────────────────────────────
@@ -872,10 +937,27 @@ router.get('/roles/:id', authenticate, authorizePermission(['roles', 'read']), r
 // Không sửa/xoá được vai trò của chính mình, vai trò toàn quyền, hay vai trò
 // có quyền cao hơn mình — xem services/privilegeGuard.js.
 const guardRoleEdit = async (req, res, next) => {
-  try { await assertCanEditRole(req.user, req.params.id); next(); } catch (e) { next(e); }
+	try {
+		await assertCanEditRole(req.user, req.params.id);
+		next();
+	} catch (e) {
+		next(e);
+	}
 };
-router.put('/roles/:id', authenticate, authorizePermission(['roles', 'update']), guardRoleEdit, roleCtrl.updateOne);
-router.delete('/roles/:id', authenticate, authorizePermission(['roles', 'delete']), guardRoleEdit, roleCtrl.removeOne);
+router.put(
+	'/roles/:id',
+	authenticate,
+	authorizePermission(['roles', 'update']),
+	guardRoleEdit,
+	roleCtrl.updateOne,
+);
+router.delete(
+	'/roles/:id',
+	authenticate,
+	authorizePermission(['roles', 'delete']),
+	guardRoleEdit,
+	roleCtrl.removeOne,
+);
 
 // ─── Research Rounds ──────────────────────────────────────────────────────────
 
@@ -932,16 +1014,19 @@ router.delete('/roles/:id', authenticate, authorizePermission(['roles', 'delete'
  *       403:
  *         description: Không có quyền
  */
-router.get('/research-rounds', authenticate, authorizePermission(['rounds', 'read']), roundCtrl.getAll);
+router.get(
+	'/research-rounds',
+	authenticate,
+	authorizePermission(['rounds', 'read']),
+	roundCtrl.getAll,
+);
 router.post(
 	'/research-rounds',
 	authenticate,
 	authorizePermission(['rounds', 'create']),
 	[
 		body('name').notEmpty().withMessage('Tên đợt không được để trống'),
-		body('year')
-			.isInt({ min: 2000, max: 2100 })
-			.withMessage('Năm không hợp lệ'),
+		body('year').isInt({ min: 2000, max: 2100 }).withMessage('Năm không hợp lệ'),
 		body('round_number').isInt({ min: 1, max: 9 }).withMessage('Số đợt phải từ 1–9'),
 		body('round_type_id')
 			.trim()
@@ -950,22 +1035,13 @@ router.post(
 			.bail()
 			.matches(/^RT\d{2}$/)
 			.withMessage('Loại đợt không hợp lệ'),
-		body('start_date')
-			.notEmpty()
-			.withMessage('Ngày bắt đầu không được để trống'),
-		body('end_date')
-			.notEmpty()
-			.withMessage('Ngày kết thúc không được để trống'),
+		body('start_date').notEmpty().withMessage('Ngày bắt đầu không được để trống'),
+		body('end_date').notEmpty().withMessage('Ngày kết thúc không được để trống'),
 		// Chấp nhận cả từ vựng phía FE ('active') lẫn DB ('open'); service tự quy đổi.
-		body('status')
-			.optional()
-			.isIn(['draft', 'active', 'open', 'closed', 'cancelled']),
+		body('status').optional().isIn(['draft', 'active', 'open', 'closed', 'cancelled']),
 		// Cấu hình luôn khi tạo: cấp độ đề tài của đợt + các mốc thời gian.
 		body('level_ids').optional().isArray().withMessage('level_ids phải là mảng'),
-		body('deadlines')
-			.optional()
-			.isArray({ max: 9 })
-			.withMessage('Tối đa 9 mốc thời gian'),
+		body('deadlines').optional().isArray({ max: 9 }).withMessage('Tối đa 9 mốc thời gian'),
 	],
 	validate,
 	roundCtrl.createOne,
@@ -1028,16 +1104,19 @@ router.post(
  *       200:
  *         description: Xoá thành công
  */
-router.get('/research-rounds/:id', authenticate, authorizePermission(['rounds', 'read']), roundCtrl.getById);
+router.get(
+	'/research-rounds/:id',
+	authenticate,
+	authorizePermission(['rounds', 'read']),
+	roundCtrl.getById,
+);
 router.put(
 	'/research-rounds/:id',
 	authenticate,
 	authorizePermission(['rounds', 'update']),
 	[
 		// Chấp nhận cả từ vựng phía FE ('active') lẫn DB ('open'); service tự quy đổi.
-		body('status')
-			.optional()
-			.isIn(['draft', 'active', 'open', 'closed', 'cancelled']),
+		body('status').optional().isIn(['draft', 'active', 'open', 'closed', 'cancelled']),
 		body('round_type_id')
 			.optional()
 			.matches(/^RT\d{2}$/)
@@ -1049,47 +1128,69 @@ router.put(
 	validate,
 	roundCtrl.updateOne,
 );
-router.delete('/research-rounds/:id', authenticate, authorizePermission(['rounds', 'delete']), roundCtrl.removeOne);
-
-// ─── Round Deadlines ──────────────────────────────────────────────────────────
-router.get('/research-rounds/:id/deadlines', authenticate, authorizePermission(['rounds', 'read']), async (req, res, next) => {
-  try { return success(res, await deadlineSvc.getByRoundId(req.params.id)); } catch (e) { next(e); }
-});
-
-router.post(
-  '/research-rounds/:id/deadlines/:phase',
-  authenticate,
-  authorizePermission(['rounds', 'update']),
-  [
-    body('name').notEmpty().withMessage('Tên hạn nộp không được để trống'),
-    body('deadline_date').notEmpty().withMessage('Ngày hạn nộp không được để trống'),
-  ],
-  validate,
-  async (req, res, next) => {
-    try {
-      const phase = parseInt(req.params.phase, 10);
-      if (isNaN(phase) || phase < 1 || phase > 9) return res.status(400).json({ success: false, message: 'Phase phải từ 1–9' });
-      const item = await deadlineSvc.upsert(req.params.id, phase, req.body, req.user.id);
-      return created(res, item, 'Lưu hạn nộp thành công');
-    } catch (e) { next(e); }
-  },
+router.delete(
+	'/research-rounds/:id',
+	authenticate,
+	authorizePermission(['rounds', 'delete']),
+	roundCtrl.removeOne,
 );
 
-router.delete('/research-rounds/:id/deadlines/:phase', authenticate, authorizePermission(['rounds', 'update']), async (req, res, next) => {
-  try {
-    const phase = parseInt(req.params.phase, 10);
-    await deadlineSvc.remove(req.params.id, phase, req.user.id);
-    return success(res, null, 'Xoá hạn nộp thành công');
-  } catch (e) { next(e); }
-});
+// ─── Round Deadlines ──────────────────────────────────────────────────────────
+router.get(
+	'/research-rounds/:id/deadlines',
+	authenticate,
+	authorizePermission(['rounds', 'read']),
+	async (req, res, next) => {
+		try {
+			return success(res, await deadlineSvc.getByRoundId(req.params.id));
+		} catch (e) {
+			next(e);
+		}
+	},
+);
+
+router.post(
+	'/research-rounds/:id/deadlines/:phase',
+	authenticate,
+	authorizePermission(['rounds', 'update']),
+	[
+		body('name').notEmpty().withMessage('Tên hạn nộp không được để trống'),
+		body('deadline_date').notEmpty().withMessage('Ngày hạn nộp không được để trống'),
+	],
+	validate,
+	async (req, res, next) => {
+		try {
+			const phase = parseInt(req.params.phase, 10);
+			if (isNaN(phase) || phase < 1 || phase > 9)
+				return res.status(400).json({ success: false, message: 'Phase phải từ 1–9' });
+			const item = await deadlineSvc.upsert(req.params.id, phase, req.body, req.user.id);
+			return created(res, item, 'Lưu hạn nộp thành công');
+		} catch (e) {
+			next(e);
+		}
+	},
+);
+
+router.delete(
+	'/research-rounds/:id/deadlines/:phase',
+	authenticate,
+	authorizePermission(['rounds', 'update']),
+	async (req, res, next) => {
+		try {
+			const phase = parseInt(req.params.phase, 10);
+			await deadlineSvc.remove(req.params.id, phase, req.user.id);
+			return success(res, null, 'Xoá hạn nộp thành công');
+		} catch (e) {
+			next(e);
+		}
+	},
+);
 
 // ─── Job titles (danh mục chỉ đọc) ─────────────────────────────────────────────
 router.get('/job-titles', authenticate, async (req, res, next) => {
 	try {
 		const pool = await getPool();
-		const r = await pool
-			.request()
-			.query('SELECT id, name FROM job_titles ORDER BY name');
+		const r = await pool.request().query('SELECT id, name FROM job_titles ORDER BY name');
 		return success(res, r.recordset);
 	} catch (e) {
 		next(e);
@@ -1099,57 +1200,79 @@ router.get('/job-titles', authenticate, async (req, res, next) => {
 // ─── Permissions ──────────────────────────────────────────────────────────────
 // GET /permissions/catalog — danh mục quyền nhóm theo module/resource kèm nhãn
 // (nguồn: permissions/catalog.js) — màn hình phân quyền dựng ma trận từ đây.
-router.get('/permissions/catalog', authenticate, authorizePermission(['roles', 'read']), async (req, res, next) => {
-  try { return success(res, await permService.getCatalog()); } catch (e) { next(e); }
-});
+router.get(
+	'/permissions/catalog',
+	authenticate,
+	authorizePermission(['roles', 'read']),
+	async (req, res, next) => {
+		try {
+			return success(res, await permService.getCatalog());
+		} catch (e) {
+			next(e);
+		}
+	},
+);
 
 // POST /roles/:id/clone — nhân bản vai trò (tên mới + đúng quyền & phạm vi của
 // vai trò nguồn). Cần cả quyền tạo vai trò lẫn quyền phân quyền.
 router.post(
-  '/roles/:id/clone',
-  authenticate,
-  authorizePermission(['roles', 'create']),
-  authorizePermission(['roles', 'manage']),
-  [body('name').trim().isLength({ min: 2 }).withMessage('Tên vai trò ít nhất 2 ký tự')],
-  validate,
-  async (req, res, next) => {
-    try {
-      const role = await permService.cloneRole(
-        req.params.id,
-        { name: req.body.name.trim(), description: req.body.description?.trim() || null },
-        req.user,
-        req.ip,
-      );
-      return created(res, role, 'Đã nhân bản vai trò');
-    } catch (e) { next(e); }
-  },
+	'/roles/:id/clone',
+	authenticate,
+	authorizePermission(['roles', 'create']),
+	authorizePermission(['roles', 'manage']),
+	[body('name').trim().isLength({ min: 2 }).withMessage('Tên vai trò ít nhất 2 ký tự')],
+	validate,
+	async (req, res, next) => {
+		try {
+			const role = await permService.cloneRole(
+				req.params.id,
+				{ name: req.body.name.trim(), description: req.body.description?.trim() || null },
+				req.user,
+				req.ip,
+			);
+			return created(res, role, 'Đã nhân bản vai trò');
+		} catch (e) {
+			next(e);
+		}
+	},
 );
 
 // GET /roles/:id/permissions — các lượt cấp quyền hiện tại: [{ permission_id, scope }]
-router.get('/roles/:id/permissions', authenticate, authorizePermission(['roles', 'read']), async (req, res, next) => {
-  try { return success(res, await permService.getRolePermissions(req.params.id)); } catch (e) { next(e); }
-});
+router.get(
+	'/roles/:id/permissions',
+	authenticate,
+	authorizePermission(['roles', 'read']),
+	async (req, res, next) => {
+		try {
+			return success(res, await permService.getRolePermissions(req.params.id));
+		} catch (e) {
+			next(e);
+		}
+	},
+);
 
 // PUT /roles/:id/permissions — thay toàn bộ quyền của vai trò.
 // Body: { grants: [{ permission_id, scope }] } — scope chỉ dùng cho resource có
 // phạm vi dữ liệu (topics / users / courses), resource khác để null.
 router.put(
-  '/roles/:id/permissions',
-  authenticate,
-  authorizePermission(['roles', 'manage']),
-  [body('grants').isArray()],
-  validate,
-  async (req, res, next) => {
-    try {
-      const result = await permService.setRolePermissions(
-        req.params.id,
-        req.body.grants,
-        req.user,
-        req.ip,
-      );
-      return success(res, result, 'Cập nhật phân quyền thành công');
-    } catch (e) { next(e); }
-  },
+	'/roles/:id/permissions',
+	authenticate,
+	authorizePermission(['roles', 'manage']),
+	[body('grants').isArray()],
+	validate,
+	async (req, res, next) => {
+		try {
+			const result = await permService.setRolePermissions(
+				req.params.id,
+				req.body.grants,
+				req.user,
+				req.ip,
+			);
+			return success(res, result, 'Cập nhật phân quyền thành công');
+		} catch (e) {
+			next(e);
+		}
+	},
 );
 
 module.exports = router;

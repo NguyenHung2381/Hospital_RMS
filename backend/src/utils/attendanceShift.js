@@ -26,7 +26,8 @@ const durationMin = (shift) => {
 const vnDateTime = (dateKey, hhmm) => new Date(Date.parse(`${dateKey}T${hhmm}:00Z`) - VN_OFFSET_MS);
 
 const dateKeyVN = (date) => new Date(date.getTime() + VN_OFFSET_MS).toISOString().slice(0, 10);
-const addDays = (dateKey, n) => new Date(Date.parse(`${dateKey}T00:00:00Z`) + n * DAY).toISOString().slice(0, 10);
+const addDays = (dateKey, n) =>
+	new Date(Date.parse(`${dateKey}T00:00:00Z`) + n * DAY).toISOString().slice(0, 10);
 // 1 = Thứ 2 … 7 = Chủ nhật
 const weekdayOf = (dateKey) => ((new Date(`${dateKey}T00:00:00Z`).getUTCDay() + 6) % 7) + 1;
 
@@ -54,7 +55,8 @@ const instanceOf = (shift, dateKey) => {
 //   assignments: các dòng phân ca của người này [{ work_date, shift_id|null }]
 const shiftIdsForDay = (pattern, assignments, dateKey) => {
 	const rows = assignments.filter((a) => a.work_date === dateKey);
-	if (rows.length) return { source: 'roster', shiftIds: rows.map((r) => r.shift_id).filter((id) => id != null) };
+	if (rows.length)
+		return { source: 'roster', shiftIds: rows.map((r) => r.shift_id).filter((id) => id != null) };
 	if (pattern) return { source: 'pattern', shiftIds: pattern.days[weekdayOf(dateKey)] ?? [] };
 	return null;
 };
@@ -65,14 +67,19 @@ const shiftIdsForDay = (pattern, assignments, dateKey) => {
 const checkOptions = ({ pattern, assignments, shiftsById, records, now = new Date() }) => {
 	const today = dateKeyVN(now);
 	const t = now.getTime();
-	const hasRecord = (dateKey, shiftId) => records.some((r) => r.work_date === dateKey && (r.shift_id ?? null) === shiftId);
+	const hasRecord = (dateKey, shiftId) =>
+		records.some((r) => r.work_date === dateKey && (r.shift_id ?? null) === shiftId);
 	const options = [];
 	// Ca dài nhất 24h + chấm ra muộn tối đa 12h ⇒ ca bắt đầu từ 2 ngày trước vẫn có thể còn mở
 	for (const dateKey of [addDays(today, -2), addDays(today, -1), today, addDays(today, 1)]) {
 		const day = shiftIdsForDay(pattern, assignments, dateKey);
 		if (!day) {
 			if (dateKey === today)
-				options.push({ shift_id: null, work_date: today, action: hasRecord(today, null) ? 'check_out' : 'check_in' });
+				options.push({
+					shift_id: null,
+					work_date: today,
+					action: hasRecord(today, null) ? 'check_out' : 'check_in',
+				});
 			continue;
 		}
 		for (const id of new Set(day.shiftIds)) {
@@ -104,8 +111,10 @@ const intIn = (v, min, max) => Number.isInteger(v) && v >= min && v <= max;
 // null = hợp lệ; ngược lại là thông báo lỗi
 const validateShift = (s) => {
 	if (!String(s.name ?? '').trim()) return 'Vui lòng nhập tên ca';
-	if (!String(s.code ?? '').trim() || String(s.code).trim().length > 10) return 'Ký hiệu ca 1–10 ký tự';
-	if (!TIME_RE.test(s.start_time ?? '') || !TIME_RE.test(s.end_time ?? '')) return 'Giờ vào/ra phải dạng HH:mm';
+	if (!String(s.code ?? '').trim() || String(s.code).trim().length > 10)
+		return 'Ký hiệu ca 1–10 ký tự';
+	if (!TIME_RE.test(s.start_time ?? '') || !TIME_RE.test(s.end_time ?? ''))
+		return 'Giờ vào/ra phải dạng HH:mm';
 	if (!intIn(s.checkin_before_min, 0, 720)) return 'Chấm vào sớm: 0–720 phút';
 	if (!intIn(s.checkout_after_min, 0, 720)) return 'Chấm ra muộn: 0–720 phút';
 	if (!intIn(s.grace_min, 0, 240)) return 'Du di đi muộn/về sớm: 0–240 phút';
@@ -117,7 +126,9 @@ const normalizePatternDays = (days) => {
 	const out = {};
 	for (let d = 1; d <= 7; d++) {
 		const ids = days?.[d] ?? days?.[String(d)] ?? [];
-		out[d] = Array.isArray(ids) ? [...new Set(ids.map(Number).filter((n) => Number.isInteger(n) && n > 0))] : [];
+		out[d] = Array.isArray(ids)
+			? [...new Set(ids.map(Number).filter((n) => Number.isInteger(n) && n > 0))]
+			: [];
 	}
 	return out;
 };

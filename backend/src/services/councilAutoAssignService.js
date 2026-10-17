@@ -34,7 +34,10 @@ const splitEven = (items, clusterCount) => {
 // viên tốt nhất tìm được kèm has_flag — người gọi tự quyết có dùng hay không
 // (không đủ cờ thì autoAssignOne chuyển sang tìm người ngoài viện thay vì nới
 // lỏng nhét người trong viện không đủ điều kiện).
-const pickInternal = async (pool, { roundId, specialtyGroup, deptIds, usedUserIds, requireChair }) => {
+const pickInternal = async (
+	pool,
+	{ roundId, specialtyGroup, deptIds, usedUserIds, requireChair },
+) => {
 	const flagCol = requireChair ? 'can_chair_council' : 'can_sit_council';
 	const req = pool
 		.request()
@@ -131,7 +134,9 @@ const autoAssignOne = async (
 		return {
 			councils_created: 0,
 			topics_assigned: 0,
-			warnings: [`Không có đề tài nào (đã duyệt, chưa gán hội đồng) thuộc hệ "${specialty_group}" trong đợt này.`],
+			warnings: [
+				`Không có đề tài nào (đã duyệt, chưa gán hội đồng) thuộc hệ "${specialty_group}" trong đợt này.`,
+			],
 		};
 	}
 
@@ -201,10 +206,7 @@ const autoAssignOne = async (
 		// gợi ý, admin sửa tay qua dropdown địa điểm nếu phòng đã có người dùng.
 		let location = null;
 		if (seats.chairman?.type === 'user') {
-			const deptRes = await pool
-				.request()
-				.input('uid', sql.VarChar(20), seats.chairman.id)
-				.query(`
+			const deptRes = await pool.request().input('uid', sql.VarChar(20), seats.chairman.id).query(`
           SELECT d.name AS dept_name
           FROM users u
           LEFT JOIN departments d ON d.id = u.department_id

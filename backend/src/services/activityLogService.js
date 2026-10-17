@@ -150,7 +150,9 @@ const rowMatches = (r, f) => {
 	if (
 		f.actor &&
 		![r.actor_id, r.actor_username, r.actor_name].some((v) =>
-			String(v ?? '').toLowerCase().includes(f.actor),
+			String(v ?? '')
+				.toLowerCase()
+				.includes(f.actor),
 		)
 	)
 		return false;
@@ -417,7 +419,12 @@ const getStats = async (query = {}) => {
 		if (r.ip_address) ips.add(r.ip_address);
 		byAction[r.action] = (byAction[r.action] || 0) + 1;
 
-		const m = byModule.get(r.module) || { module: r.module, label: r.module_label, count: 0, writes: 0 };
+		const m = byModule.get(r.module) || {
+			module: r.module,
+			label: r.module_label,
+			count: 0,
+			writes: 0,
+		};
 		m.count++;
 		if (r.action !== 'view') m.writes++;
 		byModule.set(r.module, m);
@@ -442,7 +449,13 @@ const getStats = async (query = {}) => {
 		users.set(uKey, u);
 
 		const epKey = `${r.method} ${r.route || r.path.split('?')[0]}`;
-		const ep = endpoints.get(epKey) || { endpoint: epKey, summary: r.summary, count: 0, errors: 0, durations: [] };
+		const ep = endpoints.get(epKey) || {
+			endpoint: epKey,
+			summary: r.summary,
+			count: 0,
+			errors: 0,
+			durations: [],
+		};
 		ep.count++;
 		if (code >= 400) ep.errors++;
 		if (r.duration_ms != null) ep.durations.push(r.duration_ms);

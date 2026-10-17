@@ -12,7 +12,15 @@ const ASSETS = path.join(__dirname, '../assets');
 GlobalFonts.registerFromPath(path.join(ASSETS, 'fonts/BeVietnamPro_400Regular.ttf'), 'BVP');
 GlobalFonts.registerFromPath(path.join(ASSETS, 'fonts/BeVietnamPro_700Bold.ttf'), 'BVP');
 
-const C = { primary: '#0a9b4a', dark: '#087c3b', ink: '#064d26', pale: '#e7f5ed', line: '#d1e7da', text: '#111827', muted: '#6b7280' };
+const C = {
+	primary: '#0a9b4a',
+	dark: '#087c3b',
+	ink: '#064d26',
+	pale: '#e7f5ed',
+	line: '#d1e7da',
+	text: '#111827',
+	muted: '#6b7280',
+};
 const W = 600; // đơn vị logic; ảnh xuất ×SCALE
 const SCALE = 2;
 const PAD = 40;
@@ -26,7 +34,9 @@ const wrap = (ctx, text, f, maxW, maxLines) => {
 	ctx.font = f;
 	const lines = [];
 	let cur = '';
-	for (const w of String(text || '').split(/\s+/).filter(Boolean)) {
+	for (const w of String(text || '')
+		.split(/\s+/)
+		.filter(Boolean)) {
 		const next = cur ? `${cur} ${w}` : w;
 		if (cur && ctx.measureText(next).width > maxW) {
 			lines.push(cur);
@@ -43,18 +53,43 @@ const wrap = (ctx, text, f, maxW, maxLines) => {
 	return lines;
 };
 
-const renderSeminarBadgePng = async ({ holder, organization, seminarTitle, when, location, ticketUrl, code }) => {
+const renderSeminarBadgePng = async ({
+	holder,
+	organization,
+	seminarTitle,
+	when,
+	location,
+	ticketUrl,
+	code,
+}) => {
 	const measure = createCanvas(1, 1).getContext('2d');
 	const maxW = W - PAD * 2;
 	const blocks = [
 		// [lines, font, color, lineHeight, gapAfter]
 		[wrap(measure, seminarTitle, font(24, true), maxW, 3), font(24, true), C.dark, 32, 8],
-		[wrap(measure, [when, location].filter(Boolean).join(' · '), font(17), maxW, 2), font(17), C.muted, 26, 0],
+		[
+			wrap(measure, [when, location].filter(Boolean).join(' · '), font(17), maxW, 2),
+			font(17),
+			C.muted,
+			26,
+			0,
+		],
 	];
 	const nameLines = wrap(measure, holder, font(32, true), maxW, 2);
 	const orgLines = wrap(measure, organization, font(19), maxW, 2);
 	const infoH = blocks.reduce((h, [l, , , lh, gap]) => h + l.length * lh + gap, 0);
-	const H = HEADER + 28 + infoH + 24 + QR + 34 + 28 + nameLines.length * 42 + orgLines.length * 28 + 46 + PAD;
+	const H =
+		HEADER +
+		28 +
+		infoH +
+		24 +
+		QR +
+		34 +
+		28 +
+		nameLines.length * 42 +
+		orgLines.length * 28 +
+		46 +
+		PAD;
 
 	const canvas = createCanvas(W * SCALE, H * SCALE);
 	const ctx = canvas.getContext('2d');

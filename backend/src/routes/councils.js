@@ -231,10 +231,7 @@ router.post(
 	progressCtrl.uploadFiles,
 );
 
-router.delete(
-	'/progress/:topic_id/files/:file_id',
-	progressCtrl.deleteFile,
-);
+router.delete('/progress/:topic_id/files/:file_id', progressCtrl.deleteFile);
 
 /**
  * @swagger
@@ -326,10 +323,7 @@ router.post(
 	progressCtrl.uploadMinutesFiles,
 );
 
-router.delete(
-	'/progress/:topic_id/minutes/:file_id',
-	progressCtrl.deleteMinutesFile,
-);
+router.delete('/progress/:topic_id/minutes/:file_id', progressCtrl.deleteMinutesFile);
 
 /**
  * @swagger
@@ -408,7 +402,9 @@ router.post(
 	[
 		body('round_id').notEmpty().withMessage('Đợt nghiên cứu không được để trống'),
 		body('specialty_group')
-			.custom((v) => (typeof v === 'string' && v.trim() !== '') || (Array.isArray(v) && v.length > 0))
+			.custom(
+				(v) => (typeof v === 'string' && v.trim() !== '') || (Array.isArray(v) && v.length > 0),
+			)
 			.withMessage('Hệ chuyên môn không được để trống'),
 		body('min_size').optional().isInt({ min: 1, max: 20 }),
 		body('max_size').optional().isInt({ min: 1, max: 20 }),
@@ -589,11 +585,7 @@ router.get('/:id/members', authorizePermission(['councils', 'read']), ctrl.getMe
  *       200:
  *         description: Tối đa 20 người phù hợp
  */
-router.get(
-	'/:id/eligible-users',
-	authorizePermission(['councils', 'read']),
-	ctrl.getEligibleUsers,
-);
+router.get('/:id/eligible-users', authorizePermission(['councils', 'read']), ctrl.getEligibleUsers);
 
 router.post(
 	'/:id/members',
@@ -602,7 +594,9 @@ router.post(
 		body('role').isIn(SEAT_ROLES),
 		body().custom((value) => {
 			if (!!value.user_id === !!value.external_reviewer_id) {
-				throw new Error('Cần đúng 1 trong 2: user_id (trong viện) hoặc external_reviewer_id (ngoài viện)');
+				throw new Error(
+					'Cần đúng 1 trong 2: user_id (trong viện) hoặc external_reviewer_id (ngoài viện)',
+				);
 			}
 			return true;
 		}),
@@ -667,7 +661,11 @@ router.put(
 	ctrl.updateMember,
 );
 
-router.delete('/:id/members/:member_id', authorizePermission(['councils', 'update']), ctrl.removeMember);
+router.delete(
+	'/:id/members/:member_id',
+	authorizePermission(['councils', 'update']),
+	ctrl.removeMember,
+);
 
 // ─── Topic assignment (nhiều đề tài -> một hội đồng, cùng đợt nghiên cứu) ─────
 
@@ -763,7 +761,11 @@ router.post(
  *       200:
  *         description: Cập nhật thành công
  */
-router.delete('/:id/topics/:topic_id', authorizePermission(['councils', 'update']), ctrl.unassignTopic);
+router.delete(
+	'/:id/topics/:topic_id',
+	authorizePermission(['councils', 'update']),
+	ctrl.unassignTopic,
+);
 
 router.patch(
 	'/:id/topics/:topic_id',

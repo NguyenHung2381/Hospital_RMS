@@ -2,10 +2,15 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { matchesExtension, SUPPORTED_EXTENSIONS } = require('../../src/utils/fileSignature');
-const { DOCUMENT_EXTENSIONS, MEDIA_EXTENSIONS } = require('../../src/middlewares/fileTypeAllowlist');
+const {
+	DOCUMENT_EXTENSIONS,
+	MEDIA_EXTENSIONS,
+} = require('../../src/middlewares/fileTypeAllowlist');
 
 const b = (...parts) =>
-	Buffer.concat(parts.map((p) => (typeof p === 'string' ? Buffer.from(p, 'latin1') : Buffer.from(p))));
+	Buffer.concat(
+		parts.map((p) => (typeof p === 'string' ? Buffer.from(p, 'latin1') : Buffer.from(p))),
+	);
 
 test('mọi đuôi được phép upload đều có cách kiểm tra nội dung', () => {
 	for (const ext of [...DOCUMENT_EXTENSIONS, ...MEDIA_EXTENSIONS]) {
@@ -27,7 +32,8 @@ test('nội dung đúng định dạng thì qua', () => {
 		'.txt': b('Xin chào\nDòng 2'),
 		'.mp3': b('ID3', [3, 0]),
 	};
-	for (const [ext, head] of Object.entries(ok)) assert.equal(matchesExtension(ext, head), true, ext);
+	for (const [ext, head] of Object.entries(ok))
+		assert.equal(matchesExtension(ext, head), true, ext);
 });
 
 test('file đổi đuôi (exe, HTML, ảnh giả) bị từ chối', () => {

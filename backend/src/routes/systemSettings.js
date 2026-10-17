@@ -57,9 +57,15 @@ router.put(
 		try {
 			if (!systemSettingService.isKey(req.params.key)) return notFound(res);
 			const value = req.body.value ?? null;
-			const invalid = uploadPolicy.validateSetting(req.params.key, value) ?? attendancePolicy.validateSetting(req.params.key, value);
+			const invalid =
+				uploadPolicy.validateSetting(req.params.key, value) ??
+				attendancePolicy.validateSetting(req.params.key, value);
 			if (invalid) return error(res, invalid, 400);
-			const item = await systemSettingService.update(req.params.key, req.body.value ?? null, req.user.id);
+			const item = await systemSettingService.update(
+				req.params.key,
+				req.body.value ?? null,
+				req.user.id,
+			);
 			return success(res, item, 'Đã cập nhật cấu hình');
 		} catch (err) {
 			next(err);

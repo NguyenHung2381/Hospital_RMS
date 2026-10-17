@@ -43,7 +43,9 @@ router.get(
 		query('reason').optional({ values: 'falsy' }).isIn(personMergeService.REASONS),
 	],
 	validate,
-	wrap(async (req, res) => success(res, await personMergeService.listCandidates(req.query, canSeeSensitive(req)))),
+	wrap(async (req, res) =>
+		success(res, await personMergeService.listCandidates(req.query, canSeeSensitive(req))),
+	),
 );
 
 router.get(
@@ -51,7 +53,9 @@ router.get(
 	authorizePermission(['persons', 'read']),
 	idParam,
 	validate,
-	wrap(async (req, res) => success(res, await personMergeService.getCandidate(req.params.id, canSeeSensitive(req)))),
+	wrap(async (req, res) =>
+		success(res, await personMergeService.getCandidate(req.params.id, canSeeSensitive(req))),
+	),
 );
 
 router.post(
@@ -61,11 +65,19 @@ router.post(
 		...idParam,
 		body('keep').isIn(['A', 'B']).withMessage('keep phải là A hoặc B'),
 		body('fields').optional({ nullable: true }).isObject().withMessage('fields phải là object'),
-		body('note').optional({ nullable: true }).isString().isLength({ max: 500 }).withMessage('Ghi chú tối đa 500 ký tự'),
+		body('note')
+			.optional({ nullable: true })
+			.isString()
+			.isLength({ max: 500 })
+			.withMessage('Ghi chú tối đa 500 ký tự'),
 	],
 	validate,
 	wrap(async (req, res) =>
-		success(res, await personMergeService.mergeCandidate(req.params.id, req.body, req.user.id), 'Đã gộp hồ sơ'),
+		success(
+			res,
+			await personMergeService.mergeCandidate(req.params.id, req.body, req.user.id),
+			'Đã gộp hồ sơ',
+		),
 	),
 );
 
@@ -75,7 +87,11 @@ router.post(
 	[...idParam, body('note').optional({ nullable: true }).isString().isLength({ max: 500 })],
 	validate,
 	wrap(async (req, res) =>
-		success(res, await personMergeService.rejectCandidate(req.params.id, req.body.note, req.user.id), 'Đã đánh dấu không phải cùng một người'),
+		success(
+			res,
+			await personMergeService.rejectCandidate(req.params.id, req.body.note, req.user.id),
+			'Đã đánh dấu không phải cùng một người',
+		),
 	),
 );
 
@@ -85,7 +101,11 @@ router.post(
 	idParam,
 	validate,
 	wrap(async (req, res) =>
-		success(res, await personMergeService.reopenCandidate(req.params.id, req.user.id), 'Đã đưa lại vào hàng đợi'),
+		success(
+			res,
+			await personMergeService.reopenCandidate(req.params.id, req.user.id),
+			'Đã đưa lại vào hàng đợi',
+		),
 	),
 );
 

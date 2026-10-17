@@ -53,7 +53,10 @@ const getAll = async ({ page = 1, limit = 20, search, active_only } = {}) => {
 
 const getById = async (id) => {
 	const pool = await getPool();
-	const result = await pool.request().input('id', sql.VarChar(20), id).query(`${lecturerSelect} WHERE l.id = @id`);
+	const result = await pool
+		.request()
+		.input('id', sql.VarChar(20), id)
+		.query(`${lecturerSelect} WHERE l.id = @id`);
 	return result.recordset[0] || null;
 };
 
@@ -73,8 +76,7 @@ const create = async (data, actorId) => {
 		.input('academic_rank', sql.NVarChar(50), data.academic_rank || null)
 		.input('dob', sql.Date, data.dob || null)
 		.input('gender', sql.VarChar(10), normalizeGender(data.gender))
-		.input('avatar_url', sql.NVarChar(500), data.avatar_url || null)
-		.query(`
+		.input('avatar_url', sql.NVarChar(500), data.avatar_url || null).query(`
       DECLARE @new_id VARCHAR(20) = 'GV' + LEFT(REPLACE(NEWID(),'-',''), 18);
       EXEC sp_set_actor @actor_id;
       INSERT INTO lecturers (id, user_id, full_name, specialty, is_external, phone, email, academic_degree, academic_rank, dob, gender, avatar_url, created_by)
@@ -90,7 +92,10 @@ const create = async (data, actorId) => {
 const update = async (id, data, actorId) => {
 	const pool = await getPool();
 	const sets = ['updated_at = GETDATE()', 'updated_by = @actor_id'];
-	const req = pool.request().input('id', sql.VarChar(20), id).input('actor_id', sql.VarChar(20), actorId);
+	const req = pool
+		.request()
+		.input('id', sql.VarChar(20), id)
+		.input('actor_id', sql.VarChar(20), actorId);
 
 	if (data.user_id !== undefined) {
 		await assertNotTraineeAccount(pool, data.user_id);
@@ -142,7 +147,9 @@ const update = async (id, data, actorId) => {
 		req.input('avatar_url', sql.NVarChar(500), data.avatar_url || null);
 	}
 
-	await req.query(`EXEC sp_set_actor @actor_id; UPDATE lecturers SET ${sets.join(', ')} WHERE id = @id`);
+	await req.query(
+		`EXEC sp_set_actor @actor_id; UPDATE lecturers SET ${sets.join(', ')} WHERE id = @id`,
+	);
 	await personService.syncPerson('lecturers', id, { actorId });
 	broadcast('update', { entity: 'lecturer' });
 	return getById(id);

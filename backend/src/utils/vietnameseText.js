@@ -22,8 +22,7 @@ const norm = (s) => {
 };
 
 // Bỏ tiền tố Khoa/Phòng/TT… để "Khoa Bỏng" == "Bỏng".
-const normDept = (s) =>
-	norm(s).replace(/^(khoa|phong|trung tam|tt|don vi|vp khoa|bo mon)\s+/, '');
+const normDept = (s) => norm(s).replace(/^(khoa|phong|trung tam|tt|don vi|vp khoa|bo mon)\s+/, '');
 
 // "PGS.TS. Nguyễn Văn A" / "BSCK2. X" → phần tên sau học vị.
 const stripQualification = (s) => {
@@ -31,10 +30,7 @@ const stripQualification = (s) => {
 	const lastDot = t.lastIndexOf('.');
 	const name = lastDot >= 0 ? t.slice(lastDot + 1) : t;
 	return name
-		.replace(
-			/^\s*(GS|PGS|TS|ThS|BSCKII|BSCKI|BSCK2|BSCK1|BSNT|BS|KS|CN|CĐ|DS|ĐD)\s+/i,
-			'',
-		)
+		.replace(/^\s*(GS|PGS|TS|ThS|BSCKII|BSCKI|BSCK2|BSCK1|BSNT|BS|KS|CN|CĐ|DS|ĐD)\s+/i, '')
 		.trim();
 };
 
