@@ -53,7 +53,7 @@ function getNetworkIp() {
 	return null;
 }
 
-// Worker do src/cluster.js tạo: primary đã chạy initPermissions và chọn port —
+// Worker do src/cluster.js tạo: primary đã chạy initDatabase và chọn port —
 // worker chỉ nghe đúng PORT được giao (các worker dùng chung 1 port qua cluster).
 const isClusterWorker = process.env.CLUSTER_WORKER === '1';
 
@@ -66,14 +66,14 @@ const startWorker = () => {
 
 const startStandalone = async () => {
 	try {
-		// Nâng cấp / kiểm tra CSDL phân quyền + đồng bộ danh mục quyền trước khi
-		// nhận request (xem permissions/index.js). CSDL chưa ở mô hình mới thì
-		// DỪNG: code không còn nhánh chạy theo mô hình cũ.
+		// Migration + kiểm tra CSDL phân quyền + đồng bộ danh mục quyền trước khi
+		// nhận request (xem database/index.js). CSDL chưa ở mô hình mới thì DỪNG:
+		// code không còn nhánh chạy theo mô hình cũ.
 		try {
-			await require('./permissions').initPermissions();
+			await require('./database').initDatabase();
 		} catch (err) {
-			if (err.code !== 'PERMISSION_SCHEMA_OUTDATED') throw err;
-			console.error(`❌ [permissions] ${err.message}`);
+			if (err.code !== 'DB_SCHEMA_OUTDATED') throw err;
+			console.error(`❌ [db] ${err.message}`);
 			process.exit(1);
 		}
 

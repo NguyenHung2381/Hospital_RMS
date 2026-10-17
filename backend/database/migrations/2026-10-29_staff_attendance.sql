@@ -4,7 +4,6 @@
  *   1 dòng / người / ngày: giờ vào = lần chấm đầu, giờ ra = lần chấm cuối.
  *   Lưu IP và khoảng cách tới bệnh viện (m) lúc chấm để đối chiếu khi khiếu nại
  *   — không lưu toạ độ thô.
- *   Server cũng tự chạy tương đương lúc khởi động (permissions/migrations.js).
  * Script idempotent — chạy lại nhiều lần an toàn.
  * ==========================================================================*/
 USE [RMS_HOSPITAL];

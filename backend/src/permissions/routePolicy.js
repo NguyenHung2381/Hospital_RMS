@@ -40,6 +40,8 @@ module.exports = {
 		[`GET ${API}/public/seminars/:token`]: 'Cổng công khai — hội nghị theo link QR (token 128-bit, có rate-limit)',
 		[`POST ${API}/public/seminars/:token/register`]: 'Cổng công khai — đăng ký hội nghị qua QR (có captcha, rate-limit)',
 		[`GET ${API}/public/seminar-tickets/:code`]: 'Cổng công khai — xem vé QR (mã vé 128-bit, có rate-limit)',
+		[`POST ${API}/public/seminar-tickets/:code/test/start`]:
+			'Cổng công khai — bắt đầu tính giờ làm bài test bằng mã vé (có rate-limit)',
 		[`POST ${API}/public/seminar-tickets/:code/test`]: 'Cổng công khai — nộp bài test cuối buổi bằng mã vé (có rate-limit)',
 	},
 

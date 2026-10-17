@@ -1,11 +1,11 @@
 #!/usr/bin/env node
 // Xuất định nghĩa stored procedure / function / trigger / view từ CSDL ra
-// backend/db/<loại>/<tên>.sql để đưa vào git. Nhiều object (sp_create_refresh_token,
+// backend/database/objects/<loại>/<tên>.sql để đưa vào git. Nhiều object (sp_create_refresh_token,
 // sp_gen_user_id, trg_users_audit...) chỉ tồn tại trong DB, không có trong repo —
 // không review được, không tái lập được môi trường.
 // CHỈ ĐỌC (sys.sql_modules), không sửa CSDL. Chạy lại sau mỗi lần sửa object
 // trong DB rồi commit phần thay đổi.
-//   npm run dump:db-objects                 # ghi đè thư mục backend/db
+//   npm run dump:db-objects                 # ghi đè thư mục backend/database/objects
 //   npm run dump:db-objects -- --check      # chỉ báo khác biệt, exit 1 nếu có (CI)
 const fs = require('fs');
 const path = require('path');
@@ -13,7 +13,7 @@ require('dotenv').config({ path: path.join(__dirname, '../.env'), quiet: true })
 
 const { getPool } = require('../src/config/db');
 
-const OUT = path.join(__dirname, '..', 'db');
+const OUT = path.join(__dirname, '..', 'database', 'objects');
 const FOLDER = {
 	P: 'procedures',
 	FN: 'functions',

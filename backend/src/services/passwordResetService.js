@@ -6,6 +6,7 @@ const authService = require('./authService');
 const systemSettingService = require('./systemSettingService');
 const { bumpTokenVersion } = require('./sessionVersion');
 const { checkPassword } = require('../utils/passwordPolicy');
+const { httpError } = require('../utils/httpError');
 
 const OTP_TTL_MIN = 10;
 const RESEND_COOLDOWN_SEC = 60;
@@ -14,7 +15,7 @@ const MAX_ATTEMPTS = 5;
 // Admin tắt ở Cấu hình hệ thống → khoá cả xin mã lẫn đặt lại (mặc định bật).
 const assertEnabled = async () => {
 	if ((await systemSettingService.getValue('PASSWORD_RESET_ENABLED')) === 'false') {
-		throw { statusCode: 403, message: 'Chức năng quên mật khẩu đang tắt, vui lòng liên hệ quản trị viên' };
+		throw httpError(403, 'Chức năng quên mật khẩu đang tắt, vui lòng liên hệ quản trị viên');
 	}
 };
 
@@ -105,7 +106,7 @@ const resetPassword = async (login, code, newPassword) => {
 	// Route chỉ so mật khẩu với chuỗi người dùng gõ (có thể là email) → so lại với username thật.
 	// Kiểm tra SAU khi OTP đúng để không lộ username cho người chưa có mã.
 	const policyError = checkPassword(newPassword, { username: user.username });
-	if (policyError) throw { statusCode: 400, message: policyError };
+	if (policyError) throw httpError(400, policyError);
 
 	const hashed = await authService.hashPassword(newPassword);
 	await pool

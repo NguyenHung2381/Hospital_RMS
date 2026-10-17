@@ -4,6 +4,7 @@ const { broadcast } = require('./eventService');
 const { paging } = require('../utils/paging');
 const { remember, invalidate } = require('../utils/cache');
 const permCache = require('../middlewares/permissionCache');
+const { httpError } = require('../utils/httpError');
 
 // Cùng prefix `lookup:roles:` mà createCrudService('roles', ...) tự invalidate
 // sau update/remove — getAll/create ở dưới bị override nên tự quản cache riêng.
@@ -101,7 +102,7 @@ const remove = async (id, actorId) => {
 		.input('id', sql.VarChar(20), id)
 		.query('SELECT is_system FROM roles WHERE id = @id');
 	if (r.recordset[0]?.is_system) {
-		throw Object.assign(new Error('Không thể xoá vai trò hệ thống'), { statusCode: 409 });
+		throw httpError(409, 'Không thể xoá vai trò hệ thống');
 	}
 	await base.remove(id, actorId);
 	permCache.clear(id);

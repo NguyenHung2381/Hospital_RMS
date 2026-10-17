@@ -1,8 +1,7 @@
-// Quy tắc kiểm tra quyền + phạm vi (middlewares/auth.js) và quy đổi mô hình cũ.
+// Quy tắc kiểm tra quyền + phạm vi (middlewares/auth.js).
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { hasPermission, scopeOf, isDeadlineBound } = require('../../src/middlewares/auth');
-const { normalizeLegacy } = require('../../src/permissions/scopes');
 
 const user = (grants) => ({
 	permissions: new Set(Object.keys(grants)),
@@ -34,24 +33,4 @@ test('isDeadlineBound: chỉ thấy đề tài của mình (hoặc không có qu
 	assert.equal(isDeadlineBound(user({ 'topics:read': 'own' })), true);
 	assert.equal(isDeadlineBound(user({})), true);
 	assert.equal(isDeadlineBound(user({ 'topics:read': 'department' })), false);
-});
-
-test('normalizeLegacy giữ nguyên hành vi của mô hình cũ', () => {
-	const tk = normalizeLegacy(new Set(['topics:read', 'topics:read_all', 'users:read', 'users:read_department']));
-	assert.deepEqual([...tk.keys].sort(), ['topics:read', 'users:read']);
-	assert.equal(tk.scopes.get('topics:read'), 'all');
-	assert.equal(tk.scopes.get('users:read'), 'department');
-
-	// manage dạng wildcard → bung thành từng quyền cụ thể rồi bỏ
-	const mgr = normalizeLegacy(new Set(['courses:manage', 'roles:manage']));
-	assert.ok(!mgr.keys.has('courses:manage'));
-	for (const k of ['courses:read', 'courses:create', 'courses:update', 'courses:delete', 'courses:approve']) assert.ok(mgr.keys.has(k), k);
-	assert.equal(mgr.scopes.get('courses:read'), 'all');
-	// roles:manage là quyền thật (phân quyền) → giữ, và bung thêm action khác
-	assert.ok(mgr.keys.has('roles:manage') && mgr.keys.has('roles:delete'));
-
-	// courses:read_assigned (không kèm manage) thu hẹp về khoá được phân công
-	const lec = normalizeLegacy(new Set(['courses:read', 'courses:read_assigned']));
-	assert.equal(lec.scopes.get('courses:read'), 'assigned');
-	assert.equal(normalizeLegacy(new Set(['topics:read'])).scopes.get('topics:read'), 'own');
 });

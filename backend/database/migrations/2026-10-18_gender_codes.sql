@@ -10,7 +10,6 @@
  *   seminar_participants: SET updated_at = updated_at để trigger audit không
  *   bump cột này.
  *
- *   Server tự chạy bước này lúc khởi động (permissions/migrations.js).
  *   Idempotent.
  * ==========================================================================*/
 USE [RMS_HOSPITAL];

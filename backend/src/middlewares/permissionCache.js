@@ -1,5 +1,4 @@
 const { getPool, sql } = require('../config/db');
-const schema = require('../utils/schema');
 const cacheBus = require('../utils/cacheBus');
 
 // role_id → { perms: { keys: Set<"resource:action">, scopes: Map<key, scope> }, ts }
@@ -34,12 +33,6 @@ const clear = (roleId) => {
 };
 cacheBus.register('permissions', clearLocal);
 
-// Gọi sau khi migration đổi schema / dữ liệu phân quyền.
-const resetSchemaCheck = () => {
-	schema.reset();
-	_cache.clear();
-};
-
 const load = async (roleId) => {
 	const cached = get(roleId);
 	if (cached) return cached;
@@ -69,4 +62,4 @@ const load = async (roleId) => {
 	return perms;
 };
 
-module.exports = { load, clear, resetSchemaCheck };
+module.exports = { load, clear };

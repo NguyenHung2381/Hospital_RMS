@@ -67,7 +67,7 @@ export const TAB_CONFIG: Record<
 };
 
 export const CATALOG_GROUPS: Record<CatalogGroup, { title: string; tabs: CatalogTab[]; breadcrumb?: string }> = {
-	research: { title: 'Quản lý Danh mục', tabs: ['categories', 'levels', 'round-types'] },
+	research: { title: 'Danh mục NCKH', tabs: ['categories', 'levels', 'round-types'] },
 	training: {
 		title: 'Danh mục Đào tạo',
 		tabs: ['trainee-types', 'training-forms', 'training-types'],

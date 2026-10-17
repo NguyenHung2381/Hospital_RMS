@@ -9,6 +9,7 @@ const { getPool, sql } = require('../config/db');
 const { broadcast } = require('./eventService');
 const { paging } = require('../utils/paging');
 const trainingFileService = require('./trainingFileService');
+const { httpError } = require('../utils/httpError');
 
 const recordSelect = `
   SELECT r.*, u.full_name AS user_name, u.staff_number, u.department_id, d.name AS department_name,
@@ -166,7 +167,7 @@ const addEvidence = async (id, file, actorId) => {
 
 // ── Người dùng tự khai (chờ admin duyệt) ──────────────────────────────────────
 // Chỉ bản ghi approval_status='approved' mới được cộng vào tín chỉ CME.
-const httpErr = (message, statusCode) => Object.assign(new Error(message), { statusCode });
+const httpErr = (message, statusCode) => httpError(statusCode, message);
 
 // Bản ghi phải của chính user và chưa được duyệt (đã duyệt thì khoá, tránh đổi tín chỉ sau duyệt)
 const assertEditableMine = async (id, userId) => {

@@ -3,9 +3,9 @@ node_modules/
 *.log
 
 #FOLDER
-# migrations/ nằm trong git (review được, tái lập môi trường). Chỉ bỏ script dọn
+# database/ nằm trong git (review được, tái lập môi trường). Chỉ bỏ script dọn
 # dữ liệu test chạy 1 lần.
-migrations/_cleanup_*
+database/manual/_cleanup_*
 uploads/
 secrets/
 

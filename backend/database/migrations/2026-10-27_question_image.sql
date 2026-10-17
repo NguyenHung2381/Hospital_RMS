@@ -3,7 +3,7 @@
  *   không có hình. Ảnh tải lên qua POST /exams/questions/image.
  *   (Bài test hội nghị lưu ảnh ngay trong JSON seminars.test_questions —
  *   trường "image" — nên không cần cột mới.)
- * Server tự chạy bước này lúc khởi động (permissions/migrations.js). Idempotent. */
+ * Idempotent. */
 USE [RMS_HOSPITAL];
 GO
 

@@ -53,8 +53,9 @@ desktop.ini
 # Ngoại lệ: migration schema + định nghĩa stored procedure / trigger / view đã
 # được rà không chứa mật khẩu hay dữ liệu cá nhân — phải nằm trong git để review
 # và tái lập môi trường.
-!backend/migrations/*.sql
-!backend/db/**/*.sql
+!backend/database/migrations/*.sql
+!backend/database/objects/**/*.sql
+!backend/database/manual/*.sql
 
 # Lock files (keep only one, remove if you prefer to commit these)
 # package-lock.json

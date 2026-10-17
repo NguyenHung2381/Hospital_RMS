@@ -10,8 +10,7 @@
  *   users.must_change_password = 1 ⇒ API chỉ cho đổi mật khẩu / đăng xuất
  *   (middlewares/auth.js) cho tới khi người dùng tự đặt mật khẩu mới.
  *
- *   Server tự chạy bước này lúc khởi động (permissions/migrations.js) nếu login
- *   ứng dụng có quyền ALTER; không có thì DBA chạy file này. Idempotent.
+ *   Idempotent.
  * ==========================================================================*/
 USE [RMS_HOSPITAL];
 GO

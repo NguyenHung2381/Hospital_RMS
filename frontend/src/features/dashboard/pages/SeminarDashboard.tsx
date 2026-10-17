@@ -82,7 +82,7 @@ export default function SeminarDashboard() {
 
 	return (
 		<AdminLayout
-			pageTitle='Tổng quan Hội thảo - CME'
+			pageTitle='Tổng quan Hội nghị & Đào tạo liên tục'
 			pageSubtitle={`Hội thảo, hội nghị, lượt tham dự và chứng nhận CME năm ${year}`}
 		>
 			<DashboardTabs />
@@ -138,7 +138,7 @@ export default function SeminarDashboard() {
 				{[
 					{ label: 'Hội thảo sắp diễn ra', value: kpi.upcoming_total, to: '/admin/seminars' },
 					{ label: `Sự kiện có cấp CME ${year}`, value: kpi.cme_seminars_this_year, to: '/admin/seminars' },
-					{ label: 'Sổ cấp CME', value: kpi.cme_issued_this_year, to: '/admin/cme-register' },
+					{ label: 'Sổ cấp chứng nhận', value: kpi.cme_issued_this_year, to: '/admin/cme-register' },
 					{ label: 'Theo dõi tuân thủ CME', value: null, to: '/admin/cme-compliance' },
 				].map((it) => (
 					<button

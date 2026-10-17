@@ -74,7 +74,7 @@ export default function StaffLicenses() {
 		<AdminLayout
 			pageTitle='Chứng chỉ hành nghề'
 			pageSubtitle='Hồ sơ CCHN & phạm vi hoạt động chuyên môn của nhân sự'
-			breadcrumbs={[{ label: 'Hội nghị & CME' }]}
+			breadcrumbs={[{ label: 'Nhân sự' }]}
 			headerActions={headerActions}
 		>
 			<div className={styles.tableCard}>

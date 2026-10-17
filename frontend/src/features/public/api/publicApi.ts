@@ -243,13 +243,27 @@ export interface SeminarTicket {
 		open: boolean;
 		/** off = BTC chưa bật · scheduled = chưa tới giờ · open · closed = quá giờ */
 		state?: 'off' | 'scheduled' | 'open' | 'closed';
-		/** Khung giờ làm bài (date: YYYY-MM-DD) */
-		window?: { date: string; start_time: string | null; end_time: string | null } | null;
+		/** Mở bài: date + start_time · dừng tiếp nhận: end_date + end_time (YYYY-MM-DD) */
+		window?: { date: string; end_date?: string; start_time: string | null; end_time: string | null } | null;
+		question_count?: number;
+		/** Tổng điểm bài test */
+		max_score?: number | null;
+		/** Thời gian làm bài (phút) — null = không giới hạn */
+		duration_minutes?: number | null;
+		pass_score?: number | null;
+		/** Có giới hạn thời gian: đủ điều kiện nhưng chưa bấm "Bắt đầu" */
+		can_start?: boolean;
+		/** Đã bắt đầu nhưng hết giờ mà chưa nộp */
+		expired?: boolean;
+		/** Giây còn lại tới hạn nộp khi đang làm bài — null = không giới hạn */
+		remaining_seconds?: number | null;
 		submitted_at: string | null;
 		correct: number | null;
 		total: number | null;
-		/** Chỉ có khi đã điểm danh + bài test đang mở + chưa nộp */
-		questions: { q: string; image: string | null; options: string[] }[] | null;
+		score?: number | null;
+		passed?: boolean | null;
+		/** Chỉ có khi đang làm bài (đã điểm danh + bài test đang mở + chưa nộp) — đã trộn theo vé */
+		questions: { q: string; image: string | null; options: string[]; points?: number }[] | null;
 	};
 	cme: { certificate_no: string; year: number; credits: number | null } | null;
 }
@@ -263,8 +277,11 @@ export const registerSeminar = (token: string, data: SeminarRegisterPayload) =>
 	});
 export const getSeminarTicket = (code: string) =>
 	request<SeminarTicket>(`/seminar-tickets/${encodeURIComponent(code)}`);
-export const submitSeminarTest = (code: string, answers: number[]) =>
-	request<{ correct: number; total: number }>(`/seminar-tickets/${encodeURIComponent(code)}/test`, {
+export const startSeminarTest = (code: string) =>
+	request<SeminarTicket>(`/seminar-tickets/${encodeURIComponent(code)}/test/start`, { method: 'POST' });
+/** answers theo thứ tự hiển thị; null = bỏ trống (hết giờ tự nộp) */
+export const submitSeminarTest = (code: string, answers: (number | null)[]) =>
+	request<{ correct: number; total: number; score: number; max_score: number; passed: boolean }>(`/seminar-tickets/${encodeURIComponent(code)}/test`, {
 		method: 'POST',
 		body: JSON.stringify({ answers }),
 	});

@@ -109,7 +109,7 @@ const issueCme = async (req, res, next) => {
 			out.issued
 				? `Đã cấp ${out.issued} số CME (${String(out.from).padStart(4, '0')}–${String(out.to).padStart(4, '0')} / ${out.year})`
 				: out.skipped
-					? `${out.skipped} người chưa đủ điều kiện (chưa điểm danh / chưa làm bài test)`
+					? `${out.skipped} người chưa đủ điều kiện (chưa điểm danh / chưa làm hoặc chưa đạt bài test)`
 					: 'Không có người nào cần cấp số CME',
 		);
 	} catch (e) {

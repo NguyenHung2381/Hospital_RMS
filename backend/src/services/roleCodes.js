@@ -1,5 +1,6 @@
 const { getPool, sql } = require('../config/db');
 const cacheBus = require('../utils/cacheBus');
+const { httpError } = require('../utils/httpError');
 
 // Mã cố định của các vai trò hệ thống (roles.code). Code nghiệp vụ tham chiếu
 // vai trò qua mã này thay vì id ('VT05', 'VT08'...) — id là dữ liệu, có thể
@@ -15,19 +16,6 @@ const ROLE = {
 	// thành viên hội đồng / người tham dự / ghi nhận CME (không phải một người).
 	DEPT_HEAD: 'dept_head',
 	TRAINEE: 'trainee', // Học viên — cấp khi cấp tài khoản học viên
-};
-
-// id tương ứng trong dữ liệu gốc — CHỈ dùng cho migration gán mã cho các vai
-// trò có sẵn (permissions/migrations.js). Code nghiệp vụ luôn tra qua roles.code.
-const LEGACY_ROLE_IDS = {
-	admin: 'VT01',
-	director: 'VT02',
-	research_manager: 'VT03',
-	review_council: 'VT04',
-	topic_leader: 'VT05',
-	member: 'VT06',
-	dept_head: 'VT07',
-	trainee: 'VT08',
 };
 
 const TTL_MS = 5 * 60 * 1000;
@@ -56,9 +44,7 @@ const roleIdOf = async (code) => {
 const requireRoleId = async (code) => {
 	const id = await roleIdOf(code);
 	if (!id) {
-		throw Object.assign(new Error(`Chưa có vai trò mang mã "${code}" (roles.code)`), {
-			statusCode: 500,
-		});
+		throw httpError(500, `Chưa có vai trò mang mã "${code}" (roles.code)`);
 	}
 	return id;
 };
@@ -68,4 +54,4 @@ const requireRoleId = async (code) => {
 const inputRoleId = async (request, name, code) =>
 	request.input(name, sql.VarChar(20), (await roleIdOf(code)) ?? '');
 
-module.exports = { ROLE, LEGACY_ROLE_IDS, roleIdOf, requireRoleId, inputRoleId, clear };
+module.exports = { ROLE, roleIdOf, requireRoleId, inputRoleId, clear };

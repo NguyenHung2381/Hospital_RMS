@@ -1,5 +1,6 @@
 const { getPool, sql } = require('../config/db');
 const { broadcast } = require('./eventService');
+const { httpError } = require('../utils/httpError');
 
 // ─── Topic assignment (many topics -> one council per round) ─────────────────
 
@@ -117,9 +118,7 @@ const setSeatSubstitute = async (councilId, topicId, role, userId, actorId) => {
       END
     `);
 	if (!result.recordset[0].ok) {
-		throw Object.assign(new Error('Đề tài không thuộc hội đồng này.'), {
-			status: 404,
-		});
+		throw httpError(404, 'Đề tài không thuộc hội đồng này.');
 	}
 	broadcast('update', { entity: 'council' });
 };

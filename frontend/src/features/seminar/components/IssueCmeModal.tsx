@@ -69,7 +69,7 @@ export function IssueCmeModal({
 			</div>
 			{notEligible > 0 && (
 				<p className={styles.muted}>
-					Bỏ qua {notEligible} người tự đăng ký chưa điểm danh hoặc chưa làm bài test.
+					Bỏ qua {notEligible} người tự đăng ký chưa điểm danh, chưa làm bài test hoặc chưa đạt điểm.
 				</p>
 			)}
 			{pending.length === 0 ? (

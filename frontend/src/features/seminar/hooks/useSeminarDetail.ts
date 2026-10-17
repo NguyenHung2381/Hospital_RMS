@@ -132,7 +132,7 @@ export function useSeminarDetail(id: string) {
 					(res.issued
 						? `Đã cấp ${res.issued} số CME (${String(res.from).padStart(4, '0')}–${String(res.to).padStart(4, '0')} / ${res.year})`
 						: 'Không có người nào được cấp số') +
-						(res.skipped ? ` · ${res.skipped} người chưa điểm danh / chưa làm bài test` : ''),
+						(res.skipped ? ` · ${res.skipped} người chưa điểm danh / chưa làm hoặc chưa đạt bài test` : ''),
 				);
 				refresh();
 				return true;

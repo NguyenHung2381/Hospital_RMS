@@ -204,6 +204,7 @@ router.post(
 	ctrl.registerSeminar,
 );
 router.get('/seminar-tickets/:code', seminarLimiter, [ticketCode], validate, ctrl.getSeminarTicket);
+router.post('/seminar-tickets/:code/test/start', seminarLimiter, [ticketCode], validate, ctrl.startSeminarTest);
 router.post(
 	'/seminar-tickets/:code/test',
 	seminarLimiter,

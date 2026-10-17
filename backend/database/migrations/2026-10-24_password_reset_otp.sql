@@ -1,5 +1,5 @@
 /* Quên mật khẩu bằng OTP gửi qua email (services/passwordResetService.js).
- * Server tự chạy bước này lúc khởi động (permissions/migrations.js). Idempotent. */
+ * Idempotent. */
 USE [RMS_HOSPITAL];
 GO
 

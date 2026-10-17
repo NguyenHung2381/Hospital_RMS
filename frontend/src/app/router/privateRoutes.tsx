@@ -150,7 +150,7 @@ export const adminRoutes: RouteObject[] = [
 	},
 	{
 		path: '/admin/dashboard/seminar',
-		element: admin('Tổng quan Hội thảo - CME', <SeminarDashboard />),
+		element: admin('Tổng quan Hội nghị & Đào tạo liên tục', <SeminarDashboard />),
 	},
 	{ path: '/admin/profile', element: admin('Hồ sơ cá nhân', <UserProfile />) },
 	{
@@ -181,15 +181,15 @@ export const adminRoutes: RouteObject[] = [
 	},
 	{
 		path: '/admin/cme-register',
-		element: admin('Sổ cấp CME', <CmeRegister />),
+		element: admin('Sổ cấp chứng nhận', <CmeRegister />),
 	},
 	{
 		path: '/admin/cme-compliance',
-		element: admin('Cảnh báo tín chỉ CME', <CmeCompliance />),
+		element: admin('Cảnh báo tín chỉ', <CmeCompliance />),
 	},
 	{
 		path: '/admin/cme-records',
-		element: admin('Ghi nhận CME độc lập', <CmeManualRecords />),
+		element: admin('Ghi nhận độc lập', <CmeManualRecords />),
 	},	// Trang quét vé riêng cho điện thoại (không có AdminLayout) — ban tổ chức đứng ở cửa hội trường
 	...['/admin/quet-ve', '/admin/quet-ve/:id'].map((path) => ({
 		path,
@@ -352,7 +352,7 @@ export const adminRoutes: RouteObject[] = [
 		path: '/admin/cme-credit-categories',
 		element: (
 			<RequirePermission perm='training_catalog:read'>
-				{admin('Danh mục quy đổi CME', <CmeCreditCatalog />)}
+				{admin('Danh mục quy đổi tín chỉ', <CmeCreditCatalog />)}
 			</RequirePermission>
 		),
 	},
@@ -427,7 +427,7 @@ export const userRoutes: RouteObject[] = [
 	},
 	{
 		path: '/user/cme',
-		element: user('CME của tôi', <UserMyCme />),
+		element: user('Đào tạo liên tục của tôi', <UserMyCme />),
 	},
 	{
 		path: '/user/thi-online',

@@ -12,12 +12,14 @@
     "gen:jwt": "node scripts/gen-jwt-secrets.js",
     "check:routes": "node scripts/check-route-permissions.js",
     "gen:perm-types": "node scripts/gen-permission-types.js",
-    "migrate:permissions": "node scripts/migrate-permissions.js",
+    "sync:permissions": "node scripts/sync-permissions.js",
     "flag:default-passwords": "node scripts/flag-default-passwords.js",
     "rename:trainee-usernames": "node scripts/rename-trainee-usernames.js",
     "rename:staff-usernames": "node scripts/rename-staff-usernames.js",
     "dump:db-objects": "node scripts/dump-db-objects.js",
-    "migrate": "node scripts/run-migrations.js",
+    "migrate": "node scripts/migrate.js",
+    "migrate:status": "node scripts/migrate.js status",
+    "migrate:new": "node scripts/migrate.js new",
     "import:staff": "node scripts/import-staff.js"
   },
   "dependencies": {

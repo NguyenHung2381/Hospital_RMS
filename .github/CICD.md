@@ -14,7 +14,7 @@ Deploy (deploy.yml → scripts/deploy.ps1, chạy trên runner đặt tại serv
 | `.github/workflows/ci.yml` | Kiểm tra, build image, gọi deploy, báo lỗi |
 | `.github/workflows/deploy.yml` | Deploy 1 SHA lên 1 môi trường. Chạy tay = **rollback** |
 | `scripts/deploy.ps1` | Logic deploy/smoke test/rollback. GitHub sự cố vẫn chạy tay được trên server |
-| `backend/scripts/run-migrations.js` | Chạy migration mới theo thứ tự, ghi bảng `schema_migrations` |
+| `backend/scripts/migrate.js` | Chạy migration mới theo thứ tự, ghi bảng `schema_migrations` (xem `backend/database/README.md`) |
 | `.github/dependabot.yml`, `.github/CODEOWNERS`, `.gitleaksignore` | Cập nhật thư viện, người review, báo nhầm của gitleaks |
 
 ## Cài đặt 1 lần
@@ -39,9 +39,9 @@ Deploy (deploy.yml → scripts/deploy.ps1, chạy trên runner đặt tại serv
 4. Staging: đặt biến repo `ENABLE_STAGING=true` khi đã có runner `rms-staging`.
 5. **Baseline migration** (chỉ 1 lần, vì DB hiện tại đã nâng cấp tay). Trên server, sau khi deploy bản có script này:
    ```bash
-   docker compose -f docker-compose.prod.yml run --rm --no-deps -T backend node scripts/run-migrations.js --baseline
+   docker compose -f docker-compose.prod.yml run --rm --no-deps -T backend node scripts/migrate.js --baseline
    ```
-   Từ đó mỗi lần deploy chỉ chạy file mới trong `backend/migrations/`. File bắt đầu bằng `_` là script chạy tay, không tự chạy.
+   Từ đó mỗi lần deploy chỉ chạy file mới trong `backend/database/migrations/`. Script chạy tay nằm riêng ở `backend/database/manual/`, không tự chạy.
 
 ## Vận hành
 

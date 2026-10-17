@@ -1,5 +1,6 @@
 import { notify } from '@/shared/utils/feedback';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useRealtimeUpdate } from '../../../layouts/hooks/useRealtime';
 import { getTopicFiles } from '../../topics/api/topicApi';
 import type { TopicFile } from '../../topics/types/topic.type';
@@ -93,7 +94,11 @@ export function useApproval(): ApprovalState {
 	const [activeTab, setActiveTab] = useState<TabKey>('pending');
 	const [search, setSearch] = useState('');
 	const [debouncedSearch, setDebouncedSearch] = useState('');
-	const [selectedId, setSelectedId] = useState<string | null>(null);
+	// ?topic=<id> (mở từ "Việc của tôi") → chọn sẵn đúng đề tài đó.
+	const [searchParams] = useSearchParams();
+	const [selectedId, setSelectedId] = useState<string | null>(
+		() => searchParams.get('topic'),
+	);
 	const [comment, setComment] = useState('');
 	const [modal, setModal] = useState<ModalType>(null);
 	const [loading, setLoading] = useState(false);

@@ -1,5 +1,5 @@
 const bcrypt = require('bcrypt');
-const { getPool, sql } = require('../config/db');
+const { getPool, sql, withTransaction } = require('../config/db');
 const { broadcast } = require('./eventService');
 const personService = require('./personService');
 const securityEvents = require('./securityEventService');
@@ -11,6 +11,7 @@ const { splitList, inClause } = require('../utils/sqlFilters');
 const { isDeptAccountSql } = require('../utils/deptAccount');
 const { ROLE, requireRoleId } = require('./roleCodes');
 const { defaultPassword } = require('../utils/passwordPolicy');
+const { httpError } = require('../utils/httpError');
 
 // ─── Cache thống kê toàn bảng (global_stats) ─────────────────────────────────
 // global_stats không phụ thuộc filter/phân trang nên trước đây bị quét lại toàn
@@ -186,10 +187,7 @@ const create = async (data, actorId) => {
 
 	// Mã người dùng 'NV' + mã khoa + NNNN như các luồng cấp tài khoản khác (sp_gen_user_id).
 	// sp_gen_user_id giữ applock sinh mã tới khi commit ⇒ transaction ngắn: sinh mã → INSERT → commit.
-	const tx = new sql.Transaction(pool);
-	await tx.begin();
-	let newId;
-	try {
+	const newId = await withTransaction(async (tx) => {
 		const dept = data.department_id
 			? (
 					await new sql.Request(tx)
@@ -197,10 +195,10 @@ const create = async (data, actorId) => {
 						.query('SELECT code FROM departments WHERE id = @dept')
 				).recordset[0]
 			: null;
-		newId = await genUserIdInTx(tx, dept?.code || '');
-		if (!newId) throw new Error('Không sinh được mã nhân viên mới');
+		const id = await genUserIdInTx(tx, dept?.code || '');
+		if (!id) throw new Error('Không sinh được mã nhân viên mới');
 		await new sql.Request(tx)
-			.input('new_id', sql.VarChar(20), newId)
+			.input('new_id', sql.VarChar(20), id)
 			.input('actor_id', sql.VarChar(20), actorId)
 			.input('username', sql.VarChar(50), data.username)
 			.input('password', sql.VarChar(255), hashed)
@@ -221,15 +219,8 @@ const create = async (data, actorId) => {
       INSERT INTO users (id, username, password, staff_number, full_name, email, department_id, role_id, created_by, must_change_password)
       VALUES (@new_id, @username, @password, @staff_number, @full_name, @email, @department_id, @role_id, @actor_id, 1);
     `);
-		await tx.commit();
-	} catch (err) {
-		try {
-			await tx.rollback();
-		} catch {
-			// transaction đã bị abort
-		}
-		throw err;
-	}
+		return id;
+	}, pool);
 
 	await personService.syncPerson('users', newId, { actorId });
 	const user = await getById(newId);
@@ -466,21 +457,17 @@ const createStaffAccount = async (
 	actorId,
 ) => {
 	full_name = String(full_name || '').trim();
-	if (!full_name) throw Object.assign(new Error('Vui lòng nhập họ và tên'), { statusCode: 400 });
+	if (!full_name) throw httpError(400, 'Vui lòng nhập họ và tên');
 	// require muộn: topicMemberService nạp nhiều service khác, chỉ cần ở luồng này
 	const { buildMemberUsername, ensureUniqueUsername, genUserIdInTx } = require('./topicMemberService');
 	const pool = await getPool();
 	const roleId = await requireRoleId(ROLE.MEMBER);
 
-	const tx = new sql.Transaction(pool);
-	await tx.begin();
-	let userId;
-	let username;
-	try {
+	const { userId, username } = await withTransaction(async (tx) => {
 		await new sql.Request(tx).input('actor_id', sql.VarChar(20), actorId).query('EXEC sp_set_actor @actor_id');
-		userId = await genUserIdInTx(tx, department_code || '');
+		const userId = await genUserIdInTx(tx, department_code || '');
 		if (!userId) throw new Error('Không sinh được mã nhân viên mới');
-		username = await ensureUniqueUsername(tx, buildMemberUsername(full_name, staff_number), userId);
+		const username = await ensureUniqueUsername(tx, buildMemberUsername(full_name, staff_number), userId);
 		const passwordHash = await bcrypt.hash(defaultPassword(username), 12);
 		await new sql.Request(tx)
 			.input('uid', sql.VarChar(20), userId)
@@ -494,15 +481,8 @@ const createStaffAccount = async (
         INSERT INTO users (id, username, password, full_name, staff_number, department_id, role_id, created_by, must_change_password)
         VALUES (@uid, @username, @password, @full_name, @staff_number, @department_id, @role_id, @actor_id, 1)
       `);
-		await tx.commit();
-	} catch (err) {
-		try {
-			await tx.rollback();
-		} catch {
-			// transaction đã bị abort
-		}
-		throw err;
-	}
+		return { userId, username };
+	}, pool);
 
 	await personService.syncPerson('users', userId, { actorId });
 	invalidateStatsCache();

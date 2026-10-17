@@ -13,6 +13,7 @@ const councilService = require('./councilService');
 const councilAssignmentService = require('./councilAssignmentService');
 const { ROLE, inputRoleId } = require('./roleCodes');
 const { norm, normDept, stripQualification, dice } = require('../utils/vietnameseText');
+const { httpError } = require('../utils/httpError');
 
 const SEAT_ORDER = ['chairman', 'secretary', 'reviewer1', 'reviewer2', 'member'];
 const ROLE_BY_NORM = {
@@ -99,7 +100,7 @@ const parseWorkbook = async (buffer) => {
 	try {
 		await workbook.xlsx.load(buffer);
 	} catch {
-		throw Object.assign(new Error('File không đọc được — cần file .xlsx hợp lệ.'), { status: 400 });
+		throw httpError(400, 'File không đọc được — cần file .xlsx hợp lệ.');
 	}
 	const header = findHeader(workbook);
 	if (!header) {
@@ -150,7 +151,7 @@ const parseWorkbook = async (buffer) => {
 		});
 	}
 	if (!rows.length) {
-		throw Object.assign(new Error('File không có dòng dữ liệu nào.'), { status: 400 });
+		throw httpError(400, 'File không có dòng dữ liệu nào.');
 	}
 	return rows;
 };
@@ -392,7 +393,7 @@ const importExcel = async ({ buffer, round_id, dry_run }, actorId) => {
 		.input('id', sql.VarChar(10), round_id)
 		.query('SELECT id FROM research_rounds WHERE id = @id');
 	if (!roundRes.recordset.length) {
-		throw Object.assign(new Error('Đợt nghiên cứu không tồn tại.'), { status: 404 });
+		throw httpError(404, 'Đợt nghiên cứu không tồn tại.');
 	}
 
 	const rows = await parseWorkbook(buffer);

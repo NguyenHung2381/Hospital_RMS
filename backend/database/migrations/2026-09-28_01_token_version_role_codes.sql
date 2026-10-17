@@ -1,10 +1,9 @@
 /* ============================================================================
-   20260924_02_token_version_role_codes.sql — Phiên đăng nhập & vai trò hệ thống
-   ----------------------------------------------------------------------------
-   Tương đương permissions/migrations.js → migrateRolesAndSessions (server tự
-   chạy lúc khởi động). Chạy SAU 20260924_01_permission_scopes.sql.
+   2026-09-28_01_token_version_role_codes.sql — Phiên đăng nhập & vai trò hệ thống
+   (tên cũ 20260924_02_token_version_role_codes.sql). Chạy SAU
+   2026-09-28_00_permission_scopes.sql.
 
-     sqlcmd -S <server>,<port> -d RMS_HOSPITAL -U <user> -P <pass> -C -I -b -f 65001 -i 20260924_02_token_version_role_codes.sql
+     sqlcmd -S <server>,<port> -d RMS_HOSPITAL -U <user> -P <pass> -C -I -b -f 65001 -i 2026-09-28_01_token_version_role_codes.sql
 
    -I bắt buộc (QUOTED_IDENTIFIER ON), -b dừng khi lỗi, -f 65001 đọc file UTF-8,
    -C tin chứng chỉ tự ký của SQL Server (sqlcmd bản ODBC 18).

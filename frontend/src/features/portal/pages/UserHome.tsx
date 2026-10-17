@@ -572,7 +572,7 @@ export default function UserHome() {
 										<CalendarSvg />
 									</div>
 									<div className={styles.actionText}>
-										<div className={styles.actionName}>CME của tôi</div>
+										<div className={styles.actionName}>Đào tạo liên tục</div>
 										<div className={styles.actionDesc}>
 											Tín chỉ tích luỹ trong năm so với yêu cầu
 										</div>

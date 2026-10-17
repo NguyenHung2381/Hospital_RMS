@@ -265,7 +265,7 @@ export default function CmeRegister() {
 
 	return (
 		<AdminLayout
-			pageTitle='Sổ cấp CME'
+			pageTitle='Sổ cấp chứng nhận'
 			pageSubtitle='Số quyết định chạy liên tục theo năm, hết năm bắt đầu chu trình mới'
 		>
 			<div className={styles.regHead}>

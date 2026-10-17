@@ -10,8 +10,7 @@
  *   thông báo đã lọc "created_by IS NOT NULL".
  *
  *   topics.created_by nằm trong 2 index ⇒ phải drop rồi tạo lại quanh ALTER.
- *   Server tự chạy bước này lúc khởi động (permissions/migrations.js) nếu login
- *   ứng dụng có quyền ALTER; không có thì DBA chạy file này. Idempotent.
+ *   Idempotent.
  * ==========================================================================*/
 USE [RMS_HOSPITAL];
 GO

@@ -5,8 +5,7 @@
  *   các cấp độ này.
  * - Đợt CHƯA cấu hình cấp độ nào ⇒ dùng cấp độ của loại đợt (round_type_levels);
  *   loại đợt cũng chưa cấu hình ⇒ cho phép tất cả (fallback).
- * Script idempotent, chạy lại nhiều lần an toàn. Backend cũng tự tạo bảng này
- * khi khởi động (permissions/migrations.js).
+ * Script idempotent, chạy lại nhiều lần an toàn.
  * ==========================================================================*/
 USE [RMS_HOSPITAL]
 GO

@@ -98,9 +98,6 @@ export const updateSeminar = (id: string, form: SeminarForm) =>
 export const deleteSeminar = (id: string) =>
 	apiClient.delete<null>(`/seminars/${id}`);
 
-export const getCheckInQrToken = (seminarId: string) =>
-	apiClient.get<{ token: string }>(`/seminars/${seminarId}/checkin-qr`);
-
 export const checkInSeminar = (token: string) =>
 	apiClient.post<{ seminar_id: string }>('/seminars/checkin', {
 		token,
@@ -126,7 +123,12 @@ export const updateSeminarTest = (
 		test_open?: boolean;
 		test_date?: string | null;
 		test_start_time?: string | null;
+		test_end_date?: string | null;
 		test_end_time?: string | null;
+		test_duration_minutes?: number | null;
+		test_pass_score?: number | null;
+		test_shuffle_questions?: boolean;
+		test_shuffle_options?: boolean;
 	},
 ) => apiClient.put<Seminar>(`/seminars/${id}`, data);
 

@@ -7,6 +7,7 @@ const { assertTopicActionWindow } = require('./deadlineGuard');
 const { scopeOf, hasPermission } = require('../middlewares/auth');
 const { findActiveUserIdsWhere } = require('./permissionService');
 const roundService = require('./roundService');
+const { httpError } = require('../utils/httpError');
 
 // Phạm vi xem đề tài: không có quyền topics nào ⇒ chỉ đề tài mình tham gia.
 const topicScope = (actor) => scopeOf(actor, 'topics') ?? 'own';
@@ -32,10 +33,10 @@ const assertTopicInScope = async (topicId, actor) => {
 				FROM topics t WHERE t.id = @id
 			`)
 	).recordset[0];
-	if (!row) throw Object.assign(new Error('Đề tài không tồn tại.'), { statusCode: 404 });
+	if (!row) throw httpError(404, 'Đề tài không tồn tại.');
 	const allowed = scope === 'department' ? row.department_id === actor.department_id : row.is_member === 1;
 	if (!allowed) {
-		throw Object.assign(new Error('Không có quyền thao tác trên đề tài này'), { statusCode: 403 });
+		throw httpError(403, 'Không có quyền thao tác trên đề tài này');
 	}
 };
 
@@ -255,9 +256,7 @@ const getById = async (id, actor = null) => {
 	if (actor && detailScope !== 'all') {
 		if (detailScope === 'department') {
 			if (topic.department_id !== actor.department_id) {
-				throw Object.assign(new Error('Không có quyền xem đề tài này'), {
-					status: 403,
-				});
+				throw httpError(403, 'Không có quyền xem đề tài này');
 			}
 		} else {
 			const access = await pool
@@ -268,9 +267,7 @@ const getById = async (id, actor = null) => {
           WHERE topic_id = @topic_id AND user_id = @user_id
         `);
 			if (!access.recordset[0]) {
-				throw Object.assign(new Error('Không có quyền xem đề tài này'), {
-					status: 403,
-				});
+				throw httpError(403, 'Không có quyền xem đề tài này');
 			}
 		}
 	}
@@ -380,20 +377,14 @@ const update = async (id, data, actorId, actor = null) => {
 	// chí...) ai có topics:update cũng sửa được đề tài BẤT KỲ theo id (IDOR).
 	const current = await getById(id, bypass ? null : actor);
 	if (!current)
-		throw Object.assign(new Error('Đề tài không tồn tại.'), {
-			status: 404,
-			statusCode: 404,
-		});
+		throw httpError(404, 'Đề tài không tồn tại.');
 	// Phạm vi khoa không được chuyển đề tài sang khoa khác (ra ngoài phạm vi mình)
 	if (
 		scope === 'department' &&
 		data.department_id !== undefined &&
 		data.department_id !== actor.department_id
 	) {
-		throw Object.assign(new Error('Không thể chuyển đề tài sang khoa/phòng khác.'), {
-			status: 403,
-			statusCode: 403,
-		});
+		throw httpError(403, 'Không thể chuyển đề tài sang khoa/phòng khác.');
 	}
 
 	// BR04: không cho đổi status qua đường PUT chung trừ khi actor thực sự có
@@ -413,10 +404,7 @@ const update = async (id, data, actorId, actor = null) => {
 			'cancelled',
 		];
 		if (!VALID_STATUSES.includes(data.status)) {
-			throw Object.assign(new Error('Trạng thái đề tài không hợp lệ.'), {
-				status: 400,
-				statusCode: 400,
-			});
+			throw httpError(400, 'Trạng thái đề tài không hợp lệ.');
 		}
 		if (!bypass && !hasPermission(actor, 'topics', 'approve')) {
 			throw Object.assign(

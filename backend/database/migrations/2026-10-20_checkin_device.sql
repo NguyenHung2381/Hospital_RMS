@@ -5,7 +5,6 @@
  *   mã thiết bị (FE sinh ngẫu nhiên, lưu localStorage) của lượt tự quét QR.
  *   Service chặn 1 thiết bị điểm danh cho 2 tài khoản khác nhau trong cùng
  *   buổi học / hội thảo (điểm danh hộ bằng tài khoản người khác).
- *   Server cũng tự chạy tương đương lúc khởi động (permissions/migrations.js).
  * Script idempotent — chạy lại nhiều lần an toàn.
  * ==========================================================================*/
 USE [RMS_HOSPITAL];

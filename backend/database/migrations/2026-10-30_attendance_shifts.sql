@@ -10,7 +10,6 @@
  *   staff_attendance   Thêm shift_id + ảnh chụp giờ ca lúc chấm + phút đi muộn/về sớm;
  *                      1 dòng / người / ngày bắt đầu ca / ca (shift_id NULL = chấm tự do).
  *   Không có mẫu lẫn phân ca = chấm tự do như trước.
- *   Server cũng tự chạy tương đương lúc khởi động (permissions/migrations.js).
  * Script idempotent — chạy lại nhiều lần an toàn.
  * ==========================================================================*/
 USE [RMS_HOSPITAL];

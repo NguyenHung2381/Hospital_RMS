@@ -35,24 +35,22 @@ Quy tắc kiểm tra: **có đúng quyền mới được** (`manage` không ph�
 ```bash
 npm test                                  # danh mục, quy tắc quyền/phạm vi, chống leo thang, ma trận vai trò × route
 npm run check:routes -- --list            # bảng mọi route và quyền của nó
-npm run migrate:permissions -- --dry-run  # xem trước nâng cấp CSDL
+npm run sync:permissions -- --dry-run     # xem trước đồng bộ catalog → bảng permissions
 ```
 
 Vai trò mẫu cho test ma trận nằm ở `test/permissions/fixtures/role-templates.json`: ảnh chụp quyền của 8 vai trò hệ thống, không đọc DB. Khi đổi quyền của vai trò hệ thống có chủ đích, chụp lại fixture và sửa bảng `EXPECT` trong cùng commit.
 
 ## Nâng cấp CSDL
 
-Chạy theo thứ tự tên file trong `backend/migrations/` (`sqlcmd -C -I -b -f 65001`), hoặc để server tự chạy lúc khởi động (`migrations.js`, cần quyền `ALTER TABLE`):
+Schema đi qua migration chung của backend (`backend/database/`, xem README ở đó). Hai file của mô hình phân quyền:
 
-1. `20260924_01_permission_scopes.sql`: cột `scope`, quy đổi quyền kiểu cũ, 2 quyền tách riêng `exams:manage`, `cme_records:manage`.
-2. `20260924_02_token_version_role_codes.sql`: `users.token_version`, `roles.code` / `is_system` / `is_superuser`.
+1. `2026-09-28_00_permission_scopes.sql`: cột `scope`, quy đổi quyền kiểu cũ, 2 quyền tách riêng `exams:manage`, `cme_records:manage`.
+2. `2026-09-28_01_token_version_role_codes.sql`: `users.token_version`, `roles.code` / `is_system` / `is_superuser`.
 
 ### Kiểm tra lúc khởi động
 
-Code chỉ chạy với CSDL đã ở mô hình mới, không còn nhánh chạy theo dữ liệu kiểu cũ. Khi khởi động, `permissions/index.js`:
+Code chỉ chạy với CSDL đã ở mô hình mới, không còn nhánh chạy theo dữ liệu kiểu cũ. Khi khởi động, `database/index.js` chạy migration (nếu `DB_AUTO_MIGRATE`), rồi `permissions/index.js`:
 
-1. Tự chạy migration nếu còn thiếu (cần quyền `ALTER TABLE`; đã nâng cấp thì không làm gì).
-2. Kiểm tra đủ cột (`role_permissions.scope`, `users.token_version`, `roles.code` / `is_system` / `is_superuser`) và không còn quyền kiểu cũ (`read_all`, `read_department`, `read_assigned`, `system:manage`). **Thiếu thì server dừng** (exit 1) và liệt kê từng mục kèm file SQL cần chạy.
+1. Kiểm tra đủ cột (`REQUIRED_COLUMNS`: `role_permissions.scope`, `users.token_version`, `roles.code` / `is_system` / `is_superuser`, cột 2FA / refresh token...) và không còn quyền kiểu cũ (`read_all`, `read_department`, `read_assigned`, `system:manage`). Tất cả trong 1 truy vấn. **Thiếu thì server dừng** (exit 1) và liệt kê từng mục kèm file SQL cần chạy.
+2. Đồng bộ `catalog.js` vào bảng `permissions` (`sync.js`).
 3. Không kết nối được CSDL (SQL Server chưa lên) thì chỉ cảnh báo, server vẫn chạy như trước.
-
-`normalizeLegacy` (`scopes.js`) và `LEGACY_ROLE_IDS` (`roleCodes.js`) chỉ còn phục vụ migration.

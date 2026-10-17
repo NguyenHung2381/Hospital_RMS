@@ -11,6 +11,7 @@ const trainingFileService = require('./trainingFileService');
 const path = require('path');
 const fs = require('fs');
 const { moveUploadedFiles, UPLOADS_ROOT } = require('../middlewares/uploadPublic');
+const { httpError, badRequest } = require('../utils/httpError');
 
 const hasFiles = (files) => Array.isArray(files) && files.length > 0;
 
@@ -257,13 +258,12 @@ const registerTopic = async (data, files) => {
 	const allowedLevels = await researchRoundService.getAllowedLevelIds(data.round_id);
 	const levelId = allowedLevels.length === 1 ? allowedLevels[0] : data.level_id;
 	await topicService.assertLevelForRound(data.round_id, levelId, 'de_tai');
-	if (!levelId) throw Object.assign(new Error('Vui lòng chọn cấp độ đề tài.'), { statusCode: 400 });
+	if (!levelId) throw httpError(400, 'Vui lòng chọn cấp độ đề tài.');
 
 	// Người đăng ký = chủ nhiệm; thư ký/thành viên khác nhập thêm (tùy chọn).
 	const extras = (Array.isArray(data.members) ? data.members : [])
 		.filter((m) => m && String(m.full_name ?? '').trim())
 		.map((m) => ({ ...m, role: m.role === 'secretary' ? 'secretary' : 'member' }));
-	const badRequest = (msg) => Object.assign(new Error(msg), { statusCode: 400 });
 	if (extras.filter((m) => m.role === 'secretary').length > 1) throw badRequest('Mỗi đề tài chỉ có 1 thư ký.');
 	const mnvs = [data.staff_number, ...extras.map((m) => m.staff_number)].map((v) => String(v ?? '').trim());
 	if (new Set(mnvs).size !== mnvs.length) throw badRequest('Có mã nhân viên bị trùng giữa các thành viên đề tài.');

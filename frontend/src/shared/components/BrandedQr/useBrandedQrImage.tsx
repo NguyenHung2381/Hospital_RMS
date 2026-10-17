@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { renderBrandedQr, type BrandedQrOptions } from './renderBrandedQr';
+import { renderBrandedQr, renderPlainQr, type BrandedQrOptions } from './renderBrandedQr';
 import styles from './BrandedQr.module.css';
 
 // iPadOS 13+ báo là "MacIntel" nhưng có cảm ứng
@@ -7,6 +7,18 @@ export const isIOS = () =>
 	/iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 
 type Image = { key: string; file: File; dataUrl: string };
+
+/** `plain`: chỉ mã QR (không header, khung, chữ) */
+export type QrImageOptions = (BrandedQrOptions | { value: string; plain: true }) & { filename: string };
+
+// Bỏ ký tự Windows/macOS cấm trong tên file, giữ tiếng Việt có dấu
+const safeFilename = (name: string) =>
+	name
+		.replace(/[\\/:*?"<>|]|\p{Cc}/gu, ' ')
+		.replace(/\s+/g, ' ')
+		.trim()
+		.replace(/[. ]+$/, '')
+		.slice(0, 180) || 'ma-qr';
 
 /**
  * Dựng sẵn ảnh QR thương hiệu và trả về hàm `save()` lưu ảnh về máy.
@@ -17,7 +29,7 @@ type Image = { key: string; file: File; dataUrl: string };
  * Ảnh được dựng trước khi bấm vì iOS chỉ cho gọi navigator.share() ngay trong
  * thao tác của người dùng — chờ vẽ xong mới gọi sẽ bị chặn.
  */
-export function useBrandedQrImage(options: (BrandedQrOptions & { filename: string }) | null) {
+export function useBrandedQrImage(options: QrImageOptions | null) {
 	const [rendered, setRendered] = useState<Image | null>(null);
 	const [sheetOpen, setSheetOpen] = useState(false);
 	const key = options ? JSON.stringify(options) : '';
@@ -26,15 +38,15 @@ export function useBrandedQrImage(options: (BrandedQrOptions & { filename: strin
 
 	useEffect(() => {
 		if (!key) return;
-		const { filename, ...opts } = JSON.parse(key) as BrandedQrOptions & { filename: string };
+		const { filename, ...opts } = JSON.parse(key) as QrImageOptions;
 		let alive = true;
-		void renderBrandedQr(opts)
+		void ('plain' in opts ? renderPlainQr(opts.value) : renderBrandedQr(opts))
 			.then(
 				(canvas) =>
 					new Promise<Image>((resolve, reject) =>
 						canvas.toBlob((blob) => {
 							if (!blob) return reject(new Error('Không tạo được ảnh QR'));
-							const name = filename.endsWith('.png') ? filename : `${filename}.png`;
+							const name = `${safeFilename(filename.replace(/\.png$/i, ''))}.png`;
 							resolve({ key, file: new File([blob], name, { type: 'image/png' }), dataUrl: canvas.toDataURL('image/png') });
 						}, 'image/png'),
 					),

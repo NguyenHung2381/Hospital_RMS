@@ -1,5 +1,4 @@
-/* Xoá học viên = ẩn khỏi danh sách (trainees.hidden_at). Idempotent.
- * Server cũng tự chạy tương đương lúc khởi động (permissions/migrations.js). */
+/* Xoá học viên = ẩn khỏi danh sách (trainees.hidden_at). Idempotent. */
 USE [RMS_HOSPITAL];
 GO
 

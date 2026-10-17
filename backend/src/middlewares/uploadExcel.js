@@ -1,6 +1,7 @@
 const multer = require('multer');
 const path = require('path');
 const { secureUpload } = require('./secureUpload');
+const { httpError } = require('../utils/httpError');
 
 // File Excel để import (đọc trong bộ nhớ, không lưu đĩa) — dùng chung cho các
 // route /import-excel. Trước đây mỗi route tự khai multer không lọc định dạng:
@@ -15,7 +16,7 @@ const uploadExcel = secureUpload(
 		limits: { fileSize: 10 * 1024 * 1024, files: 1 },
 		fileFilter: (_req, file, cb) => {
 			if (!EXCEL_EXT.has(path.extname(file.originalname).toLowerCase())) {
-				return cb(Object.assign(new Error('Chỉ nhận file Excel .xlsx'), { statusCode: 400 }));
+				return cb(httpError(400, 'Chỉ nhận file Excel .xlsx'));
 			}
 			cb(null, true);
 		},

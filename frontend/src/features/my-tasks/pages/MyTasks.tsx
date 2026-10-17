@@ -1,5 +1,5 @@
 import { formatDateVN } from '../../../shared/utils/formatDate';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type CSSProperties, type KeyboardEvent } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { ApproveSvg, ClipboardCheckSvg } from '@/assets/icons';
 import { Badge, Card, EmptyState, InlineLoading } from '@/shared/components';
@@ -9,6 +9,16 @@ import { canAccessAdminPanel } from '../../../app/router/authHelpers';
 import { getStoredUser } from '../../../shared/utils/storage';
 import { STATUS_CFG } from '../../topics/utils/topicHelpers';
 import { getMyTasks, type MyTasks as MyTasksData } from '../api/myTasksApi';
+
+const ROW_STYLE: CSSProperties = {
+	display: 'flex',
+	justifyContent: 'space-between',
+	alignItems: 'center',
+	padding: '10px 12px',
+	border: '1px solid var(--color-gray-100)',
+	borderRadius: 10,
+	gap: 12,
+};
 
 export default function MyTasks() {
 	const navigate = useNavigate();
@@ -25,6 +35,23 @@ export default function MyTasks() {
 	// Trang dùng chung cho 2 cổng: vào từ /admin/... thì giữ layout admin,
 	// tránh bị "nhảy" sang giao diện người dùng khi bấm từ sidebar admin.
 	const Layout = useLocation().pathname.startsWith('/admin') ? AdminLayout : UserLayout;
+
+	// Bấm vào 1 dòng là mở thẳng nơi xử lý việc đó (trang Phê duyệt chọn sẵn
+	// đúng đề tài) — "Việc của tôi" là hộp thư, không lặp lại chức năng duyệt.
+	const rowLink = (to?: string) =>
+		to
+			? {
+					role: 'button',
+					tabIndex: 0,
+					onClick: () => navigate(to),
+					onKeyDown: (e: KeyboardEvent) => {
+						if (e.key === 'Enter' || e.key === ' ') {
+							e.preventDefault();
+							navigate(to);
+						}
+					},
+				}
+			: {};
 
 	return (
 		<Layout
@@ -81,15 +108,12 @@ export default function MyTasks() {
 									return (
 										<div
 											key={t.id}
-											style={{
-												display: 'flex',
-												justifyContent: 'space-between',
-												alignItems: 'center',
-												padding: '10px 12px',
-												border: '1px solid var(--color-gray-100)',
-												borderRadius: 10,
-												gap: 12,
-											}}
+											{...rowLink(
+												isAdmin
+													? `/admin/approvals?topic=${encodeURIComponent(t.id)}`
+													: undefined,
+											)}
+											style={{ ...ROW_STYLE, cursor: isAdmin ? 'pointer' : undefined }}
 										>
 											<div>
 												<div style={{ fontWeight: 600, fontSize: 13 }}>{t.title}</div>
@@ -142,15 +166,8 @@ export default function MyTasks() {
 							{data.progress_reviews.map((t) => (
 								<div
 									key={t.id}
-									style={{
-										display: 'flex',
-										justifyContent: 'space-between',
-										alignItems: 'center',
-										padding: '10px 12px',
-										border: '1px solid var(--color-gray-100)',
-										borderRadius: 10,
-										gap: 12,
-									}}
+									{...rowLink('/user/council-progress')}
+									style={{ ...ROW_STYLE, cursor: 'pointer' }}
 								>
 									<div>
 										<div style={{ fontWeight: 600, fontSize: 13 }}>{t.title}</div>

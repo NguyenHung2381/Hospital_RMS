@@ -12,7 +12,6 @@
  *    subject_id). program_subjects → lesson_programs. Bảng subjects và
  *    program_subjects GIỮ LẠI (không còn dùng) để có thể đối chiếu/khôi phục.
  *
- *   Server cũng tự chạy tương đương lúc khởi động (permissions/migrations.js).
  * Script idempotent — chạy lại nhiều lần an toàn.
  * ==========================================================================*/
 USE [RMS_HOSPITAL];

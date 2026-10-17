@@ -2,6 +2,8 @@
 // hiển thị thành <a href>. Chỉ nhận http/https tuyệt đối — chặn javascript:,
 // data:, vbscript:... (XSS lưu trữ khi link được mở ở nơi không tự lọc như
 // React 19: file xuất, email, client khác).
+const { httpError } = require('./httpError');
+
 const assertHttpUrl = (value, field = 'Đường dẫn') => {
 	let url;
 	try {
@@ -10,7 +12,7 @@ const assertHttpUrl = (value, field = 'Đường dẫn') => {
 		url = null;
 	}
 	if (!url || (url.protocol !== 'http:' && url.protocol !== 'https:')) {
-		throw { statusCode: 400, message: `${field} phải là địa chỉ http:// hoặc https:// hợp lệ` };
+		throw httpError(400, `${field} phải là địa chỉ http:// hoặc https:// hợp lệ`);
 	}
 	return url.href;
 };

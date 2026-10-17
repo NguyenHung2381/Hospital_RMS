@@ -322,9 +322,9 @@ export default function CmeCompliance() {
 
 	return (
 		<AdminLayout
-			pageTitle='Cảnh báo tín chỉ CME'
+			pageTitle='Cảnh báo tín chỉ'
 			pageSubtitle='Ngưỡng tín chỉ đào tạo y khoa liên tục theo năm và danh sách nhân sự chưa đạt'
-			breadcrumbs={[{ label: 'Hội nghị & CME' }]}
+			breadcrumbs={[{ label: 'Đào tạo liên tục' }]}
 			headerActions={
 				<Button
 					variant='secondary'

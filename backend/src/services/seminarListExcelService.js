@@ -14,6 +14,7 @@ const { norm } = require('../utils/vietnameseText');
 const seminarService = require('./seminarService');
 const xl = require('../utils/excelTemplate');
 const { ROLE, inputRoleId } = require('./roleCodes');
+const { httpError } = require('../utils/httpError');
 
 const EVENT_TYPE_LABELS = {
 	conference: 'Hội nghị',
@@ -294,9 +295,7 @@ const parseRows = async (buffer) => {
 	try {
 		await workbook.xlsx.load(buffer);
 	} catch {
-		throw Object.assign(new Error('File không đọc được — cần file .xlsx hợp lệ.'), {
-			statusCode: 400,
-		});
+		throw httpError(400, 'File không đọc được — cần file .xlsx hợp lệ.');
 	}
 	const header = findHeader(workbook);
 	if (!header) {
@@ -401,9 +400,7 @@ const parseRows = async (buffer) => {
 const importExcel = async ({ buffer, dry_run }, actorId) => {
 	const rows = await parseRows(buffer);
 	if (rows.length === 0) {
-		throw Object.assign(new Error('File không có dòng dữ liệu nào (cột "Tên hội thảo/hội nghị" trống).'), {
-			statusCode: 400,
-		});
+		throw httpError(400, 'File không có dòng dữ liệu nào (cột "Tên hội thảo/hội nghị" trống).');
 	}
 
 	// Đánh dấu trùng: cùng tên (bỏ dấu, không phân biệt hoa thường) + cùng năm

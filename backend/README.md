@@ -14,32 +14,30 @@ npm run dev
 ## Cấu trúc dự án
 
 ```
+database/                     # Migration + định nghĩa SP/trigger/view — xem database/README.md
+├── migrations/               # *.sql chạy tự động theo thứ tự tên (npm run migrate)
+├── manual/                   # script chạy tay 1 lần
+└── objects/                  # xuất từ DB (npm run dump:db-objects)
+scripts/                      # CLI: migrate, sync-permissions, import, gen-jwt...
 src/
-├── app.js                    # Entry point
-├── config/
-│   └── db.js                 # Kết nối SQL Server (mssql pool)
-├── middlewares/
-│   ├── auth.js               # JWT authenticate + authorize
-│   └── errorHandler.js       # Global error handler + validation
-├── services/
-│   ├── authService.js        # Login, refresh, logout, đổi mật khẩu
-│   ├── userService.js        # CRUD users + reset password
-│   ├── topicService.js       # CRUD topics, members, approvals
-│   ├── fileService.js        # Upload/xóa files (gọi SP)
-│   └── crudService.js        # Factory CRUD cho bảng lookup
-├── controllers/
-│   ├── authController.js
-│   ├── userController.js
-│   ├── topicController.js
-│   ├── fileController.js
-│   └── crudController.js     # Factory controller
-└── routes/
-    ├── auth.js
-    ├── users.js
-    ├── topics.js
-    ├── files.js
-    └── lookups.js            # departments, categories, levels, roles, rounds
+├── server.js / cluster.js    # Khởi động (dev: 1 tiến trình; production: cluster)
+├── app.js                    # Express app: middleware, gắn routes
+├── config/                   # db.js (pool + withTransaction), redis, env, swagger, log
+├── database/                 # migrator.js (bộ chạy migration), index.js (initDatabase lúc khởi động)
+├── permissions/              # catalog quyền, phạm vi, kiểm tra CSDL + đồng bộ — xem README.md ở đó
+├── middlewares/              # auth, errorHandler, upload*, cache quyền / trạng thái tài khoản
+├── routes/                   # khai báo route + validate + quyền
+├── controllers/              # nhận request → gọi service → trả response
+├── services/                 # nghiệp vụ + truy vấn SQL
+├── jobs/                     # cron job nền
+└── utils/                    # hàm dùng chung: httpError, paging, sqlFilters, cache, excel*, vnDate...
 ```
+
+Quy ước dùng chung:
+
+- **Lỗi nghiệp vụ**: `throw httpError(404, 'Không tìm thấy...')`, `badRequest(...)` (`utils/httpError.js`). `errorHandler` trả đúng mã và thông điệp. Không ném object thường (`throw { statusCode }`), vì sẽ mất stack trace.
+- **Transaction**: `await withTransaction(async (tx) => { ... }, pool)` (`config/db.js`). Helper tự commit, tự rollback và không để lỗi rollback che lỗi gốc.
+- **Schema**: chỉ đổi qua file trong `database/migrations/` (`npm run migrate:new -- <mô tả>`). Code không tự chạy DDL.
 
 ## API Endpoints
 

@@ -7,7 +7,7 @@
   server. GitHub sự cố thì chạy tay trên server với cùng tham số.
     1. Ghi nhớ image đang chạy (để tự quay lại khi hỏng).
     2. Kéo image backend/frontend tag = commit SHA từ registry (không build lại).
-    3. Chạy migration DB mới bằng image MỚI (backend/scripts/run-migrations.js),
+    3. Chạy migration DB mới bằng image MỚI (backend/scripts/migrate.js),
        có backup trước nếu đặt MIGRATION_BACKUP_DIR. Lỗi → dừng, bản cũ vẫn chạy.
     4. docker compose up -d --no-build.
     5. Smoke test: /health trả đúng version, /health/db, trang chủ; theo dõi thêm
@@ -127,7 +127,7 @@ if ($env:MIGRATION_DB_USER) {
 }
 if ($env:MIGRATION_BACKUP_DIR) { $runEnv += '-e', 'MIGRATION_BACKUP_DIR' }
 try {
-	Invoke-Compose run --rm --no-deps -T @runEnv backend node scripts/run-migrations.js
+	Invoke-Compose run --rm --no-deps -T @runEnv backend node scripts/migrate.js
 } catch {
 	Write-History 'FAILED-MIGRATION' "$prevBackend"
 	throw
