@@ -1,14 +1,14 @@
-const userService = require('../services/userService');
+const userService = require('./userService');
 const ExcelJS = require('exceljs');
-const { success, created, notFound, forbidden, sendWorkbook } = require('../utils/response');
-const xl = require('../utils/excelTemplate');
-const { createCrudController } = require('../shared/crudController');
-const { scopeOf, hasPermission } = require('../middlewares/auth');
+const { success, created, notFound, forbidden, sendWorkbook } = require('../../utils/response');
+const xl = require('../../utils/excelTemplate');
+const { createCrudController } = require('../../shared/crudController');
+const { scopeOf, hasPermission } = require('../../middlewares/auth');
 const {
 	isSuperuser,
 	assertCanAssignRole,
 	assertCanManageUser,
-} = require('../modules/access/privilegeGuard');
+} = require('../access/privilegeGuard');
 
 const base = createCrudController(userService);
 

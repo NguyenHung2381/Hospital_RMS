@@ -1,17 +1,17 @@
 const bcrypt = require('bcrypt');
-const { getPool, sql, withTransaction } = require('../config/db');
-const { broadcast } = require('../modules/events/eventService');
-const personService = require('../modules/persons/personService');
-const securityEvents = require('../modules/audit/securityEventService');
-const userStatusCache = require('../middlewares/userStatusCache');
-const { bumpTokenVersion } = require('../modules/auth/sessionVersion');
-const { paging } = require('../utils/paging');
+const { getPool, sql, withTransaction } = require('../../config/db');
+const { broadcast } = require('../events/eventService');
+const personService = require('../persons/personService');
+const securityEvents = require('../audit/securityEventService');
+const userStatusCache = require('../../middlewares/userStatusCache');
+const { bumpTokenVersion } = require('../auth/sessionVersion');
+const { paging } = require('../../utils/paging');
 // department_id/role_id nhận danh sách phân tách bởi dấu phẩy (multi-select trên UI)
-const { splitList, inClause } = require('../utils/sqlFilters');
-const { isDeptAccountSql } = require('../utils/deptAccount');
-const { ROLE, requireRoleId } = require('../modules/access/roleCodes');
-const { defaultPassword } = require('../utils/passwordPolicy');
-const { httpError } = require('../utils/httpError');
+const { splitList, inClause } = require('../../utils/sqlFilters');
+const { isDeptAccountSql } = require('../../utils/deptAccount');
+const { ROLE, requireRoleId } = require('../access/roleCodes');
+const { defaultPassword } = require('../../utils/passwordPolicy');
+const { httpError } = require('../../utils/httpError');
 
 // ─── Cache thống kê toàn bảng (global_stats) ─────────────────────────────────
 // global_stats không phụ thuộc filter/phân trang nên trước đây bị quét lại toàn
@@ -182,7 +182,7 @@ const create = async (data, actorId) => {
 	// Không truyền mật khẩu ⇒ mặc định = tên đăng nhập (bắt đổi ở lần đăng nhập đầu)
 	const hashed = await bcrypt.hash(data.password || defaultPassword(data.username), 12);
 	// require muộn: topicMemberService nạp nhiều service khác
-	const { genUserIdInTx } = require('../modules/topics/topicMemberService');
+	const { genUserIdInTx } = require('../topics/topicMemberService');
 	const roleId = data.role_id || (await requireRoleId(ROLE.MEMBER));
 
 	// Mã người dùng 'NV' + mã khoa + NNNN như các luồng cấp tài khoản khác (sp_gen_user_id).
@@ -459,7 +459,7 @@ const createStaffAccount = async (
 	full_name = String(full_name || '').trim();
 	if (!full_name) throw httpError(400, 'Vui lòng nhập họ và tên');
 	// require muộn: topicMemberService nạp nhiều service khác, chỉ cần ở luồng này
-	const { buildMemberUsername, ensureUniqueUsername, genUserIdInTx } = require('../modules/topics/topicMemberService');
+	const { buildMemberUsername, ensureUniqueUsername, genUserIdInTx } = require('../topics/topicMemberService');
 	const pool = await getPool();
 	const roleId = await requireRoleId(ROLE.MEMBER);
 

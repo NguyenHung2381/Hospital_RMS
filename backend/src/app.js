@@ -237,7 +237,7 @@ app.use(API, activityLogger);
 
 app.use(`${API}/modules`, require('./modules/system/modules.routes'));
 app.use(`${API}/auth`, require('./modules/auth/auth.routes'));
-app.use(`${API}/users`, require('./routes/users'));
+app.use(`${API}/users`, require('./modules/users/users.routes'));
 app.use(`${API}/topics`, requireModule('RESEARCH'), require('./modules/topics/topics.routes'));
 app.use(`${API}/councils`, requireModule('RESEARCH'), require('./modules/councils/councils.routes'));
 app.use(`${API}/files`, require('./modules/topics/files.routes'));

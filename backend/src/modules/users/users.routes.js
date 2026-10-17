@@ -1,9 +1,9 @@
 const router = require('express').Router();
 const { body } = require('express-validator');
-const ctrl = require('../controllers/userController');
-const { authenticate, authorizePermission } = require('../middlewares/auth');
-const { validate } = require('../middlewares/errorHandler');
-const { passwordRule } = require('../utils/passwordPolicy');
+const ctrl = require('./userController');
+const { authenticate, authorizePermission } = require('../../middlewares/auth');
+const { validate } = require('../../middlewares/errorHandler');
+const { passwordRule } = require('../../utils/passwordPolicy');
 
 router.use(authenticate);
 
