@@ -44,7 +44,7 @@ Quy ước dùng chung:
 | Lệnh | Việc | CI |
 |------|------|----|
 | `npm run lint` | ESLint. Lỗi chặn merge; cảnh báo `max-lines` (file > 500 dòng) chỉ để theo dõi | ✓ |
-| `npm run format -- <file>` / `npm run format:check -- <file>` | Prettier (`.prettierrc.json`). Chỉ format file đang sửa, không format cả thư mục | — |
+| `npm run format` / `npm run format:check` | Prettier (`.prettierrc.json`) cho mọi file `.js`. Commit format hàng loạt nằm trong `.git-blame-ignore-revs` ở gốc repo (chạy 1 lần: `git config blame.ignoreRevsFile .git-blame-ignore-revs`) | ✓ |
 | `npm test` | Unit test, không cần DB (`test/**`) | ✓ |
 | `npm run test:contract` | So danh sách route + quyền với `test/contract/routes.snapshot.txt`. Đổi route có chủ đích thì chạy `UPDATE_SNAPSHOTS=1 npm run test:contract` rồi commit file snapshot | ✓ |
 | `npm run test:smoke` | Gọi thật mọi API GET vào DB đang cấu hình (chỉ đọc). So mã HTTP và tập trường JSON với baseline của máy này (`test-integration/.baseline/`, không commit) | — |

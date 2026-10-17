@@ -1,0 +1,6 @@
+# Commit chỉ đổi định dạng — git blame bỏ qua để vẫn thấy người sửa logic thật.
+# GitHub tự đọc file này. Cấu hình git local 1 lần:
+#   git config blame.ignoreRevsFile .git-blame-ignore-revs
+
+# style(backend): format toàn bộ JS bằng Prettier
+4662e5a58f35d811416b7737e07e5280b3ef67ee
