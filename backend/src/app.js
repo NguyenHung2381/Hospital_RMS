@@ -263,7 +263,7 @@ app.use(`${API}/staff-licenses`, require('./modules/staffLicenses/staffLicenses.
 app.use(`${API}/staff-attendance`, requireModule('ATTENDANCE'), require('./modules/attendance/staffAttendance.routes'));
 app.use(`${API}/system-settings`, require('./modules/settings/systemSettings.routes'));
 app.use(`${API}/persons`, require('./modules/persons/persons.routes'));
-app.use(`${API}/public`, require('./routes/public'));
+app.use(`${API}/public`, require('./modules/public/public.routes'));
 app.use(API, require('./modules/catalog/lookups.routes'));
 
 // ─── 404 handler ──────────────────────────────────────────────────────────────

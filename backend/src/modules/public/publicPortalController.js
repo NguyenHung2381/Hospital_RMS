@@ -1,8 +1,8 @@
-const service = require('../services/publicPortalService');
-const seminarParticipants = require('../modules/seminars/seminarParticipantService');
-const { generateCaptcha, verifyCaptcha } = require('../utils/captcha');
-const { success, created, error } = require('../utils/response');
-const attempts = require('../utils/attemptLimiter');
+const service = require('./publicPortalService');
+const seminarParticipants = require('../seminars/seminarParticipantService');
+const { generateCaptcha, verifyCaptcha } = require('../../utils/captcha');
+const { success, created, error } = require('../../utils/response');
+const attempts = require('../../utils/attemptLimiter');
 
 const getCaptcha = (req, res) => {
 	success(res, generateCaptcha());

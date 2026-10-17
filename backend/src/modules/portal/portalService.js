@@ -6,7 +6,7 @@
  */
 const { getPool, sql } = require('../../config/db');
 const courseService = require('../training/courses/courseService');
-const publicPortalService = require('../../services/publicPortalService');
+const publicPortalService = require('../public/publicPortalService');
 const examService = require('../training/exams/examService');
 const trainingProgramService = require('../training/programs/trainingProgramService');
 const { httpError } = require('../../utils/httpError');

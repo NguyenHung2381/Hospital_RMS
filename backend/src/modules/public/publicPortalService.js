@@ -1,17 +1,17 @@
-const { getPool, sql } = require('../config/db');
-const { remember } = require('../utils/cache');
-const traineeService = require('../modules/training/trainees/traineeService');
-const courseService = require('../modules/training/courses/courseService');
-const researchRoundService = require('../modules/rounds/roundService');
-const topicService = require('../modules/topics/topicService');
-const topicMemberService = require('../modules/topics/topicMemberService');
-const { norm } = require('../utils/vietnameseText');
-const fileService = require('../modules/topics/fileService');
-const trainingFileService = require('../modules/training/trainingFileService');
+const { getPool, sql } = require('../../config/db');
+const { remember } = require('../../utils/cache');
+const traineeService = require('../training/trainees/traineeService');
+const courseService = require('../training/courses/courseService');
+const researchRoundService = require('../rounds/roundService');
+const topicService = require('../topics/topicService');
+const topicMemberService = require('../topics/topicMemberService');
+const { norm } = require('../../utils/vietnameseText');
+const fileService = require('../topics/fileService');
+const trainingFileService = require('../training/trainingFileService');
 const path = require('path');
 const fs = require('fs');
-const { moveUploadedFiles, UPLOADS_ROOT } = require('../middlewares/uploadPublic');
-const { httpError, badRequest } = require('../utils/httpError');
+const { moveUploadedFiles, UPLOADS_ROOT } = require('../../middlewares/uploadPublic');
+const { httpError, badRequest } = require('../../utils/httpError');
 
 const hasFiles = (files) => Array.isArray(files) && files.length > 0;
 

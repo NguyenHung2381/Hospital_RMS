@@ -23,7 +23,7 @@ courseService.registerTrainee = async () => ({ id: 'GD1' });
 require('../../src/modules/training/trainees/traineeService').create = async () => ({ id: 'HV-NEW' });
 
 const { generateCaptcha, verifyCaptcha } = require('../../src/utils/captcha');
-const portal = require('../../src/services/publicPortalService');
+const portal = require('../../src/modules/public/publicPortalService');
 const attempts = require('../../src/utils/attemptLimiter');
 
 const { leadingZeroBits } = require('../../src/utils/loginShield');

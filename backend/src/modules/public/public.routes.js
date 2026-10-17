@@ -1,13 +1,13 @@
 const router = require('express').Router();
 // Đếm trên Redis, tự rơi về bộ nhớ khi Redis lỗi (utils/rateLimit.js)
-const rateLimit = require('../utils/rateLimit');
+const rateLimit = require('../../utils/rateLimit');
 const { body, param, query } = require('express-validator');
-const { validate } = require('../middlewares/errorHandler');
-const ctrl = require('../controllers/publicPortalController');
+const { validate } = require('../../middlewares/errorHandler');
+const ctrl = require('./publicPortalController');
 // Hồ sơ đính kèm (multipart: field `data` = JSON form + `files`) — tùy chọn
-const { publicUpload } = require('../middlewares/uploadPublic');
-const uploadPolicy = require('../utils/uploadPolicy');
-const { success } = require('../utils/response');
+const { publicUpload } = require('../../middlewares/uploadPublic');
+const uploadPolicy = require('../../utils/uploadPolicy');
+const { success } = require('../../utils/response');
 
 // Cổng công khai không đăng nhập — mọi endpoint ở đây PHẢI được rate-limit
 // theo IP, mirror loginLimiter ở routes/auth.js.
