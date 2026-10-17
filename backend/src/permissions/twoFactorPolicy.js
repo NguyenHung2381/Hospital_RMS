@@ -1,7 +1,7 @@
 const { getPool, sql } = require('../config/db');
 const { ALL_PERMISSIONS } = require('./catalog');
 const userStatusCache = require('../middlewares/userStatusCache');
-const systemSettingService = require('../services/systemSettingService');
+const systemSettingService = require('../modules/settings/systemSettingService');
 
 // Bắt buộc xác thực 2 lớp cho tài khoản quản trị: superuser, hoặc vai trò có
 // ít nhất 1 quyền đánh dấu `critical` trong catalog (tạo / sửa người dùng, sửa

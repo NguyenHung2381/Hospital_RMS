@@ -1,6 +1,6 @@
 const path = require('path');
 const nodemailer = require('nodemailer');
-const systemSettingService = require('./systemSettingService');
+const systemSettingService = require('../modules/settings/systemSettingService');
 
 // Kênh email tuỳ chọn (mirror MailHelper.php của hệ thống NCKH bệnh viện):
 // mặc định TẮT (MAIL_ENABLED khác 'true') để không phá vỡ môi trường dev/test

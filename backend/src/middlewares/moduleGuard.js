@@ -1,4 +1,4 @@
-const systemSettingService = require('../services/systemSettingService');
+const systemSettingService = require('../modules/settings/systemSettingService');
 
 // Bật/tắt module nghiệp vụ ở Cấu hình hệ thống: MODULE_<KEY> = 'false' là tắt, còn lại là bật.
 // Module trong DEFAULT_OFF thì ngược lại: chỉ bật khi = 'true' (chấm công cần cấu hình

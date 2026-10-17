@@ -1,5 +1,5 @@
 const net = require('net');
-const systemSettingService = require('../services/systemSettingService');
+const systemSettingService = require('../modules/settings/systemSettingService');
 const { normalizeIp } = require('./activityDescribe');
 
 // Chấm công nhân viên: phải ĐỒNG THỜI (1) gọi từ IP mạng bệnh viện và (2) có

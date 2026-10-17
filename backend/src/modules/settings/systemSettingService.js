@@ -1,5 +1,5 @@
-const { getPool, sql } = require('../config/db');
-const { broadcast } = require('../modules/events/eventService');
+const { getPool, sql } = require('../../config/db');
+const { broadcast } = require('../events/eventService');
 
 // Cấu hình hệ thống qua UI (2026-09-14_system_settings.sql) — thay .env cho các
 // giá trị nghiệp vụ hay đổi. value NULL = "chưa cấu hình qua UI, dùng .env"

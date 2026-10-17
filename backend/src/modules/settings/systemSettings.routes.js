@@ -1,12 +1,12 @@
 const router = require('express').Router();
 const { body } = require('express-validator');
-const systemSettingService = require('../services/systemSettingService');
-const { authenticate, authorizePermission } = require('../middlewares/auth');
-const { validate } = require('../middlewares/errorHandler');
-const mailService = require('../services/mailService');
-const uploadPolicy = require('../utils/uploadPolicy');
-const attendancePolicy = require('../utils/attendancePolicy');
-const { success, notFound, error } = require('../utils/response');
+const systemSettingService = require('./systemSettingService');
+const { authenticate, authorizePermission } = require('../../middlewares/auth');
+const { validate } = require('../../middlewares/errorHandler');
+const mailService = require('../../services/mailService');
+const uploadPolicy = require('../../utils/uploadPolicy');
+const attendancePolicy = require('../../utils/attendancePolicy');
+const { success, notFound, error } = require('../../utils/response');
 
 /**
  * @swagger

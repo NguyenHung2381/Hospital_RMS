@@ -36,7 +36,7 @@ install(async (text, inputs) => {
 	return [];
 });
 
-require('../../src/services/systemSettingService').getValue = async () => 'true';
+require('../../src/modules/settings/systemSettingService').getValue = async () => 'true';
 require('../../src/services/sessionVersion').bumpTokenVersion = async () => {};
 const mailService = require('../../src/services/mailService');
 const sent = [];

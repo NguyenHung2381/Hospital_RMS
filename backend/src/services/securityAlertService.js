@@ -1,4 +1,4 @@
-const systemSettingService = require('./systemSettingService');
+const systemSettingService = require('../modules/settings/systemSettingService');
 const { getPool, sql } = require('../config/db');
 const mailService = require('./mailService');
 const { consumeOnce } = require('../utils/oneTimeToken');
