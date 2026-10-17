@@ -29,7 +29,7 @@ const log = install(async (text, inputs) => {
 	if (/SELECT \* FROM users WHERE id = @id/.test(text)) return [byId[inputs.id]];
 	return [];
 });
-require('../../src/services/securityEventService').log = async () => {};
+require('../../src/modules/audit/securityEventService').log = async () => {};
 const authService = require('../../src/services/authService');
 
 const rejectsWith = async (p, status, msgRe) => {

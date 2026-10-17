@@ -1,5 +1,5 @@
-const securityEventService = require('../services/securityEventService');
-const { success } = require('../utils/response');
+const securityEventService = require('./securityEventService');
+const { success } = require('../../utils/response');
 
 const getAll = async (req, res, next) => {
 	try {

@@ -11,7 +11,7 @@ install(async (text) => {
 });
 const sent = [];
 require('../../src/modules/notifications/mailService').send = async (m) => sent.push(m);
-const { notify } = require('../../src/services/securityAlertService');
+const { notify } = require('../../src/modules/audit/securityAlertService');
 
 test('sự kiện nghiêm trọng: gửi email tới ALERT_EMAILS, nội dung được escape', async () => {
 	await notify({

@@ -1,5 +1,5 @@
-const svc = require('../services/activityLogService');
-const { success } = require('../utils/response');
+const svc = require('./activityLogService');
+const { success } = require('../../utils/response');
 
 // Bộ lọc (from, to, actor, method, action, module, status, ip, search,
 // min_duration, exclude_views) được service tự chuẩn hoá từ req.query.

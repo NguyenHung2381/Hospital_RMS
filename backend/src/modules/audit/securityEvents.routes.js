@@ -1,6 +1,6 @@
 const router = require('express').Router();
-const ctrl = require('../controllers/securityEventController');
-const { authenticate, authorizePermission } = require('../middlewares/auth');
+const ctrl = require('./securityEventController');
+const { authenticate, authorizePermission } = require('../../middlewares/auth');
 
 /**
  * @swagger

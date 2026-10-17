@@ -1,7 +1,7 @@
-const systemSettingService = require('../modules/settings/systemSettingService');
-const { getPool, sql } = require('../config/db');
-const mailService = require('../modules/notifications/mailService');
-const { consumeOnce } = require('../utils/oneTimeToken');
+const systemSettingService = require('../settings/systemSettingService');
+const { getPool, sql } = require('../../config/db');
+const mailService = require('../notifications/mailService');
+const { consumeOnce } = require('../../utils/oneTimeToken');
 
 // Gửi email cảnh báo cho quản trị khi có sự kiện bảo mật quan trọng — trước đây
 // chỉ ghi vào bảng security_events, không ai biết cho tới khi tự mở màn Nhật ký

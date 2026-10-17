@@ -1,4 +1,4 @@
-const { getPool, sql } = require('../config/db');
+const { getPool, sql } = require('../../config/db');
 
 // Ghi 1 sự kiện bảo mật (khoá tài khoản, xoay refresh token, xem dữ liệu
 // nhạy cảm...). Không bao giờ throw ra ngoài — lỗi ghi log không được phép

@@ -5,13 +5,13 @@
 
 const fsp = require('fs/promises');
 const path = require('path');
-const { describe, normalizeIp, ipKind, MODULE_LABELS } = require('../utils/activityDescribe');
+const { describe, normalizeIp, ipKind, MODULE_LABELS } = require('../../utils/activityDescribe');
 
 // Phải khớp CHÍNH XÁC với auditLogger.js: mặc định <server>/logs, neo theo mã
 // nguồn để không lệ thuộc thư mục chạy server.
 const LOG_DIR = process.env.LOG_DIR
 	? path.resolve(process.env.LOG_DIR)
-	: path.join(__dirname, '..', '..', 'logs');
+	: path.join(__dirname, '..', '..', '..', 'logs');
 
 // Chặn quét lan man: không đọc quá ngần này file / dòng cho một lần truy vấn.
 const MAX_FILES_SCANNED = 100;

@@ -11,7 +11,7 @@ delete process.env.CLAMAV_HOST;
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const express = require('express');
-require('../../src/services/securityEventService').log = async () => {};
+require('../../src/modules/audit/securityEventService').log = async () => {};
 // Cấu hình hệ thống giả (không cần DB) — test đổi được giữa chừng
 const settings = {};
 require('../../src/modules/settings/systemSettingService').getValue = async (key) => settings[key];

@@ -171,7 +171,7 @@ const recordFailure = async ({ ip, username, userAgent }) => {
 		attackLoggedAt = now;
 		const first = await consumeOnce('login-attack-log', String(Math.floor(now / ATTACK_LOG_EVERY_MS)), 600);
 		if (first) {
-			require('../services/securityEventService').log({
+			require('../modules/audit/securityEventService').log({
 				eventType: 'login_attack_mode',
 				ip,
 				userAgent,

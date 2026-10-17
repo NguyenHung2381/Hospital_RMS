@@ -56,7 +56,7 @@ install(async (text, inputs) => {
 	if (/EXEC sp_create_refresh_token/.test(text)) return [{ id: `RT${crypto.randomUUID()}` }];
 	return [];
 });
-require('../../src/services/securityEventService').log = async () => {};
+require('../../src/modules/audit/securityEventService').log = async () => {};
 const authService = require('../../src/services/authService');
 
 const preAuth = () => signToken('pre-auth-2fa', { id: 'U1', rm: 0, jti: crypto.randomUUID() }, '5m');
