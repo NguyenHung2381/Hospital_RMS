@@ -153,7 +153,6 @@ const border = { top: thin, bottom: thin, left: thin, right: thin };
 const fill = (argb) => ({ type: 'pattern', pattern: 'solid', fgColor: { argb } });
 const HEAD_FILL = fill('FF0A9B4A');
 const TOTAL_FILL = fill('FFE6F4EC');
-const SECTION_FILL = fill('FFF1F5F9');
 const WARN_FILL = fill('FFFFF4E5');
 const GREEN = 'FF0A7A3B';
 const RED = 'FFC00000';

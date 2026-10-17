@@ -39,6 +39,22 @@ Quy ước dùng chung:
 - **Transaction**: `await withTransaction(async (tx) => { ... }, pool)` (`config/db.js`). Helper tự commit, tự rollback và không để lỗi rollback che lỗi gốc.
 - **Schema**: chỉ đổi qua file trong `database/migrations/` (`npm run migrate:new -- <mô tả>`). Code không tự chạy DDL.
 
+## Kiểm tra chất lượng
+
+| Lệnh | Việc | CI |
+|------|------|----|
+| `npm run lint` | ESLint. Lỗi chặn merge; cảnh báo `max-lines` (file > 500 dòng) chỉ để theo dõi | ✓ |
+| `npm run format -- <file>` / `npm run format:check -- <file>` | Prettier (`.prettierrc.json`). Chỉ format file đang sửa, không format cả thư mục | — |
+| `npm test` | Unit test, không cần DB (`test/**`) | ✓ |
+| `npm run test:contract` | So danh sách route + quyền với `test/contract/routes.snapshot.txt`. Đổi route có chủ đích thì chạy `UPDATE_SNAPSHOTS=1 npm run test:contract` rồi commit file snapshot | ✓ |
+| `npm run test:smoke` | Gọi thật mọi API GET vào DB đang cấu hình (chỉ đọc). So mã HTTP và tập trường JSON với baseline của máy này (`test-integration/.baseline/`, không commit) | — |
+
+Khi refactor: ghi baseline trước (`UPDATE_SNAPSHOTS=1`), sau mỗi bước chạy lại để so. Backend chạy trong Docker thì gọi qua container:
+
+```bash
+docker exec hospital_rms_dev-backend-1 npm run test:smoke
+```
+
 ## API Endpoints
 
 ### Auth

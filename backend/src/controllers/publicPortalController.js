@@ -147,7 +147,7 @@ const getTopicStatus = async (req, res, next) => {
 // ─── Hội nghị: đăng ký qua QR, vé, bài test ─────────────────────────────────
 const getSeminar = async (req, res, next) => {
 	try {
-		const { scope, ...s } = await seminarParticipants.getPublicSeminar(req.params.token);
+		const { scope: _scope, ...s } = await seminarParticipants.getPublicSeminar(req.params.token);
 		success(res, s);
 	} catch (err) {
 		next(err);

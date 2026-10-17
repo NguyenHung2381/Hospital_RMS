@@ -208,7 +208,7 @@ const getCurrentTask = async (instanceId) => {
 // KHÔNG tự đổi status của đối tượng gốc (chưa có nhánh xử lý).
 const applyOutcomeToEntity = async (resource, entityId, outcome, actorId) => {
 	if (resource !== 'topics') return;
-	// eslint-disable-next-line global-require -- tránh vòng lặp require ở đầu file (topicService không cần biết workflow engine)
+	// require trong hàm để tránh vòng lặp require ở đầu file (topicService không cần biết workflow engine)
 	const topicService = require('./topicService');
 	await topicService.update(entityId, { status: outcome }, actorId, true);
 };

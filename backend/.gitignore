@@ -11,3 +11,6 @@ secrets/
 
 # File dữ liệu nhân sự xuất từ Sở Y tế (có thông tin cá nhân) — chỉ dùng để import, không commit
 danh-sach-nguoi-hanh-nghe-*
+
+# Baseline smoke test — phụ thuộc dữ liệu DB của từng máy, không commit
+test-integration/.baseline/
