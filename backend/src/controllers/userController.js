@@ -2,7 +2,7 @@ const userService = require('../services/userService');
 const ExcelJS = require('exceljs');
 const { success, created, notFound, forbidden, sendWorkbook } = require('../utils/response');
 const xl = require('../utils/excelTemplate');
-const { createCrudController } = require('./crudController');
+const { createCrudController } = require('../shared/crudController');
 const { scopeOf, hasPermission } = require('../middlewares/auth');
 const {
 	isSuperuser,

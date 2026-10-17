@@ -1,7 +1,7 @@
 const router = require('express').Router();
 const { body } = require('express-validator');
-const { createCrudService } = require('../services/crudService');
-const { createCrudController } = require('../controllers/crudController');
+const { createCrudService } = require('../shared/crudService');
+const { createCrudController } = require('../shared/crudController');
 const { authenticate, authorizePermission } = require('../middlewares/auth');
 const { validate } = require('../middlewares/errorHandler');
 const roundCtrl    = require('../controllers/roundController');

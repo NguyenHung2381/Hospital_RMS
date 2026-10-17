@@ -3,7 +3,7 @@ const councilAssignmentService = require('../services/councilAssignmentService')
 const councilAutoAssignService = require('../services/councilAutoAssignService');
 const councilImportService = require('../services/councilImportService');
 const { success, created, notFound } = require('../utils/response');
-const { createCrudController } = require('./crudController');
+const { createCrudController } = require('../shared/crudController');
 
 const base = createCrudController(councilService);
 

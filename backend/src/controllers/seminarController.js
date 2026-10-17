@@ -8,7 +8,7 @@ const partService = require('../services/seminarParticipantService');
 const importService = require('../services/seminarImportService');
 const listExcelService = require('../services/seminarListExcelService');
 const detailExcelService = require('../services/seminarDetailExcelService');
-const { createCrudController } = require('./crudController');
+const { createCrudController } = require('../shared/crudController');
 const { success, created, notFound, sendWorkbook } = require('../utils/response');
 
 const base = createCrudController(seminarService);

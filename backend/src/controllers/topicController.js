@@ -3,7 +3,7 @@ const topicMemberService = require('../services/topicMemberService');
 const topicAuthorService = require('../services/topicAuthorService');
 const workflowEngineService = require('../services/workflowEngineService');
 const { success, created, notFound } = require('../utils/response');
-const { createCrudController } = require('./crudController');
+const { createCrudController } = require('../shared/crudController');
 const { httpError } = require('../utils/httpError');
 const {
 	assertTopicActionWindow,

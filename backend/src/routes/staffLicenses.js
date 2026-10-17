@@ -1,7 +1,7 @@
 const router = require('express').Router();
 const { body } = require('express-validator');
 const staffLicenseService = require('../services/staffLicenseService');
-const { createCrudController } = require('../controllers/crudController');
+const { createCrudController } = require('../shared/crudController');
 const { authenticate, authorizePermission } = require('../middlewares/auth');
 const { validate } = require('../middlewares/errorHandler');
 const uploadExcel = require('../middlewares/uploadExcel');
