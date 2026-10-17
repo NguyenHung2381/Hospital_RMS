@@ -521,7 +521,8 @@ const linkTopicMemberToUser = async (memberId, userId, { actorId } = {}) => {
 				.input('u', sql.VarChar(20), userId)
 				.query(`SELECT (SELECT person_id FROM dbo.topic_members WHERE id = @m) AS mp,
 				               (SELECT person_id FROM dbo.users WHERE id = @u) AS up`);
-			let { mp, up } = r.recordset[0];
+			const { mp } = r.recordset[0];
+			let { up } = r.recordset[0];
 			if (!up && !mp) {
 				up = await resolveOne(tx, 'users', userId, actorId);
 				if (up) await setSourcePerson(tx, 'topic_members', memberId, up);

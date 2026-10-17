@@ -97,6 +97,9 @@ jobs:
           cache: npm
           cache-dependency-path: backend/package-lock.json
       - run: npm ci --no-fund
+      - name: Lint (ESLint)
+        # Chặn lỗi (biến thừa, ==, ...); cảnh báo max-lines không chặn
+        run: npm run lint
       - name: Phân quyền route
         # Mọi route mới phải khai báo quyền (authorizePermission) hoặc có lý do trong routePolicy
         run: npm run check:routes

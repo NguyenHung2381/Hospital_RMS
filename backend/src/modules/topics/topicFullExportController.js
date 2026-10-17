@@ -529,7 +529,7 @@ function buildMembersSheet(ws, topics, opts) {
 			curRow++;
 			return;
 		}
-		members.forEach((m, mi) => {
+		members.forEach((m) => {
 			const bg = ti % 2 === 0 ? C.rowA : C.rowB;
 			[
 				stt++,

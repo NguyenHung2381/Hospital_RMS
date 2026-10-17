@@ -1,7 +1,6 @@
 const router = require('express').Router();
 const { body } = require('express-validator');
 const ctrl = require('./trainingProgramController');
-const trainingProgramService = require('./trainingProgramService');
 const { authenticate, authorizePermission } = require('../../../middlewares/auth');
 const { validate } = require('../../../middlewares/errorHandler');
 const { createTrainingUpload } = require('../../../middlewares/uploadTraining');

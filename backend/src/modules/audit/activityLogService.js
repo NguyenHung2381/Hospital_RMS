@@ -23,7 +23,7 @@ const SESSION_GAP_MS =
 	Math.max(1, parseInt(process.env.ACTIVITY_SESSION_GAP_MIN, 10) || 30) * 60_000;
 
 // Chỉ nhận các file do auditLogger sinh ra: audit.log, audit.2026-08-27.log, ...
-const isAuditName = (name) => /^audit([.\-].*)?\.log$/i.test(name);
+const isAuditName = (name) => /^audit([.-].*)?\.log$/i.test(name);
 
 // Liệt kê file log, mới nhất trước (theo mtime — file đang ghi có mtime mới nhất).
 const listLogFiles = async () => {
