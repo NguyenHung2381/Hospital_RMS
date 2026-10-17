@@ -10,7 +10,7 @@ const uploadPolicy = require('../../utils/uploadPolicy');
 const { success } = require('../../utils/response');
 
 // Cổng công khai không đăng nhập — mọi endpoint ở đây PHẢI được rate-limit
-// theo IP, mirror loginLimiter ở routes/auth.js.
+// theo IP, mirror loginLimiter ở modules/auth/auth.routes.js.
 const registerLimiter = rateLimit({
 	name: 'register',
 	windowMs: 15 * 60 * 1000,

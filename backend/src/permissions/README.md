@@ -7,9 +7,9 @@ Mô hình: mỗi tài khoản có **một vai trò**; vai trò có tập **lư�
 | Danh mục quyền | `catalog.js` | Nguồn duy nhất. Server đồng bộ vào bảng `permissions` lúc khởi động (`sync.js`). |
 | Phạm vi dữ liệu | `scopes.js`, cột `role_permissions.scope` | `topics`: own / department / all · `users`: department / all · `courses`: assigned / all. Resource khác: `NULL`. |
 | Superuser | cột `roles.is_superuser` | Không phải quyền trong danh mục, không cấp được qua giao diện. Trong code hiện dưới dạng key `system:manage`. |
-| Vai trò hệ thống | `roles.is_system`, `roles.code` | 8 vai trò gốc, không xoá được. Code tham chiếu qua mã (`services/roleCodes.js`), không dùng id `VT0x`. |
-| Chống leo thang | `services/privilegeGuard.js` | Chỉ cấp / gán / sửa được thứ không vượt quyền (và phạm vi) của chính mình. |
-| Phiên đăng nhập | `users.token_version`, `services/sessionVersion.js` | Tăng version ⇒ mọi access token cũ bị từ chối ngay. |
+| Vai trò hệ thống | `roles.is_system`, `roles.code` | 8 vai trò gốc, không xoá được. Code tham chiếu qua mã (`modules/access/roleCodes.js`), không dùng id `VT0x`. |
+| Chống leo thang | `modules/access/privilegeGuard.js` | Chỉ cấp / gán / sửa được thứ không vượt quyền (và phạm vi) của chính mình. |
+| Phiên đăng nhập | `users.token_version`, `modules/auth/sessionVersion.js` | Tăng version ⇒ mọi access token cũ bị từ chối ngay. |
 
 Quy tắc kiểm tra: **có đúng quyền mới được** (`manage` không phải wildcard), superuser được hết. Frontend dùng cùng quy tắc (`frontend/src/shared/utils/permissions.ts`), nhưng chỉ để ẩn/hiện; backend luôn tự kiểm tra.
 

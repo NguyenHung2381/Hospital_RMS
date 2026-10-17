@@ -1,4 +1,4 @@
-// Chống IDOR cho đề tài (services/topicService.js): quyền topics:xxx ở route
+// Chống IDOR cho đề tài (modules/topics/topicService.js): quyền topics:xxx ở route
 // chưa đủ — đề tài cụ thể phải nằm trong phạm vi của người gọi.
 //   own        → là thành viên đề tài
 //   department → đề tài cùng khoa

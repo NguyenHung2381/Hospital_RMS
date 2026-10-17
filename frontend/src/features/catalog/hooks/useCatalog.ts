@@ -17,7 +17,7 @@ import type {
 
 export const EMPTY_FORM: CatalogFormData = { name: '', description: '' };
 
-// realtime: tên entity mà services/crudService.js phát ra (số ít, bỏ 's' cuối)
+// realtime: tên entity mà shared/crudService.js phát ra (số ít, bỏ 's' cuối)
 export const TAB_CONFIG: Record<
 	CatalogTab,
 	{ label: string; subtitle: string; placeholder: string; realtime: string; icon: ComponentType }

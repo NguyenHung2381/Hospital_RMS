@@ -100,7 +100,7 @@ const ASSIGNED_EXISTS_SQL = `EXISTS (
 // công. authorizePermission ở route không biết khoá học cụ thể — trước đây chỉ
 // danh sách + chi tiết khoá học lọc theo phân công, còn học viên / buổi học /
 // điểm danh / tài liệu / điểm / chứng chỉ của khoá khác vẫn đọc-sửa được theo
-// mã. routes/courses.js gắn các hàm dưới qua router.param.
+// mã. modules/training/courses/courses.routes.js gắn các hàm dưới qua router.param.
 const assertCourseInScope = async (courseId, actor) => {
 	if (scopeOf(actor, 'courses') !== 'assigned') return;
 	const pool = await getPool();
@@ -910,7 +910,7 @@ const checkInSelf = async (token, deviceId, actor) => {
 
 // ─── Tài liệu / bài kiểm tra khóa học (course_documents) ────────────────────
 // source_type 'file' (upload, kể cả video — giới hạn dung lượng xem
-// routes/courses.js) hoặc 'link' (dán URL ngoài, không có file) — xem
+// modules/training/courses/courses.routes.js) hoặc 'link' (dán URL ngoài, không có file) — xem
 // 2026-09-17_course_documents_link_support.
 const listDocuments = async (courseId) => {
 	const pool = await getPool();

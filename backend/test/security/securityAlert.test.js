@@ -1,4 +1,4 @@
-// Email cảnh báo sự kiện bảo mật (services/securityAlertService.js).
+// Email cảnh báo sự kiện bảo mật (modules/audit/securityAlertService.js).
 process.env.ALERT_EMAILS = 'it@bvnghean.vn, admin@bvnghean.vn';
 const test = require('node:test');
 const assert = require('node:assert/strict');

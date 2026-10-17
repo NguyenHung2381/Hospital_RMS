@@ -217,7 +217,7 @@ app.use(`${API}/csp-report`, require('./modules/system/cspReport.routes'));
 // nginx (frontend/nginx.conf), chặn cả request gọi thẳng 127.0.0.1:3001 bỏ qua
 // nginx. Đủ rộng cho người dùng thật (1200/phút = 20 req/s kéo dài); nhiều máy
 // đi chung 1 IP NAT thì nâng API_RATE_LIMIT. Kết nối SSE /events sống lâu,
-// đã có giới hạn riêng theo user (routes/events.js) nên không tính ở đây.
+// đã có giới hạn riêng theo user (modules/events/events.routes.js) nên không tính ở đây.
 app.use(
 	API,
 	rateLimit({

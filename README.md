@@ -561,12 +561,12 @@ Hospital_RMS/
   - Hướng dẫn cho lập trình viên (thêm quyền, thêm route, lọc theo phạm vi, nâng cấp CSDL): `backend/src/permissions/README.md`.
   - `npm test` (trong `backend`) chạy bộ test phân quyền: danh mục quyền, quy tắc quyền/phạm vi, chống leo thang, ma trận vai trò mẫu × route. Không cần DB.
   - `npm run check:routes` (trong `backend`) quét mọi route: route không gắn quyền phải được khai báo kèm lý do trong `src/permissions/routePolicy.js`, nếu không script báo lỗi.
-  - **Superuser** là cờ `roles.is_superuser`, không phải quyền trong ma trận, nên không cấp được qua giao diện. **Vai trò hệ thống** (`roles.is_system`, 8 vai trò gốc) không xoá được. Code nghiệp vụ tham chiếu vai trò qua mã `roles.code` (`admin`, `member`, `trainee`, `dept_head`…, xem `services/roleCodes.js`), không dùng id `VT0x`.
+  - **Superuser** là cờ `roles.is_superuser`, không phải quyền trong ma trận, nên không cấp được qua giao diện. **Vai trò hệ thống** (`roles.is_system`, 8 vai trò gốc) không xoá được. Code nghiệp vụ tham chiếu vai trò qua mã `roles.code` (`admin`, `member`, `trainee`, `dept_head`…, xem `modules/access/roleCodes.js`), không dùng id `VT0x`.
   - **Thu hồi phiên ngay lập tức**: access token mang `tv` = `users.token_version`. Reset mật khẩu, đăng xuất mọi thiết bị, tự đổi mật khẩu sẽ tăng version, nên mọi access token cũ bị từ chối ngay (tự đổi mật khẩu thì phiên hiện tại được cấp token mới).
   - Cache quyền / trạng thái tài khoản nằm trong RAM từng instance; lệnh xoá cache được phát qua Redis pub/sub (`utils/cacheBus.js`) để mọi instance cùng xoá. Redis không sẵn sàng thì mỗi instance tự hết hạn theo TTL.
   - Frontend làm mới quyền từ `GET /users/me` khi mở ứng dụng và khi vai trò/tài khoản thay đổi (SSE), nên đổi quyền có hiệu lực trên giao diện mà không cần đăng nhập lại.
   - Frontend dùng `<RequirePermission perm="...">`, `<Can>`, `usePermission()`, `scopeOf()` với kiểu `PermissionKey` sinh từ catalog (`npm run gen:perm-types` trong `backend` → `frontend/src/shared/types/permissions.generated.ts`); gõ sai tên quyền là lỗi biên dịch.
-  - Chống leo thang quyền (`services/privilegeGuard.js`): chỉ cấp/gán được quyền và vai trò không vượt quá quyền của chính mình.
+  - Chống leo thang quyền (`modules/access/privilegeGuard.js`): chỉ cấp/gán được quyền và vai trò không vượt quá quyền của chính mình.
   - Vai trò và tập quyền được quản lý tại `/admin/roles`; ma trận quyền dựng từ `GET /permissions/catalog`.
 
 ---
@@ -635,8 +635,8 @@ Nên bật **branch protection** cho `main` (Settings → Branches) và bắt bu
 
 ### Kiểm tra quyền theo bản ghi (chống IDOR)
 `authorizePermission` ở route chỉ biết người gọi **có** quyền `resource:action`, không biết bản ghi cụ thể có thuộc phạm vi của họ không. API nhận mã đối tượng (`:id`, danh sách mã trong body) phải kiểm tra thêm theo phạm vi (`scopeOf`):
-- Đề tài: `topicService.assertTopicInScope` / `idsInScope` — `routes/topics.js` gắn sẵn qua `router.param('id' | 'topic_id')`, nên route mới trong router này tự được kiểm tra.
-- Khoá học: `courseService.assertCourseInScope` / `assertCourseChildInScope` — `routes/courses.js` gắn qua `router.param` cho `:id` và mọi mã bản ghi con (`sessionId`, `enrollmentId`, `docId`, `gradeId`, `certId`, `linkId`, `assignmentId`). **Route mới dùng tham số mã con khác phải thêm vào `CHILD_COURSE_SQL`** (có test tự phát hiện).
+- Đề tài: `topicService.assertTopicInScope` / `idsInScope` — `modules/topics/topics.routes.js` gắn sẵn qua `router.param('id' | 'topic_id')`, nên route mới trong router này tự được kiểm tra.
+- Khoá học: `courseService.assertCourseInScope` / `assertCourseChildInScope` — `modules/training/courses/courses.routes.js` gắn qua `router.param` cho `:id` và mọi mã bản ghi con (`sessionId`, `enrollmentId`, `docId`, `gradeId`, `certId`, `linkId`, `assignmentId`). **Route mới dùng tham số mã con khác phải thêm vào `CHILD_COURSE_SQL`** (có test tự phát hiện).
 - Người dùng: `privilegeGuard.assertCanManageUser`; phạm vi khoa không chuyển được tài khoản sang khoa khác.
 - Cổng hội đồng: kiểm tra ghế **trước** khi multer ghi file. Tiến trình duyệt (`/workflows/status`): đề tài phải trong phạm vi.
 - Danh sách mã trong body (xuất dữ liệu, duyệt hàng loạt) không đi qua `router.param` — phải tự lọc / kiểm tra từng mã.

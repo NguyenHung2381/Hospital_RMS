@@ -11,7 +11,7 @@ const PAPER_QUESTION_TYPE = { multiple_choice: 'single_choice', essay: 'essay' }
 
 const parseOptions = (row) => (row.options === undefined ? row : { ...row, options: parseJsonArray(row.options) });
 
-// Ảnh minh hoạ câu hỏi — tải lên qua POST /exams/questions/image (routes/exams.js)
+// Ảnh minh hoạ câu hỏi — tải lên qua POST /exams/questions/image (modules/training/exams/exams.routes.js)
 const QUESTION_IMAGE_DIR = '/uploads/questions/';
 const imagePath = (url) => toStoredUploadPath(url, QUESTION_IMAGE_DIR);
 

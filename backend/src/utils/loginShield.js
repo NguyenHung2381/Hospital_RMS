@@ -5,7 +5,7 @@ const { consumeOnce } = require('./oneTimeToken');
 
 // ─── Lá chắn đăng nhập: thử thách proof-of-work tự thích ứng ─────────────────
 // Mỗi lượt đăng nhập sai tốn server ~200ms CPU (bcrypt). Rate-limit theo IP
-// (routes/auth.js, nginx) không chặn được kẻ tấn công dùng nhiều IP, còn khoá
+// (modules/auth/auth.routes.js, nginx) không chặn được kẻ tấn công dùng nhiều IP, còn khoá
 // tài khoản chỉ bảo vệ từng tài khoản riêng lẻ — rải 1 mật khẩu lên hàng nghìn
 // tài khoản (password spraying) vẫn bắt server chạy bcrypt cho mỗi lượt.
 //

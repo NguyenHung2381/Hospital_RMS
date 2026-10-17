@@ -1,6 +1,6 @@
 // Lớp HTTP của /auth: refresh token chỉ đi qua cookie HttpOnly, không bao giờ
 // nằm trong body; refresh/logout đọc cookie; chặn Origin lạ. Dựng Express thật
-// với routes/auth.js + CSDL giả (test/auth/fakeAuthDb.js).
+// với modules/auth/auth.routes.js + CSDL giả (test/auth/fakeAuthDb.js).
 process.env.JWT_SECRET = 'test-secret';
 process.env.JWT_REFRESH_SECRET = 'test-refresh-secret';
 process.env.CORS_ORIGIN = 'https://nckh.bvnghean.vn';

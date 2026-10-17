@@ -23,7 +23,7 @@ router.use(authenticate);
 // Chống IDOR: mọi route có mã khoá học (:id) hoặc mã bản ghi con (buổi học,
 // đăng ký, tài liệu, điểm, chứng chỉ...) chỉ chạy khi khoá học tương ứng nằm
 // trong phạm vi người gọi — giảng viên phạm vi 'assigned' chỉ khoá mình được
-// phân công (services/courseService.js). Route mới dùng đúng tên tham số dưới
+// phân công (modules/training/courses/courseService.js). Route mới dùng đúng tên tham số dưới
 // đây là tự được kiểm tra.
 const inScope = (check) => async (req, _res, next, value) => {
 	try {

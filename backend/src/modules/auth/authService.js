@@ -63,7 +63,7 @@ const hashToken = (token) => crypto.createHash('sha256').update(token).digest('h
 
 // Khoá tạm tài khoản sau N lần sai mật khẩu / mã 2FA liên tiếp — chống dò
 // mật khẩu theo TÀI KHOẢN (bổ sung cho rate-limit theo IP đã có ở
-// routes/auth.js, vốn không chặn được kẻ tấn công rải request qua nhiều IP).
+// modules/auth/auth.routes.js, vốn không chặn được kẻ tấn công rải request qua nhiều IP).
 // Chỉ áp dụng cho thiết bị LẠ — thiết bị quen xem trustedDeviceService.js.
 // Chỉ chặn đăng nhập MỚI, không đá phiên đang mở (xem middlewares/auth.js).
 const MAX_FAILED_LOGIN_ATTEMPTS = 5;

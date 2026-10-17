@@ -16,7 +16,7 @@ const topicScope = (actor) => scopeOf(actor, 'topics') ?? 'own';
 // authorizePermission ở route chỉ biết actor CÓ quyền topics:xxx, không biết
 // đề tài cụ thể có nằm trong phạm vi của họ không: 'department' = cùng khoa,
 // 'own' = là thành viên, 'all' = mọi đề tài. Mọi API thao tác theo mã đề tài
-// phải qua 1 trong 2 hàm dưới (routes/topics.js gắn qua router.param).
+// phải qua 1 trong 2 hàm dưới (modules/topics/topics.routes.js gắn qua router.param).
 const assertTopicInScope = async (topicId, actor) => {
 	const scope = topicScope(actor);
 	if (scope === 'all') return;

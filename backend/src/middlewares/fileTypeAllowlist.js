@@ -14,7 +14,7 @@ const DOCUMENT_EXTENSIONS = new Set([
 ]);
 
 // Chỉ dùng thêm cho các loại upload cần video/audio bài giảng (course_document,
-// lesson_document) — xem routes/courses.js, routes/trainingPrograms.js.
+// lesson_document) — xem modules/training/courses/courses.routes.js, modules/training/programs/trainingPrograms.routes.js.
 const MEDIA_EXTENSIONS = new Set([
 	'.mp4', '.mov', '.avi', '.mkv', '.webm', '.m4v',
 	'.mp3', '.wav', '.m4a', '.aac',
