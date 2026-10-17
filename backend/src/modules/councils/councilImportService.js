@@ -8,12 +8,12 @@
  * dry_run trả preview; commit tạo hội đồng draft + 5 ghế + gán đề tài & phiên.
  */
 const ExcelJS = require('exceljs');
-const { getPool, sql } = require('../config/db');
+const { getPool, sql } = require('../../config/db');
 const councilService = require('./councilService');
 const councilAssignmentService = require('./councilAssignmentService');
-const { ROLE, inputRoleId } = require('../modules/access/roleCodes');
-const { norm, normDept, stripQualification, dice } = require('../utils/vietnameseText');
-const { httpError } = require('../utils/httpError');
+const { ROLE, inputRoleId } = require('../access/roleCodes');
+const { norm, normDept, stripQualification, dice } = require('../../utils/vietnameseText');
+const { httpError } = require('../../utils/httpError');
 
 const SEAT_ORDER = ['chairman', 'secretary', 'reviewer1', 'reviewer2', 'member'];
 const ROLE_BY_NORM = {

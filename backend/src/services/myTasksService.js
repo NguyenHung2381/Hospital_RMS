@@ -1,5 +1,5 @@
 const topicService = require('../modules/topics/topicService');
-const councilProgressService = require('./councilProgressService');
+const councilProgressService = require('../modules/councils/councilProgressService');
 
 // Hộp thư "Việc của tôi" — gộp 2 nguồn việc-cần-làm ĐÃ tính theo người dùng cụ
 // thể (không chỉ theo quyền chung chung, vốn không nói lên "việc CỦA TÔI"):

@@ -1,9 +1,9 @@
-const councilService = require('../services/councilService');
-const councilAssignmentService = require('../services/councilAssignmentService');
-const councilAutoAssignService = require('../services/councilAutoAssignService');
-const councilImportService = require('../services/councilImportService');
-const { success, created, notFound } = require('../utils/response');
-const { createCrudController } = require('../shared/crudController');
+const councilService = require('./councilService');
+const councilAssignmentService = require('./councilAssignmentService');
+const councilAutoAssignService = require('./councilAutoAssignService');
+const councilImportService = require('./councilImportService');
+const { success, created, notFound } = require('../../utils/response');
+const { createCrudController } = require('../../shared/crudController');
 
 const base = createCrudController(councilService);
 

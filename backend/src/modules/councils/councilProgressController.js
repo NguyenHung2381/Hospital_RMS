@@ -2,8 +2,8 @@
  * councilProgressController.js — cổng đánh giá tiến độ đề tài của thành viên hội đồng.
  * Quyền theo ghế hội đồng (kiểm tra trong service), không dùng permission admin.
  */
-const progressService = require('../services/councilProgressService');
-const { success, created } = require('../utils/response');
+const progressService = require('./councilProgressService');
+const { success, created } = require('../../utils/response');
 
 const getMyProgress = async (req, res, next) => {
 	try {

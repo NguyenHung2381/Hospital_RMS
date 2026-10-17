@@ -1,12 +1,12 @@
 const router = require('express').Router();
 const { body } = require('express-validator');
-const ctrl = require('../controllers/councilController');
-const exportCtrl = require('../controllers/councilExportController');
-const progressCtrl = require('../controllers/councilProgressController');
-const upload = require('../middlewares/upload');
-const uploadImage = require('../middlewares/uploadImage');
-const { authenticate, authorizePermission } = require('../middlewares/auth');
-const { validate } = require('../middlewares/errorHandler');
+const ctrl = require('./councilController');
+const exportCtrl = require('./councilExportController');
+const progressCtrl = require('./councilProgressController');
+const upload = require('../../middlewares/upload');
+const uploadImage = require('../../middlewares/uploadImage');
+const { authenticate, authorizePermission } = require('../../middlewares/auth');
+const { validate } = require('../../middlewares/errorHandler');
 
 router.use(authenticate);
 
@@ -100,7 +100,7 @@ router.post(
  *       400:
  *         description: File không hợp lệ hoặc thiếu cột bắt buộc
  */
-const uploadExcel = require('../middlewares/uploadExcel');
+const uploadExcel = require('../../middlewares/uploadExcel');
 router.post(
 	'/import-excel',
 	authorizePermission(['councils', 'create']),

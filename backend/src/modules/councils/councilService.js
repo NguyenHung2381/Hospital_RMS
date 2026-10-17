@@ -1,8 +1,8 @@
-const { getPool, sql } = require('../config/db');
-const { broadcast } = require('../modules/events/eventService');
-const { paging } = require('../utils/paging');
-const { ROLE, inputRoleId } = require('../modules/access/roleCodes');
-const { fmtDateVN: fmtDate } = require('../utils/vnDate');
+const { getPool, sql } = require('../../config/db');
+const { broadcast } = require('../events/eventService');
+const { paging } = require('../../utils/paging');
+const { ROLE, inputRoleId } = require('../access/roleCodes');
+const { fmtDateVN: fmtDate } = require('../../utils/vnDate');
 
 const normalize = (c) => ({
 	...c,

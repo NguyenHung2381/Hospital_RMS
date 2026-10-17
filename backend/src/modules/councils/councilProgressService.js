@@ -8,11 +8,11 @@
  *
  * File đánh giá tái dùng bảng files: batch có note = EVAL_NOTE.
  */
-const { getPool, sql } = require('../config/db');
-const fileService = require('../modules/topics/fileService');
+const { getPool, sql } = require('../../config/db');
+const fileService = require('../topics/fileService');
 const sanitizeHtml = require('sanitize-html');
-const { stripUploadSignatures } = require('../utils/signedUpload');
-const { httpError } = require('../utils/httpError');
+const { stripUploadSignatures } = require('../../utils/signedUpload');
+const { httpError } = require('../../utils/httpError');
 
 const EVAL_NOTE = 'Đánh giá tiến độ của hội đồng'; // ponytail: phân biệt file đánh giá bằng note batch — thêm cột file_type nếu sau này cần chặt chẽ hơn
 const MINUTES_NOTE = 'Biên bản họp hội đồng';

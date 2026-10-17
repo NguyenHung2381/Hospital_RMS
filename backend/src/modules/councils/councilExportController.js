@@ -8,8 +8,8 @@
  * Body: { round_id, fileName?, title?, subtitle? }
  */
 const ExcelJS = require('exceljs');
-const { getPool, sql } = require('../config/db');
-const { sendWorkbook } = require('../utils/response');
+const { getPool, sql } = require('../../config/db');
+const { sendWorkbook } = require('../../utils/response');
 
 const HD_ROLES = [
 	['chairman', 'Chủ tịch'],
