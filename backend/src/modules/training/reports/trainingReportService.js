@@ -3,7 +3,7 @@
  * BAO_CAO_BUS::theoKhoaCtdt / dsHocVienKetQua / thongKeTong), RMS trước đây
  * chưa có báo cáo chuyên biệt cho mảng Đào tạo (chỉ có báo cáo NCKH).
  */
-const { getPool, sql } = require('../config/db');
+const { getPool, sql } = require('../../../config/db');
 
 // 1. Theo khóa + chương trình áp dụng: sĩ số, tỷ lệ duyệt, điểm TB, số chứng chỉ.
 const byCourseProgram = async () => {

@@ -1,18 +1,18 @@
 const bcrypt = require('bcrypt');
-const { getPool, sql } = require('../config/db');
-const { broadcast } = require('../modules/events/eventService');
-const { paging } = require('../utils/paging');
-const trainingFileService = require('./trainingFileService');
-const personService = require('../modules/persons/personService');
-const { normalizeGender } = require('../utils/gender');
-const { hasPermission } = require('../middlewares/auth');
+const { getPool, sql } = require('../../../config/db');
+const { broadcast } = require('../../events/eventService');
+const { paging } = require('../../../utils/paging');
+const trainingFileService = require('../trainingFileService');
+const personService = require('../../persons/personService');
+const { normalizeGender } = require('../../../utils/gender');
+const { hasPermission } = require('../../../middlewares/auth');
 const {
 	buildMemberUsername,
 	ensureUniqueUsername,
 	genUserIdInTx,
-} = require('../modules/topics/topicMemberService');
-const { ROLE, requireRoleId } = require('../modules/access/roleCodes');
-const { defaultPassword } = require('../utils/passwordPolicy');
+} = require('../../topics/topicMemberService');
+const { ROLE, requireRoleId } = require('../../access/roleCodes');
+const { defaultPassword } = require('../../../utils/passwordPolicy');
 
 const traineeSelect = `
   SELECT t.*, tt.name AS trainee_type_name, d.name AS department_name

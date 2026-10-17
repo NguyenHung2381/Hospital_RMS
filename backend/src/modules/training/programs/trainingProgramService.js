@@ -1,8 +1,8 @@
-const { getPool, sql } = require('../config/db');
-const { broadcast } = require('../modules/events/eventService');
-const { paging } = require('../utils/paging');
-const trainingFileService = require('./trainingFileService');
-const { assertHttpUrl } = require('../utils/safeUrl');
+const { getPool, sql } = require('../../../config/db');
+const { broadcast } = require('../../events/eventService');
+const { paging } = require('../../../utils/paging');
+const trainingFileService = require('../trainingFileService');
+const { assertHttpUrl } = require('../../../utils/safeUrl');
 
 const programSelect = `
   SELECT p.*, d.name AS department_name, tt.name AS trainee_type_name, tp.name AS training_type_name,

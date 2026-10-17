@@ -4,12 +4,12 @@
  * dry_run trả preview, commit mới ghi DB) — đối chiếu QLNCKHDTCDT-main
  * (DM_HocVien::importExcel) vốn có tính năng này nhưng RMS trước đây chưa có.
  */
-const { getPool } = require('../config/db');
-const { norm, normDept } = require('../utils/vietnameseText');
-const { parseDob, readSheet } = require('../utils/excelImport');
-const { normalizeGender } = require('../utils/gender');
+const { getPool } = require('../../../config/db');
+const { norm, normDept } = require('../../../utils/vietnameseText');
+const { parseDob, readSheet } = require('../../../utils/excelImport');
+const { normalizeGender } = require('../../../utils/gender');
 const traineeService = require('./traineeService');
-const { httpError } = require('../utils/httpError');
+const { httpError } = require('../../../utils/httpError');
 
 const COLUMN_MATCHERS = [
 	['stt', (h) => h === 'stt' || h === 'tt' || h === 'so tt'],

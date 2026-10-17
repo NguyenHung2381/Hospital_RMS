@@ -1,9 +1,9 @@
-const { getPool, sql } = require('../config/db');
-const { broadcast } = require('../modules/events/eventService');
-const { paging } = require('../utils/paging');
-const personService = require('../modules/persons/personService');
-const { normalizeGender } = require('../utils/gender');
-const { ROLE, roleIdOf } = require('../modules/access/roleCodes');
+const { getPool, sql } = require('../../../config/db');
+const { broadcast } = require('../../events/eventService');
+const { paging } = require('../../../utils/paging');
+const personService = require('../../persons/personService');
+const { normalizeGender } = require('../../../utils/gender');
+const { ROLE, roleIdOf } = require('../../access/roleCodes');
 
 const lecturerSelect = `
   SELECT l.*, u.full_name AS user_full_name, u.username

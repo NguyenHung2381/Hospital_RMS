@@ -24,7 +24,7 @@ install(async (text, inputs) => {
 	const course = CHILD[`${table}:${inputs.id}`];
 	return course ? [{ course_id: course }] : [];
 });
-const courseService = require('../../src/services/courseService');
+const courseService = require('../../src/modules/training/courses/courseService');
 
 const actor = (id, grants) => ({
 	id,
@@ -58,7 +58,7 @@ test('phạm vi toàn viện: không cần tra DB', async () => {
 });
 
 test('mọi tham số mã con trong routes/courses.js đều có cách quy về khoá học', () => {
-	const src = require('fs').readFileSync(require.resolve('../../src/routes/courses.js'), 'utf8');
+	const src = require('fs').readFileSync(require.resolve('../../src/modules/training/courses/courses.routes.js'), 'utf8');
 	const params = new Set([...src.matchAll(/'[^']*\/:([a-zA-Z]+)/g)].map((m) => m[1]));
 	for (const p of params) {
 		if (p === 'id') continue;

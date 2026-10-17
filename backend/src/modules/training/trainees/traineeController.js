@@ -1,6 +1,6 @@
-const traineeService = require('../services/traineeService');
-const traineeImportService = require('../services/traineeImportService');
-const { success, created, notFound } = require('../utils/response');
+const traineeService = require('./traineeService');
+const traineeImportService = require('./traineeImportService');
+const { success, created, notFound } = require('../../../utils/response');
 
 const getAll = async (req, res, next) => {
 	try {

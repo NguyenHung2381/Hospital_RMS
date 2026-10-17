@@ -1,5 +1,5 @@
-const { getPool, sql } = require('../config/db');
-const { removeUploadedFile } = require('../utils/uploadPaths');
+const { getPool, sql } = require('../../config/db');
+const { removeUploadedFile } = require('../../utils/uploadPaths');
 
 // multer/busboy đọc tên file từ header multipart bằng latin1 theo mặc định,
 // nên tên có dấu (UTF-8) bị lỗi (mojibake) nếu không giải mã lại — cùng lỗi

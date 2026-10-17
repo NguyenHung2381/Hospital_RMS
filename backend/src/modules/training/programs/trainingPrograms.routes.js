@@ -1,10 +1,10 @@
 const router = require('express').Router();
 const { body } = require('express-validator');
-const ctrl = require('../controllers/trainingProgramController');
-const trainingProgramService = require('../services/trainingProgramService');
-const { authenticate, authorizePermission } = require('../middlewares/auth');
-const { validate } = require('../middlewares/errorHandler');
-const { createTrainingUpload } = require('../middlewares/uploadTraining');
+const ctrl = require('./trainingProgramController');
+const trainingProgramService = require('./trainingProgramService');
+const { authenticate, authorizePermission } = require('../../../middlewares/auth');
+const { validate } = require('../../../middlewares/errorHandler');
+const { createTrainingUpload } = require('../../../middlewares/uploadTraining');
 
 const uploadLessonDoc = createTrainingUpload('lesson_document', {
 	maxSizeMB: Number(process.env.TRAINING_MEDIA_MAX_MB || 300),

@@ -1,5 +1,5 @@
-const examService = require('../services/examService');
-const { success, created, notFound } = require('../utils/response');
+const examService = require('./examService');
+const { success, created, notFound } = require('../../../utils/response');
 
 // ─── Ngân hàng câu hỏi ───────────────────────────────────────────────────────
 const listQuestions = async (req, res, next) => {

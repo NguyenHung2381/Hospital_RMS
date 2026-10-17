@@ -1,13 +1,13 @@
 const { getPool, sql } = require('../config/db');
 const { remember } = require('../utils/cache');
-const traineeService = require('./traineeService');
-const courseService = require('./courseService');
+const traineeService = require('../modules/training/trainees/traineeService');
+const courseService = require('../modules/training/courses/courseService');
 const researchRoundService = require('../modules/rounds/roundService');
 const topicService = require('../modules/topics/topicService');
 const topicMemberService = require('../modules/topics/topicMemberService');
 const { norm } = require('../utils/vietnameseText');
 const fileService = require('../modules/topics/fileService');
-const trainingFileService = require('./trainingFileService');
+const trainingFileService = require('../modules/training/trainingFileService');
 const path = require('path');
 const fs = require('fs');
 const { moveUploadedFiles, UPLOADS_ROOT } = require('../middlewares/uploadPublic');

@@ -1,6 +1,6 @@
-const courseService = require('../services/courseService');
-const { success, created, notFound } = require('../utils/response');
-const { hasPermission } = require('../middlewares/auth');
+const courseService = require('./courseService');
+const { success, created, notFound } = require('../../../utils/response');
+const { hasPermission } = require('../../../middlewares/auth');
 
 const getAll = async (req, res, next) => {
 	try {

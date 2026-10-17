@@ -1,9 +1,9 @@
 const router = require('express').Router();
 const { body } = require('express-validator');
-const ctrl = require('../controllers/examController');
-const { authenticate, authorizePermission } = require('../middlewares/auth');
-const { validate } = require('../middlewares/errorHandler');
-const { makeImageUpload } = require('../middlewares/uploadImage');
+const ctrl = require('./examController');
+const { authenticate, authorizePermission } = require('../../../middlewares/auth');
+const { validate } = require('../../../middlewares/errorHandler');
+const { makeImageUpload } = require('../../../middlewares/uploadImage');
 
 // Ảnh minh hoạ câu hỏi — dùng chung thư mục vì 1 câu hỏi nằm được trong nhiều đề
 const uploadQuestionImage = makeImageUpload(() => ['questions']);

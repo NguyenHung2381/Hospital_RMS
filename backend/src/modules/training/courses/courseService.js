@@ -1,14 +1,14 @@
-const { signToken, verifyToken } = require('../utils/keys');
-const { getPool, sql } = require('../config/db');
-const { broadcast } = require('../modules/events/eventService');
-const { paging } = require('../utils/paging');
-const mailService = require('../modules/notifications/mailService');
-const trainingFileService = require('./trainingFileService');
-const { scopeOf } = require('../middlewares/auth');
-const { ROLE, roleIdOf, inputRoleId } = require('../modules/access/roleCodes');
-const { assertHttpUrl } = require('../utils/safeUrl');
-const { todayVN } = require('../utils/vnDate');
-const { httpError } = require('../utils/httpError');
+const { signToken, verifyToken } = require('../../../utils/keys');
+const { getPool, sql } = require('../../../config/db');
+const { broadcast } = require('../../events/eventService');
+const { paging } = require('../../../utils/paging');
+const mailService = require('../../notifications/mailService');
+const trainingFileService = require('../trainingFileService');
+const { scopeOf } = require('../../../middlewares/auth');
+const { ROLE, roleIdOf, inputRoleId } = require('../../access/roleCodes');
+const { assertHttpUrl } = require('../../../utils/safeUrl');
+const { todayVN } = require('../../../utils/vnDate');
+const { httpError } = require('../../../utils/httpError');
 
 // Mã QR điểm danh: JWT ngắn hạn ký chính session_id (mirror utils/captcha.js)
 // — không trạng thái, không cần lưu DB, hết hạn nhanh. FE làm mới QR mỗi 28s;
@@ -436,7 +436,7 @@ const registerStaff = async (courseId, userId, actorId, { bypassWindow = false }
 			throw err;
 		}
 		// require muộn — traineeService kéo theo topicMemberService/personService, tránh vòng require.
-		const traineeService = require('./traineeService');
+		const traineeService = require('../trainees/traineeService');
 		const trainee = await traineeService.create(
 			{
 				full_name: user.full_name,

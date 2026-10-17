@@ -1,5 +1,5 @@
-const trainingProgramService = require('../services/trainingProgramService');
-const { success, created, notFound } = require('../utils/response');
+const trainingProgramService = require('./trainingProgramService');
+const { success, created, notFound } = require('../../../utils/response');
 
 const getAll = async (req, res, next) => {
 	try {

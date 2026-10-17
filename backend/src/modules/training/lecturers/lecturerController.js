@@ -1,5 +1,5 @@
-const lecturerService = require('../services/lecturerService');
-const { success, created, notFound } = require('../utils/response');
+const lecturerService = require('./lecturerService');
+const { success, created, notFound } = require('../../../utils/response');
 
 const getAll = async (req, res, next) => {
 	try {

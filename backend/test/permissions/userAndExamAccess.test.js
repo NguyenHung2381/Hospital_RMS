@@ -18,7 +18,7 @@ install(async (text) => {
 	return [];
 });
 require('../../src/modules/events/eventService').broadcast = () => {};
-require('../../src/services/courseService').upsertGrade = async () => {};
+require('../../src/modules/training/courses/courseService').upsertGrade = async () => {};
 
 // Controller người dùng: stub service + chốt quyền quản lý tài khoản
 const userService = require('../../src/services/userService');
@@ -32,7 +32,7 @@ userService.searchForMember = async (args) => {
 	return { data: [], pagination: {} };
 };
 const userCtrl = require('../../src/controllers/userController');
-const examService = require('../../src/services/examService');
+const examService = require('../../src/modules/training/exams/examService');
 
 const call = (handler, req) =>
 	new Promise((resolve, reject) => {

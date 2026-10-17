@@ -8,7 +8,7 @@
 const { getPool, sql } = require('../config/db');
 const { broadcast } = require('../modules/events/eventService');
 const { paging } = require('../utils/paging');
-const trainingFileService = require('./trainingFileService');
+const trainingFileService = require('../modules/training/trainingFileService');
 const { httpError } = require('../utils/httpError');
 
 const recordSelect = `

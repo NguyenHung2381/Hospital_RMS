@@ -2,8 +2,8 @@ const router = require('express').Router();
 const { authenticate, authorizePermission } = require('../middlewares/auth');
 const dashboardService = require('../services/dashboardService');
 const dashboardExportCtrl = require('../controllers/dashboardExportController');
-const trainingReportService = require('../services/trainingReportService');
-const trainingReportExportCtrl = require('../controllers/trainingReportExportController');
+const trainingReportService = require('../modules/training/reports/trainingReportService');
+const trainingReportExportCtrl = require('../modules/training/reports/trainingReportExportController');
 const { success } = require('../utils/response');
 
 router.use(authenticate);

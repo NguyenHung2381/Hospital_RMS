@@ -5,10 +5,10 @@
  * cme_records.user_id) nên không cần quyền courses:read / seminars:read.
  */
 const { getPool, sql } = require('../config/db');
-const courseService = require('./courseService');
+const courseService = require('../modules/training/courses/courseService');
 const publicPortalService = require('./publicPortalService');
-const examService = require('./examService');
-const trainingProgramService = require('./trainingProgramService');
+const examService = require('../modules/training/exams/examService');
+const trainingProgramService = require('../modules/training/programs/trainingProgramService');
 const { httpError } = require('../utils/httpError');
 
 const VN_TODAY = 'CAST(DATEADD(HOUR, 7, GETUTCDATE()) AS DATE)';

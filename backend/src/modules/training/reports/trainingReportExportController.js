@@ -4,9 +4,9 @@
  * dashboardExportController.js (letterhead + bảng màu).
  */
 const ExcelJS = require('exceljs');
-const trainingReportService = require('../services/trainingReportService');
-const { fnt, al, headerRow, dataRow } = require('../utils/excelStyle');
-const { sendWorkbook } = require('../utils/response');
+const trainingReportService = require('./trainingReportService');
+const { fnt, al, headerRow, dataRow } = require('../../../utils/excelStyle');
+const { sendWorkbook } = require('../../../utils/response');
 
 const CONTENT_START = 4;
 

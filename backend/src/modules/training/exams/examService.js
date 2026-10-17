@@ -1,8 +1,8 @@
-const { getPool, sql, withTransaction } = require('../config/db');
-const { parseJsonArray } = require('../utils/sqlFilters');
-const { broadcast } = require('../modules/events/eventService');
-const courseService = require('./courseService');
-const { removeUploadedFile, toStoredUploadPath } = require('../utils/uploadPaths');
+const { getPool, sql, withTransaction } = require('../../../config/db');
+const { parseJsonArray } = require('../../../utils/sqlFilters');
+const { broadcast } = require('../../events/eventService');
+const courseService = require('../courses/courseService');
+const { removeUploadedFile, toStoredUploadPath } = require('../../../utils/uploadPaths');
 
 const QUESTION_TYPES = ['single_choice', 'essay'];
 // Loại đề → loại câu hỏi được phép đưa vào. paper_type NULL = đề cũ (hỗn hợp),
