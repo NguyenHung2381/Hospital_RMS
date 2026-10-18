@@ -9,11 +9,7 @@ const ROLE_LABELS = {
 	member: 'Thành viên',
 };
 
-function buildSheet(
-	ws,
-	data,
-	{ customTitle, customSubtitle, refNumber, refDate },
-) {
+function buildSheet(ws, data, { customTitle, customSubtitle, refNumber, refDate }) {
 	ws.views = [{ state: 'frozen', xSplit: 0, ySplit: 8 }];
 	ws.properties.defaultRowHeight = 20;
 
@@ -147,13 +143,7 @@ function buildSheet(
 			const r = curRow + mi;
 			const m = members[mi];
 			const memBorder =
-				rowCount === 1
-					? bAll
-					: mi === 0
-						? bNoBot
-						: mi === rowCount - 1
-							? bNoTop
-							: bSides;
+				rowCount === 1 ? bAll : mi === 0 ? bNoBot : mi === rowCount - 1 ? bNoTop : bSides;
 
 			const staffNum = m?.staff_number != null ? m.staff_number : '';
 			const roleLabel = m ? (ROLE_LABELS[m.role] ?? m.role ?? '') : '';
@@ -204,9 +194,7 @@ async function exportExcel(req, res, next) {
 		} = req.body;
 
 		if (!Array.isArray(ids) || ids.length === 0) {
-			return res
-				.status(400)
-				.json({ success: false, message: 'Danh sách đề tài trống' });
+			return res.status(400).json({ success: false, message: 'Danh sách đề tài trống' });
 		}
 
 		// Chỉ xuất đề tài trong phạm vi người gọi (danh sách mã do client gửi lên)

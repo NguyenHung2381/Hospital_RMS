@@ -43,26 +43,86 @@ const userOf = (code) => {
 // [method, đường dẫn, vai trò ĐƯỢC phép, vai trò BỊ CHẶN]
 const EXPECT = [
 	// Quản lý tài khoản
-	['GET', `${API}/users/`, ['admin', 'director', 'research_manager', 'dept_head'], ['member', 'topic_leader', 'trainee', 'review_council']],
-	['POST', `${API}/users/`, ['admin', 'research_manager'], ['director', 'dept_head', 'member', 'trainee']],
+	[
+		'GET',
+		`${API}/users/`,
+		['admin', 'director', 'research_manager', 'dept_head'],
+		['member', 'topic_leader', 'trainee', 'review_council'],
+	],
+	[
+		'POST',
+		`${API}/users/`,
+		['admin', 'research_manager'],
+		['director', 'dept_head', 'member', 'trainee'],
+	],
 	['PUT', `${API}/users/:id`, ['admin', 'research_manager'], ['director', 'dept_head', 'member']],
-	['POST', `${API}/users/:id/reset-password`, ['admin', 'research_manager'], ['director', 'dept_head', 'member', 'trainee']],
-	['DELETE', `${API}/users/:id`, ['admin'], ['research_manager', 'director', 'dept_head', 'member']],
+	[
+		'POST',
+		`${API}/users/:id/reset-password`,
+		['admin', 'research_manager'],
+		['director', 'dept_head', 'member', 'trainee'],
+	],
+	[
+		'DELETE',
+		`${API}/users/:id`,
+		['admin'],
+		['research_manager', 'director', 'dept_head', 'member'],
+	],
 	// Vai trò & phân quyền — chỉ quản trị hệ thống
-	['GET', `${API}/roles`, ['admin', 'director', 'research_manager'], ['member', 'dept_head', 'trainee']],
-	['GET', `${API}/permissions/catalog`, ['admin', 'director', 'research_manager'], ['member', 'dept_head']],
-	['PUT', `${API}/roles/:id/permissions`, ['admin'], ['research_manager', 'director', 'dept_head', 'member']],
+	[
+		'GET',
+		`${API}/roles`,
+		['admin', 'director', 'research_manager'],
+		['member', 'dept_head', 'trainee'],
+	],
+	[
+		'GET',
+		`${API}/permissions/catalog`,
+		['admin', 'director', 'research_manager'],
+		['member', 'dept_head'],
+	],
+	[
+		'PUT',
+		`${API}/roles/:id/permissions`,
+		['admin'],
+		['research_manager', 'director', 'dept_head', 'member'],
+	],
 	['POST', `${API}/roles/:id/clone`, ['admin'], ['research_manager', 'director']],
 	['DELETE', `${API}/roles/:id`, ['admin'], ['research_manager', 'director']],
 	// Đề tài
-	['POST', `${API}/topics/`, ['admin', 'research_manager', 'topic_leader'], ['member', 'dept_head', 'review_council', 'trainee']],
-	['POST', `${API}/topics/:id/approve`, ['admin', 'director', 'review_council'], ['research_manager', 'topic_leader', 'member', 'dept_head']],
+	[
+		'POST',
+		`${API}/topics/`,
+		['admin', 'research_manager', 'topic_leader'],
+		['member', 'dept_head', 'review_council', 'trainee'],
+	],
+	[
+		'POST',
+		`${API}/topics/:id/approve`,
+		['admin', 'director', 'review_council'],
+		['research_manager', 'topic_leader', 'member', 'dept_head'],
+	],
 	// Đào tạo — quyền tách riêng ở giai đoạn 1
-	['GET', `${API}/exams/questions`, ['admin', 'research_manager'], ['member', 'trainee', 'dept_head']],
+	[
+		'GET',
+		`${API}/exams/questions`,
+		['admin', 'research_manager'],
+		['member', 'trainee', 'dept_head'],
+	],
 	['GET', `${API}/cme-records/`, ['admin', 'research_manager'], ['director', 'member']],
-	['POST', `${API}/trainees/grant-accounts`, ['admin', 'research_manager'], ['dept_head', 'director', 'member']],
+	[
+		'POST',
+		`${API}/trainees/grant-accounts`,
+		['admin', 'research_manager'],
+		['dept_head', 'director', 'member'],
+	],
 	// Hệ thống
-	['GET', `${API}/activity-logs/`, ['admin', 'director', 'research_manager'], ['member', 'dept_head', 'trainee']],
+	[
+		'GET',
+		`${API}/activity-logs/`,
+		['admin', 'director', 'research_manager'],
+		['member', 'dept_head', 'trainee'],
+	],
 	['GET', `${API}/security-events/`, ['admin'], ['research_manager', 'director']],
 	['GET', `${API}/system-settings/`, ['admin'], ['research_manager', 'director']],
 	['POST', `${API}/persons/merge-candidates/:id/merge`, ['admin'], ['research_manager', 'member']],
@@ -74,8 +134,10 @@ const EXPECT = [
 for (const [method, p, allowed, denied] of EXPECT) {
 	test(`${method} ${p}`, () => {
 		const r = route(method, p);
-		for (const code of allowed) assert.equal(passesGuards(r, userOf(code)), true, `${code} phải được phép`);
-		for (const code of denied) assert.equal(passesGuards(r, userOf(code)), false, `${code} phải bị chặn`);
+		for (const code of allowed)
+			assert.equal(passesGuards(r, userOf(code)), true, `${code} phải được phép`);
+		for (const code of denied)
+			assert.equal(passesGuards(r, userOf(code)), false, `${code} phải bị chặn`);
 	});
 }
 
@@ -83,9 +145,11 @@ test('mọi route đều khai báo phân quyền (authorizePermission hoặc rou
 	const problems = [];
 	for (const r of routes) {
 		const id = `${r.method} ${r.path}`;
-		for (const [res, act] of r.perms) if (!isKnownKey(`${res}:${act}`)) problems.push(`${id}: quyền lạ ${res}:${act}`);
+		for (const [res, act] of r.perms)
+			if (!isKnownKey(`${res}:${act}`)) problems.push(`${id}: quyền lạ ${res}:${act}`);
 		if (r.perms.length && !r.auth) problems.push(`${id}: có guard quyền nhưng thiếu authenticate`);
-		if (!r.perms.length && r.auth && !policy.authOnly[id]) problems.push(`${id}: chỉ cần đăng nhập nhưng chưa khai báo lý do`);
+		if (!r.perms.length && r.auth && !policy.authOnly[id])
+			problems.push(`${id}: chỉ cần đăng nhập nhưng chưa khai báo lý do`);
 		if (!r.auth && !policy.public[id]) problems.push(`${id}: công khai nhưng chưa khai báo lý do`);
 	}
 	assert.deepEqual(problems, []);
@@ -97,7 +161,9 @@ test('guard của route và hasPermission cho cùng kết quả ở mọi vai tr
 		const u = userOf(code);
 		for (const r of routes.filter((x) => x.guards.length)) {
 			// Mỗi guard: có ÍT NHẤT MỘT cặp quyền; các guard nối tiếp: phải qua TẤT CẢ
-			const expected = r.guards.every((g) => g.permissionPairs.some(([res, act]) => hasPermission(u, res, act)));
+			const expected = r.guards.every((g) =>
+				g.permissionPairs.some(([res, act]) => hasPermission(u, res, act)),
+			);
 			if (passesGuards(r, u) !== expected) mismatches.push(`${code} ${r.method} ${r.path}`);
 		}
 	}
@@ -106,6 +172,8 @@ test('guard của route và hasPermission cho cùng kết quả ở mọi vai tr
 
 test('vai trò học viên không vào được route quản trị nào', () => {
 	const u = userOf('trainee');
-	const leaked = routes.filter((r) => r.guards.length && passesGuards(r, u)).map((r) => `${r.method} ${r.path}`);
+	const leaked = routes
+		.filter((r) => r.guards.length && passesGuards(r, u))
+		.map((r) => `${r.method} ${r.path}`);
 	assert.deepEqual(leaked, []);
 });

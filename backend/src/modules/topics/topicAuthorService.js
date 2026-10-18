@@ -6,7 +6,9 @@ const listAuthors = async (topicId) => {
 	const r = await pool
 		.request()
 		.input('topic_id', sql.VarChar(15), topicId)
-		.query('SELECT * FROM topic_authors WHERE topic_id = @topic_id ORDER BY author_order ASC, created_at ASC');
+		.query(
+			'SELECT * FROM topic_authors WHERE topic_id = @topic_id ORDER BY author_order ASC, created_at ASC',
+		);
 	return r.recordset;
 };
 
@@ -15,7 +17,10 @@ const listAuthors = async (topicId) => {
 // hơn diff từng dòng, phù hợp vì số tác giả/bài báo nhỏ.
 const setAuthors = async (topicId, authors, actorId) => {
 	const pool = await getPool();
-	await pool.request().input('topic_id', sql.VarChar(15), topicId).query('DELETE FROM topic_authors WHERE topic_id = @topic_id');
+	await pool
+		.request()
+		.input('topic_id', sql.VarChar(15), topicId)
+		.query('DELETE FROM topic_authors WHERE topic_id = @topic_id');
 	let order = 0;
 	for (const a of authors || []) {
 		if (!a || !a.author_name) continue;

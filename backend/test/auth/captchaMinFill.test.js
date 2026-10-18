@@ -15,7 +15,10 @@ test('gửi sớm hơn thời gian điền form tối thiểu → không qua', a
 	const c = generateCaptcha();
 	let nonce;
 	for (let n = 0; !nonce; n++) {
-		const d = nodeCrypto.createHash('sha256').update(`${c.token}:${n.toString(36)}`).digest();
+		const d = nodeCrypto
+			.createHash('sha256')
+			.update(`${c.token}:${n.toString(36)}`)
+			.digest();
 		if (leadingZeroBits(d) >= c.bits) nonce = n.toString(36);
 	}
 	assert.equal(await verifyCaptcha(c.token, nonce), false);

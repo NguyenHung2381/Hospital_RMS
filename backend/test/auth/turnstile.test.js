@@ -17,29 +17,45 @@ const mockFetch = (impl) => {
 };
 
 test('trả site key cho client, không có câu hỏi phép tính', () => {
-	assert.deepEqual(generateCaptcha(), { provider: 'turnstile', site_key: 'site-key-test', action: 'public-form' });
+	assert.deepEqual(generateCaptcha(), {
+		provider: 'turnstile',
+		site_key: 'site-key-test',
+		action: 'public-form',
+	});
 });
 
 test('Cloudflare xác nhận → qua; gửi kèm secret + IP người dùng', async () => {
-	mockFetch(() => ({ json: async () => ({ success: true, action: 'public-form', hostname: 'localhost' }) }));
+	mockFetch(() => ({
+		json: async () => ({ success: true, action: 'public-form', hostname: 'localhost' }),
+	}));
 	assert.equal(await verifyCaptcha('cf-token', undefined, '10.1.2.3'), true);
 	const last = calls.at(-1);
 	assert.match(last.url, /challenges\.cloudflare\.com\/turnstile\/v0\/siteverify/);
-	assert.deepEqual(last.body, { secret: 'secret-key-test', response: 'cf-token', remoteip: '10.1.2.3' });
+	assert.deepEqual(last.body, {
+		secret: 'secret-key-test',
+		response: 'cf-token',
+		remoteip: '10.1.2.3',
+	});
 });
 
 test('Cloudflare từ chối (token dùng lại / giả) → không qua', async () => {
-	mockFetch(() => ({ json: async () => ({ success: false, 'error-codes': ['timeout-or-duplicate'] }) }));
+	mockFetch(() => ({
+		json: async () => ({ success: false, 'error-codes': ['timeout-or-duplicate'] }),
+	}));
 	assert.equal(await verifyCaptcha('cf-token', undefined, '10.1.2.3'), false);
 });
 
 test('token của widget khác (sai action) → không qua', async () => {
-	mockFetch(() => ({ json: async () => ({ success: true, action: 'login', hostname: 'localhost' }) }));
+	mockFetch(() => ({
+		json: async () => ({ success: true, action: 'login', hostname: 'localhost' }),
+	}));
 	assert.equal(await verifyCaptcha('cf-token', undefined, '10.1.2.3'), false);
 });
 
 test('token sinh trên tên miền lạ → không qua', async () => {
-	mockFetch(() => ({ json: async () => ({ success: true, action: 'public-form', hostname: 'evil.example' }) }));
+	mockFetch(() => ({
+		json: async () => ({ success: true, action: 'public-form', hostname: 'evil.example' }),
+	}));
 	assert.equal(await verifyCaptcha('cf-token', undefined, '10.1.2.3'), false);
 });
 

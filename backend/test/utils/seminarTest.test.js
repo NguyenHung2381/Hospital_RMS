@@ -44,7 +44,12 @@ test('publicQuestions: không lộ đáp án, phương án theo thứ tự trộ
 		{ q: 1, options: [1, 0] },
 	];
 	const pub = t.publicQuestions(QUESTIONS, order);
-	assert.deepStrictEqual(pub[0], { q: 'C', image: null, options: ['c3', 'c0', 'c1', 'c2'], points: 0.5 });
+	assert.deepStrictEqual(pub[0], {
+		q: 'C',
+		image: null,
+		options: ['c3', 'c0', 'c1', 'c2'],
+		points: 0.5,
+	});
 	assert.ok(pub.every((x) => !('answer' in x)));
 });
 
@@ -66,14 +71,25 @@ test('gradeTest: quy đáp án về chỉ số gốc, cộng điểm theo trọn
 });
 
 test('attemptDeadline: sớm hơn giữa hết thời gian làm bài và giờ dừng tiếp nhận', () => {
-	const sem = { test_open: true, test_date: '2026-10-16', test_start_time: '16:00', test_end_time: '16:30' };
+	const sem = {
+		test_open: true,
+		test_date: '2026-10-16',
+		test_start_time: '16:00',
+		test_end_time: '16:30',
+	};
 	const now = vn('2026-10-16T16:10:00');
 	// Không giới hạn thời gian làm bài → hạn = giờ dừng tiếp nhận
 	assert.strictEqual(t.attemptDeadline(sem, null, now), vn('2026-10-16T16:30:00'));
 	// 15 phút, đã làm 5 phút → còn 10 phút (16:20)
-	assert.strictEqual(t.attemptDeadline({ ...sem, test_duration_minutes: 15 }, 300, now), vn('2026-10-16T16:20:00'));
+	assert.strictEqual(
+		t.attemptDeadline({ ...sem, test_duration_minutes: 15 }, 300, now),
+		vn('2026-10-16T16:20:00'),
+	);
 	// 30 phút nhưng bắt đầu lúc 16:10 → bị chặn ở 16:30
-	assert.strictEqual(t.attemptDeadline({ ...sem, test_duration_minutes: 30 }, 0, now), vn('2026-10-16T16:30:00'));
+	assert.strictEqual(
+		t.attemptDeadline({ ...sem, test_duration_minutes: 30 }, 0, now),
+		vn('2026-10-16T16:30:00'),
+	);
 	// Không có giờ, không giới hạn → null
 	assert.strictEqual(t.attemptDeadline({ test_open: true }, 0, now), null);
 });

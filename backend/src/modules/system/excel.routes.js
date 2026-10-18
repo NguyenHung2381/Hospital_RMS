@@ -18,24 +18,36 @@ router.use(authenticate);
 router.post('/build', async (req, res, next) => {
 	try {
 		const { fileName, sheetName, headers, rows = [] } = req.body || {};
-		if (!Array.isArray(headers) || !headers.length || headers.length > MAX_COLS) throw badRequest('Danh sách cột không hợp lệ');
+		if (!Array.isArray(headers) || !headers.length || headers.length > MAX_COLS)
+			throw badRequest('Danh sách cột không hợp lệ');
 		if (!Array.isArray(rows) || rows.length > MAX_ROWS) throw badRequest(`Tối đa ${MAX_ROWS} dòng`);
 
 		const wb = new ExcelJS.Workbook();
 		// Tên sheet Excel: ≤31 ký tự, không chứa : \ / ? * [ ]
-		const ws = wb.addWorksheet(String(sheetName || 'Dữ liệu').replace(/[:\\/?*[\]]/g, ' ').slice(0, 31));
+		const ws = wb.addWorksheet(
+			String(sheetName || 'Dữ liệu')
+				.replace(/[:\\/?*[\]]/g, ' ')
+				.slice(0, 31),
+		);
 		headerRow(ws, 1, headers.map(String));
 		rows.forEach((r, i) => {
-			const vals = (Array.isArray(r) ? r : []).slice(0, headers.length).map((v) => (typeof v === 'number' ? v : v == null ? '' : String(v)));
+			const vals = (Array.isArray(r) ? r : [])
+				.slice(0, headers.length)
+				.map((v) => (typeof v === 'number' ? v : v == null ? '' : String(v)));
 			dataRow(ws, i + 2, vals);
 		});
 		headers.forEach((h, i) => {
-			const longest = Math.max(String(h).length, ...rows.slice(0, 500).map((r) => String(r?.[i] ?? '').length));
+			const longest = Math.max(
+				String(h).length,
+				...rows.slice(0, 500).map((r) => String(r?.[i] ?? '').length),
+			);
 			ws.getColumn(i + 1).width = Math.min(Math.max(longest + 2, 10), 60);
 		});
 		ws.views = [{ state: 'frozen', ySplit: 1 }];
 
-		const safeName = String(fileName || 'du-lieu').replace(/[^\p{L}\p{N}_.-]+/gu, '-').slice(0, 80);
+		const safeName = String(fileName || 'du-lieu')
+			.replace(/[^\p{L}\p{N}_.-]+/gu, '-')
+			.slice(0, 80);
 		await sendWorkbook(res, wb, `${safeName}.xlsx`);
 	} catch (e) {
 		next(e);

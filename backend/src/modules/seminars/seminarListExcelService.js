@@ -38,37 +38,121 @@ const COLUMNS = [
 		header: 'Tên hội thảo/hội nghị',
 		width: 48,
 		match: (h) =>
-			h.startsWith('ten hoi') || h === 'ten su kien' || h === 'ten' || h === 'noi dung' || h.startsWith('ten noi dung'),
+			h.startsWith('ten hoi') ||
+			h === 'ten su kien' ||
+			h === 'ten' ||
+			h === 'noi dung' ||
+			h.startsWith('ten noi dung'),
 	},
-	{ key: 'event_type', header: 'Hình thức', width: 18, match: (h) => h === 'hinh thuc' || h === 'loai' || h === 'the loai' },
-	{ key: 'scope', header: 'Phạm vi', width: 20, match: (h) => h === 'pham vi' || h === 'don vi to chuc' },
-	{ key: 'start_date', header: 'Ngày bắt đầu', width: 13, match: (h) => h === 'ngay bat dau' || h === 'tu ngay' },
-	{ key: 'end_date', header: 'Ngày kết thúc', width: 13, match: (h) => h === 'ngay ket thuc' || h === 'den ngay' },
-	{ key: 'date_text', header: 'Thời gian (ghi chữ)', width: 18, match: (h) => h.startsWith('thoi gian') || h === 'ngay to chuc' },
-	{ key: 'event_year', header: 'Năm', width: 7, match: (h) => h === 'nam' || h === 'nam to chuc' || h === 'nam su kien' },
-	{ key: 'location', header: 'Địa điểm', width: 24, match: (h) => h === 'dia diem' || h === 'noi to chuc' },
-	{ key: 'host_chair', header: 'Chủ trì / Chủ tọa', width: 22, match: (h) => h.startsWith('chu tri') || h.startsWith('chu toa') },
-	{ key: 'speakers', header: 'Báo cáo viên', width: 28, match: (h) => h === 'bao cao vien' || h === 'dien gia' },
-	{ key: 'co_organizers', header: 'Đơn vị phối hợp', width: 22, match: (h) => h.includes('phoi hop') },
+	{
+		key: 'event_type',
+		header: 'Hình thức',
+		width: 18,
+		match: (h) => h === 'hinh thuc' || h === 'loai' || h === 'the loai',
+	},
+	{
+		key: 'scope',
+		header: 'Phạm vi',
+		width: 20,
+		match: (h) => h === 'pham vi' || h === 'don vi to chuc',
+	},
+	{
+		key: 'start_date',
+		header: 'Ngày bắt đầu',
+		width: 13,
+		match: (h) => h === 'ngay bat dau' || h === 'tu ngay',
+	},
+	{
+		key: 'end_date',
+		header: 'Ngày kết thúc',
+		width: 13,
+		match: (h) => h === 'ngay ket thuc' || h === 'den ngay',
+	},
+	{
+		key: 'date_text',
+		header: 'Thời gian (ghi chữ)',
+		width: 18,
+		match: (h) => h.startsWith('thoi gian') || h === 'ngay to chuc',
+	},
+	{
+		key: 'event_year',
+		header: 'Năm',
+		width: 7,
+		match: (h) => h === 'nam' || h === 'nam to chuc' || h === 'nam su kien',
+	},
+	{
+		key: 'location',
+		header: 'Địa điểm',
+		width: 24,
+		match: (h) => h === 'dia diem' || h === 'noi to chuc',
+	},
+	{
+		key: 'host_chair',
+		header: 'Chủ trì / Chủ tọa',
+		width: 22,
+		match: (h) => h.startsWith('chu tri') || h.startsWith('chu toa'),
+	},
+	{
+		key: 'speakers',
+		header: 'Báo cáo viên',
+		width: 28,
+		match: (h) => h === 'bao cao vien' || h === 'dien gia',
+	},
+	{
+		key: 'co_organizers',
+		header: 'Đơn vị phối hợp',
+		width: 22,
+		match: (h) => h.includes('phoi hop'),
+	},
 	{
 		key: 'permit_doc_no',
 		header: 'Số giấy phép / văn bản',
 		width: 18,
 		match: (h) => h.includes('giay phep') || h.includes('so van ban') || h === 'so qd',
 	},
-	{ key: 'grants_cme', header: 'Cấp CME', width: 9, match: (h) => h === 'cap cme' || h === 'cme' || h === 'co cap cme' },
+	{
+		key: 'grants_cme',
+		header: 'Cấp CME',
+		width: 9,
+		match: (h) => h === 'cap cme' || h === 'cme' || h === 'co cap cme',
+	},
 	{
 		key: 'cme_default_credits',
 		header: 'Số tín chỉ CME',
 		width: 11,
 		match: (h) => h.includes('tin chi'),
 	},
-	{ key: 'coordinator', header: 'Đầu mối', width: 16, match: (h) => h === 'dau moi' || h === 'nguoi phu trach' },
-	{ key: 'manual_participant_count', header: 'Số người dự', width: 10, match: (h) => h === 'so nguoi du' || h === 'nguoi du' || h === 'tong so' },
+	{
+		key: 'coordinator',
+		header: 'Đầu mối',
+		width: 16,
+		match: (h) => h === 'dau moi' || h === 'nguoi phu trach',
+	},
+	{
+		key: 'manual_participant_count',
+		header: 'Số người dự',
+		width: 10,
+		match: (h) => h === 'so nguoi du' || h === 'nguoi du' || h === 'tong so',
+	},
 	{ key: 'manual_internal_count', header: 'Nội viện', width: 9, match: (h) => h === 'noi vien' },
-	{ key: 'manual_external_count', header: 'Ngoại viện', width: 9, match: (h) => h === 'ngoai vien' },
-	{ key: 'manual_foreign_count', header: 'Nước ngoài', width: 9, match: (h) => h === 'nuoc ngoai' || h === 'quoc te' },
-	{ key: 'manual_cme_count', header: 'Số cấp CME', width: 9, match: (h) => h === 'so cap cme' || h === 'so cme' },
+	{
+		key: 'manual_external_count',
+		header: 'Ngoại viện',
+		width: 9,
+		match: (h) => h === 'ngoai vien',
+	},
+	{
+		key: 'manual_foreign_count',
+		header: 'Nước ngoài',
+		width: 9,
+		match: (h) => h === 'nuoc ngoai' || h === 'quoc te',
+	},
+	{
+		key: 'manual_cme_count',
+		header: 'Số cấp CME',
+		width: 9,
+		match: (h) => h === 'so cap cme' || h === 'so cme',
+	},
 	{ key: 'notes', header: 'Ghi chú', width: 26, match: (h) => h === 'ghi chu' },
 ];
 
@@ -99,7 +183,9 @@ const DROPDOWNS = {
 // Chủ trì / Báo cáo viên. Loại tài khoản khoa dùng chung (vai trò dept_head).
 const loadStaffNames = async () => {
 	const pool = await getPool();
-	const r = await (await inputRoleId(pool.request(), 'dept_head_role', ROLE.DEPT_HEAD)).query(`
+	const r = await (
+		await inputRoleId(pool.request(), 'dept_head_role', ROLE.DEPT_HEAD)
+	).query(`
 		SELECT u.full_name, q.code AS qualification
 		FROM users u
 		LEFT JOIN qualifications q ON q.id = u.qualification_id
@@ -143,7 +229,7 @@ const exportWorkbook = async (filters = {}) => {
 
 	data.forEach((s, i) => {
 		// Số người: ưu tiên số nhập tay, không có thì lấy số đếm từ danh sách người dự
-		const pick = (manual, counted) => (manual ?? (counted || null));
+		const pick = (manual, counted) => manual ?? (counted || null);
 		ws.addRow({
 			stt: i + 1,
 			title: s.title,
@@ -208,7 +294,9 @@ const templateWorkbook = async () => {
 const cellText = (cell) => {
 	if (!cell) return '';
 	try {
-		return String(cell.text ?? '').replace(/\s+/g, ' ').trim();
+		return String(cell.text ?? '')
+			.replace(/\s+/g, ' ')
+			.trim();
 	} catch {
 		return '';
 	}
@@ -262,8 +350,10 @@ const parseEventType = (s) => {
 		if (n === norm(label) || n === k) return { event_type: k, event_type_raw: null };
 	}
 	if (n.includes('quoc te')) return { event_type: 'intl_seminar', event_type_raw: s };
-	if (n.includes('tap huan') || n.includes('dao tao')) return { event_type: 'training', event_type_raw: s };
-	if (n.includes('hoi nghi') && n.includes('khoa hoc')) return { event_type: 'sci_conference', event_type_raw: s };
+	if (n.includes('tap huan') || n.includes('dao tao'))
+		return { event_type: 'training', event_type_raw: s };
+	if (n.includes('hoi nghi') && n.includes('khoa hoc'))
+		return { event_type: 'sci_conference', event_type_raw: s };
 	if (n.includes('hoi thao')) return { event_type: 'sci_seminar', event_type_raw: s };
 	if (n.includes('hoi nghi')) return { event_type: 'conference', event_type_raw: s };
 	return { event_type: 'other', event_type_raw: s };
@@ -272,7 +362,8 @@ const parseEventType = (s) => {
 const parseScope = (s) => {
 	const n = norm(s);
 	if (!n) return 'hosted';
-	if (n.includes('ngoai') || n.includes('cu nguoi') || n.includes('cu di') || n === 'external') return 'external';
+	if (n.includes('ngoai') || n.includes('cu nguoi') || n.includes('cu di') || n === 'external')
+		return 'external';
 	return 'hosted';
 };
 
@@ -282,7 +373,9 @@ const parseBool = (s) => {
 };
 
 const parseNum = (s) => {
-	const t = String(s || '').replace(',', '.').trim();
+	const t = String(s || '')
+		.replace(',', '.')
+		.trim();
 	if (!t) return null;
 	const n = parseFloat(t);
 	return Number.isFinite(n) ? n : NaN;
@@ -325,7 +418,9 @@ const parseRows = async (buffer) => {
 		const end = parseDate(cell(row, 'end_date'));
 		let dateText = text(row, 'date_text') || null;
 		if (start.raw) {
-			warnings.push(`Ngày bắt đầu "${start.raw}" không đúng dạng dd/mm/yyyy — lưu vào "Thời gian (ghi chữ)"`);
+			warnings.push(
+				`Ngày bắt đầu "${start.raw}" không đúng dạng dd/mm/yyyy — lưu vào "Thời gian (ghi chữ)"`,
+			);
 			dateText = dateText || start.raw;
 		}
 		if (end.raw) warnings.push(`Ngày kết thúc "${end.raw}" không đúng dạng dd/mm/yyyy — bỏ qua`);
@@ -364,7 +459,8 @@ const parseRows = async (buffer) => {
 		}
 
 		const { event_type, event_type_raw } = parseEventType(text(row, 'event_type'));
-		if (event_type_raw) warnings.push(`Hình thức "${event_type_raw}" được quy về "${EVENT_TYPE_LABELS[event_type]}"`);
+		if (event_type_raw)
+			warnings.push(`Hình thức "${event_type_raw}" được quy về "${EVENT_TYPE_LABELS[event_type]}"`);
 
 		const creditsVal = Number.isNaN(credits) ? null : credits;
 		const grantsRaw = text(row, 'grants_cme');

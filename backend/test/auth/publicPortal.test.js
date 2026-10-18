@@ -11,16 +11,25 @@ const TRAINEE = { id: 'HV1', national_id: '040200001234', dob: new Date('2000-05
 const log = install(async (text, inputs) => {
 	if (/FROM trainees t\s+JOIN course_enrollments/.test(text)) {
 		const d = inputs.dob;
-		return inputs.national_id === TRAINEE.national_id && d === '2000-05-15' ? [{ full_name: 'Nguyễn Văn An' }] : [];
+		return inputs.national_id === TRAINEE.national_id && d === '2000-05-15'
+			? [{ full_name: 'Nguyễn Văn An' }]
+			: [];
 	}
 	if (/SELECT TOP 1 \* FROM trainees WHERE national_id/.test(text))
 		return inputs.national_id === TRAINEE.national_id ? [TRAINEE] : [];
 	return [];
 });
 const courseService = require('../../src/modules/training/courses/courseService');
-courseService.getById = async () => ({ id: 'KH1', status: 'draft', is_public_registration: true, enrollment_open: true });
+courseService.getById = async () => ({
+	id: 'KH1',
+	status: 'draft',
+	is_public_registration: true,
+	enrollment_open: true,
+});
 courseService.registerTrainee = async () => ({ id: 'GD1' });
-require('../../src/modules/training/trainees/traineeService').create = async () => ({ id: 'HV-NEW' });
+require('../../src/modules/training/trainees/traineeService').create = async () => ({
+	id: 'HV-NEW',
+});
 
 const { generateCaptcha, verifyCaptcha } = require('../../src/utils/captcha');
 const portal = require('../../src/modules/public/publicPortalService');
@@ -65,29 +74,52 @@ test('captcha: nonce sai định dạng / token giả → không qua', async () 
 });
 
 test('tra cứu: sai ngày sinh thì như không có dữ liệu', async () => {
-	assert.equal((await portal.lookupResults(TRAINEE.national_id, '2000-05-16', 'Nguyễn Văn An')).length, 0);
-	assert.equal((await portal.lookupResults(TRAINEE.national_id, '2000-05-15', 'Nguyễn Văn An')).length, 1);
+	assert.equal(
+		(await portal.lookupResults(TRAINEE.national_id, '2000-05-16', 'Nguyễn Văn An')).length,
+		0,
+	);
+	assert.equal(
+		(await portal.lookupResults(TRAINEE.national_id, '2000-05-15', 'Nguyễn Văn An')).length,
+		1,
+	);
 });
 
 test('tra cứu: họ tên phải khớp (bỏ qua hoa/thường, dấu, khoảng trắng thừa)', async () => {
-	assert.equal((await portal.lookupResults(TRAINEE.national_id, '2000-05-15', '  nguyen  van AN ')).length, 1);
-	assert.equal((await portal.lookupResults(TRAINEE.national_id, '2000-05-15', 'Nguyễn Văn Bình')).length, 0);
+	assert.equal(
+		(await portal.lookupResults(TRAINEE.national_id, '2000-05-15', '  nguyen  van AN ')).length,
+		1,
+	);
+	assert.equal(
+		(await portal.lookupResults(TRAINEE.national_id, '2000-05-15', 'Nguyễn Văn Bình')).length,
+		0,
+	);
 	assert.equal((await portal.lookupResults(TRAINEE.national_id, '2000-05-15', '')).length, 0);
 });
 
 test('giới hạn theo khoá: quá số lần thì bị chặn dù đổi IP', async () => {
 	const results = [];
-	for (let i = 0; i < 6; i++) results.push(await attempts.hit('test-lookup', '012345678901', 5, 3600));
+	for (let i = 0; i < 6; i++)
+		results.push(await attempts.hit('test-lookup', '012345678901', 5, 3600));
 	assert.deepEqual(results, [true, true, true, true, true, false]);
 	assert.equal(await attempts.hit('test-lookup', '999999999999', 5, 3600), true); // CCCD khác không ảnh hưởng
 });
 
 test('đăng ký: CCCD đã có hồ sơ mà sai ngày sinh thì bị từ chối', async () => {
 	await assert.rejects(
-		portal.register({ course_id: 'KH1', full_name: 'X', national_id: TRAINEE.national_id, dob: '1999-01-01' }),
+		portal.register({
+			course_id: 'KH1',
+			full_name: 'X',
+			national_id: TRAINEE.national_id,
+			dob: '1999-01-01',
+		}),
 		(e) => e.statusCode === 409,
 	);
-	const ok = await portal.register({ course_id: 'KH1', full_name: 'X', national_id: TRAINEE.national_id, dob: '2000-05-15' });
+	const ok = await portal.register({
+		course_id: 'KH1',
+		full_name: 'X',
+		national_id: TRAINEE.national_id,
+		dob: '2000-05-15',
+	});
 	assert.equal(ok.trainee_id, 'HV1');
 	assert.ok(log.length > 0);
 });

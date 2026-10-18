@@ -22,16 +22,20 @@ router.use(authenticate);
 router.get('/', authorizePermission(['staff_licenses', 'read']), ctrl.getAll);
 router.get('/:id', authorizePermission(['staff_licenses', 'read']), ctrl.getById);
 
-router.get('/by-user/:userId', authorizePermission(['staff_licenses', 'read']), async (req, res, next) => {
-	try {
-		const { success, notFound } = require('../../utils/response');
-		const item = await staffLicenseService.getByUserId(req.params.userId);
-		if (!item) return notFound(res);
-		return success(res, item);
-	} catch (err) {
-		next(err);
-	}
-});
+router.get(
+	'/by-user/:userId',
+	authorizePermission(['staff_licenses', 'read']),
+	async (req, res, next) => {
+		try {
+			const { success, notFound } = require('../../utils/response');
+			const item = await staffLicenseService.getByUserId(req.params.userId);
+			if (!item) return notFound(res);
+			return success(res, item);
+		} catch (err) {
+			next(err);
+		}
+	},
+);
 
 router.post(
 	'/',
@@ -66,9 +70,16 @@ router.post(
 	uploadExcel.single('file'),
 	async (req, res, next) => {
 		try {
-			if (!req.file) return res.status(400).json({ success: false, message: 'Chưa chọn file Excel.' });
+			if (!req.file)
+				return res.status(400).json({ success: false, message: 'Chưa chọn file Excel.' });
 			const dry_run = req.body.dry_run === '1' || req.body.dry_run === 'true';
-			return success(res, await staffLicenseImportService.importExcel({ buffer: req.file.buffer, dry_run }, req.user.id));
+			return success(
+				res,
+				await staffLicenseImportService.importExcel(
+					{ buffer: req.file.buffer, dry_run },
+					req.user.id,
+				),
+			);
 		} catch (err) {
 			next(err);
 		}

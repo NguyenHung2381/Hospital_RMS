@@ -17,14 +17,45 @@ install(async (text, inputs) => {
 	return [];
 });
 
-const base = { isActive: true, departmentId: 'K1', accountExpiresAt: null, tokenVersion: 0, mustChangePassword: false };
+const base = {
+	isActive: true,
+	departmentId: 'K1',
+	accountExpiresAt: null,
+	tokenVersion: 0,
+	mustChangePassword: false,
+};
 const STATUS = {
-	adminOverdue: { ...base, roleId: 'ADMIN', totpEnabled: false, twofaRequiredSince: new Date(Date.now() - 30 * DAY) },
-	adminGrace: { ...base, roleId: 'ADMIN', totpEnabled: false, twofaRequiredSince: new Date(Date.now() - 2 * DAY) },
+	adminOverdue: {
+		...base,
+		roleId: 'ADMIN',
+		totpEnabled: false,
+		twofaRequiredSince: new Date(Date.now() - 30 * DAY),
+	},
+	adminGrace: {
+		...base,
+		roleId: 'ADMIN',
+		totpEnabled: false,
+		twofaRequiredSince: new Date(Date.now() - 2 * DAY),
+	},
 	adminNew: { ...base, roleId: 'ADMIN', totpEnabled: false, twofaRequiredSince: null },
-	adminWith2fa: { ...base, roleId: 'ADMIN', totpEnabled: true, twofaRequiredSince: new Date(Date.now() - 30 * DAY) },
-	superOverdue: { ...base, roleId: 'SUPER', totpEnabled: false, twofaRequiredSince: new Date(Date.now() - 30 * DAY) },
-	memberOverdue: { ...base, roleId: 'MEM', totpEnabled: false, twofaRequiredSince: new Date(Date.now() - 30 * DAY) },
+	adminWith2fa: {
+		...base,
+		roleId: 'ADMIN',
+		totpEnabled: true,
+		twofaRequiredSince: new Date(Date.now() - 30 * DAY),
+	},
+	superOverdue: {
+		...base,
+		roleId: 'SUPER',
+		totpEnabled: false,
+		twofaRequiredSince: new Date(Date.now() - 30 * DAY),
+	},
+	memberOverdue: {
+		...base,
+		roleId: 'MEM',
+		totpEnabled: false,
+		twofaRequiredSince: new Date(Date.now() - 30 * DAY),
+	},
 };
 const PERMS = {
 	ADMIN: new Set(['users:read', 'users:update']), // users:update là quyền critical
@@ -33,7 +64,10 @@ const PERMS = {
 };
 require('../../src/middlewares/userStatusCache').load = async (id) => STATUS[id];
 require('../../src/middlewares/userStatusCache').clear = () => {};
-require('../../src/middlewares/permissionCache').load = async (roleId) => ({ keys: PERMS[roleId], scopes: new Map() });
+require('../../src/middlewares/permissionCache').load = async (roleId) => ({
+	keys: PERMS[roleId],
+	scopes: new Map(),
+});
 
 const { authenticate, TWO_FACTOR_REQUIRED } = require('../../src/middlewares/auth');
 const { signToken } = require('../../src/utils/keys');
@@ -61,7 +95,11 @@ test('quản trị quá hạn chưa bật 2FA: chặn API thường, vẫn gọi
 	const r = await run('adminOverdue');
 	assert.equal(r.status, 403);
 	assert.equal(r.body.code, TWO_FACTOR_REQUIRED);
-	for (const url of ['/api/v1/auth/2fa/setup', '/api/v1/auth/2fa/verify-setup', '/api/v1/auth/2fa/status']) {
+	for (const url of [
+		'/api/v1/auth/2fa/setup',
+		'/api/v1/auth/2fa/verify-setup',
+		'/api/v1/auth/2fa/status',
+	]) {
 		assert.equal((await run('adminOverdue', url)).next, true, url);
 	}
 });
@@ -80,7 +118,10 @@ test('đã bật 2FA, hoặc vai trò không có quyền critical: không bị c
 });
 
 test('lần đầu thuộc diện: ghi mốc bắt đầu, trạng thái grace với hạn 14 ngày', async () => {
-	const s = await twoFactorState({ userId: 'adminNew', totpEnabled: false, requiredSince: null }, PERMS.ADMIN);
+	const s = await twoFactorState(
+		{ userId: 'adminNew', totpEnabled: false, requiredSince: null },
+		PERMS.ADMIN,
+	);
 	assert.equal(s.state, 'grace');
 	assert.ok(writes.includes('adminNew'));
 	const days = (s.deadline.getTime() - Date.now()) / DAY;

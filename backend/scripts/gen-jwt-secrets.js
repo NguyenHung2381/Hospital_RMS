@@ -23,9 +23,7 @@ const force = args.includes('--force');
 const dryRun = args.includes('--dry-run');
 const envIdx = args.indexOf('--env');
 const envPath = path.resolve(
-	envIdx >= 0 && args[envIdx + 1]
-		? args[envIdx + 1]
-		: path.join(__dirname, '..', '.env'),
+	envIdx >= 0 && args[envIdx + 1] ? args[envIdx + 1] : path.join(__dirname, '..', '.env'),
 );
 const examplePath = path.join(path.dirname(envPath), '.env.example');
 
@@ -51,7 +49,13 @@ const changes = [];
 for (const key of KEYS) {
 	const re = new RegExp(`^\\s*${key}\\s*=(.*)$`);
 	const idx = lines.findIndex((l) => re.test(l));
-	const current = idx >= 0 ? lines[idx].match(re)[1].trim().replace(/^["']|["']$/g, '') : '';
+	const current =
+		idx >= 0
+			? lines[idx]
+					.match(re)[1]
+					.trim()
+					.replace(/^["']|["']$/g, '')
+			: '';
 
 	if (!isPlaceholder(current) && !force) {
 		changes.push(`  = ${key}: giữ nguyên (đã có giá trị, dùng --force để thay)`);
@@ -72,7 +76,9 @@ for (const key of KEYS) {
 }
 
 const changed = changes.some((c) => !c.startsWith('  ='));
-console.log(`[gen-jwt] File: ${envPath}${source !== envPath ? ` (tạo từ ${path.basename(source)})` : ''}`);
+console.log(
+	`[gen-jwt] File: ${envPath}${source !== envPath ? ` (tạo từ ${path.basename(source)})` : ''}`,
+);
 console.log(changes.join('\n'));
 
 if (!changed) {

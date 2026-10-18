@@ -4,7 +4,14 @@
 // máy không có .env (CI GitHub Actions, bản clone mới) 2 bước này luôn lỗi.
 // Gọi SAU khi đã nạp .env: biến nào đã có (từ .env thật) giữ nguyên, chỉ điền
 // giá trị giữ chỗ cho biến còn thiếu.
-const REQUIRED = ['DB_USER', 'DB_PASSWORD', 'JWT_SECRET', 'JWT_REFRESH_SECRET', 'SWAGGER_USER', 'SWAGGER_PASS'];
+const REQUIRED = [
+	'DB_USER',
+	'DB_PASSWORD',
+	'JWT_SECRET',
+	'JWT_REFRESH_SECRET',
+	'SWAGGER_USER',
+	'SWAGGER_PASS',
+];
 
 for (const key of REQUIRED) {
 	if (!process.env[key]) process.env[key] = `static-check-${key.toLowerCase()}`;

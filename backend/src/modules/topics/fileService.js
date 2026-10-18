@@ -18,9 +18,7 @@ const uploadFiles = async (topicId, filesData, batchNote, actorId) => {
 // File của một đề tài luôn ít — trả toàn bộ, không phân trang
 const getByTopic = async (topicId) => {
 	const pool = await getPool();
-	const result = await pool
-		.request()
-		.input('topic_id', sql.VarChar(15), topicId).query(`
+	const result = await pool.request().input('topic_id', sql.VarChar(15), topicId).query(`
       SELECT f.*, u.full_name AS uploaded_by_name, fb.note AS batch_note
       FROM files f
       LEFT JOIN users u ON u.id = f.created_by
@@ -38,9 +36,7 @@ const getByTopic = async (topicId) => {
 
 const getBatches = async (topicId) => {
 	const pool = await getPool();
-	const result = await pool
-		.request()
-		.input('topic_id', sql.VarChar(15), topicId).query(`
+	const result = await pool.request().input('topic_id', sql.VarChar(15), topicId).query(`
       SELECT fb.*, u.full_name AS uploaded_by_name,
              (SELECT COUNT(*) FROM files WHERE batch_id = fb.id AND is_deleted = 0) AS file_count
       FROM file_batches fb

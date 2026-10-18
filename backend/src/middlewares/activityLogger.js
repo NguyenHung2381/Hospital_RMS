@@ -93,8 +93,7 @@ const activityLogger = (req, res, next) => {
 			const durationMs = Number(process.hrtime.bigint() - startedAt) / 1e6;
 			const aborted = !res.writableFinished;
 			const len = Number(res.getHeader('content-length'));
-			const params =
-				req.params && Object.keys(req.params).length ? req.params : undefined;
+			const params = req.params && Object.keys(req.params).length ? req.params : undefined;
 
 			auditLogger.info(
 				{

@@ -38,10 +38,7 @@ const load = async (roleId) => {
 	if (cached) return cached;
 
 	const pool = await getPool();
-	const result = await pool
-		.request()
-		.input('role_id', sql.VarChar(20), roleId)
-		.query(`
+	const result = await pool.request().input('role_id', sql.VarChar(20), roleId).query(`
       SELECT p.resource, p.action, rp.scope
       FROM permissions p
       INNER JOIN role_permissions rp ON rp.permission_id = p.id

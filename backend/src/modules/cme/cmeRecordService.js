@@ -22,7 +22,14 @@ const recordSelect = `
   LEFT JOIN training_files f ON f.id = r.evidence_file_id AND f.is_deleted = 0
 `;
 
-const getAll = async ({ page = 1, limit = 20, user_id, year, category_id, approval_status } = {}) => {
+const getAll = async ({
+	page = 1,
+	limit = 20,
+	user_id,
+	year,
+	category_id,
+	approval_status,
+} = {}) => {
 	const pool = await getPool();
 	const pg = paging(page, limit, 100);
 	const where = ['1=1'];
@@ -59,7 +66,10 @@ const getAll = async ({ page = 1, limit = 20, user_id, year, category_id, approv
 
 const getById = async (id) => {
 	const pool = await getPool();
-	const result = await pool.request().input('id', sql.VarChar(20), id).query(`${recordSelect} WHERE r.id = @id`);
+	const result = await pool
+		.request()
+		.input('id', sql.VarChar(20), id)
+		.query(`${recordSelect} WHERE r.id = @id`);
 	return result.recordset[0] || null;
 };
 
@@ -93,7 +103,10 @@ const create = async (data, actorId, { fetch = true } = {}) => {
 const update = async (id, data, actorId) => {
 	const pool = await getPool();
 	const sets = ['updated_at = GETDATE()', 'updated_by = @actor_id'];
-	const req = pool.request().input('id', sql.VarChar(20), id).input('actor_id', sql.VarChar(20), actorId);
+	const req = pool
+		.request()
+		.input('id', sql.VarChar(20), id)
+		.input('actor_id', sql.VarChar(20), actorId);
 
 	const fieldMap = {
 		user_id: sql.VarChar(20),
@@ -107,7 +120,8 @@ const update = async (id, data, actorId) => {
 		end_date: sql.Date,
 	};
 	// year là cột thường: đổi ngày hoạt động thì cập nhật theo, trừ khi truyền year rõ ràng
-	if (data.year === undefined && data.activity_date) data = { ...data, year: new Date(data.activity_date).getUTCFullYear() };
+	if (data.year === undefined && data.activity_date)
+		data = { ...data, year: new Date(data.activity_date).getUTCFullYear() };
 	fieldMap.year = sql.Int;
 	for (const [field, type] of Object.entries(fieldMap)) {
 		if (data[field] !== undefined) {
@@ -126,7 +140,10 @@ const remove = async (id, actorId) => {
 		.request()
 		.input('id', sql.VarChar(20), id)
 		.query('SELECT evidence_file_id FROM cme_records WHERE id = @id');
-	await pool.request().input('id', sql.VarChar(20), id).query('DELETE FROM cme_records WHERE id = @id');
+	await pool
+		.request()
+		.input('id', sql.VarChar(20), id)
+		.query('DELETE FROM cme_records WHERE id = @id');
 	if (row.recordset[0]?.evidence_file_id) {
 		await trainingFileService.softDelete(row.recordset[0].evidence_file_id, actorId);
 	}
@@ -173,7 +190,8 @@ const httpErr = (message, statusCode) => httpError(statusCode, message);
 const assertEditableMine = async (id, userId) => {
 	const rec = await getById(id);
 	if (!rec || rec.user_id !== userId) throw httpErr('Không tìm thấy ghi nhận CME', 404);
-	if (rec.approval_status === 'approved') throw httpErr('Ghi nhận đã được duyệt, không thể sửa hoặc xoá', 409);
+	if (rec.approval_status === 'approved')
+		throw httpErr('Ghi nhận đã được duyệt, không thể sửa hoặc xoá', 409);
 	return rec;
 };
 
@@ -181,7 +199,10 @@ const createMine = async (data, userId) => {
 	const rec = await create({ ...data, user_id: userId }, userId);
 	// create() luôn để mặc định 'approved' → chuyển về chờ duyệt
 	const pool = await getPool();
-	await pool.request().input('id', sql.VarChar(20), rec.id).query("UPDATE cme_records SET approval_status = 'pending' WHERE id = @id");
+	await pool
+		.request()
+		.input('id', sql.VarChar(20), rec.id)
+		.query("UPDATE cme_records SET approval_status = 'pending' WHERE id = @id");
 	return getById(rec.id);
 };
 
@@ -194,7 +215,9 @@ const updateMine = async (id, data, userId) => {
 	await pool
 		.request()
 		.input('id', sql.VarChar(20), id)
-		.query("UPDATE cme_records SET approval_status = 'pending', reviewed_by = NULL, reviewed_at = NULL, reject_reason = NULL WHERE id = @id");
+		.query(
+			"UPDATE cme_records SET approval_status = 'pending', reviewed_by = NULL, reviewed_at = NULL, reject_reason = NULL WHERE id = @id",
+		);
 	return getById(id);
 };
 

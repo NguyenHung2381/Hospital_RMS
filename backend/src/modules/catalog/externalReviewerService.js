@@ -99,7 +99,9 @@ const update = async (id, data, actorId) => {
 	if (!sets.length) return getById(id);
 
 	req.input('actor_id', sql.VarChar(20), actorId);
-	await req.query(`UPDATE external_reviewers SET ${sets.join(', ')}, updated_at = GETDATE(), updated_by = @actor_id WHERE id = @id`);
+	await req.query(
+		`UPDATE external_reviewers SET ${sets.join(', ')}, updated_at = GETDATE(), updated_by = @actor_id WHERE id = @id`,
+	);
 	await personService.syncPerson('external_reviewers', id, { actorId });
 	const reviewer = await getById(id);
 	broadcast('update', { entity: 'external_reviewer' });
@@ -119,7 +121,9 @@ const remove = async (id, actorId) => {
 			.request()
 			.input('id', sql.VarChar(20), id)
 			.input('actor_id', sql.VarChar(20), actorId || null)
-			.query('UPDATE external_reviewers SET is_active = 0, updated_at = GETDATE(), updated_by = @actor_id WHERE id = @id');
+			.query(
+				'UPDATE external_reviewers SET is_active = 0, updated_at = GETDATE(), updated_by = @actor_id WHERE id = @id',
+			);
 	} else {
 		await pool
 			.request()

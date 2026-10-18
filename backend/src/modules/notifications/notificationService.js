@@ -1,10 +1,7 @@
 const { getPool, sql } = require('../../config/db');
 const mailService = require('./mailService');
 
-const getForUser = async (
-	userId,
-	{ page = 1, limit = 20, unread_only = false } = {},
-) => {
+const getForUser = async (userId, { page = 1, limit = 20, unread_only = false } = {}) => {
 	const pool = await getPool();
 	const offset = (page - 1) * limit;
 	const filter = unread_only ? 'AND is_read = 0' : '';
@@ -36,9 +33,7 @@ const getUnreadCount = async (userId) => {
 	const result = await pool
 		.request()
 		.input('user_id', sql.VarChar(20), userId)
-		.query(
-			'SELECT COUNT(*) AS count FROM notifications WHERE user_id = @user_id AND is_read = 0',
-		);
+		.query('SELECT COUNT(*) AS count FROM notifications WHERE user_id = @user_id AND is_read = 0');
 	return result.recordset[0].count;
 };
 
@@ -48,9 +43,7 @@ const markRead = async (notifId, userId) => {
 		.request()
 		.input('id', sql.VarChar(30), notifId)
 		.input('user_id', sql.VarChar(20), userId)
-		.query(
-			'UPDATE notifications SET is_read = 1 WHERE id = @id AND user_id = @user_id',
-		);
+		.query('UPDATE notifications SET is_read = 1 WHERE id = @id AND user_id = @user_id');
 	return result.rowsAffected[0] > 0;
 };
 
@@ -59,9 +52,7 @@ const markAllRead = async (userId) => {
 	await pool
 		.request()
 		.input('user_id', sql.VarChar(20), userId)
-		.query(
-			'UPDATE notifications SET is_read = 1 WHERE user_id = @user_id AND is_read = 0',
-		);
+		.query('UPDATE notifications SET is_read = 1 WHERE user_id = @user_id AND is_read = 0');
 };
 
 /**
@@ -113,8 +104,7 @@ const pushWithEmail = async (
 		const pool = await getPool();
 		const res = await pool
 			.request()
-			.input('user_ids', sql.NVarChar(sql.MAX), JSON.stringify(userIds))
-			.query(`
+			.input('user_ids', sql.NVarChar(sql.MAX), JSON.stringify(userIds)).query(`
 				SELECT id, email, full_name FROM users
 				WHERE id IN (SELECT [value] FROM OPENJSON(@user_ids))
 				  AND email IS NOT NULL AND email <> ''
@@ -132,9 +122,7 @@ const pushWithEmail = async (
 const getUsersByTarget = async (targetType, targetIds = []) => {
 	const pool = await getPool();
 	if (targetType === 'all') {
-		const res = await pool.request().query(
-			"SELECT id FROM users WHERE is_active = 1",
-		);
+		const res = await pool.request().query('SELECT id FROM users WHERE is_active = 1');
 		return res.recordset.map((r) => r.id);
 	}
 	if (targetType === 'department') {
@@ -151,15 +139,7 @@ const getUsersByTarget = async (targetType, targetIds = []) => {
 	return targetIds;
 };
 
-const sendBroadcast = async ({
-	type,
-	title,
-	message,
-	refId,
-	refType,
-	targetType,
-	targetIds,
-}) => {
+const sendBroadcast = async ({ type, title, message, refId, refType, targetType, targetIds }) => {
 	const userIds = await getUsersByTarget(targetType, targetIds ?? []);
 	if (!userIds.length) return { sent: 0 };
 	await pushWithEmail(type, title, userIds, { message, refId, refType, mailEvent: 'BROADCAST' });
@@ -174,10 +154,7 @@ const adminGetAll = async ({ page = 1, limit = 20, type, search } = {}) => {
 	const pool = await getPool();
 	const offset = (page - 1) * limit;
 	const conditions = [];
-	const req = pool
-		.request()
-		.input('offset', sql.Int, offset)
-		.input('limit', sql.Int, limit);
+	const req = pool.request().input('offset', sql.Int, offset).input('limit', sql.Int, limit);
 	if (type) {
 		conditions.push('n.type = @type');
 		req.input('type', sql.VarChar(50), type);
@@ -216,10 +193,7 @@ const adminGetAll = async ({ page = 1, limit = 20, type, search } = {}) => {
 
 const getBatchRecipients = async (batchKey) => {
 	const pool = await getPool();
-	const result = await pool
-		.request()
-		.input('batch_key', sql.VarChar(30), batchKey)
-		.query(`
+	const result = await pool.request().input('batch_key', sql.VarChar(30), batchKey).query(`
       SELECT u.id AS user_id, u.full_name, u.username, n.is_read
       FROM   notifications n
       JOIN   users u ON u.id = n.user_id

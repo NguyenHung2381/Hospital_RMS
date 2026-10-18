@@ -13,8 +13,14 @@ test('normalizeTime: chuẩn HH:mm, rỗng → null, sai → 400', () => {
 	assert.strictEqual(s.normalizeTime(null, 'x'), null);
 	assert.strictEqual(s.normalizeTime('08:30', 'x'), '08:30');
 	assert.strictEqual(s.normalizeTime('08:30:00', 'x'), '08:30');
-	assert.throws(() => s.normalizeTime('8h', 'Giờ bắt đầu'), (e) => e.statusCode === 400 && /Giờ bắt đầu/.test(e.message));
-	assert.throws(() => s.normalizeTime('24:00', 'x'), (e) => e.statusCode === 400);
+	assert.throws(
+		() => s.normalizeTime('8h', 'Giờ bắt đầu'),
+		(e) => e.statusCode === 400 && /Giờ bắt đầu/.test(e.message),
+	);
+	assert.throws(
+		() => s.normalizeTime('24:00', 'x'),
+		(e) => e.statusCode === 400,
+	);
 });
 
 test('testState: chưa bật = off; không có khung giờ = open khi bật', () => {
@@ -53,13 +59,25 @@ test('normalizeAgenda: bỏ trường trống, kiểm tra tên + giờ', () => {
 	assert.strictEqual(s.normalizeAgenda(null), null);
 	assert.strictEqual(s.normalizeAgenda([]), null);
 	const json = s.normalizeAgenda([
-		{ title: '  Khai mạc ', start_time: '08:00', end_time: '08:30', speaker: '', date: '2026-10-15' },
+		{
+			title: '  Khai mạc ',
+			start_time: '08:00',
+			end_time: '08:30',
+			speaker: '',
+			date: '2026-10-15',
+		},
 	]);
 	assert.deepStrictEqual(JSON.parse(json), [
 		{ title: 'Khai mạc', date: '2026-10-15', start_time: '08:00', end_time: '08:30' },
 	]);
 	assert.throws(() => s.normalizeAgenda([{ title: '' }]), /Bài 1: chưa nhập tên bài/);
-	assert.throws(() => s.normalizeAgenda([{ title: 'A', start_time: '09:00', end_time: '08:00' }]), /sau giờ bắt đầu/);
-	assert.throws(() => s.normalizeAgenda('x'), (e) => e.statusCode === 400);
+	assert.throws(
+		() => s.normalizeAgenda([{ title: 'A', start_time: '09:00', end_time: '08:00' }]),
+		/sau giờ bắt đầu/,
+	);
+	assert.throws(
+		() => s.normalizeAgenda('x'),
+		(e) => e.statusCode === 400,
+	);
 	assert.deepStrictEqual(s.parseAgenda('oops'), []);
 });

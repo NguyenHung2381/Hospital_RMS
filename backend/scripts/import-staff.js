@@ -88,7 +88,8 @@ const matchQual = (raw) => {
 
 // Ô ngày (exceljs trả Date UTC 0h) hoặc chuỗi d/m/yyyy
 const parseDob = (v) => {
-	if (v instanceof Date) return new Date(Date.UTC(v.getUTCFullYear(), v.getUTCMonth(), v.getUTCDate()));
+	if (v instanceof Date)
+		return new Date(Date.UTC(v.getUTCFullYear(), v.getUTCMonth(), v.getUTCDate()));
 	const m = String(v ?? '')
 		.trim()
 		.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
@@ -98,7 +99,8 @@ const parseDob = (v) => {
 };
 
 const cellText = (v) => {
-	if (v && typeof v === 'object' && !(v instanceof Date)) v = v.text ?? v.result ?? v.richText?.map((t) => t.text).join('');
+	if (v && typeof v === 'object' && !(v instanceof Date))
+		v = v.text ?? v.result ?? v.richText?.map((t) => t.text).join('');
 	return String(v ?? '')
 		.replace(/\s+/g, ' ')
 		.trim();
@@ -115,7 +117,8 @@ const readRows = async () => {
 		if (hit && !colOf[hit[0]]) colOf[hit[0]] = col;
 	});
 	const missing = COLUMNS.map(([k]) => k).filter((k) => !colOf[k] && k !== 'qualification');
-	if (missing.length) throw new Error(`Không thấy cột: ${missing.join(', ')} (dòng tiêu đề phải ở dòng 1)`);
+	if (missing.length)
+		throw new Error(`Không thấy cột: ${missing.join(', ')} (dòng tiêu đề phải ở dòng 1)`);
 
 	const rows = [];
 	ws.eachRow((r, line) => {
@@ -145,7 +148,8 @@ const countBy = (items, key) => {
 const ymd = (d) => (d ? d.toISOString().slice(0, 10) : '—');
 
 (async () => {
-	if (!file) throw new Error('Thiếu đường dẫn file Excel. Ví dụ: npm run import:staff -- "D:/ds.xlsx"');
+	if (!file)
+		throw new Error('Thiếu đường dẫn file Excel. Ví dụ: npm run import:staff -- "D:/ds.xlsx"');
 	const pool = await getPool();
 
 	const depts = (await pool.request().query('SELECT id, code, name FROM departments')).recordset;
@@ -165,15 +169,16 @@ const ymd = (d) => (d ? d.toISOString().slice(0, 10) : '—');
 
 	const invalid = rows.filter((r) => !r.full_name || r.mnv == null);
 	const valid = rows.filter((r) => r.full_name && r.mnv != null);
-	const dupInFile = countBy(valid, (r) => r.mnv).filter(([, n]) => n > 1).map(([mnv]) => mnv);
+	const dupInFile = countBy(valid, (r) => r.mnv)
+		.filter(([, n]) => n > 1)
+		.map(([mnv]) => mnv);
 	const usable = valid.filter((r) => !dupInFile.includes(r.mnv));
 
 	const existing = new Map();
 	if (usable.length) {
 		const res = await pool
 			.request()
-			.input('mnvs', sql.NVarChar(sql.MAX), usable.map((r) => r.mnv).join(','))
-			.query(`
+			.input('mnvs', sql.NVarChar(sql.MAX), usable.map((r) => r.mnv).join(',')).query(`
 				SELECT id, staff_number, full_name, department_id, date_of_birth, qualification_id
 				FROM users
 				WHERE staff_number IN (SELECT TRY_CAST(value AS INT) FROM STRING_SPLIT(@mnvs, ','))
@@ -192,19 +197,32 @@ const ymd = (d) => (d ? d.toISOString().slice(0, 10) : '—');
 		`${rows.length} dòng: tạo mới ${toCreate.length} | đã có (bổ sung ô trống) ${toFill.length} | ` +
 			`trùng MNV khác tên ${conflicts.length} | lỗi dữ liệu ${invalid.length} | MNV lặp trong file ${dupInFile.length}`,
 	);
-	const noDept = countBy(usable.filter((r) => !r.dept), (r) => r.deptRaw || '(trống)');
+	const noDept = countBy(
+		usable.filter((r) => !r.dept),
+		(r) => r.deptRaw || '(trống)',
+	);
 	if (noDept.length) {
 		console.log('Khoa/phòng không khớp (sẽ để trống — thêm vào DEPT_ALIAS nếu cần):');
 		for (const [k, n] of noDept) console.log(`  ${n} × ${k}`);
 	}
-	const noQual = countBy(usable.filter((r) => r.qualRaw && !r.qual_id), (r) => r.qualRaw);
-	if (noQual.length) console.log(`Văn bằng không xếp được trình độ (để trống): ${noQual.map(([k, n]) => `${k} (${n})`).join(', ')}`);
+	const noQual = countBy(
+		usable.filter((r) => r.qualRaw && !r.qual_id),
+		(r) => r.qualRaw,
+	);
+	if (noQual.length)
+		console.log(
+			`Văn bằng không xếp được trình độ (để trống): ${noQual.map(([k, n]) => `${k} (${n})`).join(', ')}`,
+		);
 	const noDob = usable.filter((r) => !r.dob);
-	if (noDob.length) console.log(`Ngày sinh không đọc được ở dòng: ${noDob.map((r) => r.line).join(', ')}`);
-	for (const r of invalid) console.log(`  BỎ QUA dòng ${r.line}: thiếu họ tên hoặc MNV không hợp lệ ("${r.mnvText}")`);
+	if (noDob.length)
+		console.log(`Ngày sinh không đọc được ở dòng: ${noDob.map((r) => r.line).join(', ')}`);
+	for (const r of invalid)
+		console.log(`  BỎ QUA dòng ${r.line}: thiếu họ tên hoặc MNV không hợp lệ ("${r.mnvText}")`);
 	for (const mnv of dupInFile) console.log(`  BỎ QUA MNV ${mnv}: xuất hiện nhiều lần trong file`);
 	for (const { r, u } of conflicts)
-		console.log(`  BỎ QUA MNV ${r.mnv}: file "${r.full_name}" nhưng hệ thống là "${u.full_name}" (${u.id})`);
+		console.log(
+			`  BỎ QUA MNV ${r.mnv}: file "${r.full_name}" nhưng hệ thống là "${u.full_name}" (${u.id})`,
+		);
 	if (verbose)
 		for (const r of usable)
 			console.log(
@@ -233,7 +251,12 @@ const ymd = (d) => (d ? d.toISOString().slice(0, 10) : '—');
 	for (const r of toCreate) {
 		try {
 			const acc = await createStaffAccount(
-				{ full_name: r.full_name, staff_number: r.mnv, department_id: r.dept?.id || null, department_code: r.dept?.code || '' },
+				{
+					full_name: r.full_name,
+					staff_number: r.mnv,
+					department_id: r.dept?.id || null,
+					department_code: r.dept?.code || '',
+				},
 				actorId,
 			);
 			await pool
@@ -276,10 +299,17 @@ const ymd = (d) => (d ? d.toISOString().slice(0, 10) : '—');
 	}
 
 	// createStaffAccount đã gắn persons trước khi có ngày sinh → đồng bộ lại cho đủ thông tin
-	await personService.syncPersons('users', [...created.map((c) => c.id), ...toFill.map((x) => x.u.id)], { actorId });
+	await personService.syncPersons(
+		'users',
+		[...created.map((c) => c.id), ...toFill.map((x) => x.u.id)],
+		{ actorId },
+	);
 
-	console.log(`\nĐã tạo ${created.length} tài khoản, bổ sung ${filled} người, lỗi ${failed.length}.`);
-	for (const f of failed) console.log(`  LỖI dòng ${f.r.line} (MNV ${f.r.mnv}, ${f.r.full_name}): ${f.err}`);
+	console.log(
+		`\nĐã tạo ${created.length} tài khoản, bổ sung ${filled} người, lỗi ${failed.length}.`,
+	);
+	for (const f of failed)
+		console.log(`  LỖI dòng ${f.r.line} (MNV ${f.r.mnv}, ${f.r.full_name}): ${f.err}`);
 
 	if (created.length) {
 		const out = new ExcelJS.Workbook();
@@ -293,7 +323,13 @@ const ymd = (d) => (d ? d.toISOString().slice(0, 10) : '—');
 		];
 		ws.getRow(1).font = { bold: true };
 		for (const c of created)
-			ws.addRow({ mnv: c.mnv, full_name: c.full_name, dept: c.dept?.name || c.deptRaw, id: c.id, username: c.username });
+			ws.addRow({
+				mnv: c.mnv,
+				full_name: c.full_name,
+				dept: c.dept?.name || c.deptRaw,
+				id: c.id,
+				username: c.username,
+			});
 		await out.xlsx.writeFile(outPath);
 		console.log(`Danh sách tài khoản mới: ${path.resolve(outPath)}`);
 	}

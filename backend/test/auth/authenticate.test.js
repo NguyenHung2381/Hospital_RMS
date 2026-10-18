@@ -9,14 +9,39 @@ const userStatusCache = require('../../src/middlewares/userStatusCache');
 const permCache = require('../../src/middlewares/permissionCache');
 
 const STATUS = {
-	active: { isActive: true, roleId: 'R1', departmentId: 'K1', accountExpiresAt: null, tokenVersion: 3, mustChangePassword: false },
-	mustChange: { isActive: true, roleId: 'R1', departmentId: 'K1', accountExpiresAt: null, tokenVersion: 0, mustChangePassword: true },
-	disabled: { isActive: false, roleId: 'R1', departmentId: null, accountExpiresAt: null, tokenVersion: 0, mustChangePassword: false },
+	active: {
+		isActive: true,
+		roleId: 'R1',
+		departmentId: 'K1',
+		accountExpiresAt: null,
+		tokenVersion: 3,
+		mustChangePassword: false,
+	},
+	mustChange: {
+		isActive: true,
+		roleId: 'R1',
+		departmentId: 'K1',
+		accountExpiresAt: null,
+		tokenVersion: 0,
+		mustChangePassword: true,
+	},
+	disabled: {
+		isActive: false,
+		roleId: 'R1',
+		departmentId: null,
+		accountExpiresAt: null,
+		tokenVersion: 0,
+		mustChangePassword: false,
+	},
 };
 userStatusCache.load = async (id) => STATUS[id];
 permCache.load = async () => ({ keys: new Set(['topics:read']), scopes: new Map() });
 
-const { authenticate, verifyAccessToken, PASSWORD_CHANGE_REQUIRED } = require('../../src/middlewares/auth');
+const {
+	authenticate,
+	verifyAccessToken,
+	PASSWORD_CHANGE_REQUIRED,
+} = require('../../src/middlewares/auth');
 
 const { signToken } = require('../../src/utils/keys');
 const sign = (payload) => signToken('access', payload, '5m');
@@ -51,7 +76,10 @@ test('token_version lệch (đã đăng xuất mọi thiết bị) bị từ ch�
 
 test('token loại khác (pre-auth 2FA, captcha) hoặc ký bằng JWT_SECRET thô bị từ chối', async () => {
 	assert.equal((await run(signToken('pre-auth-2fa', { id: 'active', tv: 3 }, '5m'))).status, 401);
-	assert.equal((await run(signToken('captcha', { id: 'active', tv: 3, answer: 7 }, '5m'))).status, 401);
+	assert.equal(
+		(await run(signToken('captcha', { id: 'active', tv: 3, answer: 7 }, '5m'))).status,
+		401,
+	);
 	// Access token kiểu cũ (trước khi tách khoá theo mục đích)
 	assert.equal((await run(jwt.sign({ id: 'active', tv: 3 }, process.env.JWT_SECRET))).status, 401);
 });

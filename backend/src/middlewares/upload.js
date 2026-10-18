@@ -7,13 +7,14 @@ const uploadPolicy = require('../utils/uploadPolicy');
 const { UPLOADS_ROOT, SAFE_ID, uniqueFilename } = require('../utils/uploadPaths');
 const { badRequest } = require('../utils/httpError');
 
-
 // Lỗi multer không có statusCode ⇒ errorHandler trả 500 — đổi sang 400 dễ hiểu.
 const friendlyMulterError = (err, { maxSizeMB, maxFiles }) => {
 	if (!(err instanceof multer.MulterError)) return err;
 	if (err.code === 'LIMIT_FILE_SIZE') return badRequest(`Mỗi file tối đa ${maxSizeMB}MB`);
 	if (err.code === 'LIMIT_FILE_COUNT' || err.code === 'LIMIT_UNEXPECTED_FILE') {
-		return badRequest(maxFiles ? `Tối đa ${maxFiles} file đính kèm` : 'Số lượng file vượt quá giới hạn');
+		return badRequest(
+			maxFiles ? `Tối đa ${maxFiles} file đính kèm` : 'Số lượng file vượt quá giới hạn',
+		);
 	}
 	return badRequest('File đính kèm không hợp lệ');
 };
@@ -25,16 +26,21 @@ const friendlyMulterError = (err, { maxSizeMB, maxFiles }) => {
  * Trả object có single/array/fields như multer để bọc bằng secureUpload.
  */
 const dynamicMulter = (build) => {
-	const method = (name) => (...args) => async (req, res, next) => {
-		if (!req.is('multipart/form-data')) return next(); // multer cũng bỏ qua — khỏi đọc cấu hình
-		let built;
-		try {
-			built = build(await uploadPolicy.getPolicy());
-		} catch (err) {
-			return next(err);
-		}
-		multer(built.options)[name](...args)(req, res, (err) => next(err && friendlyMulterError(err, built)));
-	};
+	const method =
+		(name) =>
+		(...args) =>
+		async (req, res, next) => {
+			if (!req.is('multipart/form-data')) return next(); // multer cũng bỏ qua — khỏi đọc cấu hình
+			let built;
+			try {
+				built = build(await uploadPolicy.getPolicy());
+			} catch (err) {
+				return next(err);
+			}
+			multer(built.options)[name](...args)(req, res, (err) =>
+				next(err && friendlyMulterError(err, built)),
+			);
+		};
 	return { single: method('single'), array: method('array'), fields: method('fields') };
 };
 

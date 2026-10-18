@@ -22,8 +22,7 @@ const log = async ({
 			.input('target_id', sql.VarChar(50), targetId)
 			.input('ip_address', sql.VarChar(64), ip)
 			.input('user_agent', sql.NVarChar(255), userAgent ? String(userAgent).slice(0, 255) : null)
-			.input('detail', sql.NVarChar(1000), detail)
-			.query(`
+			.input('detail', sql.NVarChar(1000), detail).query(`
 				INSERT INTO security_events
 					(event_type, actor_id, target_type, target_id, ip_address, user_agent, detail)
 				VALUES

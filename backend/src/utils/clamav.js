@@ -58,7 +58,9 @@ const scanFile = async (file) => {
 	if (!cfg.host) return { skipped: 'disabled' };
 	const size = file.buffer ? file.buffer.length : file.size;
 	if (size > cfg.maxBytes) {
-		console.warn(`[clamav] Bỏ qua quét ${file.originalname} (${Math.round(size / 1048576)}MB > CLAMAV_MAX_MB)`);
+		console.warn(
+			`[clamav] Bỏ qua quét ${file.originalname} (${Math.round(size / 1048576)}MB > CLAMAV_MAX_MB)`,
+		);
 		return { skipped: 'too_large' };
 	}
 	try {
@@ -70,7 +72,10 @@ const scanFile = async (file) => {
 		throw new Error(`Phản hồi ClamAV không rõ: ${reply || '(rỗng)'}`);
 	} catch (err) {
 		if (cfg.failOpen) {
-			console.error(`[clamav] Lỗi quét ${file.originalname} — vẫn nhận (CLAMAV_FAIL_OPEN):`, err.message);
+			console.error(
+				`[clamav] Lỗi quét ${file.originalname} — vẫn nhận (CLAMAV_FAIL_OPEN):`,
+				err.message,
+			);
 			return { skipped: 'error' };
 		}
 		throw err;

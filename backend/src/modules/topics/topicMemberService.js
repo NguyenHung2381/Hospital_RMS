@@ -11,9 +11,7 @@ const { stripDiacritics, stripQualification } = require('../../utils/vietnameseT
 const getMembers = async (topicId) => {
 	const pool = await getPool();
 
-	const result = await pool
-		.request()
-		.input('topic_id', sql.VarChar(15), topicId).query(`
+	const result = await pool.request().input('topic_id', sql.VarChar(15), topicId).query(`
       SELECT
         tm.id, tm.topic_id, tm.role, tm.department_id,
         tm.staff_number, tm.user_id,
@@ -124,12 +122,7 @@ const isGenLockTimeout = (err) => {
 	);
 };
 
-const genUserIdWithRetry = async (
-	tx,
-	deptCode,
-	isDeptAccount = false,
-	attempts = 3,
-) => {
+const genUserIdWithRetry = async (tx, deptCode, isDeptAccount = false, attempts = 3) => {
 	for (let attempt = 1; attempt <= attempts; attempt += 1) {
 		try {
 			const req = new sql.Request(tx);
@@ -164,8 +157,7 @@ const genUserIdInTx = async (tx, deptCode) => {
 			err.message,
 		);
 	}
-	const res = await new sql.Request(tx)
-		.input('dept_code', sql.VarChar(20), deptCode).query(`
+	const res = await new sql.Request(tx).input('dept_code', sql.VarChar(20), deptCode).query(`
 			DECLARE @prefix VARCHAR(12) = 'NV' + @dept_code;
 			DECLARE @count INT;
 			SELECT @count = ISNULL(MAX(CAST(RIGHT(id,4) AS INT)), 0) + 1
@@ -204,17 +196,13 @@ const grantAccountsNoEmail = async (topicId, memberIds, actorId) => {
 		throw err;
 	}
 	if (topic.status !== 'approved') {
-		const err = new Error(
-			'Đề tài chưa được phê duyệt nên chưa thể cấp tài khoản thành viên',
-		);
+		const err = new Error('Đề tài chưa được phê duyệt nên chưa thể cấp tài khoản thành viên');
 		err.statusCode = 400;
 		throw err;
 	}
 
 	// --- 2. Lấy danh sách thành viên cần cấp + mã khoa (chỉ đọc) ---
-	const membersResult = await pool
-		.request()
-		.input('topic_id', sql.VarChar(15), topicId).query(`
+	const membersResult = await pool.request().input('topic_id', sql.VarChar(15), topicId).query(`
 			SELECT tm.id, tm.name AS ho_ten, tm.email, tm.staff_number,
 			       tm.phone_number, tm.position, tm.role,
 			       tm.department_id AS member_department_id,
@@ -226,17 +214,12 @@ const grantAccountsNoEmail = async (topicId, memberIds, actorId) => {
 			  AND tm.account_granted = 0
 		`);
 
-	const filterIds =
-		Array.isArray(memberIds) && memberIds.length > 0
-			? new Set(memberIds)
-			: null;
+	const filterIds = Array.isArray(memberIds) && memberIds.length > 0 ? new Set(memberIds) : null;
 	const membersToProcess = filterIds
 		? membersResult.recordset.filter((row) => filterIds.has(row.id))
 		: membersResult.recordset;
 
-	const deptCodeResult = await pool
-		.request()
-		.input('topic_id', sql.VarChar(15), topicId).query(`
+	const deptCodeResult = await pool.request().input('topic_id', sql.VarChar(15), topicId).query(`
 			SELECT d.code
 			FROM topics t
 			INNER JOIN departments d ON d.id = t.department_id
@@ -254,8 +237,7 @@ const grantAccountsNoEmail = async (topicId, memberIds, actorId) => {
 
 	// --- 3. Mỗi thành viên = 1 transaction ngắn ---
 	for (const member of membersToProcess) {
-		const staffNumber =
-			member.staff_number != null ? Number(member.staff_number) : null;
+		const staffNumber = member.staff_number != null ? Number(member.staff_number) : null;
 		const baseUsername = buildMemberUsername(member.ho_ten, staffNumber);
 		const deptId = member.member_department_id || member.topic_department_id;
 		const roleId = await requireRoleId(member.role === 'leader' ? ROLE.TOPIC_LEADER : ROLE.MEMBER);
@@ -347,7 +329,8 @@ const grantAccountsNoEmail = async (topicId, memberIds, actorId) => {
 				//   - Vai trò khác (quản trị, trưởng khoa, hội đồng...): chỉ liên kết.
 				const isTopicAccount = [ROLE.MEMBER, ROLE.TOPIC_LEADER].includes(existingUser.role_code);
 				const expired =
-					!!existingUser.account_expires_at && new Date(existingUser.account_expires_at) < new Date();
+					!!existingUser.account_expires_at &&
+					new Date(existingUser.account_expires_at) < new Date();
 				const req = new sql.Request(tx)
 					.input('uid', sql.VarChar(20), userId)
 					.input('topic_member_id', sql.VarChar(22), member.id)
@@ -429,10 +412,7 @@ const grantAccountsNoEmail = async (topicId, memberIds, actorId) => {
 					// bỏ qua nếu transaction đã bị abort
 				}
 			}
-			console.error(
-				`grantAccountsNoEmail: bỏ qua thành viên ${member.id}:`,
-				err.message,
-			);
+			console.error(`grantAccountsNoEmail: bỏ qua thành viên ${member.id}:`, err.message);
 			skipped.push({
 				member_id: member.id,
 				ho_ten: member.ho_ten,
@@ -459,22 +439,15 @@ const grantAccountsNoEmail = async (topicId, memberIds, actorId) => {
 	// --- 4. Thông báo (ngoài transaction; lỗi ở đây không ảnh hưởng việc cấp) ---
 	try {
 		const newUserIds = credentials.map((c) => c.user_id);
-		await notifSvc.pushWithEmail(
-			'account_granted',
-			'Tài khoản hệ thống đã được cấp',
-			newUserIds,
-			{
-				message: `Tài khoản đã được cấp để tham gia đề tài ${topicId}. Vui lòng đăng nhập bằng mật khẩu tạm do khoa/phòng cung cấp — hệ thống sẽ yêu cầu đổi mật khẩu ở lần đăng nhập đầu.`,
-				refId: topicId,
-				refType: 'topic',
-				mailEvent: 'ACCOUNT_GRANTED',
-			},
-		);
+		await notifSvc.pushWithEmail('account_granted', 'Tài khoản hệ thống đã được cấp', newUserIds, {
+			message: `Tài khoản đã được cấp để tham gia đề tài ${topicId}. Vui lòng đăng nhập bằng mật khẩu tạm do khoa/phòng cung cấp — hệ thống sẽ yêu cầu đổi mật khẩu ở lần đăng nhập đầu.`,
+			refId: topicId,
+			refType: 'topic',
+			mailEvent: 'ACCOUNT_GRANTED',
+		});
 
 		// Thông báo cho khoa và chủ nhiệm đề tài
-		const excludeReq = pool
-			.request()
-			.input('topic_id', sql.VarChar(15), topicId);
+		const excludeReq = pool.request().input('topic_id', sql.VarChar(15), topicId);
 		const excludeParams = newUserIds
 			.map((id, i) => {
 				const name = `excl${i}`;
@@ -556,8 +529,7 @@ const updateMember = async (topicId, memberId, data, actorId) => {
 		`EXEC sp_set_actor @actor_id; UPDATE topic_members SET ${sets.join(', ')} WHERE id = @id AND topic_id = @topic_id`,
 	);
 	await personService.syncPerson('topic_members', memberId, { actorId });
-	const result = await pool.request().input('id', sql.VarChar(20), memberId)
-		.query(`
+	const result = await pool.request().input('id', sql.VarChar(20), memberId).query(`
       SELECT
         tm.id, tm.topic_id, tm.role, tm.department_id,
         tm.staff_number, tm.user_id,
@@ -579,9 +551,7 @@ const deleteMember = async (topicId, memberId, actorId) => {
 	await pool
 		.request()
 		.input('id', sql.VarChar(20), memberId)
-		.query(
-			`UPDATE users SET topic_member_id = NULL WHERE topic_member_id = @id`,
-		);
+		.query(`UPDATE users SET topic_member_id = NULL WHERE topic_member_id = @id`);
 	await pool
 		.request()
 		.input('id', sql.VarChar(20), memberId)

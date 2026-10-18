@@ -33,7 +33,8 @@ for (const r of routes) {
 	if (r.perms.length) {
 		const unknown = r.perms.map(([res, act]) => `${res}:${act}`).filter((k) => !isKnownKey(k));
 		status = r.perms.map(([res, act]) => `${res}:${act}`).join(' | ');
-		if (unknown.length) failures.push(`${id} — quyền không có trong catalog: ${unknown.join(', ')}`);
+		if (unknown.length)
+			failures.push(`${id} — quyền không có trong catalog: ${unknown.join(', ')}`);
 		if (!r.auth) failures.push(`${id} — có authorizePermission nhưng thiếu authenticate trước đó`);
 	} else if (r.auth) {
 		status = 'authOnly';
@@ -47,14 +48,17 @@ for (const r of routes) {
 	rows.push([id, status]);
 }
 
-const stale = [...Object.keys(policy.authOnly), ...Object.keys(policy.public)].filter((id) => !used.has(id));
+const stale = [...Object.keys(policy.authOnly), ...Object.keys(policy.public)].filter(
+	(id) => !used.has(id),
+);
 
 if (showList) {
 	const width = Math.max(...rows.map(([id]) => id.length));
 	for (const [id, status] of rows) console.log(`${id.padEnd(width)}  ${status}`);
 	console.log('');
 }
-const count = (s) => rows.filter(([, st]) => (s === 'perm' ? st !== 'authOnly' && st !== 'public' : st === s)).length;
+const count = (s) =>
+	rows.filter(([, st]) => (s === 'perm' ? st !== 'authOnly' && st !== 'public' : st === s)).length;
 console.log(
 	`Tổng ${rows.length} route: ${count('perm')} có kiểm tra quyền, ${count('authOnly')} chỉ cần đăng nhập, ${count('public')} công khai.`,
 );

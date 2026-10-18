@@ -16,10 +16,7 @@ const LOG_DIR = process.env.LOG_DIR
 	? path.resolve(process.env.LOG_DIR)
 	: path.join(__dirname, '..', '..', 'logs');
 const LOG_STDOUT = process.env.LOG_STDOUT === '1';
-const RETENTION_FILES = Math.max(
-	1,
-	parseInt(process.env.LOG_RETENTION_FILES, 10) || 90,
-);
+const RETENTION_FILES = Math.max(1, parseInt(process.env.LOG_RETENTION_FILES, 10) || 90);
 
 // Field cố định — giúp lọc/nhận diện dòng log audit giữa các nguồn khác.
 const base = {
@@ -49,7 +46,7 @@ const transport = LOG_STDOUT
 				// Giữ tối đa RETENTION_FILES file gần nhất, xoá dần file cũ hơn.
 				limit: { count: RETENTION_FILES },
 			},
-	  });
+		});
 
 const auditLogger = pino({ base, timestamp }, transport);
 

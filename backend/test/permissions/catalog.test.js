@@ -3,7 +3,13 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('fs');
 const path = require('path');
-const { ALL_PERMISSIONS, BY_KEY, MODULES, ACTION_LABELS, impliesOf } = require('../../src/permissions/catalog');
+const {
+	ALL_PERMISSIONS,
+	BY_KEY,
+	MODULES,
+	ACTION_LABELS,
+	impliesOf,
+} = require('../../src/permissions/catalog');
 const { RESOURCE_SCOPES, SCOPE_LABELS } = require('../../src/permissions/scopes');
 
 test('mỗi quyền có id, key, tên duy nhất và action có nhãn', () => {
@@ -22,15 +28,23 @@ test('mỗi quyền có id, key, tên duy nhất và action có nhãn', () => {
 
 test('không còn quyền kiểu cũ trong danh mục', () => {
 	for (const p of ALL_PERMISSIONS) {
-		assert.ok(!['read_all', 'read_department', 'read_assigned'].includes(p.action), `${p.key}: phạm vi phải là cột scope, không phải action`);
+		assert.ok(
+			!['read_all', 'read_department', 'read_assigned'].includes(p.action),
+			`${p.key}: phạm vi phải là cột scope, không phải action`,
+		);
 	}
-	assert.ok(!BY_KEY.has('system:manage'), 'superuser là cờ roles.is_superuser, không phải quyền cấp được');
+	assert.ok(
+		!BY_KEY.has('system:manage'),
+		'superuser là cờ roles.is_superuser, không phải quyền cấp được',
+	);
 });
 
 test('seedFrom trỏ tới quyền có thật; quyền đi kèm (implies) cùng resource', () => {
 	for (const p of ALL_PERMISSIONS) {
-		for (const src of p.seedFrom ?? []) assert.ok(BY_KEY.has(src), `${p.key}.seedFrom → ${src} không tồn tại`);
-		for (const k of impliesOf(p)) assert.equal(k.split(':')[0], p.resource, `${p.key} implies ${k} khác resource`);
+		for (const src of p.seedFrom ?? [])
+			assert.ok(BY_KEY.has(src), `${p.key}.seedFrom → ${src} không tồn tại`);
+		for (const k of impliesOf(p))
+			assert.equal(k.split(':')[0], p.resource, `${p.key} implies ${k} khác resource`);
 	}
 });
 
@@ -46,6 +60,12 @@ test('resource có phạm vi dữ liệu: có trong catalog, đủ nhãn, có qu
 test('kiểu PermissionKey của frontend khớp danh mục (đã chạy npm run gen:perm-types)', () => {
 	const file = path.join(__dirname, '../../../frontend/src/shared/types/permissions.generated.ts');
 	if (!fs.existsSync(file)) return test.skip?.('không có thư mục frontend cạnh backend');
-	const generated = [...fs.readFileSync(file, 'utf8').matchAll(/^\t'([a-z_]+:[a-z_]+)',$/gm)].map((m) => m[1]);
-	assert.deepEqual(generated, ALL_PERMISSIONS.map((p) => p.key), 'chạy lại: npm run gen:perm-types');
+	const generated = [...fs.readFileSync(file, 'utf8').matchAll(/^\t'([a-z_]+:[a-z_]+)',$/gm)].map(
+		(m) => m[1],
+	);
+	assert.deepEqual(
+		generated,
+		ALL_PERMISSIONS.map((p) => p.key),
+		'chạy lại: npm run gen:perm-types',
+	);
 });

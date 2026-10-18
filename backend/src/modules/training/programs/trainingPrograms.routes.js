@@ -72,7 +72,11 @@ router.post(
 	validate,
 	ctrl.createLesson,
 );
-router.get('/lessons/:lessonId/programs', authorizePermission(['training_programs', 'read']), ctrl.getLessonPrograms);
+router.get(
+	'/lessons/:lessonId/programs',
+	authorizePermission(['training_programs', 'read']),
+	ctrl.getLessonPrograms,
+);
 router.put(
 	'/lessons/:lessonId/programs',
 	authorizePermission(['training_programs', 'update']),
@@ -105,14 +109,34 @@ router.put(
 	validate,
 	ctrl.reorderLessons,
 );
-router.put('/lesson-links/:linkId', authorizePermission(['training_programs', 'update']), ctrl.updateLessonLink);
-router.delete('/lesson-links/:linkId', authorizePermission(['training_programs', 'update']), ctrl.unlinkLesson);
-router.put('/lessons/:lessonId', authorizePermission(['training_programs', 'update']), ctrl.updateLesson);
-router.delete('/lessons/:lessonId', authorizePermission(['training_programs', 'update']), ctrl.removeLesson);
+router.put(
+	'/lesson-links/:linkId',
+	authorizePermission(['training_programs', 'update']),
+	ctrl.updateLessonLink,
+);
+router.delete(
+	'/lesson-links/:linkId',
+	authorizePermission(['training_programs', 'update']),
+	ctrl.unlinkLesson,
+);
+router.put(
+	'/lessons/:lessonId',
+	authorizePermission(['training_programs', 'update']),
+	ctrl.updateLesson,
+);
+router.delete(
+	'/lessons/:lessonId',
+	authorizePermission(['training_programs', 'update']),
+	ctrl.removeLesson,
+);
 
 // ─── Tài liệu riêng của bài học (lesson_documents) — upload file/video hoặc
 // dán link ngoài, giống course_documents ─────────────────────────────────────
-router.get('/lessons/:id/documents', authorizePermission(['training_programs', 'read']), ctrl.listLessonDocuments);
+router.get(
+	'/lessons/:id/documents',
+	authorizePermission(['training_programs', 'read']),
+	ctrl.listLessonDocuments,
+);
 router.post(
 	'/lessons/:id/documents',
 	authorizePermission(['training_programs', 'update']),

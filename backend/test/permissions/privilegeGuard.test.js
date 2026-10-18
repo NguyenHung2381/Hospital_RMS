@@ -10,8 +10,17 @@ const perms = (grants) => ({
 });
 const ROLES = {
 	ADMIN: perms({ 'system:manage': null }),
-	QLKH: perms({ 'roles:manage': null, 'users:read': 'all', 'users:update': 'all', 'topics:read': 'all' }),
-	TK: perms({ 'users:read': 'department', 'users:update': 'department', 'topics:read': 'department' }),
+	QLKH: perms({
+		'roles:manage': null,
+		'users:read': 'all',
+		'users:update': 'all',
+		'topics:read': 'all',
+	}),
+	TK: perms({
+		'users:read': 'department',
+		'users:update': 'department',
+		'topics:read': 'department',
+	}),
 	MEM: perms({ 'topics:read': 'own' }),
 	DEPTVIEW: perms({ 'topics:read': 'department' }),
 };
@@ -27,7 +36,10 @@ const actor = (role, dept = 'K1') => ({
 });
 const G = (key, scope = null) => ({ key, scope });
 const denied = (promiseOrFn) =>
-	assert.rejects(async () => (typeof promiseOrFn === 'function' ? promiseOrFn() : promiseOrFn), (e) => e.statusCode === 403);
+	assert.rejects(
+		async () => (typeof promiseOrFn === 'function' ? promiseOrFn() : promiseOrFn),
+		(e) => e.statusCode === 403,
+	);
 
 test('không cấp được quyền / phạm vi mình không có', async () => {
 	const q = actor('QLKH');
@@ -36,7 +48,9 @@ test('không cấp được quyền / phạm vi mình không có', async () => {
 	await denied(() => g.assertCanChangeGrants(q, [], [G('topics:approve', 'all')]));
 	await denied(() => g.assertCanChangeGrants(q, [], [G('roles:delete')])); // manage ≠ wildcard
 	await denied(() => g.assertCanChangeGrants(tk, [], [G('topics:read', 'all')]));
-	await denied(() => g.assertCanChangeGrants(tk, [G('topics:read', 'own')], [G('topics:read', 'all')]));
+	await denied(() =>
+		g.assertCanChangeGrants(tk, [G('topics:read', 'own')], [G('topics:read', 'all')]),
+	);
 	g.assertCanChangeGrants(q, [], [G('topics:read', 'all')]);
 	g.assertCanChangeGrants(tk, [], [G('topics:read', 'own')]);
 });

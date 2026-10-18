@@ -10,7 +10,12 @@ const { paging } = require('../../utils/paging');
 const { splitList, inClause, buildWhere } = require('../../utils/sqlFilters');
 const fs = require('fs');
 const path = require('path');
-const { UPLOADS_ROOT, SAFE_ID, removeUploadedFile, toStoredUploadPath } = require('../../utils/uploadPaths');
+const {
+	UPLOADS_ROOT,
+	SAFE_ID,
+	removeUploadedFile,
+	toStoredUploadPath,
+} = require('../../utils/uploadPaths');
 const { normalizeTime, normalizeAgenda } = require('../../utils/seminarSchedule');
 const { maxScore } = require('../../utils/seminarTest');
 const { badRequest } = require('../../utils/httpError');
@@ -47,10 +52,7 @@ const getAll = async ({
 } = {}) => {
 	const pool = await getPool();
 	const pg = paging(page, limit, 20);
-	const req = pool
-		.request()
-		.input('offset', sql.Int, pg.offset)
-		.input('limit', sql.Int, pg.limit);
+	const req = pool.request().input('offset', sql.Int, pg.offset).input('limit', sql.Int, pg.limit);
 
 	const clauses = [];
 	if (search) {
@@ -60,9 +62,7 @@ const getAll = async ({
 		);
 	}
 	clauses.push(inClause(req, 's.scope', 'sc', splitList(scope), sql.VarChar));
-	clauses.push(
-		inClause(req, 's.event_type', 'et', splitList(event_type), sql.VarChar),
-	);
+	clauses.push(inClause(req, 's.event_type', 'et', splitList(event_type), sql.VarChar));
 	if (year !== undefined && year !== '' && year !== null) {
 		req.input('year', sql.Int, parseInt(year, 10));
 		clauses.push('s.event_year = @year');
@@ -93,10 +93,7 @@ const getAll = async ({
 
 const getById = async (id) => {
 	const pool = await getPool();
-	const result = await pool
-		.request()
-		.input('id', sql.VarChar(20), id)
-		.query(`
+	const result = await pool.request().input('id', sql.VarChar(20), id).query(`
       SELECT s.*, ${countSelect} FROM seminars s WHERE s.id = @id;
 
       SELECT p.*,
@@ -193,7 +190,11 @@ const create = async (data, actorId) => {
 		.input('location', sql.NVarChar(255), data.location || null)
 		.input('start_date', sql.Date, data.start_date || null)
 		.input('end_date', sql.Date, data.end_date || null)
-		.input('start_time', sql.VarChar(5), normalizeTime(data.start_time, TIME_FIELDS.start_time) ?? null)
+		.input(
+			'start_time',
+			sql.VarChar(5),
+			normalizeTime(data.start_time, TIME_FIELDS.start_time) ?? null,
+		)
 		.input('end_time', sql.VarChar(5), normalizeTime(data.end_time, TIME_FIELDS.end_time) ?? null)
 		.input('date_text', sql.NVarChar(100), data.date_text || null)
 		.input('event_year', sql.Int, yearOf(data))
@@ -209,8 +210,7 @@ const create = async (data, actorId) => {
 		.input('manual_internal_count', sql.Int, data.manual_internal_count ?? null)
 		.input('manual_external_count', sql.Int, data.manual_external_count ?? null)
 		.input('manual_foreign_count', sql.Int, data.manual_foreign_count ?? null)
-		.input('manual_cme_count', sql.Int, data.manual_cme_count ?? null)
-		.query(`
+		.input('manual_cme_count', sql.Int, data.manual_cme_count ?? null).query(`
       DECLARE @new_id VARCHAR(20) = ${genIdExpr};
       EXEC sp_set_actor @actor_id;
       INSERT INTO seminars
@@ -330,7 +330,10 @@ const update = async (id, data, actorId) => {
 		if (passScore != null && next && passScore > max)
 			throw badRequest(`Điểm đạt (${passScore}) lớn hơn tổng điểm bài test (${max}).`);
 		const prev = (
-			await pool.request().input('id', sql.VarChar(20), id).query('SELECT test_questions FROM seminars WHERE id = @id')
+			await pool
+				.request()
+				.input('id', sql.VarChar(20), id)
+				.query('SELECT test_questions FROM seminars WHERE id = @id')
 		).recordset[0]?.test_questions;
 		const kept = new Set(testImages(next));
 		removedImages = testImages(prev).filter((img) => !kept.has(img));
@@ -370,11 +373,10 @@ const remove = async (id, actorId) => {
 		.request()
 		.input('id', sql.VarChar(20), id)
 		.input('actor_id', sql.VarChar(20), actorId)
-		.query(
-			`EXEC sp_set_actor @actor_id; DELETE FROM seminars WHERE id = @id`,
-		);
+		.query(`EXEC sp_set_actor @actor_id; DELETE FROM seminars WHERE id = @id`);
 	// Ảnh bài test của sự kiện (uploads/seminars/<id>/)
-	if (SAFE_ID.test(id)) fs.rm(path.join(UPLOADS_ROOT, 'seminars', id), { recursive: true, force: true }, () => {});
+	if (SAFE_ID.test(id))
+		fs.rm(path.join(UPLOADS_ROOT, 'seminars', id), { recursive: true, force: true }, () => {});
 	broadcast('update', { entity: 'seminar' });
 };
 
@@ -515,8 +517,7 @@ const updateRegisterSeq = async (year, lastSeq, actorId) => {
 		.request()
 		.input('year', sql.Int, y)
 		.input('seq', sql.Int, seq)
-		.input('actor_id', sql.VarChar(20), actorId)
-		.query(`
+		.input('actor_id', sql.VarChar(20), actorId).query(`
       MERGE cme_year_register AS t
       USING (SELECT @year AS y) AS s ON t.[year] = s.y
       WHEN MATCHED THEN UPDATE SET last_seq = @seq, updated_at = GETDATE(), updated_by = @actor_id

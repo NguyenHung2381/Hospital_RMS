@@ -30,7 +30,9 @@ const apply = process.argv.includes('--apply');
 	).recordset;
 
 	const taken = new Set(
-		(await pool.request().query('SELECT username FROM users')).recordset.map((r) => r.username.toLowerCase()),
+		(await pool.request().query('SELECT username FROM users')).recordset.map((r) =>
+			r.username.toLowerCase(),
+		),
 	);
 	const changes = [];
 	for (const u of users) {
@@ -54,7 +56,8 @@ const apply = process.argv.includes('--apply');
 	}
 
 	console.log(`${apply ? 'Đã đổi' : '[xem trước] Sẽ đổi'} ${changes.length} username:`);
-	for (const c of changes) console.log(`  ${c.username}  →  ${c.next}   (${c.full_name}, MNV: ${c.staff_number ?? '—'})`);
+	for (const c of changes)
+		console.log(`  ${c.username}  →  ${c.next}   (${c.full_name}, MNV: ${c.staff_number ?? '—'})`);
 	if (!apply && changes.length) console.log('Chạy lại với --apply để thực hiện.');
 	process.exit(0);
 })().catch((err) => {

@@ -5,14 +5,16 @@ const fs = require('fs/promises');
 // độc thành "bao-cao.pdf" là lọt qua. Chỉ cần đọc vài KB đầu file.
 const HEAD_BYTES = 4100;
 
-const ascii = (buf, start, text) => buf.subarray(start, start + text.length).toString('latin1') === text;
+const ascii = (buf, start, text) =>
+	buf.subarray(start, start + text.length).toString('latin1') === text;
 const bytes = (buf, start, arr) => arr.every((b, i) => buf[start + i] === b);
 
 const ZIP = (b) => bytes(b, 0, [0x50, 0x4b, 0x03, 0x04]) || bytes(b, 0, [0x50, 0x4b, 0x05, 0x06]);
 const OLE = (b) => bytes(b, 0, [0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1]); // .doc/.xls/.ppt cũ
 const RIFF = (b, form) => ascii(b, 0, 'RIFF') && ascii(b, 8, form);
 // MP4/MOV/M4A: hộp đầu tiên (ISO BMFF) — 'ftyp' ở file mới, QuickTime cũ có thể bắt đầu bằng hộp khác
-const ISO_BMFF = (b) => ['ftyp', 'moov', 'mdat', 'wide', 'free', 'skip'].some((t) => ascii(b, 4, t));
+const ISO_BMFF = (b) =>
+	['ftyp', 'moov', 'mdat', 'wide', 'free', 'skip'].some((t) => ascii(b, 4, t));
 // Văn bản thuần: không có byte NUL (file nhị phân gần như luôn có)
 const TEXT = (b) => !b.includes(0x00);
 

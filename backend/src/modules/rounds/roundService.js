@@ -29,8 +29,7 @@ const REG_WINDOW_COLS = `
           WHERE rl.round_id = r.id)                                                  AS level_ids`;
 
 const normalize = (r) => {
-	const s =
-		typeof r.status === 'string' ? r.status.trim().toLowerCase() : r.status;
+	const s = typeof r.status === 'string' ? r.status.trim().toLowerCase() : r.status;
 	return {
 		...r,
 		status: STATUS_TO_FRONT[s] ?? s,
@@ -39,9 +38,7 @@ const normalize = (r) => {
 		created_at: fmtDate(r.created_at),
 		updated_at: r.updated_at ? fmtDate(r.updated_at) : undefined,
 		registration_open: r.registration_open === true || r.registration_open === 1,
-		registration_start: r.registration_start
-			? fmtDate(r.registration_start)
-			: null,
+		registration_start: r.registration_start ? fmtDate(r.registration_start) : null,
 		registration_end: r.registration_end ? fmtDate(r.registration_end) : null,
 		level_ids: r.level_ids ? String(r.level_ids).split(',') : [],
 	};
@@ -56,9 +53,7 @@ const writeLevels = async (request, roundId, levelIds) => {
 		.input('rid', sql.VarChar(10), roundId)
 		.query('DELETE FROM research_round_levels WHERE round_id = @rid');
 	for (const lid of ids) {
-		await request()
-			.input('rid', sql.VarChar(10), roundId)
-			.input('lid', sql.VarChar(5), lid).query(`
+		await request().input('rid', sql.VarChar(10), roundId).input('lid', sql.VarChar(5), lid).query(`
 				IF EXISTS (SELECT 1 FROM levels WHERE id = @lid)
 				INSERT INTO research_round_levels (round_id, level_id) VALUES (@rid, @lid)`);
 	}
@@ -83,20 +78,11 @@ const getAllowedLevelIds = async (roundId) => {
 	}
 };
 
-const getAll = async ({
-	page = 1,
-	limit = 20,
-	year,
-	status,
-	public_token,
-} = {}) => {
+const getAll = async ({ page = 1, limit = 20, year, status, public_token } = {}) => {
 	const pool = await getPool();
 	const pg = paging(page, limit);
 	let where = 'WHERE 1=1';
-	const req = pool
-		.request()
-		.input('offset', sql.Int, pg.offset)
-		.input('limit', sql.Int, pg.limit);
+	const req = pool.request().input('offset', sql.Int, pg.offset).input('limit', sql.Int, pg.limit);
 
 	if (year) {
 		where += ' AND r.year = @year';
@@ -168,9 +154,7 @@ const create = async (data, actorId) => {
 			.execute('sp_gen_round_id');
 		id = idResult.output.new_id;
 	} catch (spErr) {
-		const err = new Error(
-			`Đợt số ${round_number} năm ${year} đã tồn tại`,
-		);
+		const err = new Error(`Đợt số ${round_number} năm ${year} đã tồn tại`);
 		err.statusCode = 409;
 		throw err;
 	}
@@ -246,17 +230,12 @@ const update = async (id, data, actorId) => {
 	}
 	if (data.status !== undefined) {
 		sets.push('status = @status');
-		req.input(
-			'status',
-			sql.VarChar(10),
-			STATUS_TO_DB[data.status] ?? data.status,
-		);
+		req.input('status', sql.VarChar(10), STATUS_TO_DB[data.status] ?? data.status);
 	}
 	await req.query(
 		`EXEC sp_set_actor @actor_id; UPDATE research_rounds SET ${sets.join(', ')} WHERE id = @id`,
 	);
-	if (Array.isArray(data.level_ids))
-		await writeLevels(() => pool.request(), id, data.level_ids);
+	if (Array.isArray(data.level_ids)) await writeLevels(() => pool.request(), id, data.level_ids);
 	const round = await getById(id);
 	broadcast('update', { entity: 'round' });
 	return round;
@@ -288,9 +267,7 @@ const remove = async (id, actorId) => {
 		.request()
 		.input('id', sql.VarChar(10), id)
 		.input('actor_id', sql.VarChar(20), actorId)
-		.query(
-			`EXEC sp_set_actor @actor_id; DELETE FROM research_rounds WHERE id = @id`,
-		);
+		.query(`EXEC sp_set_actor @actor_id; DELETE FROM research_rounds WHERE id = @id`);
 	broadcast('update', { entity: 'round' });
 };
 

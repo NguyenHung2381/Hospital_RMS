@@ -22,7 +22,10 @@ const solve = (token, bits) => {
 test.beforeEach(() => shield._memory.clear());
 
 test('chưa sai lần nào: không cần thử thách', async () => {
-	assert.deepEqual(await shield.assess({ ip: '10.0.0.1', username: 'bsA' }), { bits: 0, attack: false });
+	assert.deepEqual(await shield.assess({ ip: '10.0.0.1', username: 'bsA' }), {
+		bits: 0,
+		attack: false,
+	});
 });
 
 test('IP sai ≥ 3 lần: mọi username từ IP đó đều phải giải', async () => {
@@ -67,11 +70,17 @@ test('nonce không đạt đủ số bit thì bị từ chối', async () => {
 	const { token } = shield.issueChallenge({ username: 'bsE', bits: 8 });
 	let bad;
 	for (let n = 0; ; n++) {
-		const d = crypto.createHash('sha256').update(`${token}:${n.toString(36)}`).digest();
+		const d = crypto
+			.createHash('sha256')
+			.update(`${token}:${n.toString(36)}`)
+			.digest();
 		if (shield.leadingZeroBits(d) < 8) {
 			bad = n.toString(36);
 			break;
 		}
 	}
-	assert.equal(await shield.verifyChallenge({ token, nonce: bad, username: 'bsE', requiredBits: 8 }), false);
+	assert.equal(
+		await shield.verifyChallenge({ token, nonce: bad, username: 'bsE', requiredBits: 8 }),
+		false,
+	);
 });

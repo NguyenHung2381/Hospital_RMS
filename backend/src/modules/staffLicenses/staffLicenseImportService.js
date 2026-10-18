@@ -29,7 +29,7 @@ const COLUMN_MATCHERS = [
 const DATE_FIELDS = new Set(['issued_date', 'scope_adjusted_date']);
 const typeOf = Object.fromEntries(fieldDefs);
 
-const toYmd = (v) => (v instanceof Date ? v.toISOString().slice(0, 10) : v ?? null);
+const toYmd = (v) => (v instanceof Date ? v.toISOString().slice(0, 10) : (v ?? null));
 
 const importExcel = async ({ buffer, dry_run }, actorId) => {
 	const { cols, rows: sheetRows } = await readSheet(buffer, {
@@ -57,7 +57,8 @@ const importExcel = async ({ buffer, dry_run }, actorId) => {
 	for (const { r, row, get } of sheetRows) {
 		const staffRaw = get(row, 'staff_no');
 		const fullName = get(row, 'full_name');
-		const skip = (reason) => skipped.push({ row: r, staff_no: staffRaw, full_name: fullName, reason });
+		const skip = (reason) =>
+			skipped.push({ row: r, staff_no: staffRaw, full_name: fullName, reason });
 
 		// MNV phải toàn số — "ĐHV3" không được hiểu thành MNV 3
 		if (!/^\d+$/.test(staffRaw)) {
@@ -105,7 +106,12 @@ const importExcel = async ({ buffer, dry_run }, actorId) => {
 		if (values.license_no) {
 			const dupRow = seenLicense.get(values.license_no);
 			if (dupRow) {
-				skipped.push({ row, staff_no: String(staffNo), full_name: fullName, reason: `Số CCHN ${values.license_no} trùng với dòng ${dupRow}` });
+				skipped.push({
+					row,
+					staff_no: String(staffNo),
+					full_name: fullName,
+					reason: `Số CCHN ${values.license_no} trùng với dòng ${dupRow}`,
+				});
 				continue;
 			}
 			seenLicense.set(values.license_no, row);
@@ -159,7 +165,9 @@ const importExcel = async ({ buffer, dry_run }, actorId) => {
 		} catch (err) {
 			// 2601/2627: số CCHN đã thuộc nhân sự khác (UQ_stafflic_license_no)
 			if (err.number !== 2601 && err.number !== 2627) throw err;
-			warnings.push(`Dòng ${it.row} (MNV ${it.staff_number}): số CCHN ${it.values.license_no} đã gán cho nhân sự khác — bỏ qua`);
+			warnings.push(
+				`Dòng ${it.row} (MNV ${it.staff_number}): số CCHN ${it.values.license_no} đã gán cho nhân sự khác — bỏ qua`,
+			);
 		}
 	}
 	if (written) broadcast('update', { entity: 'staff_license' });

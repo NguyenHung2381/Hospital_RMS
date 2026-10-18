@@ -31,11 +31,7 @@ const createOne = async (req, res, next) => {
 
 const updateOne = async (req, res, next) => {
 	try {
-		const item = await roundService.update(
-			req.params.id,
-			req.body,
-			req.user.id,
-		);
+		const item = await roundService.update(req.params.id, req.body, req.user.id);
 		if (!item) return notFound(res);
 		return success(res, item, 'Cập nhật đợt nghiên cứu thành công');
 	} catch (err) {

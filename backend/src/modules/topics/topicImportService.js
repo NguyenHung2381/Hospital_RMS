@@ -31,7 +31,11 @@ const SHEET_COLUMNS = [
 const COLUMN_MATCHERS = [
 	['stt', (h) => h === 'stt' || h === 'tt'],
 	['department_raw', (h) => h.startsWith('khoa') || h === 'don vi'],
-	['title', (h) => h.startsWith('ten sang kien') || h.startsWith('ten de tai') || h === 'de tai' || h === 'ten'],
+	[
+		'title',
+		(h) =>
+			h.startsWith('ten sang kien') || h.startsWith('ten de tai') || h === 'de tai' || h === 'ten',
+	],
 	['category_raw', (h) => h === 'the loai' || h === 'phan loai' || h === 'loai de tai'],
 	['name', (h) => h === 'ho va ten' || h === 'ho ten' || h === 'thanh vien'],
 	['position', (h) => h === 'chuc vu'],
@@ -73,16 +77,28 @@ const templateWorkbook = async () => {
 				row.getCell(c).border = xl.border;
 				row.getCell(c).alignment = { vertical: 'middle', wrapText: true };
 			}
-			Object.assign(row.getCell(roleCol), { value: SLOT_LABELS[i], font: { italic: true, color: { argb: 'FF6B7280' } } });
+			Object.assign(row.getCell(roleCol), {
+				value: SLOT_LABELS[i],
+				font: { italic: true, color: { argb: 'FF6B7280' } },
+			});
 		}
 		for (const c of topicCols) {
 			ws.mergeCells(top, c, top + slots - 1, c);
-			ws.getCell(top, c).alignment = { vertical: 'middle', horizontal: c === topicCols[2] ? 'left' : 'center', wrapText: true };
+			ws.getCell(top, c).alignment = {
+				vertical: 'middle',
+				horizontal: c === topicCols[2] ? 'left' : 'center',
+				wrapText: true,
+			};
 		}
 		ws.getCell(top, 1).value = b + 1;
 	}
 	const range = (name, header, rows) => {
-		const r = xl.addLookupSheet(wb, name, header, rows.map((x) => x.name));
+		const r = xl.addLookupSheet(
+			wb,
+			name,
+			header,
+			rows.map((x) => x.name),
+		);
 		return r ? { range: r } : null;
 	};
 	xl.addDropdowns(ws, SHEET_COLUMNS, {
@@ -108,7 +124,11 @@ const parseWorkbook = async (buffer) => {
 		// Dòng đầu khối có thể trống (chưa có Chủ nhiệm) nên tính theo ô gốc, không theo dòng đầu đọc được.
 		const tc = row.getCell(cols.title);
 		const block = tc.isMerged ? tc.master.row : null;
-		if (!cur || (block != null && block !== cur.row) || (title && norm(title) !== norm(cur.title))) {
+		if (
+			!cur ||
+			(block != null && block !== cur.row) ||
+			(title && norm(title) !== norm(cur.title))
+		) {
 			cur = {
 				row: block ?? r,
 				title,
@@ -141,7 +161,11 @@ const loadLookups = async () => {
 		pool.request().query('SELECT id, name FROM levels'),
 		pool.request().query('SELECT id, name, code FROM departments'),
 		pool.request().query('SELECT id, name, year FROM research_rounds'),
-		pool.request().query('SELECT full_name, staff_number, department_id FROM users WHERE staff_number IS NOT NULL AND is_active = 1'),
+		pool
+			.request()
+			.query(
+				'SELECT full_name, staff_number, department_id FROM users WHERE staff_number IS NOT NULL AND is_active = 1',
+			),
 		pool.request().query('SELECT title, round_id FROM topics'),
 		// Cấp độ ăn theo đợt — cùng quy tắc roundService.getAllowedLevelIds cho mọi đợt
 		pool
@@ -180,7 +204,8 @@ const loadLookups = async () => {
 	};
 };
 
-const matchDept = (raw, lk) => (raw ? lk.deptByKey.get(norm(raw)) || lk.deptByKey.get(normDept(raw)) || null : null);
+const matchDept = (raw, lk) =>
+	raw ? lk.deptByKey.get(norm(raw)) || lk.deptByKey.get(normDept(raw)) || null : null;
 
 // defaults = chọn ở hộp thoại { round_id, category_id, level_id, article_type, status }:
 // chỉ dùng khi ô tương ứng trong file để trống.
@@ -194,9 +219,13 @@ const buildPreview = (topics, lk, defaults = {}) => {
 		const round = lk.roundById.get(defaults.round_id);
 		if (!round) errors.push('Chưa chọn đợt nghiên cứu');
 
-		const cat = t.category_raw ? lk.catByKey.get(norm(t.category_raw)) : lk.catById.get(defaults.category_id);
-		if (!cat) errors.push(t.category_raw ? `Không khớp thể loại "${t.category_raw}"` : 'Thiếu thể loại');
-		else if (!cat.abbr) errors.push(`Thể loại "${cat.name}" chưa có ký hiệu viết tắt — bổ sung ở Danh mục`);
+		const cat = t.category_raw
+			? lk.catByKey.get(norm(t.category_raw))
+			: lk.catById.get(defaults.category_id);
+		if (!cat)
+			errors.push(t.category_raw ? `Không khớp thể loại "${t.category_raw}"` : 'Thiếu thể loại');
+		else if (!cat.abbr)
+			errors.push(`Thể loại "${cat.name}" chưa có ký hiệu viết tắt — bổ sung ở Danh mục`);
 
 		// Cấp độ phải thuộc danh sách cấp độ của đợt (như khi đăng ký); bài báo không có cấp độ
 		let level = null;
@@ -205,14 +234,18 @@ const buildPreview = (topics, lk, defaults = {}) => {
 			const allowed = round ? lk.allowedLevels(round.id) : [];
 			if (!level && allowed.length === 1) level = lk.levelById.get(allowed[0]);
 			const names = allowed.map((id) => lk.levelById.get(id)?.name || id).join(', ');
-			if (allowed.length && !level) errors.push(`Chưa chọn cấp độ — đợt "${round.name}" cho phép: ${names}`);
+			if (allowed.length && !level)
+				errors.push(`Chưa chọn cấp độ — đợt "${round.name}" cho phép: ${names}`);
 			else if (allowed.length && !allowed.includes(level.id)) {
-				errors.push(`Cấp độ "${level.name}" không thuộc đợt "${round.name}" — đợt cho phép: ${names}`);
+				errors.push(
+					`Cấp độ "${level.name}" không thuộc đợt "${round.name}" — đợt cho phép: ${names}`,
+				);
 			}
 		}
 
 		const dept = matchDept(t.department_raw, lk);
-		if (t.department_raw && !dept) warnings.push(`Không khớp khoa/phòng "${t.department_raw}" — để trống`);
+		if (t.department_raw && !dept)
+			warnings.push(`Không khớp khoa/phòng "${t.department_raw}" — để trống`);
 
 		if (!t.title) errors.push('Thiếu tên đề tài');
 
@@ -221,12 +254,15 @@ const buildPreview = (topics, lk, defaults = {}) => {
 			const user = m.staff_number != null ? lk.userByStaff.get(m.staff_number) : null;
 			const name = m.name || user?.full_name || '';
 			if (!name) {
-				warnings.push(`Dòng ${m.row}: MNV ${m.staff_number} chưa có trong hệ thống và thiếu họ tên — bỏ qua thành viên`);
+				warnings.push(
+					`Dòng ${m.row}: MNV ${m.staff_number} chưa có trong hệ thống và thiếu họ tên — bỏ qua thành viên`,
+				);
 				continue;
 			}
 			members.push({ ...m, name, department_id: user?.department_id || dept?.id || null });
 		}
-		if (members.length && !members.some((m) => m.role === 'leader')) warnings.push('Chưa có Chủ nhiệm (dòng đầu của khối để trống)');
+		if (members.length && !members.some((m) => m.role === 'leader'))
+			warnings.push('Chưa có Chủ nhiệm (dòng đầu của khối để trống)');
 		if (!members.length) warnings.push('Chưa có thành viên');
 
 		const key = round && `${round.id}|${norm(t.title)}`;
@@ -277,7 +313,13 @@ const importExcel = async ({ buffer, dry_run, defaults }, actorId) => {
 			for (const m of r.members) {
 				await topicMemberService.addMember(
 					topic.id,
-					{ ho_ten: m.name, staff_number: m.staff_number, chuc_vu: m.position, department_id: m.department_id, role: m.role },
+					{
+						ho_ten: m.name,
+						staff_number: m.staff_number,
+						chuc_vu: m.position,
+						department_id: m.department_id,
+						role: m.role,
+					},
 					actorId,
 				);
 			}

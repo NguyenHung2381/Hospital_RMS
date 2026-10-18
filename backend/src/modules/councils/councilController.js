@@ -22,7 +22,9 @@ const importExcel = async (req, res, next) => {
 			return res.status(400).json({ success: false, message: 'Chưa chọn file Excel.' });
 		}
 		if (!req.body.round_id) {
-			return res.status(400).json({ success: false, message: 'Đợt nghiên cứu không được để trống.' });
+			return res
+				.status(400)
+				.json({ success: false, message: 'Đợt nghiên cứu không được để trống.' });
 		}
 		const result = await councilImportService.importExcel(
 			{
@@ -54,11 +56,7 @@ const getMembers = async (req, res, next) => {
 
 const addMember = async (req, res, next) => {
 	try {
-		const member = await councilService.addMember(
-			req.params.id,
-			req.body,
-			req.user.id,
-		);
+		const member = await councilService.addMember(req.params.id, req.body, req.user.id);
 		return created(res, member, 'Thêm thành viên hội đồng thành công');
 	} catch (err) {
 		next(err);
@@ -82,11 +80,7 @@ const updateMember = async (req, res, next) => {
 
 const removeMember = async (req, res, next) => {
 	try {
-		await councilService.removeMember(
-			req.params.id,
-			req.params.member_id,
-			req.user.id,
-		);
+		await councilService.removeMember(req.params.id, req.params.member_id, req.user.id);
 		return success(res, null, 'Xóa thành viên hội đồng thành công');
 	} catch (err) {
 		next(err);
@@ -110,10 +104,7 @@ const getEligibleUsers = async (req, res, next) => {
 
 const getUnassignedTopics = async (req, res, next) => {
 	try {
-		return success(
-			res,
-			await councilAssignmentService.getUnassignedTopics(req.query.round_id),
-		);
+		return success(res, await councilAssignmentService.getUnassignedTopics(req.query.round_id));
 	} catch (err) {
 		next(err);
 	}
@@ -142,11 +133,7 @@ const assignTopics = async (req, res, next) => {
 
 const unassignTopic = async (req, res, next) => {
 	try {
-		await councilAssignmentService.unassignTopic(
-			req.params.id,
-			req.params.topic_id,
-			req.user.id,
-		);
+		await councilAssignmentService.unassignTopic(req.params.id, req.params.topic_id, req.user.id);
 		return success(res, null, 'Bỏ gán đề tài khỏi hội đồng thành công');
 	} catch (err) {
 		next(err);

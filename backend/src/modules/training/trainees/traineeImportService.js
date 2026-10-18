@@ -16,13 +16,20 @@ const COLUMN_MATCHERS = [
 	['full_name', (h) => h === 'ho va ten' || h === 'ho ten' || h === 'ten hoc vien'],
 	['dob', (h) => h.includes('ngay sinh') || h === 'sinh ngay' || h === 'nam sinh'],
 	['gender', (h) => h === 'gioi tinh' || h === 'phai'],
-	['national_id', (h) => h === 'cccd' || h === 'so cccd' || h.includes('can cuoc') || h === 'cmnd' || h === 'so cmnd'],
+	[
+		'national_id',
+		(h) =>
+			h === 'cccd' || h === 'so cccd' || h.includes('can cuoc') || h === 'cmnd' || h === 'so cmnd',
+	],
 	['phone', (h) => h === 'so dien thoai' || h === 'dien thoai' || h === 'sdt'],
 	['email', (h) => h === 'email' || h === 'thu dien tu'],
 	['address', (h) => h === 'dia chi'],
 	['permanent_address', (h) => h.includes('dia chi thuong tru')],
 	['trainee_type_raw', (h) => h.includes('doi tuong hoc vien') || h === 'doi tuong'],
-	['department_raw', (h) => h === 'khoa phong' || h === 'khoa' || h === 'don vi cong tac' || h === 'phong ban'],
+	[
+		'department_raw',
+		(h) => h === 'khoa phong' || h === 'khoa' || h === 'don vi cong tac' || h === 'phong ban',
+	],
 	['qualification', (h) => h.includes('trinh do chuyen mon') || h === 'trinh do'],
 	['graduated_school', (h) => h.includes('truong dao tao') || h.includes('truong tot nghiep')],
 	['graduated_year', (h) => h.includes('nam tot nghiep')],
@@ -94,11 +101,15 @@ const loadLookups = async () => {
 const buildPreview = (rows, lookups) => {
 	return rows.map((row) => {
 		const warnings = [];
-		const traineeTypeId = row.trainee_type_raw ? lookups.typeByName.get(norm(row.trainee_type_raw)) : null;
+		const traineeTypeId = row.trainee_type_raw
+			? lookups.typeByName.get(norm(row.trainee_type_raw))
+			: null;
 		if (row.trainee_type_raw && !traineeTypeId) {
 			warnings.push(`Không khớp đối tượng học viên "${row.trainee_type_raw}" — để trống.`);
 		}
-		const departmentId = row.department_raw ? lookups.deptByName.get(normDept(row.department_raw)) : null;
+		const departmentId = row.department_raw
+			? lookups.deptByName.get(normDept(row.department_raw))
+			: null;
 		if (row.department_raw && !departmentId) {
 			warnings.push(`Không khớp khoa/phòng "${row.department_raw}" — để trống.`);
 		}

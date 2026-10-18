@@ -8,7 +8,11 @@ const { bumpTokenVersion } = require('../auth/sessionVersion');
 const { paging } = require('../../utils/paging');
 // department_id/role_id nhận danh sách phân tách bởi dấu phẩy (multi-select trên UI)
 const { splitList, inClause } = require('../../utils/sqlFilters');
-const { isDeptAccountSql, deptAccountJoinSql, isDeptAccountJoinedSql } = require('../../utils/deptAccount');
+const {
+	isDeptAccountSql,
+	deptAccountJoinSql,
+	isDeptAccountJoinedSql,
+} = require('../../utils/deptAccount');
 const { ROLE, requireRoleId } = require('../access/roleCodes');
 const { defaultPassword } = require('../../utils/passwordPolicy');
 const { httpError } = require('../../utils/httpError');
@@ -78,7 +82,11 @@ const getAll = async ({
 		// username/email là cột varchar (non-unicode) -> dùng tham số VarChar để
 		// tránh SQL Server ép kiểu cả cột sang NVARCHAR (huỷ index, tốn CPU).
 		// full_name là nvarchar -> tham số NVarChar riêng.
-		const orParts = ['u.username LIKE @search', 'u.full_name LIKE @search_n', 'u.email LIKE @search'];
+		const orParts = [
+			'u.username LIKE @search',
+			'u.full_name LIKE @search_n',
+			'u.email LIKE @search',
+		];
 		req.input('search', sql.VarChar(120), `%${term}%`);
 		req.input('search_n', sql.NVarChar(220), `%${term}%`);
 		// Chỉ ép kiểu staff_number khi chuỗi tìm là số — bỏ CAST khỏi nhánh phổ
@@ -96,11 +104,20 @@ const getAll = async ({
 	const deptClause = inClause(req, 'u.department_id', 'dept', deptIds, sql.VarChar(20));
 	const roleClause = inClause(req, 'u.role_id', 'rid', roleIds, sql.VarChar(6));
 
-	const whereAll = ['WHERE', [...baseClauses, deptClause, roleClause].filter(Boolean).join(' AND ')].join(' ');
+	const whereAll = [
+		'WHERE',
+		[...baseClauses, deptClause, roleClause].filter(Boolean).join(' AND '),
+	].join(' ');
 	// Đếm theo vai trò: bỏ qua bộ lọc vai trò (để hiện số lượng nếu chọn thêm vai trò khác)
-	const whereForRoleFacet = ['WHERE', [...baseClauses, deptClause].filter(Boolean).join(' AND ')].join(' ');
+	const whereForRoleFacet = [
+		'WHERE',
+		[...baseClauses, deptClause].filter(Boolean).join(' AND '),
+	].join(' ');
 	// Đếm theo khoa/phòng: bỏ qua bộ lọc khoa/phòng
-	const whereForDeptFacet = ['WHERE', [...baseClauses, roleClause].filter(Boolean).join(' AND ')].join(' ');
+	const whereForDeptFacet = [
+		'WHERE',
+		[...baseClauses, roleClause].filter(Boolean).join(' AND '),
+	].join(' ');
 
 	// Đo trên DB dev (1.860 users):
 	// - limit=0 (dropdown chọn người): EXISTS dept_account_id quét lại departments cho
@@ -159,14 +176,10 @@ const getAll = async ({
 		const [roleCountRows, deptCountRows] = rest;
 		out.global_stats = await getGlobalStats(pool);
 		out.role_counts = Object.fromEntries(
-			roleCountRows
-				.filter((r) => r.role_id)
-				.map((r) => [r.role_id, r.count]),
+			roleCountRows.filter((r) => r.role_id).map((r) => [r.role_id, r.count]),
 		);
 		out.dept_counts = Object.fromEntries(
-			deptCountRows
-				.filter((r) => r.department_id)
-				.map((r) => [r.department_id, r.count]),
+			deptCountRows.filter((r) => r.department_id).map((r) => [r.department_id, r.count]),
 		);
 	}
 
@@ -224,8 +237,7 @@ const create = async (data, actorId) => {
 			.input('full_name', sql.NVarChar(200), data.full_name)
 			.input('email', sql.VarChar(100), data.email?.trim() || null)
 			.input('department_id', sql.VarChar(20), data.department_id || null)
-			.input('role_id', sql.VarChar(20), roleId)
-			.query(`
+			.input('role_id', sql.VarChar(20), roleId).query(`
       EXEC sp_set_actor @actor_id;
       -- Mật khẩu do quản trị đặt ⇒ người dùng phải tự đổi ở lần đăng nhập đầu
       INSERT INTO users (id, username, password, staff_number, full_name, email, department_id, role_id, created_by, must_change_password)
@@ -353,10 +365,8 @@ const remove = async (id, actorId) => {
 
 	// Lấy trước khi xoá — sau khi xoá thì dọn person (bảng persons không có FK tới users)
 	const personId = await personService.personIdOf('users', id);
-	await pool
-		.request()
-		.input('id', sql.VarChar(20), id)
-		.input('actor_id', sql.VarChar(20), actorId).query(`
+	await pool.request().input('id', sql.VarChar(20), id).input('actor_id', sql.VarChar(20), actorId)
+		.query(`
 			EXEC sp_set_actor @actor_id;
 			UPDATE topic_members SET user_id = NULL, account_granted = 0, account_granted_at = NULL WHERE user_id = @id;
 			UPDATE trainees SET user_id = NULL, account_granted = 0, account_granted_at = NULL WHERE user_id = @id;
@@ -471,15 +481,25 @@ const createStaffAccount = async (
 	full_name = String(full_name || '').trim();
 	if (!full_name) throw httpError(400, 'Vui lòng nhập họ và tên');
 	// require muộn: topicMemberService nạp nhiều service khác, chỉ cần ở luồng này
-	const { buildMemberUsername, ensureUniqueUsername, genUserIdInTx } = require('../topics/topicMemberService');
+	const {
+		buildMemberUsername,
+		ensureUniqueUsername,
+		genUserIdInTx,
+	} = require('../topics/topicMemberService');
 	const pool = await getPool();
 	const roleId = await requireRoleId(ROLE.MEMBER);
 
 	const { userId, username } = await withTransaction(async (tx) => {
-		await new sql.Request(tx).input('actor_id', sql.VarChar(20), actorId).query('EXEC sp_set_actor @actor_id');
+		await new sql.Request(tx)
+			.input('actor_id', sql.VarChar(20), actorId)
+			.query('EXEC sp_set_actor @actor_id');
 		const userId = await genUserIdInTx(tx, department_code || '');
 		if (!userId) throw new Error('Không sinh được mã nhân viên mới');
-		const username = await ensureUniqueUsername(tx, buildMemberUsername(full_name, staff_number), userId);
+		const username = await ensureUniqueUsername(
+			tx,
+			buildMemberUsername(full_name, staff_number),
+			userId,
+		);
 		const passwordHash = await bcrypt.hash(defaultPassword(username), 12);
 		await new sql.Request(tx)
 			.input('uid', sql.VarChar(20), userId)

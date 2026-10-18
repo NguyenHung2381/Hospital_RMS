@@ -54,7 +54,9 @@ const warnStalePasswords = async (pool) => {
 // (authService.refreshAccessToken) — sau đó thì xoá; mỗi lần làm mới phiên
 // (15 phút/lần) sinh thêm 1 dòng nên bảng tăng nhanh nếu không dọn.
 const purgeExpiredRefreshTokens = async (pool) => {
-	const result = await pool.request().query('DELETE FROM refresh_tokens WHERE expires_at < GETDATE()');
+	const result = await pool
+		.request()
+		.query('DELETE FROM refresh_tokens WHERE expires_at < GETDATE()');
 	const purged = result.rowsAffected?.[0] ?? 0;
 	if (purged > 0) console.log(`[job:account_maintenance] Đã xoá ${purged} refresh token hết hạn.`);
 };

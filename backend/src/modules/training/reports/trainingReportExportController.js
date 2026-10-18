@@ -38,7 +38,14 @@ async function exportTrainingReport(req, res, next) {
 		const ws1 = wb.addWorksheet('Theo khóa - chương trình');
 		sheetTitle(ws1, 'BÁO CÁO ĐÀO TẠO THEO KHÓA HỌC & CHƯƠNG TRÌNH', 'F');
 		let cur = CONTENT_START;
-		headerRow(ws1, cur, ['Khóa học', 'Chương trình', 'Tổng đăng ký', 'Đã duyệt', 'Điểm TB', 'Số chứng chỉ']);
+		headerRow(ws1, cur, [
+			'Khóa học',
+			'Chương trình',
+			'Tổng đăng ký',
+			'Đã duyệt',
+			'Điểm TB',
+			'Số chứng chỉ',
+		]);
 		cur++;
 		for (const row of byCourseProgram) {
 			dataRow(ws1, cur, [
@@ -57,7 +64,14 @@ async function exportTrainingReport(req, res, next) {
 		const ws2 = wb.addWorksheet('DS học viên - kết quả');
 		sheetTitle(ws2, 'DANH SÁCH HỌC VIÊN & KẾT QUẢ HỌC TẬP', 'F');
 		cur = CONTENT_START;
-		headerRow(ws2, cur, ['Học viên', 'Khóa học', 'Điểm tổng kết', 'Xếp loại', 'Kết quả', 'Buổi học tham dự']);
+		headerRow(ws2, cur, [
+			'Học viên',
+			'Khóa học',
+			'Điểm tổng kết',
+			'Xếp loại',
+			'Kết quả',
+			'Buổi học tham dự',
+		]);
 		cur++;
 		for (const row of traineeResults) {
 			dataRow(ws2, cur, [

@@ -26,7 +26,10 @@ test('cpuGate: chạy tối đa `max`, xếp hàng `queue`, quá thì 503 ngay',
 	assert.equal(started, 2);
 	assert.deepEqual(gate.stats(), { running: 2, waiting: 1 });
 
-	await assert.rejects(gate.run(() => 'x'), (err) => err === BUSY_ERROR && err.statusCode === 503);
+	await assert.rejects(
+		gate.run(() => 'x'),
+		(err) => err === BUSY_ERROR && err.statusCode === 503,
+	);
 
 	jobs[0].resolve('a');
 	assert.equal(await results[0], 'a');
@@ -40,7 +43,10 @@ test('cpuGate: chạy tối đa `max`, xếp hàng `queue`, quá thì 503 ngay',
 
 test('cpuGate: tác vụ lỗi vẫn trả chỗ cho tác vụ sau', async () => {
 	const gate = createGate({ max: 1, queue: 0 });
-	await assert.rejects(gate.run(() => Promise.reject(new Error('boom'))), /boom/);
+	await assert.rejects(
+		gate.run(() => Promise.reject(new Error('boom'))),
+		/boom/,
+	);
 	assert.equal(await gate.run(() => 'ok'), 'ok');
 });
 

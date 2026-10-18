@@ -5,10 +5,7 @@ const workflowEngineService = require('./workflowEngineService');
 const { success, created, notFound } = require('../../utils/response');
 const { createCrudController } = require('../../shared/crudController');
 const { httpError } = require('../../utils/httpError');
-const {
-	assertTopicActionWindow,
-	assertRegistrationOpen,
-} = require('./deadlineGuard');
+const { assertTopicActionWindow, assertRegistrationOpen } = require('./deadlineGuard');
 const { isDeadlineBound, scopeOf, hasPermission } = require('../../middlewares/auth');
 const topicImportService = require('./topicImportService');
 const { sendWorkbook } = require('../../utils/response');
@@ -73,11 +70,7 @@ const getMembers = async (req, res, next) => {
 const addMember = async (req, res, next) => {
 	try {
 		await guardMemberEdit(req);
-		const member = await topicMemberService.addMember(
-			req.params.id,
-			req.body,
-			req.user.id,
-		);
+		const member = await topicMemberService.addMember(req.params.id, req.body, req.user.id);
 		return created(res, member, 'Thêm thành viên thành công');
 	} catch (err) {
 		next(err);
@@ -103,11 +96,7 @@ const updateMember = async (req, res, next) => {
 const deleteMember = async (req, res, next) => {
 	try {
 		await guardMemberEdit(req);
-		await topicMemberService.deleteMember(
-			req.params.id,
-			req.params.member_id,
-			req.user.id,
-		);
+		await topicMemberService.deleteMember(req.params.id, req.params.member_id, req.user.id);
 		return success(res, null, 'Xóa thành viên thành công');
 	} catch (err) {
 		next(err);
@@ -147,7 +136,12 @@ const approve = async (req, res, next) => {
 			// Engine mới chỉ xử lý approved/rejected — 'supplement' (yêu cầu bổ
 			// sung) vẫn đi đường cũ vì workflow_tasks không có trạng thái tương ứng.
 			if (req.body.status === 'supplement') {
-				const result = await topicService.approve(req.params.id, req.body.status, req.body.comment, req.user.id);
+				const result = await topicService.approve(
+					req.params.id,
+					req.body.status,
+					req.body.comment,
+					req.user.id,
+				);
 				return success(res, result, 'Xử lý phê duyệt thành công');
 			}
 			const outcome = await workflowEngineService.advance(
@@ -194,12 +188,7 @@ const exportData = async (req, res, next) => {
 
 const updateOne = async (req, res, next) => {
 	try {
-		const item = await topicService.update(
-			req.params.id,
-			req.body,
-			req.user.id,
-			req.user,
-		);
+		const item = await topicService.update(req.params.id, req.body, req.user.id, req.user);
 		if (!item) return notFound(res);
 		return success(res, item, 'Cập nhật thành công');
 	} catch (err) {
@@ -217,7 +206,11 @@ const getAuthors = async (req, res, next) => {
 
 const setAuthors = async (req, res, next) => {
 	try {
-		const authors = await topicAuthorService.setAuthors(req.params.id, req.body.authors, req.user.id);
+		const authors = await topicAuthorService.setAuthors(
+			req.params.id,
+			req.body.authors,
+			req.user.id,
+		);
 		return success(res, authors, 'Đã cập nhật danh sách đồng tác giả');
 	} catch (err) {
 		next(err);
@@ -245,10 +238,14 @@ const IMPORT_STATUSES = ['submitted', 'approved', 'rejected', 'cancelled'];
 const importExcel = async (req, res, next) => {
 	try {
 		assertImportScope(req.user);
-		if (!req.file) return res.status(400).json({ success: false, message: 'Chưa chọn file Excel.' });
+		if (!req.file)
+			return res.status(400).json({ success: false, message: 'Chưa chọn file Excel.' });
 		const status = IMPORT_STATUSES.includes(req.body.status) ? req.body.status : 'submitted';
 		if (status !== 'submitted' && !hasPermission(req.user, 'topics', 'approve')) {
-			return res.status(403).json({ success: false, message: 'Cần quyền phê duyệt đề tài để nhập với trạng thái khác "Chờ duyệt".' });
+			return res.status(403).json({
+				success: false,
+				message: 'Cần quyền phê duyệt đề tài để nhập với trạng thái khác "Chờ duyệt".',
+			});
 		}
 		const out = await topicImportService.importExcel(
 			{
@@ -264,7 +261,11 @@ const importExcel = async (req, res, next) => {
 			},
 			req.user.id,
 		);
-		return success(res, out, out.dry_run ? 'Đã đọc file — kiểm tra trước khi nhập' : `Đã nhập ${out.inserted} đề tài`);
+		return success(
+			res,
+			out,
+			out.dry_run ? 'Đã đọc file — kiểm tra trước khi nhập' : `Đã nhập ${out.inserted} đề tài`,
+		);
 	} catch (err) {
 		next(err);
 	}

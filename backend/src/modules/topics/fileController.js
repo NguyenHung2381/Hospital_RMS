@@ -27,21 +27,13 @@ const checkDeleteWindow = async (req, res, next) => {
 		const { recordset } = await pool
 			.request()
 			.input('fid', sql.VarChar(32), req.params.file_id)
-			.query(
-				`SELECT topic_id FROM files WHERE id = @fid AND is_deleted = 0`,
-			);
+			.query(`SELECT topic_id FROM files WHERE id = @fid AND is_deleted = 0`);
 		if (!recordset[0]) {
-			return res
-				.status(404)
-				.json({ success: false, message: 'Không tìm thấy file' });
+			return res.status(404).json({ success: false, message: 'Không tìm thấy file' });
 		}
 		await topicService.assertTopicInScope(recordset[0].topic_id, req.user);
 		if (!isDeadlineBound(req.user)) return next();
-		await assertTopicActionWindow(
-			recordset[0].topic_id,
-			req.user.id,
-			'delete-files',
-		);
+		await assertTopicActionWindow(recordset[0].topic_id, req.user.id, 'delete-files');
 		next();
 	} catch (err) {
 		return res
@@ -56,9 +48,7 @@ const upload = async (req, res, next) => {
 		const { batch_note } = req.body;
 
 		if (!req.files || req.files.length === 0) {
-			return res
-				.status(400)
-				.json({ success: false, message: 'Chưa có file nào được tải lên' });
+			return res.status(400).json({ success: false, message: 'Chưa có file nào được tải lên' });
 		}
 
 		const files = req.files.map((f) => ({
@@ -68,12 +58,7 @@ const upload = async (req, res, next) => {
 			mime_type: f.mimetype,
 		}));
 
-		const result = await fileService.uploadFiles(
-			topic_id,
-			files,
-			batch_note,
-			req.user.id,
-		);
+		const result = await fileService.uploadFiles(topic_id, files, batch_note, req.user.id);
 		return created(res, result, 'Upload file thành công');
 	} catch (err) {
 		next(err);

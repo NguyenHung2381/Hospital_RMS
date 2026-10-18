@@ -26,7 +26,11 @@ const used = async (userId) => {
 const add = async (userId, bytes) => {
 	const k = keyOf(userId);
 	try {
-		await redis.multi().incrby(k, bytes).expire(k, 2 * 24 * 3600).exec();
+		await redis
+			.multi()
+			.incrby(k, bytes)
+			.expire(k, 2 * 24 * 3600)
+			.exec();
 	} catch {
 		if (memory.size > 10_000) memory.clear();
 		memory.set(k, (memory.get(k) || 0) + bytes);

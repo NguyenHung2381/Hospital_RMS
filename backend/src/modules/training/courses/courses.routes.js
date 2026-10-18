@@ -33,16 +33,26 @@ const inScope = (check) => async (req, _res, next, value) => {
 		next(err);
 	}
 };
-router.param('id', inScope((id, user) => courseService.assertCourseInScope(id, user)));
+router.param(
+	'id',
+	inScope((id, user) => courseService.assertCourseInScope(id, user)),
+);
 for (const name of Object.keys(courseService.CHILD_COURSE_SQL)) {
-	router.param(name, inScope((id, user) => courseService.assertCourseChildInScope(name, id, user)));
+	router.param(
+		name,
+		inScope((id, user) => courseService.assertCourseChildInScope(name, id, user)),
+	);
 }
 
 // ─── Courses ──────────────────────────────────────────────────────────────
 router.get('/', authorizePermission(['courses', 'read']), ctrl.getAll);
 // Nhân viên nội viện chưa có hồ sơ học viên — để ghi danh thẳng vào khóa (phải
 // khai báo trước '/:id').
-router.get('/staff-candidates', authorizePermission(['courses', 'create']), ctrl.listStaffCandidates);
+router.get(
+	'/staff-candidates',
+	authorizePermission(['courses', 'create']),
+	ctrl.listStaffCandidates,
+);
 // Lịch học toàn hệ thống theo khoảng ngày (phải khai báo trước '/:id').
 router.get(
 	'/sessions/calendar',
@@ -119,10 +129,18 @@ router.post(
 	validate,
 	ctrl.bulkDecideEnrollments,
 );
-router.delete('/enrollments/:enrollmentId', authorizePermission(['courses', 'delete']), ctrl.removeEnrollment);
+router.delete(
+	'/enrollments/:enrollmentId',
+	authorizePermission(['courses', 'delete']),
+	ctrl.removeEnrollment,
+);
 
 // ─── Lecturer assignments ─────────────────────────────────────────────────
-router.get('/:id/lecturer-assignments', authorizePermission(['courses', 'read']), ctrl.listAssignments);
+router.get(
+	'/:id/lecturer-assignments',
+	authorizePermission(['courses', 'read']),
+	ctrl.listAssignments,
+);
 router.post(
 	'/:id/lecturer-assignments',
 	authorizePermission(['courses', 'update']),
@@ -146,7 +164,11 @@ router.post(
 	ctrl.createSession,
 );
 router.put('/sessions/:sessionId', authorizePermission(['courses', 'update']), ctrl.updateSession);
-router.delete('/sessions/:sessionId', authorizePermission(['courses', 'update']), ctrl.removeSession);
+router.delete(
+	'/sessions/:sessionId',
+	authorizePermission(['courses', 'update']),
+	ctrl.removeSession,
+);
 router.post(
 	'/:id/sessions/bulk',
 	authorizePermission(['courses', 'update']),
@@ -197,7 +219,11 @@ router.post(
 	ctrl.addDocument,
 );
 router.delete('/documents/:docId', authorizePermission(['courses', 'update']), ctrl.removeDocument);
-router.patch('/documents/:docId/download', authorizePermission(['courses', 'read']), ctrl.incrementDocumentDownload);
+router.patch(
+	'/documents/:docId/download',
+	authorizePermission(['courses', 'read']),
+	ctrl.incrementDocumentDownload,
+);
 
 // ─── Grades ─────────────────────────────────────────────────────────────────
 router.get('/:id/grades', authorizePermission(['courses', 'read']), ctrl.listGrades);
@@ -219,7 +245,11 @@ router.post(
 	validate,
 	ctrl.issueCertificate,
 );
-router.delete('/certificates/:certId', authorizePermission(['courses', 'approve']), ctrl.removeCertificate);
+router.delete(
+	'/certificates/:certId',
+	authorizePermission(['courses', 'approve']),
+	ctrl.removeCertificate,
+);
 router.patch(
 	'/certificates/:certId/revoke',
 	authorizePermission(['courses', 'approve']),

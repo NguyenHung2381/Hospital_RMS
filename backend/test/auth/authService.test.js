@@ -12,19 +12,49 @@ const { install } = require('./fakeDb');
 
 const HASH = bcrypt.hashSync('Dung#matkhau2026', 4);
 const USERS = {
-	active: { id: 'U1', username: 'active', email: 'active@bv.vn', password: HASH, is_active: 1, role_id: null, totp_enabled: 0, failed_login_count: 0, locked_until: null },
-	disabled: { id: 'U2', username: 'disabled', email: 'chung@bv.vn', password: HASH, is_active: 0, role_id: null, totp_enabled: 0, failed_login_count: 0, locked_until: null },
-	twofa: { id: 'U3', username: 'twofa', email: 'chung@bv.vn', password: HASH, is_active: 1, totp_enabled: 1 },
+	active: {
+		id: 'U1',
+		username: 'active',
+		email: 'active@bv.vn',
+		password: HASH,
+		is_active: 1,
+		role_id: null,
+		totp_enabled: 0,
+		failed_login_count: 0,
+		locked_until: null,
+	},
+	disabled: {
+		id: 'U2',
+		username: 'disabled',
+		email: 'chung@bv.vn',
+		password: HASH,
+		is_active: 0,
+		role_id: null,
+		totp_enabled: 0,
+		failed_login_count: 0,
+		locked_until: null,
+	},
+	twofa: {
+		id: 'U3',
+		username: 'twofa',
+		email: 'chung@bv.vn',
+		password: HASH,
+		is_active: 1,
+		totp_enabled: 1,
+	},
 };
 const byId = Object.fromEntries(Object.values(USERS).map((u) => [u.id, u]));
 
 const log = install(async (text, inputs) => {
-	if (/WHERE u\.username = @login/.test(text)) return USERS[inputs.login] ? [USERS[inputs.login]] : [];
-	if (/WHERE u\.email = @login/.test(text)) return Object.values(USERS).filter((u) => u.email === inputs.login);
+	if (/WHERE u\.username = @login/.test(text))
+		return USERS[inputs.login] ? [USERS[inputs.login]] : [];
+	if (/WHERE u\.email = @login/.test(text))
+		return Object.values(USERS).filter((u) => u.email === inputs.login);
 	if (/SELECT username, totp_enabled FROM users/.test(text)) return [byId[inputs.id]];
 	if (/SELECT password FROM users WHERE id = @id/.test(text)) return [byId[inputs.id]];
 	if (/COUNT\(\*\) AS locks/.test(text)) return [{ locks: 0 }];
-	if (/OUTPUT DELETED\.failed_login_count/.test(text)) return [{ prev_count: 0, locked_until: null }];
+	if (/OUTPUT DELETED\.failed_login_count/.test(text))
+		return [{ prev_count: 0, locked_until: null }];
 	if (/SELECT token_version/.test(text)) return [{ token_version: 0 }];
 	if (/SELECT \* FROM users WHERE id = @id/.test(text)) return [byId[inputs.id]];
 	return [];
@@ -61,7 +91,11 @@ test('/2fa/setup bị từ chối khi 2FA đang bật (không ghi đè secret)',
 });
 
 test('đổi mật khẩu: mới trùng cũ bị từ chối; hợp lệ thì gỡ must_change_password', async () => {
-	await rejectsWith(authService.changePassword('U1', 'Dung#matkhau2026', 'Dung#matkhau2026'), 400, /khác/);
+	await rejectsWith(
+		authService.changePassword('U1', 'Dung#matkhau2026', 'Dung#matkhau2026'),
+		400,
+		/khác/,
+	);
 	const before = log.length;
 	await authService.changePassword('U1', 'Dung#matkhau2026', 'Moi#matkhau2027');
 	assert.ok(log.slice(before).some((q) => /must_change_password = 0/.test(q.text)));

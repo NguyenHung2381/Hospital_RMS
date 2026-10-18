@@ -73,9 +73,7 @@ const MAX_FAILED_LOGIN_ATTEMPTS = 5;
 const LOCK_MINUTES_BY_LEVEL = [5, 15, 30, 60];
 
 const lockMinutesFor = async (pool, userId) => {
-	const result = await pool
-		.request()
-		.input('id', sql.VarChar(50), userId).query(`
+	const result = await pool.request().input('id', sql.VarChar(50), userId).query(`
 			SELECT COUNT(*) AS locks FROM security_events
 			WHERE event_type = 'login_locked' AND target_id = @id
 				AND created_at > DATEADD(HOUR, -24, GETDATE())
@@ -169,10 +167,7 @@ const INVALID_CREDENTIALS = {
 };
 
 const lockedError = (lockedUntil) => {
-	const secondsLeft = Math.max(
-		1,
-		Math.ceil((new Date(lockedUntil) - new Date()) / 1000),
-	);
+	const secondsLeft = Math.max(1, Math.ceil((new Date(lockedUntil) - new Date()) / 1000));
 	return {
 		statusCode: 403,
 		message: `Tài khoản tạm khoá do đăng nhập sai nhiều lần. Thử lại sau ${Math.ceil(secondsLeft / 60)} phút.`,
@@ -196,9 +191,8 @@ const login = async (
 	// chưa UNIQUE nên lấy 2 dòng: email dùng chung cho nhiều tài khoản thì không
 	// biết là ai → coi như sai thông tin, người dùng phải đăng nhập bằng username.
 	const byEmail = String(username).includes('@');
-	const result = await pool
-		.request()
-		.input('login', sql.VarChar(100), String(username).trim()).query(`
+	const result = await pool.request().input('login', sql.VarChar(100), String(username).trim())
+		.query(`
       SELECT TOP 2 u.id, u.username, u.password, u.full_name, u.email, u.staff_number,
              u.role_id, u.is_active, u.department_id,
              u.account_expires_at, u.failed_login_count, u.locked_until,
@@ -246,8 +240,7 @@ const login = async (
 	// (sp_deactivate_expired_accounts set is_active=0 mỗi đêm). Chỉ báo SAU khi
 	// mật khẩu đúng — người không biết mật khẩu không phân biệt được tài khoản
 	// bị vô hiệu hoá với tài khoản không tồn tại.
-	if (!user.is_active)
-		throw httpError(403, 'Tài khoản đã bị vô hiệu hóa hoặc hết hạn sử dụng');
+	if (!user.is_active) throw httpError(403, 'Tài khoản đã bị vô hiệu hóa hoặc hết hạn sử dụng');
 
 	// Đăng nhập đúng trên thiết bị quen không xoá bộ đếm/khoá của thiết bị lạ
 	// — nếu không, kẻ tấn công được làm lại từ đầu mỗi khi chủ tài khoản đăng
@@ -298,23 +291,25 @@ const signAccessToken = (user, tv) =>
 //   familyId: "họ" token — mọi refresh token sinh ra từ cùng 1 lần đăng nhập
 //     (qua các lần xoay) cùng họ; phát hiện dùng lại thì thu hồi cả họ.
 //     Không truyền = phiên mới (họ mới).
-const signSession = async (pool, user, ip, userAgent, { remember = false, familyId = null } = {}) => {
+const signSession = async (
+	pool,
+	user,
+	ip,
+	userAgent,
+	{ remember = false, familyId = null } = {},
+) => {
 	const accessToken = signAccessToken(user, await currentTokenVersion(user.id, pool));
 
 	// jti ngẫu nhiên: payload chỉ có {id} + JWT iat chỉ chính xác tới giây, nên
 	// 2 lần sign trong cùng 1 giây (không hiếm với round-trip DB nhanh) cho ra
 	// CHUỖI TOKEN GIỐNG NHAU — phá vỡ bảo đảm "token cũ sau rotate bị từ chối".
 	// Hạn JWT khớp hạn trong DB (sp_create_refresh_token: 30 ngày nếu ghi nhớ).
-	const refreshToken = jwt.sign(
-		{ id: user.id, jti: uuidv4() },
-		process.env.JWT_REFRESH_SECRET,
-		{
-			algorithm: 'HS256',
-			expiresIn: remember ? '30d' : process.env.JWT_REFRESH_EXPIRES_IN || '7d',
-			issuer: ISSUER,
-			audience: 'refresh',
-		},
-	);
+	const refreshToken = jwt.sign({ id: user.id, jti: uuidv4() }, process.env.JWT_REFRESH_SECRET, {
+		algorithm: 'HS256',
+		expiresIn: remember ? '30d' : process.env.JWT_REFRESH_EXPIRES_IN || '7d',
+		issuer: ISSUER,
+		audience: 'refresh',
+	});
 
 	// Store refresh token via SP (handles id generation + remember_me)
 	const created = await pool
@@ -383,7 +378,10 @@ const readSecret = (stored) => {
 		return secretBox.decrypt(stored);
 	} catch (err) {
 		console.error('❌ Không giải mã được secret 2FA — khoá mã hoá không khớp:', err.message);
-		throw httpError(409, 'Không đọc được cấu hình xác thực 2 lớp của tài khoản. Vui lòng liên hệ quản trị viên để đặt lại 2FA.');
+		throw httpError(
+			409,
+			'Không đọc được cấu hình xác thực 2 lớp của tài khoản. Vui lòng liên hệ quản trị viên để đặt lại 2FA.',
+		);
 	}
 };
 
@@ -425,7 +423,10 @@ const checkTotp = async (pool, user, code) => {
 // 10 mã dạng "xxxx-xxxx" (~40 bit), mỗi mã dùng 1 lần, lưu HMAC có khoá ngoài DB.
 const BACKUP_CODE_COUNT = 10;
 const BACKUP_ALPHABET = 'abcdefghjkmnpqrstuvwxyz23456789';
-const normalizeBackupCode = (code) => String(code).toLowerCase().replace(/[^a-z0-9]/g, '');
+const normalizeBackupCode = (code) =>
+	String(code)
+		.toLowerCase()
+		.replace(/[^a-z0-9]/g, '');
 const isBackupCodeShape = (code) => normalizeBackupCode(code).length === 8;
 
 const generateBackupCodes = () =>
@@ -439,7 +440,9 @@ const generateBackupCodes = () =>
 const replaceBackupCodes = async (pool, userId) => {
 	const codes = generateBackupCodes();
 	const req = pool.request().input('user_id', sql.VarChar(20), userId);
-	codes.forEach((c, i) => req.input(`h${i}`, sql.Char(64), secretBox.keyedHash(normalizeBackupCode(c))));
+	codes.forEach((c, i) =>
+		req.input(`h${i}`, sql.Char(64), secretBox.keyedHash(normalizeBackupCode(c))),
+	);
 	await req.query(`
 		DELETE FROM user_backup_codes WHERE user_id = @user_id;
 		INSERT INTO user_backup_codes (user_id, code_hash)
@@ -467,12 +470,17 @@ const countBackupCodes = async (pool, userId) =>
 		await pool
 			.request()
 			.input('user_id', sql.VarChar(20), userId)
-			.query('SELECT COUNT(*) AS n FROM user_backup_codes WHERE user_id = @user_id AND used_at IS NULL')
+			.query(
+				'SELECT COUNT(*) AS n FROM user_backup_codes WHERE user_id = @user_id AND used_at IS NULL',
+			)
 	).recordset[0].n;
 
 const assertPassword = async (pool, userId, password) => {
 	const user = (
-		await pool.request().input('id', sql.VarChar(20), userId).query('SELECT password FROM users WHERE id = @id')
+		await pool
+			.request()
+			.input('id', sql.VarChar(20), userId)
+			.query('SELECT password FROM users WHERE id = @id')
 	).recordset[0];
 	if (!user) throw httpError(404, 'Người dùng không tồn tại');
 	if (!(await comparePassword(String(password ?? ''), user.password)))
@@ -497,9 +505,7 @@ const verify2FALogin = async (
 	}
 
 	const pool = await getPool();
-	const result = await pool
-		.request()
-		.input('id', sql.VarChar(20), decoded.id).query(`
+	const result = await pool.request().input('id', sql.VarChar(20), decoded.id).query(`
       SELECT u.id, u.username, u.full_name, u.email, u.staff_number, u.role_id,
              u.department_id, u.account_expires_at, u.totp_secret, u.totp_enabled,
              u.failed_login_count, u.locked_until, u.password_changed_at,
@@ -513,8 +519,7 @@ const verify2FALogin = async (
 	if (!user || !user.totp_enabled || !user.totp_secret)
 		throw httpError(401, 'Tài khoản chưa bật xác thực 2 lớp');
 	// Tài khoản có thể bị vô hiệu hoá trong 5 phút giữa bước mật khẩu và bước OTP
-	if (!user.is_active)
-		throw httpError(403, 'Tài khoản đã bị vô hiệu hóa hoặc hết hạn sử dụng');
+	if (!user.is_active) throw httpError(403, 'Tài khoản đã bị vô hiệu hóa hoặc hết hạn sử dụng');
 
 	const device = await trustedDevices.verifyDeviceToken(deviceToken, user);
 	if (!device && isLocked(user)) throw lockedError(user.locked_until);
@@ -581,7 +586,10 @@ const setup2FA = async (userId) => {
 	// chiếm được phiên tắt được 2FA và gắn authenticator của chính họ. Muốn đổi
 	// thiết bị xác thực thì tắt trước qua /2fa/disable (yêu cầu mật khẩu).
 	if (user.totp_enabled)
-		throw httpError(409, 'Xác thực 2 lớp đang bật. Hãy tắt trước (cần nhập mật khẩu) rồi thiết lập lại.');
+		throw httpError(
+			409,
+			'Xác thực 2 lớp đang bật. Hãy tắt trước (cần nhập mật khẩu) rồi thiết lập lại.',
+		);
 
 	const secret = await otplib.generateSecret();
 	await pool
@@ -639,7 +647,10 @@ const regenerateBackupCodes = async (userId, password) => {
 	const pool = await getPool();
 	await assertPassword(pool, userId, password);
 	const enabled = (
-		await pool.request().input('id', sql.VarChar(20), userId).query('SELECT totp_enabled FROM users WHERE id = @id')
+		await pool
+			.request()
+			.input('id', sql.VarChar(20), userId)
+			.query('SELECT totp_enabled FROM users WHERE id = @id')
 	).recordset[0]?.totp_enabled;
 	if (!enabled) throw httpError(400, 'Chưa bật xác thực 2 lớp');
 
@@ -658,9 +669,7 @@ const disable2FA = async (userId, password) => {
 	const pool = await getPool();
 	await assertPassword(pool, userId, password);
 
-	await pool
-		.request()
-		.input('id', sql.VarChar(20), userId)
+	await pool.request().input('id', sql.VarChar(20), userId)
 		.query(`UPDATE users SET totp_secret = NULL, totp_enabled = 0, totp_verified_at = NULL,
 		          totp_last_step = NULL WHERE id = @id;
 		        DELETE FROM user_backup_codes WHERE user_id = @id;`);
@@ -752,10 +761,7 @@ const refreshAccessToken = async (refreshToken, ip = null, userAgent = null) => 
 	const pool = await getPool();
 	const tokenHash = hashToken(refreshToken);
 	const claimed = (
-		await pool
-			.request()
-			.input('token', sql.VarChar(64), tokenHash)
-			.query(`
+		await pool.request().input('token', sql.VarChar(64), tokenHash).query(`
 				UPDATE refresh_tokens SET revoked_at = SYSUTCDATETIME()
 				OUTPUT INSERTED.id, INSERTED.user_id, INSERTED.family_id, INSERTED.remember_me
 				WHERE token = @token AND revoked_at IS NULL AND expires_at > GETDATE()
@@ -771,7 +777,9 @@ const refreshAccessToken = async (refreshToken, ip = null, userAgent = null) => 
 		).recordset[0];
 		if (prior?.revoked_at) {
 			if (Date.now() - new Date(prior.revoked_at).getTime() < REFRESH_RACE_GRACE_MS) {
-				throw httpError(401, 'Phiên đang được làm mới ở tab khác, vui lòng thử lại', { code: 'REFRESH_RACE' });
+				throw httpError(401, 'Phiên đang được làm mới ở tab khác, vui lòng thử lại', {
+					code: 'REFRESH_RACE',
+				});
 			}
 			await revokeFamily(pool, prior.family_id || prior.id, prior.user_id, ip);
 		}
@@ -798,11 +806,17 @@ const refreshAccessToken = async (refreshToken, ip = null, userAgent = null) => 
 	}
 
 	const remember = !!claimed.remember_me;
-	const { accessToken, refreshToken: newRefreshToken } = await signSession(pool, user, ip, userAgent, {
-		remember,
-		// Dòng tạo trước khi có cột family_id: lấy id của chính nó làm họ
-		familyId: claimed.family_id || claimed.id,
-	});
+	const { accessToken, refreshToken: newRefreshToken } = await signSession(
+		pool,
+		user,
+		ip,
+		userAgent,
+		{
+			remember,
+			// Dòng tạo trước khi có cột family_id: lấy id của chính nó làm họ
+			familyId: claimed.family_id || claimed.id,
+		},
+	);
 
 	return { access_token: accessToken, refresh_token: newRefreshToken, remember };
 };
@@ -829,10 +843,7 @@ const revokeFamily = async (pool, familyId, userId, ip) => {
 const logout = async (refreshToken) => {
 	if (!refreshToken) return;
 	const pool = await getPool();
-	await pool
-		.request()
-		.input('token', sql.VarChar(64), hashToken(refreshToken))
-		.query(`
+	await pool.request().input('token', sql.VarChar(64), hashToken(refreshToken)).query(`
 			DECLARE @family VARCHAR(60) =
 				(SELECT TOP 1 ISNULL(family_id, id) FROM refresh_tokens WHERE token = @token);
 			DELETE FROM refresh_tokens WHERE token = @token OR family_id = @family OR id = @family;
@@ -880,10 +891,7 @@ const logoutAll = async (userId, actorIp = null) => {
 // (vd created_at) để không vỡ query nếu cột đó không tồn tại.
 const listSessions = async (userId) => {
 	const pool = await getPool();
-	const result = await pool
-		.request()
-		.input('user_id', sql.VarChar(20), userId)
-		.query(`
+	const result = await pool.request().input('user_id', sql.VarChar(20), userId).query(`
 			SELECT *
 			FROM refresh_tokens
 			WHERE user_id = @user_id AND expires_at > GETDATE() AND revoked_at IS NULL
@@ -921,8 +929,7 @@ const changePassword = async (
 	const isMatch = await comparePassword(oldPassword, user.password);
 	if (!isMatch) throw httpError(400, 'Mật khẩu cũ không đúng');
 	// Mật khẩu tạm do quản trị cấp phải được thay thật sự, không "đổi" sang chính nó
-	if (oldPassword === newPassword)
-		throw httpError(400, 'Mật khẩu mới phải khác mật khẩu hiện tại');
+	if (oldPassword === newPassword) throw httpError(400, 'Mật khẩu mới phải khác mật khẩu hiện tại');
 
 	const hashed = await hashPassword(newPassword);
 	await pool
@@ -943,7 +950,10 @@ const changePassword = async (
 	await bumpTokenVersion(userId, pool);
 
 	const fresh = (
-		await pool.request().input('id', sql.VarChar(20), userId).query('SELECT * FROM users WHERE id = @id')
+		await pool
+			.request()
+			.input('id', sql.VarChar(20), userId)
+			.query('SELECT * FROM users WHERE id = @id')
 	).recordset[0];
 	const { accessToken, refreshToken } = await signSession(pool, fresh, ip, userAgent, { remember });
 	return { access_token: accessToken, refresh_token: refreshToken, remember };

@@ -14,7 +14,11 @@ const isModuleEnabled = async (key) => {
 const requireModule = (key) => async (req, res, next) => {
 	try {
 		if (await isModuleEnabled(key)) return next();
-		return res.status(403).json({ success: false, code: 'MODULE_DISABLED', message: 'Chức năng này đã được quản trị viên tắt' });
+		return res.status(403).json({
+			success: false,
+			code: 'MODULE_DISABLED',
+			message: 'Chức năng này đã được quản trị viên tắt',
+		});
 	} catch (err) {
 		next(err);
 	}

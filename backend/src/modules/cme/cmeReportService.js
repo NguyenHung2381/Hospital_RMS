@@ -17,7 +17,10 @@ const xl = require('../../utils/excelTemplate');
 const { deptAccountJoinSql, isDeptAccountJoinedSql } = require('../../utils/deptAccount');
 
 // Tín chỉ hội thảo/hội nghị thuộc nhóm "Khóa đào tạo, bồi dưỡng ngắn hạn, hội nghị, hội thảo"
-const SEMINAR_GROUP = { id: 'CME_DAOTAO', name: 'Khóa đào tạo, bồi dưỡng ngắn hạn, hội nghị, hội thảo về y khoa' };
+const SEMINAR_GROUP = {
+	id: 'CME_DAOTAO',
+	name: 'Khóa đào tạo, bồi dưỡng ngắn hạn, hội nghị, hội thảo về y khoa',
+};
 const NO_GROUP = { id: '__none__', name: 'Chưa phân loại' };
 const NO_DEPT = '(Chưa có khoa/phòng)';
 
@@ -88,13 +91,23 @@ const getData = async ({ year, userId, department, search } = {}) => {
 	const [groupRows, creditRows, activityRows, reqRows] = r.recordsets;
 
 	// Ngưỡng của năm: ưu tiên theo khoa/phòng, không có thì dùng ngưỡng toàn viện
-	const reqByDept = new Map(reqRows.map((x) => [x.department_id ?? null, Number(x.required_credits)]));
-	const requiredOf = (deptId) => (reqByDept.has(deptId) ? reqByDept.get(deptId) : (reqByDept.get(null) ?? null));
+	const reqByDept = new Map(
+		reqRows.map((x) => [x.department_id ?? null, Number(x.required_credits)]),
+	);
+	const requiredOf = (deptId) =>
+		reqByDept.has(deptId) ? reqByDept.get(deptId) : (reqByDept.get(null) ?? null);
 
-	const q = String(search || '').trim().toLowerCase();
+	const q = String(search || '')
+		.trim()
+		.toLowerCase();
 	const people = new Map();
 	for (const row of creditRows) {
-		if (q && !row.full_name.toLowerCase().includes(q) && !String(row.staff_number ?? '').includes(q)) continue;
+		if (
+			q &&
+			!row.full_name.toLowerCase().includes(q) &&
+			!String(row.staff_number ?? '').includes(q)
+		)
+			continue;
 		const p = people.get(row.id) ?? {
 			id: row.id,
 			staff_number: row.staff_number,
@@ -120,7 +133,12 @@ const getData = async ({ year, userId, department, search } = {}) => {
 		const p = people.get(a.user_id);
 		if (!p) continue;
 		p.activities++;
-		activities.push({ ...a, group_id: a.group_id ?? NO_GROUP.id, person: p, credits: round2(a.credits) });
+		activities.push({
+			...a,
+			group_id: a.group_id ?? NO_GROUP.id,
+			person: p,
+			credits: round2(a.credits),
+		});
 	}
 	const deptKey = (p) => p.department_name ?? NO_DEPT;
 	activities.sort(
@@ -133,7 +151,8 @@ const getData = async ({ year, userId, department, search } = {}) => {
 	// Cột hình thức = danh mục nhóm; thêm cột phụ nếu dữ liệu rơi vào nhóm không có trong danh mục
 	const groups = [...groupRows];
 	const used = new Set([...people.values()].flatMap((p) => Object.keys(p.by_group)));
-	if (used.has(SEMINAR_GROUP.id) && !groups.some((g) => g.id === SEMINAR_GROUP.id)) groups.unshift(SEMINAR_GROUP);
+	if (used.has(SEMINAR_GROUP.id) && !groups.some((g) => g.id === SEMINAR_GROUP.id))
+		groups.unshift(SEMINAR_GROUP);
 	if (used.has(NO_GROUP.id)) groups.push(NO_GROUP);
 
 	return {
@@ -217,9 +236,15 @@ const addSignature = (ws, nCols) => {
 		cell.font = font;
 		cell.alignment = { horizontal: 'center' };
 	};
-	block(start, mid + 1, nCols, `Nghệ An, ngày ${d.getDate()} tháng ${d.getMonth() + 1} năm ${d.getFullYear()}`, {
-		italic: true,
-	});
+	block(
+		start,
+		mid + 1,
+		nCols,
+		`Nghệ An, ngày ${d.getDate()} tháng ${d.getMonth() + 1} năm ${d.getFullYear()}`,
+		{
+			italic: true,
+		},
+	);
 	block(start + 1, 1, mid, 'NGƯỜI LẬP BIỂU', { bold: true });
 	block(start + 1, mid + 1, nCols, 'THỦ TRƯỞNG ĐƠN VỊ', { bold: true });
 	block(start + 2, 1, mid, '(Ký, ghi rõ họ tên)', { italic: true, color: { argb: GREY } });
@@ -324,7 +349,12 @@ const sheetOverview = (wb, data, head) => {
 		{ key: 'c', header: 'Tỷ lệ', width: 16 },
 		{ key: 'd', header: 'Ghi chú', width: 34 },
 	];
-	const ws = xl.buildSheet(wb, { sheetName: 'Tổng quan', letterhead: true, ...head, columns: cols });
+	const ws = xl.buildSheet(wb, {
+		sheetName: 'Tổng quan',
+		letterhead: true,
+		...head,
+		columns: cols,
+	});
 	const rows = [
 		['Năm báo cáo', year ?? 'Tất cả các năm'],
 		['Tổng số nhân sự trong báo cáo', s.n, null, 'Không gồm tài khoản dùng chung của khoa/phòng'],
@@ -336,9 +366,19 @@ const sheetOverview = (wb, data, head) => {
 		['Tổng số lượt hoạt động được tính tín chỉ', activities.length],
 		...(hasRequirement
 			? [
-					['Nhân sự được đánh giá theo ngưỡng', s.evaluated, null, 'Nhân sự đang làm việc, khoa có ngưỡng áp dụng'],
+					[
+						'Nhân sự được đánh giá theo ngưỡng',
+						s.evaluated,
+						null,
+						'Nhân sự đang làm việc, khoa có ngưỡng áp dụng',
+					],
 					['Đạt ngưỡng tín chỉ', s.passed, s.evaluated ? s.passed / s.evaluated : null],
-					['Chưa đạt ngưỡng tín chỉ', s.failed, s.evaluated ? s.failed / s.evaluated : null, 'Xem sheet "Chưa đạt"'],
+					[
+						'Chưa đạt ngưỡng tín chỉ',
+						s.failed,
+						s.evaluated ? s.failed / s.evaluated : null,
+						'Xem sheet "Chưa đạt"',
+					],
 				]
 			: []),
 	];
@@ -396,7 +436,10 @@ const sheetSummary = (wb, data, head) => {
 		});
 		if (p.total === 0) row.getCell('total').fill = WARN_FILL;
 		if (hasRequirement && p.required != null) {
-			row.getCell('result').font = { bold: true, color: { argb: p.total >= p.required ? GREEN : RED } };
+			row.getCell('result').font = {
+				bold: true,
+				color: { argb: p.total >= p.required ? GREEN : RED },
+			};
 		}
 	});
 	xl.styleBody(ws);
@@ -422,7 +465,12 @@ const sheetDetail = (wb, data, head) => {
 	const { people, groups } = data;
 	const groupCols = groups.map((g) => ({ key: g.id, header: g.name, width: 18 }));
 	const cols = [...ident, ...groupCols, { key: 'total', header: 'Tổng', width: 12 }];
-	const ws = xl.buildSheet(wb, { sheetName: 'BC chi tiết', letterhead: true, ...head, columns: cols });
+	const ws = xl.buildSheet(wb, {
+		sheetName: 'BC chi tiết',
+		letterhead: true,
+		...head,
+		columns: cols,
+	});
 	ws.getRow(ws.headRow).height = 75;
 	const first = ws.headRow + 1;
 	const g1 = xl.colLetter(ident.length + 1);
@@ -456,7 +504,11 @@ const sheetDetail = (wb, data, head) => {
 		...Object.assign(
 			{},
 			...groups.map((g, i) =>
-				sumOf(g.id, ident.length + 1 + i, round2(people.reduce((t, p) => t + (p.by_group[g.id] ?? 0), 0))),
+				sumOf(
+					g.id,
+					ident.length + 1 + i,
+					round2(people.reduce((t, p) => t + (p.by_group[g.id] ?? 0), 0)),
+				),
 			),
 		),
 		...sumOf('total', cols.length, summarize(people).total),
@@ -484,7 +536,12 @@ const sheetDepartments = (wb, data, head) => {
 				]
 			: []),
 	];
-	const ws = xl.buildSheet(wb, { sheetName: 'Theo khoa', letterhead: true, ...head, columns: cols });
+	const ws = xl.buildSheet(wb, {
+		sheetName: 'Theo khoa',
+		letterhead: true,
+		...head,
+		columns: cols,
+	});
 	const first = ws.headRow + 1;
 	const valuesOf = (d) => ({
 		n: d.n,
@@ -500,7 +557,8 @@ const sheetDepartments = (wb, data, head) => {
 	});
 	byDepartment(people).forEach((d, i) => {
 		const row = ws.addRow({ tt: i + 1, name: d.name, ...valuesOf(d) });
-		if (hasRequirement && d.failed > 0) row.getCell('failed').font = { bold: true, color: { argb: RED } };
+		if (hasRequirement && d.failed > 0)
+			row.getCell('failed').font = { bold: true, color: { argb: RED } };
 	});
 	xl.styleBody(ws);
 	const numeric = {
@@ -509,7 +567,11 @@ const sheetDepartments = (wb, data, head) => {
 		zero: { h: 'right' },
 		total: { h: 'right', numFmt: NUM },
 		avg: { h: 'right', numFmt: NUM },
-		...(hasRequirement && { passed: { h: 'right' }, failed: { h: 'right' }, rate: { h: 'right', numFmt: PCT } }),
+		...(hasRequirement && {
+			passed: { h: 'right' },
+			failed: { h: 'right' },
+			rate: { h: 'right', numFmt: PCT },
+		}),
 	};
 	alignCols(ws, first, { tt: { h: 'center' }, ...numeric });
 	const tot = addTotalRow(ws, 2, valuesOf(summarize(people)), 'Toàn viện');
@@ -612,7 +674,11 @@ const sheetActivities = (wb, data, head) => {
 		cert: { h: 'center' },
 	});
 	// Không có dòng tổng (tổng ở dòng mô tả) để lọc/sắp xếp bằng AutoFilter không lẫn dòng tổng
-	if (activities.length) ws.autoFilter = { from: { row: ws.headRow, column: 1 }, to: { row: ws.headRow, column: cols.length } };
+	if (activities.length)
+		ws.autoFilter = {
+			from: { row: ws.headRow, column: 1 },
+			to: { row: ws.headRow, column: cols.length },
+		};
 	setupPrint(ws, true);
 };
 

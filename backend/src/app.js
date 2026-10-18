@@ -48,9 +48,7 @@ if (isProduction) {
 // set biến — bắt buộc khai báo rõ domain được phép, cùng nguyên tắc fail-closed
 // như JWT_SECRET/DB_PASSWORD ở trên.
 if (process.env.NODE_ENV === 'production' && !process.env.CORS_ORIGIN) {
-	console.error(
-		'❌ Thiếu biến môi trường CORS_ORIGIN ở production. Xem backend/.env.example.',
-	);
+	console.error('❌ Thiếu biến môi trường CORS_ORIGIN ở production. Xem backend/.env.example.');
 	process.exit(1);
 }
 
@@ -84,10 +82,7 @@ const swaggerUi = require('swagger-ui-express');
 const swaggerSpec = require('./config/swagger');
 const swaggerAuth = require('./middlewares/swaggerAuth');
 const activityLogger = require('./middlewares/activityLogger');
-const {
-	signUploadUrlsInJson,
-	verifyUploadSignature,
-} = require('./utils/signedUpload');
+const { signUploadUrlsInJson, verifyUploadSignature } = require('./utils/signedUpload');
 
 const app = express();
 
@@ -129,8 +124,23 @@ const UPLOADS_ROOT = path.resolve(process.env.UPLOADS_DIR || 'uploads');
 // PDF không gắn CSP — trình xem PDF tích hợp của trình duyệt không chạy được
 // dưới sandbox; nội dung PDF đã được kiểm tra đúng định dạng lúc upload.
 const INLINE_UPLOAD_EXT = new Set([
-	'.png', '.jpg', '.jpeg', '.gif', '.webp', '.bmp', '.pdf',
-	'.mp4', '.m4v', '.mov', '.webm', '.mkv', '.avi', '.mp3', '.wav', '.m4a', '.aac',
+	'.png',
+	'.jpg',
+	'.jpeg',
+	'.gif',
+	'.webp',
+	'.bmp',
+	'.pdf',
+	'.mp4',
+	'.m4v',
+	'.mov',
+	'.webm',
+	'.mkv',
+	'.avi',
+	'.mp3',
+	'.wav',
+	'.m4a',
+	'.aac',
 ]);
 const setUploadHeaders = (res, filePath) => {
 	const ext = path.extname(filePath).toLowerCase();
@@ -183,10 +193,7 @@ if (swaggerEnabled) {
 const API = '/api/v1';
 
 app.use(API, (req, res, next) => {
-	res.set(
-		'Cache-Control',
-		'no-store, no-cache, must-revalidate, proxy-revalidate',
-	);
+	res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
 	res.set('Pragma', 'no-cache');
 	res.set('Expires', '0');
 	next();
@@ -239,7 +246,11 @@ app.use(`${API}/modules`, require('./modules/system/modules.routes'));
 app.use(`${API}/auth`, require('./modules/auth/auth.routes'));
 app.use(`${API}/users`, require('./modules/users/users.routes'));
 app.use(`${API}/topics`, requireModule('RESEARCH'), require('./modules/topics/topics.routes'));
-app.use(`${API}/councils`, requireModule('RESEARCH'), require('./modules/councils/councils.routes'));
+app.use(
+	`${API}/councils`,
+	requireModule('RESEARCH'),
+	require('./modules/councils/councils.routes'),
+);
 app.use(`${API}/files`, require('./modules/topics/files.routes'));
 app.use(`${API}/excel`, require('./modules/system/excel.routes'));
 app.use(`${API}/dashboard`, require('./modules/dashboard/dashboard.routes'));
@@ -249,18 +260,46 @@ app.use(`${API}/activity-logs`, require('./modules/audit/activityLogs.routes'));
 app.use(`${API}/security-events`, require('./modules/audit/securityEvents.routes'));
 app.use(`${API}/seminars`, requireModule('SEMINAR'), require('./modules/seminars/seminars.routes'));
 app.use(`${API}/cme-records`, requireModule('SEMINAR'), require('./modules/cme/cmeRecords.routes'));
-app.use(`${API}/trainees`, requireModule('TRAINING'), require('./modules/training/trainees/trainees.routes'));
-app.use(`${API}/training-programs`, requireModule('TRAINING'), require('./modules/training/programs/trainingPrograms.routes'));
-app.use(`${API}/training-plans`, requireModule('TRAINING'), require('./modules/training/plans/trainingPlans.routes'));
+app.use(
+	`${API}/trainees`,
+	requireModule('TRAINING'),
+	require('./modules/training/trainees/trainees.routes'),
+);
+app.use(
+	`${API}/training-programs`,
+	requireModule('TRAINING'),
+	require('./modules/training/programs/trainingPrograms.routes'),
+);
+app.use(
+	`${API}/training-plans`,
+	requireModule('TRAINING'),
+	require('./modules/training/plans/trainingPlans.routes'),
+);
 app.use(`${API}/surveys`, requireModule('SURVEY'), require('./modules/surveys/surveys.routes'));
 app.use(`${API}/my-tasks`, require('./modules/portal/myTasks.routes'));
 app.use(`${API}/me`, require('./modules/portal/me.routes'));
-app.use(`${API}/exams`, requireModule('TRAINING'), require('./modules/training/exams/exams.routes'));
+app.use(
+	`${API}/exams`,
+	requireModule('TRAINING'),
+	require('./modules/training/exams/exams.routes'),
+);
 app.use(`${API}/workflows`, require('./modules/topics/workflows.routes'));
-app.use(`${API}/lecturers`, requireModule('TRAINING'), require('./modules/training/lecturers/lecturers.routes'));
-app.use(`${API}/courses`, requireModule('TRAINING'), require('./modules/training/courses/courses.routes'));
+app.use(
+	`${API}/lecturers`,
+	requireModule('TRAINING'),
+	require('./modules/training/lecturers/lecturers.routes'),
+);
+app.use(
+	`${API}/courses`,
+	requireModule('TRAINING'),
+	require('./modules/training/courses/courses.routes'),
+);
 app.use(`${API}/staff-licenses`, require('./modules/staffLicenses/staffLicenses.routes'));
-app.use(`${API}/staff-attendance`, requireModule('ATTENDANCE'), require('./modules/attendance/staffAttendance.routes'));
+app.use(
+	`${API}/staff-attendance`,
+	requireModule('ATTENDANCE'),
+	require('./modules/attendance/staffAttendance.routes'),
+);
 app.use(`${API}/system-settings`, require('./modules/settings/systemSettings.routes'));
 app.use(`${API}/persons`, require('./modules/persons/persons.routes'));
 app.use(`${API}/public`, require('./modules/public/public.routes'));

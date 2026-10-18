@@ -202,7 +202,10 @@ const removeSession = async (req, res, next) => {
 
 const createSessionsBulk = async (req, res, next) => {
 	try {
-		return created(res, await courseService.createSessionsBulk(req.params.id, req.body, req.user.id));
+		return created(
+			res,
+			await courseService.createSessionsBulk(req.params.id, req.body, req.user.id),
+		);
 	} catch (err) {
 		next(err);
 	}
@@ -219,7 +222,11 @@ const listAttendance = async (req, res, next) => {
 
 const setAttendance = async (req, res, next) => {
 	try {
-		await courseService.bulkSetAttendance(req.params.sessionId, req.body.records || [], req.user.id);
+		await courseService.bulkSetAttendance(
+			req.params.sessionId,
+			req.body.records || [],
+			req.user.id,
+		);
 		return success(res, null, 'Đã lưu điểm danh');
 	} catch (err) {
 		next(err);
@@ -257,7 +264,10 @@ const addDocument = async (req, res, next) => {
 		if (sourceType === 'link' && !req.body.external_url) {
 			return res.status(400).json({ success: false, message: 'Vui lòng nhập đường dẫn tài liệu' });
 		}
-		return created(res, await courseService.addDocument(req.params.id, req.body, req.file, req.user.id));
+		return created(
+			res,
+			await courseService.addDocument(req.params.id, req.body, req.file, req.user.id),
+		);
 	} catch (err) {
 		next(err);
 	}
@@ -292,7 +302,10 @@ const listGrades = async (req, res, next) => {
 const upsertGrade = async (req, res, next) => {
 	try {
 		const { enrollment_id, subject_id, ...data } = req.body;
-		return created(res, await courseService.upsertGrade(enrollment_id, subject_id, data, req.user.id));
+		return created(
+			res,
+			await courseService.upsertGrade(enrollment_id, subject_id, data, req.user.id),
+		);
 	} catch (err) {
 		next(err);
 	}
@@ -320,7 +333,11 @@ const issueCertificate = async (req, res, next) => {
 	try {
 		return created(
 			res,
-			await courseService.issueCertificate(req.body.enrollment_id, req.user.id, req.body.expiry_date),
+			await courseService.issueCertificate(
+				req.body.enrollment_id,
+				req.user.id,
+				req.body.expiry_date,
+			),
 		);
 	} catch (err) {
 		next(err);

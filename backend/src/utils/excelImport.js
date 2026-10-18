@@ -6,12 +6,13 @@ const ExcelJS = require('exceljs');
 const { norm } = require('./vietnameseText');
 const { badRequest } = require('./httpError');
 
-
 // Text hiển thị của ô (cell.text xử lý sẵn richText/formula); gộp khoảng trắng.
 const cellText = (cell) => {
 	if (!cell) return '';
 	try {
-		return String(cell.text ?? '').replace(/\s+/g, ' ').trim();
+		return String(cell.text ?? '')
+			.replace(/\s+/g, ' ')
+			.trim();
 	} catch {
 		return '';
 	}
@@ -47,7 +48,9 @@ const parseDob = (cell) => {
 
 // "3,5" / "3.5" / "3" → number; rỗng → null
 const parseCredits = (s) => {
-	const t = String(s || '').replace(',', '.').trim();
+	const t = String(s || '')
+		.replace(',', '.')
+		.trim();
 	if (!t) return null;
 	const n = parseFloat(t);
 	return Number.isFinite(n) ? n : null;

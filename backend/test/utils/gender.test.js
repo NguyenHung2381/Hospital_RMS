@@ -5,7 +5,8 @@ const { normalizeGender } = require('../../src/utils/gender');
 
 test('nhãn tiếng Việt / tiếng Anh quy về mã chuẩn', () => {
 	for (const v of ['Nam', 'nam', 'NAM', 'male', 'M']) assert.equal(normalizeGender(v), 'male');
-	for (const v of ['Nữ', 'nữ', 'NỮ', 'Nu', 'female', 'F']) assert.equal(normalizeGender(v), 'female');
+	for (const v of ['Nữ', 'nữ', 'NỮ', 'Nu', 'female', 'F'])
+		assert.equal(normalizeGender(v), 'female');
 	for (const v of ['Khác', 'khac', 'other']) assert.equal(normalizeGender(v), 'other');
 });
 

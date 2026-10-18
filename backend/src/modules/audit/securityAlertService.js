@@ -28,17 +28,27 @@ const IMMEDIATE = {
 // Sự kiện chỉ cảnh báo khi xảy ra DỒN DẬP (dấu hiệu dò mật khẩu hàng loạt):
 // ≥ threshold lần trong windowMin phút gần nhất, trên mọi tài khoản.
 const BURST = {
-	login_locked: { threshold: 5, windowMin: 15, title: 'Nhiều tài khoản bị khoá do sai mật khẩu liên tục' },
+	login_locked: {
+		threshold: 5,
+		windowMin: 15,
+		title: 'Nhiều tài khoản bị khoá do sai mật khẩu liên tục',
+	},
 	login_2fa_failed: { threshold: 10, windowMin: 15, title: 'Nhiều lần nhập sai mã xác thực 2 lớp' },
 };
 
 const escapeHtml = (s) =>
-	String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+	String(s ?? '').replace(
+		/[&<>"']/g,
+		(c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c],
+	);
 
 const recipients = async () => {
 	const configured = await systemSettingService.getValue('ALERT_EMAILS');
 	if (configured) {
-		return configured.split(',').map((e) => e.trim()).filter(Boolean);
+		return configured
+			.split(',')
+			.map((e) => e.trim())
+			.filter(Boolean);
 	}
 	const pool = await getPool();
 	const rows = (
@@ -55,10 +65,8 @@ const recipients = async () => {
 const countRecent = async (eventType, windowMin) => {
 	const pool = await getPool();
 	return (
-		await pool
-			.request()
-			.input('type', sql.VarChar(50), eventType)
-			.input('min', sql.Int, windowMin).query(`
+		await pool.request().input('type', sql.VarChar(50), eventType).input('min', sql.Int, windowMin)
+			.query(`
 				SELECT COUNT(*) AS n FROM security_events
 				WHERE event_type = @type AND created_at > DATEADD(MINUTE, -@min, GETDATE())
 			`)
@@ -106,7 +114,9 @@ const notify = async (event) => {
 
 		const to = await recipients();
 		if (!to.length) {
-			console.warn(`[security-alert] Không có người nhận (ALERT_EMAILS / superuser có email) — bỏ qua: ${title}`);
+			console.warn(
+				`[security-alert] Không có người nhận (ALERT_EMAILS / superuser có email) — bỏ qua: ${title}`,
+			);
 			return;
 		}
 		await mailService.send({

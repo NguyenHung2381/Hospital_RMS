@@ -26,7 +26,9 @@ const keyFor = (purpose) => {
 	if (!PURPOSES.has(purpose)) throw new Error(`[keys] mục đích khoá không xác định: ${purpose}`);
 	let key = cache.get(purpose);
 	if (!key) {
-		key = Buffer.from(crypto.hkdfSync('sha256', process.env.JWT_SECRET, 'rms-hospital', `rms:${purpose}`, 32));
+		key = Buffer.from(
+			crypto.hkdfSync('sha256', process.env.JWT_SECRET, 'rms-hospital', `rms:${purpose}`, 32),
+		);
 		cache.set(purpose, key);
 	}
 	return key;

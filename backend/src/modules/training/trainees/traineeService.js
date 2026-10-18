@@ -32,14 +32,19 @@ const maskSensitive = (row, canSeeSensitive) => {
 
 const canReadSensitive = (actor) => hasPermission(actor, 'trainees', 'read_sensitive');
 
-const getAll = async ({ page = 1, limit = 20, search, trainee_type_id, department_id } = {}, actor = null) => {
+const getAll = async (
+	{ page = 1, limit = 20, search, trainee_type_id, department_id } = {},
+	actor = null,
+) => {
 	const pool = await getPool();
 	const pg = paging(page, limit, 100);
 	const where = ['t.hidden_at IS NULL'];
 	const req = pool.request().input('offset', sql.Int, pg.offset).input('limit', sql.Int, pg.limit);
 
 	if (search) {
-		where.push('(t.full_name LIKE @search OR t.national_id LIKE @search OR t.phone LIKE @search OR t.email LIKE @search)');
+		where.push(
+			'(t.full_name LIKE @search OR t.national_id LIKE @search OR t.phone LIKE @search OR t.email LIKE @search)',
+		);
 		req.input('search', sql.NVarChar, `%${search}%`);
 	}
 	if (trainee_type_id) {
@@ -67,7 +72,10 @@ const getAll = async ({ page = 1, limit = 20, search, trainee_type_id, departmen
 
 const getById = async (id, actor = null) => {
 	const pool = await getPool();
-	const result = await pool.request().input('id', sql.VarChar(20), id).query(`${traineeSelect} WHERE t.id = @id`);
+	const result = await pool
+		.request()
+		.input('id', sql.VarChar(20), id)
+		.query(`${traineeSelect} WHERE t.id = @id`);
 	const row = result.recordset[0];
 	if (!row) return null;
 	return maskSensitive(row, canReadSensitive(actor));
@@ -99,8 +107,7 @@ const create = async (data, actorId, { fetch = true } = {}) => {
 		.input('qualification', sql.NVarChar(150), data.qualification || null)
 		.input('notes', sql.NVarChar(sql.MAX), data.notes || null)
 		.input('is_active', sql.Bit, data.is_active !== undefined ? !!data.is_active : true)
-		.input('is_employee', sql.Bit, !!data.is_employee)
-		.query(`
+		.input('is_employee', sql.Bit, !!data.is_employee).query(`
       DECLARE @new_id VARCHAR(20);
       EXEC sp_gen_trainee_id @actor_id = @actor_id, @new_id = @new_id OUTPUT;
       EXEC sp_set_actor @actor_id;
@@ -127,7 +134,10 @@ const create = async (data, actorId, { fetch = true } = {}) => {
 const update = async (id, data, actorId) => {
 	const pool = await getPool();
 	const sets = ['updated_at = GETDATE()', 'updated_by = @actor_id'];
-	const req = pool.request().input('id', sql.VarChar(20), id).input('actor_id', sql.VarChar(20), actorId);
+	const req = pool
+		.request()
+		.input('id', sql.VarChar(20), id)
+		.input('actor_id', sql.VarChar(20), actorId);
 
 	const simpleFields = [
 		['full_name', sql.NVarChar(150)],
@@ -177,7 +187,9 @@ const update = async (id, data, actorId) => {
 		req.input('graduated_year', sql.SmallInt, data.graduated_year || null);
 	}
 
-	await req.query(`EXEC sp_set_actor @actor_id; UPDATE trainees SET ${sets.join(', ')} WHERE id = @id`);
+	await req.query(
+		`EXEC sp_set_actor @actor_id; UPDATE trainees SET ${sets.join(', ')} WHERE id = @id`,
+	);
 	await personService.syncPerson('trainees', id, { actorId });
 	broadcast('update', { entity: 'trainee' });
 	return getById(id, true);
@@ -190,7 +202,9 @@ const remove = async (id, actorId) => {
 		.request()
 		.input('id', sql.VarChar(20), id)
 		.input('actor_id', sql.VarChar(20), actorId)
-		.query('EXEC sp_set_actor @actor_id; UPDATE trainees SET hidden_at = SYSDATETIME() WHERE id = @id');
+		.query(
+			'EXEC sp_set_actor @actor_id; UPDATE trainees SET hidden_at = SYSDATETIME() WHERE id = @id',
+		);
 	broadcast('update', { entity: 'trainee' });
 };
 
@@ -233,14 +247,18 @@ const listDocuments = async (traineeId) => {
 
 const addDocument = async (traineeId, docType, file, actorId) => {
 	const pool = await getPool();
-	const savedFile = await trainingFileService.saveUploadedFile('trainee_document', traineeId, file, actorId);
+	const savedFile = await trainingFileService.saveUploadedFile(
+		'trainee_document',
+		traineeId,
+		file,
+		actorId,
+	);
 	const result = await pool
 		.request()
 		.input('trainee_id', sql.VarChar(20), traineeId)
 		.input('doc_type', sql.VarChar(30), docType || 'other')
 		.input('file_id', sql.VarChar(20), savedFile.id)
-		.input('actor_id', sql.VarChar(20), actorId)
-		.query(`
+		.input('actor_id', sql.VarChar(20), actorId).query(`
       DECLARE @new_id VARCHAR(20) = 'HS' + LEFT(REPLACE(NEWID(),'-',''), 18);
       INSERT INTO trainee_documents (id, trainee_id, doc_type, file_id, created_by)
       VALUES (@new_id, @trainee_id, @doc_type, @file_id, @actor_id);
@@ -257,7 +275,10 @@ const removeDocument = async (docId, actorId) => {
 		.input('id', sql.VarChar(20), docId)
 		.query('SELECT file_id FROM trainee_documents WHERE id = @id');
 	if (!doc.recordset[0]) return;
-	await pool.request().input('id', sql.VarChar(20), docId).query('DELETE FROM trainee_documents WHERE id = @id');
+	await pool
+		.request()
+		.input('id', sql.VarChar(20), docId)
+		.query('DELETE FROM trainee_documents WHERE id = @id');
 	await trainingFileService.softDelete(doc.recordset[0].file_id, actorId);
 	broadcast('update', { entity: 'trainee_document' });
 };
@@ -282,10 +303,7 @@ const grantAccounts = async (traineeIds, actorId) => {
     LEFT JOIN departments d ON d.id = t.department_id
     WHERE ISNULL(t.account_granted, 0) = 0
   `);
-	const filterIds =
-		Array.isArray(traineeIds) && traineeIds.length > 0
-			? new Set(traineeIds)
-			: null;
+	const filterIds = Array.isArray(traineeIds) && traineeIds.length > 0 ? new Set(traineeIds) : null;
 	const traineesToProcess = filterIds
 		? traineesResult.recordset.filter((row) => filterIds.has(row.id))
 		: traineesResult.recordset;

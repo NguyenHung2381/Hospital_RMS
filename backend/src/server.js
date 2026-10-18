@@ -82,9 +82,7 @@ const startStandalone = async () => {
 
 		app.listen(PORT, '0.0.0.0', () => {
 			if (PORT !== PREFERRED_PORT) {
-				console.warn(
-					`⚠️  Port ${PREFERRED_PORT} bị chiếm, chuyển sang port ${PORT}`,
-				);
+				console.warn(`⚠️  Port ${PREFERRED_PORT} bị chiếm, chuyển sang port ${PORT}`);
 			}
 
 			// Tự động đồng bộ Port sang file .env của Frontend (Client)
@@ -92,35 +90,31 @@ const startStandalone = async () => {
 			// production và khi thư mục frontend không tồn tại cạnh backend (vd:
 			// chạy trong Docker container riêng): server không được tự ghi file
 			// cấu hình ngoài thư mục của mình trên máy chủ thật.
-			if (process.env.NODE_ENV !== 'production') try {
-				const fs = require('fs');
-				const clientEnvPath = path.resolve(__dirname, '../../frontend/.env');
-				if (fs.existsSync(path.dirname(clientEnvPath))) {
-					let envContent = '';
-					if (fs.existsSync(clientEnvPath)) {
-						envContent = fs.readFileSync(clientEnvPath, 'utf8');
+			if (process.env.NODE_ENV !== 'production')
+				try {
+					const fs = require('fs');
+					const clientEnvPath = path.resolve(__dirname, '../../frontend/.env');
+					if (fs.existsSync(path.dirname(clientEnvPath))) {
+						let envContent = '';
+						if (fs.existsSync(clientEnvPath)) {
+							envContent = fs.readFileSync(clientEnvPath, 'utf8');
+						}
+						let newContent = envContent;
+						if (newContent.match(/^VITE_API_PORT=.*$/m)) {
+							newContent = newContent.replace(/^VITE_API_PORT=.*$/m, `VITE_API_PORT=${PORT}`);
+						} else {
+							newContent = newContent.trim()
+								? newContent.trim() + `\nVITE_API_PORT=${PORT}\n`
+								: `VITE_API_PORT=${PORT}\n`;
+						}
+						if (envContent !== newContent) {
+							fs.writeFileSync(clientEnvPath, newContent);
+							console.log(`✅ Đã tự động đồng bộ Port ${PORT} sang thư mục client`);
+						}
 					}
-					let newContent = envContent;
-					if (newContent.match(/^VITE_API_PORT=.*$/m)) {
-						newContent = newContent.replace(
-							/^VITE_API_PORT=.*$/m,
-							`VITE_API_PORT=${PORT}`,
-						);
-					} else {
-						newContent = newContent.trim()
-							? newContent.trim() + `\nVITE_API_PORT=${PORT}\n`
-							: `VITE_API_PORT=${PORT}\n`;
-					}
-					if (envContent !== newContent) {
-						fs.writeFileSync(clientEnvPath, newContent);
-						console.log(
-							`✅ Đã tự động đồng bộ Port ${PORT} sang thư mục client`,
-						);
-					}
+				} catch (err) {
+					console.warn(`⚠️  Không thể đồng bộ port sang client/.env: ${err.message}`);
 				}
-			} catch (err) {
-				console.warn(`⚠️  Không thể đồng bộ port sang client/.env: ${err.message}`);
-			}
 
 			const networkIp = getNetworkIp() || '192.168.x.x';
 			console.log(`🚀 RMS Hospital API running at:`);

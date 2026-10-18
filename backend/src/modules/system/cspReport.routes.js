@@ -27,7 +27,9 @@ const parseReport = express.json({
 const clip = (v) => (typeof v === 'string' ? v.slice(0, 300) : undefined);
 
 router.post('/', cspLimiter, parseReport, (req, res) => {
-	const reports = Array.isArray(req.body) ? req.body : [req.body?.['csp-report'] ?? req.body?.body ?? req.body];
+	const reports = Array.isArray(req.body)
+		? req.body
+		: [req.body?.['csp-report'] ?? req.body?.body ?? req.body];
 	for (const r of reports.slice(0, 10)) {
 		if (!r || typeof r !== 'object') continue;
 		const body = r.body && typeof r.body === 'object' ? r.body : r;

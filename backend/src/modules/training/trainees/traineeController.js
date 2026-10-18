@@ -69,7 +69,10 @@ const addDocument = async (req, res, next) => {
 		if (!req.file) {
 			return res.status(400).json({ success: false, message: 'Vui lòng chọn file để tải lên' });
 		}
-		return created(res, await traineeService.addDocument(req.params.id, req.body.doc_type, req.file, req.user.id));
+		return created(
+			res,
+			await traineeService.addDocument(req.params.id, req.body.doc_type, req.file, req.user.id),
+		);
 	} catch (err) {
 		next(err);
 	}
@@ -86,10 +89,7 @@ const removeDocument = async (req, res, next) => {
 
 const grantAccounts = async (req, res, next) => {
 	try {
-		const result = await traineeService.grantAccounts(
-			req.body.trainee_ids,
-			req.user.id,
-		);
+		const result = await traineeService.grantAccounts(req.body.trainee_ids, req.user.id);
 		return success(res, result);
 	} catch (err) {
 		next(err);

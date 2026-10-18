@@ -24,8 +24,14 @@ test('superuser (system:manage) được mọi quyền, phạm vi toàn viện',
 });
 
 test('scopeOf: ưu tiên phạm vi của quyền Xem, không có thì rộng nhất trong resource', () => {
-	assert.equal(scopeOf(user({ 'topics:read': 'department', 'topics:update': 'own' }), 'topics'), 'department');
-	assert.equal(scopeOf(user({ 'topics:create': 'own', 'topics:update': 'department' }), 'topics'), 'department');
+	assert.equal(
+		scopeOf(user({ 'topics:read': 'department', 'topics:update': 'own' }), 'topics'),
+		'department',
+	);
+	assert.equal(
+		scopeOf(user({ 'topics:create': 'own', 'topics:update': 'department' }), 'topics'),
+		'department',
+	);
 	assert.equal(scopeOf(user({ 'rounds:read': null }), 'topics'), null);
 });
 

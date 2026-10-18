@@ -15,24 +15,18 @@ const errorHandler = (err, req, res, next) => {
 	// SQL Server errors — không trả nguyên văn err.message ra ngoài ở production
 	// vì nó có thể lộ tên bảng/cột hoặc đoạn câu lệnh SQL; log đầy đủ ở server.
 	if (err.number) {
-		console.error(
-			`❌ SQL Error [${err.number}] on ${req.method} ${req.path}:`,
-			err.message,
-		);
+		console.error(`❌ SQL Error [${err.number}] on ${req.method} ${req.path}:`, err.message);
 		if (err.number === 2627 || err.number === 2601) {
 			if (/U[QX]_users_email/.test(err.message))
 				return error(res, 'Email này đã được dùng cho tài khoản khác', 409);
-			if (/UQ_stafflic_user/.test(err.message)) return error(res, 'Nhân sự này đã có hồ sơ CCHN', 409);
+			if (/UQ_stafflic_user/.test(err.message))
+				return error(res, 'Nhân sự này đã có hồ sơ CCHN', 409);
 			if (/UQ_stafflic_license_no/.test(err.message))
 				return error(res, 'Số CCHN này đã gán cho nhân sự khác', 409);
 			return error(res, 'Dữ liệu đã tồn tại (vi phạm ràng buộc unique)', 409);
 		}
 		if (err.number === 547) {
-			return error(
-				res,
-				'Không thể thực hiện vì dữ liệu đang được liên kết ở nơi khác',
-				409,
-			);
+			return error(res, 'Không thể thực hiện vì dữ liệu đang được liên kết ở nơi khác', 409);
 		}
 		return error(res, isProd ? 'Lỗi cơ sở dữ liệu' : err.message || 'Lỗi cơ sở dữ liệu', 500);
 	}

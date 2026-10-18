@@ -14,12 +14,19 @@ const { httpError } = require('../../utils/httpError');
  * chạy đồng thời với việc tạo/gắn person.
  */
 
-
 const STATUSES = ['PENDING', 'MERGED', 'REJECTED'];
 const REASONS = ['SAME_NAME_DOB', 'SAME_NAME', 'SAME_PHONE', 'SAME_EMAIL', 'SAME_STAFF_NUMBER'];
 
 // Trường được chọn giá trị khi gộp: 'keep' = giữ giá trị của hồ sơ giữ lại, 'lose' = lấy của hồ sơ bị gộp.
-const MERGE_FIELDS = ['full_name', 'date_of_birth', 'gender', 'national_id', 'email', 'phone', 'is_internal'];
+const MERGE_FIELDS = [
+	'full_name',
+	'date_of_birth',
+	'gender',
+	'national_id',
+	'email',
+	'phone',
+	'is_internal',
+];
 
 // 6 bảng nguồn mang person_id. seminar_participants có trigger bump updated_at với mọi UPDATE → giữ nguyên.
 const SOURCE_TABLES = [
@@ -92,7 +99,10 @@ const shapeCandidate = (r, canSee) => ({
 
 // ─── Đọc ─────────────────────────────────────────────────────────────────────
 
-const listCandidates = async ({ status = 'PENDING', reason, search, page, limit } = {}, canSee = false) => {
+const listCandidates = async (
+	{ status = 'PENDING', reason, search, page, limit } = {},
+	canSee = false,
+) => {
 	if (!STATUSES.includes(status)) throw httpError(400, 'Trạng thái không hợp lệ.');
 	if (reason && !REASONS.includes(reason)) throw httpError(400, 'Lý do không hợp lệ.');
 
@@ -132,7 +142,9 @@ const getStats = async () => {
 	const pool = await getPool();
 	const r = await pool
 		.request()
-		.query(`SELECT status, reason, COUNT(*) AS n FROM dbo.person_merge_candidates GROUP BY status, reason`);
+		.query(
+			`SELECT status, reason, COUNT(*) AS n FROM dbo.person_merge_candidates GROUP BY status, reason`,
+		);
 	const byStatus = { PENDING: 0, MERGED: 0, REJECTED: 0 };
 	const pendingByReason = {};
 	for (const row of r.recordset) {
@@ -183,13 +195,23 @@ const getCandidate = async (id, canSee = false) => {
 		blockers.push('Một trong hai hồ sơ đã được gộp trước đó.');
 	}
 	if (cand.a.has_account && cand.b.has_account) {
-		blockers.push('Cả hai hồ sơ đều đã có tài khoản đăng nhập. Một người chỉ được có một tài khoản — hãy vô hiệu hoá một tài khoản trước khi gộp.');
+		blockers.push(
+			'Cả hai hồ sơ đều đã có tài khoản đăng nhập. Một người chỉ được có một tài khoản — hãy vô hiệu hoá một tài khoản trước khi gộp.',
+		);
 	}
 	const warnings = [];
-	if (r.recordset[0].a_national_id && r.recordset[0].b_national_id && r.recordset[0].a_national_id !== r.recordset[0].b_national_id) {
+	if (
+		r.recordset[0].a_national_id &&
+		r.recordset[0].b_national_id &&
+		r.recordset[0].a_national_id !== r.recordset[0].b_national_id
+	) {
 		warnings.push('Hai hồ sơ có số CCCD khác nhau — rất có thể là hai người khác nhau.');
 	}
-	if (cand.a.date_of_birth && cand.b.date_of_birth && String(cand.a.date_of_birth) !== String(cand.b.date_of_birth)) {
+	if (
+		cand.a.date_of_birth &&
+		cand.b.date_of_birth &&
+		String(cand.a.date_of_birth) !== String(cand.b.date_of_birth)
+	) {
 		warnings.push('Hai hồ sơ có ngày sinh khác nhau.');
 	}
 	return { ...cand, blockers, warnings };
@@ -200,14 +222,18 @@ const getCandidate = async (id, canSee = false) => {
 const loadOpenCandidate = async (tx, id) => {
 	const r = await new sql.Request(tx)
 		.input('id', sql.Int, id)
-		.query(`SELECT id, person_a_id, person_b_id, reason, status FROM dbo.person_merge_candidates WHERE id = @id`);
+		.query(
+			`SELECT id, person_a_id, person_b_id, reason, status FROM dbo.person_merge_candidates WHERE id = @id`,
+		);
 	const c = r.recordset[0];
 	if (!c) throw httpError(404, 'Không tìm thấy cặp nghi trùng.');
 	return c;
 };
 
 const setActor = (tx, actorId) =>
-	new sql.Request(tx).input('actor_id', sql.VarChar(20), actorId || null).query('EXEC sp_set_actor @actor_id');
+	new sql.Request(tx)
+		.input('actor_id', sql.VarChar(20), actorId || null)
+		.query('EXEC sp_set_actor @actor_id');
 
 /**
  * Gộp cặp `id`. keep = 'A' | 'B' (hồ sơ giữ lại). fields[f] = 'keep' | 'lose' chọn giá trị từng trường;
@@ -245,7 +271,10 @@ const mergeCandidate = async (id, { keep, fields = {}, note } = {}, actorId) => 
 			.input('l', sql.VarChar(20), loseId)
 			.query(`SELECT person_id FROM dbo.users WHERE person_id IN (@k, @l)`);
 		if (new Set(acc.recordset.map((x) => x.person_id)).size > 1) {
-			throw httpError(409, 'Cả hai hồ sơ đều đã có tài khoản đăng nhập — không thể gộp thành một người.');
+			throw httpError(
+				409,
+				'Cả hai hồ sơ đều đã có tài khoản đăng nhập — không thể gộp thành một người.',
+			);
 		}
 
 		// Giá trị cuối cùng của từng trường
@@ -263,8 +292,7 @@ const mergeCandidate = async (id, { keep, fields = {}, note } = {}, actorId) => 
 		for (const { table, keepUpdatedAt } of SOURCE_TABLES) {
 			const m = await new sql.Request(tx)
 				.input('k', sql.VarChar(20), keepId)
-				.input('l', sql.VarChar(20), loseId)
-				.query(`
+				.input('l', sql.VarChar(20), loseId).query(`
 					DECLARE @m TABLE (id VARCHAR(30));
 					UPDATE dbo.${table} SET person_id = @k${keepUpdatedAt ? ', updated_at = updated_at' : ''}
 					OUTPUT INSERTED.id INTO @m
@@ -277,8 +305,7 @@ const mergeCandidate = async (id, { keep, fields = {}, note } = {}, actorId) => 
 		await new sql.Request(tx)
 			.input('k', sql.VarChar(20), keepId)
 			.input('l', sql.VarChar(20), loseId)
-			.input('actor', sql.VarChar(20), actorId || null)
-			.query(`
+			.input('actor', sql.VarChar(20), actorId || null).query(`
 				UPDATE dbo.persons SET status = 'MERGED', merged_into_id = @k, national_id = NULL,
 				       updated_at = SYSDATETIME(), updated_by = @actor WHERE id = @l;
 				UPDATE dbo.persons SET merged_into_id = @k WHERE merged_into_id = @l;`);
@@ -294,8 +321,7 @@ const mergeCandidate = async (id, { keep, fields = {}, note } = {}, actorId) => 
 			.input('email', sql.VarChar(255), finalVal.email || null)
 			.input('phone', sql.VarChar(20), finalVal.phone || null)
 			.input('internal', sql.Bit, finalVal.is_internal == null ? null : !!finalVal.is_internal)
-			.input('verified', sql.Bit, !!(keepP.is_verified || loseP.is_verified))
-			.query(`
+			.input('verified', sql.Bit, !!(keepP.is_verified || loseP.is_verified)).query(`
 				UPDATE dbo.persons SET full_name = @full_name, date_of_birth = @dob, gender = @gender, national_id = @national_id,
 				       email = @email, phone = @phone, is_internal = @internal, is_verified = @verified,
 				       updated_at = SYSDATETIME(), updated_by = @actor
@@ -307,8 +333,7 @@ const mergeCandidate = async (id, { keep, fields = {}, note } = {}, actorId) => 
 			.input('k', sql.VarChar(20), keepId)
 			.input('l', sql.VarChar(20), loseId)
 			.input('actor', sql.VarChar(20), actorId || null)
-			.input('note', sql.NVarChar(500), note || null)
-			.query(`
+			.input('note', sql.NVarChar(500), note || null).query(`
 				UPDATE dbo.person_merge_candidates SET status = 'MERGED', reviewed_by = @actor, reviewed_at = SYSDATETIME(),
 				       note = COALESCE(@note, note) WHERE id = @cid;
 
@@ -387,7 +412,8 @@ const reopenCandidate = async (id, actorId) => {
 			.input('a', sql.VarChar(20), cand.person_a_id)
 			.input('b', sql.VarChar(20), cand.person_b_id)
 			.query(`SELECT COUNT(*) AS n FROM dbo.persons WHERE id IN (@a, @b) AND status = 'ACTIVE'`);
-		if (p.recordset[0].n !== 2) throw httpError(409, 'Một trong hai hồ sơ đã được gộp — không thể mở lại.');
+		if (p.recordset[0].n !== 2)
+			throw httpError(409, 'Một trong hai hồ sơ đã được gộp — không thể mở lại.');
 		await new sql.Request(tx)
 			.input('id', sql.Int, id)
 			.input('actor', sql.VarChar(20), actorId || null)
@@ -398,4 +424,14 @@ const reopenCandidate = async (id, actorId) => {
 	return { id, status: 'PENDING' };
 };
 
-module.exports = { listCandidates, getStats, getCandidate, mergeCandidate, rejectCandidate, reopenCandidate, STATUSES, REASONS, MERGE_FIELDS };
+module.exports = {
+	listCandidates,
+	getStats,
+	getCandidate,
+	mergeCandidate,
+	rejectCandidate,
+	reopenCandidate,
+	STATUSES,
+	REASONS,
+	MERGE_FIELDS,
+};

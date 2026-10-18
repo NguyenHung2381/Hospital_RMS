@@ -19,10 +19,7 @@ const TTL_SEC = Number(process.env.UPLOAD_URL_TTL_SEC) || 4 * 60 * 60;
 const secret = () => process.env.UPLOAD_URL_SECRET || keyFor('upload-url');
 
 const hmac = (pathname, exp) =>
-	crypto
-		.createHmac('sha256', secret())
-		.update(`${pathname}\n${exp}`)
-		.digest('base64url');
+	crypto.createHmac('sha256', secret()).update(`${pathname}\n${exp}`).digest('base64url');
 
 // pathname dạng "/uploads/topics/<id>/<file>" (đã bỏ query cũ nếu có).
 const signPath = (pathname) => {
@@ -67,7 +64,9 @@ const verifyUploadSignature = (req, res, next) => {
 	const sig = typeof req.query.sig === 'string' ? req.query.sig : '';
 	const now = Math.floor(Date.now() / 1000);
 	if (!Number.isInteger(exp) || exp < now || exp > now + 2 * TTL_SEC || !sig) {
-		return res.status(403).json({ success: false, message: 'Link tải file không hợp lệ hoặc đã hết hạn' });
+		return res
+			.status(403)
+			.json({ success: false, message: 'Link tải file không hợp lệ hoặc đã hết hạn' });
 	}
 	// Ký trên đường dẫn đúng như lưu trong DB; trình duyệt có thể percent-encode.
 	let pathname;
@@ -79,7 +78,9 @@ const verifyUploadSignature = (req, res, next) => {
 	const expected = Buffer.from(hmac(pathname, exp));
 	const given = Buffer.from(sig);
 	if (given.length !== expected.length || !crypto.timingSafeEqual(given, expected)) {
-		return res.status(403).json({ success: false, message: 'Link tải file không hợp lệ hoặc đã hết hạn' });
+		return res
+			.status(403)
+			.json({ success: false, message: 'Link tải file không hợp lệ hoặc đã hết hạn' });
 	}
 	// Link có hạn — không để proxy/CDN dùng chung cache, trình duyệt cache tới lúc hết hạn.
 	res.set('Cache-Control', `private, max-age=${exp - now}`);

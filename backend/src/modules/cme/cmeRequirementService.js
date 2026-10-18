@@ -30,8 +30,7 @@ const create = async (data, actorId) => {
 		.input('year', sql.Int, Number(data.year))
 		.input('required_credits', sql.Decimal(6, 2), Number(data.required_credits))
 		.input('department_id', sql.VarChar(20), data.department_id || null)
-		.input('note', sql.NVarChar(255), data.note || null)
-		.query(`
+		.input('note', sql.NVarChar(255), data.note || null).query(`
       DECLARE @new_id VARCHAR(20) = 'CR' + LEFT(REPLACE(NEWID(),'-',''), 18);
       INSERT INTO cme_requirements (id, year, required_credits, department_id, note, created_by)
       VALUES (@new_id, @year, @required_credits, @department_id, @note, @actor_id);
@@ -44,7 +43,10 @@ const create = async (data, actorId) => {
 const update = async (id, data, actorId) => {
 	const pool = await getPool();
 	const sets = ['updated_at = GETDATE()', 'updated_by = @actor_id'];
-	const req = pool.request().input('id', sql.VarChar(20), id).input('actor_id', sql.VarChar(20), actorId);
+	const req = pool
+		.request()
+		.input('id', sql.VarChar(20), id)
+		.input('actor_id', sql.VarChar(20), actorId);
 
 	if (data.required_credits !== undefined) {
 		sets.push('required_credits = @required_credits');
@@ -60,7 +62,10 @@ const update = async (id, data, actorId) => {
 
 const remove = async (id) => {
 	const pool = await getPool();
-	await pool.request().input('id', sql.VarChar(20), id).query('DELETE FROM cme_requirements WHERE id = @id');
+	await pool
+		.request()
+		.input('id', sql.VarChar(20), id)
+		.query('DELETE FROM cme_requirements WHERE id = @id');
 	broadcast('update', { entity: 'cme_requirement' });
 };
 

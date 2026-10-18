@@ -26,10 +26,7 @@ const createGate = ({ max, queue }) => {
 		new Promise((resolve, reject) => {
 			const start = () => {
 				running += 1;
-				Promise.resolve()
-					.then(fn)
-					.then(resolve, reject)
-					.finally(release);
+				Promise.resolve().then(fn).then(resolve, reject).finally(release);
 			};
 			if (running < max) return start();
 			if (waiting.length >= queue) return reject(BUSY_ERROR);
@@ -48,7 +45,9 @@ const createGate = ({ max, queue }) => {
 // max = UV_THREADPOOL_SIZE (bcrypt native chạy trên threadpool) để không chiếm
 // hết threadpool; hàng đợi 50 ≈ 50 × 200ms / max ≈ 1–3 giây chờ tối đa.
 const passwordGate = createGate({
-	max: Number(process.env.LOGIN_MAX_CONCURRENT) || Math.max(2, (Number(process.env.UV_THREADPOOL_SIZE) || 4) - 1),
+	max:
+		Number(process.env.LOGIN_MAX_CONCURRENT) ||
+		Math.max(2, (Number(process.env.UV_THREADPOOL_SIZE) || 4) - 1),
 	queue: Number(process.env.LOGIN_MAX_QUEUE) || 50,
 });
 

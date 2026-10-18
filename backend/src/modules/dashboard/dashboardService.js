@@ -4,10 +4,11 @@ const { remember } = require('../../utils/cache');
 // TTL 90s: đủ ngắn để dashboard không lệch số liệu quá lâu sau khi có đề tài
 // mới/duyệt, đủ dài để tránh chạy lại chuỗi query aggregate nặng này mỗi lần
 // ai đó mở trang Dashboard.
-const getStats = async () => remember('dash:stats', 90, async () => {
-	const pool = await getPool();
+const getStats = async () =>
+	remember('dash:stats', 90, async () => {
+		const pool = await getPool();
 
-	const result = await pool.request().query(`
+		const result = await pool.request().query(`
     -- Overview counts by status
     SELECT status, COUNT(*) AS cnt
     FROM topics
@@ -116,113 +117,109 @@ const getStats = async () => remember('dash:stats', 90, async () => {
          WHERE defense_date >= CAST(GETDATE() AS DATE)) AS councils_upcoming;
   `);
 
-	const statusRows = result.recordsets[0];
-	const byStatus = {
-		submitted: 0,
-		approved: 0,
-		rejected: 0,
-		supplement: 0,
-		cancelled: 0,
-	};
-	let total = 0;
-	for (const row of statusRows) {
-		const key = row.status;
-		byStatus[key] = (byStatus[key] ?? 0) + row.cnt;
-		total += row.cnt;
-	}
+		const statusRows = result.recordsets[0];
+		const byStatus = {
+			submitted: 0,
+			approved: 0,
+			rejected: 0,
+			supplement: 0,
+			cancelled: 0,
+		};
+		let total = 0;
+		for (const row of statusRows) {
+			const key = row.status;
+			byStatus[key] = (byStatus[key] ?? 0) + row.cnt;
+			total += row.cnt;
+		}
 
-	const deptExpected = {};
-	for (const row of result.recordsets[9]) deptExpected[row.dept_name] = row.expected;
-	const deptCompleted = {};
-	for (const row of result.recordsets[10]) deptCompleted[row.dept_name] = row.completed;
+		const deptExpected = {};
+		for (const row of result.recordsets[9]) deptExpected[row.dept_name] = row.expected;
+		const deptCompleted = {};
+		for (const row of result.recordsets[10]) deptCompleted[row.dept_name] = row.completed;
 
-	return {
-		overview: { total, by_status: byStatus },
-		summary: result.recordsets[11][0],
-		by_department: (() => {
-			const deptMap = {};
-			for (const row of result.recordsets[1]) {
-				const dept = row.dept_name;
-				if (!deptMap[dept])
-					deptMap[dept] = {
-						name: dept,
-						specialty_group: row.specialty_group,
-						total: 0,
-						de_tai: 0,
-						bai_bao: 0,
-						approved: 0,
-						by_status: {
-							submitted: 0,
+		return {
+			overview: { total, by_status: byStatus },
+			summary: result.recordsets[11][0],
+			by_department: (() => {
+				const deptMap = {};
+				for (const row of result.recordsets[1]) {
+					const dept = row.dept_name;
+					if (!deptMap[dept])
+						deptMap[dept] = {
+							name: dept,
+							specialty_group: row.specialty_group,
+							total: 0,
+							de_tai: 0,
+							bai_bao: 0,
 							approved: 0,
-							rejected: 0,
-							supplement: 0,
-							cancelled: 0,
+							by_status: {
+								submitted: 0,
+								approved: 0,
+								rejected: 0,
+								supplement: 0,
+								cancelled: 0,
+							},
+							categories: {},
+						};
+					const d = deptMap[dept];
+					d.total += row.cnt;
+					d[row.article_type === 'bai_bao' ? 'bai_bao' : 'de_tai'] += row.cnt;
+					if (d.by_status[row.status] !== undefined) d.by_status[row.status] += row.cnt;
+					if (row.status === 'approved') d.approved += row.cnt;
+					d.categories[row.category_name] = (d.categories[row.category_name] ?? 0) + row.cnt;
+				}
+				return Object.values(deptMap)
+					.map((d) => ({
+						...d,
+						categories: Object.entries(d.categories).map(([name, count]) => ({
+							name,
+							count,
+						})),
+						approval_rate: d.total > 0 ? d.approved / d.total : 0,
+						council_progress: {
+							expected: deptExpected[d.name] ?? 0,
+							completed: deptCompleted[d.name] ?? 0,
 						},
-						categories: {},
-					};
-				const d = deptMap[dept];
-				d.total += row.cnt;
-				d[row.article_type === 'bai_bao' ? 'bai_bao' : 'de_tai'] += row.cnt;
-				if (d.by_status[row.status] !== undefined)
-					d.by_status[row.status] += row.cnt;
-				if (row.status === 'approved') d.approved += row.cnt;
-				d.categories[row.category_name] =
-					(d.categories[row.category_name] ?? 0) + row.cnt;
-			}
-			return Object.values(deptMap)
-				.map((d) => ({
-					...d,
-					categories: Object.entries(d.categories).map(([name, count]) => ({
-						name,
-						count,
-					})),
-					approval_rate: d.total > 0 ? d.approved / d.total : 0,
-					council_progress: {
-						expected: deptExpected[d.name] ?? 0,
-						completed: deptCompleted[d.name] ?? 0,
-					},
-				}))
-				.sort((a, b) => b.total - a.total);
-		})(),
-		by_article_type: result.recordsets[2].map((r) => ({
-			type: r.article_type === 'bai_bao' ? 'bai_bao' : 'de_tai',
-			count: r.cnt,
-		})),
-		by_category: result.recordsets[3].map((r) => ({
-			name: r.name || 'Chưa xác định',
-			count: r.cnt,
-		})),
-		by_level: result.recordsets[4].map((r) => ({
-			name: r.name || 'Chưa xác định',
-			count: r.cnt,
-		})),
-		trend_by_category: (() => {
-			const raw = result.recordsets[5];
-			const yearMap = {};
-			const catSet = new Set();
-			for (const row of raw) {
-				if (!yearMap[row.year]) yearMap[row.year] = { year: row.year };
-				yearMap[row.year][row.category_name] = row.cnt;
-				catSet.add(row.category_name);
-			}
-			return {
-				rows: Object.values(yearMap).sort((a, b) =>
-					String(a.year).localeCompare(String(b.year)),
-				),
-				categories: Array.from(catSet),
-			};
-		})(),
-		recent_approvals: result.recordsets[6],
-		council_progress: {
-			expected: result.recordsets[7][0]?.expected ?? 0,
-			completed: result.recordsets[7][0]?.completed ?? 0,
-			by_rating: result.recordsets[8].map((r) => ({
-				rating: r.rating,
+					}))
+					.sort((a, b) => b.total - a.total);
+			})(),
+			by_article_type: result.recordsets[2].map((r) => ({
+				type: r.article_type === 'bai_bao' ? 'bai_bao' : 'de_tai',
 				count: r.cnt,
 			})),
-		},
-	};
-});
+			by_category: result.recordsets[3].map((r) => ({
+				name: r.name || 'Chưa xác định',
+				count: r.cnt,
+			})),
+			by_level: result.recordsets[4].map((r) => ({
+				name: r.name || 'Chưa xác định',
+				count: r.cnt,
+			})),
+			trend_by_category: (() => {
+				const raw = result.recordsets[5];
+				const yearMap = {};
+				const catSet = new Set();
+				for (const row of raw) {
+					if (!yearMap[row.year]) yearMap[row.year] = { year: row.year };
+					yearMap[row.year][row.category_name] = row.cnt;
+					catSet.add(row.category_name);
+				}
+				return {
+					rows: Object.values(yearMap).sort((a, b) => String(a.year).localeCompare(String(b.year))),
+					categories: Array.from(catSet),
+				};
+			})(),
+			recent_approvals: result.recordsets[6],
+			council_progress: {
+				expected: result.recordsets[7][0]?.expected ?? 0,
+				completed: result.recordsets[7][0]?.completed ?? 0,
+				by_rating: result.recordsets[8].map((r) => ({
+					rating: r.rating,
+					count: r.cnt,
+				})),
+			},
+		};
+	});
 
 // courses.status chỉ còn giữ cờ 'cancelled' — trạng thái thật suy ra từ ngày
 // tháng. Đây là bản SQL của courseService.computeDisplayStatus (ngày giờ VN).
@@ -241,9 +238,10 @@ const COURSES_OPEN_SQL = `(SELECT COUNT(*) FROM courses c
 
 // Dashboard riêng cho Đào tạo (course/trainee/lecturer/class_sessions) — tách
 // khỏi getStats() vì đó chỉ phục vụ NCKH (topics/councils).
-const getTrainingStats = async () => remember('dash:training-stats', 90, async () => {
-	const pool = await getPool();
-	const result = await pool.request().query(`
+const getTrainingStats = async () =>
+	remember('dash:training-stats', 90, async () => {
+		const pool = await getPool();
+		const result = await pool.request().query(`
     -- KPI tổng quan
     SELECT
       ${COURSES_OPEN_SQL} AS open_courses,
@@ -301,25 +299,26 @@ const getTrainingStats = async () => remember('dash:training-stats', 90, async (
     ORDER BY cnt DESC;
   `);
 
-	return {
-		kpi: result.recordsets[0][0],
-		courses_by_status: result.recordsets[5],
-		upcoming_sessions: result.recordsets[1],
-		top_full_courses: result.recordsets[2].map((c) => ({
-			...c,
-			fill_rate: c.capacity > 0 ? Math.round((c.approved_count / c.capacity) * 1000) / 10 : 0,
-		})),
-		trainees_by_type: result.recordsets[3],
-		enrollment_trend: result.recordsets[4],
-	};
-});
+		return {
+			kpi: result.recordsets[0][0],
+			courses_by_status: result.recordsets[5],
+			upcoming_sessions: result.recordsets[1],
+			top_full_courses: result.recordsets[2].map((c) => ({
+				...c,
+				fill_rate: c.capacity > 0 ? Math.round((c.approved_count / c.capacity) * 1000) / 10 : 0,
+			})),
+			trainees_by_type: result.recordsets[3],
+			enrollment_trend: result.recordsets[4],
+		};
+	});
 
 // Dashboard chung toàn hệ thống — số liệu gộp của cả 3 mảng (hệ thống/tài
 // khoản, NCKH, Đào tạo, Hội thảo-CME). Chi tiết từng mảng nằm ở getStats()
 // (NCKH) và getTrainingStats() (Đào tạo).
-const getOverviewStats = async () => remember('dash:overview-stats', 90, async () => {
-	const pool = await getPool();
-	const result = await pool.request().query(`
+const getOverviewStats = async () =>
+	remember('dash:overview-stats', 90, async () => {
+		const pool = await getPool();
+		const result = await pool.request().query(`
     DECLARE @year INT = YEAR(GETDATE());
 
     -- KPI tổng quan
@@ -397,37 +396,38 @@ const getOverviewStats = async () => remember('dash:overview-stats', 90, async (
     ORDER BY topics_cnt DESC, users_cnt DESC, d.name;
   `);
 
-	// Ghép 3 chuỗi theo tháng thành 1 dãy 12 tháng liên tục (tháng trống = 0).
-	const toMap = (rows) => Object.fromEntries(rows.map((r) => [r.month, r.cnt]));
-	const topicsByMonth = toMap(result.recordsets[1]);
-	const enrollByMonth = toMap(result.recordsets[2]);
-	const seminarsByMonth = toMap(result.recordsets[3]);
-	const now = new Date();
-	const monthly = [];
-	for (let i = 11; i >= 0; i--) {
-		const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-		const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-		monthly.push({
-			month: key,
-			topics: topicsByMonth[key] ?? 0,
-			enrollments: enrollByMonth[key] ?? 0,
-			seminars: seminarsByMonth[key] ?? 0,
-		});
-	}
+		// Ghép 3 chuỗi theo tháng thành 1 dãy 12 tháng liên tục (tháng trống = 0).
+		const toMap = (rows) => Object.fromEntries(rows.map((r) => [r.month, r.cnt]));
+		const topicsByMonth = toMap(result.recordsets[1]);
+		const enrollByMonth = toMap(result.recordsets[2]);
+		const seminarsByMonth = toMap(result.recordsets[3]);
+		const now = new Date();
+		const monthly = [];
+		for (let i = 11; i >= 0; i--) {
+			const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+			const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+			monthly.push({
+				month: key,
+				topics: topicsByMonth[key] ?? 0,
+				enrollments: enrollByMonth[key] ?? 0,
+				seminars: seminarsByMonth[key] ?? 0,
+			});
+		}
 
-	return {
-		kpi: result.recordsets[0][0],
-		monthly_activity: monthly,
-		users_by_role: result.recordsets[4],
-		top_departments: result.recordsets[5],
-	};
-});
+		return {
+			kpi: result.recordsets[0][0],
+			monthly_activity: monthly,
+			users_by_role: result.recordsets[4],
+			top_departments: result.recordsets[5],
+		};
+	});
 
 // Dashboard riêng cho Hội thảo - Hội nghị & CME (theo năm hiện tại — nghiệp vụ
 // CME đếm theo năm, SQĐ reset mỗi năm).
-const getSeminarStats = async () => remember('dash:seminar-stats', 90, async () => {
-	const pool = await getPool();
-	const result = await pool.request().query(`
+const getSeminarStats = async () =>
+	remember('dash:seminar-stats', 90, async () => {
+		const pool = await getPool();
+		const result = await pool.request().query(`
     DECLARE @year INT = YEAR(GETDATE());
     DECLARE @today DATE = CAST(GETDATE() AS DATE);
 
@@ -485,23 +485,26 @@ const getSeminarStats = async () => remember('dash:seminar-stats', 90, async () 
     ORDER BY cnt DESC;
   `);
 
-	const byMonth = Object.fromEntries(result.recordsets[2].map((r) => [r.m, r]));
-	const monthly = [];
-	for (let m = 1; m <= 12; m++) {
-		monthly.push({
-			month: m,
-			seminars: byMonth[m]?.seminars ?? 0,
-			participants: byMonth[m]?.participants ?? 0,
-		});
-	}
+		const byMonth = Object.fromEntries(result.recordsets[2].map((r) => [r.m, r]));
+		const monthly = [];
+		for (let m = 1; m <= 12; m++) {
+			monthly.push({
+				month: m,
+				seminars: byMonth[m]?.seminars ?? 0,
+				participants: byMonth[m]?.participants ?? 0,
+			});
+		}
 
-	return {
-		kpi: { ...result.recordsets[0][0], cme_credits_this_year: Number(result.recordsets[0][0].cme_credits_this_year) },
-		by_event_type: result.recordsets[1],
-		monthly,
-		upcoming: result.recordsets[3],
-		top_departments: result.recordsets[4],
-	};
-});
+		return {
+			kpi: {
+				...result.recordsets[0][0],
+				cme_credits_this_year: Number(result.recordsets[0][0].cme_credits_this_year),
+			},
+			by_event_type: result.recordsets[1],
+			monthly,
+			upcoming: result.recordsets[3],
+			top_departments: result.recordsets[4],
+		};
+	});
 
 module.exports = { getStats, getTrainingStats, getOverviewStats, getSeminarStats };

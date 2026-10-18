@@ -150,7 +150,9 @@ const getMe = async (req, res, next) => {
 			// Trạng thái 2FA bắt buộc tính lại theo cấu hình hiện tại — bản lưu lúc
 			// đăng nhập sẽ cũ nếu quản trị vừa bật/tắt "Bắt buộc 2FA cho quản trị".
 			twofa_state: req.user.twoFactor?.state ?? null,
-			twofa_deadline: req.user.twoFactor?.deadline ? req.user.twoFactor.deadline.toISOString() : null,
+			twofa_deadline: req.user.twoFactor?.deadline
+				? req.user.twoFactor.deadline.toISOString()
+				: null,
 		});
 	} catch (err) {
 		next(err);
@@ -204,7 +206,8 @@ const EXPORT_COLUMNS = [
 	{ key: 'created_at', header: 'Ngày tạo', width: 13 },
 ];
 
-const fmtDate = (d) => (d ? new Date(d).toLocaleDateString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' }) : '');
+const fmtDate = (d) =>
+	d ? new Date(d).toLocaleDateString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' }) : '';
 
 // Xuất Excel đúng tập đang lọc trên trang (mọi trang), cùng giới hạn khoa như getAll.
 const exportExcel = async (req, res, next) => {

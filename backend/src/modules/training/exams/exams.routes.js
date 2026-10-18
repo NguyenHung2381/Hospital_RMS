@@ -50,8 +50,14 @@ router.post(
 	'/questions/bulk',
 	canManage,
 	[
-		body('questions').isArray({ min: 1, max: 500 }).withMessage('Danh sách câu hỏi phải có 1–500 câu'),
-		body('questions.*.question_text').isString().trim().notEmpty().withMessage('Có câu hỏi bị trống nội dung'),
+		body('questions')
+			.isArray({ min: 1, max: 500 })
+			.withMessage('Danh sách câu hỏi phải có 1–500 câu'),
+		body('questions.*.question_text')
+			.isString()
+			.trim()
+			.notEmpty()
+			.withMessage('Có câu hỏi bị trống nội dung'),
 		body('questions.*.question_type').isIn(['single_choice', 'essay']),
 		body('questions.*.points').optional().isFloat({ min: 0.1, max: 999 }),
 		body('questions.*.options').optional().isArray({ max: 20 }),
@@ -60,15 +66,26 @@ router.post(
 			.isString()
 			.isLength({ max: 255 })
 			.withMessage('Đáp án quá dài (tối đa 255 ký tự)'),
-		body('questions').custom((qs) =>
-			qs.every((q) => q.question_type === 'essay' || (Array.isArray(q.options) && q.options.includes(q.correct_option))),
-		).withMessage('Câu trắc nghiệm phải có đáp án đúng nằm trong các phương án'),
+		body('questions')
+			.custom((qs) =>
+				qs.every(
+					(q) =>
+						q.question_type === 'essay' ||
+						(Array.isArray(q.options) && q.options.includes(q.correct_option)),
+				),
+			)
+			.withMessage('Câu trắc nghiệm phải có đáp án đúng nằm trong các phương án'),
 	],
 	validate,
 	ctrl.createQuestionsBulk,
 );
 // Tải ảnh minh hoạ trước, rồi gửi `image_url` trả về trong body tạo/sửa câu hỏi
-router.post('/questions/image', canManage, uploadQuestionImage.single('image'), ctrl.uploadQuestionImage);
+router.post(
+	'/questions/image',
+	canManage,
+	uploadQuestionImage.single('image'),
+	ctrl.uploadQuestionImage,
+);
 router.put('/questions/:id', canManage, ctrl.updateQuestion);
 router.delete('/questions/:id', canManage, ctrl.removeQuestion);
 

@@ -6,9 +6,7 @@ const { httpError } = require('../../utils/httpError');
 
 const getUnassignedTopics = async (roundId) => {
 	const pool = await getPool();
-	const result = await pool
-		.request()
-		.input('round_id', sql.VarChar(10), roundId).query(`
+	const result = await pool.request().input('round_id', sql.VarChar(10), roundId).query(`
       SELECT t.id, t.title, t.status, t.[session], t.department_id, d.name AS department_name
       FROM topics t
       LEFT JOIN departments d ON d.id = t.department_id
@@ -20,9 +18,7 @@ const getUnassignedTopics = async (roundId) => {
 
 const getTopics = async (councilId) => {
 	const pool = await getPool();
-	const result = await pool
-		.request()
-		.input('council_id', sql.VarChar(15), councilId).query(`
+	const result = await pool.request().input('council_id', sql.VarChar(15), councilId).query(`
       SELECT t.id, t.title, t.status, t.[session], t.department_id, d.name AS department_name
       FROM topics t
       LEFT JOIN departments d ON d.id = t.department_id
@@ -84,10 +80,7 @@ const setTopicSession = async (councilId, topicId, session, actorId) => {
       SELECT @@ROWCOUNT AS updated;
     `);
 	if (!result.recordset[0].updated) {
-		throw Object.assign(
-			new Error('Đề tài không thuộc hội đồng này.'),
-			{ status: 404 },
-		);
+		throw Object.assign(new Error('Đề tài không thuộc hội đồng này.'), { status: 404 });
 	}
 	broadcast('update', { entity: 'topic' });
 };

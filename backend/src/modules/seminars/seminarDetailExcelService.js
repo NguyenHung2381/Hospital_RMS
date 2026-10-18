@@ -31,7 +31,12 @@ const PARTICIPATION_LABELS = {
 };
 const SOURCE_LABELS = { internal: 'Nội viện', external: 'Ngoại viện' };
 const GENDER_LABELS = { male: 'Nam', female: 'Nữ', other: 'Khác' };
-const CME_STATUS_LABELS = { none: 'Chưa cấp', pending: 'Chờ cấp', issued: 'Đã cấp', signed: 'Đã ký nhận' };
+const CME_STATUS_LABELS = {
+	none: 'Chưa cấp',
+	pending: 'Chờ cấp',
+	issued: 'Đã cấp',
+	signed: 'Đã ký nhận',
+};
 
 const pad2 = (n) => String(n).padStart(2, '0');
 // DATE từ mssql là 00:00 UTC → định dạng theo UTC; chuỗi 'YYYY-MM-DD' cũng parse thành UTC
@@ -82,7 +87,12 @@ const addInfoSheet = (wb, s, agendaCount) => {
 		['Chủ tọa', s.host_chair ?? ''],
 		['Báo cáo viên', s.speakers ?? ''],
 		['Người điều phối', s.coordinator ?? ''],
-		['Cấp CME', s.grants_cme ? `Có${s.cme_default_credits ? ` · ${s.cme_default_credits} tín chỉ` : ''}` : 'Không'],
+		[
+			'Cấp CME',
+			s.grants_cme
+				? `Có${s.cme_default_credits ? ` · ${s.cme_default_credits} tín chỉ` : ''}`
+				: 'Không',
+		],
 		[
 			'Bài test cuối buổi',
 			questionCount
@@ -145,7 +155,9 @@ const participantColumns = (s) => {
 						? [
 								{ key: 'test_score', header: 'Điểm bài test', width: 12 },
 								{ key: 'test_correct', header: 'Số câu đúng', width: 10 },
-								...(s.test_pass_score != null ? [{ key: 'test_passed', header: 'Kết quả', width: 10 }] : []),
+								...(s.test_pass_score != null
+									? [{ key: 'test_passed', header: 'Kết quả', width: 10 }]
+									: []),
 								{ key: 'test_submitted_at', header: 'Nộp bài lúc', width: 17 },
 							]
 						: []),
@@ -190,9 +202,15 @@ const addParticipantSheet = (wb, s) => {
 			email: p.email ?? '',
 			checked_in_at: fmtDateTime(p.checked_in_at),
 			// Bài nộp trước khi có điểm theo trọng số: mỗi câu đúng 1 điểm
-			test_score: p.test_submitted_at ? `${p.test_score ?? p.test_correct}/${p.test_max_score ?? p.test_total}` : '',
+			test_score: p.test_submitted_at
+				? `${p.test_score ?? p.test_correct}/${p.test_max_score ?? p.test_total}`
+				: '',
 			test_correct: p.test_submitted_at ? `${p.test_correct}/${p.test_total}` : '',
-			test_passed: p.test_submitted_at ? (isPassed(s, p.test_score ?? p.test_correct) ? 'Đạt' : 'Chưa đạt') : '',
+			test_passed: p.test_submitted_at
+				? isPassed(s, p.test_score ?? p.test_correct)
+					? 'Đạt'
+					: 'Chưa đạt'
+				: '',
 			test_submitted_at: fmtDateTime(p.test_submitted_at),
 			cme_certificate_no: p.cme_certificate_no ?? '',
 			cme_year: p.cme_year ?? '',

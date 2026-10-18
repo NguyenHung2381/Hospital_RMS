@@ -65,7 +65,9 @@ const listItems = async (planId) => {
 		return {
 			...item,
 			courses: own,
-			trainee_count: own.filter((c) => c.status !== 'cancelled').reduce((n, c) => n + c.approved_count, 0),
+			trainee_count: own
+				.filter((c) => c.status !== 'cancelled')
+				.reduce((n, c) => n + c.approved_count, 0),
 		};
 	});
 };
@@ -85,7 +87,10 @@ const listItemOptions = async () => {
 
 const getById = async (id) => {
 	const pool = await getPool();
-	const result = await pool.request().input('id', sql.VarChar(20), id).query(`${planSelect} WHERE p.id = @id`);
+	const result = await pool
+		.request()
+		.input('id', sql.VarChar(20), id)
+		.query(`${planSelect} WHERE p.id = @id`);
 	const row = result.recordset[0];
 	if (!row) return null;
 	row.items = await listItems(id);
@@ -147,8 +152,7 @@ const create = async (data, actorId) => {
 		.input('year', sql.Int, data.year)
 		.input('title', sql.NVarChar(255), data.title)
 		.input('description', sql.NVarChar(sql.MAX), data.description || null)
-		.input('status', sql.VarChar(20), data.status || 'draft')
-		.query(`
+		.input('status', sql.VarChar(20), data.status || 'draft').query(`
       DECLARE @new_id VARCHAR(20) = 'KH' + LEFT(REPLACE(NEWID(),'-',''), 18);
       INSERT INTO training_plans (id, department_id, year, title, description, status, created_by)
       VALUES (@new_id, @department_id, @year, @title, @description, @status, @actor_id);
@@ -163,7 +167,10 @@ const create = async (data, actorId) => {
 const update = async (id, data, actorId) => {
 	const pool = await getPool();
 	const sets = ['updated_at = GETDATE()', 'updated_by = @actor_id'];
-	const req = pool.request().input('id', sql.VarChar(20), id).input('actor_id', sql.VarChar(20), actorId);
+	const req = pool
+		.request()
+		.input('id', sql.VarChar(20), id)
+		.input('actor_id', sql.VarChar(20), actorId);
 
 	if (data.department_id !== undefined) {
 		sets.push('department_id = @department_id');
@@ -186,7 +193,8 @@ const update = async (id, data, actorId) => {
 		req.input('status', sql.VarChar(20), data.status);
 	}
 
-	if (sets.length > 2) await req.query(`UPDATE training_plans SET ${sets.join(', ')} WHERE id = @id`);
+	if (sets.length > 2)
+		await req.query(`UPDATE training_plans SET ${sets.join(', ')} WHERE id = @id`);
 	if (Array.isArray(data.items)) await setItems(id, data.items, actorId);
 	broadcast('update', { entity: 'training_plan' });
 	return getById(id);

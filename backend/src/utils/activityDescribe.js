@@ -158,8 +158,7 @@ const describe = (o) => {
 
 	// Đối tượng bị tác động: ưu tiên req.params (đã log sẵn), sau đó đoán từ URL.
 	const params = o.params && typeof o.params === 'object' ? o.params : {};
-	let target =
-		params.id ?? Object.values(params).find((v) => v != null && v !== '') ?? null;
+	let target = params.id ?? Object.values(params).find((v) => v != null && v !== '') ?? null;
 	if (target == null) target = rest.find(isIdLike) ?? null;
 	if (target == null && o.result_id != null) target = o.result_id;
 

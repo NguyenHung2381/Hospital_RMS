@@ -26,7 +26,8 @@ const walk = (dir) =>
 		return d.name.endsWith('.js') ? [p] : [];
 	});
 
-const exists = (p) => [p, `${p}.js`, path.join(p, 'index.js')].some((c) => fs.existsSync(c) && fs.statSync(c).isFile());
+const exists = (p) =>
+	[p, `${p}.js`, path.join(p, 'index.js')].some((c) => fs.existsSync(c) && fs.statSync(c).isFile());
 const rel = (p) => path.relative(path.join(__dirname, '..'), p).split(path.sep).join('/');
 
 const files = walk(SRC).filter((f) => !SKIP.has(f));
@@ -37,7 +38,8 @@ const RE = /require\(\s*['"](\.{1,2}\/[^'"]+)['"]\s*\)/g;
 for (const f of files) {
 	const text = fs.readFileSync(f, 'utf8');
 	for (const m of text.matchAll(RE)) {
-		if (!exists(path.resolve(path.dirname(f), m[1]))) failures.push(`${rel(f)} — không tìm thấy ${m[1]}`);
+		if (!exists(path.resolve(path.dirname(f), m[1])))
+			failures.push(`${rel(f)} — không tìm thấy ${m[1]}`);
 	}
 }
 

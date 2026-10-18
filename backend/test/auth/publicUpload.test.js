@@ -20,7 +20,9 @@ const startApp = (handler) => {
 	const app = express();
 	app.use(express.json());
 	app.post('/x', publicUpload, handler);
-	app.use((err, _req, res, _next) => res.status(err.statusCode || 500).json({ message: err.message }));
+	app.use((err, _req, res, _next) =>
+		res.status(err.statusCode || 500).json({ message: err.message }),
+	);
 	return new Promise((resolve) => {
 		const server = app.listen(0, () => resolve(server));
 	});

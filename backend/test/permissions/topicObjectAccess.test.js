@@ -15,9 +15,12 @@ const writes = [];
 install(async (text, inputs) => {
 	const t = TOPICS[inputs.id] ?? TOPICS[inputs.topic_id];
 	if (/AS is_member/.test(text)) {
-		return t ? [{ department_id: t.department_id, is_member: t.members.includes(inputs.uid) ? 1 : 0 }] : [];
+		return t
+			? [{ department_id: t.department_id, is_member: t.members.includes(inputs.uid) ? 1 : 0 }]
+			: [];
 	}
-	if (/SELECT 1 AS ok FROM topic_members/.test(text)) return t?.members.includes(inputs.user_id) ? [{ ok: 1 }] : [];
+	if (/SELECT 1 AS ok FROM topic_members/.test(text))
+		return t?.members.includes(inputs.user_id) ? [{ ok: 1 }] : [];
 	if (/WHERE t\.id = @id/.test(text)) return t ? [{ ...t }] : [];
 	if (/UPDATE topics/.test(text)) writes.push(inputs.id);
 	return [];
@@ -81,6 +84,10 @@ test('lỗi nghiệp vụ chỉ có `status` (không có statusCode) trả đún
 		},
 		json() {},
 	};
-	errorHandler(Object.assign(new Error('Không có quyền xem đề tài này'), { status: 403 }), { method: 'GET', path: '/x' }, res);
+	errorHandler(
+		Object.assign(new Error('Không có quyền xem đề tài này'), { status: 403 }),
+		{ method: 'GET', path: '/x' },
+		res,
+	);
 	assert.equal(sent, 403);
 });

@@ -22,7 +22,9 @@ module.exports = { paging };
 if (require.main === module) {
 	const assert = require('assert');
 	assert.deepStrictEqual(paging('2', '20'), {
-		page: 2, limit: 20, offset: 20,
+		page: 2,
+		limit: 20,
+		offset: 20,
 		fetchClause: 'OFFSET @offset ROWS FETCH NEXT @limit ROWS ONLY',
 	});
 	assert.strictEqual(paging(1, '0').fetchClause, ''); // limit=0 → lấy tất cả

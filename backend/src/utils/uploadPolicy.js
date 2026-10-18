@@ -5,12 +5,28 @@ const { DOCUMENT_EXTENSIONS } = require('../middlewares/fileTypeAllowlist');
 // thống (UPLOAD_ALLOWED_EXTENSIONS, UPLOAD_MAX_MB), fallback .env rồi mặc định.
 // Chỉ chọn được trong DOCUMENT_EXTENSIONS (đã có kiểm tra magic bytes) — không
 // thể bật html/svg/exe qua cấu hình.
-const DEFAULT_EXTENSIONS = ['.pdf', '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx', '.rar', '.zip'];
+const DEFAULT_EXTENSIONS = [
+	'.pdf',
+	'.doc',
+	'.docx',
+	'.xls',
+	'.xlsx',
+	'.ppt',
+	'.pptx',
+	'.rar',
+	'.zip',
+];
 const DEFAULT_MAX_MB = 50;
 const MAX_MB_CEILING = 1024;
 
-const parseExtensions = (raw) =>
-	[...new Set(String(raw ?? '').split(/[\s,;]+/).filter(Boolean).map((e) => `.${e.replace(/^\.+/, '').toLowerCase()}`))];
+const parseExtensions = (raw) => [
+	...new Set(
+		String(raw ?? '')
+			.split(/[\s,;]+/)
+			.filter(Boolean)
+			.map((e) => `.${e.replace(/^\.+/, '').toLowerCase()}`),
+	),
+];
 
 // null = hợp lệ; ngược lại là thông báo lỗi (dùng khi admin lưu cấu hình)
 const validateSetting = (key, value) => {
@@ -21,7 +37,9 @@ const validateSetting = (key, value) => {
 	}
 	if (key === 'UPLOAD_MAX_MB') {
 		const n = Number(value);
-		return Number.isInteger(n) && n > 0 && n <= MAX_MB_CEILING ? null : `Dung lượng phải là số nguyên 1–${MAX_MB_CEILING} MB`;
+		return Number.isInteger(n) && n > 0 && n <= MAX_MB_CEILING
+			? null
+			: `Dung lượng phải là số nguyên 1–${MAX_MB_CEILING} MB`;
 	}
 	return null;
 };
@@ -39,4 +57,10 @@ const getPolicy = async () => {
 	};
 };
 
-module.exports = { getPolicy, validateSetting, parseExtensions, DEFAULT_EXTENSIONS, DEFAULT_MAX_MB };
+module.exports = {
+	getPolicy,
+	validateSetting,
+	parseExtensions,
+	DEFAULT_EXTENSIONS,
+	DEFAULT_MAX_MB,
+};

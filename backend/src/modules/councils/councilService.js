@@ -36,10 +36,7 @@ const getAll = async ({ page = 1, limit = 20, round_id, status } = {}) => {
 	const pool = await getPool();
 	const pg = paging(page, limit);
 	let where = 'WHERE 1=1';
-	const req = pool
-		.request()
-		.input('offset', sql.Int, pg.offset)
-		.input('limit', sql.Int, pg.limit);
+	const req = pool.request().input('offset', sql.Int, pg.offset).input('limit', sql.Int, pg.limit);
 
 	if (round_id) {
 		where += ' AND c.round_id = @round_id';
@@ -111,21 +108,17 @@ const getById = async (id) => {
 	const members = await pool
 		.request()
 		.input('council_id', sql.VarChar(15), id)
-		.query(
-			`${MEMBER_JOIN} WHERE cm.council_id = @council_id ORDER BY ${ROLE_ORDER}`,
-		);
+		.query(`${MEMBER_JOIN} WHERE cm.council_id = @council_id ORDER BY ${ROLE_ORDER}`);
 	council.members = members.recordset.map(normalizeMember);
 
-	const topics = await pool.request().input('council_id', sql.VarChar(15), id)
-		.query(`
+	const topics = await pool.request().input('council_id', sql.VarChar(15), id).query(`
       SELECT t.id, t.title, t.status, t.[session], t.department_id, d.name AS department_name
       FROM topics t
       LEFT JOIN departments d ON d.id = t.department_id
       WHERE t.council_id = @council_id
       ORDER BY t.created_at
     `);
-	const subs = await pool.request().input('council_id', sql.VarChar(15), id)
-		.query(`
+	const subs = await pool.request().input('council_id', sql.VarChar(15), id).query(`
       SELECT s.topic_id, s.role, s.user_id, u.full_name, u.staff_number,
              u.department_id, d.name AS department_name
       FROM council_seat_substitutes s
@@ -209,10 +202,8 @@ const update = async (id, data, actorId) => {
 
 const remove = async (id, actorId) => {
 	const pool = await getPool();
-	await pool
-		.request()
-		.input('id', sql.VarChar(15), id)
-		.input('actor_id', sql.VarChar(20), actorId).query(`
+	await pool.request().input('id', sql.VarChar(15), id).input('actor_id', sql.VarChar(20), actorId)
+		.query(`
       EXEC sp_set_actor @actor_id;
       UPDATE topics SET council_id = NULL WHERE council_id = @id;
       DELETE FROM council_members WHERE council_id = @id;
@@ -228,9 +219,7 @@ const getMembers = async (councilId) => {
 	const result = await pool
 		.request()
 		.input('council_id', sql.VarChar(15), councilId)
-		.query(
-			`${MEMBER_JOIN} WHERE cm.council_id = @council_id ORDER BY ${ROLE_ORDER}`,
-		);
+		.query(`${MEMBER_JOIN} WHERE cm.council_id = @council_id ORDER BY ${ROLE_ORDER}`);
 	return result.recordset.map(normalizeMember);
 };
 

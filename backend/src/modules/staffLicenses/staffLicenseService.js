@@ -46,7 +46,10 @@ const getAll = async ({ page = 1, limit = 20, search, department_id, has_license
 
 const getById = async (id) => {
 	const pool = await getPool();
-	const result = await pool.request().input('id', sql.VarChar(20), id).query(`${licenseSelect} WHERE sl.id = @id`);
+	const result = await pool
+		.request()
+		.input('id', sql.VarChar(20), id)
+		.query(`${licenseSelect} WHERE sl.id = @id`);
 	return result.recordset[0] || null;
 };
 
@@ -105,7 +108,10 @@ const create = async (data, actorId) => {
 const update = async (id, data, actorId) => {
 	const pool = await getPool();
 	const sets = ['updated_at = GETDATE()', 'updated_by = @actor_id'];
-	const req = pool.request().input('id', sql.VarChar(20), id).input('actor_id', sql.VarChar(20), actorId);
+	const req = pool
+		.request()
+		.input('id', sql.VarChar(20), id)
+		.input('actor_id', sql.VarChar(20), actorId);
 
 	for (const [field, type] of fieldDefs) {
 		if (data[field] !== undefined) {
@@ -114,7 +120,9 @@ const update = async (id, data, actorId) => {
 		}
 	}
 
-	await req.query(`EXEC sp_set_actor @actor_id; UPDATE staff_practice_licenses SET ${sets.join(', ')} WHERE id = @id`);
+	await req.query(
+		`EXEC sp_set_actor @actor_id; UPDATE staff_practice_licenses SET ${sets.join(', ')} WHERE id = @id`,
+	);
 	broadcast('update', { entity: 'staff_license' });
 	return getById(id);
 };

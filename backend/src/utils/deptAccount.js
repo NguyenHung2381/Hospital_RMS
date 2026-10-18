@@ -4,7 +4,8 @@
  * mã nhân viên thường luôn bỏ qua đuôi 0000) và thường được departments.dept_account_id
  * trỏ tới. Xét cả hai vì có tài khoản khoa cũ không còn khoa nào liên kết.
  */
-const deptAccountCodeSql = (alias) => `(${alias}.id LIKE 'NV%[0-9][0-9][0-9][0-9]' AND RIGHT(${alias}.id, 4) = '0000')`;
+const deptAccountCodeSql = (alias) =>
+	`(${alias}.id LIKE 'NV%[0-9][0-9][0-9][0-9]' AND RIGHT(${alias}.id, 4) = '0000')`;
 
 const isDeptAccountSql = (alias = 'u') =>
 	`(${deptAccountCodeSql(alias)}

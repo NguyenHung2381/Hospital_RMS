@@ -27,11 +27,16 @@ const MIN_FILL_SEC = Number(process.env.CAPTCHA_MIN_FILL_SEC ?? 3);
 const TURNSTILE_VERIFY_URL = 'https://challenges.cloudflare.com/turnstile/v0/siteverify';
 const TURNSTILE_TIMEOUT_MS = 5000;
 
-const turnstileEnabled = () => !!(process.env.TURNSTILE_SITE_KEY && process.env.TURNSTILE_SECRET_KEY);
+const turnstileEnabled = () =>
+	!!(process.env.TURNSTILE_SITE_KEY && process.env.TURNSTILE_SECRET_KEY);
 
 const generateCaptcha = () => {
 	if (turnstileEnabled())
-		return { provider: 'turnstile', site_key: process.env.TURNSTILE_SITE_KEY, action: TURNSTILE_ACTION };
+		return {
+			provider: 'turnstile',
+			site_key: process.env.TURNSTILE_SITE_KEY,
+			action: TURNSTILE_ACTION,
+		};
 	const token = signToken('captcha', { d: POW_BITS, jti: crypto.randomUUID() }, CAPTCHA_TTL_SEC);
 	return { provider: 'pow', token, bits: POW_BITS, expires_in: CAPTCHA_TTL_SEC };
 };

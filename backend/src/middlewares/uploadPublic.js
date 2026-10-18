@@ -13,7 +13,6 @@ const TMP_DIR = path.join(UPLOADS_ROOT, '_tmp', 'public');
 
 const MAX_FILES = 10;
 
-
 // Định dạng & dung lượng theo Cấu hình hệ thống (utils/uploadPolicy.js), như route nội bộ.
 const instance = dynamicMulter((policy) => ({
 	maxSizeMB: policy.maxSizeMB,
@@ -32,7 +31,10 @@ const instance = dynamicMulter((policy) => ({
 }));
 
 // Không có tài khoản ⇒ không áp hạn mức/ngày (quota) — đã có rate-limit theo IP ở route.
-const [precheck, multerMw, verify] = secureUpload(instance, { quota: false }).array('files', MAX_FILES);
+const [precheck, multerMw, verify] = secureUpload(instance, { quota: false }).array(
+	'files',
+	MAX_FILES,
+);
 
 // File tạm chưa được service chuyển đi (lỗi validate, sai captcha, honeypot,
 // lỗi nghiệp vụ...) ⇒ xoá khi trả response. File đã chuyển thì unlink lỗi ENOENT, bỏ qua.

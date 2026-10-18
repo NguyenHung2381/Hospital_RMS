@@ -89,10 +89,14 @@ const normalize = (sqlText) => `${sqlText.replace(/\r\n?/g, '\n').trim()}\n`;
 		if (!check) fs.unlinkSync(path.join(OUT, file));
 	}
 
-	console.log(`${expected.size} object; ${changed.length} thay đổi${check ? ' (chế độ --check, không ghi)' : ''}`);
+	console.log(
+		`${expected.size} object; ${changed.length} thay đổi${check ? ' (chế độ --check, không ghi)' : ''}`,
+	);
 	for (const c of changed) console.log(`  ${c}`);
 	if (blocked.length) {
-		console.warn(`⚠️  Không xuất vì có vẻ chứa bí mật (mật khẩu / hash / chuỗi kết nối): ${blocked.join(', ')}`);
+		console.warn(
+			`⚠️  Không xuất vì có vẻ chứa bí mật (mật khẩu / hash / chuỗi kết nối): ${blocked.join(', ')}`,
+		);
 	}
 	process.exit(check && changed.length ? 1 : 0);
 })().catch((err) => {

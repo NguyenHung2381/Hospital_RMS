@@ -26,7 +26,6 @@ const collectFiles = (req) => {
 const removeFiles = (files) =>
 	Promise.all(files.filter((f) => f.path).map((f) => fs.unlink(f.path).catch(() => {})));
 
-
 const quotaPrecheck = (opts) => async (req, _res, next) => {
 	const limit = quota.quotaBytes();
 	if (!opts.quota || !limit || !req.user) return next();
@@ -62,7 +61,10 @@ const verify = (opts) => async (req, _res, next) => {
 		if (!matchesExtension(ext, head)) {
 			await removeFiles(files);
 			return next(
-				httpError(400, `File "${displayName(file)}" có nội dung không đúng định dạng ${ext || '(không có đuôi)'}.`),
+				httpError(
+					400,
+					`File "${displayName(file)}" có nội dung không đúng định dạng ${ext || '(không có đuôi)'}.`,
+				),
 			);
 		}
 	}
@@ -74,7 +76,9 @@ const verify = (opts) => async (req, _res, next) => {
 		} catch (err) {
 			console.error('[upload] ClamAV lỗi — từ chối upload:', err.message);
 			await removeFiles(files);
-			return next(httpError(503, 'Hệ thống quét virus tạm thời không hoạt động, vui lòng thử lại sau.'));
+			return next(
+				httpError(503, 'Hệ thống quét virus tạm thời không hoạt động, vui lòng thử lại sau.'),
+			);
 		}
 		if (result.clean === false) {
 			await removeFiles(files);
@@ -88,7 +92,9 @@ const verify = (opts) => async (req, _res, next) => {
 					detail: `Chặn file "${displayName(file)}" — ClamAV: ${result.virus}`,
 				})
 				.catch(() => {});
-			return next(httpError(422, `File "${displayName(file)}" bị phát hiện chứa mã độc và đã bị từ chối.`));
+			return next(
+				httpError(422, `File "${displayName(file)}" bị phát hiện chứa mã độc và đã bị từ chối.`),
+			);
 		}
 	}
 

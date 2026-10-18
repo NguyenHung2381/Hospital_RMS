@@ -55,13 +55,25 @@ const getStatus = async (req, res, next) => {
 	try {
 		const resource = req.query.resource || 'topics';
 		if (resource !== 'topics') {
-			return res.status(400).json({ success: false, message: 'Loại dữ liệu không hỗ trợ quy trình duyệt' });
+			return res
+				.status(400)
+				.json({ success: false, message: 'Loại dữ liệu không hỗ trợ quy trình duyệt' });
 		}
 		await topicService.assertTopicInScope(req.params.entityId, req.user);
-		return success(res, await workflowEngineService.getStatusForEntity(resource, req.params.entityId));
+		return success(
+			res,
+			await workflowEngineService.getStatusForEntity(resource, req.params.entityId),
+		);
 	} catch (err) {
 		next(err);
 	}
 };
 
-module.exports = { listDefinitions, getDefinition, createDefinition, updateDefinition, removeDefinition, getStatus };
+module.exports = {
+	listDefinitions,
+	getDefinition,
+	createDefinition,
+	updateDefinition,
+	removeDefinition,
+	getStatus,
+};

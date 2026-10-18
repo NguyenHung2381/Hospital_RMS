@@ -54,7 +54,9 @@ const getTransporter = async () => {
 const send = async ({ to, subject, html, attachments, event }) => {
 	if (!to) return;
 	if (!(await isEnabled(event))) {
-		console.log(`[mail] email${event ? ` (${event})` : ''} đang tắt — bỏ qua gửi tới ${to}: "${subject}"`);
+		console.log(
+			`[mail] email${event ? ` (${event})` : ''} đang tắt — bỏ qua gửi tới ${to}: "${subject}"`,
+		);
 		return;
 	}
 	try {
@@ -62,7 +64,8 @@ const send = async ({ to, subject, html, attachments, event }) => {
 		const fromUser = await systemSettingService.getValue('SMTP_USER');
 		const transporter = await getTransporter();
 		await transporter.sendMail({
-			from: fromName && fromUser ? `"${fromName}" <${fromUser}>` : process.env.SMTP_FROM || fromUser,
+			from:
+				fromName && fromUser ? `"${fromName}" <${fromUser}>` : process.env.SMTP_FROM || fromUser,
 			to,
 			subject,
 			html,
@@ -80,7 +83,9 @@ const sendTest = async (to) => {
 		systemSettingService.getValue('SMTP_FROM_NAME'),
 		systemSettingService.getValue('SMTP_USER'),
 	]);
-	await (await getTransporter()).sendMail({
+	await (
+		await getTransporter()
+	).sendMail({
 		from: fromName && fromUser ? `"${fromName}" <${fromUser}>` : process.env.SMTP_FROM || fromUser,
 		to,
 		subject: 'Email thử từ Hệ thống RMS',
@@ -143,7 +148,15 @@ const renderOtpEmail = ({ fullName, code, ttlMin, resetUrl }) => `
 // Thẻ đại biểu gửi sau khi đăng ký hội nghị công khai: QR (cid:ticket-qr) chứa
 // link vé /hoi-nghi/ve/<code> — ban tổ chức quét để điểm danh, người tham dự
 // mở để làm bài test. Cùng khung bảng/inline style như renderOtpEmail.
-const renderSeminarBadgeEmail = ({ holder, organization, seminarTitle, when, location, ticketUrl, code }) => `
+const renderSeminarBadgeEmail = ({
+	holder,
+	organization,
+	seminarTitle,
+	when,
+	location,
+	ticketUrl,
+	code,
+}) => `
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f3f4f6;padding:24px 12px;">
 	<tr><td align="center">
 		<p style="margin:0 0 16px;max-width:420px;font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.6;color:#1f2937;">Xin chào ${escapeHtml(holder)}, bạn đã đăng ký tham dự thành công. Dưới đây là thẻ đại biểu của bạn — khi đến hội nghị, đưa mã QR cho ban tổ chức quét để điểm danh.</p>
@@ -174,13 +187,17 @@ const renderSeminarBadgeEmail = ({ holder, organization, seminarTitle, when, loc
 `;
 
 const escapeHtml = (s) =>
-	String(s ?? '').replace(/[&<>"']/g, (c) => ({
-		'&': '&amp;',
-		'<': '&lt;',
-		'>': '&gt;',
-		'"': '&quot;',
-		"'": '&#39;',
-	})[c]);
+	String(s ?? '').replace(
+		/[&<>"']/g,
+		(c) =>
+			({
+				'&': '&amp;',
+				'<': '&lt;',
+				'>': '&gt;',
+				'"': '&quot;',
+				"'": '&#39;',
+			})[c],
+	);
 
 module.exports = {
 	send,

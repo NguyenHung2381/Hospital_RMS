@@ -55,13 +55,7 @@ const STATUS_LABELS = {
 	supplement: 'Bổ sung',
 	cancelled: 'Đã hủy',
 };
-const STATUS_ORDER = [
-	'approved',
-	'submitted',
-	'rejected',
-	'supplement',
-	'cancelled',
-];
+const STATUS_ORDER = ['approved', 'submitted', 'rejected', 'supplement', 'cancelled'];
 const ROLE_LABELS = {
 	leader: 'Chủ nhiệm',
 	secretary: 'Thư ký',
@@ -231,7 +225,9 @@ function buildOverviewSheet(ws, topics, opts) {
 		const rows = [...counts.entries()].sort((a, b) => b[1] - a[1]).slice(0, limit);
 
 		const tableRow = (values, style) => {
-			values.forEach((v, ci) => Object.assign(ws.getCell(cur, ci + 1), { value: v, border: bAll, ...style(ci) }));
+			values.forEach((v, ci) =>
+				Object.assign(ws.getCell(cur, ci + 1), { value: v, border: bAll, ...style(ci) }),
+			);
 			ws.mergeCells(`B${cur}:E${cur}`);
 			ws.mergeCells(`F${cur}:G${cur}`);
 			ws.getRow(cur).height = 20;
@@ -254,11 +250,20 @@ function buildOverviewSheet(ws, topics, opts) {
 		});
 	};
 
-	countSection('II. THEO PHÂN LOẠI ĐỀ TÀI', 'Phân loại', (t) => t.category_name || '(Chưa phân loại)');
+	countSection(
+		'II. THEO PHÂN LOẠI ĐỀ TÀI',
+		'Phân loại',
+		(t) => t.category_name || '(Chưa phân loại)',
+	);
 	cur++;
 	countSection('III. THEO CẤP ĐỘ', 'Cấp độ', (t) => t.level_name || '(Chưa xác định)');
 	cur++;
-	countSection('IV. THEO PHÒNG BAN (TOP 20)', 'Phòng ban / Khoa', (t) => t.department_name || '(Chưa phân)', 20);
+	countSection(
+		'IV. THEO PHÒNG BAN (TOP 20)',
+		'Phòng ban / Khoa',
+		(t) => t.department_name || '(Chưa phân)',
+		20,
+	);
 
 	// Footer note
 	cur++;
@@ -598,17 +603,13 @@ async function exportReport(req, res, next) {
 		} = req.body;
 
 		if (!Array.isArray(ids) || ids.length === 0) {
-			return res
-				.status(400)
-				.json({ success: false, message: 'Danh sách đề tài trống' });
+			return res.status(400).json({ success: false, message: 'Danh sách đề tài trống' });
 		}
 
 		// Chỉ xuất đề tài trong phạm vi người gọi (danh sách mã do client gửi lên)
 		const data = await topicService.getForExport(await topicService.idsInScope(ids, req.user));
 		if (!data.length) {
-			return res
-				.status(404)
-				.json({ success: false, message: 'Không tìm thấy đề tài' });
+			return res.status(404).json({ success: false, message: 'Không tìm thấy đề tài' });
 		}
 
 		const wb = new ExcelJS.Workbook();
@@ -622,12 +623,7 @@ async function exportReport(req, res, next) {
 		}
 
 		if (sections.includes('topics')) {
-			buildTopicListSheet(
-				wb.addWorksheet('Danh sách đề tài'),
-				data,
-				opts,
-				title,
-			);
+			buildTopicListSheet(wb.addWorksheet('Danh sách đề tài'), data, opts, title);
 		}
 
 		if (sections.includes('members')) {
@@ -671,17 +667,11 @@ async function exportReport(req, res, next) {
 
 		// Ensure at least one sheet
 		if (wb.worksheets.length === 0) {
-			buildTopicListSheet(
-				wb.addWorksheet('Danh sách đề tài'),
-				data,
-				opts,
-				title,
-			);
+			buildTopicListSheet(wb.addWorksheet('Danh sách đề tài'), data, opts, title);
 		}
 
 		const safeName =
-			(fileName || 'bao-cao-nckh').replace(/[/\\?%*:|"<>]/g, '').trim() ||
-			'bao-cao-nckh';
+			(fileName || 'bao-cao-nckh').replace(/[/\\?%*:|"<>]/g, '').trim() || 'bao-cao-nckh';
 
 		await sendWorkbook(res, wb, safeName + '.xlsx');
 	} catch (err) {

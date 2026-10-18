@@ -34,7 +34,8 @@ cacheBus.register('roleCodes', clearLocal);
 const roleIdOf = async (code) => {
 	if (!_cache || Date.now() - _cache.ts > TTL_MS) {
 		const pool = await getPool();
-		const rows = (await pool.request().query('SELECT id, code FROM roles WHERE code IS NOT NULL')).recordset;
+		const rows = (await pool.request().query('SELECT id, code FROM roles WHERE code IS NOT NULL'))
+			.recordset;
 		_cache = { byCode: new Map(rows.map((r) => [r.code, r.id])), ts: Date.now() };
 	}
 	return _cache.byCode.get(code) ?? null;
