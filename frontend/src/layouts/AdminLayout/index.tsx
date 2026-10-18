@@ -1,7 +1,6 @@
 import {
 	ApproveSvg,
 	BadgeSvg,
-	BarChartSvg,
 	BellSvg,
 	BookOpenSvg,
 	BuildingSvg,
@@ -91,7 +90,6 @@ const KEY_TO_PATH: Record<string, string> = {
 	trainingPrograms: '/admin/training-programs',
 	lessons: '/admin/lessons',
 	classSchedule: '/admin/class-schedule',
-	trainingPlans: '/admin/training-plans',
 	myTasks: '/admin/viec-cua-toi',
 	lecturers: '/admin/lecturers',
 	trainingCatalog: '/admin/trainee-types',
@@ -187,10 +185,9 @@ const NAV_GROUPS: NavGroup[] = [
 		],
 	},
 	{
-		// Luồng: kế hoạch → nội dung → khoá học/lịch → thi → con người → danh mục.
+		// Luồng: nội dung → khoá học/lịch → thi → con người → danh mục.
 		section: 'Đào tạo',
 		items: [
-			navItem('trainingPlans', 'Kế hoạch đào tạo', BarChartSvg, 'training_plans:manage'),
 			navItem('trainingPrograms', 'Chương trình đào tạo', BookOpenSvg, 'training_programs:read'),
 			navItem('lessons', 'Bài học', FileTextSvg, 'training_programs:read'),
 			navItem('courses', 'Khóa học', ClipboardCheckSvg, 'courses:read'),

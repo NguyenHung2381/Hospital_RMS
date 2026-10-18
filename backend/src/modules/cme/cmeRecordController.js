@@ -145,11 +145,18 @@ const importTemplate = asyncHandler(async (req, res) => {
 });
 
 const exportExcel = asyncHandler(async (req, res) => {
-	const { year, search, department } = req.body || {};
-	const data = await cmeReportService.getData({ year, search, department });
+	// Khoảng năm: { from_year, to_year } (trống = không giới hạn đầu đó); vẫn nhận { year } cũ = 1 năm
+	const { year, from_year, to_year, search, department } = req.body || {};
+	const data = await cmeReportService.getData({
+		year,
+		fromYear: from_year,
+		toYear: to_year,
+		search,
+		department,
+	});
 	const d = new Date();
 	const wb = cmeReportWorkbook.buildWorkbook(data, {
-		title: `BÁO CÁO TÍN CHỈ CME ${year ? `NĂM ${year}` : 'TẤT CẢ CÁC NĂM'}`,
+		title: `BÁO CÁO TÍN CHỈ CME ${data.rangeLabel}`,
 		subtitle: [
 			department,
 			`${data.people.length} nhân sự`,
@@ -158,7 +165,14 @@ const exportExcel = asyncHandler(async (req, res) => {
 			.filter(Boolean)
 			.join(' · '),
 	});
-	return sendWorkbook(res, wb, `bao-cao-cme${year ? `-${year}` : ''}.xlsx`);
+	const { fromYear, toYear } = data;
+	const suffix =
+		fromYear === null && toYear === null
+			? ''
+			: fromYear === toYear
+				? `-${fromYear}`
+				: `-${fromYear ?? 'dau'}-${toYear ?? 'nay'}`;
+	return sendWorkbook(res, wb, `bao-cao-cme${suffix}.xlsx`);
 });
 
 module.exports = {

@@ -200,11 +200,6 @@ app.use(
 	requireModule('TRAINING'),
 	require('./modules/training/programs/trainingPrograms.routes'),
 );
-app.use(
-	`${API}/training-plans`,
-	requireModule('TRAINING'),
-	require('./modules/training/plans/trainingPlans.routes'),
-);
 app.use(`${API}/surveys`, requireModule('SURVEY'), require('./modules/surveys/surveys.routes'));
 app.use(`${API}/my-tasks`, require('./modules/portal/myTasks.routes'));
 app.use(`${API}/me`, require('./modules/portal/me.routes'));

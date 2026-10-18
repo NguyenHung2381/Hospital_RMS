@@ -21,7 +21,6 @@ export type DocumentSource = { type: 'file'; file: File } | { type: 'link'; exte
 const toPayload = (form: CourseFormData) => ({
 	name: form.name,
 	program_ids: form.program_ids,
-	plan_item_id: form.plan_item_id || null,
 	training_form_id: form.training_form_id || null,
 	start_date: form.start_date || null,
 	end_date: form.end_date || null,

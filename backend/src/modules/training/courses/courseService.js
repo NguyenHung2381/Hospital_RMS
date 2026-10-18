@@ -58,11 +58,10 @@ const normalize = (c) => {
 
 // Quan hệ course<->training_program là N:N qua bảng bridge course_programs
 // (xem 2026-09-16_course_programs_bridge.sql), gán bằng program_ids của form
-// khóa học. plan_item_id: khóa được mở theo hạng mục nào của kế hoạch đào tạo.
+// khóa học.
 const courseSelect = `
   SELECT c.*,
          tf.name AS training_form_name,
-         pi.title AS plan_item_title, tpl.title AS plan_title, tpl.year AS plan_year,
          (SELECT STRING_AGG(cp.program_id, ',') FROM course_programs cp WHERE cp.course_id = c.id) AS program_ids,
          (SELECT COUNT(*) FROM course_enrollments WHERE course_id = c.id) AS enrollment_count,
          (SELECT COUNT(*) FROM course_enrollments WHERE course_id = c.id AND status = 'approved') AS approved_count,
@@ -70,8 +69,6 @@ const courseSelect = `
          (SELECT STRING_AGG(tp.name, ', ') FROM course_programs cp JOIN training_programs tp ON tp.id = cp.program_id WHERE cp.course_id = c.id) AS program_names
   FROM courses c
   LEFT JOIN training_forms tf ON tf.id = c.training_form_id
-  LEFT JOIN training_plan_items pi ON pi.id = c.plan_item_id
-  LEFT JOIN training_plans tpl ON tpl.id = pi.plan_id
 `;
 
 // ─── Courses ──────────────────────────────────────────────────────────────
@@ -82,7 +79,6 @@ const getAll = async (
 		search = undefined,
 		program_id = undefined,
 		status = undefined,
-		plan_item_id = undefined,
 	} = {},
 	actor = null,
 ) => {
@@ -104,10 +100,6 @@ const getAll = async (
 	if (status) {
 		where.push('c.status = @status');
 		req.input('status', sql.VarChar(15), status);
-	}
-	if (plan_item_id) {
-		where.push('c.plan_item_id = @plan_item_id');
-		req.input('plan_item_id', sql.VarChar(20), plan_item_id);
 	}
 	if (actor && scopeOf(actor, 'courses') === 'assigned') {
 		where.push(ASSIGNED_EXISTS_SQL);
@@ -152,7 +144,6 @@ const create = async (data, actorId) => {
 		.input('actor_id', sql.VarChar(20), actorId)
 		.input('name', sql.NVarChar(255), data.name)
 		.input('training_form_id', sql.VarChar(20), data.training_form_id || null)
-		.input('plan_item_id', sql.VarChar(20), data.plan_item_id || null)
 		.input('start_date', sql.Date, data.start_date || null)
 		.input('end_date', sql.Date, data.end_date || null)
 		.input('enrollment_start_date', sql.Date, data.enrollment_start_date || null)
@@ -166,8 +157,8 @@ const create = async (data, actorId) => {
       DECLARE @new_id VARCHAR(20);
       EXEC sp_gen_course_id @actor_id = @actor_id, @new_id = @new_id OUTPUT;
       EXEC sp_set_actor @actor_id;
-      INSERT INTO courses (id, name, training_form_id, plan_item_id, start_date, end_date, enrollment_start_date, enrollment_end_date, capacity, status, is_public_registration, description, prerequisites, objectives, created_by)
-      VALUES (@new_id, @name, @training_form_id, @plan_item_id, @start_date, @end_date, @enrollment_start_date, @enrollment_end_date, @capacity, @status, @is_public_registration, @description, @prerequisites, @objectives, @actor_id);
+      INSERT INTO courses (id, name, training_form_id, start_date, end_date, enrollment_start_date, enrollment_end_date, capacity, status, is_public_registration, description, prerequisites, objectives, created_by)
+      VALUES (@new_id, @name, @training_form_id, @start_date, @end_date, @enrollment_start_date, @enrollment_end_date, @capacity, @status, @is_public_registration, @description, @prerequisites, @objectives, @actor_id);
       SELECT @new_id AS id;
     `);
 	const id = result.recordset[0].id;
@@ -187,7 +178,6 @@ const update = async (id, data, actorId) => {
 	const fieldMap = {
 		name: sql.NVarChar(255),
 		training_form_id: sql.VarChar(20),
-		plan_item_id: sql.VarChar(20),
 		start_date: sql.Date,
 		end_date: sql.Date,
 		enrollment_start_date: sql.Date,

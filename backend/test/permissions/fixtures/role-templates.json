@@ -81,7 +81,6 @@
 			"training_catalog:delete": null,
 			"training_catalog:read": null,
 			"training_catalog:update": null,
-			"training_plans:manage": null,
 			"training_programs:create": null,
 			"training_programs:delete": null,
 			"training_programs:read": null,

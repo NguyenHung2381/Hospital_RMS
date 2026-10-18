@@ -301,18 +301,6 @@ const MODULES = [
 				],
 			},
 			{
-				key: 'training_plans',
-				label: 'Kế hoạch đào tạo',
-				permissions: [
-					p(
-						'PERM-TRNPLAN-MANAGE',
-						'manage',
-						'Quản lý kế hoạch đào tạo',
-						'Lập/sửa/xoá kế hoạch đào tạo theo năm và các hạng mục trong kế hoạch',
-					),
-				],
-			},
-			{
 				key: 'lecturers',
 				label: 'Giảng viên',
 				permissions: [

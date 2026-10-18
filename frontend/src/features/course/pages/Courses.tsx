@@ -35,7 +35,6 @@ const EXCEL_COLS: ExcelColumn<Course>[] = [
 	{ header: 'Sĩ số', key: 'capacity', value: (x) => x.capacity },
 	{ header: 'Đăng ký công khai', key: 'is_public_registration', value: (x) => (x.is_public_registration ? 'Có' : 'Không') },
 	{ header: 'Mô tả', key: 'description', value: (x) => x.description },
-	{ header: 'Kế hoạch', value: (x) => (x.plan_title ? `${x.plan_year} · ${x.plan_title} — ${x.plan_item_title}` : '') },
 	{ header: 'Trạng thái', value: (x) => DISPLAY_STATUS_CFG[x.display_status]?.label },
 	{ header: 'Đã duyệt', value: (x) => x.approved_count },
 	{ header: 'Chờ duyệt', value: (x) => x.pending_count },

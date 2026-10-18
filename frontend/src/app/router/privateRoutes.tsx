@@ -65,9 +65,6 @@ const TrainingPrograms = lazy(
 	() => import('../../features/training-program/pages/TrainingPrograms'),
 );
 const Lessons = lazy(() => import('../../features/training-program/pages/Lessons'));
-const TrainingPlan = lazy(
-	() => import('../../features/training-plan/pages/TrainingPlan'),
-);
 const Survey = lazy(() => import('../../features/survey/pages/Survey'));
 const Workflow = lazy(() => import('../../features/workflow/pages/Workflow'));
 const UserSurveys = lazy(
@@ -267,14 +264,6 @@ export const adminRoutes: RouteObject[] = [
 	{
 		path: '/admin/lessons',
 		element: admin('Bài học', <Lessons />),
-	},
-	{
-		path: '/admin/training-plans',
-		element: (
-			<RequirePermission perm='training_plans:manage'>
-				{admin('Kế hoạch đào tạo', <TrainingPlan />)}
-			</RequirePermission>
-		),
 	},
 	{
 		path: '/admin/staff-attendance',

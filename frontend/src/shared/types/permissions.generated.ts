@@ -48,7 +48,6 @@ export const PERMISSION_KEYS = [
 	'training_programs:create',
 	'training_programs:update',
 	'training_programs:delete',
-	'training_plans:manage',
 	'lecturers:read',
 	'lecturers:create',
 	'lecturers:update',

@@ -341,13 +341,6 @@ POST   /api/v1/training-forms  training_catalog:create
 GET    /api/v1/training-forms/:id  authOnly
 DELETE /api/v1/training-forms/:id  training_catalog:delete
 PUT    /api/v1/training-forms/:id  training_catalog:update
-GET    /api/v1/training-plans/  training_plans:manage
-POST   /api/v1/training-plans/  training_plans:manage
-GET    /api/v1/training-plans/:id  training_plans:manage
-PUT    /api/v1/training-plans/:id  training_plans:manage
-DELETE /api/v1/training-plans/:id  training_plans:manage
-PUT    /api/v1/training-plans/:id/items  training_plans:manage
-GET    /api/v1/training-plans/item-options  training_plans:manage
 POST   /api/v1/training-programs/  training_programs:create
 GET    /api/v1/training-programs/  training_programs:read
 DELETE /api/v1/training-programs/:id  training_programs:delete

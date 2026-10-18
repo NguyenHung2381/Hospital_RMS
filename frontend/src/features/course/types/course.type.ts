@@ -12,11 +12,6 @@ export interface Course {
 	name: string;
 	program_names: string | null;
 	program_ids: string[];
-	/** Hạng mục kế hoạch đào tạo mà khóa được mở theo. */
-	plan_item_id: string | null;
-	plan_item_title: string | null;
-	plan_title: string | null;
-	plan_year: number | null;
 	training_form_id: string | null;
 	training_form_name: string | null;
 	start_date: string | null;
@@ -40,7 +35,6 @@ export interface Course {
 export interface CourseFormData {
 	name: string;
 	program_ids: string[];
-	plan_item_id: string;
 	training_form_id: string;
 	start_date: string;
 	end_date: string;
@@ -62,7 +56,6 @@ export interface CourseListResponse {
 export const EMPTY_FORM: CourseFormData = {
 	name: '',
 	program_ids: [],
-	plan_item_id: '',
 	training_form_id: '',
 	start_date: '',
 	end_date: '',

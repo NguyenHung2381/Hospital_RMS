@@ -100,7 +100,9 @@ export const createCmeRecordFromImportRow = (row: CmeRecordImportRow, userId: st
 export const downloadCmeRecordImportTemplate = () => apiClient.postBlob('/cme-records/import-template', {});
 
 export interface CmeRecordExportFilters {
-	year?: number;
+	/** Khoảng năm của báo cáo — trống = không giới hạn đầu đó, trống cả hai = mọi năm */
+	from_year?: number;
+	to_year?: number;
 	search?: string;
 	department?: string;
 	category_id?: string;

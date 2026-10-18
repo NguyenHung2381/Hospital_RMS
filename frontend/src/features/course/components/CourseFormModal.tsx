@@ -96,7 +96,6 @@ export function CourseFormModal({
 			? {
 					name: course.name,
 					program_ids: course.program_ids,
-					plan_item_id: course.plan_item_id ?? '',
 					training_form_id: course.training_form_id ?? '',
 					start_date: course.start_date ? course.start_date.slice(0, 10) : '',
 					end_date: course.end_date ? course.end_date.slice(0, 10) : '',
@@ -113,25 +112,10 @@ export function CourseFormModal({
 	);
 	const [forms, setForms] = useState<SimpleItem[]>([]);
 	const [programs, setPrograms] = useState<SimpleItem[]>([]);
-	const [planItems, setPlanItems] = useState<SimpleItem[]>([]);
 
 	useEffect(() => {
 		apiClient.get<{ data: SimpleItem[] }>('/training-forms?limit=0').then((r) => setForms(r.data)).catch(() => {});
 		apiClient.get<{ data: SimpleItem[] }>('/training-programs?limit=0').then((r) => setPrograms(r.data)).catch(() => {});
-		// Cần quyền Kế hoạch đào tạo — không có quyền thì ẩn ô chọn
-		apiClient
-			.get<{ id: string; title: string; quarter: number | null; plan_title: string; year: number }[]>(
-				'/training-plans/item-options',
-			)
-			.then((r) =>
-				setPlanItems(
-					r.map((i) => ({
-						id: i.id,
-						name: `${i.year} · ${i.plan_title} — ${i.title}${i.quarter ? ` (Q${i.quarter})` : ''}`,
-					})),
-				),
-			)
-			.catch(() => {});
 	}, []);
 	const [errors, setErrors] = useState<Partial<Record<keyof CourseFormData, string>>>({});
 
@@ -217,34 +201,6 @@ export function CourseFormModal({
 						</div>
 					)}
 				</FormField>
-				{(planItems.length > 0 || form.plan_item_id) && (
-					<FormField
-						label='Thuộc kế hoạch đào tạo'
-						hint='Gắn khóa vào hạng mục kế hoạch để theo dõi tiến độ thực hiện kế hoạch.'
-						style={{ gridColumn: '1 / -1' }}
-					>
-						<select
-							className={styles.formInput}
-							value={form.plan_item_id}
-							onChange={set('plan_item_id')}
-						>
-							<option value=''>-- Không thuộc kế hoạch --</option>
-							{form.plan_item_id && !planItems.some((i) => i.id === form.plan_item_id) && (
-								<option value={form.plan_item_id}>
-									{course?.plan_item_title ?? 'Hạng mục hiện tại'}
-								</option>
-							)}
-							{planItems.map((i) => (
-								<option
-									key={i.id}
-									value={i.id}
-								>
-									{i.name}
-								</option>
-							))}
-						</select>
-					</FormField>
-				)}
 				<div className={styles.formGroup}>
 					<label className={styles.formLabel}>Chế độ đăng ký</label>
 					<select

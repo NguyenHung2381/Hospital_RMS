@@ -153,11 +153,6 @@ export default function CourseDetail() {
 							</Info>
 							<Info label='Chế độ'>{course.is_public_registration ? 'Công khai' : 'Nội bộ'}</Info>
 							<Info label='Hình thức'>{course.training_form_name ?? '—'}</Info>
-							{course.plan_item_title && (
-								<Info label='Thuộc kế hoạch'>
-									{course.plan_year} · {course.plan_title} — {course.plan_item_title}
-								</Info>
-							)}
 						</div>
 						{course.description && <p className={styles.infoDesc}>{course.description}</p>}
 					</div>

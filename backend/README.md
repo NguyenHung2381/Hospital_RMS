@@ -52,7 +52,7 @@ Các module trong `src/modules/`:
 | `councils` | `/councils` | hội đồng, phân công, tiến độ đánh giá |
 | `seminars` | `/seminars` | hội nghị/hội thảo, người tham dự, xuất Excel |
 | `cme` | `/cme-records` | hồ sơ CME, yêu cầu tín chỉ, báo cáo |
-| `training/` | `/courses`, `/training-programs`, `/training-plans`, `/trainees`, `/exams`, `/lecturers` | thư mục con `courses` (theo khuôn module, xem dưới), `programs`, `plans`, `trainees`, `exams`, `lecturers`, `reports`; `trainingFileService` dùng chung |
+| `training/` | `/courses`, `/training-programs`, `/trainees`, `/exams`, `/lecturers` | thư mục con `courses` (theo khuôn module, xem dưới), `programs`, `trainees`, `exams`, `lecturers`, `reports`; `trainingFileService` dùng chung |
 | `attendance` | `/staff-attendance` | chấm công, ca làm |
 | `staffLicenses` | `/staff-licenses` | chứng chỉ hành nghề |
 | `surveys` | `/surveys` | khảo sát |

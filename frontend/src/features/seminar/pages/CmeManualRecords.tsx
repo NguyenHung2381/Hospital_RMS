@@ -132,6 +132,149 @@ function YearFilter({ value, onChange }: { value: number | null; onChange: (y: n
 	);
 }
 
+const MAX_REPORT_YEARS = 20;
+const REPORT_PRESETS = [
+	{ label: 'Năm nay', years: 1 },
+	{ label: '3 năm gần nhất', years: 3 },
+	{ label: '5 năm gần nhất', years: 5 },
+] as const;
+
+/**
+ * Xuất báo cáo CME theo khoảng năm: chọn "Từ năm – Đến năm" (hoặc tất cả các năm).
+ * Nhiều năm thì file có thêm cột từng năm ở BC tổng / Theo khoa / Chưa đạt, sheet "Theo năm"
+ * và mỗi năm một sheet riêng "Năm <yyyy>".
+ */
+function ExportReportModal({
+	initialYear,
+	search,
+	department,
+	onClose,
+}: {
+	initialYear: number | null;
+	search: string;
+	department: string;
+	onClose: () => void;
+}) {
+	const [allYears, setAllYears] = useState(false);
+	const [from, setFrom] = useState(initialYear ?? THIS_YEAR);
+	const [to, setTo] = useState(initialYear ?? THIS_YEAR);
+	const [busy, setBusy] = useState(false);
+	const [error, setError] = useState('');
+
+	// Giữ Từ ≤ Đến và không quá MAX_REPORT_YEARS năm: chỉnh đầu kia theo đầu vừa đổi
+	const pickFrom = (y: number) => {
+		setFrom(y);
+		if (y > to) setTo(y);
+		else if (to - y + 1 > MAX_REPORT_YEARS) setTo(y + MAX_REPORT_YEARS - 1);
+	};
+	const pickTo = (y: number) => {
+		setTo(y);
+		if (y < from) setFrom(y);
+		else if (y - from + 1 > MAX_REPORT_YEARS) setFrom(y - MAX_REPORT_YEARS + 1);
+	};
+	const span = to - from + 1;
+
+	const run = async () => {
+		setBusy(true);
+		setError('');
+		try {
+			const blob = await exportCmeRecordsExcel({
+				from_year: allYears ? undefined : from,
+				to_year: allYears ? undefined : to,
+				search: search.trim() || undefined,
+				department: department || undefined,
+			});
+			const suffix = allYears ? '' : from === to ? `-${from}` : `-${from}-${to}`;
+			saveBlob(blob, `bao-cao-cme${suffix}.xlsx`);
+			onClose();
+		} catch (e) {
+			setError(e instanceof Error ? e.message : 'Xuất Excel thất bại');
+		} finally {
+			setBusy(false);
+		}
+	};
+
+	return (
+		<Modal
+			open
+			onClose={() => !busy && onClose()}
+			title='Xuất báo cáo tín chỉ CME'
+			subtitle='BC tổng + BC chi tiết theo hình thức, gồm cả hội thảo đã cấp CME'
+			size='md'
+			footer={
+				<>
+					<button className={styles.btnCancel} onClick={onClose} disabled={busy}>
+						Huỷ
+					</button>
+					<button className={styles.btnPrimary} onClick={run} disabled={busy}>
+						{busy ? <span className={styles.spinner} /> : <DownloadSvg />} Xuất Excel
+					</button>
+				</>
+			}
+		>
+			{error && <div className={styles.fieldError}>{error}</div>}
+			<div className={styles.formGroup}>
+				<label className={styles.formLabel}>Phạm vi năm</label>
+				<div className={styles.yearMode} role='group' aria-label='Phạm vi năm'>
+					{REPORT_PRESETS.map((p) => {
+						const active = !allYears && to === THIS_YEAR && span === p.years;
+						return (
+							<button
+								key={p.label}
+								type='button'
+								className={active ? styles.yearModeActive : ''}
+								onClick={() => {
+									setAllYears(false);
+									setTo(THIS_YEAR);
+									setFrom(THIS_YEAR - p.years + 1);
+								}}
+							>
+								{p.label}
+							</button>
+						);
+					})}
+					<button
+						type='button'
+						className={allYears ? styles.yearModeActive : ''}
+						onClick={() => setAllYears(true)}
+					>
+						Tất cả năm
+					</button>
+				</div>
+			</div>
+			{!allYears && (
+				<div className={styles.formGrid} style={{ marginTop: 12 }}>
+					<div className={styles.formGroup}>
+						<label className={styles.formLabel}>Từ năm</label>
+						<YearStepper value={from} onChange={pickFrom} />
+					</div>
+					<div className={styles.formGroup}>
+						<label className={styles.formLabel}>Đến năm</label>
+						<YearStepper value={to} onChange={pickTo} />
+					</div>
+				</div>
+			)}
+			<div className={styles.hint} style={{ marginTop: 12 }}>
+				{allYears
+					? 'Cộng dồn tín chỉ của mọi năm; mỗi năm có dữ liệu là một cột riêng.'
+					: span === 1
+						? `Báo cáo năm ${from}.`
+						: `Giai đoạn ${from} – ${to} (${span} năm): BC tổng, Theo khoa, Chưa đạt có cột số tiết từng năm; thêm sheet "Theo năm" và mỗi năm một sheet riêng "Năm …". Ngưỡng đánh giá = cộng dồn ngưỡng các năm (tối đa ${MAX_REPORT_YEARS} năm).`}
+				{(department || search.trim()) && (
+					<>
+						<br />
+						Áp dụng bộ lọc đang chọn:{' '}
+						{[department && `khoa/phòng "${department}"`, search.trim() && `từ khoá "${search.trim()}"`]
+							.filter(Boolean)
+							.join(', ')}
+						.
+					</>
+				)}
+			</div>
+		</Modal>
+	);
+}
+
 function formatCredits(n: number): string {
 	return Number(n).toLocaleString('vi-VN', { maximumFractionDigits: 2 });
 }
@@ -1408,23 +1551,8 @@ export default function CmeManualRecords() {
 		setStatusFilter('');
 	};
 
-	const [exporting, setExporting] = useState(false);
-	const handleExport = async () => {
-		setExporting(true);
-		try {
-			// Báo cáo tổng hợp theo nhân sự (BC tổng + BC chi tiết theo hình thức), lọc theo năm/khoa/từ khoá
-			const blob = await exportCmeRecordsExcel({
-				year: year ?? undefined,
-				search: search.trim() || undefined,
-				department: deptFilter || undefined,
-			});
-			saveBlob(blob, `bao-cao-cme${year ? `-${year}` : ''}.xlsx`);
-		} catch (e) {
-			alert(e instanceof Error ? e.message : 'Xuất Excel thất bại');
-		} finally {
-			setExporting(false);
-		}
-	};
+	// Báo cáo tổng hợp theo nhân sự — chọn khoảng năm trong hộp thoại, lọc khoa/từ khoá theo trang
+	const [showExport, setShowExport] = useState(false);
 
 	// Duyệt / từ chối đồng loạt: chọn theo id (giữ khi đổi trang), bỏ qua bản ghi
 	// đã ở trạng thái đích. Bản ghi lỗi được giữ lại trong lựa chọn để thử lại.
@@ -1495,11 +1623,10 @@ export default function CmeManualRecords() {
 					<div style={{ display: 'flex', gap: 8 }}>
 						<button
 							className={styles.btnGhost}
-							onClick={handleExport}
-							disabled={exporting}
-							title='Báo cáo tín chỉ CME theo nhân sự: BC tổng + BC chi tiết theo hình thức (gồm cả hội thảo đã cấp CME)'
+							onClick={() => setShowExport(true)}
+							title='Báo cáo tín chỉ CME theo nhân sự, chọn từ năm – đến năm: BC tổng + BC chi tiết theo hình thức (gồm cả hội thảo đã cấp CME)'
 						>
-							{exporting ? <span className={styles.spinner} /> : <DownloadSvg />} Xuất báo cáo
+							<DownloadSvg /> Xuất báo cáo
 						</button>
 						<button className={styles.btnGhost} onClick={() => setShowImport(true)}>
 							<UploadSvg /> Nhập từ Excel
@@ -1822,6 +1949,14 @@ export default function CmeManualRecords() {
 					groups={groups}
 					onClose={() => setEditing(null)}
 					onSaved={refresh}
+				/>
+			)}
+			{showExport && (
+				<ExportReportModal
+					initialYear={year}
+					search={search}
+					department={deptFilter}
+					onClose={() => setShowExport(false)}
 				/>
 			)}
 			{showImport && <ImportModal categories={categories} groups={groups} onClose={() => setShowImport(false)} onDone={refresh} />}

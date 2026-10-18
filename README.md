@@ -530,7 +530,7 @@ Hospital_RMS/
 | Người dùng | `/users` |
 | Nghiên cứu | `/topics`, `/councils`, `/files`, `/workflows` |
 | Hội thảo & CME | `/seminars`, `/cme-records`, `/staff-licenses` |
-| Đào tạo | `/trainees`, `/lecturers`, `/courses`, `/training-programs`, `/training-plans`, `/exams`, `/surveys` |
+| Đào tạo | `/trainees`, `/lecturers`, `/courses`, `/training-programs`, `/exams`, `/surveys` |
 | Tổng hợp | `/dashboard`, `/my-tasks`, `/notifications`, `/events` (SSE, vé dùng 1 lần `?ticket=` lấy từ `POST /events/ticket`) |
 | Hệ thống | `/activity-logs`, `/security-events`, `/system-settings`, `/persons/merge-candidates` |
 | Công khai | `/public`: captcha, khoá học mở, đăng ký, tra cứu trạng thái đề tài, đề tài tiêu biểu |

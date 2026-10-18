@@ -48,7 +48,6 @@ const RESOURCE_ICON: Record<string, React.ReactNode> = {
 	courses: <LayersSvg />,
 	exams: <LayersSvg />,
 	cme_records: <InfoSvg />,
-	training_plans: <LayersSvg />,
 	staff_licenses: <InfoSvg />,
 	persons: <UsersSvg />,
 	surveys: <InfoSvg />,

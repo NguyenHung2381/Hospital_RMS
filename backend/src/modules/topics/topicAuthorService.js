@@ -13,7 +13,7 @@ const listAuthors = async (topicId) => {
 };
 
 // Xoá hết rồi chèn lại toàn bộ danh sách tác giả theo đúng thứ tự mảng gửi lên
-// (mirror trainingPlanService.setItems/surveyService.setQuestions) — đơn giản
+// (mirror surveyService.setQuestions) — đơn giản
 // hơn diff từng dòng, phù hợp vì số tác giả/bài báo nhỏ.
 const setAuthors = async (topicId, authors, actorId) => {
 	const pool = await getPool();
