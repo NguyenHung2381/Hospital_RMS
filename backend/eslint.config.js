@@ -51,6 +51,24 @@ module.exports = [
 		},
 	},
 	{
+		// Controller chỉ đọc request → gọi service → trả response: SQL ở service/
+		// repository, dựng file Excel ở exports/ (xem README, mục Khuôn module).
+		files: ['src/modules/**/*Controller.js', 'src/shared/**/*Controller.js'],
+		rules: {
+			'no-restricted-syntax': [
+				'error',
+				{
+					selector: "CallExpression[callee.name='require'][arguments.0.value=/config\\/db$/]",
+					message: 'Controller không truy vấn DB — đưa SQL vào service/repository.',
+				},
+				{
+					selector: "CallExpression[callee.name='require'][arguments.0.value='exceljs']",
+					message: 'Controller không dựng Excel — đưa vào <module>/exports/.',
+				},
+			],
+		},
+	},
+	{
 		// Log ứng dụng đi qua config/logger.js (pino). scripts/ (CLI) vẫn dùng console.
 		files: ['src/**/*.js'],
 		ignores: ['src/config/logger.js'],

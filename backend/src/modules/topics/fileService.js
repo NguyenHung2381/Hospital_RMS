@@ -76,4 +76,14 @@ const deleteFile = async (fileId, actorId) => {
 	broadcast('update', { entity: 'file' });
 };
 
-module.exports = { uploadFiles, getByTopic, getBatches, deleteFile };
+// Đề tài chứa file (chưa xoá); null nếu không có — dùng kiểm tra quyền trước khi xoá.
+const findTopicId = async (fileId) => {
+	const pool = await getPool();
+	const { recordset } = await pool
+		.request()
+		.input('fid', sql.VarChar(32), fileId)
+		.query(`SELECT topic_id FROM files WHERE id = @fid AND is_deleted = 0`);
+	return recordset[0]?.topic_id ?? null;
+};
+
+module.exports = { uploadFiles, getByTopic, getBatches, deleteFile, findTopicId };

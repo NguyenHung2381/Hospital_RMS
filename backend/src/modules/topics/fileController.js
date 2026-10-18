@@ -1,37 +1,26 @@
 const fileService = require('./fileService');
 const topicService = require('./topicService');
 const { success, created } = require('../../utils/response');
-const { getPool, sql } = require('../../config/db');
 const { assertTopicActionWindow } = require('./deadlineGuard');
 const { isDeadlineBound } = require('../../permissions/authz');
 const { asyncHandler } = require('../../utils/asyncHandler');
 
 // Middleware: chỉ áp dụng với vai trò phạm vi "own" (đơn vị/superuser không bị chặn theo mốc)
-const checkUploadWindow = async (req, res, next) => {
+const checkUploadWindow = asyncHandler(async (req, res, next) => {
 	if (!isDeadlineBound(req.user)) return next();
-	try {
-		await assertTopicActionWindow(req.params.topic_id, req.user.id, 'add-files');
-		next();
-	} catch (err) {
-		next(err);
-	}
-};
+	await assertTopicActionWindow(req.params.topic_id, req.user.id, 'add-files');
+	next();
+});
 
 // Middleware xoá file: chỉ cho phép trong cửa sổ "Sửa" hoặc "Bổ sung" (có mục Tài liệu).
 // Mọi vai trò: file phải thuộc đề tài trong phạm vi của người xoá (chống IDOR —
 // trước đây phạm vi khoa xoá được file của đề tài khoa khác theo file_id).
 const checkDeleteWindow = asyncHandler(async (req, res, next) => {
-	const pool = await getPool();
-	const { recordset } = await pool
-		.request()
-		.input('fid', sql.VarChar(32), req.params.file_id)
-		.query(`SELECT topic_id FROM files WHERE id = @fid AND is_deleted = 0`);
-	if (!recordset[0]) {
-		return res.status(404).json({ success: false, message: 'Không tìm thấy file' });
-	}
-	await topicService.assertTopicInScope(recordset[0].topic_id, req.user);
+	const topicId = await fileService.findTopicId(req.params.file_id);
+	if (!topicId) return res.status(404).json({ success: false, message: 'Không tìm thấy file' });
+	await topicService.assertTopicInScope(topicId, req.user);
 	if (!isDeadlineBound(req.user)) return next();
-	await assertTopicActionWindow(recordset[0].topic_id, req.user.id, 'delete-files');
+	await assertTopicActionWindow(topicId, req.user.id, 'delete-files');
 	next();
 });
 
