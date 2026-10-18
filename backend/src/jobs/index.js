@@ -2,6 +2,8 @@ const cron = require('node-cron');
 const deadlineReminderJob = require('./deadlineReminderJob');
 const accountMaintenanceJob = require('./accountMaintenanceJob');
 const personLinkJob = require('./personLinkJob');
+const supplementDeadlineJob = require('./supplementDeadlineJob');
+const notificationCleanupJob = require('./notificationCleanupJob');
 const logger = require('../config/logger');
 
 const TZ = process.env.CRON_TZ || 'Asia/Ho_Chi_Minh';
@@ -23,6 +25,11 @@ const start = () => {
 		return;
 	}
 
+	// 00:15 sáng: đề tài quá hạn mốc bổ sung (mốc qua từ hôm qua) ⇒ tự từ chối
+	cron.schedule('15 0 * * *', runSafely('supplement_auto_reject', supplementDeadlineJob.run), {
+		timezone: TZ,
+	});
+
 	// 01:00 sáng: bảo trì tài khoản (vô hiệu hoá TK hết hạn, cảnh báo mật khẩu cũ)
 	cron.schedule('0 1 * * *', runSafely('account_maintenance', accountMaintenanceJob.run), {
 		timezone: TZ,
@@ -35,6 +42,11 @@ const start = () => {
 
 	// 03:00 sáng: gắn nốt person_id cho bản ghi nguồn còn thiếu (dual-write danh tính)
 	cron.schedule('0 3 * * *', runSafely('person_link', personLinkJob.run), {
+		timezone: TZ,
+	});
+
+	// 04:00 sáng: xoá thông báo cũ (đã đọc > 90 ngày, chưa đọc > 180 ngày)
+	cron.schedule('0 4 * * *', runSafely('notification_cleanup', notificationCleanupJob.run), {
 		timezone: TZ,
 	});
 

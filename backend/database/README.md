@@ -63,10 +63,22 @@ Cách này không ghi vào `schema_migrations`. Sau đó cần chạy `npm run m
 | Sinh mã | 23 `sp_gen_*` đang dùng (gồm `sp_gen_cme_no`, `sp_gen_certificate_no`) | JS, `sp_upload_files`, `sp_create_refresh_token`… | Giữ. Phần lớn giống hệt nhau (tiền tố + `yyyyMMdd` + STT, khoá `sp_getapplock`), chỉ khác tiền tố/bảng/mã lỗi. **Không** gộp thành 1 proc dùng SQL động (mất kiểm tra tên bảng, khó cấp quyền EXECUTE). Mã mới sinh ở JS như `levelService.createWithSeqId` cũng được. |
 | Sinh mã, không ai gọi | `sp_gen_approval_id`, `sp_gen_category_id`, `sp_gen_level_id`, `sp_gen_permission_id`, `sp_gen_pgroup_id`, `sp_gen_progress_id`, `sp_gen_role_id` | — | Đã có cách khác thay (crudService, `createWithSeqId`, `trg_topic_auto_approval` tự sinh). Xoá bằng migration sau khi xác nhận production không còn gì gọi. |
 | Nghiệp vụ trong DB | `trg_topic_auto_approval` (đề tài → `submitted` thì tạo dòng `approvals`), `sp_approve_topic` (+ `sp_grant_member_accounts`: duyệt, cấp tài khoản thành viên, thông báo), `sp_upload_files`, `trg_file_batch_count`, `trg_dept_gen_id`, `sp_push_notification` (+ `sp_resolve_recipients`), `sp_create_refresh_token`, `sp_deactivate_expired_accounts` | JS / DB | Giữ cho tới khi sửa nghiệp vụ liên quan thì chuyển về JS (service có test). Nên làm trước: `trg_topic_auto_approval` (logic ẩn, đọc code JS không thấy) và `sp_approve_topic` (gộp 3 việc + thông báo trong 1 proc 150 dòng). |
-| Việc định kỳ bằng SQL | `sp_process_daily_deadlines` (tự đóng mốc `auto_close`, rồi gọi `sp_cleanup_expired_tokens`, `sp_deactivate_expired_accounts`, `sp_cleanup_old_notifications`), `sp_remind_deadlines`, `sp_close_supplement_window` | Không có trong repo. Comment trong proc ghi "được gọi bởi SQL Agent Job hàng ngày". | **Cần kiểm tra trên production** (xem dưới). Nhắc deadline, dọn refresh token, khoá tài khoản hết hạn đã có job JS (`src/jobs/`); **tự đóng mốc deadline và dọn thông báo cũ thì chỉ có ở proc này**. |
+| Việc định kỳ (đã chuyển sang `src/jobs/`) | `sp_process_daily_deadlines`, `sp_remind_deadlines`: thành **no-op** từ `2026-11-04_retire_scheduled_deadline_procs.sql` (giữ tên + tham số để Agent job nếu còn vẫn chạy được). `sp_close_supplement_window` (đóng tay theo đợt, **duyệt** đề tài đang bổ sung) | Không ai gọi | Việc định kỳ chạy bằng job Node, xem mục dưới. `sp_close_supplement_window` ngược với quyết định tự **từ chối**, nên xoá ở bản phát hành sau. |
 | Không ai gọi | `sp_use_refresh_token` (xoay refresh token đã làm ở `authService`), `vw_approvals_audit`, `vw_topics_audit` | — | Hai view có thể đang được dùng để xem/báo cáo trực tiếp trên DB. Hỏi người vận hành rồi mới xoá. |
 
-Câu hỏi còn mở: SQL Agent trên production có job gọi các proc trên không? Bản Express (dev) không có SQL Agent, nên ở dev `sp_process_daily_deadlines` chắc chắn không chạy. `src/jobs/accountMaintenanceJob.js` cũng ghi rằng `sp_deactivate_expired_accounts` "chưa có gì gọi tới". Kiểm tra trên server production:
+### Việc định kỳ (quyết định 18/10/2026)
+
+Mọi việc định kỳ chạy bằng job Node (`src/jobs/index.js`, giờ VN). Mỗi worker đều lên lịch, nhưng nhờ `markOnce` mỗi việc chỉ chạy 1 lần.
+
+| Giờ | Job | Việc |
+|---|---|---|
+| 00:15 | `supplementDeadlineJob` | Đề tài "Yêu cầu bổ sung" quá **mốc bổ sung muộn nhất** của đợt ⇒ **tự từ chối** qua đúng luồng duyệt (`sp_approve_topic`: approvals, lịch sử, thông báo), ghi theo người đã yêu cầu bổ sung. Bỏ qua (ghi log, xử lý tay) đề tài được yêu cầu bổ sung **sau** khi mốc đã qua, hoặc không rõ người yêu cầu. Proc cũ làm ngược lại (tự **duyệt**), và đóng ngay khi một mốc bất kỳ qua. |
+| 01:00 | `accountMaintenanceJob` | Khoá tài khoản hết hạn, dọn refresh token hết hạn, nhắc đổi mật khẩu cũ |
+| 02:00 | `deadlineReminderJob` | Nhắc deadline sắp tới / quá hạn |
+| 03:00 | `personLinkJob` | Gắn `person_id` còn thiếu |
+| 04:00 | `notificationCleanupJob` | Xoá thông báo **đã đọc > 90 ngày**, **chưa đọc > 180 ngày**, theo lô 2000 dòng. Proc cũ chỉ xoá loại đã đọc, và `sp_process_daily_deadlines` gọi sai tên tham số nên bước này luôn lỗi. |
+
+Trên production, nếu SQL Agent còn job gọi các proc cũ thì nay job đó vô hại (no-op), nhưng nên tắt cho gọn. Kiểm tra:
 
 ```sql
 SELECT j.name AS job, j.enabled, s.step_name, s.command
@@ -77,6 +89,3 @@ WHERE s.command LIKE '%sp_process_daily_deadlines%'
    OR s.command LIKE '%sp_close_supplement_window%'
    OR s.command LIKE '%sp_cleanup_%';
 ```
-
-- **Có job:** `sp_deactivate_expired_accounts` và việc dọn refresh token đang chạy 2 lần mỗi ngày (job SQL và job JS). Vô hại nhưng thừa, nên bỏ 1 bên.
-- **Không có job:** mốc deadline không tự đóng (`deadline_actions.auto_close`), và `notifications` không bao giờ được dọn. Chuyển 2 việc này sang `src/jobs/` rồi xoá các proc định kỳ.
