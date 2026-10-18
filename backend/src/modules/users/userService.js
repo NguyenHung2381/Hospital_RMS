@@ -3,7 +3,7 @@ const { getPool, sql, withTransaction } = require('../../config/db');
 const { broadcast } = require('../events/eventService');
 const personService = require('../persons/personService');
 const securityEvents = require('../audit/securityEventService');
-const userStatusCache = require('../../middlewares/userStatusCache');
+const userStatusCache = require('../../permissions/userStatusCache');
 const { bumpTokenVersion } = require('../auth/sessionVersion');
 const { paging } = require('../../utils/paging');
 // department_id/role_id nhận danh sách phân tách bởi dấu phẩy (multi-select trên UI)

@@ -44,4 +44,28 @@ const toStoredUploadPath = (url, prefix) => {
 	return pathname;
 };
 
-module.exports = { UPLOADS_ROOT, SAFE_ID, uniqueFilename, removeUploadedFile, toStoredUploadPath };
+// Chuyển file tạm sang thư mục đích; trả về danh sách file đã chuyển (path mới).
+const moveUploadedFiles = async (files, destDir) => {
+	await fs.promises.mkdir(destDir, { recursive: true });
+	const moved = [];
+	try {
+		for (const f of files) {
+			const target = path.join(destDir, f.filename);
+			await fs.promises.rename(f.path, target);
+			moved.push({ ...f, path: target });
+		}
+	} catch (err) {
+		await Promise.all(moved.map((f) => fs.promises.unlink(f.path).catch(() => {})));
+		throw err;
+	}
+	return moved;
+};
+
+module.exports = {
+	UPLOADS_ROOT,
+	SAFE_ID,
+	uniqueFilename,
+	removeUploadedFile,
+	toStoredUploadPath,
+	moveUploadedFiles,
+};

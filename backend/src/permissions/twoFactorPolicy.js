@@ -1,6 +1,6 @@
 const { getPool, sql } = require('../config/db');
 const { ALL_PERMISSIONS } = require('./catalog');
-const userStatusCache = require('../middlewares/userStatusCache');
+const userStatusCache = require('./userStatusCache');
 const systemSettingService = require('../modules/settings/systemSettingService');
 
 // Bắt buộc xác thực 2 lớp cho tài khoản quản trị: superuser, hoặc vai trò có

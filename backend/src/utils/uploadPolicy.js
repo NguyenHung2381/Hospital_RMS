@@ -1,5 +1,5 @@
 const systemSettingService = require('../modules/settings/systemSettingService');
-const { DOCUMENT_EXTENSIONS } = require('../middlewares/fileTypeAllowlist');
+const { DOCUMENT_EXTENSIONS } = require('./fileTypeAllowlist');
 
 // Định dạng & dung lượng file tài liệu được nhận — admin chỉnh ở Cấu hình hệ
 // thống (UPLOAD_ALLOWED_EXTENSIONS, UPLOAD_MAX_MB), fallback .env rồi mặc định.

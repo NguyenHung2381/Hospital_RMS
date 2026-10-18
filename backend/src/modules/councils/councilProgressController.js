@@ -56,9 +56,7 @@ const requireSecretary = async (req, res, next) => {
 		await progressService.assertSecretary(req.params.topic_id, req.user.id);
 		next();
 	} catch (err) {
-		return res
-			.status(err.statusCode || err.status || 403)
-			.json({ success: false, message: err.message });
+		next(err);
 	}
 };
 

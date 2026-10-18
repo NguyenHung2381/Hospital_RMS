@@ -1,7 +1,7 @@
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
-const { isAllowedExtension } = require('./fileTypeAllowlist');
+const { isAllowedExtension } = require('../utils/fileTypeAllowlist');
 const { secureUpload } = require('./secureUpload');
 const uploadPolicy = require('../utils/uploadPolicy');
 const { UPLOADS_ROOT, SAFE_ID, uniqueFilename } = require('../utils/uploadPaths');

@@ -5,7 +5,7 @@ const { paging } = require('../../../utils/paging');
 const trainingFileService = require('../trainingFileService');
 const personService = require('../../persons/personService');
 const { normalizeGender } = require('../../../utils/gender');
-const { hasPermission } = require('../../../middlewares/auth');
+const { hasPermission } = require('../../../permissions/authz');
 const {
 	buildMemberUsername,
 	ensureUniqueUsername,

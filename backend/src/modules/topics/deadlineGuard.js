@@ -1,5 +1,6 @@
 const { getPool, sql } = require('../../config/db');
 const { todayVN } = require('../../utils/vnDate');
+const { httpError } = require('../../utils/httpError');
 
 const SUPPLEMENT_FIELDS = ['title', 'description', 'members', 'files'];
 
@@ -81,12 +82,10 @@ async function isTopicActionAllowed(topicId, actorUserId, action) {
 /** Ném lỗi 403 nếu thao tác không được phép. */
 async function assertTopicActionWindow(topicId, actorUserId, action) {
 	if (await isTopicActionAllowed(topicId, actorUserId, action)) return;
-	const err = new Error(
+	throw httpError(
+		403,
 		'Không trong thời gian cho phép thao tác này, hoặc bạn không phải chủ nhiệm/thư ký đề tài',
 	);
-	err.status = 403;
-	err.statusCode = 403;
-	throw err;
 }
 
 /**
@@ -118,10 +117,7 @@ async function isRegistrationOpen(roundId) {
 /** Ném lỗi 403 nếu ngoài thời gian đăng ký đề tài của đợt. */
 async function assertRegistrationOpen(roundId) {
 	if (await isRegistrationOpen(roundId)) return;
-	const err = new Error('Hiện không trong thời gian đăng ký đề tài của đợt này.');
-	err.status = 403;
-	err.statusCode = 403;
-	throw err;
+	throw httpError(403, 'Hiện không trong thời gian đăng ký đề tài của đợt này.');
 }
 
 module.exports = {

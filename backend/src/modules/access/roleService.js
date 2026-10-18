@@ -3,7 +3,7 @@ const { createCrudService } = require('../../shared/crudService');
 const { broadcast } = require('../events/eventService');
 const { paging } = require('../../utils/paging');
 const { remember, invalidate } = require('../../utils/cache');
-const permCache = require('../../middlewares/permissionCache');
+const permCache = require('../../permissions/permissionCache');
 const { httpError } = require('../../utils/httpError');
 
 // Cùng prefix `lookup:roles:` mà createCrudService('roles', ...) tự invalidate

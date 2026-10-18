@@ -272,7 +272,7 @@ const advance = async (resource, entityId, decision, actor, comment) => {
 		throw err;
 	}
 
-	const { hasPermission } = require('../../middlewares/auth');
+	const { hasPermission } = require('../../permissions/authz');
 	const authorized =
 		hasPermission(actor, 'workflows', 'manage') ||
 		!task.assignee_role_id ||

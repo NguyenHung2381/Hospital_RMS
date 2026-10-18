@@ -5,7 +5,7 @@ const { broadcast } = require('../events/eventService');
 const personService = require('../persons/personService');
 const { ROLE, requireRoleId } = require('../access/roleCodes');
 const { defaultPassword } = require('../../utils/passwordPolicy');
-const userStatusCache = require('../../middlewares/userStatusCache');
+const userStatusCache = require('../../permissions/userStatusCache');
 const { stripDiacritics, stripQualification } = require('../../utils/vietnameseText');
 
 const getMembers = async (topicId) => {

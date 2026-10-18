@@ -5,8 +5,8 @@ process.env.JWT_SECRET = 'test-secret';
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const jwt = require('jsonwebtoken');
-const userStatusCache = require('../../src/middlewares/userStatusCache');
-const permCache = require('../../src/middlewares/permissionCache');
+const userStatusCache = require('../../src/permissions/userStatusCache');
+const permCache = require('../../src/permissions/permissionCache');
 
 const STATUS = {
 	active: {

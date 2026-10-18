@@ -4,7 +4,7 @@ const fs = require('fs');
 const { dynamicMulter, extensionFilter } = require('./upload');
 const { secureUpload } = require('./secureUpload');
 
-const { UPLOADS_ROOT, uniqueFilename } = require('../utils/uploadPaths');
+const { UPLOADS_ROOT, uniqueFilename, moveUploadedFiles } = require('../utils/uploadPaths');
 const { httpError } = require('../utils/httpError');
 // Chưa có mã đề tài/học viên lúc nhận file (bản ghi tạo sau khi qua captcha +
 // kiểm tra nghiệp vụ) ⇒ ghi tạm vào _tmp/public, service chuyển sang thư mục
@@ -69,22 +69,5 @@ const parseDataField = (req, _res, next) => {
 };
 
 const publicUpload = [cleanupTmp, precheck, multerMw, verify, parseDataField];
-
-// Chuyển file tạm sang thư mục đích; trả về danh sách file đã chuyển (path mới).
-const moveUploadedFiles = async (files, destDir) => {
-	await fs.promises.mkdir(destDir, { recursive: true });
-	const moved = [];
-	try {
-		for (const f of files) {
-			const target = path.join(destDir, f.filename);
-			await fs.promises.rename(f.path, target);
-			moved.push({ ...f, path: target });
-		}
-	} catch (err) {
-		await Promise.all(moved.map((f) => fs.promises.unlink(f.path).catch(() => {})));
-		throw err;
-	}
-	return moved;
-};
 
 module.exports = { publicUpload, moveUploadedFiles, UPLOADS_ROOT, MAX_FILES };

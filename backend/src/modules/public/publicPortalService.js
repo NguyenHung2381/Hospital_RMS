@@ -10,7 +10,7 @@ const fileService = require('../topics/fileService');
 const trainingFileService = require('../training/trainingFileService');
 const path = require('path');
 const fs = require('fs');
-const { moveUploadedFiles, UPLOADS_ROOT } = require('../../middlewares/uploadPublic');
+const { moveUploadedFiles, UPLOADS_ROOT } = require('../../utils/uploadPaths');
 const { httpError, badRequest } = require('../../utils/httpError');
 
 const hasFiles = (files) => Array.isArray(files) && files.length > 0;

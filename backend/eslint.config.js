@@ -36,6 +36,21 @@ module.exports = [
 		},
 	},
 	{
+		// Ranh giới tầng: nghiệp vụ và hàm dùng chung không phụ thuộc tầng HTTP.
+		// Cần hỏi quyền thì dùng permissions/authz.js, không require middlewares/.
+		files: ['src/modules/**/*Service.js', 'src/utils/**/*.js', 'src/shared/**/*Service.js'],
+		rules: {
+			'no-restricted-syntax': [
+				'error',
+				{
+					selector: "CallExpression[callee.name='require'][arguments.0.value=/middlewares\\//]",
+					message:
+						'Service/utils không được require middlewares/ — dùng permissions/authz.js (hasPermission, scopeOf...).',
+				},
+			],
+		},
+	},
+	{
 		files: ['test/**/*.js', 'test-integration/**/*.js'],
 		rules: { 'max-lines': 'off' },
 	},

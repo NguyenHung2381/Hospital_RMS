@@ -2,7 +2,7 @@
 // đích lấy từ permissionCache, ở đây thay bằng dữ liệu giả (không cần DB).
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const permCache = require('../../src/middlewares/permissionCache');
+const permCache = require('../../src/permissions/permissionCache');
 
 const perms = (grants) => ({
 	keys: new Set(Object.keys(grants)),

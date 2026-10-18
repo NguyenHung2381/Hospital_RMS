@@ -1,5 +1,5 @@
 const { getPool, sql, withTransaction } = require('../config/db');
-const permCache = require('../middlewares/permissionCache');
+const permCache = require('./permissionCache');
 const { invalidate } = require('../utils/cache');
 const { ALL_PERMISSIONS } = require('./catalog');
 const { RESOURCE_SCOPES, isScoped, nullScopeFill } = require('./scopes');

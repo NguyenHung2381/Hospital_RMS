@@ -6,7 +6,7 @@ const { success, created, notFound } = require('../../utils/response');
 const { createCrudController } = require('../../shared/crudController');
 const { httpError } = require('../../utils/httpError');
 const { assertTopicActionWindow, assertRegistrationOpen } = require('./deadlineGuard');
-const { isDeadlineBound, scopeOf, hasPermission } = require('../../middlewares/auth');
+const { isDeadlineBound, scopeOf, hasPermission } = require('../../permissions/authz');
 const topicImportService = require('./topicImportService');
 const { sendWorkbook } = require('../../utils/response');
 

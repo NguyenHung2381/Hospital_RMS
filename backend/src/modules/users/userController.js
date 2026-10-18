@@ -3,7 +3,7 @@ const ExcelJS = require('exceljs');
 const { success, created, notFound, forbidden, sendWorkbook } = require('../../utils/response');
 const xl = require('../../utils/excelTemplate');
 const { createCrudController } = require('../../shared/crudController');
-const { scopeOf, hasPermission } = require('../../middlewares/auth');
+const { scopeOf, hasPermission } = require('../../permissions/authz');
 const {
 	isSuperuser,
 	assertCanAssignRole,

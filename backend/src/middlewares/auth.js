@@ -1,9 +1,10 @@
 const { verifyToken } = require('../utils/keys');
 const { unauthorized } = require('../utils/response');
-const permCache = require('./permissionCache');
-const userStatusCache = require('./userStatusCache');
+const permCache = require('../permissions/permissionCache');
+const userStatusCache = require('../permissions/userStatusCache');
 const { isKnownKey } = require('../permissions/catalog');
-const { scopeRank } = require('../permissions/scopes');
+// Hàm hỏi quyền thuần — re-export bên dưới cho code cũ còn require từ đây
+const { hasPermission, scopeOf, isDeadlineBound } = require('../permissions/authz');
 const { twoFactorState } = require('../permissions/twoFactorPolicy');
 
 // Xác thực 2 lớp cho mọi API cần token:
@@ -143,39 +144,6 @@ const authenticate = async (req, res, next) => {
 	}
 	next();
 };
-
-// Có ĐÚNG quyền "resource:action" (hoặc là superuser). "manage" không còn là
-// wildcard — xem permissions/catalog.js.
-const hasPermission = (user, resource, action) => {
-	const perms = user?.permissions;
-	if (!perms) return false;
-	return perms.has('system:manage') || perms.has(`${resource}:${action}`);
-};
-
-// Phạm vi dữ liệu của actor trên một resource có phạm vi (permissions/scopes.js):
-//   topics:  'own' | 'department' | 'all'
-//   users:   'department' | 'all'
-//   courses: 'assigned' | 'all'
-// Lấy theo lượt cấp quyền `resource:action` (mặc định action 'read' — phạm vi
-// XEM, quyết định danh sách/chi tiết thấy được). Không có quyền đó → phạm vi
-// rộng nhất trong các quyền khác của resource; không có quyền nào → null.
-const scopeOf = (user, resource, action = 'read') => {
-	const perms = user?.permissions;
-	if (!perms) return null;
-	if (perms.has('system:manage')) return 'all';
-	const scopes = user.permissionScopes;
-	const direct = scopes?.get(`${resource}:${action}`);
-	if (direct) return direct;
-	let best = null;
-	for (const [key, scope] of scopes ?? []) {
-		if (!key.startsWith(`${resource}:`)) continue;
-		if (best === null || scopeRank(resource, scope) > scopeRank(resource, best)) best = scope;
-	}
-	return best;
-};
-
-// Chỉ thấy đề tài mình tham gia ⇒ bị chặn theo mốc thời gian (deadline) của đợt.
-const isDeadlineBound = (user) => (scopeOf(user, 'topics') ?? 'own') === 'own';
 
 // Kiểm tra phân quyền theo resource:action từ bảng role_permissions.
 // Quyền 'system:manage' bỏ qua mọi kiểm tra (superuser).

@@ -2,7 +2,7 @@ const cmeRecordService = require('./cmeRecordService');
 const cmeRecordImportService = require('./cmeRecordImportService');
 const cmeReportService = require('./cmeReportService');
 const { success, created, notFound } = require('../../utils/response');
-const { hasPermission } = require('../../middlewares/auth');
+const { hasPermission } = require('../../permissions/authz');
 
 const getAll = async (req, res, next) => {
 	try {

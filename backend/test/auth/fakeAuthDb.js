@@ -85,7 +85,7 @@ const setup = () => {
 		return [];
 	});
 	require('../../src/modules/audit/securityEventService').log = async (e) => events.push(e);
-	require('../../src/middlewares/permissionCache').load = async () => ({
+	require('../../src/permissions/permissionCache').load = async () => ({
 		keys: new Set(),
 		scopes: new Map(),
 	});

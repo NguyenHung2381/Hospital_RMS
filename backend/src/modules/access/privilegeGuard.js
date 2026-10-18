@@ -1,5 +1,5 @@
-const permCache = require('../../middlewares/permissionCache');
-const { hasPermission, scopeOf } = require('../../middlewares/auth');
+const permCache = require('../../permissions/permissionCache');
+const { hasPermission, scopeOf } = require('../../permissions/authz');
 const { isScoped, scopeRank } = require('../../permissions/scopes');
 const { httpError } = require('../../utils/httpError');
 

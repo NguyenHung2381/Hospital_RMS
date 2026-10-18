@@ -1,6 +1,7 @@
 const { getPool, sql } = require('../../config/db');
 const { broadcast } = require('../events/eventService');
 const { removeUploadedFile } = require('../../utils/uploadPaths');
+const { httpError } = require('../../utils/httpError');
 
 const uploadFiles = async (topicId, filesData, batchNote, actorId) => {
 	const pool = await getPool();
@@ -57,9 +58,7 @@ const deleteFile = async (fileId, actorId) => {
 		.query(`SELECT file_url FROM files WHERE id = @file_id AND is_deleted = 0`);
 
 	if (!fileRow.recordset.length) {
-		const err = new Error('Không tìm thấy file');
-		err.status = 404;
-		throw err;
+		throw httpError(404, 'Không tìm thấy file');
 	}
 
 	// Soft-delete trong DB

@@ -5,7 +5,7 @@ const { matchesExtension, SUPPORTED_EXTENSIONS } = require('../../src/utils/file
 const {
 	DOCUMENT_EXTENSIONS,
 	MEDIA_EXTENSIONS,
-} = require('../../src/middlewares/fileTypeAllowlist');
+} = require('../../src/utils/fileTypeAllowlist');
 
 const b = (...parts) =>
 	Buffer.concat(

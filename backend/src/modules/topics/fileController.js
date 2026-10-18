@@ -3,7 +3,7 @@ const topicService = require('./topicService');
 const { success, created } = require('../../utils/response');
 const { getPool, sql } = require('../../config/db');
 const { assertTopicActionWindow } = require('./deadlineGuard');
-const { isDeadlineBound } = require('../../middlewares/auth');
+const { isDeadlineBound } = require('../../permissions/authz');
 
 // Middleware: chỉ áp dụng với vai trò phạm vi "own" (đơn vị/superuser không bị chặn theo mốc)
 const checkUploadWindow = async (req, res, next) => {
@@ -12,9 +12,7 @@ const checkUploadWindow = async (req, res, next) => {
 		await assertTopicActionWindow(req.params.topic_id, req.user.id, 'add-files');
 		next();
 	} catch (err) {
-		return res
-			.status(err.statusCode || err.status || 403)
-			.json({ success: false, message: err.message });
+		next(err);
 	}
 };
 
@@ -36,9 +34,7 @@ const checkDeleteWindow = async (req, res, next) => {
 		await assertTopicActionWindow(recordset[0].topic_id, req.user.id, 'delete-files');
 		next();
 	} catch (err) {
-		return res
-			.status(err.statusCode || err.status || 403)
-			.json({ success: false, message: err.message });
+		next(err);
 	}
 };
 

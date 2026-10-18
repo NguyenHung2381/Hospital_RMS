@@ -14,7 +14,7 @@
 // Quy ước (xem middlewares/auth.js):
 //   - Superuser (bỏ qua mọi kiểm tra) là cờ roles.is_superuser, KHÔNG phải quyền
 //     trong danh mục này — không cấp được qua ma trận phân quyền. Trong code nó
-//     hiện dưới dạng key 'system:manage' (middlewares/permissionCache.js).
+//     hiện dưới dạng key 'system:manage' (permissions/permissionCache.js).
 //   - Có đúng quyền được cấp mới được làm — "manage" KHÔNG còn là wildcard bao
 //     các action khác; nó chỉ là tên của một quyền cụ thể (vd roles:manage =
 //     phân quyền, surveys:manage = quản lý khảo sát).

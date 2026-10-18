@@ -62,9 +62,9 @@ const PERMS = {
 	SUPER: new Set(['system:manage']),
 	MEM: new Set(['topics:read', 'users:read']),
 };
-require('../../src/middlewares/userStatusCache').load = async (id) => STATUS[id];
-require('../../src/middlewares/userStatusCache').clear = () => {};
-require('../../src/middlewares/permissionCache').load = async (roleId) => ({
+require('../../src/permissions/userStatusCache').load = async (id) => STATUS[id];
+require('../../src/permissions/userStatusCache').clear = () => {};
+require('../../src/permissions/permissionCache').load = async (roleId) => ({
 	keys: PERMS[roleId],
 	scopes: new Map(),
 });

@@ -4,7 +4,7 @@ const { broadcast } = require('../events/eventService');
 const { paging } = require('../../utils/paging');
 const { splitList, inClause, buildWhere } = require('../../utils/sqlFilters');
 const { assertTopicActionWindow } = require('./deadlineGuard');
-const { scopeOf, hasPermission } = require('../../middlewares/auth');
+const { scopeOf, hasPermission } = require('../../permissions/authz');
 const { findActiveUserIdsWhere } = require('../access/permissionService');
 const roundService = require('../rounds/roundService');
 const { httpError } = require('../../utils/httpError');
@@ -298,10 +298,7 @@ const assertLevelForRound = async (roundId, levelId, articleType) => {
 	const allowed = await roundService.getAllowedLevelIds(roundId);
 	if (allowed.length === 0) return;
 	if (!levelId || !allowed.includes(levelId)) {
-		const err = new Error('Vui lòng chọn cấp độ đề tài hợp lệ cho đợt này.');
-		err.status = 400;
-		err.statusCode = 400;
-		throw err;
+		throw httpError(400, 'Vui lòng chọn cấp độ đề tài hợp lệ cho đợt này.');
 	}
 };
 
