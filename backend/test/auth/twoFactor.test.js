@@ -69,7 +69,7 @@ install(async (text, inputs) => {
 	return [];
 });
 require('../../src/modules/audit/securityEventService').log = async () => {};
-const authService = require('../../src/modules/auth/authService');
+const twoFactorService = require('../../src/modules/auth/twoFactorService');
 
 const preAuth = () =>
 	signToken('pre-auth-2fa', { id: 'U1', rm: 0, jti: crypto.randomUUID() }, '5m');
@@ -93,15 +93,18 @@ test('mã TOTP đúng đăng nhập được; dùng lại đúng mã đó (phiê
 	const secret = await otplib.generateSecret();
 	await setSecret(secretBox.encrypt(secret));
 	const code = await otplib.generate({ secret, type: 'totp' });
-	const r = await authService.verify2FALogin(preAuth(), code);
+	const r = await twoFactorService.verify2FALogin(preAuth(), code);
 	assert.ok(r.access_token);
-	await assert.rejects(authService.verify2FALogin(preAuth(), code), (e) => e.statusCode === 401);
+	await assert.rejects(
+		twoFactorService.verify2FALogin(preAuth(), code),
+		(e) => e.statusCode === 401,
+	);
 });
 
 test('secret cũ chưa mã hoá: đăng nhập thành công thì được mã hoá lại', async () => {
 	const secret = await otplib.generateSecret();
 	await setSecret(secret);
-	await authService.verify2FALogin(preAuth(), await otplib.generate({ secret, type: 'totp' }));
+	await twoFactorService.verify2FALogin(preAuth(), await otplib.generate({ secret, type: 'totp' }));
 	assert.ok(secretBox.isEncrypted(user.totp_secret));
 	assert.equal(secretBox.decrypt(user.totp_secret), secret);
 });
@@ -110,7 +113,7 @@ test('bật 2FA trả 10 mã khôi phục; mỗi mã dùng được đúng 1 l�
 	const secret = await otplib.generateSecret();
 	await setSecret(secretBox.encrypt(secret));
 	user.totp_enabled = 0;
-	const { backup_codes } = await authService.confirm2FASetup(
+	const { backup_codes } = await twoFactorService.confirm2FASetup(
 		'U1',
 		await otplib.generate({ secret, type: 'totp' }),
 	);
@@ -118,13 +121,13 @@ test('bật 2FA trả 10 mã khôi phục; mỗi mã dùng được đúng 1 l�
 	assert.equal(new Set(backup_codes).size, 10);
 	assert.ok(backup.every((b) => !backup_codes.includes(b.hash))); // không lưu mã gốc
 
-	const r = await authService.verify2FALogin(preAuth(), backup_codes[0].toUpperCase()); // không phân biệt hoa thường
+	const r = await twoFactorService.verify2FALogin(preAuth(), backup_codes[0].toUpperCase()); // không phân biệt hoa thường
 	assert.ok(r.access_token);
 	await assert.rejects(
-		authService.verify2FALogin(preAuth(), backup_codes[0]),
+		twoFactorService.verify2FALogin(preAuth(), backup_codes[0]),
 		(e) => e.statusCode === 401,
 	);
-	assert.equal((await authService.get2FAStatus('U1')).backup_codes_remaining, 9);
+	assert.equal((await twoFactorService.get2FAStatus('U1')).backup_codes_remaining, 9);
 });
 
 test('pre-auth token chỉ đổi được 1 phiên đăng nhập', async () => {
@@ -132,22 +135,22 @@ test('pre-auth token chỉ đổi được 1 phiên đăng nhập', async () => 
 	await setSecret(secretBox.encrypt(secret));
 	user.totp_enabled = 0;
 	const codes = (
-		await authService.confirm2FASetup('U1', await otplib.generate({ secret, type: 'totp' }))
+		await twoFactorService.confirm2FASetup('U1', await otplib.generate({ secret, type: 'totp' }))
 	).backup_codes;
 	const token = preAuth();
-	await authService.verify2FALogin(token, codes[0]);
-	await assert.rejects(authService.verify2FALogin(token, codes[1]), (e) =>
+	await twoFactorService.verify2FALogin(token, codes[0]);
+	await assert.rejects(twoFactorService.verify2FALogin(token, codes[1]), (e) =>
 		/hết hạn/.test(e.message),
 	);
 });
 
 test('mã sai định dạng / sai giá trị bị từ chối', async () => {
 	await assert.rejects(
-		authService.verify2FALogin(preAuth(), '000000'),
+		twoFactorService.verify2FALogin(preAuth(), '000000'),
 		(e) => e.statusCode === 401,
 	);
 	await assert.rejects(
-		authService.verify2FALogin(preAuth(), 'zzzz-zzzz'),
+		twoFactorService.verify2FALogin(preAuth(), 'zzzz-zzzz'),
 		(e) => e.statusCode === 401,
 	);
 });
@@ -159,7 +162,7 @@ test('khoá mã hoá đã đổi: báo lỗi rõ ràng (409), không phải 500'
 	secretBox.reset();
 	try {
 		await assert.rejects(
-			authService.verify2FALogin(preAuth(), '123456'),
+			twoFactorService.verify2FALogin(preAuth(), '123456'),
 			(e) => e.statusCode === 409,
 		);
 	} finally {

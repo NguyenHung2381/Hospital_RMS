@@ -7,7 +7,7 @@ const { authenticate, authorizePermission } = require('../../middlewares/auth');
 const { validate } = require('../../middlewares/errorHandler');
 const upload = require('../../middlewares/upload');
 const uploadExcel = require('../../middlewares/uploadExcel');
-const topicService = require('./topicService');
+const topicPolicy = require('./topicPolicy');
 
 router.use(authenticate);
 
@@ -18,7 +18,7 @@ router.use(authenticate);
 // nộp / xoá đề tài của khoa khác.
 const topicScopeParam = async (req, _res, next, topicId) => {
 	try {
-		await topicService.assertTopicInScope(topicId, req.user);
+		await topicPolicy.assertTopicInScope(topicId, req.user);
 		next();
 	} catch (err) {
 		next(err);

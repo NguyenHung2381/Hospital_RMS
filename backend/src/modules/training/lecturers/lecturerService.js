@@ -5,6 +5,7 @@ const { paging } = require('../../../utils/paging');
 const personService = require('../../persons/personService');
 const { normalizeGender } = require('../../../utils/gender');
 const { ROLE, roleIdOf } = require('../../access/roleCodes');
+const { httpError } = require('../../../utils/httpError');
 
 const lecturerSelect = `
   SELECT l.*, u.full_name AS user_full_name, u.username
@@ -22,9 +23,7 @@ const assertNotTraineeAccount = async (pool, userId) => {
 		.query('SELECT role_id FROM users WHERE id = @uid');
 	const roleId = r.recordset[0]?.role_id;
 	if (roleId && roleId === (await roleIdOf(ROLE.TRAINEE))) {
-		const err = new Error('Không thể dùng tài khoản học viên làm giảng viên.');
-		err.statusCode = 400;
-		throw err;
+		throw httpError(400, 'Không thể dùng tài khoản học viên làm giảng viên.');
 	}
 };
 

@@ -4,7 +4,7 @@ const councilProgressService = require('../councils/councilProgressService');
 // Hộp thư "Việc của tôi" — gộp 2 nguồn việc-cần-làm ĐÃ tính theo người dùng cụ
 // thể (không chỉ theo quyền chung chung, vốn không nói lên "việc CỦA TÔI"):
 //   1. Đề tài đang chờ duyệt mà actor có quyền duyệt (allowed_actions chứa
-//      'approve', đã tính sẵn ở topicService.computeAllowedActions).
+//      'approve', đã tính sẵn ở topicPolicy.computeAllowedActions).
 //   2. Đề tài actor giữ ghế hội đồng nhưng CHƯA tự mình chấm tiến độ (không có
 //      review nào trong council_progress_reviews mang user_id = actor), và đề
 //      tài đó chưa có kết luận cuối (result = null — đã kết luận thì không

@@ -1,6 +1,7 @@
 const cmeRecordService = require('./cmeRecordService');
 const cmeRecordImportService = require('./cmeRecordImportService');
 const cmeReportService = require('./cmeReportService');
+const cmeReportWorkbook = require('./exports/cmeReportWorkbook');
 const { success, created, notFound } = require('../../utils/response');
 const { hasPermission } = require('../../permissions/authz');
 const { asyncHandler } = require('../../utils/asyncHandler');
@@ -147,7 +148,7 @@ const exportExcel = asyncHandler(async (req, res) => {
 	const { year, search, department } = req.body || {};
 	const data = await cmeReportService.getData({ year, search, department });
 	const d = new Date();
-	const wb = cmeReportService.buildWorkbook(data, {
+	const wb = cmeReportWorkbook.buildWorkbook(data, {
 		title: `BÁO CÁO TÍN CHỈ CME ${year ? `NĂM ${year}` : 'TẤT CẢ CÁC NĂM'}`,
 		subtitle: [
 			department,

@@ -91,14 +91,10 @@ const register = async (data, files) => {
 	// courses.status giờ chỉ còn cờ 'cancelled' (trạng thái hiển thị tự suy từ
 	// ngày tháng — courseService.computeDisplayStatus), cửa sổ đăng ký xét ở dưới.
 	if (!course || course.status === 'cancelled' || !course.is_public_registration) {
-		const err = new Error('Khóa học không tồn tại hoặc đã đóng đăng ký.');
-		err.statusCode = 404;
-		throw err;
+		throw httpError(404, 'Khóa học không tồn tại hoặc đã đóng đăng ký.');
 	}
 	if (!course.enrollment_open) {
-		const err = new Error('Khóa học hiện không trong thời gian đăng ký.');
-		err.statusCode = 403;
-		throw err;
+		throw httpError(403, 'Khóa học hiện không trong thời gian đăng ký.');
 	}
 
 	let trainee = null;
@@ -116,11 +112,10 @@ const register = async (data, files) => {
 		// Hồ sơ cũ chưa có ngày sinh (nhập tay/import thiếu) thì không đối chiếu
 		// được — vẫn cho ghi danh vì đăng ký công khai đều phải chờ duyệt.
 		if (trainee?.dob && toDateKey(trainee.dob) !== toDateKey(data.dob)) {
-			const err = new Error(
+			throw httpError(
+				409,
 				'Thông tin không khớp với hồ sơ học viên đã có. Vui lòng kiểm tra lại ngày sinh hoặc liên hệ phòng Đào tạo.',
 			);
-			err.statusCode = 409;
-			throw err;
 		}
 	}
 	if (!trainee) {
@@ -252,14 +247,10 @@ const attachTopicFiles = async (topicId, files) => {
 const registerTopic = async (data, files) => {
 	const round = await researchRoundService.getById(data.round_id);
 	if (!round || round.status !== 'active') {
-		const err = new Error('Đợt nghiên cứu không tồn tại hoặc đã đóng.');
-		err.statusCode = 404;
-		throw err;
+		throw httpError(404, 'Đợt nghiên cứu không tồn tại hoặc đã đóng.');
 	}
 	if (!round.registration_open) {
-		const err = new Error('Đợt này hiện không trong thời gian nhận đăng ký đề tài.');
-		err.statusCode = 403;
-		throw err;
+		throw httpError(403, 'Đợt này hiện không trong thời gian nhận đăng ký đề tài.');
 	}
 	// Cấp độ ăn theo đợt: đợt chỉ cấu hình 1 cấp độ thì tự gán (form không hỏi);
 	// nhiều cấp độ thì người đăng ký chọn 1 trong số đó.

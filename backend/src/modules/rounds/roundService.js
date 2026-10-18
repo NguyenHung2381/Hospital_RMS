@@ -4,6 +4,7 @@ const { broadcast } = require('../events/eventService');
 const { paging } = require('../../utils/paging');
 const deadlineService = require('./deadlineService');
 const { fmtDateVN: fmtDate } = require('../../utils/vnDate');
+const { httpError } = require('../../utils/httpError');
 
 const STATUS_TO_FRONT = { open: 'active' };
 const STATUS_TO_DB = { active: 'open' };
@@ -155,9 +156,7 @@ const create = async (data, actorId) => {
 			.execute('sp_gen_round_id');
 		id = idResult.output.new_id;
 	} catch (spErr) {
-		const err = new Error(`Đợt số ${round_number} năm ${year} đã tồn tại`);
-		err.statusCode = 409;
-		throw err;
+		throw httpError(409, `Đợt số ${round_number} năm ${year} đã tồn tại`);
 	}
 
 	// Mốc thời gian gửi kèm: kiểm tra hết trước khi ghi (ngày 'yyyy-mm-dd').
@@ -257,11 +256,10 @@ const remove = async (id, actorId) => {
 	if (councils) parts.push(`${councils} hội đồng`);
 	if (deadlines) parts.push(`${deadlines} mốc thời hạn`);
 	if (parts.length) {
-		const err = new Error(
+		throw httpError(
+			409,
 			`Không thể xóa đợt nghiên cứu vì đang có ${parts.join(', ')} liên kết. Hãy xóa hoặc chuyển sang đợt khác trước.`,
 		);
-		err.statusCode = 409;
-		throw err;
 	}
 
 	await pool

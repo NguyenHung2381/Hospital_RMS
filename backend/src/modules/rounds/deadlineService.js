@@ -1,7 +1,7 @@
-// @ts-nocheck — còn lỗi kiểu khi bật checkJs; sửa xong thì xoá dòng này (xem README, Kiểm tra chất lượng)
 const { getPool, sql } = require('../../config/db');
 const { broadcast } = require('../events/eventService');
 const { fmtDateVN: fmtDate } = require('../../utils/vnDate');
+const { httpError } = require('../../utils/httpError');
 
 // Những mục chủ nhiệm/thư ký được sửa trong cửa sổ "Bổ sung".
 const SUPPLEMENT_FIELDS = ['title', 'description', 'members', 'files'];
@@ -121,11 +121,10 @@ const remove = async (roundId, phase, actorId) => {
       WHERE rd.round_id = @round_id AND rd.phase = @phase;
     `);
 	if (used.recordset[0].cnt > 0) {
-		const err = new Error(
+		throw httpError(
+			409,
 			`Không thể xoá mốc thời hạn vì đã có ${used.recordset[0].cnt} hành động được ghi nhận.`,
 		);
-		err.statusCode = 409;
-		throw err;
 	}
 
 	await pool
@@ -149,9 +148,7 @@ const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 const prepareBatch = (list, roundStart, roundEnd) => {
 	if (list == null) return [];
 	const fail = (msg) => {
-		const err = new Error(msg);
-		err.statusCode = 400;
-		throw err;
+		throw httpError(400, msg);
 	};
 	if (!Array.isArray(list)) fail('Danh sách mốc thời gian không hợp lệ');
 	if (list.length > MAX_PHASE) fail(`Tối đa ${MAX_PHASE} mốc thời gian cho một đợt`);

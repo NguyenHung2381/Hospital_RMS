@@ -1,5 +1,5 @@
 const { getPool, sql } = require('../config/db');
-const topicService = require('../modules/topics/topicService');
+const topicApprovalService = require('../modules/topics/topicApprovalService');
 const { markOnce } = require('./dedupe');
 const { todayVN, fmtDateVN } = require('../utils/vnDate');
 const logger = require('../config/logger');
@@ -8,7 +8,7 @@ const logger = require('../config/logger');
 // định nghiệp vụ 18/10/2026). Thay phần B của proc SQL cũ sp_process_daily_deadlines
 // (proc đó tự DUYỆT, và chỉ chạy nếu có SQL Agent job — xem database/README.md).
 //
-// Từ chối qua đúng đường của người duyệt (topicService.approve → sp_approve_topic):
+// Từ chối qua đúng đường của người duyệt (topicApprovalService.approve → sp_approve_topic):
 // cập nhật approvals, trạng thái, topic_progress, thông báo chủ nhiệm + thành viên.
 // Chặt hơn proc cũ:
 //   - Xét mốc bổ sung MUỘN NHẤT của đợt (đợt có nhiều mốc bổ sung thì chưa
@@ -59,7 +59,7 @@ const run = async () => {
 		}
 		if (!(await markOnce(JOB, `${row.id}:${row.deadline_id}`))) continue;
 		const comment = `Tự động từ chối: quá hạn bổ sung "${row.deadline_name}" (${fmtDateVN(row.deadline_date)}) mà chưa được duyệt lại.`;
-		await topicService.approve(row.id, 'rejected', comment, row.requested_by);
+		await topicApprovalService.approve(row.id, 'rejected', comment, row.requested_by);
 		rejected++;
 	}
 	if (rows.length) {

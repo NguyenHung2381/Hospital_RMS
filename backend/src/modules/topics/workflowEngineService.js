@@ -1,4 +1,3 @@
-// @ts-nocheck — còn lỗi kiểu khi bật checkJs; sửa xong thì xoá dòng này (xem README, Kiểm tra chất lượng)
 /**
  * workflowEngineService.js — engine chạy SONG SONG với đường duyệt 1 bước cũ
  * (sp_approve_topic). Mặc định KHÔNG có workflow_definitions nào active nên
@@ -11,6 +10,7 @@
  */
 const { getPool, sql } = require('../../config/db');
 const { broadcast } = require('../events/eventService');
+const { httpError } = require('../../utils/httpError');
 
 // GỌI Ở ĐẦU MỌI LUỒNG DUYỆT (topicController.approve) — phải fail-safe tuyệt
 // đối về "không có workflow" nếu bảng chưa tồn tại (migration
@@ -244,15 +244,11 @@ const applyOutcomeToEntity = async (resource, entityId, outcome, actorId) => {
 // decision: 'approved' | 'rejected'. Trả về trạng thái mới nhất của instance.
 const advance = async (resource, entityId, decision, actor, comment) => {
 	if (!['approved', 'rejected'].includes(decision)) {
-		const err = new Error('Quyết định không hợp lệ cho workflow (chỉ approved/rejected).');
-		err.statusCode = 400;
-		throw err;
+		throw httpError(400, 'Quyết định không hợp lệ cho workflow (chỉ approved/rejected).');
 	}
 	const definition = await getActiveDefinition(resource);
 	if (!definition || !definition.steps.length) {
-		const err = new Error('Chưa cấu hình workflow hợp lệ cho loại đối tượng này.');
-		err.statusCode = 400;
-		throw err;
+		throw httpError(400, 'Chưa cấu hình workflow hợp lệ cho loại đối tượng này.');
 	}
 
 	const pool = await getPool();
@@ -268,9 +264,7 @@ const advance = async (resource, entityId, decision, actor, comment) => {
 
 	const task = await getCurrentTask(instance.id);
 	if (!task) {
-		const err = new Error('Không tìm thấy nhiệm vụ duyệt đang chờ.');
-		err.statusCode = 409;
-		throw err;
+		throw httpError(409, 'Không tìm thấy nhiệm vụ duyệt đang chờ.');
 	}
 
 	const { hasPermission } = require('../../permissions/authz');
@@ -279,9 +273,7 @@ const advance = async (resource, entityId, decision, actor, comment) => {
 		!task.assignee_role_id ||
 		task.assignee_role_id === actor.role_id;
 	if (!authorized) {
-		const err = new Error('Bạn không thuộc vai trò được phân công duyệt bước này.');
-		err.statusCode = 403;
-		throw err;
+		throw httpError(403, 'Bạn không thuộc vai trò được phân công duyệt bước này.');
 	}
 
 	// Chỉ ghi quyết định khi bước vẫn đang chờ — 2 người bấm duyệt cùng lúc thì
@@ -301,9 +293,7 @@ const advance = async (resource, entityId, decision, actor, comment) => {
 			SELECT COUNT(*) AS n FROM @r;
 		`);
 	if (decided.recordset[0].n !== 1) {
-		const err = new Error('Bước duyệt này vừa được người khác xử lý, vui lòng tải lại.');
-		err.statusCode = 409;
-		throw err;
+		throw httpError(409, 'Bước duyệt này vừa được người khác xử lý, vui lòng tải lại.');
 	}
 
 	if (decision === 'rejected') {

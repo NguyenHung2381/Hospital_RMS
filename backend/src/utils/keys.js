@@ -47,12 +47,15 @@ const signToken = (purpose, payload, expiresIn) =>
 		audience: purpose,
 	});
 
+// Payload luôn là object: mọi token loại này do chính API ký từ object.
 const verifyToken = (purpose, token) =>
-	require('jsonwebtoken').verify(token, keyFor(purpose), {
-		algorithms: ['HS256'],
-		issuer: ISSUER,
-		audience: purpose,
-	});
+	/** @type {import('jsonwebtoken').JwtPayload} */ (
+		require('jsonwebtoken').verify(token, keyFor(purpose), {
+			algorithms: ['HS256'],
+			issuer: ISSUER,
+			audience: purpose,
+		})
+	);
 
 // Cho test: xoá khoá đã dẫn xuất khi đổi JWT_SECRET trong cùng tiến trình
 const reset = () => cache.clear();

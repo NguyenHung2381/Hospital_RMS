@@ -1,4 +1,3 @@
-// @ts-nocheck — còn lỗi kiểu khi bật checkJs; sửa xong thì xoá dòng này (xem README, Kiểm tra chất lượng)
 /**
  * cmeRecordImportService.js — Nhập ghi nhận CME độc lập hàng loạt từ Excel.
  * Mirror seminarImportService/traineeImportService (dò tiêu đề, khớp cột gần

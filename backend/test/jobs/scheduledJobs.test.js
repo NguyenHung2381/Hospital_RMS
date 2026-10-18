@@ -1,5 +1,5 @@
 // Job định kỳ thay cho proc SQL cũ: tự từ chối đề tài quá hạn bổ sung, xoá
-// thông báo cũ. Thay truy vấn DB + markOnce + topicService bằng hàm giả.
+// thông báo cũ. Thay truy vấn DB + markOnce + topicApprovalService bằng hàm giả.
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
@@ -13,7 +13,7 @@ require('../../src/jobs/dedupe').markOnce = async (job, key) => {
 	return true;
 };
 const approvals = [];
-require('../../src/modules/topics/topicService').approve = async (...args) => {
+require('../../src/modules/topics/topicApprovalService').approve = async (...args) => {
 	approvals.push(args);
 };
 const sup = require('../../src/jobs/supplementDeadlineJob');
@@ -35,7 +35,7 @@ test('decide: chỉ từ chối khi biết người yêu cầu và yêu cầu tr
 	assert.match(sup.decide(row({ requested_after_deadline: 1 })), /sau khi mốc đã qua/);
 });
 
-test('run: từ chối qua topicService.approve, ghi người yêu cầu + lý do; bỏ qua ca cần xử lý tay', async () => {
+test('run: từ chối qua topicApprovalService.approve, ghi người yêu cầu + lý do; bỏ qua ca cần xử lý tay', async () => {
 	approvals.length = 0;
 	sup.findOverdue = async () => [
 		row(),

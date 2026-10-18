@@ -95,7 +95,7 @@ const pushWithEmail = async (
 	type,
 	title,
 	userIds,
-	{ message = null, refId = null, refType = null, mailEvent } = {},
+	{ message = null, refId = null, refType = null, mailEvent = undefined } = {},
 ) => {
 	await push(type, title, userIds, { message, refId, refType });
 	if (!userIds?.length || !(await mailService.isEnabled(mailEvent))) return;

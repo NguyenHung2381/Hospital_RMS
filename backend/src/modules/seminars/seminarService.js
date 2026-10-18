@@ -11,6 +11,7 @@ const { paging } = require('../../utils/paging');
 const { splitList, inClause, buildWhere } = require('../../utils/sqlFilters');
 const fs = require('fs');
 const path = require('path');
+const { httpError } = require('../../utils/httpError');
 const {
 	UPLOADS_ROOT,
 	SAFE_ID,
@@ -364,11 +365,10 @@ const remove = async (id, actorId) => {
 			`SELECT COUNT(*) AS n FROM seminar_participants WHERE seminar_id = @id AND cme_seq IS NOT NULL`,
 		);
 	if (check.recordset[0].n > 0) {
-		const err = new Error(
+		throw httpError(
+			409,
 			`Không thể xoá: đã có ${check.recordset[0].n} người được cấp số CME trong sự kiện này. Hãy thu hồi số CME trước.`,
 		);
-		err.statusCode = 409;
-		throw err;
 	}
 	await pool
 		.request()
@@ -497,9 +497,7 @@ const updateRegisterSeq = async (year, lastSeq, actorId) => {
 	const y = parseInt(year, 10);
 	const seq = parseInt(lastSeq, 10);
 	if (!y || Number.isNaN(seq) || seq < 0) {
-		const err = new Error('Năm hoặc số thứ tự không hợp lệ.');
-		err.statusCode = 400;
-		throw err;
+		throw httpError(400, 'Năm hoặc số thứ tự không hợp lệ.');
 	}
 	const maxRes = await pool
 		.request()
@@ -508,11 +506,10 @@ const updateRegisterSeq = async (year, lastSeq, actorId) => {
 			`SELECT ISNULL(MAX(cme_seq), 0) AS max_seq FROM seminar_participants WHERE cme_year = @year`,
 		);
 	if (seq < maxRes.recordset[0].max_seq) {
-		const err = new Error(
+		throw httpError(
+			409,
 			`Số cuối phải ≥ ${maxRes.recordset[0].max_seq} (số CME lớn nhất đã cấp trong năm ${y}).`,
 		);
-		err.statusCode = 409;
-		throw err;
 	}
 	await pool
 		.request()

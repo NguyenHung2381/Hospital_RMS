@@ -1,7 +1,7 @@
-// @ts-nocheck — còn lỗi kiểu khi bật checkJs; sửa xong thì xoá dòng này (xem README, Kiểm tra chất lượng)
 const { signToken, verifyToken } = require('../../../utils/keys');
 const { getPool, sql } = require('../../../config/db');
 const { broadcast } = require('../../events/eventService');
+const { httpError } = require('../../../utils/httpError');
 
 // Mã QR điểm danh: JWT ngắn hạn ký chính session_id (mirror utils/captcha.js)
 // — không trạng thái, không cần lưu DB, hết hạn nhanh. FE làm mới QR mỗi 28s;
@@ -76,14 +76,10 @@ const checkInSelf = async (token, deviceId, actor) => {
 	try {
 		decoded = verifyToken('attendance-qr', token);
 	} catch {
-		const err = new Error('Mã QR đã hết hạn, vui lòng thử lại.');
-		err.statusCode = 401;
-		throw err;
+		throw httpError(401, 'Mã QR đã hết hạn, vui lòng thử lại.');
 	}
 	if (decoded.purpose !== ATTENDANCE_QR_PURPOSE) {
-		const err = new Error('Mã QR không hợp lệ.');
-		err.statusCode = 401;
-		throw err;
+		throw httpError(401, 'Mã QR không hợp lệ.');
 	}
 
 	const pool = await getPool();
@@ -99,9 +95,7 @@ const checkInSelf = async (token, deviceId, actor) => {
     `);
 	const enrollment = enrollRes.recordset[0];
 	if (!enrollment) {
-		const err = new Error('Bạn không có trong danh sách học viên của buổi học này.');
-		err.statusCode = 403;
-		throw err;
+		throw httpError(403, 'Bạn không có trong danh sách học viên của buổi học này.');
 	}
 
 	// 1 thiết bị chỉ điểm danh cho 1 học viên mỗi buổi — chặn cầm máy đăng nhập
@@ -133,9 +127,7 @@ const checkInSelf = async (token, deviceId, actor) => {
       END
     `);
 	if (res.recordset[0].device_taken) {
-		const err = new Error(DEVICE_TAKEN_MSG);
-		err.statusCode = 403;
-		throw err;
+		throw httpError(403, DEVICE_TAKEN_MSG);
 	}
 	broadcast('update', { entity: 'attendance' });
 	return { session_id: decoded.session_id };

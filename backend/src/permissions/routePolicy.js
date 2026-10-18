@@ -142,7 +142,7 @@ module.exports = {
 		[`POST ${API}/surveys/:id/respond`]: 'Trả lời khảo sát',
 
 		[`GET ${API}/workflows/status/:entityId`]:
-			'Controller: đề tài phải trong phạm vi người gọi (topicService.assertTopicInScope)',
+			'Controller: đề tài phải trong phạm vi người gọi (topicPolicy.assertTopicInScope)',
 
 		// Danh mục dùng cho dropdown ở mọi màn hình (không chứa dữ liệu nhạy cảm)
 		[`GET ${API}/departments/:id`]: 'Danh mục dropdown',

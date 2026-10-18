@@ -357,11 +357,10 @@ const remove = async (id, actorId) => {
 	if (c.survey_responses) blockers.push(`${c.survey_responses} phiếu khảo sát`);
 
 	if (blockers.length) {
-		const err = new Error(
+		throw httpError(
+			409,
 			`Không thể xoá tài khoản vì còn liên kết: ${blockers.join(', ')}. Hãy vô hiệu hoá tài khoản (ngừng hoạt động) thay vì xoá.`,
 		);
-		err.statusCode = 409;
-		throw err;
 	}
 
 	// Lấy trước khi xoá — sau khi xoá thì dọn person (bảng persons không có FK tới users)
@@ -398,9 +397,7 @@ const resetPassword = async (id, newPassword, actorId, ip = null) => {
 			.query('SELECT username FROM users WHERE id=@id');
 		const username = found.recordset[0]?.username;
 		if (!username) {
-			const err = new Error('Không tìm thấy người dùng');
-			err.statusCode = 404;
-			throw err;
+			throw httpError(404, 'Không tìm thấy người dùng');
 		}
 		generated = defaultPassword(username);
 	}

@@ -3,6 +3,7 @@ const { getPool, sql } = require('../config/db');
 const { broadcast } = require('../modules/events/eventService');
 const { paging } = require('../utils/paging');
 const { remember, invalidate } = require('../utils/cache');
+const { httpError } = require('../utils/httpError');
 
 // Factory for simple lookup tables: departments, categories, levels, roles, round_types, research_rounds
 // idPrefix: fixed prefix prepended to the random portion of the generated ID
@@ -161,11 +162,10 @@ const createCrudService = (
 				.map((g, i) => (row[`c${i}`] > 0 ? `${row[`c${i}`]} ${g.label}` : null))
 				.filter(Boolean);
 			if (parts.length) {
-				const err = new Error(
+				throw httpError(
+					409,
 					`Không thể xoá vì đang có ${parts.join(', ')} liên kết. Hãy gỡ hoặc chuyển liên kết sang mục khác trước.`,
 				);
-				err.statusCode = 409;
-				throw err;
 			}
 		}
 

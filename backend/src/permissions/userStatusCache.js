@@ -48,7 +48,7 @@ const load = async (userId) => {
 	// role_id / department_id / account_expires_at lấy từ DB chứ không từ JWT:
 	// JWT phát hành lúc đăng nhập, nên admin đổi vai trò / chuyển khoa / gia hạn
 	// tài khoản sẽ không có hiệu lực tới khi token hết hạn (tối đa 8h). Cùng
-	// định dạng ngày 'YYYY-MM-DD' với payload JWT (authService.issueTokens).
+	// định dạng ngày 'YYYY-MM-DD' với payload JWT (sessionTokenService.issueTokens).
 	const row = result.recordset[0];
 	const status = {
 		isActive: !!row?.is_active,

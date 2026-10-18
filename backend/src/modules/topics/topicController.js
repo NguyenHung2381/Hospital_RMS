@@ -1,3 +1,5 @@
+const topicApprovalService = require('./topicApprovalService');
+const topicPolicy = require('./topicPolicy');
 const topicService = require('./topicService');
 const topicMemberService = require('./topicMemberService');
 const topicAuthorService = require('./topicAuthorService');
@@ -86,7 +88,7 @@ const grantAccounts = asyncHandler(async (req, res) => {
 });
 
 const submit = asyncHandler(async (req, res) => {
-	const result = await topicService.submit(req.params.id, req.user.id);
+	const result = await topicApprovalService.submit(req.params.id, req.user.id);
 	return success(res, result, 'Nộp đề tài thành công');
 });
 
@@ -100,7 +102,7 @@ const approve = asyncHandler(async (req, res) => {
 		// Engine mới chỉ xử lý approved/rejected — 'supplement' (yêu cầu bổ
 		// sung) vẫn đi đường cũ vì workflow_tasks không có trạng thái tương ứng.
 		if (req.body.status === 'supplement') {
-			const result = await topicService.approve(
+			const result = await topicApprovalService.approve(
 				req.params.id,
 				req.body.status,
 				req.body.comment,
@@ -117,7 +119,7 @@ const approve = asyncHandler(async (req, res) => {
 		);
 		return success(res, outcome, 'Đã cập nhật bước duyệt');
 	}
-	const result = await topicService.approve(
+	const result = await topicApprovalService.approve(
 		req.params.id,
 		req.body.status,
 		req.body.comment,
@@ -127,7 +129,7 @@ const approve = asyncHandler(async (req, res) => {
 });
 
 const getApprovals = asyncHandler(async (req, res) => {
-	const approvals = await topicService.getApprovals(req.params.id);
+	const approvals = await topicApprovalService.getApprovals(req.params.id);
 	return success(res, approvals);
 });
 
@@ -135,7 +137,7 @@ const exportData = asyncHandler(async (req, res) => {
 	const { ids } = req.body;
 	if (!Array.isArray(ids) || ids.length === 0) return success(res, []);
 	// Chỉ xuất đề tài trong phạm vi người gọi (danh sách mã do client gửi lên)
-	const data = await topicService.getForExport(await topicService.idsInScope(ids, req.user));
+	const data = await topicService.getForExport(await topicPolicy.idsInScope(ids, req.user));
 	return success(res, data);
 });
 

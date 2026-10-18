@@ -5,6 +5,7 @@ const mailService = require('../../notifications/mailService');
 const mailQueue = require('../../notifications/mailQueue');
 const { ROLE, inputRoleId } = require('../../access/roleCodes');
 const { getById } = require('./courseService');
+const { httpError } = require('../../../utils/httpError');
 
 // ─── Đăng ký khóa học ────────────────────────────────────────────────────
 const listEnrollments = async (courseId) => {
@@ -28,14 +29,10 @@ const registerTrainee = async (courseId, traineeId, actorId, { bypassWindow = fa
 	const pool = await getPool();
 	const course = await getById(courseId);
 	if (!course) {
-		const err = new Error('Khóa học không tồn tại.');
-		err.statusCode = 404;
-		throw err;
+		throw httpError(404, 'Khóa học không tồn tại.');
 	}
 	if (!course.enrollment_open && !bypassWindow) {
-		const err = new Error('Khóa học hiện không trong thời gian đăng ký.');
-		err.statusCode = 403;
-		throw err;
+		throw httpError(403, 'Khóa học hiện không trong thời gian đăng ký.');
 	}
 
 	const result = await pool
@@ -58,9 +55,7 @@ const registerTrainee = async (courseId, traineeId, actorId, { bypassWindow = fa
 		)
 		.catch((err) => {
 			if (err.number === 51000) {
-				const e = new Error('Học viên này đã đăng ký khóa học rồi.');
-				e.statusCode = 409;
-				throw e;
+				throw httpError(409, 'Học viên này đã đăng ký khóa học rồi.');
 			}
 			throw err;
 		});
@@ -95,14 +90,10 @@ const listStaffCandidates = async () => {
 const registerStaff = async (courseId, userId, actorId, { bypassWindow = false } = {}) => {
 	const course = await getById(courseId);
 	if (!course) {
-		const err = new Error('Khóa học không tồn tại.');
-		err.statusCode = 404;
-		throw err;
+		throw httpError(404, 'Khóa học không tồn tại.');
 	}
 	if (!course.enrollment_open && !bypassWindow) {
-		const err = new Error('Khóa học hiện không trong thời gian đăng ký.');
-		err.statusCode = 403;
-		throw err;
+		throw httpError(403, 'Khóa học hiện không trong thời gian đăng ký.');
 	}
 
 	const pool = await getPool();
@@ -121,9 +112,7 @@ const registerStaff = async (courseId, userId, actorId, { bypassWindow = false }
 			);
 		const user = userRes.recordset[0];
 		if (!user) {
-			const err = new Error('Nhân viên không tồn tại hoặc đã bị khoá.');
-			err.statusCode = 404;
-			throw err;
+			throw httpError(404, 'Nhân viên không tồn tại hoặc đã bị khoá.');
 		}
 		// require muộn — traineeService kéo theo topicMemberService/personService, tránh vòng require.
 		const traineeService = require('../trainees/traineeService');
@@ -161,9 +150,7 @@ const decideEnrollment = async (enrollmentId, decision, actorId, note) => {
 		.query('SELECT * FROM course_enrollments WHERE id = @id');
 	const row = current.recordset[0];
 	if (!row) {
-		const err = new Error('Không tìm thấy đăng ký.');
-		err.statusCode = 404;
-		throw err;
+		throw httpError(404, 'Không tìm thấy đăng ký.');
 	}
 
 	let finalStatus = decision;

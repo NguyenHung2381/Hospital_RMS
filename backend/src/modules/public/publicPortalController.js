@@ -1,5 +1,5 @@
 const service = require('./publicPortalService');
-const seminarParticipants = require('../seminars/seminarParticipantService');
+const seminarPublicService = require('../seminars/seminarPublicService');
 const { generateCaptcha, verifyCaptcha } = require('../../utils/captcha');
 const { success, created, error } = require('../../utils/response');
 const attempts = require('../../utils/attemptLimiter');
@@ -108,7 +108,7 @@ const getTopicStatus = asyncHandler(async (req, res) => {
 
 // ─── Hội nghị: đăng ký qua QR, vé, bài test ─────────────────────────────────
 const getSeminar = asyncHandler(async (req, res) => {
-	const { scope: _scope, ...s } = await seminarParticipants.getPublicSeminar(req.params.token);
+	const { scope: _scope, ...s } = await seminarPublicService.getPublicSeminar(req.params.token);
 	success(res, s);
 });
 
@@ -120,23 +120,23 @@ const registerSeminar = asyncHandler(async (req, res) => {
 	}
 	created(
 		res,
-		await seminarParticipants.registerPublic(req.params.token, req.body),
+		await seminarPublicService.registerPublic(req.params.token, req.body),
 		'Đăng ký thành công',
 	);
 });
 
 const getSeminarTicket = asyncHandler(async (req, res) => {
-	success(res, await seminarParticipants.getTicket(req.params.code));
+	success(res, await seminarPublicService.getTicket(req.params.code));
 });
 
 const startSeminarTest = asyncHandler(async (req, res) => {
-	success(res, await seminarParticipants.startTest(req.params.code), 'Bắt đầu làm bài');
+	success(res, await seminarPublicService.startTest(req.params.code), 'Bắt đầu làm bài');
 });
 
 const submitSeminarTest = asyncHandler(async (req, res) => {
 	success(
 		res,
-		await seminarParticipants.submitTest(req.params.code, req.body.answers),
+		await seminarPublicService.submitTest(req.params.code, req.body.answers),
 		'Đã nộp bài test',
 	);
 });

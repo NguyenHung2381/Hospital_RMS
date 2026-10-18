@@ -1,3 +1,4 @@
+const topicPolicy = require('./topicPolicy');
 const topicService = require('./topicService');
 const { sendWorkbook } = require('../../utils/response');
 const { asyncHandler } = require('../../utils/asyncHandler');
@@ -13,7 +14,7 @@ const safeFileName = (name, fallback) =>
 
 const loadTopics = async (ids, user) => {
 	if (!Array.isArray(ids) || ids.length === 0) throw httpError(400, 'Danh sách đề tài trống');
-	return topicService.getForExport(await topicService.idsInScope(ids, user));
+	return topicService.getForExport(await topicPolicy.idsInScope(ids, user));
 };
 
 // POST /topics/export-excel — lịch bảo vệ đề cương (1 sheet)

@@ -1,6 +1,5 @@
-// @ts-nocheck — còn lỗi kiểu khi bật checkJs; sửa xong thì xoá dòng này (xem README, Kiểm tra chất lượng)
 const fileService = require('./fileService');
-const topicService = require('./topicService');
+const topicPolicy = require('./topicPolicy');
 const { success, created } = require('../../utils/response');
 const { assertTopicActionWindow } = require('./deadlineGuard');
 const { isDeadlineBound } = require('../../permissions/authz');
@@ -19,7 +18,7 @@ const checkUploadWindow = asyncHandler(async (req, res, next) => {
 const checkDeleteWindow = asyncHandler(async (req, res, next) => {
 	const topicId = await fileService.findTopicId(req.params.file_id);
 	if (!topicId) return res.status(404).json({ success: false, message: 'Không tìm thấy file' });
-	await topicService.assertTopicInScope(topicId, req.user);
+	await topicPolicy.assertTopicInScope(topicId, req.user);
 	if (!isDeadlineBound(req.user)) return next();
 	await assertTopicActionWindow(topicId, req.user.id, 'delete-files');
 	next();

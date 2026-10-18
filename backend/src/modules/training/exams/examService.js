@@ -4,6 +4,7 @@ const { parseJsonArray } = require('../../../utils/sqlFilters');
 const { broadcast } = require('../../events/eventService');
 const gradeService = require('../courses/gradeService');
 const { removeUploadedFile, toStoredUploadPath } = require('../../../utils/uploadPaths');
+const { httpError } = require('../../../utils/httpError');
 
 const QUESTION_TYPES = ['single_choice', 'essay'];
 // Loại đề → loại câu hỏi được phép đưa vào. paper_type NULL = đề cũ (hỗn hợp),
@@ -171,11 +172,10 @@ const removeQuestion = async (id) => {
       DELETE FROM question_bank OUTPUT DELETED.image_url WHERE id = @id;
   `);
 	if (r.recordset?.[0]?.in_use) {
-		const err = new Error(
+		throw httpError(
+			409,
 			'Câu hỏi đang được dùng trong đề thi, không thể xoá. Hãy bỏ câu hỏi khỏi các đề trước.',
 		);
-		err.statusCode = 409;
-		throw err;
 	}
 	removeUploadedFile(r.recordset?.[0]?.image_url);
 	broadcast('update', { entity: 'question_bank' });
@@ -466,14 +466,10 @@ const assertEnrollment = async (pool, paperId, actor) => {
     `);
 	const row = r.recordset[0];
 	if (!row) {
-		const err = new Error('Bạn không có quyền làm đề thi này.');
-		err.statusCode = 403;
-		throw err;
+		throw httpError(403, 'Bạn không có quyền làm đề thi này.');
 	}
 	if (row.status !== 'published') {
-		const err = new Error('Đề thi hiện không mở.');
-		err.statusCode = 403;
-		throw err;
+		throw httpError(403, 'Đề thi hiện không mở.');
 	}
 	return row;
 };
@@ -505,9 +501,7 @@ const startAttempt = async (paperId, actor) => {
       `);
 		attemptId = created.recordset[0].id;
 	} else if (existing.recordset[0].status !== 'in_progress') {
-		const err = new Error('Bạn đã nộp đề thi này rồi.');
-		err.statusCode = 409;
-		throw err;
+		throw httpError(409, 'Bạn đã nộp đề thi này rồi.');
 	}
 
 	const attemptRes = await pool
@@ -561,9 +555,7 @@ const submitAttempt = async (paperId, answers, actor) => {
 			`)
 	).recordset[0];
 	if (!claimed) {
-		const err = new Error('Không tìm thấy lượt làm bài đang mở, hoặc bạn đã nộp rồi.');
-		err.statusCode = 409;
-		throw err;
+		throw httpError(409, 'Không tìm thấy lượt làm bài đang mở, hoặc bạn đã nộp rồi.');
 	}
 	const attempt = { id: claimed.id };
 	const late = !!claimed.late;

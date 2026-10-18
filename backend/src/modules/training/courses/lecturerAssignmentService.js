@@ -1,7 +1,7 @@
-// @ts-nocheck — còn lỗi kiểu khi bật checkJs; sửa xong thì xoá dòng này (xem README, Kiểm tra chất lượng)
 const { getPool, sql } = require('../../../config/db');
 const { broadcast } = require('../../events/eventService');
 const { ROLE, roleIdOf } = require('../../access/roleCodes');
+const { httpError } = require('../../../utils/httpError');
 
 // ─── Phân công giảng viên ────────────────────────────────────────────────
 const listAssignments = async (courseId) => {
@@ -37,21 +37,16 @@ const assignLecturer = async (courseId, data, actorId) => {
     `);
 	const lec = check.recordset[0];
 	if (!lec || !lec.is_active) {
-		const err = new Error('Giảng viên không tồn tại hoặc đã ngừng hoạt động.');
-		err.statusCode = 404;
-		throw err;
+		throw httpError(404, 'Giảng viên không tồn tại hoặc đã ngừng hoạt động.');
 	}
 	if (lec.role_id && lec.role_id === (await roleIdOf(ROLE.TRAINEE))) {
-		const err = new Error('Không thể phân công tài khoản học viên làm giảng viên.');
-		err.statusCode = 400;
-		throw err;
+		throw httpError(400, 'Không thể phân công tài khoản học viên làm giảng viên.');
 	}
 	if (lec.enrolled > 0) {
-		const err = new Error(
+		throw httpError(
+			400,
 			'Người này đang là học viên của khóa học, không thể phân công làm giảng viên.',
 		);
-		err.statusCode = 400;
-		throw err;
 	}
 
 	const result = await pool

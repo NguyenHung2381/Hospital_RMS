@@ -1,8 +1,8 @@
-// @ts-nocheck — còn lỗi kiểu khi bật checkJs; sửa xong thì xoá dòng này (xem README, Kiểm tra chất lượng)
 const { getPool, sql } = require('../../../config/db');
 const { broadcast } = require('../../events/eventService');
 const trainingFileService = require('../trainingFileService');
 const { assertHttpUrl } = require('../../../utils/safeUrl');
+const { httpError } = require('../../../utils/httpError');
 
 // ─── Tài liệu / bài kiểm tra khóa học (course_documents) ────────────────────
 // source_type 'file' (upload, kể cả video — giới hạn dung lượng xem
@@ -73,9 +73,7 @@ const incrementDocumentDownload = async (docId) => {
     SELECT download_count FROM course_documents WHERE id = @id;
   `);
 	if (!result.recordset[0]) {
-		const err = new Error('Không tìm thấy tài liệu.');
-		err.statusCode = 404;
-		throw err;
+		throw httpError(404, 'Không tìm thấy tài liệu.');
 	}
 	return { download_count: result.recordset[0].download_count };
 };

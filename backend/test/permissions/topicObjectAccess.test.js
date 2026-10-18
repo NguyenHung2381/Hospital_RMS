@@ -26,6 +26,7 @@ install(async (text, inputs) => {
 	return [];
 });
 require('../../src/modules/events/eventService').broadcast = () => {};
+const topicPolicy = require('../../src/modules/topics/topicPolicy');
 const topicService = require('../../src/modules/topics/topicService');
 const { errorHandler } = require('../../src/middlewares/errorHandler');
 
@@ -43,19 +44,19 @@ const ALL = actor('U-ALL', 'K5', { 'topics:read': 'all', 'topics:update': 'all' 
 const denied = (p, code = 403) => assert.rejects(p, (e) => (e.statusCode ?? e.status) === code);
 
 test('phạm vi own: chỉ đề tài mình là thành viên', async () => {
-	await topicService.assertTopicInScope('DT1', OWN_MEMBER);
-	await denied(topicService.assertTopicInScope('DT1', OWN_OTHER)); // cùng khoa nhưng không là thành viên
-	await denied(topicService.assertTopicInScope('DT2', OWN_MEMBER));
+	await topicPolicy.assertTopicInScope('DT1', OWN_MEMBER);
+	await denied(topicPolicy.assertTopicInScope('DT1', OWN_OTHER)); // cùng khoa nhưng không là thành viên
+	await denied(topicPolicy.assertTopicInScope('DT2', OWN_MEMBER));
 });
 
 test('phạm vi department: chỉ đề tài cùng khoa', async () => {
-	await topicService.assertTopicInScope('DT1', DEPT_K1);
-	await denied(topicService.assertTopicInScope('DT2', DEPT_K1));
+	await topicPolicy.assertTopicInScope('DT1', DEPT_K1);
+	await denied(topicPolicy.assertTopicInScope('DT2', DEPT_K1));
 });
 
 test('phạm vi all: mọi đề tài; đề tài không tồn tại → 404', async () => {
-	await topicService.assertTopicInScope('DT2', ALL);
-	await denied(topicService.assertTopicInScope('DT404', DEPT_K1), 404);
+	await topicPolicy.assertTopicInScope('DT2', ALL);
+	await denied(topicPolicy.assertTopicInScope('DT404', DEPT_K1), 404);
 });
 
 test('sửa đề tài ngoài phạm vi (kể cả chỉ sửa trường "phụ" như tạp chí) bị chặn, không ghi DB', async () => {
@@ -70,9 +71,9 @@ test('phạm vi khoa không chuyển được đề tài sang khoa khác', async
 });
 
 test('xuất dữ liệu theo danh sách mã: tự bỏ đề tài ngoài phạm vi', async () => {
-	assert.deepEqual(await topicService.idsInScope(['DT1', 'DT2', 'DT404'], DEPT_K1), ['DT1']);
-	assert.deepEqual(await topicService.idsInScope(['DT1', 'DT2'], ALL), ['DT1', 'DT2']);
-	assert.deepEqual(await topicService.idsInScope('not-an-array', DEPT_K1), []);
+	assert.deepEqual(await topicPolicy.idsInScope(['DT1', 'DT2', 'DT404'], DEPT_K1), ['DT1']);
+	assert.deepEqual(await topicPolicy.idsInScope(['DT1', 'DT2'], ALL), ['DT1', 'DT2']);
+	assert.deepEqual(await topicPolicy.idsInScope('not-an-array', DEPT_K1), []);
 });
 
 test('lỗi nghiệp vụ chỉ có `status` (không có statusCode) trả đúng mã, không thành 500', () => {

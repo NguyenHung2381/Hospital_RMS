@@ -6,14 +6,15 @@
  * Luồng: parse file → mỗi dòng 1 người, khớp cán bộ nội viện theo MNV rồi họ tên
  * → dry_run trả preview; commit bulk-insert vào seminar_participants, và nếu
  * chọn "cấp CME" thì sinh dải số quyết định (SQĐ) tuần tự cho toàn bộ người vừa
- * nhập (qua seminarParticipantService.issueCme).
+ * nhập (qua seminarCmeService.issueCme).
  */
 const { getPool, sql } = require('../../config/db');
 const { norm, normDept, stripQualification } = require('../../utils/vietnameseText');
 const ExcelJS = require('exceljs');
 const { parseDob, parseCredits, parseStaffNumber, readSheet } = require('../../utils/excelImport');
 const { normalizeGender } = require('../../utils/gender');
-const partService = require('./seminarParticipantService');
+const seminarCmeService = require('./seminarCmeService');
+const seminarParticipantService = require('./seminarParticipantService');
 const { ROLE, inputRoleId } = require('../access/roleCodes');
 const xl = require('../../utils/excelTemplate');
 const { httpError } = require('../../utils/httpError');
@@ -410,7 +411,7 @@ const importExcel = async (
 	}
 
 	// Commit — bulk insert rồi (nếu cần) cấp SQĐ tuần tự theo thứ tự file.
-	const { inserted, ids } = await partService.bulkAdd(
+	const { inserted, ids } = await seminarParticipantService.bulkAdd(
 		seminar_id,
 		preview.map(previewToParticipant),
 		actorId,
@@ -419,7 +420,7 @@ const importExcel = async (
 	let cme = { issued: 0, from: null, to: null, year: null };
 	if (wantCme && seminar.event_year && ids.length) {
 		try {
-			cme = await partService.issueCme(seminar_id, ids, actorId, {
+			cme = await seminarCmeService.issueCme(seminar_id, ids, actorId, {
 				year: seminar.event_year,
 			});
 		} catch (e) {

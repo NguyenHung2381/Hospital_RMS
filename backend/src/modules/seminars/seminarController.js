@@ -4,7 +4,9 @@
  * cấp CME và thống kê xử lý riêng.
  */
 const seminarService = require('./seminarService');
-const partService = require('./seminarParticipantService');
+const seminarCmeService = require('./seminarCmeService');
+const seminarParticipantService = require('./seminarParticipantService');
+const seminarPublicService = require('./seminarPublicService');
 const importService = require('./seminarImportService');
 const listExcelService = require('./seminarListExcelService');
 const detailExcelService = require('./seminarDetailExcelService');
@@ -38,32 +40,37 @@ const updateCmeRegister = asyncHandler(async (req, res) => {
 
 // ─── Người tham dự ───────────────────────────────────────────────────────────
 const listParticipants = asyncHandler(async (req, res) => {
-	return success(res, await partService.listBySeminar(req.params.id));
+	return success(res, await seminarParticipantService.listBySeminar(req.params.id));
 });
 
 const addParticipant = asyncHandler(async (req, res) => {
 	return created(
 		res,
-		await partService.add(req.params.id, req.body, req.user.id),
+		await seminarParticipantService.add(req.params.id, req.body, req.user.id),
 		'Đã thêm người tham dự',
 	);
 });
 
 const updateParticipant = asyncHandler(async (req, res) => {
-	const p = await partService.update(req.params.id, req.params.pid, req.body, req.user.id);
+	const p = await seminarParticipantService.update(
+		req.params.id,
+		req.params.pid,
+		req.body,
+		req.user.id,
+	);
 	if (!p) return notFound(res);
 	return success(res, p, 'Đã cập nhật');
 });
 
 const removeParticipant = asyncHandler(async (req, res) => {
-	await partService.remove(req.params.id, req.params.pid, req.user.id);
+	await seminarParticipantService.remove(req.params.id, req.params.pid, req.user.id);
 	return success(res, null, 'Đã xoá');
 });
 
 // ─── CME ─────────────────────────────────────────────────────────────────────
 const issueCme = asyncHandler(async (req, res) => {
 	const ids = req.body.participant_ids || (req.params.pid ? [req.params.pid] : []);
-	const out = await partService.issueCme(req.params.id, ids, req.user.id, {
+	const out = await seminarCmeService.issueCme(req.params.id, ids, req.user.id, {
 		year: req.body.year,
 	});
 	return success(
@@ -78,12 +85,12 @@ const issueCme = asyncHandler(async (req, res) => {
 });
 
 const revokeCme = asyncHandler(async (req, res) => {
-	await partService.revokeCme(req.params.id, req.params.pid, req.user.id);
+	await seminarCmeService.revokeCme(req.params.id, req.params.pid, req.user.id);
 	return success(res, null, 'Đã thu hồi số CME');
 });
 
 const bulkCmeStatus = asyncHandler(async (req, res) => {
-	const out = await partService.setCmeStatus(
+	const out = await seminarCmeService.setCmeStatus(
 		req.params.id,
 		req.body.participant_ids || [],
 		req.body.status,
@@ -94,16 +101,20 @@ const bulkCmeStatus = asyncHandler(async (req, res) => {
 
 // ─── Điểm danh QR ─────────────────────────────────────────────────────────────
 const getCheckInQrToken = (req, res) => {
-	return success(res, { token: partService.generateCheckInQrToken(req.params.id) });
+	return success(res, { token: seminarParticipantService.generateCheckInQrToken(req.params.id) });
 };
 
 const checkInSelf = asyncHandler(async (req, res) => {
-	const result = await partService.checkInSelf(req.body.token, req.body.device_id, req.user);
+	const result = await seminarParticipantService.checkInSelf(
+		req.body.token,
+		req.body.device_id,
+		req.user,
+	);
 	return success(res, result, 'Điểm danh thành công');
 });
 
 const checkInTicket = asyncHandler(async (req, res) => {
-	const row = await partService.checkInTicket(req.params.id, req.body.code, req.user.id);
+	const row = await seminarPublicService.checkInTicket(req.params.id, req.body.code, req.user.id);
 	return success(
 		res,
 		row,

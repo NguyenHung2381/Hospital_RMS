@@ -61,6 +61,7 @@ const log = install(async (text, inputs) => {
 });
 require('../../src/modules/audit/securityEventService').log = async () => {};
 const authService = require('../../src/modules/auth/authService');
+const twoFactorService = require('../../src/modules/auth/twoFactorService');
 
 const rejectsWith = async (p, status, msgRe) => {
 	await assert.rejects(p, (e) => e.statusCode === status && (!msgRe || msgRe.test(e.message)));
@@ -86,7 +87,7 @@ test('tài khoản bị vô hiệu hoá: sai mật khẩu → lỗi chung, đún
 
 test('/2fa/setup bị từ chối khi 2FA đang bật (không ghi đè secret)', async () => {
 	const before = log.length;
-	await rejectsWith(authService.setup2FA('U3'), 409);
+	await rejectsWith(twoFactorService.setup2FA('U3'), 409);
 	assert.ok(!log.slice(before).some((q) => /UPDATE users SET totp_secret/.test(q.text)));
 });
 

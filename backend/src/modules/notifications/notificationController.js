@@ -2,6 +2,7 @@
 const svc = require('./notificationService');
 const { success, notFound } = require('../../utils/response');
 const { asyncHandler } = require('../../utils/asyncHandler');
+const { httpError } = require('../../utils/httpError');
 
 const getAll = asyncHandler(async (req, res) => {
 	const { page = 1, limit = 20, unread_only } = req.query;
@@ -32,9 +33,7 @@ const markAll = asyncHandler(async (req, res) => {
 const send = asyncHandler(async (req, res) => {
 	const { type, title, message, ref_id, ref_type, target_type, target_ids } = req.body;
 	if (!type || !title || !target_type) {
-		const err = new Error('Thiếu thông tin bắt buộc');
-		err.statusCode = 400;
-		throw err;
+		throw httpError(400, 'Thiếu thông tin bắt buộc');
 	}
 	const result = await svc.sendBroadcast({
 		type,

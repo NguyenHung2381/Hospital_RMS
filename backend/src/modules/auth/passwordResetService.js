@@ -3,7 +3,7 @@ const crypto = require('crypto');
 const { getPool, sql } = require('../../config/db');
 const mailService = require('../notifications/mailService');
 const secretBox = require('../../utils/secretBox');
-const authService = require('./authService');
+const credentialService = require('./credentialService');
 const systemSettingService = require('../settings/systemSettingService');
 const { bumpTokenVersion } = require('./sessionVersion');
 const { checkPassword } = require('../../utils/passwordPolicy');
@@ -111,7 +111,7 @@ const resetPassword = async (login, code, newPassword) => {
 	const policyError = checkPassword(newPassword, { username: user.username });
 	if (policyError) throw httpError(400, policyError);
 
-	const hashed = await authService.hashPassword(newPassword);
+	const hashed = await credentialService.hashPassword(newPassword);
 	await pool
 		.request()
 		.input('id', sql.VarChar(20), row.id)

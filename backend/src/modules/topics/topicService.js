@@ -1,84 +1,12 @@
-// @ts-nocheck — còn lỗi kiểu khi bật checkJs; sửa xong thì xoá dòng này (xem README, Kiểm tra chất lượng)
 const { getPool, sql } = require('../../config/db');
-const notifSvc = require('../notifications/notificationService');
 const { broadcast } = require('../events/eventService');
 const { paging } = require('../../utils/paging');
 const { splitList, inClause, buildWhere } = require('../../utils/sqlFilters');
 const { assertTopicActionWindow } = require('./deadlineGuard');
-const { scopeOf, hasPermission } = require('../../permissions/authz');
-const { findActiveUserIdsWhere } = require('../access/permissionService');
+const { hasPermission } = require('../../permissions/authz');
 const roundService = require('../rounds/roundService');
 const { httpError } = require('../../utils/httpError');
-
-// Phạm vi xem đề tài: không có quyền topics nào ⇒ chỉ đề tài mình tham gia.
-const topicScope = (actor) => scopeOf(actor, 'topics') ?? 'own';
-
-// ─── Kiểm tra theo bản ghi (chống IDOR) ─────────────────────────────────────
-// authorizePermission ở route chỉ biết actor CÓ quyền topics:xxx, không biết
-// đề tài cụ thể có nằm trong phạm vi của họ không: 'department' = cùng khoa,
-// 'own' = là thành viên, 'all' = mọi đề tài. Mọi API thao tác theo mã đề tài
-// phải qua 1 trong 2 hàm dưới (modules/topics/topics.routes.js gắn qua router.param).
-const assertTopicInScope = async (topicId, actor) => {
-	const scope = topicScope(actor);
-	if (scope === 'all') return;
-	const pool = await getPool();
-	const row = (
-		await pool
-			.request()
-			.input('id', sql.VarChar(15), String(topicId))
-			.input('uid', sql.VarChar(20), actor.id).query(`
-				SELECT t.department_id,
-				       CASE WHEN EXISTS (SELECT 1 FROM topic_members
-				                         WHERE topic_id = t.id AND user_id = @uid)
-				            THEN 1 ELSE 0 END AS is_member
-				FROM topics t WHERE t.id = @id
-			`)
-	).recordset[0];
-	if (!row) throw httpError(404, 'Đề tài không tồn tại.');
-	const allowed =
-		scope === 'department' ? row.department_id === actor.department_id : row.is_member === 1;
-	if (!allowed) {
-		throw httpError(403, 'Không có quyền thao tác trên đề tài này');
-	}
-};
-
-// Lọc danh sách mã đề tài (xuất dữ liệu theo lô) — chỉ giữ đề tài trong phạm vi.
-const idsInScope = async (ids, actor) => {
-	const list = [...new Set((Array.isArray(ids) ? ids : []).map(String))].slice(0, 2000);
-	if (!list.length || topicScope(actor) === 'all') return list;
-	const allowed = [];
-	for (const id of list) {
-		try {
-			await assertTopicInScope(id, actor);
-			allowed.push(id);
-		} catch {
-			// ngoài phạm vi / không tồn tại — bỏ qua, không báo lỗi cho cả lô
-		}
-	}
-	return allowed;
-};
-
-// Danh sách hành động hợp lệ cho đề tài theo status + quyền của actor — nguồn
-// chân lý duy nhất để frontend ẩn/hiện nút phê duyệt/từ chối/bổ sung/nộp lại/
-// cấp tài khoản, thay vì tự suy luận theo topic.status rải rác ở nhiều nơi
-// (ApprovalDetailPanel.tsx, useTopicDrawer.ts...). Khớp ĐÚNG điều kiện mà mỗi
-// route thật sự kiểm tra (vd 'submit' không đòi phải là leader/secretary vì
-// backend /submit cũng không kiểm tra điều đó) — allowedActions không được
-// lỏng/chặt hơn quyền thật ở route.
-const computeAllowedActions = (topic, actor) => {
-	if (!actor) return [];
-	const actions = [];
-	if (topic.status === 'submitted' && hasPermission(actor, 'topics', 'approve')) {
-		actions.push('approve', 'reject', 'request_supplement');
-	}
-	if (topic.status === 'supplement' && hasPermission(actor, 'topics', 'update')) {
-		actions.push('submit');
-	}
-	if (topic.status === 'approved' && hasPermission(actor, 'topics', 'update')) {
-		actions.push('grant_accounts');
-	}
-	return actions;
-};
+const { computeAllowedActions, topicScope } = require('./topicPolicy');
 
 const getAll = async (filters, actor = null) => {
 	const {
@@ -533,91 +461,6 @@ const remove = async (id, actorId) => {
 	broadcast('update', { entity: 'topic' });
 };
 
-const approve = async (topicId, status, comment, actorId) => {
-	const pool = await getPool();
-	const result = await pool
-		.request()
-		.input('actor_id', sql.VarChar(20), actorId)
-		.input('topic_id', sql.VarChar(15), topicId)
-		.input('decision', sql.VarChar(15), status)
-		.input('comment', sql.NVarChar(sql.MAX), comment || null)
-		.execute('sp_approve_topic');
-
-	// Notify topic creator + all members who have accounts
-	const userRes = await pool.request().input('topic_id', sql.VarChar(15), topicId).query(`
-      SELECT DISTINCT uid FROM (
-        SELECT created_by AS uid FROM topics WHERE id = @topic_id
-        UNION
-        SELECT user_id FROM topic_members WHERE topic_id = @topic_id AND user_id IS NOT NULL
-      ) x
-    `);
-	const ids = userRes.recordset.map((r) => r.uid).filter(Boolean);
-	const type =
-		status === 'approved'
-			? 'topic_approved'
-			: status === 'supplement'
-				? 'topic_supplement_requested'
-				: 'topic_rejected';
-	const title =
-		status === 'approved'
-			? 'Đề tài của bạn đã được phê duyệt'
-			: status === 'supplement'
-				? 'Đề tài của bạn cần bổ sung thông tin'
-				: 'Đề tài của bạn bị từ chối';
-	await notifSvc.pushWithEmail(type, title, ids, {
-		message: comment || null,
-		refId: topicId,
-		refType: 'topic',
-		mailEvent: 'TOPIC_RESULT',
-	});
-
-	broadcast('update', { entity: 'topic' });
-	return result.recordset[0];
-};
-
-const submit = async (topicId, actorId) => {
-	const pool = await getPool();
-	await pool
-		.request()
-		.input('topic_id', sql.VarChar(15), topicId)
-		.input('actor_id', sql.VarChar(20), actorId).query(`
-      EXEC sp_set_actor @actor_id;
-      UPDATE topics SET status = 'submitted', updated_at = GETDATE(), updated_by = @actor_id
-      WHERE id = @topic_id AND status = 'supplement';
-      -- Nộp lại: reset verdict cũ, nếu không getApprovals vẫn trả kết quả duyệt lần trước
-      IF @@ROWCOUNT > 0
-        UPDATE approvals SET status = 'pending', comment = NULL,
-          updated_at = GETDATE(), updated_by = @actor_id
-        WHERE topic_id = @topic_id;
-    `);
-
-	// Thông báo cho các tài khoản có quyền duyệt / xem toàn bộ đề tài
-	const ids = await findActiveUserIdsWhere(
-		(u) => hasPermission(u, 'topics', 'approve') || scopeOf(u, 'topics') === 'all',
-	);
-	await notifSvc.pushWithEmail('topic_submitted', 'Có đề tài mới cần xét duyệt', ids, {
-		refId: topicId,
-		refType: 'topic',
-		mailEvent: 'TOPIC_SUBMITTED',
-	});
-
-	const topic = await getById(topicId);
-	broadcast('update', { entity: 'topic' });
-	return topic;
-};
-
-const getApprovals = async (topicId) => {
-	const pool = await getPool();
-	const result = await pool.request().input('topic_id', sql.VarChar(15), topicId).query(`
-      SELECT a.*, u.full_name AS approver_name
-      FROM approvals a
-      LEFT JOIN users u ON u.id = a.created_by
-      WHERE a.topic_id = @topic_id
-      ORDER BY a.created_at DESC
-    `);
-	return result.recordset;
-};
-
 const getForExport = async (topicIds) => {
 	if (!topicIds || topicIds.length === 0) return [];
 	const pool = await getPool();
@@ -691,14 +534,9 @@ const getForExport = async (topicIds) => {
 module.exports = {
 	getAll,
 	getById,
-	assertTopicInScope,
-	idsInScope,
 	create,
 	update,
 	remove,
-	submit,
-	approve,
-	getApprovals,
 	getForExport,
 	assertLevelForRound,
 };

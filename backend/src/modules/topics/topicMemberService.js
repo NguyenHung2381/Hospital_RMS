@@ -9,6 +9,7 @@ const { defaultPassword } = require('../../utils/passwordPolicy');
 const userStatusCache = require('../../permissions/userStatusCache');
 const { stripDiacritics, stripQualification } = require('../../utils/vietnameseText');
 const logger = require('../../config/logger');
+const { httpError } = require('../../utils/httpError');
 
 const getMembers = async (topicId) => {
 	const pool = await getPool();
@@ -193,14 +194,10 @@ const grantAccountsNoEmail = async (topicId, memberIds, actorId) => {
 		.query(`SELECT id, status FROM topics WHERE id = @topic_id`);
 	const topic = topicResult.recordset[0];
 	if (!topic) {
-		const err = new Error('Không tìm thấy đề tài');
-		err.statusCode = 404;
-		throw err;
+		throw httpError(404, 'Không tìm thấy đề tài');
 	}
 	if (topic.status !== 'approved') {
-		const err = new Error('Đề tài chưa được phê duyệt nên chưa thể cấp tài khoản thành viên');
-		err.statusCode = 400;
-		throw err;
+		throw httpError(400, 'Đề tài chưa được phê duyệt nên chưa thể cấp tài khoản thành viên');
 	}
 
 	// --- 2. Lấy danh sách thành viên cần cấp + mã khoa (chỉ đọc) ---
@@ -229,9 +226,7 @@ const grantAccountsNoEmail = async (topicId, memberIds, actorId) => {
 		`);
 	const deptCode = deptCodeResult.recordset[0]?.code;
 	if (!deptCode) {
-		const err = new Error('Không xác định được khoa/phòng để tạo tài khoản');
-		err.statusCode = 400;
-		throw err;
+		throw httpError(400, 'Không xác định được khoa/phòng để tạo tài khoản');
 	}
 
 	const credentials = [];
@@ -282,9 +277,7 @@ const grantAccountsNoEmail = async (topicId, memberIds, actorId) => {
 				// Khóa "sinh mã" chỉ được giữ tới khi tx ngắn này commit (vài ms sau).
 				userId = await genUserIdInTx(tx, deptCode);
 				if (!userId) {
-					const err = new Error('Không sinh được mã tài khoản mới');
-					err.statusCode = 500;
-					throw err;
+					throw httpError(500, 'Không sinh được mã tài khoản mới');
 				}
 				username = await ensureUniqueUsername(tx, baseUsername, userId);
 				const storedEmail =
@@ -425,13 +418,12 @@ const grantAccountsNoEmail = async (topicId, memberIds, actorId) => {
 
 	if (credentials.length === 0) {
 		if (skipped.length > 0) {
-			const err = new Error(
+			throw httpError(
+				500,
 				skipped.length === 1
 					? skipped[0].reason
 					: `Không cấp được tài khoản cho ${skipped.length} thành viên`,
 			);
-			err.statusCode = 500;
-			throw err;
 		}
 		return { credentials, skipped };
 	}

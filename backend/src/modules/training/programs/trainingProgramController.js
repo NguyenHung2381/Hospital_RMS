@@ -1,4 +1,3 @@
-// @ts-nocheck — còn lỗi kiểu khi bật checkJs; sửa xong thì xoá dòng này (xem README, Kiểm tra chất lượng)
 const trainingProgramService = require('./trainingProgramService');
 const { success, created, notFound } = require('../../../utils/response');
 const { asyncHandler } = require('../../../utils/asyncHandler');

@@ -1,5 +1,5 @@
 const workflowEngineService = require('./workflowEngineService');
-const topicService = require('./topicService');
+const topicPolicy = require('./topicPolicy');
 const { success, created, notFound } = require('../../utils/response');
 const { asyncHandler } = require('../../utils/asyncHandler');
 
@@ -39,7 +39,7 @@ const getStatus = asyncHandler(async (req, res) => {
 			.status(400)
 			.json({ success: false, message: 'Loại dữ liệu không hỗ trợ quy trình duyệt' });
 	}
-	await topicService.assertTopicInScope(req.params.entityId, req.user);
+	await topicPolicy.assertTopicInScope(req.params.entityId, req.user);
 	return success(
 		res,
 		await workflowEngineService.getStatusForEntity(resource, req.params.entityId),

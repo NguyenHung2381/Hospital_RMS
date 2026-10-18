@@ -3,6 +3,7 @@ const { getPool, sql } = require('../../config/db');
 const { parseJsonArray } = require('../../utils/sqlFilters');
 const { broadcast } = require('../events/eventService');
 const { paging } = require('../../utils/paging');
+const { httpError } = require('../../utils/httpError');
 
 const QUESTION_TYPES = ['single_choice', 'multi_choice', 'text'];
 
@@ -225,14 +226,10 @@ const getForRespond = async (id, actor) => {
 	const row = survey.recordset[0];
 	if (!row) return null;
 	if (row.status !== 'active') {
-		const err = new Error('Khảo sát này hiện không mở nhận phản hồi.');
-		err.statusCode = 403;
-		throw err;
+		throw httpError(403, 'Khảo sát này hiện không mở nhận phản hồi.');
 	}
 	if (row.target_role && row.target_role !== actor.role_id) {
-		const err = new Error('Khảo sát này không dành cho vai trò của bạn.');
-		err.statusCode = 403;
-		throw err;
+		throw httpError(403, 'Khảo sát này không dành cho vai trò của bạn.');
 	}
 	const existing = await pool
 		.request()
@@ -242,9 +239,7 @@ const getForRespond = async (id, actor) => {
 			'SELECT id FROM survey_responses WHERE survey_id = @survey_id AND respondent_user_id = @user_id',
 		);
 	if (existing.recordset[0]) {
-		const err = new Error('Bạn đã nộp khảo sát này rồi.');
-		err.statusCode = 409;
-		throw err;
+		throw httpError(409, 'Bạn đã nộp khảo sát này rồi.');
 	}
 	row.questions = await listQuestions(id);
 	return row;
@@ -271,9 +266,7 @@ const submitResponse = async (surveyId, answers, actor) => {
 		)
 		.catch((err) => {
 			if (err.number === 2627 || err.number === 2601) {
-				const e = new Error('Bạn đã nộp khảo sát này rồi.');
-				e.statusCode = 409;
-				throw e;
+				throw httpError(409, 'Bạn đã nộp khảo sát này rồi.');
 			}
 			throw err;
 		});

@@ -7,6 +7,7 @@
  */
 const cmeRequirementService = require('./cmeRequirementService');
 const cmeReportService = require('./cmeReportService');
+const cmeReportWorkbook = require('./exports/cmeReportWorkbook');
 const { httpError } = require('../../utils/httpError');
 
 async function buildWorkbook(userId, year) {
@@ -14,7 +15,7 @@ async function buildWorkbook(userId, year) {
 	if (!profile) throw httpError(404, 'Không tìm thấy nhân sự');
 
 	const data = await cmeReportService.getData({ year, userId });
-	const wb = cmeReportService.buildWorkbook(data, {
+	const wb = cmeReportWorkbook.buildWorkbook(data, {
 		title: `BÁO CÁO TÍN CHỈ CME NĂM ${year}`,
 		subtitle: [profile.full_name, profile.staff_number, profile.department_name]
 			.filter(Boolean)

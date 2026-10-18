@@ -4,6 +4,7 @@ const { broadcast } = require('../../events/eventService');
 const { paging } = require('../../../utils/paging');
 const trainingFileService = require('../trainingFileService');
 const { assertHttpUrl } = require('../../../utils/safeUrl');
+const { httpError } = require('../../../utils/httpError');
 
 const programSelect = `
   SELECT p.*, d.name AS department_name, tt.name AS trainee_type_name, tp.name AS training_type_name,
@@ -276,9 +277,7 @@ const linkLesson = async (programId, lessonId, displayOrder, actorId) => {
 		)
 		.catch((err) => {
 			if (err.number === 51003) {
-				const e = new Error('Bài học này đã được gắn vào chương trình rồi.');
-				e.statusCode = 409;
-				throw e;
+				throw httpError(409, 'Bài học này đã được gắn vào chương trình rồi.');
 			}
 			throw err;
 		});
@@ -516,9 +515,7 @@ const incrementLessonDocumentDownload = async (docId) => {
     SELECT download_count FROM lesson_documents WHERE id = @id;
   `);
 	if (!result.recordset[0]) {
-		const err = new Error('Không tìm thấy tài liệu.');
-		err.statusCode = 404;
-		throw err;
+		throw httpError(404, 'Không tìm thấy tài liệu.');
 	}
 	return { download_count: result.recordset[0].download_count };
 };

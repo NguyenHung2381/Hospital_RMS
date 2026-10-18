@@ -1,4 +1,3 @@
-// @ts-nocheck — còn lỗi kiểu khi bật checkJs; sửa xong thì xoá dòng này (xem README, Kiểm tra chất lượng)
 const { getPool, sql } = require('../config/db');
 const notificationService = require('../modules/notifications/notificationService');
 const { markOnce } = require('./dedupe');
@@ -53,7 +52,7 @@ const warnStalePasswords = async (pool) => {
 };
 
 // Refresh token đã thu hồi được giữ lại tới hết hạn để phát hiện dùng lại
-// (authService.refreshAccessToken) — sau đó thì xoá; mỗi lần làm mới phiên
+// (sessionTokenService.refreshAccessToken) — sau đó thì xoá; mỗi lần làm mới phiên
 // (15 phút/lần) sinh thêm 1 dòng nên bảng tăng nhanh nếu không dọn.
 const purgeExpiredRefreshTokens = async (pool) => {
 	const result = await pool
