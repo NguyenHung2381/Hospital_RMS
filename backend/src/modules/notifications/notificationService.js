@@ -1,5 +1,6 @@
 const { getPool, sql } = require('../../config/db');
 const mailService = require('./mailService');
+const logger = require('../../config/logger');
 
 const getForUser = async (userId, { page = 1, limit = 20, unread_only = false } = {}) => {
 	const pool = await getPool();
@@ -78,7 +79,7 @@ const push = async (
 			.input('user_ids', sql.NVarChar(sql.MAX), JSON.stringify(userIds))
 			.execute('sp_push_notification');
 	} catch (err) {
-		console.error('[notification] push failed:', err.message);
+		logger.error('[notification] push failed:', err.message);
 	}
 };
 
@@ -116,7 +117,7 @@ const pushWithEmail = async (
 				html: mailService.renderNotificationEmail({ fullName: u.full_name, title, message }),
 			});
 		}
-	})().catch((err) => console.error('[notification] pushWithEmail failed:', err.message));
+	})().catch((err) => logger.error('[notification] pushWithEmail failed:', err.message));
 };
 
 const getUsersByTarget = async (targetType, targetIds = []) => {

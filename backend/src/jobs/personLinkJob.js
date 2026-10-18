@@ -1,4 +1,5 @@
 const personService = require('../modules/persons/personService');
+const logger = require('../config/logger');
 
 // Job nền: gắn nốt person_id cho các bản ghi còn thiếu (đường ghi dual-write bị lỗi,
 // dữ liệu import bằng SQL tay, đường ghi chưa được hook...). Idempotent, an toàn chạy lại.
@@ -9,7 +10,7 @@ const run = async () => {
 	if (!personService.isEnabled()) return;
 	for (const source of personService.SOURCE_ORDER) {
 		const n = await personService.syncPending(source, { limit: BATCH });
-		if (n > 0) console.log(`[job:person_link] ${source}: đã gắn person cho ${n} bản ghi.`);
+		if (n > 0) logger.info(`[job:person_link] ${source}: đã gắn person cho ${n} bản ghi.`);
 	}
 };
 

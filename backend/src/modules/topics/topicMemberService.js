@@ -7,6 +7,7 @@ const { ROLE, requireRoleId } = require('../access/roleCodes');
 const { defaultPassword } = require('../../utils/passwordPolicy');
 const userStatusCache = require('../../permissions/userStatusCache');
 const { stripDiacritics, stripQualification } = require('../../utils/vietnameseText');
+const logger = require('../../config/logger');
 
 const getMembers = async (topicId) => {
 	const pool = await getPool();
@@ -152,7 +153,7 @@ const genUserIdInTx = async (tx, deptCode) => {
 		if (id) return id;
 	} catch (err) {
 		if (!isGenLockTimeout(err)) throw err;
-		console.warn(
+		logger.warn(
 			'grantAccountsNoEmail: sp_gen_user_id lỗi khóa, dùng fallback sinh mã trong transaction:',
 			err.message,
 		);
@@ -412,7 +413,7 @@ const grantAccountsNoEmail = async (topicId, memberIds, actorId) => {
 					// bỏ qua nếu transaction đã bị abort
 				}
 			}
-			console.error(`grantAccountsNoEmail: bỏ qua thành viên ${member.id}:`, err.message);
+			logger.error(`grantAccountsNoEmail: bỏ qua thành viên ${member.id}:`, err.message);
 			skipped.push({
 				member_id: member.id,
 				ho_ten: member.ho_ten,
@@ -485,7 +486,7 @@ const grantAccountsNoEmail = async (topicId, memberIds, actorId) => {
 			);
 		}
 	} catch (err) {
-		console.error('grantAccountsNoEmail: gửi thông báo thất bại:', err.message);
+		logger.error('grantAccountsNoEmail: gửi thông báo thất bại:', err.message);
 	}
 
 	return { credentials, skipped };

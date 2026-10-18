@@ -7,6 +7,7 @@ const systemSettingService = require('../settings/systemSettingService');
 const { bumpTokenVersion } = require('./sessionVersion');
 const { checkPassword } = require('../../utils/passwordPolicy');
 const { httpError } = require('../../utils/httpError');
+const logger = require('../../config/logger');
 
 const OTP_TTL_MIN = 10;
 const RESEND_COOLDOWN_SEC = 60;
@@ -77,7 +78,7 @@ const requestOtp = async (login) => {
 		}),
 		attachments: [mailService.LOGO_ATTACHMENT],
 	});
-	if (!(await mailService.isEnabled())) console.log(`[reset-otp] ${user.username}: ${code}`);
+	if (!(await mailService.isEnabled())) logger.info(`[reset-otp] ${user.username}: ${code}`);
 };
 
 const resetPassword = async (login, code, newPassword) => {

@@ -2,6 +2,7 @@ const { getPool, sql } = require('../config/db');
 const notificationService = require('../modules/notifications/notificationService');
 const { markOnce } = require('./dedupe');
 const { todayVN } = require('../utils/vnDate');
+const logger = require('../config/logger');
 
 // Job nền: quét round_deadlines mỗi ngày, chủ động nhắc TRƯỚC khi tới hạn
 // (thay vì chỉ chặn PHẢN ỨNG như deadlineGuard.js) — mirror
@@ -85,7 +86,7 @@ const run = async () => {
 		sentCount += userIds.length;
 	}
 
-	if (sentCount > 0) console.log(`[job:deadline_reminder] Đã gửi ${sentCount} lượt nhắc deadline.`);
+	if (sentCount > 0) logger.info(`[job:deadline_reminder] Đã gửi ${sentCount} lượt nhắc deadline.`);
 };
 
 module.exports = { run };

@@ -1,5 +1,6 @@
 const router = require('express').Router();
 const express = require('express');
+const logger = require('../../config/logger');
 // Đếm trên Redis, tự rơi về bộ nhớ khi Redis lỗi (utils/rateLimit.js)
 const rateLimit = require('../../utils/rateLimit');
 
@@ -33,7 +34,7 @@ router.post('/', cspLimiter, parseReport, (req, res) => {
 	for (const r of reports.slice(0, 10)) {
 		if (!r || typeof r !== 'object') continue;
 		const body = r.body && typeof r.body === 'object' ? r.body : r;
-		console.warn(
+		logger.warn(
 			'[CSP] vi phạm',
 			JSON.stringify({
 				directive: clip(body['violated-directive'] ?? body.effectiveDirective),

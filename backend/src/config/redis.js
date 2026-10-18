@@ -1,5 +1,6 @@
 const Redis = require('ioredis');
 const { config } = require('./env');
+const logger = require('./logger');
 
 // Redis ở đây chỉ đóng vai trò cache phụ (cache-aside) cho dữ liệu đọc nặng —
 // KHÔNG phải nguồn dữ liệu chính. Vì vậy client phải "fail-open": Redis chết
@@ -51,7 +52,7 @@ let lastError = null;
 const warn = (err) => {
 	if (warned) return;
 	warned = true;
-	console.warn('[Cache] Redis không sẵn sàng — tạm thời đọc thẳng DB:', describe(err));
+	logger.warn('[Cache] Redis không sẵn sàng — tạm thời đọc thẳng DB:', describe(err));
 };
 
 redis.on('error', (err) => {
@@ -59,10 +60,10 @@ redis.on('error', (err) => {
 	if (everReady || isAuthError(err)) warn(err);
 });
 redis.on('ready', () => {
-	if (warned) console.log('[Cache] Redis đã kết nối lại.');
+	if (warned) logger.info('[Cache] Redis đã kết nối lại.');
 	// Log 1 dòng xác nhận cache đang chạy — chỉ ở tiến trình chính, worker của
 	// src/cluster.js im lặng để log không lặp lại N lần.
-	else if (!everReady && !process.env.CLUSTER_WORKER) console.log('[Cache] Đã kết nối Redis.');
+	else if (!everReady && !process.env.CLUSTER_WORKER) logger.info('[Cache] Đã kết nối Redis.');
 	warned = false;
 	everReady = true;
 });

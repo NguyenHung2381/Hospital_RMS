@@ -1,6 +1,7 @@
 const path = require('path');
 const nodemailer = require('nodemailer');
 const systemSettingService = require('../settings/systemSettingService');
+const logger = require('../../config/logger');
 
 // Kênh email tuỳ chọn (mirror MailHelper.php của hệ thống NCKH bệnh viện):
 // mặc định TẮT (MAIL_ENABLED khác 'true') để không phá vỡ môi trường dev/test
@@ -54,7 +55,7 @@ const getTransporter = async () => {
 const send = async ({ to, subject, html, attachments, event }) => {
 	if (!to) return;
 	if (!(await isEnabled(event))) {
-		console.log(
+		logger.info(
 			`[mail] email${event ? ` (${event})` : ''} đang tắt — bỏ qua gửi tới ${to}: "${subject}"`,
 		);
 		return;
@@ -72,7 +73,7 @@ const send = async ({ to, subject, html, attachments, event }) => {
 			attachments,
 		});
 	} catch (err) {
-		console.error(`❌ Gửi email thất bại tới ${to}:`, err.message);
+		logger.error(`❌ Gửi email thất bại tới ${to}:`, err.message);
 	}
 };
 

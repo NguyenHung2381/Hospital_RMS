@@ -3,6 +3,7 @@ const { unauthorized } = require('../utils/response');
 const permCache = require('../permissions/permissionCache');
 const userStatusCache = require('../permissions/userStatusCache');
 const { isKnownKey } = require('../permissions/catalog');
+const logger = require('../config/logger');
 // Hàm hỏi quyền thuần — re-export bên dưới cho code cũ còn require từ đây
 const { hasPermission, scopeOf, isDeadlineBound } = require('../permissions/authz');
 const { twoFactorState } = require('../permissions/twoFactorPolicy');
@@ -153,7 +154,7 @@ const authorizePermission = (...pairs) => {
 	// với mọi người trừ superuser. Báo ngay lúc nạp route thay vì đợi người dùng.
 	for (const [resource, action] of pairs) {
 		if (!isKnownKey(`${resource}:${action}`)) {
-			console.warn(
+			logger.warn(
 				`⚠️  [permissions] authorizePermission dùng quyền không có trong catalog: ${resource}:${action}`,
 			);
 		}

@@ -5,6 +5,7 @@ const clamav = require('../utils/clamav');
 const quota = require('../utils/uploadQuota');
 const securityEvents = require('../modules/audit/securityEventService');
 const { httpError } = require('../utils/httpError');
+const logger = require('../config/logger');
 
 // Bọc 1 instance multer để mọi route upload tự có thêm 3 lớp kiểm tra:
 //   1. Hạn mức dung lượng/ngày của tài khoản (utils/uploadQuota.js) — kiểm tra
@@ -74,7 +75,7 @@ const verify = (opts) => async (req, _res, next) => {
 		try {
 			result = await clamav.scanFile(file);
 		} catch (err) {
-			console.error('[upload] ClamAV lỗi — từ chối upload:', err.message);
+			logger.error('[upload] ClamAV lỗi — từ chối upload:', err.message);
 			await removeFiles(files);
 			return next(
 				httpError(503, 'Hệ thống quét virus tạm thời không hoạt động, vui lòng thử lại sau.'),

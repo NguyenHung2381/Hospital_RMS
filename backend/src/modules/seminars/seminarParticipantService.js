@@ -16,6 +16,7 @@ const mailService = require('../notifications/mailService');
 const { renderSeminarBadgePng } = require('../../utils/seminarBadgeImage');
 const { testState, testWindow } = require('../../utils/seminarSchedule');
 const { httpError } = require('../../utils/httpError');
+const logger = require('../../config/logger');
 const {
 	SUBMIT_GRACE_MS,
 	attemptDeadline,
@@ -484,7 +485,7 @@ const registerPublic = async (token, data) => {
 	// Không chờ SMTP — đăng ký đã ghi xong, email chậm/lỗi không chặn phản hồi.
 	if (data.email)
 		sendBadgeMail(seminar, data, ticketCode).catch((e) =>
-			console.error('[mail] thẻ đại biểu:', e.message),
+			logger.error('[mail] thẻ đại biểu:', e.message),
 		);
 	return { ticket_code: ticketCode };
 };

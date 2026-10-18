@@ -2,6 +2,7 @@ const { getPool, sql } = require('../config/db');
 const notificationService = require('../modules/notifications/notificationService');
 const { markOnce } = require('./dedupe');
 const { todayKeyVN } = require('../utils/vnDate');
+const logger = require('../config/logger');
 
 // Job nền bảo trì tài khoản:
 //  1. Gọi sp_deactivate_expired_accounts — stored proc đã tồn tại từ trước
@@ -17,7 +18,7 @@ const deactivateExpiredAccounts = async (pool) => {
 	const result = await pool.request().execute('sp_deactivate_expired_accounts');
 	const deactivated = result.recordset?.[0]?.deactivated_count ?? 0;
 	if (deactivated > 0)
-		console.log(`[job:account_maintenance] Đã vô hiệu hoá ${deactivated} tài khoản hết hạn.`);
+		logger.info(`[job:account_maintenance] Đã vô hiệu hoá ${deactivated} tài khoản hết hạn.`);
 };
 
 const warnStalePasswords = async (pool) => {
@@ -58,7 +59,7 @@ const purgeExpiredRefreshTokens = async (pool) => {
 		.request()
 		.query('DELETE FROM refresh_tokens WHERE expires_at < GETDATE()');
 	const purged = result.rowsAffected?.[0] ?? 0;
-	if (purged > 0) console.log(`[job:account_maintenance] Đã xoá ${purged} refresh token hết hạn.`);
+	if (purged > 0) logger.info(`[job:account_maintenance] Đã xoá ${purged} refresh token hết hạn.`);
 };
 
 const run = async () => {

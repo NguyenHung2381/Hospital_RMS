@@ -1,5 +1,6 @@
 const { getPool, sql, withTransaction } = require('../../config/db');
 const { normalizeGender } = require('../../utils/gender');
+const logger = require('../../config/logger');
 
 /**
  * Dual-write danh tính (GĐ 1 / bước 2) — giữ bảng `persons` đồng bộ với 6 bảng nguồn.
@@ -113,7 +114,7 @@ const checkSchema = async (pool) => {
 		            THEN 1 ELSE 0 END AS ok`);
 	schemaReady = r.recordset[0].ok === 1;
 	if (!schemaReady) {
-		console.warn(
+		logger.warn(
 			'[persons] Chưa có bảng persons/cột person_id — bỏ qua dual-write (chạy migration 2026-09-25_persons_foundation.sql).',
 		);
 	}
@@ -387,7 +388,7 @@ const logFailure = (what, err) => {
 		schemaReady = false; // thiếu bảng/cột (migration chưa chạy hoặc bị gỡ) → kiểm tra lại sau
 		schemaCheckedAt = Date.now();
 	}
-	console.error(`[persons] ${what} thất bại (bỏ qua, job đêm sẽ gắn lại):`, err?.message || err);
+	logger.error(`[persons] ${what} thất bại (bỏ qua, job đêm sẽ gắn lại):`, err?.message || err);
 };
 
 // ─── API công khai ───────────────────────────────────────────────────────────

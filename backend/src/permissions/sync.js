@@ -3,6 +3,7 @@ const permCache = require('./permissionCache');
 const { invalidate } = require('../utils/cache');
 const { ALL_PERMISSIONS } = require('./catalog');
 const { RESOURCE_SCOPES, isScoped, nullScopeFill } = require('./scopes');
+const logger = require('../config/logger');
 
 // Đồng bộ permissions/catalog.js → bảng `permissions` lúc server khởi động.
 //   - Quyền có trong catalog, chưa có trong DB → INSERT. Nếu khai báo seedFrom:
@@ -140,9 +141,9 @@ const syncPermissions = async ({ dryRun = false } = {}) => {
 		await invalidate('lookup:roles:');
 	}
 
-	for (const w of warnings) console.warn(`⚠️  [permissions] ${w}`);
+	for (const w of warnings) logger.warn(`⚠️  [permissions] ${w}`);
 	if (toInsert.length || toUpdate.length) {
-		console.log(
+		logger.info(
 			`✅ [permissions] Đồng bộ catalog: +${toInsert.length} quyền mới` +
 				(seeded ? ` (cấp sẵn cho ${seeded} lượt vai trò)` : '') +
 				`, ${toUpdate.length} quyền cập nhật tên/nhóm`,

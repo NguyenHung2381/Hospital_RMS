@@ -1,4 +1,5 @@
 const path = require('path');
+const logger = require('./config/logger');
 
 // Kiểm tra biến môi trường trước mọi thứ khác: thiếu biến bắt buộc, secret
 // production yếu, thiếu CORS_ORIGIN... thì dừng (config/env.js).
@@ -135,7 +136,7 @@ if (isProduction) {
 	app.use(API, (req, _res, next) => {
 		if (!warnedInsecure && !req.secure) {
 			warnedInsecure = true;
-			console.warn(
+			logger.warn(
 				`⚠️  Request ${req.method} ${req.path} tới qua ${req.protocol}, không phải https — ` +
 					'kiểm tra proxy HTTPS gửi X-Forwarded-Proto, TRUSTED_PROXIES (frontend) và TRUST_PROXY (backend).',
 			);

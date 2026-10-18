@@ -1,6 +1,7 @@
 // Chuẩn hóa page/limit cho các service phân trang kiểu OFFSET/FETCH.
 // limit=0 → lấy tất cả (chỉ dùng cho bảng nhỏ: departments, rounds, councils, catalogs...);
 // limit>0 → cap MAX_LIMIT chống lạm dụng. Query string gửi lên là chuỗi nên parse tại đây.
+const logger = require('../config/logger');
 const MAX_LIMIT = 1000;
 
 const paging = (page, limit, defaultLimit = 20) => {
@@ -32,5 +33,5 @@ if (require.main === module) {
 	assert.strictEqual(paging('abc', 'xyz').limit, 20); // rác → default
 	assert.strictEqual(paging(undefined, undefined, 100).limit, 100);
 	assert.strictEqual(paging('-1', '-5').offset, 0); // âm → chặn về 1
-	console.log('paging.js OK');
+	logger.info('paging.js OK');
 }

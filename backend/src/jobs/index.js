@@ -2,6 +2,7 @@ const cron = require('node-cron');
 const deadlineReminderJob = require('./deadlineReminderJob');
 const accountMaintenanceJob = require('./accountMaintenanceJob');
 const personLinkJob = require('./personLinkJob');
+const logger = require('../config/logger');
 
 const TZ = process.env.CRON_TZ || 'Asia/Ho_Chi_Minh';
 
@@ -9,7 +10,7 @@ const runSafely = (name, fn) => async () => {
 	try {
 		await fn();
 	} catch (err) {
-		console.error(`[job:${name}] lỗi:`, err.message);
+		logger.error(`[job:${name}] lỗi:`, err.message);
 	}
 };
 
@@ -18,7 +19,7 @@ const runSafely = (name, fn) => async () => {
 // JOBS_ENABLED=false trên các instance còn lại).
 const start = () => {
 	if (process.env.JOBS_ENABLED === 'false') {
-		console.log('[jobs] JOBS_ENABLED=false — không chạy cron job nền.');
+		logger.info('[jobs] JOBS_ENABLED=false — không chạy cron job nền.');
 		return;
 	}
 
@@ -37,7 +38,7 @@ const start = () => {
 		timezone: TZ,
 	});
 
-	console.log(`[jobs] Đã lên lịch cron job nền (timezone ${TZ}).`);
+	logger.info(`[jobs] Đã lên lịch cron job nền (timezone ${TZ}).`);
 };
 
 module.exports = { start };

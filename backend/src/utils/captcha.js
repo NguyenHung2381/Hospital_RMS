@@ -2,6 +2,7 @@ const crypto = require('crypto');
 const { signToken, verifyToken } = require('./keys');
 const { consumeOnce } = require('./oneTimeToken');
 const { leadingZeroBits } = require('./loginShield');
+const logger = require('../config/logger');
 
 // Chống bot cho cổng công khai (đăng ký khoá học / đề tài). 2 chế độ:
 //
@@ -76,22 +77,22 @@ const verifyTurnstile = async (token, ip) => {
 		try {
 			json = await callSiteverify(token, ip);
 		} catch (err) {
-			console.error('[captcha] Không gọi được Turnstile — từ chối yêu cầu:', err.message);
+			logger.error('[captcha] Không gọi được Turnstile — từ chối yêu cầu:', err.message);
 			return false;
 		}
 	}
 	if (json.success !== true) {
-		console.warn('[captcha] Turnstile từ chối:', (json['error-codes'] || []).join(','));
+		logger.warn('[captcha] Turnstile từ chối:', (json['error-codes'] || []).join(','));
 		return false;
 	}
 	// Khoá test của Cloudflare không trả action — chỉ so khi có
 	if (json.action && json.action !== TURNSTILE_ACTION) {
-		console.warn('[captcha] Turnstile sai action:', json.action);
+		logger.warn('[captcha] Turnstile sai action:', json.action);
 		return false;
 	}
 	const hosts = turnstileHostnames();
 	if (hosts.length && !hosts.includes(String(json.hostname || '').toLowerCase())) {
-		console.warn('[captcha] Turnstile sai hostname:', json.hostname);
+		logger.warn('[captcha] Turnstile sai hostname:', json.hostname);
 		return false;
 	}
 	return true;

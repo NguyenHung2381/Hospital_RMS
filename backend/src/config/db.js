@@ -1,5 +1,6 @@
 const sql = require('mssql');
 const { config } = require('./env');
+const logger = require('./logger');
 
 const dbConfig = {
 	server: config.DB_SERVER,
@@ -39,7 +40,7 @@ const getPool = async () => {
 		try {
 			const pool = await poolPromise;
 			if (!pool.connected) {
-				console.warn('[DB] Pool đã mất kết nối — đang reconnect...');
+				logger.warn('[DB] Pool đã mất kết nối — đang reconnect...');
 				try {
 					await pool.close();
 				} catch {
@@ -57,11 +58,11 @@ const getPool = async () => {
 	poolPromise = sql
 		.connect(dbConfig)
 		.then((pool) => {
-			console.log('✅ Connected to SQL Server');
+			logger.info('✅ Connected to SQL Server');
 
 			// Tự reset khi pool phát lỗi (SQL Server restart, network drop…)
 			pool.on('error', (err) => {
-				console.error('[DB] Pool error:', err.message);
+				logger.error('[DB] Pool error:', err.message);
 				poolPromise = null;
 			});
 

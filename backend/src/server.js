@@ -1,16 +1,17 @@
 const path = require('path');
 const app = require('./app');
 const jobs = require('./jobs');
+const logger = require('./config/logger');
 
 // ─── Global process error guards (prevent crash on unhandled rejections) ─────
 process.on('unhandledRejection', (reason) => {
-	console.error('❌ Unhandled Promise Rejection:', reason);
+	logger.error('❌ Unhandled Promise Rejection:', reason);
 });
 // Exception không ai bắt = tiến trình đang ở trạng thái không xác định (kết nối,
 // khoá, dữ liệu ghi dở...) — chạy tiếp có thể phục vụ sai hoặc lộ dữ liệu. Ghi
 // log rồi thoát; Docker (restart: unless-stopped) / nodemon tự khởi động lại.
 process.on('uncaughtException', (err) => {
-	console.error('❌ Uncaught Exception — dừng tiến trình:', err.message, err.stack);
+	logger.error('❌ Uncaught Exception — dừng tiến trình:', err.message, err.stack);
 	process.exit(1);
 });
 
@@ -35,7 +36,7 @@ const findAvailablePort = async (startPort, maxRetries = 10) => {
 		const port = startPort + i;
 		const inUse = await isPortInUse(port);
 		if (!inUse) return port;
-		console.warn(`⚠️  Port ${port} đang được sử dụng, thử port ${port + 1}...`);
+		logger.warn(`⚠️  Port ${port} đang được sử dụng, thử port ${port + 1}...`);
 	}
 	throw new Error(`Không tìm được port khả dụng sau ${maxRetries} lần thử.`);
 };
@@ -73,7 +74,7 @@ const startStandalone = async () => {
 			await require('./database').initDatabase();
 		} catch (err) {
 			if (err.code !== 'DB_SCHEMA_OUTDATED') throw err;
-			console.error(`❌ [db] ${err.message}`);
+			logger.error(`❌ [db] ${err.message}`);
 			process.exit(1);
 		}
 
@@ -82,7 +83,7 @@ const startStandalone = async () => {
 
 		app.listen(PORT, '0.0.0.0', () => {
 			if (PORT !== PREFERRED_PORT) {
-				console.warn(`⚠️  Port ${PREFERRED_PORT} bị chiếm, chuyển sang port ${PORT}`);
+				logger.warn(`⚠️  Port ${PREFERRED_PORT} bị chiếm, chuyển sang port ${PORT}`);
 			}
 
 			// Tự động đồng bộ Port sang file .env của Frontend (Client)
@@ -109,25 +110,25 @@ const startStandalone = async () => {
 						}
 						if (envContent !== newContent) {
 							fs.writeFileSync(clientEnvPath, newContent);
-							console.log(`✅ Đã tự động đồng bộ Port ${PORT} sang thư mục client`);
+							logger.info(`✅ Đã tự động đồng bộ Port ${PORT} sang thư mục client`);
 						}
 					}
 				} catch (err) {
-					console.warn(`⚠️  Không thể đồng bộ port sang client/.env: ${err.message}`);
+					logger.warn(`⚠️  Không thể đồng bộ port sang client/.env: ${err.message}`);
 				}
 
 			const networkIp = getNetworkIp() || '192.168.x.x';
-			console.log(`🚀 RMS Hospital API running at:`);
-			console.log(`   > Local:   http://localhost:${PORT}`);
-			console.log(`   > Network: http://${networkIp}:${PORT}`);
-			console.log(`   Environment: ${process.env.NODE_ENV || 'development'}`);
+			logger.info(`🚀 RMS Hospital API running at:`);
+			logger.info(`   > Local:   http://localhost:${PORT}`);
+			logger.info(`   > Network: http://${networkIp}:${PORT}`);
+			logger.info(`   Environment: ${process.env.NODE_ENV || 'development'}`);
 			if (process.env.NODE_ENV !== 'production' || process.env.SWAGGER_ENABLED === 'true')
-				console.log(`📚 Swagger UI:  http://localhost:${PORT}/api-docs`);
+				logger.info(`📚 Swagger UI:  http://localhost:${PORT}/api-docs`);
 
 			jobs.start();
 		});
 	} catch (err) {
-		console.error(`❌ Không thể khởi động server: ${err.message}`);
+		logger.error(`❌ Không thể khởi động server: ${err.message}`);
 		process.exit(1);
 	}
 };

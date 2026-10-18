@@ -1,5 +1,6 @@
 const fs = require('fs');
 const net = require('net');
+const logger = require('../config/logger');
 
 // Quét virus file upload bằng ClamAV (clamd) — TUỲ CHỌN, bật khi đặt
 // CLAMAV_HOST (vd service `clamav` trong docker-compose.prod.yml, profile "av").
@@ -58,7 +59,7 @@ const scanFile = async (file) => {
 	if (!cfg.host) return { skipped: 'disabled' };
 	const size = file.buffer ? file.buffer.length : file.size;
 	if (size > cfg.maxBytes) {
-		console.warn(
+		logger.warn(
 			`[clamav] Bỏ qua quét ${file.originalname} (${Math.round(size / 1048576)}MB > CLAMAV_MAX_MB)`,
 		);
 		return { skipped: 'too_large' };
@@ -72,7 +73,7 @@ const scanFile = async (file) => {
 		throw new Error(`Phản hồi ClamAV không rõ: ${reply || '(rỗng)'}`);
 	} catch (err) {
 		if (cfg.failOpen) {
-			console.error(
+			logger.error(
 				`[clamav] Lỗi quét ${file.originalname} — vẫn nhận (CLAMAV_FAIL_OPEN):`,
 				err.message,
 			);

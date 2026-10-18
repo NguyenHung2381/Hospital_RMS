@@ -1,5 +1,6 @@
 require('./loadEnv');
 const { z } = require('zod');
+const logger = require('./logger');
 
 // Cấu hình hạ tầng đọc từ biến môi trường — kiểm tra 1 lần lúc khởi động
 // (assertValidEnv, gọi ở app.js) thay vì rải điều kiện process.exit khắp nơi.
@@ -164,9 +165,9 @@ const { config } = loadConfig();
 // Kiểm tra lại process.env TẠI LÚC GỌI — có thể đã được bổ sung sau khi file này nạp.
 const assertValidEnv = () => {
 	const { config: current, errors, warnings: found } = loadConfig();
-	for (const w of found) console.warn(`⚠️  ${w}`);
+	for (const w of found) logger.warn(`⚠️  ${w}`);
 	if (errors.length) {
-		console.error(
+		logger.error(
 			`❌ Cấu hình môi trường không hợp lệ (xem backend/.env.example):\n${errors.map((e) => `   - ${e}`).join('\n')}`,
 		);
 		process.exit(1);

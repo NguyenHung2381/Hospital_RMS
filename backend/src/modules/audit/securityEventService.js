@@ -1,4 +1,5 @@
 const { getPool, sql } = require('../../config/db');
+const logger = require('../../config/logger');
 
 // Ghi 1 sự kiện bảo mật (khoá tài khoản, xoay refresh token, xem dữ liệu
 // nhạy cảm...). Không bao giờ throw ra ngoài — lỗi ghi log không được phép
@@ -29,7 +30,7 @@ const log = async ({
 					(@event_type, @actor_id, @target_type, @target_id, @ip_address, @user_agent, @detail)
 			`);
 	} catch (err) {
-		console.error('❌ security_events insert failed:', err.message);
+		logger.error('❌ security_events insert failed:', err.message);
 	}
 	// Email cảnh báo cho sự kiện quan trọng — chạy nền, không chờ (không làm chậm
 	// luồng đăng nhập / upload). require trễ để tránh vòng phụ thuộc lúc nạp module.

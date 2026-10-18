@@ -3,6 +3,7 @@ const jwt = require('jsonwebtoken');
 const { v4: uuidv4 } = require('uuid');
 const { getPool, sql } = require('../../config/db');
 const securityEvents = require('../audit/securityEventService');
+const logger = require('../../config/logger');
 
 // "Thiết bị quen" (OWASP — device cookie): trình duyệt đã đăng nhập thành công
 // vào 1 tài khoản được cấp device token (client giữ trong localStorage, gửi
@@ -75,7 +76,7 @@ const verifyDeviceToken = async (token, user) => {
 	try {
 		if (await isRevoked(decoded.did)) return null;
 	} catch (err) {
-		console.error('❌ trusted device revoke check failed:', err.message);
+		logger.error('❌ trusted device revoke check failed:', err.message);
 		return null;
 	}
 	return { did: decoded.did };

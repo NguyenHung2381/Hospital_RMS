@@ -15,6 +15,7 @@ const secretBox = require('../../utils/secretBox');
 const { consumeOnce } = require('../../utils/oneTimeToken');
 const { passwordGate, BUSY_ERROR } = require('../../utils/cpuGate');
 const { httpError } = require('../../utils/httpError');
+const logger = require('../../config/logger');
 
 // Mọi lần so / băm mật khẩu theo yêu cầu của người dùng đi qua passwordGate
 // (utils/cpuGate.js) — giới hạn số bcrypt chạy cùng lúc, quá tải trả 503.
@@ -377,7 +378,7 @@ const readSecret = (stored) => {
 	try {
 		return secretBox.decrypt(stored);
 	} catch (err) {
-		console.error('❌ Không giải mã được secret 2FA — khoá mã hoá không khớp:', err.message);
+		logger.error('❌ Không giải mã được secret 2FA — khoá mã hoá không khớp:', err.message);
 		throw httpError(
 			409,
 			'Không đọc được cấu hình xác thực 2 lớp của tài khoản. Vui lòng liên hệ quản trị viên để đặt lại 2FA.',
@@ -716,7 +717,7 @@ const tagRefreshTokenSession = async (pool, tokenHash, ip, userAgent, familyId) 
 				   family_id = @family_id WHERE token = @token`,
 			);
 	} catch (err) {
-		console.error('❌ tagRefreshTokenSession failed:', err.message);
+		logger.error('❌ tagRefreshTokenSession failed:', err.message);
 	}
 };
 

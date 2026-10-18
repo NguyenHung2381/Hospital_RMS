@@ -1,5 +1,6 @@
 const { getPool } = require('../config/db');
 const { syncPermissions } = require('./sync');
+const logger = require('../config/logger');
 
 // Gọi từ database/index.js lúc khởi động, sau bước migration:
 //   1. Kiểm tra CSDL đã ở mô hình phân quyền mới — code KHÔNG còn nhánh chạy
@@ -59,7 +60,7 @@ const initPermissions = async () => {
 	try {
 		await syncPermissions();
 	} catch (err) {
-		console.error(`❌ [permissions] Đồng bộ danh mục quyền thất bại: ${err.message}`);
+		logger.error(`❌ [permissions] Đồng bộ danh mục quyền thất bại: ${err.message}`);
 	}
 };
 

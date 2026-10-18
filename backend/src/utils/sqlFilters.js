@@ -1,4 +1,5 @@
 // Helper dựng mệnh đề lọc đa giá trị cho các list endpoint (multi-select trên UI).
+const logger = require('../config/logger');
 
 // "a,b,c" → ['a','b','c']; rỗng/undefined → []
 const splitList = (v) => (v ? String(v).split(',').filter(Boolean) : []);
@@ -51,5 +52,5 @@ if (require.main === module) {
 
 	assert.strictEqual(buildWhere([]), 'WHERE 1=1');
 	assert.strictEqual(buildWhere(['a=1', null, 'b=2']), 'WHERE 1=1 AND a=1 AND b=2');
-	console.log('sqlFilters.js OK');
+	logger.info('sqlFilters.js OK');
 }

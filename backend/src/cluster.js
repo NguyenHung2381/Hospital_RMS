@@ -17,6 +17,7 @@
 require('./config/loadEnv');
 const cluster = require('node:cluster');
 const os = require('node:os');
+const logger = require('./config/logger');
 
 const WORKERS = Math.max(
 	1,
@@ -30,14 +31,14 @@ const FAST_EXIT_MS = 10_000;
 const MAX_FAST_EXITS = 5;
 
 process.on('unhandledRejection', (reason) => {
-	console.error('❌ [cluster] Unhandled Promise Rejection:', reason);
+	logger.error('❌ [cluster] Unhandled Promise Rejection:', reason);
 });
 
 const main = async () => {
 	try {
 		await require('./database').initDatabase();
 	} catch (err) {
-		console.error(`❌ [db] ${err.message}`);
+		logger.error(`❌ [db] ${err.message}`);
 		process.exit(1);
 	}
 
@@ -66,12 +67,12 @@ const main = async () => {
 			if (slots.size === 0) process.exit(0);
 			return;
 		}
-		console.error(
+		logger.error(
 			`⚠️  [cluster] worker ${worker.process.pid} (slot ${slot}) dừng (code ${code}, signal ${signal}) — tạo lại.`,
 		);
 		if (Date.now() - worker.rmsStartedAt < FAST_EXIT_MS) {
 			if (++fastExits >= MAX_FAST_EXITS) {
-				console.error(`❌ [cluster] worker lỗi khi khởi động ${fastExits} lần liên tiếp — dừng.`);
+				logger.error(`❌ [cluster] worker lỗi khi khởi động ${fastExits} lần liên tiếp — dừng.`);
 				process.exit(1);
 			}
 		} else {
@@ -82,15 +83,15 @@ const main = async () => {
 
 	for (let slot = 0; slot < WORKERS; slot++) fork(slot);
 
-	console.log(`🚀 RMS Hospital API (cluster: ${WORKERS} worker) running at port ${PORT}`);
-	console.log(`   Environment: ${process.env.NODE_ENV || 'development'}`);
+	logger.info(`🚀 RMS Hospital API (cluster: ${WORKERS} worker) running at port ${PORT}`);
+	logger.info(`   Environment: ${process.env.NODE_ENV || 'development'}`);
 
 	// docker stop gửi SIGTERM cho primary (PID 1): chuyển tiếp cho từng worker,
 	// chờ tối đa 10s rồi thoát hẳn.
 	const shutdown = (signal) => {
 		if (shuttingDown) return;
 		shuttingDown = true;
-		console.log(`[cluster] nhận ${signal} — dừng ${slots.size} worker...`);
+		logger.info(`[cluster] nhận ${signal} — dừng ${slots.size} worker...`);
 		for (const worker of slots.values()) worker.process.kill('SIGTERM');
 		setTimeout(() => process.exit(0), 10_000).unref();
 	};

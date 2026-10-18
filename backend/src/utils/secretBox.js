@@ -1,6 +1,7 @@
 const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
+const logger = require('../config/logger');
 
 // Mã hoá dữ liệu bí mật lưu trong DB (secret TOTP của 2FA) bằng AES-256-GCM.
 // Mục đích: lộ riêng DB (bản sao lưu, SQL injection, người có quyền đọc bảng)
@@ -32,7 +33,7 @@ const loadKey = () => {
 		try {
 			// 'wx' = chỉ tạo nếu chưa có — 2 tiến trình khởi động cùng lúc không ghi đè nhau
 			fs.writeFileSync(file, crypto.randomBytes(32).toString('hex'), { flag: 'wx', mode: 0o600 });
-			console.log(`🔑 Đã sinh khoá mã hoá secret 2FA tại ${file} — nhớ sao lưu cùng DB.`);
+			logger.info(`🔑 Đã sinh khoá mã hoá secret 2FA tại ${file} — nhớ sao lưu cùng DB.`);
 		} catch (err) {
 			if (err.code !== 'EEXIST') throw err;
 		}
