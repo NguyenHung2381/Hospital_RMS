@@ -19,6 +19,7 @@ const log = install(async (text, inputs) => {
 		return inputs.national_id === TRAINEE.national_id ? [TRAINEE] : [];
 	return [];
 });
+const courseEnrollmentService = require('../../src/modules/training/courses/courseEnrollmentService');
 const courseService = require('../../src/modules/training/courses/courseService');
 courseService.getById = async () => ({
 	id: 'KH1',
@@ -26,7 +27,7 @@ courseService.getById = async () => ({
 	is_public_registration: true,
 	enrollment_open: true,
 });
-courseService.registerTrainee = async () => ({ id: 'GD1' });
+courseEnrollmentService.registerTrainee = async () => ({ id: 'GD1' });
 require('../../src/modules/training/trainees/traineeService').create = async () => ({
 	id: 'HV-NEW',
 });

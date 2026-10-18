@@ -29,7 +29,7 @@ const {
 
 // Mã QR điểm danh hội thảo — JWT ngắn hạn ký seminar_id (mirror
 // courseService.generateAttendanceQrToken / utils/captcha.js).
-const CHECKIN_QR_TTL = '75s'; // xem giải thích ở courseService.ATTENDANCE_QR_TTL
+const CHECKIN_QR_TTL = '75s'; // xem giải thích ở training/courses/courseAttendanceService.js (ATTENDANCE_QR_TTL)
 const CHECKIN_QR_PURPOSE = 'seminar_checkin_qr';
 
 const PART_TYPES = ['attendee', 'speaker', 'chair', 'organizer', 'trainee'];

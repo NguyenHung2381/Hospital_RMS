@@ -18,7 +18,7 @@ install(async (text) => {
 	return [];
 });
 require('../../src/modules/events/eventService').broadcast = () => {};
-require('../../src/modules/training/courses/courseService').upsertGrade = async () => {};
+require('../../src/modules/training/courses/gradeService').upsertGrade = async () => {};
 
 // Controller người dùng: stub service + chốt quyền quản lý tài khoản
 const userService = require('../../src/modules/users/userService');

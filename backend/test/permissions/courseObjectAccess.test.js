@@ -1,4 +1,4 @@
-// Chống IDOR cho khoá học (modules/training/courses/courseService.js): giảng viên phạm vi
+// Chống IDOR cho khoá học (modules/training/courses/coursePolicy.js): giảng viên phạm vi
 // 'assigned' chỉ thao tác khoá học mình được phân công — kể cả qua mã bản ghi
 // con (buổi học, đăng ký, tài liệu, điểm, chứng chỉ...).
 const test = require('node:test');
@@ -26,7 +26,7 @@ install(async (text, inputs) => {
 	const course = CHILD[`${table}:${inputs.id}`];
 	return course ? [{ course_id: course }] : [];
 });
-const courseService = require('../../src/modules/training/courses/courseService');
+const coursePolicy = require('../../src/modules/training/courses/coursePolicy');
 
 const actor = (id, grants) => ({
 	id,
@@ -39,23 +39,23 @@ const MANAGER = actor('QL1', { 'courses:read': 'all', 'courses:update': 'all' })
 const denied = (p, code = 403) => assert.rejects(p, (e) => e.statusCode === code);
 
 test('giảng viên: khoá được phân công thì qua, khoá khác bị chặn', async () => {
-	await courseService.assertCourseInScope('KH1', LECTURER);
-	await denied(courseService.assertCourseInScope('KH2', LECTURER));
+	await coursePolicy.assertCourseInScope('KH1', LECTURER);
+	await denied(coursePolicy.assertCourseInScope('KH2', LECTURER));
 });
 
 test('giảng viên: mã bản ghi con quy về khoá học chứa nó', async () => {
-	await courseService.assertCourseChildInScope('sessionId', 'BH1', LECTURER);
-	await courseService.assertCourseChildInScope('certId', 'CC1', LECTURER);
-	await denied(courseService.assertCourseChildInScope('sessionId', 'BH2', LECTURER));
-	await denied(courseService.assertCourseChildInScope('enrollmentId', 'DK2', LECTURER));
-	await denied(courseService.assertCourseChildInScope('gradeId', 'D2', LECTURER));
-	await denied(courseService.assertCourseChildInScope('docId', 'KHONG-CO', LECTURER), 404);
+	await coursePolicy.assertCourseChildInScope('sessionId', 'BH1', LECTURER);
+	await coursePolicy.assertCourseChildInScope('certId', 'CC1', LECTURER);
+	await denied(coursePolicy.assertCourseChildInScope('sessionId', 'BH2', LECTURER));
+	await denied(coursePolicy.assertCourseChildInScope('enrollmentId', 'DK2', LECTURER));
+	await denied(coursePolicy.assertCourseChildInScope('gradeId', 'D2', LECTURER));
+	await denied(coursePolicy.assertCourseChildInScope('docId', 'KHONG-CO', LECTURER), 404);
 });
 
 test('phạm vi toàn viện: không cần tra DB', async () => {
 	const before = queries.length;
-	await courseService.assertCourseInScope('KH2', MANAGER);
-	await courseService.assertCourseChildInScope('gradeId', 'D2', MANAGER);
+	await coursePolicy.assertCourseInScope('KH2', MANAGER);
+	await coursePolicy.assertCourseChildInScope('gradeId', 'D2', MANAGER);
 	assert.equal(queries.length, before);
 });
 
@@ -68,7 +68,7 @@ test('mọi tham số mã con trong modules/training/courses/courses.routes.js �
 	for (const p of params) {
 		if (p === 'id') continue;
 		assert.ok(
-			courseService.CHILD_COURSE_SQL[p],
+			coursePolicy.CHILD_COURSE_SQL[p],
 			`route dùng :${p} nhưng chưa có trong CHILD_COURSE_SQL`,
 		);
 	}

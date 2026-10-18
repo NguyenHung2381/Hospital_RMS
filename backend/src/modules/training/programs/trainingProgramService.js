@@ -171,7 +171,7 @@ const listLessons = async (programId) => {
 // Toàn bộ bài học đang có (không phân biệt chương trình) — nguồn cho picker
 // "đính kèm bài học có sẵn" ở FE, để tái dùng thay vì tạo trùng nội dung.
 // program_names: hiển thị nhanh đang thuộc chương trình nào (mirror cách
-// courseService.courseSelect làm với program_names qua STRING_AGG).
+// courseService.js (courseSelect) làm với program_names qua STRING_AGG).
 const listAllLessons = async () => {
 	const pool = await getPool();
 	const r = await pool.request().query(`
@@ -437,7 +437,7 @@ const removeLesson = async (lessonId, actorId) => {
 };
 
 // ─── Tài liệu riêng của bài học (lesson_documents) ──────────────────────────
-// Mirror course_documents (courseService.js) nhưng không có doc_type/exam_type
+// Mirror course_documents (courseDocumentService.js) nhưng không có doc_type/exam_type
 // — bài học chỉ có tài liệu, không có khái niệm bài kiểm tra.
 const listLessonDocuments = async (lessonId) => {
 	const pool = await getPool();

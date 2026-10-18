@@ -1,6 +1,7 @@
 const { getPool, sql } = require('../../config/db');
 const { remember } = require('../../utils/cache');
 const traineeService = require('../training/trainees/traineeService');
+const courseEnrollmentService = require('../training/courses/courseEnrollmentService');
 const courseService = require('../training/courses/courseService');
 const researchRoundService = require('../rounds/roundService');
 const topicService = require('../topics/topicService');
@@ -137,7 +138,11 @@ const register = async (data, files) => {
 		);
 	}
 
-	const enrollment = await courseService.registerTrainee(data.course_id, trainee.id, null);
+	const enrollment = await courseEnrollmentService.registerTrainee(
+		data.course_id,
+		trainee.id,
+		null,
+	);
 	if (hasFiles(files)) await attachTraineeDocuments(trainee.id, files, data.doc_types);
 	return { trainee_id: trainee.id, enrollment_id: enrollment.id };
 };

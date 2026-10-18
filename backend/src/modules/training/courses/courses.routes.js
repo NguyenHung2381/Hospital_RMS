@@ -4,7 +4,7 @@ const ctrl = require('./courseController');
 const { authenticate, authorizePermission } = require('../../../middlewares/auth');
 const { validate } = require('../../../middlewares/errorHandler');
 const { createTrainingUpload } = require('../../../middlewares/uploadTraining');
-const courseService = require('./courseService');
+const coursePolicy = require('./coursePolicy');
 
 const uploadCourseDoc = createTrainingUpload('course_document', {
 	maxSizeMB: Number(process.env.TRAINING_MEDIA_MAX_MB || 300),
@@ -23,7 +23,7 @@ router.use(authenticate);
 // Chống IDOR: mọi route có mã khoá học (:id) hoặc mã bản ghi con (buổi học,
 // đăng ký, tài liệu, điểm, chứng chỉ...) chỉ chạy khi khoá học tương ứng nằm
 // trong phạm vi người gọi — giảng viên phạm vi 'assigned' chỉ khoá mình được
-// phân công (modules/training/courses/courseService.js). Route mới dùng đúng tên tham số dưới
+// phân công (modules/training/courses/coursePolicy.js). Route mới dùng đúng tên tham số dưới
 // đây là tự được kiểm tra.
 const inScope = (check) => async (req, _res, next, value) => {
 	try {
@@ -35,12 +35,12 @@ const inScope = (check) => async (req, _res, next, value) => {
 };
 router.param(
 	'id',
-	inScope((id, user) => courseService.assertCourseInScope(id, user)),
+	inScope((id, user) => coursePolicy.assertCourseInScope(id, user)),
 );
-for (const name of Object.keys(courseService.CHILD_COURSE_SQL)) {
+for (const name of Object.keys(coursePolicy.CHILD_COURSE_SQL)) {
 	router.param(
 		name,
-		inScope((id, user) => courseService.assertCourseChildInScope(name, id, user)),
+		inScope((id, user) => coursePolicy.assertCourseChildInScope(name, id, user)),
 	);
 }
 

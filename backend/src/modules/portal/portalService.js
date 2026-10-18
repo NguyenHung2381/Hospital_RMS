@@ -5,6 +5,8 @@
  * cme_records.user_id) nên không cần quyền courses:read / seminars:read.
  */
 const { getPool, sql } = require('../../config/db');
+const courseDocumentService = require('../training/courses/courseDocumentService');
+const courseEnrollmentService = require('../training/courses/courseEnrollmentService');
 const courseService = require('../training/courses/courseService');
 const publicPortalService = require('../public/publicPortalService');
 const examService = require('../training/exams/examService');
@@ -193,7 +195,7 @@ const openDocument = async (docId, actor, kind = 'course') => {
 	if (!ok) throw httpError(404, 'Không tìm thấy tài liệu.');
 	return kind === 'lesson'
 		? trainingProgramService.incrementLessonDocumentDownload(docId)
-		: courseService.incrementDocumentDownload(docId);
+		: courseDocumentService.incrementDocumentDownload(docId);
 };
 
 // Tự đăng ký khóa học — chỉ khóa bật "đăng ký công khai" (cùng danh sách với
@@ -211,7 +213,7 @@ const registerCourse = async (courseId, actor) => {
 	if (!row) {
 		throw httpError(403, 'Khóa học không mở đăng ký cho cá nhân.');
 	}
-	return courseService.registerStaff(courseId, actor.id, actor.id);
+	return courseEnrollmentService.registerStaff(courseId, actor.id, actor.id);
 };
 
 // CME của tôi trong 1 năm: 2 nguồn cộng dồn giống

@@ -51,7 +51,7 @@ Các module trong `src/modules/`:
 | `councils` | `/councils` | hội đồng, phân công, tiến độ đánh giá |
 | `seminars` | `/seminars` | hội nghị/hội thảo, người tham dự, xuất Excel |
 | `cme` | `/cme-records` | hồ sơ CME, yêu cầu tín chỉ, báo cáo |
-| `training/` | `/courses`, `/training-programs`, `/training-plans`, `/trainees`, `/exams`, `/lecturers` | thư mục con `courses`, `programs`, `plans`, `trainees`, `exams`, `lecturers`, `reports`; `trainingFileService` dùng chung |
+| `training/` | `/courses`, `/training-programs`, `/training-plans`, `/trainees`, `/exams`, `/lecturers` | thư mục con `courses` (theo khuôn module, xem dưới), `programs`, `plans`, `trainees`, `exams`, `lecturers`, `reports`; `trainingFileService` dùng chung |
 | `attendance` | `/staff-attendance` | chấm công, ca làm |
 | `staffLicenses` | `/staff-licenses` | chứng chỉ hành nghề |
 | `surveys` | `/surveys` | khảo sát |
@@ -70,6 +70,22 @@ Quy ước module:
 - Module được phép `require` service của module khác. Hướng phụ thuộc nên đi từ module tổng hợp (`portal`, `public`, `dashboard`) xuống module nghiệp vụ, rồi xuống lõi (`events`, `access`, `notifications`, `settings`, `persons`). Không tạo `require` vòng giữa các file.
 - Thêm module mới: tạo `src/modules/<tên>/`, gắn router trong `app.js` (kèm `requireModule(...)` nếu thuộc module có thể bật/tắt), khai báo quyền trong `permissions/` rồi chạy `npm run check:routes`.
 - `npm run check:requires` nạp mọi file trong `src/` và báo đường dẫn `require` sai, kể cả `require` nằm trong thân hàm.
+
+### Khuôn module
+
+Mẫu tham chiếu: `modules/training/courses/`. Các module khác chuyển dần sang khuôn này khi có sửa đổi, không cần làm một lần.
+
+| File | Việc | Không được |
+|---|---|---|
+| `<tên>.routes.js` | đường dẫn, `authenticate` / `authorizePermission`, validate, gọi controller | viết logic, SQL |
+| `<tên>Controller.js` | đọc `req`, gọi service, trả `success` / `created` / `sendWorkbook` | SQL, dựng ExcelJS (đưa vào `exports/` hoặc service xuất file) |
+| `<mảng>Service.js` | quy tắc nghiệp vụ, transaction, `httpError`, `broadcast`, gọi service khác | đọc `req`/`res`, `require` `middlewares/` |
+| `<tên>Policy.js` | kiểm tra phạm vi theo bản ghi (chống IDOR), dùng qua `router.param` | quy tắc nghiệp vụ khác |
+| `<mảng>Repository.js` | SQL, trả dữ liệu thuần (mảng, object, số, `null`) | `httpError`, `broadcast`, quy tắc nghiệp vụ |
+
+- **Một service cho mỗi mảng nghiệp vụ.** Không dồn cả module vào một file (`courses/` có `courseService`, `courseEnrollmentService`, `classSessionService`, `courseAttendanceService`, `courseDocumentService`, `gradeService`, `certificateService`, `lecturerAssignmentService`). Đặt tên có tiền tố khi dễ trùng với module khác.
+- **Repository.** Mẫu là `certificateRepository.js`. Service gọi `repo.xxx(...)` (không destructure) để test thay được từng hàm. Xem `test/training/certificateService.test.js`: test quy tắc nghiệp vụ không cần DB.
+- **Khi tách/chuyển code**: chạy `npm run test:contract` (route và quyền không đổi), `npm run check:requires`, `npm run test:smoke` (so với baseline ghi trước khi sửa).
 
 Quy ước dùng chung:
 

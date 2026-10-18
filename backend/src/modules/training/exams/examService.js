@@ -1,7 +1,7 @@
 const { getPool, sql, withTransaction } = require('../../../config/db');
 const { parseJsonArray } = require('../../../utils/sqlFilters');
 const { broadcast } = require('../../events/eventService');
-const courseService = require('../courses/courseService');
+const gradeService = require('../courses/gradeService');
 const { removeUploadedFile, toStoredUploadPath } = require('../../../utils/uploadPaths');
 
 const QUESTION_TYPES = ['single_choice', 'essay'];
@@ -377,7 +377,7 @@ const getAttemptForGrading = async (attemptId) => {
 
 // Cấp điểm 1 câu tự luận — nếu đây là câu NULL cuối cùng của lượt làm bài,
 // tự tính tổng điểm + đóng lượt (status='graded') + đổ vào grades qua
-// courseService.upsertGrade (điểm tổng kết môn/khóa, subject_id = đề thuộc).
+// gradeService.upsertGrade (điểm tổng kết môn/khóa, subject_id = đề thuộc).
 const gradeEssayAnswer = async (attemptId, questionId, score, actorId) => {
 	const pool = await getPool();
 	await pool
@@ -424,7 +424,7 @@ const finalizeAttemptIfComplete = async (attemptId, actorId) => {
 		);
 
 	if (attempt) {
-		await courseService.upsertGrade(
+		await gradeService.upsertGrade(
 			attempt.enrollment_id,
 			attempt.subject_id,
 			{ score: total },
@@ -619,7 +619,7 @@ const submitAttempt = async (paperId, answers, actor) => {
 			.request()
 			.input('id', sql.VarChar(20), paperId)
 			.query('SELECT subject_id FROM exam_papers WHERE id = @id');
-		await courseService.upsertGrade(
+		await gradeService.upsertGrade(
 			info.enrollment_id,
 			paperRes.recordset[0]?.subject_id || null,
 			{ score: autoScore },
