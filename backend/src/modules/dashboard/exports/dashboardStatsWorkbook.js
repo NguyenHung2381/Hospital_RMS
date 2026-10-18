@@ -1,3 +1,4 @@
+// @ts-nocheck — còn lỗi kiểu khi bật checkJs; sửa xong thì xoá dòng này (xem README, Kiểm tra chất lượng)
 /**
  * dashboardStatsWorkbook.js — dựng workbook cho POST /api/v1/dashboard/export-stats
  *

@@ -1,3 +1,4 @@
+// @ts-nocheck — còn lỗi kiểu khi bật checkJs; sửa xong thì xoá dòng này (xem README, Kiểm tra chất lượng)
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const { signToken, verifyToken, ISSUER } = require('../../utils/keys');

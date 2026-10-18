@@ -1,3 +1,4 @@
+// @ts-nocheck — còn lỗi kiểu khi bật checkJs; sửa xong thì xoá dòng này (xem README, Kiểm tra chất lượng)
 // Chính sách mật khẩu dùng chung cho MỌI nơi đặt mật khẩu: tự đổi mật khẩu,
 // quản trị tạo tài khoản / đặt lại mật khẩu. Trước đây mỗi nơi một kiểu (5, 6
 // hoặc 8 ký tự) nên quản trị đặt được mật khẩu yếu hơn người dùng tự đặt.

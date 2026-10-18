@@ -1,3 +1,4 @@
+// @ts-nocheck — còn lỗi kiểu khi bật checkJs; sửa xong thì xoá dòng này (xem README, Kiểm tra chất lượng)
 // topicDefenseScheduleWorkbook.js — dựng workbook "Lịch bảo vệ đề cương" cho
 // POST /api/v1/topics/export-excel (1 sheet, theo mẫu công văn).
 const ExcelJS = require('exceljs');

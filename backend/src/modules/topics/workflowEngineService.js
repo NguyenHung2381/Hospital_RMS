@@ -1,3 +1,4 @@
+// @ts-nocheck — còn lỗi kiểu khi bật checkJs; sửa xong thì xoá dòng này (xem README, Kiểm tra chất lượng)
 /**
  * workflowEngineService.js — engine chạy SONG SONG với đường duyệt 1 bước cũ
  * (sp_approve_topic). Mặc định KHÔNG có workflow_definitions nào active nên

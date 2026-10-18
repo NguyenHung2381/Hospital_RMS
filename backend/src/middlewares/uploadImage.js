@@ -1,3 +1,4 @@
+// @ts-nocheck — còn lỗi kiểu khi bật checkJs; sửa xong thì xoá dòng này (xem README, Kiểm tra chất lượng)
 // Upload ảnh minh hoạ (nhận xét rich-text, câu hỏi đề kiểm tra, bài test hội
 // nghị) — chỉ nhận ảnh raster, không nhận SVG (có thể chứa script) hay các loại
 // file khác mà upload.js cho phép.

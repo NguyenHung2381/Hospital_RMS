@@ -1,3 +1,4 @@
+// @ts-nocheck — còn lỗi kiểu khi bật checkJs; sửa xong thì xoá dòng này (xem README, Kiểm tra chất lượng)
 /**
  * cmeReportService.js — Báo cáo tín chỉ CME (Excel), dựa theo mẫu "mẫu bc CME.xlsx":
  *   Sheet "Tổng quan"     : chỉ tiêu tổng hợp + cơ cấu theo hình thức CME

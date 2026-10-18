@@ -1,3 +1,4 @@
+// @ts-nocheck — còn lỗi kiểu khi bật checkJs; sửa xong thì xoá dòng này (xem README, Kiểm tra chất lượng)
 // Đọc activity log trực tiếp từ các file log xoay theo ngày.
 // Việc GHI nằm ở middlewares/activityLogger.js (auditLogger -> pino-roll ->
 // server/logs/audit-*.log). File này chỉ lo phần ĐỌC cho trang admin

@@ -106,6 +106,12 @@ jobs:
       - name: Phân quyền route
         # Mọi route mới phải khai báo quyền (authorizePermission) hoặc có lý do trong routePolicy
         run: npm run check:routes
+      - name: Đường dẫn require
+        # Nạp mọi file trong src/ — bắt require sai đường dẫn, kể cả require trong thân hàm
+        run: npm run check:requires
+      - name: Hướng phụ thuộc giữa module
+        # Không vòng require; lõi không phụ thuộc nghiệp vụ; hạ tầng chỉ dùng module lõi
+        run: npm run check:deps
       - name: Kiểu dữ liệu (tsc)
         run: npm run typecheck
       - name: Lỗ hổng thư viện

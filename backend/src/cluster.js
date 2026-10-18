@@ -1,3 +1,4 @@
+// @ts-nocheck — còn lỗi kiểu khi bật checkJs; sửa xong thì xoá dòng này (xem README, Kiểm tra chất lượng)
 // Chạy API trên nhiều CPU core bằng Node cluster (entrypoint production —
 // Dockerfile target prod). Dev vẫn chạy thẳng src/server.js (nodemon).
 //

@@ -1,3 +1,4 @@
+// @ts-nocheck — còn lỗi kiểu khi bật checkJs; sửa xong thì xoá dòng này (xem README, Kiểm tra chất lượng)
 function fnt({ bold = false, color = '1B2A4A', size = 10, italic = false } = {}) {
 	return {
 		name: 'Times New Roman',

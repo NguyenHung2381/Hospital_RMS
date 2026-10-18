@@ -1,3 +1,4 @@
+// @ts-nocheck — còn lỗi kiểu khi bật checkJs; sửa xong thì xoá dòng này (xem README, Kiểm tra chất lượng)
 // ─── Danh mục quyền — NGUỒN CHÂN LÝ DUY NHẤT ─────────────────────────────────
 // Mọi quyền "resource:action" của hệ thống khai báo ở đây. Khi server khởi
 // động, permissions/sync.js đồng bộ danh mục này vào bảng `permissions` (thêm

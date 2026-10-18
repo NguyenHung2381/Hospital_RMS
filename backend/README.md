@@ -109,6 +109,12 @@ Quy ước dùng chung:
 | `npm test` | Unit test, không cần DB (`test/**`) | ✓ |
 | `npm run test:contract` | So danh sách route + quyền với `test/contract/routes.snapshot.txt`. Đổi route có chủ đích thì chạy `UPDATE_SNAPSHOTS=1 npm run test:contract` rồi commit file snapshot | ✓ |
 | `npm run test:smoke` | Gọi thật mọi API GET vào DB đang cấu hình (chỉ đọc). So mã HTTP và tập trường JSON với baseline của máy này (`test-integration/.baseline/`, không commit) | — |
+| `npm run typecheck` | `tsc` kiểm tra kiểu mọi file JS trong `src/` (`checkJs`, không strict): gọi sai số tham số, sai tên thuộc tính... File mở đầu `// @ts-nocheck` (còn lỗi từ trước khi bật) được bỏ qua. Số file đó chỉ được giảm (`test/contract/typecheckRatchet.test.js`); file mới không thêm `@ts-nocheck` | ✓ |
+| `npm run check:routes` | Mọi route khai báo quyền hoặc có lý do trong `permissions/routePolicy.js` | ✓ |
+| `npm run check:requires` | Nạp mọi file `src/`, báo `require` sai đường dẫn | ✓ |
+| `npm run check:deps` | Hướng phụ thuộc (`scripts/check-deps.js`): không vòng `require`; module lõi (`events`, `settings`, `notifications`, `audit`, `access`, `persons`) không phụ thuộc module nghiệp vụ; chỉ module tổng hợp (`portal`, `public`, `dashboard`) dùng module tổng hợp; hạ tầng (`config`, `utils`, `middlewares`, `permissions`, `shared`, `database`) chỉ dùng module lõi; 2 module không phụ thuộc 2 chiều ở tầng service | ✓ |
+
+Checklist khi mở PR: `.github/pull_request_template.md`.
 
 Khi refactor: ghi baseline trước (`UPDATE_SNAPSHOTS=1`), sau mỗi bước chạy lại để so. Backend chạy trong Docker thì gọi qua container:
 

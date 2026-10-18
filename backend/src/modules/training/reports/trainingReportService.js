@@ -1,3 +1,4 @@
+// @ts-nocheck — còn lỗi kiểu khi bật checkJs; sửa xong thì xoá dòng này (xem README, Kiểm tra chất lượng)
 /**
  * trainingReportService.js — 3 báo cáo Đào tạo (đối chiếu QLNCKHDTCDT-main
  * BAO_CAO_BUS::theoKhoaCtdt / dsHocVienKetQua / thongKeTong), RMS trước đây
