@@ -2,7 +2,6 @@ const router = require('express').Router();
 const { body } = require('express-validator');
 const ctrl = require('./topicController');
 const exportCtrl = require('./topicExportController');
-const fullExportCtrl = require('./topicFullExportController');
 const fileCtrl = require('./fileController');
 const { authenticate, authorizePermission } = require('../../middlewares/auth');
 const { validate } = require('../../middlewares/errorHandler');
@@ -51,7 +50,7 @@ router.post(
 	authorizePermission(['reports', 'create']),
 	[body('ids').isArray()],
 	validate,
-	fullExportCtrl.exportReport,
+	exportCtrl.exportReport,
 );
 
 // Nhập danh sách đề tài từ Excel (dry_run=1 để xem trước) — controller chỉ cho phạm vi 'all'

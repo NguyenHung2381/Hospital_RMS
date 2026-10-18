@@ -1,5 +1,5 @@
 /**
- * topicFullExportController.js — POST /api/v1/topics/export-report
+ * topicReportWorkbook.js — dựng workbook cho POST /api/v1/topics/export-report
  *
  * Body:
  *   ids          string[]   — topic IDs to include
@@ -22,9 +22,7 @@
  */
 
 const ExcelJS = require('exceljs');
-const topicService = require('./topicService');
-const { fnt, al, sf, bAll } = require('../../utils/excelStyle');
-const { sendWorkbook } = require('../../utils/response');
+const { fnt, al, sf, bAll } = require('../../../utils/excelStyle');
 
 // ── Palette ──────────────────────────────────────────────────────────────────
 const C = {
@@ -590,93 +588,66 @@ function buildMembersSheet(ws, topics, opts) {
 // ════════════════════════════════════════════════════════════════════════════════
 // HANDLER
 // ════════════════════════════════════════════════════════════════════════════════
-async function exportReport(req, res, next) {
-	try {
-		const {
-			ids,
-			fileName = 'bao-cao-nckh',
-			title = 'BÁO CÁO TỔNG KẾT NGHIÊN CỨU KHOA HỌC',
-			subtitle = '',
-			refNumber = '',
-			refDate = '',
-			sections = ['overview', 'topics', 'members', 'by_category'],
-		} = req.body;
+// data: kết quả topicService.getForExport; sections: các sheet cần dựng.
+const buildTopicReportWorkbook = (data, { title, subtitle, refNumber, refDate, sections }) => {
+	const wb = new ExcelJS.Workbook();
+	wb.creator = 'RMS Hospital';
+	wb.created = new Date();
 
-		if (!Array.isArray(ids) || ids.length === 0) {
-			return res.status(400).json({ success: false, message: 'Danh sách đề tài trống' });
-		}
+	const opts = { title, subtitle, refNumber, refDate };
 
-		// Chỉ xuất đề tài trong phạm vi người gọi (danh sách mã do client gửi lên)
-		const data = await topicService.getForExport(await topicService.idsInScope(ids, req.user));
-		if (!data.length) {
-			return res.status(404).json({ success: false, message: 'Không tìm thấy đề tài' });
-		}
-
-		const wb = new ExcelJS.Workbook();
-		wb.creator = 'RMS Hospital';
-		wb.created = new Date();
-
-		const opts = { title, subtitle, refNumber, refDate };
-
-		if (sections.includes('overview')) {
-			buildOverviewSheet(wb.addWorksheet('Tổng quan'), data, opts);
-		}
-
-		if (sections.includes('topics')) {
-			buildTopicListSheet(wb.addWorksheet('Danh sách đề tài'), data, opts, title);
-		}
-
-		if (sections.includes('members')) {
-			buildMembersSheet(wb.addWorksheet('Thành viên'), data, opts);
-		}
-
-		// One sheet per distinct value of keyFn(topic) — used for by_category /
-		// by_department / by_specialty_group, which all group the same topic list.
-		const addGroupedSheets = (keyFn, fallbackLabel) => {
-			const groups = new Map();
-			data.forEach((t) => {
-				const k = keyFn(t) || fallbackLabel;
-				if (!groups.has(k)) groups.set(k, []);
-				groups.get(k).push(t);
-			});
-			const used = new Set(wb.worksheets.map((ws) => ws.name));
-			groups.forEach((groupTopics, groupName) => {
-				let sheetName = groupName.replace(/[\\/*?[\]:]/g, '').slice(0, 31) || fallbackLabel;
-				let i = 2;
-				while (used.has(sheetName)) {
-					const suffix = ` (${i++})`;
-					sheetName = sheetName.slice(0, 31 - suffix.length) + suffix;
-				}
-				used.add(sheetName);
-				const ws = wb.addWorksheet(sheetName);
-				buildTopicListSheet(ws, groupTopics, opts, `${title} — ${groupName}`);
-			});
-		};
-
-		if (sections.includes('by_category')) {
-			addGroupedSheets((t) => t.category_name, 'Chưa phân loại');
-		}
-
-		if (sections.includes('by_department')) {
-			addGroupedSheets((t) => t.department_name, 'Chưa phân');
-		}
-
-		if (sections.includes('by_specialty_group')) {
-			addGroupedSheets((t) => t.specialty_group, 'Chưa xác định');
-		}
-
-		// Ensure at least one sheet
-		if (wb.worksheets.length === 0) {
-			buildTopicListSheet(wb.addWorksheet('Danh sách đề tài'), data, opts, title);
-		}
-
-		const safeName =
-			(fileName || 'bao-cao-nckh').replace(/[/\\?%*:|"<>]/g, '').trim() || 'bao-cao-nckh';
-
-		await sendWorkbook(res, wb, safeName + '.xlsx');
-	} catch (err) {
-		next(err);
+	if (sections.includes('overview')) {
+		buildOverviewSheet(wb.addWorksheet('Tổng quan'), data, opts);
 	}
-}
 
-module.exports = { exportReport };
+	if (sections.includes('topics')) {
+		buildTopicListSheet(wb.addWorksheet('Danh sách đề tài'), data, opts, title);
+	}
+
+	if (sections.includes('members')) {
+		buildMembersSheet(wb.addWorksheet('Thành viên'), data, opts);
+	}
+
+	// One sheet per distinct value of keyFn(topic) — used for by_category /
+	// by_department / by_specialty_group, which all group the same topic list.
+	const addGroupedSheets = (keyFn, fallbackLabel) => {
+		const groups = new Map();
+		data.forEach((t) => {
+			const k = keyFn(t) || fallbackLabel;
+			if (!groups.has(k)) groups.set(k, []);
+			groups.get(k).push(t);
+		});
+		const used = new Set(wb.worksheets.map((ws) => ws.name));
+		groups.forEach((groupTopics, groupName) => {
+			let sheetName = groupName.replace(/[\\/*?[\]:]/g, '').slice(0, 31) || fallbackLabel;
+			let i = 2;
+			while (used.has(sheetName)) {
+				const suffix = ` (${i++})`;
+				sheetName = sheetName.slice(0, 31 - suffix.length) + suffix;
+			}
+			used.add(sheetName);
+			const ws = wb.addWorksheet(sheetName);
+			buildTopicListSheet(ws, groupTopics, opts, `${title} — ${groupName}`);
+		});
+	};
+
+	if (sections.includes('by_category')) {
+		addGroupedSheets((t) => t.category_name, 'Chưa phân loại');
+	}
+
+	if (sections.includes('by_department')) {
+		addGroupedSheets((t) => t.department_name, 'Chưa phân');
+	}
+
+	if (sections.includes('by_specialty_group')) {
+		addGroupedSheets((t) => t.specialty_group, 'Chưa xác định');
+	}
+
+	// Ensure at least one sheet
+	if (wb.worksheets.length === 0) {
+		buildTopicListSheet(wb.addWorksheet('Danh sách đề tài'), data, opts, title);
+	}
+	return wb;
+};
+
+module.exports = { buildTopicReportWorkbook };
