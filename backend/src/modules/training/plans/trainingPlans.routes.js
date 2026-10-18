@@ -4,13 +4,6 @@ const ctrl = require('./trainingPlanController');
 const { authenticate, authorizePermission } = require('../../../middlewares/auth');
 const { validate } = require('../../../middlewares/errorHandler');
 
-/**
- * @swagger
- * tags:
- *   name: TrainingPlans
- *   description: Kế hoạch đào tạo theo năm (module Đào tạo)
- */
-
 // Chỉ 1 quyền 'manage' cho toàn bộ resource — theo mẫu system_settings, đây là
 // công cụ lập kế hoạch nội bộ, không phải danh mục CRUD công khai.
 router.use(authenticate, authorizePermission(['training_plans', 'manage']));

@@ -9,13 +9,6 @@ const attendancePolicy = require('../../utils/attendancePolicy');
 const { success, notFound, error } = require('../../utils/response');
 const { asyncHandler } = require('../../utils/asyncHandler');
 
-/**
- * @swagger
- * tags:
- *   name: SystemSettings
- *   description: Cấu hình hệ thống (SMTP, ngưỡng CME, URL public) — thay .env
- */
-
 // Chỉ 1 quyền 'manage' cho toàn bộ resource — đây là bảng key-value cấu hình
 // nhạy cảm (chứa SMTP_PASS), không cần tách read/create/update/delete như danh
 // mục thông thường.

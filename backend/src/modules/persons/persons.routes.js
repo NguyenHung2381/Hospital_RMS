@@ -6,13 +6,6 @@ const { validate } = require('../../middlewares/errorHandler');
 const { success } = require('../../utils/response');
 const { asyncHandler } = require('../../utils/asyncHandler');
 
-/**
- * @swagger
- * tags:
- *   name: Persons
- *   description: Danh tính hợp nhất — duyệt gộp các hồ sơ người nghi trùng
- */
-
 router.use(authenticate);
 
 // CCCD chỉ hiện đủ cho người có quyền xem dữ liệu nhạy cảm (cùng quy ước với học viên)

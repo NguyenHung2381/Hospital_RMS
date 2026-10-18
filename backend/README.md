@@ -28,7 +28,8 @@ src/
 ├── middlewares/              # tầng HTTP: auth, errorHandler, validateRequest (zod), upload*, activityLogger
 ├── modules/                  # mã nghiệp vụ, mỗi thư mục một module (xem bảng dưới)
 │   └── <module>/
-│       ├── <tên>.routes.js   # khai báo route + validate + quyền (Swagger quét modules/**/*.routes.js)
+│       ├── <tên>.routes.js   # khai báo route + validate + quyền
+│       ├── <tên>.docs.js     # tài liệu OpenAPI (khối @swagger) của file route cùng tên — Swagger quét modules/**/*.docs.js
 │       ├── <tên>Controller.js# nhận request → gọi service → trả response
 │       └── <tên>Service.js   # nghiệp vụ + truy vấn SQL
 ├── shared/                   # crudService, crudController — factory CRUD dùng chung
@@ -77,7 +78,8 @@ Mẫu tham chiếu: `modules/training/courses/`. Các module khác chuyển dầ
 
 | File | Việc | Không được |
 |---|---|---|
-| `<tên>.routes.js` | đường dẫn, `authenticate` / `authorizePermission`, validate, gọi controller | viết logic, SQL |
+| `<tên>.routes.js` | đường dẫn, `authenticate` / `authorizePermission`, validate, gọi controller | viết logic, SQL, khối `@swagger` |
+| `<tên>.docs.js` | tài liệu OpenAPI (`/** @swagger ... */`) cho route cùng tên | code |
 | `<tên>Controller.js` | đọc `req`, gọi service, trả `success` / `created` / `sendWorkbook` | SQL, dựng ExcelJS (đưa vào `exports/` hoặc service xuất file) |
 | `<mảng>Service.js` | quy tắc nghiệp vụ, transaction, `httpError`, `broadcast`, gọi service khác | đọc `req`/`res`, `require` `middlewares/` |
 | `<tên>Policy.js` | kiểm tra phạm vi theo bản ghi (chống IDOR), dùng qua `router.param` | quy tắc nghiệp vụ khác |

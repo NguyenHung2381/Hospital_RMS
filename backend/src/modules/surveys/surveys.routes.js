@@ -4,13 +4,6 @@ const ctrl = require('./surveyController');
 const { authenticate, authorizePermission } = require('../../middlewares/auth');
 const { validate } = require('../../middlewares/errorHandler');
 
-/**
- * @swagger
- * tags:
- *   name: Surveys
- *   description: Khảo sát — admin tạo/quản lý, người dùng đã đăng nhập nộp phản hồi
- */
-
 router.use(authenticate);
 
 // ─── Người dùng: khảo sát đang mở dành cho mình + nộp phản hồi ──────────────

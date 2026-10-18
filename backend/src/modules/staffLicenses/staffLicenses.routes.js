@@ -9,13 +9,6 @@ const staffLicenseImportService = require('./staffLicenseImportService');
 const { success } = require('../../utils/response');
 const { asyncHandler } = require('../../utils/asyncHandler');
 
-/**
- * @swagger
- * tags:
- *   name: StaffLicenses
- *   description: Chứng chỉ hành nghề (CCHN) & hồ sơ chuyên môn nhân sự
- */
-
 const ctrl = createCrudController(staffLicenseService);
 
 router.use(authenticate);
@@ -42,25 +35,6 @@ router.post(
 	ctrl.createOne,
 );
 
-/**
- * @swagger
- * /staff-licenses/import-excel:
- *   post:
- *     summary: Cập nhật CCHN hàng loạt từ file "Danh sách người hành nghề" (khớp MNV)
- *     tags: [StaffLicenses]
- *     requestBody:
- *       required: true
- *       content:
- *         multipart/form-data:
- *           schema:
- *             type: object
- *             properties:
- *               file: { type: string, format: binary }
- *               dry_run: { type: string, example: "1" }
- *     responses:
- *       200:
- *         description: "dry_run: { summary, rows[], skipped[], warnings[] }; commit: { summary, written, skipped[], warnings[] }"
- */
 router.post(
 	'/import-excel',
 	authorizePermission(['staff_licenses', 'update']),

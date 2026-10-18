@@ -4,13 +4,6 @@ const ctrl = require('./lecturerController');
 const { authenticate, authorizePermission } = require('../../../middlewares/auth');
 const { validate } = require('../../../middlewares/errorHandler');
 
-/**
- * @swagger
- * tags:
- *   name: Lecturers
- *   description: Quản lý giảng viên (module Đào tạo)
- */
-
 router.use(authenticate);
 
 router.get('/', authorizePermission(['lecturers', 'read']), ctrl.getAll);

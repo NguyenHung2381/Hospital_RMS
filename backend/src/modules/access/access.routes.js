@@ -12,80 +12,9 @@ const permService = require('./permissionService');
 const roleService = require('./roleService');
 const roleCtrl = createCrudController(roleService);
 
-/**
- * @swagger
- * /roles:
- *   get:
- *     summary: Lấy danh sách vai trò
- *     tags: [Roles]
- *     responses:
- *       200:
- *         description: Danh sách vai trò
- *   post:
- *     summary: Tạo vai trò mới
- *     tags: [Roles]
- *     description: Chỉ admin mới có quyền
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               name: { type: string, example: "reviewer" }
- *     responses:
- *       201:
- *         description: Tạo thành công
- */
 router.get('/roles', authenticate, authorizePermission(['roles', 'read']), roleCtrl.getAll);
 router.post('/roles', authenticate, authorizePermission(['roles', 'create']), roleCtrl.createOne);
 
-/**
- * @swagger
- * /roles/{id}:
- *   get:
- *     summary: Lấy chi tiết vai trò
- *     tags: [Roles]
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema: { type: string }
- *     responses:
- *       200:
- *         description: Chi tiết vai trò
- *   put:
- *     summary: Cập nhật vai trò
- *     tags: [Roles]
- *     description: Chỉ admin mới có quyền
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema: { type: string }
- *     requestBody:
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               name: { type: string }
- *     responses:
- *       200:
- *         description: Cập nhật thành công
- *   delete:
- *     summary: Xoá vai trò
- *     tags: [Roles]
- *     description: Chỉ admin mới có quyền
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema: { type: string }
- *     responses:
- *       200:
- *         description: Xoá thành công
- */
 router.get('/roles/:id', authenticate, authorizePermission(['roles', 'read']), roleCtrl.getById);
 // Không sửa/xoá được vai trò của chính mình, vai trò toàn quyền, hay vai trò
 // có quyền cao hơn mình — xem modules/access/privilegeGuard.js.

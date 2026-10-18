@@ -8,13 +8,6 @@ const { createTrainingUpload } = require('../../middlewares/uploadTraining');
 const uploadEvidence = createTrainingUpload('cme_evidence');
 const uploadExcel = require('../../middlewares/uploadExcel');
 
-/**
- * @swagger
- * tags:
- *   name: CmeRecords
- *   description: Ghi nhận tín chỉ CME độc lập, không qua seminar (module Đào tạo)
- */
-
 router.use(authenticate);
 const canManage = authorizePermission(['cme_records', 'manage']);
 

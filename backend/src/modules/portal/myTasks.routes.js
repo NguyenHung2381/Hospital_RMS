@@ -4,13 +4,6 @@ const { authenticate } = require('../../middlewares/auth');
 const { success } = require('../../utils/response');
 const { asyncHandler } = require('../../utils/asyncHandler');
 
-/**
- * @swagger
- * tags:
- *   name: MyTasks
- *   description: Hộp thư "Việc của tôi" — đề tài chờ tôi duyệt + chờ tôi chấm tiến độ
- */
-
 router.get(
 	'/',
 	authenticate,

@@ -8,13 +8,6 @@ const { makeImageUpload } = require('../../../middlewares/uploadImage');
 // Ảnh minh hoạ câu hỏi — dùng chung thư mục vì 1 câu hỏi nằm được trong nhiều đề
 const uploadQuestionImage = makeImageUpload(() => ['questions']);
 
-/**
- * @swagger
- * tags:
- *   name: Exams
- *   description: Ngân hàng câu hỏi & thi online (module Đào tạo)
- */
-
 router.use(authenticate);
 
 // Quản lý ngân hàng câu hỏi / đề thi / bài làm. Trước đây mượn 'courses:update';

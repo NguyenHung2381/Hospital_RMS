@@ -10,13 +10,6 @@ const uploadLessonDoc = createTrainingUpload('lesson_document', {
 	allowMedia: true,
 });
 
-/**
- * @swagger
- * tags:
- *   name: TrainingPrograms
- *   description: Quản lý chương trình đào tạo & môn học (module Đào tạo)
- */
-
 router.use(authenticate);
 
 router.get('/', authorizePermission(['training_programs', 'read']), ctrl.getAll);

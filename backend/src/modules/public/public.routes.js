@@ -51,13 +51,6 @@ const codeLookupLimiter = rateLimit({
 	message: { success: false, message: 'Quá nhiều lượt tra cứu. Vui lòng thử lại sau ít phút.' },
 });
 
-/**
- * @swagger
- * tags:
- *   name: Public
- *   description: Cổng công khai (đăng ký khóa học, tra cứu kết quả) — không cần đăng nhập
- */
-
 router.get('/captcha', captchaLimiter, ctrl.getCaptcha);
 router.get('/courses', ctrl.getOpenCourses);
 router.get('/trainee-types', ctrl.getTraineeTypes);

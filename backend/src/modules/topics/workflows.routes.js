@@ -4,13 +4,6 @@ const ctrl = require('./workflowController');
 const { authenticate, authorizePermission } = require('../../middlewares/auth');
 const { validate } = require('../../middlewares/errorHandler');
 
-/**
- * @swagger
- * tags:
- *   name: Workflows
- *   description: Cấu hình workflow duyệt nhiều bước (additive, mặc định tắt — xem topicController.approve)
- */
-
 router.use(authenticate);
 const canManage = authorizePermission(['workflows', 'manage']);
 

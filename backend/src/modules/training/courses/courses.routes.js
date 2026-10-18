@@ -11,13 +11,6 @@ const uploadCourseDoc = createTrainingUpload('course_document', {
 	allowMedia: true,
 });
 
-/**
- * @swagger
- * tags:
- *   name: Courses
- *   description: Quản lý khóa học, đăng ký, phân công giảng viên, lịch học, điểm danh (module Đào tạo)
- */
-
 router.use(authenticate);
 
 // Chống IDOR: mọi route có mã khoá học (:id) hoặc mã bản ghi con (buổi học,

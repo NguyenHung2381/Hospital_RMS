@@ -8,23 +8,6 @@ const extReviewerService = require('./externalReviewerService');
 
 // ─── External Reviewers (người ngoài viện tham gia hội đồng) ──────────────────
 
-/**
- * @swagger
- * /external-reviewers:
- *   get:
- *     summary: Lấy danh sách người ngoài viện tham gia hội đồng
- *     tags: [Councils]
- *     responses:
- *       200:
- *         description: Danh sách người ngoài viện
- *   post:
- *     summary: Thêm người ngoài viện mới
- *     tags: [Councils]
- *     description: Chỉ admin mới có quyền
- *     responses:
- *       201:
- *         description: Tạo thành công
- */
 router.get(
 	'/external-reviewers',
 	authenticate,

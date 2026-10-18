@@ -5,13 +5,6 @@ const { authenticate } = require('../../middlewares/auth');
 const { success, created } = require('../../utils/response');
 const { asyncHandler } = require('../../utils/asyncHandler');
 
-/**
- * @swagger
- * tags:
- *   name: Me
- *   description: Cổng người dùng — khóa học, lịch học, CME của chính mình
- */
-
 router.use(authenticate);
 
 router.get(

@@ -7,13 +7,6 @@ const { validate } = require('../../middlewares/errorHandler');
 const { success } = require('../../utils/response');
 const { asyncHandler } = require('../../utils/asyncHandler');
 
-/**
- * @swagger
- * tags:
- *   name: StaffAttendance
- *   description: Bảng chấm công nhân viên (IP bệnh viện + GPS)
- */
-
 router.use(authenticate);
 
 // GET /staff-attendance?date=YYYY-MM-DD (mặc định hôm nay) — phạm vi khoa: chỉ khoa mình

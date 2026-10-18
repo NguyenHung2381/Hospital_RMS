@@ -23,8 +23,12 @@ const options = {
 		},
 		security: [{ bearerAuth: [] }],
 	},
-	// Dùng path.join để tránh lỗi đường dẫn trên mọi OS
-	apis: [path.join(__dirname, '../modules/**/*.routes.js')],
+	// Tài liệu nằm ở <tên>.docs.js cạnh file route; vẫn đọc *.routes.js cho khối
+	// @swagger viết thẳng trong route. path.join để đúng đường dẫn trên mọi OS.
+	apis: [
+		path.join(__dirname, '../modules/**/*.routes.js'),
+		path.join(__dirname, '../modules/**/*.docs.js'),
+	],
 };
 
 module.exports = swaggerJsdoc(options);
