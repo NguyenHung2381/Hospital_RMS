@@ -1,5 +1,6 @@
 const { getPool, sql } = require('../../config/db');
 const mailService = require('./mailService');
+const mailQueue = require('./mailQueue');
 const logger = require('../../config/logger');
 
 const getForUser = async (userId, { page = 1, limit = 20, unread_only = false } = {}) => {
@@ -101,7 +102,7 @@ const pushWithEmail = async (
 	// Không chờ SMTP — gửi tuần tự ở nền: thông báo chung có thể tới hàng trăm
 	// người, mở song song từng ấy kết nối sẽ bị Gmail chặn.
 	// ponytail: Gmail giới hạn ~500 thư/ngày/tài khoản, cần hàng đợi + SMTP riêng nếu vượt.
-	(async () => {
+	mailQueue.enqueue(`thông báo "${title}"`, async () => {
 		const pool = await getPool();
 		const res = await pool
 			.request()
@@ -117,7 +118,7 @@ const pushWithEmail = async (
 				html: mailService.renderNotificationEmail({ fullName: u.full_name, title, message }),
 			});
 		}
-	})().catch((err) => logger.error('[notification] pushWithEmail failed:', err.message));
+	});
 };
 
 const getUsersByTarget = async (targetType, targetIds = []) => {

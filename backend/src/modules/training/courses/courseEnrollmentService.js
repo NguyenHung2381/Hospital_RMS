@@ -1,6 +1,7 @@
 const { getPool, sql } = require('../../../config/db');
 const { broadcast } = require('../../events/eventService');
 const mailService = require('../../notifications/mailService');
+const mailQueue = require('../../notifications/mailQueue');
 const { ROLE, inputRoleId } = require('../../access/roleCodes');
 const { getById } = require('./courseService');
 
@@ -199,16 +200,21 @@ const decideEnrollment = async (enrollmentId, decision, actorId, note) => {
 				: finalStatus === 'waitlisted'
 					? 'Đăng ký khóa học đang chờ (danh sách chờ)'
 					: 'Đăng ký khóa học bị từ chối';
-		await mailService.send({
-			event: 'COURSE_ENROLLMENT',
-			to: traineeEmail,
-			subject: title,
-			html: mailService.renderNotificationEmail({
-				fullName: trainee.recordset[0].full_name,
-				title,
-				message: note || null,
+		// Không chờ SMTP: duyệt hàng loạt N đăng ký từng phải chờ N lần gửi mail
+		// nối tiếp ngay trong request.
+		const fullName = trainee.recordset[0].full_name;
+		mailQueue.enqueue('đăng ký khóa học', () =>
+			mailService.send({
+				event: 'COURSE_ENROLLMENT',
+				to: traineeEmail,
+				subject: title,
+				html: mailService.renderNotificationEmail({
+					fullName,
+					title,
+					message: note || null,
+				}),
 			}),
-		});
+		);
 	}
 
 	broadcast('update', { entity: 'course_enrollment' });
