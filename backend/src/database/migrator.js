@@ -122,6 +122,7 @@ const record = (conn, filename, sum) =>
  *   log      — hàm in tiến độ.
  * Trả { ...trạng thái trước khi chạy, ran: [file đã chạy / đánh dấu] }.
  */
+// eslint-disable-next-line no-console -- mặc định cho CLI (scripts/migrate.js); server truyền logger
 const migrate = async ({ dryRun = false, baseline = false, requireTracked = true, backupDir, log = console.log } = {}) => {
 	const conn = await openConnection();
 	try {

@@ -3,6 +3,7 @@ const portalService = require('./portalService');
 const cmePersonalExport = require('../cme/cmePersonalExportController');
 const { authenticate } = require('../../middlewares/auth');
 const { success, created } = require('../../utils/response');
+const { asyncHandler } = require('../../utils/asyncHandler');
 
 /**
  * @swagger
@@ -13,58 +14,52 @@ const { success, created } = require('../../utils/response');
 
 router.use(authenticate);
 
-router.get('/training', async (req, res, next) => {
-	try {
+router.get(
+	'/training',
+	asyncHandler(async (req, res) => {
 		return success(res, await portalService.getMyTraining(req.user));
-	} catch (err) {
-		next(err);
-	}
-});
+	}),
+);
 
-router.get('/courses/:id', async (req, res, next) => {
-	try {
+router.get(
+	'/courses/:id',
+	asyncHandler(async (req, res) => {
 		return success(res, await portalService.getMyCourse(req.params.id, req.user));
-	} catch (err) {
-		next(err);
-	}
-});
+	}),
+);
 
-router.patch('/documents/:docId/download', async (req, res, next) => {
-	try {
+router.patch(
+	'/documents/:docId/download',
+	asyncHandler(async (req, res) => {
 		return success(res, await portalService.openDocument(req.params.docId, req.user));
-	} catch (err) {
-		next(err);
-	}
-});
+	}),
+);
 
-router.patch('/lesson-documents/:docId/download', async (req, res, next) => {
-	try {
+router.patch(
+	'/lesson-documents/:docId/download',
+	asyncHandler(async (req, res) => {
 		return success(res, await portalService.openDocument(req.params.docId, req.user, 'lesson'));
-	} catch (err) {
-		next(err);
-	}
-});
+	}),
+);
 
-router.post('/courses/:id/register', async (req, res, next) => {
-	try {
+router.post(
+	'/courses/:id/register',
+	asyncHandler(async (req, res) => {
 		return created(
 			res,
 			await portalService.registerCourse(req.params.id, req.user),
 			'Đã gửi đăng ký, chờ duyệt',
 		);
-	} catch (err) {
-		next(err);
-	}
-});
+	}),
+);
 
-router.get('/cme', async (req, res, next) => {
-	try {
+router.get(
+	'/cme',
+	asyncHandler(async (req, res) => {
 		const year = Number(req.query.year) || new Date().getFullYear();
 		return success(res, await portalService.getMyCme(req.user, year));
-	} catch (err) {
-		next(err);
-	}
-});
+	}),
+);
 
 // Tự khai CME (chờ admin duyệt). Chỉ thao tác trên bản ghi của chính mình.
 const cmeRecordService = require('../cme/cmeRecordService');
@@ -72,13 +67,10 @@ const { body } = require('express-validator');
 const { validate } = require('../../middlewares/errorHandler');
 const { createTrainingUpload } = require('../../middlewares/uploadTraining');
 const uploadEvidence = createTrainingUpload('cme_evidence');
-const handle = (fn) => async (req, res, next) => {
-	try {
+const handle = (fn) =>
+	asyncHandler(async (req, res) => {
 		return await fn(req, res);
-	} catch (err) {
-		next(err);
-	}
-};
+	});
 
 router.get(
 	'/cme-categories',
@@ -116,17 +108,13 @@ router.delete(
 	}),
 );
 // kiểm tra quyền sở hữu TRƯỚC khi nhận file (multer ghi đĩa ngay)
-const ownPendingRecord = async (req, res, next) => {
-	try {
-		const rec = await cmeRecordService.getById(req.params.id);
-		if (!rec || rec.user_id !== req.user.id || rec.approval_status === 'approved') {
-			return res.status(404).json({ success: false, message: 'Không tìm thấy ghi nhận CME' });
-		}
-		next();
-	} catch (err) {
-		next(err);
+const ownPendingRecord = asyncHandler(async (req, res, next) => {
+	const rec = await cmeRecordService.getById(req.params.id);
+	if (!rec || rec.user_id !== req.user.id || rec.approval_status === 'approved') {
+		return res.status(404).json({ success: false, message: 'Không tìm thấy ghi nhận CME' });
 	}
-};
+	next();
+});
 router.post(
 	'/cme-records/:id/evidence',
 	ownPendingRecord,

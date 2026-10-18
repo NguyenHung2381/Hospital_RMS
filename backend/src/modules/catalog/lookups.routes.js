@@ -12,6 +12,7 @@ const extReviewerService = require('./externalReviewerService');
 const permService = require('../access/permissionService');
 const { assertCanEditRole } = require('../access/privilegeGuard');
 const { success, created, notFound } = require('../../utils/response');
+const { asyncHandler } = require('../../utils/asyncHandler');
 
 /**
  * @swagger
@@ -64,13 +65,9 @@ router.get(
 	'/departments',
 	authenticate,
 	authorizePermission(['departments', 'read']),
-	async (req, res, next) => {
-		try {
-			return success(res, await deptService.getAll(req.query));
-		} catch (e) {
-			next(e);
-		}
-	},
+	asyncHandler(async (req, res) => {
+		return success(res, await deptService.getAll(req.query));
+	}),
 );
 
 router.post(
@@ -79,13 +76,9 @@ router.post(
 	authorizePermission(['departments', 'create']),
 	[body('name').notEmpty(), body('code').notEmpty(), body('abbreviation').notEmpty()],
 	validate,
-	async (req, res, next) => {
-		try {
-			return created(res, await deptService.create(req.body, req.user.id));
-		} catch (e) {
-			next(e);
-		}
-	},
+	asyncHandler(async (req, res) => {
+		return created(res, await deptService.create(req.body, req.user.id));
+	}),
 );
 
 /**
@@ -139,43 +132,35 @@ router.post(
  *       200:
  *         description: Xoá thành công
  */
-router.get('/departments/:id', authenticate, async (req, res, next) => {
-	try {
+router.get(
+	'/departments/:id',
+	authenticate,
+	asyncHandler(async (req, res) => {
 		const item = await deptService.getById(req.params.id);
 		if (!item) return notFound(res);
 		return success(res, item);
-	} catch (e) {
-		next(e);
-	}
-});
+	}),
+);
 
 router.put(
 	'/departments/:id',
 	authenticate,
 	authorizePermission(['departments', 'update']),
-	async (req, res, next) => {
-		try {
-			const item = await deptService.update(req.params.id, req.body, req.user.id);
-			if (!item) return notFound(res);
-			return success(res, item, 'Cập nhật thành công');
-		} catch (e) {
-			next(e);
-		}
-	},
+	asyncHandler(async (req, res) => {
+		const item = await deptService.update(req.params.id, req.body, req.user.id);
+		if (!item) return notFound(res);
+		return success(res, item, 'Cập nhật thành công');
+	}),
 );
 
 router.delete(
 	'/departments/:id',
 	authenticate,
 	authorizePermission(['departments', 'delete']),
-	async (req, res, next) => {
-		try {
-			await deptService.remove(req.params.id, req.user.id);
-			return success(res, null, 'Xóa thành công');
-		} catch (e) {
-			next(e);
-		}
-	},
+	asyncHandler(async (req, res) => {
+		await deptService.remove(req.params.id, req.user.id);
+		return success(res, null, 'Xóa thành công');
+	}),
 );
 
 // ─── External Reviewers (người ngoài viện tham gia hội đồng) ──────────────────
@@ -201,13 +186,9 @@ router.get(
 	'/external-reviewers',
 	authenticate,
 	authorizePermission(['councils', 'read']),
-	async (req, res, next) => {
-		try {
-			return success(res, await extReviewerService.getAll(req.query));
-		} catch (e) {
-			next(e);
-		}
-	},
+	asyncHandler(async (req, res) => {
+		return success(res, await extReviewerService.getAll(req.query));
+	}),
 );
 
 router.post(
@@ -216,42 +197,30 @@ router.post(
 	authorizePermission(['councils', 'create']),
 	[body('full_name').notEmpty().withMessage('Họ tên không được để trống')],
 	validate,
-	async (req, res, next) => {
-		try {
-			return created(res, await extReviewerService.create(req.body, req.user.id));
-		} catch (e) {
-			next(e);
-		}
-	},
+	asyncHandler(async (req, res) => {
+		return created(res, await extReviewerService.create(req.body, req.user.id));
+	}),
 );
 
 router.put(
 	'/external-reviewers/:id',
 	authenticate,
 	authorizePermission(['councils', 'update']),
-	async (req, res, next) => {
-		try {
-			const item = await extReviewerService.update(req.params.id, req.body, req.user.id);
-			if (!item) return notFound(res);
-			return success(res, item, 'Cập nhật thành công');
-		} catch (e) {
-			next(e);
-		}
-	},
+	asyncHandler(async (req, res) => {
+		const item = await extReviewerService.update(req.params.id, req.body, req.user.id);
+		if (!item) return notFound(res);
+		return success(res, item, 'Cập nhật thành công');
+	}),
 );
 
 router.delete(
 	'/external-reviewers/:id',
 	authenticate,
 	authorizePermission(['councils', 'delete']),
-	async (req, res, next) => {
-		try {
-			await extReviewerService.remove(req.params.id, req.user.id);
-			return success(res, null, 'Xóa thành công');
-		} catch (e) {
-			next(e);
-		}
-	},
+	asyncHandler(async (req, res) => {
+		await extReviewerService.remove(req.params.id, req.user.id);
+		return success(res, null, 'Xóa thành công');
+	}),
 );
 
 // Constraint CHK_cat_id yêu cầu id LIKE 'LDT[0-9][0-9]' → LDT01, LDT02, ...
@@ -461,8 +430,10 @@ const lvlCtrl = createCrudController(lvlService);
  */
 // Lọc cấp độ theo đợt / loại đợt: dùng ở form đăng ký đề tài.
 // Loại đợt chưa cấu hình cấp độ nào ⇒ trả tất cả (fallback).
-router.get('/levels', authenticate, async (req, res, next) => {
-	try {
+router.get(
+	'/levels',
+	authenticate,
+	asyncHandler(async (req, res, next) => {
 		const { round_id, round_type_id } = req.query;
 		if (!round_id && !round_type_id) return lvlCtrl.getAll(req, res, next);
 
@@ -476,10 +447,8 @@ router.get('/levels', authenticate, async (req, res, next) => {
 			data,
 			pagination: { ...all.pagination, total: data.length },
 		});
-	} catch (e) {
-		next(e);
-	}
-});
+	}),
+);
 router.post('/levels', authenticate, authorizePermission(['catalog', 'create']), lvlCtrl.createOne);
 
 /**
@@ -634,13 +603,13 @@ router.delete(
 );
 
 // ── Cấp độ được phép theo loại đợt (round_type_levels) ──
-router.get('/round-types/:id/levels', authenticate, async (req, res, next) => {
-	try {
+router.get(
+	'/round-types/:id/levels',
+	authenticate,
+	asyncHandler(async (req, res) => {
 		return success(res, await getLevelIdsForRoundType(req.params.id));
-	} catch (e) {
-		next(e);
-	}
-});
+	}),
+);
 
 router.put(
 	'/round-types/:id/levels',
@@ -648,28 +617,24 @@ router.put(
 	authorizePermission(['catalog', 'update']),
 	[body('level_ids').isArray().withMessage('level_ids phải là mảng')],
 	validate,
-	async (req, res, next) => {
-		try {
-			const rtId = req.params.id;
-			const ids = [...new Set((req.body.level_ids || []).filter(Boolean))];
-			const pool = await getPool();
-			await pool
-				.request()
-				.input('rt', sql.VarChar(6), rtId)
-				.query('DELETE FROM round_type_levels WHERE round_type_id = @rt');
-			for (const lid of ids) {
-				await pool.request().input('rt', sql.VarChar(6), rtId).input('lid', sql.VarChar(5), lid)
-					.query(`
+	asyncHandler(async (req, res) => {
+		const rtId = req.params.id;
+		const ids = [...new Set((req.body.level_ids || []).filter(Boolean))];
+		const pool = await getPool();
+		await pool
+			.request()
+			.input('rt', sql.VarChar(6), rtId)
+			.query('DELETE FROM round_type_levels WHERE round_type_id = @rt');
+		for (const lid of ids) {
+			await pool.request().input('rt', sql.VarChar(6), rtId).input('lid', sql.VarChar(5), lid)
+				.query(`
 						IF EXISTS (SELECT 1 FROM levels WHERE id = @lid)
 						INSERT INTO round_type_levels (round_type_id, level_id)
 						VALUES (@rt, @lid)`);
-			}
-			broadcast('update', { entity: 'round_type' });
-			return success(res, await getLevelIdsForRoundType(rtId), 'Đã cập nhật cấp độ cho loại đợt');
-		} catch (e) {
-			next(e);
 		}
-	},
+		broadcast('update', { entity: 'round_type' });
+		return success(res, await getLevelIdsForRoundType(rtId), 'Đã cập nhật cấp độ cho loại đợt');
+	}),
 );
 
 // ─── Danh mục Đào tạo (trainee_types, training_forms, training_types, cme_credit_categories, cme_credit_groups) ──
@@ -936,14 +901,10 @@ router.post('/roles', authenticate, authorizePermission(['roles', 'create']), ro
 router.get('/roles/:id', authenticate, authorizePermission(['roles', 'read']), roleCtrl.getById);
 // Không sửa/xoá được vai trò của chính mình, vai trò toàn quyền, hay vai trò
 // có quyền cao hơn mình — xem modules/access/privilegeGuard.js.
-const guardRoleEdit = async (req, res, next) => {
-	try {
-		await assertCanEditRole(req.user, req.params.id);
-		next();
-	} catch (e) {
-		next(e);
-	}
-};
+const guardRoleEdit = asyncHandler(async (req, res, next) => {
+	await assertCanEditRole(req.user, req.params.id);
+	next();
+});
 router.put(
 	'/roles/:id',
 	authenticate,
@@ -1140,13 +1101,9 @@ router.get(
 	'/research-rounds/:id/deadlines',
 	authenticate,
 	authorizePermission(['rounds', 'read']),
-	async (req, res, next) => {
-		try {
-			return success(res, await deadlineSvc.getByRoundId(req.params.id));
-		} catch (e) {
-			next(e);
-		}
-	},
+	asyncHandler(async (req, res) => {
+		return success(res, await deadlineSvc.getByRoundId(req.params.id));
+	}),
 );
 
 router.post(
@@ -1158,44 +1115,36 @@ router.post(
 		body('deadline_date').notEmpty().withMessage('Ngày hạn nộp không được để trống'),
 	],
 	validate,
-	async (req, res, next) => {
-		try {
-			const phase = parseInt(req.params.phase, 10);
-			if (isNaN(phase) || phase < 1 || phase > 9)
-				return res.status(400).json({ success: false, message: 'Phase phải từ 1–9' });
-			const item = await deadlineSvc.upsert(req.params.id, phase, req.body, req.user.id);
-			return created(res, item, 'Lưu hạn nộp thành công');
-		} catch (e) {
-			next(e);
-		}
-	},
+	asyncHandler(async (req, res) => {
+		const phase = parseInt(req.params.phase, 10);
+		if (isNaN(phase) || phase < 1 || phase > 9)
+			return res.status(400).json({ success: false, message: 'Phase phải từ 1–9' });
+		const item = await deadlineSvc.upsert(req.params.id, phase, req.body, req.user.id);
+		return created(res, item, 'Lưu hạn nộp thành công');
+	}),
 );
 
 router.delete(
 	'/research-rounds/:id/deadlines/:phase',
 	authenticate,
 	authorizePermission(['rounds', 'update']),
-	async (req, res, next) => {
-		try {
-			const phase = parseInt(req.params.phase, 10);
-			await deadlineSvc.remove(req.params.id, phase, req.user.id);
-			return success(res, null, 'Xoá hạn nộp thành công');
-		} catch (e) {
-			next(e);
-		}
-	},
+	asyncHandler(async (req, res) => {
+		const phase = parseInt(req.params.phase, 10);
+		await deadlineSvc.remove(req.params.id, phase, req.user.id);
+		return success(res, null, 'Xoá hạn nộp thành công');
+	}),
 );
 
 // ─── Job titles (danh mục chỉ đọc) ─────────────────────────────────────────────
-router.get('/job-titles', authenticate, async (req, res, next) => {
-	try {
+router.get(
+	'/job-titles',
+	authenticate,
+	asyncHandler(async (req, res) => {
 		const pool = await getPool();
 		const r = await pool.request().query('SELECT id, name FROM job_titles ORDER BY name');
 		return success(res, r.recordset);
-	} catch (e) {
-		next(e);
-	}
-});
+	}),
+);
 
 // ─── Permissions ──────────────────────────────────────────────────────────────
 // GET /permissions/catalog — danh mục quyền nhóm theo module/resource kèm nhãn
@@ -1204,13 +1153,9 @@ router.get(
 	'/permissions/catalog',
 	authenticate,
 	authorizePermission(['roles', 'read']),
-	async (req, res, next) => {
-		try {
-			return success(res, await permService.getCatalog());
-		} catch (e) {
-			next(e);
-		}
-	},
+	asyncHandler(async (req, res) => {
+		return success(res, await permService.getCatalog());
+	}),
 );
 
 // POST /roles/:id/clone — nhân bản vai trò (tên mới + đúng quyền & phạm vi của
@@ -1222,19 +1167,15 @@ router.post(
 	authorizePermission(['roles', 'manage']),
 	[body('name').trim().isLength({ min: 2 }).withMessage('Tên vai trò ít nhất 2 ký tự')],
 	validate,
-	async (req, res, next) => {
-		try {
-			const role = await permService.cloneRole(
-				req.params.id,
-				{ name: req.body.name.trim(), description: req.body.description?.trim() || null },
-				req.user,
-				req.ip,
-			);
-			return created(res, role, 'Đã nhân bản vai trò');
-		} catch (e) {
-			next(e);
-		}
-	},
+	asyncHandler(async (req, res) => {
+		const role = await permService.cloneRole(
+			req.params.id,
+			{ name: req.body.name.trim(), description: req.body.description?.trim() || null },
+			req.user,
+			req.ip,
+		);
+		return created(res, role, 'Đã nhân bản vai trò');
+	}),
 );
 
 // GET /roles/:id/permissions — các lượt cấp quyền hiện tại: [{ permission_id, scope }]
@@ -1242,13 +1183,9 @@ router.get(
 	'/roles/:id/permissions',
 	authenticate,
 	authorizePermission(['roles', 'read']),
-	async (req, res, next) => {
-		try {
-			return success(res, await permService.getRolePermissions(req.params.id));
-		} catch (e) {
-			next(e);
-		}
-	},
+	asyncHandler(async (req, res) => {
+		return success(res, await permService.getRolePermissions(req.params.id));
+	}),
 );
 
 // PUT /roles/:id/permissions — thay toàn bộ quyền của vai trò.
@@ -1260,19 +1197,15 @@ router.put(
 	authorizePermission(['roles', 'manage']),
 	[body('grants').isArray()],
 	validate,
-	async (req, res, next) => {
-		try {
-			const result = await permService.setRolePermissions(
-				req.params.id,
-				req.body.grants,
-				req.user,
-				req.ip,
-			);
-			return success(res, result, 'Cập nhật phân quyền thành công');
-		} catch (e) {
-			next(e);
-		}
-	},
+	asyncHandler(async (req, res) => {
+		const result = await permService.setRolePermissions(
+			req.params.id,
+			req.body.grants,
+			req.user,
+			req.ip,
+		);
+		return success(res, result, 'Cập nhật phân quyền thành công');
+	}),
 );
 
 module.exports = router;

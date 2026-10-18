@@ -2,10 +2,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { matchesExtension, SUPPORTED_EXTENSIONS } = require('../../src/utils/fileSignature');
-const {
-	DOCUMENT_EXTENSIONS,
-	MEDIA_EXTENSIONS,
-} = require('../../src/utils/fileTypeAllowlist');
+const { DOCUMENT_EXTENSIONS, MEDIA_EXTENSIONS } = require('../../src/utils/fileTypeAllowlist');
 
 const b = (...parts) =>
 	Buffer.concat(

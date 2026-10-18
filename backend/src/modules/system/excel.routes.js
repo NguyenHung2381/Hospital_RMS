@@ -9,14 +9,16 @@ const uploadExcel = require('../../middlewares/uploadExcel');
 const { sendWorkbook, success } = require('../../utils/response');
 const { headerRow, dataRow } = require('../../utils/excelStyle');
 const { badRequest, cellText, loadWorkbook, parseDateCell } = require('../../utils/excelImport');
+const { asyncHandler } = require('../../utils/asyncHandler');
 
 const MAX_COLS = 60;
 const MAX_ROWS = 50000;
 
 router.use(authenticate);
 
-router.post('/build', async (req, res, next) => {
-	try {
+router.post(
+	'/build',
+	asyncHandler(async (req, res) => {
 		const { fileName, sheetName, headers, rows = [] } = req.body || {};
 		if (!Array.isArray(headers) || !headers.length || headers.length > MAX_COLS)
 			throw badRequest('Danh sách cột không hợp lệ');
@@ -49,14 +51,14 @@ router.post('/build', async (req, res, next) => {
 			.replace(/[^\p{L}\p{N}_.-]+/gu, '-')
 			.slice(0, 80);
 		await sendWorkbook(res, wb, `${safeName}.xlsx`);
-	} catch (e) {
-		next(e);
-	}
-});
+	}),
+);
 
 // Sheet đầu tiên → mảng dòng chữ (ô ngày đổi về dd/mm/yyyy). Client tự dò dòng tiêu đề.
-router.post('/parse', uploadExcel.single('file'), async (req, res, next) => {
-	try {
+router.post(
+	'/parse',
+	uploadExcel.single('file'),
+	asyncHandler(async (req, res) => {
 		if (!req.file) throw badRequest('Chưa chọn file');
 		const wb = await loadWorkbook(req.file.buffer);
 		const ws = wb.worksheets[0];
@@ -75,9 +77,7 @@ router.post('/parse', uploadExcel.single('file'), async (req, res, next) => {
 			rows.push(vals);
 		}
 		success(res, { rows });
-	} catch (e) {
-		next(e);
-	}
-});
+	}),
+);
 
 module.exports = router;

@@ -51,6 +51,12 @@ module.exports = [
 		},
 	},
 	{
+		// Log ứng dụng đi qua config/logger.js (pino). scripts/ (CLI) vẫn dùng console.
+		files: ['src/**/*.js'],
+		ignores: ['src/config/logger.js'],
+		rules: { 'no-console': 'error' },
+	},
+	{
 		files: ['test/**/*.js', 'test-integration/**/*.js'],
 		rules: { 'max-lines': 'off' },
 	},

@@ -4,6 +4,7 @@ const personMergeService = require('./personMergeService');
 const { authenticate, authorizePermission } = require('../../middlewares/auth');
 const { validate } = require('../../middlewares/errorHandler');
 const { success } = require('../../utils/response');
+const { asyncHandler } = require('../../utils/asyncHandler');
 
 /**
  * @swagger
@@ -21,13 +22,10 @@ const canSeeSensitive = (req) => {
 };
 
 const idParam = [param('id').isInt({ min: 1 }).withMessage('id không hợp lệ').toInt()];
-const wrap = (fn) => async (req, res, next) => {
-	try {
+const wrap = (fn) =>
+	asyncHandler(async (req, res) => {
 		return await fn(req, res);
-	} catch (err) {
-		next(err);
-	}
-};
+	});
 
 router.get(
 	'/merge-candidates/stats',

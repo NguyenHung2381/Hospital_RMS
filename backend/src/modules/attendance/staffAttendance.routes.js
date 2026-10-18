@@ -5,6 +5,7 @@ const shiftService = require('./shiftService');
 const { authenticate, authorizePermission } = require('../../middlewares/auth');
 const { validate } = require('../../middlewares/errorHandler');
 const { success } = require('../../utils/response');
+const { asyncHandler } = require('../../utils/asyncHandler');
 
 /**
  * @swagger
@@ -21,13 +22,9 @@ router.get(
 	authorizePermission(['staff_attendance', 'read']),
 	[query('date').optional({ values: 'falsy' }).isISO8601()],
 	validate,
-	async (req, res, next) => {
-		try {
-			return success(res, await staffAttendanceService.getByDate(req.query.date, req.user));
-		} catch (err) {
-			next(err);
-		}
-	},
+	asyncHandler(async (req, res) => {
+		return success(res, await staffAttendanceService.getByDate(req.query.date, req.user));
+	}),
 );
 
 // ─── Ca làm việc, mẫu ca tuần, phân ca theo ngày — shiftService ──────────────
@@ -38,13 +35,10 @@ const canManageOrRoster = authorizePermission(
 	['staff_attendance', 'manage'],
 	['staff_attendance', 'roster'],
 );
-const handle = (fn) => async (req, res, next) => {
-	try {
+const handle = (fn) =>
+	asyncHandler(async (req, res) => {
 		await fn(req, res);
-	} catch (err) {
-		next(err);
-	}
-};
+	});
 const idParam = [param('id').isInt({ min: 1 }).toInt()];
 const minutes = (field) => body(field).isInt({ min: 0, max: 720 }).toInt();
 

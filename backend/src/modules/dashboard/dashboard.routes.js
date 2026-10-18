@@ -5,6 +5,7 @@ const dashboardExportCtrl = require('./dashboardExportController');
 const trainingReportService = require('../training/reports/trainingReportService');
 const trainingReportExportCtrl = require('../training/reports/trainingReportExportController');
 const { success } = require('../../utils/response');
+const { asyncHandler } = require('../../utils/asyncHandler');
 
 router.use(authenticate);
 
@@ -27,14 +28,14 @@ router.use(authenticate);
  *       200:
  *         description: Thành công
  */
-router.get('/stats', authorizePermission(['reports', 'read']), async (req, res, next) => {
-	try {
+router.get(
+	'/stats',
+	authorizePermission(['reports', 'read']),
+	asyncHandler(async (req, res) => {
 		const data = await dashboardService.getStats();
 		success(res, data);
-	} catch (err) {
-		next(err);
-	}
-});
+	}),
+);
 
 /**
  * @swagger
@@ -45,13 +46,13 @@ router.get('/stats', authorizePermission(['reports', 'read']), async (req, res, 
  *     security:
  *       - bearerAuth: []
  */
-router.get('/overview', authorizePermission(['reports', 'read']), async (req, res, next) => {
-	try {
+router.get(
+	'/overview',
+	authorizePermission(['reports', 'read']),
+	asyncHandler(async (req, res) => {
 		success(res, await dashboardService.getOverviewStats());
-	} catch (err) {
-		next(err);
-	}
-});
+	}),
+);
 
 /**
  * @swagger
@@ -95,13 +96,13 @@ router.post(
  *     security:
  *       - bearerAuth: []
  */
-router.get('/training-stats', authorizePermission(['reports', 'read']), async (req, res, next) => {
-	try {
+router.get(
+	'/training-stats',
+	authorizePermission(['reports', 'read']),
+	asyncHandler(async (req, res) => {
 		success(res, await dashboardService.getTrainingStats());
-	} catch (err) {
-		next(err);
-	}
-});
+	}),
+);
 
 /**
  * @swagger
@@ -112,13 +113,13 @@ router.get('/training-stats', authorizePermission(['reports', 'read']), async (r
  *     security:
  *       - bearerAuth: []
  */
-router.get('/seminar-stats', authorizePermission(['reports', 'read']), async (req, res, next) => {
-	try {
+router.get(
+	'/seminar-stats',
+	authorizePermission(['reports', 'read']),
+	asyncHandler(async (req, res) => {
 		success(res, await dashboardService.getSeminarStats());
-	} catch (err) {
-		next(err);
-	}
-});
+	}),
+);
 
 /**
  * @swagger
@@ -129,8 +130,10 @@ router.get('/seminar-stats', authorizePermission(['reports', 'read']), async (re
  *     security:
  *       - bearerAuth: []
  */
-router.get('/training-report', authorizePermission(['reports', 'read']), async (req, res, next) => {
-	try {
+router.get(
+	'/training-report',
+	authorizePermission(['reports', 'read']),
+	asyncHandler(async (req, res) => {
 		const { from, to, course_id } = req.query;
 		const [byCourseProgram, traineeResults, summary] = await Promise.all([
 			trainingReportService.byCourseProgram(),
@@ -138,10 +141,8 @@ router.get('/training-report', authorizePermission(['reports', 'read']), async (
 			trainingReportService.summary({ from, to }),
 		]);
 		success(res, { by_course_program: byCourseProgram, trainee_results: traineeResults, summary });
-	} catch (err) {
-		next(err);
-	}
-});
+	}),
+);
 
 router.post(
 	'/training-report-export',

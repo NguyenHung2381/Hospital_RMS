@@ -1,49 +1,30 @@
 const lecturerService = require('./lecturerService');
 const { success, created, notFound } = require('../../../utils/response');
+const { asyncHandler } = require('../../../utils/asyncHandler');
 
-const getAll = async (req, res, next) => {
-	try {
-		return success(res, await lecturerService.getAll(req.query));
-	} catch (err) {
-		next(err);
-	}
-};
+const getAll = asyncHandler(async (req, res) => {
+	return success(res, await lecturerService.getAll(req.query));
+});
 
-const getById = async (req, res, next) => {
-	try {
-		const item = await lecturerService.getById(req.params.id);
-		if (!item) return notFound(res);
-		return success(res, item);
-	} catch (err) {
-		next(err);
-	}
-};
+const getById = asyncHandler(async (req, res) => {
+	const item = await lecturerService.getById(req.params.id);
+	if (!item) return notFound(res);
+	return success(res, item);
+});
 
-const createOne = async (req, res, next) => {
-	try {
-		return created(res, await lecturerService.create(req.body, req.user.id));
-	} catch (err) {
-		next(err);
-	}
-};
+const createOne = asyncHandler(async (req, res) => {
+	return created(res, await lecturerService.create(req.body, req.user.id));
+});
 
-const updateOne = async (req, res, next) => {
-	try {
-		const item = await lecturerService.update(req.params.id, req.body, req.user.id);
-		if (!item) return notFound(res);
-		return success(res, item, 'Cập nhật thành công');
-	} catch (err) {
-		next(err);
-	}
-};
+const updateOne = asyncHandler(async (req, res) => {
+	const item = await lecturerService.update(req.params.id, req.body, req.user.id);
+	if (!item) return notFound(res);
+	return success(res, item, 'Cập nhật thành công');
+});
 
-const removeOne = async (req, res, next) => {
-	try {
-		await lecturerService.remove(req.params.id, req.user.id);
-		return success(res, null, 'Xóa thành công');
-	} catch (err) {
-		next(err);
-	}
-};
+const removeOne = asyncHandler(async (req, res) => {
+	await lecturerService.remove(req.params.id, req.user.id);
+	return success(res, null, 'Xóa thành công');
+});
 
 module.exports = { getAll, getById, createOne, updateOne, removeOne };

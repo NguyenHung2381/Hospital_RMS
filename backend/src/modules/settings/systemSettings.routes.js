@@ -7,6 +7,7 @@ const mailService = require('../notifications/mailService');
 const uploadPolicy = require('../../utils/uploadPolicy');
 const attendancePolicy = require('../../utils/attendancePolicy');
 const { success, notFound, error } = require('../../utils/response');
+const { asyncHandler } = require('../../utils/asyncHandler');
 
 /**
  * @swagger
@@ -20,13 +21,12 @@ const { success, notFound, error } = require('../../utils/response');
 // mục thông thường.
 router.use(authenticate, authorizePermission(['system_settings', 'manage']));
 
-router.get('/', async (req, res, next) => {
-	try {
+router.get(
+	'/',
+	asyncHandler(async (req, res) => {
 		return success(res, await systemSettingService.getAll());
-	} catch (err) {
-		next(err);
-	}
-});
+	}),
+);
 
 // Gửi thử bằng cấu hình SMTP hiện tại (đã lưu) — báo lỗi thật thay vì nuốt như send().
 router.post('/test-mail', [body('to').isEmail()], validate, async (req, res, next) => {
@@ -38,39 +38,34 @@ router.post('/test-mail', [body('to').isEmail()], validate, async (req, res, nex
 	}
 });
 
-router.get('/:key', async (req, res, next) => {
-	try {
+router.get(
+	'/:key',
+	asyncHandler(async (req, res) => {
 		if (!systemSettingService.isKey(req.params.key)) return notFound(res);
 		const item = await systemSettingService.getById(req.params.key);
 		if (!item) return notFound(res);
 		return success(res, item);
-	} catch (err) {
-		next(err);
-	}
-});
+	}),
+);
 
 router.put(
 	'/:key',
 	[body('value').optional({ nullable: true }).isString()],
 	validate,
-	async (req, res, next) => {
-		try {
-			if (!systemSettingService.isKey(req.params.key)) return notFound(res);
-			const value = req.body.value ?? null;
-			const invalid =
-				uploadPolicy.validateSetting(req.params.key, value) ??
-				attendancePolicy.validateSetting(req.params.key, value);
-			if (invalid) return error(res, invalid, 400);
-			const item = await systemSettingService.update(
-				req.params.key,
-				req.body.value ?? null,
-				req.user.id,
-			);
-			return success(res, item, 'Đã cập nhật cấu hình');
-		} catch (err) {
-			next(err);
-		}
-	},
+	asyncHandler(async (req, res) => {
+		if (!systemSettingService.isKey(req.params.key)) return notFound(res);
+		const value = req.body.value ?? null;
+		const invalid =
+			uploadPolicy.validateSetting(req.params.key, value) ??
+			attendancePolicy.validateSetting(req.params.key, value);
+		if (invalid) return error(res, invalid, 400);
+		const item = await systemSettingService.update(
+			req.params.key,
+			req.body.value ?? null,
+			req.user.id,
+		);
+		return success(res, item, 'Đã cập nhật cấu hình');
+	}),
 );
 
 module.exports = router;

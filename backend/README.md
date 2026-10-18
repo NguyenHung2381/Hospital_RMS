@@ -22,10 +22,10 @@ scripts/                      # CLI: migrate, sync-permissions, import, gen-jwt.
 src/
 ├── server.js / cluster.js    # Khởi động (dev: 1 tiến trình; production: cluster)
 ├── app.js                    # Express app: middleware, gắn route của từng module (thứ tự có ý nghĩa)
-├── config/                   # db.js (pool + withTransaction), redis, env, swagger, log
+├── config/                   # env.js (kiểm tra biến môi trường), logger.js (log ứng dụng), db.js (pool + withTransaction), redis, swagger, auditLogger
 ├── database/                 # migrator.js (bộ chạy migration), index.js (initDatabase lúc khởi động)
-├── permissions/              # catalog quyền, phạm vi, kiểm tra CSDL + đồng bộ — xem README.md ở đó
-├── middlewares/              # auth, errorHandler, upload*, cache quyền / trạng thái tài khoản
+├── permissions/              # catalog quyền, phạm vi, authz.js (hasPermission/scopeOf), cache quyền + trạng thái tài khoản, đồng bộ — xem README.md ở đó
+├── middlewares/              # tầng HTTP: auth, errorHandler, validateRequest (zod), upload*, activityLogger
 ├── modules/                  # mã nghiệp vụ, mỗi thư mục một module (xem bảng dưới)
 │   └── <module>/
 │       ├── <tên>.routes.js   # khai báo route + validate + quyền (Swagger quét modules/**/*.routes.js)
@@ -34,7 +34,7 @@ src/
 ├── shared/                   # crudService, crudController — factory CRUD dùng chung
 ├── jobs/                     # cron job nền (gọi service của các module)
 ├── assets/                   # font, logo dùng khi xuất file / gửi mail
-└── utils/                    # hàm thuần dùng chung: httpError, paging, sqlFilters, cache, excel*, vnDate...
+└── utils/                    # hàm dùng chung: asyncHandler, httpError, paging, sqlFilters, cache, excel*, vnDate...
 ```
 
 Các module trong `src/modules/`:
@@ -76,6 +76,11 @@ Quy ước dùng chung:
 - **Lỗi nghiệp vụ**: `throw httpError(404, 'Không tìm thấy...')`, `badRequest(...)` (`utils/httpError.js`). `errorHandler` trả đúng mã và thông điệp. Không ném object thường (`throw { statusCode }`), vì sẽ mất stack trace.
 - **Transaction**: `await withTransaction(async (tx) => { ... }, pool)` (`config/db.js`). Helper tự commit, tự rollback và không để lỗi rollback che lỗi gốc.
 - **Schema**: chỉ đổi qua file trong `database/migrations/` (`npm run migrate:new -- <mô tả>`). Code không tự chạy DDL.
+- **Handler async**: bọc bằng `asyncHandler(async (req, res) => { ... })` (`utils/asyncHandler.js`), không viết `try { } catch (err) { next(err); }`. Lỗi ném ra tự tới `errorHandler`.
+- **Validate input (code mới)**: `validateRequest({ body, query, params })` với zod schema (`middlewares/validateRequest.js`). Lỗi trả cùng dạng express-validator nên frontend không đổi. Route cũ dùng express-validator chuyển dần khi sửa tới.
+- **Hỏi quyền trong service**: `hasPermission`, `scopeOf`, `isDeadlineBound` từ `permissions/authz.js`. Service, utils không được `require` `middlewares/` (ESLint chặn).
+- **Log**: `const logger = require('.../config/logger')` rồi `logger.info/warn/error(...)` (cùng cách gọi như console). Không dùng `console.*` trong `src/`. Mức log: `LOG_LEVEL`.
+- **Biến môi trường**: biến hạ tầng (DB, JWT, CORS, Redis...) khai báo kiểu và mặc định trong `config/env.js` và đọc qua `config`. Thiếu hoặc sai thì server báo lỗi lúc khởi động. Biến mới cũng khai báo ở đây và trong `.env.example`.
 
 ## Kiểm tra chất lượng
 

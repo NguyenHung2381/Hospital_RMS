@@ -1,4 +1,5 @@
 const router = require('express').Router();
+const { asyncHandler } = require('../../utils/asyncHandler');
 // Đếm trên Redis, tự rơi về bộ nhớ khi Redis lỗi (utils/rateLimit.js)
 const rateLimit = require('../../utils/rateLimit');
 const { body, param, query } = require('express-validator');
@@ -61,13 +62,12 @@ router.get('/captcha', captchaLimiter, ctrl.getCaptcha);
 router.get('/courses', ctrl.getOpenCourses);
 router.get('/trainee-types', ctrl.getTraineeTypes);
 // Định dạng & dung lượng file được nhận (Cấu hình hệ thống) — dùng cho cả trang nội bộ
-router.get('/upload-policy', async (_req, res, next) => {
-	try {
+router.get(
+	'/upload-policy',
+	asyncHandler(async (_req, res) => {
 		return success(res, await uploadPolicy.getPolicy());
-	} catch (err) {
-		next(err);
-	}
-});
+	}),
+);
 
 router.get(
 	'/lookup',
