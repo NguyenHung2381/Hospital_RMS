@@ -1,22 +1,32 @@
 -- Xuất tự động bởi scripts/dump-db-objects.js — sửa object trong DB (hoặc
 -- migration) rồi chạy lại script, không sửa tay file này.
--- DÃ²ng cÅ© (trÆ°á»›c migration) cÃ³ batch_id = NULL â€” váº«n hiá»ƒn thá»‹ Ä‘Ãºng lÃ  1 lÆ°á»£t
--- gá»­i Ä‘á»™c láº­p á»Ÿ phÃ­a admin nhá» COALESCE(batch_id, id), khÃ´ng cáº§n backfill.
+/* ============================================================================
+ * 2026-11-03_fix_sp_push_notification_encoding
+ * ----------------------------------------------------------------------------
+ *   Tạo lại sp_push_notification với chữ tiếng Việt đúng UTF-8. Bản đang có
+ *   trong DB bị lỗi mã hoá (UTF-8 bị đọc thành cp1252 lúc tạo — sqlcmd thiếu
+ *   -f 65001): comment và 2 thông báo RAISERROR/PRINT hiện thành chữ vỡ.
+ *   Logic KHÔNG đổi — phần code ngoài comment/chuỗi giống hệt bản cũ.
+ * Idempotent (CREATE OR ALTER) — chạy lại an toàn.
+ * ==========================================================================*/
 
-CREATE PROCEDURE [dbo].[sp_push_notification]
-    -- Ná»™i dung thÃ´ng bÃ¡o
+-- Dòng cũ (trước migration) có batch_id = NULL — vẫn hiển thị đúng là 1 lượt
+-- gửi độc lập ở phía admin nhờ COALESCE(batch_id, id), không cần backfill.
+
+CREATE   PROCEDURE [dbo].[sp_push_notification]
+    -- Nội dung thông báo
     @type     VARCHAR(50),
     @title    NVARCHAR(255),
     @message  NVARCHAR(MAX) = NULL,
     @ref_id   VARCHAR(30)   = NULL,
     @ref_type VARCHAR(20)   = NULL,
 
-    -- === NgÆ°á»i nháº­n: truyá»n Ã­t nháº¥t 1 trong cÃ¡c tham sá»‘ sau ===
+    -- === Người nhận: truyền ít nhất 1 trong các tham số sau ===
 
-    -- CÃ¡ch 1 (cÅ©, váº«n giá»¯): JSON array user_id trá»±c tiáº¿p
+    -- Cách 1 (cũ, vẫn giữ): JSON array user_id trực tiếp
     @user_ids            NVARCHAR(MAX) = NULL,   -- ["uid1","uid2"]
 
-    -- CÃ¡ch 2 (má»›i): Targeting theo nhÃ³m
+    -- Cách 2 (mới): Targeting theo nhóm
     @role_ids            NVARCHAR(MAX) = NULL,   -- ["VT03","VT07"]
     @department_ids      NVARCHAR(MAX) = NULL,   -- ["DV002","DV005"]
     @include_dept_accounts BIT          = 0,
@@ -27,18 +37,18 @@ AS
 BEGIN
     SET NOCOUNT ON;
 
-    -- Kiá»ƒm tra cÃ³ Ã­t nháº¥t 1 nguá»“n ngÆ°á»i nháº­n
+    -- Kiểm tra có ít nhất 1 nguồn người nhận
     IF  (@user_ids       IS NULL OR @user_ids       = '[]')
     AND (@role_ids       IS NULL OR @role_ids       = '[]')
     AND (@department_ids IS NULL OR @department_ids = '[]')
     AND  @topic_id       IS NULL
     AND  @all_active     = 0
     BEGIN
-        RAISERROR(N'sp_push_notification: Pháº£i truyá»n Ã­t nháº¥t 1 tham sá»‘ ngÆ°á»i nháº­n.', 16, 1);
+        RAISERROR(N'sp_push_notification: Phải truyền ít nhất 1 tham số người nhận.', 16, 1);
         RETURN;
     END
 
-    -- Giáº£i quyáº¿t danh sÃ¡ch ngÆ°á»i nháº­n cuá»‘i cÃ¹ng
+    -- Giải quyết danh sách người nhận cuối cùng
     DECLARE @final_ids NVARCHAR(MAX);
 
     EXEC [dbo].[sp_resolve_recipients]
@@ -53,17 +63,17 @@ BEGIN
 
     IF @final_ids IS NULL OR @final_ids = '[]'
     BEGIN
-        PRINT N'sp_push_notification: KhÃ´ng cÃ³ ngÆ°á»i nháº­n há»£p lá»‡, bá» qua.';
+        PRINT N'sp_push_notification: Không có người nhận hợp lệ, bỏ qua.';
         RETURN;
     END
 
-    -- Má»™t batch_id duy nháº¥t cho cáº£ lÆ°á»£t gá»­i nÃ y, Ä‘á»ƒ phÃ­a admin gá»™p láº¡i
-    -- thÃ nh 1 hÃ ng thay vÃ¬ N hÃ ng (N = sá»‘ ngÆ°á»i nháº­n).
+    -- Một batch_id duy nhất cho cả lượt gửi này, để phía admin gộp lại
+    -- thành 1 hàng thay vì N hàng (N = số người nhận).
     DECLARE @batch_id VARCHAR(30) =
         'NTFB' + FORMAT(GETDATE(), 'yyyyMMddHHmmss')
               + RIGHT('00000' + CAST(NEXT VALUE FOR dbo.seq_notification_suffix AS VARCHAR(5)), 5);
 
-    -- Insert batch, prefix NTF + yyyyMMddHHmmss + 5 chá»¯ sá»‘ thá»© tá»± (tá»« SEQUENCE, khÃ´ng bá»‹ trÃ¹ng giá»¯a cÃ¡c láº§n gá»i)
+    -- Insert batch, prefix NTF + yyyyMMddHHmmss + 5 chữ số thứ tự (từ SEQUENCE, không bị trùng giữa các lần gọi)
     INSERT INTO [dbo].[notifications]
         ([id], [user_id], [type], [title], [message], [ref_id], [ref_type], [batch_id])
     SELECT

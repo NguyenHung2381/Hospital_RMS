@@ -4,7 +4,7 @@
 -- 5. sp_gen_cme_no — cấp số quyết định CME kế tiếp cho một năm
 --    (mẫu sp_gen_*; @owner NVARCHAR(20) theo bài học 2026-08-28_fix_gen_id_applock_owner)
 ------------------------------------------------------------------------------
-CREATE   PROCEDURE dbo.sp_gen_cme_no
+CREATE   PROCEDURE [dbo].[sp_gen_cme_no]
     @year INT,
     @actor_id VARCHAR(20) = NULL,
     @new_seq INT OUTPUT

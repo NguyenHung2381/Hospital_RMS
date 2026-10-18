@@ -50,3 +50,33 @@ sqlcmd -S <server>,<port> -d RMS_HOSPITAL -U <user> -P <pass> -C -I -b -f 65001 
 ```
 
 Cách này không ghi vào `schema_migrations`. Sau đó cần chạy `npm run migrate`. File idempotent nên chạy lại không sao.
+
+`-f 65001` là bắt buộc: thiếu nó, sqlcmd đọc file UTF-8 theo bảng mã của Windows và chữ Việt bị vỡ ngay trong DB (đã xảy ra với `sp_push_notification`, sửa ở `2026-11-03_fix_sp_push_notification_encoding.sql`). `test/database/sqlEncoding.test.js` chặn file `.sql` bị lỗi mã hoá.
+
+## Rà soát object DB (2026-10-18)
+
+`objects/` khớp hoàn toàn với DB dev: 44 procedure, 16 trigger, 2 view, 1 function. "Gọi từ" bên dưới chỉ tính lời gọi thật trong `src/`, `scripts/` và các object khác, không tính comment. Lời gọi từ ngoài repo (SQL Agent job, Task Scheduler, công cụ báo cáo) không thấy được từ đây.
+
+| Nhóm | Object | Gọi từ | Đề xuất |
+|---|---|---|---|
+| Audit | 13 trigger `trg_*_audit` | DB tự chạy (ghi `updated_at`/`updated_by` theo `sp_set_actor`) | Giữ ở DB. Code JS đang dựa vào chúng (`approvals.updated_*`, dashboard). |
+| Sinh mã | 23 `sp_gen_*` đang dùng (gồm `sp_gen_cme_no`, `sp_gen_certificate_no`) | JS, `sp_upload_files`, `sp_create_refresh_token`… | Giữ. Phần lớn giống hệt nhau (tiền tố + `yyyyMMdd` + STT, khoá `sp_getapplock`), chỉ khác tiền tố/bảng/mã lỗi. **Không** gộp thành 1 proc dùng SQL động (mất kiểm tra tên bảng, khó cấp quyền EXECUTE). Mã mới sinh ở JS như `levelService.createWithSeqId` cũng được. |
+| Sinh mã, không ai gọi | `sp_gen_approval_id`, `sp_gen_category_id`, `sp_gen_level_id`, `sp_gen_permission_id`, `sp_gen_pgroup_id`, `sp_gen_progress_id`, `sp_gen_role_id` | — | Đã có cách khác thay (crudService, `createWithSeqId`, `trg_topic_auto_approval` tự sinh). Xoá bằng migration sau khi xác nhận production không còn gì gọi. |
+| Nghiệp vụ trong DB | `trg_topic_auto_approval` (đề tài → `submitted` thì tạo dòng `approvals`), `sp_approve_topic` (+ `sp_grant_member_accounts`: duyệt, cấp tài khoản thành viên, thông báo), `sp_upload_files`, `trg_file_batch_count`, `trg_dept_gen_id`, `sp_push_notification` (+ `sp_resolve_recipients`), `sp_create_refresh_token`, `sp_deactivate_expired_accounts` | JS / DB | Giữ cho tới khi sửa nghiệp vụ liên quan thì chuyển về JS (service có test). Nên làm trước: `trg_topic_auto_approval` (logic ẩn, đọc code JS không thấy) và `sp_approve_topic` (gộp 3 việc + thông báo trong 1 proc 150 dòng). |
+| Việc định kỳ bằng SQL | `sp_process_daily_deadlines` (tự đóng mốc `auto_close`, rồi gọi `sp_cleanup_expired_tokens`, `sp_deactivate_expired_accounts`, `sp_cleanup_old_notifications`), `sp_remind_deadlines`, `sp_close_supplement_window` | Không có trong repo. Comment trong proc ghi "được gọi bởi SQL Agent Job hàng ngày". | **Cần kiểm tra trên production** (xem dưới). Nhắc deadline, dọn refresh token, khoá tài khoản hết hạn đã có job JS (`src/jobs/`); **tự đóng mốc deadline và dọn thông báo cũ thì chỉ có ở proc này**. |
+| Không ai gọi | `sp_use_refresh_token` (xoay refresh token đã làm ở `authService`), `vw_approvals_audit`, `vw_topics_audit` | — | Hai view có thể đang được dùng để xem/báo cáo trực tiếp trên DB. Hỏi người vận hành rồi mới xoá. |
+
+Câu hỏi còn mở: SQL Agent trên production có job gọi các proc trên không? Bản Express (dev) không có SQL Agent, nên ở dev `sp_process_daily_deadlines` chắc chắn không chạy. `src/jobs/accountMaintenanceJob.js` cũng ghi rằng `sp_deactivate_expired_accounts` "chưa có gì gọi tới". Kiểm tra trên server production:
+
+```sql
+SELECT j.name AS job, j.enabled, s.step_name, s.command
+FROM msdb.dbo.sysjobs j
+JOIN msdb.dbo.sysjobsteps s ON s.job_id = j.job_id
+WHERE s.command LIKE '%sp_process_daily_deadlines%'
+   OR s.command LIKE '%sp_remind_deadlines%'
+   OR s.command LIKE '%sp_close_supplement_window%'
+   OR s.command LIKE '%sp_cleanup_%';
+```
+
+- **Có job:** `sp_deactivate_expired_accounts` và việc dọn refresh token đang chạy 2 lần mỗi ngày (job SQL và job JS). Vô hại nhưng thừa, nên bỏ 1 bên.
+- **Không có job:** mốc deadline không tự đóng (`deadline_actions.auto_close`), và `notifications` không bao giờ được dọn. Chuyển 2 việc này sang `src/jobs/` rồi xoá các proc định kỳ.

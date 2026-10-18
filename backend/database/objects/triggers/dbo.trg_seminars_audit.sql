@@ -4,7 +4,7 @@
 -- 4. Trigger audit (updated_at / updated_by) — mẫu trg_cat_audit
 ------------------------------------------------------------------------------
 -- RECURSIVE_TRIGGERS mặc định OFF → trigger tự UPDATE bảng của mình không tái kích hoạt.
-CREATE   TRIGGER dbo.trg_seminars_audit ON dbo.seminars AFTER UPDATE AS
+CREATE   TRIGGER [dbo].[trg_seminars_audit] ON [dbo].[seminars] AFTER UPDATE AS
 BEGIN
     SET NOCOUNT ON;
     DECLARE @actor VARCHAR(20) = CAST(SESSION_CONTEXT(N'current_user_id') AS VARCHAR(20));
