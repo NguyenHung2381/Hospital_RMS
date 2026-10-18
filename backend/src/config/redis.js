@@ -1,15 +1,16 @@
 const Redis = require('ioredis');
+const { config } = require('./env');
 
 // Redis ở đây chỉ đóng vai trò cache phụ (cache-aside) cho dữ liệu đọc nặng —
 // KHÔNG phải nguồn dữ liệu chính. Vì vậy client phải "fail-open": Redis chết
 // hoặc chưa kết nối kịp không được làm chậm/crash request, mọi lỗi rơi xuống
 // fallback đọc thẳng MSSQL ở utils/cache.js.
 const redis = new Redis({
-	host: process.env.REDIS_HOST || 'localhost',
-	port: parseInt(process.env.REDIS_PORT) || 6379,
+	host: config.REDIS_HOST,
+	port: config.REDIS_PORT,
 	// Khớp --requirepass của container redis (docker-compose.prod.yml). Không đặt
 	// = không xác thực (dev). duplicate() ở utils/cacheBus.js kế thừa luôn.
-	password: process.env.REDIS_PASSWORD || undefined,
+	password: config.REDIS_PASSWORD,
 	// Đừng để 1 request chờ retry Redis lâu — thử 1 lần, lỗi thì fallback DB ngay.
 	maxRetriesPerRequest: 1,
 	// Mất kết nối thì reject ngay thay vì xếp hàng chờ (mặc định ioredis sẽ

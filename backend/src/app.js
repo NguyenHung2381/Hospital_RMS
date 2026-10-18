@@ -1,77 +1,11 @@
 const path = require('path');
 
-require('./config/loadEnv');
+// Kiểm tra biến môi trường trước mọi thứ khác: thiếu biến bắt buộc, secret
+// production yếu, thiếu CORS_ORIGIN... thì dừng (config/env.js).
+const config = require('./config/env').assertValidEnv();
 const { requireModule } = require('./middlewares/moduleGuard');
 
-const isProduction = process.env.NODE_ENV === 'production';
-
-// Swagger UI liệt kê toàn bộ API + cho gọi thử — tắt ở production, trừ khi bật
-// có chủ đích (SWAGGER_ENABLED=true, vd tạm thời khi tích hợp với hệ thống khác).
-const swaggerEnabled = !isProduction || process.env.SWAGGER_ENABLED === 'true';
-
-// Bắt buộc phải có các biến môi trường nhạy cảm — không cho phép fail-open
-// bằng giá trị mặc định đoán được (vd 'admin'/'123'/'secret').
-const REQUIRED_ENV = [
-	'DB_USER',
-	'DB_PASSWORD',
-	'JWT_SECRET',
-	'JWT_REFRESH_SECRET',
-	...(swaggerEnabled ? ['SWAGGER_USER', 'SWAGGER_PASS'] : []),
-];
-const missingEnv = REQUIRED_ENV.filter((key) => !process.env[key]);
-if (missingEnv.length > 0) {
-	console.error(
-		`❌ Thiếu biến môi trường bắt buộc: ${missingEnv.join(', ')}. Xem backend/.env.example.`,
-	);
-	process.exit(1);
-}
-
-// Ở production, secret JWT phải đủ dài (HS256 cần ≥ 256 bit entropy — script
-// gen-jwt-secrets sinh 64 byte hex = 128 ký tự) và 2 secret phải khác nhau:
-// dùng chung thì lộ 1 là lộ cả access lẫn refresh token.
-if (isProduction) {
-	const MIN_SECRET_LEN = 64;
-	const { JWT_SECRET, JWT_REFRESH_SECRET } = process.env;
-	if (JWT_SECRET.length < MIN_SECRET_LEN || JWT_REFRESH_SECRET.length < MIN_SECRET_LEN) {
-		console.error(
-			`❌ JWT_SECRET / JWT_REFRESH_SECRET phải dài ít nhất ${MIN_SECRET_LEN} ký tự ở production (npm run gen:jwt).`,
-		);
-		process.exit(1);
-	}
-	if (JWT_SECRET === JWT_REFRESH_SECRET) {
-		console.error('❌ JWT_SECRET và JWT_REFRESH_SECRET không được trùng nhau.');
-		process.exit(1);
-	}
-}
-
-// Ở production, không cho phép CORS mở cho mọi origin bằng cách im lặng quên
-// set biến — bắt buộc khai báo rõ domain được phép, cùng nguyên tắc fail-closed
-// như JWT_SECRET/DB_PASSWORD ở trên.
-if (process.env.NODE_ENV === 'production' && !process.env.CORS_ORIGIN) {
-	console.error('❌ Thiếu biến môi trường CORS_ORIGIN ở production. Xem backend/.env.example.');
-	process.exit(1);
-}
-
-// Cảnh báo (không chặn khởi động — cần thời gian để hạ tầng/DBA xử lý) 2 rủi
-// ro cấu hình DB phổ biến khi lên production:
-//   - Kết nối không mã hoá: dữ liệu (kể cả password hash, token) truyền giữa
-//     app và SQL Server ở dạng plaintext trên mạng.
-//   - Dùng tài khoản 'sa': lộ credential này (vd qua log, .env rò rỉ) là mất
-//     toàn quyền CẢ INSTANCE SQL Server, không chỉ riêng DB RMS_HOSPITAL.
-//     Nên tạo login riêng, chỉ cấp quyền trên DB này (db_datareader/writer +
-//     EXECUTE trên các sp_* mà app dùng).
-if (process.env.NODE_ENV === 'production') {
-	if (process.env.DB_ENCRYPT !== 'true') {
-		console.warn(
-			'⚠️  DB_ENCRYPT khác "true" ở production — kết nối tới SQL Server không được mã hoá.',
-		);
-	}
-	if ((process.env.DB_USER || '').toLowerCase() === 'sa') {
-		console.warn(
-			'⚠️  DB_USER=sa ở production — nên dùng 1 SQL login riêng, chỉ cấp quyền trên DB RMS_HOSPITAL.',
-		);
-	}
-}
+const { isProduction, swaggerEnabled } = config;
 
 const express = require('express');
 const cors = require('cors');
@@ -91,13 +25,9 @@ const app = express();
 // rate-limit/khoá tài khoản theo IP mất tác dụng (coi mọi client là 1 IP),
 // hoặc bị giả mạo qua X-Forwarded-For nếu set sai. Không set = giữ hành vi
 // mặc định cũ của Express (không tin proxy nào, dùng IP kết nối trực tiếp).
-if (process.env.TRUST_PROXY) {
-	const raw = process.env.TRUST_PROXY;
-	// "1", "2"... = số hop (Express cần kiểu number, không phải string, để hiểu
-	// là hop count thay vì một địa chỉ IP tên "1"). Giá trị khác (IP/CIDR/
-	// 'loopback'/danh sách phân tách bởi dấu phẩy) giữ nguyên dạng string.
-	app.set('trust proxy', /^\d+$/.test(raw) ? Number(raw) : raw);
-}
+// config/env.js đã đổi "1", "2"... thành number (Express hiểu là số hop, không
+// phải địa chỉ IP tên "1"); IP/CIDR/'loopback'/danh sách giữ dạng string.
+if (config.TRUST_PROXY) app.set('trust proxy', config.TRUST_PROXY);
 
 // ─── Middlewares ─────────────────────────────────────────────────────────────
 // Header bảo mật (X-Frame-Options, X-Content-Type-Options, HSTS...). Tắt CSP
@@ -107,9 +37,7 @@ app.use(helmet({ contentSecurityPolicy: false }));
 
 // CORS_ORIGIN không set = cho phép mọi origin (hành vi mặc định cũ, không đổi).
 // Set CORS_ORIGIN (phân cách bởi dấu phẩy) để giới hạn origin được phép gọi API.
-const corsOrigins = process.env.CORS_ORIGIN
-	? process.env.CORS_ORIGIN.split(',').map((o) => o.trim())
-	: true;
+const corsOrigins = config.CORS_ORIGIN ?? true;
 app.use(cors({ origin: corsOrigins }));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
@@ -117,7 +45,7 @@ app.use(express.urlencoded({ extended: true }));
 // ─── Static uploads ───────────────────────────────────────────────────────────
 // Chỉ phục vụ link có chữ ký còn hạn — link được ký ở signUploadUrlsInJson
 // khi API (đã qua kiểm tra quyền) trả đường dẫn file. Xem utils/signedUpload.js.
-const UPLOADS_ROOT = path.resolve(process.env.UPLOADS_DIR || 'uploads');
+const { UPLOADS_ROOT } = require('./utils/uploadPaths');
 // Chỉ ảnh / PDF / video / audio được mở thẳng trên trình duyệt (xem trước,
 // <img>, <video>); còn lại (Office, zip, txt...) luôn tải xuống. File người dùng
 // tải lên không bao giờ được chạy như trang web: CSP sandbox + không script.
@@ -230,7 +158,7 @@ app.use(
 	rateLimit({
 		name: 'api',
 		windowMs: 60 * 1000,
-		limit: Number(process.env.API_RATE_LIMIT) || 1200,
+		limit: config.API_RATE_LIMIT,
 		standardHeaders: true,
 		legacyHeaders: false,
 		skip: (req) => req.method === 'GET' && req.path === '/events',

@@ -1,26 +1,27 @@
 const sql = require('mssql');
+const { config } = require('./env');
 
 const dbConfig = {
-	server: process.env.DB_SERVER || 'localhost',
-	port: parseInt(process.env.DB_PORT) || 1433,
-	database: process.env.DB_DATABASE || 'RMS_HOSPITAL',
-	user: process.env.DB_USER,
-	password: process.env.DB_PASSWORD,
+	server: config.DB_SERVER,
+	port: config.DB_PORT,
+	database: config.DB_DATABASE,
+	user: config.DB_USER,
+	password: config.DB_PASSWORD,
 
 	// Timeout kết nối và query — phải đặt ở top-level, KHÔNG nằm trong options
 	connectionTimeout: 30000, // 30s chờ thiết lập kết nối
 	requestTimeout: 30000, // 30s chờ kết quả query / stored procedure
 
 	options: {
-		encrypt: process.env.DB_ENCRYPT === 'true',
-		trustServerCertificate: process.env.DB_TRUST_SERVER_CERT !== 'false',
+		encrypt: config.DB_ENCRYPT,
+		trustServerCertificate: config.DB_TRUST_SERVER_CERT,
 		enableArithAbort: true,
 	},
 
 	pool: {
 		// Mỗi worker (src/cluster.js) có pool riêng: tổng kết nối tới SQL Server
 		// = WEB_CONCURRENCY × DB_POOL_MAX.
-		max: Number(process.env.DB_POOL_MAX) || 10,
+		max: config.DB_POOL_MAX,
 		min: 2, // Giữ 2 connection ấm — tránh cold-start
 		idleTimeoutMillis: 60000, // 1 phút mới đóng connection nhàn rỗi (cũ: 30s)
 		acquireTimeoutMillis: 30000, // 30s chờ lấy connection từ pool
