@@ -43,10 +43,10 @@ Các module trong `src/modules/`:
 |---|---|---|
 | `auth` | `/auth` | đăng nhập, refresh token, 2FA, thiết bị tin cậy, quên mật khẩu, `sessionVersion` |
 | `users` | `/users` | tài khoản người dùng |
-| `access` | (route ở `catalog`) | vai trò, ma trận quyền, `privilegeGuard`, `roleCodes` |
+| `access` | gốc `/api`: `/roles`, `/permissions` | vai trò, ma trận quyền, `privilegeGuard`, `roleCodes` |
 | `persons` | `/persons` | hồ sơ người (gộp trùng, liên kết tài khoản) |
-| `catalog` | gốc `/api` (gắn cuối cùng) | danh mục: khoa, phản biện ngoài, lĩnh vực, cấp, loại đợt, danh mục đào tạo/CME, địa điểm, chức danh, vai trò/quyền, đợt nghiên cứu |
-| `rounds` | (route ở `catalog`) | đợt nghiên cứu, mốc deadline |
+| `catalog` | gốc `/api` (gắn cuối cùng, cùng `access`, `rounds`) | danh mục: khoa, phản biện ngoài, lĩnh vực, cấp, loại đợt, danh mục đào tạo/CME, địa điểm, chức danh. Mỗi danh mục 1 file `<tên>.routes.js`, `catalog.routes.js` gom lại |
+| `rounds` | gốc `/api`: `/research-rounds` | đợt nghiên cứu, mốc deadline |
 | `topics` | `/topics`, `/files`, `/workflows` | đề tài, thành viên, tác giả, file nộp, workflow duyệt, nhập/xuất Excel |
 | `councils` | `/councils` | hội đồng, phân công, tiến độ đánh giá |
 | `seminars` | `/seminars` | hội nghị/hội thảo, người tham dự, xuất Excel |

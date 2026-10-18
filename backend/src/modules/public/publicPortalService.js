@@ -202,7 +202,7 @@ const getPublicDepartments = async () => {
 };
 
 // Cấp độ hợp lệ theo đợt (research_round_levels → round_type_levels); chưa
-// cấu hình gì ⇒ trả tất cả (fallback), mirror logic ở modules/catalog/lookups.routes.js (GET /levels).
+// cấu hình gì ⇒ trả tất cả (fallback), mirror logic ở modules/catalog/levelService.js (getForRound).
 const getPublicLevels = async (roundId) => {
 	const pool = await getPool();
 	const all = await pool.request().query('SELECT id, name FROM levels ORDER BY name');

@@ -232,7 +232,9 @@ app.use(
 app.use(`${API}/system-settings`, require('./modules/settings/systemSettings.routes'));
 app.use(`${API}/persons`, require('./modules/persons/persons.routes'));
 app.use(`${API}/public`, require('./modules/public/public.routes'));
-app.use(API, require('./modules/catalog/lookups.routes'));
+app.use(API, require('./modules/catalog/catalog.routes'));
+app.use(API, require('./modules/access/access.routes'));
+app.use(API, require('./modules/rounds/rounds.routes'));
 
 // ─── 404 handler ──────────────────────────────────────────────────────────────
 app.use((req, res) => {
