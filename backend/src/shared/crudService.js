@@ -1,4 +1,3 @@
-// @ts-nocheck — còn lỗi kiểu khi bật checkJs; sửa xong thì xoá dòng này (xem README, Kiểm tra chất lượng)
 const { getPool, sql } = require('../config/db');
 const { broadcast } = require('../modules/events/eventService');
 const { paging } = require('../utils/paging');
@@ -29,7 +28,7 @@ const createCrudService = (
 	// xoá sạch mọi key getAll (mọi trang/search) lẫn getById của bảng này.
 	const cachePrefix = `lookup:${tableName}:`;
 
-	const getAll = async ({ page = 1, limit = 100, search } = {}) => {
+	const getAll = async ({ page = 1, limit = 100, search = undefined } = {}) => {
 		const key = `${cachePrefix}all:${page}:${limit}:${search || ''}`;
 		return remember(key, 300, async () => {
 			const pool = await getPool();

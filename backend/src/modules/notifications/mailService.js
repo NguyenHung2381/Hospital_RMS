@@ -52,7 +52,7 @@ const getTransporter = async () => {
 
 // Không bao giờ throw ra ngoài — gửi email thất bại không được phép làm hỏng
 // luồng chính (duyệt đề tài, nhắc deadline...).
-const send = async ({ to, subject, html, attachments, event }) => {
+const send = async ({ to, subject, html, attachments = undefined, event = undefined }) => {
 	if (!to) return;
 	if (!(await isEnabled(event))) {
 		logger.info(

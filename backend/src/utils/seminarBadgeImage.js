@@ -1,4 +1,3 @@
-// @ts-nocheck — còn lỗi kiểu khi bật checkJs; sửa xong thì xoá dòng này (xem README, Kiểm tra chất lượng)
 /**
  * Ảnh PNG thẻ đại biểu hội nghị (đính kèm email đăng ký) — cùng bố cục với
  * mailService.renderSeminarBadgeEmail để người tham dự lưu/in được.
@@ -65,6 +64,7 @@ const renderSeminarBadgePng = async ({
 }) => {
 	const measure = createCanvas(1, 1).getContext('2d');
 	const maxW = W - PAD * 2;
+	/** @type {Array<[string[], string, string, number, number]>} */
 	const blocks = [
 		// [lines, font, color, lineHeight, gapAfter]
 		[wrap(measure, seminarTitle, font(24, true), maxW, 3), font(24, true), C.dark, 32, 8],

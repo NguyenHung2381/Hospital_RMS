@@ -1,4 +1,3 @@
-// @ts-nocheck — còn lỗi kiểu khi bật checkJs; sửa xong thì xoá dòng này (xem README, Kiểm tra chất lượng)
 const path = require('path');
 const logger = require('./config/logger');
 
@@ -11,7 +10,8 @@ const { isProduction, swaggerEnabled } = config;
 
 const express = require('express');
 const cors = require('cors');
-const helmet = require('helmet');
+// helmet là package ESM có bản CJS: require() trả về chính hàm, `.default` cũng là hàm đó
+const helmet = require('helmet').default;
 const rateLimit = require('./utils/rateLimit');
 const { errorHandler } = require('./middlewares/errorHandler');
 const swaggerUi = require('swagger-ui-express');

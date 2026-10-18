@@ -1,4 +1,3 @@
-// @ts-nocheck — còn lỗi kiểu khi bật checkJs; sửa xong thì xoá dòng này (xem README, Kiểm tra chất lượng)
 /**
  * seminarService.js — Quản lý Hội thảo / Hội nghị (bảng seminars).
  *
@@ -46,11 +45,11 @@ const countSelect = `
 const getAll = async ({
 	page = 1,
 	limit = 20,
-	search,
-	scope,
-	event_type,
-	year,
-	grants_cme,
+	search = undefined,
+	scope = undefined,
+	event_type = undefined,
+	year = undefined,
+	grants_cme = undefined,
 } = {}) => {
 	const pool = await getPool();
 	const pg = paging(page, limit, 20);
@@ -384,7 +383,7 @@ const remove = async (id, actorId) => {
 // ─── Thống kê ────────────────────────────────────────────────────────────────
 
 // File 1.4 — bảng tổng hợp hội thảo BV tổ chức
-const statsHosted = async ({ year, from, to } = {}) => {
+const statsHosted = async ({ year = undefined, from = undefined, to = undefined } = {}) => {
 	const pool = await getPool();
 	const req = pool.request();
 	const clauses = ["s.scope = 'hosted'"];
@@ -423,7 +422,7 @@ const statsHosted = async ({ year, from, to } = {}) => {
 };
 
 // Thống kê CME theo năm
-const statsCme = async ({ year } = {}) => {
+const statsCme = async ({ year = undefined } = {}) => {
 	const pool = await getPool();
 	const req = pool.request();
 	const y = year ? parseInt(year, 10) : new Date().getFullYear();
@@ -447,7 +446,7 @@ const statsCme = async ({ year } = {}) => {
 // Sổ cấp CME của một năm — mọi lượt cấp, sắp theo SQĐ
 // limit=0 (mặc định) → lấy hết sổ của năm đó — cần cho luồng "thu hồi tất cả"
 // (thu hồi mọi dòng khớp bộ lọc, kể cả trang chưa hiển thị trên UI).
-const cmeRegister = async ({ year, search, page = 1, limit = 0 } = {}) => {
+const cmeRegister = async ({ year = undefined, search = undefined, page = 1, limit = 0 } = {}) => {
 	const pool = await getPool();
 	const y = year ? parseInt(year, 10) : new Date().getFullYear();
 	const pg = paging(page, limit, 25);

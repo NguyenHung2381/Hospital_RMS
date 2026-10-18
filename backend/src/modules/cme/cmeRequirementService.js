@@ -1,11 +1,10 @@
-// @ts-nocheck — còn lỗi kiểu khi bật checkJs; sửa xong thì xoá dòng này (xem README, Kiểm tra chất lượng)
 const { getPool, sql } = require('../../config/db');
 const { broadcast } = require('../events/eventService');
 const { isDeptAccountSql } = require('../../utils/deptAccount');
 
 // Ngưỡng tín chỉ CME theo năm — toàn viện (department_id NULL) hoặc riêng
 // theo khoa/phòng (ghi đè ngưỡng toàn viện cho khoa đó).
-const getAll = async ({ year } = {}) => {
+const getAll = async ({ year = undefined } = {}) => {
 	const pool = await getPool();
 	const req = pool.request();
 	let where = '1=1';

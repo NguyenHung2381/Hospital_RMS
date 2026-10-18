@@ -7,7 +7,7 @@ const assert = require('node:assert/strict');
 const fs = require('fs');
 const path = require('path');
 
-const MAX = 55;
+const MAX = 0;
 
 const SRC = path.join(__dirname, '../../src');
 const walk = (d) =>

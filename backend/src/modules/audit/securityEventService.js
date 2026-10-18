@@ -1,4 +1,3 @@
-// @ts-nocheck — còn lỗi kiểu khi bật checkJs; sửa xong thì xoá dòng này (xem README, Kiểm tra chất lượng)
 const { getPool, sql } = require('../../config/db');
 const logger = require('../../config/logger');
 
@@ -41,7 +40,12 @@ const log = async ({
 };
 
 // Keyset pagination theo id giảm dần — cùng kiểu với activityLogService.
-const getAll = async ({ limit = 50, cursor, event_type, actor_id } = {}) => {
+const getAll = async ({
+	limit = 50,
+	cursor = undefined,
+	event_type = undefined,
+	actor_id = undefined,
+} = {}) => {
 	const pool = await getPool();
 	const req = pool.request().input('limit', sql.Int, Math.min(Number(limit) || 50, 200));
 

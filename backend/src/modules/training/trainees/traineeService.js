@@ -1,4 +1,3 @@
-// @ts-nocheck — còn lỗi kiểu khi bật checkJs; sửa xong thì xoá dòng này (xem README, Kiểm tra chất lượng)
 const bcrypt = require('bcrypt');
 const { getPool, sql } = require('../../../config/db');
 const { broadcast } = require('../../events/eventService');
@@ -34,7 +33,13 @@ const maskSensitive = (row, canSeeSensitive) => {
 const canReadSensitive = (actor) => hasPermission(actor, 'trainees', 'read_sensitive');
 
 const getAll = async (
-	{ page = 1, limit = 20, search, trainee_type_id, department_id } = {},
+	{
+		page = 1,
+		limit = 20,
+		search = undefined,
+		trainee_type_id = undefined,
+		department_id = undefined,
+	} = {},
 	actor = null,
 ) => {
 	const pool = await getPool();
@@ -140,6 +145,7 @@ const update = async (id, data, actorId) => {
 		.input('id', sql.VarChar(20), id)
 		.input('actor_id', sql.VarChar(20), actorId);
 
+	/** @type {Array<[string, any]>} [cột, kiểu SQL] */
 	const simpleFields = [
 		['full_name', sql.NVarChar(150)],
 		['national_id', sql.VarChar(20)],

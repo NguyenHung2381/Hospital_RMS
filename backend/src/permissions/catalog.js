@@ -1,4 +1,3 @@
-// @ts-nocheck — còn lỗi kiểu khi bật checkJs; sửa xong thì xoá dòng này (xem README, Kiểm tra chất lượng)
 // ─── Danh mục quyền — NGUỒN CHÂN LÝ DUY NHẤT ─────────────────────────────────
 // Mọi quyền "resource:action" của hệ thống khai báo ở đây. Khi server khởi
 // động, permissions/sync.js đồng bộ danh mục này vào bảng `permissions` (thêm
@@ -23,6 +22,13 @@
 //     lượt cấp quyền, không phải action — xem permissions/scopes.js.
 //   - critical: quyền cho phép quản lý tài khoản / phân quyền — giao diện cảnh báo khi cấp.
 
+/**
+ * @param {string} id
+ * @param {string} action
+ * @param {string} name
+ * @param {string} description
+ * @param {{ critical?: boolean, seedFrom?: string[], scoped?: boolean, [k: string]: any }} [opts]
+ */
 const p = (id, action, name, description, opts = {}) => ({
 	id,
 	action,

@@ -1,4 +1,3 @@
-// @ts-nocheck — còn lỗi kiểu khi bật checkJs; sửa xong thì xoá dòng này (xem README, Kiểm tra chất lượng)
 const { getPool, sql, withTransaction } = require('../../../config/db');
 const { parseJsonArray } = require('../../../utils/sqlFilters');
 const { broadcast } = require('../../events/eventService');
@@ -19,7 +18,11 @@ const QUESTION_IMAGE_DIR = '/uploads/questions/';
 const imagePath = (url) => toStoredUploadPath(url, QUESTION_IMAGE_DIR);
 
 // ─── Ngân hàng câu hỏi ───────────────────────────────────────────────────────
-const listQuestions = async ({ subject_id, search, question_type } = {}) => {
+const listQuestions = async ({
+	subject_id = undefined,
+	search = undefined,
+	question_type = undefined,
+} = {}) => {
 	const pool = await getPool();
 	const where = ['1=1'];
 	const req = pool.request();

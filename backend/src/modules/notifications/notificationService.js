@@ -1,4 +1,3 @@
-// @ts-nocheck — còn lỗi kiểu khi bật checkJs; sửa xong thì xoá dòng này (xem README, Kiểm tra chất lượng)
 const { getPool, sql } = require('../../config/db');
 const mailService = require('./mailService');
 const mailQueue = require('./mailQueue');
@@ -153,7 +152,7 @@ const sendBroadcast = async ({ type, title, message, refId, refType, targetType,
  * Gộp các dòng cùng 1 lượt gửi (cùng batch_id, hoặc cùng id nếu là dòng cũ
  * trước khi có batch_id) thành 1 hàng, kèm số người nhận và số người đã đọc.
  */
-const adminGetAll = async ({ page = 1, limit = 20, type, search } = {}) => {
+const adminGetAll = async ({ page = 1, limit = 20, type = undefined, search = undefined } = {}) => {
 	const pool = await getPool();
 	const offset = (page - 1) * limit;
 	const conditions = [];

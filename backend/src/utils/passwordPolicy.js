@@ -1,4 +1,3 @@
-// @ts-nocheck — còn lỗi kiểu khi bật checkJs; sửa xong thì xoá dòng này (xem README, Kiểm tra chất lượng)
 // Chính sách mật khẩu dùng chung cho MỌI nơi đặt mật khẩu: tự đổi mật khẩu,
 // quản trị tạo tài khoản / đặt lại mật khẩu. Trước đây mỗi nơi một kiểu (5, 6
 // hoặc 8 ký tự) nên quản trị đặt được mật khẩu yếu hơn người dùng tự đặt.
@@ -52,7 +51,7 @@ const COMMON = new Set([
 ]);
 
 // Trả về thông báo lỗi (string) nếu mật khẩu không đạt, ngược lại null.
-const checkPassword = (password, { username } = {}) => {
+const checkPassword = (password, { username = undefined } = {}) => {
 	if (typeof password !== 'string' || !password) return 'Vui lòng nhập mật khẩu';
 	if (password.length < MIN_LENGTH) return `Mật khẩu phải có ít nhất ${MIN_LENGTH} ký tự`;
 	if (password.length > MAX_LENGTH) return `Mật khẩu không được dài quá ${MAX_LENGTH} ký tự`;

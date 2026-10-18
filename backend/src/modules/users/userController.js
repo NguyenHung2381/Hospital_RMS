@@ -1,4 +1,3 @@
-// @ts-nocheck — còn lỗi kiểu khi bật checkJs; sửa xong thì xoá dòng này (xem README, Kiểm tra chất lượng)
 const userService = require('./userService');
 const { success, created, notFound, forbidden, sendWorkbook } = require('../../utils/response');
 const { buildUserListWorkbook } = require('./exports/userListWorkbook');

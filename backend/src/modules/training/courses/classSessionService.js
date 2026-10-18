@@ -1,4 +1,3 @@
-// @ts-nocheck — còn lỗi kiểu khi bật checkJs; sửa xong thì xoá dòng này (xem README, Kiểm tra chất lượng)
 const { getPool, sql } = require('../../../config/db');
 const { broadcast } = require('../../events/eventService');
 const { scopeOf } = require('../../../permissions/authz');
@@ -9,7 +8,10 @@ const { ASSIGNED_EXISTS_SQL } = require('./coursePolicy');
 // khoảng [from, to] kèm tên khoá, cùng các khoá có thời gian học giao khoảng
 // đó (để vẽ thanh thời gian khoá học). Giảng viên phạm vi 'assigned' chỉ thấy
 // khoá mình được phân công.
-const listSessionsInRange = async ({ from, to, course_id } = {}, actor = null) => {
+const listSessionsInRange = async (
+	{ from = undefined, to = undefined, course_id = undefined } = {},
+	actor = null,
+) => {
 	const pool = await getPool();
 	const req = pool.request().input('from', sql.Date, from).input('to', sql.Date, to);
 	const where = [];

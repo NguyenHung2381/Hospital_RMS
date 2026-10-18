@@ -1,4 +1,3 @@
-// @ts-nocheck — còn lỗi kiểu khi bật checkJs; sửa xong thì xoá dòng này (xem README, Kiểm tra chất lượng)
 /**
  * trainingReportService.js — 3 báo cáo Đào tạo (đối chiếu QLNCKHDTCDT-main
  * BAO_CAO_BUS::theoKhoaCtdt / dsHocVienKetQua / thongKeTong), RMS trước đây
@@ -25,7 +24,7 @@ const byCourseProgram = async () => {
 };
 
 // 2. DS học viên + kết quả (điểm tổng kết, xếp loại) toàn hệ thống.
-const traineeResults = async ({ course_id } = {}) => {
+const traineeResults = async ({ course_id = undefined } = {}) => {
 	const pool = await getPool();
 	const req = pool.request();
 	let where = '1=1';
@@ -55,7 +54,7 @@ const traineeResults = async ({ course_id } = {}) => {
 };
 
 // 3. Thống kê tổng theo khoảng thời gian (dựa trên registered_at).
-const summary = async ({ from, to } = {}) => {
+const summary = async ({ from = undefined, to = undefined } = {}) => {
 	const pool = await getPool();
 	const req = pool.request();
 	const where = ['1=1'];

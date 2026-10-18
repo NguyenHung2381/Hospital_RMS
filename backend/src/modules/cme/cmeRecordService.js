@@ -1,4 +1,3 @@
-// @ts-nocheck — còn lỗi kiểu khi bật checkJs; sửa xong thì xoá dòng này (xem README, Kiểm tra chất lượng)
 /**
  * cmeRecordService.js — Ghi nhận tín chỉ CME ĐỘC LẬP, không bắt buộc qua 1
  * seminar cụ thể (tự học, học online, minh chứng đính kèm...). Khác cơ chế
@@ -26,10 +25,10 @@ const recordSelect = `
 const getAll = async ({
 	page = 1,
 	limit = 20,
-	user_id,
-	year,
-	category_id,
-	approval_status,
+	user_id = undefined,
+	year = undefined,
+	category_id = undefined,
+	approval_status = undefined,
 } = {}) => {
 	const pool = await getPool();
 	const pg = paging(page, limit, 100);

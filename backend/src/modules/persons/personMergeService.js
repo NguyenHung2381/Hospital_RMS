@@ -1,4 +1,3 @@
-// @ts-nocheck — còn lỗi kiểu khi bật checkJs; sửa xong thì xoá dòng này (xem README, Kiểm tra chất lượng)
 const { getPool, sql } = require('../../config/db');
 const { paging } = require('../../utils/paging');
 const { broadcast } = require('../events/eventService');
@@ -101,7 +100,13 @@ const shapeCandidate = (r, canSee) => ({
 // ─── Đọc ─────────────────────────────────────────────────────────────────────
 
 const listCandidates = async (
-	{ status = 'PENDING', reason, search, page, limit } = {},
+	{
+		status = 'PENDING',
+		reason = undefined,
+		search = undefined,
+		page = undefined,
+		limit = undefined,
+	} = {},
 	canSee = false,
 ) => {
 	if (!STATUSES.includes(status)) throw httpError(400, 'Trạng thái không hợp lệ.');
@@ -240,7 +245,11 @@ const setActor = (tx, actorId) =>
  * Gộp cặp `id`. keep = 'A' | 'B' (hồ sơ giữ lại). fields[f] = 'keep' | 'lose' chọn giá trị từng trường;
  * mặc định giữ giá trị của hồ sơ giữ lại, trống thì lấy của hồ sơ bị gộp.
  */
-const mergeCandidate = async (id, { keep, fields = {}, note } = {}, actorId) => {
+const mergeCandidate = async (
+	id,
+	{ keep = undefined, fields = {}, note = undefined } = {},
+	actorId,
+) => {
 	if (keep !== 'A' && keep !== 'B') throw httpError(400, 'Phải chọn hồ sơ giữ lại (A hoặc B).');
 	for (const [k, v] of Object.entries(fields || {})) {
 		if (!MERGE_FIELDS.includes(k)) throw httpError(400, `Trường không hợp lệ: ${k}`);

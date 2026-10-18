@@ -1,4 +1,3 @@
-// @ts-nocheck — còn lỗi kiểu khi bật checkJs; sửa xong thì xoá dòng này (xem README, Kiểm tra chất lượng)
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
@@ -58,7 +57,8 @@ const extensionFilter = (allowed, allowMedia) => (_req, file, cb) => {
  * Định dạng & dung lượng theo Cấu hình hệ thống (utils/uploadPolicy.js);
  * maxSizeMB ghi đè dung lượng (route video bài giảng), allowMedia cho thêm video/audio.
  */
-const createDiskUpload = ({ idParam, dirParts, maxSizeMB, allowMedia = false }) =>
+/** @param {{ idParam: string, dirParts: (id: string) => string[], maxSizeMB?: number, allowMedia?: boolean }} opts */
+const createDiskUpload = ({ idParam, dirParts, maxSizeMB = undefined, allowMedia = false }) =>
 	secureUpload(
 		dynamicMulter((policy) => {
 			const limitMB = maxSizeMB ?? policy.maxSizeMB;
@@ -68,7 +68,7 @@ const createDiskUpload = ({ idParam, dirParts, maxSizeMB, allowMedia = false }) 
 					storage: multer.diskStorage({
 						destination: (req, _file, cb) => {
 							const id = req.params[idParam];
-							if (!SAFE_ID.test(id)) return cb(badRequest(`${idParam} không hợp lệ`));
+							if (!SAFE_ID.test(id)) return cb(badRequest(`${idParam} không hợp lệ`), '');
 							const dir = path.join(UPLOADS_ROOT, ...dirParts(id));
 							fs.mkdirSync(dir, { recursive: true });
 							cb(null, dir);

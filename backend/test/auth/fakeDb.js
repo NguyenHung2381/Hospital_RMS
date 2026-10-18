@@ -21,13 +21,13 @@ const install = (handler) => {
 				return req;
 			},
 			// mssql: req.output(name, type) khai báo tham số OUTPUT; sau execute,
-			// giá trị nằm ở req.output[name] — lấy từ dòng đầu recordset giả.
+			// giá trị nằm ở result.output[name] (KHÔNG phải req.output[name]) —
+			// lấy từ dòng đầu recordset giả.
 			output: () => req,
 			query: run,
 			async execute(proc) {
 				const r = await run(`EXEC ${proc}`);
-				Object.assign(req.output, r.recordset[0] ?? {});
-				return r;
+				return { ...r, output: { ...(r.recordset[0] ?? {}) } };
 			},
 		};
 		return req;

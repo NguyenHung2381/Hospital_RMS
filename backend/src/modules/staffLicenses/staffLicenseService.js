@@ -1,4 +1,3 @@
-// @ts-nocheck — còn lỗi kiểu khi bật checkJs; sửa xong thì xoá dòng này (xem README, Kiểm tra chất lượng)
 const { getPool, sql } = require('../../config/db');
 const { broadcast } = require('../events/eventService');
 const { paging } = require('../../utils/paging');
@@ -14,7 +13,13 @@ const licenseSelect = `
   LEFT JOIN departments d ON d.id = u.department_id
 `;
 
-const getAll = async ({ page = 1, limit = 20, search, department_id, has_license } = {}) => {
+const getAll = async ({
+	page = 1,
+	limit = 20,
+	search = undefined,
+	department_id = undefined,
+	has_license = undefined,
+} = {}) => {
 	const pool = await getPool();
 	const pg = paging(page, limit, 100);
 	const where = ['1=1'];
@@ -64,6 +69,7 @@ const getByUserId = async (userId) => {
 	return result.recordset[0] || null;
 };
 
+/** @type {Array<[string, any]>} [cột, kiểu SQL] */
 const fieldDefs = [
 	['license_no', sql.VarChar(50)],
 	['issued_date', sql.Date],

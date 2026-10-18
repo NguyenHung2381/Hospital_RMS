@@ -1,4 +1,3 @@
-// @ts-nocheck — còn lỗi kiểu khi bật checkJs; sửa xong thì xoá dòng này (xem README, Kiểm tra chất lượng)
 /**
  * councilScheduleWorkbook.js — dựng workbook cho POST /api/v1/councils/export-excel
  *
@@ -75,6 +74,7 @@ const buildCouncilScheduleWorkbook = (
 	COLS.forEach((c, i) => (ws.getColumn(i + 1).width = c.w));
 
 	// Letterhead
+	/** @type {Array<[string, string, any]>} [vùng ô, nội dung, font] */
 	const head = [
 		['A1:D1', 'SỞ Y TẾ', fnt({ bold: true, size: 11 })],
 		['F1:L1', 'CỘNG HOÀ XÃ HỘI CHỦ NGHĨA VIỆT NAM', fnt({ bold: true, size: 11 })],

@@ -25,7 +25,11 @@ class RedisWithMemoryFallbackStore {
 	async increment(key) {
 		const k = this.prefix + key;
 		try {
-			const [[incrErr, hits], [ttlErr, ttl]] = await redis.multi().incr(k).pttl(k).exec();
+			// exec() trả [[err, kết quả], ...] theo thứ tự lệnh: incr → số lượt, pttl → ms còn lại
+			const [[incrErr, hits], [ttlErr, ttl]] =
+				/** @type {[[Error|null, number], [Error|null, number]]} */ (
+					await redis.multi().incr(k).pttl(k).exec()
+				);
 			if (incrErr || ttlErr) throw incrErr || ttlErr;
 			let msLeft = ttl;
 			// Key mới (chưa có hạn) → đặt hạn = cửa sổ thời gian
@@ -61,7 +65,10 @@ class RedisWithMemoryFallbackStore {
 // (bắt buộc, duy nhất) làm tiền tố key trên Redis.
 const rateLimit = ({ name, ...options }) => {
 	if (!name) throw new Error('[rateLimit] thiếu name');
-	return expressRateLimit.rateLimit({ ...options, store: new RedisWithMemoryFallbackStore(name) });
+	return expressRateLimit.rateLimit({
+		...options,
+		store: /** @type {any} */ (new RedisWithMemoryFallbackStore(name)),
+	});
 };
 
 module.exports = rateLimit;

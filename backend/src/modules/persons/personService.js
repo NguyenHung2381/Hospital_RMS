@@ -1,4 +1,3 @@
-// @ts-nocheck — còn lỗi kiểu khi bật checkJs; sửa xong thì xoá dòng này (xem README, Kiểm tra chất lượng)
 const { getPool, sql, withTransaction } = require('../../config/db');
 const { normalizeGender } = require('../../utils/gender');
 const logger = require('../../config/logger');
@@ -395,7 +394,7 @@ const logFailure = (what, err) => {
 // ─── API công khai ───────────────────────────────────────────────────────────
 
 /** Gắn/cập nhật person cho 1 dòng nguồn. KHÔNG bao giờ ném lỗi. Trả person_id hoặc null. */
-const syncPerson = async (source, id, { actorId } = {}) => {
+const syncPerson = async (source, id, { actorId = undefined } = {}) => {
 	if (!isEnabled() || !SOURCES[source] || !id) return null;
 	try {
 		const pool = await getPool();
@@ -408,7 +407,7 @@ const syncPerson = async (source, id, { actorId } = {}) => {
 };
 
 /** Như syncPerson cho nhiều dòng (import hàng loạt). Trả số dòng đã xử lý. */
-const syncPersons = async (source, ids, { actorId } = {}) => {
+const syncPersons = async (source, ids, { actorId = undefined } = {}) => {
 	if (!isEnabled() || !SOURCES[source] || !ids?.length) return 0;
 	let done = 0;
 	try {
@@ -436,7 +435,7 @@ const syncPersons = async (source, ids, { actorId } = {}) => {
 };
 
 /** Gắn nốt các dòng còn person_id IS NULL (job đêm / nhặt sót). Trả số dòng đã gắn. */
-const syncPending = async (source, { limit = 500, actorId } = {}) => {
+const syncPending = async (source, { limit = 500, actorId = undefined } = {}) => {
 	if (!isEnabled() || !SOURCES[source]) return 0;
 	try {
 		const pool = await getPool();
@@ -481,7 +480,7 @@ const personIdOf = async (source, id) => {
  * nguồn gốc là dòng đó) không còn gì trỏ tới thì xoá; còn bản ghi nguồn khác trỏ tới (vd thành
  * viên đề tài của cùng người) thì chuyển nguồn gốc sang bản ghi đó. KHÔNG bao giờ ném lỗi.
  */
-const releasePerson = async (source, id, personId, { actorId } = {}) => {
+const releasePerson = async (source, id, personId, { actorId = undefined } = {}) => {
 	if (!isEnabled() || !SOURCES[source] || !id) return;
 	try {
 		const pool = await getPool();
@@ -533,7 +532,7 @@ const releasePerson = async (source, id, personId, { actorId } = {}) => {
  * Sau khi cấp tài khoản cho thành viên đề tài: thành viên và tài khoản phải trỏ CÙNG 1 person.
  * KHÔNG bao giờ ném lỗi.
  */
-const linkTopicMemberToUser = async (memberId, userId, { actorId } = {}) => {
+const linkTopicMemberToUser = async (memberId, userId, { actorId = undefined } = {}) => {
 	if (!isEnabled() || !memberId || !userId) return null;
 	try {
 		const pool = await getPool();

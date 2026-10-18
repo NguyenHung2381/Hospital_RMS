@@ -1,4 +1,3 @@
-// @ts-nocheck — còn lỗi kiểu khi bật checkJs; sửa xong thì xoá dòng này (xem README, Kiểm tra chất lượng)
 /**
  * dashboardStatsWorkbook.js — dựng workbook cho POST /api/v1/dashboard/export-stats
  *
@@ -43,6 +42,7 @@ const STATUS_BG = {
 
 // Quốc hiệu + tiêu ngữ — giống mẫu văn bản hành chính dùng ở export-report.
 function writeLetterhead(ws, lastCol) {
+	/** @type {any[][]} */
 	const rows = [
 		[
 			1,

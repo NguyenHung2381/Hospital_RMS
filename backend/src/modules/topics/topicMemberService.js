@@ -1,4 +1,3 @@
-// @ts-nocheck — còn lỗi kiểu khi bật checkJs; sửa xong thì xoá dòng này (xem README, Kiểm tra chất lượng)
 const { getPool, sql } = require('../../config/db');
 const bcrypt = require('bcrypt');
 const notifSvc = require('../notifications/notificationService');
@@ -133,8 +132,10 @@ const genUserIdWithRetry = async (tx, deptCode, isDeptAccount = false, attempts 
 				.input('dept_code', sql.VarChar(20), deptCode)
 				.input('is_dept_account', sql.Bit, isDeptAccount ? 1 : 0)
 				.output('new_id', sql.VarChar(20));
-			await req.execute('sp_gen_user_id');
-			return req.output.new_id;
+			// Giá trị OUTPUT nằm ở result.output — req.output là hàm khai báo tham số
+			// (trước đây đọc req.output.new_id luôn ra undefined ⇒ luôn rơi vào nhánh dự phòng).
+			const result = await req.execute('sp_gen_user_id');
+			return result.output.new_id;
 		} catch (err) {
 			if (!isGenLockTimeout(err) || attempt === attempts) throw err;
 			await sleep(200 * attempt);

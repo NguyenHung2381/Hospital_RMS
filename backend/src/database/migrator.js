@@ -1,4 +1,3 @@
-// @ts-nocheck — còn lỗi kiểu khi bật checkJs; sửa xong thì xoá dòng này (xem README, Kiểm tra chất lượng)
 const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
@@ -124,7 +123,7 @@ const record = (conn, filename, sum) =>
  * Trả { ...trạng thái trước khi chạy, ran: [file đã chạy / đánh dấu] }.
  */
 // eslint-disable-next-line no-console -- mặc định cho CLI (scripts/migrate.js); server truyền logger
-const migrate = async ({ dryRun = false, baseline = false, requireTracked = true, backupDir, log = console.log } = {}) => {
+const migrate = async ({ dryRun = false, baseline = false, requireTracked = true, backupDir = undefined, log = console.log } = {}) => {
 	const conn = await openConnection();
 	try {
 		const before = await readStatus(conn);

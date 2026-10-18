@@ -100,6 +100,7 @@ const loadConfig = (source = process.env) => {
 	// Parse từng biến riêng: thiếu 1 biến bắt buộc không làm mất giá trị/mặc
 	// định của các biến còn lại.
 	const errors = [];
+	/** @type {Record<string, any>} */
 	const raw = {};
 	for (const [key, schema] of Object.entries(SCHEMAS)) {
 		const r = schema.safeParse(source[key]);
@@ -152,7 +153,12 @@ const loadConfig = (source = process.env) => {
 	}
 
 	return {
-		config: { ...raw, isProduction, swaggerEnabled },
+		config:
+			/** @type {Record<string, any> & { isProduction: boolean, swaggerEnabled: boolean }} */ ({
+				...raw,
+				isProduction,
+				swaggerEnabled,
+			}),
 		errors,
 		warnings: [...warnings],
 	};

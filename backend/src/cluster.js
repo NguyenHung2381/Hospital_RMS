@@ -1,4 +1,3 @@
-// @ts-nocheck — còn lỗi kiểu khi bật checkJs; sửa xong thì xoá dòng này (xem README, Kiểm tra chất lượng)
 // Chạy API trên nhiều CPU core bằng Node cluster (entrypoint production —
 // Dockerfile target prod). Dev vẫn chạy thẳng src/server.js (nodemon).
 //
@@ -16,7 +15,10 @@
 // (utils/rateLimit.js), xoá cache phân quyền (utils/cacheBus.js), vé 1 lần
 // (utils/oneTimeToken.js), sự kiện realtime SSE (modules/events/eventService.js).
 require('./config/loadEnv');
-const cluster = require('node:cluster');
+// Kiểu khai báo của node:cluster là ESM (export default) nhưng require() trả về thẳng đối tượng cluster
+const cluster = /** @type {import('node:cluster').Cluster} */ (
+	/** @type {unknown} */ (require('node:cluster'))
+);
 const os = require('node:os');
 const logger = require('./config/logger');
 
@@ -51,17 +53,20 @@ const main = async () => {
 	const slots = new Map();
 
 	const fork = (slot) => {
-		const worker = cluster.fork({
-			CLUSTER_WORKER: '1',
-			PORT: String(PORT),
-			JOBS_ENABLED: slot === 0 && !jobsDisabled ? 'true' : 'false',
-		});
+		// rmsSlot / rmsStartedAt: thuộc tính tự gắn để theo dõi worker
+		const worker = /** @type {any} */ (
+			cluster.fork({
+				CLUSTER_WORKER: '1',
+				PORT: String(PORT),
+				JOBS_ENABLED: slot === 0 && !jobsDisabled ? 'true' : 'false',
+			})
+		);
 		worker.rmsSlot = slot;
 		worker.rmsStartedAt = Date.now();
 		slots.set(slot, worker);
 	};
 
-	cluster.on('exit', (worker, code, signal) => {
+	cluster.on('exit', (/** @type {any} */ worker, code, signal) => {
 		const slot = worker.rmsSlot;
 		slots.delete(slot);
 		if (shuttingDown) {

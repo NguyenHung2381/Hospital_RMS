@@ -1,4 +1,3 @@
-// @ts-nocheck — còn lỗi kiểu khi bật checkJs; sửa xong thì xoá dòng này (xem README, Kiểm tra chất lượng)
 const { getPool, sql } = require('../../../config/db');
 const { broadcast } = require('../../events/eventService');
 const { paging } = require('../../../utils/paging');
@@ -77,7 +76,14 @@ const courseSelect = `
 
 // ─── Courses ──────────────────────────────────────────────────────────────
 const getAll = async (
-	{ page = 1, limit = 20, search, program_id, status, plan_item_id } = {},
+	{
+		page = 1,
+		limit = 20,
+		search = undefined,
+		program_id = undefined,
+		status = undefined,
+		plan_item_id = undefined,
+	} = {},
 	actor = null,
 ) => {
 	const pool = await getPool();

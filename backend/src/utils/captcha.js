@@ -1,4 +1,3 @@
-// @ts-nocheck — còn lỗi kiểu khi bật checkJs; sửa xong thì xoá dòng này (xem README, Kiểm tra chất lượng)
 const crypto = require('crypto');
 const { signToken, verifyToken } = require('./keys');
 const { consumeOnce } = require('./oneTimeToken');
@@ -71,6 +70,7 @@ const callSiteverify = async (token, ip) => {
 // lại 1 lần (token chưa bị tiêu nếu request chưa tới Cloudflare); vẫn lỗi thì
 // từ chối (fail-closed).
 const verifyTurnstile = async (token, ip) => {
+	/** @type {any} JSON trả về của Cloudflare Turnstile siteverify */
 	let json;
 	try {
 		json = await callSiteverify(token, ip);

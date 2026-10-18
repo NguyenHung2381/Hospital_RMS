@@ -1,4 +1,3 @@
-// @ts-nocheck — còn lỗi kiểu khi bật checkJs; sửa xong thì xoá dòng này (xem README, Kiểm tra chất lượng)
 function fnt({ bold = false, color = '1B2A4A', size = 10, italic = false } = {}) {
 	return {
 		name: 'Times New Roman',
@@ -46,7 +45,7 @@ function headerRow(ws, row, labels) {
 }
 
 // Số căn giữa, chữ căn trái; bg mặc định sọc theo số dòng.
-function dataRow(ws, row, values, { bg, boldFirst = false } = {}) {
+function dataRow(ws, row, values, { bg = undefined, boldFirst = false } = {}) {
 	values.forEach((v, i) => {
 		Object.assign(ws.getCell(row, i + 1), {
 			value: v ?? '',

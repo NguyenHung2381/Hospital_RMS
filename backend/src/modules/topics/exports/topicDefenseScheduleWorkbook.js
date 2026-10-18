@@ -1,4 +1,3 @@
-// @ts-nocheck — còn lỗi kiểu khi bật checkJs; sửa xong thì xoá dòng này (xem README, Kiểm tra chất lượng)
 // topicDefenseScheduleWorkbook.js — dựng workbook "Lịch bảo vệ đề cương" cho
 // POST /api/v1/topics/export-excel (1 sheet, theo mẫu công văn).
 const ExcelJS = require('exceljs');
@@ -15,6 +14,7 @@ function buildSheet(ws, data, { customTitle, customSubtitle, refNumber, refDate 
 	ws.properties.defaultRowHeight = 20;
 
 	// ── Rows 1–3: letterhead ─────────────────────────────────────────────────
+	/** @type {any[][]} */
 	const hdr = [
 		[
 			1,

@@ -1,4 +1,3 @@
-// @ts-nocheck — còn lỗi kiểu khi bật checkJs; sửa xong thì xoá dòng này (xem README, Kiểm tra chất lượng)
 const { getPool, sql } = require('../../../config/db');
 const { broadcast } = require('../../events/eventService');
 const { paging } = require('../../../utils/paging');
@@ -27,7 +26,12 @@ const assertNotTraineeAccount = async (pool, userId) => {
 	}
 };
 
-const getAll = async ({ page = 1, limit = 20, search, active_only } = {}) => {
+const getAll = async ({
+	page = 1,
+	limit = 20,
+	search = undefined,
+	active_only = undefined,
+} = {}) => {
 	const pool = await getPool();
 	const pg = paging(page, limit, 100);
 	const where = ['1=1'];

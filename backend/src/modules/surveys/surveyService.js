@@ -1,4 +1,3 @@
-// @ts-nocheck — còn lỗi kiểu khi bật checkJs; sửa xong thì xoá dòng này (xem README, Kiểm tra chất lượng)
 const { getPool, sql } = require('../../config/db');
 const { parseJsonArray } = require('../../utils/sqlFilters');
 const { broadcast } = require('../events/eventService');
@@ -19,7 +18,7 @@ const parseOptions = (row) =>
 	row.options === undefined ? row : { ...row, options: parseJsonArray(row.options) };
 
 // ─── Quản trị (admin) ────────────────────────────────────────────────────────
-const getAll = async ({ page = 1, limit = 20, search, status } = {}) => {
+const getAll = async ({ page = 1, limit = 20, search = undefined, status = undefined } = {}) => {
 	const pool = await getPool();
 	const pg = paging(page, limit, 100);
 	const where = ['1=1'];

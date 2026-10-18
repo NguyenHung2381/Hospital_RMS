@@ -1,4 +1,3 @@
-// @ts-nocheck — còn lỗi kiểu khi bật checkJs; sửa xong thì xoá dòng này (xem README, Kiểm tra chất lượng)
 const { getPool, sql, withTransaction } = require('../../config/db');
 const { broadcast } = require('../events/eventService');
 const { paging } = require('../../utils/paging');
@@ -80,7 +79,13 @@ const getAllowedLevelIds = async (roundId) => {
 	}
 };
 
-const getAll = async ({ page = 1, limit = 20, year, status, public_token } = {}) => {
+const getAll = async ({
+	page = 1,
+	limit = 20,
+	year = undefined,
+	status = undefined,
+	public_token = undefined,
+} = {}) => {
 	const pool = await getPool();
 	const pg = paging(page, limit);
 	let where = 'WHERE 1=1';

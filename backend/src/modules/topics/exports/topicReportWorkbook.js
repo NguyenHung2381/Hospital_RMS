@@ -1,4 +1,3 @@
-// @ts-nocheck — còn lỗi kiểu khi bật checkJs; sửa xong thì xoá dòng này (xem README, Kiểm tra chất lượng)
 /**
  * topicReportWorkbook.js — dựng workbook cho POST /api/v1/topics/export-report
  *
@@ -77,6 +76,7 @@ function fmtDate(iso) {
 // ── Letterhead rows 1–3 ───────────────────────────────────────────────────────
 function writeLetterhead(ws, { refNumber, refDate, lastCol }) {
 	const lc = lastCol || 'J';
+	/** @type {any[][]} */
 	const rows = [
 		[
 			1,

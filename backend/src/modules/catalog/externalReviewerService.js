@@ -1,9 +1,12 @@
-// @ts-nocheck — còn lỗi kiểu khi bật checkJs; sửa xong thì xoá dòng này (xem README, Kiểm tra chất lượng)
 const { getPool, sql } = require('../../config/db');
 const { broadcast } = require('../events/eventService');
 const personService = require('../persons/personService');
 
-const getAll = async ({ search, specialty_group, active_only } = {}) => {
+const getAll = async ({
+	search = undefined,
+	specialty_group = undefined,
+	active_only = undefined,
+} = {}) => {
 	const pool = await getPool();
 	let where = 'WHERE 1=1';
 	const req = pool.request();

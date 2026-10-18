@@ -1,4 +1,3 @@
-// @ts-nocheck — còn lỗi kiểu khi bật checkJs; sửa xong thì xoá dòng này (xem README, Kiểm tra chất lượng)
 const { getPool, sql } = require('../../config/db');
 const { createCrudService } = require('../../shared/crudService');
 const { broadcast } = require('../events/eventService');
@@ -18,7 +17,7 @@ const base = createCrudService('roles', 4, '', [
 // Override getAll để kèm user_count (số tài khoản đang gán vai trò) và
 // permission_count (số quyền đã gán cho vai trò) — crudService mặc định chỉ
 // SELECT * FROM roles nên cột "Người dùng" và "Quyền" luôn hiện 0 / "Chưa xem".
-const getAll = async ({ page = 1, limit = 100, search } = {}) => {
+const getAll = async ({ page = 1, limit = 100, search = undefined } = {}) => {
 	const key = `${CACHE_PREFIX}all:${page}:${limit}:${search || ''}`;
 	return remember(key, 300, async () => {
 		const pool = await getPool();

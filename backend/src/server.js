@@ -1,4 +1,3 @@
-// @ts-nocheck — còn lỗi kiểu khi bật checkJs; sửa xong thì xoá dòng này (xem README, Kiểm tra chất lượng)
 const path = require('path');
 const app = require('./app');
 const jobs = require('./jobs');
@@ -29,7 +28,9 @@ const isPortInUse = (port) =>
 			client.destroy();
 			resolve(true);
 		});
-		client.once('error', (err) => resolve(err.code !== 'ECONNREFUSED'));
+		client.once('error', (err) =>
+			resolve(/** @type {NodeJS.ErrnoException} */ (err).code !== 'ECONNREFUSED'),
+		);
 	});
 
 const findAvailablePort = async (startPort, maxRetries = 10) => {

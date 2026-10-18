@@ -1,4 +1,3 @@
-// @ts-nocheck — còn lỗi kiểu khi bật checkJs; sửa xong thì xoá dòng này (xem README, Kiểm tra chất lượng)
 const bcrypt = require('bcrypt');
 const { getPool, sql, withTransaction } = require('../../config/db');
 const { broadcast } = require('../events/eventService');
@@ -57,6 +56,7 @@ const getGlobalStats = async (pool) => {
 	return _statsCache.data;
 };
 
+/** @param {{ page?: number|string, limit?: number|string, search?: string, department_id?: string, role_id?: string, is_active?: any, meta?: string|number|boolean }} filters */
 const getAll = async ({
 	page = 1,
 	limit = 20,

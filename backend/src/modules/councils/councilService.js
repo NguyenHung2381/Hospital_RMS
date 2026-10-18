@@ -1,4 +1,3 @@
-// @ts-nocheck — còn lỗi kiểu khi bật checkJs; sửa xong thì xoá dòng này (xem README, Kiểm tra chất lượng)
 const { getPool, sql } = require('../../config/db');
 const { broadcast } = require('../events/eventService');
 const { paging } = require('../../utils/paging');
@@ -33,7 +32,7 @@ const ROLE_ORDER = `CASE cm.role
   WHEN 'chairman' THEN 1 WHEN 'secretary' THEN 2
   WHEN 'reviewer1' THEN 3 WHEN 'reviewer2' THEN 4 ELSE 5 END`;
 
-const getAll = async ({ page = 1, limit = 20, round_id, status } = {}) => {
+const getAll = async ({ page = 1, limit = 20, round_id = undefined, status = undefined } = {}) => {
 	const pool = await getPool();
 	const pg = paging(page, limit);
 	let where = 'WHERE 1=1';
