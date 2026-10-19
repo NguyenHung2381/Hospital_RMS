@@ -71,7 +71,7 @@ const getByUserId = async (userId) => {
 
 /** @type {Array<[string, any]>} [cột, kiểu SQL] */
 const fieldDefs = [
-	['license_no', sql.VarChar(50)],
+	['license_no', sql.NVarChar(50)], // NVARCHAR từ 2026-11-09: số CCHN có chữ "Đ"
 	['issued_date', sql.Date],
 	['issuing_authority', sql.NVarChar(255)],
 	['practice_scope', sql.NVarChar(500)],

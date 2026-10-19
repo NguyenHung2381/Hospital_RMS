@@ -31,6 +31,16 @@ const excelSerialToYmd = (n) => {
 	return ymdUtc(new Date(EXCEL_EPOCH_MS + Math.floor(n) * 86400000));
 };
 
+// Chuỗi dd/mm/yyyy (hoặc - .) → 'YYYY-MM-DD'; sai dạng → null.
+const parseDateText = (s) => {
+	const m = String(s ?? '')
+		.trim()
+		.match(/^(\d{1,2})[/\-.](\d{1,2})[/\-.](\d{4})$/);
+	if (!m) return null;
+	const [d, mo, y] = [+m[1], +m[2], +m[3]];
+	return d >= 1 && d <= 31 && mo >= 1 && mo <= 12 ? `${y}-${pad2(mo)}-${pad2(d)}` : null;
+};
+
 // Ô ngày (Date thật, số serial Excel, hoặc chuỗi dd/mm/yyyy) → 'YYYY-MM-DD';
 // không nhận diện được → null. exceljs lưu ngày ở UTC — đọc theo UTC để giữ đúng ngày lịch.
 const parseDateCell = (cell) => {
@@ -44,12 +54,7 @@ const parseDateCell = (cell) => {
 	const raw = cellText(cell).replace(/^['"\s]+/, '');
 	// Serial bị lưu dạng chữ ("26546") — đúng 5 chữ số, tránh nhầm năm "1989"
 	if (/^\d{5}$/.test(raw)) return excelSerialToYmd(+raw);
-	const m = raw.match(/^(\d{1,2})[/\-.](\d{1,2})[/\-.](\d{4})$/);
-	if (m) {
-		const [d, mo, y] = [+m[1], +m[2], +m[3]];
-		if (d >= 1 && d <= 31 && mo >= 1 && mo <= 12) return `${y}-${pad2(mo)}-${pad2(d)}`;
-	}
-	return null;
+	return parseDateText(raw);
 };
 
 // Ngày sinh: { dob: 'YYYY-MM-DD'|null, dob_text } — nguồn tạp ("1989", "3/1990"…) thì giữ nguyên chữ.
@@ -145,6 +150,7 @@ module.exports = {
 	pad2,
 	cellText,
 	excelSerialToYmd,
+	parseDateText,
 	parseDateCell,
 	parseDob,
 	parseCredits,

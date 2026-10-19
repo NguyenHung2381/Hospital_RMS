@@ -41,7 +41,7 @@ async function buildFile() {
 		'000111/NA-CCHN',
 		CCCD_1,
 		'Nguyễn Văn An',
-		'Khoa Nội A',
+		'Nội hô hấp', // ghi tắt của "Khoa Nội Dị Ứng - Hô Hấp"
 		'Bác sĩ',
 		new Date(Date.UTC(1975, 4, 20)),
 		'Khám bệnh, chữa bệnh nội khoa; bổ sung siêu âm',
@@ -69,6 +69,10 @@ async function buildFile() {
 		'000222/NA-CCHN',
 		'Sở Y tế Hà Tĩnh',
 		'02/11/2018',
+		null,
+		null,
+		null,
+		'01/06/2020;15/03/2023', // điều chỉnh phạm vi 2 lần
 	]);
 	ws.addRow([3, 'ĐHV3', '', '', 'Lê Văn Cường']);
 	const r = ws.addRow([4, 1003, '', '', 'Phạm Thị Dung', 'Khoa Nhi']);
@@ -81,7 +85,7 @@ const USERS = [
 		user_id: 'NV1001',
 		staff_number: 1001,
 		full_name: 'Nguyễn Văn An',
-		department_name: 'Nội A',
+		department_name: 'Khoa Nội Dị Ứng - Hô Hấp',
 		license_id: 'LIC1',
 		license_no: '000111/NA-CCHN',
 		practice_scope: 'Khám bệnh, chữa bệnh nội khoa',
@@ -152,7 +156,7 @@ test('dry run: phạm vi NỐI ưu tiên hơn ĐƠN, nơi cấp mặc định Ng
 	assert.equal(a.values.scope_adjusted_date, '2020-06-01');
 	assert.equal(a.user_values.date_of_birth, '1975-05-20');
 	assert.ok(!a.changes.some((c) => c.field === 'license_no'), 'số CCHN không đổi');
-	assert.deepEqual(a.warnings, []);
+	assert.deepEqual(a.warnings, []); // "Nội hô hấp" ghi tắt → không cảnh báo lệch khoa
 
 	assert.equal(b.staff_number, 1002);
 	assert.equal(b.status, 'new');
@@ -160,6 +164,7 @@ test('dry run: phạm vi NỐI ưu tiên hơn ĐƠN, nơi cấp mặc định Ng
 	assert.equal(b.values.practice_scope, 'Thực hiện phạm vi hoạt động chuyên môn điều dưỡng');
 	assert.equal(b.values.issuing_authority, 'Sở Y tế Hà Tĩnh');
 	assert.equal(b.user_values.date_of_birth, '1972-09-04');
+	assert.equal(b.values.scope_adjusted_date, '2023-03-15'); // ô 2 ngày → ngày gần nhất
 	assert.ok(b.warnings.some((w) => w.includes('Khoa Ngoại') && w.includes('Nhi')));
 
 	// MNV 1003: ô ngày sinh #N/A, không có CCHN → không có gì để cập nhật

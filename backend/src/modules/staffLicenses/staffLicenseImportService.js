@@ -10,7 +10,7 @@ const { getPool, sql } = require('../../config/db');
 const { broadcast } = require('../events/eventService');
 const { norm, normDept } = require('../../utils/vietnameseText');
 const { normalizeGender } = require('../../utils/gender');
-const { readSheet, parseDateCell } = require('../../utils/excelImport');
+const { readSheet, parseDateCell, parseDateText } = require('../../utils/excelImport');
 const personService = require('../persons/personService');
 const { fieldDefs } = require('./staffLicenseService');
 
@@ -71,10 +71,21 @@ const EXCEL_ERROR = /^#(N\/A|REF!|VALUE!|DIV\/0!|NAME\?|NUM!|NULL!)$/;
 
 const toYmd = (v) => (v instanceof Date ? v.toISOString().slice(0, 10) : (v ?? null));
 
+// Cùng khoa khi mọi từ của tên ngắn đều có trong tên dài: file ghi tắt
+// "Nội hô hấp" = "Khoa Nội Dị Ứng - Hô Hấp"; "Nội tim mạch 1" ≠ "… 2".
 const sameDepartment = (a, b) => {
-	const x = normDept(a);
-	const y = normDept(b);
-	return x === y || ` ${x} `.includes(` ${y} `) || ` ${y} `.includes(` ${x} `);
+	const [x, y] = [normDept(a).split(' '), normDept(b).split(' ')].sort(
+		(p, q) => p.length - q.length,
+	);
+	return x.every((w) => y.includes(w));
+};
+
+// Ô có nhiều ngày ("01/06/2020;15/03/2023" — phạm vi điều chỉnh nhiều lần) → ngày gần nhất.
+const latestDate = (raw) => {
+	const parts = raw.split(/[;,\n]+/).filter((p) => p.trim());
+	if (parts.length < 2) return null;
+	const dates = parts.map(parseDateText);
+	return dates.every(Boolean) ? dates.sort().at(-1) : null;
 };
 
 const importExcel = async ({ buffer, dry_run }, actorId) => {
@@ -151,7 +162,7 @@ const importExcel = async ({ buffer, dry_run }, actorId) => {
 			const raw = rawOf(f);
 			if (!raw) continue;
 			if (DATE_FIELDS.has(f)) {
-				const d = parseDateCell(row.getCell(cols[f]));
+				const d = parseDateCell(row.getCell(cols[f])) ?? latestDate(raw);
 				if (d) values[f] = d;
 				else rowWarnings.push(`Ngày "${raw}" không hợp lệ — giữ nguyên dữ liệu cũ`);
 			} else {
