@@ -75,7 +75,7 @@ export function TraineeImportModal({ onClose, onDone }: { onClose: () => void; o
 					{!result && (
 						<button className={styles.btnConfirm} onClick={commit} disabled={loading || !preview || rows.length === 0}>
 							{loading ? <span className={styles.spinner} /> : <UploadSvg />}
-							Nhập {rows.length || ''} học viên
+							Nhập {rows.length || ''} dòng
 						</button>
 					)}
 				</>
@@ -86,7 +86,7 @@ export function TraineeImportModal({ onClose, onDone }: { onClose: () => void; o
 					<div className={styles.noticeBox}>
 						<InfoSvg />
 						<span>
-							Cột nhận diện: <b>Họ và tên</b> (bắt buộc), Ngày sinh, Giới tính, CCCD, SĐT, Email,
+							Cột nhận diện: <b>Họ và tên</b> (bắt buộc), CCCD (CMT/CCCD), Giới tính (Nam/Nữ hoặc ông/bà), Ngày/Nơi cấp, Hộ khẩu thường trú, Nơi sinh, Mã học viên, Ngày tốt nghiệp, Ngày cấp bằng, Ngày sinh, Giới tính, CCCD, SĐT, Email,
 							Địa chỉ, Đối tượng học viên, Khoa/phòng, Trình độ, Trường đào tạo, Năm tốt nghiệp,
 							Ghi chú. Đối tượng/khoa phòng không khớp tên sẽ để trống.
 						</span>
@@ -109,7 +109,7 @@ export function TraineeImportModal({ onClose, onDone }: { onClose: () => void; o
 							<div className={`${styles.noticeBox} ${styles.noticeOk}`} style={{ marginTop: 12 }}>
 								<CheckSvg />
 								<span>
-									Đọc được <b>{s.total}</b> học viên · {s.matched_type} khớp đối tượng ·{' '}
+									Đọc được <b>{s.total}</b> dòng · {s.new} học viên mới · {s.update} cập nhật (trùng CCCD) · {s.matched_type} khớp đối tượng ·{' '}
 									{s.matched_department} khớp khoa/phòng.
 								</span>
 							</div>
@@ -131,7 +131,8 @@ export function TraineeImportModal({ onClose, onDone }: { onClose: () => void; o
 										<tr>
 											<th className={tbl.thIdx}>STT</th>
 											<th>Họ tên</th>
-											<th>Đối tượng</th>
+											<th>Thao tác</th>
+<th>Đối tượng</th>
 											<th>Khoa/phòng</th>
 											<th>SĐT</th>
 											<th>Email</th>
@@ -149,7 +150,8 @@ export function TraineeImportModal({ onClose, onDone }: { onClose: () => void; o
 														</div>
 													))}
 												</td>
-												<td>{r.trainee_type_raw || '—'}</td>
+												<td>{r.action === 'new' ? 'Thêm mới' : r.action === 'update' ? 'Cập nhật' : 'Trùng dòng trên'}</td>
+<td>{r.trainee_type_raw || '—'}</td>
 												<td>{r.department_raw || '—'}</td>
 												<td>{r.phone || '—'}</td>
 												<td>{r.email || '—'}</td>
@@ -172,7 +174,7 @@ export function TraineeImportModal({ onClose, onDone }: { onClose: () => void; o
 					<div className={`${styles.noticeBox} ${styles.noticeOk}`}>
 						<CheckSvg />
 						<span>
-							Đã nhập <b>{result.inserted}</b> học viên.
+							Đã thêm <b>{result.inserted}</b> học viên mới, cập nhật <b>{result.updated ?? 0}</b> học viên đã có.
 						</span>
 					</div>
 					{result.warnings.length > 0 && (

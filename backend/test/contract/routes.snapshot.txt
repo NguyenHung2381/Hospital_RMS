@@ -95,7 +95,11 @@ PATCH  /api/v1/courses/certificates/:certId/revoke  courses:approve
 DELETE /api/v1/courses/documents/:docId  courses:update
 PATCH  /api/v1/courses/documents/:docId/download  courses:read
 DELETE /api/v1/courses/enrollments/:enrollmentId  courses:delete
+PUT    /api/v1/courses/enrollments/:enrollmentId  courses:update
 PUT    /api/v1/courses/enrollments/:enrollmentId/decide  courses:approve
+GET    /api/v1/courses/enrollments/:enrollmentId/lessons  courses:read
+PUT    /api/v1/courses/enrollments/:enrollmentId/lessons  courses:update
+POST   /api/v1/courses/enrollments/:enrollmentId/lessons/sync  courses:update
 POST   /api/v1/courses/enrollments/bulk-decide  courses:approve
 POST   /api/v1/courses/grades  courses:update
 DELETE /api/v1/courses/grades/:gradeId  courses:update

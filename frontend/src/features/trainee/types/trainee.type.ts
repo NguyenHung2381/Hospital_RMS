@@ -22,6 +22,12 @@ export interface Trainee {
 	position: string | null;
 	qualification: string | null;
 	notes: string | null;
+	/** Nơi sinh (tỉnh) — in trên hợp đồng thực hành. */
+	birth_province: string | null;
+	graduated_date: string | null;
+	degree_issued_date: string | null;
+	/** Mã học viên trong sổ thực hành cũ. */
+	legacy_code: string | null;
 	is_active: boolean;
 	is_employee: boolean;
 	created_at: string;
@@ -49,6 +55,10 @@ export interface TraineeFormData {
 	position: string;
 	qualification: string;
 	notes: string;
+	birth_province: string;
+	graduated_date: string;
+	degree_issued_date: string;
+	legacy_code: string;
 	is_active: boolean;
 	is_employee: boolean;
 }
@@ -65,6 +75,15 @@ export interface TraineeEnrollment {
 	registered_at: string;
 	decided_at: string | null;
 	program_names: string | null;
+	/** Chương trình học viên đã chọn khi ghi danh. */
+	program_id: string | null;
+	program_code: string | null;
+	program_name: string | null;
+	training_type_name: string | null;
+	practice_code: string | null;
+	progress_status: 'in_progress' | 'completed' | 'dropped';
+	practice_start_date: string | null;
+	practice_end_date: string | null;
 }
 
 export interface TraineeListResponse {
@@ -91,6 +110,10 @@ export const EMPTY_FORM: TraineeFormData = {
 	position: '',
 	qualification: '',
 	notes: '',
+	birth_province: '',
+	graduated_date: '',
+	degree_issued_date: '',
+	legacy_code: '',
 	is_active: true,
 	is_employee: false,
 };
@@ -117,13 +140,16 @@ export interface TraineeImportRow {
 	graduated_year: number | null;
 	is_employee: boolean;
 	notes: string | null;
+	/** new: thêm mới · update: CCCD đã có, cập nhật · duplicate: CCCD lặp lại trong file. */
+	action: 'new' | 'update' | 'duplicate';
 	warnings: string[];
 }
 
 export interface TraineeImportResult {
 	dry_run: boolean;
 	rows?: TraineeImportRow[];
-	summary?: { total: number; matched_type: number; matched_department: number };
+	summary?: { total: number; new: number; update: number; matched_type: number; matched_department: number };
 	inserted?: number;
+	updated?: number;
 	warnings: string[];
 }

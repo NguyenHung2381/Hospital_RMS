@@ -10,6 +10,11 @@ test('nhãn tiếng Việt / tiếng Anh quy về mã chuẩn', () => {
 	for (const v of ['Khác', 'khac', 'other']) assert.equal(normalizeGender(v), 'other');
 });
 
+test('"ông"/"bà" của sổ thực hành GPHN', () => {
+	for (const v of ['ông', 'Ông', ' ông ']) assert.equal(normalizeGender(v), 'male');
+	for (const v of ['bà', 'Bà']) assert.equal(normalizeGender(v), 'female');
+});
+
 test('giá trị trống / không nhận diện được → null', () => {
 	for (const v of [null, undefined, '', '   ', 'N?', 'abc']) assert.equal(normalizeGender(v), null);
 });

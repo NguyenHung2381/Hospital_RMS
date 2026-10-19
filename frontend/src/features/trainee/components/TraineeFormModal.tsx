@@ -44,6 +44,10 @@ export function TraineeFormModal({
 					position: trainee.position ?? '',
 					qualification: trainee.qualification ?? '',
 					notes: trainee.notes ?? '',
+					birth_province: trainee.birth_province ?? '',
+					graduated_date: trainee.graduated_date?.slice(0, 10) ?? '',
+					degree_issued_date: trainee.degree_issued_date?.slice(0, 10) ?? '',
+					legacy_code: trainee.legacy_code ?? '',
 					is_active: trainee.is_active,
 					is_employee: trainee.is_employee,
 				}
@@ -262,6 +266,41 @@ export function TraineeFormModal({
 						value={form.graduated_year}
 						onChange={set('graduated_year')}
 						placeholder='VD: 2025'
+					/>
+				</FormField>
+				<FormField label='Ngày tốt nghiệp'>
+					<input
+						type='date'
+						className={styles.formInput}
+						value={form.graduated_date}
+						onChange={set('graduated_date')}
+					/>
+				</FormField>
+				<FormField label='Ngày cấp bằng'>
+					<input
+						type='date'
+						className={styles.formInput}
+						value={form.degree_issued_date}
+						onChange={set('degree_issued_date')}
+					/>
+				</FormField>
+				<FormField label='Nơi sinh (tỉnh)'>
+					<input
+						className={styles.formInput}
+						value={form.birth_province}
+						onChange={set('birth_province')}
+						placeholder='VD: Nghệ An'
+					/>
+				</FormField>
+				<FormField
+					label='Mã học viên (sổ cũ)'
+					hint='Mã trong sổ theo dõi thực hành trước đây, nếu có'
+				>
+					<input
+						className={styles.formInput}
+						value={form.legacy_code}
+						onChange={set('legacy_code')}
+						placeholder='VD: 226'
 					/>
 				</FormField>
 				<FormField label='Địa chỉ'>

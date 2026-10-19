@@ -17,8 +17,9 @@ const normalizeGender = (v) => {
 	const n = norm(v);
 	if (!n) return null;
 	if (GENDERS.includes(n)) return n;
-	if (n === 'nam' || n === 'm' || n === 'trai') return 'male';
-	if (n === 'nu' || n === 'f' || n === 'gai') return 'female';
+	// "ông"/"bà": cách sổ thực hành GPHN ghi cột Giới tính (in thẳng lên giấy tờ).
+	if (n === 'nam' || n === 'm' || n === 'trai' || n === 'ong') return 'male';
+	if (n === 'nu' || n === 'f' || n === 'gai' || n === 'ba') return 'female';
 	if (n === 'khac') return 'other';
 	return null;
 };

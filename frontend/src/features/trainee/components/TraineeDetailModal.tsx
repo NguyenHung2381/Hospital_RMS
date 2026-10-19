@@ -126,6 +126,8 @@ export function TraineeDetailModal({
 										}
 									/>
 									<InfoItem label='Nơi cấp' value={trainee.national_id_issued_place} />
+								<InfoItem label='Nơi sinh (tỉnh)' value={trainee.birth_province} />
+								<InfoItem label='Mã học viên (sổ cũ)' value={trainee.legacy_code} />
 									<InfoItem
 										label='Trạng thái'
 										value={trainee.is_active ? 'Hoạt động' : 'Ngừng hoạt động'}
@@ -157,6 +159,14 @@ export function TraineeDetailModal({
 									<InfoItem label='Trình độ chuyên môn' value={trainee.qualification} />
 									<InfoItem label='Trường đào tạo' value={trainee.graduated_school} />
 									<InfoItem label='Năm tốt nghiệp' value={trainee.graduated_year} />
+									<InfoItem
+										label='Ngày tốt nghiệp'
+										value={trainee.graduated_date ? formatDate(trainee.graduated_date) : undefined}
+									/>
+									<InfoItem
+										label='Ngày cấp bằng'
+										value={trainee.degree_issued_date ? formatDate(trainee.degree_issued_date) : undefined}
+									/>
 								</div>
 							</div>
 
@@ -282,11 +292,25 @@ export function TraineeDetailModal({
 												className={styles.subRow}
 											>
 												<div className={styles.subRowMain}>
-													<div className={styles.subRowName}>{en.course_name}</div>
+													<div className={styles.subRowName}>
+														{en.course_name}
+														{en.practice_code ? ` · Mã thực hành ${en.practice_code}` : ''}
+													</div>
 													<div className={styles.subRowMeta}>
-														{en.program_names ?? 'Chưa gán chương trình đào tạo'} · Đăng ký{' '}
+														{en.program_name
+															? `${en.program_code ? `${en.program_code} — ` : ''}${en.program_name}`
+															: (en.program_names ?? 'Chưa gán chương trình đào tạo')}
+														{en.training_type_name ? ` · ${en.training_type_name}` : ''} · Đăng ký{' '}
 														{formatDate(en.registered_at)}
 														{en.decided_at ? ` · Duyệt ${formatDate(en.decided_at)}` : ''}
+														{en.practice_start_date
+															? ` · Thực hành ${formatDate(en.practice_start_date)} – ${en.practice_end_date ? formatDate(en.practice_end_date) : '…'}`
+															: ''}
+														{en.progress_status === 'completed'
+															? ' · Đã hoàn thành'
+															: en.progress_status === 'dropped'
+																? ' · Nghỉ học'
+																: ''}
 													</div>
 												</div>
 												<span

@@ -187,8 +187,11 @@ export default function CourseDetail() {
 							<EnrollmentsTab
 								enrollments={d.enrollments}
 								trainees={d.trainees}
+								course={course}
+								programLinks={d.programLinks}
 								busy={d.busy}
 								onRegister={d.registerTrainee}
+								onSaved={() => void d.reload()}
 								onDecide={d.decideEnrollment}
 								onDecideBulk={d.decideEnrollmentsBulk}
 								onRemove={d.removeEnrollment}

@@ -137,6 +137,42 @@ router.delete(
 	authorizePermission(['courses', 'delete']),
 	ctrl.removeEnrollment,
 );
+// Chương trình đã chọn, hồ sơ thực hành GPHN, tiến độ của 1 lượt ghi danh;
+// bài học tự gắn theo chương trình (ĐTLT) — xem enrollmentProgramService.
+router.put(
+	'/enrollments/:enrollmentId',
+	authorizePermission(['courses', 'update']),
+	[
+		body('progress_status').optional().isIn(['in_progress', 'completed', 'dropped']),
+		body(['start_date', 'end_date', 'progress_date'])
+			.optional({ nullable: true, checkFalsy: true })
+			.isISO8601()
+			.withMessage('Ngày không hợp lệ'),
+		body('practice_code').optional({ nullable: true }).isLength({ max: 30 }),
+	],
+	validate,
+	ctrl.updateEnrollment,
+);
+router.get(
+	'/enrollments/:enrollmentId/lessons',
+	authorizePermission(['courses', 'read']),
+	ctrl.listEnrollmentLessons,
+);
+router.post(
+	'/enrollments/:enrollmentId/lessons/sync',
+	authorizePermission(['courses', 'update']),
+	ctrl.syncEnrollmentLessons,
+);
+router.put(
+	'/enrollments/:enrollmentId/lessons',
+	authorizePermission(['courses', 'update']),
+	[
+		body('lesson_id').notEmpty().withMessage('Thiếu lesson_id'),
+		body('status').isIn(['not_started', 'in_progress', 'done']),
+	],
+	validate,
+	ctrl.updateEnrollmentLesson,
+);
 
 // ─── Lecturer assignments ─────────────────────────────────────────────────
 router.get(

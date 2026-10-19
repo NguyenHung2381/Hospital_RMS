@@ -31,6 +31,10 @@ const toPayload = (form: TraineeFormData) => ({
 	position: form.position || null,
 	qualification: form.qualification || null,
 	notes: form.notes || null,
+	birth_province: form.birth_province || null,
+	graduated_date: form.graduated_date || null,
+	degree_issued_date: form.degree_issued_date || null,
+	legacy_code: form.legacy_code || null,
 	is_active: form.is_active,
 	is_employee: form.is_employee,
 });

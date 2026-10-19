@@ -3,6 +3,7 @@ const classSessionService = require('./classSessionService');
 const courseAttendanceService = require('./courseAttendanceService');
 const courseDocumentService = require('./courseDocumentService');
 const courseEnrollmentService = require('./courseEnrollmentService');
+const enrollmentProgramService = require('./enrollmentProgramService');
 const coursePolicy = require('./coursePolicy');
 const courseService = require('./courseService');
 const gradeService = require('./gradeService');
@@ -47,10 +48,13 @@ const listEnrollments = asyncHandler(async (req, res) => {
 });
 
 const registerTrainee = asyncHandler(async (req, res) => {
-	const { trainee_id, user_id } = req.body;
+	const { trainee_id, user_id, program_id } = req.body;
 	// Admin (system:manage) và quản lý đào tạo (courses:update/manage) được ghi
 	// danh hộ cả khi khóa học đã đóng/chưa mở cửa sổ đăng ký.
-	const opts = { bypassWindow: hasPermission(req.user, 'courses', 'update') };
+	const opts = {
+		bypassWindow: hasPermission(req.user, 'courses', 'update'),
+		programId: program_id || null,
+	};
 	const item = user_id
 		? await courseEnrollmentService.registerStaff(req.params.id, user_id, req.user.id, opts)
 		: await courseEnrollmentService.registerTrainee(req.params.id, trainee_id, req.user.id, opts);
@@ -89,6 +93,32 @@ const bulkDecideEnrollments = asyncHandler(async (req, res) => {
 const removeEnrollment = asyncHandler(async (req, res) => {
 	await courseEnrollmentService.removeEnrollment(req.params.enrollmentId);
 	return success(res, null, 'Đã xoá đăng ký');
+});
+
+const updateEnrollment = asyncHandler(async (req, res) => {
+	await enrollmentProgramService.updateEnrollment(req.params.enrollmentId, req.body, req.user.id);
+	return success(res, null, 'Đã cập nhật đăng ký');
+});
+
+const listEnrollmentLessons = asyncHandler(async (req, res) => {
+	return success(res, await enrollmentProgramService.listLessons(req.params.enrollmentId));
+});
+
+const syncEnrollmentLessons = asyncHandler(async (req, res) => {
+	const out = await enrollmentProgramService.syncLessons(req.params.enrollmentId, {
+		replace: true,
+	});
+	return success(res, out, 'Đã đồng bộ bài học theo chương trình');
+});
+
+const updateEnrollmentLesson = asyncHandler(async (req, res) => {
+	await enrollmentProgramService.updateLesson(
+		req.params.enrollmentId,
+		req.body.lesson_id,
+		req.body,
+		req.user.id,
+	);
+	return success(res, null, 'Đã cập nhật bài học');
 });
 
 // ─── Lecturer assignments ─────────────────────────────────────────────────
@@ -256,6 +286,10 @@ module.exports = {
 	decideEnrollment,
 	bulkDecideEnrollments,
 	removeEnrollment,
+	updateEnrollment,
+	listEnrollmentLessons,
+	syncEnrollmentLessons,
+	updateEnrollmentLesson,
 	listAssignments,
 	assignLecturer,
 	removeAssignment,

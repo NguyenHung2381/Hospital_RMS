@@ -115,7 +115,73 @@ export interface Enrollment {
 	decided_by_name: string | null;
 	decided_at: string | null;
 	note: string | null;
+	/** Chương trình học viên chọn khi ghi danh (1 trong các chương trình của khóa). */
+	program_id: string | null;
+	program_code: string | null;
+	program_name: string | null;
+	lesson_total: number;
+	lesson_done: number;
+	// Hồ sơ thực hành GPHN (các cột của sổ thực hành)
+	practice_code: string | null;
+	professional_field: string | null;
+	practice_form: string | null;
+	start_date: string | null;
+	end_date: string | null;
+	total_duration: string | null;
+	practice_location: string | null;
+	sending_unit: string | null;
+	main_mentor_user_id: string | null;
+	main_mentor_name: string | null;
+	progress_status: ProgressStatus;
+	progress_date: string | null;
+	progress_reason: string | null;
 }
+
+export type ProgressStatus = 'in_progress' | 'completed' | 'dropped';
+export const PROGRESS_LABEL: Record<ProgressStatus, string> = {
+	in_progress: 'Đang học',
+	completed: 'Đã hoàn thành',
+	dropped: 'Nghỉ học',
+};
+
+export type EnrollmentLessonStatus = 'not_started' | 'in_progress' | 'done';
+export const LESSON_STATUS_LABEL: Record<EnrollmentLessonStatus, string> = {
+	not_started: 'Chưa học',
+	in_progress: 'Đang học',
+	done: 'Đã học',
+};
+
+/** Bài học tự gắn cho học viên theo chương trình đã chọn (ĐTLT). */
+export interface EnrollmentLesson {
+	lesson_id: string;
+	code: string;
+	title: string;
+	display_order: number;
+	status: EnrollmentLessonStatus;
+	completed_at: string | null;
+	total_hours: number;
+	credits: number;
+}
+
+/** Trường sửa được của 1 lượt ghi danh (PUT /courses/enrollments/:id). */
+export type EnrollmentUpdate = Partial<
+	Pick<
+		Enrollment,
+		| 'program_id'
+		| 'practice_code'
+		| 'professional_field'
+		| 'practice_form'
+		| 'start_date'
+		| 'end_date'
+		| 'total_duration'
+		| 'practice_location'
+		| 'sending_unit'
+		| 'progress_status'
+		| 'progress_date'
+		| 'progress_reason'
+		| 'note'
+	>
+>;
 
 /** Chương trình đào tạo áp dụng cho khóa (chọn trong form khóa học). */
 export interface CourseProgramLink {
@@ -123,6 +189,9 @@ export interface CourseProgramLink {
 	course_id: string;
 	program_id: string;
 	program_name: string;
+	program_code: string | null;
+	training_type_id: string | null;
+	program_duration: string | null;
 }
 
 export interface LecturerAssignment {

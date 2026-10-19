@@ -111,6 +111,10 @@ const create = async (data, actorId, { fetch = true } = {}) => {
 		.input('position', sql.NVarChar(100), data.position || null)
 		.input('avatar_url', sql.NVarChar(500), data.avatar_url || null)
 		.input('qualification', sql.NVarChar(150), data.qualification || null)
+		.input('birth_province', sql.NVarChar(100), data.birth_province || null)
+		.input('graduated_date', sql.Date, data.graduated_date || null)
+		.input('degree_issued_date', sql.Date, data.degree_issued_date || null)
+		.input('legacy_code', sql.NVarChar(30), data.legacy_code || null)
 		.input('notes', sql.NVarChar(sql.MAX), data.notes || null)
 		.input('is_active', sql.Bit, data.is_active !== undefined ? !!data.is_active : true)
 		.input('is_employee', sql.Bit, !!data.is_employee).query(`
@@ -121,12 +125,14 @@ const create = async (data, actorId, { fetch = true } = {}) => {
         id, full_name, dob, gender, national_id, phone, email, address, permanent_address, trainee_type_id, department_id,
         national_id_issued_date, national_id_issued_place, graduated_school, graduated_year, workplace, position, avatar_url,
         qualification, notes, is_active, is_employee,
+        birth_province, graduated_date, degree_issued_date, legacy_code,
         created_by
       )
       VALUES (
         @new_id, @full_name, @dob, @gender, @national_id, @phone, @email, @address, @permanent_address, @trainee_type_id, @department_id,
         @national_id_issued_date, @national_id_issued_place, @graduated_school, @graduated_year, @workplace, @position, @avatar_url,
         @qualification, @notes, @is_active, @is_employee,
+        @birth_province, @graduated_date, @degree_issued_date, @legacy_code,
         @actor_id
       );
       SELECT @new_id AS id;
@@ -162,6 +168,10 @@ const update = async (id, data, actorId) => {
 		['avatar_url', sql.NVarChar(500)],
 		['qualification', sql.NVarChar(150)],
 		['notes', sql.NVarChar(sql.MAX)],
+		['birth_province', sql.NVarChar(100)],
+		['legacy_code', sql.NVarChar(30)],
+		['graduated_date', sql.Date],
+		['degree_issued_date', sql.Date],
 	];
 	for (const [field, type] of simpleFields) {
 		if (data[field] !== undefined) {
@@ -224,12 +234,16 @@ const listEnrollments = async (traineeId) => {
 	const pool = await getPool();
 	const r = await pool.request().input('trainee_id', sql.VarChar(20), traineeId).query(`
     SELECT e.id, e.course_id, e.status, e.registered_at, e.decided_at,
-           c.name AS course_name, c.start_date, c.end_date,
+           e.program_id, ep.code AS program_code, ep.name AS program_name,
+           e.practice_code, e.progress_status, e.start_date AS practice_start_date, e.end_date AS practice_end_date,
+           c.name AS course_name, c.start_date, c.end_date, tt.name AS training_type_name,
            (SELECT STRING_AGG(tp.name, ', ') FROM course_programs cp
             JOIN training_programs tp ON tp.id = cp.program_id
             WHERE cp.course_id = c.id) AS program_names
     FROM course_enrollments e
     JOIN courses c ON c.id = e.course_id
+    LEFT JOIN training_programs ep ON ep.id = e.program_id
+    LEFT JOIN training_types tt ON tt.id = c.training_type_id
     WHERE e.trainee_id = @trainee_id
     ORDER BY e.registered_at DESC
   `);

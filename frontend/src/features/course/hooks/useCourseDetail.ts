@@ -171,16 +171,16 @@ export function useCourseDetail(courseId: string) {
 	}, [loadEnrollCandidates]);
 
 	const registerTrainee = useCallback(
-		async (traineeId: string) => {
+		async (traineeId: string, programId?: string) => {
 			setBusy(true);
 			setError('');
 			try {
 				if (traineeId.startsWith(STAFF_OPTION_PREFIX)) {
-					await apiRegisterStaff(courseId, traineeId.slice(STAFF_OPTION_PREFIX.length));
+					await apiRegisterStaff(courseId, traineeId.slice(STAFF_OPTION_PREFIX.length), programId);
 					// Nhân viên vừa được tạo hồ sơ học viên — nạp lại để không còn hiện 2 lần.
 					loadEnrollCandidates();
 				} else {
-					await apiRegisterTrainee(courseId, traineeId);
+					await apiRegisterTrainee(courseId, traineeId, programId);
 				}
 				await load();
 			} catch (err) {

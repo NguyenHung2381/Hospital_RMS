@@ -1,12 +1,20 @@
 import { useMemo, useState } from 'react';
-import { CheckSvg, PlusSvg, SearchSvg, TrashSvg, XSvg } from '@/assets/icons';
+import { CheckSvg, EditSvg, PlusSvg, SearchSvg, TrashSvg, XSvg } from '@/assets/icons';
 import { SearchableSelect } from '@/shared/components';
 import sel from '@/shared/components/Table/RowSelect.module.css';
 import { BulkButton, SelectCheckbox, SelectionBar } from '@/shared/components/Table/RowSelect';
 import { useRowSelection } from '@/shared/hooks/useRowSelection';
 import { formatDateOr } from '@/shared/utils';
 import type { SimpleItem } from '../hooks/useCourseDetail';
-import { ENROLLMENT_STATUS_CFG, type Enrollment, type EnrollmentStatus } from '../types/course.type';
+import {
+	ENROLLMENT_STATUS_CFG,
+	PROGRESS_LABEL,
+	type Course,
+	type CourseProgramLink,
+	type Enrollment,
+	type EnrollmentStatus,
+} from '../types/course.type';
+import { EnrollmentDetailModal } from './EnrollmentDetailModal';
 import styles from '../pages/Courses.module.css';
 import tbl from '@/shared/components/Table/Table.module.css';
 import { useClientPaging } from '@/shared/hooks/useClientPaging';
@@ -24,22 +32,36 @@ const normalize = (s: string) =>
 export function EnrollmentsTab({
 	enrollments,
 	trainees,
+	course,
+	programLinks,
 	busy,
 	onRegister,
 	onDecide,
 	onDecideBulk,
 	onRemove,
+	onSaved,
 }: {
 	enrollments: Enrollment[];
 	trainees: SimpleItem[];
+	course: Course | null;
+	/** Chương trình của khóa — học viên chọn 1 khi ghi danh. */
+	programLinks: CourseProgramLink[];
 	busy: boolean;
-	onRegister: (traineeId: string) => void;
+	onRegister: (traineeId: string, programId?: string) => void;
 	onDecide: (enrollmentId: string, status: EnrollmentStatus) => void;
 	/** Trả về id các đăng ký xử lý thất bại (được giữ lại trong lựa chọn để thử lại). */
 	onDecideBulk: (enrollmentIds: string[], status: EnrollmentStatus) => Promise<string[]>;
 	onRemove: (enrollmentId: string) => void;
+	/** Gọi sau khi sửa hồ sơ ghi danh — nạp lại danh sách. */
+	onSaved: () => void;
 }) {
 	const [newTraineeId, setNewTraineeId] = useState('');
+	const [newProgramId, setNewProgramId] = useState('');
+	const [detailId, setDetailId] = useState<string | null>(null);
+	const detail = enrollments.find((e) => e.id === detailId) ?? null;
+	// Khóa chỉ có 1 chương trình thì chọn sẵn; nhiều chương trình thì bắt chọn.
+	const programId = programLinks.length === 1 ? programLinks[0].program_id : newProgramId;
+	const needProgram = programLinks.length > 1 && !programId;
 	const [search, setSearch] = useState('');
 	const [statusFilter, setStatusFilter] = useState<EnrollmentStatus | ''>('');
 
@@ -84,16 +106,42 @@ export function EnrollmentsTab({
 			<div className={styles.subToolbar}>
 				<SearchableSelect
 					className={styles.subSearch}
-					options={trainees.filter((t) => !enrollments.some((e) => e.trainee_id === t.id))}
+					// Có chương trình: 1 học viên ghi danh được nhiều chương trình — chỉ ẩn người đã có chương trình đang chọn.
+					options={trainees.filter(
+						(t) =>
+							!enrollments.some(
+								(e) => e.trainee_id === t.id && (!programLinks.length || (e.program_id ?? '') === programId),
+							),
+					)}
 					value={newTraineeId}
 					onChange={setNewTraineeId}
 					placeholder='-- Chọn học viên / nhân viên nội viện (gõ tên để tìm) --'
 				/>
+				{programLinks.length > 1 && (
+					<select
+						className={styles.subSelect}
+						style={{ flex: '0 1 280px' }}
+						value={newProgramId}
+						onChange={(e) => setNewProgramId(e.target.value)}
+						title='Chương trình học — bài học của chương trình tự gắn cho học viên'
+					>
+						<option value=''>-- Chọn chương trình --</option>
+						{programLinks.map((p) => (
+							<option
+								key={p.program_id}
+								value={p.program_id}
+							>
+								{p.program_code ? `${p.program_code} — ${p.program_name}` : p.program_name}
+							</option>
+						))}
+					</select>
+				)}
 				<button
 					className={styles.btnGhost}
-					disabled={!newTraineeId || busy}
+					disabled={!newTraineeId || needProgram || busy}
+					title={needProgram ? 'Chọn chương trình học trước' : undefined}
 					onClick={() => {
-						onRegister(newTraineeId);
+						onRegister(newTraineeId, programId || undefined);
 						setNewTraineeId('');
 					}}
 				>
@@ -174,6 +222,7 @@ export function EnrollmentsTab({
 							</th>
 							<th className={`${styles.th} ${tbl.thIdx}`}>STT</th>
 							<th className={styles.th}>Học viên</th>
+							<th className={styles.th}>Chương trình</th>
 							<th className={styles.th}>Liên hệ</th>
 							<th className={styles.th}>Ngày đăng ký</th>
 							<th className={styles.th}>Trạng thái</th>
@@ -183,7 +232,7 @@ export function EnrollmentsTab({
 					<tbody>
 						{filtered.length === 0 ? (
 							<tr>
-								<td colSpan={7}>
+								<td colSpan={8}>
 									<div className={styles.subEmpty}>
 										{enrollments.length === 0
 											? 'Chưa có học viên nào đăng ký khóa học này.'
@@ -212,6 +261,18 @@ export function EnrollmentsTab({
 										<td className={`${styles.td} ${styles.tdIdx}`}>{pg.offset + idx + 1}</td>
 										<td className={styles.td}>
 											<div className={styles.subRowName}>{en.trainee_name}</div>
+											{en.practice_code && <div className={styles.subRowMeta}>Mã thực hành {en.practice_code}</div>}
+										</td>
+										<td className={styles.td}>
+											<div className={styles.subRowMeta}>
+												{en.program_name
+													? `${en.program_code ? `${en.program_code} — ` : ''}${en.program_name}`
+													: '—'}
+											</div>
+											<div className={styles.subRowMeta}>
+												{en.lesson_total > 0 ? `${en.lesson_done}/${en.lesson_total} bài · ` : ''}
+												{PROGRESS_LABEL[en.progress_status] ?? ''}
+											</div>
 										</td>
 										<td className={styles.td}>
 											<div className={styles.subRowMeta}>{en.trainee_phone ?? '—'}</div>
@@ -249,6 +310,14 @@ export function EnrollmentsTab({
 												)}
 												<button
 													className={styles.actionBtn}
+													title='Hồ sơ ghi danh: chương trình, tiến độ, hồ sơ thực hành, bài học'
+													disabled={busy}
+													onClick={() => setDetailId(en.id)}
+												>
+													<EditSvg />
+												</button>
+												<button
+													className={styles.actionBtn}
 													title='Xoá đăng ký'
 													disabled={busy}
 													onClick={() => onRemove(en.id)}
@@ -268,6 +337,15 @@ export function EnrollmentsTab({
 				{...pg.pagination}
 				itemLabel='đăng ký'
 			/>
+			{detail && (
+				<EnrollmentDetailModal
+					enrollment={detail}
+					course={course}
+					programLinks={programLinks}
+					onClose={() => setDetailId(null)}
+					onSaved={onSaved}
+				/>
+			)}
 		</>
 	);
 }

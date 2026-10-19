@@ -11,7 +11,10 @@ import type {
 	CourseProgramLink,
 	DocType,
 	Enrollment,
+	EnrollmentLesson,
+	EnrollmentLessonStatus,
 	EnrollmentStatus,
+	EnrollmentUpdate,
 	Grade,
 	LecturerAssignment,
 } from '../types/course.type';
@@ -66,11 +69,26 @@ export const getProgramLinks = (courseId: string) =>
 // ─── Enrollments ──────────────────────────────────────────────────────────
 export const getEnrollments = (courseId: string) =>
 	apiClient.get<Enrollment[]>(`/courses/${courseId}/enrollments`);
-export const registerTrainee = (courseId: string, traineeId: string) =>
-	apiClient.post<{ id: string }>(`/courses/${courseId}/enrollments`, { trainee_id: traineeId });
+/** programId: chương trình học viên chọn — bài học của chương trình tự gắn theo. */
+export const registerTrainee = (courseId: string, traineeId: string, programId?: string) =>
+	apiClient.post<{ id: string }>(`/courses/${courseId}/enrollments`, {
+		trainee_id: traineeId,
+		program_id: programId || null,
+	});
 /** Ghi danh nhân viên nội viện (users) — backend tự tạo/gắn hồ sơ học viên. */
-export const registerStaff = (courseId: string, userId: string) =>
-	apiClient.post<{ id: string }>(`/courses/${courseId}/enrollments`, { user_id: userId });
+export const registerStaff = (courseId: string, userId: string, programId?: string) =>
+	apiClient.post<{ id: string }>(`/courses/${courseId}/enrollments`, {
+		user_id: userId,
+		program_id: programId || null,
+	});
+export const updateEnrollment = (enrollmentId: string, data: EnrollmentUpdate) =>
+	apiClient.put<null>(`/courses/enrollments/${enrollmentId}`, data);
+export const getEnrollmentLessons = (enrollmentId: string) =>
+	apiClient.get<EnrollmentLesson[]>(`/courses/enrollments/${enrollmentId}/lessons`);
+export const syncEnrollmentLessons = (enrollmentId: string) =>
+	apiClient.post<{ added: number }>(`/courses/enrollments/${enrollmentId}/lessons/sync`, {});
+export const updateEnrollmentLesson = (enrollmentId: string, lessonId: string, status: EnrollmentLessonStatus) =>
+	apiClient.put<null>(`/courses/enrollments/${enrollmentId}/lessons`, { lesson_id: lessonId, status });
 export const decideEnrollment = (enrollmentId: string, status: EnrollmentStatus, note?: string) =>
 	apiClient.put<{ id: string; status: string }>(`/courses/enrollments/${enrollmentId}/decide`, { status, note });
 export const removeEnrollment = (enrollmentId: string) =>

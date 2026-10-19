@@ -5,16 +5,22 @@ const mailQueue = require('../../notifications/mailQueue');
 const { ROLE, inputRoleId } = require('../../access/roleCodes');
 const { getById } = require('./courseService');
 const { httpError } = require('../../../utils/httpError');
+const enrollmentProgramService = require('./enrollmentProgramService');
 
 // ─── Đăng ký khóa học ────────────────────────────────────────────────────
 const listEnrollments = async (courseId) => {
 	const pool = await getPool();
 	const r = await pool.request().input('course_id', sql.VarChar(20), courseId).query(`
     SELECT e.*, t.full_name AS trainee_name, t.phone AS trainee_phone, t.email AS trainee_email,
-           u.full_name AS decided_by_name
+           u.full_name AS decided_by_name,
+           tp.code AS program_code, tp.name AS program_name, mm.full_name AS main_mentor_name,
+           (SELECT COUNT(*) FROM enrollment_lessons el WHERE el.enrollment_id = e.id) AS lesson_total,
+           (SELECT COUNT(*) FROM enrollment_lessons el WHERE el.enrollment_id = e.id AND el.status = 'done') AS lesson_done
     FROM course_enrollments e
     JOIN trainees t ON t.id = e.trainee_id
     LEFT JOIN users u ON u.id = e.decided_by
+    LEFT JOIN training_programs tp ON tp.id = e.program_id
+    LEFT JOIN users mm ON mm.id = e.main_mentor_user_id
     WHERE e.course_id = @course_id
     ORDER BY e.registered_at DESC
   `);
@@ -23,8 +29,14 @@ const listEnrollments = async (courseId) => {
 
 // Thêm học viên vào khóa học. Chặn nếu khóa học đang đóng cửa sổ đăng ký, trừ
 // khi options.bypassWindow (admin / quản lý đào tạo ghi danh hộ — xem
-// courseController.registerTrainee).
-const registerTrainee = async (courseId, traineeId, actorId, { bypassWindow = false } = {}) => {
+// courseController.registerTrainee). options.programId: chương trình học viên
+// chọn (phải thuộc khóa) — bài học lý thuyết của chương trình tự gắn theo.
+const registerTrainee = async (
+	courseId,
+	traineeId,
+	actorId,
+	{ bypassWindow = false, programId = null } = {},
+) => {
 	const pool = await getPool();
 	const course = await getById(courseId);
 	if (!course) {
@@ -33,33 +45,43 @@ const registerTrainee = async (courseId, traineeId, actorId, { bypassWindow = fa
 	if (!course.enrollment_open && !bypassWindow) {
 		throw httpError(403, 'Khóa học hiện không trong thời gian đăng ký.');
 	}
+	if (programId) await enrollmentProgramService.assertProgramInCourse(courseId, programId);
 
 	const result = await pool
 		.request()
 		.input('actor_id', sql.VarChar(20), actorId)
 		.input('course_id', sql.VarChar(20), courseId)
 		.input('trainee_id', sql.VarChar(20), traineeId)
+		.input('program_id', sql.VarChar(20), programId || null)
 		.query(
 			`
-      IF EXISTS (SELECT 1 FROM course_enrollments WHERE course_id = @course_id AND trainee_id = @trainee_id)
+      IF EXISTS (SELECT 1 FROM course_enrollments WHERE course_id = @course_id AND trainee_id = @trainee_id
+                 AND ISNULL(program_id, '') = ISNULL(@program_id, ''))
       BEGIN
         THROW 51000, N'Học viên này đã đăng ký khóa học rồi.', 1;
       END
       DECLARE @new_id VARCHAR(20);
       EXEC sp_gen_course_enrollment_id @actor_id = @actor_id, @new_id = @new_id OUTPUT;
-      INSERT INTO course_enrollments (id, course_id, trainee_id, status, created_by)
-      VALUES (@new_id, @course_id, @trainee_id, 'pending', @actor_id);
+      INSERT INTO course_enrollments (id, course_id, trainee_id, program_id, status, created_by)
+      VALUES (@new_id, @course_id, @trainee_id, @program_id, 'pending', @actor_id);
       SELECT @new_id AS id;
     `,
 		)
 		.catch((err) => {
 			if (err.number === 51000) {
-				throw httpError(409, 'Học viên này đã đăng ký khóa học rồi.');
+				throw httpError(
+					409,
+					programId
+						? 'Học viên này đã ghi danh chương trình này trong khóa rồi.'
+						: 'Học viên này đã đăng ký khóa học rồi.',
+				);
 			}
 			throw err;
 		});
+	const id = result.recordset[0].id;
+	if (programId) await enrollmentProgramService.syncLessons(id);
 	broadcast('update', { entity: 'course_enrollment' });
-	return { id: result.recordset[0].id };
+	return { id };
 };
 
 // Nhân viên nội viện (users) CHƯA có hồ sơ học viên — hiện chung với danh sách
@@ -86,7 +108,12 @@ const listStaffCandidates = async () => {
 // chưa có thì tự tạo từ thông tin users (is_employee = 1, gắn sẵn user_id) — nhờ đó
 // nhân viên đăng nhập bằng chính tài khoản đang dùng là điểm danh QR / thi online
 // được ngay, không cần "Cấp tài khoản học viên" riêng.
-const registerStaff = async (courseId, userId, actorId, { bypassWindow = false } = {}) => {
+const registerStaff = async (
+	courseId,
+	userId,
+	actorId,
+	{ bypassWindow = false, programId = null } = {},
+) => {
 	const course = await getById(courseId);
 	if (!course) {
 		throw httpError(404, 'Khóa học không tồn tại.');
@@ -135,7 +162,7 @@ const registerStaff = async (courseId, userId, actorId, { bypassWindow = false }
       `);
 	}
 
-	return registerTrainee(courseId, traineeId, actorId, { bypassWindow });
+	return registerTrainee(courseId, traineeId, actorId, { bypassWindow, programId });
 };
 
 // Duyệt/từ chối đăng ký. Duyệt mà khóa đã đủ số lượng (capacity) ⇒ tự động

@@ -240,7 +240,8 @@ const remove = async (id, actorId) => {
 const listProgramLinks = async (courseId) => {
 	const pool = await getPool();
 	const r = await pool.request().input('course_id', sql.VarChar(20), courseId).query(`
-    SELECT cp.id, cp.course_id, cp.program_id, tp.name AS program_name
+    SELECT cp.id, cp.course_id, cp.program_id, tp.name AS program_name, tp.code AS program_code,
+           tp.training_type_id, tp.duration AS program_duration
     FROM course_programs cp
     JOIN training_programs tp ON tp.id = cp.program_id
     WHERE cp.course_id = @course_id
