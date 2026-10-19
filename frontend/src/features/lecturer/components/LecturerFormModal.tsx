@@ -2,6 +2,7 @@ import { FormField } from '@/shared/components/Input/FormField';
 import { Modal, ModalActions } from '@/shared/components';
 import React, { useState } from 'react';
 import { UserCheckSvg } from '@/assets/icons';
+import { formatDateOr } from '@/shared/utils';
 import { EMPTY_FORM, type Lecturer, type LecturerFormData } from '../types/lecturer.type';
 import styles from '../pages/Lecturers.module.css';
 
@@ -119,6 +120,34 @@ export function LecturerFormModal({
 						Giảng viên mời ngoài (không phải nhân viên bệnh viện)
 					</label>
 				</div>
+				{lecturer?.user_id && (
+					<div
+						className={styles.licenseBox}
+						style={{ gridColumn: '1 / -1' }}
+					>
+						<div className={styles.licenseTitle}>
+							Chứng chỉ hành nghề{lecturer.staff_number ? ` — MNV ${lecturer.staff_number}` : ''}
+						</div>
+						{lecturer.license_no ? (
+							<dl className={styles.licenseGrid}>
+								<dt>Số CCHN</dt>
+								<dd>{lecturer.license_no}</dd>
+								<dt>Ngày cấp</dt>
+								<dd>
+									{formatDateOr(lecturer.license_issued_date)}
+									{lecturer.license_issuing_authority ? ` — ${lecturer.license_issuing_authority}` : ''}
+								</dd>
+								<dt>Phạm vi</dt>
+								<dd>{lecturer.license_practice_scope ?? '—'}</dd>
+							</dl>
+						) : (
+							<div className={styles.descText}>Tài khoản liên kết chưa có hồ sơ CCHN.</div>
+						)}
+						<div className={styles.descText}>
+							Chỉ đọc — sửa ở màn Chứng chỉ hành nghề hoặc nhập lại file "Danh sách người hành nghề".
+						</div>
+					</div>
+				)}
 			</div>
 		</Modal>
 	);

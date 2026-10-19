@@ -6,10 +6,16 @@ const { normalizeGender } = require('../../../utils/gender');
 const { ROLE, roleIdOf } = require('../../access/roleCodes');
 const { httpError } = require('../../../utils/httpError');
 
+// license_*: hồ sơ CCHN của tài khoản liên kết (chỉ đọc trên form giảng viên —
+// sửa ở màn Chứng chỉ hành nghề hoặc nhập lại file "Danh sách người hành nghề").
 const lecturerSelect = `
-  SELECT l.*, u.full_name AS user_full_name, u.username
+  SELECT l.*, u.full_name AS user_full_name, u.username, u.staff_number,
+         sl.license_no AS license_no, sl.issued_date AS license_issued_date,
+         sl.issuing_authority AS license_issuing_authority,
+         sl.practice_scope AS license_practice_scope
   FROM lecturers l
   LEFT JOIN users u ON u.id = l.user_id
+  LEFT JOIN staff_practice_licenses sl ON sl.user_id = l.user_id
 `;
 
 // Giảng viên chỉ là bác sĩ/nhân viên nội viện (users) hoặc chuyên gia ngoài viện —
@@ -159,6 +165,66 @@ const update = async (id, data, actorId) => {
 	return getById(id);
 };
 
+/**
+ * "Thêm giảng viên từ nhân sự có CCHN": mỗi user_id thành 1 giảng viên nội viện
+ * gắn tài khoản — tên / điện thoại / email / ngày sinh / giới tính lấy từ users,
+ * chuyên môn từ hồ sơ CCHN. Nhân sự đã là giảng viên thì bỏ qua và báo lại.
+ */
+const createFromStaff = async (userIds, actorId) => {
+	const ids = [...new Set((Array.isArray(userIds) ? userIds : []).filter(Boolean).map(String))];
+	if (!ids.length) throw httpError(400, 'Chưa chọn nhân sự');
+	if (ids.length > 200) throw httpError(400, 'Tối đa 200 nhân sự mỗi lần');
+	const pool = await getPool();
+	const req = pool.request();
+	ids.forEach((id, i) => req.input(`u${i}`, sql.VarChar(20), id));
+	const rs = await req.query(`
+    SELECT u.id, u.full_name, u.email, u.phone_number, u.date_of_birth, u.gender,
+           sl.primary_specialty,
+           CAST(CASE WHEN EXISTS (SELECT 1 FROM lecturers l WHERE l.user_id = u.id) THEN 1 ELSE 0 END AS BIT) AS is_lecturer
+    FROM users u
+    LEFT JOIN staff_practice_licenses sl ON sl.user_id = u.id
+    WHERE u.id IN (${ids.map((_, i) => `@u${i}`).join(', ')})`);
+	const byId = new Map(rs.recordset.map((u) => [u.id, u]));
+
+	const createdList = [];
+	const skipped = [];
+	for (const id of ids) {
+		const u = byId.get(id);
+		if (!u) {
+			skipped.push({ user_id: id, full_name: null, reason: 'Không tìm thấy nhân sự' });
+			continue;
+		}
+		if (u.is_lecturer) {
+			skipped.push({ user_id: id, full_name: u.full_name, reason: 'Đã là giảng viên' });
+			continue;
+		}
+		// Email giữ chỗ (*.local) của tài khoản tạo tự động không phải email thật
+		const email = u.email && !/\.local$/i.test(u.email) && u.email.length <= 100 ? u.email : null;
+		try {
+			createdList.push(
+				await create(
+					{
+						user_id: id,
+						full_name: u.full_name,
+						specialty: u.primary_specialty ? String(u.primary_specialty).slice(0, 150) : null,
+						is_external: false,
+						phone: u.phone_number,
+						email,
+						dob: u.date_of_birth,
+						gender: u.gender,
+					},
+					actorId,
+				),
+			);
+		} catch (err) {
+			// assertNotTraineeAccount → 400: báo lại, không dừng cả lô
+			if (err.statusCode !== 400) throw err;
+			skipped.push({ user_id: id, full_name: u.full_name, reason: err.message });
+		}
+	}
+	return { created: createdList, skipped };
+};
+
 // Xoá cứng nếu chưa từng được phân công; nếu đã có lịch sử phân công (Giai
 // đoạn 4: lecturer_assignments), chỉ vô hiệu hoá để giữ tên hiển thị ở lịch sử.
 const remove = async (id, actorId) => {
@@ -188,4 +254,4 @@ const remove = async (id, actorId) => {
 	broadcast('update', { entity: 'lecturer' });
 };
 
-module.exports = { getAll, getById, create, update, remove };
+module.exports = { getAll, getById, create, createFromStaff, update, remove };

@@ -14,6 +14,13 @@ const ctrl = createCrudController(staffLicenseService);
 router.use(authenticate);
 
 router.get('/', authorizePermission(['staff_licenses', 'read']), ctrl.getAll);
+
+// Tìm người hướng dẫn thực hành — dùng cả ở màn giảng viên và hồ sơ thực hành GPHN
+router.get(
+	'/mentors',
+	authorizePermission(['staff_licenses', 'read'], ['lecturers', 'read'], ['courses', 'update']),
+	asyncHandler(async (req, res) => success(res, await staffLicenseService.getMentors(req.query))),
+);
 router.get('/:id', authorizePermission(['staff_licenses', 'read']), ctrl.getById);
 
 router.get(

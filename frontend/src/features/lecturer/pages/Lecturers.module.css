@@ -145,3 +145,57 @@
 		grid-template-columns: 1fr;
 	}
 }
+
+/* ── CCHN CHỈ ĐỌC (form giảng viên) ───────── */
+.licenseBox {
+	display: flex;
+	flex-direction: column;
+	gap: var(--space-2);
+	padding: var(--space-3) var(--space-4);
+	border: 1px solid var(--color-gray-200);
+	border-radius: var(--radius-lg);
+	background: var(--color-gray-50);
+}
+.licenseTitle {
+	font-size: var(--font-size-sm);
+	font-weight: var(--font-weight-bold);
+	color: var(--color-gray-700);
+}
+.licenseGrid {
+	display: grid;
+	grid-template-columns: auto 1fr;
+	gap: var(--space-1) var(--space-3);
+	margin: 0;
+	font-size: var(--font-size-sm);
+}
+.licenseGrid dt {
+	color: var(--color-gray-500);
+}
+.licenseGrid dd {
+	margin: 0;
+	color: var(--color-gray-800);
+	white-space: pre-line;
+}
+
+/* ── THÊM TỪ NHÂN SỰ CÓ CCHN ──────────────── */
+.staffPicker {
+	max-height: 380px;
+	overflow: auto;
+	border: 1px solid var(--color-gray-200);
+	border-radius: var(--radius-lg);
+	margin-top: var(--space-3);
+}
+.staffRow {
+	display: flex;
+	gap: var(--space-3);
+	align-items: flex-start;
+	padding: var(--space-2) var(--space-3);
+	border-bottom: 1px solid var(--color-gray-100);
+	cursor: pointer;
+}
+.staffRow:last-child {
+	border-bottom: 0;
+}
+.staffRow input {
+	margin-top: 3px;
+}

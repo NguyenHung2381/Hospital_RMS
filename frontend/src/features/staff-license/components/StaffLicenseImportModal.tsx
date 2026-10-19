@@ -8,11 +8,16 @@ import tbl from '@/shared/components/Table/Table.module.css';
 import { useClientPaging } from '@/shared/hooks/useClientPaging';
 import { formatDateOr } from '@/shared/utils';
 import { importStaffLicensesExcel } from '../api/staffLicenseApi';
-import { FIELD_LABELS, type LicenseImportResult } from '../types/staffLicense.type';
+import { IMPORT_FIELD_LABELS, type LicenseImportResult } from '../types/staffLicense.type';
 import styles from '../pages/StaffLicenses.module.css';
 
+const GENDER_LABELS: Record<string, string> = { male: 'Nam', female: 'Nữ', other: 'Khác' };
 const fmt = (field: string, v: string | null) =>
-	field.endsWith('_date') ? formatDateOr(v) : (v ?? '—');
+	field.endsWith('_date') || field === 'date_of_birth'
+		? formatDateOr(v)
+		: field === 'gender'
+			? (GENDER_LABELS[v ?? ''] ?? v ?? '—')
+			: (v ?? '—');
 
 // Cập nhật CCHN từ file "Danh sách người hành nghề": chọn file → dry-run liệt kê
 // các dòng mới/thay đổi so với hệ thống → xác nhận ghi.
@@ -105,10 +110,12 @@ export function StaffLicenseImportModal({ onClose, onDone }: { onClose: () => vo
 					<div className={styles.noticeBox}>
 						<InfoSvg />
 						<span>
-							Cột bắt buộc: <b>MNV</b>, <b>Số CCHN</b>. Nhận thêm: Ngày cấp, Phạm vi hành nghề, Văn bằng chuyên
-							môn, Chuyên khoa cần cập nhật KTYK liên tục, QĐ bổ sung phạm vi, Điều chỉnh phạm vi, Ngày điều
-							chỉnh, Chức danh. Ô trống trong file <b>không xoá</b> dữ liệu đang có; MNV chưa có trong hệ thống
-							sẽ bị bỏ qua.
+							Cột bắt buộc: <b>MNV</b>, <b>Số CCHN</b>. Nhận thêm: Ngày cấp, Nơi cấp (cột "Nơi cấp khác Nghệ
+							An" để trống = Sở Y tế Nghệ An), Phạm vi hành nghề (ưu tiên cột "NỐI cả QĐ bổ sung", sau đó cột
+							"ĐƠN"), Mã hoá phạm vi 2148, Văn bằng chuyên môn, Chuyên khoa cần cập nhật KTYK liên tục, QĐ bổ
+							sung phạm vi, Điều chỉnh phạm vi, Ngày điều chỉnh, Chức danh, Ngày sinh. Cột khoa (K/P/TT) chỉ
+							dùng để cảnh báo khi lệch, không đổi khoa; cột CCCD không được nhập. Ô trống trong file{' '}
+							<b>không xoá</b> dữ liệu đang có; MNV chưa có trong hệ thống sẽ bị bỏ qua.
 						</span>
 					</div>
 
@@ -165,7 +172,7 @@ export function StaffLicenseImportModal({ onClose, onDone }: { onClose: () => vo
 														<td>
 															{r.changes.map((c) => (
 																<div key={c.field} className={tbl.cellSub}>
-																	{FIELD_LABELS[c.field]}: {r.status === 'changed' && <s>{fmt(c.field, c.old)}</s>} →{' '}
+																	{IMPORT_FIELD_LABELS[c.field]}: {r.status === 'changed' && <s>{fmt(c.field, c.old)}</s>} →{' '}
 																	<b>{fmt(c.field, c.new)}</b>
 																</div>
 															))}

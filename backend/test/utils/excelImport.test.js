@@ -3,6 +3,8 @@ const assert = require('node:assert/strict');
 const ExcelJS = require('exceljs');
 const {
 	readSheet,
+	parseDateCell,
+	excelSerialToYmd,
 	parseDob,
 	parseCredits,
 	parseStaffNumber,
@@ -65,4 +67,24 @@ test('parseCredits / parseStaffNumber', () => {
 	assert.equal(parseCredits(''), null);
 	assert.equal(parseStaffNumber('NV-00123'), 123);
 	assert.equal(parseStaffNumber('abc'), null);
+});
+
+test('parseDateCell đọc Date, số serial Excel (cả dạng chữ), chuỗi dd/mm/yyyy; năm trơn không phải serial', async () => {
+	const wb = new ExcelJS.Workbook();
+	const ws = wb.addWorksheet('S');
+	ws.addRow([new Date(Date.UTC(1984, 8, 12)), 26546, '26546', '5/1/1990', 1989, '1989', 'abc']);
+	ws.getCell('H1').value = { formula: 'A1', result: 26546 };
+	ws.getCell('I1').value = { error: '#N/A' };
+	const cell = (c) => ws.getRow(1).getCell(c);
+	assert.equal(parseDateCell(cell(1)), '1984-09-12');
+	assert.equal(parseDateCell(cell(2)), '1972-09-04');
+	assert.equal(parseDateCell(cell(3)), '1972-09-04');
+	assert.equal(parseDateCell(cell(4)), '1990-01-05');
+	assert.equal(parseDateCell(cell(5)), null);
+	assert.equal(parseDateCell(cell(6)), null);
+	assert.equal(parseDateCell(cell(7)), null);
+	assert.equal(parseDateCell(cell(8)), '1972-09-04');
+	assert.equal(parseDateCell(cell(9)), null);
+	assert.equal(excelSerialToYmd(45658), '2025-01-01');
+	assert.deepEqual(parseDob(cell(5)), { dob: null, dob_text: '1989' });
 });

@@ -5,6 +5,7 @@ import {
 	type StaffLicense,
 	type StaffLicenseFormData,
 	type StaffLicenseListResponse,
+	type StaffMentor,
 } from '../types/staffLicense.type';
 
 export interface StaffLicenseListParams {
@@ -39,4 +40,19 @@ export const importStaffLicensesExcel = (file: File, dryRun: boolean) => {
 	form.append('dry_run', dryRun ? '1' : '0');
 	form.append('file', file);
 	return apiClient.postForm<LicenseImportResult>('/staff-licenses/import-excel', form);
+};
+
+export interface MentorSearchParams {
+	search?: string;
+	department_id?: string;
+	licensed_only?: boolean;
+	limit?: number;
+}
+
+// Tìm người hướng dẫn thực hành / nhân sự có CCHN (gõ MNV, tên hoặc số CCHN)
+export const searchMentors = ({ licensed_only, ...rest }: MentorSearchParams = {}) => {
+	const entries = Object.entries({ ...rest, licensed_only: licensed_only ? '1' : undefined })
+		.filter(([, v]) => v !== undefined && v !== '')
+		.map(([k, v]) => [k, String(v)] as [string, string]);
+	return apiClient.get<StaffMentor[]>(`/staff-licenses/mentors?${new URLSearchParams(entries).toString()}`);
 };

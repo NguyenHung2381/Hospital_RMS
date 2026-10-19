@@ -16,6 +16,10 @@ const createOne = asyncHandler(async (req, res) => {
 	return created(res, await lecturerService.create(req.body, req.user.id));
 });
 
+const createFromStaff = asyncHandler(async (req, res) => {
+	return created(res, await lecturerService.createFromStaff(req.body.user_ids, req.user.id));
+});
+
 const updateOne = asyncHandler(async (req, res) => {
 	const item = await lecturerService.update(req.params.id, req.body, req.user.id);
 	if (!item) return notFound(res);
@@ -27,4 +31,4 @@ const removeOne = asyncHandler(async (req, res) => {
 	return success(res, null, 'Xóa thành công');
 });
 
-module.exports = { getAll, getById, createOne, updateOne, removeOne };
+module.exports = { getAll, getById, createOne, createFromStaff, updateOne, removeOne };

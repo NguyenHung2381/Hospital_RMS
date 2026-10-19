@@ -83,7 +83,54 @@ const fieldDefs = [
 	['scope_decision_no', sql.NVarChar(100)],
 	['adjusted_scope', sql.NVarChar(500)],
 	['scope_adjusted_date', sql.Date],
+	['scope_code', sql.NVarChar(50)], // mã hoá phạm vi theo QĐ 2148 (BHXH)
 ];
+
+/**
+ * Tìm người hướng dẫn thực hành (NHD) — nhân sự (có MNV) đang hoạt động, gõ MNV
+ * / tên / số CCHN. Trả đủ trường để chụp lại thông tin NHD trên hồ sơ thực hành
+ * (Phiếu nhận xét: ông/bà, ngày sinh, trình độ, số CCHN, ngày cấp, phạm vi).
+ * Người có CCHN xếp trước; licensed_only=1 thì chỉ lấy người có CCHN.
+ */
+const getMentors = async ({
+	search = undefined,
+	department_id = undefined,
+	licensed_only = undefined,
+	limit = 20,
+} = {}) => {
+	const pool = await getPool();
+	const where = ['u.staff_number IS NOT NULL', 'u.is_active = 1'];
+	const req = pool
+		.request()
+		.input('limit', sql.Int, Math.min(Math.max(parseInt(String(limit), 10) || 20, 1), 50));
+	const q = String(search ?? '').trim();
+	if (q) {
+		where.push(
+			'(u.full_name LIKE @search OR sl.license_no LIKE @search OR CAST(u.staff_number AS VARCHAR(20)) = @search_exact)',
+		);
+		req.input('search', sql.NVarChar, `%${q}%`);
+		req.input('search_exact', sql.VarChar(20), q);
+	}
+	if (department_id) {
+		where.push('u.department_id = @department_id');
+		req.input('department_id', sql.VarChar(20), department_id);
+	}
+	if (licensed_only === '1' || licensed_only === true) where.push('sl.license_no IS NOT NULL');
+
+	const result = await req.query(`
+    SELECT TOP (@limit)
+           u.id AS user_id, u.staff_number, u.full_name, u.date_of_birth, u.gender,
+           COALESCE(sl.qualification, q.name) AS qualification,
+           sl.license_no, sl.issued_date, sl.issuing_authority, sl.practice_scope, sl.scope_code,
+           u.phone_number AS phone, u.department_id, d.name AS department_name
+    FROM users u
+    LEFT JOIN staff_practice_licenses sl ON sl.user_id = u.id
+    LEFT JOIN departments d ON d.id = u.department_id
+    LEFT JOIN qualifications q ON q.id = u.qualification_id
+    WHERE ${where.join(' AND ')}
+    ORDER BY CASE WHEN sl.license_no IS NULL THEN 1 ELSE 0 END, u.full_name`);
+	return result.recordset;
+};
 
 const create = async (data, actorId) => {
 	if (!data.user_id) {
@@ -143,4 +190,4 @@ const remove = async (id, actorId) => {
 	broadcast('update', { entity: 'staff_license' });
 };
 
-module.exports = { getAll, getById, getByUserId, create, update, remove, fieldDefs };
+module.exports = { getAll, getById, getByUserId, getMentors, create, update, remove, fieldDefs };

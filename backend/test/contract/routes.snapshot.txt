@@ -155,6 +155,7 @@ GET    /api/v1/lecturers/  lecturers:read
 DELETE /api/v1/lecturers/:id  lecturers:delete
 GET    /api/v1/lecturers/:id  lecturers:read
 PUT    /api/v1/lecturers/:id  lecturers:update
+POST   /api/v1/lecturers/from-staff  lecturers:create
 GET    /api/v1/levels  authOnly
 POST   /api/v1/levels  catalog:create
 GET    /api/v1/levels/:id  authOnly
@@ -287,6 +288,7 @@ GET    /api/v1/staff-licenses/:id  staff_licenses:read
 PUT    /api/v1/staff-licenses/:id  staff_licenses:update
 GET    /api/v1/staff-licenses/by-user/:userId  staff_licenses:read
 POST   /api/v1/staff-licenses/import-excel  staff_licenses:update
+GET    /api/v1/staff-licenses/mentors  staff_licenses:read | lecturers:read | courses:update
 GET    /api/v1/surveys/  surveys:manage
 POST   /api/v1/surveys/  surveys:manage
 GET    /api/v1/surveys/:id  surveys:manage

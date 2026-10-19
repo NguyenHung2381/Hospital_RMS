@@ -20,6 +20,15 @@ router.post(
 	ctrl.createOne,
 );
 
+// Thêm giảng viên hàng loạt từ nhân sự (thường là người có CCHN)
+router.post(
+	'/from-staff',
+	authorizePermission(['lecturers', 'create']),
+	[body('user_ids').isArray({ min: 1, max: 200 }).withMessage('Chọn 1–200 nhân sự')],
+	validate,
+	ctrl.createFromStaff,
+);
+
 router.put(
 	'/:id',
 	authorizePermission(['lecturers', 'update']),

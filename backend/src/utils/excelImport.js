@@ -20,16 +20,30 @@ const cellText = (cell) => {
 
 const pad2 = (n) => String(n).padStart(2, '0');
 
-// Ô ngày (Date thật hoặc chuỗi dd/mm/yyyy) → 'YYYY-MM-DD'; không nhận diện được → null.
-// exceljs lưu ngày ở UTC — đọc theo UTC để giữ đúng ngày lịch.
+const ymdUtc = (d) => `${d.getUTCFullYear()}-${pad2(d.getUTCMonth() + 1)}-${pad2(d.getUTCDate())}`;
+
+// Số serial ngày của Excel (26546 = 04/09/1972) → 'YYYY-MM-DD'. Mốc 30/12/1899
+// đã bù lỗi "29/02/1900" của Excel. Chỉ nhận 2101..79999 (10/1905..01/2119):
+// số 4 chữ số kiểu 1989 là NĂM SINH ghi tắt, không phải serial (xem parseDob).
+const EXCEL_EPOCH_MS = Date.UTC(1899, 11, 30);
+const excelSerialToYmd = (n) => {
+	if (!Number.isFinite(n) || n <= 2100 || n >= 80000) return null;
+	return ymdUtc(new Date(EXCEL_EPOCH_MS + Math.floor(n) * 86400000));
+};
+
+// Ô ngày (Date thật, số serial Excel, hoặc chuỗi dd/mm/yyyy) → 'YYYY-MM-DD';
+// không nhận diện được → null. exceljs lưu ngày ở UTC — đọc theo UTC để giữ đúng ngày lịch.
 const parseDateCell = (cell) => {
 	if (!cell) return null;
-	const v = cell.value;
-	if (v instanceof Date && !Number.isNaN(v.getTime())) {
-		return `${v.getUTCFullYear()}-${pad2(v.getUTCMonth() + 1)}-${pad2(v.getUTCDate())}`;
-	}
+	let v = cell.value;
+	// Ô công thức: lấy kết quả đã tính
+	if (v && typeof v === 'object' && !(v instanceof Date) && 'result' in v) v = v.result;
+	if (v instanceof Date && !Number.isNaN(v.getTime())) return ymdUtc(v);
+	if (typeof v === 'number') return excelSerialToYmd(v);
 	// Excel hay chèn dấu ' đầu ô để ép kiểu chữ; bỏ trước khi parse.
 	const raw = cellText(cell).replace(/^['"\s]+/, '');
+	// Serial bị lưu dạng chữ ("26546") — đúng 5 chữ số, tránh nhầm năm "1989"
+	if (/^\d{5}$/.test(raw)) return excelSerialToYmd(+raw);
 	const m = raw.match(/^(\d{1,2})[/\-.](\d{1,2})[/\-.](\d{4})$/);
 	if (m) {
 		const [d, mo, y] = [+m[1], +m[2], +m[3]];
@@ -130,6 +144,7 @@ module.exports = {
 	badRequest,
 	pad2,
 	cellText,
+	excelSerialToYmd,
 	parseDateCell,
 	parseDob,
 	parseCredits,

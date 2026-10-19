@@ -1,6 +1,7 @@
+import { useState } from 'react';
 import { avatarColor, getInitials } from '@/shared/utils';
 import { SearchInput, SelectionCount, RowActions } from '@/shared/components/Table/TableToolbar';
-import { PlusSvg } from '@/assets/icons';
+import { PlusSvg, UserCheckSvg } from '@/assets/icons';
 import AdminLayout from '../../../layouts/AdminLayout';
 import { ExcelActions, type ExcelColumn } from '@/shared/components/Excel';
 import { isYes } from '@/shared/components/Excel/excelHelpers';
@@ -13,6 +14,7 @@ import { DeleteAllButton, SelectCheckbox } from '../../../shared/components/Tabl
 import { useRowSelection } from '../../../shared/hooks/useRowSelection';
 import { LecturerDeleteModal } from '../components/LecturerDeleteModal';
 import { LecturerFormModal } from '../components/LecturerFormModal';
+import { LecturerFromStaffModal } from '../components/LecturerFromStaffModal';
 import { useLecturers } from '../hooks/useLecturers';
 import styles from './Lecturers.module.css';
 import tbl from '@/shared/components/Table/Table.module.css';
@@ -30,6 +32,7 @@ const EXCEL_COLS: ExcelColumn<Lecturer>[] = [
 export default function Lecturers() {
 	const d = useLecturers();
 	const rowSel = useRowSelection(d.paged.map((x) => x.id));
+	const [fromStaffOpen, setFromStaffOpen] = useState(false);
 
 	const headerActions = (
 		<div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
@@ -49,6 +52,12 @@ export default function Lecturers() {
 				}
 				onImported={d.refreshData}
 			/>
+			<button
+				className={styles.btnAddHeader}
+				onClick={() => setFromStaffOpen(true)}
+			>
+				<UserCheckSvg /> Thêm từ nhân sự có CCHN
+			</button>
 			<button
 				className={styles.btnAddHeader}
 				onClick={() => d.setModal('add')}
@@ -230,6 +239,12 @@ export default function Lecturers() {
 					}}
 					onSave={d.handleEdit}
 					loading={d.loading}
+				/>
+			)}
+			{fromStaffOpen && (
+				<LecturerFromStaffModal
+					onClose={() => setFromStaffOpen(false)}
+					onDone={d.refreshData}
 				/>
 			)}
 			{d.modal === 'delete' && d.deletingLecturer && (

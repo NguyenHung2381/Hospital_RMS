@@ -25,6 +25,7 @@ const FORM_ORDER: LicenseField[] = [
 	'title',
 	'qualification',
 	'primary_specialty',
+	'scope_code',
 	'practice_scope',
 	'cme_specialty',
 	'scope_decision_no',

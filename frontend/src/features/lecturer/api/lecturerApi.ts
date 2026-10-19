@@ -1,5 +1,10 @@
 import { apiClient } from '../../../shared/api/axios';
-import type { Lecturer, LecturerFormData, LecturerListResponse } from '../types/lecturer.type';
+import type {
+	Lecturer,
+	LecturerFormData,
+	LecturerFromStaffResult,
+	LecturerListResponse,
+} from '../types/lecturer.type';
 
 export interface LecturerListParams {
 	page?: number;
@@ -34,5 +39,9 @@ export const updateLecturer = (id: string, form: LecturerFormData) =>
 		phone: form.phone || null,
 		email: form.email || null,
 	});
+
+// Thêm giảng viên từ nhân sự — thông tin lấy từ tài khoản và hồ sơ CCHN
+export const createLecturersFromStaff = (userIds: string[]) =>
+	apiClient.post<LecturerFromStaffResult>('/lecturers/from-staff', { user_ids: userIds });
 
 export const deleteLecturer = (id: string) => apiClient.delete<null>(`/lecturers/${id}`);
