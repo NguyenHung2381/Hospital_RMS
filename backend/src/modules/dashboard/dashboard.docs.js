@@ -12,10 +12,12 @@
  * @swagger
  * /dashboard/stats:
  *   get:
- *     summary: Lấy thống kê tổng quan cho dashboard
+ *     summary: Thống kê NCKH (Dashboard, trang Báo cáo); ?year = năm đợt nghiên cứu, bỏ trống = mọi năm
  *     tags: [Dashboard]
  *     security:
  *       - bearerAuth: []
+ *     parameters:
+ *       - { in: query, name: year, schema: { type: integer, example: 2026 } }
  *     responses:
  *       200:
  *         description: Thành công
@@ -45,7 +47,7 @@
  *           schema:
  *             type: object
  *             properties:
- *               year: { type: string, example: "2026" }
+ *               year: { type: integer, example: 2026 }
  *               sections:
  *                 type: array
  *                 items:
@@ -83,7 +85,51 @@
  * @swagger
  * /dashboard/training-report:
  *   get:
- *     summary: 3 báo cáo Đào tạo (theo khóa+chương trình, DS học viên+kết quả, thống kê tổng)
+ *     summary: Báo cáo Đào tạo theo năm — tổng hợp khóa học + kết quả học viên
+ *     tags: [Dashboard]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - { in: query, name: year, schema: { type: integer, example: 2026 } }
+ */
+
+/**
+ * @swagger
+ * /dashboard/training-report-export:
+ *   post:
+ *     summary: Xuất Excel báo cáo Đào tạo (body { year, report = courses | trainees })
+ *     tags: [Dashboard]
+ *     security:
+ *       - bearerAuth: []
+ */
+
+/**
+ * @swagger
+ * /dashboard/seminar-report:
+ *   get:
+ *     summary: Báo cáo Hội thảo–CME theo năm — danh sách sự kiện + tín chỉ CME từng nhân sự
+ *     tags: [Dashboard]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - { in: query, name: year, schema: { type: integer, example: 2026 } }
+ */
+
+/**
+ * @swagger
+ * /dashboard/seminar-report-export:
+ *   post:
+ *     summary: Xuất Excel danh sách hội thảo, hội nghị trong năm (body { year })
+ *     tags: [Dashboard]
+ *     security:
+ *       - bearerAuth: []
+ */
+
+/**
+ * @swagger
+ * /dashboard/cme-report-export:
+ *   post:
+ *     summary: Xuất Excel báo cáo tín chỉ CME theo nhân sự (body { year })
  *     tags: [Dashboard]
  *     security:
  *       - bearerAuth: []

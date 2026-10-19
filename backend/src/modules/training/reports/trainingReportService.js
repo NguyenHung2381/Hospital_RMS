@@ -1,44 +1,50 @@
 /**
- * trainingReportService.js — 3 báo cáo Đào tạo (đối chiếu QLNCKHDTCDT-main
- * BAO_CAO_BUS::theoKhoaCtdt / dsHocVienKetQua / thongKeTong), RMS trước đây
- * chưa có báo cáo chuyên biệt cho mảng Đào tạo (chỉ có báo cáo NCKH).
+ * trainingReportService.js — báo cáo Đào tạo theo năm cho trang Báo cáo:
+ *   1. courses()  — tổng hợp từng khóa học (trạng thái, chương trình, sĩ số, kết quả, chứng chỉ)
+ *   2. trainees() — danh sách học viên đã duyệt + điểm, xếp loại, chuyên cần
+ * Năm của khóa = năm ngày bắt đầu (chưa có ngày bắt đầu thì lấy ngày tạo).
  */
 const { getPool, sql } = require('../../../config/db');
+const { COURSE_DISPLAY_STATUS } = require('../../dashboard/dashboardService');
 
-// 1. Theo khóa + chương trình áp dụng: sĩ số, tỷ lệ duyệt, điểm TB, số chứng chỉ.
-const byCourseProgram = async () => {
+const COURSE_IN_YEAR = '(@year IS NULL OR YEAR(COALESCE(c.start_date, c.created_at)) = @year)';
+
+/** @param {number|null} year */
+const courses = async (year) => {
 	const pool = await getPool();
-	const r = await pool.request().query(`
-    SELECT c.id AS course_id, c.name AS course_name,
-           tp.name AS program_name,
-           (SELECT COUNT(*) FROM course_enrollments WHERE course_id = c.id) AS total_enrollments,
-           (SELECT COUNT(*) FROM course_enrollments WHERE course_id = c.id AND status = 'approved') AS approved_count,
-           (SELECT AVG(score) FROM grades g JOIN course_enrollments e ON e.id = g.enrollment_id WHERE e.course_id = c.id AND g.subject_id IS NULL) AS avg_score,
-           (SELECT COUNT(*) FROM certificates ce JOIN course_enrollments e ON e.id = ce.enrollment_id WHERE e.course_id = c.id AND ce.status = 'active') AS certificate_count
+	const r = await pool.request().input('year', sql.Int, year).query(`
+    SELECT c.id, c.name, c.start_date, c.end_date, c.capacity,
+           ${COURSE_DISPLAY_STATUS} AS status,
+           (SELECT STRING_AGG(tp.name, ', ') FROM course_programs cp
+              JOIN training_programs tp ON tp.id = cp.program_id
+             WHERE cp.course_id = c.id) AS program_names,
+           (SELECT COUNT(*) FROM course_enrollments e WHERE e.course_id = c.id) AS enrollments,
+           (SELECT COUNT(*) FROM course_enrollments e WHERE e.course_id = c.id AND e.status = 'approved') AS approved,
+           (SELECT COUNT(*) FROM grades g JOIN course_enrollments e ON e.id = g.enrollment_id
+             WHERE e.course_id = c.id AND g.subject_id IS NULL AND g.result = 'pass') AS passed,
+           (SELECT AVG(CAST(g.score AS FLOAT)) FROM grades g JOIN course_enrollments e ON e.id = g.enrollment_id
+             WHERE e.course_id = c.id AND g.subject_id IS NULL) AS avg_score,
+           (SELECT COUNT(*) FROM certificates ce JOIN course_enrollments e ON e.id = ce.enrollment_id
+             WHERE e.course_id = c.id AND ce.status = 'active') AS certificates
     FROM courses c
-    LEFT JOIN course_programs cp ON cp.course_id = c.id
-    LEFT JOIN training_programs tp ON tp.id = cp.program_id
-    ORDER BY c.created_at DESC
+    WHERE ${COURSE_IN_YEAR}
+    ORDER BY COALESCE(c.start_date, c.created_at), c.name
   `);
 	return r.recordset;
 };
 
-// 2. DS học viên + kết quả (điểm tổng kết, xếp loại) toàn hệ thống.
-const traineeResults = async ({ course_id = undefined } = {}) => {
+/** @param {number|null} year */
+const trainees = async (year) => {
 	const pool = await getPool();
-	const req = pool.request();
-	let where = '1=1';
-	if (course_id) {
-		where += ' AND e.course_id = @course_id';
-		req.input('course_id', sql.VarChar(20), course_id);
-	}
-	const r = await req.query(`
-    SELECT t.full_name AS trainee_name, c.name AS course_name,
+	const r = await pool.request().input('year', sql.Int, year).query(`
+    SELECT t.full_name AS trainee_name, d.name AS department_name,
+           c.id AS course_id, c.name AS course_name,
            g.score, g.classification, g.result,
            att.attended, att.total_sessions
     FROM course_enrollments e
     JOIN trainees t ON t.id = e.trainee_id
     JOIN courses c ON c.id = e.course_id
+    LEFT JOIN departments d ON d.id = t.department_id
     LEFT JOIN grades g ON g.enrollment_id = e.id AND g.subject_id IS NULL
     OUTER APPLY (
       SELECT COUNT(*) AS total_sessions,
@@ -47,33 +53,10 @@ const traineeResults = async ({ course_id = undefined } = {}) => {
       LEFT JOIN attendance a ON a.session_id = cs.id AND a.enrollment_id = e.id
       WHERE cs.course_id = e.course_id
     ) att
-    WHERE ${where} AND e.status = 'approved'
-    ORDER BY c.name, t.full_name
+    WHERE e.status = 'approved' AND ${COURSE_IN_YEAR}
+    ORDER BY COALESCE(c.start_date, c.created_at), c.name, t.full_name
   `);
 	return r.recordset;
 };
 
-// 3. Thống kê tổng theo khoảng thời gian (dựa trên registered_at).
-const summary = async ({ from = undefined, to = undefined } = {}) => {
-	const pool = await getPool();
-	const req = pool.request();
-	const where = ['1=1'];
-	if (from) {
-		where.push('e.registered_at >= @from');
-		req.input('from', sql.Date, from);
-	}
-	if (to) {
-		where.push('e.registered_at <= @to');
-		req.input('to', sql.Date, to);
-	}
-	const r = await req.query(`
-    SELECT
-      (SELECT COUNT(DISTINCT course_id) FROM course_enrollments e WHERE ${where.join(' AND ')}) AS course_count,
-      (SELECT COUNT(*) FROM course_enrollments e WHERE ${where.join(' AND ')}) AS enrollment_count,
-      (SELECT COUNT(*) FROM course_enrollments e WHERE ${where.join(' AND ')} AND e.status = 'approved') AS approved_count,
-      (SELECT COUNT(*) FROM certificates c JOIN course_enrollments e ON e.id = c.enrollment_id WHERE ${where.join(' AND ')} AND c.status = 'active') AS certificate_count
-  `);
-	return r.recordset[0];
-};
-
-module.exports = { byCourseProgram, traineeResults, summary };
+module.exports = { courses, trainees };

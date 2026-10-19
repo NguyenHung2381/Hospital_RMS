@@ -24,11 +24,12 @@ const options = {
 		security: [{ bearerAuth: [] }],
 	},
 	// Tài liệu nằm ở <tên>.docs.js cạnh file route; vẫn đọc *.routes.js cho khối
-	// @swagger viết thẳng trong route. path.join để đúng đường dẫn trên mọi OS.
+	// @swagger viết thẳng trong route. glob (>= v9) chỉ nhận dấu '/', nên đổi
+	// '\' của Windows sang '/'.
 	apis: [
 		path.join(__dirname, '../modules/**/*.routes.js'),
 		path.join(__dirname, '../modules/**/*.docs.js'),
-	],
+	].map((p) => p.split(path.sep).join('/')),
 };
 
 module.exports = swaggerJsdoc(options);

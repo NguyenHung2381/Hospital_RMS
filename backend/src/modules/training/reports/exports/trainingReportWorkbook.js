@@ -1,98 +1,103 @@
 /**
- * trainingReportWorkbook.js — dựng workbook cho POST /api/v1/dashboard/training-report-export
- * 3 báo cáo Đào tạo trong 1 file nhiều sheet, cùng kiểu letterhead + bảng màu với
- * dashboard/exports/dashboardStatsWorkbook.js.
+ * trainingReportWorkbook.js — file Excel cho POST /api/v1/dashboard/training-report-export
+ * Mỗi báo cáo 1 file 1 sheet (letterhead bệnh viện + bảng), cùng kiểu với các file
+ * xuất Hội thảo/CME (utils/excelTemplate).
  */
 const ExcelJS = require('exceljs');
-const { fnt, al, headerRow, dataRow } = require('../../../../utils/excelStyle');
+const xl = require('../../../../utils/excelTemplate');
 
-const CONTENT_START = 4;
+const STATUS_LABELS = {
+	upcoming: 'Sắp khai giảng',
+	enrolling: 'Đang mở đăng ký',
+	in_progress: 'Đang học',
+	completed: 'Hoàn thành',
+	cancelled: 'Đã huỷ',
+};
+const RESULT_LABELS = { pass: 'Đạt', fail: 'Không đạt' };
 
-function sheetTitle(ws, title, lastCol) {
-	ws.mergeCells(`A1:${lastCol}1`);
-	Object.assign(ws.getCell('A1'), {
-		value: title,
-		font: fnt({ bold: true, size: 13 }),
-		alignment: al('center', true),
-	});
-	ws.getRow(1).height = 28;
-	ws.getRow(2).height = 6;
-}
+/** @param {Date|string|null} d */
+const fmtDate = (d) => (d ? new Date(d).toLocaleDateString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' }) : '');
+/** @param {number|null} n */
+const round2 = (n) => (n == null ? '' : Math.round(n * 100) / 100);
 
-const buildTrainingReportWorkbook = ({ byCourseProgram, traineeResults, summaryRow }) => {
+/**
+ * @param {'courses'|'trainees'} report
+ * @param {any[]} rows
+ * @param {number|null} year
+ */
+const buildTrainingReportWorkbook = (report, rows, year) => {
 	const wb = new ExcelJS.Workbook();
 	wb.creator = 'RMS Hospital';
 	wb.created = new Date();
+	const yearText = year ? `NĂM ${year}` : 'TẤT CẢ CÁC NĂM';
+	const subtitle = `Xuất ngày ${fmtDate(new Date())}`;
 
-	// Sheet 1: theo khóa + chương trình
-	const ws1 = wb.addWorksheet('Theo khóa - chương trình');
-	sheetTitle(ws1, 'BÁO CÁO ĐÀO TẠO THEO KHÓA HỌC & CHƯƠNG TRÌNH', 'F');
-	let cur = CONTENT_START;
-	headerRow(ws1, cur, [
-		'Khóa học',
-		'Chương trình',
-		'Tổng đăng ký',
-		'Đã duyệt',
-		'Điểm TB',
-		'Số chứng chỉ',
-	]);
-	cur++;
-	for (const row of byCourseProgram) {
-		dataRow(ws1, cur, [
-			row.course_name,
-			row.program_name,
-			row.total_enrollments,
-			row.approved_count,
-			row.avg_score != null ? Math.round(row.avg_score * 100) / 100 : '',
-			row.certificate_count,
-		]);
-		cur++;
+	if (report === 'courses') {
+		const ws = xl.buildSheet(wb, {
+			sheetName: 'Khóa học',
+			title: `TỔNG HỢP KHÓA ĐÀO TẠO ${yearText}`,
+			subtitle: `${rows.length} khóa học · ${subtitle}`,
+			letterhead: true,
+			columns: [
+				{ key: 'stt', header: 'STT', width: 6 },
+				{ key: 'name', header: 'Khóa học', width: 40 },
+				{ key: 'programs', header: 'Chương trình', width: 28 },
+				{ key: 'time', header: 'Thời gian', width: 24 },
+				{ key: 'status', header: 'Trạng thái', width: 16 },
+				{ key: 'enrollments', header: 'Đăng ký', width: 10 },
+				{ key: 'approved', header: 'Đã duyệt', width: 10 },
+				{ key: 'passed', header: 'Đạt', width: 8 },
+				{ key: 'avg_score', header: 'Điểm TB', width: 10 },
+				{ key: 'certificates', header: 'Chứng chỉ', width: 11 },
+			],
+		});
+		rows.forEach((c, i) =>
+			ws.addRow({
+				stt: i + 1,
+				name: c.name,
+				programs: c.program_names ?? '',
+				time: [fmtDate(c.start_date), fmtDate(c.end_date)].filter(Boolean).join(' – '),
+				status: STATUS_LABELS[c.status] ?? c.status,
+				enrollments: c.enrollments,
+				approved: c.approved,
+				passed: c.passed,
+				avg_score: round2(c.avg_score),
+				certificates: c.certificates,
+			}),
+		);
+		xl.styleBody(ws);
+		return wb;
 	}
-	[30, 22, 14, 12, 10, 14].forEach((w, i) => (ws1.getColumn(i + 1).width = w));
 
-	// Sheet 2: DS học viên + kết quả
-	const ws2 = wb.addWorksheet('DS học viên - kết quả');
-	sheetTitle(ws2, 'DANH SÁCH HỌC VIÊN & KẾT QUẢ HỌC TẬP', 'F');
-	cur = CONTENT_START;
-	headerRow(ws2, cur, [
-		'Học viên',
-		'Khóa học',
-		'Điểm tổng kết',
-		'Xếp loại',
-		'Kết quả',
-		'Buổi học tham dự',
-	]);
-	cur++;
-	for (const row of traineeResults) {
-		dataRow(ws2, cur, [
-			row.trainee_name,
-			row.course_name,
-			row.score ?? '',
-			row.classification ?? '',
-			row.result === 'pass' ? 'Đạt' : row.result === 'fail' ? 'Không đạt' : '',
-			row.total_sessions ? `${row.attended || 0}/${row.total_sessions}` : '',
-		]);
-		cur++;
-	}
-	[26, 26, 14, 14, 14, 16].forEach((w, i) => (ws2.getColumn(i + 1).width = w));
-
-	// Sheet 3: thống kê tổng
-	const ws3 = wb.addWorksheet('Thống kê tổng');
-	sheetTitle(ws3, 'THỐNG KÊ TỔNG HỢP ĐÀO TẠO', 'B');
-	cur = CONTENT_START;
-	headerRow(ws3, cur, ['Chỉ tiêu', 'Giá trị']);
-	cur++;
-	[
-		['Số khóa học', summaryRow.course_count],
-		['Tổng lượt đăng ký', summaryRow.enrollment_count],
-		['Đã duyệt', summaryRow.approved_count],
-		['Số chứng chỉ đã cấp', summaryRow.certificate_count],
-	].forEach((row) => {
-		dataRow(ws3, cur, row);
-		cur++;
+	const ws = xl.buildSheet(wb, {
+		sheetName: 'Kết quả học viên',
+		title: `KẾT QUẢ HỌC TẬP CỦA HỌC VIÊN ${yearText}`,
+		subtitle: `${rows.length} lượt học viên · ${subtitle}`,
+		letterhead: true,
+		columns: [
+			{ key: 'stt', header: 'STT', width: 6 },
+			{ key: 'trainee', header: 'Học viên', width: 28 },
+			{ key: 'department', header: 'Khoa/Phòng', width: 26 },
+			{ key: 'course', header: 'Khóa học', width: 36 },
+			{ key: 'score', header: 'Điểm tổng kết', width: 12 },
+			{ key: 'classification', header: 'Xếp loại', width: 12 },
+			{ key: 'result', header: 'Kết quả', width: 12 },
+			{ key: 'attendance', header: 'Chuyên cần', width: 12 },
+		],
 	});
-	ws3.getColumn(1).width = 28;
-	ws3.getColumn(2).width = 14;
+	rows.forEach((t, i) =>
+		ws.addRow({
+			stt: i + 1,
+			trainee: t.trainee_name,
+			department: t.department_name ?? '',
+			course: t.course_name,
+			score: t.score ?? '',
+			classification: t.classification ?? '',
+			result: RESULT_LABELS[t.result] ?? '',
+			attendance: t.total_sessions ? `${t.attended || 0}/${t.total_sessions}` : '',
+		}),
+	);
+	xl.styleBody(ws);
 	return wb;
 };
 

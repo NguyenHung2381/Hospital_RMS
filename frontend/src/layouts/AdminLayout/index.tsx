@@ -56,7 +56,6 @@ import { getMyTasks } from '../../features/my-tasks/api/myTasksApi';
 import { NotificationPanel } from '../../features/notifications/components/NotificationPanel';
 import { useNotifications } from '../../features/notifications/hooks/useNotifications';
 import { toNotif } from '../../features/notifications/utils/notifUtils';
-import { useActiveRounds } from '../../features/round/hooks/useActiveRounds';
 import { getTopics } from '../../features/topics/api/topicApi';
 import TwoFactorReminder from '../../shared/components/TwoFactorReminder';
 import { useModules, type ModuleKey } from '../../shared/hooks/useModules';
@@ -179,7 +178,12 @@ const NAV_GROUPS: NavGroup[] = [
 			navItem('topics', 'Đề tài nghiên cứu', TopicSvg, 'topics:read'),
 			navItem('approvals', 'Phê duyệt', ApproveSvg, 'topics:approve'),
 			navItem('councils', 'Hội đồng chấm', ClipboardCheckSvg, 'councils:read'),
-			navItem('externalReviewers', 'Người ngoài viện', UserPlusSvg, 'councils:read'),
+			navItem(
+				'externalReviewers',
+				'Người ngoài viện',
+				UserPlusSvg,
+				'councils:read',
+			),
 			// 1 trang 3 tab: Phân loại / Cấp độ / Loại đợt (trước đây là 3 mục menu).
 			navItem('categories', 'Danh mục NCKH', TagSvg, 'catalog:read'),
 		],
@@ -188,14 +192,24 @@ const NAV_GROUPS: NavGroup[] = [
 		// Luồng: nội dung → khoá học/lịch → thi → con người → danh mục.
 		section: 'Đào tạo',
 		items: [
-			navItem('trainingPrograms', 'Chương trình đào tạo', BookOpenSvg, 'training_programs:read'),
+			navItem(
+				'trainingPrograms',
+				'Chương trình đào tạo',
+				BookOpenSvg,
+				'training_programs:read',
+			),
 			navItem('lessons', 'Bài học', FileTextSvg, 'training_programs:read'),
 			navItem('courses', 'Khóa học', ClipboardCheckSvg, 'courses:read'),
 			navItem('classSchedule', 'Lịch học', CalendarSvg, 'courses:read'),
 			navItem('questionBank', 'Ngân hàng câu hỏi', HelpSvg, 'exams:manage'),
 			navItem('trainees', 'Học viên', UsersSvg, 'trainees:read'),
 			navItem('lecturers', 'Giảng viên', UserCheckSvg, 'lecturers:read'),
-			navItem('trainingCatalog', 'Danh mục đào tạo', ClipboardSvg, 'training_catalog:read'),
+			navItem(
+				'trainingCatalog',
+				'Danh mục đào tạo',
+				ClipboardSvg,
+				'training_catalog:read',
+			),
 		],
 	},
 	{
@@ -212,8 +226,18 @@ const NAV_GROUPS: NavGroup[] = [
 		items: [
 			navItem('cmeRegister', 'Sổ cấp chứng nhận', BadgeSvg, 'seminars:read'),
 			navItem('cmeRecords', 'Ghi nhận độc lập', EditSvg, 'cme_records:manage'),
-			navItem('cmeCompliance', 'Cảnh báo tín chỉ', WarnSvg, 'seminars:cme_manage'),
-			navItem('cmeCreditCatalog', 'Danh mục quy đổi tín chỉ', ListSvg, 'training_catalog:read'),
+			navItem(
+				'cmeCompliance',
+				'Cảnh báo tín chỉ',
+				WarnSvg,
+				'seminars:cme_manage',
+			),
+			navItem(
+				'cmeCreditCatalog',
+				'Danh mục quy đổi tín chỉ',
+				ListSvg,
+				'training_catalog:read',
+			),
 		],
 	},
 	{
@@ -222,8 +246,18 @@ const NAV_GROUPS: NavGroup[] = [
 		items: [
 			navItem('shifts', 'Ca làm việc', LayersSvg, 'staff_attendance:manage'),
 			navItem('shiftRoster', 'Phân ca', CalendarSvg, 'staff_attendance:roster'),
-			navItem('staffAttendance', 'Bảng chấm công', ClockSvg, 'staff_attendance:read'),
-			navItem('staffLicenses', 'Chứng chỉ hành nghề', ShieldSvg, 'staff_licenses:read'),
+			navItem(
+				'staffAttendance',
+				'Bảng chấm công',
+				ClockSvg,
+				'staff_attendance:read',
+			),
+			navItem(
+				'staffLicenses',
+				'Chứng chỉ hành nghề',
+				ShieldSvg,
+				'staff_licenses:read',
+			),
 		],
 	},
 	{
@@ -243,8 +277,18 @@ const NAV_GROUPS: NavGroup[] = [
 			navItem('venues', 'Địa điểm / Phòng họp', BuildingSvg, 'venues:read'),
 			navItem('personMerge', 'Duyệt trùng danh tính', CopySvg, 'persons:read'),
 			navItem('workflows', 'Workflow duyệt', LinkSvg, 'workflows:manage'),
-			navItem('settings', 'Cấu hình hệ thống', KeySvg, 'system_settings:manage'),
-			navItem('activityLogs', 'Nhật ký hoạt động', HistorySvg, 'activity_logs:read'),
+			navItem(
+				'settings',
+				'Cấu hình hệ thống',
+				KeySvg,
+				'system_settings:manage',
+			),
+			navItem(
+				'activityLogs',
+				'Nhật ký hoạt động',
+				HistorySvg,
+				'activity_logs:read',
+			),
 		],
 	},
 ];
@@ -303,9 +347,9 @@ export default function AdminLayout({
 				.filter((it) => modules[moduleOf(g.section, it.key)] === false)
 				.map((it) => KEY_TO_PATH[it.key]),
 		),
-		...DASHBOARD_TABS.filter((t) => t.module && modules[t.module] === false).map(
-			(t) => t.to,
-		),
+		...DASHBOARD_TABS.filter(
+			(t) => t.module && modules[t.module] === false,
+		).map((t) => t.to),
 	].some(
 		(p) =>
 			p && (location.pathname === p || location.pathname.startsWith(`${p}/`)),
@@ -318,18 +362,13 @@ export default function AdminLayout({
 		PATH_TO_KEY[location.pathname.replace(/\/[^/]+$/, '')] ??
 		'dashboard';
 
-	// ── Chỉ báo đợt nghiên cứu đang mở (topbar) ──
-	const activeRounds = useActiveRounds(
-		has('rounds:read') && modules.research !== false,
-	);
-	const roundLabel =
-		activeRounds.length > 1
-			? `${activeRounds.length} đợt đang mở`
-			: activeRounds[0]
-				? activeRounds[0].name.includes(String(activeRounds[0].year))
-					? activeRounds[0].name
-					: `${activeRounds[0].name} — ${activeRounds[0].year}`
-				: null;
+	// ── Ngày hôm nay (topbar) ──
+	const todayLabel = new Date().toLocaleDateString('vi-VN', {
+		weekday: 'long',
+		day: '2-digit',
+		month: '2-digit',
+		year: 'numeric',
+	});
 
 	// ── Sidebar collapsed state (persist) ───
 	const [collapsed, setCollapsed] = useState<boolean>(() => {
@@ -649,21 +688,12 @@ export default function AdminLayout({
 					</div>
 
 					<div className={styles.topbarRight}>
-						{/* Đợt nghiên cứu đang mở (ẩn khi không có đợt nào) */}
-						{roundLabel && (
-							<>
-								<button
-									type='button'
-									className={styles.roundIndicator}
-									title={activeRounds.map((r) => r.name).join('\n')}
-									onClick={() => navigate(KEY_TO_PATH.rounds)}
-								>
-									<span className={styles.roundDot} />
-									{roundLabel}
-								</button>
-								<div className={styles.topbarDivider} />
-							</>
-						)}
+						{/* Ngày hôm nay */}
+						<span className={styles.roundIndicator}>
+							<span className={styles.roundDot} />
+							{todayLabel}
+						</span>
+						<div className={styles.topbarDivider} />
 
 						{/* Notification */}
 						<NotificationPanel

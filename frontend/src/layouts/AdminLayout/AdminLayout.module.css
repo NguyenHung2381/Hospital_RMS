@@ -582,7 +582,6 @@
 	color: var(--color-primary-dark);
 	white-space: nowrap;
 	font-family: inherit;
-	cursor: pointer;
 }
 
 .roundDot {

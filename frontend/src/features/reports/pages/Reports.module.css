@@ -1,850 +1,197 @@
-/* ── Tab Bar ──────────────────────────── */
-.tabBar {
-	display: flex;
-	gap: 4px;
-	background: var(--color-gray-100);
-	border-radius: var(--radius-xl);
-	padding: 4px;
-	margin-bottom: var(--space-5);
-	width: fit-content;
-}
-.tab {
-	display: inline-flex;
-	align-items: center;
-	gap: var(--space-2);
-	padding: 7px 16px;
-	border: none;
-	border-radius: var(--radius-lg);
-	background: transparent;
-	font-family: var(--font-body);
-	font-size: var(--font-size-sm);
-	font-weight: var(--font-weight-medium);
-	color: var(--color-gray-500);
-	cursor: pointer;
-	transition: all var(--transition-fast);
-}
-.tab:hover {
-	color: var(--color-gray-700);
-}
-.tabActive {
-	display: inline-flex;
-	align-items: center;
-	gap: var(--space-2);
-	padding: 7px 16px;
-	border: none;
-	border-radius: var(--radius-lg);
-	background: var(--color-white);
-	font-family: var(--font-body);
-	font-size: var(--font-size-sm);
-	font-weight: var(--font-weight-semibold);
-	color: var(--color-gray-800);
-	cursor: pointer;
-	box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
-	transition: all var(--transition-fast);
-}
+/* Trang Báo cáo: thanh chọn mảng + năm → chỉ số trong năm → các thẻ báo cáo xuất file.
+   Nút, ô nhập, thẻ, chỉ số đều lấy từ bộ dùng chung (composes / component). */
 
-/* ── Stats Panel ──────────────────────── */
-.statsState {
+.toolbar {
 	display: flex;
 	align-items: center;
-	gap: var(--space-2);
-	padding: 60px var(--space-5);
-	justify-content: center;
-	color: var(--color-gray-400);
-	font-size: var(--font-size-sm);
-}
-.statsErr {
-	color: #b91c1c;
-}
-.retryBtn {
-	display: inline-flex;
-	align-items: center;
-	gap: 5px;
-	margin-left: var(--space-3);
-	padding: 4px 10px;
-	border: 1px solid currentColor;
-	border-radius: var(--radius-md);
-	background: transparent;
-	font-family: var(--font-body);
-	font-size: var(--font-size-xs);
-	cursor: pointer;
-	opacity: 0.8;
-}
-.retryBtn:hover {
-	opacity: 1;
-}
-
-.statsRoot {
-	display: flex;
-	flex-direction: column;
-	gap: var(--space-6);
-}
-
-/* Section grouping */
-.statsSection {
-	display: flex;
-	flex-direction: column;
-	gap: var(--space-4);
-}
-.statsSectionHead {
-	display: flex;
-	align-items: baseline;
-	gap: var(--space-2);
-}
-.statsSectionTitle {
-	font-size: var(--font-size-base);
-	font-weight: var(--font-weight-bold);
-	color: var(--color-gray-800);
-}
-.statsSectionSub {
-	font-size: var(--font-size-xs);
-	color: var(--color-gray-400);
-}
-
-.tongQuanRow {
-	display: grid;
-	grid-template-columns: 1fr 1fr 1fr;
-	gap: var(--space-4);
-	align-items: stretch;
-}
-@media (max-width: 1300px) {
-	.tongQuanRow {
-		grid-template-columns: 1fr 1fr;
-	}
-}
-@media (max-width: 700px) {
-	.tongQuanRow {
-		grid-template-columns: 1fr;
-	}
-}
-
-.completionCard {
-	background: var(--color-white);
-	border: 1px solid var(--color-gray-200);
-	border-radius: var(--radius-xl);
-	padding: var(--space-5) var(--space-6);
-	display: flex;
-	flex-direction: column;
-	justify-content: center;
-	gap: var(--space-2);
-}
-.completionValue {
-	font-size: var(--font-size-4xl);
-	font-weight: var(--font-weight-bold);
-	color: var(--color-primary-dark);
-	line-height: 1;
-	margin: 2px 0;
-}
-.completionLabel {
-	font-size: var(--font-size-base);
-	font-weight: var(--font-weight-bold);
-	color: var(--color-gray-800);
-}
-.completionSub {
-	font-size: var(--font-size-xs);
-	color: var(--color-gray-400);
-}
-.completionBreakdown {
-	display: flex;
-	flex-wrap: wrap;
-	gap: 6px 14px;
-	margin-top: var(--space-2);
-}
-.completionBreakdownItem {
-	display: flex;
-	align-items: center;
-	gap: 5px;
-	font-size: var(--font-size-xs);
-	color: var(--color-gray-600);
-}
-.completionDot {
-	width: 8px;
-	height: 8px;
-	border-radius: 50%;
-	flex-shrink: 0;
-}
-
-/* Overview cards */
-.overviewGrid {
-	display: grid;
-	grid-template-columns: repeat(6, 1fr);
-	gap: var(--space-4);
-}
-.statCard {
-	background: var(--color-white);
-	border: 1px solid var(--color-gray-200);
-	border-radius: var(--radius-xl);
-	padding: var(--space-4) var(--space-5);
-	display: flex;
-	flex-direction: column;
-	gap: 4px;
-}
-.statValue {
-	font-size: var(--font-size-3xl);
-	font-weight: var(--font-weight-bold);
-	line-height: 1;
-}
-.statLabel {
-	font-size: var(--font-size-xs);
-	color: var(--color-gray-500);
-	font-weight: var(--font-weight-medium);
-}
-
-.scTotal {
-	border-left: 4px solid #6366f1;
-}
-.scTotal .statValue {
-	color: #6366f1;
-}
-.scApproved {
-	border-left: 4px solid var(--color-primary);
-}
-.scApproved .statValue {
-	color: var(--color-primary-dark);
-}
-.scSubmitted {
-	border-left: 4px solid #f59e0b;
-}
-.scSubmitted .statValue {
-	color: #b45309;
-}
-.scCompleted {
-	border-left: 4px solid #06b6d4;
-}
-.scCompleted .statValue {
-	color: #0e7490;
-}
-.scRejected {
-	border-left: 4px solid #ef4444;
-}
-.scRejected .statValue {
-	color: #b91c1c;
-}
-.scDraft {
-	border-left: 4px solid var(--color-gray-300);
-}
-.scDraft .statValue {
-	color: var(--color-gray-500);
-}
-
-/* Theo phân hệ (đề tài NCKH vs bài báo) */
-.phanHeGrid {
-	display: grid;
-	grid-template-columns: repeat(2, 1fr);
-	gap: var(--space-4);
-}
-
-/* Main stats grid */
-.statsMainGrid {
-	display: grid;
-	grid-template-columns: 1fr 320px;
-	gap: var(--space-4);
-}
-
-.statsCard {
-	background: var(--color-white);
-	border: 1px solid var(--color-gray-200);
-	border-radius: var(--radius-xl);
-	overflow: hidden;
-}
-.statsCardHead {
-	padding: var(--space-3) var(--space-5);
-	font-size: var(--font-size-2xs);
-	font-weight: var(--font-weight-semibold);
-	color: var(--color-gray-500);
-	text-transform: uppercase;
-	letter-spacing: 0.5px;
-	border-bottom: 1px solid var(--color-gray-100);
-	background: var(--color-gray-50);
-}
-.statsCardBody {
-	padding: var(--space-4) var(--space-5);
-}
-.statsEmpty {
-	font-size: var(--font-size-compact);
-	color: var(--color-gray-400);
-	text-align: center;
-	padding: var(--space-6) 0;
-}
-
-/* Department table */
-.deptTable {
-	width: 100%;
-	table-layout: fixed;
-	border-collapse: collapse;
-}
-.dtTh {
-	composes: th from '../../../shared/components/Table/Table.module.css';
-}
-.dtThIdx {
-	composes: thIdx from '../../../shared/components/Table/Table.module.css';
-}
-.dtIdx {
-	composes: tdIdx from '../../../shared/components/Table/Table.module.css';
-}
-.dtThName {
-	width: 20%;
-}
-.dtThNum {
-	width: 7%;
-	text-align: right;
-}
-.dtThRate {
-	width: 14%;
-}
-.dtThStatus {
-	width: 20%;
-}
-.dtRow {
-	composes: tr from '../../../shared/components/Table/Table.module.css';
-}
-.dtTd {
-	composes: td from '../../../shared/components/Table/Table.module.css';
-}
-.dtNum {
-	text-align: right;
-	font-variant-numeric: tabular-nums;
-}
-.rateCell {
-	display: flex;
-	align-items: center;
-	gap: var(--space-2);
-}
-.rateCell .barTrack {
-	max-width: 120px;
-}
-.rateText {
-	font-size: var(--font-size-xs);
-	font-weight: var(--font-weight-semibold);
-	color: var(--color-gray-600);
-	white-space: nowrap;
-	font-variant-numeric: tabular-nums;
-	min-width: 30px;
-	text-align: right;
-}
-
-/* Bar track (used in table and bar lists) */
-.barTrack {
-	height: 6px;
-	background: var(--color-gray-100);
-	border-radius: 999px;
-	overflow: hidden;
-	flex: 1;
-	min-width: 60px;
-}
-.barFill {
-	height: 100%;
-	background: var(--color-primary);
-	border-radius: 999px;
-	min-width: 4px;
-	transition: width 0.4s ease;
-}
-
-/* Bar list (category / level) */
-.barList {
-	list-style: none;
-	display: flex;
-	flex-direction: column;
-	gap: var(--space-3);
-}
-.barItem {
-	display: flex;
-	flex-direction: column;
-	gap: 5px;
-}
-.barMeta {
-	display: flex;
 	justify-content: space-between;
-	align-items: baseline;
-}
-.barName {
-	font-size: var(--font-size-compact);
-	color: var(--color-gray-700);
-}
-.barCount {
-	font-size: var(--font-size-xs);
-	font-weight: var(--font-weight-semibold);
-	color: var(--color-gray-500);
-}
-
-/* Recent approvals */
-.approvalList {
-	list-style: none;
-	display: flex;
-	flex-direction: column;
-}
-.approvalItem {
-	display: flex;
-	align-items: center;
 	gap: var(--space-3);
-	padding: 10px 0;
-	border-bottom: 1px solid var(--color-gray-50);
-}
-.approvalItem:last-child {
-	border-bottom: none;
-}
-/* Badge duyệt/từ chối: dùng <Badge tone> ở @/shared/components */
-.approvalTitle {
-	flex: 1;
-	min-width: 0;
-	font-size: var(--font-size-compact);
-	color: var(--color-gray-700);
-	overflow: hidden;
-	text-overflow: ellipsis;
-	white-space: nowrap;
-}
-.approvalMeta {
-	font-size: var(--font-size-2xs);
-	color: var(--color-gray-400);
-	white-space: nowrap;
-	flex-shrink: 0;
-}
-
-/* ── Filter Panel ──────────────────────── */
-.filterPanel {
-	background: var(--color-white);
-	border: 1px solid var(--color-gray-200);
-	border-radius: var(--radius-xl);
-	padding: var(--space-5);
-	margin-bottom: var(--space-5);
-}
-.filterHead {
-	display: flex;
-	align-items: center;
-	gap: var(--space-2);
-	margin-bottom: var(--space-4);
-	color: var(--color-primary);
-}
-.filterHeadTitle {
-	font-size: var(--font-size-sm);
-	font-weight: var(--font-weight-semibold);
-	color: var(--color-gray-700);
-}
-.filterGrid {
-	display: grid;
-	grid-template-columns: 90px 1fr 1fr 1fr;
-	gap: var(--space-4);
-}
-.fg {
-	display: flex;
-	flex-direction: column;
-	gap: 5px;
-}
-.fl {
-	font-size: var(--font-size-2xs);
-	font-weight: var(--font-weight-semibold);
-	color: var(--color-gray-500);
-	text-transform: uppercase;
-	letter-spacing: 0.4px;
-}
-.fi {
-	padding: var(--space-2) var(--space-3);
-	border: 1.5px solid var(--color-gray-200);
-	border-radius: var(--radius-lg);
-	font-family: var(--font-body);
-	font-size: var(--font-size-sm);
-	color: var(--color-gray-800);
-	background: var(--color-gray-50);
-	outline: none;
-	transition:
-		border-color var(--transition-fast),
-		background var(--transition-fast);
-}
-.fi:focus {
-	border-color: var(--color-primary);
-	background: var(--color-white);
-	box-shadow: 0 0 0 3px rgba(10, 155, 74, 0.1);
-}
-.fiTextarea {
-	resize: vertical;
-	line-height: 1.5;
-}
-.filterFoot {
-	margin-top: var(--space-3);
-	padding-top: var(--space-3);
-	border-top: 1px solid var(--color-gray-100);
-}
-.countText {
-	font-size: var(--font-size-compact);
-	color: var(--color-gray-500);
-}
-.countLoading {
-	display: flex;
-	align-items: center;
-	gap: var(--space-2);
-	font-size: var(--font-size-compact);
-	color: var(--color-gray-400);
-}
-.dotSpin {
-	display: inline-block;
-	width: 11px;
-	height: 11px;
-	border: 2px solid var(--color-gray-200);
-	border-top-color: var(--color-primary);
-	border-radius: 50%;
-	animation: spin 0.7s linear infinite;
-}
-
-/* ── Report Type Selector ──────────────── */
-.typeRow {
-	display: grid;
-	grid-template-columns: repeat(3, 1fr);
-	gap: var(--space-4);
-	margin-bottom: var(--space-5);
-}
-.typeBtn {
-	background: var(--color-white);
-	border: 2px solid var(--color-gray-200);
-	border-radius: var(--radius-xl);
-	padding: var(--space-4) var(--space-5);
-	display: flex;
-	align-items: flex-start;
-	gap: var(--space-3);
-	cursor: pointer;
-	text-align: left;
-	transition: all var(--transition-fast);
-	position: relative;
-}
-.typeBtn:hover {
-	border-color: var(--color-gray-300);
-	box-shadow: 0 2px 10px rgba(0, 0, 0, 0.06);
-}
-
-.typeBtnActive_green {
-	border-color: var(--color-primary);
-	background: #f0fdf4;
-}
-.typeBtnActive_blue {
-	border-color: #378add;
-	background: #eff6ff;
-}
-.typeBtnActive_amber {
-	border-color: #ef9f27;
-	background: #fffbeb;
-}
-
-.typeIcon {
-	width: 38px;
-	height: 38px;
-	border-radius: var(--radius-xl);
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	flex-shrink: 0;
-}
-.typeIcon svg {
-	width: 18px;
-	height: 18px;
-}
-.typeIcon_green {
-	background: var(--color-primary-pale);
-	color: var(--color-primary-dark);
-}
-.typeIcon_blue {
-	background: #e6f1fb;
-	color: #0c447c;
-}
-.typeIcon_amber {
-	background: #faeeda;
-	color: #633806;
-}
-
-.typeMeta {
-	flex: 1;
-	min-width: 0;
-}
-.typeLabel {
-	font-size: var(--font-size-sm);
-	font-weight: var(--font-weight-bold);
-	color: var(--color-gray-800);
-	margin-bottom: 3px;
-}
-.typeDesc {
-	font-size: var(--font-size-xs);
-	color: var(--color-gray-500);
-	line-height: 1.4;
-}
-
-.typeCheck {
-	width: 20px;
-	height: 20px;
-	border-radius: 50%;
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	flex-shrink: 0;
-	align-self: center;
-}
-.typeCheck_green {
-	background: var(--color-primary);
-	color: #fff;
-}
-.typeCheck_blue {
-	background: #378add;
-	color: #fff;
-}
-.typeCheck_amber {
-	background: #ef9f27;
-	color: #fff;
-}
-
-/* ── Options Panel ─────────────────────── */
-.optPanel {
-	background: var(--color-white);
-	border: 1px solid var(--color-gray-200);
-	border-radius: var(--radius-xl);
-	overflow: hidden;
-}
-.optHead {
-	padding: var(--space-4) var(--space-5);
-	border-bottom: 1px solid var(--color-gray-100);
-}
-.optHeadTitle {
-	font-size: var(--font-size-sm);
-	font-weight: var(--font-weight-bold);
-	color: var(--color-gray-700);
-}
-.optBody {
-	padding: var(--space-5);
-}
-.optSection {
-	display: flex;
-	flex-direction: column;
-}
-.optSectionLabel {
-	font-size: var(--font-size-2xs);
-	font-weight: var(--font-weight-semibold);
-	color: var(--color-gray-500);
-	text-transform: uppercase;
-	letter-spacing: 0.5px;
-	margin-bottom: var(--space-3);
-}
-
-/* Column checkboxes grid */
-.checkGrid {
-	display: flex;
 	flex-wrap: wrap;
+	margin-bottom: var(--space-5);
+}
+
+.areaTabs {
+	composes: dashTabs from '../../dashboard/pages/Dashboard.module.css';
+}
+.areaTab {
+	composes: dashTab from '../../dashboard/pages/Dashboard.module.css';
+	border: none;
+	background: none;
+	cursor: pointer;
+	font-family: var(--font-body);
+}
+.areaTabActive {
+	composes: dashTabActive from '../../dashboard/pages/Dashboard.module.css';
+}
+
+.yearField {
+	display: flex;
+	align-items: center;
+	gap: var(--space-2);
+	font-size: var(--font-size-sm);
+	color: var(--color-gray-600);
+	font-weight: var(--font-weight-medium);
+}
+.select {
+	composes: formInput from '@/shared/components/Modal/Modal.module.css';
+	width: auto;
+	min-width: 0;
+}
+.yearField .select {
+	width: 110px;
+}
+
+.section {
+	display: flex;
+	flex-direction: column;
+	gap: var(--space-5);
+}
+
+.sectionHead {
+	display: flex;
+	align-items: baseline;
+	justify-content: space-between;
+	gap: var(--space-3);
+	flex-wrap: wrap;
+}
+.sectionTitle {
+	font-size: var(--font-size-base);
+	font-weight: var(--font-weight-bold);
+	color: var(--color-gray-800);
+}
+.sectionLink {
+	font-size: var(--font-size-sm);
+	color: var(--color-primary);
+	text-decoration: none;
+	font-weight: var(--font-weight-medium);
+}
+.sectionLink:hover {
+	text-decoration: underline;
+}
+
+/* Bộ lọc riêng của NCKH (đợt / khoa / trạng thái) */
+.filters {
+	display: grid;
+	grid-template-columns: repeat(3, minmax(0, 1fr)) auto;
+	gap: var(--space-3);
+	align-items: end;
+}
+.filters .select {
+	width: 100%;
+}
+.count {
+	font-size: var(--font-size-sm);
+	color: var(--color-gray-500);
+	white-space: nowrap;
+	padding-bottom: 10px;
+}
+.count strong {
+	color: var(--color-gray-800);
+}
+
+.cards {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+	gap: var(--space-4);
+}
+.card {
+	display: flex;
+	flex-direction: column;
+}
+.cardBody {
+	display: flex;
+	flex-direction: column;
+	gap: var(--space-4);
+	flex: 1;
+	padding: var(--space-4) var(--space-6) var(--space-5);
+}
+.cardDesc {
+	font-size: var(--font-size-sm);
+	color: var(--color-gray-500);
+	line-height: 1.5;
+	flex: 1;
+}
+.cardActions {
+	display: flex;
+	gap: var(--space-2);
+	flex-wrap: wrap;
+}
+
+.error {
+	font-size: var(--font-size-sm);
+	color: var(--color-red-600);
+}
+
+/* Danh sách tích chọn trong hộp thoại tùy chọn */
+.checkList {
+	display: flex;
+	flex-direction: column;
 	gap: var(--space-2);
 }
 .checkItem {
 	display: flex;
-	align-items: center;
-	gap: 7px;
-	padding: 6px 12px;
+	align-items: flex-start;
+	gap: var(--space-3);
+	padding: var(--space-3);
 	border: 1.5px solid var(--color-gray-200);
-	border-radius: var(--radius-full);
+	border-radius: var(--radius-lg);
 	cursor: pointer;
-	font-size: var(--font-size-xs);
-	color: var(--color-gray-600);
-	transition: all var(--transition-fast);
-	user-select: none;
+	font-size: var(--font-size-sm);
+	color: var(--color-gray-700);
 }
-.checkItem:hover {
-	border-color: var(--color-gray-300);
-	background: var(--color-gray-50);
-}
-.checkItemOn {
+.checkItem:has(input:checked) {
 	border-color: var(--color-primary);
-	background: #f0fdf4;
-	color: var(--color-primary-dark);
+	background: #f1faf5;
 }
-.checkInput {
-	display: none;
-}
-.checkBox {
-	width: 15px;
-	height: 15px;
-	border: 1.5px solid var(--color-gray-300);
-	border-radius: 4px;
-	display: flex;
-	align-items: center;
-	justify-content: center;
+.checkItem input {
+	margin-top: 2px;
+	accent-color: var(--color-primary);
+	width: 16px;
+	height: 16px;
 	flex-shrink: 0;
-	transition: all var(--transition-fast);
 }
-.checkItemOn .checkBox {
-	background: var(--color-primary);
-	border-color: var(--color-primary);
-	color: #fff;
-}
-.checkLabel {
-	font-weight: 500;
-}
-
-/* Schedule form */
-.scheduleGrid {
-	display: grid;
-	grid-template-columns: 1fr 1fr;
-	gap: var(--space-3);
-}
-.fgFull {
-	grid-column: 1 / -1;
-}
-.hint {
-	font-weight: 400;
-	text-transform: none;
-	letter-spacing: 0;
-	color: var(--color-gray-400);
+.checkHint {
+	display: block;
 	font-size: var(--font-size-2xs);
-}
-.fileRow {
-	display: flex;
-	align-items: center;
-	gap: var(--space-2);
-}
-.fileExt {
-	font-size: var(--font-size-xs);
 	color: var(--color-gray-400);
-	white-space: nowrap;
-	font-weight: 500;
+	margin-top: 2px;
 }
-
-/* Final sections */
-.sectionChecks {
-	display: flex;
-	flex-direction: column;
+.checkGrid {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
 	gap: var(--space-2);
 }
-.sectionCheck {
-	display: flex;
-	align-items: center;
-	gap: 10px;
-	padding: var(--space-3) var(--space-4);
-	border: 1.5px solid var(--color-gray-200);
-	border-radius: var(--radius-lg);
-	cursor: pointer;
-	transition: all var(--transition-fast);
-	user-select: none;
-}
-.sectionCheck:hover {
-	border-color: var(--color-gray-300);
-	background: var(--color-gray-50);
-}
-.sectionCheckOn {
-	border-color: var(--color-primary);
-	background: #f0fdf4;
-}
-.sectionCheckLabel {
-	font-size: var(--font-size-compact);
-	font-weight: var(--font-weight-medium);
-	color: var(--color-gray-700);
-}
-.sectionCheckOn .sectionCheckLabel {
-	color: var(--color-primary-dark);
-}
 
-/* ── Action Bar ────────────────────────── */
-.actionBar {
-	padding: var(--space-4) var(--space-5);
-	border-top: 1px solid var(--color-gray-100);
-	display: flex;
-	align-items: center;
-	justify-content: space-between;
-	gap: var(--space-4);
-	flex-wrap: wrap;
-}
-.fmtToggle {
-	display: flex;
-	align-items: center;
-	gap: var(--space-2);
-}
-.fmtLabel {
-	font-size: var(--font-size-compact);
-	color: var(--color-gray-500);
-	font-weight: 500;
-}
-.fmtBtn {
-	display: inline-flex;
-	align-items: center;
-	gap: 5px;
-	padding: 6px 14px;
-	border: 1.5px solid var(--color-gray-200);
-	border-radius: var(--radius-lg);
-	background: var(--color-white);
-	font-family: var(--font-body);
-	font-size: var(--font-size-compact);
-	font-weight: var(--font-weight-semibold);
-	color: var(--color-gray-500);
-	cursor: pointer;
-	transition: all var(--transition-fast);
-}
-.fmtBtn:hover {
-	border-color: var(--color-gray-300);
-	color: var(--color-gray-700);
-}
-.fmtBtnActive {
-	border-color: var(--color-primary);
-	background: #f0fdf4;
-	color: var(--color-primary-dark);
-}
-.actionRight {
-	display: flex;
-	align-items: center;
-	gap: var(--space-3);
-}
-.errMsg {
-	font-size: var(--font-size-xs);
-	color: #b91c1c;
-	display: flex;
-	align-items: center;
-}
-.btnExport {
-	composes: btn primary from '@/shared/components/Button/Button.module.css';
-}
-
-/* ── Spinner ───────────────────────────── */
-.spinner {
-	display: inline-block;
-	width: 13px;
-	height: 13px;
-	border: 2px solid rgba(255, 255, 255, 0.4);
-	border-top-color: #fff;
-	border-radius: 50%;
-	animation: spin 0.7s linear infinite;
-}
-
-/* ── Responsive ────────────────────────── */
-@media (max-width: 960px) {
-	.typeRow {
-		grid-template-columns: 1fr;
-	}
-	.scheduleGrid {
-		grid-template-columns: 1fr;
-	}
-}
 @media (max-width: 768px) {
-	.filterGrid {
-		grid-template-columns: 1fr 1fr;
+	.filters {
+		grid-template-columns: 1fr;
 	}
-	.actionBar {
+	.count {
+		padding-bottom: 0;
+	}
+}
+
+@media (max-width: 560px) {
+	.toolbar {
 		flex-direction: column;
 		align-items: stretch;
 	}
-	.actionRight {
-		justify-content: flex-end;
+	.areaTabs {
+		flex-wrap: nowrap;
+		overflow-x: auto;
+		width: 100%;
 	}
-}
-@media (max-width: 480px) {
-	.filterGrid {
+	.yearField .select {
+		flex: 1;
+		width: auto;
+	}
+	.cards {
 		grid-template-columns: 1fr;
 	}
-}
-@media (max-width: 1100px) {
-	.overviewGrid {
-		grid-template-columns: repeat(3, 1fr);
+	.cardBody {
+		padding: var(--space-4);
 	}
-	.statsMainGrid {
+	.checkGrid {
 		grid-template-columns: 1fr;
-	}
-}
-@media (max-width: 640px) {
-	.overviewGrid {
-		grid-template-columns: repeat(2, 1fr);
-	}
-}
-
-@keyframes spin {
-	to {
-		transform: rotate(360deg);
 	}
 }

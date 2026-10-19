@@ -244,7 +244,7 @@ const checkInSelf = async (token, deviceId, actor) => {
           AND checkin_device_id = @device_id AND (user_id IS NULL OR user_id <> @user_id)
       ) THEN 1 ELSE 0 END;
       IF @device_taken = 0
-        UPDATE seminar_participants SET checked_in_at = GETDATE(), checkin_device_id = @device_id
+        UPDATE seminar_participants SET checked_in_at = GETUTCDATE(), checkin_device_id = @device_id
         WHERE seminar_id = @seminar_id AND user_id = @user_id;
       SELECT id, @device_taken AS device_taken
       FROM seminar_participants WHERE seminar_id = @seminar_id AND user_id = @user_id;

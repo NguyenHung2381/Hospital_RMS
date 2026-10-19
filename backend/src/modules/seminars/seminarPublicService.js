@@ -329,6 +329,8 @@ const submitTest = async (code, answers) => {
 
 // Ban tổ chức quét vé QR của người tham dự. Quét lại người đã điểm danh thì
 // giữ giờ cũ, báo `already` để màn quét hiện cảnh báo.
+// checked_in_at lưu giờ UTC (GETUTCDATE): driver mssql đọc DATETIME như UTC,
+// GETDATE() là giờ VN của máy CSDL → FE hiển thị lệch +7 giờ.
 const checkInTicket = async (seminarId, code, actorId) => {
 	const pool = await getPool();
 	const r = await pool
@@ -342,7 +344,7 @@ const checkInTicket = async (seminarId, code, actorId) => {
       IF @pid IS NOT NULL AND @psid = @sid AND @prev IS NULL
       BEGIN
         EXEC sp_set_actor @actor_id;
-        UPDATE seminar_participants SET checked_in_at = GETDATE() WHERE id = @pid;
+        UPDATE seminar_participants SET checked_in_at = GETUTCDATE() WHERE id = @pid;
       END
       SELECT p.id, p.seminar_id, p.title_prefix, p.full_name, p.organization, p.checked_in_at,
              CAST(CASE WHEN @prev IS NULL THEN 0 ELSE 1 END AS BIT) AS already

@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router-dom';
 import { CheckSvg, ChevLSvg, XSvg } from '@/assets/icons';
 import { QrScanner } from '@/shared/components/QrScanner';
 import { InlineLoading } from '../../../shared/components/Loading';
+import { formatTimeVN } from '@/shared/utils/formatDate';
 import { seminarWhen } from '../../public/utils/seminarWhen';
 import { checkInTicket, getSeminars, type TicketCheckIn } from '../api/seminarApi';
 import { useSeminarDetail } from '../hooks/useSeminarDetail';
@@ -148,7 +149,7 @@ function Scanner({ id }: { id: string }) {
 								{latest.row.organization && <div>{latest.row.organization}</div>}
 								<div>
 									{latest.row.already
-										? `Đã điểm danh trước đó lúc ${new Date(latest.row.checked_in_at).toLocaleTimeString('vi-VN')}`
+										? `Đã điểm danh trước đó lúc ${formatTimeVN(latest.row.checked_in_at)}`
 										: 'Điểm danh thành công'}
 								</div>
 							</>

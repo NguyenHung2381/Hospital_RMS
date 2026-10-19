@@ -108,8 +108,11 @@ GET    /api/v1/courses/sessions/:sessionId/attendance-qr  courses:update
 GET    /api/v1/courses/sessions/calendar  courses:read
 GET    /api/v1/courses/staff-candidates  courses:create
 POST   /api/v1/csp-report/  public
+POST   /api/v1/dashboard/cme-report-export  reports:read
 POST   /api/v1/dashboard/export-stats  reports:read
 GET    /api/v1/dashboard/overview  reports:read
+GET    /api/v1/dashboard/seminar-report  reports:read
+POST   /api/v1/dashboard/seminar-report-export  reports:read
 GET    /api/v1/dashboard/seminar-stats  reports:read
 GET    /api/v1/dashboard/stats  reports:read
 GET    /api/v1/dashboard/training-report  reports:read

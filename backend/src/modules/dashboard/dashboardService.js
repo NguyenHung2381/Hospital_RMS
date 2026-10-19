@@ -1,17 +1,28 @@
-const { getPool } = require('../../config/db');
+const { getPool, sql } = require('../../config/db');
 const { remember } = require('../../utils/cache');
 
 // TTL 90s: đủ ngắn để dashboard không lệch số liệu quá lâu sau khi có đề tài
 // mới/duyệt, đủ dài để tránh chạy lại chuỗi query aggregate nặng này mỗi lần
 // ai đó mở trang Dashboard.
-const getStats = async () =>
-	remember('dash:stats', 90, async () => {
+// year = năm của đợt nghiên cứu (như bộ lọc "Năm" của danh sách đề tài); null = mọi năm.
+/** @param {number|null} [year] */
+const getStats = async (year = null) =>
+	remember(`dash:stats:${year ?? 'all'}`, 90, async () => {
 		const pool = await getPool();
 
-		const result = await pool.request().query(`
+		const result = await pool.request().input('year', sql.Int, year).query(`
+    -- Tập đề tài của năm đang xem — mọi truy vấn bên dưới đọc từ #t thay vì topics
+    DROP TABLE IF EXISTS #t;
+    SELECT t.id, t.title, t.status, t.department_id, t.category_id, t.level_id,
+           t.article_type, t.round_id, t.council_id, t.created_at
+    INTO #t
+    FROM topics t
+    LEFT JOIN research_rounds r ON r.id = t.round_id
+    WHERE @year IS NULL OR r.year = @year;
+
     -- Overview counts by status
     SELECT status, COUNT(*) AS cnt
-    FROM topics
+    FROM #t
     GROUP BY status;
 
     -- Topics by department: article_type + status + category breakdown (for full dept stats table)
@@ -22,26 +33,26 @@ const getStats = async () =>
       t.status,
       ISNULL(c.name, N'Chưa xác định') AS category_name,
       COUNT(t.id) AS cnt
-    FROM topics t
+    FROM #t t
     LEFT JOIN departments d ON d.id = t.department_id
     LEFT JOIN categories c ON c.id = t.category_id
     GROUP BY d.name, d.specialty_group, t.article_type, t.status, c.name;
 
     -- Overall totals by article_type (đề tài NCKH vs bài báo/tập san)
     SELECT t.article_type, COUNT(t.id) AS cnt
-    FROM topics t
+    FROM #t t
     GROUP BY t.article_type;
 
     -- Topics by category
     SELECT c.name AS name, COUNT(t.id) AS cnt
-    FROM topics t
+    FROM #t t
     LEFT JOIN categories c ON c.id = t.category_id
     GROUP BY c.name
     ORDER BY cnt DESC;
 
     -- Topics by level
     SELECT l.name AS name, COUNT(t.id) AS cnt
-    FROM topics t
+    FROM #t t
     LEFT JOIN levels l ON l.id = t.level_id
     GROUP BY l.name
     ORDER BY cnt DESC;
@@ -51,7 +62,7 @@ const getStats = async () =>
       CAST(r.year AS VARCHAR(4)) AS year,
       ISNULL(c.name, N'Chưa phân loại') AS category_name,
       COUNT(*) AS cnt
-    FROM topics t
+    FROM #t t
     LEFT JOIN research_rounds r ON r.id = t.round_id
     LEFT JOIN categories c ON c.id = t.category_id
     WHERE r.year IS NOT NULL
@@ -72,20 +83,20 @@ const getStats = async () =>
       COALESCE(a.updated_at, a.created_at) AS created_at,
       u.full_name AS approver_name
     FROM approvals a
-    INNER JOIN topics t ON t.id = a.topic_id
+    INNER JOIN #t t ON t.id = a.topic_id
     LEFT JOIN users u ON u.id = COALESCE(a.updated_by, a.created_by)
     WHERE t.status IN ('approved', 'rejected', 'supplement')
     ORDER BY COALESCE(a.updated_at, a.created_at) DESC;
 
     -- Council progress-review completion: expected = mỗi ghế hội đồng × mỗi đề tài của hội đồng đó
     SELECT
-      (SELECT COUNT(*) FROM council_members cm INNER JOIN topics t ON t.council_id = cm.council_id) AS expected,
-      (SELECT COUNT(*) FROM council_progress_reviews pr INNER JOIN topics t ON t.id = pr.topic_id WHERE pr.progress_percent IS NOT NULL) AS completed;
+      (SELECT COUNT(*) FROM council_members cm INNER JOIN #t t ON t.council_id = cm.council_id) AS expected,
+      (SELECT COUNT(*) FROM council_progress_reviews pr INNER JOIN #t t ON t.id = pr.topic_id WHERE pr.progress_percent IS NOT NULL) AS completed;
 
     -- Xếp loại tiến độ trong số các đánh giá đã hoàn thành
     SELECT pr.rating, COUNT(*) AS cnt
     FROM council_progress_reviews pr
-    INNER JOIN topics t ON t.id = pr.topic_id
+    INNER JOIN #t t ON t.id = pr.topic_id
     WHERE pr.progress_percent IS NOT NULL AND pr.rating IS NOT NULL
     GROUP BY pr.rating;
 
@@ -94,7 +105,7 @@ const getStats = async () =>
       ISNULL(d.name, N'Chưa xác định') AS dept_name,
       COUNT(*) AS expected
     FROM council_members cm
-    INNER JOIN topics t ON t.council_id = cm.council_id
+    INNER JOIN #t t ON t.council_id = cm.council_id
     LEFT JOIN departments d ON d.id = t.department_id
     GROUP BY d.name;
 
@@ -103,18 +114,20 @@ const getStats = async () =>
       ISNULL(d.name, N'Chưa xác định') AS dept_name,
       COUNT(*) AS completed
     FROM council_progress_reviews pr
-    INNER JOIN topics t ON t.id = pr.topic_id
+    INNER JOIN #t t ON t.id = pr.topic_id
     LEFT JOIN departments d ON d.id = t.department_id
     WHERE pr.progress_percent IS NOT NULL
     GROUP BY d.name;
 
     -- Tóm tắt nhanh riêng NCKH: đợt, hội đồng, đề tài trong năm
     SELECT
-      (SELECT COUNT(*) FROM topics WHERE YEAR(created_at) = YEAR(GETDATE())) AS topics_this_year,
+      (SELECT COUNT(*) FROM #t WHERE YEAR(created_at) = YEAR(GETDATE())) AS topics_this_year,
       (SELECT COUNT(*) FROM research_rounds WHERE status = 'active') AS rounds_active,
       (SELECT COUNT(*) FROM councils) AS councils_total,
       (SELECT COUNT(*) FROM councils
          WHERE defense_date >= CAST(GETDATE() AS DATE)) AS councils_upcoming;
+
+    DROP TABLE #t;
   `);
 
 		const statusRows = result.recordsets[0];
@@ -507,4 +520,10 @@ const getSeminarStats = async () =>
 		};
 	});
 
-module.exports = { getStats, getTrainingStats, getOverviewStats, getSeminarStats };
+module.exports = {
+	getStats,
+	getTrainingStats,
+	getOverviewStats,
+	getSeminarStats,
+	COURSE_DISPLAY_STATUS,
+};

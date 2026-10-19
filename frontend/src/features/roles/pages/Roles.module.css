@@ -793,3 +793,211 @@
 	height: 14px;
 	margin-top: 1px;
 }
+
+/* ── Phân quyền vai trò: mỗi chức năng chọn 1 mức, "Tuỳ chỉnh" để tick từng quyền ── */
+.permModal {
+	max-width: min(860px, 96vw);
+}
+.permGroupHead {
+	position: sticky;
+	top: 0;
+	z-index: 1;
+	padding: var(--space-3) var(--space-5) var(--space-2);
+	background: var(--color-white);
+	font-size: var(--font-size-xs);
+	font-weight: var(--font-weight-semibold);
+	color: var(--color-gray-500);
+	text-transform: uppercase;
+	letter-spacing: 0.04em;
+}
+.permRow {
+	padding: var(--space-3) var(--space-5);
+	border-bottom: 1px solid var(--color-gray-100);
+}
+.permRowMain {
+	display: flex;
+	align-items: center;
+	gap: var(--space-3);
+	flex-wrap: wrap;
+}
+.permRowName {
+	flex: 1 1 200px;
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+	min-width: 0;
+}
+.permRowName .permScopeSelect {
+	align-self: flex-start;
+	min-width: 0;
+	max-width: 100%;
+}
+/* Thanh chọn mức kiểu segmented */
+.permLevels {
+	display: inline-flex;
+	padding: 3px;
+	border-radius: var(--radius-md);
+	background: var(--color-gray-100);
+}
+.permLevel {
+	padding: 5px 12px;
+	border: none;
+	border-radius: var(--radius-sm);
+	background: transparent;
+	font-size: var(--font-size-xs);
+	color: var(--color-gray-600);
+	cursor: pointer;
+	white-space: nowrap;
+	transition: all var(--transition-fast);
+}
+.permLevel:hover {
+	color: var(--color-gray-900);
+}
+.permLevelOn {
+	background: var(--color-white);
+	color: var(--color-primary-dark);
+	font-weight: var(--font-weight-semibold);
+	box-shadow: 0 1px 2px rgb(0 0 0 / 0.08);
+}
+.permCustomBtn {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+	padding: 5px 10px;
+	border: 1px solid var(--color-gray-200);
+	border-radius: var(--radius-full);
+	background: var(--color-white);
+	font-size: var(--font-size-xs);
+	color: var(--color-gray-500);
+	cursor: pointer;
+	white-space: nowrap;
+	user-select: none;
+	transition: all var(--transition-fast);
+}
+.permCustomBtn:hover {
+	border-color: var(--color-gray-300);
+	color: var(--color-gray-800);
+}
+.permCustomOn {
+	border-color: var(--color-primary);
+	background: #e1f5ea;
+	color: var(--color-primary-dark);
+	font-weight: var(--font-weight-semibold);
+}
+.permCaret,
+.permCaretOpen {
+	width: 14px;
+	height: 14px;
+	fill: none;
+	stroke: currentColor;
+	stroke-width: 2;
+	stroke-linecap: round;
+	stroke-linejoin: round;
+	transition: transform var(--transition-fast);
+}
+.permCaretOpen {
+	transform: rotate(180deg);
+}
+/* Bảng tick từng quyền: mỗi quyền là một thẻ (tên + mô tả) */
+.permCustom {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+	/* mọi hàng cao bằng hàng cao nhất → các thẻ bằng nhau */
+	grid-auto-rows: 1fr;
+	gap: var(--space-2);
+	margin-top: var(--space-3);
+}
+.permOpt {
+	position: relative;
+	display: flex;
+	align-items: flex-start;
+	gap: 10px;
+	padding: 10px 12px;
+	border: 1px solid var(--color-gray-200);
+	border-radius: var(--radius-md);
+	background: var(--color-white);
+	cursor: pointer;
+	transition: all var(--transition-fast);
+}
+.permOpt:hover {
+	border-color: var(--color-gray-300);
+	background: var(--color-gray-50);
+}
+.permOpt input {
+	position: absolute;
+	opacity: 0;
+	pointer-events: none;
+}
+.permOpt:has(input:focus-visible) {
+	outline: 2px solid var(--color-primary);
+	outline-offset: 2px;
+}
+.permOptOn,
+.permOptOn:hover {
+	border-color: var(--color-primary);
+	background: #f2fbf6;
+}
+.permOptBox {
+	flex-shrink: 0;
+	width: 16px;
+	height: 16px;
+	margin-top: 1px;
+	border: 1.5px solid var(--color-gray-300);
+	border-radius: 4px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	background: var(--color-white);
+	transition: all var(--transition-fast);
+}
+.permOptBox svg {
+	display: none;
+	width: 10px;
+	height: 10px;
+	color: white;
+	stroke-width: 3;
+}
+.permOptOn .permOptBox {
+	background: var(--color-primary);
+	border-color: var(--color-primary);
+}
+.permOptOn .permOptBox svg {
+	display: block;
+}
+.permOptText {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+	min-width: 0;
+}
+.permOptName {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	font-size: var(--font-size-sm);
+	font-weight: var(--font-weight-semibold);
+	color: var(--color-gray-800);
+}
+.permOptDesc {
+	font-size: var(--font-size-2xs);
+	color: var(--color-gray-500);
+	line-height: 1.4;
+}
+/* Quyền nhạy cảm (quản lý tài khoản / phân quyền) */
+.permOptTag {
+	padding: 0 6px;
+	border-radius: var(--radius-full);
+	background: #fdf1e0;
+	color: #a0620f;
+	font-size: 10px;
+	font-weight: var(--font-weight-semibold);
+}
+@media (max-width: 640px) {
+	.permLevels {
+		width: 100%;
+	}
+	.permLevel {
+		flex: 1;
+		padding: 6px 4px;
+	}
+}

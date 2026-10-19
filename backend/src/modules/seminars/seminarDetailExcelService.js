@@ -12,6 +12,7 @@ const seminarService = require('./seminarService');
 const xl = require('../../utils/excelTemplate');
 const { parseAgenda, testWindow } = require('../../utils/seminarSchedule');
 const { isPassed, maxScore } = require('../../utils/seminarTest');
+const { VN_OFFSET_MS } = require('../../utils/vnDate');
 
 const EVENT_TYPE_LABELS = {
 	conference: 'Hội nghị',
@@ -53,6 +54,8 @@ const fmtDateTime = (d) => {
 	if (Number.isNaN(x.getTime())) return '';
 	return `${pad2(x.getUTCHours())}:${pad2(x.getUTCMinutes())} ${fmtDate(x)}`;
 };
+// DATETIME lưu giờ UTC (checked_in_at) → dịch sang giờ VN
+const fmtUtcDateTime = (d) => (d ? fmtDateTime(new Date(new Date(d).getTime() + VN_OFFSET_MS)) : '');
 const withTime = (date, time) => [time, fmtDate(date)].filter(Boolean).join(' ');
 const timeRange = (a, b) => (a && b ? `${a} – ${b}` : a ? `từ ${a}` : b ? `đến ${b}` : '');
 
@@ -200,7 +203,7 @@ const addParticipantSheet = (wb, s) => {
 			notes: p.notes ?? '',
 			phone: p.phone ?? '',
 			email: p.email ?? '',
-			checked_in_at: fmtDateTime(p.checked_in_at),
+			checked_in_at: fmtUtcDateTime(p.checked_in_at),
 			// Bài nộp trước khi có điểm theo trọng số: mỗi câu đúng 1 điểm
 			test_score: p.test_submitted_at
 				? `${p.test_score ?? p.test_correct}/${p.test_max_score ?? p.test_total}`

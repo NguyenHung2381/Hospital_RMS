@@ -1,12 +1,9 @@
 import { formatDateVN as fmtDate } from '../../../shared/utils/formatDate';
+import { notify } from '../../../shared/utils/feedback';
 import type { ExportTopic, ReportSection } from '../../topics/api/topicApi';
 import type { StatsExportSection } from '../api/reportApi';
 
 export { fmtDate };
-
-export const currentYear = new Date().getFullYear();
-export type ReportType = 'summary' | 'schedule' | 'final';
-export type ExportFormat = 'pdf' | 'xlsx';
 
 export const STATUS_LABELS: Record<string, string> = {
 	submitted: 'Chờ duyệt',
@@ -78,34 +75,14 @@ export interface ScheduleOpts {
 	subtitle: string;
 	refNumber: string;
 	refDate: string;
-	fileName: string;
 }
 
-export const REPORT_TYPES: {
-	key: ReportType;
-	label: string;
-	desc: string;
-	color: string;
-}[] = [
-	{
-		key: 'summary',
-		label: 'Tổng hợp đề tài',
-		color: 'green',
-		desc: 'Danh sách đề tài kèm phân loại, trạng thái, chủ nhiệm — chọn cột tùy ý',
-	},
-	{
-		key: 'schedule',
-		label: 'Lịch báo cáo',
-		color: 'blue',
-		desc: 'Lịch bảo vệ đề cương theo mẫu bệnh viện, có tiêu đề và số thông báo',
-	},
-	{
-		key: 'final',
-		label: 'File tổng kết',
-		color: 'amber',
-		desc: 'Báo cáo đầy đủ: thống kê tổng quan, danh sách đề tài và thành viên',
-	},
-];
+export const defaultScheduleOpts = (year: number): ScheduleOpts => ({
+	title: `LỊCH BẢO VỆ ĐỀ CƯƠNG SÁNG KIẾN, ĐỀ TÀI NGHIÊN CỨU KHOA HỌC CẤP CƠ SỞ NĂM ${year}`,
+	subtitle: `(Danh sách đề tài nghiên cứu khoa học cấp cơ sở năm ${year})`,
+	refNumber: '',
+	refDate: '',
+});
 
 export const BASE_CSS = `
 *{box-sizing:border-box;margin:0;padding:0}
@@ -174,7 +151,7 @@ export function openPrint(
 ) {
 	const win = window.open('', '_blank', 'width=1000,height=700');
 	if (!win) {
-		alert('Vui lòng cho phép mở popup để xuất PDF');
+		notify.error('Trình duyệt đang chặn cửa sổ bật lên — cho phép popup để xuất PDF');
 		return;
 	}
 	const now = new Date().toLocaleDateString('vi-VN', {
@@ -295,4 +272,27 @@ export function buildFinalHtml(
 				.join('')}</tbody></table></div>`;
 	}
 	return html;
+}
+
+/** Bảng in đơn giản: tiêu đề + dòng phụ + bảng có cột STT. */
+export function buildTableHtml(
+	heading: string,
+	sub: string,
+	headers: string[],
+	rows: (string | number | null | undefined)[][],
+): string {
+	const body =
+		rows
+			.map(
+				(r, i) =>
+					`<tr><td class="stt">${i + 1}</td>${r.map((v) => `<td>${esc(v == null ? '' : String(v))}</td>`).join('')}</tr>`,
+			)
+			.join('') ||
+		`<tr><td colspan="${headers.length + 1}" style="text-align:center">Không có dữ liệu</td></tr>`;
+	return (
+		`<h1>${esc(heading)}</h1>` +
+		(sub ? `<h2>${esc(sub)}</h2>` : '') +
+		`<table><thead><tr><th class="stt">STT</th>${headers.map((h) => `<th>${esc(h)}</th>`).join('')}</tr></thead>` +
+		`<tbody>${body}</tbody></table>`
+	);
 }

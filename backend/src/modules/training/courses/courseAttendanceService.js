@@ -113,7 +113,7 @@ const checkInSelf = async (token, deviceId, actor) => {
       ELSE
       BEGIN
         IF EXISTS (SELECT 1 FROM attendance WHERE session_id = @session_id AND enrollment_id = @enrollment_id)
-          UPDATE attendance SET status = 'present', method = 'qr', checked_in_at = GETDATE(),
+          UPDATE attendance SET status = 'present', method = 'qr', checked_in_at = GETUTCDATE(),
                  checkin_device_id = @device_id, updated_at = GETDATE(), updated_by = @actor_id
           WHERE session_id = @session_id AND enrollment_id = @enrollment_id;
         ELSE
@@ -121,7 +121,7 @@ const checkInSelf = async (token, deviceId, actor) => {
           DECLARE @new_id VARCHAR(20);
           EXEC sp_gen_attendance_id @actor_id = @actor_id, @new_id = @new_id OUTPUT;
           INSERT INTO attendance (id, session_id, enrollment_id, status, method, checked_in_at, checkin_device_id, created_by, updated_by, updated_at)
-          VALUES (@new_id, @session_id, @enrollment_id, 'present', 'qr', GETDATE(), @device_id, @actor_id, @actor_id, GETDATE());
+          VALUES (@new_id, @session_id, @enrollment_id, 'present', 'qr', GETUTCDATE(), @device_id, @actor_id, @actor_id, GETDATE());
         END
         SELECT CAST(0 AS BIT) AS device_taken;
       END

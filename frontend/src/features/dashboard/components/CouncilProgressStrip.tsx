@@ -1,7 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import { Badge } from '@/shared/components';
 import type { BadgeTone } from '@/shared/components/Badge/badgeTone';
-import type { CouncilProgressStat } from '../../reports/types/report.type';
+import type { CouncilProgressStat } from '../types/dashboard.type';
 import styles from '../pages/Dashboard.module.css';
 
 const RATING_CONFIG: Record<string, { label: string; tone: BadgeTone }> = {

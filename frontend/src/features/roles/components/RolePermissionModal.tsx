@@ -55,7 +55,7 @@ const RESOURCE_ICON: Record<string, React.ReactNode> = {
 	system_settings: <ShieldSvg />,
 };
 
-// Cột của ma trận = các action thực sự xuất hiện trong catalog, theo thứ tự
+// Thứ tự hiển thị quyền = các action thực sự xuất hiện trong catalog, theo thứ tự
 // khai báo nhãn (backend ACTION_LABELS) — không còn danh sách cột viết tay
 // (danh sách cũ thiếu 'merge' / 'read_assigned' nên 2 quyền đó không cấp được).
 function columnsOf(catalog: PermissionCatalog): string[] {
@@ -77,9 +77,7 @@ function initialScopeOf(res: CatalogResource, grants: RoleGrant[]): string {
 		p ? grants.find((g) => g.permission_id === p.id)?.scope : undefined;
 	const read = res.permissions.find((p) => p.action === 'read');
 	const found =
-		scopeOfPerm(read) ??
-		res.permissions.map(scopeOfPerm).find((s) => s != null) ??
-		null;
+		scopeOfPerm(read) ?? res.permissions.map(scopeOfPerm).find((s) => s != null) ?? null;
 	return found && scopes.some((s) => s.key === found) ? found : (scopes[0]?.key ?? '');
 }
 
@@ -89,6 +87,41 @@ function tooltipOf(perm: CatalogPermission): string {
 		lines.push('⚠ Quyền nhạy cảm: cho phép quản lý tài khoản / phân quyền');
 	}
 	return lines.join('\n');
+}
+
+// Mức quyền nhanh cho một dòng. Mỗi mức = tập action; quyền đi kèm (implies)
+// trong cùng dòng được gộp vào. Mức trùng tập quyền với mức thấp hơn bị bỏ
+// (vd dòng chỉ có quyền Xem thì chỉ còn "Không" / "Chỉ xem").
+const LEVELS: { key: string; label: string; actions: string[] | null }[] = [
+	{ key: 'none', label: 'Không', actions: [] },
+	{ key: 'view', label: 'Chỉ xem', actions: ['read', 'access'] },
+	{
+		key: 'edit',
+		label: 'Xem & sửa',
+		actions: ['read', 'access', 'create', 'update', 'import', 'export', 'roster'],
+	},
+	{ key: 'full', label: 'Toàn quyền', actions: null },
+];
+
+function levelsOf(res: CatalogResource) {
+	const rowIds = new Set(res.permissions.map((p) => p.id));
+	const out: { key: string; label: string; ids: string[] }[] = [];
+	for (const lv of LEVELS) {
+		const picked = res.permissions.filter(
+			(p) => !lv.actions || lv.actions.includes(p.action),
+		);
+		const ids = new Set(
+			picked.flatMap((p) => [p.id, ...p.implies.filter((i) => rowIds.has(i))]),
+		);
+		if (lv.key !== 'none' && !ids.size) continue;
+		if (out.some((o) => sameIds(o.ids, [...ids]))) continue;
+		out.push({ key: lv.key, label: lv.label, ids: [...ids] });
+	}
+	return out;
+}
+
+function sameIds(a: string[], b: string[]) {
+	return a.length === b.length && a.every((id) => b.includes(id));
 }
 
 interface RolePermissionModalProps {
@@ -111,13 +144,18 @@ export function RolePermissionModal({
 	const [saving, setSaving] = useState(false);
 	const [error, setError] = useState('');
 	// Trạng thái lúc mở — để tóm tắt thay đổi trước khi lưu
-	const [initial, setInitial] = useState<{ ids: Set<string>; scopes: Record<string, string> }>({
+	const [initial, setInitial] = useState<{
+		ids: Set<string>;
+		scopes: Record<string, string>;
+	}>({
 		ids: new Set(),
 		scopes: {},
 	});
 	const [filter, setFilter] = useState('');
 	const [onlyGranted, setOnlyGranted] = useState(false);
 	const [confirming, setConfirming] = useState(false);
+	// Dòng đang mở phần "Tuỳ chỉnh" (tick từng quyền)
+	const [openCustom, setOpenCustom] = useState<Set<string>>(new Set());
 
 	useEffect(() => {
 		Promise.all([getPermissionCatalog(), getRolePermissions(role.id)])
@@ -129,7 +167,10 @@ export function RolePermissionModal({
 					if (res.scopes?.length) scopes[res.key] = initialScopeOf(res, grants);
 				}
 				setRowScope(scopes);
-				setInitial({ ids: new Set(grants.map((g) => g.permission_id)), scopes });
+				setInitial({
+					ids: new Set(grants.map((g) => g.permission_id)),
+					scopes,
+				});
 			})
 			.catch(() => setError('Không thể tải quyền hiện tại'))
 			.finally(() => setLoading(false));
@@ -150,20 +191,26 @@ export function RolePermissionModal({
 		});
 	};
 
-	const toggleRow = (rowActionIds: string[]) => {
-		const allOn = rowActionIds.every((id) => granted.has(id));
+	// Chọn một mức cho cả dòng: thay toàn bộ quyền của dòng bằng các quyền của mức
+	const setRow = (res: CatalogResource, ids: string[]) => {
 		setGranted((prev) => {
 			const next = new Set(prev);
-			rowActionIds.forEach((id) => {
-				if (allOn) {
-					next.delete(id);
-				} else {
-					next.add(id);
-				}
-			});
+			res.permissions.forEach((p) => next.delete(p.id));
+			ids.forEach((id) => next.add(id));
 			return next;
 		});
 	};
+
+	const toggleCustom = (key: string) =>
+		setOpenCustom((prev) => {
+			const next = new Set(prev);
+			if (next.has(key)) {
+				next.delete(key);
+			} else {
+				next.add(key);
+			}
+			return next;
+		});
 
 	const handleSave = async () => {
 		setSaving(true);
@@ -217,12 +264,21 @@ export function RolePermissionModal({
 				if (!now && before) out.removed.push(label);
 			}
 			const hasGrant = res.permissions.some((p) => granted.has(p.id));
-			if (res.scopes?.length && hasGrant && initial.scopes[res.key] !== rowScope[res.key]) {
-				const to = res.scopes.find((sc) => sc.key === rowScope[res.key])?.label ?? rowScope[res.key];
+			if (
+				res.scopes?.length &&
+				hasGrant &&
+				initial.scopes[res.key] !== rowScope[res.key]
+			) {
+				const to =
+					res.scopes.find((sc) => sc.key === rowScope[res.key])?.label ??
+					rowScope[res.key];
 				out.scoped.push(`${res.label} → ${to}`);
 			}
 		}
-		return { ...out, count: out.added.length + out.removed.length + out.scoped.length };
+		return {
+			...out,
+			count: out.added.length + out.removed.length + out.scoped.length,
+		};
 	}, [catalog, granted, initial, rowScope]);
 
 	// Lọc hiển thị theo ô tìm kiếm / "chỉ quyền đã cấp" — không đổi dữ liệu
@@ -241,24 +297,17 @@ export function RolePermissionModal({
 			className={styles.modalBackdrop}
 			onClick={(e) => e.target === e.currentTarget && onClose()}
 		>
-			<div className={`${styles.modal} ${styles.modalXl}`}>
+			<div className={`${styles.modal} ${styles.permModal}`}>
 				<div className={styles.modalHeader}>
 					<div className={styles.modalHeaderIcon}>
 						<KeySvg />
 					</div>
 					<div>
 						<div className={styles.modalTitle}>Phân quyền — {role.name}</div>
-						<div className={styles.modalSub}>
-							Chọn các quyền được phép thực hiện
-						</div>
+						<div className={styles.modalSub}>Chọn các quyền được phép thực hiện</div>
 					</div>
-					{!loading && (
-						<span className={styles.permCount}>{granted.size} quyền</span>
-					)}
-					<button
-						className={styles.modalClose}
-						onClick={onClose}
-					>
+					{!loading && <span className={styles.permCount}>{granted.size} quyền</span>}
+					<button className={styles.modalClose} onClick={onClose}>
 						<XSvg />
 					</button>
 				</div>
@@ -287,52 +336,55 @@ export function RolePermissionModal({
 				<div className={styles.permModalBody}>
 					{role.is_superuser && (
 						<div className={styles.permSuperNotice}>
-							<ShieldSvg /> Vai trò toàn quyền: bỏ qua mọi kiểm tra phân quyền, các ô
-							bên dưới không có tác dụng. Cờ toàn quyền chỉ đặt được trong CSDL
+							<ShieldSvg /> Vai trò toàn quyền: bỏ qua mọi kiểm tra phân quyền, các ô bên
+							dưới không có tác dụng. Cờ toàn quyền chỉ đặt được trong CSDL
 							(roles.is_superuser), không cấp qua giao diện.
 						</div>
 					)}
 					{loading ? (
 						<InlineLoading label='Đang tải quyền…' />
 					) : (
-						catalog && (
-							<table className={styles.permMatrix}>
-								<thead>
-									<tr>
-										<th>Nhóm chức năng</th>
-										<th title='Áp cho mọi quyền được chọn trong dòng'>Phạm vi dữ liệu</th>
-										{columns.map((a) => (
-											<th key={a}>{catalog.actionLabels[a] ?? a}</th>
-										))}
-										<th>Chọn tất cả</th>
-									</tr>
-								</thead>
-								{catalog.modules.map((mod) => {
-									const resources = visibleResources(mod);
-									if (!resources.length) return null;
-									return (
-									<tbody key={mod.key}>
-										<tr className={styles.permModuleRow}>
-											<td colSpan={columns.length + 3}>
-												<span className={styles.permModuleLabel}>{mod.label}</span>
-											</td>
-										</tr>
-										{resources.map((res) => {
-											const rowIds = res.permissions.map((p) => p.id);
-											const allSelected = rowIds.every((id) => granted.has(id));
-
-											return (
-												<tr key={res.key}>
-													<td className={styles.permResourceCell}>
+						catalog &&
+						catalog.modules.map((mod) => {
+							const resources = visibleResources(mod);
+							if (!resources.length) return null;
+							const modIds = mod.resources.flatMap((r) => r.permissions.map((p) => p.id));
+							const modOn = modIds.filter((id) => granted.has(id)).length;
+							return (
+								<section key={mod.key} className={styles.permGroup}>
+									<div className={styles.permGroupHead}>
+										<span>{mod.label}</span>
+										<span className={styles.permGroupCount}>
+											{modOn}/{modIds.length}
+										</span>
+									</div>
+									{resources.map((res) => {
+										const rowIds = res.permissions.map((p) => p.id);
+										const levels = levelsOf(res);
+										const current = levels.find((lv) =>
+											sameIds(
+												lv.ids,
+												rowIds.filter((id) => granted.has(id)),
+											),
+										);
+										const grantedCount = rowIds.filter((id) => granted.has(id)).length;
+										const custom = !current;
+										const open = openCustom.has(res.key);
+										const perms = [...res.permissions].sort(
+											(a, b) => columns.indexOf(a.action) - columns.indexOf(b.action),
+										);
+										return (
+											<div key={res.key} className={styles.permRow}>
+												<div className={styles.permRowMain}>
+													<div className={styles.permRowName}>
 														<div className={styles.permResourceName}>
 															{RESOURCE_ICON[res.key]}
 															{res.label}
 														</div>
-													</td>
-													<td className={styles.permCell}>
-														{res.scopes?.length ? (
+														{res.scopes?.length && grantedCount > 0 ? (
 															<select
 																className={styles.permScopeSelect}
+																title='Phạm vi dữ liệu — áp cho mọi quyền được chọn'
 																value={rowScope[res.key] ?? res.scopes[0].key}
 																onChange={(e) =>
 																	setRowScope((prev) => ({
@@ -343,97 +395,127 @@ export function RolePermissionModal({
 															>
 																{res.scopes.map((sc) => (
 																	<option key={sc.key} value={sc.key}>
-																		{sc.label}
+																		Phạm vi: {sc.label}
 																	</option>
 																))}
 															</select>
-														) : (
-															<div className={styles.permCellDash} />
-														)}
-													</td>
-
-													{columns.map((action) => {
-														const perm = res.permissions.find(
-															(p) => p.action === action,
-														);
-														if (!perm) {
-															return (
-																<td
-																	key={action}
-																	className={styles.permCellEmpty}
-																>
-																	<div className={styles.permCellDash} />
-																</td>
-															);
-														}
-														return (
-															<td
-																key={action}
-																className={styles.permCell}
-																title={tooltipOf(perm)}
+														) : null}
+													</div>
+													<div
+														className={styles.permLevels}
+														role='radiogroup'
+														aria-label={res.label}
+													>
+														{levels.map((lv) => (
+															<button
+																key={lv.key}
+																type='button'
+																role='radio'
+																aria-checked={current?.key === lv.key}
+																className={`${styles.permLevel} ${current?.key === lv.key ? styles.permLevelOn : ''}`}
+																onClick={() => setRow(res, lv.ids)}
 															>
+																{lv.label}
+															</button>
+														))}
+													</div>
+													<button
+														type='button'
+														className={`${styles.permCustomBtn} ${custom ? styles.permCustomOn : ''}`}
+														onClick={() => toggleCustom(res.key)}
+													>
+														{custom ? `Tuỳ chỉnh · ${grantedCount}` : 'Tuỳ chỉnh'}
+														<svg
+															className={open ? styles.permCaretOpen : styles.permCaret}
+															viewBox='0 0 24 24'
+															aria-hidden='true'
+														>
+															<path d='M6 9l6 6 6-6' />
+														</svg>
+													</button>
+												</div>
+												{open && (
+													<div className={styles.permCustom}>
+														{perms.map((perm) => {
+															const on = granted.has(perm.id);
+															return (
 																<label
-																	className={`${styles.permCheck} ${perm.critical ? styles.permCritical : ''}`}
+																	key={perm.id}
+																	title={tooltipOf(perm)}
+																	className={`${styles.permOpt} ${on ? styles.permOptOn : ''}`}
 																>
 																	<input
 																		type='checkbox'
-																		checked={granted.has(perm.id)}
+																		checked={on}
 																		onChange={() => toggle(perm)}
 																	/>
-																	<div className={styles.permCheckBox}>
+																	<span className={styles.permOptBox}>
 																		<CheckSvg />
-																	</div>
+																	</span>
+																	<span className={styles.permOptText}>
+																		<span className={styles.permOptName}>
+																			{catalog.actionLabels[perm.action] ?? perm.name}
+																			{perm.critical && (
+																				<span className={styles.permOptTag}>
+																					Nhạy cảm
+																				</span>
+																			)}
+																		</span>
+																		{perm.description && (
+																			<span className={styles.permOptDesc}>
+																				{perm.description}
+																			</span>
+																		)}
+																	</span>
 																</label>
-															</td>
-														);
-													})}
-
-													<td className={styles.permCell}>
-														<button
-															className={`${styles.permSelectAll} ${allSelected ? styles.allSelected : ''}`}
-															onClick={() => toggleRow(rowIds)}
-														>
-															{allSelected ? 'Bỏ tất cả' : 'Chọn tất cả'}
-														</button>
-													</td>
-												</tr>
-											);
-										})}
-									</tbody>
-									);
-								})}
-							</table>
-						)
+															);
+														})}
+													</div>
+												)}
+											</div>
+										);
+									})}
+								</section>
+							);
+						})
 					)}
 				</div>
 
 				{confirming && (
 					<div className={styles.permConfirm}>
 						<div className={styles.permConfirmTitle}>
-							Xác nhận thay đổi cho vai trò "{role.name}" ({role.user_count ?? 0} người dùng)
+							Xác nhận thay đổi cho vai trò "{role.name}" ({role.user_count ?? 0} người
+							dùng)
 						</div>
 						{changes.critical.length > 0 && (
 							<div className={styles.permConfirmWarn}>
-								⚠ Cấp quyền nhạy cảm (quản lý tài khoản / phân quyền): {changes.critical.join('; ')}
+								⚠ Cấp quyền nhạy cảm (quản lý tài khoản / phân quyền):{' '}
+								{changes.critical.join('; ')}
 							</div>
 						)}
 						{changes.added.length > 0 && (
-							<div><strong>+ {changes.added.length} quyền:</strong> {changes.added.join('; ')}</div>
+							<div>
+								<strong>+ {changes.added.length} quyền:</strong>{' '}
+								{changes.added.join('; ')}
+							</div>
 						)}
 						{changes.removed.length > 0 && (
-							<div><strong>− {changes.removed.length} quyền:</strong> {changes.removed.join('; ')}</div>
+							<div>
+								<strong>− {changes.removed.length} quyền:</strong>{' '}
+								{changes.removed.join('; ')}
+							</div>
 						)}
 						{changes.scoped.length > 0 && (
-							<div><strong>Đổi phạm vi:</strong> {changes.scoped.join('; ')}</div>
+							<div>
+								<strong>Đổi phạm vi:</strong> {changes.scoped.join('; ')}
+							</div>
 						)}
 					</div>
 				)}
 
 				<div className={styles.modalFooter}>
 					{error && (
-						<span style={{ fontSize: 12, color: '#e24b4a', flex: 1 }}>
-							{error}
-						</span>
+						<span style={{ fontSize: 12, color: '#e24b4a', flex: 1 }}>{error}</span>
 					)}
 					{!error && !loading && (
 						<span className={styles.viewSub} style={{ flex: 1 }}>

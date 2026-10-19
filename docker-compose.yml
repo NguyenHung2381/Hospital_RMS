@@ -20,6 +20,8 @@ x-ensure-deps: &ensure-deps |
     echo "$$hash" > node_modules/.deps-hash
   fi
   exec "$$@"
+# npm_cache (named volume, /root/.npm): giữ cache tải về qua các lần tạo lại
+# container → npm ci bị ngắt giữa chừng / chạy lại không phải tải lại từ đầu.
 
 services:
   backend:
@@ -53,6 +55,7 @@ services:
     volumes:
       - ./backend:/app
       - /app/node_modules
+      - npm_cache:/root/.npm
       # JWT secret tự sinh khi thiếu (docker-entrypoint.sh) — giữ qua restart/redeploy
       - server_secrets:/app/secrets
     depends_on:
@@ -78,6 +81,7 @@ services:
     volumes:
       - ./frontend:/app
       - /app/node_modules
+      - npm_cache:/root/.npm
     depends_on:
       - backend
 
@@ -132,5 +136,6 @@ services:
     restart: unless-stopped
 
 volumes:
+  npm_cache:
   loki_data:
   server_secrets:
