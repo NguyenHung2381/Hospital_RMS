@@ -5,6 +5,7 @@ const courseDocumentService = require('./courseDocumentService');
 const courseEnrollmentService = require('./courseEnrollmentService');
 const enrollmentProgramService = require('./enrollmentProgramService');
 const enrollmentRotationService = require('./enrollmentRotationService');
+const practiceDocumentService = require('./practiceDocumentService');
 const coursePolicy = require('./coursePolicy');
 const courseService = require('./courseService');
 const gradeService = require('./gradeService');
@@ -167,6 +168,32 @@ const refreshRotationMentor = asyncHandler(async (req, res) => {
 const retakeRotation = asyncHandler(async (req, res) => {
 	await enrollmentRotationService.retake(req.params.rotationId, req.user.id);
 	return success(res, null, 'Đã thêm lượt học lại vòng');
+});
+
+// ─── Giấy tờ thực hành ───────────────────────────────────────────────────
+const listPracticeDocuments = asyncHandler(async (req, res) => {
+	return success(res, await practiceDocumentService.describe(req.params.enrollmentId));
+});
+
+const downloadPracticeDocument = asyncHandler(async (req, res) => {
+	if (!hasPermission(req.user, 'trainees', 'read_sensitive')) {
+		return res.status(403).json({
+			success: false,
+			message: 'Giấy tờ có số CCCD của học viên — cần quyền xem dữ liệu nhạy cảm của học viên.',
+		});
+	}
+	const out = await practiceDocumentService.generate(
+		req.params.enrollmentId,
+		req.body.type,
+		req.body.rotation_id || null,
+	);
+	res.setHeader('Content-Type', out.mime);
+	res.setHeader(
+		'Content-Disposition',
+		`attachment; filename*=UTF-8''${encodeURIComponent(out.fileName)}`,
+	);
+	res.setHeader('Access-Control-Expose-Headers', 'Content-Disposition');
+	return res.end(out.buffer);
 });
 
 const removeRotation = asyncHandler(async (req, res) => {
@@ -351,6 +378,8 @@ module.exports = {
 	refreshRotationMentor,
 	retakeRotation,
 	removeRotation,
+	listPracticeDocuments,
+	downloadPracticeDocument,
 	listAssignments,
 	assignLecturer,
 	removeAssignment,

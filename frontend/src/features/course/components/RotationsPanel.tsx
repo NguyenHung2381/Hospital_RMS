@@ -22,6 +22,7 @@ import {
 } from '../types/course.type';
 import { MentorPicker } from './MentorPicker';
 import { RotationDateRange } from './RotationDateRange';
+import { savePracticeDocument } from '../utils/practiceDocuments';
 import styles from '../pages/Courses.module.css';
 
 interface Department {
@@ -36,11 +37,14 @@ const day = (v: string | null) => (v ? v.slice(0, 10) : '');
 // ngay; cảnh báo (đỏ) chỉ để lưu ý, không chặn.
 export function RotationsPanel({
 	enrollmentId,
+	who,
 	hasProgram,
 	enrollmentStart,
 	onChanged,
 }: {
 	enrollmentId: string;
+	/** Mã thực hành / tên học viên — đặt tên file phiếu nhận xét. */
+	who: string;
 	hasProgram: boolean;
 	enrollmentStart: string | null;
 	onChanged: () => void;
@@ -226,6 +230,20 @@ export function RotationsPanel({
 										Học lại
 									</button>
 								)}
+								<button
+									type='button'
+									className={styles.btnSmall}
+									disabled={busy}
+									title='Tải phiếu nhận xét quá trình thực hành của vòng này (.docx)'
+									onClick={() =>
+										savePracticeDocument(enrollmentId, 'phieu-nhan-xet', who, {
+											id: r.id,
+											label: r.department_name || r.round_title || `vong-${i + 1}`,
+										})
+									}
+								>
+									Phiếu nhận xét
+								</button>
 								<button
 									type='button'
 									className={styles.actionBtn}

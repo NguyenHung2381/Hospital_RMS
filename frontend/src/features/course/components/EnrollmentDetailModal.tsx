@@ -21,6 +21,7 @@ import {
 	type EnrollmentUpdate,
 	type ProgressStatus,
 } from '../types/course.type';
+import { PracticeDocumentsBar } from './PracticeDocumentsBar';
 import { RotationsPanel } from './RotationsPanel';
 import styles from '../pages/Courses.module.css';
 
@@ -306,11 +307,25 @@ export function EnrollmentDetailModal({
 							className={styles.hint}
 							style={{ ...full, fontWeight: 600, marginTop: 'var(--space-2)' }}
 						>
+							In giấy tờ
+						</div>
+						<div style={full}>
+							<PracticeDocumentsBar
+								enrollmentId={enrollment.id}
+								who={enrollment.practice_code || enrollment.trainee_name}
+								refreshKey={enrollment}
+							/>
+						</div>
+						<div
+							className={styles.hint}
+							style={{ ...full, fontWeight: 600, marginTop: 'var(--space-2)' }}
+						>
 							Vòng thực hành (khoa · ngày · người hướng dẫn)
 						</div>
 						<div style={full}>
 							<RotationsPanel
 								enrollmentId={enrollment.id}
+								who={enrollment.practice_code || enrollment.trainee_name}
 								hasProgram={!!enrollment.program_id && !programChanged}
 								enrollmentStart={view.start_date || null}
 								onChanged={onSaved}

@@ -222,6 +222,25 @@ router.post(
 	authorizePermission(['courses', 'update']),
 	ctrl.retakeRotation,
 );
+// ─── Giấy tờ thực hành GPHN (Đơn đề nghị, Hợp đồng, Phiếu nhận xét) ─────────
+router.get(
+	'/enrollments/:enrollmentId/documents',
+	authorizePermission(['courses', 'read']),
+	ctrl.listPracticeDocuments,
+);
+// POST vì frontend tải file qua apiClient.postBlob. Giấy tờ in CCCD ⇒ controller
+// còn đòi thêm quyền trainees:read_sensitive.
+router.post(
+	'/enrollments/:enrollmentId/documents',
+	authorizePermission(['courses', 'update']),
+	[
+		body('type')
+			.isIn(['don-de-nghi', 'hop-dong', 'phieu-nhan-xet'])
+			.withMessage('Loại giấy tờ không hợp lệ'),
+	],
+	validate,
+	ctrl.downloadPracticeDocument,
+);
 router.delete(
 	'/rotations/:rotationId',
 	authorizePermission(['courses', 'update']),

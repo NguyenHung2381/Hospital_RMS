@@ -108,6 +108,18 @@ export const refreshRotationMentor = (rotationId: string) =>
 export const retakeRotation = (rotationId: string) =>
 	apiClient.post<null>(`/courses/rotations/${rotationId}/retake`, {});
 export const removeRotation = (rotationId: string) => apiClient.delete<null>(`/courses/rotations/${rotationId}`);
+// ─── Giấy tờ thực hành (Đơn đề nghị, Hợp đồng, Phiếu nhận xét) ────────────
+export type PracticeDocumentType = 'don-de-nghi' | 'hop-dong' | 'phieu-nhan-xet';
+export interface PracticeDocumentInfo {
+	documents: { type: PracticeDocumentType; label: string; per_rotation: boolean; missing: string[] }[];
+	rotations: { id: string; label: string; missing: string[] }[];
+}
+export const getPracticeDocuments = (enrollmentId: string) =>
+	apiClient.get<PracticeDocumentInfo>(`/courses/enrollments/${enrollmentId}/documents`);
+/** .docx; phiếu nhận xét không chọn vòng ⇒ .zip gồm phiếu mọi vòng. */
+export const downloadPracticeDocument = (enrollmentId: string, type: PracticeDocumentType, rotationId?: string) =>
+	apiClient.postBlob(`/courses/enrollments/${enrollmentId}/documents`, { type, rotation_id: rotationId ?? null });
+
 export const searchMentors = (search: string, departmentId?: string) => {
 	const qs = new URLSearchParams({ search, limit: '15' });
 	if (departmentId) qs.set('department_id', departmentId);
