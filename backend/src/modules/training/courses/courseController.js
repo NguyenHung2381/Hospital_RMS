@@ -4,6 +4,7 @@ const courseAttendanceService = require('./courseAttendanceService');
 const courseDocumentService = require('./courseDocumentService');
 const courseEnrollmentService = require('./courseEnrollmentService');
 const enrollmentProgramService = require('./enrollmentProgramService');
+const enrollmentRotationService = require('./enrollmentRotationService');
 const coursePolicy = require('./coursePolicy');
 const courseService = require('./courseService');
 const gradeService = require('./gradeService');
@@ -119,6 +120,58 @@ const updateEnrollmentLesson = asyncHandler(async (req, res) => {
 		req.user.id,
 	);
 	return success(res, null, 'Đã cập nhật bài học');
+});
+
+// ─── Vòng thực hành GPHN ─────────────────────────────────────────────────
+const listRotations = asyncHandler(async (req, res) => {
+	return success(res, await enrollmentRotationService.list(req.params.enrollmentId));
+});
+
+const generateRotations = asyncHandler(async (req, res) => {
+	const out = await enrollmentRotationService.generate(
+		req.params.enrollmentId,
+		{ replace: req.body?.replace === true },
+		req.user.id,
+	);
+	return success(res, out, 'Đã sinh vòng thực hành theo chương trình');
+});
+
+const scheduleRotations = asyncHandler(async (req, res) => {
+	const out = await enrollmentRotationService.schedule(
+		req.params.enrollmentId,
+		req.body.start_date,
+		req.user.id,
+	);
+	return success(res, out, 'Đã xếp lịch các vòng');
+});
+
+const addRotationSegment = asyncHandler(async (req, res) => {
+	await enrollmentRotationService.addSegment(
+		req.params.enrollmentId,
+		req.body.lesson_id,
+		req.user.id,
+	);
+	return success(res, null, 'Đã thêm khoa cho vòng');
+});
+
+const updateRotation = asyncHandler(async (req, res) => {
+	await enrollmentRotationService.update(req.params.rotationId, req.body, req.user.id);
+	return success(res, null, 'Đã cập nhật vòng');
+});
+
+const refreshRotationMentor = asyncHandler(async (req, res) => {
+	await enrollmentRotationService.refreshMentor(req.params.rotationId, req.user.id);
+	return success(res, null, 'Đã cập nhật thông tin người hướng dẫn');
+});
+
+const retakeRotation = asyncHandler(async (req, res) => {
+	await enrollmentRotationService.retake(req.params.rotationId, req.user.id);
+	return success(res, null, 'Đã thêm lượt học lại vòng');
+});
+
+const removeRotation = asyncHandler(async (req, res) => {
+	await enrollmentRotationService.remove(req.params.rotationId);
+	return success(res, null, 'Đã xoá vòng');
 });
 
 // ─── Lecturer assignments ─────────────────────────────────────────────────
@@ -290,6 +343,14 @@ module.exports = {
 	listEnrollmentLessons,
 	syncEnrollmentLessons,
 	updateEnrollmentLesson,
+	listRotations,
+	generateRotations,
+	scheduleRotations,
+	addRotationSegment,
+	updateRotation,
+	refreshRotationMentor,
+	retakeRotation,
+	removeRotation,
 	listAssignments,
 	assignLecturer,
 	removeAssignment,

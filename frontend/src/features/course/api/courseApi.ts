@@ -15,6 +15,9 @@ import type {
 	EnrollmentLessonStatus,
 	EnrollmentStatus,
 	EnrollmentUpdate,
+	MentorOption,
+	RotationList,
+	RotationUpdate,
 	Grade,
 	LecturerAssignment,
 } from '../types/course.type';
@@ -87,6 +90,30 @@ export const getEnrollmentLessons = (enrollmentId: string) =>
 	apiClient.get<EnrollmentLesson[]>(`/courses/enrollments/${enrollmentId}/lessons`);
 export const syncEnrollmentLessons = (enrollmentId: string) =>
 	apiClient.post<{ added: number }>(`/courses/enrollments/${enrollmentId}/lessons/sync`, {});
+// ─── Vòng thực hành GPHN ──────────────────────────────────────────────────
+export const getRotations = (enrollmentId: string) =>
+	apiClient.get<RotationList>(`/courses/enrollments/${enrollmentId}/rotations`);
+export const generateRotations = (enrollmentId: string, replace = false) =>
+	apiClient.post<RotationList>(`/courses/enrollments/${enrollmentId}/rotations/generate`, { replace });
+export const scheduleRotations = (enrollmentId: string, startDate: string) =>
+	apiClient.post<{ scheduled: number; skipped: number }>(`/courses/enrollments/${enrollmentId}/rotations/schedule`, {
+		start_date: startDate,
+	});
+export const addRotationSegment = (enrollmentId: string, lessonId: string) =>
+	apiClient.post<null>(`/courses/enrollments/${enrollmentId}/rotations/segment`, { lesson_id: lessonId });
+export const updateRotation = (rotationId: string, data: RotationUpdate) =>
+	apiClient.put<null>(`/courses/rotations/${rotationId}`, data);
+export const refreshRotationMentor = (rotationId: string) =>
+	apiClient.post<null>(`/courses/rotations/${rotationId}/refresh-mentor`, {});
+export const retakeRotation = (rotationId: string) =>
+	apiClient.post<null>(`/courses/rotations/${rotationId}/retake`, {});
+export const removeRotation = (rotationId: string) => apiClient.delete<null>(`/courses/rotations/${rotationId}`);
+export const searchMentors = (search: string, departmentId?: string) => {
+	const qs = new URLSearchParams({ search, limit: '15' });
+	if (departmentId) qs.set('department_id', departmentId);
+	return apiClient.get<MentorOption[]>(`/staff-licenses/mentors?${qs}`);
+};
+
 export const updateEnrollmentLesson = (enrollmentId: string, lessonId: string, status: EnrollmentLessonStatus) =>
 	apiClient.put<null>(`/courses/enrollments/${enrollmentId}/lessons`, { lesson_id: lessonId, status });
 export const decideEnrollment = (enrollmentId: string, status: EnrollmentStatus, note?: string) =>

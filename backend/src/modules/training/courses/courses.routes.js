@@ -174,6 +174,60 @@ router.put(
 	ctrl.updateEnrollmentLesson,
 );
 
+// ─── Vòng thực hành GPHN (khoa, ngày, người hướng dẫn từng vòng) ───────────
+router.get(
+	'/enrollments/:enrollmentId/rotations',
+	authorizePermission(['courses', 'read']),
+	ctrl.listRotations,
+);
+router.post(
+	'/enrollments/:enrollmentId/rotations/generate',
+	authorizePermission(['courses', 'update']),
+	ctrl.generateRotations,
+);
+router.post(
+	'/enrollments/:enrollmentId/rotations/schedule',
+	authorizePermission(['courses', 'update']),
+	[body('start_date').isISO8601().withMessage('Cần ngày bắt đầu')],
+	validate,
+	ctrl.scheduleRotations,
+);
+router.post(
+	'/enrollments/:enrollmentId/rotations/segment',
+	authorizePermission(['courses', 'update']),
+	[body('lesson_id').notEmpty().withMessage('Thiếu lesson_id')],
+	validate,
+	ctrl.addRotationSegment,
+);
+router.put(
+	'/rotations/:rotationId',
+	authorizePermission(['courses', 'update']),
+	[
+		body(['start_date', 'end_date'])
+			.optional({ nullable: true, checkFalsy: true })
+			.isISO8601()
+			.withMessage('Ngày không hợp lệ'),
+		body('result').optional().isIn(['pending', 'pass', 'fail']),
+	],
+	validate,
+	ctrl.updateRotation,
+);
+router.post(
+	'/rotations/:rotationId/refresh-mentor',
+	authorizePermission(['courses', 'update']),
+	ctrl.refreshRotationMentor,
+);
+router.post(
+	'/rotations/:rotationId/retake',
+	authorizePermission(['courses', 'update']),
+	ctrl.retakeRotation,
+);
+router.delete(
+	'/rotations/:rotationId',
+	authorizePermission(['courses', 'update']),
+	ctrl.removeRotation,
+);
+
 // ─── Lecturer assignments ─────────────────────────────────────────────────
 router.get(
 	'/:id/lecturer-assignments',

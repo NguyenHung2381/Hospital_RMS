@@ -271,6 +271,18 @@ const SECTIONS: Section[] = [
 					{ key: 'CME_MIN_HOURS', label: 'Giờ tín chỉ tối thiểu / chu kỳ', hint: 'Dùng cho cảnh báo thiếu tín chỉ.', type: 'number', placeholder: '120' },
 				],
 			},
+			{
+				title: 'Thực hành giấy phép hành nghề',
+				fields: [
+					{
+						key: 'PRACTICE_MENTOR_MAX_TRAINEES',
+						label: 'Số học viên tối đa / người hướng dẫn',
+						hint: 'Hồ sơ thực hành cảnh báo (không chặn) khi 1 người hướng dẫn kèm quá số học viên này cùng lúc. Mặc định 5.',
+						type: 'number',
+						placeholder: '5',
+					},
+				],
+			},
 		],
 	},
 ];

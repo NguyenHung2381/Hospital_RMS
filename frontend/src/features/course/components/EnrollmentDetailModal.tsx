@@ -21,6 +21,7 @@ import {
 	type EnrollmentUpdate,
 	type ProgressStatus,
 } from '../types/course.type';
+import { RotationsPanel } from './RotationsPanel';
 import styles from '../pages/Courses.module.css';
 
 type Form = Required<{ [K in keyof EnrollmentUpdate]: string }>;
@@ -68,6 +69,15 @@ export function EnrollmentDetailModal({
 	const program = programLinks.find((p) => p.program_id === form.program_id);
 	const isPractice = !!course?.is_rolling || program?.training_type_id === TRAINING_TYPE.GPHN;
 
+	// "Tự xếp lịch" vòng điền sẵn ngày / tổng thời gian của hồ sơ khi đang trống — ô
+	// form còn trống thì hiện & lưu theo giá trị mới nhất của hồ sơ (không ghi đè thành rỗng).
+	const view: Form = {
+		...form,
+		start_date: form.start_date || day(enrollment.start_date),
+		end_date: form.end_date || day(enrollment.end_date),
+		total_duration: form.total_duration || (enrollment.total_duration ?? ''),
+	};
+
 	const loadLessons = useCallback(
 		() =>
 			getEnrollmentLessons(enrollment.id)
@@ -92,7 +102,7 @@ export function EnrollmentDetailModal({
 		setError('');
 		try {
 			await updateEnrollment(enrollment.id, {
-				...form,
+				...view,
 				program_id: form.program_id || null,
 				progress_status: form.progress_status as ProgressStatus,
 			} as EnrollmentUpdate);
@@ -138,7 +148,9 @@ export function EnrollmentDetailModal({
 			icon={<UserCheckSvg />}
 			title={`Hồ sơ ghi danh — ${enrollment.trainee_name}`}
 			subtitle={course?.name}
-			className={styles.modal}
+			// Hồ sơ GPHN có bảng vòng thực hành ⇒ modal rộng (class .modal của trang giới hạn 620px)
+			size={isPractice ? 'xl' : 'md'}
+			className={isPractice ? undefined : styles.modal}
 			bodyClassName={styles.modalBody}
 			footer={
 				<ModalActions
@@ -262,22 +274,22 @@ export function EnrollmentDetailModal({
 						</FormField>
 						<FormField label='Bắt đầu thực hành'>
 							<DatePicker
-								value={form.start_date}
+								value={view.start_date}
 								onChange={setDate('start_date')}
-								max={form.end_date || undefined}
+								max={view.end_date || undefined}
 							/>
 						</FormField>
 						<FormField label='Kết thúc thực hành'>
 							<DatePicker
-								value={form.end_date}
+								value={view.end_date}
 								onChange={setDate('end_date')}
-								min={form.start_date || undefined}
+								min={view.start_date || undefined}
 							/>
 						</FormField>
 						<FormField label='Tổng thời gian thực hành'>
 							<input
 								className={styles.formInput}
-								value={form.total_duration}
+								value={view.total_duration}
 								onChange={set('total_duration')}
 								placeholder={program?.program_duration ?? 'VD: 12 tháng'}
 							/>
@@ -292,9 +304,17 @@ export function EnrollmentDetailModal({
 						</FormField>
 						<div
 							className={styles.hint}
-							style={full}
+							style={{ ...full, fontWeight: 600, marginTop: 'var(--space-2)' }}
 						>
-							Lịch các vòng khoa và người hướng dẫn từng vòng sẽ nhập ở bước tiếp theo (vòng thực hành).
+							Vòng thực hành (khoa · ngày · người hướng dẫn)
+						</div>
+						<div style={full}>
+							<RotationsPanel
+								enrollmentId={enrollment.id}
+								hasProgram={!!enrollment.program_id && !programChanged}
+								enrollmentStart={view.start_date || null}
+								onChanged={onSaved}
+							/>
 						</div>
 					</>
 				)}

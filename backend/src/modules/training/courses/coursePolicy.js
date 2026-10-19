@@ -34,6 +34,8 @@ const assertCourseInScope = async (courseId, actor) => {
 // Mã bản ghi con → khoá học chứa nó (tên tham số route → câu truy vấn)
 const CHILD_COURSE_SQL = {
 	enrollmentId: 'SELECT course_id FROM course_enrollments WHERE id = @id',
+	rotationId: `SELECT e.course_id FROM enrollment_rotations r
+	             JOIN course_enrollments e ON e.id = r.enrollment_id WHERE r.id = @id`,
 	sessionId: 'SELECT course_id FROM class_sessions WHERE id = @id',
 	docId: 'SELECT course_id FROM course_documents WHERE id = @id',
 	assignmentId: 'SELECT course_id FROM lecturer_assignments WHERE id = @id',

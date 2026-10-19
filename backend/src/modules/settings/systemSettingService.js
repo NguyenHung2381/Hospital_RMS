@@ -35,6 +35,8 @@ const KEYS = [
 	'ATTENDANCE_LOCATION',
 	'ATTENDANCE_RADIUS_M',
 	'ATTENDANCE_MAX_ACCURACY_M',
+	// Thực hành GPHN — cảnh báo khi 1 người hướng dẫn kèm quá N học viên cùng lúc
+	'PRACTICE_MENTOR_MAX_TRAINEES',
 	// Email theo chức năng — mặc định ở mailService.EVENT_DEFAULTS
 	'MAIL_EVENT_TOPIC_RESULT',
 	'MAIL_EVENT_DEADLINE_REMINDER',

@@ -183,6 +183,80 @@ export type EnrollmentUpdate = Partial<
 	>
 >;
 
+// ─── Vòng thực hành GPHN của 1 hồ sơ (khoa, ngày, người hướng dẫn) ─────────
+export type RotationResult = 'pending' | 'pass' | 'fail';
+export const ROTATION_RESULT_LABEL: Record<RotationResult, string> = {
+	pending: 'Đang / chưa thực hành',
+	pass: 'Đạt',
+	fail: 'Không đạt',
+};
+
+export interface EnrollmentRotation {
+	id: string;
+	enrollment_id: string;
+	lesson_id: string | null;
+	round_title: string | null;
+	round_code: string | null;
+	allow_split: boolean | null;
+	seq: number;
+	department_id: string | null;
+	department_name: string | null;
+	start_date: string | null;
+	end_date: string | null;
+	duration_text: string | null;
+	mentor_user_id: string | null;
+	// Bản chụp người hướng dẫn lúc phân công
+	mentor_name: string | null;
+	mentor_salutation: string | null;
+	mentor_staff_no: string | null;
+	mentor_dob: string | null;
+	mentor_qualification: string | null;
+	mentor_license_no: string | null;
+	mentor_license_date: string | null;
+	mentor_phone: string | null;
+	mentor_scope: string | null;
+	result: RotationResult;
+	attempt_no: number;
+	note: string | null;
+	/** Khoa được chọn của vòng (rỗng = không giới hạn). */
+	allowed_department_ids: string[];
+	warnings: string[];
+}
+
+export interface RotationRound {
+	id: string;
+	code: string;
+	title: string;
+	duration_value: number | null;
+	duration_unit: 'day' | 'week' | 'month' | null;
+	allow_split: boolean;
+	department_ids: string[];
+}
+
+export interface RotationList {
+	rows: EnrollmentRotation[];
+	rounds: RotationRound[];
+	max_mentor_load: number;
+}
+
+export type RotationUpdate = Partial<
+	Pick<
+		EnrollmentRotation,
+		'department_id' | 'start_date' | 'end_date' | 'duration_text' | 'mentor_user_id' | 'mentor_salutation' | 'result' | 'note'
+	>
+>;
+
+/** Người hướng dẫn tìm được (GET /staff-licenses/mentors). */
+export interface MentorOption {
+	user_id: string;
+	staff_number: number | null;
+	full_name: string;
+	qualification: string | null;
+	license_no: string | null;
+	practice_scope: string | null;
+	department_name: string | null;
+}
+
 /** Chương trình đào tạo áp dụng cho khóa (chọn trong form khóa học). */
 export interface CourseProgramLink {
 	id: string;
