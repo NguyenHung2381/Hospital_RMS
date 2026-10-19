@@ -363,4 +363,14 @@ const schedule = async (enrollmentId, startDate, actorId) => {
 	return { scheduled: plan.length, skipped: rows.recordset.length - plan.length };
 };
 
-module.exports = { list, generate, addSegment, update, refreshMentor, retake, remove, schedule };
+module.exports = {
+	list,
+	maxMentorLoad,
+	generate,
+	addSegment,
+	update,
+	refreshMentor,
+	retake,
+	remove,
+	schedule,
+};

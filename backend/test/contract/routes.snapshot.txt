@@ -112,6 +112,7 @@ POST   /api/v1/courses/enrollments/bulk-decide  courses:approve
 POST   /api/v1/courses/grades  courses:update
 DELETE /api/v1/courses/grades/:gradeId  courses:update
 DELETE /api/v1/courses/lecturer-assignments/:assignmentId  courses:update
+GET    /api/v1/courses/practice-board  courses:read
 PUT    /api/v1/courses/rotations/:rotationId  courses:update
 DELETE /api/v1/courses/rotations/:rotationId  courses:update
 POST   /api/v1/courses/rotations/:rotationId/refresh-mentor  courses:update

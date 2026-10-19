@@ -246,6 +246,68 @@ export type RotationUpdate = Partial<
 	>
 >;
 
+// ─── Tổng hợp thực hành GPHN theo ngày (GET /courses/practice-board) ───────
+export interface PracticeBoardRow {
+	id: string;
+	enrollment_id: string;
+	round_title: string | null;
+	seq: number;
+	attempt_no: number;
+	result: RotationResult;
+	department_id: string | null;
+	department_name: string | null;
+	current_department_name: string | null;
+	start_date: string;
+	end_date: string;
+	duration_text: string | null;
+	mentor_user_id: string | null;
+	mentor_name: string | null;
+	mentor_license_no: string | null;
+	course_id: string;
+	course_name: string;
+	practice_code: string | null;
+	progress_status: ProgressStatus;
+	trainee_id: string;
+	trainee_name: string;
+	program_id: string | null;
+	program_code: string | null;
+	program_name: string | null;
+}
+
+/** Nhóm theo khoa; key rỗng = vòng chưa chọn khoa. */
+export interface PracticeBoardDepartment {
+	key: string;
+	department_id: string | null;
+	name: string;
+	trainee_count: number;
+	rows: PracticeBoardRow[];
+}
+
+/** Nhóm theo người hướng dẫn; key rỗng = vòng chưa phân công NHD. */
+export interface PracticeBoardMentor {
+	key: string;
+	mentor_user_id: string | null;
+	name: string;
+	trainee_count: number;
+	over_limit: boolean;
+	departments: string[];
+	rows: PracticeBoardRow[];
+}
+
+export interface PracticeBoard {
+	date: string;
+	max_mentor_load: number;
+	departments: PracticeBoardDepartment[];
+	mentors: PracticeBoardMentor[];
+	summary: {
+		trainee_count: number;
+		department_count: number;
+		mentor_count: number;
+		over_limit_count: number;
+		unassigned_mentor_count: number;
+	};
+}
+
 /** Người hướng dẫn tìm được (GET /staff-licenses/mentors). */
 export interface MentorOption {
 	user_id: string;

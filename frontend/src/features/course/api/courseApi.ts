@@ -16,6 +16,7 @@ import type {
 	EnrollmentStatus,
 	EnrollmentUpdate,
 	MentorOption,
+	PracticeBoard,
 	RotationList,
 	RotationUpdate,
 	Grade,
@@ -109,6 +110,10 @@ export const retakeRotation = (rotationId: string) =>
 	apiClient.post<null>(`/courses/rotations/${rotationId}/retake`, {});
 export const removeRotation = (rotationId: string) => apiClient.delete<null>(`/courses/rotations/${rotationId}`);
 // ─── Sổ thực hành GPHN (Excel mẫu 3.xlsx) ─────────────────────────────────
+/** Thực hành GPHN đang diễn ra vào 1 ngày — theo khoa / người hướng dẫn. */
+export const getPracticeBoard = (date: string) =>
+	apiClient.get<PracticeBoard>(`/courses/practice-board?${new URLSearchParams({ date }).toString()}`);
+
 export interface PracticeBookImportResult {
 	dry_run: boolean;
 	summary: {

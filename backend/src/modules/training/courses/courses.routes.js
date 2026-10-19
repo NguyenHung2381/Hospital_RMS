@@ -58,6 +58,14 @@ router.get(
 	validate,
 	ctrl.listSessionsInRange,
 );
+// Thực hành GPHN đang diễn ra vào 1 ngày — theo khoa / người hướng dẫn (trước '/:id').
+router.get(
+	'/practice-board',
+	authorizePermission(['courses', 'read']),
+	[query('date').optional({ checkFalsy: true }).isISO8601().withMessage('Ngày không hợp lệ')],
+	validate,
+	ctrl.getPracticeBoard,
+);
 router.get('/:id', authorizePermission(['courses', 'read']), ctrl.getById);
 
 router.post(

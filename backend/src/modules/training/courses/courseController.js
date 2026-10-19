@@ -6,6 +6,7 @@ const courseEnrollmentService = require('./courseEnrollmentService');
 const enrollmentProgramService = require('./enrollmentProgramService');
 const enrollmentRotationService = require('./enrollmentRotationService');
 const practiceDocumentService = require('./practiceDocumentService');
+const practiceBoardService = require('./practiceBoardService');
 const practiceBookImportService = require('./practiceBookImportService');
 const practiceBookExportService = require('./practiceBookExportService');
 const coursePolicy = require('./coursePolicy');
@@ -265,6 +266,15 @@ const listSessionsInRange = asyncHandler(async (req, res) => {
 	);
 });
 
+// Tổng hợp thực hành GPHN theo khoa / người hướng dẫn vào 1 ngày
+const getPracticeBoard = asyncHandler(async (req, res) => {
+	const { date, department_id, mentor_user_id } = req.query;
+	return success(
+		res,
+		await practiceBoardService.getBoard({ date, department_id, mentor_user_id }, req.user),
+	);
+});
+
 const listSessions = asyncHandler(async (req, res) => {
 	return success(res, await classSessionService.listSessions(req.params.id));
 });
@@ -425,6 +435,7 @@ module.exports = {
 	removeAssignment,
 	listSessions,
 	listSessionsInRange,
+	getPracticeBoard,
 	createSession,
 	createSessionsBulk,
 	updateSession,

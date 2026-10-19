@@ -1,0 +1,147 @@
+/* Tổng hợp thực hành GPHN theo ngày — bảng dùng lại Courses.module.css, ở đây chỉ phần riêng. */
+.toolbar {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--space-3);
+	margin-bottom: var(--space-4);
+}
+.dateNav {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+}
+.dateField {
+	width: 160px;
+}
+.navBtn {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	height: 34px;
+	min-width: 34px;
+	padding: 0 10px;
+	border: 1px solid var(--color-gray-200);
+	border-radius: var(--radius-md);
+	background: var(--color-white);
+	font-family: var(--font-body);
+	font-size: var(--font-size-compact);
+	font-weight: var(--font-weight-semibold);
+	color: var(--color-gray-700);
+	cursor: pointer;
+}
+.navBtn:hover:not(:disabled) {
+	border-color: var(--color-primary);
+	color: var(--color-primary-dark);
+}
+.navBtn:disabled {
+	opacity: 0.5;
+	cursor: default;
+}
+.navBtn svg {
+	width: 14px;
+	height: 14px;
+}
+.tabs {
+	margin-bottom: 0;
+}
+.spacer {
+	flex: 1;
+}
+
+.summary {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--space-2);
+	margin-bottom: var(--space-4);
+}
+.stat {
+	display: inline-flex;
+	align-items: baseline;
+	gap: 6px;
+	padding: 6px 12px;
+	border-radius: var(--radius-full);
+	background: var(--color-gray-100);
+	font-size: var(--font-size-xs);
+	color: var(--color-gray-600);
+}
+.stat b {
+	font-size: var(--font-size-sm);
+	color: var(--color-gray-800);
+}
+.statDanger {
+	background: #fcebeb;
+	color: #791f1f;
+}
+.statDanger b {
+	color: #791f1f;
+}
+
+.group + .group {
+	margin-top: var(--space-4);
+}
+.groupCount {
+	font-size: var(--font-size-xs);
+	font-weight: var(--font-weight-semibold);
+	color: var(--color-gray-500);
+	background: var(--color-gray-100);
+	padding: 1px 8px;
+	border-radius: var(--radius-full);
+}
+.muted {
+	color: var(--color-gray-500);
+	font-style: italic;
+}
+.nowrap {
+	white-space: nowrap;
+}
+
+.overRow td {
+	background: #fdf3f3;
+}
+.load {
+	display: inline-block;
+	min-width: 56px;
+	padding: 2px 10px;
+	border-radius: var(--radius-full);
+	background: #e1f5ea;
+	color: #085028;
+	font-size: var(--font-size-xs);
+	font-weight: var(--font-weight-bold);
+	text-align: center;
+	white-space: nowrap;
+}
+.loadOver {
+	background: #f7c1c1;
+	color: #791f1f;
+}
+.traineeList {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 4px 6px;
+}
+.traineeChip {
+	padding: 2px 8px;
+	border: 1px solid var(--color-gray-200);
+	border-radius: var(--radius-full);
+	background: var(--color-white);
+	font-family: var(--font-body);
+	font-size: var(--font-size-xs);
+	color: var(--color-gray-700);
+	cursor: pointer;
+}
+.traineeChip:hover {
+	border-color: var(--color-primary);
+	color: var(--color-primary-dark);
+}
+.hint {
+	margin-top: var(--space-3);
+	font-size: var(--font-size-xs);
+	color: var(--color-gray-500);
+}
+
+@media (max-width: 640px) {
+	.spacer {
+		display: none;
+	}
+}

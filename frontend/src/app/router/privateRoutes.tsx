@@ -86,6 +86,7 @@ const StaffLicenses = lazy(
 const Lecturers = lazy(() => import('../../features/lecturer/pages/Lecturers'));
 const Courses = lazy(() => import('../../features/course/pages/Courses'));
 const CourseDetail = lazy(() => import('../../features/course/pages/CourseDetail'));
+const PracticeBoard = lazy(() => import('../../features/course/pages/PracticeBoard'));
 const ClassSchedule = lazy(
 	() => import('../../features/class-schedule/pages/ClassSchedule'),
 );
@@ -304,6 +305,14 @@ export const adminRoutes: RouteObject[] = [
 	{
 		path: '/admin/courses',
 		element: admin('Quản lý Khóa học', <Courses />),
+	},
+	{
+		path: '/admin/practice-board',
+		element: (
+			<RequirePermission perm='courses:read'>
+				{admin('Thực hành GPHN theo ngày', <PracticeBoard />)}
+			</RequirePermission>
+		),
 	},
 	{
 		path: '/admin/courses/:id',
