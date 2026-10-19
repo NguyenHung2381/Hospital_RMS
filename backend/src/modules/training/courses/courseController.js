@@ -6,6 +6,8 @@ const courseEnrollmentService = require('./courseEnrollmentService');
 const enrollmentProgramService = require('./enrollmentProgramService');
 const enrollmentRotationService = require('./enrollmentRotationService');
 const practiceDocumentService = require('./practiceDocumentService');
+const practiceBookImportService = require('./practiceBookImportService');
+const practiceBookExportService = require('./practiceBookExportService');
 const coursePolicy = require('./coursePolicy');
 const courseService = require('./courseService');
 const gradeService = require('./gradeService');
@@ -168,6 +170,42 @@ const refreshRotationMentor = asyncHandler(async (req, res) => {
 const retakeRotation = asyncHandler(async (req, res) => {
 	await enrollmentRotationService.retake(req.params.rotationId, req.user.id);
 	return success(res, null, 'Đã thêm lượt học lại vòng');
+});
+
+// ─── Sổ thực hành GPHN (nhập / xuất Excel) ───────────────────────────────
+const importPracticeBook = asyncHandler(async (req, res) => {
+	if (!hasPermission(req.user, 'trainees', 'import')) {
+		return res
+			.status(403)
+			.json({ success: false, message: 'Nhập sổ thực hành cần quyền nhập Excel học viên.' });
+	}
+	if (!req.file) return res.status(400).json({ success: false, message: 'Chưa chọn file Excel.' });
+	const out = await practiceBookImportService.importBook(
+		req.params.id,
+		{ buffer: req.file.buffer, dry_run: req.body.dry_run === '1' || req.body.dry_run === 'true' },
+		req.user.id,
+	);
+	return success(res, out);
+});
+
+const exportPracticeBook = asyncHandler(async (req, res) => {
+	if (!hasPermission(req.user, 'trainees', 'read_sensitive')) {
+		return res.status(403).json({
+			success: false,
+			message:
+				'Sổ thực hành có số CCCD của học viên — cần quyền xem dữ liệu nhạy cảm của học viên.',
+		});
+	}
+	const out = await practiceBookExportService.exportBook(req.params.id);
+	res.setHeader(
+		'Content-Type',
+		'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+	);
+	res.setHeader(
+		'Content-Disposition',
+		`attachment; filename*=UTF-8''${encodeURIComponent(`so-thuc-hanh_${out.courseName}.xlsx`)}`,
+	);
+	return res.end(Buffer.from(out.buffer));
 });
 
 // ─── Giấy tờ thực hành ───────────────────────────────────────────────────
@@ -379,6 +417,8 @@ module.exports = {
 	retakeRotation,
 	removeRotation,
 	listPracticeDocuments,
+	importPracticeBook,
+	exportPracticeBook,
 	downloadPracticeDocument,
 	listAssignments,
 	assignLecturer,

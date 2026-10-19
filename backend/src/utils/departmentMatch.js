@@ -2,7 +2,8 @@
  * departmentMatch.js — khớp tên khoa ghi tay trong file Excel ("TDCN",
  * "Gây mê hồi sức", "P. Điều dưỡng", "Cơ xương khớp") với danh mục departments.
  * Thứ tự: tên chuẩn hoá trùng khớp → viết tắt quen dùng → tên khoa chứa trọn
- * cụm từ (chỉ nhận khi đúng 1 khoa, nhiều khoa thì báo mơ hồ).
+ * cụm từ → tên khoa chứa đủ mọi từ ("Nội hô hấp" = "Nội Dị Ứng - Hô Hấp"). Chỉ nhận
+ * khi đúng 1 khoa; nhiều khoa thì báo mơ hồ.
  */
 const { normDept } = require('./vietnameseText');
 
@@ -23,6 +24,11 @@ const ALIASES = {
 	'd d': 'dieu duong',
 	'p dieu duong': 'dieu duong',
 	xq: 'x quang',
+	xquang: 'x quang',
+	// Cách viết trong sổ thực hành GPHN (3.xlsx)
+	'noi tiet dai thao duong': 'noi tiet dtd',
+	'ngoai tong hop 1': 'ngoai tong hop',
+	'phau thuat tim mach long nguc': 'phau thuat tm long nguc',
 	vs: 'vi sinh',
 	gmhs: 'gay me hoi suc',
 };
@@ -44,6 +50,10 @@ const createDepartmentMatcher = (departments) => {
 		const hits = list.filter((d) => wordsIn(d.key, key));
 		if (hits.length === 1) return { id: hits[0].id, name: hits[0].name };
 		if (hits.length > 1) return { ambiguous: hits.map((h) => h.name) };
+		const words = key.split(' ');
+		const loose = words.length > 1 ? list.filter((d) => words.every((w) => wordsIn(d.key, w))) : [];
+		if (loose.length === 1) return { id: loose[0].id, name: loose[0].name };
+		if (loose.length > 1) return { ambiguous: loose.map((h) => h.name) };
 		return null;
 	};
 };

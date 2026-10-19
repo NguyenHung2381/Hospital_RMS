@@ -15,6 +15,8 @@ import {
 	type EnrollmentStatus,
 } from '../types/course.type';
 import { EnrollmentDetailModal } from './EnrollmentDetailModal';
+import { PracticeBookImportModal } from './PracticeBookImportModal';
+import { savePracticeBook } from '../utils/practiceDocuments';
 import styles from '../pages/Courses.module.css';
 import tbl from '@/shared/components/Table/Table.module.css';
 import { useClientPaging } from '@/shared/hooks/useClientPaging';
@@ -58,6 +60,8 @@ export function EnrollmentsTab({
 	const [newTraineeId, setNewTraineeId] = useState('');
 	const [newProgramId, setNewProgramId] = useState('');
 	const [detailId, setDetailId] = useState<string | null>(null);
+	const [bookOpen, setBookOpen] = useState(false);
+	const [exporting, setExporting] = useState(false);
 	const detail = enrollments.find((e) => e.id === detailId) ?? null;
 	// Khóa chỉ có 1 chương trình thì chọn sẵn; nhiều chương trình thì bắt chọn.
 	const programId = programLinks.length === 1 ? programLinks[0].program_id : newProgramId;
@@ -103,6 +107,33 @@ export function EnrollmentsTab({
 
 	return (
 		<>
+			{course?.is_rolling && (
+				<div className={styles.subToolbar}>
+					<span className={styles.hint}>Sổ theo dõi thực hành (Excel)</span>
+					<button
+						type='button'
+						className={styles.btnGhost}
+						disabled={busy}
+						onClick={() => setBookOpen(true)}
+						title='Nhập sổ thực hành cũ (mẫu 3.xlsx): học viên, hồ sơ, vòng khoa, người hướng dẫn'
+					>
+						Nhập sổ thực hành
+					</button>
+					<button
+						type='button'
+						className={styles.btnGhost}
+						disabled={busy || exporting || enrollments.length === 0}
+						onClick={async () => {
+							setExporting(true);
+							await savePracticeBook(course.id, course.name);
+							setExporting(false);
+						}}
+						title='Xuất đúng bố cục sổ cũ (gồm cột Ngày/Tháng/Năm, TH1–TH11) để trộn thư như trước'
+					>
+						{exporting ? 'Đang xuất…' : 'Xuất sổ thực hành'}
+					</button>
+				</div>
+			)}
 			<div className={styles.subToolbar}>
 				<SearchableSelect
 					className={styles.subSearch}
@@ -337,6 +368,13 @@ export function EnrollmentsTab({
 				{...pg.pagination}
 				itemLabel='đăng ký'
 			/>
+			{bookOpen && course && (
+				<PracticeBookImportModal
+					courseId={course.id}
+					onClose={() => setBookOpen(false)}
+					onImported={onSaved}
+				/>
+			)}
 			{detail && (
 				<EnrollmentDetailModal
 					enrollment={detail}

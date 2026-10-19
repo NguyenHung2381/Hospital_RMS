@@ -108,6 +108,46 @@ export const refreshRotationMentor = (rotationId: string) =>
 export const retakeRotation = (rotationId: string) =>
 	apiClient.post<null>(`/courses/rotations/${rotationId}/retake`, {});
 export const removeRotation = (rotationId: string) => apiClient.delete<null>(`/courses/rotations/${rotationId}`);
+// ─── Sổ thực hành GPHN (Excel mẫu 3.xlsx) ─────────────────────────────────
+export interface PracticeBookImportResult {
+	dry_run: boolean;
+	summary: {
+		records: number;
+		records_new: number;
+		records_update: number;
+		skipped: number;
+		trainees_new: number;
+		trainees_update: number;
+		rotations: number;
+		mentors_linked: number;
+		programs: Record<string, number>;
+	};
+	rows?: {
+		row: number;
+		practice_code: string;
+		full_name: string;
+		action: 'new' | 'update';
+		trainee_action: 'new' | 'update' | 'duplicate';
+		program_code: string | null;
+		program_found: boolean;
+		rotations: number;
+		departments: string;
+	}[];
+	written?: number;
+	trainees_inserted?: number;
+	trainees_updated?: number;
+	programs_linked?: number;
+	warnings: string[];
+}
+export const importPracticeBook = (courseId: string, file: File, dryRun: boolean) => {
+	const form = new FormData();
+	form.append('file', file);
+	form.append('dry_run', dryRun ? '1' : '0');
+	return apiClient.postForm<PracticeBookImportResult>(`/courses/${courseId}/practice-book/import`, form);
+};
+export const exportPracticeBook = (courseId: string) =>
+	apiClient.postBlob(`/courses/${courseId}/practice-book/export`, {});
+
 // ─── Giấy tờ thực hành (Đơn đề nghị, Hợp đồng, Phiếu nhận xét) ────────────
 export type PracticeDocumentType = 'don-de-nghi' | 'hop-dong' | 'phieu-nhan-xet';
 export interface PracticeDocumentInfo {

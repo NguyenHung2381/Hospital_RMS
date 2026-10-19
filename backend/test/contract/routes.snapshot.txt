@@ -84,6 +84,8 @@ GET    /api/v1/courses/:id/enrollments  courses:read
 GET    /api/v1/courses/:id/grades  courses:read
 GET    /api/v1/courses/:id/lecturer-assignments  courses:read
 POST   /api/v1/courses/:id/lecturer-assignments  courses:update
+POST   /api/v1/courses/:id/practice-book/export  courses:read
+POST   /api/v1/courses/:id/practice-book/import  courses:update
 GET    /api/v1/courses/:id/programs  courses:read
 GET    /api/v1/courses/:id/sessions  courses:read
 POST   /api/v1/courses/:id/sessions  courses:update

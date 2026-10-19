@@ -210,6 +210,36 @@ const WRITE_FIELDS = [
 const filledFields = (p) =>
 	Object.fromEntries(WRITE_FIELDS.filter((f) => p[f] != null && p[f] !== '').map((f) => [f, p[f]]));
 
+/**
+ * Ghi các dòng đã xem trước: CCCD đã có → cập nhật, chưa có → thêm mới; CCCD lặp
+ * trong file → cùng 1 học viên. Trả idByRow (số dòng Excel → id học viên) để
+ * nơi gọi gắn tiếp dữ liệu khác (vd sổ thực hành GPHN).
+ */
+const writeTrainees = async (preview, actorId) => {
+	let inserted = 0;
+	let updated = 0;
+	const idByNationalId = new Map();
+	const idByRow = new Map();
+	for (const p of preview) {
+		const targetId = p.trainee_id ?? (p.national_id ? idByNationalId.get(p.national_id) : null);
+		if (targetId) {
+			await traineeService.update(targetId, filledFields(p), actorId);
+			idByRow.set(p.row, targetId);
+			updated += 1;
+			continue;
+		}
+		const created = await traineeService.create(
+			{ ...filledFields(p), is_employee: p.is_employee },
+			actorId,
+			{ fetch: false },
+		);
+		if (p.national_id) idByNationalId.set(p.national_id, created.id);
+		idByRow.set(p.row, created.id);
+		inserted += 1;
+	}
+	return { inserted, updated, idByRow };
+};
+
 const importExcel = async ({ buffer, dry_run }, actorId) => {
 	const { rows: rawRows } = await parseWorkbook(buffer);
 	const lookups = await loadLookups();
@@ -234,26 +264,15 @@ const importExcel = async ({ buffer, dry_run }, actorId) => {
 		return { dry_run: true, rows: preview, summary, warnings };
 	}
 
-	let inserted = 0;
-	let updated = 0;
-	const idByNationalId = new Map();
-	for (const p of preview) {
-		const targetId = p.trainee_id ?? (p.national_id ? idByNationalId.get(p.national_id) : null);
-		if (targetId) {
-			await traineeService.update(targetId, filledFields(p), actorId);
-			updated += 1;
-			continue;
-		}
-		const created = await traineeService.create(
-			{ ...filledFields(p), is_employee: p.is_employee },
-			actorId,
-			{ fetch: false },
-		);
-		if (p.national_id) idByNationalId.set(p.national_id, created.id);
-		inserted += 1;
-	}
-
+	const { inserted, updated } = await writeTrainees(preview, actorId);
 	return { dry_run: false, inserted, updated, warnings };
 };
 
-module.exports = { importExcel, COLUMN_MATCHERS, parseWorkbook, buildPreview };
+module.exports = {
+	importExcel,
+	COLUMN_MATCHERS,
+	parseWorkbook,
+	buildPreview,
+	loadLookups,
+	writeTrainees,
+};

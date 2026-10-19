@@ -1,6 +1,7 @@
 const router = require('express').Router();
 const { body, query } = require('express-validator');
 const ctrl = require('./courseController');
+const uploadExcel = require('../../../middlewares/uploadExcel');
 const { authenticate, authorizePermission } = require('../../../middlewares/auth');
 const { validate } = require('../../../middlewares/errorHandler');
 const { createTrainingUpload } = require('../../../middlewares/uploadTraining');
@@ -102,6 +103,21 @@ router.delete('/:id', authorizePermission(['courses', 'delete']), ctrl.removeOne
 // ─── Chương trình đào tạo áp dụng (N:N) ────────────────────────────────────
 // Gán/gỡ qua program_ids khi tạo/sửa khóa học
 router.get('/:id/programs', authorizePermission(['courses', 'read']), ctrl.listProgramLinks);
+
+// ─── Sổ thực hành GPHN (Excel mẫu 3.xlsx) — nhập vào khóa / xuất đúng bố cục sổ.
+// Nhập ghi cả hồ sơ học viên ⇒ controller đòi thêm trainees:import; xuất có CCCD
+// ⇒ đòi thêm trainees:read_sensitive.
+router.post(
+	'/:id/practice-book/import',
+	authorizePermission(['courses', 'update']),
+	uploadExcel.single('file'),
+	ctrl.importPracticeBook,
+);
+router.post(
+	'/:id/practice-book/export',
+	authorizePermission(['courses', 'read']),
+	ctrl.exportPracticeBook,
+);
 
 // ─── Enrollments ──────────────────────────────────────────────────────────
 router.get('/:id/enrollments', authorizePermission(['courses', 'read']), ctrl.listEnrollments);

@@ -1,6 +1,15 @@
 import { fileSlug, saveBlob } from '@/shared/utils/saveBlob';
 import { showToast } from '@/shared/utils/feedback';
-import { downloadPracticeDocument, type PracticeDocumentType } from '../api/courseApi';
+import { downloadPracticeDocument, exportPracticeBook, type PracticeDocumentType } from '../api/courseApi';
+
+/** Xuất sổ thực hành GPHN của khóa ra Excel (bố cục sổ cũ). */
+export const savePracticeBook = async (courseId: string, courseName: string) => {
+	try {
+		saveBlob(await exportPracticeBook(courseId), `so-thuc-hanh_${fileSlug(courseName)}.xlsx`);
+	} catch (err) {
+		showToast('error', err instanceof Error ? err.message : 'Không xuất được sổ thực hành');
+	}
+};
 
 /** Tải 1 giấy tờ thực hành và lưu về máy (tên file theo mã thực hành / tên học viên). */
 export const savePracticeDocument = async (
