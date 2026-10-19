@@ -14,6 +14,11 @@ export interface Course {
 	program_ids: string[];
 	training_form_id: string | null;
 	training_form_name: string | null;
+	training_type_id: string | null;
+	training_type_name: string | null;
+	batch_no: number | null;
+	/** Khóa mở liên tục (GPHN): không có ngày khóa/cửa sổ đăng ký, học viên có lịch riêng. */
+	is_rolling: boolean;
 	start_date: string | null;
 	end_date: string | null;
 	enrollment_start_date: string | null;
@@ -36,6 +41,9 @@ export interface CourseFormData {
 	name: string;
 	program_ids: string[];
 	training_form_id: string;
+	training_type_id: string;
+	batch_no: string;
+	is_rolling: boolean;
 	start_date: string;
 	end_date: string;
 	enrollment_start_date: string;
@@ -57,6 +65,9 @@ export const EMPTY_FORM: CourseFormData = {
 	name: '',
 	program_ids: [],
 	training_form_id: '',
+	training_type_id: '',
+	batch_no: '',
+	is_rolling: false,
 	start_date: '',
 	end_date: '',
 	enrollment_start_date: '',
@@ -68,6 +79,13 @@ export const EMPTY_FORM: CourseFormData = {
 	prerequisites: [],
 	objectives: [],
 };
+
+// Loại khóa = loại hình đào tạo (training_types); id cố định do migration
+// 2026-11-07_training_course_types_rotations tạo.
+export const TRAINING_TYPE = {
+	GPHN: 'TRNTP-GPHN',
+	DTLT: 'TRNTP-DTLT',
+} as const;
 
 export const DISPLAY_STATUS_CFG: Record<CourseDisplayStatus, { label: string; color: string; bg: string }> = {
 	upcoming: { label: 'Sắp khai giảng', color: '#633806', bg: '#faeeda' },

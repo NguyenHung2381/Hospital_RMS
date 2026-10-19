@@ -11,6 +11,7 @@ const { ASSIGNED_EXISTS_SQL } = require('./coursePolicy');
 // (is_public_registration) — xem 2026-09-15_course_enrollment_window và
 // 2026-09-20_drop_training_rounds.
 const isEnrollmentOpenRow = (c) => {
+	if (c.is_rolling) return true; // khóa mở liên tục (GPHN) — nhận học viên bất cứ lúc nào
 	if (!c.enrollment_start_date && !c.enrollment_end_date) return true; // chưa cấu hình = mở
 	const today = todayVN();
 	const afterStart = !c.enrollment_start_date || today >= new Date(c.enrollment_start_date);
@@ -35,6 +36,8 @@ const parseJsonList = (v) => {
 // suy ra từ ngày tháng nên vẫn cần override thủ công.
 const computeDisplayStatus = (c, enrollmentOpen) => {
 	if (c.status === 'cancelled') return 'cancelled';
+	// Khóa mở liên tục (GPHN): không có ngày khóa — học viên vào/ra theo lịch riêng.
+	if (c.is_rolling) return 'in_progress';
 	const today = todayVN();
 	const startDate = c.start_date ? new Date(c.start_date) : null;
 	const endDate = c.end_date ? new Date(c.end_date) : null;
@@ -62,6 +65,7 @@ const normalize = (c) => {
 const courseSelect = `
   SELECT c.*,
          tf.name AS training_form_name,
+         tt.name AS training_type_name,
          (SELECT STRING_AGG(cp.program_id, ',') FROM course_programs cp WHERE cp.course_id = c.id) AS program_ids,
          (SELECT COUNT(*) FROM course_enrollments WHERE course_id = c.id) AS enrollment_count,
          (SELECT COUNT(*) FROM course_enrollments WHERE course_id = c.id AND status = 'approved') AS approved_count,
@@ -69,6 +73,7 @@ const courseSelect = `
          (SELECT STRING_AGG(tp.name, ', ') FROM course_programs cp JOIN training_programs tp ON tp.id = cp.program_id WHERE cp.course_id = c.id) AS program_names
   FROM courses c
   LEFT JOIN training_forms tf ON tf.id = c.training_form_id
+  LEFT JOIN training_types tt ON tt.id = c.training_type_id
 `;
 
 // ─── Courses ──────────────────────────────────────────────────────────────
@@ -79,6 +84,7 @@ const getAll = async (
 		search = undefined,
 		program_id = undefined,
 		status = undefined,
+		training_type_id = undefined,
 	} = {},
 	actor = null,
 ) => {
@@ -100,6 +106,10 @@ const getAll = async (
 	if (status) {
 		where.push('c.status = @status');
 		req.input('status', sql.VarChar(15), status);
+	}
+	if (training_type_id) {
+		where.push('c.training_type_id = @training_type_id');
+		req.input('training_type_id', sql.VarChar(20), training_type_id);
 	}
 	if (actor && scopeOf(actor, 'courses') === 'assigned') {
 		where.push(ASSIGNED_EXISTS_SQL);
@@ -144,6 +154,9 @@ const create = async (data, actorId) => {
 		.input('actor_id', sql.VarChar(20), actorId)
 		.input('name', sql.NVarChar(255), data.name)
 		.input('training_form_id', sql.VarChar(20), data.training_form_id || null)
+		.input('training_type_id', sql.VarChar(20), data.training_type_id || null)
+		.input('batch_no', sql.Int, data.batch_no || null)
+		.input('is_rolling', sql.Bit, data.is_rolling ? 1 : 0)
 		.input('start_date', sql.Date, data.start_date || null)
 		.input('end_date', sql.Date, data.end_date || null)
 		.input('enrollment_start_date', sql.Date, data.enrollment_start_date || null)
@@ -157,8 +170,8 @@ const create = async (data, actorId) => {
       DECLARE @new_id VARCHAR(20);
       EXEC sp_gen_course_id @actor_id = @actor_id, @new_id = @new_id OUTPUT;
       EXEC sp_set_actor @actor_id;
-      INSERT INTO courses (id, name, training_form_id, start_date, end_date, enrollment_start_date, enrollment_end_date, capacity, status, is_public_registration, description, prerequisites, objectives, created_by)
-      VALUES (@new_id, @name, @training_form_id, @start_date, @end_date, @enrollment_start_date, @enrollment_end_date, @capacity, @status, @is_public_registration, @description, @prerequisites, @objectives, @actor_id);
+      INSERT INTO courses (id, name, training_form_id, training_type_id, batch_no, is_rolling, start_date, end_date, enrollment_start_date, enrollment_end_date, capacity, status, is_public_registration, description, prerequisites, objectives, created_by)
+      VALUES (@new_id, @name, @training_form_id, @training_type_id, @batch_no, @is_rolling, @start_date, @end_date, @enrollment_start_date, @enrollment_end_date, @capacity, @status, @is_public_registration, @description, @prerequisites, @objectives, @actor_id);
       SELECT @new_id AS id;
     `);
 	const id = result.recordset[0].id;
@@ -178,6 +191,9 @@ const update = async (id, data, actorId) => {
 	const fieldMap = {
 		name: sql.NVarChar(255),
 		training_form_id: sql.VarChar(20),
+		training_type_id: sql.VarChar(20),
+		batch_no: sql.Int,
+		is_rolling: sql.Bit,
 		start_date: sql.Date,
 		end_date: sql.Date,
 		enrollment_start_date: sql.Date,

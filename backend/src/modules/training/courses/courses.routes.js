@@ -65,6 +65,11 @@ router.post(
 	[
 		body('name').trim().notEmpty().withMessage('Tên khóa học không được để trống'),
 		body('capacity').optional({ checkFalsy: true }).isInt({ min: 1 }),
+		body('batch_no')
+			.optional({ checkFalsy: true })
+			.isInt({ min: 1 })
+			.withMessage('Số đợt phải là số nguyên dương'),
+		body('is_rolling').optional().isBoolean(),
 		body('prerequisites').optional({ nullable: true }).isArray(),
 		body('objectives').optional({ nullable: true }).isArray(),
 		body('program_ids').optional().isArray(),
@@ -79,6 +84,11 @@ router.put(
 	[
 		body('name').optional().trim().notEmpty(),
 		body('capacity').optional({ checkFalsy: true }).isInt({ min: 1 }),
+		body('batch_no')
+			.optional({ checkFalsy: true })
+			.isInt({ min: 1 })
+			.withMessage('Số đợt phải là số nguyên dương'),
+		body('is_rolling').optional().isBoolean(),
 		body('prerequisites').optional({ nullable: true }).isArray(),
 		body('objectives').optional({ nullable: true }).isArray(),
 		body('program_ids').optional().isArray(),

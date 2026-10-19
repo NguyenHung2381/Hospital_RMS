@@ -1,14 +1,45 @@
-export type ModalType = 'add' | 'edit' | 'delete' | null;
+export type ModalType = 'add' | 'edit' | 'delete' | 'import' | null;
+
+// ─── Thời lượng (chương trình / vòng thực hành) — lưu số + đơn vị ─────────
+export type DurationUnit = 'day' | 'week' | 'month';
+export const DURATION_UNIT_LABEL: Record<DurationUnit, string> = { day: 'ngày', week: 'tuần', month: 'tháng' };
+const DAYS_PER_UNIT: Record<DurationUnit, number> = { day: 1, week: 7, month: 30 };
+
+/** Quy đổi xấp xỉ ra ngày — chỉ để so tổng các vòng với thời lượng chương trình. */
+export const durationDays = (value: number | null, unit: DurationUnit | null) =>
+	value != null && unit ? Number(value) * DAYS_PER_UNIT[unit] : null;
+
+export const formatDuration = (value: number | null, unit: DurationUnit | null) =>
+	value != null && unit ? `${String(Number(value)).replace('.', ',')} ${DURATION_UNIT_LABEL[unit]}` : null;
+
+export type LessonKind = 'theory' | 'rotation';
+export const LESSON_KIND_LABEL: Record<LessonKind, string> = {
+	theory: 'Bài học',
+	rotation: 'Vòng thực hành',
+};
 
 export interface TrainingProgram {
 	id: string;
 	name: string;
 	code: string | null;
 	duration: string | null;
+	duration_value: number | null;
+	duration_unit: DurationUnit | null;
 	department_id: string | null;
 	department_name: string | null;
+	/** Ghi chú khoa phụ trách: "Nhiều khoa tùy vòng…" hoặc tên khoa chưa có trong danh mục. */
+	department_note: string | null;
 	trainee_type_id: string | null;
 	trainee_type_name: string | null;
+	training_type_id: string | null;
+	training_type_name: string | null;
+	/** Đối tượng học viên dạng chữ tự do ("Bác sĩ, Điều dưỡng, KTV"). */
+	target_audience: string | null;
+	theory_hours: number | null;
+	practice_hours: number | null;
+	total_hours: number;
+	credit_hours: number | null;
+	tuition_fee: number | null;
 	max_capacity: number | null;
 	display_order: number;
 	description: string | null;
@@ -21,8 +52,17 @@ export interface TrainingProgramFormData {
 	name: string;
 	code: string;
 	duration: string;
+	duration_value: string;
+	duration_unit: DurationUnit;
 	department_id: string;
+	department_note: string;
 	trainee_type_id: string;
+	training_type_id: string;
+	target_audience: string;
+	theory_hours: string;
+	practice_hours: string;
+	credit_hours: string;
+	tuition_fee: string;
 	max_capacity: string;
 	display_order: string;
 	description: string;
@@ -48,6 +88,13 @@ export interface Lesson {
 	practice_hours: number;
 	total_hours: number;
 	credits: number;
+	lesson_kind: LessonKind;
+	duration_value: number | null;
+	duration_unit: DurationUnit | null;
+	allow_split: boolean;
+	/** Khoa được chọn cho vòng thực hành — id nối bằng dấu phẩy. */
+	department_ids: string | null;
+	department_names: string | null;
 	program_names: string | null;
 	/** Id chương trình đang dùng bài học, nối bằng dấu phẩy (null = chưa thuộc chương trình nào). */
 	program_ids: string | null;
@@ -66,6 +113,12 @@ export interface ProgramLessonLink {
 	practice_hours: number;
 	total_hours: number;
 	credits: number;
+	lesson_kind: LessonKind;
+	duration_value: number | null;
+	duration_unit: DurationUnit | null;
+	allow_split: boolean;
+	department_ids: string | null;
+	department_names: string | null;
 	display_order: number;
 	created_at: string;
 }
@@ -80,6 +133,11 @@ export interface LessonFormData {
 	theory_hours: string;
 	practice_hours: string;
 	credits: string;
+	lesson_kind: LessonKind;
+	duration_value: string;
+	duration_unit: DurationUnit;
+	allow_split: boolean;
+	department_ids: string[];
 	program_ids: string[];
 }
 
@@ -91,6 +149,11 @@ export const EMPTY_LESSON_FORM: LessonFormData = {
 	theory_hours: '0',
 	practice_hours: '0',
 	credits: '0',
+	lesson_kind: 'theory',
+	duration_value: '',
+	duration_unit: 'month',
+	allow_split: false,
+	department_ids: [],
 	program_ids: [],
 };
 
@@ -133,8 +196,17 @@ export const EMPTY_FORM: TrainingProgramFormData = {
 	name: '',
 	code: '',
 	duration: '',
+	duration_value: '',
+	duration_unit: 'month',
 	department_id: '',
+	department_note: '',
 	trainee_type_id: '',
+	training_type_id: '',
+	target_audience: '',
+	theory_hours: '',
+	practice_hours: '',
+	credit_hours: '',
+	tuition_fee: '',
 	max_capacity: '',
 	display_order: '0',
 	description: '',

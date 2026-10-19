@@ -26,6 +26,8 @@ type Named = { id: string; name: string };
 
 const EXCEL_COLS: ExcelColumn<Course>[] = [
 	{ header: 'Tên khóa học', key: 'name', required: true, value: (x) => x.name },
+	{ header: 'Loại khóa', value: (x) => x.training_type_name },
+	{ header: 'Đợt số', value: (x) => x.batch_no },
 	{ header: 'Chương trình', key: 'programs', value: (x) => (x.program_names ?? '').split(/,\s*/).filter(Boolean).join('; ') },
 	{ header: 'Hình thức học', key: 'training_form', value: (x) => x.training_form_name },
 	{ header: 'Ngày bắt đầu', key: 'start_date', value: (x) => formatDateVN(x.start_date) },
@@ -195,6 +197,12 @@ export default function Courses() {
 											>
 												{c.name}
 											</span>
+											{c.training_type_name && (
+												<div className={styles.descText}>
+													{c.training_type_name}
+													{c.is_rolling ? ' · mở liên tục' : ''}
+												</div>
+											)}
 											{c.pending_count > 0 && (
 												<div className={styles.descText}>
 													{c.pending_count} đăng ký chờ duyệt

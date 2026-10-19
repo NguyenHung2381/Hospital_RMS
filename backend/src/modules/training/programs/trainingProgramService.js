@@ -4,6 +4,51 @@ const { paging } = require('../../../utils/paging');
 const trainingFileService = require('../trainingFileService');
 const { assertHttpUrl } = require('../../../utils/safeUrl');
 const { httpError } = require('../../../utils/httpError');
+const { formatDuration, UNITS } = require('../../../utils/trainingDuration');
+
+// Cột ghi được của training_programs (create + update dùng chung). duration
+// (văn bản) tự sinh từ duration_value/unit khi có — xem withDurationText.
+const PROGRAM_FIELDS = {
+	name: sql.NVarChar(255),
+	code: sql.NVarChar(50),
+	duration: sql.NVarChar(100),
+	duration_value: sql.Decimal(6, 2),
+	duration_unit: sql.VarChar(10),
+	department_id: sql.VarChar(20),
+	department_note: sql.NVarChar(255),
+	trainee_type_id: sql.VarChar(20),
+	training_type_id: sql.VarChar(20),
+	target_audience: sql.NVarChar(300),
+	theory_hours: sql.Int,
+	practice_hours: sql.Int,
+	credit_hours: sql.Decimal(6, 1),
+	tuition_fee: sql.Decimal(18, 0),
+	max_capacity: sql.Int,
+	display_order: sql.Int,
+	description: sql.NVarChar(sql.MAX),
+};
+
+const LESSON_FIELDS = {
+	code: sql.NVarChar(50),
+	title: sql.NVarChar(255),
+	description: sql.NVarChar(sql.MAX),
+	theory_hours: sql.Int,
+	practice_hours: sql.Int,
+	credits: sql.Int,
+	lesson_kind: sql.VarChar(10),
+	duration_value: sql.Decimal(6, 2),
+	duration_unit: sql.VarChar(10),
+};
+
+const emptyToNull = (v) => (v === '' || v === undefined ? null : v);
+
+const withDurationText = (data) => {
+	if (data.duration_unit !== undefined && data.duration_unit && !UNITS.includes(data.duration_unit))
+		throw httpError(400, 'Đơn vị thời lượng không hợp lệ');
+	if (data.duration_value === undefined) return data;
+	const text = formatDuration(data.duration_value || null, data.duration_unit);
+	return { ...data, duration: text ?? data.duration ?? null };
+};
 
 const programSelect = `
   SELECT p.*, d.name AS department_name, tt.name AS trainee_type_name, tp.name AS training_type_name,
@@ -20,6 +65,7 @@ const getAll = async ({
 	limit = 20,
 	search = undefined,
 	department_id = undefined,
+	training_type_id = undefined,
 } = {}) => {
 	const pool = await getPool();
 	const pg = paging(page, limit, 100);
@@ -33,6 +79,10 @@ const getAll = async ({
 	if (department_id) {
 		where.push('p.department_id = @department_id');
 		req.input('department_id', sql.VarChar(20), department_id);
+	}
+	if (training_type_id) {
+		where.push('p.training_type_id = @training_type_id');
+		req.input('training_type_id', sql.VarChar(20), training_type_id);
 	}
 	const whereSql = `WHERE ${where.join(' AND ')}`;
 
@@ -57,32 +107,37 @@ const getById = async (id) => {
 	return row ?? null;
 };
 
+// Vi phạm UQ_trprog_code (mã chương trình trùng) → 409 thay vì 500.
+const rethrowDuplicateCode = (err) => {
+	if (err.number === 2601 || err.number === 2627)
+		throw httpError(409, 'Mã chương trình đã tồn tại.');
+	throw err;
+};
+
 const create = async (data, actorId) => {
 	const pool = await getPool();
-	const result = await pool
-		.request()
-		.input('actor_id', sql.VarChar(20), actorId)
-		.input('name', sql.NVarChar(255), data.name)
-		.input('code', sql.NVarChar(50), data.code || null)
-		.input('duration', sql.NVarChar(100), data.duration || null)
-		.input('department_id', sql.VarChar(20), data.department_id || null)
-		.input('trainee_type_id', sql.VarChar(20), data.trainee_type_id || null)
-		.input('training_type_id', sql.VarChar(20), data.training_type_id || null)
-		.input('max_capacity', sql.Int, data.max_capacity || null)
-		.input('display_order', sql.Int, data.display_order || 0)
-		.input('description', sql.NVarChar(sql.MAX), data.description || null).query(`
+	const input = withDurationText(data);
+	const req = pool.request().input('actor_id', sql.VarChar(20), actorId);
+	const cols = [];
+	for (const [field, type] of Object.entries(PROGRAM_FIELDS)) {
+		cols.push(field);
+		req.input(
+			field,
+			type,
+			field === 'display_order' ? input[field] || 0 : emptyToNull(input[field]),
+		);
+	}
+	const result = await req
+		.query(
+			`
       DECLARE @new_id VARCHAR(20) = 'CT' + LEFT(REPLACE(NEWID(),'-',''), 18);
       EXEC sp_set_actor @actor_id;
-      INSERT INTO training_programs (
-        id, name, code, duration, department_id, trainee_type_id, training_type_id,
-        max_capacity, display_order, description, created_by
-      )
-      VALUES (
-        @new_id, @name, @code, @duration, @department_id, @trainee_type_id, @training_type_id,
-        @max_capacity, @display_order, @description, @actor_id
-      );
+      INSERT INTO training_programs (id, ${cols.join(', ')}, created_by)
+      VALUES (@new_id, ${cols.map((c) => `@${c}`).join(', ')}, @actor_id);
       SELECT @new_id AS id;
-    `);
+    `,
+		)
+		.catch(rethrowDuplicateCode);
 	const id = result.recordset[0].id;
 	broadcast('update', { entity: 'training_program' });
 	return getById(id);
@@ -90,53 +145,26 @@ const create = async (data, actorId) => {
 
 const update = async (id, data, actorId) => {
 	const pool = await getPool();
+	const input = withDurationText(data);
 	const sets = ['updated_at = GETDATE()', 'updated_by = @actor_id'];
 	const req = pool
 		.request()
 		.input('id', sql.VarChar(20), id)
 		.input('actor_id', sql.VarChar(20), actorId);
 
-	if (data.name !== undefined) {
-		sets.push('name = @name');
-		req.input('name', sql.NVarChar(255), data.name);
-	}
-	if (data.code !== undefined) {
-		sets.push('code = @code');
-		req.input('code', sql.NVarChar(50), data.code || null);
-	}
-	if (data.duration !== undefined) {
-		sets.push('duration = @duration');
-		req.input('duration', sql.NVarChar(100), data.duration || null);
-	}
-	if (data.max_capacity !== undefined) {
-		sets.push('max_capacity = @max_capacity');
-		req.input('max_capacity', sql.Int, data.max_capacity || null);
-	}
-	if (data.display_order !== undefined) {
-		sets.push('display_order = @display_order');
-		req.input('display_order', sql.Int, data.display_order || 0);
-	}
-	if (data.department_id !== undefined) {
-		sets.push('department_id = @department_id');
-		req.input('department_id', sql.VarChar(20), data.department_id || null);
-	}
-	if (data.trainee_type_id !== undefined) {
-		sets.push('trainee_type_id = @trainee_type_id');
-		req.input('trainee_type_id', sql.VarChar(20), data.trainee_type_id || null);
-	}
-	if (data.training_type_id !== undefined) {
-		sets.push('training_type_id = @training_type_id');
-		req.input('training_type_id', sql.VarChar(20), data.training_type_id || null);
-	}
-	if (data.description !== undefined) {
-		sets.push('description = @description');
-		req.input('description', sql.NVarChar(sql.MAX), data.description || null);
+	for (const [field, type] of Object.entries(PROGRAM_FIELDS)) {
+		if (input[field] === undefined) continue;
+		sets.push(`${field} = @${field}`);
+		const value = field === 'display_order' ? input[field] || 0 : emptyToNull(input[field]);
+		req.input(field, type, value);
 	}
 
 	if (sets.length > 2)
-		await req.query(
-			`EXEC sp_set_actor @actor_id; UPDATE training_programs SET ${sets.join(', ')} WHERE id = @id`,
-		);
+		await req
+			.query(
+				`EXEC sp_set_actor @actor_id; UPDATE training_programs SET ${sets.join(', ')} WHERE id = @id`,
+			)
+			.catch(rethrowDuplicateCode);
 	broadcast('update', { entity: 'training_program' });
 	return getById(id);
 };
@@ -160,12 +188,52 @@ const remove = async (id, actorId) => {
 // thuộc riêng bài học — xem 2026-09-18_lesson_programs_bridge. title/
 // description do đó dùng chung: sửa ở đâu cũng ảnh hưởng mọi chương trình
 // đang dùng bài học đó.
+//
+// Bài học loại 'rotation' là 1 vòng thực hành GPHN: có thời lượng và danh sách
+// khoa được chọn (lesson_departments) — xem 2026-11-07_training_course_types_rotations.
+const lessonDepartmentsSql = `
+           (SELECT STRING_AGG(ld.department_id, ',') WITHIN GROUP (ORDER BY ld.display_order)
+              FROM lesson_departments ld WHERE ld.lesson_id = pl.id) AS department_ids,
+           (SELECT STRING_AGG(d.name, ', ') WITHIN GROUP (ORDER BY ld.display_order)
+              FROM lesson_departments ld JOIN departments d ON d.id = ld.department_id
+              WHERE ld.lesson_id = pl.id) AS department_names`;
+
+// Gán lại toàn bộ khoa của 1 vòng (thứ tự = vị trí trong mảng).
+const setLessonDepartments = async (lessonId, departmentIds) => {
+	const pool = await getPool();
+	const ids = [...new Set((departmentIds || []).filter(Boolean))];
+	await pool
+		.request()
+		.input('lesson_id', sql.VarChar(20), lessonId)
+		.query('DELETE FROM lesson_departments WHERE lesson_id = @lesson_id');
+	for (let i = 0; i < ids.length; i++) {
+		await pool
+			.request()
+			.input('lesson_id', sql.VarChar(20), lessonId)
+			.input('department_id', sql.VarChar(20), ids[i])
+			.input('display_order', sql.Int, i).query(`
+        IF EXISTS (SELECT 1 FROM departments WHERE id = @department_id)
+          INSERT INTO lesson_departments (lesson_id, department_id, display_order)
+          VALUES (@lesson_id, @department_id, @display_order);
+      `);
+	}
+};
+
+const assertLessonInput = (data) => {
+	if (data.lesson_kind !== undefined && !['theory', 'rotation'].includes(data.lesson_kind))
+		throw httpError(400, 'Loại bài học không hợp lệ');
+	if (data.duration_unit && !UNITS.includes(data.duration_unit))
+		throw httpError(400, 'Đơn vị thời lượng không hợp lệ');
+};
+
 const listLessons = async (programId) => {
 	const pool = await getPool();
 	const r = await pool.request().input('program_id', sql.VarChar(20), programId).query(`
     SELECT lp.id, lp.program_id, lp.display_order,
            pl.id AS lesson_id, pl.code, pl.title, pl.description, pl.is_active,
-           pl.theory_hours, pl.practice_hours, pl.total_hours, pl.credits, pl.created_at
+           pl.theory_hours, pl.practice_hours, pl.total_hours, pl.credits, pl.created_at,
+           pl.lesson_kind, pl.duration_value, pl.duration_unit, pl.allow_split,
+           ${lessonDepartmentsSql}
     FROM lesson_programs lp
     JOIN program_lessons pl ON pl.id = lp.lesson_id
     WHERE lp.program_id = @program_id
@@ -181,7 +249,7 @@ const listLessons = async (programId) => {
 const listAllLessons = async () => {
 	const pool = await getPool();
 	const r = await pool.request().query(`
-    SELECT pl.*,
+    SELECT pl.*, ${lessonDepartmentsSql},
            (SELECT STRING_AGG(tp.name, ', ') FROM lesson_programs lp JOIN training_programs tp ON tp.id = lp.program_id WHERE lp.lesson_id = pl.id) AS program_names,
            (SELECT STRING_AGG(lp.program_id, ',') FROM lesson_programs lp WHERE lp.lesson_id = pl.id) AS program_ids
     FROM program_lessons pl
@@ -194,6 +262,7 @@ const listAllLessons = async () => {
 // gán chương trình là bước riêng qua setLessonPrograms, để form sửa/tạo bài
 // học có thể chọn nhiều chương trình cùng lúc (multi-select) ngay từ đầu.
 const createLesson = async (data, actorId) => {
+	assertLessonInput(data);
 	const pool = await getPool();
 	const result = await pool
 		.request()
@@ -204,14 +273,26 @@ const createLesson = async (data, actorId) => {
 		.input('theory_hours', sql.Int, data.theory_hours || 0)
 		.input('practice_hours', sql.Int, data.practice_hours || 0)
 		.input('credits', sql.Int, data.credits || 0)
+		.input('lesson_kind', sql.VarChar(10), data.lesson_kind || 'theory')
+		.input('duration_value', sql.Decimal(6, 2), data.duration_value || null)
+		.input(
+			'duration_unit',
+			sql.VarChar(10),
+			data.duration_value ? data.duration_unit || null : null,
+		)
+		.input('allow_split', sql.Bit, data.allow_split ? 1 : 0)
 		.input('actor_id', sql.VarChar(20), actorId).query(`
       DECLARE @lesson_id VARCHAR(20) = 'BL' + LEFT(REPLACE(NEWID(),'-',''), 18);
-      INSERT INTO program_lessons (id, code, title, description, is_active, theory_hours, practice_hours, credits, created_by)
-      VALUES (@lesson_id, @code, @title, @description, @is_active, @theory_hours, @practice_hours, @credits, @actor_id);
+      INSERT INTO program_lessons (id, code, title, description, is_active, theory_hours, practice_hours, credits,
+                                   lesson_kind, duration_value, duration_unit, allow_split, created_by)
+      VALUES (@lesson_id, @code, @title, @description, @is_active, @theory_hours, @practice_hours, @credits,
+              @lesson_kind, @duration_value, @duration_unit, @allow_split, @actor_id);
       SELECT @lesson_id AS id;
     `);
+	const id = result.recordset[0].id;
+	if (Array.isArray(data.department_ids)) await setLessonDepartments(id, data.department_ids);
 	broadcast('update', { entity: 'program_lesson' });
-	return { id: result.recordset[0].id };
+	return { id };
 };
 
 // Chương trình đào tạo đang gắn với 1 bài học (danh sách id) — nguồn khởi tạo
@@ -386,6 +467,7 @@ const unlinkLesson = async (linkId) => {
 // Sửa nội dung DÙNG CHUNG (title/description) — ảnh hưởng mọi chương trình
 // đang gắn bài học này.
 const updateLesson = async (lessonId, data, actorId) => {
+	assertLessonInput(data);
 	const pool = await getPool();
 	const sets = ['updated_at = GETDATE()', 'updated_by = @actor_id'];
 	const req = pool
@@ -393,26 +475,20 @@ const updateLesson = async (lessonId, data, actorId) => {
 		.input('id', sql.VarChar(20), lessonId)
 		.input('actor_id', sql.VarChar(20), actorId);
 
-	const fieldMap = {
-		code: sql.NVarChar(50),
-		title: sql.NVarChar(255),
-		description: sql.NVarChar(sql.MAX),
-		theory_hours: sql.Int,
-		practice_hours: sql.Int,
-		credits: sql.Int,
-	};
-	for (const [field, type] of Object.entries(fieldMap)) {
+	for (const [field, type] of Object.entries(LESSON_FIELDS)) {
 		if (data[field] !== undefined) {
 			sets.push(`${field} = @${field}`);
 			req.input(field, type, data[field] === '' ? null : data[field]);
 		}
 	}
-	if (data.is_active !== undefined) {
-		sets.push('is_active = @is_active');
-		req.input('is_active', sql.Bit, data.is_active === false || data.is_active === 'false' ? 0 : 1);
+	for (const flag of ['is_active', 'allow_split']) {
+		if (data[flag] === undefined) continue;
+		sets.push(`${flag} = @${flag}`);
+		req.input(flag, sql.Bit, data[flag] === false || data[flag] === 'false' ? 0 : 1);
 	}
 	if (sets.length > 2)
 		await req.query(`UPDATE program_lessons SET ${sets.join(', ')} WHERE id = @id`);
+	if (Array.isArray(data.department_ids)) await setLessonDepartments(lessonId, data.department_ids);
 	broadcast('update', { entity: 'program_lesson' });
 };
 
@@ -557,6 +633,7 @@ module.exports = {
 	createLesson,
 	getLessonProgramIds,
 	setLessonPrograms,
+	setLessonDepartments,
 	linkLesson,
 	linkLessons,
 	reorderLessons,

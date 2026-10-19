@@ -15,8 +15,14 @@ import { useRowSelection } from '../../../shared/hooks/useRowSelection';
 import { TrainingProgramDeleteModal } from '../components/TrainingProgramDeleteModal';
 import { TrainingProgramDetailModal } from '../components/TrainingProgramDetailModal';
 import { TrainingProgramFormModal } from '../components/TrainingProgramFormModal';
+import { ProgramCatalogImportModal } from '../components/ProgramCatalogImportModal';
 import { useTrainingPrograms } from '../hooks/useTrainingPrograms';
-import { getProgramStatus, PROGRAM_STATUS_LABELS, type ProgramStatusFilter } from '../types/trainingProgram.type';
+import {
+	EMPTY_FORM,
+	getProgramStatus,
+	PROGRAM_STATUS_LABELS,
+	type ProgramStatusFilter,
+} from '../types/trainingProgram.type';
 import styles from './TrainingPrograms.module.css';
 import tbl from '@/shared/components/Table/Table.module.css';
 
@@ -29,8 +35,15 @@ export default function TrainingPrograms() {
 	const excelCols: ExcelColumn<TrainingProgram>[] = [
 		{ header: 'Mã chương trình', key: 'code', value: (x) => x.code },
 		{ header: 'Tên chương trình', key: 'name', required: true, value: (x) => x.name },
+		{ header: 'Loại hình', value: (x) => x.training_type_name },
+		{ header: 'Lý thuyết', value: (x) => x.theory_hours },
+		{ header: 'Thực hành', value: (x) => x.practice_hours },
+		{ header: 'Tổng số tiết', value: (x) => x.total_hours || null },
+		{ header: 'Số giờ tín chỉ', value: (x) => x.credit_hours },
 		{ header: 'Thời lượng', key: 'duration', value: (x) => x.duration },
-		{ header: 'Khoa phòng', key: 'department', value: (x) => x.department_name },
+		{ header: 'Đối tượng (ghi chú)', value: (x) => x.target_audience },
+		{ header: 'Học phí', value: (x) => x.tuition_fee },
+		{ header: 'Khoa phòng', key: 'department', value: (x) => x.department_name ?? x.department_note },
 		{ header: 'Đối tượng học viên', key: 'trainee_type', value: (x) => x.trainee_type_name },
 		{ header: 'Sĩ số tối đa', key: 'max_capacity', value: (x) => x.max_capacity },
 		{ header: 'Thứ tự', key: 'display_order', value: (x) => x.display_order },
@@ -48,6 +61,7 @@ export default function TrainingPrograms() {
 				getRows={() => d.filtered}
 				importRow={(r) =>
 					createTrainingProgram({
+						...EMPTY_FORM,
 						name: r.name,
 						code: r.code,
 						duration: r.duration,
@@ -60,6 +74,13 @@ export default function TrainingPrograms() {
 				}
 				onImported={d.refreshData}
 			/>
+			<button
+				className={styles.btnGhost}
+				onClick={() => d.setModal('import')}
+				title='Nhập danh mục chương trình + vòng thực hành (sheet "Mã CT" và "Bài học")'
+			>
+				Nhập danh mục CT
+			</button>
 			<button
 				className={styles.btnAddHeader}
 				onClick={() => d.setModal('add')}
@@ -95,6 +116,22 @@ export default function TrainingPrograms() {
 							onChange={d.handleSearch}
 							placeholder='Tìm theo mã, tên chương trình...'
 						/>
+						<select
+							className={`${styles.filterSelect} ${d.trainingTypeFilter !== 'all' ? styles.filterActive : ''}`}
+							value={d.trainingTypeFilter}
+							onChange={(e) => d.handleTrainingTypeFilter(e.target.value)}
+						>
+							<option value='all'>Tất cả loại hình</option>
+							{d.trainingTypes.map((t) => (
+								<option
+									key={t.id}
+									value={t.id}
+								>
+									{t.name}
+								</option>
+							))}
+							<option value='none'>Chưa gán loại hình</option>
+						</select>
 						<select
 							className={`${styles.filterSelect} ${d.departmentFilter !== 'all' ? styles.filterActive : ''}`}
 							value={d.departmentFilter}
@@ -234,11 +271,18 @@ export default function TrainingPrograms() {
 												>
 													{getInitials(p.name)}
 												</div>
-												<span className={styles.itemName}>{p.name}</span>
+												<div>
+													<span className={styles.itemName}>{p.name}</span>
+													{(p.training_type_name || p.duration) && (
+														<div className={styles.descText}>
+															{[p.training_type_name, p.duration].filter(Boolean).join(' · ')}
+														</div>
+													)}
+												</div>
 											</div>
 										</td>
 										<td className={styles.td}>
-											<span className={styles.descText}>{p.department_name ?? '—'}</span>
+											<span className={styles.descText}>{p.department_name ?? p.department_note ?? '—'}</span>
 										</td>
 										<td className={styles.td}>
 											{p.trainee_type_name ? (
@@ -303,11 +347,18 @@ export default function TrainingPrograms() {
 			</div>
 
 
+			{d.modal === 'import' && (
+				<ProgramCatalogImportModal
+					onClose={() => d.setModal(null)}
+					onImported={d.refreshData}
+				/>
+			)}
 			{d.modal === 'add' && (
 				<TrainingProgramFormModal
 					mode='add'
 					departments={d.departments}
 					traineeTypes={d.traineeTypes}
+					trainingTypes={d.trainingTypes}
 					onClose={() => d.setModal(null)}
 					onSave={d.handleAdd}
 					loading={d.loading}
@@ -319,6 +370,7 @@ export default function TrainingPrograms() {
 					program={d.editingProgram}
 					departments={d.departments}
 					traineeTypes={d.traineeTypes}
+					trainingTypes={d.trainingTypes}
 					onClose={() => {
 						d.setModal(null);
 						d.setEditingProgram(null);

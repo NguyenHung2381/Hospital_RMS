@@ -4,16 +4,40 @@ const ctrl = require('./trainingProgramController');
 const { authenticate, authorizePermission } = require('../../../middlewares/auth');
 const { validate } = require('../../../middlewares/errorHandler');
 const { createTrainingUpload } = require('../../../middlewares/uploadTraining');
+const uploadExcel = require('../../../middlewares/uploadExcel');
 
 const uploadLessonDoc = createTrainingUpload('lesson_document', {
 	maxSizeMB: Number(process.env.TRAINING_MEDIA_MAX_MB || 300),
 	allowMedia: true,
 });
 
+// Trường số của chương trình theo danh mục 1.xlsx (Mã CT): số tiết, giờ tín chỉ,
+// học phí, thời lượng dạng số.
+const programNumberRules = [
+	body(['theory_hours', 'practice_hours'])
+		.optional({ nullable: true, checkFalsy: true })
+		.isInt({ min: 0 }),
+	body(['credit_hours', 'tuition_fee', 'duration_value'])
+		.optional({ nullable: true, checkFalsy: true })
+		.isFloat({ min: 0 }),
+	body('duration_unit')
+		.optional({ nullable: true, checkFalsy: true })
+		.isIn(['day', 'week', 'month']),
+];
+
 router.use(authenticate);
 
 router.get('/', authorizePermission(['training_programs', 'read']), ctrl.getAll);
 router.get('/:id', authorizePermission(['training_programs', 'read']), ctrl.getById);
+
+// Nhập danh mục chương trình + vòng thực hành từ Excel (mẫu 1.xlsx: sheet "Mã CT"
+// và "Bài học"). Tạo mới + cập nhật theo mã ⇒ dùng quyền tạo chương trình.
+router.post(
+	'/import-catalog',
+	authorizePermission(['training_programs', 'create']),
+	uploadExcel.single('file'),
+	ctrl.importCatalog,
+);
 
 router.post(
 	'/',
@@ -24,6 +48,7 @@ router.post(
 		body('duration').optional({ checkFalsy: true }).trim().isLength({ max: 100 }),
 		body('max_capacity').optional({ checkFalsy: true }).isInt({ min: 1 }),
 		body('display_order').optional({ checkFalsy: true }).isInt(),
+		...programNumberRules,
 	],
 	validate,
 	ctrl.createOne,
@@ -38,6 +63,7 @@ router.put(
 		body('duration').optional({ checkFalsy: true }).trim().isLength({ max: 100 }),
 		body('max_capacity').optional({ checkFalsy: true }).isInt({ min: 1 }),
 		body('display_order').optional({ checkFalsy: true }).isInt(),
+		...programNumberRules,
 	],
 	validate,
 	ctrl.updateOne,

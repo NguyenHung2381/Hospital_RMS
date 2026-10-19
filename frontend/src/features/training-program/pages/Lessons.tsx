@@ -6,7 +6,12 @@ import AdminLayout from '../../../layouts/AdminLayout';
 import { ExcelActions, type ExcelColumn } from '@/shared/components/Excel';
 import { isYes, matchLabel, nameMap, numText } from '@/shared/components/Excel/excelHelpers';
 import { createLesson, setLessonPrograms } from '../api/trainingProgramApi';
-import type { Lesson } from '../types/trainingProgram.type';
+import {
+	EMPTY_LESSON_FORM,
+	formatDuration,
+	LESSON_KIND_LABEL,
+	type Lesson,
+} from '../types/trainingProgram.type';
 import { SkeletonTable } from '../../../shared/components/Loading';
 import { Pagination } from '../../../shared/components/Table/Pagination';
 import sel from '../../../shared/components/Table/RowSelect.module.css';
@@ -30,6 +35,9 @@ export default function Lessons() {
 		{ header: 'Giờ lý thuyết', key: 'theory_hours', value: (x) => x.theory_hours },
 		{ header: 'Giờ thực hành', key: 'practice_hours', value: (x) => x.practice_hours },
 		{ header: 'Tín chỉ', key: 'credits', value: (x) => x.credits },
+		{ header: 'Loại', value: (x) => LESSON_KIND_LABEL[x.lesson_kind] },
+		{ header: 'Thời lượng', value: (x) => formatDuration(x.duration_value, x.duration_unit) },
+		{ header: 'Khoa được chọn', value: (x) => x.department_names },
 		{
 			header: 'Chương trình',
 			key: 'programs',
@@ -52,6 +60,7 @@ export default function Lessons() {
 						.map((t) => matchLabel(programNames, t, 'Chương trình'))
 						.filter((id): id is string => !!id);
 					const { id } = await createLesson({
+						...EMPTY_LESSON_FORM,
 						code: r.code,
 						title: r.title,
 						description: r.description,
@@ -214,6 +223,17 @@ export default function Lessons() {
 											</td>
 											<td className={styles.td}>
 												<span className={styles.itemName}>{l.title}</span>
+												{l.lesson_kind === 'rotation' && (
+													<div className={styles.descText}>
+														{[
+															LESSON_KIND_LABEL.rotation,
+															formatDuration(l.duration_value, l.duration_unit),
+															l.department_names,
+														]
+															.filter(Boolean)
+															.join(' · ')}
+													</div>
+												)}
 											</td>
 											<td className={styles.td}>
 												{l.program_names ? (
@@ -282,16 +302,7 @@ export default function Lessons() {
 					mode={d.formModal.mode}
 					lesson={
 						d.formModal.lesson
-							? {
-									lesson_id: d.formModal.lesson.id,
-									code: d.formModal.lesson.code,
-									title: d.formModal.lesson.title,
-									description: d.formModal.lesson.description,
-									is_active: d.formModal.lesson.is_active,
-									theory_hours: d.formModal.lesson.theory_hours,
-									practice_hours: d.formModal.lesson.practice_hours,
-									credits: d.formModal.lesson.credits,
-								}
+							? { ...d.formModal.lesson, lesson_id: d.formModal.lesson.id }
 							: undefined
 					}
 					programs={d.programs}

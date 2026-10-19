@@ -1,4 +1,5 @@
 const trainingProgramService = require('./trainingProgramService');
+const programCatalogImportService = require('./programCatalogImportService');
 const { success, created, notFound } = require('../../../utils/response');
 const { asyncHandler } = require('../../../utils/asyncHandler');
 
@@ -25,6 +26,20 @@ const updateOne = asyncHandler(async (req, res) => {
 const removeOne = asyncHandler(async (req, res) => {
 	await trainingProgramService.remove(req.params.id, req.user.id);
 	return success(res, null, 'Xóa thành công');
+});
+
+const importCatalog = asyncHandler(async (req, res) => {
+	if (!req.file) {
+		return res.status(400).json({ success: false, message: 'Chưa chọn file Excel.' });
+	}
+	const out = await programCatalogImportService.importExcel(
+		{
+			buffer: req.file.buffer,
+			dry_run: req.body.dry_run === '1' || req.body.dry_run === 'true',
+		},
+		req.user.id,
+	);
+	return success(res, out);
 });
 
 // ─── Bài học ─────────────────────────────────────────────────────────────
@@ -142,6 +157,7 @@ module.exports = {
 	createOne,
 	updateOne,
 	removeOne,
+	importCatalog,
 	listLessons,
 	listAllLessons,
 	createLesson,

@@ -6,7 +6,14 @@ import { DocSvg, EditSvg, LinkSvg, MoreVSvg, PlusSvg, TrashSvg } from '@/assets/
 import { useRowSelection } from '@/shared/hooks/useRowSelection';
 import { BulkButton, SelectCheckbox } from '@/shared/components/Table/RowSelect';
 import { getAllLessons, getLessons, linkLessons, reorderLessons, unlinkLesson } from '../api/trainingProgramApi';
-import type { Lesson, ProgramLessonLink, TrainingProgram } from '../types/trainingProgram.type';
+import {
+	durationDays,
+	formatDuration,
+	LESSON_KIND_LABEL,
+	type Lesson,
+	type ProgramLessonLink,
+	type TrainingProgram,
+} from '../types/trainingProgram.type';
 import { LessonDocumentsModal } from './LessonDocumentsModal';
 import { LessonFormModal } from './LessonFormModal';
 import styles from '../pages/TrainingPrograms.module.css';
@@ -59,8 +66,19 @@ function SortableLessonRow({
 					)}
 				</div>
 				<div className={styles.subRowMeta}>
-					{link.theory_hours} tiết LT · {link.practice_hours} tiết TH · {link.total_hours} tổng tiết · {link.credits} tín
-					chỉ
+					{link.lesson_kind === 'rotation' ? (
+						<>
+							{LESSON_KIND_LABEL.rotation}
+							{link.duration_value != null && ` · ${formatDuration(link.duration_value, link.duration_unit)}`}
+							{link.department_names &&
+								` · ${link.allow_split ? 'chia thời gian cho các khoa' : 'chọn 1 khoa'}: ${link.department_names}`}
+						</>
+					) : (
+						<>
+							{link.theory_hours} tiết LT · {link.practice_hours} tiết TH · {link.total_hours} tổng tiết · {link.credits} tín
+							chỉ
+						</>
+					)}
 					{link.description ? ` — ${link.description}` : ''}
 				</div>
 			</div>
@@ -118,6 +136,16 @@ export function ProgramLessonsPanel({ program, programs }: { program: TrainingPr
 		[allLessons, links],
 	);
 	const pickSel = useRowSelection(attachableLessons.map((l) => l.id));
+
+	// Tổng thời lượng các vòng thực hành so với thời lượng chương trình (≈ ngày, tháng = 30).
+	const rotationCheck = useMemo(() => {
+		const rotations = links.filter((l) => l.lesson_kind === 'rotation');
+		const programDays = durationDays(program.duration_value, program.duration_unit);
+		if (!rotations.length) return null;
+		const sumDays = rotations.reduce((s, l) => s + (durationDays(l.duration_value, l.duration_unit) ?? 0), 0);
+		const months = Math.round((sumDays / 30) * 10) / 10;
+		return { count: rotations.length, months, mismatch: programDays != null && Math.abs(sumDays - programDays) > 1 };
+	}, [links, program.duration_value, program.duration_unit]);
 
 	const handleAttachSelected = async () => {
 		if (!pickSel.selectedCount) return;
@@ -180,6 +208,17 @@ export function ProgramLessonsPanel({ program, programs }: { program: TrainingPr
 				Một bài học có thể được dùng chung ở nhiều chương trình đào tạo — sửa nội dung sẽ áp dụng cho mọi chương trình
 				đang dùng bài học đó. Kéo biểu tượng ở đầu mỗi dòng để sắp xếp lại thứ tự.
 			</div>
+
+			{rotationCheck && (
+				<div
+					className={rotationCheck.mismatch ? styles.durationWarn : styles.subRowMeta}
+					style={{ marginBottom: 8 }}
+				>
+					{rotationCheck.count} vòng thực hành, tổng ≈ {String(rotationCheck.months).replace('.', ',')} tháng
+					{program.duration ? ` / chương trình ${program.duration}` : ''}
+					{rotationCheck.mismatch && ' — tổng các vòng chưa khớp thời lượng chương trình.'}
+				</div>
+			)}
 
 			<div className={styles.subToolbar}>
 				<button

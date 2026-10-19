@@ -29,6 +29,8 @@ export function useTrainingPrograms() {
 	const [programs, setPrograms] = useState<TrainingProgram[]>([]);
 	const [departments, setDepartments] = useState<SimpleItem[]>([]);
 	const [traineeTypes, setTraineeTypes] = useState<SimpleItem[]>([]);
+	const [trainingTypes, setTrainingTypes] = useState<SimpleItem[]>([]);
+	const [trainingTypeFilter, setTrainingTypeFilter] = useState('all');
 	const [isLoadingData, setIsLoadingData] = useState(true);
 	const [search, setSearch] = useState('');
 	const [departmentFilter, setDepartmentFilter] = useState('all');
@@ -55,6 +57,7 @@ export function useTrainingPrograms() {
 	useEffect(() => {
 		apiClient.get<{ data: SimpleItem[] }>('/departments?limit=0').then((r) => setDepartments(r.data)).catch(() => {});
 		apiClient.get<{ data: SimpleItem[] }>('/trainee-types?limit=0').then((r) => setTraineeTypes(r.data)).catch(() => {});
+		apiClient.get<{ data: SimpleItem[] }>('/training-types?limit=0').then((r) => setTrainingTypes(r.data)).catch(() => {});
 	}, []);
 
 	// Chỉ đưa vào dropdown các khoa đang thực sự phụ trách ít nhất 1 chương trình,
@@ -80,12 +83,22 @@ export function useTrainingPrograms() {
 			if (traineeTypeFilter === 'none' ? p.trainee_type_id : traineeTypeFilter !== 'all' && p.trainee_type_id !== traineeTypeFilter)
 				return false;
 			if (statusFilter !== 'all' && getProgramStatus(p) !== statusFilter) return false;
+			if (
+				trainingTypeFilter === 'none'
+					? p.training_type_id
+					: trainingTypeFilter !== 'all' && p.training_type_id !== trainingTypeFilter
+			)
+				return false;
 			return true;
 		});
-	}, [programs, search, departmentFilter, traineeTypeFilter, statusFilter]);
+	}, [programs, search, departmentFilter, traineeTypeFilter, statusFilter, trainingTypeFilter]);
 
 	const hasActiveFilter =
-		!!search.trim() || departmentFilter !== 'all' || traineeTypeFilter !== 'all' || statusFilter !== 'all';
+		!!search.trim() ||
+		departmentFilter !== 'all' ||
+		traineeTypeFilter !== 'all' ||
+		statusFilter !== 'all' ||
+		trainingTypeFilter !== 'all';
 
 	const { page, setPage, pageSize, handlePageSize, totalPages, safePage, paged } =
 		useClientPaging(filtered);
@@ -105,6 +118,11 @@ export function useTrainingPrograms() {
 		setPage(1);
 	}, [setPage]);
 
+	const handleTrainingTypeFilter = useCallback((v: string) => {
+		setTrainingTypeFilter(v);
+		setPage(1);
+	}, [setPage]);
+
 	const handleStatusFilter = useCallback((v: ProgramStatusFilter) => {
 		setStatusFilter(v);
 		setPage(1);
@@ -115,6 +133,7 @@ export function useTrainingPrograms() {
 		setDepartmentFilter('all');
 		setTraineeTypeFilter('all');
 		setStatusFilter('all');
+		setTrainingTypeFilter('all');
 		setPage(1);
 	}, [setPage]);
 
@@ -200,6 +219,8 @@ export function useTrainingPrograms() {
 		programs,
 		departments,
 		traineeTypes,
+		trainingTypes,
+		trainingTypeFilter,
 		isLoadingData,
 		search,
 		departmentFilter,
@@ -231,6 +252,7 @@ export function useTrainingPrograms() {
 		handleDepartmentFilter,
 		handleTraineeTypeFilter,
 		handleStatusFilter,
+		handleTrainingTypeFilter,
 		clearFilters,
 		handlePageSize,
 		handleAdd,

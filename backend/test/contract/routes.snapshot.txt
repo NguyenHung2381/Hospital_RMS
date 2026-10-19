@@ -356,6 +356,7 @@ POST   /api/v1/training-programs/:id/lessons/link  training_programs:update
 POST   /api/v1/training-programs/:id/lessons/link-many  training_programs:update
 PUT    /api/v1/training-programs/:id/lessons/reorder  training_programs:update
 GET    /api/v1/training-programs/:id/results  courses:read
+POST   /api/v1/training-programs/import-catalog  training_programs:create
 DELETE /api/v1/training-programs/lesson-documents/:docId  training_programs:update
 PATCH  /api/v1/training-programs/lesson-documents/:docId/download  training_programs:read
 PUT    /api/v1/training-programs/lesson-links/:linkId  training_programs:update

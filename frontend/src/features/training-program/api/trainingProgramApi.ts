@@ -15,12 +15,24 @@ export type LessonDocumentSource = { type: 'file'; file: File } | { type: 'link'
 export const getTrainingPrograms = () =>
 	apiClient.get<TrainingProgramListResponse>('/training-programs?limit=0');
 
+const numOrNull = (s: string) => (s.trim() === '' ? null : Number(s));
+
 const toPayload = (form: TrainingProgramFormData) => ({
 	name: form.name,
 	code: form.code || null,
+	// Có số thì server tự sinh chữ hiển thị ("03 tháng"); không thì giữ chữ cũ.
 	duration: form.duration || null,
+	duration_value: numOrNull(form.duration_value),
+	duration_unit: form.duration_value.trim() ? form.duration_unit : null,
 	department_id: form.department_id || null,
+	department_note: form.department_note || null,
 	trainee_type_id: form.trainee_type_id || null,
+	training_type_id: form.training_type_id || null,
+	target_audience: form.target_audience || null,
+	theory_hours: numOrNull(form.theory_hours),
+	practice_hours: numOrNull(form.practice_hours),
+	credit_hours: numOrNull(form.credit_hours),
+	tuition_fee: numOrNull(form.tuition_fee),
 	max_capacity: form.max_capacity ? Number(form.max_capacity) : null,
 	display_order: form.display_order ? Number(form.display_order) : 0,
 	description: form.description || null,
@@ -52,6 +64,11 @@ const lessonPayload = (data: LessonFormData) => ({
 	theory_hours: data.theory_hours ? Number(data.theory_hours) : 0,
 	practice_hours: data.practice_hours ? Number(data.practice_hours) : 0,
 	credits: data.credits ? Number(data.credits) : 0,
+	lesson_kind: data.lesson_kind,
+	duration_value: data.duration_value.trim() ? Number(data.duration_value) : null,
+	duration_unit: data.duration_value.trim() ? data.duration_unit : null,
+	allow_split: data.lesson_kind === 'rotation' && data.allow_split,
+	department_ids: data.lesson_kind === 'rotation' ? data.department_ids : [],
 });
 
 // Tạo bài học mới — chương trình áp dụng lưu riêng qua setLessonPrograms
@@ -116,6 +133,48 @@ export const removeLessonDocument = (docId: string) =>
 
 export const incrementLessonDocumentDownload = (docId: string) =>
 	apiClient.patch<{ download_count: number }>(`/training-programs/lesson-documents/${docId}/download`, {});
+
+// ─── Nhập danh mục chương trình + vòng thực hành từ Excel (mẫu 1.xlsx) ─────
+export interface CatalogImportProgramRow {
+	row: number;
+	status: 'new' | 'update';
+	code: string;
+	name: string;
+	training_type_id: string | null;
+	department_name: string | null;
+	department_note: string | null;
+	duration: string | null;
+	target_audience: string | null;
+}
+export interface CatalogImportLessonRow {
+	row: number;
+	status: 'new' | 'update';
+	program_code: string;
+	code: string;
+	title: string;
+	duration: string | null;
+	allow_split: boolean;
+	departments: { id: string; name: string }[];
+}
+export interface CatalogImportResult {
+	dry_run: boolean;
+	summary: { programs_total: number; programs_new: number; lessons_total: number; lessons_new: number };
+	programs?: CatalogImportProgramRow[];
+	lessons?: CatalogImportLessonRow[];
+	programs_created?: number;
+	programs_updated?: number;
+	lessons_created?: number;
+	lessons_updated?: number;
+	links_created?: number;
+	warnings: string[];
+}
+
+export const importProgramCatalog = (file: File, dryRun: boolean) => {
+	const form = new FormData();
+	form.append('file', file);
+	form.append('dry_run', dryRun ? '1' : '0');
+	return apiClient.postForm<CatalogImportResult>('/training-programs/import-catalog', form);
+};
 
 // ─── Kết quả học tập theo chương trình (view chỉ-đọc) ──────────────────────
 export const getProgramResults = (programId: string) =>

@@ -156,16 +156,36 @@ export function TrainingProgramDetailModal({
 									value={program.code}
 								/>
 								<InfoRow
+									label='Loại hình'
+									value={program.training_type_name}
+								/>
+								<InfoRow
 									label='Thời lượng'
 									value={program.duration}
 								/>
 								<InfoRow
+									label='Số tiết (LT / TH / tổng)'
+									value={
+										program.theory_hours != null || program.practice_hours != null
+											? `${program.theory_hours ?? 0} / ${program.practice_hours ?? 0} / ${program.total_hours}`
+											: null
+									}
+								/>
+								<InfoRow
+									label='Số giờ tín chỉ'
+									value={program.credit_hours}
+								/>
+								<InfoRow
+									label='Học phí'
+									value={program.tuition_fee != null ? `${Number(program.tuition_fee).toLocaleString('vi-VN')} đ` : null}
+								/>
+								<InfoRow
 									label='Khoa / Phòng'
-									value={program.department_name}
+									value={program.department_name ?? program.department_note}
 								/>
 								<InfoRow
 									label='Đối tượng học viên'
-									value={program.trainee_type_name}
+									value={program.target_audience ?? program.trainee_type_name}
 								/>
 								<InfoRow
 									label='Sĩ số tối đa'
