@@ -40,7 +40,7 @@ router.post(
 	asyncHandler(async (req, res) => {
 		return created(
 			res,
-			await portalService.registerCourse(req.params.id, req.user),
+			await portalService.registerCourse(req.params.id, req.user, req.body?.program_id || null),
 			'Đã gửi đăng ký, chờ duyệt',
 		);
 	}),

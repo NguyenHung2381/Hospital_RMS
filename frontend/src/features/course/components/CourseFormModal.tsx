@@ -1,7 +1,9 @@
 import { FormField } from '@/shared/components/Input/FormField';
 import React, { useEffect, useState } from 'react';
-import { CheckSmSvg, LayersSvg, PlusSvg, TrashSvg } from '@/assets/icons';
+import { LayersSvg, PlusSvg, TrashSvg } from '@/assets/icons';
 import { DatePicker, Modal, ModalActions } from '@/shared/components';
+import { Toggle } from '@/shared/components/Input/Toggle';
+import { SearchInput } from '@/shared/components/Table/TableToolbar';
 import { apiClient } from '@/shared/api/axios';
 import { EMPTY_FORM, TRAINING_TYPE, type Course, type CourseFormData } from '../types/course.type';
 
@@ -141,8 +143,13 @@ export function CourseFormModal({
 			p.training_type_id === form.training_type_id ||
 			form.program_ids.includes(p.id),
 	);
+	const [programQ, setProgramQ] = useState('');
+	const q = programQ.trim().toLowerCase();
+	const filteredPrograms = q
+		? visiblePrograms.filter((p) => `${p.code ?? ''} ${p.name}`.toLowerCase().includes(q))
+		: visiblePrograms;
 
-	const changeType = (typeId: string) =>
+	const changeType =(typeId: string) =>
 		setForm((f) => ({
 			...f,
 			training_type_id: typeId,
@@ -173,6 +180,8 @@ export function CourseFormModal({
 			setForm((f) => ({ ...f, [k]: e.target.value }));
 			setErrors((er) => ({ ...er, [k]: '' }));
 		};
+
+	const full = { gridColumn: '1 / -1' };
 
 	const validate = () => {
 		const err: Partial<Record<keyof CourseFormData, string>> = {};
@@ -205,6 +214,12 @@ export function CourseFormModal({
 			}
 		>
 			<div className={styles.formGrid2}>
+				<div
+					className={styles.sectionTitle}
+					style={full}
+				>
+					1. Thông tin chung
+				</div>
 				<FormField label='Loại khóa'>
 					<select
 						className={styles.formInput}
@@ -240,37 +255,36 @@ export function CourseFormModal({
 				) : (
 					<FormField
 						label='Lịch khóa'
-						hint={form.is_rolling ? 'Không có ngày khai giảng — học viên vào học và kết thúc theo lịch riêng.' : undefined}
 					>
-						<label style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', minHeight: 38, cursor: 'pointer' }}>
-							<input
-								type='checkbox'
-								checked={form.is_rolling}
-								onChange={(e) => setForm((f) => ({ ...f, is_rolling: e.target.checked }))}
+						<div className={`${styles.formInput} ${styles.toggleBox}`}>
+							<Toggle
+								on={form.is_rolling}
+								onChange={() => setForm((f) => ({ ...f, is_rolling: !f.is_rolling }))}
+								title='Mở liên tục'
 							/>
-							Mở liên tục (mỗi học viên có lịch riêng)
-						</label>
+							<span onClick={() => setForm((f) => ({ ...f, is_rolling: !f.is_rolling }))}>Mở liên tục</span>
+						</div>
+						<span className={styles.fieldHint}>
+							{form.is_rolling ? 'Mỗi học viên có lịch học riêng' : 'Cả lớp học theo một lịch chung'}
+						</span>
 					</FormField>
 				)}
-				<div
-					className={styles.formGroup}
-					style={{ gridColumn: '1 / -1' }}
+				<FormField
+					label='Tên khóa học'
+					required
+					error={errors.name}
+					style={full}
 				>
-					<label className={styles.formLabel}>
-						Tên khóa học <span className={styles.required}>*</span>
-					</label>
 					<input
 						className={`${styles.formInput} ${errors.name ? styles.inputError : ''}`}
 						value={form.name}
 						onChange={set('name')}
 						placeholder='VD: Khóa Cấp cứu cơ bản K1/2026'
 					/>
-					{errors.name && <div className={styles.fieldError}>{errors.name}</div>}
-				</div>
+				</FormField>
 				<FormField
 					label='Chương trình đào tạo áp dụng'
-					hint='Nội dung học (bài học) lấy theo chương trình. Một khóa có thể áp dụng nhiều chương trình.'
-					style={{ gridColumn: '1 / -1' }}
+					style={full}
 				>
 					{visiblePrograms.length === 0 ? (
 						<div className={styles.hint}>
@@ -279,32 +293,118 @@ export function CourseFormModal({
 								: 'Chưa có chương trình nào thuộc loại khóa này.'}
 						</div>
 					) : (
-						<div className={styles.pickList}>
-							{visiblePrograms.map((p) => {
-								const on = form.program_ids.includes(p.id);
-								return (
+						<div className={styles.pickBox}>
+							<div className={styles.pickHead}>
+								<SearchInput
+									value={programQ}
+									onChange={setProgramQ}
+									placeholder='Tìm theo mã hoặc tên chương trình...'
+								/>
+								<span className={styles.pickCount}>
+									Đã chọn <b>{form.program_ids.length}</b>/{visiblePrograms.length}
+								</span>
+								{form.program_ids.length > 0 && (
 									<button
-										key={p.id}
 										type='button'
-										aria-pressed={on}
-										className={`${styles.pickChip} ${on ? styles.pickChipOn : ''}`}
-										onClick={() =>
-											setForm((f) => ({
-												...f,
-												program_ids: on ? f.program_ids.filter((x) => x !== p.id) : [...f.program_ids, p.id],
-											}))
-										}
+										className={styles.pickClear}
+										onClick={() => setForm((f) => ({ ...f, program_ids: [] }))}
 									>
-										{on && <CheckSmSvg />}
-										{p.code ? `${p.code} — ${p.name}` : p.name}
+										Bỏ chọn
 									</button>
-								);
-							})}
+								)}
+							</div>
+							<div className={styles.pickList}>
+								{filteredPrograms.length === 0 && <div className={styles.pickEmpty}>Không tìm thấy chương trình phù hợp.</div>}
+								{filteredPrograms.map((p) => {
+									const on = form.program_ids.includes(p.id);
+									return (
+										<label
+											key={p.id}
+											className={`${styles.pickRow} ${on ? styles.pickRowOn : ''}`}
+										>
+											<input
+												type='checkbox'
+												checked={on}
+												onChange={() =>
+													setForm((f) => ({
+														...f,
+														program_ids: on ? f.program_ids.filter((x) => x !== p.id) : [...f.program_ids, p.id],
+													}))
+												}
+											/>
+											{p.code && <span className={styles.pickCode}>{p.code}</span>}
+											<span className={styles.pickName}>{p.name}</span>
+										</label>
+									);
+								})}
+							</div>
 						</div>
 					)}
 				</FormField>
-				<div className={styles.formGroup}>
-					<label className={styles.formLabel}>Chế độ đăng ký</label>
+
+				<div
+					className={styles.sectionTitle}
+					style={full}
+				>
+					2. Thời gian
+				</div>
+				{form.is_rolling ? (
+					<div
+						className={styles.hint}
+						style={full}
+					>
+						Khóa mở liên tục: không có ngày khóa, luôn nhận học viên — ngày bắt đầu/kết thúc nhập ở hồ sơ từng học viên.
+					</div>
+				) : (
+					<>
+						<FormField label='Ngày bắt đầu'>
+							<DatePicker
+								value={form.start_date}
+								onChange={(val) => setForm((f) => ({ ...f, start_date: val }))}
+								max={form.end_date || undefined}
+							/>
+						</FormField>
+						<FormField label='Ngày kết thúc'>
+							<DatePicker
+								value={form.end_date}
+								onChange={(val) => setForm((f) => ({ ...f, end_date: val }))}
+								min={form.start_date || undefined}
+							/>
+						</FormField>
+						<FormField
+							label='Mở đăng ký từ'
+						>
+							<DatePicker
+								value={form.enrollment_start_date}
+								onChange={(val) => setForm((f) => ({ ...f, enrollment_start_date: val }))}
+								max={form.enrollment_end_date || undefined}
+							/>
+						</FormField>
+						<FormField label='Đóng đăng ký sau'>
+							<DatePicker
+								value={form.enrollment_end_date}
+								onChange={(val) => setForm((f) => ({ ...f, enrollment_end_date: val }))}
+								min={form.enrollment_start_date || undefined}
+							/>
+						</FormField>
+						<div
+							className={styles.hint}
+							style={full}
+						>
+							Trạng thái (Sắp khai giảng / Đang mở đăng ký / Đang học / Hoàn thành) tự tính từ các ngày trên.
+						</div>
+					</>
+				)}
+
+				<div
+					className={styles.sectionTitle}
+					style={full}
+				>
+					3. Đăng ký
+				</div>
+				<FormField
+					label='Chế độ đăng ký'
+				>
 					<select
 						className={styles.formInput}
 						value={form.is_public_registration ? '1' : '0'}
@@ -313,12 +413,7 @@ export function CourseFormModal({
 						<option value='0'>Nội bộ</option>
 						<option value='1'>Công khai</option>
 					</select>
-					<div className={styles.hint}>
-						{form.is_public_registration
-							? 'Công khai: hiển thị trên cổng đăng ký không cần đăng nhập, ai cũng đăng ký được (kể cả người ngoại viện).'
-							: 'Nội bộ: không hiển thị công khai, chỉ nhân viên phòng đào tạo đăng ký hộ học viên trong hệ thống.'}
-					</div>
-				</div>
+				</FormField>
 				<FormField label='Hình thức học'>
 					<select
 						className={styles.formInput}
@@ -339,7 +434,6 @@ export function CourseFormModal({
 				<FormField
 					label='Sĩ số tối đa'
 					error={errors.capacity}
-					style={{ gridColumn: '1 / -1' }}
 				>
 					<input
 						type='number'
@@ -350,96 +444,59 @@ export function CourseFormModal({
 						placeholder='Bỏ trống = không giới hạn'
 					/>
 				</FormField>
-				{!form.is_rolling && (
-				<>
-				<FormField label='Ngày bắt đầu'>
-					<DatePicker
-						value={form.start_date}
-						onChange={(val) => setForm((f) => ({ ...f, start_date: val }))}
-						max={form.end_date || undefined}
-					/>
-				</FormField>
-				<FormField label='Ngày kết thúc'>
-					<DatePicker
-						value={form.end_date}
-						onChange={(val) => setForm((f) => ({ ...f, end_date: val }))}
-						min={form.start_date || undefined}
-					/>
-				</FormField>
-				<div
-					className={styles.formGroup}
-					style={{ gridColumn: '1 / -1' }}
-				>
-					<div className={styles.hint}>
-						Cửa sổ đăng ký của riêng khóa học này (bỏ trống = luôn mở đăng ký)
-					</div>
-				</div>
-				<FormField label='Mở đăng ký từ'>
-					<DatePicker
-						value={form.enrollment_start_date}
-						onChange={(val) => setForm((f) => ({ ...f, enrollment_start_date: val }))}
-						max={form.enrollment_end_date || undefined}
-					/>
-				</FormField>
-				<FormField label='Đóng đăng ký sau'>
-					<DatePicker
-						value={form.enrollment_end_date}
-						onChange={(val) => setForm((f) => ({ ...f, enrollment_end_date: val }))}
-						min={form.enrollment_start_date || undefined}
-					/>
-				</FormField>
-				</>
-				)}
-				<div
-					className={styles.formGroup}
-					style={{ gridColumn: '1 / -1' }}
-				>
-					<div className={styles.hint}>
-						{form.is_rolling
-							? 'Khóa mở liên tục luôn ở trạng thái "Đang trong quá trình học" và luôn nhận học viên.'
-							: 'Trạng thái (Sắp khai giảng/Đang mở đăng ký/Đang học/Hoàn thành) được tự động tính từ ngày tháng ở trên, không cần chọn tay.'}
-					</div>
-					{mode === 'edit' && (
-						<label
-							style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', marginTop: 'var(--space-2)', cursor: 'pointer' }}
-						>
+				{mode === 'edit' ? (
+					<FormField label='Huỷ khóa'>
+						<label style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', minHeight: 38, cursor: 'pointer' }}>
 							<input
 								type='checkbox'
 								checked={form.status === 'cancelled'}
 								onChange={(e) => setForm((f) => ({ ...f, status: e.target.checked ? 'cancelled' : 'draft' }))}
 							/>
-							<span style={{ color: form.status === 'cancelled' ? '#791f1f' : undefined }}>
-								Huỷ khóa học này
-							</span>
+							<span style={{ color: form.status === 'cancelled' ? '#791f1f' : undefined }}>Huỷ khóa học này</span>
 						</label>
-					)}
-				</div>
-				<FormField
-					label='Mô tả'
-					style={{ gridColumn: '1 / -1' }}
+					</FormField>
+				) : (
+					<div />
+				)}
+
+				{/* Phần giới thiệu ít dùng — thu gọn, chỉ mở sẵn khi đã có nội dung */}
+				<details
+					className={styles.collapse}
+					style={full}
+					open={!!(form.description || form.prerequisites.length || form.objectives.length)}
 				>
-					<textarea
-						className={styles.formTextarea}
-						value={form.description}
-						onChange={set('description')}
-						rows={3}
-						placeholder='Mô tả ngắn về khóa học...'
-					/>
-				</FormField>
-				<ListEditor
-					label='Điều kiện'
-					items={form.prerequisites}
-					onChange={(items) => setForm((f) => ({ ...f, prerequisites: items }))}
-					placeholder='VD: Đã hoàn thành khóa Cấp cứu cơ bản'
-					addLabel='Thêm điều kiện'
-				/>
-				<ListEditor
-					label='Mục tiêu'
-					items={form.objectives}
-					onChange={(items) => setForm((f) => ({ ...f, objectives: items }))}
-					placeholder='VD: Nắm vững quy trình cấp cứu ngừng tuần hoàn'
-					addLabel='Thêm mục tiêu'
-				/>
+					<summary className={styles.sectionTitle}>
+						4. Giới thiệu khóa học (mô tả, điều kiện, mục tiêu — không bắt buộc)
+					</summary>
+					<div className={styles.formGrid2}>
+						<FormField
+							label='Mô tả'
+							style={full}
+						>
+							<textarea
+								className={styles.formTextarea}
+								value={form.description}
+								onChange={set('description')}
+								rows={3}
+								placeholder='Mô tả ngắn về khóa học...'
+							/>
+						</FormField>
+						<ListEditor
+							label='Điều kiện'
+							items={form.prerequisites}
+							onChange={(items) => setForm((f) => ({ ...f, prerequisites: items }))}
+							placeholder='VD: Đã hoàn thành khóa Cấp cứu cơ bản'
+							addLabel='Thêm điều kiện'
+						/>
+						<ListEditor
+							label='Mục tiêu'
+							items={form.objectives}
+							onChange={(items) => setForm((f) => ({ ...f, objectives: items }))}
+							placeholder='VD: Nắm vững quy trình cấp cứu ngừng tuần hoàn'
+							addLabel='Thêm mục tiêu'
+						/>
+					</div>
+				</details>
 			</div>
 		</Modal>
 	);

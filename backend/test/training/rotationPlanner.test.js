@@ -5,6 +5,10 @@ const {
 	planSchedule,
 	describeSpan,
 	findWarnings,
+	deriveTemplate,
+	arrangeRotations,
+	pickMentor,
+	practiceLocation,
 } = require('../../src/modules/training/courses/rotationPlanner');
 
 test('endOf: cộng tháng/tuần/ngày, tính cả ngày đầu (khớp sổ thực hành)', () => {
@@ -52,6 +56,7 @@ test('describeSpan ra chữ như sổ thực hành', () => {
 	assert.equal(describeSpan('2026-06-22', '2026-07-02'), '1,5 tuần');
 	assert.equal(describeSpan('2026-06-03', '2026-06-09'), '01 tuần');
 	assert.equal(describeSpan('2026-06-03', '2026-06-07'), '05 ngày');
+	assert.equal(describeSpan('2026-03-01', '2026-04-15'), '1,5 tháng'); // sổ ghi "1.5 tháng"
 	assert.equal(describeSpan(null, '2026-06-07'), null);
 	// driver mssql trả cột DATE thành Date
 	assert.equal(
@@ -102,4 +107,142 @@ test('findWarnings: khoa ngoài danh sách, NHD thiếu CCHN, ngoài thời gian
 		'Người hướng dẫn đang kèm 6 học viên cùng lúc (tối đa 5).',
 		'Trùng ngày với vòng Nội.',
 	]);
+});
+
+// Hồ sơ trong sổ: [khoa, ngày bắt đầu, ngày kết thúc, thời lượng ghi]
+const rec = (...rots) => ({
+	rotations: rots.map(([name, s, e, d]) => ({
+		department_id: name,
+		department_name: `Khoa ${name}`,
+		start_date: s ?? null,
+		end_date: e ?? null,
+		duration_text: d ?? null,
+	})),
+});
+
+test('deriveTemplate: gom khoa theo nhóm TH, ưu tiên hồ sơ đi đủ thời gian, chuyên khoa lẻ là vòng chia nhiều khoa', () => {
+	const full = rec(
+		['Cấp cứu', null, null, '03 tháng'],
+		['Nội tim mạch 2', null, null, '01 tháng'],
+		['Ngoại tiêu hóa', null, null, '02 tháng'],
+		['Phụ Sản', null, null, '02 tháng'],
+		['Nhi Sơ sinh', null, null, '02 tháng'],
+		['Mắt', '2026-06-03', '2026-06-12'],
+		['Da liễu', '2026-06-13', '2026-08-02'],
+	);
+	const other = rec(
+		['Chống độc', null, null, '03 tháng'],
+		['Nội tiêu hóa', null, null, '01 tháng'],
+		['Ngoại tiêu hóa', null, null, '02 tháng'],
+		['Phụ Sản', null, null, '02 tháng'],
+		['Nhi Sơ sinh', null, null, '02 tháng'],
+		['Mắt', '2026-06-03', '2026-06-12'],
+		['Da liễu', '2026-06-13', '2026-08-02'],
+	);
+	// Sổ ghi dần: nhiều hồ sơ mới có 1 khoa — không được lấy làm mẫu
+	const partial = rec(['Nội tim mạch 2', null, null, '01 tháng']);
+	const t = deriveTemplate([full, other, partial, partial, partial], 365);
+	assert.deepEqual(
+		t.map((r) => [r.title, r.duration_text, r.allow_split, r.department_ids]),
+		[
+			['Hồi sức cấp cứu', '03 tháng', false, ['Cấp cứu', 'Chống độc']],
+			['Nội khoa', '01 tháng', false, ['Nội tim mạch 2', 'Nội tiêu hóa']],
+			['Ngoại tiêu hóa', '02 tháng', false, ['Ngoại tiêu hóa']],
+			['Phụ Sản', '02 tháng', false, ['Phụ Sản']],
+			['Nhi Sơ sinh', '02 tháng', false, ['Nhi Sơ sinh']],
+			['Chuyên khoa khác', '02 tháng', true, ['Mắt', 'Da liễu']],
+		],
+	);
+	assert.equal(deriveTemplate([], 365), null);
+});
+
+test('arrangeRotations: xếp so le — khoa / thứ tự vòng tránh chỗ đã đông', () => {
+	const lessons = new Map([
+		['HSCC', { duration_value: 1, duration_unit: 'month', allow_split: false, department_ids: ['CC', 'CD'] }],
+		['NOI', { duration_value: 1, duration_unit: 'month', allow_split: false, department_ids: ['NOI'] }],
+	]);
+	const rows = [
+		{ id: 'a', lesson_id: 'HSCC', duration_text: '01 tháng', department_id: null },
+		{ id: 'b', lesson_id: 'NOI', duration_text: '01 tháng', department_id: 'NOI' },
+	];
+	// Cả 2 khoa HSCC tháng 7 đều có người, khoa Nội trống ⇒ đi Nội trước, HSCC sau
+	const busy = [
+		{ department_id: 'CC', start_date: '2026-07-01', end_date: '2026-07-31' },
+		{ department_id: 'CD', start_date: '2026-07-01', end_date: '2026-07-31' },
+		{ department_id: 'CC', start_date: '2026-08-01', end_date: '2026-08-31' },
+	];
+	assert.deepEqual(arrangeRotations(rows, lessons, '2026-07-01', busy), [
+		{ id: 'b', start_date: '2026-07-01', end_date: '2026-07-31', department_id: 'NOI' },
+		{ id: 'a', start_date: '2026-08-01', end_date: '2026-08-31', department_id: 'CD' },
+	]);
+	// Chưa ai học ⇒ giữ thứ tự mẫu, khoa đầu danh sách
+	assert.deepEqual(
+		arrangeRotations(rows, lessons, '2026-07-01', []).map((p) => [p.id, p.department_id]),
+		[
+			['a', 'CC'],
+			['b', 'NOI'],
+		],
+	);
+	// Ép vào Nội trước (học khoa khác rồi mới sang Cấp cứu) dù chưa ai học; vòng không có trong hồ sơ ⇒ bỏ qua
+	assert.deepEqual(
+		arrangeRotations(rows, lessons, '2026-07-01', [], 'NOI').map((p) => [p.id, p.start_date]),
+		[
+			['b', '2026-07-01'],
+			['a', '2026-08-01'],
+		],
+	);
+	assert.equal(arrangeRotations(rows, lessons, '2026-07-01', [], 'KHAC')[0].id, 'a');
+	// Vòng thiếu thời lượng ⇒ không xếp được
+	assert.equal(arrangeRotations([{ id: 'x', lesson_id: 'Z', duration_text: null }], lessons, '2026-07-01', []), null);
+});
+
+test('Tự xếp rồi Tính lại ngày: ngày các vòng giữ nguyên (vòng chia nhiều khoa không ghi thời lượng riêng)', () => {
+	const depts = ['K1', 'K2', 'K3', 'K4', 'K5', 'K6'];
+	const lessons = new Map([
+		['NOI', { duration_value: 1, duration_unit: 'month', allow_split: false, department_ids: ['NOI'] }],
+		['CK', { duration_value: 2, duration_unit: 'month', allow_split: true, department_ids: depts }],
+	]);
+	const rows = [
+		{ id: 'n', lesson_id: 'NOI', duration_text: null, department_id: 'NOI' },
+		...depts.map((d) => ({ id: d, lesson_id: 'CK', duration_text: null, department_id: d })),
+	];
+	const plan = arrangeRotations(rows, lessons, '2026-07-01', []);
+	// Khoa chuyên khoa ~10 ngày — describeSpan ra "1,5 tuần" (= 11 ngày) nên không được ghi vào duration_text
+	assert.equal(describeSpan(plan[1].start_date, plan[1].end_date), '1,5 tuần');
+	const byId = new Map(rows.map((r) => [r.id, r]));
+	const again = planSchedule(
+		plan.map((p) => byId.get(p.id)),
+		lessons,
+		plan[0].start_date,
+	);
+	assert.deepEqual(
+		again,
+		plan.map(({ id, start_date, end_date }) => ({ id, start_date, end_date })),
+	);
+});
+
+test('pickMentor: NHD đang kèm ít nhất trong khoảng ngày, hoà thì theo thứ tự ưu tiên', () => {
+	const busy = [
+		{ mentor_user_id: 'U1', start_date: '2026-07-01', end_date: '2026-07-31' },
+		{ mentor_user_id: 'U1', start_date: '2026-07-10', end_date: '2026-08-10' },
+		{ mentor_user_id: 'U2', start_date: '2026-07-01', end_date: '2026-07-31' },
+	];
+	assert.equal(pickMentor(['U1', 'U2', 'U3'], busy, '2026-07-05', '2026-07-20'), 'U3');
+	assert.equal(pickMentor(['U1', 'U2'], busy, '2026-07-05', '2026-07-20'), 'U2');
+	assert.equal(pickMentor(['U1', 'U2'], busy, '2026-09-01', '2026-09-30'), 'U1');
+	assert.equal(pickMentor([], busy, '2026-09-01', '2026-09-30'), null);
+});
+
+test('practiceLocation: ghi như cột "Địa điểm thực hành" của sổ', () => {
+	assert.equal(practiceLocation([{ department_name: 'Khoa Cấp Cứu' }]), 'Tại khoa Cấp Cứu');
+	assert.equal(
+		practiceLocation([
+			{ department_name: 'Khoa Cấp Cứu' },
+			{ department_name: 'Khoa Nội Tim Mạch 2' },
+			{ department_name: 'Khoa Mắt', round_title: 'Chuyên khoa khác', allow_split: true },
+			{ department_name: 'Khoa Da Liễu', round_title: 'Chuyên khoa khác', allow_split: true },
+		]),
+		'Tại các khoa: Cấp Cứu, Nội Tim Mạch 2, Chuyên khoa khác',
+	);
+	assert.equal(practiceLocation([]), null);
 });

@@ -1,0 +1,251 @@
+.wrap {
+	display: flex;
+	flex-direction: column;
+	gap: var(--space-4);
+}
+
+.back {
+	align-self: flex-start;
+	border: none;
+	background: none;
+	padding: 0;
+	font: inherit;
+	font-size: var(--font-size-compact);
+	color: var(--color-primary);
+	cursor: pointer;
+}
+.back:hover {
+	text-decoration: underline;
+}
+
+.head {
+	display: flex;
+	flex-direction: column;
+	gap: var(--space-1);
+	padding-bottom: var(--space-4);
+	border-bottom: 1px solid var(--color-gray-200);
+}
+.title {
+	margin: 0;
+	font-size: var(--font-size-lg);
+	font-weight: var(--font-weight-semibold);
+	color: var(--color-gray-900);
+}
+.meta {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--space-1) var(--space-4);
+	font-size: var(--font-size-compact);
+	color: var(--color-gray-500);
+}
+.meta b {
+	color: var(--color-gray-800);
+	font-weight: var(--font-weight-medium);
+}
+.desc {
+	margin: var(--space-2) 0 0;
+	font-size: var(--font-size-sm);
+	color: var(--color-gray-700);
+	white-space: pre-line;
+}
+
+.section {
+	display: flex;
+	flex-direction: column;
+	gap: var(--space-3);
+}
+.sectionHead {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--space-2) var(--space-4);
+}
+.sectionTitle {
+	font-size: var(--font-size-sm);
+	font-weight: var(--font-weight-semibold);
+	color: var(--color-gray-900);
+}
+.count {
+	color: var(--color-gray-500);
+	font-weight: var(--font-weight-normal);
+}
+
+.list {
+	display: flex;
+	flex-direction: column;
+	gap: var(--space-2);
+}
+.option {
+	border: 1.5px solid var(--color-gray-200);
+	border-radius: var(--radius-lg);
+	background: var(--color-white);
+	transition:
+		border-color 0.15s,
+		background 0.15s;
+}
+.option:hover {
+	border-color: var(--color-primary);
+}
+.optionActive {
+	border-color: var(--color-primary);
+	background: var(--color-primary-pale);
+}
+.optionRow {
+	display: flex;
+	align-items: flex-start;
+	gap: var(--space-2);
+	padding: var(--space-3) var(--space-3) var(--space-3) var(--space-4);
+}
+.optionLabel {
+	display: flex;
+	align-items: flex-start;
+	gap: var(--space-3);
+	flex: 1;
+	min-width: 0;
+	cursor: pointer;
+}
+.optionLabel:focus-within .optionName {
+	text-decoration: underline;
+}
+.toggle {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+	flex-shrink: 0;
+	border: none;
+	background: none;
+	padding: 4px 8px;
+	border-radius: var(--radius-md);
+	font: inherit;
+	font-size: var(--font-size-xs);
+	font-weight: var(--font-weight-medium);
+	color: var(--color-primary);
+	cursor: pointer;
+}
+.toggle:hover {
+	background: rgba(10, 155, 74, 0.08);
+}
+.toggle svg {
+	width: 14px;
+	height: 14px;
+	transition: transform 0.15s;
+}
+.toggleOpen svg {
+	transform: rotate(180deg);
+}
+
+.detail {
+	display: flex;
+	flex-direction: column;
+	gap: var(--space-3);
+	margin: 0 var(--space-4) var(--space-4) calc(var(--space-4) + 13px + var(--space-3));
+	padding-top: var(--space-3);
+	border-top: 1px dashed var(--color-gray-200);
+}
+.facts {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+	gap: var(--space-2) var(--space-4);
+	margin: 0;
+}
+.facts dt {
+	font-size: var(--font-size-2xs);
+	text-transform: uppercase;
+	letter-spacing: 0.03em;
+	color: var(--color-gray-500);
+}
+.facts dd {
+	margin: 2px 0 0;
+	font-size: var(--font-size-compact);
+	font-weight: var(--font-weight-medium);
+	color: var(--color-gray-800);
+}
+.contentTitle {
+	font-size: var(--font-size-xs);
+	font-weight: var(--font-weight-semibold);
+	color: var(--color-gray-700);
+}
+.lessons {
+	list-style: none;
+	margin: 0;
+	padding: 0;
+	display: flex;
+	flex-direction: column;
+	gap: var(--space-2);
+}
+.lessons li {
+	display: flex;
+	align-items: flex-start;
+	gap: var(--space-3);
+}
+.stepRound,
+.stepLesson {
+	display: grid;
+	place-items: center;
+	flex-shrink: 0;
+	min-width: 28px;
+	height: 22px;
+	padding: 0 6px;
+	border-radius: var(--radius-full);
+	font-size: var(--font-size-2xs);
+	font-weight: var(--font-weight-semibold);
+}
+.stepRound {
+	background: var(--color-primary);
+	color: var(--color-white);
+}
+.stepLesson {
+	background: var(--color-gray-100);
+	color: var(--color-gray-700);
+}
+.lessonBody {
+	display: flex;
+	flex-direction: column;
+	gap: 1px;
+	min-width: 0;
+}
+.lessonTitle {
+	font-size: var(--font-size-compact);
+	color: var(--color-gray-900);
+}
+.radio {
+	margin: 3px 0 0;
+	accent-color: var(--color-primary);
+	flex-shrink: 0;
+}
+.optionBody {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+	min-width: 0;
+}
+.optionName {
+	font-size: var(--font-size-sm);
+	font-weight: var(--font-weight-medium);
+	color: var(--color-gray-900);
+}
+.optionMeta {
+	font-size: var(--font-size-xs);
+	color: var(--color-gray-500);
+}
+
+.empty {
+	margin: 0;
+	font-size: var(--font-size-sm);
+	color: var(--color-gray-500);
+}
+
+.footer {
+	display: flex;
+	justify-content: flex-end;
+	gap: var(--space-2);
+	padding-top: var(--space-4);
+	border-top: 1px solid var(--color-gray-200);
+}
+
+@media (max-width: 560px) {
+	.detail {
+		margin-left: var(--space-4);
+	}
+}

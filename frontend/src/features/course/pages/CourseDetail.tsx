@@ -16,6 +16,7 @@ import { ResultsTab } from '../components/ResultsTab';
 import { SessionsTab } from '../components/SessionsTab';
 import { useCourseDetail, type DetailTab } from '../hooks/useCourseDetail';
 import { DISPLAY_STATUS_CFG, type Course, type CourseFormData } from '../types/course.type';
+import ProgramTags from '../components/ProgramTags';
 import styles from './Courses.module.css';
 
 const STEPS: { key: DetailTab; label: string }[] = [
@@ -143,7 +144,6 @@ export default function CourseDetail() {
 									</span>
 								)}
 							</Info>
-							<Info label='Chương trình'>{course.program_names ?? 'Chưa áp dụng chương trình'}</Info>
 							<Info label='Thời gian học'>{range(course.start_date, course.end_date) ?? 'Chưa đặt'}</Info>
 							<Info label='Đăng ký'>
 								{range(course.enrollment_start_date, course.enrollment_end_date) ?? 'Luôn mở'} ·{' '}
@@ -153,6 +153,9 @@ export default function CourseDetail() {
 							</Info>
 							<Info label='Chế độ'>{course.is_public_registration ? 'Công khai' : 'Nội bộ'}</Info>
 							<Info label='Hình thức'>{course.training_form_name ?? '—'}</Info>
+							<Info label='Chương trình' wide>
+								<ProgramTags names={course.program_names} max={12} empty='Chưa áp dụng chương trình' />
+							</Info>
 						</div>
 						{course.description && <p className={styles.infoDesc}>{course.description}</p>}
 					</div>
@@ -172,7 +175,9 @@ export default function CourseDetail() {
 									{stepMeta[s.key].done ? <CheckSmSvg /> : i + 1}
 								</span>
 								<span className={styles.stepText}>
-									<span className={styles.stepLabel}>{s.label}</span>
+									<span className={styles.stepLabel}>
+										{s.key === 'enrollments' && course.is_rolling ? 'Học viên & hồ sơ thực hành' : s.label}
+									</span>
 									<span className={styles.stepMeta}>{stepMeta[s.key].meta}</span>
 								</span>
 							</button>
@@ -234,9 +239,9 @@ export default function CourseDetail() {
 	);
 }
 
-function Info({ label, children }: { label: string; children: ReactNode }) {
+function Info({ label, children, wide }: { label: string; children: ReactNode; wide?: boolean }) {
 	return (
-		<div className={styles.infoItem}>
+		<div className={`${styles.infoItem} ${wide ? styles.infoItemWide : ''}`}>
 			<span className={styles.infoLabel}>{label}</span>
 			<span className={styles.infoValue}>{children}</span>
 		</div>

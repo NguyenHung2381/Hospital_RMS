@@ -28,7 +28,7 @@ interface Department {
 
 // Ô chọn nhiều có gợi ý (gõ để tìm, bấm × để bỏ) — dùng cho chương trình áp dụng
 // và khoa được chọn của vòng thực hành.
-function TagPicker<T extends { id: string }>({
+export function TagPicker<T extends { id: string }>({
 	items,
 	selectedIds,
 	label,
@@ -338,7 +338,6 @@ export function LessonFormModal({
 				<FormField
 					label='Thời lượng'
 					error={errors.duration_value}
-					hint={isRotation ? 'Thời gian học viên ở vòng này' : undefined}
 				>
 					<div style={{ display: 'flex', gap: 'var(--space-2)' }}>
 						<input

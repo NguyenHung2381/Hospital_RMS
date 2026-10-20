@@ -7,6 +7,7 @@ const researchRoundService = require('../rounds/roundService');
 const topicService = require('../topics/topicService');
 const topicMemberService = require('../topics/topicMemberService');
 const { norm } = require('../../utils/vietnameseText');
+const { formatDuration } = require('../../utils/trainingDuration');
 const fileService = require('../topics/fileService');
 const trainingFileService = require('../training/trainingFileService');
 const path = require('path');
@@ -25,20 +26,48 @@ const hasFiles = (files) => Array.isArray(files) && files.length > 0;
 const getOpenCourses = async () => {
 	const pool = await getPool();
 	const result = await pool.request().query(`
-    SELECT c.id, c.name, c.start_date, c.end_date, c.enrollment_start_date, c.enrollment_end_date,
+    SELECT c.id, c.name, c.description, c.start_date, c.end_date, c.enrollment_start_date, c.enrollment_end_date,
            c.capacity,
-           (SELECT STRING_AGG(tp.name, ', ') FROM course_programs cp JOIN training_programs tp ON tp.id = cp.program_id WHERE cp.course_id = c.id) AS program_name
+           (SELECT STRING_AGG(tp.name, ', ') FROM course_programs cp JOIN training_programs tp ON tp.id = cp.program_id WHERE cp.course_id = c.id) AS program_name,
+           (SELECT tp.id, tp.code, tp.name, tp.description, tp.duration, tp.target_audience,
+                   tt.name AS trainee_type_name, tp.theory_hours, tp.practice_hours, tp.tuition_fee,
+                   (SELECT COUNT(*) FROM lesson_programs lp JOIN program_lessons pl ON pl.id = lp.lesson_id AND pl.is_active = 1
+                    WHERE lp.program_id = tp.id) AS lesson_count,
+                   -- Nội dung: bài lý thuyết / vòng thực hành GPHN (khoa + thời lượng) theo thứ tự
+                   (SELECT pl.title, pl.lesson_kind AS kind, pl.theory_hours, pl.practice_hours,
+                           pl.duration_value, pl.duration_unit,
+                           (SELECT STRING_AGG(d.name, ' / ') WITHIN GROUP (ORDER BY ld.display_order)
+                              FROM lesson_departments ld JOIN departments d ON d.id = ld.department_id
+                             WHERE ld.lesson_id = pl.id) AS departments
+                      FROM lesson_programs lp JOIN program_lessons pl ON pl.id = lp.lesson_id AND pl.is_active = 1
+                     WHERE lp.program_id = tp.id
+                     ORDER BY lp.display_order, pl.created_at
+                     FOR JSON PATH) AS lessons
+            FROM course_programs cp JOIN training_programs tp ON tp.id = cp.program_id
+            LEFT JOIN trainee_types tt ON tt.id = tp.trainee_type_id
+            WHERE cp.course_id = c.id ORDER BY tp.name FOR JSON PATH) AS programs
     FROM courses c
     WHERE c.status <> 'cancelled' AND c.is_public_registration = 1
     ORDER BY c.start_date ASC
   `);
 
+	// programs: người đăng ký chọn 1 trong các chương trình của khóa
 	return result.recordset
 		.filter((row) => courseService.isEnrollmentOpenRow(row))
-		.map(({ enrollment_start_date, enrollment_end_date, ...publicRow }) => {
+		.map(({ enrollment_start_date, programs, ...publicRow }) => {
 			void enrollment_start_date;
-			void enrollment_end_date;
-			return publicRow;
+			// enrollment_end_date giữ lại để hiện "hạn đăng ký" trên thẻ khóa
+			const list = programs ? JSON.parse(programs) : [];
+			return {
+				...publicRow,
+				programs: list.map(({ lessons = [], ...p }) => ({
+					...p,
+					lessons: lessons.map(({ duration_value, duration_unit, ...l }) => ({
+						...l,
+						duration: formatDuration(duration_value, duration_unit),
+					})),
+				})),
+			};
 		});
 };
 
@@ -137,6 +166,7 @@ const register = async (data, files) => {
 		data.course_id,
 		trainee.id,
 		null,
+		{ programId: data.program_id || null },
 	);
 	if (hasFiles(files)) await attachTraineeDocuments(trainee.id, files, data.doc_types);
 	return { trainee_id: trainee.id, enrollment_id: enrollment.id };

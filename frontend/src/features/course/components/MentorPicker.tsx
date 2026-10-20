@@ -39,25 +39,32 @@ export function MentorPicker({
 	return (
 		<div style={{ position: 'relative' }}>
 			{r.mentor_user_id ? (
-				<div className={styles.subRowMeta}>
-					<div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
-						<select
-							className={styles.subSelect}
-							style={{ width: 70, flex: '0 0 auto', padding: '2px 4px' }}
-							value={r.mentor_salutation ?? ''}
-							disabled={disabled}
-							onChange={(e) => onSalutation(e.target.value)}
-							title='Cách xưng hô in trên giấy tờ'
+				<div className={styles.mentorCard}>
+					<div className={styles.mentorHead}>
+						<div
+							className={`${styles.segment} ${styles.salutation}`}
+							title='Cách xưng hô in trên giấy tờ — bấm lần nữa để bỏ'
 						>
-							<option value=''>—</option>
-							<option value='ông'>ông</option>
-							<option value='bà'>bà</option>
-						</select>
-						<b>{r.mentor_name}</b>
-						{r.mentor_staff_no && <span>MNV {r.mentor_staff_no}</span>}
+							{(['ông', 'bà'] as const).map((v) => (
+								<button
+									key={v}
+									type='button'
+									className={`${styles.segBtn} ${r.mentor_salutation === v ? styles.segBtnActive : ''}`}
+									disabled={disabled}
+									aria-pressed={r.mentor_salutation === v}
+									onClick={() => onSalutation(r.mentor_salutation === v ? '' : v)}
+								>
+									{v === 'ông' ? 'Ông' : 'Bà'}
+								</button>
+							))}
+						</div>
+						<span className={styles.mentorName}>
+							{r.mentor_name}
+							{r.mentor_staff_no && <span className={styles.hint}> · MNV {r.mentor_staff_no}</span>}
+						</span>
 						<button
 							type='button'
-							className={styles.btnSmall}
+							className={styles.linkBtn}
 							disabled={disabled}
 							onClick={onRefresh}
 							title='Chụp lại thông tin hiện tại của người hướng dẫn (sau khi CCHN được cập nhật)'
@@ -66,25 +73,33 @@ export function MentorPicker({
 						</button>
 						<button
 							type='button'
-							className={styles.btnSmall}
+							className={styles.linkBtn}
 							disabled={disabled}
 							onClick={() => onSelect(null)}
 						>
 							Bỏ chọn
 						</button>
 					</div>
-					<div>
+					<div className={styles.subRowMeta}>
 						{r.mentor_qualification ?? '—'} · CCHN {r.mentor_license_no ?? 'chưa có'}
 						{r.mentor_license_date ? ` (${formatDateVi(r.mentor_license_date)})` : ''}
 						{r.mentor_dob ? ` · Sinh ${formatDateVi(r.mentor_dob)}` : ''}
 					</div>
-					{r.mentor_scope && <div title={r.mentor_scope}>Phạm vi: {r.mentor_scope}</div>}
+					{r.mentor_scope && (
+						<div
+							className={styles.subRowMeta}
+							title={r.mentor_scope}
+						>
+							Phạm vi: {r.mentor_scope}
+						</div>
+					)}
 				</div>
 			) : (
 				<>
 					<input
-						className={styles.formInput}
-						placeholder='Người hướng dẫn: gõ tên, MNV hoặc số CCHN…'
+						className={styles.subSelect}
+						style={{ width: '100%', boxSizing: 'border-box' }}
+						placeholder='Gõ tên, MNV hoặc số CCHN…'
 						value={query}
 						disabled={disabled}
 						onChange={(e) => {

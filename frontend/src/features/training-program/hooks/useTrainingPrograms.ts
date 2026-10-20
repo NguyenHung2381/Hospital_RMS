@@ -8,6 +8,7 @@ import {
 	createTrainingProgram,
 	deleteTrainingProgram,
 	getTrainingPrograms,
+	syncProgramRotations,
 	updateTrainingProgram,
 } from '../api/trainingProgramApi';
 import type { DetailTab } from '../components/TrainingProgramDetailModal';
@@ -46,6 +47,7 @@ export function useTrainingPrograms() {
 
 	const refreshData = useCallback(() => setRefreshKey((prev) => prev + 1), []);
 	useRealtimeUpdate('training_program', refreshData);
+	useRealtimeUpdate('program_lesson', refreshData);
 
 	useEffect(() => {
 		getTrainingPrograms()
@@ -64,7 +66,14 @@ export function useTrainingPrograms() {
 	// tránh danh sách dài toàn bộ phòng ban.
 	const departmentOptions = useMemo(() => {
 		const map = new Map<string, string>();
-		for (const p of programs) if (p.department_id) map.set(p.department_id, p.department_name ?? p.department_id);
+		for (const p of programs) {
+			if (p.department_id) map.set(p.department_id, p.department_name ?? p.department_id);
+			for (const r of p.rotations ?? []) {
+				const ids = r.department_ids?.split(',') ?? [];
+				const names = r.department_names?.split(' / ') ?? [];
+				ids.forEach((id, i) => map.set(id, names[i] ?? id));
+			}
+		}
 		return [...map].map(([id, name]) => ({ id, name })).sort((a, b) => a.name.localeCompare(b.name, 'vi'));
 	}, [programs]);
 
@@ -78,7 +87,8 @@ export function useTrainingPrograms() {
 				!(p.description ?? '').toLowerCase().includes(q)
 			)
 				return false;
-			if (departmentFilter === 'none' ? p.department_id : departmentFilter !== 'all' && p.department_id !== departmentFilter)
+			const deptIds = [p.department_id, ...(p.rotations ?? []).flatMap((r) => r.department_ids?.split(',') ?? [])].filter(Boolean);
+			if (departmentFilter === 'none' ? deptIds.length : departmentFilter !== 'all' && !deptIds.includes(departmentFilter))
 				return false;
 			if (traineeTypeFilter === 'none' ? p.trainee_type_id : traineeTypeFilter !== 'all' && p.trainee_type_id !== traineeTypeFilter)
 				return false;
@@ -144,6 +154,8 @@ export function useTrainingPrograms() {
 			try {
 				const created = await createTrainingProgram(data);
 				setPrograms((prev) => [created, ...prev]);
+				await syncProgramRotations(created.id, data.code, [], data.rotations);
+				refreshData();
 				setModal(null);
 				showToast('success', `Đã thêm "${created.name}"`);
 			} catch (err) {
@@ -152,7 +164,7 @@ export function useTrainingPrograms() {
 				setLoading(false);
 			}
 		},
-		[],
+		[refreshData],
 	);
 
 	const handleEdit = useCallback(
@@ -162,6 +174,8 @@ export function useTrainingPrograms() {
 			try {
 				const updated = await updateTrainingProgram(editingProgram.id, data);
 				setPrograms((prev) => prev.map((p) => (p.id === editingProgram.id ? updated : p)));
+				await syncProgramRotations(editingProgram.id, data.code, editingProgram.rotations ?? [], data.rotations);
+				refreshData();
 				setModal(null);
 				setEditingProgram(null);
 				showToast('success', `Đã cập nhật "${updated.name}"`);
@@ -171,7 +185,7 @@ export function useTrainingPrograms() {
 				setLoading(false);
 			}
 		},
-		[editingProgram],
+		[editingProgram, refreshData],
 	);
 
 	const handleDelete = useCallback(async () => {

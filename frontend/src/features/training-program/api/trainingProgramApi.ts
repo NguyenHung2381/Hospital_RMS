@@ -5,6 +5,8 @@ import type {
 	LessonFormData,
 	ProgramLessonLink,
 	ProgramResultRow,
+	ProgramRotation,
+	RotationDraft,
 	TrainingProgram,
 	TrainingProgramFormData,
 	TrainingProgramListResponse,
@@ -33,6 +35,7 @@ const toPayload = (form: TrainingProgramFormData) => ({
 	practice_hours: numOrNull(form.practice_hours),
 	credit_hours: numOrNull(form.credit_hours),
 	tuition_fee: numOrNull(form.tuition_fee),
+	min_capacity: form.min_capacity ? Number(form.min_capacity) : null,
 	max_capacity: form.max_capacity ? Number(form.max_capacity) : null,
 	display_order: form.display_order ? Number(form.display_order) : 0,
 	description: form.description || null,
@@ -43,6 +46,38 @@ export const createTrainingProgram = (form: TrainingProgramFormData) =>
 
 export const updateTrainingProgram = (id: string, form: TrainingProgramFormData) =>
 	apiClient.put<TrainingProgram>(`/training-programs/${id}`, toPayload(form));
+
+// Đồng bộ vòng thực hành nhập ở form chương trình: gỡ vòng bị xoá (bài học vẫn
+// giữ cho hồ sơ cũ), sửa vòng có sẵn, tạo + gắn vòng mới.
+export const syncProgramRotations = async (
+	programId: string,
+	programCode: string,
+	before: ProgramRotation[],
+	after: RotationDraft[],
+) => {
+	const keep = new Set(after.map((r) => r.link_id).filter(Boolean));
+	for (const r of before) if (!keep.has(r.link_id)) await unlinkLesson(r.link_id);
+
+	const fields = (r: RotationDraft) => ({
+		title: r.title.trim(),
+		duration_value: r.duration_value.trim() ? Number(r.duration_value) : null,
+		duration_unit: r.duration_value.trim() ? r.duration_unit : null,
+		department_ids: r.department_ids,
+	});
+	const newIds: string[] = [];
+	for (const [i, r] of after.entries()) {
+		if (r.lesson_id) await apiClient.put<null>(`/training-programs/lessons/${r.lesson_id}`, fields(r));
+		else {
+			const { id } = await apiClient.post<{ id: string }>('/training-programs/lessons', {
+				...fields(r),
+				code: `${programCode}_V${i + 1}`,
+				lesson_kind: 'rotation',
+			});
+			newIds.push(id);
+		}
+	}
+	if (newIds.length) await linkLessons(programId, newIds);
+};
 
 export const deleteTrainingProgram = (id: string) =>
 	apiClient.delete<null>(`/training-programs/${id}`);

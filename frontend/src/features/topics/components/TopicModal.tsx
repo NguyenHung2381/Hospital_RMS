@@ -95,7 +95,6 @@ export function TopicModal({
 				label='Tên đề tài'
 				required
 				error={m.errors.title}
-				hint={`${m.form.title.length}/500 ký tự`}
 			>
 				<textarea
 					id='title'
@@ -111,7 +110,6 @@ export function TopicModal({
 			<FormField
 				htmlFor='description'
 				label='Mô tả / Tóm tắt'
-				hint='Mô tả mục tiêu, phương pháp, kết quả kỳ vọng'
 			>
 				<textarea
 					id='description'

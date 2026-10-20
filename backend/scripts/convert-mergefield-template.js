@@ -52,7 +52,9 @@ const convertXml = (xml) => {
 	);
 
 	// 2) Trường phức: run(begin) … run(instrText) … run(separate) … run(kết quả) … run(end)
-	const runRe = /<w:r(?:\s[^>]*)?>[\s\S]*?<\/w:r>|<w:r\/>/g;
+	// Run không được chứa run con: run bọc textbox (<w:drawing>/<w:pict>) có run bên
+	// trong — nếu bắt cả nó, thay trường sẽ cắt mất phần mở textbox ⇒ XML hỏng.
+	const runRe = /<w:r(?:\s[^>]*)?>(?:(?!<w:r[\s>/])[\s\S])*?<\/w:r>|<w:r\/>/g;
 	let result = '';
 	let last = 0;
 	let field = null; // { start, instr, resultRPr, depth }

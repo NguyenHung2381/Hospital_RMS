@@ -172,7 +172,6 @@ export function SeminarTestModal({
 				<div className={styles.testSettings}>
 					<SettingRow
 						label='Mở bài'
-						hint='Trống giờ = mở ngay khi bật bài test'
 					>
 						<DatePicker
 							value={testDate}
@@ -190,7 +189,6 @@ export function SeminarTestModal({
 					</SettingRow>
 					<SettingRow
 						label='Dừng nhận bài'
-						hint='Trống giờ = nhận bài tới khi tắt bài test'
 					>
 						<DatePicker
 							value={endDate}
@@ -209,7 +207,6 @@ export function SeminarTestModal({
 					</SettingRow>
 					<SettingRow
 						label='Thời gian làm'
-						hint='Tính từ lúc bấm "Bắt đầu", hết giờ tự nộp'
 					>
 						<input
 							type='number'
@@ -226,7 +223,6 @@ export function SeminarTestModal({
 					</SettingRow>
 					<SettingRow
 						label='Điểm đạt'
-						hint='Đạt mới được cấp CME · trống = nộp bài là đủ'
 					>
 						<input
 							type='number'
@@ -394,13 +390,12 @@ export function SeminarTestModal({
 	);
 }
 
-function SettingRow({ label, hint, children }: { label: string; hint?: string; children: ReactNode }) {
+function SettingRow({ label, children }: { label: string; children: ReactNode }) {
 	return (
 		<div className={styles.testSettingRow}>
 			<span className={styles.testSettingLabel}>{label}</span>
 			<div className={styles.testSettingControl}>
 				<div className={styles.testSettingInputs}>{children}</div>
-				{hint && <span className={styles.hint}>{hint}</span>}
 			</div>
 		</div>
 	);

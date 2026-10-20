@@ -86,6 +86,7 @@ router.post(
 	[
 		body('full_name').trim().notEmpty().withMessage('Họ tên không được để trống'),
 		body('course_id').trim().notEmpty().withMessage('Vui lòng chọn khóa học'),
+		body('program_id').optional({ checkFalsy: true }).isString().isLength({ max: 20 }),
 		body('captcha_token').notEmpty().withMessage('Thiếu mã xác nhận'),
 		// captcha_answer = nonce proof-of-work (Turnstile không có) — utils/captcha.js tự kiểm tra
 		body('email').optional({ checkFalsy: true }).isEmail().withMessage('Email không hợp lệ'),

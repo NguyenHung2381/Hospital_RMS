@@ -5,8 +5,9 @@ import { apiClient } from '@/shared/api/axios';
 import { showToast } from '@/shared/utils/feedback';
 import {
 	addRotationSegment,
-	generateRotations,
+	autoArrangeRotations,
 	getRotations,
+	moveRotation,
 	refreshRotationMentor,
 	removeRotation,
 	retakeRotation,
@@ -32,9 +33,10 @@ interface Department {
 
 const day = (v: string | null) => (v ? v.slice(0, 10) : '');
 
-// Vòng thực hành GPHN của 1 hồ sơ: sinh vòng theo chương trình, xếp lịch nối
-// tiếp, mỗi vòng chọn khoa / ngày / người hướng dẫn / kết quả. Mỗi thay đổi lưu
-// ngay; cảnh báo (đỏ) chỉ để lưu ý, không chặn.
+// Vòng thực hành GPHN của 1 hồ sơ: "Tự động xếp" sinh vòng theo chương trình,
+// xếp lịch so le, chọn khoa / người hướng dẫn đang ít người nhất; sau đó sửa tay
+// từng vòng (khoa / ngày / NHD / kết quả) — mỗi thay đổi lưu ngay; cảnh báo (đỏ)
+// chỉ để lưu ý, không chặn.
 export function RotationsPanel({
 	enrollmentId,
 	who,
@@ -53,6 +55,7 @@ export function RotationsPanel({
 	const [departments, setDepartments] = useState<Department[]>([]);
 	const [busy, setBusy] = useState(false);
 	const [startDate, setStartDate] = useState(day(enrollmentStart));
+	const [firstLesson, setFirstLesson] = useState('');
 
 	const load = useCallback(
 		() =>
@@ -97,15 +100,27 @@ export function RotationsPanel({
 		return <div className={styles.subEmpty}>Chọn chương trình (và lưu hồ sơ) để sinh các vòng thực hành.</div>;
 	if (!data) return <div className={styles.subEmpty}>Đang tải vòng thực hành…</div>;
 
-	const generate = (replace: boolean) => {
-		if (replace && !window.confirm('Sinh lại sẽ XOÁ toàn bộ vòng hiện có (kể cả người hướng dẫn, kết quả). Tiếp tục?'))
+	const autoArrange = (replace: boolean, carryOver = false) => {
+		if (
+			replace &&
+			!window.confirm(
+				'Xếp lại sẽ XOÁ các vòng chưa có kết quả (kể cả người hướng dẫn) rồi xếp mới; vòng đã Đạt / Không đạt được giữ nguyên. Tiếp tục?',
+			)
+		)
 			return;
-		run(() => generateRotations(enrollmentId, replace), 'Đã sinh vòng theo chương trình');
+		run(
+			() => autoArrangeRotations(enrollmentId, startDate || null, { replace, firstLessonId: firstLesson, carryOver }),
+			carryOver ? 'Đã công nhận vòng đã học và xếp phần còn lại' : 'Đã tự xếp khoa, lịch và người hướng dẫn',
+		);
 	};
 
 	const schedule = () => {
 		if (!startDate) return showToast('error', 'Chọn ngày bắt đầu thực hành trước');
-		if (rows.some((r) => r.start_date) && !window.confirm('Xếp lại lịch sẽ ghi đè ngày của mọi vòng. Tiếp tục?')) return;
+		if (
+			rows.some((r) => r.start_date && r.result === 'pending') &&
+			!window.confirm('Tính lại sẽ ghi đè ngày của các vòng chưa có kết quả (theo thứ tự hiện tại). Tiếp tục?')
+		)
+			return;
 		run(async () => {
 			const out = await scheduleRotations(enrollmentId, startDate);
 			showToast(
@@ -126,46 +141,80 @@ export function RotationsPanel({
 	return (
 		<div>
 			<div className={styles.subToolbar}>
+				<span className={styles.hint}>Bắt đầu thực hành</span>
+				<DatePicker
+					value={startDate}
+					onChange={setStartDate}
+					style={{ width: 170, flex: '0 0 auto' }}
+				/>
+				{data.rounds.length > 1 && (
+					<select
+						className={styles.subSelect}
+						style={{ flex: '0 1 220px' }}
+						value={firstLesson}
+						disabled={busy}
+						onChange={(e) => setFirstLesson(e.target.value)}
+						title='Học viên phải vào vòng này trước (VD học khoa khác rồi mới sang Cấp cứu) — áp dụng khi tự động xếp'
+					>
+						<option value=''>Vòng đầu: tự chọn theo tải khoa</option>
+						{data.rounds.map((x) => (
+							<option
+								key={x.id}
+								value={x.id}
+							>
+								Vòng đầu: {x.title}
+							</option>
+						))}
+					</select>
+				)}
 				{rows.length === 0 ? (
 					<button
 						type='button'
 						className={styles.btnGhost}
 						disabled={busy}
-						onClick={() => generate(false)}
+						onClick={() => autoArrange(false)}
+						title='Sinh vòng theo chương trình, xếp lịch so le, chọn khoa và người hướng dẫn đang kèm ít người nhất (trống ngày ⇒ hôm nay)'
 					>
-						<PlusSvg /> Sinh vòng theo chương trình
+						<PlusSvg /> Tự động xếp khoa · lịch · người hướng dẫn
 					</button>
 				) : (
 					<>
-						<span className={styles.hint}>Bắt đầu thực hành</span>
-						<DatePicker
-							value={startDate}
-							onChange={setStartDate}
-							style={{ width: 170, flex: '0 0 auto' }}
-						/>
 						<button
 							type='button'
 							className={styles.btnGhost}
 							disabled={busy}
 							onClick={schedule}
-							title='Xếp các vòng nối tiếp nhau từ ngày bắt đầu, theo thời lượng từng vòng'
+							title='Chỉ tính lại ngày: các vòng chưa có kết quả nối tiếp nhau từ ngày bắt đầu theo thứ tự hiện tại, giữ khoa và người hướng dẫn'
 						>
-							Tự xếp lịch toàn bộ
+							Tính lại ngày
 						</button>
 						<button
 							type='button'
 							className={styles.btnSmall}
 							disabled={busy}
-							onClick={() => generate(true)}
+							onClick={() => autoArrange(true)}
+							title='Xoá các vòng chưa có kết quả rồi tự xếp lại khoa, lịch, người hướng dẫn (vòng đã Đạt / Không đạt giữ nguyên, xếp tiếp từ sau vòng đó)'
 						>
-							Sinh lại theo chương trình
+							Tự động xếp lại
 						</button>
 					</>
+				)}
+				{data.previous_passed > 0 && (
+					<button
+						type='button'
+						className={styles.btnSmall}
+						disabled={busy}
+						onClick={() => autoArrange(rows.length > 0, true)}
+						title='Chép các vòng đã Đạt ở hồ sơ khác của học viên này (giữ ngày, khoa, người hướng dẫn), rồi tự xếp các vòng còn lại từ ngày bắt đầu'
+					>
+						Công nhận {data.previous_passed} vòng đã học ở hồ sơ trước
+					</button>
 				)}
 			</div>
 			{data.rounds.length === 0 && (
 				<div className={styles.hint}>
-					Chương trình chưa có vòng thực hành (bài học loại "Vòng thực hành") — thêm ở màn Chương trình đào tạo.
+					Chương trình chưa có vòng thực hành — nhập sổ thực hành cũ để hệ thống tự tạo mẫu vòng, hoặc thêm bài học loại
+					"Vòng thực hành" ở màn Chương trình đào tạo.
 				</div>
 			)}
 
@@ -175,95 +224,126 @@ export function RotationsPanel({
 					return (
 						<div
 							key={r.id}
-							className={styles.subRow}
-							style={{ display: 'block', borderLeft: r.warnings.length ? '3px solid #b42318' : undefined }}
+							className={`${styles.rotCard} ${r.warnings.length ? styles.rotWarn : ''}`}
 						>
-							<div style={{ display: 'flex', gap: 'var(--space-2)', alignItems: 'center', flexWrap: 'wrap' }}>
-								<div
-									className={styles.subRowName}
-									style={{ flex: '1 1 160px' }}
-								>
+							<div className={styles.rotHead}>
+								<div className={styles.subRowName}>
 									{i + 1}. {r.round_title ?? 'Vòng'}
 									{r.attempt_no > 1 && <span className={styles.hint}> · học lại lần {r.attempt_no}</span>}
+									{r.note?.startsWith('Công nhận') && <span className={styles.hint}> · {r.note}</span>}
 								</div>
-								<select
-									className={styles.subSelect}
-									style={{ flex: '1 1 200px' }}
-									value={r.department_id ?? ''}
-									disabled={busy}
-									onChange={(e) => save(r.id, { department_id: e.target.value || null })}
-								>
-									<option value=''>-- Chọn khoa --</option>
-									{deptOptions(r).map((d) => (
-										<option
-											key={d.id}
-											value={d.id}
+								<div className={styles.rotTools}>
+									<button
+										type='button'
+										className={styles.actionBtn}
+										disabled={busy || i === 0}
+										title='Đưa vòng này lên trước — xong bấm "Tính lại ngày"'
+										onClick={() => run(() => moveRotation(r.id, 'up'))}
+									>
+										↑
+									</button>
+									<button
+										type='button'
+										className={styles.actionBtn}
+										disabled={busy || i === rows.length - 1}
+										title='Đưa vòng này xuống sau — xong bấm "Tính lại ngày"'
+										onClick={() => run(() => moveRotation(r.id, 'down'))}
+									>
+										↓
+									</button>
+									{r.result === 'fail' && !rows.some((x) => x.lesson_id === r.lesson_id && x.attempt_no > r.attempt_no) && (
+										<button
+											type='button'
+											className={styles.btnSmall}
+											disabled={busy}
+											onClick={() => run(() => retakeRotation(r.id), 'Đã thêm lượt học lại')}
+											title='Thêm 1 lượt học lại vòng này ngay sau dòng hiện tại'
 										>
-											{d.name}
-										</option>
-									))}
-								</select>
-								<select
-									className={styles.subSelect}
-									style={{ flex: '0 1 170px' }}
-									value={r.result}
-									disabled={busy}
-									onChange={(e) => save(r.id, { result: e.target.value as RotationResult })}
-								>
-									{Object.entries(ROTATION_RESULT_LABEL).map(([v, label]) => (
-										<option
-											key={v}
-											value={v}
-										>
-											{label}
-										</option>
-									))}
-								</select>
-								{r.result === 'fail' && !rows.some((x) => x.lesson_id === r.lesson_id && x.attempt_no > r.attempt_no) && (
+											Học lại
+										</button>
+									)}
 									<button
 										type='button'
 										className={styles.btnSmall}
 										disabled={busy}
-										onClick={() => run(() => retakeRotation(r.id), 'Đã thêm lượt học lại')}
-										title='Thêm 1 lượt học lại vòng này ngay sau dòng hiện tại'
+										title='Tải phiếu nhận xét quá trình thực hành của vòng này (.docx)'
+										onClick={() =>
+											savePracticeDocument(enrollmentId, 'phieu-nhan-xet', who, {
+												id: r.id,
+												label: r.department_name || r.round_title || `vong-${i + 1}`,
+											})
+										}
 									>
-										Học lại
+										Phiếu nhận xét
 									</button>
-								)}
-								<button
-									type='button'
-									className={styles.btnSmall}
-									disabled={busy}
-									title='Tải phiếu nhận xét quá trình thực hành của vòng này (.docx)'
-									onClick={() =>
-										savePracticeDocument(enrollmentId, 'phieu-nhan-xet', who, {
-											id: r.id,
-											label: r.department_name || r.round_title || `vong-${i + 1}`,
-										})
-									}
-								>
-									Phiếu nhận xét
-								</button>
-								<button
-									type='button'
-									className={styles.actionBtn}
-									title='Xoá dòng này'
-									disabled={busy}
-									onClick={() => window.confirm('Xoá vòng này khỏi hồ sơ?') && run(() => removeRotation(r.id))}
-								>
-									<TrashSvg />
-								</button>
+									<button
+										type='button'
+										className={styles.actionBtn}
+										title='Xoá dòng này'
+										disabled={busy}
+										onClick={() => window.confirm('Xoá vòng này khỏi hồ sơ?') && run(() => removeRotation(r.id))}
+									>
+										<TrashSvg />
+									</button>
+								</div>
 							</div>
 
-							<div
-								style={{
-									display: 'grid',
-									gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
-									gap: 'var(--space-3)',
-									marginTop: 'var(--space-2)',
-								}}
-							>
-								<div>
+							<div className={styles.rotFields}>
+								<div className={styles.rotField}>
+									<span className={styles.rotLabel}>Khoa</span>
+									<select
+										className={styles.subSelect}
+										value={r.department_id ?? ''}
+										disabled={busy}
+										onChange={(e) => save(r.id, { department_id: e.target.value || null })}
+									>
+										<option value=''>-- Chọn khoa --</option>
+										{deptOptions(r).map((d) => (
+											<option
+												key={d.id}
+												value={d.id}
+											>
+												{d.name}
+											</option>
+										))}
+									</select>
+								</div>
+								<div className={styles.rotField}>
+									<span className={styles.rotLabel}>Kết quả</span>
+									<select
+										className={styles.subSelect}
+										value={r.result}
+										disabled={busy}
+										onChange={(e) => save(r.id, { result: e.target.value as RotationResult })}
+									>
+										{Object.entries(ROTATION_RESULT_LABEL).map(([v, label]) => (
+											<option
+												key={v}
+												value={v}
+											>
+												{label}
+											</option>
+										))}
+									</select>
+								</div>
+								<div className={styles.rotField}>
+									<span className={styles.rotLabel}>Thời lượng</span>
+									<input
+										className={styles.subSelect}
+										defaultValue={r.duration_text ?? ''}
+										key={`${r.id}-${r.duration_text}`}
+										placeholder={r.allow_split ? 'chia đều' : 'VD: 03 tháng'}
+										disabled={busy}
+										onBlur={(e) =>
+											e.target.value !== (r.duration_text ?? '') && save(r.id, { duration_text: e.target.value || null })
+										}
+									/>
+								</div>
+							</div>
+
+							<div className={styles.rotMain}>
+								<div className={styles.rotField}>
+									<span className={styles.rotLabel}>Thời gian</span>
 									<RotationDateRange
 										start={day(r.start_date)}
 										end={day(r.end_date)}
@@ -272,32 +352,21 @@ export function RotationsPanel({
 										disabled={busy}
 										onChange={(s, e) => save(r.id, { start_date: s || null, end_date: e || null })}
 									/>
-									<div className={styles.subRowMeta}>
-										Thời lượng:{' '}
-										<input
-											className={styles.formInput}
-											style={{ display: 'inline-block', width: 120, padding: '2px 6px' }}
-											defaultValue={r.duration_text ?? ''}
-											key={`${r.id}-${r.duration_text}`}
-											placeholder={r.allow_split ? 'chia đều' : 'VD: 03 tháng'}
-											disabled={busy}
-											onBlur={(e) =>
-												e.target.value !== (r.duration_text ?? '') && save(r.id, { duration_text: e.target.value || null })
-											}
-										/>
-									</div>
 								</div>
-								<MentorPicker
-									rotation={r}
-									disabled={busy}
-									onSelect={(userId) => save(r.id, { mentor_user_id: userId })}
-									onRefresh={() => run(() => refreshRotationMentor(r.id), 'Đã cập nhật thông tin người hướng dẫn')}
-									onSalutation={(v) => save(r.id, { mentor_salutation: v || null })}
-								/>
+								<div className={styles.rotField}>
+									<span className={styles.rotLabel}>Người hướng dẫn</span>
+									<MentorPicker
+										rotation={r}
+										disabled={busy}
+										onSelect={(userId) => save(r.id, { mentor_user_id: userId })}
+										onRefresh={() => run(() => refreshRotationMentor(r.id), 'Đã cập nhật thông tin người hướng dẫn')}
+										onSalutation={(v) => save(r.id, { mentor_salutation: v || null })}
+									/>
+								</div>
 							</div>
 
 							{r.warnings.length > 0 && (
-								<div style={{ color: '#b42318', fontSize: 'var(--font-size-xs)', marginTop: 4 }}>
+								<div style={{ color: '#b42318', fontSize: 'var(--font-size-xs)' }}>
 									{r.warnings.join(' · ')}
 								</div>
 							)}
@@ -305,7 +374,7 @@ export function RotationsPanel({
 								<button
 									type='button'
 									className={styles.btnSmall}
-									style={{ marginTop: 6 }}
+									style={{ alignSelf: 'flex-start' }}
 									disabled={busy}
 									onClick={() => run(() => addRotationSegment(enrollmentId, r.lesson_id as string))}
 									title='Vòng chia nhiều khoa: thêm 1 khoa nữa, thời gian vòng chia đều khi tự xếp lịch'

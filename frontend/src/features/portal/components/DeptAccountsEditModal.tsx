@@ -168,7 +168,6 @@ export function DeptAccountsEditModal({
 				<FormField
 					htmlFor='username_ro'
 					label='Tên đăng nhập'
-					hint='Không thể thay đổi'
 				>
 					<div className={styles.readonlyField}>{user.username}</div>
 				</FormField>
@@ -176,7 +175,6 @@ export function DeptAccountsEditModal({
 					htmlFor='password'
 					label='Đặt lại mật khẩu'
 					error={errors.password}
-					hint='Để trống nếu không muốn đổi. Người dùng phải đổi lại ở lần đăng nhập tới.'
 				>
 					<div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
 						<div style={{ position: 'relative', flex: 1 }}>
@@ -239,7 +237,6 @@ export function DeptAccountsEditModal({
 				<FormField
 					htmlFor='dept_ro'
 					label='Khoa / Phòng ban'
-					hint='Không thể thay đổi'
 				>
 					<div className={styles.readonlyField}>{deptName}</div>
 				</FormField>
@@ -248,7 +245,6 @@ export function DeptAccountsEditModal({
 				<FormField
 					htmlFor='role_ro'
 					label='Vai trò'
-					hint='Đổi tại trang quản trị Người dùng'
 				>
 					<div className={styles.readonlyField}>{user.role_name ?? '—'}</div>
 				</FormField>

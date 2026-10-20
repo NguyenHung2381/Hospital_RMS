@@ -126,6 +126,12 @@ router.post(
 	authorizePermission(['courses', 'read']),
 	ctrl.exportPracticeBook,
 );
+// Tự xếp vòng / khoa / NHD cho mọi hồ sơ GPHN của khóa chưa có vòng
+router.post(
+	'/:id/practice/auto-arrange',
+	authorizePermission(['courses', 'update']),
+	ctrl.autoArrangeCourse,
+);
 
 // ─── Enrollments ──────────────────────────────────────────────────────────
 router.get('/:id/enrollments', authorizePermission(['courses', 'read']), ctrl.listEnrollments);
@@ -205,9 +211,14 @@ router.get(
 	ctrl.listRotations,
 );
 router.post(
-	'/enrollments/:enrollmentId/rotations/generate',
+	'/enrollments/:enrollmentId/rotations/auto',
 	authorizePermission(['courses', 'update']),
-	ctrl.generateRotations,
+	[
+		body('start_date').optional({ nullable: true, checkFalsy: true }).isISO8601().withMessage('Ngày không hợp lệ'),
+		body(['replace', 'carry_over']).optional().isBoolean(),
+	],
+	validate,
+	ctrl.autoArrangeRotations,
 );
 router.post(
 	'/enrollments/:enrollmentId/rotations/schedule',
@@ -245,6 +256,13 @@ router.post(
 	'/rotations/:rotationId/retake',
 	authorizePermission(['courses', 'update']),
 	ctrl.retakeRotation,
+);
+router.post(
+	'/rotations/:rotationId/move',
+	authorizePermission(['courses', 'update']),
+	[body('direction').isIn(['up', 'down']).withMessage('Hướng không hợp lệ')],
+	validate,
+	ctrl.moveRotation,
 );
 // ─── Giấy tờ thực hành GPHN (Đơn đề nghị, Hợp đồng, Phiếu nhận xét) ─────────
 router.get(

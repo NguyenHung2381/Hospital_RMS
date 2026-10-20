@@ -391,7 +391,11 @@ function Empty({ text }: { text: string }) {
 		<div className={styles.tableCard}>
 			<div className={styles.emptyState}>
 				<div className={styles.emptyTitle}>{text}</div>
-				<div className={styles.emptyDesc}>Chọn ngày khác hoặc xếp lịch vòng thực hành trong hồ sơ ghi danh.</div>
+				<div className={styles.emptyDesc}>
+					Trang này chỉ hiện học viên có vòng thực hành đang diễn ra vào ngày đã chọn. Chưa có dữ liệu? Vào Khóa học → mở
+					khóa GPHN (mở liên tục) → tab Học viên → "Nhập sổ Excel" hoặc "Thêm học viên" — hệ thống tự xếp vòng, khoa,
+					người hướng dẫn. Hoặc chọn ngày khác.
+				</div>
 			</div>
 		</div>
 	);

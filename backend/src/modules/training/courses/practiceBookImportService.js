@@ -12,6 +12,9 @@
  * - Thông tin NHD giữ đúng như sổ (bản chụp — giấy tờ đã ký); MNV khớp nhân sự
  *   và trùng tên thì gắn thêm tài khoản để tra cứu / cảnh báo quá tải.
  * - Bỏ cột tính ra từ cột khác: Năm sinh, Ngày/Tháng/Năm (Đ/K), TH1–TH11.
+ * - Dòng mới chỉ có thông tin học viên (+ ngày bắt đầu), chưa có mã / khoa ⇒ sau khi
+ *   nhập hệ thống tự điền mã, vòng, khoa, NHD (practiceAutoService); chương trình
+ *   chưa có vòng thì rút mẫu vòng từ chính các hồ sơ trong sổ.
  */
 const { getPool, sql } = require('../../../config/db');
 const { broadcast } = require('../../events/eventService');
@@ -19,6 +22,7 @@ const { norm } = require('../../../utils/vietnameseText');
 const { loadWorkbook, findHeader, cellText, parseDateCell } = require('../../../utils/excelImport');
 const { createDepartmentMatcher } = require('../../../utils/departmentMatch');
 const { badRequest, httpError } = require('../../../utils/httpError');
+const { parseDuration, toDays } = require('../../../utils/trainingDuration');
 
 const RECORD_MATCHERS = [
 	['practice_code', (h) => h === 'ma thuc hanh'],
@@ -88,10 +92,12 @@ const findRotationGroups = (headerRow) => {
  * Chương trình GPHN suy từ trình độ + lĩnh vực + hình thức hành nghề (mã trong danh
  * mục 1.xlsx). "… về Hồi sức cấp cứu" là chương trình *_2.
  */
-const inferProgramCode = ({ qualification, professional_field, practice_form, suffix }) => {
+const inferProgramCode = ({ qualification, professional_field, practice_form, suffix, total_duration }) => {
 	const form = norm(practice_form);
 	const text = norm(`${qualification ?? ''} ${professional_field ?? ''}`);
-	const hscc = /hoi suc cap cuu/.test(form);
+	// Dòng mới không ghi hình thức hành nghề: thực hành ≤ 3 tháng là chương trình "về HSCC"
+	const total = parseDuration(total_duration);
+	const hscc = form ? /hoi suc cap cuu/.test(form) : !!total && toDays(total.value, total.unit) <= 92;
 	const pick = (base) => `${base}_${hscc ? 2 : 1}`;
 	if (/dinh duong|sinh duong/.test(text)) return 'GPHN_DD_1';
 	if (/xet nghiem/.test(text)) return pick('GPHN_KTVXN');
@@ -132,7 +138,7 @@ const parseBook = async (buffer) => {
 	for (let r = headerRow + 1; r <= (ws.rowCount || headerRow); r++) {
 		const row = ws.getRow(r);
 		const code = text(row, cols.practice_code).replace(/\s+/g, '');
-		if (!code || !text(row, cols.full_name)) continue;
+		if (!text(row, cols.full_name)) continue; // mã trống: hồ sơ mới, mã tự sinh khi xếp vòng
 		const readGroup = (g) => {
 			const o = {};
 			for (const [field, col] of Object.entries(g.cols))
@@ -165,7 +171,7 @@ const parseBook = async (buffer) => {
 			main_mentor: main ? readGroup(main) : null,
 		});
 	}
-	if (!records.length) throw badRequest('File không có hồ sơ nào (cột "Mã thực hành" trống).');
+	if (!records.length) throw badRequest('File không có hồ sơ nào (cột "Họ và tên" trống).');
 	return records;
 };
 
@@ -239,12 +245,12 @@ const buildPreview = (records, traineePreview, lookups) => {
 				`Chưa có chương trình ${code} trong danh mục (nhập danh mục 1.xlsx trước) — để trống`,
 				rec.row,
 			);
-		const existing = lookups.enrollmentByCode.get(rec.practice_code);
+		const existing = rec.practice_code ? lookups.enrollmentByCode.get(rec.practice_code) : null;
 		if (existing && existing.course_id !== lookups.course.id)
 			warn.add('Mã thực hành đã thuộc khóa khác — bỏ qua hồ sơ', rec.row);
-		if (seenCodes.has(rec.practice_code))
+		if (rec.practice_code && seenCodes.has(rec.practice_code))
 			warn.add('Mã thực hành lặp lại trong file — bỏ qua dòng sau', rec.row);
-		seenCodes.add(rec.practice_code);
+		if (rec.practice_code) seenCodes.add(rec.practice_code);
 
 		const mentorOf = (g) => {
 			if (!g?.mentor_name) return null;
@@ -309,11 +315,11 @@ const buildPreview = (records, traineePreview, lookups) => {
 			main_mentor: mentorOf(rec.main_mentor),
 		};
 	});
-	// Bỏ dòng sau của mã lặp
+	// Bỏ dòng sau của mã lặp (dòng chưa có mã không tính)
 	const firstRow = new Map();
-	for (const it of items)
-		if (!firstRow.has(it.practice_code)) firstRow.set(it.practice_code, it.row);
-	for (const it of items) if (firstRow.get(it.practice_code) !== it.row) it.skip = true;
+	const keyOf = (it) => it.practice_code || `#${it.row}`;
+	for (const it of items) if (!firstRow.has(keyOf(it))) firstRow.set(keyOf(it), it.row);
+	for (const it of items) if (firstRow.get(keyOf(it)) !== it.row) it.skip = true;
 	return { items, warnings: warn.list() };
 };
 
@@ -350,12 +356,21 @@ const ROTATION_TYPES = {
 	mentor_phone: sql.NVarChar(30),
 	mentor_scope: sql.NVarChar(1000),
 };
+const KEEP_IF_BLANK = new Set([
+	'practice_code',
+	'professional_field',
+	'practice_form',
+	'start_date',
+	'end_date',
+	'total_duration',
+	'practice_location',
+]);
 const cut = (v, n) => (v == null ? null : String(v).slice(0, n));
 
 const writeRecord = async (pool, it, traineeId, courseId, actorId) => {
 	const rec = it.record;
 	const values = {
-		practice_code: rec.practice_code,
+		practice_code: rec.practice_code || null,
 		professional_field: cut(rec.professional_field, 200),
 		practice_form: cut(rec.practice_form, 300),
 		start_date: ymd(rec.start_date),
@@ -375,7 +390,9 @@ const writeRecord = async (pool, it, traineeId, courseId, actorId) => {
 		.input('enrollment_id', sql.VarChar(20), it.enrollment_id);
 	for (const [f, t] of Object.entries(ENROLLMENT_FIELDS)) req.input(f, t, values[f]);
 	const r = await req.query(`
-    DECLARE @id VARCHAR(20) = @enrollment_id;
+    DECLARE @id VARCHAR(20) = ISNULL(@enrollment_id, (
+      SELECT TOP 1 id FROM course_enrollments
+      WHERE course_id = @course_id AND trainee_id = @trainee_id AND ISNULL(program_id, '') = ISNULL(@program_id, '')));
     IF @id IS NULL
     BEGIN
       EXEC sp_gen_course_enrollment_id @actor_id = @actor_id, @new_id = @id OUTPUT;
@@ -390,7 +407,8 @@ const writeRecord = async (pool, it, traineeId, courseId, actorId) => {
       UPDATE course_enrollments
       SET trainee_id = @trainee_id, program_id = ISNULL(@program_id, program_id),
           ${Object.keys(ENROLLMENT_FIELDS)
-						.map((f) => `${f} = @${f}`)
+						// Dòng chưa có mã / chưa có ngày: giữ giá trị đã tự điền lần trước
+						.map((f) => (KEEP_IF_BLANK.has(f) ? `${f} = ISNULL(@${f}, ${f})` : `${f} = @${f}`))
 						.join(', ')},
           updated_at = GETDATE(), updated_by = @actor_id
       WHERE id = @id;
@@ -439,6 +457,9 @@ const writeRecord = async (pool, it, traineeId, courseId, actorId) => {
 	return enrollmentId;
 };
 
+// Chỉ dòng MỚI (chưa có mã thực hành) mới tự xếp — hồ sơ cũ chỉ ghi địa điểm chung giữ nguyên, không bịa lịch.
+const needsArrange = (it) => !it.practice_code && !it.rotations.length && !!it.program_id;
+
 const importBook = async (courseId, { buffer, dry_run }, actorId) => {
 	// require muộn — traineeImportService kéo theo traineeService (tránh vòng require qua module courses)
 	const traineeImport = require('../trainees/traineeImportService');
@@ -470,6 +491,8 @@ const importBook = async (courseId, { buffer, dry_run }, actorId) => {
 		rotations: kept.reduce((s, it) => s + it.rotations.length, 0),
 		mentors_linked: kept.reduce((s, it) => s + it.rotations.filter((r) => r.user_id).length, 0),
 		programs: programCounts,
+		// Hồ sơ chưa có khoa nào trong sổ ⇒ tự xếp vòng / khoa / NHD sau khi nhập
+		auto_arrange: kept.filter(needsArrange).length,
 	};
 	const rows = kept.map((it) => ({
 		row: it.row,
@@ -480,6 +503,7 @@ const importBook = async (courseId, { buffer, dry_run }, actorId) => {
 		program_code: it.program_code,
 		program_found: !!it.program_id,
 		rotations: it.rotations.length,
+		auto: needsArrange(it),
 		departments: it.rotations
 			.map((r) => r.department_name)
 			.filter(Boolean)
@@ -507,15 +531,34 @@ const importBook = async (courseId, { buffer, dry_run }, actorId) => {
 
 	const failed = [];
 	let written = 0;
+	const toArrange = [];
 	for (const it of kept) {
 		try {
-			await writeRecord(pool, it, idByRow.get(it.row), courseId, actorId);
+			const id = await writeRecord(pool, it, idByRow.get(it.row), courseId, actorId);
 			written++;
+			if (needsArrange(it)) toArrange.push({ id, it });
 		} catch (err) {
 			const dup = err.number === 2601 || err.number === 2627;
 			failed.push(
 				`Dòng ${it.row} (${it.practice_code}): ${dup ? 'học viên đã có hồ sơ cùng chương trình trong khóa' : err.message}`,
 			);
+		}
+	}
+	// Chương trình chưa có vòng ⇒ rút mẫu từ các hồ sơ vừa nhập; rồi tự xếp hồ sơ chưa có khoa
+	const practiceAuto = require('./practiceAutoService');
+	const templates = await practiceAuto.buildTemplates(
+		kept.map((it) => it.program_id),
+		actorId,
+	);
+	let arranged = 0;
+	for (const { id, it } of toArrange) {
+		try {
+			await practiceAuto.arrangeOne(id, { startDate: it.record.start_date }, actorId);
+			arranged++;
+		} catch (err) {
+			// 409: nhập lại sổ, hồ sơ đã được xếp lần trước ⇒ giữ nguyên
+			if (err.statusCode !== 409)
+				failed.push(`Dòng ${it.row} (${it.full_name}): chưa tự xếp được — ${err.message}`);
 		}
 	}
 	broadcast('update', { entity: 'course_enrollment' });
@@ -527,6 +570,8 @@ const importBook = async (courseId, { buffer, dry_run }, actorId) => {
 		trainees_inserted: inserted,
 		trainees_updated: updated,
 		programs_linked: programIds.length,
+		templates,
+		arranged,
 		warnings: [...failed, ...warnings],
 	};
 };

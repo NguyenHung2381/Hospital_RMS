@@ -6,6 +6,7 @@ const { ROLE, inputRoleId } = require('../../access/roleCodes');
 const { getById } = require('./courseService');
 const { httpError } = require('../../../utils/httpError');
 const enrollmentProgramService = require('./enrollmentProgramService');
+const practiceAutoService = require('./practiceAutoService');
 
 // ─── Đăng ký khóa học ────────────────────────────────────────────────────
 const listEnrollments = async (courseId) => {
@@ -45,6 +46,10 @@ const registerTrainee = async (
 	if (!course.enrollment_open && !bypassWindow) {
 		throw httpError(403, 'Khóa học hiện không trong thời gian đăng ký.');
 	}
+	// Khóa có chương trình ⇒ mỗi lượt ghi danh theo đúng 1 chương trình (khóa chỉ
+	// có 1 thì tự chọn). Khóa chưa gán chương trình nào thì ghi danh trơn như cũ.
+	if (!programId && course.program_ids.length === 1) programId = course.program_ids[0];
+	if (!programId && course.program_ids.length) throw httpError(400, 'Vui lòng chọn chương trình học.');
 	if (programId) await enrollmentProgramService.assertProgramInCourse(courseId, programId);
 
 	const result = await pool
@@ -231,8 +236,11 @@ const decideEnrollment = async (enrollmentId, decision, actorId, note) => {
 		);
 	}
 
+	// Duyệt vào khóa GPHN ⇒ tự xếp vòng / khoa / NHD
+	const auto =
+		finalStatus === 'approved' ? await practiceAutoService.arrangeIfPractice(enrollmentId, actorId) : {};
 	broadcast('update', { entity: 'course_enrollment' });
-	return { id: enrollmentId, status: finalStatus };
+	return { id: enrollmentId, status: finalStatus, auto_warning: auto.warning ?? null };
 };
 
 const bulkDecideEnrollments = async (ids, decision, actorId, note) => {

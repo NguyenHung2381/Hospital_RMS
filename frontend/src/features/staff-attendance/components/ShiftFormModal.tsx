@@ -4,7 +4,7 @@ import { Badge, Modal, ModalActions, type BadgeTone } from '@/shared/components'
 import { FormField } from '@/shared/components/Input/FormField';
 import m from '@/shared/components/Modal/Modal.module.css';
 import { cx } from '@/shared/utils/cx';
-import { SHIFT_COLORS, describeDuration, type ShiftInput, type WorkShift } from '../api/shiftApi';
+import { SHIFT_COLORS, type ShiftInput, type WorkShift } from '../api/shiftApi';
 import styles from '../pages/Shifts.module.css';
 
 const EMPTY: ShiftInput = {
@@ -80,7 +80,7 @@ export function ShiftFormModal({
 			footer={<ModalActions onCancel={onClose} onConfirm={submit} loading={saving} confirmLabel={shift ? 'Lưu thay đổi' : 'Thêm ca'} />}
 		>
 			{!shift && (
-				<FormField label='Mẫu nhanh' hint='Điền sẵn theo kiểu ca phổ biến — chỉnh lại giờ cho đúng với viện.'>
+				<FormField label='Mẫu nhanh'>
 					<div className={styles.chips}>
 						{PRESETS.map((p) => (
 							<button key={p.label} type='button' className={styles.pick} onClick={() => setF((x) => ({ ...x, ...p.v }))}>
@@ -95,7 +95,7 @@ export function ShiftFormModal({
 				<FormField label='Tên ca' required>
 					<input className={m.formInput} value={f.name} maxLength={100} onChange={(e) => set('name', e.target.value)} placeholder='VD: Ca sáng' />
 				</FormField>
-				<FormField label='Ký hiệu' required hint='Hiện trên bảng phân ca, tối đa 10 ký tự'>
+				<FormField label='Ký hiệu' required>
 					<input className={m.formInput} value={f.code} maxLength={10} onChange={(e) => set('code', e.target.value)} placeholder='VD: S' />
 				</FormField>
 				<FormField label='Giờ vào' required>
@@ -104,17 +104,16 @@ export function ShiftFormModal({
 				<FormField
 					label='Giờ ra'
 					required
-					hint={f.start_time && f.end_time ? `Độ dài: ${describeDuration(f)}. Giờ ra ≤ giờ vào = qua đêm; bằng nhau = 24 giờ.` : undefined}
 				>
 					<input type='time' className={m.formInput} value={f.end_time} onChange={(e) => set('end_time', e.target.value)} />
 				</FormField>
-				<FormField label='Được chấm vào sớm (phút)' hint='Trước giờ vào bao lâu thì mở chấm công vào'>
+				<FormField label='Được chấm vào sớm (phút)'>
 					<input {...num('checkin_before_min')} />
 				</FormField>
-				<FormField label='Được chấm ra muộn (phút)' hint='Sau giờ ra bao lâu vẫn được chấm công ra'>
+				<FormField label='Được chấm ra muộn (phút)'>
 					<input {...num('checkout_after_min')} />
 				</FormField>
-				<FormField label='Du di đi muộn / về sớm (phút)' hint='Trễ hoặc sớm trong khoảng này không bị tính'>
+				<FormField label='Du di đi muộn / về sớm (phút)'>
 					<input {...num('grace_min')} />
 				</FormField>
 				<FormField label='Màu'>

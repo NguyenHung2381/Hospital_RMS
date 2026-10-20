@@ -1,13 +1,20 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { BookOpenSvg, CalendarSvg, DocPlusSvg, UsersSvg } from '@/assets/icons';
+import { ArrowRSvg, BookOpenSvg, CalendarSvg, ClockSvg, DocPlusSvg, LayersSvg, UsersSvg } from '@/assets/icons';
 import { Badge, Button, Card, EmptyState, InlineLoading } from '@/shared/components';
 import { formatDateVN } from '@/shared/utils/formatDate';
 import { notify } from '@/shared/utils/feedback';
 import UserLayout from '../../../layouts/UserLayout';
 import { useRealtimeUpdate } from '../../../layouts/hooks/useRealtime';
 import { DISPLAY_STATUS_CFG, ENROLLMENT_STATUS_CFG } from '../../course/types/course.type';
-import { getMyTraining, registerMyCourse, type MyEnrolledCourse, type MyTraining as Data } from '../api/meApi';
+import {
+	getMyTraining,
+	registerMyCourse,
+	type MyEnrolledCourse,
+	type MyTraining as Data,
+	type OpenCourse,
+} from '../api/meApi';
+import { CourseProgramPicker } from '../../public/components/CourseProgramPicker';
 import styles from './SelfService.module.css';
 import tbl from '@/shared/components/Table/Table.module.css';
 import { useClientPaging } from '@/shared/hooks/useClientPaging';
@@ -45,6 +52,11 @@ function EnrolledItem({ c }: { c: MyEnrolledCourse }) {
 				<span>
 					Thời gian: <b>{range(c.start_date, c.end_date)}</b>
 				</span>
+				{c.program_name && (
+					<span>
+						Chương trình: <b>{c.program_name}</b>
+					</span>
+				)}
 				{c.enrollment_status === 'approved' && c.session_count > 0 && (
 					<span>
 						Điểm danh:{' '}
@@ -110,10 +122,107 @@ function EnrolledItem({ c }: { c: MyEnrolledCourse }) {
 	);
 }
 
+// Số ngày còn lại tới hạn đăng ký (cột DATE, so theo ngày lịch máy người dùng)
+const daysLeft = (d: string) =>
+	Math.round((new Date(d.slice(0, 10)).getTime() - new Date(new Date().toLocaleDateString('en-CA')).getTime()) / 864e5);
+
+function OpenCourseCard({ course: c, onOpen }: { course: OpenCourse; onOpen: () => void }) {
+	const left = c.enrollment_end_date ? daysLeft(c.enrollment_end_date) : null;
+	return (
+		<button
+			type='button'
+			className={styles.openCard}
+			onClick={onOpen}
+		>
+			<div className={styles.openTop}>
+				<span className={styles.openIcon}>
+					<BookOpenSvg />
+				</span>
+				{left == null ? (
+					<Badge tone='green'>Đang nhận đăng ký</Badge>
+				) : left <= 7 ? (
+					<Badge tone='amber'>{left <= 0 ? 'Hết hạn hôm nay' : `Còn ${left} ngày`}</Badge>
+				) : (
+					<Badge tone='green'>Hạn {formatDateVN(c.enrollment_end_date)}</Badge>
+				)}
+			</div>
+			<div className={styles.openName}>{c.name}</div>
+			<ul className={styles.openInfo}>
+				<li>
+					<CalendarSvg />
+					{range(c.start_date, c.end_date)}
+				</li>
+				<li>
+					<LayersSvg />
+					{c.programs.length > 1
+						? `${c.programs.length} chương trình để chọn`
+						: (c.program_name ?? 'Chưa chia chương trình')}
+				</li>
+				{c.capacity != null && (
+					<li>
+						<UsersSvg />
+						Chỉ tiêu {c.capacity} học viên
+					</li>
+				)}
+				{left != null && left <= 7 && (
+					<li>
+						<ClockSvg />
+						Hạn đăng ký {formatDateVN(c.enrollment_end_date)}
+					</li>
+				)}
+			</ul>
+			<span className={styles.openCta}>
+				Xem chương trình & đăng ký <ArrowRSvg />
+			</span>
+		</button>
+	);
+}
+
+// Mở 1 khóa đang tuyển ⇒ xem chi tiết, chọn 1 chương trình rồi gửi đăng ký
+function OpenCourseDetail({ course, onBack, onDone }: { course: OpenCourse; onBack: () => void; onDone: () => void }) {
+	const [programId, setProgramId] = useState(course.programs.length === 1 ? course.programs[0].id : '');
+	const [saving, setSaving] = useState(false);
+
+	const submit = async () => {
+		setSaving(true);
+		try {
+			await registerMyCourse(course.id, programId || undefined);
+			notify.success('Đã gửi đăng ký, vui lòng chờ phòng Đào tạo duyệt.');
+			onDone();
+		} catch (err) {
+			notify.error(err instanceof Error ? err.message : 'Đăng ký thất bại');
+			setSaving(false);
+		}
+	};
+
+	return (
+		<Card>
+			<Card.Body>
+				<CourseProgramPicker
+					course={course}
+					value={programId}
+					onChange={setProgramId}
+					onBack={onBack}
+					backLabel='Khóa học của tôi'
+					footer={
+						<Button
+							loading={saving}
+							disabled={course.programs.length > 0 && !programId}
+							onClick={submit}
+						>
+							Gửi đăng ký
+						</Button>
+					}
+				/>
+			</Card.Body>
+		</Card>
+	);
+}
+
 export default function MyTraining() {
 	const [data, setData] = useState<Data | null>(null);
 	const [error, setError] = useState('');
-	const [registering, setRegistering] = useState('');
+	const [opening, setOpening] = useState<OpenCourse | null>(null);
 
 	const load = useCallback(() => {
 		getMyTraining()
@@ -123,18 +232,9 @@ export default function MyTraining() {
 	useEffect(load, [load]);
 	useRealtimeUpdate(['course', 'course_enrollment'], load);
 
-	const register = async (id: string, name: string) => {
-		if (!window.confirm(`Đăng ký tham gia khóa "${name}"?`)) return;
-		setRegistering(id);
-		try {
-			await registerMyCourse(id);
-			notify.success('Đã gửi đăng ký, vui lòng chờ phòng Đào tạo duyệt.');
-			load();
-		} catch (err) {
-			notify.error(err instanceof Error ? err.message : 'Đăng ký thất bại');
-		} finally {
-			setRegistering('');
-		}
+	const open = (c: OpenCourse) => {
+		setOpening(c);
+		window.scrollTo({ top: 0 });
 	};
 
 	const empty =
@@ -149,14 +249,25 @@ export default function MyTraining() {
 			pageTitle='Khóa học của tôi'
 			pageSubtitle='Lịch học, kết quả học tập, chứng chỉ và các khóa bạn giảng dạy'
 		>
-			{error && (
+			{opening && (
+				<OpenCourseDetail
+					key={opening.id}
+					course={opening}
+					onBack={() => setOpening(null)}
+					onDone={() => {
+						setOpening(null);
+						load();
+					}}
+				/>
+			)}
+			{!opening && error && (
 				<EmptyState
 					title='Không thể tải dữ liệu'
 					desc={error}
 				/>
 			)}
-			{!data && !error && <InlineLoading />}
-			{empty && (
+			{!opening && !data && !error && <InlineLoading />}
+			{!opening && empty && (
 				<EmptyState
 					icon={<BookOpenSvg />}
 					title='Bạn chưa tham gia khóa học nào'
@@ -164,7 +275,7 @@ export default function MyTraining() {
 				/>
 			)}
 
-			{data && !empty && (
+			{!opening && data && !empty && (
 				<div className={styles.stack}>
 					{data.upcoming_sessions.length > 0 && (
 						<Card>
@@ -285,31 +396,13 @@ export default function MyTraining() {
 								sub='Đăng ký sẽ được phòng Đào tạo xét duyệt'
 							/>
 							<Card.Body>
-								<div className={styles.list}>
+								<div className={styles.openGrid}>
 									{data.open_courses.map((c) => (
-										<div
+										<OpenCourseCard
 											key={c.id}
-											className={styles.item}
-										>
-											<div className={styles.itemHead}>
-												<div className={styles.itemTitle}>{c.name}</div>
-												<Button
-													size='sm'
-													loading={registering === c.id}
-													disabled={!!registering}
-													onClick={() => register(c.id, c.name)}
-												>
-													Đăng ký
-												</Button>
-											</div>
-											<div className={styles.meta}>
-												<span>
-													Thời gian: <b>{range(c.start_date, c.end_date)}</b>
-												</span>
-												{c.program_name && <span>Chương trình: {c.program_name}</span>}
-												{c.capacity != null && <span>Chỉ tiêu: {c.capacity}</span>}
-											</div>
-										</div>
+											course={c}
+											onOpen={() => open(c)}
+										/>
 									))}
 								</div>
 							</Card.Body>

@@ -9,6 +9,7 @@ const practiceDocumentService = require('./practiceDocumentService');
 const practiceBoardService = require('./practiceBoardService');
 const practiceBookImportService = require('./practiceBookImportService');
 const practiceBookExportService = require('./practiceBookExportService');
+const practiceAutoService = require('./practiceAutoService');
 const coursePolicy = require('./coursePolicy');
 const courseService = require('./courseService');
 const gradeService = require('./gradeService');
@@ -63,7 +64,9 @@ const registerTrainee = asyncHandler(async (req, res) => {
 	const item = user_id
 		? await courseEnrollmentService.registerStaff(req.params.id, user_id, req.user.id, opts)
 		: await courseEnrollmentService.registerTrainee(req.params.id, trainee_id, req.user.id, opts);
-	return created(res, item);
+	// Phòng Đào tạo ghi danh hộ ⇒ duyệt luôn (đủ sĩ số thì vào danh sách chờ; khóa GPHN tự xếp vòng / khoa / NHD)
+	const decided = await courseEnrollmentService.decideEnrollment(item.id, 'approved', req.user.id);
+	return created(res, { ...item, status: decided.status, auto_warning: decided.auto_warning });
 });
 
 const listStaffCandidates = asyncHandler(async (req, res) => {
@@ -131,13 +134,27 @@ const listRotations = asyncHandler(async (req, res) => {
 	return success(res, await enrollmentRotationService.list(req.params.enrollmentId));
 });
 
-const generateRotations = asyncHandler(async (req, res) => {
-	const out = await enrollmentRotationService.generate(
+// Tự động: sinh vòng + xếp lịch so le + khoa / NHD ít người nhất + điền hồ sơ
+const autoArrangeRotations = asyncHandler(async (req, res) => {
+	await practiceAutoService.arrange(
 		req.params.enrollmentId,
-		{ replace: req.body?.replace === true },
+		{
+			startDate: req.body?.start_date || null,
+			replace: req.body?.replace === true,
+			firstLessonId: req.body?.first_lesson_id || null,
+			carryOver: req.body?.carry_over === true,
+		},
 		req.user.id,
 	);
-	return success(res, out, 'Đã sinh vòng thực hành theo chương trình');
+	return success(
+		res,
+		await enrollmentRotationService.list(req.params.enrollmentId),
+		'Đã tự xếp vòng thực hành',
+	);
+});
+
+const autoArrangeCourse = asyncHandler(async (req, res) => {
+	return success(res, await practiceAutoService.arrangeCourse(req.params.id, req.user.id));
 });
 
 const scheduleRotations = asyncHandler(async (req, res) => {
@@ -171,6 +188,11 @@ const refreshRotationMentor = asyncHandler(async (req, res) => {
 const retakeRotation = asyncHandler(async (req, res) => {
 	await enrollmentRotationService.retake(req.params.rotationId, req.user.id);
 	return success(res, null, 'Đã thêm lượt học lại vòng');
+});
+
+const moveRotation = asyncHandler(async (req, res) => {
+	await enrollmentRotationService.move(req.params.rotationId, req.body.direction === 'up', req.user.id);
+	return success(res, null, 'Đã đổi thứ tự vòng');
 });
 
 // ─── Sổ thực hành GPHN (nhập / xuất Excel) ───────────────────────────────
@@ -419,12 +441,14 @@ module.exports = {
 	syncEnrollmentLessons,
 	updateEnrollmentLesson,
 	listRotations,
-	generateRotations,
+	autoArrangeRotations,
+	autoArrangeCourse,
 	scheduleRotations,
 	addRotationSegment,
 	updateRotation,
 	refreshRotationMentor,
 	retakeRotation,
+	moveRotation,
 	removeRotation,
 	listPracticeDocuments,
 	importPracticeBook,

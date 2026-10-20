@@ -18,13 +18,56 @@ import { TrainingProgramFormModal } from '../components/TrainingProgramFormModal
 import { ProgramCatalogImportModal } from '../components/ProgramCatalogImportModal';
 import { useTrainingPrograms } from '../hooks/useTrainingPrograms';
 import {
+	durationDays,
 	EMPTY_FORM,
+	formatDuration,
 	getProgramStatus,
 	PROGRAM_STATUS_LABELS,
+	type ProgramRotation,
 	type ProgramStatusFilter,
 } from '../types/trainingProgram.type';
 import styles from './TrainingPrograms.module.css';
 import tbl from '@/shared/components/Table/Table.module.css';
+
+// Chương trình GPHN: học viên luân phiên nhiều khoa, mỗi khoa thời lượng khác nhau.
+// Mỗi vòng là 1 nhóm khoa (VD "Nội khoa" gồm 11 khoa) — ô bảng chỉ hiện tên vòng, khoa cụ thể ở tooltip.
+const rotationText = (r: ProgramRotation) =>
+	[r.title || r.department_names, formatDuration(r.duration_value, r.duration_unit)].filter(Boolean).join(' · ');
+const ROTATIONS_SHOWN = 3;
+function RotationDepts({ rotations }: { rotations: ProgramRotation[] }) {
+	const shown = rotations.length > ROTATIONS_SHOWN + 1 ? rotations.slice(0, ROTATIONS_SHOWN) : rotations;
+	const rest = rotations.length - shown.length;
+	const totalDays = rotations.reduce((s, r) => s + (durationDays(r.duration_value, r.duration_unit) ?? 0), 0);
+	return (
+		<div
+			className={styles.rotationCell}
+			title={rotations
+				.map((r, i) => `Vòng ${i + 1}: ${rotationText(r)}${r.department_names ? `\n   ${r.department_names}` : ''}`)
+				.join('\n')}
+		>
+			{rotations.length > 1 && (
+				<span className={styles.rotationSummary}>
+					{rotations.length} vòng luân khoa
+					{totalDays > 0 && ` · ≈ ${formatDuration(Math.round(totalDays / 3) / 10, 'month')}`}
+				</span>
+			)}
+			<div className={styles.rotationChips}>
+				{shown.map((r) => (
+					<span
+						key={r.link_id}
+						className={styles.rotationChip}
+					>
+						{r.title || r.department_names}
+						{r.duration_value != null && (
+							<b className={styles.rotationChipDur}>{formatDuration(r.duration_value, r.duration_unit)}</b>
+						)}
+					</span>
+				))}
+				{rest > 0 && <span className={styles.rotationChipMore}>+{rest}</span>}
+			</div>
+		</div>
+	);
+}
 
 export default function TrainingPrograms() {
 	const d = useTrainingPrograms();
@@ -44,7 +87,15 @@ export default function TrainingPrograms() {
 		{ header: 'Đối tượng (ghi chú)', value: (x) => x.target_audience },
 		{ header: 'Học phí', value: (x) => x.tuition_fee },
 		{ header: 'Khoa phòng', key: 'department', value: (x) => x.department_name ?? x.department_note },
+		{
+			header: 'Vòng thực hành',
+			value: (x) =>
+				(x.rotations ?? [])
+					.map((r) => `${rotationText(r)}${r.department_names ? ` (${r.department_names})` : ''}`)
+					.join('; ') || null,
+		},
 		{ header: 'Đối tượng học viên', key: 'trainee_type', value: (x) => x.trainee_type_name },
+		{ header: 'Sĩ số tối thiểu', key: 'min_capacity', value: (x) => x.min_capacity },
 		{ header: 'Sĩ số tối đa', key: 'max_capacity', value: (x) => x.max_capacity },
 		{ header: 'Thứ tự', key: 'display_order', value: (x) => x.display_order },
 		{ header: 'Mô tả', key: 'description', value: (x) => x.description },
@@ -67,6 +118,7 @@ export default function TrainingPrograms() {
 						duration: r.duration,
 						department_id: matchLabel(deptNames, r.department, 'Khoa phòng') ?? '',
 						trainee_type_id: matchLabel(typeNames, r.trainee_type, 'Đối tượng học viên') ?? '',
+						min_capacity: numText(r.min_capacity),
 						max_capacity: numText(r.max_capacity),
 						display_order: numText(r.display_order),
 						description: r.description,
@@ -282,7 +334,11 @@ export default function TrainingPrograms() {
 											</div>
 										</td>
 										<td className={styles.td}>
-											<span className={styles.descText}>{p.department_name ?? p.department_note ?? '—'}</span>
+											{p.rotations?.length ? (
+												<RotationDepts rotations={p.rotations} />
+											) : (
+												<span className={styles.descText}>{p.department_name ?? p.department_note ?? '—'}</span>
+											)}
 										</td>
 										<td className={styles.td}>
 											{p.trainee_type_name ? (

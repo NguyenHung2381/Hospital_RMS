@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { apiClient } from '../../../shared/api/axios';
+import { showToast } from '@/shared/utils/feedback';
 import type { DocumentSource } from '../api/courseApi';
 import {
 	addDocument as apiAddDocument,
@@ -175,13 +176,18 @@ export function useCourseDetail(courseId: string) {
 			setBusy(true);
 			setError('');
 			try {
+				let out;
 				if (traineeId.startsWith(STAFF_OPTION_PREFIX)) {
-					await apiRegisterStaff(courseId, traineeId.slice(STAFF_OPTION_PREFIX.length), programId);
+					out = await apiRegisterStaff(courseId, traineeId.slice(STAFF_OPTION_PREFIX.length), programId);
 					// Nhân viên vừa được tạo hồ sơ học viên — nạp lại để không còn hiện 2 lần.
 					loadEnrollCandidates();
 				} else {
-					await apiRegisterTrainee(courseId, traineeId, programId);
+					out = await apiRegisterTrainee(courseId, traineeId, programId);
 				}
+				// Ghi danh hộ được duyệt luôn; khóa GPHN backend đã tự xếp vòng — chỉ báo khi chưa xếp được
+				if (out.auto_warning) showToast('error', out.auto_warning);
+				else if (out.status === 'waitlisted') showToast('info', 'Khóa đã đủ sĩ số — học viên được đưa vào danh sách chờ');
+				else showToast('success', 'Đã ghi danh và duyệt học viên');
 				await load();
 			} catch (err) {
 				setError(err instanceof Error ? err.message : 'Đăng ký thất bại');

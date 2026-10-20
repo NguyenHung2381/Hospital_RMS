@@ -103,7 +103,6 @@ export function RoundInfoTab({
 				label='Loại đợt'
 				required
 				error={errors.round_type_id as string}
-				hint='Quản lý danh sách loại đợt tại mục Danh mục › Loại đợt'
 			>
 				<select
 					id='round_type_id'
@@ -125,11 +124,6 @@ export function RoundInfoTab({
 			<FormField
 				htmlFor='level_ids'
 				label='Cấp độ đề tài được đăng ký'
-				hint={
-					form.level_ids.length
-						? `Đã chọn ${form.level_ids.length} cấp độ — form đăng ký đề tài của đợt chỉ hiện các cấp độ này`
-						: 'Không chọn ⇒ dùng cấp độ cấu hình cho loại đợt (chưa cấu hình thì cho phép tất cả)'
-				}
 			>
 				<div className={dmStyles.chipsContainer}>
 					{levels.length === 0 && (
@@ -162,7 +156,6 @@ export function RoundInfoTab({
 				label='Tên đợt nghiên cứu'
 				required
 				error={errors.name}
-				hint='Có thể chỉnh sửa tên tự sinh'
 			>
 				<input
 					id='name'

@@ -86,6 +86,7 @@ GET    /api/v1/courses/:id/lecturer-assignments  courses:read
 POST   /api/v1/courses/:id/lecturer-assignments  courses:update
 POST   /api/v1/courses/:id/practice-book/export  courses:read
 POST   /api/v1/courses/:id/practice-book/import  courses:update
+POST   /api/v1/courses/:id/practice/auto-arrange  courses:update
 GET    /api/v1/courses/:id/programs  courses:read
 GET    /api/v1/courses/:id/sessions  courses:read
 POST   /api/v1/courses/:id/sessions  courses:update
@@ -105,7 +106,7 @@ GET    /api/v1/courses/enrollments/:enrollmentId/lessons  courses:read
 PUT    /api/v1/courses/enrollments/:enrollmentId/lessons  courses:update
 POST   /api/v1/courses/enrollments/:enrollmentId/lessons/sync  courses:update
 GET    /api/v1/courses/enrollments/:enrollmentId/rotations  courses:read
-POST   /api/v1/courses/enrollments/:enrollmentId/rotations/generate  courses:update
+POST   /api/v1/courses/enrollments/:enrollmentId/rotations/auto  courses:update
 POST   /api/v1/courses/enrollments/:enrollmentId/rotations/schedule  courses:update
 POST   /api/v1/courses/enrollments/:enrollmentId/rotations/segment  courses:update
 POST   /api/v1/courses/enrollments/bulk-decide  courses:approve
@@ -117,6 +118,7 @@ PUT    /api/v1/courses/rotations/:rotationId  courses:update
 DELETE /api/v1/courses/rotations/:rotationId  courses:update
 POST   /api/v1/courses/rotations/:rotationId/refresh-mentor  courses:update
 POST   /api/v1/courses/rotations/:rotationId/retake  courses:update
+POST   /api/v1/courses/rotations/:rotationId/move  courses:update
 PUT    /api/v1/courses/sessions/:sessionId  courses:update
 DELETE /api/v1/courses/sessions/:sessionId  courses:update
 GET    /api/v1/courses/sessions/:sessionId/attendance  courses:read

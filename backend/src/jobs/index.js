@@ -4,6 +4,7 @@ const accountMaintenanceJob = require('./accountMaintenanceJob');
 const personLinkJob = require('./personLinkJob');
 const supplementDeadlineJob = require('./supplementDeadlineJob');
 const notificationCleanupJob = require('./notificationCleanupJob');
+const practiceAutoService = require('../modules/training/courses/practiceAutoService');
 const logger = require('../config/logger');
 
 const TZ = process.env.CRON_TZ || 'Asia/Ho_Chi_Minh';
@@ -27,6 +28,11 @@ const start = () => {
 
 	// 00:15 sáng: đề tài quá hạn mốc bổ sung (mốc qua từ hôm qua) ⇒ tự từ chối
 	cron.schedule('15 0 * * *', runSafely('supplement_auto_reject', supplementDeadlineJob.run), {
+		timezone: TZ,
+	});
+
+	// 00:30 sáng: hồ sơ thực hành GPHN qua ngày kết thúc, không vòng nào trượt ⇒ hoàn thành
+	cron.schedule('30 0 * * *', runSafely('practice_complete', practiceAutoService.completeFinished), {
 		timezone: TZ,
 	});
 

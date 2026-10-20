@@ -80,6 +80,54 @@
 .descText {
 	composes: cellSub from '../../../shared/components/Table/Table.module.css';
 }
+.programWrap {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+	max-width: 360px;
+	margin-bottom: 6px;
+}
+.programPrefix {
+	color: var(--color-gray-500);
+	font-size: var(--font-size-xs);
+}
+.programTags {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 4px;
+}
+.infoItemWide {
+	grid-column: 1 / -1;
+	padding-top: var(--space-3);
+	border-top: 1px solid var(--color-gray-100);
+}
+.infoItemWide .programWrap {
+	max-width: none;
+	margin-bottom: 0;
+}
+.programTag {
+	max-width: 100%;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	padding: 2px 8px;
+	border-radius: var(--radius-md);
+	background: var(--color-gray-100);
+	color: var(--color-gray-700);
+	font-size: var(--font-size-xs);
+}
+.programMore {
+	background: var(--color-primary-pale);
+	color: var(--color-primary-dark);
+	font-weight: var(--font-weight-semibold);
+	font-family: inherit;
+	border: none;
+	cursor: pointer;
+}
+.programMore:hover {
+	background: var(--color-primary);
+	color: #fff;
+}
 .badge {
 	font-size: var(--font-size-2xs);
 	font-weight: var(--font-weight-bold);
@@ -174,6 +222,17 @@
 	border-color: var(--color-primary);
 	background: var(--color-white);
 	box-shadow: 0 0 0 3px rgba(10, 155, 74, 0.1);
+}
+.toggleBox {
+	display: flex;
+	align-items: center;
+	gap: var(--space-2);
+	cursor: pointer;
+	user-select: none;
+}
+.fieldHint {
+	color: var(--color-gray-500);
+	font-size: var(--font-size-xs);
 }
 .formTextarea {
 	width: 100%;
@@ -453,35 +512,103 @@
 }
 
 /* Chọn chương trình trong form khóa học */
-.pickList {
+.pickBox {
+	border: 1.5px solid var(--color-gray-200);
+	border-radius: var(--radius-lg);
+	overflow: hidden;
+	background: var(--color-white);
+}
+.pickHead {
 	display: flex;
-	flex-wrap: wrap;
-	gap: var(--space-2);
-	max-height: 168px;
+	align-items: center;
+	gap: var(--space-3);
+	padding: var(--space-2);
+	border-bottom: 1px solid var(--color-gray-100);
+	background: var(--color-gray-50);
+}
+.pickHead > :first-child {
+	flex: 1;
+	min-width: 0;
+}
+.pickCount {
+	flex-shrink: 0;
+	font-size: var(--font-size-sm);
+	color: var(--color-gray-500);
+}
+.pickCount b {
+	color: var(--color-primary-dark);
+}
+.pickClear {
+	flex-shrink: 0;
+	border: none;
+	background: none;
+	padding: 0;
+	font-family: var(--font-body);
+	font-size: var(--font-size-sm);
+	color: var(--color-primary);
+	cursor: pointer;
+}
+.pickList {
+	max-height: 240px;
 	overflow-y: auto;
 }
-.pickChip {
-	display: inline-flex;
+.pickRow {
+	display: flex;
 	align-items: center;
-	gap: 4px;
-	padding: 6px 12px;
-	border: 1.5px solid var(--color-gray-200);
-	border-radius: var(--radius-full);
-	background: var(--color-white);
-	font-family: var(--font-body);
+	gap: var(--space-3);
+	padding: 9px var(--space-3);
+	border-bottom: 1px solid var(--color-gray-100);
 	font-size: var(--font-size-compact);
 	color: var(--color-gray-700);
 	cursor: pointer;
 }
-.pickChip svg {
-	width: 12px;
-	height: 12px;
+.pickRow:last-child {
+	border-bottom: none;
 }
-.pickChipOn {
-	border-color: var(--color-primary);
+.pickRow:hover {
+	background: var(--color-gray-50);
+}
+.pickRow input {
+	flex-shrink: 0;
+	width: 16px;
+	height: 16px;
+	accent-color: var(--color-primary);
+	cursor: pointer;
+}
+.pickRowOn,
+.pickRowOn:hover {
 	background: var(--color-primary-pale, #eff6ff);
-	color: var(--color-primary-dark);
+	color: var(--color-gray-800);
+}
+.pickCode {
+	flex-shrink: 0;
+	min-width: 92px;
+	font-family: var(--font-mono, monospace);
+	font-size: var(--font-size-xs);
 	font-weight: var(--font-weight-semibold);
+	color: var(--color-gray-500);
+}
+.pickRowOn .pickCode {
+	color: var(--color-primary-dark);
+}
+.pickName {
+	flex: 1;
+	min-width: 0;
+	line-height: 1.4;
+}
+.pickEmpty {
+	padding: var(--space-4);
+	text-align: center;
+	font-size: var(--font-size-sm);
+	color: var(--color-gray-400);
+}
+@media (max-width: 640px) {
+	.pickHead {
+		flex-wrap: wrap;
+	}
+	.pickHead > :first-child {
+		flex-basis: 100%;
+	}
 }
 .subToolbar {
 	display: flex;
@@ -536,6 +663,145 @@
 .subRowMeta {
 	composes: cellSub from '../../../shared/components/Table/Table.module.css';
 	margin-top: 2px;
+}
+/* Thẻ 1 vòng thực hành GPHN (RotationsPanel) */
+.rotCard {
+	display: flex;
+	flex-direction: column;
+	gap: var(--space-3);
+	padding: 12px 14px;
+	border: 1px solid var(--color-gray-100);
+	border-radius: var(--radius-lg);
+	background: var(--color-gray-50);
+}
+.rotWarn {
+	border-left: 3px solid #b42318;
+}
+.rotHead {
+	display: flex;
+	align-items: center;
+	gap: var(--space-2);
+	flex-wrap: wrap;
+}
+.rotHead > :first-child {
+	flex: 1 1 200px;
+}
+.rotTools {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+}
+.rotFields {
+	display: grid;
+	grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr);
+	gap: var(--space-3);
+}
+.rotMain {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+	gap: var(--space-3);
+}
+.rotField {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+	min-width: 0;
+}
+.rotLabel {
+	font-size: var(--font-size-2xs);
+	font-weight: var(--font-weight-semibold);
+	color: var(--color-gray-500);
+	text-transform: uppercase;
+	letter-spacing: 0.03em;
+}
+.rotField > .subSelect {
+	width: 100%;
+	min-width: 0;
+	box-sizing: border-box;
+}
+.rotChips {
+	display: flex;
+	align-items: center;
+	gap: 4px;
+	flex-wrap: wrap;
+	margin-top: 6px;
+}
+.rotChip {
+	padding: 2px 10px;
+	border: 1px solid var(--color-gray-200);
+	border-radius: var(--radius-full);
+	background: var(--color-white);
+	color: var(--color-gray-700);
+	font-family: inherit;
+	font-size: var(--font-size-xs);
+	cursor: pointer;
+}
+.rotChip:hover:not(:disabled) {
+	border-color: var(--color-primary);
+	color: var(--color-primary-dark);
+}
+.rotChip:disabled {
+	opacity: 0.5;
+	cursor: not-allowed;
+}
+.mentorCard {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+	padding: 12px 14px;
+	border: 1px solid var(--color-gray-200);
+	border-radius: var(--radius-lg);
+	background: var(--color-white);
+}
+.mentorHead {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	padding-bottom: 8px;
+	margin-bottom: 2px;
+	border-bottom: 1px dashed var(--color-gray-200);
+}
+.mentorCard > .subRowMeta {
+	margin-top: 0;
+	line-height: 1.5;
+}
+.salutation {
+	flex: 0 0 auto;
+	gap: 2px;
+	padding: 2px;
+	margin-bottom: 0;
+}
+.salutation .segBtn {
+	padding: 2px 10px;
+	font-size: var(--font-size-xs);
+}
+.mentorName {
+	flex: 1;
+	min-width: 0;
+	font-weight: var(--font-weight-semibold);
+	font-size: var(--font-size-compact);
+	color: var(--color-gray-800);
+}
+.linkBtn {
+	padding: 2px 4px;
+	border: none;
+	background: none;
+	color: var(--color-primary-dark);
+	font-family: inherit;
+	font-size: var(--font-size-xs);
+	cursor: pointer;
+	white-space: nowrap;
+}
+.linkBtn:hover:not(:disabled) {
+	text-decoration: underline;
+}
+@media (max-width: 640px) {
+	.rotFields {
+		grid-template-columns: 1fr 1fr;
+	}
+	.rotFields > :first-child {
+		grid-column: 1 / -1;
+	}
 }
 .subEmpty {
 	text-align: center;
@@ -652,4 +918,45 @@
 	border: 1px solid var(--color-gray-100);
 	border-radius: var(--radius-lg);
 	flex: none;
+}
+
+/* Tab Học viên: nút chính, khung "Thêm học viên", tên bấm mở hồ sơ */
+.btnPrimary {
+	composes: btn primary from '@/shared/components/Button/Button.module.css';
+}
+.addPanel {
+	display: flex;
+	align-items: center;
+	gap: var(--space-2);
+	flex-wrap: wrap;
+	margin: calc(-1 * var(--space-2)) 0 var(--space-4);
+	padding: var(--space-3);
+	border: 1px dashed var(--color-gray-300);
+	border-radius: var(--radius-lg);
+	background: var(--color-gray-50);
+}
+.nameBtn {
+	composes: cellLink from '@/shared/components/Table/Table.module.css';
+	border: none;
+	background: none;
+	padding: 0;
+	font-family: inherit;
+	font-size: inherit;
+	text-align: left;
+}
+
+/* Nhóm form thu gọn (<details>) — mũi tên tự vẽ vì summary dùng display:flex */
+.collapse > summary {
+	cursor: pointer;
+	list-style: none;
+}
+.collapse > summary::-webkit-details-marker {
+	display: none;
+}
+.collapse > summary::before {
+	content: '▸';
+	color: var(--color-gray-500);
+}
+.collapse[open] > summary::before {
+	content: '▾';
 }

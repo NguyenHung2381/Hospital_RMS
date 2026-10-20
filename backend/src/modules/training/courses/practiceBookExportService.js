@@ -6,9 +6,8 @@
  */
 const ExcelJS = require('exceljs');
 const { getPool, sql } = require('../../../config/db');
-const { norm } = require('../../../utils/vietnameseText');
 const { httpError } = require('../../../utils/httpError');
-const { describeSpan } = require('./rotationPlanner');
+const { describeSpan, shortDept, practiceFieldLabel } = require('./rotationPlanner');
 
 const pad2 = (n) => String(n).padStart(2, '0');
 const toDate = (v) =>
@@ -24,28 +23,6 @@ const parts = (v) => {
 	return d ? [d.getUTCDate(), d.getUTCMonth() + 1, d.getUTCFullYear()] : ['', '', ''];
 };
 const salutation = (g) => (g === 'male' ? 'ông' : g === 'female' ? 'bà' : '');
-// Sổ ghi tên khoa không có chữ "Khoa": "Cấp cứu", "Nội tim mạch 2"
-const shortDept = (name) => String(name ?? '').replace(/^\s*khoa\s+/i, '');
-
-/**
- * Nhãn lĩnh vực in lên giấy (cột TH n) — bản JS của công thức IFS trong sổ:
- * Cấp cứu/Chống độc/Hồi sức → "về Hồi sức cấp cứu"; Ngoại/Phẫu thuật/Chấn thương/Bỏng
- * → "lĩnh vực Ngoại khoa"; Nội/Đột quỵ/Nhiệt đới/Huyết học/Thần kinh/Miễn dịch → "lĩnh
- * vực Nội khoa"; Nhi → Nhi khoa; Sản → Sản phụ khoa; chuyên khoa lẻ → "về <tên khoa>".
- */
-const practiceFieldLabel = (deptName) => {
-	const name = shortDept(deptName).trim();
-	const n = norm(name);
-	if (!n) return '';
-	if (/cap cuu|chong doc|hoi suc/.test(n)) return 'về Hồi sức cấp cứu';
-	if (/ngoai|phau thuat|chan thuong|bong/.test(n)) return 'lĩnh vực Ngoại khoa';
-	if (/noi|dot quy|nhiet doi|huyet hoc|than kinh|mien dich/.test(n)) return 'lĩnh vực Nội khoa';
-	if (/\bnhi\b/.test(n)) return 'lĩnh vực Nhi khoa';
-	if (/san/.test(n)) return 'lĩnh vực Sản phụ khoa';
-	if (/tai mui hong|rang ham mat|\bmat\b|da lieu|y hoc co truyen|phuc hoi chuc nang/.test(n))
-		return `về ${name}`;
-	return 'Khác';
-};
 
 const HEAD = [
 	'TT', 'Mã học viên', 'Mã thực hành', 'Họ và tên', 'Giới tính', 'Ngày sinh', 'Năm sinh', 'Trình độ chuyên môn',

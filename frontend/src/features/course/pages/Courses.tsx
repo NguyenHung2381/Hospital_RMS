@@ -17,6 +17,7 @@ import { useRowSelection } from '../../../shared/hooks/useRowSelection';
 import { formatDate } from '../../../shared/utils/formatDate';
 import { CourseDeleteModal } from '../components/CourseDeleteModal';
 import { CourseFormModal } from '../components/CourseFormModal';
+import ProgramTags from '../components/ProgramTags';
 import { useCourses } from '../hooks/useCourses';
 import { DISPLAY_STATUS_CFG } from '../types/course.type';
 import styles from './Courses.module.css';
@@ -210,7 +211,7 @@ export default function Courses() {
 											)}
 										</td>
 										<td className={styles.td}>
-											<span className={styles.descText}>{c.program_names ?? '—'}</span>
+											<ProgramTags names={c.program_names} />
 											<div>
 												<span
 													className={styles.badge}

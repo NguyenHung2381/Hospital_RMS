@@ -190,8 +190,18 @@ const NAV_GROUPS: NavGroup[] = [
 		],
 	},
 	{
-		// Luồng: nội dung → khoá học/lịch → thi → con người → danh mục.
+		// Việc hằng ngày: khóa học (ghi danh → lịch → thi → kết quả) và thực hành GPHN.
 		section: 'Đào tạo',
+		items: [
+			navItem('courses', 'Khóa học', ClipboardCheckSvg, 'courses:read'),
+			navItem('practiceBoard', 'Thực hành GPHN', DeptSvg, 'courses:read'),
+			navItem('classSchedule', 'Lịch học', CalendarSvg, 'courses:read'),
+			navItem('trainees', 'Học viên', UsersSvg, 'trainees:read'),
+		],
+	},
+	{
+		// Khai báo 1 lần trước khi mở khóa: chương trình → bài học → câu hỏi → giảng viên → danh mục.
+		section: 'Thiết lập đào tạo',
 		items: [
 			navItem(
 				'trainingPrograms',
@@ -200,11 +210,7 @@ const NAV_GROUPS: NavGroup[] = [
 				'training_programs:read',
 			),
 			navItem('lessons', 'Bài học', FileTextSvg, 'training_programs:read'),
-			navItem('courses', 'Khóa học', ClipboardCheckSvg, 'courses:read'),
-			navItem('practiceBoard', 'Thực hành GPHN', DeptSvg, 'courses:read'),
-			navItem('classSchedule', 'Lịch học', CalendarSvg, 'courses:read'),
 			navItem('questionBank', 'Ngân hàng câu hỏi', HelpSvg, 'exams:manage'),
-			navItem('trainees', 'Học viên', UsersSvg, 'trainees:read'),
 			navItem('lecturers', 'Giảng viên', UserCheckSvg, 'lecturers:read'),
 			navItem(
 				'trainingCatalog',
@@ -299,6 +305,7 @@ const NAV_GROUPS: NavGroup[] = [
 const MODULE_BY_SECTION: Record<string, ModuleKey> = {
 	'Nghiên cứu khoa học': 'research',
 	'Đào tạo': 'training',
+	'Thiết lập đào tạo': 'training',
 	'Hội nghị': 'seminar',
 	'Đào tạo liên tục': 'seminar',
 };

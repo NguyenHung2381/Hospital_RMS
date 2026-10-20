@@ -1,15 +1,19 @@
 import { FormField } from '@/shared/components/Input/FormField';
 import { Modal, ModalActions } from '@/shared/components';
 import React, { useState } from 'react';
-import { LayersSvg } from '@/assets/icons';
+import { LayersSvg, PlusSvg, TrashSvg } from '@/assets/icons';
 import {
 	DURATION_UNIT_LABEL,
+	durationDays,
 	EMPTY_FORM,
+	EMPTY_ROTATION,
 	type DurationUnit,
+	type RotationDraft,
 	type TrainingProgram,
 	type TrainingProgramFormData,
 } from '../types/trainingProgram.type';
 import type { SimpleItem } from '../hooks/useTrainingPrograms';
+import { TagPicker } from './LessonFormModal';
 import styles from '../pages/TrainingPrograms.module.css';
 
 const str = (v: number | null | undefined) => (v != null ? String(v) : '');
@@ -29,10 +33,21 @@ const fromProgram = (p: TrainingProgram): TrainingProgramFormData => ({
 	practice_hours: str(p.practice_hours),
 	credit_hours: str(p.credit_hours),
 	tuition_fee: str(p.tuition_fee),
+	min_capacity: str(p.min_capacity),
 	max_capacity: str(p.max_capacity),
 	display_order: String(p.display_order ?? 0),
 	description: p.description ?? '',
+	rotations: (p.rotations ?? []).map((r) => ({
+		lesson_id: r.lesson_id,
+		link_id: r.link_id,
+		title: r.title,
+		duration_value: str(r.duration_value),
+		duration_unit: r.duration_unit ?? 'month',
+		department_ids: r.department_ids ? r.department_ids.split(',') : [],
+	})),
 });
+
+const deptLabel = (d: SimpleItem) => d.name;
 
 const isNonNegative = (s: string) => s.trim() === '' || (Number.isFinite(Number(s)) && Number(s) >= 0);
 
@@ -57,6 +72,21 @@ export function TrainingProgramFormModal({
 }) {
 	const [form, setForm] = useState<TrainingProgramFormData>(program ? fromProgram(program) : EMPTY_FORM);
 	const [errors, setErrors] = useState<Partial<Record<keyof TrainingProgramFormData, string>>>({});
+	const [rotationErrors, setRotationErrors] = useState<Record<number, string>>({});
+
+	const setRotation = (i: number, patch: Partial<RotationDraft>) => {
+		setForm((f) => ({ ...f, rotations: f.rotations.map((r, j) => (j === i ? { ...r, ...patch } : r)) }));
+		setRotationErrors((er) => ({ ...er, [i]: '' }));
+	};
+	const removeRotation = (i: number) => {
+		setForm((f) => ({ ...f, rotations: f.rotations.filter((_, j) => j !== i) }));
+		setRotationErrors({});
+	};
+	const rotationMonths =
+		form.rotations.reduce(
+			(s, r) => s + (durationDays(r.duration_value.trim() ? Number(r.duration_value) : null, r.duration_unit) ?? 0),
+			0,
+		) / 30;
 
 	const set =
 		(k: keyof TrainingProgramFormData) =>
@@ -69,15 +99,24 @@ export function TrainingProgramFormModal({
 		const err: Partial<Record<keyof TrainingProgramFormData, string>> = {};
 		if (!form.code.trim()) err.code = 'Vui lòng nhập mã chương trình';
 		if (!form.name.trim()) err.name = 'Vui lòng nhập tên chương trình';
-		if (form.max_capacity && (Number(form.max_capacity) < 1 || !Number.isFinite(Number(form.max_capacity))))
-			err.max_capacity = 'Số lượng phải là số nguyên dương';
+		for (const k of ['min_capacity', 'max_capacity'] as const)
+			if (form[k] && (Number(form[k]) < 1 || !Number.isFinite(Number(form[k]))))
+				err[k] = 'Số lượng phải là số nguyên dương';
+		if (form.min_capacity && form.max_capacity && Number(form.min_capacity) > Number(form.max_capacity))
+			err.min_capacity = 'Không được lớn hơn số lượng tối đa';
 		for (const k of ['duration_value', 'theory_hours', 'practice_hours', 'credit_hours', 'tuition_fee'] as const)
 			if (!isNonNegative(form[k])) err[k] = 'Phải là số không âm';
+		const rErr: Record<number, string> = {};
+		form.rotations.forEach((r, i) => {
+			if (!r.title.trim()) rErr[i] = 'Nhập tên vòng';
+			else if (r.duration_value.trim() && !(Number(r.duration_value) > 0)) rErr[i] = 'Thời lượng phải là số dương';
+			else if (!r.department_ids.length) rErr[i] = 'Chọn ít nhất 1 khoa';
+		});
 		setErrors(err);
-		return Object.keys(err).length === 0;
+		setRotationErrors(rErr);
+		return Object.keys(err).length === 0 && Object.keys(rErr).length === 0;
 	};
 
-	const totalHours = (Number(form.theory_hours) || 0) + (Number(form.practice_hours) || 0);
 	const numberInput = (k: keyof TrainingProgramFormData, placeholder: string, step = '1') => (
 		<input
 			type='number'
@@ -154,7 +193,6 @@ export function TrainingProgramFormModal({
 				<FormField
 					label='Thời lượng'
 					error={errors.duration_value}
-					hint={!form.duration_value && form.duration ? `Đang ghi: "${form.duration}"` : undefined}
 				>
 					<div style={{ display: 'flex', gap: 'var(--space-2)' }}>
 						{numberInput('duration_value', 'VD: 3', '0.5')}
@@ -190,14 +228,10 @@ export function TrainingProgramFormModal({
 				<FormField
 					label='Số tiết thực hành'
 					error={errors.practice_hours}
-					hint={totalHours ? `Tổng số tiết: ${totalHours}` : undefined}
 				>
 					{numberInput('practice_hours', '0')}
 				</FormField>
-				<FormField
-					label='Đối tượng học viên'
-					hint='Ghi như danh mục, VD: Bác sĩ, Điều dưỡng, KTV'
-				>
+				<FormField label='Đối tượng học viên'>
 					<input
 						className={styles.formInput}
 						value={form.target_audience}
@@ -239,14 +273,12 @@ export function TrainingProgramFormModal({
 						))}
 					</select>
 				</FormField>
-				<FormField
-					label='Ghi chú khoa phụ trách'
-					hint='VD: Nhiều khoa tùy từng vòng học'
-				>
+				<FormField label='Ghi chú khoa phụ trách'>
 					<input
 						className={styles.formInput}
 						value={form.department_note}
 						onChange={set('department_note')}
+						placeholder='VD: Nhiều khoa tùy từng vòng học'
 					/>
 				</FormField>
 				<FormField
@@ -254,6 +286,19 @@ export function TrainingProgramFormModal({
 					error={errors.tuition_fee}
 				>
 					{numberInput('tuition_fee', 'VD: 5000000', '1000')}
+				</FormField>
+				<FormField
+					label='Số lượng tối thiểu'
+					error={errors.min_capacity}
+				>
+					<input
+						type='number'
+						min={1}
+						className={`${styles.formInput} ${errors.min_capacity ? styles.inputError : ''}`}
+						value={form.min_capacity}
+						onChange={set('min_capacity')}
+						placeholder='5'
+					/>
 				</FormField>
 				<FormField
 					label='Số lượng tối đa'
@@ -277,6 +322,91 @@ export function TrainingProgramFormModal({
 						placeholder='0'
 					/>
 				</FormField>
+				<div
+					className={styles.formGroup}
+					style={{ gridColumn: '1 / -1' }}
+				>
+					<label className={styles.formLabel}>Vòng thực hành (luân khoa)</label>
+					<div className={styles.subRowMeta}>
+						Học viên học lần lượt nhiều khoa, mỗi vòng thời lượng riêng. Một vòng có thể chọn nhiều khoa — học viên
+						được xếp vào 1 trong các khoa đó.
+					</div>
+					{form.rotations.map((r, i) => (
+						<div
+							key={r.link_id ?? `new-${i}`}
+							className={styles.rotationRow}
+						>
+							<span className={styles.rotationIdx}>Vòng {i + 1}</span>
+							<input
+								className={`${styles.formInput} ${rotationErrors[i] && !r.title.trim() ? styles.inputError : ''}`}
+								value={r.title}
+								onChange={(e) => setRotation(i, { title: e.target.value })}
+								placeholder='Tên vòng, VD: Nội khoa'
+							/>
+							<div style={{ display: 'flex', gap: 'var(--space-2)' }}>
+								<input
+									type='number'
+									min={0}
+									step='0.5'
+									className={styles.formInput}
+									style={{ width: 80 }}
+									value={r.duration_value}
+									onChange={(e) => setRotation(i, { duration_value: e.target.value })}
+									placeholder='VD: 3'
+								/>
+								<select
+									className={styles.formInput}
+									style={{ width: 90 }}
+									value={r.duration_unit}
+									onChange={(e) => setRotation(i, { duration_unit: e.target.value as DurationUnit })}
+								>
+									{Object.entries(DURATION_UNIT_LABEL).map(([v, label]) => (
+										<option
+											key={v}
+											value={v}
+										>
+											{label}
+										</option>
+									))}
+								</select>
+							</div>
+							<button
+								type='button'
+								className={styles.btnGhost}
+								title='Bỏ vòng này'
+								onClick={() => removeRotation(i)}
+							>
+								<TrashSvg />
+							</button>
+							<div className={styles.rotationDepts}>
+								<TagPicker
+									items={departments}
+									selectedIds={r.department_ids}
+									label={deptLabel}
+									placeholder='Gõ tên khoa...'
+									emptyText='Không tìm thấy khoa phù hợp'
+									onAdd={(id) => setRotation(i, { department_ids: [...r.department_ids, id] })}
+									onRemove={(id) => setRotation(i, { department_ids: r.department_ids.filter((x) => x !== id) })}
+								/>
+								{rotationErrors[i] && <div className={styles.fieldError}>{rotationErrors[i]}</div>}
+							</div>
+						</div>
+					))}
+					<div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)', marginTop: 'var(--space-2)' }}>
+						<button
+							type='button'
+							className={styles.btnGhost}
+							onClick={() => setForm((f) => ({ ...f, rotations: [...f.rotations, { ...EMPTY_ROTATION }] }))}
+						>
+							<PlusSvg /> Thêm vòng
+						</button>
+						{rotationMonths > 0 && (
+							<span className={styles.subRowMeta}>
+								Tổng ≈ {String(Math.round(rotationMonths * 10) / 10).replace('.', ',')} tháng
+							</span>
+						)}
+					</div>
+				</div>
 				<FormField
 					label='Mô tả'
 					style={{ gridColumn: '1 / -1' }}

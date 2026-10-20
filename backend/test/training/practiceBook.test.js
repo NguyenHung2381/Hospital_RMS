@@ -35,6 +35,10 @@ test('khớp khoa theo cách viết của sổ thực hành', () => {
 test('suy chương trình GPHN từ trình độ / lĩnh vực / hình thức hành nghề', () => {
 	const c = (qualification, professional_field, practice_form, suffix = 'BS') =>
 		inferProgramCode({ qualification, professional_field, practice_form, suffix });
+	// Dòng mới không ghi hình thức hành nghề: ≤ 3 tháng là chương trình "về HSCC"
+	assert.equal(inferProgramCode({ qualification: 'Cử nhân điều dưỡng', total_duration: '01 tháng' }), 'GPHN_DTH_2');
+	assert.equal(inferProgramCode({ qualification: 'Cử nhân điều dưỡng', total_duration: '06 tháng' }), 'GPHN_DTH_1');
+	assert.equal(inferProgramCode({ qualification: 'Bác sĩ y khoa' }), 'GPHN_BS_1');
 	assert.equal(c('Bác sĩ y khoa', 'Bác sĩ y khoa', 'Khám bệnh, chữa bệnh y khoa'), 'GPHN_BS_1');
 	assert.equal(
 		c(

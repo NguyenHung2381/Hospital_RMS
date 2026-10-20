@@ -12,6 +12,7 @@ import {
 	type TraineeTypeOption,
 } from '../api/publicApi';
 import { AttachmentPicker, type Attachment } from '../components/AttachmentPicker';
+import { CourseProgramPicker } from '../components/CourseProgramPicker';
 import { FormSection, SubGroup } from '../components/FormSection';
 import { useCaptcha } from '../hooks/useCaptcha';
 import styles from './PublicPortal.module.css';
@@ -38,6 +39,7 @@ export default function CourseRegisterPublic() {
 	const [courses, setCourses] = useState<PublicCourse[]>([]);
 	const [traineeTypes, setTraineeTypes] = useState<TraineeTypeOption[]>([]);
 	const [courseId, setCourseId] = useState('');
+	const [programId, setProgramId] = useState('');
 	const [attachments, setAttachments] = useState<Attachment<TraineeDocType>[]>([]);
 	const captcha = useCaptcha();
 	const [form, setForm] = useState(EMPTY_FORM);
@@ -61,6 +63,13 @@ export default function CourseRegisterPublic() {
 			.finally(() => setLoading(false));
 	}, []);
 
+	// Bấm vào khóa ⇒ bước 1 chuyển sang chi tiết khóa, chọn 1 chương trình bên trong
+	const course = courses.find((c) => c.id === courseId);
+	const pickCourse = (c: PublicCourse | null) => {
+		setCourseId(c?.id ?? '');
+		setProgramId(c?.programs.length === 1 ? c.programs[0].id : '');
+	};
+
 	const set = (field: keyof typeof EMPTY_FORM) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
 		setForm((f) => ({ ...f, [field]: e.target.value }));
 
@@ -70,6 +79,7 @@ export default function CourseRegisterPublic() {
 		setSuccess('');
 		if (!form.full_name.trim()) return setError('Vui lòng nhập họ tên');
 		if (!courseId) return setError('Vui lòng chọn khóa học muốn đăng ký');
+		if (course?.programs.length && !programId) return setError('Vui lòng chọn chương trình học');
 		// Server đối chiếu ngày sinh khi CCCD đã có hồ sơ — bắt nhập cùng lúc
 		if (form.national_id.trim() && !form.dob) return setError('Vui lòng nhập ngày sinh kèm số CCCD/CMND');
 		if (!captcha.payload) return setError('Vui lòng hoàn tất bước xác nhận');
@@ -80,6 +90,7 @@ export default function CourseRegisterPublic() {
 				{
 					...form,
 					course_id: courseId,
+					program_id: programId || undefined,
 					doc_types: attachments.map((a) => a.type ?? 'other'),
 					...captcha.payload,
 				},
@@ -89,7 +100,7 @@ export default function CourseRegisterPublic() {
 				'Đăng ký thành công! Nhà trường sẽ liên hệ hoặc bạn có thể tra cứu kết quả bằng CCCD sau khi được duyệt.',
 			);
 			setForm(EMPTY_FORM);
-			setCourseId('');
+			pickCourse(null);
 			setAttachments([]);
 		} catch (err) {
 			setError(err instanceof Error ? err.message : 'Đăng ký thất bại, vui lòng thử lại');
@@ -139,37 +150,49 @@ export default function CourseRegisterPublic() {
 
 				<FormSection
 					step={1}
-					title='Chọn khóa học'
-					description='Chọn khóa học đang mở đăng ký mà bạn muốn tham gia.'
+					title={course ? 'Chọn chương trình' : 'Chọn khóa học'}
+					description={
+						course
+							? 'Chọn 1 chương trình bạn muốn theo học trong khóa.'
+							: 'Chọn khóa học đang mở đăng ký mà bạn muốn tham gia.'
+					}
 				>
-					{loading ? (
+					{course ? (
+						<CourseProgramPicker
+							course={course}
+							value={programId}
+							onChange={setProgramId}
+							onBack={() => pickCourse(null)}
+							backLabel='Chọn khóa khác'
+						/>
+					) : loading ? (
 						<div className={styles.emptyNotice}>Đang tải danh sách khóa học...</div>
 					) : courses.length === 0 ? (
 						<div className={styles.emptyNotice}>Hiện chưa có khóa học nào đang mở đăng ký.</div>
 					) : (
 						<div
 							className={styles.courseList}
-							role='radiogroup'
-							aria-label='Chọn khóa học'
+							aria-label='Danh sách khóa học'
 						>
 							{courses.map((c) => (
 								<div
 									key={c.id}
-									className={`${styles.courseCard} ${courseId === c.id ? styles.courseCardActive : ''}`}
-									role='radio'
-									aria-checked={courseId === c.id}
+									className={styles.courseCard}
+									role='button'
 									tabIndex={0}
-									onClick={() => setCourseId(c.id)}
+									onClick={() => pickCourse(c)}
 									onKeyDown={(e) => {
 										if (e.key === 'Enter' || e.key === ' ') {
 											e.preventDefault();
-											setCourseId(c.id);
+											pickCourse(c);
 										}
 									}}
 								>
 									<div className={styles.courseName}>{c.name}</div>
 									<div className={styles.courseMeta}>
-										{c.program_name ?? 'Chương trình chưa xác định'}
+										{c.programs.length > 1
+											? `${c.programs.length} chương trình`
+											: (c.program_name ?? 'Chương trình chưa xác định')}
 										{c.start_date ? ` · Khai giảng ${formatDateOr(c.start_date)}` : ''}
 									</div>
 								</div>

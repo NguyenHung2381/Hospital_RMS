@@ -1,6 +1,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const PizZip = require('pizzip');
+const { DOMParser } = require('@xmldom/xmldom');
 const {
 	TEMPLATES,
 	buildFields,
@@ -88,7 +89,29 @@ for (const type of Object.keys(TEMPLATES)) {
 		assert.match(text, /999\.BS/);
 		assert.match(text, /040199000001/);
 	});
+
+	test(`mẫu ${type}: document.xml sinh ra là XML hợp lệ (Word mở được)`, () => {
+		const fields = buildFields(REC, TEMPLATES[type].perRotation ? REC.rotations[0] : null);
+		const xml = new PizZip(render(type, fields)).file('word/document.xml').asText();
+		new DOMParser({ onError: (level, msg) => assert.fail(msg) }).parseFromString(xml, 'text/xml');
+	});
 }
+
+test('chuyển mẫu trộn thư: trường trong textbox không cắt mất run bọc textbox', () => {
+	const field = (name) =>
+		'<w:r><w:fldChar w:fldCharType="begin"/></w:r>' +
+		`<w:r><w:instrText> MERGEFIELD ${name} </w:instrText></w:r>` +
+		'<w:r><w:fldChar w:fldCharType="separate"/></w:r>' +
+		`<w:r><w:t>«${name}»</w:t></w:r>` +
+		'<w:r><w:fldChar w:fldCharType="end"/></w:r>';
+	const xml = `<w:p><w:r><w:rPr><w:noProof/></w:rPr><w:drawing><w:txbxContent><w:p>${field('Mã')}</w:p></w:txbxContent></w:drawing></w:r></w:p>`;
+	assert.equal(
+		convertXml(xml).xml,
+		'<w:p><w:r><w:rPr><w:noProof/></w:rPr><w:drawing><w:txbxContent><w:p>' +
+			'<w:r><w:t xml:space="preserve">{ma}</w:t></w:r>' +
+			'</w:p></w:txbxContent></w:drawing></w:r></w:p>',
+	);
+});
 
 test('phiếu nhận xét: vòng được chọn là *_1; tên khoa bỏ chữ "Khoa"; ông/bà theo giới tính', () => {
 	const f = buildFields(REC, REC.rotations[1]);

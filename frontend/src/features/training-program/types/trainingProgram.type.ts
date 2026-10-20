@@ -40,12 +40,25 @@ export interface TrainingProgram {
 	total_hours: number;
 	credit_hours: number | null;
 	tuition_fee: number | null;
+	min_capacity: number | null;
 	max_capacity: number | null;
 	display_order: number;
 	description: string | null;
 	created_at: string;
 	course_count?: number;
 	lesson_count?: number;
+	/** Vòng thực hành (GPHN) theo thứ tự — mỗi vòng 1 khoa (hoặc vài khoa để chọn) + thời lượng riêng. */
+	rotations?: ProgramRotation[];
+}
+
+export interface ProgramRotation {
+	link_id: string;
+	lesson_id: string;
+	title: string;
+	duration_value: number | null;
+	duration_unit: DurationUnit | null;
+	department_ids: string | null;
+	department_names: string | null;
 }
 
 export interface TrainingProgramFormData {
@@ -63,10 +76,25 @@ export interface TrainingProgramFormData {
 	practice_hours: string;
 	credit_hours: string;
 	tuition_fee: string;
+	min_capacity: string;
 	max_capacity: string;
 	display_order: string;
 	description: string;
+	/** Vòng thực hành nhập ngay trong form chương trình — lưu thành bài học loại 'rotation'. */
+	rotations: RotationDraft[];
 }
+
+export interface RotationDraft {
+	/** Có = vòng đã lưu (sửa tại chỗ); không = vòng mới. */
+	lesson_id?: string;
+	link_id?: string;
+	title: string;
+	duration_value: string;
+	duration_unit: DurationUnit;
+	department_ids: string[];
+}
+
+export const EMPTY_ROTATION: RotationDraft = { title: '', duration_value: '', duration_unit: 'month', department_ids: [] };
 
 export interface TrainingProgramListResponse {
 	data: TrainingProgram[];
@@ -207,9 +235,11 @@ export const EMPTY_FORM: TrainingProgramFormData = {
 	practice_hours: '',
 	credit_hours: '',
 	tuition_fee: '',
+	min_capacity: '',
 	max_capacity: '',
 	display_order: '0',
 	description: '',
+	rotations: [],
 };
 
 // Chương trình không có cột trạng thái trong DB — suy ra từ việc đã mở khóa học

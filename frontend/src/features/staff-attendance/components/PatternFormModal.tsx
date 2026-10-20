@@ -70,7 +70,6 @@ export function PatternFormModal({
 
 			<FormField
 				label='Ca theo ngày trong tuần'
-				hint='Chọn 0, 1 hoặc nhiều ca mỗi ngày. Ngày không chọn ca = nghỉ. Để trống cả tuần = chỉ làm theo bảng phân ca.'
 			>
 				{options.length === 0 ? (
 					<div className={m.formHint}>Chưa có ca làm nào — thêm ở tab "Ca làm" trước.</div>

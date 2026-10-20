@@ -2,7 +2,7 @@ import { FormField } from '@/shared/components/Input/FormField';
 import { useEffect, useState } from 'react';
 import { BadgeSvg, EditSvg, InfoSvg, LayersSvg, ListSvg, XSvg } from '@/assets/icons';
 import { getProgramResults } from '../api/trainingProgramApi';
-import type { ProgramResultRow, TrainingProgram } from '../types/trainingProgram.type';
+import { formatDuration, type ProgramResultRow, type TrainingProgram } from '../types/trainingProgram.type';
 import { ProgramLessonsPanel } from './ProgramLessonsPanel';
 import styles from '../pages/TrainingPrograms.module.css';
 import tbl from '@/shared/components/Table/Table.module.css';
@@ -188,10 +188,42 @@ export function TrainingProgramDetailModal({
 									value={program.target_audience ?? program.trainee_type_name}
 								/>
 								<InfoRow
+									label='Sĩ số tối thiểu'
+									value={program.min_capacity}
+								/>
+								<InfoRow
 									label='Sĩ số tối đa'
 									value={program.max_capacity}
 								/>
 							</div>
+							{!!program.rotations?.length && (
+								<FormField label={`Vòng thực hành (${program.rotations.length} vòng)`}>
+									<table className={tbl.table}>
+										<thead>
+											<tr>
+												<th className={tbl.thIdx}>Vòng</th>
+												<th>Tên vòng</th>
+												<th>Thời lượng</th>
+												<th>Khoa thực hành</th>
+											</tr>
+										</thead>
+										<tbody>
+											{program.rotations.map((r, i) => (
+												<tr key={r.link_id}>
+													<td className={tbl.tdIdx}>{i + 1}</td>
+													<td>
+														<span className={tbl.cellTitle}>{r.title}</span>
+													</td>
+													<td style={{ whiteSpace: 'nowrap' }}>
+														{formatDuration(r.duration_value, r.duration_unit) ?? '—'}
+													</td>
+													<td>{r.department_names ?? '—'}</td>
+												</tr>
+											))}
+										</tbody>
+									</table>
+								</FormField>
+							)}
 							<InfoRow
 								label='Mô tả'
 								value={program.description}

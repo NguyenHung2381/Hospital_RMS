@@ -115,7 +115,7 @@ export function RosterEditModal({
 
 			{kind === 'same' ? (
 				<>
-					<FormField label='Ca' hint='Chọn 1 hoặc nhiều ca (vd ca sáng + trực đêm cùng ngày).'>
+					<FormField label='Ca'>
 						<div className={styles.chips}>
 							{shifts.map((s) => (
 								<button
@@ -145,7 +145,6 @@ export function RosterEditModal({
 				<>
 					<FormField
 						label='Chu kỳ xoay vòng'
-						hint={`Bấm ca theo thứ tự để tạo chu kỳ, vd S S C C Đ Đ Nghỉ Nghỉ. Ngày ${firstDate.split('-').reverse().join('/')} là bước 1, các ngày sau lặp lại chu kỳ. Muốn lệch ca giữa các nhóm, chọn từng nhóm với ngày bắt đầu khác nhau.`}
 					>
 						<div className={styles.chips}>
 							{shifts.map((s) => (

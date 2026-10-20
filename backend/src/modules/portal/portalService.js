@@ -29,7 +29,7 @@ const getMyTraining = async (actor) => {
 	const r = await pool.request().input('uid', sql.VarChar(20), actor.id).query(`
     SELECT c.id, c.name, c.start_date, c.end_date, c.status,
            c.enrollment_start_date, c.enrollment_end_date,
-           e.id AS enrollment_id, e.status AS enrollment_status, e.registered_at,
+           e.id AS enrollment_id, e.status AS enrollment_status, e.registered_at, tp.name AS program_name,
            cert.cert_no, cert.issue_date AS cert_issue_date, cert.status AS cert_status,
            (SELECT COUNT(*) FROM class_sessions s WHERE s.course_id = c.id) AS session_count,
            (SELECT COUNT(*) FROM attendance a WHERE a.enrollment_id = e.id AND a.status IN ('present', 'late')) AS attended_count,
@@ -37,6 +37,7 @@ const getMyTraining = async (actor) => {
     FROM course_enrollments e
     JOIN trainees t ON t.id = e.trainee_id AND t.user_id = @uid
     JOIN courses c ON c.id = e.course_id
+    LEFT JOIN training_programs tp ON tp.id = e.program_id
     LEFT JOIN certificates cert ON cert.enrollment_id = e.id
     ORDER BY c.start_date DESC;
 
@@ -107,6 +108,14 @@ const getMyTraining = async (actor) => {
 	};
 };
 
+// Đã được duyệt trong khóa; programCol: và đúng chương trình đã chọn khi ghi danh
+// (lượt ghi danh cũ chưa có chương trình thì xem được mọi chương trình của khóa).
+const APPROVED_IN_COURSE = (courseCol, programCol) => `EXISTS (
+    SELECT 1 FROM course_enrollments e JOIN trainees t ON t.id = e.trainee_id
+    WHERE e.course_id = ${courseCol} AND e.status = 'approved' AND t.user_id = @uid${
+			programCol ? ` AND (e.program_id IS NULL OR e.program_id = ${programCol})` : ''
+		})`;
+
 // Chi tiết 1 khóa mình đang học: tài liệu học viên được xem (is_public) + đề thi.
 // Chỉ học viên đã được duyệt mới thấy nội dung; đang chờ duyệt thì chỉ thấy thông tin khóa.
 const getMyCourse = async (courseId, actor) => {
@@ -130,14 +139,14 @@ const getMyCourse = async (courseId, actor) => {
     WHERE d.course_id = @id AND d.is_public = 1
     ORDER BY d.created_at DESC;
 
-    -- Bài học: khóa → chương trình (course_programs) → bài học theo thứ tự trong chương trình.
+    -- Bài học: khóa → chương trình học viên đã chọn khi ghi danh → bài học theo thứ tự trong chương trình.
     SELECT tp.id AS program_id, tp.name AS program_name, pl.id, pl.code, pl.title, pl.description,
            pl.theory_hours, pl.practice_hours, pl.total_hours, pl.credits
     FROM course_programs cp
     JOIN training_programs tp ON tp.id = cp.program_id
     JOIN lesson_programs lp ON lp.program_id = cp.program_id
     JOIN program_lessons pl ON pl.id = lp.lesson_id AND pl.is_active = 1
-    WHERE cp.course_id = @id
+    WHERE cp.course_id = @id AND ${APPROVED_IN_COURSE('@id', 'cp.program_id')}
     ORDER BY tp.name, lp.display_order, pl.created_at;
 
     SELECT d.id, d.lesson_id, d.title, d.source_type, d.external_url, d.created_at,
@@ -147,7 +156,7 @@ const getMyCourse = async (courseId, actor) => {
     WHERE d.is_public = 1 AND d.lesson_id IN (
       SELECT lp.lesson_id FROM course_programs cp
       JOIN lesson_programs lp ON lp.program_id = cp.program_id
-      WHERE cp.course_id = @id)
+      WHERE cp.course_id = @id AND ${APPROVED_IN_COURSE('@id', 'cp.program_id')})
     ORDER BY d.created_at;
   `);
 	const [, , lessons, lessonDocs] = r.recordsets;
@@ -170,17 +179,14 @@ const getMyCourse = async (courseId, actor) => {
 
 // Học viên mở tài liệu → tăng lượt tải (route quản trị cần courses:read /
 // training_programs:read, học viên không có). kind 'lesson' = tài liệu của bài học,
-// được xem khi bài học thuộc chương trình của 1 khóa mình đã được duyệt.
-const APPROVED_IN_COURSE = (courseCol) => `EXISTS (
-    SELECT 1 FROM course_enrollments e JOIN trainees t ON t.id = e.trainee_id
-    WHERE e.course_id = ${courseCol} AND e.status = 'approved' AND t.user_id = @uid)`;
+// được xem khi bài học thuộc chương trình mình đã ghi danh trong khóa đã được duyệt.
 const DOC_ACCESS_SQL = {
 	course: `SELECT 1 AS ok FROM course_documents d
     WHERE d.id = @id AND d.is_public = 1 AND ${APPROVED_IN_COURSE('d.course_id')}`,
 	lesson: `SELECT 1 AS ok FROM lesson_documents d
     JOIN lesson_programs lp ON lp.lesson_id = d.lesson_id
     JOIN course_programs cp ON cp.program_id = lp.program_id
-    WHERE d.id = @id AND d.is_public = 1 AND ${APPROVED_IN_COURSE('cp.course_id')}`,
+    WHERE d.id = @id AND d.is_public = 1 AND ${APPROVED_IN_COURSE('cp.course_id', 'cp.program_id')}`,
 };
 
 const openDocument = async (docId, actor, kind = 'course') => {
@@ -200,7 +206,8 @@ const openDocument = async (docId, actor, kind = 'course') => {
 
 // Tự đăng ký khóa học — chỉ khóa bật "đăng ký công khai" (cùng danh sách với
 // cổng công khai), vẫn theo cửa sổ đăng ký và ở trạng thái 'pending' chờ duyệt.
-const registerCourse = async (courseId, actor) => {
+// programId: 1 trong các chương trình của khóa (bắt buộc khi khóa có > 1).
+const registerCourse = async (courseId, actor, programId = null) => {
 	const pool = await getPool();
 	const row = (
 		await pool
@@ -213,7 +220,7 @@ const registerCourse = async (courseId, actor) => {
 	if (!row) {
 		throw httpError(403, 'Khóa học không mở đăng ký cho cá nhân.');
 	}
-	return courseEnrollmentService.registerStaff(courseId, actor.id, actor.id);
+	return courseEnrollmentService.registerStaff(courseId, actor.id, actor.id, { programId });
 };
 
 // CME của tôi trong 1 năm: 2 nguồn cộng dồn giống

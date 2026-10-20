@@ -2,6 +2,7 @@ import { apiClient } from '../../../shared/api/axios';
 import type { CourseDisplayStatus, DocType, EnrollmentStatus, ExamType, SourceType } from '../../course/types/course.type';
 import type { AvailablePaper } from '../../exam/types/exam.type';
 import type { CmeStatus, ParticipationType, SeminarEventType, SeminarScope } from '../../seminar/types/seminar.type';
+import type { PublicCourse } from '../../public/api/publicApi';
 
 interface MyCourseBase {
 	id: string;
@@ -26,6 +27,7 @@ export interface MyEnrolledCourse extends MyCourseBase {
 	enrollment_id: string;
 	enrollment_status: EnrollmentStatus;
 	registered_at: string;
+	program_name: string | null;
 	cert_no: string | null;
 	cert_issue_date: string | null;
 	cert_status: 'active' | 'revoked' | null;
@@ -53,14 +55,8 @@ export interface MySession {
 	my_role: 'learning' | 'teaching';
 }
 
-export interface OpenCourse {
-	id: string;
-	name: string;
-	start_date: string | null;
-	end_date: string | null;
-	capacity: number | null;
-	program_name: string | null;
-}
+/** Khóa đang mở đăng ký — cùng dữ liệu với cổng công khai */
+export type OpenCourse = PublicCourse;
 
 export interface MyTraining {
 	enrolled: MyEnrolledCourse[];
@@ -179,7 +175,8 @@ export const getMyCourse = (id: string) => apiClient.get<MyCourseDetail>(`/me/co
 export const markDocumentOpened = (docId: string, kind: 'course' | 'lesson' = 'course') =>
 	apiClient.patch(`/me/${kind === 'lesson' ? 'lesson-documents' : 'documents'}/${docId}/download`, {});
 export const getMyTraining = () => apiClient.get<MyTraining>('/me/training');
-export const registerMyCourse = (courseId: string) => apiClient.post(`/me/courses/${courseId}/register`, {});
+export const registerMyCourse = (courseId: string, programId?: string) =>
+	apiClient.post(`/me/courses/${courseId}/register`, { program_id: programId || null });
 export const getMyCme = (year: number) => apiClient.get<MyCme>(`/me/cme?year=${year}`);
 /** Phiếu theo dõi CME cá nhân (Excel): năm được chọn + tổng hợp 5 năm. */
 export const exportMyCmeExcel = (year: number) => apiClient.postBlob('/me/cme/export-excel', { year });

@@ -197,9 +197,6 @@ export function RegisterMemberSection({
 						size='md'
 					/>
 				</div>
-				<div className={styles.formHint}>
-					Nhập tối thiểu 2 ký tự để tìm kiếm · Chỉ thành viên cùng khoa/phòng ban
-				</div>
 			</div>
 
 			{!showManualForm && (

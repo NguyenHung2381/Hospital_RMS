@@ -7,7 +7,6 @@ export function FormField({
 	label,
 	required,
 	error,
-	hint,
 	htmlFor,
 	className,
 	style,
@@ -16,8 +15,6 @@ export function FormField({
 	label: ReactNode;
 	required?: boolean;
 	error?: ReactNode;
-	/** Ghi chú nhỏ dưới ô nhập (ẩn khi đang báo lỗi). */
-	hint?: ReactNode;
 	htmlFor?: string;
 	className?: string;
 	style?: CSSProperties;
@@ -36,8 +33,6 @@ export function FormField({
 				{required && <span className={m.required}> *</span>}
 			</label>
 			{children}
-			{error && <div className={m.fieldError}>{error}</div>}
-			{!error && hint && <div className={m.formHint}>{hint}</div>}
-		</div>
+			{error && <div className={m.fieldError}>{error}</div>}		</div>
 	);
 }

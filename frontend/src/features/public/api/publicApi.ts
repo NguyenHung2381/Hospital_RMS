@@ -37,10 +37,41 @@ export const PUBLIC_UPLOAD_MAX_FILES = 10;
 export interface PublicCourse {
 	id: string;
 	name: string;
+	description: string | null;
 	start_date: string | null;
 	end_date: string | null;
 	capacity: number | null;
+	/** Hạn đăng ký (null = không giới hạn) */
+	enrollment_end_date: string | null;
 	program_name: string | null;
+	/** Người đăng ký chọn 1 trong các chương trình này (khóa chỉ có 1 thì tự chọn) */
+	programs: PublicProgram[];
+}
+
+export interface PublicProgram {
+	id: string;
+	code: string | null;
+	name: string;
+	description?: string | null;
+	duration?: string | null;
+	target_audience?: string | null;
+	trainee_type_name?: string | null;
+	theory_hours?: number | null;
+	practice_hours?: number | null;
+	tuition_fee?: number | null;
+	lesson_count: number;
+	/** Nội dung theo thứ tự: bài lý thuyết hoặc vòng thực hành GPHN */
+	lessons: PublicProgramLesson[];
+}
+
+export interface PublicProgramLesson {
+	title: string;
+	kind: 'theory' | 'rotation';
+	theory_hours?: number | null;
+	practice_hours?: number | null;
+	/** Khoa thực hành của vòng ("Khoa A / Khoa B" = chọn 1 trong) */
+	departments?: string | null;
+	duration: string | null;
 }
 
 export interface TraineeTypeOption {
@@ -68,6 +99,7 @@ export interface RegisterPayload {
 	address?: string;
 	trainee_type_id?: string;
 	course_id: string;
+	program_id?: string;
 	/** Loại hồ sơ của từng file đính kèm, cùng thứ tự với `files` */
 	doc_types?: TraineeDocType[];
 	captcha_token: string;

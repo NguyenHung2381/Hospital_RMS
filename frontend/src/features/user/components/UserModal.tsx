@@ -201,7 +201,6 @@ export function UserModal({
 					label='Mã nhân viên'
 					required
 					error={errors.staff_number}
-					hint='Mã định danh nhân viên trong bệnh viện'
 				>
 					<input
 						id='staff_number'
@@ -238,11 +237,6 @@ export function UserModal({
 					label='Tên đăng nhập'
 					required
 					error={errors.username}
-					hint={
-						mode === 'create'
-							? 'Chỉ gồm chữ, số, dấu gạch dưới. Mật khẩu mặc định = tên đăng nhập, người dùng phải đổi ở lần đăng nhập đầu'
-							: 'Chỉ gồm chữ, số, dấu gạch dưới'
-					}
 				>
 					<input
 						id='username'
@@ -264,7 +258,6 @@ export function UserModal({
 						htmlFor='password'
 						label='Mật khẩu mới'
 						error={errors.password}
-						hint='Để trống nếu không muốn đổi mật khẩu'
 					>
 						<div style={{ position: 'relative' }}>
 							<input

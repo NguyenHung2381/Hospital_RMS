@@ -86,6 +86,81 @@
 	composes: cellSub from '../../../shared/components/Table/Table.module.css';
 }
 
+.rotationCell {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+	min-width: 220px;
+	max-width: 320px;
+}
+
+.rotationSummary {
+	font-size: var(--font-size-xs);
+	font-weight: var(--font-weight-semibold);
+	color: var(--color-gray-700);
+}
+
+.rotationChips {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 4px;
+}
+
+.rotationChip,
+.rotationChipMore {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	padding: 2px 8px;
+	border-radius: var(--radius-full);
+	font-size: var(--font-size-2xs);
+	line-height: 1.5;
+	white-space: nowrap;
+	background: var(--color-gray-100);
+	color: var(--color-gray-700);
+}
+
+.rotationChipDur {
+	font-weight: var(--font-weight-semibold);
+	color: var(--color-primary-dark);
+}
+
+.rotationChipMore {
+	color: var(--color-gray-500);
+	cursor: help;
+}
+
+.rotationRow {
+	display: grid;
+	grid-template-columns: auto 1fr auto auto;
+	align-items: center;
+	gap: var(--space-2);
+	padding: var(--space-3);
+	margin-top: var(--space-2);
+	border: 1px solid var(--color-gray-200);
+	border-radius: var(--radius-md);
+}
+
+.rotationIdx {
+	font-size: var(--font-size-xs);
+	font-weight: var(--font-weight-bold);
+	color: var(--color-gray-500);
+	white-space: nowrap;
+}
+
+.rotationDepts {
+	grid-column: 1 / -1;
+}
+
+@media (max-width: 640px) {
+	.rotationRow {
+		grid-template-columns: 1fr auto;
+	}
+	.rotationIdx {
+		grid-column: 1 / -1;
+	}
+}
+
 /* ── ACTION BUTTONS ──────────────────────── */
 .actionBtn {
 	composes: actionBtn from '../../../shared/components/Table/Table.module.css';

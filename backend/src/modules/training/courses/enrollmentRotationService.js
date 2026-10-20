@@ -5,6 +5,9 @@
  *   - schedule: xếp lịch nối tiếp từ 1 ngày bắt đầu (rotationPlanner).
  *   - update: đổi khoa / ngày / NHD (chụp lại thông tin NHD) / kết quả.
  *   - retake: học lại vòng không đạt (dòng mới, attempt_no + 1).
+ *   - move: đổi thứ tự 1 vòng lên/xuống (rồi "Tính lại ngày").
+ *   - carryOver: công nhận vòng đã Đạt ở hồ sơ khác của cùng học viên.
+ * Vòng đã có kết quả (Đạt / Không đạt) là lịch sử: sinh lại / xếp lại không xoá, không đổi ngày.
  * Danh sách trả kèm cảnh báo từng dòng (không chặn).
  */
 const { getPool, sql } = require('../../../config/db');
@@ -80,6 +83,10 @@ const list = async (enrollmentId) => {
 		loadRounds(pool, enrollment.program_id),
 		maxMentorLoad(),
 	]);
+	const previous = await pool
+		.request()
+		.input('id', sql.VarChar(20), enrollmentId)
+		.query(`SELECT COUNT(*) AS n ${CARRY_FROM}`);
 	const allowedDepartments = new Map(rounds.map((x) => [x.id, x.department_ids]));
 	const warnings = findWarnings(rows.recordset, {
 		enrollment,
@@ -95,10 +102,12 @@ const list = async (enrollmentId) => {
 		})),
 		rounds,
 		max_mentor_load: maxLoad,
+		previous_passed: previous.recordset[0].n,
 	};
 };
 
-// Sinh vòng từ chương trình. Đã có vòng thì chỉ sinh lại khi replace=true (xoá hết vòng cũ).
+// Sinh vòng từ chương trình. Đã có vòng thì chỉ sinh lại khi replace=true: xoá vòng chưa có
+// kết quả, giữ vòng Đạt / Không đạt và chỉ sinh vòng (khoa) chưa Đạt.
 const generate = async (enrollmentId, { replace = false } = {}, actorId) => {
 	const pool = await getPool();
 	const enrollment = await getEnrollment(pool, enrollmentId);
@@ -112,32 +121,47 @@ const generate = async (enrollmentId, { replace = false } = {}, actorId) => {
 	if (existing.recordset[0].n && !replace)
 		throw httpError(409, 'Hồ sơ đã có vòng thực hành — chọn "Sinh lại" để thay toàn bộ.');
 
-	if (replace)
-		await pool
-			.request()
-			.input('id', sql.VarChar(20), enrollmentId)
-			.query('DELETE FROM enrollment_rotations WHERE enrollment_id = @id');
-	for (const [i, round] of rounds.entries()) {
-		// Vòng chỉ có 1 khoa thì gán sẵn khoa đó
-		const onlyDept = round.department_ids.length === 1 ? round.department_ids[0] : null;
-		await pool
-			.request()
-			.input('enrollment_id', sql.VarChar(20), enrollmentId)
-			.input('lesson_id', sql.VarChar(20), round.id)
-			.input('round_title', sql.NVarChar(255), round.title)
-			.input('seq', sql.Int, (i + 1) * SEQ_STEP)
-			.input('department_id', sql.VarChar(20), onlyDept)
-			// Vòng chia nhiều khoa: để trống ⇒ xếp lịch chia đều thời lượng vòng cho số khoa
-			.input(
-				'duration_text',
-				sql.NVarChar(50),
-				round.allow_split ? null : formatDuration(round.duration_value, round.duration_unit),
-			)
-			.input('actor_id', sql.VarChar(20), actorId).query(`
-        INSERT INTO enrollment_rotations (id, enrollment_id, lesson_id, round_title, seq, department_id, department_name, duration_text, created_by)
-        VALUES (${newId}, @enrollment_id, @lesson_id, @round_title, @seq, @department_id,
-                (SELECT name FROM departments WHERE id = @department_id), @duration_text, @actor_id);
-      `);
+	const kept = replace
+		? (
+				await pool.request().input('id', sql.VarChar(20), enrollmentId).query(`
+          DELETE FROM enrollment_rotations WHERE enrollment_id = @id AND result = 'pending';
+          SELECT lesson_id, department_id, result, attempt_no, seq FROM enrollment_rotations WHERE enrollment_id = @id;`)
+			).recordset
+		: [];
+	let seq = Math.max(0, ...kept.map((k) => k.seq));
+	for (const round of rounds) {
+		// Vòng chia nhiều khoa: mỗi khoa 1 dòng; vòng chỉ có 1 khoa thì gán sẵn khoa đó
+		const depts = round.allow_split
+			? round.department_ids.length
+				? round.department_ids
+				: [null]
+			: [round.department_ids.length === 1 ? round.department_ids[0] : null];
+		for (const deptId of depts) {
+			const same = kept.filter(
+				(k) => k.lesson_id === round.id && (!round.allow_split || !deptId || k.department_id === deptId),
+			);
+			if (same.some((k) => k.result === 'pass')) continue;
+			seq += SEQ_STEP;
+			await pool
+				.request()
+				.input('enrollment_id', sql.VarChar(20), enrollmentId)
+				.input('lesson_id', sql.VarChar(20), round.id)
+				.input('round_title', sql.NVarChar(255), round.title)
+				.input('seq', sql.Int, seq)
+				.input('attempt_no', sql.Int, Math.max(0, ...same.map((k) => k.attempt_no)) + 1)
+				.input('department_id', sql.VarChar(20), deptId)
+				// Vòng chia nhiều khoa: để trống ⇒ xếp lịch chia đều thời lượng vòng cho số khoa
+				.input(
+					'duration_text',
+					sql.NVarChar(50),
+					round.allow_split ? null : formatDuration(round.duration_value, round.duration_unit),
+				)
+				.input('actor_id', sql.VarChar(20), actorId).query(`
+          INSERT INTO enrollment_rotations (id, enrollment_id, lesson_id, round_title, seq, attempt_no, department_id, department_name, duration_text, created_by)
+          VALUES (${newId}, @enrollment_id, @lesson_id, @round_title, @seq, @attempt_no, @department_id,
+                  (SELECT name FROM departments WHERE id = @department_id), @duration_text, @actor_id);
+        `);
+		}
 	}
 	notify();
 	return list(enrollmentId);
@@ -308,6 +332,71 @@ const retake = async (rotationId, actorId) => {
 	notify();
 };
 
+// Đổi chỗ với vòng liền trên / dưới (học khoa khác trước rồi mới sang Cấp cứu…).
+const move = async (rotationId, up, actorId) => {
+	const pool = await getPool();
+	await pool
+		.request()
+		.input('id', sql.VarChar(20), rotationId)
+		.input('up', sql.Bit, up ? 1 : 0)
+		.input('actor_id', sql.VarChar(20), actorId)
+		.query(
+			`
+      DECLARE @enrollment_id VARCHAR(20), @seq INT, @other VARCHAR(20), @other_seq INT;
+      SELECT @enrollment_id = enrollment_id, @seq = seq FROM enrollment_rotations WHERE id = @id;
+      IF @enrollment_id IS NULL THROW 51012, N'Không tìm thấy vòng thực hành.', 1;
+      SELECT TOP 1 @other = id, @other_seq = seq FROM enrollment_rotations
+      WHERE enrollment_id = @enrollment_id AND ((@up = 1 AND seq < @seq) OR (@up = 0 AND seq > @seq))
+      ORDER BY CASE WHEN @up = 1 THEN -seq ELSE seq END;
+      IF @other IS NOT NULL
+        UPDATE enrollment_rotations
+        SET seq = CASE WHEN id = @id THEN @other_seq ELSE @seq END, updated_at = GETDATE(), updated_by = @actor_id
+        WHERE id IN (@id, @other);
+    `,
+		)
+		.catch((err) => {
+			if (err.number === 51012) throw httpError(404, 'Không tìm thấy vòng thực hành.');
+			throw err;
+		});
+	notify();
+};
+
+// Vòng Đạt ở hồ sơ KHÁC của cùng học viên mà chương trình hồ sơ này có vòng tương ứng
+// (cùng vòng, hoặc vòng có khoa đó) và hồ sơ này chưa có — dùng chung cho đếm và chép (@id = hồ sơ).
+const CARRY_FROM = `
+  FROM enrollment_rotations o
+  JOIN course_enrollments oe ON oe.id = o.enrollment_id
+  JOIN course_enrollments e ON e.id = @id AND e.trainee_id = oe.trainee_id AND oe.id <> e.id
+  CROSS APPLY (
+    SELECT TOP 1 pl.id, pl.title FROM lesson_programs lp
+    JOIN program_lessons pl ON pl.id = lp.lesson_id AND pl.lesson_kind = 'rotation'
+    WHERE lp.program_id = e.program_id
+      AND (pl.id = o.lesson_id OR EXISTS (SELECT 1 FROM lesson_departments ld
+                                          WHERE ld.lesson_id = pl.id AND ld.department_id = o.department_id))
+    ORDER BY CASE WHEN pl.id = o.lesson_id THEN 0 ELSE 1 END, lp.display_order) m
+  WHERE o.result = 'pass'
+    AND NOT EXISTS (SELECT 1 FROM enrollment_rotations x
+                    WHERE x.enrollment_id = @id AND x.result = 'pass' AND x.lesson_id = m.id
+                      AND ISNULL(x.department_id, '') = ISNULL(o.department_id, ''))`;
+
+/** Chép vòng Đạt từ hồ sơ trước sang hồ sơ này (giữ ngày, khoa, NHD). Trả số vòng đã chép. */
+const carryOver = async (enrollmentId, actorId) => {
+	const pool = await getPool();
+	const cols = ['start_date', 'end_date', 'duration_text', 'mentor_user_id', ...Object.keys(SNAPSHOT_TYPES)];
+	const r = await pool
+		.request()
+		.input('id', sql.VarChar(20), enrollmentId)
+		.input('actor_id', sql.VarChar(20), actorId).query(`
+      INSERT INTO enrollment_rotations (id, enrollment_id, lesson_id, round_title, seq, department_id, department_name,
+                                        ${cols.join(', ')}, result, note, created_by)
+      SELECT ${newId}, @id, m.id, m.title, o.seq, o.department_id, o.department_name,
+             ${cols.map((c) => `o.${c}`).join(', ')}, 'pass',
+             N'Công nhận từ hồ sơ ' + ISNULL(oe.practice_code, oe.id), @actor_id
+      ${CARRY_FROM};
+      SELECT @@ROWCOUNT AS n;`);
+	return r.recordset[0].n;
+};
+
 const remove = async (rotationId) => {
 	const pool = await getPool();
 	await pool
@@ -317,8 +406,8 @@ const remove = async (rotationId) => {
 	notify();
 };
 
-// Xếp lịch toàn bộ vòng nối tiếp từ startDate (ghi đè ngày cũ). Hồ sơ chưa có
-// ngày bắt đầu/kết thúc thì lấy theo lịch vừa xếp.
+// Xếp lịch các vòng chưa có kết quả nối tiếp từ startDate theo thứ tự (ghi đè ngày cũ);
+// vòng Đạt / Không đạt giữ nguyên. Hồ sơ chưa có ngày bắt đầu/kết thúc thì lấy theo lịch vừa xếp.
 const schedule = async (enrollmentId, startDate, actorId) => {
 	if (!/^\d{4}-\d{2}-\d{2}/.test(String(startDate || '')))
 		throw httpError(400, 'Cần ngày bắt đầu.');
@@ -329,7 +418,7 @@ const schedule = async (enrollmentId, startDate, actorId) => {
 			.request()
 			.input('id', sql.VarChar(20), enrollmentId)
 			.query(
-				'SELECT id, lesson_id, duration_text FROM enrollment_rotations WHERE enrollment_id = @id ORDER BY seq, created_at',
+				"SELECT id, lesson_id, duration_text FROM enrollment_rotations WHERE enrollment_id = @id AND result = 'pending' ORDER BY seq, created_at",
 			),
 		loadRounds(pool, enrollment.program_id),
 	]);
@@ -365,12 +454,17 @@ const schedule = async (enrollmentId, startDate, actorId) => {
 
 module.exports = {
 	list,
+	loadRounds,
+	mentorSnapshot,
+	SNAPSHOT_TYPES,
 	maxMentorLoad,
 	generate,
 	addSegment,
 	update,
 	refreshMentor,
 	retake,
+	move,
+	carryOver,
 	remove,
 	schedule,
 };

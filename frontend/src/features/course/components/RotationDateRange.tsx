@@ -58,7 +58,7 @@ export function RotationDateRange({
 					disabled={disabled}
 					placeholder='Từ ngày'
 					max={end || undefined}
-					style={{ minWidth: 150, flex: '1 1 150px' }}
+					style={{ minWidth: 140, flex: '1 1 140px' }}
 				/>
 				<span className={styles.hint}>→</span>
 				<DatePicker
@@ -68,18 +68,18 @@ export function RotationDateRange({
 					placeholder='Đến ngày'
 					min={start || undefined}
 					rangeStart={start || undefined}
-					style={{ minWidth: 150, flex: '1 1 150px' }}
+					style={{ minWidth: 140, flex: '1 1 140px' }}
 				/>
 			</div>
-			<div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 6, alignItems: 'center' }}>
-				<span className={styles.hint}>Chọn nhanh</span>
+			<div className={styles.rotChips}>
+				<span className={styles.hint}>Chọn nhanh:</span>
 				{quick
 					.filter((q) => q.show)
 					.map((q) => (
 						<button
 							key={q.label}
 							type='button'
-							className={styles.btnSmall}
+							className={styles.rotChip}
 							title={q.title}
 							disabled={disabled || (!start && q.label !== 'Nối tiếp vòng trước')}
 							onClick={q.apply}

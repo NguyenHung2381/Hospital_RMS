@@ -294,7 +294,6 @@ export function TraineeFormModal({
 				</FormField>
 				<FormField
 					label='Mã học viên (sổ cũ)'
-					hint='Mã trong sổ theo dõi thực hành trước đây, nếu có'
 				>
 					<input
 						className={styles.formInput}

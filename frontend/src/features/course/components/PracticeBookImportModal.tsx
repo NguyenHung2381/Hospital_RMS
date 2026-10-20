@@ -8,8 +8,9 @@ import styles from '../pages/Courses.module.css';
 
 const ACTION_LABEL = { new: 'Thêm mới', update: 'Cập nhật' } as const;
 
-// Nhập sổ thực hành GPHN cũ (Excel mẫu 3.xlsx) vào khóa: chọn file → xem trước
-// (học viên, hồ sơ, vòng, chương trình suy ra, cảnh báo) → xác nhận ghi.
+// Nhập sổ thực hành GPHN (Excel mẫu sổ theo dõi) vào khóa: chọn file → xem trước
+// (học viên, hồ sơ, vòng, chương trình suy ra, cảnh báo) → xác nhận ghi. Dòng mới chỉ
+// cần thông tin học viên (+ ngày bắt đầu) — mã, vòng, khoa, NHD hệ thống tự điền.
 export function PracticeBookImportModal({
 	courseId,
 	onClose,
@@ -91,8 +92,12 @@ export function PracticeBookImportModal({
 						<span>
 							File theo bố cục sổ theo dõi thực hành (cột <b>Mã thực hành</b>, <b>Họ và tên</b>, CMT/CCCD…, các
 							nhóm <b>Khoa thực hành 1…n</b>). Học viên khớp theo CCCD; hồ sơ khớp theo <b>mã thực hành</b> — nhập lại
-							thì cập nhật và thay các vòng của hồ sơ bằng vòng trong file. Nên nhập danh mục chương trình (1.xlsx)
-							trước để hồ sơ gắn được chương trình.
+							thì cập nhật và thay các vòng của hồ sơ bằng vòng trong file.
+							<br />
+							<b>Học viên mới:</b> chỉ cần điền thông tin cá nhân, trình độ và <b>Ngày bắt đầu</b> (để trống mã
+							thực hành và các cột khoa) — hệ thống tự sinh mã, xếp các khoa so le, chọn người hướng dẫn đang kèm ít
+							người nhất và điền ngày từng khoa. Thực hành ≤ 3 tháng mà không ghi hình thức hành nghề được hiểu là
+							chương trình "về Hồi sức cấp cứu".
 						</span>
 					</div>
 					<FormField label='File Excel (.xlsx)'>
@@ -123,6 +128,12 @@ export function PracticeBookImportModal({
 									{Object.entries(s.programs)
 										.map(([code, n]) => `${code} (${n})`)
 										.join(', ')}
+									{s.auto_arrange > 0 && (
+										<>
+											<br />
+											<b>{s.auto_arrange}</b> hồ sơ chưa có khoa — sẽ tự xếp vòng, khoa, người hướng dẫn sau khi nhập.
+										</>
+									)}
 								</span>
 							</div>
 							{missingPrograms && (
@@ -154,7 +165,7 @@ export function PracticeBookImportModal({
 										{preview.rows?.map((r) => (
 											<tr key={r.row}>
 												<td>{r.row}</td>
-												<td>{r.practice_code}</td>
+												<td>{r.practice_code || <span className={styles.hint}>tự sinh</span>}</td>
 												<td>
 													{r.full_name}
 													<div className={styles.subRowMeta}>
@@ -165,7 +176,7 @@ export function PracticeBookImportModal({
 													{r.program_code ?? '—'}
 												</td>
 												<td>
-													{r.rotations}
+													{r.auto ? <span className={styles.hint}>tự xếp</span> : r.rotations}
 													{r.departments && <div className={styles.subRowMeta}>{r.departments}</div>}
 												</td>
 												<td>{ACTION_LABEL[r.action]}</td>
@@ -186,7 +197,16 @@ export function PracticeBookImportModal({
 						<span>
 							Đã ghi <b>{result.written}</b>/{result.summary.records} hồ sơ · học viên: {result.trainees_inserted} mới,{' '}
 							{result.trainees_updated} cập nhật
-							{result.programs_linked ? ` · gắn thêm ${result.programs_linked} chương trình vào khóa` : ''}.
+							{result.programs_linked ? ` · gắn thêm ${result.programs_linked} chương trình vào khóa` : ''}
+							{result.arranged ? ` · tự xếp vòng cho ${result.arranged} hồ sơ` : ''}.
+							{!!result.templates?.length && (
+								<>
+									<br />
+									Đã tạo mẫu vòng từ sổ cho:{' '}
+									{result.templates.map((t) => `${t.program_code} (${t.rounds} vòng)`).join(', ')} — xem / sửa ở màn
+									Chương trình đào tạo.
+								</>
+							)}
 						</span>
 					</div>
 					{warnings.length > 0 && (

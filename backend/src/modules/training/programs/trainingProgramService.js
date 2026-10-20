@@ -23,6 +23,7 @@ const PROGRAM_FIELDS = {
 	practice_hours: sql.Int,
 	credit_hours: sql.Decimal(6, 1),
 	tuition_fee: sql.Decimal(18, 0),
+	min_capacity: sql.Int,
 	max_capacity: sql.Int,
 	display_order: sql.Int,
 	description: sql.NVarChar(sql.MAX),
@@ -53,12 +54,25 @@ const withDurationText = (data) => {
 const programSelect = `
   SELECT p.*, d.name AS department_name, tt.name AS trainee_type_name, tp.name AS training_type_name,
          (SELECT COUNT(*) FROM course_programs cp WHERE cp.program_id = p.id) AS course_count,
-         (SELECT COUNT(*) FROM lesson_programs lp WHERE lp.program_id = p.id) AS lesson_count
+         (SELECT COUNT(*) FROM lesson_programs lp WHERE lp.program_id = p.id) AS lesson_count,
+         -- Vòng thực hành GPHN: mỗi vòng 1 khoa (hoặc nhiều khoa để chọn) + thời lượng riêng.
+         (SELECT lp.id AS link_id, pl.id AS lesson_id, pl.title, pl.duration_value, pl.duration_unit,
+                 (SELECT STRING_AGG(ld.department_id, ',') WITHIN GROUP (ORDER BY ld.display_order)
+                    FROM lesson_departments ld WHERE ld.lesson_id = pl.id) AS department_ids,
+                 (SELECT STRING_AGG(d2.name, ' / ') WITHIN GROUP (ORDER BY ld.display_order)
+                    FROM lesson_departments ld JOIN departments d2 ON d2.id = ld.department_id
+                    WHERE ld.lesson_id = pl.id) AS department_names
+            FROM lesson_programs lp JOIN program_lessons pl ON pl.id = lp.lesson_id
+           WHERE lp.program_id = p.id AND pl.lesson_kind = 'rotation'
+           ORDER BY lp.display_order, pl.created_at
+           FOR JSON PATH) AS rotations
   FROM training_programs p
   LEFT JOIN departments d ON d.id = p.department_id
   LEFT JOIN trainee_types tt ON tt.id = p.trainee_type_id
   LEFT JOIN training_types tp ON tp.id = p.training_type_id
 `;
+
+const withRotations = (row) => ({ ...row, rotations: row.rotations ? JSON.parse(row.rotations) : [] });
 
 const getAll = async ({
 	page = 1,
@@ -77,7 +91,9 @@ const getAll = async ({
 		req.input('search', sql.NVarChar, `%${search}%`);
 	}
 	if (department_id) {
-		where.push('p.department_id = @department_id');
+		where.push(`(p.department_id = @department_id OR EXISTS (
+        SELECT 1 FROM lesson_programs lp JOIN lesson_departments ld ON ld.lesson_id = lp.lesson_id
+        WHERE lp.program_id = p.id AND ld.department_id = @department_id))`);
 		req.input('department_id', sql.VarChar(20), department_id);
 	}
 	if (training_type_id) {
@@ -92,7 +108,7 @@ const getAll = async ({
     SELECT COUNT(*) AS total FROM training_programs p ${whereSql};
   `);
 	return {
-		data: result.recordsets[0],
+		data: result.recordsets[0].map(withRotations),
 		pagination: { page: pg.page, limit: pg.limit, total: result.recordsets[1][0].total },
 	};
 };
@@ -104,7 +120,7 @@ const getById = async (id) => {
 		.input('id', sql.VarChar(20), id)
 		.query(`${programSelect} WHERE p.id = @id`);
 	const row = result.recordset[0];
-	return row ?? null;
+	return row ? withRotations(row) : null;
 };
 
 // Vi phạm UQ_trprog_code (mã chương trình trùng) → 409 thay vì 500.

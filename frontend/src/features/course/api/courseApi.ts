@@ -74,14 +74,17 @@ export const getProgramLinks = (courseId: string) =>
 export const getEnrollments = (courseId: string) =>
 	apiClient.get<Enrollment[]>(`/courses/${courseId}/enrollments`);
 /** programId: chương trình học viên chọn — bài học của chương trình tự gắn theo. */
+/** auto_warning: khóa GPHN — ghi danh xong nhưng chưa tự xếp được vòng (lý do). */
+/** Ghi danh hộ được duyệt luôn — đủ sĩ số thì status = 'waitlisted'. */
+type RegisterResult = { id: string; status: EnrollmentStatus; auto_warning: string | null };
 export const registerTrainee = (courseId: string, traineeId: string, programId?: string) =>
-	apiClient.post<{ id: string }>(`/courses/${courseId}/enrollments`, {
+	apiClient.post<RegisterResult>(`/courses/${courseId}/enrollments`, {
 		trainee_id: traineeId,
 		program_id: programId || null,
 	});
 /** Ghi danh nhân viên nội viện (users) — backend tự tạo/gắn hồ sơ học viên. */
 export const registerStaff = (courseId: string, userId: string, programId?: string) =>
-	apiClient.post<{ id: string }>(`/courses/${courseId}/enrollments`, {
+	apiClient.post<RegisterResult>(`/courses/${courseId}/enrollments`, {
 		user_id: userId,
 		program_id: programId || null,
 	});
@@ -94,8 +97,24 @@ export const syncEnrollmentLessons = (enrollmentId: string) =>
 // ─── Vòng thực hành GPHN ──────────────────────────────────────────────────
 export const getRotations = (enrollmentId: string) =>
 	apiClient.get<RotationList>(`/courses/enrollments/${enrollmentId}/rotations`);
-export const generateRotations = (enrollmentId: string, replace = false) =>
-	apiClient.post<RotationList>(`/courses/enrollments/${enrollmentId}/rotations/generate`, { replace });
+/**
+ * Tự động: sinh vòng, xếp lịch so le, chọn khoa / người hướng dẫn ít người nhất, điền hồ sơ.
+ * Vòng đã có kết quả giữ nguyên; firstLessonId ép vòng vào trước; carryOver công nhận vòng Đạt ở hồ sơ trước.
+ */
+export const autoArrangeRotations = (
+	enrollmentId: string,
+	startDate: string | null,
+	opts: { replace?: boolean; firstLessonId?: string | null; carryOver?: boolean } = {},
+) =>
+	apiClient.post<RotationList>(`/courses/enrollments/${enrollmentId}/rotations/auto`, {
+		start_date: startDate || null,
+		replace: !!opts.replace,
+		first_lesson_id: opts.firstLessonId || null,
+		carry_over: !!opts.carryOver,
+	});
+/** Tự xếp mọi hồ sơ GPHN của khóa chưa có vòng. */
+export const autoArrangeCourse = (courseId: string) =>
+	apiClient.post<{ arranged: number; failed: string[] }>(`/courses/${courseId}/practice/auto-arrange`, {});
 export const scheduleRotations = (enrollmentId: string, startDate: string) =>
 	apiClient.post<{ scheduled: number; skipped: number }>(`/courses/enrollments/${enrollmentId}/rotations/schedule`, {
 		start_date: startDate,
@@ -108,6 +127,8 @@ export const refreshRotationMentor = (rotationId: string) =>
 	apiClient.post<null>(`/courses/rotations/${rotationId}/refresh-mentor`, {});
 export const retakeRotation = (rotationId: string) =>
 	apiClient.post<null>(`/courses/rotations/${rotationId}/retake`, {});
+export const moveRotation = (rotationId: string, direction: 'up' | 'down') =>
+	apiClient.post<null>(`/courses/rotations/${rotationId}/move`, { direction });
 export const removeRotation = (rotationId: string) => apiClient.delete<null>(`/courses/rotations/${rotationId}`);
 // ─── Sổ thực hành GPHN (Excel mẫu 3.xlsx) ─────────────────────────────────
 /** Thực hành GPHN đang diễn ra vào 1 ngày — theo khoa / người hướng dẫn. */
@@ -126,6 +147,8 @@ export interface PracticeBookImportResult {
 		rotations: number;
 		mentors_linked: number;
 		programs: Record<string, number>;
+		/** Hồ sơ chưa có khoa trong sổ — sẽ tự xếp vòng / khoa / NHD sau khi nhập. */
+		auto_arrange: number;
 	};
 	rows?: {
 		row: number;
@@ -136,12 +159,16 @@ export interface PracticeBookImportResult {
 		program_code: string | null;
 		program_found: boolean;
 		rotations: number;
+		auto: boolean;
 		departments: string;
 	}[];
 	written?: number;
 	trainees_inserted?: number;
 	trainees_updated?: number;
 	programs_linked?: number;
+	/** Chương trình vừa được tạo mẫu vòng từ sổ. */
+	templates?: { program_code: string; rounds: number }[];
+	arranged?: number;
 	warnings: string[];
 }
 export const importPracticeBook = (courseId: string, file: File, dryRun: boolean) => {

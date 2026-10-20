@@ -237,6 +237,8 @@ export interface RotationList {
 	rows: EnrollmentRotation[];
 	rounds: RotationRound[];
 	max_mentor_load: number;
+	/** Số vòng Đạt ở hồ sơ khác của cùng học viên có thể công nhận sang hồ sơ này. */
+	previous_passed: number;
 }
 
 export type RotationUpdate = Partial<
