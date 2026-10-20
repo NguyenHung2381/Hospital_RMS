@@ -1,13 +1,13 @@
 /* ============================================================================
- * Dữ liệu chương trình ĐTLT + bài học (nhập từ "Chi tiết chương trình học ĐTLT.xlsx"
- * và thư mục "Bài học ĐTLT" của phòng Đào tạo — 2026-10-20).
+ * Chương trình ĐTLT + bài học (từ "Chi tiết chương trình học ĐTLT.xlsx" và thư mục
+ * "Bài học ĐTLT" của phòng Đào tạo — 2026-10-20). Gói trọn trong 1 file:
  * ----------------------------------------------------------------------------
- * 1) Cập nhật 57 chương trình theo MÃ (training_programs.code): loại hình ĐTLT, số tiết
+ * 0) Thêm cột training_programs.min_capacity (sĩ số tối thiểu; tối đa = max_capacity).
+ * 1) Tạo chương trình còn thiếu (theo mã), rồi cập nhật 57 chương trình theo MÃ (training_programs.code): loại hình ĐTLT, số tiết
  *    LT/TH, thời lượng, đối tượng, sĩ số tối thiểu/tối đa, khoa (tra theo departments.code —
  *    không có mã khoa đó thì giữ khoa đang có), ghi chú khoa.
  * 2) Thêm bài học (lesson_kind theory, mã <mã CT>_NN) cho 32 chương trình — CHỈ khi
  *    chương trình đó chưa có bài học nào (đã nhập / đã sửa tay thì bỏ qua).
- * Chương trình không tồn tại trong DB thì bỏ qua. Cần chạy sau 2026-11-12 (cột min_capacity).
  * File sinh từ DB dev; nguồn Excel nhập bằng scripts/import-dtlt-lessons.js.
  *
  * Idempotent — chạy lại nhiều lần an toàn.
@@ -17,7 +17,77 @@ GO
 SET NOCOUNT ON;
 GO
 
--- 1) Thông tin chương trình
+-- 0) Cột sĩ số tối thiểu
+IF COL_LENGTH('dbo.training_programs', 'min_capacity') IS NULL
+    ALTER TABLE [dbo].[training_programs] ADD [min_capacity] INT NULL;
+GO
+
+-- 1a) Tạo chương trình còn thiếu
+INSERT INTO training_programs (id, code, name, display_order, created_by)
+SELECT 'CT' + LEFT(REPLACE(NEWID(), '-', ''), 18), v.code, v.name, v.ord, 'SYSTEM'
+FROM (VALUES
+    (N'ĐTLT_1', N'Giải phẫu bệnh cơ bản', 21),
+    (N'ĐTLT_2', N'Chấn thương Chỉnh hình cơ bản', 22),
+    (N'ĐTLT_3', N'Chẩn đoán và điều trị các bệnh Nội tiết', 23),
+    (N'ĐTLT_4', N'Kỹ thuật viên Nội soi Tiêu hóa', 24),
+    (N'ĐTLT_5', N'Siêu âm cơ bản', 25),
+    (N'ĐTLT_6', N'Nội soi tiêu hóa cơ bản', 26),
+    (N'ĐTLT_7', N'Nội soi can thiệp đường tiêu hóa', 27),
+    (N'ĐTLT_8', N'Nội soi đại tràng', 28),
+    (N'ĐTLT_9', N'Phẫu thuật Nội soi cơ bản', 29),
+    (N'ĐTLT_10', N'Hóa sinh cơ bản', 30),
+    (N'ĐTLT_11', N'Chẩn đoán và điều trị bệnh đột quỵ não', 31),
+    (N'ĐTLT_12', N'Chẩn đoán và điều trị suy tim', 32),
+    (N'ĐTLT_13', N'Hướng dẫn đọc Điện tâm đồ', 33),
+    (N'ĐTLT_14', N'Điện não đồ', 34),
+    (N'ĐTLT_17', N'Tăng cường năng lực quản lý Điều dưỡng', 37),
+    (N'ĐTLT_18', N'Gây mê hồi sức cơ bản', 38),
+    (N'ĐTLT_19', N'Gây mê hồi sức trong phẫu thuật nội soi', 39),
+    (N'ĐTLT_20', N'X.quang cơ bản', 40),
+    (N'ĐTLT_21', N'Cắt lớp vi tính cơ bản', 41),
+    (N'ĐTLT_23', N'Khám nội soi tai mũi họng', 43),
+    (N'ĐTLT_24', N'Mở khí quản', 44),
+    (N'ĐTLT_25', N'Đào tạo điều dưỡng chuyên ngành tai mũi họng', 45),
+    (N'ĐTLT_26', N'Điều dưỡng nha khoa', 46),
+    (N'ĐTLT_27', N'Kỹ thuật cấp cứu cơ bản - Bác sĩ', 47),
+    (N'ĐTLT_28', N'Kỹ thuật cấp cứu cơ bản - Điều dưỡng', 48),
+    (N'ĐTLT_29', N'Phẫu thuật Phaco', 49),
+    (N'ĐTLT_30', N'Chụp mạch huỳnh quang đáy mắt', 50),
+    (N'ĐTLT_31', N'Kiểm soát nhiễm khuẩn', 51),
+    (N'ĐTLT_32', N'Cấp cứu ngừng tuần hoàn', 52),
+    (N'ĐTLT_33', N'Chẩn đoán và điều trị chấn thương sọ não', 53),
+    (N'ĐTLT_34', N'Tiêm an toàn và quản lý chất rắn y tế', 54),
+    (N'ĐTLT_35', N'Kỹ năng tư vấn và Giáo dục sức khỏe', 55),
+    (N'ĐTLT_37', N'Nội soi phế quản ống mềm', 57),
+    (N'ĐTLT_38', N'Chăm sóc bệnh nhân hồi sức sau mổ', 58),
+    (N'ĐTLT_39', N'Chăm sóc bệnh nhân thở máy', 59),
+    (N'ĐTLT_40', N'Thông khí nhân tạo cơ bản', 60),
+    (N'ĐTLT_41', N'Kỹ thuật xét nghiệm Huyết học - Truyền máu cơ bản', 61),
+    (N'ĐTLT_42', N'Chẩn đoán và điều trị các bệnh lý Cơ xương khớp cơ bản', 62),
+    (N'ĐTLT_44', N'Khúc xạ cơ bản', 64),
+    (N'ĐTLT_45', N'Phẫu thuật gan mật cơ bản', 65),
+    (N'ĐTLT_46', N'Kỹ thuật lọc máu thận nhân tạo cơ bản - Điều dưỡng - KTV', 66),
+    (N'ĐTLT_47', N'Kỹ thuật lọc máu thận nhân tạo cơ bản - Bác sỹ', 67),
+    (N'ĐTLT_48', N'Kỹ thuật xét nghiệm vi sinh cơ bản', 68),
+    (N'ĐTLT_49', N'Kỹ thuật xoa bóp bấm huyệt', 69),
+    (N'ĐTLT_50', N'Kỹ thuật châm cứu cơ bản', 70),
+    (N'ĐTLT_51', N'Đọc phim MRI cơ bản', 71),
+    (N'ĐTLT_52', N'Chẩn đoán và điều trị viêm gan', 72),
+    (N'ĐTLT_53', N'Tiêm khớp cơ bản', 73),
+    (N'ĐTLT_54', N'Chẩn đoán và điều trị một một số bệnh đường tiêu hóa thường gặp', 74),
+    (N'ĐTLT_55', N'Chẩn đoán và điều trị các bệnh lý Huyết học – Truyền máu', 75),
+    (N'ĐTLT_56', N'Kỹ thuật viên Gây mê hồi sức', 76),
+    (N'ĐTLT_57', N'Dụng cụ viên Gây mê hồi sức', 77),
+    (N'ĐTLT_63', N'Kỹ thuật khai thông mạch não bằng điều trị thuốc tiêu sợi huyết trong nhồi máu não cấp', 83),
+    (N'ĐTLT_64', N'Phục hồi chức năng cơ bản', 84),
+    (N'ĐTLT_65', N'Hồi sức cấp cứu cơ bản', 85),
+    (N'ĐTLT_66', N'Kỹ thuật lọc máu liên tục và thay huyết tương', 86),
+    (N'ĐTLT_67', N'Chăm sóc người bệnh lọc máu liên tục và thay huyết tương', 87)
+) v (code, name, ord)
+WHERE NOT EXISTS (SELECT 1 FROM training_programs p WHERE p.code = v.code);
+GO
+
+-- 1b) Thông tin chương trình
 UPDATE training_programs SET
     training_type_id = 'TRNTP-DTLT', theory_hours = 188, practice_hours = 340,
     duration = N'03 tháng', duration_value = 3, duration_unit = N'month',
@@ -1497,5 +1567,5 @@ BEGIN
 END
 GO
 
-PRINT N'✅ Migration 2026-11-13_dtlt_programs_lessons_data hoàn tất.';
+PRINT N'✅ Migration 2026-11-12_dtlt_programs_lessons hoàn tất.';
 GO
