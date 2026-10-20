@@ -28,7 +28,7 @@ const toPayload = (form: TrainingProgramFormData) => ({
 	duration_unit: form.duration_value.trim() ? form.duration_unit : null,
 	department_id: form.department_id || null,
 	department_note: form.department_note || null,
-	trainee_type_id: form.trainee_type_id || null,
+	trainee_type_ids: form.trainee_type_ids,
 	training_type_id: form.training_type_id || null,
 	target_audience: form.target_audience || null,
 	theory_hours: numOrNull(form.theory_hours),

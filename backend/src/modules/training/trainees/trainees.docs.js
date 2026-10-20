@@ -102,6 +102,14 @@
 
 /**
  * @swagger
+ * /trainees/{id}/progress:
+ *   get:
+ *     summary: Tiến độ thực tế của học viên so với chương trình hiện tại (bài lý thuyết, vòng thực hành, nhịp học)
+ *     tags: [Trainees]
+ */
+
+/**
+ * @swagger
  * /trainees/{id}/documents:
  *   get:
  *     summary: Hồ sơ đính kèm của học viên (CCCD, bằng cấp...) — dữ liệu nhạy cảm

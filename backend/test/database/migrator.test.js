@@ -1,7 +1,7 @@
 // Phần thuần của bộ chạy migration (không cần DB) + quy ước tên file thật.
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { splitBatches, checksum, nextFilename, listFiles, RENAMED } = require('../../src/database/migrator');
+const { splitBatches, checksum, nextFilename, listFiles, RENAMED, MERGED } = require('../../src/database/migrator');
 
 test('splitBatches: tách theo dòng GO (không phân biệt hoa thường), đổi USE sang DB cấu hình', () => {
 	const batches = splitBatches('USE [RMS_HOSPITAL];\nGO\nSELECT 1 AS go_col\n  go  \n\nSELECT 2\nGO;\n', 'RMS_STAGING');
@@ -29,6 +29,10 @@ test('mọi file migration đúng quy ước YYYY-MM-DD_[NN_]mo_ta.sql, không t
 	for (const f of listFiles()) assert.match(f, /^\d{4}-\d{2}-\d{2}_[a-z0-9_]+\.sql$/, f);
 	for (const [from, to] of Object.entries(RENAMED)) {
 		assert.ok(!listFiles().includes(from), `${from} đã đổi tên`);
+		assert.ok(listFiles().includes(to), `${to} phải tồn tại`);
+	}
+	for (const [from, to] of Object.entries(MERGED)) {
+		assert.ok(!listFiles().includes(from), `${from} đã gộp vào ${to}`);
 		assert.ok(listFiles().includes(to), `${to} phải tồn tại`);
 	}
 });

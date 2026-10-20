@@ -14,6 +14,7 @@ const { norm } = require('../../../utils/vietnameseText');
 const { loadWorkbook, findHeader, cellText } = require('../../../utils/excelImport');
 const { parseDuration, formatDuration, toDays } = require('../../../utils/trainingDuration');
 const { createDepartmentMatcher } = require('../../../utils/departmentMatch');
+const { parseTraineeTypes } = require('../../../utils/traineeTypeMatch');
 const { badRequest } = require('../../../utils/httpError');
 const programService = require('./trainingProgramService');
 
@@ -119,9 +120,10 @@ const parseWorkbook = async (buffer) => {
 
 const loadLookups = async () => {
 	const pool = await getPool();
-	const [depts, types, progs, lessons, links] = await Promise.all([
+	const [depts, types, traineeTypes, progs, lessons, links] = await Promise.all([
 		pool.request().query('SELECT id, name FROM departments'),
 		pool.request().query('SELECT id FROM training_types'),
+		pool.request().query('SELECT id FROM trainee_types'),
 		pool.request().query('SELECT id, code FROM training_programs WHERE code IS NOT NULL'),
 		pool
 			.request()
@@ -133,6 +135,7 @@ const loadLookups = async () => {
 	return {
 		matchDept: createDepartmentMatcher(depts.recordset),
 		typeIds: new Set(types.recordset.map((t) => t.id)),
+		traineeTypeIds: new Set(traineeTypes.recordset.map((t) => t.id)),
 		programByCode: new Map(progs.recordset.map((p) => [p.code, p.id])),
 		lessonByCode,
 		linkByPair: new Map(links.recordset.map((l) => [`${l.program_id}|${l.lesson_id}`, l.id])),
@@ -187,6 +190,11 @@ const buildPreview = ({ programs, lines }, lookups) => {
 				if (!department) departmentNote = p.department_raw;
 			}
 		}
+		// "Bác sĩ, KTV" → danh mục đối tượng học viên (chữ gốc vẫn lưu ở target_audience).
+		const audience = parseTraineeTypes(p.target_audience);
+		const traineeTypeIds = audience.ids.filter((id) => lookups.traineeTypeIds.has(id));
+		if (audience.unknown.length)
+			warn(`Đối tượng "${audience.unknown.join(', ')}" chưa có trong danh mục — chỉ lưu dạng chữ.`);
 		programItems.push({
 			row: p.r,
 			status: lookups.programByCode.has(p.code) ? 'update' : 'new',
@@ -197,6 +205,7 @@ const buildPreview = ({ programs, lines }, lookups) => {
 			department_name: department?.name ?? null,
 			department_note: departmentNote,
 			target_audience: p.target_audience,
+			trainee_type_ids: traineeTypeIds.length ? traineeTypeIds : null,
 			theory_hours: p.theory_hours,
 			practice_hours: p.practice_hours,
 			credit_hours: p.credit_hours,
@@ -280,6 +289,7 @@ const PROGRAM_WRITE_FIELDS = [
 	'department_id',
 	'department_note',
 	'target_audience',
+	'trainee_type_ids',
 	'theory_hours',
 	'practice_hours',
 	'credit_hours',

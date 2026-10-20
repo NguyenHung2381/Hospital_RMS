@@ -69,6 +69,30 @@ function RotationDepts({ rotations }: { rotations: ProgramRotation[] }) {
 	);
 }
 
+// Đối tượng học viên: mỗi đối tượng 1 nhãn, tối đa 3 nhãn + "+N" (rê chuột xem đủ).
+const MAX_TYPE_CHIPS = 3;
+function TraineeTypeChips({ names }: { names: string | null }) {
+	const list = names ? names.split(', ').filter(Boolean) : [];
+	if (!list.length) return <span className={styles.descText}>—</span>;
+	const rest = list.length - MAX_TYPE_CHIPS;
+	return (
+		<div
+			className={styles.typeChips}
+			title={list.join(', ')}
+		>
+			{list.slice(0, MAX_TYPE_CHIPS).map((n) => (
+				<span
+					key={n}
+					className={styles.typeChip}
+				>
+					{n}
+				</span>
+			))}
+			{rest > 0 && <span className={styles.typeChipMore}>+{rest}</span>}
+		</div>
+	);
+}
+
 export default function TrainingPrograms() {
 	const d = useTrainingPrograms();
 	const rowSel = useRowSelection(d.paged.map((x) => x.id));
@@ -117,7 +141,11 @@ export default function TrainingPrograms() {
 						code: r.code,
 						duration: r.duration,
 						department_id: matchLabel(deptNames, r.department, 'Khoa phòng') ?? '',
-						trainee_type_id: matchLabel(typeNames, r.trainee_type, 'Đối tượng học viên') ?? '',
+						// Ô "Đối tượng học viên" có thể ghi nhiều tên, cách nhau dấu phẩy.
+						trainee_type_ids: String(r.trainee_type ?? '')
+							.split(/[,;]/)
+							.map((s) => matchLabel(typeNames, s, 'Đối tượng học viên'))
+							.filter((x): x is string => !!x),
 						min_capacity: numText(r.min_capacity),
 						max_capacity: numText(r.max_capacity),
 						display_order: numText(r.display_order),
@@ -341,11 +369,7 @@ export default function TrainingPrograms() {
 											)}
 										</td>
 										<td className={styles.td}>
-											{p.trainee_type_name ? (
-												<span className={styles.badge}>{p.trainee_type_name}</span>
-											) : (
-												'—'
-											)}
+											<TraineeTypeChips names={p.trainee_type_name} />
 										</td>
 										<td className={styles.td}>
 											{getProgramStatus(p) === 'active' ? (

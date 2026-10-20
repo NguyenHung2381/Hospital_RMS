@@ -1,5 +1,6 @@
 const traineeService = require('./traineeService');
 const traineeImportService = require('./traineeImportService');
+const traineeProgressService = require('./traineeProgressService');
 const { success, created, notFound } = require('../../../utils/response');
 const { asyncHandler } = require('../../../utils/asyncHandler');
 
@@ -31,6 +32,10 @@ const removeOne = asyncHandler(async (req, res) => {
 
 const listEnrollments = asyncHandler(async (req, res) => {
 	return success(res, await traineeService.listEnrollments(req.params.id));
+});
+
+const getProgress = asyncHandler(async (req, res) => {
+	return success(res, await traineeProgressService.getProgress(req.params.id));
 });
 
 const listDocuments = asyncHandler(async (req, res) => {
@@ -78,6 +83,7 @@ module.exports = {
 	updateOne,
 	removeOne,
 	listEnrollments,
+	getProgress,
 	listDocuments,
 	addDocument,
 	removeDocument,

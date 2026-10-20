@@ -26,7 +26,7 @@ const fromProgram = (p: TrainingProgram): TrainingProgramFormData => ({
 	duration_unit: p.duration_unit ?? 'month',
 	department_id: p.department_id ?? '',
 	department_note: p.department_note ?? '',
-	trainee_type_id: p.trainee_type_id ?? '',
+	trainee_type_ids: p.trainee_type_ids ?? [],
 	training_type_id: p.training_type_id ?? '',
 	target_audience: p.target_audience ?? '',
 	theory_hours: str(p.theory_hours),
@@ -231,30 +231,44 @@ export function TrainingProgramFormModal({
 				>
 					{numberInput('practice_hours', '0')}
 				</FormField>
-				<FormField label='Đối tượng học viên'>
+				<FormField
+					label='Đối tượng học viên (chọn nhiều)'
+					style={{ gridColumn: '1 / -1' }}
+				>
+					<div className={styles.choiceGroup}>
+						{traineeTypes.map((t) => {
+							const on = form.trainee_type_ids.includes(t.id);
+							return (
+								<button
+									key={t.id}
+									type='button'
+									aria-pressed={on}
+									className={`${styles.choiceChip} ${on ? styles.choiceChipOn : ''}`}
+									onClick={() =>
+										setForm((f) => ({
+											...f,
+											trainee_type_ids: on
+												? f.trainee_type_ids.filter((x) => x !== t.id)
+												: [...f.trainee_type_ids, t.id],
+										}))
+									}
+								>
+									{t.name}
+								</button>
+							);
+						})}
+					</div>
+				</FormField>
+				<FormField
+					label='Đối tượng (ghi chú, điều kiện)'
+					style={{ gridColumn: '1 / -1' }}
+				>
 					<input
 						className={styles.formInput}
 						value={form.target_audience}
 						onChange={set('target_audience')}
-						placeholder='VD: Bác sĩ'
+						placeholder='VD: Bác sĩ đã có CCHN'
 					/>
-				</FormField>
-				<FormField label='Nhóm đối tượng (lọc)'>
-					<select
-						className={styles.formInput}
-						value={form.trainee_type_id}
-						onChange={set('trainee_type_id')}
-					>
-						<option value=''>-- Chọn đối tượng --</option>
-						{traineeTypes.map((t) => (
-							<option
-								key={t.id}
-								value={t.id}
-							>
-								{t.name}
-							</option>
-						))}
-					</select>
 				</FormField>
 				<FormField label='Khoa phụ trách giảng dạy'>
 					<select

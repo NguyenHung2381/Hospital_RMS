@@ -1,5 +1,11 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import styles from './DatePicker.module.css';
+
+const POPOVER_WIDTH = 310;
+const POPOVER_HEIGHT = 360; // ước lượng trước khi đo được chiều cao thật
+const GAP = 6;
+const EDGE = 8; // khoảng cách tối thiểu tới mép màn hình
 
 interface DatePickerProps {
 	value?: string; // 'YYYY-MM-DD'
@@ -91,8 +97,9 @@ export function DatePicker({
 
 	const [viewYear, setViewYear] = useState<number>(initialYear);
 	const [viewMonth, setViewMonth] = useState<number>(initialMonth);
-	const [placement, setPlacement] = useState<'bottom' | 'top'>('bottom');
-	const [alignRight, setAlignRight] = useState<boolean>(false);
+	// Toạ độ popover (position: fixed, render qua portal) — để không bị modal / vùng cuộn cắt mất.
+	const [pos, setPos] = useState<{ left: number; top?: number; bottom?: number } | null>(null);
+	const popoverRef = useRef<HTMLDivElement>(null);
 
 	// Sync view month/year when the selected value changes.
 	// Điều chỉnh state ngay khi render (thay vì trong effect) để tránh cascading render.
@@ -108,63 +115,31 @@ export function DatePicker({
 		}
 	}
 
-	// Calculate optimal placement based on available viewport and parent container space
-	useEffect(() => {
+	// Tính vị trí popover theo viewport: mở xuống dưới, hết chỗ thì lật lên trên;
+	// căn trái theo ô nhập, tràn mép phải thì căn phải.
+	useLayoutEffect(() => {
 		if (!isOpen || !containerRef.current) return;
 
 		const updatePosition = () => {
 			if (!containerRef.current) return;
 			const rect = containerRef.current.getBoundingClientRect();
-			const popoverHeight = 340;
-			const popoverWidth = 310;
+			const popoverHeight = popoverRef.current?.offsetHeight || POPOVER_HEIGHT;
+			const popoverWidth = Math.min(POPOVER_WIDTH, window.innerWidth - 2 * EDGE);
 			const spaceBelow = window.innerHeight - rect.bottom;
 			const spaceAbove = rect.top;
+			const openUp = spaceBelow < popoverHeight + GAP && spaceAbove > spaceBelow;
 
-			if (spaceBelow < popoverHeight && spaceAbove > spaceBelow) {
-				setPlacement('top');
-			} else {
-				setPlacement('bottom');
+			let left = rect.left;
+			if (align === 'right' || (align === 'auto' && rect.left + popoverWidth > window.innerWidth - EDGE)) {
+				left = rect.right - popoverWidth;
 			}
+			left = Math.max(EDGE, Math.min(left, window.innerWidth - popoverWidth - EDGE));
 
-			if (align === 'right') {
-				setAlignRight(true);
-				return;
-			}
-			if (align === 'left') {
-				setAlignRight(false);
-				return;
-			}
-
-			// Find right boundary of closest container/modal with overflow or viewport
-			let rightBoundary = window.innerWidth;
-			let parent = containerRef.current.parentElement;
-			while (parent && parent !== document.body) {
-				const style = window.getComputedStyle(parent);
-				const hasOverflow =
-					style.overflow !== 'visible' ||
-					style.overflowX !== 'visible' ||
-					style.overflowY !== 'visible';
-
-				if (
-					hasOverflow ||
-					parent.classList.contains('modal') ||
-					parent.getAttribute('role') === 'dialog' ||
-					parent.className?.toString().includes('modal')
-				) {
-					const parentRect = parent.getBoundingClientRect();
-					if (parentRect.width > 0) {
-						rightBoundary = Math.min(rightBoundary, parentRect.right);
-					}
-				}
-				parent = parent.parentElement;
-			}
-
-			// If opening to the right from rect.left exceeds rightBoundary, switch to alignRight
-			if (rect.left + popoverWidth > rightBoundary - 8) {
-				setAlignRight(true);
-			} else {
-				setAlignRight(false);
-			}
+			setPos(
+				openUp
+					? { left, bottom: window.innerHeight - rect.top + GAP }
+					: { left, top: rect.bottom + GAP },
+			);
 		};
 
 		updatePosition();
@@ -180,12 +155,9 @@ export function DatePicker({
 	// Close on click outside
 	useEffect(() => {
 		function handleClickOutside(e: MouseEvent) {
-			if (
-				containerRef.current &&
-				!containerRef.current.contains(e.target as Node)
-			) {
-				setIsOpen(false);
-			}
+			const t = e.target as Node;
+			if (containerRef.current?.contains(t) || popoverRef.current?.contains(t)) return;
+			setIsOpen(false);
 		}
 		function handleKeyDown(e: KeyboardEvent) {
 			if (e.key === 'Escape') setIsOpen(false);
@@ -406,11 +378,13 @@ export function DatePicker({
 			</div>
 
 			{/* Popover Calendar */}
-			{isOpen && (
+			{isOpen && pos && createPortal(
 				<div
+					ref={popoverRef}
 					className={`${styles.popover} ${
-						placement === 'top' ? styles.placementTop : ''
-					} ${alignRight ? styles.alignRight : ''}`}
+						pos.bottom !== undefined ? styles.placementTop : ''
+					}`}
+					style={{ left: pos.left, top: pos.top, bottom: pos.bottom }}
 				>
 					{/* Header */}
 					<div className={styles.header}>
@@ -576,7 +550,8 @@ export function DatePicker({
 							</button>
 						)}
 					</div>
-				</div>
+				</div>,
+				document.body,
 			)}
 		</div>
 	);

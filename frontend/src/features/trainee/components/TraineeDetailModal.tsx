@@ -15,6 +15,7 @@ import { formatDate } from '../../../shared/utils/formatDate';
 import { genderLabel } from '../../../shared/utils/gender';
 import { FileDropzone } from '@/shared/components';
 import { FileViewerModal } from '@/shared/components/FileViewerModal';
+import { TraineeProgressPanel } from './TraineeProgressPanel';
 import styles from '../pages/Trainees.module.css';
 
 // Xem trực tiếp trên web; đuôi khác (.doc, .xlsx...) vẫn mở/tải như cũ.
@@ -289,7 +290,7 @@ export function TraineeDetailModal({
 										return (
 											<div
 												key={en.id}
-												className={styles.subRow}
+												className={`${styles.subRow} ${styles.subRowWrap}`}
 											>
 												<div className={styles.subRowMain}>
 													<div className={styles.subRowName}>
@@ -319,6 +320,11 @@ export function TraineeDetailModal({
 												>
 													{cfg.label}
 												</span>
+												{d.progress[en.id] && (
+													<div className={styles.subRowFull}>
+														<TraineeProgressPanel progress={d.progress[en.id]} />
+													</div>
+												)}
 											</div>
 										);
 									})}

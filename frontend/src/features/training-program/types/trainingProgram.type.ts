@@ -29,7 +29,11 @@ export interface TrainingProgram {
 	department_name: string | null;
 	/** Ghi chú khoa phụ trách: "Nhiều khoa tùy vòng…" hoặc tên khoa chưa có trong danh mục. */
 	department_note: string | null;
+	/** Đối tượng đầu tiên — cột cũ, giữ cho tương thích. Dùng trainee_type_ids. */
 	trainee_type_id: string | null;
+	/** Đối tượng học viên (danh mục), theo thứ tự. */
+	trainee_type_ids: string[];
+	/** Tên các đối tượng, nối bằng ", ". */
 	trainee_type_name: string | null;
 	training_type_id: string | null;
 	training_type_name: string | null;
@@ -69,7 +73,7 @@ export interface TrainingProgramFormData {
 	duration_unit: DurationUnit;
 	department_id: string;
 	department_note: string;
-	trainee_type_id: string;
+	trainee_type_ids: string[];
 	training_type_id: string;
 	target_audience: string;
 	theory_hours: string;
@@ -228,7 +232,7 @@ export const EMPTY_FORM: TrainingProgramFormData = {
 	duration_unit: 'month',
 	department_id: '',
 	department_note: '',
-	trainee_type_id: '',
+	trainee_type_ids: [],
 	training_type_id: '',
 	target_audience: '',
 	theory_hours: '',

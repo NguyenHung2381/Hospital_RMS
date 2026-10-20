@@ -153,3 +153,113 @@ export interface TraineeImportResult {
 	updated?: number;
 	warnings: string[];
 }
+
+// ─── Tiến độ thực tế so với chương trình hiện tại (GET /trainees/:id/progress) ───
+/** missing: chương trình mới thêm, hồ sơ học viên chưa có. */
+export type TheoryProgressStatus = 'done' | 'in_progress' | 'not_started' | 'missing';
+export type RotationProgressStatus =
+	| 'passed'
+	| 'in_progress'
+	| 'scheduled'
+	| 'not_scheduled'
+	| 'overdue'
+	| 'failed'
+	| 'missing';
+export type ProgressPace =
+	| 'completed'
+	| 'dropped'
+	| 'not_started'
+	| 'ahead'
+	| 'on_track'
+	| 'behind'
+	| 'overdue'
+	| 'unknown';
+
+export interface TheoryProgressItem {
+	lesson_id: string;
+	code: string | null;
+	title: string;
+	hours: number | null;
+	/** false: chương trình đã bỏ bài này, hồ sơ còn giữ (không tính vào %). */
+	in_program: boolean;
+	status: TheoryProgressStatus;
+	completed_at: string | null;
+}
+
+export interface RotationProgressSegment {
+	id: string;
+	department_name: string | null;
+	start_date: string | null;
+	end_date: string | null;
+	duration_text: string | null;
+	mentor_name: string | null;
+	result: 'pending' | 'pass' | 'fail';
+	attempt_no: number;
+}
+
+export interface RotationProgressItem {
+	lesson_id: string | null;
+	code: string | null;
+	title: string;
+	required_duration: string | null;
+	required_days: number | null;
+	in_program: boolean;
+	status: RotationProgressStatus;
+	segments: RotationProgressSegment[];
+}
+
+export interface TraineeProgress {
+	enrollment_id: string;
+	course_id: string;
+	course_name: string;
+	program_id: string | null;
+	program_code: string | null;
+	program_name: string | null;
+	program_duration: string | null;
+	program_theory_hours: number | null;
+	program_practice_hours: number | null;
+	progress_status: 'in_progress' | 'completed' | 'dropped';
+	progress_date: string | null;
+	theory: {
+		items: TheoryProgressItem[];
+		summary: {
+			required: number;
+			done: number;
+			in_progress: number;
+			not_started: number;
+			missing: number;
+			extra: number;
+			hours_required: number;
+			hours_done: number;
+		};
+	};
+	rotations: {
+		items: RotationProgressItem[];
+		summary: {
+			required: number;
+			passed: number;
+			in_progress: number;
+			scheduled: number;
+			not_scheduled: number;
+			overdue: number;
+			failed: number;
+			missing: number;
+			extra: number;
+			days_required: number;
+			days_passed: number;
+		};
+	};
+	summary: {
+		required: number;
+		done: number;
+		/** 0..1, null khi chương trình chưa có bài / vòng nào. */
+		completion: number | null;
+		start_date: string | null;
+		end_date: string | null;
+		/** Phần thời gian đã trôi qua 0..1. */
+		elapsed: number | null;
+		pace: ProgressPace;
+		/** Hồ sơ lệch chương trình hiện tại (bài/vòng mới thêm hoặc đã bỏ). */
+		out_of_sync: boolean;
+	};
+}

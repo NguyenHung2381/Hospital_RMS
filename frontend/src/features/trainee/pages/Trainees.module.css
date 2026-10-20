@@ -226,6 +226,14 @@
 	flex: 1;
 	min-width: 0;
 }
+/* Dòng ghi danh kèm bảng tiến độ xuống dòng bên dưới */
+.subRowWrap {
+	flex-wrap: wrap;
+}
+.subRowFull {
+	flex-basis: 100%;
+	min-width: 0;
+}
 .subRowMeta {
 	composes: cellSub from '../../../shared/components/Table/Table.module.css';
 	margin-top: 2px;

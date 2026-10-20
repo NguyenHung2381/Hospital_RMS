@@ -24,7 +24,8 @@ const countText = (p: PublicProgram) => {
 function ProgramDetail({ p }: { p: PublicProgram }) {
 	const facts = [
 		['Thời gian', p.duration],
-		['Đối tượng', [p.trainee_type_name, p.target_audience].filter(Boolean).join(' — ')],
+		// Ghi chú đối tượng ("Bác sĩ đã có CCHN") rõ hơn tên danh mục — có thì ưu tiên.
+		['Đối tượng', p.target_audience || p.trainee_type_name],
 		['Số giờ', hours(p.theory_hours, p.practice_hours)],
 		['Học phí', p.tuition_fee ? `${Number(p.tuition_fee).toLocaleString('vi-VN')} đ` : null],
 	].filter(([, v]) => v);

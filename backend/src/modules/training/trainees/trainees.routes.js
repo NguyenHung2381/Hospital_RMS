@@ -50,6 +50,7 @@ router.put(
 router.delete('/:id', authorizePermission(['trainees', 'delete']), ctrl.removeOne);
 
 router.get('/:id/enrollments', authorizePermission(['trainees', 'read']), ctrl.listEnrollments);
+router.get('/:id/progress', authorizePermission(['trainees', 'read']), ctrl.getProgress);
 
 router.get(
 	'/:id/documents',

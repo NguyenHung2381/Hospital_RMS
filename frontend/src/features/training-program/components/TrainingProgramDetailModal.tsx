@@ -185,7 +185,11 @@ export function TrainingProgramDetailModal({
 								/>
 								<InfoRow
 									label='Đối tượng học viên'
-									value={program.target_audience ?? program.trainee_type_name}
+									value={program.trainee_type_name}
+								/>
+								<InfoRow
+									label='Đối tượng (ghi chú)'
+									value={program.target_audience}
 								/>
 								<InfoRow
 									label='Sĩ số tối thiểu'

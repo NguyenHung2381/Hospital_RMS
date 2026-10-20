@@ -30,7 +30,10 @@ const getOpenCourses = async () => {
            c.capacity,
            (SELECT STRING_AGG(tp.name, ', ') FROM course_programs cp JOIN training_programs tp ON tp.id = cp.program_id WHERE cp.course_id = c.id) AS program_name,
            (SELECT tp.id, tp.code, tp.name, tp.description, tp.duration, tp.target_audience,
-                   tt.name AS trainee_type_name, tp.theory_hours, tp.practice_hours, tp.tuition_fee,
+                   COALESCE((SELECT STRING_AGG(t2.name, ', ') WITHIN GROUP (ORDER BY x.display_order)
+                               FROM program_trainee_types x JOIN trainee_types t2 ON t2.id = x.trainee_type_id
+                              WHERE x.program_id = tp.id), tt.name) AS trainee_type_name,
+                   tp.theory_hours, tp.practice_hours, tp.tuition_fee,
                    (SELECT COUNT(*) FROM lesson_programs lp JOIN program_lessons pl ON pl.id = lp.lesson_id AND pl.is_active = 1
                     WHERE lp.program_id = tp.id) AS lesson_count,
                    -- Nội dung: bài lý thuyết / vòng thực hành GPHN (khoa + thời lượng) theo thứ tự

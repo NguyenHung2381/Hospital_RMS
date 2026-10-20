@@ -98,11 +98,11 @@
    POPOVER DIALOG
 ============================================= */
 
+/* Render qua portal vào <body>, toạ độ fixed do DatePicker.tsx tính —
+   nên không bị modal / bảng cuộn cắt. z-index cao hơn Modal (1000). */
 .popover {
-	position: absolute;
-	top: calc(100% + 6px);
-	left: 0;
-	z-index: 999;
+	position: fixed;
+	z-index: 1100;
 	width: 310px;
 	max-width: calc(100vw - 24px);
 	background: #ffffff;
@@ -118,14 +118,7 @@
 }
 
 .placementTop {
-	top: auto !important;
-	bottom: calc(100% + 6px) !important;
 	animation: popoverFadeInTop 0.18s cubic-bezier(0.16, 1, 0.3, 1) !important;
-}
-
-.alignRight {
-	left: auto !important;
-	right: 0 !important;
 }
 
 @keyframes popoverFadeInBottom {

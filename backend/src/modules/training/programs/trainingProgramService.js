@@ -51,8 +51,15 @@ const withDurationText = (data) => {
 	return { ...data, duration: text ?? data.duration ?? null };
 };
 
+// Đối tượng học viên: N:N qua program_trainee_types (2026-11-14). trainee_type_name
+// = tên các đối tượng nối bằng ", " (chương trình chưa chuyển sang bảng mới thì lấy cột cũ).
 const programSelect = `
-  SELECT p.*, d.name AS department_name, tt.name AS trainee_type_name, tp.name AS training_type_name,
+  SELECT p.*, d.name AS department_name, tp.name AS training_type_name,
+         (SELECT STRING_AGG(x.trainee_type_id, ',') WITHIN GROUP (ORDER BY x.display_order)
+            FROM program_trainee_types x WHERE x.program_id = p.id) AS trainee_type_ids,
+         COALESCE((SELECT STRING_AGG(t2.name, ', ') WITHIN GROUP (ORDER BY x.display_order)
+                     FROM program_trainee_types x JOIN trainee_types t2 ON t2.id = x.trainee_type_id
+                    WHERE x.program_id = p.id), tt.name) AS trainee_type_name,
          (SELECT COUNT(*) FROM course_programs cp WHERE cp.program_id = p.id) AS course_count,
          (SELECT COUNT(*) FROM lesson_programs lp WHERE lp.program_id = p.id) AS lesson_count,
          -- Vòng thực hành GPHN: mỗi vòng 1 khoa (hoặc nhiều khoa để chọn) + thời lượng riêng.
@@ -72,7 +79,46 @@ const programSelect = `
   LEFT JOIN training_types tp ON tp.id = p.training_type_id
 `;
 
-const withRotations = (row) => ({ ...row, rotations: row.rotations ? JSON.parse(row.rotations) : [] });
+const withRotations = (row) => ({
+	...row,
+	trainee_type_ids: row.trainee_type_ids
+		? row.trainee_type_ids.split(',')
+		: row.trainee_type_id
+			? [row.trainee_type_id]
+			: [],
+	rotations: row.rotations ? JSON.parse(row.rotations) : [],
+});
+
+// Nhận trainee_type_ids (mảng) hoặc trainee_type_id (client/import cũ) → danh sách
+// id; không gửi gì → undefined (giữ nguyên). Cột cũ trainee_type_id = phần tử đầu.
+const traineeTypeIdsOf = (data) => {
+	if (Array.isArray(data.trainee_type_ids)) return [...new Set(data.trainee_type_ids.filter(Boolean))];
+	if (data.trainee_type_id !== undefined) return data.trainee_type_id ? [data.trainee_type_id] : [];
+	return undefined;
+};
+
+const withTraineeType = (data, typeIds) =>
+	typeIds ? { ...data, trainee_type_id: typeIds[0] ?? null } : data;
+
+// Gán lại toàn bộ đối tượng của 1 chương trình (thứ tự = vị trí trong mảng).
+const setProgramTraineeTypes = async (programId, typeIds) => {
+	const pool = await getPool();
+	await pool
+		.request()
+		.input('program_id', sql.VarChar(20), programId)
+		.query('DELETE FROM program_trainee_types WHERE program_id = @program_id');
+	for (let i = 0; i < typeIds.length; i++) {
+		await pool
+			.request()
+			.input('program_id', sql.VarChar(20), programId)
+			.input('trainee_type_id', sql.VarChar(20), typeIds[i])
+			.input('display_order', sql.Int, i).query(`
+        IF EXISTS (SELECT 1 FROM trainee_types WHERE id = @trainee_type_id)
+          INSERT INTO program_trainee_types (program_id, trainee_type_id, display_order)
+          VALUES (@program_id, @trainee_type_id, @display_order);
+      `);
+	}
+};
 
 const getAll = async ({
 	page = 1,
@@ -132,7 +178,8 @@ const rethrowDuplicateCode = (err) => {
 
 const create = async (data, actorId) => {
 	const pool = await getPool();
-	const input = withDurationText(data);
+	const typeIds = traineeTypeIdsOf(data);
+	const input = withDurationText(withTraineeType(data, typeIds));
 	const req = pool.request().input('actor_id', sql.VarChar(20), actorId);
 	const cols = [];
 	for (const [field, type] of Object.entries(PROGRAM_FIELDS)) {
@@ -155,13 +202,15 @@ const create = async (data, actorId) => {
 		)
 		.catch(rethrowDuplicateCode);
 	const id = result.recordset[0].id;
+	if (typeIds) await setProgramTraineeTypes(id, typeIds);
 	broadcast('update', { entity: 'training_program' });
 	return getById(id);
 };
 
 const update = async (id, data, actorId) => {
 	const pool = await getPool();
-	const input = withDurationText(data);
+	const typeIds = traineeTypeIdsOf(data);
+	const input = withDurationText(withTraineeType(data, typeIds));
 	const sets = ['updated_at = GETDATE()', 'updated_by = @actor_id'];
 	const req = pool
 		.request()
@@ -181,18 +230,45 @@ const update = async (id, data, actorId) => {
 				`EXEC sp_set_actor @actor_id; UPDATE training_programs SET ${sets.join(', ')} WHERE id = @id`,
 			)
 			.catch(rethrowDuplicateCode);
+	if (typeIds) await setProgramTraineeTypes(id, typeIds);
 	broadcast('update', { entity: 'training_program' });
 	return getById(id);
 };
 
+// Xoá chương trình. Hồ sơ học viên (course_enrollments) và điểm (grades) đã
+// chọn chương trình ⇒ chặn (409), vì xoá sẽ làm mất dữ liệu học viên. Các liên
+// kết thuần (lesson_programs, course_programs) gỡ luôn — bài học vẫn được giữ
+// lại như unlinkLesson. program_subjects / program_trainee_types tự CASCADE.
 const remove = async (id, actorId) => {
 	const pool = await getPool();
+	const usage = await pool.request().input('id', sql.VarChar(20), id).query(`
+    SELECT (SELECT COUNT(*) FROM course_enrollments WHERE program_id = @id) AS enrollments,
+           (SELECT COUNT(*) FROM grades WHERE program_id = @id) AS grades
+  `);
+	const { enrollments, grades } = usage.recordset[0];
+	if (enrollments || grades) {
+		const parts = [];
+		if (enrollments) parts.push(`${enrollments} hồ sơ học viên`);
+		if (grades) parts.push(`${grades} bản ghi điểm`);
+		throw httpError(
+			409,
+			`Chương trình đang được dùng ở ${parts.join(' và ')} — không xoá được. Hãy đổi chương trình của các hồ sơ đó trước.`,
+		);
+	}
 	await pool
 		.request()
 		.input('id', sql.VarChar(20), id)
-		.input('actor_id', sql.VarChar(20), actorId)
-		.query('EXEC sp_set_actor @actor_id; DELETE FROM training_programs WHERE id = @id');
+		.input('actor_id', sql.VarChar(20), actorId).query(`
+    SET XACT_ABORT ON;
+    BEGIN TRAN;
+    EXEC sp_set_actor @actor_id;
+    DELETE FROM lesson_programs WHERE program_id = @id;
+    DELETE FROM course_programs WHERE program_id = @id;
+    DELETE FROM training_programs WHERE id = @id;
+    COMMIT;
+  `);
 	broadcast('update', { entity: 'training_program' });
+	broadcast('update', { entity: 'program_lesson' });
 };
 
 // ─── Bài học (program_lessons) ─────────────────────────────────────────────

@@ -32,6 +32,7 @@ Lúc khởi động, server tự chạy migration khi `DB_AUTO_MIGRATE=true`. M�
 - Khoá `sp_getapplock` đảm bảo chỉ một tiến trình chạy migration tại một thời điểm (cluster, nhiều container).
 - `MIGRATION_BACKUP_DIR` là thư mục **trên máy SQL Server**. Khi có file mới, runner `BACKUP DATABASE ... COPY_ONLY` vào đó trước khi chạy.
 - Đổi tên file đã chạy: thêm cặp tên cũ → tên mới vào `RENAMED` trong `migrator.js`. Runner tự đổi tên trong `schema_migrations`, không chạy lại file.
+- Gộp file (xoá file cũ, chuyển nội dung sang file khác): thêm cặp file cũ → file gộp vào `MERGED`. Bản ghi file cũ không còn bị báo "không còn file" và được xoá khi file gộp đã chạy. DB chưa có file gộp vẫn chạy nó, nên file gộp phải idempotent.
 
 ## Quy ước viết migration
 

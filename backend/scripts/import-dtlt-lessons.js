@@ -17,6 +17,7 @@ const { norm } = require('../src/utils/vietnameseText');
 const { loadWorkbook } = require('../src/utils/excelImport');
 const { parseDuration } = require('../src/utils/trainingDuration');
 const { createDepartmentMatcher } = require('../src/utils/departmentMatch');
+const { parseTraineeTypes } = require('../src/utils/traineeTypeMatch');
 const programService = require('../src/modules/training/programs/trainingProgramService');
 
 const args = process.argv.slice(2);
@@ -178,7 +179,10 @@ const readLessonFile = async (file) => {
 		}
 		const dur = parseDuration(d.duration);
 		const dept = matchDept(d.department);
+		// "Bác sĩ, KTV" → danh mục đối tượng học viên (chỉ ghi khi đọc được).
+		const traineeTypeIds = parseTraineeTypes(d.target_audience).ids;
 		const data = {
+			...(traineeTypeIds.length ? { trainee_type_ids: traineeTypeIds } : {}),
 			training_type_id: DTLT_TYPE,
 			theory_hours: d.theory_hours,
 			practice_hours: d.practice_hours,

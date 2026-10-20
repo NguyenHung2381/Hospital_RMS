@@ -5,12 +5,16 @@ import type {
 	TraineeFormData,
 	TraineeImportResult,
 	TraineeListResponse,
+	TraineeProgress,
 } from '../types/trainee.type';
 
 export const getTrainees = () => apiClient.get<TraineeListResponse>('/trainees?limit=0');
 
 export const getTraineeEnrollments = (traineeId: string) =>
 	apiClient.get<TraineeEnrollment[]>(`/trainees/${traineeId}/enrollments`);
+
+export const getTraineeProgress = (traineeId: string) =>
+	apiClient.get<TraineeProgress[]>(`/trainees/${traineeId}/progress`);
 
 const toPayload = (form: TraineeFormData) => ({
 	full_name: form.full_name,

@@ -3,6 +3,7 @@ const assert = require('node:assert/strict');
 const ExcelJS = require('exceljs');
 const { parseDuration, formatDuration, toDays } = require('../../src/utils/trainingDuration');
 const { createDepartmentMatcher } = require('../../src/utils/departmentMatch');
+const { parseTraineeTypes } = require('../../src/utils/traineeTypeMatch');
 const {
 	parseWorkbook,
 	buildPreview,
@@ -119,6 +120,7 @@ test('nhập danh mục: chương trình, loại hình theo mã, vòng + khoa', 
 	const lookups = {
 		matchDept: createDepartmentMatcher(DEPTS),
 		typeIds: new Set(['TRNTP-DTLT', 'TRNTP-GPHN']),
+		traineeTypeIds: new Set(['TRNTYPE-BS', 'TRNTYPE-DD', 'TRNTYPE-KTV']),
 		programByCode: new Map(),
 		lessonByCode: new Map(),
 		linkByPair: new Map(),
@@ -131,6 +133,8 @@ test('nhập danh mục: chương trình, loại hình theo mã, vòng + khoa', 
 	assert.equal(dtlt.department_id, 'D5');
 	assert.equal(dtlt.duration_value, 3);
 	assert.equal(dtlt.duration_unit, 'month');
+	assert.deepEqual(dtlt.trainee_type_ids, ['TRNTYPE-DD', 'TRNTYPE-KTV']);
+	assert.deepEqual(gphn.trainee_type_ids, ['TRNTYPE-BS']);
 	assert.equal(unknown.department_id, null);
 	assert.equal(unknown.department_note, 'Ng TH2');
 	assert.equal(gphn.training_type_id, 'TRNTP-GPHN');
@@ -145,4 +149,25 @@ test('nhập danh mục: chương trình, loại hình theo mã, vòng + khoa', 
 	);
 	assert.ok(warnings.some((w) => w.includes('Ng TH2')));
 	assert.ok(warnings.some((w) => w.includes('"rmh"')));
+});
+
+test('parseTraineeTypes: viết tắt, điều kiện kèm theo, nhân viên y tế', () => {
+	assert.deepEqual(parseTraineeTypes('BS, ĐD,KTV, YS YHCT').ids, [
+		'TRNTYPE-BS',
+		'TRNTYPE-DD',
+		'TRNTYPE-KTV',
+		'TRNTYPE-YS',
+	]);
+	assert.deepEqual(parseTraineeTypes('Bác sĩ đã có CCHN/GPHN').ids, ['TRNTYPE-BS']);
+	assert.deepEqual(parseTraineeTypes('Điều dưỡng, Y sỹ, KTV').ids, ['TRNTYPE-DD', 'TRNTYPE-YS', 'TRNTYPE-KTV']);
+	assert.deepEqual(parseTraineeTypes('BS, KTV xét nghiệm, Cử nhân sinh học, ĐD, Dược sĩ').ids, [
+		'TRNTYPE-BS',
+		'TRNTYPE-KTV',
+		'TRNTYPE-CN',
+		'TRNTYPE-DD',
+		'TRNTYPE-DSI',
+	]);
+	assert.equal(parseTraineeTypes('Nhân viên y tế').ids.length, 7);
+	assert.deepEqual(parseTraineeTypes('Bác sĩ, Kế toán'), { ids: ['TRNTYPE-BS'], unknown: ['Kế toán'] });
+	assert.deepEqual(parseTraineeTypes(null), { ids: [], unknown: [] });
 });

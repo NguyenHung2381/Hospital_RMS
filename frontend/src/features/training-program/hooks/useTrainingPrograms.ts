@@ -90,7 +90,8 @@ export function useTrainingPrograms() {
 			const deptIds = [p.department_id, ...(p.rotations ?? []).flatMap((r) => r.department_ids?.split(',') ?? [])].filter(Boolean);
 			if (departmentFilter === 'none' ? deptIds.length : departmentFilter !== 'all' && !deptIds.includes(departmentFilter))
 				return false;
-			if (traineeTypeFilter === 'none' ? p.trainee_type_id : traineeTypeFilter !== 'all' && p.trainee_type_id !== traineeTypeFilter)
+			const typeIds = p.trainee_type_ids ?? [];
+			if (traineeTypeFilter === 'none' ? typeIds.length : traineeTypeFilter !== 'all' && !typeIds.includes(traineeTypeFilter))
 				return false;
 			if (statusFilter !== 'all' && getProgramStatus(p) !== statusFilter) return false;
 			if (

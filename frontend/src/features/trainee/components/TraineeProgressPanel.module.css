@@ -1,0 +1,192 @@
+/* Tiến độ thực tế của học viên so với chương trình (tab Chương trình đào tạo) */
+.panel {
+	border-top: 1px dashed var(--color-gray-200);
+	margin-top: 8px;
+	padding-top: 8px;
+}
+
+.head {
+	display: flex;
+	align-items: flex-start;
+	gap: 8px;
+	width: 100%;
+	padding: 0;
+	border: 0;
+	background: none;
+	text-align: left;
+	font-family: var(--font-body);
+	cursor: pointer;
+}
+.chev {
+	display: inline-flex;
+	color: var(--color-gray-400);
+	margin-top: 1px;
+}
+.chev svg {
+	width: 16px;
+	height: 16px;
+}
+.headMain {
+	flex: 1;
+	min-width: 0;
+}
+.headLine {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 6px;
+}
+.headTitle {
+	font-size: var(--font-size-compact);
+	font-weight: var(--font-weight-semibold);
+	color: var(--color-gray-700);
+}
+.headMeta {
+	margin-top: 4px;
+	font-size: var(--font-size-2xs);
+	color: var(--color-gray-500);
+}
+
+/* Thanh tiến độ: phần xanh = đã hoàn thành, vạch đứng = thời gian đã qua */
+.bar {
+	position: relative;
+	height: 6px;
+	margin-top: 6px;
+	border-radius: var(--radius-full);
+	background: var(--color-gray-100);
+}
+.barFill {
+	height: 100%;
+	border-radius: inherit;
+	background: var(--color-primary);
+	transition: width 200ms ease;
+}
+.barMarker {
+	position: absolute;
+	top: -3px;
+	width: 2px;
+	height: 12px;
+	margin-left: -1px;
+	border-radius: 1px;
+	background: var(--color-gray-700);
+}
+
+.body {
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+	margin-top: 10px;
+	padding-left: 24px;
+}
+.sectionTitle {
+	font-size: var(--font-size-2xs);
+	font-weight: var(--font-weight-bold);
+	text-transform: uppercase;
+	letter-spacing: 0.04em;
+	color: var(--color-gray-400);
+	margin-bottom: 6px;
+}
+.list {
+	list-style: none;
+	margin: 0;
+	padding: 0;
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+}
+.item {
+	display: flex;
+	align-items: flex-start;
+	gap: 10px;
+	padding: 6px 10px;
+	border-radius: var(--radius-md, 6px);
+	background: var(--color-white);
+	border: 1px solid var(--color-gray-100);
+}
+.itemExtra {
+	opacity: 0.7;
+	border-style: dashed;
+}
+.itemMain {
+	flex: 1;
+	min-width: 0;
+}
+.itemTitle {
+	font-size: var(--font-size-compact);
+	color: var(--color-gray-700);
+}
+.code {
+	font-family: var(--font-mono);
+	font-size: var(--font-size-2xs);
+	color: var(--color-gray-500);
+	margin-right: 6px;
+}
+.muted {
+	color: var(--color-gray-400);
+}
+.segments {
+	display: flex;
+	flex-direction: column;
+	gap: 1px;
+	margin-top: 2px;
+}
+.segment {
+	font-size: var(--font-size-2xs);
+	color: var(--color-gray-500);
+}
+.extraNote {
+	font-size: var(--font-size-2xs);
+	color: #3c3489;
+	margin-top: 2px;
+}
+.syncNote {
+	font-size: var(--font-size-2xs);
+	color: #3c3489;
+	background: #eeedfe;
+	border-radius: var(--radius-lg);
+	padding: 6px 10px;
+}
+.emptyNote {
+	font-size: var(--font-size-2xs);
+	color: var(--color-gray-400);
+}
+
+.chip {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+	flex-shrink: 0;
+	padding: 2px 8px;
+	border-radius: var(--radius-full);
+	font-size: var(--font-size-2xs);
+	font-weight: var(--font-weight-bold);
+	white-space: nowrap;
+}
+.chip svg {
+	width: 12px;
+	height: 12px;
+}
+.tone_green {
+	background: #e1f5ea;
+	color: #085028;
+}
+.tone_blue {
+	background: #e6f0fb;
+	color: #0b4a8b;
+}
+.tone_amber {
+	background: #faeeda;
+	color: #633806;
+}
+.tone_red {
+	background: #fcebeb;
+	color: #791f1f;
+}
+.tone_gray {
+	background: var(--color-gray-100);
+	color: var(--color-gray-600);
+}
+.tone_violet {
+	background: #eeedfe;
+	color: #3c3489;
+}

@@ -116,9 +116,9 @@ DELETE /api/v1/courses/lecturer-assignments/:assignmentId  courses:update
 GET    /api/v1/courses/practice-board  courses:read
 PUT    /api/v1/courses/rotations/:rotationId  courses:update
 DELETE /api/v1/courses/rotations/:rotationId  courses:update
+POST   /api/v1/courses/rotations/:rotationId/move  courses:update
 POST   /api/v1/courses/rotations/:rotationId/refresh-mentor  courses:update
 POST   /api/v1/courses/rotations/:rotationId/retake  courses:update
-POST   /api/v1/courses/rotations/:rotationId/move  courses:update
 PUT    /api/v1/courses/sessions/:sessionId  courses:update
 DELETE /api/v1/courses/sessions/:sessionId  courses:update
 GET    /api/v1/courses/sessions/:sessionId/attendance  courses:read
@@ -357,6 +357,7 @@ PUT    /api/v1/trainees/:id  trainees:update
 GET    /api/v1/trainees/:id/documents  trainees:read_sensitive
 POST   /api/v1/trainees/:id/documents  trainees:update
 GET    /api/v1/trainees/:id/enrollments  trainees:read
+GET    /api/v1/trainees/:id/progress  trainees:read
 DELETE /api/v1/trainees/documents/:docId  trainees:update
 POST   /api/v1/trainees/grant-accounts  trainees:manage
 POST   /api/v1/trainees/import-excel  trainees:import

@@ -26,6 +26,16 @@ const RENAMED = {
 	'20260924_02_token_version_role_codes.sql': '2026-09-28_01_token_version_role_codes.sql',
 };
 
+// File đã xoá vì nội dung được gộp vào file khác → file gộp. Bản ghi cũ trong
+// schema_migrations không bị coi là "thiếu file"; xoá đi khi file gộp đã chạy.
+// File gộp vẫn chạy bình thường ở DB chưa có nó (phải idempotent).
+const MERGED = {
+	'2026-11-12_training_program_min_capacity.sql': '2026-11-12_dtlt_programs_lessons.sql',
+	'2026-11-13_dtlt_programs_lessons_data.sql': '2026-11-12_dtlt_programs_lessons.sql',
+	'2026-11-13_dtlt_programs_department_codes.sql': '2026-11-13_training_program_catalog.sql',
+	'2026-11-14_program_trainee_types.sql': '2026-11-13_training_program_catalog.sql',
+};
+
 const listFiles = () =>
 	fs
 		.readdirSync(MIGRATIONS_DIR)
@@ -61,7 +71,7 @@ const readStatus = async (conn) => {
 	const hasChecksum = (await scalar(conn, `SELECT COL_LENGTH(N'${TABLE}', N'checksum')`)) != null;
 	const rows = (
 		await conn.request().query(`SELECT filename${hasChecksum ? ', checksum' : ''}, applied_at FROM ${TABLE}`)
-	).recordset;
+	).recordset.filter((r) => !MERGED[r.filename]);
 	const applied = new Map(rows.map((r) => [RENAMED[r.filename] ?? r.filename, r]));
 
 	const pending = files.filter((f) => !applied.has(f));
@@ -99,6 +109,11 @@ const prepareTable = async (conn, files) => {
 		await conn.request().input('from', from).input('to', to).query(`
       UPDATE ${TABLE} SET filename = @to
       WHERE filename = @from AND NOT EXISTS (SELECT 1 FROM ${TABLE} WHERE filename = @to)`);
+	}
+	for (const [from, to] of Object.entries(MERGED)) {
+		await conn.request().input('from', from).input('to', to).query(`
+      DELETE FROM ${TABLE}
+      WHERE filename = @from AND EXISTS (SELECT 1 FROM ${TABLE} WHERE filename = @to)`);
 	}
 	const blank = (await conn.request().query(`SELECT filename FROM ${TABLE} WHERE checksum IS NULL`)).recordset;
 	for (const { filename } of blank) {
@@ -202,4 +217,4 @@ const nextFilename = (description, today = new Date()) => {
 	return `${date}_${slug}.sql`;
 };
 
-module.exports = { MIGRATIONS_DIR, RENAMED, listFiles, checksum, splitBatches, status, migrate, nextFilename };
+module.exports = { MIGRATIONS_DIR, RENAMED, MERGED, listFiles, checksum, splitBatches, status, migrate, nextFilename };
