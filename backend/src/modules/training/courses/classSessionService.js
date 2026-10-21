@@ -2,6 +2,36 @@ const { getPool, sql } = require('../../../config/db');
 const { broadcast } = require('../../events/eventService');
 const { scopeOf } = require('../../../permissions/authz');
 const { ASSIGNED_EXISTS_SQL } = require('./coursePolicy');
+const { fmtDateVN } = require('../../../utils/vnDate');
+
+// Buổi o trùng lịch giảng viên với buổi s: cùng GV, cùng ngày, chồng giờ (thiếu
+// giờ = cả ngày), khóa chưa huỷ. Chỉ cảnh báo, không chặn — GV có thể dạy ghép.
+const LECTURER_CLASH_SQL = (s, o) => `
+  ${o}.lecturer_id = ${s}.lecturer_id AND ${o}.session_date = ${s}.session_date AND ${o}.id <> ${s}.id
+  AND ISNULL(${o}.start_time, '00:00') < ISNULL(${s}.end_time, '23:59')
+  AND ISNULL(${s}.start_time, '00:00') < ISNULL(${o}.end_time, '23:59')
+  AND EXISTS (SELECT 1 FROM courses oc WHERE oc.id = ${o}.course_id AND oc.status <> 'cancelled')`;
+
+const timeRange = (r) => (r.start_time ? ` ${r.start_time}–${r.end_time ?? ''}` : ' (cả ngày)');
+
+// Cảnh báo trùng lịch cho các buổi vừa tạo / sửa (mỗi cặp trùng 1 dòng).
+const findLecturerClashes = async (sessionIds) => {
+	if (!sessionIds.length) return [];
+	const pool = await getPool();
+	const r = await pool.request().input('ids', sql.VarChar(sql.MAX), sessionIds.join(',')).query(`
+    SELECT l.full_name AS lecturer_name, o.session_date, o.start_time, o.end_time, c.name AS course_name
+    FROM class_sessions s
+    JOIN class_sessions o ON ${LECTURER_CLASH_SQL('s', 'o')}
+    JOIN courses c ON c.id = o.course_id
+    JOIN lecturers l ON l.id = s.lecturer_id
+    WHERE s.id IN (SELECT value FROM STRING_SPLIT(@ids, ','))
+    ORDER BY o.session_date, o.start_time
+  `);
+	return r.recordset.map(
+		(x) =>
+			`${x.lecturer_name} đã có buổi dạy ngày ${fmtDateVN(x.session_date)}${timeRange(x)} — ${x.course_name}`,
+	);
+};
 
 // ─── Buổi học ────────────────────────────────────────────────────────────
 // Lịch học toàn hệ thống (trang /admin/class-schedule): mọi buổi học trong
@@ -46,10 +76,17 @@ const listSessionsInRange = async (
 const listSessions = async (courseId) => {
 	const pool = await getPool();
 	const r = await pool.request().input('course_id', sql.VarChar(20), courseId).query(`
-    SELECT sess.*, s.title AS subject_name, l.full_name AS lecturer_name
+    SELECT sess.*, s.title AS subject_name, l.full_name AS lecturer_name, clash.lecturer_clashes
     FROM class_sessions sess
     LEFT JOIN program_lessons s ON s.id = sess.subject_id
     LEFT JOIN lecturers l ON l.id = sess.lecturer_id
+    OUTER APPLY (
+      SELECT STRING_AGG(CONCAT(oc.name, ' ', ISNULL(o.start_time, ''), '–', ISNULL(o.end_time, '')), '; ')
+             AS lecturer_clashes
+      FROM class_sessions o
+      JOIN courses oc ON oc.id = o.course_id
+      WHERE ${LECTURER_CLASH_SQL('sess', 'o')}
+    ) clash
     WHERE sess.course_id = @course_id
     ORDER BY sess.session_date, sess.start_time
   `);
@@ -75,7 +112,8 @@ const createSession = async (courseId, data, actorId) => {
       SELECT @new_id AS id;
     `);
 	broadcast('update', { entity: 'class_session' });
-	return { id: result.recordset[0].id };
+	const id = result.recordset[0].id;
+	return { id, warnings: await findLecturerClashes([id]) };
 };
 
 const updateSession = async (sessionId, data, actorId) => {
@@ -102,6 +140,7 @@ const updateSession = async (sessionId, data, actorId) => {
 	}
 	await req.query(`UPDATE class_sessions SET ${sets.join(', ')} WHERE id = @id`);
 	broadcast('update', { entity: 'class_session' });
+	return { warnings: await findLecturerClashes([sessionId]) };
 };
 
 const removeSession = async (sessionId) => {
@@ -165,7 +204,7 @@ const createSessionsBulk = async (courseId, data, actorId) => {
 		else skipped += 1;
 	}
 	broadcast('update', { entity: 'class_session' });
-	return { created: createdIds.length, skipped };
+	return { created: createdIds.length, skipped, warnings: await findLecturerClashes(createdIds) };
 };
 
 module.exports = {

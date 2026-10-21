@@ -83,8 +83,20 @@ const getMyTraining = async (actor) => {
                    WHERE la.course_id = c.id AND lec.user_id = @uid)
       )
     ORDER BY sess.session_date, sess.start_time;
+
+    -- Bài tôi dạy: từng bài được phân (GV chính / phụ) + số buổi mình đã được xếp dạy bài đó
+    SELECT la.id, la.course_id, c.name AS course_name, c.start_date, c.end_date,
+           s.code AS lesson_code, s.title AS lesson_title, la.role, la.hours,
+           (SELECT COUNT(*) FROM class_sessions cs
+            WHERE cs.course_id = la.course_id AND cs.subject_id = la.subject_id
+              AND cs.lecturer_id = la.lecturer_id) AS session_count
+    FROM lecturer_assignments la
+    JOIN lecturers l ON l.id = la.lecturer_id AND l.user_id = @uid
+    JOIN courses c ON c.id = la.course_id AND c.status <> 'cancelled'
+    JOIN program_lessons s ON s.id = la.subject_id
+    ORDER BY c.start_date DESC, c.name, s.title;
   `);
-	const [enrolled, grades, teaching, sessions] = r.recordsets;
+	const [enrolled, grades, teaching, sessions, myLessons] = r.recordsets;
 	// Đề đang mở mà mình chưa nộp — nhắc trên thẻ khóa học (tab "Thi online" đã gộp vào đây).
 	const papers = await examService.listAvailablePapersForUser(actor);
 	const openExamCount = (courseId) =>
@@ -104,6 +116,7 @@ const getMyTraining = async (actor) => {
 			grades: grades.filter((g) => g.enrollment_id === e.enrollment_id),
 		})),
 		teaching: teaching.map(withStatus),
+		teaching_lessons: myLessons,
 		upcoming_sessions: sessions,
 		open_courses: openCourses,
 	};

@@ -594,6 +594,11 @@ const removeLesson = async (lessonId, actorId) => {
 		.query('SELECT file_id FROM lesson_documents WHERE lesson_id = @lesson_id');
 	// Bài học thay cho "môn học" cũ: các cột subject_id trỏ tới bài học (FK không cascade) → gỡ trước khi xoá
 	await pool.request().input('id', sql.VarChar(20), lessonId).query(`
+    -- GV đã có dòng phân công cả khóa thì bỏ dòng theo bài (UQ_lecass_course_subject_lecturer)
+    DELETE la FROM lecturer_assignments la
+    WHERE la.subject_id = @id AND EXISTS (
+      SELECT 1 FROM lecturer_assignments o
+      WHERE o.course_id = la.course_id AND o.lecturer_id = la.lecturer_id AND o.subject_id IS NULL);
     UPDATE lecturer_assignments SET subject_id = NULL WHERE subject_id = @id;
     UPDATE class_sessions SET subject_id = NULL WHERE subject_id = @id;
     UPDATE question_bank SET subject_id = NULL WHERE subject_id = @id;

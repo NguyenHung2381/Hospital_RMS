@@ -9,6 +9,7 @@ import {
 	createSessionsBulk as apiCreateSessionsBulk,
 	decideEnrollment as apiDecideEnrollment,
 	getAssignments,
+	getCourseLessons,
 	getCertificates,
 	getDocuments,
 	getEnrollments,
@@ -25,18 +26,21 @@ import {
 	removeEnrollment as apiRemoveEnrollment,
 	removeSession as apiRemoveSession,
 	revokeCertificate as apiRevokeCertificate,
+	setLessonLecturers as apiSetLessonLecturers,
 	upsertGrade as apiUpsertGrade,
 } from '../api/courseApi';
 import type {
 	Certificate,
 	ClassSession,
 	CourseDocument,
+	CourseLesson,
 	CourseProgramLink,
 	DocType,
 	Enrollment,
 	EnrollmentStatus,
 	Grade,
 	LecturerAssignment,
+	LessonLecturersInput,
 } from '../types/course.type';
 
 export interface SimpleItem {
@@ -74,6 +78,13 @@ interface StaffCandidate {
  * registerTrainee nhận ra để gửi `user_id` thay vì `trainee_id`. */
 export const STAFF_OPTION_PREFIX = 'user:';
 
+/** Cảnh báo trùng lịch giảng viên từ backend — không chặn, chỉ báo. */
+const warnClashes = (warnings?: string[]) => {
+	if (!warnings?.length) return;
+	const more = warnings.length > 1 ? ` (và ${warnings.length - 1} buổi trùng khác)` : '';
+	showToast('info', `Cảnh báo trùng lịch giảng viên: ${warnings[0]}${more}`);
+};
+
 const joinLabel = (...parts: (string | null | undefined)[]) => parts.filter(Boolean).join(' · ');
 
 // "PGS.TS Nguyễn Văn A · Tim mạch" — thêm học hàm/học vị trước tên nếu tên chưa ghi sẵn.
@@ -101,6 +112,7 @@ export function useCourseDetail(courseId: string) {
 	const [trainees, setTrainees] = useState<SimpleItem[]>([]);
 	const [lecturers, setLecturers] = useState<LecturerItem[]>([]);
 	const [lessons, setLessons] = useState<SimpleItem[]>([]);
+	const [courseLessons, setCourseLessons] = useState<CourseLesson[]>([]);
 	const [loading, setLoading] = useState(true);
 	const [busy, setBusy] = useState(false);
 	const [error, setError] = useState('');
@@ -115,8 +127,9 @@ export function useCourseDetail(courseId: string) {
 			getDocuments(courseId),
 			getGrades(courseId),
 			getCertificates(courseId),
+			getCourseLessons(courseId),
 		])
-			.then(([links, e, a, s, doc, g, c]) => {
+			.then(([links, e, a, s, doc, g, c, cl]) => {
 				setProgramLinks(links);
 				setEnrollments(e);
 				setAssignments(a);
@@ -124,6 +137,7 @@ export function useCourseDetail(courseId: string) {
 				setDocuments(doc);
 				setGrades(g);
 				setCertificates(c);
+				setCourseLessons(cl);
 			})
 			.catch((err) => {
 				setError(err instanceof Error ? err.message : 'Không thể tải chi tiết khóa học');
@@ -278,6 +292,23 @@ export function useCourseDetail(courseId: string) {
 		[courseId, load],
 	);
 
+	/** Lưu 1 dòng của bảng Bài học × Giảng viên (GV chính + GV phụ + số tiết). */
+	const setLessonLecturers = useCallback(
+		async (lessonId: string, data: LessonLecturersInput) => {
+			setBusy(true);
+			setError('');
+			try {
+				await apiSetLessonLecturers(courseId, lessonId, data);
+				setAssignments(await getAssignments(courseId));
+			} catch (err) {
+				setError(err instanceof Error ? err.message : 'Lưu phân công thất bại');
+			} finally {
+				setBusy(false);
+			}
+		},
+		[courseId],
+	);
+
 	const removeAssignment = useCallback(
 		async (assignmentId: string) => {
 			setBusy(true);
@@ -305,7 +336,7 @@ export function useCourseDetail(courseId: string) {
 			setBusy(true);
 			setError('');
 			try {
-				await apiCreateSession(courseId, data);
+				warnClashes((await apiCreateSession(courseId, data)).warnings);
 				await load();
 			} catch (err) {
 				setError(err instanceof Error ? err.message : 'Thêm buổi học thất bại');
@@ -346,6 +377,7 @@ export function useCourseDetail(courseId: string) {
 			setError('');
 			try {
 				const result = await apiCreateSessionsBulk(courseId, data);
+				warnClashes(result.warnings);
 				await load();
 				return result;
 			} catch (err) {
@@ -483,6 +515,7 @@ export function useCourseDetail(courseId: string) {
 		trainees,
 		lecturers,
 		lessons,
+		courseLessons,
 		loading,
 		busy,
 		error,
@@ -494,6 +527,7 @@ export function useCourseDetail(courseId: string) {
 		decideEnrollmentsBulk,
 		removeEnrollment,
 		assignLecturer,
+		setLessonLecturers,
 		removeAssignment,
 		createSession,
 		createSessionsBulk,

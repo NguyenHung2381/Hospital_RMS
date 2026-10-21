@@ -42,6 +42,20 @@ export interface MyTeachingCourse extends MyCourseBase {
 	approved_count: number;
 }
 
+/** "Bài tôi dạy": 1 dòng = 1 bài được phân công trong 1 khóa */
+export interface MyTeachingLesson {
+	id: string;
+	course_id: string;
+	course_name: string;
+	start_date: string | null;
+	end_date: string | null;
+	lesson_code: string | null;
+	lesson_title: string;
+	role: 'main' | 'assistant';
+	hours: number | null;
+	session_count: number;
+}
+
 export interface MySession {
 	id: string;
 	course_id: string;
@@ -61,6 +75,7 @@ export type OpenCourse = PublicCourse;
 export interface MyTraining {
 	enrolled: MyEnrolledCourse[];
 	teaching: MyTeachingCourse[];
+	teaching_lessons: MyTeachingLesson[];
 	upcoming_sessions: MySession[];
 	open_courses: OpenCourse[];
 }

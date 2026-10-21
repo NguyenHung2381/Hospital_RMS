@@ -299,6 +299,20 @@ const removeAssignment = asyncHandler(async (req, res) => {
 	return success(res, null, 'Đã gỡ phân công');
 });
 
+const listCourseLessons = asyncHandler(async (req, res) => {
+	return success(res, await lecturerAssignmentService.listCourseLessons(req.params.id));
+});
+
+const setLessonLecturers = asyncHandler(async (req, res) => {
+	await lecturerAssignmentService.setLessonLecturers(
+		req.params.id,
+		req.params.lessonId,
+		req.body,
+		req.user.id,
+	);
+	return success(res, null, 'Đã lưu giảng viên của bài');
+});
+
 // ─── Class sessions ───────────────────────────────────────────────────────
 const listSessionsInRange = asyncHandler(async (req, res) => {
 	const { from, to, course_id } = req.query;
@@ -329,8 +343,11 @@ const createSession = asyncHandler(async (req, res) => {
 });
 
 const updateSession = asyncHandler(async (req, res) => {
-	await classSessionService.updateSession(req.params.sessionId, req.body, req.user.id);
-	return success(res, null, 'Đã cập nhật buổi học');
+	return success(
+		res,
+		await classSessionService.updateSession(req.params.sessionId, req.body, req.user.id),
+		'Đã cập nhật buổi học',
+	);
 });
 
 const removeSession = asyncHandler(async (req, res) => {
@@ -479,6 +496,8 @@ module.exports = {
 	listAssignments,
 	assignLecturer,
 	removeAssignment,
+	listCourseLessons,
+	setLessonLecturers,
 	listSessions,
 	listSessionsInRange,
 	getPracticeBoard,

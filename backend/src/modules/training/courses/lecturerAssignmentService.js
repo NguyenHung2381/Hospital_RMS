@@ -1,7 +1,14 @@
-const { getPool, sql } = require('../../../config/db');
+const { getPool, sql, withTransaction } = require('../../../config/db');
 const { broadcast } = require('../../events/eventService');
 const { ROLE, roleIdOf } = require('../../access/roleCodes');
 const { httpError } = require('../../../utils/httpError');
+
+// lecturer_assignments.subject_id trỏ program_lessons (tên cột cũ từ thời "môn học").
+// role: 'main' = GV chính (mỗi bài tối đa 1, UQ_lecass_main) | 'assistant' = GV phụ.
+// subject_id NULL = phân công cả khóa. Xem 2026-11-20_lecturer_assignment_roles.sql.
+
+const isUniqueViolation = (err) =>
+	[2601, 2627].includes(err?.number ?? err?.originalError?.info?.number);
 
 // ─── Phân công giảng viên ────────────────────────────────────────────────
 const listAssignments = async (courseId) => {
@@ -17,15 +24,31 @@ const listAssignments = async (courseId) => {
 	return r.recordset;
 };
 
-const assignLecturer = async (courseId, data, actorId) => {
+// Bài học (không tính vòng thực hành GPHN) thuộc các chương trình của khóa — các
+// dòng của bảng Bài học × Giảng viên. 1 bài nằm ở 2 chương trình của khóa chỉ lấy 1 dòng.
+const listCourseLessons = async (courseId) => {
 	const pool = await getPool();
-	// Không phân công học viên làm giảng viên: chặn tài khoản học viên (VT08) và
-	// người đang đăng ký học chính khóa này (khớp theo hồ sơ người / tài khoản).
-	const check = await pool
-		.request()
+	const r = await pool.request().input('course_id', sql.VarChar(20), courseId).query(`
+    SELECT pl.id, pl.code, pl.title, pl.theory_hours, pl.practice_hours, pl.total_hours,
+           MIN(tp.name) AS program_name
+    FROM course_programs cp
+    JOIN training_programs tp ON tp.id = cp.program_id
+    JOIN lesson_programs lp ON lp.program_id = cp.program_id
+    JOIN program_lessons pl ON pl.id = lp.lesson_id AND pl.lesson_kind <> 'rotation' AND pl.is_active = 1
+    WHERE cp.course_id = @course_id
+    GROUP BY pl.id, pl.code, pl.title, pl.theory_hours, pl.practice_hours, pl.total_hours
+    ORDER BY MIN(tp.name), MIN(lp.display_order), pl.title
+  `);
+	return r.recordset;
+};
+
+// Không phân công học viên làm giảng viên: chặn tài khoản học viên (VT08) và
+// người đang đăng ký học chính khóa này (khớp theo hồ sơ người / tài khoản).
+const assertAssignable = async (request, courseId, lecturerId) => {
+	const check = await request
 		.input('course_id', sql.VarChar(20), courseId)
-		.input('lecturer_id', sql.VarChar(20), data.lecturer_id).query(`
-      SELECT l.is_active, u.role_id,
+		.input('lecturer_id', sql.VarChar(20), lecturerId).query(`
+      SELECT l.full_name, l.is_active, u.role_id,
              (SELECT COUNT(*) FROM course_enrollments e
               JOIN trainees t ON t.id = e.trainee_id
               WHERE e.course_id = @course_id AND e.status <> 'rejected'
@@ -45,25 +68,135 @@ const assignLecturer = async (courseId, data, actorId) => {
 	if (lec.enrolled > 0) {
 		throw httpError(
 			400,
-			'Người này đang là học viên của khóa học, không thể phân công làm giảng viên.',
+			`${lec.full_name} đang là học viên của khóa học, không thể phân công làm giảng viên.`,
 		);
 	}
+};
 
-	const result = await pool
-		.request()
+const insertAssignment = (
+	request,
+	{ courseId, lecturerId, subjectId, role, hours, note, actorId },
+) =>
+	request
 		.input('actor_id', sql.VarChar(20), actorId)
 		.input('course_id', sql.VarChar(20), courseId)
-		.input('lecturer_id', sql.VarChar(20), data.lecturer_id)
-		.input('subject_id', sql.VarChar(20), data.subject_id || null)
-		.input('note', sql.NVarChar(255), data.note || null).query(`
+		.input('lecturer_id', sql.VarChar(20), lecturerId)
+		.input('subject_id', sql.VarChar(20), subjectId || null)
+		.input('role', sql.VarChar(10), role === 'assistant' ? 'assistant' : 'main')
+		.input('hours', sql.Int, hours ?? null)
+		.input('note', sql.NVarChar(255), note || null).query(`
       DECLARE @new_id VARCHAR(20);
       EXEC sp_gen_lecturer_assignment_id @actor_id = @actor_id, @new_id = @new_id OUTPUT;
-      INSERT INTO lecturer_assignments (id, course_id, lecturer_id, subject_id, note, created_by)
-      VALUES (@new_id, @course_id, @lecturer_id, @subject_id, @note, @actor_id);
+      INSERT INTO lecturer_assignments (id, course_id, lecturer_id, subject_id, role, hours, note, created_by)
+      VALUES (@new_id, @course_id, @lecturer_id, @subject_id, @role, @hours, @note, @actor_id);
       SELECT @new_id AS id;
     `);
+
+const toHours = (v) => {
+	if (v === undefined || v === null || v === '') return null;
+	const n = Number(v);
+	if (!Number.isInteger(n) || n < 0) throw httpError(400, 'Số tiết phải là số nguyên không âm.');
+	return n;
+};
+
+const assignLecturer = async (courseId, data, actorId) => {
+	const pool = await getPool();
+	await assertAssignable(pool.request(), courseId, data.lecturer_id);
+	try {
+		const result = await insertAssignment(pool.request(), {
+			courseId,
+			lecturerId: data.lecturer_id,
+			subjectId: data.subject_id,
+			role: data.role,
+			hours: toHours(data.hours),
+			note: data.note,
+			actorId,
+		});
+		broadcast('update', { entity: 'lecturer_assignment' });
+		return { id: result.recordset[0].id };
+	} catch (err) {
+		if (isUniqueViolation(err)) {
+			throw httpError(409, 'Giảng viên đã được phân công (hoặc bài đã có giảng viên chính).');
+		}
+		throw err;
+	}
+};
+
+/**
+ * Đặt lại toàn bộ giảng viên của 1 bài trong khóa (1 dòng của bảng Bài học × Giảng viên).
+ * data = { main: { lecturer_id, hours } | null, assistants: [{ lecturer_id, hours }] }.
+ * GV bị bỏ khỏi bài thì xoá phân công; GV giữ lại thì giữ nguyên mã phân công.
+ */
+const setLessonLecturers = async (courseId, lessonId, data, actorId) => {
+	const wanted = new Map();
+	for (const a of data.assistants || []) {
+		if (a?.lecturer_id) wanted.set(a.lecturer_id, { role: 'assistant', hours: toHours(a.hours) });
+	}
+	// GV chính ghi đè nếu trùng người với GV phụ
+	if (data.main?.lecturer_id) {
+		wanted.set(data.main.lecturer_id, { role: 'main', hours: toHours(data.main.hours) });
+	}
+
+	const pool = await getPool();
+	const inCourse = await pool
+		.request()
+		.input('course_id', sql.VarChar(20), courseId)
+		.input('lesson_id', sql.VarChar(20), lessonId).query(`
+      SELECT TOP 1 1 AS ok FROM course_programs cp
+      JOIN lesson_programs lp ON lp.program_id = cp.program_id
+      WHERE cp.course_id = @course_id AND lp.lesson_id = @lesson_id
+    `);
+	if (!inCourse.recordset.length) {
+		throw httpError(400, 'Bài học không thuộc chương trình của khóa học.');
+	}
+	for (const lecturerId of wanted.keys()) {
+		await assertAssignable(pool.request(), courseId, lecturerId);
+	}
+
+	await withTransaction(async (tx) => {
+		const keep = [...wanted.keys()];
+		const req = new sql.Request(tx)
+			.input('course_id', sql.VarChar(20), courseId)
+			.input('lesson_id', sql.VarChar(20), lessonId);
+		keep.forEach((id, i) => req.input(`l${i}`, sql.VarChar(20), id));
+		const notKept = keep.length
+			? `AND lecturer_id NOT IN (${keep.map((_, i) => `@l${i}`).join(', ')})`
+			: '';
+		// Hạ hết về 'assistant' trước để đổi GV chính không vướng UQ_lecass_main.
+		const existing = await req.query(`
+      DELETE FROM lecturer_assignments
+      WHERE course_id = @course_id AND subject_id = @lesson_id ${notKept};
+      UPDATE lecturer_assignments SET role = 'assistant'
+      WHERE course_id = @course_id AND subject_id = @lesson_id;
+      SELECT id, lecturer_id FROM lecturer_assignments
+      WHERE course_id = @course_id AND subject_id = @lesson_id;
+    `);
+		const existingId = new Map(existing.recordset.map((r) => [r.lecturer_id, r.id]));
+		for (const [lecturerId, { role, hours }] of wanted) {
+			const id = existingId.get(lecturerId);
+			if (id) {
+				await new sql.Request(tx)
+					.input('id', sql.VarChar(20), id)
+					.input('role', sql.VarChar(10), role)
+					.input('hours', sql.Int, hours)
+					.input('actor_id', sql.VarChar(20), actorId).query(`
+            UPDATE lecturer_assignments
+            SET role = @role, hours = @hours, updated_at = SYSDATETIME(), updated_by = @actor_id
+            WHERE id = @id
+          `);
+			} else {
+				await insertAssignment(new sql.Request(tx), {
+					courseId,
+					lecturerId,
+					subjectId: lessonId,
+					role,
+					hours,
+					actorId,
+				});
+			}
+		}
+	});
 	broadcast('update', { entity: 'lecturer_assignment' });
-	return { id: result.recordset[0].id };
 };
 
 const removeAssignment = async (assignmentId) => {
@@ -77,6 +210,8 @@ const removeAssignment = async (assignmentId) => {
 
 module.exports = {
 	listAssignments,
+	listCourseLessons,
 	assignLecturer,
+	setLessonLecturers,
 	removeAssignment,
 };
