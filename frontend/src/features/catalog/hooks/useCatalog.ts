@@ -1,5 +1,5 @@
 import type { ComponentType } from 'react';
-import { CalendarSvg, LayersSvg, TagSvg, UserCheckSvg } from '@/assets/icons';
+import { CalendarSvg, FileTextSvg, LayersSvg, TagSvg, UserCheckSvg } from '@/assets/icons';
 import { useClientPaging } from '@/shared/hooks/useClientPaging';
 import { showToast } from '@/shared/utils/feedback';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -71,13 +71,20 @@ export const TAB_CONFIG: Record<
 		realtime: 'hospital_training_topic',
 		icon: TagSvg,
 	},
+	'trainee-document-types': {
+		label: 'Loại giấy tờ',
+		subtitle: 'Giấy tờ trong hồ sơ học viên và loại khóa bắt buộc nộp (checklist hồ sơ)',
+		placeholder: 'VD: Giấy khám sức khỏe',
+		realtime: 'trainee_document_type',
+		icon: FileTextSvg,
+	},
 };
 
 export const CATALOG_GROUPS: Record<CatalogGroup, { title: string; tabs: CatalogTab[]; breadcrumb?: string }> = {
 	research: { title: 'Danh mục NCKH', tabs: ['categories', 'levels', 'round-types'] },
 	training: {
 		title: 'Danh mục Đào tạo',
-		tabs: ['trainee-types', 'training-forms', 'training-types', 'hospital-training-topics'],
+		tabs: ['trainee-types', 'training-forms', 'training-types', 'hospital-training-topics', 'trainee-document-types'],
 		breadcrumb: 'Đào tạo',
 	},
 };

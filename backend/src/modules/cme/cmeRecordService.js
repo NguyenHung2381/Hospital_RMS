@@ -111,9 +111,11 @@ const create = async (data, actorId, { fetch = true } = {}) => {
 	return fetch ? getById(id) : { id };
 };
 
-const update = async (id, data, actorId) => {
+// extraSets: câu SET thêm chạy cùng 1 lệnh UPDATE (vd. updateMine đưa về 'pending') —
+// tránh broadcast trạng thái cũ giữa 2 lệnh.
+const update = async (id, data, actorId, { extraSets = [] } = {}) => {
 	const pool = await getPool();
-	const sets = ['updated_at = GETDATE()', 'updated_by = @actor_id'];
+	const sets = ['updated_at = GETDATE()', 'updated_by = @actor_id', ...extraSets];
 	const req = pool
 		.request()
 		.input('id', sql.VarChar(20), id)
@@ -130,17 +132,26 @@ const update = async (id, data, actorId) => {
 		quantity: sql.Decimal(8, 2),
 		end_date: sql.Date,
 	};
-	// year là cột thường: đổi ngày hoạt động thì cập nhật theo, trừ khi truyền year rõ ràng
-	if (data.year === undefined && data.activity_date)
-		data = { ...data, year: new Date(data.activity_date).getUTCFullYear() };
+	// year là cột thường NOT NULL: không truyền / để trống thì lấy theo ngày hoạt động
+	// (giống create); không có cả hai thì giữ năm cũ, không ghi NULL.
+	const year = Number(data.year);
+	if (Number.isInteger(year) && year > 0) data = { ...data, year };
+	else if (data.activity_date) data = { ...data, year: new Date(data.activity_date).getUTCFullYear() };
+	else data = { ...data, year: undefined };
 	fieldMap.year = sql.Int;
+	// Cột NOT NULL — gửi rỗng/null thì bỏ qua thay vì để SQL báo lỗi 500
+	const NOT_NULL = new Set(['user_id', 'title', 'credits']);
 	for (const [field, type] of Object.entries(fieldMap)) {
-		if (data[field] !== undefined) {
-			sets.push(`${field} = @${field}`);
-			req.input(field, type, data[field] === '' ? null : data[field]);
-		}
+		let value = data[field];
+		if (value === undefined) continue;
+		if (value === '') value = null;
+		if (value === null && NOT_NULL.has(field)) continue;
+		if (field === 'title') value = String(value).trim();
+		sets.push(`${field} = @${field}`);
+		req.input(field, type, value);
 	}
-	await req.query(`UPDATE cme_records SET ${sets.join(', ')} WHERE id = @id`);
+	const r = await req.query(`UPDATE cme_records SET ${sets.join(', ')} WHERE id = @id`);
+	if (!r.rowsAffected[0]) return null;
 	broadcast('update', { entity: 'cme_record' });
 	return getById(id);
 };
@@ -198,11 +209,16 @@ const removeMany = async (ids, actorId) => {
 const addEvidence = async (id, file, actorId) => {
 	const pool = await getPool();
 	const savedFile = await trainingFileService.saveUploadedFile('cme_evidence', id, file, actorId);
-	await pool
+	// OUTPUT deleted.* = minh chứng cũ bị thay → gỡ luôn, không để file mồ côi
+	const r = await pool
 		.request()
 		.input('id', sql.VarChar(20), id)
 		.input('file_id', sql.VarChar(20), savedFile.id)
-		.query('UPDATE cme_records SET evidence_file_id = @file_id WHERE id = @id');
+		.query(
+			'UPDATE cme_records SET evidence_file_id = @file_id OUTPUT deleted.evidence_file_id AS old_id WHERE id = @id',
+		);
+	const oldId = r.recordset[0]?.old_id;
+	if (oldId && oldId !== savedFile.id) await trainingFileService.softDelete(oldId, actorId);
 	broadcast('update', { entity: 'cme_record' });
 	return getById(id);
 };
@@ -235,15 +251,14 @@ const createMine = async (data, userId) => {
 const updateMine = async (id, data, userId) => {
 	await assertEditableMine(id, userId);
 	const { user_id: _ignored, ...safe } = data;
-	await update(id, safe, userId);
-	const pool = await getPool();
-	await pool
-		.request()
-		.input('id', sql.VarChar(20), id)
-		.query(
-			"UPDATE cme_records SET approval_status = 'pending', reviewed_by = NULL, reviewed_at = NULL, reject_reason = NULL WHERE id = @id",
-		);
-	return getById(id);
+	return update(id, safe, userId, {
+		extraSets: [
+			"approval_status = 'pending'",
+			'reviewed_by = NULL',
+			'reviewed_at = NULL',
+			'reject_reason = NULL',
+		],
+	});
 };
 
 const removeMine = async (id, userId) => {

@@ -37,6 +37,7 @@ export const PERMISSION_KEYS = [
 	'courses:delete',
 	'courses:approve',
 	'exams:manage',
+	'grades:unlock',
 	'trainees:read',
 	'trainees:read_sensitive',
 	'trainees:create',

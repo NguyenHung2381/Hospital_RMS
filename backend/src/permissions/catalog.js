@@ -51,6 +51,7 @@ const ACTION_LABELS = {
 	access: 'Truy cập',
 	manage: 'Quản lý',
 	roster: 'Phân ca',
+	unlock: 'Mở khóa',
 };
 
 const MODULES = [
@@ -243,6 +244,19 @@ const MODULES = [
 						'Quản lý thi & kiểm tra',
 						'Ngân hàng câu hỏi, đề thi, xem và chấm bài làm của học viên',
 						{ seedFrom: ['courses:update'] },
+					),
+				],
+			},
+			{
+				key: 'grades',
+				label: 'Bảng điểm',
+				permissions: [
+					p(
+						'PERM-GRD-UNLOCK',
+						'unlock',
+						'Mở khóa bảng điểm',
+						'Mở khóa bảng điểm đã khóa để sửa điểm (ghi nhật ký)',
+						{ seedFrom: ['courses:approve'] },
 					),
 				],
 			},

@@ -107,6 +107,7 @@ export function RoundInfoTab({
 				<select
 					id='round_type_id'
 					className={`${styles.formSelect} ${errors.round_type_id ? styles.hasError : ''}`}
+					aria-invalid={errors.round_type_id ? true : undefined}
 					value={form.round_type_id}
 					onChange={(e) => set('round_type_id', e.target.value)}
 				>

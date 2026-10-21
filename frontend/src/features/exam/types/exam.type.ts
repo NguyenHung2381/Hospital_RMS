@@ -41,7 +41,16 @@ export interface ExamPaper {
 	question_count: number;
 	attempt_count: number;
 	questions?: ExamPaperQuestion[];
+	/** Phần thi: lý thuyết | thực hành (giai đoạn 4) */
+	exam_part: ExamPart;
+	/** Chấm ẩn danh: người chấm chỉ thấy mã bài */
+	blind_grading: boolean;
+	grader_ids: string[];
+	grader_names: string | null;
 }
+
+export type ExamPart = 'theory' | 'practice';
+export const EXAM_PART_LABEL: Record<ExamPart, string> = { theory: 'Lý thuyết', practice: 'Thực hành' };
 
 export interface ExamAttemptSummary {
 	id: string;

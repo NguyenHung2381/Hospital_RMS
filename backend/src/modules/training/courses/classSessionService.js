@@ -3,6 +3,7 @@ const { broadcast } = require('../../events/eventService');
 const { scopeOf } = require('../../../permissions/authz');
 const { ASSIGNED_EXISTS_SQL } = require('./coursePolicy');
 const { fmtDateVN } = require('../../../utils/vnDate');
+const { assertClassOpen } = require('./programClassService');
 
 // Buổi o trùng lịch giảng viên với buổi s: cùng GV, cùng ngày, chồng giờ (thiếu
 // giờ = cả ngày), khóa chưa huỷ. Chỉ cảnh báo, không chặn — GV có thể dạy ghép.
@@ -93,7 +94,12 @@ const listSessions = async (courseId) => {
 	return r.recordset;
 };
 
+// Buổi lý thuyết / thực hành (tính chuyên cần LT/TH ở bảng điểm). NULL = suy ra từ
+// loại bài học — xem gradebookService.SESSION_KIND_SQL.
+const kindOf = (v) => (['theory', 'practice'].includes(v) ? v : null);
+
 const createSession = async (courseId, data, actorId) => {
+	await assertClassOpen(courseId, data.subject_id);
 	const pool = await getPool();
 	const result = await pool
 		.request()
@@ -104,11 +110,12 @@ const createSession = async (courseId, data, actorId) => {
 		.input('session_date', sql.Date, data.session_date)
 		.input('start_time', sql.VarChar(5), data.start_time || null)
 		.input('end_time', sql.VarChar(5), data.end_time || null)
+		.input('session_kind', sql.VarChar(10), kindOf(data.session_kind))
 		.input('room', sql.NVarChar(255), data.room || null).query(`
       DECLARE @new_id VARCHAR(20);
       EXEC sp_gen_class_session_id @actor_id = @actor_id, @new_id = @new_id OUTPUT;
-      INSERT INTO class_sessions (id, course_id, subject_id, lecturer_id, session_date, start_time, end_time, room, created_by)
-      VALUES (@new_id, @course_id, @subject_id, @lecturer_id, @session_date, @start_time, @end_time, @room, @actor_id);
+      INSERT INTO class_sessions (id, course_id, subject_id, lecturer_id, session_date, start_time, end_time, room, session_kind, created_by)
+      VALUES (@new_id, @course_id, @subject_id, @lecturer_id, @session_date, @start_time, @end_time, @room, @session_kind, @actor_id);
       SELECT @new_id AS id;
     `);
 	broadcast('update', { entity: 'class_session' });
@@ -118,6 +125,14 @@ const createSession = async (courseId, data, actorId) => {
 
 const updateSession = async (sessionId, data, actorId) => {
 	const pool = await getPool();
+	if (data.subject_id !== undefined) {
+		const cur = await pool
+			.request()
+			.input('id', sql.VarChar(20), sessionId)
+			.query('SELECT course_id, subject_id FROM class_sessions WHERE id = @id');
+		const row = cur.recordset[0];
+		if (row && (row.subject_id ?? '') !== (data.subject_id ?? '')) await assertClassOpen(row.course_id, data.subject_id);
+	}
 	const sets = ['updated_at = GETDATE()', 'updated_by = @actor_id'];
 	const req = pool
 		.request()
@@ -131,11 +146,16 @@ const updateSession = async (sessionId, data, actorId) => {
 		start_time: sql.VarChar(5),
 		end_time: sql.VarChar(5),
 		room: sql.NVarChar(255),
+		session_kind: sql.VarChar(10),
 	};
 	for (const [field, type] of Object.entries(fieldMap)) {
 		if (data[field] !== undefined) {
 			sets.push(`${field} = @${field}`);
-			req.input(field, type, data[field] === '' ? null : data[field]);
+			req.input(
+				field,
+				type,
+				field === 'session_kind' ? kindOf(data[field]) : data[field] === '' ? null : data[field],
+			);
 		}
 	}
 	await req.query(`UPDATE class_sessions SET ${sets.join(', ')} WHERE id = @id`);
@@ -157,6 +177,7 @@ const removeSession = async (sessionId) => {
 // học trùng course_id + session_date + start_time (DB không có UNIQUE constraint
 // chống trùng lịch — xem ghi chú trong migration).
 const createSessionsBulk = async (courseId, data, actorId) => {
+	await assertClassOpen(courseId, data.subject_id);
 	const pool = await getPool();
 	const { start_date, end_date, weekdays, start_time, end_time, room, lecturer_id, subject_id } =
 		data;
@@ -183,6 +204,7 @@ const createSessionsBulk = async (courseId, data, actorId) => {
 			.input('session_date', sql.Date, sessionDate)
 			.input('start_time', sql.VarChar(5), start_time || null)
 			.input('end_time', sql.VarChar(5), end_time || null)
+			.input('session_kind', sql.VarChar(10), kindOf(data.session_kind))
 			.input('room', sql.NVarChar(255), room || null).query(`
         IF EXISTS (
           SELECT 1 FROM class_sessions
@@ -194,8 +216,8 @@ const createSessionsBulk = async (courseId, data, actorId) => {
         BEGIN
           DECLARE @new_id VARCHAR(20);
           EXEC sp_gen_class_session_id @actor_id = @actor_id, @new_id = @new_id OUTPUT;
-          INSERT INTO class_sessions (id, course_id, subject_id, lecturer_id, session_date, start_time, end_time, room, created_by)
-          VALUES (@new_id, @course_id, @subject_id, @lecturer_id, @session_date, @start_time, @end_time, @room, @actor_id);
+          INSERT INTO class_sessions (id, course_id, subject_id, lecturer_id, session_date, start_time, end_time, room, session_kind, created_by)
+          VALUES (@new_id, @course_id, @subject_id, @lecturer_id, @session_date, @start_time, @end_time, @room, @session_kind, @actor_id);
           SELECT @new_id AS id;
         END
       `);

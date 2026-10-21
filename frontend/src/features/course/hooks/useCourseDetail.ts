@@ -27,7 +27,6 @@ import {
 	removeSession as apiRemoveSession,
 	revokeCertificate as apiRevokeCertificate,
 	setLessonLecturers as apiSetLessonLecturers,
-	upsertGrade as apiUpsertGrade,
 } from '../api/courseApi';
 import type {
 	Certificate,
@@ -39,6 +38,7 @@ import type {
 	Enrollment,
 	EnrollmentStatus,
 	Grade,
+	SessionKind,
 	LecturerAssignment,
 	LessonLecturersInput,
 } from '../types/course.type';
@@ -117,6 +117,8 @@ export function useCourseDetail(courseId: string) {
 	const [busy, setBusy] = useState(false);
 	const [error, setError] = useState('');
 	const [attendanceSessionId, setAttendanceSessionId] = useState<string | null>(null);
+	// Khóa ĐTLT thường: sĩ số tính theo lớp (chương trình) — xem CourseProgramLink.class_rule
+	const classRule = programLinks.some((l) => l.class_rule);
 
 	const load = useCallback(() => {
 		return Promise.all([
@@ -201,6 +203,8 @@ export function useCourseDetail(courseId: string) {
 				// Ghi danh hộ được duyệt luôn; khóa GPHN backend đã tự xếp vòng — chỉ báo khi chưa xếp được
 				if (out.auto_warning) showToast('error', out.auto_warning);
 				else if (out.batch_name) showToast('success', `Đã ghi danh và xếp vào ${out.batch_name}`);
+				else if (out.status === 'waitlisted' && classRule)
+					showToast('info', `Lớp đã đủ sĩ số tối đa — hồ sơ được lưu cho khóa sau (vị trí ${out.waitlist_position ?? '?'})`);
 				else if (out.waitlist_position != null)
 					showToast('info', `Đã ghi danh — đang chờ đợt học (vị trí ${out.waitlist_position})`);
 				else if (out.status === 'waitlisted') showToast('info', 'Khóa đã đủ sĩ số — học viên được đưa vào danh sách chờ');
@@ -212,7 +216,7 @@ export function useCourseDetail(courseId: string) {
 				setBusy(false);
 			}
 		},
-		[courseId, load, loadEnrollCandidates],
+		[courseId, load, loadEnrollCandidates, classRule],
 	);
 
 	const decideEnrollment = useCallback(
@@ -222,6 +226,8 @@ export function useCourseDetail(courseId: string) {
 			try {
 				const out = await apiDecideEnrollment(enrollmentId, status, note);
 				if (out.batch_name) showToast('success', `Đã duyệt và xếp vào ${out.batch_name}`);
+				else if (out.status === 'waitlisted' && classRule)
+					showToast('info', `Lớp đã đủ sĩ số tối đa — hồ sơ được lưu cho khóa sau (vị trí ${out.waitlist_position ?? '?'})`);
 				await load();
 			} catch (err) {
 				setError(err instanceof Error ? err.message : 'Cập nhật thất bại');
@@ -229,7 +235,7 @@ export function useCourseDetail(courseId: string) {
 				setBusy(false);
 			}
 		},
-		[load],
+		[load, classRule],
 	);
 
 	/** Duyệt/từ chối nhiều đăng ký. Gọi tuần tự để backend kiểm tra sĩ số theo đúng thứ tự;
@@ -332,6 +338,7 @@ export function useCourseDetail(courseId: string) {
 			start_time?: string;
 			end_time?: string;
 			room?: string;
+			session_kind?: SessionKind;
 		}) => {
 			setBusy(true);
 			setError('');
@@ -372,6 +379,7 @@ export function useCourseDetail(courseId: string) {
 			room?: string;
 			lecturer_id?: string;
 			subject_id?: string;
+			session_kind?: SessionKind;
 		}) => {
 			setBusy(true);
 			setError('');
@@ -430,32 +438,6 @@ export function useCourseDetail(courseId: string) {
 		apiIncrementDocumentDownload(docId).catch(() => {});
 		setDocuments((prev) => prev.map((d) => (d.id === docId ? { ...d, download_count: d.download_count + 1 } : d)));
 	}, []);
-
-	const upsertGrade = useCallback(
-		async (data: {
-			enrollment_id: string;
-			subject_id?: string;
-			program_id?: string;
-			score?: number;
-			result?: string;
-			regular_score?: number;
-			midterm_score?: number;
-			final_score?: number;
-			note?: string;
-		}) => {
-			setBusy(true);
-			setError('');
-			try {
-				await apiUpsertGrade(data);
-				await load();
-			} catch (err) {
-				setError(err instanceof Error ? err.message : 'Lưu kết quả thất bại');
-			} finally {
-				setBusy(false);
-			}
-		},
-		[load],
-	);
 
 	const issueCertificate = useCallback(
 		async (enrollmentId: string, expiryDate?: string) => {
@@ -535,7 +517,6 @@ export function useCourseDetail(courseId: string) {
 		addDocument,
 		removeDocument,
 		incrementDocumentDownload,
-		upsertGrade,
 		issueCertificate,
 		removeCertificate,
 		revokeCertificate,

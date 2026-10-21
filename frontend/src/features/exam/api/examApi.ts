@@ -9,6 +9,7 @@ import type {
 	PaperType,
 	QuestionType,
 	StartAttemptResult,
+	ExamPart,
 } from '../types/exam.type';
 
 export interface QuestionPayload {
@@ -29,6 +30,10 @@ export interface PaperPayload {
 	duration_minutes?: number;
 	status?: string;
 	question_ids?: string[];
+	exam_part?: ExamPart;
+	blind_grading?: boolean;
+	/** Người chấm (GV); rỗng = GV được phân công bài học của đề */
+	grader_ids?: string[];
 }
 
 export interface AnswerPayload {

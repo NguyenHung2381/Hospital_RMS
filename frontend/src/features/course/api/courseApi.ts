@@ -21,6 +21,11 @@ import type {
 	RotationList,
 	RotationUpdate,
 	Grade,
+	SessionKind,
+	GradeBulkRow,
+	Gradebook,
+	GradeHistoryItem,
+	GradePart,
 	LecturerAssignment,
 	CourseLesson,
 	LessonLecturersInput,
@@ -244,7 +249,15 @@ export const getSessions = (courseId: string) =>
 	apiClient.get<ClassSession[]>(`/courses/${courseId}/sessions`);
 export const createSession = (
 	courseId: string,
-	data: { subject_id?: string; lecturer_id?: string; session_date: string; start_time?: string; end_time?: string; room?: string },
+	data: {
+		subject_id?: string;
+		lecturer_id?: string;
+		session_date: string;
+		start_time?: string;
+		end_time?: string;
+		room?: string;
+		session_kind?: SessionKind;
+	},
 ) => apiClient.post<{ id: string; warnings: string[] }>(`/courses/${courseId}/sessions`, data);
 export const removeSession = (sessionId: string) => apiClient.delete<null>(`/courses/sessions/${sessionId}`);
 export const createSessionsBulk = (
@@ -258,6 +271,7 @@ export const createSessionsBulk = (
 		room?: string;
 		lecturer_id?: string;
 		subject_id?: string;
+		session_kind?: SessionKind;
 	},
 ) => apiClient.post<{ created: number; skipped: number; warnings: string[] }>(`/courses/${courseId}/sessions/bulk`, data);
 
@@ -304,17 +318,19 @@ export const incrementDocumentDownload = (docId: string) =>
 // ─── Grades ───────────────────────────────────────────────────────────────
 export const getGrades = (courseId: string) => apiClient.get<Grade[]>(`/courses/${courseId}/grades`);
 
-export const upsertGrade = (data: {
-	enrollment_id: string;
-	subject_id?: string;
-	program_id?: string;
-	score?: number;
-	result?: string;
-	regular_score?: number;
-	midterm_score?: number;
-	final_score?: number;
-	note?: string;
-}) => apiClient.post<{ id: string }>('/courses/grades', data);
+// Bảng điểm Lý thuyết + Thực hành (giai đoạn 4)
+export const getGradebook = (courseId: string) => apiClient.get<Gradebook>(`/courses/${courseId}/gradebook`);
+export const saveGradesBulk = (courseId: string, rows: GradeBulkRow[], source?: 'import') =>
+	apiClient.put<{ saved: number }>(`/courses/${courseId}/grades/bulk`, { rows, source });
+export const lockGrades = (courseId: string) => apiClient.post<Gradebook>(`/courses/${courseId}/grades/lock`, {});
+export const unlockGrades = (courseId: string, reason?: string) =>
+	apiClient.post<Gradebook>(`/courses/${courseId}/grades/unlock`, { reason: reason || null });
+export const retakeGrade = (enrollmentId: string, part: GradePart) =>
+	apiClient.post<null>(`/courses/enrollments/${enrollmentId}/grades/retake`, { part });
+export const getGradeHistory = (enrollmentId: string) =>
+	apiClient.get<GradeHistoryItem[]>(`/courses/enrollments/${enrollmentId}/grades/history`);
+export const issueCertificatesBulk = (courseId: string, expiryDate?: string) =>
+	apiClient.post<{ issued: number }>(`/courses/${courseId}/certificates/bulk`, { expiry_date: expiryDate || null });
 
 // ─── Certificates ───────────────────────────────────────────────────────────
 export const getCertificates = (courseId: string) =>

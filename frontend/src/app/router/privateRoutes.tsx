@@ -61,6 +61,7 @@ const ActivityLogs = lazy(
 const SystemSettings = lazy(() => import('../../features/settings/pages/SystemSettings'));
 const Venues = lazy(() => import('../../features/venue/pages/Venues'));
 const Trainees = lazy(() => import('../../features/trainee/pages/Trainees'));
+const TraineeDetail = lazy(() => import('../../features/trainee/pages/TraineeDetail'));
 const TrainingPrograms = lazy(
 	() => import('../../features/training-program/pages/TrainingPrograms'),
 );
@@ -112,6 +113,7 @@ const TopicRegister = lazy(
 );
 const UserMyTraining = lazy(() => import('../../features/portal/pages/MyTraining'));
 const UserMyCourseDetail = lazy(() => import('../../features/portal/pages/MyCourseDetail'));
+const UserMyTeachingGrades = lazy(() => import('../../features/portal/pages/MyTeachingGrades'));
 const UserMyCme = lazy(() => import('../../features/portal/pages/MyCme'));
 const UserMyAttendance = lazy(() => import('../../features/portal/pages/MyAttendance'));
 const UserNotifications = lazy(
@@ -267,6 +269,10 @@ export const adminRoutes: RouteObject[] = [
 		element: admin('Học viên', <Trainees />),
 	},
 	{
+		path: '/admin/trainees/:id',
+		element: admin('Hồ sơ học viên', <TraineeDetail />),
+	},
+	{
 		path: '/admin/training-programs',
 		element: admin('Chương trình Đào tạo', <TrainingPrograms />),
 	},
@@ -359,6 +365,10 @@ export const adminRoutes: RouteObject[] = [
 		element: admin('Chủ đề tập huấn', <Catalog group='training' />),
 	},
 	{
+		path: '/admin/trainee-document-types',
+		element: admin('Loại giấy tờ', <Catalog group='training' />),
+	},
+	{
 		path: '/admin/cme-credit-categories',
 		element: (
 			<RequirePermission perm='training_catalog:read'>
@@ -430,6 +440,10 @@ export const userRoutes: RouteObject[] = [
 	{
 		path: '/user/khoa-hoc/:id',
 		element: user('Chi tiết khóa học', <UserMyCourseDetail />),
+	},
+	{
+		path: '/user/giang-day/:id/diem',
+		element: user('Nhập điểm', <UserMyTeachingGrades />),
 	},
 	{
 		path: '/user/cham-cong',

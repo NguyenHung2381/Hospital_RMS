@@ -15,6 +15,11 @@ interface MyCourseBase {
 
 export interface MyGrade {
 	subject_name: string | null;
+	/** Điểm lý thuyết / thực hành thang 10 (giai đoạn 4); TX/GK/CK chỉ còn ở dữ liệu cũ */
+	theory_score: number | null;
+	practice_score: number | null;
+	theory_flag: 'absent' | 'exempt' | null;
+	practice_flag: 'absent' | 'exempt' | null;
 	regular_score: number | null;
 	midterm_score: number | null;
 	final_score: number | null;

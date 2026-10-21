@@ -5,6 +5,7 @@ const { scopeOf } = require('../../../permissions/authz');
 const { todayVN } = require('../../../utils/vnDate');
 const { httpError } = require('../../../utils/httpError');
 const { ASSIGNED_EXISTS_SQL } = require('./coursePolicy');
+const programClassService = require('./programClassService');
 
 // Mỗi khóa học tự có cửa sổ đăng ký riêng (enrollment_start/end_date) và tự
 // quyết định có công khai trên cổng đăng ký không cần đăng nhập hay không
@@ -223,7 +224,10 @@ const create = async (data, actorId) => {
 	const id = result.recordset[0].id;
 	if (Array.isArray(data.program_ids)) await setPrograms(id, data.program_ids, actorId);
 	broadcast('update', { entity: 'course' });
-	return getById(id);
+	const saved = await getById(id);
+	// Khóa ĐTLT mới ⇒ nhận hồ sơ đang chờ ("lưu cho khóa sau") của khóa trước.
+	await programClassService.refreshCourse(saved, actorId);
+	return programClassService.appliesTo(saved) ? getById(id) : saved;
 };
 
 const update = async (id, data, actorId) => {
@@ -275,6 +279,11 @@ const update = async (id, data, actorId) => {
 	if (saved?.parent_course_id && data.capacity !== undefined && saved.program_ids[0]) {
 		await require('./courseBatchService').rebalance(saved.parent_course_id, saved.program_ids[0], actorId);
 	}
+	// Khóa ĐTLT: tăng sĩ số / thêm chương trình / dời ngày ⇒ gọi người chờ vào, nhận hồ sơ khóa trước.
+	if (programClassService.appliesTo(saved)) {
+		await programClassService.refreshCourse(saved, actorId);
+		return getById(id);
+	}
 	return saved;
 };
 
@@ -300,13 +309,16 @@ const listProgramLinks = async (courseId) => {
 	const pool = await getPool();
 	const r = await pool.request().input('course_id', sql.VarChar(20), courseId).query(`
     SELECT cp.id, cp.course_id, cp.program_id, tp.name AS program_name, tp.code AS program_code,
-           tp.training_type_id, tp.duration AS program_duration
+           tp.training_type_id, tp.duration AS program_duration,
+           ${programClassService.CLASS_COLUMNS}
     FROM course_programs cp
     JOIN training_programs tp ON tp.id = cp.program_id
+    JOIN courses c ON c.id = cp.course_id
     WHERE cp.course_id = @course_id
     ORDER BY cp.created_at
   `);
-	return r.recordset;
+	// class_rule: khóa ĐTLT thường — lớp mở khi đủ class_min, đầy ở class_max (xem programClassService)
+	return r.recordset.map(({ class_rule, ...l }) => ({ ...l, class_rule: !!class_rule }));
 };
 
 // Đồng bộ theo danh sách chọn ở form khóa học: gỡ chương trình bị bỏ, gắn chương trình mới.

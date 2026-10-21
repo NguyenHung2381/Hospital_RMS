@@ -1,0 +1,213 @@
+/* =============================================
+   SELECT.CSS - Kiểu chuẩn cho mọi <select> gốc
+   ---------------------------------------------
+   Mỗi module CSS từng tự vẽ select theo cách riêng (viền 1px/1.5px, bo 6–12px,
+   có/không mũi tên…). File này ép chung một kiểu khớp với ô nhập formInput:
+   viền 1.5px gray-200, bo radius-lg, nền gray-50, mũi tên chevron, viền xanh
+   + vòng sáng khi focus.
+
+   Bộ chọn `select:not([multiple])` (độ ưu tiên 0,1,1) cố ý cao hơn một class
+   module (0,1,0) để thắng phần màu sắc / viền / nền. Kích thước (chiều cao,
+   padding dọc, cỡ chữ, chiều rộng) VẪN do module quyết định để khớp các ô
+   cạnh bên — form trong modal và thanh lọc có cỡ khác nhau.
+
+   Trạng thái dùng thuộc tính thay cho class module:
+     aria-invalid="true"  → viền đỏ (lỗi validate)
+     data-active="true"   → bộ lọc đang áp dụng (viền + nền xanh nhạt)
+
+   Phần danh sách sổ xuống: trình duyệt hỗ trợ `appearance: base-select`
+   (Chrome/Edge 135+) dùng danh sách tự vẽ bên dưới; trình duyệt khác và màn
+   cảm ứng giữ bảng chọn gốc của hệ điều hành (dễ thao tác hơn trên điện thoại).
+============================================= */
+
+:root {
+	--select-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%239aaab6' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+	--select-chevron-active: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%230a9b4a' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+	--select-focus-ring: 0 0 0 3px rgba(10, 155, 74, 0.1);
+	--select-menu-shadow: 0 10px 32px rgba(13, 24, 32, 0.12), 0 2px 6px rgba(13, 24, 32, 0.06);
+}
+
+/* === Ô chọn === */
+select:not([multiple]) {
+	appearance: none;
+	-webkit-appearance: none;
+	min-width: 0;
+	padding-right: 34px;
+	border: 1.5px solid var(--color-gray-200);
+	border-radius: var(--radius-lg);
+	background-color: var(--color-gray-50);
+	background-image: var(--select-chevron);
+	/* !important: module hay viết shorthand `background: …` ở :focus / class
+	   trạng thái → reset repeat về mặc định, mũi tên bị lặp kín ô */
+	background-repeat: no-repeat !important;
+	background-position: right 12px center !important;
+	background-size: 14px 14px !important;
+	color: var(--color-gray-800);
+	font-family: var(--font-body);
+	line-height: 1.4;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	cursor: pointer;
+	outline: none;
+	box-shadow: none;
+	transition:
+		border-color var(--transition-fast),
+		background-color var(--transition-fast),
+		box-shadow var(--transition-fast);
+}
+
+select:not([multiple]):hover {
+	border-color: var(--color-gray-300);
+	background-color: var(--color-white);
+}
+
+/* :open tách rule riêng — trình duyệt chưa biết :open sẽ bỏ cả danh sách bộ chọn */
+select:not([multiple]):focus {
+	border-color: var(--color-primary);
+	background-color: var(--color-white);
+	background-image: var(--select-chevron-active);
+	box-shadow: var(--select-focus-ring);
+}
+
+select:not([multiple])[data-active='true'] {
+	border-color: var(--color-primary);
+	background-color: var(--color-primary-pale);
+	background-image: var(--select-chevron-active);
+	color: var(--color-primary-dark);
+	font-weight: var(--font-weight-semibold);
+}
+
+select:not([multiple])[aria-invalid='true'] {
+	border-color: var(--color-error);
+}
+select:not([multiple])[aria-invalid='true']:focus {
+	box-shadow: 0 0 0 3px rgba(232, 69, 69, 0.1);
+}
+
+select:not([multiple]):disabled {
+	border-color: var(--color-gray-200);
+	background-color: var(--color-gray-100);
+	color: var(--color-gray-400);
+	cursor: not-allowed;
+	opacity: 1;
+}
+
+/* Bảng chọn gốc (Firefox/Safari, Chrome cũ): chỉ chỉnh được màu chữ/nền option */
+select:not([multiple]) option {
+	color: var(--color-gray-800);
+	background-color: var(--color-white);
+	font-weight: var(--font-weight-normal);
+}
+select:not([multiple]) optgroup {
+	color: var(--color-gray-500);
+	font-weight: var(--font-weight-bold);
+}
+
+/* === Danh sách sổ xuống tự vẽ (Chrome/Edge 135+, chuột) === */
+@supports (appearance: base-select) {
+	@media (hover: hover) and (pointer: fine) {
+		select:not([multiple]),
+		select:not([multiple])::picker(select) {
+			appearance: base-select;
+		}
+
+		/* base-select bỏ qua text-overflow: cắt chữ dài ở mép nội dung để
+		   không tràn qua mũi tên (vùng padding-right) */
+		select:not([multiple]) {
+			overflow: clip;
+			overflow-clip-margin: content-box;
+		}
+
+		/* Dùng mũi tên nền ở trên cho đồng nhất với trình duyệt không hỗ trợ */
+		select:not([multiple])::picker-icon {
+			display: none;
+		}
+
+		select:not([multiple]):open {
+			border-color: var(--color-primary);
+			background-color: var(--color-white);
+			background-image: var(--select-chevron-active);
+			box-shadow: var(--select-focus-ring);
+		}
+
+		select:not([multiple])::picker(select) {
+			min-inline-size: anchor-size(self-inline);
+			max-inline-size: min(420px, calc(100vw - 32px));
+			max-block-size: min(320px, 50vh);
+			margin-block: 6px;
+			padding: 4px;
+			border: 1px solid var(--color-gray-200);
+			border-radius: var(--radius-lg);
+			background: var(--color-white);
+			box-shadow: var(--select-menu-shadow);
+			overflow-y: auto;
+			scrollbar-width: thin;
+			opacity: 1;
+			translate: 0 0;
+			transition:
+				opacity 120ms ease,
+				translate 120ms ease,
+				display 120ms allow-discrete,
+				overlay 120ms allow-discrete;
+		}
+
+		@starting-style {
+			select:not([multiple]):open::picker(select) {
+				opacity: 0;
+				translate: 0 -4px;
+			}
+		}
+
+		select:not([multiple]) option {
+			display: flex;
+			align-items: center;
+			gap: var(--space-2);
+			min-block-size: 34px;
+			padding: 7px 10px;
+			border-radius: var(--radius-md);
+			background: transparent;
+			color: var(--color-gray-700);
+			font-size: var(--font-size-sm);
+			font-weight: var(--font-weight-normal);
+			line-height: 1.4;
+			white-space: normal;
+			cursor: pointer;
+			outline: none;
+			transition: background-color 80ms ease;
+		}
+
+		select:not([multiple]) option:hover,
+		select:not([multiple]) option:focus-visible {
+			background: var(--color-gray-100);
+			color: var(--color-gray-900);
+		}
+
+		select:not([multiple]) option:checked {
+			background: var(--color-primary-pale);
+			color: var(--color-primary-dark);
+			font-weight: var(--font-weight-semibold);
+		}
+
+		select:not([multiple]) option:disabled {
+			color: var(--color-gray-400);
+			cursor: not-allowed;
+			background: transparent;
+		}
+
+		/* Dấu ✓ đặt cuối dòng, chỉ hiện ở mục đang chọn */
+		select:not([multiple]) option::checkmark {
+			order: 1;
+			margin-inline-start: auto;
+			color: var(--color-primary);
+			font-weight: var(--font-weight-bold);
+		}
+
+		select:not([multiple]) optgroup {
+			padding-block: 4px;
+		}
+		select:not([multiple]) optgroup + optgroup {
+			margin-block-start: 4px;
+			border-block-start: 1px solid var(--color-gray-100);
+		}
+	}
+}

@@ -1,7 +1,7 @@
 import { avatarColor, getInitials } from '@/shared/utils';
 import { SearchInput, RowAction, RowActions } from '@/shared/components/Table/TableToolbar';
 import { useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { BookOpenSvg, FileTextSvg, KeySvg, PlusSvg, TrashSvg, UploadSvg } from '@/assets/icons';
 import { Badge } from '@/shared/components';
 import AdminLayout from '../../../layouts/AdminLayout';
@@ -12,7 +12,6 @@ import { BulkButton, BulkDeleteModal, DeleteAllButton, SelectCheckbox } from '..
 import { useRowSelection } from '../../../shared/hooks/useRowSelection';
 import { GrantedAccountsModal } from '../components/GrantedAccountsModal';
 import { TraineeDeleteModal } from '../components/TraineeDeleteModal';
-import { TraineeDetailModal } from '../components/TraineeDetailModal';
 import { TraineeFormModal } from '../components/TraineeFormModal';
 import { TraineeImportModal } from '../components/TraineeImportModal';
 import { useTrainees } from '../hooks/useTrainees';
@@ -50,9 +49,11 @@ export default function Trainees() {
 	const [searchParams, setSearchParams] = useSearchParams();
 	const typeId = searchParams.get('type') ?? '';
 	const d = useTrainees(typeId);
+	const navigate = useNavigate();
+	const openDetail = (t: Trainee, tab = 'info') => navigate(`/admin/trainees/${t.id}?tab=${tab}`);
 	const isGphn = typeId === TRAINING_TYPE.GPHN;
 	// Tab theo loại: thay cột Liên hệ / Đối tượng / Khoa bằng thông tin lượt ghi danh của loại đó.
-	const colCount = typeId ? 7 : 8;
+	const colCount = typeId ? 8 : 9;
 	const changeType = (id: string) => {
 		setSearchParams(id ? { type: id } : {}, { replace: true });
 		d.setPage(1);
@@ -130,6 +131,21 @@ export default function Trainees() {
 						)}
 					</div>
 					<div className={styles.tableControls}>
+						<label
+							className={styles.tableCount}
+							style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}
+							title='Học viên còn thiếu giấy tờ bắt buộc theo loại khóa đã ghi danh'
+						>
+							<input
+								type='checkbox'
+								checked={d.missingDocsOnly}
+								onChange={(e) => {
+									d.setMissingDocsOnly(e.target.checked);
+									d.setPage(1);
+								}}
+							/>
+							Thiếu hồ sơ
+						</label>
 						<SearchInput
 							value={d.search}
 							onChange={d.handleSearch}
@@ -179,6 +195,7 @@ export default function Trainees() {
 									<th className={styles.th}>Khoa / Phòng</th>
 								</>
 							)}
+							<th className={styles.th}>Hồ sơ</th>
 							<th className={`${styles.th} ${styles.thRight}`}>Thao tác</th>
 						</tr>
 					</thead>
@@ -221,7 +238,7 @@ export default function Trainees() {
 												className={styles.personCell}
 												style={{ cursor: 'pointer' }}
 												title='Xem chi tiết học viên'
-												onClick={() => d.openDetail(t, 'general')}
+												onClick={() => openDetail(t)}
 											>
 												<div
 													className={styles.personAvatar}
@@ -301,6 +318,24 @@ export default function Trainees() {
 												</td>
 											</>
 										)}
+										<td className={styles.td}>
+											{t.doc_required ? (
+												<span
+													className={styles.badge}
+													style={
+														(t.doc_done ?? 0) < t.doc_required
+															? { background: '#fcebeb', color: '#791f1f', cursor: 'pointer' }
+															: { background: '#e1f5ea', color: '#085028', cursor: 'pointer' }
+													}
+													title='Giấy tờ bắt buộc đã nộp / cần nộp — bấm để xem'
+													onClick={() => openDetail(t, 'documents')}
+												>
+													{t.doc_done ?? 0}/{t.doc_required}
+												</span>
+											) : (
+												<span className={styles.descText}>—</span>
+											)}
+										</td>
 										<td className={`${styles.td} ${styles.tdActions}`}>
 											<RowActions
 												onEdit={() => {
@@ -314,13 +349,13 @@ export default function Trainees() {
 											>
 												<RowAction
 													title='Hồ sơ đính kèm'
-													onClick={() => d.openDetail(t, 'documents')}
+													onClick={() => openDetail(t, 'documents')}
 												>
 													<FileTextSvg />
 												</RowAction>
 												<RowAction
 													title='Chương trình đào tạo đã đăng ký'
-													onClick={() => d.openDetail(t, 'enrollments')}
+													onClick={() => openDetail(t, 'courses')}
 												>
 													<BookOpenSvg />
 												</RowAction>
@@ -410,22 +445,7 @@ export default function Trainees() {
 					loading={d.loading}
 				/>
 			)}
-			{d.viewingTrainee &&
-				(() => {
-					const viewing = d.viewingTrainee;
-					return (
-						<TraineeDetailModal
-							trainee={viewing}
-							initialTab={d.viewingTab}
-							onClose={() => d.setViewingTrainee(null)}
-							onEdit={() => {
-								d.setEditingTrainee(viewing);
-								d.setViewingTrainee(null);
-								d.setModal('edit');
-							}}
-						/>
-					);
-				})()}
+
 
 		</AdminLayout>
 	);

@@ -1,7 +1,8 @@
 const { getPool, sql, withTransaction } = require('../../../config/db');
 const { parseJsonArray } = require('../../../utils/sqlFilters');
 const { broadcast } = require('../../events/eventService');
-const gradeService = require('../courses/gradeService');
+const gradebookService = require('../courses/gradebookService');
+const { toTen } = require('../courses/gradeRules');
 const { removeUploadedFile, toStoredUploadPath } = require('../../../utils/uploadPaths');
 const { httpError } = require('../../../utils/httpError');
 
@@ -188,11 +189,19 @@ const removeQuestion = async (id) => {
 const paperSelect = `
   SELECT p.*, c.name AS course_name, s.title AS subject_name,
          (SELECT COUNT(*) FROM exam_paper_questions epq WHERE epq.paper_id = p.id) AS question_count,
-         (SELECT COUNT(*) FROM exam_attempts a WHERE a.paper_id = p.id) AS attempt_count
+         (SELECT COUNT(*) FROM exam_attempts a WHERE a.paper_id = p.id) AS attempt_count,
+         (SELECT STRING_AGG(g.lecturer_id, ',') FROM exam_paper_graders g WHERE g.paper_id = p.id) AS grader_ids,
+         (SELECT STRING_AGG(l.full_name, ', ') FROM exam_paper_graders g JOIN lecturers l ON l.id = g.lecturer_id
+          WHERE g.paper_id = p.id) AS grader_names
   FROM exam_papers p
   JOIN courses c ON c.id = p.course_id
   LEFT JOIN program_lessons s ON s.id = p.subject_id
 `;
+
+const withGraders = (row) => ({
+	...row,
+	grader_ids: row.grader_ids ? row.grader_ids.split(',') : [],
+});
 
 const listPapers = async (courseId) => {
 	const pool = await getPool();
@@ -200,7 +209,7 @@ const listPapers = async (courseId) => {
 		.request()
 		.input('course_id', sql.VarChar(20), courseId)
 		.query(`${paperSelect} WHERE p.course_id = @course_id ORDER BY p.created_at DESC`);
-	return r.recordset;
+	return r.recordset.map(withGraders);
 };
 
 // Câu hỏi trong đề — bản ĐẦY ĐỦ (có correct_option/points), chỉ dùng cho màn
@@ -227,7 +236,25 @@ const getPaper = async (id) => {
 	const row = r.recordset[0];
 	if (!row) return null;
 	row.questions = await listPaperQuestionsFull(id);
-	return row;
+	return withGraders(row);
+};
+
+// Người chấm của đề (GV). Danh sách rỗng = mặc định GV được phân công bài học của đề.
+const setPaperGraders = async (paperId, lecturerIds, actorId) => {
+	const ids = [...new Set((lecturerIds || []).filter(Boolean))];
+	await withTransaction(async (tx) => {
+		await new sql.Request(tx)
+			.input('paper_id', sql.VarChar(20), paperId)
+			.query('DELETE FROM exam_paper_graders WHERE paper_id = @paper_id');
+		for (const lecturerId of ids)
+			await new sql.Request(tx)
+				.input('paper_id', sql.VarChar(20), paperId)
+				.input('lecturer_id', sql.VarChar(20), lecturerId)
+				.input('actor_id', sql.VarChar(20), actorId || null).query(`
+          INSERT INTO exam_paper_graders (paper_id, lecturer_id, created_by)
+          SELECT @paper_id, id, @actor_id FROM lecturers WHERE id = @lecturer_id
+        `);
+	});
 };
 
 const setPaperQuestions = async (paperId, questionIds, actorId) => {
@@ -274,13 +301,16 @@ const createPaper = async (data, actorId) => {
 		.input('paper_type', sql.VarChar(20), data.paper_type || 'multiple_choice')
 		.input('duration_minutes', sql.Int, data.duration_minutes || 45)
 		.input('status', sql.VarChar(20), data.status || 'draft')
+		.input('exam_part', sql.VarChar(10), data.exam_part || 'theory')
+		.input('blind_grading', sql.Bit, data.blind_grading ? 1 : 0)
 		.input('actor_id', sql.VarChar(20), actorId).query(`
       DECLARE @new_id VARCHAR(20) = 'EP' + LEFT(REPLACE(NEWID(),'-',''), 18);
-      INSERT INTO exam_papers (id, course_id, subject_id, title, paper_type, duration_minutes, status, created_by)
-      VALUES (@new_id, @course_id, @subject_id, @title, @paper_type, @duration_minutes, @status, @actor_id);
+      INSERT INTO exam_papers (id, course_id, subject_id, title, paper_type, duration_minutes, status, exam_part, blind_grading, created_by)
+      VALUES (@new_id, @course_id, @subject_id, @title, @paper_type, @duration_minutes, @status, @exam_part, @blind_grading, @actor_id);
       SELECT @new_id AS id;
     `);
 	const id = result.recordset[0].id;
+	if (Array.isArray(data.grader_ids)) await setPaperGraders(id, data.grader_ids, actorId);
 	if (Array.isArray(data.question_ids) && data.question_ids.length)
 		await setPaperQuestions(id, data.question_ids, actorId);
 	broadcast('update', { entity: 'exam_paper' });
@@ -315,6 +345,14 @@ const updatePaper = async (id, data, actorId) => {
 		sets.push('paper_type = @paper_type');
 		req.input('paper_type', sql.VarChar(20), data.paper_type);
 	}
+	if (data.exam_part !== undefined) {
+		sets.push('exam_part = @exam_part');
+		req.input('exam_part', sql.VarChar(10), data.exam_part);
+	}
+	if (data.blind_grading !== undefined) {
+		sets.push('blind_grading = @blind_grading');
+		req.input('blind_grading', sql.Bit, data.blind_grading ? 1 : 0);
+	}
 
 	// Đổi loại đề mà không gửi danh sách câu → lọc lại câu hiện có theo loại mới
 	const questionIds = Array.isArray(data.question_ids)
@@ -324,6 +362,7 @@ const updatePaper = async (id, data, actorId) => {
 			: null;
 	if (sets.length > 2) await req.query(`UPDATE exam_papers SET ${sets.join(', ')} WHERE id = @id`);
 	if (questionIds) await setPaperQuestions(id, questionIds, actorId);
+	if (Array.isArray(data.grader_ids)) await setPaperGraders(id, data.grader_ids, actorId);
 	broadcast('update', { entity: 'exam_paper' });
 	return getPaper(id);
 };
@@ -380,8 +419,7 @@ const getAttemptForGrading = async (attemptId) => {
 };
 
 // Cấp điểm 1 câu tự luận — nếu đây là câu NULL cuối cùng của lượt làm bài,
-// tự tính tổng điểm + đóng lượt (status='graded') + đổ vào grades qua
-// gradeService.upsertGrade (điểm tổng kết môn/khóa, subject_id = đề thuộc).
+// tự tính tổng điểm + đóng lượt (status='graded') + đổ vào bảng điểm (pushExamScore).
 const gradeEssayAnswer = async (attemptId, questionId, score, actorId) => {
 	const pool = await getPool();
 	await pool
@@ -414,7 +452,7 @@ const finalizeAttemptIfComplete = async (attemptId, actorId) => {
 	const total = totalRes.recordset[0].total ?? 0;
 
 	const attemptRes = await pool.request().input('id', sql.VarChar(20), attemptId).query(`
-    SELECT a.enrollment_id, p.subject_id FROM exam_attempts a JOIN exam_papers p ON p.id = a.paper_id WHERE a.id = @id
+    SELECT a.enrollment_id, a.paper_id FROM exam_attempts a WHERE a.id = @id
   `);
 	const attempt = attemptRes.recordset[0];
 
@@ -427,14 +465,83 @@ const finalizeAttemptIfComplete = async (attemptId, actorId) => {
 			"UPDATE exam_attempts SET manual_score = @manual_score, status = 'graded', updated_at = GETDATE(), updated_by = @actor_id WHERE id = @id",
 		);
 
-	if (attempt) {
-		await gradeService.upsertGrade(
-			attempt.enrollment_id,
-			attempt.subject_id,
-			{ score: total },
-			actorId,
-		);
+	if (attempt) await pushExamScore(attempt.paper_id, attempt.enrollment_id, total, actorId);
+};
+
+// Điểm bài thi → điểm phần (LT/TH) của bảng điểm, quy về thang 10 theo tổng điểm đề
+// (trước đây ghi thẳng tổng điểm thô, vd 37/50, vào grades.score).
+const pushExamScore = async (paperId, enrollmentId, rawTotal, actorId) => {
+	const pool = await getPool();
+	const paper = (
+		await pool.request().input('id', sql.VarChar(20), paperId).query(`
+      SELECT p.exam_part, (SELECT SUM(q.points) FROM exam_paper_questions epq
+                           JOIN question_bank q ON q.id = epq.question_id
+                           WHERE epq.paper_id = p.id) AS max_points
+      FROM exam_papers p WHERE p.id = @id
+    `)
+	).recordset[0];
+	const score10 = toTen(rawTotal, paper?.max_points);
+	if (score10 == null) return;
+	await gradebookService.setPartFromExam(
+		enrollmentId,
+		paper.exam_part || 'theory',
+		score10,
+		actorId,
+	);
+};
+
+// ─── GV chấm bài được phân (cổng /me, không cần quyền exams:manage) ──────────
+const { PAPER_GRADER_SQL } = gradebookService;
+
+// Bài tự luận còn câu chưa chấm, thuộc đề mình là người chấm.
+const listPendingForGrader = async (userId) => {
+	const pool = await getPool();
+	const r = await pool.request().input('uid', sql.VarChar(20), userId).query(`
+    SELECT a.id AS attempt_id, a.submitted_at, p.id AS paper_id, p.title AS paper_title, p.exam_part,
+           p.blind_grading, c.id AS course_id, c.name AS course_name,
+           CASE WHEN p.blind_grading = 1 THEN NULL ELSE t.full_name END AS trainee_name,
+           (SELECT COUNT(*) FROM exam_answers ea WHERE ea.attempt_id = a.id AND ea.score_awarded IS NULL) AS pending_count
+    FROM exam_attempts a
+    JOIN exam_papers p ON p.id = a.paper_id
+    JOIN courses c ON c.id = p.course_id
+    JOIN course_enrollments e ON e.id = a.enrollment_id
+    JOIN trainees t ON t.id = e.trainee_id
+    WHERE a.status = 'submitted' AND ${PAPER_GRADER_SQL('p')}
+    ORDER BY a.submitted_at
+  `);
+	return r.recordset;
+};
+
+const assertGrader = async (attemptId, userId) => {
+	const pool = await getPool();
+	const ok = (
+		await pool
+			.request()
+			.input('id', sql.VarChar(20), attemptId)
+			.input('uid', sql.VarChar(20), userId).query(`
+      SELECT p.blind_grading FROM exam_attempts a JOIN exam_papers p ON p.id = a.paper_id
+      WHERE a.id = @id AND ${PAPER_GRADER_SQL('p')}
+    `)
+	).recordset[0];
+	if (!ok) throw httpError(403, 'Bạn không phải người chấm của bài thi này.');
+	return ok;
+};
+
+// Đề bật chấm ẩn danh: ẩn tên học viên, chỉ hiện mã bài.
+const getAttemptForGrader = async (attemptId, userId) => {
+	const { blind_grading } = await assertGrader(attemptId, userId);
+	const attempt = await getAttemptForGrading(attemptId);
+	if (attempt && blind_grading) {
+		attempt.trainee_name = null;
+		attempt.enrollment_id = null;
 	}
+	return attempt;
+};
+
+const gradeEssayAsGrader = async (attemptId, questionId, score, userId) => {
+	await assertGrader(attemptId, userId);
+	await gradeEssayAnswer(attemptId, questionId, score, userId);
+	return getAttemptForGrader(attemptId, userId);
 };
 
 // ─── Học viên làm bài ────────────────────────────────────────────────────────
@@ -609,19 +716,8 @@ const submitAttempt = async (paperId, answers, actor) => {
 
 	broadcast('update', { entity: 'exam_attempt' });
 
-	if (!hasEssay) {
-		// Không có câu tự luận nào chờ chấm — hoàn tất ngay, đổ điểm luôn.
-		const paperRes = await pool
-			.request()
-			.input('id', sql.VarChar(20), paperId)
-			.query('SELECT subject_id FROM exam_papers WHERE id = @id');
-		await gradeService.upsertGrade(
-			info.enrollment_id,
-			paperRes.recordset[0]?.subject_id || null,
-			{ score: autoScore },
-			actor.id,
-		);
-	}
+	// Không có câu tự luận nào chờ chấm — hoàn tất ngay, đổ điểm luôn.
+	if (!hasEssay) await pushExamScore(paperId, info.enrollment_id, autoScore, actor.id);
 
 	return { attempt_id: attempt.id, auto_score: autoScore, has_essay: hasEssay, late };
 };
@@ -642,6 +738,9 @@ module.exports = {
 	listAttempts,
 	getAttemptForGrading,
 	gradeEssayAnswer,
+	listPendingForGrader,
+	getAttemptForGrader,
+	gradeEssayAsGrader,
 	listAvailablePapersForUser,
 	startAttempt,
 	submitAttempt,

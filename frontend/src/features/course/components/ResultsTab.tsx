@@ -1,15 +1,218 @@
-import { useMemo, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { BadgeSvg, TrashSvg } from '@/assets/icons';
+import { Modal } from '@/shared/components/Modal';
+import { usePermission } from '@/shared/hooks/usePermission';
+import { showToast } from '@/shared/utils/feedback';
 import { formatDateVN } from '@/shared/utils/formatDate';
+import { useRealtimeUpdate } from '../../../layouts/hooks/useRealtime';
+import {
+	getGradeHistory,
+	getGradebook,
+	issueCertificatesBulk,
+	lockGrades,
+	retakeGrade,
+	saveGradesBulk,
+	unlockGrades,
+} from '../api/courseApi';
 import type { useCourseDetail } from '../hooks/useCourseDetail';
-import { groupGradesByProgram } from '../utils/gradeStats';
+import {
+	GRADE_FLAG_LABEL,
+	type GradePart,
+	type Gradebook,
+	type GradebookRow,
+	type GradeHistoryItem,
+} from '../types/course.type';
+import { GradebookTable } from './GradebookTable';
 import styles from '../pages/Courses.module.css';
 
-/** Bước cuối: nhập điểm TX/GK/CK cho học viên đã duyệt rồi cấp/thu hồi chứng chỉ. */
-export function ResultsTab({ d }: { d: ReturnType<typeof useCourseDetail> }) {
-	const [certExpiry, setCertExpiry] = useState<Record<string, string>>({});
-	const gradeGroups = useMemo(() => groupGradesByProgram(d.grades, d.programLinks), [d.grades, d.programLinks]);
-	const approved = d.enrollments.filter((e) => e.status === 'approved');
+const PART_LABEL: Record<GradePart, string> = { theory: 'LT', practice: 'TH' };
+const SOURCE_LABEL: Record<GradeHistoryItem['source'], string> = {
+	manual: 'Nhập tay',
+	exam: 'Bài thi',
+	import: 'Nhập Excel',
+	retake: 'Mở thi lại',
+	unlock: 'Mở khóa',
+};
+
+/** Bước cuối: nhập điểm Lý thuyết + Thực hành → khóa điểm → cấp giấy chứng nhận cho người Đạt. */
+export function ResultsTab({ courseId, d }: { courseId: string; d: ReturnType<typeof useCourseDetail> }) {
+	const { has } = usePermission();
+	const [book, setBook] = useState<Gradebook | null>(null);
+	const [error, setError] = useState('');
+	const [busy, setBusy] = useState(false);
+	const [certExpiry, setCertExpiry] = useState('');
+	const [historyOf, setHistoryOf] = useState<GradebookRow | null>(null);
+	const [history, setHistory] = useState<GradeHistoryItem[]>([]);
+
+	const load = useCallback(
+		() =>
+			getGradebook(courseId)
+				.then((b) => {
+					setBook(b);
+					setError('');
+				})
+				.catch((err) => setError(err instanceof Error ? err.message : 'Không tải được bảng điểm')),
+		[courseId],
+	);
+	useEffect(() => {
+		void load();
+	}, [load]);
+	useRealtimeUpdate(['grade', 'certificate', 'attendance'], load);
+
+	const run = async (fn: () => Promise<unknown>, ok?: string) => {
+		setBusy(true);
+		try {
+			await fn();
+			if (ok) showToast('success', ok);
+			await Promise.all([load(), d.reload()]);
+		} catch (err) {
+			showToast('error', err instanceof Error ? err.message : 'Thao tác thất bại');
+		} finally {
+			setBusy(false);
+		}
+	};
+
+	useEffect(() => {
+		if (!historyOf) return;
+		getGradeHistory(historyOf.enrollment_id)
+			.then(setHistory)
+			.catch(() => setHistory([]));
+	}, [historyOf]);
+
+	if (error) return <div className={styles.errorBanner}>{error}</div>;
+	if (!book) return <div className={styles.subEmpty}>Đang tải bảng điểm…</div>;
+
+	const passed = book.rows.filter((r) => r.computed.result === 'pass');
+	const toIssue = passed.filter((r) => !r.certificate_id).length;
+	const certOf = (row: GradebookRow) => d.certificates.find((c) => c.enrollment_id === row.enrollment_id);
+
+	const toolbar = (
+		<>
+			{!book.locked ? (
+				<button
+					className={styles.btnGhost}
+					disabled={busy || !book.rows.length}
+					title='Khóa điểm cả khóa — sau khi khóa không ai sửa được, trừ người có quyền mở khóa'
+					onClick={() => {
+						const missing = book.rows.filter((r) => r.computed.result == null).length;
+						const msg = missing
+							? `Còn ${missing} học viên chưa đủ điểm. Vẫn khóa điểm?`
+							: 'Khóa điểm cả khóa? Sau khi khóa chỉ người có quyền mở khóa mới sửa được.';
+						if (confirm(msg)) void run(() => lockGrades(courseId), 'Đã khóa điểm');
+					}}
+				>
+					Khóa điểm
+				</button>
+			) : (
+				has('grades:unlock') && (
+					<button
+						className={styles.btnGhost}
+						disabled={busy}
+						onClick={() => {
+							const reason = window.prompt('Lý do mở khóa điểm (ghi nhật ký):');
+							if (reason !== null) void run(() => unlockGrades(courseId, reason), 'Đã mở khóa điểm');
+						}}
+					>
+						Mở khóa điểm
+					</button>
+				)
+			)}
+			{book.locked && has('courses:approve') && toIssue > 0 && (
+				<>
+					<input
+						type='date'
+						className={styles.subInput}
+						style={{ maxWidth: 150 }}
+						title='Hạn giấy chứng nhận (bỏ trống = không thời hạn)'
+						value={certExpiry}
+						onChange={(e) => setCertExpiry(e.target.value)}
+					/>
+					<button
+						className={styles.btnPrimary}
+						disabled={busy}
+						onClick={() =>
+							void run(
+								() => issueCertificatesBulk(courseId, certExpiry || undefined),
+								`Đã cấp giấy chứng nhận cho ${toIssue} học viên đạt`,
+							)
+						}
+					>
+						<BadgeSvg /> Cấp giấy chứng nhận ({toIssue} người đạt)
+					</button>
+				</>
+			)}
+		</>
+	);
+
+	const rowActions = (row: GradebookRow) => {
+		const cert = certOf(row);
+		const retakeBtns = (['theory', 'practice'] as GradePart[])
+			.filter(
+				(p) =>
+					!row.locked_at &&
+					row.computed[p].passed === false &&
+					row[`${p}_attempt`] < 1 + book.rules.maxRetakes,
+			)
+			.map((p) => (
+				<button
+					key={p}
+					className={styles.btnSmall}
+					disabled={busy}
+					title={`Mở lượt thi lại phần ${PART_LABEL[p]} (điểm cũ lưu ở lịch sử)`}
+					onClick={() => {
+						if (confirm(`Mở thi lại phần ${PART_LABEL[p]} cho ${row.trainee_name}?`))
+							void run(() => retakeGrade(row.enrollment_id, p), 'Đã mở lượt thi lại');
+					}}
+				>
+					Thi lại {PART_LABEL[p]}
+				</button>
+			));
+		return (
+			<>
+				{retakeBtns}
+				<button
+					className={styles.btnSmall}
+					onClick={() => setHistoryOf(row)}
+				>
+					Lịch sử
+				</button>
+				{cert && (
+					<>
+						<span
+							className={styles.certBadge}
+							style={cert.status === 'revoked' ? { background: '#fcebeb', color: '#791f1f' } : undefined}
+							title={`Cấp ngày ${formatDateVN(cert.issue_date)}${cert.expiry_date ? ` · Hạn ${formatDateVN(cert.expiry_date)}` : ''}`}
+						>
+							{cert.cert_no} · {cert.status === 'revoked' ? 'Đã thu hồi' : 'Đã cấp'}
+						</span>
+						{has('courses:approve') &&
+							(cert.status === 'active' ? (
+								<button
+									className={styles.actionBtn}
+									title='Thu hồi giấy chứng nhận'
+									disabled={busy}
+									onClick={() => {
+										const reason = window.prompt('Lý do thu hồi (không bắt buộc):') ?? '';
+										void d.revokeCertificate(cert.id, reason || undefined).then(load);
+									}}
+								>
+									<TrashSvg />
+								</button>
+							) : (
+								<button
+									className={styles.actionBtn}
+									title='Xoá hẳn giấy chứng nhận'
+									disabled={busy}
+									onClick={() => void d.removeCertificate(cert.id).then(load)}
+								>
+									<TrashSvg />
+								</button>
+							))}
+					</>
+				)}
+			</>
+		);
+	};
 
 	return (
 		<>
@@ -17,170 +220,54 @@ export function ResultsTab({ d }: { d: ReturnType<typeof useCourseDetail> }) {
 				className={styles.subRowMeta}
 				style={{ marginBottom: 10 }}
 			>
-				Nhập điểm (tự lưu khi rời ô) rồi cấp chứng chỉ cho học viên đã được duyệt tham gia khóa học.
+				{book.rows.length} học viên · Đạt {passed.length} · Chưa đạt{' '}
+				{book.rows.filter((r) => r.computed.result === 'fail').length} · Chưa đủ điểm{' '}
+				{book.rows.filter((r) => r.computed.result == null).length}. Điểm bài thi trên hệ thống tự điền vào cột LT/TH
+				(quy về thang 10). Giảng viên nhập phần mình được phân ở cổng cá nhân.
 			</div>
-			{gradeGroups.length > 0 && (
-				<div
-					className={styles.subList}
-					style={{ marginBottom: 14 }}
-				>
-					{gradeGroups.map((g) => (
-						<div
-							key={g.program_id ?? '__none__'}
-							className={styles.subRow}
-						>
-							<div className={styles.subRowMain}>
-								<div className={styles.subRowName}>{g.program_name}</div>
-								<div className={styles.subRowMeta}>
-									{g.total} điểm · Đạt {g.passCount} · Không đạt {g.failCount}
-									{g.avgScore != null ? ` · TB ${g.avgScore}` : ''}
-								</div>
-							</div>
-						</div>
-					))}
-				</div>
-			)}
-			{approved.length === 0 ? (
-				<div className={styles.subEmpty}>Chưa có học viên nào được duyệt.</div>
-			) : (
-				<div className={styles.subList}>
-					{approved.map((en) => {
-						const grade = d.grades.find((g) => g.enrollment_id === en.id && !g.subject_id);
-						const cert = d.certificates.find((c) => c.enrollment_id === en.id);
-						const save = (patch: { program_id?: string; regular_score?: number; midterm_score?: number; final_score?: number }) =>
-							d.upsertGrade({
-								enrollment_id: en.id,
-								// Khóa chỉ 1 chương trình → tự gắn, không bắt chọn
-								program_id:
-									grade?.program_id ??
-									(d.programLinks.length === 1 ? d.programLinks[0].program_id : undefined),
-								regular_score: grade?.regular_score ?? undefined,
-								midterm_score: grade?.midterm_score ?? undefined,
-								final_score: grade?.final_score ?? undefined,
-								...patch,
-							});
-						const num = (v: string) => (v ? Number(v) : undefined);
-						return (
+			<GradebookTable
+				book={book}
+				fileName='bang-diem'
+				toolbar={toolbar}
+				rowActions={rowActions}
+				traineeHref={has('trainees:read') ? (r) => `/admin/trainees/${r.trainee_id}?tab=results` : undefined}
+				onSave={async (rows, source) => {
+					const r = await saveGradesBulk(courseId, rows, source);
+					showToast('success', `Đã lưu điểm ${r.saved} học viên`);
+					await load();
+				}}
+			/>
+			<Modal
+				open={!!historyOf}
+				onClose={() => setHistoryOf(null)}
+				title='Lịch sử điểm'
+				subtitle={historyOf?.trainee_name}
+			>
+				{history.length === 0 ? (
+					<div className={styles.subEmpty}>Chưa có thay đổi nào.</div>
+				) : (
+					<div className={styles.subList}>
+						{history.map((h) => (
 							<div
-								key={en.id}
+								key={h.id}
 								className={styles.subRow}
-								style={{ flexWrap: 'wrap' }}
 							>
 								<div className={styles.subRowMain}>
-									<div className={styles.subRowName}>{en.trainee_name}</div>
+									<div className={styles.subRowName}>
+										{PART_LABEL[h.part]} lần {h.attempt_no}:{' '}
+										{h.flag ? GRADE_FLAG_LABEL[h.flag] : h.score != null ? String(h.score).replace('.', ',') : '—'}
+									</div>
 									<div className={styles.subRowMeta}>
-										{grade?.classification && <span className={styles.certBadge}>{grade.classification}</span>}
-										{cert && (
-											<>
-												{' '}
-												<span
-													className={styles.certBadge}
-													style={cert.status === 'revoked' ? { background: '#fcebeb', color: '#791f1f' } : undefined}
-												>
-													{cert.cert_no} · {cert.status === 'revoked' ? 'Đã thu hồi' : 'Đã cấp'}
-												</span>{' '}
-												Cấp ngày {formatDateVN(cert.issue_date)}
-												{cert.expiry_date ? ` · Hạn ${formatDateVN(cert.expiry_date)}` : ''}
-											</>
-										)}
+										{SOURCE_LABEL[h.source] ?? h.source} · {h.changed_by_name ?? '—'} ·{' '}
+										{new Date(h.changed_at).toLocaleString('vi-VN')}
+										{h.note ? ` · ${h.note}` : ''}
 									</div>
 								</div>
-								{d.programLinks.length > 1 && (
-									<select
-										className={styles.subSelect}
-										title='Chương trình đào tạo'
-										value={grade?.program_id ?? ''}
-										onChange={(e) => save({ program_id: e.target.value || undefined })}
-									>
-										<option value=''>-- Chương trình --</option>
-										{d.programLinks.map((link) => (
-											<option
-												key={link.program_id}
-												value={link.program_id}
-											>
-												{link.program_name}
-											</option>
-										))}
-									</select>
-								)}
-								<input
-									type='number'
-									step='0.1'
-									className={styles.scoreInput}
-									placeholder='TX'
-									title='Điểm thường xuyên'
-									defaultValue={grade?.regular_score ?? ''}
-									onBlur={(e) => save({ regular_score: num(e.target.value) })}
-								/>
-								<input
-									type='number'
-									step='0.1'
-									className={styles.scoreInput}
-									placeholder='GK'
-									title='Điểm giữa kỳ'
-									defaultValue={grade?.midterm_score ?? ''}
-									onBlur={(e) => save({ midterm_score: num(e.target.value) })}
-								/>
-								<input
-									type='number'
-									step='0.1'
-									className={styles.scoreInput}
-									placeholder='CK'
-									title='Điểm cuối kỳ'
-									defaultValue={grade?.final_score ?? ''}
-									onBlur={(e) => save({ final_score: num(e.target.value) })}
-								/>
-								<span
-									className={styles.subRowMeta}
-									title='Điểm tổng kết'
-								>
-									{grade?.score ?? '—'}
-								</span>
-								{!cert ? (
-									<>
-										<input
-											type='date'
-											className={styles.subInput}
-											style={{ maxWidth: 140 }}
-											title='Hạn chứng chỉ (bỏ trống = không thời hạn)'
-											value={certExpiry[en.id] ?? ''}
-											onChange={(e) => setCertExpiry((m) => ({ ...m, [en.id]: e.target.value }))}
-										/>
-										<button
-											className={styles.btnGhost}
-											disabled={d.busy}
-											onClick={() => d.issueCertificate(en.id, certExpiry[en.id])}
-										>
-											<BadgeSvg /> Cấp chứng chỉ
-										</button>
-									</>
-								) : cert.status === 'active' ? (
-									<button
-										className={styles.actionBtn}
-										title='Thu hồi chứng chỉ'
-										disabled={d.busy}
-										onClick={() => {
-											const reason = window.prompt('Lý do thu hồi (không bắt buộc):') ?? '';
-											d.revokeCertificate(cert.id, reason || undefined);
-										}}
-									>
-										<TrashSvg />
-									</button>
-								) : (
-									<button
-										className={styles.actionBtn}
-										title='Xoá hẳn chứng chỉ'
-										disabled={d.busy}
-										onClick={() => d.removeCertificate(cert.id)}
-									>
-										<TrashSvg />
-									</button>
-								)}
 							</div>
-						);
-					})}
-				</div>
-			)}
+						))}
+					</div>
+				)}
+			</Modal>
 		</>
 	);
 }

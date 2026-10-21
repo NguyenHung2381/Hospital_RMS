@@ -63,6 +63,22 @@ router.post(
 	uploadTraineeDoc.single('file'),
 	ctrl.addDocument,
 );
+// Hồ sơ đầy đủ (giai đoạn 3): checklist giấy tờ theo loại khóa, điểm danh, kết quả, CME
+router.get(
+	'/:id/document-checklist',
+	authorizePermission(['trainees', 'read_sensitive']),
+	ctrl.getDocumentChecklist,
+);
+router.put(
+	'/documents/:docId/review',
+	authorizePermission(['trainees', 'update']),
+	[body('status').isIn(['approved', 'rejected']).withMessage('Trạng thái không hợp lệ')],
+	validate,
+	ctrl.reviewDocument,
+);
+router.get('/:id/attendance', authorizePermission(['trainees', 'read']), ctrl.getAttendance);
+router.get('/:id/grades', authorizePermission(['trainees', 'read']), ctrl.getGrades);
+router.get('/:id/cme', authorizePermission(['trainees', 'read']), ctrl.getCme);
 router.delete(
 	'/documents/:docId',
 	authorizePermission(['trainees', 'update']),

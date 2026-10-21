@@ -6,6 +6,7 @@
 
 @import './variables.css';
 @import './mixins.css';
+@import './select.css';
 
 /* Font Mulish / Be Vietnam Pro nạp không chặn hiển thị ở main.tsx — KHÔNG
    @import ở đây: @import trong CSS chặn vẽ trang tới khi Google Fonts trả về,

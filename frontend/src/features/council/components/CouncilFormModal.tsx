@@ -84,6 +84,7 @@ export function CouncilFormModal({
 				</label>
 				<select
 					className={`${styles.formInput} ${errors.round_id ? styles.inputError : ''}`}
+					aria-invalid={errors.round_id ? true : undefined}
 					value={form.round_id}
 					onChange={set('round_id')}
 					disabled={mode === 'edit'}

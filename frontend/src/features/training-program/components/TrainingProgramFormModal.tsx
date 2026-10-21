@@ -176,6 +176,7 @@ export function TrainingProgramFormModal({
 				>
 					<select
 						className={`${styles.formInput} ${errors.training_type_id ? styles.inputError : ''}`}
+						aria-invalid={errors.training_type_id ? true : undefined}
 						value={form.training_type_id}
 						onChange={set('training_type_id')}
 					>

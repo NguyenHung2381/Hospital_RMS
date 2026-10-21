@@ -37,6 +37,15 @@ const KEYS = [
 	'ATTENDANCE_MAX_ACCURACY_M',
 	// Thực hành GPHN — cảnh báo khi 1 người hướng dẫn kèm quá N học viên cùng lúc
 	'PRACTICE_MENTOR_MAX_TRAINEES',
+	// Chấm điểm Lý thuyết + Thực hành — mặc định ở training/courses/gradeRules.js
+	'GRADE_THEORY_PASS_PCT',
+	'GRADE_PRACTICE_PASS_PCT',
+	'ATTEND_THEORY_MAX_ABSENT_PCT',
+	'ATTEND_PRACTICE_MAX_ABSENT_PCT',
+	'GRADE_MAX_RETAKES',
+	'GRADE_RANK_EXCELLENT',
+	'GRADE_RANK_GOOD',
+	'GRADE_RANK_AVERAGE',
 	// Email theo chức năng — mặc định ở mailService.EVENT_DEFAULTS
 	'MAIL_EVENT_TOPIC_RESULT',
 	'MAIL_EVENT_DEADLINE_REMINDER',

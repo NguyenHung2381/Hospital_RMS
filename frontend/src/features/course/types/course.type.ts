@@ -361,6 +361,14 @@ export interface CourseProgramLink {
 	program_code: string | null;
 	training_type_id: string | null;
 	program_duration: string | null;
+	/** Khóa ĐTLT thường: mỗi chương trình là 1 lớp — đủ class_min học viên đã duyệt mới mở lớp
+	 *  (xếp lịch được), quá class_max thì hồ sơ vào danh sách chờ = lưu cho khóa sau. */
+	class_rule: boolean;
+	class_min: number;
+	/** null = không giới hạn */
+	class_max: number | null;
+	class_approved: number;
+	class_waiting: number;
 }
 
 export type LecturerRole = 'main' | 'assistant';
@@ -396,6 +404,8 @@ export interface LessonLecturersInput {
 	assistants: { lecturer_id: string; hours?: number | null }[];
 }
 
+export type SessionKind = 'theory' | 'practice';
+
 export interface ClassSession {
 	id: string;
 	course_id: string;
@@ -407,6 +417,8 @@ export interface ClassSession {
 	start_time: string | null;
 	end_time: string | null;
 	room: string | null;
+	/** Buổi lý thuyết / thực hành — tính chuyên cần LT/TH; null = theo loại bài học */
+	session_kind: SessionKind | null;
 	/** Buổi khác cùng GV, cùng ngày, chồng giờ ("Khóa X 08:00–10:00; …") — chỉ cảnh báo */
 	lecturer_clashes: string | null;
 }
@@ -469,6 +481,95 @@ export interface Grade {
 	final_score: number | null;
 	classification: string | null;
 	note: string | null;
+}
+
+// ─── Bảng điểm Lý thuyết + Thực hành (giai đoạn 4, GET /courses/:id/gradebook) ──
+export type GradePart = 'theory' | 'practice';
+export type GradeFlag = 'absent' | 'exempt';
+export const GRADE_FLAG_LABEL: Record<GradeFlag, string> = { absent: 'Vắng thi', exempt: 'Miễn thi' };
+
+/** Ngưỡng chấm — Cấu hình hệ thống → Đào tạo (mặc định theo Phụ lục III TT 32/2023). */
+export interface GradeRules {
+	theoryPassPct: number;
+	practicePassPct: number;
+	theoryMaxAbsentPct: number;
+	practiceMaxAbsentPct: number;
+	maxRetakes: number;
+	rankExcellent: number;
+	rankGood: number;
+	rankAverage: number;
+}
+
+export interface GradePartResult {
+	applies: boolean;
+	score: number | null;
+	flag: GradeFlag | null;
+	passed: boolean | null;
+	absentPct: number | null;
+	attendanceOk: boolean | null;
+}
+
+export interface GradebookRow {
+	enrollment_id: string;
+	trainee_id: string;
+	trainee_name: string;
+	program_id: string | null;
+	program_name: string | null;
+	theory_hours: number | null;
+	practice_hours: number | null;
+	grade_id: string | null;
+	theory_score: number | null;
+	practice_score: number | null;
+	theory_flag: GradeFlag | null;
+	practice_flag: GradeFlag | null;
+	theory_attempt: number;
+	practice_attempt: number;
+	note: string | null;
+	locked_at: string | null;
+	locked_by_name: string | null;
+	certificate_id: string | null;
+	cert_no: string | null;
+	certificate_status: CertificateStatus | null;
+	attendance: Record<GradePart, { held: number; absent: number }>;
+	computed: {
+		/** null = còn thiếu điểm */
+		result: 'pass' | 'fail' | null;
+		total: number | null;
+		classification: string | null;
+		theory: GradePartResult;
+		practice: GradePartResult;
+		reasons: string[];
+	};
+}
+
+export interface Gradebook {
+	rules: GradeRules;
+	/** Phần người xem được nhập (GV chỉ phần mình được phân) */
+	access: Record<GradePart, boolean>;
+	locked: boolean;
+	rows: GradebookRow[];
+}
+
+/** 1 dòng gửi PUT .../grades/bulk — trường không gửi thì giữ nguyên. */
+export interface GradeBulkRow {
+	enrollment_id: string;
+	theory_score?: number | null;
+	practice_score?: number | null;
+	theory_flag?: GradeFlag | null;
+	practice_flag?: GradeFlag | null;
+	note?: string | null;
+}
+
+export interface GradeHistoryItem {
+	id: number;
+	part: GradePart;
+	attempt_no: number;
+	score: number | null;
+	flag: GradeFlag | null;
+	source: 'manual' | 'exam' | 'import' | 'retake' | 'unlock';
+	note: string | null;
+	changed_at: string;
+	changed_by_name: string | null;
 }
 
 export type CertificateStatus = 'active' | 'revoked';

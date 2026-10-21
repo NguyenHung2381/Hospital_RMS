@@ -262,8 +262,8 @@ const SECTIONS: Section[] = [
 	},
 	{
 		id: 'cme',
-		title: 'CME',
-		sub: 'Ngưỡng tín chỉ liên tục',
+		title: 'Đào tạo & CME',
+		sub: 'Ngưỡng tín chỉ, chấm điểm',
 		groups: [
 			{
 				fields: [
@@ -278,6 +278,67 @@ const SECTIONS: Section[] = [
 						key: 'PRACTICE_MENTOR_MAX_TRAINEES',
 						label: 'Số học viên tối đa / người hướng dẫn',
 						hint: 'Hồ sơ thực hành cảnh báo (không chặn) khi 1 người hướng dẫn kèm quá số học viên này cùng lúc. Mặc định 5.',
+						type: 'number',
+						placeholder: '5',
+					},
+				],
+			},
+			{
+				title: 'Chấm điểm khóa học (Lý thuyết + Thực hành)',
+				fields: [
+					{
+						key: 'GRADE_THEORY_PASS_PCT',
+						label: 'Điểm đạt lý thuyết (%)',
+						hint: 'Đạt khi điểm lý thuyết ≥ ngưỡng này (60% = 6,0/10). Mặc định 60 theo Phụ lục III TT 32/2023.',
+						type: 'number',
+						placeholder: '60',
+					},
+					{
+						key: 'GRADE_PRACTICE_PASS_PCT',
+						label: 'Điểm đạt thực hành (%)',
+						hint: 'Đạt khi điểm thực hành LỚN HƠN ngưỡng này (60% ⇒ phải trên 6,0/10). Mặc định 60.',
+						type: 'number',
+						placeholder: '60',
+					},
+					{
+						key: 'ATTEND_THEORY_MAX_ABSENT_PCT',
+						label: 'Vắng lý thuyết tối đa (%)',
+						hint: 'Vắng quá tỉ lệ này số buổi lý thuyết thì không đạt. Mặc định 10.',
+						type: 'number',
+						placeholder: '10',
+					},
+					{
+						key: 'ATTEND_PRACTICE_MAX_ABSENT_PCT',
+						label: 'Vắng thực hành tối đa (%)',
+						hint: 'Mặc định 0 — không được vắng buổi thực hành (bất khả kháng thì học bù).',
+						type: 'number',
+						placeholder: '0',
+					},
+					{
+						key: 'GRADE_MAX_RETAKES',
+						label: 'Số lần thi lại tối đa / phần',
+						hint: 'Lấy kết quả lần thi sau cùng, các lần trước lưu ở lịch sử điểm. Mặc định 1.',
+						type: 'number',
+						placeholder: '1',
+					},
+					{
+						key: 'GRADE_RANK_EXCELLENT',
+						label: 'Xếp loại Giỏi từ (điểm tổng)',
+						hint: 'Điểm tổng = trung bình LT, TH theo số tiết. Chỉ xếp loại khi Đạt. Mặc định 8.',
+						type: 'number',
+						placeholder: '8',
+					},
+					{
+						key: 'GRADE_RANK_GOOD',
+						label: 'Xếp loại Khá từ',
+						hint: 'Mặc định 6,5.',
+						type: 'number',
+						placeholder: '6.5',
+					},
+					{
+						key: 'GRADE_RANK_AVERAGE',
+						label: 'Xếp loại Trung bình từ',
+						hint: 'Mặc định 5.',
 						type: 'number',
 						placeholder: '5',
 					},

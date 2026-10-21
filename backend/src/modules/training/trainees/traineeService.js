@@ -13,6 +13,7 @@ const {
 } = require('../../topics/topicMemberService');
 const { ROLE, requireRoleId } = require('../../access/roleCodes');
 const { defaultPassword } = require('../../../utils/passwordPolicy');
+const { DOC_COUNT_APPLY, DOC_MISSING_SQL } = require('./traineeDocumentSql');
 
 // extraCols/extraJoins: cột & OUTER APPLY thêm cho danh sách lọc theo loại khóa.
 const traineeSelectWith = (extraCols = '', extraJoins = '') => `
@@ -43,6 +44,7 @@ const getAll = async (
 		trainee_type_id = undefined,
 		department_id = undefined,
 		training_type_id = undefined,
+		missing_docs = undefined,
 	} = {},
 	actor = null,
 ) => {
@@ -67,6 +69,8 @@ const getAll = async (
 	}
 	// Loại học viên (GPHN / ĐTLT / CTCV) suy ra từ khóa đã ghi danh — 1 người có
 	// thể thuộc nhiều loại. Đếm cho tab dùng mọi bộ lọc trừ chính loại này.
+	// Thiếu giấy tờ bắt buộc theo loại khóa đã ghi danh (giai đoạn 3)
+	if (missing_docs === '1' || missing_docs === true) where.push(DOC_MISSING_SQL);
 	const countWhereSql = `WHERE ${where.join(' AND ')}`;
 	if (training_type_id) {
 		where.push(`EXISTS (SELECT 1 FROM course_enrollments e JOIN courses c ON c.id = e.course_id
@@ -95,7 +99,10 @@ const getAll = async (
 		: '';
 
 	const result = await req.query(`
-    ${traineeSelectWith(training_type_id ? ', le.*' : '', latestEnrollment)} ${whereSql}
+    ${traineeSelectWith(
+			`, dc.doc_required, ISNULL(dc.doc_done, 0) AS doc_done${training_type_id ? ', le.*' : ''}`,
+			`${latestEnrollment} ${DOC_COUNT_APPLY}`,
+		)} ${whereSql}
     ORDER BY t.created_at DESC
     ${pg.fetchClause};
     SELECT COUNT(*) AS total FROM trainees t ${whereSql};
@@ -124,7 +131,14 @@ const getById = async (id, actor = null) => {
 	const result = await pool
 		.request()
 		.input('id', sql.VarChar(20), id)
-		.query(`${traineeSelect} WHERE t.id = @id`);
+		// Kèm số giấy tờ bắt buộc + số lượt ghi danh cho thẻ tóm tắt ở trang hồ sơ học viên
+		.query(
+			`${traineeSelectWith(
+				`, dc.doc_required, ISNULL(dc.doc_done, 0) AS doc_done,
+				  (SELECT COUNT(*) FROM course_enrollments ce WHERE ce.trainee_id = t.id AND ce.status <> 'rejected') AS enrollment_count`,
+				DOC_COUNT_APPLY,
+			)} WHERE t.id = @id`,
+		);
 	const row = result.recordset[0];
 	if (!row) return null;
 	return maskSensitive(row, canReadSensitive(actor));
@@ -300,8 +314,10 @@ const listEnrollments = async (traineeId) => {
 const listDocuments = async (traineeId) => {
 	const pool = await getPool();
 	const r = await pool.request().input('trainee_id', sql.VarChar(20), traineeId).query(`
-    SELECT d.id, d.doc_type, d.created_at, f.file_name, f.file_url, f.mime_type, f.file_size
+    SELECT d.id, d.doc_type, d.status, d.review_note, d.created_at, dt.name AS doc_type_name,
+           f.file_name, f.file_url, f.mime_type, f.file_size
     FROM trainee_documents d
+    LEFT JOIN trainee_document_types dt ON dt.id = d.doc_type
     JOIN training_files f ON f.id = d.file_id AND f.is_deleted = 0
     WHERE d.trainee_id = @trainee_id
     ORDER BY d.created_at DESC

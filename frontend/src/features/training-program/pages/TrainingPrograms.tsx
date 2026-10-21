@@ -198,6 +198,7 @@ export default function TrainingPrograms() {
 						/>
 						<select
 							className={`${styles.filterSelect} ${d.trainingTypeFilter !== 'all' ? styles.filterActive : ''}`}
+							data-active={d.trainingTypeFilter !== 'all' ? 'true' : undefined}
 							value={d.trainingTypeFilter}
 							onChange={(e) => d.handleTrainingTypeFilter(e.target.value)}
 						>
@@ -214,6 +215,7 @@ export default function TrainingPrograms() {
 						</select>
 						<select
 							className={`${styles.filterSelect} ${d.departmentFilter !== 'all' ? styles.filterActive : ''}`}
+							data-active={d.departmentFilter !== 'all' ? 'true' : undefined}
 							value={d.departmentFilter}
 							onChange={(e) => d.handleDepartmentFilter(e.target.value)}
 						>
@@ -230,6 +232,7 @@ export default function TrainingPrograms() {
 						</select>
 						<select
 							className={`${styles.filterSelect} ${d.traineeTypeFilter !== 'all' ? styles.filterActive : ''}`}
+							data-active={d.traineeTypeFilter !== 'all' ? 'true' : undefined}
 							value={d.traineeTypeFilter}
 							onChange={(e) => d.handleTraineeTypeFilter(e.target.value)}
 						>
@@ -246,6 +249,7 @@ export default function TrainingPrograms() {
 						</select>
 						<select
 							className={`${styles.filterSelect} ${d.statusFilter !== 'all' ? styles.filterActive : ''}`}
+							data-active={d.statusFilter !== 'all' ? 'true' : undefined}
 							value={d.statusFilter}
 							onChange={(e) => d.handleStatusFilter(e.target.value as ProgramStatusFilter)}
 						>

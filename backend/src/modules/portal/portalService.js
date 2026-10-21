@@ -42,7 +42,8 @@ const getMyTraining = async (actor) => {
     LEFT JOIN certificates cert ON cert.enrollment_id = e.id
     ORDER BY c.start_date DESC;
 
-    SELECT g.enrollment_id, s.title AS subject_name, g.regular_score, g.midterm_score,
+    SELECT g.enrollment_id, s.title AS subject_name, g.theory_score, g.practice_score,
+           g.theory_flag, g.practice_flag, g.regular_score, g.midterm_score,
            g.final_score, g.score, g.result, g.classification
     FROM grades g
     JOIN course_enrollments e ON e.id = g.enrollment_id

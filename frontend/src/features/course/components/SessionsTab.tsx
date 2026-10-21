@@ -7,14 +7,22 @@ import { useClientPaging } from '@/shared/hooks/useClientPaging';
 import { formatDateVN } from '@/shared/utils/formatDate';
 import { VenueSelect } from '../../venue/components/VenueSelect';
 import type { LecturerItem, useCourseDetail } from '../hooks/useCourseDetail';
-import type { CourseLesson, LecturerAssignment } from '../types/course.type';
+import type { CourseLesson, LecturerAssignment, SessionKind } from '../types/course.type';
 import { LecturerOptions } from './LecturerOptions';
 import styles from '../pages/Courses.module.css';
 
 type Detail = ReturnType<typeof useCourseDetail>;
 
 const WEEKDAY_LABELS = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
-const EMPTY_SESSION = { session_date: '', start_time: '', end_time: '', room: '', lesson_id: '', lecturer_id: '' };
+const EMPTY_SESSION = {
+	session_date: '',
+	start_time: '',
+	end_time: '',
+	room: '',
+	lesson_id: '',
+	lecturer_id: '',
+	session_kind: '' as SessionKind | '',
+};
 const EMPTY_BULK = {
 	start_date: '',
 	end_date: '',
@@ -24,7 +32,24 @@ const EMPTY_BULK = {
 	room: '',
 	lesson_id: '',
 	lecturer_id: '',
+	session_kind: '' as SessionKind | '',
 };
+
+const SESSION_KIND_LABEL: Record<SessionKind, string> = { theory: 'Lý thuyết', practice: 'Thực hành' };
+
+// Buổi LT / TH — để tính chuyên cần từng phần ở bảng điểm (bỏ trống = theo loại bài học)
+const kindSelect = (value: SessionKind | '', onChange: (v: SessionKind | '') => void, cls: string) => (
+	<select
+		className={cls}
+		value={value}
+		title='Buổi lý thuyết hay thực hành — tính chuyên cần ở bảng điểm'
+		onChange={(e) => onChange(e.target.value as SessionKind | '')}
+	>
+		<option value=''>-- LT/TH theo bài --</option>
+		<option value='theory'>Buổi lý thuyết</option>
+		<option value='practice'>Buổi thực hành</option>
+	</select>
+);
 
 const lessonLabel = (l: { code: string | null; title: string }) => (l.code ? `${l.code} — ${l.title}` : l.title);
 const hoursText = (l: CourseLesson) =>
@@ -331,6 +356,7 @@ export function SessionsTab({ d }: { d: Detail }) {
 					{lessonSelect(sessionForm.lesson_id, (lesson_id) =>
 						setSessionForm((f) => ({ ...f, lesson_id, lecturer_id: mainLecturerOf(lesson_id) || f.lecturer_id })),
 					)}
+					{kindSelect(sessionForm.session_kind, (session_kind) => setSessionForm((f) => ({ ...f, session_kind })), styles.subSelect)}
 					<select
 						className={styles.subSelect}
 						value={sessionForm.lecturer_id}
@@ -350,6 +376,7 @@ export function SessionsTab({ d }: { d: Detail }) {
 								room: sessionForm.room || undefined,
 								subject_id: sessionForm.lesson_id || undefined,
 								lecturer_id: sessionForm.lecturer_id || undefined,
+								session_kind: sessionForm.session_kind || undefined,
 							});
 							setSessionForm(EMPTY_SESSION);
 						}}
@@ -417,6 +444,7 @@ export function SessionsTab({ d }: { d: Detail }) {
 					{lessonSelect(bulkForm.lesson_id, (lesson_id) =>
 						setBulkForm((f) => ({ ...f, lesson_id, lecturer_id: mainLecturerOf(lesson_id) || f.lecturer_id })),
 					)}
+					{kindSelect(bulkForm.session_kind, (session_kind) => setBulkForm((f) => ({ ...f, session_kind })), styles.subSelect)}
 					<select
 						className={styles.subSelect}
 						value={bulkForm.lecturer_id}
@@ -429,8 +457,12 @@ export function SessionsTab({ d }: { d: Detail }) {
 						className={styles.btnGhost}
 						disabled={!bulkForm.start_date || !bulkForm.end_date || bulkForm.weekdays.length === 0 || d.busy}
 						onClick={async () => {
-							const { lesson_id, ...rest } = bulkForm;
-							const result = await d.createSessionsBulk({ ...rest, subject_id: lesson_id || undefined });
+							const { lesson_id, session_kind, ...rest } = bulkForm;
+							const result = await d.createSessionsBulk({
+								...rest,
+								subject_id: lesson_id || undefined,
+								session_kind: session_kind || undefined,
+							});
 							if (result) setBulkResult(result);
 						}}
 					>
@@ -459,6 +491,7 @@ export function SessionsTab({ d }: { d: Detail }) {
 									{formatDateVN(s.session_date)}
 									{s.start_time ? ` · ${s.start_time}-${s.end_time ?? ''}` : ''}
 									{s.subject_name ? ` · ${s.subject_name}` : ''}
+									{s.session_kind ? ` · ${SESSION_KIND_LABEL[s.session_kind]}` : ''}
 								</div>
 								<div className={styles.subRowMeta}>
 									{s.room ?? 'Chưa gán phòng'} · {s.lecturer_name ?? 'Chưa gán giảng viên'}

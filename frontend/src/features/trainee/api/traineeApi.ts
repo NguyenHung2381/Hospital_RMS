@@ -13,6 +13,8 @@ export const getTrainees = (trainingTypeId?: string) =>
 		`/trainees?limit=0${trainingTypeId ? `&training_type_id=${encodeURIComponent(trainingTypeId)}` : ''}`,
 	);
 
+export const getTrainee = (traineeId: string) => apiClient.get<Trainee>(`/trainees/${traineeId}`);
+
 export const getTraineeEnrollments = (traineeId: string) =>
 	apiClient.get<TraineeEnrollment[]>(`/trainees/${traineeId}/enrollments`);
 

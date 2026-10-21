@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { ArrowRSvg, BookOpenSvg, CalendarSvg, ClockSvg, DocPlusSvg, LayersSvg, UsersSvg } from '@/assets/icons';
 import { Badge, Button, Card, EmptyState, InlineLoading } from '@/shared/components';
 import { formatDateVN } from '@/shared/utils/formatDate';
@@ -16,6 +16,11 @@ import {
 	type OpenCourse,
 } from '../api/meApi';
 import { CourseProgramPicker } from '../../public/components/CourseProgramPicker';
+import { GradingPanel } from '../../course/components/ExamsTab';
+import { EXAM_PART_LABEL, type ExamAttemptDetail } from '../../exam/types/exam.type';
+import { Modal } from '@/shared/components/Modal';
+import { teachingApi, type PendingGrading } from '../api/teachingApi';
+import { MyTraineeDocumentsCard } from '../components/MyTraineeDocumentsCard';
 import styles from './SelfService.module.css';
 import tbl from '@/shared/components/Table/Table.module.css';
 import { useClientPaging } from '@/shared/hooks/useClientPaging';
@@ -31,7 +36,13 @@ const num = (v: number | null) => (v == null ? '—' : v);
 
 function EnrolledItem({ c }: { c: MyEnrolledCourse }) {
 	const navigate = useNavigate();
-	const grades = c.grades.filter((g) => g.score != null || g.final_score != null || g.result);
+	const grades = c.grades.filter(
+		(g) => g.score != null || g.theory_score != null || g.practice_score != null || g.final_score != null || g.result,
+	);
+	// Lượt có điểm TX/GK/CK cũ thì hiện cột cũ, còn lại hiện Lý thuyết / Thực hành
+	const legacy = grades.some((g) => g.regular_score != null || g.midterm_score != null || g.final_score != null);
+	const part = (score: number | null, flag: 'absent' | 'exempt' | null) =>
+		flag === 'absent' ? 'Vắng thi' : flag === 'exempt' ? 'Miễn thi' : num(score);
 	const pg = useClientPaging(grades);
 	return (
 		<div
@@ -90,9 +101,18 @@ function EnrolledItem({ c }: { c: MyEnrolledCourse }) {
 							<tr>
 								<th className={tbl.thIdx}>STT</th>
 								<th>Bài học</th>
-								<th>Thường xuyên</th>
-								<th>Giữa kỳ</th>
-								<th>Cuối kỳ</th>
+								{legacy ? (
+									<>
+										<th>Thường xuyên</th>
+										<th>Giữa kỳ</th>
+										<th>Cuối kỳ</th>
+									</>
+								) : (
+									<>
+										<th>Lý thuyết</th>
+										<th>Thực hành</th>
+									</>
+								)}
 								<th>Tổng kết</th>
 								<th>Kết quả</th>
 							</tr>
@@ -102,13 +122,22 @@ function EnrolledItem({ c }: { c: MyEnrolledCourse }) {
 								<tr key={i}>
 									<td className={tbl.tdIdx}>{pg.offset + i + 1}</td>
 									<td><span className={tbl.cellTitle}>{g.subject_name ?? 'Toàn khóa'}</span></td>
-									<td>{num(g.regular_score)}</td>
-									<td>{num(g.midterm_score)}</td>
-									<td>{num(g.final_score)}</td>
+									{legacy ? (
+										<>
+											<td>{num(g.regular_score)}</td>
+											<td>{num(g.midterm_score)}</td>
+											<td>{num(g.final_score)}</td>
+										</>
+									) : (
+										<>
+											<td>{part(g.theory_score, g.theory_flag)}</td>
+											<td>{part(g.practice_score, g.practice_flag)}</td>
+										</>
+									)}
 									<td>
 										<b>{num(g.score)}</b>
 									</td>
-									<td>{g.classification ?? g.result ?? '—'}</td>
+									<td>{g.classification ?? (g.result === 'pass' ? 'Đạt' : g.result === 'fail' ? 'Chưa đạt' : (g.result ?? '—'))}</td>
 								</tr>
 							))}
 						</tbody>
@@ -276,10 +305,111 @@ function OpenCourseDetail({ course, onBack, onDone }: { course: OpenCourse; onBa
 	);
 }
 
+/** Bài chờ chấm — bài tự luận của đề mình là người chấm (giai đoạn 4.4) */
+function PendingGradingCard({ onCount }: { onCount?: (n: number) => void }) {
+	const [items, setItems] = useState<PendingGrading[]>([]);
+	const [attempt, setAttempt] = useState<ExamAttemptDetail | null>(null);
+	const load = useCallback(() => {
+		teachingApi
+			.listPendingGrading()
+			.then(setItems)
+			.catch(() => setItems([]));
+	}, []);
+	useEffect(() => onCount?.(items.length), [items.length, onCount]);
+	useEffect(load, [load]);
+	useRealtimeUpdate(['exam_attempt'], load);
+	const pg = useClientPaging(items);
+
+	const openAttempt = (id: string) =>
+		teachingApi
+			.getAttempt(id)
+			.then(setAttempt)
+			.catch((err) => notify.error(err instanceof Error ? err.message : 'Không mở được bài làm'));
+
+	if (!items.length && !attempt) return null;
+	return (
+		<Card>
+			<Card.Header
+				icon={<LayersSvg />}
+				title='Bài chờ chấm'
+				sub={`${items.length} bài tự luận`}
+			/>
+			<Card.Body>
+				<div className={styles.tableWrap}>
+					<table className={styles.table}>
+						<thead>
+							<tr>
+								<th className={tbl.thIdx}>STT</th>
+								<th>Đề thi</th>
+								<th>Khóa học</th>
+								<th>Bài làm</th>
+								<th>Câu chưa chấm</th>
+								<th />
+							</tr>
+						</thead>
+						<tbody>
+							{pg.paged.map((p, i) => (
+								<tr key={p.attempt_id}>
+									<td className={tbl.tdIdx}>{pg.offset + i + 1}</td>
+									<td>
+										<span className={tbl.cellTitle}>{p.paper_title}</span>
+										<div className={tbl.cellSub}>{EXAM_PART_LABEL[p.exam_part]}</div>
+									</td>
+									<td>{p.course_name}</td>
+									<td>{p.trainee_name ?? <span className={tbl.cellCode}>{p.attempt_id}</span>}</td>
+									<td>{p.pending_count}</td>
+									<td>
+										<Button
+											size='sm'
+											variant='secondary'
+											onClick={() => void openAttempt(p.attempt_id)}
+										>
+											Chấm
+										</Button>
+									</td>
+								</tr>
+							))}
+						</tbody>
+					</table>
+					<Pagination
+						{...pg.pagination}
+						itemLabel='bài'
+					/>
+				</div>
+			</Card.Body>
+			<Modal
+				open={!!attempt}
+				onClose={() => {
+					setAttempt(null);
+					load();
+				}}
+				title='Chấm bài tự luận'
+				size='lg'
+			>
+				{attempt && (
+					<GradingPanel
+						attempt={attempt}
+						gradeAnswer={teachingApi.gradeAnswer}
+						backLabel='← Đóng'
+						onBack={() => {
+							setAttempt(null);
+							load();
+						}}
+						onGraded={setAttempt}
+					/>
+				)}
+			</Modal>
+		</Card>
+	);
+}
+
 export default function MyTraining() {
 	const [data, setData] = useState<Data | null>(null);
 	const [error, setError] = useState('');
 	const [opening, setOpening] = useState<OpenCourse | null>(null);
+	const [pendingGrading, setPendingGrading] = useState(0);
+	const [params, setParams] = useSearchParams();
+	const navigate = useNavigate();
 
 	const load = useCallback(() => {
 		getMyTraining()
@@ -300,6 +430,13 @@ export default function MyTraining() {
 		!data.teaching.length &&
 		!data.upcoming_sessions.length &&
 		!data.open_courses.length;
+	// Vừa học vừa dạy thì tách 2 tab; chỉ một vai trò thì hiện thẳng các mục của vai trò đó
+	const isLearner = !!data && (data.enrolled.length > 0 || data.open_courses.length > 0);
+	const isTeacher = !!data && (data.teaching.length > 0 || data.teaching_lessons.length > 0);
+	const split = isLearner && isTeacher;
+	const view: 'learning' | 'teaching' = split ? (params.get('tab') === 'giang-day' ? 'teaching' : 'learning') : isTeacher ? 'teaching' : 'learning';
+	const showLearning = !split || view === 'learning';
+	const showTeaching = !split || view === 'teaching';
 
 	return (
 		<UserLayout
@@ -384,7 +521,41 @@ export default function MyTraining() {
 						</Card>
 					)}
 
-					{data.enrolled.length > 0 && (
+					{split && (
+						<Card>
+							<div
+								className={styles.tabs}
+								role='tablist'
+							>
+								{[
+									{ key: 'learning' as const, label: 'Học tập', icon: <BookOpenSvg />, count: data.enrolled.length, alert: false },
+									{
+										key: 'teaching' as const,
+										label: 'Giảng dạy',
+										icon: <UsersSvg />,
+										count: pendingGrading || data.teaching.length,
+										alert: pendingGrading > 0,
+									},
+								].map((t) => (
+									<button
+										key={t.key}
+										type='button'
+										role='tab'
+										aria-selected={view === t.key}
+										className={`${styles.tab} ${view === t.key ? styles.tabActive : ''}`}
+										title={t.alert ? `${pendingGrading} bài tự luận chờ chấm` : undefined}
+										onClick={() => setParams(t.key === 'teaching' ? { tab: 'giang-day' } : {}, { replace: true })}
+									>
+										{t.icon}
+										{t.label}
+										<span className={`${styles.tabCount} ${t.alert ? styles.tabCountAlert : ''}`}>{t.count}</span>
+									</button>
+								))}
+							</div>
+						</Card>
+					)}
+
+					{showLearning && data.enrolled.length > 0 && (
 						<Card>
 							<Card.Header
 								icon={<BookOpenSvg />}
@@ -404,7 +575,7 @@ export default function MyTraining() {
 						</Card>
 					)}
 
-					{data.teaching.length > 0 && (
+					{showTeaching && data.teaching.length > 0 && (
 						<Card>
 							<Card.Header
 								icon={<UsersSvg />}
@@ -438,6 +609,15 @@ export default function MyTraining() {
 													Số buổi: <b>{c.session_count}</b>
 												</span>
 											</div>
+											<div>
+												<Button
+													size='sm'
+													variant='secondary'
+													onClick={() => navigate(`/user/giang-day/${c.id}/diem`)}
+												>
+													Nhập điểm
+												</Button>
+											</div>
 										</div>
 									))}
 								</div>
@@ -445,9 +625,18 @@ export default function MyTraining() {
 						</Card>
 					)}
 
-					{data.teaching_lessons.length > 0 && <TeachingLessons lessons={data.teaching_lessons} />}
+					{showLearning && data.enrolled.length > 0 && <MyTraineeDocumentsCard />}
 
-					{data.open_courses.length > 0 && (
+					{/* Luôn mount để đếm bài chờ chấm cho tab; ẩn khi đang ở tab Học tập */}
+					{data.teaching.length > 0 && (
+						<div style={{ display: showTeaching ? 'contents' : 'none' }}>
+							<PendingGradingCard onCount={setPendingGrading} />
+						</div>
+					)}
+
+					{showTeaching && data.teaching_lessons.length > 0 && <TeachingLessons lessons={data.teaching_lessons} />}
+
+					{showLearning && data.open_courses.length > 0 && (
 						<Card>
 							<Card.Header
 								icon={<DocPlusSvg />}

@@ -125,7 +125,7 @@ export default function CourseDetail() {
 	return (
 		<AdminLayout
 			pageTitle={course?.name ?? 'Chi tiết khóa học'}
-			breadcrumbs={[{ label: 'Đào tạo' }, { label: 'Khóa học' }]}
+			breadcrumbs={[{ label: 'Đào tạo' }]}
 			headerActions={
 				course && (
 					<button
@@ -256,7 +256,7 @@ export default function CourseDetail() {
 						) : tab === 'exams' ? (
 							<ExamsTab courseId={id} />
 						) : (
-							<ResultsTab d={d} />
+							<ResultsTab courseId={id} d={d} />
 						)}
 					</div>
 				</>

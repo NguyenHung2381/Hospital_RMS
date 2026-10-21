@@ -42,6 +42,11 @@ export interface Trainee {
 	enrollment_end_date?: string | null;
 	current_department?: string | null;
 	type_enrollment_count?: number;
+	/** Giấy tờ bắt buộc theo loại khóa đã ghi danh / số đã nộp (đã duyệt) — giai đoạn 3 */
+	doc_required?: number;
+	doc_done?: number;
+	/** Chỉ có ở GET /trainees/:id — số lượt ghi danh (trừ bị từ chối). */
+	enrollment_count?: number;
 }
 
 export interface TraineeFormData {

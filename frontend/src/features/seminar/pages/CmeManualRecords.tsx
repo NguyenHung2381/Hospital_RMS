@@ -363,13 +363,19 @@ function RecordFormModal({
 	const [busy, setBusy] = useState(false);
 	const [error, setError] = useState('');
 	const [evidence, setEvidence] = useState<File | null>(null);
+	// Id đã lưu — tạo mới xong mà tải minh chứng lỗi thì lần bấm Lưu sau là cập nhật, không tạo trùng
+	const [savedId, setSavedId] = useState(record?.id ?? null);
 
 	const save = async () => {
-		if (!form.user_id || !form.title.trim() || !form.year || !form.credits) return;
+		if (!form.user_id || !form.title.trim() || !form.year || form.credits === '')
+			return setError('Vui lòng chọn nhân viên, nhập nội dung, năm và số tín chỉ');
+		if (form.activity_date && form.end_date && form.end_date < form.activity_date)
+			return setError('"Đến ngày" phải sau hoặc bằng "Từ ngày"');
 		setBusy(true);
 		setError('');
 		try {
-			const saved = record ? await updateCmeRecord(record.id, form) : await createCmeRecord(form);
+			const saved = savedId ? await updateCmeRecord(savedId, form) : await createCmeRecord(form);
+			setSavedId(saved.id);
 			if (evidence) await addCmeRecordEvidence(saved.id, evidence);
 			onSaved();
 			onClose();

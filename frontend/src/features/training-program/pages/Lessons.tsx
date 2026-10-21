@@ -121,6 +121,7 @@ export default function Lessons() {
 						/>
 						<select
 							className={`${styles.filterSelect} ${d.programFilter ? styles.filterActive : ''}`}
+							data-active={d.programFilter ? 'true' : undefined}
 							value={d.programFilter}
 							onChange={(e) => d.handleProgramFilter(e.target.value)}
 						>
@@ -137,6 +138,7 @@ export default function Lessons() {
 						</select>
 						<select
 							className={`${styles.filterSelect} ${d.statusFilter ? styles.filterActive : ''}`}
+							data-active={d.statusFilter ? 'true' : undefined}
 							value={d.statusFilter}
 							onChange={(e) => d.handleStatusFilter(e.target.value as '' | 'active' | 'inactive')}
 						>

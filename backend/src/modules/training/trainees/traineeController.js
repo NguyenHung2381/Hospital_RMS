@@ -1,4 +1,5 @@
 const traineeService = require('./traineeService');
+const traineeRecordService = require('./traineeRecordService');
 const traineeImportService = require('./traineeImportService');
 const traineeProgressService = require('./traineeProgressService');
 const { success, created, notFound } = require('../../../utils/response');
@@ -57,6 +58,33 @@ const removeDocument = asyncHandler(async (req, res) => {
 	return success(res, null, 'Đã xoá hồ sơ');
 });
 
+// Hồ sơ học viên đầy đủ (giai đoạn 3) — traineeRecordService
+const getDocumentChecklist = asyncHandler(async (req, res) => {
+	return success(res, await traineeRecordService.documentChecklist(req.params.id));
+});
+
+const reviewDocument = asyncHandler(async (req, res) => {
+	await traineeRecordService.reviewDocument(
+		req.params.docId,
+		req.body.status,
+		req.body.note,
+		req.user.id,
+	);
+	return success(res, null, req.body.status === 'approved' ? 'Đã duyệt hồ sơ' : 'Đã từ chối hồ sơ');
+});
+
+const getAttendance = asyncHandler(async (req, res) => {
+	return success(res, await traineeRecordService.attendance(req.params.id));
+});
+
+const getGrades = asyncHandler(async (req, res) => {
+	return success(res, await traineeRecordService.grades(req.params.id));
+});
+
+const getCme = asyncHandler(async (req, res) => {
+	return success(res, await traineeRecordService.cme(req.params.id));
+});
+
 const grantAccounts = asyncHandler(async (req, res) => {
 	const result = await traineeService.grantAccounts(req.body.trainee_ids, req.user.id);
 	return success(res, result);
@@ -89,4 +117,9 @@ module.exports = {
 	removeDocument,
 	grantAccounts,
 	importExcel,
+	getDocumentChecklist,
+	reviewDocument,
+	getAttendance,
+	getGrades,
+	getCme,
 };

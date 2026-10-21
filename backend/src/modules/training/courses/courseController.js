@@ -14,6 +14,7 @@ const practiceAutoService = require('./practiceAutoService');
 const coursePolicy = require('./coursePolicy');
 const courseService = require('./courseService');
 const gradeService = require('./gradeService');
+const gradebookService = require('./gradebookService');
 const lecturerAssignmentService = require('./lecturerAssignmentService');
 const { success, created, notFound } = require('../../../utils/response');
 const { hasPermission } = require('../../../permissions/authz');
@@ -424,9 +425,46 @@ const listGrades = asyncHandler(async (req, res) => {
 	return success(res, await gradeService.listGrades(req.params.id));
 });
 
-const upsertGrade = asyncHandler(async (req, res) => {
-	const { enrollment_id, subject_id, ...data } = req.body;
-	return created(res, await gradeService.upsertGrade(enrollment_id, subject_id, data, req.user.id));
+// Bảng điểm Lý thuyết + Thực hành (giai đoạn 4) — gradebookService
+const getGradebook = asyncHandler(async (req, res) => {
+	return success(res, await gradebookService.getGradebook(req.params.id));
+});
+
+const saveGradesBulk = asyncHandler(async (req, res) => {
+	const r = await gradebookService.saveBulk(req.params.id, req.body.rows, req.user.id, {
+		source: req.body.source === 'import' ? 'import' : 'manual',
+	});
+	return success(res, r, `Đã lưu điểm ${r.saved} học viên`);
+});
+
+const lockGrades = asyncHandler(async (req, res) => {
+	return success(res, await gradebookService.lock(req.params.id, req.user.id), 'Đã khóa điểm');
+});
+
+const unlockGrades = asyncHandler(async (req, res) => {
+	return success(
+		res,
+		await gradebookService.unlock(req.params.id, req.user.id, req.body?.reason),
+		'Đã mở khóa điểm',
+	);
+});
+
+const retakeGrade = asyncHandler(async (req, res) => {
+	await gradebookService.retake(req.params.enrollmentId, req.body.part, req.user.id);
+	return success(res, null, 'Đã mở lượt thi lại');
+});
+
+const gradeHistory = asyncHandler(async (req, res) => {
+	return success(res, await gradebookService.history(req.params.enrollmentId));
+});
+
+const issueCertificatesBulk = asyncHandler(async (req, res) => {
+	const r = await gradebookService.issueCertificatesForPassed(
+		req.params.id,
+		req.user.id,
+		req.body?.expiry_date || null,
+	);
+	return success(res, r, `Đã cấp ${r.issued} giấy chứng nhận`);
 });
 
 const removeGrade = asyncHandler(async (req, res) => {
@@ -514,7 +552,13 @@ module.exports = {
 	incrementDocumentDownload,
 	removeDocument,
 	listGrades,
-	upsertGrade,
+	getGradebook,
+	saveGradesBulk,
+	lockGrades,
+	unlockGrades,
+	retakeGrade,
+	gradeHistory,
+	issueCertificatesBulk,
 	removeGrade,
 	listCertificates,
 	issueCertificate,

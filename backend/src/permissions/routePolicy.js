@@ -12,6 +12,7 @@ const catalogLookups = [
 	'training-forms',
 	'training-types',
 	'hospital-training-topics',
+	'trainee-document-types',
 	'cme-credit-groups',
 	'cme-credit-categories',
 	'venues',
@@ -114,6 +115,21 @@ module.exports = {
 			'File kết quả bổ sung — chỉ bản ghi của chính mình, đã duyệt (assertApprovedMine trước multer)',
 		[`DELETE ${API}/me/cme-records/:id/result-files/:fileId`]:
 			'Service: chỉ bản ghi của chính mình, đã duyệt, file thuộc đúng bản ghi (removeResultFileMine)',
+		[`GET ${API}/me/teaching/courses/:id/gradebook`]:
+			'Bảng điểm khóa mình được phân công dạy (gradebookService.teachingAccess theo lecturers.user_id)',
+		[`PUT ${API}/me/teaching/courses/:id/grades/bulk`]:
+			'GV nhập điểm phần mình được phân (LT: người chấm đề LT; TH: bài có tiết thực hành) — teachingAccess',
+		[`GET ${API}/me/trainee-documents/`]:
+			'Checklist giấy tờ của hồ sơ học viên gắn với tài khoản mình (trainees.user_id)',
+		[`POST ${API}/me/trainee-documents/`]:
+			'Tự nộp giấy tờ vào hồ sơ học viên của mình — trạng thái chờ duyệt (traineeRecordService.addMyDocument)',
+		[`DELETE ${API}/me/trainee-documents/:docId`]:
+			'Rút lại file mình nộp, chỉ khi chưa duyệt và thuộc hồ sơ của mình (removeMyDocument)',
+		[`GET ${API}/me/teaching/grading`]: 'Bài tự luận chờ chấm của đề mình là người chấm',
+		[`GET ${API}/me/teaching/attempts/:attemptId`]:
+			'Bài làm của đề mình là người chấm (examService.assertGrader), ẩn tên nếu chấm ẩn danh',
+		[`POST ${API}/me/teaching/attempts/:attemptId/grade`]:
+			'Chấm câu tự luận — chỉ người chấm của đề (examService.assertGrader)',
 		[`POST ${API}/excel/build`]: 'Dựng file Excel từ dữ liệu client đã có quyền xem — không đọc DB',
 		[`POST ${API}/excel/parse`]:
 			'Đọc file Excel thành bảng chữ — không ghi DB; nhập thật đi qua API tạo mới có kiểm quyền của từng module',

@@ -59,13 +59,21 @@ export default function MyCmeRecordModal({ record, categories, defaultYear, onCl
 	const inGroup = categories.filter((c) => (c.group_name ?? NO_GROUP) === group);
 	const unit = categories.find((x) => x.id === form.category_id)?.unit_label;
 
+	// Id đã lưu — tạo mới xong mà tải minh chứng lỗi thì lần gửi sau là cập nhật, không tạo trùng
+	const [savedId, setSavedId] = useState(record?.id ?? null);
+
 	const save = async () => {
-		if (!form.title.trim() || !form.year || !form.credits) return setError('Vui lòng nhập nội dung, năm và số tín chỉ');
+		if (!form.title.trim() || !form.year || form.credits === '')
+			return setError('Vui lòng nhập nội dung, năm và số tín chỉ');
+		if (form.activity_date && form.end_date && form.end_date < form.activity_date)
+			return setError('"Đến ngày" phải sau hoặc bằng "Từ ngày"');
 		setBusy(true);
 		setError('');
 		try {
-			const saved = record ? await updateMyCmeRecord(record.id, form) : await createMyCmeRecord(form);
-			if (evidence) await addMyCmeEvidence(saved.id ?? record!.id, evidence);
+			const saved = savedId ? await updateMyCmeRecord(savedId, form) : await createMyCmeRecord(form);
+			const id = saved.id ?? savedId!;
+			setSavedId(id);
+			if (evidence) await addMyCmeEvidence(id, evidence);
 			onSaved();
 			onClose();
 		} catch (e) {

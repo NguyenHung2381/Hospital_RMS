@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client';
 
 import App from './app/App';
 import { initMobileTableCards } from './shared/utils/mobileTableCards';
+import { initSelectAutoWidth } from './shared/utils/selectAutoWidth';
 import './styles/global.css';
 
 // Stylesheet chèn bằng JS không chặn vẽ trang: Google Fonts chậm/bị chặn thì
@@ -33,6 +34,7 @@ window.addEventListener('unhandledrejection', (event) => {
 sessionStorage.removeItem(RELOAD_FLAG);
 
 initMobileTableCards();
+initSelectAutoWidth();
 
 createRoot(rootElement).render(
 	<StrictMode>

@@ -291,6 +291,7 @@ export function FilterPanel({ filters, patch, reset, moduleOptions }: Props) {
 						<span className={styles.label}>Kết quả</span>
 						<select
 							className={`${styles.control} ${filters.status ? styles.controlOn : ''}`}
+							data-active={filters.status ? 'true' : undefined}
 							value={filters.status}
 							onChange={(e) => patch({ status: e.target.value })}
 						>
@@ -309,6 +310,7 @@ export function FilterPanel({ filters, patch, reset, moduleOptions }: Props) {
 						<span className={styles.label}>Thời gian xử lý</span>
 						<select
 							className={`${styles.control} ${filters.minDuration ? styles.controlOn : ''}`}
+							data-active={filters.minDuration ? 'true' : undefined}
 							value={filters.minDuration}
 							onChange={(e) => patch({ minDuration: e.target.value })}
 						>
@@ -327,6 +329,7 @@ export function FilterPanel({ filters, patch, reset, moduleOptions }: Props) {
 						<span className={styles.label}>Loại tài khoản</span>
 						<select
 							className={`${styles.control} ${filters.actorType ? styles.controlOn : ''}`}
+							data-active={filters.actorType ? 'true' : undefined}
 							value={filters.actorType}
 							onChange={(e) => patch({ actorType: e.target.value as FilterState['actorType'] })}
 						>

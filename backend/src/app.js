@@ -202,6 +202,16 @@ app.use(
 );
 app.use(`${API}/surveys`, requireModule('SURVEY'), require('./modules/surveys/surveys.routes'));
 app.use(`${API}/my-tasks`, require('./modules/portal/myTasks.routes'));
+app.use(
+	`${API}/me/teaching`,
+	requireModule('TRAINING'),
+	require('./modules/portal/teaching.routes'),
+);
+app.use(
+	`${API}/me/trainee-documents`,
+	requireModule('TRAINING'),
+	require('./modules/portal/myTraineeDocuments.routes'),
+);
 app.use(`${API}/me`, require('./modules/portal/me.routes'));
 app.use(
 	`${API}/exams`,

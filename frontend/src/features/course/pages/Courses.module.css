@@ -943,6 +943,20 @@
 	font-family: inherit;
 	font-size: inherit;
 	text-align: left;
+	white-space: nowrap;
+}
+/* Ô chương trình trong bảng học viên: mã đậm + tên, tối đa 2 dòng (đủ tên ở title) */
+.progCell {
+	max-width: 260px;
+	min-width: 160px;
+	display: -webkit-box;
+	-webkit-line-clamp: 2;
+	-webkit-box-orient: vertical;
+	overflow: hidden;
+}
+.progCell b {
+	font-weight: var(--font-weight-semibold);
+	color: var(--color-gray-800);
 }
 
 /* Nhóm form thu gọn (<details>) — mũi tên tự vẽ vì summary dùng display:flex */
@@ -959,4 +973,149 @@
 }
 .collapse[open] > summary::before {
 	content: '▾';
+}
+
+/* Danh sách học viên của khóa: hàng lọc (tìm kiếm + trạng thái) và chip lọc theo chương trình */
+.enrFilters {
+	display: flex;
+	flex-direction: column;
+	gap: var(--space-3);
+	padding: var(--space-3) var(--space-6);
+	border-bottom: 1px solid var(--color-gray-100);
+	background: var(--color-gray-50);
+}
+.enrFilterRow {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--space-2) var(--space-3);
+}
+.enrSearch {
+	flex: 1 1 320px;
+	min-width: 0;
+	display: flex;
+}
+.enrSearch > *,
+.enrSearch input {
+	flex: 1;
+	max-width: none;
+	width: 100%;
+}
+.enrClear {
+	border: none;
+	background: none;
+	padding: 0 4px;
+	color: var(--color-primary-dark);
+	font-family: var(--font-body);
+	font-size: var(--font-size-sm);
+	cursor: pointer;
+}
+.enrClear:hover {
+	text-decoration: underline;
+}
+.progChips {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 6px;
+}
+.progChip {
+	display: inline-flex;
+	align-items: center;
+	gap: 8px;
+	max-width: 340px;
+	padding: 5px 6px 5px 12px;
+	border: 1px solid var(--color-gray-200);
+	border-radius: var(--radius-full);
+	background: var(--color-white);
+	color: var(--color-gray-700);
+	font-family: var(--font-body);
+	font-size: var(--font-size-compact);
+	cursor: pointer;
+	transition:
+		border-color var(--transition-fast),
+		background var(--transition-fast);
+}
+.progChip:hover {
+	border-color: var(--color-primary);
+}
+.progChipActive {
+	border-color: var(--color-primary);
+	background: #e1f5ea;
+	color: #085028;
+}
+.progChipEmpty {
+	color: var(--color-gray-400);
+	border-style: dashed;
+}
+.progChipLabel {
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+.progChipLabel b {
+	font-weight: var(--font-weight-semibold);
+}
+.progChipCount {
+	flex-shrink: 0;
+	min-width: 22px;
+	padding: 1px 7px;
+	border-radius: var(--radius-full);
+	background: var(--color-gray-100);
+	color: var(--color-gray-600);
+	font-size: var(--font-size-xs);
+	font-weight: var(--font-weight-semibold);
+	text-align: center;
+}
+.progChipActive .progChipCount {
+	background: #085028;
+	color: var(--color-white);
+}
+/* Lớp ĐTLT: chưa đủ sĩ số tối thiểu (vàng) / đã mở lớp (xanh) */
+.progChipClass {
+	flex-shrink: 0;
+	padding: 1px 7px;
+	border-radius: var(--radius-full);
+	background: #faeeda;
+	color: #854f0b;
+	font-size: var(--font-size-xs);
+	font-weight: var(--font-weight-semibold);
+	white-space: nowrap;
+}
+.progChipClassOpen {
+	background: #e1f5ea;
+	color: #085028;
+}
+.classNote {
+	padding: 6px 10px;
+	border-left: 3px solid #ef9f27;
+	border-radius: var(--radius-sm);
+	background: #faeeda;
+	color: #633806;
+	font-size: var(--font-size-compact);
+}
+.classNoteOpen {
+	border-left-color: #1d9e75;
+	background: #e1f5ea;
+	color: #085028;
+}
+.progChipMore {
+	border: none;
+	background: none;
+	padding: 5px 6px;
+	color: var(--color-gray-500);
+	font-family: var(--font-body);
+	font-size: var(--font-size-compact);
+	cursor: pointer;
+}
+.progChipMore:hover {
+	color: var(--color-primary-dark);
+}
+@media (max-width: 640px) {
+	.enrFilters {
+		padding: var(--space-3) var(--space-4);
+	}
+	.progChip {
+		max-width: 100%;
+	}
 }

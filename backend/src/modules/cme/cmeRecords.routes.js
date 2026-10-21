@@ -1,6 +1,7 @@
 const router = require('express').Router();
 const { body } = require('express-validator');
 const ctrl = require('./cmeRecordController');
+const { updateRules } = require('./cmeRecordValidators');
 const { authenticate, authorizePermission } = require('../../middlewares/auth');
 const { validate } = require('../../middlewares/errorHandler');
 const { createTrainingUpload } = require('../../middlewares/uploadTraining');
@@ -38,7 +39,19 @@ router.post(
 );
 router.post('/:id/approve', canManage, ctrl.approve);
 router.post('/:id/reject', canManage, ctrl.reject);
-router.put('/:id', canManage, ctrl.updateOne);
+router.put(
+	'/:id',
+	canManage,
+	[
+		...updateRules,
+		body('user_id')
+			.optional()
+			.custom((v) => !!v)
+			.withMessage('Vui lòng chọn nhân viên'),
+	],
+	validate,
+	ctrl.updateOne,
+);
 router.delete('/:id', canManage, ctrl.removeOne);
 router.post('/:id/evidence', canManage, uploadEvidence.single('file'), ctrl.addEvidence);
 router.post('/import-excel', canManage, uploadExcel.single('file'), ctrl.importExcel);

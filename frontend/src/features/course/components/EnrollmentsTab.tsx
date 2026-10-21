@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
-import { CheckSvg, PlusSvg, XSvg } from "@/assets/icons";
+import { useNavigate } from "react-router-dom";
+import { CheckSvg, PlusSvg, UserCheckSvg, XSvg } from "@/assets/icons";
 import {
   RowAction,
   RowActions,
@@ -13,6 +14,7 @@ import {
   BulkButton,
   SelectCheckbox,
 } from "@/shared/components/Table/RowSelect";
+import { usePermission } from "@/shared/hooks/usePermission";
 import { useRowSelection } from "@/shared/hooks/useRowSelection";
 import { formatDateOr } from "@/shared/utils";
 import type { SimpleItem } from "../hooks/useCourseDetail";
@@ -42,6 +44,33 @@ const normalize = (s: string) =>
     .replace(/đ/g, "d")
     .replace(/Đ/g, "D")
     .toLowerCase();
+
+/** 1 chip lọc theo chương trình; key "" = ghi danh chưa chọn / chương trình đã gỡ khỏi khóa. */
+type ProgramChip = {
+  key: string;
+  code: string | null;
+  name: string;
+  count: number;
+  /** Khóa ĐTLT thường: sĩ số lớp của chương trình (xem CourseProgramLink.class_rule). */
+  link?: CourseProgramLink;
+};
+
+/** Lớp ĐTLT đã mở (đủ sĩ số tối thiểu) chưa — kèm câu giải thích cho tooltip / dòng gợi ý. */
+const classState = (l: CourseProgramLink) => {
+  const open = l.class_approved >= l.class_min;
+  const full = l.class_max != null && l.class_approved >= l.class_max;
+  const max = l.class_max != null ? `, tối đa ${l.class_max}` : "";
+  const waiting = l.class_waiting
+    ? ` · ${l.class_waiting} hồ sơ lưu cho khóa sau`
+    : "";
+  return {
+    open,
+    short: `${l.class_approved}/${l.class_min}`,
+    text: open
+      ? `Đã mở lớp — ${l.class_approved} học viên${max}${full ? " (đã đầy, duyệt thêm sẽ lưu cho khóa sau)" : ""}${waiting}`
+      : `Chưa mở lớp — mới ${l.class_approved}/${l.class_min} học viên tối thiểu, chưa xếp lịch được${max}${waiting}`,
+  };
+};
 
 export function EnrollmentsTab({
   enrollments,
@@ -75,33 +104,89 @@ export function EnrollmentsTab({
   const [newTraineeId, setNewTraineeId] = useState("");
   const [newProgramId, setNewProgramId] = useState("");
   const [detailId, setDetailId] = useState<string | null>(null);
+  const navigate = useNavigate();
+  const canViewTrainee = usePermission().has("trainees:read");
   const [bookOpen, setBookOpen] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [arranging, setArranging] = useState(false);
   const [adding, setAdding] = useState(enrollments.length === 0);
   const detail = enrollments.find((e) => e.id === detailId) ?? null;
-  // Khóa chỉ có 1 chương trình thì chọn sẵn; nhiều chương trình thì bắt chọn.
-  const programId =
-    programLinks.length === 1 ? programLinks[0].program_id : newProgramId;
-  const needProgram = programLinks.length > 1 && !programId;
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<EnrollmentStatus | "">("");
+  // null = mọi chương trình; "" = chưa chọn chương trình
+  const [programFilter, setProgramFilter] = useState<string | null>(null);
+  const [showEmptyPrograms, setShowEmptyPrograms] = useState(false);
 
-  const filtered = useMemo(() => {
+  // Ghi danh chưa chọn chương trình / chương trình đã gỡ khỏi khóa gom vào key ""
+  const programKey = useMemo(() => {
+    const linked = new Set(programLinks.map((p) => p.program_id));
+    return (e: Enrollment) =>
+      e.program_id && linked.has(e.program_id) ? e.program_id : "";
+  }, [programLinks]);
+
+  // Khóa chỉ có 1 chương trình thì chọn sẵn; đang lọc 1 chương trình thì gợi ý chương trình đó.
+  const programId =
+    programLinks.length === 1
+      ? programLinks[0].program_id
+      : newProgramId || programFilter || "";
+  const needProgram = programLinks.length > 1 && !programId;
+
+  // Lọc theo trạng thái + từ khoá (chưa lọc chương trình) — dùng để đếm số trên từng chip.
+  const matches = useMemo(() => {
     const q = normalize(search.trim());
     return enrollments.filter(
       (en) =>
         (!statusFilter || en.status === statusFilter) &&
         (!q ||
           normalize(
-            `${en.trainee_name} ${en.trainee_phone ?? ""} ${en.trainee_email ?? ""}`,
+            `${en.trainee_name} ${en.trainee_id} ${en.practice_code ?? ""} ${en.trainee_phone ?? ""} ${en.trainee_email ?? ""}`,
           ).includes(q)),
     );
   }, [enrollments, search, statusFilter]);
 
+  const filtered = useMemo(
+    () =>
+      programFilter === null
+        ? matches
+        : matches.filter((e) => programKey(e) === programFilter),
+    [matches, programFilter, programKey],
+  );
+
+  // Chip chương trình: có học viên hiện trước, chương trình trống gom lại (bấm để hiện).
+  const chips = useMemo(() => {
+    const count = (key: string) =>
+      matches.filter((e) => programKey(e) === key).length;
+    const list: ProgramChip[] = programLinks.map((p) => ({
+      key: p.program_id,
+      code: p.program_code,
+      name: p.program_name,
+      count: count(p.program_id),
+      link: p.class_rule ? p : undefined,
+    }));
+    if (enrollments.some((e) => programKey(e) === ""))
+      list.push({ key: "", code: null, name: "Chưa chọn chương trình", count: count("") });
+    return list;
+  }, [programLinks, matches, enrollments, programKey]);
+  const filledChips = chips.filter((c) => c.count > 0 || c.key === programFilter);
+  const emptyChips = chips.filter((c) => c.count === 0 && c.key !== programFilter);
+  const shownChips = showEmptyPrograms ? [...filledChips, ...emptyChips] : filledChips;
+  const showPrograms = chips.length > 1;
+  const filterActive = !!search.trim() || !!statusFilter || programFilter !== null;
+  const onlyProgramFilter = programFilter !== null && !search.trim() && !statusFilter;
+  // Đang lọc 1 chương trình (hoặc khóa chỉ 1 chương trình) thì bỏ cột Chương trình — tiến độ dời xuống dưới tên.
+  const showProgramCol = chips.length > 1 && programFilter === null;
+  const classRule = programLinks.some((l) => l.class_rule);
+  // Lớp đang xem: đang lọc 1 chương trình, hoặc khóa chỉ có 1 chương trình.
+  const focusLink =
+    programLinks.length === 1
+      ? programLinks[0]
+      : programLinks.find((l) => l.program_id === programFilter);
+  const focusClass = focusLink?.class_rule ? classState(focusLink) : null;
+
   const pg = useClientPaging(filtered);
   const visibleIds = useMemo(() => pg.paged.map((e) => e.id), [pg.paged]);
   const rowSel = useRowSelection(visibleIds);
+  const resetPage = () => pg.setPage(1);
   // Duyệt/Từ chối hàng loạt chỉ áp cho các đăng ký "chờ duyệt" trong lựa chọn.
   const selectedPending = enrollments
     .filter((e) => e.status === "pending" && rowSel.selectedIds.has(e.id))
@@ -165,6 +250,126 @@ export function EnrollmentsTab({
     setExporting(false);
   };
 
+  const renderRow = (en: Enrollment, stt: number, showProgram: boolean) => {
+    const cfg = ENROLLMENT_STATUS_CFG[en.status];
+    const isPending = en.status === "pending";
+    const progress = (
+      <div className={tbl.cellSub}>
+        {en.lesson_total > 0
+          ? `${en.lesson_done}/${en.lesson_total} bài · `
+          : ""}
+        {PROGRESS_LABEL[en.progress_status] ?? ""}
+      </div>
+    );
+    return (
+      <tr
+        key={en.id}
+        className={`${tbl.tr} ${rowSel.isSelected(en.id) ? sel.rowSelected : ""}`}
+      >
+        <td className={sel.checkCol}>
+          <SelectCheckbox
+            title={`Chọn ${en.trainee_name}`}
+            checked={rowSel.isSelected(en.id)}
+            onChange={() => rowSel.toggleSelect(en.id)}
+          />
+        </td>
+        <td className={`${tbl.td} ${tbl.tdIdx}`}>{stt}</td>
+        <td className={tbl.td}>
+          <button
+            type="button"
+            className={styles.nameBtn}
+            title="Mở hồ sơ ghi danh"
+            onClick={() => setDetailId(en.id)}
+          >
+            {en.trainee_name}
+          </button>
+          {en.practice_code && (
+            <div className={tbl.cellSub}>Mã thực hành {en.practice_code}</div>
+          )}
+          {!showProgram && progress}
+        </td>
+        {showProgram && (
+          <td className={tbl.td}>
+            {en.program_name ? (
+              <div
+                className={styles.progCell}
+                title={`${en.program_code ? `${en.program_code} — ` : ""}${en.program_name}`}
+              >
+                {en.program_code && <b>{en.program_code}</b>} {en.program_name}
+              </div>
+            ) : (
+              "—"
+            )}
+            {progress}
+          </td>
+        )}
+        <td className={tbl.td}>
+          <div>{en.trainee_phone ?? "—"}</div>
+          {en.trainee_email && (
+            <div className={tbl.cellSub}>{en.trainee_email}</div>
+          )}
+        </td>
+        <td className={tbl.td}>{formatDateOr(en.registered_at)}</td>
+        <td className={tbl.td}>
+          <span
+            className={styles.badge}
+            style={{ background: cfg.bg, color: cfg.color }}
+            title={
+              en.decided_by_name ? `Xử lý bởi ${en.decided_by_name}` : undefined
+            }
+          >
+            {cfg.label}
+          </span>
+          {en.waitlist_position != null && (
+            <div className={tbl.cellSub}>
+              {course?.auto_batch
+                ? "Chờ đợt sau · "
+                : classRule
+                  ? "Lưu cho khóa sau · "
+                  : ""}
+              vị trí{" "}
+              {en.waitlist_position}
+            </div>
+          )}
+        </td>
+        <td className={`${tbl.td} ${tbl.tdActions}`}>
+          <RowActions
+            onEdit={() => setDetailId(en.id)}
+            onDelete={() => onRemove(en.id)}
+          >
+            {canViewTrainee && (
+              <RowAction
+                title="Hồ sơ học viên (giấy tờ, điểm danh, kết quả các khóa)"
+                onClick={() => navigate(`/admin/trainees/${en.trainee_id}`)}
+              >
+                <UserCheckSvg />
+              </RowAction>
+            )}
+            {isPending && (
+              <>
+                <RowAction
+                  title="Duyệt"
+                  disabled={busy}
+                  onClick={() => onDecide(en.id, "approved")}
+                >
+                  <CheckSvg />
+                </RowAction>
+                <RowAction
+                  title="Từ chối"
+                  danger
+                  disabled={busy}
+                  onClick={() => onDecide(en.id, "rejected")}
+                >
+                  <XSvg />
+                </RowAction>
+              </>
+            )}
+          </RowActions>
+        </td>
+      </tr>
+    );
+  };
+
   return (
     <>
       {adding && (
@@ -189,7 +394,7 @@ export function EnrollmentsTab({
             <select
               className={styles.subSelect}
               style={{ flex: "0 1 280px" }}
-              value={newProgramId}
+              value={programId}
               onChange={(e) => setNewProgramId(e.target.value)}
               title="Chương trình học — bài học của chương trình tự gắn cho học viên"
             >
@@ -254,31 +459,12 @@ export function EnrollmentsTab({
                 )
               }
             >
-              {filtered.length} đăng ký
+              {filterActive
+                ? `${filtered.length}/${enrollments.length} đăng ký`
+                : `${enrollments.length} đăng ký`}
             </SelectionCount>
           </div>
           <div className={tbl.tableControls}>
-            <SearchInput
-              value={search}
-              onChange={setSearch}
-              placeholder="Tìm học viên theo tên, SĐT, email..."
-            />
-            <select
-              className={`${tbl.filterSelect} ${statusFilter ? tbl.filterActive : ""}`}
-              value={statusFilter}
-              onChange={(e) =>
-                setStatusFilter(e.target.value as EnrollmentStatus | "")
-              }
-            >
-              <option value="">Tất cả trạng thái ({enrollments.length})</option>
-              {(Object.keys(ENROLLMENT_STATUS_CFG) as EnrollmentStatus[]).map(
-                (s) => (
-                  <option key={s} value={s}>
-                    {ENROLLMENT_STATUS_CFG[s].label} ({counts[s] ?? 0})
-                  </option>
-                ),
-              )}
-            </select>
             {course?.is_rolling && (
               <>
                 <button
@@ -320,6 +506,124 @@ export function EnrollmentsTab({
           </div>
         </div>
 
+        {/* Hàng lọc: ô tìm kiếm rộng + trạng thái; chip chương trình bên dưới */}
+        <div className={styles.enrFilters}>
+          <div className={styles.enrFilterRow}>
+            <div className={styles.enrSearch}>
+              <SearchInput
+                value={search}
+                onChange={(v) => {
+                  setSearch(v);
+                  resetPage();
+                }}
+                placeholder="Tìm theo tên, mã học viên, mã thực hành, SĐT, email..."
+              />
+            </div>
+            <select
+              className={`${tbl.filterSelect} ${statusFilter ? tbl.filterActive : ""}`}
+              data-active={statusFilter ? "true" : undefined}
+              value={statusFilter}
+              onChange={(e) => {
+                setStatusFilter(e.target.value as EnrollmentStatus | "");
+                resetPage();
+              }}
+            >
+              <option value="">Tất cả trạng thái ({enrollments.length})</option>
+              {(Object.keys(ENROLLMENT_STATUS_CFG) as EnrollmentStatus[]).map(
+                (s) => (
+                  <option key={s} value={s}>
+                    {ENROLLMENT_STATUS_CFG[s].label} ({counts[s] ?? 0})
+                  </option>
+                ),
+              )}
+            </select>
+            {filterActive && (
+              <button
+                type="button"
+                className={styles.enrClear}
+                onClick={() => {
+                  setSearch("");
+                  setStatusFilter("");
+                  setProgramFilter(null);
+                  resetPage();
+                }}
+              >
+                Xoá lọc
+              </button>
+            )}
+          </div>
+          {showPrograms && (
+            <div
+              className={styles.progChips}
+              role="radiogroup"
+              aria-label="Lọc theo chương trình"
+            >
+              <button
+                type="button"
+                role="radio"
+                aria-checked={programFilter === null}
+                className={`${styles.progChip} ${programFilter === null ? styles.progChipActive : ""}`}
+                onClick={() => {
+                  setProgramFilter(null);
+                  resetPage();
+                }}
+              >
+                <span className={styles.progChipLabel}>Tất cả chương trình</span>
+                <span className={styles.progChipCount}>{matches.length}</span>
+              </button>
+              {shownChips.map((c) => (
+                <button
+                  key={c.key || "_none"}
+                  type="button"
+                  role="radio"
+                  aria-checked={programFilter === c.key}
+                  title={[
+                    c.code ? `${c.code} — ${c.name}` : c.name,
+                    c.link && classState(c.link).text,
+                  ]
+                    .filter(Boolean)
+                    .join("\n")}
+                  className={`${styles.progChip} ${programFilter === c.key ? styles.progChipActive : ""} ${c.count === 0 ? styles.progChipEmpty : ""}`}
+                  onClick={() => {
+                    setProgramFilter(c.key);
+                    resetPage();
+                  }}
+                >
+                  <span className={styles.progChipLabel}>
+                    {c.code && <b>{c.code}</b>} {c.name}
+                  </span>
+                  {c.link && (
+                    <span
+                      className={`${styles.progChipClass} ${classState(c.link).open ? styles.progChipClassOpen : ""}`}
+                    >
+                      {classState(c.link).open ? "Đã mở" : classState(c.link).short}
+                    </span>
+                  )}
+                  <span className={styles.progChipCount}>{c.count}</span>
+                </button>
+              ))}
+              {emptyChips.length > 0 && (
+                <button
+                  type="button"
+                  className={styles.progChipMore}
+                  onClick={() => setShowEmptyPrograms((v) => !v)}
+                >
+                  {showEmptyPrograms
+                    ? "Ẩn chương trình chưa có học viên"
+                    : `+${emptyChips.length} chương trình chưa có học viên`}
+                </button>
+              )}
+            </div>
+          )}
+          {focusClass && (
+            <div
+              className={`${styles.classNote} ${focusClass.open ? styles.classNoteOpen : ""}`}
+            >
+              {focusClass.text}
+            </div>
+          )}
+        </div>
+
         <div className={tbl.tableWrap}>
           <table className={tbl.table}>
             <thead>
@@ -334,7 +638,7 @@ export function EnrollmentsTab({
                 </th>
                 <th className={`${tbl.th} ${tbl.thIdx}`}>STT</th>
                 <th className={tbl.th}>Học viên</th>
-                <th className={tbl.th}>Chương trình</th>
+                {showProgramCol && <th className={tbl.th}>Chương trình</th>}
                 <th className={tbl.th}>Liên hệ</th>
                 <th className={tbl.th}>Ngày đăng ký</th>
                 <th className={tbl.th}>Trạng thái</th>
@@ -344,121 +648,26 @@ export function EnrollmentsTab({
             <tbody>
               {filtered.length === 0 ? (
                 <TableEmpty
-                  colSpan={8}
+                  colSpan={showProgramCol ? 8 : 7}
                   title={
                     enrollments.length === 0
                       ? "Chưa có học viên"
-                      : "Không tìm thấy đăng ký"
+                      : onlyProgramFilter
+                        ? "Chương trình chưa có học viên"
+                        : "Không tìm thấy đăng ký"
                   }
                   desc={
                     enrollments.length === 0
-                      ? "Chưa có học viên nào đăng ký khóa học này."
-                      : "Thử thay đổi từ khoá hoặc bộ lọc trạng thái"
+                      ? "Bấm “Thêm học viên” để ghi danh học viên vào khóa."
+                      : onlyProgramFilter
+                        ? "Bấm “Thêm học viên” — chương trình đang chọn được chọn sẵn."
+                        : "Thử đổi từ khoá hoặc bộ lọc."
                   }
                 />
               ) : (
-                pg.paged.map((en, idx) => {
-                  const cfg = ENROLLMENT_STATUS_CFG[en.status];
-                  const isPending = en.status === "pending";
-                  return (
-                    <tr
-                      key={en.id}
-                      className={`${tbl.tr} ${rowSel.isSelected(en.id) ? sel.rowSelected : ""}`}
-                    >
-                      <td className={sel.checkCol}>
-                        <SelectCheckbox
-                          title={`Chọn ${en.trainee_name}`}
-                          checked={rowSel.isSelected(en.id)}
-                          onChange={() => rowSel.toggleSelect(en.id)}
-                        />
-                      </td>
-                      <td className={`${tbl.td} ${tbl.tdIdx}`}>
-                        {pg.offset + idx + 1}
-                      </td>
-                      <td className={tbl.td}>
-                        <button
-                          type="button"
-                          className={styles.nameBtn}
-                          title="Mở hồ sơ ghi danh"
-                          onClick={() => setDetailId(en.id)}
-                        >
-                          {en.trainee_name}
-                        </button>
-                        {en.practice_code && (
-                          <div className={tbl.cellSub}>
-                            Mã thực hành {en.practice_code}
-                          </div>
-                        )}
-                      </td>
-                      <td className={tbl.td}>
-                        <div>
-                          {en.program_name
-                            ? `${en.program_code ? `${en.program_code} — ` : ""}${en.program_name}`
-                            : "—"}
-                        </div>
-                        <div className={tbl.cellSub}>
-                          {en.lesson_total > 0
-                            ? `${en.lesson_done}/${en.lesson_total} bài · `
-                            : ""}
-                          {PROGRESS_LABEL[en.progress_status] ?? ""}
-                        </div>
-                      </td>
-                      <td className={tbl.td}>
-                        <div>{en.trainee_phone ?? "—"}</div>
-                        {en.trainee_email && (
-                          <div className={tbl.cellSub}>{en.trainee_email}</div>
-                        )}
-                      </td>
-                      <td className={tbl.td}>
-                        {formatDateOr(en.registered_at)}
-                      </td>
-                      <td className={tbl.td}>
-                        <span
-                          className={styles.badge}
-                          style={{ background: cfg.bg, color: cfg.color }}
-                          title={
-                            en.decided_by_name
-                              ? `Xử lý bởi ${en.decided_by_name}`
-                              : undefined
-                          }
-                        >
-                          {cfg.label}
-                        </span>
-                        {en.waitlist_position != null && (
-                          <div className={tbl.cellSub}>
-                            {course?.auto_batch ? "Chờ đợt sau · " : ""}vị trí {en.waitlist_position}
-                          </div>
-                        )}
-                      </td>
-                      <td className={`${tbl.td} ${tbl.tdActions}`}>
-                        <RowActions
-                          onEdit={() => setDetailId(en.id)}
-                          onDelete={() => onRemove(en.id)}
-                        >
-                          {isPending && (
-                            <>
-                              <RowAction
-                                title="Duyệt"
-                                disabled={busy}
-                                onClick={() => onDecide(en.id, "approved")}
-                              >
-                                <CheckSvg />
-                              </RowAction>
-                              <RowAction
-                                title="Từ chối"
-                                danger
-                                disabled={busy}
-                                onClick={() => onDecide(en.id, "rejected")}
-                              >
-                                <XSvg />
-                              </RowAction>
-                            </>
-                          )}
-                        </RowActions>
-                      </td>
-                    </tr>
-                  );
-                })
+                pg.paged.map((en, idx) =>
+                  renderRow(en, pg.offset + idx + 1, showProgramCol),
+                )
               )}
             </tbody>
           </table>

@@ -420,6 +420,7 @@ export default function TopicRegister() {
 											<select
 												id='reg-level'
 												className={`${styles.formSelect} ${errors.level_id ? styles.hasError : ''}`}
+												aria-invalid={errors.level_id ? true : undefined}
 												value={form.level_id}
 												onChange={(e) => setField('level_id', e.target.value)}
 											>
@@ -463,6 +464,7 @@ export default function TopicRegister() {
 										<select
 											id='reg-dept'
 											className={`${styles.formSelect} ${errors.department_id ? styles.hasError : ''}`}
+											aria-invalid={errors.department_id ? true : undefined}
 											value={form.department_id}
 											onChange={(e) => handleDeptChange(e.target.value)}
 										>

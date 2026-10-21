@@ -11,7 +11,6 @@ import {
 	updateTrainee,
 	type GrantedTraineeAccount,
 } from '../api/traineeApi';
-import type { DetailTab } from './useTraineeDetail';
 import { EMPTY_FORM, type ModalType, type Trainee, type TraineeFormData } from '../types/trainee.type';
 import { DEFAULT_PAGE_SIZE } from '@/shared/utils/constants';
 
@@ -31,8 +30,8 @@ export function useTrainees(trainingTypeId = '') {
 	const [modal, setModal] = useState<ModalType>(null);
 	const [editingTrainee, setEditingTrainee] = useState<Trainee | null>(null);
 	const [deletingTrainee, setDeletingTrainee] = useState<Trainee | null>(null);
-	const [viewingTrainee, setViewingTrainee] = useState<Trainee | null>(null);
-	const [viewingTab, setViewingTab] = useState<DetailTab>('general');
+	// Chỉ học viên còn thiếu giấy tờ bắt buộc (doc_done < doc_required)
+	const [missingDocsOnly, setMissingDocsOnly] = useState(false);
 	const [loading, setLoading] = useState(false);
 	const [pageSize, setPageSize] = useState<number>(DEFAULT_PAGE_SIZE);
 	const [page, setPage] = useState(1);
@@ -75,16 +74,17 @@ export function useTrainees(trainingTypeId = '') {
 	}, []);
 
 	const filtered = useMemo(() => {
-		if (!search.trim()) return trainees;
+		const base = missingDocsOnly ? trainees.filter((t) => (t.doc_done ?? 0) < (t.doc_required ?? 0)) : trainees;
+		if (!search.trim()) return base;
 		const q = search.toLowerCase();
-		return trainees.filter(
+		return base.filter(
 			(t) =>
 				t.full_name.toLowerCase().includes(q) ||
 				(t.national_id ?? '').toLowerCase().includes(q) ||
 				(t.phone ?? '').toLowerCase().includes(q) ||
 				(t.email ?? '').toLowerCase().includes(q),
 		);
-	}, [trainees, search]);
+	}, [trainees, search, missingDocsOnly]);
 
 	const totalPages = pageSize === 0 ? 1 : Math.ceil(filtered.length / pageSize);
 	const safePage = Math.min(page, totalPages || 1);
@@ -95,10 +95,6 @@ export function useTrainees(trainingTypeId = '') {
 		return filtered.slice(start, start + pageSize);
 	}, [filtered, safePage, pageSize]);
 
-	const openDetail = useCallback((trainee: Trainee, tab: DetailTab = 'general') => {
-		setViewingTrainee(trainee);
-		setViewingTab(tab);
-	}, []);
 
 	const handleSearch = useCallback((v: string) => {
 		setSearch(v);
@@ -219,8 +215,8 @@ export function useTrainees(trainingTypeId = '') {
 		modal,
 		editingTrainee,
 		deletingTrainee,
-		viewingTrainee,
-		viewingTab,
+		missingDocsOnly,
+		setMissingDocsOnly,
 		loading,
 		pageSize,
 		page,
@@ -232,8 +228,6 @@ export function useTrainees(trainingTypeId = '') {
 		setModal,
 		setEditingTrainee,
 		setDeletingTrainee,
-		setViewingTrainee,
-		openDetail,
 		setPage,
 		handleSearch,
 		handlePageSize,

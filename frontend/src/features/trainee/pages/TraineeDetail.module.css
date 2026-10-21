@@ -1,0 +1,299 @@
+.backLink {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	border: none;
+	background: none;
+	padding: 0;
+	margin-bottom: var(--space-3);
+	color: var(--color-gray-500);
+	font-family: var(--font-body);
+	font-size: var(--font-size-compact);
+	cursor: pointer;
+}
+.backLink:hover {
+	color: var(--color-primary-dark);
+}
+/* Thẻ tóm tắt đầu trang: định danh bên trái, các chỉ số nhanh bên phải */
+.summaryCard {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--space-4) var(--space-6);
+	background: var(--color-white);
+	border: 1px solid var(--color-gray-100);
+	border-radius: var(--radius-xl);
+	padding: var(--space-4) var(--space-5);
+	margin-bottom: var(--space-4);
+}
+.identity {
+	display: flex;
+	align-items: center;
+	gap: var(--space-3);
+	min-width: 0;
+}
+.avatar {
+	width: 48px;
+	height: 48px;
+	border-radius: 50%;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	flex-shrink: 0;
+	font-size: var(--font-size-sm);
+	font-weight: var(--font-weight-bold);
+	letter-spacing: 0.02em;
+}
+.identityText {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+	min-width: 0;
+}
+.code {
+	font-size: var(--font-size-compact);
+	color: var(--color-gray-500);
+	font-variant-numeric: tabular-nums;
+	word-break: break-all;
+}
+.tags {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 6px;
+}
+.facts {
+	flex: 1;
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(min(100%, 120px), 1fr));
+	gap: var(--space-2) var(--space-4);
+	min-width: min(100%, 260px);
+}
+.fact {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+	min-width: 0;
+	padding: 6px 10px;
+	border-radius: var(--radius-lg);
+	border: 1px solid transparent;
+	background: var(--color-gray-50);
+	text-align: left;
+	font-family: var(--font-body);
+}
+.factLink {
+	cursor: pointer;
+	border-color: var(--color-gray-100);
+}
+.factLink:hover {
+	border-color: var(--color-primary);
+}
+.factLabel {
+	font-size: var(--font-size-xs);
+	text-transform: uppercase;
+	letter-spacing: 0.03em;
+	color: var(--color-gray-400);
+	font-weight: var(--font-weight-semibold);
+}
+.factValue {
+	font-size: var(--font-size-sm);
+	color: var(--color-gray-800);
+	font-weight: var(--font-weight-semibold);
+	overflow-wrap: anywhere;
+}
+.panel {
+	background: var(--color-white);
+	border: 1px solid var(--color-gray-100);
+	border-radius: var(--radius-2xl);
+	overflow: hidden;
+}
+.tabs {
+	display: flex;
+	gap: var(--space-1);
+	padding: 0 var(--space-4);
+	border-bottom: 2px solid var(--color-gray-100);
+	overflow-x: auto;
+	overflow-y: hidden;
+	scrollbar-width: thin;
+}
+/* Màn hẹp: tab giữ 1 dòng, thanh tab cuộn ngang thay vì bẻ chữ */
+.tabs > button {
+	flex-shrink: 0;
+	white-space: nowrap;
+}
+.body {
+	padding: var(--space-5);
+}
+/* Tab Thông tin cá nhân: các nhóm xếp thành lưới thẻ, mỗi thẻ 2 cột trường */
+.infoSections {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr));
+	gap: var(--space-4);
+}
+.infoSection {
+	border: 1px solid var(--color-gray-100);
+	border-radius: var(--radius-lg);
+	padding: var(--space-3) var(--space-4) var(--space-4);
+}
+.infoSectionTitle {
+	margin: 0 0 var(--space-3);
+	font-size: var(--font-size-compact);
+	font-weight: var(--font-weight-bold);
+	color: var(--color-primary-dark);
+}
+.infoGrid {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+	gap: var(--space-3) var(--space-4);
+}
+.infoItem {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+	min-width: 0;
+}
+.infoItemFull {
+	grid-column: 1 / -1;
+}
+.infoValue {
+	font-size: var(--font-size-sm);
+	color: var(--color-gray-800);
+	font-weight: var(--font-weight-medium);
+	overflow-wrap: anywhere;
+	white-space: pre-wrap;
+}
+.infoEmpty {
+	font-size: var(--font-size-sm);
+	color: var(--color-gray-300);
+}
+.name {
+	font-weight: var(--font-weight-semibold);
+	font-size: var(--font-size-compact);
+	color: var(--color-gray-800);
+}
+.chip {
+	display: inline-block;
+	font-size: var(--font-size-xs);
+	font-weight: var(--font-weight-semibold);
+	padding: 2px 9px;
+	border-radius: var(--radius-full);
+	white-space: nowrap;
+}
+.chipDone {
+	composes: chip;
+	color: #085028;
+	background: #e1f5ea;
+}
+.chipPending {
+	composes: chip;
+	color: #633806;
+	background: #faeeda;
+}
+.chipMissing {
+	composes: chip;
+	color: #791f1f;
+	background: #fcebeb;
+}
+.chipInfo {
+	composes: chip;
+	color: #0c447c;
+	background: #e6f1fb;
+}
+.chipMuted {
+	composes: chip;
+	color: var(--color-gray-500);
+	background: var(--color-gray-100);
+}
+.summary {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--space-2);
+	align-items: center;
+	margin-bottom: var(--space-3);
+	font-size: var(--font-size-compact);
+	color: var(--color-gray-600);
+}
+.files {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+	margin-top: 6px;
+}
+.fileRow {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 8px;
+	font-size: var(--font-size-xs);
+}
+.uploadBox {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--space-2);
+	align-items: center;
+	padding: var(--space-3);
+	margin-bottom: var(--space-4);
+	border: 1px dashed var(--color-gray-300);
+	border-radius: var(--radius-lg);
+	background: var(--color-gray-50);
+}
+.course {
+	border: 1px solid var(--color-gray-100);
+	border-radius: var(--radius-lg);
+	padding: var(--space-3) var(--space-4);
+}
+.course + .course {
+	margin-top: var(--space-3);
+}
+.courseHead {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--space-2);
+	justify-content: space-between;
+}
+.stats {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--space-4);
+	margin-top: 6px;
+	font-size: var(--font-size-compact);
+	color: var(--color-gray-600);
+}
+.bad {
+	color: #a32020;
+	font-weight: var(--font-weight-semibold);
+}
+.good {
+	color: var(--color-primary-dark);
+	font-weight: var(--font-weight-semibold);
+}
+.toggle {
+	border: none;
+	background: none;
+	padding: 0;
+	color: var(--color-primary-dark);
+	font-family: var(--font-body);
+	font-size: var(--font-size-xs);
+	cursor: pointer;
+	margin-top: 6px;
+}
+.miniTable {
+	width: 100%;
+	border-collapse: collapse;
+	margin-top: 8px;
+	font-size: var(--font-size-xs);
+}
+.miniTable th,
+.miniTable td {
+	text-align: left;
+	padding: 5px 8px;
+	border-bottom: 1px solid var(--color-gray-100);
+	white-space: nowrap;
+}
+.miniTable th {
+	color: var(--color-gray-500);
+	font-weight: var(--font-weight-semibold);
+}
+.tableWrap {
+	overflow-x: auto;
+}

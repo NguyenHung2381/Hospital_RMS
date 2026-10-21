@@ -8,6 +8,7 @@ const { httpError } = require('../../../utils/httpError');
 const enrollmentProgramService = require('./enrollmentProgramService');
 const practiceAutoService = require('./practiceAutoService');
 const courseBatchService = require('./courseBatchService');
+const programClassService = require('./programClassService');
 
 // ─── Đăng ký khóa học ────────────────────────────────────────────────────
 const listEnrollments = async (courseId) => {
@@ -195,7 +196,12 @@ const decideEnrollment = async (enrollmentId, decision, actorId, note) => {
 		// Khóa tuyển sinh: duyệt = vào danh sách chờ đợt; rebalance bên dưới xếp vào đợt
 		// còn chỗ hoặc lập đợt mới khi đủ sĩ số.
 		if (course?.auto_batch) finalStatus = 'waitlisted';
-		else if (course?.capacity != null && course.approved_count >= course.capacity) {
+		else if (programClassService.appliesTo(course) && row.program_id) {
+			// Khóa ĐTLT thường: sĩ số tính theo lớp (chương trình) — lớp đầy thì lưu cho khóa sau.
+			// Hồ sơ đã duyệt (đang chiếm chỗ) thì giữ nguyên.
+			if (row.status !== 'approved')
+				finalStatus = (await programClassService.statusOnApprove(course, row.program_id)) ?? decision;
+		} else if (course?.capacity != null && course.approved_count >= course.capacity) {
 			finalStatus = 'waitlisted';
 		}
 	}
@@ -230,6 +236,24 @@ const decideEnrollment = async (enrollmentId, decision, actorId, note) => {
 			waitlistPosition = after.waitlist_position;
 		}
 	}
+	if (row.program_id && programClassService.appliesTo(course)) {
+		if (finalStatus === 'approved') await programClassService.notifyIfOpened(course, row.program_id);
+		else if (row.status === 'approved') await programClassService.promote(course.id, row.program_id, actorId);
+		if (finalStatus === 'waitlisted') {
+			// Lớp đầy: đã có khóa ĐTLT sau còn chỗ thì chuyển hồ sơ sang luôn.
+			await programClassService.forward(course.id, row.program_id, actorId);
+			const after = (
+				await pool.request().input('id', sql.VarChar(20), enrollmentId).query(`
+          SELECT e.status, e.course_id, c.name AS course_name,
+                 CASE WHEN e.status = 'waitlisted' THEN ${courseBatchService.WAITLIST_POSITION_SQL('e')} END AS waitlist_position
+          FROM course_enrollments e JOIN courses c ON c.id = e.course_id WHERE e.id = @id`)
+			).recordset[0];
+			if (after && after.course_id !== course.id) {
+				finalStatus = after.status;
+				batchName = after.course_name;
+			} else waitlistPosition = after.waitlist_position;
+		}
+	}
 
 	// Học viên là thực thể độc lập, KHÔNG bắt buộc có tài khoản đăng nhập ⇒
 	// không thể dùng notificationService (yêu cầu user_id). Báo trực tiếp qua
@@ -247,7 +271,9 @@ const decideEnrollment = async (enrollmentId, decision, actorId, note) => {
 				: finalStatus === 'waitlisted'
 					? course?.auto_batch
 						? `Đăng ký đã được duyệt — bạn ở vị trí thứ ${waitlistPosition ?? '?'} trong danh sách chờ đợt học tiếp theo`
-						: 'Đăng ký khóa học đang chờ (danh sách chờ)'
+						: programClassService.appliesTo(course)
+							? `Lớp đã đủ người — hồ sơ của bạn được lưu cho khóa sau (vị trí ${waitlistPosition ?? '?'})`
+							: 'Đăng ký khóa học đang chờ (danh sách chờ)'
 					: 'Đăng ký khóa học bị từ chối';
 		// Không chờ SMTP: duyệt hàng loạt N đăng ký từng phải chờ N lần gửi mail
 		// nối tiếp ngay trong request.
@@ -299,7 +325,8 @@ const bulkDecideEnrollments = async (ids, decision, actorId, note) => {
 const removeEnrollment = async (enrollmentId, actorId = null) => {
 	const pool = await getPool();
 	const r = await pool.request().input('id', sql.VarChar(20), enrollmentId).query(`
-    SELECT e.program_id, c.parent_course_id FROM course_enrollments e JOIN courses c ON c.id = e.course_id WHERE e.id = @id;
+    SELECT e.program_id, e.course_id, e.status, c.parent_course_id, c.training_type_id, c.auto_batch, c.is_rolling
+    FROM course_enrollments e JOIN courses c ON c.id = e.course_id WHERE e.id = @id;
     DELETE FROM attendance WHERE enrollment_id = @id;
     DELETE FROM course_enrollments WHERE id = @id;
   `);
@@ -307,6 +334,9 @@ const removeEnrollment = async (enrollmentId, actorId = null) => {
 	// Rút khỏi đợt chưa khai giảng ⇒ người đầu danh sách chờ được gọi vào.
 	const gone = r.recordsets[0][0];
 	if (gone?.parent_course_id) await courseBatchService.rebalance(gone.parent_course_id, gone.program_id, actorId);
+	// Rút khỏi lớp ĐTLT chưa khai giảng ⇒ người đầu danh sách chờ của khóa được gọi vào.
+	else if (gone?.status === 'approved' && gone.program_id && programClassService.appliesTo(gone))
+		await programClassService.promote(gone.course_id, gone.program_id, actorId);
 };
 
 module.exports = {

@@ -60,6 +60,7 @@ router.get(
 const cmeRecordService = require('../cme/cmeRecordService');
 const { body } = require('express-validator');
 const { validate } = require('../../middlewares/errorHandler');
+const { updateRules } = require('../cme/cmeRecordValidators');
 const { createTrainingUpload } = require('../../middlewares/uploadTraining');
 const uploadEvidence = createTrainingUpload('cme_evidence');
 const handle = (fn) =>
@@ -87,6 +88,8 @@ router.post(
 );
 router.put(
 	'/cme-records/:id',
+	updateRules,
+	validate,
 	handle(async (req, res) =>
 		success(
 			res,

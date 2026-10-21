@@ -411,12 +411,29 @@ router.patch(
 
 // ─── Grades ─────────────────────────────────────────────────────────────────
 router.get('/:id/grades', authorizePermission(['courses', 'read']), ctrl.listGrades);
-router.post(
-	'/grades',
+// Bảng điểm Lý thuyết + Thực hành: nhập cả bảng 1 lần, khóa điểm, thi lại (gradebookService).
+// Mở khóa cần quyền riêng grades:unlock; GV nhập phần mình ở /me/teaching (me.routes.js).
+router.get('/:id/gradebook', authorizePermission(['courses', 'read']), ctrl.getGradebook);
+router.put(
+	'/:id/grades/bulk',
 	authorizePermission(['courses', 'update']),
-	[body('enrollment_id').notEmpty().withMessage('Thiếu enrollment_id')],
+	[body('rows').isArray({ min: 1, max: 2000 }).withMessage('Danh sách điểm không hợp lệ')],
 	validate,
-	ctrl.upsertGrade,
+	ctrl.saveGradesBulk,
+);
+router.post('/:id/grades/lock', authorizePermission(['courses', 'update']), ctrl.lockGrades);
+router.post('/:id/grades/unlock', authorizePermission(['grades', 'unlock']), ctrl.unlockGrades);
+router.post(
+	'/enrollments/:enrollmentId/grades/retake',
+	authorizePermission(['courses', 'update']),
+	[body('part').isIn(['theory', 'practice']).withMessage('Phần thi không hợp lệ')],
+	validate,
+	ctrl.retakeGrade,
+);
+router.get(
+	'/enrollments/:enrollmentId/grades/history',
+	authorizePermission(['courses', 'read']),
+	ctrl.gradeHistory,
 );
 router.delete('/grades/:gradeId', authorizePermission(['courses', 'update']), ctrl.removeGrade);
 
@@ -433,6 +450,13 @@ router.delete(
 	'/certificates/:certId',
 	authorizePermission(['courses', 'approve']),
 	ctrl.removeCertificate,
+);
+router.post(
+	'/:id/certificates/bulk',
+	authorizePermission(['courses', 'approve']),
+	[body('expiry_date').optional({ values: 'falsy' }).isISO8601().withMessage('Ngày không hợp lệ')],
+	validate,
+	ctrl.issueCertificatesBulk,
 );
 router.patch(
 	'/certificates/:certId/revoke',

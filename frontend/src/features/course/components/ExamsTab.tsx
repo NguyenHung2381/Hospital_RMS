@@ -12,7 +12,9 @@ import type {
 	PaperType,
 	QuestionType,
 } from '../../exam/types/exam.type';
-import { PAPER_QUESTION_TYPE } from '../../exam/types/exam.type';
+import { EXAM_PART_LABEL, PAPER_QUESTION_TYPE, type ExamPart } from '../../exam/types/exam.type';
+import { getAssignments } from '../api/courseApi';
+import { MultiSelect } from '../../../shared/components/Input/MultiSelect';
 import { SearchableSelect } from '../../../shared/components/Input/SearchableSelect';
 import { QuestionImageView, QuestionText } from '../../../shared/components';
 import styles from '../pages/Courses.module.css';
@@ -211,9 +213,10 @@ export function ExamsTab({ courseId }: { courseId: string }) {
 							<div className={styles.subRowMain}>
 								<div className={styles.subRowName}>{p.title}</div>
 								<div style={{ fontSize: 12, color: 'var(--color-gray-500)' }}>
+									{EXAM_PART_LABEL[p.exam_part] ?? 'Lý thuyết'} ·{' '}
 									{p.paper_type ? PAPER_TYPE_LABEL[p.paper_type] : 'Hỗn hợp'} · {STATUS_LABEL[p.status]} ·{' '}
 									{p.question_count} câu · {p.duration_minutes} phút ·{' '}
-									{p.attempt_count} lượt làm
+									{p.attempt_count} lượt làm · Người chấm: {p.grader_names || 'GV được phân công bài học'}
 								</div>
 							</div>
 							<div style={{ display: 'flex', gap: 6 }}>
@@ -267,6 +270,20 @@ function ExamBuilder({
 	// null chỉ xảy ra với đề cũ (hỗn hợp) — đề mới luôn chọn 1 loại
 	const [paperType, setPaperType] = useState<PaperType | null>(paper ? paper.paper_type : 'multiple_choice');
 	const allowedType = paperType ? PAPER_QUESTION_TYPE[paperType] : null;
+	const [examPart, setExamPart] = useState<ExamPart>(paper?.exam_part ?? 'theory');
+	const [blind, setBlind] = useState(!!paper?.blind_grading);
+	const [graders, setGraders] = useState<Set<string>>(new Set(paper?.grader_ids ?? []));
+	// Người chấm chọn trong số GV được phân công của khóa
+	const [lecturers, setLecturers] = useState<{ id: string; label: string }[]>([]);
+	useEffect(() => {
+		getAssignments(courseId)
+			.then((list) => {
+				const seen = new Map<string, string>();
+				for (const a of list) if (!seen.has(a.lecturer_id)) seen.set(a.lecturer_id, a.lecturer_name);
+				setLecturers([...seen].map(([id, label]) => ({ id, label })));
+			})
+			.catch(() => {});
+	}, [courseId]);
 	const [questions, setQuestions] = useState<DraftQuestion[]>(
 		(paper?.questions ?? []).map(toDraft),
 	);
@@ -336,6 +353,9 @@ function ExamBuilder({
 					duration_minutes: Number(duration) || 45,
 					status,
 					question_ids,
+					exam_part: examPart,
+					blind_grading: blind,
+					grader_ids: [...graders],
 				});
 			} else {
 				await examApi.createPaper({
@@ -345,6 +365,9 @@ function ExamBuilder({
 					duration_minutes: Number(duration) || 45,
 					status,
 					question_ids,
+					exam_part: examPart,
+					blind_grading: blind,
+					grader_ids: [...graders],
 				});
 			}
 			onSaved();
@@ -408,6 +431,32 @@ function ExamBuilder({
 					<option value='published'>Đang mở</option>
 					<option value='closed'>Đã đóng</option>
 				</select>
+			</div>
+			<div className={styles.subToolbar}>
+				<select
+					className={styles.subSelect}
+					value={examPart}
+					onChange={(e) => setExamPart(e.target.value as ExamPart)}
+					title='Điểm bài thi (quy về thang 10) đổ vào cột này của bảng điểm'
+				>
+					<option value='theory'>Phần lý thuyết</option>
+					<option value='practice'>Phần thực hành</option>
+				</select>
+				<MultiSelect
+					options={lecturers}
+					selected={graders}
+					onChange={setGraders}
+					placeholder={graders.size ? `${graders.size} người chấm` : 'Người chấm: GV được phân công bài học'}
+					searchable
+				/>
+				<label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13 }}>
+					<input
+						type='checkbox'
+						checked={blind}
+						onChange={(e) => setBlind(e.target.checked)}
+					/>
+					Chấm ẩn danh (ẩn tên học viên)
+				</label>
 			</div>
 
 			{error && <div className={styles.errorBanner}>{error}</div>}
@@ -489,14 +538,19 @@ function ExamBuilder({
 }
 
 // ─── Chấm bài ────────────────────────────────────────────────────────────────
-function GradingPanel({
+// Dùng chung: cán bộ (exams:manage) và GV ở cổng cá nhân (gradeAnswer = API /me/teaching).
+export function GradingPanel({
 	attempt,
 	onBack,
 	onGraded,
+	gradeAnswer = examApi.gradeAnswer,
+	backLabel = '← Quay lại danh sách bài làm',
 }: {
 	attempt: ExamAttemptDetail;
 	onBack: () => void;
 	onGraded: (updated: ExamAttemptDetail) => void;
+	gradeAnswer?: (attemptId: string, questionId: string, score: number) => Promise<ExamAttemptDetail>;
+	backLabel?: string;
 }) {
 	const [scores, setScores] = useState<Record<string, string>>(
 		Object.fromEntries(attempt.answers.map((a) => [a.question_id, a.score_awarded != null ? String(a.score_awarded) : ''])),
@@ -508,7 +562,7 @@ function GradingPanel({
 		if (Number.isNaN(val)) return;
 		setSaving(questionId);
 		try {
-			const updated = await examApi.gradeAnswer(attempt.id, questionId, val);
+			const updated = await gradeAnswer(attempt.id, questionId, val);
 			onGraded(updated);
 		} finally {
 			setSaving(null);
@@ -522,9 +576,9 @@ function GradingPanel({
 				onClick={onBack}
 				style={{ marginBottom: 12 }}
 			>
-				← Quay lại danh sách bài làm
+				{backLabel}
 			</button>
-			<div style={{ fontWeight: 700, marginBottom: 4 }}>{attempt.trainee_name}</div>
+			<div style={{ fontWeight: 700, marginBottom: 4 }}>{attempt.trainee_name ?? `Bài ${attempt.id}`}</div>
 			<div style={{ fontSize: 12, color: 'var(--color-gray-500)', marginBottom: 12 }}>
 				{attempt.paper_title} · {ATTEMPT_STATUS_LABEL[attempt.status]}
 				{attempt.manual_score != null && ` · Tổng điểm: ${attempt.manual_score}`}
