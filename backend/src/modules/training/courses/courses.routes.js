@@ -214,7 +214,10 @@ router.post(
 	'/enrollments/:enrollmentId/rotations/auto',
 	authorizePermission(['courses', 'update']),
 	[
-		body('start_date').optional({ nullable: true, checkFalsy: true }).isISO8601().withMessage('Ngày không hợp lệ'),
+		body('start_date')
+			.optional({ nullable: true, checkFalsy: true })
+			.isISO8601()
+			.withMessage('Ngày không hợp lệ'),
 		body(['replace', 'carry_over']).optional().isBoolean(),
 	],
 	validate,

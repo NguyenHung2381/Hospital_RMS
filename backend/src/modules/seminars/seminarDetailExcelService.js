@@ -55,7 +55,8 @@ const fmtDateTime = (d) => {
 	return `${pad2(x.getUTCHours())}:${pad2(x.getUTCMinutes())} ${fmtDate(x)}`;
 };
 // DATETIME lưu giờ UTC (checked_in_at) → dịch sang giờ VN
-const fmtUtcDateTime = (d) => (d ? fmtDateTime(new Date(new Date(d).getTime() + VN_OFFSET_MS)) : '');
+const fmtUtcDateTime = (d) =>
+	d ? fmtDateTime(new Date(new Date(d).getTime() + VN_OFFSET_MS)) : '';
 const withTime = (date, time) => [time, fmtDate(date)].filter(Boolean).join(' ');
 const timeRange = (a, b) => (a && b ? `${a} – ${b}` : a ? `từ ${a}` : b ? `đến ${b}` : '');
 

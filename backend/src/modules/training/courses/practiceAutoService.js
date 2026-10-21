@@ -40,7 +40,8 @@ const codeSuffix = (programCode) => {
 };
 const isDoctorProgram = (programCode) => /^GPHN_(BS|YS)_/.test(programCode ?? '');
 // ponytail: đoán nhóm NHD theo chữ trình độ; NHD từng kèm khoa trong sổ được ưu tiên trước nên chỉ dùng khi khoa chưa có lịch sử.
-const isDoctorQualification = (q) => !/dieu duong|\bdd\b|ho sinh|ky thuat|ktv|cu nhan/.test(norm(q));
+const isDoctorQualification = (q) =>
+	!/dieu duong|\bdd\b|ho sinh|ky thuat|ktv|cu nhan/.test(norm(q));
 
 /** Chương trình GPHN chưa có vòng nào ⇒ tạo mẫu vòng từ hồ sơ đã có. Trả [{ program_code, rounds }]. */
 const buildTemplates = async (programIds, actorId) => {
@@ -114,7 +115,8 @@ const practiceCodeFor = async (pool, e) => {
     SELECT MAX(TRY_CAST(legacy_code AS INT)) AS max_legacy FROM trainees;`);
 	const used = new Set(r.recordsets[0].map((x) => x.practice_code));
 	const own = /^\d+$/.test(String(e.legacy_code ?? '').trim()) ? Number(e.legacy_code) : null;
-	if (own != null && !used.has(`${own}.${suffix}`)) return { code: `${own}.${suffix}`, number: own };
+	if (own != null && !used.has(`${own}.${suffix}`))
+		return { code: `${own}.${suffix}`, number: own };
 	const nums = [...used].map((c) => parseInt(c, 10)).filter(Number.isFinite);
 	const number = Math.max(0, r.recordsets[1][0].max_legacy ?? 0, ...nums) + 1;
 	return { code: `${number}.${suffix}`, number };
@@ -181,7 +183,11 @@ const arrangeOne = async (
 				"SELECT id, start_date, end_date FROM enrollment_rotations WHERE enrollment_id = @id AND result <> 'pending' ORDER BY start_date, seq",
 			)
 	).recordset.map((k) => ({ id: k.id, start_date: day(k.start_date), end_date: day(k.end_date) }));
-	const keptEnd = kept.map((k) => k.end_date).filter(Boolean).sort().at(-1);
+	const keptEnd = kept
+		.map((k) => k.end_date)
+		.filter(Boolean)
+		.sort()
+		.at(-1);
 	const afterKept = keptEnd && new Date(Date.parse(keptEnd) + 86400000).toISOString().slice(0, 10);
 	const start = day(startDate) || afterKept || day(e.start_date) || day(todayVN());
 
@@ -194,10 +200,8 @@ const arrangeOne = async (
 			),
 		rotationService.loadRounds(pool, e.program_id),
 		// Vòng của học viên khác còn đang / sẽ học từ ngày bắt đầu trở đi
-		pool
-			.request()
-			.input('id', sql.VarChar(20), enrollmentId)
-			.input('start', sql.Date, start).query(`
+		pool.request().input('id', sql.VarChar(20), enrollmentId).input('start', sql.Date, start)
+			.query(`
         SELECT r.department_id, r.mentor_user_id, r.start_date, r.end_date
         FROM enrollment_rotations r
         JOIN course_enrollments e ON e.id = r.enrollment_id
@@ -205,9 +209,23 @@ const arrangeOne = async (
           AND r.result <> 'fail' AND ISNULL(e.progress_status, 'in_progress') <> 'dropped'`),
 		loadMentorCandidates(pool, isDoctorProgram(e.program_code)),
 	]);
-	const busy = busyRes.recordset.map((b) => ({ ...b, start_date: day(b.start_date), end_date: day(b.end_date) }));
-	const plan = arrangeRotations(rows.recordset, new Map(rounds.map((x) => [x.id, x])), start, busy, firstLessonId);
-	if (!plan) throw httpError(400, 'Có vòng chưa có thời lượng — nhập thời lượng vòng ở màn Chương trình đào tạo.');
+	const busy = busyRes.recordset.map((b) => ({
+		...b,
+		start_date: day(b.start_date),
+		end_date: day(b.end_date),
+	}));
+	const plan = arrangeRotations(
+		rows.recordset,
+		new Map(rounds.map((x) => [x.id, x])),
+		start,
+		busy,
+		firstLessonId,
+	);
+	if (!plan)
+		throw httpError(
+			400,
+			'Có vòng chưa có thời lượng — nhập thời lượng vòng ở màn Chương trình đào tạo.',
+		);
 
 	// Vòng đã học đứng trước theo ngày, vòng mới xếp nối sau
 	for (const [i, k] of kept.entries())
@@ -218,7 +236,9 @@ const arrangeOne = async (
 			.query('UPDATE enrollment_rotations SET seq = @seq WHERE id = @id');
 	for (const [j, p] of plan.entries()) {
 		const i = kept.length + j;
-		const mentorId = p.department_id ? pickMentor(mentors.get(p.department_id) ?? [], busy, p.start_date, p.end_date) : null;
+		const mentorId = p.department_id
+			? pickMentor(mentors.get(p.department_id) ?? [], busy, p.start_date, p.end_date)
+			: null;
 		const snap = mentorId ? await rotationService.mentorSnapshot(pool, mentorId) : {};
 		const req = pool
 			.request()
@@ -229,7 +249,8 @@ const arrangeOne = async (
 			.input('department_id', sql.VarChar(20), p.department_id)
 			.input('mentor_user_id', sql.VarChar(20), mentorId)
 			.input('actor_id', sql.VarChar(20), actorId);
-		for (const [field, type] of Object.entries(rotationService.SNAPSHOT_TYPES)) req.input(field, type, snap[field] ?? null);
+		for (const [field, type] of Object.entries(rotationService.SNAPSHOT_TYPES))
+			req.input(field, type, snap[field] ?? null);
 		await req.query(`
       UPDATE enrollment_rotations
       SET seq = @seq, start_date = @start_date, end_date = @end_date,
@@ -256,7 +277,9 @@ const arrangeOne = async (
         WHERE program_id = @program_id AND id <> @id AND professional_field IS NOT NULL AND practice_form IS NOT NULL
         GROUP BY professional_field, practice_form ORDER BY COUNT(*) DESC`)
 	).recordset[0];
-	const { code, number } = e.practice_code ? { code: e.practice_code, number: null } : await practiceCodeFor(pool, e);
+	const { code, number } = e.practice_code
+		? { code: e.practice_code, number: null }
+		: await practiceCodeFor(pool, e);
 	const first = kept.find((k) => k.start_date)?.start_date ?? plan[0]?.start_date ?? start;
 	const last = plan.at(-1)?.end_date ?? keptEnd ?? null;
 	// ponytail: mã lấy theo số lớn nhất lúc chạy — 2 người bấm cùng lúc có thể trùng (UQ_enroll_practice_code chặn, bấm lại là xong).

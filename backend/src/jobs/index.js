@@ -32,9 +32,13 @@ const start = () => {
 	});
 
 	// 00:30 sáng: hồ sơ thực hành GPHN qua ngày kết thúc, không vòng nào trượt ⇒ hoàn thành
-	cron.schedule('30 0 * * *', runSafely('practice_complete', practiceAutoService.completeFinished), {
-		timezone: TZ,
-	});
+	cron.schedule(
+		'30 0 * * *',
+		runSafely('practice_complete', practiceAutoService.completeFinished),
+		{
+			timezone: TZ,
+		},
+	);
 
 	// 01:00 sáng: bảo trì tài khoản (vô hiệu hoá TK hết hạn, cảnh báo mật khẩu cũ)
 	cron.schedule('0 1 * * *', runSafely('account_maintenance', accountMaintenanceJob.run), {

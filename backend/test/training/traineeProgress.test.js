@@ -43,7 +43,16 @@ test('roundStatus: lấy lần học gần nhất của từng khoa', () => {
 	// Hết ngày mà chưa chấm → quá hạn
 	assert.equal(
 		roundStatus(
-			[{ id: 'a', attempt_no: 1, seq: 10, result: 'pending', start_date: '2026-05-01', end_date: '2026-05-31' }],
+			[
+				{
+					id: 'a',
+					attempt_no: 1,
+					seq: 10,
+					result: 'pending',
+					start_date: '2026-05-01',
+					end_date: '2026-05-31',
+				},
+			],
 			TODAY,
 		),
 		'overdue',
@@ -55,7 +64,12 @@ test('roundStatus: lấy lần học gần nhất của từng khoa', () => {
 });
 
 test('paceOf: so % hoàn thành với % thời gian đã qua', () => {
-	const base = { progressStatus: 'in_progress', start: '2026-01-01', end: '2026-12-31', today: TODAY };
+	const base = {
+		progressStatus: 'in_progress',
+		start: '2026-01-01',
+		end: '2026-12-31',
+		today: TODAY,
+	};
 	assert.equal(paceOf({ ...base, completion: 0.45 }).pace, 'on_track');
 	assert.equal(paceOf({ ...base, completion: 0.1 }).pace, 'behind');
 	assert.equal(paceOf({ ...base, completion: 0.9 }).pace, 'ahead');
@@ -78,7 +92,13 @@ test('buildProgress: bài chương trình mới thêm / đã bỏ được tách
 			{ id: 'L3', title: 'Bài 3 (mới thêm)', total_hours: 2 },
 		],
 		recordTheory: [
-			{ lesson_id: 'L1', title: 'Bài 1', status: 'done', total_hours: 4, completed_at: '2026-02-01' },
+			{
+				lesson_id: 'L1',
+				title: 'Bài 1',
+				status: 'done',
+				total_hours: 4,
+				completed_at: '2026-02-01',
+			},
 			{ lesson_id: 'L2', title: 'Bài 2', status: 'in_progress', total_hours: 6 },
 			{ lesson_id: 'L9', title: 'Bài đã bỏ', status: 'done', total_hours: 3 },
 		],

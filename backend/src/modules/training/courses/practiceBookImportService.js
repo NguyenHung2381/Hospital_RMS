@@ -92,12 +92,20 @@ const findRotationGroups = (headerRow) => {
  * Chương trình GPHN suy từ trình độ + lĩnh vực + hình thức hành nghề (mã trong danh
  * mục 1.xlsx). "… về Hồi sức cấp cứu" là chương trình *_2.
  */
-const inferProgramCode = ({ qualification, professional_field, practice_form, suffix, total_duration }) => {
+const inferProgramCode = ({
+	qualification,
+	professional_field,
+	practice_form,
+	suffix,
+	total_duration,
+}) => {
 	const form = norm(practice_form);
 	const text = norm(`${qualification ?? ''} ${professional_field ?? ''}`);
 	// Dòng mới không ghi hình thức hành nghề: thực hành ≤ 3 tháng là chương trình "về HSCC"
 	const total = parseDuration(total_duration);
-	const hscc = form ? /hoi suc cap cuu/.test(form) : !!total && toDays(total.value, total.unit) <= 92;
+	const hscc = form
+		? /hoi suc cap cuu/.test(form)
+		: !!total && toDays(total.value, total.unit) <= 92;
 	const pick = (base) => `${base}_${hscc ? 2 : 1}`;
 	if (/dinh duong|sinh duong/.test(text)) return 'GPHN_DD_1';
 	if (/xet nghiem/.test(text)) return pick('GPHN_KTVXN');

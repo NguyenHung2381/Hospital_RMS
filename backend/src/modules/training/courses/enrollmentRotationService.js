@@ -138,7 +138,8 @@ const generate = async (enrollmentId, { replace = false } = {}, actorId) => {
 			: [round.department_ids.length === 1 ? round.department_ids[0] : null];
 		for (const deptId of depts) {
 			const same = kept.filter(
-				(k) => k.lesson_id === round.id && (!round.allow_split || !deptId || k.department_id === deptId),
+				(k) =>
+					k.lesson_id === round.id && (!round.allow_split || !deptId || k.department_id === deptId),
 			);
 			if (same.some((k) => k.result === 'pass')) continue;
 			seq += SEQ_STEP;
@@ -382,7 +383,13 @@ const CARRY_FROM = `
 /** Chép vòng Đạt từ hồ sơ trước sang hồ sơ này (giữ ngày, khoa, NHD). Trả số vòng đã chép. */
 const carryOver = async (enrollmentId, actorId) => {
 	const pool = await getPool();
-	const cols = ['start_date', 'end_date', 'duration_text', 'mentor_user_id', ...Object.keys(SNAPSHOT_TYPES)];
+	const cols = [
+		'start_date',
+		'end_date',
+		'duration_text',
+		'mentor_user_id',
+		...Object.keys(SNAPSHOT_TYPES),
+	];
 	const r = await pool
 		.request()
 		.input('id', sql.VarChar(20), enrollmentId)

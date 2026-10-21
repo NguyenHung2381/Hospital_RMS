@@ -218,7 +218,10 @@ const deriveTemplate = (records, programDays) => {
 				g.days = toDays(own.value, own.unit);
 			} else if (g.rows.every((r) => r.start_date && r.end_date)) {
 				const s = g.rows.map((r) => dayStr(r.start_date)).sort()[0];
-				const e = g.rows.map((r) => dayStr(r.end_date)).sort().at(-1);
+				const e = g.rows
+					.map((r) => dayStr(r.end_date))
+					.sort()
+					.at(-1);
 				g.duration_text = describeSpan(s, e);
 				g.days = daysBetween(s, e) + 1;
 			}
@@ -232,7 +235,9 @@ const deriveTemplate = (records, programDays) => {
 	}
 	if (!shapes.length) return null;
 
-	const full = shapes.filter((s) => programDays && Math.abs(s.total - programDays) <= programDays * 0.15);
+	const full = shapes.filter(
+		(s) => programDays && Math.abs(s.total - programDays) <= programDays * 0.15,
+	);
 	const sig = mode((full.length ? full : shapes).map((s) => s.sig));
 	const chosen = shapes.filter((s) => s.sig === sig);
 
@@ -250,9 +255,7 @@ const deriveTemplate = (records, programDays) => {
 		.map((g0) => {
 			const all = chosen.map((s) => s.groups.find((g) => g.key === g0.key));
 			const n = g0.rows.length;
-			const depts = [...deptCount.get(g0.key)]
-				.sort((a, b) => b[1] - a[1])
-				.map(([id]) => id);
+			const depts = [...deptCount.get(g0.key)].sort((a, b) => b[1] - a[1]).map(([id]) => id);
 			const ids = n > 1 ? depts.slice(0, n) : depts;
 			const only = ids.length === 1 && n === 1 ? g0.rows[0].department_name : null;
 			return {
@@ -302,7 +305,9 @@ const arrangeRotations = (rows, lessons, startDate, busy, firstLessonId = null) 
 		let cost = 0;
 		const out = plan.map((p, i) => {
 			const r = ordered[i];
-			const allowed = r.department_id ? [r.department_id] : (lessons.get(r.lesson_id)?.department_ids ?? []);
+			const allowed = r.department_id
+				? [r.department_id]
+				: (lessons.get(r.lesson_id)?.department_ids ?? []);
 			let pick = null;
 			let load = Infinity;
 			for (const d of allowed) {

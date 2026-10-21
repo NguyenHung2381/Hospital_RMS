@@ -5,7 +5,9 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const { install } = require('../auth/fakeDb');
 
-const log = install(async (text) => (/INSERT INTO course_enrollments/.test(text) ? [{ id: 'DK1' }] : []));
+const log = install(async (text) =>
+	/INSERT INTO course_enrollments/.test(text) ? [{ id: 'DK1' }] : [],
+);
 const courseService = require('../../src/modules/training/courses/courseService');
 let programIds = [];
 courseService.getById = async () => ({ id: 'KH1', enrollment_open: true, program_ids: programIds });

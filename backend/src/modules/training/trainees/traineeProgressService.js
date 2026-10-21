@@ -24,7 +24,9 @@ const day = (v) => {
 	return v instanceof Date ? v.toISOString().slice(0, 10) : String(v).slice(0, 10);
 };
 const daysBetween = (a, b) =>
-	Math.round((new Date(`${b}T00:00:00Z`).getTime() - new Date(`${a}T00:00:00Z`).getTime()) / DAY_MS);
+	Math.round(
+		(new Date(`${b}T00:00:00Z`).getTime() - new Date(`${a}T00:00:00Z`).getTime()) / DAY_MS,
+	);
 
 // Trạng thái 1 dòng vòng chưa có kết quả, theo ngày hôm nay.
 const pendingState = (row, today) => {
@@ -50,7 +52,11 @@ const roundStatus = (rows, today) => {
 	for (const r of rows) {
 		const key = r.department_id || r.department_name || r.id;
 		const cur = latest.get(key);
-		if (!cur || r.attempt_no > cur.attempt_no || (r.attempt_no === cur.attempt_no && r.seq > cur.seq))
+		if (
+			!cur ||
+			r.attempt_no > cur.attempt_no ||
+			(r.attempt_no === cur.attempt_no && r.seq > cur.seq)
+		)
 			latest.set(key, r);
 	}
 	const states = [...latest.values()].map((r) =>
@@ -81,7 +87,8 @@ const countBy = (items, key) =>
 const paceOf = ({ progressStatus, start, end, completion, today }) => {
 	if (progressStatus === 'completed') return { pace: 'completed', elapsed: 1 };
 	if (progressStatus === 'dropped') return { pace: 'dropped', elapsed: null };
-	if (!start || !end || end < start || completion == null) return { pace: 'unknown', elapsed: null };
+	if (!start || !end || end < start || completion == null)
+		return { pace: 'unknown', elapsed: null };
 	if (today < start) return { pace: 'not_started', elapsed: 0 };
 	const total = daysBetween(start, end) + 1;
 	const elapsed = Math.min(1, (daysBetween(start, today) + 1) / total);

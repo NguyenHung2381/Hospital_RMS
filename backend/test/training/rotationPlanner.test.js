@@ -158,8 +158,19 @@ test('deriveTemplate: gom khoa theo nhóm TH, ưu tiên hồ sơ đi đủ thờ
 
 test('arrangeRotations: xếp so le — khoa / thứ tự vòng tránh chỗ đã đông', () => {
 	const lessons = new Map([
-		['HSCC', { duration_value: 1, duration_unit: 'month', allow_split: false, department_ids: ['CC', 'CD'] }],
-		['NOI', { duration_value: 1, duration_unit: 'month', allow_split: false, department_ids: ['NOI'] }],
+		[
+			'HSCC',
+			{
+				duration_value: 1,
+				duration_unit: 'month',
+				allow_split: false,
+				department_ids: ['CC', 'CD'],
+			},
+		],
+		[
+			'NOI',
+			{ duration_value: 1, duration_unit: 'month', allow_split: false, department_ids: ['NOI'] },
+		],
 	]);
 	const rows = [
 		{ id: 'a', lesson_id: 'HSCC', duration_text: '01 tháng', department_id: null },
@@ -193,13 +204,19 @@ test('arrangeRotations: xếp so le — khoa / thứ tự vòng tránh chỗ đ�
 	);
 	assert.equal(arrangeRotations(rows, lessons, '2026-07-01', [], 'KHAC')[0].id, 'a');
 	// Vòng thiếu thời lượng ⇒ không xếp được
-	assert.equal(arrangeRotations([{ id: 'x', lesson_id: 'Z', duration_text: null }], lessons, '2026-07-01', []), null);
+	assert.equal(
+		arrangeRotations([{ id: 'x', lesson_id: 'Z', duration_text: null }], lessons, '2026-07-01', []),
+		null,
+	);
 });
 
 test('Tự xếp rồi Tính lại ngày: ngày các vòng giữ nguyên (vòng chia nhiều khoa không ghi thời lượng riêng)', () => {
 	const depts = ['K1', 'K2', 'K3', 'K4', 'K5', 'K6'];
 	const lessons = new Map([
-		['NOI', { duration_value: 1, duration_unit: 'month', allow_split: false, department_ids: ['NOI'] }],
+		[
+			'NOI',
+			{ duration_value: 1, duration_unit: 'month', allow_split: false, department_ids: ['NOI'] },
+		],
 		['CK', { duration_value: 2, duration_unit: 'month', allow_split: true, department_ids: depts }],
 	]);
 	const rows = [

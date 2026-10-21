@@ -92,7 +92,8 @@ const withRotations = (row) => ({
 // Nhận trainee_type_ids (mảng) hoặc trainee_type_id (client/import cũ) → danh sách
 // id; không gửi gì → undefined (giữ nguyên). Cột cũ trainee_type_id = phần tử đầu.
 const traineeTypeIdsOf = (data) => {
-	if (Array.isArray(data.trainee_type_ids)) return [...new Set(data.trainee_type_ids.filter(Boolean))];
+	if (Array.isArray(data.trainee_type_ids))
+		return [...new Set(data.trainee_type_ids.filter(Boolean))];
 	if (data.trainee_type_id !== undefined) return data.trainee_type_id ? [data.trainee_type_id] : [];
 	return undefined;
 };
@@ -255,10 +256,8 @@ const remove = async (id, actorId) => {
 			`Chương trình đang được dùng ở ${parts.join(' và ')} — không xoá được. Hãy đổi chương trình của các hồ sơ đó trước.`,
 		);
 	}
-	await pool
-		.request()
-		.input('id', sql.VarChar(20), id)
-		.input('actor_id', sql.VarChar(20), actorId).query(`
+	await pool.request().input('id', sql.VarChar(20), id).input('actor_id', sql.VarChar(20), actorId)
+		.query(`
     SET XACT_ABORT ON;
     BEGIN TRAN;
     EXEC sp_set_actor @actor_id;

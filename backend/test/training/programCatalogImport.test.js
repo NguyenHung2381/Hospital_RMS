@@ -159,7 +159,11 @@ test('parseTraineeTypes: viết tắt, điều kiện kèm theo, nhân viên y t
 		'TRNTYPE-YS',
 	]);
 	assert.deepEqual(parseTraineeTypes('Bác sĩ đã có CCHN/GPHN').ids, ['TRNTYPE-BS']);
-	assert.deepEqual(parseTraineeTypes('Điều dưỡng, Y sỹ, KTV').ids, ['TRNTYPE-DD', 'TRNTYPE-YS', 'TRNTYPE-KTV']);
+	assert.deepEqual(parseTraineeTypes('Điều dưỡng, Y sỹ, KTV').ids, [
+		'TRNTYPE-DD',
+		'TRNTYPE-YS',
+		'TRNTYPE-KTV',
+	]);
 	assert.deepEqual(parseTraineeTypes('BS, KTV xét nghiệm, Cử nhân sinh học, ĐD, Dược sĩ').ids, [
 		'TRNTYPE-BS',
 		'TRNTYPE-KTV',
@@ -168,6 +172,9 @@ test('parseTraineeTypes: viết tắt, điều kiện kèm theo, nhân viên y t
 		'TRNTYPE-DSI',
 	]);
 	assert.equal(parseTraineeTypes('Nhân viên y tế').ids.length, 7);
-	assert.deepEqual(parseTraineeTypes('Bác sĩ, Kế toán'), { ids: ['TRNTYPE-BS'], unknown: ['Kế toán'] });
+	assert.deepEqual(parseTraineeTypes('Bác sĩ, Kế toán'), {
+		ids: ['TRNTYPE-BS'],
+		unknown: ['Kế toán'],
+	});
 	assert.deepEqual(parseTraineeTypes(null), { ids: [], unknown: [] });
 });

@@ -191,7 +191,11 @@ const retakeRotation = asyncHandler(async (req, res) => {
 });
 
 const moveRotation = asyncHandler(async (req, res) => {
-	await enrollmentRotationService.move(req.params.rotationId, req.body.direction === 'up', req.user.id);
+	await enrollmentRotationService.move(
+		req.params.rotationId,
+		req.body.direction === 'up',
+		req.user.id,
+	);
 	return success(res, null, 'Đã đổi thứ tự vòng');
 });
 

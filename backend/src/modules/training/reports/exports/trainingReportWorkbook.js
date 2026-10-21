@@ -16,7 +16,8 @@ const STATUS_LABELS = {
 const RESULT_LABELS = { pass: 'Đạt', fail: 'Không đạt' };
 
 /** @param {Date|string|null} d */
-const fmtDate = (d) => (d ? new Date(d).toLocaleDateString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' }) : '');
+const fmtDate = (d) =>
+	d ? new Date(d).toLocaleDateString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' }) : '';
 /** @param {number|null} n */
 const round2 = (n) => (n == null ? '' : Math.round(n * 100) / 100);
 
