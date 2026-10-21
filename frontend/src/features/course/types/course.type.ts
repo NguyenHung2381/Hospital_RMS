@@ -332,15 +332,37 @@ export interface CourseProgramLink {
 	program_duration: string | null;
 }
 
+export type LecturerRole = 'main' | 'assistant';
+
 export interface LecturerAssignment {
 	id: string;
 	course_id: string;
 	lecturer_id: string;
 	lecturer_name: string;
 	specialty: string | null;
+	/** Bài học (program_lessons); null = phân công cả khóa */
 	subject_id: string | null;
 	subject_name: string | null;
+	role: LecturerRole;
+	/** Số tiết đảm nhận trong bài */
+	hours: number | null;
 	note: string | null;
+}
+
+/** Bài học thuộc chương trình của khóa — 1 dòng của bảng Bài học × Giảng viên */
+export interface CourseLesson {
+	id: string;
+	code: string | null;
+	title: string;
+	theory_hours: number | null;
+	practice_hours: number | null;
+	total_hours: number | null;
+	program_name: string;
+}
+
+export interface LessonLecturersInput {
+	main: { lecturer_id: string; hours?: number | null } | null;
+	assistants: { lecturer_id: string; hours?: number | null }[];
 }
 
 export interface ClassSession {
@@ -354,6 +376,8 @@ export interface ClassSession {
 	start_time: string | null;
 	end_time: string | null;
 	room: string | null;
+	/** Buổi khác cùng GV, cùng ngày, chồng giờ ("Khóa X 08:00–10:00; …") — chỉ cảnh báo */
+	lecturer_clashes: string | null;
 }
 
 export interface AttendanceRow {

@@ -310,6 +310,15 @@ router.delete(
 	authorizePermission(['courses', 'update']),
 	ctrl.removeAssignment,
 );
+// Bảng Bài học × Giảng viên: bài học của các chương trình trong khóa + đặt GV chính/phụ từng bài
+router.get('/:id/lessons', authorizePermission(['courses', 'read']), ctrl.listCourseLessons);
+router.put(
+	'/:id/lessons/:lessonId/lecturers',
+	authorizePermission(['courses', 'update']),
+	[body('assistants').optional().isArray().withMessage('Danh sách GV phụ không hợp lệ')],
+	validate,
+	ctrl.setLessonLecturers,
+);
 
 // ─── Class sessions ───────────────────────────────────────────────────────
 router.get('/:id/sessions', authorizePermission(['courses', 'read']), ctrl.listSessions);

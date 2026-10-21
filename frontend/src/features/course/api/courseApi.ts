@@ -21,6 +21,8 @@ import type {
 	RotationUpdate,
 	Grade,
 	LecturerAssignment,
+	CourseLesson,
+	LessonLecturersInput,
 } from '../types/course.type';
 
 export type DocumentSource = { type: 'file'; file: File } | { type: 'link'; external_url: string };
@@ -214,6 +216,11 @@ export const assignLecturer = (
 ) => apiClient.post<{ id: string }>(`/courses/${courseId}/lecturer-assignments`, data);
 export const removeAssignment = (assignmentId: string) =>
 	apiClient.delete<null>(`/courses/lecturer-assignments/${assignmentId}`);
+/** Bài học thuộc các chương trình của khóa (dòng của bảng Bài học × Giảng viên) */
+export const getCourseLessons = (courseId: string) =>
+	apiClient.get<CourseLesson[]>(`/courses/${courseId}/lessons`);
+export const setLessonLecturers = (courseId: string, lessonId: string, data: LessonLecturersInput) =>
+	apiClient.put<null>(`/courses/${courseId}/lessons/${lessonId}/lecturers`, data);
 
 // ─── Class sessions ───────────────────────────────────────────────────────
 export const getSessions = (courseId: string) =>
@@ -221,7 +228,7 @@ export const getSessions = (courseId: string) =>
 export const createSession = (
 	courseId: string,
 	data: { subject_id?: string; lecturer_id?: string; session_date: string; start_time?: string; end_time?: string; room?: string },
-) => apiClient.post<{ id: string }>(`/courses/${courseId}/sessions`, data);
+) => apiClient.post<{ id: string; warnings: string[] }>(`/courses/${courseId}/sessions`, data);
 export const removeSession = (sessionId: string) => apiClient.delete<null>(`/courses/sessions/${sessionId}`);
 export const createSessionsBulk = (
 	courseId: string,
@@ -235,7 +242,7 @@ export const createSessionsBulk = (
 		lecturer_id?: string;
 		subject_id?: string;
 	},
-) => apiClient.post<{ created: number; skipped: number }>(`/courses/${courseId}/sessions/bulk`, data);
+) => apiClient.post<{ created: number; skipped: number; warnings: string[] }>(`/courses/${courseId}/sessions/bulk`, data);
 
 // ─── Attendance ───────────────────────────────────────────────────────────
 export const getAttendance = (sessionId: string) =>

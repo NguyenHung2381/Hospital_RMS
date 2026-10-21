@@ -11,6 +11,7 @@ import {
 	getMyTraining,
 	registerMyCourse,
 	type MyEnrolledCourse,
+	type MyTeachingLesson,
 	type MyTraining as Data,
 	type OpenCourse,
 } from '../api/meApi';
@@ -122,6 +123,62 @@ function EnrolledItem({ c }: { c: MyEnrolledCourse }) {
 	);
 }
 
+/** Bài tôi dạy — bài + khóa được phân công (GV chính / phụ, số tiết, số buổi đã xếp) */
+function TeachingLessons({ lessons }: { lessons: MyTeachingLesson[] }) {
+	const pg = useClientPaging(lessons);
+	return (
+		<Card>
+			<Card.Header
+				icon={<BookOpenSvg />}
+				title='Bài tôi dạy'
+				sub={`${lessons.length} bài`}
+			/>
+			<Card.Body>
+				<div className={styles.tableWrap}>
+					<table className={styles.table}>
+						<thead>
+							<tr>
+								<th className={tbl.thIdx}>STT</th>
+								<th>Bài học</th>
+								<th>Khóa học</th>
+								<th>Vai trò</th>
+								<th>Số tiết</th>
+								<th>Số buổi đã xếp</th>
+							</tr>
+						</thead>
+						<tbody>
+							{pg.paged.map((l, i) => (
+								<tr key={l.id}>
+									<td className={tbl.tdIdx}>{pg.offset + i + 1}</td>
+									<td>
+										<span className={tbl.cellTitle}>{l.lesson_title}</span>
+										{l.lesson_code && <div className={tbl.cellCode}>{l.lesson_code}</div>}
+									</td>
+									<td>
+										{l.course_name}
+										<div className={tbl.cellSub}>{range(l.start_date, l.end_date)}</div>
+									</td>
+									<td>
+										<Badge tone={l.role === 'main' ? 'purple' : 'gray'}>
+											{l.role === 'main' ? 'GV chính' : 'GV phụ'}
+										</Badge>
+									</td>
+									<td>{num(l.hours)}</td>
+									<td>{l.session_count}</td>
+								</tr>
+							))}
+						</tbody>
+					</table>
+					<Pagination
+						{...pg.pagination}
+						itemLabel='bài'
+					/>
+				</div>
+			</Card.Body>
+		</Card>
+	);
+}
+
 // Số ngày còn lại tới hạn đăng ký (cột DATE, so theo ngày lịch máy người dùng)
 const daysLeft = (d: string) =>
 	Math.round((new Date(d.slice(0, 10)).getTime() - new Date(new Date().toLocaleDateString('en-CA')).getTime()) / 864e5);
@@ -230,7 +287,7 @@ export default function MyTraining() {
 			.catch((err) => setError(err instanceof Error ? err.message : 'Không thể tải dữ liệu khóa học'));
 	}, []);
 	useEffect(load, [load]);
-	useRealtimeUpdate(['course', 'course_enrollment'], load);
+	useRealtimeUpdate(['course', 'course_enrollment', 'lecturer_assignment'], load);
 
 	const open = (c: OpenCourse) => {
 		setOpening(c);
@@ -387,6 +444,8 @@ export default function MyTraining() {
 							</Card.Body>
 						</Card>
 					)}
+
+					{data.teaching_lessons.length > 0 && <TeachingLessons lessons={data.teaching_lessons} />}
 
 					{data.open_courses.length > 0 && (
 						<Card>
