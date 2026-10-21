@@ -1,6 +1,7 @@
 const router = require('express').Router();
 const { body } = require('express-validator');
 const ctrl = require('./seminarController');
+const participantService = require('./seminarParticipantService');
 const cmeRequirementService = require('../cme/cmeRequirementService');
 const cmePersonalExport = require('../cme/cmePersonalExportController');
 const { authenticate, authorizePermission } = require('../../middlewares/auth');
@@ -33,6 +34,15 @@ const countFields = [
 	body(f).optional({ nullable: true }).isInt({ min: 0 }).withMessage(`${f} phải là số nguyên ≥ 0`),
 );
 
+// Trường riêng của tập huấn bệnh viện
+const trainingFields = [
+	body('lesson_hours')
+		.optional({ values: 'null' })
+		.isFloat({ min: 0, max: 999 })
+		.withMessage('Số tiết phải là số từ 0 đến 999'),
+	body('required_department_ids').optional().isArray(),
+];
+
 // ─── Thống kê & Sổ CME (đặt trước /:id) ──────────────────────────────────────
 
 router.get('/stats', authenticate, canRead, ctrl.statsHosted);
@@ -64,6 +74,7 @@ router.post(
 			.optional()
 			.isIn(['conference', 'sci_seminar', 'intl_seminar', 'sci_conference', 'training', 'other']),
 		...countFields,
+		...trainingFields,
 	],
 	validate,
 	ctrl.createOne,
@@ -148,7 +159,14 @@ router.post(
 router.get('/:id', authenticate, canRead, ctrl.getById);
 
 router.post('/:id/export-excel', authenticate, canExport, ctrl.exportDetailExcel);
-router.put('/:id', authenticate, canUpdate, countFields, validate, ctrl.updateOne);
+router.put(
+	'/:id',
+	authenticate,
+	canUpdate,
+	[...countFields, ...trainingFields],
+	validate,
+	ctrl.updateOne,
+);
 router.delete('/:id', authenticate, canDelete, ctrl.removeOne);
 // Tải ảnh trước, rồi gửi `image` trả về trong test_questions khi lưu bài test
 router.post(
@@ -180,6 +198,38 @@ router.post(
 	canImport,
 	uploadExcel.single('file'),
 	ctrl.importParticipants,
+);
+// Tập huấn bệnh viện: chọn nhân sự theo khoa / "Thêm cả khoa"
+router.get(
+	'/:id/department-staff',
+	authenticate,
+	canUpdate,
+	asyncHandler(async (req, res) =>
+		success(
+			res,
+			await participantService.staffOfDepartment(req.params.id, req.query.department_id),
+		),
+	),
+);
+router.post(
+	'/:id/participants/add-users',
+	authenticate,
+	canUpdate,
+	[body('user_ids').isArray({ min: 1 }).withMessage('Chưa chọn nhân sự')],
+	validate,
+	asyncHandler(async (req, res) => {
+		const out = await participantService.addUsers(req.params.id, req.body.user_ids, req.user.id);
+		return created(res, out, `Đã thêm ${out.inserted} người`);
+	}),
+);
+// Nhân sự thuộc khoa bắt buộc tham dự nhưng chưa tham dự
+router.get(
+	'/:id/required-absentees',
+	authenticate,
+	canRead,
+	asyncHandler(async (req, res) =>
+		success(res, await participantService.requiredAbsentees(req.params.id)),
+	),
 );
 router.put('/:id/participants/:pid', authenticate, canUpdate, ctrl.updateParticipant);
 router.delete('/:id/participants/:pid', authenticate, canUpdate, ctrl.removeParticipant);

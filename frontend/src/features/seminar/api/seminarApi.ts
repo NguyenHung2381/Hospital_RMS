@@ -1,7 +1,9 @@
 import { apiClient } from '../../../shared/api/axios';
 import { getCheckInDeviceId } from '../../../shared/utils/storage';
 import type {
+	DepartmentStaff,
 	ParticipationType,
+	RequiredAbsentee,
 	SeminarListImportResult,
 	CmeRegister,
 	CmeStats,
@@ -23,6 +25,8 @@ export interface SeminarListParams {
 	event_type?: string;
 	year?: number | string;
 	grants_cme?: '1';
+	/** '1' = chỉ tập huấn bệnh viện, '0' = loại trừ (trang Hội thảo) */
+	hospital_training?: '0' | '1';
 }
 
 const qs = (params?: Record<string, unknown>) => {
@@ -62,6 +66,10 @@ const formToPayload = (f: SeminarForm) => ({
 	manual_foreign_count: numOrNull(f.manual_foreign_count),
 	manual_cme_count: numOrNull(f.manual_cme_count),
 	notes: f.notes || null,
+	organizer_department_id: f.organizer_department_id || null,
+	topic_id: f.topic_id || null,
+	lesson_hours: numOrNull(f.lesson_hours),
+	required_department_ids: f.required_department_ids,
 });
 
 const participantPayload = (f: ParticipantForm) => ({
@@ -164,6 +172,21 @@ export const updateParticipant = (
 export const deleteParticipant = (seminarId: string, pid: string) =>
 	apiClient.delete<null>(`/seminars/${seminarId}/participants/${pid}`);
 
+// ─── Tập huấn bệnh viện ──────────────────────────────────────────────────────
+export const getDepartmentStaff = (seminarId: string, departmentId: string) =>
+	apiClient.get<DepartmentStaff[]>(
+		`/seminars/${seminarId}/department-staff?department_id=${encodeURIComponent(departmentId)}`,
+	);
+
+export const addSeminarUsers = (seminarId: string, userIds: string[]) =>
+	apiClient.post<{ inserted: number; skipped: number }>(
+		`/seminars/${seminarId}/participants/add-users`,
+		{ user_ids: userIds },
+	);
+
+export const getRequiredAbsentees = (seminarId: string) =>
+	apiClient.get<RequiredAbsentee[]>(`/seminars/${seminarId}/required-absentees`);
+
 export const importParticipantsExcel = (
 	seminarId: string,
 	file: File,
@@ -253,6 +276,7 @@ export interface SeminarExportFilters {
 	event_type?: string;
 	year?: string;
 	grants_cme?: '1';
+	hospital_training?: '0' | '1';
 }
 
 export const exportSeminarsExcel = (filters: SeminarExportFilters) =>

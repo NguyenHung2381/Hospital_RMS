@@ -11,6 +11,7 @@ const { broadcast } = require('../events/eventService');
 const personService = require('../persons/personService');
 const { normalizeGender } = require('../../utils/gender');
 const { httpError } = require('../../utils/httpError');
+const { deptAccountJoinSql, isDeptAccountJoinedSql } = require('../../utils/deptAccount');
 
 // Mã QR điểm danh hội thảo — JWT ngắn hạn ký seminar_id (mirror
 // courseService.generateAttendanceQrToken / utils/captcha.js).
@@ -138,6 +139,84 @@ const bulkAdd = async (seminarId, rows, actorId) => {
 	await personService.syncPersons('seminar_participants', ids, { actorId });
 	broadcast('update', { entity: 'seminar' });
 	return { inserted: valid.length, ids };
+};
+
+// ─── Tập huấn bệnh viện: người tham dự theo khoa ─────────────────────────────
+
+// Nhân sự đang làm việc (bỏ tài khoản dùng chung của khoa) — dùng chung cho
+// chọn người theo khoa và báo cáo "chưa tham dự".
+const staffFrom = `FROM users u
+  LEFT JOIN departments d ON d.id = u.department_id
+  ${deptAccountJoinSql('u')}`;
+const staffWhere = `u.is_active = 1 AND NOT ${isDeptAccountJoinedSql('u')}`;
+
+// Nhân sự 1 khoa, kèm cờ đã có trong danh sách người tham dự
+const staffOfDepartment = async (seminarId, departmentId) => {
+	const pool = await getPool();
+	const r = await pool
+		.request()
+		.input('sid', sql.VarChar(20), seminarId)
+		.input('dept', sql.VarChar(20), departmentId).query(`
+      SELECT u.id, u.staff_number, u.full_name, d.name AS department_name,
+             CAST(CASE WHEN EXISTS (SELECT 1 FROM seminar_participants p
+                  WHERE p.seminar_id = @sid AND p.user_id = u.id) THEN 1 ELSE 0 END AS BIT) AS in_list
+      ${staffFrom}
+      WHERE u.department_id = @dept AND ${staffWhere}
+      ORDER BY u.full_name;
+    `);
+	return r.recordset;
+};
+
+// Thêm nhân sự vào danh sách (vai trò Học viên) — bỏ qua người đã có
+const addUsers = async (seminarId, userIds, actorId) => {
+	const pool = await getPool();
+	await ensureSeminar(pool, seminarId);
+	const ids = [...new Set((userIds || []).filter(Boolean))];
+	if (!ids.length) return { inserted: 0, skipped: 0 };
+	const r = await pool
+		.request()
+		.input('sid', sql.VarChar(20), seminarId)
+		.input('ids', sql.NVarChar(sql.MAX), JSON.stringify(ids)).query(`
+      SELECT u.id, u.full_name, u.staff_number, u.date_of_birth, d.name AS department_name
+      FROM users u LEFT JOIN departments d ON d.id = u.department_id
+      WHERE u.id IN (SELECT [value] FROM OPENJSON(@ids))
+        AND NOT EXISTS (SELECT 1 FROM seminar_participants p WHERE p.seminar_id = @sid AND p.user_id = u.id)
+      ORDER BY d.name, u.full_name;
+    `);
+	const { inserted } = await bulkAdd(
+		seminarId,
+		r.recordset.map((u) => ({
+			user_id: u.id,
+			full_name: u.full_name,
+			staff_number: u.staff_number,
+			dob: u.date_of_birth,
+			department_raw: u.department_name,
+			source: 'internal',
+			participation_type: 'trainee',
+		})),
+		actorId,
+	);
+	return { inserted, skipped: ids.length - inserted };
+};
+
+// Nhân sự thuộc khoa bắt buộc mà chưa tham dự: chưa có trong danh sách, hoặc
+// tự đăng ký qua QR (có vé) nhưng chưa điểm danh.
+const requiredAbsentees = async (seminarId) => {
+	const pool = await getPool();
+	const r = await pool.request().input('sid', sql.VarChar(20), seminarId).query(`
+      SELECT u.id, u.staff_number, u.full_name, d.name AS department_name,
+             CASE WHEN p.id IS NULL THEN 'not_listed' ELSE 'not_checked_in' END AS reason
+      FROM seminar_required_departments r
+      JOIN users u ON u.department_id = r.department_id
+      LEFT JOIN departments d ON d.id = u.department_id
+      ${deptAccountJoinSql('u')}
+      OUTER APPLY (SELECT TOP 1 p.id, p.ticket_code, p.checked_in_at FROM seminar_participants p
+                   WHERE p.seminar_id = r.seminar_id AND p.user_id = u.id) p
+      WHERE r.seminar_id = @sid AND ${staffWhere}
+        AND (p.id IS NULL OR (p.ticket_code IS NOT NULL AND p.checked_in_at IS NULL))
+      ORDER BY d.name, u.full_name;
+    `);
+	return r.recordset;
 };
 
 const UPDATABLE = {
@@ -274,4 +353,7 @@ module.exports = {
 	PART_TYPES,
 	SOURCES,
 	ensureSeminar,
+	staffOfDepartment,
+	addUsers,
+	requiredAbsentees,
 };

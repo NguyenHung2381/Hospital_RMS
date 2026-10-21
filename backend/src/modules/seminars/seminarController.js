@@ -148,13 +148,14 @@ const importParticipants = asyncHandler(async (req, res) => {
 
 // ─── Nhập / xuất Excel danh sách hội thảo ────────────────────────────────────
 const exportListExcel = asyncHandler(async (req, res) => {
-	const { search, scope, event_type, year, grants_cme } = req.body || {};
+	const { search, scope, event_type, year, grants_cme, hospital_training } = req.body || {};
 	const wb = await listExcelService.exportWorkbook({
 		search,
 		scope,
 		event_type,
 		year,
 		grants_cme,
+		hospital_training,
 	});
 	return sendWorkbook(res, wb, `hoi-thao-hoi-nghi${year ? `-${year}` : ''}.xlsx`);
 });

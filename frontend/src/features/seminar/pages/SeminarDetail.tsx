@@ -1,5 +1,5 @@
 import { useMemo, useState, type ReactNode } from 'react';
-import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import {
 	BadgeSvg,
 	BuildingSvg,
@@ -15,6 +15,7 @@ import {
 	QrSvg,
 	TrashSvg,
 	UploadSvg,
+	UsersSvg,
 	XSvg,
 } from '@/assets/icons';
 import AdminLayout from '../../../layouts/AdminLayout';
@@ -29,17 +30,20 @@ import {
 import sel from '../../../shared/components/Table/RowSelect.module.css';
 import { useRowSelection } from '../../../shared/hooks/useRowSelection';
 import { formatDateTimeVN } from '../../../shared/utils/formatDate';
+import { DepartmentStaffModal } from '../components/DepartmentStaffModal';
 import { IssueCmeModal } from '../components/IssueCmeModal';
 import { ParticipantFormModal } from '../components/ParticipantFormModal';
 import { ParticipantImportModal } from '../components/ParticipantImportModal';
 import { SeminarQrPresentation } from '../components/SeminarQrPresentation';
 import { SeminarRegistrationQrModal } from '../components/SeminarRegistrationQrModal';
+import { RequiredAbsenteesCard } from '../components/RequiredAbsenteesCard';
 import { SeminarTestModal } from '../components/SeminarTestModal';
 import { useSeminarDetail } from '../hooks/useSeminarDetail';
 import { useSeminarPerms } from '../utils/perms';
 import {
 	CME_STATUS_LABELS,
 	EVENT_TYPE_LABELS,
+	isHospitalTraining,
 	PARTICIPATION_LABELS,
 	SCOPE_LABELS,
 	SOURCE_LABELS,
@@ -126,6 +130,11 @@ export default function SeminarDetail() {
 	const navigate = useNavigate();
 	const d = useSeminarDetail(id);
 	const perms = useSeminarPerms();
+	// Tập huấn bệnh viện dùng chung trang này (/admin/hospital-trainings/:id)
+	const { pathname } = useLocation();
+	const ht = d.seminar ? isHospitalTraining(d.seminar) : pathname.startsWith('/admin/hospital-trainings');
+	const listPath = ht ? '/admin/hospital-trainings' : '/admin/seminars';
+	const [staffOpen, setStaffOpen] = useState(false);
 
 	const [tab, setTab] = useState<'all' | ParticipationType>('all');
 	const [formModal, setFormModal] = useState<'add' | 'edit' | null>(null);
@@ -187,7 +196,7 @@ export default function SeminarDetail() {
 			<AdminLayout pageTitle='Không tìm thấy'>
 				<button
 					className={styles.backLink}
-					onClick={() => navigate('/admin/seminars')}
+					onClick={() => navigate(listPath)}
 				>
 					<ChevLSvg /> Quay lại danh sách
 				</button>
@@ -205,6 +214,14 @@ export default function SeminarDetail() {
 	// Thông tin phụ — chỉ hiện ô có dữ liệu
 	const details = sem
 		? ([
+				...(ht
+					? [
+							['Chủ đề', sem.topic_name],
+							['Khoa/phòng tổ chức', sem.organizer_department_name],
+							['Số tiết', sem.lesson_hours != null ? `${sem.lesson_hours} tiết` : null],
+							['Khoa bắt buộc tham dự', sem.required_departments?.map((x) => x.name).join(', ')],
+						]
+					: []),
 				['Chủ tọa', sem.host_chair],
 				['Báo cáo viên', sem.speakers],
 				['Người điều phối', sem.coordinator],
@@ -215,14 +232,14 @@ export default function SeminarDetail() {
 
 	return (
 		<AdminLayout
-			pageTitle={sem?.title ?? 'Chi tiết hội thảo'}
-			pageSubtitle={sem ? SCOPE_LABELS[sem.scope] : ''}
+			pageTitle={sem?.title ?? (ht ? 'Chi tiết buổi tập huấn' : 'Chi tiết hội thảo')}
+			pageSubtitle={sem ? (ht ? 'Tập huấn bệnh viện' : SCOPE_LABELS[sem.scope]) : ''}
 		>
 			<button
 				className={styles.backLink}
-				onClick={() => navigate('/admin/seminars')}
+				onClick={() => navigate(listPath)}
 			>
-				<ChevLSvg /> Danh sách hội thảo
+				<ChevLSvg /> {ht ? 'Danh sách tập huấn' : 'Danh sách hội thảo'}
 			</button>
 
 			{d.loadingData || !sem ? (
@@ -431,6 +448,14 @@ export default function SeminarDetail() {
 										onClick={() => setImportOpen(true)}
 									>
 										<UploadSvg /> Nhập Excel
+									</button>
+								)}
+								{perms.canUpdate && ht && (
+									<button
+										className={styles.btnGhost}
+										onClick={() => setStaffOpen(true)}
+									>
+										<UsersSvg /> Thêm theo khoa
 									</button>
 								)}
 								{perms.canUpdate && (
@@ -678,7 +703,22 @@ export default function SeminarDetail() {
 							itemLabel='người'
 						/>
 					</div>
+
+					{ht && !!sem.required_departments?.length && (
+						<RequiredAbsenteesCard
+							seminarId={sem.id}
+							version={sem}
+						/>
+					)}
 				</>
+			)}
+
+			{staffOpen && sem && (
+				<DepartmentStaffModal
+					seminarId={sem.id}
+					onClose={() => setStaffOpen(false)}
+					onDone={d.refresh}
+				/>
 			)}
 
 			{formModal && (

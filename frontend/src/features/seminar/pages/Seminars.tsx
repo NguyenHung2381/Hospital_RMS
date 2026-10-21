@@ -38,9 +38,15 @@ const fmtDate = (s: string | null, text: string | null) => {
 		: d.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
 };
 
-export default function Seminars() {
-	const s = useSeminars();
+/**
+ * Danh sách hội thảo; `hospitalTraining` = trang Tập huấn bệnh viện (cùng trang,
+ * cố định loại 'training' + BV tổ chức, cột chủ đề / khoa tổ chức).
+ */
+export default function Seminars({ hospitalTraining = false }: { hospitalTraining?: boolean }) {
+	const s = useSeminars(hospitalTraining);
 	const navigate = useNavigate();
+	const ht = hospitalTraining;
+	const base = ht ? '/admin/hospital-trainings' : '/admin/seminars';
 
 	const perms = useSeminarPerms();
 	const [importOpen, setImportOpen] = useState(false);
@@ -59,8 +65,9 @@ export default function Seminars() {
 				event_type: s.eventType || undefined,
 				year: s.year || undefined,
 				grants_cme: s.onlyCme ? '1' : undefined,
+				hospital_training: ht ? '1' : '0',
 			});
-			saveBlob(blob, `hoi-thao-hoi-nghi${s.year ? `-${s.year}` : ''}.xlsx`);
+			saveBlob(blob, `${ht ? 'tap-huan-benh-vien' : 'hoi-thao-hoi-nghi'}${s.year ? `-${s.year}` : ''}.xlsx`);
 		} catch (e) {
 			showToast('error', e instanceof Error ? e.message : 'Xuất Excel thất bại');
 		} finally {
@@ -70,7 +77,7 @@ export default function Seminars() {
 
 	const headerActions = (
 		<div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-			{perms.canImport && (
+			{perms.canImport && !ht && (
 				<button className={styles.btnGhost} onClick={() => setImportOpen(true)}>
 					<UploadSvg /> Nhập Excel
 				</button>
@@ -86,22 +93,28 @@ export default function Seminars() {
 				</button>
 			)}
 			<button className={styles.btnAddHeader} onClick={() => s.setModal('add')}>
-				<PlusSvg /> Thêm hội thảo
+				<PlusSvg /> {ht ? 'Thêm buổi tập huấn' : 'Thêm hội thảo'}
 			</button>
 		</div>
 	);
 
 	return (
 		<AdminLayout
-			pageTitle='Hội thảo & Hội nghị'
-			pageSubtitle='Theo dõi cán bộ cử đi dự · sự kiện bệnh viện tổ chức · cấp CME'
+			pageTitle={ht ? 'Tập huấn bệnh viện' : 'Hội thảo & Hội nghị'}
+			pageSubtitle={
+				ht
+					? 'Buổi tập huấn nội bộ · khoa bắt buộc tham dự · cấp CME theo số tiết'
+					: 'Theo dõi cán bộ cử đi dự · sự kiện bệnh viện tổ chức · cấp CME'
+			}
 			headerActions={headerActions}
 		>
 			<div className={styles.tableCard}>
 				<div className={styles.tableHeader}>
 					<div className={styles.tableHeaderLeft}>
-						<span className={styles.tableTitle}>Danh sách sự kiện</span>
-						<span className={styles.tableCount}>{s.total} sự kiện</span>
+						<span className={styles.tableTitle}>{ht ? 'Danh sách buổi tập huấn' : 'Danh sách sự kiện'}</span>
+						<span className={styles.tableCount}>
+							{s.total} {ht ? 'buổi' : 'sự kiện'}
+						</span>
 					</div>
 					<div className={styles.tableControls}>
 						<SearchInput
@@ -110,34 +123,38 @@ export default function Seminars() {
 							placeholder='Tìm theo tên, địa điểm, báo cáo viên...'
 						/>
 
-						<select
-							className={styles.filterSelect}
-							value={s.scope}
-							onChange={(e) => {
-								s.setScope(e.target.value);
-								s.setPage(1);
-							}}
-						>
-							<option value=''>Mọi phạm vi</option>
-							<option value='external'>Đơn vị ngoài tổ chức</option>
-							<option value='hosted'>Bệnh viện tổ chức</option>
-						</select>
+						{!ht && (
+							<>
+								<select
+									className={styles.filterSelect}
+									value={s.scope}
+									onChange={(e) => {
+										s.setScope(e.target.value);
+										s.setPage(1);
+									}}
+								>
+									<option value=''>Mọi phạm vi</option>
+									<option value='external'>Đơn vị ngoài tổ chức</option>
+									<option value='hosted'>Bệnh viện tổ chức</option>
+								</select>
 
-						<select
-							className={styles.filterSelect}
-							value={s.eventType}
-							onChange={(e) => {
-								s.setEventType(e.target.value);
-								s.setPage(1);
-							}}
-						>
-							<option value=''>Mọi hình thức</option>
-							{(Object.keys(EVENT_TYPE_LABELS) as SeminarEventType[]).map((t) => (
-								<option key={t} value={t}>
-									{EVENT_TYPE_LABELS[t]}
-								</option>
-							))}
-						</select>
+								<select
+									className={styles.filterSelect}
+									value={s.eventType}
+									onChange={(e) => {
+										s.setEventType(e.target.value);
+										s.setPage(1);
+									}}
+								>
+									<option value=''>Mọi hình thức</option>
+									{(Object.keys(EVENT_TYPE_LABELS) as SeminarEventType[]).map((t) => (
+										<option key={t} value={t}>
+											{EVENT_TYPE_LABELS[t]}
+										</option>
+									))}
+								</select>
+							</>
+						)}
 
 						<input
 							className={styles.filterSelect}
@@ -171,8 +188,8 @@ export default function Seminars() {
 						<tr>
 							<th className={tbl.thIdx}>STT</th>
 							<th>Tên / Nội dung</th>
-							<th>Hình thức</th>
-							<th>Phạm vi</th>
+							<th>{ht ? 'Chủ đề' : 'Hình thức'}</th>
+							<th>{ht ? 'Khoa tổ chức' : 'Phạm vi'}</th>
 							<th>Thời gian</th>
 							<th>Địa điểm</th>
 							<th className={styles.thCenter}>Người dự</th>
@@ -190,9 +207,11 @@ export default function Seminars() {
 							<tr>
 								<td colSpan={9}>
 									<div className={styles.emptyState}>
-										<div className={styles.emptyTitle}>Chưa có sự kiện nào</div>
+										<div className={styles.emptyTitle}>
+											{ht ? 'Chưa có buổi tập huấn nào' : 'Chưa có sự kiện nào'}
+										</div>
 										<div className={styles.emptyDesc}>
-											Thêm hội thảo/hội nghị hoặc đổi bộ lọc
+											{ht ? 'Thêm buổi tập huấn' : 'Thêm hội thảo/hội nghị'} hoặc đổi bộ lọc
 										</div>
 									</div>
 								</td>
@@ -206,21 +225,26 @@ export default function Seminars() {
 									<td>
 										<span
 											className={styles.linkTitle}
-											onClick={() => navigate(`/admin/seminars/${row.id}`)}
+											onClick={() => navigate(`${base}/${row.id}`)}
 										>
 											{row.title}
 										</span>
 									</td>
-									<td>
-										<Badge tone='blue'>
-											{EVENT_TYPE_LABELS[row.event_type]}
-										</Badge>
-									</td>
-									<td>
-										<Badge tone='gray'>
-											{row.scope === 'hosted' ? 'BV tổ chức' : 'Cử đi dự'}
-										</Badge>
-									</td>
+									{ht ? (
+										<>
+											<td>{row.topic_name || <span className={styles.muted}>—</span>}</td>
+											<td>{row.organizer_department_name || <span className={styles.muted}>—</span>}</td>
+										</>
+									) : (
+										<>
+											<td>
+												<Badge tone='blue'>{EVENT_TYPE_LABELS[row.event_type]}</Badge>
+											</td>
+											<td>
+												<Badge tone='gray'>{row.scope === 'hosted' ? 'BV tổ chức' : 'Cử đi dự'}</Badge>
+											</td>
+										</>
+									)}
 									<td>{fmtDate(row.start_date, row.date_text) || <span className={styles.muted}>—</span>}</td>
 									<td>{row.location || <span className={styles.muted}>—</span>}</td>
 									<td className={styles.tdCenter}>
@@ -249,7 +273,7 @@ export default function Seminars() {
 											<button
 												className={styles.actionBtn}
 												title='Người tham dự & cấp CME'
-												onClick={() => navigate(`/admin/seminars/${row.id}`)}
+												onClick={() => navigate(`${base}/${row.id}`)}
 											>
 												<UsersSvg />
 											</button>
@@ -292,7 +316,7 @@ export default function Seminars() {
 						s.setPageSize(n);
 						s.setPage(1);
 					}}
-					itemLabel='sự kiện'
+					itemLabel={ht ? 'buổi' : 'sự kiện'}
 				/>
 			</div>
 
@@ -327,18 +351,20 @@ export default function Seminars() {
 			{s.modal === 'add' && (
 				<SeminarFormModal
 					mode='add'
+					hospitalTraining={ht}
 					loading={s.loading}
 					onClose={() => s.setModal(null)}
 					onSave={async (form) => {
 						// BV tổ chức → sang trang chi tiết, mở sẵn QR đăng ký để tải về
 						const created = await s.handleAdd(form);
-						if (created?.scope === 'hosted') navigate(`/admin/seminars/${created.id}?qr=1`);
+						if (created?.scope === 'hosted') navigate(`${base}/${created.id}?qr=1`);
 					}}
 				/>
 			)}
 			{s.modal === 'edit' && s.editing && (
 				<SeminarFormModal
 					mode='edit'
+					hospitalTraining={ht}
 					seminar={s.editing}
 					loading={s.loading}
 					onClose={() => {
