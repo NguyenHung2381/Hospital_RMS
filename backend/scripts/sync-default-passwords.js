@@ -16,6 +16,10 @@ const { getPool } = require('../src/config/db');
 const { resetPassword } = require('../src/modules/users/userService');
 const { defaultPassword } = require('../src/utils/passwordPolicy');
 
+// Chống spam theo (sự kiện + tài khoản) → mỗi tài khoản 1 email cảnh báo, hàng
+// nghìn email. Tắt email trong script; security_events vẫn ghi đủ từng tài khoản.
+require('../src/modules/audit/securityAlertService').notify = async () => {};
+
 const apply = process.argv.includes('--apply');
 const all = process.argv.includes('--all');
 
