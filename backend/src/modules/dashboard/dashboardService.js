@@ -1,5 +1,6 @@
 const { getPool, sql } = require('../../config/db');
 const { remember } = require('../../utils/cache');
+const { COURSE_DISPLAY_STATUS } = require('../training/courses/courseService');
 
 // TTL 90s: đủ ngắn để dashboard không lệch số liệu quá lâu sau khi có đề tài
 // mới/duyệt, đủ dài để tránh chạy lại chuỗi query aggregate nặng này mỗi lần
@@ -234,17 +235,7 @@ const getStats = async (year = null) =>
 		};
 	});
 
-// courses.status chỉ còn giữ cờ 'cancelled' — trạng thái thật suy ra từ ngày
-// tháng. Đây là bản SQL của courseService.computeDisplayStatus (ngày giờ VN).
-const VN_TODAY = 'CAST(DATEADD(HOUR, 7, GETUTCDATE()) AS DATE)';
-const COURSE_DISPLAY_STATUS = `CASE
-    WHEN c.status = 'cancelled' THEN 'cancelled'
-    WHEN c.end_date IS NOT NULL AND ${VN_TODAY} > c.end_date THEN 'completed'
-    WHEN c.start_date IS NOT NULL AND ${VN_TODAY} >= c.start_date THEN 'in_progress'
-    WHEN (c.enrollment_start_date IS NULL OR ${VN_TODAY} >= c.enrollment_start_date)
-     AND (c.enrollment_end_date IS NULL OR ${VN_TODAY} <= c.enrollment_end_date) THEN 'enrolling'
-    ELSE 'upcoming'
-  END`;
+// courses.status chỉ còn giữ cờ 'cancelled' — trạng thái thật suy ra từ ngày tháng.
 // Khóa "đang mở" = đang nhận đăng ký hoặc đang diễn ra.
 const COURSES_OPEN_SQL = `(SELECT COUNT(*) FROM courses c
       WHERE ${COURSE_DISPLAY_STATUS} IN ('enrolling', 'in_progress'))`;
@@ -525,5 +516,4 @@ module.exports = {
 	getTrainingStats,
 	getOverviewStats,
 	getSeminarStats,
-	COURSE_DISPLAY_STATUS,
 };

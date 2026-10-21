@@ -47,6 +47,17 @@ const computeDisplayStatus = (c, enrollmentOpen) => {
 	return 'upcoming';
 };
 
+// Bản SQL của computeDisplayStatus (ngày giờ VN) — dùng trong thống kê/báo cáo.
+const VN_TODAY = 'CAST(DATEADD(HOUR, 7, GETUTCDATE()) AS DATE)';
+const COURSE_DISPLAY_STATUS = `CASE
+    WHEN c.status = 'cancelled' THEN 'cancelled'
+    WHEN c.end_date IS NOT NULL AND ${VN_TODAY} > c.end_date THEN 'completed'
+    WHEN c.start_date IS NOT NULL AND ${VN_TODAY} >= c.start_date THEN 'in_progress'
+    WHEN (c.enrollment_start_date IS NULL OR ${VN_TODAY} >= c.enrollment_start_date)
+     AND (c.enrollment_end_date IS NULL OR ${VN_TODAY} <= c.enrollment_end_date) THEN 'enrolling'
+    ELSE 'upcoming'
+  END`;
+
 const normalize = (c) => {
 	const enrollmentOpen = isEnrollmentOpenRow(c);
 	return {
@@ -287,6 +298,7 @@ const setPrograms = async (courseId, programIds, actorId) => {
 module.exports = {
 	isEnrollmentOpenRow,
 	computeDisplayStatus,
+	COURSE_DISPLAY_STATUS,
 	getAll,
 	getById,
 	create,

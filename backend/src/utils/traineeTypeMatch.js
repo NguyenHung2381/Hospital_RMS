@@ -18,6 +18,7 @@ const ALL_STAFF = [
 ];
 
 // Khớp theo ĐẦU mỗi mục (phần sau là điều kiện: "Bác sĩ đã có CCHN" → Bác sĩ).
+/** @type {Array<[RegExp, string[]]>} */
 const RULES = [
 	[/^(bac si|bs)\b/, ['TRNTYPE-BS']],
 	[/^(dieu duong|dd)\b/, ['TRNTYPE-DD']],

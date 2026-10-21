@@ -59,6 +59,7 @@ const roundStatus = (rows, today) => {
 		)
 			latest.set(key, r);
 	}
+	/** @type {string[]} */
 	const states = [...latest.values()].map((r) =>
 		r.result === 'pass' ? 'passed' : r.result === 'fail' ? 'failed' : pendingState(r, today),
 	);

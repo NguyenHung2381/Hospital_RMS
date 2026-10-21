@@ -5,7 +5,7 @@
  * Năm của khóa = năm ngày bắt đầu (chưa có ngày bắt đầu thì lấy ngày tạo).
  */
 const { getPool, sql } = require('../../../config/db');
-const { COURSE_DISPLAY_STATUS } = require('../../dashboard/dashboardService');
+const { COURSE_DISPLAY_STATUS } = require('../courses/courseService');
 
 const COURSE_IN_YEAR = '(@year IS NULL OR YEAR(COALESCE(c.start_date, c.created_at)) = @year)';
 

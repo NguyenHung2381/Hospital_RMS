@@ -24,6 +24,7 @@
     "flag:default-passwords": "node scripts/flag-default-passwords.js",
     "rename:trainee-usernames": "node scripts/rename-trainee-usernames.js",
     "rename:staff-usernames": "node scripts/rename-staff-usernames.js",
+    "sync:default-passwords": "node scripts/sync-default-passwords.js",
     "dump:db-objects": "node scripts/dump-db-objects.js",
     "migrate": "node scripts/migrate.js",
     "migrate:status": "node scripts/migrate.js status",
