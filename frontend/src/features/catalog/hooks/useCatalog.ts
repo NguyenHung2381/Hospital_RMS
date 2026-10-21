@@ -64,13 +64,20 @@ export const TAB_CONFIG: Record<
 		realtime: 'training_type',
 		icon: TagSvg,
 	},
+	'hospital-training-topics': {
+		label: 'Chủ đề tập huấn',
+		subtitle: 'Danh mục chủ đề tập huấn bệnh viện (KSNK, PCCC...)',
+		placeholder: 'VD: Kiểm soát nhiễm khuẩn',
+		realtime: 'hospital_training_topic',
+		icon: TagSvg,
+	},
 };
 
 export const CATALOG_GROUPS: Record<CatalogGroup, { title: string; tabs: CatalogTab[]; breadcrumb?: string }> = {
 	research: { title: 'Danh mục NCKH', tabs: ['categories', 'levels', 'round-types'] },
 	training: {
 		title: 'Danh mục Đào tạo',
-		tabs: ['trainee-types', 'training-forms', 'training-types'],
+		tabs: ['trainee-types', 'training-forms', 'training-types', 'hospital-training-topics'],
 		breadcrumb: 'Đào tạo',
 	},
 };

@@ -138,6 +138,15 @@ export interface Seminar {
 	test_shuffle_options: boolean;
 	/** JSON SeminarAgendaItem[] — chương trình / danh sách bài học */
 	agenda: string | null;
+	/** Tập huấn bệnh viện (event_type 'training' + scope 'hosted') */
+	organizer_department_id: string | null;
+	organizer_department_name?: string | null;
+	topic_id: string | null;
+	topic_name?: string | null;
+	/** Số tiết — 1 tiết = 1 giờ tín chỉ CME */
+	lesson_hours: number | null;
+	/** Khoa bắt buộc tham dự */
+	required_departments?: { id: string; name: string }[];
 	created_at: string;
 	participant_count?: number;
 	cme_issued_count?: number;
@@ -198,6 +207,31 @@ export interface SeminarForm {
 	manual_foreign_count: string;
 	manual_cme_count: string;
 	notes: string;
+	organizer_department_id: string;
+	topic_id: string;
+	lesson_hours: string;
+	required_department_ids: string[];
+}
+
+export const isHospitalTraining = (s: Pick<Seminar, 'event_type' | 'scope'>) =>
+	s.event_type === 'training' && s.scope === 'hosted';
+
+/** Nhân sự 1 khoa — chọn người tham dự tập huấn */
+export interface DepartmentStaff {
+	id: string;
+	staff_number: number | null;
+	full_name: string;
+	department_name: string | null;
+	in_list: boolean;
+}
+
+/** Nhân sự thuộc khoa bắt buộc nhưng chưa tham dự */
+export interface RequiredAbsentee {
+	id: string;
+	staff_number: number | null;
+	full_name: string;
+	department_name: string | null;
+	reason: 'not_listed' | 'not_checked_in';
 }
 
 export const EMPTY_SEMINAR_FORM: SeminarForm = {
@@ -224,6 +258,10 @@ export const EMPTY_SEMINAR_FORM: SeminarForm = {
 	manual_foreign_count: '',
 	manual_cme_count: '',
 	notes: '',
+	organizer_department_id: '',
+	topic_id: '',
+	lesson_hours: '',
+	required_department_ids: [],
 };
 
 export interface ParticipantForm {

@@ -77,6 +77,7 @@ const KEY_TO_PATH: Record<string, string> = {
 	rounds: '/admin/rounds',
 	councils: '/admin/councils',
 	seminars: '/admin/seminars',
+	hospitalTrainings: '/admin/hospital-trainings',
 	ticketScan: '/admin/quet-ve',
 	cmeRegister: '/admin/cme-register',
 	approvals: '/admin/approvals',
@@ -126,7 +127,7 @@ DASHBOARD_TABS.forEach((t) => {
 ['/admin/levels', '/admin/round-types'].forEach((p) => {
 	PATH_TO_KEY[p] = 'categories';
 });
-['/admin/training-forms', '/admin/training-types'].forEach((p) => {
+['/admin/training-forms', '/admin/training-types', '/admin/hospital-training-topics'].forEach((p) => {
 	PATH_TO_KEY[p] = 'trainingCatalog';
 });
 
@@ -225,6 +226,7 @@ const NAV_GROUPS: NavGroup[] = [
 		section: 'Hội nghị',
 		items: [
 			navItem('seminars', 'Hội thảo & Hội nghị', MonitorSvg, 'seminars:read'),
+			navItem('hospitalTrainings', 'Tập huấn bệnh viện', UsersSvg, 'seminars:read'),
 			navItem('ticketScan', 'Quét vé điểm danh', QrSvg, 'seminars:update'),
 		],
 	},

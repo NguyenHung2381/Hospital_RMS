@@ -20,6 +20,7 @@ const {
 const { normalizeTime, normalizeAgenda } = require('../../utils/seminarSchedule');
 const { maxScore } = require('../../utils/seminarTest');
 const { badRequest } = require('../../utils/httpError');
+const ht = require('./hospitalTraining');
 
 const EVENT_TYPES = [
 	'conference',
@@ -50,6 +51,7 @@ const getAll = async ({
 	event_type = undefined,
 	year = undefined,
 	grants_cme = undefined,
+	hospital_training = undefined,
 } = {}) => {
 	const pool = await getPool();
 	const pg = paging(page, limit, 20);
@@ -71,11 +73,12 @@ const getAll = async ({
 	if (grants_cme === '1' || grants_cme === 'true' || grants_cme === true) {
 		clauses.push('s.grants_cme = 1');
 	}
+	clauses.push(ht.trainingFilter(hospital_training));
 	const where = buildWhere(clauses);
 
 	const result = await req.query(`
-    SELECT s.*, ${countSelect}
-    FROM seminars s
+    SELECT s.*, ${countSelect}, ${ht.trainingSelect}
+    FROM seminars s ${ht.trainingJoin}
     ${where}
     ORDER BY COALESCE(s.start_date, s.created_at) DESC, s.created_at DESC
     ${pg.fetchClause};
@@ -83,7 +86,7 @@ const getAll = async ({
     SELECT COUNT(*) AS total FROM seminars s ${where};
   `);
 	return {
-		data: result.recordsets[0],
+		data: result.recordsets[0].map(ht.parseTraining),
 		pagination: {
 			page: pg.page,
 			limit: pg.limit,
@@ -95,7 +98,7 @@ const getAll = async ({
 const getById = async (id) => {
 	const pool = await getPool();
 	const result = await pool.request().input('id', sql.VarChar(20), id).query(`
-      SELECT s.*, ${countSelect} FROM seminars s WHERE s.id = @id;
+      SELECT s.*, ${countSelect}, ${ht.trainingSelect} FROM seminars s ${ht.trainingJoin} WHERE s.id = @id;
 
       SELECT p.*,
              u.full_name  AS user_full_name,
@@ -110,7 +113,7 @@ const getById = async (id) => {
              WHEN 'organizer' THEN 2 WHEN 'attendee' THEN 3 ELSE 4 END,
         p.cme_seq, p.full_name;
     `);
-	const seminar = result.recordsets[0][0];
+	const seminar = result.recordsets[0][0] && ht.parseTraining(result.recordsets[0][0]);
 	if (!seminar) return null;
 	seminar.participants = result.recordsets[1];
 	return seminar;
@@ -179,7 +182,8 @@ const optionalNumber = (v, label, { min, max, integer = false }) => {
 	return integer ? n : Math.round(n * 100) / 100;
 };
 
-const create = async (data, actorId) => {
+const create = async (input, actorId) => {
+	const data = ht.applyLessonCredits(input);
 	const pool = await getPool();
 	const result = await pool
 		.request()
@@ -211,7 +215,10 @@ const create = async (data, actorId) => {
 		.input('manual_internal_count', sql.Int, data.manual_internal_count ?? null)
 		.input('manual_external_count', sql.Int, data.manual_external_count ?? null)
 		.input('manual_foreign_count', sql.Int, data.manual_foreign_count ?? null)
-		.input('manual_cme_count', sql.Int, data.manual_cme_count ?? null).query(`
+		.input('manual_cme_count', sql.Int, data.manual_cme_count ?? null)
+		.input('organizer_department_id', sql.VarChar(20), data.organizer_department_id || null)
+		.input('topic_id', sql.VarChar(20), data.topic_id || null)
+		.input('lesson_hours', sql.Decimal(4, 1), data.lesson_hours ?? null).query(`
       DECLARE @new_id VARCHAR(20) = ${genIdExpr};
       EXEC sp_set_actor @actor_id;
       INSERT INTO seminars
@@ -219,16 +226,18 @@ const create = async (data, actorId) => {
          start_time, end_time, date_text, event_year, host_chair, speakers, permit_doc_no, co_organizers,
          grants_cme, cme_default_credits, coordinator, notes,
          manual_participant_count, manual_internal_count, manual_external_count,
-         manual_foreign_count, manual_cme_count, public_token, created_by)
+         manual_foreign_count, manual_cme_count, organizer_department_id, topic_id, lesson_hours,
+         public_token, created_by)
       VALUES
         (@new_id, @title, @event_type, @event_type_raw, @scope, @location, @start_date, @end_date,
          @start_time, @end_time, @date_text, @event_year, @host_chair, @speakers, @permit_doc_no, @co_organizers,
          @grants_cme, @cme_default_credits, @coordinator, @notes,
          @manual_participant_count, @manual_internal_count, @manual_external_count,
-         @manual_foreign_count, @manual_cme_count,
+         @manual_foreign_count, @manual_cme_count, @organizer_department_id, @topic_id, @lesson_hours,
          LOWER(REPLACE(CONVERT(VARCHAR(36), NEWID()), '-', '')), @actor_id);
       SELECT @new_id AS id;
     `);
+	await ht.setRequiredDepartments(pool, result.recordset[0].id, data.required_department_ids);
 	broadcast('update', { entity: 'seminar' });
 	return getById(result.recordset[0].id);
 };
@@ -254,9 +263,11 @@ const FIELD_TYPES = {
 	manual_external_count: sql.Int,
 	manual_foreign_count: sql.Int,
 	manual_cme_count: sql.Int,
+	...ht.TRAINING_FIELD_TYPES,
 };
 
-const update = async (id, data, actorId) => {
+const update = async (id, input, actorId) => {
+	const data = ht.applyLessonCredits(input);
 	const pool = await getPool();
 	const sets = ['updated_at = GETDATE()', 'updated_by = @actor_id'];
 	const req = pool
@@ -349,6 +360,7 @@ const update = async (id, data, actorId) => {
 	await req.query(
 		`EXEC sp_set_actor @actor_id; UPDATE seminars SET ${sets.join(', ')} WHERE id = @id`,
 	);
+	await ht.setRequiredDepartments(pool, id, data.required_department_ids);
 	removedImages.forEach(removeUploadedFile);
 	broadcast('update', { entity: 'seminar' });
 	return getById(id);

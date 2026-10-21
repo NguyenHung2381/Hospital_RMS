@@ -178,6 +178,14 @@ export const adminRoutes: RouteObject[] = [
 		element: admin('Chi tiết hội thảo', <SeminarDetail />),
 	},
 	{
+		path: '/admin/hospital-trainings',
+		element: admin('Tập huấn bệnh viện', <Seminars hospitalTraining />),
+	},
+	{
+		path: '/admin/hospital-trainings/:id',
+		element: admin('Chi tiết buổi tập huấn', <SeminarDetail />),
+	},
+	{
 		path: '/admin/cme-register',
 		element: admin('Sổ cấp chứng nhận', <CmeRegister />),
 	},
@@ -345,6 +353,10 @@ export const adminRoutes: RouteObject[] = [
 	{
 		path: '/admin/training-types',
 		element: admin('Loại hình đào tạo', <Catalog group='training' />),
+	},
+	{
+		path: '/admin/hospital-training-topics',
+		element: admin('Chủ đề tập huấn', <Catalog group='training' />),
 	},
 	{
 		path: '/admin/cme-credit-categories',

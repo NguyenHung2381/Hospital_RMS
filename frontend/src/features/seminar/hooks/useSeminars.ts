@@ -14,7 +14,8 @@ import type {
 } from '../types/seminar.type';
 import { DEFAULT_PAGE_SIZE } from '@/shared/utils/constants';
 
-export function useSeminars() {
+/** hospitalTraining: trang Tập huấn bệnh viện (chỉ buổi tập huấn BV tổ chức); trang Hội thảo loại các buổi này ra. */
+export function useSeminars(hospitalTraining = false) {
 	const [rows, setRows] = useState<Seminar[]>([]);
 	const [total, setTotal] = useState(0);
 	const [loadingData, setLoadingData] = useState(true);
@@ -60,6 +61,7 @@ export function useSeminars() {
 				event_type: eventType || undefined,
 				year: year || undefined,
 				grants_cme: onlyCme ? '1' : undefined,
+				hospital_training: hospitalTraining ? '1' : '0',
 			})
 				.then((res) => {
 					if (!alive) return;
@@ -73,7 +75,7 @@ export function useSeminars() {
 		return () => {
 			alive = false;
 		};
-	}, [page, pageSize, debouncedSearch, scope, eventType, year, onlyCme, refreshKey]);
+	}, [page, pageSize, debouncedSearch, scope, eventType, year, onlyCme, hospitalTraining, refreshKey]);
 
 	const totalPages = Math.max(1, Math.ceil(total / pageSize));
 

@@ -11,6 +11,7 @@ const catalogLookups = [
 	'trainee-types',
 	'training-forms',
 	'training-types',
+	'hospital-training-topics',
 	'cme-credit-groups',
 	'cme-credit-categories',
 	'venues',
