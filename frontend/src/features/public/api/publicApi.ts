@@ -253,11 +253,13 @@ export interface PublicSeminar {
 export interface SeminarRegisterPayload {
 	title_prefix?: string;
 	full_name: string;
+	/** Nội viện: chỉ cần họ tên + mã NV, backend tự lấy phần còn lại */
+	staff_number?: string;
 	dob?: string;
 	gender?: string;
-	phone: string;
+	phone?: string;
 	email?: string;
-	organization: string;
+	organization?: string;
 	department_raw?: string;
 	qualification_raw?: string;
 	source: 'internal' | 'external';
@@ -307,6 +309,17 @@ export interface SeminarTicket {
 
 export const getPublicSeminar = (token: string) =>
 	request<PublicSeminar>(`/seminars/${encodeURIComponent(token)}`);
+export interface SeminarStaff {
+	full_name: string;
+	title_prefix: string | null;
+	department_name: string | null;
+	qualification: string | null;
+}
+export const lookupSeminarStaff = (token: string, full_name: string, staff_number: string) =>
+	request<SeminarStaff>(`/seminars/${encodeURIComponent(token)}/staff-lookup`, {
+		method: 'POST',
+		body: JSON.stringify({ full_name, staff_number }),
+	});
 export const registerSeminar = (token: string, data: SeminarRegisterPayload) =>
 	request<{ ticket_code: string | null }>(`/seminars/${encodeURIComponent(token)}/register`, {
 		method: 'POST',

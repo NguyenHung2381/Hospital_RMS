@@ -24,6 +24,8 @@ const {
 	testOrder,
 } = require('../../utils/seminarTest');
 const { add } = require('./seminarParticipantService');
+const { norm } = require('../../utils/vietnameseText');
+const { ROLE, inputRoleId } = require('../access/roleCodes');
 
 // ─── Đăng ký công khai qua QR → vé QR → điểm danh → bài test ─────────────────
 // QR đăng ký mang link /hoi-nghi/<seminars.public_token>. Đăng ký xong người
@@ -58,25 +60,77 @@ const getPublicSeminar = async (token) => {
 	return row;
 };
 
+const HOSPITAL = 'Bệnh viện Hữu Nghị Đa Khoa Nghệ An';
+
+// Nhân viên nội viện: tìm theo mã NV, họ tên phải khớp (bỏ dấu / hoa thường) —
+// cần biết cả 2 mới ra hồ sơ. Loại tài khoản khoa dùng chung (vai trò dept_head).
+const findStaff = async (fullName, staffNumber) => {
+	const pool = await getPool();
+	const r = await (await inputRoleId(pool.request(), 'dept_head_role', ROLE.DEPT_HEAD))
+		.input('sn', sql.Int, Number(staffNumber))
+		.query(`
+      SELECT TOP 1 u.id, u.full_name, u.staff_number, u.date_of_birth, u.gender, u.phone_number,
+             u.email, q.code AS title_prefix, q.name AS qualification, d.name AS department_name
+      FROM users u
+      LEFT JOIN qualifications q ON q.id = u.qualification_id
+      LEFT JOIN departments d ON d.id = u.department_id
+      WHERE u.staff_number = @sn AND u.is_active = 1 AND u.role_id <> @dept_head_role`);
+	const u = r.recordset[0];
+	if (!u || norm(u.full_name) !== norm(fullName))
+		throw httpError(404, 'Không tìm thấy nhân viên khớp họ tên và mã nhân viên đã nhập.');
+	return u;
+};
+
+// Thông tin hiện lên form để người đăng ký xác nhận — không trả SĐT/email/ngày sinh
+// ra cổng công khai, các trường đó backend tự điền lúc đăng ký.
+const lookupStaff = async (token, fullName, staffNumber) => {
+	await getPublicSeminar(token);
+	const u = await findStaff(fullName, staffNumber);
+	return {
+		full_name: u.full_name,
+		title_prefix: u.title_prefix,
+		department_name: u.department_name,
+		qualification: u.qualification,
+	};
+};
+
+// Email tài khoản tự sinh (`...@member.local`) không nhận được thư
+const realEmail = (e) => (e && !/@member\.local$/i.test(e) ? e : null);
+
 const registerPublic = async (token, data) => {
 	const seminar = await getPublicSeminar(token);
 	if (!seminar.registration_open) throw httpError(409, 'Hội nghị đã kết thúc, không nhận đăng ký.');
 	const pool = await getPool();
-	const dup = await pool
-		.request()
-		.input('sid', sql.VarChar(20), seminar.id)
-		.input('phone', sql.VarChar(20), data.phone)
-		.query('SELECT 1 FROM seminar_participants WHERE seminar_id = @sid AND phone = @phone');
-	if (dup.recordset.length)
-		throw httpError(
-			409,
-			'Số điện thoại này đã đăng ký hội nghị. Nếu mất mã QR, vui lòng liên hệ ban tổ chức.',
-		);
 
-	const ticketCode = crypto.randomBytes(16).toString('hex');
-	await add(
-		seminar.id,
-		{
+	let person;
+	if (data.source === 'internal') {
+		// Không tin dữ liệu form — lấy lại toàn bộ từ hồ sơ nhân sự
+		const u = await findStaff(data.full_name, data.staff_number);
+		person = {
+			user_id: u.id,
+			staff_number: u.staff_number,
+			title_prefix: u.title_prefix,
+			full_name: u.full_name.trim(),
+			dob: u.date_of_birth,
+			gender: u.gender,
+			organization: HOSPITAL,
+			department_raw: u.department_name,
+			qualification_raw: u.qualification,
+			phone: u.phone_number,
+			email: realEmail(u.email),
+		};
+		const dup = await pool
+			.request()
+			.input('sid', sql.VarChar(20), seminar.id)
+			.input('uid', sql.VarChar(20), u.id)
+			.query('SELECT 1 FROM seminar_participants WHERE seminar_id = @sid AND user_id = @uid');
+		if (dup.recordset.length)
+			throw httpError(
+				409,
+				'Nhân viên này đã đăng ký hội nghị. Nếu mất mã QR, vui lòng liên hệ ban tổ chức.',
+			);
+	} else {
+		person = {
 			title_prefix: data.title_prefix,
 			full_name: String(data.full_name).trim(),
 			dob: data.dob,
@@ -84,17 +138,30 @@ const registerPublic = async (token, data) => {
 			organization: data.organization,
 			department_raw: data.department_raw,
 			qualification_raw: data.qualification_raw,
-			source: data.source,
 			phone: data.phone,
 			email: data.email,
-			participation_type: 'attendee',
-			ticket_code: ticketCode,
-		},
+		};
+		const dup = await pool
+			.request()
+			.input('sid', sql.VarChar(20), seminar.id)
+			.input('phone', sql.VarChar(20), data.phone)
+			.query('SELECT 1 FROM seminar_participants WHERE seminar_id = @sid AND phone = @phone');
+		if (dup.recordset.length)
+			throw httpError(
+				409,
+				'Số điện thoại này đã đăng ký hội nghị. Nếu mất mã QR, vui lòng liên hệ ban tổ chức.',
+			);
+	}
+
+	const ticketCode = crypto.randomBytes(16).toString('hex');
+	await add(
+		seminar.id,
+		{ ...person, source: data.source, participation_type: 'attendee', ticket_code: ticketCode },
 		null,
 	);
 	// Không chờ SMTP — đăng ký đã ghi xong, email chậm/lỗi không chặn phản hồi.
-	if (data.email) {
-		mailQueue.enqueue('thẻ đại biểu', () => sendBadgeMail(seminar, data, ticketCode));
+	if (person.email) {
+		mailQueue.enqueue('thẻ đại biểu', () => sendBadgeMail(seminar, person, ticketCode));
 	}
 	return { ticket_code: ticketCode };
 };
@@ -360,6 +427,7 @@ const checkInTicket = async (seminarId, code, actorId) => {
 
 module.exports = {
 	getPublicSeminar,
+	lookupStaff,
 	registerPublic,
 	getTicket,
 	startTest,

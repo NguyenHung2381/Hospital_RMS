@@ -112,6 +112,13 @@ const getSeminar = asyncHandler(async (req, res) => {
 	success(res, s);
 });
 
+const lookupSeminarStaff = asyncHandler(async (req, res) => {
+	success(
+		res,
+		await seminarPublicService.lookupStaff(req.params.token, req.body.full_name, req.body.staff_number),
+	);
+});
+
 // Honeypot + captcha giống register()
 const registerSeminar = asyncHandler(async (req, res) => {
 	if (req.body.website) return success(res, { ticket_code: null }, 'Đăng ký thành công', 201);
@@ -143,6 +150,7 @@ const submitSeminarTest = asyncHandler(async (req, res) => {
 
 module.exports = {
 	getSeminar,
+	lookupSeminarStaff,
 	registerSeminar,
 	getSeminarTicket,
 	startSeminarTest,

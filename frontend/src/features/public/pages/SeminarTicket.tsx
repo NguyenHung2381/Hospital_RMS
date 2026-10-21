@@ -185,7 +185,9 @@ export default function SeminarTicket() {
 
 	if (!ticket) {
 		return (
-			<PublicLayout title='Vé tham dự hội nghị'>
+			<PublicLayout
+				bare
+				title='Vé tham dự hội nghị'>
 				{error ? (
 					<div className={`${styles.alertBox} ${styles.alertError}`}>
 						<AlertSvg /> {error}
@@ -206,6 +208,7 @@ export default function SeminarTicket() {
 
 	return (
 		<PublicLayout
+			bare
 			title='Vé tham dự hội nghị'
 			subtitle={ticket.seminar.title}
 		>

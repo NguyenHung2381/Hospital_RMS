@@ -225,6 +225,17 @@ const ticketCode = param('code')
 
 router.get('/seminars/:token', seminarLimiter, [seminarToken], validate, ctrl.getSeminar);
 router.post(
+	'/seminars/:token/staff-lookup',
+	seminarLimiter,
+	[
+		seminarToken,
+		body('full_name').trim().notEmpty().withMessage('Vui lòng nhập họ tên').isLength({ max: 255 }),
+		body('staff_number').isInt({ min: 1 }).withMessage('Mã nhân viên không hợp lệ'),
+	],
+	validate,
+	ctrl.lookupSeminarStaff,
+);
+router.post(
 	'/seminars/:token/register',
 	seminarLimiter,
 	[
@@ -234,7 +245,13 @@ router.post(
 			.notEmpty()
 			.withMessage('Họ tên không được để trống')
 			.isLength({ max: 255 }),
+		// Nội viện chỉ cần họ tên + mã NV — còn lại backend lấy từ hồ sơ nhân sự
+		body('staff_number')
+			.if(body('source').equals('internal'))
+			.isInt({ min: 1 })
+			.withMessage('Vui lòng nhập mã nhân viên'),
 		body('phone')
+			.if(body('source').equals('external'))
 			.trim()
 			.matches(/^[0-9+ .-]{8,20}$/)
 			.withMessage('Số điện thoại không hợp lệ'),
@@ -246,6 +263,7 @@ router.post(
 			.isLength({ max: 255 }),
 		body('dob').optional({ checkFalsy: true }).isISO8601().withMessage('Ngày sinh không hợp lệ'),
 		body('organization')
+			.if(body('source').equals('external'))
 			.trim()
 			.notEmpty()
 			.withMessage('Vui lòng nhập đơn vị công tác')
