@@ -50,10 +50,9 @@ export function TagPicker<T extends { id: string }>({
 	const selected = selectedIds.map((id) => items.find((x) => x.id === id)).filter((x): x is T => !!x);
 	const suggestions = useMemo(() => {
 		const q = query.trim().toLowerCase();
-		if (!q) return [];
-		return items
-			.filter((x) => !selectedIds.includes(x.id) && label(x).toLowerCase().includes(q))
-			.slice(0, 20);
+		const rest = items.filter((x) => !selectedIds.includes(x.id));
+		// Chưa gõ gì → hiện toàn bộ để chọn như select (dropdown có cuộn)
+		return q ? rest.filter((x) => label(x).toLowerCase().includes(q)).slice(0, 20) : rest;
 	}, [query, items, selectedIds, label]);
 
 	return (
@@ -82,9 +81,9 @@ export function TagPicker<T extends { id: string }>({
 					setOpen(true);
 				}}
 				onFocus={() => setOpen(true)}
-				onBlur={() => setTimeout(() => setOpen(false), 150)}
+				onClick={() => setOpen(true)}				onBlur={() => setTimeout(() => setOpen(false), 150)}
 			/>
-			{open && query.trim() && (
+			{open && (
 				<div className={styles.tagSuggestions}>
 					{suggestions.length === 0 ? (
 						<div className={styles.tagSuggestionEmpty}>{emptyText}</div>
@@ -93,10 +92,11 @@ export function TagPicker<T extends { id: string }>({
 							<div
 								key={x.id}
 								className={styles.tagSuggestionItem}
-								onMouseDown={() => {
+								onMouseDown={(e) => {
+									// giữ focus + dropdown mở để chọn liên tiếp nhiều mục
+									e.preventDefault();
 									onAdd(x.id);
 									setQuery('');
-									setOpen(false);
 								}}
 							>
 								{label(x)}

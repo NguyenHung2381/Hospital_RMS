@@ -77,6 +77,20 @@ export const syncProgramRotations = async (
 		}
 	}
 	if (newIds.length) await linkLessons(programId, newIds);
+	if (after.length < 2) return;
+
+	// Lưu thứ tự vòng (người dùng có thể đưa lên/xuống): giữ nguyên các vị trí
+	// của bài học khác, chỉ xếp lại các vòng vào đúng những vị trí của vòng.
+	let j = 0;
+	const rotLessonIds = after.map((r) => r.lesson_id || newIds[j++]);
+	const rotSet = new Set(rotLessonIds);
+	const links = await getLessons(programId);
+	const linkByLesson = new Map(links.map((l) => [l.lesson_id, l.id]));
+	let k = 0;
+	await reorderLessons(
+		programId,
+		links.map((l) => (rotSet.has(l.lesson_id) ? linkByLesson.get(rotLessonIds[k++])! : l.id)),
+	);
 };
 
 export const deleteTrainingProgram = (id: string) =>

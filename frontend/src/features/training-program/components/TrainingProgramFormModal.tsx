@@ -1,7 +1,7 @@
 import { FormField } from '@/shared/components/Input/FormField';
 import { Modal, ModalActions } from '@/shared/components';
 import React, { useState } from 'react';
-import { LayersSvg, PlusSvg, TrashSvg } from '@/assets/icons';
+import { ArrowRSvg, LayersSvg, PlusSvg, TrashSvg } from '@/assets/icons';
 import {
 	DURATION_UNIT_LABEL,
 	durationDays,
@@ -82,6 +82,14 @@ export function TrainingProgramFormModal({
 		setForm((f) => ({ ...f, rotations: f.rotations.filter((_, j) => j !== i) }));
 		setRotationErrors({});
 	};
+	const moveRotation = (i: number, d: -1 | 1) => {
+		setForm((f) => {
+			const rs = [...f.rotations];
+			[rs[i], rs[i + d]] = [rs[i + d], rs[i]];
+			return { ...f, rotations: rs };
+		});
+		setRotationErrors({});
+	};
 	const rotationMonths =
 		form.rotations.reduce(
 			(s, r) => s + (durationDays(r.duration_value.trim() ? Number(r.duration_value) : null, r.duration_unit) ?? 0),
@@ -99,6 +107,7 @@ export function TrainingProgramFormModal({
 		const err: Partial<Record<keyof TrainingProgramFormData, string>> = {};
 		if (!form.code.trim()) err.code = 'Vui lòng nhập mã chương trình';
 		if (!form.name.trim()) err.name = 'Vui lòng nhập tên chương trình';
+		if (!form.training_type_id) err.training_type_id = 'Vui lòng chọn loại hình';
 		for (const k of ['min_capacity', 'max_capacity'] as const)
 			if (form[k] && (Number(form[k]) < 1 || !Number.isFinite(Number(form[k]))))
 				err[k] = 'Số lượng phải là số nguyên dương';
@@ -160,9 +169,13 @@ export function TrainingProgramFormModal({
 						placeholder='VD: ĐTLT_5, GPHN_BS_1'
 					/>
 				</FormField>
-				<FormField label='Loại hình'>
+				<FormField
+					label='Loại hình'
+					required
+					error={errors.training_type_id}
+				>
 					<select
-						className={styles.formInput}
+						className={`${styles.formInput} ${errors.training_type_id ? styles.inputError : ''}`}
 						value={form.training_type_id}
 						onChange={set('training_type_id')}
 					>
@@ -353,6 +366,7 @@ export function TrainingProgramFormModal({
 							<span className={styles.rotationIdx}>Vòng {i + 1}</span>
 							<input
 								className={`${styles.formInput} ${rotationErrors[i] && !r.title.trim() ? styles.inputError : ''}`}
+								style={{ minWidth: 140 }}
 								value={r.title}
 								onChange={(e) => setRotation(i, { title: e.target.value })}
 								placeholder='Tên vòng, VD: Nội khoa'
@@ -384,14 +398,34 @@ export function TrainingProgramFormModal({
 									))}
 								</select>
 							</div>
-							<button
-								type='button'
-								className={styles.btnGhost}
-								title='Bỏ vòng này'
-								onClick={() => removeRotation(i)}
-							>
-								<TrashSvg />
-							</button>
+							<div className={styles.rotationActions}>
+								<button
+									type='button'
+									className={styles.actionBtn}
+									title='Đưa vòng lên'
+									disabled={i === 0}
+									onClick={() => moveRotation(i, -1)}
+								>
+									<ArrowRSvg style={{ transform: 'rotate(-90deg)' }} />
+								</button>
+								<button
+									type='button'
+									className={styles.actionBtn}
+									title='Đưa vòng xuống'
+									disabled={i === form.rotations.length - 1}
+									onClick={() => moveRotation(i, 1)}
+								>
+									<ArrowRSvg style={{ transform: 'rotate(90deg)' }} />
+								</button>
+								<button
+									type='button'
+									className={styles.actionBtn}
+									title='Bỏ vòng này'
+									onClick={() => removeRotation(i)}
+								>
+									<TrashSvg />
+								</button>
+							</div>
 							<div className={styles.rotationDepts}>
 								<TagPicker
 									items={departments}

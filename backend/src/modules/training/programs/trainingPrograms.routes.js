@@ -44,6 +44,7 @@ router.post(
 	authorizePermission(['training_programs', 'create']),
 	[
 		body('name').trim().notEmpty().withMessage('Tên chương trình không được để trống'),
+		body('training_type_id').notEmpty().withMessage('Vui lòng chọn loại hình'),
 		body('code').optional({ checkFalsy: true }).trim().isLength({ max: 50 }),
 		body('duration').optional({ checkFalsy: true }).trim().isLength({ max: 100 }),
 		body('min_capacity').optional({ checkFalsy: true }).isInt({ min: 1 }),
@@ -60,6 +61,7 @@ router.put(
 	authorizePermission(['training_programs', 'update']),
 	[
 		body('name').optional().trim().notEmpty(),
+		body('training_type_id').optional().notEmpty().withMessage('Vui lòng chọn loại hình'),
 		body('code').optional({ checkFalsy: true }).trim().isLength({ max: 50 }),
 		body('duration').optional({ checkFalsy: true }).trim().isLength({ max: 100 }),
 		body('min_capacity').optional({ checkFalsy: true }).isInt({ min: 1 }),

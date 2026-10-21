@@ -29,7 +29,6 @@ function ProgramDetail({ p }: { p: PublicProgram }) {
 		['Số giờ', hours(p.theory_hours, p.practice_hours)],
 		['Học phí', p.tuition_fee ? `${Number(p.tuition_fee).toLocaleString('vi-VN')} đ` : null],
 	].filter(([, v]) => v);
-	let round = 0;
 	return (
 		<div className={styles.detail}>
 			{facts.length > 0 && (
@@ -50,7 +49,7 @@ function ProgramDetail({ p }: { p: PublicProgram }) {
 				<ol className={styles.lessons}>
 					{p.lessons.map((l, i) => {
 						const rotation = l.kind === 'rotation';
-						if (rotation) round += 1;
+						const round = p.lessons.slice(0, i + 1).filter((x) => x.kind === 'rotation').length;
 						return (
 							<li key={i}>
 								<span className={rotation ? styles.stepRound : styles.stepLesson}>{rotation ? `V${round}` : i + 1}</span>

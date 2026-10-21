@@ -176,6 +176,15 @@
 	grid-column: 1 / -1;
 }
 
+.rotationActions {
+	display: flex;
+	gap: var(--space-1);
+}
+.rotationActions button:disabled {
+	opacity: 0.35;
+	cursor: not-allowed;
+}
+
 @media (max-width: 640px) {
 	.rotationRow {
 		grid-template-columns: 1fr auto;
