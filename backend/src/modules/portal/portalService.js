@@ -12,6 +12,7 @@ const publicPortalService = require('../public/publicPortalService');
 const examService = require('../training/exams/examService');
 const trainingProgramService = require('../training/programs/trainingProgramService');
 const { httpError } = require('../../utils/httpError');
+const { RESULT_FILES_SQL, withResultFiles } = require('../cme/cmeRecordService');
 
 const VN_TODAY = 'CAST(DATEADD(HOUR, 7, GETUTCDATE()) AS DATE)';
 const UPCOMING_DAYS = 30;
@@ -227,6 +228,7 @@ const registerCourse = async (courseId, actor, programId = null) => {
 // cmeRequirementService.getComplianceReport (tham dự hội thảo + ghi nhận độc lập),
 // ngưỡng ưu tiên theo khoa rồi toàn viện. getUserCme dùng chung cho file Excel
 // CME cá nhân (cmePersonalExportController.js) — caller tự kiểm tra quyền.
+// year = null → toàn bộ các năm (không có ngưỡng yêu cầu).
 const getUserCme = async (userId, year) => {
 	const pool = await getPool();
 	const r = await pool.request().input('uid', sql.VarChar(20), userId).input('year', sql.Int, year)
@@ -237,18 +239,19 @@ const getUserCme = async (userId, year) => {
     FROM seminar_participants p
     JOIN seminars s ON s.id = p.seminar_id
     WHERE p.user_id = @uid
-      AND (p.cme_year = @year OR (p.cme_year IS NULL AND ISNULL(s.event_year, YEAR(s.start_date)) = @year))
+      AND (@year IS NULL OR p.cme_year = @year OR (p.cme_year IS NULL AND ISNULL(s.event_year, YEAR(s.start_date)) = @year))
     ORDER BY s.start_date DESC;
 
     SELECT r.id, r.title, r.activity_date, r.end_date, r.year, r.role, r.quantity, r.credits, r.note,
            r.category_id, c.name AS category_name, r.approval_status, r.reject_reason,
            f.file_name AS evidence_file_name, f.file_url AS evidence_file_url,
-           CAST(CASE WHEN r.evidence_file_id IS NULL THEN 0 ELSE 1 END AS BIT) AS has_evidence
+           CAST(CASE WHEN r.evidence_file_id IS NULL THEN 0 ELSE 1 END AS BIT) AS has_evidence,
+           ${RESULT_FILES_SQL}
     FROM cme_records r
     LEFT JOIN cme_credit_categories c ON c.id = r.category_id
     LEFT JOIN training_files f ON f.id = r.evidence_file_id AND f.is_deleted = 0
-    WHERE r.user_id = @uid AND r.year = @year
-    ORDER BY r.activity_date DESC, r.created_at DESC;
+    WHERE r.user_id = @uid AND (@year IS NULL OR r.year = @year)
+    ORDER BY r.year DESC, r.activity_date DESC, r.created_at DESC;
 
     SELECT TOP 1 req.required_credits
     FROM users u
@@ -261,7 +264,7 @@ const getUserCme = async (userId, year) => {
 	const sum = (rows, key) => rows.reduce((t, x) => t + Number(x[key] || 0), 0);
 	const earned =
 		sum(
-			seminars.filter((p) => p.cme_year === year),
+			seminars.filter((p) => (year == null ? p.cme_year != null : p.cme_year === year)),
 			'cme_credits',
 		) +
 		sum(
@@ -273,7 +276,7 @@ const getUserCme = async (userId, year) => {
 		required_credits: req[0]?.required_credits ?? null,
 		earned_credits: Math.round(earned * 100) / 100,
 		seminars,
-		records,
+		records: records.map(withResultFiles),
 	};
 };
 

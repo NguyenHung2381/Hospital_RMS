@@ -109,6 +109,10 @@ module.exports = {
 			'Service: chỉ bản ghi của chính mình, chưa duyệt (assertEditableMine)',
 		[`POST ${API}/me/cme-records/:id/evidence`]:
 			'Chỉ bản ghi của chính mình, chưa duyệt — kiểm tra trước khi multer ghi file',
+		[`POST ${API}/me/cme-records/:id/result-files`]:
+			'File kết quả bổ sung — chỉ bản ghi của chính mình, đã duyệt (assertApprovedMine trước multer)',
+		[`DELETE ${API}/me/cme-records/:id/result-files/:fileId`]:
+			'Service: chỉ bản ghi của chính mình, đã duyệt, file thuộc đúng bản ghi (removeResultFileMine)',
 		[`POST ${API}/excel/build`]: 'Dựng file Excel từ dữ liệu client đã có quyền xem — không đọc DB',
 		[`POST ${API}/excel/parse`]:
 			'Đọc file Excel thành bảng chữ — không ghi DB; nhập thật đi qua API tạo mới có kiểm quyền của từng module',

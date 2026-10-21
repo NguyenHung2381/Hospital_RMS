@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { BarChartSvg, CalendarSvg, DownloadSvg, EditSvg, FileTextSvg, PaperclipSvg, PlusSvg, TrashSvg } from '@/assets/icons';
+import { BarChartSvg, CalendarSvg, DownloadSvg, EditSvg, FileTextSvg, PaperclipSvg, PlusSvg, TrashSvg, UploadSvg, XSvg } from '@/assets/icons';
 import { Badge, Button, Card, EmptyState, InlineLoading } from '@/shared/components';
 import { formatDateVN } from '@/shared/utils/formatDate';
 import UserLayout from '../../../layouts/UserLayout';
@@ -8,8 +8,11 @@ import { useRealtimeUpdate } from '../../../layouts/hooks/useRealtime';
 import { CME_STATUS_LABELS, EVENT_TYPE_LABELS, PARTICIPATION_LABELS } from '../../seminar/types/seminar.type';
 import { saveBlob } from '@/shared/utils/saveBlob';
 import MyCmeRecordModal from '../components/MyCmeRecordModal';
+import { useUploadPolicy } from '@/shared/hooks/useUploadPolicy';
 import {
+	addMyCmeResultFile,
 	deleteMyCmeRecord,
+	deleteMyCmeResultFile,
 	exportMyCmeExcel,
 	getMyCme,
 	getMyCmeCategories,
@@ -35,7 +38,8 @@ export default function MyCme() {
 	const [params, setParams] = useSearchParams();
 	const tab: Tab = params.get('tab') === 'records' ? 'records' : 'seminars';
 	const setTab = (t: Tab) => setParams({ tab: t }, { replace: true });
-	const [year, setYear] = useState(THIS_YEAR);
+	const [year, setYear] = useState<number | 'all'>(THIS_YEAR);
+	const allYears = year === 'all';
 	const [data, setData] = useState<Data | null>(null);
 	const semPg = useClientPaging(data?.seminars ?? []);
 	const recPg = useClientPaging(data?.records ?? []);
@@ -66,7 +70,44 @@ export default function MyCme() {
 		}
 	};
 
+	// File bổ sung chứng minh kết quả — chỉ cho ghi nhận đã duyệt (1 input ẩn dùng chung)
+	const uploadPolicy = useUploadPolicy();
+	const fileInput = useRef<HTMLInputElement>(null);
+	const [uploadFor, setUploadFor] = useState<string | null>(null);
+	const [uploadingId, setUploadingId] = useState<string | null>(null);
+	const pickResultFile = (id: string) => {
+		setUploadFor(id);
+		fileInput.current?.click();
+	};
+	const handleResultFile = async (file: File | undefined) => {
+		const id = uploadFor;
+		if (fileInput.current) fileInput.current.value = '';
+		if (!file || !id) return;
+		const invalid = uploadPolicy.check(file);
+		if (invalid) return setExportError(invalid);
+		setExportError('');
+		setUploadingId(id);
+		try {
+			await addMyCmeResultFile(id, file);
+			load();
+		} catch (err) {
+			setExportError(err instanceof Error ? err.message : 'Tải file thất bại');
+		} finally {
+			setUploadingId(null);
+		}
+	};
+	const handleDeleteResultFile = async (id: string, fileId: string, name: string) => {
+		if (!window.confirm(`Xoá file "${name}"?`)) return;
+		try {
+			await deleteMyCmeResultFile(id, fileId);
+			load();
+		} catch (err) {
+			setExportError(err instanceof Error ? err.message : 'Xoá file thất bại');
+		}
+	};
+
 	const handleExport = async () => {
+		if (year === 'all') return;
 		setExporting(true);
 		setExportError('');
 		try {
@@ -93,9 +134,10 @@ export default function MyCme() {
 					<select
 						className={styles.yearSelect}
 						value={year}
-						onChange={(e) => setYear(Number(e.target.value))}
+						onChange={(e) => setYear(e.target.value === 'all' ? 'all' : Number(e.target.value))}
 						aria-label='Chọn năm'
 					>
+						<option value='all'>Tất cả các năm</option>
 						{YEARS.map((y) => (
 							<option
 								key={y}
@@ -110,9 +152,9 @@ export default function MyCme() {
 						variant='secondary'
 						icon={<DownloadSvg />}
 						loading={exporting}
-						disabled={!data}
+						disabled={!data || allYears}
 						onClick={handleExport}
-						title='Phiếu theo dõi CME năm đang chọn, kèm tổng hợp 5 năm gần nhất'
+						title={allYears ? 'Chọn 1 năm để xuất phiếu' : 'Phiếu theo dõi CME năm đang chọn, kèm tổng hợp 5 năm gần nhất'}
 					>
 						Xuất Excel
 					</Button>
@@ -132,7 +174,7 @@ export default function MyCme() {
 					<Card>
 						<Card.Header
 							icon={<BarChartSvg />}
-							title={`Tín chỉ CME năm ${data.year}`}
+							title={data.year == null ? 'Tổng tín chỉ CME tất cả các năm' : `Tín chỉ CME năm ${data.year}`}
 						/>
 						<Card.Body>
 							<div className={styles.progressRow}>
@@ -140,7 +182,7 @@ export default function MyCme() {
 									<span className={styles.bigNumber}>{data.earned_credits}</span>
 									{req != null && <span> / {req} tín chỉ</span>}
 								</div>
-								{req == null ? (
+								{allYears ? null : req == null ? (
 									<Badge>Chưa có ngưỡng yêu cầu cho năm này</Badge>
 								) : done ? (
 									<Badge tone='green'>Đã đạt yêu cầu</Badge>
@@ -185,7 +227,7 @@ export default function MyCme() {
 						{tab === 'seminars' && (
 							<Card.Body>
 								{data.seminars.length === 0 ? (
-									<EmptyState title='Chưa có sự kiện nào trong năm' />
+									<EmptyState title={allYears ? 'Chưa có sự kiện nào' : 'Chưa có sự kiện nào trong năm'} />
 								) : (
 									<div className={styles.tableWrap}>
 										<table className={styles.table}>
@@ -242,7 +284,7 @@ export default function MyCme() {
 									</Button>
 								</div>
 								{data.records.length === 0 ? (
-									<EmptyState title='Chưa có khai báo nào trong năm' />
+									<EmptyState title={allYears ? 'Chưa có khai báo nào' : 'Chưa có khai báo nào trong năm'} />
 								) : (
 									<div className={styles.tableWrap}>
 										<table className={styles.table}>
@@ -269,6 +311,22 @@ export default function MyCme() {
 																	<PaperclipSvg />
 																</a>
 															)}
+															{r.result_files.map((f) => (
+																<div key={f.id} className={tbl.dateText}>
+																	<a href={f.file_url} target='_blank' rel='noreferrer'>
+																		<FileTextSvg /> {f.file_name}
+																	</a>
+																	<button
+																		type='button'
+																		onClick={() => handleDeleteResultFile(r.id, f.id, f.file_name)}
+																		title='Xoá file'
+																		aria-label={`Xoá file ${f.file_name}`}
+																		style={{ border: 0, background: 'none', cursor: 'pointer', color: 'inherit', verticalAlign: 'middle' }}
+																	>
+																		<XSvg width={12} height={12} />
+																	</button>
+																</div>
+															))}
 														</td>
 														<td>{r.activity_date ? formatDateVN(r.activity_date) : `Năm ${r.year}`}</td>
 														<td>{r.category_name ?? '—'}</td>
@@ -280,7 +338,18 @@ export default function MyCme() {
 															)}
 														</td>
 														<td>
-															{r.approval_status !== 'approved' && (
+															{r.approval_status === 'approved' ? (
+																<Button
+																	size='sm'
+																	variant='secondary'
+																	icon={<UploadSvg />}
+																	loading={uploadingId === r.id}
+																	onClick={() => pickResultFile(r.id)}
+																	title='Tải lên file bổ sung chứng minh kết quả'
+																>
+																	Bổ sung file
+																</Button>
+															) : (
 																<div style={{ display: 'flex', gap: 6 }}>
 																	<Button size='sm' variant='secondary' icon={<EditSvg />} onClick={() => setEditing(r)} title='Sửa' />
 																	<Button size='sm' variant='secondary' icon={<TrashSvg />} onClick={() => handleDelete(r.id)} title='Xoá' />
@@ -302,11 +371,18 @@ export default function MyCme() {
 					</Card>
 				</div>
 			)}
+			<input
+				ref={fileInput}
+				type='file'
+				hidden
+				accept={uploadPolicy.accept}
+				onChange={(e) => handleResultFile(e.target.files?.[0])}
+			/>
 			{editing && (
 				<MyCmeRecordModal
 					record={editing === 'new' ? null : editing}
 					categories={categories}
-					defaultYear={year}
+					defaultYear={year === 'all' ? THIS_YEAR : year}
 					onClose={() => setEditing(null)}
 					onSaved={load}
 				/>

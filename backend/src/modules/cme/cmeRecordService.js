@@ -11,9 +11,20 @@ const { paging } = require('../../utils/paging');
 const trainingFileService = require('../training/trainingFileService');
 const { httpError } = require('../../utils/httpError');
 
+// File bổ sung chứng minh kết quả — người dùng tải lên SAU khi ghi nhận đã duyệt
+// (minh chứng chính evidence_file_id bị khoá lúc đó). Lưu ở training_files theo
+// entity_type='cme_result', entity_id = id ghi nhận; không cần cột riêng.
+const RESULT_FILE_TYPE = 'cme_result';
+const RESULT_FILES_SQL = `(SELECT tf.id, tf.file_name, tf.file_url, tf.created_at FROM training_files tf
+           WHERE tf.entity_type = '${RESULT_FILE_TYPE}' AND tf.entity_id = r.id AND tf.is_deleted = 0
+           ORDER BY tf.created_at FOR JSON PATH) AS result_files`;
+const withResultFiles = (row) =>
+	row && { ...row, result_files: row.result_files ? JSON.parse(row.result_files) : [] };
+
 const recordSelect = `
   SELECT r.*, u.full_name AS user_name, u.staff_number, u.department_id, d.name AS department_name,
-         c.name AS category_name, g.name AS group_name, f.file_name AS evidence_file_name, f.file_url AS evidence_file_url
+         c.name AS category_name, g.name AS group_name, f.file_name AS evidence_file_name, f.file_url AS evidence_file_url,
+         ${RESULT_FILES_SQL}
   FROM cme_records r
   JOIN users u ON u.id = r.user_id
   LEFT JOIN departments d ON d.id = u.department_id
@@ -59,7 +70,7 @@ const getAll = async ({
     SELECT COUNT(*) AS total FROM cme_records r ${whereSql};
   `);
 	return {
-		data: result.recordsets[0],
+		data: result.recordsets[0].map(withResultFiles),
 		pagination: { page: pg.page, limit: pg.limit, total: result.recordsets[1][0].total },
 	};
 };
@@ -70,7 +81,7 @@ const getById = async (id) => {
 		.request()
 		.input('id', sql.VarChar(20), id)
 		.query(`${recordSelect} WHERE r.id = @id`);
-	return result.recordset[0] || null;
+	return withResultFiles(result.recordset[0]) || null;
 };
 
 // opts.fetch=false: bỏ query đọc lại bản ghi — dùng cho import hàng loạt
@@ -147,7 +158,20 @@ const remove = async (id, actorId) => {
 	if (row.recordset[0]?.evidence_file_id) {
 		await trainingFileService.softDelete(row.recordset[0].evidence_file_id, actorId);
 	}
+	await removeResultFiles([id], actorId);
 	broadcast('update', { entity: 'cme_record' });
+};
+
+const removeResultFiles = async (recordIds, actorId) => {
+	const pool = await getPool();
+	const files = await pool
+		.request()
+		.input('ids', sql.NVarChar(sql.MAX), JSON.stringify(recordIds))
+		.query(
+			`SELECT id FROM training_files WHERE entity_type = '${RESULT_FILE_TYPE}' AND is_deleted = 0
+       AND entity_id IN (SELECT [value] FROM OPENJSON(@ids))`,
+		);
+	for (const f of files.recordset) await trainingFileService.softDelete(f.id, actorId);
 };
 
 // Xoá hàng loạt (nút "Xoá tất cả theo bộ lọc") — một câu DELETE, rồi gỡ file minh chứng kèm theo.
@@ -164,6 +188,7 @@ const removeMany = async (ids, actorId) => {
 	for (const { evidence_file_id } of result.recordset) {
 		if (evidence_file_id) await trainingFileService.softDelete(evidence_file_id, actorId);
 	}
+	await removeResultFiles(list, actorId);
 	broadcast('update', { entity: 'cme_record' });
 	return { deleted: result.recordset.length };
 };
@@ -231,6 +256,32 @@ const addEvidenceMine = async (id, file, userId) => {
 	return addEvidence(id, file, userId);
 };
 
+// File kết quả bổ sung — chỉ bản ghi của chính mình ĐÃ duyệt. Không đổi trạng
+// thái/tín chỉ, chỉ đính thêm minh chứng.
+const assertApprovedMine = async (id, userId) => {
+	const rec = await getById(id);
+	if (!rec || rec.user_id !== userId) throw httpErr('Không tìm thấy ghi nhận CME', 404);
+	if (rec.approval_status !== 'approved')
+		throw httpErr('Chỉ bổ sung file kết quả sau khi ghi nhận đã được duyệt', 409);
+	return rec;
+};
+
+const addResultFileMine = async (id, file, userId) => {
+	await assertApprovedMine(id, userId);
+	await trainingFileService.saveUploadedFile(RESULT_FILE_TYPE, id, file, userId);
+	broadcast('update', { entity: 'cme_record' });
+	return getById(id);
+};
+
+const removeResultFileMine = async (id, fileId, userId) => {
+	await assertApprovedMine(id, userId);
+	const f = await trainingFileService.getById(fileId);
+	if (!f || f.entity_type !== RESULT_FILE_TYPE || f.entity_id !== id)
+		throw httpErr('Không tìm thấy file', 404);
+	await trainingFileService.softDelete(fileId, userId);
+	broadcast('update', { entity: 'cme_record' });
+};
+
 // Admin duyệt / từ chối
 const review = async (id, approve, reason, actorId) => {
 	if (!approve && !String(reason || '').trim()) throw httpErr('Vui lòng nhập lý do từ chối', 400);
@@ -260,5 +311,10 @@ module.exports = {
 	updateMine,
 	removeMine,
 	addEvidenceMine,
+	assertApprovedMine,
+	addResultFileMine,
+	removeResultFileMine,
+	RESULT_FILES_SQL,
+	withResultFiles,
 	review,
 };

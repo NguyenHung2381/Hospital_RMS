@@ -19,6 +19,8 @@ export interface CmeRecord {
 	evidence_file_id: string | null;
 	evidence_file_name: string | null;
 	evidence_file_url: string | null;
+	/** File kết quả người dùng bổ sung sau khi đã duyệt. */
+	result_files?: { id: string; file_name: string; file_url: string }[];
 	note: string | null;
 	approval_status: 'pending' | 'approved' | 'rejected';
 	reject_reason: string | null;

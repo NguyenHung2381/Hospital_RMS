@@ -100,6 +100,15 @@ export interface MyCmeRecord {
 	reject_reason: string | null;
 	evidence_file_name: string | null;
 	evidence_file_url: string | null;
+	/** File bổ sung chứng minh kết quả — tải lên sau khi đã duyệt. */
+	result_files: CmeResultFile[];
+}
+
+export interface CmeResultFile {
+	id: string;
+	file_name: string;
+	file_url: string;
+	created_at: string;
 }
 
 export interface MyCmeCategory {
@@ -112,7 +121,8 @@ export interface MyCmeCategory {
 }
 
 export interface MyCme {
-	year: number;
+	/** null = toàn bộ các năm */
+	year: number | null;
 	required_credits: number | null;
 	earned_credits: number;
 	seminars: MyCmeSeminar[];
@@ -177,7 +187,7 @@ export const markDocumentOpened = (docId: string, kind: 'course' | 'lesson' = 'c
 export const getMyTraining = () => apiClient.get<MyTraining>('/me/training');
 export const registerMyCourse = (courseId: string, programId?: string) =>
 	apiClient.post(`/me/courses/${courseId}/register`, { program_id: programId || null });
-export const getMyCme = (year: number) => apiClient.get<MyCme>(`/me/cme?year=${year}`);
+export const getMyCme = (year: number | 'all') => apiClient.get<MyCme>(`/me/cme?year=${year}`);
 /** Phiếu theo dõi CME cá nhân (Excel): năm được chọn + tổng hợp 5 năm. */
 export const exportMyCmeExcel = (year: number) => apiClient.postBlob('/me/cme/export-excel', { year });
 
@@ -215,6 +225,13 @@ export const addMyCmeEvidence = (id: string, file: File) => {
 	form.append('file', file);
 	return apiClient.postForm<{ id: string }>(`/me/cme-records/${id}/evidence`, form);
 };
+export const addMyCmeResultFile = (id: string, file: File) => {
+	const form = new FormData();
+	form.append('file', file);
+	return apiClient.postForm<MyCmeRecord>(`/me/cme-records/${id}/result-files`, form);
+};
+export const deleteMyCmeResultFile = (id: string, fileId: string) =>
+	apiClient.delete<null>(`/me/cme-records/${id}/result-files/${fileId}`);
 
 // ─── Chấm công theo ca (IP bệnh viện + GPS) ─────────────────
 export interface AttendanceRow {

@@ -49,7 +49,9 @@ router.post(
 router.get(
 	'/cme',
 	asyncHandler(async (req, res) => {
-		const year = Number(req.query.year) || new Date().getFullYear();
+		// ?year=all → toàn bộ các năm
+		const year =
+			req.query.year === 'all' ? null : Number(req.query.year) || new Date().getFullYear();
 		return success(res, await portalService.getMyCme(req.user, year));
 	}),
 );
@@ -119,6 +121,33 @@ router.post(
 			res,
 			await cmeRecordService.addEvidenceMine(req.params.id, req.file, req.user.id),
 		);
+	}),
+);
+
+// File kết quả bổ sung — chỉ khi ghi nhận ĐÃ duyệt; kiểm tra trước khi multer ghi file.
+const uploadResult = createTrainingUpload('cme_result');
+const ownApprovedRecord = asyncHandler(async (req, _res, next) => {
+	await cmeRecordService.assertApprovedMine(req.params.id, req.user.id);
+	next();
+});
+router.post(
+	'/cme-records/:id/result-files',
+	ownApprovedRecord,
+	uploadResult.single('file'),
+	handle(async (req, res) => {
+		if (!req.file) return res.status(400).json({ success: false, message: 'Vui lòng chọn file' });
+		return success(
+			res,
+			await cmeRecordService.addResultFileMine(req.params.id, req.file, req.user.id),
+			'Đã tải lên file bổ sung',
+		);
+	}),
+);
+router.delete(
+	'/cme-records/:id/result-files/:fileId',
+	handle(async (req, res) => {
+		await cmeRecordService.removeResultFileMine(req.params.id, req.params.fileId, req.user.id);
+		return success(res, null, 'Đã xoá file');
 	}),
 );
 

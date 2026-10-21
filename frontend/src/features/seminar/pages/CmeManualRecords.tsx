@@ -8,6 +8,7 @@ import {
 	DownloadSvg,
 	EditSvg,
 	InfoSvg,
+	FileTextSvg,
 	PaperclipSvg,
 	PlusSvg,
 	TrashSvg,
@@ -1875,8 +1876,20 @@ export default function CmeManualRecords() {
 													<PaperclipSvg />
 												</a>
 											) : (
-												<span className={styles.muted}>—</span>
+												!r.result_files?.length && <span className={styles.muted}>—</span>
 											)}
+											{r.result_files?.map((f) => (
+												<a
+													key={f.id}
+													className={styles.cmeEvidence}
+													href={f.file_url}
+													target='_blank'
+													rel='noreferrer'
+													title={`File kết quả bổ sung: ${f.file_name}`}
+												>
+													<FileTextSvg />
+												</a>
+											))}
 										</td>
 										<td>
 		<Badge tone={r.approval_status === 'approved' ? 'green' : r.approval_status === 'rejected' ? 'red' : 'amber'}>
