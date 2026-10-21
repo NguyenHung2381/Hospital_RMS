@@ -20,8 +20,10 @@ export interface SimpleItem {
 	name: string;
 }
 
-export function useTrainees() {
+/** trainingTypeId: lọc học viên theo loại khóa đã ghi danh (tab), '' = tất cả. */
+export function useTrainees(trainingTypeId = '') {
 	const [trainees, setTrainees] = useState<Trainee[]>([]);
+	const [typeCounts, setTypeCounts] = useState<Record<string, number>>({});
 	const [traineeTypes, setTraineeTypes] = useState<SimpleItem[]>([]);
 	const [departments, setDepartments] = useState<SimpleItem[]>([]);
 	const [isLoadingData, setIsLoadingData] = useState(true);
@@ -42,11 +44,24 @@ export function useTrainees() {
 	useRealtimeUpdate('trainee', refreshData);
 
 	useEffect(() => {
-		getTrainees()
-			.then((res) => setTrainees(res.data))
-			.catch(() => showToast('error', 'Không thể tải danh sách học viên'))
-			.finally(() => setIsLoadingData(false));
-	}, [refreshKey]);
+		let stale = false;
+		void (async () => {
+			setIsLoadingData(true);
+			try {
+				const res = await getTrainees(trainingTypeId || undefined);
+				if (stale) return;
+				setTrainees(res.data);
+				setTypeCounts(res.type_counts ?? {});
+			} catch {
+				if (!stale) showToast('error', 'Không thể tải danh sách học viên');
+			} finally {
+				if (!stale) setIsLoadingData(false);
+			}
+		})();
+		return () => {
+			stale = true;
+		};
+	}, [trainingTypeId, refreshKey]);
 
 	useEffect(() => {
 		apiClient
@@ -196,6 +211,7 @@ export function useTrainees() {
 
 	return {
 		trainees,
+		typeCounts,
 		traineeTypes,
 		departments,
 		isLoadingData,

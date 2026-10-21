@@ -424,6 +424,11 @@ export function EnrollmentsTab({
                         >
                           {cfg.label}
                         </span>
+                        {en.waitlist_position != null && (
+                          <div className={tbl.cellSub}>
+                            {course?.auto_batch ? "Chờ đợt sau · " : ""}vị trí {en.waitlist_position}
+                          </div>
+                        )}
                       </td>
                       <td className={`${tbl.td} ${tbl.tdActions}`}>
                         <RowActions

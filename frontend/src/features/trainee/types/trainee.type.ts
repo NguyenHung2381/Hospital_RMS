@@ -34,6 +34,14 @@ export interface Trainee {
 	/** D0 — tài khoản đăng nhập cho học viên (điểm danh QR, thi online). */
 	user_id: string | null;
 	account_granted: boolean;
+	// Có khi lọc theo loại khóa: lượt ghi danh gần nhất thuộc loại đó.
+	practice_code?: string | null;
+	program_name?: string | null;
+	course_name?: string | null;
+	enrollment_start_date?: string | null;
+	enrollment_end_date?: string | null;
+	current_department?: string | null;
+	type_enrollment_count?: number;
 }
 
 export interface TraineeFormData {
@@ -89,6 +97,8 @@ export interface TraineeEnrollment {
 export interface TraineeListResponse {
 	data: Trainee[];
 	pagination: { page: number; limit: number; total: number };
+	/** Số học viên theo loại khóa đã ghi danh (key '' = tất cả). */
+	type_counts?: Record<string, number>;
 }
 
 export const EMPTY_FORM: TraineeFormData = {

@@ -1,12 +1,12 @@
 import { SearchInput, SelectionCount, RowAction, RowActions } from '@/shared/components/Table/TableToolbar';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useMemo } from 'react';
 import { apiClient } from '@/shared/api/axios';
 import { ExcelActions, type ExcelColumn } from '@/shared/components/Excel';
 import { dateText, isYes, matchLabel, nameMap, numText } from '@/shared/components/Excel/excelHelpers';
 import { formatDateVN } from '@/shared/utils/formatDate';
 import { createCourse, getCourses } from '../api/courseApi';
-import { EMPTY_FORM, type Course } from '../types/course.type';
+import { EMPTY_FORM, TRAINING_TYPE, type Course } from '../types/course.type';
 import { EyeSvg, PlusSvg } from '@/assets/icons';
 import AdminLayout from '../../../layouts/AdminLayout';
 import { SkeletonTable } from '../../../shared/components/Loading';
@@ -18,6 +18,7 @@ import { formatDate } from '../../../shared/utils/formatDate';
 import { CourseDeleteModal } from '../components/CourseDeleteModal';
 import { CourseFormModal } from '../components/CourseFormModal';
 import ProgramTags from '../components/ProgramTags';
+import { TrainingTypeTabs } from '../components/TrainingTypeTabs';
 import { useCourses } from '../hooks/useCourses';
 import { DISPLAY_STATUS_CFG } from '../types/course.type';
 import styles from './Courses.module.css';
@@ -44,8 +45,16 @@ const EXCEL_COLS: ExcelColumn<Course>[] = [
 ];
 
 export default function Courses() {
-	const d = useCourses();
+	const [searchParams, setSearchParams] = useSearchParams();
+	const typeId = searchParams.get('type') ?? '';
+	const d = useCourses(typeId);
 	const navigate = useNavigate();
+	const changeType = (id: string) => {
+		setSearchParams(id ? { type: id } : {}, { replace: true });
+		d.setPage(1);
+	};
+	// Thêm khóa từ tab nào thì điền sẵn loại đó (GPHN mở liên tục).
+	const addInitial = typeId ? { training_type_id: typeId, is_rolling: typeId === TRAINING_TYPE.GPHN } : undefined;
 	const openCourse = (id: string) => navigate(`/admin/courses/${id}`);
 	const rowSel = useRowSelection(d.paged.map((x) => x.id));
 
@@ -65,12 +74,15 @@ export default function Courses() {
 				fileName='khoa-hoc'
 				itemLabel='khóa học'
 				columns={EXCEL_COLS}
-				getRows={async () => (await getCourses({ search: d.search || undefined })).data}
+				getRows={async () =>
+					(await getCourses({ search: d.search || undefined, training_type_id: typeId || undefined })).data
+				}
 				importHint='Chương trình ghi tên, nhiều chương trình cách nhau bằng dấu chấm phẩy (;). Ngày ghi dd/mm/yyyy.'
 				importRow={async (r) => {
 					const { forms, programs } = await loadLookups();
 					return createCourse({
 						...EMPTY_FORM,
+						...addInitial,
 						name: r.name,
 						program_ids: r.programs
 							.split(/[;\n]/)
@@ -104,6 +116,11 @@ export default function Courses() {
 			breadcrumbs={[{ label: 'Đào tạo' }]}
 			headerActions={headerActions}
 		>
+			<TrainingTypeTabs
+				value={typeId}
+				counts={d.typeCounts}
+				onChange={changeType}
+			/>
 			<div className={styles.tableCard}>
 				<div className={styles.tableHeader}>
 					<div className={styles.tableHeaderLeft}>
@@ -202,7 +219,11 @@ export default function Courses() {
 												<div className={styles.descText}>
 													{c.training_type_name}
 													{c.is_rolling ? ' · mở liên tục' : ''}
+													{c.auto_batch ? ' · tuyển sinh theo đợt' : ''}
 												</div>
+											)}
+											{c.parent_course_name && (
+												<div className={styles.descText}>Thuộc: {c.parent_course_name}</div>
 											)}
 											{c.pending_count > 0 && (
 												<div className={styles.descText}>
@@ -237,10 +258,19 @@ export default function Courses() {
 											</span>
 										</td>
 										<td className={styles.td}>
-											<span className={`${styles.capacityText} ${isFull ? styles.capacityFull : ''}`}>
-												{c.approved_count}
-												{c.capacity != null ? `/${c.capacity}` : ''}
-											</span>
+											{c.auto_batch ? (
+												<>
+													<span className={styles.capacityText}>{c.family_count} học viên</span>
+													<div className={styles.descText}>
+														{c.batch_count} đợt · {c.waitlisted_count} chờ đợt sau
+													</div>
+												</>
+											) : (
+												<span className={`${styles.capacityText} ${isFull ? styles.capacityFull : ''}`}>
+													{c.approved_count}
+													{c.capacity != null ? `/${c.capacity}` : ''}
+												</span>
+											)}
 										</td>
 										<td className={styles.td}>
 											<span
@@ -292,6 +322,7 @@ export default function Courses() {
 			{d.modal === 'add' && (
 				<CourseFormModal
 					mode='add'
+					initial={addInitial}
 					onClose={() => d.setModal(null)}
 					onSave={d.handleAdd}
 					loading={d.loading}

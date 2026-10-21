@@ -186,6 +186,9 @@ export function useCourseDetail(courseId: string) {
 				}
 				// Ghi danh hộ được duyệt luôn; khóa GPHN backend đã tự xếp vòng — chỉ báo khi chưa xếp được
 				if (out.auto_warning) showToast('error', out.auto_warning);
+				else if (out.batch_name) showToast('success', `Đã ghi danh và xếp vào ${out.batch_name}`);
+				else if (out.waitlist_position != null)
+					showToast('info', `Đã ghi danh — đang chờ đợt học (vị trí ${out.waitlist_position})`);
 				else if (out.status === 'waitlisted') showToast('info', 'Khóa đã đủ sĩ số — học viên được đưa vào danh sách chờ');
 				else showToast('success', 'Đã ghi danh và duyệt học viên');
 				await load();
@@ -203,7 +206,8 @@ export function useCourseDetail(courseId: string) {
 			setBusy(true);
 			setError('');
 			try {
-				await apiDecideEnrollment(enrollmentId, status, note);
+				const out = await apiDecideEnrollment(enrollmentId, status, note);
+				if (out.batch_name) showToast('success', `Đã duyệt và xếp vào ${out.batch_name}`);
 				await load();
 			} catch (err) {
 				setError(err instanceof Error ? err.message : 'Cập nhật thất bại');

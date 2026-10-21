@@ -79,6 +79,7 @@ router.post(
 			.isInt({ min: 1 })
 			.withMessage('Số đợt phải là số nguyên dương'),
 		body('is_rolling').optional().isBoolean(),
+		body('auto_batch').optional().isBoolean(),
 		body('prerequisites').optional({ nullable: true }).isArray(),
 		body('objectives').optional({ nullable: true }).isArray(),
 		body('program_ids').optional().isArray(),
@@ -98,6 +99,7 @@ router.put(
 			.isInt({ min: 1 })
 			.withMessage('Số đợt phải là số nguyên dương'),
 		body('is_rolling').optional().isBoolean(),
+		body('auto_batch').optional().isBoolean(),
 		body('prerequisites').optional({ nullable: true }).isArray(),
 		body('objectives').optional({ nullable: true }).isArray(),
 		body('program_ids').optional().isArray(),
@@ -131,6 +133,17 @@ router.post(
 	'/:id/practice/auto-arrange',
 	authorizePermission(['courses', 'update']),
 	ctrl.autoArrangeCourse,
+);
+
+// ─── Khóa tuyển sinh theo đợt (auto_batch) ─────────────────────────────────
+// Tổng quan từng chương trình (người chờ, các đợt) + lập đợt ngay dù chưa đủ sĩ số.
+router.get('/:id/batches', authorizePermission(['courses', 'read']), ctrl.listBatches);
+router.post(
+	'/:id/batches',
+	authorizePermission(['courses', 'update']),
+	[body('program_id').notEmpty().withMessage('Vui lòng chọn chương trình')],
+	validate,
+	ctrl.formBatchNow,
 );
 
 // ─── Enrollments ──────────────────────────────────────────────────────────

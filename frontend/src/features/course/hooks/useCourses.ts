@@ -6,10 +6,12 @@ import { createCourse, deleteCourse, getCourses, updateCourse } from '../api/cou
 import { EMPTY_FORM, type Course, type CourseFormData, type ModalType } from '../types/course.type';
 import { DEFAULT_PAGE_SIZE } from '@/shared/utils/constants';
 
-export function useCourses() {
+/** trainingTypeId: lọc theo loại khóa (tab), '' = tất cả. */
+export function useCourses(trainingTypeId = '') {
 	// Chỉ chứa các dòng của TRANG hiện tại — server lo tìm kiếm & phân trang
 	const [courses, setCourses] = useState<Course[]>([]);
 	const [total, setTotal] = useState(0);
+	const [typeCounts, setTypeCounts] = useState<Record<string, number>>({});
 	const [isLoadingData, setIsLoadingData] = useState(true);
 	const [search, setSearch] = useState('');
 	const [debouncedSearch, setDebouncedSearch] = useState('');
@@ -35,10 +37,16 @@ export function useCourses() {
 		void (async () => {
 			setIsLoadingData(true);
 			try {
-				const res = await getCourses({ page, limit: pageSize, search: debouncedSearch || undefined });
+				const res = await getCourses({
+					page,
+					limit: pageSize,
+					search: debouncedSearch || undefined,
+					training_type_id: trainingTypeId || undefined,
+				});
 				if (controller.signal.aborted) return;
 				setCourses(res.data);
 				setTotal(res.pagination.total);
+				setTypeCounts(res.type_counts ?? {});
 				const lastPage = pageSize === 0 ? 1 : Math.max(1, Math.ceil(res.pagination.total / pageSize));
 				if (page > lastPage) setPage(1);
 			} catch {
@@ -48,7 +56,7 @@ export function useCourses() {
 			}
 		})();
 		return () => controller.abort();
-	}, [page, pageSize, debouncedSearch, refreshKey]);
+	}, [page, pageSize, debouncedSearch, trainingTypeId, refreshKey]);
 
 	const totalPages = pageSize === 0 ? 1 : Math.max(1, Math.ceil(total / pageSize));
 	const safePage = Math.min(page, totalPages);
@@ -133,8 +141,11 @@ export function useCourses() {
 
 	// Id toàn bộ bản ghi khớp từ khoá (mọi trang, limit=0) — cho nút "Xoá tất cả"
 	const fetchAllIds = useCallback(
-		async () => (await getCourses({ search: debouncedSearch || undefined })).data.map((x) => x.id),
-		[debouncedSearch],
+		async () =>
+			(
+				await getCourses({ search: debouncedSearch || undefined, training_type_id: trainingTypeId || undefined })
+			).data.map((x) => x.id),
+		[debouncedSearch, trainingTypeId],
 	);
 
 	return {
@@ -150,6 +161,7 @@ export function useCourses() {
 		pageSize,
 		page,
 		total,
+		typeCounts,
 		totalPages,
 		safePage,
 		paged: courses,

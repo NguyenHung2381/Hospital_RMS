@@ -76,6 +76,8 @@ GET    /api/v1/courses/  courses:read
 DELETE /api/v1/courses/:id  courses:delete
 GET    /api/v1/courses/:id  courses:read
 PUT    /api/v1/courses/:id  courses:update
+GET    /api/v1/courses/:id/batches  courses:read
+POST   /api/v1/courses/:id/batches  courses:update
 GET    /api/v1/courses/:id/certificates  courses:read
 GET    /api/v1/courses/:id/documents  courses:read
 POST   /api/v1/courses/:id/documents  courses:update

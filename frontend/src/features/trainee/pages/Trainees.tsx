@@ -1,6 +1,7 @@
 import { avatarColor, getInitials } from '@/shared/utils';
 import { SearchInput, RowAction, RowActions } from '@/shared/components/Table/TableToolbar';
 import { useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { BookOpenSvg, FileTextSvg, KeySvg, PlusSvg, TrashSvg, UploadSvg } from '@/assets/icons';
 import { Badge } from '@/shared/components';
 import AdminLayout from '../../../layouts/AdminLayout';
@@ -21,6 +22,8 @@ import { ExcelActions, type ExcelColumn } from '@/shared/components/Excel';
 import { formatDateVN } from '@/shared/utils/formatDate';
 import { genderLabel } from '@/shared/utils/gender';
 import type { Trainee } from '../types/trainee.type';
+import { TrainingTypeTabs } from '../../course/components/TrainingTypeTabs';
+import { TRAINING_TYPE } from '../../course/types/course.type';
 import tbl from '@/shared/components/Table/Table.module.css';
 
 // Tiêu đề trùng cột nhận diện của "Nhập từ Excel" để file xuất ra nhập lại được.
@@ -44,7 +47,16 @@ const EXCEL_COLS: ExcelColumn<Trainee>[] = [
 ];
 
 export default function Trainees() {
-	const d = useTrainees();
+	const [searchParams, setSearchParams] = useSearchParams();
+	const typeId = searchParams.get('type') ?? '';
+	const d = useTrainees(typeId);
+	const isGphn = typeId === TRAINING_TYPE.GPHN;
+	// Tab theo loại: thay cột Liên hệ / Đối tượng / Khoa bằng thông tin lượt ghi danh của loại đó.
+	const colCount = typeId ? 7 : 8;
+	const changeType = (id: string) => {
+		setSearchParams(id ? { type: id } : {}, { replace: true });
+		d.setPage(1);
+	};
 	const rowSel = useRowSelection(d.paged.map((x) => x.id));
 	const [confirmBulkDelete, setConfirmBulkDelete] = useState(false);
 	const [showImport, setShowImport] = useState(false);
@@ -79,6 +91,11 @@ export default function Trainees() {
 			breadcrumbs={[{ label: 'Đào tạo' }]}
 			headerActions={headerActions}
 		>
+			<TrainingTypeTabs
+				value={typeId}
+				counts={d.typeCounts}
+				onChange={changeType}
+			/>
 			<div className={styles.tableCard}>
 				<div className={styles.tableHeader}>
 					<div className={styles.tableHeaderLeft}>
@@ -144,9 +161,24 @@ export default function Trainees() {
 							<th className={`${styles.th} ${tbl.thIdx}`}>STT</th>
 							<th className={styles.th}>Học viên</th>
 							<th className={styles.th}>CCCD/CMND</th>
-							<th className={styles.th}>Liên hệ</th>
-							<th className={styles.th}>Đối tượng</th>
-							<th className={styles.th}>Khoa / Phòng</th>
+							{isGphn ? (
+								<>
+									<th className={styles.th}>Mã thực hành</th>
+									<th className={styles.th}>Chương trình · Thời gian</th>
+									<th className={styles.th}>Khoa đang học</th>
+								</>
+							) : typeId ? (
+								<>
+									<th className={styles.th}>Khóa gần nhất</th>
+									<th className={styles.th}>Số khóa đã học</th>
+								</>
+							) : (
+								<>
+									<th className={styles.th}>Liên hệ</th>
+									<th className={styles.th}>Đối tượng</th>
+									<th className={styles.th}>Khoa / Phòng</th>
+								</>
+							)}
 							<th className={`${styles.th} ${styles.thRight}`}>Thao tác</th>
 						</tr>
 					</thead>
@@ -154,11 +186,11 @@ export default function Trainees() {
 						{d.isLoadingData ? (
 							<SkeletonTable
 								rows={d.pageSize || 8}
-								cols={8}
+								cols={colCount}
 							/>
 						) : d.filtered.length === 0 ? (
 							<tr>
-								<td colSpan={8}>
+								<td colSpan={colCount}>
 									<div className={styles.emptyState}>
 										<div className={styles.emptyTitle}>Không tìm thấy học viên</div>
 										<div className={styles.emptyDesc}>
@@ -225,19 +257,50 @@ export default function Trainees() {
 												{t.national_id ?? '—'}
 											</span>
 										</td>
-										<td className={styles.td}>
-											<span className={styles.descText}>{t.phone ?? t.email ?? '—'}</span>
-										</td>
-										<td className={styles.td}>
-											{t.trainee_type_name ? (
-												<span className={styles.badge}>{t.trainee_type_name}</span>
-											) : (
-												'—'
-											)}
-										</td>
-										<td className={styles.td}>
-											<span className={styles.descText}>{t.department_name ?? '—'}</span>
-										</td>
+										{isGphn ? (
+											<>
+												<td className={styles.td}>
+													<span className={`${styles.descText} ${styles.mono}`}>{t.practice_code ?? '—'}</span>
+												</td>
+												<td className={styles.td}>
+													<div className={styles.descText}>{t.program_name ?? t.course_name ?? '—'}</div>
+													{(t.enrollment_start_date || t.enrollment_end_date) && (
+														<div className={styles.personSub}>
+															{formatDate(t.enrollment_start_date) ?? '—'} — {formatDate(t.enrollment_end_date) ?? '—'}
+														</div>
+													)}
+												</td>
+												<td className={styles.td}>
+													<span className={styles.descText}>{t.current_department ?? '—'}</span>
+												</td>
+											</>
+										) : typeId ? (
+											<>
+												<td className={styles.td}>
+													<div className={styles.descText}>{t.course_name ?? '—'}</div>
+													{t.program_name && <div className={styles.personSub}>{t.program_name}</div>}
+												</td>
+												<td className={styles.td}>
+													<span className={styles.descText}>{t.type_enrollment_count ?? 0}</span>
+												</td>
+											</>
+										) : (
+											<>
+												<td className={styles.td}>
+													<span className={styles.descText}>{t.phone ?? t.email ?? '—'}</span>
+												</td>
+												<td className={styles.td}>
+													{t.trainee_type_name ? (
+														<span className={styles.badge}>{t.trainee_type_name}</span>
+													) : (
+														'—'
+													)}
+												</td>
+												<td className={styles.td}>
+													<span className={styles.descText}>{t.department_name ?? '—'}</span>
+												</td>
+											</>
+										)}
 										<td className={`${styles.td} ${styles.tdActions}`}>
 											<RowActions
 												onEdit={() => {

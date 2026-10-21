@@ -7,6 +7,7 @@ const { getById } = require('./courseService');
 const { httpError } = require('../../../utils/httpError');
 const enrollmentProgramService = require('./enrollmentProgramService');
 const practiceAutoService = require('./practiceAutoService');
+const courseBatchService = require('./courseBatchService');
 
 // ─── Đăng ký khóa học ────────────────────────────────────────────────────
 const listEnrollments = async (courseId) => {
@@ -16,7 +17,8 @@ const listEnrollments = async (courseId) => {
            u.full_name AS decided_by_name,
            tp.code AS program_code, tp.name AS program_name, mm.full_name AS main_mentor_name,
            (SELECT COUNT(*) FROM enrollment_lessons el WHERE el.enrollment_id = e.id) AS lesson_total,
-           (SELECT COUNT(*) FROM enrollment_lessons el WHERE el.enrollment_id = e.id AND el.status = 'done') AS lesson_done
+           (SELECT COUNT(*) FROM enrollment_lessons el WHERE el.enrollment_id = e.id AND el.status = 'done') AS lesson_done,
+           CASE WHEN e.status = 'waitlisted' THEN ${courseBatchService.WAITLIST_POSITION_SQL('e')} END AS waitlist_position
     FROM course_enrollments e
     JOIN trainees t ON t.id = e.trainee_id
     LEFT JOIN users u ON u.id = e.decided_by
@@ -61,7 +63,9 @@ const registerTrainee = async (
 		.input('program_id', sql.VarChar(20), programId || null)
 		.query(
 			`
-      IF EXISTS (SELECT 1 FROM course_enrollments WHERE course_id = @course_id AND trainee_id = @trainee_id
+      -- Khóa tuyển sinh: người đã được chuyển sang 1 đợt của khóa cũng tính là đã đăng ký.
+      IF EXISTS (SELECT 1 FROM course_enrollments WHERE trainee_id = @trainee_id
+                 AND (course_id = @course_id OR course_id IN (SELECT id FROM courses WHERE parent_course_id = @course_id))
                  AND ISNULL(program_id, '') = ISNULL(@program_id, ''))
       BEGIN
         THROW 51000, N'Học viên này đã đăng ký khóa học rồi.', 1;
@@ -185,10 +189,13 @@ const decideEnrollment = async (enrollmentId, decision, actorId, note) => {
 		throw httpError(404, 'Không tìm thấy đăng ký.');
 	}
 
+	const course = await getById(row.course_id);
 	let finalStatus = decision;
 	if (decision === 'approved') {
-		const course = await getById(row.course_id);
-		if (course?.capacity != null && course.approved_count >= course.capacity) {
+		// Khóa tuyển sinh: duyệt = vào danh sách chờ đợt; rebalance bên dưới xếp vào đợt
+		// còn chỗ hoặc lập đợt mới khi đủ sĩ số.
+		if (course?.auto_batch) finalStatus = 'waitlisted';
+		else if (course?.capacity != null && course.approved_count >= course.capacity) {
 			finalStatus = 'waitlisted';
 		}
 	}
@@ -205,6 +212,25 @@ const decideEnrollment = async (enrollmentId, decision, actorId, note) => {
       WHERE id = @id
     `);
 
+	// Đổi trạng thái ở khóa tuyển sinh / đợt ⇒ xếp lại người chờ (người được duyệt
+	// vào đợt, hoặc đợt vừa có chỗ trống vì người khác bị từ chối).
+	let batchName = null;
+	let waitlistPosition = null;
+	if (row.program_id && (course?.auto_batch || course?.parent_course_id)) {
+		await courseBatchService.rebalance(course.auto_batch ? course.id : course.parent_course_id, row.program_id, actorId);
+		const after = (
+			await pool.request().input('id', sql.VarChar(20), enrollmentId).query(`
+        SELECT e.status, c.name AS course_name,
+               CASE WHEN e.status = 'waitlisted' THEN ${courseBatchService.WAITLIST_POSITION_SQL('e')} END AS waitlist_position
+        FROM course_enrollments e JOIN courses c ON c.id = e.course_id WHERE e.id = @id`)
+		).recordset[0];
+		if (after && course.auto_batch && finalStatus === 'waitlisted') {
+			finalStatus = after.status;
+			if (after.status === 'approved') batchName = after.course_name;
+			waitlistPosition = after.waitlist_position;
+		}
+	}
+
 	// Học viên là thực thể độc lập, KHÔNG bắt buộc có tài khoản đăng nhập ⇒
 	// không thể dùng notificationService (yêu cầu user_id). Báo trực tiếp qua
 	// email tới trainees.email nếu có.
@@ -213,12 +239,15 @@ const decideEnrollment = async (enrollmentId, decision, actorId, note) => {
 		.input('trainee_id', sql.VarChar(20), row.trainee_id)
 		.query('SELECT full_name, email FROM trainees WHERE id = @trainee_id');
 	const traineeEmail = trainee.recordset[0]?.email;
-	if (traineeEmail) {
+	// Được xếp vào đợt thì courseBatchService đã gửi thư riêng.
+	if (traineeEmail && !batchName) {
 		const title =
 			finalStatus === 'approved'
 				? 'Đăng ký khóa học đã được duyệt'
 				: finalStatus === 'waitlisted'
-					? 'Đăng ký khóa học đang chờ (danh sách chờ)'
+					? course?.auto_batch
+						? `Đăng ký đã được duyệt — bạn ở vị trí thứ ${waitlistPosition ?? '?'} trong danh sách chờ đợt học tiếp theo`
+						: 'Đăng ký khóa học đang chờ (danh sách chờ)'
 					: 'Đăng ký khóa học bị từ chối';
 		// Không chờ SMTP: duyệt hàng loạt N đăng ký từng phải chờ N lần gửi mail
 		// nối tiếp ngay trong request.
@@ -243,7 +272,13 @@ const decideEnrollment = async (enrollmentId, decision, actorId, note) => {
 			? await practiceAutoService.arrangeIfPractice(enrollmentId, actorId)
 			: {};
 	broadcast('update', { entity: 'course_enrollment' });
-	return { id: enrollmentId, status: finalStatus, auto_warning: auto.warning ?? null };
+	return {
+		id: enrollmentId,
+		status: finalStatus,
+		batch_name: batchName,
+		waitlist_position: waitlistPosition,
+		auto_warning: auto.warning ?? null,
+	};
 };
 
 const bulkDecideEnrollments = async (ids, decision, actorId, note) => {
@@ -261,13 +296,17 @@ const bulkDecideEnrollments = async (ids, decision, actorId, note) => {
 // attendance.enrollment_id KHÔNG cascade (2 đường CASCADE cùng hội tụ về
 // attendance qua session_id lẫn enrollment_id bị SQL Server chặn — xem ghi
 // chú trong migration) — phải tự xoá điểm danh liên quan trước.
-const removeEnrollment = async (enrollmentId) => {
+const removeEnrollment = async (enrollmentId, actorId = null) => {
 	const pool = await getPool();
-	await pool.request().input('id', sql.VarChar(20), enrollmentId).query(`
+	const r = await pool.request().input('id', sql.VarChar(20), enrollmentId).query(`
+    SELECT e.program_id, c.parent_course_id FROM course_enrollments e JOIN courses c ON c.id = e.course_id WHERE e.id = @id;
     DELETE FROM attendance WHERE enrollment_id = @id;
     DELETE FROM course_enrollments WHERE id = @id;
   `);
 	broadcast('update', { entity: 'course_enrollment' });
+	// Rút khỏi đợt chưa khai giảng ⇒ người đầu danh sách chờ được gọi vào.
+	const gone = r.recordsets[0][0];
+	if (gone?.parent_course_id) await courseBatchService.rebalance(gone.parent_course_id, gone.program_id, actorId);
 };
 
 module.exports = {

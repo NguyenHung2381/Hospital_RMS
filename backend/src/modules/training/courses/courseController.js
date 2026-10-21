@@ -3,6 +3,7 @@ const classSessionService = require('./classSessionService');
 const courseAttendanceService = require('./courseAttendanceService');
 const courseDocumentService = require('./courseDocumentService');
 const courseEnrollmentService = require('./courseEnrollmentService');
+const courseBatchService = require('./courseBatchService');
 const enrollmentProgramService = require('./enrollmentProgramService');
 const enrollmentRotationService = require('./enrollmentRotationService');
 const practiceDocumentService = require('./practiceDocumentService');
@@ -66,7 +67,22 @@ const registerTrainee = asyncHandler(async (req, res) => {
 		: await courseEnrollmentService.registerTrainee(req.params.id, trainee_id, req.user.id, opts);
 	// Phòng Đào tạo ghi danh hộ ⇒ duyệt luôn (đủ sĩ số thì vào danh sách chờ; khóa GPHN tự xếp vòng / khoa / NHD)
 	const decided = await courseEnrollmentService.decideEnrollment(item.id, 'approved', req.user.id);
-	return created(res, { ...item, status: decided.status, auto_warning: decided.auto_warning });
+	return created(res, {
+		...item,
+		status: decided.status,
+		batch_name: decided.batch_name,
+		waitlist_position: decided.waitlist_position,
+		auto_warning: decided.auto_warning,
+	});
+});
+
+const listBatches = asyncHandler(async (req, res) => {
+	return success(res, await courseBatchService.overview(req.params.id));
+});
+
+const formBatchNow = asyncHandler(async (req, res) => {
+	const result = await courseBatchService.formNow(req.params.id, req.body.program_id, req.user.id);
+	return created(res, result, `Đã xếp ${result.moved.length} học viên vào đợt`);
 });
 
 const listStaffCandidates = asyncHandler(async (req, res) => {
@@ -99,7 +115,7 @@ const bulkDecideEnrollments = asyncHandler(async (req, res) => {
 });
 
 const removeEnrollment = asyncHandler(async (req, res) => {
-	await courseEnrollmentService.removeEnrollment(req.params.enrollmentId);
+	await courseEnrollmentService.removeEnrollment(req.params.enrollmentId, req.user.id);
 	return success(res, null, 'Đã xoá đăng ký');
 });
 
@@ -436,6 +452,8 @@ module.exports = {
 	listProgramLinks,
 	listEnrollments,
 	registerTrainee,
+	listBatches,
+	formBatchNow,
 	listStaffCandidates,
 	decideEnrollment,
 	bulkDecideEnrollments,

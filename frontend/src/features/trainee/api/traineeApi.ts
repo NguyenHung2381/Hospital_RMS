@@ -8,7 +8,10 @@ import type {
 	TraineeProgress,
 } from '../types/trainee.type';
 
-export const getTrainees = () => apiClient.get<TraineeListResponse>('/trainees?limit=0');
+export const getTrainees = (trainingTypeId?: string) =>
+	apiClient.get<TraineeListResponse>(
+		`/trainees?limit=0${trainingTypeId ? `&training_type_id=${encodeURIComponent(trainingTypeId)}` : ''}`,
+	);
 
 export const getTraineeEnrollments = (traineeId: string) =>
 	apiClient.get<TraineeEnrollment[]>(`/trainees/${traineeId}/enrollments`);

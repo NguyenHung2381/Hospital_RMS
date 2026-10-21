@@ -3,7 +3,13 @@ export type ModalType = 'add' | 'edit' | 'delete' | null;
 // — mọi trạng thái khác (sắp khai giảng/đang mở đăng ký/đang học/hoàn thành)
 // được suy ra tự động từ ngày tháng, xem CourseDisplayStatus.
 export type CourseStatus = 'draft' | 'cancelled';
-export type CourseDisplayStatus = 'upcoming' | 'enrolling' | 'in_progress' | 'completed' | 'cancelled';
+export type CourseDisplayStatus =
+	| 'upcoming'
+	| 'enrolling'
+	| 'awaiting_schedule'
+	| 'in_progress'
+	| 'completed'
+	| 'cancelled';
 export type EnrollmentStatus = 'pending' | 'approved' | 'rejected' | 'waitlisted';
 export type AttendanceStatus = 'present' | 'absent' | 'late';
 
@@ -19,6 +25,11 @@ export interface Course {
 	batch_no: number | null;
 	/** Khóa mở liên tục (GPHN): không có ngày khóa/cửa sổ đăng ký, học viên có lịch riêng. */
 	is_rolling: boolean;
+	/** Khóa tuyển sinh theo đợt (ĐTLT/CTCV): đủ sĩ số tối thiểu của chương trình thì tự lập đợt. */
+	auto_batch: boolean;
+	/** Đợt: trỏ về khóa tuyển sinh. */
+	parent_course_id: string | null;
+	parent_course_name: string | null;
 	start_date: string | null;
 	end_date: string | null;
 	enrollment_start_date: string | null;
@@ -34,6 +45,10 @@ export interface Course {
 	enrollment_count: number;
 	approved_count: number;
 	pending_count: number;
+	waitlisted_count: number;
+	batch_count: number;
+	/** Tổng học viên toàn khóa tuyển sinh (chờ duyệt + chờ đợt + đã vào các đợt). */
+	family_count: number;
 	created_at: string;
 }
 
@@ -44,6 +59,7 @@ export interface CourseFormData {
 	training_type_id: string;
 	batch_no: string;
 	is_rolling: boolean;
+	auto_batch: boolean;
 	start_date: string;
 	end_date: string;
 	enrollment_start_date: string;
@@ -59,6 +75,8 @@ export interface CourseFormData {
 export interface CourseListResponse {
 	data: Course[];
 	pagination: { page: number; limit: number; total: number };
+	/** Số bản ghi theo loại khóa (key '' = tất cả) — cho thanh tab. */
+	type_counts?: Record<string, number>;
 }
 
 export const EMPTY_FORM: CourseFormData = {
@@ -68,6 +86,7 @@ export const EMPTY_FORM: CourseFormData = {
 	training_type_id: '',
 	batch_no: '',
 	is_rolling: false,
+	auto_batch: false,
 	start_date: '',
 	end_date: '',
 	enrollment_start_date: '',
@@ -85,11 +104,21 @@ export const EMPTY_FORM: CourseFormData = {
 export const TRAINING_TYPE = {
 	GPHN: 'TRNTP-GPHN',
 	DTLT: 'TRNTP-DTLT',
+	CTCV: 'TRNTP-CTCV',
 } as const;
+
+/** Tab loại khóa trên trang Khóa học & Học viên ('' = tất cả). */
+export const TRAINING_TYPE_TABS: { id: string; label: string }[] = [
+	{ id: '', label: 'Tất cả' },
+	{ id: TRAINING_TYPE.GPHN, label: 'Giấy phép hành nghề' },
+	{ id: TRAINING_TYPE.DTLT, label: 'Đào tạo liên tục' },
+	{ id: TRAINING_TYPE.CTCV, label: 'Cầm tay chỉ việc' },
+];
 
 export const DISPLAY_STATUS_CFG: Record<CourseDisplayStatus, { label: string; color: string; bg: string }> = {
 	upcoming: { label: 'Sắp khai giảng', color: '#633806', bg: '#faeeda' },
 	enrolling: { label: 'Đang mở đăng ký', color: '#085028', bg: '#e1f5ea' },
+	awaiting_schedule: { label: 'Chờ xếp lịch', color: '#7a4b00', bg: '#fff4d6' },
 	in_progress: { label: 'Đang trong quá trình học', color: '#3c3489', bg: '#eeedfe' },
 	completed: { label: 'Hoàn thành', color: '#0c447c', bg: '#e6f1fb' },
 	cancelled: { label: 'Đã huỷ', color: '#791f1f', bg: '#fcebeb' },
@@ -135,6 +164,8 @@ export interface Enrollment {
 	progress_status: ProgressStatus;
 	progress_date: string | null;
 	progress_reason: string | null;
+	/** Vị trí trong danh sách chờ đợt sau (khóa tuyển sinh). */
+	waitlist_position?: number | null;
 }
 
 export type ProgressStatus = 'in_progress' | 'completed' | 'dropped';
@@ -430,4 +461,25 @@ export interface Certificate {
 	revoke_reason: string | null;
 	file_name: string | null;
 	file_url: string | null;
+}
+
+/** Tổng quan 1 chương trình của khóa tuyển sinh (GET /courses/:id/batches). */
+export interface BatchProgram {
+	program_id: string;
+	program_code: string | null;
+	program_name: string;
+	min: number;
+	capacity: number | null;
+	waiting: number;
+	pending: number;
+	batches: {
+		id: string;
+		name: string;
+		batch_no: number | null;
+		capacity: number | null;
+		start_date: string | null;
+		end_date: string | null;
+		display_status: CourseDisplayStatus;
+		approved_count: number;
+	}[];
 }

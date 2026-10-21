@@ -2,6 +2,7 @@ import { apiClient } from '../../../shared/api/axios';
 import { getCheckInDeviceId } from '../../../shared/utils/storage';
 import type {
 	AttendanceRow,
+	BatchProgram,
 	Certificate,
 	ClassSession,
 	Course,
@@ -32,6 +33,7 @@ const toPayload = (form: CourseFormData) => ({
 	training_type_id: form.training_type_id || null,
 	batch_no: form.batch_no ? Number(form.batch_no) : null,
 	is_rolling: form.is_rolling,
+	auto_batch: form.auto_batch,
 	start_date: form.start_date || null,
 	end_date: form.end_date || null,
 	enrollment_start_date: form.enrollment_start_date || null,
@@ -50,6 +52,8 @@ export interface CourseListParams {
 	search?: string;
 	program_id?: string;
 	status?: string;
+	training_type_id?: string;
+	parent_course_id?: string;
 }
 
 // Không truyền params → giữ hành vi cũ: lấy toàn bộ khóa học.
@@ -61,6 +65,12 @@ export const getCourses = (params?: CourseListParams) => {
 	return apiClient.get<CourseListResponse>(`/courses?${new URLSearchParams(entries).toString()}`);
 };
 export const getCourse = (id: string) => apiClient.get<Course>(`/courses/${id}`);
+// Khóa tuyển sinh theo đợt: tổng quan từng chương trình + lập đợt ngay
+export const getBatchOverview = (id: string) => apiClient.get<BatchProgram[]>(`/courses/${id}/batches`);
+export const formBatchNow = (id: string, programId: string) =>
+	apiClient.post<{ moved: unknown[]; formed: { id: string; name: string }[] }>(`/courses/${id}/batches`, {
+		program_id: programId,
+	});
 export const createCourse = (form: CourseFormData) => apiClient.post<Course>('/courses', toPayload(form));
 export const updateCourse = (id: string, form: CourseFormData) =>
 	apiClient.put<Course>(`/courses/${id}`, toPayload(form));
@@ -76,7 +86,14 @@ export const getEnrollments = (courseId: string) =>
 /** programId: chương trình học viên chọn — bài học của chương trình tự gắn theo. */
 /** auto_warning: khóa GPHN — ghi danh xong nhưng chưa tự xếp được vòng (lý do). */
 /** Ghi danh hộ được duyệt luôn — đủ sĩ số thì status = 'waitlisted'. */
-type RegisterResult = { id: string; status: EnrollmentStatus; auto_warning: string | null };
+/** batch_name / waitlist_position: khóa tuyển sinh theo đợt — đã vào đợt nào / đang chờ ở vị trí mấy. */
+type RegisterResult = {
+	id: string;
+	status: EnrollmentStatus;
+	auto_warning: string | null;
+	batch_name?: string | null;
+	waitlist_position?: number | null;
+};
 export const registerTrainee = (courseId: string, traineeId: string, programId?: string) =>
 	apiClient.post<RegisterResult>(`/courses/${courseId}/enrollments`, {
 		trainee_id: traineeId,
@@ -201,7 +218,7 @@ export const searchMentors = (search: string, departmentId?: string) => {
 export const updateEnrollmentLesson = (enrollmentId: string, lessonId: string, status: EnrollmentLessonStatus) =>
 	apiClient.put<null>(`/courses/enrollments/${enrollmentId}/lessons`, { lesson_id: lessonId, status });
 export const decideEnrollment = (enrollmentId: string, status: EnrollmentStatus, note?: string) =>
-	apiClient.put<{ id: string; status: string }>(`/courses/enrollments/${enrollmentId}/decide`, { status, note });
+	apiClient.put<RegisterResult>(`/courses/enrollments/${enrollmentId}/decide`, { status, note });
 export const removeEnrollment = (enrollmentId: string) =>
 	apiClient.delete<null>(`/courses/enrollments/${enrollmentId}`);
 

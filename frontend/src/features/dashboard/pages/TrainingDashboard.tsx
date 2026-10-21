@@ -29,6 +29,7 @@ const EMPTY_KPI: TrainingStats['kpi'] = {
 const COURSE_STATUS: Record<string, { label: string; color: string }> = {
 	upcoming: { label: DISPLAY_STATUS_CFG.upcoming.label, color: '#EF9F27' },
 	enrolling: { label: DISPLAY_STATUS_CFG.enrolling.label, color: '#0A9B4A' },
+	awaiting_schedule: { label: DISPLAY_STATUS_CFG.awaiting_schedule.label, color: '#C98A1B' },
 	in_progress: { label: DISPLAY_STATUS_CFG.in_progress.label, color: '#7F77DD' },
 	completed: { label: DISPLAY_STATUS_CFG.completed.label, color: '#378ADD' },
 	cancelled: { label: DISPLAY_STATUS_CFG.cancelled.label, color: '#E24B4A' },

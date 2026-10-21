@@ -14,12 +14,15 @@ const {
 const { ROLE, requireRoleId } = require('../../access/roleCodes');
 const { defaultPassword } = require('../../../utils/passwordPolicy');
 
-const traineeSelect = `
-  SELECT t.*, tt.name AS trainee_type_name, d.name AS department_name
+// extraCols/extraJoins: cột & OUTER APPLY thêm cho danh sách lọc theo loại khóa.
+const traineeSelectWith = (extraCols = '', extraJoins = '') => `
+  SELECT t.*, tt.name AS trainee_type_name, d.name AS department_name${extraCols}
   FROM trainees t
   LEFT JOIN trainee_types tt ON tt.id = t.trainee_type_id
   LEFT JOIN departments d ON d.id = t.department_id
+  ${extraJoins}
 `;
+const traineeSelect = traineeSelectWith();
 
 // Che bớt CCCD (chỉ hiện 4 số cuối) cho người không có quyền xem dữ liệu
 // nhạy cảm — actor=null hoặc thiếu quyền 'trainees:read_sensitive'/system:manage
@@ -39,6 +42,7 @@ const getAll = async (
 		search = undefined,
 		trainee_type_id = undefined,
 		department_id = undefined,
+		training_type_id = undefined,
 	} = {},
 	actor = null,
 ) => {
@@ -61,18 +65,57 @@ const getAll = async (
 		where.push('t.department_id = @department_id');
 		req.input('department_id', sql.VarChar(20), department_id);
 	}
+	// Loại học viên (GPHN / ĐTLT / CTCV) suy ra từ khóa đã ghi danh — 1 người có
+	// thể thuộc nhiều loại. Đếm cho tab dùng mọi bộ lọc trừ chính loại này.
+	const countWhereSql = `WHERE ${where.join(' AND ')}`;
+	if (training_type_id) {
+		where.push(`EXISTS (SELECT 1 FROM course_enrollments e JOIN courses c ON c.id = e.course_id
+		  WHERE e.trainee_id = t.id AND e.status <> 'rejected' AND c.training_type_id = @training_type_id)`);
+		req.input('training_type_id', sql.VarChar(20), training_type_id);
+	}
 	const whereSql = `WHERE ${where.join(' AND ')}`;
 
+	// Lượt ghi danh gần nhất thuộc loại đang lọc — cột riêng của từng tab.
+	const latestEnrollment = training_type_id
+		? `OUTER APPLY (
+		    SELECT TOP 1 e.id AS enrollment_id, e.practice_code, e.start_date AS enrollment_start_date,
+		           e.end_date AS enrollment_end_date, e.status AS enrollment_status,
+		           c.name AS course_name, tp.name AS program_name,
+		           (SELECT TOP 1 r.department_name FROM enrollment_rotations r
+		            WHERE r.enrollment_id = e.id AND CAST(GETDATE() AS DATE) BETWEEN r.start_date AND r.end_date
+		            ORDER BY r.seq) AS current_department,
+		           (SELECT COUNT(*) FROM course_enrollments e2 JOIN courses c2 ON c2.id = e2.course_id
+		            WHERE e2.trainee_id = t.id AND e2.status <> 'rejected' AND c2.training_type_id = @training_type_id) AS type_enrollment_count
+		    FROM course_enrollments e
+		    JOIN courses c ON c.id = e.course_id
+		    LEFT JOIN training_programs tp ON tp.id = e.program_id
+		    WHERE e.trainee_id = t.id AND e.status <> 'rejected' AND c.training_type_id = @training_type_id
+		    ORDER BY e.created_at DESC
+		  ) le`
+		: '';
+
 	const result = await req.query(`
-    ${traineeSelect} ${whereSql} ORDER BY t.created_at DESC
+    ${traineeSelectWith(training_type_id ? ', le.*' : '', latestEnrollment)} ${whereSql}
+    ORDER BY t.created_at DESC
     ${pg.fetchClause};
     SELECT COUNT(*) AS total FROM trainees t ${whereSql};
+    SELECT c.training_type_id, COUNT(DISTINCT t.id) AS total
+    FROM trainees t
+    JOIN course_enrollments e ON e.trainee_id = t.id AND e.status <> 'rejected'
+    JOIN courses c ON c.id = e.course_id
+    ${countWhereSql} AND c.training_type_id IS NOT NULL
+    GROUP BY c.training_type_id;
+    SELECT COUNT(*) AS total FROM trainees t ${countWhereSql};
   `);
 
 	const canSeeSensitive = canReadSensitive(actor);
 	return {
 		data: result.recordsets[0].map((r) => maskSensitive(r, canSeeSensitive)),
 		pagination: { page: pg.page, limit: pg.limit, total: result.recordsets[1][0].total },
+		type_counts: {
+			'': result.recordsets[3][0].total,
+			...Object.fromEntries(result.recordsets[2].map((r) => [r.training_type_id, r.total])),
+		},
 	};
 };
 

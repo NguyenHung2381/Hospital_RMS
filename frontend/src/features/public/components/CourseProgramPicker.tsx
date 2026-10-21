@@ -20,6 +20,14 @@ const countText = (p: PublicProgram) => {
 	return [rounds ? `${rounds} vòng thực hành` : null, theory ? `${theory} bài học` : null].filter(Boolean).join(', ') || null;
 };
 
+// Khóa tuyển sinh theo đợt: báo trước đăng ký sẽ vào đợt sắp học hay danh sách chờ đợt sau.
+const batchText = (p: PublicProgram) => {
+	if (p.batch_min == null) return null;
+	const seats = p.batch_open_seats ?? 0;
+	if (seats > 0) return seats >= 9999 ? 'Đợt sắp học còn nhận' : `Đợt sắp học còn ${seats} chỗ`;
+	return `Vào danh sách chờ — đủ ${p.batch_min} người sẽ mở đợt (đang chờ ${p.batch_waiting ?? 0})`;
+};
+
 // Chi tiết 1 chương trình: thông tin chung + nội dung (bài học / vòng thực hành)
 function ProgramDetail({ p }: { p: PublicProgram }) {
 	const facts = [
@@ -183,6 +191,7 @@ export function CourseProgramPicker({
 														p.duration,
 														p.trainee_type_name,
 														countText(p),
+														batchText(p),
 													]
 														.filter(Boolean)
 														.join(' · ')}
