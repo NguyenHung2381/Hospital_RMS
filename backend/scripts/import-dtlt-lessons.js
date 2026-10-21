@@ -88,7 +88,7 @@ const intOrNull = (s) => (/^\d+$/.test(String(s).trim()) ? Number(s) : null);
 // "Bài 10: …", dòng trước đã hết câu) → "; ".
 const cleanTitle = (s) =>
 	String(s)
-		.replace(/ /g, ' ')
+		.replace(/\u00a0/g, ' ')
 		.split(/\r?\n/)
 		.map((l) => l.replace(/^\s*[-‑]\s*/, '').trim())
 		.filter(Boolean)
@@ -102,7 +102,9 @@ const cleanTitle = (s) =>
 
 // Khai giảng / kiểm tra đầu vào lên đầu (file thường để cuối), còn lại giữ thứ tự file.
 const isOpening = (t) =>
-	!/^bai \d/.test(norm(t)) && /khai giang|dau vao|pre test/.test(norm(t)) && !/be giang|cuoi khoa/.test(norm(t));
+	!/^bai \d/.test(norm(t)) &&
+	/khai giang|dau vao|pre test/.test(norm(t)) &&
+	!/be giang|cuoi khoa/.test(norm(t));
 
 const firstSheetRows = async (file) => {
 	const wb = await loadWorkbook(fs.readFileSync(file));
@@ -148,12 +150,17 @@ const readLessonFile = async (file) => {
 			theory_hours: intOrNull(r[3]) ?? 0,
 			practice_hours: intOrNull(r[4]) ?? 0,
 		}));
-	return [...lessons.filter((l) => isOpening(l.title)), ...lessons.filter((l) => !isOpening(l.title))];
+	return [
+		...lessons.filter((l) => isOpening(l.title)),
+		...lessons.filter((l) => !isOpening(l.title)),
+	];
 };
 
 (async () => {
 	if (!detailFile || !lessonDir) {
-		console.error('Cách dùng: node scripts/import-dtlt-lessons.js "<Chi tiết.xlsx>" "<thư mục bài học>" [--apply]');
+		console.error(
+			'Cách dùng: node scripts/import-dtlt-lessons.js "<Chi tiết.xlsx>" "<thư mục bài học>" [--apply]',
+		);
 		process.exit(1);
 	}
 	const pool = await getPool();
@@ -190,7 +197,9 @@ const readLessonFile = async (file) => {
 			min_capacity: d.min_capacity,
 			max_capacity: d.max_capacity,
 			...(dur ? { duration_value: dur.value, duration_unit: dur.unit } : {}),
-			...(dept?.id ? { department_id: dept.id } : { department_note: d.department.replace(/\s+/g, ' ').trim() || null }),
+			...(dept?.id
+				? { department_id: dept.id }
+				: { department_note: d.department.replace(/\s+/g, ' ').trim() || null }),
 		};
 		hoursByCode.set(p.code, d);
 		const notes = [];
@@ -207,7 +216,10 @@ const readLessonFile = async (file) => {
 
 	console.log(`\n=== Bài học (${lessonDir}) ===`);
 	let created = 0;
-	for (const f of fs.readdirSync(lessonDir).filter((n) => n.endsWith('.xlsx')).sort()) {
+	for (const f of fs
+		.readdirSync(lessonDir)
+		.filter((n) => n.endsWith('.xlsx'))
+		.sort()) {
 		const key = norm(path.basename(f, '.xlsx').replace(/^Các bài học của (lớp )?/i, ''));
 		const code = LESSON_FILES[key];
 		if (!code) {
