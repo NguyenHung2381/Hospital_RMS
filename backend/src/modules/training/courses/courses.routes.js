@@ -325,10 +325,15 @@ router.delete(
 );
 // Bảng Bài học × Giảng viên: bài học của các chương trình trong khóa + đặt GV chính/phụ từng bài
 router.get('/:id/lessons', authorizePermission(['courses', 'read']), ctrl.listCourseLessons);
+// lesson_id ở body (không phải :lessonId) — bài học không thuộc riêng khóa nào, phạm vi
+// đã kiểm qua :id và service chặn bài không thuộc chương trình của khóa.
 router.put(
-	'/:id/lessons/:lessonId/lecturers',
+	'/:id/lesson-lecturers',
 	authorizePermission(['courses', 'update']),
-	[body('assistants').optional().isArray().withMessage('Danh sách GV phụ không hợp lệ')],
+	[
+		body('lesson_id').notEmpty().withMessage('Thiếu bài học'),
+		body('assistants').optional().isArray().withMessage('Danh sách GV phụ không hợp lệ'),
+	],
 	validate,
 	ctrl.setLessonLecturers,
 );

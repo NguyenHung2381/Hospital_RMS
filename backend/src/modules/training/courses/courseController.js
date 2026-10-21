@@ -306,7 +306,7 @@ const listCourseLessons = asyncHandler(async (req, res) => {
 const setLessonLecturers = asyncHandler(async (req, res) => {
 	await lecturerAssignmentService.setLessonLecturers(
 		req.params.id,
-		req.params.lessonId,
+		req.body.lesson_id,
 		req.body,
 		req.user.id,
 	);

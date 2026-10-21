@@ -237,7 +237,7 @@ export const removeAssignment = (assignmentId: string) =>
 export const getCourseLessons = (courseId: string) =>
 	apiClient.get<CourseLesson[]>(`/courses/${courseId}/lessons`);
 export const setLessonLecturers = (courseId: string, lessonId: string, data: LessonLecturersInput) =>
-	apiClient.put<null>(`/courses/${courseId}/lessons/${lessonId}/lecturers`, data);
+	apiClient.put<null>(`/courses/${courseId}/lesson-lecturers`, { ...data, lesson_id: lessonId });
 
 // ─── Class sessions ───────────────────────────────────────────────────────
 export const getSessions = (courseId: string) =>
