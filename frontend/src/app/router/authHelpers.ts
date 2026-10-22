@@ -51,6 +51,25 @@ export function blockingSetupPath(): string | null {
 	return null;
 }
 
+// Tài khoản học viên (vai trò "trainee" — cấp cho học viên, chủ yếu ngoại viện)
+// dùng cổng học viên riêng /hoc-vien thay cho cổng người dùng /user.
+export function isTraineeAccount(): boolean {
+	return getStoredUser()?.role_code === 'trainee';
+}
+
+export const TRAINEE_HOME = '/hoc-vien';
+
+// /user/... → trang tương ứng trong cổng học viên (link cũ, thông báo, QR điểm danh).
+export function traineePathFor(pathname: string): string {
+	const rest = pathname.replace(/^\/user\/?/, '');
+	if (rest === 'profile') return `${TRAINEE_HOME}/ho-so`;
+	if (rest === 'notifications') return `${TRAINEE_HOME}/thong-bao`;
+	if (/^(khoa-hoc|diem-danh|khao-sat)(\/|$)/.test(rest)) return `${TRAINEE_HOME}/${rest}`;
+	return TRAINEE_HOME;
+}
+
 export function defaultPath(): string {
-	return canAccessAdminPanel(getStoredUser()) ? '/admin' : '/user';
+	const user = getStoredUser();
+	if (canAccessAdminPanel(user)) return '/admin';
+	return isTraineeAccount() ? TRAINEE_HOME : '/user';
 }

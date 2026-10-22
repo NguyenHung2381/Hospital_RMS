@@ -161,7 +161,7 @@ const verify2FALogin = async (
              u.department_id, u.account_expires_at, u.totp_secret, u.totp_enabled,
              u.failed_login_count, u.locked_until, u.password_changed_at,
              u.must_change_password, u.is_active,
-             r.name AS role_name
+             r.name AS role_name, r.code AS role_code
       FROM users u
       LEFT JOIN roles r ON r.id = u.role_id
       WHERE u.id = @id

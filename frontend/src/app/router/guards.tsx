@@ -9,7 +9,9 @@ import {
 	getStoredUser,
 	hasPermission,
 	hasToken,
+	isTraineeAccount,
 	mustChangePassword,
+	traineePathFor,
 } from './authHelpers';
 import type { PermissionKey } from '../../shared/types/permissions.generated';
 
@@ -21,6 +23,9 @@ export function RequireAuth({ children }: { children: React.ReactNode }) {
 	}
 	const blocking = blockingSetupPath();
 	if (blocking) return <Navigate to={blocking} replace />;
+	// Tài khoản học viên không dùng cổng /user — chuyển sang trang tương ứng ở /hoc-vien.
+	if (isTraineeAccount() && location.pathname.startsWith('/user'))
+		return <Navigate to={traineePathFor(location.pathname) + location.search} replace />;
 	return <>{children}</>;
 }
 

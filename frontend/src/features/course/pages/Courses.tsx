@@ -1,14 +1,15 @@
 import { SearchInput, SelectionCount, RowAction, RowActions } from '@/shared/components/Table/TableToolbar';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { apiClient } from '@/shared/api/axios';
 import { ExcelActions, type ExcelColumn } from '@/shared/components/Excel';
 import { dateText, isYes, matchLabel, nameMap } from '@/shared/components/Excel/excelHelpers';
 import { formatDateVN } from '@/shared/utils/formatDate';
 import { createCourse, getCourses } from '../api/courseApi';
 import { EMPTY_FORM, TRAINING_TYPE, type Course } from '../types/course.type';
-import { EyeSvg, PlusSvg } from '@/assets/icons';
+import { EyeSvg, LayersSvg, ListSvg, PlusSvg } from '@/assets/icons';
 import AdminLayout from '../../../layouts/AdminLayout';
+import { InlineLoading } from '@/shared/components';
 import { SkeletonTable } from '../../../shared/components/Loading';
 import { Pagination } from '../../../shared/components/Table/Pagination';
 import sel from '../../../shared/components/Table/RowSelect.module.css';
@@ -18,6 +19,7 @@ import { formatDate } from '../../../shared/utils/formatDate';
 import { CourseDeleteModal } from '../components/CourseDeleteModal';
 import { CourseFormModal } from '../components/CourseFormModal';
 import ProgramTags from '../components/ProgramTags';
+import { CourseCards } from '../components/CourseCards';
 import { TrainingTypeTabs } from '../components/TrainingTypeTabs';
 import { useCourses } from '../hooks/useCourses';
 import { DISPLAY_STATUS_CFG } from '../types/course.type';
@@ -56,6 +58,22 @@ export default function Courses() {
 	const addInitial = typeId ? { training_type_id: typeId, is_rolling: typeId === TRAINING_TYPE.GPHN } : undefined;
 	const openCourse = (id: string) => navigate(`/admin/courses/${id}`);
 	const rowSel = useRowSelection(d.paged.map((x) => x.id));
+	// Dạng bảng (mặc định) hoặc thẻ — nhớ theo trình duyệt
+	const [view, setViewState] = useState<'cards' | 'table'>(() => {
+		try {
+			return localStorage.getItem('courses.view') === 'cards' ? 'cards' : 'table';
+		} catch {
+			return 'table';
+		}
+	});
+	const setView = (v: 'cards' | 'table') => {
+		setViewState(v);
+		try {
+			localStorage.setItem('courses.view', v);
+		} catch {
+			/* trình duyệt chặn lưu — chỉ nhớ trong phiên */
+		}
+	};
 
 	// Danh mục để khớp tên khi nhập — chỉ tải 1 lần khi bắt đầu nhập.
 	const loadLookups = useMemo(() => {
@@ -133,6 +151,28 @@ export default function Courses() {
 						</SelectionCount>
 					</div>
 					<div className={styles.tableControls}>
+						<div
+							className={styles.viewToggle}
+							role='group'
+							aria-label='Kiểu hiển thị'
+						>
+							<button
+								type='button'
+								aria-pressed={view === 'table'}
+								title='Dạng bảng'
+								onClick={() => setView('table')}
+							>
+								<ListSvg />
+							</button>
+							<button
+								type='button'
+								aria-pressed={view === 'cards'}
+								title='Dạng thẻ'
+								onClick={() => setView('cards')}
+							>
+								<LayersSvg />
+							</button>
+						</div>
 						<SearchInput
 							value={d.search}
 							onChange={d.handleSearch}
@@ -149,6 +189,25 @@ export default function Courses() {
 					</div>
 				</div>
 
+				{view === 'cards' ? (
+					d.isLoadingData ? (
+						<InlineLoading />
+					) : (
+						<CourseCards
+							items={d.paged}
+							onOpen={(c) => openCourse(c.id)}
+							onEdit={(c) => {
+								d.setEditingCourse(c);
+								d.setModal('edit');
+							}}
+							onDelete={(c) => {
+								d.setDeletingCourse(c);
+								d.setModal('delete');
+							}}
+							emptyDesc={d.search ? 'Thử thay đổi từ khoá tìm kiếm' : 'Bấm "Thêm khóa học" để tạo khóa đầu tiên'}
+						/>
+					)
+				) : (
 				<div className={styles.tableWrap}>
 				<table className={styles.table}>
 					<thead>
@@ -290,8 +349,9 @@ export default function Courses() {
 					</tbody>
 				</table>
 				</div>
+				)}
 
-								<Pagination
+				<Pagination
 					page={d.safePage}
 					totalPages={d.totalPages}
 					total={d.total}

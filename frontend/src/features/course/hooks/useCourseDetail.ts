@@ -356,8 +356,10 @@ export function useCourseDetail(courseId: string) {
 			try {
 				warnClashes((await apiCreateSession(courseId, data)).warnings);
 				await load();
+				return true;
 			} catch (err) {
 				setError(err instanceof Error ? err.message : 'Thêm buổi học thất bại');
+				return false;
 			} finally {
 				setBusy(false);
 			}

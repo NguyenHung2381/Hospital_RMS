@@ -19,6 +19,7 @@ import {
 	type MyLesson,
 	type MyLessonDocument,
 } from '../api/meApi';
+import { isTraineeAccount, TRAINEE_HOME } from '../../../app/router/authHelpers';
 import styles from './SelfService.module.css';
 
 const ATTEMPT_LABEL: Record<string, { label: string; tone: 'amber' | 'blue' | 'green' }> = {
@@ -166,8 +167,11 @@ export default function MyCourseDetail() {
 		}
 	};
 
+	// Tài khoản học viên: cổng /hoc-vien (TraineeLayout tự có nút quay lại).
+	const trainee = isTraineeAccount();
+	const listPath = trainee ? `${TRAINEE_HOME}/khoa-hoc` : '/user/khoa-hoc';
 	const layout = {
-		breadcrumbs: [{ label: 'Khóa học của tôi', path: '/user/khoa-hoc' }],
+		breadcrumbs: [{ label: 'Khóa học của tôi', path: listPath }],
 		pageTitle: data?.name ?? 'Chi tiết khóa học',
 	};
 
@@ -229,11 +233,11 @@ export default function MyCourseDetail() {
 		<UserLayout
 			{...layout}
 			headerActions={
-				<Button
+				!trainee && <Button
 					variant='secondary'
 					size='sm'
 					icon={<ChevLSvg />}
-					onClick={() => navigate('/user/khoa-hoc')}
+					onClick={() => navigate(listPath)}
 				>
 					Quay lại
 				</Button>

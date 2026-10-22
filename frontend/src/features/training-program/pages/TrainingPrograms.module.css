@@ -600,3 +600,8 @@
 .durationWarn { color: #b42318; font-size: var(--font-size-xs); margin-top: var(--space-1); }
 /* Thân modal là flex dọc — không cho các khối xem trước co lại */
 .noticeBox, .warnList, .importPreview { flex: none; }
+
+/* Cột tên chương trình đủ rộng để tên dài không xuống 4 dòng */
+.thProgram {
+	min-width: 340px;
+}

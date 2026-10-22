@@ -295,73 +295,123 @@
 	width: 14px;
 	height: 14px;
 }
-.infoCard {
+/* Tóm tắt khóa ở đầu trang chi tiết */
+.detailActions {
+	display: flex;
+	gap: var(--space-2);
+	flex-wrap: wrap;
+}
+.summaryCard {
+	display: flex;
+	flex-direction: column;
+	gap: var(--space-3);
 	background: var(--color-white);
 	border: 1px solid var(--color-gray-100);
 	border-radius: var(--radius-xl);
 	padding: var(--space-4) var(--space-5);
 	margin-bottom: var(--space-4);
 }
-.infoGrid {
-	display: grid;
-	grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-	gap: var(--space-3) var(--space-5);
-}
-.infoItem {
+.summaryChips {
 	display: flex;
-	flex-direction: column;
-	gap: 2px;
-	min-width: 0;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--space-2);
 }
-.infoLabel {
+.summaryChip {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	padding: 3px 10px;
+	border-radius: var(--radius-full);
+	background: var(--color-gray-50);
+	border: 1px solid var(--color-gray-200);
 	font-size: var(--font-size-xs);
+	font-weight: var(--font-weight-semibold);
+	color: var(--color-gray-600);
+}
+.summaryChip svg {
+	width: 13px;
+	height: 13px;
+}
+.summaryOpen {
+	background: #e1f5ea;
+	border-color: #b9e3c9;
+	color: #085028;
+}
+.summaryClosed {
+	background: #fcebeb;
+	border-color: #f4c7c7;
+	color: #791f1f;
+}
+.summaryPrograms {
+	display: flex;
+	align-items: baseline;
+	gap: var(--space-3);
+	flex-wrap: wrap;
+}
+.summaryLabel {
+	font-size: var(--font-size-xs);
+	font-weight: var(--font-weight-semibold);
 	text-transform: uppercase;
 	letter-spacing: 0.03em;
 	color: var(--color-gray-400);
-	font-weight: var(--font-weight-semibold);
-}
-.infoValue {
-	color: var(--color-gray-800);
-	font-size: var(--font-size-sm);
 }
 .infoDesc {
-	margin: var(--space-3) 0 0;
+	margin: 0;
 	color: var(--color-gray-600);
 	font-size: var(--font-size-sm);
 }
 
-/* Thanh bước: mỗi bước là 1 tab, số tròn chuyển thành dấu ✓ khi bước đã có dữ liệu */
+/* Thanh bước nối liền: số tròn chuyển thành ✓ khi bước đã có dữ liệu */
 .steps {
 	display: grid;
 	grid-template-columns: repeat(5, minmax(0, 1fr));
-	gap: var(--space-2);
-	margin-bottom: var(--space-3);
+	margin-bottom: var(--space-4);
+	background: var(--color-white);
+	border: 1px solid var(--color-gray-100);
+	border-radius: var(--radius-xl);
+	padding: var(--space-2);
+	gap: var(--space-1);
 }
 .step {
+	position: relative;
 	display: flex;
 	align-items: center;
 	gap: var(--space-3);
 	padding: var(--space-3);
-	border: 1.5px solid var(--color-gray-100);
+	border: none;
 	border-radius: var(--radius-lg);
-	background: var(--color-white);
+	background: none;
 	font-family: var(--font-body);
 	text-align: left;
 	cursor: pointer;
 	min-width: 0;
 }
 .step:hover {
-	border-color: var(--color-gray-300);
+	background: var(--color-gray-50);
+}
+/* Đường nối sang bước sau */
+.step:not(:last-child)::after {
+	content: '';
+	position: absolute;
+	right: -6px;
+	top: 50%;
+	width: 8px;
+	height: 2px;
+	background: var(--color-gray-200);
+}
+.stepIsDone:not(:last-child)::after {
+	background: var(--color-primary-light);
 }
 .stepActive,
 .stepActive:hover {
-	border-color: var(--color-primary);
-	background: var(--color-primary-pale, #eff6ff);
+	background: var(--color-primary-pale);
+	box-shadow: inset 0 0 0 1.5px var(--color-primary);
 }
 .stepNum {
 	flex-shrink: 0;
-	width: 28px;
-	height: 28px;
+	width: 30px;
+	height: 30px;
 	border-radius: var(--radius-full);
 	display: grid;
 	place-items: center;
@@ -380,8 +430,8 @@
 }
 .stepDone,
 .stepActive .stepDone {
-	background: #e1f5ea;
-	color: #085028;
+	background: var(--color-primary);
+	color: var(--color-white);
 }
 .stepText {
 	display: flex;
@@ -390,7 +440,7 @@
 }
 .stepLabel {
 	font-size: var(--font-size-sm);
-	font-weight: var(--font-weight-semibold);
+	font-weight: var(--font-weight-bold);
 	color: var(--color-gray-800);
 	white-space: nowrap;
 	overflow: hidden;
@@ -409,6 +459,50 @@
 	border-radius: var(--radius-xl);
 	padding: var(--space-5);
 	min-height: 320px;
+}
+.stepPanelHead {
+	display: flex;
+	align-items: flex-end;
+	justify-content: space-between;
+	gap: var(--space-3);
+	flex-wrap: wrap;
+	padding-bottom: var(--space-4);
+	margin-bottom: var(--space-4);
+	border-bottom: 1px solid var(--color-gray-100);
+}
+.stepPanelNo {
+	font-size: var(--font-size-2xs);
+	font-weight: var(--font-weight-bold);
+	text-transform: uppercase;
+	letter-spacing: 0.06em;
+	color: var(--color-primary);
+}
+.stepPanelTitle {
+	margin: 2px 0 0;
+	font-size: var(--font-size-lg);
+	font-weight: var(--font-weight-extrabold);
+	color: var(--color-gray-800);
+}
+.nextStep {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	padding: 6px 12px;
+	border-radius: var(--radius-full);
+	border: 1px dashed var(--color-primary-light);
+	background: var(--color-primary-pale);
+	color: var(--color-primary-dark);
+	font: inherit;
+	font-size: var(--font-size-sm);
+	font-weight: var(--font-weight-semibold);
+	cursor: pointer;
+}
+.nextStep svg {
+	width: 14px;
+	height: 14px;
+}
+.nextStep:hover {
+	border-style: solid;
 }
 
 /* Tiêu đề nhóm trong 1 bước (vd "Giảng viên phụ trách" / "Buổi học") */
@@ -865,9 +959,16 @@
 /* ── RESPONSIVE ──────────────────────────── */
 @media (max-width: 900px) {
 	.steps {
-		grid-template-columns: repeat(5, minmax(150px, 1fr));
+		grid-template-columns: repeat(5, minmax(168px, 1fr));
 		overflow-x: auto;
-		scrollbar-width: thin;
+		scrollbar-width: none;
+		scroll-snap-type: x mandatory;
+	}
+	.step {
+		scroll-snap-align: start;
+	}
+	.summaryCard {
+		padding: var(--space-3) var(--space-4);
 	}
 	.stepPanel {
 		padding: var(--space-3);
@@ -1056,4 +1157,33 @@
 	.enrProgramSelect {
 		max-width: 100%;
 	}
+}
+
+/* Chuyển dạng thẻ / bảng ở danh sách khóa học */
+.viewToggle {
+	display: inline-flex;
+	padding: 3px;
+	gap: 2px;
+	border-radius: var(--radius-lg);
+	background: var(--color-gray-100);
+}
+.viewToggle button {
+	width: 34px;
+	height: 32px;
+	display: grid;
+	place-items: center;
+	border: none;
+	border-radius: var(--radius-md);
+	background: none;
+	color: var(--color-gray-500);
+	cursor: pointer;
+}
+.viewToggle button[aria-pressed='true'] {
+	background: var(--color-white);
+	color: var(--color-primary-dark);
+	box-shadow: var(--shadow-sm);
+}
+.viewToggle svg {
+	width: 16px;
+	height: 16px;
 }

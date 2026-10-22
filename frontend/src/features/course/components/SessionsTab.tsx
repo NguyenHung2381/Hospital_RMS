@@ -1,6 +1,9 @@
 import { useState } from 'react';
-import { CalendarSvg, CheckSvg, PlusSvg, TrashSvg, XSvg } from '@/assets/icons';
-import { Badge } from '@/shared/components';
+import { CalendarSvg, CheckSvg, PlusSvg, TrashSvg, UsersSvg, XSvg } from '@/assets/icons';
+import { Badge, Button, EmptyState } from '@/shared/components';
+import { FormField } from '@/shared/components/Input/FormField';
+import { Modal, ModalActions } from '@/shared/components/Modal';
+import m from '@/shared/components/Modal/Modal.module.css';
 import tbl from '@/shared/components/Table/Table.module.css';
 import { Pagination } from '@/shared/components/Table/Pagination';
 import { useClientPaging } from '@/shared/hooks/useClientPaging';
@@ -10,6 +13,7 @@ import type { LecturerItem, useCourseDetail } from '../hooks/useCourseDetail';
 import type { CourseLesson, LecturerAssignment, SessionKind } from '../types/course.type';
 import { LecturerOptions } from './LecturerOptions';
 import styles from '../pages/Courses.module.css';
+import ss from './SessionsTab.module.css';
 
 type Detail = ReturnType<typeof useCourseDetail>;
 
@@ -167,12 +171,215 @@ function LessonRow({
 	);
 }
 
-/** Bước "Lịch học & Giảng viên": phân công giảng viên theo bài, rồi xếp buổi học + điểm danh. */
+type SessionForm = typeof EMPTY_SESSION;
+type BulkForm = typeof EMPTY_BULK;
+
+const monthOf = (iso: string) => {
+	const [y, mo] = iso.slice(0, 10).split('-');
+	return `Tháng ${Number(mo)}/${y}`;
+};
+
+/** Hộp thoại thêm buổi học: 1 buổi hoặc lịch lặp theo tuần. */
+function SessionFormModal({
+	d,
+	bulk,
+	lessonOptions,
+	sessionLecturers,
+	mainLecturerOf,
+	onClose,
+}: {
+	d: Detail;
+	bulk: boolean;
+	lessonOptions: { id: string; name: string }[];
+	sessionLecturers: LecturerItem[];
+	mainLecturerOf: (lessonId: string) => string;
+	onClose: (result?: { created: number; skipped: number }) => void;
+}) {
+	const [one, setOne] = useState<SessionForm>(EMPTY_SESSION);
+	const [many, setMany] = useState<BulkForm>(EMPTY_BULK);
+	// Phần chung 2 chế độ (giờ, phòng, bài, LT/TH, GV) đọc/ghi qua 1 bộ hàm
+	const f = bulk ? many : one;
+	const set = (patch: Partial<SessionForm & BulkForm>) =>
+		bulk ? setMany((x) => ({ ...x, ...patch })) : setOne((x) => ({ ...x, ...patch }));
+	const valid = bulk ? !!many.start_date && !!many.end_date && many.weekdays.length > 0 : !!one.session_date;
+
+	const submit = async () => {
+		if (bulk) {
+			const { lesson_id, session_kind, ...rest } = many;
+			const result = await d.createSessionsBulk({
+				...rest,
+				subject_id: lesson_id || undefined,
+				session_kind: session_kind || undefined,
+			});
+			if (result) onClose(result);
+			return;
+		}
+		const ok = await d.createSession({
+			session_date: one.session_date,
+			start_time: one.start_time || undefined,
+			end_time: one.end_time || undefined,
+			room: one.room || undefined,
+			subject_id: one.lesson_id || undefined,
+			lecturer_id: one.lecturer_id || undefined,
+			session_kind: one.session_kind || undefined,
+		});
+		if (ok) onClose();
+	};
+
+	return (
+		<Modal
+			open
+			onClose={() => onClose()}
+			title={bulk ? 'Tạo lịch lặp theo tuần' : 'Thêm buổi học'}
+			subtitle={bulk ? 'Tạo các buổi vào những thứ đã chọn trong khoảng ngày — bỏ qua buổi trùng lịch' : undefined}
+			icon={<CalendarSvg />}
+			size='md'
+			footer={
+				<ModalActions
+					onCancel={() => onClose()}
+					onConfirm={() => void submit()}
+					loading={d.busy}
+					disabled={!valid}
+					confirmLabel={bulk ? 'Tạo lịch' : 'Thêm buổi học'}
+				/>
+			}
+		>
+			{d.error && <div className={m.error}>{d.error}</div>}
+			{bulk ? (
+				<>
+					<div className={m.formRow}>
+						<FormField
+							label='Từ ngày'
+							required
+						>
+							<input
+								type='date'
+								className={m.formInput}
+								value={many.start_date}
+								onChange={(e) => set({ start_date: e.target.value })}
+							/>
+						</FormField>
+						<FormField
+							label='Đến ngày'
+							required
+						>
+							<input
+								type='date'
+								className={m.formInput}
+								value={many.end_date}
+								onChange={(e) => set({ end_date: e.target.value })}
+							/>
+						</FormField>
+					</div>
+					<FormField
+						label='Các thứ trong tuần'
+						required
+					>
+						<div className={ss.weekdays}>
+							{WEEKDAY_LABELS.map((label, idx) => {
+								const on = many.weekdays.includes(idx);
+								return (
+									<button
+										key={idx}
+										type='button'
+										aria-pressed={on}
+										className={`${ss.weekday} ${on ? ss.weekdayOn : ''}`}
+										onClick={() =>
+											set({ weekdays: on ? many.weekdays.filter((w) => w !== idx) : [...many.weekdays, idx] })
+										}
+									>
+										{label}
+									</button>
+								);
+							})}
+						</div>
+					</FormField>
+				</>
+			) : (
+				<FormField
+					label='Ngày học'
+					required
+				>
+					<input
+						type='date'
+						className={m.formInput}
+						value={one.session_date}
+						onChange={(e) => set({ session_date: e.target.value })}
+					/>
+				</FormField>
+			)}
+			<div className={m.formRow}>
+				<FormField label='Giờ bắt đầu'>
+					<input
+						type='time'
+						className={m.formInput}
+						value={f.start_time}
+						onChange={(e) => set({ start_time: e.target.value })}
+					/>
+				</FormField>
+				<FormField label='Giờ kết thúc'>
+					<input
+						type='time'
+						className={m.formInput}
+						value={f.end_time}
+						onChange={(e) => set({ end_time: e.target.value })}
+					/>
+				</FormField>
+			</div>
+			<FormField label='Bài học'>
+				<select
+					className={m.formInput}
+					value={f.lesson_id}
+					onChange={(e) =>
+						set({ lesson_id: e.target.value, lecturer_id: mainLecturerOf(e.target.value) || f.lecturer_id })
+					}
+				>
+					<option value=''>-- Chọn bài học --</option>
+					{lessonOptions.map((l) => (
+						<option
+							key={l.id}
+							value={l.id}
+						>
+							{l.name}
+						</option>
+					))}
+				</select>
+			</FormField>
+			<div className={m.formRow}>
+				<FormField label='Giảng viên'>
+					<select
+						className={m.formInput}
+						value={f.lecturer_id}
+						onChange={(e) => set({ lecturer_id: e.target.value })}
+					>
+						<option value=''>-- Chọn giảng viên --</option>
+						<LecturerOptions lecturers={sessionLecturers} />
+					</select>
+				</FormField>
+				<FormField label='Loại buổi'>
+					{kindSelect(f.session_kind, (session_kind) => set({ session_kind }), m.formInput)}
+				</FormField>
+			</div>
+			<FormField label='Phòng học'>
+				<VenueSelect
+					scope='training'
+					className={m.formInput}
+					placeholder='-- Chọn phòng học --'
+					value={f.room}
+					onChange={(room) => set({ room })}
+				/>
+			</FormField>
+		</Modal>
+	);
+}
+
+/** Bước "Lịch học & Giảng viên": 2 phần — lịch buổi học (điểm danh) và phân công giảng viên theo bài. */
 export function SessionsTab({ d }: { d: Detail }) {
+	const [view, setView] = useState<'sessions' | 'lecturers'>(
+		d.sessions.length || !d.courseLessons.length ? 'sessions' : 'lecturers',
+	);
 	const [newLecturerId, setNewLecturerId] = useState('');
-	const [sessionForm, setSessionForm] = useState(EMPTY_SESSION);
-	const [bulkMode, setBulkMode] = useState(false);
-	const [bulkForm, setBulkForm] = useState(EMPTY_BULK);
+	const [adding, setAdding] = useState<null | 'one' | 'bulk'>(null);
 	const [bulkResult, setBulkResult] = useState<{ created: number; skipped: number } | null>(null);
 	const lessonPg = useClientPaging(d.courseLessons);
 
@@ -193,339 +400,257 @@ export function SessionsTab({ d }: { d: Detail }) {
 	// Chọn bài → tự điền GV chính của bài (vẫn đổi được)
 	const mainLecturerOf = (lessonId: string) =>
 		d.assignments.find((a) => a.subject_id === lessonId && a.role === 'main')?.lecturer_id ?? '';
+	const lessonsWithMain = d.courseLessons.filter((l) => mainLecturerOf(l.id)).length;
 
-	const lessonSelect = (value: string, onChange: (lessonId: string) => void) => (
-		<select
-			className={styles.subSelect}
-			value={value}
-			onChange={(e) => onChange(e.target.value)}
-		>
-			<option value=''>-- Bài học --</option>
-			{lessonOptions.map((l) => (
-				<option
-					key={l.id}
-					value={l.id}
-				>
-					{l.name}
-				</option>
-			))}
-		</select>
-	);
+	// Nhóm buổi theo tháng cho dễ dò
+	const months: { month: string; items: typeof d.sessions }[] = [];
+	for (const s of d.sessions) {
+		const mo = monthOf(s.session_date);
+		const last = months[months.length - 1];
+		if (last?.month === mo) last.items.push(s);
+		else months.push({ month: mo, items: [s] });
+	}
 
 	return (
 		<>
-			<div className={tbl.tableCard}>
-				<div className={tbl.tableHeader}>
-					<div className={tbl.tableHeaderLeft}>
-						<span className={tbl.tableTitle}>Giảng viên theo bài học</span>
-						<span className={tbl.tableCount}>{d.courseLessons.length}</span>
-					</div>
-				</div>
-				<div className={tbl.tableWrap}>
-					<table className={tbl.table}>
-						<thead>
-							<tr>
-								<th className={`${tbl.th} ${tbl.thIdx}`}>STT</th>
-								<th className={tbl.th}>Bài học</th>
-								<th className={tbl.th}>Giảng viên chính</th>
-								<th className={tbl.th}>Số tiết</th>
-								<th className={tbl.th}>Giảng viên phụ</th>
-							</tr>
-						</thead>
-						<tbody>
-							{d.courseLessons.length === 0 ? (
-								<tr>
-									<td
-										className={tbl.td}
-										colSpan={5}
-									>
-										<div className={styles.subEmpty}>
-											Khóa chưa có bài học — chọn chương trình đào tạo cho khóa để phân công giảng viên theo bài.
-										</div>
-									</td>
-								</tr>
-							) : (
-								lessonPg.paged.map((l, i) => (
-									<LessonRow
-										key={l.id}
-										d={d}
-										lesson={l}
-										index={lessonPg.offset + i + 1}
-										lecturers={d.lecturers}
-									/>
-								))
-							)}
-						</tbody>
-					</table>
-				</div>
-				<Pagination
-					{...lessonPg.pagination}
-					itemLabel='bài'
-				/>
-			</div>
-
-			<div className={styles.sectionTitle}>Giảng viên phụ trách chung</div>
-			<div className={styles.subToolbar}>
-				<select
-					className={styles.subSelect}
-					value={newLecturerId}
-					onChange={(e) => setNewLecturerId(e.target.value)}
-				>
-					<option value=''>-- Chọn giảng viên --</option>
-					<LecturerOptions lecturers={d.lecturers} />
-				</select>
-				<button
-					className={styles.btnGhost}
-					disabled={!newLecturerId || d.busy}
-					onClick={() => {
-						d.assignLecturer({ lecturer_id: newLecturerId });
-						setNewLecturerId('');
-					}}
-				>
-					<PlusSvg /> Phân công cả khóa
-				</button>
-			</div>
-			{otherAssignments.length === 0 ? (
-				<div className={styles.subEmpty}>Chưa phân công giảng viên phụ trách chung.</div>
-			) : (
-				<div className={styles.chipList}>
-					{otherAssignments.map((a) => (
-						<span
-							key={a.id}
-							className={styles.chip}
-						>
-							<strong>{a.lecturer_name}</strong>
-							{a.subject_name && <span className={styles.chipMeta}>· {a.subject_name}</span>}
-							<button
-								className={styles.chipRemove}
-								title='Gỡ phân công'
-								disabled={d.busy}
-								onClick={() => d.removeAssignment(a.id)}
-							>
-								<XSvg />
-							</button>
+			<div className={ss.head}>
+				<div className={styles.segment}>
+					<button
+						className={`${styles.segBtn} ${view === 'sessions' ? styles.segBtnActive : ''}`}
+						onClick={() => setView('sessions')}
+					>
+						<CalendarSvg /> Buổi học <span className={styles.sectionCount}>{d.sessions.length}</span>
+					</button>
+					<button
+						className={`${styles.segBtn} ${view === 'lecturers' ? styles.segBtnActive : ''}`}
+						onClick={() => setView('lecturers')}
+					>
+						<UsersSvg /> Phân công giảng viên{' '}
+						<span className={styles.sectionCount}>
+							{lessonsWithMain}/{d.courseLessons.length} bài
 						</span>
-					))}
-				</div>
-			)}
-
-			<div className={styles.sectionTitle}>
-				Buổi học <span className={styles.sectionCount}>{d.sessions.length}</span>
-			</div>
-			<div className={styles.segment}>
-				<button
-					className={`${styles.segBtn} ${!bulkMode ? styles.segBtnActive : ''}`}
-					onClick={() => setBulkMode(false)}
-				>
-					<PlusSvg /> Thêm 1 buổi
-				</button>
-				<button
-					className={`${styles.segBtn} ${bulkMode ? styles.segBtnActive : ''}`}
-					onClick={() => setBulkMode(true)}
-				>
-					<CalendarSvg /> Tạo lịch lặp theo tuần
-				</button>
-			</div>
-
-			{!bulkMode ? (
-				<div className={styles.subToolbar}>
-					<input
-						type='date'
-						className={styles.subInput}
-						value={sessionForm.session_date}
-						onChange={(e) => setSessionForm((f) => ({ ...f, session_date: e.target.value }))}
-					/>
-					<input
-						type='time'
-						className={styles.subInput}
-						value={sessionForm.start_time}
-						onChange={(e) => setSessionForm((f) => ({ ...f, start_time: e.target.value }))}
-					/>
-					<input
-						type='time'
-						className={styles.subInput}
-						value={sessionForm.end_time}
-						onChange={(e) => setSessionForm((f) => ({ ...f, end_time: e.target.value }))}
-					/>
-					<VenueSelect
-						scope='training'
-						className={styles.subSelect}
-						placeholder='-- Phòng học --'
-						value={sessionForm.room}
-						onChange={(room) => setSessionForm((f) => ({ ...f, room }))}
-					/>
-					{lessonSelect(sessionForm.lesson_id, (lesson_id) =>
-						setSessionForm((f) => ({ ...f, lesson_id, lecturer_id: mainLecturerOf(lesson_id) || f.lecturer_id })),
-					)}
-					{kindSelect(sessionForm.session_kind, (session_kind) => setSessionForm((f) => ({ ...f, session_kind })), styles.subSelect)}
-					<select
-						className={styles.subSelect}
-						value={sessionForm.lecturer_id}
-						onChange={(e) => setSessionForm((f) => ({ ...f, lecturer_id: e.target.value }))}
-					>
-						<option value=''>-- Giảng viên --</option>
-						<LecturerOptions lecturers={sessionLecturers} />
-					</select>
-					<button
-						className={styles.btnGhost}
-						disabled={!sessionForm.session_date || d.busy}
-						onClick={() => {
-							d.createSession({
-								session_date: sessionForm.session_date,
-								start_time: sessionForm.start_time || undefined,
-								end_time: sessionForm.end_time || undefined,
-								room: sessionForm.room || undefined,
-								subject_id: sessionForm.lesson_id || undefined,
-								lecturer_id: sessionForm.lecturer_id || undefined,
-								session_kind: sessionForm.session_kind || undefined,
-							});
-							setSessionForm(EMPTY_SESSION);
-						}}
-					>
-						<PlusSvg /> Thêm buổi học
 					</button>
 				</div>
-			) : (
-				<div className={styles.subToolbar}>
-					<input
-						type='date'
-						className={styles.subInput}
-						title='Từ ngày'
-						value={bulkForm.start_date}
-						onChange={(e) => setBulkForm((f) => ({ ...f, start_date: e.target.value }))}
-					/>
-					<input
-						type='date'
-						className={styles.subInput}
-						title='Đến ngày'
-						value={bulkForm.end_date}
-						onChange={(e) => setBulkForm((f) => ({ ...f, end_date: e.target.value }))}
-					/>
-					<div className={styles.weekdayGroup}>
-						{WEEKDAY_LABELS.map((label, idx) => (
-							<label
-								key={idx}
-								className={styles.attRadio}
-							>
-								<input
-									type='checkbox'
-									checked={bulkForm.weekdays.includes(idx)}
-									onChange={(e) =>
-										setBulkForm((f) => ({
-											...f,
-											weekdays: e.target.checked
-												? [...f.weekdays, idx]
-												: f.weekdays.filter((w) => w !== idx),
-										}))
-									}
-								/>
-								{label}
-							</label>
-						))}
+				{view === 'sessions' && (
+					<div className={ss.actions}>
+						<Button
+							variant='secondary'
+							size='sm'
+							icon={<CalendarSvg />}
+							onClick={() => setAdding('bulk')}
+						>
+							Tạo lịch lặp theo tuần
+						</Button>
+						<Button
+							size='sm'
+							icon={<PlusSvg />}
+							onClick={() => setAdding('one')}
+						>
+							Thêm buổi học
+						</Button>
 					</div>
-					<input
-						type='time'
-						className={styles.subInput}
-						value={bulkForm.start_time}
-						onChange={(e) => setBulkForm((f) => ({ ...f, start_time: e.target.value }))}
-					/>
-					<input
-						type='time'
-						className={styles.subInput}
-						value={bulkForm.end_time}
-						onChange={(e) => setBulkForm((f) => ({ ...f, end_time: e.target.value }))}
-					/>
-					<VenueSelect
-						scope='training'
-						className={styles.subSelect}
-						placeholder='-- Phòng học --'
-						value={bulkForm.room}
-						onChange={(room) => setBulkForm((f) => ({ ...f, room }))}
-					/>
-					{lessonSelect(bulkForm.lesson_id, (lesson_id) =>
-						setBulkForm((f) => ({ ...f, lesson_id, lecturer_id: mainLecturerOf(lesson_id) || f.lecturer_id })),
-					)}
-					{kindSelect(bulkForm.session_kind, (session_kind) => setBulkForm((f) => ({ ...f, session_kind })), styles.subSelect)}
-					<select
-						className={styles.subSelect}
-						value={bulkForm.lecturer_id}
-						onChange={(e) => setBulkForm((f) => ({ ...f, lecturer_id: e.target.value }))}
-					>
-						<option value=''>-- Giảng viên --</option>
-						<LecturerOptions lecturers={sessionLecturers} />
-					</select>
-					<button
-						className={styles.btnGhost}
-						disabled={!bulkForm.start_date || !bulkForm.end_date || bulkForm.weekdays.length === 0 || d.busy}
-						onClick={async () => {
-							const { lesson_id, session_kind, ...rest } = bulkForm;
-							const result = await d.createSessionsBulk({
-								...rest,
-								subject_id: lesson_id || undefined,
-								session_kind: session_kind || undefined,
-							});
-							if (result) setBulkResult(result);
-						}}
-					>
-						<PlusSvg /> Tạo lịch
-					</button>
+				)}
+			</div>
+
+			{view === 'sessions' ? (
+				<>
 					{bulkResult && (
-						<span className={styles.subRowMeta}>
+						<div className={ss.note}>
 							Đã tạo {bulkResult.created} buổi
 							{bulkResult.skipped ? `, bỏ qua ${bulkResult.skipped} buổi trùng lịch` : ''}.
-						</span>
+						</div>
 					)}
-				</div>
-			)}
-
-			{d.sessions.length === 0 ? (
-				<div className={styles.subEmpty}>Chưa có buổi học nào.</div>
-			) : (
-				<div className={styles.subList}>
-					{d.sessions.map((s) => (
-						<div
-							key={s.id}
-							className={styles.subRow}
-						>
-							<div className={styles.subRowMain}>
-								<div className={styles.subRowName}>
-									{formatDateVN(s.session_date)}
-									{s.start_time ? ` · ${s.start_time}-${s.end_time ?? ''}` : ''}
-									{s.subject_name ? ` · ${s.subject_name}` : ''}
-									{s.session_kind ? ` · ${SESSION_KIND_LABEL[s.session_kind]}` : ''}
+					{d.sessions.length === 0 ? (
+						<EmptyState
+							icon={<CalendarSvg />}
+							title='Chưa có buổi học nào'
+							desc='Thêm từng buổi hoặc tạo lịch lặp theo tuần. Phân công giảng viên theo bài trước thì buổi học tự điền giảng viên.'
+						/>
+					) : (
+						months.map((g) => (
+							<div
+								key={g.month}
+								className={ss.month}
+							>
+								<div className={ss.monthTitle}>
+									{g.month} <span>{g.items.length} buổi</span>
 								</div>
-								<div className={styles.subRowMeta}>
-									{s.room ?? 'Chưa gán phòng'} · {s.lecturer_name ?? 'Chưa gán giảng viên'}
-									{s.lecturer_clashes && (
-										<>
-											{' '}
-											<Badge
-												tone='amber'
-												dot
+								<div className={ss.list}>
+									{g.items.map((s) => {
+										const dt = new Date(s.session_date);
+										return (
+											<div
+												key={s.id}
+												className={ss.row}
 											>
-												Trùng lịch GV: {s.lecturer_clashes}
-											</Badge>
-										</>
-									)}
+												<span className={ss.date}>
+													<span>{WEEKDAY_LABELS[dt.getDay()]}</span>
+													<strong>{formatDateVN(s.session_date).slice(0, 5)}</strong>
+												</span>
+												<div className={ss.main}>
+													<div className={ss.title}>
+														<span>{s.subject_name ?? 'Chưa gán bài học'}</span>
+														{s.session_kind && (
+															<Badge tone={s.session_kind === 'practice' ? 'teal' : 'blue'}>
+																{SESSION_KIND_LABEL[s.session_kind]}
+															</Badge>
+														)}
+													</div>
+													<div className={ss.meta}>
+														<span>
+															{s.start_time
+																? `${s.start_time.slice(0, 5)}–${(s.end_time ?? '').slice(0, 5)}`
+																: 'Chưa đặt giờ'}
+														</span>
+														<span>{s.room ?? 'Chưa gán phòng'}</span>
+														<span>{s.lecturer_name ?? 'Chưa gán giảng viên'}</span>
+														{s.lecturer_clashes && (
+															<Badge
+																tone='amber'
+																dot
+															>
+																Trùng lịch GV: {s.lecturer_clashes}
+															</Badge>
+														)}
+													</div>
+												</div>
+												<div className={ss.rowActions}>
+													<Button
+														size='sm'
+														variant='secondary'
+														icon={<CheckSvg />}
+														onClick={() => d.setAttendanceSessionId(s.id)}
+													>
+														Điểm danh
+													</Button>
+													<button
+														className={styles.actionBtn}
+														title='Xoá buổi học'
+														disabled={d.busy}
+														onClick={() => d.removeSession(s.id)}
+													>
+														<TrashSvg />
+													</button>
+												</div>
+											</div>
+										);
+									})}
 								</div>
 							</div>
-							<button
-								className={styles.btnGhost}
-								onClick={() => d.setAttendanceSessionId(s.id)}
-							>
-								<CheckSvg /> Điểm danh
-							</button>
-							<button
-								className={styles.actionBtn}
-								title='Xoá buổi học'
-								disabled={d.busy}
-								onClick={() => d.removeSession(s.id)}
-							>
-								<TrashSvg />
-							</button>
+						))
+					)}
+				</>
+			) : (
+				<>
+					<div className={tbl.tableCard}>
+						<div className={tbl.tableHeader}>
+							<div className={tbl.tableHeaderLeft}>
+								<span className={tbl.tableTitle}>Giảng viên theo bài học</span>
+								<span className={tbl.tableCount}>{d.courseLessons.length}</span>
+							</div>
 						</div>
-					))}
-				</div>
+						<div className={tbl.tableWrap}>
+							<table className={tbl.table}>
+								<thead>
+									<tr>
+										<th className={`${tbl.th} ${tbl.thIdx}`}>STT</th>
+										<th className={tbl.th}>Bài học</th>
+										<th className={tbl.th}>Giảng viên chính</th>
+										<th className={tbl.th}>Số tiết</th>
+										<th className={tbl.th}>Giảng viên phụ</th>
+									</tr>
+								</thead>
+								<tbody>
+									{d.courseLessons.length === 0 ? (
+										<tr>
+											<td
+												className={tbl.td}
+												colSpan={5}
+											>
+												<div className={styles.subEmpty}>
+													Khóa chưa có bài học — chọn chương trình đào tạo cho khóa để phân công giảng viên theo bài.
+												</div>
+											</td>
+										</tr>
+									) : (
+										lessonPg.paged.map((l, i) => (
+											<LessonRow
+												key={l.id}
+												d={d}
+												lesson={l}
+												index={lessonPg.offset + i + 1}
+												lecturers={d.lecturers}
+											/>
+										))
+									)}
+								</tbody>
+							</table>
+						</div>
+						<Pagination
+							{...lessonPg.pagination}
+							itemLabel='bài'
+						/>
+					</div>
+
+					<div className={styles.sectionTitle}>Giảng viên phụ trách chung</div>
+					<div className={styles.subToolbar}>
+						<select
+							className={styles.subSelect}
+							value={newLecturerId}
+							onChange={(e) => setNewLecturerId(e.target.value)}
+						>
+							<option value=''>-- Chọn giảng viên --</option>
+							<LecturerOptions lecturers={d.lecturers} />
+						</select>
+						<button
+							className={styles.btnGhost}
+							disabled={!newLecturerId || d.busy}
+							onClick={() => {
+								d.assignLecturer({ lecturer_id: newLecturerId });
+								setNewLecturerId('');
+							}}
+						>
+							<PlusSvg /> Phân công cả khóa
+						</button>
+					</div>
+					{otherAssignments.length === 0 ? (
+						<div className={styles.subEmpty}>Chưa phân công giảng viên phụ trách chung.</div>
+					) : (
+						<div className={styles.chipList}>
+							{otherAssignments.map((a) => (
+								<span
+									key={a.id}
+									className={styles.chip}
+								>
+									<strong>{a.lecturer_name}</strong>
+									{a.subject_name && <span className={styles.chipMeta}>· {a.subject_name}</span>}
+									<button
+										className={styles.chipRemove}
+										title='Gỡ phân công'
+										disabled={d.busy}
+										onClick={() => d.removeAssignment(a.id)}
+									>
+										<XSvg />
+									</button>
+								</span>
+							))}
+						</div>
+					)}
+				</>
+			)}
+
+			{adding && (
+				<SessionFormModal
+					d={d}
+					bulk={adding === 'bulk'}
+					lessonOptions={lessonOptions}
+					sessionLecturers={sessionLecturers}
+					mainLecturerOf={mainLecturerOf}
+					onClose={(result) => {
+						setAdding(null);
+						if (result) setBulkResult(result);
+					}}
+				/>
 			)}
 		</>
 	);

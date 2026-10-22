@@ -112,10 +112,14 @@ select:not([multiple]) optgroup {
 		}
 
 		/* base-select bỏ qua text-overflow: cắt chữ dài ở mép nội dung để
-		   không tràn qua mũi tên (vùng padding-right) */
+		   không tràn qua mũi tên (vùng padding-right).
+		   base-select là hộp flex, align-items mặc định không căn giữa ⇒ ô đặt
+		   chiều cao cố định với padding dọc 0 (vd "20 / trang" ở phân trang) thì
+		   chữ dính mép trên, lệch với mũi tên. */
 		select:not([multiple]) {
 			overflow: clip;
 			overflow-clip-margin: content-box;
+			align-items: center;
 		}
 
 		/* Dùng mũi tên nền ở trên cho đồng nhất với trình duyệt không hỗ trợ */

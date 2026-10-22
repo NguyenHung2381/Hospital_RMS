@@ -116,6 +116,12 @@ const UserMyCourseDetail = lazy(() => import('../../features/portal/pages/MyCour
 const UserMyTeachingGrades = lazy(() => import('../../features/portal/pages/MyTeachingGrades'));
 const UserMyCme = lazy(() => import('../../features/portal/pages/MyCme'));
 const UserMyAttendance = lazy(() => import('../../features/portal/pages/MyAttendance'));
+// ── Cổng học viên (tài khoản học viên ngoại viện) ──────────
+const TraineeHome = lazy(() => import('../../features/trainee-portal/pages/TraineeHome'));
+const TraineeCourses = lazy(() => import('../../features/trainee-portal/pages/TraineeCourses'));
+const TraineeSchedule = lazy(() => import('../../features/trainee-portal/pages/TraineeSchedule'));
+const TraineeResults = lazy(() => import('../../features/trainee-portal/pages/TraineeResults'));
+const TraineeDocuments = lazy(() => import('../../features/trainee-portal/pages/TraineeDocuments'));
 const UserNotifications = lazy(
 	() => import('../../features/notifications/pages/UserNotifications'),
 );
@@ -468,4 +474,20 @@ export const userRoutes: RouteObject[] = [
 			</RequirePermission>
 		),
 	},
+];
+
+// Cổng học viên: trang riêng + các trang dùng chung với /user (UserLayout tự đổi
+// sang TraineeLayout với tài khoản học viên).
+export const traineeRoutes: RouteObject[] = [
+	{ path: '/hoc-vien', element: user('Tổng quan học viên', <TraineeHome />) },
+	{ path: '/hoc-vien/khoa-hoc', element: user('Khóa học của tôi', <TraineeCourses />) },
+	{ path: '/hoc-vien/khoa-hoc/:id', element: user('Chi tiết khóa học', <UserMyCourseDetail />) },
+	{ path: '/hoc-vien/lich-hoc', element: user('Lịch học & điểm danh', <TraineeSchedule />) },
+	{ path: '/hoc-vien/ket-qua', element: user('Kết quả & chứng chỉ', <TraineeResults />) },
+	{ path: '/hoc-vien/giay-to', element: user('Giấy tờ hồ sơ', <TraineeDocuments />) },
+	{ path: '/hoc-vien/diem-danh', element: user('Điểm danh QR', <AttendanceCheckIn />) },
+	{ path: '/hoc-vien/khao-sat', element: user('Khảo sát', <UserSurveys />) },
+	{ path: '/hoc-vien/khao-sat/:id', element: user('Trả lời khảo sát', <UserSurveys />) },
+	{ path: '/hoc-vien/thong-bao', element: user('Thông báo', <UserNotifications />) },
+	{ path: '/hoc-vien/ho-so', element: user('Hồ sơ cá nhân', <UserProfile />) },
 ];

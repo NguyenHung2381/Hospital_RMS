@@ -13,6 +13,8 @@ import { getInitials } from '../../shared/utils/helper';
 import { getStoredUser, type StoredUser } from '../../shared/utils/storage';
 import { logout } from '../../features/auth/api/authApi';
 import TwoFactorReminder from '../../shared/components/TwoFactorReminder';
+import { isTraineeAccount } from '../../app/router/authHelpers';
+import TraineeLayout from '../TraineeLayout';
 import styles from './UserLayout.module.css';
 import {
 	BadgeSvg,
@@ -125,8 +127,14 @@ export interface UserLayoutProps {
 	hideSidebar?: boolean;
 }
 
+// Tài khoản học viên (ngoại viện) dùng cổng học viên riêng — mọi trang dùng
+// UserLayout (hồ sơ, thông báo, điểm danh QR, khảo sát…) tự hiện trong khung đó.
+export default function UserLayout(props: UserLayoutProps) {
+	return isTraineeAccount() ? <TraineeLayout {...props} /> : <PortalLayout {...props} />;
+}
+
 // ─── COMPONENT ────────────────────────────
-export default function UserLayout({
+function PortalLayout({
 	children,
 	pageTitle,
 	pageSubtitle,

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import { FileTextSvg, TrashSvg } from '@/assets/icons';
 import { Badge, Button, Card, FileDropzone } from '@/shared/components';
 import { useUploadPolicy } from '@/shared/hooks/useUploadPolicy';
@@ -17,9 +17,9 @@ const STATE: Record<DocumentChecklist['items'][number]['state'], { label: string
  * Hồ sơ học viên của tôi (giai đoạn 3): checklist giấy tờ bắt buộc theo khóa đã ghi danh,
  * tự nộp file còn thiếu — chờ phòng Đào tạo duyệt. Tài khoản không gắn hồ sơ học viên thì ẩn.
  */
-export function MyTraineeDocumentsCard() {
+export function MyTraineeDocumentsCard({ empty = null }: { empty?: ReactNode } = {}) {
 	const uploadPolicy = useUploadPolicy();
-	const [data, setData] = useState<DocumentChecklist | null>(null);
+	const [data, setData] = useState<DocumentChecklist | null | undefined>(undefined);
 	const [docType, setDocType] = useState('');
 	const [file, setFile] = useState<File | null>(null);
 	const [busy, setBusy] = useState(false);
@@ -33,7 +33,8 @@ export function MyTraineeDocumentsCard() {
 	useEffect(load, [load]);
 	useRealtimeUpdate('trainee_document', load);
 
-	if (!data) return null;
+	if (data === undefined) return null;
+	if (!data) return <>{empty}</>;
 	const required = data.items.filter((i) => i.required);
 	const missing = required.filter((i) => i.state === 'missing');
 	const ownDocs = data.items.flatMap((i) => i.documents.map((d) => ({ ...d, type_name: i.name })));

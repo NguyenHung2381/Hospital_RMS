@@ -17,6 +17,8 @@ export type StoredUser = {
 	email?: string;
 	role?: string;
 	role_name?: string;
+	// roles.code — "trainee" = tài khoản học viên (thường là ngoại viện)
+	role_code?: string | null;
 	role_id?: string | null;
 	permissions?: string[];
 	permission_scopes?: Record<string, string>;

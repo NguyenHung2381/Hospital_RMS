@@ -68,21 +68,26 @@ export function RotationTable({ rotations }: { rotations: TraineeRotation[] }) {
 }
 
 /** Tab "Điểm danh": theo từng khóa — có mặt / vắng / muộn, tỉ lệ, chi tiết từng buổi; GPHN theo lượt khoa. */
-/** traineeId bỏ trống = học viên tự xem (cổng /me). */
-export function TraineeAttendanceTab({ traineeId }: { traineeId?: string }) {
+/** traineeId bỏ trống = học viên tự xem (cổng /me); enrollmentId = chỉ 1 lượt ghi danh (mở sẵn chi tiết buổi). */
+export function TraineeAttendanceTab({ traineeId, enrollmentId }: { traineeId?: string; enrollmentId?: string }) {
 	const [data, setData] = useState<TraineeAttendanceCourse[] | null>(null);
 	const [error, setError] = useState('');
-	const [open, setOpen] = useState<Record<string, boolean>>({});
+	const [open, setOpen] = useState<Record<string, boolean>>(enrollmentId ? { [enrollmentId]: true } : {});
 
 	useEffect(() => {
 		(traineeId ? traineeRecordApi.attendance(traineeId) : traineeRecordApi.myAttendance())
-			.then(setData)
+			.then((rows) => setData(enrollmentId ? rows.filter((r) => r.enrollment_id === enrollmentId) : rows))
 			.catch((err) => setError(err instanceof Error ? err.message : 'Không tải được điểm danh'));
-	}, [traineeId]);
+	}, [traineeId, enrollmentId]);
 
 	if (error) return <div className={styles.errorBanner}>{error}</div>;
 	if (!data) return <div className={styles.subEmpty}>Đang tải...</div>;
-	if (!data.length) return <div className={styles.subEmpty}>Học viên chưa được duyệt vào khóa học nào.</div>;
+	if (!data.length)
+		return (
+			<div className={styles.subEmpty}>
+				{enrollmentId ? 'Chưa có dữ liệu điểm danh — học viên cần được duyệt và lớp có buổi học.' : 'Học viên chưa được duyệt vào khóa học nào.'}
+			</div>
+		);
 
 	return (
 		<>

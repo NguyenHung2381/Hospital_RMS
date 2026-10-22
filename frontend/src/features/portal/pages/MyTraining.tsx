@@ -254,7 +254,7 @@ function TeachingLessons({ lessons }: { lessons: MyTeachingLesson[] }) {
 const daysLeft = (d: string) =>
 	Math.round((new Date(d.slice(0, 10)).getTime() - new Date(new Date().toLocaleDateString('en-CA')).getTime()) / 864e5);
 
-function OpenCourseCard({ course: c, onOpen }: { course: OpenCourse; onOpen: () => void }) {
+export function OpenCourseCard({ course: c, onOpen }: { course: OpenCourse; onOpen: () => void }) {
 	const left = c.enrollment_end_date ? daysLeft(c.enrollment_end_date) : null;
 	return (
 		<button
@@ -301,7 +301,7 @@ function OpenCourseCard({ course: c, onOpen }: { course: OpenCourse; onOpen: () 
 }
 
 // Mở 1 khóa đang tuyển ⇒ xem chi tiết, chọn 1 chương trình rồi gửi đăng ký
-function OpenCourseDetail({ course, onBack, onDone }: { course: OpenCourse; onBack: () => void; onDone: () => void }) {
+export function OpenCourseDetail({ course, onBack, onDone }: { course: OpenCourse; onBack: () => void; onDone: () => void }) {
 	const [programId, setProgramId] = useState(course.programs.length === 1 ? course.programs[0].id : '');
 	const [saving, setSaving] = useState(false);
 

@@ -1,4 +1,3 @@
-import { avatarColor, getInitials } from '@/shared/utils';
 import { SearchInput, SelectionCount, RowAction, RowActions } from '@/shared/components/Table/TableToolbar';
 import { ListSvg, PlusSvg } from '@/assets/icons';
 import AdminLayout from '../../../layouts/AdminLayout';
@@ -296,8 +295,7 @@ export default function TrainingPrograms() {
 								/>
 							</th>
 							<th className={`${styles.th} ${tbl.thIdx}`}>STT</th>
-							<th className={styles.th}>Mã</th>
-							<th className={styles.th}>Chương trình</th>
+							<th className={`${styles.th} ${styles.thProgram}`}>Chương trình</th>
 							<th className={styles.th}>Khoa / Phòng</th>
 							<th className={styles.th}>Đối tượng</th>
 							<th className={styles.th}>Trạng thái</th>
@@ -308,11 +306,11 @@ export default function TrainingPrograms() {
 						{d.isLoadingData ? (
 							<SkeletonTable
 								rows={d.pageSize || 8}
-								cols={8}
+								cols={7}
 							/>
 						) : d.filtered.length === 0 ? (
 							<tr>
-								<td colSpan={8}>
+								<td colSpan={7}>
 									<div className={styles.emptyState}>
 										<div className={styles.emptyTitle}>
 											Không tìm thấy chương trình đào tạo
@@ -325,7 +323,6 @@ export default function TrainingPrograms() {
 							</tr>
 						) : (
 							d.paged.map((p, i) => {
-								const c = avatarColor(p.id);
 								const rowNum = (d.safePage - 1) * (d.pageSize || d.filtered.length) + i + 1;
 								return (
 									<tr
@@ -341,28 +338,18 @@ export default function TrainingPrograms() {
 										</td>
 										<td className={`${styles.td} ${styles.tdIdx}`}>{rowNum}</td>
 										<td className={styles.td}>
-											<span className={styles.descText}>{p.code ?? '—'}</span>
-										</td>
-										<td className={styles.td}>
-											<div
-												className={styles.itemCell}
-												style={{ cursor: 'pointer' }}
+											{/* Tên rộng 1 cột, mã + loại + thời lượng gom 1 dòng phụ */}
+											<span
+												className={tbl.cellLink}
+												role='link'
+												tabIndex={0}
 												onClick={() => d.openDetail(p, 'info')}
+												onKeyDown={(e) => e.key === 'Enter' && d.openDetail(p, 'info')}
 											>
-												<div
-													className={styles.itemAvatar}
-													style={{ background: c.bg, color: c.color }}
-												>
-													{getInitials(p.name)}
-												</div>
-												<div>
-													<span className={styles.itemName}>{p.name}</span>
-													{(p.training_type_name || p.duration) && (
-														<div className={styles.descText}>
-															{[p.training_type_name, p.duration].filter(Boolean).join(' · ')}
-														</div>
-													)}
-												</div>
+												{p.name}
+											</span>
+											<div className={styles.descText}>
+												{[p.code, p.training_type_name, p.duration].filter(Boolean).join(' · ')}
 											</div>
 										</td>
 										<td className={styles.td}>

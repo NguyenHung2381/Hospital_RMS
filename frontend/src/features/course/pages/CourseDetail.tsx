@@ -1,8 +1,8 @@
-import { useCallback, useEffect, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { CheckSmSvg, ChevLSvg, EditSvg } from '@/assets/icons';
+import { ArrowRSvg, CalendarSvg, CheckSmSvg, ChevLSvg, EditSvg } from '@/assets/icons';
 import AdminLayout from '../../../layouts/AdminLayout';
-import { InlineLoading } from '@/shared/components';
+import { Button, InlineLoading } from '@/shared/components';
 import { showToast } from '@/shared/utils/feedback';
 import { formatDateOr } from '@/shared/utils';
 import { useRealtimeUpdate } from '../../../layouts/hooks/useRealtime';
@@ -120,62 +120,74 @@ export default function CourseDetail() {
 	const attendanceSession = d.sessions.find((s) => s.id === d.attendanceSessionId);
 	const status = course ? DISPLAY_STATUS_CFG[course.display_status] : null;
 
+	const activeIdx = steps.findIndex((s) => s.key === tab);
+	// Gợi ý bước kế tiếp: bước đầu tiên sau bước đang xem mà chưa xong (bỏ qua "Thi" — không bắt buộc)
+	const nextStep = steps.slice(activeIdx + 1).find((s) => s.key !== 'exams' && !stepMeta[s.key].done);
+	const goStep = (key: Step) => setParams({ tab: key }, { replace: true });
+
 	return (
 		<AdminLayout
 			pageTitle={course?.name ?? 'Chi tiết khóa học'}
 			breadcrumbs={[{ label: 'Đào tạo' }]}
 			headerActions={
-				course && (
-					<button
-						className={styles.btnGhost}
-						onClick={() => setEditing(true)}
+				<div className={styles.detailActions}>
+					<Button
+						variant='secondary'
+						icon={<ChevLSvg />}
+						onClick={() => navigate('/admin/courses')}
 					>
-						<EditSvg /> Sửa thông tin
-					</button>
-				)
+						Danh sách
+					</Button>
+					{course && (
+						<Button
+							variant='secondary'
+							icon={<EditSvg />}
+							onClick={() => setEditing(true)}
+						>
+							Sửa thông tin
+						</Button>
+					)}
+				</div>
 			}
 		>
-			<button
-				className={styles.backLink}
-				onClick={() => navigate('/admin/courses')}
-			>
-				<ChevLSvg /> Danh sách khóa học
-			</button>
-
 			{!course ? (
 				<InlineLoading />
 			) : (
 				<>
-					<div className={styles.infoCard}>
-						<div className={styles.infoGrid}>
-							<Info label='Trạng thái'>
-								{status && (
-									<span
-										className={styles.badge}
-										style={{ background: status.bg, color: status.color }}
-									>
-										{status.label}
-									</span>
-								)}
-							</Info>
-							<Info label='Thời gian học'>
-								{range(course.start_date, course.end_date) ?? 'Chưa đặt'}
-							</Info>
-							<Info label='Đăng ký'>
-								{range(course.enrollment_start_date, course.enrollment_end_date) ?? 'Luôn mở'} ·{' '}
-								<span style={{ color: course.enrollment_open ? '#085028' : '#791f1f' }}>
-									{course.enrollment_open ? 'đang mở' : 'đã đóng'}
+					{/* Tóm tắt khóa: 1 hàng nhãn + chương trình — gọn để bước làm việc nằm ngay màn đầu */}
+					<div className={styles.summaryCard}>
+						<div className={styles.summaryChips}>
+							{status && (
+								<span
+									className={styles.badge}
+									style={{ background: status.bg, color: status.color }}
+								>
+									{status.label}
 								</span>
-							</Info>
-							<Info label='Chế độ'>{course.is_public_registration ? 'Công khai' : 'Nội bộ'}</Info>
-							<Info label='Hình thức'>{course.training_form_name ?? '—'}</Info>
-							<Info label='Chương trình' wide>
-								<ProgramTags names={course.program_names} max={12} empty='Chưa áp dụng chương trình' />
-							</Info>
+							)}
+							{course.training_type_name && <span className={styles.summaryChip}>{course.training_type_name}</span>}
+							<span className={styles.summaryChip}>
+								<CalendarSvg />
+								{range(course.start_date, course.end_date) ?? 'Chưa đặt ngày học'}
+							</span>
+							{course.training_form_name && <span className={styles.summaryChip}>{course.training_form_name}</span>}
+							<span className={styles.summaryChip}>{course.is_public_registration ? 'Đăng ký công khai' : 'Nội bộ'}</span>
+							<span className={`${styles.summaryChip} ${course.enrollment_open ? styles.summaryOpen : styles.summaryClosed}`}>
+								{course.enrollment_open ? 'Đang nhận đăng ký' : 'Đã đóng đăng ký'}
+							</span>
+						</div>
+						<div className={styles.summaryPrograms}>
+							<span className={styles.summaryLabel}>Chương trình</span>
+							<ProgramTags
+								names={course.program_names}
+								max={12}
+								empty='Chưa áp dụng chương trình'
+							/>
 						</div>
 						{course.description && <p className={styles.infoDesc}>{course.description}</p>}
 					</div>
 
+					{/* Thanh bước: số tròn nối nhau, ✓ khi bước đã có dữ liệu */}
 					<nav
 						className={styles.steps}
 						aria-label='Các bước của khóa học'
@@ -183,9 +195,9 @@ export default function CourseDetail() {
 						{steps.map((s, i) => (
 							<button
 								key={s.key}
-								className={`${styles.step} ${tab === s.key ? styles.stepActive : ''}`}
+								className={`${styles.step} ${tab === s.key ? styles.stepActive : ''} ${stepMeta[s.key].done ? styles.stepIsDone : ''}`}
 								aria-current={tab === s.key ? 'step' : undefined}
-								onClick={() => setParams({ tab: s.key }, { replace: true })}
+								onClick={() => goStep(s.key)}
 							>
 								<span className={`${styles.stepNum} ${stepMeta[s.key].done ? styles.stepDone : ''}`}>
 									{stepMeta[s.key].done ? <CheckSmSvg /> : i + 1}
@@ -201,6 +213,21 @@ export default function CourseDetail() {
 					</nav>
 
 					<div className={styles.stepPanel}>
+						<div className={styles.stepPanelHead}>
+							<div>
+								<span className={styles.stepPanelNo}>Bước {activeIdx + 1}/{steps.length}</span>
+								<h2 className={styles.stepPanelTitle}>{steps[activeIdx].label}</h2>
+							</div>
+							{nextStep && stepMeta[tab].done && (
+								<button
+									type='button'
+									className={styles.nextStep}
+									onClick={() => goStep(nextStep.key)}
+								>
+									Tiếp theo: {nextStep.label} <ArrowRSvg />
+								</button>
+							)}
+						</div>
 						{d.error && <div className={styles.errorBanner}>{d.error}</div>}
 						{d.loading ? (
 							<InlineLoading />
@@ -230,7 +257,10 @@ export default function CourseDetail() {
 						) : tab === 'exams' ? (
 							<ExamsTab courseId={id} />
 						) : (
-							<ResultsTab courseId={id} d={d} />
+							<ResultsTab
+								courseId={id}
+								d={d}
+							/>
 						)}
 					</div>
 				</>
@@ -252,14 +282,5 @@ export default function CourseDetail() {
 				/>
 			)}
 		</AdminLayout>
-	);
-}
-
-function Info({ label, children, wide }: { label: string; children: ReactNode; wide?: boolean }) {
-	return (
-		<div className={`${styles.infoItem} ${wide ? styles.infoItemWide : ''}`}>
-			<span className={styles.infoLabel}>{label}</span>
-			<span className={styles.infoValue}>{children}</span>
-		</div>
 	);
 }

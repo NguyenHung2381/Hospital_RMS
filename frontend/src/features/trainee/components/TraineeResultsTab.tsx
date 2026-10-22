@@ -25,20 +25,25 @@ function ResultChip({ result, reasons }: { result: 'pass' | 'fail' | null; reaso
 }
 
 /** Tab "Kết quả & điểm": điểm lý thuyết, thực hành, chuyên cần, kết quả từng khóa (cả lần thi lại); GPHN Đạt/Không đạt từng vòng. */
-/** traineeId bỏ trống = học viên tự xem (cổng /me). */
-export function TraineeResultsTab({ traineeId }: { traineeId?: string }) {
+/** traineeId bỏ trống = học viên tự xem (cổng /me); enrollmentId = chỉ 1 lượt ghi danh. */
+export function TraineeResultsTab({ traineeId, enrollmentId }: { traineeId?: string; enrollmentId?: string }) {
 	const [data, setData] = useState<TraineeCourseResult[] | null>(null);
 	const [error, setError] = useState('');
 
 	useEffect(() => {
 		(traineeId ? traineeRecordApi.grades(traineeId) : traineeRecordApi.myGrades())
-			.then(setData)
+			.then((rows) => setData(enrollmentId ? rows.filter((r) => r.enrollment_id === enrollmentId) : rows))
 			.catch((err) => setError(err instanceof Error ? err.message : 'Không tải được kết quả'));
-	}, [traineeId]);
+	}, [traineeId, enrollmentId]);
 
 	if (error) return <div className={styles.errorBanner}>{error}</div>;
 	if (!data) return <div className={styles.subEmpty}>Đang tải...</div>;
-	if (!data.length) return <div className={styles.subEmpty}>Học viên chưa được duyệt vào khóa học nào.</div>;
+	if (!data.length)
+		return (
+			<div className={styles.subEmpty}>
+				{enrollmentId ? 'Chưa có kết quả — học viên cần được duyệt vào lớp.' : 'Học viên chưa được duyệt vào khóa học nào.'}
+			</div>
+		);
 
 	return (
 		<>

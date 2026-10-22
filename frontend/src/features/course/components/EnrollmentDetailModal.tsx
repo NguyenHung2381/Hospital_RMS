@@ -23,10 +23,12 @@ import {
 } from '../types/course.type';
 import { PracticeDocumentsBar } from './PracticeDocumentsBar';
 import { RotationsPanel } from './RotationsPanel';
+import { TraineeAttendanceTab } from '../../trainee/components/TraineeAttendanceTab';
+import { TraineeResultsTab } from '../../trainee/components/TraineeResultsTab';
 import styles from '../pages/Courses.module.css';
 import crud from '@/shared/components/Table/CrudPage.module.css';
 
-type Tab = 'info' | 'rotations' | 'documents' | 'lessons';
+type Tab = 'info' | 'rotations' | 'documents' | 'lessons' | 'attendance' | 'results';
 
 type Form = Required<{ [K in keyof EnrollmentUpdate]: string }>;
 
@@ -159,8 +161,16 @@ export function EnrollmentDetailModal({
 				] as const)
 			: []),
 		...(showLessons ? [{ key: 'lessons' as const, label: `Bài học (${done}/${lessons.length})` }] : []),
+		// Chỉ lượt đã duyệt mới có buổi học / bảng điểm
+		...(enrollment.status === 'approved'
+			? ([
+					{ key: 'attendance', label: 'Điểm danh' },
+					{ key: 'results', label: 'Kết quả' },
+				] as const)
+			: []),
 	];
 	const activeTab = tabs.some((t) => t.key === tab) ? tab : 'info';
+	const wide = activeTab === 'attendance' || activeTab === 'results';
 	const sub = (text: string) => (
 		<div
 			className={styles.hint}
@@ -180,8 +190,8 @@ export function EnrollmentDetailModal({
 				.filter(Boolean)
 				.join(' · ')}
 			// Hồ sơ GPHN có bảng vòng thực hành ⇒ modal rộng (class .modal của trang giới hạn 620px)
-			size={isPractice ? 'xl' : 'md'}
-			className={isPractice ? undefined : styles.modal}
+			size={isPractice || wide ? 'xl' : 'md'}
+			className={isPractice || wide ? undefined : styles.modal}
 			bodyClassName={styles.modalBody}
 			footer={
 				<ModalActions
@@ -392,6 +402,20 @@ export function EnrollmentDetailModal({
 						refreshKey={enrollment}
 					/>
 				</>
+			)}
+
+			{activeTab === 'attendance' && (
+				<TraineeAttendanceTab
+					traineeId={enrollment.trainee_id}
+					enrollmentId={enrollment.id}
+				/>
+			)}
+
+			{activeTab === 'results' && (
+				<TraineeResultsTab
+					traineeId={enrollment.trainee_id}
+					enrollmentId={enrollment.id}
+				/>
 			)}
 
 			{activeTab === 'lessons' && (

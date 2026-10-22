@@ -109,6 +109,7 @@ const issueTokens = async (pool, user, ip, userAgent, device = null, remember = 
 			full_name: user.full_name,
 			email: user.email,
 			role: user.role_name,
+			role_code: user.role_code ?? null,
 			role_id: user.role_id,
 			department_id: user.department_id,
 			permissions,
@@ -221,7 +222,7 @@ const refreshAccessToken = async (refreshToken, ip = null, userAgent = null) => 
 		.request()
 		.input('id', sql.VarChar(20), claimed.user_id)
 		.query(
-			`SELECT u.*, r.name AS role_name FROM users u LEFT JOIN roles r ON r.id=u.role_id WHERE u.id=@id`,
+			`SELECT u.*, r.name AS role_name, r.code AS role_code FROM users u LEFT JOIN roles r ON r.id=u.role_id WHERE u.id=@id`,
 		);
 
 	const user = userResult.recordset[0];
