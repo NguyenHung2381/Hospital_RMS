@@ -272,12 +272,15 @@ const getTrainingStats = async () =>
     WHERE sess.session_date >= CAST(GETDATE() AS DATE) AND sess.session_date <= DATEADD(DAY, 7, CAST(GETDATE() AS DATE))
     ORDER BY sess.session_date, sess.start_time;
 
-    -- Top khóa đầy chỗ nhất (có capacity)
-    SELECT TOP 10 c.id, c.name, c.capacity,
-           (SELECT COUNT(*) FROM course_enrollments WHERE course_id = c.id AND status = 'approved') AS approved_count
-    FROM courses c
-    WHERE c.capacity IS NOT NULL AND c.capacity > 0
-    ORDER BY (SELECT COUNT(*) FROM course_enrollments WHERE course_id = c.id AND status = 'approved') * 1.0 / c.capacity DESC;
+    -- Top lớp đầy chỗ nhất (lớp = chương trình trong khóa, sĩ số tối đa của chương trình)
+    SELECT TOP 10 c.id, CONCAT(c.name, N' · ', ISNULL(tp.code, tp.name)) AS name, tp.max_capacity AS capacity, a.n AS approved_count
+    FROM course_programs cp
+    JOIN courses c ON c.id = cp.course_id AND c.status <> 'cancelled'
+    JOIN training_programs tp ON tp.id = cp.program_id
+    CROSS APPLY (SELECT COUNT(*) AS n FROM course_enrollments e
+                 WHERE e.course_id = c.id AND e.program_id = cp.program_id AND e.status = 'approved') a
+    WHERE tp.max_capacity > 0
+    ORDER BY a.n * 1.0 / tp.max_capacity DESC;
 
     -- Học viên theo đối tượng
     SELECT ISNULL(tt.name, N'Chưa phân loại') AS name, COUNT(*) AS cnt

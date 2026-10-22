@@ -6,7 +6,6 @@ export type CourseStatus = 'draft' | 'cancelled';
 export type CourseDisplayStatus =
 	| 'upcoming'
 	| 'enrolling'
-	| 'awaiting_schedule'
 	| 'in_progress'
 	| 'completed'
 	| 'cancelled';
@@ -25,17 +24,11 @@ export interface Course {
 	batch_no: number | null;
 	/** Khóa mở liên tục (GPHN): không có ngày khóa/cửa sổ đăng ký, học viên có lịch riêng. */
 	is_rolling: boolean;
-	/** Khóa tuyển sinh theo đợt (ĐTLT/CTCV): đủ sĩ số tối thiểu của chương trình thì tự lập đợt. */
-	auto_batch: boolean;
-	/** Đợt: trỏ về khóa tuyển sinh. */
-	parent_course_id: string | null;
-	parent_course_name: string | null;
 	start_date: string | null;
 	end_date: string | null;
 	enrollment_start_date: string | null;
 	enrollment_end_date: string | null;
 	enrollment_open: boolean;
-	capacity: number | null;
 	status: CourseStatus;
 	display_status: CourseDisplayStatus;
 	is_public_registration: boolean;
@@ -46,9 +39,6 @@ export interface Course {
 	approved_count: number;
 	pending_count: number;
 	waitlisted_count: number;
-	batch_count: number;
-	/** Tổng học viên toàn khóa tuyển sinh (chờ duyệt + chờ đợt + đã vào các đợt). */
-	family_count: number;
 	created_at: string;
 }
 
@@ -59,12 +49,10 @@ export interface CourseFormData {
 	training_type_id: string;
 	batch_no: string;
 	is_rolling: boolean;
-	auto_batch: boolean;
 	start_date: string;
 	end_date: string;
 	enrollment_start_date: string;
 	enrollment_end_date: string;
-	capacity: string;
 	status: CourseStatus;
 	is_public_registration: boolean;
 	description: string;
@@ -86,12 +74,10 @@ export const EMPTY_FORM: CourseFormData = {
 	training_type_id: '',
 	batch_no: '',
 	is_rolling: false,
-	auto_batch: false,
 	start_date: '',
 	end_date: '',
 	enrollment_start_date: '',
 	enrollment_end_date: '',
-	capacity: '',
 	status: 'draft',
 	is_public_registration: false,
 	description: '',
@@ -107,6 +93,9 @@ export const TRAINING_TYPE = {
 	CTCV: 'TRNTP-CTCV',
 } as const;
 
+/** Loại khóa chia lớp theo chương trình (backend programClassService): sĩ số + ngày học đặt theo lớp. */
+export const CLASS_TYPES = new Set<string>([TRAINING_TYPE.DTLT, TRAINING_TYPE.CTCV]);
+
 /** Tab loại khóa trên trang Khóa học & Học viên ('' = tất cả). */
 export const TRAINING_TYPE_TABS: { id: string; label: string }[] = [
 	{ id: '', label: 'Tất cả' },
@@ -118,7 +107,6 @@ export const TRAINING_TYPE_TABS: { id: string; label: string }[] = [
 export const DISPLAY_STATUS_CFG: Record<CourseDisplayStatus, { label: string; color: string; bg: string }> = {
 	upcoming: { label: 'Sắp khai giảng', color: '#633806', bg: '#faeeda' },
 	enrolling: { label: 'Đang mở đăng ký', color: '#085028', bg: '#e1f5ea' },
-	awaiting_schedule: { label: 'Chờ xếp lịch', color: '#7a4b00', bg: '#fff4d6' },
 	in_progress: { label: 'Đang trong quá trình học', color: '#3c3489', bg: '#eeedfe' },
 	completed: { label: 'Hoàn thành', color: '#0c447c', bg: '#e6f1fb' },
 	cancelled: { label: 'Đã huỷ', color: '#791f1f', bg: '#fcebeb' },
@@ -361,12 +349,17 @@ export interface CourseProgramLink {
 	program_code: string | null;
 	training_type_id: string | null;
 	program_duration: string | null;
-	/** Khóa ĐTLT thường: mỗi chương trình là 1 lớp — đủ class_min học viên đã duyệt mới mở lớp
-	 *  (xếp lịch được), quá class_max thì hồ sơ vào danh sách chờ = lưu cho khóa sau. */
+	/** Khóa ĐTLT / CTCV: mỗi chương trình là 1 lớp — đủ class_min học viên đã duyệt thì cán bộ
+	 *  bấm "Mở lớp" (class_opened_at, mở rồi mới xếp lịch); quá class_max thì hồ sơ vào danh
+	 *  sách chờ của chương trình (class_waiting, tính trên mọi khóa). */
 	class_rule: boolean;
 	class_min: number;
 	/** null = không giới hạn */
 	class_max: number | null;
+	class_opened_at: string | null;
+	/** Ngày học của lớp (đặt khi mở lớp, sửa được); ngày khóa = sớm nhất → muộn nhất các lớp. */
+	class_start: string | null;
+	class_end: string | null;
 	class_approved: number;
 	class_waiting: number;
 }
@@ -524,6 +517,8 @@ export interface GradebookRow {
 	practice_flag: GradeFlag | null;
 	theory_attempt: number;
 	practice_attempt: number;
+	/** Điểm kiểm tra đầu vào (thang 10) — chỉ tham khảo, không tính vào kết quả */
+	entrance_score?: number | null;
 	note: string | null;
 	locked_at: string | null;
 	locked_by_name: string | null;
@@ -586,25 +581,4 @@ export interface Certificate {
 	revoke_reason: string | null;
 	file_name: string | null;
 	file_url: string | null;
-}
-
-/** Tổng quan 1 chương trình của khóa tuyển sinh (GET /courses/:id/batches). */
-export interface BatchProgram {
-	program_id: string;
-	program_code: string | null;
-	program_name: string;
-	min: number;
-	capacity: number | null;
-	waiting: number;
-	pending: number;
-	batches: {
-		id: string;
-		name: string;
-		batch_no: number | null;
-		capacity: number | null;
-		start_date: string | null;
-		end_date: string | null;
-		display_status: CourseDisplayStatus;
-		approved_count: number;
-	}[];
 }

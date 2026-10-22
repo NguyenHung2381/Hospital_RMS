@@ -29,7 +29,6 @@ const EMPTY_KPI: TrainingStats['kpi'] = {
 const COURSE_STATUS: Record<string, { label: string; color: string }> = {
 	upcoming: { label: DISPLAY_STATUS_CFG.upcoming.label, color: '#EF9F27' },
 	enrolling: { label: DISPLAY_STATUS_CFG.enrolling.label, color: '#0A9B4A' },
-	awaiting_schedule: { label: DISPLAY_STATUS_CFG.awaiting_schedule.label, color: '#C98A1B' },
 	in_progress: { label: DISPLAY_STATUS_CFG.in_progress.label, color: '#7F77DD' },
 	completed: { label: DISPLAY_STATUS_CFG.completed.label, color: '#378ADD' },
 	cancelled: { label: DISPLAY_STATUS_CFG.cancelled.label, color: '#E24B4A' },
@@ -228,8 +227,8 @@ export default function TrainingDashboard() {
 					<div className={styles.chartCard}>
 						<div className={styles.chartCardHeader}>
 							<div>
-								<div className={styles.chartTitle}>Top khóa đầy chỗ nhất</div>
-								<div className={styles.chartSubtitle}>Tỷ lệ lấp đầy theo sĩ số tối đa</div>
+								<div className={styles.chartTitle}>Top lớp đầy chỗ nhất</div>
+								<div className={styles.chartSubtitle}>Tỷ lệ lấp đầy theo sĩ số tối đa của chương trình</div>
 							</div>
 							<button
 								type='button'
@@ -243,13 +242,13 @@ export default function TrainingDashboard() {
 							<div className={styles.skeleton} style={{ height: 200, borderRadius: 12 }} />
 						) : (stats?.top_full_courses.length ?? 0) === 0 ? (
 							<div style={{ padding: 16, color: 'var(--color-gray-400)', fontSize: 13 }}>
-								Chưa có khóa học nào cấu hình sĩ số tối đa.
+								Chưa có chương trình nào cấu hình sĩ số tối đa.
 							</div>
 						) : (
 							<div style={{ maxHeight: 260, overflow: 'auto' }}>
 								{stats!.top_full_courses.map((c) => (
 									<div
-										key={c.id}
+										key={c.name}
 										style={{
 											display: 'flex',
 											justifyContent: 'space-between',

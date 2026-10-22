@@ -4,6 +4,10 @@ const cmePersonalExport = require('../cme/cmePersonalExportController');
 const { authenticate } = require('../../middlewares/auth');
 const { success, created } = require('../../utils/response');
 const { asyncHandler } = require('../../utils/asyncHandler');
+const { body, query } = require('express-validator');
+const { validate } = require('../../middlewares/errorHandler');
+const classSessionService = require('../training/courses/classSessionService');
+const traineeRecordService = require('../training/trainees/traineeRecordService');
 
 router.use(authenticate);
 
@@ -11,6 +15,38 @@ router.get(
 	'/training',
 	asyncHandler(async (req, res) => {
 		return success(res, await portalService.getMyTraining(req.user));
+	}),
+);
+
+// Học viên xem lịch học / điểm danh / điểm của chính mình (theo trainees.user_id) —
+// cùng dữ liệu với hồ sơ học viên phía cán bộ.
+router.get(
+	'/training/schedule',
+	[
+		query('from').isISO8601().withMessage('Ngày bắt đầu không hợp lệ'),
+		query('to').isISO8601().withMessage('Ngày kết thúc không hợp lệ'),
+	],
+	validate,
+	asyncHandler(async (req, res) => {
+		const { from, to } = req.query;
+		return success(
+			res,
+			await classSessionService.listTraineeSessions({ from, to, userId: req.user.id }),
+		);
+	}),
+);
+router.get(
+	'/training/attendance',
+	asyncHandler(async (req, res) => {
+		const traineeId = await traineeRecordService.traineeIdOfUser(req.user.id);
+		return success(res, await traineeRecordService.attendance(traineeId));
+	}),
+);
+router.get(
+	'/training/grades',
+	asyncHandler(async (req, res) => {
+		const traineeId = await traineeRecordService.traineeIdOfUser(req.user.id);
+		return success(res, await traineeRecordService.grades(traineeId));
 	}),
 );
 
@@ -58,8 +94,6 @@ router.get(
 
 // Tự khai CME (chờ admin duyệt). Chỉ thao tác trên bản ghi của chính mình.
 const cmeRecordService = require('../cme/cmeRecordService');
-const { body } = require('express-validator');
-const { validate } = require('../../middlewares/errorHandler');
 const { updateRules } = require('../cme/cmeRecordValidators');
 const { createTrainingUpload } = require('../../middlewares/uploadTraining');
 const uploadEvidence = createTrainingUpload('cme_evidence');

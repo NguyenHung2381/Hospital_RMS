@@ -171,3 +171,62 @@ pre.hint {
 		grid-template-columns: 1fr;
 	}
 }
+
+/* Ngân hàng đang làm việc: chương trình + kho */
+.workspace {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--space-3);
+	margin-bottom: var(--space-3);
+}
+.workspaceProgram {
+	display: flex;
+	align-items: center;
+	gap: var(--space-2);
+	flex: 1 1 360px;
+	max-width: 560px;
+}
+.workspaceProgram > :last-child {
+	flex: 1;
+	min-width: 0;
+}
+.workspaceLabel {
+	font-size: var(--font-size-xs);
+	font-weight: var(--font-weight-semibold);
+	color: var(--color-gray-600);
+	white-space: nowrap;
+}
+.poolTabs {
+	display: inline-flex;
+	gap: 2px;
+	padding: 3px;
+	border-radius: var(--radius-md);
+	background: var(--color-gray-100);
+}
+.poolTab {
+	padding: 6px 12px;
+	border: none;
+	border-radius: var(--radius-sm);
+	background: transparent;
+	color: var(--color-gray-600);
+	font-family: inherit;
+	font-size: var(--font-size-xs);
+	font-weight: var(--font-weight-semibold);
+	cursor: pointer;
+}
+.poolTabActive {
+	background: var(--color-white, #fff);
+	color: var(--color-primary-dark);
+	box-shadow: 0 1px 2px rgb(0 0 0 / 8%);
+}
+.poolCount {
+	margin-left: 4px;
+	color: var(--color-gray-400);
+	font-weight: var(--font-weight-normal, 400);
+}
+@media (max-width: 640px) {
+	.workspaceProgram {
+		max-width: 100%;
+	}
+}

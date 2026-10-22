@@ -76,8 +76,6 @@ GET    /api/v1/courses/  courses:read
 DELETE /api/v1/courses/:id  courses:delete
 GET    /api/v1/courses/:id  courses:read
 PUT    /api/v1/courses/:id  courses:update
-GET    /api/v1/courses/:id/batches  courses:read
-POST   /api/v1/courses/:id/batches  courses:update
 GET    /api/v1/courses/:id/certificates  courses:read
 POST   /api/v1/courses/:id/certificates/bulk  courses:approve
 GET    /api/v1/courses/:id/documents  courses:read
@@ -97,6 +95,9 @@ POST   /api/v1/courses/:id/practice-book/export  courses:read
 POST   /api/v1/courses/:id/practice-book/import  courses:update
 POST   /api/v1/courses/:id/practice/auto-arrange  courses:update
 GET    /api/v1/courses/:id/programs  courses:read
+PUT    /api/v1/courses/:id/programs/dates  courses:update
+POST   /api/v1/courses/:id/programs/open  courses:update
+GET    /api/v1/courses/:id/programs/suggest-dates  courses:read
 GET    /api/v1/courses/:id/sessions  courses:read
 POST   /api/v1/courses/:id/sessions  courses:update
 POST   /api/v1/courses/:id/sessions/bulk  courses:update
@@ -219,6 +220,9 @@ GET    /api/v1/me/trainee-documents/  authOnly
 POST   /api/v1/me/trainee-documents/  authOnly
 DELETE /api/v1/me/trainee-documents/:docId  authOnly
 GET    /api/v1/me/training  authOnly
+GET    /api/v1/me/training/attendance  authOnly
+GET    /api/v1/me/training/grades  authOnly
+GET    /api/v1/me/training/schedule  authOnly
 GET    /api/v1/modules/  authOnly
 GET    /api/v1/my-tasks/  authOnly
 GET    /api/v1/notifications/  authOnly
@@ -396,6 +400,7 @@ POST   /api/v1/trainees/:id/documents  trainees:update
 GET    /api/v1/trainees/:id/enrollments  trainees:read
 GET    /api/v1/trainees/:id/grades  trainees:read
 GET    /api/v1/trainees/:id/progress  trainees:read
+GET    /api/v1/trainees/:id/schedule  trainees:read
 DELETE /api/v1/trainees/documents/:docId  trainees:update
 PUT    /api/v1/trainees/documents/:docId/review  trainees:update
 POST   /api/v1/trainees/grant-accounts  trainees:manage

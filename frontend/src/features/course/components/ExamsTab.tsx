@@ -12,8 +12,17 @@ import type {
 	PaperType,
 	QuestionType,
 } from '../../exam/types/exam.type';
-import { EXAM_PART_LABEL, PAPER_QUESTION_TYPE, type ExamPart } from '../../exam/types/exam.type';
-import { getAssignments } from '../api/courseApi';
+import {
+	CODE_MODE_LABEL,
+	EXAM_PART_LABEL,
+	PAPER_QUESTION_TYPE,
+	POOL_LABEL,
+	type CodeMode,
+	type ExamPart,
+	type QuestionPool,
+} from '../../exam/types/exam.type';
+import { getAssignments, getProgramLinks } from '../api/courseApi';
+import type { CourseProgramLink } from '../types/course.type';
 import { MultiSelect } from '../../../shared/components/Input/MultiSelect';
 import { SearchableSelect } from '../../../shared/components/Input/SearchableSelect';
 import { QuestionImageView, QuestionText } from '../../../shared/components';
@@ -156,7 +165,10 @@ export function ExamsTab({ courseId }: { courseId: string }) {
 								<div className={styles.subRowMain}>
 									<div className={styles.subRowName}>{a.trainee_name}</div>
 									<div style={{ fontSize: 12, color: 'var(--color-gray-500)' }}>
+										{(a.attempt_no ?? 1) > 1 && `Thi lại lần ${(a.attempt_no ?? 1) - 1} · `}
+										{a.code_no != null && `Mã đề ${a.code_no} · `}
 										{ATTEMPT_STATUS_LABEL[a.status]}
+										{a.score10 != null && ` · ${String(a.score10).replace('.', ',')}/10`}
 										{a.auto_score != null && ` · Tự động: ${a.auto_score} điểm`}
 										{a.manual_score != null && ` · Tổng: ${a.manual_score} điểm`}
 										{a.pending_count > 0 && ` · ${a.pending_count} câu chờ chấm`}
@@ -213,9 +225,18 @@ export function ExamsTab({ courseId }: { courseId: string }) {
 							<div className={styles.subRowMain}>
 								<div className={styles.subRowName}>{p.title}</div>
 								<div style={{ fontSize: 12, color: 'var(--color-gray-500)' }}>
-									{EXAM_PART_LABEL[p.exam_part] ?? 'Lý thuyết'} ·{' '}
-									{p.paper_type ? PAPER_TYPE_LABEL[p.paper_type] : 'Hỗn hợp'} · {STATUS_LABEL[p.status]} ·{' '}
-									{p.question_count} câu · {p.duration_minutes} phút ·{' '}
+									{POOL_LABEL[p.purpose ?? 'final']}
+									{p.program_code ? ` · Lớp ${p.program_code}` : ''} ·{' '}
+									{p.purpose === 'entrance' ? '' : `${EXAM_PART_LABEL[p.exam_part] ?? 'Lý thuyết'} · `}
+									{p.paper_type ? PAPER_TYPE_LABEL[p.paper_type] : 'TN + TL'}
+									{p.weight != null && p.purpose !== 'entrance' && p.exam_part === 'theory' ? ` (${p.weight}% điểm LT)` : ''} ·{' '}
+									{STATUS_LABEL[p.status]} ·{' '}
+									{p.code_mode
+										? `Ngẫu nhiên ${[p.gen_mc_count ? `${p.gen_mc_count} TN` : '', p.gen_essay_count ? `${p.gen_essay_count} TL` : '']
+												.filter(Boolean)
+												.join(' + ')} · ${CODE_MODE_LABEL[p.code_mode]}${p.code_mode === 'codes' ? ` (${p.code_count})` : ''}`
+										: `${p.question_count} câu`}{' '}
+									· {p.duration_minutes} phút ·{' '}
 									{p.attempt_count} lượt làm · Người chấm: {p.grader_names || 'GV được phân công bài học'}
 								</div>
 							</div>
@@ -271,6 +292,31 @@ function ExamBuilder({
 	const [paperType, setPaperType] = useState<PaperType | null>(paper ? paper.paper_type : 'multiple_choice');
 	const allowedType = paperType ? PAPER_QUESTION_TYPE[paperType] : null;
 	const [examPart, setExamPart] = useState<ExamPart>(paper?.exam_part ?? 'theory');
+	// Đề đầu vào (chỉ tham khảo) / cuối khóa; lớp = chương trình trong khóa (lấy ngân hàng của chương trình đó)
+	const [purpose, setPurpose] = useState<QuestionPool>(paper?.purpose ?? 'final');
+	const [programId, setProgramId] = useState(paper?.program_id ?? '');
+	const [links, setLinks] = useState<CourseProgramLink[]>([]);
+	useEffect(() => {
+		getProgramLinks(courseId)
+			.then((l) => {
+				setLinks(l);
+				if (!paper && l.length === 1) setProgramId(l[0].program_id);
+			})
+			.catch(() => {});
+	}, [courseId, paper]);
+	// Bốc ngẫu nhiên N câu từ ngân hàng (mặc định) hay chọn câu tay
+	const wasRandom = !!paper && !!((paper.gen_mc_count ?? 0) + (paper.gen_essay_count ?? 0));
+	const [mode, setMode] = useState<'random' | 'manual'>(!paper || wasRandom ? 'random' : 'manual');
+	const [mcCount, setMcCount] = useState(String(paper?.gen_mc_count ?? 20));
+	const [essayCount, setEssayCount] = useState(String(paper?.gen_essay_count ?? 2));
+	const [codeMode, setCodeMode] = useState<CodeMode>(paper?.code_mode ?? 'per_trainee');
+	const [codeCount, setCodeCount] = useState(String(paper?.code_count ?? 2));
+	const [weight, setWeight] = useState(paper?.weight != null ? String(paper.weight) : '50');
+	const [generated, setGenerated] = useState(paper?.questions ?? []);
+	const random = mode === 'random';
+	const useMc = paperType !== 'essay';
+	const useEssay = paperType !== 'multiple_choice';
+	const theoryFinal = purpose === 'final' && examPart === 'theory';
 	const [blind, setBlind] = useState(!!paper?.blind_grading);
 	const [graders, setGraders] = useState<Set<string>>(new Set(paper?.grader_ids ?? []));
 	// Người chấm chọn trong số GV được phân công của khóa
@@ -311,7 +357,13 @@ function ExamBuilder({
 		setPickId('');
 	};
 
-	const bankOptions = bank
+	// Ngân hàng của lớp + kho tương ứng mục đích đề
+	const ownBank = bank.filter((b) => (programId ? b.program_id === programId : true) && (b.pool ?? 'final') === purpose);
+	const available = {
+		mc: ownBank.filter((b) => b.question_type === 'single_choice').length,
+		essay: ownBank.filter((b) => b.question_type === 'essay').length,
+	};
+	const bankOptions = ownBank
 		.filter((b) => (!allowedType || b.question_type === allowedType) && !questions.some((q) => q.id === b.id))
 		.map((b) => ({ id: b.id, name: `${b.question_text.slice(0, 60)}${b.question_text.length > 60 ? '…' : ''}` }));
 
@@ -336,40 +388,53 @@ function ExamBuilder({
 
 	const removeQuestion = (tempId: string) => setQuestions((prev) => prev.filter((q) => q.tempId !== tempId));
 
+	const changePurpose = (p: QuestionPool) => {
+		setPurpose(p);
+		// Đầu vào: 1 đề gồm cả trắc nghiệm + tự luận, chỉ phần lý thuyết
+		if (p === 'entrance') {
+			setPaperType(null);
+			setExamPart('theory');
+		} else if (!paperType) setPaperType('multiple_choice');
+		setQuestions([]);
+		setPickId('');
+	};
+
 	const handleSave = async () => {
 		if (!title.trim()) {
 			setError('Vui lòng nhập tên đề thi');
+			return;
+		}
+		if (random && !programId) {
+			setError('Đề ngẫu nhiên cần chọn lớp (chương trình) để lấy câu từ ngân hàng');
+			return;
+		}
+		if (random && !((useMc ? Number(mcCount) : 0) + (useEssay ? Number(essayCount) : 0) > 0)) {
+			setError('Nhập số câu cần bốc');
 			return;
 		}
 		setSaving(true);
 		setError('');
 		try {
 			const question_ids = questions.map((q) => q.id).filter((id): id is string => !!id);
-			const paper_type = paperType ?? undefined;
-			if (paper) {
-				await examApi.updatePaper(paper.id, {
-					title: title.trim(),
-					paper_type,
-					duration_minutes: Number(duration) || 45,
-					status,
-					question_ids,
-					exam_part: examPart,
-					blind_grading: blind,
-					grader_ids: [...graders],
-				});
-			} else {
-				await examApi.createPaper({
-					course_id: courseId,
-					title: title.trim(),
-					paper_type,
-					duration_minutes: Number(duration) || 45,
-					status,
-					question_ids,
-					exam_part: examPart,
-					blind_grading: blind,
-					grader_ids: [...graders],
-				});
-			}
+			const payload = {
+				title: title.trim(),
+				paper_type: paperType,
+				duration_minutes: Number(duration) || 45,
+				status,
+				exam_part: purpose === 'entrance' ? ('theory' as const) : examPart,
+				blind_grading: blind,
+				grader_ids: [...graders],
+				purpose,
+				program_id: programId || null,
+				weight: theoryFinal && weight !== '' ? Number(weight) : null,
+				gen_mc_count: random && useMc ? Number(mcCount) || 0 : null,
+				gen_essay_count: random && useEssay ? Number(essayCount) || 0 : null,
+				code_mode: random ? codeMode : null,
+				code_count: random && codeMode === 'codes' ? Number(codeCount) || 2 : null,
+				...(random ? {} : { question_ids }),
+			};
+			if (paper) await examApi.updatePaper(paper.id, payload);
+			else await examApi.createPaper({ course_id: courseId, ...payload });
 			onSaved();
 		} catch (err) {
 			setError(err instanceof Error ? err.message : 'Lưu đề thi thất bại');
@@ -398,18 +463,40 @@ function ExamBuilder({
 				/>
 				<select
 					className={styles.subSelect}
+					value={purpose}
+					onChange={(e) => changePurpose(e.target.value as QuestionPool)}
+					title='Đề đầu vào chỉ để tham khảo (so sánh với cuối khóa), không tính vào kết quả'
+				>
+					<option value='final'>Thi cuối khóa</option>
+					<option value='entrance'>Kiểm tra đầu vào</option>
+				</select>
+				<select
+					className={styles.subSelect}
+					value={programId}
+					onChange={(e) => {
+						setProgramId(e.target.value);
+						setQuestions([]);
+						setPickId('');
+					}}
+					title='Lớp (chương trình trong khóa) — học viên lớp này làm đề, câu hỏi lấy từ ngân hàng của chương trình'
+				>
+					<option value=''>— Chọn lớp —</option>
+					{links.map((l) => (
+						<option
+							key={l.program_id}
+							value={l.program_id}
+						>
+							{l.program_code ? `${l.program_code} — ${l.program_name}` : l.program_name}
+						</option>
+					))}
+				</select>
+				<select
+					className={styles.subSelect}
 					value={paperType ?? ''}
-					onChange={(e) => changePaperType(e.target.value as PaperType)}
+					onChange={(e) => (e.target.value ? changePaperType(e.target.value as PaperType) : setPaperType(null))}
 					title='Loại đề — chỉ nhận câu hỏi cùng loại'
 				>
-					{!paperType && (
-						<option
-							value=''
-							disabled
-						>
-							Hỗn hợp (đề cũ)
-						</option>
-					)}
+					{(purpose === 'entrance' || !paperType) && <option value=''>Trắc nghiệm + tự luận</option>}
 					<option value='multiple_choice'>Đề trắc nghiệm</option>
 					<option value='essay'>Đề tự luận</option>
 				</select>
@@ -433,15 +520,35 @@ function ExamBuilder({
 				</select>
 			</div>
 			<div className={styles.subToolbar}>
-				<select
-					className={styles.subSelect}
-					value={examPart}
-					onChange={(e) => setExamPart(e.target.value as ExamPart)}
-					title='Điểm bài thi (quy về thang 10) đổ vào cột này của bảng điểm'
-				>
-					<option value='theory'>Phần lý thuyết</option>
-					<option value='practice'>Phần thực hành</option>
-				</select>
+				{purpose === 'final' && (
+					<select
+						className={styles.subSelect}
+						value={examPart}
+						onChange={(e) => setExamPart(e.target.value as ExamPart)}
+						title='Điểm bài thi (quy về thang 10) đổ vào cột này của bảng điểm'
+					>
+						<option value='theory'>Phần lý thuyết</option>
+						<option value='practice'>Phần thực hành</option>
+					</select>
+				)}
+				{theoryFinal && (
+					<label
+						className={styles.inlineField}
+						title='Điểm lý thuyết = trung bình có trọng số các đề lý thuyết cuối khóa của lớp (vd TN 50% + TL 50%)'
+					>
+						Trọng số
+						<input
+							className={styles.subInput}
+							type='number'
+							min={0}
+							max={100}
+							value={weight}
+							onChange={(e) => setWeight(e.target.value)}
+							style={{ maxWidth: 80 }}
+						/>
+						% điểm LT
+					</label>
+				)}
 				<MultiSelect
 					options={lecturers}
 					selected={graders}
@@ -459,8 +566,134 @@ function ExamBuilder({
 				</label>
 			</div>
 
+			<div className={styles.subToolbar}>
+				<select
+					className={styles.subSelect}
+					value={mode}
+					onChange={(e) => setMode(e.target.value as 'random' | 'manual')}
+				>
+					<option value='random'>Bốc ngẫu nhiên từ ngân hàng</option>
+					<option value='manual'>Chọn câu thủ công</option>
+				</select>
+				{random && (
+					<>
+						{useMc && (
+							<label className={styles.inlineField}>
+								<input
+									className={styles.subInput}
+									type='number'
+									min={0}
+									value={mcCount}
+									onChange={(e) => setMcCount(e.target.value)}
+									style={{ maxWidth: 80 }}
+								/>
+								câu TN
+							</label>
+						)}
+						{useEssay && (
+							<label className={styles.inlineField}>
+								<input
+									className={styles.subInput}
+									type='number'
+									min={0}
+									value={essayCount}
+									onChange={(e) => setEssayCount(e.target.value)}
+									style={{ maxWidth: 80 }}
+								/>
+								câu TL
+							</label>
+						)}
+						<select
+							className={styles.subSelect}
+							value={codeMode}
+							onChange={(e) => setCodeMode(e.target.value as CodeMode)}
+							title='Mỗi học viên một đề: bốc riêng lúc bắt đầu làm. Chung đề: cả lớp cùng bộ câu, trộn thứ tự câu và đáp án. Nhiều mã đề: chia đều các mã cho học viên.'
+						>
+							{(Object.keys(CODE_MODE_LABEL) as CodeMode[]).map((m) => (
+								<option
+									key={m}
+									value={m}
+								>
+									{CODE_MODE_LABEL[m]}
+								</option>
+							))}
+						</select>
+						{codeMode === 'codes' && (
+							<label className={styles.inlineField}>
+								<input
+									className={styles.subInput}
+									type='number'
+									min={2}
+									max={10}
+									value={codeCount}
+									onChange={(e) => setCodeCount(e.target.value)}
+									style={{ maxWidth: 70 }}
+								/>
+								mã đề
+							</label>
+						)}
+					</>
+				)}
+			</div>
+			{random && (
+				<div className={styles.hint}>
+					{programId
+						? `Ngân hàng ${POOL_LABEL[purpose].toLowerCase()} của lớp: ${available.mc} câu trắc nghiệm, ${available.essay} câu tự luận. `
+						: 'Chọn lớp để xem số câu trong ngân hàng. '}
+					Thi lại: học viên nhận đề mới, ưu tiên câu chưa gặp.
+				</div>
+			)}
+
 			{error && <div className={styles.errorBanner}>{error}</div>}
 
+			{random ? (
+				paper && wasRandom && generated.length > 0 ? (
+					<div style={{ margin: '14px 0 8px' }}>
+						<div style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 600, fontSize: 13 }}>
+							Câu đã bốc ({generated.filter((q) => (q.code_no ?? 1) === 1).length} câu
+							{paper.code_mode === 'codes' ? ` × ${paper.code_count} mã đề` : ''})
+							{paper.attempt_count === 0 && (
+								<button
+									type='button'
+									className={styles.btnGhost}
+									onClick={async () => {
+										try {
+											const p = await examApi.updatePaper(paper.id, { title: title.trim() || paper.title, regenerate: true });
+											setGenerated(p.questions ?? []);
+										} catch (err) {
+											setError(err instanceof Error ? err.message : 'Bốc lại thất bại');
+										}
+									}}
+								>
+									Bốc lại câu
+								</button>
+							)}
+						</div>
+						<div className={styles.subList}>
+							{generated.map((q, i) => (
+								<div
+									key={q.link_id}
+									className={styles.subRow}
+								>
+									<div className={styles.subRowMain}>
+										<div className={styles.subRowName}>
+											{q.code_no != null && `Mã ${q.code_no} · `}
+											{i + 1}. <QuestionText text={q.question_text} /> ({q.points} điểm)
+										</div>
+									</div>
+								</div>
+							))}
+						</div>
+					</div>
+				) : (
+					<div className={styles.subEmpty}>
+						{codeMode === 'per_trainee'
+							? 'Mỗi học viên được bốc bộ câu riêng khi bắt đầu làm bài.'
+							: 'Câu hỏi được bốc khi lưu đề.'}
+					</div>
+				)
+			) : (
+			<>
 			<div style={{ fontWeight: 600, fontSize: 13, margin: '14px 0 8px' }}>
 				Câu hỏi trong đề ({questions.length})
 			</div>
@@ -515,7 +748,7 @@ function ExamBuilder({
 				</button>
 				<a
 					className={styles.btnGhost}
-					href='/admin/question-bank'
+					href={`/admin/question-bank${programId ? `?program=${programId}&pool=${purpose}` : ''}`}
 					target='_blank'
 					rel='noreferrer'
 					title='Soạn/nhập câu hỏi ở Ngân hàng câu hỏi, quay lại đây để chọn'
@@ -523,6 +756,8 @@ function ExamBuilder({
 					<IcPlus /> Soạn câu hỏi mới ở Ngân hàng
 				</a>
 			</div>
+			</>
+			)}
 
 			<div style={{ marginTop: 16 }}>
 				<button

@@ -73,13 +73,11 @@ router.post(
 	authorizePermission(['courses', 'create']),
 	[
 		body('name').trim().notEmpty().withMessage('Tên khóa học không được để trống'),
-		body('capacity').optional({ checkFalsy: true }).isInt({ min: 1 }),
 		body('batch_no')
 			.optional({ checkFalsy: true })
 			.isInt({ min: 1 })
 			.withMessage('Số đợt phải là số nguyên dương'),
 		body('is_rolling').optional().isBoolean(),
-		body('auto_batch').optional().isBoolean(),
 		body('prerequisites').optional({ nullable: true }).isArray(),
 		body('objectives').optional({ nullable: true }).isArray(),
 		body('program_ids').optional().isArray(),
@@ -93,13 +91,11 @@ router.put(
 	authorizePermission(['courses', 'update']),
 	[
 		body('name').optional().trim().notEmpty(),
-		body('capacity').optional({ checkFalsy: true }).isInt({ min: 1 }),
 		body('batch_no')
 			.optional({ checkFalsy: true })
 			.isInt({ min: 1 })
 			.withMessage('Số đợt phải là số nguyên dương'),
 		body('is_rolling').optional().isBoolean(),
-		body('auto_batch').optional().isBoolean(),
 		body('prerequisites').optional({ nullable: true }).isArray(),
 		body('objectives').optional({ nullable: true }).isArray(),
 		body('program_ids').optional().isArray(),
@@ -113,6 +109,40 @@ router.delete('/:id', authorizePermission(['courses', 'delete']), ctrl.removeOne
 // ─── Chương trình đào tạo áp dụng (N:N) ────────────────────────────────────
 // Gán/gỡ qua program_ids khi tạo/sửa khóa học
 router.get('/:id/programs', authorizePermission(['courses', 'read']), ctrl.listProgramLinks);
+// Lớp (chương trình trong khóa ĐTLT / CTCV) đủ sĩ số tối thiểu ⇒ cán bộ bấm mở lớp.
+const classDateRules = [
+	body('program_id').notEmpty().withMessage('Vui lòng chọn chương trình'),
+	body('start_date')
+		.optional({ nullable: true, checkFalsy: true })
+		.isISO8601()
+		.withMessage('Ngày bắt đầu không hợp lệ'),
+	body('end_date')
+		.optional({ nullable: true, checkFalsy: true })
+		.isISO8601()
+		.withMessage('Ngày kết thúc không hợp lệ'),
+];
+router.post(
+	'/:id/programs/open',
+	authorizePermission(['courses', 'update']),
+	classDateRules,
+	validate,
+	ctrl.openClass,
+);
+// Ngày học của lớp: gợi ý (thời lượng / tiết chương trình, ngày lễ) + đặt / sửa.
+router.get(
+	'/:id/programs/suggest-dates',
+	authorizePermission(['courses', 'read']),
+	[query('program_id').notEmpty().withMessage('Vui lòng chọn chương trình')],
+	validate,
+	ctrl.suggestClassDates,
+);
+router.put(
+	'/:id/programs/dates',
+	authorizePermission(['courses', 'update']),
+	classDateRules,
+	validate,
+	ctrl.setClassDates,
+);
 
 // ─── Sổ thực hành GPHN (Excel mẫu 3.xlsx) — nhập vào khóa / xuất đúng bố cục sổ.
 // Nhập ghi cả hồ sơ học viên ⇒ controller đòi thêm trainees:import; xuất có CCCD
@@ -133,17 +163,6 @@ router.post(
 	'/:id/practice/auto-arrange',
 	authorizePermission(['courses', 'update']),
 	ctrl.autoArrangeCourse,
-);
-
-// ─── Khóa tuyển sinh theo đợt (auto_batch) ─────────────────────────────────
-// Tổng quan từng chương trình (người chờ, các đợt) + lập đợt ngay dù chưa đủ sĩ số.
-router.get('/:id/batches', authorizePermission(['courses', 'read']), ctrl.listBatches);
-router.post(
-	'/:id/batches',
-	authorizePermission(['courses', 'update']),
-	[body('program_id').notEmpty().withMessage('Vui lòng chọn chương trình')],
-	validate,
-	ctrl.formBatchNow,
 );
 
 // ─── Enrollments ──────────────────────────────────────────────────────────

@@ -117,8 +117,6 @@ export function useCourseDetail(courseId: string) {
 	const [busy, setBusy] = useState(false);
 	const [error, setError] = useState('');
 	const [attendanceSessionId, setAttendanceSessionId] = useState<string | null>(null);
-	// Khóa ĐTLT thường: sĩ số tính theo lớp (chương trình) — xem CourseProgramLink.class_rule
-	const classRule = programLinks.some((l) => l.class_rule);
 
 	const load = useCallback(() => {
 		return Promise.all([
@@ -202,12 +200,9 @@ export function useCourseDetail(courseId: string) {
 				}
 				// Ghi danh hộ được duyệt luôn; khóa GPHN backend đã tự xếp vòng — chỉ báo khi chưa xếp được
 				if (out.auto_warning) showToast('error', out.auto_warning);
-				else if (out.batch_name) showToast('success', `Đã ghi danh và xếp vào ${out.batch_name}`);
-				else if (out.status === 'waitlisted' && classRule)
-					showToast('info', `Lớp đã đủ sĩ số tối đa — hồ sơ được lưu cho khóa sau (vị trí ${out.waitlist_position ?? '?'})`);
-				else if (out.waitlist_position != null)
-					showToast('info', `Đã ghi danh — đang chờ đợt học (vị trí ${out.waitlist_position})`);
-				else if (out.status === 'waitlisted') showToast('info', 'Khóa đã đủ sĩ số — học viên được đưa vào danh sách chờ');
+				else if (out.moved_to) showToast('success', `Lớp đã đầy — học viên được xếp sang ${out.moved_to}`);
+				else if (out.status === 'waitlisted')
+					showToast('info', `Lớp đã đủ sĩ số tối đa — vào danh sách chờ khóa sau (vị trí ${out.waitlist_position ?? '?'})`);
 				else showToast('success', 'Đã ghi danh và duyệt học viên');
 				await load();
 			} catch (err) {
@@ -216,7 +211,7 @@ export function useCourseDetail(courseId: string) {
 				setBusy(false);
 			}
 		},
-		[courseId, load, loadEnrollCandidates, classRule],
+		[courseId, load, loadEnrollCandidates],
 	);
 
 	const decideEnrollment = useCallback(
@@ -225,9 +220,9 @@ export function useCourseDetail(courseId: string) {
 			setError('');
 			try {
 				const out = await apiDecideEnrollment(enrollmentId, status, note);
-				if (out.batch_name) showToast('success', `Đã duyệt và xếp vào ${out.batch_name}`);
-				else if (out.status === 'waitlisted' && classRule)
-					showToast('info', `Lớp đã đủ sĩ số tối đa — hồ sơ được lưu cho khóa sau (vị trí ${out.waitlist_position ?? '?'})`);
+				if (out.moved_to) showToast('success', `Lớp đã đầy — học viên được xếp sang ${out.moved_to}`);
+				else if (out.status === 'waitlisted')
+					showToast('info', `Lớp đã đủ sĩ số tối đa — vào danh sách chờ khóa sau (vị trí ${out.waitlist_position ?? '?'})`);
 				await load();
 			} catch (err) {
 				setError(err instanceof Error ? err.message : 'Cập nhật thất bại');
@@ -235,7 +230,7 @@ export function useCourseDetail(courseId: string) {
 				setBusy(false);
 			}
 		},
-		[load, classRule],
+		[load],
 	);
 
 	/** Duyệt/từ chối nhiều đăng ký. Gọi tuần tự để backend kiểm tra sĩ số theo đúng thứ tự;

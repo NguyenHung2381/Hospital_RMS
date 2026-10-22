@@ -1,27 +1,37 @@
-// Lớp theo chương trình của khóa ĐTLT thường (programClassService) — phần không cần DB.
+// Lớp theo chương trình của khóa ĐTLT / CTCV (programClassService) — phần không cần DB.
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { appliesTo, roomOf } = require('../../src/modules/training/courses/programClassService');
+const {
+	appliesTo,
+	roomOf,
+	classStatus,
+} = require('../../src/modules/training/courses/programClassService');
 
-const dtlt = { training_type_id: 'TRNTP-DTLT', auto_batch: false, parent_course_id: null, is_rolling: false };
+const dtlt = { training_type_id: 'TRNTP-DTLT', is_rolling: false };
 
-test('chỉ áp dụng cho khóa ĐTLT thường', () => {
+test('áp dụng cho khóa ĐTLT và CTCV, không cho GPHN / khóa mở liên tục', () => {
 	assert.equal(appliesTo(dtlt), true);
-	assert.equal(appliesTo({ ...dtlt, auto_batch: true }), false); // khóa tuyển sinh theo đợt
-	assert.equal(appliesTo({ ...dtlt, parent_course_id: 'KH1' }), false); // đợt con
+	assert.equal(appliesTo({ ...dtlt, training_type_id: 'TRNTP-CTCV' }), true);
 	assert.equal(appliesTo({ ...dtlt, training_type_id: 'TRNTP-GPHN' }), false);
+	assert.equal(appliesTo({ ...dtlt, is_rolling: true }), false);
 	assert.equal(appliesTo(null), false);
 });
 
 test('chỗ trống theo sĩ số tối đa của chương trình', () => {
-	assert.equal(roomOf({ class_max: 10, class_approved: 7, course_capacity: null, course_approved: 7 }), 3);
-	assert.equal(roomOf({ class_max: 10, class_approved: 10, course_capacity: null, course_approved: 10 }), 0);
+	assert.equal(roomOf({ class_max: 10, class_approved: 7 }), 3);
+	assert.equal(roomOf({ class_max: 10, class_approved: 10 }), 0);
+	assert.equal(roomOf({ class_max: 10, class_approved: 12 }), 0);
+	assert.equal(roomOf({ class_max: null, class_approved: 50 }), Infinity);
 });
 
-test('khóa đặt sĩ số chung ⇒ lấy giới hạn chặt hơn', () => {
-	assert.equal(roomOf({ class_max: 10, class_approved: 2, course_capacity: 20, course_approved: 19 }), 1);
-});
-
-test('không đặt tối đa ⇒ không giới hạn', () => {
-	assert.equal(roomOf({ class_max: null, class_approved: 50, course_capacity: null, course_approved: 50 }), Infinity);
+test('đủ tối thiểu chỉ là "chờ mở" — cán bộ bấm mở lớp mới thành "đã mở"', () => {
+	assert.equal(
+		classStatus({ class_min: 15, class_approved: 14, class_opened_at: null }),
+		'waiting',
+	);
+	assert.equal(classStatus({ class_min: 15, class_approved: 15, class_opened_at: null }), 'ready');
+	assert.equal(
+		classStatus({ class_min: 15, class_approved: 15, class_opened_at: '2026-10-22' }),
+		'open',
+	);
 });

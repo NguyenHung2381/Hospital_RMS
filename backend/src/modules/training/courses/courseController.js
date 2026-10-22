@@ -3,7 +3,7 @@ const classSessionService = require('./classSessionService');
 const courseAttendanceService = require('./courseAttendanceService');
 const courseDocumentService = require('./courseDocumentService');
 const courseEnrollmentService = require('./courseEnrollmentService');
-const courseBatchService = require('./courseBatchService');
+const programClassService = require('./programClassService');
 const enrollmentProgramService = require('./enrollmentProgramService');
 const enrollmentRotationService = require('./enrollmentRotationService');
 const practiceDocumentService = require('./practiceDocumentService');
@@ -71,19 +71,37 @@ const registerTrainee = asyncHandler(async (req, res) => {
 	return created(res, {
 		...item,
 		status: decided.status,
-		batch_name: decided.batch_name,
+		moved_to: decided.moved_to,
 		waitlist_position: decided.waitlist_position,
 		auto_warning: decided.auto_warning,
 	});
 });
 
-const listBatches = asyncHandler(async (req, res) => {
-	return success(res, await courseBatchService.overview(req.params.id));
+const openClass = asyncHandler(async (req, res) => {
+	const { program_id, start_date, end_date } = req.body;
+	const result = await programClassService.openClass(req.params.id, program_id, req.user.id, {
+		start_date,
+		end_date,
+	});
+	return success(res, result, `Đã mở lớp với ${result.trainees} học viên`);
 });
 
-const formBatchNow = asyncHandler(async (req, res) => {
-	const result = await courseBatchService.formNow(req.params.id, req.body.program_id, req.user.id);
-	return created(res, result, `Đã xếp ${result.moved.length} học viên vào đợt`);
+const suggestClassDates = asyncHandler(async (req, res) => {
+	return success(res, await programClassService.suggestDates(req.params.id, req.query.program_id));
+});
+
+const setClassDates = asyncHandler(async (req, res) => {
+	const { program_id, start_date, end_date } = req.body;
+	return success(
+		res,
+		await programClassService.setClassDates(
+			req.params.id,
+			program_id,
+			{ start_date, end_date },
+			req.user.id,
+		),
+		'Đã lưu ngày học của lớp',
+	);
 });
 
 const listStaffCandidates = asyncHandler(async (req, res) => {
@@ -507,8 +525,9 @@ module.exports = {
 	listProgramLinks,
 	listEnrollments,
 	registerTrainee,
-	listBatches,
-	formBatchNow,
+	openClass,
+	suggestClassDates,
+	setClassDates,
 	listStaffCandidates,
 	decideEnrollment,
 	bulkDecideEnrollments,

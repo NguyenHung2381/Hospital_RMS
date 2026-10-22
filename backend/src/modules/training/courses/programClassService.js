@@ -5,42 +5,60 @@ const mailQueue = require('../../notifications/mailQueue');
 const notificationService = require('../../notifications/notificationService');
 const { httpError } = require('../../../utils/httpError');
 const logger = require('../../../config/logger');
+const systemSettingService = require('../../settings/systemSettingService');
+const { suggestClassDates } = require('../../../utils/classDates');
 
-// Khóa ĐTLT thường ("ĐTLT Đợt 3/2026" — không phải khóa tuyển sinh theo đợt, không
-// phải đợt con, xem courseBatchService): mỗi chương trình của khóa là 1 LỚP.
-//   - Sĩ số tối thiểu (training_programs.min_capacity): chưa đủ học viên đã duyệt
-//     thì lớp CHƯA MỞ — không xếp được lịch học cho bài của chương trình đó.
-//   - Sĩ số tối đa (max_capacity, không đặt thì capacity của khóa): lớp đầy thì
-//     duyệt thêm = vào danh sách chờ ('waitlisted'), tức LƯU HỒ SƠ CHO KHÓA SAU —
-//     khóa ĐTLT kế tiếp (chưa khai giảng) có chương trình đó tự nhận hồ sơ chờ.
-//     Lớp chưa khai giảng có người rút thì người đầu danh sách chờ được gọi vào.
-//   - Khóa đã khai giảng mà lớp vẫn chưa đủ tối thiểu (lớp không mở được): hồ sơ
-//     đã duyệt cũng được chuyển sang khóa sau như hồ sơ chờ.
-const DTLT_TYPE = 'TRNTP-DTLT';
+// Khóa ĐTLT / CTCV: mỗi chương trình của khóa là 1 LỚP (dòng course_programs) —
+// xem migration 2026-11-26_course_classes.
+//   - Đủ sĩ số tối thiểu (training_programs.min_capacity) ⇒ BÁO cán bộ; cán bộ
+//     bấm "Mở lớp" (course_programs.opened_at). Lớp chưa mở thì chưa xếp lịch.
+//     Không có hạn đăng ký: lớp cứ chờ tới khi đủ.
+//   - Sĩ số tối đa (max_capacity, không đặt = không giới hạn): lớp đầy thì duyệt
+//     thêm = vào DANH SÁCH CHỜ CỦA CHƯƠNG TRÌNH ('waitlisted', không gắn riêng khóa
+//     nào). Khóa chưa khai giảng có chương trình đó còn chỗ (khóa mới tạo, có người
+//     rút…) thì tự kéo người chờ vào, ai chờ lâu (decided_at) vào trước.
+const CLASS_TYPES = ['TRNTP-DTLT', 'TRNTP-CTCV'];
 const VN_TODAY = 'CAST(DATEADD(HOUR, 7, GETUTCDATE()) AS DATE)';
 
-const appliesTo = (c) =>
-	!!c && c.training_type_id === DTLT_TYPE && !c.auto_batch && !c.parent_course_id && !c.is_rolling;
+const appliesTo = (c) => !!c && CLASS_TYPES.includes(c.training_type_id) && !c.is_rolling;
 const APPLIES_SQL = (c) =>
-	`(${c}.training_type_id = '${DTLT_TYPE}' AND ${c}.auto_batch = 0 AND ${c}.parent_course_id IS NULL AND ${c}.is_rolling = 0)`;
-const NOT_STARTED_SQL = (c) => `(${c}.start_date IS NULL OR ${c}.start_date > ${VN_TODAY})`;
+	`(${c}.training_type_id IN (${CLASS_TYPES.map((t) => `'${t}'`).join(', ')}) AND ${c}.is_rolling = 0)`;
+// Lớp đã khai giảng chưa: theo ngày của lớp, lớp chưa đặt ngày thì theo ngày khóa.
+const NOT_STARTED_SQL = (cp, c) =>
+	`(COALESCE(${cp}.start_date, ${c}.start_date) IS NULL OR COALESCE(${cp}.start_date, ${c}.start_date) > ${VN_TODAY})`;
 const countSql = (c, p, status) =>
 	`(SELECT COUNT(*) FROM course_enrollments ce WHERE ce.course_id = ${c}.id AND ce.program_id = ${p} AND ce.status = '${status}')`;
 
+// Vị trí trong danh sách chờ của chương trình (1 = đầu hàng), tính trên mọi khóa.
+const WAITLIST_POSITION_SQL = (e) => `(SELECT COUNT(*) FROM course_enrollments w
+    JOIN courses wc ON wc.id = w.course_id
+    WHERE w.status = 'waitlisted' AND w.program_id = ${e}.program_id AND ${APPLIES_SQL('wc')}
+      AND (w.decided_at < ${e}.decided_at OR (w.decided_at = ${e}.decided_at AND w.id <= ${e}.id)))`;
+
 // Sĩ số từng lớp (chương trình) của khóa — dùng cho tab Học viên lẫn các kiểm tra bên dưới.
+// class_waiting: cả danh sách chờ của chương trình (mọi khóa).
 const CLASS_COLUMNS = `ISNULL(tp.min_capacity, 1) AS class_min,
-       COALESCE(tp.max_capacity, c.capacity) AS class_max,
+       tp.max_capacity AS class_max,
+       cp.opened_at AS class_opened_at,
+       cp.start_date AS class_start, cp.end_date AS class_end,
        ${countSql('c', 'cp.program_id', 'approved')} AS class_approved,
-       ${countSql('c', 'cp.program_id', 'waitlisted')} AS class_waiting,
+       (SELECT COUNT(*) FROM course_enrollments w JOIN courses wc ON wc.id = w.course_id
+         WHERE w.program_id = cp.program_id AND w.status = 'waitlisted' AND ${APPLIES_SQL('wc')}) AS class_waiting,
        CASE WHEN ${APPLIES_SQL('c')} THEN 1 ELSE 0 END AS class_rule`;
+
+/** Chỗ còn trống của lớp (Infinity = không giới hạn). */
+const roomOf = (k) =>
+	k.class_max == null ? Infinity : Math.max(0, k.class_max - k.class_approved);
+
+/** 'open' đã mở · 'ready' đủ tối thiểu, chờ cán bộ mở · 'waiting' chưa đủ. */
+const classStatus = (k) =>
+	k.class_opened_at ? 'open' : k.class_approved >= k.class_min ? 'ready' : 'waiting';
 
 const classesOf = async (courseId, q = null) => {
 	const req = q ? q() : (await getPool()).request();
 	const r = await req.input('course_id', sql.VarChar(20), courseId).query(`
-    SELECT cp.program_id, tp.code AS program_code, tp.name AS program_name, c.name AS course_name,
-           c.capacity AS course_capacity, c.created_by,
-           CASE WHEN ${NOT_STARTED_SQL('c')} THEN 0 ELSE 1 END AS started,
-           (SELECT COUNT(*) FROM course_enrollments e WHERE e.course_id = c.id AND e.status = 'approved') AS course_approved,
+    SELECT cp.program_id, tp.code AS program_code, tp.name AS program_name, c.name AS course_name, c.created_by,
+           CASE WHEN ${NOT_STARTED_SQL('cp', 'c')} THEN 0 ELSE 1 END AS started,
            ${CLASS_COLUMNS}
     FROM courses c
     JOIN course_programs cp ON cp.course_id = c.id
@@ -48,149 +66,112 @@ const classesOf = async (courseId, q = null) => {
     WHERE c.id = @course_id AND c.status <> 'cancelled'`);
 	return r.recordset;
 };
+const classOf = async (courseId, programId) =>
+	(await classesOf(courseId)).find((k) => k.program_id === programId);
 
-// Chỗ còn trống của lớp: theo sĩ số tối đa của chương trình và của cả khóa (null = không giới hạn).
-const roomOf = (k) => {
-	const rooms = [
-		k.class_max == null ? null : k.class_max - k.class_approved,
-		k.course_capacity == null ? null : k.course_capacity - k.course_approved,
-	].filter((v) => v != null);
-	return rooms.length ? Math.max(0, Math.min(...rooms)) : Infinity;
-};
+const mailTrainees = (enrollmentIds, title, message) =>
+	(async () => {
+		if (!enrollmentIds.length) return;
+		const pool = await getPool();
+		const rows = (
+			await pool.request().input('ids', sql.NVarChar(sql.MAX), JSON.stringify(enrollmentIds))
+				.query(`
+        SELECT t.full_name, t.email, c.name AS course_name, tp.name AS program_name
+        FROM course_enrollments e JOIN trainees t ON t.id = e.trainee_id JOIN courses c ON c.id = e.course_id
+        LEFT JOIN training_programs tp ON tp.id = e.program_id
+        WHERE e.id IN (SELECT [value] FROM OPENJSON(@ids)) AND t.email IS NOT NULL AND t.email <> ''`)
+		).recordset;
+		for (const r of rows) {
+			const subject = title(r);
+			mailQueue.enqueue('lớp đào tạo', () =>
+				mailService.send({
+					event: 'COURSE_ENROLLMENT',
+					to: r.email,
+					subject,
+					html: mailService.renderNotificationEmail({
+						fullName: r.full_name,
+						title: subject,
+						message,
+					}),
+				}),
+			);
+		}
+	})().catch((err) => logger.error('[course-class] mail failed:', err.message));
 
-const mailTrainees = async (enrollmentIds, title, message) => {
-	if (!enrollmentIds.length) return;
-	const pool = await getPool();
-	const rows = (
-		await pool.request().input('ids', sql.NVarChar(sql.MAX), JSON.stringify(enrollmentIds)).query(`
-      SELECT t.full_name, t.email, c.name AS course_name
-      FROM course_enrollments e JOIN trainees t ON t.id = e.trainee_id JOIN courses c ON c.id = e.course_id
-      WHERE e.id IN (SELECT [value] FROM OPENJSON(@ids)) AND t.email IS NOT NULL AND t.email <> ''`)
-	).recordset;
-	for (const r of rows) {
-		const subject = title(r.course_name);
-		mailQueue.enqueue('lớp ĐTLT', () =>
-			mailService.send({
-				event: 'COURSE_ENROLLMENT',
-				to: r.email,
-				subject,
-				html: mailService.renderNotificationEmail({ fullName: r.full_name, title: subject, message }),
-			}),
-		);
-	}
-};
-
-/**
- * Trạng thái khi duyệt 1 hồ sơ vào khóa ĐTLT thường: lớp (chương trình) hoặc khóa
- * đã đầy ⇒ 'waitlisted' (lưu cho khóa sau). Khóa không áp dụng ⇒ null (giữ cách cũ).
- */
+/** Trạng thái khi duyệt 1 hồ sơ: lớp đầy ⇒ 'waitlisted'. Khóa không áp dụng ⇒ null (giữ cách cũ). */
 const statusOnApprove = async (course, programId) => {
 	if (!appliesTo(course) || !programId) return null;
-	const k = (await classesOf(course.id)).find((x) => x.program_id === programId);
+	const k = await classOf(course.id, programId);
 	if (!k) return null;
 	return roomOf(k) > 0 ? 'approved' : 'waitlisted';
 };
 
-/** Vừa duyệt ⇒ lớp vừa chạm sĩ số tối thiểu thì báo cán bộ tạo khóa: lớp đã mở, xếp lịch được. */
-const notifyIfOpened = async (course, programId) => {
-	if (!appliesTo(course) || !programId) return;
-	const k = (await classesOf(course.id)).find((x) => x.program_id === programId);
-	if (!k || k.class_approved !== k.class_min || !k.created_by) return;
-	await notificationService.push('course_class', `Đủ sĩ số mở lớp ${k.program_code ?? k.program_name}`, [k.created_by], {
-		message: `${k.course_name}: chương trình ${k.program_name} đã đủ ${k.class_min} học viên — có thể xếp lịch học.`,
-		refId: course.id,
-		refType: 'course',
-	});
+/**
+ * Vừa thêm `added` học viên đã duyệt ⇒ lớp chưa mở vừa vượt qua sĩ số tối thiểu
+ * thì báo cán bộ tạo khóa vào bấm "Mở lớp".
+ */
+const notifyIfReady = async (courseId, programId, added = 1) => {
+	if (!programId) return;
+	const k = await classOf(courseId, programId);
+	if (!k?.class_rule || k.class_opened_at || !k.created_by) return;
+	if (!(k.class_approved >= k.class_min && k.class_approved - added < k.class_min)) return;
+	await notificationService.push(
+		'course_class',
+		`Lớp ${k.program_code ?? k.program_name} đủ sĩ số`,
+		[k.created_by],
+		{
+			message: `${k.course_name}: chương trình ${k.program_name} đã đủ ${k.class_min} học viên tối thiểu — vào tab Học viên bấm "Mở lớp".`,
+			refId: courseId,
+			refType: 'course',
+		},
+	);
 };
 
 /**
- * Lớp chưa khai giảng còn chỗ ⇒ gọi người đầu danh sách chờ của chính khóa vào
- * (có người rút / bị từ chối / tăng sĩ số).
+ * Lớp (chưa khai giảng) còn chỗ ⇒ kéo người từ danh sách chờ của chương trình vào,
+ * ai chờ lâu vào trước — cả người chờ ở chính khóa lẫn ở khóa khác.
+ * programId: chỉ xét 1 chương trình (null = mọi lớp của khóa).
  */
-const promote = async (courseId, programId, actorId) => {
-	const k = (await classesOf(courseId)).find((x) => x.program_id === programId);
-	if (!k || !k.class_rule || k.started || !k.class_waiting) return [];
-	const room = roomOf(k);
-	if (!room) return [];
-	const pool = await getPool();
-	const r = await pool
-		.request()
-		.input('course_id', sql.VarChar(20), courseId)
-		.input('program_id', sql.VarChar(20), programId)
-		.input('room', sql.Int, Number.isFinite(room) ? room : k.class_waiting)
-		.input('actor_id', sql.VarChar(20), actorId).query(`
-      ;WITH q AS (
-        SELECT TOP (@room) * FROM course_enrollments
-        WHERE course_id = @course_id AND program_id = @program_id AND status = 'waitlisted'
-        ORDER BY decided_at, registered_at, id)
-      UPDATE q SET status = 'approved', updated_at = GETDATE(), updated_by = @actor_id
-      OUTPUT inserted.id`);
-	const ids = r.recordset.map((x) => x.id);
-	if (ids.length) {
-		broadcast('update', { entity: 'course_enrollment' });
-		await mailTrainees(ids, (name) => `Bạn đã được nhận vào ${name}`, 'Lớp đã có chỗ — bạn được chuyển từ danh sách chờ vào lớp.').catch(
-			(err) => logger.error('[course-class] mail failed:', err.message),
-		);
-	}
-	return ids;
-};
-
-/**
- * Khóa sau nhận hồ sơ: khóa ĐTLT thường chưa khai giảng kéo về các hồ sơ cùng
- * chương trình ở khóa ĐTLT trước (khai giảng sớm hơn / tạo trước) — hồ sơ đang chờ,
- * và hồ sơ đã duyệt ở lớp không mở được (khóa đã khai giảng mà chưa đủ tối thiểu,
- * chưa điểm danh buổi nào). Ai chờ trước vào trước, chỉ chuyển đủ số chỗ còn trống.
- * programId: chỉ xét 1 chương trình.
- */
-const carryOver = async (courseId, actorId, { programId = null } = {}) => {
+const fillFromWaitlist = async (courseId, actorId, { programId = null } = {}) => {
 	const pool = await getPool();
 	const tx = new sql.Transaction(pool);
 	await tx.begin();
 	const q = () => new sql.Request(tx);
 	const moved = [];
+	const added = []; // [program_id, số người] — để báo lớp vừa đủ sĩ số
 	try {
-		// 1 khoá chung: 2 khóa cùng kéo 1 hồ sơ thì chỉ 1 khóa nhận.
+		// 1 khoá chung: 2 khóa cùng kéo 1 hồ sơ thì chỉ 1 khóa nhận, không vượt sĩ số.
 		await q().query(
-			"EXEC sp_getapplock @Resource = 'dtlt-carry-over', @LockMode = 'Exclusive', @LockOwner = 'Transaction', @LockTimeout = 15000",
+			"EXEC sp_getapplock @Resource = 'course-class-waitlist', @LockMode = 'Exclusive', @LockOwner = 'Transaction', @LockTimeout = 15000",
 		);
 		const classes = (await classesOf(courseId, q)).filter(
 			(k) => k.class_rule && !k.started && (!programId || k.program_id === programId),
 		);
-		let courseApproved = classes[0]?.course_approved ?? 0;
 		for (const k of classes) {
-			const room = roomOf({ ...k, course_approved: courseApproved });
+			const room = roomOf(k);
 			if (!room) continue;
 			const r = await q()
 				.input('course_id', sql.VarChar(20), courseId)
 				.input('program_id', sql.VarChar(20), k.program_id)
 				.input('room', sql.Int, Number.isFinite(room) ? room : 100000)
 				.input('actor_id', sql.VarChar(20), actorId).query(`
-          DECLARE @t_start DATE, @t_created DATETIME;
-          SELECT @t_start = start_date, @t_created = created_at FROM courses WHERE id = @course_id;
           DECLARE @picked TABLE (id VARCHAR(20));
           INSERT INTO @picked (id)
           SELECT TOP (@room) e.id
           FROM course_enrollments e
           JOIN courses c ON c.id = e.course_id
-          JOIN training_programs tp ON tp.id = e.program_id
-          WHERE e.program_id = @program_id AND e.course_id <> @course_id
+          WHERE e.program_id = @program_id AND e.status = 'waitlisted'
             AND ${APPLIES_SQL('c')} AND c.status <> 'cancelled'
-            AND CASE WHEN c.start_date IS NOT NULL AND @t_start IS NOT NULL
-                     THEN CASE WHEN c.start_date < @t_start THEN 1 ELSE 0 END
-                     ELSE CASE WHEN c.created_at < @t_created THEN 1 ELSE 0 END END = 1
-            AND (e.status = 'waitlisted'
-                 OR (e.status = 'approved' AND NOT ${NOT_STARTED_SQL('c')}
-                     AND ${countSql('c', 'e.program_id', 'approved')} < ISNULL(tp.min_capacity, 1)
-                     AND NOT EXISTS (SELECT 1 FROM attendance a WHERE a.enrollment_id = e.id)))
             AND NOT EXISTS (SELECT 1 FROM course_enrollments d
-                            WHERE d.course_id = @course_id AND d.trainee_id = e.trainee_id AND d.program_id = @program_id)
-          ORDER BY c.start_date, c.created_at, e.decided_at, e.registered_at, e.id;
+                            WHERE d.course_id = @course_id AND d.trainee_id = e.trainee_id
+                              AND d.program_id = @program_id AND d.id <> e.id)
+          ORDER BY e.decided_at, e.registered_at, e.id;
           UPDATE course_enrollments
           SET course_id = @course_id, status = 'approved', updated_at = GETDATE(), updated_by = @actor_id
           WHERE id IN (SELECT id FROM @picked);
           SELECT id FROM @picked;`);
 			const ids = r.recordset.map((x) => x.id);
-			courseApproved += ids.length;
+			if (ids.length) added.push([k.program_id, ids.length]);
 			moved.push(...ids);
 		}
 		await tx.commit();
@@ -201,43 +182,148 @@ const carryOver = async (courseId, actorId, { programId = null } = {}) => {
 	if (moved.length) {
 		broadcast('update', { entity: 'course' });
 		broadcast('update', { entity: 'course_enrollment' });
-		await mailTrainees(
+		mailTrainees(
 			moved,
-			(name) => `Hồ sơ của bạn đã được chuyển sang ${name}`,
-			'Lớp bạn đăng ký ở khóa trước đã đủ người hoặc chưa mở được — hồ sơ được giữ và chuyển sang khóa này.',
-		).catch((err) => logger.error('[course-class] mail failed:', err.message));
+			(r) => `Bạn đã được xếp vào lớp ${r.program_name ?? ''} — ${r.course_name}`,
+			'Lớp đã có chỗ — bạn được chuyển từ danh sách chờ vào lớp. Lịch học sẽ được thông báo khi cán bộ xếp lịch.',
+		);
+		for (const [programId, n] of added) await notifyIfReady(courseId, programId, n);
 	}
 	return moved;
 };
 
 /**
- * Hồ sơ vừa vào danh sách chờ ở khóa sourceId ⇒ nếu đã có khóa ĐTLT sau (chưa
- * khai giảng, cùng chương trình) còn chỗ thì chuyển sang luôn.
+ * Hồ sơ vừa vào danh sách chờ ⇒ nếu có khóa khác (chưa khai giảng, cùng chương
+ * trình) còn chỗ thì chuyển sang luôn — khóa khai giảng sớm hơn được ưu tiên.
  */
-const forward = async (sourceId, programId, actorId) => {
+const placeWaitlisted = async (sourceId, programId, actorId) => {
 	const pool = await getPool();
 	const targets = (
-		await pool.request().input('source_id', sql.VarChar(20), sourceId).input('program_id', sql.VarChar(20), programId)
-			.query(`
-      SELECT t.id FROM courses s
-      JOIN courses t ON t.id <> s.id AND ${APPLIES_SQL('t')} AND t.status <> 'cancelled' AND ${NOT_STARTED_SQL('t')}
+		await pool
+			.request()
+			.input('source_id', sql.VarChar(20), sourceId)
+			.input('program_id', sql.VarChar(20), programId).query(`
+      SELECT t.id FROM courses t
       JOIN course_programs cp ON cp.course_id = t.id AND cp.program_id = @program_id
-      WHERE s.id = @source_id
-        AND CASE WHEN s.start_date IS NOT NULL AND t.start_date IS NOT NULL
-                 THEN CASE WHEN s.start_date < t.start_date THEN 1 ELSE 0 END
-                 ELSE CASE WHEN s.created_at < t.created_at THEN 1 ELSE 0 END END = 1
-      ORDER BY ISNULL(t.start_date, '9999-12-31'), t.created_at`)
+      WHERE t.id <> @source_id AND ${APPLIES_SQL('t')} AND t.status <> 'cancelled' AND ${NOT_STARTED_SQL('cp', 't')}
+      ORDER BY ISNULL(COALESCE(cp.start_date, t.start_date), '9999-12-31'), t.created_at`)
 	).recordset;
 	const moved = [];
-	for (const t of targets) moved.push(...(await carryOver(t.id, actorId, { programId })));
+	for (const t of targets) moved.push(...(await fillFromWaitlist(t.id, actorId, { programId })));
 	return moved;
 };
 
-/** Sau khi tạo / sửa khóa: gọi người chờ vào lớp còn chỗ, rồi nhận hồ sơ từ khóa trước. */
+/** Sau khi tạo / sửa khóa: lớp còn chỗ thì nhận người từ danh sách chờ của chương trình. */
 const refreshCourse = async (course, actorId) => {
 	if (!appliesTo(course) || course.status === 'cancelled') return;
-	for (const programId of course.program_ids ?? []) await promote(course.id, programId, actorId);
-	await carryOver(course.id, actorId);
+	await fillFromWaitlist(course.id, actorId);
+};
+
+const todayVN = () => new Date(Date.now() + 7 * 3600000).toISOString().slice(0, 10);
+const fmtVN = (d) =>
+	d
+		? String(d instanceof Date ? d.toISOString() : d)
+				.slice(0, 10)
+				.split('-')
+				.reverse()
+				.join('/')
+		: '';
+
+/**
+ * Gợi ý ngày học của lớp (utils/classDates): thời lượng chương trình + tổng tiết các
+ * bài, ngày chuẩn bị và ngày lễ lấy ở Cấu hình hệ thống (tab Đào tạo).
+ */
+const suggestDates = async (courseId, programId) => {
+	const pool = await getPool();
+	const p = (
+		await pool
+			.request()
+			.input('course_id', sql.VarChar(20), courseId)
+			.input('program_id', sql.VarChar(20), programId).query(`
+      SELECT tp.duration_value, tp.duration_unit,
+             COALESCE((SELECT SUM(ISNULL(pl.theory_hours, 0) + ISNULL(pl.practice_hours, 0))
+                       FROM lesson_programs lp JOIN program_lessons pl ON pl.id = lp.lesson_id AND pl.is_active = 1
+                       WHERE lp.program_id = tp.id),
+                      ISNULL(tp.theory_hours, 0) + ISNULL(tp.practice_hours, 0)) AS total_hours
+      FROM course_programs cp JOIN training_programs tp ON tp.id = cp.program_id
+      WHERE cp.course_id = @course_id AND cp.program_id = @program_id`)
+	).recordset[0];
+	if (!p) throw httpError(404, 'Không tìm thấy lớp của chương trình này trong khóa.');
+	return suggestClassDates({
+		today: todayVN(),
+		prepDays: Number(await systemSettingService.getValue('TRAINING_CLASS_PREP_DAYS', '7')),
+		durationValue: p.duration_value == null ? null : Number(p.duration_value),
+		durationUnit: p.duration_unit,
+		totalHours: p.total_hours,
+		holidays: await systemSettingService.getValue('TRAINING_HOLIDAYS', ''),
+	});
+};
+
+// Ngày khóa = sớm nhất → muộn nhất của các lớp đã đặt ngày (lớp chưa đặt thì giữ ngày khóa).
+const syncCourseDates = (req) =>
+	req.query(`
+    UPDATE c SET start_date = x.s, end_date = x.e, updated_at = GETDATE()
+    FROM courses c
+    CROSS APPLY (SELECT MIN(start_date) AS s, MAX(end_date) AS e FROM course_programs WHERE course_id = c.id) x
+    WHERE c.id = @course_id AND x.s IS NOT NULL`);
+
+const datesInput = (req, { start_date = null, end_date = null }) => {
+	if (start_date && end_date && end_date < start_date)
+		throw httpError(400, 'Ngày kết thúc phải sau ngày bắt đầu.');
+	return req
+		.input('start_date', sql.Date, start_date || null)
+		.input('end_date', sql.Date, end_date || null);
+};
+
+/** Đặt / sửa ngày học của lớp, rồi tính lại ngày khóa. */
+const setClassDates = async (courseId, programId, dates, actorId) => {
+	const k = await classOf(courseId, programId);
+	if (!k?.class_rule) throw httpError(404, 'Không tìm thấy lớp của chương trình này trong khóa.');
+	const pool = await getPool();
+	const req = datesInput(pool.request(), dates)
+		.input('course_id', sql.VarChar(20), courseId)
+		.input('program_id', sql.VarChar(20), programId)
+		.input('actor_id', sql.VarChar(20), actorId);
+	await req.query(`
+      UPDATE course_programs SET start_date = @start_date, end_date = @end_date, updated_at = GETDATE(), updated_by = @actor_id
+      WHERE course_id = @course_id AND program_id = @program_id`);
+	await syncCourseDates(pool.request().input('course_id', sql.VarChar(20), courseId));
+	broadcast('update', { entity: 'course' });
+	return { start_date: dates.start_date || null, end_date: dates.end_date || null };
+};
+
+/** Cán bộ bấm "Mở lớp": lớp phải đủ sĩ số tối thiểu; kèm ngày học (gợi ý sẵn ở giao diện). */
+const openClass = async (courseId, programId, actorId, dates = {}) => {
+	const k = await classOf(courseId, programId);
+	if (!k || !k.class_rule)
+		throw httpError(404, 'Không tìm thấy lớp của chương trình này trong khóa.');
+	if (k.class_opened_at) throw httpError(400, 'Lớp đã mở rồi.');
+	if (k.class_approved < k.class_min)
+		throw httpError(
+			400,
+			`Lớp chưa đủ sĩ số tối thiểu (${k.class_approved}/${k.class_min} học viên đã duyệt).`,
+		);
+	const pool = await getPool();
+	const r = await datesInput(pool.request(), dates)
+		.input('course_id', sql.VarChar(20), courseId)
+		.input('program_id', sql.VarChar(20), programId)
+		.input('actor_id', sql.VarChar(20), actorId).query(`
+      UPDATE course_programs
+      SET opened_at = GETDATE(), opened_by = @actor_id, updated_at = GETDATE(), updated_by = @actor_id,
+          start_date = COALESCE(@start_date, start_date), end_date = COALESCE(@end_date, end_date)
+      WHERE course_id = @course_id AND program_id = @program_id AND opened_at IS NULL;
+      SELECT id FROM course_enrollments WHERE course_id = @course_id AND program_id = @program_id AND status = 'approved';`);
+	await syncCourseDates(pool.request().input('course_id', sql.VarChar(20), courseId));
+	broadcast('update', { entity: 'course' });
+	const when = dates.start_date
+		? ` Thời gian học: ${fmtVN(dates.start_date)}${dates.end_date ? ` → ${fmtVN(dates.end_date)}` : ''}.`
+		: '';
+	mailTrainees(
+		r.recordset.map((x) => x.id),
+		(t) => `Lớp ${t.program_name ?? ''} — ${t.course_name} đã mở`,
+		`Lớp học của bạn đã đủ sĩ số và được mở.${when} Lịch từng buổi sẽ được thông báo khi cán bộ xếp lịch.`,
+	);
+	return { opened: true, trainees: r.recordset.length };
 };
 
 /**
@@ -260,26 +346,31 @@ const assertClassOpen = async (courseId, subjectId) => {
 	const all = r.recordset;
 	if (!all.length || !all[0].class_rule) return;
 	const relevant = all.some((k) => k.has_lesson) ? all.filter((k) => k.has_lesson) : all;
-	if (relevant.some((k) => k.class_approved >= k.class_min)) return;
+	if (relevant.some((k) => k.class_opened_at)) return;
 	const list = relevant
 		.slice(0, 3)
-		.map((k) => `${k.program_code ?? k.program_name} mới có ${k.class_approved}/${k.class_min}`)
+		.map((k) => `${k.program_code ?? k.program_name} ${k.class_approved}/${k.class_min}`)
 		.join('; ');
 	throw httpError(
 		400,
-		`Lớp chưa mở — chưa đủ sĩ số tối thiểu (${list}${relevant.length > 3 ? '; …' : ''}). Đủ học viên mới xếp lịch học được.`,
+		`Lớp chưa mở (${list}${relevant.length > 3 ? '; …' : ''}). Đủ sĩ số tối thiểu thì bấm "Mở lớp" ở tab Học viên rồi mới xếp lịch.`,
 	);
 };
 
 module.exports = {
 	appliesTo,
+	APPLIES_SQL,
 	CLASS_COLUMNS,
+	WAITLIST_POSITION_SQL,
 	roomOf,
+	classStatus,
 	statusOnApprove,
-	notifyIfOpened,
-	promote,
-	carryOver,
-	forward,
+	notifyIfReady,
+	fillFromWaitlist,
+	placeWaitlisted,
 	refreshCourse,
+	openClass,
+	suggestDates,
+	setClassDates,
 	assertClassOpen,
 };

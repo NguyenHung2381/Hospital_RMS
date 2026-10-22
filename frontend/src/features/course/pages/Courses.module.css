@@ -139,10 +139,6 @@
 	font-size: var(--font-size-xs);
 	color: var(--color-gray-600);
 }
-.capacityFull {
-	color: #791f1f;
-	font-weight: var(--font-weight-bold);
-}
 
 /* ── ACTION BUTTONS ──────────────────────── */
 .actionBtns {
@@ -1013,78 +1009,10 @@
 .enrClear:hover {
 	text-decoration: underline;
 }
-.progChips {
-	display: flex;
-	flex-wrap: wrap;
-	gap: 6px;
-}
-.progChip {
-	display: inline-flex;
-	align-items: center;
-	gap: 8px;
-	max-width: 340px;
-	padding: 5px 6px 5px 12px;
-	border: 1px solid var(--color-gray-200);
-	border-radius: var(--radius-full);
-	background: var(--color-white);
-	color: var(--color-gray-700);
-	font-family: var(--font-body);
-	font-size: var(--font-size-compact);
-	cursor: pointer;
-	transition:
-		border-color var(--transition-fast),
-		background var(--transition-fast);
-}
-.progChip:hover {
-	border-color: var(--color-primary);
-}
-.progChipActive {
-	border-color: var(--color-primary);
-	background: #e1f5ea;
-	color: #085028;
-}
-.progChipEmpty {
-	color: var(--color-gray-400);
-	border-style: dashed;
-}
-.progChipLabel {
-	min-width: 0;
+.enrProgramSelect {
+	max-width: 360px;
 	overflow: hidden;
 	text-overflow: ellipsis;
-	white-space: nowrap;
-}
-.progChipLabel b {
-	font-weight: var(--font-weight-semibold);
-}
-.progChipCount {
-	flex-shrink: 0;
-	min-width: 22px;
-	padding: 1px 7px;
-	border-radius: var(--radius-full);
-	background: var(--color-gray-100);
-	color: var(--color-gray-600);
-	font-size: var(--font-size-xs);
-	font-weight: var(--font-weight-semibold);
-	text-align: center;
-}
-.progChipActive .progChipCount {
-	background: #085028;
-	color: var(--color-white);
-}
-/* Lớp ĐTLT: chưa đủ sĩ số tối thiểu (vàng) / đã mở lớp (xanh) */
-.progChipClass {
-	flex-shrink: 0;
-	padding: 1px 7px;
-	border-radius: var(--radius-full);
-	background: #faeeda;
-	color: #854f0b;
-	font-size: var(--font-size-xs);
-	font-weight: var(--font-weight-semibold);
-	white-space: nowrap;
-}
-.progChipClassOpen {
-	background: #e1f5ea;
-	color: #085028;
 }
 .classNote {
 	padding: 6px 10px;
@@ -1099,23 +1027,33 @@
 	background: #e1f5ea;
 	color: #085028;
 }
-.progChipMore {
-	border: none;
-	background: none;
-	padding: 5px 6px;
-	color: var(--color-gray-500);
-	font-family: var(--font-body);
-	font-size: var(--font-size-compact);
-	cursor: pointer;
+.inlineField {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	font-size: var(--font-size-xs);
+	color: var(--color-gray-600);
+	white-space: nowrap;
 }
-.progChipMore:hover {
-	color: var(--color-primary-dark);
+.classDateHint {
+	margin-top: var(--space-3);
+	font-size: var(--font-size-xs);
+	color: var(--color-gray-600);
+}
+.hintWarn {
+	margin-top: var(--space-1);
+	color: #791f1f;
+}
+.classOpenBtn {
+	composes: btn sm primary from '../../../shared/components/Button/Button.module.css';
+	margin-left: var(--space-3);
+	vertical-align: middle;
 }
 @media (max-width: 640px) {
 	.enrFilters {
 		padding: var(--space-3) var(--space-4);
 	}
-	.progChip {
+	.enrProgramSelect {
 		max-width: 100%;
 	}
 }

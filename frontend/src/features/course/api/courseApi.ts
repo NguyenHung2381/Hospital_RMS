@@ -2,7 +2,6 @@ import { apiClient } from '../../../shared/api/axios';
 import { getCheckInDeviceId } from '../../../shared/utils/storage';
 import type {
 	AttendanceRow,
-	BatchProgram,
 	Certificate,
 	ClassSession,
 	Course,
@@ -30,6 +29,7 @@ import type {
 	CourseLesson,
 	LessonLecturersInput,
 } from '../types/course.type';
+import { CLASS_TYPES } from '../types/course.type';
 
 export type DocumentSource = { type: 'file'; file: File } | { type: 'link'; external_url: string };
 
@@ -40,12 +40,12 @@ const toPayload = (form: CourseFormData) => ({
 	training_type_id: form.training_type_id || null,
 	batch_no: form.batch_no ? Number(form.batch_no) : null,
 	is_rolling: form.is_rolling,
-	auto_batch: form.auto_batch,
-	start_date: form.start_date || null,
-	end_date: form.end_date || null,
+	// Khóa ĐTLT / CTCV: ngày khóa tự tính từ ngày các lớp — không gửi để khỏi ghi đè.
+	...(CLASS_TYPES.has(form.training_type_id)
+		? {}
+		: { start_date: form.start_date || null, end_date: form.end_date || null }),
 	enrollment_start_date: form.enrollment_start_date || null,
 	enrollment_end_date: form.enrollment_end_date || null,
-	capacity: form.capacity ? Number(form.capacity) : null,
 	status: form.status,
 	is_public_registration: form.is_public_registration,
 	description: form.description || null,
@@ -60,7 +60,6 @@ export interface CourseListParams {
 	program_id?: string;
 	status?: string;
 	training_type_id?: string;
-	parent_course_id?: string;
 }
 
 // Không truyền params → giữ hành vi cũ: lấy toàn bộ khóa học.
@@ -72,12 +71,6 @@ export const getCourses = (params?: CourseListParams) => {
 	return apiClient.get<CourseListResponse>(`/courses?${new URLSearchParams(entries).toString()}`);
 };
 export const getCourse = (id: string) => apiClient.get<Course>(`/courses/${id}`);
-// Khóa tuyển sinh theo đợt: tổng quan từng chương trình + lập đợt ngay
-export const getBatchOverview = (id: string) => apiClient.get<BatchProgram[]>(`/courses/${id}/batches`);
-export const formBatchNow = (id: string, programId: string) =>
-	apiClient.post<{ moved: unknown[]; formed: { id: string; name: string }[] }>(`/courses/${id}/batches`, {
-		program_id: programId,
-	});
 export const createCourse = (form: CourseFormData) => apiClient.post<Course>('/courses', toPayload(form));
 export const updateCourse = (id: string, form: CourseFormData) =>
 	apiClient.put<Course>(`/courses/${id}`, toPayload(form));
@@ -86,6 +79,27 @@ export const deleteCourse = (id: string) => apiClient.delete<null>(`/courses/${i
 // ─── Chương trình đào tạo áp dụng (N:N, gán qua program_ids của form khóa học) ──
 export const getProgramLinks = (courseId: string) =>
 	apiClient.get<CourseProgramLink[]>(`/courses/${courseId}/programs`);
+type ClassDates = { start_date: string | null; end_date: string | null };
+/** Lớp (chương trình trong khóa ĐTLT / CTCV) đủ sĩ số tối thiểu ⇒ cán bộ mở lớp, kèm ngày học. */
+export const openClass = (courseId: string, programId: string, dates: ClassDates) =>
+	apiClient.post<{ opened: boolean; trainees: number }>(`/courses/${courseId}/programs/open`, {
+		program_id: programId,
+		...dates,
+	});
+export const setClassDates = (courseId: string, programId: string, dates: ClassDates) =>
+	apiClient.put<ClassDates>(`/courses/${courseId}/programs/dates`, { program_id: programId, ...dates });
+/** Gợi ý ngày học (backend utils/classDates.js). */
+export interface ClassDateSuggestion {
+	start_date: string;
+	end_date: string | null;
+	workdays: number | null;
+	needed_days: number | null;
+	warning: string | null;
+}
+export const suggestClassDates = (courseId: string, programId: string) =>
+	apiClient.get<ClassDateSuggestion>(
+		`/courses/${courseId}/programs/suggest-dates?program_id=${encodeURIComponent(programId)}`,
+	);
 
 // ─── Enrollments ──────────────────────────────────────────────────────────
 export const getEnrollments = (courseId: string) =>
@@ -93,12 +107,12 @@ export const getEnrollments = (courseId: string) =>
 /** programId: chương trình học viên chọn — bài học của chương trình tự gắn theo. */
 /** auto_warning: khóa GPHN — ghi danh xong nhưng chưa tự xếp được vòng (lý do). */
 /** Ghi danh hộ được duyệt luôn — đủ sĩ số thì status = 'waitlisted'. */
-/** batch_name / waitlist_position: khóa tuyển sinh theo đợt — đã vào đợt nào / đang chờ ở vị trí mấy. */
+/** moved_to: lớp đầy, hồ sơ được chuyển sang khóa khác còn chỗ · waitlist_position: vị trí trong danh sách chờ của chương trình. */
 type RegisterResult = {
 	id: string;
 	status: EnrollmentStatus;
 	auto_warning: string | null;
-	batch_name?: string | null;
+	moved_to?: string | null;
 	waitlist_position?: number | null;
 };
 export const registerTrainee = (courseId: string, traineeId: string, programId?: string) =>

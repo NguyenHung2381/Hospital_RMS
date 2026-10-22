@@ -390,6 +390,8 @@ export default function MyCourseDetail() {
 																<div className={styles.itemTitle}>{p.title}</div>
 																<div className={styles.meta}>
 																	<span>Thời gian làm bài: {p.duration_minutes} phút</span>
+																	{p.purpose === 'entrance' && <Badge tone='blue'>Kiểm tra đầu vào</Badge>}
+																	{p.retake_no && <Badge tone='amber'>Thi lại lần {p.retake_no - 1}</Badge>}
 																	{att && <Badge tone={att.tone}>{att.label}</Badge>}
 																</div>
 															</div>

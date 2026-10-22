@@ -3,6 +3,7 @@ const { remember } = require('../../utils/cache');
 const traineeService = require('../training/trainees/traineeService');
 const courseEnrollmentService = require('../training/courses/courseEnrollmentService');
 const courseService = require('../training/courses/courseService');
+const programClassService = require('../training/courses/programClassService');
 const researchRoundService = require('../rounds/roundService');
 const topicService = require('../topics/topicService');
 const topicMemberService = require('../topics/topicMemberService');
@@ -27,25 +28,15 @@ const getOpenCourses = async () => {
 	const pool = await getPool();
 	const result = await pool.request().query(`
     SELECT c.id, c.name, c.description, c.start_date, c.end_date, c.enrollment_start_date, c.enrollment_end_date,
-           c.capacity, c.auto_batch,
            (SELECT STRING_AGG(tp.name, ', ') FROM course_programs cp JOIN training_programs tp ON tp.id = cp.program_id WHERE cp.course_id = c.id) AS program_name,
            (SELECT tp.id, tp.code, tp.name, tp.description, tp.duration, tp.target_audience,
                    COALESCE((SELECT STRING_AGG(t2.name, ', ') WITHIN GROUP (ORDER BY x.display_order)
                                FROM program_trainee_types x JOIN trainee_types t2 ON t2.id = x.trainee_type_id
                               WHERE x.program_id = tp.id), tt.name) AS trainee_type_name,
                    tp.theory_hours, tp.practice_hours, tp.tuition_fee,
-                   -- Khóa tuyển sinh theo đợt: chỗ trống ở đợt sắp học (9999 = không giới hạn),
-                   -- số người đang chờ đợt sau, sĩ số tối thiểu để mở đợt.
-                   CASE WHEN c.auto_batch = 1 THEN (
-                     SELECT SUM(CASE WHEN b.capacity IS NULL THEN 9999 ELSE b.capacity - a.n END)
-                     FROM courses b JOIN course_programs bp ON bp.course_id = b.id AND bp.program_id = tp.id
-                     OUTER APPLY (SELECT COUNT(*) AS n FROM course_enrollments e
-                                  WHERE e.course_id = b.id AND e.status = 'approved') a
-                     WHERE b.parent_course_id = c.id AND b.status <> 'cancelled'
-                       AND (b.start_date IS NULL OR b.start_date > CAST(DATEADD(HOUR, 7, GETUTCDATE()) AS DATE))) END AS batch_open_seats,
-                   CASE WHEN c.auto_batch = 1 THEN (SELECT COUNT(*) FROM course_enrollments e
-                     WHERE e.course_id = c.id AND e.program_id = tp.id AND e.status = 'waitlisted') END AS batch_waiting,
-                   CASE WHEN c.auto_batch = 1 THEN ISNULL(tp.min_capacity, 1) END AS batch_min,
+                   -- Khóa ĐTLT / CTCV: sĩ số lớp (programClassService) — báo trước khi gửi đăng ký
+                   -- là vào lớp hay vào danh sách chờ khóa sau.
+                   ${programClassService.CLASS_COLUMNS},
                    (SELECT COUNT(*) FROM lesson_programs lp JOIN program_lessons pl ON pl.id = lp.lesson_id AND pl.is_active = 1
                     WHERE lp.program_id = tp.id) AS lesson_count,
                    -- Nội dung: bài lý thuyết / vòng thực hành GPHN (khoa + thời lượng) theo thứ tự

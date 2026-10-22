@@ -8,7 +8,6 @@ import { formatDateOr } from '@/shared/utils';
 import { useRealtimeUpdate } from '../../../layouts/hooks/useRealtime';
 import { getCourse, updateCourse } from '../api/courseApi';
 import { AttendanceModal } from '../components/AttendanceModal';
-import { BatchesTab } from '../components/BatchesTab';
 import { CourseDocumentsTab } from '../components/CourseDocumentsTab';
 import { CourseFormModal } from '../components/CourseFormModal';
 import { EnrollmentsTab } from '../components/EnrollmentsTab';
@@ -20,7 +19,7 @@ import { DISPLAY_STATUS_CFG, type Course, type CourseFormData } from '../types/c
 import ProgramTags from '../components/ProgramTags';
 import styles from './Courses.module.css';
 
-type Step = DetailTab | 'batches';
+type Step = DetailTab;
 
 const STEPS: { key: Step; label: string }[] = [
 	{ key: 'enrollments', label: 'Học viên' },
@@ -28,11 +27,6 @@ const STEPS: { key: Step; label: string }[] = [
 	{ key: 'documents', label: 'Tài liệu' },
 	{ key: 'exams', label: 'Thi & Kiểm tra' },
 	{ key: 'results', label: 'Kết quả & Chứng chỉ' },
-];
-// Khóa tuyển sinh theo đợt: chỉ nhận đăng ký — lịch, tài liệu, thi, kết quả nằm ở từng đợt.
-const FRAME_STEPS: { key: Step; label: string }[] = [
-	{ key: 'enrollments', label: 'Học viên & danh sách chờ' },
-	{ key: 'batches', label: 'Các đợt' },
 ];
 
 const range = (from: string | null, to: string | null) =>
@@ -94,22 +88,26 @@ export default function CourseDetail() {
 		);
 	}
 
-	const steps = course?.auto_batch ? FRAME_STEPS : STEPS;
+	const steps = STEPS;
 	const tab = steps.find((s) => s.key === tabParam)?.key ?? 'enrollments';
 	const approved = d.enrollments.filter((e) => e.status === 'approved').length;
 	const waiting = d.enrollments.filter((e) => e.status === 'waitlisted').length;
 	const pending = d.enrollments.filter((e) => e.status === 'pending').length;
 	const issued = d.certificates.filter((c) => c.status === 'active').length;
+	// Khóa ĐTLT / CTCV: mỗi chương trình là 1 lớp — đếm lớp đã mở.
+	const classes = d.programLinks.filter((l) => l.class_rule);
+	const opened = classes.filter((l) => l.class_opened_at).length;
 	const stepMeta: Record<Step, { meta: string; done: boolean }> = {
-		enrollments: course?.auto_batch
-			? { meta: `${waiting} chờ đợt sau${pending ? ` · ${pending} chờ duyệt` : ''}`, done: false }
-			: {
-					meta: `${approved}${course?.capacity != null ? `/${course.capacity}` : ''} đã duyệt${pending ? ` · ${pending} chờ` : ''}`,
-					done: approved > 0,
-				},
-		batches: {
-			meta: `${course?.batch_count ?? 0} đợt · ${course?.family_count ?? 0} học viên`,
-			done: (course?.batch_count ?? 0) > 0,
+		enrollments: {
+			meta: [
+				`${approved} đã duyệt`,
+				pending ? `${pending} chờ duyệt` : null,
+				classes.length ? `${opened}/${classes.length} lớp đã mở` : null,
+				waiting ? `${waiting} chờ khóa sau` : null,
+			]
+				.filter(Boolean)
+				.join(' · '),
+			done: classes.length ? opened > 0 : approved > 0,
 		},
 		sessions: {
 			meta: `${d.sessions.length} buổi · ${d.assignments.length} giảng viên`,
@@ -143,14 +141,6 @@ export default function CourseDetail() {
 			>
 				<ChevLSvg /> Danh sách khóa học
 			</button>
-			{course?.parent_course_id && (
-				<button
-					className={styles.backLink}
-					onClick={() => navigate(`/admin/courses/${course.parent_course_id}?tab=batches`)}
-				>
-					<ChevLSvg /> Khóa tuyển sinh: {course.parent_course_name}
-				</button>
-			)}
 
 			{!course ? (
 				<InlineLoading />
@@ -169,21 +159,13 @@ export default function CourseDetail() {
 								)}
 							</Info>
 							<Info label='Thời gian học'>
-								{course.auto_batch ? 'Theo từng đợt' : (range(course.start_date, course.end_date) ?? 'Chưa đặt')}
+								{range(course.start_date, course.end_date) ?? 'Chưa đặt'}
 							</Info>
 							<Info label='Đăng ký'>
-								{course.auto_batch ? (
-									'Liên tục — đủ sĩ số thì lập đợt'
-								) : course.parent_course_id ? (
-									'Xếp từ khóa tuyển sinh'
-								) : (
-									<>
-										{range(course.enrollment_start_date, course.enrollment_end_date) ?? 'Luôn mở'} ·{' '}
-										<span style={{ color: course.enrollment_open ? '#085028' : '#791f1f' }}>
-											{course.enrollment_open ? 'đang mở' : 'đã đóng'}
-										</span>
-									</>
-								)}
+								{range(course.enrollment_start_date, course.enrollment_end_date) ?? 'Luôn mở'} ·{' '}
+								<span style={{ color: course.enrollment_open ? '#085028' : '#791f1f' }}>
+									{course.enrollment_open ? 'đang mở' : 'đã đóng'}
+								</span>
 							</Info>
 							<Info label='Chế độ'>{course.is_public_registration ? 'Công khai' : 'Nội bộ'}</Info>
 							<Info label='Hình thức'>{course.training_form_name ?? '—'}</Info>
@@ -234,14 +216,6 @@ export default function CourseDetail() {
 								onDecide={d.decideEnrollment}
 								onDecideBulk={d.decideEnrollmentsBulk}
 								onRemove={d.removeEnrollment}
-							/>
-						) : tab === 'batches' ? (
-							<BatchesTab
-								courseId={id}
-								onChanged={() => {
-									void loadCourse();
-									void reload();
-								}}
 							/>
 						) : tab === 'sessions' ? (
 							<SessionsTab d={d} />

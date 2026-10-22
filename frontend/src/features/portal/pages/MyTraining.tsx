@@ -21,6 +21,9 @@ import { EXAM_PART_LABEL, type ExamAttemptDetail } from '../../exam/types/exam.t
 import { Modal } from '@/shared/components/Modal';
 import { teachingApi, type PendingGrading } from '../api/teachingApi';
 import { MyTraineeDocumentsCard } from '../components/MyTraineeDocumentsCard';
+import { TraineeScheduleTab } from '../../trainee/components/TraineeScheduleTab';
+import { TraineeAttendanceTab } from '../../trainee/components/TraineeAttendanceTab';
+import { TraineeResultsTab } from '../../trainee/components/TraineeResultsTab';
 import styles from './SelfService.module.css';
 import tbl from '@/shared/components/Table/Table.module.css';
 import { useClientPaging } from '@/shared/hooks/useClientPaging';
@@ -33,6 +36,44 @@ const range = (a: string | null, b: string | null) =>
 	a || b ? `${formatDateVN(a) || '…'} – ${formatDateVN(b) || '…'}` : 'Chưa xếp lịch';
 const time = (t: string | null) => (t ? t.slice(0, 5) : '');
 const num = (v: number | null) => (v == null ? '—' : v);
+
+/** Lịch học / điểm danh / kết quả của chính mình — dùng lại các tab hồ sơ học viên (traineeId bỏ trống = /me). */
+function MyStudyCard() {
+	const [tab, setTab] = useState<'schedule' | 'attendance' | 'results'>('schedule');
+	return (
+		<Card>
+			<div
+				className={styles.tabs}
+				role='tablist'
+			>
+				{(
+					[
+						['schedule', 'Lịch học', <CalendarSvg key='i' />],
+						['attendance', 'Điểm danh', <ClockSvg key='i' />],
+						['results', 'Kết quả & điểm', <LayersSvg key='i' />],
+					] as const
+				).map(([key, label, icon]) => (
+					<button
+						key={key}
+						type='button'
+						role='tab'
+						aria-selected={tab === key}
+						className={`${styles.tab} ${tab === key ? styles.tabActive : ''}`}
+						onClick={() => setTab(key)}
+					>
+						{icon}
+						{label}
+					</button>
+				))}
+			</div>
+			<Card.Body>
+				{tab === 'schedule' && <TraineeScheduleTab />}
+				{tab === 'attendance' && <TraineeAttendanceTab />}
+				{tab === 'results' && <TraineeResultsTab />}
+			</Card.Body>
+		</Card>
+	);
+}
 
 function EnrolledItem({ c }: { c: MyEnrolledCourse }) {
 	const navigate = useNavigate();
@@ -57,6 +98,7 @@ function EnrolledItem({ c }: { c: MyEnrolledCourse }) {
 				<div className={styles.badges}>
 					{c.open_exam_count > 0 && <Badge tone='red'>{c.open_exam_count} bài kiểm tra đang mở</Badge>}
 					{c.enrollment_status !== 'approved' && cfgBadge(ENROLLMENT_STATUS_CFG[c.enrollment_status])}
+					{c.waitlist_position != null && <Badge tone='amber'>Chờ khóa sau · vị trí {c.waitlist_position}</Badge>}
 					{cfgBadge(DISPLAY_STATUS_CFG[c.display_status])}
 				</div>
 			</div>
@@ -244,12 +286,6 @@ function OpenCourseCard({ course: c, onOpen }: { course: OpenCourse; onOpen: () 
 						? `${c.programs.length} chương trình để chọn`
 						: (c.program_name ?? 'Chưa chia chương trình')}
 				</li>
-				{c.capacity != null && (
-					<li>
-						<UsersSvg />
-						Chỉ tiêu {c.capacity} học viên
-					</li>
-				)}
 				{left != null && left <= 7 && (
 					<li>
 						<ClockSvg />
@@ -574,6 +610,8 @@ export default function MyTraining() {
 							</Card.Body>
 						</Card>
 					)}
+
+					{showLearning && data.enrolled.some((c) => c.enrollment_status === 'approved') && <MyStudyCard />}
 
 					{showTeaching && data.teaching.length > 0 && (
 						<Card>

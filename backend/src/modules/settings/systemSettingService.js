@@ -37,6 +37,10 @@ const KEYS = [
 	'ATTENDANCE_MAX_ACCURACY_M',
 	// Thực hành GPHN — cảnh báo khi 1 người hướng dẫn kèm quá N học viên cùng lúc
 	'PRACTICE_MENTOR_MAX_TRAINEES',
+	// Lớp ĐTLT / CTCV — training/courses/programClassService.js, utils/classDates.js
+	'TRAINING_CLASS_PREP_DAYS',
+	'TRAINING_HOLIDAYS',
+	'TRAINING_ALLOW_MULTI_PROGRAM',
 	// Chấm điểm Lý thuyết + Thực hành — mặc định ở training/courses/gradeRules.js
 	'GRADE_THEORY_PASS_PCT',
 	'GRADE_PRACTICE_PASS_PCT',

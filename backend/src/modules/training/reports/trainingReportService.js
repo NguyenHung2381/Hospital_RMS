@@ -13,7 +13,7 @@ const COURSE_IN_YEAR = '(@year IS NULL OR YEAR(COALESCE(c.start_date, c.created_
 const courses = async (year) => {
 	const pool = await getPool();
 	const r = await pool.request().input('year', sql.Int, year).query(`
-    SELECT c.id, c.name, c.start_date, c.end_date, c.capacity,
+    SELECT c.id, c.name, c.start_date, c.end_date,
            ${COURSE_DISPLAY_STATUS} AS status,
            (SELECT STRING_AGG(tp.name, ', ') FROM course_programs cp
               JOIN training_programs tp ON tp.id = cp.program_id

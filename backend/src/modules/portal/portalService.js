@@ -8,6 +8,7 @@ const { getPool, sql } = require('../../config/db');
 const courseDocumentService = require('../training/courses/courseDocumentService');
 const courseEnrollmentService = require('../training/courses/courseEnrollmentService');
 const courseService = require('../training/courses/courseService');
+const programClassService = require('../training/courses/programClassService');
 const publicPortalService = require('../public/publicPortalService');
 const examService = require('../training/exams/examService');
 const trainingProgramService = require('../training/programs/trainingProgramService');
@@ -31,6 +32,7 @@ const getMyTraining = async (actor) => {
     SELECT c.id, c.name, c.start_date, c.end_date, c.status,
            c.enrollment_start_date, c.enrollment_end_date,
            e.id AS enrollment_id, e.status AS enrollment_status, e.registered_at, tp.name AS program_name,
+           CASE WHEN e.status = 'waitlisted' THEN ${programClassService.WAITLIST_POSITION_SQL('e')} END AS waitlist_position,
            cert.cert_no, cert.issue_date AS cert_issue_date, cert.status AS cert_status,
            (SELECT COUNT(*) FROM class_sessions s WHERE s.course_id = c.id) AS session_count,
            (SELECT COUNT(*) FROM attendance a WHERE a.enrollment_id = e.id AND a.status IN ('present', 'late')) AS attended_count,

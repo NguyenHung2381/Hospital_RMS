@@ -12,7 +12,9 @@ install(async (text) => {
 	if (/FROM exam_papers p\s+JOIN course_enrollments/.test(text))
 		return [{ paper_id: 'DT1', status: 'published', duration_minutes: 30, enrollment_id: 'DK1' }];
 	if (/UPDATE exam_attempts SET status = 'submitted'/.test(text)) return claimRow ? [claimRow] : [];
-	if (/FROM exam_paper_questions epq JOIN question_bank/.test(text))
+	// Lượt làm bài cũ (chưa lưu question_ids) ⇒ lấy câu của đề, rồi nạp câu từ ngân hàng
+	if (/SELECT question_id FROM exam_paper_questions/.test(text)) return [{ question_id: 'Q1' }];
+	if (/FROM question_bank q WHERE q\.id IN/.test(text))
 		return [{ id: 'Q1', question_type: 'single', correct_option: 'A', points: 10 }];
 	if (/INSERT INTO exam_answers/.test(text)) writes.push('answer');
 	return [];

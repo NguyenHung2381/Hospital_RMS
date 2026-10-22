@@ -13,7 +13,6 @@ const programClassService = require('./programClassService');
 // 2026-09-20_drop_training_rounds.
 const isEnrollmentOpenRow = (c) => {
 	if (c.is_rolling) return true; // khóa mở liên tục (GPHN) — nhận học viên bất cứ lúc nào
-	if (c.auto_batch) return true; // khóa tuyển sinh theo đợt — đăng ký liên tục
 	if (!c.enrollment_start_date && !c.enrollment_end_date) return true; // chưa cấu hình = mở
 	const today = todayVN();
 	const afterStart = !c.enrollment_start_date || today >= new Date(c.enrollment_start_date);
@@ -40,8 +39,6 @@ const computeDisplayStatus = (c, enrollmentOpen) => {
 	if (c.status === 'cancelled') return 'cancelled';
 	// Khóa mở liên tục (GPHN): không có ngày khóa — học viên vào/ra theo lịch riêng.
 	if (c.is_rolling) return 'in_progress';
-	if (c.auto_batch) return 'enrolling'; // khóa tuyển sinh: luôn nhận đăng ký, lớp học ở các đợt
-	if (c.parent_course_id && !c.start_date) return 'awaiting_schedule'; // đợt vừa lập, chưa có lịch
 	const today = todayVN();
 	const startDate = c.start_date ? new Date(c.start_date) : null;
 	const endDate = c.end_date ? new Date(c.end_date) : null;
@@ -56,8 +53,6 @@ const VN_TODAY = 'CAST(DATEADD(HOUR, 7, GETUTCDATE()) AS DATE)';
 const COURSE_DISPLAY_STATUS = `CASE
     WHEN c.status = 'cancelled' THEN 'cancelled'
     WHEN c.is_rolling = 1 THEN 'in_progress'
-    WHEN c.auto_batch = 1 THEN 'enrolling'
-    WHEN c.parent_course_id IS NOT NULL AND c.start_date IS NULL THEN 'awaiting_schedule'
     WHEN c.end_date IS NOT NULL AND ${VN_TODAY} > c.end_date THEN 'completed'
     WHEN c.start_date IS NOT NULL AND ${VN_TODAY} >= c.start_date THEN 'in_progress'
     WHEN (c.enrollment_start_date IS NULL OR ${VN_TODAY} >= c.enrollment_start_date)
@@ -89,16 +84,10 @@ const courseSelect = `
          (SELECT COUNT(*) FROM course_enrollments WHERE course_id = c.id AND status = 'approved') AS approved_count,
          (SELECT COUNT(*) FROM course_enrollments WHERE course_id = c.id AND status = 'pending') AS pending_count,
          (SELECT COUNT(*) FROM course_enrollments WHERE course_id = c.id AND status = 'waitlisted') AS waitlisted_count,
-         (SELECT COUNT(*) FROM courses b WHERE b.parent_course_id = c.id) AS batch_count,
-         -- Tổng học viên toàn khóa tuyển sinh: đang chờ / chờ duyệt ở khóa + đã vào các đợt
-         (SELECT COUNT(*) FROM course_enrollments e WHERE e.status <> 'rejected'
-            AND (e.course_id = c.id OR e.course_id IN (SELECT b.id FROM courses b WHERE b.parent_course_id = c.id))) AS family_count,
-         pc.name AS parent_course_name,
          (SELECT STRING_AGG(tp.name, ', ') FROM course_programs cp JOIN training_programs tp ON tp.id = cp.program_id WHERE cp.course_id = c.id) AS program_names
   FROM courses c
   LEFT JOIN training_forms tf ON tf.id = c.training_form_id
   LEFT JOIN training_types tt ON tt.id = c.training_type_id
-  LEFT JOIN courses pc ON pc.id = c.parent_course_id
 `;
 
 // ─── Courses ──────────────────────────────────────────────────────────────
@@ -110,7 +99,6 @@ const getAll = async (
 		program_id = undefined,
 		status = undefined,
 		training_type_id = undefined,
-		parent_course_id = undefined,
 	} = {},
 	actor = null,
 ) => {
@@ -118,15 +106,6 @@ const getAll = async (
 	const pg = paging(page, limit, 100);
 	const where = ['1=1'];
 	const req = pool.request().input('offset', sql.Int, pg.offset).input('limit', sql.Int, pg.limit);
-	// Đợt của khóa tuyển sinh nằm trong chi tiết khóa đó — danh sách chính ẩn đi
-	// (trừ khi tìm theo tên, để gõ "Đợt 2" vẫn ra).
-	if (parent_course_id) {
-		where.push('c.parent_course_id = @parent_course_id');
-		req.input('parent_course_id', sql.VarChar(20), parent_course_id);
-	} else if (!search) {
-		where.push('c.parent_course_id IS NULL');
-	}
-
 	if (search) {
 		where.push('c.name LIKE @search');
 		req.input('search', sql.NVarChar, `%${search}%`);
@@ -203,12 +182,10 @@ const create = async (data, actorId) => {
 		.input('training_type_id', sql.VarChar(20), data.training_type_id || null)
 		.input('batch_no', sql.Int, data.batch_no || null)
 		.input('is_rolling', sql.Bit, data.is_rolling ? 1 : 0)
-		.input('auto_batch', sql.Bit, data.auto_batch ? 1 : 0)
 		.input('start_date', sql.Date, data.start_date || null)
 		.input('end_date', sql.Date, data.end_date || null)
 		.input('enrollment_start_date', sql.Date, data.enrollment_start_date || null)
 		.input('enrollment_end_date', sql.Date, data.enrollment_end_date || null)
-		.input('capacity', sql.Int, data.capacity || null)
 		.input('status', sql.VarChar(15), data.status || 'draft')
 		.input('is_public_registration', sql.Bit, data.is_public_registration ? 1 : 0)
 		.input('description', sql.NVarChar(sql.MAX), data.description || null)
@@ -217,15 +194,15 @@ const create = async (data, actorId) => {
       DECLARE @new_id VARCHAR(20);
       EXEC sp_gen_course_id @actor_id = @actor_id, @new_id = @new_id OUTPUT;
       EXEC sp_set_actor @actor_id;
-      INSERT INTO courses (id, name, training_form_id, training_type_id, batch_no, is_rolling, auto_batch, start_date, end_date, enrollment_start_date, enrollment_end_date, capacity, status, is_public_registration, description, prerequisites, objectives, created_by)
-      VALUES (@new_id, @name, @training_form_id, @training_type_id, @batch_no, @is_rolling, @auto_batch, @start_date, @end_date, @enrollment_start_date, @enrollment_end_date, @capacity, @status, @is_public_registration, @description, @prerequisites, @objectives, @actor_id);
+      INSERT INTO courses (id, name, training_form_id, training_type_id, batch_no, is_rolling, start_date, end_date, enrollment_start_date, enrollment_end_date, status, is_public_registration, description, prerequisites, objectives, created_by)
+      VALUES (@new_id, @name, @training_form_id, @training_type_id, @batch_no, @is_rolling, @start_date, @end_date, @enrollment_start_date, @enrollment_end_date, @status, @is_public_registration, @description, @prerequisites, @objectives, @actor_id);
       SELECT @new_id AS id;
     `);
 	const id = result.recordset[0].id;
 	if (Array.isArray(data.program_ids)) await setPrograms(id, data.program_ids, actorId);
 	broadcast('update', { entity: 'course' });
 	const saved = await getById(id);
-	// Khóa ĐTLT mới ⇒ nhận hồ sơ đang chờ ("lưu cho khóa sau") của khóa trước.
+	// Khóa ĐTLT / CTCV mới ⇒ nhận người trong danh sách chờ của chương trình.
 	await programClassService.refreshCourse(saved, actorId);
 	return programClassService.appliesTo(saved) ? getById(id) : saved;
 };
@@ -244,12 +221,10 @@ const update = async (id, data, actorId) => {
 		training_type_id: sql.VarChar(20),
 		batch_no: sql.Int,
 		is_rolling: sql.Bit,
-		auto_batch: sql.Bit,
 		start_date: sql.Date,
 		end_date: sql.Date,
 		enrollment_start_date: sql.Date,
 		enrollment_end_date: sql.Date,
-		capacity: sql.Int,
 		status: sql.VarChar(15),
 		is_public_registration: sql.Bit,
 		description: sql.NVarChar(sql.MAX),
@@ -275,11 +250,7 @@ const update = async (id, data, actorId) => {
 	if (Array.isArray(data.program_ids)) await setPrograms(id, data.program_ids, actorId);
 	broadcast('update', { entity: 'course' });
 	const saved = await getById(id);
-	// Tăng sĩ số đợt chưa khai giảng ⇒ gọi thêm người chờ vào cho đủ chỗ.
-	if (saved?.parent_course_id && data.capacity !== undefined && saved.program_ids[0]) {
-		await require('./courseBatchService').rebalance(saved.parent_course_id, saved.program_ids[0], actorId);
-	}
-	// Khóa ĐTLT: tăng sĩ số / thêm chương trình / dời ngày ⇒ gọi người chờ vào, nhận hồ sơ khóa trước.
+	// Khóa ĐTLT / CTCV: thêm chương trình / dời ngày ⇒ lớp còn chỗ nhận người chờ.
 	if (programClassService.appliesTo(saved)) {
 		await programClassService.refreshCourse(saved, actorId);
 		return getById(id);
@@ -289,13 +260,6 @@ const update = async (id, data, actorId) => {
 
 const remove = async (id, actorId) => {
 	const pool = await getPool();
-	const children = await pool
-		.request()
-		.input('id', sql.VarChar(20), id)
-		.query('SELECT COUNT(*) AS n FROM courses WHERE parent_course_id = @id');
-	if (children.recordset[0].n > 0) {
-		throw httpError(400, 'Khóa tuyển sinh còn các đợt học — xoá các đợt trước.');
-	}
 	await pool
 		.request()
 		.input('id', sql.VarChar(20), id)
@@ -317,7 +281,7 @@ const listProgramLinks = async (courseId) => {
     WHERE cp.course_id = @course_id
     ORDER BY cp.created_at
   `);
-	// class_rule: khóa ĐTLT thường — lớp mở khi đủ class_min, đầy ở class_max (xem programClassService)
+	// class_rule: khóa ĐTLT / CTCV — đủ class_min thì cán bộ mở lớp, đầy ở class_max (xem programClassService)
 	return r.recordset.map(({ class_rule, ...l }) => ({ ...l, class_rule: !!class_rule }));
 };
 

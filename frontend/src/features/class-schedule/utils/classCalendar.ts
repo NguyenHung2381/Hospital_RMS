@@ -24,7 +24,10 @@ export function courseColor(courseId: string): string {
 	return COLOR_PRESETS[h % COLOR_PRESETS.length];
 }
 
-export const sessionTitle = (s: CalendarSession) => s.subject_name || s.course_name;
+const ATTENDANCE_LABEL = { present: 'Có mặt', late: 'Muộn', absent: 'Vắng' } as const;
+
+export const sessionTitle = (s: CalendarSession) =>
+	`${s.subject_name || s.course_name}${s.attendance_status ? ` · ${ATTENDANCE_LABEL[s.attendance_status]}` : ''}`;
 
 export const sessionTime = (s: CalendarSession) =>
 	s.start_time ? `${s.start_time}${s.end_time ? `–${s.end_time}` : ''}` : '';

@@ -3,6 +3,8 @@ import { useRealtimeUpdate } from '../../../layouts/hooks/useRealtime';
 import { getClassCalendar } from '../api/classScheduleApi';
 import type { ClassCalendarResponse } from '../types/classSchedule.type';
 
+type Loader = (from: string, to: string) => Promise<ClassCalendarResponse>;
+
 interface LoadedState extends ClassCalendarResponse {
 	year: number | null;
 	error: string | null;
@@ -15,7 +17,7 @@ const INITIAL: LoadedState = { year: null, error: null, sessions: [], courses: [
  * và tuần vắt qua năm vẫn có dữ liệu. Cập nhật realtime cùng năm tải ngầm (giữ
  * dữ liệu cũ tới khi có mới) nên không nháy màn hình "Đang tải".
  */
-export function useClassSchedule(year: number) {
+export function useClassSchedule(year: number, load: Loader = getClassCalendar) {
 	const [state, setState] = useState<LoadedState>(INITIAL);
 	const [refreshKey, setRefreshKey] = useState(0);
 
@@ -24,7 +26,7 @@ export function useClassSchedule(year: number) {
 
 	useEffect(() => {
 		let cancelled = false;
-		getClassCalendar(`${year - 1}-12-24`, `${year + 1}-01-07`)
+		load(`${year - 1}-12-24`, `${year + 1}-01-07`)
 			.then((res) => {
 				if (!cancelled) setState({ year, error: null, ...res });
 			})
@@ -34,7 +36,7 @@ export function useClassSchedule(year: number) {
 				}
 			});
 		return () => { cancelled = true; };
-	}, [year, refreshKey]);
+	}, [year, refreshKey, load]);
 
 	return {
 		sessions: state.sessions,

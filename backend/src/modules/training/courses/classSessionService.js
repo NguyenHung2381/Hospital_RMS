@@ -74,6 +74,52 @@ const listSessionsInRange = async (
 	return { sessions: result.recordsets[0], courses: result.recordsets[1] };
 };
 
+/**
+ * Lịch học của 1 học viên trong [from, to] — cùng dạng với listSessionsInRange để dùng
+ * chung giao diện lịch. Chỉ lớp đã duyệt; khóa nhiều chương trình thì chỉ buổi của bài
+ * thuộc chương trình đã ghi danh (buổi không gắn bài thì ai cũng thấy). Kèm điểm danh.
+ * Chọn học viên theo traineeId (admin) hoặc userId (cổng cá nhân, trainees.user_id).
+ */
+const listTraineeSessions = async ({ from, to, traineeId = null, userId = null }) => {
+	const pool = await getPool();
+	const who = traineeId ? 't.id = @tid' : 't.user_id = @uid';
+	const result = await pool
+		.request()
+		.input('from', sql.Date, from)
+		.input('to', sql.Date, to)
+		.input('tid', sql.VarChar(20), traineeId)
+		.input('uid', sql.VarChar(20), userId).query(`
+    DECLARE @mine TABLE (enrollment_id VARCHAR(20), course_id VARCHAR(20), program_id VARCHAR(20));
+    INSERT INTO @mine
+    SELECT e.id, e.course_id, e.program_id
+    FROM course_enrollments e JOIN trainees t ON t.id = e.trainee_id
+    WHERE ${who} AND e.status = 'approved';
+    SELECT sess.id, sess.course_id, c.name AS course_name, sess.subject_id, s.title AS subject_name,
+           sess.lecturer_id, l.full_name AS lecturer_name,
+           sess.session_date, sess.start_time, sess.end_time, sess.room, a.status AS attendance_status
+    FROM class_sessions sess
+    JOIN @mine m ON m.course_id = sess.course_id
+    JOIN courses c ON c.id = sess.course_id AND c.status <> 'cancelled'
+    LEFT JOIN program_lessons s ON s.id = sess.subject_id
+    LEFT JOIN lecturers l ON l.id = sess.lecturer_id
+    LEFT JOIN attendance a ON a.session_id = sess.id AND a.enrollment_id = m.enrollment_id
+    WHERE sess.session_date BETWEEN @from AND @to
+      AND (sess.subject_id IS NULL OR m.program_id IS NULL
+           OR EXISTS (SELECT 1 FROM lesson_programs lp WHERE lp.lesson_id = sess.subject_id AND lp.program_id = m.program_id))
+    ORDER BY sess.session_date, sess.start_time;
+    -- Thanh thời gian: ngày của lớp (chương trình đã ghi danh), không có thì ngày khóa
+    SELECT c.id, CONCAT(c.name, CASE WHEN tp.code IS NULL THEN '' ELSE CONCAT(N' · ', tp.code) END) AS name,
+           COALESCE(cp.start_date, c.start_date) AS start_date, COALESCE(cp.end_date, c.end_date) AS end_date, c.status
+    FROM @mine m
+    JOIN courses c ON c.id = m.course_id AND c.status <> 'cancelled'
+    LEFT JOIN course_programs cp ON cp.course_id = m.course_id AND cp.program_id = m.program_id
+    LEFT JOIN training_programs tp ON tp.id = m.program_id
+    WHERE COALESCE(cp.start_date, c.start_date) <= @to AND COALESCE(cp.end_date, c.end_date) >= @from
+    ORDER BY start_date;
+  `);
+	return { sessions: result.recordsets[0], courses: result.recordsets[1] };
+};
+
 const listSessions = async (courseId) => {
 	const pool = await getPool();
 	const r = await pool.request().input('course_id', sql.VarChar(20), courseId).query(`
@@ -231,6 +277,7 @@ const createSessionsBulk = async (courseId, data, actorId) => {
 
 module.exports = {
 	listSessionsInRange,
+	listTraineeSessions,
 	listSessions,
 	createSession,
 	updateSession,

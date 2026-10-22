@@ -5,7 +5,7 @@ import { DatePicker, Modal, ModalActions } from '@/shared/components';
 import { Toggle } from '@/shared/components/Input/Toggle';
 import { SearchInput } from '@/shared/components/Table/TableToolbar';
 import { apiClient } from '@/shared/api/axios';
-import { EMPTY_FORM, TRAINING_TYPE, type Course, type CourseFormData } from '../types/course.type';
+import { CLASS_TYPES, EMPTY_FORM, TRAINING_TYPE, type Course, type CourseFormData } from '../types/course.type';
 
 interface SimpleItem {
 	id: string;
@@ -21,8 +21,6 @@ interface ProgramOption extends SimpleItem {
 const dtltName = (batch: string) => `ĐTLT Đợt ${batch}/${new Date().getFullYear()}`;
 import styles from '../pages/Courses.module.css';
 
-// Loại khóa tuyển sinh theo đợt (đủ sĩ số thì lập đợt).
-const BATCH_TYPES = new Set<string>([TRAINING_TYPE.DTLT, TRAINING_TYPE.CTCV]);
 
 function ListEditor({
 	label,
@@ -113,12 +111,10 @@ export function CourseFormModal({
 					training_type_id: course.training_type_id ?? '',
 					batch_no: course.batch_no != null ? String(course.batch_no) : '',
 					is_rolling: course.is_rolling,
-					auto_batch: course.auto_batch,
 					start_date: course.start_date ? course.start_date.slice(0, 10) : '',
 					end_date: course.end_date ? course.end_date.slice(0, 10) : '',
 					enrollment_start_date: course.enrollment_start_date ? course.enrollment_start_date.slice(0, 10) : '',
 					enrollment_end_date: course.enrollment_end_date ? course.enrollment_end_date.slice(0, 10) : '',
-					capacity: course.capacity != null ? String(course.capacity) : '',
 					status: course.status,
 					is_public_registration: course.is_public_registration,
 					description: course.description ?? '',
@@ -157,9 +153,8 @@ export function CourseFormModal({
 		setForm((f) => ({
 			...f,
 			training_type_id: typeId,
-			// GPHN mặc định mở liên tục; ĐTLT/CTCV mặc định tuyển sinh theo đợt (đợt con thì không)
+			// GPHN mặc định mở liên tục
 			is_rolling: typeId === TRAINING_TYPE.GPHN,
-			auto_batch: !course?.parent_course_id && BATCH_TYPES.has(typeId),
 			batch_no: typeId === TRAINING_TYPE.DTLT ? f.batch_no : '',
 		}));
 
@@ -172,21 +167,12 @@ export function CourseFormModal({
 	};
 
 	// Khóa mở liên tục không dùng ngày khóa / cửa sổ đăng ký — xoá khi lưu cho khỏi lệch.
-	const noDates = form.is_rolling || form.auto_batch;
 	const submit = () =>
 		onSave(
-			noDates
-				? {
-						...form,
-						start_date: '',
-						end_date: '',
-						enrollment_start_date: '',
-						enrollment_end_date: '',
-						batch_no: form.auto_batch ? '' : form.batch_no,
-					}
+			form.is_rolling
+				? { ...form, start_date: '', end_date: '', enrollment_start_date: '', enrollment_end_date: '' }
 				: form,
 		);
-	const canBatch = BATCH_TYPES.has(form.training_type_id) && !course?.parent_course_id;
 
 	const set =
 		(k: keyof CourseFormData) =>
@@ -200,12 +186,10 @@ export function CourseFormModal({
 	const validate = () => {
 		const err: Partial<Record<keyof CourseFormData, string>> = {};
 		if (!form.name.trim()) err.name = 'Vui lòng nhập tên khóa học';
-		if (form.training_type_id === TRAINING_TYPE.DTLT && !form.auto_batch && !form.batch_no)
+		if (form.training_type_id === TRAINING_TYPE.DTLT && !form.batch_no)
 			err.batch_no = 'Khóa ĐTLT cần số đợt';
 		if (form.batch_no && (!Number.isInteger(Number(form.batch_no)) || Number(form.batch_no) < 1))
 			err.batch_no = 'Số đợt phải là số nguyên dương';
-		if (form.capacity && (Number(form.capacity) < 1 || !Number.isFinite(Number(form.capacity))))
-			err.capacity = 'Số lượng phải là số nguyên dương';
 		setErrors(err);
 		return Object.keys(err).length === 0;
 	};
@@ -252,24 +236,7 @@ export function CourseFormModal({
 						))}
 					</select>
 				</FormField>
-				{canBatch ? (
-					<FormField label='Tuyển sinh'>
-						<div className={`${styles.formInput} ${styles.toggleBox}`}>
-							<Toggle
-								on={form.auto_batch}
-								onChange={() => setForm((f) => ({ ...f, auto_batch: !f.auto_batch }))}
-								title='Tuyển sinh theo đợt'
-							/>
-							<span onClick={() => setForm((f) => ({ ...f, auto_batch: !f.auto_batch }))}>Tuyển sinh theo đợt</span>
-						</div>
-						<span className={styles.fieldHint}>
-							{form.auto_batch
-								? 'Đăng ký liên tục, đủ sĩ số tối thiểu của chương trình thì tự lập đợt'
-								: 'Một lớp theo lịch cố định'}
-						</span>
-					</FormField>
-				) : null}
-				{form.auto_batch ? null : form.training_type_id === TRAINING_TYPE.DTLT ? (
+				{form.training_type_id === TRAINING_TYPE.DTLT ? (
 					<FormField
 						label='Đợt số'
 						required
@@ -380,16 +347,7 @@ export function CourseFormModal({
 				>
 					2. Thời gian
 				</div>
-				{form.auto_batch ? (
-					<div
-						className={styles.hint}
-						style={full}
-					>
-						Khóa tuyển sinh: không có ngày học, luôn nhận đăng ký. Học viên được duyệt vào danh sách chờ; đủ sĩ số tối thiểu
-						của chương trình (đặt ở Chương trình đào tạo) thì tự lập một đợt — ngày học xếp trong từng đợt. Đợt đầy thì người
-						sau chờ đợt kế tiếp.
-					</div>
-				) : form.is_rolling ? (
+				{form.is_rolling ? (
 					<div
 						className={styles.hint}
 						style={full}
@@ -398,20 +356,32 @@ export function CourseFormModal({
 					</div>
 				) : (
 					<>
-						<FormField label='Ngày bắt đầu'>
-							<DatePicker
-								value={form.start_date}
-								onChange={(val) => setForm((f) => ({ ...f, start_date: val }))}
-								max={form.end_date || undefined}
-							/>
-						</FormField>
-						<FormField label='Ngày kết thúc'>
-							<DatePicker
-								value={form.end_date}
-								onChange={(val) => setForm((f) => ({ ...f, end_date: val }))}
-								min={form.start_date || undefined}
-							/>
-						</FormField>
+						{CLASS_TYPES.has(form.training_type_id) ? (
+							<div
+								className={styles.hint}
+								style={full}
+							>
+								Ngày học đặt theo từng lớp (khi bấm "Mở lớp" ở tab Học viên, hệ thống gợi ý sẵn). Ngày khóa tự tính từ
+								ngày sớm nhất → muộn nhất của các lớp.
+							</div>
+						) : (
+							<>
+								<FormField label='Ngày bắt đầu'>
+									<DatePicker
+										value={form.start_date}
+										onChange={(val) => setForm((f) => ({ ...f, start_date: val }))}
+										max={form.end_date || undefined}
+									/>
+								</FormField>
+								<FormField label='Ngày kết thúc'>
+									<DatePicker
+										value={form.end_date}
+										onChange={(val) => setForm((f) => ({ ...f, end_date: val }))}
+										min={form.start_date || undefined}
+									/>
+								</FormField>
+							</>
+						)}
 						<FormField
 							label='Mở đăng ký từ'
 						>
@@ -472,22 +442,16 @@ export function CourseFormModal({
 						))}
 					</select>
 				</FormField>
-				<FormField
-					label={form.auto_batch ? 'Sĩ số tối đa mỗi đợt' : 'Sĩ số tối đa'}
-					error={errors.capacity}
-				>
-					<input
-						type='number'
-						min={1}
-						className={`${styles.formInput} ${errors.capacity ? styles.inputError : ''}`}
-						value={form.capacity}
-						onChange={set('capacity')}
-						placeholder='Bỏ trống = không giới hạn'
-					/>
-					{form.auto_batch && (
-						<span className={styles.fieldHint}>Dùng khi chương trình chưa đặt số lượng tối đa</span>
-					)}
-				</FormField>
+				{CLASS_TYPES.has(form.training_type_id) && (
+					<div
+						className={styles.hint}
+						style={full}
+					>
+						Mỗi chương trình của khóa là một lớp. Sĩ số tối thiểu / tối đa đặt ở Chương trình đào tạo: đủ tối thiểu thì
+						hệ thống báo để bấm "Mở lớp"; lớp đầy thì người duyệt sau vào danh sách chờ, khóa mới có chương trình đó tự
+						nhận người chờ.
+					</div>
+				)}
 				{mode === 'edit' ? (
 					<FormField label='Huỷ khóa'>
 						<label style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', minHeight: 38, cursor: 'pointer' }}>

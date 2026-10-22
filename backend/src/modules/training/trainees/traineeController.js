@@ -2,6 +2,7 @@ const traineeService = require('./traineeService');
 const traineeRecordService = require('./traineeRecordService');
 const traineeImportService = require('./traineeImportService');
 const traineeProgressService = require('./traineeProgressService');
+const classSessionService = require('../courses/classSessionService');
 const { success, created, notFound } = require('../../../utils/response');
 const { asyncHandler } = require('../../../utils/asyncHandler');
 
@@ -77,6 +78,14 @@ const getAttendance = asyncHandler(async (req, res) => {
 	return success(res, await traineeRecordService.attendance(req.params.id));
 });
 
+const getSchedule = asyncHandler(async (req, res) => {
+	const { from, to } = req.query;
+	return success(
+		res,
+		await classSessionService.listTraineeSessions({ from, to, traineeId: req.params.id }),
+	);
+});
+
 const getGrades = asyncHandler(async (req, res) => {
 	return success(res, await traineeRecordService.grades(req.params.id));
 });
@@ -120,6 +129,7 @@ module.exports = {
 	getDocumentChecklist,
 	reviewDocument,
 	getAttendance,
+	getSchedule,
 	getGrades,
 	getCme,
 };

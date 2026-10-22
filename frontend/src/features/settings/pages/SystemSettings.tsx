@@ -284,6 +284,34 @@ const SECTIONS: Section[] = [
 				],
 			},
 			{
+				title: 'Lớp học ĐTLT / CTCV',
+				fields: [
+					{
+						key: 'TRAINING_CLASS_PREP_DAYS',
+						label: 'Số ngày chuẩn bị trước khi khai giảng',
+						hint: 'Gợi ý ngày bắt đầu lớp = thứ Hai đầu tiên sau (hôm nay + số ngày này). Mặc định 7.',
+						type: 'number',
+						placeholder: '7',
+					},
+					{
+						key: 'TRAINING_HOLIDAYS',
+						label: 'Ngày nghỉ lễ',
+						hint: 'Bỏ qua khi gợi ý ngày học (cùng T7, CN). Mỗi dòng 1 ngày: DD/MM = lễ cố định hằng năm (01/01, 30/04…), DD/MM/YYYY = 1 ngày cụ thể (Tết âm lịch).',
+						type: 'textarea',
+						placeholder: '01/01, 30/04, 01/05, 02/09, 16/02/2026',
+					},
+					{
+						key: 'TRAINING_ALLOW_MULTI_PROGRAM',
+						label: 'Cho học nhiều chương trình cùng lúc',
+						hint: 'Tắt thì học viên đang học (hoặc chờ) một chương trình chưa kết thúc không ghi danh được chương trình khác.',
+						type: 'bool',
+						defaultOn: true,
+						onText: 'Cho phép',
+						offText: 'Không cho phép',
+					},
+				],
+			},
+			{
 				title: 'Chấm điểm khóa học (Lý thuyết + Thực hành)',
 				fields: [
 					{
@@ -317,7 +345,7 @@ const SECTIONS: Section[] = [
 					{
 						key: 'GRADE_MAX_RETAKES',
 						label: 'Số lần thi lại tối đa / phần',
-						hint: 'Lấy kết quả lần thi sau cùng, các lần trước lưu ở lịch sử điểm. Mặc định 1.',
+						hint: 'Lấy kết quả lần thi cao nhất, các lần lưu ở lịch sử điểm. Mặc định 1.',
 						type: 'number',
 						placeholder: '1',
 					},

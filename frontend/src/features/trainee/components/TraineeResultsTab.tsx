@@ -25,13 +25,13 @@ function ResultChip({ result, reasons }: { result: 'pass' | 'fail' | null; reaso
 }
 
 /** Tab "Kết quả & điểm": điểm lý thuyết, thực hành, chuyên cần, kết quả từng khóa (cả lần thi lại); GPHN Đạt/Không đạt từng vòng. */
-export function TraineeResultsTab({ traineeId }: { traineeId: string }) {
+/** traineeId bỏ trống = học viên tự xem (cổng /me). */
+export function TraineeResultsTab({ traineeId }: { traineeId?: string }) {
 	const [data, setData] = useState<TraineeCourseResult[] | null>(null);
 	const [error, setError] = useState('');
 
 	useEffect(() => {
-		traineeRecordApi
-			.grades(traineeId)
+		(traineeId ? traineeRecordApi.grades(traineeId) : traineeRecordApi.myGrades())
 			.then(setData)
 			.catch((err) => setError(err instanceof Error ? err.message : 'Không tải được kết quả'));
 	}, [traineeId]);

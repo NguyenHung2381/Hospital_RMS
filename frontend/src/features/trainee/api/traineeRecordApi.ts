@@ -1,5 +1,6 @@
 import { apiClient } from '../../../shared/api/axios';
 import type { MyCme } from '../../portal/api/meApi';
+import type { ClassCalendarResponse } from '../../class-schedule/types/classSchedule.type';
 import type { CertificateStatus, GradeFlag, GradePart, GradebookRow } from '../../course/types/course.type';
 
 // Hồ sơ học viên đầy đủ (giai đoạn 3) — backend training/trainees/traineeRecordService.js
@@ -132,6 +133,14 @@ export const traineeRecordApi = {
 	grades: (traineeId: string) => apiClient.get<TraineeCourseResult[]>(`/trainees/${traineeId}/grades`),
 	/** null = học viên chưa có tài khoản */
 	cme: (traineeId: string) => apiClient.get<MyCme | null>(`/trainees/${traineeId}/cme`),
+	/** Lịch học riêng (cùng dạng lịch toàn hệ thống) — buổi kèm điểm danh. */
+	schedule: (traineeId: string, from: string, to: string) =>
+		apiClient.get<ClassCalendarResponse>(`/trainees/${traineeId}/schedule?${new URLSearchParams({ from, to })}`),
+	// Học viên tự xem ở cổng /me (theo tài khoản đăng nhập)
+	myAttendance: () => apiClient.get<TraineeAttendanceCourse[]>('/me/training/attendance'),
+	myGrades: () => apiClient.get<TraineeCourseResult[]>('/me/training/grades'),
+	mySchedule: (from: string, to: string) =>
+		apiClient.get<ClassCalendarResponse>(`/me/training/schedule?${new URLSearchParams({ from, to })}`),
 };
 
 // Học viên tự nộp ở cổng /me

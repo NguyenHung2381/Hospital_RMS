@@ -16,7 +16,7 @@ export const exportResearchStats = (year: number, sections: StatsExportSection[]
 	apiClient.postBlob('/dashboard/export-stats', { year, sections });
 
 // ── Đào tạo ───────────────────────────────────────────
-export type CourseDisplayStatus = 'upcoming' | 'enrolling' | 'awaiting_schedule' | 'in_progress' | 'completed' | 'cancelled';
+export type CourseDisplayStatus = 'upcoming' | 'enrolling' | 'in_progress' | 'completed' | 'cancelled';
 
 export interface CourseReportRow {
 	id: string;

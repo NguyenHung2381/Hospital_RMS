@@ -20,12 +20,13 @@ const countText = (p: PublicProgram) => {
 	return [rounds ? `${rounds} vòng thực hành` : null, theory ? `${theory} bài học` : null].filter(Boolean).join(', ') || null;
 };
 
-// Khóa tuyển sinh theo đợt: báo trước đăng ký sẽ vào đợt sắp học hay danh sách chờ đợt sau.
-const batchText = (p: PublicProgram) => {
-	if (p.batch_min == null) return null;
-	const seats = p.batch_open_seats ?? 0;
-	if (seats > 0) return seats >= 9999 ? 'Đợt sắp học còn nhận' : `Đợt sắp học còn ${seats} chỗ`;
-	return `Vào danh sách chờ — đủ ${p.batch_min} người sẽ mở đợt (đang chờ ${p.batch_waiting ?? 0})`;
+// Khóa ĐTLT / CTCV: báo trước đăng ký sẽ vào lớp hay vào danh sách chờ khóa sau.
+const classText = (p: PublicProgram) => {
+	if (!p.class_rule) return null;
+	if (p.class_max != null && p.class_approved >= p.class_max)
+		return `Lớp đã đủ — vào danh sách chờ khóa sau (đang chờ ${p.class_waiting})`;
+	if (p.class_approved < p.class_min) return `Đang gom lớp: ${p.class_approved}/${p.class_min} học viên tối thiểu`;
+	return p.class_max != null ? `Lớp còn ${p.class_max - p.class_approved} chỗ` : 'Lớp đang nhận học viên';
 };
 
 // Chi tiết 1 chương trình: thông tin chung + nội dung (bài học / vòng thực hành)
@@ -137,11 +138,6 @@ export function CourseProgramPicker({
 					<span>
 						Thời gian: <b>{time}</b>
 					</span>
-					{course.capacity != null && (
-						<span>
-							Chỉ tiêu: <b>{course.capacity}</b>
-						</span>
-					)}
 				</div>
 				{course.description && <p className={styles.desc}>{course.description}</p>}
 			</div>
@@ -191,7 +187,7 @@ export function CourseProgramPicker({
 														p.duration,
 														p.trainee_type_name,
 														countText(p),
-														batchText(p),
+														classText(p),
 													]
 														.filter(Boolean)
 														.join(' · ')}

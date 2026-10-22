@@ -10,10 +10,14 @@ import type {
 	QuestionType,
 	StartAttemptResult,
 	ExamPart,
+	CodeMode,
+	QuestionPool,
 } from '../types/exam.type';
 
 export interface QuestionPayload {
 	subject_id?: string | null;
+	program_id?: string | null;
+	pool?: QuestionPool;
 	question_type: QuestionType;
 	question_text: string;
 	options?: string[];
@@ -26,7 +30,17 @@ export interface PaperPayload {
 	course_id?: string;
 	subject_id?: string | null;
 	title: string;
-	paper_type?: PaperType;
+	/** null = hỗn hợp TN + TL (đề đầu vào) */
+	paper_type?: PaperType | null;
+	purpose?: QuestionPool;
+	program_id?: string | null;
+	gen_mc_count?: number | null;
+	gen_essay_count?: number | null;
+	code_mode?: CodeMode | null;
+	code_count?: number | null;
+	weight?: number | null;
+	/** Bốc lại câu (đề chung / nhiều mã) — chỉ khi chưa ai làm bài */
+	regenerate?: boolean;
 	duration_minutes?: number;
 	status?: string;
 	question_ids?: string[];
@@ -44,9 +58,12 @@ export interface AnswerPayload {
 
 export const examApi = {
 	// Ngân hàng câu hỏi
-	listQuestions: (params: { subject_id?: string; search?: string; question_type?: QuestionType } = {}) => {
+	listQuestions: (
+		params: { program_id?: string; pool?: QuestionPool; search?: string; question_type?: QuestionType } = {},
+	) => {
 		const qs = new URLSearchParams();
-		if (params.subject_id) qs.set('subject_id', params.subject_id);
+		if (params.program_id) qs.set('program_id', params.program_id);
+		if (params.pool) qs.set('pool', params.pool);
 		if (params.search) qs.set('search', params.search);
 		if (params.question_type) qs.set('question_type', params.question_type);
 		const q = qs.toString();

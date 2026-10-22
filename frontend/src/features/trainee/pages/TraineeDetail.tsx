@@ -22,18 +22,20 @@ import { TraineeDocumentsTab } from '../components/TraineeDocumentsTab';
 import { TraineeEnrollmentsTab } from '../components/TraineeEnrollmentsTab';
 import { TraineeFormModal } from '../components/TraineeFormModal';
 import { TraineeInfoTab } from '../components/TraineeInfoTab';
+import { TraineeScheduleTab } from '../components/TraineeScheduleTab';
 import { TraineeCertificatesTab, TraineeResultsTab } from '../components/TraineeResultsTab';
 import type { SimpleItem } from '../hooks/useTrainees';
 import type { Trainee, TraineeFormData } from '../types/trainee.type';
 import styles from './Trainees.module.css';
 import ds from './TraineeDetail.module.css';
 
-export type TraineeDetailTab = 'info' | 'documents' | 'courses' | 'attendance' | 'results' | 'certificates';
+export type TraineeDetailTab = 'info' | 'documents' | 'courses' | 'schedule' | 'attendance' | 'results' | 'certificates';
 
 const TABS: { key: TraineeDetailTab; label: string; icon: ReactNode }[] = [
 	{ key: 'info', label: 'Thông tin cá nhân', icon: <UserCheckSvg /> },
 	{ key: 'documents', label: 'Hồ sơ & file scan', icon: <FileTextSvg /> },
 	{ key: 'courses', label: 'Khóa học / chương trình', icon: <BookOpenSvg /> },
+	{ key: 'schedule', label: 'Lịch học', icon: <CalendarSvg /> },
 	{ key: 'attendance', label: 'Điểm danh', icon: <CalendarSvg /> },
 	{ key: 'results', label: 'Kết quả & điểm', icon: <ClipboardCheckSvg /> },
 	{ key: 'certificates', label: 'Chứng chỉ / CME', icon: <BadgeSvg /> },
@@ -163,6 +165,7 @@ export default function TraineeDetail() {
 								/>
 							)}
 							{tab === 'courses' && <TraineeEnrollmentsTab traineeId={id} />}
+							{tab === 'schedule' && <TraineeScheduleTab traineeId={id} />}
 							{tab === 'attendance' && <TraineeAttendanceTab traineeId={id} />}
 							{tab === 'results' && <TraineeResultsTab traineeId={id} />}
 							{tab === 'certificates' && <TraineeCertificatesTab traineeId={id} />}

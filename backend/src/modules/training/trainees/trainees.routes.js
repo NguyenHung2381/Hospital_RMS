@@ -1,5 +1,5 @@
 const router = require('express').Router();
-const { body } = require('express-validator');
+const { body, query } = require('express-validator');
 const ctrl = require('./traineeController');
 const { authenticate, authorizePermission } = require('../../../middlewares/auth');
 const { validate } = require('../../../middlewares/errorHandler');
@@ -77,6 +77,17 @@ router.put(
 	ctrl.reviewDocument,
 );
 router.get('/:id/attendance', authorizePermission(['trainees', 'read']), ctrl.getAttendance);
+// Lịch học (dạng giống lịch toàn hệ thống) trong [from, to]
+router.get(
+	'/:id/schedule',
+	authorizePermission(['trainees', 'read']),
+	[
+		query('from').isISO8601().withMessage('Ngày bắt đầu không hợp lệ'),
+		query('to').isISO8601().withMessage('Ngày kết thúc không hợp lệ'),
+	],
+	validate,
+	ctrl.getSchedule,
+);
 router.get('/:id/grades', authorizePermission(['trainees', 'read']), ctrl.getGrades);
 router.get('/:id/cme', authorizePermission(['trainees', 'read']), ctrl.getCme);
 router.delete(

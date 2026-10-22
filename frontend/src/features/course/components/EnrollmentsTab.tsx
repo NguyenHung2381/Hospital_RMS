@@ -30,6 +30,7 @@ import { EnrollmentDetailModal } from "./EnrollmentDetailModal";
 import { PracticeBookImportModal } from "./PracticeBookImportModal";
 import { savePracticeBook } from "../utils/practiceDocuments";
 import { autoArrangeCourse, removeEnrollment } from "../api/courseApi";
+import { ClassDatesModal } from "./ClassDatesModal";
 import { showToast } from "@/shared/utils/feedback";
 import styles from "../pages/Courses.module.css";
 import tbl from "@/shared/components/Table/Table.module.css";
@@ -45,30 +46,35 @@ const normalize = (s: string) =>
     .replace(/Đ/g, "D")
     .toLowerCase();
 
-/** 1 chip lọc theo chương trình; key "" = ghi danh chưa chọn / chương trình đã gỡ khỏi khóa. */
+/** 1 lựa chọn lọc theo chương trình; key "" = ghi danh chưa chọn / chương trình đã gỡ khỏi khóa. */
 type ProgramChip = {
   key: string;
   code: string | null;
   name: string;
   count: number;
-  /** Khóa ĐTLT thường: sĩ số lớp của chương trình (xem CourseProgramLink.class_rule). */
+  /** Khóa ĐTLT / CTCV: sĩ số lớp của chương trình (xem CourseProgramLink.class_rule). */
   link?: CourseProgramLink;
 };
 
-/** Lớp ĐTLT đã mở (đủ sĩ số tối thiểu) chưa — kèm câu giải thích cho tooltip / dòng gợi ý. */
+/** Lớp đã mở chưa / đủ sĩ số chờ mở — kèm câu giải thích cho tooltip / dòng gợi ý. */
 const classState = (l: CourseProgramLink) => {
-  const open = l.class_approved >= l.class_min;
+  const open = !!l.class_opened_at;
+  const ready = !open && l.class_approved >= l.class_min;
   const full = l.class_max != null && l.class_approved >= l.class_max;
   const max = l.class_max != null ? `, tối đa ${l.class_max}` : "";
   const waiting = l.class_waiting
-    ? ` · ${l.class_waiting} hồ sơ lưu cho khóa sau`
+    ? ` · ${l.class_waiting} người trong danh sách chờ của chương trình`
     : "";
+  const fullNote = full ? " (đã đầy, duyệt thêm sẽ vào danh sách chờ khóa sau)" : "";
   return {
     open,
+    ready,
     short: `${l.class_approved}/${l.class_min}`,
     text: open
-      ? `Đã mở lớp — ${l.class_approved} học viên${max}${full ? " (đã đầy, duyệt thêm sẽ lưu cho khóa sau)" : ""}${waiting}`
-      : `Chưa mở lớp — mới ${l.class_approved}/${l.class_min} học viên tối thiểu, chưa xếp lịch được${max}${waiting}`,
+      ? `Đã mở lớp — ${l.class_approved} học viên${max}${fullNote}${waiting}`
+      : ready
+        ? `Đủ sĩ số — ${l.class_approved}/${l.class_min} học viên tối thiểu${max}${fullNote}. Bấm "Mở lớp" để xếp lịch học${waiting}`
+        : `Chưa mở lớp — mới ${l.class_approved}/${l.class_min} học viên tối thiểu, chưa xếp lịch được${max}${waiting}`,
   };
 };
 
@@ -115,7 +121,6 @@ export function EnrollmentsTab({
   const [statusFilter, setStatusFilter] = useState<EnrollmentStatus | "">("");
   // null = mọi chương trình; "" = chưa chọn chương trình
   const [programFilter, setProgramFilter] = useState<string | null>(null);
-  const [showEmptyPrograms, setShowEmptyPrograms] = useState(false);
 
   // Ghi danh chưa chọn chương trình / chương trình đã gỡ khỏi khóa gom vào key ""
   const programKey = useMemo(() => {
@@ -152,7 +157,7 @@ export function EnrollmentsTab({
     [matches, programFilter, programKey],
   );
 
-  // Chip chương trình: có học viên hiện trước, chương trình trống gom lại (bấm để hiện).
+  // Lựa chọn lọc theo chương trình kèm số học viên khớp từ khoá/trạng thái.
   const chips = useMemo(() => {
     const count = (key: string) =>
       matches.filter((e) => programKey(e) === key).length;
@@ -167,9 +172,9 @@ export function EnrollmentsTab({
       list.push({ key: "", code: null, name: "Chưa chọn chương trình", count: count("") });
     return list;
   }, [programLinks, matches, enrollments, programKey]);
-  const filledChips = chips.filter((c) => c.count > 0 || c.key === programFilter);
-  const emptyChips = chips.filter((c) => c.count === 0 && c.key !== programFilter);
-  const shownChips = showEmptyPrograms ? [...filledChips, ...emptyChips] : filledChips;
+  // Chương trình có học viên lên trước.
+  const sortedChips = [...chips].sort((a, b) => +(b.count > 0) - +(a.count > 0));
+  const selectedChip = chips.find((c) => c.key === programFilter);
   const showPrograms = chips.length > 1;
   const filterActive = !!search.trim() || !!statusFilter || programFilter !== null;
   const onlyProgramFilter = programFilter !== null && !search.trim() && !statusFilter;
@@ -182,6 +187,9 @@ export function EnrollmentsTab({
       ? programLinks[0]
       : programLinks.find((l) => l.program_id === programFilter);
   const focusClass = focusLink?.class_rule ? classState(focusLink) : null;
+  const canOpenClass = usePermission().has("courses:update");
+  // Hộp thoại mở lớp / sửa ngày học của lớp đang xem
+  const [classModal, setClassModal] = useState<"open" | "dates" | null>(null);
 
   const pg = useClientPaging(filtered);
   const visibleIds = useMemo(() => pg.paged.map((e) => e.id), [pg.paged]);
@@ -322,11 +330,7 @@ export function EnrollmentsTab({
           </span>
           {en.waitlist_position != null && (
             <div className={tbl.cellSub}>
-              {course?.auto_batch
-                ? "Chờ đợt sau · "
-                : classRule
-                  ? "Lưu cho khóa sau · "
-                  : ""}
+              {classRule ? "Chờ khóa sau · " : ""}
               vị trí{" "}
               {en.waitlist_position}
             </div>
@@ -506,7 +510,7 @@ export function EnrollmentsTab({
           </div>
         </div>
 
-        {/* Hàng lọc: ô tìm kiếm rộng + trạng thái; chip chương trình bên dưới */}
+        {/* Hàng lọc: ô tìm kiếm rộng + chương trình + trạng thái */}
         <div className={styles.enrFilters}>
           <div className={styles.enrFilterRow}>
             <div className={styles.enrSearch}>
@@ -519,6 +523,36 @@ export function EnrollmentsTab({
                 placeholder="Tìm theo tên, mã học viên, mã thực hành, SĐT, email..."
               />
             </div>
+            {showPrograms && (
+              <select
+                className={`${tbl.filterSelect} ${styles.enrProgramSelect} ${programFilter !== null ? tbl.filterActive : ""}`}
+                data-active={programFilter !== null ? "true" : undefined}
+                aria-label="Lọc theo chương trình"
+                title={
+                  selectedChip &&
+                  [
+                    selectedChip.code ? `${selectedChip.code} — ${selectedChip.name}` : selectedChip.name,
+                    selectedChip.link && classState(selectedChip.link).text,
+                  ]
+                    .filter(Boolean)
+                    .join("\n")
+                }
+                value={programFilter ?? "*"}
+                onChange={(e) => {
+                  setProgramFilter(e.target.value === "*" ? null : e.target.value);
+                  resetPage();
+                }}
+              >
+                <option value="*">Tất cả chương trình ({matches.length})</option>
+                {sortedChips.map((c) => (
+                  <option key={c.key || "_none"} value={c.key}>
+                    {c.code ? `${c.code} — ${c.name}` : c.name} ({c.count})
+                    {c.link &&
+                      ` · ${classState(c.link).open ? "Đã mở lớp" : classState(c.link).ready ? "Đủ sĩ số, chờ mở" : `Chưa mở ${classState(c.link).short}`}`}
+                  </option>
+                ))}
+              </select>
+            )}
             <select
               className={`${tbl.filterSelect} ${statusFilter ? tbl.filterActive : ""}`}
               data-active={statusFilter ? "true" : undefined}
@@ -552,74 +586,31 @@ export function EnrollmentsTab({
               </button>
             )}
           </div>
-          {showPrograms && (
-            <div
-              className={styles.progChips}
-              role="radiogroup"
-              aria-label="Lọc theo chương trình"
-            >
-              <button
-                type="button"
-                role="radio"
-                aria-checked={programFilter === null}
-                className={`${styles.progChip} ${programFilter === null ? styles.progChipActive : ""}`}
-                onClick={() => {
-                  setProgramFilter(null);
-                  resetPage();
-                }}
-              >
-                <span className={styles.progChipLabel}>Tất cả chương trình</span>
-                <span className={styles.progChipCount}>{matches.length}</span>
-              </button>
-              {shownChips.map((c) => (
-                <button
-                  key={c.key || "_none"}
-                  type="button"
-                  role="radio"
-                  aria-checked={programFilter === c.key}
-                  title={[
-                    c.code ? `${c.code} — ${c.name}` : c.name,
-                    c.link && classState(c.link).text,
-                  ]
-                    .filter(Boolean)
-                    .join("\n")}
-                  className={`${styles.progChip} ${programFilter === c.key ? styles.progChipActive : ""} ${c.count === 0 ? styles.progChipEmpty : ""}`}
-                  onClick={() => {
-                    setProgramFilter(c.key);
-                    resetPage();
-                  }}
-                >
-                  <span className={styles.progChipLabel}>
-                    {c.code && <b>{c.code}</b>} {c.name}
-                  </span>
-                  {c.link && (
-                    <span
-                      className={`${styles.progChipClass} ${classState(c.link).open ? styles.progChipClassOpen : ""}`}
-                    >
-                      {classState(c.link).open ? "Đã mở" : classState(c.link).short}
-                    </span>
-                  )}
-                  <span className={styles.progChipCount}>{c.count}</span>
-                </button>
-              ))}
-              {emptyChips.length > 0 && (
-                <button
-                  type="button"
-                  className={styles.progChipMore}
-                  onClick={() => setShowEmptyPrograms((v) => !v)}
-                >
-                  {showEmptyPrograms
-                    ? "Ẩn chương trình chưa có học viên"
-                    : `+${emptyChips.length} chương trình chưa có học viên`}
-                </button>
-              )}
-            </div>
-          )}
           {focusClass && (
             <div
               className={`${styles.classNote} ${focusClass.open ? styles.classNoteOpen : ""}`}
             >
               {focusClass.text}
+              {focusLink?.class_start &&
+                ` · Học ${formatDateOr(focusLink.class_start)} → ${formatDateOr(focusLink.class_end, "?")}`}
+              {focusClass.ready && canOpenClass && (
+                <button
+                  type="button"
+                  className={styles.classOpenBtn}
+                  onClick={() => setClassModal("open")}
+                >
+                  Mở lớp
+                </button>
+              )}
+              {focusClass.open && canOpenClass && (
+                <button
+                  type="button"
+                  className={styles.linkBtn}
+                  onClick={() => setClassModal("dates")}
+                >
+                  {focusLink?.class_start ? "Sửa ngày học" : "Đặt ngày học"}
+                </button>
+              )}
             </div>
           )}
         </div>
@@ -679,6 +670,15 @@ export function EnrollmentsTab({
           courseId={course.id}
           onClose={() => setBookOpen(false)}
           onImported={onSaved}
+        />
+      )}
+      {classModal && course && focusLink && (
+        <ClassDatesModal
+          courseId={course.id}
+          link={focusLink}
+          mode={classModal}
+          onClose={() => setClassModal(null)}
+          onSaved={onSaved}
         />
       )}
       {detail && (

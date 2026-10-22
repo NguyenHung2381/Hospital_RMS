@@ -40,7 +40,6 @@ export interface PublicCourse {
 	description: string | null;
 	start_date: string | null;
 	end_date: string | null;
-	capacity: number | null;
 	/** Hạn đăng ký (null = không giới hạn) */
 	enrollment_end_date: string | null;
 	program_name: string | null;
@@ -60,11 +59,13 @@ export interface PublicProgram {
 	practice_hours?: number | null;
 	tuition_fee?: number | null;
 	lesson_count: number;
-	/** Khóa tuyển sinh theo đợt: chỗ trống ở đợt sắp học (null = chưa có đợt, ≥9999 = không giới hạn). */
-	batch_open_seats?: number | null;
-	/** Số người đang chờ đợt sau / sĩ số tối thiểu để mở đợt (chỉ khóa tuyển sinh theo đợt). */
-	batch_waiting?: number | null;
-	batch_min?: number | null;
+	/** Khóa ĐTLT / CTCV (class_rule = 1): sĩ số lớp — tối thiểu để mở, tối đa (null = không giới hạn),
+	 *  đã duyệt, số người trong danh sách chờ của chương trình. */
+	class_rule: number;
+	class_min: number;
+	class_max: number | null;
+	class_approved: number;
+	class_waiting: number;
 	/** Nội dung theo thứ tự: bài lý thuyết hoặc vòng thực hành GPHN */
 	lessons: PublicProgramLesson[];
 }

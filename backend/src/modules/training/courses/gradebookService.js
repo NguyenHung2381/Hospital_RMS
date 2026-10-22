@@ -85,7 +85,10 @@ const loadRows = async (courseId, enrollmentIds) => {
            g.id AS grade_id, g.theory_score, g.practice_score, g.theory_flag, g.practice_flag,
            g.theory_attempt, g.practice_attempt, g.score, g.result, g.classification, g.note,
            g.locked_at, g.locked_by, lu.full_name AS locked_by_name,
-           cert.id AS certificate_id, cert.cert_no, cert.status AS certificate_status
+           cert.id AS certificate_id, cert.cert_no, cert.status AS certificate_status,
+           -- Kiểm tra đầu vào: chỉ tham khảo (so với điểm cuối khóa), không tính vào kết quả
+           (SELECT AVG(CAST(x.score10 AS FLOAT)) FROM exam_attempts x JOIN exam_papers ep ON ep.id = x.paper_id
+            WHERE x.enrollment_id = e.id AND ep.purpose = 'entrance' AND x.status = 'graded') AS entrance_score
     FROM course_enrollments e
     JOIN trainees t ON t.id = e.trainee_id
     LEFT JOIN training_programs tp ON tp.id = COALESCE(e.program_id, @only_program)
@@ -113,6 +116,7 @@ const loadRows = async (courseId, enrollmentIds) => {
 		...row,
 		theory_score: row.theory_score == null ? null : Number(row.theory_score),
 		practice_score: row.practice_score == null ? null : Number(row.practice_score),
+		entrance_score: row.entrance_score == null ? null : round1(row.entrance_score),
 		theory_attempt: row.theory_attempt ?? 1,
 		practice_attempt: row.practice_attempt ?? 1,
 		attendance: {
@@ -192,10 +196,25 @@ const ensureGradeRow = async (request, enrollmentId, programId, actorId) =>
     `)
 	).recordset[0];
 
+// Thi lại: bảng điểm giữ điểm CAO NHẤT các lần (GRADE_MAX_RETAKES), lịch sử ghi điểm thật từng lần.
 const writePart = async (tx, grade, enrollmentId, part, score, flag, source, actorId, note) => {
+	const attempt = grade[`${part}_attempt`] ?? 1;
+	let kept = score;
+	if (score != null && attempt > 1) {
+		const best = (
+			await new sql.Request(tx)
+				.input('enrollment_id', sql.VarChar(20), enrollmentId)
+				.input('part', sql.VarChar(10), part)
+				.input('attempt_no', sql.Int, attempt)
+				.query(
+					'SELECT MAX(score) AS best FROM grade_history WHERE enrollment_id = @enrollment_id AND part = @part AND attempt_no < @attempt_no',
+				)
+		).recordset[0]?.best;
+		if (best != null && Number(best) > Number(score)) kept = Number(best);
+	}
 	await new sql.Request(tx)
 		.input('id', sql.VarChar(20), grade.id)
-		.input('score', sql.Decimal(4, 1), score)
+		.input('score', sql.Decimal(4, 1), kept)
 		.input('flag', sql.VarChar(10), flag)
 		.input('actor_id', sql.VarChar(20), actorId)
 		.query(
@@ -204,7 +223,7 @@ const writePart = async (tx, grade, enrollmentId, part, score, flag, source, act
 	await new sql.Request(tx)
 		.input('enrollment_id', sql.VarChar(20), enrollmentId)
 		.input('part', sql.VarChar(10), part)
-		.input('attempt_no', sql.Int, grade[`${part}_attempt`] ?? 1)
+		.input('attempt_no', sql.Int, attempt)
 		.input('score', sql.Decimal(4, 1), score)
 		.input('flag', sql.VarChar(10), flag)
 		.input('source', sql.VarChar(20), source)

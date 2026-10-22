@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useMemo } from 'react';
 import { apiClient } from '@/shared/api/axios';
 import { ExcelActions, type ExcelColumn } from '@/shared/components/Excel';
-import { dateText, isYes, matchLabel, nameMap, numText } from '@/shared/components/Excel/excelHelpers';
+import { dateText, isYes, matchLabel, nameMap } from '@/shared/components/Excel/excelHelpers';
 import { formatDateVN } from '@/shared/utils/formatDate';
 import { createCourse, getCourses } from '../api/courseApi';
 import { EMPTY_FORM, TRAINING_TYPE, type Course } from '../types/course.type';
@@ -36,7 +36,6 @@ const EXCEL_COLS: ExcelColumn<Course>[] = [
 	{ header: 'Ngày kết thúc', key: 'end_date', value: (x) => formatDateVN(x.end_date) },
 	{ header: 'Mở đăng ký từ', key: 'enrollment_start_date', value: (x) => formatDateVN(x.enrollment_start_date) },
 	{ header: 'Mở đăng ký đến', key: 'enrollment_end_date', value: (x) => formatDateVN(x.enrollment_end_date) },
-	{ header: 'Sĩ số', key: 'capacity', value: (x) => x.capacity },
 	{ header: 'Đăng ký công khai', key: 'is_public_registration', value: (x) => (x.is_public_registration ? 'Có' : 'Không') },
 	{ header: 'Mô tả', key: 'description', value: (x) => x.description },
 	{ header: 'Trạng thái', value: (x) => DISPLAY_STATUS_CFG[x.display_status]?.label },
@@ -93,7 +92,6 @@ export default function Courses() {
 						end_date: dateText(r.end_date, 'Ngày kết thúc'),
 						enrollment_start_date: dateText(r.enrollment_start_date, 'Mở đăng ký từ'),
 						enrollment_end_date: dateText(r.enrollment_end_date, 'Mở đăng ký đến'),
-						capacity: numText(r.capacity),
 						is_public_registration: isYes(r.is_public_registration),
 						description: r.description,
 					});
@@ -167,7 +165,7 @@ export default function Courses() {
 							<th className={styles.th}>Khóa học</th>
 							<th className={styles.th}>Chương trình</th>
 							<th className={styles.th}>Đăng ký</th>
-							<th className={styles.th}>Sĩ số</th>
+							<th className={styles.th}>Học viên</th>
 							<th className={styles.th}>Trạng thái</th>
 							<th className={`${styles.th} ${styles.thRight}`}>Thao tác</th>
 						</tr>
@@ -193,7 +191,6 @@ export default function Courses() {
 							d.paged.map((c, i) => {
 								const rowNum = (d.safePage - 1) * (d.pageSize || d.total) + i + 1;
 								const cfg = DISPLAY_STATUS_CFG[c.display_status];
-								const isFull = c.capacity != null && c.approved_count >= c.capacity;
 								return (
 									<tr
 										key={c.id}
@@ -219,11 +216,7 @@ export default function Courses() {
 												<div className={styles.descText}>
 													{c.training_type_name}
 													{c.is_rolling ? ' · mở liên tục' : ''}
-													{c.auto_batch ? ' · tuyển sinh theo đợt' : ''}
 												</div>
-											)}
-											{c.parent_course_name && (
-												<div className={styles.descText}>Thuộc: {c.parent_course_name}</div>
 											)}
 											{c.pending_count > 0 && (
 												<div className={styles.descText}>
@@ -258,18 +251,9 @@ export default function Courses() {
 											</span>
 										</td>
 										<td className={styles.td}>
-											{c.auto_batch ? (
-												<>
-													<span className={styles.capacityText}>{c.family_count} học viên</span>
-													<div className={styles.descText}>
-														{c.batch_count} đợt · {c.waitlisted_count} chờ đợt sau
-													</div>
-												</>
-											) : (
-												<span className={`${styles.capacityText} ${isFull ? styles.capacityFull : ''}`}>
-													{c.approved_count}
-													{c.capacity != null ? `/${c.capacity}` : ''}
-												</span>
+											<span className={styles.capacityText}>{c.approved_count} đã duyệt</span>
+											{c.waitlisted_count > 0 && (
+												<div className={styles.descText}>{c.waitlisted_count} chờ khóa sau</div>
 											)}
 										</td>
 										<td className={styles.td}>

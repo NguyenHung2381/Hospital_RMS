@@ -68,14 +68,14 @@ export function RotationTable({ rotations }: { rotations: TraineeRotation[] }) {
 }
 
 /** Tab "Điểm danh": theo từng khóa — có mặt / vắng / muộn, tỉ lệ, chi tiết từng buổi; GPHN theo lượt khoa. */
-export function TraineeAttendanceTab({ traineeId }: { traineeId: string }) {
+/** traineeId bỏ trống = học viên tự xem (cổng /me). */
+export function TraineeAttendanceTab({ traineeId }: { traineeId?: string }) {
 	const [data, setData] = useState<TraineeAttendanceCourse[] | null>(null);
 	const [error, setError] = useState('');
 	const [open, setOpen] = useState<Record<string, boolean>>({});
 
 	useEffect(() => {
-		traineeRecordApi
-			.attendance(traineeId)
+		(traineeId ? traineeRecordApi.attendance(traineeId) : traineeRecordApi.myAttendance())
 			.then(setData)
 			.catch((err) => setError(err instanceof Error ? err.message : 'Không tải được điểm danh'));
 	}, [traineeId]);

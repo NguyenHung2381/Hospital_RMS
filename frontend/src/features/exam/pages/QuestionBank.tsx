@@ -1,5 +1,6 @@
 import { RowAction, RowActions } from '@/shared/components/Table/TableToolbar';
 import { useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { EditSvg, PlusSvg, SearchSvg, TrashSvg, UploadSvg } from '@/assets/icons';
 import AdminLayout from '../../../layouts/AdminLayout';
 import {
@@ -16,20 +17,31 @@ import {
 	SkeletonTable,
 } from '../../../shared/components';
 import sel from '../../../shared/components/Table/RowSelect.module.css';
+import { BulkButton } from '../../../shared/components/Table/RowSelect';
 import { useRowSelection } from '../../../shared/hooks/useRowSelection';
 import { DEFAULT_PAGE_SIZE } from '../../../shared/utils/constants';
 import { bulkToast, runBulk } from '../../../shared/utils/runBulk';
 import { notify } from '../../../shared/utils/feedback';
 import { examApi, type QuestionPayload } from '../api/examApi';
+import { apiClient } from '../../../shared/api/axios';
+import { SearchableSelect } from '../../../shared/components/Input/SearchableSelect';
 import { ExcelActions, type ExcelColumn, type ExcelRecord } from '@/shared/components/Excel';
 import { matchLabel, numText } from '@/shared/components/Excel/excelHelpers';
 import { ImportQuestionsModal } from '../components/ImportQuestionsModal';
-import type { ExamQuestion, QuestionType } from '../types/exam.type';
+import { POOL_LABEL, type ExamQuestion, type QuestionPool, type QuestionType } from '../types/exam.type';
 import styles from './QuestionBank.module.css';
 import tbl from '@/shared/components/Table/Table.module.css';
 
 const TYPE_LABEL: Record<QuestionType, string> = { single_choice: 'Trắc nghiệm', essay: 'Tự luận' };
-const NO_SUBJECT = '__none__';
+// Câu cũ chưa thuộc chương trình nào (trước khi ngân hàng tách theo chương trình)
+const NO_PROGRAM = '__none__';
+const POOLS: QuestionPool[] = ['final', 'entrance'];
+
+interface ProgramOption {
+	id: string;
+	code: string | null;
+	name: string;
+}
 const LETTERS = ['A', 'B', 'C', 'D', 'E', 'F'];
 
 const EXCEL_COLS: ExcelColumn<ExamQuestion>[] = [
@@ -42,7 +54,8 @@ const EXCEL_COLS: ExcelColumn<ExamQuestion>[] = [
 		value: (x) => (x.correct_option ? LETTERS[x.options.indexOf(x.correct_option)] : ''),
 	},
 	{ header: 'Điểm', key: 'points', value: (x) => x.points },
-	{ header: 'Bài học', value: (x) => x.subject_name },
+	{ header: 'Chương trình', value: (x) => (x.program_code ? `${x.program_code} — ${x.program_name}` : x.program_name) },
+	{ header: 'Kho', value: (x) => POOL_LABEL[x.pool] },
 	{ header: 'Số đề đang dùng', value: (x) => x.used_count ?? 0 },
 ];
 
@@ -65,7 +78,11 @@ export default function QuestionBank() {
 	const [loading, setLoading] = useState(true);
 	const [search, setSearch] = useState('');
 	const [type, setType] = useState<QuestionType | ''>('');
-	const [subject, setSubject] = useState('');
+	// Ngân hàng đang làm việc: chương trình + kho (đầu vào / cuối khóa), giữ trên URL
+	const [params, setParams] = useSearchParams();
+	const pool: QuestionPool = params.get('pool') === 'entrance' ? 'entrance' : 'final';
+	const [programs, setPrograms] = useState<ProgramOption[]>([]);
+	const [moving, setMoving] = useState<{ program: string; pool: QuestionPool } | null>(null);
 	const [usage, setUsage] = useState<'' | 'used' | 'unused'>('');
 	const [page, setPage] = useState(1);
 	const [pageSize, setPageSize] = useState<number>(DEFAULT_PAGE_SIZE);
@@ -83,30 +100,61 @@ export default function QuestionBank() {
 
 	useEffect(() => {
 		void load();
+		apiClient
+			.get<{ data: ProgramOption[] }>('/training-programs?limit=0')
+			.then((r) => setPrograms(r.data))
+			.catch(() => {});
 	}, []);
 
-	// ponytail: lọc/phân trang phía client — đủ cho vài nghìn câu; nhiều hơn thì chuyển sang API có paging
-	const subjects = useMemo(() => {
-		const m = new Map<string, string>();
-		items.forEach((x) => x.subject_id && m.set(x.subject_id, x.subject_name ?? x.subject_id));
-		return [...m].sort((a, b) => a[1].localeCompare(b[1], 'vi'));
+	// Chưa chọn thì mở chương trình có nhiều câu nhất (hoặc chương trình đầu tiên)
+	const countByProgram = useMemo(() => {
+		const m = new Map<string, number>();
+		items.forEach((x) => m.set(x.program_id ?? NO_PROGRAM, (m.get(x.program_id ?? NO_PROGRAM) ?? 0) + 1));
+		return m;
 	}, [items]);
+	const programId =
+		params.get('program') ??
+		[...countByProgram].filter(([id]) => id !== NO_PROGRAM).sort((a, b) => b[1] - a[1])[0]?.[0] ??
+		programs[0]?.id ??
+		'';
+	const unassigned = programId === NO_PROGRAM;
+	const setWorkspace = (next: { program?: string; pool?: QuestionPool }) => {
+		setParams({ program: next.program ?? programId, pool: next.pool ?? pool }, { replace: true });
+		setPage(1);
+		rowSel.clearSelection();
+	};
+	const programOptions = [
+		...programs.map((p) => ({
+			id: p.id,
+			name: `${p.code ? `${p.code} — ` : ''}${p.name} (${countByProgram.get(p.id) ?? 0} câu)`,
+		})),
+		...(countByProgram.get(NO_PROGRAM)
+			? [{ id: NO_PROGRAM, name: `Chưa thuộc chương trình nào (${countByProgram.get(NO_PROGRAM)} câu)` }]
+			: []),
+	];
+	// Câu mới / nhập vào thuộc ngân hàng đang mở
+	const withWorkspace = (q: QuestionPayload): QuestionPayload => ({ ...q, program_id: programId, pool });
+
+	// ponytail: lọc/phân trang phía client — đủ cho vài nghìn câu; nhiều hơn thì chuyển sang API có paging
+	const inWorkspace = useMemo(
+		() => items.filter((x) => (unassigned ? !x.program_id : x.program_id === programId && x.pool === pool)),
+		[items, unassigned, programId, pool],
+	);
+	const poolCount = (p: QuestionPool) => items.filter((x) => x.program_id === programId && x.pool === p).length;
 
 	const filtered = useMemo(() => {
 		const q = search.trim().toLowerCase();
-		return items.filter(
+		return inWorkspace.filter(
 			(x) =>
 				(!type || x.question_type === type) &&
-				(!subject || (subject === NO_SUBJECT ? !x.subject_id : x.subject_id === subject)) &&
 				(!usage || (usage === 'used') === !!x.used_count) &&
 				(!q || [x.question_text, ...x.options].some((s) => s.toLowerCase().includes(q))),
 		);
-	}, [items, search, type, subject, usage]);
-	const hasFilter = !!(search || type || subject || usage);
+	}, [inWorkspace, search, type, usage]);
+	const hasFilter = !!(search || type || usage);
 	const resetFilters = () => {
 		setSearch('');
 		setType('');
-		setSubject('');
 		setUsage('');
 		setPage(1);
 	};
@@ -121,6 +169,23 @@ export default function QuestionBank() {
 		try {
 			const { okIds, failedCount } = await runBulk(ids, (id) => examApi.removeQuestion(id));
 			(failedCount ? notify.error : notify.success)(bulkToast('xoá', okIds.size, failedCount, 'câu hỏi'));
+			await load();
+		} finally {
+			setBusy(false);
+		}
+	};
+
+	// Chuyển câu đã chọn sang ngân hàng khác (câu cũ chưa thuộc chương trình, hoặc đổi kho)
+	const handleMove = async () => {
+		if (!moving?.program || moving.program === NO_PROGRAM) return notify.error('Vui lòng chọn chương trình');
+		setBusy(true);
+		try {
+			const { okIds, failedCount } = await runBulk([...rowSel.selectedIds], (id) =>
+				examApi.updateQuestion(id, { program_id: moving.program, pool: moving.pool }),
+			);
+			(failedCount ? notify.error : notify.success)(bulkToast('chuyển', okIds.size, failedCount, 'câu hỏi'));
+			setMoving(null);
+			rowSel.clearSelection();
 			await load();
 		} finally {
 			setBusy(false);
@@ -148,7 +213,7 @@ export default function QuestionBank() {
 		setBusy(true);
 		try {
 			if (editing && editing !== 'new') await examApi.updateQuestion(editing.id, payload);
-			else await examApi.createQuestion(payload);
+			else await examApi.createQuestion(withWorkspace(payload));
 			notify.success(editing === 'new' ? 'Đã thêm câu hỏi' : 'Đã cập nhật câu hỏi');
 			setEditing(null);
 			await load();
@@ -177,7 +242,7 @@ export default function QuestionBank() {
 	return (
 		<AdminLayout
 			pageTitle='Ngân hàng câu hỏi'
-			pageSubtitle='Câu hỏi trắc nghiệm & tự luận dùng chung cho các đề kiểm tra của khóa học'
+			pageSubtitle='Mỗi chương trình đào tạo một ngân hàng riêng, chia kho kiểm tra đầu vào và thi cuối khóa — đề thi bốc câu từ đây'
 			breadcrumbs={[{ label: 'Đào tạo' }]}
 			headerActions={
 				<div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
@@ -187,25 +252,67 @@ export default function QuestionBank() {
 						columns={EXCEL_COLS}
 						getRows={() => filtered}
 						importHint='Có phương án → trắc nghiệm; Đáp án đúng ghi chữ cái (A–F). Điểm để trống = 1.'
-						importRow={(r) => examApi.createQuestion(questionFromExcel(r))}
+						importRow={
+							unassigned || !programId
+								? undefined
+								: (r) => examApi.createQuestion(withWorkspace(questionFromExcel(r)))
+						}
 						onImported={() => void load()}
 					/>
 					<Button
 						variant='secondary'
 						icon={<UploadSvg />}
 						onClick={() => setImporting(true)}
+						disabled={unassigned || !programId}
 					>
 						Nhập từ Word/PDF
 					</Button>
 					<Button
 						icon={<PlusSvg />}
 						onClick={() => setEditing('new')}
+						disabled={unassigned || !programId}
 					>
 						Thêm câu hỏi
 					</Button>
 				</div>
 			}
 		>
+			<div className={styles.workspace}>
+				<div className={styles.workspaceProgram}>
+					<span className={styles.workspaceLabel}>Chương trình</span>
+					<SearchableSelect
+						options={programOptions}
+						value={programId}
+						onChange={(id) => setWorkspace({ program: id })}
+						placeholder='— Chọn chương trình đào tạo —'
+					/>
+				</div>
+				{!unassigned && (
+					<div
+						className={styles.poolTabs}
+						role='tablist'
+					>
+						{POOLS.map((p) => (
+							<button
+								key={p}
+								type='button'
+								role='tab'
+								aria-selected={pool === p}
+								className={`${styles.poolTab} ${pool === p ? styles.poolTabActive : ''}`}
+								onClick={() => setWorkspace({ pool: p })}
+							>
+								{POOL_LABEL[p]} <span className={styles.poolCount}>{poolCount(p)}</span>
+							</button>
+						))}
+					</div>
+				)}
+				{unassigned && (
+					<span className={styles.hint}>
+						Câu hỏi cũ chưa thuộc chương trình nào — chọn câu rồi bấm "Chuyển sang chương trình" để đưa vào ngân hàng.
+					</span>
+				)}
+			</div>
+
 			<div className={styles.tableCard}>
 				<div className={styles.tableHeader}>
 					<div className={styles.tableHeaderLeft}>
@@ -237,27 +344,6 @@ export default function QuestionBank() {
 							<option value='single_choice'>Trắc nghiệm</option>
 							<option value='essay'>Tự luận</option>
 						</select>
-						{subjects.length > 0 && (
-							<select
-								className={styles.select}
-								value={subject}
-								onChange={(e) => {
-									setSubject(e.target.value);
-									setPage(1);
-								}}
-							>
-								<option value=''>Tất cả bài học</option>
-								{subjects.map(([id, name]) => (
-									<option
-										key={id}
-										value={id}
-									>
-										{name}
-									</option>
-								))}
-								<option value={NO_SUBJECT}>Chưa gán bài học</option>
-							</select>
-						)}
 						<select
 							className={styles.select}
 							value={usage}
@@ -298,6 +384,15 @@ export default function QuestionBank() {
 						loading={busy}
 						onBulkDelete={handleBulkDelete}
 						onBulkEdit={() => setBulkPoints('1')}
+						extraActions={
+							<BulkButton
+								onClick={() =>
+									setMoving({ program: unassigned ? '' : programId, pool: unassigned ? 'final' : pool })
+								}
+							>
+								Chuyển sang chương trình…
+							</BulkButton>
+						}
 						deleteNote='Câu hỏi đang nằm trong đề kiểm tra sẽ không xoá được và được báo lỗi riêng.'
 					/>
 					<table className={styles.table}>
@@ -435,6 +530,8 @@ export default function QuestionBank() {
 								correct_option: q.correctIndex != null ? q.options[q.correctIndex] : null,
 								points: q.points,
 								image_url: q.image ? (await examApi.uploadQuestionImage(q.image)).url : null,
+								program_id: programId,
+								pool,
 							});
 						}
 						const res = await examApi.createQuestionsBulk(payload);
@@ -487,6 +584,58 @@ export default function QuestionBank() {
 						onChange={(e) => setBulkPoints(e.target.value)}
 					/>
 				</label>
+			</Modal>
+
+			<Modal
+				open={!!moving}
+				onClose={() => setMoving(null)}
+				title={`Chuyển ${rowSel.selectedCount} câu hỏi sang ngân hàng`}
+				size='sm'
+				footer={
+					<>
+						<Button
+							variant='secondary'
+							onClick={() => setMoving(null)}
+						>
+							Huỷ
+						</Button>
+						<Button
+							loading={busy}
+							onClick={() => void handleMove()}
+						>
+							Chuyển
+						</Button>
+					</>
+				}
+			>
+				<div className={styles.form}>
+					<label className={styles.field}>
+						Chương trình
+						<SearchableSelect
+							options={programOptions.filter((o) => o.id !== NO_PROGRAM)}
+							value={moving?.program ?? ''}
+							onChange={(id) => setMoving((m) => m && { ...m, program: id })}
+							placeholder='— Chọn chương trình —'
+						/>
+					</label>
+					<label className={styles.field}>
+						Kho
+						<select
+							className={styles.input}
+							value={moving?.pool ?? 'final'}
+							onChange={(e) => setMoving((m) => m && { ...m, pool: e.target.value as QuestionPool })}
+						>
+							{POOLS.map((p) => (
+								<option
+									key={p}
+									value={p}
+								>
+									{POOL_LABEL[p]}
+								</option>
+							))}
+						</select>
+					</label>
+				</div>
 			</Modal>
 
 			<Modal

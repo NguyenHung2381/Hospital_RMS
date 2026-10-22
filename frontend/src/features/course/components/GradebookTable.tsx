@@ -158,6 +158,7 @@ export function GradebookTable({ book, onSave, fileName, toolbar, rowActions, tr
 	const excelCols: ExcelColumn<GradebookRow>[] = [
 		{ header: 'Mã HV', key: 'code', required: true, value: (r) => r.trainee_id },
 		{ header: 'Họ tên', key: 'name', value: (r) => r.trainee_name },
+		{ header: 'Đầu vào', value: (r) => fmt(r.entrance_score) },
 		{ header: 'Điểm LT', key: 'theory', value: (r) => cellText(r, 'theory') },
 		{ header: 'Điểm TH', key: 'practice', value: (r) => cellText(r, 'practice') },
 		{ header: 'Ghi chú', key: 'note', value: (r) => r.note ?? '' },
@@ -176,6 +177,9 @@ export function GradebookTable({ book, onSave, fileName, toolbar, rowActions, tr
 		}
 		if (rec.note) setCell(row.enrollment_id, 'note', rec.note);
 	};
+
+	// Lớp có làm kiểm tra đầu vào ⇒ hiện cột để so sánh trước / sau
+	const hasEntrance = rows.some((r) => r.entrance_score != null);
 
 	const pct = (part: GradePart, row: GradebookRow) => {
 		const p = row.computed[part];
@@ -310,6 +314,14 @@ export function GradebookTable({ book, onSave, fileName, toolbar, rowActions, tr
 							<th className={styles.th}>Học viên</th>
 							<th className={`${styles.th} ${styles.center}`}>Chuyên cần LT</th>
 							<th className={`${styles.th} ${styles.center}`}>Chuyên cần TH</th>
+							{hasEntrance && (
+								<th
+									className={`${styles.th} ${styles.center}`}
+									title='Kiểm tra đầu vào — chỉ tham khảo, so với điểm lý thuyết cuối khóa'
+								>
+									Đầu vào
+								</th>
+							)}
 							<th className={`${styles.th} ${styles.center}`}>Điểm LT</th>
 							<th className={`${styles.th} ${styles.center}`}>Điểm TH</th>
 							<th className={`${styles.th} ${styles.center}`}>Tổng</th>
@@ -324,7 +336,7 @@ export function GradebookTable({ book, onSave, fileName, toolbar, rowActions, tr
 							<tr>
 								<td
 									className={styles.td}
-									colSpan={rowActions ? 11 : 10}
+									colSpan={(rowActions ? 11 : 10) + (hasEntrance ? 1 : 0)}
 								>
 									Chưa có học viên nào được duyệt.
 								</td>
@@ -352,6 +364,17 @@ export function GradebookTable({ book, onSave, fileName, toolbar, rowActions, tr
 								</td>
 								<td className={`${styles.td} ${styles.center}`}>{pct('theory', row)}</td>
 								<td className={`${styles.td} ${styles.center}`}>{pct('practice', row)}</td>
+								{hasEntrance && (
+									<td className={`${styles.td} ${styles.center}`}>
+										{row.entrance_score == null ? '—' : fmt(row.entrance_score)}
+										{row.entrance_score != null && row.theory_score != null && (
+											<div className={styles.sub}>
+												{row.theory_score >= row.entrance_score ? '+' : ''}
+												{fmt(Math.round((row.theory_score - row.entrance_score) * 10) / 10)} so với LT
+											</div>
+										)}
+									</td>
+								)}
 								<td className={`${styles.td} ${styles.center}`}>{scoreCell(row, 'theory', r)}</td>
 								<td className={`${styles.td} ${styles.center}`}>{scoreCell(row, 'practice', r)}</td>
 								<td className={`${styles.td} ${styles.center}`}>{fmt(row.computed.total) || '—'}</td>

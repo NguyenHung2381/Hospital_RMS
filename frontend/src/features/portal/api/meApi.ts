@@ -39,6 +39,8 @@ export interface MyEnrolledCourse extends MyCourseBase {
 	attended_count: number;
 	document_count: number;
 	open_exam_count: number;
+	/** Đang ở danh sách chờ của chương trình (lớp đầy) — vị trí, 1 = đầu hàng. */
+	waitlist_position: number | null;
 	grades: MyGrade[];
 }
 
