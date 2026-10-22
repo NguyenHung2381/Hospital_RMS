@@ -1,10 +1,17 @@
 import type { LecturerItem } from '../hooks/useCourseDetail';
 
-/** Các <option> giảng viên chia 2 nhóm: bác sĩ nội viện / chuyên gia ngoài viện. */
+/** Các <option> giảng viên theo nhóm: GV khoa của chương trình / nhân viên khoa có CCHN
+ * (chọn là tự thành GV) / bác sĩ nội viện khác / chuyên gia ngoài viện. */
 export function LecturerOptions({ lecturers }: { lecturers: LecturerItem[] }) {
+	const dept = [...new Set(lecturers.filter((l) => l.group !== 'other').map((l) => l.department_name))]
+		.filter(Boolean)
+		.join(', ');
+	const other = lecturers.filter((l) => l.group === 'other');
 	const groups = [
-		{ label: 'Bác sĩ nội viện', items: lecturers.filter((l) => !l.is_external) },
-		{ label: 'Chuyên gia ngoài viện', items: lecturers.filter((l) => l.is_external) },
+		{ label: `Giảng viên khoa ${dept}`.trim(), items: lecturers.filter((l) => l.group === 'department') },
+		{ label: 'Nhân viên có chứng chỉ hành nghề', items: lecturers.filter((l) => l.group === 'staff') },
+		{ label: 'Bác sĩ nội viện', items: other.filter((l) => !l.is_external) },
+		{ label: 'Chuyên gia ngoài viện', items: other.filter((l) => l.is_external) },
 	];
 	return (
 		<>

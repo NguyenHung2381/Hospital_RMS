@@ -176,11 +176,12 @@ export function SessionsTab({ d }: { d: Detail }) {
 	const [bulkResult, setBulkResult] = useState<{ created: number; skipped: number } | null>(null);
 	const lessonPg = useClientPaging(d.courseLessons);
 
-	// Giảng viên đã phân công lên đầu danh sách chọn cho buổi học
+	// Buổi học chỉ chọn GV đã có hồ sơ (nhân viên CCHN phân công vào bài trước); GV đã phân công lên đầu
 	const assignedIds = new Set(d.assignments.map((a) => a.lecturer_id));
+	const realLecturers = d.lecturers.filter((l) => l.group !== 'staff');
 	const sessionLecturers = [
-		...d.lecturers.filter((l) => assignedIds.has(l.id)),
-		...d.lecturers.filter((l) => !assignedIds.has(l.id)),
+		...realLecturers.filter((l) => assignedIds.has(l.id)),
+		...realLecturers.filter((l) => !assignedIds.has(l.id)),
 	];
 	// Bài học chọn cho buổi: bài của khóa; khóa chưa gắn chương trình thì mọi bài
 	const lessonOptions = d.courseLessons.length

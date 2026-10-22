@@ -2,6 +2,7 @@ const { getPool, sql, withTransaction } = require('../../../config/db');
 const { broadcast } = require('../../events/eventService');
 const { ROLE, roleIdOf } = require('../../access/roleCodes');
 const { httpError } = require('../../../utils/httpError');
+const lecturerService = require('../lecturers/lecturerService');
 
 // lecturer_assignments.subject_id trỏ program_lessons (tên cột cũ từ thời "môn học").
 // role: 'main' = GV chính (mỗi bài tối đa 1, UQ_lecass_main) | 'assistant' = GV phụ.
@@ -40,6 +41,66 @@ const listCourseLessons = async (courseId) => {
     ORDER BY MIN(tp.name), MIN(lp.display_order), pl.title
   `);
 	return r.recordset;
+};
+
+/** Tiền tố id cho nhân viên có CCHN chưa là giảng viên trong ô chọn — phân công thì tự tạo hồ sơ GV. */
+const STAFF_PREFIX = 'user:';
+
+/**
+ * Ứng viên giảng viên của khóa, `group`:
+ * - 'department': GV có tài khoản thuộc khoa của chương trình trong khóa
+ * - 'staff': nhân viên khoa đó có CCHN, chưa là GV (id = 'user:<user_id>')
+ * - 'other': chuyên gia ngoài viện / GV chưa gắn tài khoản (chưa biết khoa) / GV đã phân công
+ * GV đã biết thuộc khoa khác thì ẩn. Chương trình không gắn khoa ⇒ lấy mọi GV.
+ */
+const listLecturerCandidates = async (courseId) => {
+	const pool = await getPool();
+	const r = await pool.request().input('course_id', sql.VarChar(20), courseId).query(`
+    DECLARE @depts TABLE (id VARCHAR(20) PRIMARY KEY);
+    INSERT INTO @depts SELECT DISTINCT tp.department_id
+    FROM course_programs cp JOIN training_programs tp ON tp.id = cp.program_id
+    WHERE cp.course_id = @course_id AND tp.department_id IS NOT NULL;
+    DECLARE @scoped BIT = CASE WHEN EXISTS (SELECT 1 FROM @depts) THEN 1 ELSE 0 END;
+
+    SELECT l.id, l.full_name, l.specialty, l.is_external, l.academic_degree, l.academic_rank,
+           d.name AS department_name,
+           CASE WHEN u.department_id IN (SELECT id FROM @depts) THEN 'department' ELSE 'other' END AS [group]
+    FROM lecturers l
+    LEFT JOIN users u ON u.id = l.user_id
+    LEFT JOIN departments d ON d.id = u.department_id
+    WHERE l.is_active = 1
+      AND (@scoped = 0 OR u.department_id IS NULL OR u.department_id IN (SELECT id FROM @depts)
+        OR l.id IN (SELECT lecturer_id FROM lecturer_assignments WHERE course_id = @course_id))
+    UNION ALL
+    SELECT '${STAFF_PREFIX}' + u.id, u.full_name, sl.primary_specialty, CAST(0 AS BIT), NULL, NULL,
+           d.name, 'staff'
+    FROM staff_practice_licenses sl
+    JOIN users u ON u.id = sl.user_id
+    LEFT JOIN departments d ON d.id = u.department_id
+    WHERE sl.license_no IS NOT NULL AND u.is_active = 1
+      AND u.department_id IN (SELECT id FROM @depts)
+      AND NOT EXISTS (SELECT 1 FROM lecturers l WHERE l.user_id = u.id)
+    ORDER BY full_name;
+  `);
+	return r.recordset;
+};
+
+// 'user:<id>' (nhân viên có CCHN) ⇒ hồ sơ GV của người đó, chưa có thì tạo.
+const resolveLecturerId = async (id, actorId) => {
+	if (!id || !String(id).startsWith(STAFF_PREFIX)) return id;
+	const userId = String(id).slice(STAFF_PREFIX.length);
+	const pool = await getPool();
+	const r = await pool.request().input('uid', sql.VarChar(20), userId).query(`
+    SELECT (SELECT TOP 1 id FROM lecturers WHERE user_id = @uid) AS lecturer_id, sl.license_no
+    FROM users u LEFT JOIN staff_practice_licenses sl ON sl.user_id = u.id
+    WHERE u.id = @uid
+  `);
+	const row = r.recordset[0];
+	if (row?.lecturer_id) return row.lecturer_id;
+	if (!row?.license_no) throw httpError(400, 'Nhân viên không có chứng chỉ hành nghề.');
+	const { created, skipped } = await lecturerService.createFromStaff([userId], actorId);
+	if (!created[0]) throw httpError(400, skipped[0]?.reason || 'Không tạo được hồ sơ giảng viên.');
+	return created[0].id;
 };
 
 // Không phân công học viên làm giảng viên: chặn tài khoản học viên (VT08) và
@@ -100,12 +161,13 @@ const toHours = (v) => {
 };
 
 const assignLecturer = async (courseId, data, actorId) => {
+	const lecturerId = await resolveLecturerId(data.lecturer_id, actorId);
 	const pool = await getPool();
-	await assertAssignable(pool.request(), courseId, data.lecturer_id);
+	await assertAssignable(pool.request(), courseId, lecturerId);
 	try {
 		const result = await insertAssignment(pool.request(), {
 			courseId,
-			lecturerId: data.lecturer_id,
+			lecturerId,
 			subjectId: data.subject_id,
 			role: data.role,
 			hours: toHours(data.hours),
@@ -130,11 +192,19 @@ const assignLecturer = async (courseId, data, actorId) => {
 const setLessonLecturers = async (courseId, lessonId, data, actorId) => {
 	const wanted = new Map();
 	for (const a of data.assistants || []) {
-		if (a?.lecturer_id) wanted.set(a.lecturer_id, { role: 'assistant', hours: toHours(a.hours) });
+		if (a?.lecturer_id) {
+			wanted.set(await resolveLecturerId(a.lecturer_id, actorId), {
+				role: 'assistant',
+				hours: toHours(a.hours),
+			});
+		}
 	}
 	// GV chính ghi đè nếu trùng người với GV phụ
 	if (data.main?.lecturer_id) {
-		wanted.set(data.main.lecturer_id, { role: 'main', hours: toHours(data.main.hours) });
+		wanted.set(await resolveLecturerId(data.main.lecturer_id, actorId), {
+			role: 'main',
+			hours: toHours(data.main.hours),
+		});
 	}
 
 	const pool = await getPool();
@@ -211,6 +281,7 @@ const removeAssignment = async (assignmentId) => {
 module.exports = {
 	listAssignments,
 	listCourseLessons,
+	listLecturerCandidates,
 	assignLecturer,
 	setLessonLecturers,
 	removeAssignment,

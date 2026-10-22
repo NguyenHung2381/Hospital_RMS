@@ -89,6 +89,7 @@ POST   /api/v1/courses/:id/grades/lock  courses:update
 POST   /api/v1/courses/:id/grades/unlock  grades:unlock
 GET    /api/v1/courses/:id/lecturer-assignments  courses:read
 POST   /api/v1/courses/:id/lecturer-assignments  courses:update
+GET    /api/v1/courses/:id/lecturer-candidates  courses:read
 PUT    /api/v1/courses/:id/lesson-lecturers  courses:update
 GET    /api/v1/courses/:id/lessons  courses:read
 POST   /api/v1/courses/:id/practice-book/export  courses:read

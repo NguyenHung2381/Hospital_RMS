@@ -306,6 +306,10 @@ const listAssignments = asyncHandler(async (req, res) => {
 	return success(res, await lecturerAssignmentService.listAssignments(req.params.id));
 });
 
+const listLecturerCandidates = asyncHandler(async (req, res) => {
+	return success(res, await lecturerAssignmentService.listLecturerCandidates(req.params.id));
+});
+
 const assignLecturer = asyncHandler(async (req, res) => {
 	return created(
 		res,
@@ -552,6 +556,7 @@ module.exports = {
 	downloadPracticeDocument,
 	listAssignments,
 	assignLecturer,
+	listLecturerCandidates,
 	removeAssignment,
 	listCourseLessons,
 	setLessonLecturers,

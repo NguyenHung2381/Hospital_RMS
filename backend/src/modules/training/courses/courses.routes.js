@@ -330,6 +330,12 @@ router.get(
 	authorizePermission(['courses', 'read']),
 	ctrl.listAssignments,
 );
+// GV khoa của chương trình + nhân viên khoa đó có CCHN (chưa là GV, id 'user:<id>')
+router.get(
+	'/:id/lecturer-candidates',
+	authorizePermission(['courses', 'read']),
+	ctrl.listLecturerCandidates,
+);
 router.post(
 	'/:id/lecturer-assignments',
 	authorizePermission(['courses', 'update']),

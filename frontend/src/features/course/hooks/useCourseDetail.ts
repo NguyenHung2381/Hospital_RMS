@@ -48,9 +48,12 @@ export interface SimpleItem {
 	name: string;
 }
 
-/** Giảng viên: bác sĩ/nhân viên nội viện hoặc chuyên gia ngoài viện (GS/PGS/TS...). */
+/** Giảng viên: bác sĩ/nhân viên nội viện hoặc chuyên gia ngoài viện (GS/PGS/TS...).
+ * group 'staff' = nhân viên khoa có CCHN chưa là GV (id 'user:…', phân công thì tự tạo hồ sơ GV). */
 export interface LecturerItem extends SimpleItem {
 	is_external: boolean;
+	group: 'department' | 'staff' | 'other';
+	department_name?: string | null;
 }
 
 interface PersonRow {
@@ -63,6 +66,8 @@ interface PersonRow {
 
 interface LecturerRow extends PersonRow {
 	is_external: boolean;
+	group: LecturerItem['group'];
+	department_name?: string | null;
 	academic_degree?: string | null;
 	academic_rank?: string | null;
 }
@@ -95,6 +100,8 @@ const toLecturerItem = (l: LecturerRow): LecturerItem => {
 		id: l.id,
 		name: joinLabel(hasTitle ? l.full_name : `${title} ${l.full_name}`, l.specialty),
 		is_external: !!l.is_external,
+		group: l.group,
+		department_name: l.department_name,
 	};
 };
 
@@ -171,19 +178,24 @@ export function useCourseDetail(courseId: string) {
 			.catch(() => {});
 	}, []);
 
+	// GV khoa của chương trình + nhân viên khoa đó có CCHN (xem listLecturerCandidates)
+	const loadLecturers = useCallback(() => {
+		apiClient
+			.get<LecturerRow[]>(`/courses/${courseId}/lecturer-candidates`)
+			.then((r) => setLecturers(r.map(toLecturerItem)))
+			.catch(() => {});
+	}, [courseId]);
+
 	useEffect(() => {
 		// trainees/lecturers trả cột `full_name` (không có `name`) — quy về SimpleItem, kèm
 		// SĐT/chuyên môn để phân biệt người trùng tên trong dropdown.
 		loadEnrollCandidates();
-		apiClient
-			.get<{ data: LecturerRow[] }>('/lecturers?limit=0&active_only=true')
-			.then((r) => setLecturers(r.data.map(toLecturerItem)))
-			.catch(() => {});
+		loadLecturers();
 		apiClient
 			.get<{ id: string; code: string; title: string }[]>('/training-programs/lessons/all')
 			.then((r) => setLessons(r.map((l) => ({ id: l.id, name: l.code ? `${l.code} — ${l.title}` : l.title }))))
 			.catch(() => {});
-	}, [loadEnrollCandidates]);
+	}, [loadEnrollCandidates, loadLecturers]);
 
 	const registerTrainee = useCallback(
 		async (traineeId: string, programId?: string) => {
@@ -284,13 +296,14 @@ export function useCourseDetail(courseId: string) {
 			try {
 				await apiAssignLecturer(courseId, data);
 				await load();
+				if (data.lecturer_id.startsWith(STAFF_OPTION_PREFIX)) loadLecturers();
 			} catch (err) {
 				setError(err instanceof Error ? err.message : 'Phân công thất bại');
 			} finally {
 				setBusy(false);
 			}
 		},
-		[courseId, load],
+		[courseId, load, loadLecturers],
 	);
 
 	/** Lưu 1 dòng của bảng Bài học × Giảng viên (GV chính + GV phụ + số tiết). */
@@ -301,13 +314,16 @@ export function useCourseDetail(courseId: string) {
 			try {
 				await apiSetLessonLecturers(courseId, lessonId, data);
 				setAssignments(await getAssignments(courseId));
+				// Nhân viên CCHN vừa thành GV — nạp lại để đổi sang mã GV thật
+				const picked = [data.main, ...data.assistants];
+				if (picked.some((a) => a?.lecturer_id.startsWith(STAFF_OPTION_PREFIX))) loadLecturers();
 			} catch (err) {
 				setError(err instanceof Error ? err.message : 'Lưu phân công thất bại');
 			} finally {
 				setBusy(false);
 			}
 		},
-		[courseId],
+		[courseId, loadLecturers],
 	);
 
 	const removeAssignment = useCallback(
