@@ -2,6 +2,7 @@ const cmeRecordService = require('./cmeRecordService');
 const cmeRecordImportService = require('./cmeRecordImportService');
 const cmeReportService = require('./cmeReportService');
 const cmeReportWorkbook = require('./exports/cmeReportWorkbook');
+const cmeUserService = require('./cmeUserService');
 const { success, created, notFound } = require('../../utils/response');
 const { hasPermission } = require('../../permissions/authz');
 const { asyncHandler } = require('../../utils/asyncHandler');
@@ -97,11 +98,19 @@ const importExcel = asyncHandler(async (req, res) => {
 				category_id: req.body.category_id || null,
 				title: String(req.body.title || '').trim() || null,
 				quantity: Number(req.body.quantity) > 0 ? Number(req.body.quantity) : null,
+				// Giờ tín chỉ mặc định cho loại "Khác" / không chọn loại — dòng để trống cột Giờ tín chỉ
+				credits:
+					String(req.body.credits ?? '').trim() !== '' && Number.isFinite(Number(req.body.credits))
+						? Number(req.body.credits)
+						: null,
 				create_missing: createMissing,
 				new_department_id: req.body.new_department_id || null,
 				staff_departments: parseStaffMap(req.body.staff_departments),
 				staff_names: parseStaffMap(req.body.staff_names),
 				can_create_staff: canCreateStaff,
+				// Người nhập đã xác nhận nhập cả dòng trùng ghi nhận đã có / dòng khác trong file
+				include_duplicates:
+					req.body.include_duplicates === '1' || req.body.include_duplicates === 'true',
 			},
 		},
 		req.user.id,
@@ -116,6 +125,7 @@ const reviewWith = (approve) =>
 			approve,
 			req.body?.reason,
 			req.user.id,
+			req.body?.credits,
 		);
 		if (!item) return notFound(res);
 		return success(res, item, approve ? 'Đã duyệt' : 'Đã từ chối');
@@ -175,6 +185,11 @@ const exportExcel = asyncHandler(async (req, res) => {
 	return sendWorkbook(res, wb, `bao-cao-cme${suffix}.xlsx`);
 });
 
+// GET /trainees/:id/cme — CME tích luỹ của học viên (hồ sơ học viên)
+const getTraineeCme = asyncHandler(async (req, res) => {
+	return success(res, await cmeUserService.getTraineeCme(req.params.id));
+});
+
 module.exports = {
 	getAll,
 	getById,
@@ -189,4 +204,5 @@ module.exports = {
 	importTemplate,
 	exportExcel,
 	createStaff,
+	getTraineeCme,
 };

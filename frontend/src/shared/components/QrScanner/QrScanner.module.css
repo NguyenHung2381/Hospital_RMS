@@ -27,8 +27,10 @@
 	display: flex;
 	flex-direction: column;
 	align-items: center;
+	justify-content: center;
 	gap: 10px;
-	padding: 24px 12px;
+	min-height: 200px;
+	padding: 24px 16px;
 	border: 2px dashed var(--color-gray-200);
 	border-radius: 12px;
 	background: var(--color-gray-50);
@@ -50,10 +52,32 @@
 }
 .placeholderText {
 	margin: 0;
-	max-width: 280px;
+	max-width: 320px;
 	font-size: var(--font-size-compact);
 	line-height: 1.5;
 	color: var(--color-gray-600);
+}
+
+/* Màn hình rộng: khung gợi ý cao hơn, gần với tỉ lệ khung camera khi bật. */
+@media (min-width: 640px) {
+	.wrap {
+		gap: 14px;
+		padding: 20px;
+	}
+	.placeholder {
+		min-height: 280px;
+	}
+	.placeholderIcon {
+		width: 72px;
+		height: 72px;
+	}
+	.placeholderIcon svg {
+		width: 38px;
+		height: 38px;
+	}
+	.placeholderText {
+		font-size: var(--font-size-sm);
+	}
 }
 
 .notice,

@@ -182,6 +182,15 @@
 	display: flex;
 	flex-direction: column;
 }
+/* Hồ sơ ghi danh: giữ chiều cao tối thiểu để tab ngắn (Thông tin) và tab dài (Điểm danh, Kết quả) không làm khung co giãn */
+.enrollmentModal {
+	min-height: min(560px, 85vh);
+}
+@media (max-width: 640px) {
+	.enrollmentModal {
+		min-height: 0;
+	}
+}
 .modalBody {
 	padding: var(--space-6);
 	display: flex;

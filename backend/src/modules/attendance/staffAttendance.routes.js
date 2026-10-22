@@ -9,7 +9,8 @@ const { asyncHandler } = require('../../utils/asyncHandler');
 
 router.use(authenticate);
 
-// GET /staff-attendance?date=YYYY-MM-DD (mặc định hôm nay) — phạm vi khoa: chỉ khoa mình
+// Chấm công học viên theo khóa đào tạo (đường dẫn / quyền giữ tên staff_attendance từ thời chấm công nhân viên)
+// GET /staff-attendance?date=YYYY-MM-DD (mặc định hôm nay) — phạm vi khoa: chỉ học viên khoa mình
 router.get(
 	'/',
 	authorizePermission(['staff_attendance', 'read']),
@@ -88,10 +89,11 @@ router.get(
 	canManageOrRoster,
 	handle(async (req, res) => success(res, await shiftService.listPatterns())),
 );
+// Khóa học để gán mẫu ca tuần
 router.get(
-	'/patterns/users',
+	'/patterns/courses',
 	canManage,
-	handle(async (req, res) => success(res, await shiftService.listUsers())),
+	handle(async (req, res) => success(res, await shiftService.listCourses())),
 );
 const patternBody = [
 	body('name').isString().trim().isLength({ min: 1, max: 100 }).withMessage('Tên mẫu 1–100 ký tự'),
@@ -130,24 +132,24 @@ router.delete(
 		return success(res, null, 'Đã xoá mẫu ca tuần');
 	}),
 );
-// Body: { user_ids: string[] } — đúng danh sách người dùng mẫu này
+// Body: { course_ids: string[] } — đúng danh sách khóa học dùng mẫu này
 router.put(
-	'/patterns/:id/users',
+	'/patterns/:id/courses',
 	canManage,
 	[
 		...idParam,
-		body('user_ids').isArray({ max: 20000 }),
-		body('user_ids.*').isString().isLength({ min: 1, max: 20 }),
+		body('course_ids').isArray({ max: 5000 }),
+		body('course_ids.*').isString().isLength({ min: 1, max: 20 }),
 	],
 	validate,
 	handle(async (req, res) => {
-		await shiftService.setPatternUsers(req.params.id, req.body.user_ids);
-		return success(res, null, 'Đã cập nhật người áp dụng mẫu ca');
+		await shiftService.setPatternCourses(req.params.id, req.body.course_ids);
+		return success(res, null, 'Đã cập nhật khóa học áp dụng mẫu ca');
 	}),
 );
 
-// GET /staff-attendance/roster?from=&to=&department_id= — tối đa 62 ngày.
-// Phân ca phạm vi khoa (staff_attendance:roster@department): chỉ thấy/xếp ca khoa mình.
+// GET /staff-attendance/roster?from=&to= — tối đa 62 ngày; học viên đang học khóa trong khoảng ngày.
+// Phân ca phạm vi khoa (staff_attendance:roster@department): chỉ thấy/xếp ca học viên khoa mình.
 router.get(
 	'/roster',
 	canRoster,
@@ -160,7 +162,6 @@ router.get(
 				if (days < 0 || days > 62) throw new Error('Khoảng ngày 0–62 ngày');
 				return true;
 			}),
-		query('department_id').optional({ values: 'falsy' }).isString().isLength({ max: 20 }),
 	],
 	validate,
 	handle(async (req, res) => success(res, await shiftService.getRoster(req.query, req.user))),

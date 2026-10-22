@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
-import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { BookOpenSvg, CalendarSvg, ChevDSvg, ChevLSvg, FileSvg, FileTextSvg, LinkSvg } from '@/assets/icons';
 import { Badge, Button, Card, EmptyState, InlineLoading } from '@/shared/components';
 import { FileViewerModal } from '@/shared/components/FileViewerModal';
@@ -19,7 +19,7 @@ import {
 	type MyLesson,
 	type MyLessonDocument,
 } from '../api/meApi';
-import { isTraineeAccount, TRAINEE_HOME } from '../../../app/router/authHelpers';
+import { isTraineeAccount, isTraineePath, TRAINEE_HOME } from '../../../app/router/authHelpers';
 import styles from './SelfService.module.css';
 
 const ATTEMPT_LABEL: Record<string, { label: string; tone: 'amber' | 'blue' | 'green' }> = {
@@ -120,6 +120,7 @@ const TABS: Tab[] = ['lessons', 'documents', 'exams'];
 export default function MyCourseDetail() {
 	const { id = '' } = useParams();
 	const navigate = useNavigate();
+	const { pathname } = useLocation();
 	// Tab giữ trên URL (?tab=) — tải lại / quay lại vẫn đúng tab đang xem.
 	const [params, setParams] = useSearchParams();
 	const tab: Tab = TABS.find((t) => t === params.get('tab')) ?? 'lessons';
@@ -168,7 +169,7 @@ export default function MyCourseDetail() {
 	};
 
 	// Tài khoản học viên: cổng /hoc-vien (TraineeLayout tự có nút quay lại).
-	const trainee = isTraineeAccount();
+	const trainee = isTraineeAccount() || isTraineePath(pathname);
 	const listPath = trainee ? `${TRAINEE_HOME}/khoa-hoc` : '/user/khoa-hoc';
 	const layout = {
 		breadcrumbs: [{ label: 'Khóa học của tôi', path: listPath }],

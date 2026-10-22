@@ -275,6 +275,16 @@
 	grid-template-columns: minmax(120px, 180px) 1fr;
 	gap: var(--space-3) var(--space-4);
 }
+/* Có thêm ô Giờ tín chỉ mặc định (loại "Khác") */
+.importDefaultsRow3 {
+	grid-template-columns: minmax(110px, 160px) minmax(110px, 160px) 1fr;
+}
+@media (max-width: 640px) {
+	.importDefaultsRow,
+	.importDefaultsRow3 {
+		grid-template-columns: 1fr;
+	}
+}
 .formLabel {
 	font-size: var(--font-size-sm);
 	font-weight: var(--font-weight-medium);

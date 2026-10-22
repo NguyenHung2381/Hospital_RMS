@@ -5,9 +5,10 @@ const { VN_OFFSET_MS } = require('./vnDate');
 //     checkin_before_min  được chấm vào sớm nhất trước giờ vào bao nhiêu phút
 //     checkout_after_min  được chấm ra muộn nhất sau giờ ra bao nhiêu phút
 //     grace_min           du di: vào trễ / ra sớm không quá số phút này thì không tính
-//   Ca của 1 người trong 1 ngày: có dòng phân ca ngày đó (shift_assignments) thì theo phân
-//   ca — dòng shift_id NULL = nghỉ; không có thì theo mẫu ca tuần (shift_patterns.days).
-//   Không có mẫu lẫn phân ca = chấm tự do (1 lượt/ngày, không giới hạn giờ — như trước).
+//   Người chấm công = học viên, chỉ trong những ngày đang học 1 khóa (courseOn).
+//   Ca của 1 học viên trong 1 ngày: có dòng phân ca ngày đó (shift_assignments) thì theo phân
+//   ca — dòng shift_id NULL = nghỉ; không có thì theo mẫu ca tuần của khóa (shift_patterns.days).
+//   Không có mẫu lẫn phân ca = chấm tự do (1 lượt/ngày, không giới hạn giờ).
 
 const MIN = 60 * 1000;
 const DAY = 24 * 60 * MIN;
@@ -61,10 +62,23 @@ const shiftIdsForDay = (pattern, assignments, dateKey) => {
 	return null;
 };
 
+// Lượt học phủ ngày dateKey (khóa mới nhất nếu học viên học nhiều khóa cùng lúc).
+//   periods: [{ course_id, start_date|null, end_date|null, … }] — 'YYYY-MM-DD', null = không giới hạn
+const periodOn = (periods, dateKey) => {
+	let best = null;
+	for (const p of periods) {
+		if ((p.start_date && p.start_date > dateKey) || (p.end_date && p.end_date < dateKey)) continue;
+		if (!best || (p.start_date ?? '') > (best.start_date ?? '')) best = p;
+	}
+	return best;
+};
+
 // Ca có thể bấm lúc `now`. Bản ghi đã có của ca → lượt bấm là chấm ra (lấy lần cuối),
 // chưa có → chấm vào (chỉ trước giờ kết thúc ca). Không có lịch ca hôm nay → 1 lựa chọn chấm tự do.
+// Ngày không thuộc khóa học nào → không có lựa chọn.
+//   courseOn(dateKey) → { course_id, course_name, pattern } | null — khóa đang học ngày đó
 //   shiftsById: Map id → ca; records: bản ghi chấm công gần đây [{ work_date, shift_id }]
-const checkOptions = ({ pattern, assignments, shiftsById, records, now = new Date() }) => {
+const checkOptions = ({ courseOn, assignments, shiftsById, records, now = new Date() }) => {
 	const today = dateKeyVN(now);
 	const t = now.getTime();
 	const hasRecord = (dateKey, shiftId) =>
@@ -72,12 +86,16 @@ const checkOptions = ({ pattern, assignments, shiftsById, records, now = new Dat
 	const options = [];
 	// Ca dài nhất 24h + chấm ra muộn tối đa 12h ⇒ ca bắt đầu từ 2 ngày trước vẫn có thể còn mở
 	for (const dateKey of [addDays(today, -2), addDays(today, -1), today, addDays(today, 1)]) {
-		const day = shiftIdsForDay(pattern, assignments, dateKey);
+		const course = courseOn(dateKey);
+		if (!course) continue;
+		const tag = { course_id: course.course_id, course_name: course.course_name ?? null };
+		const day = shiftIdsForDay(course.pattern, assignments, dateKey);
 		if (!day) {
 			if (dateKey === today)
 				options.push({
 					shift_id: null,
 					work_date: today,
+					...tag,
 					action: hasRecord(today, null) ? 'check_out' : 'check_in',
 				});
 			continue;
@@ -89,7 +107,7 @@ const checkOptions = ({ pattern, assignments, shiftsById, records, now = new Dat
 			const done = hasRecord(dateKey, id);
 			if (t < inst.open_at.getTime() || t > inst.close_at.getTime()) continue;
 			if (!done && t > inst.end_at.getTime()) continue; // hết ca mà chưa vào thì không chấm vào nữa
-			options.push({ ...inst, action: done ? 'check_out' : 'check_in' });
+			options.push({ ...inst, ...tag, action: done ? 'check_out' : 'check_in' });
 		}
 	}
 	const key = (o) => o.start_at?.getTime() ?? Infinity; // chấm tự do xếp sau các ca
@@ -143,6 +161,7 @@ module.exports = {
 	weekdayOf,
 	instanceOf,
 	shiftIdsForDay,
+	periodOn,
 	checkOptions,
 	lateMin,
 	earlyMin,

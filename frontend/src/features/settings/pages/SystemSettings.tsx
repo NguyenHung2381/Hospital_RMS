@@ -2,6 +2,10 @@ import { useEffect, useState } from 'react';
 import AdminLayout from '../../../layouts/AdminLayout';
 import { Button, Card } from '../../../shared/components';
 import { notify } from '../../../shared/utils/feedback';
+import { ADMIN_MENU } from '../../../layouts/AdminLayout/nav';
+import { TRAINEE_MENU } from '../../../layouts/TraineeLayout/nav';
+import { USER_MENU } from '../../../layouts/UserLayout/nav';
+import { resetMenuConfig, type MenuCatalog } from '../../../shared/hooks/useMenuConfig';
 import { resetModules } from '../../../shared/hooks/useModules';
 import { resetUploadPolicy } from '../../../shared/hooks/useUploadPolicy';
 import { getMyAttendance } from '../../portal/api/meApi';
@@ -12,7 +16,9 @@ type Field = {
 	key: string;
 	label: string;
 	hint?: string;
-	type?: 'bool' | 'text' | 'number' | 'password' | 'select' | 'textarea' | 'multi';
+	type?: 'bool' | 'text' | 'number' | 'password' | 'select' | 'textarea' | 'multi' | 'menu';
+	/** Cho type 'menu': danh sách mục của cổng — giá trị lưu là key các mục bị TẮT. */
+	menu?: MenuCatalog;
 	options?: [string, string][];
 	placeholder?: string;
 	/** Mặc định của backend khi chưa cấu hình gì (chỉ cho bool). */
@@ -34,8 +40,8 @@ type Section = {
 // Hiện ở cả tab "Module chức năng" lẫn tab "Chấm công" (cùng 1 key)
 const ATTENDANCE_TOGGLE: Field = {
 	key: 'MODULE_ATTENDANCE',
-	label: 'Chấm công nhân viên',
-	hint: 'Bật để hiện mục Chấm công cho nhân viên và Bảng chấm công cho quản trị. Cấu hình IP và vị trí ở tab "Chấm công" trước khi bật.',
+	label: 'Chấm công học viên',
+	hint: 'Bật để hiện mục Chấm công ở cổng học viên (học viên chấm vào/ra theo ca trong thời gian khóa học) và Bảng chấm công, Phân ca học viên cho quản trị. Cấu hình IP và vị trí ở tab "Chấm công" trước khi bật.',
 	type: 'bool',
 	defaultOn: false,
 	onText: 'Đang bật',
@@ -186,6 +192,21 @@ const SECTIONS: Section[] = [
 				],
 			},
 		],
+	},
+	{
+		id: 'menus',
+		title: 'Menu hiển thị',
+		sub: 'Bật/tắt từng mục menu',
+		groups: (
+			[
+				['MENU_HIDDEN_ADMIN', 'Trang quản trị', 'Sidebar /admin.', ADMIN_MENU],
+				['MENU_HIDDEN_USER', 'Cổng nhân viên', 'Sidebar /user. Menu tài khoản (hồ sơ, thông báo) luôn hiện.', USER_MENU],
+				['MENU_HIDDEN_TRAINEE', 'Cổng học viên', 'Menu ngang + tab đáy điện thoại. Menu tài khoản luôn hiện.', TRAINEE_MENU],
+			] as const
+		).map(([key, label, hint, menu]) => ({
+			title: label,
+			fields: [{ key, label, hint, type: 'menu' as const, menu }],
+		})),
 	},
 	{
 		id: 'upload',
@@ -457,6 +478,7 @@ export default function SystemSettings() {
 			for (const f of dirty) await settingsApi.update(f.key, form[f.key]);
 			resetUploadPolicy();
 			resetModules();
+			resetMenuConfig();
 			notify.success(`Đã lưu ${dirty.length} thay đổi`);
 			await load();
 		} catch (e) {
@@ -498,6 +520,43 @@ export default function SystemSettings() {
 					<span className={styles.track} />
 					{checked ? f.onText ?? 'Bật' : f.offText ?? 'Tắt'}
 				</label>
+			);
+		}
+		if (f.type === 'menu') {
+			const hidden = new Set((form[f.key] ?? '').split(',').filter(Boolean));
+			const toggle = (k: string) => {
+				if (hidden.has(k)) hidden.delete(k);
+				else hidden.add(k);
+				set(f.key, f.menu!.flatMap((g) => g.items.map((i) => i.key)).filter((x) => hidden.has(x)).join(','));
+			};
+			// Mục của module đang tắt (theo form, kể cả chưa lưu) thì ẩn dù bật ở đây.
+			const moduleOff = (m?: string) => !!m && form[`MODULE_${m.toUpperCase()}`] === 'false';
+			return (
+				<div className={styles.menuSections}>
+					{f.menu!.map((g) => (
+						<div key={g.section}>
+							<div className={styles.menuSectionTitle}>{g.section}</div>
+							<div className={styles.menuGrid}>
+								{g.items.map((it) => {
+									const visible = it.locked || !hidden.has(it.key);
+									return (
+										<label key={it.key} className={`${styles.switch} ${styles.menuItem}`}>
+											<input type='checkbox' checked={visible} disabled={it.locked} onChange={() => toggle(it.key)} />
+											<span className={styles.track} />
+											<span className={visible ? undefined : styles.menuOff}>{it.label}</span>
+											{it.locked && <span className={styles.tag}>Luôn hiện</span>}
+											{!it.locked && moduleOff(it.module) && (
+												<span className={`${styles.tag} ${styles.tagWarn}`} title='Module của mục này đang tắt ở tab "Module chức năng"'>
+													Module tắt
+												</span>
+											)}
+										</label>
+									);
+								})}
+							</div>
+						</div>
+					))}
+				</div>
 			);
 		}
 		if (f.type === 'multi') {
@@ -600,7 +659,21 @@ export default function SystemSettings() {
 							{section.groups.map((g, i) => (
 								<div className={styles.group} key={i}>
 									{g.title && <div className={styles.groupTitle}>{g.title}</div>}
-									{g.fields.map((f) => (
+									{g.fields.map((f) =>
+										f.type === 'menu' ? (
+											// Danh sách công tắc dài — chiếm cả chiều ngang, tiêu đề nhóm đã là tên cổng
+											<div className={styles.menuBlock} key={f.key}>
+												<span className={styles.hint}>
+													{f.hint} Mục tắt sẽ biến mất khỏi menu và vào thẳng URL thì báo "đã tắt" — chỉ ẩn giao diện, quyền dữ liệu
+													vẫn theo Vai trò & Quyền.
+													{(() => {
+														const n = (form[f.key] ?? '').split(',').filter(Boolean).length;
+														return n ? <b> Đang tắt {n} mục.</b> : null;
+													})()}
+												</span>
+												{renderControl(f)}
+											</div>
+										) : (
 										<div className={styles.row} key={f.key}>
 											<label className={styles.label} htmlFor={f.key}>
 												{f.label}
@@ -608,7 +681,8 @@ export default function SystemSettings() {
 											</label>
 											{renderControl(f)}
 										</div>
-									))}
+										),
+									)}
 								</div>
 							))}
 

@@ -21,6 +21,8 @@ const dem = shift(3, '19:00', '07:00');
 const truc24 = shift(4, '07:00', '07:00');
 const shiftsById = new Map([sang, chieu, dem, truc24].map((x) => [x.id, x]));
 const hanhChinh = { days: { 1: [1, 2], 2: [1, 2], 3: [1, 2], 4: [1, 2], 5: [1, 2], 6: [], 7: [] } };
+// Học viên đang học khóa KH1 mọi ngày, với mẫu ca tuần `pattern`
+const inCourse = (pattern) => () => ({ course_id: 'KH1', course_name: 'Khóa 1', pattern });
 
 test('durationMin & instanceOf: ca thường, qua đêm, 24 giờ', () => {
 	assert.strictEqual(s.durationMin(sang), 360);
@@ -63,7 +65,7 @@ test('shiftIdsForDay: phân ca ngày ghi đè mẫu tuần; dòng NULL = nghỉ'
 });
 
 test('checkOptions: chấm vào trong khoảng cho phép, chấm ra khi đã có bản ghi', () => {
-	const base = { pattern: hanhChinh, assignments: [], shiftsById, records: [] };
+	const base = { courseOn: inCourse(hanhChinh), assignments: [], shiftsById, records: [] };
 	assert.deepStrictEqual(s.checkOptions({ ...base, now: vn('2026-10-12T06:00:00') }), []); // quá sớm
 	const o1 = s.checkOptions({ ...base, now: vn('2026-10-12T06:45:00') });
 	assert.deepStrictEqual(
@@ -91,7 +93,7 @@ test('checkOptions: chấm vào trong khoảng cho phép, chấm ra khi đã có
 
 test('checkOptions: ca đêm chấm ra sáng hôm sau thuộc ngày bắt đầu ca', () => {
 	const assignments = [{ work_date: '2026-10-17', shift_id: 3 }];
-	const base = { pattern: hanhChinh, assignments, shiftsById };
+	const base = { courseOn: inCourse(hanhChinh), assignments, shiftsById };
 	const vao = s.checkOptions({ ...base, records: [], now: vn('2026-10-17T18:50:00') });
 	assert.deepStrictEqual(
 		vao.map((o) => [o.work_date, o.shift_id, o.action]),
@@ -112,7 +114,7 @@ test('checkOptions: ca đêm chấm ra sáng hôm sau thuộc ngày bắt đầu
 test('checkOptions: trực 24h & chấm tự do khi không có lịch ca', () => {
 	const assignments = [{ work_date: '2026-10-12', shift_id: 4 }];
 	const ra = s.checkOptions({
-		pattern: null,
+		courseOn: inCourse(null),
 		assignments,
 		shiftsById,
 		records: [{ work_date: '2026-10-12', shift_id: 4 }],
@@ -127,7 +129,7 @@ test('checkOptions: trực 24h & chấm tự do khi không có lịch ca', () =>
 		],
 	);
 	const free = s.checkOptions({
-		pattern: null,
+		courseOn: inCourse(null),
 		assignments: [],
 		shiftsById,
 		records: [],
@@ -137,6 +139,39 @@ test('checkOptions: trực 24h & chấm tự do khi không có lịch ca', () =>
 		free.map((o) => [o.shift_id, o.action]),
 		[[null, 'check_in']],
 	);
+});
+
+test('checkOptions: ngoài thời gian khóa học thì không chấm được; lựa chọn mang khóa học', () => {
+	// Khóa kết thúc 12/10: ca đêm 12/10 vẫn chấm ra sáng 13/10, nhưng 13/10 không chấm tự do
+	const courseOn = (d) => (d <= '2026-10-12' ? { course_id: 'KH1', course_name: 'Khóa 1', pattern: null } : null);
+	const opts = s.checkOptions({
+		courseOn,
+		assignments: [{ work_date: '2026-10-12', shift_id: 3 }],
+		shiftsById,
+		records: [{ work_date: '2026-10-12', shift_id: 3 }],
+		now: vn('2026-10-13T07:10:00'),
+	});
+	assert.deepStrictEqual(
+		opts.map((o) => [o.work_date, o.shift_id, o.course_id, o.action]),
+		[['2026-10-12', 3, 'KH1', 'check_out']],
+	);
+	assert.deepStrictEqual(
+		s.checkOptions({ courseOn: () => null, assignments: [], shiftsById, records: [], now: vn('2026-10-12T09:00:00') }),
+		[],
+	);
+});
+
+test('periodOn: lượt học phủ ngày, ưu tiên khóa bắt đầu muộn nhất', () => {
+	const periods = [
+		{ course_id: 'A', start_date: '2026-10-01', end_date: '2026-10-31' },
+		{ course_id: 'B', start_date: '2026-10-15', end_date: null },
+		{ course_id: 'R', start_date: null, end_date: '2026-10-05' },
+	];
+	assert.strictEqual(s.periodOn(periods, '2026-09-30').course_id, 'R');
+	assert.strictEqual(s.periodOn(periods, '2026-10-03').course_id, 'A');
+	assert.strictEqual(s.periodOn(periods, '2026-10-20').course_id, 'B');
+	assert.strictEqual(s.periodOn(periods, '2027-01-01').course_id, 'B');
+	assert.strictEqual(s.periodOn(periods.slice(0, 1), '2026-11-01'), null);
 });
 
 test('lateMin / earlyMin có du di', () => {

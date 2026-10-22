@@ -273,6 +273,18 @@ export const createSession = (
 		session_kind?: SessionKind;
 	},
 ) => apiClient.post<{ id: string; warnings: string[] }>(`/courses/${courseId}/sessions`, data);
+export const updateSession = (
+	sessionId: string,
+	data: {
+		subject_id?: string;
+		lecturer_id?: string;
+		session_date?: string;
+		start_time?: string;
+		end_time?: string;
+		room?: string;
+		session_kind?: SessionKind | '';
+	},
+) => apiClient.put<{ warnings: string[] }>(`/courses/sessions/${sessionId}`, data);
 export const removeSession = (sessionId: string) => apiClient.delete<null>(`/courses/sessions/${sessionId}`);
 export const createSessionsBulk = (
 	courseId: string,

@@ -290,7 +290,7 @@ export const adminRoutes: RouteObject[] = [
 		path: '/admin/staff-attendance',
 		element: (
 			<RequirePermission perm='staff_attendance:read'>
-				{admin('Bảng chấm công', <StaffAttendance />)}
+				{admin('Bảng chấm công học viên', <StaffAttendance />)}
 			</RequirePermission>
 		),
 	},
@@ -298,7 +298,7 @@ export const adminRoutes: RouteObject[] = [
 		path: '/admin/shifts',
 		element: (
 			<RequirePermission perm='staff_attendance:manage'>
-				{admin('Ca làm việc', <Shifts />)}
+				{admin('Ca học viên', <Shifts />)}
 			</RequirePermission>
 		),
 	},
@@ -306,7 +306,7 @@ export const adminRoutes: RouteObject[] = [
 		path: '/admin/shift-roster',
 		element: (
 			<RequirePermission perm='staff_attendance:roster'>
-				{admin('Phân ca', <Roster />)}
+				{admin('Phân ca học viên', <Roster />)}
 			</RequirePermission>
 		),
 	},
@@ -452,8 +452,9 @@ export const userRoutes: RouteObject[] = [
 		element: user('Nhập điểm', <UserMyTeachingGrades />),
 	},
 	{
+		// Chấm công chuyển sang cổng học viên — nhân viên không chấm công nữa.
 		path: '/user/cham-cong',
-		element: user('Chấm công', <UserMyAttendance />),
+		element: <Navigate to='/user' replace />,
 	},
 	{
 		path: '/user/cme',
@@ -486,6 +487,7 @@ export const traineeRoutes: RouteObject[] = [
 	{ path: '/hoc-vien/ket-qua', element: user('Kết quả & chứng chỉ', <TraineeResults />) },
 	{ path: '/hoc-vien/giay-to', element: user('Giấy tờ hồ sơ', <TraineeDocuments />) },
 	{ path: '/hoc-vien/diem-danh', element: user('Điểm danh QR', <AttendanceCheckIn />) },
+	{ path: '/hoc-vien/cham-cong', element: user('Chấm công', <UserMyAttendance />) },
 	{ path: '/hoc-vien/khao-sat', element: user('Khảo sát', <UserSurveys />) },
 	{ path: '/hoc-vien/khao-sat/:id', element: user('Trả lời khảo sát', <UserSurveys />) },
 	{ path: '/hoc-vien/thong-bao', element: user('Thông báo', <UserNotifications />) },

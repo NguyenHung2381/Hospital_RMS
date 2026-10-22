@@ -149,11 +149,12 @@ const evaluate = ({
 
 	// Điểm tổng theo số tiết, bỏ phần miễn thi / không áp dụng
 	const parts = [
-		[t, Number(theoryHours) || 0],
-		[p, Number(practiceHours) || 0],
-	].filter(([x]) => x.applies && x.flag == null && x.score != null);
-	const hours = parts.reduce((s, [, h]) => s + h, 0);
-	const total = hours > 0 ? round1(parts.reduce((s, [x, h]) => s + x.score * h, 0) / hours) : null;
+		{ x: t, h: Number(theoryHours) || 0 },
+		{ x: p, h: Number(practiceHours) || 0 },
+	].filter(({ x }) => x.applies && x.flag == null && x.score != null);
+	const hours = parts.reduce((s, { h }) => s + h, 0);
+	const total =
+		hours > 0 ? round1(parts.reduce((s, { x, h }) => s + x.score * h, 0) / hours) : null;
 
 	return {
 		result,

@@ -8,7 +8,7 @@ import { RowAction, RowActions } from '@/shared/components/Table/TableToolbar';
 import { notify } from '@/shared/utils/feedback';
 import { WEEKDAYS, describeDuration, patternApi, shiftApi, type PatternInput, type ShiftInput, type ShiftPattern, type WorkShift } from '../api/shiftApi';
 import { PatternFormModal } from '../components/PatternFormModal';
-import { PatternUsersModal } from '../components/PatternUsersModal';
+import { PatternCoursesModal } from '../components/PatternCoursesModal';
 import { ShiftBadge } from '../components/ShiftBadge';
 import { ShiftFormModal } from '../components/ShiftFormModal';
 import styles from './Shifts.module.css';
@@ -71,8 +71,8 @@ export default function Shifts() {
 
 	return (
 		<AdminLayout
-			pageTitle='Ca làm việc'
-			pageSubtitle='Ca làm và mẫu ca theo tuần — nhân viên chỉ chấm công được trong giờ ca của mình'
+			pageTitle='Ca học viên'
+			pageSubtitle='Ca và mẫu ca theo tuần của khóa đào tạo — học viên chỉ chấm công được trong giờ ca, trong thời gian khóa học'
 			headerActions={
 				<div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
 					{tab === 'shifts' && (
@@ -161,8 +161,8 @@ export default function Shifts() {
 						<div className={tbl.tableHeader}>
 							<span className={tbl.cellSub}>
 								{hasDefault
-									? 'Người chưa được gán mẫu riêng dùng mẫu mặc định. Bảng phân ca theo ngày ghi đè mẫu tuần.'
-									: 'Chưa có mẫu mặc định — người chưa có mẫu và chưa được phân ca thì chấm công tự do (1 lượt/ngày, không giới hạn giờ).'}
+									? 'Khóa học chưa gán mẫu riêng dùng mẫu mặc định. Bảng phân ca theo ngày (từng học viên) ghi đè mẫu tuần.'
+									: 'Chưa có mẫu mặc định — học viên của khóa chưa gán mẫu, chưa được phân ca thì chấm công tự do (1 lượt/ngày trong thời gian khóa học).'}
 							</span>
 						</div>
 						<div className={tbl.tableWrap}>
@@ -200,9 +200,9 @@ export default function Shifts() {
 												</td>
 												<td className={tbl.td}>
 													<button type='button' className={styles.linkBtn} onClick={() => setAssigning(p)}>
-														{p.user_count} người được gán
+														{p.course_count} khóa học được gán
 													</button>
-													{p.is_default && <div className={tbl.cellSub}>+ người chưa gán mẫu</div>}
+													{p.is_default && <div className={tbl.cellSub}>+ khóa chưa gán mẫu</div>}
 												</td>
 												<td className={`${tbl.td} ${tbl.tdActions}`}>
 													<RowActions
@@ -213,14 +213,14 @@ export default function Shifts() {
 																id: p.id,
 																name: p.name,
 																warning: p.is_default
-																	? 'Đây là mẫu mặc định: sau khi xoá, người chưa có mẫu riêng chỉ còn làm theo bảng phân ca (ngày không được phân ca thì chấm công tự do).'
-																	: p.user_count
-																		? `${p.user_count} người đang dùng mẫu này sẽ chuyển về ${hasDefault ? 'mẫu mặc định' : 'không có mẫu (chỉ theo bảng phân ca)'}.`
+																	? 'Đây là mẫu mặc định: sau khi xoá, khóa chưa có mẫu riêng chỉ còn theo bảng phân ca (ngày không được phân ca thì chấm công tự do).'
+																	: p.course_count
+																		? `${p.course_count} khóa học đang dùng mẫu này sẽ chuyển về ${hasDefault ? 'mẫu mặc định' : 'không có mẫu (chỉ theo bảng phân ca)'}.`
 																		: undefined,
 															})
 														}
 													>
-														<RowAction title='Chọn người áp dụng' onClick={() => setAssigning(p)}>
+														<RowAction title='Chọn khóa học áp dụng' onClick={() => setAssigning(p)}>
 															<UsersSvg />
 														</RowAction>
 													</RowActions>
@@ -240,12 +240,12 @@ export default function Shifts() {
 				<PatternFormModal pattern={editPattern} shifts={shifts} onClose={() => setEditPattern(undefined)} onSave={savePattern} />
 			)}
 			{assigning && (
-				<PatternUsersModal
+				<PatternCoursesModal
 					pattern={assigning}
 					patterns={patterns}
 					onClose={() => setAssigning(null)}
 					onSaved={() => {
-						notify.success('Đã cập nhật người áp dụng mẫu ca');
+						notify.success('Đã cập nhật khóa học áp dụng mẫu ca');
 						setAssigning(null);
 						load();
 					}}

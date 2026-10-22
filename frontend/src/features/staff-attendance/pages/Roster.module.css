@@ -118,6 +118,19 @@
 	color: var(--color-gray-500);
 	font-weight: 600;
 }
+.legendSwatch {
+	display: inline-block;
+	width: 14px;
+	height: 14px;
+	border-radius: 3px;
+	vertical-align: middle;
+}
+/* Ngày học viên không học khóa nào — không chấm công, không phân ca */
+.outside,
+.outside:hover {
+	cursor: not-allowed;
+	background: repeating-linear-gradient(135deg, var(--color-gray-50) 0 4px, var(--color-gray-100) 4px 8px);
+}
 
 .actionBar {
 	display: flex;

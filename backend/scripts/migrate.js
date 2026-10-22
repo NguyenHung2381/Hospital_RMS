@@ -30,6 +30,7 @@ const TEMPLATE = (
  * thì để bản phát hành sau, khi code cũ không còn dùng.
  * ==========================================================================*/
 
+-- Bảng mới: luôn có created_at, created_by, updated_at DATETIME2 NULL, updated_by VARCHAR(20) NULL
 -- IF COL_LENGTH(N'dbo.<bảng>', N'<cột>') IS NULL
 --     ALTER TABLE [dbo].[<bảng>] ADD [<cột>] NVARCHAR(255) NULL;
 -- GO

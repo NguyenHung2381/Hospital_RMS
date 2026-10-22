@@ -1,61 +1,22 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { NavLink, useNavigate } from 'react-router-dom';
+import { NavLink, matchPath, useLocation, useNavigate } from 'react-router-dom';
 import Logo from '../../assets/logo.png';
-import {
-	BadgeSvg,
-	BellSvg,
-	BookOpenSvg,
-	CalendarSvg,
-	ChevLSvg,
-	ClipboardSvg,
-	DashboardSvg,
-	FileTextSvg,
-	LogoutSvg,
-	QrSvg,
-	UserSvg,
-} from '@/assets/icons';
+import { ChevLSvg, LogoutSvg } from '@/assets/icons';
 import { NotificationPanel } from '../../features/notifications/components/NotificationPanel';
 import { useNotifications } from '../../features/notifications/hooks/useNotifications';
 import { toNotif } from '../../features/notifications/utils/notifUtils';
 import { logout } from '../../features/auth/api/authApi';
 import { TRAINEE_HOME } from '../../app/router/authHelpers';
 import TwoFactorReminder from '../../shared/components/TwoFactorReminder';
+import { useHiddenMenus } from '../../shared/hooks/useMenuConfig';
 import { useModules } from '../../shared/hooks/useModules';
 import { getInitials } from '../../shared/utils/helper';
 import { getStoredUser, type StoredUser } from '../../shared/utils/storage';
 import userStyles from '../UserLayout/UserLayout.module.css';
 import styles from './TraineeLayout.module.css';
+import { ACCOUNT_NAV, BOTTOM_TABS, NAV, TRAINEE_MENU, type NavItem } from './nav';
 
 const TRAINEE_BASE = TRAINEE_HOME;
-
-interface NavItem {
-	to: string;
-	label: string;
-	/** Nhãn ngắn cho thanh tab đáy (điện thoại) / cột biểu tượng (máy tính bảng) */
-	short: string;
-	icon: React.ReactNode;
-	end?: boolean;
-	module?: 'survey';
-}
-
-// Thứ tự = luồng học: xem tổng quan → vào khóa học → theo lịch → xem kết quả.
-const NAV: NavItem[] = [
-	{ to: TRAINEE_BASE, label: 'Tổng quan', short: 'Tổng quan', icon: <DashboardSvg />, end: true },
-	{ to: `${TRAINEE_BASE}/khoa-hoc`, label: 'Khóa học của tôi', short: 'Khóa học', icon: <BookOpenSvg /> },
-	{ to: `${TRAINEE_BASE}/lich-hoc`, label: 'Lịch học & điểm danh', short: 'Lịch học', icon: <CalendarSvg /> },
-	{ to: `${TRAINEE_BASE}/ket-qua`, label: 'Kết quả & chứng chỉ', short: 'Kết quả', icon: <BadgeSvg /> },
-	{ to: `${TRAINEE_BASE}/diem-danh`, label: 'Điểm danh QR', short: 'Điểm danh', icon: <QrSvg /> },
-	{ to: `${TRAINEE_BASE}/giay-to`, label: 'Giấy tờ hồ sơ', short: 'Giấy tờ', icon: <FileTextSvg /> },
-	{ to: `${TRAINEE_BASE}/khao-sat`, label: 'Khảo sát', short: 'Khảo sát', icon: <ClipboardSvg />, module: 'survey' },
-];
-
-const ACCOUNT_NAV: NavItem[] = [
-	{ to: `${TRAINEE_BASE}/thong-bao`, label: 'Thông báo', short: 'Thông báo', icon: <BellSvg /> },
-	{ to: `${TRAINEE_BASE}/ho-so`, label: 'Hồ sơ cá nhân', short: 'Hồ sơ', icon: <UserSvg /> },
-];
-
-// Thanh tab đáy trên điện thoại: 5 mục hay dùng nhất, Điểm danh QR ở giữa nổi bật.
-const BOTTOM_TABS = [0, 1, 4, 2, 3];
 
 export interface TraineeLayoutProps {
 	children?: React.ReactNode;
@@ -72,7 +33,10 @@ export interface TraineeLayoutProps {
 
 /**
  * Cổng học viên — dành cho tài khoản học viên (chủ yếu ngoại viện).
- * ≥1024px: sidebar đầy đủ · 640–1023px: cột biểu tượng · <640px: thanh trên gọn + tab đáy.
+ * Khác hẳn trang quản trị: không có sidebar, điều hướng ngang trên đầu,
+ * nội dung căn giữa như một trang web học tập.
+ * ≥1200px: một hàng (logo · menu · tài khoản) · 640–1199px: menu xuống hàng thứ hai
+ * · <640px: thanh trên gọn + tab đáy.
  */
 export default function TraineeLayout({
 	children,
@@ -86,7 +50,14 @@ export default function TraineeLayout({
 	const stored = getStoredUser<StoredUser>();
 	const name = userName ?? stored?.full_name ?? stored?.username ?? 'Học viên';
 	const modules = useModules();
-	const nav = NAV.filter((i) => !i.module || modules[i.module]);
+	const hiddenMenus = useHiddenMenus('trainee', TRAINEE_MENU);
+	const nav = NAV.filter((i) => (!i.module || modules[i.module]) && !hiddenMenus.has(i.key));
+	const bottomTabs = BOTTOM_TABS.map((k) => nav.find((i) => i.key === k)).filter((i): i is NavItem => !!i);
+	// Vào thẳng URL của mục đã tắt ở "Menu hiển thị" (kể cả trang con) thì chặn.
+	const { pathname } = useLocation();
+	const pageOff = NAV.some(
+		(i) => hiddenMenus.has(i.key) && matchPath({ path: i.to, end: !!i.end }, pathname),
+	);
 
 	const [menuOpen, setMenuOpen] = useState(false);
 	const [notifOpen, setNotifOpen] = useState(false);
@@ -122,14 +93,7 @@ export default function TraineeLayout({
 			onClick={() => setMenuOpen(false)}
 		>
 			{item.icon}
-			{short ? (
-				<span>{item.short}</span>
-			) : (
-				<>
-					<span className={styles.labelFull}>{item.label}</span>
-					<span className={styles.labelShort}>{item.short}</span>
-				</>
-			)}
+			<span>{short ? item.short : item.label}</span>
 		</NavLink>
 	);
 
@@ -138,161 +102,154 @@ export default function TraineeLayout({
 
 	return (
 		<div className={styles.shell}>
-			{/* ══ SIDEBAR (máy tính / máy tính bảng) ══ */}
-			<aside className={styles.sidebar}>
-				<button
-					type='button'
-					className={styles.brand}
-					onClick={() => navigate(TRAINEE_BASE)}
-					aria-label='Về tổng quan'
-				>
-					<img
-						src={Logo}
-						alt=''
-						className={styles.brandLogo}
-					/>
-					<span className={styles.brandText}>
-						<span className={styles.brandName}>Cổng học viên</span>
-						<span className={styles.brandSub}>BV Hữu nghị ĐK Nghệ An</span>
-					</span>
-				</button>
-
-				<nav
-					className={styles.sideNav}
-					aria-label='Điều hướng học viên'
-				>
-					{nav.map((i) => navLink(i, styles.sideItem, styles.sideItemActive))}
-					<div className={styles.sideSep} />
-					{ACCOUNT_NAV.map((i) => navLink(i, styles.sideItem, styles.sideItemActive))}
-				</nav>
-
-				<div className={styles.sideUser}>
-					<span className={styles.avatar}>{getInitials(name)}</span>
-					<span className={styles.sideUserMeta}>
-						<span className={styles.sideUserName}>{name}</span>
-						<span className={styles.sideUserRole}>Học viên</span>
-					</span>
+			{/* ══ HEADER: logo · menu ngang · tài khoản ══ */}
+			<header className={styles.header}>
+				<div className={styles.headerInner}>
 					<button
 						type='button'
-						className={styles.sideLogout}
-						onClick={handleLogout}
-						title='Đăng xuất'
-						aria-label='Đăng xuất'
-					>
-						<LogoutSvg />
-					</button>
-				</div>
-			</aside>
-
-			<div className={styles.main}>
-				{/* ══ TOP BAR ══ */}
-				<header className={styles.topbar}>
-					<button
-						type='button'
-						className={styles.topBrand}
+						className={styles.brand}
 						onClick={() => navigate(TRAINEE_BASE)}
 						aria-label='Về tổng quan'
 					>
 						<img
 							src={Logo}
 							alt=''
+							className={styles.brandLogo}
 						/>
-						<span>Cổng học viên</span>
+						<span className={styles.brandText}>
+							<span className={styles.brandName}>Cổng học viên</span>
+							<span className={styles.brandSub}>Bệnh viện</span>
+							<span className={styles.brandSub}>Hữu nghị Đa khoa Nghệ An</span>
+						</span>
 					</button>
-					<div className={styles.topSpacer} />
-					<NotificationPanel
-						open={notifOpen}
-						onToggle={() => setNotifOpen((o) => !o)}
-						onClose={() => setNotifOpen(false)}
-						notifications={notifications.map(toNotif)}
-						unreadCount={unreadCount}
-						onMarkAll={markAll}
-						onMarkOne={markOne}
-						s={{ ...userStyles, topbarIconBtn: styles.iconBtn, active: styles.iconBtnActive }}
-						viewAllPath={`${TRAINEE_BASE}/thong-bao`}
-					/>
-					<div
-						className={styles.menuWrap}
-						ref={menuRef}
-					>
-						<button
-							type='button'
-							className={styles.userChip}
-							onClick={() => setMenuOpen((o) => !o)}
-							aria-haspopup='menu'
-							aria-expanded={menuOpen}
-						>
-							<span className={styles.avatar}>{getInitials(name)}</span>
-							<span className={styles.userChipName}>{name}</span>
-						</button>
-						{menuOpen && (
-							<div
-								className={styles.menu}
-								role='menu'
-							>
-								<div className={styles.menuHead}>
-									<strong>{name}</strong>
-									<span>{stored?.email ?? stored?.username}</span>
-								</div>
-								{/* Điện thoại: các mục không có trên thanh tab đáy */}
-								{[...nav.filter((item) => !BOTTOM_TABS.includes(NAV.indexOf(item))), ...ACCOUNT_NAV].map((i) =>
-									navLink(i, styles.menuItem, styles.menuItemActive),
-								)}
-								<div className={styles.menuSep} />
-								<button
-									type='button'
-									className={`${styles.menuItem} ${styles.menuDanger}`}
-									onClick={handleLogout}
-									role='menuitem'
-								>
-									<LogoutSvg />
-									<span>Đăng xuất</span>
-								</button>
-							</div>
-						)}
-					</div>
-				</header>
 
-				{/* ══ NỘI DUNG ══ */}
-				<main className={styles.content}>
-					{hasHeader && (
-						<div className={styles.pageHeader}>
-							<div className={styles.pageHeaderText}>
-								{back && (
+					<nav
+						className={styles.topNav}
+						aria-label='Điều hướng học viên'
+					>
+						{nav.map((i) => navLink(i, styles.navItem, styles.navItemActive, true))}
+					</nav>
+
+					<div className={styles.headerActions}>
+						<NotificationPanel
+							open={notifOpen}
+							onToggle={() => setNotifOpen((o) => !o)}
+							onClose={() => setNotifOpen(false)}
+							notifications={notifications.map(toNotif)}
+							unreadCount={unreadCount}
+							onMarkAll={markAll}
+							onMarkOne={markOne}
+							s={{ ...userStyles, topbarIconBtn: styles.iconBtn, active: styles.iconBtnActive }}
+							viewAllPath={`${TRAINEE_BASE}/thong-bao`}
+						/>
+						<div
+							className={styles.menuWrap}
+							ref={menuRef}
+						>
+							<button
+								type='button'
+								className={styles.userChip}
+								onClick={() => setMenuOpen((o) => !o)}
+								aria-haspopup='menu'
+								aria-expanded={menuOpen}
+							>
+								<span className={styles.avatar}>{getInitials(name)}</span>
+								<span className={styles.userChipMeta}>
+									<span className={styles.userChipName}>{name}</span>
+									<span className={styles.userChipRole}>Học viên</span>
+								</span>
+							</button>
+							{menuOpen && (
+								<div
+									className={styles.menu}
+									role='menu'
+								>
+									<div className={styles.menuHead}>
+										<span className={`${styles.avatar} ${styles.avatarLg}`}>{getInitials(name)}</span>
+										<span className={styles.menuHeadMeta}>
+											<strong>{name}</strong>
+											<span>{stored?.email ?? stored?.username}</span>
+										</span>
+									</div>
+									{/* Điện thoại: các mục không có trên thanh tab đáy */}
+									<div className={styles.menuMobileOnly}>
+										{nav
+											.filter((item) => !BOTTOM_TABS.includes(item.key))
+											.map((i) => navLink(i, styles.menuItem, styles.menuItemActive))}
+									</div>
+									{ACCOUNT_NAV.map((i) => navLink(i, styles.menuItem, styles.menuItemActive))}
+									<div className={styles.menuSep} />
 									<button
 										type='button'
-										className={styles.backLink}
-										onClick={() => navigate(back)}
+										className={`${styles.menuItem} ${styles.menuDanger}`}
+										onClick={handleLogout}
+										role='menuitem'
 									>
-										<ChevLSvg />
-										{breadcrumbs![breadcrumbs!.length - 1].label}
+										<LogoutSvg />
+										<span>Đăng xuất</span>
 									</button>
-								)}
-								{pageTitle && <h1 className={styles.pageTitle}>{pageTitle}</h1>}
-								{pageSubtitle && <p className={styles.pageSubtitle}>{pageSubtitle}</p>}
-							</div>
-							{headerActions && <div className={styles.pageActions}>{headerActions}</div>}
+								</div>
+							)}
 						</div>
-					)}
-					<TwoFactorReminder />
-					{children}
-				</main>
-			</div>
+					</div>
+				</div>
+			</header>
+
+			{/* ══ DẢI TIÊU ĐỀ TRANG ══ */}
+			{hasHeader && (
+				<div className={styles.pageBand}>
+					<div className={styles.pageHeader}>
+						<div className={styles.pageHeaderText}>
+							{back && (
+								<button
+									type='button'
+									className={styles.backLink}
+									onClick={() => navigate(back)}
+								>
+									<ChevLSvg />
+									{breadcrumbs![breadcrumbs!.length - 1].label}
+								</button>
+							)}
+							{pageTitle && <h1 className={styles.pageTitle}>{pageTitle}</h1>}
+							{pageSubtitle && <p className={styles.pageSubtitle}>{pageSubtitle}</p>}
+						</div>
+						{headerActions && <div className={styles.pageActions}>{headerActions}</div>}
+					</div>
+				</div>
+			)}
+
+			{/* ══ NỘI DUNG ══ */}
+			<main className={`${styles.content} ${hasHeader ? styles.contentWithBand : ''}`}>
+				<TwoFactorReminder />
+				{pageOff ? (
+					<div style={{ padding: 48, textAlign: 'center', color: '#6b7280' }}>
+						Chức năng này đã được quản trị viên tắt.
+					</div>
+				) : (
+					children
+				)}
+			</main>
+
+			<footer className={styles.footer}>
+				<div className={styles.footerInner}>
+					<span>© {new Date().getFullYear()} Bệnh viện Hữu nghị Đa khoa Nghệ An</span>
+					<span>Cổng thông tin học viên</span>
+				</div>
+			</footer>
 
 			{/* ══ TAB ĐÁY (điện thoại) ══ */}
 			<nav
 				className={styles.bottomNav}
 				aria-label='Điều hướng nhanh'
 			>
-				{BOTTOM_TABS.map((idx) => {
-					const item = NAV[idx];
-					return navLink(
+				{bottomTabs.map((item) =>
+					navLink(
 						item,
-						`${styles.tab} ${item.to.endsWith('/diem-danh') ? styles.tabQr : ''}`,
+						`${styles.tab} ${item.key === 'checkIn' ? styles.tabQr : ''}`,
 						styles.tabActive,
 						true,
-					);
-				})}
+					),
+				)}
 			</nav>
 		</div>
 	);

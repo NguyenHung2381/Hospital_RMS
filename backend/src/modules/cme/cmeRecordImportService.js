@@ -21,8 +21,8 @@ const { ROLE, inputRoleId } = require('../access/roleCodes');
 const xl = require('../../utils/excelTemplate');
 const { httpError } = require('../../utils/httpError');
 
-// Cột file mẫu nhập — header khớp COLUMN_MATCHERS. Năm, Nhóm/Loại hình thức chọn ở hộp
-// thoại nhập (defaults) nên không có trong mẫu; file cũ còn các cột đó (và Họ tên) vẫn nhập được.
+// Cột file mẫu nhập — header khớp COLUMN_MATCHERS. Năm (cho dòng không có Từ ngày), Nhóm/Loại
+// hình thức chọn ở hộp thoại nhập (defaults) nên không có trong mẫu; file cũ còn các cột đó (và Họ tên) vẫn nhập được.
 const SHEET_COLUMNS = [
 	{ key: 'stt', header: 'STT', width: 6 },
 	{ key: 'staff_number', header: 'Mã NV', width: 9 },
@@ -43,7 +43,7 @@ const templateWorkbook = async () => {
 		sheetName: 'Ghi nhận CME',
 		title: 'MẪU NHẬP GHI NHẬN CME ĐỘC LẬP',
 		subtitle:
-			'Bắt buộc: Mã NV. Mã NV chưa có trong hệ thống sẽ được tạo nhân viên + tài khoản — cần Họ và tên (điền trong file hoặc nhập ở bước xem trước), Khoa/Phòng không bắt buộc. Năm, Nhóm/Loại hình thức chọn ở hộp thoại nhập. Hoạt động để trống → lấy Tên hoạt động mặc định. Loại hình thức có giờ quy đổi: bắt buộc có Số lượng (để trống → lấy Số lượng mặc định), hệ thống tự tính Giờ tín chỉ = Số lượng × giờ quy đổi. Loại "Khác": bỏ trống Số lượng, điền Giờ tín chỉ. Ngày: dd/mm/yyyy.',
+			'Bắt buộc: Mã NV. Mã NV chưa có trong hệ thống sẽ được tạo nhân viên + tài khoản — cần Họ và tên (điền trong file hoặc nhập ở bước xem trước), Khoa/Phòng không bắt buộc. Năm lấy theo Từ ngày; dòng không có ngày lấy Năm chọn ở hộp thoại nhập. Nhóm/Loại hình thức chọn ở hộp thoại nhập. Hoạt động để trống → lấy Tên hoạt động mặc định. Giờ tín chỉ: điền trong file thì lấy theo file. Để trống → loại hình thức có giờ quy đổi tự tính = Số lượng × giờ quy đổi (Số lượng trống lấy Số lượng mặc định); loại "Khác" lấy Giờ tín chỉ mặc định ở hộp thoại nhập. Ngày: dd/mm/yyyy.',
 		columns: SHEET_COLUMNS,
 		letterhead: true,
 	});
@@ -94,7 +94,13 @@ const parseWorkbook = async (buffer) => {
 		isValid: (c) => !!(c.full_name || c.staff_number),
 		headerError:
 			'Không tìm thấy dòng tiêu đề (cần cột "MNV" hoặc "Họ và tên"; các cột nhận diện: Danh mục, Nội dung, Ngày hoạt động, Số tín chỉ, Ghi chú).',
-		isEmpty: (get, row) => !get(row, 'full_name') && !parseStaffNumber(get(row, 'staff_number')),
+		// Dòng có Hoạt động / Giờ tín chỉ mà thiếu Mã NV + Họ tên vẫn đọc (để báo cảnh báo),
+		// không lặng lẽ bỏ qua; dòng chỉ có STT là dòng trống.
+		isEmpty: (get, row) =>
+			!get(row, 'full_name') &&
+			!parseStaffNumber(get(row, 'staff_number')) &&
+			!get(row, 'title') &&
+			!get(row, 'credits'),
 	});
 
 	const rows = [];
@@ -104,6 +110,13 @@ const parseWorkbook = async (buffer) => {
 		// File mẫu cũ có dòng ví dụ — bỏ nếu người dùng quên xoá
 		if (/\(ví dụ\)\s*$/i.test(get(row, 'title'))) continue;
 		rows.push({
+			// Chữ gốc trong ô — để báo lỗi khi ô có giá trị nhưng không đọc được
+			raw: {
+				activity_date: get(row, 'activity_date'),
+				end_date: get(row, 'end_date'),
+				credits: get(row, 'credits'),
+				quantity: get(row, 'quantity'),
+			},
 			row: r,
 			full_name: fullName,
 			staff_number: staffNumber,
@@ -301,9 +314,19 @@ const planNewStaff = (row, lookups, defaults, planned, fileNames) => {
 	return { staff, note: notes.join('; ') || null };
 };
 
-// defaults = giá trị chọn ở hộp thoại nhập { year, group_id, category_id, title, quantity,
+// Giới hạn theo kiểu cột cme_records — vượt thì SQL báo lỗi giữa chừng lúc nhập
+const MAX_CREDITS = 9999.99; // DECIMAL(6,2)
+const MAX_QUANTITY = 999999.99; // DECIMAL(8,2)
+const TEXT_LIMITS = { title: 255, role: 100, notes: 500 };
+const TEXT_LABELS = { title: 'Hoạt động', role: 'Vai trò', notes: 'Ghi chú' };
+
+const sameName = (a, b) => norm(stripQualification(a || '')) === norm(stripQualification(b || ''));
+
+// defaults = giá trị chọn ở hộp thoại nhập { year, group_id, category_id, title, quantity, credits,
 // create_missing, new_department_id, staff_departments, staff_names }: chỉ dùng khi ô tương
 // ứng trong file để trống (riêng staff_departments / staff_names { [Mã NV]: … } luôn được ưu tiên).
+// Mỗi dòng trả: warnings (mọi thông báo), data_ok (dữ liệu hợp lệ, chưa xét nhân viên),
+// valid (nhập được = data_ok + có / sẽ tạo nhân viên).
 const buildPreview = (rows, lookups, defaults = {}) => {
 	const planned = new Map();
 	const fileNames = new Map();
@@ -314,6 +337,12 @@ const buildPreview = (rows, lookups, defaults = {}) => {
 	}
 	return rows.map((row) => {
 		const warnings = [];
+		let dataOk = true;
+		const fail = (msg) => {
+			dataOk = false;
+			warnings.push(`${msg} — bỏ qua dòng này khi nhập.`);
+		};
+
 		const user = matchUser(row, lookups);
 		let newStaff = null;
 		if (!user && defaults.create_missing) {
@@ -323,11 +352,26 @@ const buildPreview = (rows, lookups, defaults = {}) => {
 			if (!newStaff) warnings.push(`${plan.reason} — bỏ qua dòng này khi nhập.`);
 		} else if (!user) {
 			warnings.push(
-				defaults.can_create_staff
-					? 'Không khớp được nhân viên — bỏ qua dòng này khi nhập (bật "Tự tạo nhân viên mới" để thêm).'
-					: 'Không khớp được nhân viên — bỏ qua dòng này khi nhập.',
+				row.staff_number == null && !row.full_name
+					? 'Không có Mã NV và Họ tên — bỏ qua dòng này khi nhập.'
+					: defaults.can_create_staff
+						? 'Không khớp được nhân viên — bỏ qua dòng này khi nhập (bật "Tự tạo nhân viên mới" để thêm).'
+						: 'Không khớp được nhân viên — bỏ qua dòng này khi nhập.',
 			);
 		}
+		// Khớp theo Mã NV nhưng họ tên trong file khác hệ thống — có thể gõ nhầm Mã NV
+		if (
+			user &&
+			row.full_name &&
+			row.staff_number != null &&
+			Number(user.staff_number) === row.staff_number &&
+			!sameName(row.full_name, user.full_name)
+		) {
+			warnings.push(
+				`Họ tên trong file "${row.full_name}" khác hệ thống "${user.full_name}" (Mã NV ${row.staff_number}) — kiểm tra lại Mã NV.`,
+			);
+		}
+
 		let categoryId = null;
 		if (!row.category_raw && lookups.conversionById.has(defaults.category_id)) {
 			categoryId = defaults.category_id;
@@ -340,25 +384,64 @@ const buildPreview = (rows, lookups, defaults = {}) => {
 			categoryId = byGroup || (ids.length === 1 ? ids[0] : null);
 			if (!categoryId) warnings.push(`Không khớp danh mục "${row.category_raw}" — để trống.`);
 		}
-		// Năm luôn theo năm chọn ở hộp thoại; gọi API không kèm năm thì lấy cột Năm / năm của Từ ngày
-		const year =
-			defaults.year || row.year || (row.activity_date ? +row.activity_date.slice(0, 4) : null);
-		if (!year) warnings.push('Thiếu Năm và Ngày hoạt động — bỏ qua dòng này khi nhập.');
-		// Loại có giờ quy đổi → bắt buộc Số lượng, tín chỉ = giờ quy đổi × Số lượng (bỏ qua cột Giờ tín chỉ);
-		// loại "Khác" (quy đổi 0) / không chọn loại → lấy cột Giờ tín chỉ, không cần Số lượng.
+
+		// Ngày: ô có chữ mà không đọc được (sai dạng / ngày không có thật) → lỗi, không lặng lẽ bỏ trống
+		const raw = row.raw || {};
+		if (raw.activity_date && !row.activity_date)
+			fail(`Từ ngày "${raw.activity_date}" không hợp lệ (cần dd/mm/yyyy)`);
+		if (raw.end_date && !row.end_date)
+			fail(`Đến ngày "${raw.end_date}" không hợp lệ (cần dd/mm/yyyy)`);
+		if (row.activity_date && row.end_date && row.end_date < row.activity_date)
+			fail('"Đến ngày" trước "Từ ngày"');
+
+		// Năm: theo Từ ngày nếu có; không có ngày thì lấy năm chọn ở hộp thoại, rồi cột Năm
+		const year = row.activity_date
+			? +row.activity_date.slice(0, 4)
+			: defaults.year || row.year || null;
+		if (!year) fail('Thiếu Năm và Ngày hoạt động');
+		else if (year < 1900 || year > 2100) fail(`Năm ${year} không hợp lệ`);
+
+		// Tín chỉ: cột Giờ tín chỉ trong file có số → luôn lấy theo file. Ô trống thì:
+		//   loại có giờ quy đổi → giờ quy đổi × Số lượng (bắt buộc có Số lượng);
+		//   loại "Khác" (quy đổi 0) / không chọn loại → Giờ tín chỉ mặc định ở hộp thoại.
 		const conv = categoryId ? lookups.conversionById.get(categoryId) : 0;
+		const quantityBad = !!raw.quantity && row.quantity == null;
+		if (quantityBad) fail(`Số lượng "${raw.quantity}" không hợp lệ`);
 		const quantity = row.quantity ?? defaults.quantity ?? null;
+		if (quantity != null && (quantity < 0 || quantity > MAX_QUANTITY))
+			fail(`Số lượng ${quantity} không hợp lệ (0 – ${MAX_QUANTITY})`);
 		let credits = row.credits;
-		if (conv > 0) {
-			credits = quantity > 0 ? +(conv * quantity).toFixed(2) : null;
-			if (credits == null)
+		if (raw.credits && credits == null) {
+			fail(`Giờ tín chỉ "${raw.credits}" không hợp lệ`);
+		} else if (credits != null) {
+			// Báo khi số trong file lệch với quy đổi — vẫn dùng số trong file
+			const converted = conv > 0 && quantity > 0 ? +(conv * quantity).toFixed(2) : null;
+			if (converted != null && converted !== credits)
 				warnings.push(
-					'Thiếu Số lượng (ô trống và chưa nhập Số lượng mặc định) — bỏ qua dòng này khi nhập.',
+					`Giờ tín chỉ trong file (${credits}) khác quy đổi ${conv} × ${quantity} = ${converted} — dùng số trong file.`,
 				);
-		} else if (credits == null) {
-			warnings.push(
-				'Thiếu Giờ tín chỉ (loại hình thức này phải nhập số giờ) — bỏ qua dòng này khi nhập.',
-			);
+		} else if (conv > 0) {
+			credits = quantity > 0 ? +(conv * quantity).toFixed(2) : null;
+			if (credits == null && !quantityBad)
+				fail('Thiếu Giờ tín chỉ và Số lượng (cần một trong hai để tính tín chỉ)');
+		} else {
+			credits = defaults.credits ?? null;
+			if (credits == null) fail('Thiếu Giờ tín chỉ (ô trống và chưa nhập Giờ tín chỉ mặc định)');
+		}
+		if (credits != null && (credits < 0 || credits > MAX_CREDITS))
+			fail(`Giờ tín chỉ ${credits} không hợp lệ (0 – ${MAX_CREDITS})`);
+
+		// Chữ dài hơn cột → cắt bớt, báo để người nhập biết
+		const text = {
+			title: row.title || defaults.title || 'Hoạt động CME',
+			role: row.role,
+			notes: row.notes,
+		};
+		for (const [k, max] of Object.entries(TEXT_LIMITS)) {
+			if (text[k] && text[k].length > max) {
+				text[k] = text[k].slice(0, max);
+				warnings.push(`${TEXT_LABELS[k]} dài quá ${max} ký tự — đã cắt bớt.`);
+			}
 		}
 
 		return {
@@ -370,18 +453,60 @@ const buildPreview = (rows, lookups, defaults = {}) => {
 			staff_number: row.staff_number,
 			category_id: categoryId || null,
 			category_raw: row.category_raw,
-			title: row.title || defaults.title || 'Hoạt động CME',
+			title: text.title,
 			activity_date: row.activity_date,
 			end_date: row.end_date,
 			year,
-			role: row.role,
+			role: text.role,
 			quantity,
 			credits,
-			notes: row.notes,
+			notes: text.notes,
 			warnings,
-			valid: (!!user || (!!newStaff && !newStaff.missing_name)) && !!year && credits != null,
+			data_ok: dataOk,
+			duplicate: null,
+			valid: dataOk && (!!user || (!!newStaff && !newStaff.missing_name)),
 		};
 	});
+};
+
+// Đánh dấu dòng trùng: cùng nhân viên + năm + nội dung + Từ ngày + tín chỉ với ghi nhận đã có
+// trong hệ thống ('existing') hoặc với dòng trước trong file ('file'). Chỉ xét dòng hợp lệ.
+// Người nhập quyết định có nhập dòng trùng không (defaults.include_duplicates).
+const dupKey = (who, year, title, date, credits) =>
+	`${who}|${year}|${norm(title || '')}|${date || ''}|${Number(credits).toFixed(2)}`;
+
+const markDuplicates = async (preview) => {
+	const valid = preview.filter((p) => p.valid);
+	const userIds = [...new Set(valid.map((p) => p.user_id).filter(Boolean))];
+	const existing = new Set();
+	if (userIds.length) {
+		const pool = await getPool();
+		const r = await pool
+			.request()
+			.input('users', sql.NVarChar(sql.MAX), JSON.stringify(userIds))
+			.input('years', sql.NVarChar(sql.MAX), JSON.stringify([...new Set(valid.map((p) => p.year))]))
+			.query(`SELECT user_id, year, title, activity_date, credits FROM cme_records
+			        WHERE user_id IN (SELECT [value] FROM OPENJSON(@users))
+			          AND year IN (SELECT CAST([value] AS INT) FROM OPENJSON(@years))`);
+		for (const e of r.recordset) {
+			const date = e.activity_date ? new Date(e.activity_date).toISOString().slice(0, 10) : null;
+			existing.add(dupKey(e.user_id, e.year, e.title, date, e.credits));
+		}
+	}
+	const seen = new Map();
+	for (const p of valid) {
+		const who = p.user_id || `sn:${p.new_staff?.staff_number}`;
+		const key = dupKey(who, p.year, p.title, p.activity_date, p.credits);
+		if (p.user_id && existing.has(key)) {
+			p.duplicate = 'existing';
+			p.warnings.push('Trùng ghi nhận đã có trong hệ thống (cùng nội dung, ngày, tín chỉ).');
+		} else if (seen.has(key)) {
+			p.duplicate = 'file';
+			p.warnings.push(`Trùng dòng ${seen.get(key)} trong file.`);
+		} else {
+			seen.set(key, p.row);
+		}
+	}
 };
 
 // Báo tài khoản vừa tạo: người được tạo (thấy khi đăng nhập; kèm email nếu bật
@@ -422,6 +547,9 @@ const importExcel = async ({ buffer, dry_run, defaults }, actorId) => {
 	const { rows: rawRows } = await parseWorkbook(buffer);
 	const lookups = await loadLookups();
 	const preview = buildPreview(rawRows, lookups, defaults);
+	await markDuplicates(preview);
+	// Dòng sẽ nhập: hợp lệ, trừ dòng trùng khi người nhập chọn bỏ qua
+	const willImport = (p) => p.valid && (!p.duplicate || defaults.include_duplicates);
 
 	const warnings = [];
 	for (const p of preview) {
@@ -435,12 +563,13 @@ const importExcel = async ({ buffer, dry_run, defaults }, actorId) => {
 	// Nhân viên mới chỉ tạo cho dòng hợp lệ (dòng sẽ bị bỏ qua thì không tạo người)
 	const newStaff = new Map();
 	for (const p of preview)
-		if (p.valid && p.new_staff) newStaff.set(p.new_staff.staff_number, p.new_staff);
+		if (willImport(p) && p.new_staff) newStaff.set(p.new_staff.staff_number, p.new_staff);
 
 	const summary = {
 		total: preview.length,
 		matched: preview.filter((p) => p.user_id).length,
 		valid: preview.filter((p) => p.valid).length,
+		duplicates: preview.filter((p) => p.duplicate).length,
 		new_staff: newStaff.size,
 	};
 
@@ -479,15 +608,17 @@ const importExcel = async ({ buffer, dry_run, defaults }, actorId) => {
 	for (const p of preview) if (p.new_staff && !p.user_id) p.user_id = p.new_staff.user_id || null;
 
 	// Id sinh bằng NEWID() nên chèn song song an toàn — chạy theo lô CONCURRENCY
-	// dòng thay vì tuần tự từng dòng (pool DB tối đa 10 kết nối).
+	// dòng thay vì tuần tự từng dòng (pool DB tối đa 10 kết nối). Dòng lỗi không làm
+	// hỏng cả lần nhập: ghi lại để báo, các dòng khác vẫn nhập (nhập lại cả file sẽ trùng).
 	const CONCURRENCY = 5;
 	const valid = preview.filter(
-		(p) => p.valid && p.user_id && !failedStaff.has(p.new_staff?.staff_number),
+		(p) => willImport(p) && p.user_id && !failedStaff.has(p.new_staff?.staff_number),
 	);
-	let inserted = 0;
+	const insertedRows = new Set();
 	for (let i = 0; i < valid.length; i += CONCURRENCY) {
-		await Promise.all(
-			valid.slice(i, i + CONCURRENCY).map((p) =>
+		const batch = valid.slice(i, i + CONCURRENCY);
+		const results = await Promise.allSettled(
+			batch.map((p) =>
 				cmeRecordService.create(
 					{
 						user_id: p.user_id,
@@ -506,12 +637,19 @@ const importExcel = async ({ buffer, dry_run, defaults }, actorId) => {
 				),
 			),
 		);
-		inserted += Math.min(CONCURRENCY, valid.length - i);
+		results.forEach((res, j) => {
+			if (res.status === 'fulfilled') return insertedRows.add(batch[j].row);
+			const p = batch[j];
+			p.warnings.push(`Lỗi khi lưu: ${res.reason?.message || res.reason}`);
+			warnings.push(
+				`Dòng ${p.row} (${p.matched_user_name || p.full_name_raw || p.staff_number}): lỗi khi lưu — chưa được nhập.`,
+			);
+		});
 	}
+	const inserted = insertedRows.size;
 
 	// Dòng không nhập được — trả lại đủ dữ liệu để giao diện "Thêm NV" rồi nhập tiếp
 	// đúng các dòng này (không phải nhập lại cả file → không trùng dòng đã nhập).
-	const insertedRows = new Set(valid.map((p) => p.row));
 	const skipped_rows = preview
 		.filter((p) => !insertedRows.has(p.row))
 		.map(({ warnings: w, ...p }) => ({ ...p, missing_user: !p.user_id, warnings: w }));

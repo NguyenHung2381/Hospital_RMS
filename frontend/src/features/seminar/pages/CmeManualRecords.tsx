@@ -369,6 +369,10 @@ function RecordFormModal({
 	const save = async () => {
 		if (!form.user_id || !form.title.trim() || !form.year || form.credits === '')
 			return setError('Vui lòng chọn nhân viên, nhập nội dung, năm và số tín chỉ');
+		const credits = Number(form.credits);
+		if (!Number.isFinite(credits) || credits < 0 || credits >= 10000)
+			return setError('Số tín chỉ phải từ 0 đến 9999.99');
+		if (form.quantity !== '' && !(Number(form.quantity) >= 0)) return setError('Số lượng không hợp lệ');
 		if (form.activity_date && form.end_date && form.end_date < form.activity_date)
 			return setError('"Đến ngày" phải sau hoặc bằng "Từ ngày"');
 		setBusy(true);
@@ -453,6 +457,7 @@ function RecordFormModal({
 					<input
 						className={styles.formInput}
 						value={form.title}
+						maxLength={255}
 						onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
 						placeholder='VD: Tự học chuyên đề X'
 					/>
@@ -462,6 +467,7 @@ function RecordFormModal({
 					<input
 						className={styles.formInput}
 						value={form.role}
+						maxLength={100}
 						onChange={(e) => setForm((f) => ({ ...f, role: e.target.value }))}
 						placeholder='VD: Đại biểu, Báo cáo viên'
 					/>
@@ -471,6 +477,7 @@ function RecordFormModal({
 					<input
 						type='number'
 						step='0.1'
+						min='0'
 						className={styles.formInput}
 						value={form.quantity}
 						onChange={(e) => pickQuantity(e.target.value)}
@@ -514,6 +521,7 @@ function RecordFormModal({
 					<input
 						type='number'
 						step='0.1'
+						min='0'
 						className={styles.formInput}
 						value={form.credits}
 						onChange={(e) => setForm((f) => ({ ...f, credits: e.target.value }))}
@@ -524,6 +532,7 @@ function RecordFormModal({
 					<input
 						className={styles.formInput}
 						value={form.note}
+						maxLength={500}
 						onChange={(e) => setForm((f) => ({ ...f, note: e.target.value }))}
 					/>
 				</div>
@@ -759,6 +768,20 @@ function CompleteStaffModal({
 	);
 }
 
+const WARN_LIMIT = 50;
+
+/** Danh sách cảnh báo khi nhập — hiện tối đa WARN_LIMIT dòng, báo số còn lại. */
+function WarnList({ warnings }: { warnings: string[] }) {
+	return (
+		<ul className={styles.warnList}>
+			{warnings.slice(0, WARN_LIMIT).map((w, i) => (
+				<li key={i}>{w}</li>
+			))}
+			{warnings.length > WARN_LIMIT && <li>… và {warnings.length - WARN_LIMIT} cảnh báo khác.</li>}
+		</ul>
+	);
+}
+
 function ImportModal({
 	categories,
 	groups,
@@ -782,6 +805,8 @@ function ImportModal({
 	const [categoryId, setCategoryId] = useState('');
 	const [title, setTitle] = useState('');
 	const [quantity, setQuantity] = useState('');
+	// Giờ tín chỉ mặc định — loại "Khác" / không chọn loại (không có giờ quy đổi)
+	const [creditsDefault, setCreditsDefault] = useState('');
 	// Mã NV chưa có trong hệ thống → tạo nhân viên mới (tạo tài khoản ⇒ cần users:create)
 	const perm = usePermission();
 	const canCreateStaff = perm.has('users:create');
@@ -821,10 +846,14 @@ function ImportModal({
 			.catch(() => setError('Không tải được danh sách khoa/phòng'));
 	}, [createMissing, adding, completing, departments.length]);
 	const inGroup = group ? categories.filter((c) => c.group_id === group) : categories;
+	const sameNameCount = (name: string) => categories.filter((c) => c.name === name).length;
 	const category = categories.find((c) => c.id === categoryId);
 	const yearOk = /^\d{4}$/.test(year);
 	const quantityNum = quantity.trim() === '' ? undefined : Number(quantity);
 	const quantityOk = quantityNum === undefined || (Number.isFinite(quantityNum) && quantityNum > 0);
+	const hasConversion = !!category?.conversion_value;
+	const creditsNum = hasConversion || creditsDefault.trim() === '' ? undefined : Number(creditsDefault);
+	const creditsOk = creditsNum === undefined || (Number.isFinite(creditsNum) && creditsNum >= 0 && creditsNum < 10000);
 	const defaults = useMemo(
 		() => ({
 			year: Number(year),
@@ -832,11 +861,12 @@ function ImportModal({
 			category_id: categoryId,
 			title: title.trim(),
 			quantity: quantityOk ? quantityNum : undefined,
+			credits: creditsOk ? creditsNum : undefined,
 			create_missing: createMissing,
 			staff_departments: createMissing && Object.keys(staffDepts).length ? staffDepts : undefined,
 			staff_names: createMissing && Object.keys(staffNamesFilled).length ? staffNamesFilled : undefined,
 		}),
-		[year, group, categoryId, title, quantityOk, quantityNum, createMissing, staffDepts, staffNamesFilled],
+		[year, group, categoryId, title, quantityOk, quantityNum, creditsOk, creditsNum, createMissing, staffDepts, staffNamesFilled],
 	);
 
 	const downloadTemplate = async () => {
@@ -850,6 +880,12 @@ function ImportModal({
 		}
 	};
 
+	// Bộ giá trị mặc định đã dùng cho bản xem trước đang hiển thị — khác `defaults` hiện tại
+	// (đang chờ đọc lại sau khi đổi) thì chưa cho nhập, tránh nhập khác với cái đang xem.
+	const [previewFor, setPreviewFor] = useState<typeof defaults | null>(null);
+	// Có dòng trùng → hỏi người nhập trước khi nhập
+	const [confirmDup, setConfirmDup] = useState(false);
+
 	// Đọc thử lại mỗi khi đổi file hoặc giá trị mặc định (trễ 400ms khi đang gõ tên hoạt động)
 	useEffect(() => {
 		if (!file || !yearOk) return;
@@ -859,14 +895,18 @@ function ImportModal({
 			setError('');
 			try {
 				const res = await importCmeRecordsExcel(file, true, defaults);
-				if (!stale) setPreview(res);
+				if (!stale) {
+					setPreview(res);
+					setPreviewFor(defaults);
+				}
 			} catch (e) {
 				if (!stale) {
 					setPreview(null);
 					setError(e instanceof Error ? e.message : 'Đọc file thất bại');
 				}
 			} finally {
-				setLoading(false);
+				// Lần đọc cũ xong muộn không tắt trạng thái đang đọc của lần mới
+				if (!stale) setLoading(false);
 			}
 		}, 400);
 		return () => {
@@ -875,12 +915,22 @@ function ImportModal({
 		};
 	}, [file, yearOk, defaults, previewKey]);
 
-	const commit = async () => {
-		if (!file || !yearOk || !quantityOk) return;
+	const duplicates = preview?.summary?.duplicates ?? 0;
+	const validCount = preview?.summary?.valid ?? 0;
+	const previewReady = !!preview && previewFor === defaults && !loading;
+
+	const requestCommit = () => {
+		if (duplicates > 0) setConfirmDup(true);
+		else commit(false);
+	};
+
+	const commit = async (includeDuplicates: boolean) => {
+		if (!file || !yearOk || !quantityOk || !creditsOk) return;
+		setConfirmDup(false);
 		setLoading(true);
 		setError('');
 		try {
-			const res = await importCmeRecordsExcel(file, false, defaults);
+			const res = await importCmeRecordsExcel(file, false, { ...defaults, include_duplicates: includeDuplicates });
 			setResult(res);
 			onDone();
 			// File thiếu họ tên / khoa → mở luôn hộp thoại bổ sung
@@ -927,7 +977,8 @@ function ImportModal({
 		let imported = 0;
 		let failed = 0;
 		for (const r of group?.rows ?? []) {
-			if (!r.year || r.credits == null) {
+			// Dòng lỗi dữ liệu (ngày sai, thiếu tín chỉ…) vẫn bỏ qua — chỉ nhập dòng thiếu nhân viên
+			if (!r.data_ok || !r.year || r.credits == null) {
 				failed++;
 				continue;
 			}
@@ -1001,8 +1052,12 @@ function ImportModal({
 							{result ? 'Đóng' : 'Huỷ'}
 						</button>
 						{!result && (
-							<button className={styles.btnPrimary} onClick={commit} disabled={loading || !yearOk || !quantityOk || !preview || rows.length === 0}>
-								{loading ? <span className={styles.spinner} /> : <UploadSvg />} Nhập {preview?.summary?.valid || ''} dòng hợp lệ
+							<button
+								className={styles.btnPrimary}
+								onClick={requestCommit}
+								disabled={loading || !yearOk || !quantityOk || !creditsOk || !previewReady || validCount === 0}
+							>
+								{loading ? <span className={styles.spinner} /> : <UploadSvg />} Nhập {validCount || ''} dòng hợp lệ
 							</button>
 						)}
 					</>
@@ -1013,14 +1068,15 @@ function ImportModal({
 						<div className={styles.noticeBox}>
 							<InfoSvg />
 							<span>
-								Nhân viên khớp theo <b>Mã NV</b>. Năm, Nhóm/Loại hình thức chọn dưới đây áp cho cả file. Số lượng
-								và Tên hoạt động mặc định dùng cho dòng để trống cột tương ứng.
+								Nhân viên khớp theo <b>Mã NV</b>. Năm lấy theo <b>Từ ngày</b>; dòng không có ngày lấy Năm chọn dưới
+								đây. Nhóm/Loại hình thức chọn dưới đây áp cho cả file. Số lượng và Tên hoạt động mặc định dùng cho
+								dòng để trống cột tương ứng.
 							</span>
 						</div>
 						<div className={styles.importDefaults}>
 							<div className={styles.formGroup}>
 								<label className={styles.formLabel}>
-									Năm <span className={styles.required}>*</span>
+									Năm (dòng không có Từ ngày) <span className={styles.required}>*</span>
 								</label>
 								<input
 									type='number'
@@ -1053,17 +1109,20 @@ function ImportModal({
 									<option value=''>-- Không chọn --</option>
 									{inGroup.map((c) => (
 										<option key={c.id} value={c.id}>
-											{c.name}
+											{/* Chưa chọn nhóm: tên trùng giữa các nhóm (vd "Khác") → ghi kèm tên nhóm */}
+											{!group && sameNameCount(c.name) > 1
+												? `${c.name} — ${groups.find((g) => g.id === c.group_id)?.name ?? 'Khác'}`
+												: c.name}
 										</option>
 									))}
 								</select>
 							</div>
 							<div className={`${styles.hint} ${styles.full}`}>
 								{category?.conversion_value
-									? `Giờ tín chỉ = Số lượng × ${category.conversion_value} giờ/${category.unit_label || 'lần'} — bắt buộc có Số lượng (ô trống lấy Số lượng mặc định, không có thì bỏ qua dòng), cột Giờ tín chỉ trong file không dùng.`
-									: 'Không có giờ quy đổi (loại "Khác" hoặc không chọn loại): không cần Số lượng, lấy cột Giờ tín chỉ trong file.'}
+									? `Dòng có Giờ tín chỉ trong file → lấy theo file. Ô trống → Giờ tín chỉ = Số lượng × ${category.conversion_value} giờ/${category.unit_label || 'lần'} (Số lượng trống lấy Số lượng mặc định, không có thì bỏ qua dòng).`
+									: 'Không có giờ quy đổi (loại "Khác" hoặc không chọn loại): lấy cột Giờ tín chỉ trong file; ô trống lấy Giờ tín chỉ mặc định.'}
 							</div>
-							<div className={`${styles.full} ${styles.importDefaultsRow}`}>
+							<div className={`${styles.full} ${styles.importDefaultsRow} ${hasConversion ? '' : styles.importDefaultsRow3}`}>
 								<div className={styles.formGroup}>
 									<label className={styles.formLabel}>
 										Số lượng mặc định
@@ -1079,6 +1138,21 @@ function ImportModal({
 										placeholder='VD: 1'
 									/>
 								</div>
+								{!hasConversion && (
+									<div className={styles.formGroup}>
+										<label className={styles.formLabel}>Giờ tín chỉ mặc định</label>
+										<input
+											type='number'
+											min='0'
+											step='0.5'
+											className={`${styles.formInput} ${creditsOk ? '' : styles.inputError}`}
+											value={creditsDefault}
+											onChange={(e) => setCreditsDefault(e.target.value)}
+											placeholder='VD: 2'
+											title='Dùng cho dòng để trống cột Giờ tín chỉ'
+										/>
+									</div>
+								)}
 								<div className={styles.formGroup}>
 									<label className={styles.formLabel}>Tên hoạt động mặc định</label>
 									<input
@@ -1134,6 +1208,12 @@ function ImportModal({
 								<span>
 									Đọc được <b>{preview.summary.total}</b> dòng · {preview.summary.matched} khớp nhân viên ·{' '}
 									{preview.summary.valid} hợp lệ để nhập
+									{duplicates > 0 && (
+										<>
+											{' '}
+											· <b>{duplicates}</b> dòng trùng (sẽ hỏi trước khi nhập)
+										</>
+									)}
 									{preview.summary.new_staff > 0 && (
 										<>
 											{' '}
@@ -1217,13 +1297,7 @@ function ImportModal({
 								</div>
 							</>
 						)}
-						{preview && preview.warnings.length > 0 && (
-							<ul className={styles.warnList}>
-								{preview.warnings.slice(0, 50).map((w, i) => (
-									<li key={i}>{w}</li>
-								))}
-							</ul>
-						)}
+						{preview && preview.warnings.length > 0 && <WarnList warnings={preview.warnings} />}
 						{rows.length > 0 && (
 							<div className={styles.importPreview}>
 								<table className={styles.table}>
@@ -1260,6 +1334,13 @@ function ImportModal({
 														</div>
 													)}
 													{!r.valid && <div className={styles.rowWarn}>Sẽ bị bỏ qua</div>}
+													{r.duplicate && (
+														<div>
+															<Badge tone='amber'>
+																{r.duplicate === 'existing' ? 'Trùng dữ liệu đã có' : 'Trùng dòng trong file'}
+															</Badge>
+														</div>
+													)}
 													{canCreateStaff && !r.user_id && !r.new_staff && r.staff_number != null && (
 														<button
 															type='button'
@@ -1280,7 +1361,11 @@ function ImportModal({
 												<td>{r.title}</td>
 												<td>{r.year ?? '—'}</td>
 												<td>{r.role || '—'}</td>
-												<td>{r.activity_date ? `${r.activity_date}${r.end_date ? ` → ${r.end_date}` : ''}` : '—'}</td>
+												<td className={styles.cmeNowrap}>
+													{r.activity_date
+														? `${formatDateVN(r.activity_date)}${r.end_date ? ` → ${formatDateVN(r.end_date)}` : ''}`
+														: '—'}
+												</td>
 												<td>{r.quantity ?? '—'}</td>
 												<td>{r.credits ?? '—'}</td>
 											</tr>
@@ -1435,13 +1520,30 @@ function ImportModal({
 						</div>
 					</>
 				)}
-				{result && result.warnings.length > 0 && (
-					<ul className={styles.warnList}>
-						{result.warnings.slice(0, 50).map((w, i) => (
-							<li key={i}>{w}</li>
-						))}
-					</ul>
-				)}
+				{result && result.warnings.length > 0 && <WarnList warnings={result.warnings} />}
+			</Modal>
+			<Modal
+				open={confirmDup}
+				onClose={() => setConfirmDup(false)}
+				title='Có dòng trùng ghi nhận'
+				size='md'
+				footer={
+					<>
+						<button className={styles.btnCancel} onClick={() => setConfirmDup(false)}>
+							Huỷ
+						</button>
+						<button className={styles.btnGhost} onClick={() => commit(true)}>
+							Nhập cả dòng trùng ({validCount})
+						</button>
+						<button className={styles.btnPrimary} onClick={() => commit(false)} disabled={validCount - duplicates === 0}>
+							<CheckSvg /> Bỏ qua dòng trùng ({validCount - duplicates})
+						</button>
+					</>
+				}
+			>
+				<b>{duplicates}</b> dòng trùng với ghi nhận đã có trong hệ thống hoặc với dòng trước trong file (cùng nhân viên,
+				nội dung, ngày và tín chỉ) — nhập cả thì tín chỉ sẽ bị cộng thêm lần nữa. Xem các dòng có nhãn "Trùng" trong bảng
+				xem trước.
 			</Modal>
 			{adding && (
 				<AddStaffModal
@@ -1486,6 +1588,9 @@ export default function CmeManualRecords() {
 	const [tab, setTab] = useState<'open' | 'approved'>('approved');
 	const [rejecting, setRejecting] = useState<CmeRecord | null>(null);
 	const [rejectReason, setRejectReason] = useState('');
+	// Duyệt 1 bản ghi kèm nhập tín chỉ (người dùng tự khai không nhập tín chỉ)
+	const [approving, setApproving] = useState<CmeRecord | null>(null);
+	const [approveCredits, setApproveCredits] = useState('');
 	const [loading, setLoading] = useState(true);
 	const [editing, setEditing] = useState<CmeRecord | null | 'new'>(null);
 	const [showImport, setShowImport] = useState(false);
@@ -1566,6 +1671,8 @@ export default function CmeManualRecords() {
 	const rowSel = useRowSelection(useMemo(() => paged.map((r) => r.id), [paged]));
 	const selectedRecs = records.filter((r) => rowSel.selectedIds.has(r.id));
 	const toApprove = selectedRecs.filter((r) => r.approval_status !== 'approved');
+	// Chưa có tín chỉ → phải duyệt từng bản ghi để nhập tín chỉ, không duyệt đồng loạt
+	const toApproveReady = toApprove.filter((r) => Number(r.credits) > 0);
 	const toReject = selectedRecs.filter((r) => r.approval_status !== 'rejected');
 	const [bulkRejecting, setBulkRejecting] = useState(false);
 	const [bulkBusy, setBulkBusy] = useState(false);
@@ -1582,7 +1689,13 @@ export default function CmeManualRecords() {
 		refresh();
 	};
 	const handleBulkApprove = () => {
-		if (window.confirm(`Duyệt ${toApprove.length} ghi nhận đã chọn?`)) runBulk(toApprove, approveCmeRecord);
+		const missing = toApprove.length - toApproveReady.length;
+		if (!toApproveReady.length)
+			return alert('Các ghi nhận đã chọn chưa có số tín chỉ — vui lòng duyệt từng ghi nhận để nhập tín chỉ.');
+		const note = missing ? `
+${missing} ghi nhận chưa có tín chỉ sẽ được bỏ qua (cần duyệt từng ghi nhận để nhập tín chỉ).` : '';
+		if (window.confirm(`Duyệt ${toApproveReady.length} ghi nhận đã chọn?${note}`))
+			runBulk(toApproveReady, (id) => approveCmeRecord(id));
 	};
 	const handleBulkReject = async () => {
 		await runBulk(toReject, (id) => rejectCmeRecord(id, rejectReason));
@@ -1594,9 +1707,20 @@ export default function CmeManualRecords() {
 		setBulkDeleting(false);
 	};
 
-	const handleApprove = async (id: string) => {
+	const openApprove = (r: CmeRecord) => {
+		setApproving(r);
+		const cat = categories.find((c) => c.id === r.category_id);
+		const qty = r.quantity == null ? '' : String(r.quantity);
+		// Gợi ý: tín chỉ đã có, không thì theo định mức danh mục × số lượng
+		setApproveCredits(Number(r.credits) > 0 ? String(r.credits) : (calcCredits(cat, qty) ?? ''));
+	};
+	const approveCreditsOk =
+		approveCredits.trim() !== '' && Number.isFinite(Number(approveCredits)) && Number(approveCredits) >= 0;
+	const handleApprove = async () => {
+		if (!approving || !approveCreditsOk) return;
 		try {
-			await approveCmeRecord(id);
+			await approveCmeRecord(approving.id, Number(approveCredits));
+			setApproving(null);
 			refresh();
 		} catch (e) {
 			alert(e instanceof Error ? e.message : 'Duyệt thất bại');
@@ -1777,7 +1901,7 @@ export default function CmeManualRecords() {
 							actions={
 								<>
 									<BulkButton disabled={bulkBusy || toApprove.length === 0} onClick={handleBulkApprove}>
-										<CheckSvg /> Duyệt đã chọn ({toApprove.length})
+										<CheckSvg /> Duyệt đã chọn ({toApproveReady.length})
 									</BulkButton>
 									<BulkButton
 										danger
@@ -1868,7 +1992,11 @@ export default function CmeManualRecords() {
 											)}
 										</td>
 										<td className={styles.tdRight}>
-											<span className={styles.cmeCredits}>{formatCredits(r.credits)}</span>
+											{r.approval_status !== 'approved' && !Number(r.credits) ? (
+												<span className={styles.muted}>Chưa nhập</span>
+											) : (
+												<span className={styles.cmeCredits}>{formatCredits(r.credits)}</span>
+											)}
 										</td>
 										<td className={styles.tdCenter}>
 											{r.evidence_file_url ? (
@@ -1907,7 +2035,7 @@ export default function CmeManualRecords() {
 											{perms.canCme && (
 												<div className={styles.actionBtns}>
 		{r.approval_status !== 'approved' && (
-			<div className={styles.actionBtn} title='Duyệt' onClick={() => handleApprove(r.id)}>
+			<div className={styles.actionBtn} title='Duyệt và nhập tín chỉ' onClick={() => openApprove(r)}>
 				<CheckSvg />
 			</div>
 		)}
@@ -2011,6 +2139,43 @@ export default function CmeManualRecords() {
 	<label className={styles.formLabel}>Lý do từ chối * (người dùng sẽ thấy để sửa và gửi lại)</label>
 	<input className={styles.formInput} value={rejectReason} onChange={(e) => setRejectReason(e.target.value)} autoFocus />
 </Modal>
+
+			<Modal
+				open={!!approving}
+				onClose={() => setApproving(null)}
+				title='Duyệt ghi nhận CME'
+				footer={
+					<>
+						<button className={styles.btnCancel} onClick={() => setApproving(null)}>
+							Huỷ
+						</button>
+						<button className={styles.btnPrimary} onClick={handleApprove} disabled={!approveCreditsOk}>
+							<CheckSvg /> Duyệt
+						</button>
+					</>
+				}
+			>
+				{approving && (
+					<>
+						<div className={styles.cmeCellSub}>
+							{approving.user_name} · {approving.title}
+							{approving.category_name && ` · ${approving.category_name}`}
+							{approving.quantity != null && ` · SL ${approving.quantity}`}
+						</div>
+						<label className={styles.formLabel}>Số tín chỉ *</label>
+						<input
+							className={styles.formInput}
+							type='number'
+							step='0.1'
+							min='0'
+							value={approveCredits}
+							onChange={(e) => setApproveCredits(e.target.value)}
+							onKeyDown={(e) => e.key === 'Enter' && handleApprove()}
+							autoFocus
+						/>
+					</>
+				)}
+			</Modal>
 
 			<BulkDeleteModal
 				open={bulkDeleting}

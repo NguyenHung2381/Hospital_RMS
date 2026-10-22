@@ -25,6 +25,8 @@ router.post(
 			.custom((v, { req }) => !!v || !!req.body.activity_date)
 			.withMessage('Vui lòng nhập năm hoặc ngày hoạt động'),
 		body('credits').isFloat({ min: 0 }).withMessage('Số tín chỉ không hợp lệ'),
+		// Giới hạn độ dài / tín chỉ tối đa / Đến ngày ≥ Từ ngày giống khi sửa
+		...updateRules,
 	],
 	validate,
 	ctrl.createOne,

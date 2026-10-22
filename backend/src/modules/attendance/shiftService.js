@@ -1,10 +1,18 @@
 const { getPool, sql, withTransaction } = require('../../config/db');
 const { broadcast } = require('../events/eventService');
-const { validateShift, normalizePatternDays, DATE_RE } = require('../../utils/attendanceShift');
+const {
+	validateShift,
+	normalizePatternDays,
+	periodOn,
+	DATE_RE,
+} = require('../../utils/attendanceShift');
 const { httpError } = require('../../utils/httpError');
 const { scopeOf } = require('../../permissions/authz');
+const { todayKeyVN } = require('../../utils/vnDate');
 
-// Ca làm việc, mẫu ca tuần, phân ca theo ngày (2026-10-30_attendance_shifts.sql).
+// Ca, mẫu ca tuần, phân ca theo ngày (2026-10-30_attendance_shifts.sql) cho chấm công
+// HỌC VIÊN theo khóa đào tạo (2026-11-30_trainee_attendance.sql): mẫu ca tuần gán theo
+// khóa (courses.shift_pattern_id), phân ca theo ngày gán cho tài khoản học viên.
 // Logic chọn ca khi chấm công ở utils/attendanceShift.js.
 
 const changed = () => broadcast('update', { entity: 'work_shifts' });
@@ -14,7 +22,7 @@ const parsePattern = (row) => row && { ...row, days: normalizePatternDays(JSON.p
 
 // Phạm vi khoa của lượt cấp staff_attendance:<action> (permissions/scopes.js):
 // undefined = toàn viện; còn lại = mã khoa duy nhất được thấy/sửa (null khi
-// người thao tác chưa thuộc khoa nào ⇒ không ai).
+// người thao tác chưa thuộc khoa nào ⇒ không ai). Khoa của học viên = trainees.department_id.
 const deptLimit = (actor, action) =>
 	scopeOf(actor, 'staff_attendance', action) === 'department'
 		? (actor.department_id ?? null)
@@ -124,7 +132,7 @@ const listPatterns = async () => {
 	const pool = await getPool();
 	const rows = (
 		await pool.request().query(`
-      SELECT p.*, (SELECT COUNT(*) FROM users u WHERE u.shift_pattern_id = p.id) AS user_count
+      SELECT p.*, (SELECT COUNT(*) FROM courses c WHERE c.shift_pattern_id = p.id AND c.status <> 'cancelled') AS course_count
       FROM shift_patterns p
       ORDER BY p.is_default DESC, p.name
     `)
@@ -174,39 +182,44 @@ const savePattern = async (id, { name, days, is_default }) => {
 	return parsePattern(row);
 };
 
-// Người đang dùng mẫu này tự về mẫu mặc định (FK ON DELETE SET NULL)
+// Khóa đang dùng mẫu này tự về mẫu mặc định (FK courses không cascade — gỡ trước khi xoá)
 const removePattern = async (id) => {
-	const pool = await getPool();
-	const { rowsAffected } = await pool
-		.request()
-		.input('id', sql.Int, id)
-		.query('DELETE FROM shift_patterns WHERE id = @id');
-	if (!rowsAffected[0]) throw httpError(404, 'Không tìm thấy mẫu ca');
+	const deleted = await withTransaction(async (tx) => {
+		await new sql.Request(tx)
+			.input('id', sql.Int, id)
+			.query('UPDATE courses SET shift_pattern_id = NULL WHERE shift_pattern_id = @id');
+		return (
+			await new sql.Request(tx)
+				.input('id', sql.Int, id)
+				.query('DELETE FROM shift_patterns WHERE id = @id')
+		).rowsAffected[0];
+	});
+	if (!deleted) throw httpError(404, 'Không tìm thấy mẫu ca');
 	changed();
 };
 
-// Tài khoản đang hoạt động (chọn người áp dụng mẫu / bảng phân ca)
-const listUsers = async (departmentId) => {
+// Khóa học chưa huỷ (chọn khóa áp dụng mẫu ca); ended = đã qua ngày kết thúc
+const listCourses = async () => {
 	const pool = await getPool();
-	const req = pool.request();
-	let where = 'u.is_active = 1';
-	if (departmentId) {
-		req.input('dept', sql.VarChar(20), String(departmentId));
-		where += ' AND u.department_id = @dept';
-	}
 	return (
-		await req.query(`
-      SELECT u.id, u.full_name, u.staff_number, u.shift_pattern_id, u.department_id, d.name AS department_name
-      FROM users u LEFT JOIN departments d ON d.id = u.department_id
-      WHERE ${where}
-      ORDER BY u.full_name
+		await pool.request().input('today', sql.Date, todayKeyVN()).query(`
+      SELECT c.id, c.name, c.start_date, c.end_date, c.is_rolling, c.shift_pattern_id,
+             CAST(CASE WHEN c.is_rolling = 0 AND c.end_date < @today THEN 1 ELSE 0 END AS BIT) AS ended,
+             (SELECT COUNT(*) FROM course_enrollments e WHERE e.course_id = c.id AND e.status = 'approved') AS trainee_count
+      FROM courses c
+      WHERE c.status <> 'cancelled'
+      ORDER BY ended, c.start_date DESC, c.name
     `)
-	).recordset;
+	).recordset.map((c) => ({
+		...c,
+		start_date: dateKey(c.start_date),
+		end_date: dateKey(c.end_date),
+	}));
 };
 
-// Đặt đúng danh sách người dùng mẫu `id`: người trong user_ids chuyển sang mẫu này,
-// người đang ở mẫu này mà không có trong danh sách → về mẫu mặc định.
-const setPatternUsers = async (id, userIds) => {
+// Đặt đúng danh sách khóa dùng mẫu `id`: khóa trong course_ids chuyển sang mẫu này,
+// khóa đang ở mẫu này mà không có trong danh sách → về mẫu mặc định.
+const setPatternCourses = async (id, courseIds) => {
 	const pool = await getPool();
 	const exists = (
 		await pool
@@ -218,30 +231,117 @@ const setPatternUsers = async (id, userIds) => {
 	await withTransaction((tx) =>
 		new sql.Request(tx)
 			.input('id', sql.Int, id)
-			.input('ids', sql.NVarChar(sql.MAX), JSON.stringify([...new Set(userIds.map(String))]))
+			.input('ids', sql.NVarChar(sql.MAX), JSON.stringify([...new Set(courseIds.map(String))]))
 			.query(`
-        UPDATE users SET shift_pattern_id = NULL
+        UPDATE courses SET shift_pattern_id = NULL
         WHERE shift_pattern_id = @id AND id NOT IN (SELECT value FROM OPENJSON(@ids));
-        UPDATE users SET shift_pattern_id = @id WHERE id IN (SELECT value FROM OPENJSON(@ids));
+        UPDATE courses SET shift_pattern_id = @id WHERE id IN (SELECT value FROM OPENJSON(@ids));
       `),
 	);
 	changed();
 };
 
+// ─── Học viên theo khóa ──────────────────────────────────────────────────────
+// Lượt học trong [from, to] của học viên có tài khoản: ghi danh 'approved', khóa chưa huỷ.
+// Thời gian học = thời gian riêng của lượt ghi danh (khóa mở liên tục) hoặc của khóa;
+// khóa thường chưa có ngày bắt đầu thì chưa tính. Ngày NULL = không giới hạn phía đó.
+//   → [{ user_id, trainee_id, full_name, department_id, department_name,
+//        course_id, course_name, shift_pattern_id, start_date, end_date }]
+const traineePeriods = async ({ from, to, userId, departmentId }) => {
+	const pool = await getPool();
+	const req = pool.request().input('from', sql.Date, from).input('to', sql.Date, to);
+	const where = [];
+	if (userId) {
+		req.input('user_id', sql.VarChar(20), userId);
+		where.push('t.user_id = @user_id');
+	}
+	if (departmentId) {
+		req.input('dept', sql.VarChar(20), String(departmentId));
+		where.push('t.department_id = @dept');
+	}
+	const rows = (
+		await req.query(`
+      SELECT t.user_id, t.id AS trainee_id, t.full_name, t.department_id, d.name AS department_name,
+             c.id AS course_id, c.name AS course_name, c.shift_pattern_id, p.start_date, p.end_date
+      FROM course_enrollments e
+      JOIN courses c ON c.id = e.course_id
+      JOIN trainees t ON t.id = e.trainee_id
+      JOIN users u ON u.id = t.user_id AND u.is_active = 1
+      LEFT JOIN departments d ON d.id = t.department_id
+      CROSS APPLY (SELECT ISNULL(e.start_date, c.start_date) AS start_date,
+                          ISNULL(e.end_date, c.end_date) AS end_date) p
+      WHERE e.status = 'approved' AND c.status <> 'cancelled'
+        AND t.is_active = 1 AND t.hidden_at IS NULL
+        AND (p.start_date IS NOT NULL OR c.is_rolling = 1)
+        AND (p.start_date IS NULL OR p.start_date <= @to)
+        AND (p.end_date IS NULL OR p.end_date >= @from)
+        ${where.map((w) => `AND ${w}`).join(' ')}
+      ORDER BY t.full_name, p.start_date DESC
+    `)
+	).recordset;
+	return rows.map((r) => ({
+		...r,
+		start_date: dateKey(r.start_date),
+		end_date: dateKey(r.end_date),
+	}));
+};
+
+// Gom lượt học theo tài khoản học viên → [{ id: user_id, trainee_id, full_name, …, periods }]
+const groupByTrainee = (periods) => {
+	const map = new Map();
+	for (const p of periods) {
+		if (!map.has(p.user_id))
+			map.set(p.user_id, {
+				id: p.user_id,
+				trainee_id: p.trainee_id,
+				full_name: p.full_name,
+				department_id: p.department_id,
+				department_name: p.department_name,
+				periods: [],
+			});
+		map.get(p.user_id).periods.push({
+			course_id: p.course_id,
+			course_name: p.course_name,
+			shift_pattern_id: p.shift_pattern_id,
+			start_date: p.start_date,
+			end_date: p.end_date,
+		});
+	}
+	return [...map.values()];
+};
+
+// (dateKey) → { course_id, course_name, pattern } | null: khóa đang học ngày đó + mẫu ca tuần
+// của khóa (khóa chưa gán mẫu → mẫu mặc định, không có nữa → null = chấm tự do)
+const courseResolver = (periods, patterns) => {
+	const byId = new Map(patterns.map((p) => [p.id, p]));
+	const fallback = patterns.find((p) => p.is_default) ?? null;
+	return (date) => {
+		const p = periodOn(periods, date);
+		if (!p) return null;
+		return {
+			course_id: p.course_id,
+			course_name: p.course_name,
+			pattern: (p.shift_pattern_id && byId.get(p.shift_pattern_id)) || fallback,
+		};
+	};
+};
+
 // ─── Phân ca theo ngày ───────────────────────────────────────────────────────
-// Dữ liệu cho lưới phân ca: người + phân ca trong khoảng ngày; client tự ghép với mẫu tuần.
-// Phân ca phạm vi khoa: chỉ người cùng khoa với người thao tác (bỏ qua department_id gửi lên).
-const getRoster = async ({ from, to, department_id }, actor) => {
+// Dữ liệu cho lưới phân ca: học viên đang học trong khoảng ngày (kèm các lượt học) + phân ca;
+// client tự ghép với mẫu ca tuần của khóa. Phân ca phạm vi khoa: chỉ học viên cùng khoa.
+const getRoster = async ({ from, to }, actor) => {
 	const limit = deptLimit(actor, 'roster');
 	if (limit === null) return { users: [], assignments: [] };
 	const pool = await getPool();
-	const users = await listUsers(limit ?? department_id);
+	const users = groupByTrainee(await traineePeriods({ from, to, departmentId: limit }));
 	const assignments = (
-		await pool.request().input('from', sql.Date, from).input('to', sql.Date, to).query(`
-      SELECT a.user_id, a.work_date, a.shift_id FROM shift_assignments a
-      JOIN users u ON u.id = a.user_id AND u.is_active = 1
-      WHERE a.work_date BETWEEN @from AND @to
-    `)
+		await pool
+			.request()
+			.input('from', sql.Date, from)
+			.input('to', sql.Date, to)
+			.query(
+				'SELECT user_id, work_date, shift_id FROM shift_assignments WHERE work_date BETWEEN @from AND @to',
+			)
 	).recordset;
 	const ids = new Set(users.map((u) => u.id));
 	return {
@@ -254,38 +354,36 @@ const getRoster = async ({ from, to, department_id }, actor) => {
 
 const MAX_CELLS = 20000;
 
-// Phân ca phạm vi khoa: mọi người trong danh sách phải cùng khoa với người thao tác.
-const assertUsersInDept = async (userIds, limit) => {
-	if (limit === undefined) return;
-	const outside =
-		limit === null
-			? userIds
-			: (
-					await (
-						await getPool()
-					)
-						.request()
-						.input('users', sql.NVarChar(sql.MAX), JSON.stringify(userIds))
-						.input('dept', sql.VarChar(20), String(limit)).query(`
-          SELECT j.value AS id FROM OPENJSON(@users) j
-          WHERE NOT EXISTS (SELECT 1 FROM users u WHERE u.id = j.value AND u.department_id = @dept)
-        `)
-				).recordset;
-	if (outside.length) throw httpError(403, 'Chỉ được phân ca cho nhân viên trong khoa của bạn');
+// Chỉ phân ca cho tài khoản học viên; phạm vi khoa: học viên phải cùng khoa với người thao tác.
+const assertTrainees = async (userIds, limit) => {
+	if (limit === null) throw httpError(403, 'Chỉ được phân ca cho học viên thuộc khoa của bạn');
+	const req = (await getPool())
+		.request()
+		.input('users', sql.NVarChar(sql.MAX), JSON.stringify(userIds));
+	if (limit !== undefined) req.input('dept', sql.VarChar(20), String(limit));
+	const outside = (
+		await req.query(`
+      SELECT j.value AS id FROM OPENJSON(@users) j
+      WHERE NOT EXISTS (SELECT 1 FROM trainees t WHERE t.user_id = j.value${limit !== undefined ? ' AND t.department_id = @dept' : ''})
+    `)
+	).recordset;
+	if (!outside.length) return;
+	if (limit === undefined) throw httpError(400, 'Chỉ phân ca được cho tài khoản học viên');
+	throw httpError(403, 'Chỉ được phân ca cho học viên thuộc khoa của bạn');
 };
 
-// Đặt ô phân ca cho mọi cặp (người × ngày):
-//   mode 'shifts'  → đúng các ca shift_ids   mode 'off' → nghỉ   mode 'pattern' → bỏ phân ca, theo mẫu tuần
+// Đặt ô phân ca cho mọi cặp (học viên × ngày):
+//   mode 'shifts'  → đúng các ca shift_ids   mode 'off' → nghỉ   mode 'pattern' → bỏ phân ca, theo mẫu tuần của khóa
 const setRoster = async ({ user_ids, dates, mode, shift_ids = [] }, actor) => {
 	const users = [...new Set(user_ids.map(String))];
 	const days = [...new Set(dates)];
-	if (!users.length || !days.length) throw httpError(400, 'Chọn ít nhất 1 người và 1 ngày');
+	if (!users.length || !days.length) throw httpError(400, 'Chọn ít nhất 1 học viên và 1 ngày');
 	if (days.some((d) => !DATE_RE.test(d))) throw httpError(400, 'Ngày không hợp lệ');
 	if (users.length * days.length > MAX_CELLS) throw httpError(400, `Tối đa ${MAX_CELLS} ô mỗi lần`);
 	const shifts =
 		mode === 'shifts' ? [...new Set(shift_ids.map(Number))] : mode === 'off' ? [null] : [];
 	if (mode === 'shifts' && !shifts.length) throw httpError(400, 'Chọn ít nhất 1 ca');
-	await assertUsersInDept(users, deptLimit(actor, 'roster'));
+	await assertTrainees(users, deptLimit(actor, 'roster'));
 	await withTransaction(async (tx) => {
 		const req = () =>
 			new sql.Request(tx)
@@ -327,20 +425,6 @@ const setRoster = async ({ user_ids, dates, mode, shift_ids = [] }, actor) => {
 const shiftsMap = async () =>
 	new Map((await listShifts()).filter((s) => s.is_active).map((s) => [s.id, s]));
 
-// Mẫu tuần đang áp dụng cho 1 người: mẫu riêng, không có thì mẫu mặc định, không có nữa = null
-const patternForUser = async (userId) => {
-	const pool = await getPool();
-	const row = (
-		await pool.request().input('user_id', sql.VarChar(20), userId).query(`
-      SELECT TOP 1 p.* FROM shift_patterns p
-      WHERE p.id = (SELECT shift_pattern_id FROM users WHERE id = @user_id)
-         OR (p.is_default = 1 AND NOT EXISTS (SELECT 1 FROM users WHERE id = @user_id AND shift_pattern_id IS NOT NULL))
-      ORDER BY p.is_default
-    `)
-	).recordset[0];
-	return parsePattern(row) ?? null;
-};
-
 const assignmentsForUser = async (userId, from, to) => {
 	const pool = await getPool();
 	return (
@@ -355,11 +439,12 @@ const assignmentsForUser = async (userId, from, to) => {
 	).recordset.map((a) => ({ ...a, work_date: dateKey(a.work_date) }));
 };
 
-// Lịch ca trong 1 ngày (bảng chấm công) của cả viện hoặc 1 khoa: mẫu của từng người + phân ca ngày đó
+// Lịch ca trong 1 ngày (bảng chấm công) của học viên cả viện hoặc 1 khoa: khóa đang học +
+// mẫu ca tuần của khóa + phân ca ngày đó
 const planForDate = async (date, departmentId) => {
 	const pool = await getPool();
-	const [users, patterns, assignments, shifts] = await Promise.all([
-		listUsers(departmentId),
+	const [periods, patterns, assignments, shifts] = await Promise.all([
+		traineePeriods({ from: date, to: date, departmentId }),
 		listPatterns(),
 		pool
 			.request()
@@ -368,9 +453,8 @@ const planForDate = async (date, departmentId) => {
 		shiftsMap(),
 	]);
 	return {
-		users,
-		patternsById: new Map(patterns.map((p) => [p.id, p])),
-		defaultPattern: patterns.find((p) => p.is_default) ?? null,
+		trainees: groupByTrainee(periods),
+		patterns,
 		assignments: assignments.recordset.map((a) => ({ ...a, work_date: dateKey(a.work_date) })),
 		shifts,
 	};
@@ -384,12 +468,13 @@ module.exports = {
 	listPatterns,
 	savePattern,
 	removePattern,
-	listUsers,
-	setPatternUsers,
+	listCourses,
+	setPatternCourses,
+	traineePeriods,
+	courseResolver,
 	getRoster,
 	setRoster,
 	shiftsMap,
-	patternForUser,
 	assignmentsForUser,
 	planForDate,
 };

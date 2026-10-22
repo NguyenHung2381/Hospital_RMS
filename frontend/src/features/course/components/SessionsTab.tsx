@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { CalendarSvg, CheckSvg, PlusSvg, TrashSvg, UsersSvg, XSvg } from '@/assets/icons';
+import { CalendarSvg, CheckSvg, PlusSvg, TrashSvg, XSvg } from '@/assets/icons';
 import { Badge, Button, EmptyState } from '@/shared/components';
 import { FormField } from '@/shared/components/Input/FormField';
 import { Modal, ModalActions } from '@/shared/components/Modal';
@@ -10,7 +10,7 @@ import { useClientPaging } from '@/shared/hooks/useClientPaging';
 import { formatDateVN } from '@/shared/utils/formatDate';
 import { VenueSelect } from '../../venue/components/VenueSelect';
 import type { LecturerItem, useCourseDetail } from '../hooks/useCourseDetail';
-import type { CourseLesson, LecturerAssignment, SessionKind } from '../types/course.type';
+import type { ClassSession, CourseLesson, LecturerAssignment, SessionKind } from '../types/course.type';
 import { LecturerOptions } from './LecturerOptions';
 import styles from '../pages/Courses.module.css';
 import ss from './SessionsTab.module.css';
@@ -61,17 +61,23 @@ const hoursText = (l: CourseLesson) =>
 		.filter(Boolean)
 		.join(' · ');
 
-/** 1 dòng của bảng Bài học × Giảng viên: GV chính + số tiết + GV phụ, đổi là lưu ngay. */
+/** 1 dòng của bảng Bài học: các buổi học (ngày, giờ, phòng) + GV chính + số tiết + GV phụ, đổi là lưu ngay. */
 function LessonRow({
 	d,
 	lesson,
 	index,
 	lecturers,
+	sessions,
+	onAddSession,
+	onEditSession,
 }: {
 	d: Detail;
 	lesson: CourseLesson;
 	index: number;
 	lecturers: LecturerItem[];
+	sessions: ClassSession[];
+	onAddSession: () => void;
+	onEditSession: (s: ClassSession) => void;
 }) {
 	const rows = d.assignments.filter((a) => a.subject_id === lesson.id);
 	const main = rows.find((a) => a.role === 'main');
@@ -89,7 +95,7 @@ function LessonRow({
 	return (
 		<tr className={tbl.tr}>
 			<td className={`${tbl.td} ${tbl.tdIdx}`}>{index}</td>
-			<td className={tbl.td}>
+			<td className={`${tbl.td} ${ss.lessonCell}`}>
 				<div className={tbl.cellTitle}>{lesson.title}</div>
 				{lesson.code && <div className={tbl.cellCode}>{lesson.code}</div>}
 				<div className={tbl.cellSub}>
@@ -97,8 +103,29 @@ function LessonRow({
 				</div>
 			</td>
 			<td className={tbl.td}>
+				<div className={ss.sessCell}>
+					{sessions.map((s) => (
+						<SessionChip
+							key={s.id}
+							d={d}
+							s={s}
+							mainLecturerId={main?.lecturer_id}
+							onEdit={() => onEditSession(s)}
+						/>
+					))}
+					<button
+						type='button'
+						className={sessions.length ? ss.addMore : ss.addFirst}
+						disabled={d.busy}
+						onClick={onAddSession}
+					>
+						<PlusSvg /> {sessions.length ? 'Thêm buổi' : 'Xếp ngày học'}
+					</button>
+				</div>
+			</td>
+			<td className={tbl.td}>
 				<select
-					className={styles.subSelect}
+					className={`${styles.subSelect} ${ss.fitSelect}`}
 					value={main?.lecturer_id ?? ''}
 					disabled={d.busy}
 					onChange={(e) =>
@@ -179,24 +206,113 @@ const monthOf = (iso: string) => {
 	return `Tháng ${Number(mo)}/${y}`;
 };
 
-/** Hộp thoại thêm buổi học: 1 buổi hoặc lịch lặp theo tuần. */
+const timeText = (s: ClassSession) =>
+	s.start_time ? `${s.start_time.slice(0, 5)}–${(s.end_time ?? '').slice(0, 5)}` : 'Chưa đặt giờ';
+
+/** 1 buổi trong ô "Buổi học" của bảng: bấm để sửa ngày/giờ/phòng/GV. */
+function SessionChip({
+	d,
+	s,
+	mainLecturerId,
+	onEdit,
+}: {
+	d: Detail;
+	s: ClassSession;
+	mainLecturerId?: string;
+	onEdit: () => void;
+}) {
+	const dt = new Date(s.session_date);
+	// GV của buổi khác GV chính của bài thì ghi rõ
+	const meta = [
+		s.room ?? 'Chưa gán phòng',
+		s.lecturer_id !== mainLecturerId && (s.lecturer_name ?? 'Chưa gán GV'),
+		s.session_kind && SESSION_KIND_LABEL[s.session_kind],
+	].filter(Boolean);
+	return (
+		<div className={`${ss.sess} ${s.lecturer_clashes ? ss.sessWarn : ''}`}>
+			<button
+				type='button'
+				className={ss.sessBody}
+				title={`${formatDateVN(s.session_date)} — bấm để sửa buổi học`}
+				onClick={onEdit}
+			>
+				<span className={ss.sessDate}>
+					<span>{WEEKDAY_LABELS[dt.getDay()]}</span>
+					<strong>{formatDateVN(s.session_date).slice(0, 5)}</strong>
+				</span>
+				<span className={ss.sessInfo}>
+					<span className={s.start_time ? ss.sessTime : ss.sessTimeEmpty}>{timeText(s)}</span>
+					<span className={ss.sessMeta}>{meta.join(' · ')}</span>
+					{s.lecturer_clashes && (
+						<span
+							className={ss.sessClash}
+							title={s.lecturer_clashes}
+						>
+							Trùng lịch GV
+						</span>
+					)}
+				</span>
+			</button>
+			<div className={ss.sessActions}>
+				<button
+					className={styles.actionBtn}
+					title='Điểm danh'
+					onClick={() => d.setAttendanceSessionId(s.id)}
+				>
+					<CheckSvg />
+				</button>
+				<button
+					className={`${styles.actionBtn} ${styles.danger}`}
+					title='Xoá buổi học'
+					disabled={d.busy}
+					onClick={() => d.removeSession(s.id)}
+				>
+					<TrashSvg />
+				</button>
+			</div>
+		</div>
+	);
+}
+
+type FormState =
+	| { mode: 'one'; initial?: Partial<SessionForm>; session?: ClassSession }
+	| { mode: 'bulk'; initial?: Partial<BulkForm> };
+
+/** Hộp thoại thêm/sửa buổi học: 1 buổi hoặc lịch lặp theo tuần. */
 function SessionFormModal({
 	d,
-	bulk,
+	state,
 	lessonOptions,
 	sessionLecturers,
 	mainLecturerOf,
 	onClose,
 }: {
 	d: Detail;
-	bulk: boolean;
+	state: FormState;
 	lessonOptions: { id: string; name: string }[];
 	sessionLecturers: LecturerItem[];
 	mainLecturerOf: (lessonId: string) => string;
 	onClose: (result?: { created: number; skipped: number }) => void;
 }) {
-	const [one, setOne] = useState<SessionForm>(EMPTY_SESSION);
-	const [many, setMany] = useState<BulkForm>(EMPTY_BULK);
+	const bulk = state.mode === 'bulk';
+	const editing = state.mode === 'one' ? state.session : undefined;
+	const [one, setOne] = useState<SessionForm>(() =>
+		editing
+			? {
+					session_date: editing.session_date.slice(0, 10),
+					start_time: editing.start_time?.slice(0, 5) ?? '',
+					end_time: editing.end_time?.slice(0, 5) ?? '',
+					room: editing.room ?? '',
+					lesson_id: editing.subject_id ?? '',
+					lecturer_id: editing.lecturer_id ?? '',
+					session_kind: editing.session_kind ?? '',
+				}
+			: { ...EMPTY_SESSION, ...(state.mode === 'one' ? state.initial : undefined) },
+	);
+	const [many, setMany] = useState<BulkForm>(() => ({
+		...EMPTY_BULK,
+		...(state.mode === 'bulk' ? state.initial : undefined),
+	}));
 	// Phần chung 2 chế độ (giờ, phòng, bài, LT/TH, GV) đọc/ghi qua 1 bộ hàm
 	const f = bulk ? many : one;
 	const set = (patch: Partial<SessionForm & BulkForm>) =>
@@ -212,6 +328,20 @@ function SessionFormModal({
 				session_kind: session_kind || undefined,
 			});
 			if (result) onClose(result);
+			return;
+		}
+		if (editing) {
+			// Gửi chuỗi rỗng để xoá giá trị cũ (backend lưu NULL)
+			const ok = await d.updateSession(editing.id, {
+				session_date: one.session_date,
+				start_time: one.start_time,
+				end_time: one.end_time,
+				room: one.room,
+				subject_id: one.lesson_id,
+				lecturer_id: one.lecturer_id,
+				session_kind: one.session_kind,
+			});
+			if (ok) onClose();
 			return;
 		}
 		const ok = await d.createSession({
@@ -230,7 +360,7 @@ function SessionFormModal({
 		<Modal
 			open
 			onClose={() => onClose()}
-			title={bulk ? 'Tạo lịch lặp theo tuần' : 'Thêm buổi học'}
+			title={bulk ? 'Tạo lịch lặp theo tuần' : editing ? 'Sửa buổi học' : 'Thêm buổi học'}
 			subtitle={bulk ? 'Tạo các buổi vào những thứ đã chọn trong khoảng ngày — bỏ qua buổi trùng lịch' : undefined}
 			icon={<CalendarSvg />}
 			size='md'
@@ -240,7 +370,7 @@ function SessionFormModal({
 					onConfirm={() => void submit()}
 					loading={d.busy}
 					disabled={!valid}
-					confirmLabel={bulk ? 'Tạo lịch' : 'Thêm buổi học'}
+					confirmLabel={bulk ? 'Tạo lịch' : editing ? 'Lưu buổi học' : 'Thêm buổi học'}
 				/>
 			}
 		>
@@ -363,6 +493,7 @@ function SessionFormModal({
 			<FormField label='Phòng học'>
 				<VenueSelect
 					scope='training'
+					includeOthers
 					className={m.formInput}
 					placeholder='-- Chọn phòng học --'
 					value={f.room}
@@ -373,13 +504,10 @@ function SessionFormModal({
 	);
 }
 
-/** Bước "Lịch học & Giảng viên": 2 phần — lịch buổi học (điểm danh) và phân công giảng viên theo bài. */
+/** Bước "Lịch học & Giảng viên": 1 bảng theo bài học — ngày học (buổi học, điểm danh) và giảng viên cùng chỗ. */
 export function SessionsTab({ d }: { d: Detail }) {
-	const [view, setView] = useState<'sessions' | 'lecturers'>(
-		d.sessions.length || !d.courseLessons.length ? 'sessions' : 'lecturers',
-	);
 	const [newLecturerId, setNewLecturerId] = useState('');
-	const [adding, setAdding] = useState<null | 'one' | 'bulk'>(null);
+	const [form, setForm] = useState<FormState | null>(null);
 	const [bulkResult, setBulkResult] = useState<{ created: number; skipped: number } | null>(null);
 	const lessonPg = useClientPaging(d.courseLessons);
 
@@ -402,9 +530,19 @@ export function SessionsTab({ d }: { d: Detail }) {
 		d.assignments.find((a) => a.subject_id === lessonId && a.role === 'main')?.lecturer_id ?? '';
 	const lessonsWithMain = d.courseLessons.filter((l) => mainLecturerOf(l.id)).length;
 
-	// Nhóm buổi theo tháng cho dễ dò
-	const months: { month: string; items: typeof d.sessions }[] = [];
+	// Buổi theo bài hiện ngay trên dòng bài; buổi chưa gắn bài của khóa liệt kê riêng bên dưới
+	const sessionsOf = new Map<string, ClassSession[]>();
+	const looseSessions: ClassSession[] = [];
 	for (const s of d.sessions) {
+		if (s.subject_id && courseLessonIds.has(s.subject_id)) {
+			sessionsOf.set(s.subject_id, [...(sessionsOf.get(s.subject_id) ?? []), s]);
+		} else looseSessions.push(s);
+	}
+	const lessonsWithSession = d.courseLessons.filter((l) => sessionsOf.has(l.id)).length;
+
+	// Nhóm buổi theo tháng cho dễ dò
+	const months: { month: string; items: ClassSession[] }[] = [];
+	for (const s of looseSessions) {
 		const mo = monthOf(s.session_date);
 		const last = months[months.length - 1];
 		if (last?.month === mo) last.items.push(s);
@@ -414,57 +552,111 @@ export function SessionsTab({ d }: { d: Detail }) {
 	return (
 		<>
 			<div className={ss.head}>
-				<div className={styles.segment}>
-					<button
-						className={`${styles.segBtn} ${view === 'sessions' ? styles.segBtnActive : ''}`}
-						onClick={() => setView('sessions')}
-					>
-						<CalendarSvg /> Buổi học <span className={styles.sectionCount}>{d.sessions.length}</span>
-					</button>
-					<button
-						className={`${styles.segBtn} ${view === 'lecturers' ? styles.segBtnActive : ''}`}
-						onClick={() => setView('lecturers')}
-					>
-						<UsersSvg /> Phân công giảng viên{' '}
-						<span className={styles.sectionCount}>
-							{lessonsWithMain}/{d.courseLessons.length} bài
-						</span>
-					</button>
+				<div className={ss.stats}>
+					<span>
+						<strong>{lessonsWithSession}</strong>/{d.courseLessons.length} bài đã có ngày học
+					</span>
+					<span>
+						<strong>{lessonsWithMain}</strong>/{d.courseLessons.length} bài đã có GV chính
+					</span>
+					<span>
+						<strong>{d.sessions.length}</strong> buổi học
+					</span>
 				</div>
-				{view === 'sessions' && (
-					<div className={ss.actions}>
-						<Button
-							variant='secondary'
-							size='sm'
-							icon={<CalendarSvg />}
-							onClick={() => setAdding('bulk')}
-						>
-							Tạo lịch lặp theo tuần
-						</Button>
-						<Button
-							size='sm'
-							icon={<PlusSvg />}
-							onClick={() => setAdding('one')}
-						>
-							Thêm buổi học
-						</Button>
-					</div>
-				)}
+				<div className={ss.actions}>
+					<Button
+						variant='secondary'
+						size='sm'
+						icon={<CalendarSvg />}
+						onClick={() => setForm({ mode: 'bulk' })}
+					>
+						Tạo lịch lặp theo tuần
+					</Button>
+					<Button
+						size='sm'
+						icon={<PlusSvg />}
+						onClick={() => setForm({ mode: 'one' })}
+					>
+						Thêm buổi học
+					</Button>
+				</div>
 			</div>
 
-			{view === 'sessions' ? (
+			{bulkResult && (
+				<div className={ss.note}>
+					Đã tạo {bulkResult.created} buổi
+					{bulkResult.skipped ? `, bỏ qua ${bulkResult.skipped} buổi trùng lịch` : ''}.
+				</div>
+			)}
+
+			<div className={tbl.tableCard}>
+				<div className={tbl.tableHeader}>
+					<div className={tbl.tableHeaderLeft}>
+						<span className={tbl.tableTitle}>Lịch học & giảng viên theo bài</span>
+						<span className={tbl.tableCount}>{d.courseLessons.length}</span>
+					</div>
+				</div>
+				<div className={tbl.tableWrap}>
+					<table className={tbl.table}>
+						<thead>
+							<tr>
+								<th className={`${tbl.th} ${tbl.thIdx}`}>STT</th>
+								<th className={tbl.th}>Bài học</th>
+								<th className={tbl.th}>Ngày học</th>
+								<th className={tbl.th}>Giảng viên chính</th>
+								<th className={tbl.th}>Số tiết</th>
+								<th className={tbl.th}>Giảng viên phụ</th>
+							</tr>
+						</thead>
+						<tbody>
+							{d.courseLessons.length === 0 ? (
+								<tr>
+									<td
+										className={tbl.td}
+										colSpan={6}
+									>
+										<div className={styles.subEmpty}>
+											Khóa chưa có bài học — chọn chương trình đào tạo cho khóa để xếp lịch và phân công giảng
+											viên theo bài.
+										</div>
+									</td>
+								</tr>
+							) : (
+								lessonPg.paged.map((l, i) => (
+									<LessonRow
+										key={l.id}
+										d={d}
+										lesson={l}
+										index={lessonPg.offset + i + 1}
+										lecturers={d.lecturers}
+										sessions={sessionsOf.get(l.id) ?? []}
+										onAddSession={() =>
+											setForm({ mode: 'one', initial: { lesson_id: l.id, lecturer_id: mainLecturerOf(l.id) } })
+										}
+										onEditSession={(session) => setForm({ mode: 'one', session })}
+									/>
+								))
+							)}
+						</tbody>
+					</table>
+				</div>
+				<Pagination
+					{...lessonPg.pagination}
+					itemLabel='bài'
+				/>
+			</div>
+
+			{(looseSessions.length > 0 || d.courseLessons.length === 0) && (
 				<>
-					{bulkResult && (
-						<div className={ss.note}>
-							Đã tạo {bulkResult.created} buổi
-							{bulkResult.skipped ? `, bỏ qua ${bulkResult.skipped} buổi trùng lịch` : ''}.
-						</div>
-					)}
-					{d.sessions.length === 0 ? (
+					<div className={styles.sectionTitle}>
+						{d.courseLessons.length ? 'Buổi học chưa gắn bài' : 'Buổi học'}{' '}
+						<span className={styles.sectionCount}>{looseSessions.length}</span>
+					</div>
+					{looseSessions.length === 0 ? (
 						<EmptyState
 							icon={<CalendarSvg />}
 							title='Chưa có buổi học nào'
-							desc='Thêm từng buổi hoặc tạo lịch lặp theo tuần. Phân công giảng viên theo bài trước thì buổi học tự điền giảng viên.'
+							desc='Thêm từng buổi hoặc tạo lịch lặp theo tuần.'
 						/>
 					) : (
 						months.map((g) => (
@@ -497,11 +689,7 @@ export function SessionsTab({ d }: { d: Detail }) {
 														)}
 													</div>
 													<div className={ss.meta}>
-														<span>
-															{s.start_time
-																? `${s.start_time.slice(0, 5)}–${(s.end_time ?? '').slice(0, 5)}`
-																: 'Chưa đặt giờ'}
-														</span>
+														<span>{timeText(s)}</span>
 														<span>{s.room ?? 'Chưa gán phòng'}</span>
 														<span>{s.lecturer_name ?? 'Chưa gán giảng viên'}</span>
 														{s.lecturer_clashes && (
@@ -515,6 +703,13 @@ export function SessionsTab({ d }: { d: Detail }) {
 													</div>
 												</div>
 												<div className={ss.rowActions}>
+													<Button
+														size='sm'
+														variant='secondary'
+														onClick={() => setForm({ mode: 'one', session: s })}
+													>
+														Sửa
+													</Button>
 													<Button
 														size='sm'
 														variant='secondary'
@@ -540,114 +735,62 @@ export function SessionsTab({ d }: { d: Detail }) {
 						))
 					)}
 				</>
-			) : (
-				<>
-					<div className={tbl.tableCard}>
-						<div className={tbl.tableHeader}>
-							<div className={tbl.tableHeaderLeft}>
-								<span className={tbl.tableTitle}>Giảng viên theo bài học</span>
-								<span className={tbl.tableCount}>{d.courseLessons.length}</span>
-							</div>
-						</div>
-						<div className={tbl.tableWrap}>
-							<table className={tbl.table}>
-								<thead>
-									<tr>
-										<th className={`${tbl.th} ${tbl.thIdx}`}>STT</th>
-										<th className={tbl.th}>Bài học</th>
-										<th className={tbl.th}>Giảng viên chính</th>
-										<th className={tbl.th}>Số tiết</th>
-										<th className={tbl.th}>Giảng viên phụ</th>
-									</tr>
-								</thead>
-								<tbody>
-									{d.courseLessons.length === 0 ? (
-										<tr>
-											<td
-												className={tbl.td}
-												colSpan={5}
-											>
-												<div className={styles.subEmpty}>
-													Khóa chưa có bài học — chọn chương trình đào tạo cho khóa để phân công giảng viên theo bài.
-												</div>
-											</td>
-										</tr>
-									) : (
-										lessonPg.paged.map((l, i) => (
-											<LessonRow
-												key={l.id}
-												d={d}
-												lesson={l}
-												index={lessonPg.offset + i + 1}
-												lecturers={d.lecturers}
-											/>
-										))
-									)}
-								</tbody>
-							</table>
-						</div>
-						<Pagination
-							{...lessonPg.pagination}
-							itemLabel='bài'
-						/>
-					</div>
-
-					<div className={styles.sectionTitle}>Giảng viên phụ trách chung</div>
-					<div className={styles.subToolbar}>
-						<select
-							className={styles.subSelect}
-							value={newLecturerId}
-							onChange={(e) => setNewLecturerId(e.target.value)}
-						>
-							<option value=''>-- Chọn giảng viên --</option>
-							<LecturerOptions lecturers={d.lecturers} />
-						</select>
-						<button
-							className={styles.btnGhost}
-							disabled={!newLecturerId || d.busy}
-							onClick={() => {
-								d.assignLecturer({ lecturer_id: newLecturerId });
-								setNewLecturerId('');
-							}}
-						>
-							<PlusSvg /> Phân công cả khóa
-						</button>
-					</div>
-					{otherAssignments.length === 0 ? (
-						<div className={styles.subEmpty}>Chưa phân công giảng viên phụ trách chung.</div>
-					) : (
-						<div className={styles.chipList}>
-							{otherAssignments.map((a) => (
-								<span
-									key={a.id}
-									className={styles.chip}
-								>
-									<strong>{a.lecturer_name}</strong>
-									{a.subject_name && <span className={styles.chipMeta}>· {a.subject_name}</span>}
-									<button
-										className={styles.chipRemove}
-										title='Gỡ phân công'
-										disabled={d.busy}
-										onClick={() => d.removeAssignment(a.id)}
-									>
-										<XSvg />
-									</button>
-								</span>
-							))}
-						</div>
-					)}
-				</>
 			)}
 
-			{adding && (
+			<div className={styles.sectionTitle}>Giảng viên phụ trách chung</div>
+			<div className={styles.subToolbar}>
+				<select
+					className={styles.subSelect}
+					value={newLecturerId}
+					onChange={(e) => setNewLecturerId(e.target.value)}
+				>
+					<option value=''>-- Chọn giảng viên --</option>
+					<LecturerOptions lecturers={d.lecturers} />
+				</select>
+				<button
+					className={styles.btnGhost}
+					disabled={!newLecturerId || d.busy}
+					onClick={() => {
+						d.assignLecturer({ lecturer_id: newLecturerId });
+						setNewLecturerId('');
+					}}
+				>
+					<PlusSvg /> Phân công cả khóa
+				</button>
+			</div>
+			{otherAssignments.length === 0 ? (
+				<div className={styles.subEmpty}>Chưa phân công giảng viên phụ trách chung.</div>
+			) : (
+				<div className={styles.chipList}>
+					{otherAssignments.map((a) => (
+						<span
+							key={a.id}
+							className={styles.chip}
+						>
+							<strong>{a.lecturer_name}</strong>
+							{a.subject_name && <span className={styles.chipMeta}>· {a.subject_name}</span>}
+							<button
+								className={styles.chipRemove}
+								title='Gỡ phân công'
+								disabled={d.busy}
+								onClick={() => d.removeAssignment(a.id)}
+							>
+								<XSvg />
+							</button>
+						</span>
+					))}
+				</div>
+			)}
+
+			{form && (
 				<SessionFormModal
 					d={d}
-					bulk={adding === 'bulk'}
+					state={form}
 					lessonOptions={lessonOptions}
 					sessionLecturers={sessionLecturers}
 					mainLecturerOf={mainLecturerOf}
 					onClose={(result) => {
-						setAdding(null);
+						setForm(null);
 						if (result) setBulkResult(result);
 					}}
 				/>
@@ -655,3 +798,4 @@ export function SessionsTab({ d }: { d: Detail }) {
 		</>
 	);
 }
+

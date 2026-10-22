@@ -13,7 +13,7 @@ const {
 	deptAccountJoinSql,
 	isDeptAccountJoinedSql,
 } = require('../../utils/deptAccount');
-const { ROLE, requireRoleId } = require('../access/roleCodes');
+const { ROLE, requireRoleId, roleIdOf, inputRoleId } = require('../access/roleCodes');
 const { defaultPassword } = require('../../utils/passwordPolicy');
 const { httpError } = require('../../utils/httpError');
 
@@ -24,6 +24,28 @@ const { httpError } = require('../../utils/httpError');
 const STATS_TTL_MS = 30 * 1000;
 let _statsCache = null; // { data, ts }
 
+// Tài khoản học viên cấp riêng (mã 'HV', vai trò Học viên — xem
+// traineeService.grantAccounts), KHÔNG thuộc tài khoản nội viện: bị loại khỏi
+// danh sách / thống kê / tìm kiếm ở đây và quản lý tại hồ sơ học viên.
+// Dùng kèm inputRoleId(req, 'trainee_role', ROLE.TRAINEE).
+const notTraineeSql = (alias) => `(${alias}.role_id IS NULL OR ${alias}.role_id <> @trainee_role)`;
+
+// Chặn gộp hai loại tài khoản qua đổi vai trò: không gán vai trò Học viên cho
+// tài khoản nội viện, cũng không chuyển tài khoản học viên thành nội viện.
+const assertNotTraineeRole = async (roleId, currentRoleId = undefined) => {
+	const traineeRole = await roleIdOf(ROLE.TRAINEE);
+	if (!traineeRole) return;
+	if (roleId === traineeRole) {
+		throw httpError(
+			400,
+			'Tài khoản học viên được cấp riêng tại mục Học viên, không gán vai trò Học viên cho tài khoản nội viện',
+		);
+	}
+	if (currentRoleId === traineeRole && roleId !== undefined) {
+		throw httpError(400, 'Không đổi vai trò của tài khoản học viên — quản lý tại hồ sơ học viên');
+	}
+};
+
 const invalidateStatsCache = () => {
 	_statsCache = null;
 };
@@ -32,7 +54,9 @@ const getGlobalStats = async (pool) => {
 	if (_statsCache && Date.now() - _statsCache.ts < STATS_TTL_MS) {
 		return _statsCache.data;
 	}
-	const r = await pool.request().query(`
+	const r = await (
+		await inputRoleId(pool.request(), 'trainee_role', ROLE.TRAINEE)
+	).query(`
     SET NOCOUNT ON;
     SELECT
       COUNT(*) AS total,
@@ -41,7 +65,8 @@ const getGlobalStats = async (pool) => {
       SUM(CASE WHEN password_changed_at IS NULL
                OR DATEDIFF(day, password_changed_at, GETDATE()) > 90
           THEN 1 ELSE 0 END) AS pwd_warn
-    FROM users;
+    FROM users u
+    WHERE ${notTraineeSql('u')};
   `);
 	const row = r.recordset[0];
 	_statsCache = {
@@ -76,8 +101,15 @@ const getAll = async ({
 
 	const req = pool.request().input('offset', sql.Int, pg.offset).input('limit', sql.Int, pg.limit);
 
-	// Mệnh đề dùng chung (search/is_active) — không phụ thuộc dept/vai trò
+	// Mệnh đề dùng chung (search/is_active) — không phụ thuộc dept/vai trò.
+	// Tài khoản học viên chỉ hiện khi lọc đích danh vai trò Học viên (vd danh
+	// sách người dùng của vai trò ở trang Phân quyền).
 	const baseClauses = ['1=1'];
+	const traineeRole = await roleIdOf(ROLE.TRAINEE);
+	if (traineeRole && !roleIds.includes(traineeRole)) {
+		req.input('trainee_role', sql.VarChar(20), traineeRole);
+		baseClauses.push(notTraineeSql('u'));
+	}
 	if (search) {
 		const term = String(search).trim();
 		// username/email là cột varchar (non-unicode) -> dùng tham số VarChar để
@@ -204,6 +236,7 @@ const getById = async (id) => {
 };
 
 const create = async (data, actorId) => {
+	if (data.role_id) await assertNotTraineeRole(data.role_id);
 	const pool = await getPool();
 	// Không truyền mật khẩu ⇒ mặc định = tên đăng nhập (bắt đổi ở lần đăng nhập đầu)
 	const hashed = await bcrypt.hash(data.password || defaultPassword(data.username), 12);
@@ -256,6 +289,16 @@ const create = async (data, actorId) => {
 
 const update = async (id, data, actorId) => {
 	const pool = await getPool();
+	if (data.role_id !== undefined) {
+		const current = (
+			await pool
+				.request()
+				.input('id', sql.VarChar(20), id)
+				.query('SELECT role_id FROM users WHERE id = @id')
+		).recordset[0];
+		if (current?.role_id !== data.role_id)
+			await assertNotTraineeRole(data.role_id, current?.role_id);
+	}
 
 	const sets = [];
 	const req = pool
@@ -370,6 +413,7 @@ const remove = async (id, actorId) => {
 			EXEC sp_set_actor @actor_id;
 			UPDATE topic_members SET user_id = NULL, account_granted = 0, account_granted_at = NULL WHERE user_id = @id;
 			UPDATE trainees SET user_id = NULL, account_granted = 0, account_granted_at = NULL WHERE user_id = @id;
+			UPDATE trainees SET staff_user_id = NULL WHERE staff_user_id = @id;
 			UPDATE round_deadlines SET created_by = @actor_id WHERE created_by = @id;
 			UPDATE departments SET head_user_id = NULL WHERE head_user_id = @id;
 			UPDATE lecturers SET user_id = NULL WHERE user_id = @id;
@@ -429,8 +473,12 @@ const resetPassword = async (id, newPassword, actorId, ip = null) => {
 
 const searchForMember = async ({ q, department_id, limit = 10 }) => {
 	const pool = await getPool();
-	let where = 'WHERE u.is_active = 1';
-	const req = pool.request().input('limit', sql.Int, Number(limit));
+	const req = await inputRoleId(
+		pool.request().input('limit', sql.Int, Number(limit)),
+		'trainee_role',
+		ROLE.TRAINEE,
+	);
+	let where = `WHERE u.is_active = 1 AND ${notTraineeSql('u')}`;
 
 	if (q && q.trim()) {
 		const term = q.trim();

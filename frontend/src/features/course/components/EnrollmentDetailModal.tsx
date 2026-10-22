@@ -170,7 +170,6 @@ export function EnrollmentDetailModal({
 			: []),
 	];
 	const activeTab = tabs.some((t) => t.key === tab) ? tab : 'info';
-	const wide = activeTab === 'attendance' || activeTab === 'results';
 	const sub = (text: string) => (
 		<div
 			className={styles.hint}
@@ -189,9 +188,9 @@ export function EnrollmentDetailModal({
 			subtitle={[course?.name, enrollment.practice_code && `Mã thực hành ${enrollment.practice_code}`]
 				.filter(Boolean)
 				.join(' · ')}
-			// Hồ sơ GPHN có bảng vòng thực hành ⇒ modal rộng (class .modal của trang giới hạn 620px)
-			size={isPractice || wide ? 'xl' : 'md'}
-			className={isPractice || wide ? undefined : styles.modal}
+			// Kích thước cố định cho mọi tab (đổi tab không nhảy khung): GPHN có bảng vòng thực hành ⇒ xl
+			size={isPractice ? 'xl' : 'lg'}
+			className={styles.enrollmentModal}
 			bodyClassName={styles.modalBody}
 			footer={
 				<ModalActions

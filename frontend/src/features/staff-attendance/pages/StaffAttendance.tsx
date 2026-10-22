@@ -12,10 +12,14 @@ import { ExcelActions, type ExcelColumn } from '@/shared/components/Excel';
 
 interface Row {
 	key: string;
+	/** Tài khoản học viên. */
 	user_id: string;
+	/** Mã học viên. */
+	trainee_id: string;
 	full_name: string;
-	staff_number: string | null;
 	department_name: string | null;
+	course_id: string | null;
+	course_name: string | null;
 	/** checked = đã chấm; pending = có ca chưa hết mà chưa chấm; absent = hết ca không chấm */
 	status: 'checked' | 'pending' | 'absent';
 	shift_id: number | null;
@@ -54,8 +58,9 @@ const place = (ip?: string | null, m?: number | null) => [ip, m != null ? `${m}m
 
 const STATUS_TEXT: Record<Row['status'], string> = { checked: 'Đã chấm', pending: 'Chưa chấm', absent: 'Vắng' };
 const EXCEL_COLS: ExcelColumn<Row>[] = [
-	{ header: 'Mã nhân viên', value: (r) => r.staff_number },
+	{ header: 'Mã học viên', value: (r) => r.trainee_id },
 	{ header: 'Họ và tên', value: (r) => r.full_name },
+	{ header: 'Khóa học', value: (r) => r.course_name },
 	{ header: 'Khoa/phòng', value: (r) => r.department_name },
 	{ header: 'Ca', value: (r) => r.shift_name },
 	{ header: 'Giờ ca', value: (r) => (r.shift_start_at ? `${formatTimeVN(r.shift_start_at)}–${formatTimeVN(r.shift_end_at)}` : '') },
@@ -74,6 +79,7 @@ export default function StaffAttendance() {
 	const [loading, setLoading] = useState(true);
 	const [search, setSearch] = useState('');
 	const [dept, setDept] = useState('');
+	const [course, setCourse] = useState('');
 	const [status, setStatus] = useState<StatusFilter>('');
 
 	const load = useCallback(() => {
@@ -90,15 +96,21 @@ export default function StaffAttendance() {
 		() => [...new Set(rows.map((r) => r.department_name).filter((d): d is string => !!d))].sort(),
 		[rows],
 	);
+	const courses = useMemo(() => {
+		const map = new Map<string, string>();
+		for (const r of rows) if (r.course_id) map.set(r.course_id, r.course_name ?? r.course_id);
+		return [...map].sort((a, b) => a[1].localeCompare(b[1], 'vi'));
+	}, [rows]);
 	const filtered = useMemo(() => {
 		const q = search.trim().toLowerCase();
 		return rows.filter(
 			(r) =>
 				matches(r, status) &&
 				(!dept || r.department_name === dept) &&
-				(!q || r.full_name.toLowerCase().includes(q) || String(r.staff_number ?? '') === q),
+				(!course || r.course_id === course) &&
+				(!q || r.full_name.toLowerCase().includes(q) || r.trainee_id.toLowerCase() === q),
 		);
-	}, [rows, search, dept, status]);
+	}, [rows, search, dept, course, status]);
 	const pg = useClientPaging(filtered);
 	const counts = useMemo(
 		() => ({
@@ -111,8 +123,8 @@ export default function StaffAttendance() {
 
 	return (
 		<AdminLayout
-			pageTitle='Bảng chấm công'
-			pageSubtitle='Giờ vào/ra theo ca — ca qua đêm tính vào ngày bắt đầu ca'
+			pageTitle='Bảng chấm công học viên'
+			pageSubtitle='Giờ vào/ra theo ca của học viên trong thời gian khóa học — ca qua đêm tính vào ngày bắt đầu ca'
 			headerActions={
 				<ExcelActions
 					fileName={`cham-cong-${date}`}
@@ -149,7 +161,17 @@ export default function StaffAttendance() {
 								</option>
 							))}
 						</select>
-						{/* Xem phạm vi khoa: server chỉ trả nhân viên khoa mình ⇒ không cần lọc khoa */}
+						{courses.length > 0 && (
+							<select className={tbl.filterSelect} value={course} onChange={(e) => setCourse(e.target.value)} aria-label='Khóa học'>
+								<option value=''>Tất cả khóa học</option>
+								{courses.map(([id, name]) => (
+									<option key={id} value={id}>
+										{name}
+									</option>
+								))}
+							</select>
+						)}
+						{/* Xem phạm vi khoa: server chỉ trả học viên khoa mình ⇒ không cần lọc khoa */}
 						{(departments.length > 1 || dept) && (
 							<select className={tbl.filterSelect} value={dept} onChange={(e) => setDept(e.target.value)} aria-label='Khoa/phòng'>
 								<option value=''>Tất cả khoa/phòng</option>
@@ -160,7 +182,7 @@ export default function StaffAttendance() {
 								))}
 							</select>
 						)}
-						<SearchInput value={search} onChange={setSearch} placeholder='Tìm theo tên, MNV...' />
+						<SearchInput value={search} onChange={setSearch} placeholder='Tìm theo tên, mã học viên...' />
 					</div>
 				</div>
 
@@ -169,7 +191,8 @@ export default function StaffAttendance() {
 						<thead>
 							<tr>
 								<th className={`${tbl.th} ${tbl.thIdx}`}>STT</th>
-								<th className={tbl.th}>Nhân viên</th>
+								<th className={tbl.th}>Học viên</th>
+								<th className={tbl.th}>Khóa học</th>
 								<th className={tbl.th}>Ca</th>
 								<th className={tbl.th}>Giờ vào</th>
 								<th className={tbl.th}>Giờ ra</th>
@@ -179,8 +202,8 @@ export default function StaffAttendance() {
 						<tbody>
 							{!loading && filtered.length === 0 ? (
 								<TableEmpty
-									colSpan={6}
-									title={rows.length ? 'Không có dòng phù hợp bộ lọc' : 'Chưa có ca hay lượt chấm công nào trong ngày này'}
+									colSpan={7}
+									title={rows.length ? 'Không có dòng phù hợp bộ lọc' : 'Chưa có ca hay lượt chấm công nào của học viên trong ngày này'}
 								/>
 							) : (
 								pg.paged.map((r, i) => (
@@ -189,10 +212,11 @@ export default function StaffAttendance() {
 										<td className={tbl.td}>
 											<div className={tbl.cellTitle}>{r.full_name}</div>
 											<div className={tbl.cellSub}>
-												{r.staff_number ? `MNV ${r.staff_number}` : 'Chưa có MNV'}
+												{r.trainee_id}
 												{r.department_name ? ` · ${r.department_name}` : ''}
 											</div>
 										</td>
+										<td className={tbl.td}>{r.course_name ?? <span className={tbl.cellSub}>—</span>}</td>
 										<td className={tbl.td}>
 											{r.shift_id != null || r.shift_name ? (
 												<>

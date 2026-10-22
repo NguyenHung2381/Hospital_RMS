@@ -34,11 +34,14 @@ const listEnrollments = async (courseId) => {
 // Cấu hình TRAINING_ALLOW_MULTI_PROGRAM = 'false' ⇒ học viên đang học / chờ một chương
 // trình khác chưa kết thúc (ngày lớp, không có thì ngày khóa) thì không ghi danh thêm.
 const assertSingleProgram = async (traineeId, programId) => {
-	if ((await systemSettingService.getValue('TRAINING_ALLOW_MULTI_PROGRAM', 'true')) !== 'false') return;
+	if ((await systemSettingService.getValue('TRAINING_ALLOW_MULTI_PROGRAM', 'true')) !== 'false')
+		return;
 	const pool = await getPool();
 	const busy = (
-		await pool.request().input('trainee_id', sql.VarChar(20), traineeId).input('program_id', sql.VarChar(20), programId)
-			.query(`
+		await pool
+			.request()
+			.input('trainee_id', sql.VarChar(20), traineeId)
+			.input('program_id', sql.VarChar(20), programId).query(`
       SELECT TOP 1 tp.name AS program_name, c.name AS course_name
       FROM course_enrollments e
       JOIN courses c ON c.id = e.course_id AND c.status <> 'cancelled'
@@ -120,9 +123,9 @@ const registerTrainee = async (
 };
 
 // Nhân viên nội viện (users) CHƯA có hồ sơ học viên — hiện chung với danh sách
-// học viên ở ô "thêm học viên" của khóa học. Người đã có hồ sơ (trainees.user_id)
-// thì đã nằm trong GET /trainees nên loại ra, tránh trùng 2 dòng. Bỏ VT08 (tài
-// khoản do "Cấp tài khoản học viên" sinh ra — luôn đã gắn với 1 trainee).
+// học viên ở ô "thêm học viên" của khóa học. Người đã có hồ sơ (trainees.staff_user_id)
+// thì đã nằm trong GET /trainees nên loại ra, tránh trùng 2 dòng. Bỏ tài khoản
+// vai trò Học viên (cấp riêng ở mục Học viên, không phải nhân viên).
 const listStaffCandidates = async () => {
 	const pool = await getPool();
 	const result = await (
@@ -133,16 +136,17 @@ const listStaffCandidates = async () => {
     LEFT JOIN departments d ON d.id = u.department_id
     WHERE u.is_active = 1
       AND ISNULL(u.role_id, '') <> @trainee_role
-      AND NOT EXISTS (SELECT 1 FROM trainees t WHERE t.user_id = u.id)
+      AND NOT EXISTS (SELECT 1 FROM trainees t WHERE t.staff_user_id = u.id)
     ORDER BY u.full_name
   `);
 	return result.recordset;
 };
 
-// Ghi danh 1 nhân viên nội viện: dùng lại hồ sơ học viên đã gắn tài khoản nếu có,
-// chưa có thì tự tạo từ thông tin users (is_employee = 1, gắn sẵn user_id) — nhờ đó
-// nhân viên đăng nhập bằng chính tài khoản đang dùng là điểm danh QR / thi online
-// được ngay, không cần "Cấp tài khoản học viên" riêng.
+// Ghi danh 1 nhân viên nội viện: dùng lại hồ sơ học viên tạo từ nhân viên này nếu
+// có, chưa có thì tự tạo từ thông tin users (is_employee = 1, staff_user_id = nhân
+// viên). Tài khoản học viên CẤP RIÊNG, không gộp vào tài khoản nội viện: hồ sơ
+// KHÔNG gắn user_id vào tài khoản nhân viên — muốn điểm danh QR / thi online thì
+// "Cấp tài khoản học viên" ở mục Học viên.
 const registerStaff = async (
 	courseId,
 	userId,
@@ -161,7 +165,7 @@ const registerStaff = async (
 	const linked = await pool
 		.request()
 		.input('uid', sql.VarChar(20), userId)
-		.query('SELECT TOP 1 id FROM trainees WHERE user_id = @uid');
+		.query('SELECT TOP 1 id FROM trainees WHERE staff_user_id = @uid ORDER BY created_at DESC');
 	let traineeId = linked.recordset[0]?.id;
 
 	if (!traineeId) {
@@ -191,9 +195,7 @@ const registerStaff = async (
 			.request()
 			.input('tid', sql.VarChar(20), traineeId)
 			.input('uid', sql.VarChar(20), userId).query(`
-        UPDATE trainees
-        SET user_id = @uid, account_granted = 1, account_granted_at = GETDATE()
-        WHERE id = @tid
+        UPDATE trainees SET staff_user_id = @uid WHERE id = @tid
       `);
 	}
 
@@ -331,7 +333,9 @@ const removeEnrollment = async (enrollmentId, actorId = null) => {
 	// Rút khỏi lớp chưa khai giảng ⇒ người đầu danh sách chờ của chương trình được gọi vào.
 	const gone = r.recordsets[0][0];
 	if (gone?.status === 'approved' && gone.program_id && programClassService.appliesTo(gone))
-		await programClassService.fillFromWaitlist(gone.course_id, actorId, { programId: gone.program_id });
+		await programClassService.fillFromWaitlist(gone.course_id, actorId, {
+			programId: gone.program_id,
+		});
 };
 
 module.exports = {

@@ -12,8 +12,8 @@ const QUESTION_TYPES = ['single_choice', 'essay'];
 // Mỗi chương trình 1 ngân hàng, chia 2 kho: kiểm tra đầu vào / thi cuối khóa (2026-11-27_exam_bank_programs)
 const POOLS = ['entrance', 'final'];
 const CODE_MODES = ['per_trainee', 'shuffled', 'codes'];
-// Loại đề → loại câu hỏi được phép đưa vào. paper_type NULL = đề cũ (hỗn hợp),
-// không lọc — giữ nguyên câu tự luận của đề tạo trước khi có cột này.
+// Loại đề → loại câu hỏi được phép đưa vào. paper_type NULL = đề hỗn hợp TN + TL
+// (đầu vào hoặc cuối khóa, và đề cũ tạo trước khi có cột này) — không lọc.
 const PAPER_QUESTION_TYPE = { multiple_choice: 'single_choice', essay: 'essay' };
 
 const parseOptions = (row) =>
@@ -123,11 +123,13 @@ const createQuestion = async (data, actorId) => {
 
 // Nhập hàng loạt (từ file Word/PDF đã tách câu ở trình duyệt) — tất cả hoặc không
 const createQuestionsBulk = async (items, actorId) => {
+	const ids = [];
 	await withTransaction(async (tx) => {
-		for (const item of items) await insertQuestion(tx.request(), item, actorId);
+		for (const item of items) ids.push(await insertQuestion(tx.request(), item, actorId));
 	});
 	broadcast('update', { entity: 'question_bank' });
-	return { created: items.length };
+	// ids theo đúng thứ tự gửi lên — form đề thi dùng để thêm ngay các câu vừa nhập vào đề
+	return { created: items.length, ids };
 };
 
 const updateQuestion = async (id, data, actorId) => {
@@ -433,7 +435,7 @@ const createPaper = async (data, actorId) => {
 		.input('course_id', sql.VarChar(20), data.course_id)
 		.input('subject_id', sql.VarChar(20), data.subject_id || null)
 		.input('title', sql.NVarChar(255), data.title)
-		// Đề đầu vào được hỗn hợp TN + TL (paper_type NULL)
+		// Đề hỗn hợp TN + TL: paper_type NULL
 		.input(
 			'paper_type',
 			sql.VarChar(20),

@@ -92,13 +92,17 @@ export interface CmeRecordImportRow {
 	credits: number | null;
 	notes: string | null;
 	warnings: string[];
+	/** Dữ liệu dòng hợp lệ (chưa xét đã khớp nhân viên hay chưa) */
+	data_ok: boolean;
+	/** Trùng ghi nhận đã có trong hệ thống / dòng trước trong file — người nhập quyết định có nhập không */
+	duplicate: 'existing' | 'file' | null;
 	valid: boolean;
 }
 
 export interface CmeRecordImportResult {
 	dry_run: boolean;
 	rows?: CmeRecordImportRow[];
-	summary?: { total: number; matched: number; valid: number; new_staff: number };
+	summary?: { total: number; matched: number; valid: number; duplicates: number; new_staff: number };
 	inserted?: number;
 	created_staff?: CmeImportCreatedStaff[];
 	/** Dòng không nhập được (chỉ khi nhập thật) — missing_user: chưa khớp nhân viên */

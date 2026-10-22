@@ -4,6 +4,7 @@ const ExcelJS = require('exceljs');
 const {
 	readSheet,
 	parseDateCell,
+	parseDateText,
 	excelSerialToYmd,
 	parseDob,
 	parseCredits,
@@ -60,6 +61,15 @@ test('readSheet báo lỗi 400 khi không có header', async () => {
 		}),
 		(err) => err.statusCode === 400 && err.message === 'no header',
 	);
+});
+
+test('parseDateText bỏ giờ phía sau, loại ngày không có thật', () => {
+	assert.equal(parseDateText('05/03/2025 08:00'), '2025-03-05');
+	assert.equal(parseDateText('5-3-2025 8:00:15'), '2025-03-05');
+	assert.equal(parseDateText('29/02/2024'), '2024-02-29');
+	assert.equal(parseDateText('29/02/2025'), null);
+	assert.equal(parseDateText('31/04/2025'), null);
+	assert.equal(parseDateText('00/01/2025'), null);
 });
 
 test('parseCredits / parseStaffNumber', () => {

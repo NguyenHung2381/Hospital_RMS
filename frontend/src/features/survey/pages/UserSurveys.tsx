@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { CheckSvg, ClipboardCheckSvg } from '@/assets/icons';
 import { InlineLoading } from '@/shared/components';
 import { notify } from '@/shared/utils/feedback';
 import UserLayout from '../../../layouts/UserLayout';
+import { isTraineeAccount, isTraineePath, TRAINEE_HOME } from '../../../app/router/authHelpers';
 import { surveyApi } from '../api/surveyApi';
 import type { ActiveSurvey, AnswerPayload, SurveyToRespond } from '../types/survey.type';
 import styles from './Survey.module.css';
@@ -139,6 +140,9 @@ export default function UserSurveys() {
 	// (chưa đăng nhập sẽ được RequireAuth chuyển tới /login?from=... rồi quay lại).
 	const { id } = useParams<{ id: string }>();
 	const navigate = useNavigate();
+	// Ở cổng học viên thì link khảo sát giữ trong /hoc-vien (không nhảy sang khung /user).
+	const { pathname } = useLocation();
+	const basePath = isTraineeAccount() || isTraineePath(pathname) ? `${TRAINEE_HOME}/khao-sat` : '/user/khao-sat';
 	const [surveys, setSurveys] = useState<ActiveSurvey[] | null>(null);
 	// Kết quả mở khảo sát, gắn với id đã tải để khi URL đổi không hiện nhầm dữ liệu cũ.
 	const [opened, setOpened] = useState<{ id: string; survey?: SurveyToRespond; error?: string } | null>(null);
@@ -180,7 +184,7 @@ export default function UserSurveys() {
 	const showList = !id || !!current;
 
 	const openSurvey = (surveyId: string) => {
-		navigate(`/user/khao-sat/${surveyId}`);
+		navigate(`${basePath}/${surveyId}`);
 	};
 
 	if (selected) {
@@ -191,10 +195,10 @@ export default function UserSurveys() {
 			>
 				<RespondForm
 					survey={selected}
-					onCancel={() => navigate('/user/khao-sat')}
+					onCancel={() => navigate(basePath)}
 					onDone={() => {
 						notify.success('Đã nộp khảo sát, cảm ơn bạn đã phản hồi.');
-						navigate('/user/khao-sat');
+						navigate(basePath);
 					}}
 				/>
 			</UserLayout>

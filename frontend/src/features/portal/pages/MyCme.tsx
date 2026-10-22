@@ -278,7 +278,7 @@ export default function MyCme() {
 						{tab === 'records' && (
 							<Card.Body>
 								<div className={styles.tabToolbar}>
-									<span>Tự khai báo — chỉ được tính vào tín chỉ sau khi quản lý phê duyệt</span>
+									<span>Tự khai báo — quản lý nhập số tín chỉ khi phê duyệt, chỉ được tính sau khi duyệt</span>
 									<Button size='sm' icon={<PlusSvg />} onClick={() => setEditing('new')}>
 										Khai báo CME
 									</Button>
@@ -330,7 +330,8 @@ export default function MyCme() {
 														</td>
 														<td>{r.activity_date ? formatDateVN(r.activity_date) : `Năm ${r.year}`}</td>
 														<td>{r.category_name ?? '—'}</td>
-														<td>{r.credits}</td>
+														{/* Tín chỉ do người quản lý nhập khi duyệt */}
+														<td>{r.approval_status === 'approved' ? r.credits : '—'}</td>
 														<td>
 															<Badge tone={APPROVAL_TONE[r.approval_status]}>{APPROVAL_LABEL[r.approval_status]}</Badge>
 															{r.approval_status === 'rejected' && r.reject_reason && (

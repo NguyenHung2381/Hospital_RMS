@@ -113,7 +113,7 @@ router.post(
 		body('year')
 			.custom((v, { req }) => !!v || !!req.body.activity_date)
 			.withMessage('Vui lòng nhập năm hoặc ngày hoạt động'),
-		body('credits').isFloat({ min: 0 }).withMessage('Số tín chỉ không hợp lệ'),
+		...updateRules,
 	],
 	validate,
 	handle(async (req, res) =>
@@ -191,8 +191,9 @@ router.delete(
 // Phiếu theo dõi CME cá nhân (Excel) của chính mình — Body: { year }
 router.post('/cme/export-excel', cmePersonalExport.exportMine);
 
-// ─── Chấm công của chính mình (IP bệnh viện + GPS) — staffAttendanceService ──
-// GET không chặn theo module: trang Cấu hình cần nó để hiện IP hiện tại trước khi bật.
+// ─── Chấm công của học viên (IP bệnh viện + GPS, theo khóa đang học) — staffAttendanceService ──
+// GET không chặn theo module và nhận mọi tài khoản (is_trainee = false): trang Cấu hình cần
+// nó để hiện IP hiện tại trước khi bật. POST chỉ nhận tài khoản học viên.
 const staffAttendanceService = require('../attendance/staffAttendanceService');
 const { requireModule } = require('../../middlewares/moduleGuard');
 router.get(

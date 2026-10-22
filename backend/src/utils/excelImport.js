@@ -31,14 +31,17 @@ const excelSerialToYmd = (n) => {
 	return ymdUtc(new Date(EXCEL_EPOCH_MS + Math.floor(n) * 86400000));
 };
 
-// Chuỗi dd/mm/yyyy (hoặc - .) → 'YYYY-MM-DD'; sai dạng → null.
+// Chuỗi dd/mm/yyyy (hoặc - .), có thể kèm giờ "hh:mm[:ss]" phía sau → 'YYYY-MM-DD';
+// sai dạng hoặc ngày không có thật (31/02) → null.
 const parseDateText = (s) => {
 	const m = String(s ?? '')
 		.trim()
-		.match(/^(\d{1,2})[/\-.](\d{1,2})[/\-.](\d{4})$/);
+		.match(/^(\d{1,2})[/\-.](\d{1,2})[/\-.](\d{4})(?:\s+\d{1,2}:\d{2}(?::\d{2})?)?$/);
 	if (!m) return null;
 	const [d, mo, y] = [+m[1], +m[2], +m[3]];
-	return d >= 1 && d <= 31 && mo >= 1 && mo <= 12 ? `${y}-${pad2(mo)}-${pad2(d)}` : null;
+	if (mo < 1 || mo > 12 || d < 1) return null;
+	const daysInMonth = new Date(Date.UTC(y, mo, 0)).getUTCDate();
+	return d <= daysInMonth ? `${y}-${pad2(mo)}-${pad2(d)}` : null;
 };
 
 // Ô ngày (Date thật, số serial Excel, hoặc chuỗi dd/mm/yyyy) → 'YYYY-MM-DD';

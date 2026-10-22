@@ -221,10 +221,10 @@ export interface MyCmeRecordForm {
 	year: string;
 	role: string;
 	quantity: string;
-	credits: string;
 	note: string;
 }
 
+// Không gửi tín chỉ — người quản lý nhập khi duyệt
 const toPayload = (f: MyCmeRecordForm) => ({
 	category_id: f.category_id || null,
 	title: f.title,
@@ -233,7 +233,6 @@ const toPayload = (f: MyCmeRecordForm) => ({
 	year: Number(f.year) || null,
 	role: f.role || null,
 	quantity: f.quantity === '' ? null : Number(f.quantity),
-	credits: Number(f.credits),
 	note: f.note || null,
 });
 
@@ -255,11 +254,14 @@ export const addMyCmeResultFile = (id: string, file: File) => {
 export const deleteMyCmeResultFile = (id: string, fileId: string) =>
 	apiClient.delete<null>(`/me/cme-records/${id}/result-files/${fileId}`);
 
-// ─── Chấm công theo ca (IP bệnh viện + GPS) ─────────────────
+// ─── Chấm công học viên theo ca, trong thời gian khóa học (IP bệnh viện + GPS) ──
 export interface AttendanceRow {
 	id: number;
 	/** Ngày bắt đầu ca. */
 	work_date: string;
+	/** Khóa đang học lúc chấm công (bản chụp). */
+	course_id: string | null;
+	course_name: string | null;
 	/** null = chấm tự do (không có lịch ca). */
 	shift_id: number | null;
 	shift_name: string | null;
@@ -287,16 +289,30 @@ export interface ShiftSlot {
 }
 export interface CheckOption extends ShiftSlot {
 	action: 'check_in' | 'check_out';
+	course_id: string | null;
+	course_name: string | null;
 }
 export interface MyAttendance {
+	/** Tài khoản đang đăng nhập là tài khoản học viên — chỉ học viên mới chấm công. */
+	is_trainee: boolean;
 	/** Ca đang trong giờ được chấm (thường 0–1, có thể 2 lúc giao ca). */
 	options: CheckOption[];
 	/** Bản ghi của hôm qua + hôm nay (ca đêm hôm qua vẫn hiện). */
 	recent: AttendanceRow[];
 	history: AttendanceRow[];
-	/** Lịch ca 7 ngày tới; shifts null = không có lịch ca (chấm tự do), [] = nghỉ. */
-	week: { date: string; source: 'roster' | 'pattern' | null; shifts: ShiftSlot[] | null }[];
-	pattern_name: string | null;
+	/**
+	 * Lịch ca 7 ngày tới. course_id null = không học khóa nào (không chấm công);
+	 * shifts null = không có lịch ca (chấm tự do), [] = nghỉ.
+	 */
+	week: {
+		date: string;
+		course_id: string | null;
+		course_name: string | null;
+		source: 'roster' | 'pattern' | null;
+		shifts: ShiftSlot[] | null;
+	}[];
+	/** Khóa đang học hôm nay + mẫu ca tuần của khóa. */
+	current_course: { course_id: string; course_name: string; pattern_name: string | null } | null;
 	client_ip: string | null;
 	/** IP hiện tại có thuộc mạng bệnh viện không. */
 	ip_ok: boolean;

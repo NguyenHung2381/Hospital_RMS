@@ -114,7 +114,7 @@ const assertAssignable = async (request, courseId, lecturerId) => {
               JOIN trainees t ON t.id = e.trainee_id
               WHERE e.course_id = @course_id AND e.status <> 'rejected'
                 AND ((l.person_id IS NOT NULL AND t.person_id = l.person_id)
-                  OR (l.user_id IS NOT NULL AND t.user_id = l.user_id))) AS enrolled
+                  OR (l.user_id IS NOT NULL AND t.staff_user_id = l.user_id))) AS enrolled
       FROM lecturers l
       LEFT JOIN users u ON u.id = l.user_id
       WHERE l.id = @lecturer_id
@@ -261,6 +261,7 @@ const setLessonLecturers = async (courseId, lessonId, data, actorId) => {
 					subjectId: lessonId,
 					role,
 					hours,
+					note: null,
 					actorId,
 				});
 			}

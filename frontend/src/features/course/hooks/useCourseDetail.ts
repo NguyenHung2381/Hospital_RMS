@@ -27,6 +27,7 @@ import {
 	removeSession as apiRemoveSession,
 	revokeCertificate as apiRevokeCertificate,
 	setLessonLecturers as apiSetLessonLecturers,
+	updateSession as apiUpdateSession,
 } from '../api/courseApi';
 import type {
 	Certificate,
@@ -312,8 +313,22 @@ export function useCourseDetail(courseId: string) {
 			setBusy(true);
 			setError('');
 			try {
+				const mainOf = (list: LecturerAssignment[]) =>
+					list.find((a) => a.subject_id === lessonId && a.role === 'main')?.lecturer_id ?? null;
+				const oldMain = mainOf(assignments);
 				await apiSetLessonLecturers(courseId, lessonId, data);
-				setAssignments(await getAssignments(courseId));
+				const fresh = await getAssignments(courseId);
+				setAssignments(fresh);
+				// Đổi GV chính → buổi của bài đang theo GV chính cũ (hoặc chưa gán GV) đổi theo
+				const newMain = mainOf(fresh);
+				const follow = newMain
+					? sessions.filter((s) => s.subject_id === lessonId && (!s.lecturer_id || s.lecturer_id === oldMain))
+					: [];
+				if (follow.length && newMain !== oldMain) {
+					const results = await Promise.all(follow.map((s) => apiUpdateSession(s.id, { lecturer_id: newMain! })));
+					warnClashes(results.flatMap((r) => r.warnings ?? []));
+					setSessions(await getSessions(courseId));
+				}
 				// Nhân viên CCHN vừa thành GV — nạp lại để đổi sang mã GV thật
 				const picked = [data.main, ...data.assistants];
 				if (picked.some((a) => a?.lecturer_id.startsWith(STAFF_OPTION_PREFIX))) loadLecturers();
@@ -323,7 +338,7 @@ export function useCourseDetail(courseId: string) {
 				setBusy(false);
 			}
 		},
-		[courseId, loadLecturers],
+		[courseId, loadLecturers, assignments, sessions],
 	);
 
 	const removeAssignment = useCallback(
@@ -365,6 +380,24 @@ export function useCourseDetail(courseId: string) {
 			}
 		},
 		[courseId, load],
+	);
+
+	const updateSession = useCallback(
+		async (sessionId: string, data: Parameters<typeof apiUpdateSession>[1]) => {
+			setBusy(true);
+			setError('');
+			try {
+				warnClashes((await apiUpdateSession(sessionId, data)).warnings);
+				await load();
+				return true;
+			} catch (err) {
+				setError(err instanceof Error ? err.message : 'Cập nhật buổi học thất bại');
+				return false;
+			} finally {
+				setBusy(false);
+			}
+		},
+		[load],
 	);
 
 	const removeSession = useCallback(
@@ -525,6 +558,7 @@ export function useCourseDetail(courseId: string) {
 		setLessonLecturers,
 		removeAssignment,
 		createSession,
+		updateSession,
 		createSessionsBulk,
 		removeSession,
 		addDocument,

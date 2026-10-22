@@ -151,6 +151,186 @@
 	color: var(--color-white);
 }
 
+/* ── Bảng bài học: ô "Ngày học" ─────────────── */
+.stats {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 4px var(--space-4);
+	font-size: var(--font-size-compact);
+	color: var(--color-gray-500);
+}
+
+.stats strong {
+	color: var(--color-gray-800);
+}
+
+.lessonCell {
+	min-width: 280px;
+}
+
+/* Không để tên GV dài nhất trong danh sách quyết định độ rộng cột */
+.fitSelect {
+	width: 100%;
+}
+
+.sessCell {
+	display: flex;
+	flex-direction: column;
+	align-items: stretch;
+	gap: 6px;
+	min-width: 250px;
+}
+
+/* Thẻ 1 buổi: khối ngày | giờ + phòng | điểm danh, xoá */
+.sess {
+	display: flex;
+	align-items: center;
+	gap: var(--space-2);
+	padding: 6px 6px 6px 6px;
+	border: 1px solid var(--color-gray-200);
+	border-radius: var(--radius-lg);
+	background: var(--color-white);
+	transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.sess:hover {
+	border-color: var(--color-primary);
+	box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+}
+
+.sessWarn {
+	border-color: #f0c26b;
+	background: #fffaf0;
+}
+
+.sessBody {
+	flex: 1;
+	min-width: 0;
+	display: flex;
+	align-items: center;
+	gap: var(--space-3);
+	padding: 0;
+	border: none;
+	background: transparent;
+	font: inherit;
+	text-align: left;
+	cursor: pointer;
+}
+
+.sessDate {
+	width: 46px;
+	flex-shrink: 0;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	padding: 4px 0;
+	border-radius: var(--radius-md);
+	background: var(--color-primary-pale);
+	color: var(--color-primary-dark);
+	line-height: 1.15;
+}
+
+.sessDate span {
+	font-size: var(--font-size-2xs);
+	font-weight: var(--font-weight-semibold);
+}
+
+.sessDate strong {
+	font-size: var(--font-size-compact);
+	font-weight: var(--font-weight-extrabold);
+}
+
+.sessInfo {
+	min-width: 0;
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+}
+
+.sessTime,
+.sessTimeEmpty {
+	font-size: var(--font-size-compact);
+	font-weight: var(--font-weight-semibold);
+	color: var(--color-gray-800);
+}
+
+.sessTimeEmpty {
+	font-weight: var(--font-weight-medium);
+	font-style: italic;
+	color: var(--color-gray-400);
+}
+
+.sessMeta {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	font-size: var(--font-size-xs);
+	color: var(--color-gray-500);
+}
+
+.sessClash {
+	font-size: var(--font-size-2xs);
+	font-weight: var(--font-weight-semibold);
+	color: #a86400;
+}
+
+.sessActions {
+	display: flex;
+	gap: 4px;
+	flex-shrink: 0;
+}
+
+/* Bài chưa có buổi: nút cao bằng các ô chọn cùng dòng */
+.addFirst {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	gap: 6px;
+	height: 36px;
+	padding: 0 var(--space-3);
+	border: 1.5px dashed var(--color-gray-300);
+	border-radius: var(--radius-lg);
+	background: var(--color-gray-50);
+	font: inherit;
+	font-size: var(--font-size-compact);
+	font-weight: var(--font-weight-semibold);
+	color: var(--color-gray-600);
+	cursor: pointer;
+	transition: all var(--transition-fast);
+}
+
+.addFirst:hover:not(:disabled) {
+	border-color: var(--color-primary);
+	background: var(--color-primary-pale);
+	color: var(--color-primary-dark);
+}
+
+/* Bài đã có buổi: chỉ là link nhỏ bên dưới */
+.addMore {
+	align-self: flex-start;
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+	padding: 2px 4px;
+	border: none;
+	background: transparent;
+	font: inherit;
+	font-size: var(--font-size-xs);
+	font-weight: var(--font-weight-semibold);
+	color: var(--color-primary-dark);
+	cursor: pointer;
+}
+
+.addMore:hover:not(:disabled) {
+	text-decoration: underline;
+}
+
+.addFirst svg,
+.addMore svg {
+	width: 12px;
+	height: 12px;
+}
+
 @media (max-width: 640px) {
 	.row {
 		flex-wrap: wrap;

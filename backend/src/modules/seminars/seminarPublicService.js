@@ -66,9 +66,9 @@ const HOSPITAL = 'Bệnh viện Hữu Nghị Đa Khoa Nghệ An';
 // cần biết cả 2 mới ra hồ sơ. Loại tài khoản khoa dùng chung (vai trò dept_head).
 const findStaff = async (fullName, staffNumber) => {
 	const pool = await getPool();
-	const r = await (await inputRoleId(pool.request(), 'dept_head_role', ROLE.DEPT_HEAD))
-		.input('sn', sql.Int, Number(staffNumber))
-		.query(`
+	const r = await (
+		await inputRoleId(pool.request(), 'dept_head_role', ROLE.DEPT_HEAD)
+	).input('sn', sql.Int, Number(staffNumber)).query(`
       SELECT TOP 1 u.id, u.full_name, u.staff_number, u.date_of_birth, u.gender, u.phone_number,
              u.email, q.code AS title_prefix, q.name AS qualification, d.name AS department_name
       FROM users u

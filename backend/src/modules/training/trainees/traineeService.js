@@ -6,24 +6,24 @@ const trainingFileService = require('../trainingFileService');
 const personService = require('../../persons/personService');
 const { normalizeGender } = require('../../../utils/gender');
 const { hasPermission } = require('../../../permissions/authz');
-const {
-	buildMemberUsername,
-	ensureUniqueUsername,
-	genUserIdInTx,
-} = require('../../topics/topicMemberService');
+const { buildMemberUsername, ensureUniqueUsername } = require('../../topics/topicMemberService');
 const { ROLE, requireRoleId } = require('../../access/roleCodes');
 const { defaultPassword } = require('../../../utils/passwordPolicy');
 const { DOC_COUNT_APPLY, DOC_MISSING_SQL } = require('./traineeDocumentSql');
+const userService = require('../../users/userService');
+const { httpError } = require('../../../utils/httpError');
+const userStatusCache = require('../../../permissions/userStatusCache');
 
 // extraCols/extraJoins: cột & OUTER APPLY thêm cho danh sách lọc theo loại khóa.
 const traineeSelectWith = (extraCols = '', extraJoins = '') => `
-  SELECT t.*, tt.name AS trainee_type_name, d.name AS department_name${extraCols}
+  SELECT t.*, tt.name AS trainee_type_name, d.name AS department_name,
+         au.username AS account_username, au.is_active AS account_active${extraCols}
   FROM trainees t
   LEFT JOIN trainee_types tt ON tt.id = t.trainee_type_id
   LEFT JOIN departments d ON d.id = t.department_id
+  LEFT JOIN users au ON au.id = t.user_id
   ${extraJoins}
 `;
-const traineeSelect = traineeSelectWith();
 
 // Che bớt CCCD (chỉ hiện 4 số cuối) cho người không có quyền xem dữ liệu
 // nhạy cảm — actor=null hoặc thiếu quyền 'trainees:read_sensitive'/system:manage
@@ -364,23 +364,35 @@ const removeDocument = async (docId, actorId) => {
 };
 
 // ─── Cấp tài khoản đăng nhập cho học viên (D0) ──────────────────────────────
-// Mirror topicMemberService.grantAccountsNoEmail: mỗi học viên xử lý trong 1
-// transaction ngắn riêng (sp_gen_user_id giữ applock sinh mã tới khi transaction
-// commit — gộp nhiều học viên vào 1 transaction lớn sẽ làm khoá bị giữ quá lâu).
-// Khác topic_members ở chỗ học viên không thuộc 1 khoa/phòng thống nhất (mỗi
-// học viên tự có department_id riêng, có thể null) nên mã NV dùng mã khoa của
-// CHÍNH học viên đó, hoặc tiền tố chung 'HV' nếu học viên không gắn khoa nào.
+// Tài khoản học viên CẤP RIÊNG, không gộp vào tài khoản nội viện: mã 'HV' +
+// NNNNNN (không theo mã khoa như nhân viên 'NV<khoa>NNNN'), không gắn khoa/phòng,
+// vai trò Học viên, và bị loại khỏi trang Quản lý người dùng — quản lý (khoá,
+// đặt lại mật khẩu) ngay tại hồ sơ học viên. Học viên là nhân viên trong viện
+// vẫn được cấp tài khoản học viên riêng, không dùng lại tài khoản nhân viên.
+// Mỗi học viên xử lý trong 1 transaction ngắn riêng (khoá dải mã 'HV' giữ tới
+// khi commit — gộp nhiều học viên vào 1 transaction lớn sẽ giữ khoá quá lâu).
 // Mật khẩu mặc định = tên đăng nhập, bắt đổi ở lần đăng nhập đầu
 // (users.must_change_password).
+
+const TRAINEE_USER_PREFIX = 'HV';
+
+// Sinh mã tài khoản học viên trong transaction: (UPDLOCK, HOLDLOCK) khoá dải mã
+// 'HV' tới khi tx commit nên chạy song song vẫn không trùng.
+const genTraineeUserIdInTx = async (tx) => {
+	const res = await new sql.Request(tx).input('prefix', sql.VarChar(4), TRAINEE_USER_PREFIX).query(`
+      SELECT @prefix + RIGHT('000000' + CAST(ISNULL(MAX(CAST(RIGHT(id, 6) AS INT)), 0) + 1 AS VARCHAR(6)), 6) AS new_id
+      FROM users WITH (UPDLOCK, HOLDLOCK)
+      WHERE id LIKE @prefix + '[0-9][0-9][0-9][0-9][0-9][0-9]'
+    `);
+	return res.recordset[0]?.new_id;
+};
 
 const grantAccounts = async (traineeIds, actorId) => {
 	const pool = await getPool();
 
 	const traineesResult = await pool.request().query(`
-    SELECT t.id, t.full_name, t.email, t.phone, t.department_id,
-           d.code AS department_code
+    SELECT t.id, t.full_name, t.email, t.phone
     FROM trainees t
-    LEFT JOIN departments d ON d.id = t.department_id
     WHERE ISNULL(t.account_granted, 0) = 0
   `);
 	const filterIds = Array.isArray(traineeIds) && traineeIds.length > 0 ? new Set(traineeIds) : null;
@@ -399,7 +411,6 @@ const grantAccounts = async (traineeIds, actorId) => {
 		// tự thêm hậu tố.
 		const usernameSeed = String(trainee.id).slice(-4);
 		const baseUsername = buildMemberUsername(trainee.full_name, usernameSeed);
-		const deptCode = trainee.department_code || 'HV';
 
 		const tx = new sql.Transaction(pool);
 		let began = false;
@@ -411,7 +422,7 @@ const grantAccounts = async (traineeIds, actorId) => {
 				.input('actor_id', sql.VarChar(20), actorId)
 				.query(`EXEC sp_set_actor @actor_id`);
 
-			const userId = await genUserIdInTx(tx, deptCode);
+			const userId = await genTraineeUserIdInTx(tx);
 			if (!userId) {
 				throw new Error('Không sinh được mã tài khoản mới');
 			}
@@ -419,10 +430,17 @@ const grantAccounts = async (traineeIds, actorId) => {
 			const username = await ensureUniqueUsername(tx, baseUsername, userId);
 			const tempPassword = defaultPassword(username);
 			const passwordHash = await bcrypt.hash(tempPassword, 12);
-			const storedEmail =
-				trainee.email && trainee.email.trim()
-					? trainee.email.trim()
-					: `${userId.toLowerCase()}@trainee.local`;
+			// Email đã thuộc tài khoản khác (thường là tài khoản nhân viên của chính
+			// học viên) ⇒ vẫn cấp tài khoản riêng, dùng email nội bộ thay thế.
+			const email = trainee.email?.trim() || null;
+			const emailTaken =
+				email &&
+				(
+					await new sql.Request(tx)
+						.input('email', sql.VarChar(255), email)
+						.query('SELECT TOP 1 1 AS x FROM users WHERE email = @email')
+				).recordset.length > 0;
+			const storedEmail = email && !emailTaken ? email : `${userId.toLowerCase()}@trainee.local`;
 
 			await new sql.Request(tx)
 				.input('uid', sql.VarChar(20), userId)
@@ -431,16 +449,15 @@ const grantAccounts = async (traineeIds, actorId) => {
 				.input('full_name', sql.NVarChar(255), trainee.full_name)
 				.input('email', sql.VarChar(255), storedEmail)
 				.input('phone_number', sql.VarChar(10), trainee.phone || null)
-				.input('department_id', sql.VarChar(20), trainee.department_id || null)
 				.input('role_id', sql.VarChar(6), traineeRoleId)
 				.input('actor_id', sql.VarChar(20), actorId).query(`
           INSERT INTO users (
             id, username, password, full_name, email,
-            phone_number, department_id, role_id, created_by, must_change_password
+            phone_number, role_id, created_by, must_change_password
           )
           VALUES (
             @uid, @username, @password, @full_name, @email,
-            @phone_number, @department_id, @role_id, @actor_id, 1
+            @phone_number, @role_id, @actor_id, 1
           )
         `);
 
@@ -474,17 +491,55 @@ const grantAccounts = async (traineeIds, actorId) => {
 			skipped.push({
 				trainee_id: trainee.id,
 				full_name: trainee.full_name,
-				reason: /U[QX]_users_email/.test(err?.message)
-					? `Email ${trainee.email} đã được dùng cho tài khoản khác (có thể học viên đã có tài khoản nhân viên)`
-					: err instanceof Error
-						? err.message
-						: 'Lỗi không xác định',
+				reason: err instanceof Error ? err.message : 'Lỗi không xác định',
 			});
 		}
 	}
 
 	if (credentials.length > 0) broadcast('update', { entity: 'trainee' });
 	return { credentials, skipped };
+};
+
+// Tài khoản học viên quản lý tại đây (không qua trang Quản lý người dùng).
+// Trả user_id của tài khoản học viên, 404 nếu học viên chưa được cấp tài khoản.
+const accountUserIdOf = async (traineeId) => {
+	const pool = await getPool();
+	const row = (
+		await pool.request().input('id', sql.VarChar(20), traineeId).query(`
+      SELECT t.user_id FROM trainees t
+      JOIN users u ON u.id = t.user_id
+      WHERE t.id = @id
+    `)
+	).recordset[0];
+	if (!row) throw httpError(404, 'Học viên chưa được cấp tài khoản');
+	return row.user_id;
+};
+
+// Đặt lại mật khẩu về mặc định (= tên đăng nhập), thu hồi mọi phiên đang mở.
+const resetAccountPassword = async (traineeId, actorId, ip = null) => {
+	const userId = await accountUserIdOf(traineeId);
+	const result = await userService.resetPassword(userId, null, actorId, ip);
+	broadcast('update', { entity: 'trainee' });
+	return result;
+};
+
+// Khoá / mở khoá tài khoản học viên. Không qua userService.update: hàm đó đồng
+// bộ users → persons (danh tính nhân viên), tài khoản học viên không thuộc đó.
+const setAccountActive = async (traineeId, isActive, actorId) => {
+	const userId = await accountUserIdOf(traineeId);
+	const pool = await getPool();
+	await pool
+		.request()
+		.input('id', sql.VarChar(20), userId)
+		.input('is_active', sql.Bit, !!isActive)
+		.input('actor_id', sql.VarChar(20), actorId).query(`
+      EXEC sp_set_actor @actor_id;
+      UPDATE users SET is_active = @is_active, updated_at = GETDATE(), updated_by = @actor_id
+      WHERE id = @id
+    `);
+	// middlewares/auth.js đọc is_active qua cache — xoá để khoá có hiệu lực ngay
+	userStatusCache.clear(userId);
+	broadcast('update', { entity: 'trainee' });
 };
 
 module.exports = {
@@ -499,4 +554,6 @@ module.exports = {
 	addDocument,
 	removeDocument,
 	grantAccounts,
+	resetAccountPassword,
+	setAccountActive,
 };

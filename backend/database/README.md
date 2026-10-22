@@ -42,7 +42,8 @@ Lúc khởi động, server tự chạy migration khi `DB_AUTO_MIGRATE=true`. M�
 4. **Tương thích ngược**, vì rollback ứng dụng không hoàn tác schema. Chỉ thêm bảng/cột/index. Xoá hoặc đổi tên thì để một bản phát hành sau, khi code cũ không còn dùng.
 5. Đổi nhiều dữ liệu thì bọc trong `SET XACT_ABORT ON; BEGIN TRANSACTION ... COMMIT`.
 6. Cột mới mà code cần ngay lúc khởi động (đăng nhập, phân quyền) thì thêm vào `REQUIRED_COLUMNS` trong `src/permissions/index.js`.
-7. Không đưa mật khẩu, chuỗi kết nối hay dữ liệu cá nhân vào file. Mọi `*.sql` ngoài `database/` đều bị `.gitignore` loại.
+7. **Bảng mới** phải có đủ cột audit: `created_at`, `created_by`, `updated_at DATETIME2 NULL`, `updated_by VARCHAR(20) NULL`. Câu `UPDATE` trong code ghi `updated_at = GETDATE(), updated_by = @actor_id`. Bảng cũ đã được bổ sung `updated_*` ở `2026-11-28_audit_updated_columns.sql`.
+8. Không đưa mật khẩu, chuỗi kết nối hay dữ liệu cá nhân vào file. Mọi `*.sql` ngoài `database/` đều bị `.gitignore` loại.
 
 Chạy tay bằng sqlcmd (khi không dùng được runner) phải có `-I`, vì `QUOTED_IDENTIFIER ON` là bắt buộc cho index lọc và cột tính toán:
 

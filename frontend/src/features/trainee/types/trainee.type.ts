@@ -34,6 +34,9 @@ export interface Trainee {
 	/** D0 — tài khoản đăng nhập cho học viên (điểm danh QR, thi online). */
 	user_id: string | null;
 	account_granted: boolean;
+	/** Tài khoản học viên cấp riêng (mã 'HV…'), không thuộc tài khoản nội viện. */
+	account_username?: string | null;
+	account_active?: boolean | null;
 	// Có khi lọc theo loại khóa: lượt ghi danh gần nhất thuộc loại đó.
 	practice_code?: string | null;
 	program_name?: string | null;

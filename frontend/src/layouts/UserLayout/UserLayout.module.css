@@ -1,51 +1,59 @@
 /* =============================================
-   USER LAYOUT — Cổng người dùng
-   Bố cục: THANH ĐIỀU HƯỚNG NGANG + nội dung căn giữa cột hẹp.
-   Cố tình khác AdminLayout (sidebar dọc, nền tối).
+   USER LAYOUT — Cổng người dùng (nhân viên)
+   Bố cục: SIDEBAR XANH bên trái (chia nhóm theo nghiệp vụ, thu gọn được)
+   + thanh trên trắng (đường dẫn trang · thông báo · tài khoản)
+   + nội dung rộng tới 1440px — tận dụng màn hình rộng, không bỏ trống 2 bên.
+   Cố tình khác AdminLayout (sidebar nền tối).
+   ≥1025px   sidebar cố định, thu gọn còn cột icon
+   ≤1024px   sidebar thành ngăn kéo, mở bằng nút menu
 ============================================= */
 .userWrapper {
+	--sb-w: 256px;
+	--sb-w-collapsed: 72px;
+	--topbar-h: 60px;
+	--wrap-w: 1440px;
+	--gutter: var(--space-8);
 	display: flex;
-	flex-direction: column;
 	min-height: 100vh;
 	width: 100%;
 	max-width: 100vw;
 	overflow-x: hidden;
-	background:
-		radial-gradient(
-			ellipse 90% 360px at 50% -80px,
-			rgba(10, 155, 74, 0.1),
-			transparent 70%
-		),
-		var(--color-gray-50);
+	background: var(--color-gray-50);
 	font-family: var(--font-body);
 }
 
-/* =============================================
-   TOP BAR
-============================================= */
-.topbar {
-	position: sticky;
-	top: 0;
-	z-index: 100;
-	/* Thanh điều hướng xanh lá gradient (khác AdminLayout nền tối) */
-	background: linear-gradient(
-		100deg,
-		#0a783b 0%,
-		#087c3b 48%,
-		#0c9047 100%
-	);
-	border-bottom: 1px solid rgba(255, 255, 255, 0.14);
-	box-shadow: 0 2px 12px rgba(10, 120, 59, 0.28);
+.withSidebar {
+	padding-left: var(--sb-w);
+	transition: padding-left 220ms ease;
 }
 
-.topbarInner {
-	max-width: 1240px;
-	margin: 0 auto;
-	height: 62px;
-	padding: 0 var(--space-6);
+/* =============================================
+   SIDEBAR
+============================================= */
+.sidebar {
+	position: fixed;
+	top: 0;
+	bottom: 0;
+	left: 0;
+	z-index: 110;
+	width: var(--sb-w);
+	display: flex;
+	flex-direction: column;
+	background: linear-gradient(180deg, #0a783b 0%, #086b34 55%, #075c2d 100%);
+	box-shadow: 2px 0 16px rgba(10, 120, 59, 0.18);
+	transition:
+		width 220ms ease,
+		transform 260ms ease;
+}
+
+.sidebarHead {
+	height: var(--topbar-h);
+	flex-shrink: 0;
 	display: flex;
 	align-items: center;
-	gap: var(--space-4);
+	gap: var(--space-2);
+	padding: 0 var(--space-4);
+	border-bottom: 1px solid rgba(255, 255, 255, 0.12);
 }
 
 /* ── Brand ── */
@@ -53,16 +61,19 @@
 	display: flex;
 	align-items: center;
 	gap: var(--space-3);
+	min-width: 0;
+	flex: 1;
 	padding: 0;
 	border: none;
 	background: none;
 	cursor: pointer;
-	flex-shrink: 0;
+	text-align: left;
 }
 
 .brandLogo {
 	width: 38px;
 	height: 38px;
+	flex-shrink: 0;
 	border-radius: 50%;
 	object-fit: contain;
 	background: #fff;
@@ -73,8 +84,8 @@
 .brandText {
 	display: flex;
 	flex-direction: column;
+	min-width: 0;
 	line-height: 1.15;
-	text-align: left;
 }
 
 .brandName {
@@ -82,6 +93,8 @@
 	font-weight: var(--font-weight-bold);
 	color: #fff;
 	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
 }
 
 .brandSub {
@@ -90,46 +103,76 @@
 	color: rgba(255, 255, 255, 0.7);
 	text-transform: uppercase;
 	letter-spacing: 0.08em;
+	white-space: nowrap;
 }
 
-/* ── Horizontal nav (tab-style) ── */
-.topNavBar {
-	border-top: 1px solid rgba(255, 255, 255, 0.14);
-	background: rgba(0, 0, 0, 0.06);
-}
-
-.topNav {
-	max-width: 1240px;
-	margin: 0 auto;
-	height: 46px;
-	padding: 0 var(--space-6);
-	display: flex;
-	align-items: stretch;
-	gap: var(--space-1);
-	/* Màn hẹp hơn tổng các mục → cuộn ngang trong hàng riêng, không tràn. */
-	overflow-x: auto;
-	overflow-y: hidden;
-	scrollbar-width: none;
-}
-
-.topNav::-webkit-scrollbar {
+.sidebarClose {
 	display: none;
+	width: 34px;
+	height: 34px;
+	flex-shrink: 0;
+	border-radius: var(--radius-md);
+	border: none;
+	background: rgba(255, 255, 255, 0.12);
+	color: #fff;
+	align-items: center;
+	justify-content: center;
+	cursor: pointer;
+}
+
+.sidebarClose svg {
+	width: 16px;
+	height: 16px;
+}
+
+/* ── Nav ── */
+.sidebarNav {
+	flex: 1;
+	min-height: 0;
+	overflow-y: auto;
+	overflow-x: hidden;
+	padding: var(--space-4) var(--space-3);
+	display: flex;
+	flex-direction: column;
+	gap: var(--space-4);
+	scrollbar-width: thin;
+	scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+}
+
+.navGroup {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+}
+
+.navGroupTitle {
+	padding: 0 var(--space-3) var(--space-2);
+	font-size: var(--font-size-2xs);
+	font-weight: var(--font-weight-bold);
+	text-transform: uppercase;
+	letter-spacing: 0.08em;
+	color: rgba(255, 255, 255, 0.55);
+	white-space: nowrap;
+	overflow: hidden;
 }
 
 .navItem {
 	position: relative;
-	display: inline-flex;
+	display: flex;
 	align-items: center;
-	gap: var(--space-2);
+	gap: var(--space-3);
+	width: 100%;
+	height: 42px;
 	padding: 0 var(--space-3);
 	border: none;
 	background: none;
+	border-radius: var(--radius-md);
 	font-family: var(--font-body);
-	font-size: var(--font-size-compact);
+	font-size: var(--font-size-sm);
 	font-weight: var(--font-weight-semibold);
-	color: rgba(255, 255, 255, 0.78);
+	color: rgba(255, 255, 255, 0.82);
 	cursor: pointer;
-	white-space: nowrap;
+	text-align: left;
 	transition:
 		color var(--transition-fast),
 		background var(--transition-fast);
@@ -137,29 +180,259 @@
 
 .navItem:hover {
 	color: #fff;
-	background: rgba(255, 255, 255, 0.12);
+	background: rgba(255, 255, 255, 0.1);
 }
 
+/* Mục đang mở: thẻ trắng nổi trên nền xanh */
 .navItem.active {
-	color: #fff;
-}
-
-.navItem.active::after {
-	content: '';
-	position: absolute;
-	left: var(--space-2);
-	right: var(--space-2);
-	bottom: 0;
-	height: 3px;
-	border-radius: 3px 3px 0 0;
+	color: var(--color-primary-dark);
 	background: #fff;
+	box-shadow: 0 2px 8px rgba(13, 24, 32, 0.12);
 }
 
 .navIcon {
+	width: 18px;
+	height: 18px;
+	flex-shrink: 0;
+}
+
+.navLabel {
+	flex: 1;
+	min-width: 0;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.navBadge {
+	min-width: 20px;
+	height: 20px;
+	padding: 0 6px;
+	border-radius: var(--radius-full);
+	background: var(--color-accent);
+	color: #fff;
+	font-size: var(--font-size-2xs);
+	font-weight: var(--font-weight-bold);
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	flex-shrink: 0;
+}
+
+.sidebarFoot {
+	flex-shrink: 0;
+	padding: var(--space-3);
+	border-top: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.collapseBtn {
+	display: flex;
+	align-items: center;
+	gap: var(--space-3);
+	width: 100%;
+	height: 38px;
+	padding: 0 var(--space-3);
+	border: none;
+	background: none;
+	border-radius: var(--radius-md);
+	font-family: var(--font-body);
+	font-size: var(--font-size-xs);
+	font-weight: var(--font-weight-semibold);
+	color: rgba(255, 255, 255, 0.7);
+	cursor: pointer;
+	text-align: left;
+}
+
+.collapseBtn:hover {
+	color: #fff;
+	background: rgba(255, 255, 255, 0.1);
+}
+
+.collapseBtn svg {
 	width: 16px;
 	height: 16px;
 	flex-shrink: 0;
-	opacity: 0.9;
+	transition: transform 220ms ease;
+}
+
+/* ── Thu gọn: chỉ còn cột icon (desktop) ── */
+@media (min-width: 1025px) {
+	.withSidebar.collapsed {
+		padding-left: var(--sb-w-collapsed);
+	}
+
+	.collapsed .sidebar {
+		width: var(--sb-w-collapsed);
+	}
+
+	.collapsed .sidebarHead {
+		padding: 0;
+		justify-content: center;
+	}
+
+	.collapsed .brand {
+		flex: none;
+	}
+
+	.collapsed .brandText,
+	.collapsed .navLabel {
+		display: none;
+	}
+
+	/* Tiêu đề nhóm thành vạch ngăn mảnh */
+	.collapsed .navGroupTitle {
+		height: 1px;
+		padding: 0;
+		margin: 0 var(--space-3) var(--space-2);
+		font-size: 0;
+		background: rgba(255, 255, 255, 0.16);
+	}
+
+	.collapsed .navItem,
+	.collapsed .collapseBtn {
+		justify-content: center;
+		padding: 0;
+	}
+
+	.collapsed .navBadge {
+		position: absolute;
+		top: 3px;
+		right: 6px;
+		min-width: 16px;
+		height: 16px;
+		padding: 0 4px;
+		font-size: 10px;
+	}
+
+	.collapsed .collapseBtn svg {
+		transform: rotate(180deg);
+	}
+}
+
+.mobileBackdrop {
+	position: fixed;
+	inset: 0;
+	background: rgba(13, 24, 32, 0.45);
+	backdrop-filter: blur(3px);
+	z-index: 105;
+	animation: fadeIn 180ms ease;
+}
+
+@keyframes fadeIn {
+	from {
+		opacity: 0;
+	}
+	to {
+		opacity: 1;
+	}
+}
+
+/* =============================================
+   CỘT CHÍNH + TOP BAR
+============================================= */
+.mainCol {
+	flex: 1;
+	min-width: 0;
+	display: flex;
+	flex-direction: column;
+	min-height: 100vh;
+}
+
+.topbar {
+	position: sticky;
+	top: 0;
+	z-index: 100;
+	background: rgba(255, 255, 255, 0.92);
+	backdrop-filter: saturate(1.4) blur(12px);
+	-webkit-backdrop-filter: saturate(1.4) blur(12px);
+	border-bottom: 1px solid var(--color-gray-200);
+}
+
+.topbarInner {
+	max-width: var(--wrap-w);
+	margin: 0 auto;
+	height: var(--topbar-h);
+	padding: 0 var(--gutter);
+	display: flex;
+	align-items: center;
+	gap: var(--space-4);
+}
+
+/* Logo trên thanh trên — khi trang ẩn sidebar, hoặc màn hẹp (sidebar là ngăn kéo) */
+.topbarBrand {
+	display: flex;
+	align-items: center;
+	gap: var(--space-3);
+	min-width: 0;
+	padding: 0;
+	border: none;
+	background: none;
+	cursor: pointer;
+	text-align: left;
+	flex-shrink: 1;
+}
+
+.topbarBrand .brandLogo {
+	width: 34px;
+	height: 34px;
+	box-shadow: none;
+	border: 1px solid var(--color-gray-200);
+}
+
+.topbarBrand .brandName {
+	color: var(--color-primary-dark);
+}
+
+.topbarBrand .brandSub {
+	color: var(--color-gray-500);
+}
+
+.topbarBrandMobile {
+	display: none;
+}
+
+/* ── Đường dẫn trang ── */
+.trail {
+	flex: 1;
+	min-width: 0;
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	font-size: var(--font-size-sm);
+	white-space: nowrap;
+	overflow: hidden;
+}
+
+.trailItem {
+	flex-shrink: 0;
+	padding: 0;
+	border: none;
+	background: none;
+	font: inherit;
+	color: var(--color-gray-500);
+}
+
+button.trailItem {
+	cursor: pointer;
+}
+
+button.trailItem:hover {
+	color: var(--color-primary-dark);
+}
+
+.trailCurrent {
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	font-weight: var(--font-weight-semibold);
+	color: var(--color-gray-800);
+}
+
+.trailSep {
+	width: 14px;
+	height: 14px;
+	flex-shrink: 0;
+	color: var(--color-gray-300);
 }
 
 /* ── Right cluster ── */
@@ -181,26 +454,27 @@
 	align-items: center;
 	gap: var(--space-2);
 	padding: 3px var(--space-2) 3px 3px;
-	border: 1px solid rgba(255, 255, 255, 0.24);
+	border: 1px solid var(--color-gray-200);
 	border-radius: var(--radius-full);
-	background: rgba(255, 255, 255, 0.12);
+	background: #fff;
 	cursor: pointer;
 	transition:
 		border-color var(--transition-fast),
 		background var(--transition-fast);
 }
 
-.userChip:hover {
-	border-color: rgba(255, 255, 255, 0.4);
-	background: rgba(255, 255, 255, 0.2);
+.userChip:hover,
+.userChip[aria-expanded='true'] {
+	border-color: var(--color-gray-300);
+	background: var(--color-gray-50);
 }
 
 .userAvatar {
-	width: 30px;
-	height: 30px;
+	width: 32px;
+	height: 32px;
 	border-radius: 50%;
-	background: rgba(255, 255, 255, 0.92);
-	color: var(--color-primary-dark);
+	background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-dark) 100%);
+	color: #fff;
 	display: flex;
 	align-items: center;
 	justify-content: center;
@@ -209,18 +483,24 @@
 	flex-shrink: 0;
 }
 
+.userAvatarLg {
+	width: 42px;
+	height: 42px;
+	font-size: var(--font-size-sm);
+}
+
 .userMeta {
 	display: flex;
 	flex-direction: column;
 	line-height: 1.2;
 	text-align: left;
-	max-width: 150px;
+	max-width: 170px;
 }
 
 .userName {
 	font-size: var(--font-size-xs);
 	font-weight: var(--font-weight-semibold);
-	color: #fff;
+	color: var(--color-gray-800);
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
@@ -228,7 +508,7 @@
 
 .userRole {
 	font-size: var(--font-size-2xs);
-	color: rgba(255, 255, 255, 0.7);
+	color: var(--color-gray-500);
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
@@ -236,7 +516,7 @@
 
 .userChevron {
 	display: inline-flex;
-	color: rgba(255, 255, 255, 0.7);
+	color: var(--color-gray-400);
 	flex-shrink: 0;
 }
 
@@ -244,7 +524,8 @@
 	position: absolute;
 	top: calc(100% + 8px);
 	right: 0;
-	min-width: 224px;
+	width: 264px;
+	max-width: calc(100vw - 24px);
 	background: var(--color-white);
 	border: 1px solid var(--color-gray-200);
 	border-radius: var(--radius-lg);
@@ -254,6 +535,39 @@
 	padding: var(--space-2);
 	z-index: 201;
 	animation: panel-drop 180ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+.userDropdownHead {
+	display: flex;
+	align-items: center;
+	gap: var(--space-3);
+	min-width: 0;
+	padding: var(--space-2) var(--space-2) var(--space-3);
+	margin-bottom: var(--space-1);
+	border-bottom: 1px solid var(--color-gray-100);
+}
+
+.userDropdownMeta {
+	display: flex;
+	flex-direction: column;
+	min-width: 0;
+	line-height: 1.3;
+}
+
+.userDropdownMeta strong {
+	font-size: var(--font-size-sm);
+	color: var(--color-gray-800);
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.userDropdownMeta span {
+	font-size: var(--font-size-xs);
+	color: var(--color-gray-500);
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
 }
 
 .userDropdownItem {
@@ -313,91 +627,30 @@
 	}
 }
 
-/* ── Mobile trigger + drawer ── */
+/* ── Nút mở ngăn kéo (màn hẹp) ── */
 .mobileNavTrigger {
 	display: none;
 	width: 38px;
 	height: 38px;
 	border-radius: var(--radius-md);
-	border: 1px solid rgba(255, 255, 255, 0.24);
-	background: rgba(255, 255, 255, 0.12);
+	border: 1px solid var(--color-gray-200);
+	background: #fff;
 	align-items: center;
 	justify-content: center;
 	cursor: pointer;
-	color: #fff;
+	color: var(--color-gray-700);
 	flex-shrink: 0;
 	transition: all var(--transition-fast);
 }
 
 .mobileNavTrigger:hover {
-	background: rgba(255, 255, 255, 0.2);
-	color: #fff;
+	background: var(--color-primary-pale);
+	color: var(--color-primary-dark);
 }
 
 .mobileNavTrigger svg {
 	width: 18px;
 	height: 18px;
-}
-
-.mobileNav {
-	display: none;
-	flex-direction: column;
-	gap: 2px;
-	padding: 0 var(--space-4);
-	max-height: 0;
-	overflow: hidden;
-	background: #0a783b;
-	border-top: 1px solid transparent;
-	transition:
-		max-height 260ms ease,
-		padding 260ms ease,
-		border-color 260ms ease;
-}
-
-.mobileNavItem {
-	display: flex;
-	align-items: center;
-	gap: var(--space-3);
-	width: 100%;
-	padding: 11px var(--space-3);
-	border: none;
-	background: none;
-	border-radius: var(--radius-md);
-	font-family: var(--font-body);
-	font-size: var(--font-size-sm);
-	font-weight: var(--font-weight-semibold);
-	color: rgba(255, 255, 255, 0.85);
-	cursor: pointer;
-	text-align: left;
-}
-
-.mobileNavItem svg {
-	width: 17px;
-	height: 17px;
-	flex-shrink: 0;
-}
-
-.mobileNavItem.active {
-	background: rgba(255, 255, 255, 0.16);
-	color: #fff;
-}
-
-.mobileBackdrop {
-	position: fixed;
-	inset: 0;
-	background: rgba(13, 24, 32, 0.45);
-	backdrop-filter: blur(3px);
-	z-index: 90;
-	animation: fadeIn 180ms ease;
-}
-
-@keyframes fadeIn {
-	from {
-		opacity: 0;
-	}
-	to {
-		opacity: 1;
-	}
 }
 
 /* =============================================
@@ -412,9 +665,9 @@
 
 .pageInner {
 	width: 100%;
-	max-width: 1120px;
+	max-width: var(--wrap-w);
 	margin: 0 auto;
-	padding: var(--space-8) var(--space-6) var(--space-16);
+	padding: var(--space-6) var(--gutter) var(--space-12);
 	display: flex;
 	flex-direction: column;
 	gap: var(--space-6);
@@ -423,7 +676,7 @@
 
 .pageHeader {
 	display: flex;
-	align-items: flex-start;
+	align-items: flex-end;
 	justify-content: space-between;
 	gap: var(--space-4);
 }
@@ -438,38 +691,6 @@
 	align-items: center;
 	gap: var(--space-3);
 	flex-shrink: 0;
-}
-
-.breadcrumb {
-	display: flex;
-	align-items: center;
-	flex-wrap: wrap;
-	gap: var(--space-2);
-	font-size: var(--font-size-xs);
-	margin-bottom: var(--space-2);
-}
-
-.breadcrumbItem {
-	color: var(--color-gray-500);
-	background: none;
-	border: none;
-	padding: 0;
-	font: inherit;
-	cursor: pointer;
-}
-
-.breadcrumbItem:hover {
-	color: var(--color-primary-dark);
-}
-
-.breadcrumbSep {
-	color: var(--color-gray-300);
-	font-size: var(--font-size-2xs);
-}
-
-.breadcrumbCurrent {
-	color: var(--color-gray-700);
-	font-weight: var(--font-weight-semibold);
 }
 
 .pageTitle {
@@ -489,7 +710,7 @@
 
 .portalFooter {
 	text-align: center;
-	padding: var(--space-6);
+	padding: var(--space-5) var(--gutter);
 	font-size: var(--font-size-xs);
 	color: var(--color-gray-400);
 	border-top: 1px solid var(--color-gray-100);
@@ -499,36 +720,36 @@
    TOPBAR ICON BUTTON (dùng bởi NotificationPanel qua s=styles)
 ============================================= */
 .topbarIconBtn {
-	width: 36px;
-	height: 36px;
+	width: 38px;
+	height: 38px;
 	border-radius: var(--radius-full);
-	border: 1px solid rgba(255, 255, 255, 0.24);
-	background: rgba(255, 255, 255, 0.12);
+	border: 1px solid var(--color-gray-200);
+	background: #fff;
 	display: flex;
 	align-items: center;
 	justify-content: center;
 	cursor: pointer;
 	transition: all var(--transition-fast);
 	position: relative;
-	color: #fff;
+	color: var(--color-gray-600);
 	flex-shrink: 0;
 }
 
 .topbarIconBtn:hover {
-	background: rgba(255, 255, 255, 0.2);
-	border-color: rgba(255, 255, 255, 0.4);
-	color: #fff;
+	background: var(--color-primary-pale);
+	border-color: var(--color-primary-pale);
+	color: var(--color-primary-dark);
 }
 
 .topbarIconBtn.active {
-	background: #fff;
-	border-color: #fff;
+	background: var(--color-primary-pale);
+	border-color: var(--color-primary);
 	color: var(--color-primary-dark);
 }
 
 .topbarIconBtn svg {
-	width: 16px;
-	height: 16px;
+	width: 17px;
+	height: 17px;
 }
 
 .notifDot {
@@ -827,8 +1048,38 @@
 /* =============================================
    RESPONSIVE
 ============================================= */
+@media (max-width: 1280px) {
+	.userWrapper {
+		--gutter: var(--space-6);
+	}
+}
+
+/* Màn hẹp: sidebar thành ngăn kéo trượt từ trái */
 @media (max-width: 1024px) {
-	.topNavBar {
+	.userWrapper {
+		--gutter: var(--space-4);
+	}
+
+	.withSidebar {
+		padding-left: 0;
+	}
+
+	.sidebar {
+		width: min(288px, 86vw);
+		transform: translateX(-100%);
+		box-shadow: none;
+	}
+
+	.sidebarOpen {
+		transform: translateX(0);
+		box-shadow: 8px 0 32px rgba(13, 24, 32, 0.28);
+	}
+
+	.sidebarClose {
+		display: flex;
+	}
+
+	.sidebarFoot {
 		display: none;
 	}
 
@@ -836,7 +1087,16 @@
 		display: flex;
 	}
 
-	.userMeta {
+	.topbarBrandMobile {
+		display: flex;
+	}
+
+	.topbarInner {
+		gap: var(--space-3);
+	}
+
+	.userMeta,
+	.userChevron {
 		display: none;
 	}
 
@@ -844,32 +1104,9 @@
 		padding: 3px;
 	}
 
-	.topbarInner {
-		gap: var(--space-3);
-	}
-
-	.mobileNav {
-		display: flex;
-	}
-
-	.mobileNavOpen {
-		max-height: 560px;
-		padding-top: var(--space-3);
-		padding-bottom: var(--space-4);
-		border-top-color: rgba(255, 255, 255, 0.16);
-	}
-
-	.mobileNavItem.userDropdownDanger {
-		color: #fad6ec;
-	}
-
-	.mobileNavItem.userDropdownDanger:hover {
-		background: rgba(255, 255, 255, 0.16);
-		color: #fff;
-	}
-
 	.pageInner {
-		padding: var(--space-6) var(--space-4) var(--space-12);
+		padding: var(--space-5) var(--gutter) var(--space-10);
+		gap: var(--space-5);
 	}
 
 	.notifPanel {
@@ -879,31 +1116,12 @@
 }
 
 @media (max-width: 560px) {
-	.brandSub {
+	/* Đường dẫn: chỉ còn trang hiện tại */
+	.trail > :not(:last-child) {
 		display: none;
 	}
 
-	.topbarInner {
-		padding: 0 var(--space-4);
-	}
-
-	/* Tên BV dài đẩy nút tài khoản ra ngoài màn hình: cho brand co lại + cắt chữ */
-	.brand {
-		flex-shrink: 1;
-		min-width: 0;
-	}
-
-	.brandText {
-		min-width: 0;
-		overflow: hidden;
-	}
-
-	.brandName {
-		overflow: hidden;
-		text-overflow: ellipsis;
-	}
-
-	.userChevron {
+	.topbarBrand .brandSub {
 		display: none;
 	}
 

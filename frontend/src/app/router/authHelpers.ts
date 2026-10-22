@@ -59,6 +59,12 @@ export function isTraineeAccount(): boolean {
 
 export const TRAINEE_HOME = '/hoc-vien';
 
+// Trang dùng chung với /user đang mở trong cổng học viên? Dùng cùng isTraineeAccount
+// để giữ khung + link ở /hoc-vien kể cả khi phiên đã lưu thiếu role_code.
+export function isTraineePath(pathname: string): boolean {
+	return pathname === TRAINEE_HOME || pathname.startsWith(`${TRAINEE_HOME}/`);
+}
+
 // /user/... → trang tương ứng trong cổng học viên (link cũ, thông báo, QR điểm danh).
 export function traineePathFor(pathname: string): string {
 	const rest = pathname.replace(/^\/user\/?/, '');

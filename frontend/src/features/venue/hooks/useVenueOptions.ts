@@ -38,8 +38,8 @@ export function useVenueOptions(scope: Exclude<VenueScope, 'both'>) {
 	useEffect(() => refresh(), [refresh]);
 	useRealtimeUpdate('venue', () => refresh(true));
 
-	const options = venues
-		.filter((v) => v.is_active && (v.usage_scope === scope || v.usage_scope === 'both'))
-		.sort((a, b) => a.name.localeCompare(b.name, 'vi'));
-	return { venues: options, loaded };
+	const active = venues.filter((v) => v.is_active).sort((a, b) => a.name.localeCompare(b.name, 'vi'));
+	const inScope = (v: Venue) => v.usage_scope === scope || v.usage_scope === 'both';
+	// others: địa điểm đang hoạt động nhưng dành cho mục đích khác — ô chọn nào cần thì hiện thêm
+	return { venues: active.filter(inScope), others: active.filter((v) => !inScope(v)), loaded };
 }

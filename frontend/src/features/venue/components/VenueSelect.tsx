@@ -1,5 +1,6 @@
 import { useVenueOptions } from '../hooks/useVenueOptions';
-import type { VenueScope } from '../types/venue.type';
+import type { Venue, VenueScope } from '../types/venue.type';
+import { SCOPE_LABEL } from '../utils/venueScope';
 
 interface VenueSelectProps {
 	/** Tên địa điểm — bảng nghiệp vụ lưu text (councils.location, class_sessions.room...). */
@@ -11,6 +12,8 @@ interface VenueSelectProps {
 	placeholder?: string;
 	disabled?: boolean;
 	id?: string;
+	/** Hiện thêm địa điểm dành cho mục đích khác (nhóm riêng bên dưới) — vd buổi học mượn phòng họp. */
+	includeOthers?: boolean;
 }
 
 // Ô chọn địa điểm từ danh mục venues (trang Quản trị → Địa điểm). Giá trị cũ
@@ -24,10 +27,22 @@ export function VenueSelect({
 	placeholder = '-- Chọn địa điểm --',
 	disabled,
 	id,
+	includeOthers,
 }: VenueSelectProps) {
-	const { venues, loaded } = useVenueOptions(scope);
+	const { venues, others, loaded } = useVenueOptions(scope);
+	const extra = includeOthers ? others : [];
 	// Chưa tải xong vẫn phải hiện giá trị hiện tại (chỉ chưa gắn nhãn "chưa có").
-	const notInList = !!value && !venues.some((v) => v.name === value);
+	const notInList = !!value && ![...venues, ...extra].some((v) => v.name === value);
+	const option = (v: Venue) => (
+		<option
+			key={v.id}
+			value={v.name}
+		>
+			{v.name}
+			{v.address ? ` — ${v.address}` : ''}
+			{v.capacity ? ` (${v.capacity} chỗ)` : ''}
+		</option>
+	);
 
 	return (
 		<select
@@ -44,16 +59,14 @@ export function VenueSelect({
 					{loaded ? ' (chưa có trong danh mục)' : ''}
 				</option>
 			)}
-			{venues.map((v) => (
-				<option
-					key={v.id}
-					value={v.name}
-				>
-					{v.name}
-					{v.address ? ` — ${v.address}` : ''}
-					{v.capacity ? ` (${v.capacity} chỗ)` : ''}
-				</option>
-			))}
+			{extra.length > 0 ? (
+				<>
+					{venues.length > 0 && <optgroup label={SCOPE_LABEL[scope].label}>{venues.map(option)}</optgroup>}
+					<optgroup label='Phòng họp / địa điểm khác'>{extra.map(option)}</optgroup>
+				</>
+			) : (
+				venues.map(option)
+			)}
 		</select>
 	);
 }

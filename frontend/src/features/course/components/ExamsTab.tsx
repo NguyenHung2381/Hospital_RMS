@@ -1,6 +1,14 @@
 import { useEffect, useState } from 'react';
-import { CheckSvg as IcCheck, PlusSvg as IcPlus, TrashSvg as IcTrash } from '@/assets/icons';
-import { examApi } from '../../exam/api/examApi';
+import {
+	CheckSvg as IcCheck,
+	PlusSvg as IcPlus,
+	SettingsSvg as IcSettings,
+	TrashSvg as IcTrash,
+	UploadSvg as IcUpload,
+} from '@/assets/icons';
+import { examApi, type QuestionPayload } from '../../exam/api/examApi';
+import { ImportQuestionsModal, type ImportedQuestion } from '../../exam/components/ImportQuestionsModal';
+import { notify } from '../../../shared/utils/feedback';
 import type {
 	AttemptStatus,
 	ExamAttemptDetail,
@@ -25,7 +33,7 @@ import { getAssignments, getProgramLinks } from '../api/courseApi';
 import type { CourseProgramLink } from '../types/course.type';
 import { MultiSelect } from '../../../shared/components/Input/MultiSelect';
 import { SearchableSelect } from '../../../shared/components/Input/SearchableSelect';
-import { QuestionImageView, QuestionText } from '../../../shared/components';
+import { Button, Modal, QuestionImageView, QuestionText } from '../../../shared/components';
 import styles from '../pages/Courses.module.css';
 
 const STATUS_LABEL: Record<PaperStatus, string> = {
@@ -288,7 +296,7 @@ function ExamBuilder({
 	const [title, setTitle] = useState(paper?.title ?? '');
 	const [duration, setDuration] = useState(String(paper?.duration_minutes ?? 45));
 	const [status, setStatus] = useState<PaperStatus>(paper?.status ?? 'draft');
-	// null chỉ xảy ra với đề cũ (hỗn hợp) — đề mới luôn chọn 1 loại
+	// null = đề hỗn hợp trắc nghiệm + tự luận (nhận cả 2 loại câu)
 	const [paperType, setPaperType] = useState<PaperType | null>(paper ? paper.paper_type : 'multiple_choice');
 	const allowedType = paperType ? PAPER_QUESTION_TYPE[paperType] : null;
 	const [examPart, setExamPart] = useState<ExamPart>(paper?.exam_part ?? 'theory');
@@ -335,6 +343,21 @@ function ExamBuilder({
 	);
 	const [saving, setSaving] = useState(false);
 	const [error, setError] = useState('');
+
+	// Khóa chỉ có 1 lớp (đã tự chọn) → ẩn ô chọn lớp
+	const soleClass = links.length === 1 && programId === links[0].program_id;
+	// Các tuỳ chọn ít đổi nằm trong modal "Cài đặt nâng cao" — tóm tắt hiện ngay dưới form
+	const [showSettings, setShowSettings] = useState(false);
+	const settingsSummary = [
+		STATUS_LABEL[status],
+		purpose === 'final' &&
+			(examPart === 'theory' ? `Lý thuyết${theoryFinal && weight !== '' ? ` (${weight}% điểm LT)` : ''}` : 'Thực hành'),
+		random && `${CODE_MODE_LABEL[codeMode]}${codeMode === 'codes' ? ` (${codeCount})` : ''}`,
+		graders.size ? `${graders.size} người chấm` : 'GV được phân công chấm',
+		blind && 'Chấm ẩn danh',
+	]
+		.filter(Boolean)
+		.join(' · ');
 
 	const [bank, setBank] = useState<ExamQuestion[]>([]);
 	const [pickId, setPickId] = useState('');
@@ -388,13 +411,63 @@ function ExamBuilder({
 
 	const removeQuestion = (tempId: string) => setQuestions((prev) => prev.filter((q) => q.tempId !== tempId));
 
+	// Nhập đề từ file Word/PDF: câu được lưu vào ngân hàng của lớp (đúng kho đầu vào/cuối khóa);
+	// đề chọn tay thì thêm ngay các câu đó vào đề
+	const [importing, setImporting] = useState(false);
+	const importFromFile = async (imported: ImportedQuestion[]) => {
+		const payload: QuestionPayload[] = [];
+		for (const q of imported) {
+			payload.push({
+				question_type: q.question_type,
+				question_text: q.question_text,
+				options: q.options,
+				correct_option: q.correctIndex != null ? q.options[q.correctIndex] : null,
+				points: q.points,
+				image_url: q.image ? (await examApi.uploadQuestionImage(q.image)).url : null,
+				program_id: programId,
+				pool: purpose,
+			});
+		}
+		const { ids } = await examApi.createQuestionsBulk(payload);
+		const fresh = await examApi.listQuestions();
+		setBank(fresh);
+		setImporting(false);
+		// Đề ngẫu nhiên: chỉ cần câu có trong ngân hàng — lúc lưu / lúc học viên làm bài sẽ bốc từ đó
+		if (random) {
+			notify.success(`Đã nhập ${ids.length} câu vào ngân hàng của lớp — đề sẽ bốc ngẫu nhiên từ đây`);
+			return;
+		}
+		const byId = new Map(fresh.map((b) => [b.id, b]));
+		setQuestions((prev) => [
+			...prev,
+			...ids.flatMap((id) => {
+				const b = byId.get(id);
+				return b
+					? [
+							{
+								tempId: nextTempId(),
+								id: b.id,
+								question_type: b.question_type,
+								question_text: b.question_text,
+								options: b.options,
+								correct_option: b.correct_option ?? '',
+								points: String(b.points),
+								image_url: b.image_url ?? null,
+							},
+						]
+					: [];
+			}),
+		]);
+		notify.success(`Đã thêm ${ids.length} câu vào đề (đồng thời lưu vào ngân hàng câu hỏi của lớp)`);
+	};
+
 	const changePurpose = (p: QuestionPool) => {
 		setPurpose(p);
-		// Đầu vào: 1 đề gồm cả trắc nghiệm + tự luận, chỉ phần lý thuyết
+		// Đầu vào: mặc định 1 đề gồm cả trắc nghiệm + tự luận, chỉ phần lý thuyết
 		if (p === 'entrance') {
 			setPaperType(null);
 			setExamPart('theory');
-		} else if (!paperType) setPaperType('multiple_choice');
+		}
 		setQuestions([]);
 		setPickId('');
 	};
@@ -470,100 +543,57 @@ function ExamBuilder({
 					<option value='final'>Thi cuối khóa</option>
 					<option value='entrance'>Kiểm tra đầu vào</option>
 				</select>
-				<select
-					className={styles.subSelect}
-					value={programId}
-					onChange={(e) => {
-						setProgramId(e.target.value);
-						setQuestions([]);
-						setPickId('');
-					}}
-					title='Lớp (chương trình trong khóa) — học viên lớp này làm đề, câu hỏi lấy từ ngân hàng của chương trình'
-				>
-					<option value=''>— Chọn lớp —</option>
-					{links.map((l) => (
-						<option
-							key={l.program_id}
-							value={l.program_id}
-						>
-							{l.program_code ? `${l.program_code} — ${l.program_name}` : l.program_name}
-						</option>
-					))}
-				</select>
+				{!soleClass && (
+					<select
+						className={styles.subSelect}
+						value={programId}
+						onChange={(e) => {
+							setProgramId(e.target.value);
+							setQuestions([]);
+							setPickId('');
+						}}
+						title='Lớp (chương trình trong khóa) — học viên lớp này làm đề, câu hỏi lấy từ ngân hàng của chương trình'
+					>
+						<option value=''>— Chọn lớp —</option>
+						{links.map((l) => (
+							<option
+								key={l.program_id}
+								value={l.program_id}
+							>
+								{l.program_code ? `${l.program_code} — ${l.program_name}` : l.program_name}
+							</option>
+						))}
+					</select>
+				)}
 				<select
 					className={styles.subSelect}
 					value={paperType ?? ''}
 					onChange={(e) => (e.target.value ? changePaperType(e.target.value as PaperType) : setPaperType(null))}
-					title='Loại đề — chỉ nhận câu hỏi cùng loại'
+					title='Loại đề — đề trắc nghiệm / tự luận chỉ nhận câu cùng loại, đề TN + TL nhận cả hai'
 				>
-					{(purpose === 'entrance' || !paperType) && <option value=''>Trắc nghiệm + tự luận</option>}
 					<option value='multiple_choice'>Đề trắc nghiệm</option>
 					<option value='essay'>Đề tự luận</option>
+					<option value=''>Đề trắc nghiệm + tự luận</option>
 				</select>
-				<input
-					className={styles.subInput}
-					type='number'
-					min={1}
-					placeholder='Thời gian (phút)'
-					value={duration}
-					onChange={(e) => setDuration(e.target.value)}
-					style={{ maxWidth: 140 }}
-				/>
-				<select
-					className={styles.subSelect}
-					value={status}
-					onChange={(e) => setStatus(e.target.value as PaperStatus)}
-				>
-					<option value='draft'>Nháp</option>
-					<option value='published'>Đang mở</option>
-					<option value='closed'>Đã đóng</option>
-				</select>
-			</div>
-			<div className={styles.subToolbar}>
-				{purpose === 'final' && (
-					<select
-						className={styles.subSelect}
-						value={examPart}
-						onChange={(e) => setExamPart(e.target.value as ExamPart)}
-						title='Điểm bài thi (quy về thang 10) đổ vào cột này của bảng điểm'
-					>
-						<option value='theory'>Phần lý thuyết</option>
-						<option value='practice'>Phần thực hành</option>
-					</select>
-				)}
-				{theoryFinal && (
-					<label
-						className={styles.inlineField}
-						title='Điểm lý thuyết = trung bình có trọng số các đề lý thuyết cuối khóa của lớp (vd TN 50% + TL 50%)'
-					>
-						Trọng số
-						<input
-							className={styles.subInput}
-							type='number'
-							min={0}
-							max={100}
-							value={weight}
-							onChange={(e) => setWeight(e.target.value)}
-							style={{ maxWidth: 80 }}
-						/>
-						% điểm LT
-					</label>
-				)}
-				<MultiSelect
-					options={lecturers}
-					selected={graders}
-					onChange={setGraders}
-					placeholder={graders.size ? `${graders.size} người chấm` : 'Người chấm: GV được phân công bài học'}
-					searchable
-				/>
-				<label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13 }}>
+				<label className={styles.inlineField}>
 					<input
-						type='checkbox'
-						checked={blind}
-						onChange={(e) => setBlind(e.target.checked)}
+						className={styles.subInput}
+						type='number'
+						min={1}
+						value={duration}
+						onChange={(e) => setDuration(e.target.value)}
+						style={{ maxWidth: 70 }}
+						aria-label='Thời gian làm bài'
 					/>
-					Chấm ẩn danh (ẩn tên học viên)
+					phút
 				</label>
+				<button
+					className={styles.btnGhost}
+					onClick={() => setShowSettings(true)}
+					title={`Cài đặt nâng cao: ${settingsSummary}`}
+				>
+					<IcSettings /> Cài đặt
+				</button>
 			</div>
 
 			<div className={styles.subToolbar}>
@@ -603,38 +633,24 @@ function ExamBuilder({
 								câu TL
 							</label>
 						)}
-						<select
-							className={styles.subSelect}
-							value={codeMode}
-							onChange={(e) => setCodeMode(e.target.value as CodeMode)}
-							title='Mỗi học viên một đề: bốc riêng lúc bắt đầu làm. Chung đề: cả lớp cùng bộ câu, trộn thứ tự câu và đáp án. Nhiều mã đề: chia đều các mã cho học viên.'
-						>
-							{(Object.keys(CODE_MODE_LABEL) as CodeMode[]).map((m) => (
-								<option
-									key={m}
-									value={m}
-								>
-									{CODE_MODE_LABEL[m]}
-								</option>
-							))}
-						</select>
-						{codeMode === 'codes' && (
-							<label className={styles.inlineField}>
-								<input
-									className={styles.subInput}
-									type='number'
-									min={2}
-									max={10}
-									value={codeCount}
-									onChange={(e) => setCodeCount(e.target.value)}
-									style={{ maxWidth: 70 }}
-								/>
-								mã đề
-							</label>
-						)}
 					</>
 				)}
+				<button
+					className={styles.btnGhost}
+					onClick={() => setImporting(true)}
+					disabled={!programId}
+					title={
+						!programId
+							? 'Chọn lớp trước — câu nhập từ file được lưu vào ngân hàng của lớp'
+							: random
+								? 'Đọc câu hỏi từ file .docx / .pdf vào ngân hàng của lớp — đề bốc ngẫu nhiên từ đó'
+								: 'Đọc câu hỏi từ file .docx / .pdf, lưu vào ngân hàng của lớp và thêm vào đề'
+					}
+				>
+					<IcUpload /> Nhập đề từ Word/PDF
+				</button>
 			</div>
+			<div className={styles.hint}>Cài đặt: {settingsSummary}</div>
 			{random && (
 				<div className={styles.hint}>
 					{programId
@@ -768,6 +784,127 @@ function ExamBuilder({
 					{saving ? '...' : <IcCheck />} Lưu đề thi
 				</button>
 			</div>
+
+			<Modal
+				open={showSettings}
+				onClose={() => setShowSettings(false)}
+				title='Cài đặt nâng cao'
+				icon={<IcSettings />}
+				footer={<Button onClick={() => setShowSettings(false)}>Xong</Button>}
+			>
+				<div className={styles.formGrid2}>
+					<div className={styles.formGroup}>
+						<label className={styles.formLabel}>Trạng thái</label>
+						<select
+							className={styles.formInput}
+							value={status}
+							onChange={(e) => setStatus(e.target.value as PaperStatus)}
+						>
+							<option value='draft'>Nháp</option>
+							<option value='published'>Đang mở</option>
+							<option value='closed'>Đã đóng</option>
+						</select>
+						<span className={styles.fieldHint}>Học viên chỉ thấy đề khi "Đang mở"</span>
+					</div>
+					{purpose === 'final' && (
+						<div className={styles.formGroup}>
+							<label className={styles.formLabel}>Tính điểm vào</label>
+							<select
+								className={styles.formInput}
+								value={examPart}
+								onChange={(e) => setExamPart(e.target.value as ExamPart)}
+							>
+								<option value='theory'>Phần lý thuyết</option>
+								<option value='practice'>Phần thực hành</option>
+							</select>
+							<span className={styles.fieldHint}>Điểm bài thi (quy về thang 10) đổ vào cột này của bảng điểm</span>
+						</div>
+					)}
+					{theoryFinal && (
+						<div className={styles.formGroup}>
+							<label className={styles.formLabel}>Trọng số (% điểm lý thuyết)</label>
+							<input
+								className={styles.formInput}
+								type='number'
+								min={0}
+								max={100}
+								value={weight}
+								onChange={(e) => setWeight(e.target.value)}
+							/>
+							<span className={styles.fieldHint}>
+								Điểm LT = trung bình có trọng số các đề lý thuyết cuối khóa của lớp (vd TN 50% + TL 50%)
+							</span>
+						</div>
+					)}
+					{random && (
+						<div className={styles.formGroup}>
+							<label className={styles.formLabel}>Cách chia đề</label>
+							<div style={{ display: 'flex', gap: 8 }}>
+								<select
+									className={styles.formInput}
+									value={codeMode}
+									onChange={(e) => setCodeMode(e.target.value as CodeMode)}
+								>
+									{(Object.keys(CODE_MODE_LABEL) as CodeMode[]).map((m) => (
+										<option
+											key={m}
+											value={m}
+										>
+											{CODE_MODE_LABEL[m]}
+										</option>
+									))}
+								</select>
+								{codeMode === 'codes' && (
+									<input
+										className={styles.formInput}
+										type='number'
+										min={2}
+										max={10}
+										value={codeCount}
+										onChange={(e) => setCodeCount(e.target.value)}
+										style={{ maxWidth: 80 }}
+										aria-label='Số mã đề'
+										title='Số mã đề'
+									/>
+								)}
+							</div>
+							<span className={styles.fieldHint}>
+								Mỗi học viên một đề: bốc riêng lúc bắt đầu làm. Chung đề: cả lớp cùng bộ câu, trộn thứ tự câu và
+								đáp án. Nhiều mã đề: chia đều các mã cho học viên.
+							</span>
+						</div>
+					)}
+					<div className={styles.formGroup}>
+						<label className={styles.formLabel}>Người chấm</label>
+						<MultiSelect
+							options={lecturers}
+							selected={graders}
+							onChange={setGraders}
+							placeholder={graders.size ? `${graders.size} người chấm` : 'GV được phân công bài học'}
+							searchable
+						/>
+						<label
+							className={styles.toggleBox}
+							style={{ fontSize: 13, marginTop: 6 }}
+						>
+							<input
+								type='checkbox'
+								checked={blind}
+								onChange={(e) => setBlind(e.target.checked)}
+							/>
+							Chấm ẩn danh (ẩn tên học viên)
+						</label>
+					</div>
+				</div>
+			</Modal>
+
+			{importing && (
+				<ImportQuestionsModal
+					onlyType={allowedType ?? undefined}
+					onClose={() => setImporting(false)}
+					onImport={importFromFile}
+				/>
+			)}
 		</div>
 	);
 }

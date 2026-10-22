@@ -74,18 +74,18 @@ Câu 2: Câu tự luận (không có A/B/C/D)`;
 /**
  * Đọc câu hỏi từ file Word/PDF ngay trên trình duyệt, cho xem lại / chọn đáp án,
  * rồi trả danh sách câu đã chọn cho onImport (ném lỗi = giữ modal mở).
- * Dùng cho ngân hàng câu hỏi Đào tạo và bài test cuối buổi Hội nghị.
+ * Dùng cho ngân hàng câu hỏi Đào tạo, form đề thi của khóa học và bài test cuối buổi Hội nghị.
  */
 export function ImportQuestionsModal({
 	onClose,
 	onImport,
-	multipleChoiceOnly = false,
+	onlyType,
 	withPoints = true,
 }: {
 	onClose: () => void;
 	onImport: (questions: ImportedQuestion[]) => Promise<void>;
-	/** Chỉ nhận câu trắc nghiệm (bài test hội nghị) — câu tự luận trong file bị bỏ qua */
-	multipleChoiceOnly?: boolean;
+	/** Chỉ nhận 1 loại câu (bài test hội nghị / đề trắc nghiệm / đề tự luận) — câu loại khác trong file bị bỏ qua */
+	onlyType?: ParsedQuestion['question_type'];
 	/** Có điểm từng câu không (bài test hội nghị chỉ đếm số câu đúng) */
 	withPoints?: boolean;
 }) {
@@ -95,7 +95,9 @@ export function ImportQuestionsModal({
 	const [saving, setSaving] = useState(false);
 	const [defaultPoints, setDefaultPoints] = useState('1');
 
-	const allowed = (q: ParsedQuestion) => !multipleChoiceOnly || q.question_type === 'single_choice';
+	const allowed = (q: ParsedQuestion) => !onlyType || q.question_type === onlyType;
+	const typeLabel = (t: ParsedQuestion['question_type']) => (t === 'essay' ? 'tự luận' : 'trắc nghiệm');
+	const otherLabel = onlyType && typeLabel(onlyType === 'essay' ? 'single_choice' : 'essay');
 
 	const pick = async (f: File | null) => {
 		setFile(f);
@@ -187,14 +189,14 @@ export function ImportQuestionsModal({
 					<details>
 						<summary className={styles.hint}>Định dạng file được hỗ trợ</summary>
 						<pre className={styles.hint}>
-							{multipleChoiceOnly ? FORMAT_HINT.split('\n\nCâu 2')[0] : FORMAT_HINT}
+							{onlyType === 'single_choice' ? FORMAT_HINT.split('\n\nCâu 2')[0] : FORMAT_HINT}
 						</pre>
 						<div className={styles.hint}>
 							Đáp án đúng có thể ghi bằng dòng "Đáp án: B", dấu * trước phương án (*B.), bảng "ĐÁP ÁN" cuối file
 							(1-A 2-C ...), hoặc in đậm/gạch chân phương án đúng trong Word. Đánh số câu/phương án phải gõ tay (không
 							dùng numbering tự động của Word). Hình chèn trong Word (PNG/JPEG/GIF) được lấy làm hình minh hoạ của câu
 							chứa nó — PDF không lấy được hình. PDF dạng ảnh scan không đọc được.
-							{multipleChoiceOnly && ' Bài test chỉ nhận câu trắc nghiệm — câu tự luận trong file sẽ bị bỏ qua.'}
+							{onlyType && ` Chỉ nhận câu ${typeLabel(onlyType)} — câu ${otherLabel} trong file sẽ bị bỏ qua.`}
 						</div>
 					</details>
 				)}
@@ -206,7 +208,7 @@ export function ImportQuestionsModal({
 							<div className={styles.hint}>
 								Tìm thấy {rows.length} câu · đã chọn {chosen.length}
 								{imageCount > 0 && ` · ${imageCount} câu có hình`}
-								{skipped > 0 && ` · bỏ qua ${skipped} câu tự luận`}
+								{skipped > 0 && ` · bỏ qua ${skipped} câu ${otherLabel}`}
 								{invalid > 0 && (
 									<span className={styles.error}> · {invalid} câu chưa hợp lệ — sửa hoặc bỏ chọn câu</span>
 								)}
@@ -256,7 +258,9 @@ export function ImportQuestionsModal({
 												{r.question_type === 'essay' ? 'Tự luận' : 'Trắc nghiệm'}
 											</Badge>
 											{withPoints && r.points != null && <span className={styles.muted}>{r.points} điểm</span>}
-											{!allowed(r) && <Badge tone='gray'>Bỏ qua — bài test chỉ nhận trắc nghiệm</Badge>}
+											{!allowed(r) && onlyType && (
+												<Badge tone='gray'>Bỏ qua — chỉ nhận câu {typeLabel(onlyType)}</Badge>
+											)}
 											{problem && <Badge tone='red'>{problem}</Badge>}
 											<span style={{ marginLeft: 'auto', display: 'flex', gap: 4 }}>
 												<button
@@ -290,7 +294,7 @@ export function ImportQuestionsModal({
 																const t = e.target.value as Row['question_type'];
 																update(i, {
 																	question_type: t,
-																	include: t === 'single_choice' || !multipleChoiceOnly,
+																	include: !onlyType || t === onlyType,
 																	...(t === 'single_choice' && r.options.length < 2 && { options: ['', '', '', ''] }),
 																});
 															}}

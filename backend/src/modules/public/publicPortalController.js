@@ -115,7 +115,11 @@ const getSeminar = asyncHandler(async (req, res) => {
 const lookupSeminarStaff = asyncHandler(async (req, res) => {
 	success(
 		res,
-		await seminarPublicService.lookupStaff(req.params.token, req.body.full_name, req.body.staff_number),
+		await seminarPublicService.lookupStaff(
+			req.params.token,
+			req.body.full_name,
+			req.body.staff_number,
+		),
 	);
 });
 

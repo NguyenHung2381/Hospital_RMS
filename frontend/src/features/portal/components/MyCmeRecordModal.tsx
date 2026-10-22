@@ -19,7 +19,7 @@ interface Props {
 	onSaved: () => void;
 }
 
-/** Người dùng tự khai CME — lưu xong ở trạng thái "Chờ duyệt", admin duyệt mới được tính tín chỉ. */
+/** Người dùng tự khai CME — lưu xong ở trạng thái "Chờ duyệt"; người quản lý nhập số tín chỉ khi duyệt. */
 export default function MyCmeRecordModal({ record, categories, defaultYear, onClose, onSaved }: Props) {
 	const [form, setForm] = useState<MyCmeRecordForm>({
 		category_id: record?.category_id ?? '',
@@ -29,7 +29,6 @@ export default function MyCmeRecordModal({ record, categories, defaultYear, onCl
 		year: String(record?.year ?? defaultYear),
 		role: record?.role ?? '',
 		quantity: record?.quantity == null ? '' : String(record.quantity),
-		credits: record ? String(record.credits) : '',
 		note: record?.note ?? '',
 	});
 	const [evidence, setEvidence] = useState<File | null>(null);
@@ -39,19 +38,8 @@ export default function MyCmeRecordModal({ record, categories, defaultYear, onCl
 	const set = (k: keyof MyCmeRecordForm) => (e: { target: { value: string } }) =>
 		setForm((f) => ({ ...f, [k]: e.target.value }));
 
-	// Tín chỉ = định mức của danh mục × số lượng (mọi loại; định mức 0 = "Khác" → nhập tay)
-	const autoCredits = (categoryId: string, quantity: string) => {
-		const c = categories.find((x) => x.id === categoryId);
-		if (!c?.conversion_value) return null;
-		return String(+(c.conversion_value * (quantity === '' ? 1 : Number(quantity))).toFixed(2));
-	};
 	const pickCategory = (category_id: string) =>
-		setForm((f) => {
-			const quantity = category_id && f.quantity === '' ? '1' : f.quantity;
-			return { ...f, category_id, quantity, credits: autoCredits(category_id, quantity) ?? f.credits };
-		});
-	const pickQuantity = (quantity: string) =>
-		setForm((f) => ({ ...f, quantity, credits: autoCredits(f.category_id, quantity) ?? f.credits }));
+		setForm((f) => ({ ...f, category_id, quantity: category_id && f.quantity === '' ? '1' : f.quantity }));
 	const NO_GROUP = '__none__';
 	const groupOf = (id: string) => categories.find((x) => x.id === id)?.group_name ?? NO_GROUP;
 	const [group, setGroup] = useState(() => (record?.category_id ? groupOf(record.category_id) : ''));
@@ -63,8 +51,7 @@ export default function MyCmeRecordModal({ record, categories, defaultYear, onCl
 	const [savedId, setSavedId] = useState(record?.id ?? null);
 
 	const save = async () => {
-		if (!form.title.trim() || !form.year || form.credits === '')
-			return setError('Vui lòng nhập nội dung, năm và số tín chỉ');
+		if (!form.title.trim() || !form.year) return setError('Vui lòng nhập nội dung và năm');
 		if (form.activity_date && form.end_date && form.end_date < form.activity_date)
 			return setError('"Đến ngày" phải sau hoặc bằng "Từ ngày"');
 		setBusy(true);
@@ -132,15 +119,15 @@ export default function MyCmeRecordModal({ record, categories, defaultYear, onCl
 				</label>
 				<label className={styles.formFull}>
 					Nội dung hoạt động *
-					<input value={form.title} onChange={set('title')} placeholder='VD: Tự học chuyên đề X' />
+					<input value={form.title} maxLength={255} onChange={set('title')} placeholder='VD: Tự học chuyên đề X' />
 				</label>
 				<label>
 					Vai trò
-					<input value={form.role} onChange={set('role')} placeholder='Đại biểu, Báo cáo viên…' />
+					<input value={form.role} maxLength={100} onChange={set('role')} placeholder='Đại biểu, Báo cáo viên…' />
 				</label>
 				<label>
 					Số lượng{unit ? ` (${unit})` : ''}
-					<input type='number' step='0.1' min='0' value={form.quantity} onChange={(e) => pickQuantity(e.target.value)} />
+					<input type='number' step='0.1' min='0' value={form.quantity} onChange={set('quantity')} />
 				</label>
 				<label>
 					Từ ngày
@@ -161,12 +148,8 @@ export default function MyCmeRecordModal({ record, categories, defaultYear, onCl
 					<input type='number' value={form.year} onChange={set('year')} />
 				</label>
 				<label>
-					Số tín chỉ *
-					<input type='number' step='0.1' min='0' value={form.credits} onChange={set('credits')} />
-				</label>
-				<label>
 					Ghi chú
-					<input value={form.note} onChange={set('note')} />
+					<input value={form.note} maxLength={500} onChange={set('note')} />
 				</label>
 				<div className={styles.formFull}>
 					<FileDropzone

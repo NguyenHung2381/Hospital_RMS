@@ -7,8 +7,12 @@ const { normalizeIp } = require('../../utils/activityDescribe');
 const { todayKeyVN } = require('../../utils/vnDate');
 const { badRequest } = require('../../utils/httpError');
 
-// Chấm công theo ca (2026-10-29_staff_attendance.sql + 2026-10-30_attendance_shifts.sql):
-// 1 dòng / người / ca / ngày bắt đầu ca. Lần bấm đầu = giờ vào, các lần sau = giờ ra (lần cuối).
+// Chấm công HỌC VIÊN theo khóa đào tạo (2026-10-29_staff_attendance.sql +
+// 2026-10-30_attendance_shifts.sql + 2026-11-30_trainee_attendance.sql). Tên bảng
+// staff_attendance giữ từ thời chấm công nhân viên.
+// Chỉ tài khoản học viên, trong những ngày đang học 1 khóa (shiftService.traineePeriods),
+// mới chấm được. Ca theo phân ca ngày, không có thì theo mẫu ca tuần của khóa.
+// 1 dòng / học viên / ca / ngày bắt đầu ca. Lần bấm đầu = giờ vào, các lần sau = giờ ra (lần cuối).
 // Ca nào đang được bấm: utils/attendanceShift.js. Không có lịch ca → 1 dòng/ngày (shift_id NULL).
 // Điều kiện vị trí ở utils/attendancePolicy.js (IP bệnh viện VÀ GPS trong bán kính).
 
@@ -20,6 +24,8 @@ const publicOption = (o) => ({
 	shift_id: o.shift_id,
 	work_date: o.work_date,
 	action: o.action,
+	course_id: o.course_id ?? null,
+	course_name: o.course_name ?? null,
 	name: o.name ?? null,
 	code: o.code ?? null,
 	color: o.color ?? null,
@@ -29,43 +35,51 @@ const publicOption = (o) => ({
 	end_at: o.end_at ?? null,
 });
 
-// Mẫu tuần + phân ca + ca + bản ghi gần đây của 1 người
+// Hồ sơ học viên + khóa đang học + phân ca + ca + bản ghi gần đây của 1 tài khoản
 const loadContext = async (userId) => {
 	const today = todayKeyVN();
+	const from = shiftLogic.addDays(today, -2);
+	const to = shiftLogic.addDays(today, WEEK_AHEAD);
 	const pool = await getPool();
-	const [pattern, assignments, shiftsById, records] = await Promise.all([
-		shiftService.patternForUser(userId),
-		shiftService.assignmentsForUser(
-			userId,
-			shiftLogic.addDays(today, -2),
-			shiftLogic.addDays(today, WEEK_AHEAD),
-		),
+	const [trainee, periods, patterns, assignments, shiftsById, records] = await Promise.all([
+		pool
+			.request()
+			.input('user_id', sql.VarChar(20), userId)
+			.query('SELECT TOP 1 id, full_name FROM trainees WHERE user_id = @user_id'),
+		shiftService.traineePeriods({ from, to, userId }),
+		shiftService.listPatterns(),
+		shiftService.assignmentsForUser(userId, from, to),
 		shiftService.shiftsMap(),
 		pool
 			.request()
 			.input('user_id', sql.VarChar(20), userId)
 			.query(
-				'SELECT TOP 60 * FROM staff_attendance WHERE user_id = @user_id ORDER BY work_date DESC, check_in_at DESC',
+				'SELECT TOP 60 * FROM staff_attendance WHERE user_id = @user_id AND course_id IS NOT NULL ORDER BY work_date DESC, check_in_at DESC',
 			),
 	]);
 	return {
 		today,
-		pattern,
+		trainee: trainee.recordset[0] ?? null,
+		courseOn: shiftService.courseResolver(periods, patterns),
 		assignments,
 		shiftsById,
 		records: records.recordset.map((r) => ({ ...r, work_date: dateKey(r.work_date) })),
 	};
 };
 
+// Gọi được với mọi tài khoản (Cấu hình hệ thống dùng client_ip); không phải học viên → is_trainee false
 const getMine = async (userId, ip) => {
 	const [ctx, policy] = await Promise.all([loadContext(userId), attendancePolicy.getPolicy()]);
-	const { today, pattern, assignments, shiftsById, records } = ctx;
-	// Lịch ca 7 ngày tới; null = không có lịch ca (chấm tự do)
+	const { today, trainee, courseOn, assignments, shiftsById, records } = ctx;
+	// Lịch 7 ngày tới: course_id null = không học khóa nào; shifts null = không có lịch ca (chấm tự do)
 	const week = Array.from({ length: WEEK_AHEAD }, (_, i) => {
 		const date = shiftLogic.addDays(today, i);
-		const day = shiftLogic.shiftIdsForDay(pattern, assignments, date);
+		const course = trainee ? courseOn(date) : null;
+		const day = course && shiftLogic.shiftIdsForDay(course.pattern, assignments, date);
 		return {
 			date,
+			course_id: course?.course_id ?? null,
+			course_name: course?.course_name ?? null,
 			source: day?.source ?? null,
 			shifts: day
 				? day.shiftIds
@@ -77,14 +91,20 @@ const getMine = async (userId, ip) => {
 				: null,
 		};
 	});
+	const current = trainee ? courseOn(today) : null;
 	return {
-		options: shiftLogic
-			.checkOptions({ pattern, assignments, shiftsById, records })
-			.map(publicOption),
+		is_trainee: !!trainee,
+		options: trainee
+			? shiftLogic.checkOptions({ courseOn, assignments, shiftsById, records }).map(publicOption)
+			: [],
 		recent: records.filter((r) => r.work_date >= shiftLogic.addDays(today, -1)),
 		history: records,
 		week,
-		pattern_name: pattern?.name ?? null,
+		current_course: current && {
+			course_id: current.course_id,
+			course_name: current.course_name,
+			pattern_name: current.pattern?.name ?? null,
+		},
 		client_ip: normalizeIp(ip),
 		ip_ok: policy.ipRanges.length ? attendancePolicy.ipAllowed(ip, policy.ipRanges) : false,
 		configured: policy.ipRanges.length > 0 && !!policy.location,
@@ -116,11 +136,14 @@ const pickOption = (options, choice) => {
 
 const check = async (userId, { ip, lat, lng, accuracy, shift_id, work_date }) => {
 	const [ctx, policy] = await Promise.all([loadContext(userId), attendancePolicy.getPolicy()]);
+	if (!ctx.trainee) throw badRequest('Chấm công chỉ dành cho tài khoản học viên');
 	const now = new Date();
 	const options = shiftLogic.checkOptions({ ...ctx, now });
 	const result = attendancePolicy.evaluate(policy, { ip, lat, lng, accuracy });
 	let option;
 	try {
+		if (!options.length && !ctx.courseOn(shiftLogic.dateKeyVN(now)))
+			throw badRequest('Hôm nay bạn không có khóa học nào đang diễn ra nên không cần chấm công');
 		option = pickOption(options, { shift_id, work_date });
 	} catch (err) {
 		result.reasons.unshift(err.message);
@@ -131,7 +154,7 @@ const check = async (userId, { ip, lat, lng, accuracy, shift_id, work_date }) =>
 	const isShift = option.shift_id != null;
 	const pool = await getPool();
 	// MERGE trên UNIQUE(user_id, work_date, shift_id): bấm 2 lần cùng lúc không tạo 2 dòng.
-	// Giờ ca chụp lại lúc chấm vào — sửa ca về sau không đổi lịch sử.
+	// Giờ ca + khóa học chụp lại lúc chấm vào — sửa ca / khóa về sau không đổi lịch sử.
 	const row = (
 		await pool
 			.request()
@@ -142,6 +165,8 @@ const check = async (userId, { ip, lat, lng, accuracy, shift_id, work_date }) =>
 			.input('shift_code', sql.NVarChar(10), option.code ?? null)
 			.input('shift_start_at', sql.DateTime2, option.start_at ?? null)
 			.input('shift_end_at', sql.DateTime2, option.end_at ?? null)
+			.input('course_id', sql.VarChar(20), option.course_id)
+			.input('course_name', sql.NVarChar(255), option.course_name ?? null)
 			.input('late', sql.Int, isShift ? shiftLogic.lateMin(option, now) : null)
 			.input('early', sql.Int, isShift ? shiftLogic.earlyMin(option, now) : null)
 			.input('now', sql.DateTime2, now)
@@ -154,9 +179,9 @@ const check = async (userId, { ip, lat, lng, accuracy, shift_id, work_date }) =>
         WHEN MATCHED THEN UPDATE SET check_out_at = @now, check_out_ip = @ip, check_out_distance_m = @distance, early_min = @early
         WHEN NOT MATCHED THEN INSERT
           (user_id, work_date, shift_id, shift_name, shift_code, shift_start_at, shift_end_at,
-           check_in_at, check_in_ip, check_in_distance_m, late_min)
+           course_id, course_name, check_in_at, check_in_ip, check_in_distance_m, late_min)
           VALUES (@user_id, @work_date, @shift_id, @shift_name, @shift_code, @shift_start_at, @shift_end_at,
-           @now, @ip, @distance, @late)
+           @course_id, @course_name, @now, @ip, @distance, @late)
         OUTPUT inserted.*, $action AS merge_action;
       `)
 	).recordset[0];
@@ -165,9 +190,9 @@ const check = async (userId, { ip, lat, lng, accuracy, shift_id, work_date }) =>
 	return { action: merge_action === 'INSERT' ? 'check_in' : 'check_out', record };
 };
 
-// Bảng chấm công 1 ngày (theo ngày bắt đầu ca) cho quản trị: các lượt đã chấm + các ca
-// được xếp mà chưa chấm. Lọc khoa/tìm tên làm ở client.
-// Xem phạm vi khoa (staff_attendance:read@department): chỉ nhân viên cùng khoa với actor.
+// Bảng chấm công học viên 1 ngày (theo ngày bắt đầu ca) cho quản trị: các lượt đã chấm +
+// các ca được xếp mà chưa chấm. Lọc khóa / khoa / tìm tên làm ở client.
+// Xem phạm vi khoa (staff_attendance:read@department): chỉ học viên thuộc khoa của actor.
 const getByDate = async (dateArg, actor) => {
 	const date = dateArg || todayKeyVN();
 	const dept = shiftService.deptLimit(actor, 'read');
@@ -177,11 +202,11 @@ const getByDate = async (dateArg, actor) => {
 	if (dept !== undefined) req.input('dept', sql.VarChar(20), String(dept));
 	const [records, plan] = await Promise.all([
 		req.query(`
-      SELECT a.*, u.full_name, u.staff_number, d.name AS department_name
+      SELECT a.*, t.id AS trainee_id, t.full_name, d.name AS department_name
       FROM staff_attendance a
-      JOIN users u ON u.id = a.user_id
-      LEFT JOIN departments d ON d.id = u.department_id
-      WHERE a.work_date = @date${dept !== undefined ? ' AND u.department_id = @dept' : ''}
+      CROSS APPLY (SELECT TOP 1 * FROM trainees WHERE user_id = a.user_id) t
+      LEFT JOIN departments d ON d.id = t.department_id
+      WHERE a.work_date = @date AND a.course_id IS NOT NULL${dept !== undefined ? ' AND t.department_id = @dept' : ''}
     `),
 		shiftService.planForDate(date, dept),
 	]);
@@ -192,12 +217,11 @@ const getByDate = async (dateArg, actor) => {
 		status: 'checked',
 	}));
 	const done = new Set(rows.map((r) => `${r.user_id}|${r.shift_id ?? ''}`));
-	for (const u of plan.users) {
-		const pattern = u.shift_pattern_id
-			? plan.patternsById.get(u.shift_pattern_id)
-			: plan.defaultPattern;
+	for (const u of plan.trainees) {
+		const course = shiftService.courseResolver(u.periods, plan.patterns)(date);
+		if (!course) continue;
 		const day = shiftLogic.shiftIdsForDay(
-			pattern ?? null,
+			course.pattern,
 			plan.assignments.filter((a) => a.user_id === u.id),
 			date,
 		);
@@ -208,9 +232,11 @@ const getByDate = async (dateArg, actor) => {
 			rows.push({
 				key: `p${u.id}|${id}`,
 				user_id: u.id,
+				trainee_id: u.trainee_id,
 				full_name: u.full_name,
-				staff_number: u.staff_number,
 				department_name: u.department_name,
+				course_id: course.course_id,
+				course_name: course.course_name,
 				work_date: date,
 				shift_id: id,
 				shift_name: shift.name,

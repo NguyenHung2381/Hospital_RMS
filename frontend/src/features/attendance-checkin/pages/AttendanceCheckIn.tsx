@@ -4,8 +4,15 @@ import { QrScanner } from '@/shared/components/QrScanner';
 import UserLayout from '../../../layouts/UserLayout';
 import { checkInAttendance } from '../../course/api/courseApi';
 import { checkInSeminar } from '../../seminar/api/seminarApi';
+import styles from './AttendanceCheckIn.module.css';
 
 type Mode = 'course' | 'seminar';
+
+/** `short` dùng trên điện thoại hẹp để nhãn tab không bị xuống dòng. */
+const MODES: { key: Mode; label: string; short: string }[] = [
+	{ key: 'course', label: 'Buổi học (khóa đào tạo)', short: 'Buổi học' },
+	{ key: 'seminar', label: 'Hội thảo / Hội nghị', short: 'Hội thảo' },
+];
 
 export default function AttendanceCheckIn() {
 	const [mode, setMode] = useState<Mode>('course');
@@ -33,56 +40,31 @@ export default function AttendanceCheckIn() {
 			pageTitle='Điểm danh QR'
 			pageSubtitle='Quét mã QR hiển thị trên màn hình lớp học / hội trường để điểm danh'
 		>
-			<div style={{ maxWidth: 420, margin: '0 auto' }}>
-				<div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
-					<button
-						type='button'
-						onClick={() => setMode('course')}
-						style={{
-							flex: 1,
-							padding: '10px 12px',
-							borderRadius: 10,
-							border: mode === 'course' ? '2px solid var(--color-primary)' : '1.5px solid var(--color-gray-200)',
-							background: mode === 'course' ? 'rgba(10,155,74,0.08)' : 'var(--color-white)',
-							fontWeight: 600,
-							fontSize: 13,
-							cursor: 'pointer',
-						}}
-					>
-						Buổi học (khóa đào tạo)
-					</button>
-					<button
-						type='button'
-						onClick={() => setMode('seminar')}
-						style={{
-							flex: 1,
-							padding: '10px 12px',
-							borderRadius: 10,
-							border: mode === 'seminar' ? '2px solid var(--color-primary)' : '1.5px solid var(--color-gray-200)',
-							background: mode === 'seminar' ? 'rgba(10,155,74,0.08)' : 'var(--color-white)',
-							fontWeight: 600,
-							fontSize: 13,
-							cursor: 'pointer',
-						}}
-					>
-						Hội thảo / Hội nghị
-					</button>
+			<div className={styles.page}>
+				<div
+					className={styles.modes}
+					role='tablist'
+					aria-label='Loại điểm danh'
+				>
+					{MODES.map((m) => (
+						<button
+							key={m.key}
+							type='button'
+							role='tab'
+							aria-selected={mode === m.key}
+							className={`${styles.mode} ${mode === m.key ? styles.modeActive : ''}`}
+							onClick={() => setMode(m.key)}
+						>
+							<span className={styles.modeFull}>{m.label}</span>
+							<span className={styles.modeShort}>{m.short}</span>
+						</button>
+					))}
 				</div>
 
 				{result && (
 					<div
-						style={{
-							display: 'flex',
-							alignItems: 'center',
-							gap: 8,
-							padding: '10px 14px',
-							borderRadius: 10,
-							marginBottom: 12,
-							fontSize: 13,
-							fontWeight: 600,
-							background: result.type === 'success' ? '#e1f5ea' : '#fcebeb',
-							color: result.type === 'success' ? '#085028' : '#791f1f',
-						}}
+						className={`${styles.result} ${result.type === 'success' ? styles.resultSuccess : styles.resultError}`}
+						role='status'
 					>
 						{result.type === 'success' ? <CheckSvg /> : <XSvg />}
 						{result.msg}

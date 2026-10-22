@@ -3,7 +3,6 @@ const { broadcast } = require('../../events/eventService');
 const { httpError } = require('../../../utils/httpError');
 const trainingFileService = require('../trainingFileService');
 const gradebookService = require('../courses/gradebookService');
-const portalService = require('../../portal/portalService');
 
 // ─── Hồ sơ học viên đầy đủ (giai đoạn 3, docs/ke-hoach-nang-cap-dao-tao.md) ─────
 // Chỉ đọc: điểm danh, kết quả & điểm, checklist giấy tờ theo loại khóa đã ghi danh.
@@ -276,14 +275,6 @@ const grades = async (traineeId) => {
 	return out;
 };
 
-// ─── CME tích lũy (theo tài khoản của học viên) ────────────────────────────
-const cme = async (traineeId) => {
-	const pool = await getPool();
-	const t = await assertTrainee(pool, traineeId);
-	if (!t.user_id) return null;
-	return portalService.getUserCme(t.user_id, null);
-};
-
 module.exports = {
 	documentChecklist,
 	reviewDocument,
@@ -293,5 +284,4 @@ module.exports = {
 	removeMyDocument,
 	attendance,
 	grades,
-	cme,
 };

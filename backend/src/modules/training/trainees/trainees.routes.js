@@ -1,6 +1,7 @@
 const router = require('express').Router();
 const { body, query } = require('express-validator');
 const ctrl = require('./traineeController');
+const cmeCtrl = require('../../cme/cmeRecordController');
 const { authenticate, authorizePermission } = require('../../../middlewares/auth');
 const { validate } = require('../../../middlewares/errorHandler');
 const { createTrainingUpload } = require('../../../middlewares/uploadTraining');
@@ -22,6 +23,20 @@ router.post(
 router.post('/grant-accounts', authorizePermission(['trainees', 'manage']), ctrl.grantAccounts);
 
 router.get('/:id', authorizePermission(['trainees', 'read']), ctrl.getById);
+
+// Tài khoản học viên cấp riêng — quản lý tại đây, không qua /users (nội viện)
+router.post(
+	'/:id/account/reset-password',
+	authorizePermission(['trainees', 'manage']),
+	ctrl.resetAccountPassword,
+);
+router.patch(
+	'/:id/account',
+	authorizePermission(['trainees', 'manage']),
+	[body('is_active').isBoolean().withMessage('Trạng thái không hợp lệ').toBoolean()],
+	validate,
+	ctrl.setAccountActive,
+);
 
 router.post(
 	'/',
@@ -89,7 +104,7 @@ router.get(
 	ctrl.getSchedule,
 );
 router.get('/:id/grades', authorizePermission(['trainees', 'read']), ctrl.getGrades);
-router.get('/:id/cme', authorizePermission(['trainees', 'read']), ctrl.getCme);
+router.get('/:id/cme', authorizePermission(['trainees', 'read']), cmeCtrl.getTraineeCme);
 router.delete(
 	'/documents/:docId',
 	authorizePermission(['trainees', 'update']),

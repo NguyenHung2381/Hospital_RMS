@@ -11,7 +11,7 @@ import {
 import { MonthGrid, WeekGrid, type CalItem } from '../../schedule/components/CalendarGrid';
 import styles from '../../schedule/components/CalendarView.module.css';
 import { formatDateVN, parseDate } from '../../../shared/utils/formatDate';
-import type { CalendarCourse, CalendarSession } from '../types/classSchedule.type';
+import type { CalendarSession } from '../types/classSchedule.type';
 import {
 	computeClassMonths,
 	courseColor,
@@ -23,7 +23,6 @@ import {
 
 interface ClassCalendarViewProps {
 	sessions:       CalendarSession[];
-	courses:        CalendarCourse[];
 	year:           number;
 	mode:           CalMode;
 	startMonth:     number;
@@ -37,17 +36,15 @@ interface ClassCalendarViewProps {
 	onOpenCourse:   (courseId: string) => void;
 }
 
-type Detail =
-	| { kind: 'session'; session: CalendarSession }
-	| { kind: 'course'; course: CalendarCourse };
+type Detail = { kind: 'session'; session: CalendarSession };
 
 /**
  * Lịch học tuần / tháng / năm — cùng giao diện với lịch trình nghiên cứu:
  * tuần/tháng dùng lưới kiểu Google (CalendarGrid), năm dùng thẻ tháng nhỏ.
- * Sự kiện là buổi học, thanh nhạt màu là thời gian học của khoá.
+ * Chỉ hiện buổi học (ngày dạy thật) — không vẽ thanh thời gian cả đợt của khoá.
  */
 export function ClassCalendarView({
-	sessions, courses, year, mode, startMonth, weekStart,
+	sessions, year, mode, startMonth, weekStart,
 	onPrev, onNext, canPrev, canNext, onSelectMonth, onOpenCourse,
 }: ClassCalendarViewProps) {
 	const isWeek = mode === 'week';
@@ -77,38 +74,21 @@ export function ClassCalendarView({
 		[isSingle, sessions, year],
 	);
 
-	const items: CalItem[] = !isSingle ? [] : [
-		...courses.flatMap((c): CalItem[] => {
-			const s = parseDate(c.start_date);
-			const e = parseDate(c.end_date);
-			if (!s || !e) return [];
-			return [{
-				id:       `course-${c.id}`,
-				title:    c.name,
-				color:    courseColor(c.id),
-				start:    s,
-				end:      e,
-				subtitle: 'Thời gian khoá học',
-				muted:    true,
-				onClick:  () => setDetail({ kind: 'course', course: c }),
-			}];
-		}),
-		...sessions.flatMap((session): CalItem[] => {
-			const d = parseDate(session.session_date);
-			if (!d) return [];
-			return [{
-				id:        session.id,
-				title:     sessionTitle(session),
-				color:     courseColor(session.course_id),
-				start:     d,
-				end:       d,
-				startTime: session.start_time ?? undefined,
-				endTime:   session.end_time ?? undefined,
-				subtitle:  `${session.course_name}${session.room ? ` · ${session.room}` : ''}`,
-				onClick:   () => setDetail({ kind: 'session', session }),
-			}];
-		}),
-	];
+	const items: CalItem[] = !isSingle ? [] : sessions.flatMap((session): CalItem[] => {
+		const d = parseDate(session.session_date);
+		if (!d) return [];
+		return [{
+			id:        session.id,
+			title:     sessionTitle(session),
+			color:     courseColor(session.course_id),
+			start:     d,
+			end:       d,
+			startTime: session.start_time ?? undefined,
+			endTime:   session.end_time ?? undefined,
+			subtitle:  `${session.course_name}${session.room ? ` · ${session.room}` : ''}`,
+			onClick:   () => setDetail({ kind: 'session', session }),
+		}];
+	});
 
 	const navLabel = (() => {
 		if (isWeek) {
@@ -239,23 +219,18 @@ function DetailModal({
 	onClose: () => void;
 	onOpenCourse: (courseId: string) => void;
 }) {
-	const isSession = detail.kind === 'session';
-	const courseId = isSession ? detail.session.course_id : detail.course.id;
+	const { session } = detail;
+	const courseId = session.course_id;
 	const color = courseColor(courseId);
 
-	const rows: [string, string][] = isSession
-		? [
-			['📅 Ngày học:', formatDateVN(detail.session.session_date)],
-			['🕐 Giờ học:', sessionTime(detail.session) || 'Chưa xếp giờ'],
-			['🎓 Khoá học:', detail.session.course_name],
-			['📚 Bài học:', detail.session.subject_name || '—'],
-			['👨‍🏫 Giảng viên:', detail.session.lecturer_name || '—'],
-			['📍 Phòng học:', detail.session.room || '—'],
-		]
-		: [
-			['📅 Thời gian:', `${formatDateVN(detail.course.start_date)} — ${formatDateVN(detail.course.end_date)}`],
-			['🎓 Mã khoá:', detail.course.id],
-		];
+	const rows: [string, string][] = [
+		['📅 Ngày học:', formatDateVN(session.session_date)],
+		['🕐 Giờ học:', sessionTime(session) || 'Chưa xếp giờ'],
+		['🎓 Khoá học:', session.course_name],
+		['📚 Bài học:', session.subject_name || '—'],
+		['👨‍🏫 Giảng viên:', session.lecturer_name || '—'],
+		['📍 Phòng học:', session.room || '—'],
+	];
 
 	return (
 		<div className={styles.popoverOverlay} onClick={onClose}>
@@ -263,10 +238,10 @@ function DetailModal({
 				<div className={styles.detailHead} style={{ borderLeftColor: color }}>
 					<div>
 						<span className={styles.detailBadge} style={{ background: `${color}20`, color }}>
-							{isSession ? 'Buổi học' : 'Thời gian khoá học'}
+							Buổi học
 						</span>
 						<h3 className={styles.detailTitle}>
-							{isSession ? sessionTitle(detail.session) : detail.course.name}
+							{sessionTitle(session)}
 						</h3>
 					</div>
 					<button className={styles.popoverClose} onClick={onClose}>✕</button>

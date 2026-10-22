@@ -2,7 +2,7 @@ const net = require('net');
 const systemSettingService = require('../modules/settings/systemSettingService');
 const { normalizeIp } = require('./activityDescribe');
 
-// Chấm công nhân viên: phải ĐỒNG THỜI (1) gọi từ IP mạng bệnh viện và (2) có
+// Chấm công học viên: phải ĐỒNG THỜI (1) gọi từ IP mạng bệnh viện và (2) có
 // vị trí GPS trong bán kính quanh bệnh viện. Admin chỉnh ở Cấu hình hệ thống →
 // tab "Chấm công". Thiếu cấu hình = không ai chấm được (an toàn hơn cho qua).
 //   ATTENDANCE_ALLOWED_IPS     "113.161.1.2, 10.0.0.0/8" — IP/CIDR, IPv4 hoặc IPv6

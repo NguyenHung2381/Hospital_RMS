@@ -51,6 +51,7 @@ export { default as RoleSvg } from '../svg/role.svg?react';
 export { default as RoundSvg } from '../svg/round.svg?react';
 export { default as SearchSvg } from '../svg/search.svg?react';
 export { default as SendSvg } from '../svg/send.svg?react';
+export { default as SettingsSvg } from '../svg/settings.svg?react';
 export { default as ShieldSvg } from '../svg/shield.svg?react';
 export { default as TagSvg } from '../svg/tag.svg?react';
 export { default as TopicSvg } from '../svg/topic.svg?react';

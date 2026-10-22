@@ -36,7 +36,9 @@ export const createCmeRecord = (form: CmeRecordFormData) =>
 export const updateCmeRecord = (id: string, form: CmeRecordFormData) =>
 	apiClient.put<CmeRecord>(`/cme-records/${id}`, toPayload(form));
 
-export const approveCmeRecord = (id: string) => apiClient.post<CmeRecord>(`/cme-records/${id}/approve`, {});
+/** credits: số tín chỉ người quản lý nhập khi duyệt; bỏ trống = giữ tín chỉ hiện có. */
+export const approveCmeRecord = (id: string, credits?: number) =>
+	apiClient.post<CmeRecord>(`/cme-records/${id}/approve`, credits === undefined ? {} : { credits });
 export const rejectCmeRecord = (id: string, reason: string) =>
 	apiClient.post<CmeRecord>(`/cme-records/${id}/reject`, { reason });
 
@@ -58,6 +60,8 @@ export interface CmeRecordImportDefaults {
 	title?: string;
 	/** Dùng cho dòng để trống cột Số lượng */
 	quantity?: number;
+	/** Giờ tín chỉ cho dòng để trống cột Giờ tín chỉ — chỉ với loại không có giờ quy đổi ("Khác") */
+	credits?: number;
 	/** Tạo nhân viên mới cho Mã NV chưa có trong hệ thống (cần quyền users:create) */
 	create_missing?: boolean;
 	/** Khoa/Phòng cho nhân viên mới khi file không có cột Khoa/Phòng */
@@ -66,13 +70,17 @@ export interface CmeRecordImportDefaults {
 	staff_departments?: Record<number, string>;
 	/** Họ tên nhập ở bước xem trước cho nhân viên mới mà file / hệ thống chưa có: { [Mã NV]: họ tên } */
 	staff_names?: Record<number, string>;
+	/** Người nhập xác nhận nhập cả dòng trùng (mặc định bỏ qua) */
+	include_duplicates?: boolean;
 }
 
 export const importCmeRecordsExcel = (file: File, dryRun: boolean, defaults: CmeRecordImportDefaults) => {
 	const form = new FormData();
 	form.append('dry_run', dryRun ? '1' : '0');
 	for (const [k, v] of Object.entries(defaults)) {
-		if (v) form.append(k, v === true ? '1' : typeof v === 'object' ? JSON.stringify(v) : String(v));
+		// Bỏ giá trị trống; số 0 vẫn gửi (Giờ tín chỉ mặc định = 0 là hợp lệ)
+		if (v === undefined || v === null || v === '' || v === false) continue;
+		form.append(k, v === true ? '1' : typeof v === 'object' ? JSON.stringify(v) : String(v));
 	}
 	form.append('file', file);
 	return apiClient.postForm<CmeRecordImportResult>('/cme-records/import-excel', form);

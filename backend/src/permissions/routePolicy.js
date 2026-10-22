@@ -51,6 +51,8 @@ module.exports = {
 		[`GET ${API}/public/featured-topics`]: 'Cổng công khai — đề tài tiêu biểu',
 		[`GET ${API}/public/seminars/:token`]:
 			'Cổng công khai — hội nghị theo link QR (token 128-bit, có rate-limit)',
+		[`POST ${API}/public/seminars/:token/staff-lookup`]:
+			'Cổng công khai — tra nhân viên nội viện khi đăng ký QR (phải khớp cả họ tên + mã NV, chỉ trả họ tên/khoa/học hàm, có rate-limit)',
 		[`POST ${API}/public/seminars/:token/register`]:
 			'Cổng công khai — đăng ký hội nghị qua QR (có captcha, rate-limit)',
 		[`GET ${API}/public/seminar-tickets/:code`]:
@@ -88,6 +90,12 @@ module.exports = {
 		[`GET ${API}/my-tasks/`]: 'Việc cần làm của chính mình',
 		[`GET ${API}/me/training`]:
 			'Khóa học mình học/dạy + lịch học của chính mình (lọc theo user_id)',
+		[`GET ${API}/me/training/schedule`]:
+			'Lịch học của học viên đang đăng nhập (lọc theo userId = req.user.id, không nhận trainee_id từ client)',
+		[`GET ${API}/me/training/attendance`]:
+			'Điểm danh của học viên đang đăng nhập (traineeIdOfUser(req.user.id))',
+		[`GET ${API}/me/training/grades`]:
+			'Kết quả & điểm của học viên đang đăng nhập (traineeIdOfUser(req.user.id))',
 		[`GET ${API}/me/courses/:id`]:
 			'Chi tiết khóa mình đang học — service chỉ trả khi có ghi danh; tài liệu/đề thi chỉ khi đã duyệt',
 		[`PATCH ${API}/me/documents/:docId/download`]:
@@ -96,9 +104,9 @@ module.exports = {
 			'Tăng lượt tải tài liệu bài học — service kiểm tra tài liệu công khai + bài học thuộc khóa đã được duyệt',
 		[`POST ${API}/me/courses/:id/register`]:
 			'Tự đăng ký khóa học — service chỉ nhận khóa bật đăng ký công khai, trong cửa sổ đăng ký, trạng thái chờ duyệt',
-		[`GET ${API}/me/attendance`]: 'Chấm công của chính mình (lọc theo user_id)',
+		[`GET ${API}/me/attendance`]: 'Chấm công của học viên đang đăng nhập (lọc theo user_id; tài khoản khác chỉ nhận IP hiện tại)',
 		[`POST ${API}/me/attendance/check`]:
-			'Tự chấm công — service gán user_id = req.user.id, kiểm tra IP bệnh viện + GPS trong bán kính + ca đang trong giờ được chấm',
+			'Học viên tự chấm công — service gán user_id = req.user.id, chỉ tài khoản học viên trong thời gian khóa học, kiểm tra IP bệnh viện + GPS trong bán kính + ca đang trong giờ được chấm',
 		[`GET ${API}/me/cme`]: 'Tín chỉ CME của chính mình (lọc theo user_id)',
 		[`POST ${API}/me/cme/export-excel`]:
 			'Xuất Excel phiếu CME của chính mình (dùng req.user.id, không nhận user_id từ client)',
@@ -134,6 +142,7 @@ module.exports = {
 		[`POST ${API}/excel/parse`]:
 			'Đọc file Excel thành bảng chữ — không ghi DB; nhập thật đi qua API tạo mới có kiểm quyền của từng module',
 		[`GET ${API}/modules/`]: 'Module nào đang bật — để ẩn/hiện menu',
+		[`GET ${API}/modules/menus`]: 'Mục menu nào bị quản trị ẩn ở từng cổng — chỉ đọc cấu hình giao diện',
 
 		// Thành viên hội đồng — service kiểm tra ghế trong council_members
 		// (assertSecretary / assertChairman, councilProgressService.js)

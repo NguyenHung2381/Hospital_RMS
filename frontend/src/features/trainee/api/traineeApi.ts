@@ -75,6 +75,17 @@ export const grantTraineeAccounts = (traineeIds?: string[]) =>
 		traineeIds ? { trainee_ids: traineeIds } : {},
 	);
 
+// Tài khoản học viên cấp riêng — quản lý tại hồ sơ học viên, không qua /users.
+// Đặt lại về mật khẩu mặc định (= tên đăng nhập), bắt đổi ở lần đăng nhập tới.
+export const resetTraineeAccountPassword = (traineeId: string) =>
+	apiClient.post<{ temporary_password: string } | null>(
+		`/trainees/${traineeId}/account/reset-password`,
+		{},
+	);
+
+export const setTraineeAccountActive = (traineeId: string, isActive: boolean) =>
+	apiClient.patch<null>(`/trainees/${traineeId}/account`, { is_active: isActive });
+
 export const importTraineesExcel = (file: File, dryRun: boolean) => {
 	const form = new FormData();
 	form.append('dry_run', dryRun ? '1' : '0');

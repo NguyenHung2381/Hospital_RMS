@@ -381,7 +381,7 @@ export function SeminarTestModal({
 			</Modal>
 			{importing && (
 				<ImportQuestionsModal
-					multipleChoiceOnly
+					onlyType='single_choice'
 					onClose={() => setImporting(false)}
 					onImport={handleImport}
 				/>

@@ -1,24 +1,36 @@
-// Phạm vi khoa của chấm công / phân ca (staff_attendance): khoa trưởng, điều
-// dưỡng trưởng chỉ thấy và xếp ca cho khoa mình; lượt cấp quyền có từ trước khi
-// resource có phạm vi (scope NULL) giữ hiệu lực toàn viện, không bị thu hẹp.
+// Phạm vi khoa của chấm công / phân ca học viên (staff_attendance): khoa trưởng,
+// điều dưỡng trưởng chỉ thấy và xếp ca cho học viên khoa mình (trainees.department_id);
+// lượt cấp quyền có từ trước khi resource có phạm vi (scope NULL) giữ hiệu lực toàn
+// viện, không bị thu hẹp. Chỉ tài khoản học viên mới được phân ca.
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { install } = require('../auth/fakeDb');
 
-// Nhân viên theo khoa
+// Tài khoản học viên theo khoa, đang học khóa KH1
 const USERS = [
 	{ id: 'U1', full_name: 'A', department_id: 'K1' },
 	{ id: 'U2', full_name: 'B', department_id: 'K1' },
 	{ id: 'U3', full_name: 'C', department_id: 'K2' },
 ];
+const isTrainee = (id, dept) => USERS.some((u) => u.id === id && (!dept || u.department_id === dept));
 
 const log = install(async (text, inputs) => {
-	if (/FROM users u LEFT JOIN departments d/.test(text)) {
-		return USERS.filter((u) => !inputs.dept || u.department_id === inputs.dept);
+	if (/FROM course_enrollments e/.test(text)) {
+		return USERS.filter((u) => !inputs.dept || u.department_id === inputs.dept).map((u) => ({
+			user_id: u.id,
+			trainee_id: `HV${u.id}`,
+			full_name: u.full_name,
+			department_id: u.department_id,
+			course_id: 'KH1',
+			course_name: 'Khóa 1',
+			shift_pattern_id: null,
+			start_date: '2026-11-01',
+			end_date: null,
+		}));
 	}
 	if (/FROM OPENJSON\(@users\) j/.test(text)) {
 		return JSON.parse(inputs.users)
-			.filter((id) => !USERS.some((u) => u.id === id && u.department_id === inputs.dept))
+			.filter((id) => !isTrainee(id, inputs.dept))
 			.map((id) => ({ id }));
 	}
 	if (/FROM work_shifts/.test(text)) return [{ id: 1, is_active: true }];
@@ -66,7 +78,7 @@ test('lượt cấp scope NULL: staff_attendance giữ toàn viện, resource kh
 	assert.equal(nullScopeFill('users'), 'department');
 });
 
-test('getRoster phạm vi khoa: chỉ người khoa mình, bỏ qua department_id gửi lên', async () => {
+test('getRoster phạm vi khoa: chỉ học viên khoa mình, bỏ qua department_id gửi lên', async () => {
 	const own = await shiftService.getRoster(ROSTER, HEAD_K1);
 	assert.deepEqual(
 		own.users.map((u) => u.id),
@@ -87,13 +99,13 @@ test('getRoster toàn viện / lượt cấp cũ / superuser: không đổi hàn
 			['U1', 'U2', 'U3'],
 		);
 		assert.deepEqual(
-			(await shiftService.getRoster({ ...ROSTER, department_id: 'K2' }, a)).users.map((u) => u.id),
-			['U3'],
+			(await shiftService.getRoster(ROSTER, a)).users[0].periods.map((p) => p.course_id),
+			['KH1'],
 		);
 	}
 });
 
-test('setRoster phạm vi khoa: người ngoài khoa ⇒ 403, không ghi gì', async () => {
+test('setRoster phạm vi khoa: học viên ngoài khoa ⇒ 403, không ghi gì', async () => {
 	const n = log.length;
 	await denied(shiftService.setRoster({ ...PUT, user_ids: ['U1', 'U3'] }, HEAD_K1));
 	await denied(shiftService.setRoster({ ...PUT, user_ids: ['U1'] }, NO_DEPT));
@@ -104,7 +116,7 @@ test('setRoster phạm vi khoa: người ngoài khoa ⇒ 403, không ghi gì', a
 	);
 });
 
-test('setRoster phạm vi khoa: người cùng khoa thì được', async () => {
+test('setRoster phạm vi khoa: học viên cùng khoa thì được', async () => {
 	const n = log.length;
 	assert.deepEqual(await shiftService.setRoster({ ...PUT, user_ids: ['U1', 'U2'] }, HEAD_K1), {
 		cells: 2,
@@ -112,11 +124,16 @@ test('setRoster phạm vi khoa: người cùng khoa thì được', async () => 
 	assert.ok(queriesSince(n).some((t) => /INSERT INTO shift_assignments/.test(t)));
 });
 
-test('setRoster toàn viện / lượt cấp cũ / superuser: không kiểm tra khoa', async () => {
+test('setRoster toàn viện / lượt cấp cũ / superuser: không kiểm tra khoa, chỉ kiểm tra là học viên', async () => {
 	for (const a of [HR, LEGACY, SU]) {
 		const n = log.length;
 		await shiftService.setRoster({ ...PUT, user_ids: ['U1', 'U3'] }, a);
-		assert.ok(!queriesSince(n).some((t) => /FROM OPENJSON\(@users\) j/.test(t)));
+		const check = log.slice(n).find((q) => /FROM OPENJSON\(@users\) j/.test(q.text));
+		assert.doesNotMatch(check.text, /@dept/);
+		await assert.rejects(
+			shiftService.setRoster({ ...PUT, user_ids: ['NV1'] }, a),
+			(e) => e.statusCode === 400,
+		);
 	}
 });
 
@@ -124,10 +141,10 @@ test('bảng chấm công phạm vi khoa: lọc theo khoa của người xem', a
 	let n = log.length;
 	await staffAttendanceService.getByDate('2026-11-02', HEAD_K1);
 	const att = log.slice(n).find((q) => /FROM staff_attendance a/.test(q.text));
-	assert.match(att.text, /u\.department_id = @dept/);
+	assert.match(att.text, /t\.department_id = @dept/);
 	assert.equal(att.inputs.dept, 'K1');
 	assert.equal(
-		log.slice(n).find((q) => /FROM users u LEFT JOIN departments d/.test(q.text)).inputs.dept,
+		log.slice(n).find((q) => /FROM course_enrollments e/.test(q.text)).inputs.dept,
 		'K1',
 	);
 

@@ -142,7 +142,6 @@ export function ClassScheduleBoard({
 				) : (
 					<ClassCalendarView
 						sessions={shownSessions}
-						courses={shownCourses}
 						year={year}
 						mode={calMode}
 						startMonth={calMode === 'year' ? 0 : calStart}

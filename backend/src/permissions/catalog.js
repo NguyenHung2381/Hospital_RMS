@@ -511,25 +511,25 @@ const MODULES = [
 			},
 			{
 				key: 'staff_attendance',
-				label: 'Chấm công nhân viên',
+				label: 'Chấm công học viên',
 				permissions: [
 					p(
 						'PERM-STATT-READ',
 						'read',
 						'Xem bảng chấm công',
-						'Xem giờ vào/ra chấm công của nhân viên trong khoa hoặc toàn viện (theo phạm vi)',
+						'Xem giờ vào/ra chấm công của học viên theo khóa đào tạo, trong khoa hoặc toàn viện (theo phạm vi)',
 					),
 					p(
 						'PERM-STATT-MANAGE',
 						'manage',
-						'Cấu hình ca làm việc',
-						'Tạo ca làm, mẫu ca theo tuần và gán mẫu ca cho nhân viên (luôn toàn viện, không theo phạm vi)',
+						'Cấu hình ca học viên',
+						'Tạo ca, mẫu ca theo tuần và gán mẫu ca cho khóa đào tạo (luôn toàn viện, không theo phạm vi)',
 					),
 					p(
 						'PERM-STATT-ROSTER',
 						'roster',
 						'Phân ca',
-						'Xếp ca làm việc theo ngày cho nhân viên trong khoa hoặc toàn viện (theo phạm vi), ghi đè mẫu ca tuần',
+						'Xếp ca theo ngày cho học viên trong khoa hoặc toàn viện (theo phạm vi), ghi đè mẫu ca tuần của khóa',
 					),
 				],
 			},

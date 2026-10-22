@@ -157,7 +157,13 @@ export default function TraineeDetail() {
 							))}
 						</div>
 						<div className={ds.body}>
-							{tab === 'info' && <TraineeInfoTab trainee={trainee} />}
+							{tab === 'info' && (
+									<TraineeInfoTab
+										trainee={trainee}
+										canManageAccount={has('trainees:manage')}
+										onChanged={() => void load()}
+									/>
+								)}
 							{tab === 'documents' && (
 								<TraineeDocumentsTab
 									traineeId={id}
@@ -221,9 +227,13 @@ function TraineeSummary({
 						<span className={trainee.is_active ? ds.chipDone : ds.chipMuted}>
 							{trainee.is_active ? 'Hoạt động' : 'Ngừng hoạt động'}
 						</span>
-						<span className={trainee.account_granted ? ds.chipDone : ds.chipMuted}>
-							{trainee.account_granted ? 'Đã cấp tài khoản' : 'Chưa cấp tài khoản'}
-						</span>
+						{trainee.account_granted && trainee.account_active === false ? (
+							<span className={ds.chipMissing}>Tài khoản đã khoá</span>
+						) : (
+							<span className={trainee.account_granted ? ds.chipDone : ds.chipMuted}>
+								{trainee.account_granted ? 'Đã cấp tài khoản' : 'Chưa cấp tài khoản'}
+							</span>
+						)}
 						{trainee.is_employee && <span className={ds.chipInfo}>Nhân viên BV</span>}
 					</div>
 				</div>

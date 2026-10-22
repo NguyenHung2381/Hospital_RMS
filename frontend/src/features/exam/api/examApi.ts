@@ -71,7 +71,7 @@ export const examApi = {
 	},
 	createQuestion: (payload: QuestionPayload) => apiClient.post<ExamQuestion>('/exams/questions', payload),
 	createQuestionsBulk: (questions: QuestionPayload[]) =>
-		apiClient.post<{ created: number }>('/exams/questions/bulk', { questions }),
+		apiClient.post<{ created: number; ids: string[] }>('/exams/questions/bulk', { questions }),
 	uploadQuestionImage: (file: File) => {
 		const form = new FormData();
 		form.append('image', file);

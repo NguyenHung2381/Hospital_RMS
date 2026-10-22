@@ -225,6 +225,7 @@ GET    /api/v1/me/training/attendance  authOnly
 GET    /api/v1/me/training/grades  authOnly
 GET    /api/v1/me/training/schedule  authOnly
 GET    /api/v1/modules/  authOnly
+GET    /api/v1/modules/menus  authOnly
 GET    /api/v1/my-tasks/  authOnly
 GET    /api/v1/notifications/  authOnly
 DELETE /api/v1/notifications/:id  notifications:delete
@@ -326,8 +327,8 @@ POST   /api/v1/staff-attendance/patterns  staff_attendance:manage
 GET    /api/v1/staff-attendance/patterns  staff_attendance:manage | staff_attendance:roster
 PUT    /api/v1/staff-attendance/patterns/:id  staff_attendance:manage
 DELETE /api/v1/staff-attendance/patterns/:id  staff_attendance:manage
-PUT    /api/v1/staff-attendance/patterns/:id/users  staff_attendance:manage
-GET    /api/v1/staff-attendance/patterns/users  staff_attendance:manage
+PUT    /api/v1/staff-attendance/patterns/:id/courses  staff_attendance:manage
+GET    /api/v1/staff-attendance/patterns/courses  staff_attendance:manage
 GET    /api/v1/staff-attendance/roster  staff_attendance:roster
 PUT    /api/v1/staff-attendance/roster  staff_attendance:roster
 POST   /api/v1/staff-attendance/shifts  staff_attendance:manage
@@ -393,6 +394,8 @@ GET    /api/v1/trainees/  trainees:read
 DELETE /api/v1/trainees/:id  trainees:delete
 GET    /api/v1/trainees/:id  trainees:read
 PUT    /api/v1/trainees/:id  trainees:update
+PATCH  /api/v1/trainees/:id/account  trainees:manage
+POST   /api/v1/trainees/:id/account/reset-password  trainees:manage
 GET    /api/v1/trainees/:id/attendance  trainees:read
 GET    /api/v1/trainees/:id/cme  trainees:read
 GET    /api/v1/trainees/:id/document-checklist  trainees:read_sensitive

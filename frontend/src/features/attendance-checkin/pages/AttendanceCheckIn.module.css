@@ -1,0 +1,95 @@
+/* Khung nội dung của layout là flex-column: `margin: 0 auto` một mình sẽ làm khối co
+ * lại theo nội dung — cần width: 100% để khối giãn tới max-width rồi mới căn giữa. */
+.page {
+	width: 100%;
+	max-width: 560px;
+	margin: 0 auto;
+	display: flex;
+	flex-direction: column;
+	gap: var(--space-4);
+}
+
+/* ── Chọn loại điểm danh (segmented control) ── */
+.modes {
+	display: grid;
+	grid-template-columns: 1fr 1fr;
+	gap: var(--space-1);
+	padding: var(--space-1);
+	border: 1.5px solid var(--color-gray-200);
+	border-radius: var(--radius-lg);
+	background: var(--color-white);
+}
+
+.mode {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	/* height (không phải min-height): rule `button` toàn cục trên mobile đặt
+	 * min-height 38px với specificity cao hơn. Nhãn luôn 1 dòng nên cố định được. */
+	height: 44px;
+	padding: 0 var(--space-3);
+	border: none;
+	border-radius: var(--radius-md);
+	background: transparent;
+	font-family: inherit;
+	font-size: var(--font-size-sm);
+	font-weight: 600;
+	line-height: 1.3;
+	color: var(--color-gray-600);
+	white-space: nowrap;
+	cursor: pointer;
+	transition:
+		background 0.15s,
+		color 0.15s;
+}
+.mode:hover:not(.modeActive) {
+	background: var(--color-gray-50);
+	color: var(--color-gray-800);
+}
+.mode:focus-visible {
+	outline: 2px solid var(--color-primary);
+	outline-offset: 2px;
+}
+.modeActive {
+	background: var(--color-primary-pale);
+	color: var(--color-primary-dark);
+	box-shadow: inset 0 0 0 1.5px var(--color-primary);
+}
+
+.modeShort {
+	display: none;
+}
+
+/* ── Kết quả quét ── */
+.result {
+	display: flex;
+	align-items: center;
+	gap: var(--space-2);
+	padding: var(--space-3) var(--space-4);
+	border-radius: var(--radius-lg);
+	font-size: var(--font-size-sm);
+	font-weight: 600;
+}
+.result svg {
+	flex-shrink: 0;
+	width: 18px;
+	height: 18px;
+}
+.resultSuccess {
+	background: #e1f5ea;
+	color: #085028;
+}
+.resultError {
+	background: #fcebeb;
+	color: #791f1f;
+}
+
+/* Điện thoại hẹp: dùng nhãn rút gọn để tab không bị xuống dòng. */
+@media (max-width: 420px) {
+	.modeFull {
+		display: none;
+	}
+	.modeShort {
+		display: inline;
+	}
+}

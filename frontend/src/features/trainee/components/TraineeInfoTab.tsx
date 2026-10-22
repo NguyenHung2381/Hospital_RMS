@@ -3,6 +3,7 @@ import { formatDate } from '../../../shared/utils/formatDate';
 import { genderLabel } from '../../../shared/utils/gender';
 import type { Trainee } from '../types/trainee.type';
 import ds from '../pages/TraineeDetail.module.css';
+import { TraineeAccountSection } from './TraineeAccountSection';
 
 function InfoItem({ label, value, full }: { label: string; value: ReactNode; full?: boolean }) {
 	const empty = value == null || value === '';
@@ -29,7 +30,15 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
  * Tab "Thông tin cá nhân": toàn bộ trường của hồ sơ, nhóm Định danh / Liên hệ / Văn bằng / Hành nghề / Đơn vị cử.
  * Nút "Chỉnh sửa thông tin" nằm trên header trang.
  */
-export function TraineeInfoTab({ trainee }: { trainee: Trainee }) {
+export function TraineeInfoTab({
+	trainee,
+	canManageAccount = false,
+	onChanged = () => {},
+}: {
+	trainee: Trainee;
+	canManageAccount?: boolean;
+	onChanged?: () => void;
+}) {
 	return (
 		<div className={ds.infoSections}>
 			<Section title='Định danh'>
@@ -42,7 +51,6 @@ export function TraineeInfoTab({ trainee }: { trainee: Trainee }) {
 				<InfoItem label='Ngày cấp' value={date(trainee.national_id_issued_date)} />
 				<InfoItem label='Nơi cấp' value={trainee.national_id_issued_place} />
 				<InfoItem label='Trạng thái' value={trainee.is_active ? 'Hoạt động' : 'Ngừng hoạt động'} />
-				<InfoItem label='Tài khoản đăng nhập' value={trainee.account_granted ? 'Đã cấp' : 'Chưa cấp'} />
 			</Section>
 			<Section title='Liên hệ'>
 				<InfoItem label='Điện thoại' value={trainee.phone} />
@@ -66,6 +74,11 @@ export function TraineeInfoTab({ trainee }: { trainee: Trainee }) {
 				<InfoItem label='Khoa / Phòng' value={trainee.department_name} />
 				<InfoItem label='Đơn vị công tác' value={trainee.workplace} full />
 			</Section>
+			<TraineeAccountSection
+				trainee={trainee}
+				canManage={canManageAccount}
+				onChanged={onChanged}
+			/>
 			{trainee.notes && (
 				<Section title='Ghi chú'>
 					<InfoItem label='Ghi chú' value={trainee.notes} full />

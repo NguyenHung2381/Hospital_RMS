@@ -107,7 +107,7 @@ export function PatternFormModal({
 				<input type='checkbox' checked={isDefault} onChange={(e) => setIsDefault(e.target.checked)} />
 				<span>
 					<b>Mẫu mặc định</b>
-					<div className={m.formHint}>Áp dụng cho mọi người chưa được gán mẫu riêng. Chỉ có 1 mẫu mặc định.</div>
+					<div className={m.formHint}>Áp dụng cho mọi khóa học chưa được gán mẫu riêng. Chỉ có 1 mẫu mặc định.</div>
 				</span>
 			</label>
 

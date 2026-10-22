@@ -106,10 +106,17 @@ export default function MyAttendance() {
 		}
 	};
 
-	const blocked = !enabled ? 'Chức năng chấm công đang tắt. Vui lòng liên hệ quản trị hệ thống.' : data && !data.configured ? 'Quản trị chưa cấu hình chấm công. Vui lòng liên hệ phòng CNTT.' : '';
+	const blocked = !enabled
+		? 'Chức năng chấm công đang tắt. Vui lòng liên hệ phòng Đào tạo.'
+		: data && !data.is_trainee
+			? 'Chấm công chỉ dành cho học viên đang học khóa đào tạo tại bệnh viện.'
+			: data && !data.configured
+				? 'Quản trị chưa cấu hình chấm công. Vui lòng liên hệ phòng CNTT.'
+				: '';
+	const noCourseWeek = data?.week.every((d) => !d.course_id) ?? true;
 
 	return (
-		<UserLayout pageTitle='Chấm công' pageSubtitle='Chấm công theo ca — cần kết nối mạng bệnh viện và đang ở trong khuôn viên'>
+		<UserLayout pageTitle='Chấm công' pageSubtitle='Chấm công theo ca trong thời gian khóa học — cần kết nối mạng bệnh viện và đang ở trong khuôn viên'>
 			{loadError && <EmptyState title='Không thể tải dữ liệu' desc={loadError} />}
 			{!data && !loadError && <InlineLoading />}
 
@@ -118,6 +125,11 @@ export default function MyAttendance() {
 					<Card>
 						<Card.Header icon={<ClockSvg />} title={`Hôm nay, ${formatDateVN(new Date())}`} />
 						<Card.Body>
+							{data.current_course && (
+								<p className={own.note}>
+									Khóa đang học: <b>{data.current_course.course_name}</b>
+								</p>
+							)}
 							<div className={own.conditions}>
 								<Badge tone={data.ip_ok ? 'green' : 'red'} dot>
 									{data.ip_ok ? 'Đang dùng mạng bệnh viện' : 'Chưa kết nối mạng bệnh viện'}
@@ -129,7 +141,7 @@ export default function MyAttendance() {
 								<p className={own.error}>{blocked}</p>
 							) : data.options.length === 0 ? (
 								<p className={own.idle}>
-									Hiện không có ca nào trong giờ chấm công.
+									{data.current_course ? 'Hiện không có ca nào trong giờ chấm công.' : 'Hôm nay bạn không có khóa học nào đang diễn ra nên không cần chấm công.'}
 									{next && (
 										<>
 											{' '}
@@ -174,6 +186,7 @@ export default function MyAttendance() {
 												<ShiftTag s={{ code: r.shift_code, color: null, name: r.shift_name, start_time: null, end_time: null }} />
 												<span className={tbl.cellSub}>
 													{r.shift_name ?? 'Tự do'} · {formatDateVN(r.work_date)}
+													{r.course_name ? ` · ${r.course_name}` : ''}
 												</span>
 											</div>
 											<div className={own.times}>
@@ -198,8 +211,10 @@ export default function MyAttendance() {
 					<Card>
 						<Card.Header icon={<CalendarSvg />} title='Lịch ca 7 ngày tới' />
 						<Card.Body>
-							{data.week.every((d) => d.shifts === null) ? (
-								<p className={own.idle}>Bạn chưa có lịch ca — chấm công tự do 1 lượt vào/ra mỗi ngày.</p>
+							{noCourseWeek ? (
+								<p className={own.idle}>7 ngày tới bạn không có khóa học nào đang diễn ra.</p>
+							) : data.week.every((d) => !d.course_id || d.shifts === null) ? (
+								<p className={own.idle}>Khóa học chưa có lịch ca — chấm công tự do 1 lượt vào/ra mỗi ngày học.</p>
 							) : (
 								<div className={own.week}>
 									{data.week.map((d) => (
@@ -207,7 +222,9 @@ export default function MyAttendance() {
 											<div className={own.timeLabel}>
 												{WEEKDAY[new Date(`${d.date}T00:00:00Z`).getUTCDay()]} {d.date.slice(8)}/{d.date.slice(5, 7)}
 											</div>
-											{d.shifts === null ? (
+											{!d.course_id ? (
+												<span className={tbl.cellSub}>Không học</span>
+											) : d.shifts === null ? (
 												<span className={tbl.cellSub}>Tự do</span>
 											) : d.shifts.length === 0 ? (
 												<span className={tbl.cellSub}>Nghỉ</span>
@@ -225,7 +242,11 @@ export default function MyAttendance() {
 									))}
 								</div>
 							)}
-							{data.pattern_name && <p className={own.note}>Mẫu ca tuần: {data.pattern_name}. Ngày được phân ca riêng sẽ theo bảng phân ca.</p>}
+							{data.current_course?.pattern_name && (
+								<p className={own.note}>
+									Mẫu ca tuần của khóa: {data.current_course.pattern_name}. Ngày được phân ca riêng sẽ theo bảng phân ca.
+								</p>
+							)}
 						</Card.Body>
 					</Card>
 
@@ -242,6 +263,7 @@ export default function MyAttendance() {
 												<tr>
 													<th className={tbl.thIdx}>STT</th>
 													<th>Ngày</th>
+													<th>Khóa học</th>
 													<th>Ca</th>
 													<th>Giờ vào</th>
 													<th>Giờ ra</th>
@@ -253,6 +275,7 @@ export default function MyAttendance() {
 													<tr key={r.id}>
 														<td className={tbl.tdIdx}>{pg.offset + i + 1}</td>
 														<td className={tbl.cellTitle}>{formatDateVN(r.work_date)}</td>
+														<td>{r.course_name ?? '—'}</td>
 														<td>{r.shift_name ?? <span className={tbl.cellSub}>Tự do</span>}</td>
 														<td>{formatTimeVN(r.check_in_at)}</td>
 														<td>{formatTimeVN(r.check_out_at) || '--:--'}</td>

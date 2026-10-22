@@ -11,6 +11,7 @@ import {
 	WEEKDAYS,
 	addDays,
 	patternApi,
+	periodOn,
 	rosterApi,
 	shiftApi,
 	shiftsForDay,
@@ -42,6 +43,7 @@ export default function Roster() {
 	const [shifts, setShifts] = useState<WorkShift[]>([]);
 	const [patterns, setPatterns] = useState<ShiftPattern[]>([]);
 	const [dept, setDept] = useState('');
+	const [course, setCourse] = useState('');
 	const [search, setSearch] = useState('');
 	const [selected, setSelected] = useState<Set<string>>(new Set());
 	const [anchor, setAnchor] = useState<{ row: number; col: number } | null>(null);
@@ -75,16 +77,32 @@ export default function Roster() {
 		() => [...new Set((data?.users ?? []).map((u) => u.department_name).filter((d): d is string => !!d))].sort(),
 		[data],
 	);
+	const courses = useMemo(() => {
+		const map = new Map<string, string>();
+		for (const u of data?.users ?? []) for (const p of u.periods) map.set(p.course_id, p.course_name);
+		return [...map].sort((a, b) => a[1].localeCompare(b[1], 'vi'));
+	}, [data]);
 	const filtered = useMemo(() => {
 		const q = search.trim().toLowerCase();
 		return (data?.users ?? []).filter(
-			(u) => (!dept || u.department_name === dept) && (!q || u.full_name.toLowerCase().includes(q) || (u.staff_number ?? '').toLowerCase() === q),
+			(u) =>
+				(!dept || u.department_name === dept) &&
+				(!course || u.periods.some((p) => p.course_id === course)) &&
+				(!q || u.full_name.toLowerCase().includes(q) || u.trainee_id.toLowerCase() === q),
 		);
-	}, [data, dept, search]);
+	}, [data, dept, course, search]);
+	// Ô của ngày học viên không học khóa nào thì không chọn được
+	const studying = (u: ShiftUser, date: string) => periodOn(u.periods, date) != null;
 	const pg = useClientPaging(filtered, 30);
 	const rows = pg.paged;
 
-	const toggleKeys = (keys: string[]) =>
+	const toggleKeys = (all: string[]) => {
+		const keys = all.filter((k) => {
+			const [userId, date] = k.split('|');
+			const u = rows.find((r) => r.id === userId);
+			return !!u && studying(u, date);
+		});
+		if (!keys.length) return;
 		setSelected((s) => {
 			const next = new Set(s);
 			const allOn = keys.every((k) => next.has(k));
@@ -94,11 +112,14 @@ export default function Roster() {
 			}
 			return next;
 		});
+	};
 	const clickCell = (row: number, col: number, shift: boolean) => {
+		if (!studying(rows[row], days[col])) return;
 		if (shift && anchor) {
 			const keys: string[] = [];
 			for (let r = Math.min(anchor.row, row); r <= Math.max(anchor.row, row); r++)
-				for (let c = Math.min(anchor.col, col); c <= Math.max(anchor.col, col); c++) keys.push(key(rows[r].id, days[c]));
+				for (let c = Math.min(anchor.col, col); c <= Math.max(anchor.col, col); c++)
+					if (studying(rows[r], days[c])) keys.push(key(rows[r].id, days[c]));
 			setSelected((s) => new Set([...s, ...keys]));
 		} else toggleKeys([key(rows[row].id, days[col])]);
 		setAnchor({ row, col });
@@ -110,7 +131,10 @@ export default function Roster() {
 	});
 
 	const renderCell = (u: ShiftUser, date: string) => {
-		const pattern = u.shift_pattern_id ? (patternById.get(u.shift_pattern_id) ?? null) : defaultPattern;
+		const period = periodOn(u.periods, date);
+		if (!period) return null;
+		// Mẫu ca tuần của khóa đang học ngày đó; khóa chưa gán mẫu → mẫu mặc định
+		const pattern = (period.shift_pattern_id ? patternById.get(period.shift_pattern_id) : undefined) ?? defaultPattern;
 		const day = shiftsForDay(pattern, byCell.get(key(u.id, date)) ?? [], date);
 		if (!day) return null;
 		const list = day.shiftIds
@@ -128,7 +152,7 @@ export default function Roster() {
 	};
 
 	return (
-		<AdminLayout pageTitle='Phân ca' pageSubtitle='Xếp ca làm việc theo ngày — ghi đè mẫu ca tuần của từng người'>
+		<AdminLayout pageTitle='Phân ca học viên' pageSubtitle='Xếp ca theo ngày cho học viên trong thời gian khóa học — ghi đè mẫu ca tuần của khóa'>
 			<div className={tbl.tableCard}>
 				<div className={tbl.tableHeader}>
 					<div className={styles.controls}>
@@ -147,7 +171,23 @@ export default function Roster() {
 						</Button>
 					</div>
 					<div className={tbl.tableControls}>
-						{/* Phân ca phạm vi khoa: server chỉ trả người khoa mình ⇒ không cần lọc khoa */}
+						<select
+							className={tbl.filterSelect}
+							value={course}
+							onChange={(e) => {
+								setCourse(e.target.value);
+								pg.setPage(1);
+							}}
+							aria-label='Khóa học'
+						>
+							<option value=''>Tất cả khóa học</option>
+							{courses.map(([id, name]) => (
+								<option key={id} value={id}>
+									{name}
+								</option>
+							))}
+						</select>
+						{/* Phân ca phạm vi khoa: server chỉ trả học viên khoa mình ⇒ không cần lọc khoa */}
 						{(departments.length > 1 || dept) && (
 							<select
 								className={tbl.filterSelect}
@@ -166,7 +206,7 @@ export default function Roster() {
 								))}
 							</select>
 						)}
-						<SearchInput value={search} onChange={setSearch} placeholder='Tìm theo tên, MNV...' />
+						<SearchInput value={search} onChange={setSearch} placeholder='Tìm theo tên, mã học viên...' />
 					</div>
 				</div>
 
@@ -181,8 +221,11 @@ export default function Roster() {
 					<span className={styles.legendItem}>
 						<span className={styles.offMark}>N</span> Nghỉ
 					</span>
-					<span className={cx(styles.legendItem, styles.fromPattern)}>Mờ = theo mẫu tuần</span>
-					<span className={styles.legendItem}>Ô trống = không có ca</span>
+					<span className={cx(styles.legendItem, styles.fromPattern)}>Mờ = theo mẫu tuần của khóa</span>
+					<span className={styles.legendItem}>Ô trống = không có ca (chấm tự do)</span>
+					<span className={styles.legendItem}>
+						<span className={cx(styles.legendSwatch, styles.outside)} /> Ngoài thời gian khóa học
+					</span>
 					<span className={styles.legendItem}>· Bấm ô để chọn, Shift+bấm chọn vùng, bấm ngày/tên để chọn cả cột/hàng</span>
 				</div>
 
@@ -202,13 +245,16 @@ export default function Roster() {
 				{!data ? (
 					<InlineLoading />
 				) : filtered.length === 0 ? (
-					<EmptyState title='Không có nhân viên phù hợp' />
+					<EmptyState
+						title={data.users.length ? 'Không có học viên phù hợp' : 'Không có học viên nào đang học trong tháng này'}
+						desc={data.users.length ? undefined : 'Chỉ học viên đã được cấp tài khoản, có ghi danh đã duyệt vào khóa có thời gian học trong tháng mới hiện ở đây.'}
+					/>
 				) : (
 					<div className={styles.gridWrap}>
 						<table className={styles.grid}>
 							<thead>
 								<tr>
-									<th className={styles.nameCell}>Nhân viên</th>
+									<th className={styles.nameCell}>Học viên</th>
 									{days.map((d) => {
 										const wd = weekdayOf(d);
 										return (
@@ -228,17 +274,23 @@ export default function Roster() {
 							<tbody>
 								{rows.map((u, row) => (
 									<tr key={u.id}>
-										<th className={styles.nameCell} onClick={() => toggleKeys(days.map((d) => key(u.id, d)))} title='Chọn cả tháng của người này'>
+										<th className={styles.nameCell} onClick={() => toggleKeys(days.map((d) => key(u.id, d)))} title='Chọn cả tháng của học viên này'>
 											<div className={styles.name}>{u.full_name}</div>
 											<div className={styles.sub}>
-												{u.staff_number ? `MNV ${u.staff_number}` : 'Chưa có MNV'}
+												{u.trainee_id}
 												{u.department_name ? ` · ${u.department_name}` : ''}
 											</div>
 										</th>
 										{days.map((d, col) => (
 											<td
 												key={d}
-												className={cx(styles.cell, weekdayOf(d) >= 6 && styles.weekend, selected.has(key(u.id, d)) && styles.selected)}
+												className={cx(
+													styles.cell,
+													weekdayOf(d) >= 6 && styles.weekend,
+													!studying(u, d) && styles.outside,
+													selected.has(key(u.id, d)) && styles.selected,
+												)}
+												title={periodOn(u.periods, d)?.course_name}
 												onClick={(e) => clickCell(row, col, e.shiftKey)}
 											>
 												{renderCell(u, d)}
@@ -251,7 +303,7 @@ export default function Roster() {
 					</div>
 				)}
 
-				<Pagination {...pg.pagination} itemLabel='người' />
+				<Pagination {...pg.pagination} itemLabel='học viên' />
 			</div>
 
 			{editing && (

@@ -27,10 +27,14 @@ const KEYS = [
 	'MODULE_SEMINAR',
 	'MODULE_SURVEY',
 	'MODULE_ATTENDANCE',
+	// Mục menu bị ẩn của từng cổng (danh sách key phân cách dấu phẩy) — modules.routes.js /menus
+	'MENU_HIDDEN_ADMIN',
+	'MENU_HIDDEN_USER',
+	'MENU_HIDDEN_TRAINEE',
 	// File tài liệu được nhận — utils/uploadPolicy.js
 	'UPLOAD_ALLOWED_EXTENSIONS',
 	'UPLOAD_MAX_MB',
-	// Chấm công nhân viên — utils/attendancePolicy.js
+	// Chấm công học viên — utils/attendancePolicy.js
 	'ATTENDANCE_ALLOWED_IPS',
 	'ATTENDANCE_LOCATION',
 	'ATTENDANCE_RADIUS_M',

@@ -127,7 +127,11 @@ export function useUserList(): UserListState {
 					getRolesList(),
 				]);
 				setDepartments(deptsRes.data);
-				setRoles(rolesRes.data);
+				// Tài khoản học viên cấp riêng ở mục Học viên, không thuộc tài khoản
+				// nội viện ⇒ bỏ vai trò Học viên khỏi tab lọc và ô chọn vai trò.
+				setRoles(
+					rolesRes.data.filter((r) => (r as { code?: string | null }).code !== 'trainee'),
+				);
 			} catch {
 				// Không chặn danh sách người dùng nếu tải danh mục lỗi
 			}

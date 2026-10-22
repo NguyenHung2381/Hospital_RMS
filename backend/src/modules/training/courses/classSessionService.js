@@ -177,7 +177,8 @@ const updateSession = async (sessionId, data, actorId) => {
 			.input('id', sql.VarChar(20), sessionId)
 			.query('SELECT course_id, subject_id FROM class_sessions WHERE id = @id');
 		const row = cur.recordset[0];
-		if (row && (row.subject_id ?? '') !== (data.subject_id ?? '')) await assertClassOpen(row.course_id, data.subject_id);
+		if (row && (row.subject_id ?? '') !== (data.subject_id ?? ''))
+			await assertClassOpen(row.course_id, data.subject_id);
 	}
 	const sets = ['updated_at = GETDATE()', 'updated_by = @actor_id'];
 	const req = pool
