@@ -82,9 +82,6 @@ export function useProfile() {
 	const [oldPwd, setOldPwd] = useState('');
 	const [newPwd, setNewPwd] = useState('');
 	const [confirmPwd, setConfirmPwd] = useState('');
-	const [showOld, setShowOld] = useState(false);
-	const [showNew, setShowNew] = useState(false);
-	const [showConfirm, setShowConfirm] = useState(false);
 	const [pwdError, setPwdError] = useState('');
 	const [pwdSaving, setPwdSaving] = useState(false);
 
@@ -288,18 +285,12 @@ export function useProfile() {
 		oldPwd,
 		newPwd,
 		confirmPwd,
-		showOld,
-		showNew,
-		showConfirm,
 		pwdError,
 		pwdSaving,
 		loggingOutAll,
 		setOldPwd,
 		setNewPwd,
 		setConfirmPwd,
-		setShowOld,
-		setShowNew,
-		setShowConfirm,
 		setPwdError,
 		handleChangePassword,
 		handleLogoutAll,

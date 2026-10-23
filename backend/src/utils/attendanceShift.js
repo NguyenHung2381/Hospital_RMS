@@ -1,14 +1,14 @@
 const { VN_OFFSET_MS } = require('./vnDate');
 
-// Chấm công theo ca. Mọi giờ ca là giờ Việt Nam; ngày của ca (work_date) = ngày BẮT ĐẦU ca.
+// Điểm danh theo ca. Mọi giờ ca là giờ Việt Nam; ngày của ca (work_date) = ngày BẮT ĐẦU ca.
 //   Ca (work_shifts): start_time/end_time 'HH:mm'. end <= start = qua đêm; end = start = 24 giờ.
-//     checkin_before_min  được chấm vào sớm nhất trước giờ vào bao nhiêu phút
-//     checkout_after_min  được chấm ra muộn nhất sau giờ ra bao nhiêu phút
+//     checkin_before_min  được điểm danh vào sớm nhất trước giờ vào bao nhiêu phút
+//     checkout_after_min  được điểm danh ra muộn nhất sau giờ ra bao nhiêu phút
 //     grace_min           du di: vào trễ / ra sớm không quá số phút này thì không tính
-//   Người chấm công = học viên, chỉ trong những ngày đang học 1 khóa (courseOn).
+//   Người điểm danh = học viên, chỉ trong những ngày đang học 1 khóa (courseOn).
 //   Ca của 1 học viên trong 1 ngày: có dòng phân ca ngày đó (shift_assignments) thì theo phân
 //   ca — dòng shift_id NULL = nghỉ; không có thì theo mẫu ca tuần của khóa (shift_patterns.days).
-//   Không có mẫu lẫn phân ca = chấm tự do (1 lượt/ngày, không giới hạn giờ).
+//   Không có mẫu lẫn phân ca = điểm danh tự do (1 lượt/ngày, không giới hạn giờ).
 
 const MIN = 60 * 1000;
 const DAY = 24 * 60 * MIN;
@@ -52,7 +52,7 @@ const instanceOf = (shift, dateKey) => {
 	};
 };
 
-// → { source: 'roster'|'pattern', shiftIds } | null (không có lịch ca → chấm tự do)
+// → { source: 'roster'|'pattern', shiftIds } | null (không có lịch ca → điểm danh tự do)
 //   assignments: các dòng phân ca của người này [{ work_date, shift_id|null }]
 const shiftIdsForDay = (pattern, assignments, dateKey) => {
 	const rows = assignments.filter((a) => a.work_date === dateKey);
@@ -73,18 +73,18 @@ const periodOn = (periods, dateKey) => {
 	return best;
 };
 
-// Ca có thể bấm lúc `now`. Bản ghi đã có của ca → lượt bấm là chấm ra (lấy lần cuối),
-// chưa có → chấm vào (chỉ trước giờ kết thúc ca). Không có lịch ca hôm nay → 1 lựa chọn chấm tự do.
+// Ca có thể bấm lúc `now`. Bản ghi đã có của ca → lượt bấm là điểm danh ra (lấy lần cuối),
+// chưa có → điểm danh vào (chỉ trước giờ kết thúc ca). Không có lịch ca hôm nay → 1 lựa chọn điểm danh tự do.
 // Ngày không thuộc khóa học nào → không có lựa chọn.
 //   courseOn(dateKey) → { course_id, course_name, pattern } | null — khóa đang học ngày đó
-//   shiftsById: Map id → ca; records: bản ghi chấm công gần đây [{ work_date, shift_id }]
+//   shiftsById: Map id → ca; records: bản ghi điểm danh gần đây [{ work_date, shift_id }]
 const checkOptions = ({ courseOn, assignments, shiftsById, records, now = new Date() }) => {
 	const today = dateKeyVN(now);
 	const t = now.getTime();
 	const hasRecord = (dateKey, shiftId) =>
 		records.some((r) => r.work_date === dateKey && (r.shift_id ?? null) === shiftId);
 	const options = [];
-	// Ca dài nhất 24h + chấm ra muộn tối đa 12h ⇒ ca bắt đầu từ 2 ngày trước vẫn có thể còn mở
+	// Ca dài nhất 24h + điểm danh ra muộn tối đa 12h ⇒ ca bắt đầu từ 2 ngày trước vẫn có thể còn mở
 	for (const dateKey of [addDays(today, -2), addDays(today, -1), today, addDays(today, 1)]) {
 		const course = courseOn(dateKey);
 		if (!course) continue;
@@ -106,11 +106,11 @@ const checkOptions = ({ courseOn, assignments, shiftsById, records, now = new Da
 			const inst = instanceOf(shift, dateKey);
 			const done = hasRecord(dateKey, id);
 			if (t < inst.open_at.getTime() || t > inst.close_at.getTime()) continue;
-			if (!done && t > inst.end_at.getTime()) continue; // hết ca mà chưa vào thì không chấm vào nữa
+			if (!done && t > inst.end_at.getTime()) continue; // hết ca mà chưa vào thì không điểm danh vào nữa
 			options.push({ ...inst, ...tag, action: done ? 'check_out' : 'check_in' });
 		}
 	}
-	const key = (o) => o.start_at?.getTime() ?? Infinity; // chấm tự do xếp sau các ca
+	const key = (o) => o.start_at?.getTime() ?? Infinity; // điểm danh tự do xếp sau các ca
 	return options.sort((a, b) => key(a) - key(b));
 };
 
@@ -133,8 +133,8 @@ const validateShift = (s) => {
 		return 'Ký hiệu ca 1–10 ký tự';
 	if (!TIME_RE.test(s.start_time ?? '') || !TIME_RE.test(s.end_time ?? ''))
 		return 'Giờ vào/ra phải dạng HH:mm';
-	if (!intIn(s.checkin_before_min, 0, 720)) return 'Chấm vào sớm: 0–720 phút';
-	if (!intIn(s.checkout_after_min, 0, 720)) return 'Chấm ra muộn: 0–720 phút';
+	if (!intIn(s.checkin_before_min, 0, 720)) return 'Điểm danh vào sớm: 0–720 phút';
+	if (!intIn(s.checkout_after_min, 0, 720)) return 'Điểm danh ra muộn: 0–720 phút';
 	if (!intIn(s.grace_min, 0, 240)) return 'Du di đi muộn/về sớm: 0–240 phút';
 	return null;
 };

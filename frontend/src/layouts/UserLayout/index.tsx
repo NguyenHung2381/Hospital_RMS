@@ -418,7 +418,8 @@ function PortalLayout({
 									unreadCount={unreadCount}
 									onMarkAll={markAll}
 									onMarkOne={markOne}
-									s={styles}
+									buttonClassName={styles.topbarIconBtn}
+									activeClassName={styles.active}
 								/>
 							)}
 

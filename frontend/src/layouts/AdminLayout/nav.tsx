@@ -78,6 +78,7 @@ export const KEY_TO_PATH: Record<string, string> = {
 	staffAttendance: '/admin/staff-attendance',
 	shifts: '/admin/shifts',
 	shiftRoster: '/admin/shift-roster',
+	leaveRequests: '/admin/leave-requests',
 	cmeCreditCatalog: '/admin/cme-credit-categories',
 	users: '/admin/users',
 	roles: '/admin/roles',
@@ -136,8 +137,8 @@ const navItem = (
 // - Hội nghị (tổ chức sự kiện) và Đào tạo liên tục (tín chỉ CME từ hội nghị,
 //   khoá học, ghi nhận ngoài) là 2 nhóm riêng, dùng chung module 'seminar'.
 // - Mục dùng chung nhiều mảng (Báo cáo, Thông báo, Khảo sát) không nhét vào
-//   "Quản trị hệ thống"; Nhân sự (CCHN) tách nhóm riêng. Chấm công là của học viên
-//   nên nằm trong Đào tạo (bảng chấm công, phân ca) / Thiết lập đào tạo (ca, mẫu ca).
+//   "Quản trị hệ thống"; Nhân sự (CCHN) tách nhóm riêng. Điểm danh là của học viên
+//   nên nằm trong Đào tạo (bảng điểm danh, phân ca) / Thiết lập đào tạo (ca, mẫu ca).
 // - Trang có tab (Danh mục NCKH, Danh mục đào tạo) chỉ có 1 mục menu.
 export const NAV_GROUPS: NavGroup[] = [
 	{
@@ -178,10 +179,11 @@ export const NAV_GROUPS: NavGroup[] = [
 			navItem('shiftRoster', 'Phân ca học viên', CalendarSvg, 'staff_attendance:roster'),
 			navItem(
 				'staffAttendance',
-				'Bảng chấm công',
+				'Bảng điểm danh',
 				ClockSvg,
 				'staff_attendance:read',
 			),
+			navItem('leaveRequests', 'Đơn xin phép', FileTextSvg, 'staff_attendance:approve'),
 		],
 	},
 	{
@@ -293,6 +295,7 @@ const MODULE_BY_KEY: Record<string, ModuleKey> = {
 	staffAttendance: 'attendance',
 	shifts: 'attendance',
 	shiftRoster: 'attendance',
+	leaveRequests: 'attendance',
 };
 export const moduleOf = (section: string, key: string) =>
 	MODULE_BY_KEY[key] ?? MODULE_BY_SECTION[section];

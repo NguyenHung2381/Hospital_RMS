@@ -1,7 +1,7 @@
 /**
  * portalService.js — Dữ liệu "của tôi" cho cổng người dùng ngoài NCKH: khóa học
  * mình học / dạy, lịch học sắp tới, CME tích luỹ trong năm. Chỉ đọc theo
- * actor.id (trainees.user_id, lecturers.user_id, seminar_participants.user_id,
+ * actor.id (trainees.user_id / staff_user_id, lecturers.user_id, seminar_participants.user_id,
  * cme_records.user_id) nên không cần quyền courses:read / seminars:read.
  */
 const { getPool, sql } = require('../../config/db');
@@ -9,6 +9,8 @@ const courseDocumentService = require('../training/courses/courseDocumentService
 const courseEnrollmentService = require('../training/courses/courseEnrollmentService');
 const courseService = require('../training/courses/courseService');
 const programClassService = require('../training/courses/programClassService');
+const { SESSION_IN_PROGRAM_SQL } = require('../training/courses/sessionScope');
+const { TRAINEE_OF_USER_SQL } = require('../training/trainees/traineeOfUser');
 const publicPortalService = require('../public/publicPortalService');
 const examService = require('../training/exams/examService');
 const trainingProgramService = require('../training/programs/trainingProgramService');
@@ -34,11 +36,12 @@ const getMyTraining = async (actor) => {
            e.id AS enrollment_id, e.status AS enrollment_status, e.registered_at, tp.name AS program_name,
            CASE WHEN e.status = 'waitlisted' THEN ${programClassService.WAITLIST_POSITION_SQL('e')} END AS waitlist_position,
            cert.cert_no, cert.issue_date AS cert_issue_date, cert.status AS cert_status,
-           (SELECT COUNT(*) FROM class_sessions s WHERE s.course_id = c.id) AS session_count,
-           (SELECT COUNT(*) FROM attendance a WHERE a.enrollment_id = e.id AND a.status IN ('present', 'late')) AS attended_count,
+           (SELECT COUNT(*) FROM class_sessions s WHERE s.course_id = c.id AND ${SESSION_IN_PROGRAM_SQL('s', 'e')}) AS session_count,
+           (SELECT COUNT(*) FROM attendance a JOIN class_sessions s ON s.id = a.session_id
+            WHERE a.enrollment_id = e.id AND a.status IN ('present', 'late') AND ${SESSION_IN_PROGRAM_SQL('s', 'e')}) AS attended_count,
            (SELECT COUNT(*) FROM course_documents d WHERE d.course_id = c.id AND d.is_public = 1) AS document_count
     FROM course_enrollments e
-    JOIN trainees t ON t.id = e.trainee_id AND t.user_id = @uid
+    JOIN trainees t ON t.id = e.trainee_id AND ${TRAINEE_OF_USER_SQL('t')}
     JOIN courses c ON c.id = e.course_id
     LEFT JOIN training_programs tp ON tp.id = e.program_id
     LEFT JOIN certificates cert ON cert.enrollment_id = e.id
@@ -49,7 +52,7 @@ const getMyTraining = async (actor) => {
            g.final_score, g.score, g.result, g.classification
     FROM grades g
     JOIN course_enrollments e ON e.id = g.enrollment_id
-    JOIN trainees t ON t.id = e.trainee_id AND t.user_id = @uid
+    JOIN trainees t ON t.id = e.trainee_id AND ${TRAINEE_OF_USER_SQL('t')}
     LEFT JOIN program_lessons s ON s.id = g.subject_id;
 
     SELECT c.id, c.name, c.start_date, c.end_date, c.status,
@@ -81,7 +84,8 @@ const getMyTraining = async (actor) => {
       AND sess.session_date < DATEADD(DAY, ${UPCOMING_DAYS}, ${VN_TODAY})
       AND (
         EXISTS (SELECT 1 FROM course_enrollments e JOIN trainees t ON t.id = e.trainee_id
-                WHERE e.course_id = c.id AND e.status = 'approved' AND t.user_id = @uid)
+                WHERE e.course_id = c.id AND e.status = 'approved' AND ${TRAINEE_OF_USER_SQL('t')}
+                  AND ${SESSION_IN_PROGRAM_SQL('sess', 'e')})
         OR EXISTS (SELECT 1 FROM lecturer_assignments la JOIN lecturers lec ON lec.id = la.lecturer_id
                    WHERE la.course_id = c.id AND lec.user_id = @uid)
       )
@@ -129,7 +133,7 @@ const getMyTraining = async (actor) => {
 // (lượt ghi danh cũ chưa có chương trình thì xem được mọi chương trình của khóa).
 const APPROVED_IN_COURSE = (courseCol, programCol) => `EXISTS (
     SELECT 1 FROM course_enrollments e JOIN trainees t ON t.id = e.trainee_id
-    WHERE e.course_id = ${courseCol} AND e.status = 'approved' AND t.user_id = @uid${
+    WHERE e.course_id = ${courseCol} AND e.status = 'approved' AND ${TRAINEE_OF_USER_SQL('t')}${
 			programCol ? ` AND (e.program_id IS NULL OR e.program_id = ${programCol})` : ''
 		})`;
 
@@ -142,9 +146,13 @@ const getMyCourse = async (courseId, actor) => {
 		.input('id', sql.VarChar(20), courseId)
 		.input('uid', sql.VarChar(20), actor.id).query(`
     SELECT TOP 1 c.id, c.name, c.description, c.start_date, c.end_date, c.status,
-           c.enrollment_start_date, c.enrollment_end_date, e.status AS enrollment_status
+           c.enrollment_start_date, c.enrollment_end_date, e.status AS enrollment_status,
+           -- Chuyên cần của lượt ghi danh này (buổi thuộc lớp mình — sessionScope)
+           (SELECT COUNT(*) FROM class_sessions s WHERE s.course_id = c.id AND ${SESSION_IN_PROGRAM_SQL('s', 'e')}) AS session_count,
+           (SELECT COUNT(*) FROM attendance a JOIN class_sessions s ON s.id = a.session_id
+            WHERE a.enrollment_id = e.id AND a.status IN ('present', 'late') AND ${SESSION_IN_PROGRAM_SQL('s', 'e')}) AS attended_count
     FROM course_enrollments e
-    JOIN trainees t ON t.id = e.trainee_id AND t.user_id = @uid
+    JOIN trainees t ON t.id = e.trainee_id AND ${TRAINEE_OF_USER_SQL('t')}
     JOIN courses c ON c.id = e.course_id
     WHERE c.id = @id
     ORDER BY CASE WHEN e.status = 'approved' THEN 0 ELSE 1 END;

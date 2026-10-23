@@ -17,6 +17,7 @@ import { CatalogFormModal } from '../components/CatalogFormModal';
 import { CATALOG_GROUPS, TAB_CONFIG, useCatalog } from '../hooks/useCatalog';
 import type { CatalogGroup } from '../types/catalog.type';
 import tbl from '@/shared/components/Table/Table.module.css';
+import { TableEmpty } from '@/shared/components/EmptyState';
 
 const EXCEL_COLS: ExcelColumn<CatalogItem>[] = [
 	{ header: 'Tên', key: 'name', required: true, value: (x) => x.name },
@@ -127,16 +128,11 @@ export default function Catalog({ group }: { group: CatalogGroup }) {
 									cols={5}
 								/>
 							) : d.filtered.length === 0 ? (
-								<tr>
-									<td colSpan={5}>
-										<div className={styles.emptyState}>
-											<div className={styles.emptyTitle}>Không tìm thấy {label}</div>
-											<div className={styles.emptyDesc}>
-												{d.search ? 'Thử thay đổi từ khoá tìm kiếm' : `Chưa có ${label} nào`}
-											</div>
-										</div>
-									</td>
-								</tr>
+								<TableEmpty
+									colSpan={5}
+									title={<>Không tìm thấy {label}</>}
+									desc={d.search ? 'Thử thay đổi từ khoá tìm kiếm' : `Chưa có ${label} nào`}
+								/>
 							) : (
 								d.paged.map((item, i) => {
 									const c = avatarColor(item.id);

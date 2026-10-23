@@ -11,11 +11,7 @@ import {
 	XAxis,
 	YAxis,
 } from 'recharts';
-import {
-	CATEGORY_COLORS,
-	DEPT_COLORS,
-	STATUS_COLORS,
-} from '../utils/dashboardHelpers';
+import { CHART_COLORS, STATUS_COLORS } from '../utils/dashboardHelpers';
 import styles from '../pages/Dashboard.module.css';
 
 function PieTooltip({
@@ -270,7 +266,7 @@ export function TrendBarChart({
 								dataKey={String(cat)}
 								name={String(cat)}
 								stackId={stacked ? 'a' : undefined}
-								fill={CATEGORY_COLORS[i % CATEGORY_COLORS.length]}
+								fill={CHART_COLORS[i % CHART_COLORS.length]}
 								radius={
 									!stacked || i === trendCats.length - 1
 										? [4, 4, 0, 0]
@@ -382,7 +378,7 @@ export function DeptBarChart({
 										dataKey={String(cat)}
 										name={String(cat)}
 										stackId='a'
-										fill={DEPT_COLORS[i % DEPT_COLORS.length]}
+										fill={CHART_COLORS[i % CHART_COLORS.length]}
 										radius={
 											i === deptCats.length - 1 ? [4, 4, 0, 0] : [0, 0, 0, 0]
 										}

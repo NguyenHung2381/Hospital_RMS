@@ -7,6 +7,7 @@ const { removeUploadedFile, toStoredUploadPath } = require('../../../utils/uploa
 const { randomUUID } = require('crypto');
 const { httpError } = require('../../../utils/httpError');
 const { seededRandom, shuffle, drawQuestions, theoryScore } = require('./examGen');
+const { TRAINEE_OF_USER_SQL } = require('../trainees/traineeOfUser');
 
 const QUESTION_TYPES = ['single_choice', 'essay'];
 // Mỗi chương trình 1 ngân hàng, chia 2 kho: kiểm tra đầu vào / thi cuối khóa (2026-11-27_exam_bank_programs)
@@ -805,7 +806,7 @@ const listAvailablePapersForUser = async (actor) => {
     FROM exam_papers p
     JOIN courses c ON c.id = p.course_id
     JOIN course_enrollments e ON e.course_id = c.id AND e.status = 'approved' AND ${PAPER_FOR_ENROLLMENT_SQL('p', 'e')}
-    JOIN trainees t ON t.id = e.trainee_id AND t.user_id = @user_id
+    JOIN trainees t ON t.id = e.trainee_id AND ${TRAINEE_OF_USER_SQL('t', '@user_id')}
     OUTER APPLY (SELECT TOP 1 x.id, x.status, x.attempt_no FROM exam_attempts x
                  WHERE x.paper_id = p.id AND x.enrollment_id = e.id ORDER BY x.attempt_no DESC) att
     WHERE p.status = 'published'
@@ -826,7 +827,7 @@ const assertEnrollment = async (pool, paperId, actor) => {
       SELECT p.*, e.id AS enrollment_id, ${WANT_ATTEMPT_SQL('p', 'e')} AS want_no
       FROM exam_papers p
       JOIN course_enrollments e ON e.course_id = p.course_id AND e.status = 'approved' AND ${PAPER_FOR_ENROLLMENT_SQL('p', 'e')}
-      JOIN trainees t ON t.id = e.trainee_id AND t.user_id = @user_id
+      JOIN trainees t ON t.id = e.trainee_id AND ${TRAINEE_OF_USER_SQL('t', '@user_id')}
       WHERE p.id = @paper_id
     `);
 	const row = r.recordset[0];

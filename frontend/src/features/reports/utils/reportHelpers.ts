@@ -1,5 +1,6 @@
 import { formatDateVN as fmtDate } from '../../../shared/utils/formatDate';
 import { notify } from '../../../shared/utils/feedback';
+import { toRoman } from '../../../shared/utils/helper';
 import type { ExportTopic, ReportSection } from '../../topics/api/topicApi';
 import type { StatsExportSection } from '../api/reportApi';
 
@@ -110,13 +111,6 @@ export function esc(s: string | null | undefined): string {
 
 export function getLeader(t: ExportTopic): string {
 	return t.members.find((m) => m.role === 'leader')?.ho_ten ?? '';
-}
-
-export function toRoman(n: number): string {
-	return (
-		['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'][n - 1] ??
-		String(n)
-	);
 }
 
 export function cellVal(t: ExportTopic, key: SummaryColKey): string {

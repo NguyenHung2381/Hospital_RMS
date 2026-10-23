@@ -2,6 +2,7 @@ const router = require('express').Router();
 const { body, param, query } = require('express-validator');
 const staffAttendanceService = require('./staffAttendanceService');
 const shiftService = require('./shiftService');
+const leaveRequestService = require('./leaveRequestService');
 const { authenticate, authorizePermission } = require('../../middlewares/auth');
 const { validate } = require('../../middlewares/errorHandler');
 const { success } = require('../../utils/response');
@@ -9,7 +10,7 @@ const { asyncHandler } = require('../../utils/asyncHandler');
 
 router.use(authenticate);
 
-// Chấm công học viên theo khóa đào tạo (đường dẫn / quyền giữ tên staff_attendance từ thời chấm công nhân viên)
+// Điểm danh học viên theo khóa đào tạo (đường dẫn / quyền giữ tên staff_attendance từ thời điểm danh nhân viên)
 // GET /staff-attendance?date=YYYY-MM-DD (mặc định hôm nay) — phạm vi khoa: chỉ học viên khoa mình
 router.get(
 	'/',
@@ -19,6 +20,42 @@ router.get(
 	asyncHandler(async (req, res) => {
 		return success(res, await staffAttendanceService.getByDate(req.query.date, req.user));
 	}),
+);
+
+// ─── Đơn xin nghỉ / xin đi muộn của học viên — leaveRequestService ───────────
+// GET /staff-attendance/leave-requests?status=&from=&to= — phạm vi khoa theo quyền duyệt (hoặc quyền xem)
+router.get(
+	'/leave-requests',
+	authorizePermission(['staff_attendance', 'read'], ['staff_attendance', 'approve']),
+	[
+		query('status')
+			.optional({ values: 'falsy' })
+			.isIn(['pending', 'approved', 'rejected', 'cancelled']),
+		query('from').optional({ values: 'falsy' }).isISO8601({ strict: true }),
+		query('to').optional({ values: 'falsy' }).isISO8601({ strict: true }),
+	],
+	validate,
+	asyncHandler(async (req, res) =>
+		success(res, await leaveRequestService.list(req.query, req.user)),
+	),
+);
+// Body: { decision: 'approved'|'rejected', note? } — từ chối bắt buộc có lý do
+router.put(
+	'/leave-requests/:id/review',
+	authorizePermission(['staff_attendance', 'approve']),
+	[
+		param('id').isInt({ min: 1 }).toInt(),
+		body('decision').isIn(['approved', 'rejected']),
+		body('note').optional({ values: 'null' }).isString().isLength({ max: 500 }),
+	],
+	validate,
+	asyncHandler(async (req, res) =>
+		success(
+			res,
+			await leaveRequestService.review(req.params.id, req.body, req.user),
+			req.body.decision === 'approved' ? 'Đã duyệt đơn xin phép' : 'Đã từ chối đơn xin phép',
+		),
+	),
 );
 
 // ─── Ca làm việc, mẫu ca tuần, phân ca theo ngày — shiftService ──────────────

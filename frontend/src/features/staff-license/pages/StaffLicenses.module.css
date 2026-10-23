@@ -59,15 +59,6 @@
 	font-size: var(--font-size-sm);
 	color: var(--color-gray-700);
 }
-.emptyState {
-	composes: emptyState from '@/shared/components/Table/Table.module.css';
-}
-.emptyTitle {
-	composes: emptyTitle from '@/shared/components/Table/Table.module.css';
-}
-.emptyDesc {
-	composes: emptyDesc from '@/shared/components/Table/Table.module.css';
-}
 
 /* ── NÚT + MODAL ─────────────────────────── */
 .btnAddHeader {

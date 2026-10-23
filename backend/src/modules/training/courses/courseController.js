@@ -86,6 +86,15 @@ const openClass = asyncHandler(async (req, res) => {
 	return success(res, result, `Đã mở lớp với ${result.trainees} học viên`);
 });
 
+const cancelOpenClass = asyncHandler(async (req, res) => {
+	const result = await programClassService.cancelOpenClass(
+		req.params.id,
+		req.body.program_id,
+		req.user.id,
+	);
+	return success(res, result, 'Đã hủy mở lớp');
+});
+
 const suggestClassDates = asyncHandler(async (req, res) => {
 	return success(res, await programClassService.suggestDates(req.params.id, req.query.program_id));
 });
@@ -530,6 +539,7 @@ module.exports = {
 	listEnrollments,
 	registerTrainee,
 	openClass,
+	cancelOpenClass,
 	suggestClassDates,
 	setClassDates,
 	listStaffCandidates,

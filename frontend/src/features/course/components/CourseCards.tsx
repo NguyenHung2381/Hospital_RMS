@@ -1,4 +1,4 @@
-import { ArrowRSvg, CalendarSvg, EditSvg, TrashSvg } from '@/assets/icons';
+import { ArrowRSvg, CalendarSvg, CopySvg, EditSvg, QrSvg, TrashSvg } from '@/assets/icons';
 import { EmptyState } from '@/shared/components';
 import { formatDateOr } from '@/shared/utils';
 import { DISPLAY_STATUS_CFG, type Course } from '../types/course.type';
@@ -14,12 +14,18 @@ export function CourseCards({
 	onOpen,
 	onEdit,
 	onDelete,
+	onShareLink,
+	onClone,
 	emptyDesc,
 }: {
+	/** Nhân bản khóa (mở form thêm mới điền sẵn) */
+	onClone?: (c: Course) => void;
 	items: Course[];
 	onOpen: (c: Course) => void;
 	onEdit: (c: Course) => void;
 	onDelete: (c: Course) => void;
+	/** Mở link + QR đăng ký (chỉ khóa đăng ký công khai) */
+	onShareLink?: (c: Course) => void;
 	emptyDesc: string;
 }) {
 	if (!items.length)
@@ -54,6 +60,24 @@ export function CourseCards({
 							</span>
 							{c.training_type_name && <span className={styles.type}>{c.training_type_name}</span>}
 							<span className={styles.tools}>
+								{onShareLink && c.is_public_registration && (
+									<button
+										type='button'
+										title='Link & QR đăng ký'
+										onClick={() => onShareLink(c)}
+									>
+										<QrSvg />
+									</button>
+								)}
+								{onClone && (
+									<button
+										type='button'
+										title='Nhân bản khóa học'
+										onClick={() => onClone(c)}
+									>
+										<CopySvg />
+									</button>
+								)}
 								<button
 									type='button'
 									title='Sửa thông tin'

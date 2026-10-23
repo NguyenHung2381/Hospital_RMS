@@ -66,14 +66,15 @@ export interface GrantedTraineeAccount {
 
 export interface GrantTraineeAccountsResult {
 	credentials: GrantedTraineeAccount[];
-	skipped: { trainee_id: string; full_name: string; reason: string }[];
+	skipped: { trainee_id: string; full_name: string | null; reason: string }[];
 }
 
-export const grantTraineeAccounts = (traineeIds?: string[]) =>
-	apiClient.post<GrantTraineeAccountsResult>(
-		'/trainees/grant-accounts',
-		traineeIds ? { trainee_ids: traineeIds } : {},
-	);
+// Bắt buộc truyền danh sách học viên — backend không còn "cấp cho tất cả".
+// Tên đăng nhập dạng NVA_0001, mật khẩu mặc định = tên đăng nhập.
+export const grantTraineeAccounts = (traineeIds: string[]) =>
+	apiClient.post<GrantTraineeAccountsResult>('/trainees/grant-accounts', {
+		trainee_ids: traineeIds,
+	});
 
 // Tài khoản học viên cấp riêng — quản lý tại hồ sơ học viên, không qua /users.
 // Đặt lại về mật khẩu mặc định (= tên đăng nhập), bắt đổi ở lần đăng nhập tới.

@@ -1,4 +1,4 @@
-import { Modal } from '@/shared/components';
+import { Modal, TableEmpty } from '@/shared/components';
 import { showToast } from '@/shared/utils/feedback';
 import { useEffect, useMemo, useState } from 'react';
 import { BuildingSvg, EditSvg, PlusSvg, SearchSvg, TrashSvg, XSvg } from '@/assets/icons';
@@ -221,18 +221,11 @@ export default function Venues() {
 									cols={colCount}
 								/>
 							) : filtered.length === 0 ? (
-								<tr>
-									<td colSpan={colCount}>
-										<div className={base.emptyState}>
-											<div className={base.emptyTitle}>Không tìm thấy địa điểm</div>
-											<div className={base.emptyDesc}>
-												{search || scopeFilter
-													? 'Thử thay đổi từ khoá hoặc bộ lọc'
-													: 'Chưa có địa điểm nào'}
-											</div>
-										</div>
-									</td>
-								</tr>
+								<TableEmpty
+									colSpan={colCount}
+									title='Không tìm thấy địa điểm'
+									desc={search || scopeFilter ? 'Thử thay đổi từ khoá hoặc bộ lọc' : 'Chưa có địa điểm nào'}
+								/>
 							) : (
 								paged.map((v, i) => (
 									<tr

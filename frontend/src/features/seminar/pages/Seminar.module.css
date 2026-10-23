@@ -140,12 +140,6 @@
 	padding: var(--space-5);
 	margin-bottom: var(--space-4);
 }
-.infoGrid {
-	display: grid;
-	grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-	gap: var(--space-3) var(--space-5);
-}
-.infoItem { display: flex; flex-direction: column; gap: 2px; }
 .infoLabel {
 	font-size: var(--font-size-xs);
 	text-transform: uppercase;
@@ -153,7 +147,6 @@
 	color: var(--color-gray-400);
 	font-weight: var(--font-weight-semibold);
 }
-.infoValue { color: var(--color-gray-800); font-size: var(--font-size-sm); }
 
 .statsRow {
 	display: flex;
@@ -191,51 +184,19 @@
 .tabActive { color: var(--color-primary-dark); border-bottom-color: var(--color-primary); }
 
 /* ── Modal ── */
-.modalBackdrop {
-	position: fixed;
-	inset: 0;
-	background: rgba(15, 23, 42, 0.45);
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	z-index: 1000;
-	padding: var(--space-4);
-}
 .modal {
 	background: var(--color-white);
 	border-radius: var(--radius-2xl);
 	width: 100%;
 	max-width: 640px;
 	max-height: 90vh;
+	max-height: 90dvh;
 	overflow: auto;
 	box-shadow: 0 24px 60px rgba(0, 0, 0, 0.22);
 }
 .modalSm { max-width: 460px; }
-.modalHeader {
-	display: flex;
-	align-items: flex-start;
-	gap: var(--space-3);
-	padding: var(--space-5);
-	border-bottom: 1px solid var(--color-gray-100);
-}
-.modalTitle { font-weight: var(--font-weight-bold); color: var(--color-gray-800); }
 .modalSub { font-size: var(--font-size-sm); color: var(--color-gray-500); }
-.modalClose {
-	margin-left: auto;
-	background: none;
-	border: none;
-	color: var(--color-gray-400);
-	cursor: pointer;
-}
-.modalClose svg { width: 16px; height: 16px; }
 .modalBody { padding: var(--space-5); }
-.modalFooter {
-	display: flex;
-	justify-content: flex-end;
-	gap: var(--space-2);
-	padding: var(--space-4) var(--space-5);
-	border-top: 1px solid var(--color-gray-100);
-}
 
 .formGrid {
 	display: grid;
@@ -404,6 +365,7 @@
 
 .importPreview {
 	max-height: 46vh;
+	max-height: 46dvh;
 	overflow: auto;
 	border: 1px solid var(--color-gray-100);
 	border-radius: var(--radius-lg);

@@ -10,10 +10,10 @@ const { httpError } = require('../../utils/httpError');
 const { scopeOf } = require('../../permissions/authz');
 const { todayKeyVN } = require('../../utils/vnDate');
 
-// Ca, mẫu ca tuần, phân ca theo ngày (2026-10-30_attendance_shifts.sql) cho chấm công
+// Ca, mẫu ca tuần, phân ca theo ngày (2026-10-30_attendance_shifts.sql) cho điểm danh
 // HỌC VIÊN theo khóa đào tạo (2026-11-30_trainee_attendance.sql): mẫu ca tuần gán theo
 // khóa (courses.shift_pattern_id), phân ca theo ngày gán cho tài khoản học viên.
-// Logic chọn ca khi chấm công ở utils/attendanceShift.js.
+// Logic chọn ca khi điểm danh ở utils/attendanceShift.js.
 
 const changed = () => broadcast('update', { entity: 'work_shifts' });
 
@@ -95,7 +95,7 @@ const saveShift = async (id, body) => {
 	return row;
 };
 
-// Ca đã dùng trong mẫu tuần / bảng phân ca thì không xoá được (bảng chấm công lưu bản chụp giờ ca nên không ảnh hưởng)
+// Ca đã dùng trong mẫu tuần / bảng phân ca thì không xoá được (bảng điểm danh lưu bản chụp giờ ca nên không ảnh hưởng)
 const removeShift = async (id) => {
 	const pool = await getPool();
 	const inPattern = (
@@ -312,7 +312,7 @@ const groupByTrainee = (periods) => {
 };
 
 // (dateKey) → { course_id, course_name, pattern } | null: khóa đang học ngày đó + mẫu ca tuần
-// của khóa (khóa chưa gán mẫu → mẫu mặc định, không có nữa → null = chấm tự do)
+// của khóa (khóa chưa gán mẫu → mẫu mặc định, không có nữa → null = điểm danh tự do)
 const courseResolver = (periods, patterns) => {
 	const byId = new Map(patterns.map((p) => [p.id, p]));
 	const fallback = patterns.find((p) => p.is_default) ?? null;
@@ -421,7 +421,7 @@ const setRoster = async ({ user_ids, dates, mode, shift_ids = [] }, actor) => {
 	return { cells: users.length * days.length };
 };
 
-// ─── Dùng khi chấm công ──────────────────────────────────────────────────────
+// ─── Dùng khi điểm danh ──────────────────────────────────────────────────────
 // Ca ngừng dùng không còn hiệu lực ở mẫu tuần lẫn bảng phân ca
 const shiftsMap = async () =>
 	new Map((await listShifts()).filter((s) => s.is_active).map((s) => [s.id, s]));
@@ -440,7 +440,7 @@ const assignmentsForUser = async (userId, from, to) => {
 	).recordset.map((a) => ({ ...a, work_date: dateKey(a.work_date) }));
 };
 
-// Lịch ca trong 1 ngày (bảng chấm công) của học viên cả viện hoặc 1 khoa: khóa đang học +
+// Lịch ca trong 1 ngày (bảng điểm danh) của học viên cả viện hoặc 1 khoa: khóa đang học +
 // mẫu ca tuần của khóa + phân ca ngày đó
 const planForDate = async (date, departmentId) => {
 	const pool = await getPool();

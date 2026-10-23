@@ -586,6 +586,4 @@ module.exports = {
 	isEnabled,
 	withTx, // giao dịch có giữ khóa person_sync — dùng chung với personMergeService
 	SOURCE_ORDER,
-	// dùng cho kiểm thử
-	_internal: { SOURCES, clean, cleanEmail, cleanPhone },
 };

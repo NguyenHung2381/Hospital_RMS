@@ -18,6 +18,7 @@ import { LecturerFromStaffModal } from '../components/LecturerFromStaffModal';
 import { useLecturers } from '../hooks/useLecturers';
 import styles from './Lecturers.module.css';
 import tbl from '@/shared/components/Table/Table.module.css';
+import { TableEmpty } from '@/shared/components/EmptyState';
 
 const EXCEL_COLS: ExcelColumn<Lecturer>[] = [
 	{ header: 'Họ và tên', key: 'full_name', required: true, value: (x) => x.full_name },
@@ -131,16 +132,11 @@ export default function Lecturers() {
 								cols={7}
 							/>
 						) : d.total === 0 ? (
-							<tr>
-								<td colSpan={7}>
-									<div className={styles.emptyState}>
-										<div className={styles.emptyTitle}>Không tìm thấy giảng viên</div>
-										<div className={styles.emptyDesc}>
-											{d.search ? 'Thử thay đổi từ khoá tìm kiếm' : 'Chưa có giảng viên nào'}
-										</div>
-									</div>
-								</td>
-							</tr>
+							<TableEmpty
+								colSpan={7}
+								title='Không tìm thấy giảng viên'
+								desc={d.search ? 'Thử thay đổi từ khoá tìm kiếm' : 'Chưa có giảng viên nào'}
+							/>
 						) : (
 							d.paged.map((l, i) => {
 								const c = avatarColor(l.id);

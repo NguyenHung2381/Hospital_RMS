@@ -8,7 +8,9 @@ import {
 	WarnSvg,
 	XSvg,
 } from '@/assets/icons';
+import { cx } from '@/shared/utils/cx';
 import type { Notif } from '../utils/notifUtils';
+import styles from './NotificationPanel.module.css';
 
 interface NotificationPanelProps {
 	open: boolean;
@@ -18,11 +20,20 @@ interface NotificationPanelProps {
 	unreadCount: number;
 	onMarkAll: () => void;
 	onMarkOne: (id: string) => void;
-	/** CSS module from the parent layout — provides all notif* class names. */
-	s: Record<string, string>;
+	/** Style nút chuông theo topbar của layout đang render panel. */
+	buttonClassName: string;
+	/** Thêm vào nút chuông khi panel đang mở. */
+	activeClassName?: string;
 	/** Route for "Xem tất cả" — keep it inside whichever layout is currently rendering this panel. */
 	viewAllPath?: string;
 }
+
+const ICONS: Record<Notif['type'], { el: React.ReactNode; cls: string }> = {
+	approval: { el: <ApproveSvg />, cls: styles.iconApproval },
+	topic: { el: <DocSvg />, cls: styles.iconTopic },
+	system: { el: <InfoSvg />, cls: styles.iconSystem },
+	warning: { el: <WarnSvg />, cls: styles.iconWarning },
+};
 
 export function NotificationPanel({
 	open,
@@ -32,30 +43,32 @@ export function NotificationPanel({
 	unreadCount,
 	onMarkAll,
 	onMarkOne,
-	s,
+	buttonClassName,
+	activeClassName,
 	viewAllPath = '/user/notifications',
 }: NotificationPanelProps) {
 	const [tab, setTab] = useState<'all' | 'unread'>('all');
+	// Mép dưới nút chuông — panel neo theo khung nhìn trên điện thoại (xem CSS).
+	const [top, setTop] = useState<number>();
 	const wrapRef = useRef<HTMLDivElement>(null);
 	const navigate = useNavigate();
 
 	useEffect(() => {
 		if (!open) return;
+		setTop(wrapRef.current?.getBoundingClientRect().bottom);
 		const handler = (e: MouseEvent) => {
 			if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) {
 				onClose();
 			}
 		};
+		const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
 		document.addEventListener('mousedown', handler);
-		return () => document.removeEventListener('mousedown', handler);
+		document.addEventListener('keydown', onKey);
+		return () => {
+			document.removeEventListener('mousedown', handler);
+			document.removeEventListener('keydown', onKey);
+		};
 	}, [open, onClose]);
-
-	const iconMap: Record<Notif['type'], { el: React.ReactNode; cls: string }> = {
-		approval: { el: <ApproveSvg />, cls: s.iconApproval },
-		topic: { el: <DocSvg />, cls: s.iconTopic },
-		system: { el: <InfoSvg />, cls: s.iconSystem },
-		warning: { el: <WarnSvg />, cls: s.iconWarning },
-	};
 
 	const displayed =
 		tab === 'unread' ? notifications.filter((n) => !n.read) : notifications;
@@ -73,61 +86,50 @@ export function NotificationPanel({
 
 	return (
 		<div
-			className={s.notifWrapper}
+			className={styles.wrapper}
 			ref={wrapRef}
 		>
 			<button
-				className={`${s.topbarIconBtn} ${open ? s.active : ''}`}
+				type='button'
+				className={cx(buttonClassName, open && activeClassName)}
 				onClick={onToggle}
 				aria-label='Thông báo'
 				aria-expanded={open}
 			>
 				<BellSvg />
-				{unreadCount > 0 && <span className={s.notifDot} />}
+				{unreadCount > 0 && <span className={styles.dot} />}
 			</button>
 
 			{open && (
 				<>
 					<div
-						className={s.notifOverlay}
+						className={styles.overlay}
 						onClick={onClose}
 					/>
 					<div
-						className={s.notifPanel}
+						className={styles.panel}
 						role='dialog'
 						aria-label='Thông báo'
+						style={top ? ({ '--notif-top': `${top + 8}px` } as React.CSSProperties) : undefined}
 					>
-						{/* Header */}
-						<div className={s.notifPanelHeader}>
-							<span className={s.notifPanelTitle}>
+						<div className={styles.header}>
+							<span className={styles.title}>
 								Thông báo
-								{unreadCount > 0 && (
-									<span
-										style={{
-											marginLeft: 8,
-											background: 'var(--color-accent)',
-											color: '#fff',
-											fontSize: 11,
-											fontWeight: 700,
-											padding: '1px 7px',
-											borderRadius: 999,
-										}}
-									>
-										{unreadCount}
-									</span>
-								)}
+								{unreadCount > 0 && <span className={styles.count}>{unreadCount}</span>}
 							</span>
-							<div className={s.notifPanelActions}>
+							<div className={styles.actions}>
 								{unreadCount > 0 && (
 									<button
-										className={s.notifMarkAll}
+										type='button'
+										className={styles.markAll}
 										onClick={onMarkAll}
 									>
 										Đánh dấu đã đọc
 									</button>
 								)}
 								<button
-									className={s.notifClose}
+									type='button'
+									className={styles.close}
 									onClick={onClose}
 									aria-label='Đóng'
 								>
@@ -136,62 +138,56 @@ export function NotificationPanel({
 							</div>
 						</div>
 
-						{/* Tabs */}
-						<div className={s.notifTabs}>
+						<div
+							className={styles.tabs}
+							role='tablist'
+						>
 							{(['all', 'unread'] as const).map((t) => (
-								<div
+								<button
+									type='button'
+									role='tab'
+									aria-selected={tab === t}
 									key={t}
-									className={`${s.notifTab} ${tab === t ? s.notifTabActive : ''}`}
+									className={cx(styles.tab, tab === t && styles.tabActive)}
 									onClick={() => setTab(t)}
 								>
 									{t === 'all' ? 'Tất cả' : 'Chưa đọc'}
-									<span className={s.notifTabBadge}>
+									<span className={styles.tabBadge}>
 										{t === 'all' ? notifications.length : unreadCount}
 									</span>
-								</div>
+								</button>
 							))}
 						</div>
 
-						{/* List */}
-						<div className={s.notifList}>
+						<div className={styles.list}>
 							{displayed.length === 0 ? (
-								<div
-									style={{
-										padding: '32px 24px',
-										textAlign: 'center',
-										color: 'var(--color-gray-400)',
-										fontSize: 13,
-									}}
-								>
-									Không có thông báo nào
-								</div>
+								<div className={styles.empty}>Không có thông báo nào</div>
 							) : (
 								displayed.map((n) => {
-									const cfg = iconMap[n.type];
+									const cfg = ICONS[n.type];
 									return (
-										<div
+										<button
+											type='button'
 											key={n.id}
-											className={`${s.notifItem} ${!n.read ? s.unread : ''}`}
+											className={cx(styles.item, !n.read && styles.unread)}
 											onClick={() => handleItemClick(n)}
 										>
-											<div className={`${s.notifItemIcon} ${cfg.cls}`}>
-												{cfg.el}
-											</div>
-											<div className={s.notifItemContent}>
-												<div className={s.notifItemTitle}>{n.title}</div>
-												<div className={s.notifItemDesc}>{n.desc}</div>
-												<div className={s.notifItemTime}>{n.time}</div>
-											</div>
-										</div>
+											<span className={cx(styles.itemIcon, cfg.cls)}>{cfg.el}</span>
+											<span className={styles.itemContent}>
+												<span className={styles.itemTitle}>{n.title}</span>
+												<span className={styles.itemDesc}>{n.desc}</span>
+												<span className={styles.itemTime}>{n.time}</span>
+											</span>
+										</button>
 									);
 								})
 							)}
 						</div>
 
-						{/* Footer */}
-						<div className={s.notifPanelFooter}>
+						<div className={styles.footer}>
 							<button
-								className={s.notifViewAll}
+								type='button'
+								className={styles.viewAll}
 								onClick={handleViewAll}
 							>
 								Xem tất cả thông báo →

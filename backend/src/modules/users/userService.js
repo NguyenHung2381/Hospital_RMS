@@ -25,7 +25,7 @@ const STATS_TTL_MS = 30 * 1000;
 let _statsCache = null; // { data, ts }
 
 // Tài khoản học viên cấp riêng (mã 'HV', vai trò Học viên — xem
-// traineeService.grantAccounts), KHÔNG thuộc tài khoản nội viện: bị loại khỏi
+// traineeAccountService.grantAccounts), KHÔNG thuộc tài khoản nội viện: bị loại khỏi
 // danh sách / thống kê / tìm kiếm ở đây và quản lý tại hồ sơ học viên.
 // Dùng kèm inputRoleId(req, 'trainee_role', ROLE.TRAINEE).
 const notTraineeSql = (alias) => `(${alias}.role_id IS NULL OR ${alias}.role_id <> @trainee_role)`;

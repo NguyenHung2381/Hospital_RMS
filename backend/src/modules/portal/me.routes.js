@@ -4,7 +4,7 @@ const cmePersonalExport = require('../cme/cmePersonalExportController');
 const { authenticate } = require('../../middlewares/auth');
 const { success, created } = require('../../utils/response');
 const { asyncHandler } = require('../../utils/asyncHandler');
-const { body, query } = require('express-validator');
+const { body, param, query } = require('express-validator');
 const { validate } = require('../../middlewares/errorHandler');
 const classSessionService = require('../training/courses/classSessionService');
 const traineeRecordService = require('../training/trainees/traineeRecordService');
@@ -18,7 +18,7 @@ router.get(
 	}),
 );
 
-// Học viên xem lịch học / điểm danh / điểm của chính mình (theo trainees.user_id) —
+// Học viên xem lịch học / điểm danh / điểm của chính mình (tài khoản học viên hoặc nhân viên nội viện đã ghi danh — traineeOfUser) —
 // cùng dữ liệu với hồ sơ học viên phía cán bộ.
 router.get(
 	'/training/schedule',
@@ -38,14 +38,14 @@ router.get(
 router.get(
 	'/training/attendance',
 	asyncHandler(async (req, res) => {
-		const traineeId = await traineeRecordService.traineeIdOfUser(req.user.id);
+		const traineeId = await traineeRecordService.myTraineeId(req.user.id);
 		return success(res, await traineeRecordService.attendance(traineeId));
 	}),
 );
 router.get(
 	'/training/grades',
 	asyncHandler(async (req, res) => {
-		const traineeId = await traineeRecordService.traineeIdOfUser(req.user.id);
+		const traineeId = await traineeRecordService.myTraineeId(req.user.id);
 		return success(res, await traineeRecordService.grades(traineeId));
 	}),
 );
@@ -109,7 +109,7 @@ router.get(
 router.post(
 	'/cme-records',
 	[
-		body('title').trim().notEmpty().withMessage('Vui lòng nhập nội dung hoạt động'),
+		body('title').trim().notEmpty().withMessage('Vui lòng nhập tên hoạt động'),
 		body('year')
 			.custom((v, { req }) => !!v || !!req.body.activity_date)
 			.withMessage('Vui lòng nhập năm hoặc ngày hoạt động'),
@@ -191,7 +191,7 @@ router.delete(
 // Phiếu theo dõi CME cá nhân (Excel) của chính mình — Body: { year }
 router.post('/cme/export-excel', cmePersonalExport.exportMine);
 
-// ─── Chấm công của học viên (IP bệnh viện + GPS, theo khóa đang học) — staffAttendanceService ──
+// ─── Điểm danh của học viên (IP bệnh viện + GPS, theo khóa đang học) — staffAttendanceService ──
 // GET không chặn theo module và nhận mọi tài khoản (is_trainee = false): trang Cấu hình cần
 // nó để hiện IP hiện tại trước khi bật. POST chỉ nhận tài khoản học viên.
 const staffAttendanceService = require('../attendance/staffAttendanceService');
@@ -209,7 +209,7 @@ router.post(
 		body('lat').isFloat({ min: -90, max: 90 }).toFloat(),
 		body('lng').isFloat({ min: -180, max: 180 }).toFloat(),
 		body('accuracy').isFloat({ min: 0 }).toFloat(),
-		// Ca cần chấm khi lúc đó có nhiều ca mở (vd hết ca sáng, vào ca chiều); shift_id null = chấm tự do
+		// Ca cần điểm danh khi lúc đó có nhiều ca mở (vd hết ca sáng, vào ca chiều); shift_id null = điểm danh tự do
 		body('work_date').optional({ values: 'null' }).isISO8601({ strict: true }),
 		body('shift_id').optional({ values: 'null' }).isInt({ min: 1 }).toInt(),
 	],
@@ -224,7 +224,52 @@ router.post(
 			shift_id,
 			work_date,
 		});
-		return success(res, data, data.action === 'check_in' ? 'Đã chấm công vào' : 'Đã chấm công ra');
+		return success(res, data, data.action === 'check_in' ? 'Đã điểm danh vào' : 'Đã điểm danh ra');
+	}),
+);
+
+// ─── Đơn xin nghỉ / xin đi muộn của học viên — leaveRequestService ───────────
+const leaveRequestService = require('../attendance/leaveRequestService');
+router.get(
+	'/attendance/leave-requests',
+	handle(async (req, res) => success(res, await leaveRequestService.listMine(req.user.id))),
+);
+// Body: { type: 'absent'|'late', from_date, to_date?, shift_id?, arrive_time? (late), reason }
+router.post(
+	'/attendance/leave-requests',
+	requireModule('ATTENDANCE'),
+	[
+		body('type').isIn(['absent', 'late']).withMessage('Loại đơn không hợp lệ'),
+		body('from_date').isISO8601({ strict: true }).withMessage('Ngày không hợp lệ'),
+		body('to_date').optional({ values: 'falsy' }).isISO8601({ strict: true }),
+		body('shift_id').optional({ values: 'null' }).isInt({ min: 1 }).toInt(),
+		body('arrive_time')
+			.optional({ values: 'falsy' })
+			.matches(/^([01]\d|2[0-3]):[0-5]\d$/)
+			.withMessage('Giờ có mặt phải dạng HH:mm'),
+		body('reason')
+			.isString()
+			.trim()
+			.isLength({ min: 5, max: 1000 })
+			.withMessage('Lý do 5–1000 ký tự'),
+	],
+	validate,
+	handle(async (req, res) =>
+		created(
+			res,
+			await leaveRequestService.createMine(req.user.id, req.body),
+			'Đã gửi đơn xin phép',
+		),
+	),
+);
+router.patch(
+	'/attendance/leave-requests/:id/cancel',
+	requireModule('ATTENDANCE'),
+	[param('id').isInt({ min: 1 }).toInt()],
+	validate,
+	handle(async (req, res) => {
+		await leaveRequestService.cancelMine(req.user.id, req.params.id);
+		return success(res, null, 'Đã huỷ đơn xin phép');
 	}),
 );
 

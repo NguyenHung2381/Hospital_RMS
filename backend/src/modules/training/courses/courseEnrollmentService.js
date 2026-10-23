@@ -144,9 +144,9 @@ const listStaffCandidates = async () => {
 
 // Ghi danh 1 nhân viên nội viện: dùng lại hồ sơ học viên tạo từ nhân viên này nếu
 // có, chưa có thì tự tạo từ thông tin users (is_employee = 1, staff_user_id = nhân
-// viên). Tài khoản học viên CẤP RIÊNG, không gộp vào tài khoản nội viện: hồ sơ
-// KHÔNG gắn user_id vào tài khoản nhân viên — muốn điểm danh QR / thi online thì
-// "Cấp tài khoản học viên" ở mục Học viên.
+// viên). Hồ sơ KHÔNG gắn user_id vào tài khoản nhân viên (tài khoản học viên cấp
+// riêng), nhưng staff_user_id đủ để nhân viên xem khóa học / lịch / điểm danh, tự
+// quét QR và thi online ngay bằng tài khoản nội viện (xem traineeOfUser.js).
 const registerStaff = async (
 	courseId,
 	userId,

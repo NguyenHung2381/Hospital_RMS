@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { apiClient } from '../../../shared/api/axios';
 import { showToast } from '@/shared/utils/feedback';
 import type { DocumentSource } from '../api/courseApi';
+import { academicLevel } from '../utils/academicLevel';
 import {
 	addDocument as apiAddDocument,
 	assignLecturer as apiAssignLecturer,
@@ -55,6 +56,10 @@ export interface LecturerItem extends SimpleItem {
 	is_external: boolean;
 	group: 'department' | 'staff' | 'other';
 	department_name?: string | null;
+	/** Thứ hạng trình độ (GS = 1 … chưa rõ = 99) — xếp giảng viên trong khoa, xem utils/academicLevel. */
+	level: number;
+	/** Họ tên gốc (không kèm học vị) — xếp A→Z trong cùng trình độ. */
+	full_name: string;
 }
 
 interface PersonRow {
@@ -103,6 +108,8 @@ const toLecturerItem = (l: LecturerRow): LecturerItem => {
 		is_external: !!l.is_external,
 		group: l.group,
 		department_name: l.department_name,
+		level: academicLevel(l.academic_rank, l.academic_degree, l.full_name),
+		full_name: l.full_name,
 	};
 };
 

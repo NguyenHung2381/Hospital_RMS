@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { BookOpenSvg, CalendarSvg, ChevDSvg, ChevLSvg, FileSvg, FileTextSvg, LinkSvg } from '@/assets/icons';
+import { BookOpenSvg, CalendarSvg, ChevDSvg, ChevLSvg, ClockSvg, FileSvg, FileTextSvg, LinkSvg, QrSvg } from '@/assets/icons';
 import { Badge, Button, Card, EmptyState, InlineLoading } from '@/shared/components';
 import { FileViewerModal } from '@/shared/components/FileViewerModal';
 import { formatDateVN } from '@/shared/utils/formatDate';
@@ -20,6 +20,7 @@ import {
 	type MyLessonDocument,
 } from '../api/meApi';
 import { isTraineeAccount, isTraineePath, TRAINEE_HOME } from '../../../app/router/authHelpers';
+import { TraineeAttendanceTab } from '../../trainee/components/TraineeAttendanceTab';
 import styles from './SelfService.module.css';
 
 const ATTEMPT_LABEL: Record<string, { label: string; tone: 'amber' | 'blue' | 'green' }> = {
@@ -114,8 +115,8 @@ function LessonsPanel({ lessons, onOpen }: { lessons: MyLesson[]; onOpen: OpenDo
 	);
 }
 
-type Tab = 'lessons' | 'documents' | 'exams';
-const TABS: Tab[] = ['lessons', 'documents', 'exams'];
+type Tab = 'lessons' | 'documents' | 'exams' | 'attendance';
+const TABS: Tab[] = ['lessons', 'documents', 'exams', 'attendance'];
 
 export default function MyCourseDetail() {
 	const { id = '' } = useParams();
@@ -171,6 +172,7 @@ export default function MyCourseDetail() {
 	// Tài khoản học viên: cổng /hoc-vien (TraineeLayout tự có nút quay lại).
 	const trainee = isTraineeAccount() || isTraineePath(pathname);
 	const listPath = trainee ? `${TRAINEE_HOME}/khoa-hoc` : '/user/khoa-hoc';
+	const checkInPath = trainee ? `${TRAINEE_HOME}/diem-danh` : '/user/diem-danh';
 	const layout = {
 		breadcrumbs: [{ label: 'Khóa học của tôi', path: listPath }],
 		pageTitle: data?.name ?? 'Chi tiết khóa học',
@@ -204,7 +206,7 @@ export default function MyCourseDetail() {
 		key: Tab;
 		label: string;
 		icon: ReactNode;
-		count: number;
+		count: number | string;
 		alert?: boolean;
 	}[] = data
 		? [
@@ -226,6 +228,12 @@ export default function MyCourseDetail() {
 					icon: <FileTextSvg />,
 					count: data.papers.length,
 					alert: openExams > 0,
+				},
+				{
+					key: 'attendance',
+					label: 'Điểm danh',
+					icon: <ClockSvg />,
+					count: `${data.attended_count}/${data.session_count}`,
 				},
 			]
 		: [];
@@ -295,6 +303,11 @@ export default function MyCourseDetail() {
 												key: 'exams' as Tab,
 												value: openExams,
 												label: 'Bài kiểm tra cần làm',
+											},
+											{
+												key: 'attendance' as Tab,
+												value: `${data.attended_count}/${data.session_count}`,
+												label: 'Buổi có mặt',
 											},
 										].map((s) => (
 											<button
@@ -416,6 +429,24 @@ export default function MyCourseDetail() {
 											})}
 										</div>
 									))}
+
+								{tab === 'attendance' && (
+									<>
+										<div className={styles.tabToolbar}>
+											<span className={styles.meta}>
+												Đến lớp, quét mã QR giảng viên chiếu trên màn hình để điểm danh.
+											</span>
+											<Button
+												size='sm'
+												icon={<QrSvg />}
+												onClick={() => navigate(checkInPath)}
+											>
+												Điểm danh QR
+											</Button>
+										</div>
+										<TraineeAttendanceTab courseId={data.id} />
+									</>
+								)}
 							</Card.Body>
 						</Card>
 					)}

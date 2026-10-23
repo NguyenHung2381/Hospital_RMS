@@ -1,11 +1,8 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import {
-	canAccessAdminPanel,
-	FORCE_PASSWORD_PATH,
-	TWO_FACTOR_SETUP_PATH,
-} from '../../../app/router/authHelpers';
+import { FORCE_PASSWORD_PATH, TWO_FACTOR_SETUP_PATH } from '../../../app/router/authHelpers';
+import { canAccessAdminPanel } from '../../../shared/utils/permissions';
 import AuthLayout from '../../../layouts/AuthLayout';
 import { saveAuth } from '../../../shared/utils/storage';
 import { getMyProgress } from '../../council/api/councilApi';

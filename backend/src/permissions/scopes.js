@@ -7,7 +7,7 @@ const RESOURCE_SCOPES = {
 	topics: ['own', 'department', 'all'],
 	users: ['department', 'all'],
 	courses: ['assigned', 'all'],
-	// Phân ca / xem bảng chấm công: khoa trưởng, điều dưỡng trưởng chỉ khoa mình
+	// Phân ca / xem bảng điểm danh: khoa trưởng, điều dưỡng trưởng chỉ khoa mình
 	staff_attendance: ['department', 'all'],
 };
 

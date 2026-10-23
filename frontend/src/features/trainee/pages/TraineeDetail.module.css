@@ -263,10 +263,6 @@
 	color: #a32020;
 	font-weight: var(--font-weight-semibold);
 }
-.good {
-	color: var(--color-primary-dark);
-	font-weight: var(--font-weight-semibold);
-}
 .toggle {
 	border: none;
 	background: none;

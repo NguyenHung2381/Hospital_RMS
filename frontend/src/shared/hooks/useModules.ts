@@ -4,7 +4,7 @@ import { apiClient } from '../api/axios';
 export type ModuleKey = 'research' | 'training' | 'seminar' | 'survey' | 'attendance';
 export type Modules = Record<ModuleKey, boolean>;
 
-// Chấm công mặc định tắt (backend moduleGuard.DEFAULT_OFF)
+// Điểm danh mặc định tắt (backend moduleGuard.DEFAULT_OFF)
 const ALL_ON: Modules = { research: true, training: true, seminar: true, survey: true, attendance: false };
 let cache: Modules | null = null;
 let inflight: Promise<Modules> | null = null;

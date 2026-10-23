@@ -5,5 +5,5 @@
  * @swagger
  * tags:
  *   name: StaffAttendance
- *   description: Bảng chấm công nhân viên (IP bệnh viện + GPS)
+ *   description: Bảng điểm danh nhân viên (IP bệnh viện + GPS)
  */

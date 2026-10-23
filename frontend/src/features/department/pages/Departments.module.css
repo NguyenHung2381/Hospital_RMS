@@ -94,15 +94,6 @@
 }
 
 /* ── EMPTY STATE ─────────────────────────── */
-.emptyState {
-	composes: emptyState from '../../../shared/components/Table/Table.module.css';
-}
-.emptyTitle {
-	composes: emptyTitle from '../../../shared/components/Table/Table.module.css';
-}
-.emptyDesc {
-	composes: emptyDesc from '../../../shared/components/Table/Table.module.css';
-}
 
 /* ── HEADER BUTTON ───────────────────────── */
 .btnAddHeader {

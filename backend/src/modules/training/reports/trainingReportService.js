@@ -6,6 +6,7 @@
  */
 const { getPool, sql } = require('../../../config/db');
 const { COURSE_DISPLAY_STATUS } = require('../courses/courseService');
+const { SESSION_IN_PROGRAM_SQL } = require('../courses/sessionScope');
 
 const COURSE_IN_YEAR = '(@year IS NULL OR YEAR(COALESCE(c.start_date, c.created_at)) = @year)';
 
@@ -51,7 +52,7 @@ const trainees = async (year) => {
              SUM(CASE WHEN a.status = 'present' THEN 1 ELSE 0 END) AS attended
       FROM class_sessions cs
       LEFT JOIN attendance a ON a.session_id = cs.id AND a.enrollment_id = e.id
-      WHERE cs.course_id = e.course_id
+      WHERE cs.course_id = e.course_id AND ${SESSION_IN_PROGRAM_SQL('cs', 'e')}
     ) att
     WHERE e.status = 'approved' AND ${COURSE_IN_YEAR}
     ORDER BY COALESCE(c.start_date, c.created_at), c.name, t.full_name

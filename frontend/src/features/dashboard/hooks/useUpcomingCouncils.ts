@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { hasPermission } from '@/app/router/authHelpers';
+import { hasPermission } from '@/shared/utils/permissions';
 import { getCouncils } from '@/features/council/api/councilApi';
 import type { Council } from '@/features/council/types/council.type';
 import { getStoredUser, type StoredUser } from '@/shared/utils/storage';

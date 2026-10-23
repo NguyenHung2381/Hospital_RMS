@@ -93,6 +93,7 @@ export const PERMISSION_KEYS = [
 	'staff_attendance:read',
 	'staff_attendance:manage',
 	'staff_attendance:roster',
+	'staff_attendance:approve',
 	'activity_logs:read',
 	'security_events:read',
 	'system_settings:manage',

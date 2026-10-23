@@ -57,8 +57,6 @@ export const CHART_COLORS = [
 	'#EC4899',
 	'#6366F1',
 ];
-export const DEPT_COLORS = CHART_COLORS;
-export const CATEGORY_COLORS = CHART_COLORS;
 
 export const APPROVAL_CONFIG: Record<string, { label: string; tone: BadgeTone }> = {
 	pending: { label: 'Chờ thẩm định', tone: 'amber' },

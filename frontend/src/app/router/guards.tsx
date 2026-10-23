@@ -2,17 +2,16 @@ import React from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import {
 	blockingSetupPath,
-	canAccessAdminPanel,
 	canSetupTwoFactor,
 	defaultPath,
 	FORCE_PASSWORD_PATH,
 	getStoredUser,
-	hasPermission,
 	hasToken,
 	isTraineeAccount,
 	mustChangePassword,
 	traineePathFor,
 } from './authHelpers';
+import { canAccessAdminPanel, hasPermission } from '../../shared/utils/permissions';
 import type { PermissionKey } from '../../shared/types/permissions.generated';
 
 export function RequireAuth({ children }: { children: React.ReactNode }) {

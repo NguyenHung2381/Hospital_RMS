@@ -1,4 +1,4 @@
-// Phạm vi khoa của chấm công / phân ca học viên (staff_attendance): khoa trưởng,
+// Phạm vi khoa của điểm danh / phân ca học viên (staff_attendance): khoa trưởng,
 // điều dưỡng trưởng chỉ thấy và xếp ca cho học viên khoa mình (trainees.department_id);
 // lượt cấp quyền có từ trước khi resource có phạm vi (scope NULL) giữ hiệu lực toàn
 // viện, không bị thu hẹp. Chỉ tài khoản học viên mới được phân ca.
@@ -138,7 +138,7 @@ test('setRoster toàn viện / lượt cấp cũ / superuser: không kiểm tra 
 	}
 });
 
-test('bảng chấm công phạm vi khoa: lọc theo khoa của người xem', async () => {
+test('bảng điểm danh phạm vi khoa: lọc theo khoa của người xem', async () => {
 	let n = log.length;
 	await staffAttendanceService.getByDate('2026-11-02', HEAD_K1);
 	const att = log.slice(n).find((q) => /FROM staff_attendance a/.test(q.text));

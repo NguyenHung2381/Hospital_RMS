@@ -52,15 +52,6 @@
 .actionBtn {
 	composes: actionBtn from '../../../shared/components/Table/Table.module.css';
 }
-.emptyState {
-	composes: emptyState from '../../../shared/components/Table/Table.module.css';
-}
-.emptyTitle {
-	composes: emptyTitle from '../../../shared/components/Table/Table.module.css';
-}
-.emptyDesc {
-	composes: emptyDesc from '../../../shared/components/Table/Table.module.css';
-}
 
 .select {
 	padding: 6px 10px;

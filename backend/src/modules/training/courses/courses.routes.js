@@ -128,6 +128,14 @@ router.post(
 	validate,
 	ctrl.openClass,
 );
+// Hủy mở lớp: lớp về trạng thái chờ mở (lớp đã có buổi học thì phải xóa lịch trước).
+router.post(
+	'/:id/programs/cancel-open',
+	authorizePermission(['courses', 'update']),
+	[body('program_id').notEmpty().withMessage('Vui lòng chọn chương trình')],
+	validate,
+	ctrl.cancelOpenClass,
+);
 // Ngày học của lớp: gợi ý (thời lượng / tiết chương trình, ngày lễ) + đặt / sửa.
 router.get(
 	'/:id/programs/suggest-dates',

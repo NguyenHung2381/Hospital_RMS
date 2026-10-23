@@ -4,6 +4,8 @@ const { scopeOf } = require('../../../permissions/authz');
 const { ASSIGNED_EXISTS_SQL } = require('./coursePolicy');
 const { fmtDateVN } = require('../../../utils/vnDate');
 const { assertClassOpen } = require('./programClassService');
+const { SESSION_IN_PROGRAM_SQL } = require('./sessionScope');
+const { TRAINEE_OF_USER_SQL } = require('../trainees/traineeOfUser');
 
 // Buổi o trùng lịch giảng viên với buổi s: cùng GV, cùng ngày, chồng giờ (thiếu
 // giờ = cả ngày), khóa chưa huỷ. Chỉ cảnh báo, không chặn — GV có thể dạy ghép.
@@ -76,20 +78,20 @@ const listSessionsInRange = async (
 
 /**
  * Lịch học của 1 học viên trong [from, to] — cùng dạng với listSessionsInRange để dùng
- * chung giao diện lịch. Chỉ lớp đã duyệt; khóa nhiều chương trình thì chỉ buổi của bài
- * thuộc chương trình đã ghi danh (buổi không gắn bài thì ai cũng thấy). Kèm điểm danh.
- * Chọn học viên theo traineeId (admin) hoặc userId (cổng cá nhân, trainees.user_id).
+ * chung giao diện lịch. Chỉ lớp đã duyệt; khóa nhiều chương trình thì chỉ buổi thuộc
+ * chương trình đã ghi danh (xem sessionScope). Kèm điểm danh.
+ * Chọn học viên theo traineeId (admin) hoặc userId (cổng cá nhân — xem traineeOfUser).
  */
 const listTraineeSessions = async ({ from, to, traineeId = null, userId = null }) => {
 	const pool = await getPool();
-	const who = traineeId ? 't.id = @tid' : 't.user_id = @uid';
+	const who = traineeId ? 't.id = @tid' : TRAINEE_OF_USER_SQL('t');
 	const result = await pool
 		.request()
 		.input('from', sql.Date, from)
 		.input('to', sql.Date, to)
 		.input('tid', sql.VarChar(20), traineeId)
 		.input('uid', sql.VarChar(20), userId).query(`
-    DECLARE @mine TABLE (enrollment_id VARCHAR(20), course_id VARCHAR(20), program_id VARCHAR(20));
+    DECLARE @mine TABLE (id VARCHAR(20), course_id VARCHAR(20), program_id VARCHAR(20));
     INSERT INTO @mine
     SELECT e.id, e.course_id, e.program_id
     FROM course_enrollments e JOIN trainees t ON t.id = e.trainee_id
@@ -102,10 +104,8 @@ const listTraineeSessions = async ({ from, to, traineeId = null, userId = null }
     JOIN courses c ON c.id = sess.course_id AND c.status <> 'cancelled'
     LEFT JOIN program_lessons s ON s.id = sess.subject_id
     LEFT JOIN lecturers l ON l.id = sess.lecturer_id
-    LEFT JOIN attendance a ON a.session_id = sess.id AND a.enrollment_id = m.enrollment_id
-    WHERE sess.session_date BETWEEN @from AND @to
-      AND (sess.subject_id IS NULL OR m.program_id IS NULL
-           OR EXISTS (SELECT 1 FROM lesson_programs lp WHERE lp.lesson_id = sess.subject_id AND lp.program_id = m.program_id))
+    LEFT JOIN attendance a ON a.session_id = sess.id AND a.enrollment_id = m.id
+    WHERE sess.session_date BETWEEN @from AND @to AND ${SESSION_IN_PROGRAM_SQL('sess', 'm')}
     ORDER BY sess.session_date, sess.start_time;
     -- Thanh thời gian: ngày của lớp (chương trình đã ghi danh), không có thì ngày khóa
     SELECT c.id, CONCAT(c.name, CASE WHEN tp.code IS NULL THEN '' ELSE CONCAT(N' · ', tp.code) END) AS name,

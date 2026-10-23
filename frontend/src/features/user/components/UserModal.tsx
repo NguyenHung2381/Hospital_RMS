@@ -1,7 +1,8 @@
 import { Toggle } from '@/shared/components/Input/Toggle';
 import { FormField } from '@/shared/components/Input/FormField';
+import { PasswordInput } from '@/shared/components/Input/PasswordInput';
 import { Modal } from '@/shared/components';
-import { CheckSvg, ChevDSvg, EditSvg, InfoSvg, KeySvg } from '@/assets/icons';
+import { CheckSvg, ChevDSvg, EditSvg, KeySvg } from '@/assets/icons';
 import { useState } from 'react';
 import type { SimpleItem } from '../api/userApi';
 import styles from '../pages/UserList.module.css';
@@ -62,7 +63,6 @@ export function UserModal({
 	});
 	const [errors, setErrors] = useState<FormErrors>({});
 	const [loading, setLoading] = useState(false);
-	const [showPwd, setShowPwd] = useState(false);
 	const [usernameTouched, setUsernameTouched] = useState(mode === 'edit');
 	const [saveError, setSaveError] = useState<string | null>(null);
 
@@ -259,35 +259,14 @@ export function UserModal({
 						label='Mật khẩu mới'
 						error={errors.password}
 					>
-						<div style={{ position: 'relative' }}>
-							<input
-								id='password'
-								type={showPwd ? 'text' : 'password'}
-								className={`${styles.formInput} ${errors.password ? styles.inputError : ''}`}
-								placeholder='(để trống = giữ nguyên)'
-								value={form.password}
-								onChange={(e) => set('password', e.target.value)}
-								style={{ paddingRight: 40 }}
-							/>
-							<button
-								type='button'
-								onClick={() => setShowPwd((v) => !v)}
-								style={{
-									position: 'absolute',
-									right: 10,
-									top: '50%',
-									transform: 'translateY(-50%)',
-									background: 'none',
-									border: 'none',
-									cursor: 'pointer',
-									color: 'var(--color-gray-400)',
-									display: 'flex',
-								}}
-								aria-label={showPwd ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
-							>
-								<InfoSvg />
-							</button>
-						</div>
+						<PasswordInput
+							id='password'
+							value={form.password}
+							onChange={(v) => set('password', v)}
+							placeholder='(để trống = giữ nguyên)'
+							invalid={!!errors.password}
+							className={styles.formInput}
+						/>
 					</FormField>
 				)}
 			</div>

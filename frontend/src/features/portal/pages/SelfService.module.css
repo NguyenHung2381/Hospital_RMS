@@ -68,9 +68,9 @@
 
 .stats {
 	display: grid;
-	grid-template-columns: repeat(3, minmax(110px, 1fr));
+	grid-template-columns: repeat(4, minmax(100px, 1fr));
 	gap: 10px;
-	flex: 0 1 460px;
+	flex: 0 1 580px;
 }
 
 .stat {
@@ -180,7 +180,7 @@
 
 @media (max-width: 560px) {
 	.stats {
-		grid-template-columns: repeat(3, 1fr);
+		grid-template-columns: repeat(2, 1fr);
 		flex-basis: 100%;
 	}
 

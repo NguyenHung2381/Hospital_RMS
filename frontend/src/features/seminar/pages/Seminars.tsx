@@ -12,7 +12,7 @@ import {
 	UsersSvg,
 } from '@/assets/icons';
 import AdminLayout from '../../../layouts/AdminLayout';
-import { Badge } from '@/shared/components';
+import { Badge, TableEmpty } from '@/shared/components';
 import { SkeletonTable } from '../../../shared/components/Loading';
 import { Pagination } from '../../../shared/components/Table/Pagination';
 import { SeminarDeleteModal } from '../components/SeminarDeleteModal';
@@ -204,18 +204,11 @@ export default function Seminars({ hospitalTraining = false }: { hospitalTrainin
 								cols={9}
 							/>
 						) : s.rows.length === 0 ? (
-							<tr>
-								<td colSpan={9}>
-									<div className={styles.emptyState}>
-										<div className={styles.emptyTitle}>
-											{ht ? 'Chưa có buổi tập huấn nào' : 'Chưa có sự kiện nào'}
-										</div>
-										<div className={styles.emptyDesc}>
-											{ht ? 'Thêm buổi tập huấn' : 'Thêm hội thảo/hội nghị'} hoặc đổi bộ lọc
-										</div>
-									</div>
-								</td>
-							</tr>
+							<TableEmpty
+								colSpan={9}
+								title={ht ? 'Chưa có buổi tập huấn nào' : 'Chưa có sự kiện nào'}
+								desc={<>{ht ? 'Thêm buổi tập huấn' : 'Thêm hội thảo/hội nghị'} hoặc đổi bộ lọc</>}
+							/>
 						) : (
 							s.rows.map((row, i) => (
 								<tr key={row.id}>

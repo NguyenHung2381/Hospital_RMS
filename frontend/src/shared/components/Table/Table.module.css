@@ -144,6 +144,15 @@
 	color: var(--color-primary-dark);
 	text-decoration: underline;
 }
+/* Bảng rộng hơn khung (tablet/laptop nhỏ) tự co cột theo nội dung → cột tên chính
+   bị ép còn 1-2 từ/dòng. Giữ bề rộng tối thiểu cho ô chứa tên; bảng cuộn ngang thay vì
+   vỡ chữ. Không áp ở chế độ thẻ (≤640px, xem global.css table[data-cards]). */
+@media (min-width: 641px) {
+	td:has(> .cellTitle) {
+		min-width: 180px;
+	}
+}
+
 /* Chữ phụ dưới tên / mô tả ngắn / ngày tháng */
 .cellSub,
 .dateText {

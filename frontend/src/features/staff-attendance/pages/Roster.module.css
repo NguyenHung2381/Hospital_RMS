@@ -26,6 +26,7 @@
 .gridWrap {
 	overflow: auto;
 	max-height: calc(100vh - 340px);
+	max-height: calc(100dvh - 340px);
 	min-height: 240px;
 }
 .grid {

@@ -18,6 +18,7 @@
 	width: 88vw;
 	max-width: 1100px;
 	height: 86vh;
+	height: 86dvh;
 	display: flex;
 	flex-direction: column;
 	overflow: hidden;

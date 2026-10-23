@@ -5,7 +5,7 @@ import { ApproveSvg, ClipboardCheckSvg } from '@/assets/icons';
 import { Badge, Card, EmptyState, InlineLoading } from '@/shared/components';
 import AdminLayout from '../../../layouts/AdminLayout';
 import UserLayout from '../../../layouts/UserLayout';
-import { canAccessAdminPanel } from '../../../app/router/authHelpers';
+import { canAccessAdminPanel } from '../../../shared/utils/permissions';
 import { getStoredUser } from '../../../shared/utils/storage';
 import { STATUS_CFG } from '../../topics/utils/topicHelpers';
 import { getMyTasks, type MyTasks as MyTasksData } from '../api/myTasksApi';

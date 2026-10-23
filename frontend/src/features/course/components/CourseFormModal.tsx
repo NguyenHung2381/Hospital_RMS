@@ -6,6 +6,7 @@ import { Toggle } from '@/shared/components/Input/Toggle';
 import { SearchInput } from '@/shared/components/Table/TableToolbar';
 import { apiClient } from '@/shared/api/axios';
 import { CLASS_TYPES, EMPTY_FORM, TRAINING_TYPE, type Course, type CourseFormData } from '../types/course.type';
+import { courseToForm } from '../utils/courseForm';
 
 interface SimpleItem {
 	id: string;
@@ -93,36 +94,19 @@ export function CourseFormModal({
 	onClose,
 	onSave,
 	loading,
+	cloneOf,
 }: {
 	mode: 'add' | 'edit';
 	course?: Course;
 	/** Giá trị điền sẵn khi thêm mới (vd tạo khóa từ hạng mục kế hoạch). */
 	initial?: Partial<CourseFormData>;
+	/** Tên khóa gốc khi nhân bản — đổi tiêu đề/nút cho rõ */
+	cloneOf?: string;
 	onClose: () => void;
 	onSave: (d: CourseFormData) => void;
 	loading: boolean;
 }) {
-	const [form, setForm] = useState<CourseFormData>(
-		course
-			? {
-					name: course.name,
-					program_ids: course.program_ids,
-					training_form_id: course.training_form_id ?? '',
-					training_type_id: course.training_type_id ?? '',
-					batch_no: course.batch_no != null ? String(course.batch_no) : '',
-					is_rolling: course.is_rolling,
-					start_date: course.start_date ? course.start_date.slice(0, 10) : '',
-					end_date: course.end_date ? course.end_date.slice(0, 10) : '',
-					enrollment_start_date: course.enrollment_start_date ? course.enrollment_start_date.slice(0, 10) : '',
-					enrollment_end_date: course.enrollment_end_date ? course.enrollment_end_date.slice(0, 10) : '',
-					status: course.status,
-					is_public_registration: course.is_public_registration,
-					description: course.description ?? '',
-					prerequisites: course.prerequisites,
-					objectives: course.objectives,
-				}
-			: { ...EMPTY_FORM, ...initial },
-	);
+	const [form, setForm] = useState<CourseFormData>(course ? courseToForm(course) : { ...EMPTY_FORM, ...initial });
 	const [forms, setForms] = useState<SimpleItem[]>([]);
 	const [programs, setPrograms] = useState<ProgramOption[]>([]);
 	const [types, setTypes] = useState<SimpleItem[]>([]);
@@ -199,8 +183,14 @@ export function CourseFormModal({
 			open
 			onClose={onClose}
 			icon={<LayersSvg />}
-			title={mode === 'add' ? 'Thêm khóa học' : 'Chỉnh sửa khóa học'}
-			subtitle={mode === 'add' ? 'Thêm khóa học mới' : `Cập nhật — ${course?.name}`}
+			title={cloneOf ? 'Nhân bản khóa học' : mode === 'add' ? 'Thêm khóa học' : 'Chỉnh sửa khóa học'}
+			subtitle={
+				cloneOf
+					? `Từ "${cloneOf}" — kiểm tra lại tên, số đợt và ngày học trước khi lưu`
+					: mode === 'add'
+						? 'Thêm khóa học mới'
+						: `Cập nhật — ${course?.name}`
+			}
 			className={styles.modal}
 			bodyClassName={styles.modalBody}
 			footer={
@@ -208,7 +198,7 @@ export function CourseFormModal({
 					onCancel={onClose}
 					onConfirm={() => validate() && submit()}
 					loading={loading}
-					confirmLabel={mode === 'add' ? 'Thêm khóa học' : 'Lưu thay đổi'}
+					confirmLabel={cloneOf ? 'Tạo bản sao' : mode === 'add' ? 'Thêm khóa học' : 'Lưu thay đổi'}
 				/>
 			}
 		>

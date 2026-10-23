@@ -350,12 +350,6 @@
 /* ── PAGE SIZE ───────────────────────────── */
 
 /* ── PAGINATION ──────────────────────────── */
-.pagination {
-	display: flex;
-	align-items: center;
-	justify-content: space-between;
-	margin-top: var(--space-4);
-}
 
 /* ── PERMISSION MODAL ────────────────────── */
 .modalLg {
@@ -380,6 +374,7 @@
 .permModalBody {
 	padding: 0;
 	max-height: 60vh;
+	max-height: 60dvh;
 	overflow-y: auto;
 }
 
@@ -416,11 +411,6 @@
 	letter-spacing: 0.04em;
 }
 /* Quyền nhạy cảm (quản lý tài khoản / phân quyền): viền cảnh báo quanh ô */
-.permCritical {
-	outline: 1px dashed #e2a04a;
-	outline-offset: 2px;
-	border-radius: 4px;
-}
 .permResourceCell {
 	padding: var(--space-3) var(--space-5);
 	vertical-align: middle;
@@ -439,75 +429,10 @@
 }
 
 /* Cell checkbox */
-.permMatrix .permCell {
-	text-align: center;
-	padding: var(--space-3) var(--space-2);
-	vertical-align: middle;
-}
 
 /* Custom checkbox */
-.permCheck {
-	position: relative;
-	width: 18px;
-	height: 18px;
-	display: inline-flex;
-	align-items: center;
-	justify-content: center;
-	cursor: pointer;
-}
-
-.permCheck input[type='checkbox'] {
-	position: absolute;
-	opacity: 0;
-	inset: 0;
-	width: 100%;
-	height: 100%;
-	margin: 0;
-	cursor: pointer;
-}
-
-.permCheckBox {
-	width: 18px;
-	height: 18px;
-	border: 1.5px solid var(--color-gray-300);
-	border-radius: 5px;
-	background: var(--color-white);
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	transition: all var(--transition-fast);
-	cursor: pointer;
-}
-
-.permCheck input:checked + .permCheckBox {
-	background: var(--color-primary);
-	border-color: var(--color-primary);
-}
-
-.permCheck input:checked + .permCheckBox svg {
-	display: block;
-}
-
-.permCheckBox svg {
-	display: none;
-	width: 11px;
-	height: 11px;
-	color: white;
-	stroke-width: 3;
-}
-
-.permCheck input:disabled + .permCheckBox {
-	background: var(--color-gray-100);
-	border-color: var(--color-gray-200);
-	cursor: not-allowed;
-}
 
 /* Cell trống (action không áp dụng cho resource này) */
-.permCellEmpty {
-	text-align: center;
-	padding: var(--space-3) var(--space-2);
-	vertical-align: middle;
-}
 .permCellDash {
 	width: 16px;
 	height: 2px;
@@ -517,29 +442,6 @@
 }
 
 /* Thanh chọn tất cả theo resource */
-.permSelectAll {
-	padding: 2px 8px;
-	border-radius: var(--radius-full);
-	border: 1px solid var(--color-gray-200);
-	background: var(--color-white);
-	font-size: var(--font-size-2xs);
-	font-weight: var(--font-weight-semibold);
-	color: var(--color-gray-500);
-	cursor: pointer;
-	margin-left: var(--space-2);
-	transition: all var(--transition-fast);
-	white-space: nowrap;
-}
-.permSelectAll:hover {
-	background: #e1f5ea;
-	border-color: var(--color-primary);
-	color: var(--color-primary-dark);
-}
-.permSelectAll.allSelected {
-	background: #e1f5ea;
-	border-color: var(--color-primary);
-	color: var(--color-primary-dark);
-}
 
 /* Action btn "Phân quyền" */
 .actionPerm {
@@ -741,9 +643,6 @@
 }
 
 /* ── Ma trận phân quyền: modal rộng + ghim cột tên / hàng tiêu đề khi cuộn ── */
-.modalXl {
-	max-width: min(1240px, 96vw);
-}
 .permMatrix thead th:first-child,
 .permMatrix .permResourceCell {
 	position: sticky;
@@ -757,10 +656,6 @@
 	background: #f1f5f9;
 }
 /* Ô gộp colSpan không "dính" được — cho nhãn bên trong dính trái khi cuộn ngang */
-.permModuleLabel {
-	position: sticky;
-	left: var(--space-5);
-}
 .permScopeSelect {
 	min-width: 150px;
 	padding: 4px 8px;

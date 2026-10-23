@@ -821,7 +821,7 @@ const sheetActivities = (wb, data, head) => {
 		{ key: 'source', header: 'Nguồn', width: 16 },
 		{ key: 'group', header: 'Hình thức CME', width: 24 },
 		{ key: 'category', header: 'Danh mục', width: 22 },
-		{ key: 'title', header: 'Nội dung hoạt động', width: 38 },
+		{ key: 'title', header: 'Tên hoạt động', width: 38 },
 		{ key: 'role', header: 'Vai trò', width: 14 },
 		{ key: 'time', header: 'Thời gian', width: 22 },
 		{ key: 'year', header: 'Năm', width: 8 },

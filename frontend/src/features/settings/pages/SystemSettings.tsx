@@ -37,11 +37,11 @@ type Section = {
 	groups: { title?: string; fields: Field[] }[];
 };
 
-// Hiện ở cả tab "Module chức năng" lẫn tab "Chấm công" (cùng 1 key)
+// Hiện ở cả tab "Module chức năng" lẫn tab "Điểm danh" (cùng 1 key)
 const ATTENDANCE_TOGGLE: Field = {
 	key: 'MODULE_ATTENDANCE',
-	label: 'Chấm công học viên',
-	hint: 'Bật để hiện mục Chấm công ở cổng học viên (học viên chấm vào/ra theo ca trong thời gian khóa học) và Bảng chấm công, Phân ca học viên cho quản trị. Cấu hình IP và vị trí ở tab "Chấm công" trước khi bật.',
+	label: 'Điểm danh học viên',
+	hint: 'Bật để hiện mục Điểm danh ở cổng học viên (học viên điểm danh vào/ra theo ca trong thời gian khóa học) và Bảng điểm danh, Phân ca học viên cho quản trị. Cấu hình IP và vị trí ở tab "Điểm danh" trước khi bật.',
 	type: 'bool',
 	defaultOn: false,
 	onText: 'Đang bật',
@@ -52,7 +52,7 @@ const SECTIONS: Section[] = [
 	{
 		id: 'security',
 		title: 'Bảo mật & Tài khoản',
-		sub: '2FA, quên mật khẩu, cảnh báo',
+		sub: '2FA, quên mật khẩu, chống bot',
 		groups: [
 			{
 				title: 'Xác thực 2 lớp (TOTP)',
@@ -93,6 +93,29 @@ const SECTIONS: Section[] = [
 						hint: 'Phân cách bằng dấu phẩy. Để trống = gửi cho mọi superuser có email.',
 						type: 'textarea',
 						placeholder: 'it@benhvien.vn, antoan@benhvien.vn',
+					},
+				],
+			},
+			{
+				title: 'Chống bot form đăng ký công khai (Google reCAPTCHA v2)',
+				fields: [
+					{
+						key: 'RECAPTCHA_SITE_KEY',
+						label: 'Site key',
+						hint: 'Lấy ở google.com/recaptcha/admin → tạo site loại reCAPTCHA v2 "Tôi không phải người máy", thêm tên miền hệ thống. Đặt đủ Site key + Secret key thì form đăng ký khóa học / đề tài hiện ô tích của Google; để trống cả hai = dùng kiểm tra chạy ngầm (proof-of-work), chạy được cả trong mạng nội bộ. Máy chủ phải gọi ra được www.google.com, không thì mọi lượt đăng ký bị từ chối.',
+						placeholder: '6Lc…',
+					},
+					{
+						key: 'RECAPTCHA_SECRET_KEY',
+						label: 'Secret key',
+						hint: 'Được che sau khi lưu. Để nguyên nếu không đổi.',
+						type: 'password',
+					},
+					{
+						key: 'RECAPTCHA_HOSTNAMES',
+						label: 'Chỉ nhận từ tên miền',
+						hint: 'Tuỳ chọn, phân cách bằng dấu phẩy. Để trống = không kiểm tra tên miền. Không đặt khi dùng khoá TEST của Google.',
+						placeholder: 'rms.benhvien.vn',
 					},
 				],
 			},
@@ -243,17 +266,17 @@ const SECTIONS: Section[] = [
 	},
 	{
 		id: 'attendance',
-		title: 'Chấm công',
-		sub: 'Mạng & vị trí bệnh viện',
+		title: 'Điểm danh',
+		sub: 'Mạng, vị trí, đơn xin phép',
 		groups: [
 			{ fields: [ATTENDANCE_TOGGLE] },
 			{
-				title: 'Chấm công hợp lệ khi đạt CẢ HAI điều kiện',
+				title: 'Điểm danh hợp lệ khi đạt CẢ HAI điều kiện',
 				fields: [
 					{
 						key: 'ATTENDANCE_ALLOWED_IPS',
 						label: '1. IP mạng bệnh viện',
-						hint: 'IP công cộng của đường mạng bệnh viện, hoặc dải IP nội bộ nếu máy chủ đặt trong viện. Nhiều giá trị phân cách bằng dấu phẩy, nhận dạng CIDR (vd 10.0.0.0/8). Để trống = không ai chấm công được.',
+						hint: 'IP công cộng của đường mạng bệnh viện, hoặc dải IP nội bộ nếu máy chủ đặt trong viện. Nhiều giá trị phân cách bằng dấu phẩy, nhận dạng CIDR (vd 10.0.0.0/8). Để trống = không ai điểm danh được.',
 						type: 'textarea',
 						placeholder: '113.161.1.2, 10.0.0.0/8',
 					},
@@ -276,6 +299,41 @@ const SECTIONS: Section[] = [
 						hint: 'Vị trí có sai số lớn hơn bị từ chối (máy tính không có GPS thường sai vài trăm mét). Trong nhà GPS hay lệch 30–100m. Mặc định 100m.',
 						type: 'number',
 						placeholder: '100',
+					},
+				],
+			},
+			{
+				title: 'Đơn xin phép (xin nghỉ / xin đi muộn)',
+				fields: [
+					{
+						key: 'LEAVE_REQUEST_ENABLED',
+						label: 'Cho học viên gửi đơn xin phép',
+						hint: 'Tắt thì học viên không gửi được đơn mới; đơn đang chờ vẫn duyệt được ở trang Đơn xin phép.',
+						type: 'bool',
+						defaultOn: true,
+						onText: 'Cho phép',
+						offText: 'Đã tắt',
+					},
+					{
+						key: 'LEAVE_BACKDATE_DAYS',
+						label: 'Nộp bổ sung cho ngày đã qua tối đa (ngày)',
+						hint: '0 = chỉ xin phép từ hôm nay trở đi. Từ 0 đến 30. Mặc định 3.',
+						type: 'number',
+						placeholder: '3',
+					},
+					{
+						key: 'LEAVE_AHEAD_DAYS',
+						label: 'Xin phép trước tối đa (ngày)',
+						hint: 'Ngày cuối của đơn không được quá hôm nay + số ngày này. Từ 1 đến 365. Mặc định 90.',
+						type: 'number',
+						placeholder: '90',
+					},
+					{
+						key: 'LEAVE_MAX_SPAN_DAYS',
+						label: 'Một đơn xin nghỉ dài tối đa (ngày)',
+						hint: 'Từ 1 đến 180. Mặc định 31.',
+						type: 'number',
+						placeholder: '31',
 					},
 				],
 			},
@@ -406,7 +464,7 @@ export default function SystemSettings() {
 	const [env, setEnv] = useState<Values>({}); // giá trị đang áp dụng từ .env khi chưa đặt qua UI
 	const [tab, setTab] = useState(SECTIONS[0].id);
 	const [showPass, setShowPass] = useState(false);
-	const [hasPass, setHasPass] = useState(false);
+	const [hasSecret, setHasSecret] = useState<Record<string, boolean>>({}); // secret đã đặt (backend chỉ trả ••••••)
 	const [saving, setSaving] = useState(false);
 	const [testTo, setTestTo] = useState('');
 	const [testing, setTesting] = useState(false);
@@ -419,6 +477,7 @@ export default function SystemSettings() {
 			.then((rows) => {
 				const v: Values = {};
 				const e: Values = {};
+				const secrets: Record<string, boolean> = {};
 				for (const f of FIELDS) {
 					const r = rows.find((x) => x.setting_key === f.key);
 					if (f.type === 'bool') {
@@ -429,8 +488,9 @@ export default function SystemSettings() {
 						v[f.key] = r?.value ?? '';
 						if (!r?.value && r?.effective) e[f.key] = r.effective;
 					}
-					if (f.key === 'SMTP_PASS') setHasPass(!!r?.has_value);
+					if (f.type === 'password') secrets[f.key] = !!r?.has_value;
 				}
+				setHasSecret(secrets);
 				setSaved(v);
 				setForm(v);
 				setEnv(e);
@@ -608,7 +668,7 @@ export default function SystemSettings() {
 					className={styles.input}
 					type={isPass && !showPass ? 'password' : f.type === 'number' ? 'number' : 'text'}
 					autoComplete='off'
-					placeholder={isPass ? (hasPass ? 'Đã đặt — nhập để thay đổi' : '') : (env[f.key] ?? f.placeholder)}
+					placeholder={isPass ? (hasSecret[f.key] ? 'Đã đặt — nhập để thay đổi' : '') : (env[f.key] ?? f.placeholder)}
 					value={form[f.key] ?? ''}
 					onChange={(e) => set(f.key, e.target.value)}
 					onFocus={(e) => isPass && e.target.value === '••••••' && set(f.key, '')}

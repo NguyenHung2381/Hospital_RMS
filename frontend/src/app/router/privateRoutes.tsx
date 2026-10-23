@@ -81,6 +81,7 @@ const StaffAttendance = lazy(
 );
 const Shifts = lazy(() => import('../../features/staff-attendance/pages/Shifts'));
 const Roster = lazy(() => import('../../features/staff-attendance/pages/Roster'));
+const LeaveRequests = lazy(() => import('../../features/staff-attendance/pages/LeaveRequests'));
 const StaffLicenses = lazy(
 	() => import('../../features/staff-license/pages/StaffLicenses'),
 );
@@ -290,7 +291,7 @@ export const adminRoutes: RouteObject[] = [
 		path: '/admin/staff-attendance',
 		element: (
 			<RequirePermission perm='staff_attendance:read'>
-				{admin('Bảng chấm công học viên', <StaffAttendance />)}
+				{admin('Bảng điểm danh học viên', <StaffAttendance />)}
 			</RequirePermission>
 		),
 	},
@@ -307,6 +308,14 @@ export const adminRoutes: RouteObject[] = [
 		element: (
 			<RequirePermission perm='staff_attendance:roster'>
 				{admin('Phân ca học viên', <Roster />)}
+			</RequirePermission>
+		),
+	},
+	{
+		path: '/admin/leave-requests',
+		element: (
+			<RequirePermission perm='staff_attendance:approve'>
+				{admin('Đơn xin phép của học viên', <LeaveRequests />)}
 			</RequirePermission>
 		),
 	},
@@ -452,7 +461,7 @@ export const userRoutes: RouteObject[] = [
 		element: user('Nhập điểm', <UserMyTeachingGrades />),
 	},
 	{
-		// Chấm công chuyển sang cổng học viên — nhân viên không chấm công nữa.
+		// Điểm danh chuyển sang cổng học viên — nhân viên không điểm danh nữa.
 		path: '/user/cham-cong',
 		element: <Navigate to='/user' replace />,
 	},
@@ -487,7 +496,9 @@ export const traineeRoutes: RouteObject[] = [
 	{ path: '/hoc-vien/ket-qua', element: user('Kết quả & chứng chỉ', <TraineeResults />) },
 	{ path: '/hoc-vien/giay-to', element: user('Giấy tờ hồ sơ', <TraineeDocuments />) },
 	{ path: '/hoc-vien/diem-danh', element: user('Điểm danh QR', <AttendanceCheckIn />) },
-	{ path: '/hoc-vien/cham-cong', element: user('Chấm công', <UserMyAttendance />) },
+	{ path: '/hoc-vien/diem-danh-ca', element: user('Điểm danh & xin phép', <UserMyAttendance />) },
+	// Đường dẫn cũ khi mục này còn tên "Chấm công"
+	{ path: '/hoc-vien/cham-cong', element: <Navigate to='/hoc-vien/diem-danh-ca' replace /> },
 	{ path: '/hoc-vien/khao-sat', element: user('Khảo sát', <UserSurveys />) },
 	{ path: '/hoc-vien/khao-sat/:id', element: user('Trả lời khảo sát', <UserSurveys />) },
 	{ path: '/hoc-vien/thong-bao', element: user('Thông báo', <UserNotifications />) },

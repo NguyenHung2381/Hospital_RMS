@@ -86,7 +86,12 @@ export const openClass = (courseId: string, programId: string, dates: ClassDates
 		program_id: programId,
 		...dates,
 	});
-export const setClassDates = (courseId: string, programId: string, dates: ClassDates) =>
+/** Hủy mở lớp: lớp về trạng thái chờ mở, học viên giữ nguyên (lớp đã có buổi học thì bị chặn). */
+export const cancelOpenClass = (courseId: string, programId: string) =>
+	apiClient.post<{ cancelled: boolean; trainees: number }>(`/courses/${courseId}/programs/cancel-open`, {
+		program_id: programId,
+	});
+export const setClassDates =(courseId: string, programId: string, dates: ClassDates) =>
 	apiClient.put<ClassDates>(`/courses/${courseId}/programs/dates`, { program_id: programId, ...dates });
 /** Gợi ý ngày học (backend utils/classDates.js). */
 export interface ClassDateSuggestion {

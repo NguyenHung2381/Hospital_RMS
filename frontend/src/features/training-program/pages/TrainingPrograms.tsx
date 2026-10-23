@@ -27,6 +27,7 @@ import {
 } from '../types/trainingProgram.type';
 import styles from './TrainingPrograms.module.css';
 import tbl from '@/shared/components/Table/Table.module.css';
+import { TableEmpty } from '@/shared/components/EmptyState';
 
 // Chương trình GPHN: học viên luân phiên nhiều khoa, mỗi khoa thời lượng khác nhau.
 // Mỗi vòng là 1 nhóm khoa (VD "Nội khoa" gồm 11 khoa) — ô bảng chỉ hiện tên vòng, khoa cụ thể ở tooltip.
@@ -309,18 +310,11 @@ export default function TrainingPrograms() {
 								cols={7}
 							/>
 						) : d.filtered.length === 0 ? (
-							<tr>
-								<td colSpan={7}>
-									<div className={styles.emptyState}>
-										<div className={styles.emptyTitle}>
-											Không tìm thấy chương trình đào tạo
-										</div>
-										<div className={styles.emptyDesc}>
-											{d.hasActiveFilter ? 'Thử thay đổi từ khoá hoặc bộ lọc' : 'Chưa có chương trình nào'}
-										</div>
-									</div>
-								</td>
-							</tr>
+							<TableEmpty
+								colSpan={7}
+								title='Không tìm thấy chương trình đào tạo'
+								desc={d.hasActiveFilter ? 'Thử thay đổi từ khoá hoặc bộ lọc' : 'Chưa có chương trình nào'}
+							/>
 						) : (
 							d.paged.map((p, i) => {
 								const rowNum = (d.safePage - 1) * (d.pageSize || d.filtered.length) + i + 1;

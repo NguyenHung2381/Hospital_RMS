@@ -327,6 +327,59 @@ const openClass = async (courseId, programId, actorId, dates = {}) => {
 };
 
 /**
+ * Hủy mở lớp (bấm nhầm, hoặc lớp không tổ chức được nữa): lớp quay về trạng thái
+ * chờ mở, học viên giữ nguyên. Lớp đã có buổi học trong lịch thì phải xóa các buổi
+ * đó trước — chỉ tính buổi CHỈ nhờ lớp này mà xếp được (bài học còn thuộc 1 lớp khác
+ * đã mở của khóa thì vẫn giữ được, xem assertClassOpen).
+ */
+const cancelOpenClass = async (courseId, programId, actorId) => {
+	const k = await classOf(courseId, programId);
+	if (!k || !k.class_rule)
+		throw httpError(404, 'Không tìm thấy lớp của chương trình này trong khóa.');
+	if (!k.class_opened_at) throw httpError(400, 'Lớp chưa mở.');
+	const pool = await getPool();
+	const params = (req) =>
+		req
+			.input('course_id', sql.VarChar(20), courseId)
+			.input('program_id', sql.VarChar(20), programId);
+	// Lớp khác của khóa vẫn đang mở, có bài học s.subject_id (lesson NULL = lớp bất kỳ).
+	const otherOpen = (lesson) => `EXISTS (SELECT 1 FROM course_programs o
+        WHERE o.course_id = @course_id AND o.program_id <> @program_id AND o.opened_at IS NOT NULL
+          ${lesson ? `AND EXISTS (SELECT 1 FROM lesson_programs lo WHERE lo.program_id = o.program_id AND lo.lesson_id = ${lesson})` : ''})`;
+	const sessions = (
+		await params(pool.request()).query(`
+      SELECT COUNT(*) AS n FROM class_sessions s
+      WHERE s.course_id = @course_id AND (
+        -- bài thuộc chương trình này, không lớp nào khác đã mở có bài đó
+        (EXISTS (SELECT 1 FROM lesson_programs lp WHERE lp.program_id = @program_id AND lp.lesson_id = s.subject_id)
+         AND NOT ${otherOpen('s.subject_id')})
+        -- buổi không gắn bài / bài không thuộc chương trình nào của khóa: cần ít nhất 1 lớp mở
+        OR (NOT EXISTS (SELECT 1 FROM lesson_programs lp JOIN course_programs cp
+                          ON cp.program_id = lp.program_id AND cp.course_id = @course_id
+                        WHERE lp.lesson_id = s.subject_id)
+            AND NOT ${otherOpen(null)})
+      )`)
+	).recordset[0].n;
+	if (sessions)
+		throw httpError(
+			400,
+			`Lớp đã có ${sessions} buổi học trong lịch — xóa các buổi đó ở tab Lịch học trước khi hủy mở lớp.`,
+		);
+	const r = await params(pool.request()).input('actor_id', sql.VarChar(20), actorId).query(`
+      UPDATE course_programs
+      SET opened_at = NULL, opened_by = NULL, updated_at = GETDATE(), updated_by = @actor_id
+      WHERE course_id = @course_id AND program_id = @program_id AND opened_at IS NOT NULL;
+      SELECT id FROM course_enrollments WHERE course_id = @course_id AND program_id = @program_id AND status = 'approved';`);
+	broadcast('update', { entity: 'course' });
+	mailTrainees(
+		r.recordset.map((x) => x.id),
+		(t) => `Lớp ${t.program_name ?? ''} — ${t.course_name} tạm hoãn mở`,
+		'Lớp học của bạn tạm thời chưa mở như thông báo trước. Bạn vẫn giữ chỗ trong lớp; thời gian học mới sẽ được thông báo khi lớp mở lại.',
+	);
+	return { cancelled: true, trainees: r.recordset.length };
+};
+
+/**
  * Chặn xếp lịch cho lớp chưa mở. Bài học (subjectId) thuộc nhiều chương trình của
  * khóa thì chỉ cần 1 lớp đã mở; không chọn bài thì cần ít nhất 1 lớp của khóa đã mở.
  */
@@ -370,6 +423,7 @@ module.exports = {
 	placeWaitlisted,
 	refreshCourse,
 	openClass,
+	cancelOpenClass,
 	suggestDates,
 	setClassDates,
 	assertClassOpen,

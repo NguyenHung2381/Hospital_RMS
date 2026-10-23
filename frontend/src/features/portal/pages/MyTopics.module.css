@@ -230,6 +230,7 @@
 	gap: var(--space-5);
 	align-items: stretch;
 	height: calc(100vh - 340px);
+	height: calc(100dvh - 340px);
 	min-height: 500px;
 }
 
@@ -798,16 +799,6 @@
 
 /* ── FILES ── */
 
-.fileName {
-	font-size: var(--font-size-sm);
-	font-weight: var(--font-weight-bold);
-	color: var(--color-gray-800);
-	white-space: nowrap;
-	overflow: hidden;
-	text-overflow: ellipsis;
-	transition: color var(--transition-fast);
-}
-
 /* ── ACTION PANEL (bottom of detail) ── */
 .actionPanel {
 	display: flex;
@@ -935,6 +926,7 @@
 	width: 560px;
 	max-width: 100%;
 	max-height: 90vh;
+	max-height: 90dvh;
 	display: flex;
 	flex-direction: column;
 	overflow: hidden;

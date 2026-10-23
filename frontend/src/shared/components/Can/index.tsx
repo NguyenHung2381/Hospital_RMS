@@ -19,5 +19,3 @@ export function Can({ permission, anyOf, children, fallback = null }: CanProps) 
 	const allowed = anyOf ? hasAny(anyOf) : has(permission);
 	return allowed ? <>{children}</> : <>{fallback}</>;
 }
-
-export default Can;

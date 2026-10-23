@@ -7,9 +7,11 @@ import { dateText, isYes, matchLabel, nameMap } from '@/shared/components/Excel/
 import { formatDateVN } from '@/shared/utils/formatDate';
 import { createCourse, getCourses } from '../api/courseApi';
 import { EMPTY_FORM, TRAINING_TYPE, type Course } from '../types/course.type';
-import { EyeSvg, LayersSvg, ListSvg, PlusSvg } from '@/assets/icons';
+import { CopySvg, EyeSvg, LayersSvg, ListSvg, PlusSvg, QrSvg } from '@/assets/icons';
+import { CourseCloneModal } from '../components/CourseCloneModal';
 import AdminLayout from '../../../layouts/AdminLayout';
-import { InlineLoading } from '@/shared/components';
+import { Button, InlineLoading, TableEmpty } from '@/shared/components';
+import { CourseRegisterLinkModal } from '../components/CourseRegisterLinkModal';
 import { SkeletonTable } from '../../../shared/components/Loading';
 import { Pagination } from '../../../shared/components/Table/Pagination';
 import sel from '../../../shared/components/Table/RowSelect.module.css';
@@ -58,6 +60,9 @@ export default function Courses() {
 	const addInitial = typeId ? { training_type_id: typeId, is_rolling: typeId === TRAINING_TYPE.GPHN } : undefined;
 	const openCourse = (id: string) => navigate(`/admin/courses/${id}`);
 	const rowSel = useRowSelection(d.paged.map((x) => x.id));
+	// Link + QR đăng ký: null = đóng, 'all' = link chung, Course = link riêng 1 khóa
+	const [shareLink, setShareLink] = useState<Course | 'all' | null>(null);
+	const [cloneFrom, setCloneFrom] = useState<Course | null>(null);
 	// Dạng bảng (mặc định) hoặc thẻ — nhớ theo trình duyệt
 	const [view, setViewState] = useState<'cards' | 'table'>(() => {
 		try {
@@ -116,6 +121,14 @@ export default function Courses() {
 				}}
 				onImported={d.refreshData}
 			/>
+			<Button
+				variant='secondary'
+				icon={<QrSvg />}
+				onClick={() => setShareLink('all')}
+				title='Link & mã QR trang đăng ký cho học viên'
+			>
+				Link đăng ký
+			</Button>
 			<button
 				className={styles.btnAddHeader}
 				onClick={() => d.setModal('add')}
@@ -204,6 +217,8 @@ export default function Courses() {
 								d.setDeletingCourse(c);
 								d.setModal('delete');
 							}}
+							onShareLink={setShareLink}
+							onClone={setCloneFrom}
 							emptyDesc={d.search ? 'Thử thay đổi từ khoá tìm kiếm' : 'Bấm "Thêm khóa học" để tạo khóa đầu tiên'}
 						/>
 					)
@@ -236,16 +251,11 @@ export default function Courses() {
 								cols={8}
 							/>
 						) : d.total === 0 ? (
-							<tr>
-								<td colSpan={8}>
-									<div className={styles.emptyState}>
-										<div className={styles.emptyTitle}>Không tìm thấy khóa học</div>
-										<div className={styles.emptyDesc}>
-											{d.search ? 'Thử thay đổi từ khoá tìm kiếm' : 'Chưa có khóa học nào'}
-										</div>
-									</div>
-								</td>
-							</tr>
+							<TableEmpty
+								colSpan={8}
+								title='Không tìm thấy khóa học'
+								desc={d.search ? 'Thử thay đổi từ khoá tìm kiếm' : 'Chưa có khóa học nào'}
+							/>
 						) : (
 							d.paged.map((c, i) => {
 								const rowNum = (d.safePage - 1) * (d.pageSize || d.total) + i + 1;
@@ -340,6 +350,20 @@ export default function Courses() {
 												>
 													<EyeSvg />
 												</RowAction>
+												{c.is_public_registration && (
+													<RowAction
+														title='Link & QR đăng ký'
+														onClick={() => setShareLink(c)}
+													>
+														<QrSvg />
+													</RowAction>
+												)}
+												<RowAction
+													title='Nhân bản khóa học'
+													onClick={() => setCloneFrom(c)}
+												>
+													<CopySvg />
+												</RowAction>
 											</RowActions>
 										</td>
 									</tr>
@@ -393,6 +417,18 @@ export default function Courses() {
 					}}
 					onConfirm={d.handleDelete}
 					loading={d.loading}
+				/>
+			)}
+			{cloneFrom && (
+				<CourseCloneModal
+					course={cloneFrom}
+					onClose={() => setCloneFrom(null)}
+				/>
+			)}
+			{shareLink && (
+				<CourseRegisterLinkModal
+					course={shareLink === 'all' ? null : shareLink}
+					onClose={() => setShareLink(null)}
 				/>
 			)}
 

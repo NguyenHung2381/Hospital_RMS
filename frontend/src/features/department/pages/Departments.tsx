@@ -18,6 +18,7 @@ import { DeptFormModal } from '../components/DeptFormModal';
 import { useDepartments } from '../hooks/useDepartments';
 import styles from './Departments.module.css';
 import tbl from '@/shared/components/Table/Table.module.css';
+import { TableEmpty } from '@/shared/components/EmptyState';
 
 const DEPT_COLORS = [
 	{ bg: '#e1f5ea', color: '#085028' },
@@ -144,18 +145,11 @@ export default function Departments() {
 									cols={7}
 								/>
 							) : d.total === 0 ? (
-								<tr>
-									<td colSpan={7}>
-										<div className={styles.emptyState}>
-											<div className={styles.emptyTitle}>
-												Không tìm thấy khoa phòng
-											</div>
-											<div className={styles.emptyDesc}>
-												Thử thay đổi từ khoá tìm kiếm
-											</div>
-										</div>
-									</td>
-								</tr>
+								<TableEmpty
+									colSpan={7}
+									title='Không tìm thấy khoa phòng'
+									desc='Thử thay đổi từ khoá tìm kiếm'
+								/>
 							) : (
 								d.paged.map((dept, i) => {
 									const c = getDeptColor(dept.id);

@@ -443,9 +443,6 @@
 .emptyState {
 	composes: emptyState from '../../../shared/components/Table/Table.module.css';
 }
-.emptyTitle {
-	composes: emptyTitle from '../../../shared/components/Table/Table.module.css';
-}
 .emptyDesc {
 	composes: emptyDesc from '../../../shared/components/Table/Table.module.css';
 }
@@ -470,6 +467,7 @@
 	width: 100%;
 	max-width: 580px;
 	max-height: 90vh;
+	max-height: 90dvh;
 	display: flex;
 	flex-direction: column;
 	overflow: hidden;
@@ -973,6 +971,7 @@ select.formInput:focus {
 	flex-direction: column;
 	gap: var(--space-2);
 	max-height: 46vh;
+	max-height: 46dvh;
 	overflow-y: auto;
 	padding-right: 4px;
 }
@@ -1045,6 +1044,7 @@ select.formInput:focus {
 	flex-direction: column;
 	gap: 4px;
 	max-height: 46vh;
+	max-height: 46dvh;
 	overflow-y: auto;
 	border: 1.5px solid var(--color-gray-200);
 	border-radius: var(--radius-lg);

@@ -31,6 +31,7 @@ import { ImportQuestionsModal } from '../components/ImportQuestionsModal';
 import { POOL_LABEL, type ExamQuestion, type QuestionPool, type QuestionType } from '../types/exam.type';
 import styles from './QuestionBank.module.css';
 import tbl from '@/shared/components/Table/Table.module.css';
+import { TableEmpty } from '@/shared/components/EmptyState';
 
 const TYPE_LABEL: Record<QuestionType, string> = { single_choice: 'Trắc nghiệm', essay: 'Tự luận' };
 // Câu cũ chưa thuộc chương trình nào (trước khi ngân hàng tách theo chương trình)
@@ -421,16 +422,11 @@ export default function QuestionBank() {
 									cols={7}
 								/>
 							) : paged.length === 0 ? (
-								<tr>
-									<td colSpan={7}>
-										<div className={styles.emptyState}>
-											<div className={styles.emptyTitle}>Không có câu hỏi</div>
-											<div className={styles.emptyDesc}>
-												{hasFilter ? 'Thử đổi bộ lọc' : 'Bấm "Thêm câu hỏi" để bắt đầu'}
-											</div>
-										</div>
-									</td>
-								</tr>
+								<TableEmpty
+									colSpan={7}
+									title='Không có câu hỏi'
+									desc={hasFilter ? 'Thử đổi bộ lọc' : 'Bấm "Thêm câu hỏi" để bắt đầu'}
+								/>
 							) : (
 								paged.map((q, i) => (
 									<tr

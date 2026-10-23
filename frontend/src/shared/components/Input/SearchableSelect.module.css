@@ -162,6 +162,29 @@
 	font-weight: var(--font-weight-bold);
 }
 
+/* Dòng đang tô bằng phím ↑/↓ hoặc rê chuột */
+.optionActive:not(.optionSelected) {
+	background: var(--color-gray-100);
+	color: var(--color-gray-900);
+}
+
+/* Tiêu đề nhóm (như <optgroup>) — ví dụ "Giảng viên khoa …" */
+.groupLabel {
+	margin-top: 4px;
+	padding: 6px 10px;
+	border-radius: var(--radius-md);
+	background: var(--color-gray-50);
+	font-size: var(--font-size-xs);
+	font-weight: var(--font-weight-bold);
+	color: var(--color-primary-dark);
+	line-height: 1.4;
+}
+
+.trigger:disabled {
+	cursor: not-allowed;
+	opacity: 0.6;
+}
+
 .optionEmpty {
 	font-style: italic;
 	color: var(--color-gray-500);

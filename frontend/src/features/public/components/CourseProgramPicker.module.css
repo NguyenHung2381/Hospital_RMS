@@ -144,70 +144,54 @@
 	border-top: 1px dashed var(--color-gray-200);
 }
 .facts {
-	display: grid;
-	grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-	gap: var(--space-2) var(--space-4);
-	margin: 0;
-}
-.facts dt {
-	font-size: var(--font-size-2xs);
-	text-transform: uppercase;
-	letter-spacing: 0.03em;
-	color: var(--color-gray-500);
-}
-.facts dd {
-	margin: 2px 0 0;
 	font-size: var(--font-size-compact);
 	font-weight: var(--font-weight-medium);
 	color: var(--color-gray-800);
 }
-.contentTitle {
-	font-size: var(--font-size-xs);
-	font-weight: var(--font-weight-semibold);
-	color: var(--color-gray-700);
+.detail .desc {
+	margin: 0;
 }
 .lessons {
-	list-style: none;
+	list-style: decimal;
 	margin: 0;
-	padding: 0;
+	padding-left: 1.5em;
 	display: flex;
 	flex-direction: column;
-	gap: var(--space-2);
+	gap: 4px;
+	font-size: var(--font-size-compact);
+	color: var(--color-gray-800);
 }
-.lessons li {
-	display: flex;
-	align-items: flex-start;
-	gap: var(--space-3);
+.lessons li::marker {
+	color: var(--color-gray-500);
 }
-.stepRound,
-.stepLesson {
-	display: grid;
-	place-items: center;
-	flex-shrink: 0;
-	min-width: 28px;
-	height: 22px;
-	padding: 0 6px;
+.more {
+	align-self: flex-start;
+	border: none;
+	background: none;
+	padding: 0;
+	font: inherit;
+	font-size: var(--font-size-xs);
+	font-weight: var(--font-weight-medium);
+	color: var(--color-primary);
+	cursor: pointer;
+}
+.more:hover {
+	text-decoration: underline;
+}
+.badge {
+	display: inline-block;
+	margin-left: var(--space-2);
+	padding: 1px 8px;
 	border-radius: var(--radius-full);
-	font-size: var(--font-size-2xs);
-	font-weight: var(--font-weight-semibold);
-}
-.stepRound {
-	background: var(--color-primary);
-	color: var(--color-white);
-}
-.stepLesson {
 	background: var(--color-gray-100);
 	color: var(--color-gray-700);
+	font-size: var(--font-size-2xs);
+	font-weight: var(--font-weight-medium);
+	white-space: nowrap;
 }
-.lessonBody {
-	display: flex;
-	flex-direction: column;
-	gap: 1px;
-	min-width: 0;
-}
-.lessonTitle {
-	font-size: var(--font-size-compact);
-	color: var(--color-gray-900);
+.badgeFull {
+	background: rgba(245, 166, 35, 0.15);
+	color: #9a5b00;
 }
 .radio {
 	margin: 3px 0 0;

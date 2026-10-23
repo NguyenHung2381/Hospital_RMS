@@ -198,6 +198,9 @@ export interface MyCourseDetail {
 	end_date: string | null;
 	display_status: CourseDisplayStatus;
 	enrollment_status: EnrollmentStatus;
+	/** Số buổi của lớp mình / số buổi có mặt (kể cả muộn) */
+	session_count: number;
+	attended_count: number;
 	documents: MyCourseDocument[];
 	lessons: MyLesson[];
 	papers: AvailablePaper[];
@@ -254,15 +257,15 @@ export const addMyCmeResultFile = (id: string, file: File) => {
 export const deleteMyCmeResultFile = (id: string, fileId: string) =>
 	apiClient.delete<null>(`/me/cme-records/${id}/result-files/${fileId}`);
 
-// ─── Chấm công học viên theo ca, trong thời gian khóa học (IP bệnh viện + GPS) ──
+// ─── Điểm danh học viên theo ca, trong thời gian khóa học (IP bệnh viện + GPS) ──
 export interface AttendanceRow {
 	id: number;
 	/** Ngày bắt đầu ca. */
 	work_date: string;
-	/** Khóa đang học lúc chấm công (bản chụp). */
+	/** Khóa đang học lúc điểm danh (bản chụp). */
 	course_id: string | null;
 	course_name: string | null;
-	/** null = chấm tự do (không có lịch ca). */
+	/** null = điểm danh tự do (không có lịch ca). */
 	shift_id: number | null;
 	shift_name: string | null;
 	shift_code: string | null;
@@ -275,7 +278,7 @@ export interface AttendanceRow {
 	late_min: number | null;
 	early_min: number | null;
 }
-/** Một lần làm ca (ca × ngày bắt đầu). Trường ca null = chấm tự do. */
+/** Một lần làm ca (ca × ngày bắt đầu). Trường ca null = điểm danh tự do. */
 export interface ShiftSlot {
 	shift_id: number | null;
 	work_date: string;
@@ -293,16 +296,16 @@ export interface CheckOption extends ShiftSlot {
 	course_name: string | null;
 }
 export interface MyAttendance {
-	/** Tài khoản đang đăng nhập là tài khoản học viên — chỉ học viên mới chấm công. */
+	/** Tài khoản đang đăng nhập là tài khoản học viên — chỉ học viên mới điểm danh. */
 	is_trainee: boolean;
-	/** Ca đang trong giờ được chấm (thường 0–1, có thể 2 lúc giao ca). */
+	/** Ca đang trong giờ được điểm danh (thường 0–1, có thể 2 lúc giao ca). */
 	options: CheckOption[];
 	/** Bản ghi của hôm qua + hôm nay (ca đêm hôm qua vẫn hiện). */
 	recent: AttendanceRow[];
 	history: AttendanceRow[];
 	/**
-	 * Lịch ca 7 ngày tới. course_id null = không học khóa nào (không chấm công);
-	 * shifts null = không có lịch ca (chấm tự do), [] = nghỉ.
+	 * Lịch ca 7 ngày tới. course_id null = không học khóa nào (không điểm danh);
+	 * shifts null = không có lịch ca (điểm danh tự do), [] = nghỉ.
 	 */
 	week: {
 		date: string;
@@ -319,13 +322,70 @@ export interface MyAttendance {
 	/** Quản trị đã cấu hình đủ IP + vị trí bệnh viện chưa. */
 	configured: boolean;
 	radius_m: number;
+	/** Giới hạn đơn xin phép — Cấu hình hệ thống → Điểm danh → Đơn xin phép. */
+	leave: LeavePolicy;
+}
+export interface LeavePolicy {
+	/** false = quản trị tắt gửi đơn mới. */
+	enabled: boolean;
+	/** Nộp bổ sung cho ngày đã qua tối đa N ngày (0 = không cho). */
+	backdate_days: number;
+	/** Xin phép trước tối đa N ngày. */
+	ahead_days: number;
+	/** Một đơn xin nghỉ dài tối đa N ngày. */
+	max_span_days: number;
 }
 export const getMyAttendance = () => apiClient.get<MyAttendance>('/me/attendance');
 export const checkAttendance = (data: {
 	lat: number;
 	lng: number;
 	accuracy: number;
-	/** Ca cần chấm — bắt buộc khi có nhiều ca mở cùng lúc. */
+	/** Ca cần điểm danh — bắt buộc khi có nhiều ca mở cùng lúc. */
 	shift_id?: number | null;
 	work_date?: string;
 }) => apiClient.post<{ action: 'check_in' | 'check_out'; record: AttendanceRow }>('/me/attendance/check', data);
+
+// ─── Đơn xin nghỉ / xin đi muộn (học viên gửi, phòng Đào tạo / khoa duyệt) ──
+export type LeaveType = 'absent' | 'late';
+export type LeaveStatus = 'pending' | 'approved' | 'rejected' | 'cancelled';
+export interface LeaveRequest {
+	id: number;
+	user_id: string;
+	type: LeaveType;
+	from_date: string;
+	/** = from_date với đơn xin đi muộn. */
+	to_date: string;
+	/** null = cả ngày. */
+	shift_id: number | null;
+	shift_name: string | null;
+	/** Giờ dự kiến có mặt 'HH:mm' (đơn xin đi muộn). */
+	arrive_time: string | null;
+	reason: string;
+	course_id: string | null;
+	course_name: string | null;
+	status: LeaveStatus;
+	review_note: string | null;
+	reviewer_name: string | null;
+	reviewed_at: string | null;
+	created_at: string;
+}
+export interface LeaveRequestForm {
+	type: LeaveType;
+	from_date: string;
+	to_date?: string;
+	shift_id?: number | null;
+	arrive_time?: string | null;
+	reason: string;
+}
+export const LEAVE_TYPE_TEXT: Record<LeaveType, string> = { absent: 'Xin nghỉ', late: 'Xin đi muộn' };
+export const LEAVE_STATUS: Record<LeaveStatus, { label: string; tone: 'amber' | 'green' | 'red' | 'gray' }> = {
+	pending: { label: 'Chờ duyệt', tone: 'amber' },
+	approved: { label: 'Đã duyệt', tone: 'green' },
+	rejected: { label: 'Từ chối', tone: 'red' },
+	cancelled: { label: 'Đã huỷ', tone: 'gray' },
+};
+export const getMyLeaveRequests = () => apiClient.get<LeaveRequest[]>('/me/attendance/leave-requests');
+export const createLeaveRequest = (data: LeaveRequestForm) =>
+	apiClient.post<LeaveRequest>('/me/attendance/leave-requests', data);
+export const cancelLeaveRequest = (id: number) =>
+	apiClient.patch<null>(`/me/attendance/leave-requests/${id}/cancel`, {});

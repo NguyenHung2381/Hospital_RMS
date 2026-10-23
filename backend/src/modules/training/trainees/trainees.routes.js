@@ -20,7 +20,18 @@ router.post(
 	ctrl.importExcel,
 );
 
-router.post('/grant-accounts', authorizePermission(['trainees', 'manage']), ctrl.grantAccounts);
+router.post(
+	'/grant-accounts',
+	authorizePermission(['trainees', 'manage']),
+	[
+		body('trainee_ids')
+			.isArray({ min: 1, max: 500 })
+			.withMessage('Chọn 1–500 học viên cần cấp tài khoản'),
+		body('trainee_ids.*').isString().trim().notEmpty().withMessage('Mã học viên không hợp lệ'),
+	],
+	validate,
+	ctrl.grantAccounts,
+);
 
 router.get('/:id', authorizePermission(['trainees', 'read']), ctrl.getById);
 

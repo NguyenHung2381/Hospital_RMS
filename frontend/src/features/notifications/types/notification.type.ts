@@ -12,6 +12,8 @@ export const NOTIF_TYPES: { value: string; label: string; category: NotifCategor
 	{ value: 'supplement_closed', label: 'Đóng đợt bổ sung thông tin', category: 'approval' },
 	{ value: 'member_added', label: 'Thêm thành viên', category: 'topic' },
 	{ value: 'account_granted', label: 'Cấp tài khoản', category: 'system' },
+	{ value: 'leave_request_submitted', label: 'Đơn xin phép', category: 'approval' },
+	{ value: 'leave_request_reviewed', label: 'Kết quả đơn xin phép', category: 'approval' },
 ];
 
 export type TargetType = 'all' | 'department' | 'users';

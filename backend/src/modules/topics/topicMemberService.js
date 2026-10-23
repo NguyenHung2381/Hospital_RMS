@@ -564,7 +564,7 @@ module.exports = {
 	updateMember,
 	deleteMember,
 	grantAccounts: grantAccountsNoEmail,
-	// Helper cấp tài khoản dùng chung — export để traineeService.grantAccounts
+	// Helper sinh username dùng chung — export để trainees/traineeUsername.js
 	// (D0) tái dùng thay vì chép lại logic sinh username/mã NV.
 	buildMemberUsername,
 	ensureUniqueUsername,

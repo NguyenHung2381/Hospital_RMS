@@ -184,6 +184,9 @@
 	.formRow {
 		grid-template-columns: 1fr;
 	}
+	.methodGroup {
+		grid-template-columns: 1fr;
+	}
 	.groupHeader {
 		flex-wrap: wrap;
 	}

@@ -14,6 +14,7 @@ import { useSurvey } from '../hooks/useSurvey';
 import type { SurveyStatus } from '../types/survey.type';
 import styles from './Survey.module.css';
 import tbl from '@/shared/components/Table/Table.module.css';
+import { TableEmpty } from '@/shared/components/EmptyState';
 
 const STATUS_CLASS: Record<SurveyStatus, string> = {
 	draft: 'statusDraft',
@@ -99,16 +100,11 @@ export default function Survey() {
 									cols={8}
 								/>
 							) : d.filtered.length === 0 ? (
-								<tr>
-									<td colSpan={8}>
-										<div className={styles.emptyState}>
-											<div className={styles.emptyTitle}>Không tìm thấy khảo sát</div>
-											<div className={styles.emptyDesc}>
-												{d.search ? 'Thử thay đổi từ khoá tìm kiếm' : 'Chưa có khảo sát nào'}
-											</div>
-										</div>
-									</td>
-								</tr>
+								<TableEmpty
+									colSpan={8}
+									title='Không tìm thấy khảo sát'
+									desc={d.search ? 'Thử thay đổi từ khoá tìm kiếm' : 'Chưa có khảo sát nào'}
+								/>
 							) : (
 								d.paged.map((survey, i) => {
 									const rowNum = (d.safePage - 1) * (d.pageSize || d.filtered.length) + i + 1;

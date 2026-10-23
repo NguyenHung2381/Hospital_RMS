@@ -1,4 +1,5 @@
 const traineeService = require('./traineeService');
+const traineeAccountService = require('./traineeAccountService');
 const traineeRecordService = require('./traineeRecordService');
 const traineeImportService = require('./traineeImportService');
 const traineeProgressService = require('./traineeProgressService');
@@ -91,17 +92,17 @@ const getGrades = asyncHandler(async (req, res) => {
 });
 
 const grantAccounts = asyncHandler(async (req, res) => {
-	const result = await traineeService.grantAccounts(req.body.trainee_ids, req.user.id);
+	const result = await traineeAccountService.grantAccounts(req.body.trainee_ids, req.user.id);
 	return success(res, result);
 });
 
 const resetAccountPassword = asyncHandler(async (req, res) => {
-	const data = await traineeService.resetAccountPassword(req.params.id, req.user.id, req.ip);
+	const data = await traineeAccountService.resetAccountPassword(req.params.id, req.user.id, req.ip);
 	return success(res, data, 'Đã đặt lại mật khẩu');
 });
 
 const setAccountActive = asyncHandler(async (req, res) => {
-	await traineeService.setAccountActive(req.params.id, req.body.is_active, req.user.id);
+	await traineeAccountService.setAccountActive(req.params.id, req.body.is_active, req.user.id);
 	return success(res, null, req.body.is_active ? 'Đã mở khoá tài khoản' : 'Đã khoá tài khoản');
 });
 

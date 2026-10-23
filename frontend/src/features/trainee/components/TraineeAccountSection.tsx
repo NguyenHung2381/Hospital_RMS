@@ -55,7 +55,7 @@ export function TraineeAccountSection({
 		}, 'Cấp tài khoản thất bại');
 
 	const reset = () => {
-		if (!window.confirm(`Đặt lại mật khẩu tài khoản ${trainee.account_username} về mặc định? Học viên sẽ bị đăng xuất khỏi mọi phiên.`))
+		if (!window.confirm(`Đặt lại mật khẩu tài khoản ${trainee.account_username} về mặc định (= tên đăng nhập)? Học viên sẽ bị đăng xuất khỏi mọi phiên.`))
 			return;
 		void run(async () => {
 			const r = await resetTraineeAccountPassword(trainee.id);
@@ -106,7 +106,9 @@ export function TraineeAccountSection({
 				<div className={`${ds.infoItem} ${ds.infoItemFull}`}>
 					<span className={ds.factLabel}>
 						Tài khoản học viên được cấp riêng, tách khỏi tài khoản nội viện — kể cả học viên là nhân
-						viên bệnh viện. Mật khẩu mặc định là tên đăng nhập, phải đổi ở lần đăng nhập đầu.
+						viên bệnh viện. Tên đăng nhập dạng viết tắt họ tên + số thứ tự (vd NVA_0001); mật khẩu mặc
+						định là tên đăng nhập, phải đổi ở lần đăng nhập đầu. Xoá hoặc ngừng hồ sơ học viên sẽ khoá
+						tài khoản.
 					</span>
 				</div>
 			</div>

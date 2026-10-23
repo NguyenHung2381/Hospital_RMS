@@ -2,7 +2,7 @@ import { RowActions } from '@/shared/components/Table/TableToolbar';
 import { useState } from 'react';
 import { EditSvg, PlusSvg, SearchSvg, TrashSvg } from '@/assets/icons';
 import AdminLayout from '../../../layouts/AdminLayout';
-import { Badge } from '@/shared/components';
+import { Badge, TableEmpty } from '@/shared/components';
 import { SkeletonTable } from '../../../shared/components/Loading';
 import sel from '../../../shared/components/Table/RowSelect.module.css';
 import {
@@ -154,16 +154,11 @@ export default function ExternalReviewers() {
 								cols={8}
 							/>
 						) : d.filtered.length === 0 ? (
-							<tr>
-								<td colSpan={8}>
-									<div className={styles.emptyState}>
-										<div className={styles.emptyTitle}>Chưa có người ngoài viện nào</div>
-										<div className={styles.emptyDesc}>
-											Thêm chuyên gia mời ngoài để chọn khi xếp ghế hội đồng
-										</div>
-									</div>
-								</td>
-							</tr>
+							<TableEmpty
+								colSpan={8}
+								title='Chưa có người ngoài viện nào'
+								desc='Thêm chuyên gia mời ngoài để chọn khi xếp ghế hội đồng'
+							/>
 						) : (
 							pg.paged.map((r, i) => (
 								<tr

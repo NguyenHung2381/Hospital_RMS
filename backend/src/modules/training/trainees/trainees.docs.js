@@ -43,21 +43,24 @@
  * @swagger
  * /trainees/grant-accounts:
  *   post:
- *     summary: Cấp tài khoản đăng nhập cho học viên (mật khẩu tạm ngẫu nhiên, bắt đổi ở lần đăng nhập đầu)
+ *     summary: Cấp tài khoản đăng nhập cho học viên (tên đăng nhập NVA_0001, mật khẩu mặc định = tên đăng nhập, bắt đổi ở lần đăng nhập đầu)
  *     tags: [Trainees]
  *     requestBody:
  *       content:
  *         application/json:
  *           schema:
  *             type: object
+ *             required: [trainee_ids]
  *             properties:
  *               trainee_ids:
  *                 type: array
+ *                 minItems: 1
+ *                 maxItems: 500
  *                 items: { type: string }
- *                 description: Bỏ trống = cấp cho mọi học viên chưa có tài khoản
+ *                 description: Học viên cần cấp (bắt buộc). Hồ sơ đã xoá / ngừng hoạt động / đã có tài khoản bị bỏ qua.
  *     responses:
  *       200:
- *         description: Cấp tài khoản thành công (kèm danh sách bị bỏ qua nếu có lỗi)
+ *         description: Cấp tài khoản thành công (kèm danh sách bị bỏ qua và lý do)
  */
 
 /**

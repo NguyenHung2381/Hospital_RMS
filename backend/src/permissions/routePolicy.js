@@ -89,13 +89,13 @@ module.exports = {
 		[`PUT ${API}/notifications/:id/read`]: 'Thông báo của chính mình',
 		[`GET ${API}/my-tasks/`]: 'Việc cần làm của chính mình',
 		[`GET ${API}/me/training`]:
-			'Khóa học mình học/dạy + lịch học của chính mình (lọc theo user_id)',
+			'Khóa học mình học/dạy + lịch học của chính mình (lọc theo user_id / staff_user_id)',
 		[`GET ${API}/me/training/schedule`]:
 			'Lịch học của học viên đang đăng nhập (lọc theo userId = req.user.id, không nhận trainee_id từ client)',
 		[`GET ${API}/me/training/attendance`]:
-			'Điểm danh của học viên đang đăng nhập (traineeIdOfUser(req.user.id))',
+			'Điểm danh của học viên đang đăng nhập (myTraineeId(req.user.id))',
 		[`GET ${API}/me/training/grades`]:
-			'Kết quả & điểm của học viên đang đăng nhập (traineeIdOfUser(req.user.id))',
+			'Kết quả & điểm của học viên đang đăng nhập (myTraineeId(req.user.id))',
 		[`GET ${API}/me/courses/:id`]:
 			'Chi tiết khóa mình đang học — service chỉ trả khi có ghi danh; tài liệu/đề thi chỉ khi đã duyệt',
 		[`PATCH ${API}/me/documents/:docId/download`]:
@@ -105,9 +105,15 @@ module.exports = {
 		[`POST ${API}/me/courses/:id/register`]:
 			'Tự đăng ký khóa học — service chỉ nhận khóa bật đăng ký công khai, trong cửa sổ đăng ký, trạng thái chờ duyệt',
 		[`GET ${API}/me/attendance`]:
-			'Chấm công của học viên đang đăng nhập (lọc theo user_id; tài khoản khác chỉ nhận IP hiện tại)',
+			'Điểm danh của học viên đang đăng nhập (lọc theo user_id; tài khoản khác chỉ nhận IP hiện tại)',
 		[`POST ${API}/me/attendance/check`]:
-			'Học viên tự chấm công — service gán user_id = req.user.id, chỉ tài khoản học viên trong thời gian khóa học, kiểm tra IP bệnh viện + GPS trong bán kính + ca đang trong giờ được chấm',
+			'Học viên tự điểm danh — service gán user_id = req.user.id, chỉ tài khoản học viên trong thời gian khóa học, kiểm tra IP bệnh viện + GPS trong bán kính + ca đang trong giờ được điểm danh',
+		[`GET ${API}/me/attendance/leave-requests`]:
+			'Đơn xin phép của chính mình (lọc theo user_id = req.user.id)',
+		[`POST ${API}/me/attendance/leave-requests`]:
+			'Học viên gửi đơn xin nghỉ / đi muộn — service gán user_id = req.user.id, chỉ tài khoản học viên, ngày thuộc thời gian khóa học, trạng thái chờ duyệt',
+		[`PATCH ${API}/me/attendance/leave-requests/:id/cancel`]:
+			'Huỷ đơn của chính mình còn chờ duyệt (WHERE user_id = req.user.id AND status = pending)',
 		[`GET ${API}/me/cme`]: 'Tín chỉ CME của chính mình (lọc theo user_id)',
 		[`POST ${API}/me/cme/export-excel`]:
 			'Xuất Excel phiếu CME của chính mình (dùng req.user.id, không nhận user_id từ client)',

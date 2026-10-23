@@ -13,70 +13,48 @@ const key = (s: string) => removeDiacritics(s).toLowerCase();
 const hours = (lt?: number | null, th?: number | null) =>
 	[lt ? `${lt} giờ lý thuyết` : null, th ? `${th} giờ thực hành` : null].filter(Boolean).join(' · ');
 
-// "4 vòng thực hành" / "6 bài học" / cả hai
-const countText = (p: PublicProgram) => {
-	const rounds = p.lessons.filter((l) => l.kind === 'rotation').length;
-	const theory = p.lessons.length - rounds;
-	return [rounds ? `${rounds} vòng thực hành` : null, theory ? `${theory} bài học` : null].filter(Boolean).join(', ') || null;
-};
+const LESSON_PREVIEW = 5; // số nội dung hiện sẵn, còn lại bấm "Xem thêm"
 
-// Khóa ĐTLT / CTCV: báo trước đăng ký sẽ vào lớp hay vào danh sách chờ khóa sau.
-const classText = (p: PublicProgram) => {
+// Khóa ĐTLT / CTCV: nhãn ngắn báo đăng ký sẽ vào lớp hay vào danh sách chờ khóa sau.
+const classBadge = (p: PublicProgram): { text: string; full: boolean } | null => {
 	if (!p.class_rule) return null;
-	if (p.class_max != null && p.class_approved >= p.class_max)
-		return `Lớp đã đủ — vào danh sách chờ khóa sau (đang chờ ${p.class_waiting})`;
-	if (p.class_approved < p.class_min) return `Đang gom lớp: ${p.class_approved}/${p.class_min} học viên tối thiểu`;
-	return p.class_max != null ? `Lớp còn ${p.class_max - p.class_approved} chỗ` : 'Lớp đang nhận học viên';
+	if (p.class_max != null && p.class_approved >= p.class_max) return { text: 'Lớp đã đủ · vào danh sách chờ', full: true };
+	if (p.class_approved < p.class_min) return { text: `Đang gom lớp ${p.class_approved}/${p.class_min}`, full: false };
+	return p.class_max != null ? { text: `Còn ${p.class_max - p.class_approved} chỗ`, full: false } : null;
 };
 
-// Chi tiết 1 chương trình: thông tin chung + nội dung (bài học / vòng thực hành)
+// Chi tiết 1 chương trình: số giờ, học phí, mô tả + danh sách nội dung rút gọn
 function ProgramDetail({ p }: { p: PublicProgram }) {
+	const [showAll, setShowAll] = useState(false);
 	const facts = [
-		['Thời gian', p.duration],
-		// Ghi chú đối tượng ("Bác sĩ đã có CCHN") rõ hơn tên danh mục — có thì ưu tiên.
-		['Đối tượng', p.target_audience || p.trainee_type_name],
-		['Số giờ', hours(p.theory_hours, p.practice_hours)],
-		['Học phí', p.tuition_fee ? `${Number(p.tuition_fee).toLocaleString('vi-VN')} đ` : null],
-	].filter(([, v]) => v);
+		hours(p.theory_hours, p.practice_hours),
+		p.tuition_fee ? `Học phí ${Number(p.tuition_fee).toLocaleString('vi-VN')} đ` : null,
+	].filter(Boolean);
+	const lessons = showAll ? p.lessons : p.lessons.slice(0, LESSON_PREVIEW);
+	const hidden = p.lessons.length - LESSON_PREVIEW;
 	return (
 		<div className={styles.detail}>
-			{facts.length > 0 && (
-				<dl className={styles.facts}>
-					{facts.map(([k, v]) => (
-						<div key={k}>
-							<dt>{k}</dt>
-							<dd>{v}</dd>
-						</div>
-					))}
-				</dl>
-			)}
+			{facts.length > 0 && <div className={styles.facts}>{facts.join(' · ')}</div>}
 			{p.description && <p className={styles.desc}>{p.description}</p>}
-			<div className={styles.contentTitle}>Nội dung chương trình</div>
 			{p.lessons.length === 0 ? (
 				<p className={styles.empty}>Chưa cập nhật nội dung.</p>
 			) : (
-				<ol className={styles.lessons}>
-					{p.lessons.map((l, i) => {
-						const rotation = l.kind === 'rotation';
-						const round = p.lessons.slice(0, i + 1).filter((x) => x.kind === 'rotation').length;
-						return (
-							<li key={i}>
-								<span className={rotation ? styles.stepRound : styles.stepLesson}>{rotation ? `V${round}` : i + 1}</span>
-								<span className={styles.lessonBody}>
-									<span className={styles.lessonTitle}>{l.title}</span>
-									<span className={styles.optionMeta}>
-										{(rotation
-											? [l.departments, l.duration]
-											: [hours(l.theory_hours, l.practice_hours) || null, l.duration]
-										)
-											.filter(Boolean)
-											.join(' · ')}
-									</span>
-								</span>
-							</li>
-						);
-					})}
-				</ol>
+				<>
+					<ol className={styles.lessons}>
+						{lessons.map((l, i) => (
+							<li key={i}>{l.title}</li>
+						))}
+					</ol>
+					{hidden > 0 && (
+						<button
+							type='button'
+							className={styles.more}
+							onClick={() => setShowAll((v) => !v)}
+						>
+							{showAll ? 'Ẩn bớt' : `Xem thêm ${hidden} nội dung`}
+						</button>
+					)}
+				</>
 			)}
 		</div>
 	);
@@ -102,7 +80,8 @@ export function CourseProgramPicker({
 	footer?: React.ReactNode;
 }) {
 	const [q, setQ] = useState('');
-	const [openIds, setOpenIds] = useState<Set<string>>(() => new Set(value ? [value] : []));
+	// Mặc định thu gọn — cần xem nội dung thì bấm "Chi tiết"
+	const [openIds, setOpenIds] = useState<Set<string>>(() => new Set());
 	const toggle = (id: string) =>
 		setOpenIds((s) => {
 			const n = new Set(s);
@@ -110,10 +89,6 @@ export function CourseProgramPicker({
 			else n.add(id);
 			return n;
 		});
-	const choose = (id: string) => {
-		onChange(id);
-		setOpenIds((s) => new Set(s).add(id));
-	};
 	const programs = course.programs.filter(
 		(p) => !q.trim() || key(`${p.name} ${p.code ?? ''}`).includes(key(q.trim())),
 	);
@@ -165,6 +140,7 @@ export function CourseProgramPicker({
 					>
 						{programs.map((p) => {
 							const expanded = openIds.has(p.id);
+							const badge = classBadge(p);
 							return (
 								<div
 									key={p.id}
@@ -177,20 +153,15 @@ export function CourseProgramPicker({
 												name={`program-${course.id}`}
 												className={styles.radio}
 												checked={value === p.id}
-												onChange={() => choose(p.id)}
+												onChange={() => onChange(p.id)}
 											/>
 											<span className={styles.optionBody}>
 												<span className={styles.optionName}>{p.name}</span>
 												<span className={styles.optionMeta}>
-													{[
-														p.code,
-														p.duration,
-														p.trainee_type_name,
-														countText(p),
-														classText(p),
-													]
-														.filter(Boolean)
-														.join(' · ')}
+													{[p.duration, p.target_audience || p.trainee_type_name].filter(Boolean).join(' · ')}
+													{badge && (
+														<span className={`${styles.badge} ${badge.full ? styles.badgeFull : ''}`}>{badge.text}</span>
+													)}
 												</span>
 											</span>
 										</label>

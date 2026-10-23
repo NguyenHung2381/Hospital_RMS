@@ -11,7 +11,7 @@ import { formatDateVN } from '@/shared/utils/formatDate';
 import { VenueSelect } from '../../venue/components/VenueSelect';
 import type { LecturerItem, useCourseDetail } from '../hooks/useCourseDetail';
 import type { ClassSession, CourseLesson, LecturerAssignment, SessionKind } from '../types/course.type';
-import { LecturerOptions } from './LecturerOptions';
+import { LecturerSelect } from './LecturerOptions';
 import styles from '../pages/Courses.module.css';
 import ss from './SessionsTab.module.css';
 
@@ -124,17 +124,16 @@ function LessonRow({
 				</div>
 			</td>
 			<td className={tbl.td}>
-				<select
-					className={`${styles.subSelect} ${ss.fitSelect}`}
+				<LecturerSelect
+					className={`${styles.subSearch} ${ss.fitSelect}`}
+					size='sm'
+					lecturers={lecturers}
 					value={main?.lecturer_id ?? ''}
 					disabled={d.busy}
-					onChange={(e) =>
-						save(e.target.value, main?.hours ?? lesson.total_hours ?? null, assistants.map(toInput))
-					}
-				>
-					<option value=''>-- Chưa phân công --</option>
-					<LecturerOptions lecturers={lecturers} />
-				</select>
+					placeholder='-- Chưa phân công --'
+					emptyLabel='-- Chưa phân công --'
+					onChange={(id) => save(id, main?.hours ?? lesson.total_hours ?? null, assistants.map(toInput))}
+				/>
 			</td>
 			<td className={tbl.td}>
 				<input
@@ -177,21 +176,21 @@ function LessonRow({
 							</button>
 						</span>
 					))}
-					<select
-						className={styles.subSelect}
+					<LecturerSelect
+						className={styles.subSearch}
+						size='sm'
+						lecturers={lecturers.filter((l) => !taken.has(l.id))}
 						value=''
 						disabled={d.busy}
-						onChange={(e) =>
-							e.target.value &&
+						placeholder='+ Thêm GV phụ'
+						onChange={(id) =>
+							id &&
 							save(main?.lecturer_id ?? '', main?.hours ?? null, [
 								...assistants.map(toInput),
-								{ lecturer_id: e.target.value, hours: null },
+								{ lecturer_id: id, hours: null },
 							])
 						}
-					>
-						<option value=''>+ Thêm GV phụ</option>
-						<LecturerOptions lecturers={lecturers.filter((l) => !taken.has(l.id))} />
-					</select>
+					/>
 				</div>
 			</td>
 		</tr>
@@ -475,31 +474,31 @@ function SessionFormModal({
 					))}
 				</select>
 			</FormField>
+			{/* Giảng viên 1 hàng riêng, rộng bằng hộp thoại: tên kèm chuyên khoa dài, đọc không bị xuống dòng */}
+			<FormField label='Giảng viên'>
+				<LecturerSelect
+					lecturers={sessionLecturers}
+					value={f.lecturer_id}
+					placeholder='-- Chọn giảng viên --'
+					emptyLabel='-- Chọn giảng viên --'
+					onChange={(lecturer_id) => set({ lecturer_id })}
+				/>
+			</FormField>
 			<div className={m.formRow}>
-				<FormField label='Giảng viên'>
-					<select
-						className={m.formInput}
-						value={f.lecturer_id}
-						onChange={(e) => set({ lecturer_id: e.target.value })}
-					>
-						<option value=''>-- Chọn giảng viên --</option>
-						<LecturerOptions lecturers={sessionLecturers} />
-					</select>
-				</FormField>
 				<FormField label='Loại buổi'>
 					{kindSelect(f.session_kind, (session_kind) => set({ session_kind }), m.formInput)}
 				</FormField>
+				<FormField label='Phòng học'>
+					<VenueSelect
+						scope='training'
+						includeOthers
+						className={m.formInput}
+						placeholder='-- Chọn phòng học --'
+						value={f.room}
+						onChange={(room) => set({ room })}
+					/>
+				</FormField>
 			</div>
-			<FormField label='Phòng học'>
-				<VenueSelect
-					scope='training'
-					includeOthers
-					className={m.formInput}
-					placeholder='-- Chọn phòng học --'
-					value={f.room}
-					onChange={(room) => set({ room })}
-				/>
-			</FormField>
 		</Modal>
 	);
 }
@@ -739,14 +738,13 @@ export function SessionsTab({ d }: { d: Detail }) {
 
 			<div className={styles.sectionTitle}>Giảng viên phụ trách chung</div>
 			<div className={styles.subToolbar}>
-				<select
-					className={styles.subSelect}
+				<LecturerSelect
+					className={styles.subSearch}
+					lecturers={d.lecturers}
 					value={newLecturerId}
-					onChange={(e) => setNewLecturerId(e.target.value)}
-				>
-					<option value=''>-- Chọn giảng viên --</option>
-					<LecturerOptions lecturers={d.lecturers} />
-				</select>
+					placeholder='-- Chọn giảng viên --'
+					onChange={setNewLecturerId}
+				/>
 				<button
 					className={styles.btnGhost}
 					disabled={!newLecturerId || d.busy}

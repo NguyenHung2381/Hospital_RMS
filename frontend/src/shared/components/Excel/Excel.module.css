@@ -78,6 +78,7 @@
 .preview {
 	composes: tableWrap from '@/shared/components/Table/Table.module.css';
 	max-height: 46vh;
+	max-height: 46dvh;
 	overflow: auto;
 }
 .table {

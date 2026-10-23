@@ -2,9 +2,9 @@ const net = require('net');
 const systemSettingService = require('../modules/settings/systemSettingService');
 const { normalizeIp } = require('./activityDescribe');
 
-// Chấm công học viên: phải ĐỒNG THỜI (1) gọi từ IP mạng bệnh viện và (2) có
+// Điểm danh học viên: phải ĐỒNG THỜI (1) gọi từ IP mạng bệnh viện và (2) có
 // vị trí GPS trong bán kính quanh bệnh viện. Admin chỉnh ở Cấu hình hệ thống →
-// tab "Chấm công". Thiếu cấu hình = không ai chấm được (an toàn hơn cho qua).
+// tab "Điểm danh". Thiếu cấu hình = không ai điểm danh được (an toàn hơn cho qua).
 //   ATTENDANCE_ALLOWED_IPS     "113.161.1.2, 10.0.0.0/8" — IP/CIDR, IPv4 hoặc IPv6
 //   ATTENDANCE_LOCATION        "10.7769, 106.7009" — dán từ Google Maps
 //   ATTENDANCE_RADIUS_M        bán kính cho phép (m)
@@ -99,7 +99,7 @@ const evaluate = (policy, { ip, lat, lng, accuracy }) => {
 	if (!policy.ipRanges.length || !policy.location)
 		return {
 			ok: false,
-			reasons: ['Quản trị chưa cấu hình chấm công (IP mạng bệnh viện / vị trí bệnh viện)'],
+			reasons: ['Quản trị chưa cấu hình điểm danh (IP mạng bệnh viện / vị trí bệnh viện)'],
 			distance_m: null,
 		};
 	const reasons = [];

@@ -13,7 +13,7 @@ const MAX_SHOWN = 300;
 const courseDates = (c: PatternCourse) =>
 	c.is_rolling ? 'Mở liên tục' : c.start_date || c.end_date ? `${formatDateVN(c.start_date) || '…'} – ${formatDateVN(c.end_date) || '…'}` : 'Chưa xếp lịch';
 
-/** Chọn khóa đào tạo dùng mẫu ca tuần — học viên của khóa chấm công theo mẫu này. */
+/** Chọn khóa đào tạo dùng mẫu ca tuần — học viên của khóa điểm danh theo mẫu này. */
 export function PatternCoursesModal({
 	pattern,
 	patterns,

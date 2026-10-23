@@ -196,7 +196,7 @@ test('validateShift & normalizePatternDays', () => {
 	assert.match(s.validateShift({ ...sang, name: ' ' }), /tên ca/);
 	assert.match(s.validateShift({ ...sang, code: '' }), /Ký hiệu/);
 	assert.match(s.validateShift({ ...sang, start_time: '7:00' }), /HH:mm/);
-	assert.match(s.validateShift({ ...sang, checkin_before_min: -1 }), /Chấm vào sớm/);
+	assert.match(s.validateShift({ ...sang, checkin_before_min: -1 }), /Điểm danh vào sớm/);
 	assert.deepStrictEqual(s.normalizePatternDays({ 1: [2, 2, '3'], 7: 'x' }), {
 		1: [2, 3],
 		2: [],

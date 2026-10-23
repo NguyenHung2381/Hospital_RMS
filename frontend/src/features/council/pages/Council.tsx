@@ -14,7 +14,7 @@ import {
 	UserSvg,
 } from '@/assets/icons';
 import AdminLayout from '../../../layouts/AdminLayout';
-import { Badge } from '@/shared/components';
+import { Badge, TableEmpty } from '@/shared/components';
 import { BulkButton, SelectCheckbox } from '../../../shared/components/Table/RowSelect';
 import sel from '../../../shared/components/Table/RowSelect.module.css';
 import tbl from '@/shared/components/Table/Table.module.css';
@@ -242,18 +242,11 @@ export default function Council() {
 								cols={9}
 							/>
 						) : d.councils.length === 0 ? (
-							<tr>
-								<td colSpan={9}>
-									<div className={styles.emptyState}>
-										<div className={styles.emptyTitle}>
-											Chưa có hội đồng nào
-										</div>
-										<div className={styles.emptyDesc}>
-											Tạo hội đồng mới hoặc thử thay đổi bộ lọc
-										</div>
-									</div>
-								</td>
-							</tr>
+							<TableEmpty
+								colSpan={9}
+								title='Chưa có hội đồng nào'
+								desc='Tạo hội đồng mới hoặc thử thay đổi bộ lọc'
+							/>
 						) : (
 							pg.paged.map((g) => {
 								const open = expanded.has(g.roundId);

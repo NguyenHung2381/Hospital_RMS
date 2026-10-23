@@ -22,6 +22,8 @@ export const NOTIF_TYPE_MAP: Record<string, NotifCategory> = {
 	warning: 'warning',
 	member_added: 'topic',
 	account_granted: 'system',
+	leave_request_submitted: 'approval',
+	leave_request_reviewed: 'approval',
 	broadcast: 'system',
 };
 

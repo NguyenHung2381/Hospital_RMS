@@ -1,18 +1,24 @@
 import { useCallback, useEffect, useState } from 'react';
-import { CalendarSvg, ClockSvg } from '@/assets/icons';
+import { CalendarSvg, ClockSvg, FileTextSvg, PlusSvg } from '@/assets/icons';
 import { Badge, Button, Card, EmptyState, InlineLoading, type BadgeTone } from '@/shared/components';
 import { Pagination } from '@/shared/components/Table/Pagination';
 import tbl from '@/shared/components/Table/Table.module.css';
 import { useClientPaging } from '@/shared/hooks/useClientPaging';
 import { useModules } from '@/shared/hooks/useModules';
-import { formatDateVN, formatTimeVN } from '@/shared/utils/formatDate';
+import { formatDateTimeVN, formatDateVN, formatTimeVN } from '@/shared/utils/formatDate';
 import { notify } from '@/shared/utils/feedback';
 import UserLayout from '../../../layouts/UserLayout';
 import { useRealtimeUpdate } from '../../../layouts/hooks/useRealtime';
+import LeaveRequestModal from '../components/LeaveRequestModal';
 import {
+	cancelLeaveRequest,
 	checkAttendance,
 	getMyAttendance,
+	getMyLeaveRequests,
+	LEAVE_STATUS,
+	LEAVE_TYPE_TEXT,
 	type AttendanceRow,
+	type LeaveRequest,
 	type CheckOption,
 	type MyAttendance as Data,
 	type ShiftSlot,
@@ -39,7 +45,7 @@ const getPosition = () =>
 	});
 
 const shiftLabel = (s: Pick<ShiftSlot, 'name' | 'start_time' | 'end_time'>) =>
-	s.name ? `${s.name} (${s.start_time}–${s.end_time})` : 'Chấm công tự do';
+	s.name ? `${s.name} (${s.start_time}–${s.end_time})` : 'Điểm danh tự do';
 const slotKey = (s: Pick<ShiftSlot, 'shift_id' | 'work_date'>) => `${s.work_date}|${s.shift_id ?? ''}`;
 
 function ShiftTag({ s }: { s: Pick<ShiftSlot, 'code' | 'color' | 'name' | 'start_time' | 'end_time'> }) {
@@ -51,26 +57,76 @@ function ShiftTag({ s }: { s: Pick<ShiftSlot, 'code' | 'color' | 'name' | 'start
 	);
 }
 
-/** Đi muộn / về sớm / chưa chấm ra */
+/** Đi muộn / về sớm / chưa điểm danh ra */
 function Notes({ r }: { r: AttendanceRow }) {
 	return (
 		<span className={own.notes}>
 			{!!r.late_min && <Badge tone='amber'>Muộn {r.late_min}′</Badge>}
 			{!!r.early_min && <Badge tone='amber'>Sớm {r.early_min}′</Badge>}
-			{!r.check_out_at && <span className={tbl.cellSub}>Chưa chấm ra</span>}
+			{!r.check_out_at && <span className={tbl.cellSub}>Chưa điểm danh ra</span>}
 		</span>
+	);
+}
+
+/** "05/12" hoặc "05/12 – 07/12" (+ ca / giờ có mặt) */
+const leavePeriod = (l: LeaveRequest) => {
+	const range = l.from_date === l.to_date ? formatDateVN(l.from_date) : `${formatDateVN(l.from_date)} – ${formatDateVN(l.to_date)}`;
+	const extra = [l.shift_name, l.arrive_time ? `có mặt lúc ${l.arrive_time}` : null].filter(Boolean).join(' · ');
+	return extra ? `${range} · ${extra}` : range;
+};
+
+/** Danh sách đơn xin nghỉ / đi muộn của học viên — huỷ được đơn còn chờ duyệt. */
+function LeaveList({ leaves, onCancel, cancelling }: { leaves: LeaveRequest[]; onCancel: (l: LeaveRequest) => void; cancelling: number | null }) {
+	const pg = useClientPaging(leaves);
+	if (!leaves.length) return <p className={own.idle}>Bạn chưa gửi đơn xin phép nào.</p>;
+	return (
+		<>
+			<div className={own.leaveList}>
+				{pg.paged.map((l) => (
+					<div key={l.id} className={own.leaveItem}>
+						<div className={own.leaveHead}>
+							<Badge tone={l.type === 'absent' ? 'blue' : 'purple'}>{LEAVE_TYPE_TEXT[l.type]}</Badge>
+							<span className={tbl.cellTitle}>{leavePeriod(l)}</span>
+							<Badge tone={LEAVE_STATUS[l.status].tone} dot>
+								{LEAVE_STATUS[l.status].label}
+							</Badge>
+						</div>
+						<div className={tbl.cellSub}>Lý do: {l.reason}</div>
+						{l.course_name && <div className={tbl.cellSub}>Khóa học: {l.course_name}</div>}
+						{(l.status === 'approved' || l.status === 'rejected') && (
+							<div className={tbl.cellSub}>
+								{l.status === 'approved' ? 'Duyệt' : 'Từ chối'} bởi {l.reviewer_name ?? '—'}
+								{l.reviewed_at ? ` lúc ${formatDateTimeVN(l.reviewed_at)}` : ''}
+								{l.review_note ? ` — ${l.review_note}` : ''}
+							</div>
+						)}
+						{l.status === 'pending' && (
+							<div>
+								<Button size='sm' variant='ghost' loading={cancelling === l.id} disabled={cancelling != null && cancelling !== l.id} onClick={() => onCancel(l)}>
+									Huỷ đơn
+								</Button>
+							</div>
+						)}
+					</div>
+				))}
+			</div>
+			<Pagination {...pg.pagination} itemLabel='đơn' />
+		</>
 	);
 }
 
 export default function MyAttendance() {
 	const [data, setData] = useState<Data | null>(null);
-	// Ca sắp tới gần nhất (tính lúc tải) — hiện khi chưa tới giờ chấm
+	// Ca sắp tới gần nhất (tính lúc tải) — hiện khi chưa tới giờ điểm danh
 	const [next, setNext] = useState<ShiftSlot | null>(null);
 	const [loadError, setLoadError] = useState('');
 	const [checking, setChecking] = useState<string | null>(null);
 	const [checkError, setCheckError] = useState('');
 	const pg = useClientPaging(data?.history ?? []);
 	const enabled = useModules().attendance;
+	const [leaves, setLeaves] = useState<LeaveRequest[]>([]);
+	const [leaveOpen, setLeaveOpen] = useState(false);
+	const [cancelling, setCancelling] = useState<number | null>(null);
 
 	const load = useCallback(() => {
 		getMyAttendance()
@@ -79,10 +135,35 @@ export default function MyAttendance() {
 				setData(d);
 				setNext(d.week.flatMap((w) => w.shifts ?? []).find((x) => x.start_at && new Date(x.start_at).getTime() > now) ?? null);
 			})
-			.catch((e) => setLoadError(e instanceof Error ? e.message : 'Không thể tải dữ liệu chấm công'));
+			.catch((e) => setLoadError(e instanceof Error ? e.message : 'Không thể tải dữ liệu điểm danh'));
 	}, []);
 	useEffect(load, [load]);
 	useRealtimeUpdate(['staff_attendance', 'shift_assignments', 'work_shifts'], load);
+
+	const loadLeaves = useCallback(() => {
+		getMyLeaveRequests()
+			.then(setLeaves)
+			.catch(() => setLeaves([]));
+	}, []);
+	useEffect(loadLeaves, [loadLeaves]);
+	useRealtimeUpdate(['attendance_leave'], loadLeaves);
+
+	const cancelLeave = async (l: LeaveRequest) => {
+		if (!window.confirm(`Huỷ đơn ${LEAVE_TYPE_TEXT[l.type].toLowerCase()} ${leavePeriod(l)}?`)) return;
+		setCancelling(l.id);
+		try {
+			await cancelLeaveRequest(l.id);
+			notify.success('Đã huỷ đơn xin phép');
+			loadLeaves();
+		} catch (e) {
+			notify.error(e instanceof Error ? e.message : 'Huỷ đơn thất bại');
+		} finally {
+			setCancelling(null);
+		}
+	};
+	// Đơn chờ duyệt / đã duyệt phủ 1 ngày (để đánh dấu trên lịch ca)
+	const leaveOn = (date: string) =>
+		leaves.find((l) => (l.status === 'approved' || l.status === 'pending') && l.from_date <= date && date <= l.to_date);
 
 	const handleCheck = async (o: CheckOption) => {
 		setChecking(slotKey(o));
@@ -96,10 +177,10 @@ export default function MyAttendance() {
 				shift_id: o.shift_id,
 				work_date: o.work_date,
 			});
-			notify.success(res.action === 'check_in' ? 'Đã chấm công vào' : 'Đã chấm công ra');
+			notify.success(res.action === 'check_in' ? 'Đã điểm danh vào' : 'Đã điểm danh ra');
 			load();
 		} catch (e) {
-			setCheckError(e instanceof Error ? e.message : 'Chấm công thất bại');
+			setCheckError(e instanceof Error ? e.message : 'Điểm danh thất bại');
 			load();
 		} finally {
 			setChecking(null);
@@ -107,16 +188,16 @@ export default function MyAttendance() {
 	};
 
 	const blocked = !enabled
-		? 'Chức năng chấm công đang tắt. Vui lòng liên hệ phòng Đào tạo.'
+		? 'Chức năng điểm danh đang tắt. Vui lòng liên hệ phòng Đào tạo.'
 		: data && !data.is_trainee
-			? 'Chấm công chỉ dành cho học viên đang học khóa đào tạo tại bệnh viện.'
+			? 'Điểm danh chỉ dành cho học viên đang học khóa đào tạo tại bệnh viện.'
 			: data && !data.configured
-				? 'Quản trị chưa cấu hình chấm công. Vui lòng liên hệ phòng CNTT.'
+				? 'Quản trị chưa cấu hình điểm danh. Vui lòng liên hệ phòng CNTT.'
 				: '';
 	const noCourseWeek = data?.week.every((d) => !d.course_id) ?? true;
 
 	return (
-		<UserLayout pageTitle='Chấm công' pageSubtitle='Chấm công theo ca trong thời gian khóa học — cần kết nối mạng bệnh viện và đang ở trong khuôn viên'>
+		<UserLayout pageTitle='Điểm danh & xin phép' pageSubtitle='Điểm danh theo ca trong thời gian khóa học (cần mạng bệnh viện và ở trong khuôn viên); có việc đột xuất thì gửi đơn xin nghỉ / đi muộn'>
 			{loadError && <EmptyState title='Không thể tải dữ liệu' desc={loadError} />}
 			{!data && !loadError && <InlineLoading />}
 
@@ -141,7 +222,7 @@ export default function MyAttendance() {
 								<p className={own.error}>{blocked}</p>
 							) : data.options.length === 0 ? (
 								<p className={own.idle}>
-									{data.current_course ? 'Hiện không có ca nào trong giờ chấm công.' : 'Hôm nay bạn không có khóa học nào đang diễn ra nên không cần chấm công.'}
+									{data.current_course ? 'Hiện không có ca nào trong giờ điểm danh.' : 'Hôm nay bạn không có khóa học nào đang diễn ra nên không cần điểm danh.'}
 									{next && (
 										<>
 											{' '}
@@ -169,7 +250,7 @@ export default function MyAttendance() {
 													disabled={!!checking && checking !== k}
 													onClick={() => handleCheck(o)}
 												>
-													{o.action === 'check_in' ? 'Chấm công vào' : 'Chấm công ra'}
+													{o.action === 'check_in' ? 'Điểm danh vào' : 'Điểm danh ra'}
 												</Button>
 											</div>
 										);
@@ -202,9 +283,29 @@ export default function MyAttendance() {
 											<Notes r={r} />
 										</div>
 									))}
-									<p className={own.note}>Chấm công ra nhiều lần trong ca thì lấy lần cuối cùng.</p>
+									<p className={own.note}>Điểm danh ra nhiều lần trong ca thì lấy lần cuối cùng.</p>
 								</div>
 							)}
+						</Card.Body>
+					</Card>
+
+					<Card>
+						<Card.Header
+							icon={<FileTextSvg />}
+							title='Đơn xin phép'
+							sub='Có việc đột xuất không thể tham gia hoặc phải đến muộn? Gửi đơn để được duyệt nghỉ / đi muộn có phép.'
+							actions={
+								data.is_trainee &&
+								enabled &&
+								data.leave?.enabled !== false && (
+									<Button size='sm' icon={<PlusSvg />} onClick={() => setLeaveOpen(true)}>
+										Tạo đơn xin phép
+									</Button>
+								)
+							}
+						/>
+						<Card.Body>
+							<LeaveList leaves={leaves} onCancel={cancelLeave} cancelling={cancelling} />
 						</Card.Body>
 					</Card>
 
@@ -214,7 +315,7 @@ export default function MyAttendance() {
 							{noCourseWeek ? (
 								<p className={own.idle}>7 ngày tới bạn không có khóa học nào đang diễn ra.</p>
 							) : data.week.every((d) => !d.course_id || d.shifts === null) ? (
-								<p className={own.idle}>Khóa học chưa có lịch ca — chấm công tự do 1 lượt vào/ra mỗi ngày học.</p>
+								<p className={own.idle}>Khóa học chưa có lịch ca — điểm danh tự do 1 lượt vào/ra mỗi ngày học.</p>
 							) : (
 								<div className={own.week}>
 									{data.week.map((d) => (
@@ -222,6 +323,17 @@ export default function MyAttendance() {
 											<div className={own.timeLabel}>
 												{WEEKDAY[new Date(`${d.date}T00:00:00Z`).getUTCDay()]} {d.date.slice(8)}/{d.date.slice(5, 7)}
 											</div>
+											{(() => {
+												const l = d.course_id ? leaveOn(d.date) : undefined;
+												return (
+													l && (
+														<Badge tone={l.status === 'approved' ? 'green' : 'amber'}>
+															{l.type === 'absent' ? 'Nghỉ' : 'Muộn'}
+															{l.status === 'approved' ? ' có phép' : ' (chờ duyệt)'}
+														</Badge>
+													)
+												);
+											})()}
 											{!d.course_id ? (
 												<span className={tbl.cellSub}>Không học</span>
 											) : d.shifts === null ? (
@@ -251,10 +363,10 @@ export default function MyAttendance() {
 					</Card>
 
 					<Card>
-						<Card.Header title='Lịch sử chấm công gần đây' />
+						<Card.Header title='Lịch sử điểm danh gần đây' />
 						<Card.Body>
 							{data.history.length === 0 ? (
-								<EmptyState title='Chưa có lượt chấm công nào' />
+								<EmptyState title='Chưa có lượt điểm danh nào' />
 							) : (
 								<>
 									<div className={styles.tableWrap}>
@@ -294,6 +406,10 @@ export default function MyAttendance() {
 					</Card>
 				</div>
 			)}
+			{leaveOpen && data && <LeaveRequestModal week={data.week} policy={data.leave} onClose={() => setLeaveOpen(false)} onSaved={() => {
+				notify.success('Đã gửi đơn xin phép, vui lòng chờ duyệt');
+				loadLeaves();
+			}} />}
 		</UserLayout>
 	);
 }

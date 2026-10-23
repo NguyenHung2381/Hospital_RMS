@@ -20,8 +20,17 @@ interface Row {
 	department_name: string | null;
 	course_id: string | null;
 	course_name: string | null;
-	/** checked = đã chấm; pending = có ca chưa hết mà chưa chấm; absent = hết ca không chấm */
-	status: 'checked' | 'pending' | 'absent';
+	/** checked = đã điểm danh; pending = có ca chưa hết mà chưa điểm danh; absent = hết ca không điểm danh */
+	status: 'checked' | 'pending' | 'absent' | 'excused';
+	/** Đơn xin phép chờ duyệt / đã duyệt phủ dòng này (đơn cả ngày khớp mọi ca). */
+	leave?: {
+		id: number;
+		type: 'absent' | 'late';
+		status: 'pending' | 'approved';
+		arrive_time: string | null;
+		shift_name: string | null;
+		reason: string;
+	} | null;
 	shift_id: number | null;
 	shift_name: string | null;
 	shift_code: string | null;
@@ -37,14 +46,16 @@ interface Row {
 	early_min?: number | null;
 }
 
-type StatusFilter = '' | 'late' | 'early' | 'absent' | 'pending' | 'no_out';
+type StatusFilter = '' | 'late' | 'early' | 'absent' | 'pending' | 'no_out' | 'excused' | 'leave';
 const STATUS_FILTERS: { value: StatusFilter; label: string }[] = [
 	{ value: '', label: 'Tất cả trạng thái' },
 	{ value: 'late', label: 'Đi muộn' },
 	{ value: 'early', label: 'Về sớm' },
-	{ value: 'no_out', label: 'Chưa chấm ra' },
-	{ value: 'absent', label: 'Vắng (có ca, không chấm)' },
-	{ value: 'pending', label: 'Chưa tới giờ / chưa chấm' },
+	{ value: 'no_out', label: 'Chưa điểm danh ra' },
+	{ value: 'absent', label: 'Vắng (có ca, không điểm danh)' },
+	{ value: 'pending', label: 'Chưa tới giờ / chưa điểm danh' },
+	{ value: 'excused', label: 'Nghỉ có phép' },
+	{ value: 'leave', label: 'Có đơn xin phép' },
 ];
 const matches = (r: Row, f: StatusFilter) =>
 	!f ||
@@ -52,11 +63,24 @@ const matches = (r: Row, f: StatusFilter) =>
 	(f === 'early' && !!r.early_min) ||
 	(f === 'no_out' && r.status === 'checked' && !r.check_out_at) ||
 	(f === 'absent' && r.status === 'absent') ||
-	(f === 'pending' && r.status === 'pending');
+	(f === 'pending' && r.status === 'pending') ||
+	(f === 'excused' && r.status === 'excused') ||
+	(f === 'leave' && !!r.leave);
+
+/** "Nghỉ có phép" / "Muộn có phép (08:30)" / "Đơn xin nghỉ chờ duyệt" */
+const leaveText = (l: NonNullable<Row['leave']>) =>
+	l.status === 'approved'
+		? `${l.type === 'absent' ? 'Nghỉ' : 'Muộn'} có phép${l.arrive_time ? ` (${l.arrive_time})` : ''}`
+		: `Đơn xin ${l.type === 'absent' ? 'nghỉ' : 'đi muộn'} chờ duyệt`;
 
 const place = (ip?: string | null, m?: number | null) => [ip, m != null ? `${m}m` : null].filter(Boolean).join(' · ');
 
-const STATUS_TEXT: Record<Row['status'], string> = { checked: 'Đã chấm', pending: 'Chưa chấm', absent: 'Vắng' };
+const STATUS_TEXT: Record<Row['status'], string> = {
+	checked: 'Đã điểm danh',
+	pending: 'Chưa điểm danh',
+	absent: 'Vắng',
+	excused: 'Nghỉ có phép',
+};
 const EXCEL_COLS: ExcelColumn<Row>[] = [
 	{ header: 'Mã học viên', value: (r) => r.trainee_id },
 	{ header: 'Họ và tên', value: (r) => r.full_name },
@@ -69,8 +93,9 @@ const EXCEL_COLS: ExcelColumn<Row>[] = [
 	{ header: 'Đi muộn (phút)', value: (r) => r.late_min || '' },
 	{ header: 'Về sớm (phút)', value: (r) => r.early_min || '' },
 	{ header: 'Trạng thái', value: (r) => STATUS_TEXT[r.status] },
-	{ header: 'Nơi chấm vào', value: (r) => place(r.check_in_ip, r.check_in_distance_m) },
-	{ header: 'Nơi chấm ra', value: (r) => place(r.check_out_ip, r.check_out_distance_m) },
+	{ header: 'Đơn xin phép', value: (r) => (r.leave ? `${leaveText(r.leave)} — ${r.leave.reason}` : '') },
+	{ header: 'Nơi điểm danh vào', value: (r) => place(r.check_in_ip, r.check_in_distance_m) },
+	{ header: 'Nơi điểm danh ra', value: (r) => place(r.check_out_ip, r.check_out_distance_m) },
 ];
 
 export default function StaffAttendance() {
@@ -86,11 +111,11 @@ export default function StaffAttendance() {
 		apiClient
 			.get<Row[]>(`/staff-attendance?date=${date}`)
 			.then(setRows)
-			.catch((e) => notify.error(e instanceof Error ? e.message : 'Không thể tải bảng chấm công'))
+			.catch((e) => notify.error(e instanceof Error ? e.message : 'Không thể tải bảng điểm danh'))
 			.finally(() => setLoading(false));
 	}, [date]);
 	useEffect(load, [load]);
-	useRealtimeUpdate(['staff_attendance', 'shift_assignments', 'work_shifts'], load);
+	useRealtimeUpdate(['staff_attendance', 'shift_assignments', 'work_shifts', 'attendance_leave'], load);
 
 	const departments = useMemo(
 		() => [...new Set(rows.map((r) => r.department_name).filter((d): d is string => !!d))].sort(),
@@ -116,6 +141,7 @@ export default function StaffAttendance() {
 		() => ({
 			checked: rows.filter((r) => r.status === 'checked').length,
 			absent: rows.filter((r) => r.status === 'absent').length,
+			excused: rows.filter((r) => r.status === 'excused').length,
 			late: rows.filter((r) => r.late_min).length,
 		}),
 		[rows],
@@ -123,12 +149,12 @@ export default function StaffAttendance() {
 
 	return (
 		<AdminLayout
-			pageTitle='Bảng chấm công học viên'
+			pageTitle='Bảng điểm danh học viên'
 			pageSubtitle='Giờ vào/ra theo ca của học viên trong thời gian khóa học — ca qua đêm tính vào ngày bắt đầu ca'
 			headerActions={
 				<ExcelActions
 					fileName={`cham-cong-${date}`}
-					itemLabel='lượt chấm công'
+					itemLabel='lượt điểm danh'
 					columns={EXCEL_COLS}
 					getRows={() => filtered}
 				/>
@@ -137,9 +163,9 @@ export default function StaffAttendance() {
 			<div className={tbl.tableCard}>
 				<div className={tbl.tableHeader}>
 					<div className={tbl.tableHeaderLeft}>
-						<span className={tbl.tableTitle}>Chấm công ngày</span>
+						<span className={tbl.tableTitle}>Điểm danh ngày</span>
 						<span className={tbl.tableCount}>
-							{counts.checked} lượt chấm · {counts.late} muộn · {counts.absent} vắng
+							{counts.checked} lượt điểm danh · {counts.late} muộn · {counts.absent} vắng · {counts.excused} nghỉ có phép
 						</span>
 					</div>
 					<div className={tbl.tableControls}>
@@ -203,7 +229,7 @@ export default function StaffAttendance() {
 							{!loading && filtered.length === 0 ? (
 								<TableEmpty
 									colSpan={7}
-									title={rows.length ? 'Không có dòng phù hợp bộ lọc' : 'Chưa có ca hay lượt chấm công nào của học viên trong ngày này'}
+									title={rows.length ? 'Không có dòng phù hợp bộ lọc' : 'Chưa có ca hay lượt điểm danh nào của học viên trong ngày này'}
 								/>
 							) : (
 								pg.paged.map((r, i) => (
@@ -246,21 +272,33 @@ export default function StaffAttendance() {
 													<div className={tbl.cellSub}>{place(r.check_out_ip, r.check_out_distance_m)}</div>
 												</>
 											) : (
-												<span className={tbl.cellSub}>{r.status === 'checked' ? 'Chưa chấm ra' : '—'}</span>
+												<span className={tbl.cellSub}>{r.status === 'checked' ? 'Chưa điểm danh ra' : '—'}</span>
 											)}
 										</td>
 										<td className={tbl.td}>
-											{r.status === 'absent' ? (
+											{r.status === 'excused' ? (
+												<Badge tone='blue'>Nghỉ có phép</Badge>
+											) : r.status === 'absent' ? (
 												<Badge tone='red'>Vắng</Badge>
 											) : r.status === 'pending' ? (
-												<Badge tone='gray'>Chưa chấm</Badge>
+												<Badge tone='gray'>Chưa điểm danh</Badge>
 											) : r.late_min || r.early_min ? (
 												<span style={{ display: 'inline-flex', gap: 4, flexWrap: 'wrap' }}>
 													{!!r.late_min && <Badge tone='amber'>Muộn {r.late_min}′</Badge>}
 													{!!r.early_min && <Badge tone='amber'>Sớm {r.early_min}′</Badge>}
 												</span>
 											) : (
-												<Badge tone='green'>{r.shift_id != null ? 'Đúng giờ' : 'Đã chấm'}</Badge>
+												<Badge tone='green'>{r.shift_id != null ? 'Đúng giờ' : 'Đã điểm danh'}</Badge>
+											)}
+											{r.leave && r.status !== 'excused' && (
+												<div className={tbl.cellSub} title={r.leave.reason}>
+													{leaveText(r.leave)}
+												</div>
+											)}
+											{r.leave && r.status === 'excused' && (
+												<div className={tbl.cellSub} title={r.leave.reason}>
+													{r.leave.reason}
+												</div>
 											)}
 										</td>
 									</tr>

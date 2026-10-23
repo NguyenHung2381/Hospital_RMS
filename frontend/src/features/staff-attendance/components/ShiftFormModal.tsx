@@ -74,7 +74,7 @@ export function ShiftFormModal({
 			onClose={onClose}
 			icon={<ClockSvg />}
 			title={shift ? 'Sửa ca làm' : 'Thêm ca làm'}
-			subtitle={shift ? `${shift.code} — ${shift.name}` : 'Giờ vào/ra và khoảng thời gian được chấm công'}
+			subtitle={shift ? `${shift.code} — ${shift.name}` : 'Giờ vào/ra và khoảng thời gian được điểm danh'}
 			size='lg'
 			bodyClassName={m.stack}
 			footer={<ModalActions onCancel={onClose} onConfirm={submit} loading={saving} confirmLabel={shift ? 'Lưu thay đổi' : 'Thêm ca'} />}
@@ -107,10 +107,10 @@ export function ShiftFormModal({
 				>
 					<input type='time' className={m.formInput} value={f.end_time} onChange={(e) => set('end_time', e.target.value)} />
 				</FormField>
-				<FormField label='Được chấm vào sớm (phút)'>
+				<FormField label='Được điểm danh vào sớm (phút)'>
 					<input {...num('checkin_before_min')} />
 				</FormField>
-				<FormField label='Được chấm ra muộn (phút)'>
+				<FormField label='Được điểm danh ra muộn (phút)'>
 					<input {...num('checkout_after_min')} />
 				</FormField>
 				<FormField label='Du di đi muộn / về sớm (phút)'>
@@ -139,7 +139,7 @@ export function ShiftFormModal({
 					<input type='checkbox' checked={!f.is_active} onChange={(e) => set('is_active', !e.target.checked)} />
 					<span>
 						<b>Ngừng dùng</b>
-						<div className={m.formHint}>Ca không còn hiệu lực trong mẫu tuần và bảng phân ca, không xếp thêm được; lịch sử chấm công giữ nguyên.</div>
+						<div className={m.formHint}>Ca không còn hiệu lực trong mẫu tuần và bảng phân ca, không xếp thêm được; lịch sử điểm danh giữ nguyên.</div>
 					</span>
 				</label>
 			)}

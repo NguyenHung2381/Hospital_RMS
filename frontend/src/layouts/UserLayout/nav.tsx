@@ -70,7 +70,7 @@ export const NAV_GROUPS: NavGroup[] = [
 		items: [
 			{ key: 'home', label: 'Trang chủ', icon: <DashboardSvg className={styles.navIcon} /> },
 			{ key: 'myTasks', label: 'Việc của tôi', icon: <ClipboardCheckSvg className={styles.navIcon} /> },
-			// Chấm công chỉ dành cho học viên (cổng học viên /hoc-vien/cham-cong), không áp dụng cho nhân viên
+			// Điểm danh chỉ dành cho học viên (cổng học viên /hoc-vien/diem-danh-ca), không áp dụng cho nhân viên
 			{ key: 'attendanceCheckIn', label: 'Điểm danh QR', icon: <QrSvg className={styles.navIcon} /> },
 			{ key: 'surveys', label: 'Khảo sát', icon: <ClipboardSvg className={styles.navIcon} />, module: 'survey' },
 		],

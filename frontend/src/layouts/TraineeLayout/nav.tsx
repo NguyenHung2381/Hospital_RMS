@@ -37,9 +37,9 @@ export const NAV: NavItem[] = [
 	{ key: 'courses', to: `${base}/khoa-hoc`, label: 'Khóa học của tôi', short: 'Khóa học', icon: <BookOpenSvg /> },
 	{ key: 'schedule', to: `${base}/lich-hoc`, label: 'Lịch học & điểm danh', short: 'Lịch học', icon: <CalendarSvg /> },
 	{ key: 'results', to: `${base}/ket-qua`, label: 'Kết quả & chứng chỉ', short: 'Kết quả', icon: <BadgeSvg /> },
-	{ key: 'checkIn', to: `${base}/diem-danh`, label: 'Điểm danh QR', short: 'Điểm danh', icon: <QrSvg /> },
-	// Chấm công vào/ra theo ca trong thời gian khóa học (module Chấm công, mặc định tắt)
-	{ key: 'attendance', to: `${base}/cham-cong`, label: 'Chấm công', short: 'Chấm công', icon: <ClockSvg />, module: 'attendance' },
+	{ key: 'checkIn', to: `${base}/diem-danh`, label: 'Điểm danh QR', short: 'Quét QR', icon: <QrSvg /> },
+	// Điểm danh vào/ra theo ca + đơn xin nghỉ / đi muộn trong thời gian khóa học (module Điểm danh, mặc định tắt)
+	{ key: 'attendance', to: `${base}/diem-danh-ca`, label: 'Điểm danh & xin phép', short: 'Điểm danh ca', icon: <ClockSvg />, module: 'attendance' },
 	{ key: 'documents', to: `${base}/giay-to`, label: 'Giấy tờ hồ sơ', short: 'Giấy tờ', icon: <FileTextSvg /> },
 	{ key: 'surveys', to: `${base}/khao-sat`, label: 'Khảo sát', short: 'Khảo sát', icon: <ClipboardSvg />, module: 'survey' },
 ];

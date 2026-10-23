@@ -12,7 +12,6 @@ import { useHiddenMenus } from '../../shared/hooks/useMenuConfig';
 import { useModules } from '../../shared/hooks/useModules';
 import { getInitials } from '../../shared/utils/helper';
 import { getStoredUser, type StoredUser } from '../../shared/utils/storage';
-import userStyles from '../UserLayout/UserLayout.module.css';
 import styles from './TraineeLayout.module.css';
 import { ACCOUNT_NAV, BOTTOM_TABS, NAV, TRAINEE_MENU, type NavItem } from './nav';
 
@@ -139,7 +138,8 @@ export default function TraineeLayout({
 							unreadCount={unreadCount}
 							onMarkAll={markAll}
 							onMarkOne={markOne}
-							s={{ ...userStyles, topbarIconBtn: styles.iconBtn, active: styles.iconBtnActive }}
+							buttonClassName={styles.iconBtn}
+							activeClassName={styles.iconBtnActive}
 							viewAllPath={`${TRAINEE_BASE}/thong-bao`}
 						/>
 						<div

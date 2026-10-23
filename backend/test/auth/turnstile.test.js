@@ -16,8 +16,8 @@ const mockFetch = (impl) => {
 	};
 };
 
-test('trả site key cho client, không có câu hỏi phép tính', () => {
-	assert.deepEqual(generateCaptcha(), {
+test('trả site key cho client, không có câu hỏi phép tính', async () => {
+	assert.deepEqual(await generateCaptcha(), {
 		provider: 'turnstile',
 		site_key: 'site-key-test',
 		action: 'public-form',

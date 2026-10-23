@@ -10,6 +10,7 @@ import styles from './Workflow.module.css';
 import tbl from '@/shared/components/Table/Table.module.css';
 import { useClientPaging } from '@/shared/hooks/useClientPaging';
 import { Pagination } from '@/shared/components/Table/Pagination';
+import { TableEmpty } from '@/shared/components/EmptyState';
 
 export default function Workflow() {
 	const d = useWorkflow();
@@ -58,17 +59,11 @@ export default function Workflow() {
 									cols={6}
 								/>
 							) : d.items.length === 0 ? (
-								<tr>
-									<td colSpan={6}>
-										<div className={styles.emptyState}>
-											<div className={styles.emptyTitle}>Chưa có workflow nào</div>
-											<div className={styles.emptyDesc}>
-												Đề tài đang duyệt theo đường 1 bước mặc định. Tạo workflow để chuyển
-												sang duyệt nhiều bước.
-											</div>
-										</div>
-									</td>
-								</tr>
+								<TableEmpty
+									colSpan={6}
+									title='Chưa có workflow nào'
+									desc='Đề tài đang duyệt theo đường 1 bước mặc định. Tạo workflow để chuyển sang duyệt nhiều bước.'
+								/>
 							) : (
 								pg.paged.map((w, i) => (
 									<tr

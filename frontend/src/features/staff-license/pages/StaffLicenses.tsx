@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { PlusSvg, UploadSvg } from '@/assets/icons';
 import AdminLayout from '@/layouts/AdminLayout';
-import { Can, ConfirmDeleteModal, Pagination, SearchableSelect } from '@/shared/components';
+import { Can, ConfirmDeleteModal, Pagination, SearchableSelect, TableEmpty } from '@/shared/components';
 import { SkeletonTable } from '@/shared/components/Loading';
 import tbl from '@/shared/components/Table/Table.module.css';
 import { RowActions, SearchInput } from '@/shared/components/Table/TableToolbar';
@@ -122,14 +122,11 @@ export default function StaffLicenses() {
 							{d.isLoadingData ? (
 								<SkeletonTable rows={d.pageSize} cols={6} />
 							) : d.total === 0 ? (
-								<tr>
-									<td colSpan={6}>
-										<div className={styles.emptyState}>
-											<div className={styles.emptyTitle}>Không tìm thấy hồ sơ CCHN</div>
-											<div className={styles.emptyDesc}>Thử thay đổi từ khoá hoặc bộ lọc</div>
-										</div>
-									</td>
-								</tr>
+								<TableEmpty
+									colSpan={6}
+									title='Không tìm thấy hồ sơ CCHN'
+									desc='Thử thay đổi từ khoá hoặc bộ lọc'
+								/>
 							) : (
 								d.items.map((l, i) => (
 									<tr key={l.id} className={styles.tr}>

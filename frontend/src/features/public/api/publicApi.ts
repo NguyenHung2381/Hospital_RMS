@@ -86,10 +86,12 @@ export interface TraineeTypeOption {
 }
 
 // Server chọn chế độ (backend utils/captcha.js): proof-of-work mặc định (trình
-// duyệt tự giải ngầm), hoặc Cloudflare Turnstile khi đã cấu hình khoá.
+// duyệt tự giải ngầm), hoặc Cloudflare Turnstile / Google reCAPTCHA v2 khi đã
+// cấu hình khoá.
 export type Captcha =
 	| { provider: 'pow'; token: string; bits: number; expires_in: number }
-	| { provider: 'turnstile'; site_key: string; action: string };
+	| { provider: 'turnstile'; site_key: string; action: string }
+	| { provider: 'recaptcha'; site_key: string };
 
 export const getOpenCourses = () => request<PublicCourse[]>('/courses');
 export const getTraineeTypes = () => request<TraineeTypeOption[]>('/trainee-types');

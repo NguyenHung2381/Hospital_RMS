@@ -5,9 +5,9 @@ const { success, created, error } = require('../../utils/response');
 const attempts = require('../../utils/attemptLimiter');
 const { asyncHandler } = require('../../utils/asyncHandler');
 
-const getCaptcha = (req, res) => {
-	success(res, generateCaptcha());
-};
+const getCaptcha = asyncHandler(async (req, res) => {
+	success(res, await generateCaptcha());
+});
 
 const getOpenCourses = asyncHandler(async (req, res) => {
 	success(res, await service.getOpenCourses());

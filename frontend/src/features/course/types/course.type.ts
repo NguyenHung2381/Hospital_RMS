@@ -419,6 +419,9 @@ export interface ClassSession {
 export interface AttendanceRow {
 	enrollment_id: string;
 	trainee_name: string;
+	/** Lớp (chương trình) học viên ghi danh — chỉ học viên của lớp có buổi này mới có trong danh sách */
+	program_code: string | null;
+	program_name: string | null;
 	attendance_id: string | null;
 	status: AttendanceStatus | null;
 	note: string | null;

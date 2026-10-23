@@ -5,7 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import { CheckSvg, TrashSvg, UsersSvg, XSvg } from '@/assets/icons';
 import AdminLayout from '../../../layouts/AdminLayout';
 import { useRealtimeUpdate } from '../../../layouts/hooks/useRealtime';
-import { Badge, Button, Modal } from '@/shared/components';
+import { Badge, Button, Modal, TableEmpty } from '@/shared/components';
 import { SkeletonTable } from '../../../shared/components/Loading';
 import { Pagination } from '../../../shared/components/Table/Pagination';
 import sel from '../../../shared/components/Table/RowSelect.module.css';
@@ -398,22 +398,11 @@ export default function CmeRegister() {
 								cols={perms.canCme ? 12 : 11}
 							/>
 						) : total === 0 ? (
-							<tr>
-								<td colSpan={perms.canCme ? 12 : 11}>
-									<div className={styles.emptyState}>
-										<div className={styles.emptyTitle}>
-											{search
-												? 'Không tìm thấy lượt cấp nào'
-												: `Chưa cấp số CME nào trong năm ${year}`}
-										</div>
-										<div className={styles.emptyDesc}>
-											{search
-												? 'Thử đổi từ khoá tìm kiếm'
-												: 'Sổ sẽ tự ghi khi cấp CME từ danh sách đại biểu của hội nghị'}
-										</div>
-									</div>
-								</td>
-							</tr>
+							<TableEmpty
+								colSpan={perms.canCme ? 12 : 11}
+								title={search ? 'Không tìm thấy lượt cấp nào' : `Chưa cấp số CME nào trong năm ${year}`}
+								desc={search ? 'Thử đổi từ khoá tìm kiếm' : 'Sổ sẽ tự ghi khi cấp CME từ danh sách đại biểu của hội nghị'}
+							/>
 						) : (
 							paged.map((e, i) => (
 								<tr

@@ -39,6 +39,7 @@ body {
 	-moz-osx-font-smoothing: grayscale;
 	text-rendering: optimizeLegibility;
 	min-height: 100vh;
+	min-height: 100dvh;
 }
 
 /* === TYPOGRAPHY === */
@@ -221,6 +222,7 @@ table {
 	div[class*='modalContent'] {
 		width: min(560px, calc(100vw - 24px)) !important;
 		max-height: 85vh !important;
+		max-height: 85dvh !important;
 		overflow-y: auto !important;
 		margin: 12px auto !important;
 	}
@@ -379,6 +381,7 @@ table {
 /* === PAGE WRAPPER === */
 .page-wrapper {
 	min-height: 100vh;
+	min-height: 100dvh;
 	display: flex;
 	flex-direction: column;
 }

@@ -45,7 +45,6 @@ export default function MyCmeRecordModal({ record, categories, defaultYear, onCl
 	const [group, setGroup] = useState(() => (record?.category_id ? groupOf(record.category_id) : ''));
 	const groups = Array.from(new Set(categories.map((c) => c.group_name ?? NO_GROUP)));
 	const inGroup = categories.filter((c) => (c.group_name ?? NO_GROUP) === group);
-	const unit = categories.find((x) => x.id === form.category_id)?.unit_label;
 
 	// Id đã lưu — tạo mới xong mà tải minh chứng lỗi thì lần gửi sau là cập nhật, không tạo trùng
 	const [savedId, setSavedId] = useState(record?.id ?? null);
@@ -118,7 +117,7 @@ export default function MyCmeRecordModal({ record, categories, defaultYear, onCl
 					</select>
 				</label>
 				<label className={styles.formFull}>
-					Nội dung hoạt động *
+					Tên hoạt động *
 					<input value={form.title} maxLength={255} onChange={set('title')} placeholder='VD: Tự học chuyên đề X' />
 				</label>
 				<label>
@@ -126,7 +125,7 @@ export default function MyCmeRecordModal({ record, categories, defaultYear, onCl
 					<input value={form.role} maxLength={100} onChange={set('role')} placeholder='Đại biểu, Báo cáo viên…' />
 				</label>
 				<label>
-					Số lượng{unit ? ` (${unit})` : ''}
+					Số buổi tham gia
 					<input type='number' step='0.1' min='0' value={form.quantity} onChange={set('quantity')} />
 				</label>
 				<label>

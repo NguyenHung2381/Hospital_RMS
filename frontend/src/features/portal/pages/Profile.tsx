@@ -3,8 +3,6 @@ import {
 	BadgeSvg,
 	CalendarSvg,
 	CheckSvg,
-	EyeOffSvg,
-	EyeSvg,
 	KeySvg,
 	LockSvg,
 	LogoutSvg,
@@ -13,11 +11,12 @@ import {
 	UserSvg,
 } from '@/assets/icons';
 import { QRCode } from 'antd';
+import { PasswordInput } from '@/shared/components/Input/PasswordInput';
 import { useLocation } from 'react-router-dom';
 import AdminLayout from '../../../layouts/AdminLayout';
 import UserLayout from '../../../layouts/UserLayout';
 import { InlineLoading } from '@/shared/components';
-import { PASSWORD_HINT } from '@/shared/utils/password';
+import { PASSWORD_HINT, PASSWORD_MIN_LENGTH } from '@/shared/utils/password';
 import { fmtDate, useProfile } from '../hooks/useProfile';
 import styles from './Profile.module.css';
 
@@ -181,7 +180,7 @@ export default function Profile() {
 											}}
 										>
 											<input
-												className={styles.pwdInput}
+												className={styles.nameInput}
 												value={d.nameDraft}
 												maxLength={200}
 												autoFocus
@@ -272,95 +271,64 @@ export default function Profile() {
 
 						<div className={styles.pwdForm}>
 							<div className={styles.formGroup}>
-								<label className={styles.formLabel}>Mật khẩu hiện tại</label>
-								<div className={styles.pwdInput}>
-									<input
-										type={d.showOld ? 'text' : 'password'}
-										className={styles.formInput}
-										placeholder='Nhập mật khẩu hiện tại...'
-										value={d.oldPwd}
-										onChange={(e) => {
-											d.setOldPwd(e.target.value);
-											d.setPwdError('');
-										}}
-									/>
-									<button
-										type='button'
-										className={styles.eyeBtn}
-										onClick={() => d.setShowOld((v) => !v)}
-									>
-										{d.showOld ? <EyeOffSvg /> : <EyeSvg />}
-									</button>
-								</div>
+								<label className={styles.formLabel} htmlFor='pwd-old'>Mật khẩu hiện tại</label>
+								<PasswordInput
+									id='pwd-old'
+									className={styles.formInput}
+									placeholder='Nhập mật khẩu hiện tại...'
+									value={d.oldPwd}
+									autoComplete='current-password'
+									onChange={(v) => {
+										d.setOldPwd(v);
+										d.setPwdError('');
+									}}
+								/>
 							</div>
 
 							<div className={styles.formGroup}>
-								<label className={styles.formLabel}>Mật khẩu mới</label>
-								<div className={styles.pwdInput}>
-									<input
-										type={d.showNew ? 'text' : 'password'}
-										className={styles.formInput}
-										placeholder='Nhập mật khẩu mới...'
-										value={d.newPwd}
-										onChange={(e) => {
-											d.setNewPwd(e.target.value);
-											d.setPwdError('');
-										}}
-									/>
-									<button
-										type='button'
-										className={styles.eyeBtn}
-										onClick={() => d.setShowNew((v) => !v)}
-									>
-										{d.showNew ? <EyeOffSvg /> : <EyeSvg />}
-									</button>
-								</div>
+								<label className={styles.formLabel} htmlFor='pwd-new'>Mật khẩu mới</label>
+								<PasswordInput
+									id='pwd-new'
+									className={styles.formInput}
+									placeholder='Nhập mật khẩu mới...'
+									value={d.newPwd}
+									autoComplete='new-password'
+									onChange={(v) => {
+										d.setNewPwd(v);
+										d.setPwdError('');
+									}}
+								/>
 								{d.newPwd.length > 0 && (
 									<div className={styles.strengthBar}>
 										<div
 											className={styles.strengthFill}
-											style={{
-												width:
-													d.newPwd.length < 8
-														? '33%'
-														: d.newPwd.length < 12
-															? '66%'
-															: '100%',
-												background:
-													d.newPwd.length < 8
-														? '#ef4444'
-														: d.newPwd.length < 12
-															? '#f59e0b'
-															: '#22c55e',
-											}}
+											style={
+												d.newPwd.length < PASSWORD_MIN_LENGTH
+													? { width: '33%', background: '#ef4444' }
+													: d.newPwd.length < PASSWORD_MIN_LENGTH + 4
+														? { width: '66%', background: '#f59e0b' }
+														: { width: '100%', background: '#22c55e' }
+											}
 										/>
 									</div>
 								)}
 							</div>
 
 							<div className={styles.formGroup}>
-								<label className={styles.formLabel}>
+								<label className={styles.formLabel} htmlFor='pwd-confirm'>
 									Xác nhận mật khẩu mới
 								</label>
-								<div className={styles.pwdInput}>
-									<input
-										type={d.showConfirm ? 'text' : 'password'}
-										className={styles.formInput}
-										placeholder='Nhập lại mật khẩu mới...'
-										value={d.confirmPwd}
-										onChange={(e) => {
-											d.setConfirmPwd(e.target.value);
-											d.setPwdError('');
-										}}
-									/>
-									<button
-										type='button'
-										className={styles.eyeBtn}
-										onClick={() => d.setShowConfirm((v) => !v)}
-									>
-										{d.showConfirm ? <EyeOffSvg /> : <EyeSvg />}
-									</button>
-								</div>
+								<PasswordInput
+									id='pwd-confirm'
+									className={styles.formInput}
+									placeholder='Nhập lại mật khẩu mới...'
+									value={d.confirmPwd}
+									autoComplete='new-password'
+									onChange={(v) => {
+										d.setConfirmPwd(v);
+										d.setPwdError('');
+									}}
+								/>
 								{d.confirmPwd && d.newPwd && (
 									<div
 										className={styles.matchHint}

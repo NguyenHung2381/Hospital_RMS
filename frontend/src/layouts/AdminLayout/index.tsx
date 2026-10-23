@@ -438,7 +438,8 @@ export default function AdminLayout({
 							unreadCount={unreadCount}
 							onMarkAll={markAll}
 							onMarkOne={markOne}
-							s={styles}
+							buttonClassName={styles.topbarIconBtn}
+							activeClassName={styles.active}
 							viewAllPath='/admin/notifications'
 						/>
 					</div>

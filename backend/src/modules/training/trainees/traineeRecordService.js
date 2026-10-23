@@ -3,6 +3,8 @@ const { broadcast } = require('../../events/eventService');
 const { httpError } = require('../../../utils/httpError');
 const trainingFileService = require('../trainingFileService');
 const gradebookService = require('../courses/gradebookService');
+const { SESSION_IN_PROGRAM_SQL } = require('../courses/sessionScope');
+const { TRAINEE_OF_USER_SQL } = require('./traineeOfUser');
 
 // ─── Hồ sơ học viên đầy đủ (giai đoạn 3, docs/ke-hoach-nang-cap-dao-tao.md) ─────
 // Chỉ đọc: điểm danh, kết quả & điểm, checklist giấy tờ theo loại khóa đã ghi danh.
@@ -89,6 +91,21 @@ const traineeOfUser = async (pool, userId) => {
 
 const traineeIdOfUser = async (userId) => traineeOfUser(await getPool(), userId);
 
+// Điểm danh / kết quả của tôi: nhận cả hồ sơ học viên của nhân viên nội viện
+// (staff_user_id — xem traineeOfUser.js); ưu tiên hồ sơ gắn tài khoản học viên.
+// Giấy tờ hồ sơ vẫn dùng traineeIdOfUser (chỉ tài khoản học viên).
+const myTraineeId = async (userId) => {
+	const pool = await getPool();
+	const t = (
+		await pool.request().input('uid', sql.VarChar(20), userId).query(`
+      SELECT TOP 1 t.id FROM trainees t
+      WHERE ${TRAINEE_OF_USER_SQL('t')}
+      ORDER BY CASE WHEN t.user_id = @uid THEN 0 ELSE 1 END, t.created_at DESC`)
+	).recordset[0];
+	if (!t) throw httpError(404, 'Bạn chưa có hồ sơ học viên — hãy đăng ký một khóa học.');
+	return t.id;
+};
+
 const myChecklist = async (userId) =>
 	documentChecklist(await traineeOfUser(await getPool(), userId));
 
@@ -162,7 +179,7 @@ const attendance = async (traineeId) => {
     WHERE e.trainee_id = @trainee_id AND e.status = 'approved'
     ORDER BY c.start_date DESC;
 
-    -- Buổi đã diễn ra của các khóa trên (kể cả buổi chưa điểm danh người này)
+    -- Buổi đã diễn ra của chương trình đã ghi danh (kể cả buổi chưa điểm danh người này)
     SELECT e.id AS enrollment_id, s.id AS session_id, s.session_date, s.start_time, s.end_time,
            pl.title AS lesson_title, ${SESSION_KIND_SQL} AS kind, a.status, a.method, a.note
     FROM course_enrollments e
@@ -170,7 +187,7 @@ const attendance = async (traineeId) => {
     LEFT JOIN program_lessons pl ON pl.id = s.subject_id
     LEFT JOIN attendance a ON a.session_id = s.id AND a.enrollment_id = e.id
     WHERE e.trainee_id = @trainee_id AND e.status = 'approved'
-      AND s.session_date <= CAST(GETDATE() AS DATE)
+      AND s.session_date <= CAST(GETDATE() AS DATE) AND ${SESSION_IN_PROGRAM_SQL('s', 'e')}
     ORDER BY s.session_date DESC, s.start_time DESC;
 
     -- GPHN: theo lượt khoa
@@ -279,6 +296,7 @@ module.exports = {
 	documentChecklist,
 	reviewDocument,
 	traineeIdOfUser,
+	myTraineeId,
 	myChecklist,
 	addMyDocument,
 	removeMyDocument,

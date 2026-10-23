@@ -38,7 +38,7 @@ export default function MyCme() {
 	const [params, setParams] = useSearchParams();
 	const tab: Tab = params.get('tab') === 'records' ? 'records' : 'seminars';
 	const setTab = (t: Tab) => setParams({ tab: t }, { replace: true });
-	const [year, setYear] = useState<number | 'all'>(THIS_YEAR);
+	const [year, setYear] = useState<number | 'all'>('all');
 	const allYears = year === 'all';
 	const [data, setData] = useState<Data | null>(null);
 	const semPg = useClientPaging(data?.seminars ?? []);
@@ -291,7 +291,7 @@ export default function MyCme() {
 											<thead>
 												<tr>
 													<th className={tbl.thIdx}>STT</th>
-													<th>Nội dung</th>
+													<th>Tên hoạt động</th>
 													<th>Ngày</th>
 													<th>Loại hoạt động</th>
 													<th>Tín chỉ</th>

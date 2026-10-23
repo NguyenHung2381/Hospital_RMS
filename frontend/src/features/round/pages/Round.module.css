@@ -493,6 +493,7 @@
 	width: 100%;
 	max-width: 720px;
 	max-height: 90vh;
+	max-height: 90dvh;
 	display: flex;
 	flex-direction: column;
 	overflow: hidden;
@@ -1079,5 +1080,23 @@
 	}
 	.roundCardActions {
 		justify-content: flex-end;
+	}
+	/* Thẻ thống kê trong modal (icon + số + nhãn) chỉ còn ~100px/ô ở 3 cột → xếp dọc */
+	.modalStatsGrid {
+		grid-template-columns: 1fr;
+		gap: var(--space-2);
+	}
+	.modalStatCard {
+		padding: var(--space-3);
+	}
+	.statusSelector {
+		grid-template-columns: 1fr;
+		gap: var(--space-2);
+	}
+	.statusOption {
+		flex-direction: row;
+		align-items: center;
+		text-align: left;
+		padding: var(--space-3);
 	}
 }

@@ -1,5 +1,6 @@
 .authWrapper {
 	min-height: 100vh;
+	min-height: 100dvh;
 	display: grid;
 	grid-template-columns: 1fr 1fr;
 	background: var(--color-white);
@@ -427,11 +428,16 @@
 		font-size: var(--font-size-2xl);
 	}
 
-	.panelStats {
+	/* Xếp chồng: chỉ giữ logo + tên BV + mô tả để form nằm trong màn hình đầu
+	   (danh sách tính năng đẩy form xuống dưới nếp gấp trên tablet). */
+	.panelStats,
+	.panelFeatures,
+	.panelDivider {
 		display: none;
 	}
 
 	.panelRight {
+		justify-content: flex-start;
 		padding: var(--space-8) var(--space-6);
 	}
 
@@ -466,14 +472,11 @@
 	}
 
 	.desktopOnly,
-	.panelFeatures,
-	.panelDivider,
 	.glowOrb {
 		display: none;
 	}
 
 	.panelRight {
-		justify-content: flex-start;
 		padding: var(--space-6) var(--space-4);
 	}
 

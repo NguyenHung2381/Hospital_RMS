@@ -222,7 +222,7 @@ export default function Roster() {
 						<span className={styles.offMark}>N</span> Nghỉ
 					</span>
 					<span className={cx(styles.legendItem, styles.fromPattern)}>Mờ = theo mẫu tuần của khóa</span>
-					<span className={styles.legendItem}>Ô trống = không có ca (chấm tự do)</span>
+					<span className={styles.legendItem}>Ô trống = không có ca (điểm danh tự do)</span>
 					<span className={styles.legendItem}>
 						<span className={cx(styles.legendSwatch, styles.outside)} /> Ngoài thời gian khóa học
 					</span>

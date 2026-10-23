@@ -10,10 +10,10 @@ const updateRules = [
 	body('title')
 		.optional()
 		.custom((v) => String(v ?? '').trim() !== '')
-		.withMessage('Vui lòng nhập nội dung hoạt động')
+		.withMessage('Vui lòng nhập tên hoạt động')
 		.bail()
 		.custom((v) => String(v).trim().length <= 255)
-		.withMessage('Nội dung hoạt động tối đa 255 ký tự'),
+		.withMessage('Tên hoạt động tối đa 255 ký tự'),
 	body('role')
 		.optional({ values: 'null' })
 		.custom((v) => String(v).length <= 100)

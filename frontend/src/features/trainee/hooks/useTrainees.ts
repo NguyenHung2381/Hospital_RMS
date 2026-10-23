@@ -175,7 +175,8 @@ export function useTrainees(trainingTypeId = '') {
 	);
 
 	const handleGrantAccounts = useCallback(
-		async (ids?: string[]) => {
+		async (ids: string[]) => {
+			if (ids.length === 0) return;
 			setGranting(true);
 			try {
 				const result = await grantTraineeAccounts(ids);
@@ -187,9 +188,13 @@ export function useTrainees(trainingTypeId = '') {
 					setGrantedAccounts(result.credentials);
 				}
 				if (result.skipped.length > 0) {
+					// Gom lý do bỏ qua: "Học viên đã có tài khoản: 3; Hồ sơ học viên đã bị xoá: 1"
+					const reasons = new Map<string, number>();
+					for (const s of result.skipped) reasons.set(s.reason, (reasons.get(s.reason) ?? 0) + 1);
+					const detail = [...reasons].map(([r, n]) => `${r}: ${n}`).join('; ');
 					showToast(
 						result.credentials.length > 0 ? 'success' : 'error',
-						`Cấp được ${result.credentials.length} tài khoản, bỏ qua ${result.skipped.length} (đã có tài khoản hoặc lỗi).`,
+						`Cấp được ${result.credentials.length} tài khoản, bỏ qua ${result.skipped.length} (${detail}).`,
 					);
 				} else if (result.credentials.length > 0) {
 					showToast('success', `Đã cấp ${result.credentials.length} tài khoản mới.`);

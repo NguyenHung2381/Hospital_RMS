@@ -28,7 +28,7 @@ const SHEET_COLUMNS = [
 	{ key: 'staff_number', header: 'Mã NV', width: 9 },
 	{ key: 'full_name', header: 'Họ và tên', width: 24 },
 	{ key: 'department_raw', header: 'Khoa/Phòng', width: 22 },
-	{ key: 'title', header: 'Hoạt động', width: 34 },
+	{ key: 'title', header: 'Tên hoạt động', width: 34 },
 	{ key: 'role', header: 'Vai trò', width: 14 },
 	{ key: 'quantity', header: 'Số lượng', width: 10 },
 	{ key: 'credits', header: 'Giờ tín chỉ', width: 12 },
@@ -43,7 +43,7 @@ const templateWorkbook = async () => {
 		sheetName: 'Ghi nhận CME',
 		title: 'MẪU NHẬP GHI NHẬN CME ĐỘC LẬP',
 		subtitle:
-			'Bắt buộc: Mã NV. Mã NV chưa có trong hệ thống sẽ được tạo nhân viên + tài khoản — cần Họ và tên (điền trong file hoặc nhập ở bước xem trước), Khoa/Phòng không bắt buộc. Năm lấy theo Từ ngày; dòng không có ngày lấy Năm chọn ở hộp thoại nhập. Nhóm/Loại hình thức chọn ở hộp thoại nhập. Hoạt động để trống → lấy Tên hoạt động mặc định. Giờ tín chỉ: điền trong file thì lấy theo file. Để trống → loại hình thức có giờ quy đổi tự tính = Số lượng × giờ quy đổi (Số lượng trống lấy Số lượng mặc định); loại "Khác" lấy Giờ tín chỉ mặc định ở hộp thoại nhập. Ngày: dd/mm/yyyy.',
+			'Bắt buộc: Mã NV. Mã NV chưa có trong hệ thống sẽ được tạo nhân viên + tài khoản — cần Họ và tên (điền trong file hoặc nhập ở bước xem trước), Khoa/Phòng không bắt buộc. Năm lấy theo Từ ngày; dòng không có ngày lấy Năm chọn ở hộp thoại nhập. Nhóm/Loại hình thức chọn ở hộp thoại nhập. Tên hoạt động để trống → lấy Tên hoạt động mặc định. Giờ tín chỉ: điền trong file thì lấy theo file. Để trống → loại hình thức có giờ quy đổi tự tính = Số lượng × giờ quy đổi (Số lượng trống lấy Số lượng mặc định); loại "Khác" lấy Giờ tín chỉ mặc định ở hộp thoại nhập. Ngày: dd/mm/yyyy.',
 		columns: SHEET_COLUMNS,
 		letterhead: true,
 	});
@@ -93,8 +93,8 @@ const parseWorkbook = async (buffer) => {
 		matchers: COLUMN_MATCHERS,
 		isValid: (c) => !!(c.full_name || c.staff_number),
 		headerError:
-			'Không tìm thấy dòng tiêu đề (cần cột "MNV" hoặc "Họ và tên"; các cột nhận diện: Danh mục, Nội dung, Ngày hoạt động, Số tín chỉ, Ghi chú).',
-		// Dòng có Hoạt động / Giờ tín chỉ mà thiếu Mã NV + Họ tên vẫn đọc (để báo cảnh báo),
+			'Không tìm thấy dòng tiêu đề (cần cột "MNV" hoặc "Họ và tên"; các cột nhận diện: Danh mục, Tên hoạt động, Ngày hoạt động, Số tín chỉ, Ghi chú).',
+		// Dòng có Tên hoạt động / Giờ tín chỉ mà thiếu Mã NV + Họ tên vẫn đọc (để báo cảnh báo),
 		// không lặng lẽ bỏ qua; dòng chỉ có STT là dòng trống.
 		isEmpty: (get, row) =>
 			!get(row, 'full_name') &&

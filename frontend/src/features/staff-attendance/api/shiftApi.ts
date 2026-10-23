@@ -11,9 +11,9 @@ export interface WorkShift {
 	color: string | null;
 	start_time: string;
 	end_time: string;
-	/** Được chấm vào sớm nhất trước giờ vào (phút). */
+	/** Được điểm danh vào sớm nhất trước giờ vào (phút). */
 	checkin_before_min: number;
-	/** Được chấm ra muộn nhất sau giờ ra (phút). */
+	/** Được điểm danh ra muộn nhất sau giờ ra (phút). */
 	checkout_after_min: number;
 	/** Du di đi muộn/về sớm (phút). */
 	grace_min: number;
@@ -146,7 +146,7 @@ export const periodOn = (periods: StudyPeriod[], dateKey: string): StudyPeriod |
 
 /**
  * Ca của 1 học viên trong 1 ngày, khớp backend shiftIdsForDay: có phân ca ngày đó thì theo
- * phân ca (rỗng = nghỉ), không thì theo mẫu tuần của khóa; null = không có lịch ca (chấm tự do).
+ * phân ca (rỗng = nghỉ), không thì theo mẫu tuần của khóa; null = không có lịch ca (điểm danh tự do).
  */
 export const shiftsForDay = (
 	pattern: ShiftPattern | null,

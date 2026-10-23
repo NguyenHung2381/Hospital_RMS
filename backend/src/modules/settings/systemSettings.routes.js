@@ -6,6 +6,8 @@ const { validate } = require('../../middlewares/errorHandler');
 const mailService = require('../notifications/mailService');
 const uploadPolicy = require('../../utils/uploadPolicy');
 const attendancePolicy = require('../../utils/attendancePolicy');
+const leavePolicy = require('../../utils/leavePolicy');
+const captcha = require('../../utils/captcha');
 const { success, notFound, error } = require('../../utils/response');
 const { asyncHandler } = require('../../utils/asyncHandler');
 
@@ -50,7 +52,9 @@ router.put(
 		const value = req.body.value ?? null;
 		const invalid =
 			uploadPolicy.validateSetting(req.params.key, value) ??
-			attendancePolicy.validateSetting(req.params.key, value);
+			attendancePolicy.validateSetting(req.params.key, value) ??
+			leavePolicy.validateSetting(req.params.key, value) ??
+			captcha.validateSetting(req.params.key, value);
 		if (invalid) return error(res, invalid, 400);
 		const item = await systemSettingService.update(
 			req.params.key,

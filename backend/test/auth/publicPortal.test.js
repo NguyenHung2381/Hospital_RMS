@@ -1,6 +1,14 @@
 // Cổng công khai: captcha dùng 1 lần; tra cứu cần CCCD + ngày sinh, có giới
 // hạn theo từng CCCD; đăng ký khoá học đối chiếu ngày sinh với hồ sơ đã có.
 process.env.JWT_SECRET = 'test-secret';
+// Ghim chế độ proof-of-work: đặt rỗng để dotenv không nạp khoá Turnstile/reCAPTCHA từ .env máy dev
+for (const k of [
+	'TURNSTILE_SITE_KEY',
+	'TURNSTILE_SECRET_KEY',
+	'RECAPTCHA_SITE_KEY',
+	'RECAPTCHA_SECRET_KEY',
+])
+	process.env[k] = '';
 process.env.CAPTCHA_POW_BITS = '12'; // test giải nhanh
 process.env.CAPTCHA_MIN_FILL_SEC = '0';
 const test = require('node:test');
@@ -47,28 +55,28 @@ const wrongNonce = ({ token, bits }) => {
 	for (let n = 0; ; n++) if (!powOk(token, n.toString(36), bits)) return n.toString(36);
 };
 
-test('captcha: chế độ mặc định là proof-of-work, không lộ đáp án', () => {
-	const c = generateCaptcha();
+test('captcha: chế độ mặc định là proof-of-work, không lộ đáp án', async () => {
+	const c = await generateCaptcha();
 	assert.equal(c.provider, 'pow');
 	assert.equal(c.bits, 12);
 	assert.equal(c.question, undefined);
 });
 
 test('captcha: giải đúng thì qua, nhưng chỉ dùng được 1 lần', async () => {
-	const c = generateCaptcha();
+	const c = await generateCaptcha();
 	const nonce = solve(c);
 	assert.equal(await verifyCaptcha(c.token, nonce), true);
 	assert.equal(await verifyCaptcha(c.token, nonce), false);
 });
 
 test('captcha: lời giải sai cũng làm mất hiệu lực token', async () => {
-	const c = generateCaptcha();
+	const c = await generateCaptcha();
 	assert.equal(await verifyCaptcha(c.token, wrongNonce(c)), false);
 	assert.equal(await verifyCaptcha(c.token, solve(c)), false);
 });
 
 test('captcha: nonce sai định dạng / token giả → không qua', async () => {
-	const c = generateCaptcha();
+	const c = await generateCaptcha();
 	assert.equal(await verifyCaptcha(c.token, '../../x'), false);
 	assert.equal(await verifyCaptcha(c.token, 12345), false);
 	assert.equal(await verifyCaptcha(`${c.token}x`, solve(c)), false);

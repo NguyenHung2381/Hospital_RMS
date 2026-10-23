@@ -4,6 +4,7 @@ const { httpError } = require('../../../utils/httpError');
 const systemSettingService = require('../../settings/systemSettingService');
 const certificateService = require('./certificateService');
 const { DEFAULT_RULES, RULE_SETTING_KEYS, evaluate, round1 } = require('./gradeRules');
+const { SESSION_IN_PROGRAM_SQL } = require('./sessionScope');
 
 // ─── Bảng điểm 2 phần Lý thuyết + Thực hành (giai đoạn 4) ──────────────────
 // 1 dòng grades / lượt ghi danh (subject_id NULL — UQ_grades_enrollment_course).
@@ -98,13 +99,15 @@ const loadRows = async (courseId, enrollmentIds) => {
     WHERE e.course_id = @course_id AND e.status = 'approved' ${only}
     ORDER BY t.full_name, e.id;
 
-    -- Chuyên cần: chỉ tính buổi đã điểm danh người đó; 'late' tính là có mặt.
+    -- Chuyên cần: chỉ tính buổi đã điểm danh người đó, thuộc chương trình người đó
+    -- theo học (bỏ bản ghi cũ ở buổi của lớp khác); 'late' tính là có mặt.
     SELECT a.enrollment_id, ${SESSION_KIND_SQL} AS kind,
            COUNT(*) AS held, SUM(CASE WHEN a.status = 'absent' THEN 1 ELSE 0 END) AS absent
     FROM class_sessions s
     LEFT JOIN program_lessons pl ON pl.id = s.subject_id
     JOIN attendance a ON a.session_id = s.id
-    WHERE s.course_id = @course_id
+    JOIN course_enrollments e ON e.id = a.enrollment_id
+    WHERE s.course_id = @course_id AND ${SESSION_IN_PROGRAM_SQL('s', 'e')}
     GROUP BY a.enrollment_id, ${SESSION_KIND_SQL};
   `);
 	const [rows, att] = r.recordsets;

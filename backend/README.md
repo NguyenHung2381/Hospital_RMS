@@ -53,7 +53,7 @@ Các module trong `src/modules/`:
 | `seminars` | `/seminars` | hội nghị/hội thảo, người tham dự, xuất Excel |
 | `cme` | `/cme-records` | hồ sơ CME, yêu cầu tín chỉ, báo cáo |
 | `training/` | `/courses`, `/training-programs`, `/trainees`, `/exams`, `/lecturers` | thư mục con `courses` (theo khuôn module, xem dưới), `programs`, `trainees`, `exams`, `lecturers`, `reports`; `trainingFileService` dùng chung |
-| `attendance` | `/staff-attendance` | chấm công, ca làm |
+| `attendance` | `/staff-attendance` | điểm danh, ca làm |
 | `staffLicenses` | `/staff-licenses` | chứng chỉ hành nghề |
 | `surveys` | `/surveys` | khảo sát |
 | `notifications` | `/notifications` | thông báo trong hệ thống, `mailService` |

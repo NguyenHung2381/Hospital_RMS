@@ -16,11 +16,7 @@ import { TopicTable } from '../components/TopicTable';
 import { UpcomingCouncilsTable } from '../components/UpcomingCouncilsTable';
 import { useDashboard } from '../hooks/useDashboard';
 import { useUpcomingCouncils } from '../hooks/useUpcomingCouncils';
-import {
-	APPROVAL_CONFIG,
-	DEPT_COLORS,
-	formatDate,
-} from '../utils/dashboardHelpers';
+import { APPROVAL_CONFIG, CHART_COLORS, formatDate } from '../utils/dashboardHelpers';
 import styles from './Dashboard.module.css';
 
 type TableMode = 'topics' | 'councils';
@@ -454,7 +450,7 @@ export default function ResearchDashboard() {
 																		height: 7,
 																		borderRadius: '50%',
 																		background:
-																			DEPT_COLORS[ci % DEPT_COLORS.length],
+																			CHART_COLORS[ci % CHART_COLORS.length],
 																		marginRight: 3,
 																		verticalAlign: 'middle',
 																	}}

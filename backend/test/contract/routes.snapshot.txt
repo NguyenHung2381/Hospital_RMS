@@ -96,6 +96,7 @@ POST   /api/v1/courses/:id/practice-book/export  courses:read
 POST   /api/v1/courses/:id/practice-book/import  courses:update
 POST   /api/v1/courses/:id/practice/auto-arrange  courses:update
 GET    /api/v1/courses/:id/programs  courses:read
+POST   /api/v1/courses/:id/programs/cancel-open  courses:update
 PUT    /api/v1/courses/:id/programs/dates  courses:update
 POST   /api/v1/courses/:id/programs/open  courses:update
 GET    /api/v1/courses/:id/programs/suggest-dates  courses:read
@@ -199,6 +200,9 @@ DELETE /api/v1/levels/:id  catalog:delete
 PUT    /api/v1/levels/:id  catalog:update
 GET    /api/v1/me/attendance  authOnly
 POST   /api/v1/me/attendance/check  authOnly
+GET    /api/v1/me/attendance/leave-requests  authOnly
+POST   /api/v1/me/attendance/leave-requests  authOnly
+PATCH  /api/v1/me/attendance/leave-requests/:id/cancel  authOnly
 GET    /api/v1/me/cme  authOnly
 GET    /api/v1/me/cme-categories  authOnly
 POST   /api/v1/me/cme-records  authOnly
@@ -323,6 +327,8 @@ POST   /api/v1/seminars/import-template  seminars:import
 POST   /api/v1/seminars/participant-import-template  seminars:import
 GET    /api/v1/seminars/stats  seminars:read
 GET    /api/v1/staff-attendance/  staff_attendance:read
+GET    /api/v1/staff-attendance/leave-requests  staff_attendance:read | staff_attendance:approve
+PUT    /api/v1/staff-attendance/leave-requests/:id/review  staff_attendance:approve
 POST   /api/v1/staff-attendance/patterns  staff_attendance:manage
 GET    /api/v1/staff-attendance/patterns  staff_attendance:manage | staff_attendance:roster
 PUT    /api/v1/staff-attendance/patterns/:id  staff_attendance:manage

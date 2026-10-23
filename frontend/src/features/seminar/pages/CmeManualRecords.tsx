@@ -342,7 +342,6 @@ function RecordFormModal({
 	const [group, setGroup] = useState(() => (record?.category_id ? groupOf(record.category_id) : ''));
 	const groupIds = Array.from(new Set(categories.map((c) => c.group_id ?? NO_GROUP)));
 	const inGroup = categories.filter((c) => (c.group_id ?? NO_GROUP) === group);
-	const unit = categories.find((c) => c.id === form.category_id)?.unit_label;
 	const pickCategory = (category_id: string) =>
 		setForm((f) => {
 			const quantity = category_id && f.quantity === '' ? '1' : f.quantity;
@@ -372,7 +371,7 @@ function RecordFormModal({
 		const credits = Number(form.credits);
 		if (!Number.isFinite(credits) || credits < 0 || credits >= 10000)
 			return setError('Số tín chỉ phải từ 0 đến 9999.99');
-		if (form.quantity !== '' && !(Number(form.quantity) >= 0)) return setError('Số lượng không hợp lệ');
+		if (form.quantity !== '' && !(Number(form.quantity) >= 0)) return setError('Số buổi tham gia không hợp lệ');
 		if (form.activity_date && form.end_date && form.end_date < form.activity_date)
 			return setError('"Đến ngày" phải sau hoặc bằng "Từ ngày"');
 		setBusy(true);
@@ -453,7 +452,7 @@ function RecordFormModal({
 					</select>
 				</div>
 				<div className={`${styles.formGroup} ${styles.full}`}>
-					<label className={styles.formLabel}>Nội dung hoạt động *</label>
+					<label className={styles.formLabel}>Tên hoạt động *</label>
 					<input
 						className={styles.formInput}
 						value={form.title}
@@ -473,7 +472,7 @@ function RecordFormModal({
 					/>
 				</div>
 				<div className={styles.formGroup}>
-					<label className={styles.formLabel}>Số lượng{unit ? ` (${unit})` : ''}</label>
+					<label className={styles.formLabel}>Số buổi tham gia</label>
 					<input
 						type='number'
 						step='0.1'
@@ -1159,7 +1158,7 @@ function ImportModal({
 										className={styles.formInput}
 										value={title}
 										onChange={(e) => setTitle(e.target.value)}
-										placeholder="Dùng khi cột 'Hoạt động' trong file để trống"
+										placeholder="Dùng khi cột 'Tên hoạt động' trong file để trống"
 									/>
 								</div>
 							</div>
@@ -1305,7 +1304,7 @@ function ImportModal({
 										<tr>
 											<th className={tbl.thIdx}>STT</th>
 											<th>Nhân viên</th>
-											<th>Nội dung</th>
+											<th>Tên hoạt động</th>
 											<th>Năm</th>
 											<th>Vai trò</th>
 											<th>Ngày</th>
@@ -1936,7 +1935,7 @@ ${missing} ghi nhận chưa có tín chỉ sẽ được bỏ qua (cần duyệt
 									)}
 									<th>STT</th>
 									<th>Nhân viên</th>
-									<th>Nội dung hoạt động</th>
+									<th>Tên hoạt động</th>
 									<th>Nhóm / Hình thức · Vai trò</th>
 									<th>Thời gian</th>
 									<th className={styles.thRight}>Tín chỉ</th>

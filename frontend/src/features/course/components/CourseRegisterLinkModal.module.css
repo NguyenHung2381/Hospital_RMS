@@ -1,0 +1,86 @@
+.panel {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: var(--space-3);
+	text-align: center;
+}
+.qrBox {
+	padding: var(--space-2);
+	border: 1px solid var(--color-gray-100);
+	border-radius: var(--radius-xl, 14px);
+	background: var(--color-white);
+}
+.hint {
+	font-size: var(--font-size-xs);
+	color: var(--color-gray-500);
+}
+.linkRow {
+	display: flex;
+	align-items: center;
+	gap: var(--space-2);
+	width: 100%;
+	padding: 4px 4px 4px var(--space-3);
+	border: 1px solid var(--color-gray-200);
+	border-radius: var(--radius-lg);
+	background: var(--color-gray-50);
+}
+.linkRow > svg {
+	flex: none;
+	width: 14px;
+	height: 14px;
+	color: var(--color-gray-400);
+}
+.linkRow a {
+	flex: 1;
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	text-align: left;
+	font-family: var(--font-mono);
+	font-size: var(--font-size-xs);
+	color: var(--color-gray-700);
+}
+.linkRow a:hover {
+	color: var(--color-primary);
+}
+.copyBtn {
+	flex: none;
+	display: grid;
+	place-items: center;
+	width: 32px;
+	height: 32px;
+	border: none;
+	border-radius: var(--radius-md);
+	background: none;
+	color: var(--color-gray-500);
+	cursor: pointer;
+}
+.copyBtn:hover {
+	background: var(--color-white);
+	color: var(--color-primary);
+}
+.copyBtn svg {
+	width: 16px;
+	height: 16px;
+}
+.warn {
+	display: flex;
+	gap: var(--space-2);
+	width: 100%;
+	padding: var(--space-2) var(--space-3);
+	border: 1px solid #f0d9b5;
+	border-radius: var(--radius-lg);
+	background: #faeeda;
+	color: #633806;
+	font-size: var(--font-size-xs);
+	line-height: 1.5;
+	text-align: left;
+}
+.warn svg {
+	flex: none;
+	width: 15px;
+	height: 15px;
+	margin-top: 1px;
+}

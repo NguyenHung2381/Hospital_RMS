@@ -22,8 +22,8 @@ const SHIFT_EXCEL_COLS: ExcelColumn<WorkShift>[] = [
 	{ header: 'Giờ vào', value: (s) => s.start_time.slice(0, 5) },
 	{ header: 'Giờ ra', value: (s) => s.end_time.slice(0, 5) },
 	{ header: 'Thời lượng', value: (s) => describeDuration(s) },
-	{ header: 'Chấm vào sớm nhất (phút)', value: (s) => s.checkin_before_min },
-	{ header: 'Chấm ra muộn nhất (phút)', value: (s) => s.checkout_after_min },
+	{ header: 'Điểm danh vào sớm nhất (phút)', value: (s) => s.checkin_before_min },
+	{ header: 'Điểm danh ra muộn nhất (phút)', value: (s) => s.checkout_after_min },
 	{ header: 'Du di (phút)', value: (s) => s.grace_min },
 	{ header: 'Đang dùng', value: (s) => (s.is_active ? 'Có' : 'Không') },
 ];
@@ -72,7 +72,7 @@ export default function Shifts() {
 	return (
 		<AdminLayout
 			pageTitle='Ca học viên'
-			pageSubtitle='Ca và mẫu ca theo tuần của khóa đào tạo — học viên chỉ chấm công được trong giờ ca, trong thời gian khóa học'
+			pageSubtitle='Ca và mẫu ca theo tuần của khóa đào tạo — học viên chỉ điểm danh được trong giờ ca, trong thời gian khóa học'
 			headerActions={
 				<div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
 					{tab === 'shifts' && (
@@ -112,7 +112,7 @@ export default function Shifts() {
 								<tr>
 									<th className={tbl.th}>Ca</th>
 									<th className={tbl.th}>Giờ làm</th>
-									<th className={tbl.th}>Được chấm công</th>
+									<th className={tbl.th}>Được điểm danh</th>
 									<th className={tbl.th}>Du di</th>
 									<th className={`${tbl.th} ${tbl.thRight}`}>Thao tác</th>
 								</tr>
@@ -162,7 +162,7 @@ export default function Shifts() {
 							<span className={tbl.cellSub}>
 								{hasDefault
 									? 'Khóa học chưa gán mẫu riêng dùng mẫu mặc định. Bảng phân ca theo ngày (từng học viên) ghi đè mẫu tuần.'
-									: 'Chưa có mẫu mặc định — học viên của khóa chưa gán mẫu, chưa được phân ca thì chấm công tự do (1 lượt/ngày trong thời gian khóa học).'}
+									: 'Chưa có mẫu mặc định — học viên của khóa chưa gán mẫu, chưa được phân ca thì điểm danh tự do (1 lượt/ngày trong thời gian khóa học).'}
 							</span>
 						</div>
 						<div className={tbl.tableWrap}>
@@ -213,7 +213,7 @@ export default function Shifts() {
 																id: p.id,
 																name: p.name,
 																warning: p.is_default
-																	? 'Đây là mẫu mặc định: sau khi xoá, khóa chưa có mẫu riêng chỉ còn theo bảng phân ca (ngày không được phân ca thì chấm công tự do).'
+																	? 'Đây là mẫu mặc định: sau khi xoá, khóa chưa có mẫu riêng chỉ còn theo bảng phân ca (ngày không được phân ca thì điểm danh tự do).'
 																	: p.course_count
 																		? `${p.course_count} khóa học đang dùng mẫu này sẽ chuyển về ${hasDefault ? 'mẫu mặc định' : 'không có mẫu (chỉ theo bảng phân ca)'}.`
 																		: undefined,

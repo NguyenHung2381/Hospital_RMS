@@ -70,7 +70,7 @@ export function AttendanceModal({ session, onClose }: { session: ClassSession; o
 			onClose={onClose}
 			icon={<ClipboardCheckSvg />}
 			title='Điểm danh buổi học'
-			subtitle={<>{formatDateVN(session.session_date)} {session.start_time ? ` · ${session.start_time}-${session.end_time ?? ''}` : ''} {session.room ? ` · ${session.room}` : ''}</>}
+			subtitle={<>{formatDateVN(session.session_date)} {session.start_time ? ` · ${session.start_time}-${session.end_time ?? ''}` : ''} {session.room ? ` · ${session.room}` : ''} {session.subject_name ? ` · ${session.subject_name}` : ''}</>}
 			className={styles.modal}
 			bodyClassName={styles.modalBody}
 			footer={
@@ -107,7 +107,8 @@ export function AttendanceModal({ session, onClose }: { session: ClassSession; o
 				<div className={styles.subEmpty}>Đang tải...</div>
 			) : rows.length === 0 ? (
 				<div className={styles.subEmpty}>
-					Chưa có học viên nào được duyệt tham gia khóa học này.
+					Buổi học này chưa có học viên. Chỉ học viên đã duyệt của lớp (chương trình) có bài học này,
+					và lớp đã mở, mới có trong danh sách điểm danh.
 				</div>
 			) : (
 				<div className={styles.subList}>
@@ -118,6 +119,12 @@ export function AttendanceModal({ session, onClose }: { session: ClassSession; o
 						>
 							<div className={styles.subRowMain}>
 								<div className={styles.subRowName}>{r.trainee_name}</div>
+								{r.program_code || r.program_name ? (
+									<div className={styles.subRowMeta}>
+										Lớp {r.program_code ?? r.program_name}
+										{r.program_code && r.program_name ? ` · ${r.program_name}` : ''}
+									</div>
+								) : null}
 							</div>
 							<div className={styles.attGrid}>
 								{ATT_OPTIONS.map((opt) => (

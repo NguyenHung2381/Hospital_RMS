@@ -511,13 +511,13 @@ const MODULES = [
 			},
 			{
 				key: 'staff_attendance',
-				label: 'Chấm công học viên',
+				label: 'Điểm danh học viên',
 				permissions: [
 					p(
 						'PERM-STATT-READ',
 						'read',
-						'Xem bảng chấm công',
-						'Xem giờ vào/ra chấm công của học viên theo khóa đào tạo, trong khoa hoặc toàn viện (theo phạm vi)',
+						'Xem bảng điểm danh',
+						'Xem giờ vào/ra điểm danh của học viên theo khóa đào tạo, trong khoa hoặc toàn viện (theo phạm vi)',
 					),
 					p(
 						'PERM-STATT-MANAGE',
@@ -530,6 +530,14 @@ const MODULES = [
 						'roster',
 						'Phân ca',
 						'Xếp ca theo ngày cho học viên trong khoa hoặc toàn viện (theo phạm vi), ghi đè mẫu ca tuần của khóa',
+					),
+					p(
+						'PERM-STATT-APPROVE',
+						'approve',
+						'Duyệt đơn xin phép',
+						'Duyệt / từ chối đơn xin nghỉ, xin đi muộn của học viên trong khoa hoặc toàn viện (theo phạm vi)',
+						// Người đang phân ca (khoa trưởng, điều dưỡng trưởng…) duyệt luôn đơn của học viên khoa mình
+						{ seedFrom: ['staff_attendance:roster'] },
 					),
 				],
 			},

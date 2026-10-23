@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { ArrowRSvg, CalendarSvg, CheckSmSvg, ChevLSvg, EditSvg } from '@/assets/icons';
+import { ArrowRSvg, CalendarSvg, ChevLSvg, CopySvg, EditSvg, QrSvg } from '@/assets/icons';
+import { CourseCloneModal } from '../components/CourseCloneModal';
+import tbl from '@/shared/components/Table/Table.module.css';
 import AdminLayout from '../../../layouts/AdminLayout';
 import { Button, InlineLoading } from '@/shared/components';
 import { showToast } from '@/shared/utils/feedback';
@@ -10,6 +12,7 @@ import { getCourse, updateCourse } from '../api/courseApi';
 import { AttendanceModal } from '../components/AttendanceModal';
 import { CourseDocumentsTab } from '../components/CourseDocumentsTab';
 import { CourseFormModal } from '../components/CourseFormModal';
+import { CourseRegisterLinkModal } from '../components/CourseRegisterLinkModal';
 import { EnrollmentsTab } from '../components/EnrollmentsTab';
 import { ExamsTab } from '../components/ExamsTab';
 import { ResultsTab } from '../components/ResultsTab';
@@ -43,6 +46,8 @@ export default function CourseDetail() {
 	const [notFound, setNotFound] = useState(false);
 	const [editing, setEditing] = useState(false);
 	const [saving, setSaving] = useState(false);
+	const [sharing, setSharing] = useState(false);
+	const [cloning, setCloning] = useState(false);
 	const d = useCourseDetail(id);
 	const { reload } = d;
 
@@ -123,7 +128,13 @@ export default function CourseDetail() {
 	const activeIdx = steps.findIndex((s) => s.key === tab);
 	// Gợi ý bước kế tiếp: bước đầu tiên sau bước đang xem mà chưa xong (bỏ qua "Thi" — không bắt buộc)
 	const nextStep = steps.slice(activeIdx + 1).find((s) => s.key !== 'exams' && !stepMeta[s.key].done);
+	const doneCount = steps.filter((s) => stepMeta[s.key].done).length;
 	const goStep = (key: Step) => setParams({ tab: key }, { replace: true });
+	const stepLabel = (s: { key: Step; label: string }) =>
+		s.key === 'enrollments' && course?.is_rolling ? 'Học viên & hồ sơ thực hành' : s.label;
+	// Chọn 1 chương trình ở phần tóm tắt ⇒ mở danh sách học viên lọc sẵn theo chương trình đó.
+	const goProgram = (programId: string) =>
+		setParams({ tab: 'enrollments', ...(programId ? { program: programId } : {}) }, { replace: true });
 
 	return (
 		<AdminLayout
@@ -138,6 +149,24 @@ export default function CourseDetail() {
 					>
 						Danh sách
 					</Button>
+					{course?.is_public_registration && (
+						<Button
+							variant='secondary'
+							icon={<QrSvg />}
+							onClick={() => setSharing(true)}
+						>
+							Link & QR đăng ký
+						</Button>
+					)}
+					{course && (
+						<Button
+							variant='secondary'
+							icon={<CopySvg />}
+							onClick={() => setCloning(true)}
+						>
+							Nhân bản
+						</Button>
+					)}
 					{course && (
 						<Button
 							variant='secondary'
@@ -178,46 +207,65 @@ export default function CourseDetail() {
 						</div>
 						<div className={styles.summaryPrograms}>
 							<span className={styles.summaryLabel}>Chương trình</span>
-							<ProgramTags
-								names={course.program_names}
-								max={12}
-								empty='Chưa áp dụng chương trình'
-							/>
+							{d.programLinks.length > 1 ? (
+								// Nhiều chương trình: thu vào 1 select thay vì hàng thẻ dài nhiều dòng
+								<select
+									className={`${tbl.filterSelect} ${styles.summarySelect}`}
+									aria-label='Xem học viên theo chương trình'
+									value=''
+									onChange={(e) => goProgram(e.target.value)}
+								>
+									<option
+										value=''
+										disabled
+										hidden
+									>
+										{d.programLinks.length} chương trình — chọn để xem học viên
+									</option>
+									<option value=''>Tất cả chương trình</option>
+									{d.programLinks.map((p) => (
+										<option
+											key={p.program_id}
+											value={p.program_id}
+										>
+											{p.program_code ? `${p.program_code} — ${p.program_name}` : p.program_name}
+										</option>
+									))}
+								</select>
+							) : (
+								<ProgramTags
+									names={course.program_names}
+									max={12}
+									empty='Chưa áp dụng chương trình'
+								/>
+							)}
 						</div>
 						{course.description && <p className={styles.infoDesc}>{course.description}</p>}
 					</div>
 
-					{/* Thanh bước: số tròn nối nhau, ✓ khi bước đã có dữ liệu */}
-					<nav
-						className={styles.steps}
-						aria-label='Các bước của khóa học'
-					>
-						{steps.map((s, i) => (
-							<button
-								key={s.key}
-								className={`${styles.step} ${tab === s.key ? styles.stepActive : ''} ${stepMeta[s.key].done ? styles.stepIsDone : ''}`}
-								aria-current={tab === s.key ? 'step' : undefined}
-								onClick={() => goStep(s.key)}
-							>
-								<span className={`${styles.stepNum} ${stepMeta[s.key].done ? styles.stepDone : ''}`}>
-									{stepMeta[s.key].done ? <CheckSmSvg /> : i + 1}
-								</span>
-								<span className={styles.stepText}>
-									<span className={styles.stepLabel}>
-										{s.key === 'enrollments' && course.is_rolling ? 'Học viên & hồ sơ thực hành' : s.label}
-									</span>
-									<span className={styles.stepMeta}>{stepMeta[s.key].meta}</span>
-								</span>
-							</button>
-						))}
-					</nav>
-
 					<div className={styles.stepPanel}>
+						{/* Chọn bước bằng select: ✓ = bước đã có dữ liệu; kèm tiến độ và gợi ý bước kế tiếp */}
 						<div className={styles.stepPanelHead}>
-							<div>
-								<span className={styles.stepPanelNo}>Bước {activeIdx + 1}/{steps.length}</span>
-								<h2 className={styles.stepPanelTitle}>{steps[activeIdx].label}</h2>
-							</div>
+							<label className={styles.stepPick}>
+								<span className={styles.stepPanelNo}>
+									Bước {activeIdx + 1}/{steps.length} · đã xong {doneCount}/{steps.length}
+								</span>
+								<select
+									className={styles.stepSelect}
+									aria-label='Chọn bước của khóa học'
+									value={tab}
+									onChange={(e) => goStep(e.target.value as Step)}
+								>
+									{steps.map((s, i) => (
+										<option
+											key={s.key}
+											value={s.key}
+										>
+											{stepMeta[s.key].done ? '✓' : `${i + 1}.`} {stepLabel(s)} — {stepMeta[s.key].meta}
+										</option>
+									))}
+								</select>
+							</label>
 							{nextStep && stepMeta[tab].done && (
 								<button
 									type='button'
@@ -273,6 +321,18 @@ export default function CourseDetail() {
 					onClose={() => setEditing(false)}
 					onSave={handleEdit}
 					loading={saving}
+				/>
+			)}
+			{cloning && course && (
+				<CourseCloneModal
+					course={course}
+					onClose={() => setCloning(false)}
+				/>
+			)}
+			{sharing && course && (
+				<CourseRegisterLinkModal
+					course={course}
+					onClose={() => setSharing(false)}
 				/>
 			)}
 			{attendanceSession && (

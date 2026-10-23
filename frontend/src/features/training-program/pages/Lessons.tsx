@@ -1,4 +1,4 @@
-import { Modal } from '@/shared/components';
+import { Modal, TableEmpty } from '@/shared/components';
 import { SearchInput, SelectionCount, RowAction, RowActions } from '@/shared/components/Table/TableToolbar';
 import { useState } from 'react';
 import { DocSvg, PlusSvg, TrashSvg } from '@/assets/icons';
@@ -194,16 +194,11 @@ export default function Lessons() {
 									cols={8}
 								/>
 							) : d.filtered.length === 0 ? (
-								<tr>
-									<td colSpan={8}>
-										<div className={styles.emptyState}>
-											<div className={styles.emptyTitle}>Không tìm thấy bài học</div>
-											<div className={styles.emptyDesc}>
-												{d.hasFilter ? 'Thử thay đổi từ khoá hoặc bộ lọc' : 'Chưa có bài học nào'}
-											</div>
-										</div>
-									</td>
-								</tr>
+								<TableEmpty
+									colSpan={8}
+									title='Không tìm thấy bài học'
+									desc={d.hasFilter ? 'Thử thay đổi từ khoá hoặc bộ lọc' : 'Chưa có bài học nào'}
+								/>
 							) : (
 								d.paged.map((l, i) => {
 									const rowNum = (d.safePage - 1) * (d.pageSize || d.filtered.length) + i + 1;

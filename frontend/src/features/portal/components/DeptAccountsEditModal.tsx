@@ -1,11 +1,12 @@
 import { Toggle } from '@/shared/components/Input/Toggle';
 import { FormField } from '@/shared/components/Input/FormField';
+import { PasswordInput } from '@/shared/components/Input/PasswordInput';
 import { Modal } from '@/shared/components';
 import { useState } from 'react';
-import { CheckSvg, EditSvg, InfoSvg } from '@/assets/icons';
+import { CheckSvg, EditSvg } from '@/assets/icons';
 import type { FormErrors, User } from '../../user/types/user.type';
 import type { EditForm } from '../utils/deptAccountsHelpers';
-import { checkPassword, generateTempPassword } from '../../../shared/utils/password';
+import { checkPassword } from '../../../shared/utils/password';
 import styles from '../pages/DepartmentAccounts.module.css';
 
 interface DeptAccountsEditModalProps {
@@ -30,7 +31,6 @@ export function DeptAccountsEditModal({
 	});
 	const [errors, setErrors] = useState<FormErrors>({});
 	const [loading, setLoading] = useState(false);
-	const [showPwd, setShowPwd] = useState(false);
 	const [saveError, setSaveError] = useState<string | null>(null);
 
 	const set = (field: keyof EditForm, value: unknown) => {
@@ -176,59 +176,15 @@ export function DeptAccountsEditModal({
 					label='Đặt lại mật khẩu'
 					error={errors.password}
 				>
-					<div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-						<div style={{ position: 'relative', flex: 1 }}>
-							<input
-								id='password'
-								type={showPwd ? 'text' : 'password'}
-								className={`${styles.formInput} ${errors.password ? styles.inputError : ''}`}
-								placeholder='(để trống = giữ nguyên)'
-								value={form.password}
-								onChange={(e) => set('password', e.target.value)}
-								style={{ paddingRight: 40 }}
-							/>
-							<button
-								type='button'
-								onClick={() => setShowPwd((v) => !v)}
-								style={{
-									position: 'absolute',
-									right: 10,
-									top: '50%',
-									transform: 'translateY(-50%)',
-									background: 'none',
-									border: 'none',
-									cursor: 'pointer',
-									color: 'var(--color-gray-400)',
-									display: 'flex',
-								}}
-								aria-label={showPwd ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
-							>
-								<InfoSvg />
-							</button>
-						</div>
-						<button
-							type='button'
-							onClick={() => {
-								set('password', generateTempPassword());
-								setShowPwd(true);
-							}}
-							style={{
-								flexShrink: 0,
-								height: 38,
-								padding: '0 12px',
-								borderRadius: 8,
-								border: '1px solid var(--color-gray-200)',
-								background: 'var(--color-gray-50)',
-								color: 'var(--color-gray-600)',
-								fontSize: 12,
-								fontWeight: 500,
-								cursor: 'pointer',
-								whiteSpace: 'nowrap',
-							}}
-						>
-							Tạo ngẫu nhiên
-						</button>
-					</div>
+					<PasswordInput
+						id='password'
+						value={form.password}
+						onChange={(v) => set('password', v)}
+						placeholder='(để trống = giữ nguyên)'
+						invalid={!!errors.password}
+						className={styles.formInput}
+						generate
+					/>
 				</FormField>
 			</div>
 

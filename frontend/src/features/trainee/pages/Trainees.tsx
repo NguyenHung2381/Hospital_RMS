@@ -3,7 +3,7 @@ import { SearchInput, RowAction, RowActions } from '@/shared/components/Table/Ta
 import { useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { BookOpenSvg, FileTextSvg, KeySvg, PlusSvg, TrashSvg, UploadSvg } from '@/assets/icons';
-import { Badge } from '@/shared/components';
+import { Badge, TableEmpty } from '@/shared/components';
 import AdminLayout from '../../../layouts/AdminLayout';
 import { SkeletonTable } from '../../../shared/components/Loading';
 import { Pagination } from '../../../shared/components/Table/Pagination';
@@ -206,16 +206,11 @@ export default function Trainees() {
 								cols={colCount}
 							/>
 						) : d.filtered.length === 0 ? (
-							<tr>
-								<td colSpan={colCount}>
-									<div className={styles.emptyState}>
-										<div className={styles.emptyTitle}>Không tìm thấy học viên</div>
-										<div className={styles.emptyDesc}>
-											{d.search ? 'Thử thay đổi từ khoá tìm kiếm' : 'Chưa có học viên nào'}
-										</div>
-									</div>
-								</td>
-							</tr>
+							<TableEmpty
+								colSpan={colCount}
+								title='Không tìm thấy học viên'
+								desc={d.search ? 'Thử thay đổi từ khoá tìm kiếm' : 'Chưa có học viên nào'}
+							/>
 						) : (
 							d.paged.map((t, i) => {
 								const c = avatarColor(t.id);

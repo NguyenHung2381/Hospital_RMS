@@ -20,7 +20,7 @@ router.post(
 	canManage,
 	[
 		body('user_id').notEmpty().withMessage('Vui lòng chọn nhân viên'),
-		body('title').trim().notEmpty().withMessage('Vui lòng nhập nội dung hoạt động'),
+		body('title').trim().notEmpty().withMessage('Vui lòng nhập tên hoạt động'),
 		body('year')
 			.custom((v, { req }) => !!v || !!req.body.activity_date)
 			.withMessage('Vui lòng nhập năm hoặc ngày hoạt động'),

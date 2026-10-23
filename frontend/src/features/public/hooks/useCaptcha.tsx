@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { solveChallenge } from '../../auth/utils/solveChallenge';
 import { getCaptcha, type Captcha } from '../api/publicApi';
 import HumanCheckbox, { type HumanCheckState } from '../components/HumanCheckbox';
+import RecaptchaWidget from '../components/RecaptchaWidget';
 import TurnstileWidget from '../components/TurnstileWidget';
 import styles from '../pages/PublicPortal.module.css';
 
@@ -39,7 +40,7 @@ const errorText = (err: unknown) =>
 			: 'Xác minh thất bại';
 
 // Chống bot dùng chung cho các form công khai. Server quyết định chế độ
-// (proof-of-work hoặc Cloudflare Turnstile). Proof-of-work hiển thị như ô
+// (proof-of-work, Cloudflare Turnstile hoặc Google reCAPTCHA v2). Proof-of-work hiển thị như ô
 // "Tôi không phải người máy" (reCAPTCHA / Turnstile): lời giải được tính ngầm
 // trong Web Worker ngay khi mở trang, người dùng tích ô là có mã. Mỗi mã chỉ
 // dùng được 1 lần: gọi reload() sau mỗi lần gửi form (thành công hay lỗi).
@@ -47,7 +48,8 @@ export function useCaptcha() {
 	const [captcha, setCaptcha] = useState<Captcha | null>(null);
 	const [nonce, setNonce] = useState('');
 	const [powStatus, setPowStatus] = useState<PowStatus>('loading');
-	const [turnstileToken, setTurnstileToken] = useState('');
+	// Token của widget bên thứ ba (Turnstile / reCAPTCHA)
+	const [widgetToken, setWidgetToken] = useState('');
 	const [widgetKey, setWidgetKey] = useState(0);
 	const [loadError, setLoadError] = useState('');
 	const [checked, setChecked] = useState(false);
@@ -95,9 +97,9 @@ export function useCaptcha() {
 
 	const reload = useCallback(() => {
 		setChecked(false);
-		setTurnstileToken('');
+		setWidgetToken('');
 		setLoadError('');
-		setWidgetKey((k) => k + 1); // vẽ lại widget Turnstile → token mới
+		setWidgetKey((k) => k + 1); // vẽ lại widget Turnstile / reCAPTCHA → token mới
 		renew();
 	}, [renew]);
 
@@ -126,13 +128,24 @@ export function useCaptcha() {
 
 	// null = chưa hoàn tất xác nhận
 	const payload: CaptchaPayload | null =
-		captcha?.provider === 'turnstile'
-			? turnstileToken
-				? { captcha_token: turnstileToken, captcha_answer: '' }
+		captcha?.provider === 'turnstile' || captcha?.provider === 'recaptcha'
+			? widgetToken
+				? { captcha_token: widgetToken, captcha_answer: '' }
 				: null
 			: captcha?.provider === 'pow' && checkState === 'verified' && nonce
 				? { captcha_token: captcha.token, captcha_answer: nonce }
 				: null;
+
+	const onWidgetToken = useCallback((token: string) => {
+		setWidgetToken(token);
+		if (token) setLoadError('');
+	}, []);
+
+	const widgetError = loadError && (
+		<span style={{ color: '#dc2626', fontSize: 13 }}>
+			{loadError} — kiểm tra kết nối mạng rồi tải lại trang.
+		</span>
+	);
 
 	const field =
 		captcha?.provider === 'turnstile' ? (
@@ -141,14 +154,43 @@ export function useCaptcha() {
 					key={widgetKey}
 					siteKey={captcha.site_key}
 					action={captcha.action}
-					onToken={setTurnstileToken}
+					onToken={onWidgetToken}
 					onError={setLoadError}
 				/>
-				{loadError && (
-					<span style={{ color: '#dc2626', fontSize: 13 }}>
-						{loadError} — kiểm tra kết nối mạng rồi tải lại trang.
-					</span>
-				)}
+				{widgetError}
+			</div>
+		) : captcha?.provider === 'recaptcha' ? (
+			<div className={styles.formGroup}>
+				<RecaptchaWidget
+					key={widgetKey}
+					siteKey={captcha.site_key}
+					onToken={onWidgetToken}
+					onError={setLoadError}
+				/>
+				{widgetError}
+			</div>
+		) : !captcha && powStatus !== 'error' ? (
+			// Chưa biết server dùng chế độ nào → khung trung tính, tránh nháy ô
+			// proof-of-work rồi mới đổi sang widget Turnstile / reCAPTCHA
+			<div className={styles.formGroup}>
+				<div
+					style={{
+						width: 304,
+						maxWidth: '100%',
+						height: 78,
+						display: 'flex',
+						alignItems: 'center',
+						padding: '0 16px',
+						border: '1px solid #d3d3d3',
+						borderRadius: 3,
+						background: '#f9f9f9',
+						color: '#666',
+						fontSize: 14,
+						boxSizing: 'border-box',
+					}}
+				>
+					Đang tải bước xác minh…
+				</div>
 			</div>
 		) : (
 			<div className={styles.formGroup}>
