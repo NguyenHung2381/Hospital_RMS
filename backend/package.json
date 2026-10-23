@@ -28,8 +28,6 @@
     "sync:upload-paths": "node scripts/sync-upload-paths.js",
     "dump:db-objects": "node scripts/dump-db-objects.js",
     "migrate": "node scripts/migrate.js",
-    "migrate:status": "node scripts/migrate.js status",
-    "migrate:new": "node scripts/migrate.js new",
     "import:staff": "node scripts/import-staff.js"
   },
   "dependencies": {
@@ -76,7 +74,6 @@
     "nodemon": "^3.1.0",
     "pino-pretty": "^13.2.0",
     "prettier": "^3.9.10",
-    "tsx": "^4.19.2",
     "typescript": "^5.7.3"
   },
   "overrides": {

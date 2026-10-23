@@ -39,7 +39,7 @@ Deploy (deploy.yml → scripts/deploy.ps1, chạy trên runner đặt tại serv
 4. Staging: đặt biến repo `ENABLE_STAGING=true` khi đã có runner `rms-staging`.
 5. **Baseline migration** (chỉ 1 lần, vì DB hiện tại đã nâng cấp tay). Trên server, sau khi deploy bản có script này:
    ```bash
-   docker compose -f docker-compose.prod.yml run --rm --no-deps -T backend node scripts/migrate.js --baseline
+   docker compose -f docker-compose.prod.yml run --rm --no-deps -T backend node scripts/migrate.js baseline
    ```
    Từ đó mỗi lần deploy chỉ chạy file mới trong `backend/database/migrations/`. Script chạy tay nằm riêng ở `backend/database/manual/`, không tự chạy.
 

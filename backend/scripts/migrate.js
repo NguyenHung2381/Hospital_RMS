@@ -1,12 +1,7 @@
 #!/usr/bin/env node
 // Migration CSDL (database/migrations/*.sql) — xem database/README.md.
-//   npm run migrate                       # chạy file mới (pipeline deploy gọi lệnh này)
-//   npm run migrate -- --dry-run          # chỉ liệt kê file sẽ chạy
-//   npm run migrate:status                # trạng thái từng file
-//   npm run migrate -- --baseline         # LẦN ĐẦU trên DB đã nâng cấp tay:
-//                                         # đánh dấu mọi file hiện có là đã chạy
-//   npm run migrate -- --init             # DB trống: tạo bảng theo dõi rồi chạy hết
-//   npm run migrate:new -- <mô tả>        # tạo file migration mới từ mẫu
+// Một lệnh duy nhất, việc chọn bằng lệnh con (xem USAGE). Cờ cũ --dry-run /
+// --baseline / --init vẫn nhận (= status / baseline / init).
 // MIGRATION_BACKUP_DIR (thư mục TRÊN MÁY SQL Server): có file mới thì
 // BACKUP DATABASE ... COPY_ONLY vào đó trước khi chạy — điểm phục hồi khi
 // migration hỏng (rollback ứng dụng không hoàn tác được schema).
@@ -15,9 +10,26 @@ const path = require('path');
 require('../src/config/loadEnv');
 const migrator = require('../src/database/migrator');
 
+const USAGE = `Cách dùng: npm run migrate [lệnh]   (hoặc node scripts/migrate.js [lệnh])
+  (trống) | up      chạy file mới (pipeline deploy gọi lệnh này)
+  status            trạng thái từng file + file chờ chạy, không ghi gì
+  new <mô tả>       tạo file migration mới từ mẫu, tên đã đúng quy ước
+  baseline          LẦN ĐẦU trên DB đã nâng cấp tay: đánh dấu mọi file hiện có là đã chạy
+  init              DB trống: tạo bảng theo dõi rồi chạy hết
+  help              in hướng dẫn này`;
+
+const FLAG_COMMANDS = {
+	'--dry-run': 'status',
+	'--baseline': 'baseline',
+	'--init': 'init',
+	'--help': 'help',
+	'-h': 'help',
+};
 const args = process.argv.slice(2);
-const flag = (name) => args.includes(`--${name}`);
-const command = args.find((a) => !a.startsWith('--')) ?? 'up';
+const words = args.filter((a) => !a.startsWith('-'));
+const flagCommand = args.map((a) => FLAG_COMMANDS[a]).find(Boolean);
+const command = flagCommand ?? words[0] ?? 'up';
+const rest = flagCommand ? words : words.slice(1);
 
 const TEMPLATE = (
 	name,
@@ -45,11 +57,20 @@ const printStatus = (s) => {
 		const when = row?.applied_at
 			? new Date(row.applied_at).toISOString().slice(0, 16).replace('T', ' ')
 			: '';
-		console.log(`  ${mark} ${f}${when ? `  (${when})` : ''}`);
+		const parts = s.sections.get(f);
+		const done = parts?.filter((p) => s.recorded.has(p)).length;
+		const detail = !parts
+			? ''
+			: row
+				? `gộp ${parts.length} file`
+				: `${done}/${parts.length} phần đã chạy`;
+		const info = [when, detail].filter(Boolean).join(' · ');
+		console.log(`  ${mark} ${f}${info ? `  (${info})` : ''}`);
 	}
 	console.log(
 		`\n${s.files.length} file · ${s.files.length - s.pending.length} đã chạy · ${s.pending.length} chờ chạy`,
 	);
+	if (s.pending.length) console.log(`Chờ chạy:\n  ${s.pending.join('\n  ')}`);
 };
 
 const warn = (s) => {
@@ -63,49 +84,44 @@ const warn = (s) => {
 		console.warn(`⚠️  Chạy lệch thứ tự (đứng trước file đã chạy): ${s.outOfOrder.join(', ')}`);
 };
 
-const main = async () => {
-	if (command === 'new') {
-		const name = migrator.nextFilename(
-			args
-				.filter((a) => !a.startsWith('--'))
-				.slice(1)
-				.join(' '),
-		);
-		const file = path.join(migrator.MIGRATIONS_DIR, name);
-		fs.writeFileSync(file, TEMPLATE(name));
-		console.log(`Đã tạo ${path.relative(process.cwd(), file)}`);
-		return;
-	}
-	if (command === 'status') {
-		const s = await migrator.status();
-		printStatus(s);
-		warn(s);
-		return;
-	}
-	if (command !== 'up') throw new Error(`Lệnh không hợp lệ: ${command} (up | status | new)`);
-
-	const dryRun = flag('dry-run');
-	const baseline = flag('baseline');
+const run = async (options) => {
 	const result = await migrator.migrate({
-		dryRun,
-		baseline,
-		requireTracked: !flag('init'),
+		...options,
 		backupDir: process.env.MIGRATION_BACKUP_DIR,
 	});
 	warn(result);
-	if (dryRun || !result.ran.length) {
-		console.log(
-			result.pending.length
-				? `Migration chờ chạy:\n  ${result.pending.join('\n  ')}`
-				: 'Không có migration mới',
-		);
+	if (!result.ran.length) {
+		console.log('Không có migration mới');
 		return;
 	}
 	console.log(
-		baseline
+		options.baseline
 			? `Đã đánh dấu ${result.ran.length} file là đã chạy`
 			: `Đã chạy ${result.ran.length} migration`,
 	);
+};
+
+const COMMANDS = {
+	up: () => run({}),
+	baseline: () => run({ baseline: true }),
+	init: () => run({ requireTracked: false }),
+	status: async () => {
+		const s = await migrator.status();
+		printStatus(s);
+		warn(s);
+	},
+	new: () => {
+		const name = migrator.nextFilename(rest.join(' '));
+		const file = path.join(migrator.MIGRATIONS_DIR, name);
+		fs.writeFileSync(file, TEMPLATE(name));
+		console.log(`Đã tạo ${path.relative(process.cwd(), file)}`);
+	},
+	help: () => console.log(USAGE),
+};
+
+const main = async () => {
+	if (!Object.hasOwn(COMMANDS, command)) throw new Error(`Lệnh không hợp lệ: ${command}\n${USAGE}`);
+	await COMMANDS[command]();
 };
 
 main()

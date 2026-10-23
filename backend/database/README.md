@@ -11,17 +11,18 @@ Nguồn sự thật duy nhất cho schema là `migrations/`. Code ứng dụng k
 
 ## Lệnh
 
-Chạy trong thư mục `backend`:
+Chạy trong thư mục `backend`. Chỉ có một lệnh `npm run migrate`, việc cần làm chọn bằng lệnh con (`npm run migrate help` in danh sách):
 
 | Lệnh | Việc |
 |------|------|
 | `npm run migrate` | Chạy các file chưa chạy (deploy gọi lệnh này) |
-| `npm run migrate -- --dry-run` | Chỉ liệt kê file sẽ chạy |
-| `npm run migrate:status` | Trạng thái từng file: `✓` đã chạy, `·` chờ chạy, `!` đã sửa sau khi chạy |
-| `npm run migrate:new -- <mô tả>` | Tạo file mới từ mẫu, tên đã đúng quy ước |
-| `npm run migrate -- --baseline` | **1 lần** trên DB đã nâng cấp tay: đánh dấu mọi file hiện có là đã chạy |
-| `npm run migrate -- --init` | DB trống: tạo bảng theo dõi rồi chạy hết |
+| `npm run migrate status` | Trạng thái từng file: `✓` đã chạy, `·` chờ chạy, `!` đã sửa sau khi chạy. Không ghi gì vào DB |
+| `npm run migrate new <mô tả>` | Tạo file mới từ mẫu, tên đã đúng quy ước |
+| `npm run migrate baseline` | **1 lần** trên DB đã nâng cấp tay: đánh dấu mọi file hiện có là đã chạy |
+| `npm run migrate init` | DB trống: tạo bảng theo dõi rồi chạy hết |
 | `npm run dump:db-objects` | Xuất lại `objects/` sau khi sửa SP/trigger/view trong DB |
+
+Cờ cũ vẫn dùng được: `--dry-run` (= `status`), `--baseline`, `--init`. Các script `migrate:status` / `migrate:new` đã bỏ.
 
 Lúc khởi động, server tự chạy migration khi `DB_AUTO_MIGRATE=true`. Mặc định biến này bật ngoài production và tắt ở production. Ở production, `scripts/deploy.ps1` chạy `node scripts/migrate.js` bằng login có quyền ALTER/BACKUP, trước khi đổi container. Nếu có file chưa chạy, server chỉ cảnh báo. Riêng khi thiếu cột bắt buộc của phân quyền/đăng nhập (`permissions/index.js`), server **dừng**.
 
@@ -32,13 +33,18 @@ Lúc khởi động, server tự chạy migration khi `DB_AUTO_MIGRATE=true`. M�
 - Khoá `sp_getapplock` đảm bảo chỉ một tiến trình chạy migration tại một thời điểm (cluster, nhiều container).
 - `MIGRATION_BACKUP_DIR` là thư mục **trên máy SQL Server**. Khi có file mới, runner `BACKUP DATABASE ... COPY_ONLY` vào đó trước khi chạy.
 - Đổi tên file đã chạy: thêm cặp tên cũ → tên mới vào `RENAMED` trong `migrator.js`. Runner tự đổi tên trong `schema_migrations`, không chạy lại file.
-- Gộp file (xoá file cũ, chuyển nội dung sang file khác): thêm cặp file cũ → file gộp vào `MERGED`. Bản ghi file cũ không còn bị báo "không còn file" và được xoá khi file gộp đã chạy. DB chưa có file gộp vẫn chạy nó, nên file gộp phải idempotent.
+- **File gộp** (`YYYY-MM-DD_gop_thang_MM.sql`): các migration cũ được nối nguyên văn theo thứ tự cũ, mỗi file cũ thành một phần mở đầu bằng dòng `-- @migration <tên file cũ>.sql`. Chú thích trước dòng `@migration` đầu tiên không chạy.
+  - DB đã chạy đủ các file cũ: file gộp coi như đã chạy. Lần `npm run migrate` kế tiếp ghi tên file gộp và xoá bản ghi các file cũ, không chạy lại SQL nào.
+  - DB mới chạy một phần: chỉ chạy các phần còn thiếu, đúng thứ tự. Mỗi phần xong được ghi bằng tên file cũ, nên hỏng giữa chừng thì lần sau chạy tiếp từ phần đó. `status` hiện `x/y phần đã chạy`.
+  - Code và tài liệu nhắc tên file cũ (vd `2026-10-06_workflow_engine.sql`): tìm dòng `-- @migration <tên đó>` trong file gộp.
+  - Hiện đã gộp tháng 08–11/2026 (110 file thành 4 file). Gộp tiếp thì nối nguyên văn theo cách trên rồi xoá file cũ. `test/database/migrator.test.js` kiểm tra thứ tự và tên các phần.
+- Gộp kiểu cũ (xoá file cũ, viết lại nội dung vào file khác): thêm cặp file cũ → file gộp vào `MERGED`. Bản ghi file cũ không còn bị báo "không còn file" và được xoá khi file gộp đã chạy. DB chưa có file gộp vẫn chạy nó, nên file gộp phải idempotent.
 
 ## Quy ước viết migration
 
-1. **Tên file** là `YYYY-MM-DD_mo_ta_ngan.sql`. Cùng ngày thì thêm số thứ tự: `YYYY-MM-DD_00_...`, `YYYY-MM-DD_01_...`. Dùng `npm run migrate:new` để luôn xếp cuối.
+1. **Tên file** là `YYYY-MM-DD_mo_ta_ngan.sql`. Cùng ngày thì thêm số thứ tự: `YYYY-MM-DD_00_...`, `YYYY-MM-DD_01_...`. Dùng `npm run migrate new <mô tả>` để luôn xếp cuối.
 2. **Idempotent**: mỗi bước tự kiểm tra trước khi làm (`OBJECT_ID`, `COL_LENGTH`, `sys.indexes`, `MERGE` cho dữ liệu danh mục). Chạy lại phải an toàn.
-3. **Không sửa file đã chạy** ở bất kỳ môi trường nào. Cần đổi gì thì viết file mới. `migrate:status` đánh dấu `!` cho file bị sửa.
+3. **Không sửa file đã chạy** ở bất kỳ môi trường nào. Cần đổi gì thì viết file mới. Phần cũ trong file gộp cũng vậy. `npm run migrate status` đánh dấu `!` cho file bị sửa.
 4. **Tương thích ngược**, vì rollback ứng dụng không hoàn tác schema. Chỉ thêm bảng/cột/index. Xoá hoặc đổi tên thì để một bản phát hành sau, khi code cũ không còn dùng.
 5. Đổi nhiều dữ liệu thì bọc trong `SET XACT_ABORT ON; BEGIN TRANSACTION ... COMMIT`.
 6. Cột mới mà code cần ngay lúc khởi động (đăng nhập, phân quyền) thì thêm vào `REQUIRED_COLUMNS` trong `src/permissions/index.js`.

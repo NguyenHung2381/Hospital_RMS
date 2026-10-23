@@ -93,7 +93,7 @@ Quy ước dùng chung:
 
 - **Lỗi nghiệp vụ**: `throw httpError(404, 'Không tìm thấy...')`, `badRequest(...)` (`utils/httpError.js`). `errorHandler` trả đúng mã và thông điệp. Không ném object thường (`throw { statusCode }`), vì sẽ mất stack trace.
 - **Transaction**: `await withTransaction(async (tx) => { ... }, pool)` (`config/db.js`). Helper tự commit, tự rollback và không để lỗi rollback che lỗi gốc.
-- **Schema**: chỉ đổi qua file trong `database/migrations/` (`npm run migrate:new -- <mô tả>`). Code không tự chạy DDL.
+- **Schema**: chỉ đổi qua file trong `database/migrations/` (`npm run migrate new <mô tả>`). Code không tự chạy DDL.
 - **Handler async**: bọc bằng `asyncHandler(async (req, res) => { ... })` (`utils/asyncHandler.js`), không viết `try { } catch (err) { next(err); }`. Lỗi ném ra tự tới `errorHandler`.
 - **Validate input (code mới)**: `validateRequest({ body, query, params })` với zod schema (`middlewares/validateRequest.js`). Lỗi trả cùng dạng express-validator nên frontend không đổi. Route cũ dùng express-validator chuyển dần khi sửa tới.
 - **Hỏi quyền trong service**: `hasPermission`, `scopeOf`, `isDeadlineBound` từ `permissions/authz.js`. Service, utils không được `require` `middlewares/` (ESLint chặn).
