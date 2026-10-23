@@ -12,7 +12,8 @@ const USERS = [
 	{ id: 'U2', full_name: 'B', department_id: 'K1' },
 	{ id: 'U3', full_name: 'C', department_id: 'K2' },
 ];
-const isTrainee = (id, dept) => USERS.some((u) => u.id === id && (!dept || u.department_id === dept));
+const isTrainee = (id, dept) =>
+	USERS.some((u) => u.id === id && (!dept || u.department_id === dept));
 
 const log = install(async (text, inputs) => {
 	if (/FROM course_enrollments e/.test(text)) {

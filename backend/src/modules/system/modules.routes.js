@@ -29,7 +29,13 @@ router.get(
 		const entries = await Promise.all(
 			MENU_LAYOUTS.map(async (l) => {
 				const raw = await systemSettingService.getValue(`MENU_HIDDEN_${l.toUpperCase()}`, '');
-				return [l, String(raw ?? '').split(',').map((k) => k.trim()).filter(Boolean)];
+				return [
+					l,
+					String(raw ?? '')
+						.split(',')
+						.map((k) => k.trim())
+						.filter(Boolean),
+				];
 			}),
 		);
 		return success(res, Object.fromEntries(entries));

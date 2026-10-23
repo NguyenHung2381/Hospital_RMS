@@ -247,6 +247,7 @@ const setPatternCourses = async (id, courseIds) => {
 // khóa thường chưa có ngày bắt đầu thì chưa tính. Ngày NULL = không giới hạn phía đó.
 //   → [{ user_id, trainee_id, full_name, department_id, department_name,
 //        course_id, course_name, shift_pattern_id, start_date, end_date }]
+/** @param {{ from: unknown, to: unknown, userId?: unknown, departmentId?: unknown }} opts */
 const traineePeriods = async ({ from, to, userId, departmentId }) => {
 	const pool = await getPool();
 	const req = pool.request().input('from', sql.Date, from).input('to', sql.Date, to);

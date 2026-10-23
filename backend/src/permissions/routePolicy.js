@@ -104,7 +104,8 @@ module.exports = {
 			'Tăng lượt tải tài liệu bài học — service kiểm tra tài liệu công khai + bài học thuộc khóa đã được duyệt',
 		[`POST ${API}/me/courses/:id/register`]:
 			'Tự đăng ký khóa học — service chỉ nhận khóa bật đăng ký công khai, trong cửa sổ đăng ký, trạng thái chờ duyệt',
-		[`GET ${API}/me/attendance`]: 'Chấm công của học viên đang đăng nhập (lọc theo user_id; tài khoản khác chỉ nhận IP hiện tại)',
+		[`GET ${API}/me/attendance`]:
+			'Chấm công của học viên đang đăng nhập (lọc theo user_id; tài khoản khác chỉ nhận IP hiện tại)',
 		[`POST ${API}/me/attendance/check`]:
 			'Học viên tự chấm công — service gán user_id = req.user.id, chỉ tài khoản học viên trong thời gian khóa học, kiểm tra IP bệnh viện + GPS trong bán kính + ca đang trong giờ được chấm',
 		[`GET ${API}/me/cme`]: 'Tín chỉ CME của chính mình (lọc theo user_id)',
@@ -142,7 +143,8 @@ module.exports = {
 		[`POST ${API}/excel/parse`]:
 			'Đọc file Excel thành bảng chữ — không ghi DB; nhập thật đi qua API tạo mới có kiểm quyền của từng module',
 		[`GET ${API}/modules/`]: 'Module nào đang bật — để ẩn/hiện menu',
-		[`GET ${API}/modules/menus`]: 'Mục menu nào bị quản trị ẩn ở từng cổng — chỉ đọc cấu hình giao diện',
+		[`GET ${API}/modules/menus`]:
+			'Mục menu nào bị quản trị ẩn ở từng cổng — chỉ đọc cấu hình giao diện',
 
 		// Thành viên hội đồng — service kiểm tra ghế trong council_members
 		// (assertSecretary / assertChairman, councilProgressService.js)

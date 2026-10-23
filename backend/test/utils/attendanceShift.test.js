@@ -143,7 +143,8 @@ test('checkOptions: trực 24h & chấm tự do khi không có lịch ca', () =>
 
 test('checkOptions: ngoài thời gian khóa học thì không chấm được; lựa chọn mang khóa học', () => {
 	// Khóa kết thúc 12/10: ca đêm 12/10 vẫn chấm ra sáng 13/10, nhưng 13/10 không chấm tự do
-	const courseOn = (d) => (d <= '2026-10-12' ? { course_id: 'KH1', course_name: 'Khóa 1', pattern: null } : null);
+	const courseOn = (d) =>
+		d <= '2026-10-12' ? { course_id: 'KH1', course_name: 'Khóa 1', pattern: null } : null;
 	const opts = s.checkOptions({
 		courseOn,
 		assignments: [{ work_date: '2026-10-12', shift_id: 3 }],
@@ -156,7 +157,13 @@ test('checkOptions: ngoài thời gian khóa học thì không chấm được; 
 		[['2026-10-12', 3, 'KH1', 'check_out']],
 	);
 	assert.deepStrictEqual(
-		s.checkOptions({ courseOn: () => null, assignments: [], shiftsById, records: [], now: vn('2026-10-12T09:00:00') }),
+		s.checkOptions({
+			courseOn: () => null,
+			assignments: [],
+			shiftsById,
+			records: [],
+			now: vn('2026-10-12T09:00:00'),
+		}),
 		[],
 	);
 });
