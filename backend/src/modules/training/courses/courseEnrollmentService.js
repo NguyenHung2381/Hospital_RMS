@@ -131,7 +131,10 @@ const registerTrainee = async (
 			throw err;
 		});
 	const id = result.recordset[0].id;
-	if (programId) await enrollmentProgramService.syncLessons(id);
+	if (programId) {
+		await enrollmentProgramService.syncLessons(id);
+		await enrollmentProgramService.fillPracticeDefaults(id);
+	}
 	broadcast('update', { entity: 'course_enrollment' });
 	return { id };
 };

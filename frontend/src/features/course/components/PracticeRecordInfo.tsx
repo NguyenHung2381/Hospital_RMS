@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { DatePicker } from '@/shared/components';
 import { FormField } from '@/shared/components/Input/FormField';
+import { usePracticeCatalogs } from '../../catalog/hooks/usePracticeCatalogs';
 import { updateEnrollment } from '../api/courseApi';
 import {
 	PROGRESS_LABEL,
@@ -43,6 +44,7 @@ export function PracticeRecordInfo({
 }) {
 	const [draft, setDraft] = useState<Partial<Record<Field, string>>>({});
 	const [state, setState] = useState<SaveState>({ kind: 'idle' });
+	const catalogs = usePracticeCatalogs();
 
 	const value = (k: Field) => draft[k] ?? current(enrollment, k);
 	const program = programLinks.find((p) => p.program_id === value('program_id'));
@@ -89,6 +91,29 @@ export function PracticeRecordInfo({
 			onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
 		/>
 	);
+	// Ô chọn từ danh mục (lưu chữ vào hồ sơ); giá trị cũ không có trong danh mục vẫn hiện để giữ nguyên
+	const pick = (k: Field, items: { id: string; name: string }[], empty: string) => {
+		const v = value(k);
+		return (
+			<select
+				className={styles.formInput}
+				value={v}
+				disabled={!canEdit}
+				onChange={(e) => void commit(k, e.target.value)}
+			>
+				<option value=''>{empty}</option>
+				{v && !items.some((x) => x.name === v) && <option value={v}>{v} (ngoài danh mục)</option>}
+				{items.map((x) => (
+					<option
+						key={x.id}
+						value={x.name}
+					>
+						{x.name}
+					</option>
+				))}
+			</select>
+		);
+	};
 	const date = (k: Field, bounds: { min?: string; max?: string } = {}) => (
 		<DatePicker
 			value={value(k)}
@@ -191,11 +216,20 @@ export function PracticeRecordInfo({
 				<h3 className={local.sectionTitle}>Thông tin in trên giấy tờ (đơn đề nghị, hợp đồng)</h3>
 				<div className={styles.formGrid2}>
 					<FormField label='Mã thực hành'>{text('practice_code', '226.BS')}</FormField>
-					<FormField label='Đơn vị cử đi'>{text('sending_unit', 'VD: BV YHCT Nghệ An')}</FormField>
-					<FormField label='Lĩnh vực chuyên môn'>{text('professional_field', 'VD: Bác sĩ y khoa')}</FormField>
-					<FormField label='Hình thức hành nghề'>
-						{text('practice_form', 'VD: Khám bệnh, chữa bệnh y khoa')}
+					<FormField label='Đơn vị cử đi'>{pick('sending_unit', catalogs.units, '-- Chọn đơn vị cử đi --')}</FormField>
+					<FormField label='Lĩnh vực chuyên môn'>
+						{pick('professional_field', catalogs.fields, '-- Chọn lĩnh vực --')}
 					</FormField>
+					<FormField label='Hình thức hành nghề'>
+						{pick('practice_form', catalogs.forms, '-- Chọn hình thức --')}
+					</FormField>
+					<div
+						className={styles.hint}
+						style={full}
+					>
+						Thiếu lựa chọn? Thêm ở Danh mục đào tạo (Lĩnh vực chuyên môn / Hình thức hành nghề / Đơn vị cử đi). Đặt lĩnh
+						vực, hình thức mặc định ở chương trình đào tạo thì hồ sơ mới tự điền.
+					</div>
 					<FormField
 						label='Ghi chú'
 						style={full}

@@ -124,11 +124,16 @@ export function EnrollmentsTab({
   const [detailId, setDetailId] = useState<string | null>(null);
   // Mở hồ sơ thẳng vào tab Vòng thực hành (nút "Xếp lịch" trên dòng chưa xếp)
   const [detailTab, setDetailTab] = useState<"rotations" | undefined>();
+  const navigate = useNavigate();
+  // Khóa GPHN: hồ sơ làm ở trang "Hồ sơ thực hành GPHN" (tự lưu, chọn danh mục) — không mở modal
   const openDetail = (id: string, tab?: "rotations") => {
+    if (course?.is_rolling) {
+      navigate(`/admin/practice-records/${id}${tab ? `?tab=${tab}` : ""}`);
+      return;
+    }
     setDetailTab(tab);
     setDetailId(id);
   };
-  const navigate = useNavigate();
   const canViewTrainee = usePermission().has("trainees:read");
   const [bookOpen, setBookOpen] = useState(false);
   const [exporting, setExporting] = useState(false);

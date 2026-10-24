@@ -9,6 +9,9 @@ export type CatalogTab =
 	| 'training-forms'
 	| 'training-types'
 	| 'hospital-training-topics'
+	| 'professional-fields'
+	| 'practice-forms'
+	| 'sending-units'
 	| 'trainee-document-types';
 
 export type ModalType = 'add' | 'edit' | 'delete' | null;

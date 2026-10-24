@@ -18,6 +18,9 @@ const PROGRAM_FIELDS = {
 	department_note: sql.NVarChar(255),
 	trainee_type_id: sql.VarChar(20),
 	training_type_id: sql.VarChar(20),
+	// GPHN: lĩnh vực chuyên môn / hình thức hành nghề mặc định — tự điền vào hồ sơ thực hành
+	professional_field_id: sql.VarChar(20),
+	practice_form_id: sql.VarChar(20),
 	target_audience: sql.NVarChar(300),
 	theory_hours: sql.Int,
 	practice_hours: sql.Int,
@@ -55,6 +58,7 @@ const withDurationText = (data) => {
 // = tên các đối tượng nối bằng ", " (chương trình chưa chuyển sang bảng mới thì lấy cột cũ).
 const programSelect = `
   SELECT p.*, d.name AS department_name, tp.name AS training_type_name,
+         pf.name AS professional_field_name, pfo.name AS practice_form_name,
          (SELECT STRING_AGG(x.trainee_type_id, ',') WITHIN GROUP (ORDER BY x.display_order)
             FROM program_trainee_types x WHERE x.program_id = p.id) AS trainee_type_ids,
          COALESCE((SELECT STRING_AGG(t2.name, ', ') WITHIN GROUP (ORDER BY x.display_order)
@@ -77,6 +81,8 @@ const programSelect = `
   LEFT JOIN departments d ON d.id = p.department_id
   LEFT JOIN trainee_types tt ON tt.id = p.trainee_type_id
   LEFT JOIN training_types tp ON tp.id = p.training_type_id
+  LEFT JOIN professional_fields pf ON pf.id = p.professional_field_id
+  LEFT JOIN practice_forms pfo ON pfo.id = p.practice_form_id
 `;
 
 const withRotations = (row) => ({

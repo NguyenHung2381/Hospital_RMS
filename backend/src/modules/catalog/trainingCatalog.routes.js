@@ -6,7 +6,7 @@ const { authenticate, authorizePermission } = require('../../middlewares/auth');
 const { validate } = require('../../middlewares/errorHandler');
 const { sql } = require('../../config/db');
 
-// ─── Danh mục Đào tạo (trainee_types, training_forms, training_types, hospital_training_topics, trainee_document_types, cme_credit_categories, cme_credit_groups) ──
+// ─── Danh mục Đào tạo (trainee_types, training_forms, training_types, hospital_training_topics, professional_fields, practice_forms, sending_units, trainee_document_types, cme_credit_categories, cme_credit_groups) ──
 // "Môn học" (subjects) đã gộp vào Bài học (program_lessons) — xem 2026-11-01_lessons_replace_subjects.sql.
 // Shape id/name/description/audit giống categories/levels ⇒ dùng thẳng crudService(), không cần override.
 // 2 bảng CME có thêm cột (công thức quy đổi, thứ tự) + mã tự đặt ⇒ khai báo riêng bên dưới.
@@ -15,6 +15,9 @@ const TRAINING_CATALOG_TABLES = {
 	'training-forms': 'training_forms',
 	'training-types': 'training_types',
 	'hospital-training-topics': 'hospital_training_topics',
+	'professional-fields': 'professional_fields',
+	'practice-forms': 'practice_forms',
+	'sending-units': 'sending_units',
 };
 
 const CME_CATEGORY_EXTRA_FIELDS = [
@@ -24,8 +27,16 @@ const CME_CATEGORY_EXTRA_FIELDS = [
 	{ column: 'unit_label', sqlType: sql.NVarChar(40) },
 ];
 
+// Danh mục hồ sơ thực hành GPHN (2026-12-03_danh_muc_thuc_hanh_gphn.sql). Hồ sơ lưu
+// CHỮ (giá trị chọn từ danh mục) nên xoá mục không ảnh hưởng hồ sơ cũ; chỉ chặn xoá
+// khi chương trình đang dùng làm mặc định.
+const PRACTICE_CATALOG_GUARDS = {
+	'professional-fields': [{ table: 'training_programs', column: 'professional_field_id', label: 'chương trình đào tạo' }],
+	'practice-forms': [{ table: 'training_programs', column: 'practice_form_id', label: 'chương trình đào tạo' }],
+};
+
 for (const [path, table] of Object.entries(TRAINING_CATALOG_TABLES)) {
-	const svc = createCrudService(table, 20);
+	const svc = createCrudService(table, 20, '', PRACTICE_CATALOG_GUARDS[path] ?? []);
 	const ctrl = createCrudController(svc);
 
 	router.get(`/${path}`, authenticate, ctrl.getAll);

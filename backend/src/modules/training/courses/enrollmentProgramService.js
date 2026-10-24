@@ -105,6 +105,22 @@ const updateLesson = async (enrollmentId, lessonId, { status }, actorId) => {
 	broadcast('update', { entity: 'course_enrollment' });
 };
 
+// GPHN: điền lĩnh vực chuyên môn / hình thức hành nghề MẶC ĐỊNH của chương trình
+// (danh mục, xem 2026-12-03_danh_muc_thuc_hanh_gphn) vào hồ sơ — chỉ ô còn trống.
+const fillPracticeDefaults = async (enrollmentId) => {
+	const pool = await getPool();
+	await pool.request().input('id', sql.VarChar(20), enrollmentId).query(`
+    UPDATE e
+    SET professional_field = ISNULL(e.professional_field, pf.name),
+        practice_form = ISNULL(e.practice_form, f.name)
+    FROM course_enrollments e
+    JOIN training_programs tp ON tp.id = e.program_id
+    LEFT JOIN professional_fields pf ON pf.id = tp.professional_field_id
+    LEFT JOIN practice_forms f ON f.id = tp.practice_form_id
+    WHERE e.id = @id AND (pf.id IS NOT NULL OR f.id IS NOT NULL)
+      AND (e.professional_field IS NULL OR e.practice_form IS NULL)`);
+};
+
 // Sửa thông tin 1 lượt ghi danh: đổi chương trình (chép lại bài học), trường
 // thực hành GPHN, tiến độ. Chỉ ghi trường có trong data.
 const updateEnrollment = async (enrollmentId, data, actorId) => {
@@ -153,12 +169,14 @@ const updateEnrollment = async (enrollmentId, data, actorId) => {
 			throw err;
 		});
 	if (programChanged) await syncLessons(enrollmentId, { replace: true });
+	if (programChanged && data.program_id) await fillPracticeDefaults(enrollmentId);
 	broadcast('update', { entity: 'course_enrollment' });
 };
 
 module.exports = {
 	assertProgramInCourse,
 	syncLessons,
+	fillPracticeDefaults,
 	listLessons,
 	updateLesson,
 	updateEnrollment,

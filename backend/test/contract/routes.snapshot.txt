@@ -249,6 +249,16 @@ POST   /api/v1/persons/merge-candidates/:id/merge  persons:merge
 POST   /api/v1/persons/merge-candidates/:id/reject  persons:merge
 POST   /api/v1/persons/merge-candidates/:id/reopen  persons:merge
 GET    /api/v1/persons/merge-candidates/stats  persons:read
+GET    /api/v1/practice-forms  authOnly
+POST   /api/v1/practice-forms  training_catalog:create
+GET    /api/v1/practice-forms/:id  authOnly
+DELETE /api/v1/practice-forms/:id  training_catalog:delete
+PUT    /api/v1/practice-forms/:id  training_catalog:update
+GET    /api/v1/professional-fields  authOnly
+POST   /api/v1/professional-fields  training_catalog:create
+GET    /api/v1/professional-fields/:id  authOnly
+DELETE /api/v1/professional-fields/:id  training_catalog:delete
+PUT    /api/v1/professional-fields/:id  training_catalog:update
 GET    /api/v1/public/captcha  public
 GET    /api/v1/public/categories  public
 POST   /api/v1/public/course-registration  public
@@ -328,6 +338,11 @@ POST   /api/v1/seminars/import-excel  seminars:import
 POST   /api/v1/seminars/import-template  seminars:import
 POST   /api/v1/seminars/participant-import-template  seminars:import
 GET    /api/v1/seminars/stats  seminars:read
+GET    /api/v1/sending-units  authOnly
+POST   /api/v1/sending-units  training_catalog:create
+GET    /api/v1/sending-units/:id  authOnly
+DELETE /api/v1/sending-units/:id  training_catalog:delete
+PUT    /api/v1/sending-units/:id  training_catalog:update
 GET    /api/v1/staff-attendance/  staff_attendance:read
 GET    /api/v1/staff-attendance/leave-requests  staff_attendance:read | staff_attendance:approve
 PUT    /api/v1/staff-attendance/leave-requests/:id/review  staff_attendance:approve

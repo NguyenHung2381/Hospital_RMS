@@ -105,7 +105,15 @@ DASHBOARD_TABS.forEach((t) => {
 ['/admin/levels', '/admin/round-types'].forEach((p) => {
 	PATH_TO_KEY[p] = 'categories';
 });
-['/admin/training-forms', '/admin/training-types', '/admin/hospital-training-topics', '/admin/trainee-document-types'].forEach((p) => {
+[
+	'/admin/training-forms',
+	'/admin/training-types',
+	'/admin/professional-fields',
+	'/admin/practice-forms',
+	'/admin/sending-units',
+	'/admin/hospital-training-topics',
+	'/admin/trainee-document-types',
+].forEach((p) => {
 	PATH_TO_KEY[p] = 'trainingCatalog';
 });
 

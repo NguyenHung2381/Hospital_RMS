@@ -18,6 +18,7 @@
  */
 const { getPool, sql } = require('../../../config/db');
 const { broadcast } = require('../../events/eventService');
+const { invalidate } = require('../../../utils/cache');
 const { norm } = require('../../../utils/vietnameseText');
 const { loadWorkbook, findHeader, cellText, parseDateCell } = require('../../../utils/excelImport');
 const { createDepartmentMatcher } = require('../../../utils/departmentMatch');
@@ -375,6 +376,28 @@ const KEEP_IF_BLANK = new Set([
 ]);
 const cut = (v, n) => (v == null ? null : String(v).slice(0, n));
 
+// Lĩnh vực / hình thức / đơn vị cử đi mới gặp trong sổ ⇒ thêm vào danh mục để chọn
+// lại được ở hồ sơ (2026-12-03_danh_muc_thuc_hanh_gphn). Hồ sơ vẫn lưu chữ.
+const CATALOG_OF = {
+	professional_field: ['professional_fields', 200],
+	practice_form: ['practice_forms', 300],
+	sending_unit: ['sending_units', 200],
+};
+const addToCatalogs = async (pool, records, actorId) => {
+	for (const [field, [table, len]] of Object.entries(CATALOG_OF)) {
+		const names = [...new Set(records.map((r) => cut(r[field]?.trim(), len)).filter(Boolean))];
+		for (const name of names)
+			await pool.request().input('name', sql.NVarChar(len), name).input('actor_id', sql.VarChar(20), actorId)
+				.query(`
+          IF NOT EXISTS (SELECT 1 FROM ${table} WHERE name = @name)
+            INSERT INTO ${table} (id, name, created_by) VALUES (LEFT(REPLACE(NEWID(), '-', ''), 20), @name, @actor_id)`);
+		if (names.length) {
+			await invalidate(`lookup:${table}:`);
+			broadcast('update', { entity: table.slice(0, -1) });
+		}
+	}
+};
+
 const writeRecord = async (pool, it, traineeId, courseId, actorId) => {
 	const rec = it.record;
 	const values = {
@@ -552,6 +575,11 @@ const importBook = async (courseId, { buffer, dry_run }, actorId) => {
 			);
 		}
 	}
+	await addToCatalogs(
+		pool,
+		kept.map((it) => it.record),
+		actorId,
+	);
 	// Chương trình chưa có vòng ⇒ rút mẫu từ các hồ sơ vừa nhập; rồi tự xếp hồ sơ chưa có khoa
 	const practiceAuto = require('./practiceAutoService');
 	const templates = await practiceAuto.buildTemplates(

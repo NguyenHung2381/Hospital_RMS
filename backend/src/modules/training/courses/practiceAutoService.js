@@ -23,6 +23,7 @@ const { parseDuration, toDays } = require('../../../utils/trainingDuration');
 const { todayVN } = require('../../../utils/vnDate');
 const logger = require('../../../config/logger');
 const rotationService = require('./enrollmentRotationService');
+const { fillPracticeDefaults } = require('./enrollmentProgramService');
 const trainingProgramService = require('../programs/trainingProgramService');
 const {
 	deriveTemplate,
@@ -270,7 +271,9 @@ const arrangeOne = async (
     SELECT r.department_name, r.round_title, ISNULL(pl.allow_split, 0) AS allow_split
     FROM enrollment_rotations r LEFT JOIN program_lessons pl ON pl.id = r.lesson_id
     WHERE r.enrollment_id = @id ORDER BY r.seq`);
-	// Lĩnh vực / hình thức hành nghề: cách ghi hay gặp nhất của cùng chương trình trong sổ
+	// Lĩnh vực / hình thức hành nghề: mặc định của chương trình (danh mục) trước,
+	// ô còn trống thì lấy cách ghi hay gặp nhất của cùng chương trình trong sổ
+	await fillPracticeDefaults(enrollmentId);
 	const usual = (
 		await pool
 			.request()

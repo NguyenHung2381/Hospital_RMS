@@ -394,6 +394,18 @@ export const adminRoutes: RouteObject[] = [
 		element: admin('Loại hình đào tạo', <Catalog group='training' />),
 	},
 	{
+		path: '/admin/professional-fields',
+		element: admin('Lĩnh vực chuyên môn', <Catalog group='training' />),
+	},
+	{
+		path: '/admin/practice-forms',
+		element: admin('Hình thức hành nghề', <Catalog group='training' />),
+	},
+	{
+		path: '/admin/sending-units',
+		element: admin('Đơn vị cử đi', <Catalog group='training' />),
+	},
+	{
 		path: '/admin/hospital-training-topics',
 		element: admin('Chủ đề tập huấn', <Catalog group='training' />),
 	},

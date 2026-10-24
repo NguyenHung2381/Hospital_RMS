@@ -1,5 +1,5 @@
 import type { ComponentType } from 'react';
-import { CalendarSvg, FileTextSvg, LayersSvg, TagSvg, UserCheckSvg } from '@/assets/icons';
+import { BuildingSvg, CalendarSvg, FileTextSvg, LayersSvg, TagSvg, UserCheckSvg } from '@/assets/icons';
 import { useClientPaging } from '@/shared/hooks/useClientPaging';
 import { showToast } from '@/shared/utils/feedback';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -64,6 +64,28 @@ export const TAB_CONFIG: Record<
 		realtime: 'training_type',
 		icon: TagSvg,
 	},
+	// 3 danh mục của hồ sơ thực hành GPHN — hồ sơ chọn từ đây, nhập sổ Excel tự thêm tên mới
+	'professional-fields': {
+		label: 'Lĩnh vực chuyên môn',
+		subtitle: 'Lĩnh vực chuyên môn in trên đơn đề nghị / hợp đồng thực hành GPHN; đặt mặc định theo chương trình',
+		placeholder: 'VD: Bác sĩ y khoa',
+		realtime: 'professional_field',
+		icon: TagSvg,
+	},
+	'practice-forms': {
+		label: 'Hình thức hành nghề',
+		subtitle: 'Hình thức hành nghề in trên giấy tờ thực hành GPHN; đặt mặc định theo chương trình',
+		placeholder: 'VD: Khám bệnh, chữa bệnh y khoa',
+		realtime: 'practice_form',
+		icon: FileTextSvg,
+	},
+	'sending-units': {
+		label: 'Đơn vị cử đi',
+		subtitle: 'Cơ sở cử học viên đến thực hành GPHN',
+		placeholder: 'VD: BV YHCT Nghệ An',
+		realtime: 'sending_unit',
+		icon: BuildingSvg,
+	},
 	'hospital-training-topics': {
 		label: 'Chủ đề tập huấn',
 		subtitle: 'Danh mục chủ đề tập huấn bệnh viện (KSNK, PCCC...)',
@@ -84,7 +106,16 @@ export const CATALOG_GROUPS: Record<CatalogGroup, { title: string; tabs: Catalog
 	research: { title: 'Danh mục NCKH', tabs: ['categories', 'levels', 'round-types'] },
 	training: {
 		title: 'Danh mục Đào tạo',
-		tabs: ['trainee-types', 'training-forms', 'training-types', 'hospital-training-topics', 'trainee-document-types'],
+		tabs: [
+			'trainee-types',
+			'training-forms',
+			'training-types',
+			'professional-fields',
+			'practice-forms',
+			'sending-units',
+			'hospital-training-topics',
+			'trainee-document-types',
+		],
 		breadcrumb: 'Đào tạo',
 	},
 };

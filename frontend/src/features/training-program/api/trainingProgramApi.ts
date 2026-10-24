@@ -30,6 +30,8 @@ const toPayload = (form: TrainingProgramFormData) => ({
 	department_note: form.department_note || null,
 	trainee_type_ids: form.trainee_type_ids,
 	training_type_id: form.training_type_id || null,
+	professional_field_id: form.professional_field_id || null,
+	practice_form_id: form.practice_form_id || null,
 	target_audience: form.target_audience || null,
 	theory_hours: numOrNull(form.theory_hours),
 	practice_hours: numOrNull(form.practice_hours),

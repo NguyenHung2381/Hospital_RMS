@@ -14,6 +14,8 @@ import {
 } from '../types/trainingProgram.type';
 import type { SimpleItem } from '../hooks/useTrainingPrograms';
 import { TagPicker } from './LessonFormModal';
+import { usePracticeCatalogs } from '../../catalog/hooks/usePracticeCatalogs';
+import { TRAINING_TYPE } from '../../course/types/course.type';
 import styles from '../pages/TrainingPrograms.module.css';
 
 const str = (v: number | null | undefined) => (v != null ? String(v) : '');
@@ -28,6 +30,8 @@ const fromProgram = (p: TrainingProgram): TrainingProgramFormData => ({
 	department_note: p.department_note ?? '',
 	trainee_type_ids: p.trainee_type_ids ?? [],
 	training_type_id: p.training_type_id ?? '',
+	professional_field_id: p.professional_field_id ?? '',
+	practice_form_id: p.practice_form_id ?? '',
 	target_audience: p.target_audience ?? '',
 	theory_hours: str(p.theory_hours),
 	practice_hours: str(p.practice_hours),
@@ -73,6 +77,7 @@ export function TrainingProgramFormModal({
 	const [form, setForm] = useState<TrainingProgramFormData>(program ? fromProgram(program) : EMPTY_FORM);
 	const [errors, setErrors] = useState<Partial<Record<keyof TrainingProgramFormData, string>>>({});
 	const [rotationErrors, setRotationErrors] = useState<Record<number, string>>({});
+	const catalogs = usePracticeCatalogs();
 
 	const setRotation = (i: number, patch: Partial<RotationDraft>) => {
 		setForm((f) => ({ ...f, rotations: f.rotations.map((r, j) => (j === i ? { ...r, ...patch } : r)) }));
@@ -284,6 +289,50 @@ export function TrainingProgramFormModal({
 						placeholder='VD: Bác sĩ đã có CCHN'
 					/>
 				</FormField>
+				{(form.training_type_id === TRAINING_TYPE.GPHN || form.professional_field_id || form.practice_form_id) && (
+					<>
+						<FormField
+							label='Lĩnh vực chuyên môn (mặc định)'
+						>
+							<select
+								className={styles.formInput}
+								value={form.professional_field_id}
+								onChange={set('professional_field_id')}
+								title='Tự điền vào hồ sơ thực hành GPHN của chương trình — thêm giá trị ở Danh mục đào tạo'
+							>
+								<option value=''>-- Không đặt --</option>
+								{catalogs.fields.map((x) => (
+									<option
+										key={x.id}
+										value={x.id}
+									>
+										{x.name}
+									</option>
+								))}
+							</select>
+						</FormField>
+						<FormField
+							label='Hình thức hành nghề (mặc định)'
+						>
+							<select
+								className={styles.formInput}
+								value={form.practice_form_id}
+								onChange={set('practice_form_id')}
+								title='Tự điền vào hồ sơ thực hành GPHN của chương trình — thêm giá trị ở Danh mục đào tạo'
+							>
+								<option value=''>-- Không đặt --</option>
+								{catalogs.forms.map((x) => (
+									<option
+										key={x.id}
+										value={x.id}
+									>
+										{x.name}
+									</option>
+								))}
+							</select>
+						</FormField>
+					</>
+				)}
 				<FormField label='Khoa phụ trách giảng dạy'>
 					<select
 						className={styles.formInput}

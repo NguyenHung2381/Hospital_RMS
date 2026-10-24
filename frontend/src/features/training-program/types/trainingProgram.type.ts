@@ -37,6 +37,11 @@ export interface TrainingProgram {
 	trainee_type_name: string | null;
 	training_type_id: string | null;
 	training_type_name: string | null;
+	/** GPHN: lĩnh vực chuyên môn / hình thức hành nghề mặc định (danh mục) — tự điền vào hồ sơ thực hành. */
+	professional_field_id: string | null;
+	professional_field_name: string | null;
+	practice_form_id: string | null;
+	practice_form_name: string | null;
 	/** Đối tượng học viên dạng chữ tự do ("Bác sĩ, Điều dưỡng, KTV"). */
 	target_audience: string | null;
 	theory_hours: number | null;
@@ -75,6 +80,8 @@ export interface TrainingProgramFormData {
 	department_note: string;
 	trainee_type_ids: string[];
 	training_type_id: string;
+	professional_field_id: string;
+	practice_form_id: string;
 	target_audience: string;
 	theory_hours: string;
 	practice_hours: string;
@@ -234,6 +241,8 @@ export const EMPTY_FORM: TrainingProgramFormData = {
 	department_note: '',
 	trainee_type_ids: [],
 	training_type_id: '',
+	professional_field_id: '',
+	practice_form_id: '',
 	target_audience: '',
 	theory_hours: '',
 	practice_hours: '',
