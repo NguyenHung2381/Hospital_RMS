@@ -1,0 +1,130 @@
+/* Tab "Thực hành" của học viên GPHN — thông tin hồ sơ + dòng thời gian các vòng. */
+.info {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+	gap: 10px 20px;
+	margin: 0;
+	padding: 12px 14px;
+	border-radius: 10px;
+	background: #f8fafc;
+}
+
+.info dt {
+	font-size: var(--font-size-xs);
+	color: #64748b;
+}
+
+.info dd {
+	margin: 2px 0 0;
+	font-size: var(--font-size-compact);
+	font-weight: 600;
+	color: #0f172a;
+}
+
+.timeline {
+	list-style: none;
+	margin: 0;
+	padding: 0;
+}
+
+.step {
+	position: relative;
+	display: flex;
+	gap: 12px;
+	padding-bottom: 16px;
+}
+
+/* Đường nối giữa các vòng */
+.step:not(:last-child)::before {
+	content: '';
+	position: absolute;
+	left: 13px;
+	top: 28px;
+	bottom: 0;
+	width: 2px;
+	background: var(--color-gray-200);
+}
+
+.dot {
+	flex: 0 0 28px;
+	height: 28px;
+	border-radius: 50%;
+	display: grid;
+	place-items: center;
+	font-size: var(--font-size-xs);
+	font-weight: 700;
+	background: #f1f5f9;
+	color: #64748b;
+	z-index: 1;
+}
+
+.current .dot {
+	background: var(--color-primary);
+	color: #fff;
+}
+
+.awaiting .dot {
+	background: #fef3c7;
+	color: #b45309;
+}
+
+.done .dot {
+	background: #dcfce7;
+	color: #15803d;
+}
+
+.body {
+	flex: 1;
+	min-width: 0;
+	padding: 2px 0 0;
+}
+
+.current .body {
+	padding: 10px 12px;
+	margin-top: -6px;
+	border: 1px solid var(--color-primary);
+	border-radius: 10px;
+	background: var(--color-primary-pale);
+}
+
+.attempt {
+	font-weight: 400;
+	color: #64748b;
+}
+
+.facts {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 4px 16px;
+	margin-top: 6px;
+	font-size: var(--font-size-compact);
+	color: #475569;
+}
+
+.facts > span,
+.facts > a {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	min-width: 0;
+}
+
+.facts svg {
+	width: 14px;
+	height: 14px;
+	flex-shrink: 0;
+	color: #94a3b8;
+}
+
+.phone {
+	color: var(--color-primary);
+	font-weight: 600;
+	text-decoration: none;
+}
+
+.comment {
+	margin: 6px 0 0;
+	font-size: var(--font-size-compact);
+	color: #334155;
+	white-space: pre-line;
+}

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { BookOpenSvg, CalendarSvg, ChevDSvg, ChevLSvg, ClockSvg, FileSvg, FileTextSvg, LinkSvg, QrSvg } from '@/assets/icons';
+import { BookOpenSvg, CalendarSvg, ChevDSvg, ChevLSvg, ClipboardSvg, ClockSvg, DeptSvg, FileSvg, FileTextSvg, LinkSvg, QrSvg } from '@/assets/icons';
 import { Badge, Button, Card, EmptyState, InlineLoading } from '@/shared/components';
 import { FileViewerModal } from '@/shared/components/FileViewerModal';
 import { formatDateVN } from '@/shared/utils/formatDate';
@@ -21,6 +21,8 @@ import {
 } from '../api/meApi';
 import { isTraineeAccount, isTraineePath, TRAINEE_HOME } from '../../../app/router/authHelpers';
 import { TraineeAttendanceTab } from '../../trainee/components/TraineeAttendanceTab';
+import { MyPracticePanel } from '../components/MyPracticePanel';
+import { MyTraineeDocumentsCard } from '../components/MyTraineeDocumentsCard';
 import styles from './SelfService.module.css';
 
 const ATTEMPT_LABEL: Record<string, { label: string; tone: 'amber' | 'blue' | 'green' }> = {
@@ -115,8 +117,16 @@ function LessonsPanel({ lessons, onOpen }: { lessons: MyLesson[]; onOpen: OpenDo
 	);
 }
 
-type Tab = 'lessons' | 'documents' | 'exams' | 'attendance';
-const TABS: Tab[] = ['lessons', 'documents', 'exams', 'attendance'];
+// practice / records: chỉ khóa thực hành GPHN (mở liên tục) — lịch vòng thay bài học, giấy tờ hồ sơ.
+type Tab = 'practice' | 'lessons' | 'documents' | 'exams' | 'attendance' | 'records';
+const TABS: Tab[] = ['practice', 'lessons', 'documents', 'exams', 'attendance', 'records'];
+interface TabDef {
+	key: Tab;
+	label: string;
+	icon: ReactNode;
+	count: number | string;
+	alert?: boolean;
+}
 
 export default function MyCourseDetail() {
 	const { id = '' } = useParams();
@@ -124,9 +134,10 @@ export default function MyCourseDetail() {
 	const { pathname } = useLocation();
 	// Tab giữ trên URL (?tab=) — tải lại / quay lại vẫn đúng tab đang xem.
 	const [params, setParams] = useSearchParams();
-	const tab: Tab = TABS.find((t) => t === params.get('tab')) ?? 'lessons';
 	const setTab = (t: Tab) => setParams({ tab: t }, { replace: true });
 	const [data, setData] = useState<Data | null>(null);
+	const rolling = !!data?.is_rolling;
+	const tab: Tab = TABS.find((t) => t === params.get('tab')) ?? (rolling ? 'practice' : 'lessons');
 	const [error, setError] = useState('');
 	const [viewer, setViewer] = useState<{
 		url: string;
@@ -146,6 +157,8 @@ export default function MyCourseDetail() {
 	}, [id]);
 	useEffect(load, [load]);
 	useRealtimeUpdate(['course', 'course_enrollment', 'course_document', 'program_lesson', 'lesson_document'], load);
+	const passed = data?.rotations.filter((r) => r.result === 'pass').length ?? 0;
+	const currentRound = data?.rotations.find((r) => r.phase === 'current');
 
 	const openDoc: OpenDoc = (doc, kind = 'course') => {
 		void markDocumentOpened(doc.id, kind).catch(() => {});
@@ -202,20 +215,21 @@ export default function MyCourseDetail() {
 	const approved = data?.enrollment_status === 'approved';
 	const totalHours = data?.lessons.reduce((t, l) => t + (l.total_hours || 0), 0) ?? 0;
 	const openExams = data?.papers.filter((p) => !p.attempt_status || p.attempt_status === 'in_progress').length ?? 0;
-	const tabs: {
-		key: Tab;
-		label: string;
-		icon: ReactNode;
-		count: number | string;
-		alert?: boolean;
-	}[] = data
+	const allTabs: TabDef[] = data
 		? [
-				{
-					key: 'lessons',
-					label: 'Bài học',
-					icon: <BookOpenSvg />,
-					count: data.lessons.length,
-				},
+				rolling
+					? {
+							key: 'practice',
+							label: 'Thực hành',
+							icon: <DeptSvg />,
+							count: `${passed}/${data.rotations.length}`,
+						}
+					: {
+							key: 'lessons',
+							label: 'Bài học',
+							icon: <BookOpenSvg />,
+							count: data.lessons.length,
+						},
 				{
 					key: 'documents',
 					label: 'Tài liệu',
@@ -235,8 +249,18 @@ export default function MyCourseDetail() {
 					icon: <ClockSvg />,
 					count: `${data.attended_count}/${data.session_count}`,
 				},
+				{
+					key: 'records',
+					label: 'Giấy tờ',
+					icon: <ClipboardSvg />,
+					count: '',
+				},
 			]
 		: [];
+	// Khóa GPHN: không có buổi học thì ẩn "Điểm danh"; khóa thường không có tab "Giấy tờ"
+	const tabs = allTabs.filter(
+		(t) => (t.key !== 'attendance' || !rolling || data?.session_count) && (t.key !== 'records' || rolling),
+	);
 
 	return (
 		<UserLayout
@@ -282,18 +306,28 @@ export default function MyCourseDetail() {
 									</div>
 									<div className={styles.summaryDates}>
 										<CalendarSvg />
-										{formatDateVN(data.start_date) || '…'} – {formatDateVN(data.end_date) || '…'}
+										{/* Khóa GPHN mở liên tục: thời gian thực hành của hồ sơ mình, không phải của đợt */}
+										{formatDateVN(rolling ? data.practice_start : data.start_date) || '…'} –{' '}
+										{formatDateVN(rolling ? data.practice_end : data.end_date) || '…'}
 									</div>
 									{data.description && <p className={styles.lessonDesc}>{data.description}</p>}
 								</div>
 								{approved && (
 									<div className={styles.stats}>
 										{[
-											{
-												key: 'lessons' as Tab,
-												value: data.lessons.length,
-												label: `Bài học · ${totalHours} tiết`,
-											},
+											rolling
+												? {
+														key: 'practice' as Tab,
+														value: `${passed}/${data.rotations.length}`,
+														label: currentRound
+															? `Vòng đạt · đang ở ${currentRound.department_name || currentRound.round_title}`
+															: 'Vòng đã đạt',
+													}
+												: {
+														key: 'lessons' as Tab,
+														value: data.lessons.length,
+														label: `Bài học · ${totalHours} tiết`,
+													},
 											{
 												key: 'documents' as Tab,
 												value: data.documents.length,
@@ -309,7 +343,9 @@ export default function MyCourseDetail() {
 												value: `${data.attended_count}/${data.session_count}`,
 												label: 'Buổi có mặt',
 											},
-										].map((s) => (
+										]
+											.filter((s) => tabs.some((t) => t.key === s.key))
+											.map((s) => (
 											<button
 												key={s.key}
 												type='button'
@@ -348,11 +384,19 @@ export default function MyCourseDetail() {
 									>
 										{t.icon}
 										{t.label}
-										<span className={`${styles.tabCount} ${t.alert ? styles.tabCountAlert : ''}`}>{t.count}</span>
+										{t.count !== '' && (
+											<span className={`${styles.tabCount} ${t.alert ? styles.tabCountAlert : ''}`}>{t.count}</span>
+										)}
 									</button>
 								))}
 							</div>
 							<Card.Body>
+								{tab === 'practice' && <MyPracticePanel data={data} />}
+								{tab === 'records' && (
+									<MyTraineeDocumentsCard
+										empty={<EmptyState title='Chưa có yêu cầu giấy tờ nào' desc='Hồ sơ không yêu cầu nộp thêm giấy tờ.' />}
+									/>
+								)}
 								{tab === 'lessons' && (
 									<LessonsPanel
 										lessons={data.lessons}

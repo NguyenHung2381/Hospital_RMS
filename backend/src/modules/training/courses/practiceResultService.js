@@ -64,6 +64,26 @@ const listForMentor = async (userId) => {
 	return r.recordset.map((x) => ({ ...x, phase: phaseOf(x, today) }));
 };
 
+/**
+ * Cổng học viên (/me/courses/:id): vòng thực hành của hồ sơ mình — lịch, khoa, người
+ * hướng dẫn (kèm SĐT để liên hệ), kết quả + nhận xét. Không lộ ai nhập kết quả.
+ * Gọi sau khi đã xác định hồ sơ là của học viên đang đăng nhập.
+ */
+const listForTrainee = async (enrollmentId) => {
+	const today = todayKeyVN();
+	const pool = await getPool();
+	const r = await pool.request().input('id', sql.VarChar(20), enrollmentId).query(`
+      SELECT r.id, r.round_title, r.seq, r.attempt_no, r.start_date, r.end_date, r.duration_text,
+             ISNULL(d.name, r.department_name) AS department_name,
+             r.mentor_salutation, r.mentor_name, r.mentor_qualification, r.mentor_phone,
+             r.result, r.result_comment, r.result_at
+      FROM enrollment_rotations r
+      LEFT JOIN departments d ON d.id = r.department_id
+      WHERE r.enrollment_id = @id
+      ORDER BY r.seq, r.created_at`);
+	return r.recordset.map((x) => ({ ...x, phase: x.start_date ? phaseOf(x, today) : 'unscheduled' }));
+};
+
 /** Menu "Hướng dẫn thực hành": có vòng nào mình hướng dẫn (hiện menu) + số vòng chờ mình đánh giá (badge). */
 const countForMentor = async (userId) => {
 	const pool = await getPool();
@@ -162,4 +182,4 @@ const saveBulk = async (actor, rows) => {
 	return { saved, failed };
 };
 
-module.exports = { listForMentor, countForMentor, evaluateAsMentor, listAwaiting, saveBulk, phaseOf };
+module.exports = { listForMentor, countForMentor, listForTrainee, evaluateAsMentor, listAwaiting, saveBulk, phaseOf };

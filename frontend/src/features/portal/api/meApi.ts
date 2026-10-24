@@ -1,5 +1,5 @@
 import { apiClient } from '../../../shared/api/axios';
-import type { CourseDisplayStatus, DocType, EnrollmentStatus, ExamType, SourceType } from '../../course/types/course.type';
+import type { CourseDisplayStatus, DocType, EnrollmentStatus, ExamType, ProgressStatus, RotationResult, SourceType } from '../../course/types/course.type';
 import type { AvailablePaper } from '../../exam/types/exam.type';
 import type { CmeStatus, ParticipationType, SeminarEventType, SeminarScope } from '../../seminar/types/seminar.type';
 import type { PublicCourse } from '../../public/api/publicApi';
@@ -190,6 +190,27 @@ export interface MyLesson {
 	documents: MyLessonDocument[];
 }
 
+/** Vòng thực hành GPHN của hồ sơ mình (khóa mở liên tục) — tab "Thực hành" */
+export interface MyRotation {
+	id: string;
+	round_title: string | null;
+	seq: number;
+	attempt_no: number;
+	start_date: string | null;
+	end_date: string | null;
+	duration_text: string | null;
+	department_name: string | null;
+	mentor_salutation: string | null;
+	mentor_name: string | null;
+	mentor_qualification: string | null;
+	mentor_phone: string | null;
+	result: RotationResult;
+	result_comment: string | null;
+	result_at: string | null;
+	/** unscheduled: chưa xếp lịch · current · awaiting: đã xong chờ đánh giá · upcoming · done */
+	phase: 'unscheduled' | 'current' | 'awaiting' | 'upcoming' | 'done';
+}
+
 export interface MyCourseDetail {
 	id: string;
 	name: string;
@@ -204,6 +225,19 @@ export interface MyCourseDetail {
 	documents: MyCourseDocument[];
 	lessons: MyLesson[];
 	papers: AvailablePaper[];
+	/** Khóa mở liên tục (thực hành GPHN) — hiện tab "Thực hành" thay "Bài học" */
+	is_rolling: boolean;
+	enrollment_id: string;
+	practice_code: string | null;
+	program_name: string | null;
+	professional_field: string | null;
+	practice_form: string | null;
+	sending_unit: string | null;
+	total_duration: string | null;
+	practice_start: string | null;
+	practice_end: string | null;
+	progress_status: ProgressStatus | null;
+	rotations: MyRotation[];
 }
 
 export const getMyCourse = (id: string) => apiClient.get<MyCourseDetail>(`/me/courses/${id}`);

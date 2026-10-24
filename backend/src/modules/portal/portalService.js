@@ -13,6 +13,7 @@ const { SESSION_IN_PROGRAM_SQL } = require('../training/courses/sessionScope');
 const { TRAINEE_OF_USER_SQL } = require('../training/trainees/traineeOfUser');
 const publicPortalService = require('../public/publicPortalService');
 const examService = require('../training/exams/examService');
+const practiceResultService = require('../training/courses/practiceResultService');
 const trainingProgramService = require('../training/programs/trainingProgramService');
 const { httpError } = require('../../utils/httpError');
 const { getUserCme } = require('../cme/cmeUserService');
@@ -147,6 +148,11 @@ const getMyCourse = async (courseId, actor) => {
 		.input('uid', sql.VarChar(20), actor.id).query(`
     SELECT TOP 1 c.id, c.name, c.description, c.start_date, c.end_date, c.status,
            c.enrollment_start_date, c.enrollment_end_date, e.status AS enrollment_status,
+           c.is_rolling, e.id AS enrollment_id,
+           -- Hồ sơ thực hành GPHN (khóa mở liên tục) — học viên xem ở tab "Thực hành"
+           e.practice_code, e.professional_field, e.practice_form, e.sending_unit, e.total_duration,
+           e.start_date AS practice_start, e.end_date AS practice_end, e.progress_status,
+           tp.name AS program_name,
            -- Chuyên cần của lượt ghi danh này (buổi thuộc lớp mình — sessionScope)
            (SELECT COUNT(*) FROM class_sessions s WHERE s.course_id = c.id AND ${SESSION_IN_PROGRAM_SQL('s', 'e')}) AS session_count,
            (SELECT COUNT(*) FROM attendance a JOIN class_sessions s ON s.id = a.session_id
@@ -154,6 +160,7 @@ const getMyCourse = async (courseId, actor) => {
     FROM course_enrollments e
     JOIN trainees t ON t.id = e.trainee_id AND ${TRAINEE_OF_USER_SQL('t')}
     JOIN courses c ON c.id = e.course_id
+    LEFT JOIN training_programs tp ON tp.id = e.program_id
     WHERE c.id = @id
     ORDER BY CASE WHEN e.status = 'approved' THEN 0 ELSE 1 END;
 
@@ -199,6 +206,8 @@ const getMyCourse = async (courseId, actor) => {
 					(p) => p.course_id === courseId,
 				)
 			: [],
+		// Vòng thực hành GPHN của hồ sơ: lịch, khoa, người hướng dẫn, kết quả (GĐ3)
+		rotations: approved ? await practiceResultService.listForTrainee(course.enrollment_id) : [],
 	};
 };
 
