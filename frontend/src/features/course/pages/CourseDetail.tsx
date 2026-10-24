@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { ArrowRSvg, CalendarSvg, ChevLSvg, CopySvg, EditSvg, QrSvg } from '@/assets/icons';
+import { ArrowRSvg, CalendarSvg, CheckSmSvg, ChevLSvg, CopySvg, EditSvg, QrSvg } from '@/assets/icons';
 import { CourseCloneModal } from '../components/CourseCloneModal';
 import tbl from '@/shared/components/Table/Table.module.css';
 import AdminLayout from '../../../layouts/AdminLayout';
@@ -18,7 +18,7 @@ import { ExamsTab } from '../components/ExamsTab';
 import { ResultsTab } from '../components/ResultsTab';
 import { SessionsTab } from '../components/SessionsTab';
 import { useCourseDetail, type DetailTab } from '../hooks/useCourseDetail';
-import { DISPLAY_STATUS_CFG, type Course, type CourseFormData } from '../types/course.type';
+import { DISPLAY_STATUS_CFG, TRAINING_TYPE, type Course, type CourseFormData } from '../types/course.type';
 import ProgramTags from '../components/ProgramTags';
 import styles from './Courses.module.css';
 
@@ -31,6 +31,9 @@ const STEPS: { key: Step; label: string }[] = [
 	{ key: 'exams', label: 'Thi & Kiểm tra' },
 	{ key: 'results', label: 'Kết quả & Chứng chỉ' },
 ];
+// Khóa GPHN: mỗi học viên có lịch vòng riêng, kết quả theo vòng ⇒ không có lịch chung / thi / bảng điểm.
+const PRACTICE_STEPS = new Set<Step>(['enrollments', 'documents']);
+const isPracticeCourse = (c: Course | null) => !!c && (c.is_rolling || c.training_type_id === TRAINING_TYPE.GPHN);
 
 const range = (from: string | null, to: string | null) =>
 	from || to ? `${formatDateOr(from, '?')} → ${formatDateOr(to, '?')}` : null;
@@ -93,7 +96,7 @@ export default function CourseDetail() {
 		);
 	}
 
-	const steps = STEPS;
+	const steps = isPracticeCourse(course) ? STEPS.filter((s) => PRACTICE_STEPS.has(s.key)) : STEPS;
 	const tab = steps.find((s) => s.key === tabParam)?.key ?? 'enrollments';
 	const approved = d.enrollments.filter((e) => e.status === 'approved').length;
 	const waiting = d.enrollments.filter((e) => e.status === 'waitlisted').length;
@@ -131,7 +134,7 @@ export default function CourseDetail() {
 	const doneCount = steps.filter((s) => stepMeta[s.key].done).length;
 	const goStep = (key: Step) => setParams({ tab: key }, { replace: true });
 	const stepLabel = (s: { key: Step; label: string }) =>
-		s.key === 'enrollments' && course?.is_rolling ? 'Học viên & hồ sơ thực hành' : s.label;
+		s.key === 'enrollments' && isPracticeCourse(course) ? 'Học viên & hồ sơ thực hành' : s.label;
 	// Chọn 1 chương trình ở phần tóm tắt ⇒ mở danh sách học viên lọc sẵn theo chương trình đó.
 	const goProgram = (programId: string) =>
 		setParams({ tab: 'enrollments', ...(programId ? { program: programId } : {}) }, { replace: true });
@@ -244,37 +247,48 @@ export default function CourseDetail() {
 					</div>
 
 					<div className={styles.stepPanel}>
-						{/* Chọn bước bằng select: ✓ = bước đã có dữ liệu; kèm tiến độ và gợi ý bước kế tiếp */}
+						{/* Thanh bước luôn hiện: ✓ = bước đã có dữ liệu; kèm tiến độ và gợi ý bước kế tiếp */}
 						<div className={styles.stepPanelHead}>
-							<label className={styles.stepPick}>
-								<span className={styles.stepPanelNo}>
-									Bước {activeIdx + 1}/{steps.length} · đã xong {doneCount}/{steps.length}
-								</span>
-								<select
-									className={styles.stepSelect}
-									aria-label='Chọn bước của khóa học'
-									value={tab}
-									onChange={(e) => goStep(e.target.value as Step)}
+							<div className={styles.stepPick}>
+								{/* Hàng tiêu đề: tiến độ + gợi ý bước kế tiếp — thanh bước bên dưới có trọn chiều ngang */}
+								<div className={styles.stepTop}>
+									<span className={styles.stepPanelNo}>
+										Bước {activeIdx + 1}/{steps.length} · đã xong {doneCount}/{steps.length}
+									</span>
+									{nextStep && stepMeta[tab].done && (
+										<button
+											type='button'
+											className={styles.nextStep}
+											onClick={() => goStep(nextStep.key)}
+										>
+											Tiếp theo: {stepLabel(nextStep)} <ArrowRSvg />
+										</button>
+									)}
+								</div>
+								<nav
+									className={styles.steps}
+									aria-label='Các bước của khóa học'
 								>
 									{steps.map((s, i) => (
-										<option
+										<button
 											key={s.key}
-											value={s.key}
+											type='button'
+											className={`${styles.step} ${tab === s.key ? styles.stepActive : ''}`}
+											aria-current={tab === s.key ? 'step' : undefined}
+											title={`${stepLabel(s)} — ${stepMeta[s.key].meta}`}
+											onClick={() => goStep(s.key)}
 										>
-											{stepMeta[s.key].done ? '✓' : `${i + 1}.`} {stepLabel(s)} — {stepMeta[s.key].meta}
-										</option>
+											<span className={`${styles.stepNum} ${stepMeta[s.key].done ? styles.stepDone : ''}`}>
+												{stepMeta[s.key].done ? <CheckSmSvg /> : i + 1}
+											</span>
+											<span className={styles.stepText}>
+												<span className={styles.stepLabel}>{stepLabel(s)}</span>
+												<span className={styles.stepMeta}>{stepMeta[s.key].meta}</span>
+											</span>
+										</button>
 									))}
-								</select>
-							</label>
-							{nextStep && stepMeta[tab].done && (
-								<button
-									type='button'
-									className={styles.nextStep}
-									onClick={() => goStep(nextStep.key)}
-								>
-									Tiếp theo: {nextStep.label} <ArrowRSvg />
-								</button>
-							)}
+								</nav>
+							</div>
 						</div>
 						{d.error && <div className={styles.errorBanner}>{d.error}</div>}
 						{d.loading ? (

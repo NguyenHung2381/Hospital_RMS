@@ -143,7 +143,7 @@ export default function PracticeBoard() {
 
 	return (
 		<AdminLayout
-			pageTitle='Thực hành GPHN theo ngày'
+			pageTitle='Thực hành theo ngày'
 			pageSubtitle='Học viên đang thực hành ở khoa nào, mỗi người hướng dẫn đang kèm bao nhiêu học viên'
 			breadcrumbs={[{ label: 'Đào tạo' }]}
 		>
@@ -393,8 +393,8 @@ function Empty({ text }: { text: string }) {
 				<div className={styles.emptyTitle}>{text}</div>
 				<div className={styles.emptyDesc}>
 					Trang này chỉ hiện học viên có vòng thực hành đang diễn ra vào ngày đã chọn. Chưa có dữ liệu? Vào Khóa học → mở
-					khóa GPHN (mở liên tục) → tab Học viên → "Nhập sổ Excel" hoặc "Thêm học viên" — hệ thống tự xếp vòng, khoa,
-					người hướng dẫn. Hoặc chọn ngày khác.
+					khóa GPHN (mở liên tục) → tab Học viên → "Nhập sổ Excel" (tự xếp vòng cho dòng mới), hoặc "Thêm học viên" rồi
+					"Xếp lịch" hồ sơ đã duyệt. Hoặc chọn ngày khác.
 				</div>
 			</div>
 		</div>

@@ -157,7 +157,7 @@ export const adminRoutes: RouteObject[] = [
 	},
 	{
 		path: '/admin/dashboard/seminar',
-		element: admin('Tổng quan Hội nghị & Đào tạo liên tục', <SeminarDashboard />),
+		element: admin('Tổng quan Hội nghị & Tín chỉ CME', <SeminarDashboard />),
 	},
 	{ path: '/admin/profile', element: admin('Hồ sơ cá nhân', <UserProfile />) },
 	{
@@ -339,7 +339,7 @@ export const adminRoutes: RouteObject[] = [
 		path: '/admin/practice-board',
 		element: (
 			<RequirePermission perm='courses:read'>
-				{admin('Thực hành GPHN theo ngày', <PracticeBoard />)}
+				{admin('Thực hành theo ngày', <PracticeBoard />)}
 			</RequirePermission>
 		),
 	},
@@ -467,7 +467,7 @@ export const userRoutes: RouteObject[] = [
 	},
 	{
 		path: '/user/cme',
-		element: user('Đào tạo liên tục của tôi', <UserMyCme />),
+		element: user('Tín chỉ CME của tôi', <UserMyCme />),
 	},
 	{
 		path: '/user/thi-online',

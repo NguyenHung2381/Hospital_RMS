@@ -218,9 +218,8 @@ export function useCourseDetail(courseId: string) {
 				} else {
 					out = await apiRegisterTrainee(courseId, traineeId, programId);
 				}
-				// Ghi danh hộ được duyệt luôn; khóa GPHN backend đã tự xếp vòng — chỉ báo khi chưa xếp được
-				if (out.auto_warning) showToast('error', out.auto_warning);
-				else if (out.moved_to) showToast('success', `Lớp đã đầy — học viên được xếp sang ${out.moved_to}`);
+				// Ghi danh hộ được duyệt luôn; khóa GPHN xếp lịch vòng ở bước sau
+				if (out.moved_to) showToast('success', `Lớp đã đầy — học viên được xếp sang ${out.moved_to}`);
 				else if (out.status === 'waitlisted')
 					showToast('info', `Lớp đã đủ sĩ số tối đa — vào danh sách chờ khóa sau (vị trí ${out.waitlist_position ?? '?'})`);
 				else showToast('success', 'Đã ghi danh và duyệt học viên');

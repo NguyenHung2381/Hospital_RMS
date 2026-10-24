@@ -110,13 +110,11 @@ export const suggestClassDates = (courseId: string, programId: string) =>
 export const getEnrollments = (courseId: string) =>
 	apiClient.get<Enrollment[]>(`/courses/${courseId}/enrollments`);
 /** programId: chương trình học viên chọn — bài học của chương trình tự gắn theo. */
-/** auto_warning: khóa GPHN — ghi danh xong nhưng chưa tự xếp được vòng (lý do). */
-/** Ghi danh hộ được duyệt luôn — đủ sĩ số thì status = 'waitlisted'. */
+/** Ghi danh hộ được duyệt luôn — đủ sĩ số thì status = 'waitlisted'. Khóa GPHN: xếp lịch vòng là bước sau. */
 /** moved_to: lớp đầy, hồ sơ được chuyển sang khóa khác còn chỗ · waitlist_position: vị trí trong danh sách chờ của chương trình. */
 type RegisterResult = {
 	id: string;
 	status: EnrollmentStatus;
-	auto_warning: string | null;
 	moved_to?: string | null;
 	waitlist_position?: number | null;
 };

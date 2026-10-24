@@ -323,38 +323,91 @@
 	font-size: var(--font-size-sm);
 }
 
-/* Chọn bước bằng select ở đầu khung làm việc (thay thanh 5 bước) */
+/* Thanh bước ở đầu khung làm việc — chỉ các bước hợp loại khóa (GPHN 2 bước, còn lại 5) */
 .stepPick {
 	display: flex;
 	flex-direction: column;
-	gap: 4px;
-	flex: 1 1 360px;
+	gap: 6px;
+	flex: 1 1 100%;
 	min-width: 0;
-	max-width: 640px;
 }
-.stepSelect {
-	width: 100%;
-	padding: 8px 36px 8px 12px;
-	border: 1.5px solid var(--color-gray-200);
+.stepTop {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--space-2);
+	flex-wrap: wrap;
+	min-height: 30px;
+}
+/* Thanh bước 1 hàng, luôn hiện; hẹp thì cuộn ngang thay vì xuống dòng */
+.steps {
+	display: flex;
+	gap: var(--space-1);
+	overflow-x: auto;
+	scrollbar-width: thin;
+}
+.step {
+	flex: 1 1 0;
+	min-width: 150px;
+	display: flex;
+	align-items: center;
+	gap: var(--space-2);
+	padding: 6px 10px;
+	border: 1px solid var(--color-gray-100);
 	border-radius: var(--radius-lg);
-	background: var(--color-white) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23667085' stroke-width='2.5'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") no-repeat right 12px center;
-	appearance: none;
+	background: var(--color-white);
 	font-family: var(--font-body);
-	font-size: var(--font-size-lg);
-	font-weight: var(--font-weight-extrabold);
-	color: var(--color-gray-800);
-	text-overflow: ellipsis;
+	text-align: left;
 	cursor: pointer;
-	outline: none;
-	transition: border-color var(--transition-fast);
 }
-.stepSelect:hover,
-.stepSelect:focus {
+.step:hover {
+	background: var(--color-gray-50);
+}
+.stepActive,
+.stepActive:hover {
+	background: var(--color-primary-pale);
 	border-color: var(--color-primary);
 }
-.stepSelect option {
+.stepNum {
+	flex-shrink: 0;
+	width: 22px;
+	height: 22px;
+	border-radius: var(--radius-full);
+	display: grid;
+	place-items: center;
+	background: var(--color-gray-100);
+	color: var(--color-gray-600);
+	font-size: var(--font-size-xs);
+	font-weight: var(--font-weight-bold);
+}
+.stepNum svg {
+	width: 12px;
+	height: 12px;
+}
+.stepActive .stepNum,
+.stepDone {
+	background: var(--color-primary);
+	color: var(--color-white);
+}
+.stepText {
+	display: flex;
+	flex-direction: column;
+	min-width: 0;
+}
+.stepLabel {
 	font-size: var(--font-size-sm);
-	font-weight: var(--font-weight-normal);
+	font-weight: var(--font-weight-bold);
+	color: var(--color-gray-800);
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+.stepMeta {
+	font-size: var(--font-size-2xs);
+	color: var(--color-gray-500);
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
 }
 .stepPanel {
 	background: var(--color-white);
@@ -965,6 +1018,11 @@
 }
 .pendingAlert:hover {
 	border-color: #ef9f27;
+}
+/* Hồ sơ GPHN đã duyệt nhưng chưa xếp lịch vòng (dòng phụ dưới tên học viên) */
+.unscheduled {
+	color: #b45309;
+	font-weight: var(--font-weight-semibold);
 }
 /* Select nhóm học viên (Chờ duyệt / Đã phê duyệt / ...) ở hàng lọc */
 .enrViewSelect {

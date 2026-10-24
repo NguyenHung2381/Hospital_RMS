@@ -5,12 +5,14 @@
  *     lượng, khoa được đi) từ các hồ sơ đã nhập của sổ cũ — rotationPlanner.deriveTemplate.
  *   - arrange: 1 hồ sơ ⇒ mã thực hành, lĩnh vực / hình thức / tổng thời gian, sinh vòng,
  *     xếp lịch SO LE (thứ tự vòng + khoa ít học viên nhất), NHD đang kèm ít nhất,
- *     địa điểm thực hành; hồ sơ chờ duyệt thì duyệt luôn. Vòng đã có kết quả (Đạt / Không
+ *     địa điểm thực hành. Chỉ xếp hồ sơ ĐÃ DUYỆT — duyệt là bước riêng của phòng Đào
+ *     tạo, duyệt xong mới xếp lịch. Vòng đã có kết quả (Đạt / Không
  *     đạt, kể cả vòng công nhận từ hồ sơ trước) giữ nguyên, chỉ xếp phần còn lại từ sau
  *     vòng cuối đã học; firstLessonId ép vòng vào trước (học khoa khác rồi mới sang Cấp cứu).
  *   - arrangeCourse: arrange mọi hồ sơ của khóa chưa có vòng, lần lượt — hồ sơ sau
  *     thấy lịch của hồ sơ trước nên tự tránh khoa / NHD đã đông.
- *   - completeFinished: job hằng ngày — qua ngày kết thúc, không vòng nào trượt ⇒ hoàn thành.
+ *   - completeFinished: job hằng ngày — qua ngày kết thúc, mọi vòng đã có kết quả, không
+ *     vòng nào trượt ⇒ hoàn thành.
  * Mọi thứ tự điền vẫn sửa tay được ở hồ sơ; cảnh báo vòng vẫn hiện như cũ.
  */
 const { getPool, sql } = require('../../../config/db');
@@ -161,7 +163,7 @@ const arrangeOne = async (
 	const pool = await getPool();
 	const e = (
 		await pool.request().input('id', sql.VarChar(20), enrollmentId).query(`
-      SELECT e.id, e.program_id, e.trainee_id, e.practice_code, e.start_date, t.legacy_code,
+      SELECT e.id, e.status, e.program_id, e.trainee_id, e.practice_code, e.start_date, t.legacy_code,
              tp.code AS program_code, tp.duration AS program_duration
       FROM course_enrollments e
       JOIN trainees t ON t.id = e.trainee_id
@@ -169,6 +171,7 @@ const arrangeOne = async (
       WHERE e.id = @id`)
 	).recordset[0];
 	if (!e) throw httpError(404, 'Không tìm thấy đăng ký.');
+	if (e.status !== 'approved') throw httpError(400, 'Duyệt hồ sơ trước khi xếp lịch thực hành.');
 	if (!e.program_id) throw httpError(400, 'Hồ sơ chưa chọn chương trình.');
 
 	await buildTemplates([e.program_id], actorId);
@@ -302,9 +305,6 @@ const arrangeOne = async (
           practice_form = ISNULL(practice_form, @practice_form),
           total_duration = ISNULL(total_duration, @total_duration),
           start_date = @start_date, end_date = @end_date, practice_location = @practice_location,
-          decided_by = CASE WHEN status = 'pending' THEN @actor_id ELSE decided_by END,
-          decided_at = CASE WHEN status = 'pending' THEN GETDATE() ELSE decided_at END,
-          status = CASE WHEN status = 'pending' THEN 'approved' ELSE status END,
           updated_at = GETDATE(), updated_by = @actor_id
       WHERE id = @id;
       UPDATE trainees SET legacy_code = @number WHERE id = @trainee_id AND legacy_code IS NULL AND @number IS NOT NULL;`);
@@ -317,22 +317,7 @@ const arrange = async (enrollmentId, opts, actorId) => {
 	return out;
 };
 
-/** Ghi danh / duyệt vào khóa GPHN ⇒ tự xếp nếu hồ sơ chưa có vòng. Không ném lỗi — trả { warning }. */
-const arrangeIfPractice = async (enrollmentId, actorId) => {
-	const pool = await getPool();
-	const r = await pool.request().input('id', sql.VarChar(20), enrollmentId).query(`
-    SELECT e.id FROM course_enrollments e JOIN courses c ON c.id = e.course_id
-    WHERE e.id = @id AND c.is_rolling = 1 AND e.program_id IS NOT NULL
-      AND NOT EXISTS (SELECT 1 FROM enrollment_rotations r WHERE r.enrollment_id = e.id)`);
-	if (!r.recordset[0]) return {};
-	try {
-		return await arrange(enrollmentId, {}, actorId);
-	} catch (err) {
-		return { warning: `Chưa tự xếp được vòng thực hành: ${err.message}` };
-	}
-};
-
-/** Tự xếp mọi hồ sơ đang học của khóa chưa có vòng, lần lượt theo ngày bắt đầu (bỏ hồ sơ đã qua ngày kết thúc). */
+/** Tự xếp mọi hồ sơ đã duyệt, đang học của khóa chưa có vòng, lần lượt theo ngày bắt đầu (bỏ hồ sơ đã qua ngày kết thúc). */
 const arrangeCourse = async (courseId, actorId) => {
 	const pool = await getPool();
 	const r = await pool
@@ -341,7 +326,7 @@ const arrangeCourse = async (courseId, actorId) => {
 		.input('today', sql.Date, todayVN()).query(`
     SELECT e.id, e.start_date, e.practice_code, t.full_name
     FROM course_enrollments e JOIN trainees t ON t.id = e.trainee_id
-    WHERE e.course_id = @course_id AND e.program_id IS NOT NULL AND e.status IN ('pending', 'approved')
+    WHERE e.course_id = @course_id AND e.program_id IS NOT NULL AND e.status = 'approved'
       AND ISNULL(e.progress_status, 'in_progress') = 'in_progress'
       AND (e.end_date IS NULL OR e.end_date >= @today)
       AND NOT EXISTS (SELECT 1 FROM enrollment_rotations r WHERE r.enrollment_id = e.id)
@@ -360,7 +345,8 @@ const arrangeCourse = async (courseId, actorId) => {
 	return { arranged, failed };
 };
 
-// Job: hồ sơ đã qua ngày kết thúc, có vòng và không còn vòng trượt chưa học lại ⇒ hoàn thành.
+// Job: hồ sơ đã qua ngày kết thúc, có vòng, mọi vòng đã có kết quả (người hướng dẫn
+// chưa đánh giá thì chưa coi là xong) và không còn vòng trượt chưa học lại ⇒ hoàn thành.
 const completeFinished = async () => {
 	const pool = await getPool();
 	const r = await pool.request().input('today', sql.Date, todayVN()).query(`
@@ -369,6 +355,7 @@ const completeFinished = async () => {
     WHERE e.status = 'approved' AND ISNULL(e.progress_status, 'in_progress') = 'in_progress'
       AND e.end_date < @today
       AND EXISTS (SELECT 1 FROM enrollment_rotations r WHERE r.enrollment_id = e.id)
+      AND NOT EXISTS (SELECT 1 FROM enrollment_rotations p WHERE p.enrollment_id = e.id AND p.result = 'pending')
       AND NOT EXISTS (
         SELECT 1 FROM enrollment_rotations f
         WHERE f.enrollment_id = e.id AND f.result = 'fail'
@@ -387,7 +374,6 @@ module.exports = {
 	buildTemplates,
 	arrange,
 	arrangeOne,
-	arrangeIfPractice,
 	arrangeCourse,
 	completeFinished,
 	codeSuffix,

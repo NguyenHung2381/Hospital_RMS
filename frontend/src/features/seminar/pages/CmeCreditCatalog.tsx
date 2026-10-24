@@ -172,7 +172,7 @@ export default function CmeCreditCatalog() {
 		<AdminLayout
 			pageTitle='Danh mục quy đổi tín chỉ'
 			pageSubtitle='Nhóm hoạt động, loại hình và công thức quy đổi ra giờ tín chỉ CME'
-			breadcrumbs={[{ label: 'Đào tạo liên tục' }]}
+			breadcrumbs={[{ label: 'Tín chỉ CME' }]}
 			headerActions={
 				canCreate && (
 					<div className={styles.headerActions}>

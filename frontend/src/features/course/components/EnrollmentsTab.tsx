@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { CheckSvg, PlusSvg, UserCheckSvg, XSvg } from "@/assets/icons";
+import { CalendarSvg, CheckSvg, PlusSvg, UserCheckSvg, XSvg } from "@/assets/icons";
 import {
   RowAction,
   RowActions,
@@ -122,6 +122,12 @@ export function EnrollmentsTab({
   const [newTraineeId, setNewTraineeId] = useState("");
   const [newProgramId, setNewProgramId] = useState("");
   const [detailId, setDetailId] = useState<string | null>(null);
+  // Mở hồ sơ thẳng vào tab Vòng thực hành (nút "Xếp lịch" trên dòng chưa xếp)
+  const [detailTab, setDetailTab] = useState<"rotations" | undefined>();
+  const openDetail = (id: string, tab?: "rotations") => {
+    setDetailTab(tab);
+    setDetailId(id);
+  };
   const navigate = useNavigate();
   const canViewTrainee = usePermission().has("trainees:read");
   const [bookOpen, setBookOpen] = useState(false);
@@ -296,6 +302,15 @@ export function EnrollmentsTab({
     onSaved();
   };
 
+  // Khóa GPHN: duyệt xong mới xếp lịch — hồ sơ đã duyệt, đang học, có chương trình mà chưa có vòng.
+  const needsSchedule = (en: Enrollment) =>
+    !!course?.is_rolling &&
+    en.status === "approved" &&
+    en.progress_status === "in_progress" &&
+    !!en.program_id &&
+    en.rotation_total === 0;
+  const unscheduled = enrollments.filter(needsSchedule).length;
+
   const autoArrange = async () => {
     if (!course) return;
     setArranging(true);
@@ -305,8 +320,8 @@ export function EnrollmentsTab({
         failed.length ? "error" : "success",
         [
           arranged
-            ? `Đã tự xếp ${arranged} hồ sơ`
-            : "Không có hồ sơ nào chưa có vòng",
+            ? `Đã xếp lịch ${arranged} hồ sơ`
+            : "Không có hồ sơ đã duyệt nào chưa xếp lịch",
           ...failed.slice(0, 3),
           failed.length > 3 ? `… và ${failed.length - 3} hồ sơ khác` : "",
         ]
@@ -368,6 +383,9 @@ export function EnrollmentsTab({
           ? `${en.lesson_done}/${en.lesson_total} bài · `
           : ""}
         {PROGRESS_LABEL[en.progress_status] ?? ""}
+        {needsSchedule(en) && (
+          <span className={styles.unscheduled}> · Chưa xếp lịch</span>
+        )}
       </div>
     );
     return (
@@ -388,7 +406,7 @@ export function EnrollmentsTab({
             type="button"
             className={styles.nameBtn}
             title="Mở hồ sơ ghi danh"
-            onClick={() => setDetailId(en.id)}
+            onClick={() => openDetail(en.id)}
           >
             {en.trainee_name}
           </button>
@@ -460,9 +478,17 @@ export function EnrollmentsTab({
         )}
         <td className={`${tbl.td} ${tbl.tdActions}`}>
           <RowActions
-            onEdit={() => setDetailId(en.id)}
+            onEdit={() => openDetail(en.id)}
             onDelete={() => onRemove(en.id)}
           >
+            {needsSchedule(en) && (
+              <RowAction
+                title="Xếp lịch thực hành (khoa, ngày, người hướng dẫn)"
+                onClick={() => openDetail(en.id, "rotations")}
+              >
+                <CalendarSvg />
+              </RowAction>
+            )}
             {canViewTrainee && (
               <RowAction
                 title="Hồ sơ học viên (giấy tờ, điểm danh, kết quả các khóa)"
@@ -561,7 +587,9 @@ export function EnrollmentsTab({
           <span className={styles.hint} style={{ flexBasis: "100%" }}>
             Chưa có trong danh sách? Thêm ở mục Học viên trước (khóa thực hành:
             nhập sổ Excel). Ghi danh ở đây được duyệt luôn (đủ sĩ số thì vào
-            danh sách chờ); bấm tên học viên trong bảng để mở hồ sơ.
+            danh sách chờ)
+            {course?.is_rolling && "; khóa thực hành: duyệt xong thì xếp lịch vòng ở bước sau"}; bấm tên
+            học viên trong bảng để mở hồ sơ.
           </span>
         </div>
       )}
@@ -639,11 +667,15 @@ export function EnrollmentsTab({
                 <button
                   type="button"
                   className={styles.btnGhost}
-                  disabled={busy || arranging || enrollments.length === 0}
+                  disabled={busy || arranging || unscheduled === 0}
                   onClick={autoArrange}
-                  title="Mọi hồ sơ đang học chưa có vòng: sinh vòng, xếp lịch so le, chọn khoa và người hướng dẫn đang kèm ít người nhất, sinh mã thực hành"
+                  title="Mọi hồ sơ đã duyệt, đang học mà chưa có vòng: sinh vòng, xếp lịch so le, chọn khoa và người hướng dẫn đang kèm ít người nhất, sinh mã thực hành"
                 >
-                  {arranging ? "Đang xếp…" : "Tự xếp hồ sơ mới"}
+                  {arranging
+                    ? "Đang xếp…"
+                    : unscheduled
+                      ? `Xếp lịch ${unscheduled} hồ sơ đã duyệt`
+                      : "Không có hồ sơ chờ xếp lịch"}
                 </button>
               </>
             )}
@@ -845,6 +877,7 @@ export function EnrollmentsTab({
       {detail && (
         <EnrollmentDetailModal
           enrollment={detail}
+          initialTab={detailTab}
           course={course}
           programLinks={programLinks}
           onClose={() => setDetailId(null)}

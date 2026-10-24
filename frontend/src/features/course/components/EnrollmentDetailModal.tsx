@@ -56,12 +56,15 @@ const programLabel = (p: CourseProgramLink) => (p.program_code ? `${p.program_co
 // (các cột đăng ký của sổ thực hành) và bài học tự gắn theo chương trình (ĐTLT).
 export function EnrollmentDetailModal({
 	enrollment,
+	initialTab,
 	course,
 	programLinks,
 	onClose,
 	onSaved,
 }: {
 	enrollment: Enrollment;
+	/** Tab mở sẵn (vd "rotations" khi bấm "Xếp lịch" ở danh sách); không hợp lệ thì về "Thông tin hồ sơ". */
+	initialTab?: Tab;
 	course: Course | null;
 	programLinks: CourseProgramLink[];
 	onClose: () => void;
@@ -71,7 +74,7 @@ export function EnrollmentDetailModal({
 	const [lessons, setLessons] = useState<EnrollmentLesson[]>([]);
 	const [saving, setSaving] = useState(false);
 	const [error, setError] = useState('');
-	const [tab, setTab] = useState<Tab>('info');
+	const [tab, setTab] = useState<Tab>(initialTab ?? 'info');
 
 	// "Tự động xếp" vòng điền mã, ngày, lĩnh vực, địa điểm… lên hồ sơ ngay khi modal đang mở —
 	// ô người dùng chưa sửa thì hiện & lưu theo giá trị mới nhất của hồ sơ (không ghi đè bằng giá trị cũ).
@@ -382,6 +385,7 @@ export function EnrollmentDetailModal({
 						enrollmentId={enrollment.id}
 						who={enrollment.practice_code || enrollment.trainee_name}
 						hasProgram={!!enrollment.program_id && !programChanged}
+						approved={enrollment.status === 'approved'}
 						enrollmentStart={view.start_date || null}
 						onChanged={onSaved}
 					/>

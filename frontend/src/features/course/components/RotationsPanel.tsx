@@ -41,6 +41,7 @@ export function RotationsPanel({
 	enrollmentId,
 	who,
 	hasProgram,
+	approved,
 	enrollmentStart,
 	onChanged,
 }: {
@@ -48,6 +49,8 @@ export function RotationsPanel({
 	/** Mã thực hành / tên học viên — đặt tên file phiếu nhận xét. */
 	who: string;
 	hasProgram: boolean;
+	/** Duyệt xong mới xếp lịch — hồ sơ chưa duyệt chưa có vòng thì chỉ báo. */
+	approved: boolean;
 	enrollmentStart: string | null;
 	onChanged: () => void;
 }) {
@@ -99,6 +102,12 @@ export function RotationsPanel({
 	if (!hasProgram)
 		return <div className={styles.subEmpty}>Chọn chương trình (và lưu hồ sơ) để sinh các vòng thực hành.</div>;
 	if (!data) return <div className={styles.subEmpty}>Đang tải vòng thực hành…</div>;
+	if (!approved && data.rows.length === 0)
+		return (
+			<div className={styles.subEmpty}>
+				Hồ sơ chưa được duyệt — duyệt hồ sơ ở danh sách học viên rồi mới xếp lịch thực hành.
+			</div>
+		);
 
 	const autoArrange = (replace: boolean, carryOver = false) => {
 		if (

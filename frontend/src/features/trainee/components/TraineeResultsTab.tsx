@@ -208,7 +208,7 @@ export function TraineeCertificatesTab({ traineeId }: { traineeId: string }) {
 				className={ds.summary}
 				style={{ marginTop: 20 }}
 			>
-				<b>Đào tạo liên tục (CME)</b>
+				<b>Tín chỉ CME</b>
 				{cme && (
 					<span>
 						· Tích lũy <b>{fmt(cme.earned_credits)}</b> giờ tín chỉ ({cme.seminars.length} hội thảo/tập huấn,{' '}

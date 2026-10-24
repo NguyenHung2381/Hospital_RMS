@@ -66,14 +66,13 @@ const registerTrainee = asyncHandler(async (req, res) => {
 	const item = user_id
 		? await courseEnrollmentService.registerStaff(req.params.id, user_id, req.user.id, opts)
 		: await courseEnrollmentService.registerTrainee(req.params.id, trainee_id, req.user.id, opts);
-	// Phòng Đào tạo ghi danh hộ ⇒ duyệt luôn (đủ sĩ số thì vào danh sách chờ; khóa GPHN tự xếp vòng / khoa / NHD)
+	// Phòng Đào tạo ghi danh hộ ⇒ duyệt luôn (đủ sĩ số thì vào danh sách chờ). Khóa GPHN: xếp lịch vòng là bước sau.
 	const decided = await courseEnrollmentService.decideEnrollment(item.id, 'approved', req.user.id);
 	return created(res, {
 		...item,
 		status: decided.status,
 		moved_to: decided.moved_to,
 		waitlist_position: decided.waitlist_position,
-		auto_warning: decided.auto_warning,
 	});
 });
 

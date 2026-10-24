@@ -82,7 +82,7 @@ export default function SeminarDashboard() {
 
 	return (
 		<AdminLayout
-			pageTitle='Tổng quan Hội nghị & Đào tạo liên tục'
+			pageTitle='Tổng quan Hội nghị & Tín chỉ CME'
 			pageSubtitle={`Hội thảo, hội nghị, lượt tham dự và chứng nhận CME năm ${year}`}
 		>
 			<DashboardTabs />

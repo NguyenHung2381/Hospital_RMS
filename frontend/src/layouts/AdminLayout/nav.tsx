@@ -132,9 +132,9 @@ const navItem = (
 // Nguyên tắc sắp xếp:
 // - Mỗi mảng nghiệp vụ là 1 nhóm, các mục đi theo luồng công việc, danh
 //   mục/cấu hình của mảng xếp cuối nhóm.
-// - 4 dashboard (chung / NCKH / Đào tạo / Hội nghị & ĐTLT) là 1 trang có tab
+// - 4 dashboard (chung / NCKH / Đào tạo / Hội nghị & CME) là 1 trang có tab
 //   (DashboardTabs) nên chỉ có 1 mục menu; tab của module bị tắt tự ẩn.
-// - Hội nghị (tổ chức sự kiện) và Đào tạo liên tục (tín chỉ CME từ hội nghị,
+// - Hội nghị (tổ chức sự kiện) và Tín chỉ CME (tín chỉ từ hội nghị,
 //   khoá học, ghi nhận ngoài) là 2 nhóm riêng, dùng chung module 'seminar'.
 // - Mục dùng chung nhiều mảng (Báo cáo, Thông báo, Khảo sát) không nhét vào
 //   "Quản trị hệ thống"; Nhân sự (CCHN) tách nhóm riêng. Điểm danh là của học viên
@@ -169,11 +169,11 @@ export const NAV_GROUPS: NavGroup[] = [
 		],
 	},
 	{
-		// Việc hằng ngày: khóa học (ghi danh → lịch → thi → kết quả) và thực hành GPHN.
+		// Việc hằng ngày: khóa học (ghi danh → lịch → thi → kết quả) và thực hành GPHN theo ngày.
 		section: 'Đào tạo',
 		items: [
 			navItem('courses', 'Khóa học', ClipboardCheckSvg, 'courses:read'),
-			navItem('practiceBoard', 'Thực hành GPHN', DeptSvg, 'courses:read'),
+			navItem('practiceBoard', 'Thực hành theo ngày', DeptSvg, 'courses:read'),
 			navItem('classSchedule', 'Lịch học', CalendarSvg, 'courses:read'),
 			navItem('trainees', 'Học viên', UsersSvg, 'trainees:read'),
 			navItem('shiftRoster', 'Phân ca học viên', CalendarSvg, 'staff_attendance:roster'),
@@ -219,7 +219,7 @@ export const NAV_GROUPS: NavGroup[] = [
 	},
 	{
 		// Tín chỉ CME: cấp từ hội nghị → ghi nhận ngoài → theo dõi ngưỡng → danh mục.
-		section: 'Đào tạo liên tục',
+		section: 'Tín chỉ CME',
 		items: [
 			navItem('cmeRegister', 'Sổ cấp chứng nhận', BadgeSvg, 'seminars:read'),
 			navItem('cmeRecords', 'Ghi nhận độc lập', EditSvg, 'cme_records:manage'),
@@ -288,7 +288,7 @@ const MODULE_BY_SECTION: Record<string, ModuleKey> = {
 	'Đào tạo': 'training',
 	'Thiết lập đào tạo': 'training',
 	'Hội nghị': 'seminar',
-	'Đào tạo liên tục': 'seminar',
+	'Tín chỉ CME': 'seminar',
 };
 const MODULE_BY_KEY: Record<string, ModuleKey> = {
 	surveys: 'survey',

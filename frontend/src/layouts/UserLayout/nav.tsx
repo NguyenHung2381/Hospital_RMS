@@ -100,7 +100,7 @@ export const NAV_GROUPS: NavGroup[] = [
 		title: 'Đào tạo',
 		items: [
 			{ key: 'myTraining', label: 'Khóa học của tôi', icon: <BookOpenSvg className={styles.navIcon} />, module: 'training' },
-			{ key: 'myCme', label: 'Đào tạo liên tục (CME)', icon: <BadgeSvg className={styles.navIcon} />, module: 'seminar' },
+			{ key: 'myCme', label: 'Tín chỉ CME của tôi', icon: <BadgeSvg className={styles.navIcon} />, module: 'seminar' },
 		],
 	},
 	{

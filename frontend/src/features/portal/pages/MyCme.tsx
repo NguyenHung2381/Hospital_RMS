@@ -126,7 +126,7 @@ export default function MyCme() {
 
 	return (
 		<UserLayout
-			pageTitle='Đào tạo liên tục của tôi'
+			pageTitle='Tín chỉ CME của tôi'
 			pageSubtitle='Tín chỉ đào tạo liên tục tích luỹ qua hội thảo, hội nghị và ghi nhận độc lập'
 			headerActions={
 				<div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>

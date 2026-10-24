@@ -6,5 +6,5 @@ export const DASHBOARD_TABS: { to: string; label: string; module?: ModuleKey }[]
 	{ to: '/admin', label: 'Tổng quan chung' },
 	{ to: '/admin/dashboard/research', label: 'Nghiên cứu khoa học', module: 'research' },
 	{ to: '/admin/dashboard/training', label: 'Đào tạo', module: 'training' },
-	{ to: '/admin/dashboard/seminar', label: 'Hội nghị & Đào tạo liên tục', module: 'seminar' },
+	{ to: '/admin/dashboard/seminar', label: 'Hội nghị & Tín chỉ CME', module: 'seminar' },
 ];

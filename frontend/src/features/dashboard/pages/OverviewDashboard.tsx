@@ -157,7 +157,7 @@ export default function OverviewDashboard() {
 	return (
 		<AdminLayout
 			pageTitle='Tổng quan Hệ thống'
-			pageSubtitle='Số liệu chung toàn hệ thống: tài khoản, Nghiên cứu khoa học, Đào tạo, Hội nghị và Đào tạo liên tục'
+			pageSubtitle='Số liệu chung toàn hệ thống: tài khoản, Nghiên cứu khoa học, Đào tạo, Hội nghị và Tín chỉ CME'
 		>
 			<DashboardTabs />
 
@@ -241,7 +241,7 @@ export default function OverviewDashboard() {
 					]}
 				/>
 				<ModuleCard
-					title={`Hội nghị & Đào tạo liên tục ${year}`}
+					title={`Hội nghị & Tín chỉ CME ${year}`}
 					subtitle='Hội nghị, hội thảo & tín chỉ CME trong năm'
 					loading={loading}
 					linkLabel='Dashboard Hội thảo'

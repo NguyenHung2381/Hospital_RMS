@@ -138,6 +138,8 @@ export interface Enrollment {
 	program_name: string | null;
 	lesson_total: number;
 	lesson_done: number;
+	/** Số dòng vòng thực hành GPHN đã sinh — 0 = hồ sơ chưa xếp lịch. */
+	rotation_total: number;
 	// Hồ sơ thực hành GPHN (các cột của sổ thực hành)
 	practice_code: string | null;
 	professional_field: string | null;

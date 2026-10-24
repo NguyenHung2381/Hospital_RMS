@@ -6,7 +6,6 @@ const { ROLE, inputRoleId } = require('../../access/roleCodes');
 const { getById } = require('./courseService');
 const { httpError } = require('../../../utils/httpError');
 const enrollmentProgramService = require('./enrollmentProgramService');
-const practiceAutoService = require('./practiceAutoService');
 const programClassService = require('./programClassService');
 const systemSettingService = require('../../settings/systemSettingService');
 
@@ -19,6 +18,7 @@ const listEnrollments = async (courseId) => {
            tp.code AS program_code, tp.name AS program_name, mm.full_name AS main_mentor_name,
            (SELECT COUNT(*) FROM enrollment_lessons el WHERE el.enrollment_id = e.id) AS lesson_total,
            (SELECT COUNT(*) FROM enrollment_lessons el WHERE el.enrollment_id = e.id AND el.status = 'done') AS lesson_done,
+           (SELECT COUNT(*) FROM enrollment_rotations er WHERE er.enrollment_id = e.id) AS rotation_total,
            CASE WHEN e.status = 'waitlisted' THEN ${programClassService.WAITLIST_POSITION_SQL('e')} END AS waitlist_position
     FROM course_enrollments e
     JOIN trainees t ON t.id = e.trainee_id
@@ -291,18 +291,13 @@ const decideEnrollment = async (enrollmentId, decision, actorId, note) => {
 		);
 	}
 
-	// Duyệt vào khóa GPHN ⇒ tự xếp vòng / khoa / NHD
-	const auto =
-		finalStatus === 'approved'
-			? await practiceAutoService.arrangeIfPractice(enrollmentId, actorId)
-			: {};
+	// Khóa GPHN: duyệt chỉ là duyệt — xếp vòng / khoa / NHD là bước riêng (practiceAutoService.arrange).
 	broadcast('update', { entity: 'course_enrollment' });
 	return {
 		id: enrollmentId,
 		status: finalStatus,
 		moved_to: movedTo,
 		waitlist_position: waitlistPosition,
-		auto_warning: auto.warning ?? null,
 	};
 };
 
