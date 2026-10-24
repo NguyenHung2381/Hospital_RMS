@@ -370,6 +370,17 @@ export const getGradeHistory = (enrollmentId: string) =>
 export const issueCertificatesBulk = (courseId: string, expiryDate?: string) =>
 	apiClient.post<{ issued: number }>(`/courses/${courseId}/certificates/bulk`, { expiry_date: expiryDate || null });
 
+/** Ghi lại CME tự động của khóa (courseCmeService) — null = không chạy (công tắc tắt / điểm chưa khóa). */
+export interface CourseCmeSyncResult {
+	trainees: number | null;
+	lecturers: number | null;
+	trainee_enabled: boolean;
+	lecturer_enabled: boolean;
+	grades_locked: boolean;
+}
+export const syncCourseCme = (courseId: string) =>
+	apiClient.post<CourseCmeSyncResult>(`/courses/${courseId}/cme-sync`, {});
+
 // ─── Certificates ───────────────────────────────────────────────────────────
 export const getCertificates = (courseId: string) =>
 	apiClient.get<Certificate[]>(`/courses/${courseId}/certificates`);

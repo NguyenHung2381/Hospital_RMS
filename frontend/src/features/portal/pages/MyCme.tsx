@@ -6,6 +6,7 @@ import { formatDateVN } from '@/shared/utils/formatDate';
 import UserLayout from '../../../layouts/UserLayout';
 import { useRealtimeUpdate } from '../../../layouts/hooks/useRealtime';
 import { CME_STATUS_LABELS, EVENT_TYPE_LABELS, PARTICIPATION_LABELS } from '../../seminar/types/seminar.type';
+import { CME_SOURCE_LABEL } from '../../seminar/types/cmeRecord.type';
 import { saveBlob } from '@/shared/utils/saveBlob';
 import MyCmeRecordModal from '../components/MyCmeRecordModal';
 import { useUploadPolicy } from '@/shared/hooks/useUploadPolicy';
@@ -305,6 +306,11 @@ export default function MyCme() {
 														<td className={tbl.tdIdx}>{recPg.offset + i + 1}</td>
 														<td>
 															<span className={tbl.cellTitle}>{r.title}</span>
+															{r.source_type && (
+																<div>
+																	<Badge tone='purple'>{CME_SOURCE_LABEL[r.source_type]}</Badge>
+																</div>
+															)}
 															{r.evidence_file_url && (
 																<a href={r.evidence_file_url} target='_blank' rel='noreferrer' title={r.evidence_file_name ?? 'Minh chứng'}>
 																	{' '}
@@ -350,7 +356,7 @@ export default function MyCme() {
 																>
 																	Bổ sung file
 																</Button>
-															) : (
+															) : r.source_type ? null : (
 																<div style={{ display: 'flex', gap: 6 }}>
 																	<Button size='sm' variant='secondary' icon={<EditSvg />} onClick={() => setEditing(r)} title='Sửa' />
 																	<Button size='sm' variant='secondary' icon={<TrashSvg />} onClick={() => handleDelete(r.id)} title='Xoá' />

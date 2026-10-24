@@ -508,7 +508,7 @@ const issueCertificate = asyncHandler(async (req, res) => {
 });
 
 const removeCertificate = asyncHandler(async (req, res) => {
-	await certificateService.removeCertificate(req.params.certId);
+	await certificateService.removeCertificate(req.params.certId, req.user.id);
 	return success(res, null, 'Đã xoá chứng chỉ');
 });
 

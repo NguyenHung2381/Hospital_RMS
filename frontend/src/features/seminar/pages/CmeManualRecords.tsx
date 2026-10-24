@@ -45,6 +45,7 @@ import { usePermission } from '@/shared/hooks/usePermission';
 import { updateUser } from '@/features/user/api/userApi';
 import { saveBlob } from '@/shared/utils/saveBlob';
 import {
+	CME_SOURCE_LABEL,
 	EMPTY_CME_RECORD_FORM,
 	type CmeCreditCategory,
 	type CmeRecord,
@@ -1963,6 +1964,7 @@ ${missing} ghi nhận chưa có tín chỉ sẽ được bỏ qua (cần duyệt
 										</td>
 										<td>
 											<div className={styles.cmeCellMain}>{r.title}</div>
+											{r.source_type && <Badge tone='purple'>{CME_SOURCE_LABEL[r.source_type]}</Badge>}
 											{r.note && <div className={styles.cmeCellSub}>{r.note}</div>}
 										</td>
 										<td>

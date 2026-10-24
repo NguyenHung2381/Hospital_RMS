@@ -78,6 +78,7 @@ GET    /api/v1/courses/:id  courses:read
 PUT    /api/v1/courses/:id  courses:update
 GET    /api/v1/courses/:id/certificates  courses:read
 POST   /api/v1/courses/:id/certificates/bulk  courses:approve
+POST   /api/v1/courses/:id/cme-sync  courses:approve
 GET    /api/v1/courses/:id/documents  courses:read
 POST   /api/v1/courses/:id/documents  courses:update
 POST   /api/v1/courses/:id/enrollments  courses:create

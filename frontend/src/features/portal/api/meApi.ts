@@ -3,6 +3,7 @@ import type { CourseDisplayStatus, DocType, EnrollmentStatus, ExamType, Progress
 import type { AvailablePaper } from '../../exam/types/exam.type';
 import type { CmeStatus, ParticipationType, SeminarEventType, SeminarScope } from '../../seminar/types/seminar.type';
 import type { PublicCourse } from '../../public/api/publicApi';
+import type { CmeSourceType } from '../../seminar/types/cmeRecord.type';
 
 interface MyCourseBase {
 	id: string;
@@ -120,6 +121,8 @@ export interface MyCmeRecord {
 	category_name: string | null;
 	approval_status: CmeApprovalStatus;
 	reject_reason: string | null;
+	/** Dòng tự động từ khóa học — không tự sửa / xoá */
+	source_type: CmeSourceType | null;
 	evidence_file_name: string | null;
 	evidence_file_url: string | null;
 	/** File bổ sung chứng minh kết quả — tải lên sau khi đã duyệt. */

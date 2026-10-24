@@ -12,7 +12,9 @@ import {
 	lockGrades,
 	retakeGrade,
 	saveGradesBulk,
+	syncCourseCme,
 	unlockGrades,
+	type CourseCmeSyncResult,
 } from '../api/courseApi';
 import type { useCourseDetail } from '../hooks/useCourseDetail';
 import {
@@ -26,6 +28,16 @@ import { GradebookTable } from './GradebookTable';
 import styles from '../pages/Courses.module.css';
 
 const PART_LABEL: Record<GradePart, string> = { theory: 'LT', practice: 'TH' };
+
+const cmeSyncMessage = (r: CourseCmeSyncResult) => {
+	const parts = [
+		r.trainees == null ? 'học viên: công tắc đang tắt' : `${r.trainees} học viên`,
+		r.lecturers == null
+			? `giảng viên: ${r.lecturer_enabled ? 'điểm chưa khóa' : 'công tắc đang tắt'}`
+			: `${r.lecturers} giảng viên`,
+	];
+	return `Đã ghi lại CME — ${parts.join(', ')}`;
+};
 const SOURCE_LABEL: Record<GradeHistoryItem['source'], string> = {
 	manual: 'Nhập tay',
 	exam: 'Bài thi',
@@ -140,6 +152,22 @@ export function ResultsTab({ courseId, d }: { courseId: string; d: ReturnType<ty
 						<BadgeSvg /> Cấp giấy chứng nhận ({toIssue} người đạt)
 					</button>
 				</>
+			)}
+			{book.locked && has('courses:approve') && (
+				<button
+					className={styles.btnGhost}
+					disabled={busy}
+					title='Tự cộng tín chỉ CME: học viên nội viện đã có giấy chứng nhận + giảng viên theo số tiết (Cài đặt hệ thống → Đào tạo)'
+					onClick={() => {
+						setBusy(true);
+						syncCourseCme(courseId)
+							.then((r) => showToast('success', cmeSyncMessage(r)))
+							.catch((err) => showToast('error', err instanceof Error ? err.message : 'Ghi CME thất bại'))
+							.finally(() => setBusy(false));
+					}}
+				>
+					Ghi lại CME
+				</button>
 			)}
 		</>
 	);

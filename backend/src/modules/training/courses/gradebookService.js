@@ -3,6 +3,8 @@ const { broadcast } = require('../../events/eventService');
 const { httpError } = require('../../../utils/httpError');
 const systemSettingService = require('../../settings/systemSettingService');
 const certificateService = require('./certificateService');
+const courseCmeService = require('./courseCmeService');
+const logger = require('../../../config/logger');
 const { DEFAULT_RULES, RULE_SETTING_KEYS, evaluate, partHours, round1 } = require('./gradeRules');
 const { SESSION_IN_PROGRAM_SQL } = require('./sessionScope');
 
@@ -368,6 +370,10 @@ const lock = async (courseId, actorId) => {
 	});
 	await recompute(courseId);
 	broadcast('update', { entity: 'grade' });
+	// Khóa điểm ⇒ tự cộng CME giảng viên (công tắc CME_AUTO_LECTURER); lỗi chỉ ghi log
+	await courseCmeService
+		.syncLecturers(courseId, actorId)
+		.catch((err) => logger.error(`[course-cme] khóa điểm ${courseId}: ${err.message}`));
 	return getGradebook(courseId);
 };
 

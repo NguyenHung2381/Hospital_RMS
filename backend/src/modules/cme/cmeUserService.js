@@ -25,7 +25,7 @@ const getUserCme = async (userId, year) => {
     ORDER BY s.start_date DESC;
 
     SELECT r.id, r.title, r.activity_date, r.end_date, r.year, r.role, r.quantity, r.credits, r.note,
-           r.category_id, c.name AS category_name, r.approval_status, r.reject_reason,
+           r.category_id, c.name AS category_name, r.approval_status, r.reject_reason, r.source_type,
            f.file_name AS evidence_file_name, f.file_url AS evidence_file_url,
            CAST(CASE WHEN r.evidence_file_id IS NULL THEN 0 ELSE 1 END AS BIT) AS has_evidence,
            ${RESULT_FILES_SQL}

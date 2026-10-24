@@ -19,7 +19,7 @@ const { suggestClassDates } = require('../../../utils/classDates');
 //     Lớp có người rút ⇒ người chờ CỦA CHÍNH KHÓA được gọi vào. Không tự chuyển sang
 //     khóa khác: đợt mới cùng chương trình gợi ý danh sách "Người chờ từ đợt trước",
 //     cán bộ chọn rồi bấm chuyển (waitlistTransferService).
-const CLASS_TYPES = ['TRNTP-DTLT', 'TRNTP-CTCV'];
+const { CLASS_TYPES } = require('./classTypes');
 const VN_TODAY = 'CAST(DATEADD(HOUR, 7, GETUTCDATE()) AS DATE)';
 
 const appliesTo = (c) => !!c && CLASS_TYPES.includes(c.training_type_id) && !c.is_rolling;
@@ -413,6 +413,7 @@ const assertClassOpen = async (courseId, subjectId) => {
 };
 
 module.exports = {
+	CLASS_TYPES,
 	appliesTo,
 	APPLIES_SQL,
 	CLASS_COLUMNS,

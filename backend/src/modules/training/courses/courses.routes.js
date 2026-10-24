@@ -3,6 +3,7 @@ const { body, query } = require('express-validator');
 const ctrl = require('./courseController');
 const practiceCtrl = require('./practiceRecordController');
 const waitlistCtrl = require('./waitlistController');
+const cmeCtrl = require('./courseCmeController');
 const uploadExcel = require('../../../middlewares/uploadExcel');
 const { authenticate, authorizePermission } = require('../../../middlewares/auth');
 const { validate } = require('../../../middlewares/errorHandler');
@@ -69,9 +70,17 @@ router.get(
 	ctrl.getPracticeBoard,
 );
 // Hồ sơ thực hành GPHN trên mọi khóa — màn "Hồ sơ thực hành GPHN" (trước '/:id').
-router.get('/practice-records', authorizePermission(['courses', 'read']), practiceCtrl.listPracticeRecords);
+router.get(
+	'/practice-records',
+	authorizePermission(['courses', 'read']),
+	practiceCtrl.listPracticeRecords,
+);
 // Nhập kết quả vòng hàng loạt (phiếu giấy của NHD) — vòng đã kết thúc chưa đánh giá.
-router.get('/practice-results', authorizePermission(['courses', 'read']), practiceCtrl.listAwaitingResults);
+router.get(
+	'/practice-results',
+	authorizePermission(['courses', 'read']),
+	practiceCtrl.listAwaitingResults,
+);
 router.put(
 	'/practice-results/bulk',
 	authorizePermission(['courses', 'update']),
@@ -147,7 +156,11 @@ router.post(
 	ctrl.openClass,
 );
 // Người chờ từ đợt trước (cùng chương trình, nội viện): gợi ý + cán bộ chọn chuyển sang đợt này.
-router.get('/:id/waitlist-candidates', authorizePermission(['courses', 'read']), waitlistCtrl.listCandidates);
+router.get(
+	'/:id/waitlist-candidates',
+	authorizePermission(['courses', 'read']),
+	waitlistCtrl.listCandidates,
+);
 router.post(
 	'/:id/waitlist-transfer',
 	authorizePermission(['courses', 'approve']),
@@ -518,5 +531,7 @@ router.patch(
 	authorizePermission(['courses', 'approve']),
 	ctrl.revokeCertificate,
 );
+// Tự cộng CME (courseCmeService): ghi lại cho học viên đã có giấy + giảng viên khi điểm đã khóa.
+router.post('/:id/cme-sync', authorizePermission(['courses', 'approve']), cmeCtrl.sync);
 
 module.exports = router;

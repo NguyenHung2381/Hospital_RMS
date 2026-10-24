@@ -24,7 +24,17 @@ export interface CmeRecord {
 	note: string | null;
 	approval_status: 'pending' | 'approved' | 'rejected';
 	reject_reason: string | null;
+	/** Dòng tự động từ khóa ĐTLT / CTCV (courseCmeService); null = tự khai / cán bộ nhập */
+	source_type?: CmeSourceType | null;
+	/** Mã khóa học nguồn */
+	source_id?: string | null;
 }
+
+export type CmeSourceType = 'course_trainee' | 'course_lecturer';
+export const CME_SOURCE_LABEL: Record<CmeSourceType, string> = {
+	course_trainee: 'Tự động · học viên khóa học',
+	course_lecturer: 'Tự động · giảng dạy khóa học',
+};
 
 export interface CmeRecordFormData {
 	user_id: string;

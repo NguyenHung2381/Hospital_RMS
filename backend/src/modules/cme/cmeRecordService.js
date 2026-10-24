@@ -232,6 +232,9 @@ const httpErr = (message, statusCode) => httpError(statusCode, message);
 const assertEditableMine = async (id, userId) => {
 	const rec = await getById(id);
 	if (!rec || rec.user_id !== userId) throw httpErr('Không tìm thấy ghi nhận CME', 404);
+	// Dòng tự động từ khóa học (courseCmeService) — theo giấy chứng nhận / khóa điểm, không tự sửa
+	if (rec.source_type)
+		throw httpErr('Ghi nhận CME tự động từ khóa học, không thể sửa hoặc xoá', 409);
 	if (rec.approval_status === 'approved')
 		throw httpErr('Ghi nhận đã được duyệt, không thể sửa hoặc xoá', 409);
 	return rec;

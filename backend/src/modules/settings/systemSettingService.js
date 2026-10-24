@@ -63,6 +63,9 @@ const KEYS = [
 	'GRADE_RANK_EXCELLENT',
 	'GRADE_RANK_GOOD',
 	'GRADE_RANK_AVERAGE',
+	// Tự cộng tín chỉ CME từ khóa ĐTLT / CTCV — training/courses/courseCmeService.js
+	'CME_AUTO_TRAINEE',
+	'CME_AUTO_LECTURER',
 	// Email theo chức năng — mặc định ở mailService.EVENT_DEFAULTS
 	'MAIL_EVENT_TOPIC_RESULT',
 	'MAIL_EVENT_DEADLINE_REMINDER',

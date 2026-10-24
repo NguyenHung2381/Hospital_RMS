@@ -30,7 +30,7 @@ const findEnrollmentStatus = async (enrollmentId) => {
 };
 
 // Cấp chứng chỉ: số CC<năm><4 số> (sp_gen_certificate_no) + mã (sp_gen_certificate_id).
-// Trả { id, cert_no }; null nếu đăng ký này đã có chứng chỉ (kiểm tra trong
+// Trả { id, cert_no, course_id }; null nếu đăng ký này đã có chứng chỉ (kiểm tra trong
 // cùng câu lệnh với INSERT — không có khe giữa kiểm tra và ghi).
 const DUPLICATE = 51001;
 const insert = async ({ enrollmentId, actorId, year, expiryDate }) => {
@@ -52,7 +52,8 @@ const insert = async ({ enrollmentId, actorId, year, expiryDate }) => {
       EXEC sp_gen_certificate_id @actor_id = @actor_id, @new_id = @new_id OUTPUT;
       INSERT INTO certificates (id, enrollment_id, cert_no, expiry_date, created_by)
       VALUES (@new_id, @enrollment_id, @cert_no, @expiry_date, @actor_id);
-      SELECT @new_id AS id, @cert_no AS cert_no;
+      SELECT @new_id AS id, @cert_no AS cert_no,
+             (SELECT course_id FROM course_enrollments WHERE id = @enrollment_id) AS course_id;
     `);
 		return r.recordset[0];
 	} catch (err) {

@@ -451,6 +451,29 @@ const SECTIONS: Section[] = [
 					},
 				],
 			},
+			{
+				title: 'Tự cộng tín chỉ CME (khóa ĐTLT / CTCV)',
+				fields: [
+					{
+						key: 'CME_AUTO_TRAINEE',
+						label: 'Cộng CME cho học viên',
+						hint: 'Học viên nội viện có tài khoản được cấp giấy chứng nhận ⇒ ghi 1 dòng CME đã duyệt (tín chỉ = số giờ tín chỉ của chương trình, chưa khai thì theo số tiết). Thu hồi giấy chứng nhận thì thu hồi dòng CME.',
+						type: 'bool',
+						defaultOn: true,
+						onText: 'Tự cộng',
+						offText: 'Không cộng',
+					},
+					{
+						key: 'CME_AUTO_LECTURER',
+						label: 'Cộng CME cho giảng viên',
+						hint: 'Khi khóa điểm: giảng viên có tài khoản được ghi CME theo số tiết đảm nhận × hệ số danh mục "Giảng dạy về y khoa" (GIANGDAY).',
+						type: 'bool',
+						defaultOn: true,
+						onText: 'Tự cộng',
+						offText: 'Không cộng',
+					},
+				],
+			},
 		],
 	},
 ];
