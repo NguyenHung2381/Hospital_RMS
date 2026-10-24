@@ -2,6 +2,7 @@ import {
 	BadgeSvg,
 	BellSvg,
 	BookOpenSvg,
+	CalendarSvg,
 	ClipboardCheckSvg,
 	ClipboardSvg,
 	DashboardSvg,
@@ -32,6 +33,7 @@ export const KEY_TO_PATH: Record<string, string> = {
 	myTraining: '/user/khoa-hoc',
 	myCme: '/user/cme',
 	myMentoring: '/user/huong-dan',
+	myHospitalTrainings: '/user/tap-huan',
 	profile: '/user/profile',
 	deptAccounts: '/user/department-accounts',
 	notifications: '/user/notifications',
@@ -105,6 +107,12 @@ export const NAV_GROUPS: NavGroup[] = [
 		items: [
 			{ key: 'myTraining', label: 'Khóa học của tôi', icon: <BookOpenSvg className={styles.navIcon} />, module: 'training' },
 			{ key: 'myCme', label: 'Tín chỉ CME của tôi', icon: <BadgeSvg className={styles.navIcon} />, module: 'seminar' },
+			{
+				key: 'myHospitalTrainings',
+				label: 'Tập huấn bệnh viện',
+				icon: <CalendarSvg className={styles.navIcon} />,
+				module: 'seminar',
+			},
 			{
 				key: 'myMentoring',
 				label: 'Hướng dẫn thực hành',

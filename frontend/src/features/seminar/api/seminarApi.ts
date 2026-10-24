@@ -184,6 +184,10 @@ export const addSeminarUsers = (seminarId: string, userIds: string[]) =>
 		{ user_ids: userIds },
 	);
 
+/** Thêm cả khoa bắt buộc: mọi nhân sự các khoa bắt buộc chưa có trong danh sách */
+export const addRequiredStaff = (seminarId: string) =>
+	apiClient.post<{ inserted: number; skipped: number }>(`/seminars/${seminarId}/participants/add-required`, {});
+
 export const getRequiredAbsentees = (seminarId: string) =>
 	apiClient.get<RequiredAbsentee[]>(`/seminars/${seminarId}/required-absentees`);
 

@@ -1,0 +1,78 @@
+/* Màn "Tập huấn bệnh viện" của nhân viên — ưu tiên điện thoại (360px). */
+.head {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: flex-start;
+	justify-content: space-between;
+	gap: 6px 10px;
+}
+
+.title {
+	flex: 1 1 220px;
+	min-width: 0;
+	font-weight: 700;
+	color: #0f172a;
+}
+
+.badges {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 6px;
+}
+
+.facts {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 6px 16px;
+	margin-top: 8px;
+	font-size: var(--font-size-compact);
+	color: #475569;
+}
+
+.facts > span {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	min-width: 0;
+}
+
+.facts svg {
+	width: 15px;
+	height: 15px;
+	flex-shrink: 0;
+	color: #94a3b8;
+}
+
+.organizer {
+	flex-basis: 100%;
+	color: #64748b;
+}
+
+.footer {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	justify-content: flex-end;
+	gap: 8px 12px;
+	margin-top: 12px;
+	padding-top: 12px;
+	border-top: 1px solid var(--color-gray-100);
+}
+
+.note {
+	flex: 1 1 auto;
+	font-size: var(--font-size-xs);
+	color: #64748b;
+}
+
+.bigBtn {
+	min-height: 44px;
+	justify-content: center;
+	font-size: var(--font-size-base);
+}
+
+@media (max-width: 480px) {
+	.bigBtn {
+		flex: 1 1 100%;
+	}
+}

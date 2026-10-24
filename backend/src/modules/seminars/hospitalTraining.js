@@ -59,6 +59,7 @@ const setRequiredDepartments = async (pool, seminarId, ids) => {
 };
 
 module.exports = {
+	HOSPITAL_TRAINING_SQL,
 	TRAINING_FIELD_TYPES,
 	trainingFilter,
 	trainingSelect,

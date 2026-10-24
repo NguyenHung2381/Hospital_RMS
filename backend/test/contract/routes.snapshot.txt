@@ -221,6 +221,9 @@ POST   /api/v1/me/cme/export-excel  authOnly
 GET    /api/v1/me/courses/:id  authOnly
 POST   /api/v1/me/courses/:id/register  authOnly
 PATCH  /api/v1/me/documents/:docId/download  authOnly
+GET    /api/v1/me/hospital-trainings/  authOnly
+POST   /api/v1/me/hospital-trainings/:id/register  authOnly
+DELETE /api/v1/me/hospital-trainings/:id/register  authOnly
 PATCH  /api/v1/me/lesson-documents/:docId/download  authOnly
 GET    /api/v1/me/mentoring/  authOnly
 GET    /api/v1/me/mentoring/count  authOnly
@@ -324,6 +327,7 @@ POST   /api/v1/seminars/:id/participants  seminars:update
 PUT    /api/v1/seminars/:id/participants/:pid  seminars:update
 DELETE /api/v1/seminars/:id/participants/:pid  seminars:update
 POST   /api/v1/seminars/:id/participants/:pid/revoke-cme  seminars:cme_manage
+POST   /api/v1/seminars/:id/participants/add-required  seminars:update
 POST   /api/v1/seminars/:id/participants/add-users  seminars:update
 POST   /api/v1/seminars/:id/participants/bulk-cme  seminars:update
 POST   /api/v1/seminars/:id/participants/import-excel  seminars:import

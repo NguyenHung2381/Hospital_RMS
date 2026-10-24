@@ -199,6 +199,25 @@ const addUsers = async (seminarId, userIds, actorId) => {
 	return { inserted, skipped: ids.length - inserted };
 };
 
+// Thêm cả khoa bắt buộc 1 lần (GĐ6): mọi nhân sự đang làm việc của các khoa bắt
+// buộc chưa có trong danh sách — chạy lại chỉ thêm người mới vào khoa.
+const addRequiredStaff = async (seminarId, actorId) => {
+	const pool = await getPool();
+	const r = await pool.request().input('sid', sql.VarChar(20), seminarId).query(`
+      SELECT u.id
+      FROM seminar_required_departments r
+      JOIN users u ON u.department_id = r.department_id
+      ${deptAccountJoinSql('u')}
+      WHERE r.seminar_id = @sid AND ${staffWhere}
+        AND NOT EXISTS (SELECT 1 FROM seminar_participants p WHERE p.seminar_id = @sid AND p.user_id = u.id)`);
+	if (!r.recordset.length) return { inserted: 0, skipped: 0 };
+	return addUsers(
+		seminarId,
+		r.recordset.map((u) => u.id),
+		actorId,
+	);
+};
+
 // Nhân sự thuộc khoa bắt buộc mà chưa tham dự: chưa có trong danh sách, hoặc
 // tự đăng ký qua QR (có vé) nhưng chưa điểm danh.
 const requiredAbsentees = async (seminarId) => {
@@ -355,5 +374,6 @@ module.exports = {
 	ensureSeminar,
 	staffOfDepartment,
 	addUsers,
+	addRequiredStaff,
 	requiredAbsentees,
 };

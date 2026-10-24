@@ -5,7 +5,7 @@ import { Pagination } from '@/shared/components/Table/Pagination';
 import tbl from '@/shared/components/Table/Table.module.css';
 import { useClientPaging } from '@/shared/hooks/useClientPaging';
 import { showToast } from '@/shared/utils/feedback';
-import { getRequiredAbsentees } from '../api/seminarApi';
+import { addRequiredStaff, getRequiredAbsentees } from '../api/seminarApi';
 import type { RequiredAbsentee } from '../types/seminar.type';
 import styles from '../pages/Seminar.module.css';
 
@@ -21,10 +21,39 @@ const EXCEL_COLS: ExcelColumn<RequiredAbsentee>[] = [
 	{ header: 'Tình trạng', value: (x) => REASON_LABELS[x.reason] },
 ];
 
-/** Tập huấn bệnh viện: nhân viên thuộc khoa bắt buộc nhưng chưa tham dự. */
-export function RequiredAbsenteesCard({ seminarId, version }: { seminarId: string; version: unknown }) {
+/**
+ * Tập huấn bệnh viện: nhân viên thuộc khoa bắt buộc nhưng chưa tham dự. canAdd: nút
+ * "Thêm N người chưa có trong danh sách" (thêm cả khoa bắt buộc 1 lần — GĐ6).
+ */
+export function RequiredAbsenteesCard({
+	seminarId,
+	version,
+	canAdd = false,
+	onAdded,
+}: {
+	seminarId: string;
+	version: unknown;
+	canAdd?: boolean;
+	onAdded?: () => void;
+}) {
 	const [rows, setRows] = useState<RequiredAbsentee[]>([]);
 	const [loading, setLoading] = useState(true);
+	const [adding, setAdding] = useState(false);
+	const notListed = rows.filter((x) => x.reason === 'not_listed').length;
+
+	const addAll = async () => {
+		if (!confirm(`Thêm ${notListed} nhân viên các khoa bắt buộc vào danh sách người tham dự (vai trò Học viên)?`)) return;
+		setAdding(true);
+		try {
+			const r = await addRequiredStaff(seminarId);
+			showToast('success', `Đã thêm ${r.inserted} người vào danh sách`);
+			onAdded?.();
+		} catch (err) {
+			showToast('error', err instanceof Error ? err.message : 'Thêm thất bại');
+		} finally {
+			setAdding(false);
+		}
+	};
 
 	// version: đổi khi chi tiết buổi tập huấn tải lại (thêm/xoá người, điểm danh)
 	useEffect(() => {
@@ -48,6 +77,17 @@ export function RequiredAbsenteesCard({ seminarId, version }: { seminarId: strin
 					<span className={styles.tableCount}>{rows.length} người</span>
 				</div>
 				<div className={styles.tableControls}>
+					{canAdd && notListed > 0 && (
+						<button
+							type='button'
+							className={styles.btnPrimary}
+							disabled={adding}
+							title='Thêm mọi nhân viên đang làm việc của các khoa bắt buộc chưa có trong danh sách — chạy lại chỉ thêm người mới'
+							onClick={() => void addAll()}
+						>
+							{adding ? 'Đang thêm…' : `Thêm ${notListed} người chưa có trong danh sách`}
+						</button>
+					)}
 					<ExcelActions
 						fileName='chua-tham-du-tap-huan'
 						itemLabel='người chưa tham dự'

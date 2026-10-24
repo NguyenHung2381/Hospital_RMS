@@ -708,6 +708,8 @@ export default function SeminarDetail() {
 						<RequiredAbsenteesCard
 							seminarId={sem.id}
 							version={sem}
+							canAdd={perms.canUpdate}
+							onAdded={d.refresh}
 						/>
 					)}
 				</>

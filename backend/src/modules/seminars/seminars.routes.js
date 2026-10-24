@@ -222,6 +222,16 @@ router.post(
 		return created(res, out, `Đã thêm ${out.inserted} người`);
 	}),
 );
+// Thêm cả khoa bắt buộc: mọi nhân sự các khoa bắt buộc chưa có trong danh sách
+router.post(
+	'/:id/participants/add-required',
+	authenticate,
+	canUpdate,
+	asyncHandler(async (req, res) => {
+		const out = await participantService.addRequiredStaff(req.params.id, req.user.id);
+		return created(res, out, `Đã thêm ${out.inserted} người`);
+	}),
+);
 // Nhân sự thuộc khoa bắt buộc tham dự nhưng chưa tham dự
 router.get(
 	'/:id/required-absentees',

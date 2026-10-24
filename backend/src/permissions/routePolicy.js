@@ -150,6 +150,12 @@ module.exports = {
 			'Đếm vòng mình hướng dẫn — để hiện menu và badge chờ đánh giá (countForMentor)',
 		[`PUT ${API}/me/mentoring/rotations/:rotationId/result`]:
 			'NHD đánh giá vòng của mình — service kiểm mentor_user_id = chính mình (evaluateAsMentor)',
+		[`GET ${API}/me/hospital-trainings/`]:
+			'Buổi Tập huấn bệnh viện sắp tới + buổi mình có trong danh sách (hospitalTrainingSelfService.listForMe)',
+		[`POST ${API}/me/hospital-trainings/:id/register`]:
+			'Tự đăng ký chính mình vào buổi tập huấn chưa diễn ra — chỉ thêm user đang đăng nhập',
+		[`DELETE ${API}/me/hospital-trainings/:id/register`]:
+			'Hủy đăng ký của chính mình: dòng tự đăng ký, chưa điểm danh, trước ngày học, không thuộc khoa bắt buộc',
 		[`GET ${API}/me/teaching/attempts/:attemptId`]:
 			'Bài làm của đề mình là người chấm (examService.assertGrader), ẩn tên nếu chấm ẩn danh',
 		[`POST ${API}/me/teaching/attempts/:attemptId/grade`]:

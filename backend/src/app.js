@@ -213,6 +213,11 @@ app.use(
 	require('./modules/portal/mentoring.routes'),
 );
 app.use(
+	`${API}/me/hospital-trainings`,
+	requireModule('SEMINAR'),
+	require('./modules/portal/hospitalTrainingSelf.routes'),
+);
+app.use(
 	`${API}/me/trainee-documents`,
 	requireModule('TRAINING'),
 	require('./modules/portal/myTraineeDocuments.routes'),

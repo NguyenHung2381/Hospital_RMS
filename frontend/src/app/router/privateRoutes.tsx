@@ -120,6 +120,7 @@ const UserMyCourseDetail = lazy(() => import('../../features/portal/pages/MyCour
 const UserMyTeachingGrades = lazy(() => import('../../features/portal/pages/MyTeachingGrades'));
 const UserMyCme = lazy(() => import('../../features/portal/pages/MyCme'));
 const UserMyMentoring = lazy(() => import('../../features/portal/pages/MyMentoring'));
+const UserMyHospitalTrainings = lazy(() => import('../../features/portal/pages/MyHospitalTrainings'));
 const UserMyAttendance = lazy(() => import('../../features/portal/pages/MyAttendance'));
 // ── Cổng học viên (tài khoản học viên ngoại viện) ──────────
 const TraineeHome = lazy(() => import('../../features/trainee-portal/pages/TraineeHome'));
@@ -508,6 +509,10 @@ export const userRoutes: RouteObject[] = [
 	{
 		path: '/user/huong-dan',
 		element: user('Hướng dẫn thực hành', <UserMyMentoring />),
+	},
+	{
+		path: '/user/tap-huan',
+		element: user('Tập huấn bệnh viện', <UserMyHospitalTrainings />),
 	},
 	{
 		path: '/user/cme',
