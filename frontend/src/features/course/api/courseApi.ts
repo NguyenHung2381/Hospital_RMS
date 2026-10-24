@@ -17,6 +17,7 @@ import type {
 	EnrollmentUpdate,
 	MentorOption,
 	PracticeBoard,
+	PracticeRecordRow,
 	RotationList,
 	RotationUpdate,
 	Grade,
@@ -60,6 +61,8 @@ export interface CourseListParams {
 	program_id?: string;
 	status?: string;
 	training_type_id?: string;
+	/** Bỏ khóa thuộc loại này (khi không lọc training_type_id). */
+	exclude_training_type_id?: string;
 }
 
 // Không truyền params → giữ hành vi cũ: lấy toàn bộ khóa học.
@@ -109,6 +112,10 @@ export const suggestClassDates = (courseId: string, programId: string) =>
 // ─── Enrollments ──────────────────────────────────────────────────────────
 export const getEnrollments = (courseId: string) =>
 	apiClient.get<Enrollment[]>(`/courses/${courseId}/enrollments`);
+export const getEnrollment = (enrollmentId: string) =>
+	apiClient.get<Enrollment>(`/courses/enrollments/${enrollmentId}`);
+/** Hồ sơ thực hành GPHN trên mọi khóa (màn "Hồ sơ thực hành GPHN"). */
+export const getPracticeRecords = () => apiClient.get<PracticeRecordRow[]>('/courses/practice-records');
 /** programId: chương trình học viên chọn — bài học của chương trình tự gắn theo. */
 /** Ghi danh hộ được duyệt luôn — đủ sĩ số thì status = 'waitlisted'. Khóa GPHN: xếp lịch vòng là bước sau. */
 /** moved_to: lớp đầy, hồ sơ được chuyển sang khóa khác còn chỗ · waitlist_position: vị trí trong danh sách chờ của chương trình. */

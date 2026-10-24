@@ -89,6 +89,8 @@ const Lecturers = lazy(() => import('../../features/lecturer/pages/Lecturers'));
 const Courses = lazy(() => import('../../features/course/pages/Courses'));
 const CourseDetail = lazy(() => import('../../features/course/pages/CourseDetail'));
 const PracticeBoard = lazy(() => import('../../features/course/pages/PracticeBoard'));
+const PracticeRecords = lazy(() => import('../../features/course/pages/PracticeRecords'));
+const PracticeRecordDetail = lazy(() => import('../../features/course/pages/PracticeRecordDetail'));
 const ClassSchedule = lazy(
 	() => import('../../features/class-schedule/pages/ClassSchedule'),
 );
@@ -333,7 +335,23 @@ export const adminRoutes: RouteObject[] = [
 	},
 	{
 		path: '/admin/courses',
-		element: admin('Quản lý Khóa học', <Courses />),
+		element: admin('Khóa ĐTLT / CTCV', <Courses />),
+	},
+	{
+		path: '/admin/practice-records',
+		element: (
+			<RequirePermission perm='courses:read'>
+				{admin('Hồ sơ thực hành GPHN', <PracticeRecords />)}
+			</RequirePermission>
+		),
+	},
+	{
+		path: '/admin/practice-records/:enrollmentId',
+		element: (
+			<RequirePermission perm='courses:read'>
+				{admin('Hồ sơ thực hành GPHN', <PracticeRecordDetail />)}
+			</RequirePermission>
+		),
 	},
 	{
 		path: '/admin/practice-board',

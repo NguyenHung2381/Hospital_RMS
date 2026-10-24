@@ -10,9 +10,8 @@ const programClassService = require('./programClassService');
 const systemSettingService = require('../../settings/systemSettingService');
 
 // ─── Đăng ký khóa học ────────────────────────────────────────────────────
-const listEnrollments = async (courseId) => {
-	const pool = await getPool();
-	const r = await pool.request().input('course_id', sql.VarChar(20), courseId).query(`
+// 1 dòng ghi danh kèm học viên / chương trình / tiến độ — dùng chung cho danh sách của khóa và 1 hồ sơ.
+const enrollmentSelect = (whereSql) => `
     SELECT e.*, t.full_name AS trainee_name, t.phone AS trainee_phone, t.email AS trainee_email,
            u.full_name AS decided_by_name,
            tp.code AS program_code, tp.name AS program_name, mm.full_name AS main_mentor_name,
@@ -25,10 +24,25 @@ const listEnrollments = async (courseId) => {
     LEFT JOIN users u ON u.id = e.decided_by
     LEFT JOIN training_programs tp ON tp.id = e.program_id
     LEFT JOIN users mm ON mm.id = e.main_mentor_user_id
-    WHERE e.course_id = @course_id
-    ORDER BY e.registered_at DESC
-  `);
+    WHERE ${whereSql}`;
+
+const listEnrollments = async (courseId) => {
+	const pool = await getPool();
+	const r = await pool
+		.request()
+		.input('course_id', sql.VarChar(20), courseId)
+		.query(`${enrollmentSelect('e.course_id = @course_id')} ORDER BY e.registered_at DESC`);
 	return r.recordset;
+};
+
+// 1 hồ sơ ghi danh (trang chi tiết Hồ sơ thực hành GPHN).
+const getEnrollment = async (enrollmentId) => {
+	const pool = await getPool();
+	const row = (
+		await pool.request().input('id', sql.VarChar(20), enrollmentId).query(enrollmentSelect('e.id = @id'))
+	).recordset[0];
+	if (!row) throw httpError(404, 'Không tìm thấy hồ sơ ghi danh.');
+	return row;
 };
 
 // Cấu hình TRAINING_ALLOW_MULTI_PROGRAM = 'false' ⇒ học viên đang học / chờ một chương
@@ -335,6 +349,7 @@ const removeEnrollment = async (enrollmentId, actorId = null) => {
 
 module.exports = {
 	listEnrollments,
+	getEnrollment,
 	registerTrainee,
 	listStaffCandidates,
 	registerStaff,

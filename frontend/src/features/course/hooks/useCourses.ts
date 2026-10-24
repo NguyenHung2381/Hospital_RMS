@@ -3,10 +3,14 @@ import { useCallback, useEffect, useState } from 'react';
 import { useRealtimeUpdate } from '../../../layouts/hooks/useRealtime';
 import { bulkToast, runBulk } from '../../../shared/utils/runBulk';
 import { createCourse, deleteCourse, getCourses, updateCourse } from '../api/courseApi';
-import { EMPTY_FORM, type Course, type CourseFormData, type ModalType } from '../types/course.type';
+import { EMPTY_FORM, TRAINING_TYPE, type Course, type CourseFormData, type ModalType } from '../types/course.type';
 import { DEFAULT_PAGE_SIZE } from '@/shared/utils/constants';
 
-/** trainingTypeId: lọc theo loại khóa (tab), '' = tất cả. */
+/** Lọc theo tab loại khóa; tab "Tất cả" ('') bỏ đợt GPHN — GPHN làm việc ở trang Hồ sơ thực hành GPHN. */
+export const courseTypeFilter = (trainingTypeId: string) =>
+	trainingTypeId ? { training_type_id: trainingTypeId } : { exclude_training_type_id: TRAINING_TYPE.GPHN };
+
+/** trainingTypeId: lọc theo loại khóa (tab), '' = tất cả trừ GPHN. */
 export function useCourses(trainingTypeId = '') {
 	// Chỉ chứa các dòng của TRANG hiện tại — server lo tìm kiếm & phân trang
 	const [courses, setCourses] = useState<Course[]>([]);
@@ -41,12 +45,14 @@ export function useCourses(trainingTypeId = '') {
 					page,
 					limit: pageSize,
 					search: debouncedSearch || undefined,
-					training_type_id: trainingTypeId || undefined,
+					...courseTypeFilter(trainingTypeId),
 				});
 				if (controller.signal.aborted) return;
 				setCourses(res.data);
 				setTotal(res.pagination.total);
-				setTypeCounts(res.type_counts ?? {});
+				const counts = res.type_counts ?? {};
+				// Tab "Tất cả" không gồm đợt GPHN (quản lý ở trang Hồ sơ thực hành GPHN)
+				setTypeCounts({ ...counts, '': (counts[''] ?? 0) - (counts[TRAINING_TYPE.GPHN] ?? 0) });
 				const lastPage = pageSize === 0 ? 1 : Math.max(1, Math.ceil(res.pagination.total / pageSize));
 				if (page > lastPage) setPage(1);
 			} catch {
@@ -143,7 +149,7 @@ export function useCourses(trainingTypeId = '') {
 	const fetchAllIds = useCallback(
 		async () =>
 			(
-				await getCourses({ search: debouncedSearch || undefined, training_type_id: trainingTypeId || undefined })
+				await getCourses({ search: debouncedSearch || undefined, ...courseTypeFilter(trainingTypeId) })
 			).data.map((x) => x.id),
 		[debouncedSearch, trainingTypeId],
 	);

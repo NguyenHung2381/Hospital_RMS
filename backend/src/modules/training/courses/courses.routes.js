@@ -1,6 +1,7 @@
 const router = require('express').Router();
 const { body, query } = require('express-validator');
 const ctrl = require('./courseController');
+const practiceCtrl = require('./practiceRecordController');
 const uploadExcel = require('../../../middlewares/uploadExcel');
 const { authenticate, authorizePermission } = require('../../../middlewares/auth');
 const { validate } = require('../../../middlewares/errorHandler');
@@ -66,6 +67,8 @@ router.get(
 	validate,
 	ctrl.getPracticeBoard,
 );
+// Hồ sơ thực hành GPHN trên mọi khóa — màn "Hồ sơ thực hành GPHN" (trước '/:id').
+router.get('/practice-records', authorizePermission(['courses', 'read']), practiceCtrl.listPracticeRecords);
 router.get('/:id', authorizePermission(['courses', 'read']), ctrl.getById);
 
 router.post(
@@ -187,6 +190,11 @@ router.post(
 	],
 	validate,
 	ctrl.registerTrainee,
+);
+router.get(
+	'/enrollments/:enrollmentId',
+	authorizePermission(['courses', 'read']),
+	practiceCtrl.getEnrollment,
 );
 router.put(
 	'/enrollments/:enrollmentId/decide',

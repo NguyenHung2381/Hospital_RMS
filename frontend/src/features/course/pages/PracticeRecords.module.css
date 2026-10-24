@@ -1,0 +1,64 @@
+/* Hồ sơ thực hành GPHN — bảng dùng lại Courses.module.css, ở đây chỉ phần riêng. */
+.headerActions {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+}
+.filter {
+	max-width: 240px;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+.muted {
+	color: var(--color-gray-500);
+}
+.warn {
+	color: #b45309;
+	font-weight: var(--font-weight-semibold);
+}
+.danger {
+	color: var(--color-danger, #b91c1c);
+	font-weight: var(--font-weight-semibold);
+}
+.nowrap {
+	white-space: nowrap;
+}
+.ok {
+	color: #15803d;
+	font-weight: var(--font-weight-semibold);
+}
+
+/* Trang 1 hồ sơ */
+.infoWrap {
+	display: flex;
+	flex-direction: column;
+	gap: var(--space-4);
+}
+.saveState {
+	font-size: var(--font-size-sm);
+	min-height: 20px;
+}
+.section {
+	background: var(--color-white);
+	border: 1px solid var(--color-gray-100);
+	border-radius: var(--radius-xl);
+	padding: var(--space-4) var(--space-5);
+}
+.sectionTitle {
+	margin: 0 0 var(--space-3);
+	font-size: var(--font-size-sm);
+	font-weight: var(--font-weight-bold);
+	color: var(--color-gray-700);
+}
+.panel {
+	background: var(--color-white);
+	border: 1px solid var(--color-gray-100);
+	border-radius: var(--radius-xl);
+	padding: var(--space-4) var(--space-5);
+}
+@media (max-width: 640px) {
+	.section,
+	.panel {
+		padding: var(--space-3);
+	}
+}

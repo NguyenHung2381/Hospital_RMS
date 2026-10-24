@@ -89,6 +89,30 @@ interface StaffCandidate {
  * registerTrainee nhận ra để gửi `user_id` thay vì `trainee_id`. */
 export const STAFF_OPTION_PREFIX = 'user:';
 
+/** Ứng viên ghi danh: hồ sơ học viên (nội + ngoại viện) + nhân viên nội viện chưa có hồ sơ học viên. */
+export const fetchEnrollCandidates = async (): Promise<SimpleItem[]> => {
+	const [traineeRows, staff] = await Promise.all([
+		apiClient.get<{ data: PersonRow[] }>('/trainees?limit=0').then((r) => r.data),
+		apiClient.get<StaffCandidate[]>('/courses/staff-candidates').catch(() => [] as StaffCandidate[]),
+	]);
+	return [
+		...traineeRows.map((t) => ({
+			id: t.id,
+			name: joinLabel(t.full_name, t.phone, t.is_employee ? 'Nội viện' : 'Ngoại viện'),
+		})),
+		...staff.map((u) => ({
+			id: STAFF_OPTION_PREFIX + u.id,
+			name: joinLabel(u.full_name, u.staff_number, u.department_name, 'Nội viện'),
+		})),
+	];
+};
+
+/** Ghi danh 1 ứng viên của fetchEnrollCandidates (id 'user:…' = nhân viên chưa có hồ sơ học viên). */
+export const registerCandidate = (courseId: string, candidateId: string, programId?: string) =>
+	candidateId.startsWith(STAFF_OPTION_PREFIX)
+		? apiRegisterStaff(courseId, candidateId.slice(STAFF_OPTION_PREFIX.length), programId)
+		: apiRegisterTrainee(courseId, candidateId, programId);
+
 /** Cảnh báo trùng lịch giảng viên từ backend — không chặn, chỉ báo. */
 const warnClashes = (warnings?: string[]) => {
 	if (!warnings?.length) return;
@@ -167,22 +191,8 @@ export function useCourseDetail(courseId: string) {
 	// Ô "thêm học viên" gộp 2 nguồn: hồ sơ học viên (cả nội viện lẫn ngoại viện) +
 	// nhân viên nội viện chưa có hồ sơ học viên (tạo tự động khi ghi danh).
 	const loadEnrollCandidates = useCallback(() => {
-		Promise.all([
-			apiClient.get<{ data: PersonRow[] }>('/trainees?limit=0').then((r) => r.data),
-			apiClient.get<StaffCandidate[]>('/courses/staff-candidates').catch(() => [] as StaffCandidate[]),
-		])
-			.then(([traineeRows, staff]) =>
-				setTrainees([
-					...traineeRows.map((t) => ({
-						id: t.id,
-						name: joinLabel(t.full_name, t.phone, t.is_employee ? 'Nội viện' : 'Ngoại viện'),
-					})),
-					...staff.map((u) => ({
-						id: STAFF_OPTION_PREFIX + u.id,
-						name: joinLabel(u.full_name, u.staff_number, u.department_name, 'Nội viện'),
-					})),
-				]),
-			)
+		fetchEnrollCandidates()
+			.then(setTrainees)
 			.catch(() => {});
 	}, []);
 
@@ -210,14 +220,9 @@ export function useCourseDetail(courseId: string) {
 			setBusy(true);
 			setError('');
 			try {
-				let out;
-				if (traineeId.startsWith(STAFF_OPTION_PREFIX)) {
-					out = await apiRegisterStaff(courseId, traineeId.slice(STAFF_OPTION_PREFIX.length), programId);
-					// Nhân viên vừa được tạo hồ sơ học viên — nạp lại để không còn hiện 2 lần.
-					loadEnrollCandidates();
-				} else {
-					out = await apiRegisterTrainee(courseId, traineeId, programId);
-				}
+				const out = await registerCandidate(courseId, traineeId, programId);
+				// Nhân viên vừa được tạo hồ sơ học viên — nạp lại để không còn hiện 2 lần.
+				if (traineeId.startsWith(STAFF_OPTION_PREFIX)) loadEnrollCandidates();
 				// Ghi danh hộ được duyệt luôn; khóa GPHN xếp lịch vòng ở bước sau
 				if (out.moved_to) showToast('success', `Lớp đã đầy — học viên được xếp sang ${out.moved_to}`);
 				else if (out.status === 'waitlisted')

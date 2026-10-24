@@ -269,6 +269,54 @@ export type RotationUpdate = Partial<
 	>
 >;
 
+// ─── Hồ sơ thực hành GPHN trên mọi khóa (GET /courses/practice-records) ────
+/** Giai đoạn hồ sơ theo luồng: duyệt → xếp lịch → thực hành → kết thúc; other = từ chối / danh sách chờ. */
+export type PracticeStage = 'pending' | 'unscheduled' | 'practicing' | 'completed' | 'dropped' | 'other';
+export const PRACTICE_STAGE_LABEL: Record<PracticeStage, string> = {
+	pending: 'Chờ duyệt',
+	unscheduled: 'Chưa xếp lịch',
+	practicing: 'Đang thực hành',
+	completed: 'Hoàn thành',
+	dropped: 'Nghỉ học',
+	other: 'Từ chối / chờ',
+};
+export interface PracticeRecordRow {
+	id: string;
+	course_id: string;
+	course_name: string;
+	trainee_id: string;
+	trainee_name: string;
+	trainee_phone: string | null;
+	is_internal: boolean;
+	status: EnrollmentStatus;
+	progress_status: ProgressStatus | null;
+	practice_code: string | null;
+	program_id: string | null;
+	program_code: string | null;
+	program_name: string | null;
+	start_date: string | null;
+	end_date: string | null;
+	sending_unit: string | null;
+	registered_at: string;
+	stage: PracticeStage;
+	rotation_total: number;
+	rotation_passed: number;
+	rotation_failed: number;
+	/** Vòng đã qua ngày kết thúc mà chưa có kết quả (chờ NHD đánh giá). */
+	rotation_awaiting: number;
+	/** Vòng đang diễn ra hôm nay. */
+	current_round: string | null;
+	current_department_id: string | null;
+	current_department: string | null;
+	current_mentor_user_id: string | null;
+	current_mentor: string | null;
+	current_end_date: string | null;
+	/** Vòng kế tiếp (hôm nay chưa vào vòng nào / giữa 2 vòng). */
+	next_round: string | null;
+	next_department: string | null;
+	next_start_date: string | null;
+}
+
 // ─── Tổng hợp thực hành GPHN theo ngày (GET /courses/practice-board) ───────
 export interface PracticeBoardRow {
 	id: string;

@@ -99,6 +99,8 @@ const getAll = async (
 		program_id = undefined,
 		status = undefined,
 		training_type_id = undefined,
+		// Trang "Khóa ĐTLT / CTCV" ẩn đợt GPHN ở tab Tất cả (GPHN quản lý theo hồ sơ)
+		exclude_training_type_id = undefined,
 	} = {},
 	actor = null,
 ) => {
@@ -129,6 +131,9 @@ const getAll = async (
 	if (training_type_id) {
 		where.push('c.training_type_id = @training_type_id');
 		req.input('training_type_id', sql.VarChar(20), training_type_id);
+	} else if (exclude_training_type_id) {
+		where.push('(c.training_type_id IS NULL OR c.training_type_id <> @exclude_type)');
+		req.input('exclude_type', sql.VarChar(20), exclude_training_type_id);
 	}
 	const whereSql = `WHERE ${where.join(' AND ')}`;
 

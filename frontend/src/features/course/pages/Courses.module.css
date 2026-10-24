@@ -1145,3 +1145,51 @@
 	width: 16px;
 	height: 16px;
 }
+
+/* Menu "Xếp lịch ▾" ở tab Vòng thực hành */
+.menuWrap {
+	position: relative;
+	display: inline-flex;
+}
+.menuWrap > button svg {
+	width: 12px;
+	height: 12px;
+}
+.menu {
+	position: absolute;
+	top: calc(100% + 4px);
+	left: 0;
+	z-index: 30;
+	width: min(360px, calc(100vw - 32px));
+	padding: 4px;
+	background: var(--color-white);
+	border: 1px solid var(--color-gray-200);
+	border-radius: var(--radius-md);
+	box-shadow: 0 8px 24px rgb(0 0 0 / 12%);
+}
+.menuItem {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+	width: 100%;
+	padding: 8px 10px;
+	border: none;
+	border-radius: var(--radius-sm, 6px);
+	background: none;
+	text-align: left;
+	font-family: var(--font-body);
+	cursor: pointer;
+}
+.menuItem:hover,
+.menuItem:focus-visible {
+	background: var(--color-gray-50);
+}
+.menuLabel {
+	font-size: var(--font-size-sm);
+	font-weight: var(--font-weight-semibold);
+	color: var(--color-gray-800);
+}
+.menuDesc {
+	font-size: var(--font-size-2xs);
+	color: var(--color-gray-500);
+}

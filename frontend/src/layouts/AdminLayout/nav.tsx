@@ -70,6 +70,7 @@ export const KEY_TO_PATH: Record<string, string> = {
 	lecturers: '/admin/lecturers',
 	trainingCatalog: '/admin/trainee-types',
 	courses: '/admin/courses',
+	practiceRecords: '/admin/practice-records',
 	practiceBoard: '/admin/practice-board',
 	questionBank: '/admin/question-bank',
 	cmeCompliance: '/admin/cme-compliance',
@@ -172,7 +173,8 @@ export const NAV_GROUPS: NavGroup[] = [
 		// Việc hằng ngày: khóa học (ghi danh → lịch → thi → kết quả) và thực hành GPHN theo ngày.
 		section: 'Đào tạo',
 		items: [
-			navItem('courses', 'Khóa học', ClipboardCheckSvg, 'courses:read'),
+			navItem('courses', 'Khóa ĐTLT / CTCV', ClipboardCheckSvg, 'courses:read'),
+			navItem('practiceRecords', 'Hồ sơ thực hành GPHN', FileTextSvg, 'courses:read'),
 			navItem('practiceBoard', 'Thực hành theo ngày', DeptSvg, 'courses:read'),
 			navItem('classSchedule', 'Lịch học', CalendarSvg, 'courses:read'),
 			navItem('trainees', 'Học viên', UsersSvg, 'trainees:read'),

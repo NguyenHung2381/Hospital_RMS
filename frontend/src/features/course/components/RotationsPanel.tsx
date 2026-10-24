@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { DatePicker } from '@/shared/components';
-import { PlusSvg, TrashSvg } from '@/assets/icons';
+import { ChevDSvg, PlusSvg, TrashSvg } from '@/assets/icons';
 import { apiClient } from '@/shared/api/axios';
 import { showToast } from '@/shared/utils/feedback';
 import {
@@ -32,6 +32,68 @@ interface Department {
 }
 
 const day = (v: string | null) => (v ? v.slice(0, 10) : '');
+
+/** Nút "Xếp lịch ▾": menu các cách xếp, mỗi mục kèm 1 dòng giải thích. Bấm ra ngoài / Esc thì đóng. */
+function ArrangeMenu({
+	items,
+	disabled,
+}: {
+	items: { label: string; desc: string; onClick: () => void }[];
+	disabled: boolean;
+}) {
+	const [open, setOpen] = useState(false);
+	const ref = useRef<HTMLDivElement>(null);
+	useEffect(() => {
+		if (!open) return;
+		const onDown = (e: MouseEvent) => !ref.current?.contains(e.target as Node) && setOpen(false);
+		const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setOpen(false);
+		document.addEventListener('mousedown', onDown);
+		document.addEventListener('keydown', onKey);
+		return () => {
+			document.removeEventListener('mousedown', onDown);
+			document.removeEventListener('keydown', onKey);
+		};
+	}, [open]);
+	return (
+		<div
+			className={styles.menuWrap}
+			ref={ref}
+		>
+			<button
+				type='button'
+				className={styles.btnSmall}
+				disabled={disabled}
+				aria-haspopup='menu'
+				aria-expanded={open}
+				onClick={() => setOpen((v) => !v)}
+			>
+				Xếp lịch <ChevDSvg />
+			</button>
+			{open && (
+				<div
+					className={styles.menu}
+					role='menu'
+				>
+					{items.map((it) => (
+						<button
+							key={it.label}
+							type='button'
+							role='menuitem'
+							className={styles.menuItem}
+							onClick={() => {
+								setOpen(false);
+								it.onClick();
+							}}
+						>
+							<span className={styles.menuLabel}>{it.label}</span>
+							<span className={styles.menuDesc}>{it.desc}</span>
+						</button>
+					))}
+				</div>
+			)}
+		</div>
+	);
+}
 
 // Vòng thực hành GPHN của 1 hồ sơ: "Tự động xếp" sinh vòng theo chương trình,
 // xếp lịch so le, chọn khoa / người hướng dẫn đang ít người nhất; sau đó sửa tay
@@ -105,7 +167,7 @@ export function RotationsPanel({
 	if (!approved && data.rows.length === 0)
 		return (
 			<div className={styles.subEmpty}>
-				Hồ sơ chưa được duyệt — duyệt hồ sơ ở danh sách học viên rồi mới xếp lịch thực hành.
+				Hồ sơ chưa được duyệt — duyệt hồ sơ trước rồi mới xếp lịch thực hành.
 			</div>
 		);
 
@@ -176,48 +238,47 @@ export function RotationsPanel({
 						))}
 					</select>
 				)}
-				{rows.length === 0 ? (
+				{rows.length === 0 && (
 					<button
 						type='button'
-						className={styles.btnGhost}
+						className={styles.btnPrimary}
 						disabled={busy}
 						onClick={() => autoArrange(false)}
 						title='Sinh vòng theo chương trình, xếp lịch so le, chọn khoa và người hướng dẫn đang kèm ít người nhất (trống ngày ⇒ hôm nay)'
 					>
 						<PlusSvg /> Tự động xếp khoa · lịch · người hướng dẫn
 					</button>
-				) : (
-					<>
-						<button
-							type='button'
-							className={styles.btnGhost}
-							disabled={busy}
-							onClick={schedule}
-							title='Chỉ tính lại ngày: các vòng chưa có kết quả nối tiếp nhau từ ngày bắt đầu theo thứ tự hiện tại, giữ khoa và người hướng dẫn'
-						>
-							Tính lại ngày
-						</button>
-						<button
-							type='button'
-							className={styles.btnSmall}
-							disabled={busy}
-							onClick={() => autoArrange(true)}
-							title='Xoá các vòng chưa có kết quả rồi tự xếp lại khoa, lịch, người hướng dẫn (vòng đã Đạt / Không đạt giữ nguyên, xếp tiếp từ sau vòng đó)'
-						>
-							Tự động xếp lại
-						</button>
-					</>
 				)}
-				{data.previous_passed > 0 && (
-					<button
-						type='button'
-						className={styles.btnSmall}
+				{/* Các cách xếp còn lại gom vào 1 menu — tránh hàng nút dài, mỗi mục có giải thích */}
+				{(rows.length > 0 || data.previous_passed > 0) && (
+					<ArrangeMenu
 						disabled={busy}
-						onClick={() => autoArrange(rows.length > 0, true)}
-						title='Chép các vòng đã Đạt ở hồ sơ khác của học viên này (giữ ngày, khoa, người hướng dẫn), rồi tự xếp các vòng còn lại từ ngày bắt đầu'
-					>
-						Công nhận {data.previous_passed} vòng đã học ở hồ sơ trước
-					</button>
+						items={[
+							...(rows.length > 0
+								? [
+										{
+											label: 'Tính lại ngày',
+											desc: 'Các vòng chưa có kết quả nối tiếp nhau từ ngày bắt đầu theo thứ tự hiện tại; giữ khoa và người hướng dẫn',
+											onClick: schedule,
+										},
+										{
+											label: 'Tự động xếp lại',
+											desc: 'Xoá vòng chưa có kết quả rồi xếp lại khoa, lịch, người hướng dẫn; vòng đã Đạt / Không đạt giữ nguyên',
+											onClick: () => autoArrange(true),
+										},
+									]
+								: []),
+							...(data.previous_passed > 0
+								? [
+										{
+											label: `Công nhận ${data.previous_passed} vòng đã học ở hồ sơ trước`,
+											desc: 'Chép các vòng đã Đạt ở hồ sơ khác của học viên (giữ ngày, khoa, người hướng dẫn), rồi xếp phần còn lại',
+											onClick: () => autoArrange(rows.length > 0, true),
+										},
+									]
+								: []),
+						]}
+					/>
 				)}
 			</div>
 			{data.rounds.length === 0 && (

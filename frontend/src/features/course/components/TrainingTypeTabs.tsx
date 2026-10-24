@@ -6,14 +6,17 @@ export function TrainingTypeTabs({
 	value,
 	counts,
 	onChange,
+	tabs = TRAINING_TYPE_TABS,
 }: {
 	value: string;
 	counts?: Record<string, number>;
 	onChange: (id: string) => void;
+	/** Danh sách / thứ tự tab riêng (mặc định TRAINING_TYPE_TABS). */
+	tabs?: { id: string; label: string }[];
 }) {
 	return (
 		<div className={crud.tabs}>
-			{TRAINING_TYPE_TABS.map((t) => (
+			{tabs.map((t) => (
 				<button
 					key={t.id}
 					type='button'

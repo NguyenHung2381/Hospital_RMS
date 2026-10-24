@@ -23,12 +23,20 @@ import { CourseFormModal } from '../components/CourseFormModal';
 import ProgramTags from '../components/ProgramTags';
 import { CourseCards } from '../components/CourseCards';
 import { TrainingTypeTabs } from '../components/TrainingTypeTabs';
-import { useCourses } from '../hooks/useCourses';
+import { courseTypeFilter, useCourses } from '../hooks/useCourses';
 import { DISPLAY_STATUS_CFG } from '../types/course.type';
 import styles from './Courses.module.css';
 import tbl from '@/shared/components/Table/Table.module.css';
 
 type Named = { id: string; name: string };
+
+// "Tất cả" = ĐTLT + CTCV; đợt GPHN để cuối (hồ sơ GPHN làm ở trang Hồ sơ thực hành GPHN)
+const COURSE_TABS = [
+	{ id: '', label: 'Tất cả' },
+	{ id: TRAINING_TYPE.DTLT, label: 'Đào tạo liên tục' },
+	{ id: TRAINING_TYPE.CTCV, label: 'Cầm tay chỉ việc' },
+	{ id: TRAINING_TYPE.GPHN, label: 'Đợt thực hành GPHN' },
+];
 
 const EXCEL_COLS: ExcelColumn<Course>[] = [
 	{ header: 'Tên khóa học', key: 'name', required: true, value: (x) => x.name },
@@ -97,7 +105,7 @@ export default function Courses() {
 				itemLabel='khóa học'
 				columns={EXCEL_COLS}
 				getRows={async () =>
-					(await getCourses({ search: d.search || undefined, training_type_id: typeId || undefined })).data
+					(await getCourses({ search: d.search || undefined, ...courseTypeFilter(typeId) })).data
 				}
 				importHint='Chương trình ghi tên, nhiều chương trình cách nhau bằng dấu chấm phẩy (;). Ngày ghi dd/mm/yyyy.'
 				importRow={async (r) => {
@@ -140,14 +148,19 @@ export default function Courses() {
 
 	return (
 		<AdminLayout
-			pageTitle='Quản lý Khóa học'
-			pageSubtitle='Mở một khóa học để làm lần lượt: ghi danh → lịch học & giảng viên → tài liệu → thi → kết quả & chứng chỉ'
+			pageTitle='Khóa ĐTLT / CTCV'
+			pageSubtitle={
+				typeId === TRAINING_TYPE.GPHN
+					? 'Đợt thực hành GPHN: tạo đợt, gắn chương trình, mở đăng ký — duyệt & xếp lịch hồ sơ ở mục "Hồ sơ thực hành GPHN"'
+					: 'Mở một khóa học để làm lần lượt: ghi danh → lịch học & giảng viên → tài liệu → thi → kết quả & chứng chỉ'
+			}
 			breadcrumbs={[{ label: 'Đào tạo' }]}
 			headerActions={headerActions}
 		>
 			<TrainingTypeTabs
 				value={typeId}
 				counts={d.typeCounts}
+				tabs={COURSE_TABS}
 				onChange={changeType}
 			/>
 			<div className={styles.tableCard}>

@@ -110,6 +110,7 @@ PATCH  /api/v1/courses/certificates/:certId/revoke  courses:approve
 DELETE /api/v1/courses/documents/:docId  courses:update
 PATCH  /api/v1/courses/documents/:docId/download  courses:read
 DELETE /api/v1/courses/enrollments/:enrollmentId  courses:delete
+GET    /api/v1/courses/enrollments/:enrollmentId  courses:read
 PUT    /api/v1/courses/enrollments/:enrollmentId  courses:update
 PUT    /api/v1/courses/enrollments/:enrollmentId/decide  courses:approve
 GET    /api/v1/courses/enrollments/:enrollmentId/documents  courses:read
@@ -127,6 +128,7 @@ POST   /api/v1/courses/enrollments/bulk-decide  courses:approve
 DELETE /api/v1/courses/grades/:gradeId  courses:update
 DELETE /api/v1/courses/lecturer-assignments/:assignmentId  courses:update
 GET    /api/v1/courses/practice-board  courses:read
+GET    /api/v1/courses/practice-records  courses:read
 PUT    /api/v1/courses/rotations/:rotationId  courses:update
 DELETE /api/v1/courses/rotations/:rotationId  courses:update
 POST   /api/v1/courses/rotations/:rotationId/move  courses:update

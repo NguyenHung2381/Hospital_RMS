@@ -4,14 +4,9 @@ import { ChevLSvg, ChevRSvg, DeptSvg, UserCheckSvg } from '@/assets/icons';
 import AdminLayout from '../../../layouts/AdminLayout';
 import { useRealtimeUpdate } from '../../../layouts/hooks/useRealtime';
 import { DatePicker, InlineLoading, SearchInput } from '@/shared/components';
-import { showToast } from '@/shared/utils/feedback';
 import { formatDateVN, toIsoDate } from '../../../shared/utils/formatDate';
-import { getCourse, getEnrollments, getPracticeBoard, getProgramLinks } from '../api/courseApi';
-import { EnrollmentDetailModal } from '../components/EnrollmentDetailModal';
+import { getPracticeBoard } from '../api/courseApi';
 import type {
-	Course,
-	CourseProgramLink,
-	Enrollment,
 	PracticeBoard as Board,
 	PracticeBoardRow,
 } from '../types/course.type';
@@ -36,11 +31,6 @@ const matches = (r: PracticeBoardRow, q: string) =>
 		.filter(Boolean)
 		.some((v) => String(v).toLowerCase().includes(q));
 
-interface Opened {
-	enrollment: Enrollment;
-	course: Course;
-	programLinks: CourseProgramLink[];
-}
 
 /** Thực hành GPHN vào 1 ngày: ai đang ở khoa nào, mỗi người hướng dẫn đang kèm mấy học viên. */
 export default function PracticeBoard() {
@@ -51,8 +41,6 @@ export default function PracticeBoard() {
 	const [board, setBoard] = useState<Board | null>(null);
 	const [error, setError] = useState('');
 	const [refreshKey, setRefreshKey] = useState(0);
-	const [opened, setOpened] = useState<Opened | null>(null);
-	const [opening, setOpening] = useState(false);
 
 	const refresh = useCallback(() => setRefreshKey((k) => k + 1), []);
 	useRealtimeUpdate(['course_enrollment', 'course'], refresh);
@@ -92,24 +80,7 @@ export default function PracticeBoard() {
 		[board, q],
 	);
 
-	const openEnrollment = async (r: PracticeBoardRow) => {
-		if (opening) return;
-		setOpening(true);
-		try {
-			const [course, enrollments, programLinks] = await Promise.all([
-				getCourse(r.course_id),
-				getEnrollments(r.course_id),
-				getProgramLinks(r.course_id),
-			]);
-			const enrollment = enrollments.find((e) => e.id === r.enrollment_id);
-			if (!enrollment) throw new Error('Không tìm thấy hồ sơ ghi danh');
-			setOpened({ enrollment, course, programLinks });
-		} catch (e) {
-			showToast('error', (e as Error).message || 'Không mở được hồ sơ ghi danh');
-		} finally {
-			setOpening(false);
-		}
-	};
+	const openEnrollment = (r: PracticeBoardRow) => navigate(`/admin/practice-records/${r.enrollment_id}?tab=rotations`);
 
 	const openCourse = (courseId: string) => navigate(`/admin/courses/${courseId}?tab=enrollments`);
 
@@ -117,8 +88,8 @@ export default function PracticeBoard() {
 		<>
 			<span
 				className={styles.itemName}
-				title='Mở hồ sơ ghi danh'
-				onClick={() => void openEnrollment(r)}
+				title='Mở hồ sơ thực hành'
+				onClick={() => openEnrollment(r)}
 			>
 				{r.trainee_name}
 			</span>
@@ -349,7 +320,7 @@ export default function PracticeBoard() {
 														key={r.id}
 														className={local.traineeChip}
 														title={`${deptOf(r) || 'Chưa chọn khoa'} · ${span(r)} · ${r.course_name}`}
-														onClick={() => void openEnrollment(r)}
+														onClick={() => openEnrollment(r)}
 													>
 														{r.trainee_name}
 														{r.practice_code ? ` (${r.practice_code})` : ''}
@@ -373,15 +344,6 @@ export default function PracticeBoard() {
 				</p>
 			)}
 
-			{opened && (
-				<EnrollmentDetailModal
-					enrollment={opened.enrollment}
-					course={opened.course}
-					programLinks={opened.programLinks}
-					onClose={() => setOpened(null)}
-					onSaved={refresh}
-				/>
-			)}
 		</AdminLayout>
 	);
 }
