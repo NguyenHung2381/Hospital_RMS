@@ -18,6 +18,8 @@ import type {
 	MentorOption,
 	PracticeBoard,
 	PracticeRecordRow,
+	PracticeResultList,
+	PracticeResultSave,
 	RotationList,
 	RotationUpdate,
 	Grade,
@@ -116,6 +118,10 @@ export const getEnrollment = (enrollmentId: string) =>
 	apiClient.get<Enrollment>(`/courses/enrollments/${enrollmentId}`);
 /** Hồ sơ thực hành GPHN trên mọi khóa (màn "Hồ sơ thực hành GPHN"). */
 export const getPracticeRecords = () => apiClient.get<PracticeRecordRow[]>('/courses/practice-records');
+/** Vòng đã kết thúc chưa có kết quả — màn "Nhập kết quả vòng" (Phòng Đào tạo nhập hộ từ phiếu giấy). */
+export const getPracticeResults = () => apiClient.get<PracticeResultList>('/courses/practice-results');
+export const savePracticeResults = (rows: PracticeResultSave[]) =>
+	apiClient.put<{ saved: number; failed: { id: string; message: string }[] }>('/courses/practice-results/bulk', { rows });
 /** programId: chương trình học viên chọn — bài học của chương trình tự gắn theo. */
 /** Ghi danh hộ được duyệt luôn — đủ sĩ số thì status = 'waitlisted'. Khóa GPHN: xếp lịch vòng là bước sau. */
 /** moved_to: lớp đầy, hồ sơ được chuyển sang khóa khác còn chỗ · waitlist_position: vị trí trong danh sách chờ của chương trình. */

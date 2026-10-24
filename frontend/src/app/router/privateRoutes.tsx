@@ -90,6 +90,7 @@ const Courses = lazy(() => import('../../features/course/pages/Courses'));
 const CourseDetail = lazy(() => import('../../features/course/pages/CourseDetail'));
 const PracticeBoard = lazy(() => import('../../features/course/pages/PracticeBoard'));
 const PracticeRecords = lazy(() => import('../../features/course/pages/PracticeRecords'));
+const PracticeResults = lazy(() => import('../../features/course/pages/PracticeResults'));
 const PracticeRecordDetail = lazy(() => import('../../features/course/pages/PracticeRecordDetail'));
 const ClassSchedule = lazy(
 	() => import('../../features/class-schedule/pages/ClassSchedule'),
@@ -118,6 +119,7 @@ const UserMyTraining = lazy(() => import('../../features/portal/pages/MyTraining
 const UserMyCourseDetail = lazy(() => import('../../features/portal/pages/MyCourseDetail'));
 const UserMyTeachingGrades = lazy(() => import('../../features/portal/pages/MyTeachingGrades'));
 const UserMyCme = lazy(() => import('../../features/portal/pages/MyCme'));
+const UserMyMentoring = lazy(() => import('../../features/portal/pages/MyMentoring'));
 const UserMyAttendance = lazy(() => import('../../features/portal/pages/MyAttendance'));
 // ── Cổng học viên (tài khoản học viên ngoại viện) ──────────
 const TraineeHome = lazy(() => import('../../features/trainee-portal/pages/TraineeHome'));
@@ -346,6 +348,14 @@ export const adminRoutes: RouteObject[] = [
 		),
 	},
 	{
+		path: '/admin/practice-results',
+		element: (
+			<RequirePermission perm='courses:update'>
+				{admin('Nhập kết quả vòng', <PracticeResults />)}
+			</RequirePermission>
+		),
+	},
+	{
 		path: '/admin/practice-records/:enrollmentId',
 		element: (
 			<RequirePermission perm='courses:read'>
@@ -494,6 +504,10 @@ export const userRoutes: RouteObject[] = [
 		// Điểm danh chuyển sang cổng học viên — nhân viên không điểm danh nữa.
 		path: '/user/cham-cong',
 		element: <Navigate to='/user' replace />,
+	},
+	{
+		path: '/user/huong-dan',
+		element: user('Hướng dẫn thực hành', <UserMyMentoring />),
 	},
 	{
 		path: '/user/cme',

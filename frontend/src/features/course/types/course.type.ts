@@ -206,6 +206,8 @@ export type EnrollmentUpdate = Partial<
 
 // ─── Vòng thực hành GPHN của 1 hồ sơ (khoa, ngày, người hướng dẫn) ─────────
 export type RotationResult = 'pending' | 'pass' | 'fail';
+/** mentor: người hướng dẫn tự đánh giá (cổng nhân viên) · staff: Phòng Đào tạo nhập hộ */
+export type RotationResultSource = 'mentor' | 'staff';
 export const ROTATION_RESULT_LABEL: Record<RotationResult, string> = {
 	pending: 'Đang / chưa thực hành',
 	pass: 'Đạt',
@@ -237,6 +239,11 @@ export interface EnrollmentRotation {
 	mentor_phone: string | null;
 	mentor_scope: string | null;
 	result: RotationResult;
+	/** Nhận xét khi đánh giá + ai nhập (NHD tự đánh giá / Phòng Đào tạo nhập hộ), lúc nào */
+	result_comment?: string | null;
+	result_at?: string | null;
+	result_source?: RotationResultSource | null;
+	result_by_name?: string | null;
 	attempt_no: number;
 	note: string | null;
 	/** Khoa được chọn của vòng (rỗng = không giới hạn). */
@@ -265,7 +272,7 @@ export interface RotationList {
 export type RotationUpdate = Partial<
 	Pick<
 		EnrollmentRotation,
-		'department_id' | 'start_date' | 'end_date' | 'duration_text' | 'mentor_user_id' | 'mentor_salutation' | 'result' | 'note'
+		'department_id' | 'start_date' | 'end_date' | 'duration_text' | 'mentor_user_id' | 'mentor_salutation' | 'result' | 'result_comment' | 'note'
 	>
 >;
 
@@ -634,4 +641,53 @@ export interface Certificate {
 	revoke_reason: string | null;
 	file_name: string | null;
 	file_url: string | null;
+}
+
+// ─── Đánh giá vòng thực hành (GĐ3): màn NHD + nhập kết quả hàng loạt ────────
+/** 1 vòng kèm học viên / khóa — GET /me/mentoring và GET /courses/practice-results */
+export interface PracticeResultRow {
+	id: string;
+	enrollment_id: string;
+	round_title: string | null;
+	seq: number;
+	attempt_no: number;
+	start_date: string | null;
+	end_date: string | null;
+	duration_text: string | null;
+	department_id: string | null;
+	department_name: string | null;
+	mentor_user_id: string | null;
+	mentor_name: string | null;
+	result: RotationResult;
+	result_comment: string | null;
+	result_at: string | null;
+	result_source: RotationResultSource | null;
+	result_by_name: string | null;
+	practice_code: string | null;
+	course_id: string;
+	course_name: string;
+	trainee_name: string;
+	trainee_phone: string | null;
+	program_code: string | null;
+	program_name: string | null;
+}
+
+export interface PracticeResultOption {
+	/** '' = chưa phân NHD / chưa có khoa */
+	id: string;
+	name: string;
+	count: number;
+}
+
+export interface PracticeResultList {
+	rows: PracticeResultRow[];
+	mentors: PracticeResultOption[];
+	departments: PracticeResultOption[];
+	total: number;
+}
+
+export interface PracticeResultSave {
+	id: string;
+	result: RotationResult;
+	comment?: string | null;
 }

@@ -69,6 +69,20 @@ router.get(
 );
 // Hồ sơ thực hành GPHN trên mọi khóa — màn "Hồ sơ thực hành GPHN" (trước '/:id').
 router.get('/practice-records', authorizePermission(['courses', 'read']), practiceCtrl.listPracticeRecords);
+// Nhập kết quả vòng hàng loạt (phiếu giấy của NHD) — vòng đã kết thúc chưa đánh giá.
+router.get('/practice-results', authorizePermission(['courses', 'read']), practiceCtrl.listAwaitingResults);
+router.put(
+	'/practice-results/bulk',
+	authorizePermission(['courses', 'update']),
+	[
+		body('rows').isArray({ min: 1, max: 500 }).withMessage('Danh sách kết quả không hợp lệ'),
+		body('rows.*.id').isString().notEmpty(),
+		body('rows.*.result').isIn(['pending', 'pass', 'fail']).withMessage('Kết quả không hợp lệ'),
+		body('rows.*.comment').optional({ nullable: true }).isString().isLength({ max: 1000 }),
+	],
+	validate,
+	practiceCtrl.saveResultsBulk,
+);
 router.get('/:id', authorizePermission(['courses', 'read']), ctrl.getById);
 
 router.post(

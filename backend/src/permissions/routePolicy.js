@@ -144,6 +144,12 @@ module.exports = {
 		[`DELETE ${API}/me/trainee-documents/:docId`]:
 			'Rút lại file mình nộp, chỉ khi chưa duyệt và thuộc hồ sơ của mình (removeMyDocument)',
 		[`GET ${API}/me/teaching/grading`]: 'Bài tự luận chờ chấm của đề mình là người chấm',
+		[`GET ${API}/me/mentoring/`]:
+			'Vòng thực hành GPHN mình là người hướng dẫn (practiceResultService.listForMentor theo mentor_user_id)',
+		[`GET ${API}/me/mentoring/count`]:
+			'Đếm vòng mình hướng dẫn — để hiện menu và badge chờ đánh giá (countForMentor)',
+		[`PUT ${API}/me/mentoring/rotations/:rotationId/result`]:
+			'NHD đánh giá vòng của mình — service kiểm mentor_user_id = chính mình (evaluateAsMentor)',
 		[`GET ${API}/me/teaching/attempts/:attemptId`]:
 			'Bài làm của đề mình là người chấm (examService.assertGrader), ẩn tên nếu chấm ẩn danh',
 		[`POST ${API}/me/teaching/attempts/:attemptId/grade`]:

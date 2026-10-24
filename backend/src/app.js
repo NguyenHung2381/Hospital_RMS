@@ -208,6 +208,11 @@ app.use(
 	require('./modules/portal/teaching.routes'),
 );
 app.use(
+	`${API}/me/mentoring`,
+	requireModule('TRAINING'),
+	require('./modules/portal/mentoring.routes'),
+);
+app.use(
 	`${API}/me/trainee-documents`,
 	requireModule('TRAINING'),
 	require('./modules/portal/myTraineeDocuments.routes'),

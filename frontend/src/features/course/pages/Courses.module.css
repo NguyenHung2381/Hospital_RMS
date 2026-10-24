@@ -1193,3 +1193,18 @@
 	font-size: var(--font-size-2xs);
 	color: var(--color-gray-500);
 }
+/* Vòng thực hành: ai nhập kết quả + nhận xét NHD (GĐ3) */
+.rotResultBy {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+	font-size: var(--font-size-2xs);
+	color: var(--color-gray-500);
+}
+.rotResultComment {
+	color: var(--color-gray-700);
+	font-style: normal;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}

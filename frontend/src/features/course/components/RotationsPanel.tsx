@@ -3,6 +3,7 @@ import { DatePicker } from '@/shared/components';
 import { ChevDSvg, PlusSvg, TrashSvg } from '@/assets/icons';
 import { apiClient } from '@/shared/api/axios';
 import { showToast } from '@/shared/utils/feedback';
+import { formatDateVN } from '@/shared/utils/formatDate';
 import {
 	addRotationSegment,
 	autoArrangeRotations,
@@ -395,6 +396,16 @@ export function RotationsPanel({
 											</option>
 										))}
 									</select>
+									{r.result !== 'pending' && r.result_source && (
+										<span
+											className={styles.rotResultBy}
+											title={r.result_comment ? `Nhận xét: ${r.result_comment}` : undefined}
+										>
+											{r.result_source === 'mentor' ? 'NHD tự đánh giá' : `PĐT nhập${r.result_by_name ? ` · ${r.result_by_name}` : ''}`}
+											{r.result_at && ` · ${formatDateVN(r.result_at)}`}
+											{r.result_comment && <em className={styles.rotResultComment}>“{r.result_comment}”</em>}
+										</span>
+									)}
 								</div>
 								<div className={styles.rotField}>
 									<span className={styles.rotLabel}>Thời lượng</span>

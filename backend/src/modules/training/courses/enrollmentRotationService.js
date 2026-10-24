@@ -63,10 +63,12 @@ const list = async (enrollmentId) => {
 	const [rows, loads, rounds, maxLoad] = await Promise.all([
 		pool.request().input('id', sql.VarChar(20), enrollmentId).query(`
       SELECT r.*, pl.code AS round_code, pl.allow_split, pl.duration_value AS round_duration_value,
-             pl.duration_unit AS round_duration_unit, d.name AS current_department_name
+             pl.duration_unit AS round_duration_unit, d.name AS current_department_name,
+             ub.full_name AS result_by_name
       FROM enrollment_rotations r
       LEFT JOIN program_lessons pl ON pl.id = r.lesson_id
       LEFT JOIN departments d ON d.id = r.department_id
+      LEFT JOIN users ub ON ub.id = r.result_by
       WHERE r.enrollment_id = @id
       ORDER BY r.seq, r.created_at
     `),
@@ -240,9 +242,12 @@ const ROW_FIELDS = {
 	mentor_salutation: sql.NVarChar(10),
 	result: sql.VarChar(10),
 	note: sql.NVarChar(500),
+	// Nhận xét của người hướng dẫn khi đánh giá vòng (GĐ3)
+	result_comment: sql.NVarChar(1000),
 };
 
-const update = async (rotationId, data, actorId) => {
+// source: ai nhập kết quả — 'mentor' (NHD tự đánh giá ở /me/mentoring) | 'staff' (Phòng Đào tạo).
+const update = async (rotationId, data, actorId, { source = 'staff' } = {}) => {
 	if (data.result !== undefined && !RESULTS.includes(data.result))
 		throw httpError(400, 'Kết quả không hợp lệ');
 	const pool = await getPool();
@@ -258,6 +263,16 @@ const update = async (rotationId, data, actorId) => {
 		if (changingMentor && field in SNAPSHOT_TYPES) continue;
 		sets.push(`${field} = @${field}`);
 		req.input(field, type, data[field] === '' ? null : data[field]);
+	}
+	// Kết quả đổi ⇒ ghi lại ai nhập, lúc nào, nguồn; về "chưa đánh giá" thì xoá. Cột ở vế
+	// phải là giá trị TRƯỚC khi UPDATE nên so được kết quả cũ / mới.
+	if (data.result !== undefined) {
+		const changed = (col, val) =>
+			`${col} = CASE WHEN @result = 'pending' THEN NULL WHEN result = @result THEN ${col} ELSE ${val} END`;
+		sets.push(changed('result_at', 'GETDATE()'));
+		sets.push(changed('result_by', '@actor_id'));
+		sets.push(changed('result_source', '@result_source'));
+		req.input('result_source', sql.VarChar(10), source);
 	}
 	// Đổi ngày mà không ghi thời lượng ⇒ tự ghi lại chữ thời lượng theo ngày
 	if (data.duration_text === undefined && data.start_date && data.end_date) {
@@ -317,7 +332,11 @@ const retake = async (rotationId, actorId) => {
       DECLARE @enrollment_id VARCHAR(20), @seq INT;
       SELECT @enrollment_id = enrollment_id, @seq = seq FROM enrollment_rotations WHERE id = @id;
       IF @enrollment_id IS NULL THROW 51011, N'Không tìm thấy vòng thực hành.', 1;
-      UPDATE enrollment_rotations SET result = 'fail', updated_at = GETDATE(), updated_by = @actor_id WHERE id = @id;
+      UPDATE enrollment_rotations SET result = 'fail', updated_at = GETDATE(), updated_by = @actor_id,
+        result_at = CASE WHEN result = 'fail' THEN result_at ELSE GETDATE() END,
+        result_by = CASE WHEN result = 'fail' THEN result_by ELSE @actor_id END,
+        result_source = CASE WHEN result = 'fail' THEN result_source ELSE 'staff' END
+      WHERE id = @id;
       UPDATE enrollment_rotations SET seq = seq + 1 WHERE enrollment_id = @enrollment_id AND seq > @seq;
       INSERT INTO enrollment_rotations (id, enrollment_id, lesson_id, round_title, seq, department_id, department_name,
                                         duration_text, attempt_no, note, created_by)

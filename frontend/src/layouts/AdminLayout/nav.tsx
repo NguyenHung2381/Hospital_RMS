@@ -71,6 +71,7 @@ export const KEY_TO_PATH: Record<string, string> = {
 	trainingCatalog: '/admin/trainee-types',
 	courses: '/admin/courses',
 	practiceRecords: '/admin/practice-records',
+	practiceResults: '/admin/practice-results',
 	practiceBoard: '/admin/practice-board',
 	questionBank: '/admin/question-bank',
 	cmeCompliance: '/admin/cme-compliance',
@@ -183,6 +184,7 @@ export const NAV_GROUPS: NavGroup[] = [
 		items: [
 			navItem('courses', 'Khóa ĐTLT / CTCV', ClipboardCheckSvg, 'courses:read'),
 			navItem('practiceRecords', 'Hồ sơ thực hành GPHN', FileTextSvg, 'courses:read'),
+			navItem('practiceResults', 'Nhập kết quả vòng', ApproveSvg, 'courses:update'),
 			navItem('practiceBoard', 'Thực hành theo ngày', DeptSvg, 'courses:read'),
 			navItem('classSchedule', 'Lịch học', CalendarSvg, 'courses:read'),
 			navItem('trainees', 'Học viên', UsersSvg, 'trainees:read'),

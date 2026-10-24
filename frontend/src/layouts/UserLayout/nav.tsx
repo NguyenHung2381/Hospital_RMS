@@ -10,6 +10,7 @@ import {
 	QrSvg,
 	TopicSvg,
 	UserSvg,
+	UserCheckSvg,
 	UsersSvg,
 } from '@/assets/icons';
 import type React from 'react';
@@ -30,6 +31,7 @@ export const KEY_TO_PATH: Record<string, string> = {
 	attendanceCheckIn: '/user/diem-danh',
 	myTraining: '/user/khoa-hoc',
 	myCme: '/user/cme',
+	myMentoring: '/user/huong-dan',
 	profile: '/user/profile',
 	deptAccounts: '/user/department-accounts',
 	notifications: '/user/notifications',
@@ -48,6 +50,8 @@ export interface NavItem {
 	managerOnly?: boolean;
 	/** Chỉ hiện khi user đang giữ ghế trong ít nhất một hội đồng. */
 	councilOnly?: boolean;
+	/** Chỉ hiện khi user là người hướng dẫn của ít nhất một vòng thực hành GPHN. */
+	mentorOnly?: boolean;
 	/** Chỉ hiện khi đang trong thời gian "Đăng ký đề tài" của một đợt đang mở. */
 	needsRegistrationWindow?: boolean;
 	/** Ẩn khi module bị tắt ở Cấu hình hệ thống. */
@@ -101,6 +105,13 @@ export const NAV_GROUPS: NavGroup[] = [
 		items: [
 			{ key: 'myTraining', label: 'Khóa học của tôi', icon: <BookOpenSvg className={styles.navIcon} />, module: 'training' },
 			{ key: 'myCme', label: 'Tín chỉ CME của tôi', icon: <BadgeSvg className={styles.navIcon} />, module: 'seminar' },
+			{
+				key: 'myMentoring',
+				label: 'Hướng dẫn thực hành',
+				icon: <UserCheckSvg className={styles.navIcon} />,
+				mentorOnly: true,
+				module: 'training',
+			},
 		],
 	},
 	{

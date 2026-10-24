@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import Logo from '../../assets/logo.png';
 import { getMyProgressCount } from '../../features/council/api/councilApi';
 import { getMyTasks } from '../../features/my-tasks/api/myTasksApi';
+import { mentoringApi } from '../../features/portal/api/mentoringApi';
 import { useRegistrationOpen } from '../../features/round/hooks/useRegistrationOpen';
 import { NotificationPanel } from '../../features/notifications/components/NotificationPanel';
 import { useNotifications } from '../../features/notifications/hooks/useNotifications';
@@ -140,6 +141,20 @@ function PortalLayout({
 	}, [fetchTaskCount]);
 	useRealtimeUpdate('topic', fetchTaskCount);
 
+	// "Hướng dẫn thực hành": chỉ hiện cho người hướng dẫn vòng GPHN; badge = vòng chờ mình đánh giá.
+	const [mentor, setMentor] = useState({ total: 0, awaiting: 0 });
+	const fetchMentor = useCallback(() => {
+		if (hideSidebar) return;
+		mentoringApi
+			.count()
+			.then(setMentor)
+			.catch(() => setMentor({ total: 0, awaiting: 0 }));
+	}, [hideSidebar]);
+	useEffect(() => {
+		fetchMentor();
+	}, [fetchMentor]);
+	useRealtimeUpdate('course_enrollment', fetchMentor);
+
 	const modules = useModules();
 	const hiddenMenus = useHiddenMenus('user', USER_MENU);
 	const keep = (item: NavItem) => {
@@ -148,6 +163,7 @@ function PortalLayout({
 		if (item.restrictMember && !canRegisterTopic) return false;
 		if (item.managerOnly && !isManagerAccount) return false;
 		if (item.councilOnly && !isCouncilMember) return false;
+		if (item.mentorOnly && !mentor.total) return false;
 		if (item.needsRegistrationWindow && !registrationOpen) return false;
 		return true;
 	};
@@ -251,7 +267,7 @@ function PortalLayout({
 	const showPageHeader = Boolean(pageTitle || pageSubtitle || headerActions);
 
 	const renderNavItem = (item: NavItem) => {
-		const badge = item.key === 'myTasks' && taskCount > 0 ? taskCount : 0;
+		const badge = item.key === 'myTasks' ? taskCount : item.key === 'myMentoring' ? mentor.awaiting : 0;
 		return (
 			<button
 				key={item.key}

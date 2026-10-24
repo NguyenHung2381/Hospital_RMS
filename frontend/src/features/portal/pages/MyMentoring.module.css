@@ -1,0 +1,116 @@
+/* Màn "Hướng dẫn thực hành" — ưu tiên điện thoại (360px): nút lớn, chữ dễ bấm. */
+.who {
+	min-width: 0;
+	flex: 1;
+}
+
+.round {
+	margin-top: 2px;
+	font-size: var(--font-size-compact);
+	font-weight: 600;
+	color: #096b35;
+}
+
+.facts {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 6px 16px;
+	margin-top: 8px;
+	font-size: var(--font-size-compact);
+	color: #475569;
+}
+
+.facts > span,
+.facts > a {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	min-width: 0;
+}
+
+.facts svg {
+	width: 15px;
+	height: 15px;
+	flex-shrink: 0;
+	color: #94a3b8;
+}
+
+.phone {
+	color: var(--color-primary);
+	font-weight: 600;
+	text-decoration: none;
+}
+
+.program {
+	flex-basis: 100%;
+	color: #64748b;
+}
+
+.evaluate {
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+	margin-top: 12px;
+	padding-top: 12px;
+	border-top: 1px solid var(--color-gray-100);
+}
+
+.textarea {
+	width: 100%;
+	box-sizing: border-box;
+	padding: 10px 12px;
+	border: 1px solid #cbd5e1;
+	border-radius: 8px;
+	font: inherit;
+	font-size: 16px; /* ≥16px: iOS không tự phóng to khi gõ */
+	resize: vertical;
+}
+
+.actions {
+	display: grid;
+	grid-template-columns: 1fr 1fr;
+	gap: 10px;
+}
+
+.bigBtn {
+	min-height: 44px;
+	justify-content: center;
+	font-size: var(--font-size-base);
+}
+
+.doneBox {
+	margin-top: 10px;
+	padding-top: 10px;
+	border-top: 1px solid var(--color-gray-100);
+}
+
+.comment {
+	margin: 0 0 6px;
+	font-size: var(--font-size-compact);
+	color: #334155;
+	white-space: pre-line;
+}
+
+.doneMeta {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 4px 14px;
+	font-size: var(--font-size-xs);
+	color: #64748b;
+}
+
+.link {
+	padding: 6px 0;
+	border: 0;
+	background: none;
+	font: inherit;
+	font-weight: 600;
+	color: var(--color-primary);
+	cursor: pointer;
+}
+
+.link:disabled {
+	opacity: 0.5;
+	cursor: default;
+}

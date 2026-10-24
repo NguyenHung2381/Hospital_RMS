@@ -129,6 +129,8 @@ DELETE /api/v1/courses/grades/:gradeId  courses:update
 DELETE /api/v1/courses/lecturer-assignments/:assignmentId  courses:update
 GET    /api/v1/courses/practice-board  courses:read
 GET    /api/v1/courses/practice-records  courses:read
+GET    /api/v1/courses/practice-results  courses:read
+PUT    /api/v1/courses/practice-results/bulk  courses:update
 PUT    /api/v1/courses/rotations/:rotationId  courses:update
 DELETE /api/v1/courses/rotations/:rotationId  courses:update
 POST   /api/v1/courses/rotations/:rotationId/move  courses:update
@@ -218,6 +220,9 @@ GET    /api/v1/me/courses/:id  authOnly
 POST   /api/v1/me/courses/:id/register  authOnly
 PATCH  /api/v1/me/documents/:docId/download  authOnly
 PATCH  /api/v1/me/lesson-documents/:docId/download  authOnly
+GET    /api/v1/me/mentoring/  authOnly
+GET    /api/v1/me/mentoring/count  authOnly
+PUT    /api/v1/me/mentoring/rotations/:rotationId/result  authOnly
 GET    /api/v1/me/teaching/attempts/:attemptId  authOnly
 POST   /api/v1/me/teaching/attempts/:attemptId/grade  authOnly
 GET    /api/v1/me/teaching/courses/:id/gradebook  authOnly
