@@ -3,6 +3,7 @@ const { getPool, sql } = require('../../../config/db');
 const { broadcast } = require('../../events/eventService');
 const { httpError } = require('../../../utils/httpError');
 const { SESSION_IN_PROGRAM_SQL } = require('./sessionScope');
+const lessonProgressService = require('./lessonProgressService');
 const { TRAINEE_OF_USER_SQL } = require('../trainees/traineeOfUser');
 
 // Mã QR điểm danh: JWT ngắn hạn ký chính session_id (mirror utils/captcha.js)
@@ -39,7 +40,8 @@ const listAttendance = async (sessionId) => {
 	return r.recordset;
 };
 
-const setAttendance = async (sessionId, enrollmentId, status, note, actorId) => {
+// recompute=false khi lưu hàng loạt — bulkSetAttendance tính lại 1 lần sau cùng.
+const setAttendance = async (sessionId, enrollmentId, status, note, actorId, { recompute = true } = {}) => {
 	const pool = await getPool();
 	await pool
 		.request()
@@ -60,6 +62,8 @@ const setAttendance = async (sessionId, enrollmentId, status, note, actorId) => 
       END
     `);
 	broadcast('update', { entity: 'attendance' });
+	// Bài học "đã học" tính theo điểm danh (quyết định 13)
+	if (recompute) await lessonProgressService.recompute({ sessionId });
 };
 
 const bulkSetAttendance = async (sessionId, records, actorId) => {
@@ -76,8 +80,9 @@ const bulkSetAttendance = async (sessionId, records, actorId) => {
 		throw httpError(400, 'Có học viên không thuộc lớp (chương trình) của buổi học này.');
 	}
 	for (const rec of records) {
-		await setAttendance(sessionId, rec.enrollment_id, rec.status, rec.note, actorId);
+		await setAttendance(sessionId, rec.enrollment_id, rec.status, rec.note, actorId, { recompute: false });
 	}
+	await lessonProgressService.recompute({ sessionId });
 };
 
 // Sinh mã QR điểm danh cho 1 buổi học — giảng viên/quản lý (đã qua
@@ -155,6 +160,7 @@ const checkInSelf = async (token, deviceId, actor) => {
 		}
 	}
 	broadcast('update', { entity: 'attendance' });
+	await lessonProgressService.recompute({ sessionId: decoded.session_id });
 	return { session_id: decoded.session_id };
 };
 

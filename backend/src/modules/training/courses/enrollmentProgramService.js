@@ -11,9 +11,9 @@
 const { getPool, sql } = require('../../../config/db');
 const { broadcast } = require('../../events/eventService');
 const { httpError } = require('../../../utils/httpError');
+const lessonProgressService = require('./lessonProgressService');
 
 const PROGRESS = ['in_progress', 'completed', 'dropped'];
-const LESSON_STATUS = ['not_started', 'in_progress', 'done'];
 
 const ENROLLMENT_FIELDS = {
 	practice_code: sql.NVarChar(30),
@@ -69,6 +69,8 @@ const syncLessons = async (enrollmentId, { replace = false } = {}) => {
       AND NOT EXISTS (SELECT 1 FROM enrollment_lessons el WHERE el.enrollment_id = @id AND el.lesson_id = lp.lesson_id);
     SELECT @@ROWCOUNT AS added;
   `);
+	// Bài vừa chép: trạng thái tính theo điểm danh đã có (lessonProgressService)
+	await lessonProgressService.recompute({ enrollmentId });
 	return { added: r.recordset[0]?.added ?? 0 };
 };
 
@@ -83,26 +85,6 @@ const listLessons = async (enrollmentId) => {
     ORDER BY el.display_order, pl.title
   `);
 	return r.recordset;
-};
-
-const updateLesson = async (enrollmentId, lessonId, { status }, actorId) => {
-	if (!LESSON_STATUS.includes(status)) throw httpError(400, 'Trạng thái bài học không hợp lệ');
-	const pool = await getPool();
-	const r = await pool
-		.request()
-		.input('id', sql.VarChar(20), enrollmentId)
-		.input('lesson_id', sql.VarChar(20), lessonId)
-		.input('status', sql.VarChar(15), status)
-		.input('actor_id', sql.VarChar(20), actorId).query(`
-      UPDATE enrollment_lessons
-      SET status = @status,
-          completed_at = CASE WHEN @status = 'done' THEN ISNULL(completed_at, CAST(GETDATE() AS DATE)) ELSE NULL END,
-          updated_at = GETDATE(), updated_by = @actor_id
-      WHERE enrollment_id = @id AND lesson_id = @lesson_id;
-      SELECT @@ROWCOUNT AS n;
-    `);
-	if (!r.recordset[0]?.n) throw httpError(404, 'Không tìm thấy bài học của học viên.');
-	broadcast('update', { entity: 'course_enrollment' });
 };
 
 // GPHN: điền lĩnh vực chuyên môn / hình thức hành nghề MẶC ĐỊNH của chương trình
@@ -178,6 +160,5 @@ module.exports = {
 	syncLessons,
 	fillPracticeDefaults,
 	listLessons,
-	updateLesson,
 	updateEnrollment,
 };

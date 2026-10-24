@@ -15,7 +15,13 @@ import {
 import type { SimpleItem } from '../hooks/useTrainingPrograms';
 import { TagPicker } from './LessonFormModal';
 import { usePracticeCatalogs } from '../../catalog/hooks/usePracticeCatalogs';
-import { TRAINING_TYPE } from '../../course/types/course.type';
+import { TRAINING_TYPE, type ExamParts } from '../../course/types/course.type';
+
+const EXAM_PARTS_LABEL: Record<ExamParts, string> = {
+	theory: 'Chỉ lý thuyết',
+	practice: 'Chỉ thực hành',
+	both: 'Cả lý thuyết và thực hành',
+};
 import styles from '../pages/TrainingPrograms.module.css';
 
 const str = (v: number | null | undefined) => (v != null ? String(v) : '');
@@ -35,6 +41,7 @@ const fromProgram = (p: TrainingProgram): TrainingProgramFormData => ({
 	target_audience: p.target_audience ?? '',
 	theory_hours: str(p.theory_hours),
 	practice_hours: str(p.practice_hours),
+	exam_parts: p.exam_parts ?? '',
 	credit_hours: str(p.credit_hours),
 	tuition_fee: str(p.tuition_fee),
 	min_capacity: str(p.min_capacity),
@@ -107,6 +114,15 @@ export function TrainingProgramFormModal({
 			setForm((f) => ({ ...f, [k]: e.target.value }));
 			setErrors((er) => ({ ...er, [k]: '' }));
 		};
+
+	// Chưa chọn phần thi: bảng điểm suy theo số tiết (gradeRules.partHours)
+	const examAutoText = (() => {
+		const t = form.theory_hours.trim();
+		const p = form.practice_hours.trim();
+		if (!t && !p) return EXAM_PARTS_LABEL.both.toLowerCase();
+		const parts = [Number(t) > 0 && 'lý thuyết', Number(p) > 0 && 'thực hành'].filter(Boolean);
+		return parts.length ? parts.join(' + ') : 'không thi phần nào';
+	})();
 
 	const validate = () => {
 		const err: Partial<Record<keyof TrainingProgramFormData, string>> = {};
@@ -249,6 +265,23 @@ export function TrainingProgramFormModal({
 					error={errors.practice_hours}
 				>
 					{numberInput('practice_hours', '0')}
+				</FormField>
+				<FormField label='Phần thi cuối khóa'>
+					<select
+						className={styles.formInput}
+						value={form.exam_parts}
+						onChange={set('exam_parts')}
+					>
+						<option value=''>Tự động theo số tiết ({examAutoText})</option>
+						{(Object.keys(EXAM_PARTS_LABEL) as ExamParts[]).map((k) => (
+							<option
+								key={k}
+								value={k}
+							>
+								{EXAM_PARTS_LABEL[k]}
+							</option>
+						))}
+					</select>
 				</FormField>
 				<FormField
 					label='Đối tượng học viên (chọn nhiều)'

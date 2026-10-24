@@ -103,6 +103,8 @@ GET    /api/v1/courses/:id/programs/suggest-dates  courses:read
 GET    /api/v1/courses/:id/sessions  courses:read
 POST   /api/v1/courses/:id/sessions  courses:update
 POST   /api/v1/courses/:id/sessions/bulk  courses:update
+GET    /api/v1/courses/:id/waitlist-candidates  courses:read
+POST   /api/v1/courses/:id/waitlist-transfer  courses:approve
 POST   /api/v1/courses/attendance/check-in  authOnly
 POST   /api/v1/courses/certificates  courses:approve
 DELETE /api/v1/courses/certificates/:certId  courses:approve
@@ -118,7 +120,6 @@ POST   /api/v1/courses/enrollments/:enrollmentId/documents  courses:update
 GET    /api/v1/courses/enrollments/:enrollmentId/grades/history  courses:read
 POST   /api/v1/courses/enrollments/:enrollmentId/grades/retake  courses:update
 GET    /api/v1/courses/enrollments/:enrollmentId/lessons  courses:read
-PUT    /api/v1/courses/enrollments/:enrollmentId/lessons  courses:update
 POST   /api/v1/courses/enrollments/:enrollmentId/lessons/sync  courses:update
 GET    /api/v1/courses/enrollments/:enrollmentId/rotations  courses:read
 POST   /api/v1/courses/enrollments/:enrollmentId/rotations/auto  courses:update

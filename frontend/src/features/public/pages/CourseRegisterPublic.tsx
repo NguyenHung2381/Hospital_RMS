@@ -115,7 +115,11 @@ export default function CourseRegisterPublic() {
 		if (match) setForm((f) => (f.trainee_type_id ? f : { ...f, trainee_type_id: match.id }));
 	};
 	// Khóa chỉ có 1 chương trình thì tự chọn luôn
-	const autoProgram = (c: PublicCourse | null) => (c?.programs.length === 1 ? c.programs[0].id : '');
+	// Lớp ĐTLT / CTCV đã đủ sĩ số thì không tự chọn — người ngoài viện không đăng ký được (12b)
+	const autoProgram = (c: PublicCourse | null) => {
+		const only = c?.programs.length === 1 ? c.programs[0] : null;
+		return only && !(only.class_rule && only.class_max != null && only.class_approved >= only.class_max) ? only.id : '';
+	};
 
 	const pickCourse = (c: PublicCourse | null) => {
 		choose(c, autoProgram(c));
@@ -365,6 +369,7 @@ export default function CourseRegisterPublic() {
 									}}
 									onBack={() => pickCourse(null)}
 									backLabel={courses.length > 1 ? 'Chọn khóa khác' : 'Xem danh sách khóa'}
+									external
 								/>
 							) : loading ? (
 								<div className={styles.emptyNotice}>Đang tải danh sách khóa học...</div>

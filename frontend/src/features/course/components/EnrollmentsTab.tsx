@@ -31,6 +31,7 @@ import { PracticeBookImportModal } from "./PracticeBookImportModal";
 import { savePracticeBook } from "../utils/practiceDocuments";
 import { autoArrangeCourse, cancelOpenClass, removeEnrollment } from "../api/courseApi";
 import { ClassDatesModal } from "./ClassDatesModal";
+import { WaitlistCandidatesPanel } from "./WaitlistCandidatesPanel";
 import { showToast } from "@/shared/utils/feedback";
 import styles from "../pages/Courses.module.css";
 import tbl from "@/shared/components/Table/Table.module.css";
@@ -77,7 +78,7 @@ const classState = (l: CourseProgramLink) => {
   const waiting = l.class_waiting
     ? ` · ${l.class_waiting} người trong danh sách chờ của chương trình`
     : "";
-  const fullNote = full ? " (đã đầy, duyệt thêm sẽ vào danh sách chờ khóa sau)" : "";
+  const fullNote = full ? " (đã đầy: nội viện duyệt thêm vào danh sách chờ đợt sau, ngoại viện không nhận thêm)" : "";
   return {
     open,
     ready,
@@ -591,13 +592,16 @@ export function EnrollmentsTab({
           </button>
           <span className={styles.hint} style={{ flexBasis: "100%" }}>
             Chưa có trong danh sách? Thêm ở mục Học viên trước (khóa thực hành:
-            nhập sổ Excel). Ghi danh ở đây được duyệt luôn (đủ sĩ số thì vào
-            danh sách chờ)
+            nhập sổ Excel). Ghi danh ở đây được duyệt luôn (lớp đủ sĩ số: nội viện vào
+            danh sách chờ đợt sau, ngoại viện không ghi danh được)
             {course?.is_rolling && "; khóa thực hành: duyệt xong thì xếp lịch vòng ở bước sau"}; bấm tên
             học viên trong bảng để mở hồ sơ.
           </span>
         </div>
       )}
+
+      {/* Khóa ĐTLT / CTCV: nội viện chờ ở đợt trước cùng chương trình — cán bộ chọn chuyển sang */}
+      {classRule && course && <WaitlistCandidatesPanel courseId={course.id} onMoved={onSaved} />}
 
       <div className={tbl.tableCard}>
         <div className={tbl.tableHeader}>

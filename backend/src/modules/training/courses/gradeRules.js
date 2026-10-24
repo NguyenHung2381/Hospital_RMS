@@ -166,4 +166,20 @@ const evaluate = ({
 	};
 };
 
-module.exports = { DEFAULT_RULES, RULE_SETTING_KEYS, toTen, round1, classify, evaluate };
+/**
+ * Trọng số (số tiết) 2 phần theo phần thi của chương trình (training_programs.exam_parts).
+ * Phần không thi ⇒ 0 tiết (evaluate bỏ qua: không hiện, không bắt buộc).
+ *   - 'theory' / 'practice': chỉ 1 phần; 'both': cả 2, phần khai 0 tiết vẫn thi (trọng số 1).
+ *   - NULL: suy theo số tiết — phần có tiết > 0 thì thi; chưa khai số tiết thì cả 2 ngang nhau.
+ */
+const partHours = ({ theoryHours = null, practiceHours = null, examParts = null } = {}) => {
+	const known = theoryHours != null || practiceHours != null;
+	const th = known ? Number(theoryHours) || 0 : 1;
+	const ph = known ? Number(practiceHours) || 0 : 1;
+	if (examParts === 'theory') return { theoryHours: th || 1, practiceHours: 0 };
+	if (examParts === 'practice') return { theoryHours: 0, practiceHours: ph || 1 };
+	if (examParts === 'both') return { theoryHours: th || 1, practiceHours: ph || 1 };
+	return { theoryHours: th, practiceHours: ph };
+};
+
+module.exports = { DEFAULT_RULES, RULE_SETTING_KEYS, toTen, round1, classify, evaluate, partHours };

@@ -2,7 +2,7 @@
 // ngưỡng mặc định theo Phụ lục III TT 32/2023.
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { evaluate, toTen } = require('../../src/modules/training/courses/gradeRules');
+const { evaluate, partHours, toTen } = require('../../src/modules/training/courses/gradeRules');
 
 const att = (held, absent) => ({ held, absent });
 
@@ -59,4 +59,30 @@ test('điểm tổng theo số tiết + xếp loại', () => {
 test('ngưỡng cấu hình được', () => {
 	const r = evaluate({ theory: 6.5, practice: 9, rules: { theoryPassPct: 70 } });
 	assert.equal(r.result, 'fail');
+});
+
+test('phần thi theo chương trình (exam_parts)', () => {
+	// chưa cấu hình: suy theo số tiết; chưa khai tiết thì cả 2
+	assert.deepEqual(partHours({}), { theoryHours: 1, practiceHours: 1 });
+	assert.deepEqual(partHours({ theoryHours: 20, practiceHours: 0 }), {
+		theoryHours: 20,
+		practiceHours: 0,
+	});
+	// chỉ thi LT dù có tiết TH
+	assert.deepEqual(partHours({ theoryHours: 20, practiceHours: 40, examParts: 'theory' }), {
+		theoryHours: 20,
+		practiceHours: 0,
+	});
+	// cả 2 dù khai 0 tiết TH
+	assert.deepEqual(partHours({ theoryHours: 20, practiceHours: 0, examParts: 'both' }), {
+		theoryHours: 20,
+		practiceHours: 1,
+	});
+	// chỉ thi TH ⇒ thiếu điểm LT vẫn Đạt
+	const r = evaluate({
+		practice: 7,
+		...partHours({ theoryHours: 10, practiceHours: 30, examParts: 'practice' }),
+	});
+	assert.equal(r.theory.applies, false);
+	assert.equal(r.result, 'pass');
 });

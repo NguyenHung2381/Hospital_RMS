@@ -1,3 +1,5 @@
+import type { ExamParts } from '../../course/types/course.type';
+
 export type ModalType = 'add' | 'edit' | 'delete' | 'import' | null;
 
 // ─── Thời lượng (chương trình / vòng thực hành) — lưu số + đơn vị ─────────
@@ -46,6 +48,8 @@ export interface TrainingProgram {
 	target_audience: string | null;
 	theory_hours: number | null;
 	practice_hours: number | null;
+	/** Phần thi cuối khóa; null = suy theo số tiết (phần có tiết > 0 thì thi) */
+	exam_parts: ExamParts | null;
 	total_hours: number;
 	credit_hours: number | null;
 	tuition_fee: number | null;
@@ -85,6 +89,8 @@ export interface TrainingProgramFormData {
 	target_audience: string;
 	theory_hours: string;
 	practice_hours: string;
+	/** '' = tự suy theo số tiết */
+	exam_parts: ExamParts | '';
 	credit_hours: string;
 	tuition_fee: string;
 	min_capacity: string;
@@ -246,6 +252,7 @@ export const EMPTY_FORM: TrainingProgramFormData = {
 	target_audience: '',
 	theory_hours: '',
 	practice_hours: '',
+	exam_parts: '',
 	credit_hours: '',
 	tuition_fee: '',
 	min_capacity: '',

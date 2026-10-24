@@ -3,7 +3,7 @@ const { broadcast } = require('../../events/eventService');
 const { httpError } = require('../../../utils/httpError');
 const systemSettingService = require('../../settings/systemSettingService');
 const certificateService = require('./certificateService');
-const { DEFAULT_RULES, RULE_SETTING_KEYS, evaluate, round1 } = require('./gradeRules');
+const { DEFAULT_RULES, RULE_SETTING_KEYS, evaluate, partHours, round1 } = require('./gradeRules');
 const { SESSION_IN_PROGRAM_SQL } = require('./sessionScope');
 
 // ─── Bảng điểm 2 phần Lý thuyết + Thực hành (giai đoạn 4) ──────────────────
@@ -82,7 +82,7 @@ const loadRows = async (courseId, enrollmentIds) => {
       SELECT CASE WHEN COUNT(*) = 1 THEN MIN(program_id) END FROM course_programs WHERE course_id = @course_id);
 
     SELECT e.id AS enrollment_id, e.trainee_id, t.full_name AS trainee_name,
-           tp.id AS program_id, tp.name AS program_name, tp.theory_hours, tp.practice_hours,
+           tp.id AS program_id, tp.name AS program_name, tp.theory_hours, tp.practice_hours, tp.exam_parts,
            g.id AS grade_id, g.theory_score, g.practice_score, g.theory_flag, g.practice_flag,
            g.theory_attempt, g.practice_attempt, g.score, g.result, g.classification, g.note,
            g.locked_at, g.locked_by, lu.full_name AS locked_by_name,
@@ -129,13 +129,13 @@ const loadRows = async (courseId, enrollmentIds) => {
 	}));
 };
 
-// Chương trình chưa khai số tiết (NULL) ⇒ coi như có cả 2 phần, trọng số bằng nhau.
-const hoursOf = (row) => {
-	const known = row.theory_hours != null || row.practice_hours != null;
-	return known
-		? { theoryHours: Number(row.theory_hours) || 0, practiceHours: Number(row.practice_hours) || 0 }
-		: { theoryHours: 1, practiceHours: 1 };
-};
+// Phần thi theo cấu hình chương trình (exam_parts), chưa đặt thì suy theo số tiết.
+const hoursOf = (row) =>
+	partHours({
+		theoryHours: row.theory_hours,
+		practiceHours: row.practice_hours,
+		examParts: row.exam_parts,
+	});
 
 const evaluateRow = (row, rules) =>
 	evaluate({
@@ -282,6 +282,11 @@ const saveBulk = async (
 						? normScore(input[`${part}_score`])
 						: row[`${part}_score`];
 				if (score === row[`${part}_score`] && flag === (row[`${part}_flag`] ?? null)) continue;
+				if (!(hoursOf(row)[`${part}Hours`] > 0))
+					throw httpError(
+						400,
+						`Chương trình của ${row.trainee_name} không thi phần ${PART_LABEL[part]}.`,
+					);
 				if (!access[part])
 					throw httpError(
 						403,

@@ -13,10 +13,12 @@ const { suggestClassDates } = require('../../../utils/classDates');
 //   - Đủ sĩ số tối thiểu (training_programs.min_capacity) ⇒ BÁO cán bộ; cán bộ
 //     bấm "Mở lớp" (course_programs.opened_at). Lớp chưa mở thì chưa xếp lịch.
 //     Không có hạn đăng ký: lớp cứ chờ tới khi đủ.
-//   - Sĩ số tối đa (max_capacity, không đặt = không giới hạn): lớp đầy thì duyệt
-//     thêm = vào DANH SÁCH CHỜ CỦA CHƯƠNG TRÌNH ('waitlisted', không gắn riêng khóa
-//     nào). Khóa chưa khai giảng có chương trình đó còn chỗ (khóa mới tạo, có người
-//     rút…) thì tự kéo người chờ vào, ai chờ lâu (decided_at) vào trước.
+//   - Sĩ số tối đa (max_capacity, không đặt = không giới hạn): lớp đầy thì
+//     NỘI VIỆN (trainees.staff_user_id) duyệt thêm = vào DANH SÁCH CHỜ ĐỢT SAU
+//     ('waitlisted'); NGOẠI VIỆN bị chặn "Lớp đã đủ sĩ số" (cả form đăng ký công khai).
+//     Lớp có người rút ⇒ người chờ CỦA CHÍNH KHÓA được gọi vào. Không tự chuyển sang
+//     khóa khác: đợt mới cùng chương trình gợi ý danh sách "Người chờ từ đợt trước",
+//     cán bộ chọn rồi bấm chuyển (waitlistTransferService).
 const CLASS_TYPES = ['TRNTP-DTLT', 'TRNTP-CTCV'];
 const VN_TODAY = 'CAST(DATEADD(HOUR, 7, GETUTCDATE()) AS DATE)';
 
@@ -98,12 +100,38 @@ const mailTrainees = (enrollmentIds, title, message) =>
 		}
 	})().catch((err) => logger.error('[course-class] mail failed:', err.message));
 
-/** Trạng thái khi duyệt 1 hồ sơ: lớp đầy ⇒ 'waitlisted'. Khóa không áp dụng ⇒ null (giữ cách cũ). */
-const statusOnApprove = async (course, programId) => {
+/** Nội viện = hồ sơ học viên gắn tài khoản nhân viên của viện (quyết định 12a). */
+const isInternalTrainee = async (traineeId) => {
+	const pool = await getPool();
+	const r = await pool
+		.request()
+		.input('id', sql.VarChar(20), traineeId)
+		.query('SELECT staff_user_id FROM trainees WHERE id = @id');
+	return !!r.recordset[0]?.staff_user_id;
+};
+
+const FULL_MESSAGE = (k) =>
+	`Lớp ${k.program_code ?? k.program_name} đã đủ sĩ số tối đa (${k.class_max} học viên).`;
+
+/**
+ * Trạng thái khi duyệt 1 hồ sơ: lớp đầy ⇒ nội viện vào danh sách chờ đợt sau
+ * ('waitlisted'), ngoại viện bị chặn (409). Khóa không áp dụng ⇒ null (giữ cách cũ).
+ */
+const statusOnApprove = async (course, programId, traineeId) => {
 	if (!appliesTo(course) || !programId) return null;
 	const k = await classOf(course.id, programId);
 	if (!k) return null;
-	return roomOf(k) > 0 ? 'approved' : 'waitlisted';
+	if (roomOf(k) > 0) return 'approved';
+	if (await isInternalTrainee(traineeId)) return 'waitlisted';
+	throw httpError(409, `${FULL_MESSAGE(k)} Học viên ngoại viện không vào danh sách chờ — hãy từ chối hoặc nâng sĩ số.`);
+};
+
+/** Đăng ký mới (công khai / ghi danh hộ) vào lớp đầy: ngoại viện bị chặn ngay (12b). */
+const assertRoomForTrainee = async (course, programId, traineeId) => {
+	if (!appliesTo(course) || !programId) return;
+	const k = await classOf(course.id, programId);
+	if (!k || roomOf(k) > 0 || (await isInternalTrainee(traineeId))) return;
+	throw httpError(409, `${FULL_MESSAGE(k)} Vui lòng chọn đợt khác hoặc liên hệ phòng Đào tạo.`);
 };
 
 /**
@@ -128,8 +156,8 @@ const notifyIfReady = async (courseId, programId, added = 1) => {
 };
 
 /**
- * Lớp (chưa khai giảng) còn chỗ ⇒ kéo người từ danh sách chờ của chương trình vào,
- * ai chờ lâu vào trước — cả người chờ ở chính khóa lẫn ở khóa khác.
+ * Lớp (chưa khai giảng) còn chỗ ⇒ gọi người chờ CỦA CHÍNH KHÓA vào, ai chờ lâu vào
+ * trước. Người chờ ở khóa khác không tự chuyển (12c) — xem waitlistTransferService.
  * programId: chỉ xét 1 chương trình (null = mọi lớp của khóa).
  */
 const fillFromWaitlist = async (courseId, actorId, { programId = null } = {}) => {
@@ -159,15 +187,10 @@ const fillFromWaitlist = async (courseId, actorId, { programId = null } = {}) =>
           INSERT INTO @picked (id)
           SELECT TOP (@room) e.id
           FROM course_enrollments e
-          JOIN courses c ON c.id = e.course_id
-          WHERE e.program_id = @program_id AND e.status = 'waitlisted'
-            AND ${APPLIES_SQL('c')} AND c.status <> 'cancelled'
-            AND NOT EXISTS (SELECT 1 FROM course_enrollments d
-                            WHERE d.course_id = @course_id AND d.trainee_id = e.trainee_id
-                              AND d.program_id = @program_id AND d.id <> e.id)
+          WHERE e.course_id = @course_id AND e.program_id = @program_id AND e.status = 'waitlisted'
           ORDER BY e.decided_at, e.registered_at, e.id;
           UPDATE course_enrollments
-          SET course_id = @course_id, status = 'approved', updated_at = GETDATE(), updated_by = @actor_id
+          SET status = 'approved', updated_at = GETDATE(), updated_by = @actor_id
           WHERE id IN (SELECT id FROM @picked);
           SELECT id FROM @picked;`);
 			const ids = r.recordset.map((x) => x.id);
@@ -192,28 +215,7 @@ const fillFromWaitlist = async (courseId, actorId, { programId = null } = {}) =>
 	return moved;
 };
 
-/**
- * Hồ sơ vừa vào danh sách chờ ⇒ nếu có khóa khác (chưa khai giảng, cùng chương
- * trình) còn chỗ thì chuyển sang luôn — khóa khai giảng sớm hơn được ưu tiên.
- */
-const placeWaitlisted = async (sourceId, programId, actorId) => {
-	const pool = await getPool();
-	const targets = (
-		await pool
-			.request()
-			.input('source_id', sql.VarChar(20), sourceId)
-			.input('program_id', sql.VarChar(20), programId).query(`
-      SELECT t.id FROM courses t
-      JOIN course_programs cp ON cp.course_id = t.id AND cp.program_id = @program_id
-      WHERE t.id <> @source_id AND ${APPLIES_SQL('t')} AND t.status <> 'cancelled' AND ${NOT_STARTED_SQL('cp', 't')}
-      ORDER BY ISNULL(COALESCE(cp.start_date, t.start_date), '9999-12-31'), t.created_at`)
-	).recordset;
-	const moved = [];
-	for (const t of targets) moved.push(...(await fillFromWaitlist(t.id, actorId, { programId })));
-	return moved;
-};
-
-/** Sau khi tạo / sửa khóa: lớp còn chỗ thì nhận người từ danh sách chờ của chương trình. */
+/** Sau khi tạo / sửa khóa (vd. nâng sĩ số): lớp còn chỗ thì nhận người chờ của chính khóa. */
 const refreshCourse = async (course, actorId) => {
 	if (!appliesTo(course) || course.status === 'cancelled') return;
 	await fillFromWaitlist(course.id, actorId);
@@ -420,7 +422,10 @@ module.exports = {
 	statusOnApprove,
 	notifyIfReady,
 	fillFromWaitlist,
-	placeWaitlisted,
+	classesOf,
+	mailTrainees,
+	isInternalTrainee,
+	assertRoomForTrainee,
 	refreshCourse,
 	openClass,
 	cancelOpenClass,

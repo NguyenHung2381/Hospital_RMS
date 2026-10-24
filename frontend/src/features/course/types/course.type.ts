@@ -538,6 +538,8 @@ export interface Grade {
 
 // ─── Bảng điểm Lý thuyết + Thực hành (giai đoạn 4, GET /courses/:id/gradebook) ──
 export type GradePart = 'theory' | 'practice';
+/** Phần thi cuối khóa của chương trình (training_programs.exam_parts) */
+export type ExamParts = GradePart | 'both';
 export type GradeFlag = 'absent' | 'exempt';
 export const GRADE_FLAG_LABEL: Record<GradeFlag, string> = { absent: 'Vắng thi', exempt: 'Miễn thi' };
 
@@ -570,6 +572,8 @@ export interface GradebookRow {
 	program_name: string | null;
 	theory_hours: number | null;
 	practice_hours: number | null;
+	/** Phần thi của chương trình; null = suy theo số tiết */
+	exam_parts: ExamParts | null;
 	grade_id: string | null;
 	theory_score: number | null;
 	practice_score: number | null;

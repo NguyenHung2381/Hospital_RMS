@@ -16,9 +16,11 @@ const hours = (lt?: number | null, th?: number | null) =>
 const LESSON_PREVIEW = 5; // số nội dung hiện sẵn, còn lại bấm "Xem thêm"
 
 // Khóa ĐTLT / CTCV: nhãn ngắn báo đăng ký sẽ vào lớp hay vào danh sách chờ khóa sau.
-const classBadge = (p: PublicProgram): { text: string; full: boolean } | null => {
+// Lớp đầy: nội viện vào danh sách chờ đợt sau; ngoại viện (cổng công khai) không đăng ký được.
+const classBadge = (p: PublicProgram, external: boolean): { text: string; full: boolean } | null => {
 	if (!p.class_rule) return null;
-	if (p.class_max != null && p.class_approved >= p.class_max) return { text: 'Lớp đã đủ · vào danh sách chờ', full: true };
+	if (p.class_max != null && p.class_approved >= p.class_max)
+		return { text: external ? 'Lớp đã đủ sĩ số' : 'Lớp đã đủ · vào danh sách chờ', full: true };
 	if (p.class_approved < p.class_min) return { text: `Đang gom lớp ${p.class_approved}/${p.class_min}`, full: false };
 	return p.class_max != null ? { text: `Còn ${p.class_max - p.class_approved} chỗ`, full: false } : null;
 };
@@ -71,6 +73,7 @@ export function CourseProgramPicker({
 	onBack,
 	backLabel = 'Quay lại',
 	footer,
+	external = false,
 }: {
 	course: PublicCourse;
 	value: string;
@@ -78,6 +81,8 @@ export function CourseProgramPicker({
 	onBack: () => void;
 	backLabel?: string;
 	footer?: React.ReactNode;
+	/** Cổng công khai (ngoại viện): chương trình đã đủ sĩ số thì không chọn được. */
+	external?: boolean;
 }) {
 	const [q, setQ] = useState('');
 	// Mặc định thu gọn — cần xem nội dung thì bấm "Chi tiết"
@@ -140,7 +145,8 @@ export function CourseProgramPicker({
 					>
 						{programs.map((p) => {
 							const expanded = openIds.has(p.id);
-							const badge = classBadge(p);
+							const badge = classBadge(p, external);
+							const blocked = external && !!badge?.full;
 							return (
 								<div
 									key={p.id}
@@ -153,6 +159,7 @@ export function CourseProgramPicker({
 												name={`program-${course.id}`}
 												className={styles.radio}
 												checked={value === p.id}
+												disabled={blocked}
 												onChange={() => onChange(p.id)}
 											/>
 											<span className={styles.optionBody}>

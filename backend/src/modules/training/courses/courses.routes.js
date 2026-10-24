@@ -2,6 +2,7 @@ const router = require('express').Router();
 const { body, query } = require('express-validator');
 const ctrl = require('./courseController');
 const practiceCtrl = require('./practiceRecordController');
+const waitlistCtrl = require('./waitlistController');
 const uploadExcel = require('../../../middlewares/uploadExcel');
 const { authenticate, authorizePermission } = require('../../../middlewares/auth');
 const { validate } = require('../../../middlewares/errorHandler');
@@ -145,6 +146,15 @@ router.post(
 	validate,
 	ctrl.openClass,
 );
+// Người chờ từ đợt trước (cùng chương trình, nội viện): gợi ý + cán bộ chọn chuyển sang đợt này.
+router.get('/:id/waitlist-candidates', authorizePermission(['courses', 'read']), waitlistCtrl.listCandidates);
+router.post(
+	'/:id/waitlist-transfer',
+	authorizePermission(['courses', 'approve']),
+	[body('enrollment_ids').isArray({ min: 1, max: 500 }).withMessage('Chưa chọn học viên')],
+	validate,
+	waitlistCtrl.transfer,
+);
 // Hủy mở lớp: lớp về trạng thái chờ mở (lớp đã có buổi học thì phải xóa lịch trước).
 router.post(
 	'/:id/programs/cancel-open',
@@ -254,16 +264,6 @@ router.post(
 	'/enrollments/:enrollmentId/lessons/sync',
 	authorizePermission(['courses', 'update']),
 	ctrl.syncEnrollmentLessons,
-);
-router.put(
-	'/enrollments/:enrollmentId/lessons',
-	authorizePermission(['courses', 'update']),
-	[
-		body('lesson_id').notEmpty().withMessage('Thiếu lesson_id'),
-		body('status').isIn(['not_started', 'in_progress', 'done']),
-	],
-	validate,
-	ctrl.updateEnrollmentLesson,
 );
 
 // ─── Vòng thực hành GPHN (khoa, ngày, người hướng dẫn từng vòng) ───────────

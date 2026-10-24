@@ -24,6 +24,8 @@ const PROGRAM_FIELDS = {
 	target_audience: sql.NVarChar(300),
 	theory_hours: sql.Int,
 	practice_hours: sql.Int,
+	// Phần thi cuối khóa: theory | practice | both; NULL = suy theo số tiết (gradebookService)
+	exam_parts: sql.VarChar(10),
 	credit_hours: sql.Decimal(6, 1),
 	tuition_fee: sql.Decimal(18, 0),
 	min_capacity: sql.Int,

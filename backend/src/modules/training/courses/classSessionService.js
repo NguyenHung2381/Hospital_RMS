@@ -5,6 +5,7 @@ const { ASSIGNED_EXISTS_SQL } = require('./coursePolicy');
 const { fmtDateVN } = require('../../../utils/vnDate');
 const { assertClassOpen } = require('./programClassService');
 const { SESSION_IN_PROGRAM_SQL } = require('./sessionScope');
+const lessonProgressService = require('./lessonProgressService');
 const { TRAINEE_OF_USER_SQL } = require('../trainees/traineeOfUser');
 
 // Buổi o trùng lịch giảng viên với buổi s: cùng GV, cùng ngày, chồng giờ (thiếu
@@ -166,19 +167,24 @@ const createSession = async (courseId, data, actorId) => {
     `);
 	broadcast('update', { entity: 'class_session' });
 	const id = result.recordset[0].id;
+	// Bài có thêm buổi ⇒ học viên đã "xong" bài phải có mặt cả buổi mới (quyết định 13)
+	await lessonProgressService.recompute({ sessionId: id });
 	return { id, warnings: await findLecturerClashes([id]) };
 };
 
 const updateSession = async (sessionId, data, actorId) => {
 	const pool = await getPool();
+	let movedFromCourse = null; // buổi đổi bài ⇒ tính lại trạng thái bài cả khóa
 	if (data.subject_id !== undefined) {
 		const cur = await pool
 			.request()
 			.input('id', sql.VarChar(20), sessionId)
 			.query('SELECT course_id, subject_id FROM class_sessions WHERE id = @id');
 		const row = cur.recordset[0];
-		if (row && (row.subject_id ?? '') !== (data.subject_id ?? ''))
+		if (row && (row.subject_id ?? '') !== (data.subject_id ?? '')) {
 			await assertClassOpen(row.course_id, data.subject_id);
+			movedFromCourse = row.course_id;
+		}
 	}
 	const sets = ['updated_at = GETDATE()', 'updated_by = @actor_id'];
 	const req = pool
@@ -207,16 +213,19 @@ const updateSession = async (sessionId, data, actorId) => {
 	}
 	await req.query(`UPDATE class_sessions SET ${sets.join(', ')} WHERE id = @id`);
 	broadcast('update', { entity: 'class_session' });
+	if (movedFromCourse) await lessonProgressService.recompute({ courseId: movedFromCourse });
 	return { warnings: await findLecturerClashes([sessionId]) };
 };
 
 const removeSession = async (sessionId) => {
 	const pool = await getPool();
-	await pool
-		.request()
-		.input('id', sql.VarChar(20), sessionId)
-		.query('DELETE FROM class_sessions WHERE id = @id');
+	const r = await pool.request().input('id', sql.VarChar(20), sessionId).query(`
+      SELECT course_id FROM class_sessions WHERE id = @id;
+      DELETE FROM class_sessions WHERE id = @id;`);
 	broadcast('update', { entity: 'class_session' });
+	// Bớt 1 buổi ⇒ bài có thể vừa đủ điều kiện "đã học"
+	const courseId = r.recordsets[0][0]?.course_id;
+	if (courseId) await lessonProgressService.recompute({ courseId });
 };
 
 // Tạo nhiều buổi học cùng lúc theo khoảng ngày + các thứ trong tuần được chọn.
@@ -273,6 +282,7 @@ const createSessionsBulk = async (courseId, data, actorId) => {
 		else skipped += 1;
 	}
 	broadcast('update', { entity: 'class_session' });
+	if (createdIds.length) await lessonProgressService.recompute({ courseId });
 	return { created: createdIds.length, skipped, warnings: await findLecturerClashes(createdIds) };
 };
 

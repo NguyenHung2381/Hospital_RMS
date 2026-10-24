@@ -224,8 +224,7 @@ export function useCourseDetail(courseId: string) {
 				// Nhân viên vừa được tạo hồ sơ học viên — nạp lại để không còn hiện 2 lần.
 				if (traineeId.startsWith(STAFF_OPTION_PREFIX)) loadEnrollCandidates();
 				// Ghi danh hộ được duyệt luôn; khóa GPHN xếp lịch vòng ở bước sau
-				if (out.moved_to) showToast('success', `Lớp đã đầy — học viên được xếp sang ${out.moved_to}`);
-				else if (out.status === 'waitlisted')
+				if (out.status === 'waitlisted')
 					showToast('info', `Lớp đã đủ sĩ số tối đa — vào danh sách chờ khóa sau (vị trí ${out.waitlist_position ?? '?'})`);
 				else showToast('success', 'Đã ghi danh và duyệt học viên');
 				await load();
@@ -244,8 +243,7 @@ export function useCourseDetail(courseId: string) {
 			setError('');
 			try {
 				const out = await apiDecideEnrollment(enrollmentId, status, note);
-				if (out.moved_to) showToast('success', `Lớp đã đầy — học viên được xếp sang ${out.moved_to}`);
-				else if (out.status === 'waitlisted')
+				if (out.status === 'waitlisted')
 					showToast('info', `Lớp đã đủ sĩ số tối đa — vào danh sách chờ khóa sau (vị trí ${out.waitlist_position ?? '?'})`);
 				await load();
 			} catch (err) {

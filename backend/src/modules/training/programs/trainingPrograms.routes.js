@@ -12,7 +12,7 @@ const uploadLessonDoc = createTrainingUpload('lesson_document', {
 });
 
 // Trường số của chương trình theo danh mục 1.xlsx (Mã CT): số tiết, giờ tín chỉ,
-// học phí, thời lượng dạng số.
+// học phí, thời lượng dạng số; phần thi cuối khóa.
 const programNumberRules = [
 	body(['theory_hours', 'practice_hours'])
 		.optional({ nullable: true, checkFalsy: true })
@@ -23,6 +23,10 @@ const programNumberRules = [
 	body('duration_unit')
 		.optional({ nullable: true, checkFalsy: true })
 		.isIn(['day', 'week', 'month']),
+	body('exam_parts')
+		.optional({ nullable: true, checkFalsy: true })
+		.isIn(['theory', 'practice', 'both'])
+		.withMessage('Phần thi không hợp lệ'),
 ];
 
 router.use(authenticate);

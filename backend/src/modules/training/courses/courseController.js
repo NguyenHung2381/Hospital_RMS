@@ -71,7 +71,6 @@ const registerTrainee = asyncHandler(async (req, res) => {
 	return created(res, {
 		...item,
 		status: decided.status,
-		moved_to: decided.moved_to,
 		waitlist_position: decided.waitlist_position,
 	});
 });
@@ -160,16 +159,6 @@ const syncEnrollmentLessons = asyncHandler(async (req, res) => {
 		replace: true,
 	});
 	return success(res, out, 'Đã đồng bộ bài học theo chương trình');
-});
-
-const updateEnrollmentLesson = asyncHandler(async (req, res) => {
-	await enrollmentProgramService.updateLesson(
-		req.params.enrollmentId,
-		req.body.lesson_id,
-		req.body,
-		req.user.id,
-	);
-	return success(res, null, 'Đã cập nhật bài học');
 });
 
 // ─── Vòng thực hành GPHN ─────────────────────────────────────────────────
@@ -548,7 +537,6 @@ module.exports = {
 	updateEnrollment,
 	listEnrollmentLessons,
 	syncEnrollmentLessons,
-	updateEnrollmentLesson,
 	listRotations,
 	autoArrangeRotations,
 	autoArrangeCourse,

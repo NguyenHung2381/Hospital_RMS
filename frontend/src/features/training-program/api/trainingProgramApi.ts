@@ -35,6 +35,7 @@ const toPayload = (form: TrainingProgramFormData) => ({
 	target_audience: form.target_audience || null,
 	theory_hours: numOrNull(form.theory_hours),
 	practice_hours: numOrNull(form.practice_hours),
+	exam_parts: form.exam_parts || null,
 	credit_hours: numOrNull(form.credit_hours),
 	tuition_fee: numOrNull(form.tuition_fee),
 	min_capacity: form.min_capacity ? Number(form.min_capacity) : null,

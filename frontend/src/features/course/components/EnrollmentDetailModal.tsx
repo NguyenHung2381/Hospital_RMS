@@ -1,13 +1,12 @@
 import { useCallback, useEffect, useState } from 'react';
 import { FormField } from '@/shared/components/Input/FormField';
-import { DatePicker, Modal, ModalActions } from '@/shared/components';
+import { Badge, DatePicker, Modal, ModalActions } from '@/shared/components';
 import { UserCheckSvg } from '@/assets/icons';
 import { showToast } from '@/shared/utils/feedback';
 import {
 	getEnrollmentLessons,
 	syncEnrollmentLessons,
 	updateEnrollment,
-	updateEnrollmentLesson,
 } from '../api/courseApi';
 import {
 	LESSON_STATUS_LABEL,
@@ -17,7 +16,6 @@ import {
 	type CourseProgramLink,
 	type Enrollment,
 	type EnrollmentLesson,
-	type EnrollmentLessonStatus,
 	type EnrollmentUpdate,
 	type ProgressStatus,
 } from '../types/course.type';
@@ -27,6 +25,9 @@ import { TraineeAttendanceTab } from '../../trainee/components/TraineeAttendance
 import { TraineeResultsTab } from '../../trainee/components/TraineeResultsTab';
 import styles from '../pages/Courses.module.css';
 import crud from '@/shared/components/Table/CrudPage.module.css';
+
+// Trạng thái bài tự tính theo điểm danh (lessonProgressService) — chỉ hiển thị
+const LESSON_STATUS_TONE = { not_started: 'gray', in_progress: 'blue', done: 'green' } as const;
 
 type Tab = 'info' | 'rotations' | 'documents' | 'lessons' | 'attendance' | 'results';
 
@@ -122,16 +123,6 @@ export function EnrollmentDetailModal({
 			setError(err instanceof Error ? err.message : 'Lưu thất bại');
 		} finally {
 			setSaving(false);
-		}
-	};
-
-	const changeLesson = async (lessonId: string, status: EnrollmentLessonStatus) => {
-		try {
-			await updateEnrollmentLesson(enrollment.id, lessonId, status);
-			await loadLessons();
-			onSaved();
-		} catch (err) {
-			setError(err instanceof Error ? err.message : 'Cập nhật bài học thất bại');
 		}
 	};
 
@@ -432,7 +423,7 @@ export function EnrollmentDetailModal({
 						}}
 					>
 						<span className={styles.hint}>
-							{done}/{lessons.length} bài đã học · đổi trạng thái được lưu ngay
+							{done}/{lessons.length} bài đã học · tự tính theo điểm danh (có mặt mọi buổi của bài)
 						</span>
 						<button
 							type='button'
@@ -462,21 +453,7 @@ export function EnrollmentDetailModal({
 											{l.completed_at ? ` · xong ${day(l.completed_at).split('-').reverse().join('/')}` : ''}
 										</div>
 									</div>
-									<select
-										className={styles.formInput}
-										style={{ width: 130 }}
-										value={l.status}
-										onChange={(e) => changeLesson(l.lesson_id, e.target.value as EnrollmentLessonStatus)}
-									>
-										{Object.entries(LESSON_STATUS_LABEL).map(([v, label]) => (
-											<option
-												key={v}
-												value={v}
-											>
-												{label}
-											</option>
-										))}
-									</select>
+									<Badge tone={LESSON_STATUS_TONE[l.status]}>{LESSON_STATUS_LABEL[l.status]}</Badge>
 								</div>
 							))}
 						</div>

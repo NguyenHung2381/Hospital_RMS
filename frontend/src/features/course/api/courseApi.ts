@@ -12,7 +12,6 @@ import type {
 	DocType,
 	Enrollment,
 	EnrollmentLesson,
-	EnrollmentLessonStatus,
 	EnrollmentStatus,
 	EnrollmentUpdate,
 	MentorOption,
@@ -124,11 +123,10 @@ export const savePracticeResults = (rows: PracticeResultSave[]) =>
 	apiClient.put<{ saved: number; failed: { id: string; message: string }[] }>('/courses/practice-results/bulk', { rows });
 /** programId: chương trình học viên chọn — bài học của chương trình tự gắn theo. */
 /** Ghi danh hộ được duyệt luôn — đủ sĩ số thì status = 'waitlisted'. Khóa GPHN: xếp lịch vòng là bước sau. */
-/** moved_to: lớp đầy, hồ sơ được chuyển sang khóa khác còn chỗ · waitlist_position: vị trí trong danh sách chờ của chương trình. */
+/** waitlist_position: vị trí trong danh sách chờ đợt sau của chương trình (nội viện, lớp đầy). */
 type RegisterResult = {
 	id: string;
 	status: EnrollmentStatus;
-	moved_to?: string | null;
 	waitlist_position?: number | null;
 };
 export const registerTrainee = (courseId: string, traineeId: string, programId?: string) =>
@@ -252,8 +250,6 @@ export const searchMentors = (search: string, departmentId?: string) => {
 	return apiClient.get<MentorOption[]>(`/staff-licenses/mentors?${qs}`);
 };
 
-export const updateEnrollmentLesson = (enrollmentId: string, lessonId: string, status: EnrollmentLessonStatus) =>
-	apiClient.put<null>(`/courses/enrollments/${enrollmentId}/lessons`, { lesson_id: lessonId, status });
 export const decideEnrollment = (enrollmentId: string, status: EnrollmentStatus, note?: string) =>
 	apiClient.put<RegisterResult>(`/courses/enrollments/${enrollmentId}/decide`, { status, note });
 export const removeEnrollment = (enrollmentId: string) =>
@@ -387,3 +383,31 @@ export const issueCertificate = (enrollmentId: string, expiryDate?: string) =>
 export const removeCertificate = (certId: string) => apiClient.delete<null>(`/courses/certificates/${certId}`);
 export const revokeCertificate = (certId: string, reason?: string) =>
 	apiClient.patch<null>(`/courses/certificates/${certId}/revoke`, { reason: reason || null });
+
+/** Người chờ từ đợt trước (nội viện, cùng chương trình) — gợi ý ở tab Học viên của đợt mới. */
+export interface WaitlistCandidate {
+	id: string;
+	trainee_id: string;
+	trainee_name: string;
+	trainee_phone: string | null;
+	trainee_email: string | null;
+	from_course_id: string;
+	from_course_name: string;
+	decided_at: string | null;
+	waitlist_position: number;
+}
+export interface WaitlistClass {
+	program_id: string;
+	program_code: string | null;
+	program_name: string;
+	started: boolean;
+	/** Chỗ trống của lớp — null = không giới hạn */
+	room: number | null;
+	candidates: WaitlistCandidate[];
+}
+export const getWaitlistCandidates = (courseId: string) =>
+	apiClient.get<WaitlistClass[]>(`/courses/${courseId}/waitlist-candidates`);
+export const transferWaitlisted = (courseId: string, enrollmentIds: string[]) =>
+	apiClient.post<{ moved: number; skipped: number; full: number }>(`/courses/${courseId}/waitlist-transfer`, {
+		enrollment_ids: enrollmentIds,
+	});

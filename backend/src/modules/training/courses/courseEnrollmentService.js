@@ -98,6 +98,8 @@ const registerTrainee = async (
 		throw httpError(400, 'Vui lòng chọn chương trình học.');
 	if (programId) await enrollmentProgramService.assertProgramInCourse(courseId, programId);
 	if (programId) await assertSingleProgram(traineeId, programId);
+	// Lớp đầy: ngoại viện bị chặn ngay khi đăng ký (12b); nội viện vẫn nhận, duyệt thì vào danh sách chờ.
+	if (programId) await programClassService.assertRoomForTrainee(course, programId, traineeId);
 
 	const result = await pool
 		.request()
@@ -219,8 +221,8 @@ const registerStaff = async (
 	return registerTrainee(courseId, traineeId, actorId, { bypassWindow, programId });
 };
 
-// Duyệt/từ chối đăng ký. Khóa ĐTLT / CTCV: lớp (chương trình) đầy ⇒ duyệt = vào
-// danh sách chờ của chương trình (programClassService), không chặn cứng.
+// Duyệt/từ chối đăng ký. Khóa ĐTLT / CTCV: lớp (chương trình) đầy ⇒ nội viện vào
+// danh sách chờ đợt sau, ngoại viện bị chặn 409 (programClassService.statusOnApprove).
 const decideEnrollment = async (enrollmentId, decision, actorId, note) => {
 	const pool = await getPool();
 	const current = await pool
@@ -237,7 +239,7 @@ const decideEnrollment = async (enrollmentId, decision, actorId, note) => {
 	let finalStatus = decision;
 	// Hồ sơ đã duyệt (đang chiếm chỗ) thì giữ nguyên.
 	if (decision === 'approved' && classRule && row.status !== 'approved')
-		finalStatus = (await programClassService.statusOnApprove(course, row.program_id)) ?? decision;
+		finalStatus = (await programClassService.statusOnApprove(course, row.program_id, row.trainee_id)) ?? decision;
 
 	await pool
 		.request()
@@ -251,7 +253,6 @@ const decideEnrollment = async (enrollmentId, decision, actorId, note) => {
       WHERE id = @id
     `);
 
-	let movedTo = null; // tên khóa khác nhận hồ sơ từ danh sách chờ
 	let waitlistPosition = null;
 	if (classRule) {
 		if (finalStatus === 'approved' && row.status !== 'approved')
@@ -260,18 +261,13 @@ const decideEnrollment = async (enrollmentId, decision, actorId, note) => {
 		else if (row.status === 'approved' && finalStatus !== 'approved')
 			await programClassService.fillFromWaitlist(course.id, actorId, { programId: row.program_id });
 		if (finalStatus === 'waitlisted') {
-			// Lớp đầy: khóa khác chưa khai giảng còn chỗ thì chuyển hồ sơ sang luôn.
-			await programClassService.placeWaitlisted(course.id, row.program_id, actorId);
+			// Nội viện, lớp đầy: chờ đợt sau — cán bộ chuyển tay khi có đợt mới (waitlistTransferService).
 			const after = (
 				await pool.request().input('id', sql.VarChar(20), enrollmentId).query(`
-          SELECT e.status, e.course_id, c.name AS course_name,
-                 CASE WHEN e.status = 'waitlisted' THEN ${programClassService.WAITLIST_POSITION_SQL('e')} END AS waitlist_position
-          FROM course_enrollments e JOIN courses c ON c.id = e.course_id WHERE e.id = @id`)
+          SELECT ${programClassService.WAITLIST_POSITION_SQL('e')} AS waitlist_position
+          FROM course_enrollments e WHERE e.id = @id`)
 			).recordset[0];
-			if (after && after.course_id !== course.id) {
-				finalStatus = after.status;
-				movedTo = after.course_name;
-			} else waitlistPosition = after?.waitlist_position ?? null;
+			waitlistPosition = after?.waitlist_position ?? null;
 		}
 	}
 
@@ -283,8 +279,7 @@ const decideEnrollment = async (enrollmentId, decision, actorId, note) => {
 		.input('trainee_id', sql.VarChar(20), row.trainee_id)
 		.query('SELECT full_name, email FROM trainees WHERE id = @trainee_id');
 	const traineeEmail = trainee.recordset[0]?.email;
-	// Được chuyển sang khóa khác thì programClassService đã gửi thư riêng.
-	if (traineeEmail && !movedTo) {
+	if (traineeEmail) {
 		const title =
 			finalStatus === 'approved'
 				? 'Đăng ký khóa học đã được duyệt'
@@ -313,7 +308,6 @@ const decideEnrollment = async (enrollmentId, decision, actorId, note) => {
 	return {
 		id: enrollmentId,
 		status: finalStatus,
-		moved_to: movedTo,
 		waitlist_position: waitlistPosition,
 	};
 };
