@@ -203,7 +203,11 @@ const userAttemptKey = (userId) => `user:${userId}`;
 const loginAttemptKey = (login) =>
 	`login:${crypto
 		.createHash('sha256')
-		.update(String(login ?? '').trim().toLowerCase())
+		.update(
+			String(login ?? '')
+				.trim()
+				.toLowerCase(),
+		)
 		.digest('hex')}`;
 
 // Đọc lại bộ đếm / trạng thái khóa mới nhất — gọi SAU khi đã giữ khóa lượt thử.

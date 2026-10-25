@@ -57,7 +57,9 @@ const reset = () => {
 test('đăng nhập: 12 request sai cùng lúc chỉ được thử đúng 5 lần, còn lại báo khóa', async () => {
 	reset();
 	const results = await Promise.all(
-		Array.from({ length: 12 }, (_, i) => authService.login('nva', `Sai#matkhau${i}`).catch((e) => e)),
+		Array.from({ length: 12 }, (_, i) =>
+			authService.login('nva', `Sai#matkhau${i}`).catch((e) => e),
+		),
 	);
 	assert.equal(failures, 5);
 	const locked = results.filter((e) => e.statusCode === 403 && e.retryAfterSeconds);

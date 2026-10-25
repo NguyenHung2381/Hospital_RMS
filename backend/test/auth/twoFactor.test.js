@@ -174,7 +174,11 @@ test('tắt 2FA: đúng mật khẩu nhưng thiếu / sai mã xác thực thì k
 		assert.equal(user.totp_enabled, 1);
 	}
 	await assert.rejects(
-		twoFactorService.disable2FA('U1', 'Sai#matkhau', await otplib.generate({ secret, type: 'totp' })),
+		twoFactorService.disable2FA(
+			'U1',
+			'Sai#matkhau',
+			await otplib.generate({ secret, type: 'totp' }),
+		),
 		(e) => e.statusCode === 400 && /Mật khẩu/.test(e.message),
 	);
 	await twoFactorService.disable2FA(

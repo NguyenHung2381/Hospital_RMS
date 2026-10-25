@@ -71,8 +71,6 @@ const isListView = (v: string | null): v is ListView =>
 
 /** Lọc nguồn học viên: nội viện (nhân viên bệnh viện) / ngoại viện. */
 type OriginFilter = "internal" | "external";
-const isOriginFilter = (v: string | null): v is OriginFilter =>
-  v === "internal" || v === "external";
 const matchOrigin = (e: Enrollment, o: OriginFilter | null) =>
   o === null || e.is_internal === (o === "internal");
 
@@ -186,9 +184,10 @@ export function EnrollmentsTab({
     setUrlParam("program", v === "" ? "_none" : v);
   // Lọc nội / ngoại viện (?origin=internal|external)
   const originParam = params.get("origin");
-  const originFilter: OriginFilter | null = isOriginFilter(originParam)
-    ? originParam
-    : null;
+  // Trả về chuỗi hằng (không trả lại originParam) để React Compiler biết đây là giá trị nguyên thủy —
+  // nếu không nó coi originFilter có thể bị matchOrigin() sửa và bỏ qua useMemo bên dưới.
+  const originFilter: OriginFilter | null =
+    originParam === "internal" ? "internal" : originParam === "external" ? "external" : null;
 
   // Ghi danh chưa chọn chương trình / chương trình đã gỡ khỏi khóa gom vào key ""
   const programKey = useMemo(() => {
