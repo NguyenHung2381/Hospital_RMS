@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { apiClient } from '../../../shared/api/axios';
 import { showToast } from '@/shared/utils/feedback';
-import type { DocumentSource } from '../api/courseApi';
+import type { DocumentSource, RegisterResult } from '../api/courseApi';
 import { academicLevel } from '../utils/academicLevel';
 import {
 	addDocument as apiAddDocument,
@@ -60,10 +60,22 @@ export interface LecturerItem extends SimpleItem {
 	full_name: string;
 }
 
+/** Ứng viên ghi danh — `name` gộp sẵn (dùng cho SearchableSelect), các trường còn lại cho danh sách tìm kiếm. */
+export interface EnrollCandidate extends SimpleItem {
+	full_name: string;
+	is_internal: boolean;
+	/** Dòng phụ: SĐT · email · khoa (học viên) hoặc mã NV · khoa (nhân viên chưa có hồ sơ). */
+	sub: string;
+	/** Nhân viên nội viện chưa có hồ sơ học viên — ghi danh sẽ tự tạo hồ sơ. */
+	is_staff: boolean;
+}
+
 interface PersonRow {
 	id: string;
 	full_name: string;
 	phone?: string | null;
+	email?: string | null;
+	department_name?: string | null;
 	specialty?: string | null;
 	is_employee?: boolean | null;
 }
@@ -88,7 +100,7 @@ interface StaffCandidate {
 export const STAFF_OPTION_PREFIX = 'user:';
 
 /** Ứng viên ghi danh: hồ sơ học viên (nội + ngoại viện) + nhân viên nội viện chưa có hồ sơ học viên. */
-export const fetchEnrollCandidates = async (): Promise<SimpleItem[]> => {
+export const fetchEnrollCandidates = async (): Promise<EnrollCandidate[]> => {
 	const [traineeRows, staff] = await Promise.all([
 		apiClient.get<{ data: PersonRow[] }>('/trainees?limit=0').then((r) => r.data),
 		apiClient.get<StaffCandidate[]>('/courses/staff-candidates').catch(() => [] as StaffCandidate[]),
@@ -97,10 +109,18 @@ export const fetchEnrollCandidates = async (): Promise<SimpleItem[]> => {
 		...traineeRows.map((t) => ({
 			id: t.id,
 			name: joinLabel(t.full_name, t.phone, t.is_employee ? 'Nội viện' : 'Ngoại viện'),
+			full_name: t.full_name,
+			is_internal: !!t.is_employee,
+			sub: joinLabel(t.phone, t.email, t.department_name),
+			is_staff: false,
 		})),
 		...staff.map((u) => ({
 			id: STAFF_OPTION_PREFIX + u.id,
 			name: joinLabel(u.full_name, u.staff_number, u.department_name, 'Nội viện'),
+			full_name: u.full_name,
+			is_internal: true,
+			sub: joinLabel(u.staff_number && `Mã NV ${u.staff_number}`, u.department_name),
+			is_staff: true,
 		})),
 	];
 };
@@ -146,7 +166,7 @@ export function useCourseDetail(courseId: string) {
 	const [documents, setDocuments] = useState<CourseDocument[]>([]);
 	const [grades, setGrades] = useState<Grade[]>([]);
 	const [certificates, setCertificates] = useState<Certificate[]>([]);
-	const [trainees, setTrainees] = useState<SimpleItem[]>([]);
+	const [trainees, setTrainees] = useState<EnrollCandidate[]>([]);
 	const [lecturers, setLecturers] = useState<LecturerItem[]>([]);
 	const [lessons, setLessons] = useState<SimpleItem[]>([]);
 	const [courseLessons, setCourseLessons] = useState<CourseLesson[]>([]);
@@ -213,8 +233,13 @@ export function useCourseDetail(courseId: string) {
 			.catch(() => {});
 	}, [loadEnrollCandidates, loadLecturers]);
 
+	/** `label` ("Nguyễn Văn A → ĐTLT_1") ghi vào thông báo để biết đã thêm đúng người, đúng lớp. */
 	const registerTrainee = useCallback(
-		async (traineeId: string, programId?: string) => {
+		async (
+			traineeId: string,
+			programId?: string,
+			label?: string,
+		): Promise<{ ok: true; result: RegisterResult } | { ok: false; error: string }> => {
 			setBusy(true);
 			setError('');
 			try {
@@ -222,12 +247,16 @@ export function useCourseDetail(courseId: string) {
 				// Nhân viên vừa được tạo hồ sơ học viên — nạp lại để không còn hiện 2 lần.
 				if (traineeId.startsWith(STAFF_OPTION_PREFIX)) loadEnrollCandidates();
 				// Ghi danh hộ được duyệt luôn; khóa GPHN xếp lịch vòng ở bước sau
+				const who = label ? `${label}: ` : '';
 				if (out.status === 'waitlisted')
-					showToast('info', `Lớp đã đủ sĩ số tối đa — vào danh sách chờ khóa sau (vị trí ${out.waitlist_position ?? '?'})`);
-				else showToast('success', 'Đã ghi danh và duyệt học viên');
+					showToast('info', `${who}lớp đã đủ sĩ số tối đa — vào danh sách chờ khóa sau (vị trí ${out.waitlist_position ?? '?'})`);
+				else showToast('success', `${who}đã ghi danh và duyệt`);
 				await load();
+				return { ok: true, result: out };
 			} catch (err) {
-				setError(err instanceof Error ? err.message : 'Đăng ký thất bại');
+				const msg = err instanceof Error ? err.message : 'Đăng ký thất bại';
+				setError(msg);
+				return { ok: false, error: msg };
 			} finally {
 				setBusy(false);
 			}

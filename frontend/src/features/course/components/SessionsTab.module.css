@@ -186,7 +186,7 @@
 	display: flex;
 	align-items: flex-start;
 	gap: var(--space-3);
-	padding: 2px var(--space-2);
+	padding: 2px var(--space-3) 2px var(--space-2);
 	border: 1px solid var(--color-gray-200);
 	border-radius: var(--radius-lg);
 	background: var(--color-white);
@@ -197,14 +197,17 @@
 	border-color: var(--color-gray-300);
 }
 
+/* Rộng đủ chữ "Hôm nay" (ngày hôm nay) — mọi ô ngày cùng rộng để cột giờ thẳng hàng */
 .dayDate {
-	width: 48px;
+	width: 56px;
+	box-sizing: border-box;
 	flex-shrink: 0;
 	margin: 6px 0;
 	display: flex;
 	flex-direction: column;
 	align-items: center;
-	padding: 6px 0;
+	gap: 1px;
+	padding: 6px 4px;
 	border-radius: var(--radius-md);
 	background: var(--color-primary-pale);
 	color: var(--color-primary-dark);
@@ -214,6 +217,7 @@
 .dayDate span {
 	font-size: var(--font-size-2xs);
 	font-weight: var(--font-weight-semibold);
+	white-space: nowrap;
 }
 
 .dayDate strong {
@@ -401,10 +405,6 @@
 		gap: var(--space-2);
 	}
 
-	.dayDate {
-		width: 42px;
-	}
-
 	/* Cụm nút neo góc phải dòng giờ → dòng GV/phòng được rộng hết thẻ */
 	.sess {
 		position: relative;
@@ -424,4 +424,118 @@
 		min-height: 28px;
 		padding-right: 96px;
 	}
+}
+
+/* ── Tiến độ bài học: đã học / đang học / sắp học / chưa xếp lịch ── */
+.progress {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--space-2);
+}
+.progressBar {
+	display: inline-block;
+	width: 120px;
+	height: 6px;
+	border-radius: var(--radius-full);
+	background: var(--color-gray-100);
+	overflow: hidden;
+}
+.progressBar > span {
+	display: block;
+	height: 100%;
+	border-radius: inherit;
+	background: var(--color-primary);
+}
+/* Cột "Tiến độ": nhãn trạng thái + dòng phụ (học xong ngày…, x/y buổi, bắt đầu ngày…) */
+.statusCell {
+	width: 1%;
+	min-width: 150px;
+	white-space: nowrap;
+}
+.statusCell > div {
+	margin-top: 4px;
+}
+/* Bài đã học xong: nền nhạt để mắt lướt qua, tập trung vào bài chưa học */
+.rowDone > td {
+	background: #f7fbf8;
+}
+.statusTabs {
+	display: inline-flex;
+	flex-wrap: wrap;
+	gap: 2px;
+	padding: 3px;
+	border-radius: var(--radius-lg);
+	background: var(--color-gray-100);
+}
+.statusTab {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	padding: 5px 10px;
+	border: none;
+	border-radius: var(--radius-md);
+	background: transparent;
+	font-family: var(--font-body);
+	font-size: var(--font-size-xs);
+	color: var(--color-gray-600);
+	white-space: nowrap;
+	cursor: pointer;
+}
+.statusTabOn {
+	background: var(--color-white);
+	color: var(--color-gray-900);
+	font-weight: var(--font-weight-semibold);
+	box-shadow: 0 1px 2px rgba(16, 24, 40, 0.08);
+}
+.statusCount {
+	color: var(--color-gray-400);
+	font-weight: normal;
+}
+.statusDot {
+	width: 7px;
+	height: 7px;
+	border-radius: var(--radius-full);
+}
+.dot_done {
+	background: #0a9b4a;
+}
+.dot_ongoing {
+	background: #2f6fd1;
+}
+.dot_upcoming {
+	background: #ef9f27;
+}
+.dot_none {
+	background: var(--color-gray-400);
+}
+/* Ngày đã học: ô ngày xám + dấu ✓; hôm nay: viền xanh */
+.dayPast {
+	background: var(--color-gray-50);
+}
+.dayPast .dayDate {
+	position: relative;
+	background: var(--color-gray-100);
+	color: var(--color-gray-500);
+}
+.dayPast .sessTime {
+	color: var(--color-gray-500);
+}
+.dayCheck {
+	position: absolute;
+	top: -5px;
+	right: -5px;
+	width: 14px;
+	height: 14px;
+	padding: 2px;
+	border-radius: var(--radius-full);
+	background: #0a9b4a;
+	color: var(--color-white);
+}
+.dayToday {
+	border-color: var(--color-primary);
+	box-shadow: 0 0 0 2px rgba(10, 155, 74, 0.12);
+}
+.dayToday .dayDate {
+	background: var(--color-primary);
+	color: var(--color-white);
 }

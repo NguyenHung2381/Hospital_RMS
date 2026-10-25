@@ -441,6 +441,8 @@ export interface CourseLesson {
 	practice_hours: number | null;
 	total_hours: number | null;
 	program_name: string;
+	/** Id các chương trình của khóa có bài này, cách nhau dấu phẩy — lọc lịch học theo chương trình. */
+	program_ids: string | null;
 }
 
 export type SessionKind = 'theory' | 'practice';

@@ -123,7 +123,7 @@ export const savePracticeResults = (rows: PracticeResultSave[]) =>
 /** programId: chương trình học viên chọn — bài học của chương trình tự gắn theo. */
 /** Ghi danh hộ được duyệt luôn — đủ sĩ số thì status = 'waitlisted'. Khóa GPHN: xếp lịch vòng là bước sau. */
 /** waitlist_position: vị trí trong danh sách chờ đợt sau của chương trình (nội viện, lớp đầy). */
-type RegisterResult = {
+export type RegisterResult = {
 	id: string;
 	status: EnrollmentStatus;
 	waitlist_position?: number | null;

@@ -27,12 +27,13 @@ const listAssignments = async (courseId) => {
 };
 
 // Bài học (không tính vòng thực hành GPHN) thuộc các chương trình của khóa — các
-// dòng của bảng Bài học × Giảng viên. 1 bài nằm ở 2 chương trình của khóa chỉ lấy 1 dòng.
+// dòng của bảng Bài học × Giảng viên. 1 bài nằm ở 2 chương trình của khóa chỉ lấy 1 dòng;
+// program_ids (cách nhau dấu phẩy) để lọc lịch học theo chương trình.
 const listCourseLessons = async (courseId) => {
 	const pool = await getPool();
 	const r = await pool.request().input('course_id', sql.VarChar(20), courseId).query(`
     SELECT pl.id, pl.code, pl.title, pl.theory_hours, pl.practice_hours, pl.total_hours,
-           MIN(tp.name) AS program_name
+           MIN(tp.name) AS program_name, STRING_AGG(cp.program_id, ',') AS program_ids
     FROM course_programs cp
     JOIN training_programs tp ON tp.id = cp.program_id
     JOIN lesson_programs lp ON lp.program_id = cp.program_id

@@ -1,0 +1,597 @@
+/* Khung "Thêm học viên vào khóa" ở tab Học viên: chọn lớp → tìm người → đối chiếu "Vừa ghi danh" */
+.panel {
+	margin-bottom: var(--space-4);
+	border: 1px solid var(--color-gray-200);
+	border-radius: var(--radius-lg);
+	background: var(--color-white);
+	box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04);
+	overflow: hidden;
+}
+.head {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: var(--space-3) var(--space-5);
+	border-bottom: 1px solid var(--color-gray-100);
+	background: var(--color-primary-pale);
+}
+.headTitle {
+	display: flex;
+	align-items: center;
+	gap: var(--space-2);
+	font-weight: var(--font-weight-semibold);
+	color: var(--color-primary-dark);
+}
+.headTitle svg {
+	width: 18px;
+	height: 18px;
+}
+.close {
+	display: grid;
+	place-items: center;
+	width: 28px;
+	height: 28px;
+	border: none;
+	border-radius: var(--radius-md);
+	background: transparent;
+	color: var(--color-gray-500);
+	cursor: pointer;
+}
+.close:hover {
+	background: var(--color-white);
+	color: var(--color-gray-800);
+}
+.close svg {
+	width: 16px;
+	height: 16px;
+}
+
+.step {
+	display: flex;
+	flex-direction: column;
+	gap: var(--space-2);
+	min-width: 0;
+}
+.panel > .step {
+	padding: var(--space-4) var(--space-5) 0;
+}
+.stepLabel {
+	display: flex;
+	align-items: center;
+	flex-wrap: wrap;
+	gap: 6px;
+	font-size: var(--font-size-xs);
+	font-weight: var(--font-weight-semibold);
+	color: var(--color-gray-600);
+	text-transform: uppercase;
+	letter-spacing: 0.02em;
+}
+.stepNo {
+	display: inline-grid;
+	place-items: center;
+	width: 18px;
+	height: 18px;
+	border-radius: var(--radius-full);
+	background: var(--color-primary);
+	color: var(--color-white);
+	font-size: var(--font-size-2xs);
+}
+.stepNote {
+	font-weight: normal;
+	text-transform: none;
+	letter-spacing: 0;
+	color: var(--color-primary-dark);
+}
+
+/* Bước 1: chọn lớp — đã chọn thì thu gọn thành 1 thanh, chưa chọn / "Đổi lớp" thì mở ô tìm + danh sách */
+.chosen {
+	display: flex;
+	align-items: center;
+	gap: var(--space-3);
+	padding: var(--space-2) var(--space-3);
+	border: 1.5px solid var(--color-primary);
+	border-radius: var(--radius-md);
+	background: var(--color-primary-pale);
+}
+.chosenCheck {
+	flex: none;
+	display: grid;
+	place-items: center;
+	width: 18px;
+	height: 18px;
+	border-radius: var(--radius-full);
+	background: var(--color-primary);
+	color: var(--color-white);
+}
+.chosenCheck svg {
+	width: 11px;
+	height: 11px;
+}
+.chosenName {
+	flex: 1;
+	min-width: 0;
+	font-size: var(--font-size-sm);
+	color: var(--color-gray-800);
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+.chosenName b {
+	font-weight: var(--font-weight-semibold);
+}
+.chosenMeta,
+.progMeta {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	flex: none;
+	font-size: var(--font-size-xs);
+	color: var(--color-gray-500);
+	white-space: nowrap;
+}
+.changeBtn {
+	composes: btn sm secondary from '@/shared/components/Button/Button.module.css';
+	flex: none;
+}
+.picker {
+	display: flex;
+	flex-direction: column;
+	gap: var(--space-2);
+}
+/* .search dùng flex-basis cho bề ngang ở hàng tìm học viên — trong cột dọc thì bỏ, kẻo thành chiều cao */
+.picker > .search {
+	flex: none;
+}
+.pickerCancel {
+	flex: none;
+	margin-left: var(--space-2);
+	padding: 0 4px;
+	border: none;
+	background: none;
+	color: var(--color-primary-dark);
+	font-family: var(--font-body);
+	font-size: var(--font-size-sm);
+	white-space: nowrap;
+	cursor: pointer;
+}
+.pickerCancel:hover {
+	text-decoration: underline;
+}
+/* Danh sách lớp: mỗi lớp 1 dòng, cao tối đa ~6 dòng rồi cuộn */
+.progList {
+	max-height: 232px;
+	overflow-y: auto;
+	border: 1px solid var(--color-gray-100);
+	border-radius: var(--radius-md);
+}
+.progRow {
+	display: grid;
+	grid-template-columns: 16px minmax(64px, auto) minmax(0, 1fr) auto;
+	align-items: center;
+	gap: var(--space-3);
+	width: 100%;
+	padding: 8px var(--space-3);
+	border: none;
+	border-bottom: 1px solid var(--color-gray-100);
+	background: var(--color-white);
+	font-family: var(--font-body);
+	font-size: var(--font-size-compact);
+	text-align: left;
+	cursor: pointer;
+}
+.progRow:last-child {
+	border-bottom: none;
+}
+.progRowActive {
+	background: var(--color-gray-50);
+}
+.progRowOn {
+	background: var(--color-primary-pale);
+}
+.progCode {
+	font-weight: var(--font-weight-semibold);
+	color: var(--color-gray-800);
+	white-space: nowrap;
+}
+.progName {
+	color: var(--color-gray-700);
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+.programRadio {
+	display: grid;
+	place-items: center;
+	width: 16px;
+	height: 16px;
+	border: 1.5px solid var(--color-gray-300);
+	border-radius: var(--radius-full);
+	background: var(--color-white);
+	color: var(--color-white);
+}
+.progRowOn .programRadio {
+	border-color: var(--color-primary);
+	background: var(--color-primary);
+}
+.programRadio svg {
+	width: 10px;
+	height: 10px;
+}
+/* Nhãn trạng thái lớp (ĐTLT / CTCV) */
+.badge {
+	padding: 1px 8px;
+	border-radius: var(--radius-full);
+	font-size: var(--font-size-2xs);
+	font-weight: var(--font-weight-semibold);
+}
+.badge_wait {
+	background: var(--color-gray-100);
+	color: var(--color-gray-600);
+}
+.badge_ready {
+	background: #faeeda;
+	color: #633806;
+}
+.badge_open {
+	background: #e1f5ea;
+	color: #085028;
+}
+.badge_full {
+	background: #fcebeb;
+	color: #791f1f;
+}
+
+/* Bước 2 (tìm + kết quả) bên trái, "Vừa ghi danh" bên phải */
+.body {
+	display: grid;
+	grid-template-columns: minmax(0, 1.7fr) minmax(240px, 1fr);
+	gap: var(--space-5);
+	padding: var(--space-4) var(--space-5) var(--space-5);
+}
+.searchRow {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--space-2);
+	align-items: center;
+}
+.search {
+	position: relative;
+	flex: 1 1 260px;
+	display: flex;
+	align-items: center;
+}
+.searchIcon {
+	position: absolute;
+	left: var(--space-3);
+	width: 15px;
+	height: 15px;
+	color: var(--color-gray-400);
+	pointer-events: none;
+}
+.searchInput {
+	width: 100%;
+	padding: 9px var(--space-8) 9px calc(var(--space-3) + 15px + var(--space-2));
+	border: 1.5px solid var(--color-gray-200);
+	border-radius: var(--radius-lg);
+	background: var(--color-white);
+	font-family: var(--font-body);
+	font-size: var(--font-size-sm);
+	color: var(--color-gray-800);
+}
+.searchInput:focus {
+	outline: none;
+	border-color: var(--color-primary);
+	box-shadow: 0 0 0 3px rgba(10, 155, 74, 0.1);
+}
+.searchClear {
+	position: absolute;
+	right: 6px;
+	display: grid;
+	place-items: center;
+	width: 24px;
+	height: 24px;
+	border: none;
+	border-radius: var(--radius-sm);
+	background: transparent;
+	color: var(--color-gray-400);
+	cursor: pointer;
+}
+.searchClear:hover {
+	color: var(--color-gray-700);
+}
+.searchClear svg {
+	width: 14px;
+	height: 14px;
+}
+.originTabs {
+	display: inline-flex;
+	padding: 3px;
+	gap: 2px;
+	border-radius: var(--radius-lg);
+	background: var(--color-gray-100);
+}
+.originTab {
+	padding: 5px 10px;
+	border: none;
+	border-radius: var(--radius-md);
+	background: transparent;
+	font-family: var(--font-body);
+	font-size: var(--font-size-xs);
+	color: var(--color-gray-600);
+	white-space: nowrap;
+	cursor: pointer;
+}
+.originTabOn {
+	background: var(--color-white);
+	color: var(--color-gray-900);
+	font-weight: var(--font-weight-semibold);
+	box-shadow: 0 1px 2px rgba(16, 24, 40, 0.08);
+}
+.originCount {
+	color: var(--color-gray-400);
+	font-weight: normal;
+}
+.warn {
+	padding: 6px 10px;
+	border-left: 3px solid #ef9f27;
+	border-radius: var(--radius-sm);
+	background: #faeeda;
+	color: #633806;
+	font-size: var(--font-size-compact);
+}
+
+.results {
+	max-height: 340px;
+	overflow-y: auto;
+	border: 1px solid var(--color-gray-100);
+	border-radius: var(--radius-md);
+}
+.result {
+	display: flex;
+	align-items: center;
+	gap: var(--space-3);
+	padding: var(--space-2) var(--space-3);
+	border-bottom: 1px solid var(--color-gray-100);
+}
+.result:last-child {
+	border-bottom: none;
+}
+.resultActive {
+	background: var(--color-gray-50);
+}
+.resultDone {
+	background: #f6fbf8;
+}
+.resultMain {
+	flex: 1;
+	min-width: 0;
+}
+.resultName {
+	display: flex;
+	align-items: center;
+	flex-wrap: wrap;
+	gap: 6px;
+	font-size: var(--font-size-sm);
+	font-weight: var(--font-weight-semibold);
+	color: var(--color-gray-800);
+}
+.resultSub {
+	margin-top: 1px;
+	font-size: var(--font-size-xs);
+	color: var(--color-gray-500);
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+.otherClass {
+	color: #1d4f91;
+}
+.tag,
+.tagNew {
+	padding: 1px 8px;
+	border-radius: var(--radius-full);
+	font-size: var(--font-size-2xs);
+	font-weight: var(--font-weight-semibold);
+	white-space: nowrap;
+}
+.tagIn {
+	background: #e1f5ea;
+	color: #085028;
+}
+.tagOut {
+	background: #e6f0fb;
+	color: #1d4f91;
+}
+.tagNew {
+	background: var(--color-gray-100);
+	color: var(--color-gray-600);
+	font-weight: normal;
+}
+.addBtn {
+	composes: btn sm primary from '@/shared/components/Button/Button.module.css';
+	flex: none;
+	white-space: nowrap;
+}
+.inClass {
+	flex: none;
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+	padding: 4px 8px;
+	border: none;
+	border-radius: var(--radius-md);
+	background: transparent;
+	color: #085028;
+	font-family: var(--font-body);
+	font-size: var(--font-size-xs);
+	font-weight: var(--font-weight-semibold);
+	white-space: nowrap;
+	cursor: pointer;
+}
+.inClass:hover {
+	background: #e1f5ea;
+}
+.inClass svg {
+	width: 13px;
+	height: 13px;
+}
+.empty,
+.more {
+	padding: var(--space-4);
+	font-size: var(--font-size-compact);
+	color: var(--color-gray-500);
+	text-align: center;
+}
+.more {
+	padding: var(--space-2);
+	font-size: var(--font-size-xs);
+	background: var(--color-gray-50);
+}
+.keys {
+	font-size: var(--font-size-2xs);
+	color: var(--color-gray-500);
+}
+
+/* Cột "Vừa ghi danh" */
+.recent {
+	display: flex;
+	flex-direction: column;
+	gap: var(--space-2);
+	min-width: 0;
+	padding-left: var(--space-5);
+	border-left: 1px dashed var(--color-gray-200);
+}
+.recentCount {
+	padding: 0 7px;
+	border-radius: var(--radius-full);
+	background: var(--color-primary);
+	color: var(--color-white);
+	font-size: var(--font-size-2xs);
+	letter-spacing: 0;
+}
+.recentEmpty {
+	padding: var(--space-4);
+	border: 1px dashed var(--color-gray-200);
+	border-radius: var(--radius-md);
+	font-size: var(--font-size-compact);
+	color: var(--color-gray-500);
+	text-align: center;
+}
+.recentList {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+	max-height: 380px;
+	margin: 0;
+	padding: 0;
+	overflow-y: auto;
+	list-style: none;
+}
+.recentItem {
+	display: flex;
+	align-items: center;
+	gap: var(--space-2);
+	padding: var(--space-2) var(--space-3);
+	border-radius: var(--radius-md);
+	background: #e1f5ea;
+	color: #085028;
+	animation: recentIn 0.25s ease-out;
+}
+.recentWait {
+	background: #eeedfe;
+	color: #3c3489;
+}
+.recentErr {
+	background: #fcebeb;
+	color: #791f1f;
+}
+.recentIcon {
+	flex: none;
+	display: grid;
+	place-items: center;
+	width: 20px;
+	height: 20px;
+	border-radius: var(--radius-full);
+	background: currentColor;
+}
+.recentIcon svg {
+	width: 12px;
+	height: 12px;
+	color: var(--color-white);
+}
+.recentText {
+	flex: 1;
+	min-width: 0;
+}
+.recentName {
+	font-size: var(--font-size-compact);
+	font-weight: var(--font-weight-semibold);
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+.recentSub {
+	font-size: var(--font-size-xs);
+	opacity: 0.85;
+}
+.recentView {
+	flex: none;
+	padding: 3px 10px;
+	border: 1px solid currentColor;
+	border-radius: var(--radius-full);
+	background: var(--color-white);
+	color: inherit;
+	font-family: var(--font-body);
+	font-size: var(--font-size-xs);
+	font-weight: var(--font-weight-semibold);
+	cursor: pointer;
+}
+@keyframes recentIn {
+	from {
+		opacity: 0;
+		transform: translateY(-4px);
+	}
+}
+
+@media (max-width: 900px) {
+	.body {
+		grid-template-columns: 1fr;
+	}
+	.recent {
+		padding-left: 0;
+		border-left: none;
+	}
+}
+@media (max-width: 640px) {
+	/* Màn hẹp: tên lớp xuống dưới mã, số học viên + trạng thái sang dòng tiếp */
+	.progRow {
+		grid-template-columns: 16px minmax(0, 1fr);
+		row-gap: 2px;
+	}
+	.progName,
+	.progMeta {
+		grid-column: 2;
+		white-space: normal;
+	}
+	.chosen {
+		flex-wrap: wrap;
+	}
+	.chosenName {
+		flex-basis: calc(100% - 40px);
+		white-space: normal;
+	}
+	.head,
+	.panel > .step,
+	.body {
+		padding-left: var(--space-4);
+		padding-right: var(--space-4);
+	}
+	.result {
+		flex-wrap: wrap;
+		gap: var(--space-2);
+	}
+	/* Màn hẹp: tên chiếm trọn dòng, nút ghi danh xuống dưới */
+	.resultMain {
+		flex-basis: 100%;
+	}
+}

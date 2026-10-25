@@ -3,7 +3,6 @@ import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { Dropdown } from 'antd';
 import { CalendarSvg, ChevLSvg, CopySvg, EditSvg, MoreVSvg, QrSvg } from '@/assets/icons';
 import { CourseCloneModal } from '../components/CourseCloneModal';
-import tbl from '@/shared/components/Table/Table.module.css';
 import AdminLayout from '../../../layouts/AdminLayout';
 import { Button, InlineLoading } from '@/shared/components';
 import { showToast } from '@/shared/utils/feedback';
@@ -133,12 +132,13 @@ export default function CourseDetail() {
 	// Khóa thuộc loại nào thì tô sáng mục menu loại đó và "Danh sách" quay về đúng trang loại đó.
 	const menuKey = practice ? 'gphn' : course?.training_type_id === TRAINING_TYPE.CTCV ? 'ctcv' : 'dtlt';
 	const backTo = { gphn: '/admin/practice-batches', ctcv: '/admin/ctcv', dtlt: '/admin/dtlt' }[menuKey];
-	const goStep = (key: Step) => setParams({ tab: key }, { replace: true });
+	// Đổi tab giữ chương trình đang lọc (?program=) — tab Học viên và Lịch học dùng chung bộ lọc này.
+	const goStep = (key: Step) => {
+		const program = params.get('program');
+		setParams({ tab: key, ...(program ? { program } : {}) }, { replace: true });
+	};
 	const stepLabel = (s: { key: Step; label: string }) =>
 		s.key === 'enrollments' && practice ? 'Học viên & hồ sơ thực hành' : s.label;
-	// Chọn 1 chương trình ở phần tóm tắt ⇒ mở danh sách học viên lọc sẵn theo chương trình đó.
-	const goProgram = (programId: string) =>
-		setParams({ tab: 'enrollments', ...(programId ? { program: programId } : {}) }, { replace: true });
 
 	return (
 		<AdminLayout
@@ -214,41 +214,17 @@ export default function CourseDetail() {
 								{course.enrollment_open ? 'Đang nhận đăng ký' : 'Đã đóng đăng ký'}
 							</span>
 						</div>
-						<div className={styles.summaryPrograms}>
-							<span className={styles.summaryLabel}>Chương trình</span>
-							{d.programLinks.length > 1 ? (
-								// Nhiều chương trình: thu vào 1 select thay vì hàng thẻ dài nhiều dòng
-								<select
-									className={`${tbl.filterSelect} ${styles.summarySelect}`}
-									aria-label='Xem học viên theo chương trình'
-									value=''
-									onChange={(e) => goProgram(e.target.value)}
-								>
-									<option
-										value=''
-										disabled
-										hidden
-									>
-										{d.programLinks.length} chương trình — chọn để xem học viên
-									</option>
-									<option value=''>Tất cả chương trình</option>
-									{d.programLinks.map((p) => (
-										<option
-											key={p.program_id}
-											value={p.program_id}
-										>
-											{p.program_code ? `${p.program_code} — ${p.program_name}` : p.program_name}
-										</option>
-									))}
-								</select>
-							) : (
+						{/* Nhiều chương trình: lọc ngay trong tab Học viên / Lịch học (có ô tìm) — ở đây chỉ hiện khi 0–1 chương trình */}
+						{!d.loading && d.programLinks.length <= 1 && (
+							<div className={styles.summaryPrograms}>
+								<span className={styles.summaryLabel}>Chương trình</span>
 								<ProgramTags
 									names={course.program_names}
 									max={12}
 									empty='Chưa áp dụng chương trình'
 								/>
-							)}
-						</div>
+							</div>
+						)}
 						{course.description && <p className={styles.infoDesc}>{course.description}</p>}
 					</div>
 

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Tooltip } from 'antd';
 import {
 	CalendarSvg,
@@ -12,6 +13,7 @@ import {
 	XSvg,
 } from '@/assets/icons';
 import { Badge, Button, EmptyState, TimePicker } from '@/shared/components';
+import type { BadgeTone } from '@/shared/components/Badge/badgeTone';
 import { FormField } from '@/shared/components/Input/FormField';
 import { Modal, ModalActions } from '@/shared/components/Modal';
 import m from '@/shared/components/Modal/Modal.module.css';
@@ -23,6 +25,7 @@ import { VenueSelect } from '../../venue/components/VenueSelect';
 import type { LecturerItem, useCourseDetail } from '../hooks/useCourseDetail';
 import type { ClassSession, CourseLesson, SessionKind } from '../types/course.type';
 import { LecturerSelect } from './LecturerOptions';
+import { ProgramFilter } from './ProgramFilter';
 import styles from '../pages/Courses.module.css';
 import ss from './SessionsTab.module.css';
 
@@ -72,12 +75,49 @@ const hoursText = (l: CourseLesson) =>
 		.filter(Boolean)
 		.join(' · ');
 
+/** Tiến độ 1 bài theo lịch: đã học hết / đang học dở / có lịch chưa tới / chưa xếp buổi nào. */
+type LessonStatus = 'done' | 'ongoing' | 'upcoming' | 'none';
+const LESSON_STATUS: Record<LessonStatus, { label: string; tone: BadgeTone }> = {
+	done: { label: 'Đã học', tone: 'green' },
+	ongoing: { label: 'Đang học', tone: 'blue' },
+	upcoming: { label: 'Sắp học', tone: 'amber' },
+	none: { label: 'Chưa xếp lịch', tone: 'gray' },
+};
+const STATUS_ORDER: LessonStatus[] = ['done', 'ongoing', 'upcoming', 'none'];
+
+/** Buổi đã diễn ra: qua giờ kết thúc (không đặt giờ kết thúc ⇒ tính hết ngày học). */
+const isPast = (s: ClassSession, now: Date) =>
+	new Date(`${s.session_date.slice(0, 10)}T${(s.end_time ?? '23:59').slice(0, 5)}:00`) <= now;
+
+const lessonProgress = (sessions: ClassSession[], now: Date) => {
+	const past = sessions.filter((s) => isPast(s, now));
+	const next = sessions.find((s) => !isPast(s, now));
+	const status: LessonStatus = !sessions.length
+		? 'none'
+		: past.length === sessions.length
+			? 'done'
+			: past.length
+				? 'ongoing'
+				: 'upcoming';
+	const last = past[past.length - 1];
+	const note =
+		status === 'done'
+			? `Học xong ${formatDateVN(last.session_date)}`
+			: status === 'ongoing'
+				? `${past.length}/${sessions.length} buổi · buổi tới ${formatDateVN(next!.session_date)}`
+				: status === 'upcoming'
+					? `Bắt đầu ${formatDateVN(next!.session_date)}`
+					: null;
+	return { status, note };
+};
+
 /** 1 dòng của bảng Bài học: các buổi học (ngày, giờ, phòng, giảng viên) — GV chọn ở từng buổi. */
 function LessonRow({
 	d,
 	lesson,
 	index,
 	sessions,
+	now,
 	onAddSession,
 	onEditSession,
 }: {
@@ -85,11 +125,13 @@ function LessonRow({
 	lesson: CourseLesson;
 	index: number;
 	sessions: ClassSession[];
+	now: Date;
 	onAddSession: () => void;
 	onEditSession: (s: ClassSession) => void;
 }) {
+	const { status, note } = lessonProgress(sessions, now);
 	return (
-		<tr className={tbl.tr}>
+		<tr className={`${tbl.tr} ${status === 'done' ? ss.rowDone : ''}`}>
 			<td className={`${tbl.td} ${tbl.tdIdx}`}>{index}</td>
 			<td className={`${tbl.td} ${ss.lessonCell}`}>
 				<div className={tbl.cellTitle}>{lesson.title}</div>
@@ -97,6 +139,15 @@ function LessonRow({
 				<div className={tbl.cellSub}>
 					{[lesson.program_name, hoursText(lesson) && `${hoursText(lesson)} tiết`].filter(Boolean).join(' · ')}
 				</div>
+			</td>
+			<td className={`${tbl.td} ${ss.statusCell}`}>
+				<Badge
+					tone={LESSON_STATUS[status].tone}
+					dot
+				>
+					{LESSON_STATUS[status].label}
+				</Badge>
+				{note && <div className={tbl.cellSub}>{note}</div>}
 			</td>
 			<td className={`${tbl.td} ${ss.sessTd}`}>
 				<div className={ss.sessCell}>
@@ -106,6 +157,7 @@ function LessonRow({
 							d={d}
 							date={g.date}
 							items={g.items}
+							now={now}
 							onEditSession={onEditSession}
 						/>
 					))}
@@ -131,6 +183,10 @@ const monthOf = (iso: string) => {
 	return `Tháng ${Number(mo)}/${y}`;
 };
 
+/** yyyy-mm-dd theo giờ máy (so với session_date). */
+const localIso = (dt: Date) =>
+	`${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`;
+
 const timeText = (s: ClassSession) =>
 	s.start_time ? `${s.start_time.slice(0, 5)}–${(s.end_time ?? '').slice(0, 5)}` : 'Chưa đặt giờ';
 
@@ -149,22 +205,27 @@ function SessionDay({
 	d,
 	date,
 	items,
+	now,
 	onEditSession,
 }: {
 	d: Detail;
 	date: string;
 	items: ClassSession[];
+	now: Date;
 	onEditSession: (s: ClassSession) => void;
 }) {
 	const dateVN = formatDateVN(date);
+	const allPast = items.every((s) => isPast(s, now));
+	const today = date === localIso(now);
 	return (
-		<div className={ss.day}>
+		<div className={`${ss.day} ${allPast ? ss.dayPast : ''} ${today ? ss.dayToday : ''}`}>
 			<span
 				className={ss.dayDate}
-				title={dateVN}
+				title={allPast ? `${dateVN} — đã học` : today ? `${dateVN} — hôm nay` : dateVN}
 			>
-				<span>{WEEKDAY_LABELS[new Date(date).getDay()]}</span>
+				<span>{today ? 'Hôm nay' : WEEKDAY_LABELS[new Date(date).getDay()]}</span>
 				<strong>{dateVN.slice(0, 5)}</strong>
+				{allPast && <CheckSvg className={ss.dayCheck} />}
 			</span>
 			<div className={ss.dayList}>
 				{items.map((s) => (
@@ -258,13 +319,16 @@ function SessionFormModal({
 	d,
 	state,
 	lessonOptions,
+	allLessonOptions,
 	sessionLecturers,
 	mainLecturerOf,
 	onClose,
 }: {
 	d: Detail;
 	state: FormState;
+	/** Bài của chương trình đang lọc (không lọc: mọi bài của khóa). */
 	lessonOptions: { id: string; name: string }[];
+	allLessonOptions: { id: string; name: string }[];
 	sessionLecturers: LecturerItem[];
 	mainLecturerOf: (lessonId: string) => string;
 	onClose: (result?: { created: number; skipped: number }) => void;
@@ -293,6 +357,11 @@ function SessionFormModal({
 	const set = (patch: Partial<SessionForm & BulkForm>) =>
 		bulk ? setMany((x) => ({ ...x, ...patch })) : setOne((x) => ({ ...x, ...patch }));
 	const valid = bulk ? !!many.start_date && !!many.end_date && many.weekdays.length > 0 : !!one.session_date;
+	// Buổi đang sửa thuộc bài ngoài chương trình đang lọc ⇒ vẫn giữ bài đó trong danh sách chọn
+	const lessonChoices =
+		f.lesson_id && !lessonOptions.some((l) => l.id === f.lesson_id)
+			? [...lessonOptions, ...allLessonOptions.filter((l) => l.id === f.lesson_id)]
+			: lessonOptions;
 
 	const submit = async () => {
 		if (bulk) {
@@ -436,7 +505,7 @@ function SessionFormModal({
 					}
 				>
 					<option value=''>-- Chọn bài học --</option>
-					{lessonOptions.map((l) => (
+					{lessonChoices.map((l) => (
 						<option
 							key={l.id}
 							value={l.id}
@@ -480,7 +549,36 @@ export function SessionsTab({ d }: { d: Detail }) {
 	const [newLecturerId, setNewLecturerId] = useState('');
 	const [form, setForm] = useState<FormState | null>(null);
 	const [bulkResult, setBulkResult] = useState<{ created: number; skipped: number } | null>(null);
-	const lessonPg = useClientPaging(d.courseLessons);
+	// Lọc theo chương trình (?program=, dùng chung với tab Học viên) — khóa nhiều chương trình mới hiện.
+	const [params, setParams] = useSearchParams();
+	const multiProgram = d.programLinks.length > 1;
+	const programParam = params.get('program');
+	const programFilter =
+		multiProgram && d.programLinks.some((l) => l.program_id === programParam) ? programParam : null;
+	const programsOf = (l: CourseLesson) => (l.program_ids ?? '').split(',');
+	const lessons =
+		programFilter === null ? d.courseLessons : d.courseLessons.filter((l) => programsOf(l).includes(programFilter));
+	// Mốc "bây giờ" để chia buổi đã học / chưa học — lấy lúc mở tab.
+	const [now] = useState(() => new Date());
+	const [statusFilter, setStatusFilter] = useState<LessonStatus | null>(null);
+	const setProgramFilter = (v: string | null) => {
+		setParams(
+			(p) => {
+				if (v === null) p.delete('program');
+				else p.set('program', v);
+				return p;
+			},
+			{ replace: true },
+		);
+		setStatusFilter(null);
+		lessonPg.setPage(1);
+	};
+	const programOptions = d.programLinks.map((p) => ({
+		id: p.program_id,
+		name: `${p.program_code ? `${p.program_code} — ${p.program_name}` : p.program_name} (${
+			d.courseLessons.filter((l) => programsOf(l).includes(p.program_id)).length
+		} bài)`,
+	}));
 
 	// GV chọn ở buổi học (cả nhân viên có CCHN — hệ thống tự tạo hồ sơ GV); GV đã dạy khóa lên đầu
 	const assignedIds = new Set(d.assignments.map((a) => a.lecturer_id));
@@ -489,9 +587,11 @@ export function SessionsTab({ d }: { d: Detail }) {
 		...d.lecturers.filter((l) => !assignedIds.has(l.id)),
 	];
 	// Bài học chọn cho buổi: bài của khóa; khóa chưa gắn chương trình thì mọi bài
-	const lessonOptions = d.courseLessons.length
+	const allLessonOptions = d.courseLessons.length
 		? d.courseLessons.map((l) => ({ id: l.id, name: lessonLabel(l) }))
 		: d.lessons;
+	const lessonOptions =
+		programFilter === null ? allLessonOptions : lessons.map((l) => ({ id: l.id, name: lessonLabel(l) }));
 	const courseLessonIds = new Set(d.courseLessons.map((l) => l.id));
 	// Phân công cả khóa + phân công cũ theo bài không còn trong chương trình của khóa
 	const otherAssignments = d.assignments.filter((a) => !a.subject_id || !courseLessonIds.has(a.subject_id));
@@ -507,7 +607,17 @@ export function SessionsTab({ d }: { d: Detail }) {
 			sessionsOf.set(s.subject_id, [...(sessionsOf.get(s.subject_id) ?? []), s]);
 		} else looseSessions.push(s);
 	}
-	const lessonsWithSession = d.courseLessons.filter((l) => sessionsOf.has(l.id)).length;
+	const statusOf = new Map(lessons.map((l) => [l.id, lessonProgress(sessionsOf.get(l.id) ?? [], now).status]));
+	const statusCount = (st: LessonStatus) => lessons.filter((l) => statusOf.get(l.id) === st).length;
+	const shownLessons = statusFilter === null ? lessons : lessons.filter((l) => statusOf.get(l.id) === statusFilter);
+	const lessonPg = useClientPaging(shownLessons);
+	const doneCount = statusCount('done');
+	const pastSessions = d.sessions.filter((x) => isPast(x, now)).length;
+	// Đang lọc chương trình: buổi của các bài thuộc chương trình đó + buổi chưa gắn bài (chung cả khóa)
+	const sessionCount =
+		programFilter === null
+			? d.sessions.length
+			: lessons.reduce((n, l) => n + (sessionsOf.get(l.id)?.length ?? 0), looseSessions.length);
 
 	// Nhóm buổi theo tháng cho dễ dò
 	const months: { month: string; items: ClassSession[] }[] = [];
@@ -522,11 +632,21 @@ export function SessionsTab({ d }: { d: Detail }) {
 		<>
 			<div className={ss.head}>
 				<div className={ss.stats}>
-					<span>
-						<strong>{lessonsWithSession}</strong>/{d.courseLessons.length} bài đã có ngày học
+					<span className={ss.progress}>
+						<span
+							className={ss.progressBar}
+							aria-hidden
+						>
+							<span style={{ width: `${lessons.length ? (doneCount / lessons.length) * 100 : 0}%` }} />
+						</span>
+						<strong>{doneCount}</strong>/{lessons.length} bài đã học
 					</span>
 					<span>
-						<strong>{d.sessions.length}</strong> buổi học
+						<strong>{lessons.length - statusCount('none')}</strong>/{lessons.length} bài đã xếp lịch
+					</span>
+					<span>
+						<strong>{sessionCount}</strong> buổi học
+						{programFilter === null && pastSessions > 0 && ` (${pastSessions} buổi đã diễn ra)`}
 					</span>
 				</div>
 				<div className={ss.actions}>
@@ -559,8 +679,45 @@ export function SessionsTab({ d }: { d: Detail }) {
 				<div className={tbl.tableHeader}>
 					<div className={tbl.tableHeaderLeft}>
 						<span className={tbl.tableTitle}>Lịch học theo bài</span>
-						<span className={tbl.tableCount}>{d.courseLessons.length}</span>
+						<span className={tbl.tableCount}>
+							{programFilter === null ? lessons.length : `${lessons.length}/${d.courseLessons.length}`}
+						</span>
 					</div>
+					{lessons.length > 0 && (
+						<div
+							className={ss.statusTabs}
+							role='tablist'
+							aria-label='Lọc bài theo tiến độ'
+						>
+							{([null, ...STATUS_ORDER] as const).map((st) => (
+								<button
+									key={st ?? 'all'}
+									type='button'
+									role='tab'
+									aria-selected={statusFilter === st}
+									className={`${ss.statusTab} ${statusFilter === st ? ss.statusTabOn : ''}`}
+									onClick={() => {
+										setStatusFilter(st);
+										lessonPg.setPage(1);
+									}}
+								>
+									{st && <span className={`${ss.statusDot} ${ss[`dot_${st}`]}`} />}
+									{st ? LESSON_STATUS[st].label : 'Tất cả'}
+									<span className={ss.statusCount}>{st ? statusCount(st) : lessons.length}</span>
+								</button>
+							))}
+						</div>
+					)}
+					{multiProgram && (
+						<div className={tbl.tableControls}>
+							<ProgramFilter
+								options={programOptions}
+								value={programFilter}
+								onChange={setProgramFilter}
+								allLabel={`Tất cả chương trình (${d.courseLessons.length} bài)`}
+							/>
+						</div>
+					)}
 				</div>
 				<div className={tbl.tableWrap}>
 					<table className={tbl.table}>
@@ -568,19 +725,23 @@ export function SessionsTab({ d }: { d: Detail }) {
 							<tr>
 								<th className={`${tbl.th} ${tbl.thIdx}`}>STT</th>
 								<th className={tbl.th}>Bài học</th>
+								<th className={tbl.th}>Tiến độ</th>
 								<th className={tbl.th}>Buổi học (ngày · giờ · giảng viên · phòng)</th>
 							</tr>
 						</thead>
 						<tbody>
-							{d.courseLessons.length === 0 ? (
+							{shownLessons.length === 0 ? (
 								<tr>
 									<td
 										className={tbl.td}
-										colSpan={3}
+										colSpan={4}
 									>
 										<div className={styles.subEmpty}>
-											Khóa chưa có bài học — chọn chương trình đào tạo cho khóa để xếp lịch và phân công giảng
-											viên theo bài.
+											{lessons.length
+												? `Không có bài nào “${statusFilter ? LESSON_STATUS[statusFilter].label : ''}”.`
+												: d.courseLessons.length
+												? 'Chương trình này chưa có bài học — thêm bài ở mục Chương trình & bài học.'
+												: 'Khóa chưa có bài học — chọn chương trình đào tạo cho khóa để xếp lịch và phân công giảng viên theo bài.'}
 										</div>
 									</td>
 								</tr>
@@ -592,6 +753,7 @@ export function SessionsTab({ d }: { d: Detail }) {
 										lesson={l}
 										index={lessonPg.offset + i + 1}
 										sessions={sessionsOf.get(l.id) ?? []}
+										now={now}
 										onAddSession={() =>
 											setForm({ mode: 'one', initial: { lesson_id: l.id, lecturer_id: mainLecturerOf(l.id) } })
 										}
@@ -748,6 +910,7 @@ export function SessionsTab({ d }: { d: Detail }) {
 					d={d}
 					state={form}
 					lessonOptions={lessonOptions}
+					allLessonOptions={allLessonOptions}
 					sessionLecturers={sessionLecturers}
 					mainLecturerOf={mainLecturerOf}
 					onClose={(result) => {

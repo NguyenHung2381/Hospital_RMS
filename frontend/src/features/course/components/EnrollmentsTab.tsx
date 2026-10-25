@@ -1,10 +1,9 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { CalendarSvg, CheckSvg, PlusSvg, UserCheckSvg, XSvg } from "@/assets/icons";
 import {
   RowAction,
   RowActions,
-  SearchableSelect,
   SearchInput,
   SelectionCount,
   TableEmpty,
@@ -17,7 +16,8 @@ import {
 import { usePermission } from "@/shared/hooks/usePermission";
 import { useRowSelection } from "@/shared/hooks/useRowSelection";
 import { formatDateOr } from "@/shared/utils";
-import type { SimpleItem } from "../hooks/useCourseDetail";
+import type { EnrollCandidate } from "../hooks/useCourseDetail";
+import type { RegisterResult } from "../api/courseApi";
 import {
   ENROLLMENT_STATUS_CFG,
   PROGRESS_LABEL,
@@ -27,11 +27,13 @@ import {
   type EnrollmentStatus,
 } from "../types/course.type";
 import { EnrollmentDetailModal } from "./EnrollmentDetailModal";
+import { AddEnrollmentPanel, type RecentAdd } from "./AddEnrollmentPanel";
 import { PracticeBookImportModal } from "./PracticeBookImportModal";
 import { savePracticeBook } from "../utils/practiceDocuments";
 import { autoArrangeCourse, cancelOpenClass, removeEnrollment } from "../api/courseApi";
 import { ClassDatesModal } from "./ClassDatesModal";
 import { WaitlistCandidatesPanel } from "./WaitlistCandidatesPanel";
+import { ProgramFilter } from "./ProgramFilter";
 import { showToast } from "@/shared/utils/feedback";
 import styles from "../pages/Courses.module.css";
 import tbl from "@/shared/components/Table/Table.module.css";
@@ -46,6 +48,9 @@ const normalize = (s: string) =>
     .replace(/đ/g, "d")
     .replace(/Đ/g, "D")
     .toLowerCase();
+
+const programLabel = (p: CourseProgramLink) =>
+  p.program_code ? `${p.program_code} — ${p.program_name}` : p.program_name;
 
 /** 1 lựa chọn lọc theo chương trình; key "" = ghi danh chưa chọn / chương trình đã gỡ khỏi khóa. */
 type ProgramChip = {
@@ -109,12 +114,16 @@ export function EnrollmentsTab({
   onSaved,
 }: {
   enrollments: Enrollment[];
-  trainees: SimpleItem[];
+  trainees: EnrollCandidate[];
   course: Course | null;
   /** Chương trình của khóa — học viên chọn 1 khi ghi danh. */
   programLinks: CourseProgramLink[];
   busy: boolean;
-  onRegister: (traineeId: string, programId?: string) => void;
+  onRegister: (
+    traineeId: string,
+    programId?: string,
+    label?: string,
+  ) => Promise<{ ok: true; result: RegisterResult } | { ok: false; error: string }>;
   onDecide: (enrollmentId: string, status: EnrollmentStatus) => void;
   /** Trả về id các đăng ký xử lý thất bại (được giữ lại trong lựa chọn để thử lại). */
   onDecideBulk: (
@@ -125,8 +134,6 @@ export function EnrollmentsTab({
   /** Gọi sau khi sửa hồ sơ ghi danh — nạp lại danh sách. */
   onSaved: () => void;
 }) {
-  const [newTraineeId, setNewTraineeId] = useState("");
-  const [newProgramId, setNewProgramId] = useState("");
   const [detailId, setDetailId] = useState<string | null>(null);
   // Mở hồ sơ thẳng vào tab Vòng thực hành (nút "Xếp lịch" trên dòng chưa xếp)
   const [detailTab, setDetailTab] = useState<"rotations" | undefined>();
@@ -204,12 +211,14 @@ export function EnrollmentsTab({
         (v === "all" || e.status === v),
     ).length;
 
-  // Khóa chỉ có 1 chương trình thì chọn sẵn; đang lọc 1 chương trình thì gợi ý chương trình đó.
+  // Chương trình ghi danh = chương trình đang lọc ở bảng (khóa chỉ 1 chương trình thì chọn sẵn):
+  // chọn lớp ở khung thêm học viên thì bảng lọc theo lớp đó ⇒ thấy ngay người vừa thêm.
   const programId =
     programLinks.length === 1
       ? programLinks[0].program_id
-      : newProgramId || programFilter || "";
-  const needProgram = programLinks.length > 1 && !programId;
+      : programLinks.some((l) => l.program_id === programFilter)
+        ? (programFilter as string)
+        : "";
 
   // Lọc theo nhóm + từ khóa (chưa lọc nguồn / chương trình).
   const searched = useMemo(() => {
@@ -291,6 +300,105 @@ export function EnrollmentsTab({
     setUrlParam("list", v);
     rowSel.clearSelection();
     resetPage();
+  };
+
+  // ── Thêm học viên: cột "Vừa ghi danh" + đưa dòng vừa thêm ra cho thấy ──
+  const [recent, setRecent] = useState<RecentAdd[]>([]);
+  const panelRef = useRef<HTMLDivElement>(null);
+  // Dòng đang tô sáng; jumpId = còn chờ nhảy tới trang chứa dòng (danh sách có thể chưa nạp lại xong).
+  const [flash, setFlash] = useState<{ id: string; scroll: boolean } | null>(null);
+  const [jumpId, setJumpId] = useState<string | null>(null);
+  if (jumpId) {
+    const idx = filtered.findIndex((e) => e.id === jumpId);
+    if (idx >= 0) {
+      setJumpId(null);
+      const page = pg.pageSize ? Math.floor(idx / pg.pageSize) + 1 : 1;
+      if (page !== pg.safePage) pg.setPage(page);
+    }
+  }
+  useEffect(() => {
+    if (!flash || jumpId) return;
+    if (flash.scroll)
+      document
+        .querySelector(`[data-enrollment-id="${flash.id}"]`)
+        ?.scrollIntoView({ block: "center", behavior: "smooth" });
+    const t = setTimeout(() => setFlash(null), 4000);
+    return () => clearTimeout(t);
+  }, [flash, jumpId]);
+  useEffect(() => {
+    if (adding) panelRef.current?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+  }, [adding]);
+
+  /** Đổi bộ lọc ít nhất có thể để đăng ký hiện trong bảng, nhảy tới trang chứa nó và tô sáng. */
+  const reveal = (
+    t: { id: string; programKey: string; status: EnrollmentStatus; isInternal: boolean; text: string },
+    scroll: boolean,
+  ) => {
+    setParams(
+      (p) => {
+        if (programFilter !== null && programFilter !== t.programKey)
+          p.set("program", t.programKey || "_none");
+        if (view !== "all" && view !== t.status) p.set("list", t.status);
+        if (originFilter !== null && (originFilter === "internal") !== t.isInternal)
+          p.delete("origin");
+        return p;
+      },
+      { replace: true },
+    );
+    const q = normalize(search.trim());
+    if (q && !normalize(t.text).includes(q)) setSearch("");
+    setJumpId(t.id);
+    setFlash({ id: t.id, scroll });
+  };
+  const revealEnrollment = (id: string) => {
+    const en = enrollments.find((e) => e.id === id);
+    if (!en) return;
+    reveal(
+      {
+        id,
+        programKey: programKey(en),
+        status: en.status,
+        isInternal: en.is_internal,
+        text: `${en.trainee_name} ${en.trainee_id} ${en.practice_code ?? ""} ${en.trainee_phone ?? ""} ${en.trainee_email ?? ""}`,
+      },
+      true,
+    );
+  };
+
+  const addCandidate = async (c: EnrollCandidate) => {
+    const prog = programLinks.find((l) => l.program_id === programId);
+    const res = await onRegister(
+      c.id,
+      programId || undefined,
+      prog ? `${c.full_name} → ${prog.program_code ?? prog.program_name}` : c.full_name,
+    );
+    setRecent((r) => [
+      {
+        key: `${Date.now()}-${c.id}`,
+        name: c.full_name,
+        programText: prog ? programLabel(prog) : null,
+        ...(res.ok
+          ? {
+              enrollmentId: res.result.id,
+              status: res.result.status,
+              waitlistPosition: res.result.waitlist_position,
+            }
+          : { error: res.error }),
+      },
+      ...r,
+    ]);
+    // Đang thêm liên tục ⇒ không cuộn trang (giữ ô tìm kiếm trong tầm mắt), chỉ tô sáng dòng mới.
+    if (res.ok)
+      reveal(
+        {
+          id: res.result.id,
+          programKey: prog ? programId : "",
+          status: res.result.status,
+          isInternal: c.is_internal,
+          text: `${c.full_name} ${c.sub}`,
+        },
+        false,
+      );
   };
 
   // Hàng loạt: duyệt áp cho người chờ duyệt / bị từ chối; từ chối (hủy duyệt) áp cho người chưa bị từ chối.
@@ -423,7 +531,8 @@ export function EnrollmentsTab({
     return (
       <tr
         key={en.id}
-        className={`${tbl.tr} ${rowSel.isSelected(en.id) ? sel.rowSelected : ""}`}
+        data-enrollment-id={en.id}
+        className={`${tbl.tr} ${rowSel.isSelected(en.id) ? sel.rowSelected : ""} ${flash?.id === en.id ? styles.rowFlash : ""}`}
       >
         <td className={sel.checkCol}>
           <SelectCheckbox
@@ -577,62 +686,27 @@ export function EnrollmentsTab({
   return (
     <>
       {adding && (
-        <div className={styles.addPanel}>
-          <SearchableSelect
-            className={styles.subSearch}
-            // Có chương trình: 1 học viên ghi danh được nhiều chương trình — chỉ ẩn người đã có chương trình đang chọn.
-            options={trainees.filter(
-              (t) =>
-                !enrollments.some(
-                  (e) =>
-                    e.trainee_id === t.id &&
-                    (!programLinks.length ||
-                      (e.program_id ?? "") === programId),
-                ),
-            )}
-            value={newTraineeId}
-            onChange={setNewTraineeId}
-            placeholder="Gõ tên để tìm học viên / nhân viên nội viện"
-          />
-          {programLinks.length > 1 && (
-            <select
-              className={styles.subSelect}
-              style={{ flex: "0 1 280px" }}
-              value={programId}
-              onChange={(e) => setNewProgramId(e.target.value)}
-              title="Chương trình học — bài học của chương trình tự gắn cho học viên"
-            >
-              <option value="">-- Chọn chương trình --</option>
-              {programLinks.map((p) => (
-                <option key={p.program_id} value={p.program_id}>
-                  {p.program_code
-                    ? `${p.program_code} — ${p.program_name}`
-                    : p.program_name}
-                </option>
-              ))}
-            </select>
-          )}
-          <button
-            className={styles.btnPrimary}
-            disabled={!newTraineeId || needProgram || busy}
-            title={needProgram ? "Chọn chương trình học trước" : undefined}
-            onClick={() => {
-              onRegister(newTraineeId, programId || undefined);
-              setNewTraineeId("");
+        <div ref={panelRef}>
+          <AddEnrollmentPanel
+            candidates={trainees}
+            enrollments={enrollments}
+            programLinks={programLinks}
+            programId={programId}
+            onProgramChange={(id) => {
+              setProgramFilter(id);
+              rowSel.clearSelection();
+              resetPage();
             }}
-          >
-            <CheckSvg /> Ghi danh
-          </button>
-          <button className={styles.btnGhost} onClick={() => setAdding(false)}>
-            Đóng
-          </button>
-          <span className={styles.hint} style={{ flexBasis: "100%" }}>
-            Chưa có trong danh sách? Thêm ở mục Học viên trước (khóa thực hành:
-            nhập sổ Excel). Ghi danh ở đây được duyệt luôn (lớp đủ sĩ số: nội viện vào
-            danh sách chờ đợt sau, ngoại viện không ghi danh được)
-            {course?.is_rolling && "; khóa thực hành: duyệt xong thì xếp lịch vòng ở bước sau"}; bấm tên
-            học viên trong bảng để mở hồ sơ.
-          </span>
+            busy={busy}
+            isRolling={course?.is_rolling}
+            recent={recent}
+            onAdd={addCandidate}
+            onReveal={revealEnrollment}
+            onClose={() => {
+              setAdding(false);
+              setRecent([]);
+            }}
+          />
         </div>
       )}
 
@@ -727,9 +801,12 @@ export function EnrollmentsTab({
             <button
               type="button"
               className={styles.btnPrimary}
-              onClick={() => setAdding((v) => !v)}
+              onClick={() => {
+                if (adding) setRecent([]);
+                setAdding((v) => !v);
+              }}
             >
-              <PlusSvg /> Thêm học viên
+              <PlusSvg /> {adding ? "Đóng khung thêm" : "Thêm học viên"}
             </button>
           </div>
         </div>
@@ -776,10 +853,7 @@ export function EnrollmentsTab({
               <option value="external">Ngoại viện ({originCount("external")})</option>
             </select>
             {showPrograms && (
-              <select
-                className={`${tbl.filterSelect} ${styles.enrProgramSelect} ${programFilter !== null ? tbl.filterActive : ""}`}
-                data-active={programFilter !== null ? "true" : undefined}
-                aria-label="Lọc theo chương trình"
+              <ProgramFilter
                 title={
                   selectedChip &&
                   [
@@ -789,21 +863,22 @@ export function EnrollmentsTab({
                     .filter(Boolean)
                     .join("\n")
                 }
-                value={programFilter ?? "*"}
-                onChange={(e) => {
-                  setProgramFilter(e.target.value === "*" ? null : e.target.value);
+                // key "" (chưa chọn chương trình) đổi thành "_none" — SearchableSelect coi id rỗng là ô trống
+                value={programFilter === "" ? "_none" : programFilter}
+                onChange={(v) => {
+                  setProgramFilter(v === "_none" ? "" : v);
                   resetPage();
                 }}
-              >
-                <option value="*">Tất cả chương trình ({matches.length})</option>
-                {sortedChips.map((c) => (
-                  <option key={c.key || "_none"} value={c.key}>
-                    {c.code ? `${c.code} — ${c.name}` : c.name} ({c.count})
-                    {c.link &&
-                      ` · ${classState(c.link).open ? "Đã mở lớp" : classState(c.link).ready ? "Đủ sĩ số, chờ mở" : `Chưa mở ${classState(c.link).short}`}`}
-                  </option>
-                ))}
-              </select>
+                allLabel={`Tất cả chương trình (${matches.length})`}
+                options={sortedChips.map((c) => ({
+                  id: c.key || "_none",
+                  name: `${c.code ? `${c.code} — ${c.name}` : c.name} (${c.count})${
+                    c.link
+                      ? ` · ${classState(c.link).open ? "Đã mở lớp" : classState(c.link).ready ? "Đủ sĩ số, chờ mở" : `Chưa mở ${classState(c.link).short}`}`
+                      : ""
+                  }`,
+                }))}
+              />
             )}
             {filterActive && (
               <button

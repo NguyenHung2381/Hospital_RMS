@@ -311,12 +311,6 @@
 	letter-spacing: 0.03em;
 	color: var(--color-gray-400);
 }
-.summarySelect {
-	flex: 0 1 420px;
-	min-width: 0;
-	overflow: hidden;
-	text-overflow: ellipsis;
-}
 .infoDesc {
 	margin: 0;
 	color: var(--color-gray-600);
@@ -882,20 +876,9 @@
 	flex: none;
 }
 
-/* Tab Học viên: nút chính, khung "Thêm học viên", tên bấm mở hồ sơ */
+/* Tab Học viên: nút chính, tên bấm mở hồ sơ */
 .btnPrimary {
 	composes: btn primary from '@/shared/components/Button/Button.module.css';
-}
-.addPanel {
-	display: flex;
-	align-items: center;
-	gap: var(--space-2);
-	flex-wrap: wrap;
-	margin: calc(-1 * var(--space-2)) 0 var(--space-4);
-	padding: var(--space-3);
-	border: 1px dashed var(--color-gray-300);
-	border-radius: var(--radius-lg);
-	background: var(--color-gray-50);
 }
 .nameBtn {
 	composes: cellLink from '@/shared/components/Table/Table.module.css';
@@ -1020,11 +1003,6 @@
 .enrClear:hover {
 	text-decoration: underline;
 }
-.enrProgramSelect {
-	max-width: 360px;
-	overflow: hidden;
-	text-overflow: ellipsis;
-}
 .classNote {
 	padding: 6px 10px;
 	border-left: 3px solid #ef9f27;
@@ -1063,9 +1041,6 @@
 @media (max-width: 640px) {
 	.enrFilters {
 		padding: var(--space-3) var(--space-4);
-	}
-	.enrProgramSelect {
-		max-width: 100%;
 	}
 }
 
@@ -1159,4 +1134,36 @@
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
+}
+
+/* Dòng học viên vừa ghi danh / vừa bấm "Xem" — nháy nền xanh vài giây cho dễ thấy */
+.rowFlash > td {
+	animation: rowFlash 4s ease-out;
+}
+@keyframes rowFlash {
+	0%,
+	60% {
+		background: #d6f2e1;
+	}
+	100% {
+		background: transparent;
+	}
+}
+
+/* Lọc theo chương trình (SearchableSelect có ô tìm) ở tab Học viên / Lịch học — đang lọc thì tô xanh */
+.programFilter {
+	flex: 0 1 380px;
+	width: auto;
+	min-width: 220px;
+}
+.programFilterActive > button {
+	border-color: var(--color-primary);
+	background: var(--color-primary-pale);
+	color: var(--color-primary-dark);
+	font-weight: var(--font-weight-semibold);
+}
+@media (max-width: 640px) {
+	.programFilter {
+		flex-basis: 100%;
+	}
 }
