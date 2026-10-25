@@ -68,7 +68,9 @@ const createDiskUpload = ({ idParam, dirParts, maxSizeMB = undefined, allowMedia
 					storage: multer.diskStorage({
 						destination: (req, _file, cb) => {
 							const id = req.params[idParam];
-							if (!SAFE_ID.test(id)) return cb(badRequest(`${idParam} không hợp lệ`), '');
+							// Express 5: param wildcard (*name) là string[] — id chỉ nhận chuỗi
+							if (typeof id !== 'string' || !SAFE_ID.test(id))
+								return cb(badRequest(`${idParam} không hợp lệ`), '');
 							const dir = path.join(UPLOADS_ROOT, ...dirParts(id));
 							fs.mkdirSync(dir, { recursive: true });
 							cb(null, dir);

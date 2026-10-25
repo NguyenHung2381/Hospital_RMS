@@ -16,8 +16,9 @@ require('dotenv').config({ path: path.join(__dirname, '../../.env'), quiet: true
 // Không có .env (CI) thì điền giá trị giữ chỗ — app.js dừng nếu thiếu biến bắt buộc
 require('../../scripts/lib/static-check-env');
 
-const app = require('../../src/app');
+// routeWalker phải nạp trước app để ghi lại đường mount của router (Express 5)
 const { listRoutes } = require('../../src/permissions/routeWalker');
+const app = require('../../src/app');
 
 const SNAPSHOT = path.join(__dirname, 'routes.snapshot.txt');
 

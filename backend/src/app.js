@@ -48,6 +48,16 @@ const corsOrigins = config.CORS_ORIGIN ?? true;
 app.use(cors({ origin: corsOrigins }));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
+// Express 5 để req.body = undefined khi request không có body (Express 4 luôn là
+// {}); nhiều controller đọc thẳng req.body.x nên giữ hành vi cũ. Không chặn các
+// parser phía sau (body-parser/multer xét stream đã đọc chưa, không xét req.body).
+app.use((req, _res, next) => {
+	req.body ??= {};
+	next();
+});
+// Query parser giữ mặc định "simple" của Express 5 (querystring của Node): frontend
+// chỉ gửi query phẳng qua URLSearchParams, không có a[b]= hay a[]=; giá trị
+// req.query vì vậy chỉ là string hoặc string[], không bao giờ là object lồng.
 
 // ─── Static uploads ───────────────────────────────────────────────────────────
 // Chỉ phục vụ link có chữ ký còn hạn — link được ký ở signUploadUrlsInJson
