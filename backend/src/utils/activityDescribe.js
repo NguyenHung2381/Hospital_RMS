@@ -132,6 +132,7 @@ const SUB_ACTION_LABELS = {
 	grades: 'Chấm điểm',
 	substitute: 'Thay thế thành viên',
 	bulk: 'Thao tác hàng loạt',
+	'bulk-update': 'Sửa đồng loạt',
 	members: 'Thành viên',
 	documents: 'Tài liệu',
 	files: 'Tệp đính kèm',

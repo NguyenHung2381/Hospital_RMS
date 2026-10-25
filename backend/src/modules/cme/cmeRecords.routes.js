@@ -39,6 +39,14 @@ router.post(
 	validate,
 	ctrl.removeMany,
 );
+// Sửa đồng loạt: { ids, ...trường cần đổi } — trường không gửi giữ nguyên
+router.post(
+	'/bulk-update',
+	canManage,
+	[body('ids').isArray({ min: 1 }).withMessage('Chưa chọn ghi nhận nào để sửa'), ...updateRules],
+	validate,
+	ctrl.updateMany,
+);
 router.post('/:id/approve', canManage, ctrl.approve);
 router.post('/:id/reject', canManage, ctrl.reject);
 router.put(

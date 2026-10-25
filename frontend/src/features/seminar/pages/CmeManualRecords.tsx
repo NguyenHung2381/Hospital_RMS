@@ -26,6 +26,8 @@ import { apiClient } from '../../../shared/api/axios';
 import {
 	addCmeRecordEvidence,
 	approveCmeRecord,
+	bulkUpdateCmeRecords,
+	type CmeRecordBulkPatch,
 	rejectCmeRecord,
 	createCmeImportStaff,
 	createCmeRecord,
@@ -550,6 +552,223 @@ function RecordFormModal({
 						</div>
 					)}
 				</div>
+			</div>
+		</Modal>
+	);
+}
+
+const EMPTY_BULK = {
+	group: '',
+	category_id: '',
+	title: '',
+	role: '',
+	quantity: '',
+	activity_date: '',
+	end_date: '',
+	year: '',
+	credits: '',
+	note: '',
+};
+
+/** Sửa đồng loạt các ghi nhận đã chọn — ô để trống giữ nguyên giá trị cũ của từng ghi nhận. */
+function BulkEditModal({
+	ids,
+	categories,
+	groups,
+	onClose,
+	onSaved,
+}: {
+	ids: string[];
+	categories: CmeCreditCategory[];
+	groups: { id: string; name: string }[];
+	onClose: () => void;
+	onSaved: () => void;
+}) {
+	const [f, setF] = useState(EMPTY_BULK);
+	const set = (patch: Partial<typeof EMPTY_BULK>) => setF((x) => ({ ...x, ...patch }));
+	const [busy, setBusy] = useState(false);
+	const [error, setError] = useState('');
+	const groupIds = Array.from(new Set(categories.map((c) => c.group_id ?? NO_GROUP)));
+	const inGroup = categories.filter((c) => (c.group_id ?? NO_GROUP) === f.group);
+
+	const patch: CmeRecordBulkPatch = {
+		...(f.category_id ? { category_id: f.category_id } : {}),
+		...(f.title.trim() ? { title: f.title.trim() } : {}),
+		...(f.role.trim() ? { role: f.role.trim() } : {}),
+		...(f.quantity !== '' ? { quantity: Number(f.quantity) } : {}),
+		...(f.activity_date ? { activity_date: f.activity_date } : {}),
+		...(f.end_date ? { end_date: f.end_date } : {}),
+		...(f.year !== '' ? { year: Number(f.year) } : {}),
+		...(f.credits !== '' ? { credits: Number(f.credits) } : {}),
+		...(f.note.trim() ? { note: f.note.trim() } : {}),
+	};
+	const hasChange = Object.keys(patch).length > 0;
+	const recalc = patch.credits === undefined && (patch.category_id !== undefined || patch.quantity !== undefined);
+
+	const save = async () => {
+		if (patch.credits !== undefined && !(patch.credits >= 0 && patch.credits < 10000))
+			return setError('Số tín chỉ phải từ 0 đến 9999.99');
+		if (patch.quantity !== undefined && !(patch.quantity >= 0)) return setError('Số buổi tham gia không hợp lệ');
+		if (patch.year !== undefined && !(Number.isInteger(patch.year) && patch.year >= 1900 && patch.year <= 2100))
+			return setError('Năm không hợp lệ');
+		if (patch.activity_date && patch.end_date && patch.end_date < patch.activity_date)
+			return setError('"Đến ngày" phải sau hoặc bằng "Từ ngày"');
+		setBusy(true);
+		setError('');
+		try {
+			await bulkUpdateCmeRecords(ids, patch);
+			onSaved();
+			onClose();
+		} catch (e) {
+			setError(e instanceof Error ? e.message : 'Cập nhật thất bại');
+		} finally {
+			setBusy(false);
+		}
+	};
+
+	return (
+		<Modal
+			open
+			onClose={() => !busy && onClose()}
+			title='Sửa đồng loạt ghi nhận CME'
+			subtitle={`${ids.length} ghi nhận đã chọn`}
+			size='md'
+			footer={
+				<>
+					<button className={styles.btnCancel} onClick={onClose} disabled={busy}>
+						Hủy
+					</button>
+					<button className={styles.btnPrimary} onClick={save} disabled={busy || !hasChange}>
+						{busy ? <span className={styles.spinner} /> : <CheckSvg />} Áp dụng cho {ids.length} ghi nhận
+					</button>
+				</>
+			}
+		>
+			<div className={styles.noticeBox}>
+				<InfoSvg />
+				<span>Chỉ ô được nhập mới ghi đè; ô để trống giữ nguyên giá trị cũ của từng ghi nhận.</span>
+			</div>
+			{error && <div className={styles.fieldError}>{error}</div>}
+			<div className={styles.formGrid}>
+				<div className={styles.formGroup}>
+					<label className={styles.formLabel}>Nhóm hoạt động</label>
+					<select
+						className={styles.formInput}
+						value={f.group}
+						onChange={(e) => set({ group: e.target.value, category_id: '' })}
+					>
+						<option value=''>-- Giữ nguyên --</option>
+						{groupIds.map((g) => (
+							<option key={g} value={g}>
+								{g === NO_GROUP ? 'Khác' : (groups.find((x) => x.id === g)?.name ?? g)}
+							</option>
+						))}
+					</select>
+				</div>
+				<div className={styles.formGroup}>
+					<label className={styles.formLabel}>Hình thức / danh mục</label>
+					<select
+						className={styles.formInput}
+						value={f.category_id}
+						onChange={(e) => set({ category_id: e.target.value })}
+						disabled={!f.group}
+					>
+						<option value=''>-- Giữ nguyên --</option>
+						{inGroup.map((c) => (
+							<option key={c.id} value={c.id}>
+								{c.name}
+							</option>
+						))}
+					</select>
+				</div>
+				<div className={`${styles.formGroup} ${styles.full}`}>
+					<label className={styles.formLabel}>Tên hoạt động</label>
+					<input
+						className={styles.formInput}
+						value={f.title}
+						maxLength={255}
+						onChange={(e) => set({ title: e.target.value })}
+						placeholder='Giữ nguyên'
+					/>
+				</div>
+				<div className={styles.formGroup}>
+					<label className={styles.formLabel}>Vai trò</label>
+					<input
+						className={styles.formInput}
+						value={f.role}
+						maxLength={100}
+						onChange={(e) => set({ role: e.target.value })}
+						placeholder='Giữ nguyên'
+					/>
+				</div>
+				<div className={styles.formGroup}>
+					<label className={styles.formLabel}>Số buổi tham gia</label>
+					<input
+						type='number'
+						step='0.1'
+						min='0'
+						className={styles.formInput}
+						value={f.quantity}
+						onChange={(e) => set({ quantity: e.target.value })}
+						placeholder='Giữ nguyên'
+					/>
+				</div>
+				<div className={styles.formGroup}>
+					<label className={styles.formLabel}>Từ ngày</label>
+					<input
+						type='date'
+						className={styles.formInput}
+						value={f.activity_date}
+						onChange={(e) => set({ activity_date: e.target.value })}
+					/>
+				</div>
+				<div className={styles.formGroup}>
+					<label className={styles.formLabel}>Đến ngày</label>
+					<input
+						type='date'
+						className={styles.formInput}
+						value={f.end_date}
+						onChange={(e) => set({ end_date: e.target.value })}
+					/>
+				</div>
+				<div className={styles.formGroup}>
+					<label className={styles.formLabel}>Năm</label>
+					<input
+						type='number'
+						className={styles.formInput}
+						value={f.year}
+						onChange={(e) => set({ year: e.target.value })}
+						placeholder={f.activity_date ? `Theo Từ ngày (${f.activity_date.slice(0, 4)})` : 'Giữ nguyên'}
+					/>
+				</div>
+				<div className={styles.formGroup}>
+					<label className={styles.formLabel}>Số tín chỉ</label>
+					<input
+						type='number'
+						step='0.1'
+						min='0'
+						className={styles.formInput}
+						value={f.credits}
+						onChange={(e) => set({ credits: e.target.value })}
+						placeholder={recalc ? 'Tự tính lại' : 'Giữ nguyên'}
+					/>
+				</div>
+				<div className={`${styles.formGroup} ${styles.full}`}>
+					<label className={styles.formLabel}>Ghi chú</label>
+					<input
+						className={styles.formInput}
+						value={f.note}
+						maxLength={500}
+						onChange={(e) => set({ note: e.target.value })}
+						placeholder='Giữ nguyên'
+					/>
+				</div>
+				{recalc && (
+					<div className={`${styles.hint} ${styles.full}`}>
+						Không nhập Số tín chỉ: tín chỉ từng ghi nhận tự tính lại = định mức danh mục × số buổi (danh mục không có
+						định mức thì giữ tín chỉ cũ).
+					</div>
+				)}
 			</div>
 		</Modal>
 	);
@@ -1677,6 +1896,7 @@ export default function CmeManualRecords() {
 	const [bulkRejecting, setBulkRejecting] = useState(false);
 	const [bulkBusy, setBulkBusy] = useState(false);
 	const [bulkDeleting, setBulkDeleting] = useState(false);
+	const [bulkEditing, setBulkEditing] = useState(false);
 
 	const runBulk = async (recs: CmeRecord[], fn: (id: string) => Promise<unknown>) => {
 		setBulkBusy(true);
@@ -1900,6 +2120,9 @@ ${missing} ghi nhận chưa có tín chỉ sẽ được bỏ qua (cần duyệt
 							itemLabel='ghi nhận'
 							actions={
 								<>
+									<BulkButton disabled={bulkBusy} onClick={() => setBulkEditing(true)}>
+										<EditSvg /> Sửa đồng loạt ({selectedRecs.length})
+									</BulkButton>
 									<BulkButton disabled={bulkBusy || toApprove.length === 0} onClick={handleBulkApprove}>
 										<CheckSvg /> Duyệt đã chọn ({toApproveReady.length})
 									</BulkButton>
@@ -2097,6 +2320,18 @@ ${missing} ghi nhận chưa có tín chỉ sẽ được bỏ qua (cần duyệt
 					groups={groups}
 					onClose={() => setEditing(null)}
 					onSaved={refresh}
+				/>
+			)}
+			{bulkEditing && (
+				<BulkEditModal
+					ids={selectedRecs.map((r) => r.id)}
+					categories={categories}
+					groups={groups}
+					onClose={() => setBulkEditing(false)}
+					onSaved={() => {
+						rowSel.clearSelection();
+						refresh();
+					}}
 				/>
 			)}
 			{showExport && (

@@ -37,6 +37,12 @@ const removeMany = asyncHandler(async (req, res) => {
 	return success(res, out, `Đã xóa ${out.deleted} ghi nhận CME`);
 });
 
+const updateMany = asyncHandler(async (req, res) => {
+	const { ids, ...data } = req.body;
+	const out = await cmeRecordService.updateMany(ids, data, req.user.id);
+	return success(res, out, `Đã cập nhật ${out.updated} ghi nhận CME`);
+});
+
 const addEvidence = asyncHandler(async (req, res) => {
 	if (!req.file) {
 		return res.status(400).json({ success: false, message: 'Vui lòng chọn file minh chứng' });
@@ -197,6 +203,7 @@ module.exports = {
 	updateOne,
 	removeOne,
 	removeMany,
+	updateMany,
 	addEvidence,
 	approve,
 	reject,

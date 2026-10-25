@@ -111,16 +111,10 @@ const create = async (data, actorId, { fetch = true } = {}) => {
 	return fetch ? getById(id) : { id };
 };
 
-// extraSets: câu SET thêm chạy cùng 1 lệnh UPDATE (vd. updateMine đưa về 'pending') —
-// tránh broadcast trạng thái cũ giữa 2 lệnh.
-const update = async (id, data, actorId, { extraSets = [] } = {}) => {
-	const pool = await getPool();
-	const sets = ['updated_at = GETDATE()', 'updated_by = @actor_id', ...extraSets];
-	const req = pool
-		.request()
-		.input('id', sql.VarChar(20), id)
-		.input('actor_id', sql.VarChar(20), actorId);
-
+// Dựng các câu SET từ data (cập nhật từng phần, trường undefined = giữ nguyên) và gắn
+// tham số vào req — dùng chung cho sửa 1 bản ghi và sửa đồng loạt.
+const fieldSets = (req, data) => {
+	const sets = [];
 	const fieldMap = {
 		user_id: sql.VarChar(20),
 		category_id: sql.VarChar(20),
@@ -151,10 +145,64 @@ const update = async (id, data, actorId, { extraSets = [] } = {}) => {
 		sets.push(`${field} = @${field}`);
 		req.input(field, type, value);
 	}
+	return sets;
+};
+
+// extraSets: câu SET thêm chạy cùng 1 lệnh UPDATE (vd. updateMine đưa về 'pending') —
+// tránh broadcast trạng thái cũ giữa 2 lệnh.
+const update = async (id, data, actorId, { extraSets = [] } = {}) => {
+	const pool = await getPool();
+	const req = pool
+		.request()
+		.input('id', sql.VarChar(20), id)
+		.input('actor_id', sql.VarChar(20), actorId);
+	const sets = ['updated_at = GETDATE()', 'updated_by = @actor_id', ...extraSets, ...fieldSets(req, data)];
 	const r = await req.query(`UPDATE cme_records SET ${sets.join(', ')} WHERE id = @id`);
 	if (!r.rowsAffected[0]) return null;
 	broadcast('update', { entity: 'cme_record' });
 	return getById(id);
+};
+
+// Sửa đồng loạt — áp cùng giá trị cho nhiều ghi nhận trong 1 câu UPDATE. Không đổi nhân viên.
+// Đổi danh mục / số buổi mà không nhập tín chỉ → tính lại tín chỉ = định mức × số buổi của
+// từng ghi nhận (giống form sửa 1 bản ghi); danh mục không có định mức thì giữ tín chỉ cũ.
+const updateMany = async (ids, data, actorId) => {
+	const list = [...new Set((ids || []).filter((id) => typeof id === 'string' && id))];
+	if (!list.length) return { updated: 0 };
+	const { user_id: _ignored, ...safe } = data;
+	const pool = await getPool();
+	// Mỗi câu lệnh 1 request riêng, cùng bộ tham số
+	const newReq = () => {
+		const req = pool
+			.request()
+			.input('ids', sql.NVarChar(sql.MAX), JSON.stringify(list))
+			.input('actor_id', sql.VarChar(20), actorId);
+		return { req, fields: fieldSets(req, safe) };
+	};
+	const { req, fields } = newReq();
+	if (!fields.length) throw httpError(400, 'Chưa nhập giá trị nào để sửa');
+	const has = (f) => fields.some((s) => s.startsWith(`${f} =`));
+	const newVal = (f) => (has(f) ? `@${f}` : `r.${f}`);
+
+	// Đổi 1 đầu khoảng ngày có thể làm "Đến ngày" < "Từ ngày" ở ghi nhận khác → chặn trước
+	if (has('activity_date') || has('end_date')) {
+		const bad = await newReq().req.query(`SELECT COUNT(*) AS n FROM cme_records r
+			WHERE r.id IN (SELECT CAST([value] AS VARCHAR(50)) FROM OPENJSON(@ids))
+			AND ${newVal('end_date')} < ${newVal('activity_date')}`);
+		if (bad.recordset[0].n)
+			throw httpError(400, `${bad.recordset[0].n} ghi nhận sẽ có "Đến ngày" trước "Từ ngày" — vui lòng nhập cả hai ngày`);
+	}
+
+	const sets = ['updated_at = GETDATE()', 'updated_by = @actor_id', ...fields];
+	if (!has('credits') && (has('category_id') || has('quantity'))) {
+		const total = `c.conversion_value * ISNULL(${newVal('quantity')}, 1)`;
+		sets.push(`credits = CASE WHEN c.conversion_value > 0 AND ${total} < 10000 THEN ROUND(${total}, 2) ELSE r.credits END`);
+	}
+	const r = await req.query(`UPDATE r SET ${sets.join(', ')}
+		FROM cme_records r LEFT JOIN cme_credit_categories c ON c.id = ${newVal('category_id')}
+		WHERE r.id IN (SELECT CAST([value] AS VARCHAR(50)) FROM OPENJSON(@ids))`);
+	broadcast('update', { entity: 'cme_record' });
+	return { updated: r.rowsAffected[0] };
 };
 
 const remove = async (id, actorId) => {
@@ -332,6 +380,7 @@ module.exports = {
 	getById,
 	create,
 	update,
+	updateMany,
 	remove,
 	removeMany,
 	addEvidence,
