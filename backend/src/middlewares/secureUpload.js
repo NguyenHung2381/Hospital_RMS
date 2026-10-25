@@ -28,9 +28,10 @@ const removeFiles = (files) =>
 	Promise.all(files.filter((f) => f.path).map((f) => fs.unlink(f.path).catch(() => {})));
 
 const quotaPrecheck = (opts) => async (req, _res, next) => {
-	const limit = quota.quotaBytes();
-	if (!opts.quota || !limit || !req.user) return next();
+	if (!opts.quota || !req.user) return next();
 	try {
+		const limit = await quota.quotaBytes();
+		if (!limit) return next();
 		const incoming = Number(req.headers['content-length']) || 0;
 		if ((await quota.used(req.user.id)) + incoming > limit) {
 			return next(

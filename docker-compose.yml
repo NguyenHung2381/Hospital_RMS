@@ -147,7 +147,18 @@ services:
       - loki
     restart: unless-stopped
 
+  # Quét virus file upload — TUỲ CHỌN (~1,5GB RAM, cần Internet tải CSDL virus).
+  # Bật: docker compose --profile av up -d, rồi điền máy chủ "clamav" ở
+  # Cấu hình hệ thống → Tải lên → Quét virus (ClamAV).
+  clamav:
+    profiles: ["av"]
+    image: clamav/clamav:stable
+    mem_limit: 2g
+    volumes:
+      - clamav_db:/var/lib/clamav
+
 volumes:
+  clamav_db:
   npm_cache:
   loki_data:
   server_secrets:

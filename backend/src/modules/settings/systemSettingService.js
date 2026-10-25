@@ -34,6 +34,12 @@ const KEYS = [
 	// File tài liệu được nhận — utils/uploadPolicy.js
 	'UPLOAD_ALLOWED_EXTENSIONS',
 	'UPLOAD_MAX_MB',
+	// Kiểm tra file upload — utils/uploadQuota.js, utils/clamav.js (fallback .env)
+	'UPLOAD_DAILY_QUOTA_MB',
+	'CLAMAV_HOST',
+	'CLAMAV_PORT',
+	'CLAMAV_MAX_MB',
+	'CLAMAV_FAIL_OPEN',
 	// Điểm danh học viên — utils/attendancePolicy.js
 	'ATTENDANCE_ALLOWED_IPS',
 	'ATTENDANCE_LOCATION',

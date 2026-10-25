@@ -389,6 +389,7 @@ GET    /api/v1/surveys/active  authOnly
 GET    /api/v1/system-settings/  system_settings:manage
 GET    /api/v1/system-settings/:key  system_settings:manage
 PUT    /api/v1/system-settings/:key  system_settings:manage
+POST   /api/v1/system-settings/test-clamav  system_settings:manage
 POST   /api/v1/system-settings/test-mail  system_settings:manage
 POST   /api/v1/topics/  topics:create
 GET    /api/v1/topics/  topics:read

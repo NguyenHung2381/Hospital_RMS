@@ -12,4 +12,5 @@ export const settingsApi = {
 	list: () => apiClient.get<SettingRow[]>('/system-settings'),
 	update: (key: string, value: string) => apiClient.put<SettingRow>(`/system-settings/${key}`, { value }),
 	testMail: (to: string) => apiClient.post<null>('/system-settings/test-mail', { to }),
+	testClamav: () => apiClient.post<{ host: string; port: number; version: string | null }>('/system-settings/test-clamav', {}),
 };

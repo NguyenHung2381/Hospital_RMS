@@ -61,7 +61,7 @@ type Group = {
 	/** Công tắc tổng — khi tắt thì cảnh báo nhóm này chưa có tác dụng. */
 	dependsOn?: { key: string; text: string };
 	/** Công cụ hỗ trợ hiện cuối nhóm. */
-	tool?: 'mail-test' | 'attendance-helper';
+	tool?: 'mail-test' | 'attendance-helper' | 'clamav-test';
 	fields: Field[];
 };
 
@@ -285,9 +285,9 @@ const SECTIONS: Section[] = [
 	{
 		id: 'upload',
 		title: 'Tải lên',
-		sub: 'Định dạng & dung lượng file',
+		sub: 'Định dạng, dung lượng, quét virus',
 		icon: UploadSvg,
-		note: 'Áp dụng cho hồ sơ đề tài, hồ sơ học viên, minh chứng CME, tài liệu khóa học và cổng đăng ký công khai. Video bài giảng, ảnh chèn nhận xét và file import Excel có quy định riêng.',
+		note: 'Định dạng & dung lượng áp dụng cho hồ sơ đề tài, hồ sơ học viên, minh chứng CME, tài liệu khóa học và cổng đăng ký công khai (video bài giảng, ảnh chèn nhận xét và file import Excel có quy định riêng). Hạn mức và quét virus áp dụng cho MỌI lượt tải lên. Ngoài ra mọi file luôn được kiểm tra nội dung thật khớp với đuôi file (chặn file .exe đổi tên thành .pdf).',
 		groups: [
 			{
 				fields: [
@@ -321,6 +321,56 @@ const SECTIONS: Section[] = [
 							['.gif', 'GIF', 'Hình ảnh'], ['.webp', 'WEBP', 'Hình ảnh'], ['.bmp', 'BMP', 'Hình ảnh'],
 						],
 						defaultValue: '.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.rar,.zip',
+					},
+				],
+			},
+			{
+				title: 'Hạn mức tải lên',
+				fields: [
+					{
+						key: 'UPLOAD_DAILY_QUOTA_MB',
+						label: 'Tổng dung lượng mỗi tài khoản / ngày',
+						hint: 'Chặn 1 tài khoản (bị chiếm hoặc script lỗi) tải lên liên tục làm đầy ổ đĩa máy chủ. Làm mới lúc 0h. 0 = không giới hạn.',
+						type: 'number',
+						placeholder: '2048',
+						unit: 'MB',
+						min: 0,
+						max: 1048576,
+					},
+				],
+			},
+			{
+				title: 'Quét virus (ClamAV)',
+				desc: 'Quét mọi file tải lên bằng ClamAV trước khi lưu; file nhiễm bị xóa ngay và ghi vào nhật ký bảo mật. Để trống máy chủ = không quét.',
+				tool: 'clamav-test',
+				fields: [
+					{
+						key: 'CLAMAV_HOST',
+						label: 'Máy chủ ClamAV',
+						hint: 'Tên máy hoặc IP của dịch vụ clamd.',
+						more: 'Chạy bằng Docker: thêm "--profile av" khi docker compose up rồi điền "clamav". Lần đầu ClamAV tải cơ sở dữ liệu virus mất vài phút, trong lúc đó việc tải lên có thể bị từ chối.',
+						placeholder: 'clamav',
+					},
+					{ key: 'CLAMAV_PORT', label: 'Cổng', type: 'number', placeholder: '3310', min: 1, max: 65535 },
+					{
+						key: 'CLAMAV_MAX_MB',
+						label: 'Chỉ quét file nhỏ hơn',
+						hint: 'File lớn hơn được nhận mà không quét (thường là video bài giảng).',
+						more: 'Không đặt lớn hơn StreamMaxLength của clamd (mặc định 25MB), nếu không file lớn sẽ bị từ chối.',
+						type: 'number',
+						placeholder: '25',
+						unit: 'MB',
+						min: 1,
+						max: 4095,
+					},
+					{
+						key: 'CLAMAV_FAIL_OPEN',
+						label: 'Khi ClamAV không hoạt động',
+						hint: 'Mặc định từ chối tải lên cho tới khi ClamAV chạy lại — bật quét mà lặng lẽ bỏ qua thì không khác gì không quét.',
+						type: 'bool',
+						defaultOn: false,
+						onText: 'Vẫn nhận file',
+						offText: 'Từ chối tải lên',
 					},
 				],
 			},
@@ -568,6 +618,7 @@ export default function SystemSettings() {
 	const [saving, setSaving] = useState(false);
 	const [testTo, setTestTo] = useState('');
 	const [testing, setTesting] = useState(false);
+	const [clamTesting, setClamTesting] = useState(false);
 	const [myIp, setMyIp] = useState<string | null>(null);
 	const [locating, setLocating] = useState(false);
 
@@ -707,13 +758,27 @@ export default function SystemSettings() {
 		}
 	};
 
+	const testClamav = async () => {
+		setClamTesting(true);
+		try {
+			await settingsApi.testClamav();
+			notify.success('Kết nối ClamAV thành công — đang quét file tải lên');
+		} catch (e) {
+			notify.error(e instanceof Error ? e.message : 'Kiểm tra thất bại');
+		} finally {
+			setClamTesting(false);
+		}
+	};
+
 	const modules = SECTIONS.find((s) => s.id === 'modules')!.groups[0].fields;
 	const smtp = saved.SMTP_HOST || env.SMTP_HOST;
+	const clamHost = saved.CLAMAV_HOST || env.CLAMAV_HOST;
 	const stats = [
 		{ label: '2FA quản trị', value: on('REQUIRE_2FA_FOR_ADMINS') ? 'Bắt buộc' : 'Không bắt buộc', ok: on('REQUIRE_2FA_FOR_ADMINS'), tab: 'security' },
 		{ label: 'Quên mật khẩu', value: on('PASSWORD_RESET_ENABLED') ? 'Cho phép' : 'Đã tắt', ok: on('PASSWORD_RESET_ENABLED'), tab: 'security' },
 		{ label: 'Gửi email', value: on('MAIL_ENABLED') ? 'Đang bật' : 'Đang tắt', ok: on('MAIL_ENABLED'), tab: 'mail' },
 		{ label: 'Máy chủ SMTP', value: smtp || 'Chưa cấu hình', ok: !!smtp, tab: 'mail' },
+		{ label: 'Quét virus', value: clamHost ? `ClamAV ${clamHost}` : 'Chưa bật', ok: !!clamHost, tab: 'upload' },
 		{ label: 'Phân hệ', value: `${modules.filter((f) => on(f.key)).length}/${modules.length} đang bật`, ok: true, tab: 'modules' },
 	];
 
@@ -1008,6 +1073,22 @@ export default function SystemSettings() {
 						Gửi thử
 					</Button>
 					{dirty.length > 0 && <span className={styles.toolHint}>Lưu thay đổi trước khi gửi thử</span>}
+				</div>
+			);
+		}
+		if (tool === 'clamav-test') {
+			return (
+				<div className={styles.toolRow}>
+					<Button variant='secondary' loading={clamTesting} disabled={!clamHost || dirty.length > 0} onClick={testClamav}>
+						Kiểm tra kết nối
+					</Button>
+					<span className={dirty.length > 0 || !clamHost ? styles.toolHint : styles.toolNote}>
+						{dirty.length > 0
+							? 'Lưu thay đổi trước khi kiểm tra'
+							: clamHost
+								? 'Gửi lệnh PING và quét thử một đoạn dữ liệu sạch tới ClamAV đã lưu.'
+								: 'Đang tắt — điền máy chủ ClamAV và lưu để bật quét virus.'}
+					</span>
 				</div>
 			);
 		}

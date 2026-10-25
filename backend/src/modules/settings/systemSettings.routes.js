@@ -5,6 +5,7 @@ const { authenticate, authorizePermission } = require('../../middlewares/auth');
 const { validate } = require('../../middlewares/errorHandler');
 const mailService = require('../notifications/mailService');
 const uploadPolicy = require('../../utils/uploadPolicy');
+const clamav = require('../../utils/clamav');
 const attendancePolicy = require('../../utils/attendancePolicy');
 const leavePolicy = require('../../utils/leavePolicy');
 const captcha = require('../../utils/captcha');
@@ -33,6 +34,20 @@ router.post('/test-mail', [body('to').isEmail()], validate, async (req, res, nex
 	}
 });
 
+// Kiểm tra kết nối ClamAV bằng cấu hình đã lưu (PING + quét thử dữ liệu sạch).
+router.post('/test-clamav', async (req, res) => {
+	try {
+		const r = await clamav.testConnection();
+		return success(
+			res,
+			r,
+			`ClamAV ${r.host}:${r.port} hoạt động bình thường${r.version ? ` — ${r.version}` : ''}`,
+		);
+	} catch (err) {
+		return error(res, `Kiểm tra thất bại: ${err.message}`, 400);
+	}
+});
+
 router.get(
 	'/:key',
 	asyncHandler(async (req, res) => {
@@ -52,6 +67,7 @@ router.put(
 		const value = req.body.value ?? null;
 		const invalid =
 			uploadPolicy.validateSetting(req.params.key, value) ??
+			clamav.validateSetting(req.params.key, value) ??
 			attendancePolicy.validateSetting(req.params.key, value) ??
 			leavePolicy.validateSetting(req.params.key, value) ??
 			captcha.validateSetting(req.params.key, value);

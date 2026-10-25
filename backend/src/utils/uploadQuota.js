@@ -1,13 +1,17 @@
 const redis = require('../config/redis');
+const systemSettingService = require('../modules/settings/systemSettingService');
 
 // Hạn mức dung lượng upload mỗi tài khoản mỗi ngày (UPLOAD_DAILY_QUOTA_MB, mặc
 // định 2048MB; 0 = không giới hạn) — chặn 1 tài khoản (bị chiếm, hoặc script lỗi)
-// upload liên tục làm đầy ổ đĩa máy chủ. Đếm trên Redis (dùng chung giữa các
-// instance), Redis lỗi thì đếm trong bộ nhớ tiến trình.
+// upload liên tục làm đầy ổ đĩa máy chủ. Admin chỉnh ở Cấu hình hệ thống, fallback
+// .env. Đếm trên Redis (dùng chung giữa các instance), Redis lỗi thì đếm trong bộ
+// nhớ tiến trình.
+const DEFAULT_QUOTA_MB = 2048;
 const memory = new Map(); // key → bytes
 
-const quotaBytes = () => {
-	const mb = Number(process.env.UPLOAD_DAILY_QUOTA_MB ?? 2048);
+const quotaBytes = async () => {
+	const raw = await systemSettingService.getValue('UPLOAD_DAILY_QUOTA_MB');
+	const mb = Number(raw === null || raw === undefined || raw === '' ? DEFAULT_QUOTA_MB : raw);
 	return Number.isFinite(mb) && mb > 0 ? mb * 1024 * 1024 : 0;
 };
 

@@ -18,6 +18,7 @@ const DEFAULT_EXTENSIONS = [
 ];
 const DEFAULT_MAX_MB = 50;
 const MAX_MB_CEILING = 1024;
+const QUOTA_MB_CEILING = 1048576; // 1TB/ngày — 0 = không giới hạn
 
 const parseExtensions = (raw) => [
 	...new Set(
@@ -40,6 +41,12 @@ const validateSetting = (key, value) => {
 		return Number.isInteger(n) && n > 0 && n <= MAX_MB_CEILING
 			? null
 			: `Dung lượng phải là số nguyên 1–${MAX_MB_CEILING} MB`;
+	}
+	if (key === 'UPLOAD_DAILY_QUOTA_MB') {
+		const n = Number(value);
+		return Number.isInteger(n) && n >= 0 && n <= QUOTA_MB_CEILING
+			? null
+			: `Hạn mức phải là số nguyên 0–${QUOTA_MB_CEILING} MB (0 = không giới hạn)`;
 	}
 	return null;
 };

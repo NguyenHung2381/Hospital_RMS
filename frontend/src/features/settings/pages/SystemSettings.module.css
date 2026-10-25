@@ -141,6 +141,7 @@ textarea.input { resize: vertical; min-height: 64px; }
 .toolRow { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; padding: 0 var(--space-5) var(--space-4); }
 .toolRow .input { flex: 1; min-width: 220px; max-width: 360px; }
 .toolHint { font-size: var(--font-size-xs); color: #b45309; }
+.toolNote { font-size: var(--font-size-xs); color: var(--color-gray-500, #6b7280); }
 .helper { margin: 0 var(--space-5) var(--space-4); padding: var(--space-3) var(--space-4); background: #f0fdf4; border: 1px dashed #86efac; border-radius: var(--radius-lg); display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2) var(--space-3); }
 .helperIcon { width: 16px; height: 16px; color: #15803d; flex: none; }
 .helperText { flex: 1; min-width: 220px; font-size: var(--font-size-sm); color: var(--color-gray-700); }
