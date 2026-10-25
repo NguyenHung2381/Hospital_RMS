@@ -80,11 +80,11 @@ test('token loại khác (pre-auth 2FA, captcha) hoặc ký bằng JWT_SECRET th
 		(await run(signToken('captcha', { id: 'active', tv: 3, answer: 7 }, '5m'))).status,
 		401,
 	);
-	// Access token kiểu cũ (trước khi tách khoá theo mục đích)
+	// Access token kiểu cũ (trước khi tách khóa theo mục đích)
 	assert.equal((await run(jwt.sign({ id: 'active', tv: 3 }, process.env.JWT_SECRET))).status, 401);
 });
 
-test('tài khoản bị vô hiệu hoá bị từ chối', async () => {
+test('tài khoản bị vô hiệu hóa bị từ chối', async () => {
 	assert.equal((await run(sign({ id: 'disabled', tv: 0 }))).status, 401);
 });
 

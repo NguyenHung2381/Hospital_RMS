@@ -26,7 +26,7 @@ export interface TopicRow {
 }
 
 export const STATUS_CONFIG: Record<string, { label: string; tone: BadgeTone }> = {
-	draft: { label: 'Bản thảo', tone: 'gray' },
+	draft: { label: 'Bản nháp', tone: 'gray' },
 	submitted: { label: 'Chờ thẩm định', tone: 'amber' },
 	approved: { label: 'Đã phê duyệt', tone: 'green' },
 	rejected: { label: 'Không thông qua', tone: 'red' },

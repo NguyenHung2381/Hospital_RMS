@@ -24,7 +24,7 @@ const HEADER = [
 	'Ngày cấp chứng chỉ hành nghề',
 	'Quyết định bổ sung phạm vi',
 	'Điều chỉnh phạm vi HĐCM trong CCHN',
-	'Mã hoá phạm vi điều chỉnh theo 2148 (BHXH)',
+	'Mã hóa phạm vi điều chỉnh theo 2148 (BHXH)',
 	'Ngày điều chỉnh phạm vi',
 	'Nơi cấp QĐ điều chỉnh',
 ];

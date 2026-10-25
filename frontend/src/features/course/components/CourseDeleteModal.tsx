@@ -14,14 +14,14 @@ export function CourseDeleteModal({
 }) {
 	return (
 		<ConfirmDeleteModal
-			title='Xoá khóa học'
+			title='Xóa khóa học'
 			subtitle={course.name}
 			onClose={onClose}
 			onConfirm={onConfirm}
 			loading={loading}
 		>
-			Bạn có chắc muốn xoá <strong>{course.name}</strong> khỏi hệ thống? Toàn bộ đăng ký, phân
-			công giảng viên, lịch học và điểm danh của khóa này sẽ bị xoá theo. Thao tác này không thể
+			Bạn có chắc muốn xóa <strong>{course.name}</strong> khỏi hệ thống? Toàn bộ đăng ký, phân
+			công giảng viên, lịch học và điểm danh của khóa này sẽ bị xóa theo. Thao tác này không thể
 			hoàn tác.
 		</ConfirmDeleteModal>
 	);

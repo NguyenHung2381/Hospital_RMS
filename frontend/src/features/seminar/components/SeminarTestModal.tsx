@@ -1,4 +1,4 @@
-import { DatePicker, Modal, QuestionImageField } from '@/shared/components';
+import { DatePicker, Modal, QuestionImageField, TimePicker } from '@/shared/components';
 import { formatDateOr } from '@/shared/utils/formatDate';
 import { useState, type ReactNode } from 'react';
 import { CheckSvg, PlusSvg, TrashSvg, UploadSvg, XSvg } from '@/assets/icons';
@@ -22,7 +22,7 @@ const pointsOf = (q: SeminarTestQuestion) => (q.points && q.points > 0 ? q.point
 const round2 = (n: number) => Math.round(n * 100) / 100;
 const numOrNull = (v: string) => (v.trim() === '' ? null : Number(v));
 
-// Soạn bài test trắc nghiệm cuối buổi + cấu hình (giờ mở / dừng tiếp nhận, thời gian
+// Soạn bài kiểm tra trắc nghiệm cuối buổi + cấu hình (giờ mở / dừng tiếp nhận, thời gian
 // làm bài, điểm từng câu, điểm đạt, trộn đề). Người tự đăng ký qua QR phải điểm
 // danh + nộp bài (và đạt điểm đạt nếu có) mới được cấp CME.
 export function SeminarTestModal({
@@ -61,7 +61,7 @@ export function SeminarTestModal({
 		setQuestions((qs) => qs.map((q, k) => (k === i ? { ...q, ...p } : q)));
 
 	const validate = () => {
-		if (open && !filled.length) return 'Chưa có câu hỏi nào để mở bài test.';
+		if (open && !filled.length) return 'Chưa có câu hỏi nào để mở bài kiểm tra.';
 		if (endDate && !endTime) return 'Chọn giờ dừng tiếp nhận (hoặc bỏ trống ngày dừng tiếp nhận).';
 		if (startTime && endTime && `${endDate || openDay} ${endTime}` <= `${openDay} ${startTime}`)
 			return 'Thời điểm dừng tiếp nhận phải sau thời điểm mở bài.';
@@ -71,7 +71,7 @@ export function SeminarTestModal({
 		const p = numOrNull(passScore);
 		if (p !== null && !(p >= 0)) return 'Điểm đạt không hợp lệ.';
 		if (p !== null && filled.length && p > totalPoints)
-			return `Điểm đạt (${p}) lớn hơn tổng điểm bài test (${totalPoints}).`;
+			return `Điểm đạt (${p}) lớn hơn tổng điểm bài kiểm tra (${totalPoints}).`;
 		const bad = questions.findIndex((q) => !isBlank(q) && q.points !== undefined && !(q.points > 0));
 		if (bad >= 0) return `Câu ${bad + 1}: điểm phải lớn hơn 0.`;
 		return '';
@@ -127,7 +127,7 @@ export function SeminarTestModal({
 				open
 				// Esc khi đang mở modal nhập file chỉ đóng modal đó
 				onClose={importing ? () => {} : onClose}
-				title='Bài test cuối buổi'
+				title='Bài kiểm tra cuối buổi'
 				subtitle='Trắc nghiệm 1 đáp án · chấm tự động'
 				size='lg'
 				bodyClassName={styles.modalBody}
@@ -138,7 +138,7 @@ export function SeminarTestModal({
 							onClick={onClose}
 							disabled={saving}
 						>
-							Huỷ
+							Hủy
 						</button>
 						<button
 							className={styles.btnPrimary}
@@ -160,7 +160,7 @@ export function SeminarTestModal({
 					/>
 					<span className={styles.testSwitchTrack} />
 					<span>
-						<b>{open ? 'Đang mở bài test' : 'Bài test đang tắt'}</b>
+						<b>{open ? 'Đang mở bài kiểm tra' : 'Bài kiểm tra đang tắt'}</b>
 						<span className={styles.hint}>
 							{open
 								? 'Người đã điểm danh làm bài ngay trên vé QR (trong khung giờ bên dưới nếu có)'
@@ -179,11 +179,10 @@ export function SeminarTestModal({
 							placeholder={defaultDate ? formatDateOr(defaultDate) : 'Hôm nay'}
 							className={styles.testDate}
 						/>
-						<input
-							type='time'
-							className={`${styles.formInput} ${styles.testTime}`}
+						<TimePicker
+							className={styles.testTime}
 							value={startTime}
-							onChange={(e) => setStartTime(e.target.value)}
+							onChange={setStartTime}
 							aria-label='Giờ mở bài'
 						/>
 					</SettingRow>
@@ -197,11 +196,10 @@ export function SeminarTestModal({
 							min={openDay || undefined}
 							className={styles.testDate}
 						/>
-						<input
-							type='time'
-							className={`${styles.formInput} ${styles.testTime}`}
+						<TimePicker
+							className={styles.testTime}
 							value={endTime}
-							onChange={(e) => setEndTime(e.target.value)}
+							onChange={setEndTime}
 							aria-label='Giờ dừng nhận bài'
 						/>
 					</SettingRow>
@@ -309,7 +307,7 @@ export function SeminarTestModal({
 								<button
 									type='button'
 									className={`${styles.actionBtn} ${styles.danger}`}
-									title='Xoá câu hỏi'
+									title='Xóa câu hỏi'
 									onClick={() => setQuestions((qs) => qs.filter((_, k) => k !== i))}
 								>
 									<TrashSvg />
@@ -348,7 +346,7 @@ export function SeminarTestModal({
 										<button
 											type='button'
 											className={styles.actionBtn}
-											title='Xoá phương án'
+											title='Xóa phương án'
 											onClick={() =>
 												patch(i, {
 													options: q.options.filter((_, k) => k !== j),

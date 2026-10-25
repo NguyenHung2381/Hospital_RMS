@@ -19,10 +19,9 @@ export interface SimpleItem {
 	name: string;
 }
 
-/** trainingTypeId: lọc học viên theo loại khóa đã ghi danh (tab), '' = tất cả. */
+/** trainingTypeId: lọc học viên theo loại khóa đã ghi danh (trang Học viên của 1 loại), '' = tất cả. */
 export function useTrainees(trainingTypeId = '') {
 	const [trainees, setTrainees] = useState<Trainee[]>([]);
-	const [typeCounts, setTypeCounts] = useState<Record<string, number>>({});
 	const [traineeTypes, setTraineeTypes] = useState<SimpleItem[]>([]);
 	const [departments, setDepartments] = useState<SimpleItem[]>([]);
 	const [isLoadingData, setIsLoadingData] = useState(true);
@@ -50,7 +49,6 @@ export function useTrainees(trainingTypeId = '') {
 				const res = await getTrainees(trainingTypeId || undefined);
 				if (stale) return;
 				setTrainees(res.data);
-				setTypeCounts(res.type_counts ?? {});
 			} catch {
 				if (!stale) showToast('error', 'Không thể tải danh sách học viên');
 			} finally {
@@ -150,9 +148,9 @@ export function useTrainees(trainingTypeId = '') {
 			setTrainees((prev) => prev.filter((t) => t.id !== deletingTrainee.id));
 			setModal(null);
 			setDeletingTrainee(null);
-			showToast('success', `Đã xoá "${deletingTrainee.full_name}"`);
+			showToast('success', `Đã xóa "${deletingTrainee.full_name}"`);
 		} catch (err) {
-			showToast('error', err instanceof Error ? err.message : 'Xoá thất bại');
+			showToast('error', err instanceof Error ? err.message : 'Xóa thất bại');
 		} finally {
 			setLoading(false);
 		}
@@ -166,7 +164,7 @@ export function useTrainees(trainingTypeId = '') {
 				const { okIds, failedCount } = await runBulk(ids, deleteTrainee);
 				setTrainees((prev) => prev.filter((t) => !okIds.has(t.id)));
 				setModal(null);
-				showToast(failedCount ? 'error' : 'success', bulkToast('xoá', okIds.size, failedCount, 'học viên'));
+				showToast(failedCount ? 'error' : 'success', bulkToast('xóa', okIds.size, failedCount, 'học viên'));
 			} finally {
 				setLoading(false);
 			}
@@ -188,7 +186,7 @@ export function useTrainees(trainingTypeId = '') {
 					setGrantedAccounts(result.credentials);
 				}
 				if (result.skipped.length > 0) {
-					// Gom lý do bỏ qua: "Học viên đã có tài khoản: 3; Hồ sơ học viên đã bị xoá: 1"
+					// Gom lý do bỏ qua: "Học viên đã có tài khoản: 3; Hồ sơ học viên đã bị xóa: 1"
 					const reasons = new Map<string, number>();
 					for (const s of result.skipped) reasons.set(s.reason, (reasons.get(s.reason) ?? 0) + 1);
 					const detail = [...reasons].map(([r, n]) => `${r}: ${n}`).join('; ');
@@ -212,7 +210,6 @@ export function useTrainees(trainingTypeId = '') {
 
 	return {
 		trainees,
-		typeCounts,
 		traineeTypes,
 		departments,
 		isLoadingData,

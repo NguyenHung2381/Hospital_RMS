@@ -55,7 +55,7 @@ export function ExternalReviewerFormModal({
 			open
 			onClose={onClose}
 			icon={<UserPlusSvg />}
-			title={mode === 'add' ? 'Thêm người ngoài viện' : 'Chỉnh sửa người ngoài viện'}
+			title={mode === 'add' ? 'Thêm chuyên gia ngoài viện' : 'Chỉnh sửa chuyên gia ngoài viện'}
 			subtitle='Chuyên gia mời ngoài tham gia hội đồng chấm, không cần tài khoản đăng nhập'
 			className={styles.modal}
 			bodyClassName={styles.modalBody}

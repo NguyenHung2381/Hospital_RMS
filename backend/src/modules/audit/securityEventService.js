@@ -1,7 +1,7 @@
 const { getPool, sql } = require('../../config/db');
 const logger = require('../../config/logger');
 
-// Ghi 1 sự kiện bảo mật (khoá tài khoản, xoay refresh token, xem dữ liệu
+// Ghi 1 sự kiện bảo mật (khóa tài khoản, xoay refresh token, xem dữ liệu
 // nhạy cảm...). Không bao giờ throw ra ngoài — lỗi ghi log không được phép
 // làm hỏng luồng chính (giống middlewares/activityLogger.js).
 const log = async ({

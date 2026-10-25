@@ -105,7 +105,7 @@ export function useRound() {
 		await deleteRoundApi(deleteRound.id);
 		setRounds((prev) => prev.filter((r) => r.id !== deleteRound.id));
 		setDeleteRound(null);
-		notify.success('Đã xoá đợt');
+		notify.success('Đã xóa đợt');
 	}, [deleteRound]);
 
 	const handleCopyLink = useCallback((token: string) => {

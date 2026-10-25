@@ -743,7 +743,7 @@
 .testSettingInputs { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2) var(--space-4); min-height: 36px; }
 .testSettingInputs .checkFilter { gap: 6px; }
 .testDate { width: 170px; }
-.testTime { width: 110px; }
+.testTime { width: 130px; flex: none; }
 .testNum { width: 90px; }
 .testUnit { font-size: var(--font-size-sm); color: var(--color-gray-500); margin-left: calc(var(--space-2) * -1); }
 

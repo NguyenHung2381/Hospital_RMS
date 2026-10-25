@@ -2,7 +2,7 @@ const fs = require('fs');
 const net = require('net');
 const logger = require('../config/logger');
 
-// Quét virus file upload bằng ClamAV (clamd) — TUỲ CHỌN, bật khi đặt
+// Quét virus file upload bằng ClamAV (clamd) — TÙY CHỌN, bật khi đặt
 // CLAMAV_HOST (vd service `clamav` trong docker-compose.prod.yml, profile "av").
 // Gửi nội dung qua lệnh INSTREAM của clamd (không cần chung ổ đĩa).
 //

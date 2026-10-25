@@ -75,7 +75,7 @@ export function MyTopicsListPanel({
 						</div>
 						<div className={styles.listEmptyDesc}>
 							{search
-								? 'Thử từ khoá khác hoặc đổi bộ lọc.'
+								? 'Thử từ khóa khác hoặc đổi bộ lọc.'
 								: 'Không có đề tài ở trạng thái này.'}
 						</div>
 					</div>

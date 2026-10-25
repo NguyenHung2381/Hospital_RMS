@@ -1,4 +1,4 @@
-// Job định kỳ thay cho proc SQL cũ: tự từ chối đề tài quá hạn bổ sung, xoá
+// Job định kỳ thay cho proc SQL cũ: tự từ chối đề tài quá hạn bổ sung, xóa
 // thông báo cũ. Thay truy vấn DB + markOnce + topicApprovalService bằng hàm giả.
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -61,7 +61,7 @@ test('run: mỗi (đề tài, mốc) chỉ xử lý 1 lần dù chạy lại / n
 	assert.deepEqual(await sup.run(), { overdue: 1, rejected: 1 });
 });
 
-test('dọn thông báo: xoá theo lô tới khi hết, mỗi ngày 1 lần', async () => {
+test('dọn thông báo: xóa theo lô tới khi hết, mỗi ngày 1 lần', async () => {
 	const batches = [nc.BATCH_SIZE, nc.BATCH_SIZE, 7];
 	let calls = 0;
 	nc.deleteBatch = async () => {

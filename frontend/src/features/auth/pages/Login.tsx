@@ -96,7 +96,7 @@ export default function Login() {
 	const [preAuthToken, setPreAuthToken] = useState<string | null>(null);
 	const [otpCode, setOtpCode] = useState('');
 	const [otpError, setOtpError] = useState<string | null>(null);
-	// Đăng nhập bị khoá tạm: mốc hết khoá (ms) + số giây còn lại để đếm ngược.
+	// Đăng nhập bị khóa tạm: mốc hết khóa (ms) + số giây còn lại để đếm ngược.
 	const [lockedUntil, setLockedUntil] = useState<number | null>(null);
 	const [secondsLeft, setSecondsLeft] = useState(0);
 
@@ -150,7 +150,7 @@ export default function Login() {
 			if (errors[field as keyof FormErrors]) {
 				setErrors((prev) => ({ ...prev, [field]: undefined }));
 			}
-			// Giữ thông báo khoá cho tới khi hết giờ đếm ngược.
+			// Giữ thông báo khóa cho tới khi hết giờ đếm ngược.
 			if (apiError && !isLocked) setApiError(null);
 		};
 

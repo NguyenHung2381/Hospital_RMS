@@ -113,7 +113,7 @@ function finish(state: Uint32Array, tailIn: Uint8Array, totalLen: number): void 
 	if (blocks === 2) compress(state, tailBuf, 64);
 }
 
-// Tìm nonce (base36) thoả thử thách. maxTries chặn vòng lặp vô hạn.
+// Tìm nonce (base36) thỏa thử thách. maxTries chặn vòng lặp vô hạn.
 export function solvePow(token: string, bits: number, maxTries = 2 ** 28): string | null {
 	const prefix = encoder.encode(`${token}:`);
 	const full = prefix.length - (prefix.length % 64);

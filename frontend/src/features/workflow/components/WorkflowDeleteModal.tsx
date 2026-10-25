@@ -14,13 +14,13 @@ export function WorkflowDeleteModal({
 }) {
 	return (
 		<ConfirmDeleteModal
-			title='Xoá workflow'
+			title='Xóa quy trình duyệt'
 			subtitle={item.name}
 			onClose={onClose}
 			onConfirm={onConfirm}
 			loading={loading}
 		>
-			Bạn có chắc muốn xoá <strong>{item.name}</strong>? Nếu workflow này đang bật, đề tài sẽ quay
+			Bạn có chắc muốn xóa <strong>{item.name}</strong>? Nếu quy trình này đang bật, đề tài sẽ quay
 			lại đường duyệt 1 bước mặc định. Thao tác này không thể hoàn tác.
 		</ConfirmDeleteModal>
 	);

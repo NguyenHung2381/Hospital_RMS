@@ -47,7 +47,7 @@ export function UserBulkEditModal({
 						onClick={onClose}
 						disabled={loading}
 					>
-						Huỷ
+						Hủy
 					</button>
 					<button
 						className={styles.btnConfirmBlue}
@@ -98,7 +98,7 @@ export function UserBulkEditModal({
 						>
 							<option value=''>— Giữ nguyên —</option>
 							<option value='active'>Kích hoạt</option>
-							<option value='locked'>Khoá</option>
+							<option value='locked'>Khóa</option>
 						</select>
 						<ChevDSvg />
 					</div>
@@ -106,7 +106,7 @@ export function UserBulkEditModal({
 			</div>
 			<div className={styles.formRow}>
 				<div className={styles.formGroup}>
-					<label className={styles.formLabel}>Phòng ban / Khoa</label>
+					<label className={styles.formLabel}>Khoa/phòng</label>
 					<div className={styles.selectWrapper}>
 						<select
 							className={styles.formSelect}

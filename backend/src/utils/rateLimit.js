@@ -55,13 +55,13 @@ class RedisWithMemoryFallbackStore {
 		try {
 			await redis.del(this.prefix + key);
 		} catch {
-			// bỏ qua — vẫn xoá bộ đếm dự phòng bên dưới
+			// bỏ qua — vẫn xóa bộ đếm dự phòng bên dưới
 		}
 		await this.memory.resetKey(key);
 	}
 }
 
-// Dùng thay cho require('express-rate-limit'): cùng tuỳ chọn, thêm `name`
+// Dùng thay cho require('express-rate-limit'): cùng tùy chọn, thêm `name`
 // (bắt buộc, duy nhất) làm tiền tố key trên Redis.
 const rateLimit = ({ name, ...options }) => {
 	if (!name) throw new Error('[rateLimit] thiếu name');

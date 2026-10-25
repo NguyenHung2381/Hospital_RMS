@@ -146,7 +146,7 @@ export function TopicImportModal({
 			footer={
 				<>
 					<button className={styles.btnCancel} onClick={onClose} disabled={loading}>
-						{result ? 'Đóng' : 'Huỷ'}
+						{result ? 'Đóng' : 'Hủy'}
 					</button>
 					{!result && (
 						<button className={styles.btnPrimary} onClick={commit} disabled={loading || !roundId || !s || s.importable === 0}>

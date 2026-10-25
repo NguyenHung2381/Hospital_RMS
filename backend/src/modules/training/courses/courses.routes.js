@@ -17,9 +17,9 @@ const uploadCourseDoc = createTrainingUpload('course_document', {
 
 router.use(authenticate);
 
-// Chống IDOR: mọi route có mã khoá học (:id) hoặc mã bản ghi con (buổi học,
-// đăng ký, tài liệu, điểm, chứng chỉ...) chỉ chạy khi khoá học tương ứng nằm
-// trong phạm vi người gọi — giảng viên phạm vi 'assigned' chỉ khoá mình được
+// Chống IDOR: mọi route có mã khóa học (:id) hoặc mã bản ghi con (buổi học,
+// đăng ký, tài liệu, điểm, chứng chỉ...) chỉ chạy khi khóa học tương ứng nằm
+// trong phạm vi người gọi — giảng viên phạm vi 'assigned' chỉ khóa mình được
 // phân công (modules/training/courses/coursePolicy.js). Route mới dùng đúng tên tham số dưới
 // đây là tự được kiểm tra.
 const inScope = (check) => async (req, _res, next, value) => {
@@ -57,6 +57,7 @@ router.get(
 	[
 		query('from').isISO8601().withMessage('Ngày bắt đầu không hợp lệ'),
 		query('to').isISO8601().withMessage('Ngày kết thúc không hợp lệ'),
+		query('training_type_id').optional().isString().isLength({ max: 20 }),
 	],
 	validate,
 	ctrl.listSessionsInRange,
@@ -400,7 +401,7 @@ router.put(
 	authorizePermission(['courses', 'update']),
 	[
 		body('lesson_id').notEmpty().withMessage('Thiếu bài học'),
-		body('assistants').optional().isArray().withMessage('Danh sách GV phụ không hợp lệ'),
+		body('assistants').optional().isArray().withMessage('Danh sách giảng viên phụ không hợp lệ'),
 	],
 	validate,
 	ctrl.setLessonLecturers,

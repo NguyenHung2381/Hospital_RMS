@@ -100,7 +100,7 @@
  *       200:
  *         description: Cập nhật thành công
  *   delete:
- *     summary: Xoá đợt nghiên cứu
+ *     summary: Xóa đợt nghiên cứu
  *     tags: [ResearchRounds]
  *     description: Chỉ admin mới có quyền
  *     parameters:
@@ -110,5 +110,5 @@
  *         schema: { type: string }
  *     responses:
  *       200:
- *         description: Xoá thành công
+ *         description: Xóa thành công
  */

@@ -11,10 +11,10 @@ const ASSIGNED_EXISTS_SQL = `EXISTS (
   )`;
 
 // ─── Kiểm tra theo bản ghi (chống IDOR) ─────────────────────────────────────
-// Phạm vi 'assigned' (giảng viên) chỉ thao tác được khoá học mình được phân
-// công. authorizePermission ở route không biết khoá học cụ thể — trước đây chỉ
-// danh sách + chi tiết khoá học lọc theo phân công, còn học viên / buổi học /
-// điểm danh / tài liệu / điểm / chứng chỉ của khoá khác vẫn đọc-sửa được theo
+// Phạm vi 'assigned' (giảng viên) chỉ thao tác được khóa học mình được phân
+// công. authorizePermission ở route không biết khóa học cụ thể — trước đây chỉ
+// danh sách + chi tiết khóa học lọc theo phân công, còn học viên / buổi học /
+// điểm danh / tài liệu / điểm / chứng chỉ của khóa khác vẫn đọc-sửa được theo
 // mã. modules/training/courses/courses.routes.js gắn các hàm dưới qua router.param.
 const assertCourseInScope = async (courseId, actor) => {
 	if (scopeOf(actor, 'courses') !== 'assigned') return;
@@ -31,7 +31,7 @@ const assertCourseInScope = async (courseId, actor) => {
 	}
 };
 
-// Mã bản ghi con → khoá học chứa nó (tên tham số route → câu truy vấn)
+// Mã bản ghi con → khóa học chứa nó (tên tham số route → câu truy vấn)
 const CHILD_COURSE_SQL = {
 	enrollmentId: 'SELECT course_id FROM course_enrollments WHERE id = @id',
 	rotationId: `SELECT e.course_id FROM enrollment_rotations r

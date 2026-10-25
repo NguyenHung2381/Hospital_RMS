@@ -56,7 +56,7 @@ const assertCanAssignRole = async (actor, roleId) => {
 	}
 };
 
-// Sửa / xoá / reset mật khẩu một tài khoản: phải cùng khoa (nếu actor bị giới
+// Sửa / xóa / reset mật khẩu một tài khoản: phải cùng khoa (nếu actor bị giới
 // hạn theo khoa) và tài khoản đích không được mang quyền cao hơn actor.
 const assertCanManageUser = async (actor, target) => {
 	if (isSuperuser(actor)) return;
@@ -71,7 +71,7 @@ const assertCanManageUser = async (actor, target) => {
 	}
 };
 
-// Sửa thông tin / xoá / đổi quyền một vai trò.
+// Sửa thông tin / xóa / đổi quyền một vai trò.
 const assertCanEditRole = async (actor, roleId) => {
 	if (isSuperuser(actor)) return;
 	if (actor?.role_id === roleId) {

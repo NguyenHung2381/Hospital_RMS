@@ -89,10 +89,10 @@ export function useSeminarDetail(id: string) {
 			setLoading(true);
 			try {
 				await deleteParticipant(id, pid);
-				showToast('success', 'Đã xoá');
+				showToast('success', 'Đã xóa');
 				refresh();
 			} catch (e) {
-				showToast('error', e instanceof Error ? e.message : 'Xoá thất bại');
+				showToast('error', e instanceof Error ? e.message : 'Xóa thất bại');
 			} finally {
 				setLoading(false);
 			}
@@ -111,8 +111,8 @@ export function useSeminarDetail(id: string) {
 				showToast(
 					failedCount ? 'error' : 'success',
 					failedCount
-						? `Đã xoá ${okIds.size}, lỗi ${failedCount}`
-						: `Đã xoá ${okIds.size} người`,
+						? `Đã xóa ${okIds.size}, lỗi ${failedCount}`
+						: `Đã xóa ${okIds.size} người`,
 				);
 				refresh();
 			} finally {
@@ -132,7 +132,7 @@ export function useSeminarDetail(id: string) {
 					(res.issued
 						? `Đã cấp ${res.issued} số CME (${String(res.from).padStart(4, '0')}–${String(res.to).padStart(4, '0')} / ${res.year})`
 						: 'Không có người nào được cấp số') +
-						(res.skipped ? ` · ${res.skipped} người chưa điểm danh / chưa làm hoặc chưa đạt bài test` : ''),
+						(res.skipped ? ` · ${res.skipped} người chưa điểm danh / chưa làm hoặc chưa đạt bài kiểm tra` : ''),
 				);
 				refresh();
 				return true;

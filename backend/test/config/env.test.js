@@ -1,5 +1,5 @@
 // Kiểm tra cấu hình môi trường lúc khởi động (src/config/env.js): biến bắt buộc,
-// quy tắc riêng của production, biến tuỳ chọn sai định dạng → cảnh báo + mặc định.
+// quy tắc riêng của production, biến tùy chọn sai định dạng → cảnh báo + mặc định.
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
@@ -63,13 +63,13 @@ test('production: secret ngắn, trùng nhau, thiếu CORS_ORIGIN ⇒ lỗi', ()
 	assert.match(noCors[0], /CORS_ORIGIN/);
 });
 
-test('production: DB không mã hoá / dùng sa ⇒ chỉ cảnh báo, không chặn', () => {
+test('production: DB không mã hóa / dùng sa ⇒ chỉ cảnh báo, không chặn', () => {
 	const { errors, warnings } = loadConfig({ ...PROD, DB_ENCRYPT: 'false', DB_USER: 'SA' });
 	assert.deepEqual(errors, []);
 	assert.equal(warnings.length, 2);
 });
 
-test('biến tuỳ chọn sai định dạng ⇒ cảnh báo nêu tên biến, dùng mặc định', () => {
+test('biến tùy chọn sai định dạng ⇒ cảnh báo nêu tên biến, dùng mặc định', () => {
 	const { config, errors, warnings } = loadConfig({
 		...BASE,
 		DB_POOL_MAX: 'abc',

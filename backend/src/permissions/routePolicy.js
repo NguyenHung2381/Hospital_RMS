@@ -1,6 +1,6 @@
 // Các route KHÔNG gắn authorizePermission — mỗi route phải có lý do. Được
 // scripts/check-route-permissions.js đối chiếu: route mới thiếu guard mà không
-// có mặt ở đây sẽ làm script fail. Khoá = "METHOD /đường/dẫn/đầy/đủ".
+// có mặt ở đây sẽ làm script fail. Khóa = "METHOD /đường/dẫn/đầy/đủ".
 // "TODO:" = đã biết còn thiếu kiểm tra, cần xử lý ở giai đoạn sau.
 const API = '/api/v1';
 
@@ -38,11 +38,11 @@ module.exports = {
 		[`POST ${API}/csp-report/`]:
 			'Trình duyệt gửi báo cáo vi phạm CSP (không kèm token) — chỉ ghi log, có rate-limit',
 		[`GET ${API}/public/captcha`]: 'Cổng công khai',
-		[`GET ${API}/public/courses`]: 'Cổng công khai — khoá học mở đăng ký',
+		[`GET ${API}/public/courses`]: 'Cổng công khai — khóa học mở đăng ký',
 		[`GET ${API}/public/trainee-types`]: 'Cổng công khai — danh mục cho form đăng ký',
 		[`GET ${API}/public/upload-policy`]: 'Định dạng & dung lượng file được nhận (không nhạy cảm)',
 		[`GET ${API}/public/lookup`]: 'Cổng công khai — tra cứu trạng thái đăng ký',
-		[`POST ${API}/public/course-registration`]: 'Cổng công khai — đăng ký khoá học (có captcha)',
+		[`POST ${API}/public/course-registration`]: 'Cổng công khai — đăng ký khóa học (có captcha)',
 		[`GET ${API}/public/topic-rounds`]: 'Cổng công khai — đợt đang mở',
 		[`GET ${API}/public/topic-rounds/by-token/:token`]:
 			'Cổng công khai — đợt theo link đăng ký (có rate-limit)',
@@ -85,7 +85,7 @@ module.exports = {
 		[`GET ${API}/users/:id`]:
 			'Controller: chính mình, hoặc cần users:read + cùng khoa (userController.getById)',
 		[`GET ${API}/users/search`]:
-			'Tìm người để thêm làm thành viên đề tài — bắt buộc từ khoá, tối đa 20 kết quả (có email để điền sẵn)',
+			'Tìm người để thêm làm thành viên đề tài — bắt buộc từ khóa, tối đa 20 kết quả (có email để điền sẵn)',
 		[`GET ${API}/notifications/`]: 'Thông báo của chính mình',
 		[`GET ${API}/notifications/unread-count`]: 'Thông báo của chính mình',
 		[`PUT ${API}/notifications/read-all`]: 'Thông báo của chính mình',
@@ -116,7 +116,7 @@ module.exports = {
 		[`POST ${API}/me/attendance/leave-requests`]:
 			'Học viên gửi đơn xin nghỉ / đi muộn — service gán user_id = req.user.id, chỉ tài khoản học viên, ngày thuộc thời gian khóa học, trạng thái chờ duyệt',
 		[`PATCH ${API}/me/attendance/leave-requests/:id/cancel`]:
-			'Huỷ đơn của chính mình còn chờ duyệt (WHERE user_id = req.user.id AND status = pending)',
+			'Hủy đơn của chính mình còn chờ duyệt (WHERE user_id = req.user.id AND status = pending)',
 		[`GET ${API}/me/cme`]: 'Tín chỉ CME của chính mình (lọc theo user_id)',
 		[`POST ${API}/me/cme/export-excel`]:
 			'Xuất Excel phiếu CME của chính mình (dùng req.user.id, không nhận user_id từ client)',
@@ -187,8 +187,8 @@ module.exports = {
 		[`POST ${API}/seminars/checkin`]: 'Điểm danh hội thảo bằng token QR (có purpose + hạn dùng)',
 		[`POST ${API}/courses/attendance/check-in`]:
 			'Điểm danh buổi học bằng token QR (có purpose + hạn dùng)',
-		[`GET ${API}/exams/available`]: 'Service: đề thi của khoá học mình đã được duyệt đăng ký',
-		[`POST ${API}/exams/papers/:id/start`]: 'Service: phải có đăng ký khoá học được duyệt',
+		[`GET ${API}/exams/available`]: 'Service: đề thi của khóa học mình đã được duyệt đăng ký',
+		[`POST ${API}/exams/papers/:id/start`]: 'Service: phải có đăng ký khóa học được duyệt',
 		[`POST ${API}/exams/papers/:id/submit`]: 'Service: chỉ nộp bài làm của chính mình',
 		[`GET ${API}/surveys/active`]: 'Khảo sát đang mở cho người dùng',
 		[`GET ${API}/surveys/:id/respond`]: 'Trả lời khảo sát',

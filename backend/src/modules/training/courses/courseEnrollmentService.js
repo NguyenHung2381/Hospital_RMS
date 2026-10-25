@@ -13,6 +13,7 @@ const systemSettingService = require('../../settings/systemSettingService');
 // 1 dòng ghi danh kèm học viên / chương trình / tiến độ — dùng chung cho danh sách của khóa và 1 hồ sơ.
 const enrollmentSelect = (whereSql) => `
     SELECT e.*, t.full_name AS trainee_name, t.phone AS trainee_phone, t.email AS trainee_email,
+           CAST(CASE WHEN t.staff_user_id IS NULL THEN 0 ELSE 1 END AS BIT) AS is_internal,
            u.full_name AS decided_by_name,
            tp.code AS program_code, tp.name AS program_name, mm.full_name AS main_mentor_name,
            (SELECT COUNT(*) FROM enrollment_lessons el WHERE el.enrollment_id = e.id) AS lesson_total,
@@ -39,7 +40,10 @@ const listEnrollments = async (courseId) => {
 const getEnrollment = async (enrollmentId) => {
 	const pool = await getPool();
 	const row = (
-		await pool.request().input('id', sql.VarChar(20), enrollmentId).query(enrollmentSelect('e.id = @id'))
+		await pool
+			.request()
+			.input('id', sql.VarChar(20), enrollmentId)
+			.query(enrollmentSelect('e.id = @id'))
 	).recordset[0];
 	if (!row) throw httpError(404, 'Không tìm thấy hồ sơ ghi danh.');
 	return row;
@@ -196,7 +200,7 @@ const registerStaff = async (
 			);
 		const user = userRes.recordset[0];
 		if (!user) {
-			throw httpError(404, 'Nhân viên không tồn tại hoặc đã bị khoá.');
+			throw httpError(404, 'Nhân viên không tồn tại hoặc đã bị khóa.');
 		}
 		// require muộn — traineeService kéo theo topicMemberService/personService, tránh vòng require.
 		const traineeService = require('../trainees/traineeService');
@@ -239,7 +243,9 @@ const decideEnrollment = async (enrollmentId, decision, actorId, note) => {
 	let finalStatus = decision;
 	// Hồ sơ đã duyệt (đang chiếm chỗ) thì giữ nguyên.
 	if (decision === 'approved' && classRule && row.status !== 'approved')
-		finalStatus = (await programClassService.statusOnApprove(course, row.program_id, row.trainee_id)) ?? decision;
+		finalStatus =
+			(await programClassService.statusOnApprove(course, row.program_id, row.trainee_id)) ??
+			decision;
 
 	await pool
 		.request()
@@ -326,7 +332,7 @@ const bulkDecideEnrollments = async (ids, decision, actorId, note) => {
 
 // attendance.enrollment_id KHÔNG cascade (2 đường CASCADE cùng hội tụ về
 // attendance qua session_id lẫn enrollment_id bị SQL Server chặn — xem ghi
-// chú trong migration) — phải tự xoá điểm danh liên quan trước.
+// chú trong migration) — phải tự xóa điểm danh liên quan trước.
 const removeEnrollment = async (enrollmentId, actorId = null) => {
 	const pool = await getPool();
 	const r = await pool.request().input('id', sql.VarChar(20), enrollmentId).query(`

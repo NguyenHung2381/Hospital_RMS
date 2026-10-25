@@ -322,7 +322,7 @@ const arrangeRotations = (rows, lessons, startDate, busy, firstLessonId = null) 
 	return best?.out ?? [];
 };
 
-/** NHD đang kèm ít học viên nhất trong [s, e]; hoà thì theo thứ tự `candidates`. */
+/** NHD đang kèm ít học viên nhất trong [s, e]; hòa thì theo thứ tự `candidates`. */
 const pickMentor = (candidates, busy, s, e) => {
 	let pick = null;
 	let load = Infinity;

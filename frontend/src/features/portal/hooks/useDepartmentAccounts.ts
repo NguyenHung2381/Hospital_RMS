@@ -118,7 +118,7 @@ export function useDepartmentAccounts() {
 		await deleteUserApi(deleteUser.id);
 		setUsers((prev) => prev.filter((u) => u.id !== deleteUser.id));
 		setDeleteUser(null);
-		showToast('info', `Đã xoá tài khoản ${deleteUser.full_name}`);
+		showToast('info', `Đã xóa tài khoản ${deleteUser.full_name}`);
 	}, [deleteUser]);
 
 	// Server đặt về mật khẩu mặc định = tên đăng nhập; modal
@@ -139,7 +139,7 @@ export function useDepartmentAccounts() {
 					is_active: !target.is_active,
 				});
 				setUsers((prev) => prev.map((u) => (u.id === id ? updated : u)));
-				showToast('info', updated.is_active ? 'Đã kích hoạt tài khoản' : 'Đã khoá tài khoản');
+				showToast('info', updated.is_active ? 'Đã kích hoạt tài khoản' : 'Đã khóa tài khoản');
 			} catch {
 				showToast('error', 'Không thể cập nhật trạng thái');
 			}
@@ -152,7 +152,7 @@ export function useDepartmentAccounts() {
 			if (!ids.length) return;
 			const { okIds, failedCount } = await runBulk(ids, deleteUserApi);
 			setUsers((prev) => prev.filter((u) => !okIds.has(u.id)));
-			showToast(failedCount ? 'error' : 'info', bulkToast('xoá', okIds.size, failedCount, 'tài khoản'));
+			showToast(failedCount ? 'error' : 'info', bulkToast('xóa', okIds.size, failedCount, 'tài khoản'));
 		},
 		[],
 	);
@@ -167,7 +167,7 @@ export function useDepartmentAccounts() {
 				prev.map((u) => (okIds.has(u.id) ? { ...u, is_active: isActive } : u)),
 			);
 			showToast(failedCount ? 'error' : 'info', bulkToast(
-					isActive ? 'kích hoạt' : 'khoá',
+					isActive ? 'kích hoạt' : 'khóa',
 					okIds.size,
 					failedCount,
 					'tài khoản',

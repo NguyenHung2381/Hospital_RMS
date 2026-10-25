@@ -6,7 +6,7 @@ const { httpError } = require('../utils/httpError');
 
 // Factory for simple lookup tables: departments, categories, levels, roles, round_types, research_rounds
 // idPrefix: fixed prefix prepended to the random portion of the generated ID
-// deleteGuards: [{ table, column, label }] — trước khi xoá sẽ đếm số dòng con đang
+// deleteGuards: [{ table, column, label }] — trước khi xóa sẽ đếm số dòng con đang
 //   tham chiếu tới id này; nếu còn thì trả lỗi 409 thay vì để DB ném FK 547.
 // extraFields: [{ column, sqlType }] — cột phụ ngoài name/description (vd:
 //   cme_credit_categories.group_id/conversion_method/conversion_value/unit_label)
@@ -25,7 +25,7 @@ const createCrudService = (
 	// Thực thể để phát tín hiệu (vd: roles -> role)
 	const entity = tableName.endsWith('s') ? tableName.slice(0, -1) : tableName;
 	// Prefix cache riêng theo bảng — invalidate(cachePrefix) sau mỗi lần ghi sẽ
-	// xoá sạch mọi key getAll (mọi trang/search) lẫn getById của bảng này.
+	// xóa sạch mọi key getAll (mọi trang/search) lẫn getById của bảng này.
 	const cachePrefix = `lookup:${tableName}:`;
 
 	const getAll = async ({ page = 1, limit = 100, search = undefined } = {}) => {
@@ -139,7 +139,7 @@ const createCrudService = (
 		await req.query(
 			`EXEC sp_set_actor @actor_id; UPDATE ${tableName} SET ${sets.join(', ')} WHERE id = @id`,
 		);
-		// Xoá cache trước khi getById để không trả lại bản ghi cũ vừa cache.
+		// Xóa cache trước khi getById để không trả lại bản ghi cũ vừa cache.
 		await invalidate(cachePrefix);
 		broadcast('update', { entity });
 		return getById(id);
@@ -163,7 +163,7 @@ const createCrudService = (
 			if (parts.length) {
 				throw httpError(
 					409,
-					`Không thể xoá vì đang có ${parts.join(', ')} liên kết. Hãy gỡ hoặc chuyển liên kết sang mục khác trước.`,
+					`Không thể xóa vì đang có ${parts.join(', ')} liên kết. Hãy gỡ hoặc chuyển liên kết sang mục khác trước.`,
 				);
 			}
 		}

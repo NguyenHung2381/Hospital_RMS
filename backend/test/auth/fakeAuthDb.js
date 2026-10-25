@@ -63,7 +63,7 @@ const setup = () => {
 			return [];
 		}
 		if (/DECLARE @family/.test(text)) {
-			// logout(): xoá cả họ của token
+			// logout(): xóa cả họ của token
 			const r = rows.find((x) => x.token === inputs.token);
 			const family = r ? r.family_id || r.id : null;
 			for (let i = rows.length - 1; i >= 0; i--)

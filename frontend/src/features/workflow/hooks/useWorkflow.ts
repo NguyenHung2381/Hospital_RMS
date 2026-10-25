@@ -28,7 +28,7 @@ export function useWorkflow() {
 		workflowApi
 			.list()
 			.then(setItems)
-			.catch(() => showToast('error', 'Không thể tải danh sách workflow'))
+			.catch(() => showToast('error', 'Không thể tải danh sách quy trình duyệt'))
 			.finally(() => setIsLoadingData(false));
 	}, [refreshKey]);
 
@@ -59,7 +59,7 @@ export function useWorkflow() {
 				const createdItem = await workflowApi.create(toPayload(data));
 				setItems((prev) => [createdItem, ...prev]);
 				setModal(null);
-				showToast('success', `Đã tạo workflow "${createdItem.name}"`);
+				showToast('success', `Đã tạo quy trình duyệt "${createdItem.name}"`);
 			} catch (err) {
 				showToast('error', err instanceof Error ? err.message : 'Tạo thất bại');
 			} finally {
@@ -96,9 +96,9 @@ export function useWorkflow() {
 			setItems((prev) => prev.filter((d) => d.id !== deletingItem.id));
 			setModal(null);
 			setDeletingItem(null);
-			showToast('success', `Đã xoá "${deletingItem.name}"`);
+			showToast('success', `Đã xóa "${deletingItem.name}"`);
 		} catch (err) {
-			showToast('error', err instanceof Error ? err.message : 'Xoá thất bại');
+			showToast('error', err instanceof Error ? err.message : 'Xóa thất bại');
 		} finally {
 			setLoading(false);
 		}

@@ -60,7 +60,7 @@ const adminList = asyncHandler(async (req, res) => {
 const deleteOne = asyncHandler(async (req, res) => {
 	const ok = await svc.deleteNotif(req.params.id);
 	if (!ok) return notFound(res, 'Không tìm thấy thông báo');
-	success(res, null, 'Đã xoá thông báo');
+	success(res, null, 'Đã xóa thông báo');
 });
 
 const getBatchRecipients = asyncHandler(async (req, res) => {
@@ -71,7 +71,7 @@ const getBatchRecipients = asyncHandler(async (req, res) => {
 const deleteBatch = asyncHandler(async (req, res) => {
 	const ok = await svc.deleteBatch(req.params.batchKey);
 	if (!ok) return notFound(res, 'Không tìm thấy thông báo');
-	success(res, null, 'Đã xoá thông báo');
+	success(res, null, 'Đã xóa thông báo');
 });
 
 module.exports = {

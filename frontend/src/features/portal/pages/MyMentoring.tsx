@@ -178,7 +178,7 @@ function RotationCard({ row, onSaved }: { row: MentorRotation; onSaved: () => vo
 					{row.result !== 'pending' && (
 						<div className={styles.doneMeta}>
 							<button type='button' className={styles.link} onClick={() => setEditing(false)}>
-								Huỷ
+								Hủy
 							</button>
 							<button
 								type='button'

@@ -149,7 +149,7 @@ export default function StaffAttendance() {
 
 	return (
 		<AdminLayout
-			pageTitle='Bảng điểm danh học viên'
+			pageTitle='Điểm danh theo ca'
 			pageSubtitle='Giờ vào/ra theo ca của học viên trong thời gian khóa học — ca qua đêm tính vào ngày bắt đầu ca'
 			headerActions={
 				<ExcelActions

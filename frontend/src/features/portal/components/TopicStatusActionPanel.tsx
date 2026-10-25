@@ -18,7 +18,7 @@ export function TopicStatusActionPanel({
 }: TopicStatusActionPanelProps) {
 	const approver = latestApproval?.approver_name ?? latestApproval?.created_by;
 	const decidedAt = formatDate(latestApproval?.created_at ?? detailTopic.updated_at);
-	// "Phê duyệt bởi A · 28/09/2026" — không có người duyệt thì chỉ hiện ngày
+	// "Người phê duyệt A · 28/09/2026" — không có người duyệt thì chỉ hiện ngày
 	const decidedLine = (prefix: string) =>
 		approver ? `${prefix} ${approver} · ${decidedAt}` : `Ngày ${decidedAt}`;
 
@@ -40,7 +40,7 @@ export function TopicStatusActionPanel({
 					<CheckCircleSvg />
 					<div>
 						<div className={styles.noticeTitle}>Đề tài đã được phê duyệt</div>
-						<div className={styles.noticeSub}>{decidedLine('Phê duyệt bởi')}</div>
+						<div className={styles.noticeSub}>{decidedLine('Người phê duyệt')}</div>
 					</div>
 				</div>
 			)}

@@ -273,7 +273,7 @@ export function NotificationSendForm({
 					</div>
 
 					<div className={styles.formGroup}>
-						<label className={styles.formLabel}>Đề tài liên quan (tuỳ chọn)</label>
+						<label className={styles.formLabel}>Đề tài liên quan (tùy chọn)</label>
 						{selectedTopic ? (
 							<div className={`${styles.userNode} ${styles.userNodeOn}`}>
 								<span className={styles.userNodeName}>{selectedTopic.title}</span>
@@ -328,7 +328,7 @@ export function NotificationSendForm({
 						onClick={onClose}
 						disabled={sending}
 					>
-						Huỷ
+						Hủy
 					</button>
 					<button
 						className={styles.btnSend}

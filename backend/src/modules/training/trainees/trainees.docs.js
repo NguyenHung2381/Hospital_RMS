@@ -57,7 +57,7 @@
  *                 minItems: 1
  *                 maxItems: 500
  *                 items: { type: string }
- *                 description: Học viên cần cấp (bắt buộc). Hồ sơ đã xoá / ngừng hoạt động / đã có tài khoản bị bỏ qua.
+ *                 description: Học viên cần cấp (bắt buộc). Hồ sơ đã xóa / ngừng hoạt động / đã có tài khoản bị bỏ qua.
  *     responses:
  *       200:
  *         description: Cấp tài khoản thành công (kèm danh sách bị bỏ qua và lý do)
@@ -91,7 +91,7 @@
  * @swagger
  * /trainees/{id}:
  *   delete:
- *     summary: Xoá học viên
+ *     summary: Xóa học viên
  *     tags: [Trainees]
  */
 

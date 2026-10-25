@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { BookOpenSvg, CheckSvg, PlusSvg, TrashSvg } from '@/assets/icons';
-import { DatePicker, Modal } from '@/shared/components';
+import { DatePicker, Modal, TimePicker } from '@/shared/components';
 import { updateSeminarAgenda } from '../api/seminarApi';
 import type { Seminar, SeminarAgendaItem } from '../types/seminar.type';
 import { parseAgenda } from '../utils/agenda';
@@ -67,7 +67,7 @@ export function SeminarAgendaModal({
 						onClick={onClose}
 						disabled={saving}
 					>
-						Huỷ
+						Hủy
 					</button>
 					<button
 						className={styles.btnPrimary}
@@ -97,7 +97,7 @@ export function SeminarAgendaModal({
 								<button
 									type='button'
 									className={`${styles.actionBtn} ${styles.danger}`}
-									title='Xoá bài'
+									title='Xóa bài'
 									onClick={() => setItems((xs) => xs.filter((_, k) => k !== i))}
 								>
 									<TrashSvg />
@@ -121,20 +121,16 @@ export function SeminarAgendaModal({
 						<div className={styles.formGroup}>
 							<label className={styles.formLabel}>Thời gian</label>
 							<div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-								<input
-									type='time'
-									className={styles.formInput}
+								<TimePicker
 									value={a.start_time ?? ''}
-									onChange={(e) => patch(i, { start_time: e.target.value })}
-									title='Giờ bắt đầu'
+									onChange={(v) => patch(i, { start_time: v })}
+									aria-label='Giờ bắt đầu'
 								/>
 								<span>–</span>
-								<input
-									type='time'
-									className={styles.formInput}
+								<TimePicker
 									value={a.end_time ?? ''}
-									onChange={(e) => patch(i, { end_time: e.target.value })}
-									title='Giờ kết thúc'
+									onChange={(v) => patch(i, { end_time: v })}
+									aria-label='Giờ kết thúc'
 								/>
 							</div>
 						</div>

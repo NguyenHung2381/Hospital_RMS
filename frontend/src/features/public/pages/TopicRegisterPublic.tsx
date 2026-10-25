@@ -55,7 +55,7 @@ export default function TopicRegisterPublic() {
 		if (error || success) window.scrollTo({ top: 0, behavior: 'smooth' });
 	}, [error, success]);
 
-	// Link kèm ?token= (tab "Nâng cao" của đợt) ⇒ khoá form vào đúng đợt đó;
+	// Link kèm ?token= (tab "Nâng cao" của đợt) ⇒ khóa form vào đúng đợt đó;
 	// không có token ⇒ người đăng ký tự chọn trong các đợt đang mở.
 	const [searchParams] = useSearchParams();
 	const token = searchParams.get('token');
@@ -145,7 +145,7 @@ export default function TopicRegisterPublic() {
 			return setError(
 				badIdx === 0
 					? 'Vui lòng nhập đủ thông tin chủ nhiệm đề tài'
-					: `Vui lòng nhập đủ thông tin người thứ ${badIdx + 1} (hoặc xoá nếu không cần)`,
+					: `Vui lòng nhập đủ thông tin người thứ ${badIdx + 1} (hoặc xóa nếu không cần)`,
 			);
 		}
 		if (people.filter((p) => p.role === 'secretary').length > 1) return setError('Mỗi đề tài chỉ có 1 thư ký');
@@ -178,7 +178,7 @@ export default function TopicRegisterPublic() {
 			setSuccess('Đăng ký đề tài thành công! Khoa/phòng và hội đồng sẽ xem xét và duyệt hồ sơ của bạn.');
 			setRegisteredId(result.topic_id ?? '');
 			setCopied(false);
-			// Link khoá theo đợt ⇒ giữ đợt để nộp tiếp đề tài khác cùng đợt
+			// Link khóa theo đợt ⇒ giữ đợt để nộp tiếp đề tài khác cùng đợt
 			setForm({ ...EMPTY_FORM, round_id: lockedRoundId });
 			setPeople(INITIAL_PEOPLE);
 			setPersonErrors([]);
@@ -427,7 +427,7 @@ export default function TopicRegisterPublic() {
 										className={styles.memberRemove}
 										onClick={() => removePerson(idx)}
 									>
-										<TrashSvg /> Xoá
+										<TrashSvg /> Xóa
 									</button>
 								</div>
 								<div className={styles.memberBody}>

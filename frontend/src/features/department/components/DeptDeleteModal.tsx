@@ -17,7 +17,7 @@ export function DeptDeleteModal({
 	const topics = dept.topic_count ?? 0;
 	return (
 		<ConfirmDeleteModal
-			title='Xoá khoa phòng'
+			title='Xóa khoa/phòng'
 			subtitle={dept.name}
 			onClose={onClose}
 			onConfirm={onConfirm}
@@ -29,14 +29,14 @@ export function DeptDeleteModal({
 						<span>
 							Có {users > 0 && <strong>{users} người dùng</strong>}
 							{users > 0 && topics > 0 && ' và '}
-							{topics > 0 && <strong>{topics} đề tài</strong>} đang liên kết với khoa phòng này.
-							Khi xoá, các bản ghi này sẽ được gỡ liên kết (không bị xoá theo).
+							{topics > 0 && <strong>{topics} đề tài</strong>} đang liên kết với khoa/phòng này.
+							Khi xóa, các bản ghi này sẽ được gỡ liên kết (không bị xóa theo).
 						</span>
 					</>
 				)
 			}
 		>
-			Bạn có chắc muốn xoá <strong>{dept.name}</strong> ({dept.abbreviation}) khỏi hệ thống?
+			Bạn có chắc muốn xóa <strong>{dept.name}</strong> ({dept.abbreviation}) khỏi hệ thống?
 		</ConfirmDeleteModal>
 	);
 }

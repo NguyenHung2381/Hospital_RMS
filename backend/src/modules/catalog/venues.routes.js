@@ -11,7 +11,7 @@ const { sql } = require('../../config/db');
 // GET chỉ cần đăng nhập: form hội đồng / buổi học / chương trình của khóa đều
 // cần danh sách để chọn. Tên địa điểm được lưu dạng text sang bảng nghiệp vụ
 // (councils.location, class_sessions.room, course_programs.location) nên
-// không có deleteGuards — xoá địa điểm không ảnh hưởng dữ liệu đã lưu.
+// không có deleteGuards — xóa địa điểm không ảnh hưởng dữ liệu đã lưu.
 {
 	const VENUE_EXTRA_FIELDS = [
 		{ column: 'address', sqlType: sql.NVarChar(255) },

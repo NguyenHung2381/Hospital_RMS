@@ -173,7 +173,7 @@ export default function CouncilProgress() {
 													onClick={() => setActiveTab('council-conclusion')}
 												>
 													<span className={styles.tabIcon}>👥</span>
-													<span className={styles.tabLabel}>Hội đồng &amp; Kết luận</span>
+													<span className={styles.tabLabel}>Hội đồng &amp; kết luận</span>
 												</button>
 											</div>
 

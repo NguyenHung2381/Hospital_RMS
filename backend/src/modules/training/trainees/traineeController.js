@@ -57,7 +57,7 @@ const addDocument = asyncHandler(async (req, res) => {
 
 const removeDocument = asyncHandler(async (req, res) => {
 	await traineeService.removeDocument(req.params.docId, req.user.id);
-	return success(res, null, 'Đã xoá hồ sơ');
+	return success(res, null, 'Đã xóa hồ sơ');
 });
 
 // Hồ sơ học viên đầy đủ (giai đoạn 3) — traineeRecordService
@@ -103,7 +103,7 @@ const resetAccountPassword = asyncHandler(async (req, res) => {
 
 const setAccountActive = asyncHandler(async (req, res) => {
 	await traineeAccountService.setAccountActive(req.params.id, req.body.is_active, req.user.id);
-	return success(res, null, req.body.is_active ? 'Đã mở khoá tài khoản' : 'Đã khoá tài khoản');
+	return success(res, null, req.body.is_active ? 'Đã mở khóa tài khoản' : 'Đã khóa tài khoản');
 });
 
 const importExcel = asyncHandler(async (req, res) => {

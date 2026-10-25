@@ -53,7 +53,7 @@ export function TopicInfoSection({ detailTopic, latestApproval }: TopicInfoSecti
 					</div>
 				</div>
 				<div className={styles.infoItem}>
-					<div className={styles.infoLabel}>Phòng ban / Khoa</div>
+					<div className={styles.infoLabel}>Khoa/phòng</div>
 					<div className={styles.infoValue}>
 						{detailTopic.department_name ??
 							detailTopic.department_id ??

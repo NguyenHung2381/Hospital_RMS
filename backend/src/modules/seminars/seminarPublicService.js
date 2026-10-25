@@ -8,7 +8,9 @@
 const crypto = require('crypto');
 const { getPool, sql } = require('../../config/db');
 const { broadcast } = require('../events/eventService');
-const QRCode = require('qrcode');
+const { lazyRequire } = require('../../utils/lazyRequire');
+/** @type {typeof import('qrcode')} */
+const QRCode = lazyRequire('qrcode');
 const mailService = require('../notifications/mailService');
 const mailQueue = require('../notifications/mailQueue');
 const { renderSeminarBadgePng } = require('../../utils/seminarBadgeImage');
@@ -60,7 +62,7 @@ const getPublicSeminar = async (token) => {
 	return row;
 };
 
-const HOSPITAL = 'Bệnh viện Hữu Nghị Đa Khoa Nghệ An';
+const HOSPITAL = 'Bệnh viện Hữu nghị Đa khoa Nghệ An';
 
 // Nhân viên nội viện: tìm theo mã NV, họ tên phải khớp (bỏ dấu / hoa thường) —
 // cần biết cả 2 mới ra hồ sơ. Loại tài khoản khoa dùng chung (vai trò dept_head).
@@ -262,16 +264,16 @@ const testAttempt = (row, now = Date.now()) => {
 
 // Lỗi chung khi bắt đầu / nộp bài
 const assertCanTest = (row, a) => {
-	if (!a.questions.length) throw httpError(409, 'Hội nghị này không có bài test.');
+	if (!a.questions.length) throw httpError(409, 'Hội nghị này không có bài kiểm tra.');
 	if (!row.checked_in_at)
 		throw httpError(
 			409,
 			'Bạn chưa được điểm danh — vui lòng đưa mã QR cho ban tổ chức quét trước.',
 		);
-	if (row.test_submitted_at) throw httpError(409, 'Bạn đã nộp bài test rồi.');
-	if (a.state === 'off') throw httpError(409, 'Bài test chưa mở hoặc đã đóng.');
+	if (row.test_submitted_at) throw httpError(409, 'Bạn đã nộp bài kiểm tra rồi.');
+	if (a.state === 'off') throw httpError(409, 'Bài kiểm tra chưa mở hoặc đã đóng.');
 	if (a.state === 'scheduled')
-		throw httpError(409, `Chưa tới giờ làm bài test (mở lúc ${row.test_start_time}).`);
+		throw httpError(409, `Chưa tới giờ làm bài kiểm tra (mở lúc ${row.test_start_time}).`);
 };
 
 const getTicket = async (code) => {
@@ -338,7 +340,7 @@ const startTest = async (code) => {
 	const row = await loadTicket(code);
 	const a = testAttempt(row);
 	assertCanTest(row, a);
-	if (a.state === 'closed') throw httpError(409, 'Đã hết thời gian nhận bài test.');
+	if (a.state === 'closed') throw httpError(409, 'Đã hết thời gian nhận bài kiểm tra.');
 	if (row.test_duration_minutes && !row.test_started_at) {
 		const pool = await getPool();
 		await pool
@@ -383,7 +385,7 @@ const submitTest = async (code, answers) => {
       WHERE id = @id AND test_submitted_at IS NULL;
       SELECT @@ROWCOUNT AS n;
     `);
-	if (!u.recordset[0].n) throw httpError(409, 'Bạn đã nộp bài test rồi.');
+	if (!u.recordset[0].n) throw httpError(409, 'Bạn đã nộp bài kiểm tra rồi.');
 	broadcast('update', { entity: 'seminar' });
 	return {
 		correct: g.correct,

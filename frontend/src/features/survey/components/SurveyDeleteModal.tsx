@@ -14,14 +14,14 @@ export function SurveyDeleteModal({
 }) {
 	return (
 		<ConfirmDeleteModal
-			title='Xoá khảo sát'
+			title='Xóa khảo sát'
 			subtitle={item.title}
 			onClose={onClose}
 			onConfirm={onConfirm}
 			loading={loading}
 		>
-			Bạn có chắc muốn xoá <strong>{item.title}</strong>? Toàn bộ câu hỏi và phản hồi đã nhận (
-			{item.response_count}) cũng sẽ bị xoá. Thao tác này không thể hoàn tác.
+			Bạn có chắc muốn xóa <strong>{item.title}</strong>? Toàn bộ câu hỏi và phản hồi đã nhận (
+			{item.response_count}) cũng sẽ bị xóa. Thao tác này không thể hoàn tác.
 		</ConfirmDeleteModal>
 	);
 }

@@ -117,7 +117,7 @@ export default function Approval() {
 
 	return (
 		<AdminLayout
-			pageTitle='Phê duyệt Đề tài'
+			pageTitle='Phê duyệt đề tài'
 			pageSubtitle='Xem xét và quyết định hồ sơ đề tài nghiên cứu khoa học'
 			headerActions={headerActions}
 		>

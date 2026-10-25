@@ -27,7 +27,6 @@ import {
 	removeEnrollment as apiRemoveEnrollment,
 	removeSession as apiRemoveSession,
 	revokeCertificate as apiRevokeCertificate,
-	setLessonLecturers as apiSetLessonLecturers,
 	updateSession as apiUpdateSession,
 } from '../api/courseApi';
 import type {
@@ -42,7 +41,6 @@ import type {
 	Grade,
 	SessionKind,
 	LecturerAssignment,
-	LessonLecturersInput,
 } from '../types/course.type';
 
 export interface SimpleItem {
@@ -291,7 +289,7 @@ export function useCourseDetail(courseId: string) {
 				await apiRemoveEnrollment(enrollmentId);
 				await load();
 			} catch (err) {
-				setError(err instanceof Error ? err.message : 'Xoá thất bại');
+				setError(err instanceof Error ? err.message : 'Xóa thất bại');
 			} finally {
 				setBusy(false);
 			}
@@ -316,40 +314,6 @@ export function useCourseDetail(courseId: string) {
 		[courseId, load, loadLecturers],
 	);
 
-	/** Lưu 1 dòng của bảng Bài học × Giảng viên (GV chính + GV phụ + số tiết). */
-	const setLessonLecturers = useCallback(
-		async (lessonId: string, data: LessonLecturersInput) => {
-			setBusy(true);
-			setError('');
-			try {
-				const mainOf = (list: LecturerAssignment[]) =>
-					list.find((a) => a.subject_id === lessonId && a.role === 'main')?.lecturer_id ?? null;
-				const oldMain = mainOf(assignments);
-				await apiSetLessonLecturers(courseId, lessonId, data);
-				const fresh = await getAssignments(courseId);
-				setAssignments(fresh);
-				// Đổi GV chính → buổi của bài đang theo GV chính cũ (hoặc chưa gán GV) đổi theo
-				const newMain = mainOf(fresh);
-				const follow = newMain
-					? sessions.filter((s) => s.subject_id === lessonId && (!s.lecturer_id || s.lecturer_id === oldMain))
-					: [];
-				if (follow.length && newMain !== oldMain) {
-					const results = await Promise.all(follow.map((s) => apiUpdateSession(s.id, { lecturer_id: newMain! })));
-					warnClashes(results.flatMap((r) => r.warnings ?? []));
-					setSessions(await getSessions(courseId));
-				}
-				// Nhân viên CCHN vừa thành GV — nạp lại để đổi sang mã GV thật
-				const picked = [data.main, ...data.assistants];
-				if (picked.some((a) => a?.lecturer_id.startsWith(STAFF_OPTION_PREFIX))) loadLecturers();
-			} catch (err) {
-				setError(err instanceof Error ? err.message : 'Lưu phân công thất bại');
-			} finally {
-				setBusy(false);
-			}
-		},
-		[courseId, loadLecturers, assignments, sessions],
-	);
-
 	const removeAssignment = useCallback(
 		async (assignmentId: string) => {
 			setBusy(true);
@@ -357,7 +321,7 @@ export function useCourseDetail(courseId: string) {
 				await apiRemoveAssignment(assignmentId);
 				await load();
 			} catch (err) {
-				setError(err instanceof Error ? err.message : 'Xoá thất bại');
+				setError(err instanceof Error ? err.message : 'Xóa thất bại');
 			} finally {
 				setBusy(false);
 			}
@@ -380,6 +344,7 @@ export function useCourseDetail(courseId: string) {
 			try {
 				warnClashes((await apiCreateSession(courseId, data)).warnings);
 				await load();
+				if (data.lecturer_id?.startsWith(STAFF_OPTION_PREFIX)) loadLecturers();
 				return true;
 			} catch (err) {
 				setError(err instanceof Error ? err.message : 'Thêm buổi học thất bại');
@@ -388,7 +353,7 @@ export function useCourseDetail(courseId: string) {
 				setBusy(false);
 			}
 		},
-		[courseId, load],
+		[courseId, load, loadLecturers],
 	);
 
 	const updateSession = useCallback(
@@ -398,6 +363,8 @@ export function useCourseDetail(courseId: string) {
 			try {
 				warnClashes((await apiUpdateSession(sessionId, data)).warnings);
 				await load();
+				// Nhân viên CCHN vừa thành GV — nạp lại để đổi sang mã GV thật
+				if (data.lecturer_id?.startsWith(STAFF_OPTION_PREFIX)) loadLecturers();
 				return true;
 			} catch (err) {
 				setError(err instanceof Error ? err.message : 'Cập nhật buổi học thất bại');
@@ -406,7 +373,7 @@ export function useCourseDetail(courseId: string) {
 				setBusy(false);
 			}
 		},
-		[load],
+		[load, loadLecturers],
 	);
 
 	const removeSession = useCallback(
@@ -416,7 +383,7 @@ export function useCourseDetail(courseId: string) {
 				await apiRemoveSession(sessionId);
 				await load();
 			} catch (err) {
-				setError(err instanceof Error ? err.message : 'Xoá thất bại');
+				setError(err instanceof Error ? err.message : 'Xóa thất bại');
 			} finally {
 				setBusy(false);
 			}
@@ -481,7 +448,7 @@ export function useCourseDetail(courseId: string) {
 				await apiRemoveDocument(docId);
 				await load();
 			} catch (err) {
-				setError(err instanceof Error ? err.message : 'Xoá thất bại');
+				setError(err instanceof Error ? err.message : 'Xóa thất bại');
 			} finally {
 				setBusy(false);
 			}
@@ -517,7 +484,7 @@ export function useCourseDetail(courseId: string) {
 				await apiRemoveCertificate(certId);
 				await load();
 			} catch (err) {
-				setError(err instanceof Error ? err.message : 'Xoá thất bại');
+				setError(err instanceof Error ? err.message : 'Xóa thất bại');
 			} finally {
 				setBusy(false);
 			}
@@ -564,7 +531,6 @@ export function useCourseDetail(courseId: string) {
 		decideEnrollmentsBulk,
 		removeEnrollment,
 		assignLecturer,
-		setLessonLecturers,
 		removeAssignment,
 		createSession,
 		updateSession,

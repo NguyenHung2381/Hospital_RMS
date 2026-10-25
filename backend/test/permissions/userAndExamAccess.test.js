@@ -1,6 +1,6 @@
-// Các bản sửa kiểm tra quyền theo bản ghi ngoài đề tài / khoá học:
+// Các bản sửa kiểm tra quyền theo bản ghi ngoài đề tài / khóa học:
 //   - quản lý phạm vi khoa không chuyển được tài khoản sang khoa khác
-//   - tìm người (/users/search) bắt buộc từ khoá, tối đa 20 kết quả
+//   - tìm người (/users/search) bắt buộc từ khóa, tối đa 20 kết quả
 //   - nộp bài thi: nhận bài nguyên tử (nộp 2 lần → 409), quá giờ thì bỏ đáp án
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -77,7 +77,7 @@ test('quản lý phạm vi khoa: sửa được trong khoa, KHÔNG chuyển đư
 	assert.equal(updated, null);
 });
 
-test('tìm người: từ khoá rỗng không trả ai; limit bị chặn ở 20', async () => {
+test('tìm người: từ khóa rỗng không trả ai; limit bị chặn ở 20', async () => {
 	searchArgs = null;
 	const empty = await call(userCtrl.searchMembers, {
 		user: deptManager,

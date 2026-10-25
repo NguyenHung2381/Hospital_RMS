@@ -31,7 +31,7 @@ const EXCEL_COLS: ExcelColumn<ExternalReviewer>[] = [
 	{ header: 'Số điện thoại', key: 'phone', value: (x) => x.phone },
 	{ header: 'Email', key: 'email', value: (x) => x.email },
 	{ header: 'Ghi chú', key: 'note', value: (x) => x.note },
-	{ header: 'Trạng thái', value: (x) => (x.is_active ? 'Đang hoạt động' : 'Ngưng') },
+	{ header: 'Trạng thái', value: (x) => (x.is_active ? 'Đang hoạt động' : 'Ngừng hoạt động') },
 ];
 
 export default function ExternalReviewers() {
@@ -64,21 +64,21 @@ export default function ExternalReviewers() {
 				className={styles.btnCreateCouncil}
 				onClick={() => d.setModal('add')}
 			>
-				<PlusSvg /> Thêm người ngoài viện
+				<PlusSvg /> Thêm chuyên gia ngoài viện
 			</button>
 		</div>
 	);
 
 	return (
 		<AdminLayout
-			pageTitle='Người ngoài viện tham gia hội đồng'
+			pageTitle='Chuyên gia ngoài viện'
 			pageSubtitle='Chuyên gia mời ngoài, chọn được khi xếp ghế hội đồng chấm'
 			headerActions={headerActions}
 		>
 			<div className={styles.tableCard}>
 				<div className={styles.tableHeader}>
 					<div className={styles.tableHeaderLeft}>
-						<span className={styles.tableTitle}>Danh sách người ngoài viện</span>
+						<span className={styles.tableTitle}>Danh sách chuyên gia ngoài viện</span>
 						{rowSel.selectedCount > 0 ? (
 							<span className={styles.tableCount}>
 								Đã chọn {rowSel.selectedCount}
@@ -89,7 +89,7 @@ export default function ExternalReviewers() {
 									danger
 									onClick={() => setConfirmBulkDelete(true)}
 								>
-									<TrashSvg /> Xoá đã chọn
+									<TrashSvg /> Xóa đã chọn
 								</BulkButton>
 								<button
 									type='button'
@@ -156,7 +156,7 @@ export default function ExternalReviewers() {
 						) : d.filtered.length === 0 ? (
 							<TableEmpty
 								colSpan={8}
-								title='Chưa có người ngoài viện nào'
+								title='Chưa có chuyên gia ngoài viện nào'
 								desc='Thêm chuyên gia mời ngoài để chọn khi xếp ghế hội đồng'
 							/>
 						) : (
@@ -223,7 +223,7 @@ export default function ExternalReviewers() {
 				count={rowSel.selectedCount}
 				itemLabel='người'
 				loading={d.loading}
-				note='Người đã từng ngồi ghế hội đồng sẽ được vô hiệu hoá thay vì xoá hẳn, để giữ tên hiển thị trên hội đồng cũ.'
+				note='Người đã từng ngồi ghế hội đồng sẽ được vô hiệu hóa thay vì xóa hẳn, để giữ tên hiển thị trên hội đồng cũ.'
 				onClose={() => setConfirmBulkDelete(false)}
 				onConfirm={async () => {
 					await d.handleBulkDelete([...rowSel.selectedIds]);

@@ -199,7 +199,7 @@ export function RoundInfoTab({
 			</div>
 			{showDeadlines && (
 				<>
-					<div className={styles.formSection}>Mốc thời gian &amp; Hạn nộp</div>
+					<div className={styles.formSection}>Mốc thời gian &amp; hạn nộp</div>
 					{errors.deadlines && (
 						<div className={dmStyles.errorMessage}>{errors.deadlines}</div>
 					)}

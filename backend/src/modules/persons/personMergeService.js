@@ -195,14 +195,14 @@ const getCandidate = async (id, canSee = false) => {
 	cand.a.records = recA;
 	cand.b.records = recB;
 
-	// Chặn / cảnh báo trước khi gộp — giao diện dùng để vô hiệu hoá nút và hiện lý do
+	// Chặn / cảnh báo trước khi gộp — giao diện dùng để vô hiệu hóa nút và hiện lý do
 	const blockers = [];
 	if (cand.a.status !== 'ACTIVE' || cand.b.status !== 'ACTIVE') {
 		blockers.push('Một trong hai hồ sơ đã được gộp trước đó.');
 	}
 	if (cand.a.has_account && cand.b.has_account) {
 		blockers.push(
-			'Cả hai hồ sơ đều đã có tài khoản đăng nhập. Một người chỉ được có một tài khoản — hãy vô hiệu hoá một tài khoản trước khi gộp.',
+			'Cả hai hồ sơ đều đã có tài khoản đăng nhập. Một người chỉ được có một tài khoản — hãy vô hiệu hóa một tài khoản trước khi gộp.',
 		);
 	}
 	const warnings = [];
@@ -311,7 +311,7 @@ const mergeCandidate = async (
 			if (m.recordset.length) moved[table] = m.recordset.map((x) => x.id);
 		}
 
-		// 2) hồ sơ bị gộp (xoá CCCD trước để nhường ràng buộc UNIQUE cho hồ sơ giữ lại)
+		// 2) hồ sơ bị gộp (xóa CCCD trước để nhường ràng buộc UNIQUE cho hồ sơ giữ lại)
 		await new sql.Request(tx)
 			.input('k', sql.VarChar(20), keepId)
 			.input('l', sql.VarChar(20), loseId)
@@ -369,7 +369,7 @@ const mergeCandidate = async (
 				       note = N'Chuyển sang hồ sơ ' + @k
 				WHERE status = 'PENDING' AND (person_a_id = @l OR person_b_id = @l);`);
 
-		// 5) nhật ký gộp (không xoá được)
+		// 5) nhật ký gộp (không xóa được)
 		await new sql.Request(tx)
 			.input('cid', sql.Int, id)
 			.input('k', sql.VarChar(20), keepId)

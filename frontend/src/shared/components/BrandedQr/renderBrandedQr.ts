@@ -6,8 +6,8 @@ import Logo from '@/assets/logo.png';
 // Vẽ thẳng từ ma trận QR thay vì chụp lại canvas của antd: canvas antd nhân theo
 // devicePixelRatio (iPhone = 3) nên kích thước thay đổi theo máy, ảnh bị cắt/méo.
 
-export const HOSPITAL_NAME = 'Bệnh viện Hữu Nghị Đa Khoa Nghệ An';
-const HOSPITAL_SUB = 'Cổng thông tin Đào tạo';
+export const HOSPITAL_NAME = 'Bệnh viện Hữu nghị Đa khoa Nghệ An';
+const HOSPITAL_SUB = 'Cổng thông tin đào tạo';
 
 // Bám theo --color-primary* trong styles/variables.css; ô QR dùng xanh rất đậm để
 // đủ tương phản cho máy quét.

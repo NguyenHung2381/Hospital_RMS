@@ -97,7 +97,7 @@ function tableLines(table: HTMLTableElement): SourceLine[] {
 		const isHead = r.parentElement?.tagName === 'THEAD' || [...r.cells].every((c) => c.tagName === 'TH');
 		if (ri === 0 && isHead) out.push({ text: `|${cells.map(() => '---').join('|')}|` });
 	});
-	// Hình trong ô bảng → gắn vào dòng đầu bảng (thành hình minh hoạ của câu)
+	// Hình trong ô bảng → gắn vào dòng đầu bảng (thành hình minh họa của câu)
 	if (images.length) out.unshift({ text: '', images });
 	return out;
 }
@@ -127,7 +127,7 @@ async function readPdf(data: ArrayBuffer): Promise<SourceLine[]> {
 		for (const item of content.items) {
 			if (!('str' in item)) continue;
 			const y = item.transform[5];
-			// Sang dòng mới khi toạ độ y đổi (PDF không phải lúc nào cũng có hasEOL)
+			// Sang dòng mới khi tọa độ y đổi (PDF không phải lúc nào cũng có hasEOL)
 			if (lastY != null && Math.abs(y - lastY) > 2 && cur.trim()) {
 				lines.push({ text: cur });
 				cur = '';

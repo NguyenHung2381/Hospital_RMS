@@ -28,7 +28,7 @@ const REGISTER_LINKS = [
 		key: 'public',
 		path: '/de-xuat-de-tai',
 		label: 'Liên kết đăng ký công khai',
-		hint: 'Ai cũng mở được, không cần tài khoản — điền form rút gọn và xác nhận captcha.',
+		hint: 'Ai cũng mở được, không cần tài khoản — điền biểu mẫu rút gọn và xác nhận captcha.',
 	},
 	{
 		key: 'department',
@@ -91,7 +91,7 @@ export function RoundAdvancedTab({ round }: RoundAdvancedTabProps) {
 			<div className={styles.tokenAccessCard}>
 				<div className={styles.tokenHeader}>
 					<KeySvg />
-					<span>Cài đặt bảo mật &amp; Truy cập</span>
+					<span>Cài đặt bảo mật &amp; truy cập</span>
 				</div>
 				<div className={styles.tokenBody}>
 					<span className={styles.tokenWarningText}>
@@ -122,7 +122,7 @@ export function RoundAdvancedTab({ round }: RoundAdvancedTabProps) {
 				</div>
 			</div>
 
-			<div className={styles.formSection}>Mốc thời gian &amp; Hạn nộp</div>
+			<div className={styles.formSection}>Mốc thời gian &amp; hạn nộp</div>
 			<DeadlineManager
 				roundId={round.id}
 				roundStart={toInputDate(round.start_date)}

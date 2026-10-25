@@ -30,7 +30,10 @@ const STAGE_SQL = `CASE
 
 const list = async (actor = null) => {
 	const pool = await getPool();
-	const req = pool.request().input('today', sql.Date, todayKeyVN()).input('gphn', sql.VarChar(20), GPHN_TYPE);
+	const req = pool
+		.request()
+		.input('today', sql.Date, todayKeyVN())
+		.input('gphn', sql.VarChar(20), GPHN_TYPE);
 	const where = ['(c.is_rolling = 1 OR c.training_type_id = @gphn)'];
 	if (actor && scopeOf(actor, 'courses') === 'assigned') {
 		where.push(ASSIGNED_EXISTS_SQL);

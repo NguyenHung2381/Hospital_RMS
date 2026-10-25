@@ -5,7 +5,7 @@ const { authenticate, authorizePermission } = require('../../../middlewares/auth
 const { validate } = require('../../../middlewares/errorHandler');
 const { makeImageUpload } = require('../../../middlewares/uploadImage');
 
-// Ảnh minh hoạ câu hỏi — dùng chung thư mục vì 1 câu hỏi nằm được trong nhiều đề
+// Ảnh minh họa câu hỏi — dùng chung thư mục vì 1 câu hỏi nằm được trong nhiều đề
 const uploadQuestionImage = makeImageUpload(() => ['questions']);
 
 router.use(authenticate);
@@ -76,7 +76,7 @@ router.post(
 	validate,
 	ctrl.createQuestionsBulk,
 );
-// Tải ảnh minh hoạ trước, rồi gửi `image_url` trả về trong body tạo/sửa câu hỏi
+// Tải ảnh minh họa trước, rồi gửi `image_url` trả về trong body tạo/sửa câu hỏi
 router.post(
 	'/questions/image',
 	canManage,

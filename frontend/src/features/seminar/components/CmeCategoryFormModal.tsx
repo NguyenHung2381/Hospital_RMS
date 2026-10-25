@@ -13,7 +13,7 @@ import { CONVERSION_METHOD, UNIT_SUGGESTIONS } from '../utils/cmeConversion';
 
 const CODE_RE = /^[A-Za-z0-9_]{1,20}$/;
 
-// Số lượng mẫu để minh hoạ công thức trong form (3 tiết, 1 lần, 2 năm).
+// Số lượng mẫu để minh họa công thức trong form (3 tiết, 1 lần, 2 năm).
 const SAMPLE_QTY: Record<CmeConversionMethod, number> = { per_session: 3, fixed: 1, per_year: 2 };
 
 export function CmeCategoryFormModal({

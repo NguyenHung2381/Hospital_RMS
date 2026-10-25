@@ -1,7 +1,7 @@
 const auditLogger = require('../config/auditLogger');
 const { normalizeIp } = require('../utils/activityDescribe');
 
-// Khoá nhạy cảm — so khớp theo mẫu, áp dụng ở MỌI cấp lồng nhau của body.
+// Khóa nhạy cảm — so khớp theo mẫu, áp dụng ở MỌI cấp lồng nhau của body.
 const SENSITIVE_KEY = /pass|token|secret|otp|authorization|cookie/i;
 const MAX_BODY_LEN = 4000;
 const MAX_DEPTH = 6;
@@ -87,7 +87,7 @@ const activityLogger = (req, res, next) => {
 		return originalJson(payload);
 	};
 
-	// 'close' luôn bắn (cả khi client huỷ giữa chừng) → không sót request bị abort.
+	// 'close' luôn bắn (cả khi client hủy giữa chừng) → không sót request bị abort.
 	res.on('close', () => {
 		try {
 			const durationMs = Number(process.hrtime.bigint() - startedAt) / 1e6;

@@ -1,5 +1,5 @@
 // 2FA (authService) với CSDL giả: chống dùng lại mã TOTP, mã khôi phục dùng
-// 1 lần, pre-auth token chỉ đổi được 1 phiên, secret TOTP lưu mã hoá.
+// 1 lần, pre-auth token chỉ đổi được 1 phiên, secret TOTP lưu mã hóa.
 const os = require('os');
 const path = require('path');
 const fs = require('fs');
@@ -27,12 +27,19 @@ const user = {
 	failed_login_count: 0,
 	locked_until: null,
 	token_version: 0,
+	password: require('bcrypt').hashSync('Dung#matkhau2026', 4),
 };
 let backup = []; // { hash, used }
 
 install(async (text, inputs) => {
+	if (/SELECT id, username, password, failed_login_count, locked_until FROM users/.test(text))
+		return [user];
+	if (/UPDATE users SET totp_secret = NULL, totp_enabled = 0/.test(text)) {
+		Object.assign(user, { totp_secret: null, totp_enabled: 0, totp_last_step: null });
+		return [];
+	}
 	if (/WHERE u\.id = @id/.test(text) && /totp_secret/.test(text)) return [user];
-	if (/SELECT id, totp_secret, totp_enabled FROM users/.test(text)) return [user];
+	if (/SELECT id, totp_secret, totp_enabled\b/.test(text)) return [user];
 	if (/SELECT totp_enabled FROM users/.test(text)) return [user];
 	if (/SET totp_last_step = @step/.test(text)) {
 		const ok = user.totp_last_step === null || user.totp_last_step < inputs.step;
@@ -78,7 +85,7 @@ const setSecret = async (stored) => {
 	user.totp_last_step = null;
 };
 
-test('secretBox: mã hoá/giải mã, phát hiện dữ liệu bị sửa, đọc được giá trị cũ chưa mã hoá', () => {
+test('secretBox: mã hóa/giải mã, phát hiện dữ liệu bị sửa, đọc được giá trị cũ chưa mã hóa', () => {
 	const enc = secretBox.encrypt('JBSWY3DPEHPK3PXP');
 	assert.ok(secretBox.isEncrypted(enc));
 	assert.notEqual(enc, secretBox.encrypt('JBSWY3DPEHPK3PXP')); // IV ngẫu nhiên
@@ -101,7 +108,7 @@ test('mã TOTP đúng đăng nhập được; dùng lại đúng mã đó (phiê
 	);
 });
 
-test('secret cũ chưa mã hoá: đăng nhập thành công thì được mã hoá lại', async () => {
+test('secret cũ chưa mã hóa: đăng nhập thành công thì được mã hóa lại', async () => {
 	const secret = await otplib.generateSecret();
 	await setSecret(secret);
 	await twoFactorService.verify2FALogin(preAuth(), await otplib.generate({ secret, type: 'totp' }));
@@ -155,7 +162,32 @@ test('mã sai định dạng / sai giá trị bị từ chối', async () => {
 	);
 });
 
-test('khoá mã hoá đã đổi: báo lỗi rõ ràng (409), không phải 500', async () => {
+test('tắt 2FA: đúng mật khẩu nhưng thiếu / sai mã xác thực thì không tắt; đủ cả 2 thì tắt', async () => {
+	const secret = await otplib.generateSecret();
+	await setSecret(secretBox.encrypt(secret));
+	user.totp_enabled = 1;
+	for (const code of [undefined, '', '000000', 'zzzz-zzzz']) {
+		await assert.rejects(
+			twoFactorService.disable2FA('U1', 'Dung#matkhau2026', code),
+			(e) => e.statusCode === 400,
+		);
+		assert.equal(user.totp_enabled, 1);
+	}
+	await assert.rejects(
+		twoFactorService.disable2FA('U1', 'Sai#matkhau', await otplib.generate({ secret, type: 'totp' })),
+		(e) => e.statusCode === 400 && /Mật khẩu/.test(e.message),
+	);
+	await twoFactorService.disable2FA(
+		'U1',
+		'Dung#matkhau2026',
+		await otplib.generate({ secret, type: 'totp' }),
+	);
+	assert.equal(user.totp_enabled, 0);
+	assert.equal(user.totp_secret, null);
+	user.totp_enabled = 1; // test sau giả định 2FA đang bật
+});
+
+test('khóa mã hóa đã đổi: báo lỗi rõ ràng (409), không phải 500', async () => {
 	const secret = await otplib.generateSecret();
 	await setSecret(secretBox.encrypt(secret));
 	process.env.TOTP_ENC_KEY = crypto.randomBytes(32).toString('hex');

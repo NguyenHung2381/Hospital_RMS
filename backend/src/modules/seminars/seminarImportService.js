@@ -10,7 +10,9 @@
  */
 const { getPool, sql } = require('../../config/db');
 const { norm, normDept, stripQualification } = require('../../utils/vietnameseText');
-const ExcelJS = require('exceljs');
+const { lazyRequire } = require('../../utils/lazyRequire');
+/** @type {typeof import('exceljs')} */
+const ExcelJS = lazyRequire('exceljs');
 const { parseDob, parseCredits, parseStaffNumber, readSheet } = require('../../utils/excelImport');
 const { normalizeGender } = require('../../utils/gender');
 const seminarCmeService = require('./seminarCmeService');
@@ -173,7 +175,7 @@ const parseWorkbook = async (buffer) => {
 	for (const { r, row, get } of sheetRows) {
 		const rawName = get(row, 'full_name');
 
-		// Dòng ví dụ của file mẫu (ghi chú "Dòng ví dụ…") — bỏ qua nếu quên xoá
+		// Dòng ví dụ của file mẫu (ghi chú "Dòng ví dụ…") — bỏ qua nếu quên xóa
 		if (/^dong vi du/.test(norm(get(row, 'notes')))) continue;
 
 		const { title_prefix, full_name } = splitTitlePrefix(rawName, get(row, 'title_prefix'));
@@ -333,7 +335,7 @@ const previewToParticipant = (p) => ({
 });
 
 // ─── API chính ─────────────────────────────────────────────────────────────
-// Chuẩn hoá { vai_trò: số tín chỉ } gửi từ client — bỏ key lạ / giá trị không hợp lệ
+// Chuẩn hóa { vai_trò: số tín chỉ } gửi từ client — bỏ key lạ / giá trị không hợp lệ
 const normalizeCreditsByRole = (raw) => {
 	let obj = raw;
 	if (typeof raw === 'string') {
@@ -468,11 +470,11 @@ const templateWorkbook = () => {
 		sheetName: 'Người tham dự',
 		title: 'MẪU NHẬP DANH SÁCH NGƯỜI THAM DỰ HỘI THẢO / HỘI NGHỊ',
 		subtitle:
-			'Bắt buộc: Họ và tên. Cán bộ nội viện nên ghi MNV để tự khớp. Ngày sinh dd/mm/yyyy (hoặc chỉ năm). Số tín chỉ để trống sẽ lấy mặc định theo vai trò chọn khi nhập. Quốc tịch để trống = Việt Nam. Xoá 2 dòng ví dụ trước khi nhập.',
+			'Bắt buộc: Họ và tên. Cán bộ nội viện nên ghi MNV để tự khớp. Ngày sinh dd/mm/yyyy (hoặc chỉ năm). Số tín chỉ để trống sẽ lấy mặc định theo vai trò chọn khi nhập. Quốc tịch để trống = Việt Nam. Xóa 2 dòng ví dụ trước khi nhập.',
 		columns: TEMPLATE_COLUMNS,
 	});
 	ws.getRow(2).height = 30;
-	const note = 'Dòng ví dụ — xoá trước khi nhập';
+	const note = 'Dòng ví dụ — xóa trước khi nhập';
 	ws.addRow({
 		stt: 1,
 		title_prefix: 'Ông',

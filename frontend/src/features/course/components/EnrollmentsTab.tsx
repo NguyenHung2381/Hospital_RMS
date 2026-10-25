@@ -69,6 +69,13 @@ const LIST_VIEWS: { key: ListView; label: string; /** Ẩn lựa chọn khi khô
 const isListView = (v: string | null): v is ListView =>
   LIST_VIEWS.some((t) => t.key === v);
 
+/** Lọc nguồn học viên: nội viện (nhân viên bệnh viện) / ngoại viện. */
+type OriginFilter = "internal" | "external";
+const isOriginFilter = (v: string | null): v is OriginFilter =>
+  v === "internal" || v === "external";
+const matchOrigin = (e: Enrollment, o: OriginFilter | null) =>
+  o === null || e.is_internal === (o === "internal");
+
 /** Lớp đã mở chưa / đủ sĩ số chờ mở — kèm câu giải thích cho tooltip / dòng gợi ý. */
 const classState = (l: CourseProgramLink) => {
   const open = !!l.class_opened_at;
@@ -177,6 +184,11 @@ export function EnrollmentsTab({
     );
   const setProgramFilter = (v: string | null) =>
     setUrlParam("program", v === "" ? "_none" : v);
+  // Lọc nội / ngoại viện (?origin=internal|external)
+  const originParam = params.get("origin");
+  const originFilter: OriginFilter | null = isOriginFilter(originParam)
+    ? originParam
+    : null;
 
   // Ghi danh chưa chọn chương trình / chương trình đã gỡ khỏi khóa gom vào key ""
   const programKey = useMemo(() => {
@@ -189,6 +201,7 @@ export function EnrollmentsTab({
     enrollments.filter(
       (e) =>
         (programFilter === null || programKey(e) === programFilter) &&
+        matchOrigin(e, originFilter) &&
         (v === "all" || e.status === v),
     ).length;
 
@@ -199,8 +212,8 @@ export function EnrollmentsTab({
       : newProgramId || programFilter || "";
   const needProgram = programLinks.length > 1 && !programId;
 
-  // Lọc theo nhóm + từ khoá (chưa lọc chương trình) — dùng để đếm số trên từng chip.
-  const matches = useMemo(() => {
+  // Lọc theo nhóm + từ khóa (chưa lọc nguồn / chương trình).
+  const searched = useMemo(() => {
     const q = normalize(search.trim());
     return enrollments.filter(
       (en) =>
@@ -211,6 +224,18 @@ export function EnrollmentsTab({
           ).includes(q)),
     );
   }, [enrollments, search, view]);
+  // Số trên select nội / ngoại viện: theo nhóm + từ khóa + chương trình đang lọc.
+  const originCount = (o: OriginFilter | null) =>
+    searched.filter(
+      (e) =>
+        matchOrigin(e, o) &&
+        (programFilter === null || programKey(e) === programFilter),
+    ).length;
+  // + lọc nguồn (chưa lọc chương trình) — dùng để đếm số trên từng chip.
+  const matches = useMemo(
+    () => searched.filter((e) => matchOrigin(e, originFilter)),
+    [searched, originFilter],
+  );
 
   const filtered = useMemo(
     () =>
@@ -220,7 +245,7 @@ export function EnrollmentsTab({
     [matches, programFilter, programKey],
   );
 
-  // Lựa chọn lọc theo chương trình kèm số học viên khớp từ khoá/trạng thái.
+  // Lựa chọn lọc theo chương trình kèm số học viên khớp từ khóa/trạng thái.
   const chips = useMemo(() => {
     const count = (key: string) =>
       matches.filter((e) => programKey(e) === key).length;
@@ -239,8 +264,10 @@ export function EnrollmentsTab({
   const sortedChips = [...chips].sort((a, b) => +(b.count > 0) - +(a.count > 0));
   const selectedChip = chips.find((c) => c.key === programFilter);
   const showPrograms = chips.length > 1;
-  const filterActive = !!search.trim() || programFilter !== null;
-  const onlyProgramFilter = programFilter !== null && !search.trim();
+  const filterActive =
+    !!search.trim() || programFilter !== null || originFilter !== null;
+  const onlyProgramFilter =
+    programFilter !== null && !search.trim() && originFilter === null;
   // Nhóm chỉ có 1 trạng thái thì cột Trạng thái thừa — chỉ giữ ở "Danh sách chờ" (vị trí chờ) và "Tất cả".
   const showStatusCol = view === "waitlisted" || view === "all";
   // Đang lọc 1 chương trình (hoặc khóa chỉ 1 chương trình) thì bỏ cột Chương trình — tiến độ dời xuống dưới tên.
@@ -304,7 +331,7 @@ export function EnrollmentsTab({
     let failed = 0;
     for (const id of ids) await removeEnrollment(id).catch(() => failed++);
     if (failed)
-      showToast("error", `Không xoá được ${failed}/${ids.length} đăng ký`);
+      showToast("error", `Không xóa được ${failed}/${ids.length} đăng ký`);
     onSaved();
   };
 
@@ -416,6 +443,16 @@ export function EnrollmentsTab({
           >
             {en.trainee_name}
           </button>
+          <span
+            className={`${styles.originTag} ${en.is_internal ? styles.originInternal : styles.originExternal}`}
+            title={
+              en.is_internal
+                ? "Nội viện — nhân viên bệnh viện"
+                : "Ngoại viện — học viên ngoài bệnh viện"
+            }
+          >
+            {en.is_internal ? "Nội viện" : "Ngoại viện"}
+          </span>
           {en.practice_code && (
             <div className={tbl.cellSub}>Mã thực hành {en.practice_code}</div>
           )}
@@ -450,7 +487,7 @@ export function EnrollmentsTab({
               style={{ whiteSpace: "nowrap" }}
               title={
                 [
-                  en.decided_by_name && `Bởi ${en.decided_by_name}`,
+                  en.decided_by_name && `Người xử lý: ${en.decided_by_name}`,
                   en.note && `Ghi chú: ${en.note}`,
                 ]
                   .filter(Boolean)
@@ -468,7 +505,7 @@ export function EnrollmentsTab({
               style={{ background: cfg.bg, color: cfg.color }}
               title={
                 en.decided_by_name
-                  ? `Xử lý bởi ${en.decided_by_name}`
+                  ? `Người xử lý: ${en.decided_by_name}`
                   : undefined
               }
             >
@@ -724,6 +761,21 @@ export function EnrollmentsTab({
                 </option>
               ))}
             </select>
+            <select
+              className={`${tbl.filterSelect} ${originFilter !== null ? tbl.filterActive : ""}`}
+              data-active={originFilter !== null ? "true" : undefined}
+              aria-label="Lọc nội viện / ngoại viện"
+              value={originFilter ?? "*"}
+              onChange={(e) => {
+                setUrlParam("origin", e.target.value === "*" ? null : e.target.value);
+                rowSel.clearSelection();
+                resetPage();
+              }}
+            >
+              <option value="*">Nội + ngoại viện ({originCount(null)})</option>
+              <option value="internal">Nội viện ({originCount("internal")})</option>
+              <option value="external">Ngoại viện ({originCount("external")})</option>
+            </select>
             {showPrograms && (
               <select
                 className={`${tbl.filterSelect} ${styles.enrProgramSelect} ${programFilter !== null ? tbl.filterActive : ""}`}
@@ -760,11 +812,18 @@ export function EnrollmentsTab({
                 className={styles.enrClear}
                 onClick={() => {
                   setSearch("");
-                  setProgramFilter(null);
+                  setParams(
+                    (p) => {
+                      p.delete("program");
+                      p.delete("origin");
+                      return p;
+                    },
+                    { replace: true },
+                  );
                   resetPage();
                 }}
               >
-                Xoá lọc
+                Xóa lọc
               </button>
             )}
           </div>
@@ -849,7 +908,7 @@ export function EnrollmentsTab({
                     enrollments.length === 0
                       ? "Bấm “Thêm học viên” để ghi danh học viên vào khóa."
                       : filterActive && !onlyProgramFilter
-                        ? "Thử đổi từ khoá hoặc bộ lọc."
+                        ? "Thử đổi từ khóa hoặc bộ lọc."
                         : view === "approved" && counts.pending
                           ? `Có ${counts.pending} đăng ký đang chờ ở nhóm “Đăng ký chờ duyệt”.`
                           : onlyProgramFilter && view !== "pending"

@@ -52,7 +52,7 @@ export default function Round() {
 
 	return (
 		<AdminLayout
-			pageTitle='Quản lý Đợt Nghiên cứu'
+			pageTitle='Đợt nghiên cứu'
 			pageSubtitle='Thiết lập và theo dõi các đợt đăng ký đề tài NCKH'
 			headerActions={headerActions}
 		>

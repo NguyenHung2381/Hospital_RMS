@@ -16,6 +16,7 @@ const USERS = [
 ];
 const otps = new Map(); // user_id → { code_hash, attempts }
 let newPassword = null;
+const failureEvents = []; // target_id của mỗi event password_reset_failed
 
 install(async (text, inputs) => {
 	if (/WHERE email = @login/.test(text)) return USERS.filter((u) => u.email === inputs.login);
@@ -27,15 +28,23 @@ install(async (text, inputs) => {
 	}
 	if (/UPDATE users SET password = @password/.test(text)) {
 		newPassword = inputs.password;
+		otps.delete(inputs.id); // cùng câu lệnh: xóa OTP + refresh token
 		return [];
 	}
-	if (/SELECT user_id AS id, code_hash/.test(text)) {
+	if (/UPDATE password_reset_otps SET attempts = attempts \+ 1/.test(text)) {
 		const o = otps.get(inputs.id);
-		return o ? [{ id: inputs.id, ...o, alive: 1 }] : [];
+		if (!o || o.attempts >= inputs.max) return [];
+		o.attempts++;
+		return [{ id: inputs.id, code_hash: o.code_hash }];
 	}
+	if (/FROM security_events/.test(text) && inputs.type === 'password_reset_failed')
+		return [{ n: failureEvents.filter((id) => id === inputs.id).length }];
 	return [];
 });
 
+require('../../src/modules/audit/securityEventService').log = async (e) => {
+	if (e.eventType === 'password_reset_failed') failureEvents.push(e.targetId);
+};
 require('../../src/modules/settings/systemSettingService').getValue = async () => 'true';
 require('../../src/modules/auth/sessionVersion').bumpTokenVersion = async () => {};
 const mailService = require('../../src/modules/notifications/mailService');
@@ -71,4 +80,82 @@ test('đặt lại bằng email: OTP sai bị từ chối; mật khẩu chứa u
 	);
 	await svc.resetPassword('a@bv.vn', '123456', 'Matkhau#2026x');
 	assert.ok(newPassword);
+});
+
+const setOtp = (code, attempts = 0) => {
+	const secretBox = require('../../src/utils/secretBox');
+	otps.set('U1', { code_hash: secretBox.keyedHash(code), attempts });
+};
+
+test('mỗi mã chỉ thử được 5 lần — kể cả khi nhiều request sai gửi cùng lúc', async () => {
+	failureEvents.length = 0;
+	setOtp('123456');
+	const wrong = Array.from({ length: 8 }, (_, i) =>
+		svc.resetPassword('a@bv.vn', String(100000 + i), 'Matkhau#2026x').catch((e) => e),
+	);
+	assert.ok((await Promise.all(wrong)).every((e) => e.statusCode === 400));
+	assert.equal(failureEvents.length, 5); // 3 request sau không còn lượt để so mã
+	await assert.rejects(svc.resetPassword('a@bv.vn', '123456', 'Matkhau#2026x'), (e) =>
+		/OTP/.test(e.message),
+	);
+});
+
+test('sai đủ 10 lần trong 24h (qua nhiều mã): ngừng cấp mã mới và từ chối cả mã đúng', async () => {
+	failureEvents.length = 0;
+	for (let round = 0; round < 2; round++) {
+		setOtp('123456');
+		for (let i = 0; i < 5; i++)
+			await assert.rejects(svc.resetPassword('a@bv.vn', '000000', 'Matkhau#2026x'));
+	}
+	assert.equal(failureEvents.length, 10);
+
+	sent.length = 0;
+	otps.delete('U1');
+	await svc.requestOtp('a@bv.vn');
+	assert.equal(sent.length, 0);
+	assert.ok(!otps.has('U1'));
+
+	setOtp('123456');
+	await assert.rejects(svc.resetPassword('a@bv.vn', '123456', 'Matkhau#2026x'), (e) =>
+		/OTP/.test(e.message),
+	);
+	failureEvents.length = 0;
+});
+
+test('xin mã không chờ gửi mail xong (thời gian phản hồi không lộ tài khoản có thật)', async () => {
+	const original = mailService.send;
+	mailService.send = () => new Promise(() => {}); // SMTP treo
+	try {
+		otps.delete('U1');
+		await svc.requestOtp('a@bv.vn'); // treo ở đây nếu còn await mail
+		assert.ok(otps.has('U1'));
+	} finally {
+		mailService.send = original;
+	}
+});
+
+test('production: mail tắt cũng KHÔNG ghi mã OTP vào log', async () => {
+	const logger = require('../../src/config/logger');
+	const originalInfo = logger.info;
+	const originalEnv = process.env.NODE_ENV;
+	const logged = [];
+	logger.info = (...args) => logged.push(args.join(' '));
+	mailService.isEnabled = async () => false;
+	try {
+		process.env.NODE_ENV = 'production';
+		otps.delete('U1');
+		await svc.requestOtp('a@bv.vn');
+		await new Promise((r) => setImmediate(r));
+		assert.ok(!logged.some((l) => l.includes('[reset-otp]')));
+
+		process.env.NODE_ENV = 'development';
+		otps.delete('U1');
+		await svc.requestOtp('a@bv.vn');
+		await new Promise((r) => setImmediate(r));
+		assert.ok(logged.some((l) => l.includes('[reset-otp]')));
+	} finally {
+		logger.info = originalInfo;
+		process.env.NODE_ENV = originalEnv;
+		mailService.isEnabled = async () => true;
+	}
 });

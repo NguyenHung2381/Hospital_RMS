@@ -8,7 +8,7 @@ process.on('unhandledRejection', (reason) => {
 	logger.error('❌ Unhandled Promise Rejection:', reason);
 });
 // Exception không ai bắt = tiến trình đang ở trạng thái không xác định (kết nối,
-// khoá, dữ liệu ghi dở...) — chạy tiếp có thể phục vụ sai hoặc lộ dữ liệu. Ghi
+// khóa, dữ liệu ghi dở...) — chạy tiếp có thể phục vụ sai hoặc lộ dữ liệu. Ghi
 // log rồi thoát; Docker (restart: unless-stopped) / nodemon tự khởi động lại.
 process.on('uncaughtException', (err) => {
 	logger.error('❌ Uncaught Exception — dừng tiến trình:', err.message, err.stack);
@@ -60,11 +60,24 @@ function getNetworkIp() {
 // worker chỉ nghe đúng PORT được giao (các worker dùng chung 1 port qua cluster).
 const isClusterWorker = process.env.CLUSTER_WORKER === '1';
 
+// nginx giữ kết nối keepalive tới backend (upstream keepalive, frontend/nginx.conf)
+// và tái dùng tới 60s (keepalive_timeout mặc định của upstream). Node mặc định
+// đóng kết nối rảnh sau 5s: nginx gửi request vào đúng lúc Node vừa đóng ⇒ 502
+// ngẫu nhiên, càng đông càng hay gặp. Node phải giữ lâu hơn nginx; headersTimeout
+// phải lớn hơn keepAliveTimeout (yêu cầu của Node).
+const tuneKeepAlive = (server) => {
+	server.keepAliveTimeout = 65_000;
+	server.headersTimeout = 66_000;
+	return server;
+};
+
 const startWorker = () => {
 	const PORT = parseInt(process.env.PORT);
-	app.listen(PORT, '0.0.0.0', () => {
-		jobs.start();
-	});
+	tuneKeepAlive(
+		app.listen(PORT, '0.0.0.0', () => {
+			jobs.start();
+		}),
+	);
 };
 
 const startStandalone = async () => {
@@ -83,7 +96,7 @@ const startStandalone = async () => {
 		const PREFERRED_PORT = parseInt(process.env.PORT) || 3000;
 		const PORT = await findAvailablePort(PREFERRED_PORT);
 
-		app.listen(PORT, '0.0.0.0', () => {
+		const server = app.listen(PORT, '0.0.0.0', () => {
 			if (PORT !== PREFERRED_PORT) {
 				logger.warn(`⚠️  Port ${PREFERRED_PORT} bị chiếm, chuyển sang port ${PORT}`);
 			}
@@ -129,6 +142,7 @@ const startStandalone = async () => {
 
 			jobs.start();
 		});
+		tuneKeepAlive(server);
 	} catch (err) {
 		logger.error(`❌ Không thể khởi động server: ${err.message}`);
 		process.exit(1);

@@ -164,20 +164,27 @@ const getGradebook = async (courseId, access = FULL_ACCESS) => {
 // Ghi lại score / result / classification theo 2 phần (sau mỗi lần sửa điểm).
 const recompute = async (courseId, enrollmentIds) => {
 	const [rules, rows] = await Promise.all([loadRules(), loadRows(courseId, enrollmentIds)]);
+	const updates = rows
+		.filter((row) => row.grade_id)
+		.map((row) => {
+			const c = evaluateRow(row, rules);
+			return {
+				id: row.grade_id,
+				score: c.total,
+				result: c.result,
+				classification: c.classification,
+			};
+		});
+	if (!updates.length) return;
+	// 1 câu UPDATE cho cả lớp (trước đây 1 round-trip / học viên)
 	const pool = await getPool();
-	for (const row of rows) {
-		if (!row.grade_id) continue;
-		const c = evaluateRow(row, rules);
-		await pool
-			.request()
-			.input('id', sql.VarChar(20), row.grade_id)
-			.input('score', sql.Decimal(5, 2), c.total)
-			.input('result', sql.VarChar(20), c.result)
-			.input('classification', sql.NVarChar(20), c.classification)
-			.query(
-				'UPDATE grades SET score = @score, result = @result, classification = @classification WHERE id = @id',
-			);
-	}
+	await pool.request().input('rows', sql.NVarChar(sql.MAX), JSON.stringify(updates)).query(`
+    UPDATE g SET score = j.score, result = j.result, classification = j.classification
+    FROM grades g
+    JOIN OPENJSON(@rows) WITH (
+      id VARCHAR(20), score DECIMAL(5, 2), result VARCHAR(20), classification NVARCHAR(20)
+    ) j ON j.id = g.id
+  `);
 };
 
 // ─── Ghi điểm ──────────────────────────────────────────────────────────────

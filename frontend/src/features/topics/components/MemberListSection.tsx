@@ -184,7 +184,7 @@ export function MemberListSection({
 								</div>
 								<div
 									className={`${styles.actionBtn} ${styles.danger}`}
-									title='Xoá thành viên'
+									title='Xóa thành viên'
 									onClick={() => handleDeleteMember(m.id)}
 									style={{ marginLeft: 4, flexShrink: 0 }}
 								>

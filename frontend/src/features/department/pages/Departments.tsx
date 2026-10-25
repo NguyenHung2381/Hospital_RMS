@@ -58,7 +58,7 @@ export default function Departments() {
 		<div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
 			<ExcelActions
 				fileName='khoa-phong'
-				itemLabel='khoa phòng'
+				itemLabel='khoa/phòng'
 				columns={EXCEL_COLS}
 				getRows={async () => (await getDepartments({ search: d.search || undefined })).data}
 				importRow={(r) =>
@@ -76,29 +76,29 @@ export default function Departments() {
 				className={styles.btnAddHeader}
 				onClick={() => d.setModal('add')}
 			>
-				<PlusSvg /> Thêm khoa phòng
+				<PlusSvg /> Thêm khoa/phòng
 			</button>
 		</div>
 	);
 
 	return (
 		<AdminLayout
-			pageTitle='Quản lý Khoa Phòng'
-			pageSubtitle='Danh sách khoa phòng và đơn vị trong bệnh viện'
+			pageTitle='Khoa / Phòng ban'
+			pageSubtitle='Danh sách khoa/phòng và đơn vị trong bệnh viện'
 			headerActions={headerActions}
 		>
 			{/* ── TABLE CARD ── */}
 			<div className={styles.tableCard}>
 				<div className={styles.tableHeader}>
 					<div className={styles.tableHeaderLeft}>
-						<span className={styles.tableTitle}>Danh sách khoa phòng</span>
+						<span className={styles.tableTitle}>Danh sách khoa/phòng</span>
 						<SelectionCount
 							rowSel={rowSel}
-							itemLabel='khoa phòng'
+							itemLabel='khoa/phòng'
 							loading={d.loading}
 							onBulkDelete={d.handleBulkDelete}
 						>
-							{d.total} khoa phòng
+							{d.total} khoa/phòng
 						</SelectionCount>
 					</div>
 					<div className={styles.tableControls}>
@@ -109,7 +109,7 @@ export default function Departments() {
 						/>
 						<DeleteAllButton
 							count={d.total}
-							itemLabel='khoa phòng'
+							itemLabel='khoa/phòng'
 							getIds={d.fetchAllIds}
 							onDelete={d.handleBulkDelete}
 							onDone={rowSel.clearSelection}
@@ -147,8 +147,8 @@ export default function Departments() {
 							) : d.total === 0 ? (
 								<TableEmpty
 									colSpan={7}
-									title='Không tìm thấy khoa phòng'
-									desc='Thử thay đổi từ khoá tìm kiếm'
+									title='Không tìm thấy khoa/phòng'
+									desc='Thử thay đổi từ khóa tìm kiếm'
 								/>
 							) : (
 								d.paged.map((dept, i) => {
@@ -162,7 +162,7 @@ export default function Departments() {
 										>
 											<td className={sel.checkCol}>
 												<SelectCheckbox
-													title='Chọn khoa phòng'
+													title='Chọn khoa/phòng'
 													checked={rowSel.isSelected(dept.id)}
 													onChange={() => rowSel.toggleSelect(dept.id)}
 												/>
@@ -220,7 +220,7 @@ export default function Departments() {
 					total={d.total}
 					rowsPerPage={d.pageSize}
 					onPageChange={d.setPage}
-					itemLabel='khoa phòng'
+					itemLabel='khoa/phòng'
 					onRowsPerPageChange={d.handlePageSize}
 				/>
 			</div>

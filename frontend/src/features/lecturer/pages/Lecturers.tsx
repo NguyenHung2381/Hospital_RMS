@@ -70,7 +70,7 @@ export default function Lecturers() {
 
 	return (
 		<AdminLayout
-			pageTitle='Quản lý Giảng viên'
+			pageTitle='Giảng viên'
 			pageSubtitle='Danh sách giảng viên tham gia đào tạo (nội viện & mời ngoài)'
 			breadcrumbs={[{ label: 'Đào tạo' }]}
 			headerActions={headerActions}
@@ -135,7 +135,7 @@ export default function Lecturers() {
 							<TableEmpty
 								colSpan={7}
 								title='Không tìm thấy giảng viên'
-								desc={d.search ? 'Thử thay đổi từ khoá tìm kiếm' : 'Chưa có giảng viên nào'}
+								desc={d.search ? 'Thử thay đổi từ khóa tìm kiếm' : 'Chưa có giảng viên nào'}
 							/>
 						) : (
 							d.paged.map((l, i) => {
@@ -165,7 +165,7 @@ export default function Lecturers() {
 												<div>
 													<div className={styles.personName}>{l.full_name}</div>
 													{!l.is_active && (
-														<div className={styles.personSub}>Đã vô hiệu hoá</div>
+														<div className={styles.personSub}>Đã vô hiệu hóa</div>
 													)}
 												</div>
 											</div>

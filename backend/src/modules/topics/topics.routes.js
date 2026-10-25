@@ -15,7 +15,7 @@ router.use(authenticate);
 // trong phạm vi của người gọi (own = thành viên, department = cùng khoa, all).
 // authorizePermission chỉ kiểm tra "có quyền topics:xxx", không kiểm tra đề tài
 // cụ thể — trước đây phạm vi khoa thao tác được thành viên / file / tác giả /
-// nộp / xoá đề tài của khoa khác.
+// nộp / xóa đề tài của khoa khác.
 const topicScopeParam = async (req, _res, next, topicId) => {
 	try {
 		await topicPolicy.assertTopicInScope(topicId, req.user);

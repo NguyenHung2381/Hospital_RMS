@@ -65,7 +65,7 @@ export default function Profile() {
 										: { background: '#fee2e2', color: '#991b1b' }
 								}
 							>
-								{d.profile.is_active ? 'Đang hoạt động' : 'Đã khoá'}
+								{d.profile.is_active ? 'Đang hoạt động' : 'Đã khóa'}
 							</span>
 						)}
 					</div>
@@ -195,7 +195,7 @@ export default function Profile() {
 												className={styles.linkBtn}
 												onClick={() => d.setNameDraft(null)}
 											>
-												Huỷ
+												Hủy
 											</button>
 										</form>
 									)}
@@ -222,7 +222,7 @@ export default function Profile() {
 									</div>
 								</div>
 								<div className={styles.detailItem}>
-									<div className={styles.detailLabel}>Chức vụ / Vai trò</div>
+									<div className={styles.detailLabel}>Chức vụ / vai trò</div>
 									<div className={styles.detailValue}>
 										{d.profile.role ?? d.userRole}
 									</div>
@@ -238,7 +238,7 @@ export default function Profile() {
 													: { background: '#fee2e2', color: '#991b1b' }
 											}
 										>
-											{d.profile.is_active ? 'Hoạt động' : 'Đã khoá'}
+											{d.profile.is_active ? 'Hoạt động' : 'Đã khóa'}
 										</span>
 									</div>
 								</div>
@@ -478,7 +478,7 @@ export default function Profile() {
 										onClick={d.handleCancel2FASetup}
 										disabled={d.twoFaSaving}
 									>
-										Huỷ
+										Hủy
 									</button>
 								</div>
 							</div>
@@ -567,7 +567,7 @@ export default function Profile() {
 												}}
 												disabled={d.twoFaSaving}
 											>
-												Huỷ
+												Hủy
 											</button>
 										</div>
 									</>
@@ -614,6 +614,18 @@ export default function Profile() {
 												onChange={(e) => d.setDisablePwd(e.target.value)}
 											/>
 										</div>
+										<div className={styles.formGroup}>
+											<label className={styles.formLabel}>Mã xác thực</label>
+											<input
+												type='text'
+												className={styles.formInput}
+												placeholder='Mã 6 số từ ứng dụng, hoặc 1 mã khôi phục'
+												autoComplete='one-time-code'
+												maxLength={20}
+												value={d.disableCode}
+												onChange={(e) => d.setDisableCode(e.target.value)}
+											/>
+										</div>
 										{d.twoFaError && (
 											<div className={styles.errorMsg}>
 												<AlertSvg /> {d.twoFaError}
@@ -624,7 +636,7 @@ export default function Profile() {
 												type='button'
 												className={styles.btnDangerOutline}
 												onClick={() => void d.handleDisable2FA()}
-												disabled={d.twoFaSaving || !d.disablePwd}
+												disabled={d.twoFaSaving || !d.disablePwd || !d.disableCode.trim()}
 											>
 												Xác nhận tắt 2FA
 											</button>
@@ -634,10 +646,11 @@ export default function Profile() {
 												onClick={() => {
 													d.setShowDisable2Fa(false);
 													d.setDisablePwd('');
+													d.setDisableCode('');
 												}}
 												disabled={d.twoFaSaving}
 											>
-												Huỷ
+												Hủy
 											</button>
 										</div>
 									</>

@@ -66,7 +66,7 @@ function ListEditor({
 							<button
 								type='button'
 								className={`${styles.actionBtn} ${styles.danger}`}
-								title='Xoá mục'
+								title='Xóa mục'
 								onClick={() => onChange(items.filter((_, i) => i !== idx))}
 							>
 								<TrashSvg />
@@ -150,7 +150,7 @@ export function CourseFormModal({
 		setErrors((er) => ({ ...er, batch_no: '' }));
 	};
 
-	// Khóa mở liên tục không dùng ngày khóa / cửa sổ đăng ký — xoá khi lưu cho khỏi lệch.
+	// Khóa mở liên tục không dùng ngày khóa / cửa sổ đăng ký — xóa khi lưu cho khỏi lệch.
 	const submit = () =>
 		onSave(
 			form.is_rolling
@@ -443,14 +443,14 @@ export function CourseFormModal({
 					</div>
 				)}
 				{mode === 'edit' ? (
-					<FormField label='Huỷ khóa'>
+					<FormField label='Hủy khóa'>
 						<label style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', minHeight: 38, cursor: 'pointer' }}>
 							<input
 								type='checkbox'
 								checked={form.status === 'cancelled'}
 								onChange={(e) => setForm((f) => ({ ...f, status: e.target.checked ? 'cancelled' : 'draft' }))}
 							/>
-							<span style={{ color: form.status === 'cancelled' ? '#791f1f' : undefined }}>Huỷ khóa học này</span>
+							<span style={{ color: form.status === 'cancelled' ? '#791f1f' : undefined }}>Hủy khóa học này</span>
 						</label>
 					</FormField>
 				) : (

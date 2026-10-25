@@ -56,7 +56,7 @@ export function UserStatsRow({
 					<div className={styles.statValue}>
 						{loading ? <Skeleton width={50} height={28} style={{ verticalAlign: 'middle' }} /> : inactive}
 					</div>
-					<div className={styles.statLabel}>Tạm khoá</div>
+					<div className={styles.statLabel}>Tạm khóa</div>
 				</div>
 			</div>
 			<div className={`${styles.statCard} ${styles.statRed}`}>

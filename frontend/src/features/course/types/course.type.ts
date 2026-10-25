@@ -1,5 +1,5 @@
 export type ModalType = 'add' | 'edit' | 'delete' | null;
-// courses.status giờ chỉ còn lưu cờ huỷ ('cancelled' vs 'draft' = bình thường)
+// courses.status giờ chỉ còn lưu cờ hủy ('cancelled' vs 'draft' = bình thường)
 // — mọi trạng thái khác (sắp khai giảng/đang mở đăng ký/đang học/hoàn thành)
 // được suy ra tự động từ ngày tháng, xem CourseDisplayStatus.
 export type CourseStatus = 'draft' | 'cancelled';
@@ -96,20 +96,12 @@ export const TRAINING_TYPE = {
 /** Loại khóa chia lớp theo chương trình (backend programClassService): sĩ số + ngày học đặt theo lớp. */
 export const CLASS_TYPES = new Set<string>([TRAINING_TYPE.DTLT, TRAINING_TYPE.CTCV]);
 
-/** Tab loại khóa trên trang Khóa học & Học viên ('' = tất cả). */
-export const TRAINING_TYPE_TABS: { id: string; label: string }[] = [
-	{ id: '', label: 'Tất cả' },
-	{ id: TRAINING_TYPE.GPHN, label: 'Giấy phép hành nghề' },
-	{ id: TRAINING_TYPE.DTLT, label: 'Đào tạo liên tục' },
-	{ id: TRAINING_TYPE.CTCV, label: 'Cầm tay chỉ việc' },
-];
-
 export const DISPLAY_STATUS_CFG: Record<CourseDisplayStatus, { label: string; color: string; bg: string }> = {
 	upcoming: { label: 'Sắp khai giảng', color: '#633806', bg: '#faeeda' },
 	enrolling: { label: 'Đang mở đăng ký', color: '#085028', bg: '#e1f5ea' },
 	in_progress: { label: 'Đang trong quá trình học', color: '#3c3489', bg: '#eeedfe' },
 	completed: { label: 'Hoàn thành', color: '#0c447c', bg: '#e6f1fb' },
-	cancelled: { label: 'Đã huỷ', color: '#791f1f', bg: '#fcebeb' },
+	cancelled: { label: 'Đã hủy', color: '#791f1f', bg: '#fcebeb' },
 };
 
 export const ENROLLMENT_STATUS_CFG: Record<EnrollmentStatus, { label: string; color: string; bg: string }> = {
@@ -126,6 +118,8 @@ export interface Enrollment {
 	trainee_name: string;
 	trainee_phone: string | null;
 	trainee_email: string | null;
+	/** Học viên gắn tài khoản nhân viên bệnh viện (trainees.staff_user_id) = nội viện; còn lại ngoại viện. */
+	is_internal: boolean;
 	status: EnrollmentStatus;
 	registered_at: string;
 	decided_by: string | null;
@@ -447,11 +441,6 @@ export interface CourseLesson {
 	practice_hours: number | null;
 	total_hours: number | null;
 	program_name: string;
-}
-
-export interface LessonLecturersInput {
-	main: { lecturer_id: string; hours?: number | null } | null;
-	assistants: { lecturer_id: string; hours?: number | null }[];
 }
 
 export type SessionKind = 'theory' | 'practice';

@@ -26,7 +26,7 @@ export type { ExcelColumn, ExcelRecord } from './excelHelpers';
 interface Props<T> {
 	/** Tên file không dấu, vd 'khoa-phong'. */
 	fileName: string;
-	/** Nhãn số nhiều trong câu thông báo, vd 'khoa phòng'. */
+	/** Nhãn số nhiều trong câu thông báo, vd 'khoa/phòng'. */
 	itemLabel: string;
 	columns: ExcelColumn<T>[];
 	getRows?: () => Promise<T[]> | T[];
@@ -221,7 +221,7 @@ function ImportModal<T>({
 			footer={
 				<>
 					<button className={styles.btn} onClick={onClose} disabled={loading}>
-						{result ? 'Đóng' : 'Huỷ'}
+						{result ? 'Đóng' : 'Hủy'}
 					</button>
 					{!result && (
 						<button

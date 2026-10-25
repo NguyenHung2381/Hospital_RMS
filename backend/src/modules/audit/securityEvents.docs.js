@@ -5,7 +5,7 @@
  * @swagger
  * tags:
  *   name: SecurityEvents
- *   description: Nhật ký sự kiện bảo mật — khoá tài khoản, xoay phiên đăng nhập, truy cập dữ liệu nhạy cảm (admin only)
+ *   description: Nhật ký sự kiện bảo mật — khóa tài khoản, xoay phiên đăng nhập, truy cập dữ liệu nhạy cảm (admin only)
  */
 
 /**

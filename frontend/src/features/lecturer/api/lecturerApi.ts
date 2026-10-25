@@ -13,7 +13,7 @@ export interface LecturerListParams {
 	active_only?: boolean | string;
 }
 
-// Không truyền params → giữ hành vi cũ: lấy toàn bộ giảng viên (kể cả đã vô hiệu hoá).
+// Không truyền params → giữ hành vi cũ: lấy toàn bộ giảng viên (kể cả đã vô hiệu hóa).
 export const getLecturers = (params?: LecturerListParams) => {
 	const merged = { limit: 0, active_only: 'false', ...params };
 	const entries = Object.entries(merged)

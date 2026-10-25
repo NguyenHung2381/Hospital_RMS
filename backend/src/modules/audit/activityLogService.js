@@ -59,7 +59,7 @@ const toMs = (v) => {
 	return Number.isNaN(t) ? undefined : t;
 };
 
-// Chuẩn hoá query string → bộ lọc. Dùng chung cho list / stats / sessions.
+// Chuẩn hóa query string → bộ lọc. Dùng chung cho list / stats / sessions.
 const parseFilters = (q = {}) => {
 	const list = (v) =>
 		v

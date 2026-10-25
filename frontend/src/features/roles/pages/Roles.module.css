@@ -689,7 +689,7 @@
 	margin-top: 1px;
 }
 
-/* ── Phân quyền vai trò: mỗi chức năng chọn 1 mức, "Tuỳ chỉnh" để tick từng quyền ── */
+/* ── Phân quyền vai trò: mỗi chức năng chọn 1 mức, "Tùy chỉnh" để tick từng quyền ── */
 .permModal {
 	max-width: min(860px, 96vw);
 }

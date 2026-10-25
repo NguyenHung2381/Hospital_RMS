@@ -372,7 +372,7 @@
  *       200:
  *         description: Cập nhật thành công
  *   delete:
- *     summary: Xoá hội đồng (tự động bỏ gán đề tài và xoá thành viên)
+ *     summary: Xóa hội đồng (tự động bỏ gán đề tài và xóa thành viên)
  *     tags: [Councils]
  *     parameters:
  *       - in: path
@@ -381,7 +381,7 @@
  *         schema: { type: string }
  *     responses:
  *       200:
- *         description: Xoá thành công
+ *         description: Xóa thành công
  */
 
 /**
@@ -478,7 +478,7 @@
  *       200:
  *         description: Cập nhật thành công
  *   delete:
- *     summary: Xoá một ghế khỏi hội đồng
+ *     summary: Xóa một ghế khỏi hội đồng
  *     tags: [Councils]
  *     parameters:
  *       - in: path
@@ -491,7 +491,7 @@
  *         schema: { type: string }
  *     responses:
  *       200:
- *         description: Xoá thành công
+ *         description: Xóa thành công
  */
 
 /**

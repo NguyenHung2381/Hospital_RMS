@@ -12,7 +12,7 @@ const trainingFileService = require('../training/trainingFileService');
 const { httpError } = require('../../utils/httpError');
 
 // File bổ sung chứng minh kết quả — người dùng tải lên SAU khi ghi nhận đã duyệt
-// (minh chứng chính evidence_file_id bị khoá lúc đó). Lưu ở training_files theo
+// (minh chứng chính evidence_file_id bị khóa lúc đó). Lưu ở training_files theo
 // entity_type='cme_result', entity_id = id ghi nhận; không cần cột riêng.
 const RESULT_FILE_TYPE = 'cme_result';
 const RESULT_FILES_SQL = `(SELECT tf.id, tf.file_name, tf.file_url, tf.created_at FROM training_files tf
@@ -181,12 +181,12 @@ const removeResultFiles = async (recordIds, actorId) => {
 		.input('ids', sql.NVarChar(sql.MAX), JSON.stringify(recordIds))
 		.query(
 			`SELECT id FROM training_files WHERE entity_type = '${RESULT_FILE_TYPE}' AND is_deleted = 0
-       AND entity_id IN (SELECT [value] FROM OPENJSON(@ids))`,
+       AND entity_id IN (SELECT CAST([value] AS VARCHAR(50)) FROM OPENJSON(@ids))`,
 		);
 	for (const f of files.recordset) await trainingFileService.softDelete(f.id, actorId);
 };
 
-// Xoá hàng loạt (nút "Xoá tất cả theo bộ lọc") — một câu DELETE, rồi gỡ file minh chứng kèm theo.
+// Xóa hàng loạt (nút "Xóa tất cả theo bộ lọc") — một câu DELETE, rồi gỡ file minh chứng kèm theo.
 const removeMany = async (ids, actorId) => {
 	const list = [...new Set((ids || []).filter((id) => typeof id === 'string' && id))];
 	if (!list.length) return { deleted: 0 };
@@ -195,7 +195,7 @@ const removeMany = async (ids, actorId) => {
 		.request()
 		.input('ids', sql.NVarChar(sql.MAX), JSON.stringify(list))
 		.query(
-			'DELETE FROM cme_records OUTPUT deleted.evidence_file_id WHERE id IN (SELECT [value] FROM OPENJSON(@ids))',
+			'DELETE FROM cme_records OUTPUT deleted.evidence_file_id WHERE id IN (SELECT CAST([value] AS VARCHAR(50)) FROM OPENJSON(@ids))',
 		);
 	for (const { evidence_file_id } of result.recordset) {
 		if (evidence_file_id) await trainingFileService.softDelete(evidence_file_id, actorId);
@@ -228,15 +228,15 @@ const addEvidence = async (id, file, actorId) => {
 // Chỉ bản ghi approval_status='approved' mới được cộng vào tín chỉ CME.
 const httpErr = (message, statusCode) => httpError(statusCode, message);
 
-// Bản ghi phải của chính user và chưa được duyệt (đã duyệt thì khoá, tránh đổi tín chỉ sau duyệt)
+// Bản ghi phải của chính user và chưa được duyệt (đã duyệt thì khóa, tránh đổi tín chỉ sau duyệt)
 const assertEditableMine = async (id, userId) => {
 	const rec = await getById(id);
 	if (!rec || rec.user_id !== userId) throw httpErr('Không tìm thấy ghi nhận CME', 404);
 	// Dòng tự động từ khóa học (courseCmeService) — theo giấy chứng nhận / khóa điểm, không tự sửa
 	if (rec.source_type)
-		throw httpErr('Ghi nhận CME tự động từ khóa học, không thể sửa hoặc xoá', 409);
+		throw httpErr('Ghi nhận CME tự động từ khóa học, không thể sửa hoặc xóa', 409);
 	if (rec.approval_status === 'approved')
-		throw httpErr('Ghi nhận đã được duyệt, không thể sửa hoặc xoá', 409);
+		throw httpErr('Ghi nhận đã được duyệt, không thể sửa hoặc xóa', 409);
 	return rec;
 };
 

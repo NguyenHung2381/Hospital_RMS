@@ -23,7 +23,7 @@ export function formatDateOr(value?: string | null, fallback = '—'): string {
 	return formatDate(value) ?? fallback;
 }
 
-// Chuẩn hoá bất kỳ định dạng ngày nào (ISO string "2026-10-31T00:00:00.000Z",
+// Chuẩn hóa bất kỳ định dạng ngày nào (ISO string "2026-10-31T00:00:00.000Z",
 // "2026-10-31", "31/10/2026", Date object) về chuỗi chuẩn 'YYYY-MM-DD'.
 export function toIsoDate(value?: string | Date | null): string {
 	if (!value) return '';

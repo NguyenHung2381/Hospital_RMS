@@ -1,5 +1,5 @@
 // Luồng upload thật qua Express + multer + secureUpload: file sai nội dung bị
-// xoá và báo lỗi, hạn mức/ngày, quét virus bằng clamd giả lập (TCP).
+// xóa và báo lỗi, hạn mức/ngày, quét virus bằng clamd giả lập (TCP).
 const os = require('os');
 const path = require('path');
 const fs = require('fs');
@@ -103,7 +103,7 @@ const fakeClamd = () =>
 		srv.listen(0, '127.0.0.1', () => resolve(srv));
 	});
 
-test('ClamAV: file sạch qua, file nhiễm bị chặn (422) và xoá', async () => {
+test('ClamAV: file sạch qua, file nhiễm bị chặn (422) và xóa', async () => {
 	const clamd = await fakeClamd();
 	process.env.CLAMAV_HOST = '127.0.0.1';
 	process.env.CLAMAV_PORT = String(clamd.address().port);

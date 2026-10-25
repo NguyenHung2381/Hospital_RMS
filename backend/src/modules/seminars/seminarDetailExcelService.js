@@ -7,7 +7,9 @@
  *   - sheet "Bài học"        : chương trình hội nghị (seminars.agenda).
  * parts = ['participants', 'agenda'] để chỉ xuất một phần (sheet "Thông tin" luôn có).
  */
-const ExcelJS = require('exceljs');
+const { lazyRequire } = require('../../utils/lazyRequire');
+/** @type {typeof import('exceljs')} */
+const ExcelJS = lazyRequire('exceljs');
 const seminarService = require('./seminarService');
 const xl = require('../../utils/excelTemplate');
 const { parseAgenda, testWindow } = require('../../utils/seminarSchedule');
@@ -98,7 +100,7 @@ const addInfoSheet = (wb, s, agendaCount) => {
 				: 'Không',
 		],
 		[
-			'Bài test cuối buổi',
+			'Bài kiểm tra cuối buổi',
 			questionCount
 				? [
 						`${questionCount} câu · ${maxScore(questions)} điểm`,
@@ -114,7 +116,7 @@ const addInfoSheet = (wb, s, agendaCount) => {
 		],
 		['Số người tham dự (danh sách)', participants.length],
 		['Đã điểm danh', participants.filter((p) => p.checked_in_at).length],
-		['Đã nộp bài test', participants.filter((p) => p.test_submitted_at).length],
+		['Đã nộp bài kiểm tra', participants.filter((p) => p.test_submitted_at).length],
 		['Đã cấp CME', participants.filter((p) => p.cme_seq != null).length],
 		['Số bài học', agendaCount],
 		['Ghi chú', s.notes ?? ''],
@@ -157,7 +159,7 @@ const participantColumns = (s) => {
 					{ key: 'checked_in_at', header: 'Điểm danh lúc', width: 17 },
 					...(s.test_questions
 						? [
-								{ key: 'test_score', header: 'Điểm bài test', width: 12 },
+								{ key: 'test_score', header: 'Điểm bài kiểm tra', width: 12 },
 								{ key: 'test_correct', header: 'Số câu đúng', width: 10 },
 								...(s.test_pass_score != null
 									? [{ key: 'test_passed', header: 'Kết quả', width: 10 }]

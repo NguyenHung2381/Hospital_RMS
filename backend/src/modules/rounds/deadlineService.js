@@ -110,7 +110,7 @@ const remove = async (roundId, phase, actorId) => {
 	const pool = await getPool();
 
 	// deadline_actions.deadline_id không có ON DELETE CASCADE → chặn nếu mốc đã
-	// phát sinh hành động (gia hạn tự động, khoá nộp...).
+	// phát sinh hành động (gia hạn tự động, khóa nộp...).
 	const used = await pool
 		.request()
 		.input('round_id', sql.VarChar(10), roundId)
@@ -123,7 +123,7 @@ const remove = async (roundId, phase, actorId) => {
 	if (used.recordset[0].cnt > 0) {
 		throw httpError(
 			409,
-			`Không thể xoá mốc thời hạn vì đã có ${used.recordset[0].cnt} hành động được ghi nhận.`,
+			`Không thể xóa mốc thời hạn vì đã có ${used.recordset[0].cnt} hành động được ghi nhận.`,
 		);
 	}
 
@@ -139,7 +139,7 @@ const remove = async (roundId, phase, actorId) => {
 };
 
 // ─── Tạo mốc hàng loạt khi tạo đợt ──────────────────────────────────────────
-// Chuẩn hoá + kiểm tra danh sách mốc gửi kèm lúc tạo đợt (ngày dạng
+// Chuẩn hóa + kiểm tra danh sách mốc gửi kèm lúc tạo đợt (ngày dạng
 // 'yyyy-mm-dd', phải nằm trong [roundStart, roundEnd]). Giai đoạn đánh số lại
 // 1..n theo thứ tự gửi lên. Lỗi ⇒ throw 400 trước khi ghi gì vào DB.
 const MAX_PHASE = 9;

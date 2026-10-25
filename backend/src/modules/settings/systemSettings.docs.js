@@ -5,5 +5,5 @@
  * @swagger
  * tags:
  *   name: SystemSettings
- *   description: Cấu hình hệ thống (SMTP, ngưỡng CME, URL public) — thay .env
+ *   description: Cấu hình hệ thống (SMTP, ngưỡng CME, địa chỉ trang công khai) — thay .env
  */

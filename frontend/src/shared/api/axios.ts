@@ -137,7 +137,7 @@ async function requestForm<T>(path: string, body: FormData): Promise<T> {
 // cùng một URL gần như đồng thời (vd /departments?limit=0 ở 4 nơi). Request
 // trùng URL đang bay sẽ dùng chung 1 promise. Riêng các bảng danh mục (ít đổi,
 // trang nào cũng cần) được giữ thêm LOOKUP_TTL_MS để điều hướng không phải chờ.
-// Mọi thao tác ghi + mọi sự kiện realtime đều xoá sạch cache → không đọc dữ
+// Mọi thao tác ghi + mọi sự kiện realtime đều xóa sạch cache → không đọc dữ
 // liệu cũ sau khi chính mình (hoặc người khác) vừa sửa.
 const LOOKUP_TTL_MS = 60_000;
 const LOOKUP_RESOURCES = new Set([

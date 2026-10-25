@@ -93,7 +93,7 @@ export function DeptAccountsEditModal({
 						className={styles.btnCancel}
 						onClick={onClose}
 					>
-						Huỷ
+						Hủy
 					</button>
 					<button
 						className={styles.btnConfirmBlue}
@@ -212,7 +212,7 @@ export function DeptAccountsEditModal({
 					<div className={styles.formToggleSub}>
 						{form.is_active
 							? 'Tài khoản đang hoạt động'
-							: 'Tài khoản bị tạm khoá'}
+							: 'Tài khoản bị tạm khóa'}
 					</div>
 				</div>
 				<Toggle

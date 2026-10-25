@@ -37,7 +37,7 @@ const post = (server, body) =>
 
 const waitCleanup = () => new Promise((r) => setTimeout(r, 50));
 
-test('multipart: field data (JSON) thành req.body, file tạm bị xoá nếu không được chuyển đi', async () => {
+test('multipart: field data (JSON) thành req.body, file tạm bị xóa nếu không được chuyển đi', async () => {
 	let seen;
 	const server = await startApp((req, res) => {
 		seen = { body: req.body, files: req.files.length };

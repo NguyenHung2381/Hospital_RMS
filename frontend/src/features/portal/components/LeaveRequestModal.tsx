@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Button, Modal } from '@/shared/components';
+import { Button, Modal, TimePicker } from '@/shared/components';
 import { toIsoDate } from '@/shared/utils/formatDate';
 import { createLeaveRequest, type LeavePolicy, type LeaveType, type MyAttendance } from '../api/meApi';
 import styles from '../pages/SelfService.module.css';
@@ -107,7 +107,7 @@ export default function LeaveRequestModal({ week, policy = DEFAULT_POLICY, onClo
 			footer={
 				<>
 					<Button variant='secondary' onClick={onClose} disabled={busy}>
-						Huỷ
+						Hủy
 					</Button>
 					<Button onClick={save} loading={busy}>
 						Gửi đơn
@@ -144,7 +144,7 @@ export default function LeaveRequestModal({ week, policy = DEFAULT_POLICY, onClo
 				) : (
 					<label>
 						Giờ dự kiến có mặt *
-						<input type='time' value={arriveTime} onChange={(e) => setArriveTime(e.target.value)} />
+						<TimePicker value={arriveTime} onChange={setArriveTime} />
 					</label>
 				)}
 				{singleDay && (
@@ -177,7 +177,7 @@ export default function LeaveRequestModal({ week, policy = DEFAULT_POLICY, onClo
 				{policy.backdate_days
 					? `Đơn cho ngày đã qua chỉ nộp bổ sung được trong ${policy.backdate_days} ngày.`
 					: 'Không nộp đơn cho ngày đã qua.'}{' '}
-				Xin phép trước tối đa {policy.ahead_days} ngày, mỗi đơn xin nghỉ tối đa {policy.max_span_days} ngày. Đơn chờ duyệt có thể huỷ trong danh sách đơn.
+				Xin phép trước tối đa {policy.ahead_days} ngày, mỗi đơn xin nghỉ tối đa {policy.max_span_days} ngày. Đơn chờ duyệt có thể hủy trong danh sách đơn.
 			</p>
 		</Modal>
 	);

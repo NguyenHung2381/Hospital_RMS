@@ -12,7 +12,7 @@ const { asyncHandler } = require('../../utils/asyncHandler');
 const uploadExcel = require('../../middlewares/uploadExcel');
 const { makeImageUpload, safeParam } = require('../../middlewares/uploadImage');
 
-// Ảnh minh hoạ câu hỏi bài test cuối buổi — uploads/seminars/<id>/test/
+// Ảnh minh họa câu hỏi bài test cuối buổi — uploads/seminars/<id>/test/
 const uploadTestImage = makeImageUpload((req) => ['seminars', safeParam(req, 'id'), 'test']);
 
 const canRead = authorizePermission(['seminars', 'read']);
@@ -133,7 +133,7 @@ router.delete(
 	canCme,
 	asyncHandler(async (req, res) => {
 		await cmeRequirementService.remove(req.params.id);
-		return success(res, null, 'Đã xoá');
+		return success(res, null, 'Đã xóa');
 	}),
 );
 

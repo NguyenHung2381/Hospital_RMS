@@ -6,7 +6,7 @@ const logger = require('./logger');
 // (assertValidEnv, gọi ở app.js) thay vì rải điều kiện process.exit khắp nơi.
 //   - Thiếu biến bắt buộc / vi phạm quy tắc production ⇒ lỗi, server DỪNG
 //     (fail-closed, không chạy bằng giá trị mặc định đoán được).
-//   - Biến tuỳ chọn sai định dạng (vd DB_POOL_MAX=abc) ⇒ cảnh báo, dùng mặc
+//   - Biến tùy chọn sai định dạng (vd DB_POOL_MAX=abc) ⇒ cảnh báo, dùng mặc
 //     định — giữ đúng hành vi cũ `Number(x) || mặc định`, nhưng không im lặng.
 // Chỉ mô tả các biến của tầng hạ tầng (DB, JWT, HTTP, Redis). Biến riêng của
 // từng tính năng vẫn đọc tại chỗ dùng (nhiều test đổi process.env lúc chạy);
@@ -46,10 +46,7 @@ const str =
 			.preprocess((v) => (isBlank(v) ? undefined : String(v).trim()), z.string().optional())
 			.transform((v) => transform(v ?? fallback));
 const required = () =>
-	z.preprocess(
-		(v) => (isBlank(v) ? undefined : String(v)),
-		z.string({ required_error: 'bắt buộc' }),
-	);
+	z.preprocess((v) => (isBlank(v) ? undefined : String(v)), z.string({ error: 'bắt buộc' }));
 
 const SPEC = {
 	NODE_ENV: str('development'),
@@ -137,11 +134,11 @@ const loadConfig = (source = process.env) => {
 			if (!raw.CORS_ORIGIN) errors.push('CORS_ORIGIN: bắt buộc ở production.');
 
 			// Chỉ cảnh báo (hạ tầng/DBA cần thời gian xử lý):
-			//   - Không mã hoá: password hash, token đi plaintext giữa app và SQL Server.
+			//   - Không mã hóa: password hash, token đi plaintext giữa app và SQL Server.
 			//   - Tài khoản 'sa': lộ là mất toàn quyền CẢ INSTANCE, không chỉ DB này.
 			if (!raw.DB_ENCRYPT) {
 				warnings.push(
-					'DB_ENCRYPT khác "true" ở production — kết nối tới SQL Server không được mã hoá.',
+					'DB_ENCRYPT khác "true" ở production — kết nối tới SQL Server không được mã hóa.',
 				);
 			}
 			if (raw.DB_USER.toLowerCase() === 'sa') {

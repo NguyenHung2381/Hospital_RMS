@@ -36,15 +36,15 @@ const issueCertificate = async (enrollmentId, actorId, expiryDate) => {
 	return cert;
 };
 
-// Xoá cứng — chỉ dùng khi cấp nhầm (không giữ lịch sử). Muốn hủy giá trị
+// Xóa cứng — chỉ dùng khi cấp nhầm (không giữ lịch sử). Muốn hủy giá trị
 // pháp lý của chứng chỉ đã cấp đúng, dùng revokeCertificate (thu hồi mềm).
 const removeCertificate = async (certId, actorId) => {
-	await syncCme('xoá giấy', () => cme.withdrawForCertificate(certId, actorId, { remove: true }));
+	await syncCme('xóa giấy', () => cme.withdrawForCertificate(certId, actorId, { remove: true }));
 	await repo.deleteById(certId);
 	broadcast('update', { entity: 'certificate' });
 };
 
-// Thu hồi mềm — giữ lại dòng dữ liệu (khác removeCertificate xoá cứng).
+// Thu hồi mềm — giữ lại dòng dữ liệu (khác removeCertificate xóa cứng).
 const revokeCertificate = async (certId, reason, actorId) => {
 	const affected = await repo.revoke({ certId, reason, actorId });
 	if (!affected) {

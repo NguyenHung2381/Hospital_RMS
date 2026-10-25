@@ -5,7 +5,7 @@ const { broadcast } = require('../events/eventService');
 // giá trị nghiệp vụ hay đổi. value NULL = "chưa cấu hình qua UI, dùng .env"
 // (mailService.js/cmeRequirementService.js tự fallback process.env).
 const SECRET_KEYS = new Set(['SMTP_PASS', 'RECAPTCHA_SECRET_KEY']);
-// Whitelist — PUT /:key không được tạo key tuỳ ý. Thêm key mới = thêm ở đây +
+// Whitelist — PUT /:key không được tạo key tùy ý. Thêm key mới = thêm ở đây +
 // trang cấu hình frontend (features/settings).
 const KEYS = [
 	'MAIL_ENABLED',
@@ -90,7 +90,7 @@ const maskRow = (row) => {
 };
 
 // Cache 15s/worker: getValue được gọi mỗi request (chính sách 2FA) — không để mỗi
-// lần chạm DB. update() xoá cache của worker xử lý; worker khác tự hết hạn sau TTL.
+// lần chạm DB. update() xóa cache của worker xử lý; worker khác tự hết hạn sau TTL.
 const TTL_MS = 15000;
 let cache = null;
 const loadRows = async () => {

@@ -17,13 +17,14 @@ const THROTTLE_SEC = 30 * 60;
 // Sự kiện gửi ngay (mỗi lần xảy ra, sau chống spam)
 const IMMEDIATE = {
 	refresh_token_reuse: 'Phiên đăng nhập có dấu hiệu bị đánh cắp (refresh token bị dùng lại)',
-	upload_malware_blocked: 'Chặn file upload chứa mã độc',
+	upload_malware_blocked: 'Chặn file tải lên chứa mã độc',
 	role_permissions_changed: 'Thay đổi phân quyền của vai trò',
 	role_cloned: 'Tạo vai trò mới bằng sao chép quyền',
 	'2fa_disabled': 'Tắt xác thực 2 lớp',
 	device_untrusted: 'Thu hồi thiết bị quen do nhập sai nhiều lần',
 	password_reset_by_admin: 'Quản trị đặt lại mật khẩu người dùng',
-	login_attack_mode: 'Phát hiện dội đăng nhập — bật chế độ chống tấn công (utils/loginShield.js)',
+	login_attack_mode:
+		'Phát hiện đăng nhập dồn dập — bật chế độ chống tấn công (utils/loginShield.js)',
 };
 
 // Sự kiện chỉ cảnh báo khi xảy ra DỒN DẬP (dấu hiệu dò mật khẩu hàng loạt):
@@ -32,9 +33,14 @@ const BURST = {
 	login_locked: {
 		threshold: 5,
 		windowMin: 15,
-		title: 'Nhiều tài khoản bị khoá do sai mật khẩu liên tục',
+		title: 'Nhiều tài khoản bị khóa do sai mật khẩu liên tục',
 	},
 	login_2fa_failed: { threshold: 10, windowMin: 15, title: 'Nhiều lần nhập sai mã xác thực 2 lớp' },
+	password_reset_failed: {
+		threshold: 10,
+		windowMin: 15,
+		title: 'Nhiều lần nhập sai mã OTP đặt lại mật khẩu',
+	},
 };
 
 const escapeHtml = (s) =>
@@ -87,7 +93,7 @@ const render = (title, rows) => `
 				.join('')}
 		</table>
 		<p style="margin-top: 16px;">Kiểm tra chi tiết tại màn <strong>Nhật ký bảo mật</strong> của hệ thống.
-		Nếu không phải thao tác của quản trị, hãy khoá tài khoản liên quan và đổi mật khẩu ngay.</p>
+		Nếu không phải thao tác của quản trị, hãy khóa tài khoản liên quan và đổi mật khẩu ngay.</p>
 		<p style="color:#9ca3af; font-size:12px; margin-top:24px; border-top:1px solid #e5e7eb; padding-top:12px;">
 			Email cảnh báo tự động — mỗi loại sự kiện gửi tối đa 1 lần / 30 phút.
 		</p>

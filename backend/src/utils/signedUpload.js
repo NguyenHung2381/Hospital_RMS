@@ -14,8 +14,8 @@ const { keyFor } = require('./keys');
 
 const TTL_SEC = Number(process.env.UPLOAD_URL_TTL_SEC) || 4 * 60 * 60;
 
-// Không đặt UPLOAD_URL_SECRET thì dùng khoá dẫn xuất riêng (utils/keys.js), không
-// dùng thẳng JWT_SECRET — chữ ký link file không được trùng khoá với token khác.
+// Không đặt UPLOAD_URL_SECRET thì dùng khóa dẫn xuất riêng (utils/keys.js), không
+// dùng thẳng JWT_SECRET — chữ ký link file không được trùng khóa với token khác.
 const secret = () => process.env.UPLOAD_URL_SECRET || keyFor('upload-url');
 
 const hmac = (pathname, exp) =>
@@ -52,9 +52,19 @@ const signDeep = (value) => {
 };
 
 // Gắn trước các route API: ký mọi đường dẫn /uploads trong body JSON trả về.
+// Phần lớn response không chứa đường dẫn file nào: stringify 1 lần, không thấy
+// "/uploads/" thì gửi luôn chuỗi đó — khỏi sao chép sâu cả cây dữ liệu (danh sách
+// hàng nghìn dòng) chỉ để không đổi gì. JSON.stringify không escape "/" nên kiểm
+// tra chuỗi con là đủ, kể cả src="/uploads/..." nằm trong HTML.
 const signUploadUrlsInJson = (_req, res, next) => {
 	const json = res.json.bind(res);
-	res.json = (body) => json(signDeep(body));
+	res.json = (body) => {
+		const raw = JSON.stringify(body);
+		if (raw !== undefined && raw.includes('/uploads/')) return json(signDeep(body));
+		// Giống res.json của Express (app không đặt json replacer/spaces/escape)
+		if (!res.get('Content-Type')) res.set('Content-Type', 'application/json');
+		return res.send(raw);
+	};
 	next();
 };
 

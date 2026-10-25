@@ -377,7 +377,7 @@ export function LessonFormModal({
 						onChange={(e) => setForm((f) => ({ ...f, is_active: e.target.value === '1' }))}
 					>
 						<option value='1'>Hoạt động</option>
-						<option value='0'>Ngưng hoạt động</option>
+						<option value='0'>Ngừng hoạt động</option>
 					</select>
 				</FormField>
 

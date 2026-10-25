@@ -8,7 +8,9 @@
  * Vai trò theo vị trí dòng trong khối. File không gộp ô: dòng để trống / trùng
  * Tên đề tài với dòng trên thuộc cùng đề tài (như file "Xuất Excel").
  */
-const ExcelJS = require('exceljs');
+const { lazyRequire } = require('../../utils/lazyRequire');
+/** @type {typeof import('exceljs')} */
+const ExcelJS = lazyRequire('exceljs');
 const { getPool } = require('../../config/db');
 const { norm, normDept } = require('../../utils/vietnameseText');
 const { parseStaffNumber, readSheet } = require('../../utils/excelImport');
@@ -262,7 +264,7 @@ const buildPreview = (topics, lk, defaults = {}) => {
 			members.push({ ...m, name, department_id: user?.department_id || dept?.id || null });
 		}
 		if (members.length && !members.some((m) => m.role === 'leader'))
-			warnings.push('Chưa có Chủ nhiệm (dòng đầu của khối để trống)');
+			warnings.push('Chưa có chủ nhiệm (dòng đầu của khối để trống)');
 		if (!members.length) warnings.push('Chưa có thành viên');
 
 		const key = round && `${round.id}|${norm(t.title)}`;

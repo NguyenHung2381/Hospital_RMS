@@ -14,7 +14,7 @@ import styles from '../pages/Trainees.module.css';
 
 /**
  * Tài khoản đăng nhập của học viên — CẤP RIÊNG, không gộp vào tài khoản nội viện
- * (không hiện ở trang Quản lý người dùng). Cấp / khoá / đặt lại mật khẩu ngay tại đây.
+ * (không hiện ở trang Quản lý người dùng). Cấp / khóa / đặt lại mật khẩu ngay tại đây.
  */
 export function TraineeAccountSection({
 	trainee,
@@ -75,11 +75,11 @@ export function TraineeAccountSection({
 	};
 
 	const toggle = () => {
-		if (active && !window.confirm(`Khoá tài khoản ${trainee.account_username}? Học viên sẽ không đăng nhập được.`))
+		if (active && !window.confirm(`Khóa tài khoản ${trainee.account_username}? Học viên sẽ không đăng nhập được.`))
 			return;
 		void run(async () => {
 			await setTraineeAccountActive(trainee.id, !active);
-			showToast('success', active ? 'Đã khoá tài khoản' : 'Đã mở khoá tài khoản');
+			showToast('success', active ? 'Đã khóa tài khoản' : 'Đã mở khóa tài khoản');
 		}, 'Cập nhật tài khoản thất bại');
 	};
 
@@ -98,7 +98,7 @@ export function TraineeAccountSection({
 						<span className={ds.factLabel}>Trạng thái</span>
 						<span>
 							<span className={active ? ds.chipDone : ds.chipMissing}>
-								{active ? 'Đang hoạt động' : 'Đã khoá'}
+								{active ? 'Đang hoạt động' : 'Đã khóa'}
 							</span>
 						</span>
 					</div>
@@ -107,7 +107,7 @@ export function TraineeAccountSection({
 					<span className={ds.factLabel}>
 						Tài khoản học viên được cấp riêng, tách khỏi tài khoản nội viện — kể cả học viên là nhân
 						viên bệnh viện. Tên đăng nhập dạng viết tắt họ tên + số thứ tự (vd NVA_0001); mật khẩu mặc
-						định là tên đăng nhập, phải đổi ở lần đăng nhập đầu. Xoá hoặc ngừng hồ sơ học viên sẽ khoá
+						định là tên đăng nhập, phải đổi ở lần đăng nhập đầu. Xóa hoặc ngừng hồ sơ học viên sẽ khóa
 						tài khoản.
 					</span>
 				</div>
@@ -136,7 +136,7 @@ export function TraineeAccountSection({
 								onClick={toggle}
 								disabled={busy}
 							>
-								{active ? 'Khoá tài khoản' : 'Mở khoá tài khoản'}
+								{active ? 'Khóa tài khoản' : 'Mở khóa tài khoản'}
 							</button>
 						</>
 					)}

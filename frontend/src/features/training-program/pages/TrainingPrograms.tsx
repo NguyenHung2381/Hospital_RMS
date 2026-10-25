@@ -269,7 +269,7 @@ export default function TrainingPrograms() {
 								className={styles.clearSelectionBtn}
 								onClick={d.clearFilters}
 							>
-								Xoá lọc
+								Xóa lọc
 							</button>
 						)}
 						<DeleteAllButton
@@ -313,7 +313,7 @@ export default function TrainingPrograms() {
 							<TableEmpty
 								colSpan={7}
 								title='Không tìm thấy chương trình đào tạo'
-								desc={d.hasActiveFilter ? 'Thử thay đổi từ khoá hoặc bộ lọc' : 'Chưa có chương trình nào'}
+								desc={d.hasActiveFilter ? 'Thử thay đổi từ khóa hoặc bộ lọc' : 'Chưa có chương trình nào'}
 							/>
 						) : (
 							d.paged.map((p, i) => {
@@ -362,7 +362,7 @@ export default function TrainingPrograms() {
 													tone='green'
 													dot
 												>
-													{PROGRAM_STATUS_LABELS.active} · {p.course_count} khoá
+													{PROGRAM_STATUS_LABELS.active} · {p.course_count} khóa
 												</Badge>
 											) : (
 												<Badge

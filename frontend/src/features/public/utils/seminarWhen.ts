@@ -24,7 +24,7 @@ export const seminarWhen = (s: When) => {
 	return `${at(s.start_date, s.start_time)} – ${at(s.end_date, s.end_time)}`;
 };
 
-/** Khung giờ làm bài test: "16:00 – 16:30 ngày 16/10/2026" (rỗng nếu chưa đặt giờ). */
+/** Khung giờ làm bài kiểm tra: "16:00 – 16:30 ngày 16/10/2026" (rỗng nếu chưa đặt giờ). */
 export const testWindowText = (w: SeminarTicket['test']['window']) => {
 	if (!w) return '';
 	// Dừng tiếp nhận ở ngày khác ngày mở bài

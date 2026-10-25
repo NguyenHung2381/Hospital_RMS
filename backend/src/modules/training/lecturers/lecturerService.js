@@ -225,8 +225,8 @@ const createFromStaff = async (userIds, actorId) => {
 	return { created: createdList, skipped };
 };
 
-// Xoá cứng nếu chưa từng được phân công; nếu đã có lịch sử phân công (Giai
-// đoạn 4: lecturer_assignments), chỉ vô hiệu hoá để giữ tên hiển thị ở lịch sử.
+// Xóa cứng nếu chưa từng được phân công; nếu đã có lịch sử phân công (Giai
+// đoạn 4: lecturer_assignments), chỉ vô hiệu hóa để giữ tên hiển thị ở lịch sử.
 const remove = async (id, actorId) => {
 	const pool = await getPool();
 	let used = { recordset: [] };

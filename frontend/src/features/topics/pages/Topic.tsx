@@ -79,7 +79,7 @@ export default function TopicPage() {
 
 	return (
 		<AdminLayout
-			pageTitle='Quản lý Đề tài Nghiên cứu'
+			pageTitle='Đề tài nghiên cứu'
 			pageSubtitle='Danh sách và theo dõi tất cả đề tài NCKH'
 			headerActions={headerActions}
 		>
@@ -166,7 +166,7 @@ export default function TopicPage() {
 									danger
 									onClick={() => setBulkModal('delete')}
 								>
-									<TrashSvg /> Xoá đã chọn
+									<TrashSvg /> Xóa đã chọn
 								</BulkButton>
 								<button
 									type='button'
@@ -254,7 +254,7 @@ export default function TopicPage() {
 							className={styles.filterSelectWrap}
 							options={[
 								{ id: 'de_tai', label: 'Đề tài NCKH' },
-								{ id: 'bai_bao', label: 'Bài báo & Tập san' },
+								{ id: 'bai_bao', label: 'Bài báo & tập san' },
 							]}
 							selected={d.articleTypeFilters}
 							onChange={(next) => {
@@ -269,7 +269,7 @@ export default function TopicPage() {
 							getIds={() => d.fetchExportIds('filtered')}
 							onDelete={d.handleBulkDelete}
 							onDone={rowSel.clearSelection}
-							note='Thành viên, file và dữ liệu liên quan của các đề tài này cũng bị xoá theo.'
+							note='Thành viên, file và dữ liệu liên quan của các đề tài này cũng bị xóa theo.'
 						/>
 					</div>
 				</div>
@@ -340,7 +340,7 @@ export default function TopicPage() {
 												Không tìm thấy đề tài nào
 											</p>
 											<p className={styles.emptyDesc}>
-												Thử thay đổi bộ lọc hoặc từ khoá tìm kiếm
+												Thử thay đổi bộ lọc hoặc từ khóa tìm kiếm
 											</p>
 										</div>
 									</td>
@@ -547,7 +547,7 @@ export default function TopicPage() {
 				count={rowSel.selectedCount}
 				itemLabel='đề tài'
 				loading={d.bulkBusy}
-				note='Toàn bộ thành viên, tiến độ và tài liệu của các đề tài này cũng bị xoá.'
+				note='Toàn bộ thành viên, tiến độ và tài liệu của các đề tài này cũng bị xóa.'
 				onClose={() => setBulkModal(null)}
 				onConfirm={async () => {
 					await d.handleBulkDelete([...rowSel.selectedIds]);

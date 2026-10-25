@@ -15,16 +15,21 @@ const helmet = require('helmet').default;
 const rateLimit = require('./utils/rateLimit');
 const { errorHandler } = require('./middlewares/errorHandler');
 const swaggerUi = require('swagger-ui-express');
-const swaggerSpec = require('./config/swagger');
 const swaggerAuth = require('./middlewares/swaggerAuth');
 const activityLogger = require('./middlewares/activityLogger');
 const { signUploadUrlsInJson, verifyUploadSignature } = require('./utils/signedUpload');
 
 const app = express();
 
+// Express mặc định băm (SHA1) toàn bộ body của MỌI response để sinh ETag. API ở
+// đây luôn trả Cache-Control: no-store nên trình duyệt không bao giờ gửi lại
+// If-None-Match — ETag chỉ tốn CPU. /uploads dùng ETag riêng của express.static,
+// không bị ảnh hưởng.
+app.set('etag', false);
+
 // Số hop reverse-proxy đứng trước server (Nginx/IIS ARR/LB...) — bắt buộc set
 // đúng khi deploy sau proxy, nếu không req.ip luôn là IP của proxy khiến
-// rate-limit/khoá tài khoản theo IP mất tác dụng (coi mọi client là 1 IP),
+// rate-limit/khóa tài khoản theo IP mất tác dụng (coi mọi client là 1 IP),
 // hoặc bị giả mạo qua X-Forwarded-For nếu set sai. Không set = giữ hành vi
 // mặc định cũ của Express (không tin proxy nào, dùng IP kết nối trực tiếp).
 // config/env.js đã đổi "1", "2"... thành number (Express hiểu là số hop, không
@@ -92,7 +97,7 @@ app.use(
 app.use('/health', require('./modules/system/health.routes'));
 
 // ─── Swagger UI (chỉ admin mới truy cập được) ────────────────────────────────
-// Basic Auth không có khoá tài khoản như /auth/login — chặn brute-force
+// Basic Auth không có khóa tài khoản như /auth/login — chặn brute-force
 // SWAGGER_PASS bằng rate-limit theo IP.
 if (swaggerEnabled) {
 	const swaggerLimiter = rateLimit({
@@ -103,19 +108,28 @@ if (swaggerEnabled) {
 		legacyHeaders: false,
 		message: 'Quá nhiều lần đăng nhập thất bại. Vui lòng thử lại sau ít phút.',
 	});
+	/** @type {import('express').RequestHandler | undefined} */
+	let swaggerPage;
 	app.use(
 		'/api-docs',
 		swaggerLimiter,
 		swaggerAuth,
+		// Quét JSDoc sinh spec (~360ms CPU, ~13MB heap) ở lần mở /api-docs đầu tiên
+		// thay vì mỗi lần khởi động (mỗi worker cluster, mỗi lần nodemon restart).
+		// Phải chạy trước swaggerUi.serve: setup() cũng nạp spec cho swagger-ui-init.js.
+		(req, res, next) => {
+			swaggerPage ??= swaggerUi.setup(require('./config/swagger'), {
+				customSiteTitle: 'RMS Hospital API Docs',
+				swaggerOptions: {
+					persistAuthorization: true, // giữ token sau khi reload
+					docExpansion: 'none', // đóng gọn tất cả endpoint mặc định
+					filter: true, // ô tìm kiếm endpoint
+				},
+			});
+			next();
+		},
 		swaggerUi.serve,
-		swaggerUi.setup(swaggerSpec, {
-			customSiteTitle: 'RMS Hospital API Docs',
-			swaggerOptions: {
-				persistAuthorization: true, // giữ token sau khi reload
-				docExpansion: 'none', // đóng gọn tất cả endpoint mặc định
-				filter: true, // ô tìm kiếm endpoint
-			},
-		}),
+		(req, res, next) => swaggerPage(req, res, next),
 	);
 }
 

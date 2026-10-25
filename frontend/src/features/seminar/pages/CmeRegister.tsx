@@ -115,7 +115,7 @@ export default function CmeRegister() {
 		};
 	}, [year, page, pageSize, debouncedSearch, refreshKey]);
 
-	// Đổi năm / từ khoá (đã debounce) thì quay về trang đầu (điều chỉnh khi
+	// Đổi năm / từ khóa (đã debounce) thì quay về trang đầu (điều chỉnh khi
 	// render, không dùng effect, để tránh 1 lượt fetch thừa ở trang cũ)
 	const [pageResetKey, setPageResetKey] = useState(`${year}|${debouncedSearch}`);
 	if (pageResetKey !== `${year}|${debouncedSearch}`) {
@@ -139,7 +139,7 @@ export default function CmeRegister() {
 	};
 
 	const handleRevoke = async (seminarId: string, pid: string, seq: number) => {
-		if (!window.confirm(`Thu hồi số quyết định ${seq}? Dòng này sẽ bị xoá khỏi sổ.`)) return;
+		if (!window.confirm(`Thu hồi số quyết định ${seq}? Dòng này sẽ bị xóa khỏi sổ.`)) return;
 		setRevokingId(pid);
 		try {
 			await revokeCme(seminarId, pid);
@@ -169,7 +169,7 @@ export default function CmeRegister() {
 		[rowSel.selectedIds],
 	);
 
-	// Đổi năm / từ khoá thì bỏ chọn (điều chỉnh khi render, đồng bộ với reset trang ở trên).
+	// Đổi năm / từ khóa thì bỏ chọn (điều chỉnh khi render, đồng bộ với reset trang ở trên).
 	const [selResetKey, setSelResetKey] = useState(`${year}|${debouncedSearch}`);
 	if (selResetKey !== `${year}|${debouncedSearch}` && !revokeAllBusy) {
 		setSelResetKey(`${year}|${debouncedSearch}`);
@@ -215,7 +215,7 @@ export default function CmeRegister() {
 		if (n === 0) return;
 		if (
 			!window.confirm(
-				`Thu hồi số quyết định của ${n} lượt cấp đã chọn? Các dòng này sẽ bị xoá khỏi sổ.`,
+				`Thu hồi số quyết định của ${n} lượt cấp đã chọn? Các dòng này sẽ bị xóa khỏi sổ.`,
 			)
 		)
 			return;
@@ -233,9 +233,9 @@ export default function CmeRegister() {
 		}
 	};
 
-	// Thu hồi TẤT CẢ lượt cấp đang khớp bộ lọc (năm + từ khoá), kể cả trang chưa
+	// Thu hồi TẤT CẢ lượt cấp đang khớp bộ lọc (năm + từ khóa), kể cả trang chưa
 	// hiển thị — tải riêng toàn bộ tập khớp bộ lọc ngay lúc thực hiện (server giờ
-	// chỉ trả về đúng 1 trang cho phần hiển thị), tránh xoá nhầm/thiếu do dữ liệu cũ.
+	// chỉ trả về đúng 1 trang cho phần hiển thị), tránh xóa nhầm/thiếu do dữ liệu cũ.
 	const handleRevokeAll = async () => {
 		if (confirmText.trim() !== String(total)) return;
 		setRevokeAllBusy(true);
@@ -401,7 +401,7 @@ export default function CmeRegister() {
 							<TableEmpty
 								colSpan={perms.canCme ? 12 : 11}
 								title={search ? 'Không tìm thấy lượt cấp nào' : `Chưa cấp số CME nào trong năm ${year}`}
-								desc={search ? 'Thử đổi từ khoá tìm kiếm' : 'Sổ sẽ tự ghi khi cấp CME từ danh sách đại biểu của hội nghị'}
+								desc={search ? 'Thử đổi từ khóa tìm kiếm' : 'Sổ sẽ tự ghi khi cấp CME từ danh sách đại biểu của hội nghị'}
 							/>
 						) : (
 							paged.map((e, i) => (
@@ -503,7 +503,7 @@ export default function CmeRegister() {
 							onClick={() => setRevokeAllOpen(false)}
 							disabled={revokeAllBusy}
 						>
-							Huỷ
+							Hủy
 						</Button>
 						<Button
 							variant='danger'
@@ -521,12 +521,12 @@ export default function CmeRegister() {
 					<strong>toàn bộ {total} lượt cấp</strong>{' '}
 					{search ? (
 						<>
-							đang khớp từ khoá “<strong>{search}</strong>”
+							đang khớp từ khóa “<strong>{search}</strong>”
 						</>
 					) : (
 						<>trong năm {year}</>
 					)}
-					. Các dòng này sẽ bị xoá khỏi sổ và <strong>không thể hoàn tác</strong>.
+					. Các dòng này sẽ bị xóa khỏi sổ và <strong>không thể hoàn tác</strong>.
 				</p>
 				<label className={styles.formLabel} style={{ display: 'block', marginBottom: 6 }}>
 					Nhập số <strong>{total}</strong> để xác nhận

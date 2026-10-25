@@ -5,7 +5,7 @@ const { consumeOnce } = require('./oneTimeToken');
 
 // ─── Lá chắn đăng nhập: thử thách proof-of-work tự thích ứng ─────────────────
 // Mỗi lượt đăng nhập sai tốn server ~200ms CPU (bcrypt). Rate-limit theo IP
-// (modules/auth/auth.routes.js, nginx) không chặn được kẻ tấn công dùng nhiều IP, còn khoá
+// (modules/auth/auth.routes.js, nginx) không chặn được kẻ tấn công dùng nhiều IP, còn khóa
 // tài khoản chỉ bảo vệ từng tài khoản riêng lẻ — rải 1 mật khẩu lên hàng nghìn
 // tài khoản (password spraying) vẫn bắt server chạy bcrypt cho mỗi lượt.
 //
@@ -86,7 +86,7 @@ const del = async (k) => {
 	try {
 		await redis.del(k);
 	} catch {
-		/* đã xoá bản dự phòng ở trên */
+		/* đã xóa bản dự phòng ở trên */
 	}
 };
 
@@ -128,7 +128,7 @@ const assess = async ({ ip, username }) => {
 
 // ─── Thử thách ───────────────────────────────────────────────────────────────
 // Token gắn với username (không dùng lời giải của tài khoản này cho tài khoản
-// khác) và chỉ dùng được 1 lần (jti). Khoá ký riêng 'login-pow' (utils/keys.js).
+// khác) và chỉ dùng được 1 lần (jti). Khóa ký riêng 'login-pow' (utils/keys.js).
 const issueChallenge = ({ username, bits }) => ({
 	token: signToken(
 		'login-pow',
@@ -199,7 +199,7 @@ const recordFailure = async ({ ip, username, userAgent }) => {
 	}
 };
 
-// Đăng nhập đúng: xoá bộ đếm của username (chủ tài khoản không bị làm khó vì
+// Đăng nhập đúng: xóa bộ đếm của username (chủ tài khoản không bị làm khó vì
 // người khác đã đoán sai trước đó). Bộ đếm theo IP GIỮ NGUYÊN — nếu không, kẻ
 // tấn công có 1 tài khoản thật chỉ cần đăng nhập đúng xen kẽ là "tẩy" được IP.
 const recordSuccess = async ({ username }) => {

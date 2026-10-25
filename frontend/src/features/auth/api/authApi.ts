@@ -30,7 +30,7 @@ export interface Requires2FAResponse {
 	pre_auth_token: string;
 }
 
-// Lỗi đăng nhập bị khoá tạm (sai mật khẩu nhiều lần / quá giới hạn theo IP) —
+// Lỗi đăng nhập bị khóa tạm (sai mật khẩu nhiều lần / quá giới hạn theo IP) —
 // kèm số giây còn lại để trang đăng nhập đếm ngược.
 export class LoginLockedError extends Error {
 	retryAfterSeconds: number;
@@ -183,21 +183,26 @@ export async function verifySetup2FAApi(accessToken: string, code: string): Prom
 	return (json.data?.backup_codes as string[]) ?? [];
 }
 
-export async function disable2FAApi(accessToken: string, password: string): Promise<void> {
+// code: mã 6 số từ ứng dụng xác thực hoặc 1 mã khôi phục
+export async function disable2FAApi(
+	accessToken: string,
+	password: string,
+	code: string,
+): Promise<void> {
 	const res = await fetch(`${BASE_URL}/api/v1/auth/2fa/disable`, {
 		method: 'POST',
 		headers: {
 			'Content-Type': 'application/json',
 			Authorization: `Bearer ${accessToken}`,
 		},
-		body: JSON.stringify({ password }),
+		body: JSON.stringify({ password, code }),
 	});
 	const json = await res.json();
 	if (!res.ok || !json.success) throw new Error(json.message ?? 'Có lỗi xảy ra, vui lòng thử lại');
 }
 
-// Đăng xuất thật: server thu hồi phiên (refresh token trong cookie) và xoá
-// cookie; sau đó mới xoá dữ liệu phía trình duyệt. Lỗi mạng vẫn xoá dữ liệu
+// Đăng xuất thật: server thu hồi phiên (refresh token trong cookie) và xóa
+// cookie; sau đó mới xóa dữ liệu phía trình duyệt. Lỗi mạng vẫn xóa dữ liệu
 // cục bộ — người dùng bấm đăng xuất thì luôn phải ra khỏi hệ thống.
 export async function logout(): Promise<void> {
 	try {
@@ -208,7 +213,7 @@ export async function logout(): Promise<void> {
 			body: '{}',
 		});
 	} catch {
-		// bỏ qua — vẫn xoá phiên phía trình duyệt bên dưới
+		// bỏ qua — vẫn xóa phiên phía trình duyệt bên dưới
 	}
 	clearAuth();
 	broadcastLogout();

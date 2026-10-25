@@ -424,8 +424,9 @@
 	font-size: 13px;
 	font-weight: 600;
 }
-.formGrid input,
-.formGrid select {
+/* Chỉ ô nhập trực tiếp trong label — không đè lên ô bên trong TimePicker / DatePicker */
+.formGrid > label > input,
+.formGrid > label > select {
 	width: 100%;
 	box-sizing: border-box;
 	padding: 8px 10px;

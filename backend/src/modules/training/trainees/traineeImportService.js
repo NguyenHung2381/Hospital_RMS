@@ -206,7 +206,7 @@ const WRITE_FIELDS = [
 	'notes',
 ];
 
-// Cập nhật: chỉ ghi ô có giá trị — ô trống trong file không xoá dữ liệu đang có.
+// Cập nhật: chỉ ghi ô có giá trị — ô trống trong file không xóa dữ liệu đang có.
 const filledFields = (p) =>
 	Object.fromEntries(WRITE_FIELDS.filter((f) => p[f] != null && p[f] !== '').map((f) => [f, p[f]]));
 

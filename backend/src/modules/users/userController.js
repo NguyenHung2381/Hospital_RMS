@@ -94,7 +94,7 @@ const updateOne = asyncHandler(async (req, res) => {
 const removeOne = asyncHandler(async (req, res) => {
 	const actor = req.user;
 	if (req.params.id === actor.id) {
-		return forbidden(res, 'Không thể tự xoá tài khoản của chính mình');
+		return forbidden(res, 'Không thể tự xóa tài khoản của chính mình');
 	}
 	const target = await loadManageableTarget(actor, req.params.id);
 	if (!target) return notFound(res);
@@ -111,7 +111,7 @@ const resetPassword = asyncHandler(async (req, res) => {
 		req.user.id,
 		req.ip,
 	);
-	return success(res, data, 'Reset mật khẩu thành công');
+	return success(res, data, 'Đặt lại mật khẩu thành công');
 });
 
 const getMe = asyncHandler(async (req, res) => {
@@ -143,7 +143,7 @@ const updateMe = asyncHandler(async (req, res) => {
 const searchMembers = asyncHandler(async (req, res) => {
 	const { q = '', department_id, limit = 10 } = req.query;
 	// Mở cho mọi tài khoản đăng nhập (chọn người khi thêm thành viên) và có trả
-	// email — bắt buộc có từ khoá + tối đa 20 kết quả, không để tải cả danh bạ
+	// email — bắt buộc có từ khóa + tối đa 20 kết quả, không để tải cả danh bạ
 	// nhân viên bằng 1 request (trước đây limit không giới hạn, q rỗng trả tất cả).
 	if (!String(q).trim()) {
 		return success(res, { data: [], pagination: { page: 1, limit: 0, total: 0 } });

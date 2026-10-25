@@ -219,7 +219,7 @@ export interface IssueCmeResult {
 	from: number | null;
 	to: number | null;
 	year: number;
-	/** Người tự đăng ký chưa điểm danh / chưa làm bài test — không được cấp */
+	/** Người tự đăng ký chưa điểm danh / chưa làm bài kiểm tra — không được cấp */
 	skipped: number;
 }
 

@@ -206,7 +206,7 @@ function ExportReportModal({
 			footer={
 				<>
 					<button className={styles.btnCancel} onClick={onClose} disabled={busy}>
-						Huỷ
+						Hủy
 					</button>
 					<button className={styles.btnPrimary} onClick={run} disabled={busy}>
 						{busy ? <span className={styles.spinner} /> : <DownloadSvg />} Xuất Excel
@@ -266,7 +266,7 @@ function ExportReportModal({
 					<>
 						<br />
 						Áp dụng bộ lọc đang chọn:{' '}
-						{[department && `khoa/phòng "${department}"`, search.trim() && `từ khoá "${search.trim()}"`]
+						{[department && `khoa/phòng "${department}"`, search.trim() && `từ khóa "${search.trim()}"`]
 							.filter(Boolean)
 							.join(', ')}
 						.
@@ -399,7 +399,7 @@ function RecordFormModal({
 			footer={
 				<>
 					<button className={styles.btnCancel} onClick={onClose} disabled={busy}>
-						Huỷ
+						Hủy
 					</button>
 					<button className={styles.btnPrimary} onClick={save} disabled={busy}>
 						{busy ? <span className={styles.spinner} /> : <CheckSvg />} Lưu
@@ -601,7 +601,7 @@ function AddStaffModal({
 			footer={
 				<>
 					<button className={styles.btnCancel} onClick={onClose} disabled={busy}>
-						Huỷ
+						Hủy
 					</button>
 					<button className={styles.btnPrimary} onClick={save} disabled={busy}>
 						{busy ? <span className={styles.spinner} /> : <PlusSvg />} Thêm nhân viên
@@ -1049,7 +1049,7 @@ function ImportModal({
 				footer={
 					<>
 						<button className={styles.btnCancel} onClick={onClose} disabled={loading}>
-							{result ? 'Đóng' : 'Huỷ'}
+							{result ? 'Đóng' : 'Hủy'}
 						</button>
 						{!result && (
 							<button
@@ -1530,7 +1530,7 @@ function ImportModal({
 				footer={
 					<>
 						<button className={styles.btnCancel} onClick={() => setConfirmDup(false)}>
-							Huỷ
+							Hủy
 						</button>
 						<button className={styles.btnGhost} onClick={() => commit(true)}>
 							Nhập cả dòng trùng ({validCount})
@@ -1663,7 +1663,7 @@ export default function CmeManualRecords() {
 		setStatusFilter('');
 	};
 
-	// Báo cáo tổng hợp theo nhân sự — chọn khoảng năm trong hộp thoại, lọc khoa/từ khoá theo trang
+	// Báo cáo tổng hợp theo nhân sự — chọn khoảng năm trong hộp thoại, lọc khoa/từ khóa theo trang
 	const [showExport, setShowExport] = useState(false);
 
 	// Duyệt / từ chối đồng loạt: chọn theo id (giữ khi đổi trang), bỏ qua bản ghi
@@ -1853,7 +1853,7 @@ ${missing} ghi nhận chưa có tín chỉ sẽ được bỏ qua (cần duyệt
 						<YearFilter value={year} onChange={setYear} />
 						{hasFilter && (
 							<button className={styles.clearSelectionBtn} onClick={clearFilters}>
-								Xoá lọc
+								Xóa lọc
 							</button>
 						)}
 						{perms.canCme && (
@@ -1914,7 +1914,7 @@ ${missing} ghi nhận chưa có tín chỉ sẽ được bỏ qua (cần duyệt
 										<XSvg /> Từ chối đã chọn ({toReject.length})
 									</BulkButton>
 									<BulkButton danger disabled={bulkBusy} onClick={() => setBulkDeleting(true)}>
-										<TrashSvg /> Xoá đã chọn ({selectedRecs.length})
+										<TrashSvg /> Xóa đã chọn ({selectedRecs.length})
 									</BulkButton>
 								</>
 							}
@@ -2057,7 +2057,7 @@ ${missing} ghi nhận chưa có tín chỉ sẽ được bỏ qua (cần duyệt
 													</div>
 													<div
 														className={`${styles.actionBtn} ${styles.danger}`}
-														title='Xoá'
+														title='Xóa'
 														onClick={() => setDeletingId(r.id)}
 													>
 														<TrashSvg />
@@ -2125,7 +2125,7 @@ ${missing} ghi nhận chưa có tín chỉ sẽ được bỏ qua (cần duyệt
 					setBulkRejecting(false);
 				}}
 			>
-				Huỷ
+				Hủy
 			</button>
 			<button
 				className={styles.btnDanger}
@@ -2148,7 +2148,7 @@ ${missing} ghi nhận chưa có tín chỉ sẽ được bỏ qua (cần duyệt
 				footer={
 					<>
 						<button className={styles.btnCancel} onClick={() => setApproving(null)}>
-							Huỷ
+							Hủy
 						</button>
 						<button className={styles.btnPrimary} onClick={handleApprove} disabled={!approveCreditsOk}>
 							<CheckSvg /> Duyệt
@@ -2190,19 +2190,19 @@ ${missing} ghi nhận chưa có tín chỉ sẽ được bỏ qua (cần duyệt
 			<Modal
 				open={!!deletingId}
 				onClose={() => setDeletingId(null)}
-				title='Xoá ghi nhận CME'
+				title='Xóa ghi nhận CME'
 				footer={
 					<>
 						<button className={styles.btnCancel} onClick={() => setDeletingId(null)}>
-							Huỷ
+							Hủy
 						</button>
 						<button className={styles.btnDanger} onClick={() => deletingId && handleDelete(deletingId)}>
-							<TrashSvg /> Xoá
+							<TrashSvg /> Xóa
 						</button>
 					</>
 				}
 			>
-				Bạn có chắc muốn xoá ghi nhận CME này? Hành động này không thể hoàn tác.
+				Bạn có chắc muốn xóa ghi nhận CME này? Hành động này không thể hoàn tác.
 			</Modal>
 		</AdminLayout>
 	);

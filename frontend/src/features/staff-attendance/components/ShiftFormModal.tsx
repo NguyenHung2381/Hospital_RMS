@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { ClockSvg } from '@/assets/icons';
-import { Badge, Modal, ModalActions, type BadgeTone } from '@/shared/components';
+import { Badge, Modal, ModalActions, TimePicker, type BadgeTone } from '@/shared/components';
 import { FormField } from '@/shared/components/Input/FormField';
 import m from '@/shared/components/Modal/Modal.module.css';
 import { cx } from '@/shared/utils/cx';
@@ -73,7 +73,7 @@ export function ShiftFormModal({
 			open
 			onClose={onClose}
 			icon={<ClockSvg />}
-			title={shift ? 'Sửa ca làm' : 'Thêm ca làm'}
+			title={shift ? 'Sửa ca' : 'Thêm ca'}
 			subtitle={shift ? `${shift.code} — ${shift.name}` : 'Giờ vào/ra và khoảng thời gian được điểm danh'}
 			size='lg'
 			bodyClassName={m.stack}
@@ -99,13 +99,13 @@ export function ShiftFormModal({
 					<input className={m.formInput} value={f.code} maxLength={10} onChange={(e) => set('code', e.target.value)} placeholder='VD: S' />
 				</FormField>
 				<FormField label='Giờ vào' required>
-					<input type='time' className={m.formInput} value={f.start_time} onChange={(e) => set('start_time', e.target.value)} />
+					<TimePicker value={f.start_time} onChange={(v) => set('start_time', v)} />
 				</FormField>
 				<FormField
 					label='Giờ ra'
 					required
 				>
-					<input type='time' className={m.formInput} value={f.end_time} onChange={(e) => set('end_time', e.target.value)} />
+					<TimePicker value={f.end_time} onChange={(v) => set('end_time', v)} />
 				</FormField>
 				<FormField label='Được điểm danh vào sớm (phút)'>
 					<input {...num('checkin_before_min')} />

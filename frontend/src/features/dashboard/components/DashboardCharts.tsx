@@ -296,7 +296,7 @@ export function DeptBarChart({
 	deptCats,
 	loading,
 	error,
-	title = 'Phân bố đề tài theo Khoa / Phòng ban chủ trì',
+	title = 'Phân bố đề tài theo khoa/phòng chủ trì',
 	subtitle = 'Thống kê số lượng đề tài và cơ cấu lĩnh vực của các đơn vị',
 }: DeptBarChartProps) {
 	const minWidth = Math.max(deptBarData.length * 130, 100);

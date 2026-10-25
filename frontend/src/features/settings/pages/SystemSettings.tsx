@@ -25,7 +25,7 @@ type Field = {
 	defaultOn?: boolean;
 	/** Mặc định của backend khi chưa cấu hình (cho multi — danh sách phân cách dấu phẩy). */
 	defaultValue?: string;
-	/** Nhãn bên cạnh công tắc, tuỳ trạng thái. */
+	/** Nhãn bên cạnh công tắc, tùy trạng thái. */
 	onText?: string;
 	offText?: string;
 };
@@ -37,11 +37,11 @@ type Section = {
 	groups: { title?: string; fields: Field[] }[];
 };
 
-// Hiện ở cả tab "Module chức năng" lẫn tab "Điểm danh" (cùng 1 key)
+// Hiện ở cả tab "Phân hệ chức năng" lẫn tab "Điểm danh" (cùng 1 key)
 const ATTENDANCE_TOGGLE: Field = {
 	key: 'MODULE_ATTENDANCE',
 	label: 'Điểm danh học viên',
-	hint: 'Bật để hiện mục Điểm danh ở cổng học viên (học viên điểm danh vào/ra theo ca trong thời gian khóa học) và Bảng điểm danh, Phân ca học viên cho quản trị. Cấu hình IP và vị trí ở tab "Điểm danh" trước khi bật.',
+	hint: 'Bật để hiện mục Điểm danh ở cổng học viên (học viên điểm danh vào/ra theo ca trong thời gian khóa học) và mục Ca & điểm danh cho quản trị. Cấu hình IP và vị trí ở tab "Điểm danh" trước khi bật.',
 	type: 'bool',
 	defaultOn: false,
 	onText: 'Đang bật',
@@ -51,7 +51,7 @@ const ATTENDANCE_TOGGLE: Field = {
 const SECTIONS: Section[] = [
 	{
 		id: 'security',
-		title: 'Bảo mật & Tài khoản',
+		title: 'Bảo mật & tài khoản',
 		sub: '2FA, quên mật khẩu, chống bot',
 		groups: [
 			{
@@ -114,7 +114,7 @@ const SECTIONS: Section[] = [
 					{
 						key: 'RECAPTCHA_HOSTNAMES',
 						label: 'Chỉ nhận từ tên miền',
-						hint: 'Tuỳ chọn, phân cách bằng dấu phẩy. Để trống = không kiểm tra tên miền. Không đặt khi dùng khoá TEST của Google.',
+						hint: 'Tùy chọn, phân cách bằng dấu phẩy. Để trống = không kiểm tra tên miền. Không đặt khi dùng khóa TEST của Google.',
 						placeholder: 'rms.benhvien.vn',
 					},
 				],
@@ -146,7 +146,7 @@ const SECTIONS: Section[] = [
 						['TOPIC_RESULT', 'Kết quả duyệt đề tài', 'Phê duyệt / từ chối / yêu cầu bổ sung — gửi chủ nhiệm và thành viên.', true],
 						['TOPIC_SUBMITTED', 'Có đề tài mới cần duyệt', 'Gửi người có quyền duyệt khi đề tài được nộp.', false],
 						['ACCOUNT_GRANTED', 'Cấp tài khoản thành viên đề tài', 'Báo thành viên mới, khoa và chủ nhiệm (không kèm mật khẩu).', false],
-						['DEADLINE_REMINDER', 'Nhắc deadline đợt NCKH', 'Trước hạn và khi quá hạn các mốc của đợt.', true],
+						['DEADLINE_REMINDER', 'Nhắc hạn nộp đợt NCKH', 'Trước hạn và khi quá hạn các mốc của đợt.', true],
 						['COURSE_ENROLLMENT', 'Kết quả đăng ký khóa học', 'Gửi học viên khi đăng ký được duyệt / chờ / từ chối.', true],
 						['SEMINAR_BADGE', 'Thẻ đại biểu hội nghị', 'Gửi kèm QR điểm danh sau khi đăng ký hội nghị công khai.', true],
 						['PASSWORD_EXPIRY', 'Nhắc đổi mật khẩu', 'Khi mật khẩu lâu chưa đổi.', true],
@@ -202,14 +202,14 @@ const SECTIONS: Section[] = [
 	},
 	{
 		id: 'modules',
-		title: 'Module chức năng',
+		title: 'Phân hệ chức năng',
 		sub: 'Bật/tắt từng phân hệ',
 		groups: [
 			{
 				fields: [
 					{ key: 'MODULE_RESEARCH', label: 'Nghiên cứu khoa học', hint: 'Đề tài, đợt, hội đồng chấm, phê duyệt, danh mục phân loại.', type: 'bool', defaultOn: true, onText: 'Đang bật', offText: 'Đã tắt' },
-					{ key: 'MODULE_TRAINING', label: 'Đào tạo', hint: 'Kế hoạch, chương trình, khóa học, học viên, giảng viên, ngân hàng câu hỏi.', type: 'bool', defaultOn: true, onText: 'Đang bật', offText: 'Đã tắt' },
-					{ key: 'MODULE_SEMINAR', label: 'Hội nghị & Tín chỉ CME', hint: 'Hội thảo, quét vé, sổ cấp chứng nhận, ghi nhận độc lập, cảnh báo tín chỉ.', type: 'bool', defaultOn: true, onText: 'Đang bật', offText: 'Đã tắt' },
+					{ key: 'MODULE_TRAINING', label: 'Đào tạo', hint: 'Chương trình, khóa học, hồ sơ thực hành GPHN, học viên, giảng viên, ngân hàng câu hỏi.', type: 'bool', defaultOn: true, onText: 'Đang bật', offText: 'Đã tắt' },
+					{ key: 'MODULE_SEMINAR', label: 'Hội nghị & tín chỉ CME', hint: 'Hội thảo, tập huấn bệnh viện, quét vé, sổ cấp chứng nhận, ghi nhận độc lập, theo dõi ngưỡng tín chỉ.', type: 'bool', defaultOn: true, onText: 'Đang bật', offText: 'Đã tắt' },
 					{ key: 'MODULE_SURVEY', label: 'Khảo sát', type: 'bool', defaultOn: true, onText: 'Đang bật', offText: 'Đã tắt' },
 					ATTENDANCE_TOGGLE,
 				],
@@ -223,7 +223,7 @@ const SECTIONS: Section[] = [
 		groups: (
 			[
 				['MENU_HIDDEN_ADMIN', 'Trang quản trị', 'Sidebar /admin.', ADMIN_MENU],
-				['MENU_HIDDEN_USER', 'Cổng nhân viên', 'Sidebar /user. Menu tài khoản (hồ sơ, thông báo) luôn hiện.', USER_MENU],
+				['MENU_HIDDEN_USER', 'Cổng nhân viên', 'Menu dọc của cổng nhân viên (/user). Menu tài khoản (hồ sơ, thông báo) luôn hiện.', USER_MENU],
 				['MENU_HIDDEN_TRAINEE', 'Cổng học viên', 'Menu ngang + tab đáy điện thoại. Menu tài khoản luôn hiện.', TRAINEE_MENU],
 			] as const
 		).map(([key, label, hint, menu]) => ({
@@ -282,14 +282,14 @@ const SECTIONS: Section[] = [
 					},
 					{
 						key: 'ATTENDANCE_LOCATION',
-						label: '2. Toạ độ bệnh viện',
+						label: '2. Tọa độ bệnh viện',
 						hint: 'Dạng "vĩ độ, kinh độ" — chuột phải vào bệnh viện trên Google Maps để sao chép, hoặc bấm "Dùng vị trí hiện tại" bên dưới khi đang ở viện.',
 						placeholder: '10.7769, 106.7009',
 					},
 					{
 						key: 'ATTENDANCE_RADIUS_M',
 						label: 'Bán kính cho phép (m)',
-						hint: 'Nhân viên phải ở trong bán kính này quanh toạ độ bệnh viện. Mặc định 200m.',
+						hint: 'Học viên phải ở trong bán kính này quanh tọa độ bệnh viện. Mặc định 200m.',
 						type: 'number',
 						placeholder: '200',
 					},
@@ -629,8 +629,8 @@ export default function SystemSettings() {
 											<span className={visible ? undefined : styles.menuOff}>{it.label}</span>
 											{it.locked && <span className={styles.tag}>Luôn hiện</span>}
 											{!it.locked && moduleOff(it.module) && (
-												<span className={`${styles.tag} ${styles.tagWarn}`} title='Module của mục này đang tắt ở tab "Module chức năng"'>
-													Module tắt
+												<span className={`${styles.tag} ${styles.tagWarn}`} title='Phân hệ của mục này đang tắt ở tab "Phân hệ chức năng"'>
+													Phân hệ đang tắt
 												</span>
 											)}
 										</label>
@@ -748,7 +748,7 @@ export default function SystemSettings() {
 											<div className={styles.menuBlock} key={f.key}>
 												<span className={styles.hint}>
 													{f.hint} Mục tắt sẽ biến mất khỏi menu và vào thẳng URL thì báo "đã tắt" — chỉ ẩn giao diện, quyền dữ liệu
-													vẫn theo Vai trò & Quyền.
+													vẫn theo Vai trò & quyền.
 													{(() => {
 														const n = (form[f.key] ?? '').split(',').filter(Boolean).length;
 														return n ? <b> Đang tắt {n} mục.</b> : null;

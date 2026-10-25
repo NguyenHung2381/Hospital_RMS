@@ -89,10 +89,10 @@ export function useLessons() {
 		try {
 			await deleteLesson(deletingLesson.id);
 			setDeletingLesson(null);
-			showToast('success', `Đã xoá "${deletingLesson.title}"`);
+			showToast('success', `Đã xóa "${deletingLesson.title}"`);
 			await load();
 		} catch (err) {
-			showToast('error', err instanceof Error ? err.message : 'Xoá thất bại');
+			showToast('error', err instanceof Error ? err.message : 'Xóa thất bại');
 		} finally {
 			setLoading(false);
 		}
@@ -104,7 +104,7 @@ export function useLessons() {
 			setLoading(true);
 			try {
 				const { okIds, failedCount } = await runBulk(ids, deleteLesson);
-				showToast(failedCount ? 'error' : 'success', bulkToast('xoá', okIds.size, failedCount, 'bài học'));
+				showToast(failedCount ? 'error' : 'success', bulkToast('xóa', okIds.size, failedCount, 'bài học'));
 				await load();
 			} finally {
 				setLoading(false);

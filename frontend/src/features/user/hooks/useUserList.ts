@@ -258,7 +258,7 @@ export function useUserList(): UserListState {
 		await deleteUserApi(deleteUser.id);
 		setDeleteUser(null);
 		refreshData();
-		showToast('info', `Đã xoá tài khoản ${deleteUser.full_name}`);
+		showToast('info', `Đã xóa tài khoản ${deleteUser.full_name}`);
 	}, [deleteUser, refreshData]);
 
 	// Server đặt về mật khẩu mặc định = tên đăng nhập; modal
@@ -280,7 +280,7 @@ export function useUserList(): UserListState {
 				});
 				setUsers((prev) => prev.map((u) => (u.id === id ? updated : u)));
 				refreshData();
-				showToast('info', updated.is_active ? 'Đã kích hoạt tài khoản' : 'Đã khoá tài khoản');
+				showToast('info', updated.is_active ? 'Đã kích hoạt tài khoản' : 'Đã khóa tài khoản');
 			} catch {
 				showToast('error', 'Không thể cập nhật trạng thái');
 			}
@@ -293,7 +293,7 @@ export function useUserList(): UserListState {
 			if (!ids.length) return;
 			const { okIds, failedCount } = await runBulk(ids, deleteUserApi);
 			refreshData();
-			showToast(failedCount ? 'error' : 'info', bulkToast('xoá', okIds.size, failedCount, 'tài khoản'));
+			showToast(failedCount ? 'error' : 'info', bulkToast('xóa', okIds.size, failedCount, 'tài khoản'));
 		},
 		[refreshData],
 	);

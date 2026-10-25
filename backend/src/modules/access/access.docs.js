@@ -61,7 +61,7 @@
  *       200:
  *         description: Cập nhật thành công
  *   delete:
- *     summary: Xoá vai trò
+ *     summary: Xóa vai trò
  *     tags: [Roles]
  *     description: Chỉ admin mới có quyền
  *     parameters:
@@ -71,5 +71,5 @@
  *         schema: { type: string }
  *     responses:
  *       200:
- *         description: Xoá thành công
+ *         description: Xóa thành công
  */

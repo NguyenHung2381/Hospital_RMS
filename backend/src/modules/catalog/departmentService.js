@@ -160,9 +160,9 @@ const update = async (id, data, actorId) => {
 	return dept;
 };
 
-// Xoá khoa phòng: gỡ liên kết (set NULL) mọi bản ghi đang trỏ tới khoa này
-// thay vì xoá kèm, để giữ lại user / đề tài. Riêng topic_related_departments có
-// department_id NOT NULL nên phải xoá dòng. Toàn bộ chạy trong 1 transaction.
+// Xóa khoa/phòng: gỡ liên kết (set NULL) mọi bản ghi đang trỏ tới khoa này
+// thay vì xóa kèm, để giữ lại user / đề tài. Riêng topic_related_departments có
+// department_id NOT NULL nên phải xóa dòng. Toàn bộ chạy trong 1 transaction.
 const remove = async (id, actorId) => {
 	const pool = await getPool();
 	await pool.request().input('id', sql.VarChar(20), id).input('actor_id', sql.VarChar(20), actorId)

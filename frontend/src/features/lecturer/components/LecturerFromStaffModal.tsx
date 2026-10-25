@@ -92,7 +92,7 @@ export function LecturerFromStaffModal({ onClose, onDone }: { onClose: () => voi
 					<InlineLoading label='Đang tìm…' />
 				) : list.length === 0 ? (
 					<div className={styles.emptyState}>
-						<div className={styles.emptyDesc}>Không có nhân sự có CCHN khớp từ khoá</div>
+						<div className={styles.emptyDesc}>Không có nhân sự có CCHN khớp từ khóa</div>
 					</div>
 				) : (
 					list.map((m) => (

@@ -46,7 +46,7 @@ export function useAdminNotifications() {
 	const [fetchedTopicQuery, setFetchedTopicQuery] = useState('');
 	const [selectedTopic, setSelectedTopic] = useState<Topic | null>(null);
 
-	// Đang tải khi từ khoá hiện tại chưa khớp với từ khoá đã fetch xong (suy ra khi render)
+	// Đang tải khi từ khóa hiện tại chưa khớp với từ khóa đã fetch xong (suy ra khi render)
 	const loadingTopics =
 		topicSearch.trim() !== '' && topicSearch.trim() !== fetchedTopicQuery;
 
@@ -267,17 +267,17 @@ export function useAdminNotifications() {
 		setDeletingBatch(true);
 		try {
 			await deleteNotificationBatch(pendingDelete.batch_key);
-			showToast('success', 'Đã xoá thông báo');
+			showToast('success', 'Đã xóa thông báo');
 			setPendingDelete(null);
 			setRefreshKey((k) => k + 1);
 		} catch {
-			showToast('error', 'Xoá thất bại');
+			showToast('error', 'Xóa thất bại');
 		} finally {
 			setDeletingBatch(false);
 		}
 	};
 
-	// Batch key toàn bộ thông báo khớp bộ lọc (mọi trang) — cho nút "Xoá tất cả"
+	// Batch key toàn bộ thông báo khớp bộ lọc (mọi trang) — cho nút "Xóa tất cả"
 	// (server giới hạn 100 dòng/trang nên lấy lần lượt từng trang)
 	const fetchAllBatchKeys = async () => {
 		const keys: string[] = [];
@@ -302,7 +302,7 @@ export function useAdminNotifications() {
 				batchKeys,
 				deleteNotificationBatch,
 			);
-			showToast(failedCount ? 'error' : 'success', bulkToast('xoá', okIds.size, failedCount, 'thông báo'));
+			showToast(failedCount ? 'error' : 'success', bulkToast('xóa', okIds.size, failedCount, 'thông báo'));
 			setRefreshKey((k) => k + 1);
 		} finally {
 			setDeletingBatch(false);

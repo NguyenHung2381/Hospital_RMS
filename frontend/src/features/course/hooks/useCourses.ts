@@ -6,7 +6,7 @@ import { createCourse, deleteCourse, getCourses, updateCourse } from '../api/cou
 import { EMPTY_FORM, TRAINING_TYPE, type Course, type CourseFormData, type ModalType } from '../types/course.type';
 import { DEFAULT_PAGE_SIZE } from '@/shared/utils/constants';
 
-/** Lọc theo tab loại khóa; tab "Tất cả" ('') bỏ đợt GPHN — GPHN làm việc ở trang Hồ sơ thực hành GPHN. */
+/** Lọc theo tab loại khóa; tab "Tất cả" ('') bỏ đợt GPHN — đợt GPHN ở mục Thực hành GPHN (tab Đợt thực hành). */
 export const courseTypeFilter = (trainingTypeId: string) =>
 	trainingTypeId ? { training_type_id: trainingTypeId } : { exclude_training_type_id: TRAINING_TYPE.GPHN };
 
@@ -15,7 +15,6 @@ export function useCourses(trainingTypeId = '') {
 	// Chỉ chứa các dòng của TRANG hiện tại — server lo tìm kiếm & phân trang
 	const [courses, setCourses] = useState<Course[]>([]);
 	const [total, setTotal] = useState(0);
-	const [typeCounts, setTypeCounts] = useState<Record<string, number>>({});
 	const [isLoadingData, setIsLoadingData] = useState(true);
 	const [search, setSearch] = useState('');
 	const [debouncedSearch, setDebouncedSearch] = useState('');
@@ -50,9 +49,6 @@ export function useCourses(trainingTypeId = '') {
 				if (controller.signal.aborted) return;
 				setCourses(res.data);
 				setTotal(res.pagination.total);
-				const counts = res.type_counts ?? {};
-				// Tab "Tất cả" không gồm đợt GPHN (quản lý ở trang Hồ sơ thực hành GPHN)
-				setTypeCounts({ ...counts, '': (counts[''] ?? 0) - (counts[TRAINING_TYPE.GPHN] ?? 0) });
 				const lastPage = pageSize === 0 ? 1 : Math.max(1, Math.ceil(res.pagination.total / pageSize));
 				if (page > lastPage) setPage(1);
 			} catch {
@@ -120,10 +116,10 @@ export function useCourses(trainingTypeId = '') {
 			await deleteCourse(deletingCourse.id);
 			setModal(null);
 			setDeletingCourse(null);
-			showToast('success', `Đã xoá "${deletingCourse.name}"`);
+			showToast('success', `Đã xóa "${deletingCourse.name}"`);
 			refreshData();
 		} catch (err) {
-			showToast('error', err instanceof Error ? err.message : 'Xoá thất bại');
+			showToast('error', err instanceof Error ? err.message : 'Xóa thất bại');
 		} finally {
 			setLoading(false);
 		}
@@ -136,7 +132,7 @@ export function useCourses(trainingTypeId = '') {
 			try {
 				const { okIds, failedCount } = await runBulk(ids, deleteCourse);
 				setModal(null);
-				showToast(failedCount ? 'error' : 'success', bulkToast('xoá', okIds.size, failedCount, 'khóa học'));
+				showToast(failedCount ? 'error' : 'success', bulkToast('xóa', okIds.size, failedCount, 'khóa học'));
 				refreshData();
 			} finally {
 				setLoading(false);
@@ -145,7 +141,7 @@ export function useCourses(trainingTypeId = '') {
 		[refreshData],
 	);
 
-	// Id toàn bộ bản ghi khớp từ khoá (mọi trang, limit=0) — cho nút "Xoá tất cả"
+	// Id toàn bộ bản ghi khớp từ khóa (mọi trang, limit=0) — cho nút "Xóa tất cả"
 	const fetchAllIds = useCallback(
 		async () =>
 			(
@@ -167,7 +163,6 @@ export function useCourses(trainingTypeId = '') {
 		pageSize,
 		page,
 		total,
-		typeCounts,
 		totalPages,
 		safePage,
 		paged: courses,

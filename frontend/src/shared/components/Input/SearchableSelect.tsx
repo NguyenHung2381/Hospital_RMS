@@ -104,7 +104,7 @@ export function SearchableSelect({
 		return q ? options.filter((o) => fold(o.name).includes(q) || (!!o.group && fold(o.group).includes(q))) : options;
 	}, [options, query]);
 
-	// Mở menu ⇒ tô sẵn lựa chọn hiện tại; gõ từ khoá ⇒ tô dòng đầu kết quả.
+	// Mở menu ⇒ tô sẵn lựa chọn hiện tại; gõ từ khóa ⇒ tô dòng đầu kết quả.
 	const openMenu = (q = '') => {
 		setQuery(q);
 		setActive(q ? 0 : Math.max(options.findIndex((o) => o.id === value), 0));

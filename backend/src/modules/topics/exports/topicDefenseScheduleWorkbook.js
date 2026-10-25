@@ -1,6 +1,8 @@
 // topicDefenseScheduleWorkbook.js — dựng workbook "Lịch bảo vệ đề cương" cho
 // POST /api/v1/topics/export-excel (1 sheet, theo mẫu công văn).
-const ExcelJS = require('exceljs');
+const { lazyRequire } = require('../../../utils/lazyRequire');
+/** @type {typeof import('exceljs')} */
+const ExcelJS = lazyRequire('exceljs');
 const { fnt, al, sf, bAll, bNoBot, bNoTop, bSides } = require('../../../utils/excelStyle');
 
 const ROLE_LABELS = {
@@ -22,7 +24,7 @@ function buildSheet(ws, data, { customTitle, customSubtitle, refNumber, refDate 
 			'SỞ Y TẾ NGHỆ AN',
 			fnt({ size: 11 }),
 			'F1:J1',
-			'CỘNG HOÀ XÃ HỘI CHỦ NGHĨA VIỆT NAM',
+			'CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM',
 			fnt({ bold: true, size: 11 }),
 			18,
 		],

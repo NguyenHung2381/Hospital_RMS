@@ -12,12 +12,12 @@ export function UserDeleteModal({
 }) {
 	return (
 		<ConfirmDeleteModal
-			title='Xoá tài khoản?'
+			title='Xóa tài khoản?'
 			subtitle={user.username}
 			onClose={onClose}
 			onConfirm={onConfirm}
 		>
-			Bạn chắc chắn muốn xoá tài khoản <strong>{user.full_name}</strong> ({user.username})? Hành
+			Bạn chắc chắn muốn xóa tài khoản <strong>{user.full_name}</strong> ({user.username})? Hành
 			động này không thể hoàn tác.
 		</ConfirmDeleteModal>
 	);

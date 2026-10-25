@@ -677,6 +677,40 @@
 	gap: var(--space-4);
 }
 
+/* Thanh tab của mục menu gộp nhiều trang (Khóa học, Thực hành GPHN, Ca & điểm danh…) */
+.sectionTabs {
+	display: flex;
+	gap: var(--space-1);
+	border-bottom: 1px solid var(--color-gray-200);
+	margin-bottom: calc(-1 * var(--space-2));
+	overflow-x: auto;
+	scrollbar-width: none;
+}
+.sectionTabs::-webkit-scrollbar {
+	display: none;
+}
+.sectionTab {
+	flex-shrink: 0;
+	padding: var(--space-2) var(--space-4);
+	margin-bottom: -1px;
+	border-bottom: 2px solid transparent;
+	font-size: var(--font-size-sm);
+	font-weight: var(--font-weight-semibold);
+	color: var(--color-gray-500);
+	text-decoration: none;
+	white-space: nowrap;
+	transition:
+		color 0.15s,
+		border-color 0.15s;
+}
+.sectionTab:hover {
+	color: var(--color-gray-800);
+}
+.sectionTabActive {
+	color: var(--color-primary-dark);
+	border-bottom-color: var(--color-primary);
+}
+
 .pageTitle {
 	font-size: var(--font-size-2xl);
 	font-weight: var(--font-weight-extrabold);

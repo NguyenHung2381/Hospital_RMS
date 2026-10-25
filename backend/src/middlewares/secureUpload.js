@@ -12,7 +12,7 @@ const logger = require('../config/logger');
 //      theo Content-Length TRƯỚC khi nhận file, cộng dồn sau khi nhận xong.
 //   2. Nội dung file khớp phần mở rộng (utils/fileSignature.js).
 //   3. Quét virus bằng ClamAV nếu đã bật (utils/clamav.js).
-// Không qua thì xoá ngay file vừa ghi, trả lỗi. Dùng như multer:
+// Không qua thì xóa ngay file vừa ghi, trả lỗi. Dùng như multer:
 //   secureUpload(multer({...})).single('file') → mảng middleware (Express tự trải).
 
 const displayName = (file) => Buffer.from(file.originalname, 'latin1').toString('utf8');
@@ -36,7 +36,7 @@ const quotaPrecheck = (opts) => async (req, _res, next) => {
 			return next(
 				httpError(
 					429,
-					`Đã vượt hạn mức upload ${Math.round(limit / 1048576)}MB trong ngày của tài khoản. Vui lòng thử lại vào ngày mai hoặc liên hệ quản trị.`,
+					`Đã vượt hạn mức tải lên ${Math.round(limit / 1048576)}MB trong ngày của tài khoản. Vui lòng thử lại vào ngày mai hoặc liên hệ quản trị.`,
 				),
 			);
 		}

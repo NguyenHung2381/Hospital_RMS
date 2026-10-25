@@ -50,7 +50,7 @@ export const createTrainingProgram = (form: TrainingProgramFormData) =>
 export const updateTrainingProgram = (id: string, form: TrainingProgramFormData) =>
 	apiClient.put<TrainingProgram>(`/training-programs/${id}`, toPayload(form));
 
-// Đồng bộ vòng thực hành nhập ở form chương trình: gỡ vòng bị xoá (bài học vẫn
+// Đồng bộ vòng thực hành nhập ở form chương trình: gỡ vòng bị xóa (bài học vẫn
 // giữ cho hồ sơ cũ), sửa vòng có sẵn, tạo + gắn vòng mới.
 export const syncProgramRotations = async (
 	programId: string,
@@ -153,12 +153,12 @@ export const reorderLessons = (programId: string, linkIds: string[]) =>
 		link_ids: linkIds,
 	});
 
-// Gỡ bài học khỏi 1 chương trình (không xoá nội dung nếu còn chương trình
+// Gỡ bài học khỏi 1 chương trình (không xóa nội dung nếu còn chương trình
 // khác đang dùng chung — server tự dọn khi đây là lượt gắn cuối cùng)
 export const unlinkLesson = (linkId: string) =>
 	apiClient.delete<null>(`/training-programs/lesson-links/${linkId}`);
 
-// Xoá hẳn bài học (mọi chương trình đang dùng sẽ mất luôn — dùng cẩn thận)
+// Xóa hẳn bài học (mọi chương trình đang dùng sẽ mất luôn — dùng cẩn thận)
 export const deleteLesson = (lessonId: string) =>
 	apiClient.delete<null>(`/training-programs/lessons/${lessonId}`);
 

@@ -11,7 +11,7 @@ import { useClientPaging } from '@/shared/hooks/useClientPaging';
 import { Pagination } from '@/shared/components/Table/Pagination';
 
 // Nhập học viên hàng loạt từ Excel: chọn file → dry-run xem trước từng dòng
-// (khớp đối tượng học viên/khoa phòng) → xác nhận nhập. Mirror
+// (khớp đối tượng học viên/khoa/phòng) → xác nhận nhập. Mirror
 // ParticipantImportModal.tsx (seminar) — cùng cơ chế dry_run/commit ở backend.
 export function TraineeImportModal({ onClose, onDone }: { onClose: () => void; onDone: () => void }) {
 	const [file, setFile] = useState<File | null>(null);
@@ -70,7 +70,7 @@ export function TraineeImportModal({ onClose, onDone }: { onClose: () => void; o
 			footer={
 				<>
 					<button className={styles.btnCancel} onClick={onClose} disabled={loading}>
-						{result ? 'Đóng' : 'Huỷ'}
+						{result ? 'Đóng' : 'Hủy'}
 					</button>
 					{!result && (
 						<button className={styles.btnConfirm} onClick={commit} disabled={loading || !preview || rows.length === 0}>
@@ -88,7 +88,7 @@ export function TraineeImportModal({ onClose, onDone }: { onClose: () => void; o
 						<span>
 							Cột nhận diện: <b>Họ và tên</b> (bắt buộc), CCCD (CMT/CCCD), Giới tính (Nam/Nữ hoặc ông/bà), Ngày/Nơi cấp, Hộ khẩu thường trú, Nơi sinh, Mã học viên, Ngày tốt nghiệp, Ngày cấp bằng, Ngày sinh, Giới tính, CCCD, SĐT, Email,
 							Địa chỉ, Đối tượng học viên, Khoa/phòng, Trình độ, Trường đào tạo, Năm tốt nghiệp,
-							Ghi chú. Đối tượng/khoa phòng không khớp tên sẽ để trống.
+							Ghi chú. Đối tượng/khoa/phòng không khớp tên sẽ để trống.
 						</span>
 					</div>
 

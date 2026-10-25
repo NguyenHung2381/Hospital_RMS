@@ -17,7 +17,7 @@ export interface Role {
 	permission_count?: number;
 	/** Mã cố định (vd 'member', 'trainee') — code nghiệp vụ tham chiếu vai trò qua mã này */
 	code?: string | null;
-	/** Vai trò gốc của hệ thống — không xoá được */
+	/** Vai trò gốc của hệ thống — không xóa được */
 	is_system?: boolean;
 	/** Toàn quyền: bỏ qua mọi kiểm tra, không cần (và không thể) tick quyền */
 	is_superuser?: boolean;

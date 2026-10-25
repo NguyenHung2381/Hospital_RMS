@@ -7,8 +7,8 @@ const logger = require('../../config/logger');
 
 // "Thiết bị quen" (OWASP — device cookie): trình duyệt đã đăng nhập thành công
 // vào 1 tài khoản được cấp device token (client giữ trong localStorage, gửi
-// kèm lúc đăng nhập). Khoá tạm tài khoản do sai mật khẩu chỉ chặn thiết bị
-// LẠ — kẻ tấn công cố tình nhập sai để khoá tài khoản sẽ không chặn được chủ
+// kèm lúc đăng nhập). Khóa tạm tài khoản do sai mật khẩu chỉ chặn thiết bị
+// LẠ — kẻ tấn công cố tình nhập sai để khóa tài khoản sẽ không chặn được chủ
 // tài khoản đăng nhập trên máy quen. Thiết bị quen có bộ đếm sai riêng: sai
 // quá ngưỡng thì bị thu hồi, các lần sai sau tính như thiết bị lạ.
 // Không dùng MAC/IP: trình duyệt không đọc được MAC, còn IP/MAC đều giả được.
@@ -21,7 +21,7 @@ const DEVICE_TOKEN_PURPOSE = 'trusted_device';
 const MAX_DEVICE_FAILED_ATTEMPTS = 10;
 const MAX_TRACKED_DEVICES = 10000;
 
-// Ký bằng khoá dẫn xuất riêng (không phải JWT_SECRET) — device token không
+// Ký bằng khóa dẫn xuất riêng (không phải JWT_SECRET) — device token không
 // bao giờ dùng được làm access token và ngược lại.
 let _deviceKey = null;
 const deviceKey = () => {
@@ -95,7 +95,7 @@ const issueDeviceToken = (user, device = null) => {
 };
 
 // Sai mật khẩu / mã 2FA trên thiết bị quen: tăng bộ đếm của riêng thiết bị,
-// đủ ngưỡng thì thu hồi (không khoá tài khoản).
+// đủ ngưỡng thì thu hồi (không khóa tài khoản).
 const recordDeviceFailure = async (device, user, ip, reason) => {
 	const count = (failedCounts.get(device.did) || 0) + 1;
 	if (count < MAX_DEVICE_FAILED_ATTEMPTS) {

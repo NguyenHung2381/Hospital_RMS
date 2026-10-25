@@ -124,10 +124,10 @@ export function useSeminars(hospitalTraining = false) {
 			await deleteSeminar(deleting.id);
 			setModal(null);
 			setDeleting(null);
-			showToast('success', `Đã xoá "${deleting.title}"`);
+			showToast('success', `Đã xóa "${deleting.title}"`);
 			refresh();
 		} catch (e) {
-			showToast('error', e instanceof Error ? e.message : 'Xoá thất bại');
+			showToast('error', e instanceof Error ? e.message : 'Xóa thất bại');
 		} finally {
 			setLoading(false);
 		}

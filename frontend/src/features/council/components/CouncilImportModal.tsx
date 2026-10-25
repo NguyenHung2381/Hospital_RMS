@@ -240,7 +240,7 @@ export function CouncilImportModal({
 
 				<div className={styles.modalFooter}>
 					<button className={styles.btnCancel} onClick={onClose} disabled={loading}>
-						{result ? 'Đóng' : 'Huỷ'}
+						{result ? 'Đóng' : 'Hủy'}
 					</button>
 					{!result && (
 						<button

@@ -24,7 +24,7 @@ const errorHandler = (err, req, res, next) => {
 				return error(res, 'Nhân sự này đã có hồ sơ CCHN', 409);
 			if (/UQ_stafflic_license_no/.test(err.message))
 				return error(res, 'Số CCHN này đã gán cho nhân sự khác', 409);
-			return error(res, 'Dữ liệu đã tồn tại (vi phạm ràng buộc unique)', 409);
+			return error(res, 'Dữ liệu bị trùng với bản ghi đã có', 409);
 		}
 		if (err.number === 547) {
 			return error(res, 'Không thể thực hiện vì dữ liệu đang được liên kết ở nơi khác', 409);
@@ -34,7 +34,7 @@ const errorHandler = (err, req, res, next) => {
 
 	logger.error(`❌ Error on ${req.method} ${req.path}:`, err.message);
 	// Nhiều service ném lỗi nghiệp vụ chỉ kèm `status` (không có `statusCode`) —
-	// trước đây rơi xuống 500 ("Lỗi server nội bộ"), kể cả lỗi từ chối quyền 403.
+	// trước đây rơi xuống 500 ("Lỗi máy chủ nội bộ"), kể cả lỗi từ chối quyền 403.
 	const legacyStatus =
 		Number.isInteger(err.status) && err.status >= 400 && err.status < 600 ? err.status : null;
 	const statusCode = err.statusCode || legacyStatus || 500;
@@ -42,8 +42,8 @@ const errorHandler = (err, req, res, next) => {
 	// thị); >= 500 = lỗi không lường trước, ở production chỉ trả thông điệp
 	// chung chung, tránh lộ stack/chi tiết nội bộ cho client.
 	const message =
-		statusCode < 500 || !isProd ? err.message || 'Lỗi server nội bộ' : 'Lỗi server nội bộ';
-	// Lỗi khoá tạm (vd. đăng nhập sai nhiều lần) kèm số giây còn lại để client
+		statusCode < 500 || !isProd ? err.message || 'Lỗi máy chủ nội bộ' : 'Lỗi máy chủ nội bộ';
+	// Lỗi khóa tạm (vd. đăng nhập sai nhiều lần) kèm số giây còn lại để client
 	// hiển thị đồng hồ đếm ngược.
 	if (err.retryAfterSeconds) {
 		return res

@@ -169,8 +169,18 @@
  * @swagger
  * /auth/2fa/disable:
  *   post:
- *     summary: Tắt xác thực 2 lớp (yêu cầu nhập lại mật khẩu)
+ *     summary: Tắt xác thực 2 lớp (yêu cầu nhập lại mật khẩu và 1 mã xác thực)
  *     tags: [Auth]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [password, code]
+ *             properties:
+ *               password: { type: string }
+ *               code: { type: string, description: 'Mã 6 số từ ứng dụng xác thực hoặc 1 mã khôi phục' }
  *     responses:
  *       200:
  *         description: Đã tắt xác thực 2 lớp

@@ -36,7 +36,7 @@ const loadDraft = (code: string): (number | undefined)[] => {
 
 // Vé cá nhân của người đã đăng ký hội nghị. QR trên vé chứa chính link trang
 // này: ban tổ chức quét bằng màn "Quét vé điểm danh" để điểm danh, người tham
-// dự quét/mở lại link để làm bài test cuối buổi.
+// dự quét/mở lại link để làm bài kiểm tra cuối buổi.
 export default function SeminarTicket() {
 	const { code = '' } = useParams();
 	const location = useLocation();
@@ -52,7 +52,7 @@ export default function SeminarTicket() {
 	const [deadline, setDeadline] = useState<number | null>(null);
 	const [now, setNow] = useState(() => Date.now());
 	const justRegistered = !!(location.state as { justRegistered?: boolean } | null)?.justRegistered;
-	// Giữ thông báo sau khi state bị xoá (tự tải QR xong)
+	// Giữ thông báo sau khi state bị xóa (tự tải QR xong)
 	const [welcome] = useState(justRegistered);
 
 	const applyTicket = useCallback((t: Ticket) => {
@@ -95,7 +95,7 @@ export default function SeminarTicket() {
 			: null,
 	);
 
-	// Vừa đăng ký xong: tự lưu ảnh QR về máy 1 lần (xoá state để tải lại trang không lưu nữa).
+	// Vừa đăng ký xong: tự lưu ảnh QR về máy 1 lần (xóa state để tải lại trang không lưu nữa).
 	// iOS không tự tải được — hiện ảnh để nhấn giữ lưu.
 	const { ready: qrReady, save: saveQr } = qrImage;
 	useEffect(() => {
@@ -177,7 +177,7 @@ export default function SeminarTicket() {
 			applyTicket(await startSeminarTest(code));
 			setError('');
 		} catch (err) {
-			setError(err instanceof Error ? err.message : 'Không bắt đầu được bài test');
+			setError(err instanceof Error ? err.message : 'Không bắt đầu được bài kiểm tra');
 		} finally {
 			setStarting(false);
 		}
@@ -253,7 +253,7 @@ export default function SeminarTicket() {
 				{test.has_test && (
 					<TicketStep
 						state={!testDone ? 'todo' : test.passed === false ? 'fail' : 'done'}
-						title='Bài test'
+						title='Bài kiểm tra'
 						text={
 							testDone
 								? `${score}/${maxScore} điểm${test.pass_score != null ? (test.passed ? ' · Đạt' : ' · Chưa đạt') : ''}`
@@ -290,7 +290,7 @@ export default function SeminarTicket() {
 			{test.has_test && !testDone && (
 				<section className={styles.section}>
 					<header className={styles.sectionHead}>
-						<h2 className={styles.sectionHeading}>Bài test cuối buổi</h2>
+						<h2 className={styles.sectionHeading}>Bài kiểm tra cuối buổi</h2>
 					</header>
 					<div className={styles.sectionBody}>
 					{questions ? (
@@ -391,14 +391,14 @@ export default function SeminarTicket() {
 						<div style={{ display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'flex-start' }}>
 							<span className={styles.sectionDesc}>
 								{!ticket.checked_in_at
-									? 'Cần điểm danh trước khi làm bài test.'
+									? 'Cần điểm danh trước khi làm bài kiểm tra.'
 									: test.expired
 										? 'Đã hết thời gian làm bài nhưng bài chưa được nộp — vui lòng liên hệ ban tổ chức.'
 										: test.state === 'closed'
-											? 'Đã hết thời gian nhận bài test.'
+											? 'Đã hết thời gian nhận bài kiểm tra.'
 											: test.window
-												? `Bài test chưa mở — thời gian làm bài: ${testWindowText(test.window)}.`
-												: 'Bài test chưa mở — ban tổ chức sẽ mở vào cuối buổi.'}
+												? `Bài kiểm tra chưa mở — thời gian làm bài: ${testWindowText(test.window)}.`
+												: 'Bài kiểm tra chưa mở — ban tổ chức sẽ mở vào cuối buổi.'}
 							</span>
 							<button
 								type='button'
@@ -418,7 +418,7 @@ export default function SeminarTicket() {
 	);
 }
 
-// 1 bước trong tiến trình của vé: điểm danh → bài test → CME
+// 1 bước trong tiến trình của vé: điểm danh → bài kiểm tra → CME
 function TicketStep({ state, title, text }: { state: 'done' | 'todo' | 'fail'; title: string; text: string }) {
 	return (
 		<li className={`${styles.ticketStep} ${styles[`ticketStep_${state}`]}`}>

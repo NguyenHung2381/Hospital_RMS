@@ -77,7 +77,7 @@ export default function TrainingDashboard() {
 
 	return (
 		<AdminLayout
-			pageTitle='Tổng quan Đào tạo'
+			pageTitle='Tổng quan đào tạo'
 			pageSubtitle='Khóa học, học viên, giảng viên, lịch học & xu hướng đăng ký'
 		>
 			<DashboardTabs />
@@ -182,7 +182,7 @@ export default function TrainingDashboard() {
 							<button
 								type='button'
 								className={styles.moduleLink}
-								onClick={() => navigate('/admin/class-schedule')}
+								onClick={() => navigate('/admin/dtlt/lich-hoc')}
 							>
 								Lịch học →
 							</button>
@@ -227,13 +227,13 @@ export default function TrainingDashboard() {
 					<div className={styles.chartCard}>
 						<div className={styles.chartCardHeader}>
 							<div>
-								<div className={styles.chartTitle}>Top lớp đầy chỗ nhất</div>
+								<div className={styles.chartTitle}>Lớp đầy chỗ nhất</div>
 								<div className={styles.chartSubtitle}>Tỷ lệ lấp đầy theo sĩ số tối đa của chương trình</div>
 							</div>
 							<button
 								type='button'
 								className={styles.moduleLink}
-								onClick={() => navigate('/admin/courses')}
+								onClick={() => navigate('/admin/dtlt')}
 							>
 								Khóa học →
 							</button>

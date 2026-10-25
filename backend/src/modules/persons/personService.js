@@ -458,7 +458,7 @@ const syncPending = async (source, { limit = 500, actorId = undefined } = {}) =>
 	}
 };
 
-/** person_id hiện tại của 1 dòng nguồn — gọi TRƯỚC khi xoá dòng đó rồi truyền cho releasePerson. KHÔNG ném lỗi. */
+/** person_id hiện tại của 1 dòng nguồn — gọi TRƯỚC khi xóa dòng đó rồi truyền cho releasePerson. KHÔNG ném lỗi. */
 const personIdOf = async (source, id) => {
 	if (!isEnabled() || !SOURCES[source] || !id) return null;
 	try {
@@ -476,8 +476,8 @@ const personIdOf = async (source, id) => {
 };
 
 /**
- * Sau khi XOÁ 1 dòng nguồn (vd xoá tài khoản): person của dòng đó (personId, hoặc person có
- * nguồn gốc là dòng đó) không còn gì trỏ tới thì xoá; còn bản ghi nguồn khác trỏ tới (vd thành
+ * Sau khi XÓA 1 dòng nguồn (vd xóa tài khoản): person của dòng đó (personId, hoặc person có
+ * nguồn gốc là dòng đó) không còn gì trỏ tới thì xóa; còn bản ghi nguồn khác trỏ tới (vd thành
  * viên đề tài của cùng người) thì chuyển nguồn gốc sang bản ghi đó. KHÔNG bao giờ ném lỗi.
  */
 const releasePerson = async (source, id, personId, { actorId = undefined } = {}) => {

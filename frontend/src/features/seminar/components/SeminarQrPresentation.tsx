@@ -60,7 +60,7 @@ export function SeminarQrPresentation({ seminar, onClose }: { seminar: Seminar; 
 				/>
 				<div>
 					<div className={styles.hospital}>{HOSPITAL_NAME}</div>
-					<div className={styles.sub}>Cổng thông tin Đào tạo</div>
+					<div className={styles.sub}>Cổng thông tin đào tạo</div>
 				</div>
 				<div className={styles.actions}>
 					{!isFull && document.fullscreenEnabled && (

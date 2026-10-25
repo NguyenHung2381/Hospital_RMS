@@ -81,7 +81,10 @@ const listForTrainee = async (enrollmentId) => {
       LEFT JOIN departments d ON d.id = r.department_id
       WHERE r.enrollment_id = @id
       ORDER BY r.seq, r.created_at`);
-	return r.recordset.map((x) => ({ ...x, phase: x.start_date ? phaseOf(x, today) : 'unscheduled' }));
+	return r.recordset.map((x) => ({
+		...x,
+		phase: x.start_date ? phaseOf(x, today) : 'unscheduled',
+	}));
 };
 
 /** Menu "Hướng dẫn thực hành": có vòng nào mình hướng dẫn (hiện menu) + số vòng chờ mình đánh giá (badge). */
@@ -114,17 +117,15 @@ const evaluateAsMentor = async (rotationId, userId, { result, comment }) => {
       WHERE r.id = @id`)
 	).recordset[0];
 	if (!row) throw httpError(404, 'Không tìm thấy vòng thực hành.');
-	if (row.mentor_user_id !== userId) throw httpError(403, 'Bạn không phải người hướng dẫn của vòng này.');
+	if (row.mentor_user_id !== userId)
+		throw httpError(403, 'Bạn không phải người hướng dẫn của vòng này.');
 	if (row.status !== 'approved' || row.progress_status === 'dropped')
 		throw httpError(400, 'Hồ sơ không còn trong thời gian thực hành.');
 	if (result !== 'pending' && (!row.start_date || day(row.start_date) > todayKeyVN()))
 		throw httpError(400, 'Vòng chưa bắt đầu — chưa đánh giá được.');
-	await rotationService.update(
-		rotationId,
-		{ result, result_comment: comment ?? null },
-		userId,
-		{ source: 'mentor' },
-	);
+	await rotationService.update(rotationId, { result, result_comment: comment ?? null }, userId, {
+		source: 'mentor',
+	});
 };
 
 /**
@@ -139,7 +140,9 @@ const listAwaiting = async (actor) => {
 		where.push(ASSIGNED_EXISTS_SQL);
 		req.input('actor_id', sql.VarChar(20), actor.id);
 	}
-	const r = await req.query(`${ROW_SELECT} WHERE ${where.join(' AND ')} ORDER BY r.mentor_name, r.end_date, t.full_name`);
+	const r = await req.query(
+		`${ROW_SELECT} WHERE ${where.join(' AND ')} ORDER BY r.mentor_name, r.end_date, t.full_name`,
+	);
 	const all = r.recordset;
 	// Lựa chọn bộ lọc kèm số vòng chờ — id '' = chưa phân NHD / chưa có khoa
 	const count = (idKey, nameKey) => {
@@ -170,7 +173,10 @@ const saveBulk = async (actor, rows) => {
 			await assertCourseChildInScope('rotationId', row.id, actor);
 			await rotationService.update(
 				row.id,
-				{ result: row.result, ...(row.comment !== undefined ? { result_comment: row.comment || null } : {}) },
+				{
+					result: row.result,
+					...(row.comment !== undefined ? { result_comment: row.comment || null } : {}),
+				},
 				actor.id,
 				{ source: 'staff' },
 			);
@@ -182,4 +188,12 @@ const saveBulk = async (actor, rows) => {
 	return { saved, failed };
 };
 
-module.exports = { listForMentor, countForMentor, listForTrainee, evaluateAsMentor, listAwaiting, saveBulk, phaseOf };
+module.exports = {
+	listForMentor,
+	countForMentor,
+	listForTrainee,
+	evaluateAsMentor,
+	listAwaiting,
+	saveBulk,
+	phaseOf,
+};

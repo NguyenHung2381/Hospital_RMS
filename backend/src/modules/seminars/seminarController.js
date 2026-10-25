@@ -64,7 +64,7 @@ const updateParticipant = asyncHandler(async (req, res) => {
 
 const removeParticipant = asyncHandler(async (req, res) => {
 	await seminarParticipantService.remove(req.params.id, req.params.pid, req.user.id);
-	return success(res, null, 'Đã xoá');
+	return success(res, null, 'Đã xóa');
 });
 
 // ─── CME ─────────────────────────────────────────────────────────────────────
@@ -79,7 +79,7 @@ const issueCme = asyncHandler(async (req, res) => {
 		out.issued
 			? `Đã cấp ${out.issued} số CME (${String(out.from).padStart(4, '0')}–${String(out.to).padStart(4, '0')} / ${out.year})`
 			: out.skipped
-				? `${out.skipped} người chưa đủ điều kiện (chưa điểm danh / chưa làm hoặc chưa đạt bài test)`
+				? `${out.skipped} người chưa đủ điều kiện (chưa điểm danh / chưa làm hoặc chưa đạt bài kiểm tra)`
 				: 'Không có người nào cần cấp số CME',
 	);
 });

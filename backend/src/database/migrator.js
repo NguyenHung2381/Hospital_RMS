@@ -13,7 +13,7 @@ const { sql, dbConfig } = require('../config/db');
 //   File ghi cứng USE [RMS_HOSPITAL] được đổi sang DB đang cấu hình (staging…).
 //   File gộp (nhiều migration cũ nối lại, mỗi phần mở đầu bằng dòng
 //   "-- @migration <tên file cũ>.sql"): chỉ chạy phần DB chưa ghi nhận, mỗi
-//   phần xong ghi tên file cũ; đủ hết thì ghi tên file gộp, xoá bản ghi phần.
+//   phần xong ghi tên file cũ; đủ hết thì ghi tên file gộp, xóa bản ghi phần.
 //   DB đã chạy đủ các file cũ = file gộp đã chạy, không chạy lại gì.
 //
 // Quy ước viết file: database/README.md.
@@ -30,8 +30,8 @@ const RENAMED = {
 	'20260924_02_token_version_role_codes.sql': '2026-09-28_01_token_version_role_codes.sql',
 };
 
-// File đã xoá vì nội dung được gộp vào file khác → file gộp. Bản ghi cũ trong
-// schema_migrations không bị coi là "thiếu file"; xoá đi khi file gộp đã chạy.
+// File đã xóa vì nội dung được gộp vào file khác → file gộp. Bản ghi cũ trong
+// schema_migrations không bị coi là "thiếu file"; xóa đi khi file gộp đã chạy.
 // File gộp vẫn chạy bình thường ở DB chưa có nó (phải idempotent).
 // (Gộp nhiều file nguyên văn thì dùng dòng "-- @migration", không cần thêm vào đây.)
 const MERGED = {
@@ -229,10 +229,10 @@ const migrate = async ({ dryRun = false, baseline = false, requireTracked = true
       DECLARE @r INT;
       EXEC @r = sp_getapplock @Resource = N'${LOCK}', @LockMode = 'Exclusive', @LockOwner = 'Session', @LockTimeout = 600000;
       SELECT @r`);
-		if (lock < 0) throw new Error(`Không lấy được khoá ${LOCK} (mã ${lock})`);
+		if (lock < 0) throw new Error(`Không lấy được khóa ${LOCK} (mã ${lock})`);
 
 		await prepareTable(conn, log);
-		const { pending, recorded } = await readStatus(conn); // nơi khác có thể vừa chạy xong trong lúc chờ khoá
+		const { pending, recorded } = await readStatus(conn); // nơi khác có thể vừa chạy xong trong lúc chờ khóa
 
 		if (baseline) {
 			for (const f of pending) await record(conn, f, checksum(readFile(f)));

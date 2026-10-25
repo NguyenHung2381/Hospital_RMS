@@ -15,7 +15,7 @@ const { asyncHandler } = require('../../utils/asyncHandler');
 
 const base = createCrudController(topicService);
 
-// Tài khoản khoa phòng (phạm vi 'own') chỉ đăng ký được đề tài khi mốc
+// Tài khoản khoa/phòng (phạm vi 'own') chỉ đăng ký được đề tài khi mốc
 // "Đăng ký đề tài" của đợt đang mở. Đơn vị/superuser không bị chặn.
 const createOne = asyncHandler(async (req, res) => {
 	if (isDeadlineBound(req.user)) {

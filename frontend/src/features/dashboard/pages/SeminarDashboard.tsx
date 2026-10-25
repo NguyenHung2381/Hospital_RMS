@@ -82,14 +82,14 @@ export default function SeminarDashboard() {
 
 	return (
 		<AdminLayout
-			pageTitle='Tổng quan Hội nghị & Tín chỉ CME'
+			pageTitle='Tổng quan hội nghị & tín chỉ CME'
 			pageSubtitle={`Hội thảo, hội nghị, lượt tham dự và chứng nhận CME năm ${year}`}
 		>
 			<DashboardTabs />
 
 			<div className={styles.metricsGrid}>
 				<MetricCard
-					label={`Hội thảo - Hội nghị ${year}`}
+					label={`Hội thảo, hội nghị ${year}`}
 					value={fmt(kpi.seminars_this_year)}
 					loading={loading}
 					compare={

@@ -75,7 +75,7 @@ export function ProgramCatalogImportModal({ onClose, onImported }: { onClose: ()
 						onClick={onClose}
 						disabled={loading}
 					>
-						{result ? 'Đóng' : 'Huỷ'}
+						{result ? 'Đóng' : 'Hủy'}
 					</button>
 					{!result && (
 						<button
@@ -98,7 +98,7 @@ export function ProgramCatalogImportModal({ onClose, onImported }: { onClose: ()
 							Sheet chương trình cần cột <b>Mã Chương trình đào tạo</b> và <b>Tên Chương trình đào tạo</b>;
 							loại hình suy ra từ tiền tố mã (ĐTLT_, GPHN_, CTCV_, THBV_). Sheet vòng: dòng có mã GPHN_* mở
 							chương trình, dòng có mã khác là 1 vòng, dòng chỉ có nội dung là khoa của vòng ngay trên.
-							Trùng mã thì cập nhật; ô trống không xoá dữ liệu đang có.
+							Trùng mã thì cập nhật; ô trống không xóa dữ liệu đang có.
 						</span>
 					</div>
 

@@ -62,12 +62,12 @@ export default function MyCme() {
 	useRealtimeUpdate(['seminar', 'cme_record', 'cme_requirement'], load);
 
 	const handleDelete = async (id: string) => {
-		if (!window.confirm('Xoá khai báo CME này?')) return;
+		if (!window.confirm('Xóa khai báo CME này?')) return;
 		try {
 			await deleteMyCmeRecord(id);
 			load();
 		} catch (err) {
-			setExportError(err instanceof Error ? err.message : 'Xoá thất bại');
+			setExportError(err instanceof Error ? err.message : 'Xóa thất bại');
 		}
 	};
 
@@ -98,12 +98,12 @@ export default function MyCme() {
 		}
 	};
 	const handleDeleteResultFile = async (id: string, fileId: string, name: string) => {
-		if (!window.confirm(`Xoá file "${name}"?`)) return;
+		if (!window.confirm(`Xóa file "${name}"?`)) return;
 		try {
 			await deleteMyCmeResultFile(id, fileId);
 			load();
 		} catch (err) {
-			setExportError(err instanceof Error ? err.message : 'Xoá file thất bại');
+			setExportError(err instanceof Error ? err.message : 'Xóa file thất bại');
 		}
 	};
 
@@ -128,7 +128,7 @@ export default function MyCme() {
 	return (
 		<UserLayout
 			pageTitle='Tín chỉ CME của tôi'
-			pageSubtitle='Tín chỉ đào tạo liên tục tích luỹ qua hội thảo, hội nghị và ghi nhận độc lập'
+			pageSubtitle='Tín chỉ đào tạo liên tục tích lũy qua hội thảo, hội nghị và ghi nhận độc lập'
 			headerActions={
 				<div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
 					{exportError && <Badge tone='red'>{exportError}</Badge>}
@@ -325,8 +325,8 @@ export default function MyCme() {
 																	<button
 																		type='button'
 																		onClick={() => handleDeleteResultFile(r.id, f.id, f.file_name)}
-																		title='Xoá file'
-																		aria-label={`Xoá file ${f.file_name}`}
+																		title='Xóa file'
+																		aria-label={`Xóa file ${f.file_name}`}
 																		style={{ border: 0, background: 'none', cursor: 'pointer', color: 'inherit', verticalAlign: 'middle' }}
 																	>
 																		<XSvg width={12} height={12} />
@@ -359,7 +359,7 @@ export default function MyCme() {
 															) : r.source_type ? null : (
 																<div style={{ display: 'flex', gap: 6 }}>
 																	<Button size='sm' variant='secondary' icon={<EditSvg />} onClick={() => setEditing(r)} title='Sửa' />
-																	<Button size='sm' variant='secondary' icon={<TrashSvg />} onClick={() => handleDelete(r.id)} title='Xoá' />
+																	<Button size='sm' variant='secondary' icon={<TrashSvg />} onClick={() => handleDelete(r.id)} title='Xóa' />
 																</div>
 															)}
 														</td>

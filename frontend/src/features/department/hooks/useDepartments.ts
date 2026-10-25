@@ -52,7 +52,7 @@ export function useDepartments() {
 				const lastPage = pageSize === 0 ? 1 : Math.max(1, Math.ceil(res.pagination.total / pageSize));
 				if (page > lastPage) setPage(1);
 			} catch {
-				if (!controller.signal.aborted) showToast('error', 'Không thể tải danh sách khoa phòng');
+				if (!controller.signal.aborted) showToast('error', 'Không thể tải danh sách khoa/phòng');
 			} finally {
 				if (!controller.signal.aborted) setIsLoadingData(false);
 			}
@@ -122,10 +122,10 @@ export function useDepartments() {
 			await deleteDepartment(deletingDept.id);
 			setModal(null);
 			setDeletingDept(null);
-			showToast('success', `Đã xoá "${deletingDept.name}"`);
+			showToast('success', `Đã xóa "${deletingDept.name}"`);
 			refreshData();
 		} catch (err) {
-			showToast('error', err instanceof Error ? err.message : 'Xoá thất bại');
+			showToast('error', err instanceof Error ? err.message : 'Xóa thất bại');
 		} finally {
 			setLoading(false);
 		}
@@ -140,7 +140,7 @@ export function useDepartments() {
 				setModal(null);
 				showToast(
 					failedCount ? 'error' : 'success',
-					bulkToast('xoá', okIds.size, failedCount, 'khoa phòng'),
+					bulkToast('xóa', okIds.size, failedCount, 'khoa/phòng'),
 				);
 				refreshData();
 			} finally {
@@ -150,7 +150,7 @@ export function useDepartments() {
 		[refreshData],
 	);
 
-	// Id toàn bộ bản ghi khớp từ khoá (mọi trang, limit=0) — cho nút "Xoá tất cả"
+	// Id toàn bộ bản ghi khớp từ khóa (mọi trang, limit=0) — cho nút "Xóa tất cả"
 	const fetchAllIds = useCallback(
 		async () => (await getDepartments({ search: debouncedSearch || undefined })).data.map((x) => x.id),
 		[debouncedSearch],

@@ -1,5 +1,5 @@
 /**
- * vietnameseText.js — helper chuẩn hoá chuỗi tiếng Việt dùng khi match dữ liệu
+ * vietnameseText.js — helper chuẩn hóa chuỗi tiếng Việt dùng khi match dữ liệu
  * import (tên người, tên khoa, tên đề tài…). Tách từ councilImportService để
  * seminarImportService dùng chung.
  */
@@ -12,7 +12,7 @@ const stripDiacritics = (s) =>
 		.replace(/đ/g, 'd')
 		.replace(/Đ/g, 'D');
 
-// Chuẩn hoá về "chỉ chữ thường + số + 1 dấu cách" — khoá so khớp.
+// Chuẩn hóa về "chỉ chữ thường + số + 1 dấu cách" — khóa so khớp.
 const norm = (s) => {
 	if (!s) return '';
 	return stripDiacritics(s)

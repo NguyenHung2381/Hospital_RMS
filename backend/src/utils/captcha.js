@@ -5,8 +5,8 @@ const { leadingZeroBits } = require('./loginShield');
 const logger = require('../config/logger');
 const systemSettingService = require('../modules/settings/systemSettingService');
 
-// Chống bot cho cổng công khai (đăng ký khoá học / đề tài). 3 chế độ, server
-// chọn theo khoá đã cấu hình (ưu tiên từ trên xuống):
+// Chống bot cho cổng công khai (đăng ký khóa học / đề tài). 3 chế độ, server
+// chọn theo khóa đã cấu hình (ưu tiên từ trên xuống):
 //
 //  - Cloudflare Turnstile (khi đặt TURNSTILE_SITE_KEY + TURNSTILE_SECRET_KEY):
 //    thử thách chạy ngầm trên trình duyệt, server xác minh với Cloudflare. Cần
@@ -15,7 +15,7 @@ const systemSettingService = require('../modules/settings/systemSettingService')
 //  - Google reCAPTCHA v2 "Tôi không phải người máy" (khi đặt RECAPTCHA_SITE_KEY
 //    + RECAPTCHA_SECRET_KEY): ô tích của Google, đôi khi bắt chọn ảnh. Server
 //    xác minh với https://www.google.com/recaptcha/api/siteverify — cũng
-//    fail-closed như Turnstile. Khoá đặt ở Cấu hình hệ thống → tab "Bảo mật &
+//    fail-closed như Turnstile. Khóa đặt ở Cấu hình hệ thống → tab "Bảo mật &
 //    Tài khoản" (áp dụng ngay, không cần khởi động lại); trống thì lấy .env.
 //  - Proof-of-work (mặc định, chạy được trong mạng nội bộ không ra Internet):
 //    cùng cơ chế lá chắn đăng nhập (utils/loginShield.js) — trình duyệt phải tìm
@@ -41,7 +41,7 @@ const turnstileEnabled = () =>
 	!!(process.env.TURNSTILE_SITE_KEY && process.env.TURNSTILE_SECRET_KEY);
 
 const RECAPTCHA_KEYS = ['RECAPTCHA_SITE_KEY', 'RECAPTCHA_SECRET_KEY', 'RECAPTCHA_HOSTNAMES'];
-// Khoá reCAPTCHA: Cấu hình hệ thống, từng key trống thì lấy .env (systemSettingService.getValue)
+// Khóa reCAPTCHA: Cấu hình hệ thống, từng key trống thì lấy .env (systemSettingService.getValue)
 const recaptchaConfig = async () => {
 	const [siteKey, secretKey, hostnames] = await Promise.all(
 		RECAPTCHA_KEYS.map((k) => systemSettingService.getValue(k)),
@@ -67,11 +67,11 @@ const validateSetting = (key, value) => {
 		const bad = parseHostnames(value).filter((h) => !HOST_RE.test(h));
 		return bad.length ? `Tên miền không hợp lệ: ${bad.join(', ')}` : null;
 	}
-	// Khoá secret: UI gửi lại chuỗi che (••••••) khi không đổi — systemSettingService tự giữ nguyên
+	// Khóa secret: UI gửi lại chuỗi che (••••••) khi không đổi — systemSettingService tự giữ nguyên
 	if (key === 'RECAPTCHA_SECRET_KEY' && /^•+$/.test(value)) return null;
 	return KEY_RE.test(value.trim())
 		? null
-		: 'Khoá reCAPTCHA không hợp lệ (chữ, số, "_" hoặc "-", 20–100 ký tự)';
+		: 'Khóa reCAPTCHA không hợp lệ (chữ, số, "_" hoặc "-", 20–100 ký tự)';
 };
 
 // action gắn vào widget (frontend TurnstileWidget) — token cấp cho widget/trang
@@ -99,7 +99,7 @@ const generateCaptcha = async () => {
 	}
 };
 
-// Tuỳ chọn: chỉ nhận token sinh ra trên các tên miền này (vd rms.benhvien.vn)
+// Tùy chọn: chỉ nhận token sinh ra trên các tên miền này (vd rms.benhvien.vn)
 const parseHostnames = (value) =>
 	(value || '')
 		.split(',')
@@ -148,7 +148,7 @@ const verifyTurnstile = async (token, ip) => {
 		logger.warn('[captcha] Turnstile từ chối:', (json['error-codes'] || []).join(','));
 		return false;
 	}
-	// Khoá test của Cloudflare không trả action — chỉ so khi có
+	// Khóa test của Cloudflare không trả action — chỉ so khi có
 	if (json.action && json.action !== TURNSTILE_ACTION) {
 		logger.warn('[captcha] Turnstile sai action:', json.action);
 		return false;

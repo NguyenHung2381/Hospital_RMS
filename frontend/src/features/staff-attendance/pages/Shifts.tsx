@@ -45,7 +45,7 @@ export default function Shifts() {
 				setShifts(s);
 				setPatterns(p);
 			})
-			.catch((e) => notify.error(e instanceof Error ? e.message : 'Không thể tải ca làm việc'))
+			.catch((e) => notify.error(e instanceof Error ? e.message : 'Không thể tải danh sách ca'))
 			.finally(() => setLoading(false));
 	}, []);
 	useEffect(load, [load]);
@@ -57,7 +57,7 @@ export default function Shifts() {
 	const saveShift = async (data: ShiftInput) => {
 		if (editShift) await shiftApi.update(editShift.id, data);
 		else await shiftApi.create(data);
-		notify.success(editShift ? 'Đã cập nhật ca làm' : 'Đã thêm ca làm');
+		notify.success(editShift ? 'Đã cập nhật ca' : 'Đã thêm ca');
 		setEditShift(undefined);
 		load();
 	};
@@ -71,12 +71,12 @@ export default function Shifts() {
 
 	return (
 		<AdminLayout
-			pageTitle='Ca học viên'
+			pageTitle='Ca & mẫu ca tuần'
 			pageSubtitle='Ca và mẫu ca theo tuần của khóa đào tạo — học viên chỉ điểm danh được trong giờ ca, trong thời gian khóa học'
 			headerActions={
 				<div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
 					{tab === 'shifts' && (
-						<ExcelActions fileName='ca-lam-viec' itemLabel='ca làm' columns={SHIFT_EXCEL_COLS} getRows={() => shifts} />
+						<ExcelActions fileName='ca-lam-viec' itemLabel='ca' columns={SHIFT_EXCEL_COLS} getRows={() => shifts} />
 					)}
 					<Button icon={<PlusSvg />} onClick={() => (tab === 'shifts' ? setEditShift(null) : setEditPattern(null))}>
 						{tab === 'shifts' ? 'Thêm ca' : 'Thêm mẫu ca tuần'}
@@ -88,7 +88,7 @@ export default function Shifts() {
 				<div className={tbl.tabsRow}>
 					{(
 						[
-							['shifts', 'Ca làm', shifts.length],
+							['shifts', 'Ca', shifts.length],
 							['patterns', 'Mẫu ca tuần', patterns.length],
 						] as const
 					).map(([key, label, count]) => (
@@ -111,7 +111,7 @@ export default function Shifts() {
 							<thead>
 								<tr>
 									<th className={tbl.th}>Ca</th>
-									<th className={tbl.th}>Giờ làm</th>
+									<th className={tbl.th}>Giờ ca</th>
 									<th className={tbl.th}>Được điểm danh</th>
 									<th className={tbl.th}>Du di</th>
 									<th className={`${tbl.th} ${tbl.thRight}`}>Thao tác</th>
@@ -121,7 +121,7 @@ export default function Shifts() {
 								{!loading && shifts.length === 0 ? (
 									<TableEmpty
 										colSpan={5}
-										title='Chưa có ca làm'
+										title='Chưa có ca nào'
 										desc='Thêm ca (hành chính, ca sáng/chiều/đêm, trực 24h...) rồi ghép thành mẫu ca tuần hoặc xếp vào bảng phân ca.'
 									/>
 								) : (
@@ -213,7 +213,7 @@ export default function Shifts() {
 																id: p.id,
 																name: p.name,
 																warning: p.is_default
-																	? 'Đây là mẫu mặc định: sau khi xoá, khóa chưa có mẫu riêng chỉ còn theo bảng phân ca (ngày không được phân ca thì điểm danh tự do).'
+																	? 'Đây là mẫu mặc định: sau khi xóa, khóa chưa có mẫu riêng chỉ còn theo bảng phân ca (ngày không được phân ca thì điểm danh tự do).'
 																	: p.course_count
 																		? `${p.course_count} khóa học đang dùng mẫu này sẽ chuyển về ${hasDefault ? 'mẫu mặc định' : 'không có mẫu (chỉ theo bảng phân ca)'}.`
 																		: undefined,
@@ -253,21 +253,21 @@ export default function Shifts() {
 			)}
 			{deleting && (
 				<ConfirmDeleteModal
-					title={deleting.kind === 'shifts' ? 'Xoá ca làm' : 'Xoá mẫu ca tuần'}
+					title={deleting.kind === 'shifts' ? 'Xóa ca' : 'Xóa mẫu ca tuần'}
 					subtitle={deleting.name}
 					onClose={() => setDeleting(null)}
 					onConfirm={async () => {
 						if (deleting.kind === 'shifts') await shiftApi.remove(deleting.id);
 						else await patternApi.remove(deleting.id);
-						notify.success(deleting.kind === 'shifts' ? 'Đã xoá ca làm' : 'Đã xoá mẫu ca tuần');
+						notify.success(deleting.kind === 'shifts' ? 'Đã xóa ca' : 'Đã xóa mẫu ca tuần');
 						setDeleting(null);
 						load();
 					}}
 					warning={deleting.warning}
 				>
 					{deleting.kind === 'shifts'
-						? 'Chỉ xoá được ca chưa dùng trong mẫu tuần hay bảng phân ca. Ca đã dùng thì chuyển sang "Ngừng dùng".'
-						: 'Bạn có chắc muốn xoá mẫu ca tuần này?'}
+						? 'Chỉ xóa được ca chưa dùng trong mẫu tuần hay bảng phân ca. Ca đã dùng thì chuyển sang "Ngừng dùng".'
+						: 'Bạn có chắc muốn xóa mẫu ca tuần này?'}
 				</ConfirmDeleteModal>
 			)}
 		</AdminLayout>

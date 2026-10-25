@@ -96,7 +96,7 @@ export function useStaffLicenses() {
 	const remove = useCallback(
 		async (item: StaffLicense) => {
 			await deleteStaffLicense(item.id);
-			showToast('success', `Đã xoá hồ sơ CCHN của "${item.user_full_name}"`);
+			showToast('success', `Đã xóa hồ sơ CCHN của "${item.user_full_name}"`);
 			refreshData();
 		},
 		[refreshData],

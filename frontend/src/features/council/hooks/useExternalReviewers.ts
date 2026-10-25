@@ -34,7 +34,7 @@ export function useExternalReviewers() {
 	useEffect(() => {
 		getExternalReviewers({ active_only: false })
 			.then(setReviewers)
-			.catch(() => showToast('error', 'Không thể tải danh sách người ngoài viện'))
+			.catch(() => showToast('error', 'Không thể tải danh sách chuyên gia ngoài viện'))
 			.finally(() => setIsLoadingData(false));
 	}, [refreshKey]);
 
@@ -93,9 +93,9 @@ export function useExternalReviewers() {
 			setModal(null);
 			setDeletingReviewer(null);
 			refreshData();
-			showToast('success', `Đã xoá "${deletingReviewer.full_name}"`);
+			showToast('success', `Đã xóa "${deletingReviewer.full_name}"`);
 		} catch (err) {
-			showToast('error', err instanceof Error ? err.message : 'Xoá thất bại');
+			showToast('error', err instanceof Error ? err.message : 'Xóa thất bại');
 		} finally {
 			setLoading(false);
 		}
@@ -114,7 +114,7 @@ export function useExternalReviewers() {
 				refreshData();
 				showToast(
 					failedCount ? 'error' : 'success',
-					bulkToast('xoá', okIds.size, failedCount, 'người ngoài viện'),
+					bulkToast('xóa', okIds.size, failedCount, 'chuyên gia ngoài viện'),
 				);
 			} finally {
 				setLoading(false);
@@ -135,7 +135,7 @@ export function useExternalReviewers() {
 				refreshData();
 				showToast(
 					failedCount ? 'error' : 'success',
-					bulkToast('cập nhật', okIds.size, failedCount, 'người ngoài viện'),
+					bulkToast('cập nhật', okIds.size, failedCount, 'chuyên gia ngoài viện'),
 				);
 			} finally {
 				setLoading(false);

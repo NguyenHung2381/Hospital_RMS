@@ -12,7 +12,7 @@ const listAuthors = async (topicId) => {
 	return r.recordset;
 };
 
-// Xoá hết rồi chèn lại toàn bộ danh sách tác giả theo đúng thứ tự mảng gửi lên
+// Xóa hết rồi chèn lại toàn bộ danh sách tác giả theo đúng thứ tự mảng gửi lên
 // (mirror surveyService.setQuestions) — đơn giản
 // hơn diff từng dòng, phù hợp vì số tác giả/bài báo nhỏ.
 const setAuthors = async (topicId, authors, actorId) => {

@@ -2,7 +2,7 @@
 // Lưới an toàn cho việc tách backend thành module: di chuyển code KHÔNG được làm
 // mất route, đổi đường dẫn hay đổi quyền một cách vô tình. Không cần DB.
 //
-// Thay đổi route có chủ đích (thêm/xoá/đổi quyền) → chạy lại với
+// Thay đổi route có chủ đích (thêm/xóa/đổi quyền) → chạy lại với
 //   UPDATE_SNAPSHOTS=1 npm run test:contract
 // rồi commit file routes.snapshot.txt cùng thay đổi — diff của file này chính là
 // danh sách route bị ảnh hưởng để người review soát.

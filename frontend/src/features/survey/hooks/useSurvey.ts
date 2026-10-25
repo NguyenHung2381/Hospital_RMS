@@ -127,9 +127,9 @@ export function useSurvey() {
 			setItems((prev) => prev.filter((d) => d.id !== deletingItem.id));
 			setModal(null);
 			setDeletingItem(null);
-			showToast('success', `Đã xoá "${deletingItem.title}"`);
+			showToast('success', `Đã xóa "${deletingItem.title}"`);
 		} catch (err) {
-			showToast('error', err instanceof Error ? err.message : 'Xoá thất bại');
+			showToast('error', err instanceof Error ? err.message : 'Xóa thất bại');
 		} finally {
 			setLoading(false);
 		}
@@ -145,7 +145,7 @@ export function useSurvey() {
 				setModal(null);
 				showToast(
 					failedCount ? 'error' : 'success',
-					bulkToast('xoá', okIds.size, failedCount, 'khảo sát'),
+					bulkToast('xóa', okIds.size, failedCount, 'khảo sát'),
 				);
 			} finally {
 				setLoading(false);

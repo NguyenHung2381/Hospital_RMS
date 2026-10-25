@@ -39,7 +39,7 @@
 
 /* ── Chọn số dòng / trang ───────────────── */
 
-/* ── Nút sửa / xoá trong hàng ───────────── */
+/* ── Nút sửa / xóa trong hàng ───────────── */
 .actions {
 	composes: actionBtns from './Table.module.css';
 	justify-content: flex-end;

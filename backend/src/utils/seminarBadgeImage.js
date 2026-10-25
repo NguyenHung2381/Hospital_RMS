@@ -5,12 +5,28 @@
  * font hỗ trợ tiếng Việt.
  */
 const path = require('path');
-const QRCode = require('qrcode');
-const { createCanvas, loadImage, GlobalFonts } = require('@napi-rs/canvas');
+const { lazyRequire } = require('./lazyRequire');
+/** @type {typeof import('qrcode')} */
+const QRCode = lazyRequire('qrcode');
 
 const ASSETS = path.join(__dirname, '../assets');
-GlobalFonts.registerFromPath(path.join(ASSETS, 'fonts/BeVietnamPro_400Regular.ttf'), 'BVP');
-GlobalFonts.registerFromPath(path.join(ASSETS, 'fonts/BeVietnamPro_700Bold.ttf'), 'BVP');
+
+// Nạp Skia ở lần vẽ đầu tiên thay vì lúc khởi động: binding tạo 1 luồng tokio
+// cho mỗi core (~20 luồng) + ~27MB RSS ở MỌI tiến trình (mỗi worker cluster,
+// mỗi lần nodemon restart), trong khi chỉ email đăng ký hội nghị mới dùng tới.
+/** @type {typeof import('@napi-rs/canvas') | undefined} */
+let skia;
+const loadSkia = () => {
+	if (!skia) {
+		skia = require('@napi-rs/canvas');
+		skia.GlobalFonts.registerFromPath(
+			path.join(ASSETS, 'fonts/BeVietnamPro_400Regular.ttf'),
+			'BVP',
+		);
+		skia.GlobalFonts.registerFromPath(path.join(ASSETS, 'fonts/BeVietnamPro_700Bold.ttf'), 'BVP');
+	}
+	return skia;
+};
 
 const C = {
 	primary: '#0a9b4a',
@@ -62,6 +78,7 @@ const renderSeminarBadgePng = async ({
 	ticketUrl,
 	code,
 }) => {
+	const { createCanvas, loadImage } = loadSkia();
 	const measure = createCanvas(1, 1).getContext('2d');
 	const maxW = W - PAD * 2;
 	/** @type {Array<[string[], string, string, number, number]>} */
@@ -114,7 +131,7 @@ const renderSeminarBadgePng = async ({
 	ctx.fill();
 	ctx.drawImage(logo, W / 2 - 34, 30, 68, 68);
 	ctx.font = font(16);
-	ctx.fillText('Bệnh viện Hữu Nghị Đa Khoa Nghệ An', W / 2, 118);
+	ctx.fillText('Bệnh viện Hữu nghị Đa khoa Nghệ An', W / 2, 118);
 	ctx.font = font(34, true);
 	ctx.letterSpacing = '6px';
 	ctx.fillText('THẺ ĐẠI BIỂU', W / 2 + 3, 146); // +3: bù khoảng giãn sau ký tự cuối

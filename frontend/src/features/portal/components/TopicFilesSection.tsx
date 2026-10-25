@@ -108,7 +108,7 @@ export function TopicFilesSection({
 
 							<input
 								className={styles.batchNoteInput}
-								placeholder='Ghi chú đợt upload (tùy chọn)'
+								placeholder='Ghi chú lần tải lên (tùy chọn)'
 								value={batchNote}
 								onChange={(e) => setBatchNote(e.target.value)}
 								disabled={uploadLoading}

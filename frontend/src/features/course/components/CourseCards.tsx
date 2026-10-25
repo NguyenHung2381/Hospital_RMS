@@ -87,7 +87,7 @@ export function CourseCards({
 								</button>
 								<button
 									type='button'
-									title='Xoá khóa học'
+									title='Xóa khóa học'
 									className={styles.danger}
 									onClick={() => onDelete(c)}
 								>

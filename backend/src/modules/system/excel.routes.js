@@ -3,7 +3,9 @@
 // đọc file thành bảng chữ — việc ghi dữ liệu vẫn đi qua API tạo mới của từng
 // module nên quyền & validate giữ nguyên.
 const router = require('express').Router();
-const ExcelJS = require('exceljs');
+const { lazyRequire } = require('../../utils/lazyRequire');
+/** @type {typeof import('exceljs')} */
+const ExcelJS = lazyRequire('exceljs');
 const { authenticate } = require('../../middlewares/auth');
 const uploadExcel = require('../../middlewares/uploadExcel');
 const { sendWorkbook, success } = require('../../utils/response');
@@ -62,7 +64,7 @@ router.post(
 		if (!req.file) throw badRequest('Chưa chọn file');
 		const wb = await loadWorkbook(req.file.buffer);
 		const ws = wb.worksheets[0];
-		if (!ws) throw badRequest('File không có sheet nào');
+		if (!ws) throw badRequest('File không có trang tính nào');
 		const rows = [];
 		const maxRow = Math.min(ws.rowCount || 0, MAX_ROWS + 30);
 		const maxCol = Math.min(ws.columnCount || 0, MAX_COLS);

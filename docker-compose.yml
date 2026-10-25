@@ -73,11 +73,21 @@ services:
       # thoại quét QR bằng camera trực tiếp (Safari chặn camera trên HTTP).
       DEV_HTTPS: "${DEV_HTTPS:-false}"
       NODE_OPTIONS: "--max-old-space-size=512"
+      # Rolldown (Rust) tạo 1 luồng worker cho MỖI core máy host (Docker Desktop
+      # báo 20 core → 35 luồng rolldown-worker), mỗi luồng giữ vùng nhớ riêng của
+      # mimalloc và không trả lại OS → pre-bundle nguội đạt đỉnh 1.5GB, chạy lâu
+      # phình ~1.2GB RSS. 2 luồng + mimalloc trả trang trống ngay: đỉnh ~520MB,
+      # transform toàn bộ src (~640 file) vẫn ~20s như cũ.
+      ROLLDOWN_WORKER_THREADS: "2"
+      ROLLDOWN_MAX_BLOCKING_THREADS: "2"
+      RAYON_NUM_THREADS: "2"
+      MIMALLOC_PURGE_DELAY: "0"
+      MIMALLOC_ARENA_EAGER_COMMIT: "0"
     # Chạy vite trực tiếp, bỏ tiến trình `npm run dev` (~60MB RSS) bọc ngoài.
     command: ["sh", "-c", *ensure-deps, "sh", "node", "node_modules/vite/bin/vite.js"]
     # Lần quét/pre-bundle deps đầu tiên (sau npm ci) của Rolldown dùng bộ nhớ
-    # native ngoài heap V8 → 768m bị OOMKilled (exit 137).
-    mem_limit: 1536m
+    # native ngoài heap V8 — với giới hạn luồng ở trên đỉnh ~520MB, chừa gấp đôi.
+    mem_limit: 1024m
     ports:
       - "5173:5173"
     volumes:

@@ -11,11 +11,11 @@ const userStatusCache = require('../../../permissions/userStatusCache');
 // ─── Cấp tài khoản đăng nhập cho học viên (D0) ──────────────────────────────
 // Tài khoản học viên CẤP RIÊNG, không gộp vào tài khoản nội viện: mã 'HV' +
 // NNNNNN (không theo mã khoa như nhân viên 'NV<khoa>NNNN'), không gắn khoa/phòng,
-// vai trò Học viên, và bị loại khỏi trang Quản lý người dùng — quản lý (khoá,
+// vai trò Học viên, và bị loại khỏi trang Quản lý người dùng — quản lý (khóa,
 // đặt lại mật khẩu) ngay tại hồ sơ học viên. Học viên là nhân viên trong viện
 // vẫn được cấp tài khoản học viên riêng, không dùng lại tài khoản nhân viên.
-// Mỗi học viên xử lý trong 1 transaction ngắn riêng (khoá dải mã 'HV' giữ tới
-// khi commit — gộp nhiều học viên vào 1 transaction lớn sẽ giữ khoá quá lâu).
+// Mỗi học viên xử lý trong 1 transaction ngắn riêng (khóa dải mã 'HV' giữ tới
+// khi commit — gộp nhiều học viên vào 1 transaction lớn sẽ giữ khóa quá lâu).
 // Tên đăng nhập "NVA_0001" (xem traineeUsername.js). Mật khẩu mặc định = tên
 // đăng nhập (cả khi cấp lẫn khi đặt lại), bắt đổi ở lần đăng nhập đầu
 // (users.must_change_password).
@@ -23,7 +23,7 @@ const userStatusCache = require('../../../permissions/userStatusCache');
 const TRAINEE_USER_PREFIX = 'HV';
 
 // Tên đăng nhập kế tiếp cho viết tắt của fullName. Gọi SAU genTraineeUserIdInTx
-// trong cùng tx: khoá dải mã 'HV' đã tuần tự hoá các lần cấp song song nên hai
+// trong cùng tx: khóa dải mã 'HV' đã tuần tự hóa các lần cấp song song nên hai
 // học viên cùng viết tắt không nhận trùng số thứ tự.
 const genTraineeUsernameInTx = async (tx, fullName, traineeRoleId) => {
 	const prefix = traineeUsernamePrefix(fullName);
@@ -43,7 +43,7 @@ const genTraineeUsernameInTx = async (tx, fullName, traineeRoleId) => {
 	);
 };
 
-// Sinh mã tài khoản học viên trong transaction: (UPDLOCK, HOLDLOCK) khoá dải mã
+// Sinh mã tài khoản học viên trong transaction: (UPDLOCK, HOLDLOCK) khóa dải mã
 // 'HV' tới khi tx commit nên chạy song song vẫn không trùng.
 const genTraineeUserIdInTx = async (tx) => {
 	const res = await new sql.Request(tx).input('prefix', sql.VarChar(4), TRAINEE_USER_PREFIX).query(`
@@ -55,7 +55,7 @@ const genTraineeUserIdInTx = async (tx) => {
 };
 
 // traineeIds BẮT BUỘC (route đã kiểm tra) — trước đây bỏ trống = cấp cho mọi học
-// viên chưa có tài khoản, kể cả hồ sơ đã xoá. Hồ sơ đã xoá / ngừng hoạt động /
+// viên chưa có tài khoản, kể cả hồ sơ đã xóa. Hồ sơ đã xóa / ngừng hoạt động /
 // đã có tài khoản / không tồn tại được trả về trong skipped kèm lý do.
 const grantAccounts = async (traineeIds, actorId) => {
 	const ids = [...new Set((traineeIds || []).map(String))];
@@ -80,7 +80,7 @@ const grantAccounts = async (traineeIds, actorId) => {
 		const reason = !row
 			? 'Không tìm thấy học viên'
 			: row.hidden_at
-				? 'Hồ sơ học viên đã bị xoá'
+				? 'Hồ sơ học viên đã bị xóa'
 				: !row.is_active
 					? 'Học viên đang ngừng hoạt động'
 					: row.account_granted
@@ -207,7 +207,7 @@ const resetAccountPassword = async (traineeId, actorId, ip = null) => {
 	return result;
 };
 
-// Khoá tài khoản học viên (nếu có) — dùng khi xoá / ngừng hồ sơ học viên.
+// Khóa tài khoản học viên (nếu có) — dùng khi xóa / ngừng hồ sơ học viên.
 const lockAccountOf = async (traineeId, actorId) => {
 	const pool = await getPool();
 	// Không dùng OUTPUT: bảng users có trigger audit (trg_users_audit)
@@ -225,11 +225,11 @@ const lockAccountOf = async (traineeId, actorId) => {
       SELECT @uid AS user_id;
     `);
 	const userId = r.recordset[0]?.user_id;
-	// middlewares/auth.js đọc is_active qua cache — xoá để khoá có hiệu lực ngay
+	// middlewares/auth.js đọc is_active qua cache — xóa để khóa có hiệu lực ngay
 	if (userId) userStatusCache.clear(userId);
 };
 
-// Khoá / mở khoá tài khoản học viên. Không qua userService.update: hàm đó đồng
+// Khóa / mở khóa tài khoản học viên. Không qua userService.update: hàm đó đồng
 // bộ users → persons (danh tính nhân viên), tài khoản học viên không thuộc đó.
 const setAccountActive = async (traineeId, isActive, actorId) => {
 	const {
@@ -238,11 +238,11 @@ const setAccountActive = async (traineeId, isActive, actorId) => {
 		hidden_at: hiddenAt,
 	} = await accountOf(traineeId);
 	if (isActive && hiddenAt)
-		throw httpError(400, 'Hồ sơ học viên đã bị xoá, không mở khoá tài khoản');
+		throw httpError(400, 'Hồ sơ học viên đã bị xóa, không mở khóa tài khoản');
 	if (isActive && !traineeActive)
 		throw httpError(
 			400,
-			'Học viên đang ngừng hoạt động — bật lại hồ sơ trước khi mở khoá tài khoản',
+			'Học viên đang ngừng hoạt động — bật lại hồ sơ trước khi mở khóa tài khoản',
 		);
 	const pool = await getPool();
 	await pool
@@ -254,7 +254,7 @@ const setAccountActive = async (traineeId, isActive, actorId) => {
       UPDATE users SET is_active = @is_active, updated_at = GETDATE(), updated_by = @actor_id
       WHERE id = @id
     `);
-	// middlewares/auth.js đọc is_active qua cache — xoá để khoá có hiệu lực ngay
+	// middlewares/auth.js đọc is_active qua cache — xóa để khóa có hiệu lực ngay
 	userStatusCache.clear(userId);
 	broadcast('update', { entity: 'trainee' });
 };

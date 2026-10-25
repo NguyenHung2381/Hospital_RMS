@@ -78,7 +78,7 @@ export function StaffLicenseImportModal({ onClose, onDone }: { onClose: () => vo
 			footer={
 				<>
 					<button className={styles.btnCancel} onClick={onClose} disabled={loading}>
-						{result ? 'Đóng' : 'Huỷ'}
+						{result ? 'Đóng' : 'Hủy'}
 					</button>
 					{!result && (
 						<button className={styles.btnConfirm} onClick={commit} disabled={loading || rows.length === 0}>
@@ -112,10 +112,10 @@ export function StaffLicenseImportModal({ onClose, onDone }: { onClose: () => vo
 						<span>
 							Cột bắt buộc: <b>MNV</b>, <b>Số CCHN</b>. Nhận thêm: Ngày cấp, Nơi cấp (cột "Nơi cấp khác Nghệ
 							An" để trống = Sở Y tế Nghệ An), Phạm vi hành nghề (ưu tiên cột "NỐI cả QĐ bổ sung", sau đó cột
-							"ĐƠN"), Mã hoá phạm vi 2148, Văn bằng chuyên môn, Chuyên khoa cần cập nhật KTYK liên tục, QĐ bổ
+							"ĐƠN"), Mã hóa phạm vi 2148, Văn bằng chuyên môn, Chuyên khoa cần cập nhật KTYK liên tục, QĐ bổ
 							sung phạm vi, Điều chỉnh phạm vi, Ngày điều chỉnh, Chức danh, Ngày sinh. Cột khoa (K/P/TT) chỉ
 							dùng để cảnh báo khi lệch, không đổi khoa; cột CCCD không được nhập. Ô trống trong file{' '}
-							<b>không xoá</b> dữ liệu đang có; MNV chưa có trong hệ thống sẽ bị bỏ qua.
+							<b>không xóa</b> dữ liệu đang có; MNV chưa có trong hệ thống sẽ bị bỏ qua.
 						</span>
 					</div>
 

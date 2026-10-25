@@ -1,5 +1,5 @@
-// Chống IDOR cho khoá học (modules/training/courses/coursePolicy.js): giảng viên phạm vi
-// 'assigned' chỉ thao tác khoá học mình được phân công — kể cả qua mã bản ghi
+// Chống IDOR cho khóa học (modules/training/courses/coursePolicy.js): giảng viên phạm vi
+// 'assigned' chỉ thao tác khóa học mình được phân công — kể cả qua mã bản ghi
 // con (buổi học, đăng ký, tài liệu, điểm, chứng chỉ...).
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -38,12 +38,12 @@ const MANAGER = actor('QL1', { 'courses:read': 'all', 'courses:update': 'all' })
 
 const denied = (p, code = 403) => assert.rejects(p, (e) => e.statusCode === code);
 
-test('giảng viên: khoá được phân công thì qua, khoá khác bị chặn', async () => {
+test('giảng viên: khóa được phân công thì qua, khóa khác bị chặn', async () => {
 	await coursePolicy.assertCourseInScope('KH1', LECTURER);
 	await denied(coursePolicy.assertCourseInScope('KH2', LECTURER));
 });
 
-test('giảng viên: mã bản ghi con quy về khoá học chứa nó', async () => {
+test('giảng viên: mã bản ghi con quy về khóa học chứa nó', async () => {
 	await coursePolicy.assertCourseChildInScope('sessionId', 'BH1', LECTURER);
 	await coursePolicy.assertCourseChildInScope('certId', 'CC1', LECTURER);
 	await denied(coursePolicy.assertCourseChildInScope('sessionId', 'BH2', LECTURER));
@@ -59,7 +59,7 @@ test('phạm vi toàn viện: không cần tra DB', async () => {
 	assert.equal(queries.length, before);
 });
 
-test('mọi tham số mã con trong modules/training/courses/courses.routes.js đều có cách quy về khoá học', () => {
+test('mọi tham số mã con trong modules/training/courses/courses.routes.js đều có cách quy về khóa học', () => {
 	const src = require('fs').readFileSync(
 		require.resolve('../../src/modules/training/courses/courses.routes.js'),
 		'utf8',

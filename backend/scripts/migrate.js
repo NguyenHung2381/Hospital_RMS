@@ -38,7 +38,7 @@ const TEMPLATE = (
  * ----------------------------------------------------------------------------
  *   <Mô tả thay đổi: bảng / cột nào, để làm gì, ai dùng>
  * Idempotent — mỗi bước tự kiểm tra (OBJECT_ID / COL_LENGTH / sys.indexes)
- * nên chạy lại nhiều lần an toàn. Chỉ THÊM (bảng/cột/index); xoá hay đổi tên
+ * nên chạy lại nhiều lần an toàn. Chỉ THÊM (bảng/cột/index); xóa hay đổi tên
  * thì để bản phát hành sau, khi code cũ không còn dùng.
  * ==========================================================================*/
 

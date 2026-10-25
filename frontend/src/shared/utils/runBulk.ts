@@ -17,7 +17,7 @@ export async function runBulk<T>(
 	return { okIds, failedCount: ids.length - okIds.size, results };
 }
 
-/** Câu thông báo kết quả bulk: "Đã xoá 5 khoa phòng" / "Đã xoá 3 khoa phòng, 2 lỗi". */
+/** Câu thông báo kết quả bulk: "Đã xóa 5 khoa/phòng" / "Đã xóa 3 khoa/phòng, 2 lỗi". */
 export const bulkToast = (
 	verb: string,
 	ok: number,

@@ -143,7 +143,7 @@
  * @swagger
  * /notifications/admin/batch/{batchKey}:
  *   delete:
- *     summary: Xoá cả 1 lượt gửi thông báo (admin only)
+ *     summary: Xóa cả 1 lượt gửi thông báo (admin only)
  *     tags: [Notifications]
  *     parameters:
  *       - in: path
@@ -152,7 +152,7 @@
  *         schema: { type: string }
  *     responses:
  *       200:
- *         description: Đã xoá
+ *         description: Đã xóa
  *       404:
  *         description: Không tìm thấy
  */
@@ -161,7 +161,7 @@
  * @swagger
  * /notifications/{id}:
  *   delete:
- *     summary: Xoá thông báo (admin only)
+ *     summary: Xóa thông báo (admin only)
  *     tags: [Notifications]
  *     parameters:
  *       - in: path
@@ -170,7 +170,7 @@
  *         schema: { type: string }
  *     responses:
  *       200:
- *         description: Đã xoá
+ *         description: Đã xóa
  *       404:
  *         description: Không tìm thấy
  */

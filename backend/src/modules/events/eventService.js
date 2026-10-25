@@ -64,7 +64,7 @@ const publish = (payload) => {
 	redis.publish(CHANNEL, payload).catch(() => send(payload));
 };
 
-// Gộp sự kiện trùng phát ra liên tiếp: import Excel N dòng hay xoá hàng loạt N
+// Gộp sự kiện trùng phát ra liên tiếp: import Excel N dòng hay xóa hàng loạt N
 // bản ghi gọi broadcast N lần cho cùng 1 entity → mọi tab đang mở tải lại
 // danh sách N lần. Trong cửa sổ COALESCE_MS chỉ gửi 1 lần (ở cuối cửa sổ, sau
 // khi dữ liệu đã ghi xong), đổi lại độ trễ realtime ~200ms không đáng kể.

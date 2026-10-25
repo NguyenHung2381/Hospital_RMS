@@ -67,7 +67,7 @@ export default function SetupTwoFactor() {
 				</h2>
 				<p className={styles.loginSubtitle}>
 					{required
-						? 'Tài khoản quản trị bắt buộc bật xác thực 2 lớp. Hệ thống tạm khoá các chức năng khác cho tới khi bạn bật xong.'
+						? 'Tài khoản quản trị bắt buộc bật xác thực 2 lớp. Hệ thống tạm khóa các chức năng khác cho tới khi bạn bật xong.'
 						: `Tài khoản quản trị phải bật xác thực 2 lớp${deadline ? ` trước ${deadline.toLocaleDateString('vi-VN')}` : ''}.`}
 				</p>
 			</div>

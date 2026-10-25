@@ -9,7 +9,7 @@ const forgot = asyncHandler(async (req, res) => {
 
 const reset = asyncHandler(async (req, res) => {
 	const { username, code, new_password } = req.body;
-	await passwordResetService.resetPassword(username.trim(), code, new_password);
+	await passwordResetService.resetPassword(username.trim(), code, new_password, req.ip);
 	return success(res, null, 'Đặt lại mật khẩu thành công. Vui lòng đăng nhập bằng mật khẩu mới.');
 });
 

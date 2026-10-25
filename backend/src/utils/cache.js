@@ -7,9 +7,9 @@ const cacheBus = require('./cacheBus');
 //   L1 — Map trong RAM từng process: trúng là trả ngay, không tốn round-trip
 //        mạng tới Redis. TTL ngắn (≤ L1_MAX_MS) và không vượt TTL còn lại của
 //        key trên Redis, để giới hạn độ trễ khi Redis down (cacheBus không phát
-//        được lệnh xoá sang worker khác).
+//        được lệnh xóa sang worker khác).
 //   L2 — Redis, dùng chung giữa các worker / instance (utils/cacheBus.js phát
-//        lệnh xoá L1 sang worker khác sau mỗi lần ghi).
+//        lệnh xóa L1 sang worker khác sau mỗi lần ghi).
 //
 // Mọi lỗi Redis đều bị nuốt — Redis chết thì L1 vẫn chạy, miss thì đọc DB.
 //
@@ -26,7 +26,7 @@ const l1 = new Map(); // key → { raw, exp }
 // chờ chung kết quả — tránh dồn N query nặng vào MSSQL cùng lúc (cache stampede).
 const inflight = new Map();
 // Tăng mỗi lần invalidate: lượt đọc DB bắt đầu TRƯỚC khi có ghi thì kết quả có
-// thể đã cũ — không được ghi đè lại vào cache sau khi vừa xoá.
+// thể đã cũ — không được ghi đè lại vào cache sau khi vừa xóa.
 let epoch = 0;
 
 const l1Get = (key) => {
@@ -82,7 +82,7 @@ const remember = async (key, ttlSeconds, fn) => {
 	return raw === undefined ? undefined : JSON.parse(raw);
 };
 
-// Xoá L1 + lượt đọc đang chạy của prefix (null = tất cả) trong process này.
+// Xóa L1 + lượt đọc đang chạy của prefix (null = tất cả) trong process này.
 const clearLocal = (prefix) => {
 	epoch++;
 	for (const k of l1.keys()) if (!prefix || k.startsWith(prefix)) l1.delete(k);
@@ -90,9 +90,9 @@ const clearLocal = (prefix) => {
 };
 cacheBus.register('redisCache', clearLocal);
 
-// Xoá mọi key khớp prefix (vd sau khi ghi dữ liệu lookup) ở cả 2 tầng. Redis
+// Xóa mọi key khớp prefix (vd sau khi ghi dữ liệu lookup) ở cả 2 tầng. Redis
 // dùng SCAN thay vì KEYS để không block; UNLINK giải phóng bộ nhớ ở luồng nền.
-// Thứ tự quan trọng: xoá Redis XONG mới báo worker khác xoá L1 — báo trước thì
+// Thứ tự quan trọng: xóa Redis XONG mới báo worker khác xóa L1 — báo trước thì
 // worker kia có thể kịp đọc lại bản cũ từ Redis vào L1 (giữ thêm tới 30s).
 const invalidate = async (prefix) => {
 	clearLocal(prefix);

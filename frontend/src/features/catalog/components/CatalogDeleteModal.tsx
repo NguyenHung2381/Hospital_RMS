@@ -17,13 +17,13 @@ export function CatalogDeleteModal({
 }) {
 	return (
 		<ConfirmDeleteModal
-			title={`Xoá ${TAB_CONFIG[tab].label.toLowerCase()}`}
+			title={`Xóa ${TAB_CONFIG[tab].label.toLowerCase()}`}
 			subtitle={item.name}
 			onClose={onClose}
 			onConfirm={onConfirm}
 			loading={loading}
 		>
-			Bạn có chắc muốn xoá <strong>{item.name}</strong> khỏi hệ thống? Thao tác này không thể hoàn
+			Bạn có chắc muốn xóa <strong>{item.name}</strong> khỏi hệ thống? Thao tác này không thể hoàn
 			tác.
 		</ConfirmDeleteModal>
 	);

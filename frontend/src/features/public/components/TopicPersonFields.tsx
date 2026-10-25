@@ -7,7 +7,7 @@ interface Props {
 	person: TopicPerson;
 	errors?: Partial<Record<PersonField, string>>;
 	departments: SimpleOption[];
-	/** Đã có thư ký ở người khác ⇒ khoá lựa chọn "Thư ký" */
+	/** Đã có thư ký ở người khác ⇒ khóa lựa chọn "Thư ký" */
 	secretaryTaken?: boolean;
 	onChange: (field: PersonField, value: string) => void;
 }

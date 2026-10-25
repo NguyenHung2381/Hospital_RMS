@@ -179,7 +179,7 @@ export function useCouncilProgress() {
 			notify.success(`Đã tải lên ${files.length} file đánh giá`);
 			await load();
 		} catch (e) {
-			notify.error(e instanceof Error ? e.message : 'Upload thất bại');
+			notify.error(e instanceof Error ? e.message : 'Tải lên thất bại');
 		} finally {
 			setUploadingId(null);
 			const input = fileInputs.current[t.id];
@@ -191,7 +191,7 @@ export function useCouncilProgress() {
 		if (!confirm('Xóa file đánh giá này?')) return;
 		try {
 			await deleteEvaluationFile(t.id, fileId);
-			notify.success('Đã xoá file đánh giá');
+			notify.success('Đã xóa file đánh giá');
 			await load();
 		} catch (e) {
 			notify.error(e instanceof Error ? e.message : 'Xóa file thất bại');
@@ -231,7 +231,7 @@ export function useCouncilProgress() {
 			notify.success(`Đã tải lên ${files.length} biên bản`);
 			await load();
 		} catch (e) {
-			notify.error(e instanceof Error ? e.message : 'Upload thất bại');
+			notify.error(e instanceof Error ? e.message : 'Tải lên thất bại');
 		} finally {
 			setUploadingMinutesId(null);
 			const input = minutesInputs.current[t.id];
@@ -243,7 +243,7 @@ export function useCouncilProgress() {
 		if (!confirm('Xóa biên bản này?')) return;
 		try {
 			await deleteMinutesFile(t.id, fileId);
-			notify.success('Đã xoá biên bản');
+			notify.success('Đã xóa biên bản');
 			await load();
 		} catch (e) {
 			notify.error(e instanceof Error ? e.message : 'Xóa file thất bại');

@@ -23,7 +23,7 @@ export function ConfirmUploadModal({
 		try {
 			await onConfirm();
 		} catch (err) {
-			setError(err instanceof Error ? err.message : 'Lỗi upload file');
+			setError(err instanceof Error ? err.message : 'Lỗi tải lên file');
 			setLoading(false);
 		}
 	};
@@ -130,7 +130,7 @@ export function ConfirmUploadModal({
 						onClick={onClose}
 						disabled={loading}
 					>
-						Huỷ bỏ
+						Hủy bỏ
 					</button>
 					<button
 						className={styles.btnPrimary}

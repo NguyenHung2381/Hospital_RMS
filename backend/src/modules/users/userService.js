@@ -20,7 +20,7 @@ const { httpError } = require('../../utils/httpError');
 // ─── Cache thống kê toàn bảng (global_stats) ─────────────────────────────────
 // global_stats không phụ thuộc filter/phân trang nên trước đây bị quét lại toàn
 // bảng users ở MỌI request (kể cả khi chỉ bấm chuyển trang). Cache 30s trong bộ
-// nhớ process; xoá ngay khi có thay đổi user (create/update/remove/reset pass).
+// nhớ process; xóa ngay khi có thay đổi user (create/update/remove/reset pass).
 const STATS_TTL_MS = 30 * 1000;
 let _statsCache = null; // { data, ts }
 
@@ -113,7 +113,7 @@ const getAll = async ({
 	if (search) {
 		const term = String(search).trim();
 		// username/email là cột varchar (non-unicode) -> dùng tham số VarChar để
-		// tránh SQL Server ép kiểu cả cột sang NVARCHAR (huỷ index, tốn CPU).
+		// tránh SQL Server ép kiểu cả cột sang NVARCHAR (hủy index, tốn CPU).
 		// full_name là nvarchar -> tham số NVarChar riêng.
 		const orParts = [
 			'u.username LIKE @search',
@@ -123,7 +123,7 @@ const getAll = async ({
 		req.input('search', sql.VarChar(120), `%${term}%`);
 		req.input('search_n', sql.NVarChar(220), `%${term}%`);
 		// Chỉ ép kiểu staff_number khi chuỗi tìm là số — bỏ CAST khỏi nhánh phổ
-		// biến (tìm theo tên), nơi nó vô hiệu hoá mọi index.
+		// biến (tìm theo tên), nơi nó vô hiệu hóa mọi index.
 		if (/^\d+$/.test(term)) {
 			orParts.push('CAST(u.staff_number AS VARCHAR(20)) LIKE @search');
 		}
@@ -177,7 +177,7 @@ const getAll = async ({
     ${pg.fetchClause};
   `;
 
-	// JOIN departments/roles là LEFT JOIN theo khoá chính ⇒ không đổi số dòng, đếm trên users là đủ.
+	// JOIN departments/roles là LEFT JOIN theo khóa chính ⇒ không đổi số dòng, đếm trên users là đủ.
 	if (paged) {
 		query += `
     SELECT COUNT(*) AS total FROM users u ${whereAll};
@@ -366,8 +366,8 @@ const remove = async (id, actorId) => {
 	const pool = await getPool();
 
 	// Nhiều FK trỏ tới users.id KHÔNG có ON DELETE CASCADE (đề tài/hội đồng/đợt/tệp
-	// do user tạo, ghế hội đồng, tài khoản liên hệ khoa...). Không thể xoá cứng mà
-	// giữ được lịch sử → chặn và yêu cầu vô hiệu hoá tài khoản (is_active = 0).
+	// do user tạo, ghế hội đồng, tài khoản liên hệ khoa...). Không thể xóa cứng mà
+	// giữ được lịch sử → chặn và yêu cầu vô hiệu hóa tài khoản (is_active = 0).
 	const check = await pool.request().input('id', sql.VarChar(20), id).query(`
 		SELECT
 			(SELECT COUNT(*) FROM topics WHERE created_by = @id) AS topics_created,
@@ -402,11 +402,11 @@ const remove = async (id, actorId) => {
 	if (blockers.length) {
 		throw httpError(
 			409,
-			`Không thể xoá tài khoản vì còn liên kết: ${blockers.join(', ')}. Hãy vô hiệu hoá tài khoản (ngừng hoạt động) thay vì xoá.`,
+			`Không thể xóa tài khoản vì còn liên kết: ${blockers.join(', ')}. Hãy vô hiệu hóa tài khoản (ngừng hoạt động) thay vì xóa.`,
 		);
 	}
 
-	// Lấy trước khi xoá — sau khi xoá thì dọn person (bảng persons không có FK tới users)
+	// Lấy trước khi xóa — sau khi xóa thì dọn person (bảng persons không có FK tới users)
 	const personId = await personService.personIdOf('users', id);
 	await pool.request().input('id', sql.VarChar(20), id).input('actor_id', sql.VarChar(20), actorId)
 		.query(`

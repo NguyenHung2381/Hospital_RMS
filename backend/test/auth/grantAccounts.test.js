@@ -101,13 +101,13 @@ test('tài khoản thành viên đã hết hạn: mở lại + gia hạn, không
 	assert.equal(credentials[0].note, null);
 });
 
-test('tài khoản thành viên bị khoá tay (chưa hết hạn): báo cần quản trị mở lại', async () => {
+test('tài khoản thành viên bị khóa tay (chưa hết hạn): báo cần quản trị mở lại', async () => {
 	members = [member('TM3', 300, 'leader')];
 	const from = log.length;
 	const { credentials } = await grantAccounts('DT1', null, 'ACTOR');
 	const [w] = writesFor(from, 'NVK1_0300');
 	assert.equal(w.inputs.role_id, 'VT05'); // được nâng lên chủ nhiệm
-	assert.match(credentials[0].note, /khoá/);
+	assert.match(credentials[0].note, /khóa/);
 });
 
 test('thành viên chưa có tài khoản: tạo mới với mật khẩu mặc định = tên đăng nhập, bắt đổi', async () => {

@@ -68,7 +68,7 @@ const transfer = async (courseId, enrollmentIds, actorId) => {
 	const added = new Map(); // program_id → số người, để báo lớp vừa đủ sĩ số
 	const full = []; // hồ sơ không chuyển được vì lớp hết chỗ
 	try {
-		// Cùng khoá với fillFromWaitlist: không 2 thao tác cùng chiếm 1 chỗ trống.
+		// Cùng khóa với fillFromWaitlist: không 2 thao tác cùng chiếm 1 chỗ trống.
 		await q().query(
 			"EXEC sp_getapplock @Resource = 'course-class-waitlist', @LockMode = 'Exclusive', @LockOwner = 'Transaction', @LockTimeout = 15000",
 		);
@@ -81,7 +81,7 @@ const transfer = async (courseId, enrollmentIds, actorId) => {
 			await q()
 				.input('course_id', sql.VarChar(20), courseId)
 				.input('ids', sql.NVarChar(sql.MAX), JSON.stringify(enrollmentIds))
-				.query(`${CANDIDATE_SQL} AND e.id IN (SELECT [value] FROM OPENJSON(@ids))
+				.query(`${CANDIDATE_SQL} AND e.id IN (SELECT CAST([value] AS VARCHAR(50)) FROM OPENJSON(@ids))
                 ORDER BY e.decided_at, e.registered_at, e.id`)
 		).recordset;
 		for (const e of valid) {
@@ -121,7 +121,8 @@ const transfer = async (courseId, enrollmentIds, actorId) => {
 		(r) => `Bạn đã được xếp vào lớp ${r.program_name ?? ''} — ${r.course_name}`,
 		'Bạn được chuyển từ danh sách chờ vào đợt học mới. Lịch học sẽ được thông báo khi phòng Đào tạo xếp lịch.',
 	);
-	for (const [programId, n] of added) await programClassService.notifyIfReady(courseId, programId, n);
+	for (const [programId, n] of added)
+		await programClassService.notifyIfReady(courseId, programId, n);
 	return { moved: moved.length, skipped: enrollmentIds.length - moved.length, full: full.length };
 };
 

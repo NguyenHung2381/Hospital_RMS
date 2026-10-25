@@ -98,7 +98,7 @@
    POPOVER DIALOG
 ============================================= */
 
-/* Render qua portal vào <body>, toạ độ fixed do DatePicker.tsx tính —
+/* Render qua portal vào <body>, tọa độ fixed do DatePicker.tsx tính —
    nên không bị modal / bảng cuộn cắt. z-index cao hơn Modal (1000). */
 .popover {
 	position: fixed;

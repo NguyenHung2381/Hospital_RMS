@@ -68,12 +68,12 @@ const TABS: { key: 'all' | ParticipationType; label: string }[] = [
 	{ key: 'trainee', label: 'Học viên' },
 ];
 
-// Điểm bài test — bài nộp trước khi có điểm từng câu: mỗi câu đúng 1 điểm
+// Điểm bài kiểm tra — bài nộp trước khi có điểm từng câu: mỗi câu đúng 1 điểm
 const testScore = (p: SeminarParticipant) => p.test_score ?? p.test_correct;
 const testPassed = (s: Seminar, p: SeminarParticipant) =>
 	s.test_pass_score == null || (testScore(p) ?? -1) >= s.test_pass_score;
 
-// Người tự đăng ký qua QR (có vé) phải điểm danh + nộp bài test (nếu có, và đạt
+// Người tự đăng ký qua QR (có vé) phải điểm danh + nộp bài kiểm tra (nếu có, và đạt
 // điểm đạt nếu đặt) mới được cấp CME — khớp CME_ELIGIBLE_SQL ở backend seminarParticipantService.
 const cmeEligible = (p: SeminarParticipant, s: Seminar) =>
 	!p.ticket_code || (!!p.checked_in_at && (!s.test_questions || (!!p.test_submitted_at && testPassed(s, p))));
@@ -103,7 +103,7 @@ const seminarWhen = (s: Seminar) => {
 	return range || s.date_text || '';
 };
 
-// Khung giờ làm bài test — ngày mở trống = ngày kết thúc (hoặc bắt đầu), ngày dừng
+// Khung giờ làm bài kiểm tra — ngày mở trống = ngày kết thúc (hoặc bắt đầu), ngày dừng
 // tiếp nhận trống = ngày mở; khớp backend testWindow()
 const testWhen = (s: Seminar) => {
 	if (!s.test_start_time && !s.test_end_time) return '';
@@ -352,7 +352,7 @@ export default function SeminarDetail() {
 							/>
 							<OrgTile
 								icon={<FileTextSvg />}
-								title='Bài test cuối buổi'
+								title='Bài kiểm tra cuối buổi'
 								status={
 									!testQuestions.length ? (
 										<Badge tone='gray'>Chưa soạn</Badge>
@@ -374,7 +374,7 @@ export default function SeminarDetail() {
 										: 'Soạn câu hỏi, đặt giờ mở và điểm đạt'
 								}
 								hint={testQuestions.length ? testWhen(sem) : undefined}
-								action={testQuestions.length ? 'Cấu hình' : 'Soạn bài test'}
+								action={testQuestions.length ? 'Cấu hình' : 'Soạn bài kiểm tra'}
 								onClick={() => setTestOpen(true)}
 							/>
 						</section>
@@ -546,7 +546,7 @@ export default function SeminarDetail() {
 										<th>Vai trò</th>
 										<th>Đơn vị / Khoa</th>
 										{hosted && <th>Điểm danh</th>}
-										{hosted && hasTest && <th>Bài test</th>}
+										{hosted && hasTest && <th>Bài kiểm tra</th>}
 										{sem.grants_cme && <th>CME</th>}
 										<th className={styles.thRight} />
 									</tr>
@@ -684,7 +684,7 @@ export default function SeminarDetail() {
 														{perms.canUpdate && (
 															<button
 																className={`${styles.actionBtn} ${styles.danger}`}
-																title='Xoá'
+																title='Xóa'
 																onClick={() => d.removeOne(p.id)}
 															>
 																<TrashSvg />

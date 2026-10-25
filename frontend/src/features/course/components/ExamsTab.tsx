@@ -110,7 +110,7 @@ export function ExamsTab({ courseId }: { courseId: string }) {
 
 	const openBuilder = async (paper: ExamPaper | null) => {
 		try {
-			// Dòng danh sách không kèm câu hỏi — lưu với questions rỗng sẽ xoá sạch đề
+			// Dòng danh sách không kèm câu hỏi — lưu với questions rỗng sẽ xóa sạch đề
 			setEditingPaper(paper ? await examApi.getPaper(paper.id) : null);
 			setView('builder');
 		} catch {
@@ -263,9 +263,9 @@ export function ExamsTab({ courseId }: { courseId: string }) {
 								</button>
 								<div
 									className={styles.actionBtn}
-									title='Xoá đề thi'
+									title='Xóa đề thi'
 									onClick={async () => {
-										if (!confirm(`Xoá đề thi "${p.title}"?`)) return;
+										if (!confirm(`Xóa đề thi "${p.title}"?`)) return;
 										await examApi.removePaper(p.id);
 										loadPapers();
 									}}
@@ -346,7 +346,7 @@ function ExamBuilder({
 
 	// Khóa chỉ có 1 lớp (đã tự chọn) → ẩn ô chọn lớp
 	const soleClass = links.length === 1 && programId === links[0].program_id;
-	// Các tuỳ chọn ít đổi nằm trong modal "Cài đặt nâng cao" — tóm tắt hiện ngay dưới form
+	// Các tùy chọn ít đổi nằm trong modal "Cài đặt nâng cao" — tóm tắt hiện ngay dưới form
 	const [showSettings, setShowSettings] = useState(false);
 	const settingsSummary = [
 		STATUS_LABEL[status],
@@ -523,7 +523,7 @@ function ExamBuilder({
 				onClick={onCancel}
 				style={{ marginBottom: 12 }}
 			>
-				← Huỷ, quay lại danh sách
+				← Hủy, quay lại danh sách
 			</button>
 
 			<div className={styles.subToolbar}>

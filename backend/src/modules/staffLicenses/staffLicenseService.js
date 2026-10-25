@@ -83,7 +83,7 @@ const fieldDefs = [
 	['scope_decision_no', sql.NVarChar(100)],
 	['adjusted_scope', sql.NVarChar(500)],
 	['scope_adjusted_date', sql.Date],
-	['scope_code', sql.NVarChar(50)], // mã hoá phạm vi theo QĐ 2148 (BHXH)
+	['scope_code', sql.NVarChar(50)], // mã hóa phạm vi theo QĐ 2148 (BHXH)
 ];
 
 /**

@@ -67,7 +67,7 @@ test('làm mới bằng cookie: access token mới + cookie mới; cookie cũ d�
 	assert.equal(json.data.refresh_token, undefined);
 	const c2 = valueOf(cookieOf(res));
 	assert.notEqual(c2, c1);
-	// Dùng lại ngay (tab khác) → REFRESH_RACE, không xoá cookie
+	// Dùng lại ngay (tab khác) → REFRESH_RACE, không xóa cookie
 	const race = await post('/refresh', { cookie: c1 });
 	assert.equal(race.status, 401);
 	assert.equal((await race.json()).code, 'REFRESH_RACE');
@@ -86,7 +86,7 @@ test('không có cookie → 401', async () => {
 	assert.equal((await post('/refresh')).status, 401);
 });
 
-test('đăng xuất: xoá cả họ token trên server và xoá cookie', async () => {
+test('đăng xuất: xóa cả họ token trên server và xóa cookie', async () => {
 	const login = await post('/login', { body: { username: 'nva', password: PASSWORD } });
 	const c1 = valueOf(cookieOf(login));
 	const before = rows.length;

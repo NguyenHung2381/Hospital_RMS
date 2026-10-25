@@ -12,7 +12,7 @@
  * @swagger
  * /files/{file_id}:
  *   delete:
- *     summary: Xoá file theo ID
+ *     summary: Xóa file theo ID
  *     tags: [Files]
  *     parameters:
  *       - in: path
@@ -23,7 +23,7 @@
  *         example: "FILE001"
  *     responses:
  *       200:
- *         description: Xoá file thành công
+ *         description: Xóa file thành công
  *       404:
  *         description: Không tìm thấy file
  *       401:

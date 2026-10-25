@@ -14,13 +14,13 @@ export function TraineeDeleteModal({
 }) {
 	return (
 		<ConfirmDeleteModal
-			title='Xoá học viên'
+			title='Xóa học viên'
 			subtitle={trainee.full_name}
 			onClose={onClose}
 			onConfirm={onConfirm}
 			loading={loading}
 		>
-			Bạn có chắc muốn xoá hồ sơ <strong>{trainee.full_name}</strong> khỏi hệ thống? Thao tác
+			Bạn có chắc muốn xóa hồ sơ <strong>{trainee.full_name}</strong> khỏi hệ thống? Thao tác
 			này không thể hoàn tác.
 		</ConfirmDeleteModal>
 	);

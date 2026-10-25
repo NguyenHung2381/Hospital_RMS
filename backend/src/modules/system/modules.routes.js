@@ -5,7 +5,7 @@ const systemSettingService = require('../settings/systemSettingService');
 const { success } = require('../../utils/response');
 const { asyncHandler } = require('../../utils/asyncHandler');
 
-// Cổng có menu tuỳ chỉnh được ở Cấu hình hệ thống → key MENU_HIDDEN_<LAYOUT>.
+// Cổng có menu tùy chỉnh được ở Cấu hình hệ thống → key MENU_HIDDEN_<LAYOUT>.
 const MENU_LAYOUTS = ['admin', 'user', 'trainee'];
 
 // Mọi người dùng đăng nhập đều cần biết module nào đang bật để ẩn menu.

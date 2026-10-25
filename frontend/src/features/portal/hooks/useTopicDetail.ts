@@ -248,7 +248,7 @@ export function useTopicDetail() {
 	const handleDeleteFile = async (fileId: string) => {
 		await deleteTopicFile(fileId);
 		setFiles((p) => p.filter((f) => f.id !== fileId));
-		notify.success('Đã xoá file');
+		notify.success('Đã xóa file');
 		setSelectedIds((p) => {
 			const n = new Set(p);
 			n.delete(fileId);
@@ -260,7 +260,7 @@ export function useTopicDetail() {
 		const ids = Array.from(selectedIds);
 		await Promise.all(ids.map((fid) => deleteTopicFile(fid)));
 		setFiles((p) => p.filter((f) => !ids.includes(f.id)));
-		notify.success(`Đã xoá ${ids.length} file`);
+		notify.success(`Đã xóa ${ids.length} file`);
 		setSelectedIds(new Set());
 	};
 

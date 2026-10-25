@@ -14,17 +14,17 @@ export function SeminarDeleteModal({
 }) {
 	return (
 		<ConfirmDeleteModal
-			title='Xoá hội thảo / hội nghị'
+			title='Xóa hội thảo / hội nghị'
 			subtitle='Hành động không thể hoàn tác'
 			onClose={onClose}
 			onConfirm={onConfirm}
 			loading={loading}
 			warning={
 				!!seminar.cme_issued_count &&
-				`Sự kiện đã cấp ${seminar.cme_issued_count} số CME — cần thu hồi trước khi xoá.`
+				`Sự kiện đã cấp ${seminar.cme_issued_count} số CME — cần thu hồi trước khi xóa.`
 			}
 		>
-			Xoá <strong>{seminar.title}</strong> cùng {seminar.participant_count ?? 0} người tham dự?
+			Xóa <strong>{seminar.title}</strong> cùng {seminar.participant_count ?? 0} người tham dự?
 		</ConfirmDeleteModal>
 	);
 }

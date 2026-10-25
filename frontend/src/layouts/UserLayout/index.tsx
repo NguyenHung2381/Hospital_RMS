@@ -292,7 +292,7 @@ function PortalLayout({
 			{showNav && (
 				<aside
 					className={`${styles.sidebar} ${mobileNavOpen ? styles.sidebarOpen : ''}`}
-					aria-label='Điều hướng cổng người dùng'
+					aria-label='Điều hướng cổng nhân viên'
 				>
 					<div className={styles.sidebarHead}>
 						<button
@@ -308,7 +308,7 @@ function PortalLayout({
 							/>
 							<span className={styles.brandText}>
 								<span className={styles.brandName}>BV Hữu nghị ĐK Nghệ An</span>
-								<span className={styles.brandSub}>Cổng người dùng</span>
+								<span className={styles.brandSub}>Cổng nhân viên</span>
 							</span>
 						</button>
 						<button
@@ -384,7 +384,7 @@ function PortalLayout({
 							{!showNav && (
 								<span className={styles.brandText}>
 									<span className={styles.brandName}>BV Hữu nghị ĐK Nghệ An</span>
-									<span className={styles.brandSub}>Cổng người dùng</span>
+									<span className={styles.brandSub}>Cổng nhân viên</span>
 								</span>
 							)}
 						</button>
@@ -529,7 +529,7 @@ function PortalLayout({
 				</main>
 
 				<footer className={styles.portalFooter}>
-					© {new Date().getFullYear()} Bệnh viện Hữu Nghị Đa Khoa Nghệ An — Cổng
+					© {new Date().getFullYear()} Bệnh viện Hữu nghị Đa khoa Nghệ An — Cổng
 					người dùng
 				</footer>
 			</div>

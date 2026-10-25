@@ -40,7 +40,7 @@ const start = () => {
 		},
 	);
 
-	// 01:00 sáng: bảo trì tài khoản (vô hiệu hoá TK hết hạn, cảnh báo mật khẩu cũ)
+	// 01:00 sáng: bảo trì tài khoản (vô hiệu hóa TK hết hạn, cảnh báo mật khẩu cũ)
 	cron.schedule('0 1 * * *', runSafely('account_maintenance', accountMaintenanceJob.run), {
 		timezone: TZ,
 	});
@@ -55,7 +55,7 @@ const start = () => {
 		timezone: TZ,
 	});
 
-	// 04:00 sáng: xoá thông báo cũ (đã đọc > 90 ngày, chưa đọc > 180 ngày)
+	// 04:00 sáng: xóa thông báo cũ (đã đọc > 90 ngày, chưa đọc > 180 ngày)
 	cron.schedule('0 4 * * *', runSafely('notification_cleanup', notificationCleanupJob.run), {
 		timezone: TZ,
 	});

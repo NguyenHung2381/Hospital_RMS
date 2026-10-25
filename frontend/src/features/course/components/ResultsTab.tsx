@@ -229,7 +229,7 @@ export function ResultsTab({ courseId, d }: { courseId: string; d: ReturnType<ty
 							) : (
 								<button
 									className={styles.actionBtn}
-									title='Xoá hẳn giấy chứng nhận'
+									title='Xóa hẳn giấy chứng nhận'
 									disabled={busy}
 									onClick={() => void d.removeCertificate(cert.id).then(load)}
 								>

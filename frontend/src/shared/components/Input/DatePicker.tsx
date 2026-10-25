@@ -97,7 +97,7 @@ export function DatePicker({
 
 	const [viewYear, setViewYear] = useState<number>(initialYear);
 	const [viewMonth, setViewMonth] = useState<number>(initialMonth);
-	// Toạ độ popover (position: fixed, render qua portal) — để không bị modal / vùng cuộn cắt mất.
+	// Tọa độ popover (position: fixed, render qua portal) — để không bị modal / vùng cuộn cắt mất.
 	const [pos, setPos] = useState<{ left: number; top?: number; bottom?: number } | null>(null);
 	const popoverRef = useRef<HTMLDivElement>(null);
 
@@ -344,7 +344,7 @@ export function DatePicker({
 					<button
 						type='button'
 						className={styles.clearBtn}
-						title='Xoá ngày'
+						title='Xóa ngày'
 						onClick={(e) => {
 							e.stopPropagation();
 							onChange('');
@@ -546,7 +546,7 @@ export function DatePicker({
 									setIsOpen(false);
 								}}
 							>
-								Xoá chọn
+								Xóa chọn
 							</button>
 						)}
 					</div>

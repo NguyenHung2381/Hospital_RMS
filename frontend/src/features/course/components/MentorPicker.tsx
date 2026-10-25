@@ -67,7 +67,7 @@ export function MentorPicker({
 							className={styles.linkBtn}
 							disabled={disabled}
 							onClick={onRefresh}
-							title='Chụp lại thông tin hiện tại của người hướng dẫn (sau khi CCHN được cập nhật)'
+							title='Lấy lại thông tin mới nhất của người hướng dẫn (sau khi CCHN được cập nhật)'
 						>
 							Làm mới
 						</button>

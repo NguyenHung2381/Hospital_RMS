@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { CalendarSvg, CheckSvg } from '@/assets/icons';
 import { apiClient } from '@/shared/api/axios';
-import { DatePicker, Modal, MultiSelect } from '@/shared/components';
+import { DatePicker, Modal, MultiSelect, TimePicker } from '@/shared/components';
 import {
 	EMPTY_SEMINAR_FORM,
 	EVENT_TYPE_LABELS,
@@ -105,6 +105,11 @@ export function SeminarFormModal({
 			setErr('');
 			setTimeErr('');
 		};
+	const setTime = (k: 'start_time' | 'end_time') => (v: string) => {
+		setForm((f) => ({ ...f, [k]: v }));
+		setErr('');
+		setTimeErr('');
+	};
 
 	const submit = () => {
 		if (!form.title.trim()) {
@@ -149,7 +154,7 @@ export function SeminarFormModal({
 						onClick={onClose}
 						disabled={loading}
 					>
-						Huỷ
+						Hủy
 					</button>
 					<button
 						className={styles.btnPrimary}
@@ -297,20 +302,17 @@ export function SeminarFormModal({
 				</div>
 				<div className={styles.formGroup}>
 					<label className={styles.formLabel}>Giờ bắt đầu</label>
-					<input
-						type='time'
-						className={styles.formInput}
+					<TimePicker
 						value={form.start_time}
-						onChange={set('start_time')}
+						onChange={setTime('start_time')}
 					/>
 				</div>
 				<div className={styles.formGroup}>
 					<label className={styles.formLabel}>Giờ kết thúc</label>
-					<input
-						type='time'
-						className={`${styles.formInput} ${timeErr ? styles.inputError : ''}`}
+					<TimePicker
 						value={form.end_time}
-						onChange={set('end_time')}
+						onChange={setTime('end_time')}
+						hasError={!!timeErr}
 					/>
 					{timeErr ? (
 						<div className={styles.fieldError}>{timeErr}</div>

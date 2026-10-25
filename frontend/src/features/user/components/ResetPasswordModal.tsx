@@ -138,7 +138,7 @@ export function ResetPasswordModal({
 								className={styles.btnCancel}
 								onClick={onClose}
 							>
-								Huỷ bỏ
+								Hủy bỏ
 							</button>
 							<button
 								className={styles.btnConfirmBlue}

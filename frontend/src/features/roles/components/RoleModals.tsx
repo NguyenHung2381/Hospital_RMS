@@ -63,7 +63,7 @@ export function RoleFormModal({
 						onClick={onClose}
 						disabled={loading}
 					>
-						Huỷ
+						Hủy
 					</button>
 					<button
 						className={styles.btnSave}
@@ -122,7 +122,7 @@ export function RoleDeleteModal({
 			onClose={onClose}
 			icon={<TrashSvg />}
 			tone='danger'
-			title='Xoá vai trò'
+			title='Xóa vai trò'
 			subtitle={role.name}
 			className={`${styles.modal} ${styles.modalSm}`}
 			bodyClassName={styles.modalBody}
@@ -133,7 +133,7 @@ export function RoleDeleteModal({
 						onClick={onClose}
 						disabled={loading}
 					>
-						Huỷ
+						Hủy
 					</button>
 					<button
 						className={styles.btnDanger}
@@ -145,14 +145,14 @@ export function RoleDeleteModal({
 						) : (
 							<TrashSvg />
 						)}
-						Xác nhận xoá
+						Xác nhận xóa
 					</button>
 				</>
 			}
 		>
 			<p className={styles.deleteDesc}>
-				Bạn có chắc muốn xoá vai trò <strong>"{role.name}"</strong>? Tất cả
-				phân quyền liên kết cũng sẽ bị xoá. Hành động này không thể hoàn
+				Bạn có chắc muốn xóa vai trò <strong>"{role.name}"</strong>? Tất cả
+				phân quyền liên kết cũng sẽ bị xóa. Hành động này không thể hoàn
 				tác.
 			</p>
 			{(role.user_count ?? 0) > 0 && (
@@ -160,7 +160,7 @@ export function RoleDeleteModal({
 					<InfoSvg />
 					<span>
 						Có <strong>{role.user_count} người dùng</strong> đang sử dụng
-						vai trò này và sẽ bị mất vai trò sau khi xoá.
+						vai trò này và sẽ bị mất vai trò sau khi xóa.
 					</span>
 				</div>
 			)}

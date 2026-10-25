@@ -18,7 +18,7 @@ const STATUS_FILTERS: { value: LeaveStatus | ''; label: string }[] = [
 	{ value: 'pending', label: 'Chờ duyệt' },
 	{ value: 'approved', label: 'Đã duyệt' },
 	{ value: 'rejected', label: 'Từ chối' },
-	{ value: 'cancelled', label: 'Học viên đã huỷ' },
+	{ value: 'cancelled', label: 'Học viên đã hủy' },
 	{ value: '', label: 'Tất cả trạng thái' },
 ];
 
@@ -147,7 +147,7 @@ export default function LeaveRequests() {
 	return (
 		<AdminLayout
 			pageTitle='Đơn xin phép của học viên'
-			pageSubtitle='Học viên có việc đột xuất gửi đơn xin nghỉ / xin đi muộn — đơn được duyệt hiện "có phép" ở bảng điểm danh'
+			pageSubtitle='Học viên có việc đột xuất gửi đơn xin nghỉ / xin đi muộn — đơn được duyệt hiện "có phép" ở tab Điểm danh'
 			headerActions={<ExcelActions fileName='don-xin-phep' itemLabel='đơn' columns={EXCEL_COLS} getRows={() => filtered} />}
 		>
 			<div className={tbl.tableCard}>

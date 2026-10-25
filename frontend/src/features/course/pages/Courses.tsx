@@ -1,5 +1,5 @@
 import { SearchInput, SelectionCount, RowAction, RowActions } from '@/shared/components/Table/TableToolbar';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useMemo, useState } from 'react';
 import { apiClient } from '@/shared/api/axios';
 import { ExcelActions, type ExcelColumn } from '@/shared/components/Excel';
@@ -22,7 +22,6 @@ import { CourseDeleteModal } from '../components/CourseDeleteModal';
 import { CourseFormModal } from '../components/CourseFormModal';
 import ProgramTags from '../components/ProgramTags';
 import { CourseCards } from '../components/CourseCards';
-import { TrainingTypeTabs } from '../components/TrainingTypeTabs';
 import { courseTypeFilter, useCourses } from '../hooks/useCourses';
 import { DISPLAY_STATUS_CFG } from '../types/course.type';
 import styles from './Courses.module.css';
@@ -30,13 +29,24 @@ import tbl from '@/shared/components/Table/Table.module.css';
 
 type Named = { id: string; name: string };
 
-// "Tất cả" = ĐTLT + CTCV; đợt GPHN để cuối (hồ sơ GPHN làm ở trang Hồ sơ thực hành GPHN)
-const COURSE_TABS = [
-	{ id: '', label: 'Tất cả' },
-	{ id: TRAINING_TYPE.DTLT, label: 'Đào tạo liên tục' },
-	{ id: TRAINING_TYPE.CTCV, label: 'Cầm tay chỉ việc' },
-	{ id: TRAINING_TYPE.GPHN, label: 'Đợt thực hành GPHN' },
-];
+// Tiêu đề / đơn vị đếm theo loại — mỗi loại đào tạo 1 trang riêng (mục menu riêng).
+const TYPE_TEXT: Record<string, { title: string; unit: string; subtitle: string }> = {
+	[TRAINING_TYPE.DTLT]: {
+		title: 'Khóa đào tạo liên tục',
+		unit: 'khóa học',
+		subtitle: 'Bấm vào một khóa để quản lý học viên, lịch học, tài liệu, thi và chứng chỉ',
+	},
+	[TRAINING_TYPE.CTCV]: {
+		title: 'Khóa cầm tay chỉ việc',
+		unit: 'khóa học',
+		subtitle: 'Bấm vào một khóa để quản lý học viên, lịch học, tài liệu, thi và chứng chỉ',
+	},
+	[TRAINING_TYPE.GPHN]: {
+		title: 'Đợt thực hành GPHN',
+		unit: 'đợt thực hành',
+		subtitle: 'Tạo đợt, gắn chương trình và mở đăng ký — hồ sơ của từng học viên xử lý ở tab Hồ sơ thực hành',
+	},
+};
 
 const EXCEL_COLS: ExcelColumn<Course>[] = [
 	{ header: 'Tên khóa học', key: 'name', required: true, value: (x) => x.name },
@@ -55,17 +65,15 @@ const EXCEL_COLS: ExcelColumn<Course>[] = [
 	{ header: 'Chờ duyệt', value: (x) => x.pending_count },
 ];
 
-export default function Courses() {
-	const [searchParams, setSearchParams] = useSearchParams();
-	const typeId = searchParams.get('type') ?? '';
+/** Danh sách khóa của 1 loại đào tạo (ĐTLT / CTCV / GPHN — với GPHN là các đợt thực hành). */
+export default function Courses({ typeId }: { typeId: string }) {
 	const d = useCourses(typeId);
 	const navigate = useNavigate();
-	const changeType = (id: string) => {
-		setSearchParams(id ? { type: id } : {}, { replace: true });
-		d.setPage(1);
-	};
-	// Thêm khóa từ tab nào thì điền sẵn loại đó (GPHN mở liên tục).
-	const addInitial = typeId ? { training_type_id: typeId, is_rolling: typeId === TRAINING_TYPE.GPHN } : undefined;
+	const practice = typeId === TRAINING_TYPE.GPHN;
+	const text = TYPE_TEXT[typeId] ?? TYPE_TEXT[TRAINING_TYPE.DTLT];
+	const unit = text.unit;
+	// Khóa thêm mới mang sẵn loại của trang (GPHN mở liên tục).
+	const addInitial = { training_type_id: typeId, is_rolling: practice };
 	const openCourse = (id: string) => navigate(`/admin/courses/${id}`);
 	const rowSel = useRowSelection(d.paged.map((x) => x.id));
 	// Link + QR đăng ký: null = đóng, 'all' = link chung, Course = link riêng 1 khóa
@@ -141,39 +149,29 @@ export default function Courses() {
 				className={styles.btnAddHeader}
 				onClick={() => d.setModal('add')}
 			>
-				<PlusSvg /> Thêm khóa học
+				<PlusSvg /> {practice ? 'Thêm đợt' : 'Thêm khóa học'}
 			</button>
 		</div>
 	);
 
 	return (
 		<AdminLayout
-			pageTitle='Khóa ĐTLT / CTCV'
-			pageSubtitle={
-				typeId === TRAINING_TYPE.GPHN
-					? 'Đợt thực hành GPHN: tạo đợt, gắn chương trình, mở đăng ký — duyệt & xếp lịch hồ sơ ở mục "Hồ sơ thực hành GPHN"'
-					: 'Mở một khóa học để làm lần lượt: ghi danh → lịch học & giảng viên → tài liệu → thi → kết quả & chứng chỉ'
-			}
+			pageTitle={text.title}
+			pageSubtitle={text.subtitle}
 			breadcrumbs={[{ label: 'Đào tạo' }]}
 			headerActions={headerActions}
 		>
-			<TrainingTypeTabs
-				value={typeId}
-				counts={d.typeCounts}
-				tabs={COURSE_TABS}
-				onChange={changeType}
-			/>
 			<div className={styles.tableCard}>
 				<div className={styles.tableHeader}>
 					<div className={styles.tableHeaderLeft}>
-						<span className={styles.tableTitle}>Danh sách khóa học</span>
+						<span className={styles.tableTitle}>Danh sách {unit}</span>
 						<SelectionCount
 							rowSel={rowSel}
 							itemLabel='khóa học'
 							loading={d.loading}
 							onBulkDelete={d.handleBulkDelete}
 						>
-							{d.total} khóa học
+							{d.total} {unit}
 						</SelectionCount>
 					</div>
 					<div className={styles.tableControls}>
@@ -202,7 +200,7 @@ export default function Courses() {
 						<SearchInput
 							value={d.search}
 							onChange={d.handleSearch}
-							placeholder='Tìm theo tên khóa học...'
+							placeholder={`Tìm theo tên ${unit}...`}
 						/>
 						<DeleteAllButton
 							count={d.total}
@@ -232,7 +230,7 @@ export default function Courses() {
 							}}
 							onShareLink={setShareLink}
 							onClone={setCloneFrom}
-							emptyDesc={d.search ? 'Thử thay đổi từ khoá tìm kiếm' : 'Bấm "Thêm khóa học" để tạo khóa đầu tiên'}
+							emptyDesc={d.search ? 'Thử thay đổi từ khóa tìm kiếm' : `Bấm "${practice ? 'Thêm đợt' : 'Thêm khóa học'}" để bắt đầu`}
 						/>
 					)
 				) : (
@@ -249,7 +247,7 @@ export default function Courses() {
 								/>
 							</th>
 							<th className={`${styles.th} ${tbl.thIdx}`}>STT</th>
-							<th className={styles.th}>Khóa học</th>
+							<th className={styles.th}>{practice ? 'Đợt thực hành' : 'Khóa học'}</th>
 							<th className={styles.th}>Chương trình</th>
 							<th className={styles.th}>Đăng ký</th>
 							<th className={styles.th}>Học viên</th>
@@ -266,8 +264,8 @@ export default function Courses() {
 						) : d.total === 0 ? (
 							<TableEmpty
 								colSpan={8}
-								title='Không tìm thấy khóa học'
-								desc={d.search ? 'Thử thay đổi từ khoá tìm kiếm' : 'Chưa có khóa học nào'}
+								title={`Không tìm thấy ${unit}`}
+								desc={d.search ? 'Thử thay đổi từ khóa tìm kiếm' : `Chưa có ${unit} nào`}
 							/>
 						) : (
 							d.paged.map((c, i) => {

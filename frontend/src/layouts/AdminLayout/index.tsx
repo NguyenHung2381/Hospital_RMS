@@ -13,7 +13,7 @@ import React, {
 	useRef,
 	useState,
 } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import Logo from '../../assets/logo.png';
 import { logout, type LoginUser } from '../../features/auth/api/authApi';
 import { DASHBOARD_TABS } from '../../features/dashboard/constants/dashboardTabs';
@@ -30,7 +30,15 @@ import { getInitials } from '../../shared/utils/helper';
 import { getStoredUser } from '../../shared/utils/storage';
 import { useRealtimeUpdate } from '../hooks/useRealtime';
 import styles from './AdminLayout.module.css';
-import { ADMIN_MENU, KEY_TO_PATH, NAV_GROUPS, PATH_TO_KEY, moduleOf } from './nav';
+import {
+	ADMIN_MENU,
+	KEY_TO_PATH,
+	NAV_GROUPS,
+	PATH_TO_KEY,
+	SECTION_TABS,
+	moduleOf,
+	sectionTabsOf,
+} from './nav';
 
 // ─── STORAGE KEY ──────────────────────────
 const SIDEBAR_KEY = 'rms_sidebar_collapsed';
@@ -43,6 +51,8 @@ export interface AdminLayoutProps {
 	pageSubtitle?: string;
 	breadcrumbs?: { label: string }[];
 	headerActions?: React.ReactNode;
+	/** Mục menu cần tô sáng khi không suy ra được từ URL (vd chi tiết khóa → loại của khóa). */
+	activeKey?: string;
 }
 
 // ─── COMPONENT ────────────────────────────
@@ -52,6 +62,7 @@ export default function AdminLayout({
 	pageSubtitle,
 	breadcrumbs,
 	headerActions,
+	activeKey,
 }: AdminLayoutProps) {
 	const storedUser = getStoredUser<LoginUser>();
 	const userName = storedUser?.full_name ?? 'Người dùng';
@@ -64,11 +75,15 @@ export default function AdminLayout({
 	const { has } = usePermission();
 	const modules = useModules();
 	const hiddenMenus = useHiddenMenus('admin', ADMIN_MENU);
+	// Mục gộp nhiều tab: hiện khi có quyền ít nhất 1 tab.
+	const allowedTabs = (key: string) =>
+		SECTION_TABS[key]?.filter((t) => has(t.perm)) ?? null;
 	const navGroups = NAV_GROUPS.map((g) => ({
 		...g,
 		items: g.items.filter(
 			(it) =>
 				has(it.perm) &&
+				allowedTabs(it.key)?.length !== 0 &&
 				modules[moduleOf(g.section, it.key)] !== false &&
 				!hiddenMenus.has(it.key),
 		),
@@ -77,7 +92,10 @@ export default function AdminLayout({
 		...NAV_GROUPS.flatMap((g) =>
 			g.items
 				.filter((it) => modules[moduleOf(g.section, it.key)] === false)
-				.map((it) => KEY_TO_PATH[it.key]),
+				.flatMap((it) => [
+					KEY_TO_PATH[it.key],
+					...(SECTION_TABS[it.key] ?? []).map((t) => t.to),
+				]),
 		),
 		...DASHBOARD_TABS.filter(
 			(t) => t.module && modules[t.module] === false,
@@ -90,6 +108,7 @@ export default function AdminLayout({
 	// Tự detect activePage từ URL hiện tại
 	// Trang chi tiết (/admin/courses/:id, /admin/seminars/:id…) → mục của trang cha
 	const activePage =
+		activeKey ??
 		PATH_TO_KEY[location.pathname] ??
 		PATH_TO_KEY[location.pathname.replace(/\/[^/]+$/, '')] ??
 		'dashboard';
@@ -218,9 +237,13 @@ export default function AdminLayout({
 		NAV_GROUPS.flatMap((g) => g.items).find((i) => i.key === activePage)
 			?.label ?? 'Tổng quan';
 
+	const sectionTabs = sectionTabsOf(location.pathname)?.filter((t) =>
+		has(t.perm),
+	);
+
 	// ── Nav click handler ─────────────────────
 	const handleNavClick = (key: string) => {
-		const path = KEY_TO_PATH[key];
+		const path = allowedTabs(key)?.[0]?.to ?? KEY_TO_PATH[key];
 		if (path) {
 			setMobileNavOpen(false);
 			navigate(path);
@@ -267,7 +290,7 @@ export default function AdminLayout({
 								className={styles.collapseBtn}
 								onClick={toggleSidebar}
 								aria-label={
-									effectiveCollapsed ? 'Mở rộng sidebar' : 'Thu gọn sidebar'
+									effectiveCollapsed ? 'Mở rộng menu' : 'Thu gọn menu'
 								}
 								title={effectiveCollapsed ? 'Mở rộng' : 'Thu gọn'}
 							>
@@ -447,6 +470,26 @@ export default function AdminLayout({
 
 				{/* Page content */}
 				<main className={styles.pageArea}>
+					{/* Mục menu gộp nhiều trang: thanh tab chuyển giữa các trang cùng mảng */}
+					{sectionTabs && sectionTabs.length > 1 && (
+						<nav
+							className={styles.sectionTabs}
+							aria-label={currentLabel}
+						>
+							{sectionTabs.map((t) => (
+								<NavLink
+									key={t.to}
+									to={t.to}
+									end
+									className={({ isActive }) =>
+										`${styles.sectionTab} ${isActive ? styles.sectionTabActive : ''}`
+									}
+								>
+									{t.label}
+								</NavLink>
+							))}
+						</nav>
+					)}
 					{(pageTitle || headerActions) && (
 						<div className={styles.pageHeader}>
 							<div className={styles.pageHeaderLeft}>

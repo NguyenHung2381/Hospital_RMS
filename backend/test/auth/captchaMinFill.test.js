@@ -1,7 +1,7 @@
 // Captcha proof-of-work: gửi ngay sau khi lấy mã (nhanh hơn người thật điền
 // form) thì bị từ chối dù lời giải đúng.
 process.env.JWT_SECRET = 'test-secret';
-// Ghim chế độ proof-of-work: đặt rỗng để dotenv không nạp khoá Turnstile/reCAPTCHA từ .env máy dev
+// Ghim chế độ proof-of-work: đặt rỗng để dotenv không nạp khóa Turnstile/reCAPTCHA từ .env máy dev
 for (const k of [
 	'TURNSTILE_SITE_KEY',
 	'TURNSTILE_SECRET_KEY',

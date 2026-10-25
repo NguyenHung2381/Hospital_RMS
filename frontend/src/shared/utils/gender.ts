@@ -1,5 +1,5 @@
 /* Giới tính: DB lưu mã ASCII male/female/other (cột VARCHAR — ghi "Nữ" sẽ mất
- * dấu thành "N?"), FE chỉ đổi sang nhãn khi hiển thị. Backend cũng tự chuẩn hoá
+ * dấu thành "N?"), FE chỉ đổi sang nhãn khi hiển thị. Backend cũng tự chuẩn hóa
  * nhãn tiếng Việt (backend/src/utils/gender.js) nên dữ liệu import vẫn khớp. */
 
 export const GENDER_OPTIONS = [
@@ -12,7 +12,7 @@ const GENDER_LABEL: Record<string, string> = {
 	male: 'Nam',
 	female: 'Nữ',
 	other: 'Khác',
-	// dữ liệu cũ trước khi chuẩn hoá
+	// dữ liệu cũ trước khi chuẩn hóa
 	nam: 'Nam',
 	nữ: 'Nữ',
 	nu: 'Nữ',

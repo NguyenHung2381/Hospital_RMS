@@ -148,7 +148,7 @@ export const publicRoutes: RouteObject[] = [
 		),
 	},
 	{
-		// Vé QR cá nhân: BTC quét để điểm danh, người tham dự mở để làm bài test
+		// Vé QR cá nhân: BTC quét để điểm danh, người tham dự mở để làm bài kiểm tra
 		path: '/hoi-nghi/ve/:code',
 		element: (
 			<LazyRoute title='Vé hội nghị'>

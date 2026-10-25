@@ -33,7 +33,7 @@ const parseJsonList = (v) => {
 
 // Trạng thái hiển thị được suy ra hoàn toàn từ ngày tháng thay vì để người
 // dùng tự chọn tay (dễ quên cập nhật) — cột courses.status giờ chỉ còn dùng
-// để lưu cờ 'cancelled' (huỷ khóa học), đây là lựa chọn duy nhất không thể
+// để lưu cờ 'cancelled' (hủy khóa học), đây là lựa chọn duy nhất không thể
 // suy ra từ ngày tháng nên vẫn cần override thủ công.
 const computeDisplayStatus = (c, enrollmentOpen) => {
 	if (c.status === 'cancelled') return 'cancelled';

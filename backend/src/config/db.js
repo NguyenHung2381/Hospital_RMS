@@ -77,7 +77,7 @@ const getPool = async () => {
 };
 
 // Chạy fn(tx) trong 1 transaction: xong thì commit, lỗi thì rollback rồi ném
-// lại lỗi GỐC. SQL Server có thể đã tự huỷ transaction (XACT_ABORT, lỗi nặng)
+// lại lỗi GỐC. SQL Server có thể đã tự hủy transaction (XACT_ABORT, lỗi nặng)
 // ⇒ rollback() ném "Transaction has not begun" — nuốt lỗi đó để không che lỗi thật.
 // pool: truyền khi đã có sẵn, bỏ trống thì lấy pool chung.
 const withTransaction = async (fn, pool) => {

@@ -21,7 +21,7 @@ export interface CalItem {
 	endTime?: string;
 	/** Dòng phụ trong tooltip / popover */
 	subtitle?: string;
-	/** Thanh nhạt màu (thời gian đợt / khoá học) */
+	/** Thanh nhạt màu (thời gian đợt / khóa học) */
 	muted?: boolean;
 	onClick: () => void;
 }

@@ -41,7 +41,14 @@ const listAttendance = async (sessionId) => {
 };
 
 // recompute=false khi lưu hàng loạt — bulkSetAttendance tính lại 1 lần sau cùng.
-const setAttendance = async (sessionId, enrollmentId, status, note, actorId, { recompute = true } = {}) => {
+const setAttendance = async (
+	sessionId,
+	enrollmentId,
+	status,
+	note,
+	actorId,
+	{ recompute = true } = {},
+) => {
 	const pool = await getPool();
 	await pool
 		.request()
@@ -80,7 +87,9 @@ const bulkSetAttendance = async (sessionId, records, actorId) => {
 		throw httpError(400, 'Có học viên không thuộc lớp (chương trình) của buổi học này.');
 	}
 	for (const rec of records) {
-		await setAttendance(sessionId, rec.enrollment_id, rec.status, rec.note, actorId, { recompute: false });
+		await setAttendance(sessionId, rec.enrollment_id, rec.status, rec.note, actorId, {
+			recompute: false,
+		});
 	}
 	await lessonProgressService.recompute({ sessionId });
 };

@@ -84,7 +84,7 @@ export function ApprovalDetailPanel({
 						<div className={styles.infoGrid}>
 							{[
 								{ label: 'Người đăng ký', value: selected.created_by },
-								{ label: 'Phòng ban / Khoa', value: selected.topic_dept },
+								{ label: 'Khoa/phòng', value: selected.topic_dept },
 								{ label: 'Đợt nghiên cứu', value: selected.topic_round },
 								{
 									label: 'Số thành viên',
@@ -167,13 +167,13 @@ export function ApprovalDetailPanel({
 							</div>
 						)}
 
-						{/* Tài chính & Quyết định */}
+						{/* Tài chính & quyết định */}
 						{(selected.budget_estimated != null ||
 							selected.budget_actual != null ||
 							selected.approval_decision_no ||
 							selected.recognition_decision_no) && (
 							<div className={styles.descSection}>
-								<div className={styles.sectionLabel}>Tài chính & Quyết định</div>
+								<div className={styles.sectionLabel}>Tài chính & quyết định</div>
 								<div className={styles.infoGrid}>
 									{selected.budget_estimated != null && (
 										<div className={styles.infoItem}>
@@ -350,7 +350,7 @@ export function ApprovalDetailPanel({
 										Đề tài đã được phê duyệt
 									</div>
 									<div style={{ fontSize: 12, marginTop: 2 }}>
-										Phê duyệt bởi {selected.updated_by} · {selected.updated_at}
+										Người phê duyệt {selected.updated_by} · {selected.updated_at}
 									</div>
 								</div>
 							</div>

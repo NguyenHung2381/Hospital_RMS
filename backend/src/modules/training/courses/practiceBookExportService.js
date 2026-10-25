@@ -4,7 +4,9 @@
  * để phòng Đào tạo vẫn trộn thư Word như trước trong giai đoạn chuyển tiếp.
  * Số nhóm "Khoa thực hành n" = max(11, số vòng nhiều nhất của 1 hồ sơ).
  */
-const ExcelJS = require('exceljs');
+const { lazyRequire } = require('../../../utils/lazyRequire');
+/** @type {typeof import('exceljs')} */
+const ExcelJS = lazyRequire('exceljs');
 const { getPool, sql } = require('../../../config/db');
 const { httpError } = require('../../../utils/httpError');
 const { describeSpan, shortDept, practiceFieldLabel } = require('./rotationPlanner');

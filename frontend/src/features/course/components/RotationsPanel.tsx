@@ -176,7 +176,7 @@ export function RotationsPanel({
 		if (
 			replace &&
 			!window.confirm(
-				'Xếp lại sẽ XOÁ các vòng chưa có kết quả (kể cả người hướng dẫn) rồi xếp mới; vòng đã Đạt / Không đạt được giữ nguyên. Tiếp tục?',
+				'Xếp lại sẽ XÓA các vòng chưa có kết quả (kể cả người hướng dẫn) rồi xếp mới; vòng đã Đạt / Không đạt được giữ nguyên. Tiếp tục?',
 			)
 		)
 			return;
@@ -264,7 +264,7 @@ export function RotationsPanel({
 										},
 										{
 											label: 'Tự động xếp lại',
-											desc: 'Xoá vòng chưa có kết quả rồi xếp lại khoa, lịch, người hướng dẫn; vòng đã Đạt / Không đạt giữ nguyên',
+											desc: 'Xóa vòng chưa có kết quả rồi xếp lại khoa, lịch, người hướng dẫn; vòng đã Đạt / Không đạt giữ nguyên',
 											onClick: () => autoArrange(true),
 										},
 									]
@@ -350,9 +350,9 @@ export function RotationsPanel({
 									<button
 										type='button'
 										className={styles.actionBtn}
-										title='Xoá dòng này'
+										title='Xóa dòng này'
 										disabled={busy}
-										onClick={() => window.confirm('Xoá vòng này khỏi hồ sơ?') && run(() => removeRotation(r.id))}
+										onClick={() => window.confirm('Xóa vòng này khỏi hồ sơ?') && run(() => removeRotation(r.id))}
 									>
 										<TrashSvg />
 									</button>

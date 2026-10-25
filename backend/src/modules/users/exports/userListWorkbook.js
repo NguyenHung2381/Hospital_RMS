@@ -1,5 +1,7 @@
 // userListWorkbook.js — dựng workbook cho POST /api/v1/users/export-excel.
-const ExcelJS = require('exceljs');
+const { lazyRequire } = require('../../../utils/lazyRequire');
+/** @type {typeof import('exceljs')} */
+const ExcelJS = lazyRequire('exceljs');
 const xl = require('../../../utils/excelTemplate');
 
 const EXPORT_COLUMNS = [
@@ -34,7 +36,7 @@ const buildUserListWorkbook = (data) => {
 			email: u.email ?? '',
 			department_name: u.department_name ?? '',
 			role_name: u.role_name ?? '',
-			status: u.is_active ? 'Hoạt động' : 'Đã khoá',
+			status: u.is_active ? 'Hoạt động' : 'Đã khóa',
 			created_at: fmtDate(u.created_at),
 		}),
 	);

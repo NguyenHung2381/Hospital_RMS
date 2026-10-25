@@ -31,7 +31,7 @@ export function SeminarReports({ year }: { year: number }) {
 	return (
 		<div className={styles.section}>
 			<div className={styles.sectionHead}>
-				<span className={styles.sectionTitle}>Hội thảo – Hội nghị & CME năm {year}</span>
+				<span className={styles.sectionTitle}>Hội thảo, hội nghị & CME năm {year}</span>
 				<Link
 					to='/admin/dashboard/seminar'
 					className={styles.sectionLink}

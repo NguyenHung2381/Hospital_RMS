@@ -116,7 +116,7 @@ export function DrawerFilesTab({
 							onClick={() => setPendingFiles([])}
 							disabled={uploading}
 						>
-							Xoá tất cả
+							Xóa tất cả
 						</button>
 					</div>
 
@@ -154,7 +154,7 @@ export function DrawerFilesTab({
 
 					<input
 						className={styles.formInput}
-						placeholder='Ghi chú đợt upload (tùy chọn)'
+						placeholder='Ghi chú lần tải lên (tùy chọn)'
 						value={batchNote}
 						onChange={(e) => setBatchNote(e.target.value)}
 						disabled={uploading}
@@ -226,7 +226,7 @@ export function DrawerFilesTab({
 						className={`${styles.fileBulkBtn} ${styles.fileBulkBtnDanger}`}
 						onClick={handleBulkDelete}
 					>
-						<IcTrash /> Xoá
+						<IcTrash /> Xóa
 					</button>
 					<button
 						className={styles.fileBulkClear}
@@ -308,7 +308,7 @@ export function DrawerFilesTab({
 									</a>
 									<button
 										className={`${styles.fileActionBtn} ${styles.fileActionDanger}`}
-										title='Xoá file'
+										title='Xóa file'
 										onClick={() => handleDeleteFile(f)}
 									>
 										<IcTrash />

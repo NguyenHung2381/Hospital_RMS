@@ -21,7 +21,7 @@ const DEFAULT_AUTHORITY = 'Sở Y tế Nghệ An';
 // K/P/TT đến T8.2026 | Văn bằng chuyên môn T8.2025 | Ngày tháng năm sinh |
 // Phạm vi hành nghề NỐI cả QĐ bổ sung PV | Phạm vi hành nghề ĐƠN | Số CCHN |
 // Nơi cấp khác Nghệ An | Ngày cấp chứng chỉ hành nghề | Quyết định bổ sung phạm vi |
-// Điều chỉnh phạm vi HĐCM trong CCHN | Mã hoá phạm vi điều chỉnh theo 2148 (BHXH) |
+// Điều chỉnh phạm vi HĐCM trong CCHN | Mã hóa phạm vi điều chỉnh theo 2148 (BHXH) |
 // Ngày điều chỉnh phạm vi | Nơi cấp QĐ điều chỉnh
 //  - Cột "Mã nhân viên" thực chất chứa SỐ CCHN: mỗi trường lấy cột khớp ĐẦU TIÊN,
 //    "MNV" đứng trước nên staff_no đúng (test giữ hành vi này).
@@ -154,7 +154,7 @@ const importExcel = async ({ buffer, dry_run }, actorId) => {
 			return text(f);
 		};
 
-		// Ô trống KHÔNG xoá dữ liệu cũ — muốn xoá thì sửa tay trên giao diện
+		// Ô trống KHÔNG xóa dữ liệu cũ — muốn xóa thì sửa tay trên giao diện
 		const values = {};
 		const userValues = {};
 		const rowWarnings = [];

@@ -1,13 +1,13 @@
 /**
  * departmentMatch.js — khớp tên khoa ghi tay trong file Excel ("TDCN",
  * "Gây mê hồi sức", "P. Điều dưỡng", "Cơ xương khớp") với danh mục departments.
- * Thứ tự: tên chuẩn hoá trùng khớp → viết tắt quen dùng → tên khoa chứa trọn
+ * Thứ tự: tên chuẩn hóa trùng khớp → viết tắt quen dùng → tên khoa chứa trọn
  * cụm từ → tên khoa chứa đủ mọi từ ("Nội hô hấp" = "Nội Dị Ứng - Hô Hấp"). Chỉ nhận
  * khi đúng 1 khoa; nhiều khoa thì báo mơ hồ.
  */
 const { normDept } = require('./vietnameseText');
 
-// Viết tắt thường gặp trong sổ sách của phòng Đào tạo → tên khoa đã chuẩn hoá.
+// Viết tắt thường gặp trong sổ sách của phòng Đào tạo → tên khoa đã chuẩn hóa.
 const ALIASES = {
 	ctch: 'chan thuong chinh hinh',
 	tdcn: 'tham do chuc nang',

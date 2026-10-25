@@ -100,7 +100,7 @@ export function MemberSeatModal({
 							onClick={onClose}
 							disabled={loading}
 						>
-							Huỷ
+							Hủy
 						</button>
 					)}
 					<button

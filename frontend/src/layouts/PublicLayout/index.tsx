@@ -30,8 +30,8 @@ export default function PublicLayout({ title, subtitle, bare, children }: Public
 				className={styles.brandLogo}
 			/>
 			<div className={styles.brandText}>
-				<div className={styles.brandName}>Bệnh viện Hữu Nghị Đa Khoa Nghệ An</div>
-				<div className={styles.brandSub}>Cổng thông tin Đào tạo</div>
+				<div className={styles.brandName}>Bệnh viện Hữu nghị Đa khoa Nghệ An</div>
+				<div className={styles.brandSub}>Cổng thông tin đào tạo</div>
 			</div>
 		</>
 	);
@@ -82,7 +82,7 @@ export default function PublicLayout({ title, subtitle, bare, children }: Public
 			</main>
 
 			<footer className={styles.footer}>
-				© {new Date().getFullYear()} Bệnh viện Hữu Nghị Đa Khoa Nghệ An — Phòng CNTT
+				© {new Date().getFullYear()} Bệnh viện Hữu nghị Đa khoa Nghệ An — Phòng CNTT
 			</footer>
 		</div>
 	);

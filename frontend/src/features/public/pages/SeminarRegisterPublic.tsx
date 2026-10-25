@@ -15,7 +15,7 @@ import { useCaptcha } from '../hooks/useCaptcha';
 import { seminarWhen } from '../utils/seminarWhen';
 import styles from './PublicPortal.module.css';
 
-const HOSPITAL = 'Bệnh viện Hữu Nghị Đa Khoa Nghệ An';
+const HOSPITAL = 'Bệnh viện Hữu nghị Đa khoa Nghệ An';
 const SOURCES = [
 	['internal', 'Nhân viên nội viện', `Nhân viên ${HOSPITAL} — chỉ cần họ tên và mã nhân viên`],
 	['external', 'Ngoại viện', 'Đơn vị khác — nhập đầy đủ thông tin'],
@@ -156,7 +156,7 @@ export default function SeminarRegisterPublic() {
 					{seminar.grants_cme && (
 						<div className={styles.courseMeta}>
 							Có cấp chứng nhận CME{seminar.cme_default_credits ? ` (${seminar.cme_default_credits} tín chỉ)` : ''} —
-							yêu cầu điểm danh bằng mã QR cá nhân và làm bài test cuối buổi.
+							yêu cầu điểm danh bằng mã QR cá nhân và làm bài kiểm tra cuối buổi.
 						</div>
 					)}
 				</div>

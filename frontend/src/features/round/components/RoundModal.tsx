@@ -116,7 +116,7 @@ export function RoundModal({
 						className={styles.btnSecondary}
 						onClick={onClose}
 					>
-						Huỷ
+						Hủy
 					</button>
 					<button
 						className={styles.btnPrimary}

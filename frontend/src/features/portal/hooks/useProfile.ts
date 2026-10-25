@@ -157,6 +157,7 @@ export function useProfile() {
 	const [twoFaSaving, setTwoFaSaving] = useState(false);
 	const [twoFaError, setTwoFaError] = useState('');
 	const [disablePwd, setDisablePwd] = useState('');
+	const [disableCode, setDisableCode] = useState('');
 	const [showDisable2Fa, setShowDisable2Fa] = useState(false);
 	// Mã khôi phục vừa sinh — server chỉ trả 1 lần, hiển thị tới khi người dùng đóng
 	const [backupCodes, setBackupCodes] = useState<string[] | null>(null);
@@ -221,16 +222,17 @@ export function useProfile() {
 
 	async function handleDisable2FA() {
 		const token = getToken();
-		if (!token || !disablePwd) return;
+		if (!token || !disablePwd || !disableCode.trim()) return;
 		setTwoFaError('');
 		setTwoFaSaving(true);
 		try {
-			await disable2FAApi(token, disablePwd);
+			await disable2FAApi(token, disablePwd, disableCode.trim());
 			setTwoFaEnabled(false);
 			setBackupCodes(null);
 			setBackupRemaining(0);
 			setShowDisable2Fa(false);
 			setDisablePwd('');
+			setDisableCode('');
 			showToast('success', 'Đã tắt xác thực 2 lớp');
 		} catch (e: unknown) {
 			setTwoFaError(e instanceof Error ? e.message : 'Mật khẩu không đúng');
@@ -300,9 +302,11 @@ export function useProfile() {
 		twoFaSaving,
 		twoFaError,
 		disablePwd,
+		disableCode,
 		showDisable2Fa,
 		setTwoFaCode,
 		setDisablePwd,
+		setDisableCode,
 		setShowDisable2Fa,
 		handleStart2FASetup,
 		handleCancel2FASetup,

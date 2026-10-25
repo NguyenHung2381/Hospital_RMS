@@ -2,7 +2,9 @@
  * excelImport.js — helper đọc file Excel nhập liệu dùng chung cho các service
  * *ImportService (học viên, người tham dự hội thảo, ghi nhận CME, hội đồng).
  */
-const ExcelJS = require('exceljs');
+const { lazyRequire } = require('./lazyRequire');
+/** @type {typeof import('exceljs')} */
+const ExcelJS = lazyRequire('exceljs');
 const { norm } = require('./vietnameseText');
 const { badRequest } = require('./httpError');
 

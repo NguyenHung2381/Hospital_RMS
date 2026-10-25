@@ -85,7 +85,7 @@ export default function UserList() {
 	if (d.loadError) {
 		return (
 			<AdminLayout
-				pageTitle='Quản lý người dùng'
+				pageTitle='Người dùng'
 				pageSubtitle='Quản lý tài khoản cán bộ, nhân viên'
 				headerActions={headerActions}
 			>
@@ -100,7 +100,7 @@ export default function UserList() {
 
 	return (
 		<AdminLayout
-			pageTitle='Quản lý người dùng'
+			pageTitle='Người dùng'
 			pageSubtitle='Quản lý tài khoản cán bộ, nhân viên'
 			headerActions={headerActions}
 		>
@@ -124,7 +124,7 @@ export default function UserList() {
 						<SearchInput
 							value={d.search}
 							onChange={d.setSearch}
-							placeholder='Tìm theo tên, username, email...'
+							placeholder='Tìm theo tên, tên đăng nhập, email...'
 						/>
 
 						{/* Multi-select Dept */}

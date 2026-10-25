@@ -168,7 +168,7 @@ export function DrawerAuthorsTab({ topicId }: { topicId: string }) {
 
 						<div
 							className={`${styles.actionBtn} ${styles.danger}`}
-							title='Xoá tác giả'
+							title='Xóa tác giả'
 							onClick={() => removeAuthor(a.tempId)}
 						>
 							<IcTrash />

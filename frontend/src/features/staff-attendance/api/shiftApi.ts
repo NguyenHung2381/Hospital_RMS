@@ -27,7 +27,7 @@ export interface ShiftPattern {
 	name: string;
 	days: PatternDays;
 	is_default: boolean;
-	/** Số khóa học (chưa huỷ) gán mẫu này. */
+	/** Số khóa học (chưa hủy) gán mẫu này. */
 	course_count: number;
 }
 export type PatternInput = Pick<ShiftPattern, 'name' | 'days' | 'is_default'>;

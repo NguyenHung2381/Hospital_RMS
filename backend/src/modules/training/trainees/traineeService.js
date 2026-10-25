@@ -258,8 +258,8 @@ const update = async (id, data, actorId) => {
 	await req.query(
 		`EXEC sp_set_actor @actor_id; UPDATE trainees SET ${sets.join(', ')} WHERE id = @id`,
 	);
-	// Ngừng học viên ⇒ khoá luôn tài khoản. Bật lại KHÔNG tự mở khoá: tài khoản có
-	// thể đã bị khoá vì lý do khác — mở khoá thủ công tại hồ sơ học viên.
+	// Ngừng học viên ⇒ khóa luôn tài khoản. Bật lại KHÔNG tự mở khóa: tài khoản có
+	// thể đã bị khóa vì lý do khác — mở khóa thủ công tại hồ sơ học viên.
 	if (data.is_active !== undefined && !data.is_active) await lockAccountOf(id, actorId);
 	await personService.syncPerson('trainees', id, { actorId });
 	broadcast('update', { entity: 'trainee' });
@@ -276,7 +276,7 @@ const remove = async (id, actorId) => {
 		.query(
 			'EXEC sp_set_actor @actor_id; UPDATE trainees SET hidden_at = SYSDATETIME() WHERE id = @id',
 		);
-	// Hồ sơ đã xoá thì tài khoản học viên cũng không được đăng nhập nữa
+	// Hồ sơ đã xóa thì tài khoản học viên cũng không được đăng nhập nữa
 	await lockAccountOf(id, actorId);
 	broadcast('update', { entity: 'trainee' });
 };

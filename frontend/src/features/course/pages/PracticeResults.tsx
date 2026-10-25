@@ -126,7 +126,7 @@ export default function PracticeResults() {
 
 	return (
 		<AdminLayout
-			pageTitle='Nhập kết quả vòng'
+			pageTitle='Nhập kết quả vòng GPHN'
 			pageSubtitle='Vòng thực hành GPHN đã kết thúc chưa có kết quả — nhập hộ từ phiếu đánh giá của người hướng dẫn'
 			breadcrumbs={[{ label: 'Đào tạo' }]}
 			headerActions={headerActions}
@@ -196,7 +196,7 @@ export default function PracticeResults() {
 									setParams({}, { replace: true });
 								}}
 							>
-								Xoá bộ lọc
+								Xóa bộ lọc
 							</button>
 						)}
 					</div>
@@ -225,7 +225,7 @@ export default function PracticeResults() {
 									<TableEmpty
 										colSpan={7}
 										title={filterActive ? 'Không có vòng khớp bộ lọc' : 'Không còn vòng nào chờ nhập kết quả'}
-										desc={filterActive ? 'Thử đổi người hướng dẫn, khoa hoặc từ khoá.' : undefined}
+										desc={filterActive ? 'Thử đổi người hướng dẫn, khoa hoặc từ khóa.' : undefined}
 									/>
 								) : (
 									pg.paged.map((r, i) => (

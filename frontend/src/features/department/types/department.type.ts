@@ -28,7 +28,7 @@ export const SPECIALTY_GROUPS = [
 	'Gây mê - Hồi sức - Chống độc',
 	'Khoa lẻ',
 	'Ngoại CT-Bỏng-Cột sống',
-	'Ngoại tiêu hóa - gan mật - tiếu niệu',
+	'Ngoại tiêu hóa - gan mật - tiết niệu',
 	'Nội 1 (Nội thận - TH - CXK)',
 	'Nội 2 (Nội HH - DƯ - Nội A - KKB)',
 	'Phòng ban',

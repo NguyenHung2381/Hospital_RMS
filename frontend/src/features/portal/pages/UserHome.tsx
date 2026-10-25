@@ -574,7 +574,7 @@ export default function UserHome() {
 									<div className={styles.actionText}>
 										<div className={styles.actionName}>Tín chỉ CME</div>
 										<div className={styles.actionDesc}>
-											Tín chỉ tích luỹ trong năm so với yêu cầu
+											Tín chỉ tích lũy trong năm so với yêu cầu
 										</div>
 									</div>
 									<ChevRSvg className={styles.actionArrow} />
@@ -594,7 +594,7 @@ export default function UserHome() {
 									<div className={styles.actionText}>
 										<div className={styles.actionNameRow}>
 											<span className={styles.actionName}>
-												Thông báo & Nhắc nhở
+												Thông báo & nhắc nhở
 											</span>
 											{d.unreadCount > 0 && (
 												<span className={styles.actionNotifBadge}>

@@ -90,12 +90,12 @@ const saveShift = async (id, body) => {
           VALUES (@name, @code, @color, @start_time, @end_time, @before, @after, @grace, @active)
         `)
 			).recordset[0];
-	if (!row) throw httpError(404, 'Không tìm thấy ca làm');
+	if (!row) throw httpError(404, 'Không tìm thấy ca');
 	changed();
 	return row;
 };
 
-// Ca đã dùng trong mẫu tuần / bảng phân ca thì không xoá được (bảng điểm danh lưu bản chụp giờ ca nên không ảnh hưởng)
+// Ca đã dùng trong mẫu tuần / bảng phân ca thì không xóa được (bảng điểm danh lưu bản chụp giờ ca nên không ảnh hưởng)
 const removeShift = async (id) => {
 	const pool = await getPool();
 	const inPattern = (
@@ -117,13 +117,13 @@ const removeShift = async (id) => {
 	if (used)
 		throw httpError(
 			409,
-			'Ca đã được xếp trong bảng phân ca — chuyển ca sang "Ngừng dùng" thay vì xoá',
+			'Ca đã được xếp trong bảng phân ca — chuyển ca sang "Ngừng dùng" thay vì xóa',
 		);
 	const { rowsAffected } = await pool
 		.request()
 		.input('id', sql.Int, id)
 		.query('DELETE FROM work_shifts WHERE id = @id');
-	if (!rowsAffected[0]) throw httpError(404, 'Không tìm thấy ca làm');
+	if (!rowsAffected[0]) throw httpError(404, 'Không tìm thấy ca');
 	changed();
 };
 
@@ -182,7 +182,7 @@ const savePattern = async (id, { name, days, is_default }) => {
 	return parsePattern(row);
 };
 
-// Khóa đang dùng mẫu này tự về mẫu mặc định (FK courses không cascade — gỡ trước khi xoá)
+// Khóa đang dùng mẫu này tự về mẫu mặc định (FK courses không cascade — gỡ trước khi xóa)
 const removePattern = async (id) => {
 	const deleted = await withTransaction(async (tx) => {
 		await new sql.Request(tx)
@@ -198,7 +198,7 @@ const removePattern = async (id) => {
 	changed();
 };
 
-// Khóa học chưa huỷ (chọn khóa áp dụng mẫu ca); ended = đã qua ngày kết thúc
+// Khóa học chưa hủy (chọn khóa áp dụng mẫu ca); ended = đã qua ngày kết thúc
 const listCourses = async () => {
 	const pool = await getPool();
 	return (
@@ -242,7 +242,7 @@ const setPatternCourses = async (id, courseIds) => {
 };
 
 // ─── Học viên theo khóa ──────────────────────────────────────────────────────
-// Lượt học trong [from, to] của học viên có tài khoản: ghi danh 'approved', khóa chưa huỷ.
+// Lượt học trong [from, to] của học viên có tài khoản: ghi danh 'approved', khóa chưa hủy.
 // Thời gian học = thời gian riêng của lượt ghi danh (khóa mở liên tục) hoặc của khóa;
 // khóa thường chưa có ngày bắt đầu thì chưa tính. Ngày NULL = không giới hạn phía đó.
 //   → [{ user_id, trainee_id, full_name, department_id, department_name,

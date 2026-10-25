@@ -9,7 +9,9 @@
  *   3. "Theo khoa-phòng-TT" — bảng đầy đủ từng khoa/phòng/trung tâm
  *   4+. Một sheet riêng cho từng khoa/phòng/trung tâm
  */
-const ExcelJS = require('exceljs');
+const { lazyRequire } = require('../../../utils/lazyRequire');
+/** @type {typeof import('exceljs')} */
+const ExcelJS = lazyRequire('exceljs');
 const { fnt, al, headerRow, dataRow } = require('../../../utils/excelStyle');
 
 const C = {
@@ -50,7 +52,7 @@ function writeLetterhead(ws, lastCol) {
 			'SỞ Y TẾ NGHỆ AN',
 			fnt({ size: 11 }),
 			`F1:${lastCol}1`,
-			'CỘNG HOÀ XÃ HỘI CHỦ NGHĨA VIỆT NAM',
+			'CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM',
 			fnt({ bold: true, size: 11 }),
 			18,
 		],
@@ -115,7 +117,7 @@ function buildOverviewSheet(ws, stats, year) {
 	cur++;
 	[
 		['Đề tài NCKH', deTai],
-		['Bài báo & Tập san', baiBao],
+		['Bài báo & tập san', baiBao],
 		['Tổng cộng', overview.total],
 	].forEach((r) => {
 		dataRow(ws, cur, r, { bg: C.totalBg, boldFirst: true });
@@ -200,7 +202,7 @@ function buildDeptTableSheet(ws, stats) {
 		'Đã duyệt',
 		'Từ chối',
 		'Bổ sung',
-		'Huỷ',
+		'Hủy',
 		'Tỷ lệ duyệt (%)',
 	]);
 	cur++;
@@ -236,7 +238,7 @@ function buildDeptDetailSheet(ws, d) {
 	cur++;
 	dataRow(ws, cur, ['Đề tài NCKH', d.de_tai], { boldFirst: true });
 	cur++;
-	dataRow(ws, cur, ['Bài báo & Tập san', d.bai_bao], { boldFirst: true });
+	dataRow(ws, cur, ['Bài báo & tập san', d.bai_bao], { boldFirst: true });
 	cur++;
 	dataRow(ws, cur, ['Tổng cộng', d.total], { bg: C.totalBg, boldFirst: true });
 	cur++;

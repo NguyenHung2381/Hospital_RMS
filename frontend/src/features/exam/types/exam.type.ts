@@ -33,7 +33,7 @@ export interface ExamQuestion {
 	options: string[];
 	correct_option: string | null;
 	points: number;
-	/** Ảnh minh hoạ (link /uploads đã ký) — null = không có hình */
+	/** Ảnh minh họa (link /uploads đã ký) — null = không có hình */
 	image_url: string | null;
 	used_count?: number;
 }

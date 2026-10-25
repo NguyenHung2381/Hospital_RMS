@@ -13,13 +13,13 @@ const { twoFactorState } = require('../permissions/twoFactorPolicy');
 //     việc xảy ra SAU khi token phát hành).
 //   Lớp 2 — DB (qua cache 60s): tài khoản còn is_active=1, chưa quá
 //     account_expires_at, kèm role_id/department_id HIỆN TẠI. Bắt
-//     được trường hợp lớp 1 không thấy: admin vô hiệu hoá tài khoản sau khi
+//     được trường hợp lớp 1 không thấy: admin vô hiệu hóa tài khoản sau khi
 //     access token đã phát hành — access token cũ (sống tới 8h) sẽ bị chặn
 //     trong vòng tối đa 60s thay vì tiếp tục dùng được tới hết hạn.
 //     Kèm users.token_version: khác phiên bản trong token ⇒ phiên đã bị thu hồi.
-//     Cố ý KHÔNG xét locked_until (khoá tạm do đăng nhập sai): nếu đá phiên
+//     Cố ý KHÔNG xét locked_until (khóa tạm do đăng nhập sai): nếu đá phiên
 //     đang mở ra thì kẻ tấn công chỉ cần cố tình nhập sai mật khẩu là đẩy
-//     được người dùng thật ra khỏi hệ thống. Khoá tạm chỉ chặn đăng nhập MỚI.
+//     được người dùng thật ra khỏi hệ thống. Khóa tạm chỉ chặn đăng nhập MỚI.
 // Sau đó mới nạp tập quyền của vai trò vào req.user.permissions (+ phạm vi
 // dữ liệu vào req.user.permissionScopes) qua permCache (cache 5 phút/role) nên
 // tổng chi phí không đáng kể.
@@ -32,8 +32,8 @@ const verifyAccessToken = async (token) => {
 
 	let decoded;
 	try {
-		// Khoá riêng của access token (utils/keys.js): token loại khác (pre-auth
-		// 2FA, captcha, QR điểm danh...) ký bằng khoá khác nên không bao giờ lọt qua.
+		// Khóa riêng của access token (utils/keys.js): token loại khác (pre-auth
+		// 2FA, captcha, QR điểm danh...) ký bằng khóa khác nên không bao giờ lọt qua.
 		decoded = verifyToken('access', token);
 	} catch (err) {
 		if (err.name === 'TokenExpiredError') return { error: 'Token đã hết hạn' };

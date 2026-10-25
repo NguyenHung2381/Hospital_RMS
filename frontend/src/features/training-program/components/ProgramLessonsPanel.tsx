@@ -61,7 +61,7 @@ function SortableLessonRow({
 							className={styles.tagPill}
 							style={{ marginLeft: 6, background: 'var(--color-gray-100)', color: 'var(--color-gray-500)' }}
 						>
-							Ngưng hoạt động
+							Ngừng hoạt động
 						</span>
 					)}
 				</div>

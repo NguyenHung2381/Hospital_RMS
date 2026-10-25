@@ -13,7 +13,7 @@ interface ModalProps {
 	subtitle?: React.ReactNode;
 	/** Icon ô vuông bên trái tiêu đề. */
 	icon?: React.ReactNode;
-	/** 'danger' tô đỏ ô icon (hộp thoại xoá). */
+	/** 'danger' tô đỏ ô icon (hộp thoại xóa). */
 	tone?: 'default' | 'danger';
 	children: React.ReactNode;
 	footer?: React.ReactNode;
@@ -94,7 +94,7 @@ export function Modal({
 	);
 }
 
-/** Cặp nút chuẩn ở footer: "Huỷ" + nút xác nhận (spinner khi đang lưu). */
+/** Cặp nút chuẩn ở footer: "Hủy" + nút xác nhận (spinner khi đang lưu). */
 export function ModalActions({
 	onCancel,
 	onConfirm,
@@ -102,12 +102,12 @@ export function ModalActions({
 	disabled,
 	confirmLabel,
 	confirmIcon = <CheckSvg />,
-	cancelLabel = 'Huỷ',
+	cancelLabel = 'Hủy',
 }: {
 	onCancel: () => void;
 	onConfirm: () => void;
 	loading?: boolean;
-	/** Khoá riêng nút xác nhận (vd form chưa hợp lệ). */
+	/** Khóa riêng nút xác nhận (vd form chưa hợp lệ). */
 	disabled?: boolean;
 	confirmLabel: React.ReactNode;
 	confirmIcon?: React.ReactNode;
@@ -138,10 +138,10 @@ export function ModalActions({
 
 interface ConfirmDeleteModalProps {
 	title: React.ReactNode;
-	/** Tên bản ghi sắp xoá — hiện dưới tiêu đề. */
+	/** Tên bản ghi sắp xóa — hiện dưới tiêu đề. */
 	subtitle?: React.ReactNode;
 	onClose: () => void;
-	/** Trả Promise thì hộp thoại tự hiện trạng thái đang xoá và lỗi (nếu reject). */
+	/** Trả Promise thì hộp thoại tự hiện trạng thái đang xóa và lỗi (nếu reject). */
 	onConfirm: () => void | Promise<void>;
 	loading?: boolean;
 	confirmLabel?: React.ReactNode;
@@ -151,14 +151,14 @@ interface ConfirmDeleteModalProps {
 	warning?: React.ReactNode;
 }
 
-/** Hộp thoại xác nhận xoá 1 bản ghi — dùng chung cho mọi danh mục. */
+/** Hộp thoại xác nhận xóa 1 bản ghi — dùng chung cho mọi danh mục. */
 export function ConfirmDeleteModal({
 	title,
 	subtitle,
 	onClose,
 	onConfirm,
 	loading,
-	confirmLabel = 'Xác nhận xoá',
+	confirmLabel = 'Xác nhận xóa',
 	children,
 	warning,
 }: ConfirmDeleteModalProps) {
@@ -174,7 +174,7 @@ export function ConfirmDeleteModal({
 		try {
 			await result;
 		} catch (err) {
-			setError(err instanceof Error ? err.message : 'Xoá thất bại');
+			setError(err instanceof Error ? err.message : 'Xóa thất bại');
 		} finally {
 			setBusy(false);
 		}
@@ -198,7 +198,7 @@ export function ConfirmDeleteModal({
 						onClick={onClose}
 						disabled={pending}
 					>
-						Huỷ
+						Hủy
 					</button>
 					<button
 						type='button'

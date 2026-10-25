@@ -108,7 +108,7 @@ const pushWithEmail = async (
 			.request()
 			.input('user_ids', sql.NVarChar(sql.MAX), JSON.stringify(userIds)).query(`
 				SELECT id, email, full_name FROM users
-				WHERE id IN (SELECT [value] FROM OPENJSON(@user_ids))
+				WHERE id IN (SELECT CAST([value] AS VARCHAR(50)) FROM OPENJSON(@user_ids))
 				  AND email IS NOT NULL AND email <> ''
 			`);
 		for (const u of res.recordset) {

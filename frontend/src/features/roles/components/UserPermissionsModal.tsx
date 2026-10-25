@@ -63,7 +63,7 @@ export function UserPermissionsModal({ onClose }: UserPermissionsModalProps) {
 	};
 
 	const role = roles.find((r) => r.id === user?.role_id);
-	// Từ khoá quá ngắn → không hiện kết quả cũ (không cần xoá state trong effect)
+	// Từ khóa quá ngắn → không hiện kết quả cũ (không cần xóa state trong effect)
 	const shownResults = query.trim().length >= 2 ? results : [];
 
 	const sections = useMemo(() => {

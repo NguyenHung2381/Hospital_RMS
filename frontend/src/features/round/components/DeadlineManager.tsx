@@ -385,9 +385,9 @@ export function DeadlineManager({
 		try {
 			await deleteDeadline(roundId, phase);
 			setDeadlines((p) => p.filter((d) => d.phase !== phase));
-			notify.success('Đã xoá mốc thời gian');
+			notify.success('Đã xóa mốc thời gian');
 		} catch {
-			setErr('Xoá thất bại');
+			setErr('Xóa thất bại');
 		}
 	};
 

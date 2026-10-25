@@ -37,7 +37,7 @@ const [precheck, multerMw, verify] = secureUpload(instance, { quota: false }).ar
 );
 
 // File tạm chưa được service chuyển đi (lỗi validate, sai captcha, honeypot,
-// lỗi nghiệp vụ...) ⇒ xoá khi trả response. File đã chuyển thì unlink lỗi ENOENT, bỏ qua.
+// lỗi nghiệp vụ...) ⇒ xóa khi trả response. File đã chuyển thì unlink lỗi ENOENT, bỏ qua.
 const cleanupTmp = (req, res, next) => {
 	let done = false;
 	const cleanup = () => {

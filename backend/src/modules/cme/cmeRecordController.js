@@ -29,12 +29,12 @@ const updateOne = asyncHandler(async (req, res) => {
 
 const removeOne = asyncHandler(async (req, res) => {
 	await cmeRecordService.remove(req.params.id, req.user.id);
-	return success(res, null, 'Đã xoá ghi nhận CME');
+	return success(res, null, 'Đã xóa ghi nhận CME');
 });
 
 const removeMany = asyncHandler(async (req, res) => {
 	const out = await cmeRecordService.removeMany(req.body.ids, req.user.id);
-	return success(res, out, `Đã xoá ${out.deleted} ghi nhận CME`);
+	return success(res, out, `Đã xóa ${out.deleted} ghi nhận CME`);
 });
 
 const addEvidence = asyncHandler(async (req, res) => {
@@ -185,7 +185,7 @@ const exportExcel = asyncHandler(async (req, res) => {
 	return sendWorkbook(res, wb, `bao-cao-cme${suffix}.xlsx`);
 });
 
-// GET /trainees/:id/cme — CME tích luỹ của học viên (hồ sơ học viên)
+// GET /trainees/:id/cme — CME tích lũy của học viên (hồ sơ học viên)
 const getTraineeCme = asyncHandler(async (req, res) => {
 	return success(res, await cmeUserService.getTraineeCme(req.params.id));
 });

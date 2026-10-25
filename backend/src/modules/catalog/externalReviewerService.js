@@ -112,7 +112,7 @@ const update = async (id, data, actorId) => {
 	return reviewer;
 };
 
-// Xoá cứng chỉ khi chưa từng ngồi ghế nào; nếu đã có lịch sử, chỉ vô hiệu hoá
+// Xóa cứng chỉ khi chưa từng ngồi ghế nào; nếu đã có lịch sử, chỉ vô hiệu hóa
 // (is_active = 0) để giữ nguyên tên hiển thị trên các hội đồng cũ.
 const remove = async (id, actorId) => {
 	const pool = await getPool();

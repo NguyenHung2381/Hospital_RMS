@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { ArrowRSvg, CalendarSvg, CheckSmSvg, ChevLSvg, CopySvg, EditSvg, QrSvg } from '@/assets/icons';
+import { Dropdown } from 'antd';
+import { CalendarSvg, ChevLSvg, CopySvg, EditSvg, MoreVSvg, QrSvg } from '@/assets/icons';
 import { CourseCloneModal } from '../components/CourseCloneModal';
 import tbl from '@/shared/components/Table/Table.module.css';
 import AdminLayout from '../../../layouts/AdminLayout';
@@ -24,12 +25,13 @@ import styles from './Courses.module.css';
 
 type Step = DetailTab;
 
+// Thứ tự tab đi theo luồng làm việc: ghi danh → lịch → tài liệu → thi → kết quả.
 const STEPS: { key: Step; label: string }[] = [
 	{ key: 'enrollments', label: 'Học viên' },
-	{ key: 'sessions', label: 'Lịch học & Giảng viên' },
+	{ key: 'sessions', label: 'Lịch học & giảng viên' },
 	{ key: 'documents', label: 'Tài liệu' },
-	{ key: 'exams', label: 'Thi & Kiểm tra' },
-	{ key: 'results', label: 'Kết quả & Chứng chỉ' },
+	{ key: 'exams', label: 'Thi & kiểm tra' },
+	{ key: 'results', label: 'Kết quả & chứng chỉ' },
 ];
 // Khóa GPHN: mỗi học viên có lịch vòng riêng, kết quả theo vòng ⇒ không có lịch chung / thi / bảng điểm.
 const PRACTICE_STEPS = new Set<Step>(['enrollments', 'documents']);
@@ -38,7 +40,7 @@ const isPracticeCourse = (c: Course | null) => !!c && (c.is_rolling || c.trainin
 const range = (from: string | null, to: string | null) =>
 	from || to ? `${formatDateOr(from, '?')} → ${formatDateOr(to, '?')}` : null;
 
-/** Trang chi tiết khóa học — các bước xếp theo luồng: ghi danh → xếp lịch → tài liệu → thi → kết quả. */
+/** Trang chi tiết khóa học — mỗi phần việc 1 tab, kèm số đếm để biết phần nào còn trống. */
 export default function CourseDetail() {
 	const { id = '' } = useParams();
 	const navigate = useNavigate();
@@ -85,9 +87,9 @@ export default function CourseDetail() {
 			<AdminLayout pageTitle='Không tìm thấy'>
 				<button
 					className={styles.backLink}
-					onClick={() => navigate('/admin/courses')}
+					onClick={() => navigate(-1)}
 				>
-					<ChevLSvg /> Danh sách khóa học
+					<ChevLSvg /> Quay lại
 				</button>
 				<div className={styles.emptyState}>
 					<div className={styles.emptyTitle}>Khóa học không tồn tại hoặc bạn không có quyền xem</div>
@@ -105,9 +107,12 @@ export default function CourseDetail() {
 	// Khóa ĐTLT / CTCV: mỗi chương trình là 1 lớp — đếm lớp đã mở.
 	const classes = d.programLinks.filter((l) => l.class_rule);
 	const opened = classes.filter((l) => l.class_opened_at).length;
-	const stepMeta: Record<Step, { meta: string; done: boolean }> = {
+	// Số đếm trên tab + chú thích khi rê chuột; alert = việc đang chờ xử lý (đăng ký chờ duyệt).
+	const tabInfo: Record<Step, { count?: string; title: string; alert?: number }> = {
 		enrollments: {
-			meta: [
+			count: String(approved),
+			alert: pending,
+			title: [
 				`${approved} đã duyệt`,
 				pending ? `${pending} chờ duyệt` : null,
 				classes.length ? `${opened}/${classes.length} lớp đã mở` : null,
@@ -115,26 +120,22 @@ export default function CourseDetail() {
 			]
 				.filter(Boolean)
 				.join(' · '),
-			done: classes.length ? opened > 0 : approved > 0,
 		},
-		sessions: {
-			meta: `${d.sessions.length} buổi · ${d.assignments.length} giảng viên`,
-			done: d.sessions.length > 0,
-		},
-		documents: { meta: `${d.documents.length} tài liệu`, done: d.documents.length > 0 },
-		exams: { meta: 'Đề thi online', done: false },
-		results: { meta: `${issued}/${approved} chứng chỉ`, done: approved > 0 && issued >= approved },
+		sessions: { count: String(d.sessions.length), title: `${d.sessions.length} buổi · ${d.assignments.length} giảng viên` },
+		documents: { count: String(d.documents.length), title: `${d.documents.length} tài liệu` },
+		exams: { title: 'Đề thi trực tuyến' },
+		results: { count: `${issued}/${approved}`, title: `${issued}/${approved} chứng chỉ đã cấp` },
 	};
 	const attendanceSession = d.sessions.find((s) => s.id === d.attendanceSessionId);
 	const status = course ? DISPLAY_STATUS_CFG[course.display_status] : null;
 
-	const activeIdx = steps.findIndex((s) => s.key === tab);
-	// Gợi ý bước kế tiếp: bước đầu tiên sau bước đang xem mà chưa xong (bỏ qua "Thi" — không bắt buộc)
-	const nextStep = steps.slice(activeIdx + 1).find((s) => s.key !== 'exams' && !stepMeta[s.key].done);
-	const doneCount = steps.filter((s) => stepMeta[s.key].done).length;
+	const practice = isPracticeCourse(course);
+	// Khóa thuộc loại nào thì tô sáng mục menu loại đó và "Danh sách" quay về đúng trang loại đó.
+	const menuKey = practice ? 'gphn' : course?.training_type_id === TRAINING_TYPE.CTCV ? 'ctcv' : 'dtlt';
+	const backTo = { gphn: '/admin/practice-batches', ctcv: '/admin/ctcv', dtlt: '/admin/dtlt' }[menuKey];
 	const goStep = (key: Step) => setParams({ tab: key }, { replace: true });
 	const stepLabel = (s: { key: Step; label: string }) =>
-		s.key === 'enrollments' && isPracticeCourse(course) ? 'Học viên & hồ sơ thực hành' : s.label;
+		s.key === 'enrollments' && practice ? 'Học viên & hồ sơ thực hành' : s.label;
 	// Chọn 1 chương trình ở phần tóm tắt ⇒ mở danh sách học viên lọc sẵn theo chương trình đó.
 	const goProgram = (programId: string) =>
 		setParams({ tab: 'enrollments', ...(programId ? { program: programId } : {}) }, { replace: true });
@@ -143,41 +144,46 @@ export default function CourseDetail() {
 		<AdminLayout
 			pageTitle={course?.name ?? 'Chi tiết khóa học'}
 			breadcrumbs={[{ label: 'Đào tạo' }]}
+			activeKey={course ? menuKey : undefined}
 			headerActions={
 				<div className={styles.detailActions}>
 					<Button
 						variant='secondary'
 						icon={<ChevLSvg />}
-						onClick={() => navigate('/admin/courses')}
+						onClick={() => navigate(backTo)}
 					>
 						Danh sách
 					</Button>
-					{course?.is_public_registration && (
-						<Button
-							variant='secondary'
-							icon={<QrSvg />}
-							onClick={() => setSharing(true)}
-						>
-							Link & QR đăng ký
-						</Button>
-					)}
 					{course && (
 						<Button
-							variant='secondary'
-							icon={<CopySvg />}
-							onClick={() => setCloning(true)}
-						>
-							Nhân bản
-						</Button>
-					)}
-					{course && (
-						<Button
-							variant='secondary'
 							icon={<EditSvg />}
 							onClick={() => setEditing(true)}
 						>
 							Sửa thông tin
 						</Button>
+					)}
+					{/* Thao tác ít dùng gom vào menu "…" cho thanh tiêu đề gọn */}
+					{course && (
+						<Dropdown
+							trigger={['click']}
+							placement='bottomRight'
+							menu={{
+								items: [
+									...(course.is_public_registration
+										? [{ key: 'share', icon: <QrSvg width={14} />, label: 'Link & QR đăng ký' }]
+										: []),
+									{ key: 'clone', icon: <CopySvg width={14} />, label: practice ? 'Nhân bản đợt' : 'Nhân bản khóa học' },
+								],
+								onClick: ({ key }) => (key === 'share' ? setSharing(true) : setCloning(true)),
+							}}
+						>
+							<Button
+								variant='secondary'
+								aria-label='Thao tác khác'
+								title='Thao tác khác'
+								icon={<MoreVSvg />}
+							/>
+						</Dropdown>
 					)}
 				</div>
 			}
@@ -247,49 +253,35 @@ export default function CourseDetail() {
 					</div>
 
 					<div className={styles.stepPanel}>
-						{/* Thanh bước luôn hiện: ✓ = bước đã có dữ liệu; kèm tiến độ và gợi ý bước kế tiếp */}
-						<div className={styles.stepPanelHead}>
-							<div className={styles.stepPick}>
-								{/* Hàng tiêu đề: tiến độ + gợi ý bước kế tiếp — thanh bước bên dưới có trọn chiều ngang */}
-								<div className={styles.stepTop}>
-									<span className={styles.stepPanelNo}>
-										Bước {activeIdx + 1}/{steps.length} · đã xong {doneCount}/{steps.length}
-									</span>
-									{nextStep && stepMeta[tab].done && (
-										<button
-											type='button'
-											className={styles.nextStep}
-											onClick={() => goStep(nextStep.key)}
-										>
-											Tiếp theo: {stepLabel(nextStep)} <ArrowRSvg />
-										</button>
-									)}
-								</div>
-								<nav
-									className={styles.steps}
-									aria-label='Các bước của khóa học'
-								>
-									{steps.map((s, i) => (
-										<button
-											key={s.key}
-											type='button'
-											className={`${styles.step} ${tab === s.key ? styles.stepActive : ''}`}
-											aria-current={tab === s.key ? 'step' : undefined}
-											title={`${stepLabel(s)} — ${stepMeta[s.key].meta}`}
-											onClick={() => goStep(s.key)}
-										>
-											<span className={`${styles.stepNum} ${stepMeta[s.key].done ? styles.stepDone : ''}`}>
-												{stepMeta[s.key].done ? <CheckSmSvg /> : i + 1}
+						<nav
+							className={styles.detailTabs}
+							aria-label='Các phần của khóa học'
+						>
+							{steps.map((s) => {
+								const info = tabInfo[s.key];
+								return (
+									<button
+										key={s.key}
+										type='button'
+										className={`${styles.detailTab} ${tab === s.key ? styles.detailTabActive : ''}`}
+										aria-current={tab === s.key ? 'page' : undefined}
+										title={info.title}
+										onClick={() => goStep(s.key)}
+									>
+										{stepLabel(s)}
+										{info.count !== undefined && <span className={styles.detailTabCount}>{info.count}</span>}
+										{!!info.alert && (
+											<span
+												className={styles.detailTabAlert}
+												title={`${info.alert} đăng ký chờ duyệt`}
+											>
+												{info.alert} chờ duyệt
 											</span>
-											<span className={styles.stepText}>
-												<span className={styles.stepLabel}>{stepLabel(s)}</span>
-												<span className={styles.stepMeta}>{stepMeta[s.key].meta}</span>
-											</span>
-										</button>
-									))}
-								</nav>
-							</div>
-						</div>
+										)}
+									</button>
+								);
+							})}
+						</nav>
 						{d.error && <div className={styles.errorBanner}>{d.error}</div>}
 						{d.loading ? (
 							<InlineLoading />

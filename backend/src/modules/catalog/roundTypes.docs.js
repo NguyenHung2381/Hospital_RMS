@@ -50,9 +50,9 @@
  *         required: true
  *         schema: { type: string }
  *   delete:
- *     summary: Xoá loại đợt
+ *     summary: Xóa loại đợt
  *     tags: [ResearchRounds]
- *     description: Chỉ admin mới có quyền. Không xoá được khi còn đợt đang dùng.
+ *     description: Chỉ admin mới có quyền. Không xóa được khi còn đợt đang dùng.
  *     parameters:
  *       - in: path
  *         name: id

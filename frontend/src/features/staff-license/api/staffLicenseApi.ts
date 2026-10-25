@@ -23,7 +23,7 @@ export const getStaffLicenses = (params: StaffLicenseListParams) => {
 	return apiClient.get<StaffLicenseListResponse>(`/staff-licenses?${new URLSearchParams(entries).toString()}`);
 };
 
-// Ô để trống → null (xoá giá trị cũ)
+// Ô để trống → null (xóa giá trị cũ)
 const toPayload = (form: StaffLicenseFormData) =>
 	Object.fromEntries(LICENSE_FIELDS.map((f) => [f, form[f].trim() || null]));
 

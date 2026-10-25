@@ -14,7 +14,7 @@ export type MenuCatalog = {
 		label: string;
 		/** Mục thuộc module này — module tắt thì mục cũng ẩn dù bật ở đây. */
 		module?: ModuleKey;
-		/** Không cho tắt (trang chủ của cổng, Cấu hình hệ thống — tắt là tự khoá mình). */
+		/** Không cho tắt (trang chủ của cổng, Cấu hình hệ thống — tắt là tự khóa mình). */
 		locked?: boolean;
 	}[];
 }[];
@@ -35,7 +35,7 @@ export const resetMenuConfig = () => {
 	cache = null;
 };
 
-/** Key các mục menu quản trị đã tắt ở cổng `layout`, bỏ qua mục bị khoá. */
+/** Key các mục menu quản trị đã tắt ở cổng `layout`, bỏ qua mục bị khóa. */
 export function useHiddenMenus(layout: MenuLayout, catalog: MenuCatalog): Set<string> {
 	const [menus, setMenus] = useState<HiddenMenus>(cache ?? NONE);
 	useEffect(() => {

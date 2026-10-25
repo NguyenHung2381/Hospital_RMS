@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { CalendarSvg, CheckSvg, EyeSvg, LayersSvg, PlusSvg, UploadSvg, XSvg } from '@/assets/icons';
+import { CalendarSvg, CheckSvg, EyeSvg, PlusSvg, UploadSvg, XSvg } from '@/assets/icons';
 import AdminLayout from '../../../layouts/AdminLayout';
 import { useRealtimeUpdate } from '../../../layouts/hooks/useRealtime';
 import { Button, Pagination, RowAction, RowActions, SearchInput, SkeletonTable, TableEmpty } from '@/shared/components';
@@ -202,14 +202,6 @@ export default function PracticeRecords() {
 
 	const headerActions = (
 		<div className={local.headerActions}>
-			<Button
-				variant='ghost'
-				icon={<LayersSvg />}
-				onClick={() => navigate(`/admin/courses?type=${TRAINING_TYPE.GPHN}`)}
-				title='Tạo / sửa đợt thực hành (khóa GPHN), chương trình áp dụng, đăng ký công khai'
-			>
-				Quản lý đợt
-			</Button>
 			{canEdit && (
 				<Button
 					variant='secondary'
@@ -387,7 +379,7 @@ export default function PracticeRecords() {
 									pg.setPage(1);
 								}}
 							>
-								Xoá bộ lọc
+								Xóa bộ lọc
 							</button>
 						)}
 					</div>
@@ -419,7 +411,7 @@ export default function PracticeRecords() {
 										title={filterActive ? 'Không có hồ sơ khớp bộ lọc' : `Không có hồ sơ ${stageLabel(stage).toLowerCase()}`}
 										desc={
 											filterActive
-												? 'Thử đổi từ khoá hoặc bộ lọc.'
+												? 'Thử đổi từ khóa hoặc bộ lọc.'
 												: all.length === 0
 													? 'Bấm “Thêm hồ sơ”, hoặc chọn đợt rồi “Nhập sổ Excel”.'
 													: undefined

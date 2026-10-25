@@ -143,7 +143,7 @@ export default function DepartmentAccounts() {
 					</div>
 					<div className={styles.statBody}>
 						<div className={styles.statValue}>{d.stats.locked}</div>
-						<div className={styles.statLabel}>Tạm khoá</div>
+						<div className={styles.statLabel}>Tạm khóa</div>
 					</div>
 				</div>
 			</div>
@@ -157,7 +157,7 @@ export default function DepartmentAccounts() {
 							<SearchSvg />
 							<input
 								className={styles.searchInput}
-								placeholder='Tìm theo tên, username, email, mã NV...'
+								placeholder='Tìm theo tên, tên đăng nhập, email, mã NV...'
 								value={d.search}
 								onChange={(e) => d.setSearch(e.target.value)}
 							/>
@@ -213,7 +213,7 @@ export default function DepartmentAccounts() {
 							</div>
 							<div className={styles.emptyDesc}>
 								{d.search || d.roleFilter !== 'all'
-									? 'Thử thay đổi bộ lọc hoặc từ khoá tìm kiếm'
+									? 'Thử thay đổi bộ lọc hoặc từ khóa tìm kiếm'
 									: 'Liên hệ quản trị viên để cấp tài khoản'}
 							</div>
 						</div>
@@ -246,7 +246,7 @@ export default function DepartmentAccounts() {
 												)
 											}
 										>
-											<XSvg /> Khoá
+											<XSvg /> Khóa
 										</BulkButton>
 									)}
 									{canDelete && (
@@ -255,7 +255,7 @@ export default function DepartmentAccounts() {
 											disabled={bulkBusy}
 											onClick={() => setBulkDeleteOpen(true)}
 										>
-											<TrashSvg /> Xoá đã chọn
+											<TrashSvg /> Xóa đã chọn
 										</BulkButton>
 									)}
 								</>
@@ -353,7 +353,7 @@ export default function DepartmentAccounts() {
 																: 'var(--color-gray-400)',
 														}}
 													>
-														{u.is_active ? 'Hoạt động' : 'Khoá'}
+														{u.is_active ? 'Hoạt động' : 'Khóa'}
 													</span>
 												</div>
 											</td>
@@ -385,7 +385,7 @@ export default function DepartmentAccounts() {
 												{canDelete && (
 													<button
 														className={`${styles.actionBtn} ${styles.actionDelete}`}
-														title='Xoá'
+														title='Xóa'
 														onClick={() => d.setDeleteUser(u)}
 													>
 														<TrashSvg />

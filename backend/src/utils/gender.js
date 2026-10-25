@@ -1,5 +1,5 @@
 /**
- * gender.js — chuẩn hoá giới tính về mã ASCII lưu DB: 'male' | 'female' | 'other'.
+ * gender.js — chuẩn hóa giới tính về mã ASCII lưu DB: 'male' | 'female' | 'other'.
  *
  * Các cột gender (trainees, lecturers, persons, seminar_participants) là
  * VARCHAR(10) và được bind sql.VarChar → ghi thẳng "Nữ" sẽ mất dấu thành "N?".

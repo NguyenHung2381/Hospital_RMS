@@ -26,7 +26,7 @@ const clearLocal = (roleId) => {
 	else _cache.clear();
 };
 
-// Xoá cache (1 vai trò, hoặc tất cả) ở instance này VÀ báo các instance khác.
+// Xóa cache (1 vai trò, hoặc tất cả) ở instance này VÀ báo các instance khác.
 const clear = (roleId) => {
 	clearLocal(roleId);
 	cacheBus.publish('permissions', roleId ?? null);

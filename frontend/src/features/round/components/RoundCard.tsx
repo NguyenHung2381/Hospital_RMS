@@ -180,7 +180,7 @@ export function RoundCard({
 					</div>
 					<div
 						className={`${styles.actionBtn} ${styles.danger}`}
-						title='Xoá đợt'
+						title='Xóa đợt'
 						onClick={onDelete}
 					>
 						<TrashSvg />

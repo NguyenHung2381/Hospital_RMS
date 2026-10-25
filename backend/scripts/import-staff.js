@@ -71,7 +71,7 @@ const QUAL_RULES = [
 	[/^(ky su|ks |cu nhan|cn|kien truc su|dh khac)/, 'TD016'],
 ];
 
-// Tiêu đề cột (sau norm) → khoá
+// Tiêu đề cột (sau norm) → khóa
 const COLUMNS = [
 	['mnv', (h) => h === 'mnv' || h === 'ma nv' || h === 'ma nhan vien'],
 	['full_name', (h) => h === 'ho va ten' || h === 'ho ten'],

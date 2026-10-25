@@ -81,7 +81,7 @@ const mailTrainees = (enrollmentIds, title, message) =>
         SELECT t.full_name, t.email, c.name AS course_name, tp.name AS program_name
         FROM course_enrollments e JOIN trainees t ON t.id = e.trainee_id JOIN courses c ON c.id = e.course_id
         LEFT JOIN training_programs tp ON tp.id = e.program_id
-        WHERE e.id IN (SELECT [value] FROM OPENJSON(@ids)) AND t.email IS NOT NULL AND t.email <> ''`)
+        WHERE e.id IN (SELECT CAST([value] AS VARCHAR(50)) FROM OPENJSON(@ids)) AND t.email IS NOT NULL AND t.email <> ''`)
 		).recordset;
 		for (const r of rows) {
 			const subject = title(r);
@@ -123,7 +123,10 @@ const statusOnApprove = async (course, programId, traineeId) => {
 	if (!k) return null;
 	if (roomOf(k) > 0) return 'approved';
 	if (await isInternalTrainee(traineeId)) return 'waitlisted';
-	throw httpError(409, `${FULL_MESSAGE(k)} Học viên ngoại viện không vào danh sách chờ — hãy từ chối hoặc nâng sĩ số.`);
+	throw httpError(
+		409,
+		`${FULL_MESSAGE(k)} Học viên ngoại viện không vào danh sách chờ — hãy từ chối hoặc nâng sĩ số.`,
+	);
 };
 
 /** Đăng ký mới (công khai / ghi danh hộ) vào lớp đầy: ngoại viện bị chặn ngay (12b). */
@@ -168,7 +171,7 @@ const fillFromWaitlist = async (courseId, actorId, { programId = null } = {}) =>
 	const moved = [];
 	const added = []; // [program_id, số người] — để báo lớp vừa đủ sĩ số
 	try {
-		// 1 khoá chung: 2 khóa cùng kéo 1 hồ sơ thì chỉ 1 khóa nhận, không vượt sĩ số.
+		// 1 khóa chung: 2 khóa cùng kéo 1 hồ sơ thì chỉ 1 khóa nhận, không vượt sĩ số.
 		await q().query(
 			"EXEC sp_getapplock @Resource = 'course-class-waitlist', @LockMode = 'Exclusive', @LockOwner = 'Transaction', @LockTimeout = 15000",
 		);

@@ -1,4 +1,4 @@
-// Upload ảnh minh hoạ (nhận xét rich-text, câu hỏi đề kiểm tra, bài test hội
+// Upload ảnh minh họa (nhận xét rich-text, câu hỏi đề kiểm tra, bài test hội
 // nghị) — chỉ nhận ảnh raster, không nhận SVG (có thể chứa script) hay các loại
 // file khác mà upload.js cho phép.
 const multer = require('multer');

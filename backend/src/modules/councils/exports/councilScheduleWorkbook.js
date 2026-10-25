@@ -7,7 +7,9 @@
  *
  * Body: { round_id, fileName?, title?, subtitle? }
  */
-const ExcelJS = require('exceljs');
+const { lazyRequire } = require('../../../utils/lazyRequire');
+/** @type {typeof import('exceljs')} */
+const ExcelJS = lazyRequire('exceljs');
 
 const HD_ROLES = [
 	['chairman', 'Chủ tịch'],
@@ -77,7 +79,7 @@ const buildCouncilScheduleWorkbook = (
 	/** @type {Array<[string, string, any]>} [vùng ô, nội dung, font] */
 	const head = [
 		['A1:D1', 'SỞ Y TẾ', fnt({ bold: true, size: 11 })],
-		['F1:L1', 'CỘNG HOÀ XÃ HỘI CHỦ NGHĨA VIỆT NAM', fnt({ bold: true, size: 11 })],
+		['F1:L1', 'CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM', fnt({ bold: true, size: 11 })],
 		['A2:D2', 'BỆNH VIỆN HNĐK NGHỆ AN', fnt({ bold: true, size: 11 })],
 		['F2:L2', 'Độc lập - Tự do - Hạnh phúc', fnt({ bold: true, size: 11, underline: true })],
 	];

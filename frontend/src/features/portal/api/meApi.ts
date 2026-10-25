@@ -121,7 +121,7 @@ export interface MyCmeRecord {
 	category_name: string | null;
 	approval_status: CmeApprovalStatus;
 	reject_reason: string | null;
-	/** Dòng tự động từ khóa học — không tự sửa / xoá */
+	/** Dòng tự động từ khóa học — không tự sửa / xóa */
 	source_type: CmeSourceType | null;
 	evidence_file_name: string | null;
 	evidence_file_url: string | null;
@@ -419,7 +419,7 @@ export const LEAVE_STATUS: Record<LeaveStatus, { label: string; tone: 'amber' | 
 	pending: { label: 'Chờ duyệt', tone: 'amber' },
 	approved: { label: 'Đã duyệt', tone: 'green' },
 	rejected: { label: 'Từ chối', tone: 'red' },
-	cancelled: { label: 'Đã huỷ', tone: 'gray' },
+	cancelled: { label: 'Đã hủy', tone: 'gray' },
 };
 export const getMyLeaveRequests = () => apiClient.get<LeaveRequest[]>('/me/attendance/leave-requests');
 export const createLeaveRequest = (data: LeaveRequestForm) =>

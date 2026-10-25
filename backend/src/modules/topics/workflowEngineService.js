@@ -244,11 +244,11 @@ const applyOutcomeToEntity = async (resource, entityId, outcome, actorId) => {
 // decision: 'approved' | 'rejected'. Trả về trạng thái mới nhất của instance.
 const advance = async (resource, entityId, decision, actor, comment) => {
 	if (!['approved', 'rejected'].includes(decision)) {
-		throw httpError(400, 'Quyết định không hợp lệ cho workflow (chỉ approved/rejected).');
+		throw httpError(400, 'Quyết định không hợp lệ cho quy trình duyệt (chỉ approved/rejected).');
 	}
 	const definition = await getActiveDefinition(resource);
 	if (!definition || !definition.steps.length) {
-		throw httpError(400, 'Chưa cấu hình workflow hợp lệ cho loại đối tượng này.');
+		throw httpError(400, 'Chưa cấu hình quy trình duyệt hợp lệ cho loại đối tượng này.');
 	}
 
 	const pool = await getPool();

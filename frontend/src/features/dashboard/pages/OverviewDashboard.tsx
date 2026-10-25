@@ -156,7 +156,7 @@ export default function OverviewDashboard() {
 
 	return (
 		<AdminLayout
-			pageTitle='Tổng quan Hệ thống'
+			pageTitle='Tổng quan hệ thống'
 			pageSubtitle='Số liệu chung toàn hệ thống: tài khoản, Nghiên cứu khoa học, Đào tạo, Hội nghị và Tín chỉ CME'
 		>
 			<DashboardTabs />
@@ -199,7 +199,7 @@ export default function OverviewDashboard() {
 					accent='accentAmber'
 				/>
 				<MetricCard
-					label={`Hội thảo - Hội nghị ${year}`}
+					label={`Hội thảo, hội nghị ${year}`}
 					value={fmt(kpi.seminars_this_year)}
 					loading={loading}
 					compare={`${fmt(kpi.cme_issued_this_year)} chứng nhận CME đã cấp`}
@@ -216,7 +216,7 @@ export default function OverviewDashboard() {
 					title='Nghiên cứu khoa học'
 					subtitle='Đề tài, đợt nghiên cứu & hội đồng'
 					loading={loading}
-					linkLabel='Dashboard NCKH'
+					linkLabel='Tổng quan NCKH'
 					onOpen={() => navigate('/admin/dashboard/research')}
 					rows={[
 						{ label: 'Đề tài chờ thẩm định', value: kpi.topics_pending },
@@ -230,7 +230,7 @@ export default function OverviewDashboard() {
 					title='Đào tạo'
 					subtitle='Khóa học, học viên & giảng viên'
 					loading={loading}
-					linkLabel='Dashboard Đào tạo'
+					linkLabel='Tổng quan đào tạo'
 					onOpen={() => navigate('/admin/dashboard/training')}
 					rows={[
 						{ label: 'Học viên đang đào tạo', value: kpi.trainees_active },
@@ -241,13 +241,13 @@ export default function OverviewDashboard() {
 					]}
 				/>
 				<ModuleCard
-					title={`Hội nghị & Tín chỉ CME ${year}`}
+					title={`Hội nghị & tín chỉ CME ${year}`}
 					subtitle='Hội nghị, hội thảo & tín chỉ CME trong năm'
 					loading={loading}
-					linkLabel='Dashboard Hội thảo'
+					linkLabel='Tổng quan hội nghị & CME'
 					onOpen={() => navigate('/admin/dashboard/seminar')}
 					rows={[
-						{ label: 'Hội thảo - Hội nghị', value: kpi.seminars_this_year },
+						{ label: 'Hội thảo, hội nghị', value: kpi.seminars_this_year },
 						{ label: 'Lượt tham dự', value: kpi.participants_this_year },
 						{ label: 'Chứng nhận CME đã cấp', value: kpi.cme_issued_this_year },
 					]}
@@ -284,7 +284,7 @@ export default function OverviewDashboard() {
 			<div className={styles.chartCard}>
 				<div className={styles.chartCardHeader}>
 					<div>
-						<div className={styles.chartTitle}>Hoạt động theo Khoa / Phòng</div>
+						<div className={styles.chartTitle}>Hoạt động theo khoa/phòng</div>
 						<div className={styles.chartSubtitle}>
 							Tài khoản, đề tài NCKH, đào tạo và hội thảo - CME năm {year} của từng đơn vị
 						</div>
@@ -338,7 +338,7 @@ export default function OverviewDashboard() {
 						</table>
 						<Pagination
 							{...deptPg.pagination}
-							itemLabel='khoa phòng'
+							itemLabel='khoa/phòng'
 						/>
 					</div>
 				)}

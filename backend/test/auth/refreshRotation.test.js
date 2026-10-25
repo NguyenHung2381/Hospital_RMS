@@ -16,7 +16,7 @@ const login = async (remember = false) =>
 const rowOf = (hashOf) => rows.find((r) => r.token === hashOf);
 const hash = (t) => require('crypto').createHash('sha256').update(t).digest('hex');
 
-test('làm mới: phát token mới cùng họ, token cũ bị đánh dấu thu hồi (không xoá)', async () => {
+test('làm mới: phát token mới cùng họ, token cũ bị đánh dấu thu hồi (không xóa)', async () => {
 	const rt1 = await login();
 	const { refresh_token: rt2, access_token } = await sessionTokenService.refreshAccessToken(rt1);
 	assert.ok(access_token);
@@ -60,6 +60,6 @@ test('token đã xoay bị dùng lại sau thời gian chờ: thu hồi cả h�
 	await assert.rejects(sessionTokenService.refreshAccessToken(rt2), (e) => e.statusCode === 401);
 });
 
-test('token rác / ký sai khoá bị từ chối', async () => {
+test('token rác / ký sai khóa bị từ chối', async () => {
 	await assert.rejects(sessionTokenService.refreshAccessToken('abc'), (e) => e.statusCode === 401);
 });

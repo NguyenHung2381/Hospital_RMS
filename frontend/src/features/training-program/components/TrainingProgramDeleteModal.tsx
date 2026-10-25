@@ -14,13 +14,13 @@ export function TrainingProgramDeleteModal({
 }) {
 	return (
 		<ConfirmDeleteModal
-			title='Xoá chương trình đào tạo'
+			title='Xóa chương trình đào tạo'
 			subtitle={program.name}
 			onClose={onClose}
 			onConfirm={onConfirm}
 			loading={loading}
 		>
-			Bạn có chắc muốn xoá <strong>{program.name}</strong> khỏi hệ thống? Thao tác này không thể
+			Bạn có chắc muốn xóa <strong>{program.name}</strong> khỏi hệ thống? Thao tác này không thể
 			hoàn tác.
 		</ConfirmDeleteModal>
 	);

@@ -119,7 +119,7 @@ export default function FilesTab({
 							onClick={() => setPendingFiles([])}
 							disabled={uploading}
 						>
-							Xoá tất cả
+							Xóa tất cả
 						</button>
 					</div>
 					<div className={styles.pendingList}>
@@ -157,7 +157,7 @@ export default function FilesTab({
 
 					<input
 						className={styles.noteInput}
-						placeholder='Ghi chú đợt upload (tùy chọn)'
+						placeholder='Ghi chú lần tải lên (tùy chọn)'
 						value={batchNote}
 						onChange={(e) => setBatchNote(e.target.value)}
 						disabled={uploading}
@@ -219,7 +219,7 @@ export default function FilesTab({
 							className={`${styles.bulkBtn} ${styles.bulkBtnDanger}`}
 							onClick={handleBulkDelete}
 						>
-							<TrashSvg /> Xoá
+							<TrashSvg /> Xóa
 						</button>
 					)}
 				</div>
@@ -278,7 +278,7 @@ export default function FilesTab({
 									{canDeleteFiles && (
 										<button
 											className={`${styles.fileActionBtn} ${styles.fileActionDanger}`}
-											title='Xoá file'
+											title='Xóa file'
 											onClick={() => handleDeleteFile(f.id)}
 										>
 											<TrashSvg />

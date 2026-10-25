@@ -30,7 +30,7 @@ export function ConfirmDeleteFileModal({
 		try {
 			await onConfirm();
 		} catch (err) {
-			setError(err instanceof Error ? err.message : 'Lỗi xoá file');
+			setError(err instanceof Error ? err.message : 'Lỗi xóa file');
 			setLoading(false);
 		}
 	};
@@ -63,7 +63,7 @@ export function ConfirmDeleteFileModal({
 					</div>
 					<div className={styles.cfmHeaderText}>
 						<div className={styles.cfmHeaderTitle}>
-							{isBulk ? `Xoá ${files.length} file?` : 'Xoá file?'}
+							{isBulk ? `Xóa ${files.length} file?` : 'Xóa file?'}
 						</div>
 						<div className={styles.cfmHeaderSub}>
 							{isBulk
@@ -146,8 +146,8 @@ export function ConfirmDeleteFileModal({
 						<IcWarn />
 						<span>
 							{isBulk
-								? `${files.length} file sẽ bị xoá vĩnh viễn khỏi hệ thống và không thể khôi phục.`
-								: 'File sẽ bị xoá vĩnh viễn khỏi hệ thống và không thể khôi phục.'}
+								? `${files.length} file sẽ bị xóa vĩnh viễn khỏi hệ thống và không thể khôi phục.`
+								: 'File sẽ bị xóa vĩnh viễn khỏi hệ thống và không thể khôi phục.'}
 						</span>
 					</div>
 				</div>
@@ -166,7 +166,7 @@ export function ConfirmDeleteFileModal({
 						onClick={onClose}
 						disabled={loading}
 					>
-						Huỷ bỏ
+						Hủy bỏ
 					</button>
 					<button
 						className={styles.btnDanger}
@@ -179,12 +179,12 @@ export function ConfirmDeleteFileModal({
 									className={styles.spinner}
 									style={{ borderTopColor: '#791F1F' }}
 								/>
-								Đang xoá...
+								Đang xóa...
 							</>
 						) : isBulk ? (
-							`Xoá ${files.length} file`
+							`Xóa ${files.length} file`
 						) : (
-							'Xác nhận xoá'
+							'Xác nhận xóa'
 						)}
 					</button>
 				</div>

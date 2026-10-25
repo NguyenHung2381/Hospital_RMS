@@ -2,7 +2,7 @@ const path = require('path');
 const pino = require('pino');
 
 // Logger CHUYÊN cho audit/activity log — tách hẳn khỏi console.log ứng dụng.
-// Mỗi sự kiện ghi ra 1 dòng JSON vào file, xoay theo ngày, tự xoá file cũ.
+// Mỗi sự kiện ghi ra 1 dòng JSON vào file, xoay theo ngày, tự xóa file cũ.
 // Đây là NGUỒN DỮ LIỆU CHÍNH của trang /activity-logs — không còn INSERT vào
 // SQL Server nên bảng activity_logs không phình nữa.
 //
@@ -26,7 +26,7 @@ const base = {
 };
 
 // time: ISO cho người đọc. ts: epoch mili-giây kèm phần thập phân (độ phân giải
-// micro-giây, tăng đơn điệu trong 1 tiến trình) — dùng làm khoá sắp xếp + con
+// micro-giây, tăng đơn điệu trong 1 tiến trình) — dùng làm khóa sắp xếp + con
 // trỏ phân trang để không bị đụng-độ khi nhiều sự kiện rơi vào cùng 1 ms.
 const timestamp = () => {
 	const ms = performance.timeOrigin + performance.now();
@@ -43,7 +43,7 @@ const transport = LOG_STDOUT
 				frequency: 'daily',
 				dateFormat: 'yyyy-MM-dd',
 				mkdir: true,
-				// Giữ tối đa RETENTION_FILES file gần nhất, xoá dần file cũ hơn.
+				// Giữ tối đa RETENTION_FILES file gần nhất, xóa dần file cũ hơn.
 				limit: { count: RETENTION_FILES },
 			},
 		});

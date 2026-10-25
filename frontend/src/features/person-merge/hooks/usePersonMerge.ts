@@ -90,7 +90,7 @@ export function usePersonMerge() {
 		setPage(1);
 	}, []);
 
-	// Mọi thao tác ghi: khoá nút trong lúc chạy, báo kết quả, tải lại danh sách + số đếm.
+	// Mọi thao tác ghi: khóa nút trong lúc chạy, báo kết quả, tải lại danh sách + số đếm.
 	const run = useCallback(
 		async (fn: () => Promise<string>, close = true) => {
 			setBusy(true);

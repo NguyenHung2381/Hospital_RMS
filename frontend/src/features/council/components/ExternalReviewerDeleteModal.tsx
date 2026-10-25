@@ -14,14 +14,14 @@ export function ExternalReviewerDeleteModal({
 }) {
 	return (
 		<ConfirmDeleteModal
-			title='Xoá người ngoài viện'
+			title='Xóa chuyên gia ngoài viện'
 			subtitle={reviewer.full_name}
 			onClose={onClose}
 			onConfirm={onConfirm}
 			loading={loading}
 		>
-			Bạn có chắc muốn xoá <strong>{reviewer.full_name}</strong> khỏi danh sách? Nếu người này đã
-			từng ngồi ghế hội đồng, hồ sơ sẽ được vô hiệu hoá thay vì xoá hẳn để giữ lịch sử.
+			Bạn có chắc muốn xóa <strong>{reviewer.full_name}</strong> khỏi danh sách? Nếu người này đã
+			từng ngồi ghế hội đồng, hồ sơ sẽ được vô hiệu hóa thay vì xóa hẳn để giữ lịch sử.
 		</ConfirmDeleteModal>
 	);
 }

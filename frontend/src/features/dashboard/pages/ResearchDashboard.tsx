@@ -76,7 +76,7 @@ export default function ResearchDashboard() {
 
 	return (
 		<AdminLayout
-			pageTitle='Tổng quan Nghiên cứu khoa học'
+			pageTitle='Tổng quan nghiên cứu khoa học'
 			pageSubtitle='Đề tài NCKH, tiến độ Hội đồng đánh giá, phân bố theo khoa/phòng & nhật ký thẩm định'
 		>
 			<DashboardTabs />
@@ -267,7 +267,7 @@ export default function ResearchDashboard() {
 					{/* Recent approvals */}
 					<div className={styles.approvalCard}>
 						<div className={styles.cardHeader}>
-							<span className={styles.cardTitle}>Nhật ký Thẩm định Gần đây</span>
+							<span className={styles.cardTitle}>Nhật ký thẩm định gần đây</span>
 							<span
 								className={styles.cardViewAll}
 								onClick={() => navigate('/admin/approvals')}
@@ -372,7 +372,7 @@ export default function ResearchDashboard() {
 					{/* Department summary */}
 					<div className={styles.deptSummaryCard}>
 						<div className={styles.cardHeader}>
-							<span className={styles.cardTitle}>Đơn vị Nghiên cứu Tiêu biểu</span>
+							<span className={styles.cardTitle}>Đơn vị nghiên cứu tiêu biểu</span>
 							<span
 								className={styles.cardViewAll}
 								onClick={() => navigate('/admin/departments')}

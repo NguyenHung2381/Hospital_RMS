@@ -75,7 +75,7 @@ export function DeadlineModal({ state, onClose, onSaved }: Props) {
 				...round,
 				deadlines: round.deadlines.filter((d) => d.phase !== deadline.phase),
 			});
-			notify.success('Đã xoá mốc thời gian');
+			notify.success('Đã xóa mốc thời gian');
 		} catch (e: unknown) {
 			setErr(e instanceof Error ? e.message : 'Lỗi không xác định');
 			setDeleting(false);

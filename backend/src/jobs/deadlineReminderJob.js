@@ -86,7 +86,7 @@ const run = async () => {
 		sentCount += userIds.length;
 	}
 
-	if (sentCount > 0) logger.info(`[job:deadline_reminder] Đã gửi ${sentCount} lượt nhắc deadline.`);
+	if (sentCount > 0) logger.info(`[job:deadline_reminder] Đã gửi ${sentCount} lượt nhắc hạn nộp.`);
 };
 
 module.exports = { run };

@@ -75,7 +75,7 @@ export default function CmeCreditCatalog() {
 	);
 
 	// Mỗi nhóm = 1 khối; loại hình không thuộc nhóm nào (group_id NULL hoặc trỏ
-	// tới nhóm đã xoá) gom vào khối "Chưa phân nhóm" cuối trang.
+	// tới nhóm đã xóa) gom vào khối "Chưa phân nhóm" cuối trang.
 	const sections = useMemo(() => {
 		const q = search.trim().toLowerCase();
 		const known = new Set(groups.map((g) => g.id));
@@ -155,10 +155,10 @@ export default function CmeCreditCatalog() {
 				await cmeCatalogApi.removeCategory(deleting.item.id);
 				setCategories((prev) => prev.filter((c) => c.id !== deleting.item.id));
 			}
-			showToast('success', `Đã xoá "${deleting.item.name}"`);
+			showToast('success', `Đã xóa "${deleting.item.name}"`);
 			setDeleting(null);
 		} catch (err) {
-			showToast('error', err instanceof Error ? err.message : 'Xoá thất bại');
+			showToast('error', err instanceof Error ? err.message : 'Xóa thất bại');
 		} finally {
 			setLoading(false);
 		}
@@ -256,7 +256,7 @@ export default function CmeCreditCatalog() {
 						<div className={base.emptyTitle}>Không tìm thấy loại hình nào</div>
 						<div className={base.emptyDesc}>
 							{search || groupFilter
-								? 'Thử thay đổi từ khoá hoặc bộ lọc'
+								? 'Thử thay đổi từ khóa hoặc bộ lọc'
 								: 'Chưa có nhóm hoạt động — bấm "Thêm nhóm" để bắt đầu'}
 						</div>
 					</div>
@@ -298,7 +298,7 @@ export default function CmeCreditCatalog() {
 								{canDelete && group && (
 									<div
 										className={`${base.actionBtn} ${base.danger}`}
-										title='Xoá nhóm'
+										title='Xóa nhóm'
 										onClick={() => setDeleting({ kind: 'group', item: group })}
 									>
 										<TrashSvg />
@@ -370,7 +370,7 @@ export default function CmeCreditCatalog() {
 																{canDelete && (
 																	<div
 																		className={`${base.actionBtn} ${base.danger}`}
-																		title='Xoá'
+																		title='Xóa'
 																		onClick={() => setDeleting({ kind: 'category', item: c })}
 																	>
 																		<TrashSvg />
@@ -424,7 +424,7 @@ export default function CmeCreditCatalog() {
 					onClose={() => setDeleting(null)}
 					icon={<TrashSvg />}
 					tone='danger'
-					title={deleting.kind === 'group' ? 'Xoá nhóm hoạt động' : 'Xoá loại hình quy đổi'}
+					title={deleting.kind === 'group' ? 'Xóa nhóm hoạt động' : 'Xóa loại hình quy đổi'}
 					subtitle={deleting.item.name}
 					className={`${base.modal} ${base.modalSm}`}
 					bodyClassName={base.modalBody}
@@ -435,7 +435,7 @@ export default function CmeCreditCatalog() {
 								onClick={() => setDeleting(null)}
 								disabled={loading}
 							>
-								Huỷ
+								Hủy
 							</button>
 							<button
 								className={base.btnDanger}
@@ -443,7 +443,7 @@ export default function CmeCreditCatalog() {
 								disabled={loading}
 							>
 								{loading ? <span className={`${base.spinner} ${base.spinnerDark}`} /> : <TrashSvg />}
-								Xác nhận xoá
+								Xác nhận xóa
 							</button>
 						</>
 					}
@@ -451,12 +451,12 @@ export default function CmeCreditCatalog() {
 					<p className={base.deleteDesc}>
 						{deleting.kind === 'group' ? (
 							<>
-								Xoá nhóm <strong>{deleting.item.name}</strong>? Chỉ xoá được khi nhóm không còn
-								loại hình nào — hãy chuyển hoặc xoá các loại hình trong nhóm trước.
+								Xóa nhóm <strong>{deleting.item.name}</strong>? Chỉ xóa được khi nhóm không còn
+								loại hình nào — hãy chuyển hoặc xóa các loại hình trong nhóm trước.
 							</>
 						) : (
 							<>
-								Xoá <strong>{deleting.item.name}</strong> khỏi danh mục? Không xoá được nếu đã có
+								Xóa <strong>{deleting.item.name}</strong> khỏi danh mục? Không xóa được nếu đã có
 								bản ghi CME dùng loại hình này.
 							</>
 						)}

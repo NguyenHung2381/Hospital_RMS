@@ -46,7 +46,7 @@ const norm = (s: string | null | undefined) =>
 		.replace(/đ/gi, 'd')
 		.toLowerCase();
 
-/** Lọc theo từ khoá + cắt trang phía client (API trả về toàn bộ danh sách theo năm). */
+/** Lọc theo từ khóa + cắt trang phía client (API trả về toàn bộ danh sách theo năm). */
 function usePagedList<T>(
 	items: T[],
 	getText: (item: T) => string,
@@ -64,7 +64,7 @@ function usePagedList<T>(
 		);
 	}, [items, search, getText, extraFilter]);
 
-	// Đổi từ khoá / năm thì quay về trang đầu (điều chỉnh khi render, không dùng effect)
+	// Đổi từ khóa / năm thì quay về trang đầu (điều chỉnh khi render, không dùng effect)
 	const key = `${search}|${String(resetKey)}`;
 	const [prevKey, setPrevKey] = useState(key);
 	if (prevKey !== key) {
@@ -270,15 +270,15 @@ export default function CmeCompliance() {
 	};
 
 	const handleDelete = async (r: CmeRequirement) => {
-		if (!window.confirm(`Xoá ngưỡng CME của "${r.department_name ?? 'Toàn viện'}" năm ${year}?`))
+		if (!window.confirm(`Xóa ngưỡng CME của "${r.department_name ?? 'Toàn viện'}" năm ${year}?`))
 			return;
 		setSaving(true);
 		try {
 			await deleteCmeRequirement(r.id);
-			showToast('success', 'Đã xoá ngưỡng CME');
+			showToast('success', 'Đã xóa ngưỡng CME');
 			load();
 		} catch (err) {
-			showToast('error', err instanceof Error ? err.message : 'Xoá thất bại');
+			showToast('error', err instanceof Error ? err.message : 'Xóa thất bại');
 		} finally {
 			setSaving(false);
 		}
@@ -322,7 +322,7 @@ export default function CmeCompliance() {
 
 	return (
 		<AdminLayout
-			pageTitle='Cảnh báo tín chỉ'
+			pageTitle='Theo dõi ngưỡng tín chỉ'
 			pageSubtitle='Ngưỡng tín chỉ đào tạo y khoa liên tục theo năm và danh sách nhân sự chưa đạt'
 			breadcrumbs={[{ label: 'Tín chỉ CME' }]}
 			headerActions={
@@ -410,7 +410,7 @@ export default function CmeCompliance() {
 									/>
 								) : compList.total === 0 ? (
 									compList.search || compDept ? (
-										emptyRow(7, 'Không tìm thấy nhân sự phù hợp', 'Thử đổi từ khoá hoặc bộ lọc')
+										emptyRow(7, 'Không tìm thấy nhân sự phù hợp', 'Thử đổi từ khóa hoặc bộ lọc')
 									) : requirements.length === 0 ? (
 										emptyRow(
 											7,
@@ -508,7 +508,7 @@ export default function CmeCompliance() {
 									/>
 								) : reqList.total === 0 ? (
 									reqList.search || reqScope ? (
-										emptyRow(5, 'Không tìm thấy ngưỡng phù hợp', 'Thử đổi từ khoá hoặc bộ lọc')
+										emptyRow(5, 'Không tìm thấy ngưỡng phù hợp', 'Thử đổi từ khóa hoặc bộ lọc')
 									) : (
 										emptyRow(
 											5,
@@ -535,7 +535,7 @@ export default function CmeCompliance() {
 														<EditSvg />
 													</RowAction>
 													<RowAction
-														title='Xoá ngưỡng'
+														title='Xóa ngưỡng'
 														danger
 														disabled={saving}
 														onClick={() => handleDelete(r)}
@@ -571,7 +571,7 @@ export default function CmeCompliance() {
 							onClick={() => setEditing(null)}
 							disabled={saving}
 						>
-							Huỷ
+							Hủy
 						</Button>
 						<Button
 							icon={<CheckSvg />}
@@ -653,7 +653,7 @@ export default function CmeCompliance() {
 							onClick={() => setPersonModal(false)}
 							disabled={!!exportingId}
 						>
-							Huỷ
+							Hủy
 						</Button>
 						<Button
 							icon={<DownloadSvg />}

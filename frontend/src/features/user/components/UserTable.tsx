@@ -85,7 +85,7 @@ export function UserTable({
 					title={isFiltered ? 'Không tìm thấy kết quả' : 'Chưa có tài khoản'}
 					desc={
 						isFiltered
-							? 'Thử thay đổi bộ lọc hoặc từ khoá tìm kiếm'
+							? 'Thử thay đổi bộ lọc hoặc từ khóa tìm kiếm'
 							: 'Cấp tài khoản đầu tiên'
 					}
 					action={
@@ -218,7 +218,7 @@ export function UserTable({
 														: 'var(--color-gray-400)',
 												}}
 											>
-												{u.is_active ? 'Hoạt động' : 'Khoá'}
+												{u.is_active ? 'Hoạt động' : 'Khóa'}
 											</span>
 										</div>
 									</td>
@@ -246,7 +246,7 @@ export function UserTable({
 											</div>
 											<div
 												className={`${styles.actionBtn} ${styles.danger}`}
-												title='Xoá'
+												title='Xóa'
 												onClick={() => setDeleteUser(u)}
 											>
 												<TrashSvg />

@@ -14,7 +14,7 @@ const stats = [
 
 const features = [
 	'Quản lý đề tài NCKH & hội đồng xét duyệt, nghiệm thu',
-	'Đào tạo liên tục: chương trình, kế hoạch, khóa học',
+	'Đào tạo liên tục: chương trình, khóa học, thực hành GPHN',
 	'Quản lý học viên, giảng viên, lịch học & điểm danh',
 	'Tổ chức thi, hội nghị – hội thảo và khảo sát',
 	'Báo cáo, thống kê & phân quyền theo vai trò',
@@ -39,7 +39,7 @@ export default function AuthLayout({ children }: AuthLayoutProps) {
 					<div className={styles.panelLogo}>
 						<img
 							src={Logo}
-							alt='Logo Bệnh viện Hữu Nghị Đa Khoa Nghệ An'
+							alt='Logo Bệnh viện Hữu nghị Đa khoa Nghệ An'
 						/>
 					</div>
 
@@ -98,7 +98,7 @@ export default function AuthLayout({ children }: AuthLayoutProps) {
 				<div className={styles.formWrapper}>{children}</div>
 
 				<div className={styles.authFooter}>
-					© {new Date().getFullYear()} Bệnh viện Hữu Nghị Đa Khoa Nghệ An —
+					© {new Date().getFullYear()} Bệnh viện Hữu nghị Đa khoa Nghệ An —
 					Phòng CNTT
 				</div>
 			</div>

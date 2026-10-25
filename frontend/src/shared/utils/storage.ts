@@ -6,8 +6,8 @@ const KEYS = {
 	user: 'rms_user',
 } as const;
 
-// Khoá refresh token của bản cũ — chỉ còn đọc 1 lần để chuyển phiên đang mở
-// sang cookie (shared/api/interceptors.ts), rồi xoá.
+// Khóa refresh token của bản cũ — chỉ còn đọc 1 lần để chuyển phiên đang mở
+// sang cookie (shared/api/interceptors.ts), rồi xóa.
 export const LEGACY_REFRESH_KEY = 'refresh_token';
 
 export type StoredUser = {
@@ -113,8 +113,8 @@ export function updateStoredUser(patch: Partial<StoredUser>): boolean {
 
 // Device token "thiết bị quen" (backend: trustedDeviceService.js) — theo từng
 // tài khoản đã đăng nhập thành công trên trình duyệt này (máy dùng chung có
-// nhiều người). CỐ Ý không nằm trong KEYS: đăng xuất không xoá, để lần đăng
-// nhập sau máy này vẫn không bị khoá tạm tài khoản chặn.
+// nhiều người). CỐ Ý không nằm trong KEYS: đăng xuất không xóa, để lần đăng
+// nhập sau máy này vẫn không bị khóa tạm tài khoản chặn.
 const DEVICE_TOKENS_KEY = 'rms_device_tokens';
 const MAX_DEVICE_TOKENS = 20;
 
@@ -148,7 +148,7 @@ export function saveDeviceToken(username: string, token: string): void {
 // tài khoản trong cùng buổi (checkin_device_id). Cũng không nằm trong KEYS:
 // đăng xuất rồi đăng nhập tài khoản khác vẫn giữ nguyên mã. Dùng
 // getRandomValues thay randomUUID vì randomUUID cần HTTPS.
-// ponytail: xoá dữ liệu trình duyệt / tab ẩn danh là có mã mới — chỉ nâng rào,
+// ponytail: xóa dữ liệu trình duyệt / tab ẩn danh là có mã mới — chỉ nâng rào,
 // chặn chắc hơn thì kết hợp giới hạn IP mạng nội bộ.
 const CHECKIN_DEVICE_KEY = 'rms_checkin_device';
 
@@ -169,8 +169,8 @@ export function getCheckInDeviceId(): string {
 	return id;
 }
 
-// Chỉ xoá dữ liệu phía trình duyệt. Đăng xuất thật (thu hồi phiên trên server +
-// xoá cookie refresh) dùng logout() ở features/auth/api/authApi.ts.
+// Chỉ xóa dữ liệu phía trình duyệt. Đăng xuất thật (thu hồi phiên trên server +
+// xóa cookie refresh) dùng logout() ở features/auth/api/authApi.ts.
 export function clearAuth(): void {
 	[...Object.values(KEYS), LEGACY_REFRESH_KEY].forEach((key) => {
 		localStorage.removeItem(key);

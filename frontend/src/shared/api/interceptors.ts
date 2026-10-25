@@ -19,7 +19,7 @@ export async function tryRefresh(): Promise<string | null> {
 	if (!getStoredUser()) return null;
 
 	// Phiên mở từ bản cũ còn refresh token trong storage: gửi 1 lần để server
-	// chuyển sang cookie, rồi xoá khỏi storage.
+	// chuyển sang cookie, rồi xóa khỏi storage.
 	const legacy =
 		localStorage.getItem(LEGACY_REFRESH_KEY) ?? sessionStorage.getItem(LEGACY_REFRESH_KEY);
 

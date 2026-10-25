@@ -197,9 +197,9 @@ export function useTrainingPrograms() {
 			setPrograms((prev) => prev.filter((p) => p.id !== deletingProgram.id));
 			setModal(null);
 			setDeletingProgram(null);
-			showToast('success', `Đã xoá "${deletingProgram.name}"`);
+			showToast('success', `Đã xóa "${deletingProgram.name}"`);
 		} catch (err) {
-			showToast('error', err instanceof Error ? err.message : 'Xoá thất bại');
+			showToast('error', err instanceof Error ? err.message : 'Xóa thất bại');
 		} finally {
 			setLoading(false);
 		}
@@ -215,7 +215,7 @@ export function useTrainingPrograms() {
 				setModal(null);
 				showToast(
 					failedCount ? 'error' : 'success',
-					bulkToast('xoá', okIds.size, failedCount, 'chương trình'),
+					bulkToast('xóa', okIds.size, failedCount, 'chương trình'),
 				);
 			} finally {
 				setLoading(false);

@@ -60,20 +60,20 @@ export function ScheduleListView({
 						{/* Main Phases Summary Grid */}
 						<div className={styles.phasesGrid}>
 							<div className={styles.phaseCard} style={{ '--phase-color': '#378add' } as React.CSSProperties}>
-								<span className={styles.phaseTitle}>Giai đoạn Sửa</span>
+								<span className={styles.phaseTitle}>Giai đoạn sửa đề tài</span>
 								<span className={styles.phaseDate}>
 									{regDeadline?.start_date ? `${formatDateVN(regDeadline.start_date)} ➔ ${formatDateVN(regDeadline.deadline_date)}` : 'Chưa thiết lập'}
 								</span>
 							</div>
 							<div className={styles.phaseCard} style={{ '--phase-color': status.color } as React.CSSProperties}>
-								<span className={styles.phaseTitle}>Giai đoạn Nghiên cứu</span>
+								<span className={styles.phaseTitle}>Giai đoạn nghiên cứu</span>
 								<span className={styles.phaseDate}>
 									{formatDateVN(round.start_date)} ➔ {formatDateVN(round.end_date)}
 								</span>
 							</div>
 							{supDeadline && (
 								<div className={styles.phaseCard} style={{ '--phase-color': '#ef9f27' } as React.CSSProperties}>
-									<span className={styles.phaseTitle}>Giai đoạn Bổ sung</span>
+									<span className={styles.phaseTitle}>Giai đoạn bổ sung</span>
 									<span className={styles.phaseDate}>
 										{supDeadline.start_date ? `${formatDateVN(supDeadline.start_date)} ➔ ${formatDateVN(supDeadline.deadline_date)}` : formatDateVN(supDeadline.deadline_date)}
 									</span>

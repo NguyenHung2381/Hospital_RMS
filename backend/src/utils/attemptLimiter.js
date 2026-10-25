@@ -1,10 +1,10 @@
 const crypto = require('crypto');
 const redis = require('../config/redis');
 
-// Đếm số lần thử theo 1 khoá bất kỳ (không theo IP) trong cửa sổ thời gian —
+// Đếm số lần thử theo 1 khóa bất kỳ (không theo IP) trong cửa sổ thời gian —
 // bổ sung cho express-rate-limit (theo IP): kẻ dò quét đổi IP liên tục vẫn bị
 // chặn khi cứ nhắm vào cùng 1 đối tượng (vd cùng 1 số CCCD).
-// Khoá được băm trước khi lưu — Redis/log không chứa dữ liệu cá nhân gốc.
+// Khóa được băm trước khi lưu — Redis/log không chứa dữ liệu cá nhân gốc.
 // Redis không sẵn sàng thì đếm trong bộ nhớ tiến trình.
 const memory = new Map(); // key → { count, resetAt }
 const MAX_MEMORY_KEYS = 50_000;

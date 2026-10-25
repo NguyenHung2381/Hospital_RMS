@@ -6,14 +6,19 @@ const trustedDevices = require('./trustedDeviceService');
 const { httpError } = require('../../utils/httpError');
 const {
 	INVALID_CREDENTIALS,
+	assertPassword,
 	comparePassword,
 	fakeCompareDelay,
 	hashPassword,
 	isLocked,
 	isRepeatedWrongPassword,
 	lockedError,
+	loginAttemptKey,
 	recordFailedLogin,
+	refreshLockState,
 	resetFailedLogins,
+	userAttemptKey,
+	withAttemptGuard,
 } = require('./credentialService');
 const { PRE_AUTH_2FA_TTL } = require('./twoFactorService');
 const { issueTokens, signSession } = require('./sessionTokenService');
@@ -48,44 +53,52 @@ const login = async (
 
 	const user = result.recordset.length === 1 ? result.recordset[0] : null;
 	if (!user) {
-		await fakeCompareDelay();
+		// Cũng đi qua khóa lượt thử (theo chuỗi đăng nhập) như tài khoản thật bên
+		// dưới — nhiều request cùng lúc cho 1 username bịa phải chờ y hệt.
+		await withAttemptGuard(loginAttemptKey(username), fakeCompareDelay);
 		throw INVALID_CREDENTIALS;
 	}
 
-	// Thiết bị quen không bị khoá tạm tài khoản chặn — kẻ tấn công cố tình nhập
-	// sai từ máy khác không khoá được chủ tài khoản trên máy của họ.
+	// Thiết bị quen không bị khóa tạm tài khoản chặn — kẻ tấn công cố tình nhập
+	// sai từ máy khác không khóa được chủ tài khoản trên máy của họ.
 	const device = await trustedDevices.verifyDeviceToken(deviceToken, user);
 
-	// Báo khoá TRƯỚC khi so mật khẩu (đánh đổi có chủ đích): nếu chỉ báo khoá khi
-	// mật khẩu đúng, kẻ tấn công vẫn dò tiếp được trong thời gian khoá và nhận
-	// ra mật khẩu đúng qua thông báo khác đi. Cái giá: lộ việc tài khoản tồn tại
-	// — chỉ với tài khoản đang bị khoá.
-	if (!device && isLocked(user)) {
-		throw lockedError(user.locked_until);
-	}
+	const verifyPassword = async () => {
+		if (!device) {
+			await refreshLockState(pool, user);
+			// Báo khóa TRƯỚC khi so mật khẩu (đánh đổi có chủ đích): nếu chỉ báo khóa
+			// khi mật khẩu đúng, kẻ tấn công vẫn dò tiếp được trong thời gian khóa và
+			// nhận ra mật khẩu đúng qua thông báo khác đi. Cái giá: lộ việc tài khoản
+			// tồn tại — chỉ với tài khoản đang bị khóa.
+			if (isLocked(user)) throw lockedError(user.locked_until);
+		}
 
-	const isMatch = await comparePassword(password, user.password);
-	if (!isMatch) {
+		const isMatch = await comparePassword(password, user.password);
+		if (isMatch) return;
 		if (!isRepeatedWrongPassword(user.id, password)) {
 			if (device) {
 				await trustedDevices.recordDeviceFailure(device, user, ip, 'sai mật khẩu');
 			} else {
 				const lockedUntil = await recordFailedLogin(pool, user, ip);
-				// Lần sai làm khoá tài khoản → báo khoá ngay, không để người dùng
+				// Lần sai làm khóa tài khoản → báo khóa ngay, không để người dùng
 				// thử thêm lần nữa mới biết.
 				if (lockedUntil) throw lockedError(lockedUntil);
 			}
 		}
 		throw INVALID_CREDENTIALS;
-	}
+	};
+	// Thiết bị lạ: so mật khẩu dưới khóa lượt thử của tài khoản — loạt request
+	// song song không vượt được ngưỡng khóa (credentialService.withAttemptGuard).
+	// Thiết bị quen có bộ đếm riêng, không phải chờ kẻ đang dội tài khoản này.
+	await (device ? verifyPassword() : withAttemptGuard(userAttemptKey(user.id), verifyPassword));
 
 	// is_active = 0 bao gồm cả TK bị vô hiệu hóa thủ công lẫn TK hết hạn
 	// (sp_deactivate_expired_accounts set is_active=0 mỗi đêm). Chỉ báo SAU khi
 	// mật khẩu đúng — người không biết mật khẩu không phân biệt được tài khoản
-	// bị vô hiệu hoá với tài khoản không tồn tại.
+	// bị vô hiệu hóa với tài khoản không tồn tại.
 	if (!user.is_active) throw httpError(403, 'Tài khoản đã bị vô hiệu hóa hoặc hết hạn sử dụng');
 
-	// Đăng nhập đúng trên thiết bị quen không xoá bộ đếm/khoá của thiết bị lạ
+	// Đăng nhập đúng trên thiết bị quen không xóa bộ đếm/khóa của thiết bị lạ
 	// — nếu không, kẻ tấn công được làm lại từ đầu mỗi khi chủ tài khoản đăng
 	// nhập. Bộ đếm của thiết bị quen được reset trong issueDeviceToken().
 	if (!device) await resetFailedLogins(pool, user);
@@ -93,7 +106,7 @@ const login = async (
 	// Tài khoản đã bật 2FA: dừng lại ở đây, KHÔNG phát token thật — chỉ trả 1
 	// pre-auth token ngắn hạn để client gọi tiếp /auth/2fa/verify kèm mã OTP.
 	if (user.totp_enabled) {
-		// Khoá riêng 'pre-auth-2fa' (utils/keys.js): token này không bao giờ được
+		// Khóa riêng 'pre-auth-2fa' (utils/keys.js): token này không bao giờ được
 		// chấp nhận như access token. `rm` giữ lựa chọn "ghi nhớ" sang bước 2.
 		const preAuthToken = signToken(
 			'pre-auth-2fa',
@@ -118,16 +131,8 @@ const changePassword = async (
 	remember = false,
 ) => {
 	const pool = await getPool();
-	const result = await pool
-		.request()
-		.input('id', sql.VarChar(20), userId)
-		.query(`SELECT password FROM users WHERE id = @id`);
-
-	const user = result.recordset[0];
-	if (!user) throw httpError(404, 'Người dùng không tồn tại');
-
-	const isMatch = await comparePassword(oldPassword, user.password);
-	if (!isMatch) throw httpError(400, 'Mật khẩu cũ không đúng');
+	// Sai mật khẩu cũ tính vào bộ đếm khóa tài khoản (xem assertPassword)
+	await assertPassword(pool, userId, oldPassword, { ip, message: 'Mật khẩu cũ không đúng' });
 	// Mật khẩu tạm do quản trị cấp phải được thay thật sự, không "đổi" sang chính nó
 	if (oldPassword === newPassword) throw httpError(400, 'Mật khẩu mới phải khác mật khẩu hiện tại');
 

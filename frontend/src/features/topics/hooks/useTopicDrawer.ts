@@ -180,7 +180,7 @@ export function useTopicDrawer(topic: Topic) {
 			setPendingFiles([]);
 			setBatchNote('');
 		} catch (err) {
-			setUploadError(err instanceof Error ? err.message : 'Lỗi upload file');
+			setUploadError(err instanceof Error ? err.message : 'Lỗi tải lên file');
 		} finally {
 			setUploading(false);
 		}
@@ -224,7 +224,7 @@ export function useTopicDrawer(topic: Topic) {
 	const doDeleteFiles = async () => {
 		const ids = filesToDelete.map((f) => f.id);
 		await Promise.all(ids.map((id) => deleteTopicFile(id)));
-		notify.success(`Đã xoá ${ids.length} file`);
+		notify.success(`Đã xóa ${ids.length} file`);
 		setFiles((prev) => prev.filter((f) => !ids.includes(f.id)));
 		setSelectedIds((prev) => {
 			const next = new Set(prev);
@@ -273,9 +273,9 @@ export function useTopicDrawer(topic: Topic) {
 		try {
 			await deleteTopicMember(topic.id, memberId);
 			setMembers((prev) => prev.filter((m) => m.id !== memberId));
-			notify.success('Đã xoá thành viên');
+			notify.success('Đã xóa thành viên');
 		} catch (err) {
-			notify.error(err instanceof Error ? err.message : 'Xoá thành viên thất bại');
+			notify.error(err instanceof Error ? err.message : 'Xóa thành viên thất bại');
 		}
 	};
 

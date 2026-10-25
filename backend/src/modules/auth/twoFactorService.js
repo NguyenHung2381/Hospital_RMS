@@ -14,7 +14,10 @@ const {
 	isLocked,
 	lockedError,
 	recordFailedLogin,
+	refreshLockState,
 	resetFailedLogins,
+	userAttemptKey,
+	withAttemptGuard,
 } = require('./credentialService');
 const { issueTokens } = require('./sessionTokenService');
 
@@ -32,15 +35,15 @@ const verifyTotp = (secret, token) =>
 	);
 
 // ─── 2FA: dùng chung ────────────────────────────────────────────────────────
-// Secret TOTP lưu mã hoá (utils/secretBox.js). Giá trị cũ chưa mã hoá vẫn đọc
-// được; lần dùng thành công kế tiếp sẽ mã hoá lại (reencryptIfLegacy).
-// Giải mã lỗi = khoá (TOTP_ENC_KEY / secrets/totp.key) đã đổi so với lúc lưu
+// Secret TOTP lưu mã hóa (utils/secretBox.js). Giá trị cũ chưa mã hóa vẫn đọc
+// được; lần dùng thành công kế tiếp sẽ mã hóa lại (reencryptIfLegacy).
+// Giải mã lỗi = khóa (TOTP_ENC_KEY / secrets/totp.key) đã đổi so với lúc lưu
 // secret: không sinh được mã nữa, người dùng phải được quản trị đặt lại 2FA.
 const readSecret = (stored) => {
 	try {
 		return secretBox.decrypt(stored);
 	} catch (err) {
-		logger.error('❌ Không giải mã được secret 2FA — khoá mã hoá không khớp:', err.message);
+		logger.error('❌ Không giải mã được secret 2FA — khóa mã hóa không khớp:', err.message);
 		throw httpError(
 			409,
 			'Không đọc được cấu hình xác thực 2 lớp của tài khoản. Vui lòng liên hệ quản trị viên để đặt lại 2FA.',
@@ -83,7 +86,7 @@ const checkTotp = async (pool, user, code) => {
 };
 
 // ── Mã khôi phục (khi mất điện thoại) ──
-// 10 mã dạng "xxxx-xxxx" (~40 bit), mỗi mã dùng 1 lần, lưu HMAC có khoá ngoài DB.
+// 10 mã dạng "xxxx-xxxx" (~40 bit), mỗi mã dùng 1 lần, lưu HMAC có khóa ngoài DB.
 const BACKUP_CODE_COUNT = 10;
 const BACKUP_ALPHABET = 'abcdefghjkmnpqrstuvwxyz23456789';
 const normalizeBackupCode = (code) =>
@@ -169,20 +172,21 @@ const verify2FALogin = async (
 	const user = result.recordset[0];
 	if (!user || !user.totp_enabled || !user.totp_secret)
 		throw httpError(401, 'Tài khoản chưa bật xác thực 2 lớp');
-	// Tài khoản có thể bị vô hiệu hoá trong 5 phút giữa bước mật khẩu và bước OTP
+	// Tài khoản có thể bị vô hiệu hóa trong 5 phút giữa bước mật khẩu và bước OTP
 	if (!user.is_active) throw httpError(403, 'Tài khoản đã bị vô hiệu hóa hoặc hết hạn sử dụng');
 
 	const device = await trustedDevices.verifyDeviceToken(deviceToken, user);
-	if (!device && isLocked(user)) throw lockedError(user.locked_until);
-
 	const input = String(code ?? '').trim();
-	let usedBackupCode = false;
-	let valid = await checkTotp(pool, user, input);
-	if (!valid && (await consumeBackupCode(pool, user.id, input))) {
-		valid = true;
-		usedBackupCode = true;
-	}
-	if (!valid) {
+
+	// Trả về true nếu đăng nhập bằng mã khôi phục.
+	const verifyCode = async () => {
+		if (!device) {
+			await refreshLockState(pool, user);
+			if (isLocked(user)) throw lockedError(user.locked_until);
+		}
+		if (await checkTotp(pool, user, input)) return false;
+		if (await consumeBackupCode(pool, user.id, input)) return true;
+
 		await securityEvents.log({
 			eventType: 'login_2fa_failed',
 			actorId: user.id,
@@ -191,7 +195,7 @@ const verify2FALogin = async (
 			ip,
 			detail: 'Sai (hoặc dùng lại) mã xác thực 2 lớp lúc đăng nhập',
 		});
-		// Sai OTP cũng tính vào bộ đếm khoá (của thiết bị quen, hoặc của tài
+		// Sai OTP cũng tính vào bộ đếm khóa (của thiết bị quen, hoặc của tài
 		// khoản với thiết bị lạ) — chặn dò mã 6 số từ nhiều IP.
 		if (device) {
 			await trustedDevices.recordDeviceFailure(device, user, ip, 'sai mã 2FA');
@@ -200,7 +204,11 @@ const verify2FALogin = async (
 			if (lockedUntil) throw lockedError(lockedUntil);
 		}
 		throw httpError(401, 'Mã xác thực không đúng, đã hết hạn hoặc đã được sử dụng');
-	}
+	};
+	// Thiết bị lạ: dưới khóa lượt thử của tài khoản, như bước mật khẩu (authService.login)
+	const usedBackupCode = await (device
+		? verifyCode()
+		: withAttemptGuard(userAttemptKey(user.id), verifyCode));
 
 	// Pre-auth token + mã đúng chỉ đổi lấy phiên đăng nhập đúng 1 lần
 	if (!(await consumeOnce('pre-auth-2fa', decoded.jti, 10 * 60)))
@@ -222,7 +230,7 @@ const verify2FALogin = async (
 };
 
 // ─── 2FA: thiết lập / xác nhận / tắt (Hồ sơ cá nhân) ────────────────────────
-// Sinh secret mới + lưu NGAY (mã hoá, totp_enabled vẫn = 0 — "đang chờ xác
+// Sinh secret mới + lưu NGAY (mã hóa, totp_enabled vẫn = 0 — "đang chờ xác
 // nhận"), tránh phải giữ secret ở phía client giữa 2 bước setup/verify-setup.
 const setup2FA = async (userId) => {
 	const pool = await getPool();
@@ -280,7 +288,7 @@ const confirm2FASetup = async (userId, code) => {
 		.request()
 		.input('id', sql.VarChar(20), userId)
 		.query('UPDATE users SET totp_enabled = 1, totp_verified_at = GETDATE() WHERE id = @id');
-	// Middleware auth đọc totp_enabled qua cache — xoá để hết bị chặn / nhắc ngay
+	// Middleware auth đọc totp_enabled qua cache — xóa để hết bị chặn / nhắc ngay
 	userStatusCache.clear(userId);
 	const backupCodes = await replaceBackupCodes(pool, userId);
 
@@ -294,9 +302,9 @@ const confirm2FASetup = async (userId, code) => {
 };
 
 // Tạo lại bộ mã khôi phục (bộ cũ mất hiệu lực) — yêu cầu nhập lại mật khẩu.
-const regenerateBackupCodes = async (userId, password) => {
+const regenerateBackupCodes = async (userId, password, ip = null) => {
 	const pool = await getPool();
-	await assertPassword(pool, userId, password);
+	await assertPassword(pool, userId, password, { ip });
 	const enabled = (
 		await pool
 			.request()
@@ -315,10 +323,28 @@ const regenerateBackupCodes = async (userId, password) => {
 	return { backup_codes: backupCodes };
 };
 
-// Tắt 2FA — yêu cầu nhập lại mật khẩu (hành động nhạy cảm, giống đổi mật khẩu).
-const disable2FA = async (userId, password) => {
+// Tắt 2FA — yêu cầu nhập lại mật khẩu VÀ 1 mã xác thực (OTP hoặc mã khôi phục):
+// chỉ mật khẩu thì ai chiếm được phiên + biết mật khẩu (lộ / dò được) tắt được
+// lớp bảo vệ thứ 2 mà không cần thiết bị xác thực. Sai mã tính vào bộ đếm khóa.
+const disable2FA = async (userId, password, code, ip = null) => {
 	const pool = await getPool();
-	await assertPassword(pool, userId, password);
+	await assertPassword(pool, userId, password, { ip });
+
+	const user = (
+		await pool
+			.request()
+			.input('id', sql.VarChar(20), userId)
+			.query(
+				'SELECT id, totp_secret, totp_enabled, failed_login_count, locked_until FROM users WHERE id = @id',
+			)
+	).recordset[0];
+	if (!user?.totp_enabled || !user.totp_secret) throw httpError(400, 'Chưa bật xác thực 2 lớp');
+	const input = String(code ?? '').trim();
+	if (!(await checkTotp(pool, user, input)) && !(await consumeBackupCode(pool, userId, input))) {
+		const lockedUntil = await recordFailedLogin(pool, user, ip, 'sai mã 2FA');
+		if (lockedUntil) throw lockedError(lockedUntil);
+		throw httpError(400, 'Mã xác thực không đúng, đã hết hạn hoặc đã được sử dụng');
+	}
 
 	await pool.request().input('id', sql.VarChar(20), userId)
 		.query(`UPDATE users SET totp_secret = NULL, totp_enabled = 0, totp_verified_at = NULL,

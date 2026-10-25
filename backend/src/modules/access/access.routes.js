@@ -16,7 +16,7 @@ router.get('/roles', authenticate, authorizePermission(['roles', 'read']), roleC
 router.post('/roles', authenticate, authorizePermission(['roles', 'create']), roleCtrl.createOne);
 
 router.get('/roles/:id', authenticate, authorizePermission(['roles', 'read']), roleCtrl.getById);
-// Không sửa/xoá được vai trò của chính mình, vai trò toàn quyền, hay vai trò
+// Không sửa/xóa được vai trò của chính mình, vai trò toàn quyền, hay vai trò
 // có quyền cao hơn mình — xem modules/access/privilegeGuard.js.
 const guardRoleEdit = asyncHandler(async (req, res, next) => {
 	await assertCanEditRole(req.user, req.params.id);

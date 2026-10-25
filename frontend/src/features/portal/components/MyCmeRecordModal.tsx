@@ -78,7 +78,7 @@ export default function MyCmeRecordModal({ record, categories, defaultYear, onCl
 			footer={
 				<>
 					<Button variant='secondary' onClick={onClose} disabled={busy}>
-						Huỷ
+						Hủy
 					</Button>
 					<Button onClick={save} loading={busy}>
 						Gửi duyệt

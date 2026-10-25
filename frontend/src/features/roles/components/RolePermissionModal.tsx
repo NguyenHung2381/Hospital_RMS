@@ -154,7 +154,7 @@ export function RolePermissionModal({
 	const [filter, setFilter] = useState('');
 	const [onlyGranted, setOnlyGranted] = useState(false);
 	const [confirming, setConfirming] = useState(false);
-	// Dòng đang mở phần "Tuỳ chỉnh" (tick từng quyền)
+	// Dòng đang mở phần "Tùy chỉnh" (tick từng quyền)
 	const [openCustom, setOpenCustom] = useState<Set<string>>(new Set());
 
 	useEffect(() => {
@@ -424,7 +424,7 @@ export function RolePermissionModal({
 														className={`${styles.permCustomBtn} ${custom ? styles.permCustomOn : ''}`}
 														onClick={() => toggleCustom(res.key)}
 													>
-														{custom ? `Tuỳ chỉnh · ${grantedCount}` : 'Tuỳ chỉnh'}
+														{custom ? `Tùy chỉnh · ${grantedCount}` : 'Tùy chỉnh'}
 														<svg
 															className={open ? styles.permCaretOpen : styles.permCaret}
 															viewBox='0 0 24 24'
@@ -527,7 +527,7 @@ export function RolePermissionModal({
 						onClick={confirming ? () => setConfirming(false) : onClose}
 						disabled={saving}
 					>
-						{confirming ? 'Quay lại' : 'Huỷ'}
+						{confirming ? 'Quay lại' : 'Hủy'}
 					</button>
 					<button
 						className={styles.btnSave}

@@ -311,7 +311,7 @@ export function AddMemberForm({
 					</label>
 					<input
 						className={styles.formInput}
-						placeholder='email@hospital.vn (tuỳ chọn)'
+						placeholder='email@hospital.vn (tùy chọn)'
 						type='email'
 						value={newMember.email}
 						onChange={(e) =>
@@ -333,7 +333,7 @@ export function AddMemberForm({
 					</label>
 					<input
 						className={styles.formInput}
-						placeholder='0901234567 (tuỳ chọn)'
+						placeholder='0901234567 (tùy chọn)'
 						type='tel'
 						value={newMember.so_dien_thoai}
 						onChange={(e) =>
@@ -373,7 +373,7 @@ export function AddMemberForm({
 						setMemberError('');
 					}}
 				>
-					Huỷ
+					Hủy
 				</button>
 				<button
 					className={styles.btnPrimary}

@@ -3,7 +3,9 @@
  * Mỗi báo cáo 1 file 1 sheet (letterhead bệnh viện + bảng), cùng kiểu với các file
  * xuất Hội thảo/CME (utils/excelTemplate).
  */
-const ExcelJS = require('exceljs');
+const { lazyRequire } = require('../../../../utils/lazyRequire');
+/** @type {typeof import('exceljs')} */
+const ExcelJS = lazyRequire('exceljs');
 const xl = require('../../../../utils/excelTemplate');
 
 const STATUS_LABELS = {
@@ -11,7 +13,7 @@ const STATUS_LABELS = {
 	enrolling: 'Đang mở đăng ký',
 	in_progress: 'Đang học',
 	completed: 'Hoàn thành',
-	cancelled: 'Đã huỷ',
+	cancelled: 'Đã hủy',
 };
 const RESULT_LABELS = { pass: 'Đạt', fail: 'Không đạt' };
 

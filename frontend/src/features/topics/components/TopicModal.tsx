@@ -58,7 +58,7 @@ export function TopicModal({
 						className={styles.btnSecondary}
 						onClick={onClose}
 					>
-						Huỷ
+						Hủy
 					</button>
 					<button
 						className={styles.btnPrimary}
@@ -122,7 +122,7 @@ export function TopicModal({
 				/>
 			</FormField>
 
-			<div className={styles.formSection}>Phân loại & Đợt nghiên cứu</div>
+			<div className={styles.formSection}>Phân loại & đợt nghiên cứu</div>
 
 			<FormField
 				htmlFor='article_type'
@@ -238,7 +238,7 @@ export function TopicModal({
 				)}
 				<FormField
 					htmlFor='department_id'
-					label='Phòng ban / Khoa'
+					label='Khoa/phòng'
 					required
 					error={m.errors.department_id}
 				>
@@ -247,7 +247,7 @@ export function TopicModal({
 						options={departments}
 						value={m.form.department_id}
 						onChange={(id) => m.setField('department_id', id)}
-						placeholder='— Chọn phòng ban —'
+						placeholder='— Chọn khoa/phòng —'
 						hasError={!!m.errors.department_id}
 					/>
 				</FormField>
@@ -297,7 +297,7 @@ export function TopicModal({
 
 			{m.form.article_type === 'de_tai' && (
 				<>
-					<div className={styles.formSection}>Tài chính & Quyết định</div>
+					<div className={styles.formSection}>Tài chính & quyết định</div>
 					<div className={styles.formRow}>
 						<FormField
 							htmlFor='budget_estimated'

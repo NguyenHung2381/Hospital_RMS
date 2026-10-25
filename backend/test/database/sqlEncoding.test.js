@@ -29,7 +29,7 @@ const MOJIBAKE = new RegExp(
 	].join('|'),
 );
 
-test('mọi file .sql trong database/ là UTF-8 tiếng Việt đúng (không lỗi mã hoá)', () => {
+test('mọi file .sql trong database/ là UTF-8 tiếng Việt đúng (không lỗi mã hóa)', () => {
 	const bad = [];
 	for (const file of walk(ROOT)) {
 		const lines = fs.readFileSync(file, 'utf8').split(/\r?\n/);
@@ -37,7 +37,7 @@ test('mọi file .sql trong database/ là UTF-8 tiếng Việt đúng (không l�
 			if (MOJIBAKE.test(l)) bad.push(`${path.relative(ROOT, file)}:${i + 1}: ${l.trim().slice(0, 80)}`);
 		});
 	}
-	assert.deepEqual(bad, [], `Có dòng lỗi mã hoá:\n${bad.join('\n')}`);
+	assert.deepEqual(bad, [], `Có dòng lỗi mã hóa:\n${bad.join('\n')}`);
 });
 
 test('mẫu nhận diện bắt đúng chữ vỡ và không bắt nhầm chữ Việt đúng', () => {

@@ -44,7 +44,7 @@ interface NotificationHistoryTableProps {
 	onRefresh: () => void;
 	onDeleteRequest: (row: AdminNotification) => void;
 	onBulkDelete: (batchKeys: string[]) => Promise<void> | void;
-	/** Lấy batch key mọi trang khớp bộ lọc — cho nút "Xoá tất cả". */
+	/** Lấy batch key mọi trang khớp bộ lọc — cho nút "Xóa tất cả". */
 	fetchAllBatchKeys: () => Promise<string[]>;
 	onFilterChange: () => void;
 }
@@ -127,7 +127,7 @@ export function NotificationHistoryTable({
 						onDelete={onBulkDelete}
 						onDone={rowSel.clearSelection}
 						disabled={loading}
-						note='Toàn bộ bản ghi thông báo tới người nhận trong các lô này sẽ bị xoá.'
+						note='Toàn bộ bản ghi thông báo tới người nhận trong các lô này sẽ bị xóa.'
 					/>
 				</div>
 			</div>
@@ -148,7 +148,7 @@ export function NotificationHistoryTable({
 						itemLabel='thông báo'
 						loading={loading}
 						onBulkDelete={onBulkDelete}
-						deleteNote='Toàn bộ bản ghi thông báo tới người nhận trong các lô này sẽ bị xoá.'
+						deleteNote='Toàn bộ bản ghi thông báo tới người nhận trong các lô này sẽ bị xóa.'
 					/>
 					<table className={styles.table}>
 						<thead>
@@ -245,7 +245,7 @@ export function NotificationHistoryTable({
 												<div
 													className={`${styles.actionBtn} ${styles.danger}`}
 													onClick={() => onDeleteRequest(row)}
-													title='Xoá'
+													title='Xóa'
 												>
 													<TrashSvg />
 												</div>

@@ -238,7 +238,7 @@ test('Tự xếp rồi Tính lại ngày: ngày các vòng giữ nguyên (vòng 
 	);
 });
 
-test('pickMentor: NHD đang kèm ít nhất trong khoảng ngày, hoà thì theo thứ tự ưu tiên', () => {
+test('pickMentor: NHD đang kèm ít nhất trong khoảng ngày, hòa thì theo thứ tự ưu tiên', () => {
 	const busy = [
 		{ mentor_user_id: 'U1', start_date: '2026-07-01', end_date: '2026-07-31' },
 		{ mentor_user_id: 'U1', start_date: '2026-07-10', end_date: '2026-08-10' },

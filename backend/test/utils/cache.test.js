@@ -44,7 +44,7 @@ test('kết quả luôn cùng dạng JSON dù trúng hay trượt (Date → chu�
 	assert.equal(await remember(`${p}a`, 60, async () => d), d.toISOString());
 });
 
-test('invalidate(prefix) xoá đúng prefix, giữ key khác', async () => {
+test('invalidate(prefix) xóa đúng prefix, giữ key khác', async () => {
 	const p = uniq();
 	const other = uniq();
 	let calls = 0;

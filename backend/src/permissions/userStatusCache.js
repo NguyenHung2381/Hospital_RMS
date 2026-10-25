@@ -2,10 +2,10 @@ const { getPool, sql } = require('../config/db');
 const cacheBus = require('../utils/cacheBus');
 
 // Lớp xác thực thứ 2 cho các API cần token: JWT (middlewares/auth.js) chỉ xác
-// minh được chữ ký + hạn dùng — không biết tài khoản có vừa bị vô hiệu hoá
+// minh được chữ ký + hạn dùng — không biết tài khoản có vừa bị vô hiệu hóa
 // SAU khi token đã phát hành hay không (stateless). Cache 60s để tránh query
-// DB mỗi request, đủ ngắn để việc vô hiệu hoá tài khoản có hiệu lực gần như
-// ngay, thay vì phải chờ token tự hết hạn (tối đa 8h). Khoá tạm do đăng nhập
+// DB mỗi request, đủ ngắn để việc vô hiệu hóa tài khoản có hiệu lực gần như
+// ngay, thay vì phải chờ token tự hết hạn (tối đa 8h). Khóa tạm do đăng nhập
 // sai (locked_until) cố ý không xét ở đây — xem middlewares/auth.js.
 const _cache = new Map(); // user_id → { status: { isActive, roleId, departmentId, accountExpiresAt, tokenVersion, mustChangePassword, totpEnabled, twofaRequiredSince }, ts }
 const TTL_MS = 60 * 1000;
@@ -25,7 +25,7 @@ const clearLocal = (userId) => {
 	else _cache.clear();
 };
 
-// Xoá cache ở instance này VÀ báo các instance khác (utils/cacheBus.js).
+// Xóa cache ở instance này VÀ báo các instance khác (utils/cacheBus.js).
 const clear = (userId) => {
 	clearLocal(userId);
 	cacheBus.publish('userStatus', userId ?? null);

@@ -51,7 +51,7 @@ const getBatches = async (topicId) => {
 const deleteFile = async (fileId, actorId) => {
 	const pool = await getPool();
 
-	// Lấy file_url trước khi xoá để xoá file vật lý
+	// Lấy file_url trước khi xóa để xóa file vật lý
 	const fileRow = await pool
 		.request()
 		.input('file_id', sql.VarChar(32), fileId)
@@ -71,12 +71,12 @@ const deleteFile = async (fileId, actorId) => {
       WHERE id = @file_id
     `);
 
-	// Xoá file vật lý (file_url dạng /uploads/topics/xxx/filename.pdf)
+	// Xóa file vật lý (file_url dạng /uploads/topics/xxx/filename.pdf)
 	removeUploadedFile(fileRow.recordset[0].file_url);
 	broadcast('update', { entity: 'file' });
 };
 
-// Đề tài chứa file (chưa xoá); null nếu không có — dùng kiểm tra quyền trước khi xoá.
+// Đề tài chứa file (chưa xóa); null nếu không có — dùng kiểm tra quyền trước khi xóa.
 const findTopicId = async (fileId) => {
 	const pool = await getPool();
 	const { recordset } = await pool

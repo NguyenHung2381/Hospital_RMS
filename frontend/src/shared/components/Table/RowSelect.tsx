@@ -38,7 +38,7 @@ interface SelectionBarProps {
 	count: number;
 	onClear: () => void;
 	itemLabel?: string;
-	/** Nút hành động hàng loạt (Sửa đồng loạt / Xoá đã chọn…) hiển thị trong thanh. */
+	/** Nút hành động hàng loạt (Sửa đồng loạt / Xóa đã chọn…) hiển thị trong thanh. */
 	actions?: ReactNode;
 }
 
@@ -101,11 +101,11 @@ interface BulkDeleteModalProps {
 	onClose: () => void;
 	onConfirm: () => void;
 	loading?: boolean;
-	/** Cảnh báo hệ quả khi xoá (vd: dữ liệu liên quan cũng bị gỡ). */
+	/** Cảnh báo hệ quả khi xóa (vd: dữ liệu liên quan cũng bị gỡ). */
 	note?: ReactNode;
 }
 
-/** Hộp thoại xác nhận xoá hàng loạt, hiển thị đúng số lượng đang chọn. */
+/** Hộp thoại xác nhận xóa hàng loạt, hiển thị đúng số lượng đang chọn. */
 export function BulkDeleteModal({
 	open,
 	count,
@@ -119,7 +119,7 @@ export function BulkDeleteModal({
 		<Modal
 			open={open}
 			onClose={onClose}
-			title='Xoá hàng loạt'
+			title='Xóa hàng loạt'
 			size='sm'
 			footer={
 				<>
@@ -128,20 +128,20 @@ export function BulkDeleteModal({
 						onClick={onClose}
 						disabled={loading}
 					>
-						Huỷ
+						Hủy
 					</Button>
 					<Button
 						variant='danger'
 						onClick={onConfirm}
 						loading={loading}
 					>
-						Xoá {count} {itemLabel}
+						Xóa {count} {itemLabel}
 					</Button>
 				</>
 			}
 		>
 			<p className={styles.deleteText}>
-				Bạn có chắc muốn xoá vĩnh viễn{' '}
+				Bạn có chắc muốn xóa vĩnh viễn{' '}
 				<strong>
 					{count} {itemLabel}
 				</strong>{' '}
@@ -158,9 +158,9 @@ interface DeleteAllButtonProps {
 	itemLabel: string;
 	/** Lấy id toàn bộ bản ghi khớp bộ lọc — bảng phân trang server thì gọi API lấy hết. */
 	getIds: () => string[] | Promise<string[]>;
-	/** Thường dùng lại handler "Xoá đã chọn" của trang (tự toast + tải lại). */
+	/** Thường dùng lại handler "Xóa đã chọn" của trang (tự toast + tải lại). */
 	onDelete: (ids: string[]) => Promise<unknown> | unknown;
-	/** Gọi sau khi xoá xong, vd bỏ chọn dòng. */
+	/** Gọi sau khi xóa xong, vd bỏ chọn dòng. */
 	onDone?: () => void;
 	/** Cảnh báo hệ quả hiển thị trong hộp thoại. */
 	note?: ReactNode;
@@ -168,7 +168,7 @@ interface DeleteAllButtonProps {
 }
 
 /**
- * Nút "Xoá tất cả (N)" đặt cuối `tableControls`: xoá mọi bản ghi khớp bộ lọc
+ * Nút "Xóa tất cả (N)" đặt cuối `tableControls`: xóa mọi bản ghi khớp bộ lọc
  * hiện tại trên tất cả các trang, có hộp thoại xác nhận số lượng.
  */
 export function DeleteAllButton({
@@ -192,7 +192,7 @@ export function DeleteAllButton({
 			onDone?.();
 			setOpen(false);
 		} catch (e) {
-			alert(e instanceof Error ? e.message : 'Xoá thất bại');
+			alert(e instanceof Error ? e.message : 'Xóa thất bại');
 		} finally {
 			setBusy(false);
 		}
@@ -205,14 +205,14 @@ export function DeleteAllButton({
 				className={styles.deleteAllBtn}
 				onClick={() => setOpen(true)}
 				disabled={disabled || busy}
-				title={`Xoá toàn bộ ${itemLabel} đang khớp bộ lọc (mọi trang)`}
+				title={`Xóa toàn bộ ${itemLabel} đang khớp bộ lọc (mọi trang)`}
 			>
-				<TrashSvg /> Xoá tất cả ({count})
+				<TrashSvg /> Xóa tất cả ({count})
 			</button>
 			<Modal
 				open={open}
 				onClose={() => !busy && setOpen(false)}
-				title='Xoá tất cả'
+				title='Xóa tất cả'
 				size='sm'
 				footer={
 					<>
@@ -221,20 +221,20 @@ export function DeleteAllButton({
 							onClick={() => setOpen(false)}
 							disabled={busy}
 						>
-							Huỷ
+							Hủy
 						</Button>
 						<Button
 							variant='danger'
 							onClick={handleConfirm}
 							loading={busy}
 						>
-							Xoá {count} {itemLabel}
+							Xóa {count} {itemLabel}
 						</Button>
 					</>
 				}
 			>
 				<p className={styles.deleteText}>
-					Bạn có chắc muốn xoá vĩnh viễn{' '}
+					Bạn có chắc muốn xóa vĩnh viễn{' '}
 					<strong>
 						toàn bộ {count} {itemLabel}
 					</strong>{' '}
@@ -255,21 +255,21 @@ export interface RowSelectionLike {
 
 interface BulkBarProps {
 	rowSel: RowSelectionLike;
-	/** Danh từ đếm được, vd "khoa phòng", "tài khoản". */
+	/** Danh từ đếm được, vd "khoa/phòng", "tài khoản". */
 	itemLabel: string;
 	loading?: boolean;
-	/** Nhận danh sách id đã chọn, thực hiện xoá. `BulkBar` tự xoá lựa chọn sau đó. */
+	/** Nhận danh sách id đã chọn, thực hiện xóa. `BulkBar` tự xóa lựa chọn sau đó. */
 	onBulkDelete: (ids: string[]) => Promise<void> | void;
 	/** Mở modal sửa hàng loạt của feature. Bỏ trống thì không hiện nút "Sửa đồng loạt". */
 	onBulkEdit?: () => void;
-	/** Cảnh báo hệ quả hiển thị trong hộp thoại xoá. */
+	/** Cảnh báo hệ quả hiển thị trong hộp thoại xóa. */
 	deleteNote?: ReactNode;
-	/** Nút hàng loạt riêng của feature (dùng `BulkButton`), đặt trước "Xoá đã chọn". */
+	/** Nút hàng loạt riêng của feature (dùng `BulkButton`), đặt trước "Xóa đã chọn". */
 	extraActions?: ReactNode;
 }
 
 /**
- * Thanh hành động hàng loạt dùng chung: nút "Sửa đồng loạt" (tuỳ chọn) + "Xoá đã chọn"
+ * Thanh hành động hàng loạt dùng chung: nút "Sửa đồng loạt" (tùy chọn) + "Xóa đã chọn"
  * kèm hộp thoại xác nhận số lượng. Đặt ngay trên `<table>`.
  */
 export function BulkBar({
@@ -301,7 +301,7 @@ export function BulkBar({
 							danger
 							onClick={() => setConfirmOpen(true)}
 						>
-							<TrashSvg /> Xoá đã chọn
+							<TrashSvg /> Xóa đã chọn
 						</BulkButton>
 					</>
 				}

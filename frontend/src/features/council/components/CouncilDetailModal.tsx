@@ -57,7 +57,7 @@ export function CouncilDetailModal({
 	const [assignModal, setAssignModal] = useState(false);
 	const [busy, setBusy] = useState(false);
 
-	// Gọi lại sau mỗi thao tác (thêm/xoá thành viên, gán/bỏ gán đề tài) — không bật
+	// Gọi lại sau mỗi thao tác (thêm/xóa thành viên, gán/bỏ gán đề tài) — không bật
 	// lại isLoading để tránh nháy skeleton, chỉ cập nhật dữ liệu tại chỗ.
 	const load = useCallback(
 		() =>
@@ -106,11 +106,11 @@ export function CouncilDetailModal({
 		try {
 			await removeCouncilMember(council.id, existing.id);
 			setSeatModal(null);
-			notify.success('Đã xoá thành viên khỏi hội đồng');
+			notify.success('Đã xóa thành viên khỏi hội đồng');
 			load();
 			onChanged();
 		} catch (err) {
-			setError(err instanceof Error ? err.message : 'Xoá thành viên thất bại');
+			setError(err instanceof Error ? err.message : 'Xóa thành viên thất bại');
 		} finally {
 			setBusy(false);
 		}
@@ -175,7 +175,7 @@ export function CouncilDetailModal({
 				subModal.role,
 			);
 			setSubModal(null);
-			notify.success('Đã xoá ghế thay thế');
+			notify.success('Đã xóa ghế thay thế');
 			load();
 			onChanged();
 		} catch (err) {

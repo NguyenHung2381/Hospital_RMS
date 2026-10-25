@@ -18,7 +18,7 @@ const deactivateExpiredAccounts = async (pool) => {
 	const result = await pool.request().execute('sp_deactivate_expired_accounts');
 	const deactivated = result.recordset?.[0]?.deactivated_count ?? 0;
 	if (deactivated > 0)
-		logger.info(`[job:account_maintenance] Đã vô hiệu hoá ${deactivated} tài khoản hết hạn.`);
+		logger.info(`[job:account_maintenance] Đã vô hiệu hóa ${deactivated} tài khoản hết hạn.`);
 };
 
 const warnStalePasswords = async (pool) => {
@@ -52,14 +52,14 @@ const warnStalePasswords = async (pool) => {
 };
 
 // Refresh token đã thu hồi được giữ lại tới hết hạn để phát hiện dùng lại
-// (sessionTokenService.refreshAccessToken) — sau đó thì xoá; mỗi lần làm mới phiên
+// (sessionTokenService.refreshAccessToken) — sau đó thì xóa; mỗi lần làm mới phiên
 // (15 phút/lần) sinh thêm 1 dòng nên bảng tăng nhanh nếu không dọn.
 const purgeExpiredRefreshTokens = async (pool) => {
 	const result = await pool
 		.request()
 		.query('DELETE FROM refresh_tokens WHERE expires_at < GETDATE()');
 	const purged = result.rowsAffected?.[0] ?? 0;
-	if (purged > 0) logger.info(`[job:account_maintenance] Đã xoá ${purged} refresh token hết hạn.`);
+	if (purged > 0) logger.info(`[job:account_maintenance] Đã xóa ${purged} refresh token hết hạn.`);
 };
 
 const run = async () => {

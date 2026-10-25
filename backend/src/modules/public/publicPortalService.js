@@ -142,7 +142,7 @@ const register = async (data, files) => {
 			);
 		trainee = existing.recordset[0] || null;
 		// Người đăng ký phải là chủ hồ sơ: ngày sinh khớp hồ sơ đã có. Trước đây
-		// chỉ cần biết số CCCD của người khác là ghi danh được họ vào khoá học.
+		// chỉ cần biết số CCCD của người khác là ghi danh được họ vào khóa học.
 		// Hồ sơ cũ chưa có ngày sinh (nhập tay/import thiếu) thì không đối chiếu
 		// được — vẫn cho ghi danh vì đăng ký công khai đều phải chờ duyệt.
 		if (trainee?.dob && toDateKey(trainee.dob) !== toDateKey(data.dob)) {
@@ -247,7 +247,7 @@ const getPublicLevels = async (roundId) => {
 	return ids.length ? all.recordset.filter((l) => ids.includes(l.id)) : all.recordset;
 };
 
-// Hồ sơ học viên đính kèm khi đăng ký khoá học (CCCD, bằng cấp...) — cùng chỗ
+// Hồ sơ học viên đính kèm khi đăng ký khóa học (CCCD, bằng cấp...) — cùng chỗ
 // lưu với tab "Hồ sơ" của học viên (traineeService.addDocument).
 const attachTraineeDocuments = async (traineeId, files, docTypes) => {
 	const dir = path.join(UPLOADS_ROOT, 'training', 'trainee_document', traineeId);
@@ -377,7 +377,7 @@ const getFeaturedTopics = async () => {
 
 // Tra cứu trạng thái hồ sơ đề tài đã nộp qua cổng công khai bằng chính mã đề
 // tài trả về lúc đăng ký (registerTopic ở trên) — chỉ trả tối thiểu, không
-// JOIN thành viên/file/khoa phòng.
+// JOIN thành viên/file/khoa/phòng.
 // Tra cứu trạng thái hồ sơ theo mã + email HOẶC số điện thoại của 1 thành viên
 // đề tài (người đăng ký đã tự nhập lúc nộp). Trước đây chỉ cần mã — mã sinh
 // theo thứ tự (<LOẠI>_<năm>_001...) nên người ngoài dò được tiêu đề của mọi đề

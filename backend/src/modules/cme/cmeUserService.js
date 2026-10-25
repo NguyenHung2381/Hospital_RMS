@@ -1,5 +1,5 @@
 /**
- * cmeUserService.js — CME tích luỹ của 1 tài khoản (users.id). Dùng chung cho
+ * cmeUserService.js — CME tích lũy của 1 tài khoản (users.id). Dùng chung cho
  * cổng "của tôi" (portalService.getMyCme) và hồ sơ học viên (GET /trainees/:id/cme).
  * Caller tự kiểm tra quyền.
  */

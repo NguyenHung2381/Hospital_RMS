@@ -136,7 +136,7 @@ router.delete(
 	'/cme-records/:id',
 	handle(async (req, res) => {
 		await cmeRecordService.removeMine(req.params.id, req.user.id);
-		return success(res, null, 'Đã xoá');
+		return success(res, null, 'Đã xóa');
 	}),
 );
 // kiểm tra quyền sở hữu TRƯỚC khi nhận file (multer ghi đĩa ngay)
@@ -184,7 +184,7 @@ router.delete(
 	'/cme-records/:id/result-files/:fileId',
 	handle(async (req, res) => {
 		await cmeRecordService.removeResultFileMine(req.params.id, req.params.fileId, req.user.id);
-		return success(res, null, 'Đã xoá file');
+		return success(res, null, 'Đã xóa file');
 	}),
 );
 
@@ -269,7 +269,7 @@ router.patch(
 	validate,
 	handle(async (req, res) => {
 		await leaveRequestService.cancelMine(req.user.id, req.params.id);
-		return success(res, null, 'Đã huỷ đơn xin phép');
+		return success(res, null, 'Đã hủy đơn xin phép');
 	}),
 );
 

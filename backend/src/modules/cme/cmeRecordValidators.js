@@ -1,5 +1,5 @@
 // Kiểm tra body ghi nhận CME — dùng khi SỬA (PUT) cho admin (/cme-records) và người
-// dùng tự khai (/me/cme-records), và khi THÊM (POST, kèm các rule bắt buộc riêng). Mọi trường đều tuỳ chọn (cập nhật
+// dùng tự khai (/me/cme-records), và khi THÊM (POST, kèm các rule bắt buộc riêng). Mọi trường đều tùy chọn (cập nhật
 // từng phần), nhưng đã gửi thì phải hợp lệ — trước đây không kiểm tra nên
 // tín chỉ/ngày sai làm SQL báo lỗi 500.
 const { body } = require('express-validator');

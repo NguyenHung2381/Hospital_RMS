@@ -79,7 +79,7 @@ export function DepartmentStaffModal({
 			footer={
 				<>
 					<button className={styles.btnCancel} onClick={onClose} disabled={saving}>
-						Huỷ
+						Hủy
 					</button>
 					<button
 						className={styles.btnGhost}

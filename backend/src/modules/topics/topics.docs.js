@@ -189,7 +189,7 @@
  * @swagger
  * /topics/{id}:
  *   delete:
- *     summary: Xoá đề tài
+ *     summary: Xóa đề tài
  *     tags: [Topics]
  *     description: Chỉ admin và manager mới có quyền
  *     parameters:
@@ -199,7 +199,7 @@
  *         schema: { type: string }
  *     responses:
  *       200:
- *         description: Xoá thành công
+ *         description: Xóa thành công
  *       403:
  *         description: Không có quyền
  */
@@ -289,7 +289,7 @@
  * @swagger
  * /topics/{id}/members/{member_id}:
  *   delete:
- *     summary: Xoá thành viên khỏi đề tài
+ *     summary: Xóa thành viên khỏi đề tài
  *     tags: [Topics]
  *     parameters:
  *       - in: path
@@ -302,7 +302,7 @@
  *         schema: { type: string }
  *     responses:
  *       200:
- *         description: Xoá thành viên thành công
+ *         description: Xóa thành viên thành công
  */
 
 /**

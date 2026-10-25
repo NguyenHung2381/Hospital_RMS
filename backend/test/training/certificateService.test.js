@@ -88,7 +88,7 @@ test('thu hồi: không có dòng nào đổi ⇒ 404; có ⇒ phát sự kiện
 	assert.deepEqual(events, ['certificate']);
 });
 
-test('CME đi kèm giấy: cấp ⇒ ghi CME hồ sơ đó; thu hồi ⇒ thu hồi; xoá ⇒ xoá trước khi xoá giấy', async () => {
+test('CME đi kèm giấy: cấp ⇒ ghi CME hồ sơ đó; thu hồi ⇒ thu hồi; xóa ⇒ xóa trước khi xóa giấy', async () => {
 	fakeRepo({
 		findEnrollmentStatus: () => 'approved',
 		insert: () => ({ id: 'CERT01', cert_no: 'CC20260001', course_id: 'KH01' }),

@@ -151,7 +151,7 @@ export function useTopicPage() {
 				setTopics(res.data);
 				setTotal(res.pagination.total);
 				setStats(res.global_stats);
-				// Trang hiện tại vượt quá số trang thực tế (vd. vừa xoá) — về trang 1
+				// Trang hiện tại vượt quá số trang thực tế (vd. vừa xóa) — về trang 1
 				const lastPage = Math.max(
 					1,
 					Math.ceil(res.pagination.total / rowsPerPage),
@@ -320,7 +320,7 @@ export function useTopicPage() {
 		refreshData();
 		setDeleteTopic(null);
 		setViewTopic(null);
-		notify.success('Đã xoá đề tài');
+		notify.success('Đã xóa đề tài');
 	}, [deleteTopic, refreshData]);
 
 	const handleBulkDelete = useCallback(
@@ -332,7 +332,7 @@ export function useTopicPage() {
 				refreshData();
 				setBulkNotice({
 					type: failedCount ? 'error' : 'success',
-					msg: bulkToast('xoá', okIds.size, failedCount, 'đề tài'),
+					msg: bulkToast('xóa', okIds.size, failedCount, 'đề tài'),
 				});
 			} finally {
 				setBulkBusy(false);

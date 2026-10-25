@@ -69,7 +69,7 @@ export function DeptFormModal({
 
 	const validate = () => {
 		const err: Partial<DeptFormData> = {};
-		if (!form.name.trim()) err.name = 'Vui lòng nhập tên khoa phòng';
+		if (!form.name.trim()) err.name = 'Vui lòng nhập tên khoa/phòng';
 		if (!form.code.trim()) err.code = 'Vui lòng nhập mã';
 		if (!form.abbreviation.trim()) err.abbreviation = 'Vui lòng nhập viết tắt';
 		setErrors(err);
@@ -81,7 +81,7 @@ export function DeptFormModal({
 			open
 			onClose={onClose}
 			icon={<BookOpenSvg />}
-			title={mode === 'add' ? 'Thêm khoa phòng' : 'Chỉnh sửa khoa phòng'}
+			title={mode === 'add' ? 'Thêm khoa/phòng' : 'Chỉnh sửa khoa/phòng'}
 			subtitle={mode === 'add' ? 'Thêm đơn vị mới vào hệ thống' : `Cập nhật — ${dept?.code}`}
 			className={styles.modal}
 			bodyClassName={styles.modalBody}
@@ -90,13 +90,13 @@ export function DeptFormModal({
 					onCancel={onClose}
 					onConfirm={() => validate() && onSave(form)}
 					loading={loading}
-					confirmLabel={mode === 'add' ? 'Thêm khoa phòng' : 'Lưu thay đổi'}
+					confirmLabel={mode === 'add' ? 'Thêm khoa/phòng' : 'Lưu thay đổi'}
 				/>
 			}
 		>
 			<div className={styles.formGrid2}>
 				<FormField
-					label='Tên khoa phòng'
+					label='Tên khoa/phòng'
 					required
 					error={errors.name}
 					style={{ gridColumn: '1 / -1' }}
@@ -161,7 +161,7 @@ export function DeptFormModal({
 						value={form.description}
 						onChange={set('description')}
 						rows={3}
-						placeholder='Mô tả ngắn về chức năng khoa phòng...'
+						placeholder='Mô tả ngắn về chức năng khoa/phòng...'
 					/>
 				</FormField>
 			</div>

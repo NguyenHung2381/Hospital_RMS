@@ -76,7 +76,7 @@ export interface SeminarParticipant {
 	notes: string | null;
 	phone: string | null;
 	email: string | null;
-	/** Có = tự đăng ký qua QR (phải điểm danh + làm bài test mới được cấp CME) */
+	/** Có = tự đăng ký qua QR (phải điểm danh + làm bài kiểm tra mới được cấp CME) */
 	ticket_code: string | null;
 	checked_in_at: string | null;
 	test_correct: number | null;
@@ -158,7 +158,7 @@ export interface Seminar {
 
 export interface SeminarTestQuestion {
 	q: string;
-	/** Ảnh minh hoạ (link /uploads đã ký) */
+	/** Ảnh minh họa (link /uploads đã ký) */
 	image?: string | null;
 	options: string[];
 	/** Chỉ số phương án đúng */

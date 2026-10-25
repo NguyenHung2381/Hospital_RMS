@@ -130,7 +130,7 @@ export default function InfoTab({
 						onClick={() => setEditingInfo(false)}
 						disabled={savingInfo}
 					>
-						Huỷ
+						Hủy
 					</button>
 				</div>
 			</div>

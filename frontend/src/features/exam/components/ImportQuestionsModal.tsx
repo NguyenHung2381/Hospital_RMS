@@ -64,7 +64,7 @@ export interface ImportedQuestion {
 }
 
 const FORMAT_HINT = `Câu 1: Nội dung câu hỏi (2 điểm)
-[hình minh hoạ — chèn ngay dưới câu hỏi, tuỳ chọn]
+[hình minh họa — chèn ngay dưới câu hỏi, tùy chọn]
 A. Phương án    B. Phương án
 C. Phương án    D. Phương án
 Đáp án: B
@@ -74,7 +74,7 @@ Câu 2: Câu tự luận (không có A/B/C/D)`;
 /**
  * Đọc câu hỏi từ file Word/PDF ngay trên trình duyệt, cho xem lại / chọn đáp án,
  * rồi trả danh sách câu đã chọn cho onImport (ném lỗi = giữ modal mở).
- * Dùng cho ngân hàng câu hỏi Đào tạo, form đề thi của khóa học và bài test cuối buổi Hội nghị.
+ * Dùng cho ngân hàng câu hỏi Đào tạo, form đề thi của khóa học và bài kiểm tra cuối buổi Hội nghị.
  */
 export function ImportQuestionsModal({
 	onClose,
@@ -84,9 +84,9 @@ export function ImportQuestionsModal({
 }: {
 	onClose: () => void;
 	onImport: (questions: ImportedQuestion[]) => Promise<void>;
-	/** Chỉ nhận 1 loại câu (bài test hội nghị / đề trắc nghiệm / đề tự luận) — câu loại khác trong file bị bỏ qua */
+	/** Chỉ nhận 1 loại câu (bài kiểm tra hội nghị / đề trắc nghiệm / đề tự luận) — câu loại khác trong file bị bỏ qua */
 	onlyType?: ParsedQuestion['question_type'];
-	/** Có điểm từng câu không (bài test hội nghị chỉ đếm số câu đúng) */
+	/** Có điểm từng câu không (bài kiểm tra hội nghị chỉ đếm số câu đúng) */
 	withPoints?: boolean;
 }) {
 	const [file, setFile] = useState<File | null>(null);
@@ -165,7 +165,7 @@ export function ImportQuestionsModal({
 						onClick={onClose}
 						disabled={saving}
 					>
-						Huỷ
+						Hủy
 					</Button>
 					<Button
 						loading={saving}
@@ -182,7 +182,7 @@ export function ImportQuestionsModal({
 					value={file}
 					onChange={(f) => void pick(f)}
 					accept='.docx,.pdf'
-					hint='File .docx hoặc .pdf, tối đa 20MB — file được đọc ngay trên máy, chỉ hình minh hoạ được tải lên khi bấm Nhập'
+					hint='File .docx hoặc .pdf, tối đa 20MB — file được đọc ngay trên máy, chỉ hình minh họa được tải lên khi bấm Nhập'
 					maxSizeMB={20}
 				/>
 				{!rows && !reading && (
@@ -194,7 +194,7 @@ export function ImportQuestionsModal({
 						<div className={styles.hint}>
 							Đáp án đúng có thể ghi bằng dòng "Đáp án: B", dấu * trước phương án (*B.), bảng "ĐÁP ÁN" cuối file
 							(1-A 2-C ...), hoặc in đậm/gạch chân phương án đúng trong Word. Đánh số câu/phương án phải gõ tay (không
-							dùng numbering tự động của Word). Hình chèn trong Word (PNG/JPEG/GIF) được lấy làm hình minh hoạ của câu
+							dùng numbering tự động của Word). Hình chèn trong Word (PNG/JPEG/GIF) được lấy làm hình minh họa của câu
 							chứa nó — PDF không lấy được hình. PDF dạng ảnh scan không đọc được.
 							{onlyType && ` Chỉ nhận câu ${typeLabel(onlyType)} — câu ${otherLabel} trong file sẽ bị bỏ qua.`}
 						</div>
@@ -274,7 +274,7 @@ export function ImportQuestionsModal({
 												<button
 													type='button'
 													className={styles.actionBtn}
-													title='Xoá câu này khỏi danh sách'
+													title='Xóa câu này khỏi danh sách'
 													onClick={() => remove(i)}
 												>
 													<TrashSvg />

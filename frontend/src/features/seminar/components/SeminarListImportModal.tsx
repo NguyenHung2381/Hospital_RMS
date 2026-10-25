@@ -105,7 +105,7 @@ export function SeminarListImportModal({
 						onClick={onClose}
 						disabled={loading}
 					>
-						{result ? 'Đóng' : 'Huỷ'}
+						{result ? 'Đóng' : 'Hủy'}
 					</button>
 					{!result && (
 						<button

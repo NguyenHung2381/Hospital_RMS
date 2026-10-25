@@ -1,6 +1,6 @@
 // tsc (npm run typecheck, checkJs) kiểm tra mọi file JS trong src/ — trừ file
 // mở đầu bằng `// @ts-nocheck` (còn lỗi kiểu từ trước khi bật). Số file đó chỉ
-// được GIẢM: sửa xong lỗi của 1 file thì xoá dòng @ts-nocheck và hạ MAX bên dưới.
+// được GIẢM: sửa xong lỗi của 1 file thì xóa dòng @ts-nocheck và hạ MAX bên dưới.
 // File mới không được thêm @ts-nocheck.
 const test = require('node:test');
 const assert = require('node:assert/strict');

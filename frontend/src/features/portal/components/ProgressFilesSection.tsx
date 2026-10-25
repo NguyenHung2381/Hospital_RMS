@@ -23,7 +23,7 @@ interface ProgressFilesSectionProps {
 	onDeleteMinutes: (t: ProgressTopic, fileId: string) => void;
 }
 
-/** Khung danh sách file có tiêu đề, nút tải lên (tuỳ chọn) và nút xoá từng file (tuỳ chọn). */
+/** Khung danh sách file có tiêu đề, nút tải lên (tùy chọn) và nút xóa từng file (tùy chọn). */
 function FileBox({
 	title,
 	emptyText,
@@ -137,7 +137,7 @@ export function ProgressFilesSection({
 				/>
 			</Row>
 
-			{/* File đánh giá & Biên bản — chỉ thư ký được tải lên / xoá */}
+			{/* File đánh giá & Biên bản — chỉ thư ký được tải lên / xóa */}
 			<Row>
 				<FileBox
 					title='📁 File đánh giá'

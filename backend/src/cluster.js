@@ -12,7 +12,7 @@
 //   4. worker chết thì tạo lại (có chặn vòng lặp crash liên tục).
 //
 // Trạng thái dùng chung giữa các worker đã nằm trên Redis: rate-limit
-// (utils/rateLimit.js), xoá cache phân quyền (utils/cacheBus.js), vé 1 lần
+// (utils/rateLimit.js), xóa cache phân quyền (utils/cacheBus.js), vé 1 lần
 // (utils/oneTimeToken.js), sự kiện realtime SSE (modules/events/eventService.js).
 require('./config/loadEnv');
 // Kiểu khai báo của node:cluster là ESM (export default) nhưng require() trả về thẳng đối tượng cluster

@@ -92,7 +92,7 @@ const create = async (data, actorId) => {
 };
 
 // Vai trò hệ thống (roles.is_system — 8 vai trò gốc, code nghiệp vụ tham chiếu
-// qua roles.code) không được xoá: xoá đi thì cấp tài khoản chủ nhiệm / học viên,
+// qua roles.code) không được xóa: xóa đi thì cấp tài khoản chủ nhiệm / học viên,
 // lọc tài khoản khoa... lỗi ngay. Sửa tên / mô tả / quyền vẫn được.
 const remove = async (id, actorId) => {
 	const pool = await getPool();
@@ -101,7 +101,7 @@ const remove = async (id, actorId) => {
 		.input('id', sql.VarChar(20), id)
 		.query('SELECT is_system FROM roles WHERE id = @id');
 	if (r.recordset[0]?.is_system) {
-		throw httpError(409, 'Không thể xoá vai trò hệ thống');
+		throw httpError(409, 'Không thể xóa vai trò hệ thống');
 	}
 	await base.remove(id, actorId);
 	permCache.clear(id);

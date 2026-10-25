@@ -206,10 +206,10 @@ export function ResearchReports({ year }: { year: number }) {
 						accent='accentAmber'
 					/>
 					<MetricCard
-						label='Từ chối / huỷ'
+						label='Từ chối / hủy'
 						value={(s?.rejected ?? 0) + (s?.cancelled ?? 0)}
 						loading={!stats}
-						compare={`${s?.cancelled ?? 0} đề tài đã huỷ`}
+						compare={`${s?.cancelled ?? 0} đề tài đã hủy`}
 						icon={<XCircleSvg />}
 						iconClass='iconPink'
 						accent='accentPink'

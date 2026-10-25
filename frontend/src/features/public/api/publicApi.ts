@@ -87,7 +87,7 @@ export interface TraineeTypeOption {
 
 // Server chọn chế độ (backend utils/captcha.js): proof-of-work mặc định (trình
 // duyệt tự giải ngầm), hoặc Cloudflare Turnstile / Google reCAPTCHA v2 khi đã
-// cấu hình khoá.
+// cấu hình khóa.
 export type Captcha =
 	| { provider: 'pow'; token: string; bits: number; expires_in: number }
 	| { provider: 'turnstile'; site_key: string; action: string }
@@ -237,7 +237,7 @@ export interface FeaturedTopic {
 
 export const getFeaturedTopics = () => request<FeaturedTopic[]>('/featured-topics');
 
-// ─── Hội nghị: đăng ký qua QR, vé QR, bài test cuối buổi ─────────────────────
+// ─── Hội nghị: đăng ký qua QR, vé QR, bài kiểm tra cuối buổi ─────────────────────
 export interface PublicSeminar {
 	id: string;
 	title: string;
@@ -288,7 +288,7 @@ export interface SeminarTicket {
 		/** Mở bài: date + start_time · dừng tiếp nhận: end_date + end_time (YYYY-MM-DD) */
 		window?: { date: string; end_date?: string; start_time: string | null; end_time: string | null } | null;
 		question_count?: number;
-		/** Tổng điểm bài test */
+		/** Tổng điểm bài kiểm tra */
 		max_score?: number | null;
 		/** Thời gian làm bài (phút) — null = không giới hạn */
 		duration_minutes?: number | null;
@@ -304,7 +304,7 @@ export interface SeminarTicket {
 		total: number | null;
 		score?: number | null;
 		passed?: boolean | null;
-		/** Chỉ có khi đang làm bài (đã điểm danh + bài test đang mở + chưa nộp) — đã trộn theo vé */
+		/** Chỉ có khi đang làm bài (đã điểm danh + bài kiểm tra đang mở + chưa nộp) — đã trộn theo vé */
 		questions: { q: string; image: string | null; options: string[]; points?: number }[] | null;
 	};
 	cme: { certificate_no: string; year: number; credits: number | null } | null;

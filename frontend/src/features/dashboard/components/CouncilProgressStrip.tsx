@@ -41,7 +41,7 @@ export function CouncilProgressStrip({
 		return (
 			<div className={styles.councilStrip}>
 				<div className={styles.councilStripLeft}>
-					<span className={styles.cardTitle}>Tiến độ Đánh giá của Hội đồng Khoa học</span>
+					<span className={styles.cardTitle}>Tiến độ đánh giá của Hội đồng Khoa học</span>
 				</div>
 				<div style={{ color: 'var(--color-gray-400)', fontSize: 13 }}>
 					{error ? 'Không tải được dữ liệu' : 'Chưa có dữ liệu đánh giá tiến độ'}
@@ -58,7 +58,7 @@ export function CouncilProgressStrip({
 					style={{ cursor: 'pointer' }}
 					onClick={() => navigate('/admin/councils')}
 				>
-					Tiến độ Đánh giá của Hội đồng Khoa học
+					Tiến độ đánh giá của Hội đồng Khoa học
 				</span>
 				<div style={{ fontSize: 12, color: 'var(--color-gray-400)', marginTop: 2 }}>
 					Tỷ lệ hoàn thành đánh giá tiến độ các đề tài nghiên cứu theo kế hoạch

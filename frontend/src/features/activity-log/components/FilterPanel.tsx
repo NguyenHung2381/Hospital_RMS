@@ -46,7 +46,7 @@ const QUICK_FILTERS: QuickFilter[] = [
 		off: { action: [] },
 	},
 	{
-		label: 'Xoá dữ liệu',
+		label: 'Xóa dữ liệu',
 		isOn: (f) => sameSet(f.action, ['delete']),
 		on: { action: ['delete'] },
 		off: { action: [] },
@@ -115,7 +115,7 @@ export function FilterPanel({ filters, patch, reset, moduleOptions }: Props) {
 		tags.push({ key: 'range', label: `Thời gian: ${rangeLabel}`, clear: { range: DEFAULT_FILTERS.range } });
 	}
 	if (filters.actor) tags.push({ key: 'actor', label: `Người dùng: ${filters.actor}`, clear: { actor: '' } });
-	if (filters.search) tags.push({ key: 'search', label: `Từ khoá: ${filters.search}`, clear: { search: '' } });
+	if (filters.search) tags.push({ key: 'search', label: `Từ khóa: ${filters.search}`, clear: { search: '' } });
 	for (const a of filters.action)
 		tags.push({
 			key: `action-${a}`,
@@ -210,7 +210,7 @@ export function FilterPanel({ filters, patch, reset, moduleOptions }: Props) {
 				<label className={styles.search}>
 					<SearchSvg className={styles.searchIcon} />
 					<input
-						placeholder='Từ khoá: đường dẫn, nội dung gửi lên, lỗi…'
+						placeholder='Từ khóa: đường dẫn, nội dung gửi lên, lỗi…'
 						value={filters.search}
 						onChange={(e) => patch({ search: e.target.value })}
 					/>
@@ -390,7 +390,7 @@ export function FilterPanel({ filters, patch, reset, moduleOptions }: Props) {
 						className={styles.clearAll}
 						onClick={reset}
 					>
-						Xoá tất cả
+						Xóa tất cả
 					</button>
 				</div>
 			)}

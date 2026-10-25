@@ -112,7 +112,7 @@ export function CouncilBulkDeleteModal({
 			onClose={onClose}
 			icon={<TrashSvg />}
 			tone='danger'
-			title='Xoá hàng loạt'
+			title='Xóa hàng loạt'
 			subtitle={<>{count} hội đồng đã chọn</>}
 			className={`${styles.modal} ${styles.modalSm}`}
 			bodyClassName={styles.modalBody}
@@ -123,7 +123,7 @@ export function CouncilBulkDeleteModal({
 						onClick={onClose}
 						disabled={loading}
 					>
-						Huỷ
+						Hủy
 					</button>
 					<button
 						className={styles.btnDanger}
@@ -135,19 +135,19 @@ export function CouncilBulkDeleteModal({
 						) : (
 							<TrashSvg />
 						)}
-						Xoá {count} hội đồng
+						Xóa {count} hội đồng
 					</button>
 				</>
 			}
 		>
 			<p className={styles.deleteDesc}>
-				Bạn có chắc muốn xoá <strong>{count} hội đồng</strong> khỏi hệ thống?
+				Bạn có chắc muốn xóa <strong>{count} hội đồng</strong> khỏi hệ thống?
 			</p>
 			<div className={styles.warnBox}>
 				<InfoSvg />
 				<span>
 					Đề tài đang gán cho các hội đồng này sẽ tự động bỏ gán, và toàn bộ
-					thành viên hội đồng sẽ bị xoá.
+					thành viên hội đồng sẽ bị xóa.
 				</span>
 			</div>
 		</Modal>

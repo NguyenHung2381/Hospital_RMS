@@ -50,7 +50,7 @@ const validateSetting = (key, value) => {
 		return bad.length ? `IP/dải IP không hợp lệ: ${bad.join(', ')}` : null;
 	}
 	if (key === 'ATTENDANCE_LOCATION')
-		return parseLocation(value) ? null : 'Toạ độ phải dạng "vĩ độ, kinh độ", vd 10.7769, 106.7009';
+		return parseLocation(value) ? null : 'Tọa độ phải dạng "vĩ độ, kinh độ", vd 10.7769, 106.7009';
 	if (key === 'ATTENDANCE_RADIUS_M')
 		return positiveInt(value, 10000) ? null : 'Bán kính phải là số nguyên 1–10000 m';
 	if (key === 'ATTENDANCE_MAX_ACCURACY_M')

@@ -46,7 +46,7 @@ const buildSheet = (wb, { sheetName, title, subtitle, columns, letterhead = fals
 		if (n >= 8) {
 			const rEnd = n >= 10 ? n - 4 : n;
 			const rStart = n >= 10 ? Math.max(6, rEnd - 3) : 5;
-			block(rStart, rEnd, 1, 'CỘNG HOÀ XÃ HỘI CHỦ NGHĨA VIỆT NAM', { bold: true, size: 11 });
+			block(rStart, rEnd, 1, 'CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM', { bold: true, size: 11 });
 			block(rStart, rEnd, 2, 'Độc lập - Tự do - Hạnh phúc', {
 				bold: true,
 				size: 11,

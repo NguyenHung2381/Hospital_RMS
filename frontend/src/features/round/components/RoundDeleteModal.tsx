@@ -12,12 +12,12 @@ export function RoundDeleteModal({
 }) {
 	return (
 		<ConfirmDeleteModal
-			title='Xoá đợt nghiên cứu?'
+			title='Xóa đợt nghiên cứu?'
 			subtitle={round.name}
 			onClose={onClose}
 			onConfirm={onConfirm}
 		>
-			Bạn sắp xoá đợt <strong>"{round.name}"</strong>.
+			Bạn sắp xóa đợt <strong>"{round.name}"</strong>.
 			{round.topic_total > 0
 				? ` Đợt này có ${round.topic_total} đề tài liên kết — tất cả sẽ mất liên kết với đợt nghiên cứu này.`
 				: ' Hành động không thể hoàn tác.'}

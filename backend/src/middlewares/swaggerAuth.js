@@ -18,7 +18,7 @@ const timingSafeStringEqual = (a, b) => {
 };
 
 const swaggerAuth = (req, res, next) => {
-	// Bỏ qua xác thực nếu không phải môi trường production (tuỳ chọn)
+	// Bỏ qua xác thực nếu không phải môi trường production (tùy chọn)
 	// if (process.env.NODE_ENV !== 'production') return next();
 
 	const authHeader = req.headers['authorization'];

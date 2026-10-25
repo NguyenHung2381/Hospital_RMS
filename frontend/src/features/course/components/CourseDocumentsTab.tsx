@@ -9,7 +9,7 @@ import styles from './CourseDocumentsTab.module.css';
 const formatSize = (bytes: number) =>
 	bytes >= 1024 * 1024 ? `${(bytes / 1024 / 1024).toFixed(1)} MB` : `${Math.max(1, Math.round(bytes / 1024))} KB`;
 
-// Chỉ còn tài liệu học tập — kiểm tra/thi làm ở bước "Thi & Kiểm tra" (đề online).
+// Chỉ còn tài liệu học tập — kiểm tra/thi làm ở bước "Thi & kiểm tra" (đề online).
 // Đề/đáp án dạng file tải lên trước đây vẫn hiện trong danh sách, kèm nhãn.
 export function CourseDocumentsTab({
 	documents,
@@ -178,7 +178,7 @@ export function CourseDocumentsTab({
 							</div>
 							<button
 								className={styles.iconBtn}
-								title='Xoá'
+								title='Xóa'
 								disabled={busy}
 								onClick={() => onRemove(doc.id)}
 							>

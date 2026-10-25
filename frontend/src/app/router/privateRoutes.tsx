@@ -1,10 +1,11 @@
 /* eslint-disable react-refresh/only-export-components */
 // @refresh reset
 import React from 'react';
-import { Navigate, type RouteObject } from 'react-router-dom';
+import { Navigate, useSearchParams, type RouteObject } from 'react-router-dom';
 import { LazyRoute } from './LazyRoute';
 import { lazyRoute as lazy } from './routePrefetch';
 import { RequireAdmin, RequireAuth, RequirePermission } from './guards';
+import { TRAINING_TYPE } from '../../features/course/types/course.type';
 
 // ── Admin pages ──────────────────────────────────────────
 const OverviewDashboard = lazy(
@@ -141,6 +142,39 @@ const admin = (
 	</RequireAdmin>
 );
 
+// Link cũ trước khi tách theo loại đào tạo: /admin/courses?type=…, /admin/trainees?type=…
+const COURSE_PATH_BY_TYPE: Record<string, string> = {
+	[TRAINING_TYPE.DTLT]: '/admin/dtlt',
+	[TRAINING_TYPE.GPHN]: '/admin/practice-batches',
+	[TRAINING_TYPE.CTCV]: '/admin/ctcv',
+};
+const TRAINEE_PATH_BY_TYPE: Record<string, string> = {
+	[TRAINING_TYPE.DTLT]: '/admin/dtlt/hoc-vien',
+	[TRAINING_TYPE.GPHN]: '/admin/gphn/hoc-vien',
+	[TRAINING_TYPE.CTCV]: '/admin/ctcv/hoc-vien',
+};
+function LegacyCourses() {
+	const [params] = useSearchParams();
+	return (
+		<Navigate
+			to={COURSE_PATH_BY_TYPE[params.get('type') ?? ''] ?? '/admin/dtlt'}
+			replace
+		/>
+	);
+}
+function TraineesOrLegacy() {
+	const [params] = useSearchParams();
+	const to = TRAINEE_PATH_BY_TYPE[params.get('type') ?? ''];
+	return to ? (
+		<Navigate
+			to={to}
+			replace
+		/>
+	) : (
+		<Trainees />
+	);
+}
+
 const user = (
 	title: string,
 	element: React.ReactNode,
@@ -151,25 +185,25 @@ const user = (
 );
 
 export const adminRoutes: RouteObject[] = [
-	{ path: '/admin', element: admin('Tổng quan Hệ thống', <OverviewDashboard />) },
+	{ path: '/admin', element: admin('Tổng quan hệ thống', <OverviewDashboard />) },
 	{
 		path: '/admin/dashboard/research',
 		element: admin('Tổng quan NCKH', <ResearchDashboard />),
 	},
 	{
 		path: '/admin/dashboard/training',
-		element: admin('Tổng quan Đào tạo', <TrainingDashboard />),
+		element: admin('Tổng quan đào tạo', <TrainingDashboard />),
 	},
 	{
 		path: '/admin/dashboard/seminar',
-		element: admin('Tổng quan Hội nghị & Tín chỉ CME', <SeminarDashboard />),
+		element: admin('Tổng quan hội nghị & tín chỉ CME', <SeminarDashboard />),
 	},
 	{ path: '/admin/profile', element: admin('Hồ sơ cá nhân', <UserProfile />) },
 	{
 		path: '/admin/viec-cua-toi',
 		element: admin('Việc của tôi', <MyTasks />),
 	},
-	{ path: '/admin/topics', element: admin('Quản lý Đề tài', <Topics />) },
+	{ path: '/admin/topics', element: admin('Đề tài nghiên cứu', <Topics />) },
 	{ path: '/admin/rounds', element: admin('Đợt nghiên cứu', <Rounds />) },
 	{
 		path: '/admin/councils',
@@ -177,15 +211,15 @@ export const adminRoutes: RouteObject[] = [
 	},
 	{
 		path: '/admin/approvals',
-		element: admin('Phê duyệt Đề tài', <Approvals />),
+		element: admin('Phê duyệt đề tài', <Approvals />),
 	},
 	{
 		path: '/admin/external-reviewers',
-		element: admin('Người ngoài viện', <ExternalReviewers />),
+		element: admin('Chuyên gia ngoài viện', <ExternalReviewers />),
 	},
 	{
 		path: '/admin/seminars',
-		element: admin('Hội thảo & Hội nghị', <Seminars />),
+		element: admin('Hội thảo & hội nghị', <Seminars />),
 	},
 	{
 		path: '/admin/seminars/:id',
@@ -205,7 +239,7 @@ export const adminRoutes: RouteObject[] = [
 	},
 	{
 		path: '/admin/cme-compliance',
-		element: admin('Cảnh báo tín chỉ', <CmeCompliance />),
+		element: admin('Theo dõi ngưỡng tín chỉ', <CmeCompliance />),
 	},
 	{
 		path: '/admin/cme-records',
@@ -242,10 +276,10 @@ export const adminRoutes: RouteObject[] = [
 		),
 	},
 	{ path: '/admin/users', element: admin('Người dùng', <Users />) },
-	{ path: '/admin/roles', element: admin('Phân quyền', <Roles />) },
+	{ path: '/admin/roles', element: admin('Vai trò & quyền', <Roles />) },
 	{
 		path: '/admin/reports',
-		element: admin('Báo cáo & Xuất dữ liệu', <Reports />),
+		element: admin('Báo cáo & xuất dữ liệu', <Reports />),
 	},
 	{
 		path: '/admin/categories',
@@ -258,7 +292,7 @@ export const adminRoutes: RouteObject[] = [
 	},
 	{
 		path: '/admin/schedule',
-		element: admin('Lịch trình nghiên cứu', <Schedule />),
+		element: admin('Lịch trình đợt nghiên cứu', <Schedule />),
 	},
 	{
 		path: '/admin/notifications',
@@ -278,7 +312,44 @@ export const adminRoutes: RouteObject[] = [
 	},
 	{
 		path: '/admin/trainees',
-		element: admin('Học viên', <Trainees />),
+		element: admin('Tất cả học viên', <TraineesOrLegacy />),
+	},
+	// ─── Đào tạo theo loại: mỗi loại 1 mục menu, các trang dưới đây là tab ───
+	{
+		path: '/admin/dtlt',
+		element: admin('Đào tạo liên tục', <Courses typeId={TRAINING_TYPE.DTLT} />),
+	},
+	{
+		path: '/admin/dtlt/lich-hoc',
+		element: (
+			<RequirePermission perm='courses:read'>
+				{admin('Lịch học đào tạo liên tục', <ClassSchedule typeId={TRAINING_TYPE.DTLT} />)}
+			</RequirePermission>
+		),
+	},
+	{
+		path: '/admin/dtlt/hoc-vien',
+		element: admin('Học viên đào tạo liên tục', <Trainees typeId={TRAINING_TYPE.DTLT} />),
+	},
+	{
+		path: '/admin/ctcv',
+		element: admin('Cầm tay chỉ việc', <Courses typeId={TRAINING_TYPE.CTCV} />),
+	},
+	{
+		path: '/admin/ctcv/lich-hoc',
+		element: (
+			<RequirePermission perm='courses:read'>
+				{admin('Lịch học cầm tay chỉ việc', <ClassSchedule typeId={TRAINING_TYPE.CTCV} />)}
+			</RequirePermission>
+		),
+	},
+	{
+		path: '/admin/ctcv/hoc-vien',
+		element: admin('Học viên cầm tay chỉ việc', <Trainees typeId={TRAINING_TYPE.CTCV} />),
+	},
+	{
+		path: '/admin/gphn/hoc-vien',
+		element: admin('Học viên GPHN', <Trainees typeId={TRAINING_TYPE.GPHN} />),
 	},
 	{
 		path: '/admin/trainees/:id',
@@ -286,7 +357,7 @@ export const adminRoutes: RouteObject[] = [
 	},
 	{
 		path: '/admin/training-programs',
-		element: admin('Chương trình Đào tạo', <TrainingPrograms />),
+		element: admin('Chương trình đào tạo', <TrainingPrograms />),
 	},
 	{
 		path: '/admin/lessons',
@@ -296,7 +367,7 @@ export const adminRoutes: RouteObject[] = [
 		path: '/admin/staff-attendance',
 		element: (
 			<RequirePermission perm='staff_attendance:read'>
-				{admin('Bảng điểm danh học viên', <StaffAttendance />)}
+				{admin('Điểm danh theo ca', <StaffAttendance />)}
 			</RequirePermission>
 		),
 	},
@@ -304,7 +375,7 @@ export const adminRoutes: RouteObject[] = [
 		path: '/admin/shifts',
 		element: (
 			<RequirePermission perm='staff_attendance:manage'>
-				{admin('Ca học viên', <Shifts />)}
+				{admin('Ca & mẫu ca tuần', <Shifts />)}
 			</RequirePermission>
 		),
 	},
@@ -338,7 +409,7 @@ export const adminRoutes: RouteObject[] = [
 	},
 	{
 		path: '/admin/courses',
-		element: admin('Khóa ĐTLT / CTCV', <Courses />),
+		element: <LegacyCourses />,
 	},
 	{
 		path: '/admin/practice-records',
@@ -349,10 +420,18 @@ export const adminRoutes: RouteObject[] = [
 		),
 	},
 	{
+		path: '/admin/practice-batches',
+		element: (
+			<RequirePermission perm='courses:read'>
+				{admin('Đợt thực hành GPHN', <Courses typeId={TRAINING_TYPE.GPHN} />)}
+			</RequirePermission>
+		),
+	},
+	{
 		path: '/admin/practice-results',
 		element: (
 			<RequirePermission perm='courses:update'>
-				{admin('Nhập kết quả vòng', <PracticeResults />)}
+				{admin('Nhập kết quả vòng GPHN', <PracticeResults />)}
 			</RequirePermission>
 		),
 	},
@@ -387,9 +466,10 @@ export const adminRoutes: RouteObject[] = [
 	{
 		path: '/admin/class-schedule',
 		element: (
-			<RequirePermission perm='courses:read'>
-				{admin('Lịch học', <ClassSchedule />)}
-			</RequirePermission>
+			<Navigate
+				to='/admin/dtlt/lich-hoc'
+				replace
+			/>
 		),
 	},
 	{
@@ -444,7 +524,7 @@ export const adminRoutes: RouteObject[] = [
 		path: '/admin/workflows',
 		element: (
 			<RequirePermission perm='workflows:manage'>
-				{admin('Workflow duyệt', <Workflow />)}
+				{admin('Quy trình duyệt', <Workflow />)}
 			</RequirePermission>
 		),
 	},

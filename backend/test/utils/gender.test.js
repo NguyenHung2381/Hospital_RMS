@@ -1,4 +1,4 @@
-// Chuẩn hoá giới tính về mã ASCII lưu DB (utils/gender.js).
+// Chuẩn hóa giới tính về mã ASCII lưu DB (utils/gender.js).
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { normalizeGender } = require('../../src/utils/gender');

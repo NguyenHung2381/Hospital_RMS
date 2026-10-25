@@ -14,7 +14,7 @@ interface ReportCardProps {
 	onPdf?: () => Promise<void>;
 	/** Mở hộp thoại tùy chọn (cột, tiêu đề, nội dung…) của báo cáo. */
 	onOptions?: () => void;
-	/** Lý do không xuất được (vd bộ lọc không còn đề tài nào) — khoá nút xuất. */
+	/** Lý do không xuất được (vd bộ lọc không còn đề tài nào) — khóa nút xuất. */
 	disabledReason?: string;
 }
 

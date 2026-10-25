@@ -7,7 +7,9 @@
  * với users/external_reviewers, match đề tài (đã có sẵn trong đợt) theo tên →
  * dry_run trả preview; commit tạo hội đồng draft + 5 ghế + gán đề tài & phiên.
  */
-const ExcelJS = require('exceljs');
+const { lazyRequire } = require('../../utils/lazyRequire');
+/** @type {typeof import('exceljs')} */
+const ExcelJS = lazyRequire('exceljs');
 const { getPool, sql } = require('../../config/db');
 const councilService = require('./councilService');
 const councilAssignmentService = require('./councilAssignmentService');
@@ -428,7 +430,7 @@ const importExcel = async ({ buffer, round_id, dry_run }, actorId) => {
 					warnings.push(`${c.name} — dòng ${t.row}, ghế thay thế ${s.role}: ${s.error}`);
 				} else if (s.matched?.type === 'external') {
 					warnings.push(
-						`${c.name} — dòng ${t.row}, ghế thay thế ${s.role}: "${s.matched.full_name}" là người ngoài viện — hệ thống chỉ hỗ trợ ghế thay thế trong viện, cần xử lý tay.`,
+						`${c.name} — dòng ${t.row}, ghế thay thế ${s.role}: "${s.matched.full_name}" là chuyên gia ngoài viện — hệ thống chỉ hỗ trợ ghế thay thế trong viện, cần xử lý tay.`,
 					);
 				}
 			}
@@ -449,7 +451,7 @@ const importExcel = async ({ buffer, round_id, dry_run }, actorId) => {
 	}
 
 	// Commit — theo pattern autoAssign: tạo tuần tự qua councilService, hội đồng
-	// draft nên lỗi giữa chừng xoá tay được ngay trên UI.
+	// draft nên lỗi giữa chừng xóa tay được ngay trên UI.
 	let councilsCreated = 0;
 	let topicsAssigned = 0;
 	for (const c of councils) {

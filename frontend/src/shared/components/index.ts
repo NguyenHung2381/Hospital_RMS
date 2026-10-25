@@ -18,6 +18,7 @@ export { Can } from './Can';
  *   import { QrScanner } from '@/shared/components/QrScanner'; */
 
 export { DatePicker } from './Input/DatePicker';
+export { TimePicker } from './Input/TimePicker';
 export { MultiSelect } from './Input/MultiSelect';
 export { SearchableSelect } from './Input/SearchableSelect';
 export { FileDropzone } from './Input/FileDropzone';

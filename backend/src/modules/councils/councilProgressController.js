@@ -73,7 +73,7 @@ const uploadFiles = asyncHandler(async (req, res) => {
 		filesFromRequest(req),
 		req.user.id,
 	);
-	return created(res, result, 'Upload file đánh giá thành công');
+	return created(res, result, 'Tải lên file đánh giá thành công');
 });
 
 const deleteFile = asyncHandler(async (req, res) => {
@@ -91,7 +91,7 @@ const uploadMinutesFiles = asyncHandler(async (req, res) => {
 		filesFromRequest(req),
 		req.user.id,
 	);
-	return created(res, result, 'Upload biên bản thành công');
+	return created(res, result, 'Tải lên biên bản thành công');
 });
 
 const uploadCommentImage = asyncHandler(async (req, res) => {

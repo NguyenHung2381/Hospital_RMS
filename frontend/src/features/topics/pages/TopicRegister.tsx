@@ -153,10 +153,10 @@ export default function TopicRegister() {
 						<AlertSvg />
 					</div>
 					<div className={styles.emptyTitle}>
-						Chức năng này chỉ dành cho tài khoản khoa phòng
+						Chức năng này chỉ dành cho tài khoản khoa/phòng
 					</div>
 					<div className={styles.emptyDesc}>
-						Tài khoản của bạn chưa được gán vào khoa phòng. Vui lòng liên hệ
+						Tài khoản của bạn chưa được gán vào khoa/phòng. Vui lòng liên hệ
 						quản trị viên.
 					</div>
 				</div>

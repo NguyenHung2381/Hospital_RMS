@@ -70,7 +70,7 @@ export function ModalMembersSection({
 						marginLeft: 8,
 					}}
 				>
-					(tuỳ chọn — có thể thêm sau)
+					(tùy chọn — có thể thêm sau)
 				</span>
 			</div>
 

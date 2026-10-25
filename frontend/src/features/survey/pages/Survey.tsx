@@ -103,7 +103,7 @@ export default function Survey() {
 								<TableEmpty
 									colSpan={8}
 									title='Không tìm thấy khảo sát'
-									desc={d.search ? 'Thử thay đổi từ khoá tìm kiếm' : 'Chưa có khảo sát nào'}
+									desc={d.search ? 'Thử thay đổi từ khóa tìm kiếm' : 'Chưa có khảo sát nào'}
 								/>
 							) : (
 								d.paged.map((survey, i) => {

@@ -39,7 +39,7 @@ const toYear = (v) => {
 };
 
 /**
- * Chuẩn hoá khoảng năm của báo cáo: { year } (1 năm) hoặc { fromYear, toYear }.
+ * Chuẩn hóa khoảng năm của báo cáo: { year } (1 năm) hoặc { fromYear, toYear }.
  * Trống cả hai = mọi năm; chỉ có một đầu = không giới hạn đầu kia.
  * @param {{ year?: unknown, fromYear?: unknown, toYear?: unknown }} input
  * @returns {{ fromYear: number|null, toYear: number|null }}
@@ -221,7 +221,7 @@ const getData = async ({ year, fromYear, toYear: to, userId, department, search 
 		p.total = round2(p.total + Number(row.credits));
 	}
 
-	// Hoạt động: chỉ của nhân sự có trong báo cáo (đã qua lọc khoa / từ khoá / tài khoản khoa)
+	// Hoạt động: chỉ của nhân sự có trong báo cáo (đã qua lọc khoa / từ khóa / tài khoản khoa)
 	const activities = [];
 	for (const a of activityRows) {
 		const p = people.get(a.user_id);

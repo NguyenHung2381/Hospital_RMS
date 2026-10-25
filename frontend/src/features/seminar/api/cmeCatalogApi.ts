@@ -23,7 +23,7 @@ const categoryPayload = (f: CmeCategoryFormData) => ({
 	description: f.description.trim() || null,
 });
 
-// Mã chỉ gửi khi tạo mới — sửa không đổi được khoá chính.
+// Mã chỉ gửi khi tạo mới — sửa không đổi được khóa chính.
 const withCode = <T extends object>(code: string, payload: T) =>
 	code.trim() ? { id: code.trim().toUpperCase(), ...payload } : payload;
 

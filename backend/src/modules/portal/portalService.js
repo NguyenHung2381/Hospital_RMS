@@ -1,6 +1,6 @@
 /**
  * portalService.js — Dữ liệu "của tôi" cho cổng người dùng ngoài NCKH: khóa học
- * mình học / dạy, lịch học sắp tới, CME tích luỹ trong năm. Chỉ đọc theo
+ * mình học / dạy, lịch học sắp tới, CME tích lũy trong năm. Chỉ đọc theo
  * actor.id (trainees.user_id / staff_user_id, lecturers.user_id, seminar_participants.user_id,
  * cme_records.user_id) nên không cần quyền courses:read / seminars:read.
  */

@@ -161,7 +161,7 @@ const loadPermissions = async (roleId) => {
 };
 
 // ─── Xoay refresh token + phát hiện dùng lại ────────────────────────────────
-// Mỗi lần làm mới: token đang dùng bị đánh dấu thu hồi (revoked_at, KHÔNG xoá)
+// Mỗi lần làm mới: token đang dùng bị đánh dấu thu hồi (revoked_at, KHÔNG xóa)
 // và được thay bằng token mới cùng họ (family_id). Bước "nhận" token là 1 câu
 // UPDATE nguyên tử — 2 request cùng mang 1 token thì chỉ 1 bên thắng (trước
 // đây SELECT rồi mới DELETE nên cả 2 cùng qua được).
@@ -228,7 +228,7 @@ const refreshAccessToken = async (refreshToken, ip = null, userAgent = null) => 
 	const user = userResult.recordset[0];
 	if (!user || user.id !== decoded.id) throw invalidRefresh();
 
-	// Cùng điều kiện với login(): tài khoản bị vô hiệu hoá / hết hạn không được
+	// Cùng điều kiện với login(): tài khoản bị vô hiệu hóa / hết hạn không được
 	// làm mới phiên — token vừa bị thu hồi ở bước trên nên không thử lại được.
 	const accountExpiresAt = user.account_expires_at
 		? new Date(user.account_expires_at).toISOString().split('T')[0]
@@ -270,7 +270,7 @@ const revokeFamily = async (pool, familyId, userId, ip) => {
 	});
 };
 
-// Đăng xuất phiên hiện tại: xoá cả họ token của phiên (kể cả các token đã xoay
+// Đăng xuất phiên hiện tại: xóa cả họ token của phiên (kể cả các token đã xoay
 // trước đó), không đụng tới phiên trên thiết bị khác.
 const logout = async (refreshToken) => {
 	if (!refreshToken) return;
@@ -296,7 +296,7 @@ const isRememberedSession = async (refreshToken) => {
 	return !!row?.remember_me;
 };
 
-// Đăng xuất khỏi mọi thiết bị: xoá toàn bộ refresh token của người dùng và
+// Đăng xuất khỏi mọi thiết bị: xóa toàn bộ refresh token của người dùng và
 // tăng users.token_version để mọi access token đang lưu hành hết hiệu lực ngay.
 const logoutAll = async (userId, actorIp = null) => {
 	const pool = await getPool();

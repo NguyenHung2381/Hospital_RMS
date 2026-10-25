@@ -95,7 +95,7 @@ router.post(
 	asyncHandler(async (req, res) => {
 		const phase = parseInt(req.params.phase, 10);
 		if (isNaN(phase) || phase < 1 || phase > 9)
-			return res.status(400).json({ success: false, message: 'Phase phải từ 1–9' });
+			return res.status(400).json({ success: false, message: 'Giai đoạn phải từ 1–9' });
 		const item = await deadlineSvc.upsert(req.params.id, phase, req.body, req.user.id);
 		return created(res, item, 'Lưu hạn nộp thành công');
 	}),
@@ -108,7 +108,7 @@ router.delete(
 	asyncHandler(async (req, res) => {
 		const phase = parseInt(req.params.phase, 10);
 		await deadlineSvc.remove(req.params.id, phase, req.user.id);
-		return success(res, null, 'Xoá hạn nộp thành công');
+		return success(res, null, 'Xóa hạn nộp thành công');
 	}),
 );
 

@@ -72,7 +72,7 @@ export function WorkflowFormModal({
 
 	const validate = () => {
 		const err: Partial<Record<'name', string>> = {};
-		if (!form.name.trim()) err.name = 'Vui lòng nhập tên workflow';
+		if (!form.name.trim()) err.name = 'Vui lòng nhập tên quy trình';
 		setErrors(err);
 		return Object.keys(err).length === 0;
 	};
@@ -86,7 +86,7 @@ export function WorkflowFormModal({
 		<Modal
 			open
 			onClose={onClose}
-			title={mode === 'add' ? 'Tạo workflow duyệt' : 'Chỉnh sửa workflow duyệt'}
+			title={mode === 'add' ? 'Tạo quy trình duyệt' : 'Chỉnh sửa quy trình duyệt'}
 			subtitle={mode === 'add' ? 'Thiết lập quy trình duyệt nhiều bước' : `Cập nhật — ${item?.name}`}
 			className={`${styles.modal} ${styles.modalLg}`}
 			bodyClassName={styles.modalBody}
@@ -95,12 +95,12 @@ export function WorkflowFormModal({
 					onCancel={onClose}
 					onConfirm={handleSave}
 					loading={loading}
-					confirmLabel={mode === 'add' ? 'Tạo workflow' : 'Lưu thay đổi'}
+					confirmLabel={mode === 'add' ? 'Tạo quy trình' : 'Lưu thay đổi'}
 				/>
 			}
 		>
 			<FormField
-				label='Tên workflow'
+				label='Tên quy trình'
 				required
 				error={errors.name}
 			>
@@ -205,7 +205,7 @@ export function WorkflowFormModal({
 									type='button'
 									className={styles.itemRemoveBtn}
 									onClick={() => removeStep(s.tempId)}
-									title='Xoá bước'
+									title='Xóa bước'
 								>
 									<TrashSvg />
 								</button>

@@ -11,7 +11,7 @@ export interface DeptListParams {
 	search?: string;
 }
 
-// Không truyền params → giữ hành vi cũ: lấy toàn bộ khoa phòng.
+// Không truyền params → giữ hành vi cũ: lấy toàn bộ khoa/phòng.
 export const getDepartments = (params?: DeptListParams) => {
 	const merged = { limit: 0, ...params };
 	const entries = Object.entries(merged)

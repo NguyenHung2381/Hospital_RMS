@@ -216,7 +216,7 @@
  *     summary: Cập nhật hội thảo/hội nghị
  *     tags: [Seminars]
  *   delete:
- *     summary: Xoá hội thảo/hội nghị (chặn nếu đã cấp số CME)
+ *     summary: Xóa hội thảo/hội nghị (chặn nếu đã cấp số CME)
  *     tags: [Seminars]
  */
 

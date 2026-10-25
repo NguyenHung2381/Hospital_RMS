@@ -3,7 +3,7 @@ import { EditSvg, SearchSvg, TrashSvg, XSvg } from '@/assets/icons';
 import { BulkButton, BulkDeleteModal, type RowSelectionLike } from './RowSelect';
 import styles from './TableToolbar.module.css';
 
-/** Ô tìm kiếm có nút xoá nhanh, đặt trong `tableControls`. */
+/** Ô tìm kiếm có nút xóa nhanh, đặt trong `tableControls`. */
 export function SearchInput({
 	value,
 	onChange,
@@ -26,7 +26,7 @@ export function SearchInput({
 				<button
 					type='button'
 					className={styles.searchClear}
-					aria-label='Xoá tìm kiếm'
+					aria-label='Xóa tìm kiếm'
 					onClick={() => onChange('')}
 				>
 					<XSvg />
@@ -38,7 +38,7 @@ export function SearchInput({
 
 /**
  * Nhãn đếm cạnh tiêu đề bảng. Khi đang chọn dòng thì đổi thành
- * "Đã chọn N · Xoá đã chọn · Bỏ chọn" kèm hộp thoại xác nhận xoá hàng loạt.
+ * "Đã chọn N · Xóa đã chọn · Bỏ chọn" kèm hộp thoại xác nhận xóa hàng loạt.
  */
 export function SelectionCount({
 	rowSel,
@@ -51,9 +51,9 @@ export function SelectionCount({
 	rowSel: RowSelectionLike;
 	itemLabel: string;
 	loading?: boolean;
-	/** Bỏ trống thì không có nút "Xoá đã chọn". */
+	/** Bỏ trống thì không có nút "Xóa đã chọn". */
 	onBulkDelete?: (ids: string[]) => Promise<void> | void;
-	/** Nút hàng loạt khác (vd "Sửa đồng loạt") đặt trước nút xoá. */
+	/** Nút hàng loạt khác (vd "Sửa đồng loạt") đặt trước nút xóa. */
 	extraActions?: ReactNode;
 	/** Nội dung khi không chọn dòng nào, vd "12 giảng viên". */
 	children: ReactNode;
@@ -70,7 +70,7 @@ export function SelectionCount({
 						danger
 						onClick={() => setConfirmOpen(true)}
 					>
-						<TrashSvg /> Xoá đã chọn
+						<TrashSvg /> Xóa đã chọn
 					</BulkButton>
 					<BulkDeleteModal
 						open={confirmOpen}
@@ -125,7 +125,7 @@ export function RowAction({
 	);
 }
 
-/** Cụm nút ở cột "Thao tác": các `RowAction` riêng (children) rồi tới Sửa / Xoá. */
+/** Cụm nút ở cột "Thao tác": các `RowAction` riêng (children) rồi tới Sửa / Xóa. */
 export function RowActions({
 	onEdit,
 	onDelete,
@@ -148,7 +148,7 @@ export function RowActions({
 			)}
 			{onDelete && (
 				<RowAction
-					title='Xoá'
+					title='Xóa'
 					danger
 					onClick={onDelete}
 				>

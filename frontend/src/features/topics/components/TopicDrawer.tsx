@@ -118,7 +118,7 @@ export function TopicDrawer({
 									</div>
 								</div>
 								<div className={styles.infoItem}>
-									<div className={styles.infoLabel}>Phòng ban / Khoa</div>
+									<div className={styles.infoLabel}>Khoa/phòng</div>
 									<div className={styles.infoValue}>
 										{lookup(departments, topic.department_id)}
 									</div>

@@ -75,7 +75,7 @@ const leavePeriod = (l: LeaveRequest) => {
 	return extra ? `${range} · ${extra}` : range;
 };
 
-/** Danh sách đơn xin nghỉ / đi muộn của học viên — huỷ được đơn còn chờ duyệt. */
+/** Danh sách đơn xin nghỉ / đi muộn của học viên — hủy được đơn còn chờ duyệt. */
 function LeaveList({ leaves, onCancel, cancelling }: { leaves: LeaveRequest[]; onCancel: (l: LeaveRequest) => void; cancelling: number | null }) {
 	const pg = useClientPaging(leaves);
 	if (!leaves.length) return <p className={own.idle}>Bạn chưa gửi đơn xin phép nào.</p>;
@@ -103,7 +103,7 @@ function LeaveList({ leaves, onCancel, cancelling }: { leaves: LeaveRequest[]; o
 						{l.status === 'pending' && (
 							<div>
 								<Button size='sm' variant='ghost' loading={cancelling === l.id} disabled={cancelling != null && cancelling !== l.id} onClick={() => onCancel(l)}>
-									Huỷ đơn
+									Hủy đơn
 								</Button>
 							</div>
 						)}
@@ -149,14 +149,14 @@ export default function MyAttendance() {
 	useRealtimeUpdate(['attendance_leave'], loadLeaves);
 
 	const cancelLeave = async (l: LeaveRequest) => {
-		if (!window.confirm(`Huỷ đơn ${LEAVE_TYPE_TEXT[l.type].toLowerCase()} ${leavePeriod(l)}?`)) return;
+		if (!window.confirm(`Hủy đơn ${LEAVE_TYPE_TEXT[l.type].toLowerCase()} ${leavePeriod(l)}?`)) return;
 		setCancelling(l.id);
 		try {
 			await cancelLeaveRequest(l.id);
-			notify.success('Đã huỷ đơn xin phép');
+			notify.success('Đã hủy đơn xin phép');
 			loadLeaves();
 		} catch (e) {
-			notify.error(e instanceof Error ? e.message : 'Huỷ đơn thất bại');
+			notify.error(e instanceof Error ? e.message : 'Hủy đơn thất bại');
 		} finally {
 			setCancelling(null);
 		}

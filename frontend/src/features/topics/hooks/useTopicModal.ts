@@ -108,7 +108,7 @@ export function useTopicModal({
 	}, [memberQuery]);
 
 	// Mỗi lần danh sách thành viên đổi → vai trò mặc định nhảy lần lượt Chủ nhiệm → Thư ký → Thành viên.
-	// Chuẩn hoá ngay khi render (tránh cascading render từ effect).
+	// Chuẩn hóa ngay khi render (tránh cascading render từ effect).
 	const [prevPending, setPrevPending] = useState(pendingMembers);
 	if (prevPending !== pendingMembers) {
 		setPrevPending(pendingMembers);
@@ -167,10 +167,10 @@ export function useTopicModal({
 		if (!isAddRoleAllowed(pendingMembers, manualRole)) {
 			setManualError(
 				pendingMembers.length === 0
-					? 'Vui lòng chọn Chủ nhiệm trước'
+					? 'Vui lòng chọn chủ nhiệm trước'
 					: manualRole === 'leader'
-						? 'Đã có Chủ nhiệm, không thể thêm người thứ hai'
-						: 'Đã có Thư ký, không thể thêm người thứ hai',
+						? 'Đã có chủ nhiệm, không thể thêm người thứ hai'
+						: 'Đã có thư ký, không thể thêm người thứ hai',
 			);
 			return;
 		}
@@ -231,7 +231,7 @@ export function useTopicModal({
 		if (!form.round_id) e.round_id = 'Vui lòng chọn đợt nghiên cứu';
 		if (!form.category_id) e.category_id = 'Vui lòng chọn phân loại';
 		if (!isPaper && !form.level_id) e.level_id = 'Vui lòng chọn cấp độ';
-		if (!form.department_id) e.department_id = 'Vui lòng chọn phòng ban / khoa';
+		if (!form.department_id) e.department_id = 'Vui lòng chọn khoa/phòng';
 		setErrors(e);
 		return Object.keys(e).length === 0;
 	};

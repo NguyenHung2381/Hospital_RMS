@@ -114,7 +114,7 @@ export default function ActivityLogs() {
 				<StatTile
 					label='Thay đổi dữ liệu'
 					value={fmt(t?.writes)}
-					sub='Thêm / sửa / xoá / duyệt…'
+					sub='Thêm / sửa / xóa / duyệt…'
 				/>
 				<StatTile
 					label='Lỗi'

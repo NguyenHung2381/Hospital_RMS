@@ -19,10 +19,10 @@ import { parseDate } from '../../../shared/utils/formatDate';
 export function ClassScheduleBoard({
 	load = getClassCalendar,
 	onOpenCourse,
-	courseFilterLabel = 'Tất cả khoá học',
+	courseFilterLabel = 'Tất cả khóa học',
 }: {
 	load?: (from: string, to: string) => Promise<ClassCalendarResponse>;
-	/** Không truyền = không mở được khoá (vd cổng học viên). */
+	/** Không truyền = không mở được khóa (vd cổng học viên). */
 	onOpenCourse?: (courseId: string) => void;
 	courseFilterLabel?: string;
 }) {
@@ -38,7 +38,7 @@ export function ClassScheduleBoard({
 	const [filterCourseId, setFilterCourseId] = useState('');
 	const { sessions, courses, loading, error } = useClassSchedule(year, load);
 
-	// Ô lọc: mọi khoá có buổi học hoặc có thời gian học trong khoảng đang tải
+	// Ô lọc: mọi khóa có buổi học hoặc có thời gian học trong khoảng đang tải
 	const courseOptions = useMemo(() => {
 		const map = new Map<string, string>();
 		courses.forEach((c) => map.set(c.id, c.name));
@@ -157,7 +157,7 @@ export function ClassScheduleBoard({
 
 				{viewMode === 'calendar' && !loading && !error && (
 					<p className={styles.hint}>
-						Mỗi khoá học một màu · Thanh nhạt màu là thời gian học của khoá · Nhấp vào buổi học để xem chi tiết · Lăn chuột để chuyển tuần/tháng
+						Mỗi khóa học một màu · Thanh nhạt màu là thời gian học của khóa · Nhấp vào buổi học để xem chi tiết · Lăn chuột để chuyển tuần/tháng
 					</p>
 				)}
 			</div>

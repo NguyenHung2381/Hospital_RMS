@@ -10,7 +10,9 @@
  */
 const { getPool, sql } = require('../../config/db');
 const fileService = require('../topics/fileService');
-const sanitizeHtml = require('sanitize-html');
+const { lazyRequire } = require('../../utils/lazyRequire');
+/** @type {typeof import('sanitize-html')} */
+const sanitizeHtml = lazyRequire('sanitize-html');
 const { stripUploadSignatures } = require('../../utils/signedUpload');
 const { httpError } = require('../../utils/httpError');
 
@@ -236,7 +238,7 @@ const uploadMinutesFiles = async (topicId, filesData, userId) => {
 };
 
 // Ảnh chèn vào nhận xét (rich-text) — không lưu vào bảng files vì đây là ảnh
-// minh hoạ trong nhận xét, không phải tài liệu đề tài. Bất kỳ ai có ghế trong
+// minh họa trong nhận xét, không phải tài liệu đề tài. Bất kỳ ai có ghế trong
 // hội đồng của đề tài đều được chèn ảnh vào nhận xét của chính mình.
 const uploadCommentImage = async (topicId, userId, file) => {
 	const roles = await getRolesForTopic(topicId, userId);

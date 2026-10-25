@@ -147,7 +147,7 @@ export function EditTopicModal({
 							</div>
 
 							<div className={styles.editField}>
-								<label className={styles.editLabel}>Phòng ban / Khoa</label>
+								<label className={styles.editLabel}>Khoa/phòng</label>
 								<select
 									className={styles.editSelect}
 									value={editForm.department_id}

@@ -113,7 +113,7 @@ const updateLesson = asyncHandler(async (req, res) => {
 
 const removeLesson = asyncHandler(async (req, res) => {
 	await trainingProgramService.removeLesson(req.params.lessonId, req.user.id);
-	return success(res, null, 'Đã xoá bài học');
+	return success(res, null, 'Đã xóa bài học');
 });
 
 // ─── Tài liệu bài học ────────────────────────────────────────────────────
@@ -137,7 +137,7 @@ const addLessonDocument = asyncHandler(async (req, res) => {
 
 const removeLessonDocument = asyncHandler(async (req, res) => {
 	await trainingProgramService.removeLessonDocument(req.params.docId, req.user.id);
-	return success(res, null, 'Đã xoá tài liệu');
+	return success(res, null, 'Đã xóa tài liệu');
 });
 
 const incrementLessonDocumentDownload = asyncHandler(async (req, res) => {

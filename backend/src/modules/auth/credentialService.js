@@ -1,6 +1,7 @@
 const bcrypt = require('bcrypt');
 const crypto = require('crypto');
 const { sql } = require('../../config/db');
+const redis = require('../../config/redis');
 const securityEvents = require('../audit/securityEventService');
 const { passwordGate, BUSY_ERROR } = require('../../utils/cpuGate');
 const { httpError } = require('../../utils/httpError');
@@ -33,14 +34,14 @@ const fakeCompareDelay = () => {
 	return new Promise((resolve) => setTimeout(resolve, compareMsAvg * (0.85 + Math.random() * 0.3)));
 };
 
-// Khoá tạm tài khoản sau N lần sai mật khẩu / mã 2FA liên tiếp — chống dò
+// Khóa tạm tài khoản sau N lần sai mật khẩu / mã 2FA liên tiếp — chống dò
 // mật khẩu theo TÀI KHOẢN (bổ sung cho rate-limit theo IP đã có ở
 // modules/auth/auth.routes.js, vốn không chặn được kẻ tấn công rải request qua nhiều IP).
 // Chỉ áp dụng cho thiết bị LẠ — thiết bị quen xem trustedDeviceService.js.
 // Chỉ chặn đăng nhập MỚI, không đá phiên đang mở (xem middlewares/auth.js).
 const MAX_FAILED_LOGIN_ATTEMPTS = 5;
 
-// Thời gian khoá tăng dần theo số lần đã bị khoá trong 24h qua (đếm event
+// Thời gian khóa tăng dần theo số lần đã bị khóa trong 24h qua (đếm event
 // 'login_locked' ở security_events — không cần thêm cột): 5 → 15 → 30 → 60 phút.
 const LOCK_MINUTES_BY_LEVEL = [5, 15, 30, 60];
 
@@ -55,8 +56,8 @@ const lockMinutesFor = async (pool, userId) => {
 };
 
 // Tăng bộ đếm atomically trong DB (tránh 2 request song song cùng đọc 1 giá
-// trị cũ) — đủ ngưỡng thì khoá và reset bộ đếm. Trả về locked_until nếu lần
-// sai này làm tài khoản bị khoá, ngược lại null.
+// trị cũ) — đủ ngưỡng thì khóa và reset bộ đếm. Trả về locked_until nếu lần
+// sai này làm tài khoản bị khóa, ngược lại null.
 const recordFailedLogin = async (pool, user, ip, reason = 'sai mật khẩu') => {
 	const minutes = await lockMinutesFor(pool, user.id);
 	const result = await pool
@@ -87,7 +88,7 @@ const recordFailedLogin = async (pool, user, ip, reason = 'sai mật khẩu') =>
 		targetType: 'user',
 		targetId: user.id,
 		ip,
-		detail: `Khoá ${minutes} phút (thiết bị lạ) sau ${MAX_FAILED_LOGIN_ATTEMPTS} lần ${reason} liên tiếp`,
+		detail: `Khóa ${minutes} phút (thiết bị lạ) sau ${MAX_FAILED_LOGIN_ATTEMPTS} lần ${reason} liên tiếp`,
 	});
 	return row.locked_until;
 };
@@ -105,7 +106,7 @@ const isLocked = (user) => !!user.locked_until && new Date(user.locked_until) > 
 // ── Bỏ qua mật khẩu sai lặp lại ─────────────────────────────────
 // Cùng 1 mật khẩu sai nhập lại (gõ lại, trình duyệt còn lưu mật khẩu cũ tự
 // thử) không cho kẻ tấn công thêm thông tin gì, nên không cộng vào bộ đếm
-// khoá. Chỉ giữ HMAC (khoá ngẫu nhiên theo tiến trình, không lưu DB) của vài
+// khóa. Chỉ giữ HMAC (khóa ngẫu nhiên theo tiến trình, không lưu DB) của vài
 // mật khẩu sai gần nhất, trong thời gian ngắn.
 const RECENT_WRONG_TTL_MS = 60 * 60 * 1000;
 const RECENT_WRONG_PER_USER = 5;
@@ -142,22 +143,114 @@ const lockedError = (lockedUntil) => {
 	const secondsLeft = Math.max(1, Math.ceil((new Date(lockedUntil).getTime() - Date.now()) / 1000));
 	return {
 		statusCode: 403,
-		message: `Tài khoản tạm khoá do đăng nhập sai nhiều lần. Thử lại sau ${Math.ceil(secondsLeft / 60)} phút.`,
+		message: `Tài khoản tạm khóa do đăng nhập sai nhiều lần. Thử lại sau ${Math.ceil(secondsLeft / 60)} phút.`,
 		retryAfterSeconds: secondsLeft,
 	};
 };
 
-const assertPassword = async (pool, userId, password) => {
-	const user = (
+// ── Mỗi tài khoản chỉ 1 lượt so mật khẩu / mã tại 1 thời điểm ───────────────
+// Trạng thái khóa (locked_until) đọc lúc đầu request: N request gửi CÙNG LÚC
+// đều thấy "chưa khóa" và mỗi request được thử 1 lần — loạt request song song
+// vượt qua ngưỡng MAX_FAILED_LOGIN_ATTEMPTS. Giữ khóa lượt thử theo tài khoản
+// (Redis SET NX, dùng chung giữa các worker; Redis lỗi thì bộ nhớ tiến trình),
+// rồi mới đọc lại trạng thái khóa (refreshLockState): lượt sau luôn thấy kết
+// quả của lượt trước. Lượt đến sau CHỜ chứ không bị từ chối ngay — trả lỗi khác
+// đi sẽ để lộ username nào tồn tại (username bịa cũng đi qua khóa này, xem login()).
+const ATTEMPT_GUARD_TTL_MS = 15_000; // trần an toàn nếu tiến trình chết khi đang giữ
+const ATTEMPT_WAIT_MS = 5_000; // chờ quá lâu = đang bị dội → 503 như passwordGate
+const ATTEMPT_POLL_MS = 25;
+const RELEASE_SCRIPT = `if redis.call('get', KEYS[1]) == ARGV[1] then return redis.call('del', KEYS[1]) end return 0`;
+const guardMemory = new Map(); // key → { token, expiresAt }
+
+const acquireGuard = async (key, token) => {
+	try {
+		return (await redis.set(key, token, 'PX', ATTEMPT_GUARD_TTL_MS, 'NX')) === 'OK';
+	} catch {
+		const now = Date.now();
+		const held = guardMemory.get(key);
+		if (held && held.expiresAt > now) return false;
+		guardMemory.set(key, { token, expiresAt: now + ATTEMPT_GUARD_TTL_MS });
+		return true;
+	}
+};
+
+const releaseGuard = async (key, token) => {
+	if (guardMemory.get(key)?.token === token) guardMemory.delete(key);
+	try {
+		await redis.eval(RELEASE_SCRIPT, 1, key, token);
+	} catch {
+		// Redis lỗi: khóa trên Redis (nếu có) tự hết hạn sau ATTEMPT_GUARD_TTL_MS
+	}
+};
+
+const withAttemptGuard = async (key, fn) => {
+	const fullKey = `guard:auth-attempt:${key}`;
+	const token = crypto.randomUUID();
+	const deadline = Date.now() + ATTEMPT_WAIT_MS;
+	while (!(await acquireGuard(fullKey, token))) {
+		if (Date.now() >= deadline) throw BUSY_ERROR;
+		await new Promise((resolve) => setTimeout(resolve, ATTEMPT_POLL_MS));
+	}
+	try {
+		return await fn();
+	} finally {
+		await releaseGuard(fullKey, token);
+	}
+};
+
+// Khóa lượt thử theo tài khoản / theo chuỗi đăng nhập (username bịa — login()).
+const userAttemptKey = (userId) => `user:${userId}`;
+const loginAttemptKey = (login) =>
+	`login:${crypto
+		.createHash('sha256')
+		.update(String(login ?? '').trim().toLowerCase())
+		.digest('hex')}`;
+
+// Đọc lại bộ đếm / trạng thái khóa mới nhất — gọi SAU khi đã giữ khóa lượt thử.
+const refreshLockState = async (pool, user) => {
+	const row = (
 		await pool
 			.request()
-			.input('id', sql.VarChar(20), userId)
-			.query('SELECT password FROM users WHERE id = @id')
+			.input('id', sql.VarChar(20), user.id)
+			.query('SELECT failed_login_count, locked_until FROM users WHERE id = @id')
 	).recordset[0];
-	if (!user) throw httpError(404, 'Người dùng không tồn tại');
-	if (!(await comparePassword(String(password ?? ''), user.password)))
-		throw httpError(400, 'Mật khẩu không đúng');
+	if (row) {
+		user.failed_login_count = row.failed_login_count;
+		user.locked_until = row.locked_until;
+	}
+	return user;
 };
+
+// Xác nhận lại mật khẩu cho thao tác nhạy cảm trên phiên đã đăng nhập (đổi mật
+// khẩu, tắt 2FA, tạo lại mã khôi phục). Lần sai tính chung vào bộ đếm khóa của
+// tài khoản và tài khoản đang khóa thì không được thử — nếu không, ai chiếm được
+// phiên dò được mật khẩu qua các API này mà không bao giờ bị khóa.
+const assertPassword = async (
+	pool,
+	userId,
+	password,
+	{ ip = null, message = 'Mật khẩu không đúng' } = {},
+) =>
+	withAttemptGuard(userAttemptKey(userId), async () => {
+		const user = (
+			await pool
+				.request()
+				.input('id', sql.VarChar(20), userId)
+				.query(
+					'SELECT id, username, password, failed_login_count, locked_until FROM users WHERE id = @id',
+				)
+		).recordset[0];
+		if (!user) throw httpError(404, 'Người dùng không tồn tại');
+		if (isLocked(user)) throw lockedError(user.locked_until);
+
+		const plain = String(password ?? '');
+		if (await comparePassword(plain, user.password)) return;
+		if (!isRepeatedWrongPassword(user.id, plain)) {
+			const lockedUntil = await recordFailedLogin(pool, user, ip, 'sai mật khẩu xác nhận lại');
+			if (lockedUntil) throw lockedError(lockedUntil);
+		}
+		throw httpError(400, message);
+	});
 
 module.exports = {
 	hashPassword,
@@ -169,5 +262,9 @@ module.exports = {
 	isRepeatedWrongPassword,
 	recordFailedLogin,
 	resetFailedLogins,
+	withAttemptGuard,
+	userAttemptKey,
+	loginAttemptKey,
+	refreshLockState,
 	assertPassword,
 };

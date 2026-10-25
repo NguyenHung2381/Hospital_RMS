@@ -131,7 +131,7 @@ export default function Catalog({ group }: { group: CatalogGroup }) {
 								<TableEmpty
 									colSpan={5}
 									title={<>Không tìm thấy {label}</>}
-									desc={d.search ? 'Thử thay đổi từ khoá tìm kiếm' : `Chưa có ${label} nào`}
+									desc={d.search ? 'Thử thay đổi từ khóa tìm kiếm' : `Chưa có ${label} nào`}
 								/>
 							) : (
 								d.paged.map((item, i) => {

@@ -37,7 +37,7 @@ test('chống spam: cùng loại + cùng đối tượng trong 30 phút chỉ g�
 	assert.equal(sent.length, before + 1);
 });
 
-test('khoá tài khoản lẻ tẻ không cảnh báo; dồn dập (≥5 trong 15 phút) thì gửi 1 email', async () => {
+test('khóa tài khoản lẻ tẻ không cảnh báo; dồn dập (≥5 trong 15 phút) thì gửi 1 email', async () => {
 	const before = sent.length;
 	recentLocks = 2;
 	await notify({ eventType: 'login_locked', targetId: 'A' });

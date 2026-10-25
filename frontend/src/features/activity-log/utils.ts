@@ -3,7 +3,7 @@ import type { ActivityLog } from './api/activityLogApi';
 export const ACTION_OPTIONS: { value: string; label: string }[] = [
 	{ value: 'create', label: 'Thêm mới' },
 	{ value: 'update', label: 'Cập nhật' },
-	{ value: 'delete', label: 'Xoá' },
+	{ value: 'delete', label: 'Xóa' },
 	{ value: 'execute', label: 'Thực hiện (duyệt, xuất file…)' },
 	{ value: 'view', label: 'Xem' },
 	{ value: 'login', label: 'Đăng nhập' },
@@ -23,7 +23,7 @@ export const STATUS_OPTIONS = [
 	{ value: '400,422', label: '400 · Dữ liệu không hợp lệ' },
 	{ value: '409', label: '409 · Xung đột dữ liệu' },
 	{ value: '429', label: '429 · Quá nhiều yêu cầu' },
-	{ value: '499', label: '499 · Người dùng huỷ' },
+	{ value: '499', label: '499 · Người dùng hủy' },
 	{ value: '500', label: '500 · Lỗi máy chủ' },
 ];
 
@@ -32,7 +32,7 @@ export const METHOD_OPTIONS = [
 	{ value: 'POST', label: 'POST · Tạo / thực hiện' },
 	{ value: 'PUT', label: 'PUT · Cập nhật' },
 	{ value: 'PATCH', label: 'PATCH · Cập nhật một phần' },
-	{ value: 'DELETE', label: 'DELETE · Xoá' },
+	{ value: 'DELETE', label: 'DELETE · Xóa' },
 ];
 
 export const DURATION_OPTIONS = [
@@ -55,7 +55,7 @@ export const STATUS_TEXT: Record<number, string> = {
 	413: 'Dữ liệu quá lớn',
 	422: 'Không xử lý được',
 	429: 'Quá nhiều yêu cầu',
-	499: 'Người dùng huỷ giữa chừng',
+	499: 'Người dùng hủy giữa chừng',
 	500: 'Lỗi máy chủ',
 	502: 'Lỗi cổng',
 	503: 'Dịch vụ không sẵn sàng',

@@ -100,7 +100,7 @@ export default function Seminars({ hospitalTraining = false }: { hospitalTrainin
 
 	return (
 		<AdminLayout
-			pageTitle={ht ? 'Tập huấn bệnh viện' : 'Hội thảo & Hội nghị'}
+			pageTitle={ht ? 'Tập huấn bệnh viện' : 'Hội thảo & hội nghị'}
 			pageSubtitle={
 				ht
 					? 'Buổi tập huấn nội bộ · khoa bắt buộc tham dự · cấp CME theo số tiết'
@@ -282,7 +282,7 @@ export default function Seminars({ hospitalTraining = false }: { hospitalTrainin
 											</button>
 											<button
 												className={`${styles.actionBtn} ${styles.danger}`}
-												title='Xoá'
+												title='Xóa'
 												onClick={() => {
 													s.setDeleting(row);
 													s.setModal('delete');

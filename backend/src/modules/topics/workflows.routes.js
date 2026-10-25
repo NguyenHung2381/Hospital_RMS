@@ -14,7 +14,7 @@ router.post(
 	canManage,
 	[
 		body('resource').trim().notEmpty().withMessage('Vui lòng chọn loại đối tượng áp dụng'),
-		body('name').trim().notEmpty().withMessage('Tên workflow không được để trống'),
+		body('name').trim().notEmpty().withMessage('Tên quy trình duyệt không được để trống'),
 		body('steps').optional().isArray(),
 	],
 	validate,

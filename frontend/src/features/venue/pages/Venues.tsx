@@ -103,10 +103,10 @@ export default function Venues() {
 		try {
 			await venueApi.remove(deleting.id);
 			setItems((prev) => prev.filter((v) => v.id !== deleting.id));
-			showToast('success', `Đã xoá "${deleting.name}"`);
+			showToast('success', `Đã xóa "${deleting.name}"`);
 			setDeleting(null);
 		} catch (err) {
-			showToast('error', err instanceof Error ? err.message : 'Xoá thất bại');
+			showToast('error', err instanceof Error ? err.message : 'Xóa thất bại');
 		} finally {
 			setLoading(false);
 		}
@@ -224,7 +224,7 @@ export default function Venues() {
 								<TableEmpty
 									colSpan={colCount}
 									title='Không tìm thấy địa điểm'
-									desc={search || scopeFilter ? 'Thử thay đổi từ khoá hoặc bộ lọc' : 'Chưa có địa điểm nào'}
+									desc={search || scopeFilter ? 'Thử thay đổi từ khóa hoặc bộ lọc' : 'Chưa có địa điểm nào'}
 								/>
 							) : (
 								paged.map((v, i) => (
@@ -260,7 +260,7 @@ export default function Venues() {
 												tone={v.is_active ? 'green' : 'gray'}
 												dot
 											>
-												{v.is_active ? 'Đang sử dụng' : 'Ngưng sử dụng'}
+												{v.is_active ? 'Đang sử dụng' : 'Ngừng sử dụng'}
 											</Badge>
 										</td>
 										{showActions && (
@@ -278,7 +278,7 @@ export default function Venues() {
 													{canDelete && (
 														<div
 															className={`${base.actionBtn} ${base.danger}`}
-															title='Xoá'
+															title='Xóa'
 															onClick={() => setDeleting(v)}
 														>
 															<TrashSvg />
@@ -323,7 +323,7 @@ export default function Venues() {
 					onClose={() => setDeleting(null)}
 					icon={<TrashSvg />}
 					tone='danger'
-					title='Xoá địa điểm'
+					title='Xóa địa điểm'
 					subtitle={deleting.name}
 					className={`${base.modal} ${base.modalSm}`}
 					bodyClassName={base.modalBody}
@@ -334,7 +334,7 @@ export default function Venues() {
 								onClick={() => setDeleting(null)}
 								disabled={loading}
 							>
-								Huỷ
+								Hủy
 							</button>
 							<button
 								className={base.btnDanger}
@@ -342,15 +342,15 @@ export default function Venues() {
 								disabled={loading}
 							>
 								{loading ? <span className={`${base.spinner} ${base.spinnerDark}`} /> : <TrashSvg />}
-								Xác nhận xoá
+								Xác nhận xóa
 							</button>
 						</>
 					}
 				>
 					<p className={base.deleteDesc}>
-						Xoá <strong>{deleting.name}</strong> khỏi danh mục? Hội đồng / buổi học đã xếp ở
+						Xóa <strong>{deleting.name}</strong> khỏi danh mục? Hội đồng / buổi học đã xếp ở
 						địa điểm này vẫn giữ nguyên tên địa điểm. Nếu chỉ tạm không dùng, hãy chuyển
-						sang <strong>Ngưng sử dụng</strong> thay vì xoá.
+						sang <strong>Ngừng sử dụng</strong> thay vì xóa.
 					</p>
 				</Modal>
 			)}

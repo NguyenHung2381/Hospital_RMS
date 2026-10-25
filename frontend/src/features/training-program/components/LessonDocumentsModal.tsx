@@ -90,10 +90,10 @@ export function LessonDocumentsModal({
 		setBusy(true);
 		try {
 			await removeLessonDocument(docId);
-			notify.success('Đã xoá tài liệu');
+			notify.success('Đã xóa tài liệu');
 			await load();
 		} catch (err) {
-			setError(err instanceof Error ? err.message : 'Xoá thất bại');
+			setError(err instanceof Error ? err.message : 'Xóa thất bại');
 		} finally {
 			setBusy(false);
 		}
@@ -211,7 +211,7 @@ export function LessonDocumentsModal({
 							</div>
 							<button
 								className={styles.actionBtn}
-								title='Xoá'
+								title='Xóa'
 								disabled={busy}
 								onClick={() => handleRemove(doc.id)}
 							>

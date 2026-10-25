@@ -101,7 +101,7 @@ export function UserModal({
 			e.username = 'Tên đăng nhập ít nhất 3 ký tự';
 		if (form.email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email))
 			e.email = 'Email không hợp lệ';
-		if (!form.department_id) e.department_id = 'Vui lòng chọn phòng ban';
+		if (!form.department_id) e.department_id = 'Vui lòng chọn khoa/phòng';
 		if (!form.role_id) e.role_id = 'Vui lòng chọn vai trò';
 		if (form.password) {
 			const pwdError = checkPassword(form.password, form.username);
@@ -151,7 +151,7 @@ export function UserModal({
 						className={styles.btnCancel}
 						onClick={onClose}
 					>
-						Huỷ
+						Hủy
 					</button>
 					<button
 						className={
@@ -271,11 +271,11 @@ export function UserModal({
 				)}
 			</div>
 
-			<div className={styles.formSection}>Phân công &amp; Vai trò</div>
+			<div className={styles.formSection}>Phân công &amp; vai trò</div>
 			<div className={styles.formRow}>
 				<FormField
 					htmlFor='department_id'
-					label='Phòng ban / Khoa'
+					label='Khoa/phòng'
 					required
 					error={errors.department_id}
 				>
@@ -286,7 +286,7 @@ export function UserModal({
 							value={form.department_id}
 							onChange={(e) => set('department_id', e.target.value)}
 						>
-							<option value=''>— Chọn phòng ban —</option>
+							<option value=''>— Chọn khoa/phòng —</option>
 							{departments.map((d) => (
 								<option
 									key={d.id}
@@ -333,7 +333,7 @@ export function UserModal({
 					<div className={styles.formToggleSub}>
 						{form.is_active
 							? 'Tài khoản đang hoạt động'
-							: 'Tài khoản bị tạm khoá'}
+							: 'Tài khoản bị tạm khóa'}
 					</div>
 				</div>
 				<Toggle

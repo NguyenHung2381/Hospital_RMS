@@ -1,5 +1,5 @@
 // modules/auth/authService.js với CSDL giả (test/auth/fakeDb.js):
-//   - chống dò tài khoản: sai username / sai mật khẩu / TK bị khoá mà sai mật
+//   - chống dò tài khoản: sai username / sai mật khẩu / TK bị khóa mà sai mật
 //     khẩu đều trả cùng một lỗi;
 //   - /2fa/setup không được dùng để tắt 2FA đang bật (chỉ cần access token);
 //   - đổi mật khẩu phải khác mật khẩu cũ và gỡ cờ bắt buộc đổi.
@@ -51,7 +51,9 @@ const log = install(async (text, inputs) => {
 	if (/WHERE u\.email = @login/.test(text))
 		return Object.values(USERS).filter((u) => u.email === inputs.login);
 	if (/SELECT username, totp_enabled FROM users/.test(text)) return [byId[inputs.id]];
-	if (/SELECT password FROM users WHERE id = @id/.test(text)) return [byId[inputs.id]];
+	if (/SELECT id, username, password, failed_login_count, locked_until FROM users/.test(text))
+		return [byId[inputs.id]];
+	if (/SELECT failed_login_count, locked_until FROM users/.test(text)) return [byId[inputs.id]];
 	if (/COUNT\(\*\) AS locks/.test(text)) return [{ locks: 0 }];
 	if (/OUTPUT DELETED\.failed_login_count/.test(text))
 		return [{ prev_count: 0, locked_until: null }];
@@ -80,7 +82,7 @@ test('đăng nhập bằng email; email dùng chung nhiều tài khoản → l�
 	await rejectsWith(authService.login('chung@bv.vn', 'Dung#matkhau2026'), 401, /không đúng/);
 });
 
-test('tài khoản bị vô hiệu hoá: sai mật khẩu → lỗi chung, đúng mật khẩu → mới báo vô hiệu hoá', async () => {
+test('tài khoản bị vô hiệu hóa: sai mật khẩu → lỗi chung, đúng mật khẩu → mới báo vô hiệu hóa', async () => {
 	await rejectsWith(authService.login('disabled', 'Sai#matkhau3'), 401, /không đúng/);
 	await rejectsWith(authService.login('disabled', 'Dung#matkhau2026'), 403, /vô hiệu hóa/);
 });

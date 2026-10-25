@@ -55,7 +55,7 @@ const getOpenTopicRounds = asyncHandler(async (req, res) => {
 
 const getTopicRoundByToken = asyncHandler(async (req, res) => {
 	const round = await service.getTopicRoundByToken(req.params.token);
-	if (!round) return error(res, 'Liên kết đăng ký không hợp lệ hoặc đợt đã bị xoá.', 404);
+	if (!round) return error(res, 'Liên kết đăng ký không hợp lệ hoặc đợt đã bị xóa.', 404);
 	success(res, round);
 });
 
@@ -148,7 +148,7 @@ const submitSeminarTest = asyncHandler(async (req, res) => {
 	success(
 		res,
 		await seminarPublicService.submitTest(req.params.code, req.body.answers),
-		'Đã nộp bài test',
+		'Đã nộp bài kiểm tra',
 	);
 });
 

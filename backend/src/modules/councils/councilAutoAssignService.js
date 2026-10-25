@@ -150,7 +150,7 @@ const autoAssignOne = async (
 	const clusters = splitEven(topics, clusterCount);
 	if (topics.length < minSize) {
 		warnings.push(
-			`Hệ "${specialty_group}": chỉ có ${topics.length} đề tài (ít hơn cận dưới ${minSize}) — vẫn tạo 1 hội đồng ${topics.length} đề tài.`,
+			`Hệ "${specialty_group}": chỉ có ${topics.length} đề tài (ít hơn mức tối thiểu ${minSize}) — vẫn tạo 1 hội đồng ${topics.length} đề tài.`,
 		);
 	}
 
@@ -159,7 +159,7 @@ const autoAssignOne = async (
 		const cluster = clusters[i];
 		if (cluster.length > maxSize) {
 			warnings.push(
-				`Hội đồng "${specialty_group} #${i + 1}": có ${cluster.length} đề tài, vượt cận trên ${maxSize} để giữ số hội đồng ít nhất — cân nhắc tách tay nếu quá tải 1 buổi chấm.`,
+				`Hội đồng "${specialty_group} #${i + 1}": có ${cluster.length} đề tài, vượt mức tối đa ${maxSize} để giữ số hội đồng ít nhất — cân nhắc tách tay nếu quá tải 1 buổi chấm.`,
 			);
 		}
 		const deptIds = [...new Set(cluster.map((t) => t.department_id))];
@@ -190,7 +190,7 @@ const autoAssignOne = async (
 				seats[role] = { type: 'external', id: external.id };
 				usedExternalReviewerIds.push(external.id);
 				warnings.push(
-					`Hội đồng "${specialty_group} #${i + 1}": hết người trong viện đủ điều kiện cho ghế ${SEAT_LABELS[role]}, đã xếp người ngoài viện "${external.full_name}" — cần rà lại.`,
+					`Hội đồng "${specialty_group} #${i + 1}": hết người trong viện đủ điều kiện cho ghế ${SEAT_LABELS[role]}, đã xếp chuyên gia ngoài viện "${external.full_name}" — cần rà lại.`,
 				);
 				continue;
 			}

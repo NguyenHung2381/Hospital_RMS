@@ -3,14 +3,14 @@
  *
  *   Câu 1: Nội dung câu hỏi (2 điểm)      ← "Câu 1." / "Câu 1)" / "1." / "1)" đều được
  *   A. Phương án   B. Phương án             ← nhiều phương án trên 1 dòng cũng được
- *   *C. Phương án đúng                     ← dấu * đánh dấu đáp án (tuỳ chọn)
+ *   *C. Phương án đúng                     ← dấu * đánh dấu đáp án (tùy chọn)
  *   D. Phương án
- *   Đáp án: C                              ← tuỳ chọn
+ *   Đáp án: C                              ← tùy chọn
  *
  * Đáp án lấy theo thứ tự ưu tiên: dòng "Đáp án: X" → bảng đáp án cuối file
  * ("ĐÁP ÁN" rồi "1-A 2.C 3B ...") → dấu * → phương án duy nhất in đậm/gạch chân (Word).
  * Câu không có phương án nào = câu tự luận.
- * Hình trong file Word (nằm giữa "Câu N" và câu kế tiếp) → hình minh hoạ của câu N.
+ * Hình trong file Word (nằm giữa "Câu N" và câu kế tiếp) → hình minh họa của câu N.
  * Bảng trong file Word → các dòng "| ô | ô |" giữ trong nội dung câu (QuestionText hiển thị thành bảng).
  * Tiêu đề / "Phần II ..." kết thúc câu đang đọc; "Hướng dẫn chấm", "Lời giải"... (bản giáo
  * viên) bị bỏ tới câu kế tiếp — không lọt vào đề thí sinh nhìn thấy.
@@ -33,7 +33,7 @@ export interface ParsedQuestion {
 	options: string[];
 	correctIndex: number | null;
 	points: number | null;
-	/** Hình đầu tiên của câu (data URI) — mỗi câu chỉ giữ 1 hình minh hoạ */
+	/** Hình đầu tiên của câu (data URI) — mỗi câu chỉ giữ 1 hình minh họa */
 	image: string | null;
 }
 
@@ -116,7 +116,7 @@ export function parseQuestions(lines: SourceLine[]): ParsedQuestion[] {
 		// Hình thuộc câu đang đọc (hình trước "Câu 1" / trong bảng đáp án / hướng dẫn chấm thì bỏ)
 		if (raw.images?.length && cur && !inKey && !inGuide) cur.images.push(...raw.images);
 		if (!text) continue;
-		// Giữ marks khớp với text đã chuẩn hoá khoảng trắng: chỉ trim đầu dòng là đủ lệch,
+		// Giữ marks khớp với text đã chuẩn hóa khoảng trắng: chỉ trim đầu dòng là đủ lệch,
 		// nên dựng lại marks theo text mới khi độ dài khác
 		const line: SourceLine =
 			raw.marks && text !== raw.text ? { text, marks: remapMarks(raw.text, raw.marks) } : { text, marks: raw.marks };

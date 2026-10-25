@@ -54,7 +54,7 @@ const getAll = async (filters, actor = null) => {
 		);
 		req.input('search', sql.NVarChar, `%${search}%`);
 	}
-	// scope 'all' được lọc theo participant_id tuỳ ý; các scope hẹp hơn chỉ được
+	// scope 'all' được lọc theo participant_id tùy ý; các scope hẹp hơn chỉ được
 	// tự lọc theo chính mình (vd. widget "đề tài của tôi") — không được soi người khác.
 	if (participant_id && (scope === 'all' || (actor && participant_id === actor.id))) {
 		baseClauses.push(`(t.created_by = @participant_id OR EXISTS (
@@ -78,7 +78,7 @@ const getAll = async (filters, actor = null) => {
 		),
 	);
 	if (department_id && scope === 'all') {
-		// phạm vi 'department' đã bị khoá cứng theo khoa; chỉ 'all' mới lọc theo department_id tuỳ ý
+		// phạm vi 'department' đã bị khóa cứng theo khoa; chỉ 'all' mới lọc theo department_id tùy ý
 		baseClauses.push(
 			inClause(req, 't.department_id', 'dept', splitList(department_id), sql.VarChar(20)),
 		);

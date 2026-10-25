@@ -64,7 +64,7 @@ export default function Roles() {
 
 	return (
 		<AdminLayout
-			pageTitle='Quản lý Vai trò & Quyền'
+			pageTitle='Vai trò & quyền'
 			pageSubtitle='Danh sách vai trò và phân quyền người dùng'
 			headerActions={headerActions}
 		>
@@ -179,7 +179,7 @@ export default function Roles() {
 										</p>
 										<p className={styles.emptyDesc}>
 											{r.search
-												? 'Thử thay đổi từ khoá tìm kiếm'
+												? 'Thử thay đổi từ khóa tìm kiếm'
 												: 'Nhấn "Thêm vai trò" để bắt đầu'}
 										</p>
 									</div>
@@ -218,7 +218,7 @@ export default function Roles() {
 															</Badge>
 														)}
 														{role.is_system && (
-															<Badge tone='gray' style={{ marginLeft: 6 }} title='Vai trò gốc của hệ thống — không xoá được'>
+															<Badge tone='gray' style={{ marginLeft: 6 }} title='Vai trò gốc của hệ thống — không xóa được'>
 																Hệ thống
 															</Badge>
 														)}
@@ -326,7 +326,7 @@ export default function Roles() {
 												{!role.is_system && (
 													<div
 														className={`${styles.actionBtn} ${styles.danger}`}
-														title='Xoá'
+														title='Xóa'
 														onClick={() => {
 															r.setDeletingRole(role);
 															r.setModal('delete');

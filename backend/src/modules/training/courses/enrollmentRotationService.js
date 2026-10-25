@@ -7,7 +7,7 @@
  *   - retake: học lại vòng không đạt (dòng mới, attempt_no + 1).
  *   - move: đổi thứ tự 1 vòng lên/xuống (rồi "Tính lại ngày").
  *   - carryOver: công nhận vòng đã Đạt ở hồ sơ khác của cùng học viên.
- * Vòng đã có kết quả (Đạt / Không đạt) là lịch sử: sinh lại / xếp lại không xoá, không đổi ngày.
+ * Vòng đã có kết quả (Đạt / Không đạt) là lịch sử: sinh lại / xếp lại không xóa, không đổi ngày.
  * Danh sách trả kèm cảnh báo từng dòng (không chặn).
  */
 const { getPool, sql } = require('../../../config/db');
@@ -108,7 +108,7 @@ const list = async (enrollmentId) => {
 	};
 };
 
-// Sinh vòng từ chương trình. Đã có vòng thì chỉ sinh lại khi replace=true: xoá vòng chưa có
+// Sinh vòng từ chương trình. Đã có vòng thì chỉ sinh lại khi replace=true: xóa vòng chưa có
 // kết quả, giữ vòng Đạt / Không đạt và chỉ sinh vòng (khoa) chưa Đạt.
 const generate = async (enrollmentId, { replace = false } = {}, actorId) => {
 	const pool = await getPool();
@@ -264,7 +264,7 @@ const update = async (rotationId, data, actorId, { source = 'staff' } = {}) => {
 		sets.push(`${field} = @${field}`);
 		req.input(field, type, data[field] === '' ? null : data[field]);
 	}
-	// Kết quả đổi ⇒ ghi lại ai nhập, lúc nào, nguồn; về "chưa đánh giá" thì xoá. Cột ở vế
+	// Kết quả đổi ⇒ ghi lại ai nhập, lúc nào, nguồn; về "chưa đánh giá" thì xóa. Cột ở vế
 	// phải là giá trị TRƯỚC khi UPDATE nên so được kết quả cũ / mới.
 	if (data.result !== undefined) {
 		const changed = (col, val) =>

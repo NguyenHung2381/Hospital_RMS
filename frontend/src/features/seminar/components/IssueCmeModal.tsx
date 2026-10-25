@@ -14,7 +14,7 @@ export function IssueCmeModal({
 	onConfirm,
 }: {
 	targets: SeminarParticipant[];
-	/** Số người đã chọn nhưng chưa điểm danh / chưa làm bài test — bị bỏ qua */
+	/** Số người đã chọn nhưng chưa điểm danh / chưa làm bài kiểm tra — bị bỏ qua */
 	notEligible?: number;
 	defaultYear: number | null;
 	registerLastSeq: number | null;
@@ -45,7 +45,7 @@ export function IssueCmeModal({
 						onClick={onClose}
 						disabled={loading}
 					>
-						Huỷ
+						Hủy
 					</button>
 					<button
 						className={styles.btnPrimary}
@@ -69,7 +69,7 @@ export function IssueCmeModal({
 			</div>
 			{notEligible > 0 && (
 				<p className={styles.muted}>
-					Bỏ qua {notEligible} người tự đăng ký chưa điểm danh, chưa làm bài test hoặc chưa đạt điểm.
+					Bỏ qua {notEligible} người tự đăng ký chưa điểm danh, chưa làm bài kiểm tra hoặc chưa đạt điểm.
 				</p>
 			)}
 			{pending.length === 0 ? (

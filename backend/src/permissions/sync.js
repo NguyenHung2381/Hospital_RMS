@@ -12,8 +12,8 @@ const logger = require('../config/logger');
 //   - Quyền đã có → cập nhật name/description/module/sort_order nếu khác.
 //     resource/action của một id KHÔNG bao giờ bị đổi tự động (đổi nghĩa quyền
 //     đang được cấp là thao tác nguy hiểm) — chỉ cảnh báo.
-//   - Quyền có trong DB mà không có trong catalog → chỉ cảnh báo, không xoá
-//     (xoá sẽ cascade gỡ khỏi mọi vai trò).
+//   - Quyền có trong DB mà không có trong catalog → chỉ cảnh báo, không xóa
+//     (xóa sẽ cascade gỡ khỏi mọi vai trò).
 // Lỗi đồng bộ không chặn server khởi động: quyền cũ trong DB vẫn dùng được.
 // dryRun: chỉ tính và trả về thay đổi, không ghi DB.
 const syncPermissions = async ({ dryRun = false } = {}) => {

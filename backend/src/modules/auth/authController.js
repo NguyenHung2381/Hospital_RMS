@@ -58,8 +58,8 @@ const login = async (req, res, next) => {
 				remember_me === true,
 			);
 		} catch (err) {
-			// Sai tài khoản/mật khẩu (401) hoặc bị khoá tạm (kèm retryAfterSeconds)
-			// = 1 lần dò. Lỗi khác (503 quá tải, 403 tài khoản vô hiệu hoá sau khi
+			// Sai tài khoản/mật khẩu (401) hoặc bị khóa tạm (kèm retryAfterSeconds)
+			// = 1 lần dò. Lỗi khác (503 quá tải, 403 tài khoản vô hiệu hóa sau khi
 			// ĐÚNG mật khẩu...) không tính.
 			if (err?.statusCode === 401 || (err?.statusCode === 403 && err.retryAfterSeconds)) {
 				await loginShield.recordFailure({ ip: req.ip, username, userAgent });
@@ -79,9 +79,9 @@ const refresh = async (req, res, next) => {
 		const token = refreshTokenOf(req);
 		if (!token) return error(res, 'Không có phiên đăng nhập để làm mới', 401);
 		const data = await sessionTokenService.refreshAccessToken(token, req.ip, req.get('user-agent'));
-		return success(res, withRefreshCookie(res, data), 'Làm mới token thành công');
+		return success(res, withRefreshCookie(res, data), 'Làm mới phiên đăng nhập thành công');
 	} catch (err) {
-		// Phiên hỏng thật (không phải 2 tab cùng làm mới) thì xoá cookie luôn
+		// Phiên hỏng thật (không phải 2 tab cùng làm mới) thì xóa cookie luôn
 		if (err.statusCode === 401 && err.code !== 'REFRESH_RACE') clearRefreshCookie(res);
 		if (err.code) {
 			return res
@@ -154,12 +154,12 @@ const verifySetup2FA = asyncHandler(async (req, res) => {
 });
 
 const regenerateBackupCodes = asyncHandler(async (req, res) => {
-	const data = await twoFactorService.regenerateBackupCodes(req.user.id, req.body.password);
+	const data = await twoFactorService.regenerateBackupCodes(req.user.id, req.body.password, req.ip);
 	return success(res, data, 'Đã tạo bộ mã khôi phục mới');
 });
 
 const disable2FA = asyncHandler(async (req, res) => {
-	await twoFactorService.disable2FA(req.user.id, req.body.password);
+	await twoFactorService.disable2FA(req.user.id, req.body.password, req.body.code, req.ip);
 	return success(res, null, 'Đã tắt xác thực 2 lớp');
 });
 

@@ -141,7 +141,7 @@
  * @swagger
  * /users/{id}:
  *   delete:
- *     summary: Xoá người dùng
+ *     summary: Xóa người dùng
  *     tags: [Users]
  *     description: Chỉ admin mới có quyền
  *     parameters:
@@ -152,7 +152,7 @@
  *           type: string
  *     responses:
  *       200:
- *         description: Xoá thành công
+ *         description: Xóa thành công
  *       403:
  *         description: Không có quyền
  *       404:

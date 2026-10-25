@@ -98,7 +98,8 @@ export default function TraineeDetail() {
 	const back = (
 		<button
 			className={ds.backLink}
-			onClick={() => navigate('/admin/trainees')}
+			// Quay lại trang vừa mở (Học viên của 1 loại / Tất cả học viên); vào thẳng link thì về danh bạ chung
+			onClick={() => (window.history.state?.idx > 0 ? navigate(-1) : navigate('/admin/trainees'))}
 		>
 			<ChevLSvg /> Danh sách học viên
 		</button>
@@ -228,7 +229,7 @@ function TraineeSummary({
 							{trainee.is_active ? 'Hoạt động' : 'Ngừng hoạt động'}
 						</span>
 						{trainee.account_granted && trainee.account_active === false ? (
-							<span className={ds.chipMissing}>Tài khoản đã khoá</span>
+							<span className={ds.chipMissing}>Tài khoản đã khóa</span>
 						) : (
 							<span className={trainee.account_granted ? ds.chipDone : ds.chipMuted}>
 								{trainee.account_granted ? 'Đã cấp tài khoản' : 'Chưa cấp tài khoản'}

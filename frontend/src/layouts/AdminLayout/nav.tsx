@@ -1,4 +1,5 @@
 import {
+	ActivitySvg,
 	ApproveSvg,
 	BadgeSvg,
 	BellSvg,
@@ -12,13 +13,12 @@ import {
 	CopySvg,
 	DashboardSvg,
 	DeptSvg,
+	DocSvg,
 	DownloadSvg,
 	EditSvg,
-	FileTextSvg,
 	HelpSvg,
 	HistorySvg,
 	KeySvg,
-	LayersSvg,
 	LinkSvg,
 	ListSvg,
 	MessageSvg,
@@ -29,6 +29,7 @@ import {
 	ShieldSvg,
 	TagSvg,
 	TopicSvg,
+	TrendUpSvg,
 	UserCheckSvg,
 	UserPlusSvg,
 	UserSvg,
@@ -63,24 +64,18 @@ export const KEY_TO_PATH: Record<string, string> = {
 	externalReviewers: '/admin/external-reviewers',
 	categories: '/admin/categories',
 	trainees: '/admin/trainees',
+	dtlt: '/admin/dtlt',
+	gphn: '/admin/practice-records',
+	ctcv: '/admin/ctcv',
 	trainingPrograms: '/admin/training-programs',
-	lessons: '/admin/lessons',
-	classSchedule: '/admin/class-schedule',
 	myTasks: '/admin/viec-cua-toi',
 	lecturers: '/admin/lecturers',
 	trainingCatalog: '/admin/trainee-types',
-	courses: '/admin/courses',
-	practiceRecords: '/admin/practice-records',
-	practiceResults: '/admin/practice-results',
-	practiceBoard: '/admin/practice-board',
 	questionBank: '/admin/question-bank',
 	cmeCompliance: '/admin/cme-compliance',
 	cmeRecords: '/admin/cme-records',
 	staffLicenses: '/admin/staff-licenses',
 	staffAttendance: '/admin/staff-attendance',
-	shifts: '/admin/shifts',
-	shiftRoster: '/admin/shift-roster',
-	leaveRequests: '/admin/leave-requests',
 	cmeCreditCatalog: '/admin/cme-credit-categories',
 	users: '/admin/users',
 	roles: '/admin/roles',
@@ -97,7 +92,7 @@ export const KEY_TO_PATH: Record<string, string> = {
 export const PATH_TO_KEY: Record<string, string> = Object.fromEntries(
 	Object.entries(KEY_TO_PATH).map(([k, v]) => [v, k]),
 );
-// Dashboard / Danh mục NCKH / Danh mục Đào tạo gộp nhiều tab dưới 1 mục
+// Dashboard / Danh mục NCKH / Danh mục đào tạo gộp nhiều tab dưới 1 mục
 // sidebar — các path tab còn lại (ngoài path mặc định) cần trỏ ngược thủ công
 // để vẫn highlight đúng mục khi đang ở tab khác.
 DASHBOARD_TABS.forEach((t) => {
@@ -117,6 +112,57 @@ DASHBOARD_TABS.forEach((t) => {
 ].forEach((p) => {
 	PATH_TO_KEY[p] = 'trainingCatalog';
 });
+
+// ─── TAB CỦA MỤC MENU ─────────────────────
+// Mục menu gộp nhiều trang: mỗi trang là 1 tab (AdminLayout vẽ thanh tab ở đầu
+// trang). Tab chỉ hiện khi có quyền; bấm mục menu sẽ mở tab đầu tiên được phép.
+export interface SectionTab {
+	to: string;
+	label: string;
+	perm?: PermissionKey;
+}
+export const SECTION_TABS: Record<string, SectionTab[]> = {
+	// Mỗi loại đào tạo 1 mục: khóa của loại đó, lịch học, học viên đã ghi danh.
+	dtlt: [
+		{ to: '/admin/dtlt', label: 'Khóa học', perm: 'courses:read' },
+		{ to: '/admin/dtlt/lich-hoc', label: 'Lịch học', perm: 'courses:read' },
+		{ to: '/admin/dtlt/hoc-vien', label: 'Học viên', perm: 'trainees:read' },
+	],
+	gphn: [
+		{ to: '/admin/practice-records', label: 'Hồ sơ thực hành', perm: 'courses:read' },
+		{ to: '/admin/practice-board', label: 'Theo ngày', perm: 'courses:read' },
+		{ to: '/admin/practice-results', label: 'Nhập kết quả vòng', perm: 'courses:update' },
+		{ to: '/admin/practice-batches', label: 'Đợt thực hành', perm: 'courses:read' },
+		{ to: '/admin/gphn/hoc-vien', label: 'Học viên', perm: 'trainees:read' },
+	],
+	ctcv: [
+		{ to: '/admin/ctcv', label: 'Khóa học', perm: 'courses:read' },
+		{ to: '/admin/ctcv/lich-hoc', label: 'Lịch học', perm: 'courses:read' },
+		{ to: '/admin/ctcv/hoc-vien', label: 'Học viên', perm: 'trainees:read' },
+	],
+	staffAttendance: [
+		{ to: '/admin/staff-attendance', label: 'Điểm danh', perm: 'staff_attendance:read' },
+		{ to: '/admin/shift-roster', label: 'Phân ca', perm: 'staff_attendance:roster' },
+		{ to: '/admin/leave-requests', label: 'Đơn xin phép', perm: 'staff_attendance:approve' },
+		{ to: '/admin/shifts', label: 'Ca & mẫu ca tuần', perm: 'staff_attendance:manage' },
+	],
+	trainingPrograms: [
+		{ to: '/admin/training-programs', label: 'Chương trình' },
+		{ to: '/admin/lessons', label: 'Bài học' },
+	],
+};
+Object.entries(SECTION_TABS).forEach(([key, tabs]) =>
+	tabs.forEach((t) => {
+		PATH_TO_KEY[t.to] = key;
+	}),
+);
+// Chi tiết khóa (/admin/courses/:id) khi chưa tải xong khóa: tạm tô sáng Đào tạo liên tục.
+PATH_TO_KEY['/admin/courses'] = 'dtlt';
+/** Tab của mục menu đang chứa đúng đường dẫn này (null = trang không thuộc nhóm tab). */
+export const sectionTabsOf = (pathname: string) => {
+	const key = PATH_TO_KEY[pathname];
+	return key ? (SECTION_TABS[key] ?? null) : null;
+};
 
 // ─── NAV CONFIG ───────────────────────────
 interface NavItem {
@@ -145,10 +191,12 @@ const navItem = (
 // - 4 dashboard (chung / NCKH / Đào tạo / Hội nghị & CME) là 1 trang có tab
 //   (DashboardTabs) nên chỉ có 1 mục menu; tab của module bị tắt tự ẩn.
 // - Hội nghị (tổ chức sự kiện) và Tín chỉ CME (tín chỉ từ hội nghị,
-//   khoá học, ghi nhận ngoài) là 2 nhóm riêng, dùng chung module 'seminar'.
+//   khóa học, ghi nhận ngoài) là 2 nhóm riêng, dùng chung module 'seminar'.
 // - Mục dùng chung nhiều mảng (Báo cáo, Thông báo, Khảo sát) không nhét vào
-//   "Quản trị hệ thống"; Nhân sự (CCHN) tách nhóm riêng. Điểm danh là của học viên
-//   nên nằm trong Đào tạo (bảng điểm danh, phân ca) / Thiết lập đào tạo (ca, mẫu ca).
+//   "Quản trị hệ thống"; Nhân sự (CCHN) tách nhóm riêng.
+// - Đào tạo chia theo loại: Đào tạo liên tục / Giấy phép hành nghề / Cầm tay chỉ
+//   việc, mỗi loại 1 mục; ca & điểm danh và thiết lập là 2 nhóm riêng. Trang cùng
+//   loại gộp thành tab của 1 mục (SECTION_TABS) thay vì mỗi trang 1 mục menu.
 // - Trang có tab (Danh mục NCKH, Danh mục đào tạo) chỉ có 1 mục menu.
 export const NAV_GROUPS: NavGroup[] = [
 	{
@@ -156,7 +204,7 @@ export const NAV_GROUPS: NavGroup[] = [
 		items: [
 			navItem('dashboard', 'Bảng điều khiển', DashboardSvg),
 			navItem('myTasks', 'Việc của tôi', CheckCircleSvg),
-			navItem('reports', 'Báo cáo & Xuất', DownloadSvg, 'reports:read'),
+			navItem('reports', 'Báo cáo & xuất dữ liệu', DownloadSvg, 'reports:read'),
 		],
 	},
 	{
@@ -166,11 +214,11 @@ export const NAV_GROUPS: NavGroup[] = [
 			navItem('rounds', 'Đợt nghiên cứu', RoundSvg, 'rounds:read'),
 			navItem('schedule', 'Lịch trình đợt', CalendarSvg, 'rounds:read'),
 			navItem('topics', 'Đề tài nghiên cứu', TopicSvg, 'topics:read'),
-			navItem('approvals', 'Phê duyệt', ApproveSvg, 'topics:approve'),
-			navItem('councils', 'Hội đồng chấm', ClipboardCheckSvg, 'councils:read'),
+			navItem('approvals', 'Phê duyệt đề tài', ApproveSvg, 'topics:approve'),
+			navItem('councils', 'Hội đồng chấm đề cương', ClipboardCheckSvg, 'councils:read'),
 			navItem(
 				'externalReviewers',
-				'Người ngoài viện',
+				'Chuyên gia ngoài viện',
 				UserPlusSvg,
 				'councils:read',
 			),
@@ -179,39 +227,33 @@ export const NAV_GROUPS: NavGroup[] = [
 		],
 	},
 	{
-		// Việc hằng ngày: khóa học (ghi danh → lịch → thi → kết quả) và thực hành GPHN theo ngày.
+		// Chia theo loại đào tạo — mỗi loại 1 mục, việc của loại đó là các tab bên trong.
+		// "Tất cả học viên" là danh bạ chung (1 người có thể học nhiều loại).
 		section: 'Đào tạo',
 		items: [
-			navItem('courses', 'Khóa ĐTLT / CTCV', ClipboardCheckSvg, 'courses:read'),
-			navItem('practiceRecords', 'Hồ sơ thực hành GPHN', FileTextSvg, 'courses:read'),
-			navItem('practiceResults', 'Nhập kết quả vòng', ApproveSvg, 'courses:update'),
-			navItem('practiceBoard', 'Thực hành theo ngày', DeptSvg, 'courses:read'),
-			navItem('classSchedule', 'Lịch học', CalendarSvg, 'courses:read'),
-			navItem('trainees', 'Học viên', UsersSvg, 'trainees:read'),
-			navItem('shiftRoster', 'Phân ca học viên', CalendarSvg, 'staff_attendance:roster'),
-			navItem(
-				'staffAttendance',
-				'Bảng điểm danh',
-				ClockSvg,
-				'staff_attendance:read',
-			),
-			navItem('leaveRequests', 'Đơn xin phép', FileTextSvg, 'staff_attendance:approve'),
+			navItem('dtlt', 'Đào tạo liên tục', TrendUpSvg),
+			navItem('gphn', 'Giấy phép hành nghề', DocSvg),
+			navItem('ctcv', 'Cầm tay chỉ việc', ActivitySvg),
+			navItem('trainees', 'Tất cả học viên', UsersSvg, 'trainees:read'),
 		],
 	},
 	{
-		// Khai báo 1 lần trước khi mở khóa: chương trình → bài học → câu hỏi → giảng viên → danh mục.
+		// Ca, phân ca, điểm danh và đơn xin phép của học viên — 1 mục, mỗi việc 1 tab (theo quyền).
+		section: 'Ca & điểm danh học viên',
+		items: [navItem('staffAttendance', 'Ca & điểm danh', ClockSvg)],
+	},
+	{
+		// Khai báo 1 lần trước khi mở khóa: chương trình & bài học → câu hỏi → giảng viên → danh mục.
 		section: 'Thiết lập đào tạo',
 		items: [
 			navItem(
 				'trainingPrograms',
-				'Chương trình đào tạo',
+				'Chương trình & bài học',
 				BookOpenSvg,
 				'training_programs:read',
 			),
-			navItem('lessons', 'Bài học', FileTextSvg, 'training_programs:read'),
 			navItem('questionBank', 'Ngân hàng câu hỏi', HelpSvg, 'exams:manage'),
 			navItem('lecturers', 'Giảng viên', UserCheckSvg, 'lecturers:read'),
-			navItem('shifts', 'Ca học viên', LayersSvg, 'staff_attendance:manage'),
 			navItem(
 				'trainingCatalog',
 				'Danh mục đào tạo',
@@ -221,10 +263,10 @@ export const NAV_GROUPS: NavGroup[] = [
 		],
 	},
 	{
-		// Tổ chức sự kiện: lập hội nghị → quét vé điểm danh tại cửa hội trường.
-		section: 'Hội nghị',
+		// Tổ chức sự kiện: lập hội nghị / buổi tập huấn → quét vé điểm danh tại cửa hội trường.
+		section: 'Hội nghị & tập huấn',
 		items: [
-			navItem('seminars', 'Hội thảo & Hội nghị', MonitorSvg, 'seminars:read'),
+			navItem('seminars', 'Hội thảo & hội nghị', MonitorSvg, 'seminars:read'),
 			navItem('hospitalTrainings', 'Tập huấn bệnh viện', UsersSvg, 'seminars:read'),
 			navItem('ticketScan', 'Quét vé điểm danh', QrSvg, 'seminars:update'),
 		],
@@ -237,7 +279,7 @@ export const NAV_GROUPS: NavGroup[] = [
 			navItem('cmeRecords', 'Ghi nhận độc lập', EditSvg, 'cme_records:manage'),
 			navItem(
 				'cmeCompliance',
-				'Cảnh báo tín chỉ',
+				'Theo dõi ngưỡng tín chỉ',
 				WarnSvg,
 				'seminars:cme_manage',
 			),
@@ -262,7 +304,7 @@ export const NAV_GROUPS: NavGroup[] = [
 		],
 	},
 	{
-		section: 'Thông báo & Khảo sát',
+		section: 'Thông báo & khảo sát',
 		items: [
 			navItem('notifications', 'Thông báo', BellSvg, 'notifications:read'),
 			navItem('surveys', 'Khảo sát', MessageSvg, 'surveys:manage'),
@@ -273,11 +315,11 @@ export const NAV_GROUPS: NavGroup[] = [
 		section: 'Quản trị hệ thống',
 		items: [
 			navItem('users', 'Người dùng', UserSvg, 'users:read'),
-			navItem('roles', 'Vai trò & Quyền', RoleSvg, 'roles:read'),
+			navItem('roles', 'Vai trò & quyền', RoleSvg, 'roles:read'),
 			navItem('departments', 'Khoa / Phòng ban', DeptSvg, 'departments:read'),
 			navItem('venues', 'Địa điểm / Phòng họp', BuildingSvg, 'venues:read'),
 			navItem('personMerge', 'Duyệt trùng danh tính', CopySvg, 'persons:read'),
-			navItem('workflows', 'Workflow duyệt', LinkSvg, 'workflows:manage'),
+			navItem('workflows', 'Quy trình duyệt', LinkSvg, 'workflows:manage'),
 			navItem(
 				'settings',
 				'Cấu hình hệ thống',
@@ -298,22 +340,20 @@ export const NAV_GROUPS: NavGroup[] = [
 const MODULE_BY_SECTION: Record<string, ModuleKey> = {
 	'Nghiên cứu khoa học': 'research',
 	'Đào tạo': 'training',
+	'Ca & điểm danh học viên': 'attendance',
 	'Thiết lập đào tạo': 'training',
-	'Hội nghị': 'seminar',
+	'Hội nghị & tập huấn': 'seminar',
 	'Tín chỉ CME': 'seminar',
 };
 const MODULE_BY_KEY: Record<string, ModuleKey> = {
 	surveys: 'survey',
 	staffAttendance: 'attendance',
-	shifts: 'attendance',
-	shiftRoster: 'attendance',
-	leaveRequests: 'attendance',
 };
 export const moduleOf = (section: string, key: string) =>
 	MODULE_BY_KEY[key] ?? MODULE_BY_SECTION[section];
 
 // Không cho tắt: Bảng điều khiển là trang mặc định của /admin, Cấu hình hệ thống
-// là nơi bật lại menu — tắt là tự khoá mình.
+// là nơi bật lại menu — tắt là tự khóa mình.
 const LOCKED = new Set(['dashboard', 'settings']);
 
 /** Danh sách mục menu quản trị cho tab "Menu hiển thị" ở Cấu hình hệ thống. */

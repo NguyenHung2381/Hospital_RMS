@@ -1,0 +1,107 @@
+/* =============================================
+   TIME PICKER — dùng chung khung ô nhập / popover với DatePicker
+============================================= */
+
+.container {
+	composes: container from './DatePicker.module.css';
+}
+.inputWrapper {
+	composes: inputWrapper from './DatePicker.module.css';
+}
+.input {
+	composes: input from './DatePicker.module.css';
+	cursor: text;
+	font-variant-numeric: tabular-nums;
+}
+.isOpen {
+	composes: isOpen from './DatePicker.module.css';
+}
+.hasError {
+	composes: hasError from './DatePicker.module.css';
+}
+.calendarIcon {
+	composes: calendarIcon from './DatePicker.module.css';
+}
+.clearBtn {
+	composes: clearBtn from './DatePicker.module.css';
+}
+.popover {
+	composes: popover from './DatePicker.module.css';
+}
+.placementTop {
+	composes: placementTop from './DatePicker.module.css';
+}
+.footer {
+	composes: footer from './DatePicker.module.css';
+}
+.todayBtn {
+	composes: todayBtn from './DatePicker.module.css';
+}
+.clearTextBtn {
+	composes: clearTextBtn from './DatePicker.module.css';
+}
+
+.timePopover {
+	width: 232px;
+	padding: 12px;
+}
+
+.colHeads,
+.cols {
+	display: grid;
+	grid-template-columns: 1fr 1fr;
+	gap: 8px;
+}
+
+.colHeads {
+	margin-bottom: 6px;
+	text-align: center;
+	font-size: var(--font-size-2xs);
+	font-weight: 700;
+	color: var(--color-gray-400, #9ca3af);
+	text-transform: uppercase;
+	letter-spacing: 0.03em;
+}
+
+/* Mỗi cột cuộn riêng, hiện ~6 ô */
+.col {
+	position: relative;
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+	height: 216px;
+	overflow-y: auto;
+	padding: 2px;
+	border-radius: 10px;
+	background: var(--color-gray-50, #f8fafc);
+	scrollbar-width: thin;
+}
+
+.cell {
+	flex: 0 0 34px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	border: none;
+	border-radius: 8px;
+	background: transparent;
+	font-family: inherit;
+	font-size: var(--font-size-compact);
+	font-weight: 500;
+	font-variant-numeric: tabular-nums;
+	color: var(--color-gray-700, #374151);
+	cursor: pointer;
+	transition: all 0.15s ease;
+}
+
+.cell:hover:not(.cellSelected) {
+	background: var(--color-gray-100, #f1f5f9);
+	color: var(--color-gray-900, #111827);
+}
+
+.cellSelected {
+	background: var(--color-primary, #10b981);
+	color: #ffffff;
+	font-weight: 700;
+	box-shadow: 0 3px 10px rgba(16, 185, 129, 0.3);
+}

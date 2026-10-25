@@ -21,13 +21,13 @@ export default function Workflow() {
 			className={styles.btnAddHeader}
 			onClick={() => d.setModal('add')}
 		>
-			<PlusSvg /> Tạo workflow
+			<PlusSvg /> Tạo quy trình
 		</button>
 	);
 
 	return (
 		<AdminLayout
-			pageTitle='Workflow duyệt'
+			pageTitle='Quy trình duyệt'
 			pageSubtitle='Cấu hình quy trình duyệt nhiều bước — mặc định tắt, đề tài vẫn duyệt 1 bước như hiện tại trừ khi bật'
 			breadcrumbs={[{ label: 'Hệ thống' }]}
 			headerActions={headerActions}
@@ -35,8 +35,8 @@ export default function Workflow() {
 			<div className={styles.tableCard}>
 				<div className={styles.tableHeader}>
 					<div className={styles.tableHeaderLeft}>
-						<span className={styles.tableTitle}>Danh sách workflow</span>
-						<span className={styles.tableCount}>{d.items.length} workflow</span>
+						<span className={styles.tableTitle}>Danh sách quy trình duyệt</span>
+						<span className={styles.tableCount}>{d.items.length} quy trình</span>
 					</div>
 				</div>
 
@@ -45,7 +45,7 @@ export default function Workflow() {
 						<thead>
 							<tr>
 								<th className={`${styles.th} ${tbl.thIdx}`}>STT</th>
-								<th className={styles.th}>Tên workflow</th>
+								<th className={styles.th}>Tên quy trình</th>
 								<th className={styles.th}>Áp dụng cho</th>
 								<th className={styles.th}>Số bước</th>
 								<th className={styles.th}>Trạng thái</th>
@@ -61,8 +61,8 @@ export default function Workflow() {
 							) : d.items.length === 0 ? (
 								<TableEmpty
 									colSpan={6}
-									title='Chưa có workflow nào'
-									desc='Đề tài đang duyệt theo đường 1 bước mặc định. Tạo workflow để chuyển sang duyệt nhiều bước.'
+									title='Chưa có quy trình duyệt nào'
+									desc='Đề tài đang duyệt theo quy trình mặc định 1 bước. Tạo quy trình duyệt để chuyển sang duyệt nhiều bước.'
 								/>
 							) : (
 								pg.paged.map((w, i) => (
@@ -104,7 +104,7 @@ export default function Workflow() {
 				</div>
 				<Pagination
 					{...pg.pagination}
-					itemLabel='workflow'
+					itemLabel='quy trình duyệt'
 				/>
 			</div>
 

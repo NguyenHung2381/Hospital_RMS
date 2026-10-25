@@ -1,6 +1,6 @@
 /**
  * uploadPaths.js — vị trí lưu file upload trên đĩa + quy tắc đặt tên, dùng chung
- * cho các middleware upload* và service xoá file.
+ * cho các middleware upload* và service xóa file.
  */
 const path = require('path');
 const fs = require('fs');
@@ -23,7 +23,7 @@ const uniqueFilename = (originalname) => {
 	return `${base}-${crypto.randomBytes(16).toString('hex')}${ext}`;
 };
 
-// Xoá file vật lý theo file_url "/uploads/..." (bỏ qua nếu không tồn tại / nằm ngoài UPLOADS_ROOT).
+// Xóa file vật lý theo file_url "/uploads/..." (bỏ qua nếu không tồn tại / nằm ngoài UPLOADS_ROOT).
 const removeUploadedFile = (fileUrl) => {
 	if (!fileUrl || !fileUrl.startsWith('/uploads/')) return;
 	const diskPath = path.resolve(UPLOADS_ROOT, fileUrl.slice('/uploads/'.length));

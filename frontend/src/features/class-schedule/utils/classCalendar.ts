@@ -17,7 +17,7 @@ export interface ClassMonthData {
 
 export const dayKey = (d: Date) => `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
 
-/** Màu cố định theo mã khoá học — cùng 1 khoá luôn cùng màu ở mọi chế độ xem. */
+/** Màu cố định theo mã khóa học — cùng 1 khóa luôn cùng màu ở mọi chế độ xem. */
 export function courseColor(courseId: string): string {
 	let h = 0;
 	for (let i = 0; i < courseId.length; i++) h = (h * 31 + courseId.charCodeAt(i)) >>> 0;
@@ -64,7 +64,7 @@ function summarizeMonth(sessions: CalendarSession[], year: number, m: number): C
 	return [...byCourse.values()].sort((a, b) => b.count - a.count);
 }
 
-/** 12 thẻ tháng cho chế độ Năm (chấm buổi học + tóm tắt số buổi theo khoá). */
+/** 12 thẻ tháng cho chế độ Năm (chấm buổi học + tóm tắt số buổi theo khóa). */
 export function computeClassMonths(sessions: CalendarSession[], year: number): ClassMonthData[] {
 	const sessionsByDay = buildSessionsByDay(sessions);
 	return Array.from({ length: 12 }, (_, m) => ({

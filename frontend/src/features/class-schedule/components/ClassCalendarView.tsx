@@ -41,7 +41,7 @@ type Detail = { kind: 'session'; session: CalendarSession };
 /**
  * Lịch học tuần / tháng / năm — cùng giao diện với lịch trình nghiên cứu:
  * tuần/tháng dùng lưới kiểu Google (CalendarGrid), năm dùng thẻ tháng nhỏ.
- * Chỉ hiện buổi học (ngày dạy thật) — không vẽ thanh thời gian cả đợt của khoá.
+ * Chỉ hiện buổi học (ngày dạy thật) — không vẽ thanh thời gian cả đợt của khóa.
  */
 export function ClassCalendarView({
 	sessions, year, mode, startMonth, weekStart,
@@ -226,7 +226,7 @@ function DetailModal({
 	const rows: [string, string][] = [
 		['📅 Ngày học:', formatDateVN(session.session_date)],
 		['🕐 Giờ học:', sessionTime(session) || 'Chưa xếp giờ'],
-		['🎓 Khoá học:', session.course_name],
+		['🎓 Khóa học:', session.course_name],
 		['📚 Bài học:', session.subject_name || '—'],
 		['👨‍🏫 Giảng viên:', session.lecturer_name || '—'],
 		['📍 Phòng học:', session.room || '—'],
@@ -258,7 +258,7 @@ function DetailModal({
 
 				<div className={styles.detailFoot}>
 					<button className={styles.detailEditBtn} onClick={() => onOpenCourse(courseId)}>
-						📋 Mở lịch học & điểm danh của khoá
+						📋 Mở lịch học & điểm danh của khóa
 					</button>
 				</div>
 			</div>

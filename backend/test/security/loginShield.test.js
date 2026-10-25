@@ -34,7 +34,7 @@ test('IP sai ≥ 3 lần: mọi username từ IP đó đều phải giải', asy
 	assert.equal((await shield.assess({ ip: '10.0.0.3', username: 'khac' })).bits, 0);
 });
 
-test('username bị dò từ nhiều IP: username đó phải giải, đăng nhập đúng thì xoá', async () => {
+test('username bị dò từ nhiều IP: username đó phải giải, đăng nhập đúng thì xóa', async () => {
 	for (let i = 0; i < 3; i++) await shield.recordFailure({ ip: `10.1.0.${i}`, username: 'BsB' });
 	assert.equal((await shield.assess({ ip: '10.9.9.9', username: 'bsb' })).bits, 8); // không phân biệt hoa thường
 	await shield.recordSuccess({ username: 'bsb' });

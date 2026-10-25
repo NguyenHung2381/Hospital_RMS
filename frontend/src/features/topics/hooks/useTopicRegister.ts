@@ -312,7 +312,7 @@ export function useTopicRegister(): TopicRegisterState {
 	);
 
 	const resetRound = useCallback(() => {
-		if (lockedRound) return; // đợt đã khoá theo link công khai
+		if (lockedRound) return; // đợt đã khóa theo link công khai
 		setPickedRoundId('');
 		setField('round_id', '');
 	}, [lockedRound, setField]);
@@ -450,10 +450,10 @@ export function useTopicRegister(): TopicRegisterState {
 				form.article_type === 'bai_bao'
 					? 'Tiêu đề bài báo là bắt buộc'
 					: 'Tiêu đề đề tài là bắt buộc';
-		if (!form.round_id) e.round_id = 'Vui lòng chọn vòng nghiên cứu';
+		if (!form.round_id) e.round_id = 'Vui lòng chọn đợt nghiên cứu';
 		if (form.article_type !== 'bai_bao' && !levelId)
 			e.level_id = 'Vui lòng chọn cấp độ đề tài';
-		if (!form.department_id) e.department_id = 'Vui lòng chọn khoa phòng';
+		if (!form.department_id) e.department_id = 'Vui lòng chọn khoa/phòng';
 		if (Object.keys(e).length) {
 			setErrors(e);
 			return;
@@ -558,7 +558,7 @@ export function useTopicRegister(): TopicRegisterState {
 					.map((r) => r.value),
 			);
 			const failedCount = pendingTopics.length - succeededIds.size;
-			// Chỉ xoá khỏi danh sách chờ các đề tài đã tạo thành công — tránh gửi
+			// Chỉ xóa khỏi danh sách chờ các đề tài đã tạo thành công — tránh gửi
 			// trùng khi user bấm gửi lại sau khi 1 phần bị lỗi.
 			setPendingTopics((prev) => prev.filter((t) => !succeededIds.has(t.localId)));
 			setSubmittingAll(false);

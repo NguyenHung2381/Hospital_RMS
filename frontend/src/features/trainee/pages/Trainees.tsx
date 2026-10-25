@@ -1,7 +1,7 @@
 import { avatarColor, getInitials } from '@/shared/utils';
 import { SearchInput, RowAction, RowActions } from '@/shared/components/Table/TableToolbar';
 import { useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { BookOpenSvg, FileTextSvg, KeySvg, PlusSvg, TrashSvg, UploadSvg } from '@/assets/icons';
 import { Badge, TableEmpty } from '@/shared/components';
 import AdminLayout from '../../../layouts/AdminLayout';
@@ -21,7 +21,6 @@ import { ExcelActions, type ExcelColumn } from '@/shared/components/Excel';
 import { formatDateVN } from '@/shared/utils/formatDate';
 import { genderLabel } from '@/shared/utils/gender';
 import type { Trainee } from '../types/trainee.type';
-import { TrainingTypeTabs } from '../../course/components/TrainingTypeTabs';
 import { TRAINING_TYPE } from '../../course/types/course.type';
 import tbl from '@/shared/components/Table/Table.module.css';
 
@@ -45,19 +44,23 @@ const EXCEL_COLS: ExcelColumn<Trainee>[] = [
 	{ header: 'Tài khoản', value: (x) => (x.account_granted ? 'Đã cấp' : '') },
 ];
 
-export default function Trainees() {
-	const [searchParams, setSearchParams] = useSearchParams();
-	const typeId = searchParams.get('type') ?? '';
+const TYPE_NAME: Record<string, string> = {
+	[TRAINING_TYPE.DTLT]: 'khóa đào tạo liên tục',
+	[TRAINING_TYPE.GPHN]: 'đợt thực hành GPHN',
+	[TRAINING_TYPE.CTCV]: 'khóa cầm tay chỉ việc',
+};
+
+/**
+ * typeId bỏ trống = "Tất cả học viên" (danh bạ chung, thêm / nhập học viên ở đây);
+ * có typeId = tab Học viên của 1 loại đào tạo: chỉ người đã ghi danh loại đó.
+ */
+export default function Trainees({ typeId = '' }: { typeId?: string }) {
 	const d = useTrainees(typeId);
 	const navigate = useNavigate();
 	const openDetail = (t: Trainee, tab = 'info') => navigate(`/admin/trainees/${t.id}?tab=${tab}`);
 	const isGphn = typeId === TRAINING_TYPE.GPHN;
 	// Tab theo loại: thay cột Liên hệ / Đối tượng / Khoa bằng thông tin lượt ghi danh của loại đó.
 	const colCount = typeId ? 8 : 9;
-	const changeType = (id: string) => {
-		setSearchParams(id ? { type: id } : {}, { replace: true });
-		d.setPage(1);
-	};
 	const rowSel = useRowSelection(d.paged.map((x) => x.id));
 	const [confirmBulkDelete, setConfirmBulkDelete] = useState(false);
 	const [showImport, setShowImport] = useState(false);
@@ -70,33 +73,37 @@ export default function Trainees() {
 				columns={EXCEL_COLS}
 				getRows={() => d.filtered}
 			/>
-			<button
-				className={styles.btnAddHeader}
-				onClick={() => setShowImport(true)}
-			>
-				<UploadSvg /> Nhập từ Excel
-			</button>
-			<button
-				className={styles.btnAddHeader}
-				onClick={() => d.setModal('add')}
-			>
-				<PlusSvg /> Thêm học viên
-			</button>
+			{/* Thêm mới ở danh bạ chung — tab theo loại chỉ hiện người đã ghi danh nên thêm ở đó sẽ không thấy */}
+			{!typeId && (
+				<>
+					<button
+						className={styles.btnAddHeader}
+						onClick={() => setShowImport(true)}
+					>
+						<UploadSvg /> Nhập từ Excel
+					</button>
+					<button
+						className={styles.btnAddHeader}
+						onClick={() => d.setModal('add')}
+					>
+						<PlusSvg /> Thêm học viên
+					</button>
+				</>
+			)}
 		</div>
 	);
 
 	return (
 		<AdminLayout
-			pageTitle='Quản lý Học viên'
-			pageSubtitle='Danh sách học viên tham gia các chương trình đào tạo'
+			pageTitle={typeId ? 'Học viên' : 'Tất cả học viên'}
+			pageSubtitle={
+				typeId
+					? `Học viên đã ghi danh ${TYPE_NAME[typeId] ?? 'loại đào tạo này'} — ghi danh thêm trong trang của từng khóa`
+					: 'Danh bạ học viên chung của mọi loại đào tạo — thêm, nhập Excel và cấp tài khoản tại đây'
+			}
 			breadcrumbs={[{ label: 'Đào tạo' }]}
 			headerActions={headerActions}
 		>
-			<TrainingTypeTabs
-				value={typeId}
-				counts={d.typeCounts}
-				onChange={changeType}
-			/>
 			<div className={styles.tableCard}>
 				<div className={styles.tableHeader}>
 					<div className={styles.tableHeaderLeft}>
@@ -114,7 +121,7 @@ export default function Trainees() {
 									danger
 									onClick={() => setConfirmBulkDelete(true)}
 								>
-									<TrashSvg /> Xoá đã chọn
+									<TrashSvg /> Xóa đã chọn
 								</BulkButton>
 								<button
 									type='button'
@@ -209,7 +216,7 @@ export default function Trainees() {
 							<TableEmpty
 								colSpan={colCount}
 								title='Không tìm thấy học viên'
-								desc={d.search ? 'Thử thay đổi từ khoá tìm kiếm' : 'Chưa có học viên nào'}
+								desc={d.search ? 'Thử thay đổi từ khóa tìm kiếm' : 'Chưa có học viên nào'}
 							/>
 						) : (
 							d.paged.map((t, i) => {

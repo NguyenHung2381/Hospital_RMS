@@ -125,7 +125,7 @@ export default function StaffLicenses() {
 								<TableEmpty
 									colSpan={6}
 									title='Không tìm thấy hồ sơ CCHN'
-									desc='Thử thay đổi từ khoá hoặc bộ lọc'
+									desc='Thử thay đổi từ khóa hoặc bộ lọc'
 								/>
 							) : (
 								d.items.map((l, i) => (
@@ -196,7 +196,7 @@ export default function StaffLicenses() {
 			)}
 			{deleting && (
 				<ConfirmDeleteModal
-					title='Xoá hồ sơ CCHN'
+					title='Xóa hồ sơ CCHN'
 					subtitle={deleting.user_full_name}
 					onClose={() => setDeleting(null)}
 					onConfirm={async () => {
@@ -204,7 +204,7 @@ export default function StaffLicenses() {
 						setDeleting(null);
 					}}
 				>
-					Xoá toàn bộ thông tin chứng chỉ hành nghề của <strong>{deleting.user_full_name}</strong>? Tài khoản nhân sự
+					Xóa toàn bộ thông tin chứng chỉ hành nghề của <strong>{deleting.user_full_name}</strong>? Tài khoản nhân sự
 					không bị ảnh hưởng.
 				</ConfirmDeleteModal>
 			)}

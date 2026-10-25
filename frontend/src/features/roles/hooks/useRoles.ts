@@ -114,10 +114,10 @@ export function useRoles() {
 			await deleteRole(deletingRole.id);
 			setModal(null);
 			setDeletingRole(null);
-			showToast('success', `Đã xoá "${deletingRole.name}"`);
+			showToast('success', `Đã xóa "${deletingRole.name}"`);
 			refreshData();
 		} catch (err) {
-			showToast('error', err instanceof Error ? err.message : 'Xoá thất bại');
+			showToast('error', err instanceof Error ? err.message : 'Xóa thất bại');
 		} finally {
 			setLoading(false);
 		}
@@ -132,7 +132,7 @@ export function useRoles() {
 				setModal(null);
 				showToast(
 					failedCount ? 'error' : 'success',
-					bulkToast('xoá', okIds.size, failedCount, 'vai trò'),
+					bulkToast('xóa', okIds.size, failedCount, 'vai trò'),
 				);
 				refreshData();
 			} finally {

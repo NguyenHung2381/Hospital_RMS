@@ -148,7 +148,7 @@ export function TopicTable({
 						<tr>
 							<th className={tbl.thIdx}>STT</th>
 							<th className={styles.colId}>Mã đề tài</th>
-							<th className={styles.colTitle}>Tên đề tài & Chủ nhiệm</th>
+							<th className={styles.colTitle}>Tên đề tài & chủ nhiệm</th>
 							<th className={styles.colLevel}>Cấp quản lý</th>
 							<th className={styles.colCategory}>Lĩnh vực nghiên cứu</th>
 							<th className={styles.colDept}>Khoa / Phòng chủ trì</th>

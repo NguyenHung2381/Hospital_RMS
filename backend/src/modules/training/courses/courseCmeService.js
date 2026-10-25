@@ -5,12 +5,12 @@
  * (source_type, source_id = khóa, user_id) — khóa duy nhất ⇒ chạy lại thì cập nhật.
  *   - Học viên nội viện có tài khoản (trainees.staff_user_id) được cấp giấy chứng
  *     nhận: tín chỉ = số giờ tín chỉ của chương trình, chưa khai thì số tiết LT + TH
- *     × hệ số danh mục DT_KHOAHOC. Thu hồi giấy ⇒ dòng CME bị từ chối; xoá giấy
- *     (cấp nhầm) ⇒ xoá dòng CME.
+ *     × hệ số danh mục DT_KHOAHOC. Thu hồi giấy ⇒ dòng CME bị từ chối; xóa giấy
+ *     (cấp nhầm) ⇒ xóa dòng CME.
  *   - Giảng viên có tài khoản, khi khóa điểm: số tiết đảm nhận × hệ số GIANGDAY.
  *     Số tiết = lecturer_assignments.hours; GV chính của 1 bài chưa nhập số tiết
  *     thì lấy số tiết của bài.
- * Công tắc CME_AUTO_TRAINEE / CME_AUTO_LECTURER (mặc định bật). Thu hồi / xoá
+ * Công tắc CME_AUTO_TRAINEE / CME_AUTO_LECTURER (mặc định bật). Thu hồi / xóa
  * luôn chạy (kể cả công tắc tắt) để CME không còn tính cho giấy đã hủy.
  */
 const { getPool, sql } = require('../../../config/db');
@@ -84,7 +84,7 @@ const syncTrainees = async (courseId, actorId, { enrollmentId = null } = {}) => 
 	return n;
 };
 
-/** Giấy chứng nhận bị thu hồi (remove=false) hoặc xoá vì cấp nhầm (remove=true). */
+/** Giấy chứng nhận bị thu hồi (remove=false) hoặc xóa vì cấp nhầm (remove=true). */
 const withdrawForCertificate = async (certId, actorId, { remove = false, reason = null } = {}) => {
 	const pool = await getPool();
 	const r = await pool
@@ -117,7 +117,7 @@ const withdrawForCertificate = async (certId, actorId, { remove = false, reason 
 
 /**
  * Giảng viên: ghi CME theo số tiết đảm nhận (gọi khi khóa điểm). GV không còn
- * phân công (hoặc còn 0 tiết) thì xoá dòng tự động cũ của khóa.
+ * phân công (hoặc còn 0 tiết) thì xóa dòng tự động cũ của khóa.
  */
 const syncLecturers = async (courseId, actorId) => {
 	if (!(await isOn('CME_AUTO_LECTURER'))) return 0;

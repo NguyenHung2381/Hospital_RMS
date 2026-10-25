@@ -114,7 +114,7 @@ export default function MembersTab({
 											className={styles.btnDanger}
 											onClick={() => handleDeleteMember(m.id)}
 										>
-											Xoá
+											Xóa
 										</button>
 									</div>
 								)}

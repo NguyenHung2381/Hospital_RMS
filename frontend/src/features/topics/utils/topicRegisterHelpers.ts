@@ -12,7 +12,7 @@ export const ARTICLE_TYPE_CFG: Record<
 	},
 	bai_bao: {
 		label: 'Đăng ký bài báo / báo cáo tập san',
-		tabLabel: 'Bài báo & Tập san',
+		tabLabel: 'Bài báo & tập san',
 		sub: 'Nhập thông tin bài báo/báo cáo rồi nhấn "Thêm vào danh sách"',
 	},
 };

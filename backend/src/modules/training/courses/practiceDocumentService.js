@@ -8,8 +8,11 @@
  */
 const fs = require('fs');
 const path = require('path');
-const PizZip = require('pizzip');
-const Docxtemplater = require('docxtemplater');
+const { lazyRequire } = require('../../../utils/lazyRequire');
+/** @type {typeof import('pizzip')} */
+const PizZip = lazyRequire('pizzip');
+/** @type {typeof import('docxtemplater')} */
+const Docxtemplater = lazyRequire('docxtemplater');
 const { getPool, sql } = require('../../../config/db');
 const { httpError } = require('../../../utils/httpError');
 const { describeSpan } = require('./rotationPlanner');

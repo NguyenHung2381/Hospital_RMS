@@ -29,7 +29,6 @@ import type {
 	GradePart,
 	LecturerAssignment,
 	CourseLesson,
-	LessonLecturersInput,
 } from '../types/course.type';
 import { CLASS_TYPES } from '../types/course.type';
 
@@ -267,8 +266,6 @@ export const removeAssignment = (assignmentId: string) =>
 /** Bài học thuộc các chương trình của khóa (dòng của bảng Bài học × Giảng viên) */
 export const getCourseLessons = (courseId: string) =>
 	apiClient.get<CourseLesson[]>(`/courses/${courseId}/lessons`);
-export const setLessonLecturers = (courseId: string, lessonId: string, data: LessonLecturersInput) =>
-	apiClient.put<null>(`/courses/${courseId}/lesson-lecturers`, { ...data, lesson_id: lessonId });
 
 // ─── Class sessions ───────────────────────────────────────────────────────
 export const getSessions = (courseId: string) =>

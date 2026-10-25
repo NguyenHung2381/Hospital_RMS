@@ -105,7 +105,7 @@ export const TAB_CONFIG: Record<
 export const CATALOG_GROUPS: Record<CatalogGroup, { title: string; tabs: CatalogTab[]; breadcrumb?: string }> = {
 	research: { title: 'Danh mục NCKH', tabs: ['categories', 'levels', 'round-types'] },
 	training: {
-		title: 'Danh mục Đào tạo',
+		title: 'Danh mục đào tạo',
 		tabs: [
 			'trainee-types',
 			'training-forms',
@@ -246,9 +246,9 @@ export function useCatalog(group: CatalogGroup) {
 			setItems((prev) => prev.filter((d) => d.id !== deletingItem.id));
 			setModal(null);
 			setDeletingItem(null);
-			showToast('success', `Đã xoá "${deletingItem.name}"`);
+			showToast('success', `Đã xóa "${deletingItem.name}"`);
 		} catch (err) {
-			showToast('error', err instanceof Error ? err.message : 'Xoá thất bại');
+			showToast('error', err instanceof Error ? err.message : 'Xóa thất bại');
 		} finally {
 			setLoading(false);
 		}
@@ -266,7 +266,7 @@ export function useCatalog(group: CatalogGroup) {
 				setModal(null);
 				showToast(
 					failedCount ? 'error' : 'success',
-					bulkToast('xoá', okIds.size, failedCount, cfg.label.toLowerCase()),
+					bulkToast('xóa', okIds.size, failedCount, cfg.label.toLowerCase()),
 				);
 			} finally {
 				setLoading(false);

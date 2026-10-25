@@ -1,4 +1,4 @@
-// Captcha chế độ Google reCAPTCHA v2 (utils/captcha.js): bật khi có đủ 2 khoá,
+// Captcha chế độ Google reCAPTCHA v2 (utils/captcha.js): bật khi có đủ 2 khóa,
 // xác minh qua API Google (giả lập bằng fetch), lỗi mạng thì từ chối.
 process.env.JWT_SECRET = 'test-secret';
 delete process.env.TURNSTILE_SITE_KEY;
@@ -32,7 +32,7 @@ test('trả site key cho client', async () => {
 	assert.deepEqual(await generateCaptcha(), { provider: 'recaptcha', site_key: 'site-key-test' });
 });
 
-test('khoá đặt ở Cấu hình hệ thống được ưu tiên hơn .env', async () => {
+test('khóa đặt ở Cấu hình hệ thống được ưu tiên hơn .env', async () => {
 	uiSettings.RECAPTCHA_SITE_KEY = 'ui-site-key';
 	uiSettings.RECAPTCHA_SECRET_KEY = 'ui-secret-key';
 	try {
@@ -46,7 +46,7 @@ test('khoá đặt ở Cấu hình hệ thống được ưu tiên hơn .env', a
 	}
 });
 
-test('chưa có khoá nào → quay về proof-of-work', async () => {
+test('chưa có khóa nào → quay về proof-of-work', async () => {
 	const saved = process.env.RECAPTCHA_SECRET_KEY;
 	delete process.env.RECAPTCHA_SECRET_KEY;
 	try {
@@ -121,7 +121,7 @@ test('thiếu token → không gọi Google', async () => {
 	assert.equal(calls.length, before);
 });
 
-test('đặt cả khoá Turnstile → Turnstile được ưu tiên', async () => {
+test('đặt cả khóa Turnstile → Turnstile được ưu tiên', async () => {
 	process.env.TURNSTILE_SITE_KEY = 'cf-site';
 	process.env.TURNSTILE_SECRET_KEY = 'cf-secret';
 	try {

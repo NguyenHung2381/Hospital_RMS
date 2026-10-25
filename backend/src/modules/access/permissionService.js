@@ -12,7 +12,7 @@ const { httpError, badRequest } = require('../../utils/httpError');
 // Danh mục quyền cho màn hình phân quyền: nhóm theo module → resource, kèm
 // nhãn tiếng Việt và quan hệ "đi kèm". Chỉ trả những quyền đã có trong DB (id
 // dùng được khi lưu) — quyền catalog chưa đồng bộ được (DB lỗi lúc khởi động)
-// bị ẩn thay vì lưu ra lỗi khoá ngoại.
+// bị ẩn thay vì lưu ra lỗi khóa ngoại.
 const getCatalog = async () => {
 	const pool = await getPool();
 	const rows = (
@@ -77,7 +77,7 @@ const getCatalog = async () => {
 	return { actionLabels: ACTION_LABELS, modules };
 };
 
-// id các tài khoản đang hoạt động có vai trò thoả `predicate` — predicate nhận
+// id các tài khoản đang hoạt động có vai trò thỏa `predicate` — predicate nhận
 // một "user" tối giản ({ permissions, permissionScopes }) nên dùng được
 // hasPermission / scopeOf như với req.user. Đi qua permCache ⇒ đúng ở cả mô
 // hình phân quyền cũ lẫn mới, thay vì SQL đọc thẳng resource/action.

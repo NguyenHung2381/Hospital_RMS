@@ -272,7 +272,7 @@ export function ManualMemberForm({
 						type='button'
 						onClick={closeManualAdd}
 					>
-						Huỷ
+						Hủy
 					</button>
 					<button
 						className={styles.btnPrimary}

@@ -55,7 +55,7 @@ export function RequiredAbsenteesCard({
 		}
 	};
 
-	// version: đổi khi chi tiết buổi tập huấn tải lại (thêm/xoá người, điểm danh)
+	// version: đổi khi chi tiết buổi tập huấn tải lại (thêm/xóa người, điểm danh)
 	useEffect(() => {
 		let alive = true;
 		getRequiredAbsentees(seminarId)

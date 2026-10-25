@@ -30,7 +30,7 @@ const fmtDob = (row: { dob: string | null; dob_text: string | null }) => {
 
 // Nhập danh sách người tham dự của MỘT hội thảo từ Excel: chọn file → dry-run
 // xem trước từng dòng (khớp cán bộ nội viện, nguồn, tín chỉ) → xác nhận nhập;
-// tuỳ chọn cấp luôn dải số quyết định CME cho toàn bộ người vừa nhập.
+// tùy chọn cấp luôn dải số quyết định CME cho toàn bộ người vừa nhập.
 export function ParticipantImportModal({
 	seminarId,
 	grantsCme,
@@ -170,7 +170,7 @@ export function ParticipantImportModal({
 						onClick={onClose}
 						disabled={loading}
 					>
-						{result ? 'Đóng' : 'Huỷ'}
+						{result ? 'Đóng' : 'Hủy'}
 					</button>
 					{!result && (
 						<button

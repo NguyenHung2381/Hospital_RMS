@@ -144,7 +144,7 @@ export default function Lessons() {
 						>
 							<option value=''>Tất cả trạng thái</option>
 							<option value='active'>Hoạt động</option>
-							<option value='inactive'>Ngưng hoạt động</option>
+							<option value='inactive'>Ngừng hoạt động</option>
 						</select>
 						{d.hasFilter && (
 							<button
@@ -152,7 +152,7 @@ export default function Lessons() {
 								className={styles.clearSelectionBtn}
 								onClick={d.clearFilters}
 							>
-								Xoá lọc
+								Xóa lọc
 							</button>
 						)}
 						<DeleteAllButton
@@ -197,7 +197,7 @@ export default function Lessons() {
 								<TableEmpty
 									colSpan={8}
 									title='Không tìm thấy bài học'
-									desc={d.hasFilter ? 'Thử thay đổi từ khoá hoặc bộ lọc' : 'Chưa có bài học nào'}
+									desc={d.hasFilter ? 'Thử thay đổi từ khóa hoặc bộ lọc' : 'Chưa có bài học nào'}
 								/>
 							) : (
 								d.paged.map((l, i) => {
@@ -257,7 +257,7 @@ export default function Lessons() {
 														className={styles.badge}
 														style={{ background: 'var(--color-gray-100)', color: 'var(--color-gray-500)' }}
 													>
-														Ngưng hoạt động
+														Ngừng hoạt động
 													</span>
 												)}
 											</td>
@@ -314,7 +314,7 @@ export default function Lessons() {
 					onClose={() => d.setDeletingLesson(null)}
 					icon={<TrashSvg />}
 					tone='danger'
-					title='Xoá bài học'
+					title='Xóa bài học'
 					subtitle={d.deletingLesson.title}
 					className={`${styles.modal} ${styles.modalSm}`}
 					bodyClassName={styles.modalBody}
@@ -325,7 +325,7 @@ export default function Lessons() {
 								onClick={() => d.setDeletingLesson(null)}
 								disabled={d.loading}
 							>
-								Huỷ
+								Hủy
 							</button>
 							<button
 								className={styles.btnDanger}
@@ -333,13 +333,13 @@ export default function Lessons() {
 								disabled={d.loading}
 							>
 								{d.loading ? <span className={`${styles.spinner} ${styles.spinnerDark}`} /> : <TrashSvg />}
-								Xoá bài học
+								Xóa bài học
 							</button>
 						</>
 					}
 				>
 					<p className={styles.deleteDesc}>
-						Bài học sẽ bị xoá hẳn khỏi mọi chương trình đào tạo đang dùng chung (nếu có). Thao tác này không thể
+						Bài học sẽ bị xóa hẳn khỏi mọi chương trình đào tạo đang dùng chung (nếu có). Thao tác này không thể
 						hoàn tác.
 					</p>
 				</Modal>

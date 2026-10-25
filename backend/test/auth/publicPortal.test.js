@@ -1,7 +1,7 @@
 // Cổng công khai: captcha dùng 1 lần; tra cứu cần CCCD + ngày sinh, có giới
-// hạn theo từng CCCD; đăng ký khoá học đối chiếu ngày sinh với hồ sơ đã có.
+// hạn theo từng CCCD; đăng ký khóa học đối chiếu ngày sinh với hồ sơ đã có.
 process.env.JWT_SECRET = 'test-secret';
-// Ghim chế độ proof-of-work: đặt rỗng để dotenv không nạp khoá Turnstile/reCAPTCHA từ .env máy dev
+// Ghim chế độ proof-of-work: đặt rỗng để dotenv không nạp khóa Turnstile/reCAPTCHA từ .env máy dev
 for (const k of [
 	'TURNSTILE_SITE_KEY',
 	'TURNSTILE_SECRET_KEY',
@@ -105,7 +105,7 @@ test('tra cứu: họ tên phải khớp (bỏ qua hoa/thường, dấu, khoản
 	assert.equal((await portal.lookupResults(TRAINEE.national_id, '2000-05-15', '')).length, 0);
 });
 
-test('giới hạn theo khoá: quá số lần thì bị chặn dù đổi IP', async () => {
+test('giới hạn theo khóa: quá số lần thì bị chặn dù đổi IP', async () => {
 	const results = [];
 	for (let i = 0; i < 6; i++)
 		results.push(await attempts.hit('test-lookup', '012345678901', 5, 3600));

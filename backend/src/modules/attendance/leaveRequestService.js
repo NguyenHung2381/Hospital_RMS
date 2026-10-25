@@ -47,7 +47,7 @@ const approversFor = async (departmentId) => {
 			.input('dept', sql.VarChar(20), String(departmentId))
 			.input('ids', sql.NVarChar(sql.MAX), JSON.stringify(deptScoped))
 			.query(
-				'SELECT id FROM users WHERE department_id = @dept AND id IN (SELECT [value] FROM OPENJSON(@ids))',
+				'SELECT id FROM users WHERE department_id = @dept AND id IN (SELECT CAST([value] AS VARCHAR(50)) FROM OPENJSON(@ids))',
 			)
 	).recordset.map((r) => r.id);
 	return [...new Set([...all, ...sameDept])];
@@ -192,7 +192,7 @@ const createMine = async (userId, body) => {
 	return saved;
 };
 
-// Học viên tự huỷ đơn còn chờ duyệt
+// Học viên tự hủy đơn còn chờ duyệt
 const cancelMine = async (userId, id) => {
 	const pool = await getPool();
 	const res = await pool
@@ -203,7 +203,7 @@ const cancelMine = async (userId, id) => {
       SET status = 'cancelled', updated_at = GETDATE(), updated_by = @user_id
       WHERE id = @id AND user_id = @user_id AND status = 'pending'
     `);
-	if (!res.rowsAffected[0]) throw conflict('Chỉ huỷ được đơn của bạn đang chờ duyệt');
+	if (!res.rowsAffected[0]) throw conflict('Chỉ hủy được đơn của bạn đang chờ duyệt');
 	changed();
 };
 

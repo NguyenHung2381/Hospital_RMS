@@ -210,7 +210,7 @@ export function ProgressConclusionTab({
 								{CONCLUSION_LABELS[t.result.conclusion]}
 							</span>
 							<span className={styles.conclusionMeta}>
-								Phê duyệt bởi: {t.result.decided_by_name} · {formatDateTimeVN(t.result.updated_at)}
+								Người phê duyệt: {t.result.decided_by_name} · {formatDateTimeVN(t.result.updated_at)}
 							</span>
 						</div>
 						{t.result.general_comment && (

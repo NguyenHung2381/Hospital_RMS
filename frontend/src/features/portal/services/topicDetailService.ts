@@ -101,7 +101,7 @@ function windowPermissions(active: RoundDeadline): TopicPermissions {
 			canDeleteFiles: true,
 			activeType: 'edit',
 			banner: {
-				text: 'Đang trong cửa sổ "Sửa" — chủ nhiệm/thư ký có thể chỉnh sửa toàn bộ thông tin, thành viên và tài liệu.',
+				text: 'Đang trong thời hạn "Sửa" — chủ nhiệm/thư ký có thể chỉnh sửa toàn bộ thông tin, thành viên và tài liệu.',
 				...style,
 			},
 		};
@@ -116,7 +116,7 @@ function windowPermissions(active: RoundDeadline): TopicPermissions {
 			canDeleteFiles: false,
 			activeType: 'report_submission',
 			banner: {
-				text: 'Đang trong thời hạn nộp báo cáo — chỉ có thể tải lên tài liệu mới, không xoá được tài liệu cũ.',
+				text: 'Đang trong thời hạn nộp báo cáo — chỉ có thể tải lên tài liệu mới, không xóa được tài liệu cũ.',
 				...style,
 			},
 		};

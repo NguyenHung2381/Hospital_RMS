@@ -119,7 +119,7 @@ const getById = async (id) => {
 	return seminar;
 };
 
-// ─── Chuẩn hoá payload ───────────────────────────────────────────────────────
+// ─── Chuẩn hóa payload ───────────────────────────────────────────────────────
 const normalizeType = (t) => (EVENT_TYPES.includes(t) ? t : 'other');
 const normalizeScope = (s) => (SCOPES.includes(s) ? s : 'external');
 const yearOf = (data) => {
@@ -131,7 +131,7 @@ const yearOf = (data) => {
 
 // Bài test cuối buổi: [{ q, image?, options: [..≥2], answer: index }] — trắc
 // nghiệm 1 đáp án, chấm tự động khi nộp (seminarParticipantService.submitTest).
-// image: ảnh minh hoạ, tải lên qua POST /seminars/:id/test-image.
+// image: ảnh minh họa, tải lên qua POST /seminars/:id/test-image.
 const testImageDir = (seminarId) => `/uploads/seminars/${seminarId}/test/`;
 const testImages = (json) => {
 	try {
@@ -168,8 +168,8 @@ const normalizeTestQuestions = (raw, seminarId) => {
 const TIME_FIELDS = {
 	start_time: 'Giờ bắt đầu',
 	end_time: 'Giờ kết thúc',
-	test_start_time: 'Giờ mở bài test',
-	test_end_time: 'Giờ dừng tiếp nhận bài test',
+	test_start_time: 'Giờ mở bài kiểm tra',
+	test_end_time: 'Giờ dừng tiếp nhận bài kiểm tra',
 };
 
 // Thời gian làm bài (phút) / điểm đạt: '' / null → null; sai → 400
@@ -294,7 +294,7 @@ const update = async (id, input, actorId) => {
 		const openDay = String(data.test_date || '').slice(0, 10);
 		const closeDay = String(data.test_end_date || '').slice(0, 10) || openDay;
 		if (`${closeDay} ${times.test_end_time}` <= `${openDay} ${times.test_start_time}`)
-			throw badRequest('Thời điểm dừng tiếp nhận bài test phải sau thời điểm mở bài.');
+			throw badRequest('Thời điểm dừng tiếp nhận bài kiểm tra phải sau thời điểm mở bài.');
 	}
 	const duration = optionalNumber(data.test_duration_minutes, 'Thời gian làm bài (phút)', {
 		min: 1,
@@ -340,7 +340,7 @@ const update = async (id, input, actorId) => {
 		const next = normalizeTestQuestions(data.test_questions, id);
 		const max = maxScore(JSON.parse(next || '[]'));
 		if (passScore != null && next && passScore > max)
-			throw badRequest(`Điểm đạt (${passScore}) lớn hơn tổng điểm bài test (${max}).`);
+			throw badRequest(`Điểm đạt (${passScore}) lớn hơn tổng điểm bài kiểm tra (${max}).`);
 		const prev = (
 			await pool
 				.request()
@@ -366,7 +366,7 @@ const update = async (id, input, actorId) => {
 	return getById(id);
 };
 
-// Chặn xoá khi còn người đã được cấp số CME (tránh mất số trong sổ năm).
+// Chặn xóa khi còn người đã được cấp số CME (tránh mất số trong sổ năm).
 const remove = async (id, actorId) => {
 	const pool = await getPool();
 	const check = await pool
@@ -378,7 +378,7 @@ const remove = async (id, actorId) => {
 	if (check.recordset[0].n > 0) {
 		throw httpError(
 			409,
-			`Không thể xoá: đã có ${check.recordset[0].n} người được cấp số CME trong sự kiện này. Hãy thu hồi số CME trước.`,
+			`Không thể xóa: đã có ${check.recordset[0].n} người được cấp số CME trong sự kiện này. Hãy thu hồi số CME trước.`,
 		);
 	}
 	await pool

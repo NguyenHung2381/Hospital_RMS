@@ -3,6 +3,7 @@ const { broadcast } = require('../../events/eventService');
 const { ROLE, roleIdOf } = require('../../access/roleCodes');
 const { httpError } = require('../../../utils/httpError');
 const lecturerService = require('../lecturers/lecturerService');
+const logger = require('../../../config/logger');
 
 // lecturer_assignments.subject_id trỏ program_lessons (tên cột cũ từ thời "môn học").
 // role: 'main' = GV chính (mỗi bài tối đa 1, UQ_lecass_main) | 'assistant' = GV phụ.
@@ -187,7 +188,7 @@ const assignLecturer = async (courseId, data, actorId) => {
 /**
  * Đặt lại toàn bộ giảng viên của 1 bài trong khóa (1 dòng của bảng Bài học × Giảng viên).
  * data = { main: { lecturer_id, hours } | null, assistants: [{ lecturer_id, hours }] }.
- * GV bị bỏ khỏi bài thì xoá phân công; GV giữ lại thì giữ nguyên mã phân công.
+ * GV bị bỏ khỏi bài thì xóa phân công; GV giữ lại thì giữ nguyên mã phân công.
  */
 const setLessonLecturers = async (courseId, lessonId, data, actorId) => {
 	const wanted = new Map();
@@ -270,6 +271,62 @@ const setLessonLecturers = async (courseId, lessonId, data, actorId) => {
 	broadcast('update', { entity: 'lecturer_assignment' });
 };
 
+/**
+ * Phân công của 1 bài suy ra từ các buổi học: GV dạy nhiều buổi nhất (bằng nhau
+ * thì GV dạy sớm nhất) là GV chính, còn lại là GV phụ. Giữ số tiết đã nhập của
+ * người còn trong bài. rows: [{ lecturer_id, n, first_slot }] đã xếp theo thứ tự đó.
+ */
+const lessonLecturersFromSessions = (rows, hoursOf = new Map()) => {
+	const pick = (r) => ({ lecturer_id: r.lecturer_id, hours: hoursOf.get(r.lecturer_id) ?? null });
+	return rows.length ? { main: pick(rows[0]), assistants: rows.slice(1).map(pick) } : null;
+};
+
+// Giảng viên chọn ở buổi học: nhân viên CCHN ('user:<id>') ⇒ hồ sơ GV; chặn người
+// không được dạy khóa này (học viên của khóa…) trước khi lưu buổi.
+const resolveSessionLecturer = async (courseId, id, actorId) => {
+	if (!id) return id;
+	const lecturerId = await resolveLecturerId(id, actorId);
+	const pool = await getPool();
+	await assertAssignable(pool.request(), courseId, lecturerId);
+	return lecturerId;
+};
+
+/**
+ * Đồng bộ phân công GV theo bài từ buổi học (bỏ ô "GV chính / GV phụ" nhập tay ở
+ * bảng Lịch học). Bài chưa có buổi nào gán GV thì giữ nguyên phân công cũ; bài
+ * ngoài chương trình của khóa thì bỏ qua. Lỗi ở đây không chặn việc lưu buổi học.
+ */
+const syncLessonsFromSessions = async (courseId, lessonIds, actorId) => {
+	const pool = await getPool();
+	for (const lessonId of new Set(lessonIds.filter(Boolean))) {
+		try {
+			const r = await pool
+				.request()
+				.input('course_id', sql.VarChar(20), courseId)
+				.input('lesson_id', sql.VarChar(20), lessonId).query(`
+          SELECT lecturer_id, COUNT(*) AS n,
+                 MIN(CONVERT(CHAR(10), session_date, 23) + ISNULL(start_time, '')) AS first_slot
+          FROM class_sessions
+          WHERE course_id = @course_id AND subject_id = @lesson_id AND lecturer_id IS NOT NULL
+          GROUP BY lecturer_id
+          ORDER BY COUNT(*) DESC, first_slot, lecturer_id;
+          SELECT lecturer_id, hours FROM lecturer_assignments
+          WHERE course_id = @course_id AND subject_id = @lesson_id;
+          SELECT TOP 1 1 AS ok FROM course_programs cp
+          JOIN lesson_programs lp ON lp.program_id = cp.program_id
+          WHERE cp.course_id = @course_id AND lp.lesson_id = @lesson_id;`);
+			const [rows, existing, inCourse] = r.recordsets;
+			const data = lessonLecturersFromSessions(
+				rows,
+				new Map(existing.map((x) => [x.lecturer_id, x.hours])),
+			);
+			if (data && inCourse.length) await setLessonLecturers(courseId, lessonId, data, actorId);
+		} catch (err) {
+			logger.error(`[lecturer-assignment] đồng bộ GV bài ${lessonId}: ${err.message}`);
+		}
+	}
+};
+
 const removeAssignment = async (assignmentId) => {
 	const pool = await getPool();
 	await pool
@@ -286,4 +343,7 @@ module.exports = {
 	assignLecturer,
 	setLessonLecturers,
 	removeAssignment,
+	lessonLecturersFromSessions,
+	resolveSessionLecturer,
+	syncLessonsFromSessions,
 };

@@ -1,5 +1,5 @@
 /**
- * practiceAutoService.js — tự động hoá hồ sơ thực hành GPHN để phòng Đào tạo chỉ
+ * practiceAutoService.js — tự động hóa hồ sơ thực hành GPHN để phòng Đào tạo chỉ
  * cần nhập thông tin học viên + ngày bắt đầu, phần còn lại của sổ hệ thống tự điền:
  *   - buildTemplates: chương trình GPHN chưa có vòng ⇒ rút mẫu vòng (nhóm khoa, thời
  *     lượng, khoa được đi) từ các hồ sơ đã nhập của sổ cũ — rotationPlanner.deriveTemplate.

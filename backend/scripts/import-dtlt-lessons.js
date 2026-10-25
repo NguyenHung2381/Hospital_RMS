@@ -25,7 +25,7 @@ const apply = args.includes('--apply');
 const [detailFile, lessonDir] = args.filter((a) => !a.startsWith('--'));
 const ACTOR = 'SYSTEM';
 const DTLT_TYPE = 'TRNTP-DTLT';
-// Khoá viết dễ đọc như trong file; so khớp theo norm (bỏ dấu, dấu câu).
+// Khóa viết dễ đọc như trong file; so khớp theo norm (bỏ dấu, dấu câu).
 const normKeys = (obj) => Object.fromEntries(Object.entries(obj).map(([k, v]) => [norm(k), v]));
 
 // Tên trong file Chi tiết → mã chương trình, khi khác tên trong danh mục.

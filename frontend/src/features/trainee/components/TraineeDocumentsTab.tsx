@@ -210,11 +210,11 @@ export function TraineeDocumentsTab({ traineeId, canEdit }: { traineeId: string;
 												{canEdit && (
 													<button
 														className={styles.actionBtn}
-														title='Xoá file'
+														title='Xóa file'
 														disabled={busy}
 														onClick={() => {
-															if (confirm(`Xoá file "${doc.file_name}"?`))
-																void run(() => removeTraineeDocument(doc.id), 'Đã xoá file');
+															if (confirm(`Xóa file "${doc.file_name}"?`))
+																void run(() => removeTraineeDocument(doc.id), 'Đã xóa file');
 														}}
 													>
 														<TrashSvg />

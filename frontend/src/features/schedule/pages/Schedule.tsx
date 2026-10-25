@@ -208,7 +208,7 @@ export default function Schedule() {
 	// ── Render ─────────────────────────────────────────────────────────────────
 	return (
 		<AdminLayout
-			pageTitle='Lịch trình nghiên cứu'
+			pageTitle='Lịch trình đợt nghiên cứu'
 			pageSubtitle='Biểu đồ Gantt hiển thị các mốc thời gian của đợt nghiên cứu'
 		>
 			<div className={styles.page}>

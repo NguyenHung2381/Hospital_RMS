@@ -1,9 +1,11 @@
 const path = require('path');
-const nodemailer = require('nodemailer');
+const { lazyRequire } = require('../../utils/lazyRequire');
+/** @type {typeof import('nodemailer')} */
+const nodemailer = lazyRequire('nodemailer');
 const systemSettingService = require('../settings/systemSettingService');
 const logger = require('../../config/logger');
 
-// Kênh email tuỳ chọn (mirror MailHelper.php của hệ thống NCKH bệnh viện):
+// Kênh email tùy chọn (mirror MailHelper.php của hệ thống NCKH bệnh viện):
 // mặc định TẮT (MAIL_ENABLED khác 'true') để không phá vỡ môi trường dev/test
 // chưa cấu hình SMTP — chỉ log ra console. Bật bằng set SMTP_* + MAIL_ENABLED=true
 // trong .env HOẶC qua màn "Cấu hình hệ thống" (system_settings, 2026-09-14) —
@@ -164,7 +166,7 @@ const renderSeminarBadgeEmail = ({
 		<table role="presentation" width="380" cellpadding="0" cellspacing="0" style="max-width:380px;width:100%;background:#ffffff;border-radius:16px;overflow:hidden;font-family:Arial,Helvetica,sans-serif;color:#1f2937;border:1px solid #d1e7da;">
 			<tr><td align="center" style="background:#0a9b4a;padding:20px 16px 18px;">
 				<img src="cid:rms-logo" width="56" height="56" alt="Logo" style="display:block;border:0;margin:0 auto 8px;background:#ffffff;border-radius:50%;">
-				<div style="color:#ffffff;font-size:13px;opacity:.9;">Bệnh viện Hữu Nghị Đa Khoa Nghệ An</div>
+				<div style="color:#ffffff;font-size:13px;opacity:.9;">Bệnh viện Hữu nghị Đa khoa Nghệ An</div>
 				<div style="color:#ffffff;font-size:22px;font-weight:bold;letter-spacing:4px;margin-top:6px;">THẺ ĐẠI BIỂU</div>
 			</td></tr>
 			<tr><td align="center" style="padding:20px 24px 4px;">
@@ -181,7 +183,7 @@ const renderSeminarBadgeEmail = ({
 				<div style="display:inline-block;background:#e7f5ed;color:#087c3b;font-size:12px;font-weight:bold;padding:4px 12px;border-radius:999px;margin-top:10px;">ĐẠI BIỂU</div>
 			</td></tr>
 		</table>
-		<p style="margin:16px 0 0;max-width:420px;font-family:Arial,Helvetica,sans-serif;font-size:13px;line-height:1.6;color:#4b5563;">Cuối buổi, quét lại mã QR hoặc mở <a href="${escapeHtml(ticketUrl)}" style="color:#087c3b;">trang vé của bạn</a> để làm bài test và theo dõi chứng nhận CME.</p>
+		<p style="margin:16px 0 0;max-width:420px;font-family:Arial,Helvetica,sans-serif;font-size:13px;line-height:1.6;color:#4b5563;">Cuối buổi, quét lại mã QR hoặc mở <a href="${escapeHtml(ticketUrl)}" style="color:#087c3b;">trang vé của bạn</a> để làm bài kiểm tra và theo dõi chứng nhận CME.</p>
 		<p style="margin:12px 0 0;font-family:Arial,Helvetica,sans-serif;font-size:12px;color:#9ca3af;">Đây là email tự động từ Hệ thống Quản lý NCKH &amp; Đào tạo. Vui lòng không trả lời email này.</p>
 	</td></tr>
 </table>

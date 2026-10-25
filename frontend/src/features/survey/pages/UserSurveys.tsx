@@ -118,7 +118,7 @@ function RespondForm({
 						onClick={onCancel}
 						disabled={submitting}
 					>
-						Huỷ
+						Hủy
 					</button>
 					<button
 						type='button'

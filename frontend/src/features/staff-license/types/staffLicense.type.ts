@@ -51,7 +51,7 @@ export const FIELD_LABELS: Record<LicenseField, string> = {
 	scope_decision_no: 'QĐ bổ sung phạm vi',
 	adjusted_scope: 'Phạm vi HĐCM sau điều chỉnh',
 	scope_adjusted_date: 'Ngày điều chỉnh phạm vi',
-	scope_code: 'Mã hoá phạm vi (2148)',
+	scope_code: 'Mã hóa phạm vi (2148)',
 	notes: 'Ghi chú',
 };
 

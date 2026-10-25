@@ -53,7 +53,7 @@ export function PatternFormModal({
 			onClose={onClose}
 			icon={<CalendarSvg />}
 			title={pattern ? 'Sửa mẫu ca tuần' : 'Thêm mẫu ca tuần'}
-			subtitle='Ca làm cố định theo từng thứ — bảng phân ca theo ngày sẽ ghi đè khi cần'
+			subtitle='Ca cố định theo từng thứ — bảng phân ca theo ngày sẽ ghi đè khi cần'
 			size='lg'
 			bodyClassName={m.stack}
 			footer={<ModalActions onCancel={onClose} onConfirm={submit} loading={saving} confirmLabel={pattern ? 'Lưu thay đổi' : 'Thêm mẫu'} />}
@@ -72,7 +72,7 @@ export function PatternFormModal({
 				label='Ca theo ngày trong tuần'
 			>
 				{options.length === 0 ? (
-					<div className={m.formHint}>Chưa có ca làm nào — thêm ở tab "Ca làm" trước.</div>
+					<div className={m.formHint}>Chưa có ca nào — thêm ở tab "Ca" trước.</div>
 				) : (
 					<div>
 						{WEEKDAYS.map((d) => (

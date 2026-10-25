@@ -8,7 +8,9 @@
  *   dry_run trả preview, commit tạo từng sự kiện qua seminarService.create.
  *   Bỏ qua dòng trùng (cùng tên + cùng năm) với dữ liệu đã có hoặc trong file.
  */
-const ExcelJS = require('exceljs');
+const { lazyRequire } = require('../../utils/lazyRequire');
+/** @type {typeof import('exceljs')} */
+const ExcelJS = lazyRequire('exceljs');
 const { getPool } = require('../../config/db');
 const { norm } = require('../../utils/vietnameseText');
 const seminarService = require('./seminarService');
@@ -265,7 +267,7 @@ const templateWorkbook = async () => {
 	const ws = buildSheet(
 		wb,
 		'MẪU NHẬP DANH SÁCH HỘI THẢO, HỘI NGHỊ',
-		'Bắt buộc: Tên hội thảo/hội nghị. Hình thức: Hội nghị / Hội thảo khoa học / Hội thảo quốc tế / Hội nghị khoa học / Tập huấn / Khác. Phạm vi: Bệnh viện tổ chức / Đơn vị ngoài tổ chức. Ngày dạng dd/mm/yyyy. Cấp CME: Có / Không. Chủ trì / Báo cáo viên: chọn cán bộ trong viện hoặc gõ tên người ngoài viện (nhiều người cách nhau bằng dấu ;). Xoá dòng ví dụ trước khi nhập.',
+		'Bắt buộc: Tên hội thảo/hội nghị. Hình thức: Hội nghị / Hội thảo khoa học / Hội thảo quốc tế / Hội nghị khoa học / Tập huấn / Khác. Phạm vi: Bệnh viện tổ chức / Đơn vị ngoài tổ chức. Ngày dạng dd/mm/yyyy. Cấp CME: Có / Không. Chủ trì / Báo cáo viên: chọn cán bộ trong viện hoặc gõ tên người ngoài viện (nhiều người cách nhau bằng dấu ;). Xóa dòng ví dụ trước khi nhập.',
 	);
 	ws.getRow(2).height = 30;
 	ws.addRow({
@@ -409,7 +411,7 @@ const parseRows = async (buffer) => {
 		const row = ws.getRow(r);
 		const title = text(row, 'title');
 		if (!title) continue;
-		// Bỏ dòng ví dụ trong file mẫu nếu người dùng quên xoá
+		// Bỏ dòng ví dụ trong file mẫu nếu người dùng quên xóa
 		if (/\(ví dụ\)\s*$/i.test(title)) continue;
 
 		const warnings = [];

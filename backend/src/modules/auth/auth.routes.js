@@ -180,7 +180,8 @@ router.post(
 	'/2fa/disable',
 	twoFaManageLimiter,
 	authenticate,
-	[body('password').notEmpty()],
+	// code: mã 6 số từ ứng dụng xác thực hoặc 1 mã khôi phục
+	[body('password').notEmpty(), body('code').isString().notEmpty().isLength({ max: 20 })],
 	validate,
 	authController.disable2FA,
 );

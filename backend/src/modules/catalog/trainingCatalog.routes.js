@@ -28,11 +28,15 @@ const CME_CATEGORY_EXTRA_FIELDS = [
 ];
 
 // Danh mục hồ sơ thực hành GPHN (2026-12-03_danh_muc_thuc_hanh_gphn.sql). Hồ sơ lưu
-// CHỮ (giá trị chọn từ danh mục) nên xoá mục không ảnh hưởng hồ sơ cũ; chỉ chặn xoá
+// CHỮ (giá trị chọn từ danh mục) nên xóa mục không ảnh hưởng hồ sơ cũ; chỉ chặn xóa
 // khi chương trình đang dùng làm mặc định.
 const PRACTICE_CATALOG_GUARDS = {
-	'professional-fields': [{ table: 'training_programs', column: 'professional_field_id', label: 'chương trình đào tạo' }],
-	'practice-forms': [{ table: 'training_programs', column: 'practice_form_id', label: 'chương trình đào tạo' }],
+	'professional-fields': [
+		{ table: 'training_programs', column: 'professional_field_id', label: 'chương trình đào tạo' },
+	],
+	'practice-forms': [
+		{ table: 'training_programs', column: 'practice_form_id', label: 'chương trình đào tạo' },
+	],
 };
 
 for (const [path, table] of Object.entries(TRAINING_CATALOG_TABLES)) {

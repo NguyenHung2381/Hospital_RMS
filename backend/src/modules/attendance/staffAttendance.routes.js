@@ -98,7 +98,7 @@ router.post(
 	shiftBody,
 	validate,
 	handle(async (req, res) =>
-		success(res, await shiftService.saveShift(null, req.body), 'Đã thêm ca làm', 201),
+		success(res, await shiftService.saveShift(null, req.body), 'Đã thêm ca', 201),
 	),
 );
 router.put(
@@ -107,7 +107,7 @@ router.put(
 	[...idParam, ...shiftBody],
 	validate,
 	handle(async (req, res) =>
-		success(res, await shiftService.saveShift(req.params.id, req.body), 'Đã cập nhật ca làm'),
+		success(res, await shiftService.saveShift(req.params.id, req.body), 'Đã cập nhật ca'),
 	),
 );
 router.delete(
@@ -117,7 +117,7 @@ router.delete(
 	validate,
 	handle(async (req, res) => {
 		await shiftService.removeShift(req.params.id);
-		return success(res, null, 'Đã xoá ca làm');
+		return success(res, null, 'Đã xóa ca');
 	}),
 );
 
@@ -166,7 +166,7 @@ router.delete(
 	validate,
 	handle(async (req, res) => {
 		await shiftService.removePattern(req.params.id);
-		return success(res, null, 'Đã xoá mẫu ca tuần');
+		return success(res, null, 'Đã xóa mẫu ca tuần');
 	}),
 );
 // Body: { course_ids: string[] } — đúng danh sách khóa học dùng mẫu này

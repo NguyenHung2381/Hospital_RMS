@@ -21,14 +21,14 @@ const RETRY_MS = 10_000;
 const FLUSH_PADDING = `:${' '.repeat(2048)}\n\n`;
 
 // Kết nối SSE sống hàng giờ — kiểm tra lại phiên định kỳ để tài khoản bị vô
-// hiệu hoá / "đăng xuất mọi thiết bị" / đổi mật khẩu bị ngắt luồng, không tiếp
+// hiệu hóa / "đăng xuất mọi thiết bị" / đổi mật khẩu bị ngắt luồng, không tiếp
 // tục nhận sự kiện tới khi tự đóng tab. Cùng nhịp TTL của userStatusCache (60s).
 const RECHECK_EVERY_BEATS = 4;
 
 // ─── Vé mở kết nối ───────────────────────────────────────────────────────────
 // EventSource không gắn được header Authorization nên thông tin xác thực phải
 // nằm trên URL — và URL bị ghi vào access log của nginx/proxy, lịch sử trình
-// duyệt. Trước đây đó là access token thật; giờ là VÉ: ký bằng khoá riêng
+// duyệt. Trước đây đó là access token thật; giờ là VÉ: ký bằng khóa riêng
 // (không dùng làm access token được), sống 60 giây, chỉ dùng được 1 lần.
 const TICKET_TTL_SEC = 60;
 

@@ -270,7 +270,7 @@ export default function MemberFormFields({
 					disabled={saving}
 					style={{ fontSize: 13 }}
 				>
-					Huỷ
+					Hủy
 				</button>
 			</div>
 		</div>

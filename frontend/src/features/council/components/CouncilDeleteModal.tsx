@@ -15,7 +15,7 @@ export function CouncilDeleteModal({
 }) {
 	return (
 		<ConfirmDeleteModal
-			title='Xoá hội đồng'
+			title='Xóa hội đồng'
 			subtitle={council.name}
 			onClose={onClose}
 			onConfirm={onConfirm}
@@ -26,13 +26,13 @@ export function CouncilDeleteModal({
 						<InfoSvg />
 						<span>
 							Có <strong>{council.topic_count} đề tài</strong> đang gán cho hội đồng này — sẽ tự
-							động bỏ gán, và toàn bộ thành viên hội đồng sẽ bị xoá.
+							động bỏ gán, và toàn bộ thành viên hội đồng sẽ bị xóa.
 						</span>
 					</>
 				)
 			}
 		>
-			Bạn có chắc muốn xoá <strong>{council.name}</strong> khỏi hệ thống?
+			Bạn có chắc muốn xóa <strong>{council.name}</strong> khỏi hệ thống?
 		</ConfirmDeleteModal>
 	);
 }

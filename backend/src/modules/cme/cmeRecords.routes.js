@@ -35,7 +35,7 @@ router.post(
 router.post(
 	'/bulk-delete',
 	canManage,
-	[body('ids').isArray({ min: 1 }).withMessage('Chưa chọn ghi nhận nào để xoá')],
+	[body('ids').isArray({ min: 1 }).withMessage('Chưa chọn ghi nhận nào để xóa')],
 	validate,
 	ctrl.removeMany,
 );

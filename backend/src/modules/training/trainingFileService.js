@@ -38,7 +38,7 @@ const getById = async (fileId) => {
 	return r.recordset[0] || null;
 };
 
-// Soft-delete trong DB + xoá file vật lý (bỏ qua lỗi nếu file không tồn tại).
+// Soft-delete trong DB + xóa file vật lý (bỏ qua lỗi nếu file không tồn tại).
 const softDelete = async (fileId, actorId) => {
 	const pool = await getPool();
 	const file = await getById(fileId);

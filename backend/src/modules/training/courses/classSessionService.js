@@ -7,9 +7,10 @@ const { assertClassOpen } = require('./programClassService');
 const { SESSION_IN_PROGRAM_SQL } = require('./sessionScope');
 const lessonProgressService = require('./lessonProgressService');
 const { TRAINEE_OF_USER_SQL } = require('../trainees/traineeOfUser');
+const lecturerAssignmentService = require('./lecturerAssignmentService');
 
 // Buổi o trùng lịch giảng viên với buổi s: cùng GV, cùng ngày, chồng giờ (thiếu
-// giờ = cả ngày), khóa chưa huỷ. Chỉ cảnh báo, không chặn — GV có thể dạy ghép.
+// giờ = cả ngày), khóa chưa hủy. Chỉ cảnh báo, không chặn — GV có thể dạy ghép.
 const LECTURER_CLASH_SQL = (s, o) => `
   ${o}.lecturer_id = ${s}.lecturer_id AND ${o}.session_date = ${s}.session_date AND ${o}.id <> ${s}.id
   AND ISNULL(${o}.start_time, '00:00') < ISNULL(${s}.end_time, '23:59')
@@ -39,11 +40,12 @@ const findLecturerClashes = async (sessionIds) => {
 
 // ─── Buổi học ────────────────────────────────────────────────────────────
 // Lịch học toàn hệ thống (trang /admin/class-schedule): mọi buổi học trong
-// khoảng [from, to] kèm tên khoá, cùng các khoá có thời gian học giao khoảng
-// đó (để vẽ thanh thời gian khoá học). Giảng viên phạm vi 'assigned' chỉ thấy
-// khoá mình được phân công.
+// khoảng [from, to] kèm tên khóa, cùng các khóa có thời gian học giao khoảng
+// đó (để vẽ thanh thời gian khóa học). training_type_id: chỉ khóa của 1 loại
+// (lịch học riêng ĐTLT / CTCV). Giảng viên phạm vi 'assigned' chỉ thấy khóa
+// mình được phân công.
 const listSessionsInRange = async (
-	{ from = undefined, to = undefined, course_id = undefined } = {},
+	{ from = undefined, to = undefined, course_id = undefined, training_type_id = undefined } = {},
 	actor = null,
 ) => {
 	const pool = await getPool();
@@ -52,6 +54,10 @@ const listSessionsInRange = async (
 	if (course_id) {
 		where.push('c.id = @course_id');
 		req.input('course_id', sql.VarChar(20), course_id);
+	}
+	if (training_type_id) {
+		where.push('c.training_type_id = @training_type_id');
+		req.input('training_type_id', sql.VarChar(20), training_type_id);
 	}
 	if (actor && scopeOf(actor, 'courses') === 'assigned') {
 		where.push(ASSIGNED_EXISTS_SQL);
@@ -145,15 +151,21 @@ const listSessions = async (courseId) => {
 // loại bài học — xem gradebookService.SESSION_KIND_SQL.
 const kindOf = (v) => (['theory', 'practice'].includes(v) ? v : null);
 
+// Giảng viên chỉ chọn ở buổi học — phân công GV theo bài tự cập nhật theo các buổi.
 const createSession = async (courseId, data, actorId) => {
 	await assertClassOpen(courseId, data.subject_id);
+	const lecturerId = await lecturerAssignmentService.resolveSessionLecturer(
+		courseId,
+		data.lecturer_id,
+		actorId,
+	);
 	const pool = await getPool();
 	const result = await pool
 		.request()
 		.input('actor_id', sql.VarChar(20), actorId)
 		.input('course_id', sql.VarChar(20), courseId)
 		.input('subject_id', sql.VarChar(20), data.subject_id || null)
-		.input('lecturer_id', sql.VarChar(20), data.lecturer_id || null)
+		.input('lecturer_id', sql.VarChar(20), lecturerId || null)
 		.input('session_date', sql.Date, data.session_date)
 		.input('start_time', sql.VarChar(5), data.start_time || null)
 		.input('end_time', sql.VarChar(5), data.end_time || null)
@@ -167,6 +179,7 @@ const createSession = async (courseId, data, actorId) => {
     `);
 	broadcast('update', { entity: 'class_session' });
 	const id = result.recordset[0].id;
+	await lecturerAssignmentService.syncLessonsFromSessions(courseId, [data.subject_id], actorId);
 	// Bài có thêm buổi ⇒ học viên đã "xong" bài phải có mặt cả buổi mới (quyết định 13)
 	await lessonProgressService.recompute({ sessionId: id });
 	return { id, warnings: await findLecturerClashes([id]) };
@@ -175,12 +188,23 @@ const createSession = async (courseId, data, actorId) => {
 const updateSession = async (sessionId, data, actorId) => {
 	const pool = await getPool();
 	let movedFromCourse = null; // buổi đổi bài ⇒ tính lại trạng thái bài cả khóa
+	const cur = await pool
+		.request()
+		.input('id', sql.VarChar(20), sessionId)
+		.query('SELECT course_id, subject_id, lecturer_id FROM class_sessions WHERE id = @id');
+	const row = cur.recordset[0];
+	// Chỉ kiểm tra GV khi đổi người — sửa giờ / phòng buổi cũ không vướng GV đã nghỉ
+	if (row && data.lecturer_id && data.lecturer_id !== row.lecturer_id) {
+		data = {
+			...data,
+			lecturer_id: await lecturerAssignmentService.resolveSessionLecturer(
+				row.course_id,
+				data.lecturer_id,
+				actorId,
+			),
+		};
+	}
 	if (data.subject_id !== undefined) {
-		const cur = await pool
-			.request()
-			.input('id', sql.VarChar(20), sessionId)
-			.query('SELECT course_id, subject_id FROM class_sessions WHERE id = @id');
-		const row = cur.recordset[0];
 		if (row && (row.subject_id ?? '') !== (data.subject_id ?? '')) {
 			await assertClassOpen(row.course_id, data.subject_id);
 			movedFromCourse = row.course_id;
@@ -213,19 +237,30 @@ const updateSession = async (sessionId, data, actorId) => {
 	}
 	await req.query(`UPDATE class_sessions SET ${sets.join(', ')} WHERE id = @id`);
 	broadcast('update', { entity: 'class_session' });
+	// Bài cũ (nếu đổi bài) và bài mới đều tính lại GV chính / phụ
+	if (row) {
+		await lecturerAssignmentService.syncLessonsFromSessions(
+			row.course_id,
+			[row.subject_id, data.subject_id === undefined ? row.subject_id : data.subject_id],
+			actorId,
+		);
+	}
 	if (movedFromCourse) await lessonProgressService.recompute({ courseId: movedFromCourse });
 	return { warnings: await findLecturerClashes([sessionId]) };
 };
 
-const removeSession = async (sessionId) => {
+const removeSession = async (sessionId, actorId) => {
 	const pool = await getPool();
 	const r = await pool.request().input('id', sql.VarChar(20), sessionId).query(`
-      SELECT course_id FROM class_sessions WHERE id = @id;
+      SELECT course_id, subject_id FROM class_sessions WHERE id = @id;
       DELETE FROM class_sessions WHERE id = @id;`);
 	broadcast('update', { entity: 'class_session' });
 	// Bớt 1 buổi ⇒ bài có thể vừa đủ điều kiện "đã học"
-	const courseId = r.recordsets[0][0]?.course_id;
-	if (courseId) await lessonProgressService.recompute({ courseId });
+	const { course_id: courseId, subject_id: lessonId } = r.recordsets[0][0] ?? {};
+	if (courseId) {
+		await lecturerAssignmentService.syncLessonsFromSessions(courseId, [lessonId], actorId);
+		await lessonProgressService.recompute({ courseId });
+	}
 };
 
 // Tạo nhiều buổi học cùng lúc theo khoảng ngày + các thứ trong tuần được chọn.
@@ -235,8 +270,12 @@ const removeSession = async (sessionId) => {
 const createSessionsBulk = async (courseId, data, actorId) => {
 	await assertClassOpen(courseId, data.subject_id);
 	const pool = await getPool();
-	const { start_date, end_date, weekdays, start_time, end_time, room, lecturer_id, subject_id } =
-		data;
+	const { start_date, end_date, weekdays, start_time, end_time, room, subject_id } = data;
+	const lecturer_id = await lecturerAssignmentService.resolveSessionLecturer(
+		courseId,
+		data.lecturer_id,
+		actorId,
+	);
 	const weekdaySet = new Set((weekdays || []).map(Number));
 	const dates = [];
 	const cursor = new Date(`${start_date}T00:00:00Z`);
@@ -282,7 +321,10 @@ const createSessionsBulk = async (courseId, data, actorId) => {
 		else skipped += 1;
 	}
 	broadcast('update', { entity: 'class_session' });
-	if (createdIds.length) await lessonProgressService.recompute({ courseId });
+	if (createdIds.length) {
+		await lecturerAssignmentService.syncLessonsFromSessions(courseId, [subject_id], actorId);
+		await lessonProgressService.recompute({ courseId });
+	}
 	return { created: createdIds.length, skipped, warnings: await findLecturerClashes(createdIds) };
 };
 

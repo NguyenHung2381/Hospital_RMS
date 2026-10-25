@@ -12,9 +12,9 @@ const checkUploadWindow = asyncHandler(async (req, res, next) => {
 	next();
 });
 
-// Middleware xoá file: chỉ cho phép trong cửa sổ "Sửa" hoặc "Bổ sung" (có mục Tài liệu).
-// Mọi vai trò: file phải thuộc đề tài trong phạm vi của người xoá (chống IDOR —
-// trước đây phạm vi khoa xoá được file của đề tài khoa khác theo file_id).
+// Middleware xóa file: chỉ cho phép trong cửa sổ "Sửa" hoặc "Bổ sung" (có mục Tài liệu).
+// Mọi vai trò: file phải thuộc đề tài trong phạm vi của người xóa (chống IDOR —
+// trước đây phạm vi khoa xóa được file của đề tài khoa khác theo file_id).
 const checkDeleteWindow = asyncHandler(async (req, res, next) => {
 	const topicId = await fileService.findTopicId(req.params.file_id);
 	if (!topicId) return res.status(404).json({ success: false, message: 'Không tìm thấy file' });
@@ -40,7 +40,7 @@ const upload = asyncHandler(async (req, res) => {
 	}));
 
 	const result = await fileService.uploadFiles(topic_id, files, batch_note, req.user.id);
-	return created(res, result, 'Upload file thành công');
+	return created(res, result, 'Tải lên file thành công');
 });
 
 const getByTopic = asyncHandler(async (req, res) => {

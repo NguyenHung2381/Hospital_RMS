@@ -13,7 +13,7 @@ interface SessionListViewProps {
 	onOpenCourse: (courseId: string) => void;
 }
 
-/** Danh sách buổi học trong năm, gom theo khoá học — cùng kiểu thẻ với "Danh sách mốc" NCKH. */
+/** Danh sách buổi học trong năm, gom theo khóa học — cùng kiểu thẻ với "Danh sách mốc" NCKH. */
 export function SessionListView({ sessions, courses, year, onOpenCourse }: SessionListViewProps) {
 	const groups = useMemo(() => {
 		const byCourse = new Map<string, { id: string; name: string; items: CalendarSession[] }>();
@@ -50,7 +50,7 @@ export function SessionListView({ sessions, courses, year, onOpenCourse }: Sessi
 								<div className={styles.metaRow}>
 									{course && (
 										<>
-											<span>Khoá học: {formatDateVN(course.start_date)} ➔ {formatDateVN(course.end_date)}</span>
+											<span>Khóa học: {formatDateVN(course.start_date)} ➔ {formatDateVN(course.end_date)}</span>
 											<span>•</span>
 										</>
 									)}
@@ -72,7 +72,7 @@ export function SessionListView({ sessions, courses, year, onOpenCourse }: Sessi
 											key={s.id}
 											className={styles.deadlineItem}
 											onClick={() => onOpenCourse(g.id)}
-											title='Nhấp để mở lịch học của khoá'
+											title='Nhấp để mở lịch học của khóa'
 											style={{ '--dl-color': color, opacity: past ? 0.6 : 1 } as React.CSSProperties}
 										>
 											<div className={styles.deadlineDot} />

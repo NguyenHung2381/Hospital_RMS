@@ -179,7 +179,7 @@ const addUsers = async (seminarId, userIds, actorId) => {
 		.input('ids', sql.NVarChar(sql.MAX), JSON.stringify(ids)).query(`
       SELECT u.id, u.full_name, u.staff_number, u.date_of_birth, d.name AS department_name
       FROM users u LEFT JOIN departments d ON d.id = u.department_id
-      WHERE u.id IN (SELECT [value] FROM OPENJSON(@ids))
+      WHERE u.id IN (SELECT CAST([value] AS VARCHAR(50)) FROM OPENJSON(@ids))
         AND NOT EXISTS (SELECT 1 FROM seminar_participants p WHERE p.seminar_id = @sid AND p.user_id = u.id)
       ORDER BY d.name, u.full_name;
     `);

@@ -321,7 +321,7 @@ const grantAccountsNoEmail = async (topicId, memberIds, actorId) => {
 				//   - Không bao giờ đổi mật khẩu, username, khoa, họ tên, email.
 				//   - Chỉ tài khoản đề tài (member / topic_leader) mới được nâng lên chủ
 				//     nhiệm (không hạ), gia hạn (chỉ kéo dài) và mở lại khi đã HẾT HẠN.
-				//     Tài khoản bị quản trị khoá tay thì giữ nguyên — cần quản trị mở.
+				//     Tài khoản bị quản trị khóa tay thì giữ nguyên — cần quản trị mở.
 				//   - Vai trò khác (quản trị, trưởng khoa, hội đồng...): chỉ liên kết.
 				const isTopicAccount = [ROLE.MEMBER, ROLE.TOPIC_LEADER].includes(existingUser.role_code);
 				const expired =
@@ -358,7 +358,7 @@ const grantAccountsNoEmail = async (topicId, memberIds, actorId) => {
 						WHERE id = @uid
 					`);
 					if (!existingUser.is_active && !expired)
-						note = 'Tài khoản đang bị khoá — cần quản trị kích hoạt lại';
+						note = 'Tài khoản đang bị khóa — cần quản trị kích hoạt lại';
 				} else {
 					await req.query(`
 						UPDATE users

@@ -160,8 +160,8 @@ export function useCouncils() {
 		showToast(
 			failed ? 'error' : 'success',
 			failed
-				? `Đã xoá ${okIds.size} hội đồng, ${failed} lỗi`
-				: `Đã xoá ${okIds.size} hội đồng`,
+				? `Đã xóa ${okIds.size} hội đồng, ${failed} lỗi`
+				: `Đã xóa ${okIds.size} hội đồng`,
 		);
 		refreshData();
 	}, [selected, refreshData]);
@@ -202,10 +202,10 @@ export function useCouncils() {
 			setCouncils((prev) => prev.filter((c) => c.id !== activeCouncil.id));
 			setModal(null);
 			setActiveCouncil(null);
-			showToast('success', `Đã xoá "${activeCouncil.name}"`);
+			showToast('success', `Đã xóa "${activeCouncil.name}"`);
 			refreshData();
 		} catch (err) {
-			showToast('error', err instanceof Error ? err.message : 'Xoá thất bại');
+			showToast('error', err instanceof Error ? err.message : 'Xóa thất bại');
 		} finally {
 			setLoading(false);
 		}

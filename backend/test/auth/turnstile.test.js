@@ -1,4 +1,4 @@
-// Captcha chế độ Cloudflare Turnstile (utils/captcha.js): bật khi có đủ 2 khoá,
+// Captcha chế độ Cloudflare Turnstile (utils/captcha.js): bật khi có đủ 2 khóa,
 // xác minh qua API Cloudflare (giả lập bằng fetch), lỗi mạng thì từ chối.
 process.env.JWT_SECRET = 'test-secret';
 process.env.TURNSTILE_SITE_KEY = 'site-key-test';

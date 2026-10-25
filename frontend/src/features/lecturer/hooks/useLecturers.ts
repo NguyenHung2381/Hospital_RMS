@@ -49,7 +49,7 @@ export function useLecturers() {
 				if (controller.signal.aborted) return;
 				setLecturers(res.data);
 				setTotal(res.pagination.total);
-				// Trang hiện tại vượt quá số trang thực tế (vd. vừa xoá/đổi tìm kiếm) — về trang 1
+				// Trang hiện tại vượt quá số trang thực tế (vd. vừa xóa/đổi tìm kiếm) — về trang 1
 				const lastPage = pageSize === 0 ? 1 : Math.max(1, Math.ceil(res.pagination.total / pageSize));
 				if (page > lastPage) setPage(1);
 			} catch {
@@ -117,10 +117,10 @@ export function useLecturers() {
 			await deleteLecturer(deletingLecturer.id);
 			setModal(null);
 			setDeletingLecturer(null);
-			showToast('success', `Đã xoá "${deletingLecturer.full_name}"`);
+			showToast('success', `Đã xóa "${deletingLecturer.full_name}"`);
 			refreshData();
 		} catch (err) {
-			showToast('error', err instanceof Error ? err.message : 'Xoá thất bại');
+			showToast('error', err instanceof Error ? err.message : 'Xóa thất bại');
 		} finally {
 			setLoading(false);
 		}
@@ -133,7 +133,7 @@ export function useLecturers() {
 			try {
 				const { okIds, failedCount } = await runBulk(ids, deleteLecturer);
 				setModal(null);
-				showToast(failedCount ? 'error' : 'success', bulkToast('xoá', okIds.size, failedCount, 'giảng viên'));
+				showToast(failedCount ? 'error' : 'success', bulkToast('xóa', okIds.size, failedCount, 'giảng viên'));
 				refreshData();
 			} finally {
 				setLoading(false);
@@ -142,7 +142,7 @@ export function useLecturers() {
 		[refreshData],
 	);
 
-	// Id toàn bộ bản ghi khớp từ khoá (mọi trang, limit=0) — cho nút "Xoá tất cả"
+	// Id toàn bộ bản ghi khớp từ khóa (mọi trang, limit=0) — cho nút "Xóa tất cả"
 	const fetchAllIds = useCallback(
 		async () => (await getLecturers({ search: debouncedSearch || undefined, active_only: false })).data.map((x) => x.id),
 		[debouncedSearch],

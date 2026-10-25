@@ -27,7 +27,7 @@ const removeGrade = async (gradeId) => {
 		.request()
 		.input('id', sql.VarChar(20), gradeId)
 		.query('DELETE FROM grades WHERE id = @id AND locked_at IS NULL');
-	if (!r.rowsAffected[0]) throw httpError(409, 'Không xoá được: điểm đã khóa hoặc không tồn tại.');
+	if (!r.rowsAffected[0]) throw httpError(409, 'Không xóa được: điểm đã khóa hoặc không tồn tại.');
 	broadcast('update', { entity: 'grade' });
 };
 

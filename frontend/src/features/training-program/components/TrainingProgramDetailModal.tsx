@@ -53,7 +53,7 @@ function ResultsPanel({ programId }: { programId: string }) {
 	if (rows.length === 0) {
 		return (
 			<div className={styles.subEmpty}>
-				Chưa có kết quả học tập nào cho chương trình này. Điểm được chấm ở màn Khóa học (tab "Kết quả & Chứng chỉ").
+				Chưa có kết quả học tập nào cho chương trình này. Điểm được chấm ở màn Khóa học (tab "Kết quả & chứng chỉ").
 			</div>
 		);
 	}

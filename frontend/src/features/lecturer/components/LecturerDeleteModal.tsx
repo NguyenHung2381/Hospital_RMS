@@ -14,14 +14,14 @@ export function LecturerDeleteModal({
 }) {
 	return (
 		<ConfirmDeleteModal
-			title='Xoá giảng viên'
+			title='Xóa giảng viên'
 			subtitle={lecturer.full_name}
 			onClose={onClose}
 			onConfirm={onConfirm}
 			loading={loading}
 		>
-			Bạn có chắc muốn xoá <strong>{lecturer.full_name}</strong> khỏi hệ thống? Nếu giảng viên đã
-			từng được phân công giảng dạy, hệ thống sẽ chỉ vô hiệu hoá thay vì xoá hẳn.
+			Bạn có chắc muốn xóa <strong>{lecturer.full_name}</strong> khỏi hệ thống? Nếu giảng viên đã
+			từng được phân công giảng dạy, hệ thống sẽ chỉ vô hiệu hóa thay vì xóa hẳn.
 		</ConfirmDeleteModal>
 	);
 }

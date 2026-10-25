@@ -34,8 +34,8 @@ function handleUpdate(e: MessageEvent) {
 		return;
 	}
 	// Dữ liệu trên server vừa đổi — bỏ cache GET để các trang tải lại bản mới.
-	// Xoá sạch chứ không chỉ entity đó: danh mục nhúng dữ liệu chéo (research-rounds
-	// có số đề tài + tên loại đợt) nên xoá theo entity sẽ trả về bản cũ.
+	// Xóa sạch chứ không chỉ entity đó: danh mục nhúng dữ liệu chéo (research-rounds
+	// có số đề tài + tên loại đợt) nên xóa theo entity sẽ trả về bản cũ.
 	invalidateApiCache();
 	for (const sub of subscribers) {
 		if (entity === 'all' || sub.entities.includes(entity)) dirty.add(sub);

@@ -27,49 +27,49 @@ interface QuickLink {
 
 const QUICK_LINKS: QuickLink[] = [
 	{
-		label: 'Quản lý Đề tài',
+		label: 'Đề tài nghiên cứu',
 		path: '/admin/topics',
 		icon: <TopicSvg />,
 		perm: 'topics:read',
 	},
 	{
-		label: 'Xét duyệt Hồ sơ',
+		label: 'Phê duyệt đề tài',
 		path: '/admin/approvals',
 		icon: <ClipboardCheckSvg />,
 		perm: 'topics:approve',
 	},
 	{
-		label: 'Hội đồng Khoa học',
+		label: 'Hội đồng chấm đề cương',
 		path: '/admin/councils',
 		icon: <ShieldSvg />,
 		perm: 'councils:read',
 	},
 	{
-		label: 'Kế hoạch & Đợt NCKH',
+		label: 'Lịch trình đợt nghiên cứu',
 		path: '/admin/schedule',
 		icon: <CalendarSvg />,
 		perm: 'rounds:read',
 	},
 	{
-		label: 'Hội nghị - Hội thảo CME',
+		label: 'Hội thảo & hội nghị',
 		path: '/admin/seminars',
 		icon: <BookOpenSvg />,
 		perm: 'seminars:read',
 	},
 	{
-		label: 'Giám sát Định ngạch CME',
+		label: 'Theo dõi ngưỡng tín chỉ CME',
 		path: '/admin/cme-compliance',
 		icon: <BadgeSvg />,
 		perm: 'seminars:cme_manage',
 	},
 	{
-		label: 'Quản lý Học viên',
+		label: 'Học viên',
 		path: '/admin/trainees',
 		icon: <UsersSvg />,
 		perm: 'trainees:read',
 	},
 	{
-		label: 'Cán bộ Giảng dạy',
+		label: 'Giảng viên',
 		path: '/admin/lecturers',
 		icon: <UserCheckSvg />,
 		perm: 'lecturers:read',
@@ -81,7 +81,7 @@ const QUICK_LINKS: QuickLink[] = [
 		perm: 'departments:read',
 	},
 	{
-		label: 'Báo cáo & Thống kê',
+		label: 'Báo cáo & thống kê',
 		path: '/admin/reports',
 		icon: <BarChartSvg />,
 		perm: 'reports:read',
@@ -98,7 +98,7 @@ export function QuickAccess() {
 	return (
 		<div className={styles.quickAccessCard}>
 			<div className={styles.cardHeader}>
-				<span className={styles.cardTitle}>Truy cập nhanh Phân hệ Nghiệp vụ</span>
+				<span className={styles.cardTitle}>Truy cập nhanh các phân hệ</span>
 			</div>
 			<div className={styles.quickAccessGrid}>
 				{links.map((l) => (

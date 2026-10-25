@@ -7,7 +7,7 @@ Mô hình: mỗi tài khoản có **một vai trò**; vai trò có tập **lư�
 | Danh mục quyền   | `catalog.js`                                            | Nguồn duy nhất. Server đồng bộ vào bảng `permissions` lúc khởi động (`sync.js`).                                                                                                                                         |
 | Phạm vi dữ liệu  | `scopes.js`, cột `role_permissions.scope`               | `topics`: own / department / all · `users`: department / all · `courses`: assigned / all · `staff_attendance`: department / all (lượt cấp có trước khi thêm phạm vi giữ `all` — `nullScopeFill`). Resource khác: `NULL`. |
 | Superuser        | cột `roles.is_superuser`                                | Không phải quyền trong danh mục, không cấp được qua giao diện. Trong code hiện dưới dạng key `system:manage`.                                                                                                            |
-| Vai trò hệ thống | `roles.is_system`, `roles.code`                         | 8 vai trò gốc, không xoá được. Code tham chiếu qua mã (`modules/access/roleCodes.js`), không dùng id `VT0x`.                                                                                                             |
+| Vai trò hệ thống | `roles.is_system`, `roles.code`                         | 8 vai trò gốc, không xóa được. Code tham chiếu qua mã (`modules/access/roleCodes.js`), không dùng id `VT0x`.                                                                                                             |
 | Chống leo thang  | `modules/access/privilegeGuard.js`                      | Chỉ cấp / gán / sửa được thứ không vượt quyền (và phạm vi) của chính mình.                                                                                                                                               |
 | Phiên đăng nhập  | `users.token_version`, `modules/auth/sessionVersion.js` | Tăng version ⇒ mọi access token cũ bị từ chối ngay.                                                                                                                                                                      |
 
@@ -17,7 +17,7 @@ Quy tắc kiểm tra: **có đúng quyền mới được** (`manage` không ph�
 
 **Thêm quyền mới**
 
-1. Thêm `p('PERM-XXX-ACTION', 'action', 'Tên hiển thị', 'Mô tả')` vào đúng resource trong `catalog.js`. Id cố định, tên không trùng (cột `name` có UNIQUE).
+1. Thêm `p('PERM-XXX-ACTION', 'action', 'Tên hiển thị', 'Mô tả')` vào đúng resource trong `catalogBusiness.js` (nghiệp vụ) hoặc `catalogAdmin.js` (quản trị) — `catalog.js` gom lại và kiểm tra. Id cố định, tên không trùng (cột `name` có UNIQUE).
 2. Tách từ quyền cũ ⇒ thêm `seedFrom: ['resource:action']` để vai trò đang có quyền cũ được cấp sẵn quyền mới (chỉ ở lần tạo).
 3. `npm run gen:perm-types` để sinh lại kiểu `PermissionKey` cho frontend.
 4. Dùng ở route: `authorizePermission(['resource', 'action'])`.

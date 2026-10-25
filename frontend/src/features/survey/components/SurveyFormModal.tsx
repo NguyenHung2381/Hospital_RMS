@@ -234,7 +234,7 @@ export function SurveyFormModal({
 								type='button'
 								className={styles.itemRemoveBtn}
 								onClick={() => removeQuestion(q.tempId)}
-								title='Xoá câu hỏi'
+								title='Xóa câu hỏi'
 							>
 								<TrashSvg />
 							</button>
@@ -257,7 +257,7 @@ export function SurveyFormModal({
 											type='button'
 											className={styles.itemRemoveBtn}
 											onClick={() => removeOption(q.tempId, oi)}
-											title='Xoá lựa chọn'
+											title='Xóa lựa chọn'
 										>
 											<TrashSvg />
 										</button>

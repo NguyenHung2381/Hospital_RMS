@@ -1,4 +1,4 @@
-// Link ngoài do người dùng nhập (tài liệu khoá học / bài học dạng "link") được
+// Link ngoài do người dùng nhập (tài liệu khóa học / bài học dạng "link") được
 // hiển thị thành <a href>. Chỉ nhận http/https tuyệt đối — chặn javascript:,
 // data:, vbscript:... (XSS lưu trữ khi link được mở ở nơi không tự lọc như
 // React 19: file xuất, email, client khác).

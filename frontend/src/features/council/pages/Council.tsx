@@ -117,7 +117,7 @@ export default function Council() {
 
 	return (
 		<AdminLayout
-			pageTitle='Quản lý Hội đồng chấm đề cương'
+			pageTitle='Hội đồng chấm đề cương'
 			pageSubtitle='Thành lập hội đồng và phân công đề tài để chấm'
 			headerActions={headerActions}
 		>
@@ -161,7 +161,7 @@ export default function Council() {
 									danger
 									onClick={() => d.setModal('bulk-delete')}
 								>
-									<TrashSvg /> Xoá đã chọn
+									<TrashSvg /> Xóa đã chọn
 								</BulkButton>
 								<button
 									type='button'

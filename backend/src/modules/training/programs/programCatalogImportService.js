@@ -7,7 +7,7 @@
  *     nội dung = 1 khoa được chọn của vòng ngay trên.
  * Cập nhật theo MÃ (chương trình: training_programs.code, vòng:
  * program_lessons.code) nên nhập lại nhiều lần an toàn. Ô trống trong file
- * không xoá dữ liệu đang có. dry_run trả bản xem trước, không ghi DB.
+ * không xóa dữ liệu đang có. dry_run trả bản xem trước, không ghi DB.
  */
 const { getPool } = require('../../../config/db');
 const { norm } = require('../../../utils/vietnameseText');
@@ -278,7 +278,7 @@ const buildPreview = ({ programs, lines }, lookups) => {
 	return { programItems, lessonItems, warnings };
 };
 
-// Chỉ ghi trường có giá trị trong file — ô trống không xoá dữ liệu đang có.
+// Chỉ ghi trường có giá trị trong file — ô trống không xóa dữ liệu đang có.
 const pickFilled = (obj, fields) =>
 	Object.fromEntries(fields.filter((f) => obj[f] != null && obj[f] !== '').map((f) => [f, obj[f]]));
 

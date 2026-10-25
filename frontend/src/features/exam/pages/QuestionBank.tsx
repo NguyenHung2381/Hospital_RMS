@@ -169,7 +169,7 @@ export default function QuestionBank() {
 		setBusy(true);
 		try {
 			const { okIds, failedCount } = await runBulk(ids, (id) => examApi.removeQuestion(id));
-			(failedCount ? notify.error : notify.success)(bulkToast('xoá', okIds.size, failedCount, 'câu hỏi'));
+			(failedCount ? notify.error : notify.success)(bulkToast('xóa', okIds.size, failedCount, 'câu hỏi'));
 			await load();
 		} finally {
 			setBusy(false);
@@ -230,7 +230,7 @@ export default function QuestionBank() {
 		setBusy(true);
 		try {
 			await examApi.removeQuestion(deleting.id);
-			notify.success('Đã xoá câu hỏi');
+			notify.success('Đã xóa câu hỏi');
 			setDeleting(null);
 			await load();
 		} catch (e) {
@@ -363,7 +363,7 @@ export default function QuestionBank() {
 								size='sm'
 								onClick={resetFilters}
 							>
-								Xoá lọc
+								Xóa lọc
 							</Button>
 						)}
 						<DeleteAllButton
@@ -373,7 +373,7 @@ export default function QuestionBank() {
 							onDelete={handleBulkDelete}
 							onDone={rowSel.clearSelection}
 							disabled={busy}
-							note='Câu hỏi đang nằm trong đề kiểm tra sẽ không xoá được và được báo lỗi riêng.'
+							note='Câu hỏi đang nằm trong đề kiểm tra sẽ không xóa được và được báo lỗi riêng.'
 						/>
 					</div>
 				</div>
@@ -394,7 +394,7 @@ export default function QuestionBank() {
 								Chuyển sang chương trình…
 							</BulkButton>
 						}
-						deleteNote='Câu hỏi đang nằm trong đề kiểm tra sẽ không xoá được và được báo lỗi riêng.'
+						deleteNote='Câu hỏi đang nằm trong đề kiểm tra sẽ không xóa được và được báo lỗi riêng.'
 					/>
 					<table className={styles.table}>
 						<thead>
@@ -483,7 +483,7 @@ export default function QuestionBank() {
 													<EditSvg />
 												</RowAction>
 												<RowAction
-													title='Xoá'
+													title='Xóa'
 													onClick={() => setDeleting(q)}
 												>
 													<TrashSvg />
@@ -558,7 +558,7 @@ export default function QuestionBank() {
 							variant='secondary'
 							onClick={() => setBulkPoints(null)}
 						>
-							Huỷ
+							Hủy
 						</Button>
 						<Button
 							loading={busy}
@@ -593,7 +593,7 @@ export default function QuestionBank() {
 							variant='secondary'
 							onClick={() => setMoving(null)}
 						>
-							Huỷ
+							Hủy
 						</Button>
 						<Button
 							loading={busy}
@@ -637,7 +637,7 @@ export default function QuestionBank() {
 			<Modal
 				open={!!deleting}
 				onClose={() => setDeleting(null)}
-				title='Xoá câu hỏi'
+				title='Xóa câu hỏi'
 				size='sm'
 				footer={
 					<>
@@ -645,19 +645,19 @@ export default function QuestionBank() {
 							variant='secondary'
 							onClick={() => setDeleting(null)}
 						>
-							Huỷ
+							Hủy
 						</Button>
 						<Button
 							variant='danger'
 							loading={busy}
 							onClick={() => void handleDelete()}
 						>
-							Xoá
+							Xóa
 						</Button>
 					</>
 				}
 			>
-				Xoá câu hỏi "{deleting?.question_text.slice(0, 80)}"? Câu hỏi đang nằm trong đề kiểm tra sẽ không xoá được.
+				Xóa câu hỏi "{deleting?.question_text.slice(0, 80)}"? Câu hỏi đang nằm trong đề kiểm tra sẽ không xóa được.
 			</Modal>
 		</AdminLayout>
 	);
@@ -719,7 +719,7 @@ function QuestionFormModal({
 						variant='secondary'
 						onClick={onClose}
 					>
-						Huỷ
+						Hủy
 					</Button>
 					<Button
 						loading={busy}
@@ -765,7 +765,7 @@ function QuestionFormModal({
 					/>
 				</label>
 				<div className={styles.field}>
-					Hình minh hoạ <span className={styles.hint}>(không bắt buộc)</span>
+					Hình minh họa <span className={styles.hint}>(không bắt buộc)</span>
 					<QuestionImageField
 						value={image}
 						onChange={setImage}

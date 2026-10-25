@@ -39,7 +39,7 @@ export default function TwoFactorReminder() {
 						{daysLeft !== null && ` (còn ${daysLeft} ngày)`}
 					</>
 				)}
-				. Quá hạn, các chức năng sẽ bị tạm khoá cho tới khi bật.
+				. Quá hạn, các chức năng sẽ bị tạm khóa cho tới khi bật.
 			</span>
 			<Link to='/bat-2fa' style={{ fontWeight: 600, color: '#92400e', textDecoration: 'underline' }}>
 				Bật ngay

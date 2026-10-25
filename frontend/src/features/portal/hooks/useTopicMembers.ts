@@ -18,7 +18,7 @@ const toPayload = (f: MemberFormState) => ({
 	role: f.role,
 });
 
-/** State + thao tác thêm/sửa/xoá thành viên đề tài (dùng cho MembersTab). */
+/** State + thao tác thêm/sửa/xóa thành viên đề tài (dùng cho MembersTab). */
 export function useTopicMembers(topicId: string | null | undefined) {
 	const [members, setMembers] = useState<TopicMember[]>([]);
 	const [addingMember, setAddingMember] = useState(false);
@@ -86,9 +86,9 @@ export function useTopicMembers(topicId: string | null | undefined) {
 		try {
 			await deleteTopicMember(topicId, memberId);
 			setMembers((p) => p.filter((m) => m.id !== memberId));
-			notify.success('Đã xoá thành viên');
+			notify.success('Đã xóa thành viên');
 		} catch (e) {
-			setMemberErr(e instanceof Error ? e.message : 'Xoá thất bại');
+			setMemberErr(e instanceof Error ? e.message : 'Xóa thất bại');
 		}
 	};
 
