@@ -18,8 +18,15 @@ WORKDIR /app
 COPY package*.json ./
 RUN --mount=type=cache,target=/root/.npm \
     npm ci --no-audit --no-fund --fetch-timeout=600000 --fetch-retries=5 --fetch-retry-maxtimeout=120000
-COPY . .
-RUN npm run build
+# Bỏ file chỉ dùng ở stage prod (cấu hình nginx) — sửa chúng không làm mất cache
+# của bước build (tsc + vite + obfuscator, chậm nhất trong cả quá trình).
+COPY --exclude=nginx.conf --exclude=docker . .
+# Nén gzip sẵn lúc build (nginx.conf: gzip_static on) → nginx gửi thẳng file .gz
+# mức 9 thay vì nén lại bundle JS (antd + obfuscator, vài MB) cho MỖI request.
+# File < 1KB không đáng nén; ảnh/font đã nén sẵn nên không nén thêm.
+RUN npm run build \
+    && find dist -type f -size +1k \( -name '*.js' -o -name '*.mjs' -o -name '*.css' -o -name '*.html' \
+        -o -name '*.svg' -o -name '*.json' -o -name '*.txt' \) -exec gzip -9 -k {} +
 
 FROM nginx:alpine AS prod
 COPY --from=build /app/dist /usr/share/nginx/html

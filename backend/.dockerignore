@@ -9,3 +9,17 @@ uploads
 secrets
 # Log hoạt động của máy build (audit-*.log chứa dữ liệu người dùng) — không đưa vào image
 logs
+# Không dùng lúc chạy: test (dev chạy qua bind mount ./backend:/app), cấu hình
+# lint/format/typecheck, tài liệu. Loại khỏi context để sửa các file này không
+# làm `COPY . .` mất cache → không phải build lại image.
+test
+test-integration
+eslint.config.js
+tsconfig.json
+.prettierrc.json
+.prettierignore
+.gitignore
+nodemon.json
+README.md
+Dockerfile
+.dockerignore

@@ -85,6 +85,16 @@ services:
       # phải nằm ngoài container để không mất khi redeploy/tạo lại container.
       - server_logs:/app/logs
       - redis_secret:/run/redis-secret:ro
+    # `docker ps` hiện healthy/unhealthy để thấy ngay worker treo (event loop kẹt)
+    # dù tiến trình chưa chết. Gọi /health (không chạm DB, không qua rate-limit)
+    # bằng wget có sẵn trong busybox — nhẹ hơn nhiều so với bật thêm 1 tiến trình node.
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:3001/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
+      start_interval: 2s
     # Chờ Redis trả lời PING rồi mới chạy backend — trước đây chỉ chờ container
     # redis "started", backend nối vào lúc Redis chưa nhận kết nối nên lần nào
     # deploy log cũng báo "[Cache] Redis không sẵn sàng". required: false — Redis

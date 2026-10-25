@@ -3,3 +3,8 @@ dist
 .env
 .env.*
 *.log
+# Không dùng khi build — loại khỏi context để sửa chúng không làm mất cache `COPY . .`
+README.md
+.gitignore
+Dockerfile
+.dockerignore
