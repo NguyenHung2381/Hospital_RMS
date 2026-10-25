@@ -13,10 +13,11 @@ require('dotenv').config({ path: path.join(__dirname, '../../.env'), quiet: true
 // Không có .env (CI) thì điền giá trị giữ chỗ — app.js dừng nếu thiếu biến bắt buộc
 require('../../scripts/lib/static-check-env');
 
+// routeWalker phải nạp trước app để ghi lại đường mount của router (Express 5)
+const { listRoutes, passesGuards } = require('../../src/permissions/routeWalker');
 const app = require('../../src/app');
 const { hasPermission } = require('../../src/middlewares/auth');
 const { isKnownKey } = require('../../src/permissions/catalog');
-const { listRoutes, passesGuards } = require('../../src/permissions/routeWalker');
 const policy = require('../../src/permissions/routePolicy');
 const TEMPLATES = require('./fixtures/role-templates.json');
 
