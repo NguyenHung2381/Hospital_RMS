@@ -126,7 +126,10 @@ test('kiểm giá trị: độ dài, số, ngày, lựa chọn bị thu hẹp', 
 	);
 	assert.match(validateValues(r, base).errors.budget_estimated, /Vui lòng nhập/);
 	// Bài báo không có kinh phí ⇒ không đòi
-	assert.equal(validateValues(r, { ...base, article_type: 'bai_bao' }).errors.budget_estimated, undefined);
+	assert.equal(
+		validateValues(r, { ...base, article_type: 'bai_bao' }).errors.budget_estimated,
+		undefined,
+	);
 });
 
 test('when: trường bài báo chỉ bắt buộc khi loại = bài báo', () => {

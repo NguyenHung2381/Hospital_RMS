@@ -226,6 +226,11 @@ const whenUnknown = (when, values) =>
 
 // Kiểm cả form: values = body. mode 'update' = sửa từng phần — trường không gửi
 // lên thì giữ nguyên, không bắt buộc lại. Trả { errors: {key: msg}, custom }.
+/**
+ * @param {any} resolved
+ * @param {Record<string, any>} values
+ * @param {{ mode?: string, customValues?: Record<string, any> }} [options]
+ */
 const validateValues = (resolved, values, { mode = 'create', customValues } = {}) => {
 	const errors = {};
 	for (const f of Object.values(resolved.fields)) {
