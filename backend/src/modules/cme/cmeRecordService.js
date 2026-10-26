@@ -156,7 +156,12 @@ const update = async (id, data, actorId, { extraSets = [] } = {}) => {
 		.request()
 		.input('id', sql.VarChar(20), id)
 		.input('actor_id', sql.VarChar(20), actorId);
-	const sets = ['updated_at = GETDATE()', 'updated_by = @actor_id', ...extraSets, ...fieldSets(req, data)];
+	const sets = [
+		'updated_at = GETDATE()',
+		'updated_by = @actor_id',
+		...extraSets,
+		...fieldSets(req, data),
+	];
 	const r = await req.query(`UPDATE cme_records SET ${sets.join(', ')} WHERE id = @id`);
 	if (!r.rowsAffected[0]) return null;
 	broadcast('update', { entity: 'cme_record' });
@@ -190,13 +195,18 @@ const updateMany = async (ids, data, actorId) => {
 			WHERE r.id IN (SELECT CAST([value] AS VARCHAR(50)) FROM OPENJSON(@ids))
 			AND ${newVal('end_date')} < ${newVal('activity_date')}`);
 		if (bad.recordset[0].n)
-			throw httpError(400, `${bad.recordset[0].n} ghi nhận sẽ có "Đến ngày" trước "Từ ngày" — vui lòng nhập cả hai ngày`);
+			throw httpError(
+				400,
+				`${bad.recordset[0].n} ghi nhận sẽ có "Đến ngày" trước "Từ ngày" — vui lòng nhập cả hai ngày`,
+			);
 	}
 
 	const sets = ['updated_at = GETDATE()', 'updated_by = @actor_id', ...fields];
 	if (!has('credits') && (has('category_id') || has('quantity'))) {
 		const total = `c.conversion_value * ISNULL(${newVal('quantity')}, 1)`;
-		sets.push(`credits = CASE WHEN c.conversion_value > 0 AND ${total} < 10000 THEN ROUND(${total}, 2) ELSE r.credits END`);
+		sets.push(
+			`credits = CASE WHEN c.conversion_value > 0 AND ${total} < 10000 THEN ROUND(${total}, 2) ELSE r.credits END`,
+		);
 	}
 	const r = await req.query(`UPDATE r SET ${sets.join(', ')}
 		FROM cme_records r LEFT JOIN cme_credit_categories c ON c.id = ${newVal('category_id')}

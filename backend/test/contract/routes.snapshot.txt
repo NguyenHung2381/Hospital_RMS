@@ -38,6 +38,7 @@ POST   /api/v1/cme-records/:id/approve  cme_records:manage
 POST   /api/v1/cme-records/:id/evidence  cme_records:manage
 POST   /api/v1/cme-records/:id/reject  cme_records:manage
 POST   /api/v1/cme-records/bulk-delete  cme_records:manage
+POST   /api/v1/cme-records/bulk-update  cme_records:manage
 POST   /api/v1/cme-records/export-excel  cme_records:manage
 POST   /api/v1/cme-records/import-excel  cme_records:manage
 POST   /api/v1/cme-records/import-template  cme_records:manage
