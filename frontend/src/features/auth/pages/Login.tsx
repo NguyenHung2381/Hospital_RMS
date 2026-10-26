@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { FORCE_PASSWORD_PATH, TWO_FACTOR_SETUP_PATH } from '../../../app/router/authHelpers';
+import { ServiceUnavailableError, userMessage } from '../../../shared/api/http';
 import { canAccessAdminPanel } from '../../../shared/utils/permissions';
 import AuthLayout from '../../../layouts/AuthLayout';
 import { saveAuth } from '../../../shared/utils/storage';
@@ -21,8 +22,10 @@ import {
 	EyeSvg,
 	LockSvg,
 	MessageSvg,
+	RefreshSvg,
 	ShieldSvg,
 	UserSvg,
+	WarnSvg,
 } from '@/assets/icons';
 
 // === ICONS ===
@@ -71,6 +74,40 @@ const Icon = {
 	),
 };
 
+// Máy chủ không phản hồi / mất mạng — không phải lỗi do người dùng nhập sai,
+// nên hiển thị dạng thông báo trạng thái kèm nút thử lại thay vì khung lỗi đỏ.
+function ServiceNotice({ formId, busy }: { formId: string; busy: boolean }) {
+	return (
+		<div
+			className={styles.serviceNotice}
+			role='status'
+		>
+			<span className={styles.serviceNoticeIcon}>
+				<WarnSvg
+					width={20}
+					height={20}
+				/>
+			</span>
+			<div className={styles.serviceNoticeBody}>
+				<strong className={styles.serviceNoticeTitle}>Hệ thống đang tạm gián đoạn</strong>
+				<span>Chưa kết nối được máy chủ. Vui lòng kiểm tra mạng hoặc thử lại sau ít phút.</span>
+			</div>
+			<button
+				type='submit'
+				form={formId}
+				className={styles.serviceNoticeRetry}
+				disabled={busy}
+			>
+				<RefreshSvg
+					width={14}
+					height={14}
+				/>
+				Thử lại
+			</button>
+		</div>
+	);
+}
+
 // === COMPONENT ===
 export default function Login() {
 	const navigate = useNavigate();
@@ -86,6 +123,8 @@ export default function Login() {
 	// Server yêu cầu giải thử thách chống dò mật khẩu (xem loginApi)
 	const [isVerifying, setIsVerifying] = useState(false);
 	const [apiError, setApiError] = useState<string | null>(null);
+	// Lỗi hạ tầng (máy chủ không phản hồi) — hiển thị riêng, xem ServiceNotice
+	const [serviceDown, setServiceDown] = useState(false);
 	// Popup chọn nơi vào cho tài khoản có ghế trong hội đồng chấm đề tài
 	const [councilPrompt, setCouncilPrompt] = useState<{
 		dest: string;
@@ -193,6 +232,7 @@ export default function Login() {
 
 		setIsLoading(true);
 		setApiError(null);
+		setServiceDown(false);
 
 		try {
 			const data = await loginApi(form.username, form.password, form.remember, () =>
@@ -204,13 +244,15 @@ export default function Login() {
 			}
 			await completeLogin(data);
 		} catch (err) {
+			if (err instanceof ServiceUnavailableError) {
+				setServiceDown(true);
+				return;
+			}
 			if (err instanceof LoginLockedError) {
 				setLockedUntil(Date.now() + err.retryAfterSeconds * 1000);
 				setSecondsLeft(err.retryAfterSeconds);
 			}
-			setApiError(
-				err instanceof Error ? err.message : 'Có lỗi xảy ra, vui lòng thử lại',
-			);
+			setApiError(userMessage(err));
 		} finally {
 			setIsLoading(false);
 			setIsVerifying(false);
@@ -222,11 +264,13 @@ export default function Login() {
 		if (!preAuthToken || !otpCode.trim()) return;
 		setIsLoading(true);
 		setOtpError(null);
+		setServiceDown(false);
 		try {
 			const data = await verify2FAApi(form.username, preAuthToken, otpCode.trim());
 			await completeLogin(data);
 		} catch (err) {
-			setOtpError(err instanceof Error ? err.message : 'Mã xác thực không đúng');
+			if (err instanceof ServiceUnavailableError) setServiceDown(true);
+			else setOtpError(userMessage(err, 'Mã xác thực không đúng'));
 		} finally {
 			setIsLoading(false);
 		}
@@ -249,6 +293,12 @@ export default function Login() {
 				</div>
 
 				<div className={styles.loginCard}>
+					{serviceDown && (
+						<ServiceNotice
+							formId='otp-form'
+							busy={isLoading}
+						/>
+					)}
 					{otpError && (
 						<div
 							className={`${styles.alertBox} ${styles.alertError}`}
@@ -260,6 +310,7 @@ export default function Login() {
 					)}
 
 					<form
+						id='otp-form'
 						onSubmit={handleVerify2FA}
 						className={styles.loginForm}
 						noValidate
@@ -316,6 +367,7 @@ export default function Login() {
 								setPreAuthToken(null);
 								setOtpCode('');
 								setOtpError(null);
+								setServiceDown(false);
 							}}
 							disabled={isLoading}
 						>
@@ -338,6 +390,13 @@ export default function Login() {
 
 			{/* Form card */}
 			<div className={styles.loginCard}>
+				{serviceDown && (
+					<ServiceNotice
+						formId='login-form'
+						busy={isLoading}
+					/>
+				)}
+
 				{/* Thông báo lỗi API */}
 				{apiError && (
 					<div
@@ -358,6 +417,7 @@ export default function Login() {
 				)}
 
 				<form
+					id='login-form'
 					onSubmit={handleSubmit}
 					className={styles.loginForm}
 					noValidate

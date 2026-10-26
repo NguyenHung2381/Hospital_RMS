@@ -1,6 +1,7 @@
 import { trackRequest } from '../utils/feedback';
 import { clearAuth, getToken, updateStoredUser } from '../utils/storage';
 import { BASE_URL } from './endpoints';
+import { readJson, safeFetch } from './http';
 import { handle401, refreshQueued } from './interceptors';
 
 // Khớp FORCE_PASSWORD_PATH (app/router/authHelpers.ts) — không import từ router
@@ -24,7 +25,7 @@ function checkPasswordChangeRequired(status: number, json: { code?: string } | n
 
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 	const token = getToken();
-	const res = await fetch(`${BASE_URL}/api/v1${path}`, {
+	const res = await safeFetch(`${BASE_URL}/api/v1${path}`, {
 		...options,
 		headers: {
 			'Content-Type': 'application/json',
@@ -33,15 +34,15 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 		},
 	});
 
-	const json = await res.json();
-
 	if (res.status === 401) {
 		return handle401<T>(path, options);
 	}
+
+	const json = await readJson(res);
 	checkPasswordChangeRequired(res.status, json);
 
-	if (!res.ok || !json.success) {
-		throw new Error(json.message ?? 'Có lỗi xảy ra, vui lòng thử lại');
+	if (!res.ok || !json?.success) {
+		throw new Error(json?.message ?? 'Có lỗi xảy ra, vui lòng thử lại');
 	}
 
 	return json.data as T;
@@ -49,7 +50,7 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 
 async function requestBlob(path: string, body: unknown): Promise<Blob> {
 	const token = getToken();
-	const res = await fetch(`${BASE_URL}/api/v1${path}`, {
+	const res = await safeFetch(`${BASE_URL}/api/v1${path}`, {
 		method: 'POST',
 		body: JSON.stringify(body),
 		headers: {
@@ -61,7 +62,7 @@ async function requestBlob(path: string, body: unknown): Promise<Blob> {
 	if (res.status === 401) {
 		const newToken = await refreshQueued();
 		if (newToken) {
-			const retryRes = await fetch(`${BASE_URL}/api/v1${path}`, {
+			const retryRes = await safeFetch(`${BASE_URL}/api/v1${path}`, {
 				method: 'POST',
 				body: JSON.stringify(body),
 				headers: {
@@ -72,8 +73,8 @@ async function requestBlob(path: string, body: unknown): Promise<Blob> {
 			if (!retryRes.ok) {
 				const ct = retryRes.headers.get('Content-Type') ?? '';
 				if (ct.includes('json')) {
-					const json = await retryRes.json();
-					throw new Error(json.message ?? 'Lỗi xuất file');
+					const json = await readJson(retryRes);
+					throw new Error(json?.message ?? 'Lỗi xuất file');
 				}
 				throw new Error(`Lỗi xuất file (${retryRes.status})`);
 			}
@@ -87,8 +88,8 @@ async function requestBlob(path: string, body: unknown): Promise<Blob> {
 	if (!res.ok) {
 		const ct = res.headers.get('Content-Type') ?? '';
 		if (ct.includes('json')) {
-			const json = await res.json();
-			throw new Error(json.message ?? 'Lỗi xuất file');
+			const json = await readJson(res);
+			throw new Error(json?.message ?? 'Lỗi xuất file');
 		}
 		throw new Error(`Lỗi xuất file (${res.status})`);
 	}
@@ -98,7 +99,7 @@ async function requestBlob(path: string, body: unknown): Promise<Blob> {
 
 async function requestForm<T>(path: string, body: FormData): Promise<T> {
 	const token = getToken();
-	const res = await fetch(`${BASE_URL}/api/v1${path}`, {
+	const res = await safeFetch(`${BASE_URL}/api/v1${path}`, {
 		method: 'POST',
 		body,
 		headers: token ? { Authorization: `Bearer ${token}` } : {},
@@ -107,14 +108,14 @@ async function requestForm<T>(path: string, body: FormData): Promise<T> {
 	if (res.status === 401) {
 		const newToken = await refreshQueued();
 		if (newToken) {
-			const retryRes = await fetch(`${BASE_URL}/api/v1${path}`, {
+			const retryRes = await safeFetch(`${BASE_URL}/api/v1${path}`, {
 				method: 'POST',
 				body,
 				headers: { Authorization: `Bearer ${newToken}` },
 			});
-			const retryJson = await retryRes.json();
-			if (!retryRes.ok || !retryJson.success)
-				throw new Error(retryJson.message ?? 'Có lỗi xảy ra, vui lòng thử lại');
+			const retryJson = await readJson(retryRes);
+			if (!retryRes.ok || !retryJson?.success)
+				throw new Error(retryJson?.message ?? 'Có lỗi xảy ra, vui lòng thử lại');
 			return retryJson.data as T;
 		}
 		clearAuth();
@@ -122,11 +123,11 @@ async function requestForm<T>(path: string, body: FormData): Promise<T> {
 		throw new Error('Phiên đăng nhập đã hết hạn');
 	}
 
-	const json = await res.json();
+	const json = await readJson(res);
 	checkPasswordChangeRequired(res.status, json);
 
-	if (!res.ok || !json.success) {
-		throw new Error(json.message ?? 'Có lỗi xảy ra, vui lòng thử lại');
+	if (!res.ok || !json?.success) {
+		throw new Error(json?.message ?? 'Có lỗi xảy ra, vui lòng thử lại');
 	}
 
 	return json.data as T;

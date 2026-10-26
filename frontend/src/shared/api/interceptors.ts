@@ -6,6 +6,7 @@ import {
 	tokenUserId,
 } from '../utils/storage';
 import { BASE_URL } from './endpoints';
+import { readJson, safeFetch } from './http';
 
 let isRefreshing = false;
 let refreshQueue: Array<(token: string | null) => void> = [];
@@ -24,13 +25,13 @@ export async function tryRefresh(): Promise<string | null> {
 		localStorage.getItem(LEGACY_REFRESH_KEY) ?? sessionStorage.getItem(LEGACY_REFRESH_KEY);
 
 	for (let attempt = 0; attempt < 3; attempt++) {
-		const res = await fetch(`${BASE_URL}/api/v1/auth/refresh`, {
+		const res = await safeFetch(`${BASE_URL}/api/v1/auth/refresh`, {
 			method: 'POST',
 			credentials: 'same-origin',
 			headers: { 'Content-Type': 'application/json' },
 			body: JSON.stringify(legacy ? { refresh_token: legacy } : {}),
 		});
-		const json = await res.json().catch(() => null);
+		const json = await readJson(res).catch(() => null);
 
 		// Tab khác vừa làm mới bằng cùng cookie — chờ chút, cookie mới đã về
 		if (res.status === 401 && json?.code === 'REFRESH_RACE') {
@@ -76,7 +77,7 @@ export async function handle401<T>(
 ): Promise<T> {
 	const newToken = await refreshQueued();
 	if (newToken) {
-		const retryRes = await fetch(`${BASE_URL}/api/v1${path}`, {
+		const retryRes = await safeFetch(`${BASE_URL}/api/v1${path}`, {
 			...options,
 			headers: {
 				'Content-Type': 'application/json',
@@ -84,9 +85,9 @@ export async function handle401<T>(
 				...(options.headers ?? {}),
 			},
 		});
-		const retryJson = await retryRes.json();
-		if (!retryRes.ok || !retryJson.success) {
-			throw new Error(retryJson.message ?? 'Có lỗi xảy ra, vui lòng thử lại');
+		const retryJson = await readJson(retryRes);
+		if (!retryRes.ok || !retryJson?.success) {
+			throw new Error(retryJson?.message ?? 'Có lỗi xảy ra, vui lòng thử lại');
 		}
 		return retryJson.data as T;
 	}

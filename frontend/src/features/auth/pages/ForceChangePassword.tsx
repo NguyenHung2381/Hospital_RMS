@@ -11,6 +11,7 @@ import {
 	type StoredUser,
 } from '../../../shared/utils/storage';
 import { logout } from '../api/authApi';
+import { userMessage } from '../../../shared/api/http';
 import styles from './Login.module.css';
 import { AlertSvg, LockSvg } from '@/assets/icons';
 
@@ -56,7 +57,7 @@ export default function ForceChangePassword() {
 			// Còn phải bật 2FA (tài khoản quản trị quá hạn) thì sang màn đó
 			navigate(blockingSetupPath() ?? defaultPath(), { replace: true });
 		} catch (err) {
-			setError(err instanceof Error ? err.message : 'Có lỗi xảy ra, vui lòng thử lại.');
+			setError(userMessage(err, 'Có lỗi xảy ra, vui lòng thử lại.'));
 			setSaving(false);
 		}
 	};

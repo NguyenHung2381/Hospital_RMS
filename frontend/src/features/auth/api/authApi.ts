@@ -1,4 +1,5 @@
 import { BASE_URL } from '../../../shared/api/axios';
+import { readJson, safeFetch } from '../../../shared/api/http';
 import { broadcastLogout, clearAuth, getDeviceToken, saveDeviceToken } from '../../../shared/utils/storage';
 import { type LoginChallenge, solveChallenge } from '../utils/solveChallenge';
 
@@ -58,7 +59,7 @@ export async function loginApi(
 	for (let round = 0; ; round++) {
 		// Refresh token về trong cookie HttpOnly (Set-Cookie) — không có trong body.
 		// remember_me: cookie sống 30 ngày thay vì mất khi đóng trình duyệt.
-		res = await fetch(`${BASE_URL}/api/v1/auth/login`, {
+		res = await safeFetch(`${BASE_URL}/api/v1/auth/login`, {
 			method: 'POST',
 			credentials: 'same-origin',
 			headers: { 'Content-Type': 'application/json' },
@@ -70,17 +71,17 @@ export async function loginApi(
 				...pow,
 			}),
 		});
-		json = await res.json();
+		json = await readJson(res);
 		if (res.status !== 428 || json.code !== 'LOGIN_CHALLENGE' || round >= MAX_CHALLENGE_ROUNDS) break;
 		onVerifying?.();
 		const challenge = json.challenge as LoginChallenge;
 		pow = { pow_token: challenge.token, pow_nonce: await solveChallenge(challenge) };
 	}
 
-	if (!res.ok || !json.success) {
-		const message = json.message ?? 'Có lỗi xảy ra, vui lòng thử lại';
-		if (json.retry_after_seconds > 0) {
-			throw new LoginLockedError(message, json.retry_after_seconds);
+	if (!res.ok || !json?.success) {
+		const message = json?.message ?? 'Có lỗi xảy ra, vui lòng thử lại';
+		if (json?.retry_after_seconds > 0) {
+			throw new LoginLockedError(message, json?.retry_after_seconds);
 		}
 		throw new Error(message);
 	}
@@ -95,7 +96,7 @@ export async function verify2FAApi(
 	preAuthToken: string,
 	code: string,
 ): Promise<LoginResponse> {
-	const res = await fetch(`${BASE_URL}/api/v1/auth/2fa/verify`, {
+	const res = await safeFetch(`${BASE_URL}/api/v1/auth/2fa/verify`, {
 		method: 'POST',
 		headers: { 'Content-Type': 'application/json' },
 		body: JSON.stringify({
@@ -105,12 +106,12 @@ export async function verify2FAApi(
 		}),
 	});
 
-	const json = await res.json();
+	const json = await readJson(res);
 
-	if (!res.ok || !json.success) {
-		const message = json.message ?? 'Mã xác thực không đúng';
-		if (json.retry_after_seconds > 0) {
-			throw new LoginLockedError(message, json.retry_after_seconds);
+	if (!res.ok || !json?.success) {
+		const message = json?.message ?? 'Mã xác thực không đúng';
+		if (json?.retry_after_seconds > 0) {
+			throw new LoginLockedError(message, json?.retry_after_seconds);
 		}
 		throw new Error(message);
 	}
@@ -132,11 +133,11 @@ export interface TwoFaStatus {
 }
 
 export async function get2FAStatusApi(accessToken: string): Promise<TwoFaStatus> {
-	const res = await fetch(`${BASE_URL}/api/v1/auth/2fa/status`, {
+	const res = await safeFetch(`${BASE_URL}/api/v1/auth/2fa/status`, {
 		headers: { Authorization: `Bearer ${accessToken}` },
 	});
-	const json = await res.json();
-	if (!res.ok || !json.success) throw new Error(json.message ?? 'Có lỗi xảy ra, vui lòng thử lại');
+	const json = await readJson(res);
+	if (!res.ok || !json?.success) throw new Error(json?.message ?? 'Có lỗi xảy ra, vui lòng thử lại');
 	return json.data as TwoFaStatus;
 }
 
@@ -145,7 +146,7 @@ export async function regenerateBackupCodesApi(
 	accessToken: string,
 	password: string,
 ): Promise<string[]> {
-	const res = await fetch(`${BASE_URL}/api/v1/auth/2fa/backup-codes`, {
+	const res = await safeFetch(`${BASE_URL}/api/v1/auth/2fa/backup-codes`, {
 		method: 'POST',
 		headers: {
 			'Content-Type': 'application/json',
@@ -153,24 +154,24 @@ export async function regenerateBackupCodesApi(
 		},
 		body: JSON.stringify({ password }),
 	});
-	const json = await res.json();
-	if (!res.ok || !json.success) throw new Error(json.message ?? 'Có lỗi xảy ra, vui lòng thử lại');
+	const json = await readJson(res);
+	if (!res.ok || !json?.success) throw new Error(json?.message ?? 'Có lỗi xảy ra, vui lòng thử lại');
 	return json.data.backup_codes as string[];
 }
 
 export async function setup2FAApi(accessToken: string): Promise<TwoFaSetup> {
-	const res = await fetch(`${BASE_URL}/api/v1/auth/2fa/setup`, {
+	const res = await safeFetch(`${BASE_URL}/api/v1/auth/2fa/setup`, {
 		method: 'POST',
 		headers: { Authorization: `Bearer ${accessToken}` },
 	});
-	const json = await res.json();
-	if (!res.ok || !json.success) throw new Error(json.message ?? 'Có lỗi xảy ra, vui lòng thử lại');
+	const json = await readJson(res);
+	if (!res.ok || !json?.success) throw new Error(json?.message ?? 'Có lỗi xảy ra, vui lòng thử lại');
 	return json.data as TwoFaSetup;
 }
 
 // Bật 2FA — trả bộ mã khôi phục (server chỉ trả đúng 1 lần này).
 export async function verifySetup2FAApi(accessToken: string, code: string): Promise<string[]> {
-	const res = await fetch(`${BASE_URL}/api/v1/auth/2fa/verify-setup`, {
+	const res = await safeFetch(`${BASE_URL}/api/v1/auth/2fa/verify-setup`, {
 		method: 'POST',
 		headers: {
 			'Content-Type': 'application/json',
@@ -178,8 +179,8 @@ export async function verifySetup2FAApi(accessToken: string, code: string): Prom
 		},
 		body: JSON.stringify({ code }),
 	});
-	const json = await res.json();
-	if (!res.ok || !json.success) throw new Error(json.message ?? 'Mã xác thực không đúng');
+	const json = await readJson(res);
+	if (!res.ok || !json?.success) throw new Error(json?.message ?? 'Mã xác thực không đúng');
 	return (json.data?.backup_codes as string[]) ?? [];
 }
 
@@ -189,7 +190,7 @@ export async function disable2FAApi(
 	password: string,
 	code: string,
 ): Promise<void> {
-	const res = await fetch(`${BASE_URL}/api/v1/auth/2fa/disable`, {
+	const res = await safeFetch(`${BASE_URL}/api/v1/auth/2fa/disable`, {
 		method: 'POST',
 		headers: {
 			'Content-Type': 'application/json',
@@ -197,8 +198,8 @@ export async function disable2FAApi(
 		},
 		body: JSON.stringify({ password, code }),
 	});
-	const json = await res.json();
-	if (!res.ok || !json.success) throw new Error(json.message ?? 'Có lỗi xảy ra, vui lòng thử lại');
+	const json = await readJson(res);
+	if (!res.ok || !json?.success) throw new Error(json?.message ?? 'Có lỗi xảy ra, vui lòng thử lại');
 }
 
 // Đăng xuất thật: server thu hồi phiên (refresh token trong cookie) và xóa
@@ -220,31 +221,31 @@ export async function logout(): Promise<void> {
 }
 
 export async function logoutAllApi(accessToken: string): Promise<void> {
-	const res = await fetch(`${BASE_URL}/api/v1/auth/logout-all`, {
+	const res = await safeFetch(`${BASE_URL}/api/v1/auth/logout-all`, {
 		method: 'POST',
 		headers: {
 			'Content-Type': 'application/json',
 			Authorization: `Bearer ${accessToken}`,
 		},
 	});
-	const json = await res.json();
-	if (!res.ok || !json.success) {
-		throw new Error(json.message ?? 'Có lỗi xảy ra, vui lòng thử lại');
+	const json = await readJson(res);
+	if (!res.ok || !json?.success) {
+		throw new Error(json?.message ?? 'Có lỗi xảy ra, vui lòng thử lại');
 	}
 }
 
 async function postPublic(path: string, body: object): Promise<string> {
-	const res = await fetch(`${BASE_URL}/api/v1/auth/${path}`, {
+	const res = await safeFetch(`${BASE_URL}/api/v1/auth/${path}`, {
 		method: 'POST',
 		headers: { 'Content-Type': 'application/json' },
 		body: JSON.stringify(body),
 	});
-	const json = await res.json();
-	if (!res.ok || !json.success) {
-		const detail = json.errors?.[0]?.message ?? json.errors?.[0]?.msg;
-		throw new Error(detail ?? json.message ?? 'Có lỗi xảy ra, vui lòng thử lại');
+	const json = await readJson(res);
+	if (!res.ok || !json?.success) {
+		const detail = json?.errors?.[0]?.message ?? json?.errors?.[0]?.msg;
+		throw new Error(detail ?? json?.message ?? 'Có lỗi xảy ra, vui lòng thử lại');
 	}
-	return json.message as string;
+	return json?.message as string;
 }
 
 export const forgotPasswordApi = (username: string) => postPublic('forgot-password', { username });

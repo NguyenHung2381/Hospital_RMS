@@ -6,6 +6,7 @@ import AuthLayout from '../../../layouts/AuthLayout';
 import { apiClient } from '../../../shared/api/axios';
 import { getStoredUser, updateStoredUser, type StoredUser } from '../../../shared/utils/storage';
 import { logout, type TwoFaSetup } from '../api/authApi';
+import { userMessage } from '../../../shared/api/http';
 import styles from './Login.module.css';
 import { AlertSvg, KeySvg } from '@/assets/icons';
 
@@ -34,7 +35,7 @@ export default function SetupTwoFactor() {
 		apiClient
 			.post<TwoFaSetup>('/auth/2fa/setup', {})
 			.then(setSetup)
-			.catch((err: unknown) => setError(err instanceof Error ? err.message : 'Không khởi tạo được 2FA'));
+			.catch((err: unknown) => setError(userMessage(err, 'Không khởi tạo được 2FA')));
 	}, []);
 
 	const handleConfirm = async (e: React.FormEvent) => {
@@ -47,7 +48,7 @@ export default function SetupTwoFactor() {
 			setBackupCodes(data.backup_codes ?? []);
 			updateStoredUser({ twofa_state: null, twofa_deadline: null });
 		} catch (err) {
-			setError(err instanceof Error ? err.message : 'Mã xác thực không đúng');
+			setError(userMessage(err, 'Mã xác thực không đúng'));
 		} finally {
 			setSaving(false);
 		}

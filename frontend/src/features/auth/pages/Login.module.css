@@ -358,6 +358,82 @@
 	color: #b91c1c;
 }
 
+/* Máy chủ không phản hồi — thông báo trạng thái, không phải lỗi nhập liệu */
+.serviceNotice {
+	display: flex;
+	align-items: center;
+	gap: var(--space-3);
+	margin-bottom: var(--space-4);
+	padding: var(--space-3) var(--space-4);
+	border: 1px solid rgba(245, 166, 35, 0.35);
+	border-radius: var(--radius-lg);
+	background: rgba(245, 166, 35, 0.08);
+	font-size: var(--font-size-sm);
+	line-height: var(--line-height-base);
+	color: #7a4b00;
+	animation: fadeIn 0.3s ease;
+}
+
+.serviceNoticeIcon {
+	flex-shrink: 0;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 36px;
+	height: 36px;
+	border-radius: var(--radius-full);
+	background: rgba(245, 166, 35, 0.16);
+	color: var(--color-warning);
+}
+
+.serviceNoticeBody {
+	flex: 1;
+	min-width: 0;
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+}
+
+.serviceNoticeTitle {
+	font-weight: var(--font-weight-semibold);
+	color: #5c3900;
+}
+
+.serviceNoticeRetry {
+	flex-shrink: 0;
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	padding: 6px 12px;
+	border: 1px solid rgba(245, 166, 35, 0.5);
+	border-radius: var(--radius-md);
+	background: #fff;
+	color: #7a4b00;
+	font-size: var(--font-size-xs);
+	font-weight: var(--font-weight-semibold);
+	cursor: pointer;
+	transition: background var(--transition-fast);
+}
+
+.serviceNoticeRetry:hover:not(:disabled) {
+	background: rgba(245, 166, 35, 0.12);
+}
+
+.serviceNoticeRetry:disabled {
+	opacity: 0.6;
+	cursor: not-allowed;
+}
+
+@media (max-width: 420px) {
+	.serviceNotice {
+		flex-wrap: wrap;
+	}
+
+	.serviceNoticeRetry {
+		margin-left: calc(36px + var(--space-3));
+	}
+}
+
 /* === SUBMIT BUTTON === */
 .submitBtn {
 	composes: btn primary lg from '@/shared/components/Button/Button.module.css';

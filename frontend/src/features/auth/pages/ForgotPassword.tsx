@@ -3,6 +3,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import AuthLayout from '../../../layouts/AuthLayout';
 import { checkPassword, PASSWORD_HINT } from '../../../shared/utils/password';
 import { forgotPasswordApi, resetPasswordApi } from '../api/authApi';
+import { userMessage } from '../../../shared/api/http';
 import styles from './Login.module.css';
 import { AlertSvg } from '@/assets/icons';
 
@@ -27,7 +28,7 @@ export default function ForgotPassword() {
 		try {
 			await fn();
 		} catch (err) {
-			setError(err instanceof Error ? err.message : 'Có lỗi xảy ra, vui lòng thử lại.');
+			setError(userMessage(err, 'Có lỗi xảy ra, vui lòng thử lại.'));
 		} finally {
 			setBusy(false);
 		}
