@@ -348,7 +348,7 @@ const SECTIONS: Section[] = [
 						key: 'CLAMAV_HOST',
 						label: 'Máy chủ ClamAV',
 						hint: 'Tên máy hoặc IP của dịch vụ clamd.',
-						more: 'Chạy bằng Docker: thêm "--profile av" khi docker compose up rồi điền "clamav". Lần đầu ClamAV tải cơ sở dữ liệu virus mất vài phút, trong lúc đó việc tải lên có thể bị từ chối.',
+						more: 'Chạy bằng Docker: dịch vụ "clamav" được cài và bật sẵn, để trống ô này là dùng nó. Sau khi khởi động, ClamAV mất khoảng 1 phút để nạp cơ sở dữ liệu virus, trong lúc đó việc tải lên có thể bị từ chối.',
 						placeholder: 'clamav',
 					},
 					{ key: 'CLAMAV_PORT', label: 'Cổng', type: 'number', placeholder: '3310', min: 1, max: 65535 },

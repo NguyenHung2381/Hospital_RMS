@@ -36,6 +36,9 @@ services:
       DB_SERVER: host.docker.internal
       REDIS_HOST: redis
       REDIS_PORT: "6379"
+      # Quét virus upload bằng service clamav bên dưới (ghi đè backend/.env).
+      # Tắt: `CLAMAV_HOST=` trong file .env cạnh compose.
+      CLAMAV_HOST: "${CLAMAV_HOST-clamav}"
       # Giữ tối thiểu 100 file log ngày (>= 3 tháng) cho promtail + trang /activity-logs
       LOG_RETENTION_FILES: "100"
       # Chặn heap V8 để GC dọn sớm thay vì phình tới khi Docker Desktop hết RAM.
@@ -59,7 +62,12 @@ services:
       # JWT secret tự sinh khi thiếu (docker-entrypoint.sh) — giữ qua restart/redeploy
       - server_secrets:/app/secrets
     depends_on:
-      - redis
+      redis:
+        condition: service_started
+      # Chạy kèm khi `up backend`; required: false để `--scale clamav=0` vẫn chạy được
+      clamav:
+        condition: service_started
+        required: false
 
   frontend:
     build:
@@ -147,11 +155,11 @@ services:
       - loki
     restart: unless-stopped
 
-  # Quét virus file upload — TUỲ CHỌN (~1,5GB RAM, cần Internet tải CSDL virus).
-  # Bật: docker compose --profile av up -d, rồi điền máy chủ "clamav" ở
-  # Cấu hình hệ thống → Tải lên → Quét virus (ClamAV).
+  # Quét virus file upload — chạy MẶC ĐỊNH (~1,5GB RAM). Image đã kèm sẵn CSDL
+  # virus, freshclam trong container tự cập nhật khi có Internet. Máy yếu không
+  # muốn chạy: đặt `CLAMAV_HOST=` trong .env cạnh compose rồi
+  #   docker compose up -d --scale clamav=0
   clamav:
-    profiles: ["av"]
     image: clamav/clamav:stable
     mem_limit: 2g
     volumes:

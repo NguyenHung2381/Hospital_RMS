@@ -448,7 +448,7 @@ Log ghi tại `logs/jwt-rotate.log`.
 | Upload file lớn bị lỗi `413` ở prod | Vượt `client_max_body_size 300m` trong `frontend/nginx.conf` hoặc giới hạn `TRAINING_*_MAX_MB` của backend. |
 | Upload bị từ chối "nội dung không đúng định dạng" | File bị đổi đuôi (vd ảnh chụp lưu thành `.pdf`) hoặc hỏng. Mở file bằng phần mềm tương ứng rồi lưu lại đúng định dạng. |
 | Upload bị từ chối `429` "vượt hạn mức" | Tài khoản đã upload quá `UPLOAD_DAILY_QUOTA_MB` (mặc định 2048MB) trong ngày. Tăng hạn mức hoặc chờ sang ngày. |
-| Upload bị từ chối `503` "quét virus" | Đã bật ClamAV (`CLAMAV_HOST`) nhưng container `clamav` chưa sẵn sàng (lần đầu tải CSDL virus mất vài phút) hoặc đã dừng. Xem `docker compose -f docker-compose.prod.yml logs clamav`. |
+| Upload bị từ chối `503` "quét virus" | ClamAV đang bật (mặc định `CLAMAV_HOST=clamav`) nhưng container `clamav` chưa sẵn sàng (nạp CSDL virus ~1 phút sau khi khởi động) hoặc đã dừng. Xem `docker compose -f docker-compose.prod.yml logs clamav`. |
 | Docker Desktop ngốn RAM | Mỗi service đã có `mem_limit`. Tắt profile `logs` nếu không dùng Loki. |
 
 ---
@@ -671,7 +671,7 @@ Mọi route upload dùng middleware trong `backend/src/middlewares/` (`upload`, 
 1. **Đuôi file** do admin chọn ở *Cấu hình hệ thống → Tải lên* (`UPLOAD_ALLOWED_EXTENSIONS`, mặc định PDF/Word/Excel/PowerPoint/RAR/ZIP), chỉ trong tập an toàn `fileTypeAllowlist.js` (`utils/uploadPolicy.js`); ảnh nhận xét chỉ PNG/JPEG/GIF/WEBP; import chỉ `.xlsx`.
 2. **Dung lượng mỗi file**: `UPLOAD_MAX_MB` ở Cấu hình hệ thống (mặc định 50) cho mọi file tài liệu kể cả cổng công khai; video bài giảng `TRAINING_MEDIA_MAX_MB` (300), Excel 10MB.
 3. **Nội dung khớp đuôi** (magic bytes, `utils/fileSignature.js`) — file đổi đuôi (exe → pdf, HTML → png) bị từ chối và xoá ngay.
-4. **Quét virus** bằng ClamAV nếu bật `CLAMAV_HOST` (`utils/clamav.js`, service `clamav`, profile `av`). File nhiễm bị xoá và ghi sự kiện bảo mật `upload_malware_blocked`. ClamAV lỗi thì từ chối upload, trừ khi đặt `CLAMAV_FAIL_OPEN=true`. File lớn hơn `CLAMAV_MAX_MB` (25) không quét.
+4. **Quét virus** bằng ClamAV nếu bật `CLAMAV_HOST` (`utils/clamav.js`, service `clamav` chạy mặc định trong cả 2 file compose). File nhiễm bị xoá và ghi sự kiện bảo mật `upload_malware_blocked`. ClamAV lỗi thì từ chối upload, trừ khi đặt `CLAMAV_FAIL_OPEN=true`. File lớn hơn `CLAMAV_MAX_MB` (25) không quét.
 5. **Hạn mức/ngày** mỗi tài khoản `UPLOAD_DAILY_QUOTA_MB` (2048; `0` = không giới hạn).
 
 Khi tải về (`/uploads`): chỉ ảnh, PDF, video, audio được mở trên trình duyệt; còn lại luôn tải xuống (`Content-Disposition: attachment`). Mọi file trừ PDF kèm `Content-Security-Policy: sandbox`, nên không file nào chạy được như trang web.

@@ -4,7 +4,7 @@ const systemSettingService = require('../modules/settings/systemSettingService')
 const logger = require('../config/logger');
 
 // Quét virus file upload bằng ClamAV (clamd) — TÙY CHỌN, bật khi đặt
-// CLAMAV_HOST (vd service `clamav` trong docker-compose.prod.yml, profile "av").
+// CLAMAV_HOST (Docker: service `clamav` chạy mặc định, compose đặt sẵn CLAMAV_HOST=clamav).
 // Gửi nội dung qua lệnh INSTREAM của clamd (không cần chung ổ đĩa).
 // Admin chỉnh ở Cấu hình hệ thống → Tải lên (CLAMAV_*), fallback .env.
 //
