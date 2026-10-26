@@ -271,6 +271,7 @@ export function ApprovalListPanel({
 										{sc.label}
 									</Badge>
 									<span className={styles.listItemDate}>{r.created_at}</span>
+									{r.is_legacy && <Badge tone='blue'>Nhập bổ sung</Badge>}
 									{r.is_urgent && (
 										<span
 											style={{

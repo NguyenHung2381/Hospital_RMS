@@ -1,3 +1,5 @@
+import type { CustomValues } from '../../../shared/formConfig/types';
+
 export type ModalType = 'add' | 'edit' | 'delete' | null;
 // courses.status giờ chỉ còn lưu cờ hủy ('cancelled' vs 'draft' = bình thường)
 // — mọi trạng thái khác (sắp khai giảng/đang mở đăng ký/đang học/hoàn thành)
@@ -113,6 +115,8 @@ export const ENROLLMENT_STATUS_CFG: Record<EnrollmentStatus, { label: string; co
 
 export interface Enrollment {
 	id: string;
+	/** Trường tùy chỉnh khi đăng ký công khai — chỉ có ở GET /courses/enrollments/:id (Cấu hình form 'course_registration') */
+	custom?: CustomValues;
 	course_id: string;
 	trainee_id: string;
 	trainee_name: string;

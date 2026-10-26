@@ -4,6 +4,7 @@ import styles from '../pages/TopicDetail.module.css';
 import type { MemberFormState } from '../types/topicDetail.type';
 import { blankMember, ROLE_BADGE } from '../types/topicDetail.type';
 import MemberFormFields from './MemberFormFields';
+import { CustomValuesInline, useFormConfig } from '@/shared/formConfig';
 
 type Props = {
 	members: TopicMember[];
@@ -44,6 +45,8 @@ export default function MembersTab({
 	handleSaveMember,
 	handleDeleteMember,
 }: Props) {
+	// Trường tùy chỉnh của thành viên (Cấu hình form 'topic_member')
+	const cfg = useFormConfig('topic_member', 'portal');
 	return (
 		<>
 			<div className={styles.sectionHeader}>
@@ -95,6 +98,10 @@ export default function MembersTab({
 										{m.email && <span>{m.email} · </span>}
 										{m.chuc_vu ?? 'N/A'}
 									</div>
+									<CustomValuesInline
+										cfg={cfg}
+										data={m.custom}
+									/>
 								</div>
 								<span
 									className={styles.roleBadge}

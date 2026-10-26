@@ -13,6 +13,7 @@ import { formatDateTimeVN, formatDateVN } from '@/shared/utils/formatDate';
 import { notify } from '@/shared/utils/feedback';
 import { LEAVE_STATUS, LEAVE_TYPE_TEXT, type LeaveStatus } from '@/features/portal/api/meApi';
 import { listLeaveRequests, reviewLeaveRequest, type AdminLeaveRequest } from '../api/leaveApi';
+import { CustomValuesInline, useFormConfig } from '@/shared/formConfig';
 
 const STATUS_FILTERS: { value: LeaveStatus | ''; label: string }[] = [
 	{ value: 'pending', label: 'Chờ duyệt' },
@@ -59,6 +60,7 @@ function ReviewModal({
 	onDone: () => void;
 }) {
 	const [note, setNote] = useState('');
+	const cfg = useFormConfig('leave_request', 'portal');
 	const [busy, setBusy] = useState(false);
 	const [error, setError] = useState('');
 	const reject = decision === 'rejected';
@@ -99,6 +101,7 @@ function ReviewModal({
 			<div className={tbl.cellSub} style={{ marginBottom: 12 }}>
 				{detail(req) && <div>{detail(req)}</div>}
 				<div>Lý do: {req.reason}</div>
+				<CustomValuesInline cfg={cfg} data={req.custom} />
 			</div>
 			<FormField label={reject ? 'Lý do từ chối' : 'Ghi chú (không bắt buộc)'} required={reject} error={error}>
 				<textarea className={m.formTextarea} rows={3} maxLength={500} value={note} onChange={(e) => setNote(e.target.value)} autoFocus />
@@ -109,6 +112,8 @@ function ReviewModal({
 
 export default function LeaveRequests() {
 	const [rows, setRows] = useState<AdminLeaveRequest[]>([]);
+	// Trường tùy chỉnh học viên điền khi gửi đơn (Cấu hình form 'leave_request')
+	const cfg = useFormConfig('leave_request', 'portal');
 	const [loading, setLoading] = useState(true);
 	const [status, setStatus] = useState<LeaveStatus | ''>('pending');
 	const [from, setFrom] = useState('');
@@ -252,6 +257,7 @@ export default function LeaveRequests() {
 										</td>
 										<td className={tbl.td} style={{ maxWidth: 320 }}>
 											<div>{r.reason}</div>
+											<CustomValuesInline cfg={cfg} data={r.custom} className={tbl.cellSub} />
 											<div className={tbl.cellSub}>Gửi lúc {formatDateTimeVN(r.created_at)}</div>
 										</td>
 										<td className={tbl.td}>

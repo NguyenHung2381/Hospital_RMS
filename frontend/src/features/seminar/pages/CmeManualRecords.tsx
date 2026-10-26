@@ -56,6 +56,7 @@ import {
 } from '../types/cmeRecord.type';
 import styles from './Seminar.module.css';
 import tbl from '@/shared/components/Table/Table.module.css';
+import { CustomValuesInline, useFormConfig } from '@/shared/formConfig';
 import { DEFAULT_PAGE_SIZE } from '@/shared/utils/constants';
 import { useClientPaging } from '@/shared/hooks/useClientPaging';
 
@@ -1574,6 +1575,8 @@ function ImportModal({
 
 export default function CmeManualRecords() {
 	const perms = useSeminarPerms();
+	// Trường tùy chỉnh người dùng điền khi tự khai (Cấu hình form 'cme_record')
+	const cmeCfg = useFormConfig('cme_record', 'portal');
 	// null = tất cả các năm
 	const [year, setYear] = useState<number | null>(THIS_YEAR);
 	const [records, setRecords] = useState<CmeRecord[]>([]);
@@ -1966,6 +1969,7 @@ ${missing} ghi nhận chưa có tín chỉ sẽ được bỏ qua (cần duyệt
 											<div className={styles.cmeCellMain}>{r.title}</div>
 											{r.source_type && <Badge tone='purple'>{CME_SOURCE_LABEL[r.source_type]}</Badge>}
 											{r.note && <div className={styles.cmeCellSub}>{r.note}</div>}
+											<CustomValuesInline cfg={cmeCfg} data={r.custom} className={styles.cmeCellSub} />
 										</td>
 										<td>
 											{r.group_name && <div className={styles.cmeCellSub}>{r.group_name}</div>}

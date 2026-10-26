@@ -13,9 +13,12 @@ import {
 	type SimpleOption,
 } from '../api/publicApi';
 import { AttachmentPicker, type Attachment } from '../components/AttachmentPicker';
-import { FormSection } from '../components/FormSection';
+import { FormSection, SubGroup } from '../components/FormSection';
 import { TopicPersonFields } from '../components/TopicPersonFields';
-import { EMPTY_PERSON, validatePerson, type PersonField, type TopicPerson } from '../utils/topicPerson';
+import { EMPTY_PERSON, validateLeader, validatePerson, type PersonField, type TopicPerson } from '../utils/topicPerson';
+import { CustomFields } from '@/shared/formConfig/CustomFields';
+import type { CustomValues } from '@/shared/formConfig/types';
+import { useFormConfig } from '@/shared/formConfig/useFormConfig';
 import { useCaptcha } from '../hooks/useCaptcha';
 import styles from './PublicPortal.module.css';
 
@@ -25,7 +28,6 @@ const EMPTY_FORM = {
 	round_id: '',
 	department_id: '',
 	category_id: '',
-	level_id: '',
 	website: '', // honeypot
 };
 
@@ -37,7 +39,8 @@ export default function TopicRegisterPublic() {
 	const [rounds, setRounds] = useState<PublicTopicRound[]>([]);
 	const [categories, setCategories] = useState<SimpleOption[]>([]);
 	const [departments, setDepartments] = useState<SimpleOption[]>([]);
-	const [levels, setLevels] = useState<SimpleOption[]>([]);
+	// Cấp độ của đợt đang chọn — chỉ hiển thị (mỗi đợt 1 cấp độ, server tự gán)
+	const [levelName, setLevelName] = useState<string | null>(null);
 	const captcha = useCaptcha();
 	const [form, setForm] = useState(EMPTY_FORM);
 	const [people, setPeople] = useState<TopicPerson[]>(INITIAL_PEOPLE);
@@ -49,6 +52,18 @@ export default function TopicRegisterPublic() {
 	const [success, setSuccess] = useState('');
 	const [registeredId, setRegisteredId] = useState('');
 	const [copied, setCopied] = useState(false);
+	// Nhãn / bắt buộc / trường tùy chỉnh theo Cấu hình form (biến thể công khai)
+	const cfg = useFormConfig('topic', 'public');
+	const [custom, setCustomState] = useState<CustomValues>({});
+	const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+	const setCustom = (next: CustomValues) => {
+		setCustomState(next);
+		setFieldErrors((errs) => {
+			const n = { ...errs };
+			Object.keys(next).forEach((k) => next[k] !== custom[k] && delete n[k]);
+			return n;
+		});
+	};
 
 	// Form dài, thông báo nằm trên đầu ⇒ cuộn lên để người dùng thấy kết quả gửi
 	useEffect(() => {
@@ -61,18 +76,14 @@ export default function TopicRegisterPublic() {
 	const token = searchParams.get('token');
 	const [lockedRoundId, setLockedRoundId] = useState('');
 
-	// Cấp độ ăn theo đợt (cấu hình ở đợt / loại đợt): đợt chỉ có 1 cấp độ thì tự
-	// gán, không hỏi; đợt cho nhiều cấp độ mới hiện ô chọn trong số đó.
+	// Cấp độ lấy theo đợt (server tự gán khi tạo) — form chỉ hiển thị để người đăng ký biết.
 	const pickRound = (roundId: string) => {
 		if (lockedRoundId && roundId !== lockedRoundId) return;
-		setForm((f) => ({ ...f, round_id: roundId, level_id: '' }));
-		setLevels([]);
+		setForm((f) => ({ ...f, round_id: roundId }));
+		setLevelName(null);
 		getPublicLevels(roundId)
-			.then((ls) => {
-				setLevels(ls);
-				if (ls.length === 1) setForm((f) => (f.round_id === roundId ? { ...f, level_id: ls[0].id } : f));
-			})
-			.catch(() => setLevels([]));
+			.then((ls) => setLevelName(ls.length === 1 ? ls[0].name : null))
+			.catch(() => setLevelName(null));
 	};
 
 	useEffect(() => {
@@ -100,12 +111,17 @@ export default function TopicRegisterPublic() {
 			.finally(() => setLoading(false));
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [token]);
-	const mustPickLevel = !!form.round_id && levels.length > 1;
 
 	const set =
 		(field: keyof typeof EMPTY_FORM) =>
 		(e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
 			setForm((f) => ({ ...f, [field]: e.target.value }));
+	const fieldError = (k: string) =>
+		fieldErrors[k] ? <span className={styles.fieldError}>{fieldErrors[k]}</span> : null;
+	const fieldHint = (k: string) => {
+		const h = cfg.hint(k);
+		return h ? <span className={styles.fieldHint}>{h}</span> : null;
+	};
 
 	const setPerson = (idx: number) => (field: PersonField, value: string) => {
 		setPeople((list) => list.map((p, i) => (i === idx ? { ...p, [field]: value } : p)));
@@ -123,7 +139,7 @@ export default function TopicRegisterPublic() {
 		e.preventDefault();
 		setError('');
 		setSuccess('');
-		const errs = people.map(validatePerson);
+		const errs = people.map((p, i) => (i === 0 ? validateLeader(p, cfg) : validatePerson(p)));
 		// MNV trùng giữa các người trong cùng đề tài
 		const seen = new Map<string, number>();
 		people.forEach((p, i) => {
@@ -138,7 +154,13 @@ export default function TopicRegisterPublic() {
 		if (!form.round_id) return setError('Vui lòng chọn đợt đăng ký đề tài');
 		if (!form.category_id) return setError('Vui lòng chọn danh mục đề tài');
 		if (!form.department_id) return setError('Vui lòng chọn khoa/phòng');
-		if (mustPickLevel && !form.level_id) return setError('Vui lòng chọn cấp độ đề tài');
+		const { title, description, round_id, category_id, department_id } = form;
+		const cfgErrs = cfg.validate({ title, description, round_id, category_id, department_id }, custom, {
+			mode: 'create',
+		});
+		setFieldErrors(cfgErrs);
+		const firstCfgErr = Object.values(cfgErrs)[0];
+		if (firstCfgErr) return setError(firstCfgErr);
 
 		const badIdx = errs.findIndex((e) => Object.keys(e).length);
 		if (badIdx >= 0) {
@@ -171,6 +193,7 @@ export default function TopicRegisterPublic() {
 						role: p.role === 'secretary' ? 'secretary' : 'member',
 						department_id: p.department_id || undefined,
 					})),
+					custom,
 					...captcha.payload,
 				},
 				attachments.map((a) => a.file),
@@ -183,6 +206,8 @@ export default function TopicRegisterPublic() {
 			setPeople(INITIAL_PEOPLE);
 			setPersonErrors([]);
 			setAttachments([]);
+			setCustomState({});
+			setFieldErrors({});
 		} catch (err) {
 			setError(err instanceof Error ? err.message : 'Đăng ký thất bại, vui lòng thử lại');
 		} finally {
@@ -301,29 +326,40 @@ export default function TopicRegisterPublic() {
 					<div className={styles.formGrid}>
 						<div className={`${styles.formGroup} ${styles.full}`}>
 							<label className={styles.label}>
-								Tiêu đề đề tài <span className={styles.required}>*</span>
+								{cfg.label('title', 'Tiêu đề đề tài')} <span className={styles.required}>*</span>
 							</label>
 							<input
-								className={styles.input}
+								className={`${styles.input} ${fieldErrors.title ? styles.inputError : ''}`}
 								value={form.title}
 								onChange={set('title')}
-								placeholder='Nhập tiêu đề đề tài nghiên cứu...'
+								placeholder={cfg.placeholder('title', 'Nhập tiêu đề đề tài nghiên cứu...')}
+								maxLength={cfg.maxLength('title')}
 								required
 							/>
+							{fieldHint('title')}
+							{fieldError('title')}
 						</div>
-						<div className={`${styles.formGroup} ${styles.full}`}>
-							<label className={styles.label}>Mô tả / Tóm tắt</label>
-							<textarea
-								className={styles.textarea}
-								rows={4}
-								value={form.description}
-								onChange={set('description')}
-								placeholder='Mô tả ngắn về mục tiêu, phương pháp nghiên cứu...'
-							/>
-						</div>
+						{cfg.visible('description') && (
+							<div className={`${styles.formGroup} ${styles.full}`}>
+								<label className={styles.label}>
+									{cfg.label('description', 'Mô tả / Tóm tắt')}{' '}
+									{cfg.required('description') && <span className={styles.required}>*</span>}
+								</label>
+								<textarea
+									className={`${styles.textarea} ${fieldErrors.description ? styles.inputError : ''}`}
+									rows={4}
+									value={form.description}
+									onChange={set('description')}
+									placeholder={cfg.placeholder('description', 'Mô tả ngắn về mục tiêu, phương pháp nghiên cứu...')}
+									maxLength={cfg.maxLength('description')}
+								/>
+								{fieldHint('description')}
+								{fieldError('description')}
+							</div>
+						)}
 						<div className={styles.formGroup}>
 							<label className={styles.label}>
-								Danh mục <span className={styles.required}>*</span>
+								{cfg.label('category_id', 'Danh mục')} <span className={styles.required}>*</span>
 							</label>
 							<select
 								className={styles.select}
@@ -344,7 +380,7 @@ export default function TopicRegisterPublic() {
 						</div>
 						<div className={styles.formGroup}>
 							<label className={styles.label}>
-								Khoa/phòng chủ trì <span className={styles.required}>*</span>
+								{cfg.label('department_id', 'Khoa/phòng chủ trì')} <span className={styles.required}>*</span>
 							</label>
 							<select
 								className={styles.select}
@@ -363,30 +399,30 @@ export default function TopicRegisterPublic() {
 								))}
 							</select>
 						</div>
-						{mustPickLevel && (
+						{form.round_id && levelName && (
 							<div className={styles.formGroup}>
-								<label className={styles.label}>
-									Cấp độ đề tài <span className={styles.required}>*</span>
-								</label>
-								<select
-									className={styles.select}
-									value={form.level_id}
-									onChange={set('level_id')}
-									required
-								>
-									<option value=''>-- Chọn cấp độ --</option>
-									{levels.map((l) => (
-										<option
-											key={l.id}
-											value={l.id}
-										>
-											{l.name}
-										</option>
-									))}
-								</select>
+								<label className={styles.label}>Cấp độ đề tài (theo đợt)</label>
+								<input
+									className={styles.input}
+									value={levelName}
+									readOnly
+									disabled
+								/>
 							</div>
 						)}
 					</div>
+					{cfg.custom.length > 0 && (
+						<SubGroup title='Thông tin bổ sung'>
+							<CustomFields
+								cfg={cfg}
+								value={custom}
+								onChange={setCustom}
+								errors={fieldErrors}
+								title={null}
+								inputClassName={styles.input}
+							/>
+						</SubGroup>
+					)}
 				</FormSection>
 
 				<FormSection
@@ -399,6 +435,7 @@ export default function TopicRegisterPublic() {
 						errors={personErrors[0]}
 						departments={departments}
 						onChange={setPerson(0)}
+						cfg={cfg}
 					/>
 				</FormSection>
 

@@ -21,7 +21,7 @@ import { DEFAULT_PAGE_SIZE } from '@/shared/utils/constants';
 
 export type TopicBulkPatch = Pick<
 	UpdateTopicPayload,
-	'status' | 'category_id' | 'level_id' | 'department_id'
+	'status' | 'category_id' | 'department_id'
 >;
 
 type TabKey = 'all' | TopicStatus;
@@ -245,7 +245,6 @@ export function useTopicPage() {
 				description: form.description || undefined,
 				round_id: form.round_id,
 				category_id: form.category_id || undefined,
-				level_id: form.level_id || undefined,
 				department_id: form.department_id || undefined,
 				status: form.status,
 				article_type: form.article_type,
@@ -255,6 +254,8 @@ export function useTopicPage() {
 				budget_estimated: form.budget_estimated
 					? Number(form.budget_estimated)
 					: undefined,
+				custom: form.custom,
+				form_variant: 'admin',
 			});
 			if (pendingMembers.length > 0) {
 				await Promise.allSettled(
@@ -287,7 +288,6 @@ export function useTopicPage() {
 				description: form.description || undefined,
 				round_id: form.round_id,
 				category_id: form.category_id || undefined,
-				level_id: form.level_id || undefined,
 				department_id: form.department_id || undefined,
 				status: form.status,
 				article_type: form.article_type,
@@ -304,7 +304,13 @@ export function useTopicPage() {
 				approval_decision_date: form.approval_decision_date || undefined,
 				recognition_decision_no: form.recognition_decision_no || undefined,
 				recognition_decision_date: form.recognition_decision_date || undefined,
+				acceptance_rating: form.acceptance_rating || null,
+				acceptance_score:
+					form.acceptance_score !== '' ? Number(form.acceptance_score) : null,
+				acceptance_date: form.acceptance_date || null,
 				is_featured: form.is_featured,
+				custom: form.custom,
+				form_variant: 'admin',
 			});
 			refreshData();
 			setEditTopic(null);

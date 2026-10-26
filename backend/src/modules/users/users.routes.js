@@ -4,15 +4,18 @@ const ctrl = require('./userController');
 const { authenticate, authorizePermission } = require('../../middlewares/auth');
 const { validate } = require('../../middlewares/errorHandler');
 const { passwordRule } = require('../../utils/passwordPolicy');
+const { formConfigGuard } = require('../forms/formConfigGuard');
 
 router.use(authenticate);
 
 router.get('/me', ctrl.getMe);
 
+// Hồ sơ cá nhân: đổi họ tên và/hoặc trường tùy chỉnh (Cấu hình form 'user_profile')
 router.patch(
 	'/me',
-	[body('full_name').isString().trim().notEmpty().isLength({ max: 200 })],
+	[body('full_name').optional().isString().trim().notEmpty().isLength({ max: 200 })],
 	validate,
+	formConfigGuard('user_profile', { variant: 'profile', mode: 'update' }),
 	ctrl.updateMe,
 );
 

@@ -24,6 +24,7 @@ import {
 } from '../api/meApi';
 import styles from './SelfService.module.css';
 import tbl from '@/shared/components/Table/Table.module.css';
+import { CustomValuesInline, useFormConfig } from '@/shared/formConfig';
 import { useClientPaging } from '@/shared/hooks/useClientPaging';
 import { Pagination } from '@/shared/components/Table/Pagination';
 
@@ -35,6 +36,8 @@ const YEARS = Array.from({ length: 5 }, (_, i) => THIS_YEAR - i);
 type Tab = 'seminars' | 'records';
 
 export default function MyCme() {
+	// Trường tùy chỉnh khi tự khai CME (Cấu hình form 'cme_record')
+	const cmeCfg = useFormConfig('cme_record', 'portal');
 	// Tab giữ trên URL (?tab=) — tải lại / quay lại vẫn đúng tab đang xem.
 	const [params, setParams] = useSearchParams();
 	const tab: Tab = params.get('tab') === 'records' ? 'records' : 'seminars';
@@ -306,6 +309,7 @@ export default function MyCme() {
 														<td className={tbl.tdIdx}>{recPg.offset + i + 1}</td>
 														<td>
 															<span className={tbl.cellTitle}>{r.title}</span>
+															<CustomValuesInline cfg={cmeCfg} data={r.custom} />
 															{r.source_type && (
 																<div>
 																	<Badge tone='purple'>{CME_SOURCE_LABEL[r.source_type]}</Badge>

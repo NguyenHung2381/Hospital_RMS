@@ -25,6 +25,7 @@ import {
 } from '../api/meApi';
 import styles from './SelfService.module.css';
 import own from './MyAttendance.module.css';
+import { CustomValuesInline, useFormConfig } from '@/shared/formConfig';
 
 const GEO_ERRORS: Record<number, string> = {
 	1: 'Bạn đã chặn quyền vị trí. Mở cài đặt trình duyệt → cho phép trang này truy cập vị trí rồi thử lại.',
@@ -78,6 +79,8 @@ const leavePeriod = (l: LeaveRequest) => {
 /** Danh sách đơn xin nghỉ / đi muộn của học viên — hủy được đơn còn chờ duyệt. */
 function LeaveList({ leaves, onCancel, cancelling }: { leaves: LeaveRequest[]; onCancel: (l: LeaveRequest) => void; cancelling: number | null }) {
 	const pg = useClientPaging(leaves);
+	// Trường tùy chỉnh điền khi gửi đơn (Cấu hình form 'leave_request')
+	const cfg = useFormConfig('leave_request', 'portal');
 	if (!leaves.length) return <p className={own.idle}>Bạn chưa gửi đơn xin phép nào.</p>;
 	return (
 		<>
@@ -92,6 +95,7 @@ function LeaveList({ leaves, onCancel, cancelling }: { leaves: LeaveRequest[]; o
 							</Badge>
 						</div>
 						<div className={tbl.cellSub}>Lý do: {l.reason}</div>
+						<CustomValuesInline cfg={cfg} data={l.custom} className={tbl.cellSub} />
 						{l.course_name && <div className={tbl.cellSub}>Khóa học: {l.course_name}</div>}
 						{(l.status === 'approved' || l.status === 'rejected') && (
 							<div className={tbl.cellSub}>

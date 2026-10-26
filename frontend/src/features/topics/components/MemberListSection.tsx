@@ -4,6 +4,7 @@ import { getInitials } from '../../../shared/utils/helper';
 import { genMemberUsername, MEMBER_ROLE_CFG } from '../utils/topicHelpers';
 import { Badge } from '@/shared/components';
 import styles from '../pages/Topic.module.css';
+import { CustomValuesInline, useFormConfig } from '@/shared/formConfig';
 
 interface MemberListSectionProps {
 	topic: Topic;
@@ -30,6 +31,8 @@ export function MemberListSection({
 	handleGrantSingleMember,
 	handleDeleteMember,
 }: MemberListSectionProps) {
+	// Trường tùy chỉnh thành viên khai ở cổng nhân viên (Cấu hình form 'topic_member')
+	const cfg = useFormConfig('topic_member', 'portal');
 	return (
 		<>
 			{pendingMembers.length > 0 && (
@@ -113,6 +116,10 @@ export function MemberListSection({
 										{m.staff_number && <span>MNV: {m.staff_number} · </span>}
 										{m.email} · {m.chuc_vu ?? 'N/A'}
 									</div>
+									<CustomValuesInline
+										cfg={cfg}
+										data={m.custom}
+									/>
 								</div>
 								<div className={styles.memberRight}>
 									<Badge tone={rc.tone}>{rc.label}</Badge>

@@ -38,6 +38,8 @@ module.exports = {
 		[`POST ${API}/csp-report/`]:
 			'Trình duyệt gửi báo cáo vi phạm CSP (không kèm token) — chỉ ghi log, có rate-limit',
 		[`GET ${API}/public/captcha`]: 'Cổng công khai',
+		[`GET ${API}/form-configs/:formKey`]:
+			'Nhãn / bắt buộc / ràng buộc của form (form đăng ký công khai cũng cần) — không chứa dữ liệu nghiệp vụ',
 		[`GET ${API}/public/courses`]: 'Cổng công khai — khóa học mở đăng ký',
 		[`GET ${API}/public/trainee-types`]: 'Cổng công khai — danh mục cho form đăng ký',
 		[`GET ${API}/public/upload-policy`]: 'Định dạng & dung lượng file được nhận (không nhạy cảm)',

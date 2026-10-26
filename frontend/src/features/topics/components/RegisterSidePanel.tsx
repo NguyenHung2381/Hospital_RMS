@@ -13,21 +13,29 @@ import styles from '../pages/TopicRegister.module.css';
 interface RegisterSidePanelProps {
 	myTopics: MyTopic[];
 	navigate: NavigateFunction;
+	/** Mặc định: hướng dẫn đăng ký đề tài. */
+	guideTitle?: string;
+	guideSteps?: { title: string; desc: string }[];
 }
 
-export function RegisterSidePanel({ myTopics, navigate }: RegisterSidePanelProps) {
+export function RegisterSidePanel({
+	myTopics,
+	navigate,
+	guideTitle = 'Hướng dẫn đăng ký',
+	guideSteps = GUIDE_STEPS,
+}: RegisterSidePanelProps) {
 	return (
 		<div className={styles.sidePanel}>
 			<div className={styles.sideCard}>
 				<div className={styles.sideCardHeader}>
-					<span>Hướng dẫn đăng ký</span>
+					<span>{guideTitle}</span>
 					<HelpSvg
 						width={15}
 						height={15}
 					/>
 				</div>
 				<div className={styles.sideCardBody}>
-					{GUIDE_STEPS.map((s, i) => (
+					{guideSteps.map((s, i) => (
 						<div
 							key={i}
 							className={styles.guideStep}

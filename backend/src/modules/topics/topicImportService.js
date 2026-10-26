@@ -62,7 +62,7 @@ const templateWorkbook = async () => {
 		sheetName: 'Đề tài',
 		title: 'MẪU NHẬP DANH SÁCH ĐỀ TÀI NGHIÊN CỨU KHOA HỌC',
 		subtitle:
-			'Mỗi đề tài 1 khối 3 dòng (đã gộp ô sẵn): dòng 1 Chủ nhiệm, dòng 2 Thư ký, dòng 3 Thành viên — chỉ điền Họ và tên / Chức vụ / MNV, không cần nhập vai trò. Thêm thành viên: chèn dòng trong khối. Bắt buộc: Tên đề tài, Thể loại, Họ và tên hoặc MNV. Đợt nghiên cứu và Cấp độ chọn ở hộp thoại nhập (áp cho cả file).',
+			'Mỗi đề tài 1 khối 3 dòng (đã gộp ô sẵn): dòng 1 Chủ nhiệm, dòng 2 Thư ký, dòng 3 Thành viên — chỉ điền Họ và tên / Chức vụ / MNV, không cần nhập vai trò. Thêm thành viên: chèn dòng trong khối. Bắt buộc: Tên đề tài, Thể loại, Họ và tên hoặc MNV. Đợt nghiên cứu chọn ở hộp thoại nhập (áp cho cả file); cấp độ lấy theo đợt.',
 		columns: SHEET_COLUMNS,
 		letterhead: true,
 	});
@@ -209,7 +209,7 @@ const loadLookups = async () => {
 const matchDept = (raw, lk) =>
 	raw ? lk.deptByKey.get(norm(raw)) || lk.deptByKey.get(normDept(raw)) || null : null;
 
-// defaults = chọn ở hộp thoại { round_id, category_id, level_id, article_type, status }:
+// defaults = chọn ở hộp thoại { round_id, category_id, article_type, status }:
 // chỉ dùng khi ô tương ứng trong file để trống.
 const buildPreview = (topics, lk, defaults = {}) => {
 	const seen = new Set();
@@ -217,7 +217,7 @@ const buildPreview = (topics, lk, defaults = {}) => {
 		const errors = [];
 		const warnings = [];
 
-		// Đợt + cấp độ chọn ở hộp thoại, áp cho cả file
+		// Đợt chọn ở hộp thoại, áp cho cả file
 		const round = lk.roundById.get(defaults.round_id);
 		if (!round) errors.push('Chưa chọn đợt nghiên cứu');
 
@@ -229,20 +229,12 @@ const buildPreview = (topics, lk, defaults = {}) => {
 		else if (!cat.abbr)
 			errors.push(`Thể loại "${cat.name}" chưa có ký hiệu viết tắt — bổ sung ở Danh mục`);
 
-		// Cấp độ phải thuộc danh sách cấp độ của đợt (như khi đăng ký); bài báo không có cấp độ
+		// Cấp độ lấy theo đợt (mỗi đợt 1 cấp độ — topicService.create tự gán); bài báo không có
 		let level = null;
-		if (defaults.article_type !== 'bai_bao') {
-			level = lk.levelById.get(defaults.level_id) || null;
-			const allowed = round ? lk.allowedLevels(round.id) : [];
-			if (!level && allowed.length === 1) level = lk.levelById.get(allowed[0]);
-			const names = allowed.map((id) => lk.levelById.get(id)?.name || id).join(', ');
-			if (allowed.length && !level)
-				errors.push(`Chưa chọn cấp độ — đợt "${round.name}" cho phép: ${names}`);
-			else if (allowed.length && !allowed.includes(level.id)) {
-				errors.push(
-					`Cấp độ "${level.name}" không thuộc đợt "${round.name}" — đợt cho phép: ${names}`,
-				);
-			}
+		if (defaults.article_type !== 'bai_bao' && round) {
+			const allowed = lk.allowedLevels(round.id);
+			if (allowed.length === 1) level = lk.levelById.get(allowed[0]) || null;
+			else warnings.push(`Đợt "${round.name}" chưa cấu hình cấp độ — đề tài để trống cấp độ`);
 		}
 
 		const dept = matchDept(t.department_raw, lk);

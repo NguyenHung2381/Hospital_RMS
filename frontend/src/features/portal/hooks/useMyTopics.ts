@@ -30,6 +30,8 @@ import type {
 import { formatFileSize } from '../../topics/utils/topicHelpers';
 import { getTopicPermissions } from '../services/topicDetailService';
 import { useTopicMembers } from './useTopicMembers';
+import type { CustomValues } from '@/shared/formConfig/types';
+import { useFormConfig } from '@/shared/formConfig/useFormConfig';
 import {
 	type CategoryTab,
 	type FilterTab,
@@ -95,6 +97,18 @@ export function useMyTopics() {
 	});
 	const [editLoading, setEditLoading] = useState(false);
 	const [editError, setEditError] = useState('');
+	// Cấu hình form (nhãn / bắt buộc / trường tùy chỉnh) — biến thể cổng nhân viên
+	const editCfg = useFormConfig('topic', 'portal');
+	const [editCustom, setEditCustomState] = useState<CustomValues>({});
+	const [editErrors, setEditErrors] = useState<Record<string, string>>({});
+	const setEditCustom = (next: CustomValues) => {
+		setEditCustomState(next);
+		setEditErrors((e) => {
+			const n = { ...e };
+			Object.keys(next).forEach((k) => next[k] !== editCustom[k] && delete n[k]);
+			return n;
+		});
+	};
 	const [refData, setRefData] = useState<{
 		categories: SimpleItem[];
 		levels: SimpleItem[];
@@ -303,6 +317,8 @@ export function useMyTopics() {
 			level_id: detailTopic.level_id ?? '',
 			department_id: detailTopic.department_id ?? '',
 		});
+		setEditCustomState(detailTopic.custom ?? {});
+		setEditErrors({});
 		setEditError('');
 		memberCtl.setAddingMember(false);
 		memberCtl.setEditingMemberId(null);
@@ -318,9 +334,20 @@ export function useMyTopics() {
 		if (canEditInfo) {
 			payload.description = editForm.description || undefined;
 			payload.category_id = editForm.category_id || undefined;
-			payload.level_id = editForm.level_id || undefined;
 			payload.department_id = editForm.department_id || undefined;
+			payload.custom = editCustom;
 		}
+		// Chỉ kiểm các trường đang được sửa (mốc thời gian cho phép)
+		const values: Record<string, unknown> = {};
+		if (canEditTitle) values.title = editForm.title;
+		if (canEditInfo) {
+			values.description = editForm.description;
+			values.category_id = editForm.category_id;
+			values.department_id = editForm.department_id;
+		}
+		const errs = editCfg.validate(values, canEditInfo ? editCustom : undefined, { mode: 'edit' });
+		setEditErrors(errs);
+		if (Object.keys(errs).length) return;
 		if (Object.keys(payload).length === 0) {
 			setEditOpen(false);
 			return;
@@ -380,6 +407,7 @@ export function useMyTopics() {
 		initials,
 		canSeeDept,
 		canRegister,
+		canCreateTopic,
 		// topics
 		deptTopics,
 		myTopics,
@@ -417,6 +445,10 @@ export function useMyTopics() {
 		setEditForm,
 		editLoading,
 		editError,
+		editCfg,
+		editCustom,
+		setEditCustom,
+		editErrors,
 		refData,
 		refDataLoading,
 		openEdit,

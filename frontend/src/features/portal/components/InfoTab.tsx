@@ -61,14 +61,12 @@ export default function InfoTab({
 				</div>
 				<div className={styles.infoEditRow}>
 					<div style={{ flex: 1 }}>
-						<label className={styles.infoLabel}>Cấp độ</label>
+						{/* Cấp độ lấy theo đợt — chỉ hiển thị, đổi ở cấu hình đợt */}
+						<label className={styles.infoLabel}>Cấp độ (theo đợt)</label>
 						<select
 							className={styles.formInput}
 							value={infoForm.level_id}
-							disabled={!canEditInfo}
-							onChange={(e) =>
-								setInfoForm((f) => ({ ...f, level_id: e.target.value }))
-							}
+							disabled
 						>
 							<option value=''>— Chọn cấp độ —</option>
 							{meta.levels.map((l) => (

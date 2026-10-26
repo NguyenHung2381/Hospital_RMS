@@ -11,7 +11,6 @@ import styles from '@/features/seminar/pages/Seminar.module.css';
 import { saveBlob } from '@/shared/utils/saveBlob';
 import {
 	downloadTopicImportTemplate,
-	getLevels,
 	importTopicsExcel,
 	type SimpleItem,
 	type TopicImportDefaults,
@@ -37,37 +36,14 @@ export function TopicImportModal({
 	const [preview, setPreview] = useState<TopicImportResult | null>(null);
 	const [result, setResult] = useState<TopicImportResult | null>(null);
 	const [downloading, setDownloading] = useState(false);
-	// Đợt + cấp độ chọn ở đây, áp cho cả file (file không có cột Đợt / Cấp độ)
+	// Đợt chọn ở đây, áp cho cả file (file không có cột Đợt); cấp độ server tự lấy theo đợt
 	const [roundId, setRoundId] = useState('');
-	const [levelId, setLevelId] = useState('');
 	const [articleType, setArticleType] = useState<'de_tai' | 'bai_bao'>('de_tai');
 	const [status, setStatus] = useState<NonNullable<TopicImportDefaults['status']>>('submitted');
-	// Cấp độ ăn theo đợt: chỉ liệt kê cấp độ của đợt đã chọn; đợt chỉ có 1 cấp độ ⇒ tự chọn
-	const [roundLevels, setRoundLevels] = useState<SimpleItem[]>([]);
-	useEffect(() => {
-		setLevelId('');
-		setRoundLevels([]);
-		if (!roundId) return;
-		let alive = true;
-		getLevels({ round_id: roundId })
-			.then((res) => {
-				if (!alive) return;
-				setRoundLevels(res.data);
-				if (res.data.length === 1) setLevelId(res.data[0].id);
-			})
-			.catch(() => alive && setError('Không tải được cấp độ của đợt'));
-		return () => {
-			alive = false;
-		};
-	}, [roundId]);
+	const roundLevelName = rounds.find((r) => r.id === roundId)?.level_name ?? null;
 	const defaults = useMemo<TopicImportDefaults>(
-		() => ({
-			round_id: roundId,
-			level_id: articleType === 'bai_bao' ? '' : levelId,
-			article_type: articleType,
-			status,
-		}),
-		[roundId, levelId, articleType, status],
+		() => ({ round_id: roundId, article_type: articleType, status }),
+		[roundId, articleType, status],
 	);
 
 	useEffect(() => {
@@ -163,7 +139,7 @@ export function TopicImportModal({
 						<InfoSvg />
 						<span>
 							Mỗi đề tài 1 khối dòng đã <b>gộp ô</b> sẵn trong file mẫu: dòng 1 <b>Chủ nhiệm</b>, dòng 2 <b>Thư ký</b>, dòng 3 Thành viên — chỉ điền Họ và tên / MNV, không cần nhập vai trò.
-							Thành viên khớp theo <b>MNV</b> (thiếu họ tên thì lấy từ hệ thống). <b>Đợt</b> và <b>Cấp độ</b> chọn dưới đây áp cho cả file. Đề tài <b>trùng tên trong cùng đợt</b> hoặc có lỗi sẽ bị bỏ qua.
+							Thành viên khớp theo <b>MNV</b> (thiếu họ tên thì lấy từ hệ thống). <b>Đợt</b> chọn dưới đây áp cho cả file (cấp độ lấy theo đợt). Đề tài <b>trùng tên trong cùng đợt</b> hoặc có lỗi sẽ bị bỏ qua.
 						</span>
 					</div>
 					<div className={styles.importDefaults}>
@@ -175,16 +151,13 @@ export function TopicImportModal({
 						</div>
 						{articleType !== 'bai_bao' && (
 							<div className={styles.formGroup}>
-								<label className={styles.formLabel}>
-									Cấp độ {roundLevels.length > 0 && <span className={styles.required}>*</span>}
-								</label>
-								{roundId ? (
-									select(levelId, setLevelId, roundLevels, '-- Chọn cấp độ --')
-								) : (
-									<select className={styles.formInput} disabled>
-										<option>-- Chọn đợt trước --</option>
-									</select>
-								)}
+								<label className={styles.formLabel}>Cấp độ (theo đợt)</label>
+								<input
+									className={styles.formInput}
+									value={roundId ? (roundLevelName ?? 'Đợt chưa cấu hình cấp độ') : 'Chọn đợt trước'}
+									readOnly
+									disabled
+								/>
 							</div>
 						)}
 						<div className={styles.formGroup}>

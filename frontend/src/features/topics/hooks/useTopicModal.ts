@@ -11,6 +11,8 @@ import type {
 	TopicForm,
 } from '../types/topic.type';
 import { isAddRoleAllowed, isEditRoleAllowed, nextAddRole } from '../utils/topicHelpers';
+import { useFormConfig } from '../../../shared/formConfig/useFormConfig';
+import type { CustomValues } from '../../../shared/formConfig/types';
 
 export interface PendingMember {
 	tempId: string;
@@ -34,13 +36,18 @@ export interface ManualMemberForm {
 	department_id: string;
 }
 
+// Cột DATE của SQL Server về tới client dạng '2026-10-26T00:00:00.000Z' → cắt về 'YYYY-MM-DD' cho DatePicker.
+const toDateValue = (v?: string | null) => (v ? String(v).slice(0, 10) : '');
+
 interface UseTopicModalProps {
+	mode: 'create' | 'edit';
 	topic?: Topic;
 	departments: SimpleItem[];
 	onSave: (form: TopicForm, members: PendingMember[]) => Promise<void>;
 }
 
 export function useTopicModal({
+	mode,
 	topic,
 	departments,
 	onSave,
@@ -50,22 +57,27 @@ export function useTopicModal({
 		description: topic?.description ?? '',
 		round_id: topic?.round_id ?? '',
 		category_id: topic?.category_id ?? '',
-		level_id: topic?.level_id ?? '',
 		department_id: topic?.department_id ?? '',
 		status: topic?.status ?? 'submitted',
 		article_type: topic?.article_type ?? 'de_tai',
 		journal_name: topic?.journal_name ?? '',
 		doi: topic?.doi ?? '',
-		publish_date: topic?.publish_date ?? '',
+		publish_date: toDateValue(topic?.publish_date),
 		budget_estimated: topic?.budget_estimated?.toString() ?? '',
 		budget_actual: topic?.budget_actual?.toString() ?? '',
 		approval_decision_no: topic?.approval_decision_no ?? '',
-		approval_decision_date: topic?.approval_decision_date ?? '',
+		approval_decision_date: toDateValue(topic?.approval_decision_date),
 		recognition_decision_no: topic?.recognition_decision_no ?? '',
-		recognition_decision_date: topic?.recognition_decision_date ?? '',
+		recognition_decision_date: toDateValue(topic?.recognition_decision_date),
+		acceptance_rating: topic?.acceptance_rating ?? '',
+		acceptance_score: topic?.acceptance_score?.toString() ?? '',
+		acceptance_date: toDateValue(topic?.acceptance_date),
 		is_featured: topic?.is_featured ?? false,
 	});
 	const [errors, setErrors] = useState<FormErrors>({});
+	// Cấu hình form 'topic' (trang Cấu hình form) — biến thể form quản trị
+	const cfg = useFormConfig('topic', 'admin');
+	const [custom, setCustomState] = useState<CustomValues>(topic?.custom ?? {});
 
 	const [loading, setLoading] = useState(false);
 	const [saveError, setSaveError] = useState('');
@@ -220,18 +232,32 @@ export function useTopicModal({
 			});
 	};
 
+	const setCustom = (next: CustomValues) => {
+		setCustomState(next);
+		const changed = Object.keys(next).filter((k) => next[k] !== custom[k]);
+		if (changed.some((k) => errors[k]))
+			setErrors((p) => {
+				const n = { ...p };
+				changed.forEach((k) => delete n[k]);
+				return n;
+			});
+	};
+
 	const toggleFeatured = () => {
 		setForm((p) => ({ ...p, is_featured: !p.is_featured }));
 	};
 
 	const validate = (): boolean => {
-		const e: FormErrors = {};
-		const isPaper = form.article_type === 'bai_bao';
-		if (!form.title.trim()) e.title = 'Vui lòng nhập tên đề tài';
-		if (!form.round_id) e.round_id = 'Vui lòng chọn đợt nghiên cứu';
-		if (!form.category_id) e.category_id = 'Vui lòng chọn phân loại';
-		if (!isPaper && !form.level_id) e.level_id = 'Vui lòng chọn cấp độ';
-		if (!form.department_id) e.department_id = 'Vui lòng chọn khoa/phòng';
+		let e: FormErrors = {};
+		if (cfg.resolved) {
+			// Bắt buộc / ràng buộc theo Cấu hình form (gồm cả trường tùy chỉnh)
+			e = cfg.validate({ ...form }, custom, { mode });
+		} else {
+			if (!form.title.trim()) e.title = 'Vui lòng nhập tên đề tài';
+			if (!form.round_id) e.round_id = 'Vui lòng chọn đợt nghiên cứu';
+			if (!form.category_id) e.category_id = 'Vui lòng chọn phân loại';
+			if (!form.department_id) e.department_id = 'Vui lòng chọn khoa/phòng';
+		}
 		setErrors(e);
 		return Object.keys(e).length === 0;
 	};
@@ -246,7 +272,7 @@ export function useTopicModal({
 		setLoading(true);
 		setSaveError('');
 		try {
-			await onSave(form, pendingMembers);
+			await onSave({ ...form, custom }, pendingMembers);
 		} catch (err: unknown) {
 			setSaveError(err instanceof Error ? err.message : 'Lỗi lưu đề tài');
 			setLoading(false);
@@ -256,6 +282,9 @@ export function useTopicModal({
 	return {
 		form,
 		errors,
+		cfg,
+		custom,
+		setCustom,
 		loading,
 		saveError,
 		pendingMembers,

@@ -187,6 +187,10 @@ GET    /api/v1/external-reviewers  councils:read
 DELETE /api/v1/external-reviewers/:id  councils:delete
 PUT    /api/v1/external-reviewers/:id  councils:update
 DELETE /api/v1/files/:file_id  files:delete
+GET    /api/v1/form-configs/:formKey  public
+GET    /api/v1/form-configs/admin  form_configs:manage
+PUT    /api/v1/form-configs/admin/:formKey  form_configs:manage
+DELETE /api/v1/form-configs/admin/:formKey  form_configs:manage
 GET    /api/v1/hospital-training-topics  authOnly
 POST   /api/v1/hospital-training-topics  training_catalog:create
 GET    /api/v1/hospital-training-topics/:id  authOnly
@@ -414,6 +418,7 @@ POST   /api/v1/topics/export-excel  reports:create
 POST   /api/v1/topics/export-report  reports:create
 POST   /api/v1/topics/import-excel  topics:create
 POST   /api/v1/topics/import-template  topics:create
+POST   /api/v1/topics/legacy  topics:create
 GET    /api/v1/trainee-document-types  authOnly
 POST   /api/v1/trainee-document-types  training_catalog:create
 GET    /api/v1/trainee-document-types/:id  authOnly

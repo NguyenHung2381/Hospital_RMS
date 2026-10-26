@@ -4,6 +4,12 @@ import { toIsoDate } from '@/shared/utils/formatDate';
 import { createLeaveRequest, type LeavePolicy, type LeaveType, type MyAttendance } from '../api/meApi';
 import styles from '../pages/SelfService.module.css';
 import own from '../pages/MyAttendance.module.css';
+import { SELF_FIELD } from '../utils/selfField';
+import { allowedOptions } from '@/shared/formConfig/allowedOptions';
+import { CfgField } from '@/shared/formConfig/CfgField';
+import { CustomFields } from '@/shared/formConfig/CustomFields';
+import type { CustomValues } from '@/shared/formConfig/types';
+import { useFormConfig } from '@/shared/formConfig/useFormConfig';
 
 interface Props {
 	/** Lịch ca 7 ngày tới — để chọn ca khi xin phép trong 1 ngày. */
@@ -42,7 +48,14 @@ export default function LeaveRequestModal({ week, policy = DEFAULT_POLICY, onClo
 	const today = toIsoDate(new Date());
 	const minDate = addDays(today, -policy.backdate_days);
 	const maxDate = addDays(today, policy.ahead_days);
-	const [type, setType] = useState<LeaveType>('absent');
+	// Nhãn / ghi chú / giới hạn / trường tùy chỉnh theo Cấu hình form
+	const cfg = useFormConfig('leave_request', 'portal');
+	const [custom, setCustom] = useState<CustomValues>({});
+	const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+	// Admin có thể chỉ cho 1 loại đơn ⇒ loại đang chọn luôn nằm trong danh sách còn lại
+	const types = allowedOptions(cfg, 'type', TYPES);
+	const [pickedType, setType] = useState<LeaveType>('absent');
+	const type = types.some((t) => t.value === pickedType) ? pickedType : (types[0]?.value ?? pickedType);
 	const [fromDate, setFromDate] = useState(today);
 	const [toDate, setToDate] = useState(today);
 	const [shiftId, setShiftId] = useState('');
@@ -77,6 +90,11 @@ export default function LeaveRequestModal({ week, policy = DEFAULT_POLICY, onClo
 			return setError(`Một đơn xin nghỉ tối đa ${policy.max_span_days} ngày`);
 		if (type === 'late' && !arriveTime) return setError('Nhập giờ dự kiến có mặt');
 		if (reason.trim().length < 5) return setError('Lý do tối thiểu 5 ký tự');
+		const values = { type, from_date: fromDate, to_date: type === 'late' ? fromDate : toDate, reason };
+		const cfgErrs = cfg.validate(values, custom, { mode: 'create' });
+		setFieldErrors(cfgErrs);
+		const firstCfgErr = Object.values(cfgErrs)[0];
+		if (firstCfgErr) return setError(firstCfgErr);
 		setBusy(true);
 		setError('');
 		try {
@@ -87,6 +105,7 @@ export default function LeaveRequestModal({ week, policy = DEFAULT_POLICY, onClo
 				shift_id: singleDay && shiftId ? Number(shiftId) : null,
 				arrive_time: type === 'late' ? arriveTime : null,
 				reason: reason.trim(),
+				custom,
 			});
 			onSaved();
 			onClose();
@@ -117,7 +136,7 @@ export default function LeaveRequestModal({ week, policy = DEFAULT_POLICY, onClo
 		>
 			{error && <div className={styles.formError}>{error}</div>}
 			<div className={own.typePicker} role='radiogroup' aria-label='Loại đơn'>
-				{TYPES.map((t) => (
+				{types.map((t) => (
 					<button
 						key={t.value}
 						type='button'
@@ -132,15 +151,20 @@ export default function LeaveRequestModal({ week, policy = DEFAULT_POLICY, onClo
 				))}
 			</div>
 			<div className={styles.formGrid}>
-				<label>
-					{type === 'late' ? 'Ngày *' : 'Từ ngày *'}
+				<CfgField
+					cfg={cfg}
+					name='from_date'
+					label={type === 'late' ? 'Ngày' : 'Từ ngày'}
+					required
+					error={fieldErrors.from_date}
+					classes={SELF_FIELD}
+				>
 					<input type='date' value={fromDate} min={minDate} max={maxDate} onChange={(e) => changeFrom(e.target.value)} />
-				</label>
+				</CfgField>
 				{type === 'absent' ? (
-					<label>
-						Đến ngày *
+					<CfgField cfg={cfg} name='to_date' label='Đến ngày' required error={fieldErrors.to_date} classes={SELF_FIELD}>
 						<input type='date' value={toDate} min={fromDate} max={maxToDate} onChange={(e) => setToDate(e.target.value)} />
-					</label>
+					</CfgField>
 				) : (
 					<label>
 						Giờ dự kiến có mặt *
@@ -161,8 +185,15 @@ export default function LeaveRequestModal({ week, policy = DEFAULT_POLICY, onClo
 						{pickedShift && type === 'late' && <span className={own.fieldHint}>Giờ vào ca: {pickedShift.start_time}</span>}
 					</label>
 				)}
-				<label className={styles.formFull}>
-					Lý do *
+				<CfgField
+					cfg={cfg}
+					name='reason'
+					label='Lý do'
+					required
+					error={fieldErrors.reason}
+					className={styles.formFull}
+					classes={SELF_FIELD}
+				>
 					<textarea
 						className={own.reason}
 						rows={4}
@@ -171,7 +202,16 @@ export default function LeaveRequestModal({ week, policy = DEFAULT_POLICY, onClo
 						onChange={(e) => setReason(e.target.value)}
 						placeholder='VD: Bị sốt cao, đã khám tại phòng khám X…'
 					/>
-				</label>
+				</CfgField>
+				<CustomFields
+					cfg={cfg}
+					value={custom}
+					onChange={setCustom}
+					errors={fieldErrors}
+					title={null}
+					inputClassName={styles.cfgInput}
+					classes={SELF_FIELD}
+				/>
 			</div>
 			<p className={own.note}>
 				{policy.backdate_days

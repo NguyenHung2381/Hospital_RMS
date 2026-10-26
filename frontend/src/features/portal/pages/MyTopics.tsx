@@ -3,6 +3,7 @@ import {
 	BuildingSvg,
 	CheckCircleSvg,
 	ClockSvg,
+	HistorySvg,
 	MessageSvg,
 	PlusSvg,
 	UserCheckSvg,
@@ -23,14 +24,26 @@ export default function MyTopics() {
 	const navigate = useNavigate();
 	const d = useMyTopics();
 
-	const headerActions = d.canRegister ? (
-		<button
-			className={styles.btnPrimary}
-			onClick={() => navigate('/user/register-topic')}
-		>
-			<PlusSvg />
-			Đăng ký đề tài mới
-		</button>
+	const headerActions = d.canCreateTopic ? (
+		<div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+			{/* Đề tài của đợt đã làm xong trước khi có hệ thống — không cần mốc đăng ký */}
+			<button
+				className={styles.btnSecondary}
+				onClick={() => navigate('/user/nhap-de-tai')}
+			>
+				<HistorySvg />
+				Nhập đề tài đã hoàn thành
+			</button>
+			{d.canRegister && (
+				<button
+					className={styles.btnPrimary}
+					onClick={() => navigate('/user/register-topic')}
+				>
+					<PlusSvg />
+					Đăng ký đề tài mới
+				</button>
+			)}
+		</div>
 	) : null;
 
 	return (
@@ -225,6 +238,10 @@ export default function MyTopics() {
 					canEditInfo={d.canEditInfo}
 					refData={d.refData}
 					refDataLoading={d.refDataLoading}
+					cfg={d.editCfg}
+					errors={d.editErrors}
+					custom={d.editCustom}
+					setCustom={d.setEditCustom}
 					onClose={() => d.setEditOpen(false)}
 					onSave={() => void d.handleSaveEdit()}
 				>

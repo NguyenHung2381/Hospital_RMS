@@ -8,6 +8,7 @@
 const { signToken, verifyToken } = require('../../utils/keys');
 const { getPool, sql, withTransaction } = require('../../config/db');
 const { broadcast } = require('../events/eventService');
+const formCustomValueService = require('../forms/formCustomValueService');
 const personService = require('../persons/personService');
 const { normalizeGender } = require('../../utils/gender');
 const { httpError } = require('../../utils/httpError');
@@ -37,7 +38,12 @@ const listBySeminar = async (seminarId) => {
              WHEN 'organizer' THEN 2 WHEN 'attendee' THEN 3 ELSE 4 END,
         p.cme_seq, p.full_name;
     `);
-	return r.recordset;
+	// Trường tùy chỉnh người đăng ký điền ở form công khai (Cấu hình form)
+	const custom = await formCustomValueService.getMany(
+		'seminar_participant',
+		r.recordset.map((p) => p.id),
+	);
+	return r.recordset.map((p) => ({ ...p, custom: custom.get(p.id) || {} }));
 };
 
 const ensureSeminar = async (pool, seminarId) => {
@@ -309,6 +315,7 @@ const remove = async (seminarId, pid, actorId) => {
       EXEC sp_set_actor @actor_id;
       DELETE FROM seminar_participants WHERE id = @pid AND seminar_id = @sid;
     `);
+	await formCustomValueService.remove('seminar_participant', pid);
 	broadcast('update', { entity: 'seminar' });
 };
 

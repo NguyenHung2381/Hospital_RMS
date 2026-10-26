@@ -136,6 +136,12 @@
 	grid-column: 1 / -1;
 }
 
+/* Ghi chú dưới ô nhập — đặt ở trang Cấu hình form */
+.formHint {
+	font-size: var(--font-size-2xs);
+	color: var(--color-gray-500);
+}
+
 .formError {
 	font-size: var(--font-size-2xs);
 	color: #ef4444;

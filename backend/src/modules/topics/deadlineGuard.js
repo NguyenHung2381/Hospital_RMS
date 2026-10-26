@@ -28,8 +28,9 @@ async function isTopicActionAllowed(topicId, actorUserId, action) {
 	const topicRes = await pool
 		.request()
 		.input('tid', sql.VarChar(15), topicId)
-		.query('SELECT round_id FROM topics WHERE id = @tid');
-	const roundId = topicRes.recordset[0]?.round_id;
+		.query('SELECT round_id, status, is_legacy FROM topics WHERE id = @tid');
+	const topic = topicRes.recordset[0];
+	const roundId = topic?.round_id;
 	if (!roundId) return false;
 
 	// Phải là chủ nhiệm / thư ký của chính đề tài này.
@@ -41,6 +42,11 @@ async function isTopicActionAllowed(topicId, actorUserId, action) {
 			WHERE topic_id = @tid AND user_id = @uid AND role IN ('leader', 'secretary')
 		`);
 	if (!roleRes.recordset[0]) return false;
+
+	// Đề tài nhập bổ sung (đã hoàn thành): đợt cũ đã đóng, không có mốc nào mở —
+	// chủ nhiệm/thư ký sửa hồ sơ tự do cho tới khi được duyệt (chờ duyệt / bổ sung).
+	if (topic.is_legacy && (topic.status === 'submitted' || topic.status === 'supplement'))
+		return true;
 
 	const today = todayVN();
 	const dls = (

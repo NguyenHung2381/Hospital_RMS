@@ -487,7 +487,6 @@ export default function TopicPage() {
 				<TopicModal
 					mode='create'
 					categories={d.categories}
-					levels={d.levels}
 					rounds={d.rounds}
 					departments={d.departments}
 					onClose={() => d.setShowCreate(false)}
@@ -499,7 +498,6 @@ export default function TopicPage() {
 					mode='edit'
 					topic={d.editTopic}
 					categories={d.categories}
-					levels={d.levels}
 					rounds={d.rounds}
 					departments={d.departments}
 					onClose={() => d.setEditTopic(null)}
@@ -531,7 +529,6 @@ export default function TopicPage() {
 				<TopicBulkEditModal
 					count={rowSel.selectedCount}
 					categories={d.categories}
-					levels={d.levels}
 					departments={d.departments}
 					loading={d.bulkBusy}
 					onClose={() => setBulkModal(null)}

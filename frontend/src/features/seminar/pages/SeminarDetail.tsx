@@ -58,6 +58,7 @@ import { fileSlug, saveBlob } from '@/shared/utils/saveBlob';
 import { showToast } from '@/shared/utils/feedback';
 import styles from './Seminar.module.css';
 import tbl from '@/shared/components/Table/Table.module.css';
+import { CustomValuesInline, useFormConfig } from '@/shared/formConfig';
 import { useClientPaging } from '@/shared/hooks/useClientPaging';
 import { Pagination } from '@/shared/components/Table/Pagination';
 
@@ -126,6 +127,8 @@ const parseTestQuestions = (s: Seminar): { points?: number }[] => {
 };
 
 export default function SeminarDetail() {
+	// Trường tùy chỉnh người tham dự điền khi đăng ký công khai (Cấu hình form 'seminar_participant')
+	const partCfg = useFormConfig('seminar_participant', 'public');
 	const { id = '' } = useParams();
 	const navigate = useNavigate();
 	const d = useSeminarDetail(id);
@@ -588,6 +591,11 @@ export default function SeminarDetail() {
 														</Badge>
 													)}
 													{p.phone && <div className={styles.cellSub}>{p.phone}</div>}
+													<CustomValuesInline
+														cfg={partCfg}
+														data={p.custom}
+														className={styles.cellSub}
+													/>
 												</td>
 												<td>
 													{PARTICIPATION_LABELS[p.participation_type]}

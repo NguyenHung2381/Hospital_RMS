@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react';
-import { CheckSvg } from '@/assets/icons';
 import { getAllLevels } from '../api/roundApi';
 import type {
 	FormErrors,
@@ -43,13 +42,6 @@ export function RoundInfoTab({
 			.catch(() => setLevels([]));
 	}, []);
 
-	const toggleLevel = (id: string, checked: boolean) =>
-		set(
-			'level_ids',
-			checked
-				? [...form.level_ids, id]
-				: form.level_ids.filter((x) => x !== id),
-		);
 
 	return (
 		<>
@@ -124,33 +116,34 @@ export function RoundInfoTab({
 			</FormField>
 			<FormField
 				htmlFor='level_ids'
-				label='Cấp độ đề tài được đăng ký'
+				label='Cấp độ đề tài của đợt'
+				required
+				error={errors.level_ids as string}
 			>
-				<div className={dmStyles.chipsContainer}>
-					{levels.length === 0 && (
-						<span className={styles.formHint}>Chưa có cấp độ nào trong danh mục</span>
-					)}
-					{levels.map((lv) => {
-						const checked = form.level_ids.includes(lv.id);
-						return (
-							<label
-								key={lv.id}
-								className={`${dmStyles.chipLabel} ${checked ? dmStyles.chipLabelActive : ''}`}
-							>
-								<input
-									type='checkbox'
-									className={dmStyles.hiddenCheckbox}
-									checked={checked}
-									onChange={(e) => toggleLevel(lv.id, e.target.checked)}
-								/>
-								<span className={dmStyles.customCheckbox}>
-									{checked && <CheckSvg style={{ width: 10, height: 10 }} />}
-								</span>
-								<span>{lv.name}</span>
-							</label>
-						);
-					})}
-				</div>
+				{/* Mỗi đợt đúng 1 cấp độ — mọi đề tài trong đợt lấy cấp độ này */}
+				<select
+					id='level_ids'
+					className={`${styles.formSelect} ${errors.level_ids ? styles.hasError : ''}`}
+					value={form.level_ids.length === 1 ? form.level_ids[0] : ''}
+					onChange={(e) => set('level_ids', e.target.value ? [e.target.value] : [])}
+				>
+					<option value=''>
+						{levels.length === 0 ? 'Chưa có cấp độ nào trong danh mục' : '-- Chọn cấp độ --'}
+					</option>
+					{levels.map((lv) => (
+						<option
+							key={lv.id}
+							value={lv.id}
+						>
+							{lv.name}
+						</option>
+					))}
+				</select>
+				{form.level_ids.length > 1 && (
+					<span className={styles.formHint}>
+						Đợt đang có {form.level_ids.length} cấp độ (cấu hình cũ) — chọn lại 1 cấp độ.
+					</span>
+				)}
 			</FormField>
 			<FormField
 				htmlFor='name'

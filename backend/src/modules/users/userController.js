@@ -1,4 +1,5 @@
 const userService = require('./userService');
+const formCustomValueService = require('../forms/formCustomValueService');
 const { success, created, notFound, forbidden, sendWorkbook } = require('../../utils/response');
 const { buildUserListWorkbook } = require('./exports/userListWorkbook');
 const { createCrudController } = require('../../shared/crudController');
@@ -120,6 +121,7 @@ const getMe = asyncHandler(async (req, res) => {
 	// Kèm tập quyền để client tái tạo điều hướng sau khi tải lại trang.
 	return success(res, {
 		...user,
+		custom: await formCustomValueService.get('user_profile', req.user.id),
 		permissions: [...(req.user.permissions ?? [])],
 		permission_scopes: Object.fromEntries(req.user.permissionScopes ?? []),
 		// Trạng thái 2FA bắt buộc tính lại theo cấu hình hiện tại — bản lưu lúc
@@ -131,13 +133,18 @@ const getMe = asyncHandler(async (req, res) => {
 
 // Chỉ lấy đúng các trường người dùng được tự sửa — không nhận role/khoa/trạng thái.
 const updateMe = asyncHandler(async (req, res) => {
-	const item = await userService.update(
+	let item = null;
+	if (req.body.full_name !== undefined) {
+		item = await userService.update(req.user.id, { full_name: req.body.full_name }, req.user.id);
+		if (!item) return notFound(res);
+	}
+	const custom = await formCustomValueService.save(
+		'user_profile',
 		req.user.id,
-		{ full_name: req.body.full_name },
+		req.formCustom,
 		req.user.id,
 	);
-	if (!item) return notFound(res);
-	return success(res, item, 'Cập nhật thành công');
+	return success(res, { ...item, ...(custom ? { custom } : {}) }, 'Cập nhật thành công');
 });
 
 const searchMembers = asyncHandler(async (req, res) => {

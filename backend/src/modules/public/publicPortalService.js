@@ -7,6 +7,7 @@ const programClassService = require('../training/courses/programClassService');
 const researchRoundService = require('../rounds/roundService');
 const topicService = require('../topics/topicService');
 const topicMemberService = require('../topics/topicMemberService');
+const formCustomValueService = require('../forms/formCustomValueService');
 const { norm } = require('../../utils/vietnameseText');
 const { formatDuration } = require('../../utils/trainingDuration');
 const fileService = require('../topics/fileService');
@@ -120,7 +121,8 @@ const toDateKey = (v) => {
 // trùng nếu học viên đã từng đăng ký khóa khác), nếu chưa có thì tạo mới với
 // actor_id = NULL (không có tài khoản đứng sau thao tác này — cột created_by
 // cho phép NULL, giống các trường hợp import/nguồn ngoài khác).
-const register = async (data, files) => {
+// custom = trường tùy chỉnh (Cấu hình form 'course_registration') — lưu theo lượt ghi danh
+const register = async (data, files, custom = null) => {
 	const course = await courseService.getById(data.course_id);
 	// courses.status giờ chỉ còn cờ 'cancelled' (trạng thái hiển thị tự suy từ
 	// ngày tháng — courseService.computeDisplayStatus), cửa sổ đăng ký xét ở dưới.
@@ -174,6 +176,7 @@ const register = async (data, files) => {
 		null,
 		{ programId: data.program_id || null },
 	);
+	await formCustomValueService.save('course_registration', enrollment.id, custom);
 	if (hasFiles(files)) await attachTraineeDocuments(trainee.id, files, data.doc_types);
 	return { trainee_id: trainee.id, enrollment_id: enrollment.id };
 };
@@ -279,7 +282,7 @@ const attachTopicFiles = async (topicId, files) => {
 	}
 };
 
-const registerTopic = async (data, files) => {
+const registerTopic = async (data, files, custom = null) => {
 	const round = await researchRoundService.getById(data.round_id);
 	if (!round || round.status !== 'active') {
 		throw httpError(404, 'Đợt nghiên cứu không tồn tại hoặc đã đóng.');
@@ -287,12 +290,7 @@ const registerTopic = async (data, files) => {
 	if (!round.registration_open) {
 		throw httpError(403, 'Đợt này hiện không trong thời gian nhận đăng ký đề tài.');
 	}
-	// Cấp độ ăn theo đợt: đợt chỉ cấu hình 1 cấp độ thì tự gán (form không hỏi);
-	// nhiều cấp độ thì người đăng ký chọn 1 trong số đó.
-	const allowedLevels = await researchRoundService.getAllowedLevelIds(data.round_id);
-	const levelId = allowedLevels.length === 1 ? allowedLevels[0] : data.level_id;
-	await topicService.assertLevelForRound(data.round_id, levelId, 'de_tai');
-	if (!levelId) throw httpError(400, 'Vui lòng chọn cấp độ đề tài.');
+	// Cấp độ lấy theo đợt — topicService.create tự gán, form không hỏi.
 
 	// Người đăng ký = chủ nhiệm; thư ký/thành viên khác nhập thêm (tùy chọn).
 	const extras = (Array.isArray(data.members) ? data.members : [])
@@ -312,7 +310,6 @@ const registerTopic = async (data, files) => {
 			description: data.description,
 			round_id: data.round_id,
 			category_id: data.category_id,
-			level_id: levelId,
 			department_id: data.department_id,
 			article_type: 'de_tai',
 		},
@@ -348,6 +345,7 @@ const registerTopic = async (data, files) => {
 			);
 		}
 		if (hasFiles(files)) await attachTopicFiles(topic.id, files);
+		await formCustomValueService.save('topic', topic.id, custom);
 	} catch (err) {
 		// Không để lại đề tài "mồ côi" thiếu chủ nhiệm/thành viên/tài liệu khi lỗi giữa chừng
 		await topicService.remove(topic.id, null).catch(() => {});

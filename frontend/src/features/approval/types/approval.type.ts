@@ -26,6 +26,10 @@ export interface ApprovalRecord {
 	approval_decision_date: string | null;
 	recognition_decision_no: string | null;
 	recognition_decision_date: string | null;
+	/** Đề tài đã hoàn thành, nhập bổ sung ở cổng nhân viên (đợt cũ). */
+	is_legacy: boolean;
+	/** Kết quả nghiệm thu đã định dạng ("Tốt · 85 điểm · 12/05/2023"), rỗng nếu chưa có. */
+	acceptance: string;
 	// derived
 	is_urgent: boolean; // nộp > 3 ngày chưa duyệt
 	history: ApvHistoryItem[];

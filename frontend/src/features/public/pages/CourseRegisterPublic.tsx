@@ -18,8 +18,17 @@ import { AttachmentPicker, type Attachment } from '../components/AttachmentPicke
 import { CourseProgramPicker } from '../components/CourseProgramPicker';
 import { FormSection, SubGroup } from '../components/FormSection';
 import { useCaptcha } from '../hooks/useCaptcha';
+import { PUBLIC_FIELD } from '../utils/fieldClasses';
+import { allowedOptions } from '@/shared/formConfig/allowedOptions';
+import { CfgField } from '@/shared/formConfig/CfgField';
+import { CustomFields } from '@/shared/formConfig/CustomFields';
+import type { CustomValues } from '@/shared/formConfig/types';
+import { useFormConfig } from '@/shared/formConfig/useFormConfig';
 import styles from './PublicPortal.module.css';
 import s from './CourseRegisterPublic.module.css';
+
+// Trang này có class ghi chú / lỗi riêng
+const COURSE_FIELD = { ...PUBLIC_FIELD, hint: s.hint, error: s.fieldError, inputError: s.inputError };
 
 const DOC_TYPE_OPTIONS: { value: TraineeDocType; label: string }[] = [
 	{ value: 'national_id', label: 'CCCD/CMND' },
@@ -39,10 +48,24 @@ const EMPTY_FORM = {
 	website: '', // honeypot
 };
 
-type FieldKey = 'course' | 'program' | 'full_name' | 'dob' | 'email' | 'captcha';
+// Khóa lỗi: course/program/captcha + trường có sẵn + trường tùy chỉnh (Cấu hình form)
+type FieldKey = string;
 // Thứ tự trên trang — lỗi đầu tiên theo thứ tự này được cuộn tới
-const FIELD_ORDER: FieldKey[] = ['course', 'program', 'full_name', 'dob', 'email', 'captcha'];
-const fieldId = (k: FieldKey) => (k === 'program' ? 'f-course' : `f-${k}`);
+const FIELD_ORDER: FieldKey[] = [
+	'course',
+	'program',
+	'full_name',
+	'national_id',
+	'dob',
+	'gender',
+	'trainee_type_id',
+	'phone',
+	'email',
+	'address',
+];
+// Trường tùy chỉnh có id cf-<key> (CustomFields)
+const fieldId = (k: FieldKey) =>
+	k === 'program' ? 'f-course' : document.getElementById(`f-${k}`) ? `f-${k}` : `cf-${k}`;
 
 // Nhiều khóa thì mới cần ô tìm
 const SEARCH_FROM = 6;
@@ -99,6 +122,13 @@ export default function CourseRegisterPublic() {
 	const [errors, setErrors] = useState<Partial<Record<FieldKey, string>>>({});
 	const [serverError, setServerError] = useState('');
 	const [done, setDone] = useState<Done | null>(null);
+	// Nhãn / bắt buộc / giới hạn / trường tùy chỉnh theo Cấu hình form
+	const cfg = useFormConfig('course_registration', 'public');
+	const [custom, setCustomState] = useState<CustomValues>({});
+	const setCustom = (next: CustomValues) => {
+		Object.keys(next).forEach((k) => next[k] !== custom[k] && clearError(k));
+		setCustomState(next);
+	};
 
 	const course = courses.find((c) => c.id === courseId);
 	const program = course?.programs.find((p) => p.id === programId);
@@ -159,8 +189,8 @@ export default function CourseRegisterPublic() {
 
 	const set = (field: keyof typeof EMPTY_FORM) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
 		setForm((f) => ({ ...f, [field]: e.target.value }));
-		if (field === 'full_name' || field === 'email') clearError(field);
-		if (field === 'dob' || field === 'national_id') clearError('dob');
+		clearError(field);
+		if (field === 'national_id') clearError('dob');
 	};
 
 	const visibleCourses = useMemo(() => {
@@ -175,11 +205,14 @@ export default function CourseRegisterPublic() {
 		const e: Partial<Record<FieldKey, string>> = {};
 		if (!courseId) e.course = 'Vui lòng chọn khóa học muốn đăng ký';
 		else if (course?.programs.length && !programId) e.program = 'Vui lòng chọn 1 chương trình trong khóa';
+		// Bắt buộc / độ dài / định dạng theo Cấu hình form (honeypot không có trong registry nên bỏ qua)
+		Object.assign(e, cfg.validate(form, custom, { mode: 'create' }));
 		if (!form.full_name.trim()) e.full_name = 'Vui lòng nhập họ và tên';
 		// Server đối chiếu ngày sinh khi CCCD đã có hồ sơ — bắt nhập cùng lúc
 		if (form.national_id.trim() && !form.dob) e.dob = 'Nhập ngày sinh kèm số CCCD/CMND';
 		if (form.email.trim() && !/^\S+@\S+\.\S+$/.test(form.email.trim())) e.email = 'Email không hợp lệ';
 		if (!captcha.payload) e.captcha = 'Vui lòng tích ô xác nhận trước khi gửi';
+		Object.keys(e).forEach((k) => !e[k] && delete e[k]);
 		return e;
 	};
 
@@ -188,7 +221,10 @@ export default function CourseRegisterPublic() {
 		setServerError('');
 		const errs = validate();
 		setErrors(errs);
-		const first = FIELD_ORDER.find((k) => errs[k]);
+		const first =
+			FIELD_ORDER.find((k) => errs[k]) ??
+			cfg.custom.find((c) => errs[c.key])?.key ??
+			(errs.captcha ? 'captcha' : undefined);
 		if (first) {
 			const el = document.getElementById(fieldId(first));
 			el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -205,6 +241,7 @@ export default function CourseRegisterPublic() {
 					course_id: courseId,
 					program_id: programId || undefined,
 					doc_types: attachments.map((a) => a.type ?? 'other'),
+					custom,
 					...captcha.payload,
 				},
 				attachments.map((a) => a.file),
@@ -217,6 +254,7 @@ export default function CourseRegisterPublic() {
 				hasLookup: !!form.national_id.trim() && !!form.dob,
 			});
 			setForm(EMPTY_FORM);
+			setCustomState({});
 			setAttachments([]);
 			window.scrollTo({ top: 0, behavior: 'smooth' });
 		} catch (err) {
@@ -438,32 +476,35 @@ export default function CourseRegisterPublic() {
 					>
 						<SubGroup title='Thông tin cá nhân'>
 							<div className={styles.formGrid}>
-								<div className={`${styles.formGroup} ${styles.full}`}>
-									<label
-										className={styles.label}
-										htmlFor='f-full_name'
-									>
-										Họ và tên <span className={styles.required}>*</span>
-									</label>
+								<CfgField
+									cfg={cfg}
+									name='full_name'
+									htmlFor='f-full_name'
+									label='Họ và tên'
+									required
+									error={errors.full_name}
+									className={styles.full}
+									classes={COURSE_FIELD}
+								>
 									<input
 										id='f-full_name'
-										className={`${styles.input} ${errors.full_name ? s.inputError : ''}`}
+										className={styles.input}
 										value={form.full_name}
 										onChange={set('full_name')}
 										placeholder='VD: Nguyễn Văn An'
 										autoComplete='name'
-										aria-invalid={!!errors.full_name}
 										required
 									/>
-									{errors.full_name && <span className={s.fieldError}>{errors.full_name}</span>}
-								</div>
-								<div className={styles.formGroup}>
-									<label
-										className={styles.label}
-										htmlFor='f-national_id'
-									>
-										Số CCCD/CMND
-									</label>
+								</CfgField>
+								<CfgField
+									cfg={cfg}
+									name='national_id'
+									htmlFor='f-national_id'
+									label='Số CCCD/CMND'
+									hint='Cần để tra cứu kết quả và nhận chứng chỉ.'
+									error={errors.national_id}
+									classes={COURSE_FIELD}
+								>
 									<input
 										id='f-national_id'
 										className={styles.input}
@@ -472,32 +513,32 @@ export default function CourseRegisterPublic() {
 										placeholder='12 số trên thẻ CCCD'
 										inputMode='numeric'
 									/>
-									<span className={s.hint}>Cần để tra cứu kết quả và nhận chứng chỉ.</span>
-								</div>
-								<div className={styles.formGroup}>
-									<label
-										className={styles.label}
-										htmlFor='f-dob'
-									>
-										Ngày sinh {form.national_id.trim() && <span className={styles.required}>*</span>}
-									</label>
+								</CfgField>
+								<CfgField
+									cfg={cfg}
+									name='dob'
+									htmlFor='f-dob'
+									label='Ngày sinh'
+									forceRequired={!!form.national_id.trim()}
+									error={errors.dob}
+									classes={COURSE_FIELD}
+								>
 									<input
 										id='f-dob'
 										type='date'
-										className={`${styles.input} ${errors.dob ? s.inputError : ''}`}
+										className={styles.input}
 										value={form.dob}
 										onChange={set('dob')}
-										aria-invalid={!!errors.dob}
 									/>
-									{errors.dob && <span className={s.fieldError}>{errors.dob}</span>}
-								</div>
-								<div className={styles.formGroup}>
-									<label
-										className={styles.label}
-										htmlFor='f-gender'
-									>
-										Giới tính
-									</label>
+								</CfgField>
+								<CfgField
+									cfg={cfg}
+									name='gender'
+									htmlFor='f-gender'
+									label='Giới tính'
+									error={errors.gender}
+									classes={COURSE_FIELD}
+								>
 									<select
 										id='f-gender'
 										className={styles.select}
@@ -505,7 +546,7 @@ export default function CourseRegisterPublic() {
 										onChange={set('gender')}
 									>
 										<option value=''>-- Chọn --</option>
-										{GENDER_OPTIONS.map((o) => (
+										{allowedOptions(cfg, 'gender', GENDER_OPTIONS).map((o) => (
 											<option
 												key={o.value}
 												value={o.value}
@@ -514,16 +555,17 @@ export default function CourseRegisterPublic() {
 											</option>
 										))}
 									</select>
-								</div>
-								<div className={styles.formGroup}>
-									<label
-										className={styles.label}
-										htmlFor='f-trainee_type'
-									>
-										Đối tượng học viên
-									</label>
+								</CfgField>
+								<CfgField
+									cfg={cfg}
+									name='trainee_type_id'
+									htmlFor='f-trainee_type_id'
+									label='Đối tượng học viên'
+									error={errors.trainee_type_id}
+									classes={COURSE_FIELD}
+								>
 									<select
-										id='f-trainee_type'
+										id='f-trainee_type_id'
 										className={styles.select}
 										value={form.trainee_type_id}
 										onChange={set('trainee_type_id')}
@@ -538,19 +580,20 @@ export default function CourseRegisterPublic() {
 											</option>
 										))}
 									</select>
-								</div>
+								</CfgField>
 							</div>
 						</SubGroup>
 
 						<SubGroup title='Thông tin liên hệ'>
 							<div className={styles.formGrid}>
-								<div className={styles.formGroup}>
-									<label
-										className={styles.label}
-										htmlFor='f-phone'
-									>
-										Số điện thoại
-									</label>
+								<CfgField
+									cfg={cfg}
+									name='phone'
+									htmlFor='f-phone'
+									label='Số điện thoại'
+									error={errors.phone}
+									classes={COURSE_FIELD}
+								>
 									<input
 										id='f-phone'
 										className={styles.input}
@@ -560,33 +603,34 @@ export default function CourseRegisterPublic() {
 										placeholder='VD: 0912345678'
 										autoComplete='tel'
 									/>
-								</div>
-								<div className={styles.formGroup}>
-									<label
-										className={styles.label}
-										htmlFor='f-email'
-									>
-										Email
-									</label>
+								</CfgField>
+								<CfgField
+									cfg={cfg}
+									name='email'
+									htmlFor='f-email'
+									label='Email'
+									error={errors.email}
+									classes={COURSE_FIELD}
+								>
 									<input
 										id='f-email'
 										type='email'
-										className={`${styles.input} ${errors.email ? s.inputError : ''}`}
+										className={styles.input}
 										value={form.email}
 										onChange={set('email')}
 										placeholder='email@example.com'
 										autoComplete='email'
-										aria-invalid={!!errors.email}
 									/>
-									{errors.email && <span className={s.fieldError}>{errors.email}</span>}
-								</div>
-								<div className={`${styles.formGroup} ${styles.full}`}>
-									<label
-										className={styles.label}
-										htmlFor='f-address'
-									>
-										Địa chỉ
-									</label>
+								</CfgField>
+								<CfgField
+									cfg={cfg}
+									name='address'
+									htmlFor='f-address'
+									label='Địa chỉ'
+									error={errors.address}
+									className={styles.full}
+									classes={COURSE_FIELD}
+								>
 									<input
 										id='f-address'
 										className={styles.input}
@@ -595,9 +639,25 @@ export default function CourseRegisterPublic() {
 										placeholder='Số nhà, đường, xã/phường, tỉnh/thành phố'
 										autoComplete='street-address'
 									/>
-								</div>
+								</CfgField>
 							</div>
 						</SubGroup>
+
+						{cfg.custom.length > 0 && (
+							<SubGroup title='Thông tin bổ sung'>
+								<div className={styles.formGrid}>
+									<CustomFields
+										cfg={cfg}
+										value={custom}
+										onChange={setCustom}
+										errors={errors}
+										title={null}
+										inputClassName={styles.input}
+										classes={COURSE_FIELD}
+									/>
+								</div>
+							</SubGroup>
+						)}
 					</FormSection>
 
 					<FormSection

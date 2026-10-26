@@ -10,7 +10,6 @@ import { STATUS_CFG } from '../utils/topicHelpers';
 export function TopicBulkEditModal({
 	count,
 	categories,
-	levels,
 	departments,
 	loading,
 	onClose,
@@ -18,7 +17,6 @@ export function TopicBulkEditModal({
 }: {
 	count: number;
 	categories: SimpleItem[];
-	levels: SimpleItem[];
 	departments: SimpleItem[];
 	loading: boolean;
 	onClose: () => void;
@@ -26,14 +24,12 @@ export function TopicBulkEditModal({
 }) {
 	const [status, setStatus] = useState<TopicStatus | ''>('');
 	const [categoryId, setCategoryId] = useState('');
-	const [levelId, setLevelId] = useState('');
 	const [departmentId, setDepartmentId] = useState('');
 
 	// Chỉ gửi trường được chọn — trường "Giữ nguyên" không đụng tới
 	const patch: TopicBulkPatch = {
 		...(status ? { status } : {}),
 		...(categoryId ? { category_id: categoryId } : {}),
-		...(levelId ? { level_id: levelId } : {}),
 		...(departmentId ? { department_id: departmentId } : {}),
 	};
 	const hasChange = Object.keys(patch).length > 0;
@@ -117,24 +113,6 @@ export function TopicBulkEditModal({
 				</label>
 			</div>
 			<div className={styles.formRow}>
-				<label>
-					<div className={styles.formSection}>Cấp độ</div>
-					<select
-						className={styles.formSelect}
-						value={levelId}
-						onChange={(e) => setLevelId(e.target.value)}
-					>
-						<option value=''>— Giữ nguyên —</option>
-						{levels.map((l) => (
-							<option
-								key={l.id}
-								value={l.id}
-							>
-								{l.name}
-							</option>
-						))}
-					</select>
-				</label>
 				<label>
 					<div className={styles.formSection}>Khoa / Phòng</div>
 					<select

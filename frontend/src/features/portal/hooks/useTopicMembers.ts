@@ -7,6 +7,7 @@ import {
 	updateTopicMember,
 } from '../../topics/api/topicApi';
 import type { TopicMember } from '../../topics/types/topic.type';
+import { useFormConfig } from '../../../shared/formConfig/useFormConfig';
 import { blankMember, type MemberFormState } from '../types/topicDetail.type';
 
 const toPayload = (f: MemberFormState) => ({
@@ -16,6 +17,8 @@ const toPayload = (f: MemberFormState) => ({
 	chuc_vu: f.chuc_vu.trim() || undefined,
 	staff_number: f.staff_number.trim() || undefined,
 	role: f.role,
+	custom: f.custom,
+	form_variant: 'portal' as const,
 });
 
 /** State + thao tác thêm/sửa/xóa thành viên đề tài (dùng cho MembersTab). */
@@ -28,12 +31,18 @@ export function useTopicMembers(topicId: string | null | undefined) {
 		useState<MemberFormState>(blankMember);
 	const [savingMember, setSavingMember] = useState(false);
 	const [memberErr, setMemberErr] = useState('');
+	// Bắt buộc / giới hạn theo Cấu hình form — form gọn nên chỉ báo lỗi đầu tiên
+	const cfg = useFormConfig('topic_member', 'portal');
+	const cfgError = ({ custom, ...values }: MemberFormState, mode: 'create' | 'edit') =>
+		Object.values(cfg.validate(values, custom, { mode }))[0];
 
 	const handleAddMember = async () => {
 		if (!topicId || !newMember.ho_ten.trim()) {
 			setMemberErr('Họ tên không được để trống.');
 			return;
 		}
+		const cfgErr = cfgError(newMember, 'create');
+		if (cfgErr) return setMemberErr(cfgErr);
 		setSavingMember(true);
 		setMemberErr('');
 		try {
@@ -58,6 +67,7 @@ export function useTopicMembers(topicId: string | null | undefined) {
 			chuc_vu: m.chuc_vu ?? '',
 			staff_number: m.staff_number != null ? String(m.staff_number) : '',
 			role: m.role,
+			custom: m.custom ?? {},
 		});
 		setMemberErr('');
 	};
@@ -67,6 +77,8 @@ export function useTopicMembers(topicId: string | null | undefined) {
 			setMemberErr('Họ tên không được để trống.');
 			return;
 		}
+		const cfgErr = cfgError(editMemberForm, 'edit');
+		if (cfgErr) return setMemberErr(cfgErr);
 		setSavingMember(true);
 		setMemberErr('');
 		try {

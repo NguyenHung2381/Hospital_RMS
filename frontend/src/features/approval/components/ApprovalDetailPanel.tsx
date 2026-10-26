@@ -1,6 +1,7 @@
 import { TopicFileList } from '@/features/topics/components/TopicFileItem';
 import {
 	CheckCircleSvg,
+	HistorySvg,
 	MessageSvg,
 	WarnSvg,
 	XCircleSvg,
@@ -63,6 +64,12 @@ export function ApprovalDetailPanel({
 								{getLevelStyle(selected.topic_level).label}
 							</Badge>
 							<Badge tone='gray'>{selected.topic_category}</Badge>
+							{selected.is_legacy && (
+								<Badge tone='blue'>
+									<HistorySvg style={{ width: 11, height: 11, flexShrink: 0 }} />
+									Đã hoàn thành · nhập bổ sung
+								</Badge>
+							)}
 							{selected.is_urgent && (
 								<Badge tone='red'>
 									<WarnSvg style={{ width: 11, height: 11, flexShrink: 0 }} />
@@ -91,6 +98,9 @@ export function ApprovalDetailPanel({
 									value: `${selected.topic_member_count} người`,
 								},
 								{ label: 'Ngày nộp hồ sơ', value: selected.created_at },
+								...(selected.is_legacy
+									? [{ label: 'Kết quả nghiệm thu', value: selected.acceptance || '—' }]
+									: []),
 							].map((item) => (
 								<div
 									key={item.label}

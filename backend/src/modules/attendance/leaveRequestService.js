@@ -8,6 +8,7 @@ const leavePolicy = require('../../utils/leavePolicy');
 const shiftService = require('./shiftService');
 const { todayKeyVN, fmtDateVN } = require('../../utils/vnDate');
 const { badRequest, conflict, notFound } = require('../../utils/httpError');
+const formCustomValueService = require('../forms/formCustomValueService');
 
 // Đơn xin phép của học viên (2026-12-02_attendance_leave_requests.sql): xin nghỉ
 // (1 hoặc nhiều ngày, cả ngày hoặc 1 ca) hoặc xin đi muộn (1 ngày, kèm giờ dự kiến có mặt).
@@ -71,7 +72,8 @@ const listMine = async (userId) => {
          OFFSET 0 ROWS FETCH NEXT 200 ROWS ONLY`,
 			)
 	).recordset;
-	return rows.map(normalize);
+	// custom = trường tùy chỉnh điền khi gửi đơn (Cấu hình form 'leave_request')
+	return formCustomValueService.attach('leave_request', rows.map(normalize));
 };
 
 /**
@@ -255,7 +257,7 @@ const list = async ({ status, from, to }, actor) => {
       OFFSET 0 ROWS FETCH NEXT 1000 ROWS ONLY
     `)
 	).recordset;
-	return rows.map(normalize);
+	return formCustomValueService.attach('leave_request', rows.map(normalize));
 };
 
 /**

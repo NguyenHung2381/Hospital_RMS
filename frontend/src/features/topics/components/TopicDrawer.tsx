@@ -3,7 +3,7 @@ import type { SimpleItem } from '../api/topicApi';
 import { useTopicDrawer } from '../hooks/useTopicDrawer';
 import styles from '../pages/Topic.module.css';
 import type { DrawerTab, Topic } from '../types/topic.type';
-import { STATUS_CFG, lookup } from '../utils/topicHelpers';
+import { STATUS_CFG, formatAcceptance, lookup } from '../utils/topicHelpers';
 import { Badge } from '@/shared/components';
 import { ConfirmDeleteFileModal } from './ConfirmDeleteFileModal';
 import { ConfirmUploadModal } from './ConfirmUploadModal';
@@ -13,6 +13,8 @@ import { DrawerMembersTab } from './DrawerMembersTab';
 import { GrantedAccountsModal } from './GrantedAccountsModal';
 import { formatDateTimeVN } from '../../../shared/utils/formatDate';
 import { EditSvg as IcEdit, XSvg as IcX } from '@/assets/icons';
+import { CustomFieldsView } from '@/shared/formConfig/CustomFieldsView';
+import { useFormConfig } from '@/shared/formConfig/useFormConfig';
 
 interface DrawerProps {
 	topic: Topic;
@@ -35,6 +37,8 @@ export function TopicDrawer({
 }: DrawerProps) {
 	const [tab, setTab] = useState<DrawerTab>('info');
 	const d = useTopicDrawer(topic);
+	// Nhãn trường tùy chỉnh (trang Cấu hình form)
+	const cfg = useFormConfig('topic', 'admin');
 	const statusCfg = STATUS_CFG[topic.status];
 
 	useEffect(() => {
@@ -79,6 +83,7 @@ export function TopicDrawer({
 							<Badge tone='teal'>
 								{lookup(categories, topic.category_id)}
 							</Badge>
+							{topic.is_legacy && <Badge tone='blue'>Đã hoàn thành · nhập bổ sung</Badge>}
 						</div>
 					</div>
 					<button
@@ -123,6 +128,12 @@ export function TopicDrawer({
 										{lookup(departments, topic.department_id)}
 									</div>
 								</div>
+								{(topic.is_legacy || topic.acceptance_rating || topic.acceptance_score != null) && (
+									<div className={styles.infoItem}>
+										<div className={styles.infoLabel}>Kết quả nghiệm thu</div>
+										<div className={styles.infoValue}>{formatAcceptance(topic) || '—'}</div>
+									</div>
+								)}
 								<div className={styles.infoItem}>
 									<div className={styles.infoLabel}>Cấp độ</div>
 									<div className={styles.infoValue}>
@@ -147,6 +158,13 @@ export function TopicDrawer({
 										{topic.member_count} người
 									</div>
 								</div>
+								<CustomFieldsView
+									cfg={cfg}
+									data={topic.custom}
+									itemClassName={styles.infoItem}
+									labelClassName={styles.infoLabel}
+									valueClassName={styles.infoValue}
+								/>
 							</div>
 
 							{topic.description && (

@@ -1,3 +1,5 @@
+import type { CustomValues } from '../../../shared/formConfig/types';
+
 // ─── TYPES ────────────────────────────────
 export type TopicStatus =
 	| 'submitted'
@@ -6,6 +8,8 @@ export type TopicStatus =
 	| 'supplement'
 	| 'cancelled';
 export type ArticleType = 'de_tai' | 'bai_bao';
+/** Xếp loại nghiệm thu — đề tài nhập bổ sung (đã hoàn thành). */
+export type AcceptanceRating = 'xuat_sac' | 'tot' | 'kha' | 'dat' | 'khong_dat';
 export type MemberRole = 'leader' | 'secretary' | 'member';
 export type ApvStatus = 'pending' | 'approved' | 'rejected';
 export type DrawerTab = 'info' | 'members' | 'files' | 'authors';
@@ -52,6 +56,13 @@ export interface Topic {
 	/** Đưa đề tài này vào trang công khai "Thư viện đề tài" — chỉ có hiệu lực
 	 * khi status='approved' (lọc thêm ở publicPortalService.getFeaturedTopics). */
 	is_featured?: boolean;
+	/** Đề tài đã hoàn thành, nhập bổ sung ở cổng nhân viên (đợt cũ trước khi có hệ thống). */
+	is_legacy?: boolean;
+	/** Giá trị trường tùy chỉnh (trang Cấu hình form) */
+	custom?: CustomValues;
+	acceptance_rating?: AcceptanceRating | null;
+	acceptance_score?: number | null;
+	acceptance_date?: string | null;
 	// derived / computed
 	progress: number;
 	member_count: number;
@@ -79,6 +90,8 @@ export interface TopicMember {
 	username: string | null;
 	account_expires_at: string | null;
 	has_existing_account: boolean;
+	/** Trường tùy chỉnh (Cấu hình form 'topic_member') */
+	custom?: CustomValues;
 }
 
 export interface TopicProgress {
@@ -104,7 +117,6 @@ export interface TopicForm {
 	description: string;
 	round_id: string;
 	category_id: string;
-	level_id: string;
 	department_id: string;
 	status: TopicStatus;
 	article_type: ArticleType;
@@ -117,7 +129,12 @@ export interface TopicForm {
 	approval_decision_date: string;
 	recognition_decision_no: string;
 	recognition_decision_date: string;
+	acceptance_rating: AcceptanceRating | '';
+	acceptance_score: string;
+	acceptance_date: string;
 	is_featured: boolean;
+	/** Giá trị trường tùy chỉnh (trang Cấu hình form) */
+	custom?: CustomValues;
 }
 
 export interface FormErrors {

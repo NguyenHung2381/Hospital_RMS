@@ -10,6 +10,8 @@ const { httpError } = require('../../utils/httpError');
 const { assertTopicActionWindow, assertRegistrationOpen } = require('./deadlineGuard');
 const { isDeadlineBound, scopeOf, hasPermission } = require('../../permissions/authz');
 const topicImportService = require('./topicImportService');
+const topicLegacyService = require('./topicLegacyService');
+const formCustomValueService = require('../forms/formCustomValueService');
 const { sendWorkbook } = require('../../utils/response');
 const { asyncHandler } = require('../../utils/asyncHandler');
 
@@ -18,16 +20,18 @@ const base = createCrudController(topicService);
 // Tài khoản khoa/phòng (phạm vi 'own') chỉ đăng ký được đề tài khi mốc
 // "Đăng ký đề tài" của đợt đang mở. Đơn vị/superuser không bị chặn.
 const createOne = asyncHandler(async (req, res) => {
-	if (isDeadlineBound(req.user)) {
-		await assertRegistrationOpen(req.body.round_id);
-		await topicService.assertLevelForRound(
-			req.body.round_id,
-			req.body.level_id,
-			req.body.article_type,
-		);
-	}
-	const item = await topicService.create(req.body, req.user.id);
+	if (isDeadlineBound(req.user)) await assertRegistrationOpen(req.body.round_id);
+	// is_legacy chỉ đặt qua createLegacy — chặn tự gán để né mốc thời gian (deadlineGuard)
+	const item = await topicService.create({ ...req.body, is_legacy: false }, req.user.id);
+	await formCustomValueService.save('topic', item.id, req.formCustom, req.user.id);
+	if (req.formCustom) item.custom = { ...item.custom, ...req.formCustom };
 	return created(res, item);
+});
+
+// Nhập bổ sung đề tài đã hoàn thành (đợt cũ) — không xét mốc đăng ký, vào hàng chờ duyệt
+const createLegacy = asyncHandler(async (req, res) => {
+	const item = await topicLegacyService.create(req.body, req.user);
+	return created(res, item, 'Đã gửi đề tài — chờ quản lý NCKH xác nhận');
 });
 
 // Tài khoản thành viên (chủ nhiệm/thư ký) chỉ được sửa thành viên khi có mốc
@@ -51,12 +55,27 @@ const getById = asyncHandler(async (req, res) => {
 
 const getMembers = asyncHandler(async (req, res) => {
 	const members = await topicMemberService.getMembers(req.params.id);
-	return success(res, members);
+	// Trường tùy chỉnh (Cấu hình form) của từng thành viên
+	const custom = await formCustomValueService.getMany(
+		'topic_member',
+		members.map((m) => m.id),
+	);
+	return success(
+		res,
+		members.map((m) => ({ ...m, custom: custom.get(m.id) || {} })),
+	);
 });
 
 const addMember = asyncHandler(async (req, res) => {
 	await guardMemberEdit(req);
 	const member = await topicMemberService.addMember(req.params.id, req.body, req.user.id);
+	if (member?.id && req.formCustom)
+		member.custom = await formCustomValueService.save(
+			'topic_member',
+			member.id,
+			req.formCustom,
+			req.user.id,
+		);
 	return created(res, member, 'Thêm thành viên thành công');
 });
 
@@ -69,16 +88,28 @@ const updateMember = asyncHandler(async (req, res) => {
 		req.user.id,
 	);
 	if (!member) return notFound(res);
+	if (req.formCustom)
+		member.custom = await formCustomValueService.save(
+			'topic_member',
+			req.params.member_id,
+			req.formCustom,
+			req.user.id,
+		);
 	return success(res, member, 'Cập nhật thành viên thành công');
 });
 
 const deleteMember = asyncHandler(async (req, res) => {
 	await guardMemberEdit(req);
 	await topicMemberService.deleteMember(req.params.id, req.params.member_id, req.user.id);
+	await formCustomValueService.remove('topic_member', req.params.member_id);
 	return success(res, null, 'Xóa thành viên thành công');
 });
 
 const grantAccounts = asyncHandler(async (req, res) => {
+	// Đề tài nhập bổ sung: hạn tài khoản theo ngày kết thúc đợt cũ (đã qua) — không cấp
+	const topic = await topicService.getById(req.params.id);
+	if (topic?.is_legacy)
+		throw httpError(400, 'Đề tài nhập bổ sung (đã hoàn thành) không cấp tài khoản thành viên.');
 	const result = await topicMemberService.grantAccounts(
 		req.params.id,
 		req.body.member_ids,
@@ -144,6 +175,9 @@ const exportData = asyncHandler(async (req, res) => {
 const updateOne = asyncHandler(async (req, res) => {
 	const item = await topicService.update(req.params.id, req.body, req.user.id, req.user);
 	if (!item) return notFound(res);
+	// Sau update(): service đã kiểm phạm vi + mốc thời gian của người sửa
+	await formCustomValueService.save('topic', req.params.id, req.formCustom, req.user.id);
+	if (req.formCustom) item.custom = { ...item.custom, ...req.formCustom };
 	return success(res, item, 'Cập nhật thành công');
 });
 
@@ -187,7 +221,6 @@ const importExcel = asyncHandler(async (req, res) => {
 			defaults: {
 				round_id: req.body.round_id || null,
 				category_id: req.body.category_id || null,
-				level_id: req.body.level_id || null,
 				article_type: req.body.article_type === 'bai_bao' ? 'bai_bao' : 'de_tai',
 				status,
 			},
@@ -208,6 +241,7 @@ module.exports = {
 	getAll,
 	getById,
 	createOne,
+	createLegacy,
 	updateOne,
 	getMembers,
 	addMember,

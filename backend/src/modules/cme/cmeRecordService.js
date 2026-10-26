@@ -10,6 +10,7 @@ const { broadcast } = require('../events/eventService');
 const { paging } = require('../../utils/paging');
 const trainingFileService = require('../training/trainingFileService');
 const { httpError } = require('../../utils/httpError');
+const formCustomValueService = require('../forms/formCustomValueService');
 
 // File bổ sung chứng minh kết quả — người dùng tải lên SAU khi ghi nhận đã duyệt
 // (minh chứng chính evidence_file_id bị khóa lúc đó). Lưu ở training_files theo
@@ -70,7 +71,11 @@ const getAll = async ({
     SELECT COUNT(*) AS total FROM cme_records r ${whereSql};
   `);
 	return {
-		data: result.recordsets[0].map(withResultFiles),
+		// custom = trường tùy chỉnh người khai điền (Cấu hình form 'cme_record')
+		data: await formCustomValueService.attach(
+			'cme_record',
+			result.recordsets[0].map(withResultFiles),
+		),
 		pagination: { page: pg.page, limit: pg.limit, total: result.recordsets[1][0].total },
 	};
 };
@@ -81,7 +86,10 @@ const getById = async (id) => {
 		.request()
 		.input('id', sql.VarChar(20), id)
 		.query(`${recordSelect} WHERE r.id = @id`);
-	return withResultFiles(result.recordset[0]) || null;
+	const row = withResultFiles(result.recordset[0]);
+	if (!row) return null;
+	row.custom = await formCustomValueService.get('cme_record', id);
+	return row;
 };
 
 // opts.fetch=false: bỏ query đọc lại bản ghi — dùng cho import hàng loạt
@@ -171,6 +179,7 @@ const remove = async (id, actorId) => {
 		await trainingFileService.softDelete(row.recordset[0].evidence_file_id, actorId);
 	}
 	await removeResultFiles([id], actorId);
+	await formCustomValueService.remove('cme_record', id);
 	broadcast('update', { entity: 'cme_record' });
 };
 
@@ -201,6 +210,7 @@ const removeMany = async (ids, actorId) => {
 		if (evidence_file_id) await trainingFileService.softDelete(evidence_file_id, actorId);
 	}
 	await removeResultFiles(list, actorId);
+	await formCustomValueService.removeMany('cme_record', list);
 	broadcast('update', { entity: 'cme_record' });
 	return { deleted: result.recordset.length };
 };

@@ -26,6 +26,7 @@ const {
 	testOrder,
 } = require('../../utils/seminarTest');
 const { add } = require('./seminarParticipantService');
+const formCustomValueService = require('../forms/formCustomValueService');
 const { norm } = require('../../utils/vietnameseText');
 const { ROLE, inputRoleId } = require('../access/roleCodes');
 
@@ -99,7 +100,8 @@ const lookupStaff = async (token, fullName, staffNumber) => {
 // Email tài khoản tự sinh (`...@member.local`) không nhận được thư
 const realEmail = (e) => (e && !/@member\.local$/i.test(e) ? e : null);
 
-const registerPublic = async (token, data) => {
+// custom = trường tùy chỉnh (Cấu hình form 'seminar_participant') đã kiểm ở route
+const registerPublic = async (token, data, custom = null) => {
 	const seminar = await getPublicSeminar(token);
 	if (!seminar.registration_open) throw httpError(409, 'Hội nghị đã kết thúc, không nhận đăng ký.');
 	const pool = await getPool();
@@ -156,11 +158,13 @@ const registerPublic = async (token, data) => {
 	}
 
 	const ticketCode = crypto.randomBytes(16).toString('hex');
-	await add(
+	const participant = await add(
 		seminar.id,
 		{ ...person, source: data.source, participation_type: 'attendee', ticket_code: ticketCode },
 		null,
 	);
+	if (participant?.id)
+		await formCustomValueService.save('seminar_participant', participant.id, custom);
 	// Không chờ SMTP — đăng ký đã ghi xong, email chậm/lỗi không chặn phản hồi.
 	if (person.email) {
 		mailQueue.enqueue('thẻ đại biểu', () => sendBadgeMail(seminar, person, ticketCode));

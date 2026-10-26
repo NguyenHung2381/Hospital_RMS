@@ -6,6 +6,7 @@
 const { getPool, sql } = require('../../config/db');
 const { httpError } = require('../../utils/httpError');
 const { RESULT_FILES_SQL, withResultFiles } = require('./cmeRecordService');
+const formCustomValueService = require('../forms/formCustomValueService');
 
 // CME trong 1 năm: 2 nguồn cộng dồn giống
 // cmeRequirementService.getComplianceReport (tham dự hội thảo + ghi nhận độc lập),
@@ -58,7 +59,7 @@ const getUserCme = async (userId, year) => {
 		required_credits: req[0]?.required_credits ?? null,
 		earned_credits: Math.round(earned * 100) / 100,
 		seminars,
-		records: records.map(withResultFiles),
+		records: await formCustomValueService.attach('cme_record', records.map(withResultFiles)),
 	};
 };
 

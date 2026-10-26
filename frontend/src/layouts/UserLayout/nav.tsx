@@ -7,6 +7,7 @@ import {
 	ClipboardSvg,
 	DashboardSvg,
 	DocPlusSvg,
+	HistorySvg,
 	ProgressSvg,
 	QrSvg,
 	TopicSvg,
@@ -26,6 +27,7 @@ export const KEY_TO_PATH: Record<string, string> = {
 	home: '/user',
 	myTopics: '/user/my-topics',
 	registerTopic: '/user/register-topic',
+	legacyTopic: '/user/nhap-de-tai',
 	councilProgress: '/user/council-progress',
 	surveys: '/user/khao-sat',
 	myTasks: '/user/viec-cua-toi',
@@ -91,6 +93,14 @@ export const NAV_GROUPS: NavGroup[] = [
 				icon: <DocPlusSvg className={styles.navIcon} />,
 				restrictMember: true,
 				needsRegistrationWindow: true,
+				module: 'research',
+			},
+			{
+				// Đề tài của đợt đã làm xong trước khi có hệ thống — không phụ thuộc mốc đăng ký
+				key: 'legacyTopic',
+				label: 'Nhập đề tài đã hoàn thành',
+				icon: <HistorySvg className={styles.navIcon} />,
+				restrictMember: true,
 				module: 'research',
 			},
 			{

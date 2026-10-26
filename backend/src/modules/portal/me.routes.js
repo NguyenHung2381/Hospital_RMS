@@ -6,6 +6,8 @@ const { success, created } = require('../../utils/response');
 const { asyncHandler } = require('../../utils/asyncHandler');
 const { body, param, query } = require('express-validator');
 const { validate } = require('../../middlewares/errorHandler');
+const { formConfigGuard } = require('../forms/formConfigGuard');
+const formCustomValueService = require('../forms/formCustomValueService');
 const classSessionService = require('../training/courses/classSessionService');
 const traineeRecordService = require('../training/trainees/traineeRecordService');
 
@@ -116,21 +118,34 @@ router.post(
 		...updateRules,
 	],
 	validate,
-	handle(async (req, res) =>
-		created(res, await cmeRecordService.createMine(req.body, req.user.id), 'Đã gửi, chờ duyệt'),
-	),
+	formConfigGuard('cme_record', { variant: 'portal', mode: 'create' }),
+	handle(async (req, res) => {
+		const rec = await cmeRecordService.createMine(req.body, req.user.id);
+		const custom = await formCustomValueService.save(
+			'cme_record',
+			rec.id,
+			req.formCustom,
+			req.user.id,
+		);
+		return created(res, custom ? { ...rec, custom } : rec, 'Đã gửi, chờ duyệt');
+	}),
 );
 router.put(
 	'/cme-records/:id',
 	updateRules,
 	validate,
-	handle(async (req, res) =>
-		success(
-			res,
-			await cmeRecordService.updateMine(req.params.id, req.body, req.user.id),
-			'Đã gửi lại, chờ duyệt',
-		),
-	),
+	formConfigGuard('cme_record', { variant: 'portal', mode: 'update' }),
+	handle(async (req, res) => {
+		// updateMine kiểm quyền sở hữu trước — lưu trường tùy chỉnh sau đó
+		const rec = await cmeRecordService.updateMine(req.params.id, req.body, req.user.id);
+		const custom = await formCustomValueService.save(
+			'cme_record',
+			req.params.id,
+			req.formCustom,
+			req.user.id,
+		);
+		return success(res, custom && rec ? { ...rec, custom } : rec, 'Đã gửi lại, chờ duyệt');
+	}),
 );
 router.delete(
 	'/cme-records/:id',
@@ -254,13 +269,17 @@ router.post(
 			.withMessage('Lý do 5–1000 ký tự'),
 	],
 	validate,
-	handle(async (req, res) =>
-		created(
-			res,
-			await leaveRequestService.createMine(req.user.id, req.body),
-			'Đã gửi đơn xin phép',
-		),
-	),
+	formConfigGuard('leave_request', { variant: 'portal', mode: 'create' }),
+	handle(async (req, res) => {
+		const saved = await leaveRequestService.createMine(req.user.id, req.body);
+		const custom = await formCustomValueService.save(
+			'leave_request',
+			saved.id,
+			req.formCustom,
+			req.user.id,
+		);
+		return created(res, custom ? { ...saved, custom } : saved, 'Đã gửi đơn xin phép');
+	}),
 );
 router.patch(
 	'/attendance/leave-requests/:id/cancel',

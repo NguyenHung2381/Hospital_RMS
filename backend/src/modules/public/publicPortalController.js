@@ -45,7 +45,7 @@ const register = asyncHandler(async (req, res) => {
 	if (!(await verifyCaptcha(req.body.captcha_token, req.body.captcha_answer, req.ip))) {
 		return error(res, 'Mã xác nhận không đúng hoặc đã hết hạn, vui lòng thử lại.', 400);
 	}
-	const result = await service.register(req.body, req.files);
+	const result = await service.register(req.body, req.files, req.formCustom);
 	created(res, result, 'Đăng ký khóa học thành công, vui lòng chờ duyệt.');
 });
 
@@ -80,7 +80,7 @@ const registerTopic = asyncHandler(async (req, res) => {
 	if (!(await verifyCaptcha(req.body.captcha_token, req.body.captcha_answer, req.ip))) {
 		return error(res, 'Mã xác nhận không đúng hoặc đã hết hạn, vui lòng thử lại.', 400);
 	}
-	const result = await service.registerTopic(req.body, req.files);
+	const result = await service.registerTopic(req.body, req.files, req.formCustom);
 	created(res, result, 'Đăng ký đề tài thành công, vui lòng chờ khoa/phòng và hội đồng xét duyệt.');
 });
 
@@ -131,7 +131,7 @@ const registerSeminar = asyncHandler(async (req, res) => {
 	}
 	created(
 		res,
-		await seminarPublicService.registerPublic(req.params.token, req.body),
+		await seminarPublicService.registerPublic(req.params.token, req.body, req.formCustom),
 		'Đăng ký thành công',
 	);
 });

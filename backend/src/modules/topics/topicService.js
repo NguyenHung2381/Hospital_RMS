@@ -7,6 +7,7 @@ const { hasPermission } = require('../../permissions/authz');
 const roundService = require('../rounds/roundService');
 const { httpError } = require('../../utils/httpError');
 const { computeAllowedActions, topicScope } = require('./topicPolicy');
+const formCustomValueService = require('../forms/formCustomValueService');
 
 const getAll = async (filters, actor = null) => {
 	const {
@@ -99,6 +100,7 @@ const getAll = async (filters, actor = null) => {
            t.department_id, d.name AS department_name,
            t.created_by, u.full_name AS created_by_name,
            t.article_type, t.journal_name, t.doi, t.publish_date, t.is_featured,
+           t.is_legacy, t.acceptance_rating, t.acceptance_score, t.acceptance_date,
            (SELECT COUNT(*) FROM topic_members tm WHERE tm.topic_id = t.id) AS member_count,
            0 AS progress
     FROM topics t
@@ -113,6 +115,7 @@ const getAll = async (filters, actor = null) => {
 
     SELECT COUNT(*) AS total FROM topics t
     LEFT JOIN research_rounds r ON r.id = t.round_id
+    LEFT JOIN users u ON u.id = t.created_by -- bộ lọc search có u.full_name
     ${whereAll};
 
     SELECT t.status, COUNT(*) AS count FROM topics t
@@ -122,8 +125,15 @@ const getAll = async (filters, actor = null) => {
 
 	const [rows, totalRows, globalStatusRows] = result.recordsets;
 	const byStatus = Object.fromEntries(globalStatusRows.map((r) => [r.status, r.count]));
+	// Trường tùy chỉnh của các dòng trang này — form sửa mở từ danh sách cần đủ
+	// giá trị cũ, nếu không lưu lại sẽ ghi đè bằng rỗng
+	const custom = await formCustomValueService.getMany(
+		'topic',
+		rows.map((r) => r.id),
+	);
 	rows.forEach((row) => {
 		row.allowed_actions = computeAllowedActions(row, actor);
+		row.custom = custom.get(row.id) ?? {};
 	});
 
 	return {
@@ -199,6 +209,8 @@ const getById = async (id, actor = null) => {
       WHERE trd.topic_id = @topic_id
     `);
 	topic.related_departments = related.recordset;
+	// Giá trị trường tùy chỉnh (trang Cấu hình form)
+	topic.custom = await formCustomValueService.get('topic', id, pool);
 	topic.allowed_actions = computeAllowedActions(topic, actor);
 
 	return topic;
@@ -220,19 +232,14 @@ const setRelatedDepartments = async (topicId, ids) => {
   `);
 };
 
-// "Cấp độ ăn theo đợt": cấp độ đề tài phải thuộc danh sách cấu hình của đợt
-// (hoặc của loại đợt nếu đợt chưa cấu hình). Chưa cấu hình gì ⇒ bỏ qua (fallback).
-const assertLevelForRound = async (roundId, levelId, articleType) => {
-	if (articleType === 'bai_bao') return; // bài báo không có cấp độ
-	const allowed = await roundService.getAllowedLevelIds(roundId);
-	if (allowed.length === 0) return;
-	if (!levelId || !allowed.includes(levelId)) {
-		throw httpError(400, 'Vui lòng chọn cấp độ đề tài hợp lệ cho đợt này.');
-	}
-};
+// Cấp độ đề tài lấy theo đợt (mỗi đợt đúng 1 cấp độ) — form không hỏi nữa;
+// bài báo không có cấp độ. Đợt chưa cấu hình cấp độ ⇒ null.
+const levelForRound = (roundId, articleType) =>
+	articleType === 'bai_bao' ? null : roundService.getRoundLevelId(roundId);
 
 const create = async (data, actorId) => {
 	const pool = await getPool();
+	const levelId = await levelForRound(data.round_id, data.article_type);
 	const result = await pool
 		.request()
 		.input('actor_id', sql.VarChar(20), actorId)
@@ -240,18 +247,25 @@ const create = async (data, actorId) => {
 		.input('description', sql.NVarChar(sql.MAX), data.description || null)
 		.input('round_id', sql.VarChar(10), data.round_id)
 		.input('category_id', sql.VarChar(6), data.category_id || null)
-		.input('level_id', sql.VarChar(5), data.level_id || null)
+		.input('level_id', sql.VarChar(5), levelId)
 		.input('department_id', sql.VarChar(20), data.department_id || null)
 		.input('article_type', sql.VarChar(20), data.article_type || 'de_tai')
 		.input('journal_name', sql.NVarChar(255), data.journal_name || null)
 		.input('doi', sql.VarChar(100), data.doi || null)
 		.input('publish_date', sql.Date, data.publish_date || null)
-		.input('budget_estimated', sql.Decimal(18, 2), data.budget_estimated ?? null).query(`
+		.input('budget_estimated', sql.Decimal(18, 2), data.budget_estimated ?? null)
+		// Đề tài nhập bổ sung (đã hoàn thành) — chỉ topicLegacyService truyền vào
+		.input('is_legacy', sql.Bit, data.is_legacy ? 1 : 0)
+		.input('acceptance_rating', sql.VarChar(20), data.acceptance_rating || null)
+		.input('acceptance_score', sql.Decimal(5, 2), data.acceptance_score ?? null)
+		.input('acceptance_date', sql.Date, data.acceptance_date || null).query(`
       DECLARE @new_id VARCHAR(15);
       EXEC sp_gen_topic_id @category_id, @round_id, @new_id OUTPUT;
       EXEC sp_set_actor @actor_id;
-      INSERT INTO topics (id, title, description, round_id, category_id, level_id, department_id, status, created_by, article_type, journal_name, doi, publish_date, budget_estimated)
-      VALUES (@new_id, @title, @description, @round_id, @category_id, @level_id, @department_id, 'submitted', @actor_id, @article_type, @journal_name, @doi, @publish_date, @budget_estimated);
+      INSERT INTO topics (id, title, description, round_id, category_id, level_id, department_id, status, created_by, article_type, journal_name, doi, publish_date, budget_estimated,
+                          is_legacy, acceptance_rating, acceptance_score, acceptance_date)
+      VALUES (@new_id, @title, @description, @round_id, @category_id, @level_id, @department_id, 'submitted', @actor_id, @article_type, @journal_name, @doi, @publish_date, @budget_estimated,
+              @is_legacy, @acceptance_rating, @acceptance_score, @acceptance_date);
       SELECT @new_id AS id;
     `);
 	if (Array.isArray(data.related_department_ids) && data.related_department_ids.length)
@@ -313,8 +327,10 @@ const update = async (id, data, actorId, actor = null) => {
 		if (
 			data.description !== undefined ||
 			data.category_id !== undefined ||
-			data.level_id !== undefined ||
-			data.department_id !== undefined
+			data.department_id !== undefined ||
+			data.acceptance_rating !== undefined ||
+			data.acceptance_score !== undefined ||
+			data.acceptance_date !== undefined
 		)
 			await assertTopicActionWindow(id, actorId, 'edit-info');
 	} else if (scope !== 'all') {
@@ -344,9 +360,19 @@ const update = async (id, data, actorId, actor = null) => {
 		sets.push('category_id = @cat');
 		req.input('cat', sql.VarChar(6), data.category_id);
 	}
-	if (data.level_id !== undefined) {
+	// level_id từ client bị bỏ qua: cấp độ theo đợt, tính lại khi đổi đợt / loại bài
+	const roundChanged = data.round_id !== undefined && data.round_id !== current.round_id;
+	const typeChanged = data.article_type !== undefined && data.article_type !== current.article_type;
+	if (roundChanged || typeChanged) {
 		sets.push('level_id = @lvl');
-		req.input('lvl', sql.VarChar(5), data.level_id);
+		req.input(
+			'lvl',
+			sql.VarChar(5),
+			await levelForRound(
+				data.round_id ?? current.round_id,
+				data.article_type ?? current.article_type,
+			),
+		);
 	}
 	if (data.department_id !== undefined) {
 		sets.push('department_id = @dept');
@@ -399,6 +425,22 @@ const update = async (id, data, actorId, actor = null) => {
 	if (data.recognition_decision_date !== undefined) {
 		sets.push('recognition_decision_date = @recognition_decision_date');
 		req.input('recognition_decision_date', sql.Date, data.recognition_decision_date || null);
+	}
+	if (data.acceptance_rating !== undefined) {
+		sets.push('acceptance_rating = @acceptance_rating');
+		req.input('acceptance_rating', sql.VarChar(20), data.acceptance_rating || null);
+	}
+	if (data.acceptance_score !== undefined) {
+		sets.push('acceptance_score = @acceptance_score');
+		req.input(
+			'acceptance_score',
+			sql.Decimal(5, 2),
+			data.acceptance_score === '' || data.acceptance_score == null ? null : data.acceptance_score,
+		);
+	}
+	if (data.acceptance_date !== undefined) {
+		sets.push('acceptance_date = @acceptance_date');
+		req.input('acceptance_date', sql.Date, data.acceptance_date || null);
 	}
 	if (data.is_featured !== undefined) {
 		sets.push('is_featured = @is_featured');
@@ -458,6 +500,7 @@ const remove = async (id, actorId) => {
 		.input('id', sql.VarChar(15), id)
 		.input('actor_id', sql.VarChar(20), actorId)
 		.query(`EXEC sp_set_actor @actor_id; DELETE FROM topics WHERE id = @id`);
+	await formCustomValueService.remove('topic', id);
 	broadcast('update', { entity: 'topic' });
 };
 
@@ -538,5 +581,4 @@ module.exports = {
 	update,
 	remove,
 	getForExport,
-	assertLevelForRound,
 };

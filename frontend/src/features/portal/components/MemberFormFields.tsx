@@ -4,6 +4,15 @@ import { searchUsers, type UserSuggestion } from '../../topics/api/topicApi';
 import { getInitials } from '../../../shared/utils/helper';
 import styles from '../pages/TopicDetail.module.css';
 import type { MemberFormState } from '../types/topicDetail.type';
+import { allowedOptions } from '../../../shared/formConfig/allowedOptions';
+import { CustomFields } from '../../../shared/formConfig/CustomFields';
+import { useFormConfig } from '../../../shared/formConfig/useFormConfig';
+
+const ROLE_OPTIONS = [
+	{ value: 'leader', label: 'Chủ nhiệm' },
+	{ value: 'secretary', label: 'Thư ký' },
+	{ value: 'member', label: 'Thành viên' },
+];
 
 type Props = {
 	form: MemberFormState;
@@ -28,6 +37,12 @@ export default function MemberFormFields({
 		(k: keyof MemberFormState) =>
 		(e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
 			setForm((f) => ({ ...f, [k]: e.target.value }));
+
+	// Form gọn: placeholder đóng vai nhãn — nhãn / bắt buộc / độ dài theo Cấu hình form
+	const cfg = useFormConfig('topic_member', 'portal');
+	const ph = (k: keyof MemberFormState, def: string, req = false) =>
+		cfg.placeholder(k) ?? `${cfg.label(k, def)}${cfg.required(k, req) ? ' *' : ''}`;
+	const show = cfg.visible;
 
 	// ── Tìm nhân viên đã có trong hệ thống ──
 	// Chọn một người sẽ điền sẵn các ô bên dưới; nếu người này chưa có trong DB
@@ -204,7 +219,8 @@ export default function MemberFormFields({
 			<div style={{ display: 'flex', gap: 8 }}>
 				<input
 					className={styles.formInput}
-					placeholder='Họ tên *'
+					placeholder={ph('ho_ten', 'Họ tên', true)}
+					maxLength={cfg.maxLength('ho_ten')}
 					value={form.ho_ten}
 					onChange={set('ho_ten')}
 					style={{ flex: 2 }}
@@ -215,43 +231,71 @@ export default function MemberFormFields({
 					onChange={set('role')}
 					style={{ flex: 1 }}
 				>
-					<option value='leader'>Chủ nhiệm</option>
-					<option value='secretary'>Thư ký</option>
-					<option value='member'>Thành viên</option>
+					{allowedOptions(cfg, 'role', ROLE_OPTIONS).map((o) => (
+						<option
+							key={o.value}
+							value={o.value}
+						>
+							{o.label}
+						</option>
+					))}
 				</select>
 			</div>
-			<div style={{ display: 'flex', gap: 8 }}>
-				<input
-					className={styles.formInput}
-					placeholder='Email'
-					value={form.email}
-					onChange={set('email')}
-					style={{ flex: 1 }}
-				/>
-				<input
-					className={styles.formInput}
-					placeholder='Điện thoại'
-					value={form.so_dien_thoai}
-					onChange={set('so_dien_thoai')}
-					style={{ flex: 1 }}
-				/>
-			</div>
-			<div style={{ display: 'flex', gap: 8 }}>
-				<input
-					className={styles.formInput}
-					placeholder='Chức vụ'
-					value={form.chuc_vu}
-					onChange={set('chuc_vu')}
-					style={{ flex: 1 }}
-				/>
-				<input
-					className={styles.formInput}
-					placeholder='Mã NV'
-					value={form.staff_number}
-					onChange={set('staff_number')}
-					style={{ flex: 1 }}
-				/>
-			</div>
+			{(show('email') || show('so_dien_thoai')) && (
+				<div style={{ display: 'flex', gap: 8 }}>
+					{show('email') && (
+						<input
+							className={styles.formInput}
+							placeholder={ph('email', 'Email')}
+							maxLength={cfg.maxLength('email')}
+							value={form.email}
+							onChange={set('email')}
+							style={{ flex: 1 }}
+						/>
+					)}
+					{show('so_dien_thoai') && (
+						<input
+							className={styles.formInput}
+							placeholder={ph('so_dien_thoai', 'Điện thoại')}
+							maxLength={cfg.maxLength('so_dien_thoai')}
+							value={form.so_dien_thoai}
+							onChange={set('so_dien_thoai')}
+							style={{ flex: 1 }}
+						/>
+					)}
+				</div>
+			)}
+			{(show('chuc_vu') || show('staff_number')) && (
+				<div style={{ display: 'flex', gap: 8 }}>
+					{show('chuc_vu') && (
+						<input
+							className={styles.formInput}
+							placeholder={ph('chuc_vu', 'Chức vụ')}
+							maxLength={cfg.maxLength('chuc_vu')}
+							value={form.chuc_vu}
+							onChange={set('chuc_vu')}
+							style={{ flex: 1 }}
+						/>
+					)}
+					{show('staff_number') && (
+						<input
+							className={styles.formInput}
+							placeholder={ph('staff_number', 'Mã NV')}
+							maxLength={cfg.maxLength('staff_number')}
+							value={form.staff_number}
+							onChange={set('staff_number')}
+							style={{ flex: 1 }}
+						/>
+					)}
+				</div>
+			)}
+			<CustomFields
+				cfg={cfg}
+				value={form.custom}
+				onChange={(custom) => setForm((f) => ({ ...f, custom }))}
+				title={null}
+				inputClassName={styles.formInput}
+			/>
 			{err && (
 				<p style={{ color: '#ef4444', fontSize: 13, margin: 0 }}>{err}</p>
 			)}

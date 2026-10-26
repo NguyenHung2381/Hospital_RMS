@@ -4,6 +4,7 @@ const { asyncHandler } = require('../../utils/asyncHandler');
 const rateLimit = require('../../utils/rateLimit');
 const { body, param, query } = require('express-validator');
 const { validate } = require('../../middlewares/errorHandler');
+const { formConfigGuard } = require('../forms/formConfigGuard');
 const ctrl = require('./publicPortalController');
 // Hồ sơ đính kèm (multipart: field `data` = JSON form + `files`) — tùy chọn
 const { publicUpload } = require('../../middlewares/uploadPublic');
@@ -103,6 +104,7 @@ router.post(
 			.withMessage('Loại hồ sơ không hợp lệ'),
 	],
 	validate,
+	formConfigGuard('course_registration', { variant: 'public', mode: 'create' }),
 	ctrl.register,
 );
 
@@ -133,22 +135,13 @@ router.post(
 			.trim()
 			.matches(/^\d{1,9}$/)
 			.withMessage('Mã nhân viên của chủ nhiệm phải là chữ số'),
-		body('phone')
-			.trim()
-			.notEmpty()
-			.withMessage('Vui lòng nhập số điện thoại chủ nhiệm')
-			.isLength({ max: 20 }),
-		body('position')
-			.trim()
-			.notEmpty()
-			.withMessage('Vui lòng nhập chức danh chuyên môn của chủ nhiệm')
-			.isLength({ max: 200 }),
+		// SĐT / chức danh: bắt buộc hay không do Cấu hình form quyết định (formConfigGuard)
+		body('phone').optional({ checkFalsy: true }).trim().isLength({ max: 20 }),
+		body('position').optional({ checkFalsy: true }).trim().isLength({ max: 200 }),
 		body('member_department_id').optional({ checkFalsy: true }).isString().isLength({ max: 20 }),
 		body('title').trim().notEmpty().withMessage('Vui lòng nhập tiêu đề đề tài'),
 		body('round_id').trim().notEmpty().withMessage('Vui lòng chọn đợt đăng ký'),
 		body('department_id').trim().notEmpty().withMessage('Vui lòng chọn khoa/phòng'),
-		// Cấp độ ăn theo đợt (publicPortalService.registerTopic) — chỉ cần gửi khi đợt có nhiều cấp độ
-		body('level_id').optional({ checkFalsy: true }).isString().trim().isLength({ max: 5 }),
 		// Mã đề tài sinh theo ký hiệu danh mục (sp_gen_topic_id) ⇒ bắt buộc
 		body('category_id').trim().notEmpty().withMessage('Vui lòng chọn danh mục đề tài'),
 		body('captcha_token').notEmpty().withMessage('Thiếu mã xác nhận'),
@@ -188,6 +181,7 @@ router.post(
 			.withMessage('Email thành viên không hợp lệ'),
 	],
 	validate,
+	formConfigGuard('topic', { variant: 'public', mode: 'create' }),
 	ctrl.registerTopic,
 );
 
@@ -262,12 +256,8 @@ router.post(
 			.withMessage('Email không hợp lệ')
 			.isLength({ max: 255 }),
 		body('dob').optional({ checkFalsy: true }).isISO8601().withMessage('Ngày sinh không hợp lệ'),
-		body('organization')
-			.if(body('source').equals('external'))
-			.trim()
-			.notEmpty()
-			.withMessage('Vui lòng nhập đơn vị công tác')
-			.isLength({ max: 255 }),
+		// Bắt buộc hay không theo Cấu hình form (formConfigGuard bên dưới)
+		body('organization').optional({ checkFalsy: true }).trim().isLength({ max: 255 }),
 		body('department_raw').optional().isString().isLength({ max: 255 }),
 		body('qualification_raw').optional().isString().isLength({ max: 100 }),
 		body('title_prefix').optional().isString().isLength({ max: 10 }),
@@ -277,6 +267,7 @@ router.post(
 		body('captcha_token').notEmpty().withMessage('Thiếu mã xác nhận'),
 	],
 	validate,
+	formConfigGuard('seminar_participant', { variant: 'public', mode: 'create' }),
 	ctrl.registerSeminar,
 );
 router.get('/seminar-tickets/:code', seminarLimiter, [ticketCode], validate, ctrl.getSeminarTicket);

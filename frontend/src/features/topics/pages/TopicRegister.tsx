@@ -4,7 +4,6 @@ import {
 	CalendarSvg,
 	ChevRSvg,
 	FileTextSvg,
-	LayersSvg,
 	ListSvg,
 	LockSvg,
 	RefreshSvg,
@@ -15,11 +14,13 @@ import { PendingTopicsCard } from '../components/PendingTopicsCard';
 import { RegisterAttachmentsSection } from '../components/RegisterAttachmentsSection';
 import { RegisterMemberSection } from '../components/RegisterMemberSection';
 import { RegisterSidePanel } from '../components/RegisterSidePanel';
+import { RoundLevelField } from '../components/RoundLevelField';
 import { useTopicRegister } from '../hooks/useTopicRegister';
 import type { ArticleType, MemberRole } from '../types/topic.type';
 import { ARTICLE_ROLE_CFG, ARTICLE_TYPE_CFG } from '../utils/topicRegisterHelpers';
 import styles from './TopicRegister.module.css';
 import { DatePicker } from '../../../shared/components/Input/DatePicker';
+import { CustomFields } from '@/shared/formConfig/CustomFields';
 
 export default function TopicRegister() {
 	const {
@@ -30,8 +31,7 @@ export default function TopicRegister() {
 		canRegister,
 		rounds,
 		categories,
-		levels,
-		autoLevel,
+		roundLevelName,
 		depts,
 		myTopics,
 		loadingRef,
@@ -43,6 +43,9 @@ export default function TopicRegister() {
 		errors,
 		setField,
 		handleDeptChange,
+		cfg,
+		custom,
+		setCustom,
 		pendingTopics,
 		submittingAll,
 		submitError,
@@ -87,6 +90,17 @@ export default function TopicRegister() {
 	];
 
 	const isPaper = form.article_type === 'bai_bao';
+	// Nhãn / bắt buộc / placeholder theo Cấu hình form (chưa tải xong = mặc định trong code)
+	const { label: lbl, required: req, placeholder: ph, maxLength: maxLen } = cfg;
+	const hint = (k: string) => {
+		const h = cfg.hint(k);
+		return h ? <div className={styles.formHint}>{h}</div> : null;
+	};
+	const reqMark = <span className={styles.formRequired}>*</span>;
+	const allowedType = (t: ArticleType) => {
+		const opts = cfg.field('article_type')?.options;
+		return cfg.visible('article_type') && (!opts || opts.some((o) => o.value === t));
+	};
 	const roleCfg = ARTICLE_ROLE_CFG[form.article_type];
 	const roleKeys = Object.keys(roleCfg) as MemberRole[];
 
@@ -305,7 +319,7 @@ export default function TopicRegister() {
 
 						<div className={styles.formCardBody}>
 							<div className={styles.statusPills}>
-								{(Object.keys(ARTICLE_TYPE_CFG) as ArticleType[]).map((t) => (
+								{(Object.keys(ARTICLE_TYPE_CFG) as ArticleType[]).filter(allowedType).map((t) => (
 									<button
 										key={t}
 										type='button'
@@ -324,20 +338,22 @@ export default function TopicRegister() {
 									className={styles.formLabel}
 									htmlFor='reg-title'
 								>
-									{isPaper ? 'Tên bài báo / báo cáo' : 'Tiêu đề đề tài'}{' '}
-									<span className={styles.formRequired}>*</span>
+									{lbl('title', isPaper ? 'Tên bài báo / báo cáo' : 'Tiêu đề đề tài')} {reqMark}
 								</label>
 								<input
 									id='reg-title'
 									className={`${styles.formInput} ${errors.title ? styles.hasError : ''}`}
-									placeholder={
+									placeholder={ph(
+										'title',
 										isPaper
 											? 'Nhập tên bài báo / báo cáo đăng tập san...'
-											: 'Nhập tiêu đề đề tài nghiên cứu...'
-									}
+											: 'Nhập tiêu đề đề tài nghiên cứu...',
+									)}
+									maxLength={maxLen('title')}
 									value={form.title}
 									onChange={(e) => setField('title', e.target.value)}
 								/>
+								{hint('title')}
 								{errors.title && (
 									<div className={styles.formError}>
 										<AlertSvg /> {errors.title}
@@ -345,22 +361,31 @@ export default function TopicRegister() {
 								)}
 							</div>
 
-							<div className={styles.formGroup}>
-								<label
-									className={styles.formLabel}
-									htmlFor='reg-desc'
-								>
-									Mô tả / Tóm tắt
-								</label>
-								<textarea
-									id='reg-desc'
-									className={styles.formInput}
-									rows={3}
-									placeholder='Mô tả ngắn về mục tiêu, phương pháp nghiên cứu...'
-									value={form.description}
-									onChange={(e) => setField('description', e.target.value)}
-								/>
-							</div>
+							{cfg.visible('description') && (
+								<div className={styles.formGroup}>
+									<label
+										className={styles.formLabel}
+										htmlFor='reg-desc'
+									>
+										{lbl('description', 'Mô tả / Tóm tắt')} {req('description') && reqMark}
+									</label>
+									<textarea
+										id='reg-desc'
+										className={`${styles.formInput} ${errors.description ? styles.hasError : ''}`}
+										rows={3}
+										placeholder={ph('description', 'Mô tả ngắn về mục tiêu, phương pháp nghiên cứu...')}
+										maxLength={maxLen('description')}
+										value={form.description}
+										onChange={(e) => setField('description', e.target.value)}
+									/>
+									{hint('description')}
+									{errors.description && (
+										<div className={styles.formError}>
+											<AlertSvg /> {errors.description}
+										</div>
+									)}
+								</div>
+							)}
 
 							<div className={styles.formSection}>
 								Phân loại &amp; Vòng nghiên cứu
@@ -399,47 +424,8 @@ export default function TopicRegister() {
 							<div className={styles.formRow}>
 								{!isPaper && (
 									<div className={styles.formGroup}>
-										<label
-											className={styles.formLabel}
-											htmlFor='reg-level'
-										>
-											Cấp độ <span className={styles.formRequired}>*</span>
-										</label>
-										{autoLevel ? (
-											<div
-												className={styles.lockedField}
-												title='Đợt này chỉ cho phép một cấp độ — tự gán theo cấu hình đợt'
-											>
-												<LayersSvg className={styles.lockedFieldIcon} />
-												<span className={styles.lockedFieldText}>
-													{autoLevel.name}
-												</span>
-												<span className={styles.lockedFieldTag}>Theo đợt</span>
-											</div>
-										) : (
-											<select
-												id='reg-level'
-												className={`${styles.formSelect} ${errors.level_id ? styles.hasError : ''}`}
-												aria-invalid={errors.level_id ? true : undefined}
-												value={form.level_id}
-												onChange={(e) => setField('level_id', e.target.value)}
-											>
-												<option value=''>-- Chọn cấp đề tài --</option>
-												{levels.map((l) => (
-													<option
-														key={l.id}
-														value={l.id}
-													>
-														{l.name}
-													</option>
-												))}
-											</select>
-										)}
-										{errors.level_id && (
-											<div className={styles.formError}>
-												<AlertSvg /> {errors.level_id}
-											</div>
-										)}
+										<span className={styles.formLabel}>Cấp độ</span>
+										<RoundLevelField levelName={roundLevelName} />
 									</div>
 								)}
 								<div className={styles.formGroup}>
@@ -447,7 +433,7 @@ export default function TopicRegister() {
 										className={styles.formLabel}
 										htmlFor='reg-dept'
 									>
-										Khoa phòng <span className={styles.formRequired}>*</span>
+										{lbl('department_id', 'Khoa phòng')} {req('department_id', true) && reqMark}
 									</label>
 									{currentDeptId ? (
 										<div
@@ -492,11 +478,12 @@ export default function TopicRegister() {
 										className={styles.formLabel}
 										htmlFor='reg-cat'
 									>
-										Danh mục
+										{lbl('category_id', 'Danh mục')} {reqMark}
 									</label>
 									<select
 										id='reg-cat'
-										className={styles.formSelect}
+										className={`${styles.formSelect} ${errors.category_id ? styles.hasError : ''}`}
+										aria-invalid={errors.category_id ? true : undefined}
 										value={form.category_id}
 										onChange={(e) => setField('category_id', e.target.value)}
 									>
@@ -510,42 +497,74 @@ export default function TopicRegister() {
 											</option>
 										))}
 									</select>
+									{errors.category_id && (
+										<div className={styles.formError}>
+											<AlertSvg /> {errors.category_id}
+										</div>
+									)}
 								</div>
 							</div>
 
-							{isPaper && (
+							{isPaper && (cfg.visible('doi') || cfg.visible('publish_date')) && (
 								<div className={styles.formRow}>
-									<div className={styles.formGroup}>
-										<label
-											className={styles.formLabel}
-											htmlFor='reg-doi'
-										>
-											DOI (nếu có)
-										</label>
-										<input
-											id='reg-doi'
-											className={styles.formInput}
-											placeholder='VD: 10.1234/abcd.2026'
-											value={form.doi}
-											onChange={(e) => setField('doi', e.target.value)}
-										/>
-									</div>
-									<div className={styles.formGroup}>
-										<label
-											className={styles.formLabel}
-											htmlFor='reg-publish-date'
-										>
-											Ngày xuất bản
-										</label>
-										<DatePicker
-											id='reg-publish-date'
-											value={form.publish_date}
-											onChange={(val) => setField('publish_date', val)}
-											placeholder='Chọn ngày xuất bản...'
-										/>
-									</div>
+									{cfg.visible('doi') && (
+										<div className={styles.formGroup}>
+											<label
+												className={styles.formLabel}
+												htmlFor='reg-doi'
+											>
+												{lbl('doi', 'DOI (nếu có)')} {req('doi') && reqMark}
+											</label>
+											<input
+												id='reg-doi'
+												className={`${styles.formInput} ${errors.doi ? styles.hasError : ''}`}
+												placeholder={ph('doi', 'VD: 10.1234/abcd.2026')}
+												maxLength={maxLen('doi')}
+												value={form.doi}
+												onChange={(e) => setField('doi', e.target.value)}
+											/>
+											{hint('doi')}
+											{errors.doi && (
+												<div className={styles.formError}>
+													<AlertSvg /> {errors.doi}
+												</div>
+											)}
+										</div>
+									)}
+									{cfg.visible('publish_date') && (
+										<div className={styles.formGroup}>
+											<label
+												className={styles.formLabel}
+												htmlFor='reg-publish-date'
+											>
+												{lbl('publish_date', 'Ngày xuất bản')} {req('publish_date') && reqMark}
+											</label>
+											<DatePicker
+												id='reg-publish-date'
+												value={form.publish_date}
+												onChange={(val) => setField('publish_date', val)}
+												placeholder={ph('publish_date', 'Chọn ngày xuất bản...')}
+												hasError={!!errors.publish_date}
+											/>
+											{hint('publish_date')}
+											{errors.publish_date && (
+												<div className={styles.formError}>
+													<AlertSvg /> {errors.publish_date}
+												</div>
+											)}
+										</div>
+									)}
 								</div>
 							)}
+
+							<CustomFields
+								cfg={cfg}
+								value={custom}
+								onChange={setCustom}
+								errors={errors}
+								sectionClassName={styles.formSection}
+								inputClassName={styles.formInput}
+							/>
 
 							<div className={styles.formSection}>
 								{isPaper ? 'Tác giả' : 'Thành viên tham gia'}

@@ -47,7 +47,8 @@ const WEEKDAYS = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
 // Helper to format ISO string 'YYYY-MM-DD' to Vietnamese 'DD/MM/YYYY'
 function formatVN(isoStr: string): string {
 	if (!isoStr) return '';
-	const parts = isoStr.split('-');
+	// Chấp nhận cả timestamp đầy đủ ('2026-10-26T00:00:00.000Z') — chỉ lấy phần ngày.
+	const parts = isoStr.slice(0, 10).split('-');
 	if (parts.length !== 3) return isoStr;
 	const [y, m, d] = parts;
 	return `${d.padStart(2, '0')}/${m.padStart(2, '0')}/${y}`;

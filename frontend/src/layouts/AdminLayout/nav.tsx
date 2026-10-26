@@ -61,6 +61,7 @@ export const KEY_TO_PATH: Record<string, string> = {
 	departments: '/admin/departments',
 	venues: '/admin/venues',
 	settings: '/admin/settings',
+	formConfigs: '/admin/form-configs',
 	externalReviewers: '/admin/external-reviewers',
 	categories: '/admin/categories',
 	trainees: '/admin/trainees',
@@ -326,6 +327,7 @@ export const NAV_GROUPS: NavGroup[] = [
 				KeySvg,
 				'system_settings:manage',
 			),
+			navItem('formConfigs', 'Cấu hình form', EditSvg, 'form_configs:manage'),
 			navItem(
 				'activityLogs',
 				'Nhật ký hoạt động',

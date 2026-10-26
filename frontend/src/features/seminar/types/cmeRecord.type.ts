@@ -1,3 +1,5 @@
+import type { CustomValues } from '../../../shared/formConfig/types';
+
 // CME ghi nhận độc lập — không bắt buộc qua 1 seminar cụ thể (tự học, học
 // online, minh chứng đính kèm...). Khác cme_credits gắn seminar_participants.
 export interface CmeRecord {
@@ -21,6 +23,8 @@ export interface CmeRecord {
 	evidence_file_url: string | null;
 	/** File kết quả người dùng bổ sung sau khi đã duyệt. */
 	result_files?: { id: string; file_name: string; file_url: string }[];
+	/** Trường tùy chỉnh người dùng điền khi tự khai (Cấu hình form 'cme_record') */
+	custom?: CustomValues;
 	note: string | null;
 	approval_status: 'pending' | 'approved' | 'rejected';
 	reject_reason: string | null;

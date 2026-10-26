@@ -1,5 +1,5 @@
 import { showToast } from '@/shared/utils/feedback';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { getStoredUser } from '../../../shared/utils/storage';
 import { getTopicRoundByToken } from '../../public/api/publicApi';
@@ -8,10 +8,8 @@ import {
 	createTopic,
 	getCategories,
 	getDepts,
-	getLevels,
 	getRounds,
 	getTopics,
-	searchUsers,
 	uploadTopicFiles,
 	type SimpleItem,
 	type UserSuggestion,
@@ -24,26 +22,12 @@ import type {
 	RegisterForm,
 } from '../types/topicregister.type';
 import { getInitials } from '../../../shared/utils/helper';
-import { useUploadPolicy } from '@/shared/hooks/useUploadPolicy';
-import { nextAddRole } from '../utils/topicHelpers';
+import { useFormConfig, type FormConfig } from '@/shared/formConfig/useFormConfig';
+import type { CustomValues } from '@/shared/formConfig/types';
+import { useAttachmentPicker } from './useAttachmentPicker';
+import { useMemberPicker, type ManualForm } from './useMemberPicker';
 
-export interface ManualForm {
-	ho_ten: string;
-	staff_number: string;
-	phone_number: string;
-	chuc_vu: string;
-	department_id: string;
-	role: MemberRole;
-}
-
-const EMPTY_MANUAL: ManualForm = {
-	ho_ten: '',
-	staff_number: '',
-	phone_number: '',
-	chuc_vu: '',
-	department_id: '',
-	role: 'member',
-};
+export type { ManualForm } from './useMemberPicker';
 
 export interface TopicRegisterState {
 	// User
@@ -56,9 +40,8 @@ export interface TopicRegisterState {
 	// Reference data
 	rounds: SimpleItem[];
 	categories: SimpleItem[];
-	levels: SimpleItem[];
-	/** Đợt chỉ cho 1 cấp độ ⇒ cấp độ đó (tự gán, không cho chọn). */
-	autoLevel: SimpleItem | null;
+	/** Cấp độ của đợt đang chọn (đề tài lấy cấp độ theo đợt, không hỏi). */
+	roundLevelName: string | null;
 	depts: SimpleItem[];
 	myTopics: MyTopic[];
 	loadingRef: boolean;
@@ -80,6 +63,10 @@ export interface TopicRegisterState {
 		val: RegisterForm[K],
 	) => void;
 	handleDeptChange: (deptId: string) => void;
+	/** Cấu hình form (nhãn / bắt buộc / trường tùy chỉnh) — biến thể cổng nhân viên */
+	cfg: FormConfig;
+	custom: CustomValues;
+	setCustom: (next: CustomValues) => void;
 
 	// Pending topics
 	pendingTopics: PendingTopic[];
@@ -146,7 +133,6 @@ export function useTopicRegister(): TopicRegisterState {
 
 	const [rounds, setRounds] = useState<SimpleItem[]>([]);
 	const [categories, setCategories] = useState<SimpleItem[]>([]);
-	const [levels, setLevels] = useState<SimpleItem[]>([]);
 	const [depts, setDepts] = useState<SimpleItem[]>([]);
 	const [myTopics, setMyTopics] = useState<MyTopic[]>([]);
 	const [loadingRef, setLoadingRef] = useState(true);
@@ -161,34 +147,22 @@ export function useTopicRegister(): TopicRegisterState {
 		staff_number: '',
 		round_id: '',
 		category_id: '',
-		level_id: '',
 		department_id: currentDeptId,
 		doi: '',
 		publish_date: '',
 	});
 	const [errors, setErrors] = useState<FormErrors>({});
+	const cfg = useFormConfig('topic', 'portal');
+	const [custom, setCustomState] = useState<CustomValues>({});
 
 	const [pendingTopics, setPendingTopics] = useState<PendingTopic[]>([]);
 	const [submittingAll, setSubmittingAll] = useState(false);
 	const [submitError, setSubmitError] = useState('');
 
-	const [pendingMembers, setPendingMembers] = useState<PendingMember[]>([]);
-	const [memberQuery, setMemberQuery] = useState('');
-	const [suggestions, setSuggestions] = useState<UserSuggestion[]>([]);
-	const [showSuggestions, setShowSuggestions] = useState(false);
-	const [isSearching, setIsSearching] = useState(false);
-	const [addRole, setAddRole] = useState<MemberRole>('leader');
-	const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-	const [showManualForm, setShowManualForm] = useState(false);
-	const [manualForm, setManualForm] = useState<ManualForm>(EMPTY_MANUAL);
-	const [manualErrors, setManualErrors] = useState<Record<string, string>>({});
-
-	const [attachments, setAttachments] = useState<File[]>([]);
-	const [fileError, setFileError] = useState('');
-	const [isDragging, setIsDragging] = useState(false);
-	const fileInputRef = useRef<HTMLInputElement>(null);
-
+	const members = useMemberPicker();
+	const files = useAttachmentPicker();
+	const { pendingMembers, resetMembers } = members;
+	const { attachments, resetAttachments } = files;
 
 	// Load reference data
 	useEffect(() => {
@@ -224,27 +198,6 @@ export function useTopicRegister(): TopicRegisterState {
 		Promise.all([base, tokenLoad]).finally(() => setLoadingRef(false));
 	}, [publicToken]);
 
-	// Cấp độ "ăn theo" đợt (cấu hình ở đợt / loại đợt): mỗi khi đổi vòng nghiên
-	// cứu, tải lại danh sách cấp độ được phép. Nếu cấp độ đang chọn không còn hợp
-	// lệ → bỏ chọn. Chưa chọn đợt ⇒ tất cả cấp độ.
-	useEffect(() => {
-		const roundId = form.round_id;
-		let alive = true;
-		getLevels(roundId ? { round_id: roundId } : undefined)
-			.then((res) => {
-				if (!alive) return;
-				setLevels(res.data);
-				setFormState((f) =>
-					f.level_id && !res.data.some((l) => l.id === f.level_id)
-						? { ...f, level_id: '' }
-						: f,
-				);
-			})
-			.catch(() => {});
-		return () => {
-			alive = false;
-		};
-	}, [form.round_id]);
 
 	// Load my topics — lọc theo participant_id ngay ở server, không phải lấy N đề
 	// tài mới nhất trong phạm vi rồi tự lọc created_by (dễ sai/rỗng với scope
@@ -265,25 +218,6 @@ export function useTopicRegister(): TopicRegisterState {
 			.catch(() => {});
 	}, [currentUserId]);
 
-	// Member search debounce
-	useEffect(() => {
-		if (memberQuery.trim().length < 2) return;
-		if (debounceRef.current) clearTimeout(debounceRef.current);
-		debounceRef.current = setTimeout(() => {
-			setIsSearching(true);
-			searchUsers(memberQuery)
-				.then((res) => {
-					setSuggestions(res.data);
-					setShowSuggestions(true);
-				})
-				.catch(() => setSuggestions([]))
-				.finally(() => setIsSearching(false));
-		}, 300);
-		return () => {
-			if (debounceRef.current) clearTimeout(debounceRef.current);
-		};
-	}, [memberQuery]);
-
 	const setField = useCallback(
 		<K extends keyof RegisterForm>(key: K, val: RegisterForm[K]) => {
 			setFormState((f) => ({ ...f, [key]: val }));
@@ -295,6 +229,28 @@ export function useTopicRegister(): TopicRegisterState {
 		},
 		[],
 	);
+
+	const setCustom = useCallback((next: CustomValues) => {
+		setCustomState((prev) => {
+			const changed = Object.keys(next).filter((k) => next[k] !== prev[k]);
+			if (changed.length)
+				setErrors((e) => {
+					const n = { ...e };
+					changed.forEach((k) => delete n[k]);
+					return n;
+				});
+			return next;
+		});
+	}, []);
+
+	// Admin thu hẹp loại bài (Cấu hình form) ⇒ chuyển sang loại đầu tiên còn cho phép
+	const typeOptions = cfg.field('article_type')?.options;
+	const [seenTypeOptions, setSeenTypeOptions] = useState<typeof typeOptions>();
+	if (typeOptions !== seenTypeOptions) {
+		setSeenTypeOptions(typeOptions);
+		if (typeOptions?.length && !typeOptions.some((o) => o.value === form.article_type))
+			setFormState((f) => ({ ...f, article_type: typeOptions[0].value as RegisterForm['article_type'] }));
+	}
 
 	const handleDeptChange = useCallback(
 		(deptId: string) => {
@@ -317,104 +273,6 @@ export function useTopicRegister(): TopicRegisterState {
 		setField('round_id', '');
 	}, [lockedRound, setField]);
 
-	const addMember = useCallback(
-		(u: UserSuggestion) => {
-			if (pendingMembers.some((m) => m.id === u.id)) return;
-			const next = [
-				...pendingMembers,
-				{
-					id: u.id,
-					ho_ten: u.full_name,
-					staff_number: u.staff_number != null ? String(u.staff_number) : '',
-					email: u.email,
-					chuc_vu: '',
-					role: addRole,
-				},
-			];
-			setPendingMembers(next);
-			// Người thêm tiếp theo mặc định lần lượt Chủ nhiệm → Thư ký → Thành viên
-			setAddRole(nextAddRole(next));
-			setMemberQuery('');
-			setSuggestions([]);
-			setShowSuggestions(false);
-		},
-		[pendingMembers, addRole],
-	);
-
-	const removeMember = useCallback(
-		(id: string) =>
-			setPendingMembers((prev) => prev.filter((m) => m.id !== id)),
-		[],
-	);
-	const changeRole = useCallback(
-		(id: string, role: MemberRole) =>
-			setPendingMembers((prev) =>
-				prev.map((m) => (m.id === id ? { ...m, role } : m)),
-			),
-		[],
-	);
-
-	const addMemberManual = useCallback(() => {
-		const errs: Record<string, string> = {};
-		if (!manualForm.ho_ten.trim()) errs.ho_ten = 'Nhập họ tên';
-		if (!manualForm.staff_number.trim())
-			errs.staff_number = 'Nhập mã nhân viên';
-		if (!manualForm.phone_number.trim())
-			errs.phone_number = 'Nhập số điện thoại';
-		if (!manualForm.chuc_vu.trim()) errs.chuc_vu = 'Nhập chức danh';
-		if (Object.keys(errs).length) {
-			setManualErrors(errs);
-			return;
-		}
-		if (
-			pendingMembers.some(
-				(m) => m.staff_number === manualForm.staff_number.trim(),
-			)
-		) {
-			showToast('error', 'Thành viên này đã được thêm.');
-			return;
-		}
-		setPendingMembers((prev) => [
-			...prev,
-			{
-				id: `manual_${Date.now()}`,
-				ho_ten: manualForm.ho_ten.trim(),
-				staff_number: manualForm.staff_number.trim(),
-				phone_number: manualForm.phone_number.trim(),
-				chuc_vu: manualForm.chuc_vu.trim(),
-				department_id: manualForm.department_id || undefined,
-				role: manualForm.role,
-			},
-		]);
-		setManualForm(EMPTY_MANUAL);
-		setManualErrors({});
-		setShowManualForm(false);
-		setMemberQuery('');
-	}, [pendingMembers, manualForm]);
-
-	const uploadPolicy = useUploadPolicy();
-	const handleFiles = useCallback((files: FileList | null) => {
-		if (!files) return;
-		const toAdd: File[] = [];
-		const problems: string[] = [];
-		Array.from(files).forEach((f) => {
-			const problem = uploadPolicy.check(f);
-			if (problem) problems.push(problem);
-			else toAdd.push(f);
-		});
-		setFileError(problems.join(' · '));
-		if (toAdd.length)
-			setAttachments((prev) => {
-				const s = new Set(prev.map((f) => f.name));
-				return [...prev, ...toAdd.filter((f) => !s.has(f.name))];
-			});
-	}, [uploadPolicy]);
-
-	const removeAttachment = useCallback((name: string) => {
-		setAttachments((prev) => prev.filter((f) => f.name !== name));
-		setFileError('');
-	}, []);
-
 	const clearForm = useCallback(() => {
 		setFormState((f) => ({
 			article_type: f.article_type,
@@ -423,36 +281,31 @@ export function useTopicRegister(): TopicRegisterState {
 			staff_number: '',
 			round_id: lockedRound ? lockedRound.id : pickedRoundId,
 			category_id: '',
-			level_id: '',
 			department_id: currentDeptId,
 			doi: '',
 			publish_date: '',
 		}));
 		setErrors({});
-		setPendingMembers([]);
-		setAddRole('leader');
-		setMemberQuery('');
-		setSuggestions([]);
-		setShowManualForm(false);
-		setManualErrors({});
-		setAttachments([]);
-		setFileError('');
-	}, [lockedRound, pickedRoundId, currentDeptId]);
+		setCustomState({});
+		resetMembers();
+		resetAttachments();
+	}, [lockedRound, pickedRoundId, currentDeptId, resetMembers, resetAttachments]);
 
-	// Đợt chỉ cho 1 cấp độ ⇒ tự gán, không hỏi (giống cổng đăng ký công khai).
-	const autoLevel = form.round_id && levels.length === 1 ? levels[0] : null;
+	// Cấp độ lấy theo đợt — server tự gán khi tạo đề tài, form chỉ hiển thị.
+	const roundLevelName = rounds.find((r) => r.id === form.round_id)?.level_name ?? null;
 
 	const addTopicToList = useCallback(() => {
-		const levelId = form.level_id || autoLevel?.id || '';
-		const e: FormErrors = {};
+		// Bắt buộc / ràng buộc theo Cấu hình form (gồm trường tùy chỉnh); các lỗi
+		// cứng bên dưới vẫn giữ để lời nhắc quen thuộc khi chưa tải được cấu hình.
+		const e: FormErrors = cfg.validate({ ...form }, custom, { mode: 'create' });
 		if (!form.title.trim())
 			e.title =
 				form.article_type === 'bai_bao'
 					? 'Tiêu đề bài báo là bắt buộc'
 					: 'Tiêu đề đề tài là bắt buộc';
 		if (!form.round_id) e.round_id = 'Vui lòng chọn đợt nghiên cứu';
-		if (form.article_type !== 'bai_bao' && !levelId)
-			e.level_id = 'Vui lòng chọn cấp độ đề tài';
+		// Mã đề tài sinh theo ký hiệu danh mục (sp_gen_topic_id) — bắt buộc cả với bài báo
+		if (!form.category_id) e.category_id = 'Vui lòng chọn danh mục';
 		if (!form.department_id) e.department_id = 'Vui lòng chọn khoa/phòng';
 		if (Object.keys(e).length) {
 			setErrors(e);
@@ -468,12 +321,12 @@ export function useTopicRegister(): TopicRegisterState {
 				staff_number: form.staff_number.trim(),
 				round_id: form.round_id,
 				category_id: form.category_id,
-				level_id: form.article_type === 'bai_bao' ? '' : levelId,
 				department_id: form.department_id,
 				doi: form.doi.trim(),
 				publish_date: form.publish_date,
 				members: pendingMembers,
 				attachments,
+				custom,
 			},
 		]);
 		showToast('success', form.article_type === 'bai_bao' ? 'Đã thêm bài báo vào danh sách.' : 'Đã thêm đề tài vào danh sách.');
@@ -484,23 +337,15 @@ export function useTopicRegister(): TopicRegisterState {
 			staff_number: '',
 			round_id: form.round_id,
 			category_id: '',
-			level_id: '',
 			department_id: form.department_id,
 			doi: '',
 			publish_date: '',
 		});
 		setErrors({});
-		setPendingMembers([]);
-		setAddRole('leader');
-		setMemberQuery('');
-		setSuggestions([]);
-		setShowSuggestions(false);
-		setShowManualForm(false);
-		setManualForm(EMPTY_MANUAL);
-		setManualErrors({});
-		setAttachments([]);
-		setFileError('');
-	}, [form, autoLevel, pendingMembers, attachments]);
+		setCustomState({});
+		resetMembers();
+		resetAttachments();
+	}, [form, custom, cfg, pendingMembers, attachments, resetMembers, resetAttachments]);
 
 	const removeTopicFromList = useCallback(
 		(localId: string) =>
@@ -522,13 +367,13 @@ export function useTopicRegister(): TopicRegisterState {
 						title: t.title,
 						description: t.description || undefined,
 						round_id: t.round_id,
-						category_id: t.category_id || undefined,
-						level_id: t.level_id || undefined,
+						category_id: t.category_id,
 						department_id: t.department_id,
 						status,
 						article_type: t.article_type,
 						doi: t.doi || undefined,
 						publish_date: t.publish_date || undefined,
+						custom: t.custom,
 					});
 					if (t.members.length > 0) {
 						await Promise.allSettled(
@@ -582,8 +427,7 @@ export function useTopicRegister(): TopicRegisterState {
 		canRegister,
 		rounds,
 		categories,
-		levels,
-		autoLevel,
+		roundLevelName,
 		depts,
 		myTopics,
 		loadingRef,
@@ -595,40 +439,17 @@ export function useTopicRegister(): TopicRegisterState {
 		errors,
 		setField,
 		handleDeptChange,
+		cfg,
+		custom,
+		setCustom,
 		pendingTopics,
 		submittingAll,
 		submitError,
 		addTopicToList,
 		removeTopicFromList,
 		submitAll,
-		pendingMembers,
-		memberQuery,
-		suggestions,
-		showSuggestions,
-		isSearching,
-		addRole,
-		addedIds: new Set(pendingMembers.map((m) => m.id)),
-		setMemberQuery,
-		setSuggestions,
-		setShowSuggestions,
-		setAddRole,
-		addMember,
-		removeMember,
-		changeRole,
-		showManualForm,
-		manualForm,
-		manualErrors,
-		setShowManualForm,
-		setManualForm: setManualForm as (v: ManualForm) => void,
-		setManualErrors: setManualErrors as (v: Record<string, string>) => void,
-		addMemberManual,
-		attachments,
-		fileError,
-		isDragging,
-		fileInputRef,
-		handleFiles,
-		removeAttachment,
-		setIsDragging,
+		...members,
+		...files,
 		navigate,
 		clearForm,
 	};

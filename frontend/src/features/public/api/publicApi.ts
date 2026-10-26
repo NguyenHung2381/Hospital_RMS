@@ -1,3 +1,4 @@
+import type { CustomValues } from '@/shared/formConfig/types';
 import { BASE_URL } from '../../../shared/api/axios';
 
 // Client riêng cho cổng công khai — KHÔNG dùng shared/api/axios.apiClient vì
@@ -106,6 +107,8 @@ export interface RegisterPayload {
 	email?: string;
 	address?: string;
 	trainee_type_id?: string;
+	/** Trường tùy chỉnh (Cấu hình form 'course_registration') */
+	custom?: CustomValues;
 	course_id: string;
 	program_id?: string;
 	/** Loại hồ sơ của từng file đính kèm, cùng thứ tự với `files` */
@@ -194,9 +197,9 @@ export interface TopicRegisterPayload {
 	round_id: string;
 	department_id: string;
 	category_id: string;
-	/** Chỉ cần khi đợt cho nhiều cấp độ — đợt 1 cấp độ thì server tự gán */
-	level_id?: string;
 	members?: TopicRegisterMember[];
+	/** Trường tùy chỉnh (Cấu hình form) */
+	custom?: CustomValues;
 	captcha_token: string;
 	captcha_answer: string;
 	website?: string; // honeypot — luôn để trống
@@ -266,6 +269,8 @@ export interface SeminarRegisterPayload {
 	department_raw?: string;
 	qualification_raw?: string;
 	source: 'internal' | 'external';
+	/** Trường tùy chỉnh (Cấu hình form 'seminar_participant') */
+	custom?: CustomValues;
 	captcha_token: string;
 	captcha_answer: string;
 	website?: string; // honeypot

@@ -97,6 +97,7 @@ export const PERMISSION_KEYS = [
 	'activity_logs:read',
 	'security_events:read',
 	'system_settings:manage',
+	'form_configs:manage',
 ] as const;
 
 export type PermissionKey = (typeof PERMISSION_KEYS)[number];

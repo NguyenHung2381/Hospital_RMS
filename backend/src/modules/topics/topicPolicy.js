@@ -66,7 +66,9 @@ const computeAllowedActions = (topic, actor) => {
 	if (topic.status === 'supplement' && hasPermission(actor, 'topics', 'update')) {
 		actions.push('submit');
 	}
-	if (topic.status === 'approved' && hasPermission(actor, 'topics', 'update')) {
+	// Đề tài nhập bổ sung: đợt cũ đã hết hạn — cấp tài khoản sẽ đặt hạn tài khoản
+	// thành viên theo ngày kết thúc đợt (đã qua) nên không cho cấp.
+	if (topic.status === 'approved' && !topic.is_legacy && hasPermission(actor, 'topics', 'update')) {
 		actions.push('grant_accounts');
 	}
 	return actions;

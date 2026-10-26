@@ -1,5 +1,6 @@
 import { apiClient } from '../../../shared/api/axios';
-import type { ArticleType, Topic, TopicAuthor, TopicFile, TopicMember } from '../types/topic.type';
+import type { CustomValues } from '../../../shared/formConfig/types';
+import type { AcceptanceRating, ArticleType, Topic, TopicAuthor, TopicFile, TopicMember } from '../types/topic.type';
 
 export interface SimpleItem {
 	id: string;
@@ -11,6 +12,9 @@ export interface SimpleItem {
 	/** Mốc mở/đóng đăng ký đề tài (dd/mm/yyyy) — chỉ có ở /research-rounds. */
 	registration_start?: string | null;
 	registration_end?: string | null;
+	/** Chỉ có ở /research-rounds: cấp độ của đợt — đề tài lấy cấp độ theo đợt. */
+	level_id?: string | null;
+	level_name?: string | null;
 }
 
 // Các trường lọc nhận 1 giá trị hoặc danh sách "a,b,c" (multi-select trên UI)
@@ -53,7 +57,6 @@ export interface CreateTopicPayload {
 	description?: string;
 	round_id: string;
 	category_id?: string;
-	level_id?: string;
 	department_id?: string;
 	status?: string;
 	article_type?: ArticleType;
@@ -61,6 +64,10 @@ export interface CreateTopicPayload {
 	doi?: string;
 	publish_date?: string;
 	budget_estimated?: number;
+	/** Giá trị trường tùy chỉnh (trang Cấu hình form) */
+	custom?: CustomValues;
+	/** Form quản trị (TopicModal) — server chỉ nhận với tài khoản phạm vi khoa/toàn viện */
+	form_variant?: 'admin';
 }
 
 export interface UpdateTopicPayload {
@@ -68,7 +75,6 @@ export interface UpdateTopicPayload {
 	description?: string;
 	round_id?: string;
 	category_id?: string;
-	level_id?: string;
 	department_id?: string;
 	status?: string;
 	article_type?: ArticleType;
@@ -82,6 +88,13 @@ export interface UpdateTopicPayload {
 	recognition_decision_no?: string;
 	recognition_decision_date?: string;
 	is_featured?: boolean;
+	acceptance_rating?: AcceptanceRating | null;
+	acceptance_score?: number | null;
+	acceptance_date?: string | null;
+	/** Giá trị trường tùy chỉnh (trang Cấu hình form) */
+	custom?: CustomValues;
+	/** Form quản trị (TopicModal) — server chỉ nhận với tài khoản phạm vi khoa/toàn viện */
+	form_variant?: 'admin';
 }
 
 export type TopicMemberApiRole = 'leader' | 'secretary' | 'member';
@@ -94,6 +107,10 @@ export interface TopicMemberPayload {
 	staff_number?: string | null;
 	department_id?: string | null;
 	role?: TopicMemberApiRole;
+	/** Trường tùy chỉnh (Cấu hình form 'topic_member') */
+	custom?: CustomValues;
+	/** 'portal' = form ở cổng nhân viên — server kiểm theo Cấu hình form */
+	form_variant?: 'portal';
 }
 
 export const getTopics = (params?: TopicListParams) => {
@@ -110,6 +127,22 @@ export const getTopic = (id: string) => apiClient.get<Topic>(`/topics/${id}`);
 
 export const createTopic = (payload: CreateTopicPayload) =>
 	apiClient.post<Topic>('/topics', payload);
+
+// Nhập bổ sung đề tài đã hoàn thành (đợt cũ) — vào hàng chờ duyệt, file tải lên sau
+export interface CreateLegacyTopicPayload {
+	title: string;
+	description?: string;
+	round_id: string;
+	category_id: string;
+	department_id: string;
+	acceptance_rating?: AcceptanceRating;
+	acceptance_score?: number;
+	acceptance_date?: string;
+	members: (TopicMemberPayload & { user_id?: string })[];
+}
+
+export const createLegacyTopic = (payload: CreateLegacyTopicPayload) =>
+	apiClient.post<Topic>('/topics/legacy', payload);
 
 export const updateTopic = (id: string, data: UpdateTopicPayload) =>
 	apiClient.put<Topic>(`/topics/${id}`, data);
@@ -302,7 +335,6 @@ export const searchUsers = (q: string, departmentId?: string) => {
 export interface TopicImportDefaults {
 	round_id?: string;
 	category_id?: string;
-	level_id?: string;
 	article_type?: ArticleType;
 	status?: 'submitted' | 'approved' | 'rejected' | 'cancelled';
 }

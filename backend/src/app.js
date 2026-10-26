@@ -270,6 +270,7 @@ app.use(
 	require('./modules/attendance/staffAttendance.routes'),
 );
 app.use(`${API}/system-settings`, require('./modules/settings/systemSettings.routes'));
+app.use(`${API}/form-configs`, require('./modules/forms/formConfig.routes'));
 app.use(`${API}/persons`, require('./modules/persons/persons.routes'));
 app.use(`${API}/public`, require('./modules/public/public.routes'));
 app.use(API, require('./modules/catalog/catalog.routes'));

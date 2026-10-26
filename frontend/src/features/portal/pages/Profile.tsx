@@ -18,6 +18,8 @@ import UserLayout from '../../../layouts/UserLayout';
 import { InlineLoading } from '@/shared/components';
 import { PASSWORD_HINT, PASSWORD_MIN_LENGTH } from '@/shared/utils/password';
 import { fmtDate, useProfile } from '../hooks/useProfile';
+import ProfileExtraCard from '../components/ProfileExtraCard';
+import { useFormConfig } from '@/shared/formConfig/useFormConfig';
 import styles from './Profile.module.css';
 
 const SPINNER = (
@@ -34,6 +36,8 @@ const SPINNER = (
 
 export default function Profile() {
 	const d = useProfile();
+	// Nhãn / độ dài họ tên + trường tùy chỉnh hồ sơ theo Cấu hình form
+	const cfg = useFormConfig('user_profile', 'profile');
 	// Dùng chung 2 cổng như MyTasks: vào từ /admin/... thì giữ layout admin.
 	const isAdmin = useLocation().pathname.startsWith('/admin');
 	const Layout = isAdmin ? AdminLayout : UserLayout;
@@ -159,7 +163,7 @@ export default function Profile() {
 
 							<div className={styles.detailGrid}>
 								<div className={styles.detailItem}>
-									<div className={styles.detailLabel}>Họ và tên</div>
+									<div className={styles.detailLabel}>{cfg.label('full_name', 'Họ và tên')}</div>
 									{d.nameDraft === null ? (
 										<div className={styles.detailValue}>
 											{d.profile.full_name}{' '}
@@ -182,7 +186,7 @@ export default function Profile() {
 											<input
 												className={styles.nameInput}
 												value={d.nameDraft}
-												maxLength={200}
+												maxLength={cfg.maxLength('full_name') ?? 200}
 												autoFocus
 												aria-label='Họ và tên'
 												onChange={(e) => d.setNameDraft(e.target.value)}
@@ -250,6 +254,14 @@ export default function Profile() {
 								</div>
 							</div>
 						</div>
+					)}
+
+					{d.profile && (
+						<ProfileExtraCard
+							key={d.profile.id}
+							cfg={cfg}
+							initial={d.profile.custom ?? {}}
+						/>
 					)}
 
 					{/* Change password */}

@@ -34,8 +34,9 @@ router.post(
 		body('end_date').notEmpty().withMessage('Ngày kết thúc không được để trống'),
 		// Chấp nhận cả từ vựng phía FE ('active') lẫn DB ('open'); service tự quy đổi.
 		body('status').optional().isIn(['draft', 'active', 'open', 'closed', 'cancelled']),
-		// Cấu hình luôn khi tạo: cấp độ đề tài của đợt + các mốc thời gian.
-		body('level_ids').optional().isArray().withMessage('level_ids phải là mảng'),
+		// Cấu hình luôn khi tạo: cấp độ đề tài của đợt (đúng 1 — đề tài lấy cấp độ
+		// theo đợt) + các mốc thời gian.
+		body('level_ids').isArray({ min: 1, max: 1 }).withMessage('Mỗi đợt chọn đúng 1 cấp độ đề tài'),
 		body('deadlines').optional().isArray({ max: 9 }).withMessage('Tối đa 9 mốc thời gian'),
 	],
 	validate,
@@ -61,7 +62,10 @@ router.put(
 			.withMessage('Loại đợt không hợp lệ'),
 		body('start_date').optional().notEmpty(),
 		body('end_date').optional().notEmpty(),
-		body('level_ids').optional().isArray().withMessage('level_ids phải là mảng'),
+		body('level_ids')
+			.optional()
+			.isArray({ min: 1, max: 1 })
+			.withMessage('Mỗi đợt chọn đúng 1 cấp độ đề tài'),
 	],
 	validate,
 	roundCtrl.updateOne,

@@ -69,8 +69,11 @@ export interface ResearchRound {
 	registration_open?: boolean;
 	registration_start?: string | null; // dd/mm/yyyy
 	registration_end?: string | null; // dd/mm/yyyy
-	/** Cấp độ đề tài cấu hình riêng cho đợt. [] ⇒ theo loại đợt / cho phép tất cả. */
+	/** Cấp độ đề tài cấu hình riêng cho đợt (đúng 1). [] ⇒ theo loại đợt. */
 	level_ids?: string[];
+	/** Cấp độ hiệu lực của đợt (riêng của đợt, không thì theo loại đợt); null = chưa cấu hình. */
+	level_id?: string | null;
+	level_name?: string | null;
 }
 
 export interface RoundForm {

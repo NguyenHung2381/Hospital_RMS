@@ -4,6 +4,7 @@ import { Badge, DatePicker, Modal, ModalActions } from '@/shared/components';
 import { UserCheckSvg } from '@/assets/icons';
 import { showToast } from '@/shared/utils/feedback';
 import {
+	getEnrollment,
 	getEnrollmentLessons,
 	syncEnrollmentLessons,
 	updateEnrollment,
@@ -25,6 +26,8 @@ import { TraineeAttendanceTab } from '../../trainee/components/TraineeAttendance
 import { TraineeResultsTab } from '../../trainee/components/TraineeResultsTab';
 import styles from '../pages/Courses.module.css';
 import crud from '@/shared/components/Table/CrudPage.module.css';
+import m from '@/shared/components/Modal/Modal.module.css';
+import { CustomFieldsView, useFormConfig, type CustomValues } from '@/shared/formConfig';
 
 // Trạng thái bài tự tính theo điểm danh (lessonProgressService) — chỉ hiển thị
 const LESSON_STATUS_TONE = { not_started: 'gray', in_progress: 'blue', done: 'green' } as const;
@@ -98,6 +101,18 @@ export function EnrollmentDetailModal({
 	useEffect(() => {
 		loadLessons();
 	}, [loadLessons]);
+
+	// Trường tùy chỉnh người đăng ký điền ở cổng công khai (Cấu hình form 'course_registration') —
+	// danh sách ghi danh không kèm, tải riêng khi form có trường tùy chỉnh
+	const regCfg = useFormConfig('course_registration', 'public');
+	const hasRegCustom = !!regCfg.resolved?.labels.length;
+	const [regCustom, setRegCustom] = useState<CustomValues | null>(null);
+	useEffect(() => {
+		if (!hasRegCustom) return;
+		getEnrollment(enrollment.id)
+			.then((e) => setRegCustom(e.custom ?? null))
+			.catch(() => setRegCustom(null));
+	}, [enrollment.id, hasRegCustom]);
 
 	const set = (k: keyof Form) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
 		setForm((f) => ({ ...f, [k]: e.target.value }));
@@ -361,6 +376,12 @@ export function EnrollmentDetailModal({
 							onChange={set('note')}
 						/>
 					</FormField>
+					<CustomFieldsView
+						cfg={regCfg}
+						data={regCustom}
+						itemClassName={m.formGroup}
+						labelClassName={m.formLabel}
+					/>
 				</div>
 			)}
 

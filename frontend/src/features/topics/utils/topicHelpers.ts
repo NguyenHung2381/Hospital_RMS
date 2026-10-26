@@ -1,4 +1,4 @@
-import type { MemberRole, TopicStatus } from '../types/topic.type';
+import type { AcceptanceRating, MemberRole, TopicStatus } from '../types/topic.type';
 import type { BadgeTone } from '@/shared/components/Badge/badgeTone';
 
 export const STATUS_CFG: Record<TopicStatus, { label: string; tone: BadgeTone }> = {
@@ -8,6 +8,29 @@ export const STATUS_CFG: Record<TopicStatus, { label: string; tone: BadgeTone }>
 	supplement: { label: 'Yêu cầu bổ sung', tone: 'blue' },
 	cancelled: { label: 'Đã hủy', tone: 'gray' },
 };
+
+// Xếp loại nghiệm thu — đề tài nhập bổ sung (đã hoàn thành)
+export const ACCEPTANCE_RATING_CFG: Record<AcceptanceRating, { label: string; tone: BadgeTone }> = {
+	xuat_sac: { label: 'Xuất sắc', tone: 'green' },
+	tot: { label: 'Tốt', tone: 'green' },
+	kha: { label: 'Khá', tone: 'blue' },
+	dat: { label: 'Đạt', tone: 'amber' },
+	khong_dat: { label: 'Không đạt', tone: 'red' },
+};
+export const ACCEPTANCE_RATINGS = Object.keys(ACCEPTANCE_RATING_CFG) as AcceptanceRating[];
+
+/** "Tốt · 85 điểm · 12/05/2023" — rỗng khi chưa có kết quả nghiệm thu. */
+export function formatAcceptance(t: {
+	acceptance_rating?: AcceptanceRating | null;
+	acceptance_score?: number | null;
+	acceptance_date?: string | null;
+}): string {
+	const parts: string[] = [];
+	if (t.acceptance_rating) parts.push(ACCEPTANCE_RATING_CFG[t.acceptance_rating]?.label ?? t.acceptance_rating);
+	if (t.acceptance_score != null) parts.push(`${Number(t.acceptance_score)} điểm`);
+	if (t.acceptance_date) parts.push(new Date(t.acceptance_date).toLocaleDateString('vi-VN'));
+	return parts.join(' · ');
+}
 
 export const MEMBER_ROLE_CFG: Record<
 	MemberRole,

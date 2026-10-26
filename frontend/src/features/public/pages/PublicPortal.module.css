@@ -111,7 +111,8 @@
 	padding: var(--space-6);
 }
 /* Nhóm con trong 1 khối (VD: "Thông tin cá nhân" / "Thông tin liên hệ") */
-.subGroup + .subGroup {
+.subGroup + .subGroup,
+.formGrid + .subGroup {
 	margin-top: var(--space-6);
 	padding-top: var(--space-5);
 	border-top: 1px dashed var(--color-gray-200);
@@ -319,6 +320,11 @@
 .inputError,
 .inputError:focus {
 	border-color: var(--color-danger, #d92d20);
+}
+/* Ghi chú dưới ô nhập — đặt ở trang Cấu hình form */
+.fieldHint {
+	font-size: var(--font-size-xs, 12px);
+	color: var(--color-gray-500);
 }
 .fieldError {
 	font-size: var(--font-size-xs, 12px);

@@ -8,6 +8,27 @@ const { validate } = require('../../middlewares/errorHandler');
 const upload = require('../../middlewares/upload');
 const uploadExcel = require('../../middlewares/uploadExcel');
 const topicPolicy = require('./topicPolicy');
+const { ACCEPTANCE_RATINGS } = require('./topicLegacyService');
+const { formConfigGuard } = require('../forms/formConfigGuard');
+const { scopeOf } = require('../../permissions/authz');
+
+// Form nào đang gửi (cấu hình form 'topic'): TopicModal gửi form_variant='admin',
+// chỉ tài khoản phạm vi khoa/toàn viện mới được kiểm theo form quản trị.
+const topicVariant = (req) => {
+	const wantsAdmin = req.body?.form_variant === 'admin';
+	if (req.body) delete req.body.form_variant;
+	const scope = scopeOf(req.user, 'topics');
+	return wantsAdmin && (scope === 'all' || scope === 'department') ? 'admin' : 'portal';
+};
+
+// Form thành viên ở cổng nhân viên gửi form_variant='portal' ⇒ kiểm theo Cấu hình
+// form. Drawer quản trị / trang đăng ký cũng gọi route này nhưng chưa nối cấu
+// hình ⇒ null = bỏ qua.
+const memberVariant = (req) => {
+	const v = req.body?.form_variant;
+	if (req.body) delete req.body.form_variant;
+	return v === 'portal' ? 'portal' : null;
+};
 
 router.use(authenticate);
 
@@ -70,12 +91,43 @@ router.post(
 	[
 		body('title').notEmpty(),
 		body('round_id').notEmpty(),
+		// Mã đề tài sinh theo ký hiệu thể loại (sp_gen_topic_id) ⇒ bắt buộc
+		body('category_id').trim().notEmpty().withMessage('Vui lòng chọn danh mục đề tài'),
 		body('article_type').optional().isIn(['de_tai', 'bai_bao']),
 		body('publish_date').optional({ checkFalsy: true }).isISO8601(),
 		body('budget_estimated').optional({ checkFalsy: true }).isFloat({ min: 0 }),
 	],
 	validate,
+	formConfigGuard('topic', { variant: topicVariant, mode: 'create' }),
 	ctrl.createOne,
+);
+
+// Nhập bổ sung đề tài đã hoàn thành ở cổng nhân viên (đợt cũ, không xét mốc đăng ký)
+router.post(
+	'/legacy',
+	authorizePermission(['topics', 'create']),
+	[
+		body('title').trim().notEmpty().withMessage('Tên đề tài không được để trống'),
+		body('round_id').trim().notEmpty().withMessage('Vui lòng chọn đợt nghiên cứu'),
+		// Mã đề tài sinh theo ký hiệu thể loại (sp_gen_topic_id) ⇒ bắt buộc
+		body('category_id').trim().notEmpty().withMessage('Vui lòng chọn danh mục đề tài'),
+		body('department_id').trim().notEmpty().withMessage('Vui lòng chọn khoa/phòng'),
+		body('acceptance_rating')
+			.optional({ checkFalsy: true })
+			.isIn(ACCEPTANCE_RATINGS)
+			.withMessage('Xếp loại nghiệm thu không hợp lệ'),
+		body('acceptance_score')
+			.optional({ checkFalsy: true })
+			.isFloat({ min: 0, max: 100 })
+			.withMessage('Điểm nghiệm thu phải từ 0 đến 100'),
+		body('acceptance_date').optional({ checkFalsy: true }).isISO8601(),
+		body('members').isArray({ min: 1, max: 50 }).withMessage('Cần ít nhất một thành viên'),
+		body('members.*.ho_ten').trim().notEmpty().withMessage('Thành viên thiếu họ tên'),
+		body('members.*.email').optional({ checkFalsy: true }).isEmail(),
+		body('members.*.role').isIn(['leader', 'secretary', 'member']),
+	],
+	validate,
+	ctrl.createLegacy,
 );
 
 router.put(
@@ -93,8 +145,12 @@ router.put(
 		body('approval_decision_date').optional({ checkFalsy: true }).isISO8601(),
 		body('recognition_decision_date').optional({ checkFalsy: true }).isISO8601(),
 		body('is_featured').optional().isBoolean(),
+		body('acceptance_rating').optional({ checkFalsy: true }).isIn(ACCEPTANCE_RATINGS),
+		body('acceptance_score').optional({ checkFalsy: true }).isFloat({ min: 0, max: 100 }),
+		body('acceptance_date').optional({ checkFalsy: true }).isISO8601(),
 	],
 	validate,
+	formConfigGuard('topic', { variant: topicVariant, mode: 'update' }),
 	ctrl.updateOne,
 );
 
@@ -111,6 +167,7 @@ router.post(
 		body('role').optional().isIn(['leader', 'secretary', 'member']),
 	],
 	validate,
+	formConfigGuard('topic_member', { variant: memberVariant, mode: 'create' }),
 	ctrl.addMember,
 );
 
@@ -123,6 +180,7 @@ router.put(
 		body('role').optional().isIn(['leader', 'secretary', 'member']),
 	],
 	validate,
+	formConfigGuard('topic_member', { variant: memberVariant, mode: 'update' }),
 	ctrl.updateMember,
 );
 

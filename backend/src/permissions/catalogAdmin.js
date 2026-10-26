@@ -219,6 +219,19 @@ const ADMIN_MODULE = {
 				),
 			],
 		},
+		{
+			key: 'form_configs',
+			label: 'Cấu hình form',
+			permissions: [
+				p(
+					'PERM-FORMCFG-MANAGE',
+					'manage',
+					'Quản lý cấu hình form',
+					'Ẩn/hiện, bắt buộc, ràng buộc và trường tùy chỉnh của các form nhập liệu',
+					{ seedFrom: ['system_settings:manage'] },
+				),
+			],
+		},
 	],
 };
 

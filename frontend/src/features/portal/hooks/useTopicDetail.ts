@@ -187,7 +187,6 @@ export function useTopicDetail() {
 		if (canEditInfo) {
 			payload.description = infoForm.description.trim() || undefined;
 			payload.category_id = infoForm.category_id || undefined;
-			payload.level_id = infoForm.level_id || undefined;
 		}
 		if (Object.keys(payload).length === 0) {
 			setEditingInfo(false);

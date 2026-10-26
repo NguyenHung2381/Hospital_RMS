@@ -1,4 +1,5 @@
 import { formatDate } from '../../../shared/utils/formatDate';
+import { formatAcceptance } from '../../topics/utils/topicHelpers';
 import type { BadgeTone } from '@/shared/components/Badge/badgeTone';
 import type {
 	ApprovalRecord,
@@ -110,6 +111,8 @@ export function mapTopicToRecord(topic: TopicApprovalItem): ApprovalRecord {
 		approval_decision_date: formatDate(topic.approval_decision_date),
 		recognition_decision_no: topic.recognition_decision_no ?? null,
 		recognition_decision_date: formatDate(topic.recognition_decision_date),
+		is_legacy: !!topic.is_legacy,
+		acceptance: formatAcceptance(topic),
 		is_urgent: isUrgentTopic(topic.created_at, status),
 		history: [],
 		members: [],
@@ -143,6 +146,8 @@ export function mergeTopicDetail(
 			topic.recognition_decision_no ?? record.recognition_decision_no,
 		recognition_decision_date:
 			formatDate(topic.recognition_decision_date) ?? record.recognition_decision_date,
+		is_legacy: !!topic.is_legacy,
+		acceptance: formatAcceptance(topic),
 		comment: latest?.comment ?? null,
 		updated_at: formatDate(latest?.created_at) ?? record.updated_at,
 		updated_by:

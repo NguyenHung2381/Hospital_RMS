@@ -79,6 +79,46 @@ const getAllowedLevelIds = async (roundId) => {
 	}
 };
 
+// Mỗi đợt đúng 1 cấp độ; đề tài lấy cấp độ theo đợt (form không hỏi nữa).
+// Cấu hình riêng của đợt, không có thì theo loại đợt. Nhiều cấp (dữ liệu cũ)
+// hoặc chưa cấu hình ⇒ null — quản lý chọn lại cấp độ cho đợt.
+const getRoundLevelId = async (roundId) => {
+	const ids = await getAllowedLevelIds(roundId);
+	return ids.length === 1 ? ids[0] : null;
+};
+
+// Cùng quy tắc với getRoundLevelId, dùng trong SELECT danh sách / chi tiết đợt.
+const ROUND_LEVEL_APPLY = `
+    OUTER APPLY (
+      SELECT CASE WHEN COUNT(*) = 1 THEN MAX(s.level_id) END AS level_id
+      FROM (
+        SELECT level_id FROM research_round_levels WHERE round_id = r.id
+        UNION ALL
+        SELECT rtl.level_id FROM round_type_levels rtl
+        WHERE rtl.round_type_id = r.round_type_id
+          AND NOT EXISTS (SELECT 1 FROM research_round_levels WHERE round_id = r.id)
+      ) s
+    ) rl
+    LEFT JOIN levels lv ON lv.id = rl.level_id`;
+
+// Đề tài (trừ bài báo) của đợt nhận lại cấp độ của đợt — gọi khi đổi cấp độ /
+// loại đợt để báo cáo, bộ lọc (đọc topics.level_id) khớp cấu hình đợt.
+const syncTopicLevels = async (roundId, actorId) => {
+	const levelId = await getRoundLevelId(roundId);
+	if (!levelId) return;
+	const pool = await getPool();
+	await pool
+		.request()
+		.input('rid', sql.VarChar(10), roundId)
+		.input('lid', sql.VarChar(5), levelId)
+		.input('actor_id', sql.VarChar(20), actorId).query(`
+      EXEC sp_set_actor @actor_id;
+      UPDATE topics SET level_id = @lid, updated_at = GETDATE(), updated_by = @actor_id
+      WHERE round_id = @rid AND article_type <> 'bai_bao'
+        AND (level_id IS NULL OR level_id <> @lid);`);
+	broadcast('update', { entity: 'topic' });
+};
+
 const getAll = async ({
 	page = 1,
 	limit = 20,
@@ -107,6 +147,7 @@ const getAll = async ({
 
 	const result = await req.query(`
     SELECT r.*, u.full_name AS created_by_name, rt.name AS round_type_name,
+           rl.level_id, lv.name AS level_name,
            (SELECT COUNT(*) FROM topics WHERE round_id = r.id)                               AS topic_total,
            (SELECT COUNT(*) FROM topics WHERE round_id = r.id AND status = 'approved')       AS topic_active,
            (SELECT COUNT(*) FROM topics WHERE round_id = r.id AND status = 'submitted')      AS topic_pending,
@@ -115,6 +156,7 @@ ${REG_WINDOW_COLS}
     FROM research_rounds r
     LEFT JOIN users u ON u.id = r.created_by
     LEFT JOIN round_types rt ON rt.id = r.round_type_id
+${ROUND_LEVEL_APPLY}
     ${where}
     ORDER BY r.year DESC, r.round_number DESC
     ${pg.fetchClause};
@@ -132,6 +174,7 @@ const getById = async (id) => {
 	const pool = await getPool();
 	const result = await pool.request().input('id', sql.VarChar(10), id).query(`
       SELECT r.*, u.full_name AS created_by_name, rt.name AS round_type_name,
+             rl.level_id, lv.name AS level_name,
              (SELECT COUNT(*) FROM topics WHERE round_id = r.id)                               AS topic_total,
              (SELECT COUNT(*) FROM topics WHERE round_id = r.id AND status = 'approved')       AS topic_active,
              (SELECT COUNT(*) FROM topics WHERE round_id = r.id AND status = 'submitted')      AS topic_pending,
@@ -140,6 +183,7 @@ ${REG_WINDOW_COLS}
       FROM research_rounds r
       LEFT JOIN users u ON u.id = r.created_by
       LEFT JOIN round_types rt ON rt.id = r.round_type_id
+${ROUND_LEVEL_APPLY}
       WHERE r.id = @id
     `);
 	return result.recordset[0] ? normalize(result.recordset[0]) : null;
@@ -241,6 +285,8 @@ const update = async (id, data, actorId) => {
 		`EXEC sp_set_actor @actor_id; UPDATE research_rounds SET ${sets.join(', ')} WHERE id = @id`,
 	);
 	if (Array.isArray(data.level_ids)) await writeLevels(() => pool.request(), id, data.level_ids);
+	if (Array.isArray(data.level_ids) || data.round_type_id !== undefined)
+		await syncTopicLevels(id, actorId);
 	const round = await getById(id);
 	broadcast('update', { entity: 'round' });
 	return round;
@@ -279,6 +325,7 @@ module.exports = {
 	getAll,
 	getById,
 	getAllowedLevelIds,
+	getRoundLevelId,
 	create,
 	update,
 	remove,

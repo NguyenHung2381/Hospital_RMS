@@ -4,6 +4,7 @@ import type { AvailablePaper } from '../../exam/types/exam.type';
 import type { CmeStatus, ParticipationType, SeminarEventType, SeminarScope } from '../../seminar/types/seminar.type';
 import type { PublicCourse } from '../../public/api/publicApi';
 import type { CmeSourceType } from '../../seminar/types/cmeRecord.type';
+import type { CustomValues } from '../../../shared/formConfig/types';
 
 interface MyCourseBase {
 	id: string;
@@ -127,6 +128,8 @@ export interface MyCmeRecord {
 	evidence_file_url: string | null;
 	/** File bổ sung chứng minh kết quả — tải lên sau khi đã duyệt. */
 	result_files: CmeResultFile[];
+	/** Trường tùy chỉnh (Cấu hình form 'cme_record') */
+	custom?: CustomValues;
 }
 
 export interface CmeResultFile {
@@ -262,6 +265,8 @@ export interface MyCmeRecordForm {
 	role: string;
 	quantity: string;
 	note: string;
+	/** Trường tùy chỉnh (Cấu hình form 'cme_record') */
+	custom: CustomValues;
 }
 
 // Không gửi tín chỉ — người quản lý nhập khi duyệt
@@ -274,6 +279,7 @@ const toPayload = (f: MyCmeRecordForm) => ({
 	role: f.role || null,
 	quantity: f.quantity === '' ? null : Number(f.quantity),
 	note: f.note || null,
+	custom: f.custom,
 });
 
 export const getMyCmeCategories = () => apiClient.get<MyCmeCategory[]>('/me/cme-categories');
@@ -405,6 +411,8 @@ export interface LeaveRequest {
 	reviewer_name: string | null;
 	reviewed_at: string | null;
 	created_at: string;
+	/** Trường tùy chỉnh (Cấu hình form 'leave_request') */
+	custom?: CustomValues;
 }
 export interface LeaveRequestForm {
 	type: LeaveType;
@@ -413,6 +421,7 @@ export interface LeaveRequestForm {
 	shift_id?: number | null;
 	arrive_time?: string | null;
 	reason: string;
+	custom?: CustomValues;
 }
 export const LEAVE_TYPE_TEXT: Record<LeaveType, string> = { absent: 'Xin nghỉ', late: 'Xin đi muộn' };
 export const LEAVE_STATUS: Record<LeaveStatus, { label: string; tone: 'amber' | 'green' | 'red' | 'gray' }> = {

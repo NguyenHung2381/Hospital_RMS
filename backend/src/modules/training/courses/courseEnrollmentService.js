@@ -8,6 +8,7 @@ const { httpError } = require('../../../utils/httpError');
 const enrollmentProgramService = require('./enrollmentProgramService');
 const programClassService = require('./programClassService');
 const systemSettingService = require('../../settings/systemSettingService');
+const formCustomValueService = require('../../forms/formCustomValueService');
 
 // ─── Đăng ký khóa học ────────────────────────────────────────────────────
 // 1 dòng ghi danh kèm học viên / chương trình / tiến độ — dùng chung cho danh sách của khóa và 1 hồ sơ.
@@ -46,6 +47,8 @@ const getEnrollment = async (enrollmentId) => {
 			.query(enrollmentSelect('e.id = @id'))
 	).recordset[0];
 	if (!row) throw httpError(404, 'Không tìm thấy hồ sơ ghi danh.');
+	// Trường tùy chỉnh người đăng ký điền ở cổng công khai (Cấu hình form 'course_registration')
+	row.custom = await formCustomValueService.get('course_registration', enrollmentId);
 	return row;
 };
 
@@ -341,6 +344,7 @@ const removeEnrollment = async (enrollmentId, actorId = null) => {
     DELETE FROM attendance WHERE enrollment_id = @id;
     DELETE FROM course_enrollments WHERE id = @id;
   `);
+	await formCustomValueService.remove('course_registration', enrollmentId);
 	broadcast('update', { entity: 'course_enrollment' });
 	// Rút khỏi lớp chưa khai giảng ⇒ người đầu danh sách chờ của chương trình được gọi vào.
 	const gone = r.recordsets[0][0];

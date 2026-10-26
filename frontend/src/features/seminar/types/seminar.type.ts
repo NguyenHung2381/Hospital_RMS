@@ -1,3 +1,5 @@
+import type { CustomValues } from '../../../shared/formConfig/types';
+
 // ─── Hội thảo / Hội nghị & CME ────────────────────────────────────────────────
 
 export type SeminarScope = 'external' | 'hosted';
@@ -62,6 +64,8 @@ export interface SeminarParticipant {
 	gender: string | null;
 	organization: string | null;
 	department_raw: string | null;
+	/** Trường tùy chỉnh điền khi đăng ký công khai (Cấu hình form 'seminar_participant') */
+	custom?: CustomValues;
 	staff_number: number | null;
 	qualification_raw: string | null;
 	source: ParticipantSource;

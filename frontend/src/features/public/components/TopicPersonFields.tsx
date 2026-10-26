@@ -1,3 +1,4 @@
+import type { FormConfig } from '@/shared/formConfig/useFormConfig';
 import type { SimpleOption } from '../api/publicApi';
 import type { PersonField, TopicPerson } from '../utils/topicPerson';
 import styles from '../pages/PublicPortal.module.css';
@@ -10,28 +11,37 @@ interface Props {
 	/** Đã có thư ký ở người khác ⇒ khóa lựa chọn "Thư ký" */
 	secretaryTaken?: boolean;
 	onChange: (field: PersonField, value: string) => void;
+	/** Chỉ truyền cho chủ nhiệm: nhãn / bắt buộc / ẩn theo Cấu hình form */
+	cfg?: FormConfig;
 }
 
-export function TopicPersonFields({ person, errors = {}, departments, secretaryTaken, onChange }: Props) {
+export function TopicPersonFields({ person, errors = {}, departments, secretaryTaken, onChange, cfg }: Props) {
 	const input = (
 		field: PersonField,
 		label: string,
 		opts: { required?: boolean; placeholder?: string; type?: string } = {},
-	) => (
-		<div className={styles.formGroup}>
-			<label className={styles.label}>
-				{label} {opts.required && <span className={styles.required}>*</span>}
-			</label>
-			<input
-				type={opts.type ?? 'text'}
-				className={`${styles.input} ${errors[field] ? styles.inputError : ''}`}
-				placeholder={opts.placeholder}
-				value={person[field]}
-				onChange={(e) => onChange(field, e.target.value)}
-			/>
-			{errors[field] && <span className={styles.fieldError}>{errors[field]}</span>}
-		</div>
-	);
+	) => {
+		if (cfg && !cfg.visible(field)) return null;
+		const required = cfg ? cfg.required(field, opts.required) : opts.required;
+		const hint = cfg?.hint(field);
+		return (
+			<div className={styles.formGroup}>
+				<label className={styles.label}>
+					{cfg ? cfg.label(field, label) : label} {required && <span className={styles.required}>*</span>}
+				</label>
+				<input
+					type={opts.type ?? 'text'}
+					className={`${styles.input} ${errors[field] ? styles.inputError : ''}`}
+					placeholder={cfg ? cfg.placeholder(field, opts.placeholder) : opts.placeholder}
+					maxLength={cfg?.maxLength(field)}
+					value={person[field]}
+					onChange={(e) => onChange(field, e.target.value)}
+				/>
+				{hint && <span className={styles.fieldHint}>{hint}</span>}
+				{errors[field] && <span className={styles.fieldError}>{errors[field]}</span>}
+			</div>
+		);
+	};
 
 	return (
 		<>

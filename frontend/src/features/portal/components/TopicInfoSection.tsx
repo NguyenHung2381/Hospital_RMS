@@ -4,6 +4,7 @@ import { formatDate } from '../../../shared/utils/formatDate';
 import { getInitials } from '../../../shared/utils/helper';
 import { Badge } from '@/shared/components';
 import { STATUS_CFG } from '../utils/myTopicsHelpers';
+import { formatAcceptance } from '../../topics/utils/topicHelpers';
 import styles from '../pages/MyTopics.module.css';
 
 interface TopicInfoSectionProps {
@@ -35,6 +36,9 @@ export function TopicHeader({ detailTopic }: { detailTopic: TopicApprovalDetail 
 					<Badge tone='gray'>
 						{detailTopic.level_name ?? detailTopic.level_id}
 					</Badge>
+				)}
+				{detailTopic.is_legacy && (
+					<Badge tone='blue'>Đã hoàn thành · nhập bổ sung</Badge>
 				)}
 			</div>
 		</div>
@@ -75,6 +79,14 @@ export function TopicInfoSection({ detailTopic, latestApproval }: TopicInfoSecti
 						người
 					</div>
 				</div>
+				{detailTopic.is_legacy && (
+					<div className={styles.infoItem}>
+						<div className={styles.infoLabel}>Kết quả nghiệm thu</div>
+						<div className={styles.infoValue}>
+							{formatAcceptance(detailTopic) || '—'}
+						</div>
+					</div>
+				)}
 				<div className={styles.infoItem}>
 					<div className={styles.infoLabel}>Ngày nộp hồ sơ</div>
 					<div className={styles.infoValue}>

@@ -1,3 +1,4 @@
+import type { CustomValues } from '@/shared/formConfig/types';
 import type { ArticleType, MemberRole, TopicStatus } from './topic.type';
 
 export interface PendingMember {
@@ -18,7 +19,6 @@ export interface RegisterForm {
 	staff_number: string;
 	round_id: string;
 	category_id: string;
-	level_id: string;
 	department_id: string;
 	doi: string;
 	publish_date: string;
@@ -32,12 +32,13 @@ export interface PendingTopic {
 	staff_number: string;
 	round_id: string;
 	category_id: string;
-	level_id: string;
 	department_id: string;
 	doi: string;
 	publish_date: string;
 	members: PendingMember[];
 	attachments: File[];
+	/** Giá trị trường tùy chỉnh (Cấu hình form) */
+	custom: CustomValues;
 }
 
 export interface MyTopic {

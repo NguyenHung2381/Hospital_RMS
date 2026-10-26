@@ -443,6 +443,31 @@
 	font-size: 13px;
 	margin-bottom: 8px;
 }
+/* Ghi chú / lỗi của ô theo Cấu hình form (SELF_FIELD) */
+.cfgHint,
+.cfgError {
+	font-size: 12px;
+	font-weight: 400;
+}
+.cfgHint {
+	color: #64748b;
+}
+.cfgError {
+	color: #b91c1c;
+}
+.formGrid > label > .cfgInputError {
+	border-color: #ef4444;
+}
+/* Ô của trường tùy chỉnh (textarea không có sẵn style như input/select) */
+.cfgInput {
+	width: 100%;
+	box-sizing: border-box;
+	padding: 8px 10px;
+	border: 1px solid #cbd5e1;
+	border-radius: 8px;
+	font: inherit;
+	font-weight: 400;
+}
 @media (max-width: 600px) {
 	.formGrid {
 		grid-template-columns: minmax(0, 1fr);

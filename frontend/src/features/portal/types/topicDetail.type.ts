@@ -1,4 +1,5 @@
 import type { DeadlineType } from '../../round/types/round.type';
+import type { CustomValues } from '../../../shared/formConfig/types';
 
 /**
  * Những thao tác chủ nhiệm / thư ký được phép làm với đề tài, suy ra từ mốc
@@ -31,6 +32,8 @@ export type MemberFormState = {
 	chuc_vu: string;
 	staff_number: string;
 	role: 'leader' | 'secretary' | 'member';
+	/** Trường tùy chỉnh (Cấu hình form 'topic_member') */
+	custom: CustomValues;
 };
 
 export const blankMember: MemberFormState = {
@@ -40,6 +43,7 @@ export const blankMember: MemberFormState = {
 	chuc_vu: '',
 	staff_number: '',
 	role: 'member',
+	custom: {},
 };
 
 export const STATUS_CFG = {

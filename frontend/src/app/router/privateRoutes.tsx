@@ -60,6 +60,7 @@ const ActivityLogs = lazy(
 	() => import('../../features/activity-log/pages/ActivityLogs'),
 );
 const SystemSettings = lazy(() => import('../../features/settings/pages/SystemSettings'));
+const FormConfigs = lazy(() => import('../../features/form-config/pages/FormConfigs'));
 const Venues = lazy(() => import('../../features/venue/pages/Venues'));
 const Trainees = lazy(() => import('../../features/trainee/pages/Trainees'));
 const TraineeDetail = lazy(() => import('../../features/trainee/pages/TraineeDetail'));
@@ -115,6 +116,9 @@ const DepartmentAccounts = lazy(
 );
 const TopicRegister = lazy(
 	() => import('../../features/topics/pages/TopicRegister'),
+);
+const TopicLegacyImport = lazy(
+	() => import('../../features/topics/pages/TopicLegacyImport'),
 );
 const UserMyTraining = lazy(() => import('../../features/portal/pages/MyTraining'));
 const UserMyCourseDetail = lazy(() => import('../../features/portal/pages/MyCourseDetail'));
@@ -272,6 +276,14 @@ export const adminRoutes: RouteObject[] = [
 		element: (
 			<RequirePermission perm='system_settings:manage'>
 				{admin('Cấu hình hệ thống', <SystemSettings />)}
+			</RequirePermission>
+		),
+	},
+	{
+		path: '/admin/form-configs',
+		element: (
+			<RequirePermission perm='form_configs:manage'>
+				{admin('Cấu hình form', <FormConfigs />)}
 			</RequirePermission>
 		),
 	},
@@ -609,6 +621,16 @@ export const userRoutes: RouteObject[] = [
 			<RequirePermission perm='topics:create'>
 				<LazyRoute title='Đăng ký đề tài'>
 					<TopicRegister />
+				</LazyRoute>
+			</RequirePermission>
+		),
+	},
+	{
+		path: '/user/nhap-de-tai',
+		element: (
+			<RequirePermission perm='topics:create'>
+				<LazyRoute title='Nhập đề tài đã hoàn thành'>
+					<TopicLegacyImport />
 				</LazyRoute>
 			</RequirePermission>
 		),

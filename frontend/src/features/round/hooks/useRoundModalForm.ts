@@ -44,8 +44,8 @@ export function useRoundModalForm({
 	const [loading, setLoading] = useState(false);
 	const [saveError, setSaveError] = useState('');
 
-	// Tạo mới: chọn loại đợt ⇒ gợi ý sẵn cấp độ đã cấu hình cho loại đợt đó,
-	// cho tới khi người dùng tự tick/bỏ tick cấp độ.
+	// Tạo mới: chọn loại đợt ⇒ gợi ý sẵn cấp độ khi loại đợt đó chỉ cấu hình 1
+	// cấp độ, cho tới khi người dùng tự chọn cấp độ.
 	const levelsTouched = useRef(!!round);
 	useEffect(() => {
 		if (levelsTouched.current || !form.round_type_id) return;
@@ -53,7 +53,7 @@ export function useRoundModalForm({
 		getRoundTypeLevelIds(form.round_type_id)
 			.then((ids) => {
 				if (!cancelled && !levelsTouched.current)
-					setForm((p) => ({ ...p, level_ids: ids }));
+					setForm((p) => ({ ...p, level_ids: ids.length === 1 ? ids : [] }));
 			})
 			.catch(() => {});
 		return () => {
@@ -99,6 +99,7 @@ export function useRoundModalForm({
 		const e: FormErrors = {};
 		if (!form.name.trim()) e.name = 'Vui lòng nhập tên đợt';
 		if (!form.round_type_id) e.round_type_id = 'Vui lòng chọn loại đợt';
+		if (form.level_ids.length !== 1) e.level_ids = 'Vui lòng chọn cấp độ đề tài của đợt';
 		if (!form.start_date) e.start_date = 'Vui lòng chọn ngày bắt đầu';
 		if (!form.end_date) e.end_date = 'Vui lòng chọn ngày kết thúc';
 		const s = parseDate(form.start_date),

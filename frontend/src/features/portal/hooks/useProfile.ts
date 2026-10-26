@@ -20,6 +20,7 @@ import {
 	verifySetup2FAApi,
 	type TwoFaSetup,
 } from '../../auth/api/authApi';
+import type { CustomValues } from '../../../shared/formConfig/types';
 
 interface ProfileData {
 	id: string;
@@ -33,6 +34,8 @@ interface ProfileData {
 	is_active: boolean;
 	password_changed_at: string | null;
 	created_at: string;
+	/** Trường tùy chỉnh (Cấu hình form 'user_profile') */
+	custom?: CustomValues;
 }
 
 export function fmtDate(iso: string | null) {

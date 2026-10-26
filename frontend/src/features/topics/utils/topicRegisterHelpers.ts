@@ -75,3 +75,26 @@ export const GUIDE_STEPS = [
 		desc: 'Khi hoàn tất, nhấn "Gửi tất cả" để nộp hồ sơ yêu cầu phê duyệt.',
 	},
 ];
+
+export const LEGACY_GUIDE_STEPS = [
+	{
+		title: 'Chọn đợt',
+		desc: 'Chọn đợt nghiên cứu đề tài đã thực hiện. Chưa có đợt thì liên hệ quản lý NCKH tạo trước.',
+	},
+	{
+		title: 'Điền thông tin',
+		desc: 'Tên đề tài, danh mục và kết quả nghiệm thu (nếu có). Cấp độ lấy theo đợt.',
+	},
+	{
+		title: 'Thêm thành viên',
+		desc: 'Bắt buộc có Chủ nhiệm. Bạn nên có tên với vai trò Chủ nhiệm hoặc Thư ký để bổ sung hồ sơ sau.',
+	},
+	{
+		title: 'Đính kèm hồ sơ',
+		desc: 'Thuyết minh, báo cáo tổng kết, biên bản nghiệm thu, quyết định công nhận...',
+	},
+	{
+		title: 'Gửi xác nhận',
+		desc: 'Đề tài vào hàng chờ duyệt; quản lý NCKH kiểm tra rồi xác nhận.',
+	},
+];

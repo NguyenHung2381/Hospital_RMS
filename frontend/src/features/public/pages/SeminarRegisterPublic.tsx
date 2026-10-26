@@ -13,6 +13,12 @@ import {
 import { FormSection, SubGroup } from '../components/FormSection';
 import { useCaptcha } from '../hooks/useCaptcha';
 import { seminarWhen } from '../utils/seminarWhen';
+import { PUBLIC_FIELD } from '../utils/fieldClasses';
+import { allowedOptions } from '@/shared/formConfig/allowedOptions';
+import { CfgField } from '@/shared/formConfig/CfgField';
+import { CustomFields } from '@/shared/formConfig/CustomFields';
+import type { CustomValues } from '@/shared/formConfig/types';
+import { useFormConfig } from '@/shared/formConfig/useFormConfig';
 import styles from './PublicPortal.module.css';
 
 const HOSPITAL = 'Bệnh viện Hữu nghị Đa khoa Nghệ An';
@@ -51,6 +57,18 @@ export default function SeminarRegisterPublic() {
 	// Nhân viên nội viện tìm thấy theo họ tên + mã NV (null = chưa tra / không khớp)
 	const [staff, setStaff] = useState<SeminarStaff | null>(null);
 	const [lookingUp, setLookingUp] = useState(false);
+	// Nhãn / bắt buộc / trường tùy chỉnh theo Cấu hình form
+	const cfg = useFormConfig('seminar_participant', 'public');
+	const [custom, setCustomState] = useState<CustomValues>({});
+	const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+	const setCustom = (next: CustomValues) => {
+		setCustomState(next);
+		setFieldErrors((errs) => {
+			const n = { ...errs };
+			Object.keys(next).forEach((k) => next[k] !== custom[k] && delete n[k]);
+			return n;
+		});
+	};
 
 	useEffect(() => {
 		getPublicSeminar(token)
@@ -62,8 +80,10 @@ export default function SeminarRegisterPublic() {
 		if (error) window.scrollTo({ top: 0, behavior: 'smooth' });
 	}, [error]);
 
-	const set = (field: keyof typeof EMPTY_FORM) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
+	const set = (field: keyof typeof EMPTY_FORM) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
 		setForm((f) => ({ ...f, [field]: e.target.value }));
+		setFieldErrors((errs) => (errs[field] ? { ...errs, [field]: '' } : errs));
+	};
 
 	const setSource = (source: 'internal' | 'external') => {
 		setError('');
@@ -97,10 +117,16 @@ export default function SeminarRegisterPublic() {
 		if (form.source === 'internal') {
 			if (!form.staff_number.trim()) return setError('Vui lòng nhập mã nhân viên');
 			if (!staff) return setError('Vui lòng bấm "Lấy thông tin" để xác nhận nhân viên');
-		} else {
-			if (!form.phone.trim()) return setError('Vui lòng nhập số điện thoại');
-			if (!form.organization.trim()) return setError('Vui lòng nhập đơn vị công tác');
 		}
+		// Bắt buộc / ràng buộc theo Cấu hình form — nội viện chỉ có họ tên + mã NV
+		const values: Record<string, string> =
+			form.source === 'internal'
+				? { source: form.source, full_name: form.full_name, staff_number: form.staff_number }
+				: Object.fromEntries(Object.entries(form).filter(([k]) => k !== 'website' && k !== 'staff_number'));
+		const cfgErrs = cfg.validate(values, custom, { mode: 'create' });
+		setFieldErrors(cfgErrs);
+		const firstCfgErr = Object.values(cfgErrs)[0];
+		if (firstCfgErr) return setError(firstCfgErr);
 		if (!captcha.payload) return setError('Vui lòng hoàn tất bước xác nhận');
 
 		setSubmitting(true);
@@ -112,6 +138,7 @@ export default function SeminarRegisterPublic() {
 				website,
 				...(form.source === 'internal' ? { staff_number } : rest),
 				source: form.source,
+				custom,
 				...captcha.payload,
 			});
 			if (ticket_code) navigate(`/hoi-nghi/ve/${ticket_code}`, { state: { justRegistered: true } });
@@ -231,11 +258,17 @@ export default function SeminarRegisterPublic() {
 								description='Nhập họ tên và mã nhân viên, hệ thống tự lấy thông tin còn lại từ hồ sơ nhân sự.'
 							>
 								<div className={styles.formGrid}>
-									<div className={styles.formGroup}>
-										<label className={styles.label}>
-											Họ và tên <span className={styles.required}>*</span>
-										</label>
+									<CfgField
+										cfg={cfg}
+										name='full_name'
+										htmlFor='s-staff-name'
+										label='Họ và tên'
+										required
+										error={fieldErrors.full_name}
+										classes={PUBLIC_FIELD}
+									>
 										<input
+											id='s-staff-name'
 											className={styles.input}
 											value={form.full_name}
 											onChange={setStaffField('full_name')}
@@ -244,13 +277,19 @@ export default function SeminarRegisterPublic() {
 											autoComplete='name'
 											required
 										/>
-									</div>
-									<div className={styles.formGroup}>
-										<label className={styles.label}>
-											Mã nhân viên <span className={styles.required}>*</span>
-										</label>
+									</CfgField>
+									<CfgField
+										cfg={cfg}
+										name='staff_number'
+										htmlFor='s-staff-number'
+										label='Mã nhân viên'
+										required
+										error={fieldErrors.staff_number}
+										classes={PUBLIC_FIELD}
+									>
 										<div className={styles.searchRow}>
 											<input
+												id='s-staff-number'
 												className={styles.input}
 												inputMode='numeric'
 												value={form.staff_number}
@@ -268,7 +307,7 @@ export default function SeminarRegisterPublic() {
 												{lookingUp ? 'Đang tìm...' : 'Lấy thông tin'}
 											</button>
 										</div>
-									</div>
+									</CfgField>
 								</div>
 								{staff && (
 									<div className={`${styles.alertBox} ${styles.alertSuccess}`}>
@@ -294,21 +333,34 @@ export default function SeminarRegisterPublic() {
 							>
 								<SubGroup title='Thông tin cá nhân'>
 									<div className={styles.formGrid}>
-										<div className={styles.formGroup}>
-											<label className={styles.label}>Học hàm / học vị</label>
+										<CfgField
+											cfg={cfg}
+											name='title_prefix'
+											htmlFor='s-title_prefix'
+											label='Học hàm / học vị'
+											error={fieldErrors.title_prefix}
+											classes={PUBLIC_FIELD}
+										>
 											<input
+												id='s-title_prefix'
 												className={styles.input}
 												value={form.title_prefix}
 												onChange={set('title_prefix')}
 												placeholder='VD: BS., ThS., TS.'
 												maxLength={10}
 											/>
-										</div>
-										<div className={styles.formGroup}>
-											<label className={styles.label}>
-												Họ và tên <span className={styles.required}>*</span>
-											</label>
+										</CfgField>
+										<CfgField
+											cfg={cfg}
+											name='full_name'
+											htmlFor='s-full_name'
+											label='Họ và tên'
+											required
+											error={fieldErrors.full_name}
+											classes={PUBLIC_FIELD}
+										>
 											<input
+												id='s-full_name'
 												className={styles.input}
 												value={form.full_name}
 												onChange={set('full_name')}
@@ -316,25 +368,39 @@ export default function SeminarRegisterPublic() {
 												autoComplete='name'
 												required
 											/>
-										</div>
-										<div className={styles.formGroup}>
-											<label className={styles.label}>Ngày sinh</label>
+										</CfgField>
+										<CfgField
+											cfg={cfg}
+											name='dob'
+											htmlFor='s-dob'
+											label='Ngày sinh'
+											error={fieldErrors.dob}
+											classes={PUBLIC_FIELD}
+										>
 											<input
+												id='s-dob'
 												type='date'
 												className={styles.input}
 												value={form.dob}
 												onChange={set('dob')}
 											/>
-										</div>
-										<div className={styles.formGroup}>
-											<label className={styles.label}>Giới tính</label>
+										</CfgField>
+										<CfgField
+											cfg={cfg}
+											name='gender'
+											htmlFor='s-gender'
+											label='Giới tính'
+											error={fieldErrors.gender}
+											classes={PUBLIC_FIELD}
+										>
 											<select
+												id='s-gender'
 												className={styles.select}
 												value={form.gender}
 												onChange={set('gender')}
 											>
 												<option value=''>-- Chọn --</option>
-												{GENDER_OPTIONS.map((o) => (
+												{allowedOptions(cfg, 'gender', GENDER_OPTIONS).map((o) => (
 													<option
 														key={o.value}
 														value={o.value}
@@ -343,12 +409,18 @@ export default function SeminarRegisterPublic() {
 													</option>
 												))}
 											</select>
-										</div>
-										<div className={styles.formGroup}>
-											<label className={styles.label}>
-												Số điện thoại <span className={styles.required}>*</span>
-											</label>
+										</CfgField>
+										<CfgField
+											cfg={cfg}
+											name='phone'
+											htmlFor='s-phone'
+											label='Số điện thoại'
+											required
+											error={fieldErrors.phone}
+											classes={PUBLIC_FIELD}
+										>
 											<input
+												id='s-phone'
 												className={styles.input}
 												type='tel'
 												value={form.phone}
@@ -357,10 +429,17 @@ export default function SeminarRegisterPublic() {
 												autoComplete='tel'
 												required
 											/>
-										</div>
-										<div className={styles.formGroup}>
-											<label className={styles.label}>Email</label>
+										</CfgField>
+										<CfgField
+											cfg={cfg}
+											name='email'
+											htmlFor='s-email'
+											label='Email'
+											error={fieldErrors.email}
+											classes={PUBLIC_FIELD}
+										>
 											<input
+												id='s-email'
 												type='email'
 												className={styles.input}
 												value={form.email}
@@ -368,43 +447,82 @@ export default function SeminarRegisterPublic() {
 												placeholder='email@example.com'
 												autoComplete='email'
 											/>
-										</div>
+										</CfgField>
 									</div>
 								</SubGroup>
 
 								<SubGroup title='Công tác'>
 									<div className={styles.formGrid}>
-										<div className={styles.formGroup}>
-											<label className={styles.label}>
-												Đơn vị công tác <span className={styles.required}>*</span>
-											</label>
+										<CfgField
+											cfg={cfg}
+											name='organization'
+											htmlFor='s-organization'
+											label='Đơn vị công tác'
+											required
+											error={fieldErrors.organization}
+											classes={PUBLIC_FIELD}
+										>
 											<input
+												id='s-organization'
 												className={styles.input}
 												value={form.organization}
 												onChange={set('organization')}
 												placeholder='Bệnh viện / cơ sở y tế'
 											/>
-										</div>
-										<div className={styles.formGroup}>
-											<label className={styles.label}>Khoa / phòng</label>
+										</CfgField>
+										<CfgField
+											cfg={cfg}
+											name='department_raw'
+											htmlFor='s-department_raw'
+											label='Khoa / phòng'
+											error={fieldErrors.department_raw}
+											classes={PUBLIC_FIELD}
+										>
 											<input
+												id='s-department_raw'
 												className={styles.input}
 												value={form.department_raw}
 												onChange={set('department_raw')}
 											/>
-										</div>
-										<div className={styles.formGroup}>
-											<label className={styles.label}>Trình độ chuyên môn</label>
+										</CfgField>
+										<CfgField
+											cfg={cfg}
+											name='qualification_raw'
+											htmlFor='s-qualification_raw'
+											label='Trình độ chuyên môn'
+											error={fieldErrors.qualification_raw}
+											classes={PUBLIC_FIELD}
+										>
 											<input
+												id='s-qualification_raw'
 												className={styles.input}
 												value={form.qualification_raw}
 												onChange={set('qualification_raw')}
 												placeholder='VD: Bác sĩ, Điều dưỡng, Dược sĩ...'
 												maxLength={100}
 											/>
-										</div>
+										</CfgField>
 									</div>
 								</SubGroup>
+							</FormSection>
+						)}
+
+						{form.source && cfg.custom.length > 0 && (
+							<FormSection
+								step={3}
+								title='Thông tin bổ sung'
+							>
+								<div className={styles.formGrid}>
+									<CustomFields
+										cfg={cfg}
+										value={custom}
+										onChange={setCustom}
+										errors={fieldErrors}
+										title={null}
+										inputClassName={styles.input}
+										classes={PUBLIC_FIELD}
+									/>
+								</div>
 							</FormSection>
 						)}
 
