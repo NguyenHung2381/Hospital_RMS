@@ -1,7 +1,4 @@
 {
-	"dependencies": {
-		"concurrently": "^9.2.1"
-	},
 	"scripts": {
 		"server": "cd backend && npm run dev",
 		"client": "cd frontend && npm run dev",
@@ -9,5 +6,8 @@
 		"dev": "concurrently -n SERVER,CLIENT -c cyan,yellow \"npm run server\" \"npm run client:wait\"",
 		"gen:jwt": "node backend/scripts/gen-jwt-secrets.js",
 		"rotate:jwt": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/rotate-jwt-secrets.ps1"
+	},
+	"devDependencies": {
+		"concurrently": "^10.0.6"
 	}
 }

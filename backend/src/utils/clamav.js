@@ -109,7 +109,7 @@ const testConnection = async () => {
 	try {
 		pong = await command('PING', cfg);
 	} catch (err) {
-		throw new Error(`Không kết nối được ${where} (${err.code || err.message})`);
+		throw new Error(`Không kết nối được ${where} (${err.code || err.message})`, { cause: err });
 	}
 	if (pong !== 'PONG') throw new Error(`${where} không phải máy chủ ClamAV (clamd)`);
 	const version = await command('VERSION', cfg).catch(() => '');

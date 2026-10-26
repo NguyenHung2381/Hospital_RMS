@@ -122,7 +122,7 @@ async function ensureConnection() {
 
 	closeConnection();
 	connecting = true;
-	let ticket: string | null = null;
+	let ticket: string | null;
 	try {
 		ticket = await fetchTicket();
 	} catch {

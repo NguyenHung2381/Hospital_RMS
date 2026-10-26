@@ -77,7 +77,7 @@ export function useDrag({ setRows, yearStart, yearMs, zoom }: UseDragProps) {
 		const computeBarPos = (
 			mode: DragMode, initL: number, initW: number, deltaPct: number,
 		): { l: number; w: number } => {
-			let l = initL, w = initW;
+			let l: number, w: number;
 			if (mode === 'move') {
 				l = clampPct(initL + deltaPct);
 				if (l + initW > 100) l = 100 - initW;

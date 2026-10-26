@@ -9,6 +9,10 @@ updates:
     groups:
       minor-patch:
         update-types: [minor, patch]
+    ignore:
+      # Kiểu Node phải khớp bản Node đang chạy (CI 22, Docker 24), không theo bản mới nhất
+      - dependency-name: '@types/node'
+        update-types: ['version-update:semver-major']
   - package-ecosystem: github-actions
     directory: /
     schedule:

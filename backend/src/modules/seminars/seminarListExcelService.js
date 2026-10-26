@@ -431,7 +431,7 @@ const parseRows = async (buffer) => {
 		}
 
 		const yearRaw = text(row, 'event_year');
-		let eventYear = null;
+		let eventYear;
 		if (yearRaw) {
 			eventYear = parseInt(yearRaw, 10);
 			if (!(eventYear >= 1990 && eventYear <= 2100)) {
