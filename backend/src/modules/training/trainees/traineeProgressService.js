@@ -102,11 +102,11 @@ const paceOf = ({ progressStatus, start, end, completion, today }) => {
 /**
  * Phần tính THUẦN (không DB) cho 1 lượt ghi danh.
  * @param {object} p
- * @param {object} p.enrollment         course_enrollments + courses (ngày khóa)
- * @param {object[]} p.programTheory    bài lý thuyết đang có trong chương trình
- * @param {object[]} p.recordTheory     enrollment_lessons của hồ sơ
- * @param {object[]} p.programRounds    vòng thực hành đang có trong chương trình
- * @param {object[]} p.recordRotations  enrollment_rotations của hồ sơ
+ * @param {Record<string, any>} p.enrollment         course_enrollments + courses (ngày khóa)
+ * @param {Record<string, any>[]} p.programTheory    bài lý thuyết đang có trong chương trình
+ * @param {Record<string, any>[]} p.recordTheory     enrollment_lessons của hồ sơ
+ * @param {Record<string, any>[]} p.programRounds    vòng thực hành đang có trong chương trình
+ * @param {Record<string, any>[]} p.recordRotations  enrollment_rotations của hồ sơ
  * @param {string} p.today              'YYYY-MM-DD'
  */
 const buildProgress = ({

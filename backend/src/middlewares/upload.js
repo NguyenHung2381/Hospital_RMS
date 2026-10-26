@@ -90,7 +90,4 @@ const upload = createDiskUpload({
 	dirParts: (id) => ['topics', id],
 });
 
-module.exports = upload;
-module.exports.createDiskUpload = createDiskUpload;
-module.exports.dynamicMulter = dynamicMulter;
-module.exports.extensionFilter = extensionFilter;
+module.exports = Object.assign(upload, { createDiskUpload, dynamicMulter, extensionFilter });

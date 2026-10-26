@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { CheckSvg, XSvg } from '@/assets/icons';
 import AdminLayout from '@/layouts/AdminLayout';
 import { useRealtimeUpdate } from '@/layouts/hooks/useRealtime';
-import { Badge, Button, Modal, ModalActions, Pagination, TableEmpty } from '@/shared/components';
+import { Badge, Button, DatePicker, Modal, ModalActions, Pagination, TableEmpty } from '@/shared/components';
 import { ExcelActions, type ExcelColumn } from '@/shared/components/Excel';
 import { FormField } from '@/shared/components/Input/FormField';
 import m from '@/shared/components/Modal/Modal.module.css';
@@ -180,23 +180,8 @@ export default function LeaveRequests() {
 								</option>
 							))}
 						</select>
-						<input
-							type='date'
-							className={tbl.filterSelect}
-							value={from}
-							onChange={(e) => setFrom(e.target.value)}
-							aria-label='Từ ngày'
-							title='Từ ngày'
-						/>
-						<input
-							type='date'
-							className={tbl.filterSelect}
-							value={to}
-							min={from || undefined}
-							onChange={(e) => setTo(e.target.value)}
-							aria-label='Đến ngày'
-							title='Đến ngày'
-						/>
+						<DatePicker style={{ width: 170 }} placeholder='Từ ngày' value={from} onChange={setFrom} />
+						<DatePicker style={{ width: 170 }} placeholder='Đến ngày' value={to} min={from || undefined} onChange={setTo} />
 						{(departments.length > 1 || dept) && (
 							<select className={tbl.filterSelect} value={dept} onChange={(e) => setDept(e.target.value)} aria-label='Khoa/phòng'>
 								<option value=''>Tất cả khoa/phòng</option>

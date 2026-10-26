@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { AlertSvg, BookOpenSvg, CheckCircleSvg, CheckSmSvg, ChevRSvg, SendSvg } from '@/assets/icons';
-import { SearchInput } from '@/shared/components';
+import { DatePicker, SearchInput } from '@/shared/components';
 import { removeDiacritics } from '@/shared/utils/helper';
 import PublicLayout from '../../../layouts/PublicLayout';
 import { formatDateOr } from '../../../shared/utils/formatDate';
@@ -523,12 +523,12 @@ export default function CourseRegisterPublic() {
 									error={errors.dob}
 									classes={COURSE_FIELD}
 								>
-									<input
+									<DatePicker
 										id='f-dob'
-										type='date'
-										className={styles.input}
 										value={form.dob}
-										onChange={set('dob')}
+										hasError={!!errors.dob}
+										max={new Date().toISOString().slice(0, 10)}
+										onChange={(v) => set('dob')({ target: { value: v } } as React.ChangeEvent<HTMLInputElement>)}
 									/>
 								</CfgField>
 								<CfgField

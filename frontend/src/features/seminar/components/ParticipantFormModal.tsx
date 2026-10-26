@@ -1,4 +1,4 @@
-import { Modal } from '@/shared/components';
+import { DatePicker, Modal } from '@/shared/components';
 import { useEffect, useState } from 'react';
 import { CheckSvg, UsersSvg } from '@/assets/icons';
 import { searchUsers, type UserSuggestion } from '../../topics/api/topicApi';
@@ -260,12 +260,7 @@ export function ParticipantFormModal({
 
 				<div className={styles.formGroup}>
 					<label className={styles.formLabel}>Ngày sinh</label>
-					<input
-						type='date'
-						className={styles.formInput}
-						value={form.dob}
-						onChange={set('dob')}
-					/>
+					<DatePicker value={form.dob} onChange={(v) => setForm((f) => ({ ...f, dob: v }))} />
 				</div>
 				<div className={styles.formGroup}>
 					<label className={styles.formLabel}>Ngày sinh (dạng chữ)</label>

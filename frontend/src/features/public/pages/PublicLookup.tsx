@@ -8,6 +8,7 @@ import styles from './PublicPortal.module.css';
 import tbl from '@/shared/components/Table/Table.module.css';
 import { useClientPaging } from '@/shared/hooks/useClientPaging';
 import { Pagination } from '@/shared/components/Table/Pagination';
+import { DatePicker } from '@/shared/components';
 
 export default function PublicLookup() {
 	const [fullName, setFullName] = useState('');
@@ -79,14 +80,7 @@ export default function PublicLookup() {
 					<span className={styles.label}>
 						Ngày sinh <span className={styles.required}>*</span>
 					</span>
-					<input
-						type='date'
-						className={styles.input}
-						value={dob}
-						onChange={(e) => setDob(e.target.value)}
-						max={new Date().toISOString().slice(0, 10)}
-						title='Ngày sinh (ngày/tháng/năm)'
-					/>
+					<DatePicker value={dob} onChange={setDob} max={new Date().toISOString().slice(0, 10)} />
 				</label>
 				<button
 					type='submit'

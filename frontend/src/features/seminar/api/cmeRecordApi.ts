@@ -46,7 +46,22 @@ export const deleteCmeRecord = (id: string) => apiClient.delete<null>(`/cme-reco
 export const deleteCmeRecords = (ids: string[]) =>
 	apiClient.post<{ deleted: number }>('/cme-records/bulk-delete', { ids });
 
-export const addCmeRecordEvidence = (id: string, file: File) => {
+/** Sửa đồng loạt — chỉ trường có trong patch bị ghi đè, còn lại giữ nguyên. */
+export type CmeRecordBulkPatch = Partial<{
+	category_id: string;
+	title: string;
+	role: string;
+	quantity: number;
+	activity_date: string;
+	end_date: string;
+	year: number;
+	credits: number;
+	note: string;
+}>;
+export const bulkUpdateCmeRecords = (ids: string[], patch: CmeRecordBulkPatch) =>
+	apiClient.post<{ updated: number }>('/cme-records/bulk-update', { ids, ...patch });
+
+export const addCmeRecordEvidence =(id: string, file: File) => {
 	const form = new FormData();
 	form.append('file', file);
 	return apiClient.postForm<CmeRecord>(`/cme-records/${id}/evidence`, form);

@@ -253,7 +253,7 @@ export function buildFinalHtml(
 		const rows: { t: ExportTopic; m: ExportTopic['members'][0] }[] = [];
 		topics.forEach((t) => t.members.forEach((m) => rows.push({ t, m })));
 		html +=
-			`<div style="margin-top:14pt"><h1 style="font-size:12pt">${toRoman(n++)}. Danh sách thành viên tham gia</h1>` +
+			`<div style="margin-top:14pt"><h1 style="font-size:12pt">${toRoman(n)}. Danh sách thành viên tham gia</h1>` +
 			`<p style="text-align:center;font-size:10pt;margin-bottom:8pt">Tổng: <strong>${rows.length}</strong> thành viên</p>` +
 			`<table><thead><tr><th class="stt">STT</th><th>Mã ĐT</th><th>Tên đề tài</th><th>Họ tên</th><th>Vai trò</th><th>Chức vụ</th><th>Email</th></tr></thead>` +
 			`<tbody>${rows

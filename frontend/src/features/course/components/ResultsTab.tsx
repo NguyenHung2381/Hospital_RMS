@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { BadgeSvg, TrashSvg } from '@/assets/icons';
 import { Modal } from '@/shared/components/Modal';
+import { DatePicker } from '@/shared/components';
 import { usePermission } from '@/shared/hooks/usePermission';
 import { showToast } from '@/shared/utils/feedback';
 import { formatDateVN } from '@/shared/utils/formatDate';
@@ -131,13 +132,11 @@ export function ResultsTab({ courseId, d }: { courseId: string; d: ReturnType<ty
 			)}
 			{book.locked && has('courses:approve') && toIssue > 0 && (
 				<>
-					<input
-						type='date'
-						className={styles.subInput}
-						style={{ maxWidth: 150 }}
-						title='Hạn giấy chứng nhận (bỏ trống = không thời hạn)'
+					<DatePicker
+						style={{ maxWidth: 170 }}
+						placeholder='Không thời hạn'
 						value={certExpiry}
-						onChange={(e) => setCertExpiry(e.target.value)}
+						onChange={setCertExpiry}
 					/>
 					<button
 						className={styles.btnPrimary}

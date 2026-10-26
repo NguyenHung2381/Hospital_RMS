@@ -59,6 +59,4 @@ const safeParam = (req, name) => {
 // Ảnh chèn vào nhận xét của hội đồng đánh giá đề tài
 const uploadImage = makeImageUpload((req) => ['topics', safeParam(req, 'topic_id'), 'comments']);
 
-module.exports = uploadImage;
-module.exports.makeImageUpload = makeImageUpload;
-module.exports.safeParam = safeParam;
+module.exports = Object.assign(uploadImage, { makeImageUpload, safeParam });

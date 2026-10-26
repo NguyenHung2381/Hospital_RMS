@@ -12,7 +12,7 @@ import {
 	UserSvg,
 	XSvg,
 } from '@/assets/icons';
-import { Badge, Button, EmptyState, TimePicker } from '@/shared/components';
+import { Badge, Button, DatePicker, EmptyState, TimePicker } from '@/shared/components';
 import type { BadgeTone } from '@/shared/components/Badge/badgeTone';
 import { FormField } from '@/shared/components/Input/FormField';
 import { Modal, ModalActions } from '@/shared/components/Modal';
@@ -426,23 +426,13 @@ function SessionFormModal({
 							label='Từ ngày'
 							required
 						>
-							<input
-								type='date'
-								className={m.formInput}
-								value={many.start_date}
-								onChange={(e) => set({ start_date: e.target.value })}
-							/>
+							<DatePicker value={many.start_date} onChange={(v) => set({ start_date: v })} />
 						</FormField>
 						<FormField
 							label='Đến ngày'
 							required
 						>
-							<input
-								type='date'
-								className={m.formInput}
-								value={many.end_date}
-								onChange={(e) => set({ end_date: e.target.value })}
-							/>
+							<DatePicker value={many.end_date} min={many.start_date || undefined} onChange={(v) => set({ end_date: v })} />
 						</FormField>
 					</div>
 					<FormField
@@ -474,12 +464,7 @@ function SessionFormModal({
 					label='Ngày học'
 					required
 				>
-					<input
-						type='date'
-						className={m.formInput}
-						value={one.session_date}
-						onChange={(e) => set({ session_date: e.target.value })}
-					/>
+					<DatePicker value={one.session_date} onChange={(v) => set({ session_date: v })} />
 				</FormField>
 			)}
 			<div className={m.formRow}>

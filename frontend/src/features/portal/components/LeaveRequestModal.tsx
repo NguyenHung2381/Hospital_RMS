@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Button, Modal, TimePicker } from '@/shared/components';
+import { Button, DatePicker, Modal, TimePicker } from '@/shared/components';
 import { toIsoDate } from '@/shared/utils/formatDate';
 import { createLeaveRequest, type LeavePolicy, type LeaveType, type MyAttendance } from '../api/meApi';
 import styles from '../pages/SelfService.module.css';
@@ -159,11 +159,11 @@ export default function LeaveRequestModal({ week, policy = DEFAULT_POLICY, onClo
 					error={fieldErrors.from_date}
 					classes={SELF_FIELD}
 				>
-					<input type='date' value={fromDate} min={minDate} max={maxDate} onChange={(e) => changeFrom(e.target.value)} />
+					<DatePicker value={fromDate} min={minDate} max={maxDate} hasError={!!fieldErrors.from_date} onChange={changeFrom} />
 				</CfgField>
 				{type === 'absent' ? (
 					<CfgField cfg={cfg} name='to_date' label='Đến ngày' required error={fieldErrors.to_date} classes={SELF_FIELD}>
-						<input type='date' value={toDate} min={fromDate} max={maxToDate} onChange={(e) => setToDate(e.target.value)} />
+						<DatePicker value={toDate} min={fromDate} max={maxToDate} hasError={!!fieldErrors.to_date} onChange={setToDate} />
 					</CfgField>
 				) : (
 					<label>

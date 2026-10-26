@@ -71,5 +71,4 @@ const rateLimit = ({ name, ...options }) => {
 	});
 };
 
-module.exports = rateLimit;
-module.exports.RedisWithMemoryFallbackStore = RedisWithMemoryFallbackStore;
+module.exports = Object.assign(rateLimit, { RedisWithMemoryFallbackStore });

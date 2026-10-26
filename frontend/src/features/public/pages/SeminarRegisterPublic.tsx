@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { AlertSvg } from '@/assets/icons';
+import { DatePicker } from '@/shared/components';
 import PublicLayout from '../../../layouts/PublicLayout';
 import { GENDER_OPTIONS } from '../../../shared/utils/gender';
 import {
@@ -377,12 +378,12 @@ export default function SeminarRegisterPublic() {
 											error={fieldErrors.dob}
 											classes={PUBLIC_FIELD}
 										>
-											<input
+											<DatePicker
 												id='s-dob'
-												type='date'
-												className={styles.input}
 												value={form.dob}
-												onChange={set('dob')}
+												hasError={!!fieldErrors.dob}
+												max={new Date().toISOString().slice(0, 10)}
+												onChange={(v) => setForm((f) => ({ ...f, dob: v }))}
 											/>
 										</CfgField>
 										<CfgField

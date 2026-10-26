@@ -14,6 +14,6 @@ const envFile = process.env.NODE_ENV === 'production' ? '.env.production' : '.en
 const envCandidates = [path.resolve(SERVER_DIR, envFile), path.resolve(SERVER_DIR, '.env')];
 for (const envPath of envCandidates) {
 	if (fs.existsSync(envPath)) {
-		dotenv.config({ path: envPath });
+		dotenv.config({ path: envPath, quiet: true });
 	}
 }

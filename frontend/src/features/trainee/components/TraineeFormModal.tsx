@@ -1,5 +1,5 @@
 import { FormField } from '@/shared/components/Input/FormField';
-import { Modal, ModalActions } from '@/shared/components';
+import { DatePicker, Modal, ModalActions } from '@/shared/components';
 import React, { useState } from 'react';
 import { UserCheckSvg } from '@/assets/icons';
 import { EMPTY_FORM, GENDER_OPTIONS, type Trainee, type TraineeFormData } from '../types/trainee.type';
@@ -115,12 +115,7 @@ export function TraineeFormModal({
 					</select>
 				</FormField>
 				<FormField label='Ngày sinh'>
-					<input
-						type='date'
-						className={styles.formInput}
-						value={form.dob}
-						onChange={set('dob')}
-					/>
+					<DatePicker value={form.dob} onChange={(v) => setForm((f) => ({ ...f, dob: v }))} />
 				</FormField>
 				<FormField label='Giới tính'>
 					<select
@@ -159,12 +154,7 @@ export function TraineeFormModal({
 					/>
 				</FormField>
 				<FormField label='Ngày cấp CCCD'>
-					<input
-						type='date'
-						className={styles.formInput}
-						value={form.national_id_issued_date}
-						onChange={set('national_id_issued_date')}
-					/>
+					<DatePicker value={form.national_id_issued_date} onChange={(v) => setForm((f) => ({ ...f, national_id_issued_date: v }))} />
 				</FormField>
 				<FormField label='Nơi cấp CCCD'>
 					<input
@@ -269,20 +259,10 @@ export function TraineeFormModal({
 					/>
 				</FormField>
 				<FormField label='Ngày tốt nghiệp'>
-					<input
-						type='date'
-						className={styles.formInput}
-						value={form.graduated_date}
-						onChange={set('graduated_date')}
-					/>
+					<DatePicker value={form.graduated_date} onChange={(v) => setForm((f) => ({ ...f, graduated_date: v }))} />
 				</FormField>
 				<FormField label='Ngày cấp bằng'>
-					<input
-						type='date'
-						className={styles.formInput}
-						value={form.degree_issued_date}
-						onChange={set('degree_issued_date')}
-					/>
+					<DatePicker value={form.degree_issued_date} onChange={(v) => setForm((f) => ({ ...f, degree_issued_date: v }))} />
 				</FormField>
 				<FormField label='Nơi sinh (tỉnh)'>
 					<input

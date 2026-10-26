@@ -1,6 +1,6 @@
 import { useUploadPolicy } from '@/shared/hooks/useUploadPolicy';
 import { useState } from 'react';
-import { Button, FileDropzone, Modal } from '@/shared/components';
+import { Button, DatePicker, FileDropzone, Modal } from '@/shared/components';
 import {
 	addMyCmeEvidence,
 	createMyCmeRecord,
@@ -142,16 +142,19 @@ export default function MyCmeRecordModal({ record, categories, defaultYear, onCl
 					<input type='number' step='0.1' min='0' value={form.quantity} onChange={set('quantity')} />
 				</CfgField>
 				<CfgField cfg={cfg} name='activity_date' label='Từ ngày' error={fieldErrors.activity_date} classes={SELF_FIELD}>
-					<input
-						type='date'
+					<DatePicker
 						value={form.activity_date}
-						onChange={(e) =>
-							setForm((f) => ({ ...f, activity_date: e.target.value, year: e.target.value.slice(0, 4) || f.year }))
-						}
+						hasError={!!fieldErrors.activity_date}
+						onChange={(v) => setForm((f) => ({ ...f, activity_date: v, year: v.slice(0, 4) || f.year }))}
 					/>
 				</CfgField>
 				<CfgField cfg={cfg} name='end_date' label='Đến ngày' error={fieldErrors.end_date} classes={SELF_FIELD}>
-					<input type='date' value={form.end_date} onChange={set('end_date')} />
+					<DatePicker
+						value={form.end_date}
+						min={form.activity_date || undefined}
+						hasError={!!fieldErrors.end_date}
+						onChange={(v) => set('end_date')({ target: { value: v } })}
+					/>
 				</CfgField>
 				<CfgField cfg={cfg} name='year' label='Năm' required error={fieldErrors.year} classes={SELF_FIELD}>
 					<input type='number' value={form.year} onChange={set('year')} />
