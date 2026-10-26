@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import AdminLayout from '@/layouts/AdminLayout';
 import { useRealtimeUpdate } from '@/layouts/hooks/useRealtime';
 import { apiClient } from '@/shared/api/axios';
-import { Badge, Pagination, TableEmpty } from '@/shared/components';
+import { Badge, DatePicker, Pagination, TableEmpty } from '@/shared/components';
 import tbl from '@/shared/components/Table/Table.module.css';
 import { SearchInput } from '@/shared/components/Table/TableToolbar';
 import { useClientPaging } from '@/shared/hooks/useClientPaging';
@@ -169,16 +169,14 @@ export default function StaffAttendance() {
 						</span>
 					</div>
 					<div className={tbl.tableControls}>
-						<input
-							type='date'
-							className={tbl.filterSelect}
+						<DatePicker
+							style={{ width: 170 }}
 							value={date}
-							onChange={(e) => {
-								if (!e.target.value) return;
+							onChange={(v) => {
+								if (!v) return;
 								setLoading(true);
-								setDate(e.target.value);
+								setDate(v);
 							}}
-							aria-label='Ngày'
 						/>
 						<select className={tbl.filterSelect} value={status} onChange={(e) => setStatus(e.target.value as StatusFilter)} aria-label='Trạng thái'>
 							{STATUS_FILTERS.map((s) => (

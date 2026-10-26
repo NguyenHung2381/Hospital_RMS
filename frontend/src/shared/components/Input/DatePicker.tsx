@@ -252,10 +252,12 @@ export function DatePicker({
 		setIsOpen(false);
 	};
 
-	// Year Options (from todayYear - 30 to todayYear + 15)
+	// Năm: lùi 100 năm (đủ cho ngày sinh) tới +15 năm, luôn chứa năm đang xem
 	const currentYearNum = today.getFullYear();
 	const yearOptions: number[] = [];
-	for (let y = currentYearNum - 35; y <= currentYearNum + 15; y++) {
+	const firstYear = Math.min(currentYearNum - 100, viewYear);
+	const lastYear = Math.max(currentYearNum + 15, viewYear);
+	for (let y = firstYear; y <= lastYear; y++) {
 		yearOptions.push(y);
 	}
 

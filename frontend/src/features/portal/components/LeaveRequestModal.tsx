@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Button, Modal, TimePicker } from '@/shared/components';
+import { Button, DatePicker, Modal, TimePicker } from '@/shared/components';
 import { toIsoDate } from '@/shared/utils/formatDate';
 import { createLeaveRequest, type LeavePolicy, type LeaveType, type MyAttendance } from '../api/meApi';
 import styles from '../pages/SelfService.module.css';
@@ -134,12 +134,12 @@ export default function LeaveRequestModal({ week, policy = DEFAULT_POLICY, onClo
 			<div className={styles.formGrid}>
 				<label>
 					{type === 'late' ? 'Ngày *' : 'Từ ngày *'}
-					<input type='date' value={fromDate} min={minDate} max={maxDate} onChange={(e) => changeFrom(e.target.value)} />
+					<DatePicker value={fromDate} min={minDate} max={maxDate} onChange={changeFrom} />
 				</label>
 				{type === 'absent' ? (
 					<label>
 						Đến ngày *
-						<input type='date' value={toDate} min={fromDate} max={maxToDate} onChange={(e) => setToDate(e.target.value)} />
+						<DatePicker value={toDate} min={fromDate} max={maxToDate} onChange={setToDate} />
 					</label>
 				) : (
 					<label>

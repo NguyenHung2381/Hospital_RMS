@@ -1,6 +1,6 @@
 import { useUploadPolicy } from '@/shared/hooks/useUploadPolicy';
 import { useState } from 'react';
-import { Button, FileDropzone, Modal } from '@/shared/components';
+import { Button, DatePicker, FileDropzone, Modal } from '@/shared/components';
 import {
 	addMyCmeEvidence,
 	createMyCmeRecord,
@@ -130,17 +130,14 @@ export default function MyCmeRecordModal({ record, categories, defaultYear, onCl
 				</label>
 				<label>
 					Từ ngày
-					<input
-						type='date'
+					<DatePicker
 						value={form.activity_date}
-						onChange={(e) =>
-							setForm((f) => ({ ...f, activity_date: e.target.value, year: e.target.value.slice(0, 4) || f.year }))
-						}
+						onChange={(v) => setForm((f) => ({ ...f, activity_date: v, year: v.slice(0, 4) || f.year }))}
 					/>
 				</label>
 				<label>
 					Đến ngày
-					<input type='date' value={form.end_date} onChange={set('end_date')} />
+					<DatePicker value={form.end_date} min={form.activity_date || undefined} onChange={(v) => set('end_date')({ target: { value: v } })} />
 				</label>
 				<label>
 					Năm *

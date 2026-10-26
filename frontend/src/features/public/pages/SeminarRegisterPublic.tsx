@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { AlertSvg } from '@/assets/icons';
+import { DatePicker } from '@/shared/components';
 import PublicLayout from '../../../layouts/PublicLayout';
 import { GENDER_OPTIONS } from '../../../shared/utils/gender';
 import {
@@ -319,11 +320,10 @@ export default function SeminarRegisterPublic() {
 										</div>
 										<div className={styles.formGroup}>
 											<label className={styles.label}>Ngày sinh</label>
-											<input
-												type='date'
-												className={styles.input}
+											<DatePicker
 												value={form.dob}
-												onChange={set('dob')}
+												max={new Date().toISOString().slice(0, 10)}
+												onChange={(v) => setForm((f) => ({ ...f, dob: v }))}
 											/>
 										</div>
 										<div className={styles.formGroup}>

@@ -17,7 +17,7 @@ import {
 } from '@/assets/icons';
 import AdminLayout from '../../../layouts/AdminLayout';
 import { useRealtimeUpdate } from '../../../layouts/hooks/useRealtime';
-import { Badge, FileDropzone, Modal, Pagination, SearchableSelect } from '@/shared/components';
+import { Badge, DatePicker, FileDropzone, Modal, Pagination, SearchableSelect } from '@/shared/components';
 import { InlineLoading } from '../../../shared/components/Loading';
 import sel from '@/shared/components/Table/RowSelect.module.css';
 import { BulkButton, BulkDeleteModal, DeleteAllButton, SelectCheckbox, SelectionBar } from '@/shared/components/Table/RowSelect';
@@ -487,27 +487,20 @@ function RecordFormModal({
 				</div>
 				<div className={styles.formGroup}>
 					<label className={styles.formLabel}>Từ ngày</label>
-					<input
-						type='date'
-						className={styles.formInput}
+					<DatePicker
 						value={form.activity_date}
-						onChange={(e) =>
+						onChange={(v) =>
 							setForm((f) => ({
 								...f,
-								activity_date: e.target.value,
-								year: e.target.value.slice(0, 4) || f.year,
+								activity_date: v,
+								year: v.slice(0, 4) || f.year,
 							}))
 						}
 					/>
 				</div>
 				<div className={styles.formGroup}>
 					<label className={styles.formLabel}>Đến ngày</label>
-					<input
-						type='date'
-						className={styles.formInput}
-						value={form.end_date}
-						onChange={(e) => setForm((f) => ({ ...f, end_date: e.target.value }))}
-					/>
+					<DatePicker value={form.end_date} onChange={(v) => setForm((f) => ({ ...f, end_date: v }))} />
 				</div>
 				<div className={styles.formGroup}>
 					<label className={styles.formLabel}>Năm *</label>
@@ -715,21 +708,11 @@ function BulkEditModal({
 				</div>
 				<div className={styles.formGroup}>
 					<label className={styles.formLabel}>Từ ngày</label>
-					<input
-						type='date'
-						className={styles.formInput}
-						value={f.activity_date}
-						onChange={(e) => set({ activity_date: e.target.value })}
-					/>
+					<DatePicker value={f.activity_date} onChange={(v) => set({ activity_date: v })} />
 				</div>
 				<div className={styles.formGroup}>
 					<label className={styles.formLabel}>Đến ngày</label>
-					<input
-						type='date'
-						className={styles.formInput}
-						value={f.end_date}
-						onChange={(e) => set({ end_date: e.target.value })}
-					/>
+					<DatePicker value={f.end_date} onChange={(v) => set({ end_date: v })} />
 				</div>
 				<div className={styles.formGroup}>
 					<label className={styles.formLabel}>Năm</label>
