@@ -121,12 +121,27 @@ router.post(
 			.isFloat({ min: 0, max: 100 })
 			.withMessage('Điểm nghiệm thu phải từ 0 đến 100'),
 		body('acceptance_date').optional({ checkFalsy: true }).isISO8601(),
+		body(['budget_estimated', 'budget_actual'])
+			.optional({ checkFalsy: true })
+			.isFloat({ min: 0 })
+			.withMessage('Kinh phí phải là số không âm'),
+		body(['approval_decision_date', 'recognition_decision_date'])
+			.optional({ checkFalsy: true })
+			.isISO8601(),
 		body('members').isArray({ min: 1, max: 50 }).withMessage('Cần ít nhất một thành viên'),
 		body('members.*.ho_ten').trim().notEmpty().withMessage('Thành viên thiếu họ tên'),
 		body('members.*.email').optional({ checkFalsy: true }).isEmail(),
 		body('members.*.role').isIn(['leader', 'secretary', 'member']),
 	],
 	validate,
+	// Đề tài cũ luôn là 'de_tai' (service tự gán) — đặt sẵn để điều kiện `when`
+	// của cấu hình form tính đúng, rồi kiểm theo form cổng nhân viên.
+	(req, _res, next) => {
+		req.body.article_type = 'de_tai';
+		next();
+	},
+	// Đề tài đã xong ⇒ kiểm cả trường "chỉ khi sửa" (kết quả, kinh phí, quyết định)
+	formConfigGuard('topic', { variant: 'portal', mode: 'create', includeEditOnly: true }),
 	ctrl.createLegacy,
 );
 

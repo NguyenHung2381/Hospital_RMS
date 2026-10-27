@@ -7,6 +7,7 @@ import {
 	ListSvg,
 	LockSvg,
 } from '@/assets/icons';
+import { CustomFields } from '@/shared/formConfig/CustomFields';
 import UserLayout from '../../../layouts/UserLayout';
 import { InlineLoading } from '../../../shared/components/Loading';
 import { DatePicker } from '../../../shared/components/Input/DatePicker';
@@ -14,7 +15,7 @@ import { RegisterAttachmentsSection } from '../components/RegisterAttachmentsSec
 import { RegisterMemberSection } from '../components/RegisterMemberSection';
 import { RegisterSidePanel } from '../components/RegisterSidePanel';
 import { RoundLevelField } from '../components/RoundLevelField';
-import { useTopicLegacyImport } from '../hooks/useTopicLegacyImport';
+import { type LegacyTopicForm, useTopicLegacyImport } from '../hooks/useTopicLegacyImport';
 import type { AcceptanceRating, MemberRole } from '../types/topic.type';
 import { ACCEPTANCE_RATING_CFG, ACCEPTANCE_RATINGS } from '../utils/topicHelpers';
 import { ARTICLE_ROLE_CFG, LEGACY_GUIDE_STEPS } from '../utils/topicRegisterHelpers';
@@ -27,11 +28,42 @@ const ROUND_STATUS_LABEL: Record<string, string> = {
 	closed: 'Đã đóng',
 };
 
+// Kinh phí & quyết định — xếp theo cặp trên lưới 2 cột
+const DECISION_FIELDS: {
+	key: keyof LegacyTopicForm;
+	label: string;
+	type: 'money' | 'text' | 'date';
+	placeholder: string;
+}[] = [
+	{ key: 'budget_estimated', label: 'Kinh phí dự toán (đồng)', type: 'money', placeholder: 'VD: 50000000' },
+	{ key: 'budget_actual', label: 'Kinh phí thực tế (đồng)', type: 'money', placeholder: 'VD: 48000000' },
+	{ key: 'approval_decision_no', label: 'Số quyết định phê duyệt', type: 'text', placeholder: 'VD: 123/QĐ-BV' },
+	{ key: 'approval_decision_date', label: 'Ngày quyết định phê duyệt', type: 'date', placeholder: 'Chọn ngày...' },
+	{ key: 'recognition_decision_no', label: 'Số quyết định công nhận', type: 'text', placeholder: 'VD: 456/QĐ-BV' },
+	{ key: 'recognition_decision_date', label: 'Ngày quyết định công nhận', type: 'date', placeholder: 'Chọn ngày...' },
+];
+
 // Đợt đã làm xong trước khi có hệ thống: người dùng nhập lại đề tài + hồ sơ,
 // quản lý NCKH xác nhận ở trang Phê duyệt như đăng ký thường.
 export default function TopicLegacyImport() {
 	const s = useTopicLegacyImport();
-	const { form, errors, setField } = s;
+	const { form, errors, setField, cfg } = s;
+	// Nhãn / bắt buộc / placeholder theo Cấu hình form 'topic' (biến thể cổng nhân viên)
+	const { label: lbl, required: req, placeholder: ph, maxLength: maxLen } = cfg;
+	const hint = (k: string) => {
+		const h = cfg.hint(k);
+		return h ? <div className={styles.formHint}>{h}</div> : null;
+	};
+	const reqMark = <span className={styles.formRequired}>*</span>;
+	const showRating = cfg.visible('acceptance_rating');
+	const showScore = cfg.visible('acceptance_score');
+	const showAccDate = cfg.visible('acceptance_date');
+	// Admin có thể thu hẹp danh sách xếp loại
+	const allowedRatings = cfg.field('acceptance_rating')?.options?.map((o) => o.value);
+	const ratingOptions = allowedRatings
+		? ACCEPTANCE_RATINGS.filter((r) => allowedRatings.includes(r))
+		: ACCEPTANCE_RATINGS;
+	const decisionFields = DECISION_FIELDS.filter((f) => cfg.visible(f.key));
 
 	const breadcrumbs = [
 		{ label: 'Đề tài', path: '/user/my-topics' },
@@ -104,7 +136,7 @@ export default function TopicLegacyImport() {
 								className={styles.formLabel}
 								htmlFor='legacy-round'
 							>
-								Đợt đề tài đã thực hiện <span className={styles.formRequired}>*</span>
+								{lbl('round_id', 'Đợt đề tài đã thực hiện')} {reqMark}
 							</label>
 							<select
 								id='legacy-round'
@@ -126,6 +158,7 @@ export default function TopicLegacyImport() {
 									</option>
 								))}
 							</select>
+							{hint('round_id')}
 							{fieldError('round_id')}
 							<div className={styles.dropZoneHint}>
 								<InfoSvg
@@ -143,34 +176,44 @@ export default function TopicLegacyImport() {
 								className={styles.formLabel}
 								htmlFor='legacy-title'
 							>
-								Tên đề tài <span className={styles.formRequired}>*</span>
+								{lbl('title', 'Tên đề tài')} {reqMark}
 							</label>
 							<input
 								id='legacy-title'
 								className={`${styles.formInput} ${errors.title ? styles.hasError : ''}`}
-								placeholder='Nhập tên đề tài nghiên cứu...'
+								placeholder={ph('title', 'Nhập tên đề tài nghiên cứu...')}
+								maxLength={maxLen('title')}
 								value={form.title}
 								onChange={(e) => setField('title', e.target.value)}
 							/>
+							{hint('title')}
 							{fieldError('title')}
 						</div>
 
-						<div className={styles.formGroup}>
-							<label
-								className={styles.formLabel}
-								htmlFor='legacy-desc'
-							>
-								Mô tả / Tóm tắt
-							</label>
-							<textarea
-								id='legacy-desc'
-								className={styles.formInput}
-								rows={3}
-								placeholder='Mục tiêu, phương pháp, kết quả chính của đề tài...'
-								value={form.description}
-								onChange={(e) => setField('description', e.target.value)}
-							/>
-						</div>
+						{cfg.visible('description') && (
+							<div className={styles.formGroup}>
+								<label
+									className={styles.formLabel}
+									htmlFor='legacy-desc'
+								>
+									{lbl('description', 'Mô tả / Tóm tắt')} {req('description') && reqMark}
+								</label>
+								<textarea
+									id='legacy-desc'
+									className={`${styles.formInput} ${errors.description ? styles.hasError : ''}`}
+									rows={3}
+									placeholder={ph(
+										'description',
+										'Mục tiêu, phương pháp, kết quả chính của đề tài...',
+									)}
+									maxLength={maxLen('description')}
+									value={form.description}
+									onChange={(e) => setField('description', e.target.value)}
+								/>
+								{hint('description')}
+								{fieldError('description')}
+							</div>
+						)}
 
 						<div className={styles.formRow}>
 							<div className={styles.formGroup}>
@@ -182,7 +225,7 @@ export default function TopicLegacyImport() {
 									className={styles.formLabel}
 									htmlFor='legacy-dept'
 								>
-									Khoa phòng <span className={styles.formRequired}>*</span>
+									{lbl('department_id', 'Khoa phòng')} {reqMark}
 								</label>
 								{s.currentDeptId ? (
 									<div
@@ -212,6 +255,7 @@ export default function TopicLegacyImport() {
 										))}
 									</select>
 								)}
+								{hint('department_id')}
 								{fieldError('department_id')}
 							</div>
 							<div className={`${styles.formGroup} ${styles.formRowFull}`}>
@@ -219,7 +263,7 @@ export default function TopicLegacyImport() {
 									className={styles.formLabel}
 									htmlFor='legacy-cat'
 								>
-									Danh mục <span className={styles.formRequired}>*</span>
+									{lbl('category_id', 'Danh mục')} {reqMark}
 								</label>
 								<select
 									id='legacy-cat'
@@ -238,71 +282,146 @@ export default function TopicLegacyImport() {
 										</option>
 									))}
 								</select>
+								{hint('category_id')}
 								{fieldError('category_id')}
 							</div>
 						</div>
 
-						<div className={styles.formSection}>Kết quả nghiệm thu</div>
+						<CustomFields
+							cfg={cfg}
+							value={s.custom}
+							onChange={s.setCustom}
+							errors={errors}
+							sectionClassName={styles.formSection}
+							inputClassName={styles.formInput}
+						/>
 
-						<div className={styles.formGroup}>
-							<span className={styles.formLabel}>Xếp loại</span>
-							<div className={styles.statusPills}>
-								{ACCEPTANCE_RATINGS.map((r) => (
-									<button
-										key={r}
-										type='button'
-										aria-pressed={form.acceptance_rating === r}
-										className={`${styles.statusPill} ${form.acceptance_rating === r ? styles.statusPillActive : ''}`}
-										onClick={() =>
-											setField(
-												'acceptance_rating',
-												form.acceptance_rating === r ? '' : (r as AcceptanceRating),
-											)
-										}
-									>
-										{ACCEPTANCE_RATING_CFG[r].label}
-									</button>
-								))}
-							</div>
-						</div>
+						{(showRating || showScore || showAccDate) && (
+							<div className={styles.formSection}>Kết quả nghiệm thu</div>
+						)}
 
-						<div className={styles.formRow}>
+						{showRating && (
 							<div className={styles.formGroup}>
-								<label
-									className={styles.formLabel}
-									htmlFor='legacy-score'
-								>
-									Điểm nghiệm thu (0–100)
-								</label>
-								<input
-									id='legacy-score'
-									type='number'
-									min={0}
-									max={100}
-									step={0.01}
-									inputMode='decimal'
-									className={`${styles.formInput} ${errors.acceptance_score ? styles.hasError : ''}`}
-									placeholder='VD: 85'
-									value={form.acceptance_score}
-									onChange={(e) => setField('acceptance_score', e.target.value)}
-								/>
-								{fieldError('acceptance_score')}
+								<span className={styles.formLabel}>
+									{lbl('acceptance_rating', 'Xếp loại')} {req('acceptance_rating') && reqMark}
+								</span>
+								<div className={styles.statusPills}>
+									{ratingOptions.map((r) => (
+										<button
+											key={r}
+											type='button'
+											aria-pressed={form.acceptance_rating === r}
+											className={`${styles.statusPill} ${form.acceptance_rating === r ? styles.statusPillActive : ''}`}
+											onClick={() =>
+												setField(
+													'acceptance_rating',
+													form.acceptance_rating === r ? '' : (r as AcceptanceRating),
+												)
+											}
+										>
+											{ACCEPTANCE_RATING_CFG[r].label}
+										</button>
+									))}
+								</div>
+								{hint('acceptance_rating')}
+								{fieldError('acceptance_rating')}
 							</div>
-							<div className={styles.formGroup}>
-								<label
-									className={styles.formLabel}
-									htmlFor='legacy-acc-date'
-								>
-									Ngày nghiệm thu
-								</label>
-								<DatePicker
-									id='legacy-acc-date'
-									value={form.acceptance_date}
-									onChange={(val) => setField('acceptance_date', val)}
-									placeholder='Chọn ngày nghiệm thu...'
-								/>
+						)}
+
+						{(showScore || showAccDate) && (
+							<div className={styles.formRow}>
+								{showScore && (
+									<div className={styles.formGroup}>
+										<label
+											className={styles.formLabel}
+											htmlFor='legacy-score'
+										>
+											{lbl('acceptance_score', 'Điểm nghiệm thu (0–100)')}{' '}
+											{req('acceptance_score') && reqMark}
+										</label>
+										<input
+											id='legacy-score'
+											type='number'
+											min={0}
+											max={100}
+											step={0.01}
+											inputMode='decimal'
+											className={`${styles.formInput} ${errors.acceptance_score ? styles.hasError : ''}`}
+											placeholder={ph('acceptance_score', 'VD: 85')}
+											value={form.acceptance_score}
+											onChange={(e) => setField('acceptance_score', e.target.value)}
+										/>
+										{hint('acceptance_score')}
+										{fieldError('acceptance_score')}
+									</div>
+								)}
+								{showAccDate && (
+									<div className={styles.formGroup}>
+										<label
+											className={styles.formLabel}
+											htmlFor='legacy-acc-date'
+										>
+											{lbl('acceptance_date', 'Ngày nghiệm thu')}{' '}
+											{req('acceptance_date') && reqMark}
+										</label>
+										<DatePicker
+											id='legacy-acc-date'
+											value={form.acceptance_date}
+											onChange={(val) => setField('acceptance_date', val)}
+											placeholder={ph('acceptance_date', 'Chọn ngày nghiệm thu...')}
+										/>
+										{hint('acceptance_date')}
+										{fieldError('acceptance_date')}
+									</div>
+								)}
 							</div>
-						</div>
+						)}
+
+						{decisionFields.length > 0 && (
+							<>
+								<div className={styles.formSection}>Kinh phí &amp; quyết định</div>
+								<div className={styles.formRow}>
+									{decisionFields.map((f) => {
+										const id = `legacy-${f.key}`;
+										return (
+											<div
+												key={f.key}
+												className={styles.formGroup}
+											>
+												<label
+													className={styles.formLabel}
+													htmlFor={id}
+												>
+													{lbl(f.key, f.label)} {req(f.key) && reqMark}
+												</label>
+												{f.type === 'date' ? (
+													<DatePicker
+														id={id}
+														value={form[f.key]}
+														onChange={(val) => setField(f.key, val)}
+														placeholder={ph(f.key, f.placeholder)}
+													/>
+												) : (
+													<input
+														id={id}
+														type={f.type === 'money' ? 'number' : 'text'}
+														min={f.type === 'money' ? 0 : undefined}
+														inputMode={f.type === 'money' ? 'numeric' : undefined}
+														maxLength={maxLen(f.key)}
+														className={`${styles.formInput} ${errors[f.key] ? styles.hasError : ''}`}
+														placeholder={ph(f.key, f.placeholder)}
+														value={form[f.key]}
+														onChange={(e) => setField(f.key, e.target.value)}
+													/>
+												)}
+												{hint(f.key)}
+												{fieldError(f.key)}
+											</div>
+										);
+									})}
+								</div>
+							</>
+						)}
 
 						<div className={styles.formSection}>Thành viên tham gia</div>
 
