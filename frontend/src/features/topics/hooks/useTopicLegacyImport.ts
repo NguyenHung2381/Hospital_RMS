@@ -28,7 +28,26 @@ export interface LegacyTopicForm {
 	acceptance_rating: AcceptanceRating | '';
 	acceptance_score: string;
 	acceptance_date: string;
+	budget_estimated: string;
+	budget_actual: string;
+	approval_decision_no: string;
+	approval_decision_date: string;
+	recognition_decision_no: string;
+	recognition_decision_date: string;
 }
+
+// Kết quả / kinh phí / quyết định — tùy chọn, ẩn được ở Cấu hình form
+const RESULT_KEYS = [
+	'acceptance_rating',
+	'acceptance_score',
+	'acceptance_date',
+	'budget_estimated',
+	'budget_actual',
+	'approval_decision_no',
+	'approval_decision_date',
+	'recognition_decision_no',
+	'recognition_decision_date',
+] as const;
 
 const emptyForm = (deptId: string): LegacyTopicForm => ({
 	title: '',
@@ -39,6 +58,12 @@ const emptyForm = (deptId: string): LegacyTopicForm => ({
 	acceptance_rating: '',
 	acceptance_score: '',
 	acceptance_date: '',
+	budget_estimated: '',
+	budget_actual: '',
+	approval_decision_no: '',
+	approval_decision_date: '',
+	recognition_decision_no: '',
+	recognition_decision_date: '',
 });
 
 const errorMessage = (err: unknown) =>
@@ -148,19 +173,11 @@ export function useTopicLegacyImport() {
 	}, [currentDeptId, resetMembers, resetAttachments]);
 
 	const validate = (): FormErrors => {
-		// Bắt buộc / ràng buộc / trường tùy chỉnh theo Cấu hình form; phần cứng bên dưới
-		const e: FormErrors = cfg.validate(
-			{
-				title: form.title,
-				description: form.description,
-				round_id: form.round_id,
-				category_id: form.category_id,
-				department_id: form.department_id,
-				article_type: 'de_tai',
-			},
-			custom,
-			{ mode: 'create' },
-		);
+		// Bắt buộc / ràng buộc / trường tùy chỉnh theo Cấu hình form; phần cứng bên dưới.
+		// mode 'edit': đề tài đã xong nên kiểm cả trường "chỉ khi sửa" (kết quả, quyết định)
+		const e: FormErrors = cfg.validate({ ...form, article_type: 'de_tai' }, custom, {
+			mode: 'edit',
+		});
 		if (!form.title.trim()) e.title = 'Tên đề tài là bắt buộc';
 		if (!form.round_id) e.round_id = 'Vui lòng chọn đợt nghiên cứu';
 		// Mã đề tài sinh theo ký hiệu danh mục — bắt buộc
@@ -191,10 +208,13 @@ export function useTopicLegacyImport() {
 				round_id: form.round_id,
 				category_id: form.category_id,
 				department_id: form.department_id,
-				acceptance_rating: form.acceptance_rating || undefined,
-				acceptance_score:
-					form.acceptance_score !== '' ? Number(form.acceptance_score) : undefined,
-				acceptance_date: form.acceptance_date || undefined,
+				// Trường bị ẩn ở Cấu hình form hoặc để trống thì không gửi
+				...Object.fromEntries(
+					RESULT_KEYS.filter((k) => cfg.visible(k) && form[k].trim() !== '').map((k) => [
+						k,
+						form[k].trim(),
+					]),
+				),
 				custom,
 				members: pendingMembers.map((m) => ({
 					// Thành viên chọn từ gợi ý mang mã tài khoản — server gắn tài khoản người nhập

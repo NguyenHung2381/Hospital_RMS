@@ -257,3 +257,18 @@ test('trường tùy chỉnh không hợp lệ bị từ chối khi lưu', () =>
 		/bị trùng/,
 	);
 });
+
+test('kinh phí ở cổng nhân viên: chỉ form nhập đề tài đã hoàn thành kiểm', () => {
+	const ov = { fields: { budget_estimated: { required: true } } };
+	const portal = resolve(topic, ov, 'portal');
+	assert.equal(portal.fields.budget_estimated.editOnly, true);
+	// Form đăng ký mới không có ô kinh phí ⇒ không đòi
+	assert.equal(validateValues(portal, base).errors.budget_estimated, undefined);
+	// Form nhập đề tài đã hoàn thành ⇒ đòi
+	assert.equal(
+		validateValues(portal, base, { includeEditOnly: true }).errors.budget_estimated,
+		'Vui lòng nhập Kinh phí dự toán',
+	);
+	// Form quản trị vẫn đòi ngay khi tạo
+	assert.equal(resolve(topic, ov, 'admin').fields.budget_estimated.editOnly, false);
+});

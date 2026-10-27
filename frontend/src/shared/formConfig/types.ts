@@ -74,7 +74,8 @@ export interface RegistryField {
 	options?: FieldOption[];
 	when?: Record<string, string>;
 	dynamic?: boolean;
-	editOnly?: boolean;
+	/** true | [variant...] */
+	editOnly?: VariantSpec;
 }
 
 export interface FieldOverride {

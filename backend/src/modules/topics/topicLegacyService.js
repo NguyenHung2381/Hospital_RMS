@@ -27,6 +27,8 @@ const toStaffNumber = (v) => {
 	return Number.isNaN(n) ? null : n;
 };
 
+const num = (v) => (v === '' || v == null ? null : Number(v));
+
 const loadContext = async (roundId, actorId) => {
 	const pool = await getPool();
 	const r = await pool
@@ -90,11 +92,23 @@ const create = async (data, actor) => {
 					? null
 					: Number(data.acceptance_score),
 			acceptance_date: data.acceptance_date,
+			budget_estimated: num(data.budget_estimated),
 		},
 		actor.id,
 	);
 
 	try {
+		// Kinh phí thực tế + quyết định không có trong câu INSERT của topicService.create
+		const extra = {
+			budget_actual: num(data.budget_actual),
+			approval_decision_no: data.approval_decision_no?.trim() || null,
+			approval_decision_date: data.approval_decision_date || null,
+			recognition_decision_no: data.recognition_decision_no?.trim() || null,
+			recognition_decision_date: data.recognition_decision_date || null,
+		};
+		if (Object.values(extra).some((v) => v != null))
+			await topicService.update(topic.id, extra, actor.id, true);
+
 		const pool = await getPool();
 		for (const m of members) {
 			const { id } = await topicMemberService.addMember(

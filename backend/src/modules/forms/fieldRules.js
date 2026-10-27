@@ -94,7 +94,7 @@ const resolveField = (form, field, ov, variant) => {
 		options: options || null,
 		dynamic: !!field.dynamic,
 		when: field.when || null,
-		editOnly: !!field.editOnly,
+		editOnly: inVariant(field.editOnly, variant),
 	};
 };
 
@@ -225,19 +225,24 @@ const whenUnknown = (when, values) =>
 	!!when && Object.keys(when).some((k) => values[k] === undefined);
 
 // Kiểm cả form: values = body. mode 'update' = sửa từng phần — trường không gửi
-// lên thì giữ nguyên, không bắt buộc lại. Trả { errors: {key: msg}, custom }.
+// lên thì giữ nguyên, không bắt buộc lại. includeEditOnly: form tạo mới nhưng có
+// cả trường "chỉ khi sửa" (nhập đề tài đã hoàn thành). Trả { errors: {key: msg}, custom }.
 /**
  * @param {any} resolved
  * @param {Record<string, any>} values
- * @param {{ mode?: string, customValues?: Record<string, any> }} [options]
+ * @param {{ mode?: string, customValues?: Record<string, any>, includeEditOnly?: boolean }} [options]
  */
-const validateValues = (resolved, values, { mode = 'create', customValues } = {}) => {
+const validateValues = (
+	resolved,
+	values,
+	{ mode = 'create', customValues, includeEditOnly = false } = {},
+) => {
 	const errors = {};
 	for (const f of Object.values(resolved.fields)) {
 		if (!f.visible) continue;
 		const v = values[f.key];
 		if (mode === 'update' && v === undefined) continue;
-		if (mode === 'create' && f.editOnly) continue;
+		if (mode === 'create' && f.editOnly && !includeEditOnly) continue;
 		if (f.when && (whenUnknown(f.when, values) ? v === undefined : !whenHolds(f.when, values)))
 			continue;
 		const err = checkValue(

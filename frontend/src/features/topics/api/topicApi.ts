@@ -136,8 +136,14 @@ export interface CreateLegacyTopicPayload {
 	category_id: string;
 	department_id: string;
 	acceptance_rating?: AcceptanceRating;
-	acceptance_score?: number;
+	acceptance_score?: string;
 	acceptance_date?: string;
+	budget_estimated?: string;
+	budget_actual?: string;
+	approval_decision_no?: string;
+	approval_decision_date?: string;
+	recognition_decision_no?: string;
+	recognition_decision_date?: string;
 	members: (TopicMemberPayload & { user_id?: string })[];
 	custom?: CustomValues;
 }

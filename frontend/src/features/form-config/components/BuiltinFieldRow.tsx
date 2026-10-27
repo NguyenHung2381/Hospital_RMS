@@ -66,7 +66,16 @@ export function BuiltinFieldRow({
 					)}
 					{field.dynamic && <span className={s.typeTag}>Danh mục</span>}
 					{field.when && <span className={s.typeTag}>{whenLabel(field.when)}</span>}
-					{field.editOnly && <span className={s.typeTag}>Chỉ khi sửa</span>}
+					{field.editOnly === true && <span className={s.typeTag}>Chỉ khi sửa</span>}
+					{Array.isArray(field.editOnly) && (
+						<span className={s.typeTag}>
+							Chỉ khi sửa:{' '}
+							{variants
+								.filter((v) => inVariant(field.editOnly, v.key))
+								.map((v) => v.label)
+								.join(', ')}
+						</span>
+					)}
 				</div>
 				<div className={s.variantChips}>
 					{variants.map((v) => {

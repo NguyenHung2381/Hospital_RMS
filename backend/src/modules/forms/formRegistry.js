@@ -13,7 +13,8 @@
 //   options   giá trị hợp lệ của select (admin được thu hẹp)
 //   when      chỉ áp bắt buộc/ràng buộc khi điều kiện đúng, vd { article_type: 'bai_bao' }
 //   dynamic   select lấy từ danh mục (đợt, khoa...) — không cấu hình option
-//   editOnly  chỉ có ở form SỬA (vd kết quả nghiệm thu) — lúc tạo mới không đòi
+//   editOnly  chỉ có ở form SỬA (vd kết quả nghiệm thu) — lúc tạo mới không đòi.
+//             true | [variant...]
 //
 // Thêm form mới: khai báo ở đây + gắn formConfigGuard ở route tạo/sửa + dùng
 // <CfgField>/<CustomFields> ở frontend (shared/formConfig).
@@ -128,15 +129,17 @@ const FORMS = [
 				key: 'budget_estimated',
 				label: 'Kinh phí dự toán',
 				type: 'number',
-				in: ['admin'],
+				in: ['admin', 'portal'], // portal: trang Nhập đề tài đã hoàn thành
 				when: { article_type: 'de_tai' },
+				// Form đăng ký ở cổng không có ô này — chỉ form nhập đề tài đã hoàn thành
+				editOnly: ['portal'],
 				base: { min: 0, max: 999999999999999 },
 			},
 			{
 				key: 'budget_actual',
 				label: 'Kinh phí thực tế',
 				type: 'number',
-				in: ['admin'],
+				in: ['admin', 'portal'], // portal: trang Nhập đề tài đã hoàn thành
 				when: { article_type: 'de_tai' },
 				editOnly: true,
 				base: { min: 0, max: 999999999999999 },
@@ -145,7 +148,7 @@ const FORMS = [
 				key: 'approval_decision_no',
 				label: 'Số quyết định phê duyệt',
 				type: 'text',
-				in: ['admin'],
+				in: ['admin', 'portal'], // portal: trang Nhập đề tài đã hoàn thành
 				when: { article_type: 'de_tai' },
 				editOnly: true,
 				base: { maxLength: 100 },
@@ -154,7 +157,7 @@ const FORMS = [
 				key: 'approval_decision_date',
 				label: 'Ngày quyết định phê duyệt',
 				type: 'date',
-				in: ['admin'],
+				in: ['admin', 'portal'], // portal: trang Nhập đề tài đã hoàn thành
 				when: { article_type: 'de_tai' },
 				editOnly: true,
 			},
@@ -162,7 +165,7 @@ const FORMS = [
 				key: 'recognition_decision_no',
 				label: 'Số quyết định công nhận',
 				type: 'text',
-				in: ['admin'],
+				in: ['admin', 'portal'], // portal: trang Nhập đề tài đã hoàn thành
 				when: { article_type: 'de_tai' },
 				editOnly: true,
 				base: { maxLength: 100 },
@@ -171,7 +174,7 @@ const FORMS = [
 				key: 'recognition_decision_date',
 				label: 'Ngày quyết định công nhận',
 				type: 'date',
-				in: ['admin'],
+				in: ['admin', 'portal'], // portal: trang Nhập đề tài đã hoàn thành
 				when: { article_type: 'de_tai' },
 				editOnly: true,
 			},
@@ -179,7 +182,7 @@ const FORMS = [
 				key: 'acceptance_rating',
 				label: 'Xếp loại nghiệm thu',
 				type: 'select',
-				in: ['admin'],
+				in: ['admin', 'portal'], // portal: trang Nhập đề tài đã hoàn thành
 				when: { article_type: 'de_tai' },
 				editOnly: true,
 				options: ACCEPTANCE_RATINGS,
@@ -188,7 +191,7 @@ const FORMS = [
 				key: 'acceptance_score',
 				label: 'Điểm nghiệm thu',
 				type: 'number',
-				in: ['admin'],
+				in: ['admin', 'portal'], // portal: trang Nhập đề tài đã hoàn thành
 				when: { article_type: 'de_tai' },
 				editOnly: true,
 				base: { min: 0, max: 100 },
@@ -197,7 +200,7 @@ const FORMS = [
 				key: 'acceptance_date',
 				label: 'Ngày nghiệm thu',
 				type: 'date',
-				in: ['admin'],
+				in: ['admin', 'portal'], // portal: trang Nhập đề tài đã hoàn thành
 				when: { article_type: 'de_tai' },
 				editOnly: true,
 			},

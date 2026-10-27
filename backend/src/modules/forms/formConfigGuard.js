@@ -12,7 +12,7 @@ const logger = require('../../config/logger');
 // Kết quả: req.formCustom = giá trị tùy chỉnh đã chuẩn hóa (null = không gửi,
 // không ghi đè) — controller lưu bằng formCustomValueService.save().
 const formConfigGuard =
-	(formKey, { variant, mode = 'create' }) =>
+	(formKey, { variant, mode = 'create', includeEditOnly = false }) =>
 	async (req, res, next) => {
 		try {
 			const v = typeof variant === 'function' ? variant(req) : variant;
@@ -33,7 +33,11 @@ const formConfigGuard =
 					return error(res, 'Dữ liệu trường bổ sung không hợp lệ', 400);
 				}
 			}
-			const { errors, custom } = validateValues(resolved, req.body || {}, { mode, customValues });
+			const { errors, custom } = validateValues(resolved, req.body || {}, {
+				mode,
+				customValues,
+				includeEditOnly,
+			});
 			const keys = Object.keys(errors);
 			if (keys.length) {
 				return error(

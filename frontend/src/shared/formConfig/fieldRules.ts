@@ -174,7 +174,7 @@ const resolveField = (
 		options: options ?? null,
 		dynamic: !!field.dynamic,
 		when: field.when ?? null,
-		editOnly: !!field.editOnly,
+		editOnly: inVariant(field.editOnly, variant),
 	};
 };
 
