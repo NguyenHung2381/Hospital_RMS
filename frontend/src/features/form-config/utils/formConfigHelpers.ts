@@ -27,8 +27,8 @@ export const cleanRules = (r: FieldRules): FieldRules | undefined => {
 export const hasRules = (type: FieldType, options?: FieldOption[] | null, dynamic?: boolean) =>
 	type !== 'checkbox' && !(type === 'select' && (dynamic || !options));
 
-// Giá trị điều kiện `when` → chữ hiển thị (registry hiện chỉ dùng loại đăng ký đề tài)
-const WHEN_VALUE: Record<string, string> = { de_tai: 'đề tài', bai_bao: 'bài báo' };
+// Giá trị điều kiện `when` → chữ hiển thị (loại đăng ký đề tài, loại khóa học)
+const WHEN_VALUE: Record<string, string> = { de_tai: 'đề tài', bai_bao: 'bài báo', 'TRNTP-DTLT': 'khóa ĐTLT', dropped: 'nghỉ học' };
 export const whenLabel = (when: Record<string, string>) =>
 	`Chỉ với ${Object.values(when)
 		.map((v) => WHEN_VALUE[v] ?? v)

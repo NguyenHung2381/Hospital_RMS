@@ -18,6 +18,8 @@
 // Thêm form mới: khai báo ở đây + gắn formConfigGuard ở route tạo/sửa + dùng
 // <CfgField>/<CustomFields> ở frontend (shared/formConfig).
 
+const { GENDERS, TRAINING_FORMS } = require('./formRegistry.training');
+
 const ARTICLE_TYPES = [
 	{ value: 'de_tai', label: 'Đề tài' },
 	{ value: 'bai_bao', label: 'Bài báo' },
@@ -38,11 +40,6 @@ const MEMBER_ROLES = [
 const PARTICIPANT_SOURCES = [
 	{ value: 'internal', label: 'Nội viện' },
 	{ value: 'external', label: 'Ngoại viện' },
-];
-const GENDERS = [
-	{ value: 'male', label: 'Nam' },
-	{ value: 'female', label: 'Nữ' },
-	{ value: 'other', label: 'Khác' },
 ];
 const LEAVE_TYPES = [
 	{ value: 'absent', label: 'Xin nghỉ' },
@@ -474,6 +471,8 @@ const FORMS = [
 			},
 		],
 	},
+	// ─── Đợt 3: Đào tạo (formRegistry.training.js) ─────────────────────────────
+	...TRAINING_FORMS,
 ];
 
 const byKey = new Map(FORMS.map((f) => [f.key, f]));

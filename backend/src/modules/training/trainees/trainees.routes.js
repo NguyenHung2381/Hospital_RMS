@@ -4,6 +4,7 @@ const ctrl = require('./traineeController');
 const cmeCtrl = require('../../cme/cmeRecordController');
 const { authenticate, authorizePermission } = require('../../../middlewares/auth');
 const { validate } = require('../../../middlewares/errorHandler');
+const { formConfigGuard, bodyVariant } = require('../../forms/formConfigGuard');
 const { createTrainingUpload } = require('../../../middlewares/uploadTraining');
 
 const uploadTraineeDoc = createTrainingUpload('trainee_document');
@@ -58,6 +59,7 @@ router.post(
 		body('dob').optional({ checkFalsy: true }).isISO8601(),
 	],
 	validate,
+	formConfigGuard('trainee', { variant: bodyVariant('admin'), mode: 'create' }),
 	ctrl.createOne,
 );
 
@@ -70,6 +72,7 @@ router.put(
 		body('dob').optional({ checkFalsy: true }).isISO8601(),
 	],
 	validate,
+	formConfigGuard('trainee', { variant: bodyVariant('admin'), mode: 'update' }),
 	ctrl.updateOne,
 );
 

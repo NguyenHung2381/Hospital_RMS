@@ -1,5 +1,13 @@
 import { formatDateOr } from '../utils/formatDate';
-import type { ResolvedField } from './types';
+import type { CustomValues, ResolvedField } from './types';
+import type { FormConfig } from './useFormConfig';
+
+/** Ô có giá trị để hiển thị (bỏ rỗng / danh sách trống) */
+export const hasValue = (v: unknown) => v !== undefined && v !== null && v !== '' && !(Array.isArray(v) && !v.length);
+
+/** Có giá trị tùy chỉnh nào để hiện không (ẩn luôn khung / tiêu đề nhóm khi trống) */
+export const hasCustomValues = (cfg: FormConfig, data?: CustomValues | null) =>
+	!!data && (cfg.resolved?.labels ?? []).some((f) => hasValue(data[f.key]));
 
 /** Hiển thị giá trị tùy chỉnh ở trang chi tiết / drawer. */
 export function formatCustomValue(f: Pick<ResolvedField, 'type' | 'options'>, v: unknown): string {

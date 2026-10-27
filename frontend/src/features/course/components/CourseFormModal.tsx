@@ -21,6 +21,8 @@ interface ProgramOption extends SimpleItem {
 // Gợi ý tên khóa ĐTLT theo đợt: "ĐTLT Đợt 3/2026".
 const dtltName = (batch: string) => `ĐTLT Đợt ${batch}/${new Date().getFullYear()}`;
 import styles from '../pages/Courses.module.css';
+import m from '@/shared/components/Modal/Modal.module.css';
+import { CfgField, CustomFields, useFormConfig, type CustomValues } from '@/shared/formConfig';
 
 
 function ListEditor({
@@ -116,7 +118,10 @@ export function CourseFormModal({
 		apiClient.get<{ data: ProgramOption[] }>('/training-programs?limit=0').then((r) => setPrograms(r.data)).catch(() => {});
 		apiClient.get<{ data: SimpleItem[] }>('/training-types?limit=0').then((r) => setTypes(r.data)).catch(() => {});
 	}, []);
-	const [errors, setErrors] = useState<Partial<Record<keyof CourseFormData, string>>>({});
+	// Nhãn / bắt buộc / giới hạn / trường tùy chỉnh theo Cấu hình form
+	const cfg = useFormConfig('course', 'admin');
+	const [custom, setCustom] = useState<CustomValues>(course?.custom ?? initial?.custom ?? {});
+	const [errors, setErrors] = useState<Record<string, string>>({});
 
 	// Chỉ cho chọn chương trình cùng loại với khóa; chương trình chưa gán loại thì luôn hiện,
 	// chương trình đã chọn từ trước vẫn hiện để bỏ chọn được.
@@ -154,8 +159,8 @@ export function CourseFormModal({
 	const submit = () =>
 		onSave(
 			form.is_rolling
-				? { ...form, start_date: '', end_date: '', enrollment_start_date: '', enrollment_end_date: '' }
-				: form,
+				? { ...form, start_date: '', end_date: '', enrollment_start_date: '', enrollment_end_date: '', custom }
+				: { ...form, custom },
 		);
 
 	const set =
@@ -168,14 +173,14 @@ export function CourseFormModal({
 	const full = { gridColumn: '1 / -1' };
 
 	const validate = () => {
-		const err: Partial<Record<keyof CourseFormData, string>> = {};
-		if (!form.name.trim()) err.name = 'Vui lòng nhập tên khóa học';
+		const err: Record<string, string> = cfg.validate({ ...form }, custom, { mode: mode === 'add' ? 'create' : 'edit' });
+		if (!form.name.trim()) err.name ||= 'Vui lòng nhập tên khóa học';
 		if (form.training_type_id === TRAINING_TYPE.DTLT && !form.batch_no)
 			err.batch_no = 'Khóa ĐTLT cần số đợt';
 		if (form.batch_no && (!Number.isInteger(Number(form.batch_no)) || Number(form.batch_no) < 1))
 			err.batch_no = 'Số đợt phải là số nguyên dương';
 		setErrors(err);
-		return Object.keys(err).length === 0;
+		return !Object.values(err).some(Boolean);
 	};
 
 	return (
@@ -209,7 +214,7 @@ export function CourseFormModal({
 				>
 					1. Thông tin chung
 				</div>
-				<FormField label='Loại khóa'>
+				<CfgField cfg={cfg} name='training_type_id' error={errors.training_type_id} label='Loại khóa'>
 					<select
 						className={styles.formInput}
 						value={form.training_type_id}
@@ -225,9 +230,11 @@ export function CourseFormModal({
 							</option>
 						))}
 					</select>
-				</FormField>
+				</CfgField>
 				{form.training_type_id === TRAINING_TYPE.DTLT ? (
-					<FormField
+					<CfgField
+						cfg={cfg}
+						name='batch_no'
 						label='Đợt số'
 						required
 						error={errors.batch_no}
@@ -240,7 +247,7 @@ export function CourseFormModal({
 							onChange={(e) => changeBatch(e.target.value)}
 							placeholder='VD: 3'
 						/>
-					</FormField>
+					</CfgField>
 				) : (
 					<FormField
 						label='Lịch khóa'
@@ -258,7 +265,9 @@ export function CourseFormModal({
 						</span>
 					</FormField>
 				)}
-				<FormField
+				<CfgField
+					cfg={cfg}
+					name='name'
 					label='Tên khóa học'
 					required
 					error={errors.name}
@@ -270,7 +279,7 @@ export function CourseFormModal({
 						onChange={set('name')}
 						placeholder='VD: Khóa Cấp cứu cơ bản K1/2026'
 					/>
-				</FormField>
+				</CfgField>
 				<FormField
 					label='Chương trình đào tạo áp dụng'
 					style={full}
@@ -331,6 +340,14 @@ export function CourseFormModal({
 					)}
 				</FormField>
 
+				<CustomFields
+					cfg={cfg}
+					value={custom}
+					onChange={setCustom}
+					errors={errors}
+					sectionClassName={m.formSectionTitle}
+					inputClassName={styles.formInput}
+				/>
 				<div
 					className={styles.sectionTitle}
 					style={full}
@@ -415,7 +432,7 @@ export function CourseFormModal({
 						<option value='1'>Công khai</option>
 					</select>
 				</FormField>
-				<FormField label='Hình thức học'>
+				<CfgField cfg={cfg} name='training_form_id' error={errors.training_form_id} label='Hình thức học'>
 					<select
 						className={styles.formInput}
 						value={form.training_form_id}
@@ -431,7 +448,7 @@ export function CourseFormModal({
 							</option>
 						))}
 					</select>
-				</FormField>
+				</CfgField>
 				{CLASS_TYPES.has(form.training_type_id) && (
 					<div
 						className={styles.hint}
@@ -467,7 +484,10 @@ export function CourseFormModal({
 						4. Giới thiệu khóa học (mô tả, điều kiện, mục tiêu — không bắt buộc)
 					</summary>
 					<div className={styles.formGrid2}>
-						<FormField
+						<CfgField
+							cfg={cfg}
+							name='description'
+							error={errors.description}
 							label='Mô tả'
 							style={full}
 						>
@@ -478,7 +498,7 @@ export function CourseFormModal({
 								rows={3}
 								placeholder='Mô tả ngắn về khóa học...'
 							/>
-						</FormField>
+						</CfgField>
 						<ListEditor
 							label='Điều kiện'
 							items={form.prerequisites}

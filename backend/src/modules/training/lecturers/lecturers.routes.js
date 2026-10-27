@@ -3,6 +3,7 @@ const { body } = require('express-validator');
 const ctrl = require('./lecturerController');
 const { authenticate, authorizePermission } = require('../../../middlewares/auth');
 const { validate } = require('../../../middlewares/errorHandler');
+const { formConfigGuard, bodyVariant } = require('../../forms/formConfigGuard');
 
 router.use(authenticate);
 
@@ -17,6 +18,7 @@ router.post(
 		body('email').optional({ checkFalsy: true }).isEmail().withMessage('Email không hợp lệ'),
 	],
 	validate,
+	formConfigGuard('lecturer', { variant: bodyVariant('admin'), mode: 'create' }),
 	ctrl.createOne,
 );
 
@@ -37,6 +39,7 @@ router.put(
 		body('email').optional({ checkFalsy: true }).isEmail().withMessage('Email không hợp lệ'),
 	],
 	validate,
+	formConfigGuard('lecturer', { variant: bodyVariant('admin'), mode: 'update' }),
 	ctrl.updateOne,
 );
 

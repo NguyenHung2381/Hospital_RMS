@@ -1,10 +1,11 @@
-import { FormField } from '@/shared/components/Input/FormField';
 import { Modal, ModalActions } from '@/shared/components';
 import React, { useState } from 'react';
 import { UserCheckSvg } from '@/assets/icons';
 import { formatDateOr } from '@/shared/utils';
 import { EMPTY_FORM, type Lecturer, type LecturerFormData } from '../types/lecturer.type';
 import styles from '../pages/Lecturers.module.css';
+import m from '@/shared/components/Modal/Modal.module.css';
+import { CfgField, CustomFields, useFormConfig, type CustomValues } from '@/shared/formConfig';
 
 export function LecturerFormModal({
 	mode,
@@ -30,7 +31,10 @@ export function LecturerFormModal({
 				}
 			: EMPTY_FORM,
 	);
-	const [errors, setErrors] = useState<Partial<Record<keyof LecturerFormData, string>>>({});
+	// Nhãn / bắt buộc / giới hạn / trường tùy chỉnh theo Cấu hình form
+	const cfg = useFormConfig('lecturer', 'admin');
+	const [custom, setCustom] = useState<CustomValues>(lecturer?.custom ?? {});
+	const [errors, setErrors] = useState<Record<string, string>>({});
 
 	const set =
 		(k: keyof LecturerFormData) => (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -39,11 +43,11 @@ export function LecturerFormModal({
 		};
 
 	const validate = () => {
-		const err: Partial<Record<keyof LecturerFormData, string>> = {};
-		if (!form.full_name.trim()) err.full_name = 'Vui lòng nhập họ tên';
+		const err: Record<string, string> = cfg.validate({ ...form }, custom, { mode: mode === 'add' ? 'create' : 'edit' });
+		if (!form.full_name.trim()) err.full_name ||= 'Vui lòng nhập họ tên';
 		if (form.email && !/^\S+@\S+\.\S+$/.test(form.email)) err.email = 'Email không hợp lệ';
 		setErrors(err);
-		return Object.keys(err).length === 0;
+		return !Object.values(err).some(Boolean);
 	};
 
 	return (
@@ -58,14 +62,16 @@ export function LecturerFormModal({
 			footer={
 				<ModalActions
 					onCancel={onClose}
-					onConfirm={() => validate() && onSave(form)}
+					onConfirm={() => validate() && onSave({ ...form, custom })}
 					loading={loading}
 					confirmLabel={mode === 'add' ? 'Thêm giảng viên' : 'Lưu thay đổi'}
 				/>
 			}
 		>
 			<div className={styles.formGrid2}>
-				<FormField
+				<CfgField
+					cfg={cfg}
+					name='full_name'
 					label='Họ và tên'
 					required
 					error={errors.full_name}
@@ -77,24 +83,26 @@ export function LecturerFormModal({
 						onChange={set('full_name')}
 						placeholder='VD: BS. Nguyễn Văn A'
 					/>
-				</FormField>
-				<FormField label='Chuyên môn'>
+				</CfgField>
+				<CfgField cfg={cfg} name='specialty' error={errors.specialty} label='Chuyên môn'>
 					<input
 						className={styles.formInput}
 						value={form.specialty}
 						onChange={set('specialty')}
 						placeholder='VD: Hồi sức cấp cứu'
 					/>
-				</FormField>
-				<FormField label='Điện thoại'>
+				</CfgField>
+				<CfgField cfg={cfg} name='phone' error={errors.phone} label='Điện thoại'>
 					<input
 						className={styles.formInput}
 						value={form.phone}
 						onChange={set('phone')}
 						placeholder='VD: 0912345678'
 					/>
-				</FormField>
-				<FormField
+				</CfgField>
+				<CfgField
+					cfg={cfg}
+					name='email'
 					label='Email'
 					error={errors.email}
 				>
@@ -104,7 +112,7 @@ export function LecturerFormModal({
 						onChange={set('email')}
 						placeholder='email@benhvien.vn'
 					/>
-				</FormField>
+				</CfgField>
 				<div
 					className={styles.formGroup}
 					style={{ gridColumn: '1 / -1' }}
@@ -120,6 +128,14 @@ export function LecturerFormModal({
 						Giảng viên mời ngoài (không phải nhân viên bệnh viện)
 					</label>
 				</div>
+				<CustomFields
+					cfg={cfg}
+					value={custom}
+					onChange={setCustom}
+					errors={errors}
+					sectionClassName={m.formSectionTitle}
+					inputClassName={styles.formInput}
+				/>
 				{lecturer?.user_id && (
 					<div
 						className={styles.licenseBox}

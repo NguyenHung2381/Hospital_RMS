@@ -3,12 +3,19 @@
 // coursePolicy kiểm ở router (chống IDOR).
 const { asyncHandler } = require('../../../utils/asyncHandler');
 const { success } = require('../../../utils/response');
+const formCustomValueService = require('../../forms/formCustomValueService');
 const practiceRecordService = require('./practiceRecordService');
 const practiceResultService = require('./practiceResultService');
 const courseEnrollmentService = require('./courseEnrollmentService');
 
 const listPracticeRecords = asyncHandler(async (req, res) =>
-	success(res, await practiceRecordService.list(req.user)),
+	success(
+		res,
+		await formCustomValueService.attachResult(
+			'enrollment',
+			await practiceRecordService.list(req.user),
+		),
+	),
 );
 
 const getEnrollment = asyncHandler(async (req, res) =>

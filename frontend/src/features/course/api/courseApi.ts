@@ -1,3 +1,4 @@
+import type { CustomValues } from '@/shared/formConfig';
 import { apiClient } from '../../../shared/api/axios';
 import { getCheckInDeviceId } from '../../../shared/utils/storage';
 import type {
@@ -52,6 +53,7 @@ const toPayload = (form: CourseFormData) => ({
 	description: form.description || null,
 	prerequisites: form.prerequisites.map((s) => s.trim()).filter(Boolean),
 	objectives: form.objectives.map((s) => s.trim()).filter(Boolean),
+	...(form.custom ? { custom: form.custom, form_variant: 'admin' } : {}),
 });
 
 export interface CourseListParams {
@@ -128,16 +130,20 @@ export type RegisterResult = {
 	status: EnrollmentStatus;
 	waitlist_position?: number | null;
 };
-export const registerTrainee = (courseId: string, traineeId: string, programId?: string) =>
+/** Gửi từ form "Thêm hồ sơ thực hành" (Cấu hình form 'enrollment') — server kiểm + lưu trường tùy chỉnh */
+export type EnrollFormExtra = { custom?: CustomValues; form_variant?: 'practice' };
+export const registerTrainee = (courseId: string, traineeId: string, programId?: string, extra?: EnrollFormExtra) =>
 	apiClient.post<RegisterResult>(`/courses/${courseId}/enrollments`, {
 		trainee_id: traineeId,
 		program_id: programId || null,
+		...extra,
 	});
 /** Ghi danh nhân viên nội viện (users) — backend tự tạo/gắn hồ sơ học viên. */
-export const registerStaff = (courseId: string, userId: string, programId?: string) =>
+export const registerStaff = (courseId: string, userId: string, programId?: string, extra?: EnrollFormExtra) =>
 	apiClient.post<RegisterResult>(`/courses/${courseId}/enrollments`, {
 		user_id: userId,
 		program_id: programId || null,
+		...extra,
 	});
 export const updateEnrollment = (enrollmentId: string, data: EnrollmentUpdate) =>
 	apiClient.put<null>(`/courses/enrollments/${enrollmentId}`, data);
@@ -270,9 +276,11 @@ export const getCourseLessons = (courseId: string) =>
 // ─── Class sessions ───────────────────────────────────────────────────────
 export const getSessions = (courseId: string) =>
 	apiClient.get<ClassSession[]>(`/courses/${courseId}/sessions`);
+/** Gửi từ hộp thoại buổi học (Cấu hình form 'course_session') — server kiểm + lưu trường tùy chỉnh */
+export type SessionFormExtra = { custom?: CustomValues; form_variant?: 'admin' };
 export const createSession = (
 	courseId: string,
-	data: {
+	data: SessionFormExtra & {
 		subject_id?: string;
 		lecturer_id?: string;
 		session_date: string;
@@ -284,7 +292,7 @@ export const createSession = (
 ) => apiClient.post<{ id: string; warnings: string[] }>(`/courses/${courseId}/sessions`, data);
 export const updateSession = (
 	sessionId: string,
-	data: {
+	data: SessionFormExtra & {
 		subject_id?: string;
 		lecturer_id?: string;
 		session_date?: string;
@@ -297,7 +305,7 @@ export const updateSession = (
 export const removeSession = (sessionId: string) => apiClient.delete<null>(`/courses/sessions/${sessionId}`);
 export const createSessionsBulk = (
 	courseId: string,
-	data: {
+	data: SessionFormExtra & {
 		start_date: string;
 		end_date: string;
 		weekdays: number[];

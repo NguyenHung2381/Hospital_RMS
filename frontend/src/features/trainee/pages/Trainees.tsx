@@ -23,6 +23,7 @@ import { genderLabel } from '@/shared/utils/gender';
 import type { Trainee } from '../types/trainee.type';
 import { TRAINING_TYPE } from '../../course/types/course.type';
 import tbl from '@/shared/components/Table/Table.module.css';
+import { CustomValuesInline, useFormConfig } from '@/shared/formConfig';
 
 // Tiêu đề trùng cột nhận diện của "Nhập từ Excel" để file xuất ra nhập lại được.
 const EXCEL_COLS: ExcelColumn<Trainee>[] = [
@@ -55,6 +56,7 @@ const TYPE_NAME: Record<string, string> = {
  * có typeId = tab Học viên của 1 loại đào tạo: chỉ người đã ghi danh loại đó.
  */
 export default function Trainees({ typeId = '' }: { typeId?: string }) {
+	const customCfg = useFormConfig('trainee', 'admin');
 	const d = useTrainees(typeId);
 	const navigate = useNavigate();
 	const openDetail = (t: Trainee, tab = 'info') => navigate(`/admin/trainees/${t.id}?tab=${tab}`);
@@ -268,6 +270,11 @@ export default function Trainees({ typeId = '' }: { typeId?: string }) {
 															{formatDate(t.dob)}
 														</div>
 													)}
+													<CustomValuesInline
+														cfg={customCfg}
+														data={t.custom}
+														className={styles.personSub}
+													/>
 												</div>
 											</div>
 										</td>

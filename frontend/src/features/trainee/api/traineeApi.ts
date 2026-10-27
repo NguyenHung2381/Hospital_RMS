@@ -46,6 +46,7 @@ const toPayload = (form: TraineeFormData) => ({
 	legacy_code: form.legacy_code || null,
 	is_active: form.is_active,
 	is_employee: form.is_employee,
+	...(form.custom ? { custom: form.custom, form_variant: 'admin' } : {}),
 });
 
 export const createTrainee = (form: TraineeFormData) =>

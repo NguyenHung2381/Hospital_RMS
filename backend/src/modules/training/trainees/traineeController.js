@@ -4,28 +4,38 @@ const traineeRecordService = require('./traineeRecordService');
 const traineeImportService = require('./traineeImportService');
 const traineeProgressService = require('./traineeProgressService');
 const classSessionService = require('../courses/classSessionService');
+const formCustomValueService = require('../../forms/formCustomValueService');
 const { success, created, notFound } = require('../../../utils/response');
 const { asyncHandler } = require('../../../utils/asyncHandler');
 
 const getAll = asyncHandler(async (req, res) => {
 	const result = await traineeService.getAll(req.query, req.user);
-	return success(res, result);
+	// custom = trường tùy chỉnh (Cấu hình form 'trainee') — form sửa mở từ danh sách
+	return success(res, await formCustomValueService.attachResult('trainee', result));
 });
 
 const getById = asyncHandler(async (req, res) => {
 	const item = await traineeService.getById(req.params.id, req.user);
 	if (!item) return notFound(res);
+	item.custom = await formCustomValueService.get('trainee', item.id);
 	return success(res, item);
 });
 
 const createOne = asyncHandler(async (req, res) => {
 	const item = await traineeService.create(req.body, req.user.id);
-	return created(res, item);
+	const custom = await formCustomValueService.save('trainee', item.id, req.formCustom, req.user.id);
+	return created(res, custom ? { ...item, custom } : item);
 });
 
 const updateOne = asyncHandler(async (req, res) => {
 	const item = await traineeService.update(req.params.id, req.body, req.user.id);
-	return success(res, item, 'Cập nhật thành công');
+	const custom = await formCustomValueService.save(
+		'trainee',
+		req.params.id,
+		req.formCustom,
+		req.user.id,
+	);
+	return success(res, custom && item ? { ...item, custom } : item, 'Cập nhật thành công');
 });
 
 const removeOne = asyncHandler(async (req, res) => {

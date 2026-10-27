@@ -54,24 +54,35 @@ export interface FormConfig {
 		custom?: CustomValues,
 		opts?: { mode?: 'create' | 'edit' },
 	) => Record<string, string>;
+	/** Số lần đã gọi validate — CustomFields dựa vào đây để biết form vừa kiểm lại */
+	readonly validated: number;
 }
 
 /** FormConfig từ cấu hình đã ghép — dùng cho hook và cho xem trước ở trang quản trị. */
-export const configFromResolved = (resolved: ResolvedForm | null): FormConfig => ({
-	resolved,
-	field: (key) => resolved?.fields[key],
-	visible: (key) => resolved?.fields[key]?.visible ?? true,
-	custom: resolved?.custom ?? [],
-	label: (key, def) => {
-		const f = resolved?.fields[key];
-		return f?.labelSet ? f.label : def;
-	},
-	required: (key, def = false) => resolved?.fields[key]?.required ?? def,
-	placeholder: (key, def) => resolved?.fields[key]?.placeholder ?? def,
-	maxLength: (key) => resolved?.fields[key]?.rules.maxLength,
-	hint: (key) => resolved?.fields[key]?.hint ?? undefined,
-	validate: (values, custom, opts) => (resolved ? validateForm(resolved, values, custom, opts) : {}),
-});
+export const configFromResolved = (resolved: ResolvedForm | null): FormConfig => {
+	let validated = 0;
+	return {
+		resolved,
+		field: (key) => resolved?.fields[key],
+		visible: (key) => resolved?.fields[key]?.visible ?? true,
+		custom: resolved?.custom ?? [],
+		label: (key, def) => {
+			const f = resolved?.fields[key];
+			return f?.labelSet ? f.label : def;
+		},
+		required: (key, def = false) => resolved?.fields[key]?.required ?? def,
+		placeholder: (key, def) => resolved?.fields[key]?.placeholder ?? def,
+		maxLength: (key) => resolved?.fields[key]?.rules.maxLength,
+		hint: (key) => resolved?.fields[key]?.hint ?? undefined,
+		validate: (values, custom, opts) => {
+			validated++;
+			return resolved ? validateForm(resolved, values, custom, opts) : {};
+		},
+		get validated() {
+			return validated;
+		},
+	};
+};
 
 /**
  * const cfg = useFormConfig('topic', 'admin');

@@ -22,6 +22,7 @@ import {
 	type PracticeStage,
 } from '../types/course.type';
 import styles from './Courses.module.css';
+import { CustomValuesInline, useFormConfig } from '@/shared/formConfig';
 import local from './PracticeRecords.module.css';
 
 type StageTab = PracticeStage | 'all';
@@ -67,6 +68,7 @@ const NO_FILTERS: Filters = { program: '', department: '', mentor: '', course: '
  * Khóa GPHN chỉ còn là "đợt" (nhãn, bộ lọc); quản lý đợt ở trang Khóa học.
  */
 export default function PracticeRecords() {
+	const customCfg = useFormConfig('enrollment', 'practice');
 	const navigate = useNavigate();
 	const [params, setParams] = useSearchParams();
 	const stageParam = params.get('stage');
@@ -436,6 +438,11 @@ export default function PracticeRecords() {
 														.filter(Boolean)
 														.join(' · ')}
 												</div>
+												<CustomValuesInline
+													cfg={customCfg}
+													data={r.custom}
+													className={styles.descText}
+												/>
 											</td>
 											<td className={styles.td}>
 												{r.program_code || r.program_name || <span className={local.muted}>Chưa chọn chương trình</span>}

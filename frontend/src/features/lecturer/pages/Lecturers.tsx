@@ -18,6 +18,7 @@ import { LecturerFromStaffModal } from '../components/LecturerFromStaffModal';
 import { useLecturers } from '../hooks/useLecturers';
 import styles from './Lecturers.module.css';
 import tbl from '@/shared/components/Table/Table.module.css';
+import { CustomValuesInline, useFormConfig } from '@/shared/formConfig';
 import { TableEmpty } from '@/shared/components/EmptyState';
 
 const EXCEL_COLS: ExcelColumn<Lecturer>[] = [
@@ -31,6 +32,7 @@ const EXCEL_COLS: ExcelColumn<Lecturer>[] = [
 ];
 
 export default function Lecturers() {
+	const customCfg = useFormConfig('lecturer', 'admin');
 	const d = useLecturers();
 	const rowSel = useRowSelection(d.paged.map((x) => x.id));
 	const [fromStaffOpen, setFromStaffOpen] = useState(false);
@@ -164,6 +166,11 @@ export default function Lecturers() {
 												</div>
 												<div>
 													<div className={styles.personName}>{l.full_name}</div>
+<CustomValuesInline
+	cfg={customCfg}
+	data={l.custom}
+	className={styles.personSub}
+/>
 													{!l.is_active && (
 														<div className={styles.personSub}>Đã vô hiệu hóa</div>
 													)}

@@ -23,6 +23,9 @@ const EXAM_PARTS_LABEL: Record<ExamParts, string> = {
 	both: 'Cả lý thuyết và thực hành',
 };
 import styles from '../pages/TrainingPrograms.module.css';
+import m from '@/shared/components/Modal/Modal.module.css';
+import { CfgField, CustomFields, useFormConfig, type CustomValues } from '@/shared/formConfig';
+import { allowedOptions } from '@/shared/formConfig/allowedOptions';
 
 const str = (v: number | null | undefined) => (v != null ? String(v) : '');
 
@@ -82,7 +85,10 @@ export function TrainingProgramFormModal({
 	loading: boolean;
 }) {
 	const [form, setForm] = useState<TrainingProgramFormData>(program ? fromProgram(program) : EMPTY_FORM);
-	const [errors, setErrors] = useState<Partial<Record<keyof TrainingProgramFormData, string>>>({});
+	// Nhãn / bắt buộc / giới hạn / trường tùy chỉnh theo Cấu hình form
+	const cfg = useFormConfig('training_program', 'admin');
+	const [custom, setCustom] = useState<CustomValues>(program?.custom ?? {});
+	const [errors, setErrors] = useState<Record<string, string>>({});
 	const [rotationErrors, setRotationErrors] = useState<Record<number, string>>({});
 	const catalogs = usePracticeCatalogs();
 
@@ -125,10 +131,10 @@ export function TrainingProgramFormModal({
 	})();
 
 	const validate = () => {
-		const err: Partial<Record<keyof TrainingProgramFormData, string>> = {};
-		if (!form.code.trim()) err.code = 'Vui lòng nhập mã chương trình';
-		if (!form.name.trim()) err.name = 'Vui lòng nhập tên chương trình';
-		if (!form.training_type_id) err.training_type_id = 'Vui lòng chọn loại hình';
+		const err: Record<string, string> = cfg.validate({ ...form }, custom, { mode: mode === 'add' ? 'create' : 'edit' });
+		if (!form.code.trim()) err.code ||= 'Vui lòng nhập mã chương trình';
+		if (!form.name.trim()) err.name ||= 'Vui lòng nhập tên chương trình';
+		if (!form.training_type_id) err.training_type_id ||= 'Vui lòng chọn loại hình';
 		for (const k of ['min_capacity', 'max_capacity'] as const)
 			if (form[k] && (Number(form[k]) < 1 || !Number.isFinite(Number(form[k]))))
 				err[k] = 'Số lượng phải là số nguyên dương';
@@ -144,7 +150,7 @@ export function TrainingProgramFormModal({
 		});
 		setErrors(err);
 		setRotationErrors(rErr);
-		return Object.keys(err).length === 0 && Object.keys(rErr).length === 0;
+		return !Object.values(err).some(Boolean) && Object.keys(rErr).length === 0;
 	};
 
 	const numberInput = (k: keyof TrainingProgramFormData, placeholder: string, step = '1') => (
@@ -171,14 +177,16 @@ export function TrainingProgramFormModal({
 			footer={
 				<ModalActions
 					onCancel={onClose}
-					onConfirm={() => validate() && onSave(form)}
+					onConfirm={() => validate() && onSave({ ...form, custom })}
 					loading={loading}
 					confirmLabel={mode === 'add' ? 'Thêm chương trình' : 'Lưu thay đổi'}
 				/>
 			}
 		>
 			<div className={styles.formGrid2}>
-				<FormField
+				<CfgField
+					cfg={cfg}
+					name='code'
 					label='Mã chương trình'
 					required
 					error={errors.code}
@@ -189,8 +197,10 @@ export function TrainingProgramFormModal({
 						onChange={set('code')}
 						placeholder='VD: ĐTLT_5, GPHN_BS_1'
 					/>
-				</FormField>
-				<FormField
+				</CfgField>
+				<CfgField
+					cfg={cfg}
+					name='training_type_id'
 					label='Loại hình'
 					required
 					error={errors.training_type_id}
@@ -211,8 +221,10 @@ export function TrainingProgramFormModal({
 							</option>
 						))}
 					</select>
-				</FormField>
-				<FormField
+				</CfgField>
+				<CfgField
+					cfg={cfg}
+					name='name'
 					label='Tên chương trình'
 					required
 					error={errors.name}
@@ -224,8 +236,10 @@ export function TrainingProgramFormModal({
 						onChange={set('name')}
 						placeholder='VD: Siêu âm cơ bản'
 					/>
-				</FormField>
-				<FormField
+				</CfgField>
+				<CfgField
+					cfg={cfg}
+					name='duration_value'
 					label='Thời lượng'
 					error={errors.duration_value}
 				>
@@ -247,33 +261,43 @@ export function TrainingProgramFormModal({
 							))}
 						</select>
 					</div>
-				</FormField>
-				<FormField
+				</CfgField>
+				<CfgField
+					cfg={cfg}
+					name='credit_hours'
 					label='Số giờ tín chỉ'
 					error={errors.credit_hours}
 				>
 					{numberInput('credit_hours', 'VD: 24', '0.5')}
-				</FormField>
-				<FormField
+				</CfgField>
+				<CfgField
+					cfg={cfg}
+					name='theory_hours'
 					label='Số tiết lý thuyết'
 					error={errors.theory_hours}
 				>
 					{numberInput('theory_hours', '0')}
-				</FormField>
-				<FormField
+				</CfgField>
+				<CfgField
+					cfg={cfg}
+					name='practice_hours'
 					label='Số tiết thực hành'
 					error={errors.practice_hours}
 				>
 					{numberInput('practice_hours', '0')}
-				</FormField>
-				<FormField label='Phần thi cuối khóa'>
+				</CfgField>
+				<CfgField cfg={cfg} name='exam_parts' error={errors.exam_parts} label='Phần thi cuối khóa'>
 					<select
 						className={styles.formInput}
 						value={form.exam_parts}
 						onChange={set('exam_parts')}
 					>
 						<option value=''>Tự động theo số tiết ({examAutoText})</option>
-						{(Object.keys(EXAM_PARTS_LABEL) as ExamParts[]).map((k) => (
+						{allowedOptions(
+							cfg,
+							'exam_parts',
+							(Object.keys(EXAM_PARTS_LABEL) as ExamParts[]).map((value) => ({ value })),
+						).map(({ value: k }) => (
 							<option
 								key={k}
 								value={k}
@@ -282,7 +306,7 @@ export function TrainingProgramFormModal({
 							</option>
 						))}
 					</select>
-				</FormField>
+				</CfgField>
 				<FormField
 					label='Đối tượng học viên (chọn nhiều)'
 					style={{ gridColumn: '1 / -1' }}
@@ -311,7 +335,10 @@ export function TrainingProgramFormModal({
 						})}
 					</div>
 				</FormField>
-				<FormField
+				<CfgField
+					cfg={cfg}
+					name='target_audience'
+					error={errors.target_audience}
 					label='Đối tượng (ghi chú, điều kiện)'
 					style={{ gridColumn: '1 / -1' }}
 				>
@@ -321,10 +348,13 @@ export function TrainingProgramFormModal({
 						onChange={set('target_audience')}
 						placeholder='VD: Bác sĩ đã có CCHN'
 					/>
-				</FormField>
+				</CfgField>
 				{(form.training_type_id === TRAINING_TYPE.GPHN || form.professional_field_id || form.practice_form_id) && (
 					<>
-						<FormField
+						<CfgField
+							cfg={cfg}
+							name='professional_field_id'
+							error={errors.professional_field_id}
 							label='Lĩnh vực chuyên môn (mặc định)'
 						>
 							<select
@@ -343,8 +373,11 @@ export function TrainingProgramFormModal({
 									</option>
 								))}
 							</select>
-						</FormField>
-						<FormField
+						</CfgField>
+						<CfgField
+							cfg={cfg}
+							name='practice_form_id'
+							error={errors.practice_form_id}
 							label='Hình thức hành nghề (mặc định)'
 						>
 							<select
@@ -363,10 +396,10 @@ export function TrainingProgramFormModal({
 									</option>
 								))}
 							</select>
-						</FormField>
+						</CfgField>
 					</>
 				)}
-				<FormField label='Khoa phụ trách giảng dạy'>
+				<CfgField cfg={cfg} name='department_id' error={errors.department_id} label='Khoa phụ trách giảng dạy'>
 					<select
 						className={styles.formInput}
 						value={form.department_id}
@@ -382,22 +415,26 @@ export function TrainingProgramFormModal({
 							</option>
 						))}
 					</select>
-				</FormField>
-				<FormField label='Ghi chú khoa phụ trách'>
+				</CfgField>
+				<CfgField cfg={cfg} name='department_note' error={errors.department_note} label='Ghi chú khoa phụ trách'>
 					<input
 						className={styles.formInput}
 						value={form.department_note}
 						onChange={set('department_note')}
 						placeholder='VD: Nhiều khoa tùy từng vòng học'
 					/>
-				</FormField>
-				<FormField
+				</CfgField>
+				<CfgField
+					cfg={cfg}
+					name='tuition_fee'
 					label='Học phí (VNĐ)'
 					error={errors.tuition_fee}
 				>
 					{numberInput('tuition_fee', 'VD: 5000000', '1000')}
-				</FormField>
-				<FormField
+				</CfgField>
+				<CfgField
+					cfg={cfg}
+					name='min_capacity'
 					label='Số lượng tối thiểu'
 					error={errors.min_capacity}
 				>
@@ -409,8 +446,10 @@ export function TrainingProgramFormModal({
 						onChange={set('min_capacity')}
 						placeholder='5'
 					/>
-				</FormField>
-				<FormField
+				</CfgField>
+				<CfgField
+					cfg={cfg}
+					name='max_capacity'
 					label='Số lượng tối đa'
 					error={errors.max_capacity}
 				>
@@ -422,7 +461,7 @@ export function TrainingProgramFormModal({
 						onChange={set('max_capacity')}
 						placeholder='30'
 					/>
-				</FormField>
+				</CfgField>
 				<FormField label='Thứ tự'>
 					<input
 						type='number'
@@ -538,7 +577,10 @@ export function TrainingProgramFormModal({
 						)}
 					</div>
 				</div>
-				<FormField
+				<CfgField
+					cfg={cfg}
+					name='description'
+					error={errors.description}
 					label='Mô tả'
 					style={{ gridColumn: '1 / -1' }}
 				>
@@ -549,7 +591,15 @@ export function TrainingProgramFormModal({
 						rows={3}
 						placeholder='Mô tả ngắn về chương trình...'
 					/>
-				</FormField>
+				</CfgField>
+				<CustomFields
+					cfg={cfg}
+					value={custom}
+					onChange={setCustom}
+					errors={errors}
+					sectionClassName={m.formSectionTitle}
+					inputClassName={styles.formInput}
+				/>
 			</div>
 		</Modal>
 	);

@@ -5,6 +5,9 @@ import { UserCheckSvg } from '@/assets/icons';
 import { EMPTY_FORM, GENDER_OPTIONS, type Trainee, type TraineeFormData } from '../types/trainee.type';
 import type { SimpleItem } from '../hooks/useTrainees';
 import styles from '../pages/Trainees.module.css';
+import m from '@/shared/components/Modal/Modal.module.css';
+import { CfgField, CustomFields, useFormConfig, type CustomValues } from '@/shared/formConfig';
+import { allowedOptions } from '@/shared/formConfig/allowedOptions';
 
 export function TraineeFormModal({
 	mode,
@@ -53,7 +56,10 @@ export function TraineeFormModal({
 				}
 			: EMPTY_FORM,
 	);
-	const [errors, setErrors] = useState<Partial<Record<keyof TraineeFormData, string>>>({});
+	// Nhãn / bắt buộc / giới hạn / trường tùy chỉnh theo Cấu hình form
+	const cfg = useFormConfig('trainee', 'admin');
+	const [custom, setCustom] = useState<CustomValues>(trainee?.custom ?? {});
+	const [errors, setErrors] = useState<Record<string, string>>({});
 
 	const set =
 		(k: keyof TraineeFormData) =>
@@ -63,13 +69,13 @@ export function TraineeFormModal({
 		};
 
 	const validate = () => {
-		const err: Partial<Record<keyof TraineeFormData, string>> = {};
-		if (!form.full_name.trim()) err.full_name = 'Vui lòng nhập họ tên';
+		const err: Record<string, string> = cfg.validate({ ...form }, custom, { mode: mode === 'add' ? 'create' : 'edit' });
+		if (!form.full_name.trim()) err.full_name ||= 'Vui lòng nhập họ tên';
 		if (form.email && !/^\S+@\S+\.\S+$/.test(form.email)) err.email = 'Email không hợp lệ';
 		if (form.national_id && !/^\d{9,12}$/.test(form.national_id))
 			err.national_id = 'CCCD/CMND phải gồm 9-12 chữ số';
 		setErrors(err);
-		return Object.keys(err).length === 0;
+		return !Object.values(err).some(Boolean);
 	};
 
 	return (
@@ -84,14 +90,16 @@ export function TraineeFormModal({
 			footer={
 				<ModalActions
 					onCancel={onClose}
-					onConfirm={() => validate() && onSave(form)}
+					onConfirm={() => validate() && onSave({ ...form, custom })}
 					loading={loading}
 					confirmLabel={mode === 'add' ? 'Thêm học viên' : 'Lưu thay đổi'}
 				/>
 			}
 		>
 			<div className={styles.formGrid2}>
-				<FormField
+				<CfgField
+					cfg={cfg}
+					name='full_name'
 					label='Họ và tên'
 					required
 					error={errors.full_name}
@@ -103,7 +111,7 @@ export function TraineeFormModal({
 						onChange={set('full_name')}
 						placeholder='VD: Nguyễn Văn A'
 					/>
-				</FormField>
+				</CfgField>
 				<FormField label='Trạng thái'>
 					<select
 						className={styles.formInput}
@@ -114,17 +122,17 @@ export function TraineeFormModal({
 						<option value='0'>Ngừng hoạt động</option>
 					</select>
 				</FormField>
-				<FormField label='Ngày sinh'>
+				<CfgField cfg={cfg} name='dob' error={errors.dob} label='Ngày sinh'>
 					<DatePicker value={form.dob} onChange={(v) => setForm((f) => ({ ...f, dob: v }))} />
-				</FormField>
-				<FormField label='Giới tính'>
+				</CfgField>
+				<CfgField cfg={cfg} name='gender' error={errors.gender} label='Giới tính'>
 					<select
 						className={styles.formInput}
 						value={form.gender}
 						onChange={set('gender')}
 					>
 						<option value=''>-- Chọn --</option>
-						{GENDER_OPTIONS.map((g) => (
+						{allowedOptions(cfg, 'gender', GENDER_OPTIONS).map((g) => (
 							<option
 								key={g.value}
 								value={g.value}
@@ -133,16 +141,18 @@ export function TraineeFormModal({
 							</option>
 						))}
 					</select>
-				</FormField>
-				<FormField label='Trình độ chuyên môn'>
+				</CfgField>
+				<CfgField cfg={cfg} name='qualification' error={errors.qualification} label='Trình độ chuyên môn'>
 					<input
 						className={styles.formInput}
 						value={form.qualification}
 						onChange={set('qualification')}
 						placeholder='VD: Cử nhân điều dưỡng'
 					/>
-				</FormField>
-				<FormField
+				</CfgField>
+				<CfgField
+					cfg={cfg}
+					name='national_id'
 					label='Số CCCD/CMND'
 					error={errors.national_id}
 				>
@@ -152,27 +162,29 @@ export function TraineeFormModal({
 						onChange={set('national_id')}
 						placeholder='VD: 038201012345'
 					/>
-				</FormField>
-				<FormField label='Ngày cấp CCCD'>
+				</CfgField>
+				<CfgField cfg={cfg} name='national_id_issued_date' error={errors.national_id_issued_date} label='Ngày cấp CCCD'>
 					<DatePicker value={form.national_id_issued_date} onChange={(v) => setForm((f) => ({ ...f, national_id_issued_date: v }))} />
-				</FormField>
-				<FormField label='Nơi cấp CCCD'>
+				</CfgField>
+				<CfgField cfg={cfg} name='national_id_issued_place' error={errors.national_id_issued_place} label='Nơi cấp CCCD'>
 					<input
 						className={styles.formInput}
 						value={form.national_id_issued_place}
 						onChange={set('national_id_issued_place')}
 						placeholder='VD: Cục CSQLHC về TTXH'
 					/>
-				</FormField>
-				<FormField label='Điện thoại'>
+				</CfgField>
+				<CfgField cfg={cfg} name='phone' error={errors.phone} label='Điện thoại'>
 					<input
 						className={styles.formInput}
 						value={form.phone}
 						onChange={set('phone')}
 						placeholder='VD: 0912345678'
 					/>
-				</FormField>
-				<FormField
+				</CfgField>
+				<CfgField
+					cfg={cfg}
+					name='email'
 					label='Email'
 					error={errors.email}
 				>
@@ -182,8 +194,8 @@ export function TraineeFormModal({
 						onChange={set('email')}
 						placeholder='email@example.com'
 					/>
-				</FormField>
-				<FormField label='Đối tượng học viên'>
+				</CfgField>
+				<CfgField cfg={cfg} name='trainee_type_id' error={errors.trainee_type_id} label='Đối tượng học viên'>
 					<select
 						className={styles.formInput}
 						value={form.trainee_type_id}
@@ -199,8 +211,8 @@ export function TraineeFormModal({
 							</option>
 						))}
 					</select>
-				</FormField>
-				<FormField label='Khoa / Phòng (nếu là nhân viên)'>
+				</CfgField>
+				<CfgField cfg={cfg} name='department_id' error={errors.department_id} label='Khoa / Phòng (nếu là nhân viên)'>
 					<select
 						className={styles.formInput}
 						value={form.department_id}
@@ -216,7 +228,7 @@ export function TraineeFormModal({
 							</option>
 						))}
 					</select>
-				</FormField>
+				</CfgField>
 				<div className={styles.formGroup}>
 					<label className={styles.checkboxRow}>
 						<input
@@ -227,29 +239,29 @@ export function TraineeFormModal({
 						Là nhân viên của bệnh viện
 					</label>
 				</div>
-				<FormField label='Đơn vị công tác'>
+				<CfgField cfg={cfg} name='workplace' error={errors.workplace} label='Đơn vị công tác'>
 					<input
 						className={styles.formInput}
 						value={form.workplace}
 						onChange={set('workplace')}
 						placeholder='VD: Bệnh viện Y học cổ truyền Nghệ An'
 					/>
-				</FormField>
-				<FormField label='Chức vụ'>
+				</CfgField>
+				<CfgField cfg={cfg} name='position' error={errors.position} label='Chức vụ'>
 					<input
 						className={styles.formInput}
 						value={form.position}
 						onChange={set('position')}
 					/>
-				</FormField>
-				<FormField label='Trường đào tạo'>
+				</CfgField>
+				<CfgField cfg={cfg} name='graduated_school' error={errors.graduated_school} label='Trường đào tạo'>
 					<input
 						className={styles.formInput}
 						value={form.graduated_school}
 						onChange={set('graduated_school')}
 					/>
-				</FormField>
-				<FormField label='Năm tốt nghiệp'>
+				</CfgField>
+				<CfgField cfg={cfg} name='graduated_year' error={errors.graduated_year} label='Năm tốt nghiệp'>
 					<input
 						type='number'
 						className={styles.formInput}
@@ -257,22 +269,25 @@ export function TraineeFormModal({
 						onChange={set('graduated_year')}
 						placeholder='VD: 2025'
 					/>
-				</FormField>
-				<FormField label='Ngày tốt nghiệp'>
+				</CfgField>
+				<CfgField cfg={cfg} name='graduated_date' error={errors.graduated_date} label='Ngày tốt nghiệp'>
 					<DatePicker value={form.graduated_date} onChange={(v) => setForm((f) => ({ ...f, graduated_date: v }))} />
-				</FormField>
-				<FormField label='Ngày cấp bằng'>
+				</CfgField>
+				<CfgField cfg={cfg} name='degree_issued_date' error={errors.degree_issued_date} label='Ngày cấp bằng'>
 					<DatePicker value={form.degree_issued_date} onChange={(v) => setForm((f) => ({ ...f, degree_issued_date: v }))} />
-				</FormField>
-				<FormField label='Nơi sinh (tỉnh)'>
+				</CfgField>
+				<CfgField cfg={cfg} name='birth_province' error={errors.birth_province} label='Nơi sinh (tỉnh)'>
 					<input
 						className={styles.formInput}
 						value={form.birth_province}
 						onChange={set('birth_province')}
 						placeholder='VD: Nghệ An'
 					/>
-				</FormField>
-				<FormField
+				</CfgField>
+				<CfgField
+					cfg={cfg}
+					name='legacy_code'
+					error={errors.legacy_code}
 					label='Mã học viên (sổ cũ)'
 				>
 					<input
@@ -281,24 +296,27 @@ export function TraineeFormModal({
 						onChange={set('legacy_code')}
 						placeholder='VD: 226'
 					/>
-				</FormField>
-				<FormField label='Địa chỉ'>
+				</CfgField>
+				<CfgField cfg={cfg} name='address' error={errors.address} label='Địa chỉ'>
 					<input
 						className={styles.formInput}
 						value={form.address}
 						onChange={set('address')}
 						placeholder='Địa chỉ liên hệ...'
 					/>
-				</FormField>
-				<FormField label='Địa chỉ thường trú'>
+				</CfgField>
+				<CfgField cfg={cfg} name='permanent_address' error={errors.permanent_address} label='Địa chỉ thường trú'>
 					<input
 						className={styles.formInput}
 						value={form.permanent_address}
 						onChange={set('permanent_address')}
 						placeholder='Địa chỉ thường trú...'
 					/>
-				</FormField>
-				<FormField
+				</CfgField>
+				<CfgField
+					cfg={cfg}
+					name='notes'
+					error={errors.notes}
 					label='Ghi chú'
 					style={{ gridColumn: '1 / -1' }}
 				>
@@ -309,7 +327,15 @@ export function TraineeFormModal({
 						onChange={set('notes')}
 						placeholder='Ghi chú thêm (nếu có)...'
 					/>
-				</FormField>
+				</CfgField>
+				<CustomFields
+					cfg={cfg}
+					value={custom}
+					onChange={setCustom}
+					errors={errors}
+					sectionClassName={m.formSectionTitle}
+					inputClassName={styles.formInput}
+				/>
 			</div>
 		</Modal>
 	);

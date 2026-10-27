@@ -1,3 +1,5 @@
+import type { CustomValues } from '@/shared/formConfig';
+
 export type ModalType = 'add' | 'edit' | 'delete' | null;
 
 export interface Trainee {
@@ -50,6 +52,8 @@ export interface Trainee {
 	doc_done?: number;
 	/** Chỉ có ở GET /trainees/:id — số lượt ghi danh (trừ bị từ chối). */
 	enrollment_count?: number;
+	/** Trường tùy chỉnh (Cấu hình form 'trainee') */
+	custom?: CustomValues;
 }
 
 export interface TraineeFormData {
@@ -77,6 +81,8 @@ export interface TraineeFormData {
 	legacy_code: string;
 	is_active: boolean;
 	is_employee: boolean;
+	/** Có khi gửi từ TraineeFormModal ⇒ server kiểm theo Cấu hình form */
+	custom?: CustomValues;
 }
 
 export type EnrollmentStatus = 'pending' | 'approved' | 'rejected' | 'waitlisted';

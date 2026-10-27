@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { DatePicker } from '../components/Input/DatePicker';
 import { MultiSelect } from '../components/Input/MultiSelect';
 import m from '../components/Modal/Modal.module.css';
@@ -43,7 +44,7 @@ function CustomInput({
 			return (
 				<input
 					id={id}
-					type='number'
+					type="number"
 					className={cls}
 					value={str(value)}
 					placeholder={placeholder}
@@ -71,12 +72,9 @@ function CustomInput({
 					value={str(value)}
 					onChange={(e) => onChange(e.target.value)}
 				>
-					<option value=''>{placeholder ?? '— Chọn —'}</option>
+					<option value="">{placeholder ?? '— Chọn —'}</option>
 					{(f.options ?? []).map((o) => (
-						<option
-							key={o.value}
-							value={o.value}
-						>
+						<option key={o.value} value={o.value}>
 							{o.label}
 						</option>
 					))}
@@ -85,7 +83,10 @@ function CustomInput({
 		case 'multiselect':
 			return (
 				<MultiSelect
-					options={(f.options ?? []).map((o) => ({ id: o.value, label: o.label }))}
+					options={(f.options ?? []).map((o) => ({
+						id: o.value,
+						label: o.label,
+					}))}
 					selected={new Set(Array.isArray(value) ? (value as string[]) : [])}
 					onChange={(next) => onChange([...next])}
 					placeholder={placeholder ?? '— Chọn —'}
@@ -94,11 +95,17 @@ function CustomInput({
 		case 'checkbox':
 			return (
 				<label
-					style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 'var(--font-size-sm)', cursor: 'pointer' }}
+					style={{
+						display: 'flex',
+						alignItems: 'center',
+						gap: 8,
+						fontSize: 'var(--font-size-sm)',
+						cursor: 'pointer',
+					}}
 				>
 					<input
 						id={id}
-						type='checkbox'
+						type="checkbox"
 						checked={value === true}
 						onChange={(e) => onChange(e.target.checked)}
 					/>
@@ -145,6 +152,14 @@ export function CustomFields({
 	/** Class của trang tự vẽ form (xem FieldClasses) */
 	classes?: FieldClasses;
 }) {
+	// Ô đã sửa sau lần kiểm gần nhất thì ẩn lỗi của ô đó (như ô có sẵn). Dựa vào số lần
+	// gọi cfg.validate chứ không vào `errors`: form xóa lỗi ô khác cũng tạo object mới
+	const [edited, setEdited] = useState({
+		at: cfg.validated,
+		keys: [] as string[],
+	});
+	const editedKeys = edited.at === cfg.validated ? edited.keys : [];
+	const errorOf = (key: string) => (editedKeys.includes(key) ? undefined : errors?.[key]);
 	if (!cfg.custom.length) return null;
 	return (
 		<>
@@ -157,13 +172,17 @@ export function CustomFields({
 					label={f.label}
 					required={f.required}
 					hint={f.hint}
-					error={errors?.[f.key]}
+					error={errorOf(f.key)}
 				>
 					<CustomInput
 						f={f}
 						value={value[f.key]}
-						onChange={(v) => onChange({ ...value, [f.key]: v })}
-						hasError={!!errors?.[f.key]}
+						onChange={(v) => {
+							if (errors?.[f.key] && !editedKeys.includes(f.key))
+								setEdited({ at: cfg.validated, keys: [...editedKeys, f.key] });
+							onChange({ ...value, [f.key]: v });
+						}}
+						hasError={!!errorOf(f.key)}
 						inputClassName={inputClassName}
 						inputErrorClassName={classes?.inputError}
 					/>

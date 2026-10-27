@@ -87,13 +87,21 @@ const removeMany = async (formKey, recordIds) => {
 		);
 };
 
-// Gắn `custom` vào từng dòng (danh sách / chi tiết) — rows có cột id
-const attach = async (formKey, rows) => {
+// Gắn `custom` vào từng dòng (danh sách / chi tiết) — idKey = cột id bản ghi
+const attach = async (formKey, rows, idKey = 'id') => {
 	const custom = await getMany(
 		formKey,
-		rows.map((r) => r.id),
+		rows.map((r) => r[idKey]),
 	);
-	return rows.map((r) => ({ ...r, custom: custom.get(String(r.id)) || {} }));
+	return rows.map((r) => ({ ...r, custom: custom.get(String(r[idKey])) || {} }));
 };
 
-module.exports = { get, getMany, save, remove, removeMany, attach };
+// Như attach nhưng nhận thẳng kết quả list của service: mảng hoặc { data: [...], ... }
+const attachResult = async (formKey, result, idKey = 'id') => {
+	const rows = Array.isArray(result) ? result : result?.data;
+	if (!Array.isArray(rows) || !rows.length) return result;
+	const out = await attach(formKey, rows, idKey);
+	return Array.isArray(result) ? out : { ...result, data: out };
+};
+
+module.exports = { get, getMany, save, remove, removeMany, attach, attachResult };

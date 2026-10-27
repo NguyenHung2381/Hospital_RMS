@@ -46,5 +46,6 @@ export function cloneCourseForm(course: Course): CourseFormData {
 		end_date: '',
 		enrollment_start_date: '',
 		enrollment_end_date: '',
+		custom: course.custom,
 	};
 }

@@ -7,6 +7,7 @@ const cmeCtrl = require('./courseCmeController');
 const uploadExcel = require('../../../middlewares/uploadExcel');
 const { authenticate, authorizePermission } = require('../../../middlewares/auth');
 const { validate } = require('../../../middlewares/errorHandler');
+const { formConfigGuard, bodyVariant } = require('../../forms/formConfigGuard');
 const { createTrainingUpload } = require('../../../middlewares/uploadTraining');
 const coursePolicy = require('./coursePolicy');
 
@@ -111,6 +112,7 @@ router.post(
 		body('program_ids').optional().isArray(),
 	],
 	validate,
+	formConfigGuard('course', { variant: bodyVariant('admin'), mode: 'create' }),
 	ctrl.createOne,
 );
 
@@ -129,6 +131,7 @@ router.put(
 		body('program_ids').optional().isArray(),
 	],
 	validate,
+	formConfigGuard('course', { variant: bodyVariant('admin'), mode: 'update' }),
 	ctrl.updateOne,
 );
 
@@ -227,6 +230,9 @@ router.post(
 			.withMessage('Vui lòng chọn học viên'),
 	],
 	validate,
+	// Form "Thêm hồ sơ thực hành" chỉ có khóa / chương trình / học viên + trường tùy chỉnh ⇒
+	// kiểm như sửa từng phần (trường hồ sơ khác nhập sau ở trang hồ sơ)
+	formConfigGuard('enrollment', { variant: bodyVariant('practice'), mode: 'update' }),
 	ctrl.registerTrainee,
 );
 router.get(
@@ -267,6 +273,7 @@ router.put(
 		body('practice_code').optional({ nullable: true }).isLength({ max: 30 }),
 	],
 	validate,
+	formConfigGuard('enrollment', { variant: bodyVariant('course', 'practice'), mode: 'update' }),
 	ctrl.updateEnrollment,
 );
 router.get(
@@ -414,9 +421,15 @@ router.post(
 	authorizePermission(['courses', 'update']),
 	[body('session_date').notEmpty().withMessage('Vui lòng chọn ngày học')],
 	validate,
+	formConfigGuard('course_session', { variant: bodyVariant('admin'), mode: 'create' }),
 	ctrl.createSession,
 );
-router.put('/sessions/:sessionId', authorizePermission(['courses', 'update']), ctrl.updateSession);
+router.put(
+	'/sessions/:sessionId',
+	authorizePermission(['courses', 'update']),
+	formConfigGuard('course_session', { variant: bodyVariant('admin'), mode: 'update' }),
+	ctrl.updateSession,
+);
 router.delete(
 	'/sessions/:sessionId',
 	authorizePermission(['courses', 'update']),
@@ -431,6 +444,8 @@ router.post(
 		body('weekdays').isArray({ min: 1 }).withMessage('Vui lòng chọn ít nhất 1 thứ trong tuần'),
 	],
 	validate,
+	// Xếp lịch nhiều buổi không có ô "Ngày học" (khoảng ngày + thứ) ⇒ chỉ kiểm trường gửi lên
+	formConfigGuard('course_session', { variant: bodyVariant('admin'), mode: 'update' }),
 	ctrl.createSessionsBulk,
 );
 

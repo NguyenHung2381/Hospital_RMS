@@ -28,6 +28,8 @@ import { LecturerSelect } from './LecturerOptions';
 import { ProgramFilter } from './ProgramFilter';
 import styles from '../pages/Courses.module.css';
 import ss from './SessionsTab.module.css';
+import { CfgField, CustomFields, useFormConfig, type CustomValues } from '@/shared/formConfig';
+import { allowedOptions } from '@/shared/formConfig/allowedOptions';
 
 type Detail = ReturnType<typeof useCourseDetail>;
 
@@ -56,7 +58,17 @@ const EMPTY_BULK = {
 const SESSION_KIND_LABEL: Record<SessionKind, string> = { theory: 'Lý thuyết', practice: 'Thực hành' };
 
 // Buổi LT / TH — để tính chuyên cần từng phần ở bảng điểm (bỏ trống = theo loại bài học)
-const kindSelect = (value: SessionKind | '', onChange: (v: SessionKind | '') => void, cls: string) => (
+const KIND_OPTIONS = [
+	{ value: 'theory', label: 'Buổi lý thuyết' },
+	{ value: 'practice', label: 'Buổi thực hành' },
+] as const;
+
+const kindSelect = (
+	value: SessionKind | '',
+	onChange: (v: SessionKind | '') => void,
+	cls: string,
+	options: readonly { value: string; label: string }[] = KIND_OPTIONS,
+) => (
 	<select
 		className={cls}
 		value={value}
@@ -64,8 +76,14 @@ const kindSelect = (value: SessionKind | '', onChange: (v: SessionKind | '') => 
 		onChange={(e) => onChange(e.target.value as SessionKind | '')}
 	>
 		<option value=''>-- LT/TH theo bài --</option>
-		<option value='theory'>Buổi lý thuyết</option>
-		<option value='practice'>Buổi thực hành</option>
+		{options.map((o) => (
+			<option
+				key={o.value}
+				value={o.value}
+			>
+				{o.label}
+			</option>
+		))}
 	</select>
 );
 
@@ -352,10 +370,18 @@ function SessionFormModal({
 		...EMPTY_BULK,
 		...(state.mode === 'bulk' ? state.initial : undefined),
 	}));
+	// Nhãn / bắt buộc / giới hạn / trường tùy chỉnh theo Cấu hình form
+	const cfg = useFormConfig('course_session', 'admin');
+	const [custom, setCustom] = useState<CustomValues>(editing?.custom ?? {});
+	const [errors, setErrors] = useState<Record<string, string>>({});
 	// Phần chung 2 chế độ (giờ, phòng, bài, LT/TH, GV) đọc/ghi qua 1 bộ hàm
 	const f = bulk ? many : one;
-	const set = (patch: Partial<SessionForm & BulkForm>) =>
-		bulk ? setMany((x) => ({ ...x, ...patch })) : setOne((x) => ({ ...x, ...patch }));
+	const set = (patch: Partial<SessionForm & BulkForm>) => {
+		if (bulk) setMany((x) => ({ ...x, ...patch }));
+		else setOne((x) => ({ ...x, ...patch }));
+		const keys = Object.keys(patch).map((k) => (k === 'lesson_id' ? 'subject_id' : k));
+		setErrors((er) => (keys.some((k) => er[k]) ? { ...er, ...Object.fromEntries(keys.map((k) => [k, ''])) } : er));
+	};
 	const valid = bulk ? !!many.start_date && !!many.end_date && many.weekdays.length > 0 : !!one.session_date;
 	// Buổi đang sửa thuộc bài ngoài chương trình đang lọc ⇒ vẫn giữ bài đó trong danh sách chọn
 	const lessonChoices =
@@ -364,12 +390,27 @@ function SessionFormModal({
 			: lessonOptions;
 
 	const submit = async () => {
+		// Xếp lịch nhiều buổi không có ô "Ngày học"
+		const values = {
+			...(bulk ? {} : { session_date: one.session_date }),
+			start_time: f.start_time,
+			end_time: f.end_time,
+			room: f.room,
+			subject_id: f.lesson_id,
+			lecturer_id: f.lecturer_id,
+			session_kind: f.session_kind,
+		};
+		const errs = cfg.validate(values, custom, { mode: editing ? 'edit' : 'create' });
+		setErrors(errs);
+		if (Object.values(errs).some(Boolean)) return;
+		const extra = { custom, form_variant: 'admin' as const };
 		if (bulk) {
 			const { lesson_id, session_kind, ...rest } = many;
 			const result = await d.createSessionsBulk({
 				...rest,
 				subject_id: lesson_id || undefined,
 				session_kind: session_kind || undefined,
+				...extra,
 			});
 			if (result) onClose(result);
 			return;
@@ -384,6 +425,7 @@ function SessionFormModal({
 				subject_id: one.lesson_id,
 				lecturer_id: one.lecturer_id,
 				session_kind: one.session_kind,
+				...extra,
 			});
 			if (ok) onClose();
 			return;
@@ -396,6 +438,7 @@ function SessionFormModal({
 			subject_id: one.lesson_id || undefined,
 			lecturer_id: one.lecturer_id || undefined,
 			session_kind: one.session_kind || undefined,
+			...extra,
 		});
 		if (ok) onClose();
 	};
@@ -460,28 +503,31 @@ function SessionFormModal({
 					</FormField>
 				</>
 			) : (
-				<FormField
+				<CfgField
+					cfg={cfg}
+					name='session_date'
+					error={errors.session_date}
 					label='Ngày học'
 					required
 				>
 					<DatePicker value={one.session_date} onChange={(v) => set({ session_date: v })} />
-				</FormField>
+				</CfgField>
 			)}
 			<div className={m.formRow}>
-				<FormField label='Giờ bắt đầu'>
+				<CfgField cfg={cfg} name='start_time' error={errors.start_time} label='Giờ bắt đầu'>
 					<TimePicker
 						value={f.start_time}
 						onChange={(v) => set({ start_time: v })}
 					/>
-				</FormField>
-				<FormField label='Giờ kết thúc'>
+				</CfgField>
+				<CfgField cfg={cfg} name='end_time' error={errors.end_time} label='Giờ kết thúc'>
 					<TimePicker
 						value={f.end_time}
 						onChange={(v) => set({ end_time: v })}
 					/>
-				</FormField>
+				</CfgField>
 			</div>
-			<FormField label='Bài học'>
+			<CfgField cfg={cfg} name='subject_id' error={errors.subject_id} label='Bài học'>
 				<select
 					className={m.formInput}
 					value={f.lesson_id}
@@ -499,9 +545,9 @@ function SessionFormModal({
 						</option>
 					))}
 				</select>
-			</FormField>
+			</CfgField>
 			{/* Giảng viên 1 hàng riêng, rộng bằng hộp thoại: tên kèm chuyên khoa dài, đọc không bị xuống dòng */}
-			<FormField label='Giảng viên'>
+			<CfgField cfg={cfg} name='lecturer_id' error={errors.lecturer_id} label='Giảng viên'>
 				<LecturerSelect
 					lecturers={sessionLecturers}
 					value={f.lecturer_id}
@@ -509,12 +555,12 @@ function SessionFormModal({
 					emptyLabel='-- Chọn giảng viên --'
 					onChange={(lecturer_id) => set({ lecturer_id })}
 				/>
-			</FormField>
+			</CfgField>
 			<div className={m.formRow}>
-				<FormField label='Loại buổi'>
-					{kindSelect(f.session_kind, (session_kind) => set({ session_kind }), m.formInput)}
-				</FormField>
-				<FormField label='Phòng học'>
+				<CfgField cfg={cfg} name='session_kind' error={errors.session_kind} label='Loại buổi'>
+					{kindSelect(f.session_kind, (session_kind) => set({ session_kind }), m.formInput, allowedOptions(cfg, 'session_kind', KIND_OPTIONS))}
+				</CfgField>
+				<CfgField cfg={cfg} name='room' error={errors.room} label='Phòng học'>
 					<VenueSelect
 						scope='training'
 						includeOthers
@@ -523,8 +569,16 @@ function SessionFormModal({
 						value={f.room}
 						onChange={(room) => set({ room })}
 					/>
-				</FormField>
+				</CfgField>
 			</div>
+			<CustomFields
+				cfg={cfg}
+				value={custom}
+				onChange={setCustom}
+				errors={errors}
+				sectionClassName={m.formSectionTitle}
+				inputClassName={m.formInput}
+			/>
 		</Modal>
 	);
 }

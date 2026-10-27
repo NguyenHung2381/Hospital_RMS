@@ -325,7 +325,12 @@ const createSessionsBulk = async (courseId, data, actorId) => {
 		await lecturerAssignmentService.syncLessonsFromSessions(courseId, [subject_id], actorId);
 		await lessonProgressService.recompute({ courseId });
 	}
-	return { created: createdIds.length, skipped, warnings: await findLecturerClashes(createdIds) };
+	return {
+		created: createdIds.length,
+		ids: createdIds,
+		skipped,
+		warnings: await findLecturerClashes(createdIds),
+	};
 };
 
 module.exports = {

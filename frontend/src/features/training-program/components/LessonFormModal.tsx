@@ -1,4 +1,7 @@
 import { FormField } from '@/shared/components/Input/FormField';
+import m from '@/shared/components/Modal/Modal.module.css';
+import { CfgField, CustomFields, useFormConfig, type CustomValues } from '@/shared/formConfig';
+import { allowedOptions } from '@/shared/formConfig/allowedOptions';
 import { Modal, ModalActions } from '@/shared/components';
 import { notify } from '../../../shared/utils/feedback';
 import { useEffect, useMemo, useState } from 'react';
@@ -129,6 +132,8 @@ export type EditableLesson = {
 	duration_unit: DurationUnit | null;
 	allow_split: boolean;
 	department_ids: string | null;
+	/** Trường tùy chỉnh (Cấu hình form 'lesson') */
+	custom?: CustomValues;
 };
 
 export function LessonFormModal({
@@ -166,7 +171,10 @@ export function LessonFormModal({
 			: { ...EMPTY_LESSON_FORM, program_ids: defaultProgramId ? [defaultProgramId] : [] },
 	);
 	const [loadingPrograms, setLoadingPrograms] = useState(mode === 'edit');
-	const [errors, setErrors] = useState<Partial<Record<'code' | 'title' | 'duration_value', string>>>({});
+	// Nhãn / bắt buộc / giới hạn / trường tùy chỉnh theo Cấu hình form
+	const cfg = useFormConfig('lesson', 'admin');
+	const [custom, setCustom] = useState<CustomValues>(lesson?.custom ?? {});
+	const [errors, setErrors] = useState<Record<string, string>>({});
 	const [saving, setSaving] = useState(false);
 	const [error, setError] = useState('');
 	const [departments, setDepartments] = useState<Department[]>([]);
@@ -196,13 +204,13 @@ export function LessonFormModal({
 		setForm((f) => ({ ...f, [key]: on ? [...f[key], id] : f[key].filter((x) => x !== id) }));
 
 	const validate = () => {
-		const err: Partial<Record<'code' | 'title' | 'duration_value', string>> = {};
-		if (!form.code.trim()) err.code = 'Vui lòng nhập mã bài học';
-		if (!form.title.trim()) err.title = 'Vui lòng nhập tên bài học';
+		const err: Record<string, string> = cfg.validate({ ...form }, custom, { mode: mode === 'add' ? 'create' : 'edit' });
+		if (cfg.required('code', true) && !form.code.trim()) err.code ||= 'Vui lòng nhập mã bài học';
+		if (!form.title.trim()) err.title ||= 'Vui lòng nhập tên bài học';
 		if (form.duration_value.trim() && !(Number(form.duration_value) > 0))
 			err.duration_value = 'Thời lượng phải là số dương';
 		setErrors(err);
-		return Object.keys(err).length === 0;
+		return !Object.values(err).some(Boolean);
 	};
 
 	const handleSave = async () => {
@@ -210,8 +218,9 @@ export function LessonFormModal({
 		setSaving(true);
 		setError('');
 		try {
-			const lessonId = mode === 'edit' && lesson ? lesson.lesson_id : (await createLesson(form)).id;
-			if (mode === 'edit') await updateLesson(lessonId, form);
+			const data = { ...form, custom };
+			const lessonId = mode === 'edit' && lesson ? lesson.lesson_id : (await createLesson(data)).id;
+			if (mode === 'edit') await updateLesson(lessonId, data);
 			await setLessonPrograms(lessonId, form.program_ids);
 			notify.success(mode === 'edit' ? 'Đã cập nhật bài học' : 'Đã thêm bài học');
 			onSaved();
@@ -243,7 +252,9 @@ export function LessonFormModal({
 			{error && <div className={styles.errorBanner}>{error}</div>}
 
 			<div className={styles.formGrid2}>
-				<FormField
+				<CfgField
+					cfg={cfg}
+					name='code'
 					label='Mã bài học'
 					required
 					error={errors.code}
@@ -257,14 +268,18 @@ export function LessonFormModal({
 						}}
 						placeholder='VD: TH_BS_RHM'
 					/>
-				</FormField>
-				<FormField label='Loại'>
+				</CfgField>
+				<CfgField cfg={cfg} name='lesson_kind' error={errors.lesson_kind} label='Loại'>
 					<select
 						className={styles.formInput}
 						value={form.lesson_kind}
 						onChange={(e) => setForm((f) => ({ ...f, lesson_kind: e.target.value as LessonKind }))}
 					>
-						{Object.entries(LESSON_KIND_LABEL).map(([v, label]) => (
+						{allowedOptions(
+							cfg,
+							'lesson_kind',
+							Object.entries(LESSON_KIND_LABEL).map(([value, label]) => ({ value, label })),
+						).map(({ value: v, label }) => (
 							<option
 								key={v}
 								value={v}
@@ -273,9 +288,11 @@ export function LessonFormModal({
 							</option>
 						))}
 					</select>
-				</FormField>
+				</CfgField>
 
-				<FormField
+				<CfgField
+					cfg={cfg}
+					name='title'
 					label='Tên bài học'
 					required
 					error={errors.title}
@@ -290,13 +307,13 @@ export function LessonFormModal({
 						}}
 						placeholder='VD: Thực hành vòng Răng hàm mặt'
 					/>
-				</FormField>
+				</CfgField>
 
 				<div
 					className={styles.formGroup}
 					style={{ gridColumn: '1 / -1', display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 'var(--space-4)' }}
 				>
-					<FormField label='Số tiết lý thuyết'>
+					<CfgField cfg={cfg} name='theory_hours' error={errors.theory_hours} label='Số tiết lý thuyết'>
 						<input
 							type='number'
 							min={0}
@@ -304,8 +321,8 @@ export function LessonFormModal({
 							value={form.theory_hours}
 							onChange={(e) => setForm((f) => ({ ...f, theory_hours: e.target.value }))}
 						/>
-					</FormField>
-					<FormField label='Số tiết thực hành'>
+					</CfgField>
+					<CfgField cfg={cfg} name='practice_hours' error={errors.practice_hours} label='Số tiết thực hành'>
 						<input
 							type='number'
 							min={0}
@@ -313,7 +330,7 @@ export function LessonFormModal({
 							value={form.practice_hours}
 							onChange={(e) => setForm((f) => ({ ...f, practice_hours: e.target.value }))}
 						/>
-					</FormField>
+					</CfgField>
 					<div className={styles.formGroup}>
 						<label className={styles.formLabel}>Tổng số tiết</label>
 						<input
@@ -326,7 +343,7 @@ export function LessonFormModal({
 					</div>
 				</div>
 
-				<FormField label='Số tín chỉ'>
+				<CfgField cfg={cfg} name='credits' error={errors.credits} label='Số tín chỉ'>
 					<input
 						type='number'
 						min={0}
@@ -334,8 +351,10 @@ export function LessonFormModal({
 						value={form.credits}
 						onChange={(e) => setForm((f) => ({ ...f, credits: e.target.value }))}
 					/>
-				</FormField>
-				<FormField
+				</CfgField>
+				<CfgField
+					cfg={cfg}
+					name='duration_value'
 					label='Thời lượng'
 					error={errors.duration_value}
 				>
@@ -368,7 +387,7 @@ export function LessonFormModal({
 							))}
 						</select>
 					</div>
-				</FormField>
+				</CfgField>
 
 				<FormField label='Trạng thái'>
 					<select
@@ -441,7 +460,10 @@ export function LessonFormModal({
 					</div>
 				</div>
 
-				<FormField
+				<CfgField
+					cfg={cfg}
+					name='description'
+					error={errors.description}
 					label='Mô tả'
 					style={{ gridColumn: '1 / -1' }}
 				>
@@ -451,7 +473,15 @@ export function LessonFormModal({
 						value={form.description}
 						onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
 					/>
-				</FormField>
+				</CfgField>
+				<CustomFields
+					cfg={cfg}
+					value={custom}
+					onChange={setCustom}
+					errors={errors}
+					sectionClassName={m.formSectionTitle}
+					inputClassName={styles.formInput}
+				/>
 			</div>
 		</Modal>
 	);

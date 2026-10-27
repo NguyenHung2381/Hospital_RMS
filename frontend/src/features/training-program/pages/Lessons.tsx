@@ -22,8 +22,10 @@ import { LessonFormModal } from '../components/LessonFormModal';
 import { useLessons } from '../hooks/useLessons';
 import styles from './TrainingPrograms.module.css';
 import tbl from '@/shared/components/Table/Table.module.css';
+import { CustomValuesInline, useFormConfig } from '@/shared/formConfig';
 
 export default function Lessons() {
+	const customCfg = useFormConfig('lesson', 'admin');
 	const d = useLessons();
 	const rowSel = useRowSelection(d.paged.map((x) => x.id));
 	const [docsLesson, setDocsLesson] = useState<{ id: string; title: string } | null>(null);
@@ -220,6 +222,11 @@ export default function Lessons() {
 											</td>
 											<td className={styles.td}>
 												<span className={styles.itemName}>{l.title}</span>
+<CustomValuesInline
+	cfg={customCfg}
+	data={l.custom}
+	className={styles.descText}
+/>
 												{l.lesson_kind === 'rotation' && (
 													<div className={styles.descText}>
 														{[

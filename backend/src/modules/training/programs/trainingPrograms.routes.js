@@ -3,6 +3,7 @@ const { body } = require('express-validator');
 const ctrl = require('./trainingProgramController');
 const { authenticate, authorizePermission } = require('../../../middlewares/auth');
 const { validate } = require('../../../middlewares/errorHandler');
+const { formConfigGuard, bodyVariant } = require('../../forms/formConfigGuard');
 const { createTrainingUpload } = require('../../../middlewares/uploadTraining');
 const uploadExcel = require('../../../middlewares/uploadExcel');
 
@@ -57,6 +58,7 @@ router.post(
 		...programNumberRules,
 	],
 	validate,
+	formConfigGuard('training_program', { variant: bodyVariant('admin'), mode: 'create' }),
 	ctrl.createOne,
 );
 
@@ -74,6 +76,7 @@ router.put(
 		...programNumberRules,
 	],
 	validate,
+	formConfigGuard('training_program', { variant: bodyVariant('admin'), mode: 'update' }),
 	ctrl.updateOne,
 );
 
@@ -97,6 +100,7 @@ router.post(
 		body('code').optional({ checkFalsy: true }).trim().isLength({ max: 50 }),
 	],
 	validate,
+	formConfigGuard('lesson', { variant: bodyVariant('admin'), mode: 'create' }),
 	ctrl.createLesson,
 );
 router.get(
@@ -149,6 +153,7 @@ router.delete(
 router.put(
 	'/lessons/:lessonId',
 	authorizePermission(['training_programs', 'update']),
+	formConfigGuard('lesson', { variant: bodyVariant('admin'), mode: 'update' }),
 	ctrl.updateLesson,
 );
 router.delete(

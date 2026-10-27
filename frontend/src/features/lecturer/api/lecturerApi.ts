@@ -29,6 +29,7 @@ export const createLecturer = (form: LecturerFormData) =>
 		is_external: form.is_external,
 		phone: form.phone || null,
 		email: form.email || null,
+		...(form.custom ? { custom: form.custom, form_variant: 'admin' } : {}),
 	});
 
 export const updateLecturer = (id: string, form: LecturerFormData) =>
@@ -38,6 +39,7 @@ export const updateLecturer = (id: string, form: LecturerFormData) =>
 		is_external: form.is_external,
 		phone: form.phone || null,
 		email: form.email || null,
+		...(form.custom ? { custom: form.custom, form_variant: 'admin' } : {}),
 	});
 
 // Thêm giảng viên từ nhân sự — thông tin lấy từ tài khoản và hồ sơ CCHN

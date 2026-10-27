@@ -1,30 +1,52 @@
 const trainingProgramService = require('./trainingProgramService');
 const programCatalogImportService = require('./programCatalogImportService');
 const { success, created, notFound } = require('../../../utils/response');
+const formCustomValueService = require('../../forms/formCustomValueService');
 const { asyncHandler } = require('../../../utils/asyncHandler');
 
 const getAll = asyncHandler(async (req, res) => {
-	return success(res, await trainingProgramService.getAll(req.query));
+	return success(
+		res,
+		await formCustomValueService.attachResult(
+			'training_program',
+			await trainingProgramService.getAll(req.query),
+		),
+	);
 });
 
 const getById = asyncHandler(async (req, res) => {
 	const item = await trainingProgramService.getById(req.params.id);
 	if (!item) return notFound(res);
+	item.custom = await formCustomValueService.get('training_program', item.id);
 	return success(res, item);
 });
 
 const createOne = asyncHandler(async (req, res) => {
-	return created(res, await trainingProgramService.create(req.body, req.user.id));
+	const item = await trainingProgramService.create(req.body, req.user.id);
+	const custom = await formCustomValueService.save(
+		'training_program',
+		item.id,
+		req.formCustom,
+		req.user.id,
+	);
+	return created(res, custom ? { ...item, custom } : item);
 });
 
 const updateOne = asyncHandler(async (req, res) => {
 	const item = await trainingProgramService.update(req.params.id, req.body, req.user.id);
 	if (!item) return notFound(res);
-	return success(res, item, 'Cập nhật thành công');
+	const custom = await formCustomValueService.save(
+		'training_program',
+		req.params.id,
+		req.formCustom,
+		req.user.id,
+	);
+	return success(res, custom ? { ...item, custom } : item, 'Cập nhật thành công');
 });
 
 const removeOne = asyncHandler(async (req, res) => {
 	await trainingProgramService.remove(req.params.id, req.user.id);
+	await formCustomValueService.remove('training_program', req.params.id);
 	return success(res, null, 'Xóa thành công');
 });
 
@@ -44,15 +66,30 @@ const importCatalog = asyncHandler(async (req, res) => {
 
 // ─── Bài học ─────────────────────────────────────────────────────────────
 const listLessons = asyncHandler(async (req, res) => {
-	return success(res, await trainingProgramService.listLessons(req.params.id));
+	return success(
+		res,
+		await formCustomValueService.attachResult(
+			'lesson',
+			await trainingProgramService.listLessons(req.params.id),
+			'lesson_id',
+		),
+	);
 });
 
 const listAllLessons = asyncHandler(async (req, res) => {
-	return success(res, await trainingProgramService.listAllLessons());
+	return success(
+		res,
+		await formCustomValueService.attachResult(
+			'lesson',
+			await trainingProgramService.listAllLessons(),
+		),
+	);
 });
 
 const createLesson = asyncHandler(async (req, res) => {
-	return created(res, await trainingProgramService.createLesson(req.body, req.user.id));
+	const item = await trainingProgramService.createLesson(req.body, req.user.id);
+	await formCustomValueService.save('lesson', item.id, req.formCustom, req.user.id);
+	return created(res, item);
 });
 
 const getLessonPrograms = asyncHandler(async (req, res) => {
@@ -108,11 +145,13 @@ const unlinkLesson = asyncHandler(async (req, res) => {
 
 const updateLesson = asyncHandler(async (req, res) => {
 	await trainingProgramService.updateLesson(req.params.lessonId, req.body, req.user.id);
+	await formCustomValueService.save('lesson', req.params.lessonId, req.formCustom, req.user.id);
 	return success(res, null, 'Cập nhật bài học thành công');
 });
 
 const removeLesson = asyncHandler(async (req, res) => {
 	await trainingProgramService.removeLesson(req.params.lessonId, req.user.id);
+	await formCustomValueService.remove('lesson', req.params.lessonId);
 	return success(res, null, 'Đã xóa bài học');
 });
 

@@ -21,6 +21,8 @@ import {
 	issueCertificate as apiIssueCertificate,
 	registerTrainee as apiRegisterTrainee,
 	registerStaff as apiRegisterStaff,
+	type EnrollFormExtra,
+	type SessionFormExtra,
 	removeAssignment as apiRemoveAssignment,
 	removeCertificate as apiRemoveCertificate,
 	removeDocument as apiRemoveDocument,
@@ -126,10 +128,10 @@ export const fetchEnrollCandidates = async (): Promise<EnrollCandidate[]> => {
 };
 
 /** Ghi danh 1 ứng viên của fetchEnrollCandidates (id 'user:…' = nhân viên chưa có hồ sơ học viên). */
-export const registerCandidate = (courseId: string, candidateId: string, programId?: string) =>
+export const registerCandidate = (courseId: string, candidateId: string, programId?: string, extra?: EnrollFormExtra) =>
 	candidateId.startsWith(STAFF_OPTION_PREFIX)
-		? apiRegisterStaff(courseId, candidateId.slice(STAFF_OPTION_PREFIX.length), programId)
-		: apiRegisterTrainee(courseId, candidateId, programId);
+		? apiRegisterStaff(courseId, candidateId.slice(STAFF_OPTION_PREFIX.length), programId, extra)
+		: apiRegisterTrainee(courseId, candidateId, programId, extra);
 
 /** Cảnh báo trùng lịch giảng viên từ backend — không chặn, chỉ báo. */
 const warnClashes = (warnings?: string[]) => {
@@ -359,7 +361,7 @@ export function useCourseDetail(courseId: string) {
 	);
 
 	const createSession = useCallback(
-		async (data: {
+		async (data: SessionFormExtra & {
 			subject_id?: string;
 			lecturer_id?: string;
 			session_date: string;
@@ -421,7 +423,7 @@ export function useCourseDetail(courseId: string) {
 	);
 
 	const createSessionsBulk = useCallback(
-		async (data: {
+		async (data: SessionFormExtra & {
 			start_date: string;
 			end_date: string;
 			weekdays: number[];

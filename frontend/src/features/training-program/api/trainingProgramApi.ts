@@ -42,6 +42,7 @@ const toPayload = (form: TrainingProgramFormData) => ({
 	max_capacity: form.max_capacity ? Number(form.max_capacity) : null,
 	display_order: form.display_order ? Number(form.display_order) : 0,
 	description: form.description || null,
+	...(form.custom ? { custom: form.custom, form_variant: 'admin' } : {}),
 });
 
 export const createTrainingProgram = (form: TrainingProgramFormData) =>
@@ -121,6 +122,7 @@ const lessonPayload = (data: LessonFormData) => ({
 	duration_unit: data.duration_value.trim() ? data.duration_unit : null,
 	allow_split: data.lesson_kind === 'rotation' && data.allow_split,
 	department_ids: data.lesson_kind === 'rotation' ? data.department_ids : [],
+	...(data.custom ? { custom: data.custom, form_variant: 'admin' } : {}),
 });
 
 // Tạo bài học mới — chương trình áp dụng lưu riêng qua setLessonPrograms

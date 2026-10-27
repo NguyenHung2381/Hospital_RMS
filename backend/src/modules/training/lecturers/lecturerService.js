@@ -5,6 +5,7 @@ const personService = require('../../persons/personService');
 const { normalizeGender } = require('../../../utils/gender');
 const { ROLE, roleIdOf } = require('../../access/roleCodes');
 const { httpError } = require('../../../utils/httpError');
+const formCustomValueService = require('../../forms/formCustomValueService');
 
 // license_*: hồ sơ CCHN của tài khoản liên kết (chỉ đọc trên form giảng viên —
 // sửa ở màn Chứng chỉ hành nghề hoặc nhập lại file "Danh sách người hành nghề").
@@ -250,6 +251,8 @@ const remove = async (id, actorId) => {
 			.input('id', sql.VarChar(20), id)
 			.input('actor_id', sql.VarChar(20), actorId)
 			.query('EXEC sp_set_actor @actor_id; DELETE FROM lecturers WHERE id = @id');
+		// Xóa cứng ⇒ bỏ luôn giá trị trường tùy chỉnh (Cấu hình form 'lecturer')
+		await formCustomValueService.remove('lecturer', id);
 	}
 	broadcast('update', { entity: 'lecturer' });
 };

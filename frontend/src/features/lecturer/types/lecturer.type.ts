@@ -1,3 +1,5 @@
+import type { CustomValues } from '@/shared/formConfig';
+
 export type ModalType = 'add' | 'edit' | 'delete' | null;
 
 export interface Lecturer {
@@ -18,6 +20,8 @@ export interface Lecturer {
 	license_issued_date: string | null;
 	license_issuing_authority: string | null;
 	license_practice_scope: string | null;
+	/** Trường tùy chỉnh (Cấu hình form 'lecturer') */
+	custom?: CustomValues;
 }
 
 export interface LecturerFromStaffResult {
@@ -31,6 +35,8 @@ export interface LecturerFormData {
 	is_external: boolean;
 	phone: string;
 	email: string;
+	/** Có khi gửi từ LecturerFormModal ⇒ server kiểm theo Cấu hình form */
+	custom?: CustomValues;
 }
 
 export interface LecturerListResponse {

@@ -1,4 +1,5 @@
 import type { ExamParts } from '../../course/types/course.type';
+import type { CustomValues } from '@/shared/formConfig';
 
 export type ModalType = 'add' | 'edit' | 'delete' | 'import' | null;
 
@@ -62,6 +63,8 @@ export interface TrainingProgram {
 	lesson_count?: number;
 	/** Vòng thực hành (GPHN) theo thứ tự — mỗi vòng 1 khoa (hoặc vài khoa để chọn) + thời lượng riêng. */
 	rotations?: ProgramRotation[];
+	/** Trường tùy chỉnh (Cấu hình form 'training_program') */
+	custom?: CustomValues;
 }
 
 export interface ProgramRotation {
@@ -99,6 +102,8 @@ export interface TrainingProgramFormData {
 	description: string;
 	/** Vòng thực hành nhập ngay trong form chương trình — lưu thành bài học loại 'rotation'. */
 	rotations: RotationDraft[];
+	/** Có khi gửi từ TrainingProgramFormModal ⇒ server kiểm theo Cấu hình form */
+	custom?: CustomValues;
 }
 
 export interface RotationDraft {
@@ -144,6 +149,7 @@ export interface Lesson {
 	/** Id chương trình đang dùng bài học, nối bằng dấu phẩy (null = chưa thuộc chương trình nào). */
 	program_ids: string | null;
 	created_at: string;
+	custom?: CustomValues;
 }
 
 export interface ProgramLessonLink {
@@ -166,6 +172,7 @@ export interface ProgramLessonLink {
 	department_names: string | null;
 	display_order: number;
 	created_at: string;
+	custom?: CustomValues;
 }
 
 // Form đầy đủ cho 1 bài học (nội dung dùng chung) — dùng chung cho tạo mới &
@@ -184,6 +191,8 @@ export interface LessonFormData {
 	allow_split: boolean;
 	department_ids: string[];
 	program_ids: string[];
+	/** Có khi gửi từ LessonFormModal ⇒ server kiểm theo Cấu hình form */
+	custom?: CustomValues;
 }
 
 export const EMPTY_LESSON_FORM: LessonFormData = {

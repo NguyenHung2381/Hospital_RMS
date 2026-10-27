@@ -55,4 +55,16 @@ const formConfigGuard =
 		}
 	};
 
-module.exports = { formConfigGuard };
+// Route dùng chung cho nhiều màn hình: chỉ kiểm theo cấu hình khi body ghi rõ
+// form_variant (form đã nối Cấu hình form gửi kèm) — màn hình khác (sửa nhanh,
+// nhân bản...) bỏ qua, chỉ express-validator kiểm.
+//   formConfigGuard('course', { variant: bodyVariant('admin'), mode: 'update' })
+const bodyVariant =
+	(...allowed) =>
+	(req) => {
+		const v = req.body?.form_variant;
+		if (req.body) delete req.body.form_variant;
+		return allowed.includes(v) ? v : null;
+	};
+
+module.exports = { formConfigGuard, bodyVariant };

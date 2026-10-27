@@ -4,6 +4,7 @@ import { genderLabel } from '../../../shared/utils/gender';
 import type { Trainee } from '../types/trainee.type';
 import ds from '../pages/TraineeDetail.module.css';
 import { TraineeAccountSection } from './TraineeAccountSection';
+import { CustomFieldsView, hasCustomValues, useFormConfig } from '@/shared/formConfig';
 
 function InfoItem({ label, value, full }: { label: string; value: ReactNode; full?: boolean }) {
 	const empty = value == null || value === '';
@@ -39,6 +40,8 @@ export function TraineeInfoTab({
 	canManageAccount?: boolean;
 	onChanged?: () => void;
 }) {
+	// Trường tùy chỉnh (Cấu hình form 'trainee')
+	const cfg = useFormConfig('trainee', 'admin');
 	return (
 		<div className={ds.infoSections}>
 			<Section title='Định danh'>
@@ -74,6 +77,17 @@ export function TraineeInfoTab({
 				<InfoItem label='Khoa / Phòng' value={trainee.department_name} />
 				<InfoItem label='Đơn vị công tác' value={trainee.workplace} full />
 			</Section>
+			{hasCustomValues(cfg, trainee.custom) && (
+				<Section title='Thông tin bổ sung'>
+					<CustomFieldsView
+						cfg={cfg}
+						data={trainee.custom}
+						itemClassName={ds.infoItem}
+						labelClassName={ds.factLabel}
+						valueClassName={ds.infoValue}
+					/>
+				</Section>
+			)}
 			<TraineeAccountSection
 				trainee={trainee}
 				canManage={canManageAccount}

@@ -21,6 +21,7 @@ import { useCourseDetail, type DetailTab } from '../hooks/useCourseDetail';
 import { DISPLAY_STATUS_CFG, TRAINING_TYPE, type Course, type CourseFormData } from '../types/course.type';
 import ProgramTags from '../components/ProgramTags';
 import styles from './Courses.module.css';
+import { CustomValuesInline, useFormConfig } from '@/shared/formConfig';
 
 type Step = DetailTab;
 
@@ -48,6 +49,8 @@ export default function CourseDetail() {
 
 	const [course, setCourse] = useState<Course | null>(null);
 	const [notFound, setNotFound] = useState(false);
+	// Trường tùy chỉnh (Cấu hình form 'course')
+	const customCfg = useFormConfig('course', 'admin');
 	const [editing, setEditing] = useState(false);
 	const [saving, setSaving] = useState(false);
 	const [sharing, setSharing] = useState(false);
@@ -226,6 +229,11 @@ export default function CourseDetail() {
 							</div>
 						)}
 						{course.description && <p className={styles.infoDesc}>{course.description}</p>}
+						<CustomValuesInline
+							cfg={customCfg}
+							data={course.custom}
+							className={styles.infoDesc}
+						/>
 					</div>
 
 					<div className={styles.stepPanel}>

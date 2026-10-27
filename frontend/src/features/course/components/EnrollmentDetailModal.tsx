@@ -17,6 +17,7 @@ import {
 	type CourseProgramLink,
 	type Enrollment,
 	type EnrollmentLesson,
+	type EnrollmentFields,
 	type EnrollmentUpdate,
 	type ProgressStatus,
 } from '../types/course.type';
@@ -27,14 +28,15 @@ import { TraineeResultsTab } from '../../trainee/components/TraineeResultsTab';
 import styles from '../pages/Courses.module.css';
 import crud from '@/shared/components/Table/CrudPage.module.css';
 import m from '@/shared/components/Modal/Modal.module.css';
-import { CustomFieldsView, useFormConfig, type CustomValues } from '@/shared/formConfig';
+import { CfgField, CustomFields, CustomFieldsView, useFormConfig, type CustomValues } from '@/shared/formConfig';
+import { allowedOptions } from '@/shared/formConfig/allowedOptions';
 
 // Trạng thái bài tự tính theo điểm danh (lessonProgressService) — chỉ hiển thị
 const LESSON_STATUS_TONE = { not_started: 'gray', in_progress: 'blue', done: 'green' } as const;
 
 type Tab = 'info' | 'rotations' | 'documents' | 'lessons' | 'attendance' | 'results';
 
-type Form = Required<{ [K in keyof EnrollmentUpdate]: string }>;
+type Form = Required<{ [K in keyof EnrollmentFields]: string }>;
 
 const day = (v: string | null) => (v ? v.slice(0, 10) : '');
 
@@ -79,6 +81,8 @@ export function EnrollmentDetailModal({
 	const [saving, setSaving] = useState(false);
 	const [error, setError] = useState('');
 	const [tab, setTab] = useState<Tab>(initialTab ?? 'info');
+	const [custom, setCustom] = useState<CustomValues>(enrollment.custom ?? {});
+	const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
 	// "Tự động xếp" vòng điền mã, ngày, lĩnh vực, địa điểm… lên hồ sơ ngay khi modal đang mở —
 	// ô người dùng chưa sửa thì hiện & lưu theo giá trị mới nhất của hồ sơ (không ghi đè bằng giá trị cũ).
@@ -90,6 +94,9 @@ export function EnrollmentDetailModal({
 
 	const program = programLinks.find((p) => p.program_id === view.program_id);
 	const isPractice = !!course?.is_rolling || program?.training_type_id === TRAINING_TYPE.GPHN;
+	// Nhãn / bắt buộc / giới hạn / trường tùy chỉnh theo Cấu hình form — GPHN dùng form hồ sơ thực hành
+	const variant = isPractice ? 'practice' : 'course';
+	const cfg = useFormConfig('enrollment', variant);
 
 	const loadLessons = useCallback(
 		() =>
@@ -110,18 +117,31 @@ export function EnrollmentDetailModal({
 	useEffect(() => {
 		if (!hasRegCustom) return;
 		getEnrollment(enrollment.id)
-			.then((e) => setRegCustom(e.custom ?? null))
+			.then((e) => setRegCustom(e.registration_custom ?? null))
 			.catch(() => setRegCustom(null));
 	}, [enrollment.id, hasRegCustom]);
 
-	const set = (k: keyof Form) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
+	const clearErr = (k: string) => setFieldErrors((er) => (er[k] ? { ...er, [k]: '' } : er));
+	const set = (k: keyof Form) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
 		setForm((f) => ({ ...f, [k]: e.target.value }));
-	const setDate = (k: keyof Form) => (v: string) => setForm((f) => ({ ...f, [k]: v }));
+		clearErr(k);
+	};
+	const setDate = (k: keyof Form) => (v: string) => {
+		setForm((f) => ({ ...f, [k]: v }));
+		clearErr(k);
+	};
 
 	const save = async () => {
 		if (programChanged && enrollment.lesson_total > 0) {
 			if (!window.confirm('Đổi chương trình sẽ thay danh sách bài học của học viên theo chương trình mới. Tiếp tục?'))
 				return;
+		}
+		const errs = cfg.validate({ ...view }, custom, { mode: 'edit' });
+		setFieldErrors(errs);
+		const firstErr = Object.values(errs).find(Boolean);
+		if (firstErr) {
+			setTab('info');
+			return setError(firstErr);
 		}
 		setSaving(true);
 		setError('');
@@ -130,6 +150,8 @@ export function EnrollmentDetailModal({
 				...view,
 				program_id: view.program_id || null,
 				progress_status: view.progress_status as ProgressStatus,
+				custom,
+				form_variant: variant,
 			} as EnrollmentUpdate);
 			showToast('success', 'Đã lưu hồ sơ ghi danh');
 			onSaved();
@@ -155,7 +177,9 @@ export function EnrollmentDetailModal({
 	const programChanged = view.program_id !== (enrollment.program_id ?? '');
 	const done = lessons.filter((l) => l.status === 'done').length;
 	const full = { gridColumn: '1 / -1' };
-	const dirty = (Object.keys(form) as (keyof Form)[]).some((k) => form[k] !== initial[k]);
+	const dirty =
+		(Object.keys(form) as (keyof Form)[]).some((k) => form[k] !== initial[k]) ||
+		JSON.stringify(custom) !== JSON.stringify(enrollment.custom ?? {});
 	const close = () => {
 		if (dirty && !window.confirm('Có thay đổi chưa lưu ở tab "Thông tin hồ sơ". Đóng và bỏ thay đổi?')) return;
 		onClose();
@@ -235,7 +259,10 @@ export function EnrollmentDetailModal({
 
 			{activeTab === 'info' && (
 				<div className={styles.formGrid2}>
-					<FormField
+					<CfgField
+						cfg={cfg}
+						name='program_id'
+						error={fieldErrors.program_id}
 						label='Chương trình học'
 						style={full}
 					>
@@ -254,14 +281,18 @@ export function EnrollmentDetailModal({
 								</option>
 							))}
 						</select>
-					</FormField>
-					<FormField label='Tiến độ'>
+					</CfgField>
+					<CfgField cfg={cfg} name='progress_status' error={fieldErrors.progress_status} label='Tiến độ'>
 						<select
 							className={styles.formInput}
 							value={view.progress_status}
 							onChange={set('progress_status')}
 						>
-							{Object.entries(PROGRESS_LABEL).map(([v, label]) => (
+							{allowedOptions(
+								cfg,
+								'progress_status',
+								Object.entries(PROGRESS_LABEL).map(([value, label]) => ({ value, label })),
+							).map(({ value: v, label }) => (
 								<option
 									key={v}
 									value={v}
@@ -270,7 +301,7 @@ export function EnrollmentDetailModal({
 								</option>
 							))}
 						</select>
-					</FormField>
+					</CfgField>
 					{view.progress_status !== 'in_progress' ? (
 						<FormField label={view.progress_status === 'completed' ? 'Ngày hoàn thành' : 'Ngày nghỉ học'}>
 							<DatePicker
@@ -282,7 +313,10 @@ export function EnrollmentDetailModal({
 						<div />
 					)}
 					{view.progress_status === 'dropped' && (
-						<FormField
+						<CfgField
+							cfg={cfg}
+							name='progress_reason'
+							error={fieldErrors.progress_reason}
 							label='Lý do nghỉ học'
 							style={full}
 						>
@@ -291,45 +325,48 @@ export function EnrollmentDetailModal({
 								value={view.progress_reason}
 								onChange={set('progress_reason')}
 							/>
-						</FormField>
+						</CfgField>
 					)}
 
 					{isPractice && (
 						<>
 							{sub('Thời gian thực hành')}
-							<FormField label='Bắt đầu thực hành'>
+							<CfgField cfg={cfg} name='start_date' error={fieldErrors.start_date} label='Bắt đầu thực hành'>
 								<DatePicker
 									value={view.start_date}
 									onChange={setDate('start_date')}
 									max={view.end_date || undefined}
 								/>
-							</FormField>
-							<FormField label='Kết thúc thực hành'>
+							</CfgField>
+							<CfgField cfg={cfg} name='end_date' error={fieldErrors.end_date} label='Kết thúc thực hành'>
 								<DatePicker
 									value={view.end_date}
 									onChange={setDate('end_date')}
 									min={view.start_date || undefined}
 								/>
-							</FormField>
-							<FormField label='Tổng thời gian thực hành'>
+							</CfgField>
+							<CfgField cfg={cfg} name='total_duration' error={fieldErrors.total_duration} label='Tổng thời gian thực hành'>
 								<input
 									className={styles.formInput}
 									value={view.total_duration}
 									onChange={set('total_duration')}
 									placeholder={program?.program_duration ?? 'VD: 12 tháng'}
 								/>
-							</FormField>
-							<FormField label='Địa điểm thực hành'>
+							</CfgField>
+							<CfgField cfg={cfg} name='practice_location' error={fieldErrors.practice_location} label='Địa điểm thực hành'>
 								<input
 									className={styles.formInput}
 									value={view.practice_location}
 									onChange={set('practice_location')}
 									placeholder='VD: Tại các khoa: Cấp cứu, Nội tim mạch 2…'
 								/>
-							</FormField>
+							</CfgField>
 
 							{sub('Thông tin in trên giấy tờ (đơn đề nghị, hợp đồng)')}
-							<FormField
+							<CfgField
+								cfg={cfg}
+								name='practice_code'
+								error={fieldErrors.practice_code}
 								label='Mã thực hành'
 							>
 								<input
@@ -338,35 +375,38 @@ export function EnrollmentDetailModal({
 									onChange={set('practice_code')}
 									placeholder='226.BS'
 								/>
-							</FormField>
-							<FormField label='Đơn vị cử đi'>
+							</CfgField>
+							<CfgField cfg={cfg} name='sending_unit' error={fieldErrors.sending_unit} label='Đơn vị cử đi'>
 								<input
 									className={styles.formInput}
 									value={view.sending_unit}
 									onChange={set('sending_unit')}
 									placeholder='VD: BV YHCT Nghệ An'
 								/>
-							</FormField>
-							<FormField label='Lĩnh vực chuyên môn'>
+							</CfgField>
+							<CfgField cfg={cfg} name='professional_field' error={fieldErrors.professional_field} label='Lĩnh vực chuyên môn'>
 								<input
 									className={styles.formInput}
 									value={view.professional_field}
 									onChange={set('professional_field')}
 									placeholder='VD: Bác sĩ y khoa'
 								/>
-							</FormField>
-							<FormField label='Hình thức hành nghề'>
+							</CfgField>
+							<CfgField cfg={cfg} name='practice_form' error={fieldErrors.practice_form} label='Hình thức hành nghề'>
 								<input
 									className={styles.formInput}
 									value={view.practice_form}
 									onChange={set('practice_form')}
 									placeholder='VD: Khám bệnh, chữa bệnh y khoa'
 								/>
-							</FormField>
+							</CfgField>
 						</>
 					)}
 
-					<FormField
+					<CfgField
+						cfg={cfg}
+						name='note'
+						error={fieldErrors.note}
 						label='Ghi chú'
 						style={full}
 					>
@@ -375,7 +415,15 @@ export function EnrollmentDetailModal({
 							value={view.note}
 							onChange={set('note')}
 						/>
-					</FormField>
+					</CfgField>
+					<CustomFields
+						cfg={cfg}
+						value={custom}
+						onChange={setCustom}
+						errors={fieldErrors}
+						sectionClassName={m.formSectionTitle}
+						inputClassName={styles.formInput}
+					/>
 					<CustomFieldsView
 						cfg={regCfg}
 						data={regCustom}

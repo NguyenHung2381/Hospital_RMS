@@ -3,6 +3,6 @@ export { useFormConfig, resetFormConfig } from './useFormConfig';
 export type { FormConfig } from './useFormConfig';
 export { CfgField, CfgVisible } from './CfgField';
 export { CustomFields } from './CustomFields';
-export { formatCustomValue } from './format';
+export { formatCustomValue, hasCustomValues } from './format';
 export { CustomFieldsView, CustomValuesInline } from './CustomFieldsView';
 export type * from './types';

@@ -27,6 +27,7 @@ import {
 } from '../types/trainingProgram.type';
 import styles from './TrainingPrograms.module.css';
 import tbl from '@/shared/components/Table/Table.module.css';
+import { CustomValuesInline, useFormConfig } from '@/shared/formConfig';
 import { TableEmpty } from '@/shared/components/EmptyState';
 
 // Chương trình GPHN: học viên luân phiên nhiều khoa, mỗi khoa thời lượng khác nhau.
@@ -94,6 +95,7 @@ function TraineeTypeChips({ names }: { names: string | null }) {
 }
 
 export default function TrainingPrograms() {
+	const customCfg = useFormConfig('training_program', 'admin');
 	const d = useTrainingPrograms();
 	const rowSel = useRowSelection(d.paged.map((x) => x.id));
 
@@ -345,6 +347,11 @@ export default function TrainingPrograms() {
 											<div className={styles.descText}>
 												{[p.code, p.training_type_name, p.duration].filter(Boolean).join(' · ')}
 											</div>
+											<CustomValuesInline
+												cfg={customCfg}
+												data={p.custom}
+												className={styles.descText}
+											/>
 										</td>
 										<td className={styles.td}>
 											{p.rotations?.length ? (

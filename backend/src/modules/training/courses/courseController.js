@@ -12,6 +12,7 @@ const gradeService = require('./gradeService');
 const gradebookService = require('./gradebookService');
 const lecturerAssignmentService = require('./lecturerAssignmentService');
 const { success, created, notFound } = require('../../../utils/response');
+const formCustomValueService = require('../../forms/formCustomValueService');
 const { hasPermission } = require('../../../permissions/authz');
 const { asyncHandler } = require('../../../utils/asyncHandler');
 const {
@@ -32,27 +33,43 @@ const {
 } = require('./practiceController');
 
 const getAll = asyncHandler(async (req, res) => {
-	return success(res, await courseService.getAll(req.query, req.user));
+	return success(
+		res,
+		await formCustomValueService.attachResult(
+			'course',
+			await courseService.getAll(req.query, req.user),
+		),
+	);
 });
 
 const getById = asyncHandler(async (req, res) => {
 	const item = await courseService.getById(req.params.id, req.user);
 	if (!item) return notFound(res);
+	item.custom = await formCustomValueService.get('course', item.id);
 	return success(res, item);
 });
 
 const createOne = asyncHandler(async (req, res) => {
-	return created(res, await courseService.create(req.body, req.user.id));
+	const item = await courseService.create(req.body, req.user.id);
+	const custom = await formCustomValueService.save('course', item.id, req.formCustom, req.user.id);
+	return created(res, custom ? { ...item, custom } : item);
 });
 
 const updateOne = asyncHandler(async (req, res) => {
 	const item = await courseService.update(req.params.id, req.body, req.user.id);
 	if (!item) return notFound(res);
-	return success(res, item, 'Cập nhật thành công');
+	const custom = await formCustomValueService.save(
+		'course',
+		req.params.id,
+		req.formCustom,
+		req.user.id,
+	);
+	return success(res, custom ? { ...item, custom } : item, 'Cập nhật thành công');
 });
 
 const removeOne = asyncHandler(async (req, res) => {
 	await courseService.remove(req.params.id, req.user.id);
+	await formCustomValueService.remove('course', req.params.id);
 	return success(res, null, 'Xóa thành công');
 });
 
@@ -63,7 +80,13 @@ const listProgramLinks = asyncHandler(async (req, res) => {
 
 // ─── Enrollments ──────────────────────────────────────────────────────────
 const listEnrollments = asyncHandler(async (req, res) => {
-	return success(res, await courseEnrollmentService.listEnrollments(req.params.id));
+	return success(
+		res,
+		await formCustomValueService.attachResult(
+			'enrollment',
+			await courseEnrollmentService.listEnrollments(req.params.id),
+		),
+	);
 });
 
 const registerTrainee = asyncHandler(async (req, res) => {
@@ -79,6 +102,7 @@ const registerTrainee = asyncHandler(async (req, res) => {
 		: await courseEnrollmentService.registerTrainee(req.params.id, trainee_id, req.user.id, opts);
 	// Phòng Đào tạo ghi danh hộ ⇒ duyệt luôn (đủ sĩ số thì vào danh sách chờ). Khóa GPHN: xếp lịch vòng là bước sau.
 	const decided = await courseEnrollmentService.decideEnrollment(item.id, 'approved', req.user.id);
+	await formCustomValueService.save('enrollment', item.id, req.formCustom, req.user.id);
 	return created(res, {
 		...item,
 		status: decided.status,
@@ -158,6 +182,12 @@ const removeEnrollment = asyncHandler(async (req, res) => {
 
 const updateEnrollment = asyncHandler(async (req, res) => {
 	await enrollmentProgramService.updateEnrollment(req.params.enrollmentId, req.body, req.user.id);
+	await formCustomValueService.save(
+		'enrollment',
+		req.params.enrollmentId,
+		req.formCustom,
+		req.user.id,
+	);
 	return success(res, null, 'Đã cập nhật đăng ký');
 });
 
@@ -229,34 +259,43 @@ const getPracticeBoard = asyncHandler(async (req, res) => {
 });
 
 const listSessions = asyncHandler(async (req, res) => {
-	return success(res, await classSessionService.listSessions(req.params.id));
+	return success(
+		res,
+		await formCustomValueService.attachResult(
+			'course_session',
+			await classSessionService.listSessions(req.params.id),
+		),
+	);
 });
 
 const createSession = asyncHandler(async (req, res) => {
-	return created(
-		res,
-		await classSessionService.createSession(req.params.id, req.body, req.user.id),
-	);
+	const out = await classSessionService.createSession(req.params.id, req.body, req.user.id);
+	await formCustomValueService.save('course_session', out.id, req.formCustom, req.user.id);
+	return created(res, out);
 });
 
 const updateSession = asyncHandler(async (req, res) => {
-	return success(
-		res,
-		await classSessionService.updateSession(req.params.sessionId, req.body, req.user.id),
-		'Đã cập nhật buổi học',
+	const out = await classSessionService.updateSession(req.params.sessionId, req.body, req.user.id);
+	await formCustomValueService.save(
+		'course_session',
+		req.params.sessionId,
+		req.formCustom,
+		req.user.id,
 	);
+	return success(res, out, 'Đã cập nhật buổi học');
 });
 
 const removeSession = asyncHandler(async (req, res) => {
 	await classSessionService.removeSession(req.params.sessionId, req.user.id);
+	await formCustomValueService.remove('course_session', req.params.sessionId);
 	return success(res, null, 'Đã xóa buổi học');
 });
 
 const createSessionsBulk = asyncHandler(async (req, res) => {
-	return created(
-		res,
-		await classSessionService.createSessionsBulk(req.params.id, req.body, req.user.id),
-	);
+	const out = await classSessionService.createSessionsBulk(req.params.id, req.body, req.user.id);
+	for (const id of out.ids ?? [])
+		await formCustomValueService.save('course_session', id, req.formCustom, req.user.id);
+	return created(res, out);
 });
 
 // ─── Attendance ───────────────────────────────────────────────────────────

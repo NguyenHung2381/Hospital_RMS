@@ -7,6 +7,8 @@ import { getProgramLinks } from '../api/courseApi';
 import { fetchEnrollCandidates, registerCandidate, type SimpleItem } from '../hooks/useCourseDetail';
 import type { Course, CourseProgramLink } from '../types/course.type';
 import styles from '../pages/Courses.module.css';
+import m from '@/shared/components/Modal/Modal.module.css';
+import { CfgField, CustomFields, useFormConfig, type CustomValues } from '@/shared/formConfig';
 
 const programLabel = (p: CourseProgramLink) => (p.program_code ? `${p.program_code} — ${p.program_name}` : p.program_name);
 
@@ -33,6 +35,10 @@ export function AddPracticeRecordModal({
 	const [candidateId, setCandidateId] = useState('');
 	const [saving, setSaving] = useState(false);
 	const [error, setError] = useState('');
+	// Nhãn / bắt buộc / trường tùy chỉnh theo Cấu hình form (hồ sơ thực hành GPHN)
+	const cfg = useFormConfig('enrollment', 'practice');
+	const [custom, setCustom] = useState<CustomValues>({});
+	const [errors, setErrors] = useState<Record<string, string>>({});
 
 	useEffect(() => {
 		fetchEnrollCandidates()
@@ -59,10 +65,16 @@ export function AddPracticeRecordModal({
 	const needProgram = links.length > 0 && !programId;
 
 	const save = async () => {
+		const errs = cfg.validate({ program_id: programId }, custom, { mode: 'edit' });
+		setErrors(errs);
+		if (Object.values(errs).some(Boolean)) return;
 		setSaving(true);
 		setError('');
 		try {
-			const out = await registerCandidate(courseId, candidateId, programId || undefined);
+			const out = await registerCandidate(courseId, candidateId, programId || undefined, {
+				custom,
+				form_variant: 'practice',
+			});
 			showToast('success', 'Đã thêm hồ sơ — bước tiếp: xếp lịch thực hành');
 			onAdded(out.id);
 		} catch (err) {
@@ -102,14 +114,20 @@ export function AddPracticeRecordModal({
 						placeholder='Chọn đợt (khóa GPHN)'
 					/>
 				</FormField>
-				<FormField
+				<CfgField
+					cfg={cfg}
+					name='program_id'
+					error={errors.program_id}
 					label='Chương trình thực hành'
 					style={{ gridColumn: '1 / -1' }}
 				>
 					<select
 						className={styles.formInput}
 						value={programId}
-						onChange={(e) => setProgramId(e.target.value)}
+						onChange={(e) => {
+							setProgramId(e.target.value);
+							setErrors((er) => ({ ...er, program_id: '' }));
+						}}
 						disabled={!links.length}
 					>
 						<option value=''>{links.length ? '-- Chọn chương trình --' : 'Đợt chưa gắn chương trình'}</option>
@@ -122,7 +140,7 @@ export function AddPracticeRecordModal({
 							</option>
 						))}
 					</select>
-				</FormField>
+				</CfgField>
 				<FormField
 					label='Học viên'
 					style={{ gridColumn: '1 / -1' }}
@@ -134,6 +152,14 @@ export function AddPracticeRecordModal({
 						placeholder='Gõ tên để tìm học viên / nhân viên nội viện'
 					/>
 				</FormField>
+				<CustomFields
+					cfg={cfg}
+					value={custom}
+					onChange={setCustom}
+					errors={errors}
+					sectionClassName={m.formSectionTitle}
+					inputClassName={styles.formInput}
+				/>
 			</div>
 			<div className={styles.hint}>
 				Chưa có trong danh sách? Thêm ở mục Học viên trước, hoặc nhập cả sổ thực hành bằng "Nhập sổ Excel".

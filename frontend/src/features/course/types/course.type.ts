@@ -42,6 +42,8 @@ export interface Course {
 	pending_count: number;
 	waitlisted_count: number;
 	created_at: string;
+	/** Trường tùy chỉnh (Cấu hình form 'course') */
+	custom?: CustomValues;
 }
 
 export interface CourseFormData {
@@ -60,6 +62,8 @@ export interface CourseFormData {
 	description: string;
 	prerequisites: string[];
 	objectives: string[];
+	/** Có khi gửi từ CourseFormModal ⇒ server kiểm theo Cấu hình form */
+	custom?: CustomValues;
 }
 
 export interface CourseListResponse {
@@ -115,8 +119,10 @@ export const ENROLLMENT_STATUS_CFG: Record<EnrollmentStatus, { label: string; co
 
 export interface Enrollment {
 	id: string;
-	/** Trường tùy chỉnh khi đăng ký công khai — chỉ có ở GET /courses/enrollments/:id (Cấu hình form 'course_registration') */
+	/** Trường tùy chỉnh của hồ sơ ghi danh / thực hành (Cấu hình form 'enrollment') */
 	custom?: CustomValues;
+	/** Trường tùy chỉnh khi đăng ký công khai — chỉ có ở GET /courses/enrollments/:id (Cấu hình form 'course_registration') */
+	registration_custom?: CustomValues;
 	course_id: string;
 	trainee_id: string;
 	trainee_name: string;
@@ -183,7 +189,8 @@ export interface EnrollmentLesson {
 }
 
 /** Trường sửa được của 1 lượt ghi danh (PUT /courses/enrollments/:id). */
-export type EnrollmentUpdate = Partial<
+/** Ô nhập có sẵn của hồ sơ ghi danh (form sửa hồ sơ, tự lưu ở hồ sơ thực hành) */
+export type EnrollmentFields = Partial<
 	Pick<
 		Enrollment,
 		| 'program_id'
@@ -201,6 +208,12 @@ export type EnrollmentUpdate = Partial<
 		| 'note'
 	>
 >;
+export type EnrollmentUpdate = EnrollmentFields & {
+	/** Trường tùy chỉnh (Cấu hình form 'enrollment') */
+	custom?: CustomValues;
+	/** Gửi từ form đã nối Cấu hình form ⇒ server kiểm theo variant này */
+	form_variant?: 'course' | 'practice';
+};
 
 // ─── Vòng thực hành GPHN của 1 hồ sơ (khoa, ngày, người hướng dẫn) ─────────
 export type RotationResult = 'pending' | 'pass' | 'fail';
@@ -286,6 +299,8 @@ export const PRACTICE_STAGE_LABEL: Record<PracticeStage, string> = {
 	other: 'Từ chối / chờ',
 };
 export interface PracticeRecordRow {
+	/** Trường tùy chỉnh (Cấu hình form 'enrollment') */
+	custom?: CustomValues;
 	id: string;
 	course_id: string;
 	course_name: string;
@@ -452,6 +467,8 @@ export interface CourseLesson {
 export type SessionKind = 'theory' | 'practice';
 
 export interface ClassSession {
+	/** Trường tùy chỉnh (Cấu hình form 'course_session') */
+	custom?: CustomValues;
 	id: string;
 	course_id: string;
 	subject_id: string | null;

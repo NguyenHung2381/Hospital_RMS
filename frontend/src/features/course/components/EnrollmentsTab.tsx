@@ -37,6 +37,7 @@ import { ProgramFilter } from "./ProgramFilter";
 import { showToast } from "@/shared/utils/feedback";
 import styles from "../pages/Courses.module.css";
 import tbl from "@/shared/components/Table/Table.module.css";
+import { CustomValuesInline, useFormConfig } from "@/shared/formConfig";
 import { useClientPaging } from "@/shared/hooks/useClientPaging";
 import { Pagination } from "@/shared/components/Table/Pagination";
 
@@ -509,6 +510,8 @@ export function EnrollmentsTab({
     setExporting(false);
   };
 
+  // Trường tùy chỉnh của hồ sơ ghi danh (Cấu hình form 'enrollment')
+  const customCfg = useFormConfig("enrollment", course?.is_rolling ? "practice" : "course");
   const renderRow = (en: Enrollment, stt: number, showProgram: boolean) => {
     const cfg = ENROLLMENT_STATUS_CFG[en.status];
     const decidedLabel =
@@ -564,6 +567,11 @@ export function EnrollmentsTab({
           {en.practice_code && (
             <div className={tbl.cellSub}>Mã thực hành {en.practice_code}</div>
           )}
+          <CustomValuesInline
+            cfg={customCfg}
+            data={en.custom}
+            className={tbl.cellSub}
+          />
           {!showProgram && progress}
         </td>
         {showProgram && (
