@@ -139,6 +139,7 @@ export interface CreateLegacyTopicPayload {
 	acceptance_score?: number;
 	acceptance_date?: string;
 	members: (TopicMemberPayload & { user_id?: string })[];
+	custom?: CustomValues;
 }
 
 export const createLegacyTopic = (payload: CreateLegacyTopicPayload) =>

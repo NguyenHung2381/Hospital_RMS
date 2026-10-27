@@ -7,6 +7,7 @@ import {
 	ListSvg,
 	LockSvg,
 } from '@/assets/icons';
+import { CustomFields } from '@/shared/formConfig/CustomFields';
 import UserLayout from '../../../layouts/UserLayout';
 import { InlineLoading } from '../../../shared/components/Loading';
 import { DatePicker } from '../../../shared/components/Input/DatePicker';
@@ -31,7 +32,14 @@ const ROUND_STATUS_LABEL: Record<string, string> = {
 // quản lý NCKH xác nhận ở trang Phê duyệt như đăng ký thường.
 export default function TopicLegacyImport() {
 	const s = useTopicLegacyImport();
-	const { form, errors, setField } = s;
+	const { form, errors, setField, cfg } = s;
+	// Nhãn / bắt buộc / placeholder theo Cấu hình form 'topic' (biến thể cổng nhân viên)
+	const { label: lbl, required: req, placeholder: ph, maxLength: maxLen } = cfg;
+	const hint = (k: string) => {
+		const h = cfg.hint(k);
+		return h ? <div className={styles.formHint}>{h}</div> : null;
+	};
+	const reqMark = <span className={styles.formRequired}>*</span>;
 
 	const breadcrumbs = [
 		{ label: 'Đề tài', path: '/user/my-topics' },
@@ -104,7 +112,7 @@ export default function TopicLegacyImport() {
 								className={styles.formLabel}
 								htmlFor='legacy-round'
 							>
-								Đợt đề tài đã thực hiện <span className={styles.formRequired}>*</span>
+								{lbl('round_id', 'Đợt đề tài đã thực hiện')} {reqMark}
 							</label>
 							<select
 								id='legacy-round'
@@ -126,6 +134,7 @@ export default function TopicLegacyImport() {
 									</option>
 								))}
 							</select>
+							{hint('round_id')}
 							{fieldError('round_id')}
 							<div className={styles.dropZoneHint}>
 								<InfoSvg
@@ -143,34 +152,44 @@ export default function TopicLegacyImport() {
 								className={styles.formLabel}
 								htmlFor='legacy-title'
 							>
-								Tên đề tài <span className={styles.formRequired}>*</span>
+								{lbl('title', 'Tên đề tài')} {reqMark}
 							</label>
 							<input
 								id='legacy-title'
 								className={`${styles.formInput} ${errors.title ? styles.hasError : ''}`}
-								placeholder='Nhập tên đề tài nghiên cứu...'
+								placeholder={ph('title', 'Nhập tên đề tài nghiên cứu...')}
+								maxLength={maxLen('title')}
 								value={form.title}
 								onChange={(e) => setField('title', e.target.value)}
 							/>
+							{hint('title')}
 							{fieldError('title')}
 						</div>
 
-						<div className={styles.formGroup}>
-							<label
-								className={styles.formLabel}
-								htmlFor='legacy-desc'
-							>
-								Mô tả / Tóm tắt
-							</label>
-							<textarea
-								id='legacy-desc'
-								className={styles.formInput}
-								rows={3}
-								placeholder='Mục tiêu, phương pháp, kết quả chính của đề tài...'
-								value={form.description}
-								onChange={(e) => setField('description', e.target.value)}
-							/>
-						</div>
+						{cfg.visible('description') && (
+							<div className={styles.formGroup}>
+								<label
+									className={styles.formLabel}
+									htmlFor='legacy-desc'
+								>
+									{lbl('description', 'Mô tả / Tóm tắt')} {req('description') && reqMark}
+								</label>
+								<textarea
+									id='legacy-desc'
+									className={`${styles.formInput} ${errors.description ? styles.hasError : ''}`}
+									rows={3}
+									placeholder={ph(
+										'description',
+										'Mục tiêu, phương pháp, kết quả chính của đề tài...',
+									)}
+									maxLength={maxLen('description')}
+									value={form.description}
+									onChange={(e) => setField('description', e.target.value)}
+								/>
+								{hint('description')}
+								{fieldError('description')}
+							</div>
+						)}
 
 						<div className={styles.formRow}>
 							<div className={styles.formGroup}>
@@ -182,7 +201,7 @@ export default function TopicLegacyImport() {
 									className={styles.formLabel}
 									htmlFor='legacy-dept'
 								>
-									Khoa phòng <span className={styles.formRequired}>*</span>
+									{lbl('department_id', 'Khoa phòng')} {reqMark}
 								</label>
 								{s.currentDeptId ? (
 									<div
@@ -212,6 +231,7 @@ export default function TopicLegacyImport() {
 										))}
 									</select>
 								)}
+								{hint('department_id')}
 								{fieldError('department_id')}
 							</div>
 							<div className={`${styles.formGroup} ${styles.formRowFull}`}>
@@ -219,7 +239,7 @@ export default function TopicLegacyImport() {
 									className={styles.formLabel}
 									htmlFor='legacy-cat'
 								>
-									Danh mục <span className={styles.formRequired}>*</span>
+									{lbl('category_id', 'Danh mục')} {reqMark}
 								</label>
 								<select
 									id='legacy-cat'
@@ -238,9 +258,19 @@ export default function TopicLegacyImport() {
 										</option>
 									))}
 								</select>
+								{hint('category_id')}
 								{fieldError('category_id')}
 							</div>
 						</div>
+
+						<CustomFields
+							cfg={cfg}
+							value={s.custom}
+							onChange={s.setCustom}
+							errors={errors}
+							sectionClassName={styles.formSection}
+							inputClassName={styles.formInput}
+						/>
 
 						<div className={styles.formSection}>Kết quả nghiệm thu</div>
 

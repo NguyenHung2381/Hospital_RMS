@@ -127,6 +127,13 @@ router.post(
 		body('members.*.role').isIn(['leader', 'secretary', 'member']),
 	],
 	validate,
+	// Đề tài cũ luôn là 'de_tai' (service tự gán) — đặt sẵn để điều kiện `when`
+	// của cấu hình form tính đúng, rồi kiểm theo form cổng nhân viên.
+	(req, _res, next) => {
+		req.body.article_type = 'de_tai';
+		next();
+	},
+	formConfigGuard('topic', { variant: 'portal', mode: 'create' }),
 	ctrl.createLegacy,
 );
 

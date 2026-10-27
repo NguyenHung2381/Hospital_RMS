@@ -1,6 +1,8 @@
 import { showToast } from '@/shared/utils/feedback';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import type { CustomValues } from '@/shared/formConfig/types';
+import { useFormConfig } from '@/shared/formConfig/useFormConfig';
 import { getStoredUser } from '../../../shared/utils/storage';
 import { getInitials } from '../../../shared/utils/helper';
 import {
@@ -64,6 +66,10 @@ export function useTopicLegacyImport() {
 	const [errors, setErrors] = useState<FormErrors>({});
 	const [submitting, setSubmitting] = useState(false);
 
+	// Cùng cấu hình form 'topic' với trang Đăng ký (biến thể cổng nhân viên)
+	const cfg = useFormConfig('topic', 'portal');
+	const [custom, setCustomState] = useState<CustomValues>({});
+
 	const members = useMemberPicker();
 	const files = useAttachmentPicker();
 	const { pendingMembers, resetMembers } = members;
@@ -117,18 +123,44 @@ export function useTopicLegacyImport() {
 		[],
 	);
 
+	const setCustom = useCallback((next: CustomValues) => {
+		setCustomState((prev) => {
+			const changed = Object.keys(next).filter((k) => next[k] !== prev[k]);
+			if (changed.length)
+				setErrors((e) => {
+					const n = { ...e };
+					changed.forEach((k) => delete n[k]);
+					return n;
+				});
+			return next;
+		});
+	}, []);
+
 	// Cấp độ lấy theo đợt — server tự gán khi tạo đề tài, form chỉ hiển thị
 	const roundLevelName = rounds.find((r) => r.id === form.round_id)?.level_name ?? null;
 
 	const clearForm = useCallback(() => {
 		setForm(emptyForm(currentDeptId));
 		setErrors({});
+		setCustomState({});
 		resetMembers();
 		resetAttachments();
 	}, [currentDeptId, resetMembers, resetAttachments]);
 
 	const validate = (): FormErrors => {
-		const e: FormErrors = {};
+		// Bắt buộc / ràng buộc / trường tùy chỉnh theo Cấu hình form; phần cứng bên dưới
+		const e: FormErrors = cfg.validate(
+			{
+				title: form.title,
+				description: form.description,
+				round_id: form.round_id,
+				category_id: form.category_id,
+				department_id: form.department_id,
+				article_type: 'de_tai',
+			},
+			custom,
+			{ mode: 'create' },
+		);
 		if (!form.title.trim()) e.title = 'Tên đề tài là bắt buộc';
 		if (!form.round_id) e.round_id = 'Vui lòng chọn đợt nghiên cứu';
 		// Mã đề tài sinh theo ký hiệu danh mục — bắt buộc
@@ -163,6 +195,7 @@ export function useTopicLegacyImport() {
 				acceptance_score:
 					form.acceptance_score !== '' ? Number(form.acceptance_score) : undefined,
 				acceptance_date: form.acceptance_date || undefined,
+				custom,
 				members: pendingMembers.map((m) => ({
 					// Thành viên chọn từ gợi ý mang mã tài khoản — server gắn tài khoản người nhập
 					user_id: m.id.startsWith('manual_') ? undefined : m.id,
@@ -212,6 +245,9 @@ export function useTopicLegacyImport() {
 		form,
 		errors,
 		setField,
+		cfg,
+		custom,
+		setCustom,
 		submitting,
 		submit,
 		clearForm,

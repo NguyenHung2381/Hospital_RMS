@@ -31,6 +31,8 @@ const createOne = asyncHandler(async (req, res) => {
 // Nhập bổ sung đề tài đã hoàn thành (đợt cũ) — không xét mốc đăng ký, vào hàng chờ duyệt
 const createLegacy = asyncHandler(async (req, res) => {
 	const item = await topicLegacyService.create(req.body, req.user);
+	await formCustomValueService.save('topic', item.id, req.formCustom, req.user.id);
+	if (req.formCustom) item.custom = { ...item.custom, ...req.formCustom };
 	return created(res, item, 'Đã gửi đề tài — chờ quản lý NCKH xác nhận');
 });
 
