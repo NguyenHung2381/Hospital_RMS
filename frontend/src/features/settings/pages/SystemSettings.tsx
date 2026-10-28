@@ -27,6 +27,7 @@ import { resetUploadPolicy } from '../../../shared/hooks/useUploadPolicy';
 import { getMyAttendance } from '../../portal/api/meApi';
 import { settingsApi } from '../api/settingsApi';
 import styles from './SystemSettings.module.css';
+import RadiusMap from '../components/RadiusMap';
 
 type Field = {
 	key: string;
@@ -690,7 +691,13 @@ export default function SystemSettings() {
 				setLocating(false);
 			},
 			(e) => {
-				notify.error(e.code === 1 ? 'Bạn đã chặn quyền vị trí cho trang này' : 'Không lấy được vị trí');
+				notify.error(
+					e.code === 1
+						? 'Bạn đã chặn quyền vị trí cho trang này'
+						: e.code === 2
+							? 'Thiết bị không xác định được vị trí — bật Dịch vụ định vị của hệ điều hành (Windows: Cài đặt → Quyền riêng tư → Vị trí)'
+							: 'Lấy vị trí quá lâu — thử lại hoặc nhập tọa độ từ Google Maps',
+				);
 				setLocating(false);
 			},
 			{ enableHighAccuracy: true, timeout: 20000, maximumAge: 0 },
@@ -1093,6 +1100,11 @@ export default function SystemSettings() {
 			);
 		}
 		if (tool === 'attendance-helper') {
+			// Bản đồ xem trước tọa độ + bán kính đang nhập (chưa lưu cũng hiện)
+			const m = /^\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*$/.exec(form.ATTENDANCE_LOCATION ?? '');
+			const [lat, lng] = m ? [Number(m[1]), Number(m[2])] : [NaN, NaN];
+			const hasPoint = Math.abs(lat) <= 90 && Math.abs(lng) <= 180;
+			const radius = Number(form.ATTENDANCE_RADIUS_M) > 0 ? Number(form.ATTENDANCE_RADIUS_M) : 200;
 			return (
 				<div className={styles.helper}>
 					<InfoSvg className={styles.helperIcon} />
@@ -1106,6 +1118,26 @@ export default function SystemSettings() {
 						<Button variant='secondary' size='sm' loading={locating} onClick={useCurrentLocation}>
 							Dùng vị trí hiện tại
 						</Button>
+					</div>
+					<div className={styles.mapBox}>
+						<RadiusMap
+							className={styles.mapFrame}
+							lat={hasPoint ? lat : null}
+							lng={hasPoint ? lng : null}
+							radius={radius}
+							onPick={(a, b) => set('ATTENDANCE_LOCATION', `${a.toFixed(6)}, ${b.toFixed(6)}`)}
+						/>
+						<span className={styles.toolNote}>
+							Bấm lên bản đồ để chọn tọa độ bệnh viện (nhớ bấm Lưu).
+							{hasPoint && (
+								<>
+									{' '}Chấm đỏ = tọa độ đang chọn, vòng xanh = vùng điểm danh hợp lệ (bán kính {radius}m) —{' '}
+									<a href={`https://www.google.com/maps?q=${lat},${lng}`} target='_blank' rel='noreferrer'>
+										mở bằng Google Maps
+									</a>
+								</>
+							)}
+						</span>
 					</div>
 				</div>
 			);

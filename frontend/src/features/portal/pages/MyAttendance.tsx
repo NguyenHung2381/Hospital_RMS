@@ -29,7 +29,7 @@ import { CustomValuesInline, useFormConfig } from '@/shared/formConfig';
 
 const GEO_ERRORS: Record<number, string> = {
 	1: 'Bạn đã chặn quyền vị trí. Mở cài đặt trình duyệt → cho phép trang này truy cập vị trí rồi thử lại.',
-	2: 'Không xác định được vị trí. Bật GPS/định vị của thiết bị rồi thử lại.',
+	2: 'Không xác định được vị trí. Bật GPS/Dịch vụ định vị của thiết bị (Windows: Cài đặt → Quyền riêng tư → Vị trí) rồi thử lại.',
 	3: 'Lấy vị trí quá lâu. Ra gần cửa sổ hoặc bật GPS rồi thử lại.',
 };
 const WEEKDAY = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];

@@ -146,6 +146,10 @@ textarea.input { resize: vertical; min-height: 64px; }
 .helperIcon { width: 16px; height: 16px; color: #15803d; flex: none; }
 .helperText { flex: 1; min-width: 220px; font-size: var(--font-size-sm); color: var(--color-gray-700); }
 .helper .toolRow { padding: 0; }
+.mapBox { flex-basis: 100%; display: flex; flex-direction: column; gap: 6px; }
+/* isolation: giữ z-index nội bộ của Leaflet (400–1000) không đè lên header/modal */
+.mapFrame:global(.leaflet-container) { cursor: crosshair; }
+.mapFrame { isolation: isolate; width: 100%; height: 280px; border: 1px solid var(--color-gray-200, #e5e7eb); border-radius: var(--radius-md, 8px); background: #fff; }
 
 /* ── Tab "Menu hiển thị" — công tắc từng mục menu, chia theo nhóm của sidebar ── */
 .menuBlock { position: relative; padding: var(--space-4) 0; }
