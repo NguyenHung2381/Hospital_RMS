@@ -173,7 +173,7 @@ Dự án có hai file compose:
 
 Mỗi file đặt tên project riêng (khoá `name:` ở đầu file) nên hai môi trường chạy song song được trên cùng một máy: container, network và volume tách biệt, không dùng chung JWT secret. Trước đây cả hai cùng lấy tên thư mục làm tên project, chạy môi trường này sẽ dừng container của môi trường kia.
 
-> Dựng production từ đầu trên máy ảo Ubuntu (2 ổ đĩa, SQL Server cài riêng ngoài Docker, quản trị qua SSH): xem [infra/cai-dat-may-ao-ubuntu.md](infra/cai-dat-may-ao-ubuntu.md).
+> Dựng production từ đầu trên máy ảo Ubuntu 26.04 (2 ổ đĩa, SQL Server cài riêng ngoài Docker, quản trị qua SSH): xem [infra/cai-dat-may-ao-ubuntu.md](infra/cai-dat-may-ao-ubuntu.md).
 
 ### Yêu cầu chung
 
