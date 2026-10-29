@@ -35,7 +35,10 @@ COPY nginx.conf /etc/nginx/conf.d/default.conf
 # image nginx tự chạy mọi file /docker-entrypoint.d/*.sh). tr bỏ CR phòng khi
 # file bị checkout CRLF trên Windows.
 COPY docker/40-trusted-proxies.sh /tmp/40-trusted-proxies.sh
-RUN tr -d '\r' < /tmp/40-trusted-proxies.sh > /docker-entrypoint.d/40-trusted-proxies.sh \
+# apk upgrade: lấy bản vá gói hệ thống mới hơn image nginx:alpine gốc (giống
+# backend) — Trivy ở CI chặn lỗ hổng CRITICAL đã có bản vá.
+RUN apk upgrade --no-cache \
+    && tr -d '\r' < /tmp/40-trusted-proxies.sh > /docker-entrypoint.d/40-trusted-proxies.sh \
     && chmod +x /docker-entrypoint.d/40-trusted-proxies.sh \
     && rm /tmp/40-trusted-proxies.sh
 EXPOSE 80
