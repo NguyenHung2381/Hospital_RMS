@@ -15,8 +15,11 @@ type Props = {
 export default function RadiusMap({ lat, lng, radius, onPick, className }: Props) {
 	const el = useRef<HTMLDivElement>(null);
 	const layers = useRef<{ map: L.Map; circle: L.Circle; dot: L.CircleMarker } | null>(null);
+	// Giữ onPick mới nhất cho handler click của Leaflet (đăng ký 1 lần lúc tạo map)
 	const pick = useRef(onPick);
-	pick.current = onPick;
+	useEffect(() => {
+		pick.current = onPick;
+	}, [onPick]);
 
 	useEffect(() => {
 		const map = L.map(el.current!, { scrollWheelZoom: false }).setView([16, 106], 5);
