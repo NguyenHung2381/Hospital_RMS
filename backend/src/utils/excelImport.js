@@ -6,6 +6,7 @@ const { lazyRequire } = require('./lazyRequire');
 /** @type {typeof import('exceljs')} */
 const ExcelJS = lazyRequire('exceljs');
 const { norm } = require('./vietnameseText');
+const zlib = require('zlib');
 const { badRequest } = require('./httpError');
 
 // Text hiển thị của ô (cell.text xử lý sẵn richText/formula); gộp khoảng trắng.
@@ -88,12 +89,60 @@ const parseStaffNumber = (s) => {
 	return Number.isFinite(n) ? n : null;
 };
 
+// .xlsx là file zip. ExcelJS bung cả file vào bộ nhớ: đo thực tế ~4MB heap / 1MB
+// XML, file 4,6MB (bung ra 52MB) đã làm sập worker 256MB heap ở production —
+// file "bom nén" 10MB bung ra hàng GB. Giải nén thử từng mục với trần dung
+// lượng trước khi đưa cho ExcelJS; không tin kích thước khai trong mục lục zip.
+// ponytail: trần cố định 20MB (~50.000 dòng × 7 cột); nâng heap worker thì nâng theo.
+const MAX_UNZIPPED_BYTES = 20 * 1024 * 1024;
+const UNREADABLE = 'File không đọc được — cần file .xlsx hợp lệ.';
+
+const assertUnzippedSize = (buf, max = MAX_UNZIPPED_BYTES) => {
+	const tooBig = () =>
+		badRequest(
+			`File Excel quá lớn (tối đa ${max / 1024 / 1024}MB dữ liệu sau giải nén) — hãy chia nhỏ file.`,
+		);
+	try {
+		// Bản ghi kết thúc mục lục (22 byte + comment ≤ 65535 byte) nằm cuối file
+		let eocd = -1;
+		for (let i = buf.length - 22; i >= Math.max(0, buf.length - 22 - 0xffff); i--) {
+			if (buf.readUInt32LE(i) === 0x06054b50) {
+				eocd = i;
+				break;
+			}
+		}
+		if (eocd < 0) throw new Error('no eocd');
+		let p = buf.readUInt32LE(eocd + 16);
+		let total = 0;
+		for (let n = buf.readUInt16LE(eocd + 10); n > 0; n--) {
+			if (buf.readUInt32LE(p) !== 0x02014b50) throw new Error('bad cd');
+			const method = buf.readUInt16LE(p + 10);
+			const size = buf.readUInt32LE(p + 20);
+			const local = buf.readUInt32LE(p + 42);
+			p += 46 + buf.readUInt16LE(p + 28) + buf.readUInt16LE(p + 30) + buf.readUInt16LE(p + 32);
+			if (buf.readUInt32LE(local) !== 0x04034b50) throw new Error('bad local');
+			const start = local + 30 + buf.readUInt16LE(local + 26) + buf.readUInt16LE(local + 28);
+			const data = buf.subarray(start, start + size);
+			if (method === 0) total += data.length;
+			else if (method === 8)
+				total += zlib.inflateRawSync(data, { maxOutputLength: max - total + 1 }).length;
+			else throw new Error('bad method');
+			if (total > max) throw tooBig();
+		}
+	} catch (err) {
+		if (err.code === 'ERR_BUFFER_TOO_LARGE') throw tooBig();
+		if (err.statusCode) throw err;
+		throw badRequest(UNREADABLE);
+	}
+};
+
 const loadWorkbook = async (buffer) => {
+	assertUnzippedSize(buffer);
 	const workbook = new ExcelJS.Workbook();
 	try {
 		await workbook.xlsx.load(buffer);
 	} catch {
-		throw badRequest('File không đọc được — cần file .xlsx hợp lệ.');
+		throw badRequest(UNREADABLE);
 	}
 	return workbook;
 };
@@ -160,6 +209,7 @@ module.exports = {
 	parseDob,
 	parseCredits,
 	parseStaffNumber,
+	assertUnzippedSize,
 	loadWorkbook,
 	findHeader,
 	readSheet,

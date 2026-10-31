@@ -30,11 +30,41 @@ test('không có đường dẫn /uploads ⇒ JSON giữ nguyên, Content-Type J
 test('có /uploads ⇒ được ký, kể cả trong HTML', async () => {
 	const res = await call({
 		file_url: '/uploads/topics/T1/a.pdf',
-		html: '<img src="/uploads/topics/T1/b.png">',
+		general_comment: '<img src="/uploads/topics/T1/comments/b.png">',
 	});
 	const out = JSON.parse(res.text);
 	assert.match(out.file_url, /^\/uploads\/topics\/T1\/a\.pdf\?exp=\d+&sig=[\w-]+$/);
-	assert.match(out.html, /src="\/uploads\/topics\/T1\/b\.png\?exp=\d+&sig=[\w-]+"/);
+	assert.match(
+		out.general_comment,
+		/src="\/uploads\/topics\/T1\/comments\/b\.png\?exp=\d+&sig=[\w-]+"/,
+	);
+});
+
+test('chuỗi người dùng tự nhập không được ký (chống tự xin link file người khác)', async () => {
+	const res = await call({
+		full_name: '/uploads/topics/T1/secret.pdf',
+		note: '<img src="/uploads/topics/T1/secret.pdf">',
+		// trường nhúng ảnh: chỉ ký ảnh nhận xét, không ký tài liệu đề tài
+		comment:
+			'<img src="/uploads/topics/T1/secret.pdf"><img src="/uploads/topics/T1/comments/a.png">',
+		file_url: 'xem /uploads/topics/T1/a.pdf',
+	});
+	const out = JSON.parse(res.text);
+	assert.equal(out.full_name, '/uploads/topics/T1/secret.pdf');
+	assert.equal(out.note, '<img src="/uploads/topics/T1/secret.pdf">');
+	assert.match(out.comment, /src="\/uploads\/topics\/T1\/secret\.pdf"/);
+	assert.match(out.comment, /src="\/uploads\/topics\/T1\/comments\/a\.png\?exp=\d+&sig=[\w-]+"/);
+	assert.equal(out.file_url, 'xem /uploads/topics/T1/a.pdf');
+});
+
+test('ảnh test hội nghị: chuỗi JSON test_questions và mảng/đối tượng image đều được ký', async () => {
+	const res = await call({
+		test_questions: JSON.stringify([{ q: 'a', image: '/uploads/seminars/S1/test/x.png' }]),
+		questions: [{ image: '/uploads/seminars/S1/test/y.png' }],
+	});
+	const out = JSON.parse(res.text);
+	assert.match(JSON.parse(out.test_questions)[0].image, /\?exp=\d+&sig=/);
+	assert.match(out.questions[0].image, /\?exp=\d+&sig=/);
 });
 
 test('route tự đặt Content-Type thì không bị ghi đè', async () => {

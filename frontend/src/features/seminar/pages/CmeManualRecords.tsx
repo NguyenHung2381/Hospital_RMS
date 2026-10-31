@@ -46,6 +46,7 @@ import { useSeminarPerms } from '../utils/perms';
 import { usePermission } from '@/shared/hooks/usePermission';
 import { updateUser } from '@/features/user/api/userApi';
 import { saveBlob } from '@/shared/utils/saveBlob';
+import { csvCell } from '@/shared/utils/csv';
 import {
 	CME_SOURCE_LABEL,
 	EMPTY_CME_RECORD_FORM,
@@ -1203,7 +1204,6 @@ function ImportModal({
 	const incomplete = accounts.filter((u) => u.missing_name || u.missing_department);
 	// Danh sách tài khoản để phát cho nhân viên — CSV có BOM để Excel đọc đúng tiếng Việt
 	const downloadAccounts = () => {
-		const esc = (v: unknown) => `"${String(v ?? '').replace(/"/g, '""')}"`;
 		const lines = [
 			['Mã NV', 'Họ và tên', 'Khoa/Phòng', 'Tên đăng nhập', 'Mật khẩu ban đầu', 'Ghi chú'],
 			...accounts.map((u) => [
@@ -1214,7 +1214,7 @@ function ImportModal({
 				u.username,
 				[u.missing_name && 'Cần bổ sung tên', u.missing_department && 'Cần bổ sung khoa'].filter(Boolean).join('; '),
 			]),
-		].map((r) => r.map(esc).join(','));
+		].map((r) => r.map(csvCell).join(','));
 		saveBlob(
 			new Blob(['\uFEFF' + lines.join('\r\n')], {
 				type: 'text/csv;charset=utf-8',

@@ -130,10 +130,24 @@ const getAll = async () =>
 
 const getById = async (key) => maskRow(await getRaw(key));
 
+// Mật khẩu SMTP gắn với máy chủ của nó: đổi SMTP_HOST sang máy lạ rồi "Gửi thử"
+// không được làm server đăng nhập máy đó bằng mật khẩu thật (mật khẩu bị che trên
+// UI nhưng vẫn lộ theo đường này).
+//   Mật khẩu lưu ở DB: update() xóa khi máy chủ SMTP đang áp dụng đổi.
+//   Mật khẩu ở .env: chỉ dùng khi máy chủ đang áp dụng = SMTP_HOST của .env.
+const smtpPassword = async () => {
+	const row = await getRaw('SMTP_PASS');
+	if (row?.value) return row.value;
+	return (await getValue('SMTP_HOST')) === process.env.SMTP_HOST
+		? process.env.SMTP_PASS
+		: undefined;
+};
+
 const update = async (key, value, actorId) => {
 	// UI gửi lại MASK khi admin không đổi secret → giữ nguyên giá trị cũ.
 	if (SECRET_KEYS.has(key) && value === MASK) return getById(key);
 	const pool = await getPool();
+	const hostBefore = key === 'SMTP_HOST' ? await getValue('SMTP_HOST') : undefined;
 	await pool
 		.request()
 		.input('key', sql.VarChar(50), key)
@@ -145,8 +159,17 @@ const update = async (key, value, actorId) => {
       WHEN NOT MATCHED THEN INSERT (setting_key, value, created_by, updated_by) VALUES (@key, @value, @actor_id, @actor_id);
     `);
 	cache = null;
+	if (key === 'SMTP_HOST' && (await getValue('SMTP_HOST')) !== hostBefore) {
+		await pool
+			.request()
+			.input('actor_id', sql.VarChar(20), actorId)
+			.query(
+				"UPDATE system_settings SET value = NULL, updated_at = GETDATE(), updated_by = @actor_id WHERE setting_key = 'SMTP_PASS'",
+			);
+		cache = null;
+	}
 	broadcast('update', { entity: 'system_setting' });
 	return getById(key);
 };
 
-module.exports = { getAll, getById, getValue, update, isKey };
+module.exports = { getAll, getById, getValue, smtpPassword, update, isKey };

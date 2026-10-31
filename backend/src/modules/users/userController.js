@@ -5,6 +5,7 @@ const { buildUserListWorkbook } = require('./exports/userListWorkbook');
 const { createCrudController } = require('../../shared/crudController');
 const { scopeOf, hasPermission } = require('../../permissions/authz');
 const { asyncHandler } = require('../../utils/asyncHandler');
+const { ROLE, roleIdOf } = require('../access/roleCodes');
 const {
 	isSuperuser,
 	assertCanAssignRole,
@@ -152,6 +153,11 @@ const searchMembers = asyncHandler(async (req, res) => {
 	// Mở cho mọi tài khoản đăng nhập (chọn người khi thêm thành viên) và có trả
 	// email — bắt buộc có từ khóa + tối đa 20 kết quả, không để tải cả danh bạ
 	// nhân viên bằng 1 request (trước đây limit không giới hạn, q rỗng trả tất cả).
+	// Tài khoản học viên (người ngoài viện) không có chức năng chọn thành viên —
+	// chặn hẳn để không dò được danh bạ nhân viên (tên đăng nhập, email, mã NV).
+	if (req.user.role_id && req.user.role_id === (await roleIdOf(ROLE.TRAINEE))) {
+		return forbidden(res, 'Không đủ quyền thực hiện thao tác này');
+	}
 	if (!String(q).trim()) {
 		return success(res, { data: [], pagination: { page: 1, limit: 0, total: 0 } });
 	}

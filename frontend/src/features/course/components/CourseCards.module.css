@@ -53,15 +53,6 @@
 	border-radius: var(--radius-full);
 }
 
-.type {
-	font-size: var(--font-size-2xs);
-	font-weight: var(--font-weight-semibold);
-	color: var(--color-gray-500);
-	background: var(--color-gray-100);
-	padding: 3px 9px;
-	border-radius: var(--radius-full);
-}
-
 .tools {
 	position: absolute;
 	z-index: 1;

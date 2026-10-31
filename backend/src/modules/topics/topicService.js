@@ -275,12 +275,23 @@ const create = async (data, actorId) => {
 	return topic;
 };
 
+// Phạm vi 'own' (chủ nhiệm / thư ký sửa từ cổng người dùng) chỉ được sửa các
+// trường cổng gửi lên. Đề tài tiêu biểu, số quyết định, kinh phí, đợt, kết quả
+// nghiệm thu... do phòng quản lý nhập — trước đây chủ nhiệm tự đặt được bằng
+// payload tự chế, bất kể trạng thái đề tài.
+const OWN_EDITABLE = ['title', 'description', 'category_id', 'department_id'];
+
 const update = async (id, data, actorId, actor = null) => {
 	const pool = await getPool();
 
 	// actor có thể là object (req.user), true (bỏ qua kiểm tra), hoặc null.
 	const bypass = actor === true;
 	const scope = bypass ? 'all' : topicScope(actor);
+	if (!bypass && scope === 'own') {
+		data = Object.fromEntries(
+			OWN_EDITABLE.filter((k) => data[k] !== undefined).map((k) => [k, data[k]]),
+		);
+	}
 
 	// Chỉ sửa được đề tài mình XEM được (cùng quy tắc phạm vi với getById):
 	// 'own' phải là thành viên, 'department' phải cùng khoa. Trước đây gọi
@@ -327,10 +338,7 @@ const update = async (id, data, actorId, actor = null) => {
 		if (
 			data.description !== undefined ||
 			data.category_id !== undefined ||
-			data.department_id !== undefined ||
-			data.acceptance_rating !== undefined ||
-			data.acceptance_score !== undefined ||
-			data.acceptance_date !== undefined
+			data.department_id !== undefined
 		)
 			await assertTopicActionWindow(id, actorId, 'edit-info');
 	} else if (scope !== 'all') {

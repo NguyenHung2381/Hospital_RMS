@@ -7,15 +7,13 @@
  * với users/external_reviewers, match đề tài (đã có sẵn trong đợt) theo tên →
  * dry_run trả preview; commit tạo hội đồng draft + 5 ghế + gán đề tài & phiên.
  */
-const { lazyRequire } = require('../../utils/lazyRequire');
-/** @type {typeof import('exceljs')} */
-const ExcelJS = lazyRequire('exceljs');
 const { getPool, sql } = require('../../config/db');
 const councilService = require('./councilService');
 const councilAssignmentService = require('./councilAssignmentService');
 const { ROLE, inputRoleId } = require('../access/roleCodes');
 const { norm, normDept, stripQualification, dice } = require('../../utils/vietnameseText');
 const { httpError } = require('../../utils/httpError');
+const { loadWorkbook } = require('../../utils/excelImport');
 
 const SEAT_ORDER = ['chairman', 'secretary', 'reviewer1', 'reviewer2', 'member'];
 const ROLE_BY_NORM = {
@@ -103,12 +101,7 @@ const parseSession = (s) => {
 
 // Parse toàn bộ file → danh sách dòng đề tài kèm 5 ghế hội đồng thô
 const parseWorkbook = async (buffer) => {
-	const workbook = new ExcelJS.Workbook();
-	try {
-		await workbook.xlsx.load(buffer);
-	} catch {
-		throw httpError(400, 'File không đọc được — cần file .xlsx hợp lệ.');
-	}
+	const workbook = await loadWorkbook(buffer);
 	const header = findHeader(workbook);
 	if (!header) {
 		throw Object.assign(

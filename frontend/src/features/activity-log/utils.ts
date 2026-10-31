@@ -1,3 +1,4 @@
+import { csvCell } from '@/shared/utils/csv';
 import type { ActivityLog } from './api/activityLogApi';
 
 export const ACTION_OPTIONS: { value: string; label: string }[] = [
@@ -219,10 +220,6 @@ export function exportCsv(rows: ActivityLog[]) {
 		'Lỗi',
 		'Dữ liệu gửi lên',
 	];
-	const esc = (v: unknown) => {
-		const s = v == null ? '' : String(v);
-		return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
-	};
 	const lines = rows.map((r) => {
 		const ua = parseUserAgent(r.user_agent);
 		return [
@@ -243,7 +240,7 @@ export function exportCsv(rows: ActivityLog[]) {
 			r.error,
 			r.body,
 		]
-			.map(esc)
+			.map(csvCell)
 			.join(',');
 	});
 	const blob = new Blob(['\uFEFF' + [header.join(','), ...lines].join('\r\n')], {

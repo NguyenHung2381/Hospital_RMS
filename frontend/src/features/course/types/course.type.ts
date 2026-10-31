@@ -1,4 +1,5 @@
 import type { CustomValues } from '../../../shared/formConfig/types';
+import type { BadgeTone } from '@/shared/components/Badge/badgeTone';
 
 export type ModalType = 'add' | 'edit' | 'delete' | null;
 // courses.status giờ chỉ còn lưu cờ hủy ('cancelled' vs 'draft' = bình thường)
@@ -102,12 +103,15 @@ export const TRAINING_TYPE = {
 /** Loại khóa chia lớp theo chương trình (backend programClassService): sĩ số + ngày học đặt theo lớp. */
 export const CLASS_TYPES = new Set<string>([TRAINING_TYPE.DTLT, TRAINING_TYPE.CTCV]);
 
-export const DISPLAY_STATUS_CFG: Record<CourseDisplayStatus, { label: string; color: string; bg: string }> = {
-	upcoming: { label: 'Sắp khai giảng', color: '#633806', bg: '#faeeda' },
-	enrolling: { label: 'Đang mở đăng ký', color: '#085028', bg: '#e1f5ea' },
-	in_progress: { label: 'Đang trong quá trình học', color: '#3c3489', bg: '#eeedfe' },
-	completed: { label: 'Hoàn thành', color: '#0c447c', bg: '#e6f1fb' },
-	cancelled: { label: 'Đã hủy', color: '#791f1f', bg: '#fcebeb' },
+export const DISPLAY_STATUS_CFG: Record<
+	CourseDisplayStatus,
+	{ label: string; color: string; bg: string; tone: BadgeTone }
+> = {
+	upcoming: { label: 'Sắp khai giảng', color: '#633806', bg: '#faeeda', tone: 'amber' },
+	enrolling: { label: 'Đang mở đăng ký', color: '#085028', bg: '#e1f5ea', tone: 'green' },
+	in_progress: { label: 'Đang trong quá trình học', color: '#3c3489', bg: '#eeedfe', tone: 'purple' },
+	completed: { label: 'Hoàn thành', color: '#0c447c', bg: '#e6f1fb', tone: 'blue' },
+	cancelled: { label: 'Đã hủy', color: '#791f1f', bg: '#fcebeb', tone: 'red' },
 };
 
 export const ENROLLMENT_STATUS_CFG: Record<EnrollmentStatus, { label: string; color: string; bg: string }> = {

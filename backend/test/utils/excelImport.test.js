@@ -98,3 +98,53 @@ test('parseDateCell đọc Date, số serial Excel (cả dạng chữ), chuỗi 
 	assert.equal(excelSerialToYmd(45658), '2025-01-01');
 	assert.deepEqual(parseDob(cell(5)), { dob: null, dob_text: '1989' });
 });
+
+// Zip 1 mục tự dựng — `declared` = kích thước giải nén GHI trong mục lục (có thể khai man)
+const zipOf = (name, raw, declared = raw.length) => {
+	const zlib = require('zlib');
+	const data = zlib.deflateRawSync(raw);
+	const fname = Buffer.from(name);
+	const local = Buffer.alloc(30);
+	local.writeUInt32LE(0x04034b50, 0);
+	local.writeUInt16LE(8, 8);
+	local.writeUInt32LE(data.length, 18);
+	local.writeUInt32LE(declared, 22);
+	local.writeUInt16LE(fname.length, 26);
+	const cd = Buffer.alloc(46);
+	cd.writeUInt32LE(0x02014b50, 0);
+	cd.writeUInt16LE(8, 10);
+	cd.writeUInt32LE(data.length, 20);
+	cd.writeUInt32LE(declared, 24);
+	cd.writeUInt16LE(fname.length, 28);
+	cd.writeUInt32LE(0, 42);
+	const cdStart = local.length + fname.length + data.length;
+	const eocd = Buffer.alloc(22);
+	eocd.writeUInt32LE(0x06054b50, 0);
+	eocd.writeUInt16LE(1, 8);
+	eocd.writeUInt16LE(1, 10);
+	eocd.writeUInt32LE(cd.length + fname.length, 12);
+	eocd.writeUInt32LE(cdStart, 16);
+	return Buffer.concat([local, fname, data, cd, fname, eocd]);
+};
+
+test('chặn file Excel "bom nén" trước khi ExcelJS bung ra bộ nhớ', async () => {
+	const { loadWorkbook, assertUnzippedSize } = require('../../src/utils/excelImport');
+	const is400 = (re) => (e) => e.statusCode === 400 && re.test(e.message);
+
+	// File thật vẫn đọc được
+	const wb = await loadWorkbook(Buffer.from(await buffer([['Họ và tên'], ['Nguyễn Văn A']])));
+	assert.equal(wb.worksheets[0].getRow(2).getCell(1).text, 'Nguyễn Văn A');
+
+	// 30MB chữ "a" nén còn ~30KB — kể cả khi mục lục khai man kích thước = 1 byte
+	const bomb = zipOf('xl/worksheets/sheet1.xml', Buffer.alloc(30 * 1024 * 1024, 'a'), 1);
+	assert.ok(bomb.length < 100 * 1024);
+	await assert.rejects(loadWorkbook(bomb), is400(/quá lớn/));
+	assert.doesNotThrow(() => assertUnzippedSize(zipOf('a.xml', Buffer.alloc(1024, 'a'))));
+
+	// Không phải zip / zip hỏng
+	await assert.rejects(
+		loadWorkbook(Buffer.from('not a zip at all, just text....')),
+		is400(/không đọc được/),
+	);
+	await assert.rejects(loadWorkbook(bomb.subarray(0, 200)), is400(/không đọc được/));
+});

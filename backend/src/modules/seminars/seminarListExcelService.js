@@ -17,6 +17,7 @@ const seminarService = require('./seminarService');
 const xl = require('../../utils/excelTemplate');
 const { ROLE, inputRoleId } = require('../access/roleCodes');
 const { httpError } = require('../../utils/httpError');
+const { loadWorkbook } = require('../../utils/excelImport');
 
 const EVENT_TYPE_LABELS = {
 	conference: 'Hội nghị',
@@ -386,12 +387,7 @@ const parseNum = (s) => {
 const dupKey = (title, year) => `${norm(title)}|${year ?? ''}`;
 
 const parseRows = async (buffer) => {
-	const workbook = new ExcelJS.Workbook();
-	try {
-		await workbook.xlsx.load(buffer);
-	} catch {
-		throw httpError(400, 'File không đọc được — cần file .xlsx hợp lệ.');
-	}
+	const workbook = await loadWorkbook(buffer);
 	const header = findHeader(workbook);
 	if (!header) {
 		throw Object.assign(

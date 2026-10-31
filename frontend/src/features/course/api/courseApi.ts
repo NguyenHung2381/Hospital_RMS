@@ -62,6 +62,8 @@ export interface CourseListParams {
 	search?: string;
 	program_id?: string;
 	status?: string;
+	/** Trạng thái hiển thị (suy ra từ ngày) — xem DISPLAY_STATUS_CFG */
+	display_status?: string;
 	training_type_id?: string;
 	/** Bỏ khóa thuộc loại này (khi không lọc training_type_id). */
 	exclude_training_type_id?: string;

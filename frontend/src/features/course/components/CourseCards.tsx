@@ -58,7 +58,6 @@ export function CourseCards({
 							>
 								{cfg.label}
 							</span>
-							{c.training_type_name && <span className={styles.type}>{c.training_type_name}</span>}
 							<span className={styles.tools}>
 								{onShareLink && c.is_public_registration && (
 									<button

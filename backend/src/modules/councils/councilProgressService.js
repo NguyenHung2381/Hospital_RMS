@@ -14,6 +14,7 @@ const { lazyRequire } = require('../../utils/lazyRequire');
 /** @type {typeof import('sanitize-html')} */
 const sanitizeHtml = lazyRequire('sanitize-html');
 const { stripUploadSignatures } = require('../../utils/signedUpload');
+const { toStoredUploadPath } = require('../../utils/uploadPaths');
 const { httpError } = require('../../utils/httpError');
 
 const EVAL_NOTE = 'Đánh giá tiến độ của hội đồng'; // ponytail: phân biệt file đánh giá bằng note batch — thêm cột file_type nếu sau này cần chặt chẽ hơn
@@ -22,15 +23,27 @@ const MINUTES_NOTE = 'Biên bản họp hội đồng';
 const RATINGS = ['on_track', 'behind', 'at_risk'];
 const CONCLUSIONS = ['pass', 'fail', 'revise'];
 
+// Ảnh nhận xét chỉ được trỏ vào thư mục ảnh nhận xét của CHÍNH đề tài này
+// (uploadCommentImage lưu ở đó) — trỏ sang file khác trong /uploads (tài liệu
+// đề tài khác...) thì response sẽ ký link cho file đó.
+const isOwnCommentImage = (src, topicId) => {
+	try {
+		return !!toStoredUploadPath(src, `/uploads/topics/${topicId}/comments/`);
+	} catch {
+		return false;
+	}
+};
+
 // Nhận xét hỗ trợ định dạng chữ + chèn ảnh (HTML) — lọc trước khi lưu để chặn
-// stored-XSS; ảnh chỉ được chèn qua uploadCommentImage nên src luôn bắt đầu
-// bằng /uploads/, chặn javascript:/data: và ảnh từ nguồn ngoài.
-const sanitizeComment = (html) => {
+// stored-XSS; ảnh chỉ được chèn qua uploadCommentImage, chặn javascript:/data:,
+// ảnh từ nguồn ngoài và file không phải ảnh nhận xét của đề tài này.
+const sanitizeComment = (html, topicId) => {
 	if (!html) return null;
 	const clean = sanitizeHtml(html, {
 		allowedTags: ['b', 'strong', 'i', 'em', 'u', 's', 'ul', 'ol', 'li', 'br', 'p', 'img'],
 		allowedAttributes: { img: ['src', 'alt'] },
-		exclusiveFilter: (frame) => frame.tag === 'img' && !frame.attribs.src?.startsWith('/uploads/'),
+		exclusiveFilter: (frame) =>
+			frame.tag === 'img' && !isOwnCommentImage(frame.attribs.src, topicId),
 	});
 	// Ảnh hiển thị trên trình soạn thảo mang src đã ký (có hạn) — lưu đường dẫn
 	// gốc, response sau sẽ ký lại.
@@ -176,7 +189,7 @@ const upsertReview = async (topicId, userId, { progress_percent, rating, comment
 		.input('role', sql.VarChar(15), roles[0])
 		.input('progress_percent', sql.Int, progress_percent ?? null)
 		.input('rating', sql.VarChar(15), rating || null)
-		.input('comment', sql.NVarChar(sql.MAX), sanitizeComment(comment)).query(`
+		.input('comment', sql.NVarChar(sql.MAX), sanitizeComment(comment, topicId)).query(`
       UPDATE council_progress_reviews
       SET progress_percent = @progress_percent, rating = @rating,
           comment = @comment, role = @role, updated_at = GETDATE(), updated_by = @user_id
@@ -217,7 +230,8 @@ const upsertResult = async (topicId, userId, { conclusion, general_comment }) =>
 		.input('topic_id', sql.VarChar(15), topicId)
 		.input('user_id', sql.VarChar(20), userId)
 		.input('conclusion', sql.VarChar(15), conclusion || null)
-		.input('general_comment', sql.NVarChar(sql.MAX), sanitizeComment(general_comment)).query(`
+		.input('general_comment', sql.NVarChar(sql.MAX), sanitizeComment(general_comment, topicId))
+		.query(`
       UPDATE council_topic_results
       SET conclusion = @conclusion, general_comment = @general_comment,
           decided_by = @user_id, updated_at = GETDATE(), updated_by = @user_id

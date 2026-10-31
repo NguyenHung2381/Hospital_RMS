@@ -10,7 +10,7 @@ import { EMPTY_FORM, TRAINING_TYPE, type Course } from '../types/course.type';
 import { CopySvg, EyeSvg, LayersSvg, ListSvg, PlusSvg, QrSvg } from '@/assets/icons';
 import { CourseCloneModal } from '../components/CourseCloneModal';
 import AdminLayout from '../../../layouts/AdminLayout';
-import { Button, InlineLoading, TableEmpty } from '@/shared/components';
+import { Badge, Button, InlineLoading, TableEmpty } from '@/shared/components';
 import { CourseRegisterLinkModal } from '../components/CourseRegisterLinkModal';
 import { SkeletonTable } from '../../../shared/components/Loading';
 import { Pagination } from '../../../shared/components/Table/Pagination';
@@ -28,6 +28,9 @@ import styles from './Courses.module.css';
 import tbl from '@/shared/components/Table/Table.module.css';
 
 type Named = { id: string; name: string };
+
+const dateRange = (a: string | null, b: string | null) =>
+	a || b ? `${formatDate(a) ?? '?'} → ${formatDate(b) ?? '?'}` : null;
 
 // Tiêu đề / đơn vị đếm theo loại — mỗi loại đào tạo 1 trang riêng (mục menu riêng).
 const TYPE_TEXT: Record<string, { title: string; unit: string; subtitle: string }> = {
@@ -75,6 +78,7 @@ export default function Courses({ typeId }: { typeId: string }) {
 	// Khóa thêm mới mang sẵn loại của trang (GPHN mở liên tục).
 	const addInitial = { training_type_id: typeId, is_rolling: practice };
 	const openCourse = (id: string) => navigate(`/admin/courses/${id}`);
+	const filtered = !!(d.search || d.statusFilter);
 	const rowSel = useRowSelection(d.paged.map((x) => x.id));
 	// Link + QR đăng ký: null = đóng, 'all' = link chung, Course = link riêng 1 khóa
 	const [shareLink, setShareLink] = useState<Course | 'all' | null>(null);
@@ -197,6 +201,25 @@ export default function Courses({ typeId }: { typeId: string }) {
 								<LayersSvg />
 							</button>
 						</div>
+						{/* Đợt GPHN luôn "đang học" (mở liên tục) — lọc trạng thái không có nghĩa */}
+						{!practice && (
+							<select
+								className={`${tbl.filterSelect} ${d.statusFilter ? tbl.filterActive : ''}`}
+								aria-label='Lọc theo trạng thái'
+								value={d.statusFilter}
+								onChange={(e) => d.handleStatusFilter(e.target.value)}
+							>
+								<option value=''>Tất cả trạng thái</option>
+								{Object.entries(DISPLAY_STATUS_CFG).map(([v, s]) => (
+									<option
+										key={v}
+										value={v}
+									>
+										{s.label}
+									</option>
+								))}
+							</select>
+						)}
 						<SearchInput
 							value={d.search}
 							onChange={d.handleSearch}
@@ -230,7 +253,7 @@ export default function Courses({ typeId }: { typeId: string }) {
 							}}
 							onShareLink={setShareLink}
 							onClone={setCloneFrom}
-							emptyDesc={d.search ? 'Thử thay đổi từ khóa tìm kiếm' : `Bấm "${practice ? 'Thêm đợt' : 'Thêm khóa học'}" để bắt đầu`}
+							emptyDesc={filtered ? 'Thử đổi từ khóa hoặc bộ lọc trạng thái' : `Bấm "${practice ? 'Thêm đợt' : 'Thêm khóa học'}" để bắt đầu`}
 						/>
 					)
 				) : (
@@ -248,6 +271,7 @@ export default function Courses({ typeId }: { typeId: string }) {
 							</th>
 							<th className={`${styles.th} ${tbl.thIdx}`}>STT</th>
 							<th className={styles.th}>{practice ? 'Đợt thực hành' : 'Khóa học'}</th>
+							<th className={styles.th}>Thời gian học</th>
 							<th className={styles.th}>Chương trình</th>
 							<th className={styles.th}>Đăng ký</th>
 							<th className={styles.th}>Học viên</th>
@@ -259,18 +283,23 @@ export default function Courses({ typeId }: { typeId: string }) {
 						{d.isLoadingData ? (
 							<SkeletonTable
 								rows={d.pageSize || 8}
-								cols={8}
+								cols={9}
 							/>
 						) : d.total === 0 ? (
 							<TableEmpty
-								colSpan={8}
+								colSpan={9}
 								title={`Không tìm thấy ${unit}`}
-								desc={d.search ? 'Thử thay đổi từ khóa tìm kiếm' : `Chưa có ${unit} nào`}
+								desc={filtered ? 'Thử đổi từ khóa hoặc bộ lọc trạng thái' : `Chưa có ${unit} nào`}
 							/>
 						) : (
 							d.paged.map((c, i) => {
 								const rowNum = (d.safePage - 1) * (d.pageSize || d.total) + i + 1;
 								const cfg = DISPLAY_STATUS_CFG[c.display_status];
+								const meta = [
+									c.batch_no ? `Đợt ${c.batch_no}` : null,
+									c.training_form_name,
+									c.is_rolling ? 'Mở liên tục' : null,
+								].filter(Boolean);
 								return (
 									<tr
 										key={c.id}
@@ -292,57 +321,52 @@ export default function Courses({ typeId }: { typeId: string }) {
 											>
 												{c.name}
 											</span>
-											{c.training_type_name && (
-												<div className={styles.descText}>
-													{c.training_type_name}
-													{c.is_rolling ? ' · mở liên tục' : ''}
-												</div>
-											)}
-											{c.pending_count > 0 && (
-												<div className={styles.descText}>
-													{c.pending_count} đăng ký chờ duyệt
-												</div>
-											)}
+											{meta.length > 0 && <div className={styles.descText}>{meta.join(' · ')}</div>}
+										</td>
+										<td className={`${styles.td} ${styles.nowrap}`}>
+											<span className={styles.descText}>
+												{c.is_rolling
+													? 'Theo lịch từng học viên'
+													: dateRange(c.start_date, c.end_date) ?? 'Chưa đặt ngày'}
+											</span>
 										</td>
 										<td className={styles.td}>
 											<ProgramTags names={c.program_names} />
-											<div>
-												<span
-													className={styles.badge}
-													style={
-														c.is_public_registration
-															? { background: '#e1f5ea', color: '#085028' }
-															: { background: 'var(--color-gray-100)', color: 'var(--color-gray-600)' }
-													}
-												>
-													{c.is_public_registration ? 'Công khai' : 'Nội bộ'}
-												</span>
+										</td>
+										<td className={styles.td}>
+											<Badge
+												tone={c.enrollment_open ? 'green' : 'gray'}
+												dot
+											>
+												{c.enrollment_open ? 'Đang mở' : 'Đã đóng'}
+											</Badge>
+											<div className={`${styles.descText} ${styles.nowrap}`}>
+												{c.is_public_registration ? 'Công khai' : 'Nội bộ'}
+												{!c.is_rolling &&
+													(c.enrollment_start_date || c.enrollment_end_date) &&
+													` · ${dateRange(c.enrollment_start_date, c.enrollment_end_date)}`}
 											</div>
 										</td>
-										<td className={styles.td}>
-											<span className={styles.descText}>
-												{c.enrollment_start_date || c.enrollment_end_date
-													? `${formatDate(c.enrollment_start_date) ?? '—'} — ${formatDate(c.enrollment_end_date) ?? '—'}`
-													: 'Luôn mở'}
-												{' · '}
-												<span style={{ color: c.enrollment_open ? '#085028' : '#791f1f' }}>
-													{c.enrollment_open ? 'Đang mở' : 'Đã đóng'}
-												</span>
+										<td className={`${styles.td} ${styles.nowrap}`}>
+											<span className={styles.capacityText}>
+												<strong>{c.approved_count}</strong> học viên
 											</span>
-										</td>
-										<td className={styles.td}>
-											<span className={styles.capacityText}>{c.approved_count} đã duyệt</span>
+											{c.pending_count > 0 && (
+												<div>
+													<Badge
+														tone='amber'
+														title='Đăng ký đang chờ duyệt — mở khóa học để duyệt'
+													>
+														{c.pending_count} chờ duyệt
+													</Badge>
+												</div>
+											)}
 											{c.waitlisted_count > 0 && (
-												<div className={styles.descText}>{c.waitlisted_count} chờ khóa sau</div>
+												<div className={styles.descText}>{c.waitlisted_count} trong danh sách chờ</div>
 											)}
 										</td>
 										<td className={styles.td}>
-											<span
-												className={styles.badge}
-												style={{ background: cfg.bg, color: cfg.color }}
-											>
-												{cfg.label}
-											</span>
+											<Badge tone={cfg.tone}>{cfg.label}</Badge>
 										</td>
 										<td className={`${styles.td} ${styles.tdActions}`}>
 											<RowActions

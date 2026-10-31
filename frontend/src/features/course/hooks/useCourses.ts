@@ -18,6 +18,8 @@ export function useCourses(trainingTypeId = '') {
 	const [isLoadingData, setIsLoadingData] = useState(true);
 	const [search, setSearch] = useState('');
 	const [debouncedSearch, setDebouncedSearch] = useState('');
+	// '' = mọi trạng thái
+	const [statusFilter, setStatusFilter] = useState('');
 	const [modal, setModal] = useState<ModalType>(null);
 	const [editingCourse, setEditingCourse] = useState<Course | null>(null);
 	const [deletingCourse, setDeletingCourse] = useState<Course | null>(null);
@@ -44,6 +46,7 @@ export function useCourses(trainingTypeId = '') {
 					page,
 					limit: pageSize,
 					search: debouncedSearch || undefined,
+					display_status: statusFilter || undefined,
 					...courseTypeFilter(trainingTypeId),
 				});
 				if (controller.signal.aborted) return;
@@ -58,13 +61,18 @@ export function useCourses(trainingTypeId = '') {
 			}
 		})();
 		return () => controller.abort();
-	}, [page, pageSize, debouncedSearch, trainingTypeId, refreshKey]);
+	}, [page, pageSize, debouncedSearch, statusFilter, trainingTypeId, refreshKey]);
 
 	const totalPages = pageSize === 0 ? 1 : Math.max(1, Math.ceil(total / pageSize));
 	const safePage = Math.min(page, totalPages);
 
 	const handleSearch = useCallback((v: string) => {
 		setSearch(v);
+		setPage(1);
+	}, []);
+
+	const handleStatusFilter = useCallback((v: string) => {
+		setStatusFilter(v);
 		setPage(1);
 	}, []);
 
@@ -145,9 +153,13 @@ export function useCourses(trainingTypeId = '') {
 	const fetchAllIds = useCallback(
 		async () =>
 			(
-				await getCourses({ search: debouncedSearch || undefined, ...courseTypeFilter(trainingTypeId) })
+				await getCourses({
+					search: debouncedSearch || undefined,
+					display_status: statusFilter || undefined,
+					...courseTypeFilter(trainingTypeId),
+				})
 			).data.map((x) => x.id),
-		[debouncedSearch, trainingTypeId],
+		[debouncedSearch, statusFilter, trainingTypeId],
 	);
 
 	return {
@@ -156,6 +168,8 @@ export function useCourses(trainingTypeId = '') {
 		fetchAllIds,
 		isLoadingData,
 		search,
+		statusFilter,
+		handleStatusFilter,
 		modal,
 		editingCourse,
 		deletingCourse,

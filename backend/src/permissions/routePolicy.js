@@ -87,7 +87,7 @@ module.exports = {
 		[`GET ${API}/users/:id`]:
 			'Controller: chính mình, hoặc cần users:read + cùng khoa (userController.getById)',
 		[`GET ${API}/users/search`]:
-			'Tìm người để thêm làm thành viên đề tài — bắt buộc từ khóa, tối đa 20 kết quả (có email để điền sẵn)',
+			'Tìm người để thêm làm thành viên đề tài — bắt buộc từ khóa, tối đa 20 kết quả (có email để điền sẵn); tài khoản học viên bị chặn',
 		[`GET ${API}/notifications/`]: 'Thông báo của chính mình',
 		[`GET ${API}/notifications/unread-count`]: 'Thông báo của chính mình',
 		[`PUT ${API}/notifications/read-all`]: 'Thông báo của chính mình',

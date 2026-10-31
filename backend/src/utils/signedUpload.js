@@ -33,19 +33,37 @@ const signPath = (pathname) => {
 const WHOLE = /^(\/uploads\/[^?#\s"'<>]+)(\?[^#\s"'<>]*)?$/;
 const IN_HTML = /(["'])(\/uploads\/[^?#\s"'<>]+)(\?[^#\s"'<>]*)?\1/g;
 
-const signString = (s) => {
-	const m = WHOLE.exec(s);
-	if (m) return signPath(m[1]);
-	if (!s.includes('/uploads/')) return s;
-	return s.replace(IN_HTML, (_all, q, p) => `${q}${signPath(p)}${q}`);
+// CHỈ ký ở các trường file do server tự ghi đường dẫn. Ký mọi chuỗi thì bất kỳ ô
+// nhập tự do nào (họ tên, ghi chú...) cũng thành "máy ký link": gõ đường dẫn file
+// của người khác vào, đọc lại là nhận link hợp lệ. Thêm trường file mới ⇒ thêm tên vào đây.
+//   file_url / evidence_file_url — files, training_files (tên lưu do server sinh)
+//   image_url — question_bank (toStoredUploadPath giới hạn thư mục)
+//   url — response upload ảnh; image — ảnh câu hỏi test hội nghị (đã parse)
+const FILE_KEYS = new Set(['file_url', 'evidence_file_url', 'image_url', 'url', 'image']);
+// Trường HTML/JSON nhúng ảnh: nhận xét hội đồng, câu hỏi test hội nghị (chuỗi JSON).
+// Chỉ ký ảnh nằm trong thư mục ảnh nhúng, không bao giờ ký tài liệu đề tài/khóa học.
+const EMBED_KEYS = new Set(['comment', 'general_comment', 'test_questions']);
+const EMBED_PATH =
+	/^\/uploads\/(topics\/[A-Za-z0-9_-]+\/comments|seminars\/[A-Za-z0-9_-]+\/test)\/[^/]+$/;
+
+const signString = (s, key) => {
+	if (FILE_KEYS.has(key)) {
+		const m = WHOLE.exec(s);
+		return m ? signPath(m[1]) : s;
+	}
+	if (EMBED_KEYS.has(key) && s.includes('/uploads/')) {
+		return s.replace(IN_HTML, (all, q, p) => (EMBED_PATH.test(p) ? `${q}${signPath(p)}${q}` : all));
+	}
+	return s;
 };
 
-const signDeep = (value) => {
-	if (typeof value === 'string') return signString(value);
-	if (Array.isArray(value)) return value.map(signDeep);
+// Phần tử mảng mang tên trường của mảng cha (vd images: ['/uploads/...']).
+const signDeep = (value, key) => {
+	if (typeof value === 'string') return signString(value, key);
+	if (Array.isArray(value)) return value.map((v) => signDeep(v, key));
 	if (value && typeof value === 'object' && !(value instanceof Date) && !Buffer.isBuffer(value)) {
 		const out = {};
-		for (const k of Object.keys(value)) out[k] = signDeep(value[k]);
+		for (const k of Object.keys(value)) out[k] = signDeep(value[k], k);
 		return out;
 	}
 	return value;

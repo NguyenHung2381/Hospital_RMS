@@ -42,7 +42,7 @@ const getTransporter = async () => {
 		systemSettingService.getValue('SMTP_PORT'),
 		systemSettingService.getValue('SMTP_SECURE'),
 		systemSettingService.getValue('SMTP_USER'),
-		systemSettingService.getValue('SMTP_PASS'),
+		systemSettingService.smtpPassword(),
 	]);
 	return nodemailer.createTransport({
 		host,

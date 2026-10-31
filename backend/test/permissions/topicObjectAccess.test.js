@@ -23,6 +23,7 @@ install(async (text, inputs) => {
 		return t?.members.includes(inputs.user_id) ? [{ ok: 1 }] : [];
 	if (/WHERE t\.id = @id/.test(text)) return t ? [{ ...t }] : [];
 	if (/UPDATE topics/.test(text)) writes.push(inputs.id);
+	if (/DELETE FROM topic_related_departments/.test(text)) writes.push(inputs.topic_id);
 	return [];
 });
 require('../../src/modules/events/eventService').broadcast = () => {};
@@ -62,6 +63,24 @@ test('phạm vi all: mọi đề tài; đề tài không tồn tại → 404', a
 test('sửa đề tài ngoài phạm vi (kể cả chỉ sửa trường "phụ" như tạp chí) bị chặn, không ghi DB', async () => {
 	await denied(topicService.update('DT2', { journal_name: 'X' }, 'U-K1', DEPT_K1));
 	await denied(topicService.update('DT1', { journal_name: 'X' }, 'U-X', OWN_OTHER));
+	assert.deepEqual(writes, []);
+});
+
+test('phạm vi own: trường của phòng quản lý (tiêu biểu, quyết định, kinh phí, nghiệm thu, trạng thái) bị bỏ qua', async () => {
+	await topicService.update(
+		'DT1',
+		{
+			is_featured: 1,
+			approval_decision_no: 'QD-1',
+			budget_actual: 1e9,
+			round_id: 'R2',
+			acceptance_score: 100,
+			status: 'approved',
+			related_department_ids: ['K2'],
+		},
+		'U-MEM',
+		OWN_MEMBER,
+	);
 	assert.deepEqual(writes, []);
 });
 

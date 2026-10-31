@@ -98,6 +98,8 @@ const getAll = async (
 		search = undefined,
 		program_id = undefined,
 		status = undefined,
+		// Trạng thái hiển thị (suy ra từ ngày) — upcoming|enrolling|in_progress|completed|cancelled
+		display_status = undefined,
 		training_type_id = undefined,
 		// Trang "Khóa ĐTLT / CTCV" ẩn đợt GPHN ở tab Tất cả (GPHN quản lý theo hồ sơ)
 		exclude_training_type_id = undefined,
@@ -121,6 +123,10 @@ const getAll = async (
 	if (status) {
 		where.push('c.status = @status');
 		req.input('status', sql.VarChar(15), status);
+	}
+	if (display_status) {
+		where.push(`${COURSE_DISPLAY_STATUS} = @display_status`);
+		req.input('display_status', sql.VarChar(15), display_status);
 	}
 	if (actor && scopeOf(actor, 'courses') === 'assigned') {
 		where.push(ASSIGNED_EXISTS_SQL);
