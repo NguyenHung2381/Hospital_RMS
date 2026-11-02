@@ -1,4 +1,5 @@
 require('./loadEnv');
+const fs = require('fs');
 const { z } = require('zod');
 const logger = require('./logger');
 
@@ -59,6 +60,13 @@ const SPEC = {
 	DB_PASSWORD: required,
 	DB_ENCRYPT: bool(false),
 	DB_TRUST_SERVER_CERT: bool(true),
+	// File PEM để kiểm tra chứng chỉ của SQL Server: chứng chỉ CA (nội bộ) đã ký
+	// cho SQL Server, HOẶC chính chứng chỉ tự ký của SQL Server (ghim chứng chỉ).
+	// Đặt biến này ⇒ luôn kiểm tra chứng chỉ (bỏ qua DB_TRUST_SERVER_CERT).
+	DB_CA_CERT_FILE: str(undefined),
+	// Tên trong chứng chỉ (CN / SAN) khi khác DB_SERVER — vd DB_SERVER là IP hoặc
+	// host.docker.internal còn chứng chỉ cấp cho tên máy.
+	DB_CERT_SERVER_NAME: str(undefined),
 	DB_POOL_MAX: int(10),
 
 	JWT_SECRET: required,
@@ -111,6 +119,26 @@ const loadConfig = (source = process.env) => {
 	const swaggerEnabled = !isProduction || raw.SWAGGER_ENABLED === true;
 
 	if (errors.length === 0) {
+		if (raw.DB_CA_CERT_FILE) {
+			if (!raw.DB_ENCRYPT) {
+				errors.push(
+					'DB_CA_CERT_FILE: cần DB_ENCRYPT=true (không mã hóa thì không có chứng chỉ để kiểm tra).',
+				);
+			} else {
+				let pem = null;
+				try {
+					pem = fs.readFileSync(raw.DB_CA_CERT_FILE, 'utf8');
+				} catch (err) {
+					errors.push(
+						`DB_CA_CERT_FILE: không đọc được ${raw.DB_CA_CERT_FILE} (${err.code || err.message}).`,
+					);
+				}
+				if (pem !== null && !pem.includes('-----BEGIN CERTIFICATE-----')) {
+					errors.push(`DB_CA_CERT_FILE: ${raw.DB_CA_CERT_FILE} không phải chứng chỉ dạng PEM.`);
+				}
+			}
+		}
+
 		if (swaggerEnabled) {
 			for (const key of ['SWAGGER_USER', 'SWAGGER_PASS']) {
 				if (!raw[key]) errors.push(`${key}: bắt buộc khi Swagger UI bật`);
@@ -139,6 +167,13 @@ const loadConfig = (source = process.env) => {
 			if (!raw.DB_ENCRYPT) {
 				warnings.push(
 					'DB_ENCRYPT khác "true" ở production — kết nối tới SQL Server không được mã hóa.',
+				);
+			} else if (raw.DB_TRUST_SERVER_CERT && !raw.DB_CA_CERT_FILE) {
+				//   - Mã hóa nhưng không kiểm tra chứng chỉ: ai chen được vào đường mạng
+				//     tới SQL Server giả làm server được (đọc mật khẩu DB, dữ liệu).
+				warnings.push(
+					'DB_TRUST_SERVER_CERT=true ở production — mã hóa nhưng KHÔNG kiểm tra chứng chỉ SQL Server ' +
+						'(giả mạo được server). Đặt DB_CA_CERT_FILE (xem README, mục chứng chỉ SQL Server).',
 				);
 			}
 			if (raw.DB_USER.toLowerCase() === 'sa') {

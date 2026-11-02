@@ -1,6 +1,19 @@
+const fs = require('fs');
 const sql = require('mssql');
 const { config } = require('./env');
 const logger = require('./logger');
+
+// Kiểm tra chứng chỉ SQL Server (config/env.js đã kiểm tra file đọc được, đúng PEM).
+// Có DB_CA_CERT_FILE ⇒ tin ĐÚNG chứng chỉ trong file (CA nội bộ, hoặc chính chứng
+// chỉ tự ký của SQL Server), không tin danh sách CA hệ thống, luôn kiểm tra tên.
+const tlsOptions = (cfg) => {
+	if (!cfg.DB_CA_CERT_FILE) return { trustServerCertificate: cfg.DB_TRUST_SERVER_CERT };
+	return {
+		trustServerCertificate: false,
+		cryptoCredentialsDetails: { ca: fs.readFileSync(cfg.DB_CA_CERT_FILE, 'utf8') },
+		...(cfg.DB_CERT_SERVER_NAME ? { serverName: cfg.DB_CERT_SERVER_NAME } : {}),
+	};
+};
 
 const dbConfig = {
 	server: config.DB_SERVER,
@@ -15,7 +28,7 @@ const dbConfig = {
 
 	options: {
 		encrypt: config.DB_ENCRYPT,
-		trustServerCertificate: config.DB_TRUST_SERVER_CERT,
+		...tlsOptions(config),
 		enableArithAbort: true,
 	},
 
@@ -93,4 +106,4 @@ const withTransaction = async (fn, pool) => {
 	}
 };
 
-module.exports = { getPool, sql, dbConfig, withTransaction };
+module.exports = { getPool, sql, dbConfig, withTransaction, tlsOptions };

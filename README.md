@@ -288,7 +288,7 @@ Compose nạp hai file theo thứ tự. File sau ghi đè file trước, và c�
 | File | Nội dung nên đặt |
 |---|---|
 | `backend/.env` | Cấu hình chung: `DB_SERVER`, `DB_PORT`, `DB_DATABASE`, `SWAGGER_*`, `SMTP_*`, `JOBS_ENABLED`… |
-| `backend/.env.production` | Thông tin chỉ dùng cho prod: `DB_USER` / `DB_PASSWORD` của login riêng, `DB_TRUST_SERVER_CERT`, `UPLOAD_URL_SECRET` |
+| `backend/.env.production` | Thông tin chỉ dùng cho prod: `DB_USER` / `DB_PASSWORD` của login riêng, `DB_TRUST_SERVER_CERT` / `DB_CA_CERT_FILE` ([chứng chỉ SQL Server](#chứng-chỉ-sql-server)), `UPLOAD_URL_SECRET` |
 
 ```bash
 cp backend/.env.example backend/.env
@@ -311,13 +311,50 @@ Các biến sau được đặt cứng trong `docker-compose.prod.yml` và **lu�
 
 | Biến | Giá trị | Ghi chú |
 |---|---|---|
-| `DB_ENCRYPT` | `true` | Luôn mã hoá kết nối tới SQL Server. SQL Server chưa cài chứng chỉ thì dùng chứng chỉ tự ký, cần `DB_TRUST_SERVER_CERT=true`. Có chứng chỉ CA thật thì đặt `false` |
+| `DB_ENCRYPT` | `true` | Luôn mã hoá kết nối tới SQL Server. Mã hoá mà **không kiểm tra chứng chỉ** (`DB_TRUST_SERVER_CERT=true`) thì ai chen được vào đường mạng tới SQL Server vẫn giả làm server được — backend cảnh báo lúc khởi động. Cách bật kiểm tra (không cần mua chứng chỉ): [Chứng chỉ SQL Server](#chứng-chỉ-sql-server) |
 | `PORT` | `3001` | Phải khớp `proxy_pass http://backend:3001` trong `frontend/nginx.conf` |
 | `REDIS_HOST` / `REDIS_PORT` | `redis` / `6379` | |
 | `TRUST_PROXY` | `1` | Tin đúng 1 proxy liền trước backend (nginx container). Nginx đã tự lọc IP thật và **ghi đè** `X-Forwarded-For`, nên rate-limit đăng nhập tính theo IP thật |
 | `CORS_ORIGIN` | `${CORS_ORIGIN:-https://nckh.bvnghean.vn}` | Bắt buộc ở production |
 | `REDIS_PASSWORD_FILE` | `/run/redis-secret/pass` | Entrypoint đọc mật khẩu Redis do container `redis` tự sinh |
 | `NODE_OPTIONS` | `--max-old-space-size=384` | Heap nhỏ hơn `mem_limit` để còn chỗ cho buffer upload và xuất Excel |
+
+#### Chứng chỉ SQL Server
+
+SQL Server mặc định tự sinh chứng chỉ tự ký **mới mỗi lần khởi động**, nên backend không ghim được, phải để `DB_TRUST_SERVER_CERT=true` (không kiểm tra). Muốn kiểm tra mà không cần CA: tạo 1 chứng chỉ tự ký cố định cho SQL Server rồi đưa đúng file chứng chỉ đó (không phải khoá) cho backend (`DB_CA_CERT_FILE`). Backend chỉ tin chứng chỉ trong file, server giả mạo bị từ chối.
+
+1. Trên máy SQL Server (Linux, như [hướng dẫn cài máy ảo](infra/cai-dat-may-ao-ubuntu.md)). `CN`/`subjectAltName` phải có **đúng tên backend dùng để kết nối** (`DB_SERVER`, vd `host.docker.internal` khi SQL Server ở chính máy chạy Docker, hoặc tên máy / IP):
+
+   ```bash
+   sudo mkdir -p /var/opt/mssql/certs && cd /var/opt/mssql/certs
+   sudo openssl req -x509 -nodes -newkey rsa:2048 -days 1825 -subj "/CN=$(hostname)" \
+     -addext "subjectAltName=DNS:$(hostname),DNS:host.docker.internal" \
+     -keyout mssql.key -out mssql.pem
+   sudo chown mssql:mssql mssql.key mssql.pem && sudo chmod 600 mssql.key
+   sudo /opt/mssql/bin/mssql-conf set network.tlscert /var/opt/mssql/certs/mssql.pem
+   sudo /opt/mssql/bin/mssql-conf set network.tlskey /var/opt/mssql/certs/mssql.key
+   sudo /opt/mssql/bin/mssql-conf set network.tlsprotocols 1.2
+   sudo systemctl restart mssql-server
+   ```
+
+   SQL Server trên Windows: tạo / nhập chứng chỉ vào *SQL Server Configuration Manager → Protocols → Certificate*, xuất phần chứng chỉ (Base-64 `.cer`, không kèm khoá) làm file PEM.
+
+2. Đưa **file chứng chỉ** (`mssql.pem`, không phải `mssql.key`) vào volume bí mật của backend, rồi khai báo trong `backend/.env.production`:
+
+   ```bash
+   docker compose -f docker-compose.prod.yml cp /var/opt/mssql/certs/mssql.pem backend:/app/secrets/sqlserver.pem
+   ```
+
+   ```bash
+   DB_CA_CERT_FILE=/app/secrets/sqlserver.pem
+   DB_TRUST_SERVER_CERT=false
+   # Chỉ khi tên trong chứng chỉ khác DB_SERVER (vd DB_SERVER là IP):
+   # DB_CERT_SERVER_NAME=<tên trong chứng chỉ>
+   ```
+
+3. `docker compose -f docker-compose.prod.yml up -d backend`, xem log không còn cảnh báo `DB_TRUST_SERVER_CERT` và có `Connected to SQL Server`. Lỗi `ERR_TLS_CERT_ALTNAME_INVALID` = tên kết nối không có trong chứng chỉ (sửa `subjectAltName` hoặc đặt `DB_CERT_SERVER_NAME`). File sai / không đọc được thì backend dừng ngay lúc khởi động và báo rõ.
+
+Chứng chỉ hết hạn sau 5 năm (`-days 1825`) — tạo lại và chép lại file trước ngày đó. Đổi chứng chỉ trên SQL Server mà quên chép sang backend thì backend không kết nối được DB.
 
 **Đổi domain** thì sửa đồng bộ: `CORS_ORIGIN` (origin chính xác trình duyệt dùng, gồm scheme và port nếu có) và `server_name` trong `frontend/nginx.conf`.
 
@@ -327,14 +364,16 @@ HTTPS kết thúc ở reverse proxy đứng trước cổng `8084` (IIS ARR, ngi
 
 | Biến | Mặc định | Ý nghĩa |
 |---|---|---|
-| `TRUSTED_PROXIES` | mọi IP nội bộ (`127.0.0.1/32 10.0.0.0/8 172.16.0.0/12 192.168.0.0/16`) | IP/CIDR của reverse proxy. Chỉ request đến từ các địa chỉ này mới được tin `X-Forwarded-For` (IP thật) và `X-Forwarded-Proto` (https) |
+| `TRUSTED_PROXIES` | `127.0.0.1/32 172.16.0.0/12` (loopback + mạng Docker) | IP/CIDR của reverse proxy. Chỉ request đến từ các địa chỉ này mới được tin `X-Forwarded-For` (IP thật) và `X-Forwarded-Proto` (https). Proxy ở máy khác thì **bắt buộc** khai |
+| `ONLY_TRUSTED_PROXIES` | `auto` | `auto`: đã khai `TRUSTED_PROXIES` thì chỉ proxy đó, `127.0.0.1` và máy chạy Docker (gateway mạng Docker — health check của deploy) được kết nối tới `8084`, nơi khác nhận **403**. `false`: cho phép truy cập thẳng. `true`: luôn chặn |
+| `CSP_REPORT_ONLY` | `false` | `true` = CSP chỉ báo cáo, không chặn — chỉ để gỡ nhanh khi CSP chặn nhầm (xem mục Nginx) |
 | `FRONTEND_BIND` | `8084` | Địa chỉ publish cổng frontend |
 | `CORS_ORIGIN` | `https://nckh.bvnghean.vn` | |
 
-Mặc định chạy được với proxy ở bất kỳ đâu trong mạng nội bộ, nhưng **máy khác trong LAN gọi thẳng `http://<server>:8084` vẫn tự khai được IP giả**. Nên thu hẹp lại:
+Container nhận HTTP thuần: máy trong LAN gọi thẳng `http://<server>:8084` là bỏ qua HTTPS của proxy (mật khẩu đi dạng chữ thường trên mạng) và tự khai được IP giả. Thu hẹp lại:
 
-- Proxy **cùng máy** với Docker: đặt `FRONTEND_BIND=127.0.0.1:8084` (chỉ proxy trên máy đó gọi được). Muốn chặt hơn nữa thì đặt `TRUSTED_PROXIES` bằng IP gateway của mạng Docker (xem bằng `docker network inspect hospital_rms_default`, thường là `172.x.0.1`).
-- Proxy **ở máy khác**: đặt `TRUSTED_PROXIES=<IP proxy>` và dùng firewall chỉ cho IP proxy vào cổng `8084`.
+- Proxy **cùng máy** với Docker: đặt `FRONTEND_BIND=127.0.0.1:8084` (chỉ proxy trên máy đó gọi được).
+- Proxy **ở máy khác**: đặt `TRUSTED_PROXIES=<IP proxy>`. Nginx tự trả 403 cho mọi máy khác (`ONLY_TRUSTED_PROXIES=auto`). Nên chặn thêm ở firewall của hypervisor / mạng, chỉ mở `8084` cho IP proxy. Sau khi đặt, thử từ 1 máy trong LAN: `curl -I http://<server>:8084` phải trả `403`; qua `https://nckh.bvnghean.vn` vẫn vào bình thường.
 
 Reverse proxy phải gửi `X-Forwarded-Proto: https`. IIS ARR mặc định **không** gửi header này: thêm server variable `HTTP_X_FORWARDED_PROTO` = `https` trong rule URL Rewrite. Nếu thiếu, backend in cảnh báo `Request ... tới qua http, không phải https` trong log, và trình duyệt không nhận HSTS.
 
@@ -404,7 +443,7 @@ Sao lưu log hoạt động cũng làm tương tự với volume `hospital_rms_s
 - Các đường dẫn còn lại trả `index.html` cho SPA, kèm header bảo mật: HSTS (chỉ khi người dùng vào bằng HTTPS), `X-Frame-Options`, `X-Content-Type-Options`, `Referrer-Policy`, `Permissions-Policy`, CSP.
 - `server_tokens off` (không lộ phiên bản nginx).
 
-**CSP đang ở chế độ chỉ báo cáo** (`Content-Security-Policy-Report-Only`): không chặn gì, trình duyệt gửi vi phạm về `/api/v1/csp-report` và backend ghi log dòng `[CSP] vi phạm …`. Theo dõi khoảng 1 tuần bằng `docker compose -f docker-compose.prod.yml logs backend | grep CSP`. Vi phạm hợp lệ (tài nguyên hệ thống cần) thì bổ sung vào CSP. Khi không còn vi phạm hợp lệ, đổi tên header thành `Content-Security-Policy` trong `frontend/nginx.conf` để chặn thật.
+**CSP chặn thật** (`Content-Security-Policy`, nội dung ở `map $csp_policy` đầu `frontend/nginx.conf`): script ngoài danh sách cho phép, script nội tuyến, `eval` đều bị chặn — lỗi XSS chèn được HTML cũng không chạy được mã. Vi phạm vẫn được gửi về `/api/v1/csp-report`, backend ghi log dòng `[CSP] vi phạm …` (`docker compose -f docker-compose.prod.yml logs backend | grep CSP`). Chức năng nào bị chặn nhầm: đặt `CSP_REPORT_ONLY=true` trong `.env` cạnh `docker-compose.prod.yml` rồi `docker compose -f docker-compose.prod.yml up -d frontend` để tạm về chế độ chỉ báo cáo (không cần build lại), bổ sung nguồn cần thiết vào `$csp_policy`, xong thì bỏ biến này. Thêm thư viện / dịch vụ ngoài mới (font, bản đồ, captcha…) phải thêm nguồn của nó vào CSP. Không chèn `<script>` nội tuyến vào trang hay cửa sổ `window.open('')` (cửa sổ này thừa hưởng CSP của trang).
 
 Nginx trong container chỉ nghe HTTP. HTTPS do reverse proxy phía trước lo, xem [Bước 3b](#bước-3b-nối-với-reverse-proxy-https).
 
