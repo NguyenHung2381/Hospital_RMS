@@ -15,6 +15,7 @@ const {
 } = require('../../utils/deptAccount');
 const { ROLE, requireRoleId, roleIdOf, inputRoleId } = require('../access/roleCodes');
 const { defaultPassword } = require('../../utils/passwordPolicy');
+const { maskEmail } = require('../../utils/maskEmail');
 const { httpError } = require('../../utils/httpError');
 
 // ─── Cache thống kê toàn bảng (global_stats) ─────────────────────────────────
@@ -506,8 +507,12 @@ const searchForMember = async ({ q, department_id, limit = 10 }) => {
     ORDER BY u.full_name
   `);
 
+	// Mọi tài khoản đăng nhập đều gọi được (chọn người khi thêm thành viên) ⇒ không
+	// trả email thật, kẻo lặp từ khóa là gom được danh bạ email cả viện. Chỉ trả bản
+	// che để nhận ra người; email thật được backend tự điền từ tài khoản khi lưu
+	// thành viên (topicMemberService.emailFromStaffAccount).
 	return {
-		data: result.recordset,
+		data: result.recordset.map(({ email, ...u }) => ({ ...u, email_masked: maskEmail(email) })),
 		pagination: {
 			page: 1,
 			limit: Number(limit),

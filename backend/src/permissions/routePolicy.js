@@ -25,7 +25,8 @@ module.exports = {
 	// ─── Không cần đăng nhập ─────────────────────────────────────────────────
 	public: {
 		'GET /health/': 'Health check cho Docker / reverse proxy',
-		'GET /health/db': 'Health check kết nối DB (TODO: không trả chi tiết lỗi kết nối ra ngoài)',
+		'GET /health/db':
+			'Health check kết nối DB — chỉ trả connected/disconnected, chi tiết lỗi ghi log',
 		[`POST ${API}/auth/login`]: 'Đăng nhập',
 		[`POST ${API}/auth/refresh`]: 'Làm mới phiên bằng refresh token',
 		[`POST ${API}/auth/logout`]: 'Đăng xuất bằng refresh token',
@@ -87,7 +88,7 @@ module.exports = {
 		[`GET ${API}/users/:id`]:
 			'Controller: chính mình, hoặc cần users:read + cùng khoa (userController.getById)',
 		[`GET ${API}/users/search`]:
-			'Tìm người để thêm làm thành viên đề tài — bắt buộc từ khóa, tối đa 20 kết quả (có email để điền sẵn); tài khoản học viên bị chặn',
+			'Tìm người để thêm làm thành viên đề tài — bắt buộc từ khóa, tối đa 20 kết quả, email chỉ trả bản đã che (server tự điền email thật khi lưu thành viên); tài khoản học viên bị chặn',
 		[`GET ${API}/notifications/`]: 'Thông báo của chính mình',
 		[`GET ${API}/notifications/unread-count`]: 'Thông báo của chính mình',
 		[`PUT ${API}/notifications/read-all`]: 'Thông báo của chính mình',

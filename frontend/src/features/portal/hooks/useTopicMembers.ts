@@ -33,8 +33,20 @@ export function useTopicMembers(topicId: string | null | undefined) {
 	const [memberErr, setMemberErr] = useState('');
 	// Bắt buộc / giới hạn theo Cấu hình form — form gọn nên chỉ báo lỗi đầu tiên
 	const cfg = useFormConfig('topic_member', 'portal');
-	const cfgError = ({ custom, ...values }: MemberFormState, mode: 'create' | 'edit') =>
-		Object.values(cfg.validate(values, custom, { mode }))[0];
+	const cfgError = (
+		{ custom, accountEmailHint, ...values }: MemberFormState,
+		mode: 'create' | 'edit',
+	) =>
+		Object.values(
+			cfg.validate(
+				// Chọn từ gợi ý mà để trống email: server điền email tài khoản ⇒ coi như đã có
+				!values.email.trim() && accountEmailHint
+					? { ...values, email: accountEmailHint.replace('***', 'x') }
+					: values,
+				custom,
+				{ mode },
+			),
+		)[0];
 
 	const handleAddMember = async () => {
 		if (!topicId || !newMember.ho_ten.trim()) {

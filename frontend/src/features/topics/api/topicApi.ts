@@ -256,7 +256,9 @@ export interface UserSuggestion {
 	full_name: string;
 	username: string;
 	staff_number: string | null;
-	email: string;
+	/** Email đã che (vd "ng***@bvnghean.vn") — API tìm người không trả email thật.
+	 * Chọn người thì để trống ô email: server tự điền email tài khoản theo mã NV. */
+	email_masked: string | null;
 	department_id: string;
 }
 

@@ -10,6 +10,7 @@ const uploadExcel = require('../../middlewares/uploadExcel');
 const topicPolicy = require('./topicPolicy');
 const { ACCEPTANCE_RATINGS } = require('./topicLegacyService');
 const { formConfigGuard } = require('../forms/formConfigGuard');
+const { fillEmailFromStaffAccount } = require('./memberAccountEmail');
 const { scopeOf } = require('../../permissions/authz');
 
 // Form nào đang gửi (cấu hình form 'topic'): TopicModal gửi form_variant='admin',
@@ -182,6 +183,8 @@ router.post(
 		body('role').optional().isIn(['leader', 'secretary', 'member']),
 	],
 	validate,
+	// Chọn người từ gợi ý: email gửi lên trống, server điền email thật của tài khoản
+	fillEmailFromStaffAccount,
 	formConfigGuard('topic_member', { variant: memberVariant, mode: 'create' }),
 	ctrl.addMember,
 );
@@ -195,6 +198,7 @@ router.put(
 		body('role').optional().isIn(['leader', 'secretary', 'member']),
 	],
 	validate,
+	fillEmailFromStaffAccount,
 	formConfigGuard('topic_member', { variant: memberVariant, mode: 'update' }),
 	ctrl.updateMember,
 );

@@ -66,7 +66,8 @@ export function useMemberPicker() {
 					id: u.id,
 					ho_ten: u.full_name,
 					staff_number: u.staff_number != null ? String(u.staff_number) : '',
-					email: u.email,
+					// Server điền email tài khoản theo mã NV
+					email: '',
 					chuc_vu: '',
 					role: addRole,
 				},

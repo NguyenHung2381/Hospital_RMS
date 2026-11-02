@@ -36,7 +36,12 @@ export default function MemberFormFields({
 	const set =
 		(k: keyof MemberFormState) =>
 		(e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
-			setForm((f) => ({ ...f, [k]: e.target.value }));
+			setForm((f) => ({
+				...f,
+				[k]: e.target.value,
+				// Sửa tên / mã NV ⇒ không còn chắc là người đã chọn từ gợi ý
+				...(k === 'ho_ten' || k === 'staff_number' ? { accountEmailHint: null } : {}),
+			}));
 
 	// Form gọn: placeholder đóng vai nhãn — nhãn / bắt buộc / độ dài theo Cấu hình form
 	const cfg = useFormConfig('topic_member', 'portal');
@@ -83,7 +88,9 @@ export default function MemberFormFields({
 		setForm((f) => ({
 			...f,
 			ho_ten: u.full_name,
-			email: u.email ?? '',
+			// Server điền email tài khoản theo mã NV (API tìm người chỉ trả email đã che)
+			email: '',
+			accountEmailHint: u.email_masked,
 			staff_number: u.staff_number != null ? String(u.staff_number) : '',
 		}));
 		setQuery('');
@@ -246,7 +253,11 @@ export default function MemberFormFields({
 					{show('email') && (
 						<input
 							className={styles.formInput}
-							placeholder={ph('email', 'Email')}
+							placeholder={
+								form.accountEmailHint
+									? `Email tài khoản: ${form.accountEmailHint}`
+									: ph('email', 'Email')
+							}
 							maxLength={cfg.maxLength('email')}
 							value={form.email}
 							onChange={set('email')}

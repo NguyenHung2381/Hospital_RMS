@@ -147,7 +147,8 @@ export function useTopicModal({
 				tempId: u.id,
 				ho_ten: u.full_name,
 				staff_number: u.staff_number != null ? String(u.staff_number) : '',
-				email: u.email,
+				// Server điền email tài khoản theo mã NV
+				email: '',
 				username: u.username,
 				department_id: u.department_id,
 				department_name: deptName(u.department_id),
