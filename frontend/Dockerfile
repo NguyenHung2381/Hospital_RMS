@@ -31,14 +31,17 @@ RUN npm run build \
 FROM nginx:alpine AS prod
 COPY --from=build /app/dist /usr/share/nginx/html
 COPY nginx.conf /etc/nginx/conf.d/default.conf
-# Sinh danh sách proxy tin cậy từ TRUSTED_PROXIES lúc khởi động (entrypoint của
-# image nginx tự chạy mọi file /docker-entrypoint.d/*.sh). tr bỏ CR phòng khi
-# file bị checkout CRLF trên Windows.
-COPY docker/40-trusted-proxies.sh /tmp/40-trusted-proxies.sh
+# Script chạy lúc khởi động (entrypoint của image nginx tự chạy mọi file
+# /docker-entrypoint.d/*.sh): 40 sinh danh sách proxy tin cậy từ TRUSTED_PROXIES,
+# 41 chọn header CSP (chặn / chỉ báo cáo) theo CSP_REPORT_ONLY. tr bỏ CR phòng
+# khi file bị checkout CRLF trên Windows.
+COPY docker/40-trusted-proxies.sh docker/41-csp.sh /tmp/
 # apk upgrade: lấy bản vá gói hệ thống mới hơn image nginx:alpine gốc (giống
 # backend) — Trivy ở CI chặn lỗ hổng CRITICAL đã có bản vá.
 RUN apk upgrade --no-cache \
-    && tr -d '\r' < /tmp/40-trusted-proxies.sh > /docker-entrypoint.d/40-trusted-proxies.sh \
-    && chmod +x /docker-entrypoint.d/40-trusted-proxies.sh \
-    && rm /tmp/40-trusted-proxies.sh
+    && for f in 40-trusted-proxies.sh 41-csp.sh; do \
+         tr -d '\r' < /tmp/$f > /docker-entrypoint.d/$f \
+         && chmod +x /docker-entrypoint.d/$f \
+         && rm /tmp/$f; \
+       done
 EXPOSE 80

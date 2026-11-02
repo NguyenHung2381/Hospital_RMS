@@ -41,6 +41,13 @@ const BURST = {
 		windowMin: 15,
 		title: 'Nhiều lần nhập sai mã OTP đặt lại mật khẩu',
 	},
+	// Đúng mật khẩu tạm (thường = tên đăng nhập) của tài khoản bỏ quên — nhiều lượt
+	// liền nhau là dấu hiệu dò mật khẩu mặc định hàng loạt.
+	login_temp_password_expired: {
+		threshold: 3,
+		windowMin: 15,
+		title: 'Nhiều lượt đăng nhập bằng mật khẩu tạm đã hết hạn (nghi dò mật khẩu mặc định)',
+	},
 };
 
 const escapeHtml = (s) =>

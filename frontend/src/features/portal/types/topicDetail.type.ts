@@ -34,6 +34,9 @@ export type MemberFormState = {
 	role: 'leader' | 'secretary' | 'member';
 	/** Trường tùy chỉnh (Cấu hình form 'topic_member') */
 	custom: CustomValues;
+	/** Chọn từ gợi ý: email đã che của tài khoản. Ô email để trống thì server tự
+	 * điền email thật theo mã NV — không gửi lên server. */
+	accountEmailHint?: string | null;
 };
 
 export const blankMember: MemberFormState = {

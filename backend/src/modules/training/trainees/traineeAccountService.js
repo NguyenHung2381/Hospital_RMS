@@ -134,11 +134,11 @@ const grantAccounts = async (traineeIds, actorId) => {
 				.input('actor_id', sql.VarChar(20), actorId).query(`
           INSERT INTO users (
             id, username, password, full_name, email,
-            phone_number, role_id, created_by, must_change_password
+            phone_number, role_id, created_by, must_change_password, temp_password_issued_at
           )
           VALUES (
             @uid, @username, @password, @full_name, @email,
-            @phone_number, @role_id, @actor_id, 1
+            @phone_number, @role_id, @actor_id, 1, SYSUTCDATETIME()
           )
         `);
 

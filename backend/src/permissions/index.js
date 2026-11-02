@@ -20,6 +20,7 @@ const REQUIRED_COLUMNS = [
 	['users', 'totp_last_step', '2026-10-11_2fa_hardening.sql'],
 	['users', 'twofa_required_since', '2026-10-11_2fa_hardening.sql'],
 	['user_backup_codes', 'code_hash', '2026-10-11_2fa_hardening.sql'],
+	['users', 'temp_password_issued_at', '2026-12-12_han_dung_mat_khau_tam.sql'],
 ];
 
 // Danh sách vấn đề (rỗng = CSDL đã sẵn sàng cho mô hình phân quyền mới) — 1 round-trip.

@@ -22,6 +22,8 @@ const KEYS = [
 	'TWOFA_GRACE_DAYS',
 	'ALERT_EMAILS',
 	'PASSWORD_RESET_ENABLED',
+	// Hạn dùng mật khẩu tạm (ngày) — permissions/tempPasswordPolicy.js
+	'TEMP_PASSWORD_TTL_DAYS',
 	'MODULE_RESEARCH',
 	'MODULE_TRAINING',
 	'MODULE_SEMINAR',

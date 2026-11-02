@@ -129,7 +129,8 @@ export function AddMemberForm({
 														u.staff_number != null
 															? String(u.staff_number)
 															: '',
-													email: u.email,
+													// Server điền email tài khoản theo mã NV
+													email: '',
 													department_id: u.department_id,
 												}));
 												setShowNameSuggestions(false);

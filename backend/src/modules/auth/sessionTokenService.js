@@ -4,6 +4,7 @@ const crypto = require('crypto');
 const { getPool, sql } = require('../../config/db');
 const permCache = require('../../permissions/permissionCache');
 const { twoFactorState } = require('../../permissions/twoFactorPolicy');
+const tempPasswordPolicy = require('../../permissions/tempPasswordPolicy');
 const { currentTokenVersion, bumpTokenVersion } = require('./sessionVersion');
 const { v4: uuidv4 } = require('uuid');
 const securityEvents = require('../audit/securityEventService');
@@ -235,6 +236,14 @@ const refreshAccessToken = async (refreshToken, ip = null, userAgent = null) => 
 		: null;
 	if (!user.is_active || (accountExpiresAt && new Date(accountExpiresAt) < new Date())) {
 		throw httpError(401, 'Tài khoản đã bị vô hiệu hóa hoặc hết hạn sử dụng');
+	}
+	if (
+		await tempPasswordPolicy.isExpired({
+			mustChangePassword: user.must_change_password,
+			issuedAt: user.temp_password_issued_at,
+		})
+	) {
+		throw httpError(401, tempPasswordPolicy.EXPIRED_MESSAGE);
 	}
 
 	const remember = !!claimed.remember_me;

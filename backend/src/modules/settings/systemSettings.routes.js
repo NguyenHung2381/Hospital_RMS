@@ -9,6 +9,7 @@ const clamav = require('../../utils/clamav');
 const attendancePolicy = require('../../utils/attendancePolicy');
 const leavePolicy = require('../../utils/leavePolicy');
 const captcha = require('../../utils/captcha');
+const tempPasswordPolicy = require('../../permissions/tempPasswordPolicy');
 const { success, notFound, error } = require('../../utils/response');
 const { asyncHandler } = require('../../utils/asyncHandler');
 
@@ -70,7 +71,8 @@ router.put(
 			clamav.validateSetting(req.params.key, value) ??
 			attendancePolicy.validateSetting(req.params.key, value) ??
 			leavePolicy.validateSetting(req.params.key, value) ??
-			captcha.validateSetting(req.params.key, value);
+			captcha.validateSetting(req.params.key, value) ??
+			tempPasswordPolicy.validateSetting(req.params.key, value);
 		if (invalid) return error(res, invalid, 400);
 		const item = await systemSettingService.update(
 			req.params.key,

@@ -119,15 +119,21 @@ services:
       target: prod
     # https://nckh.bvnghean.vn (reverse proxy HTTPS) → :8084 → nginx (port 80).
     # Proxy HTTPS ở CÙNG máy thì đặt FRONTEND_BIND=127.0.0.1:8084 (file .env cạnh
-    # compose) để máy khác trong LAN không gọi thẳng HTTP 8084 được nữa; proxy ở
-    # máy khác thì giữ mặc định và chặn 8084 bằng firewall, chỉ mở cho IP proxy.
+    # compose); proxy ở máy khác thì giữ mặc định, khai TRUSTED_PROXIES=<IP proxy>
+    # — nginx tự trả 403 cho máy khác gọi thẳng 8084 (ONLY_TRUSTED_PROXIES).
     ports:
       - "${FRONTEND_BIND:-8084}:80"
     environment:
       # IP/CIDR của reverse proxy HTTPS, phân cách dấu cách hoặc phẩy. Để trống
-      # = mọi IP nội bộ (chạy được với proxy ở bất kỳ đâu trong LAN). Biết IP
-      # proxy thì đặt hẹp lại — xem frontend/docker/40-trusted-proxies.sh.
+      # = chỉ tin 127.0.0.1 + mạng Docker (proxy cùng máy). Proxy ở máy khác thì
+      # BẮT BUỘC khai — xem frontend/docker/40-trusted-proxies.sh.
       TRUSTED_PROXIES: "${TRUSTED_PROXIES:-}"
+      # auto = đã khai TRUSTED_PROXIES thì chỉ proxy đó (và máy chạy Docker) được
+      # kết nối tới 8084, nơi khác nhận 403; false = cho phép truy cập thẳng.
+      ONLY_TRUSTED_PROXIES: "${ONLY_TRUSTED_PROXIES:-auto}"
+      # true = CSP chỉ báo cáo, không chặn — chỉ để gỡ nhanh khi CSP chặn nhầm
+      # một chức năng (xem frontend/docker/41-csp.sh). Mặc định chặn thật.
+      CSP_REPORT_ONLY: "${CSP_REPORT_ONLY:-false}"
     mem_limit: 64m
     depends_on:
       - backend

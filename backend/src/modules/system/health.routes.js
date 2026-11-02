@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
-const sql = require('mssql');
+const { getPool } = require('../../config/db');
+const logger = require('../../config/logger');
 
 // ─── Helper: format bytes ─────────────────────────────────────────────────────
 const formatBytes = (bytes) => {
@@ -48,67 +49,26 @@ router.get('/', (req, res) => {
 });
 
 // ─── GET /health/db ───────────────────────────────────────────────────────────
-// Kiểm tra kết nối tới SQL Server
+// Kiểm tra kết nối tới SQL Server (deploy.ps1 smoke test, giám sát). Route công
+// khai ⇒ KHÔNG trả chi tiết: tên/địa chỉ server, tên DB, thông báo lỗi kết nối
+// (lộ tên login, lý do đăng nhập hỏng...) chỉ ghi vào log server. Chỉ dùng pool
+// của ứng dụng (config/db.js) — không tự mở kết nối dự phòng bằng cấu hình khác.
 router.get('/db', async (req, res) => {
 	const start = Date.now();
-
 	try {
-		// Dùng pool hiện có nếu đã kết nối, hoặc tạo kết nối tạm để ping
-		let pool;
-
-		try {
-			// Lấy pool đang dùng trong app
-			const dbConfig = require('../../config/db');
-			if (dbConfig.getPool) {
-				pool = await dbConfig.getPool();
-			} else {
-				throw new Error('No getPool function');
-			}
-		} catch {
-			// Fallback: tạo connection tạm từ biến môi trường
-			pool = await sql.connect({
-				server: process.env.DB_SERVER || 'localhost',
-				database: process.env.DB_DATABASE || 'RMS_HOSPITAL',
-				user: process.env.DB_USER || 'sa',
-				password: process.env.DB_PASSWORD || '',
-				port: parseInt(process.env.DB_PORT) || 1433,
-				connectionTimeout: 10000,
-				requestTimeout: 10000,
-				options: {
-					encrypt: process.env.DB_ENCRYPT === 'true',
-					trustServerCertificate: process.env.DB_TRUST_SERVER_CERT !== 'false',
-				},
-			});
-		}
-
-		// Ping nhẹ: lấy thời gian hiện tại từ SQL Server
-		const result = await pool.request().query('SELECT GETDATE() AS serverTime');
-		const latency = Date.now() - start;
-
+		const pool = await getPool();
+		await pool.request().query('SELECT 1 AS ok');
 		return res.json({
 			success: true,
 			status: 'connected',
-			database: {
-				server: process.env.DB_SERVER || 'N/A',
-				name: process.env.DB_DATABASE || 'N/A', // fix: DB_NAME → DB_DATABASE
-				serverTime: result.recordset[0]?.serverTime,
-				latencyMs: latency,
-			},
+			latencyMs: Date.now() - start,
 			timestamp: new Date(),
 		});
 	} catch (err) {
-		const latency = Date.now() - start;
-
-		return res.status(503).json({
-			success: false,
-			status: 'disconnected',
-			error: {
-				message: err.message,
-				code: err.code || 'UNKNOWN',
-				latencyMs: latency,
-			},
-			timestamp: new Date(),
-		});
+		logger.error(
+			`[health] Không kết nối được SQL Server: ${err.message} (${err.code || 'UNKNOWN'})`,
+		);
+		return res.status(503).json({ success: false, status: 'disconnected', timestamp: new Date() });
 	}
 });
 

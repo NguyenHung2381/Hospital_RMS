@@ -941,7 +941,7 @@ sudo ufw status verbose
 Docker tự mở các cổng publish bằng iptables riêng, **bỏ qua UFW**. Cổng `8084` vẫn vào được từ mạng dù UFW không có rule. Muốn hạn chế:
 
 - Có reverse proxy HTTPS ngay trên máy ảo (13.3): đặt `FRONTEND_BIND=127.0.0.1:8084`. Khi đó chỉ proxy trên máy gọi được `8084`.
-- Proxy ở máy khác: chặn ở firewall của hypervisor / mạng, chỉ cho IP proxy vào `8084`. Đặt thêm `TRUSTED_PROXIES=<IP proxy>` trong `.env`.
+- Proxy ở máy khác: đặt `TRUSTED_PROXIES=<IP proxy>` trong `.env` — nginx tự trả 403 cho máy khác gọi thẳng `8084` (`ONLY_TRUSTED_PROXIES=auto`). Nên chặn thêm ở firewall của hypervisor / mạng, chỉ cho IP proxy vào `8084`.
 
 Backend (`127.0.0.1:3001`) chỉ mở trên loopback, không lộ ra mạng.
 

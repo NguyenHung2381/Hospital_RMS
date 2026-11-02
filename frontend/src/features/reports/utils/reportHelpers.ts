@@ -155,11 +155,23 @@ export function openPrint(
 		`<!DOCTYPE html><html lang="vi"><head><meta charset="UTF-8"><title>${esc(title)}</title>` +
 			`<style>${BASE_CSS}@page{size:A4 ${orient};margin:15mm}</style></head><body>` +
 			`${body}<p class="foot">Xuất ngày ${now} — Hệ thống Quản lý NCKH – Đào tạo – CME</p>` +
-			`<script>window.onload=function(){setTimeout(function(){window.print();},350)}</` +
-			`script>` +
 			`</body></html>`,
 	);
 	win.document.close();
+	// Gọi print() từ trang gốc, KHÔNG chèn <script> vào cửa sổ in: cửa sổ
+	// about:blank thừa hưởng Content-Security-Policy của trang (script-src 'self',
+	// không 'unsafe-inline') nên script nội tuyến bị chặn.
+	let printed = false;
+	const print = () => {
+		if (printed || win.closed) return;
+		printed = true;
+		win.focus();
+		win.print();
+	};
+	if (win.document.readyState === 'complete') setTimeout(print, 350);
+	else win.addEventListener('load', () => setTimeout(print, 350), { once: true });
+	// Lưới an toàn: trình duyệt không bắn 'load' cho tài liệu ghi bằng document.write
+	setTimeout(print, 1500);
 }
 
 export function buildSummaryHtml(

@@ -1,6 +1,8 @@
 const { validationResult } = require('express-validator');
 const { error } = require('../utils/response');
 const logger = require('../config/logger');
+// Đường dẫn có thể chứa mã vé / token QR (cổng công khai) — không để lọt vào log lỗi
+const { redactUrl } = require('../utils/logRedact');
 
 const validate = (req, res, next) => {
 	const errors = validationResult(req);
@@ -16,7 +18,10 @@ const errorHandler = (err, req, res, next) => {
 	// SQL Server errors — không trả nguyên văn err.message ra ngoài ở production
 	// vì nó có thể lộ tên bảng/cột hoặc đoạn câu lệnh SQL; log đầy đủ ở server.
 	if (err.number) {
-		logger.error(`❌ SQL Error [${err.number}] on ${req.method} ${req.path}:`, err.message);
+		logger.error(
+			`❌ SQL Error [${err.number}] on ${req.method} ${redactUrl(req.path)}:`,
+			err.message,
+		);
 		if (err.number === 2627 || err.number === 2601) {
 			if (/U[QX]_users_email/.test(err.message))
 				return error(res, 'Email này đã được dùng cho tài khoản khác', 409);
@@ -32,7 +37,7 @@ const errorHandler = (err, req, res, next) => {
 		return error(res, isProd ? 'Lỗi cơ sở dữ liệu' : err.message || 'Lỗi cơ sở dữ liệu', 500);
 	}
 
-	logger.error(`❌ Error on ${req.method} ${req.path}:`, err.message);
+	logger.error(`❌ Error on ${req.method} ${redactUrl(req.path)}:`, err.message);
 	// Nhiều service ném lỗi nghiệp vụ chỉ kèm `status` (không có `statusCode`) —
 	// trước đây rơi xuống 500 ("Lỗi máy chủ nội bộ"), kể cả lỗi từ chối quyền 403.
 	const legacyStatus =

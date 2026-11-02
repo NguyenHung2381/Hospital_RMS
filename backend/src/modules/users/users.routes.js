@@ -53,8 +53,10 @@ router.delete('/:id', authorizePermission(['users', 'delete']), ctrl.removeOne);
 router.post(
 	'/:id/reset-password',
 	authorizePermission(['users', 'update']),
-	// Bỏ trống new_password ⇒ server tự sinh mật khẩu tạm ngẫu nhiên và trả về 1
-	// lần. Dù đặt tay hay tự sinh, người dùng đều phải đổi ở lần đăng nhập tới.
+	// Bỏ trống new_password ⇒ đặt về mật khẩu mặc định = TÊN ĐĂNG NHẬP (dễ đoán,
+	// không phải chuỗi ngẫu nhiên — userService.resetPassword). Dù đặt tay hay mặc
+	// định, người dùng phải đổi ở lần đăng nhập tới và mật khẩu tạm chỉ dùng được
+	// trong TEMP_PASSWORD_TTL_DAYS ngày (permissions/tempPasswordPolicy.js).
 	[body('new_password').optional({ values: 'falsy' }).custom(passwordRule())],
 	validate,
 	ctrl.resetPassword,

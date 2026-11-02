@@ -17,6 +17,7 @@ const { norm } = require('../../utils/vietnameseText');
 const { httpError } = require('../../utils/httpError');
 const topicService = require('./topicService');
 const topicMemberService = require('./topicMemberService');
+const { emailFromStaffAccount } = require('./memberAccountEmail');
 const { topicScope } = require('./topicPolicy');
 
 const ACCEPTANCE_RATINGS = ['xuat_sac', 'tot', 'kha', 'dat', 'khong_dat'];
@@ -115,7 +116,8 @@ const create = async (data, actor) => {
 				topic.id,
 				{
 					ho_ten: m.ho_ten,
-					email: m.email,
+					// Chọn từ gợi ý: email trống ⇒ lấy email tài khoản theo mã NV
+					email: m.email || (await emailFromStaffAccount(m.staff_number)),
 					so_dien_thoai: m.so_dien_thoai,
 					chuc_vu: m.chuc_vu,
 					staff_number: m.staff_number,

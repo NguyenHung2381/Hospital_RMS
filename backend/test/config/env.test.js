@@ -98,3 +98,48 @@ test('CORS_ORIGIN tách theo dấu phẩy; TRUST_PROXY số ⇒ number, còn l�
 	assert.equal(loadConfig({ ...BASE, TRUST_PROXY: 'loopback' }).config.TRUST_PROXY, 'loopback');
 	assert.equal(loadConfig(BASE).config.TRUST_PROXY, undefined);
 });
+
+test('chứng chỉ SQL Server: production mã hóa mà không kiểm tra chứng chỉ ⇒ cảnh báo', () => {
+	const { errors, warnings } = loadConfig(PROD);
+	assert.deepEqual(errors, []);
+	assert.equal(warnings.length, 1);
+	assert.match(warnings[0], /DB_TRUST_SERVER_CERT=true/);
+	assert.deepEqual(loadConfig({ ...PROD, DB_TRUST_SERVER_CERT: 'false' }).warnings, []);
+});
+
+test('DB_CA_CERT_FILE: file PEM hợp lệ thì hết cảnh báo; thiếu file / sai định dạng / không mã hóa ⇒ lỗi', () => {
+	const fs = require('fs');
+	const os = require('os');
+	const path = require('path');
+	const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'rms-dbca-'));
+	const good = path.join(dir, 'sql.pem');
+	const bad = path.join(dir, 'sql.txt');
+	fs.writeFileSync(good, '-----BEGIN CERTIFICATE-----\nMIIB\n-----END CERTIFICATE-----\n');
+	fs.writeFileSync(bad, 'không phải chứng chỉ');
+
+	const ok = loadConfig({ ...PROD, DB_CA_CERT_FILE: good });
+	assert.deepEqual(ok.errors, []);
+	assert.deepEqual(ok.warnings, []);
+	assert.match(loadConfig({ ...PROD, DB_CA_CERT_FILE: bad }).errors[0], /PEM/);
+	assert.match(
+		loadConfig({ ...PROD, DB_CA_CERT_FILE: path.join(dir, 'missing.pem') }).errors[0],
+		/không đọc được/,
+	);
+	assert.match(
+		loadConfig({ ...PROD, DB_ENCRYPT: 'false', DB_CA_CERT_FILE: good }).errors[0],
+		/DB_ENCRYPT=true/,
+	);
+
+	// Cấu hình kết nối: có file ⇒ luôn kiểm tra chứng chỉ, chỉ tin đúng file đó
+	const { tlsOptions } = require('../../src/config/db');
+	assert.deepEqual(tlsOptions({ DB_TRUST_SERVER_CERT: true }), { trustServerCertificate: true });
+	const tls = tlsOptions({
+		DB_TRUST_SERVER_CERT: true,
+		DB_CA_CERT_FILE: good,
+		DB_CERT_SERVER_NAME: 'sqlvm01',
+	});
+	assert.equal(tls.trustServerCertificate, false);
+	assert.match(tls.cryptoCredentialsDetails.ca, /BEGIN CERTIFICATE/);
+	assert.equal(tls.serverName, 'sqlvm01');
+	fs.rmSync(dir, { recursive: true, force: true });
+});

@@ -150,9 +150,9 @@ const updateMe = asyncHandler(async (req, res) => {
 
 const searchMembers = asyncHandler(async (req, res) => {
 	const { q = '', department_id, limit = 10 } = req.query;
-	// Mở cho mọi tài khoản đăng nhập (chọn người khi thêm thành viên) và có trả
-	// email — bắt buộc có từ khóa + tối đa 20 kết quả, không để tải cả danh bạ
-	// nhân viên bằng 1 request (trước đây limit không giới hạn, q rỗng trả tất cả).
+	// Mở cho mọi tài khoản đăng nhập (chọn người khi thêm thành viên) — bắt buộc
+	// có từ khóa + tối đa 20 kết quả, email chỉ trả bản đã che (userService
+	// .searchForMember), không để gom danh bạ email nhân viên.
 	// Tài khoản học viên (người ngoài viện) không có chức năng chọn thành viên —
 	// chặn hẳn để không dò được danh bạ nhân viên (tên đăng nhập, email, mã NV).
 	if (req.user.role_id && req.user.role_id === (await roleIdOf(ROLE.TRAINEE))) {
