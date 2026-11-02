@@ -1,10 +1,31 @@
-// Refresh token KHÔNG còn lưu ở đây: server đặt trong cookie HttpOnly
-// (backend utils/authCookie.js) — JavaScript của trang, kể cả mã độc chèn qua
-// XSS, không đọc được. Storage chỉ giữ access token ngắn hạn (15 phút).
+// Refresh token KHÔNG lưu ở đây: server đặt trong cookie HttpOnly
+// (backend utils/authCookie.js) — JavaScript của trang không đọc được.
+// Access token (15 phút) chỉ nằm trong BỘ NHỚ của tab (biến accessToken bên
+// dưới), không ghi localStorage/sessionStorage: không nằm trên đĩa (máy dùng
+// chung), mã độc / tiện ích trình duyệt đọc storage không lấy được. Tải lại
+// trang / mở tab mới thì làm mới từ cookie (shared/api/session.ts restoreSession).
+// Storage chỉ còn giữ thông tin hiển thị của user (tên, quyền...) — không phải bí mật.
 const KEYS = {
-	token: 'access_token',
 	user: 'rms_user',
 } as const;
+
+// Khóa access token của bản cũ (từng lưu trong storage) — đọc 1 lần lúc nạp
+// trang cho phiên đang mở khỏi phải làm mới ngay, rồi xóa khỏi storage.
+const LEGACY_TOKEN_KEY = 'access_token';
+
+let accessToken: string | null = null;
+
+function takeLegacyToken(): string | null {
+	try {
+		const t = localStorage.getItem(LEGACY_TOKEN_KEY) ?? sessionStorage.getItem(LEGACY_TOKEN_KEY);
+		localStorage.removeItem(LEGACY_TOKEN_KEY);
+		sessionStorage.removeItem(LEGACY_TOKEN_KEY);
+		return t;
+	} catch {
+		return null; // storage bị chặn
+	}
+}
+accessToken = takeLegacyToken();
 
 // Khóa refresh token của bản cũ — chỉ còn đọc 1 lần để chuyển phiên đang mở
 // sang cookie (shared/api/interceptors.ts), rồi xóa.
@@ -59,8 +80,10 @@ export function broadcastLogout(): void {
 
 export function saveAuth(data: AuthData, rememberMe: boolean): void {
 	clearAuth();
+	accessToken = data.access_token;
+	// "Ghi nhớ đăng nhập": thông tin hiển thị còn sau khi đóng trình duyệt (cookie
+	// refresh cũng vậy); không ghi nhớ thì mất cùng phiên trình duyệt.
 	const storage = rememberMe ? localStorage : sessionStorage;
-	storage.setItem(KEYS.token, data.access_token);
 	storage.setItem(KEYS.user, JSON.stringify(data.user));
 	authChannel?.postMessage({ type: 'login', id: data.user.id });
 }
@@ -76,15 +99,13 @@ export function tokenUserId(token: string): string | null {
 	}
 }
 
-// Thay access token của phiên hiện tại (làm mới, đổi mật khẩu...) — ghi vào
-// đúng storage đang giữ phiên ("ghi nhớ đăng nhập" → local).
-export function replaceAccessToken(accessToken: string): void {
-	const storage = localStorage.getItem(KEYS.user) ? localStorage : sessionStorage;
-	storage.setItem(KEYS.token, accessToken);
+// Thay access token của phiên hiện tại (làm mới, đổi mật khẩu...) — chỉ trong bộ nhớ.
+export function replaceAccessToken(token: string): void {
+	accessToken = token;
 }
 
 export function getToken(): string | null {
-	return localStorage.getItem(KEYS.token) ?? sessionStorage.getItem(KEYS.token);
+	return accessToken;
 }
 
 export function getStoredUser<T = unknown>(): T | null {
@@ -172,7 +193,8 @@ export function getCheckInDeviceId(): string {
 // Chỉ xóa dữ liệu phía trình duyệt. Đăng xuất thật (thu hồi phiên trên server +
 // xóa cookie refresh) dùng logout() ở features/auth/api/authApi.ts.
 export function clearAuth(): void {
-	[...Object.values(KEYS), LEGACY_REFRESH_KEY].forEach((key) => {
+	accessToken = null;
+	[...Object.values(KEYS), LEGACY_TOKEN_KEY, LEGACY_REFRESH_KEY].forEach((key) => {
 		localStorage.removeItem(key);
 		sessionStorage.removeItem(key);
 	});
