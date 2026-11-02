@@ -22,6 +22,7 @@
     "gen:perm-types": "node scripts/gen-permission-types.js",
     "sync:permissions": "node scripts/sync-permissions.js",
     "flag:default-passwords": "node scripts/flag-default-passwords.js",
+    "redact:activity-logs": "node scripts/redact-activity-logs.js",
     "rename:trainee-usernames": "node scripts/rename-trainee-usernames.js",
     "rename:staff-usernames": "node scripts/rename-staff-usernames.js",
     "sync:default-passwords": "node scripts/sync-default-passwords.js",

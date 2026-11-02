@@ -1,11 +1,11 @@
 const auditLogger = require('../config/auditLogger');
 const { normalizeIp } = require('../utils/activityDescribe');
+// Che mật khẩu / token / mã OTP / CCCD / ngày sinh / SĐT... ở body, query, đường dẫn
+const { redact, redactUrl, redactParams } = require('../utils/logRedact');
 
-// Khóa nhạy cảm — so khớp theo mẫu, áp dụng ở MỌI cấp lồng nhau của body.
-const SENSITIVE_KEY = /pass|token|secret|otp|authorization|cookie/i;
 const MAX_BODY_LEN = 4000;
-const MAX_DEPTH = 6;
 const MAX_UA_LEN = 300;
+const MAX_PATH_LEN = 500;
 
 // Mặc định: ghi lại MỌI request tới /api/v1 (GET, POST, PUT, PATCH, DELETE...).
 // Muốn thu hẹp lại thì đặt AUDIT_LOG_METHODS, ví dụ:
@@ -16,17 +16,6 @@ const ONLY_METHODS = new Set(
 		.map((m) => m.trim().toUpperCase())
 		.filter(Boolean),
 );
-
-const redact = (value, depth = 0) => {
-	if (value == null || typeof value !== 'object') return value;
-	if (depth >= MAX_DEPTH) return '[…]';
-	if (Array.isArray(value)) return value.map((v) => redact(v, depth + 1));
-	const clean = {};
-	for (const [key, v] of Object.entries(value)) {
-		clean[key] = SENSITIVE_KEY.test(key) ? '[hidden]' : redact(v, depth + 1);
-	}
-	return clean;
-};
 
 const sanitizeBody = (body) => {
 	if (!body || typeof body !== 'object' || !Object.keys(body).length) return null;
@@ -93,7 +82,8 @@ const activityLogger = (req, res, next) => {
 			const durationMs = Number(process.hrtime.bigint() - startedAt) / 1e6;
 			const aborted = !res.writableFinished;
 			const len = Number(res.getHeader('content-length'));
-			const params = req.params && Object.keys(req.params).length ? req.params : undefined;
+			const params =
+				req.params && Object.keys(req.params).length ? redactParams(req.params) : undefined;
 
 			auditLogger.info(
 				{
@@ -102,7 +92,7 @@ const activityLogger = (req, res, next) => {
 					actor_name: req.user?.full_name ?? null,
 					role_id: req.user?.role_id ?? null,
 					method: req.method,
-					path: req.originalUrl.slice(0, 500),
+					path: redactUrl(req.originalUrl).slice(0, MAX_PATH_LEN),
 					route: routePattern(req),
 					params,
 					status_code: aborted ? 499 : res.statusCode,
@@ -117,7 +107,7 @@ const activityLogger = (req, res, next) => {
 								.join(', ')
 						: undefined,
 					user_agent: (req.headers['user-agent'] || '').slice(0, MAX_UA_LEN) || undefined,
-					referer: req.headers['referer'] || undefined,
+					referer: redactUrl(req.headers['referer']) || undefined,
 					body: sanitizeBody(req.body),
 					files: uploadedFiles(req),
 					error: errorMessage,

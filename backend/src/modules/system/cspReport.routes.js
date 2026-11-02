@@ -3,6 +3,8 @@ const express = require('express');
 const logger = require('../../config/logger');
 // Đếm trên Redis, tự rơi về bộ nhớ khi Redis lỗi (utils/rateLimit.js)
 const rateLimit = require('../../utils/rateLimit');
+// URL trang (vd /hoi-nghi/ve/<mã vé>) có thể chứa mã bí mật — che trước khi ghi log
+const { redactUrl } = require('../../utils/logRedact');
 
 // Nhận báo cáo vi phạm Content-Security-Policy từ trình duyệt (header
 // Content-Security-Policy-Report-Only trong frontend/nginx.conf). Giai đoạn chỉ
@@ -38,9 +40,9 @@ router.post('/', cspLimiter, parseReport, (req, res) => {
 			'[CSP] vi phạm',
 			JSON.stringify({
 				directive: clip(body['violated-directive'] ?? body.effectiveDirective),
-				blocked: clip(body['blocked-uri'] ?? body.blockedURL),
-				page: clip(body['document-uri'] ?? body.documentURL),
-				source: clip(body['source-file'] ?? body.sourceFile),
+				blocked: clip(redactUrl(body['blocked-uri'] ?? body.blockedURL)),
+				page: clip(redactUrl(body['document-uri'] ?? body.documentURL)),
+				source: clip(redactUrl(body['source-file'] ?? body.sourceFile)),
 				line: Number(body['line-number'] ?? body.lineNumber) || undefined,
 			}),
 		);
