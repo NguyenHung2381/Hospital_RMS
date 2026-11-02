@@ -28,12 +28,14 @@ const loginLimiter = rateLimit({
 	},
 });
 
-// Refresh được gọi tự động (nhiều tab/thiết bị cùng lúc) nên giới hạn rộng hơn
-// login — mục tiêu chỉ là chặn spam/dò refresh token, không chặn dùng bình thường.
+// Refresh được gọi tự động: access token chỉ nằm trong bộ nhớ của tab (frontend
+// shared/utils/storage.ts) nên MỖI lần tải lại trang / mở tab mới đều làm mới 1
+// lần, cộng thêm mỗi 15 phút/tab. Refresh token là chuỗi ngẫu nhiên 256 bit (không
+// dò được) — giới hạn này chỉ chặn spam, phải đủ rộng cho người mở nhiều tab.
 const refreshLimiter = rateLimit({
 	name: 'refresh',
 	windowMs: 15 * 60 * 1000,
-	limit: 30,
+	limit: 300,
 	standardHeaders: true,
 	legacyHeaders: false,
 	message: {
