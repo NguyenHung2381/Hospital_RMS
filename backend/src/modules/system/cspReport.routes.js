@@ -6,10 +6,10 @@ const rateLimit = require('../../utils/rateLimit');
 // URL trang (vd /hoi-nghi/ve/<mã vé>) có thể chứa mã bí mật — che trước khi ghi log
 const { redactUrl } = require('../../utils/logRedact');
 
-// Nhận báo cáo vi phạm Content-Security-Policy từ trình duyệt (header
-// Content-Security-Policy-Report-Only trong frontend/nginx.conf). Giai đoạn chỉ
-// báo cáo: gom các vi phạm hợp lệ (font, ảnh, script bên thứ ba...) để chỉnh
-// CSP trước khi bật chặn thật. Công khai (trình duyệt gửi không kèm token) nên
+// Nhận báo cáo vi phạm Content-Security-Policy từ trình duyệt (frontend/nginx.conf,
+// report-uri). CSP đang chặn thật: mỗi vi phạm là 1 thứ đã bị chặn — hoặc tấn công
+// (XSS chèn script), hoặc tài nguyên hợp lệ còn thiếu trong CSP (font, ảnh, script
+// bên thứ ba...) cần bổ sung. Công khai (trình duyệt gửi không kèm token) nên
 // giới hạn chặt kích thước + tần suất, chỉ ghi log vài trường cần thiết.
 const cspLimiter = rateLimit({
 	name: 'csp',

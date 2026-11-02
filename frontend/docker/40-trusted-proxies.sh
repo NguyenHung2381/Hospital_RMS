@@ -15,7 +15,40 @@
 # bệnh viện gọi thẳng cổng 8084 đều tự khai được X-Forwarded-For để lách
 # rate-limit đăng nhập. Proxy đặt ở MÁY KHÁC thì BẮT BUỘC khai IP của nó, nếu
 # không mọi người dùng sẽ bị coi là cùng 1 IP (IP của proxy).
+#
+# Chỉ cho proxy vào (ONLY_TRUSTED_PROXIES): container nhận HTTP thuần, nên máy
+# trong LAN gọi thẳng http://<server>:8084 là bỏ qua HTTPS của proxy — mật khẩu
+# đi dạng chữ thường trên mạng. Khi bật, request KHÔNG đến từ proxy tin cậy nhận
+# 403. Luôn cho qua 127.0.0.1 và gateway mạng Docker (= chính máy chạy Docker:
+# health check của deploy gọi http://127.0.0.1:8084 đi vào qua địa chỉ này).
+#   auto (mặc định) — bật khi đã khai TRUSTED_PROXIES (proxy ở máy khác);
+#                     TRUSTED_PROXIES trống thì không chặn (chưa biết proxy ở đâu).
+#   true / false    — luôn bật / luôn tắt (false: cho phép truy cập thẳng 8084).
 set -eu
+
+ONLY_TRUSTED_PROXIES="${ONLY_TRUSTED_PROXIES:-auto}"
+case "$ONLY_TRUSTED_PROXIES" in
+	auto) [ -n "${TRUSTED_PROXIES:-}" ] && only_proxies=1 || only_proxies=0 ;;
+	true | 1 | yes) only_proxies=1 ;;
+	false | 0 | no) only_proxies=0 ;;
+	*)
+		echo "40-trusted-proxies: ONLY_TRUSTED_PROXIES không hợp lệ: $ONLY_TRUSTED_PROXIES (auto/true/false)" >&2
+		exit 1
+		;;
+esac
+
+# Gateway của mạng Docker (route mặc định của container), dạng hex little-endian
+# trong /proc/net/route. ROUTE_FILE chỉ để test.
+docker_gateway() {
+	hex=$(awk '$2 == "00000000" { print $3; exit }' "${ROUTE_FILE:-/proc/net/route}" 2>/dev/null || true)
+	case "$hex" in
+		[0-9A-Fa-f][0-9A-Fa-f][0-9A-Fa-f][0-9A-Fa-f][0-9A-Fa-f][0-9A-Fa-f][0-9A-Fa-f][0-9A-Fa-f]) ;;
+		*) return 0 ;;
+	esac
+	# shellcheck disable=SC2046
+	set -- $(echo "$hex" | sed 's/\(..\)\(..\)\(..\)\(..\)/\4 \3 \2 \1/')
+	printf '%d.%d.%d.%d' "0x$1" "0x$2" "0x$3" "0x$4"
+}
 
 if [ -z "${TRUSTED_PROXIES:-}" ]; then
 	echo "40-trusted-proxies: CẢNH BÁO — TRUSTED_PROXIES trống, chỉ tin 127.0.0.1 + mạng Docker." >&2
@@ -37,6 +70,8 @@ for cidr in $list; do
 	esac
 done
 
+gateway=$(docker_gateway)
+
 {
 	echo "# Sinh tự động bởi /docker-entrypoint.d/40-trusted-proxies.sh — không sửa tay."
 	for cidr in $list; do echo "set_real_ip_from $cidr;"; done
@@ -49,6 +84,26 @@ done
 	echo "    default 0;"
 	for cidr in $list; do echo "    $cidr 1;"; done
 	echo "}"
+	# $direct_client_allowed = 0 ⇒ nginx.conf trả 403. So theo địa chỉ KẾT NỐI
+	# ($realip_remote_addr), không theo X-Forwarded-For tự khai.
+	echo 'geo $realip_remote_addr $direct_client_allowed {'
+	if [ "$only_proxies" = 1 ]; then
+		echo "    default 0;"
+		seen=" "
+		for cidr in 127.0.0.1/32 ${gateway:+$gateway/32} $list; do
+			case "$seen" in *" $cidr "*) continue ;; esac
+			seen="$seen$cidr "
+			echo "    $cidr 1;"
+		done
+	else
+		echo "    default 1;"
+	fi
+	echo "}"
 } > "$OUT"
 
 echo "40-trusted-proxies: tin proxy $TRUSTED_PROXIES"
+if [ "$only_proxies" = 1 ]; then
+	echo "40-trusted-proxies: CHỈ nhận kết nối từ proxy trên + 127.0.0.1${gateway:+ + $gateway (máy chạy Docker)} — nơi khác nhận 403."
+else
+	echo "40-trusted-proxies: không giới hạn nơi kết nối tới (ONLY_TRUSTED_PROXIES=$ONLY_TRUSTED_PROXIES)."
+fi
