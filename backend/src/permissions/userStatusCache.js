@@ -7,7 +7,7 @@ const cacheBus = require('../utils/cacheBus');
 // DB mỗi request, đủ ngắn để việc vô hiệu hóa tài khoản có hiệu lực gần như
 // ngay, thay vì phải chờ token tự hết hạn (tối đa 8h). Khóa tạm do đăng nhập
 // sai (locked_until) cố ý không xét ở đây — xem middlewares/auth.js.
-const _cache = new Map(); // user_id → { status: { isActive, roleId, departmentId, accountExpiresAt, tokenVersion, mustChangePassword, totpEnabled, twofaRequiredSince }, ts }
+const _cache = new Map(); // user_id → { status: { isActive, roleId, departmentId, accountExpiresAt, tokenVersion, mustChangePassword, tempPasswordIssuedAt, totpEnabled, twofaRequiredSince }, ts }
 const TTL_MS = 60 * 1000;
 
 const get = (userId) => {
@@ -42,7 +42,7 @@ const load = async (userId) => {
 		.input('id', sql.VarChar(20), userId)
 		.query(
 			`SELECT is_active, role_id, department_id, account_expires_at, token_version, must_change_password,
-			        totp_enabled, twofa_required_since FROM users WHERE id = @id`,
+			        temp_password_issued_at, totp_enabled, twofa_required_since FROM users WHERE id = @id`,
 		);
 
 	// role_id / department_id / account_expires_at lấy từ DB chứ không từ JWT:
@@ -59,6 +59,7 @@ const load = async (userId) => {
 			: null,
 		tokenVersion: row?.token_version ?? 0,
 		mustChangePassword: !!row?.must_change_password,
+		tempPasswordIssuedAt: row?.temp_password_issued_at ?? null,
 		totpEnabled: !!row?.totp_enabled,
 		twofaRequiredSince: row?.twofa_required_since ?? null,
 	};

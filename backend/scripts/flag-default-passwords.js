@@ -1,52 +1,123 @@
 #!/usr/bin/env node
-// Đánh dấu bắt buộc đổi mật khẩu (users.must_change_password = 1) cho mọi tài
-// khoản còn dùng mật khẩu mặc định cũ '123456', chạy tay 1 lần sau khi nâng cấp.
-// Migration chỉ bắt được tài khoản có password_changed_at NULL; tài khoản bị
-// quản trị "đặt lại về 123456" thì password_changed_at đã có giá trị, phải so
-// hash từng tài khoản (bcrypt ~0,2s/tài khoản — vì vậy không chạy lúc khởi động).
-//   npm run flag:default-passwords -- --dry-run   # chỉ đếm, không ghi DB
-//   npm run flag:default-passwords                # thực hiện
+// Rà soát tài khoản còn dùng mật khẩu mặc định — chạy tay (bcrypt ~0,2s/tài
+// khoản nên không chạy lúc khởi động):
+//
+//   1. Tài khoản đã gỡ cờ bắt đổi (must_change_password = 0) mà mật khẩu vẫn là
+//      mật khẩu mặc định: '123456' (kiểu cũ) hoặc = tên đăng nhập
+//      (utils/passwordPolicy.defaultPassword). Ai biết username là đăng nhập được
+//      ⇒ đánh dấu bắt đổi mật khẩu + bắt đầu tính hạn dùng mật khẩu tạm
+//      (temp_password_issued_at, permissions/tempPasswordPolicy.js).
+//   2. Báo cáo tài khoản đang chờ đổi mật khẩu tạm (must_change_password = 1):
+//      bao nhiêu đã quá hạn (không đăng nhập được nữa), bao nhiêu sắp hết hạn.
+//      Tài khoản thiếu mốc cấp (vd đánh dấu bằng script cũ) được ghi mốc = bây giờ.
+//
+// Mặc định CHỈ XEM, không ghi DB; thêm --apply để ghi.
+//   npm run flag:default-passwords                # xem trước
+//   npm run flag:default-passwords -- --apply     # thực hiện
+//   npm run flag:default-passwords -- --list      # in cả danh sách tài khoản chờ đổi
 const path = require('path');
 require('dotenv').config({ path: path.join(__dirname, '../.env'), quiet: true });
 
 const bcrypt = require('bcrypt');
 const { getPool, sql } = require('../src/config/db');
+const { defaultPassword } = require('../src/utils/passwordPolicy');
+const tempPasswordPolicy = require('../src/permissions/tempPasswordPolicy');
 
-const DEFAULT_PASSWORDS = ['123456'];
-const dryRun = process.argv.includes('--dry-run');
+const LEGACY_DEFAULTS = ['123456'];
+const apply = process.argv.includes('--apply');
+const listAll = process.argv.includes('--list');
+// bcrypt.compare chạy trên threadpool của libuv (mặc định 4 luồng)
+const CONCURRENCY = 4;
+
+const usesDefaultPassword = async (u) => {
+	if (!u.password) return false;
+	for (const pw of [defaultPassword(u.username), ...LEGACY_DEFAULTS]) {
+		if (await bcrypt.compare(pw, u.password)) return true;
+	}
+	return false;
+};
+
+const mapLimit = async (items, limit, fn) => {
+	const out = new Array(items.length);
+	let next = 0;
+	let done = 0;
+	const worker = async () => {
+		while (next < items.length) {
+			const i = next++;
+			out[i] = await fn(items[i]);
+			if (++done % 100 === 0) console.log(`  ...${done}/${items.length}`);
+		}
+	};
+	await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker));
+	return out;
+};
+
+const fmt = (d) => (d ? new Date(d).toISOString().slice(0, 16).replace('T', ' ') + ' UTC' : '—');
 
 (async () => {
 	const pool = await getPool();
+	const ttl = await tempPasswordPolicy.ttlDays();
 	const users = (
-		await pool
-			.request()
-			.query('SELECT id, username, password FROM users WHERE must_change_password = 0')
+		await pool.request().query(`
+			SELECT id, username, password, must_change_password, temp_password_issued_at, created_at
+			FROM users WHERE is_active = 1 ORDER BY username
+		`)
 	).recordset;
-	console.log(`Kiểm tra ${users.length} tài khoản...`);
 
-	const flagged = [];
-	for (const [i, u] of users.entries()) {
-		for (const pw of DEFAULT_PASSWORDS) {
-			if (u.password && (await bcrypt.compare(pw, u.password))) {
-				flagged.push(u);
-				break;
-			}
-		}
-		if ((i + 1) % 100 === 0) console.log(`  ...${i + 1}/${users.length}`);
-	}
+	// ─── 1. Đã gỡ cờ mà vẫn dùng mật khẩu mặc định ──────────────────────────
+	const cleared = users.filter((u) => !u.must_change_password);
+	console.log(`Kiểm tra mật khẩu của ${cleared.length} tài khoản đã gỡ cờ bắt đổi mật khẩu...`);
+	const hits = await mapLimit(cleared, CONCURRENCY, usesDefaultPassword);
+	const flagged = cleared.filter((_, i) => hits[i]);
 
-	if (!dryRun) {
-		for (const u of flagged) {
-			await pool
-				.request()
-				.input('id', sql.VarChar(20), u.id)
-				.query('UPDATE users SET must_change_password = 1 WHERE id = @id');
-		}
-	}
-	console.log(
-		`${dryRun ? '[dry-run] Sẽ đánh dấu' : 'Đã đánh dấu'} ${flagged.length} tài khoản dùng mật khẩu mặc định` +
-			(flagged.length ? `: ${flagged.map((u) => u.username).join(', ')}` : ''),
+	// ─── 2. Tài khoản đang chờ đổi mật khẩu tạm ──────────────────────────────
+	const pending = users.filter((u) => u.must_change_password);
+	const missingIssued = pending.filter((u) => !u.temp_password_issued_at);
+	const now = Date.now();
+	const withDeadline = pending
+		.filter((u) => u.temp_password_issued_at)
+		.map((u) => ({
+			...u,
+			deadline: tempPasswordPolicy.deadlineOf(u.temp_password_issued_at, ttl),
+		}));
+	const expired = withDeadline.filter((u) => u.deadline && u.deadline.getTime() <= now);
+	const soon = withDeadline.filter(
+		(u) => u.deadline && u.deadline.getTime() > now && u.deadline.getTime() - now < 2 * 86400000,
 	);
+
+	if (apply) {
+		for (const u of [...flagged, ...missingIssued]) {
+			await pool.request().input('id', sql.VarChar(20), u.id).query(`
+				UPDATE users SET must_change_password = 1, temp_password_issued_at = SYSUTCDATETIME()
+				WHERE id = @id AND (must_change_password = 0 OR temp_password_issued_at IS NULL)
+			`);
+		}
+	}
+
+	const verb = apply ? 'Đã' : '[xem trước] Sẽ';
+	console.log(
+		`\n${verb} đánh dấu bắt đổi mật khẩu ${flagged.length} tài khoản còn mật khẩu mặc định (123456 hoặc = tên đăng nhập)` +
+			(flagged.length ? `:\n  ${flagged.map((u) => u.username).join(', ')}` : '.'),
+	);
+	if (missingIssued.length)
+		console.log(
+			`${verb} ghi mốc cấp mật khẩu tạm = bây giờ cho ${missingIssued.length} tài khoản chờ đổi chưa có mốc.`,
+		);
+
+	console.log(
+		`\nTài khoản đang chờ đổi mật khẩu tạm: ${pending.length}` +
+			` (hạn dùng hiện tại: ${ttl ? `${ttl} ngày` : 'không giới hạn'})`,
+	);
+	console.log(`  - Đã quá hạn, không đăng nhập được nữa: ${expired.length}`);
+	console.log(`  - Hết hạn trong 2 ngày tới: ${soon.length}`);
+	if (listAll) {
+		for (const u of withDeadline)
+			console.log(
+				`    ${u.username.padEnd(24)} cấp ${fmt(u.temp_password_issued_at)} → hạn ${fmt(u.deadline)}`,
+			);
+	}
+	if (!apply && (flagged.length || missingIssued.length))
+		console.log('\nChạy lại với --apply để ghi vào DB.');
 	process.exit(0);
 })().catch((err) => {
 	console.error(`❌ ${err.message}`);

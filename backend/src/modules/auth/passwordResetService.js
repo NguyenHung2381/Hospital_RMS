@@ -155,7 +155,8 @@ const resetPassword = async (login, code, newPassword, ip = null) => {
 		.input('id', sql.VarChar(20), row.id)
 		.input('password', sql.VarChar(255), hashed).query(`
 			UPDATE users SET password = @password, password_changed_at = GETDATE(), must_change_password = 0,
-			       failed_login_count = 0, locked_until = NULL, updated_at = GETDATE(), updated_by = @id
+			       temp_password_issued_at = NULL, failed_login_count = 0, locked_until = NULL,
+			       updated_at = GETDATE(), updated_by = @id
 			WHERE id = @id;
 			DELETE FROM password_reset_otps WHERE user_id = @id;
 			DELETE FROM refresh_tokens WHERE user_id = @id;

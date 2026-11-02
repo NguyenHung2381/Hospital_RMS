@@ -305,12 +305,13 @@ const grantAccountsNoEmail = async (topicId, memberIds, actorId) => {
 					INSERT INTO users (
 						id, username, password, full_name, staff_number, email,
 						phone_number, position_detail, department_id, role_id,
-						topic_member_id, account_expires_at, created_by, must_change_password
+						topic_member_id, account_expires_at, created_by, must_change_password,
+						temp_password_issued_at
 					)
 					VALUES (
 						@uid, @username, @password, @full_name, @staff_number, @email,
 						@phone_number, @position_detail, @department_id, @role_id,
-						@topic_member_id, @expires_at, @actor_id, 1
+						@topic_member_id, @expires_at, @actor_id, 1, SYSUTCDATETIME()
 					)
 				`);
 			} else {

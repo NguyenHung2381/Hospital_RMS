@@ -7,6 +7,7 @@ const logger = require('../config/logger');
 // Hàm hỏi quyền thuần — re-export bên dưới cho code cũ còn require từ đây
 const { hasPermission, scopeOf, isDeadlineBound } = require('../permissions/authz');
 const { twoFactorState } = require('../permissions/twoFactorPolicy');
+const tempPasswordPolicy = require('../permissions/tempPasswordPolicy');
 
 // Xác thực 2 lớp cho mọi API cần token:
 //   Lớp 1 — JWT: chữ ký hợp lệ + chưa hết hạn (stateless, không biết được
@@ -60,6 +61,16 @@ const verifySession = async (id, tv) => {
 	}
 	if (status.accountExpiresAt && new Date(status.accountExpiresAt) < new Date()) {
 		return { error: 'Tài khoản đã hết hạn sử dụng (đợt nghiên cứu đã kết thúc)' };
+	}
+	// Phiên mở bằng mật khẩu tạm mà tới hạn vẫn chưa đổi: chặn luôn, không để
+	// phiên cũ (có thể của kẻ đã đoán ra mật khẩu mặc định) dùng tiếp.
+	if (
+		await tempPasswordPolicy.isExpired({
+			mustChangePassword: status.mustChangePassword,
+			issuedAt: status.tempPasswordIssuedAt,
+		})
+	) {
+		return { error: tempPasswordPolicy.EXPIRED_MESSAGE };
 	}
 	return { status };
 };

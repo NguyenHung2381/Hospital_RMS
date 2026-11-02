@@ -274,8 +274,10 @@ const create = async (data, actorId) => {
 			.input('role_id', sql.VarChar(20), roleId).query(`
       EXEC sp_set_actor @actor_id;
       -- Mật khẩu do quản trị đặt ⇒ người dùng phải tự đổi ở lần đăng nhập đầu
-      INSERT INTO users (id, username, password, staff_number, full_name, email, department_id, role_id, created_by, must_change_password)
-      VALUES (@new_id, @username, @password, @staff_number, @full_name, @email, @department_id, @role_id, @actor_id, 1);
+      INSERT INTO users (id, username, password, staff_number, full_name, email, department_id, role_id, created_by,
+                         must_change_password, temp_password_issued_at)
+      VALUES (@new_id, @username, @password, @staff_number, @full_name, @email, @department_id, @role_id, @actor_id,
+              1, SYSUTCDATETIME());
     `);
 		return id;
 	}, pool);
@@ -454,7 +456,7 @@ const resetPassword = async (id, newPassword, actorId, ip = null) => {
 		.query(
 			`EXEC sp_set_actor @actor_id;
 			 UPDATE users SET password=@password, password_changed_at=GETDATE(), must_change_password=1,
-			   updated_at=GETDATE(), updated_by=@actor_id WHERE id=@id;
+			   temp_password_issued_at=SYSUTCDATETIME(), updated_at=GETDATE(), updated_by=@actor_id WHERE id=@id;
 			 DELETE FROM refresh_tokens WHERE user_id=@id;`,
 		);
 	// Thu hồi ngay cả access token đang lưu hành (không chờ hết hạn 8h)
@@ -556,8 +558,10 @@ const createStaffAccount = async (
 			.input('department_id', sql.VarChar(20), department_id)
 			.input('role_id', sql.VarChar(20), roleId)
 			.input('actor_id', sql.VarChar(20), actorId).query(`
-        INSERT INTO users (id, username, password, full_name, staff_number, department_id, role_id, created_by, must_change_password)
-        VALUES (@uid, @username, @password, @full_name, @staff_number, @department_id, @role_id, @actor_id, 1)
+        INSERT INTO users (id, username, password, full_name, staff_number, department_id, role_id, created_by,
+                           must_change_password, temp_password_issued_at)
+        VALUES (@uid, @username, @password, @full_name, @staff_number, @department_id, @role_id, @actor_id,
+                1, SYSUTCDATETIME())
       `);
 		return { userId, username };
 	}, pool);

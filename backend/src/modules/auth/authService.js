@@ -22,6 +22,8 @@ const {
 } = require('./credentialService');
 const { PRE_AUTH_2FA_TTL } = require('./twoFactorService');
 const { issueTokens, signSession } = require('./sessionTokenService');
+const tempPasswordPolicy = require('../../permissions/tempPasswordPolicy');
+const securityEvents = require('../audit/securityEventService');
 
 // remember = "Ghi nhớ đăng nhập": refresh token sống 30 ngày thay vì 7 ngày
 // (sp_create_refresh_token) và cookie tồn tại qua lần đóng trình duyệt.
@@ -45,6 +47,7 @@ const login = async (
              u.role_id, u.is_active, u.department_id,
              u.account_expires_at, u.failed_login_count, u.locked_until,
              u.totp_enabled, u.password_changed_at, u.must_change_password, u.twofa_required_since,
+             u.temp_password_issued_at,
              r.name AS role_name, r.code AS role_code
       FROM users u
       LEFT JOIN roles r ON r.id = u.role_id
@@ -98,6 +101,27 @@ const login = async (
 	// bị vô hiệu hóa với tài khoản không tồn tại.
 	if (!user.is_active) throw httpError(403, 'Tài khoản đã bị vô hiệu hóa hoặc hết hạn sử dụng');
 
+	// Mật khẩu tạm (thường = tên đăng nhập, dễ đoán) bỏ quên quá hạn mà chưa đổi:
+	// không cho dùng nữa, kể cả khi đúng (permissions/tempPasswordPolicy.js). Báo
+	// SAU khi mật khẩu đúng, như tài khoản bị vô hiệu hóa ở trên.
+	if (
+		await tempPasswordPolicy.isExpired({
+			mustChangePassword: user.must_change_password,
+			issuedAt: user.temp_password_issued_at,
+		})
+	) {
+		await securityEvents.log({
+			eventType: 'login_temp_password_expired',
+			actorId: user.id,
+			targetType: 'user',
+			targetId: user.id,
+			ip,
+			userAgent,
+			detail: 'Đăng nhập bằng mật khẩu tạm đã quá hạn — bị từ chối',
+		});
+		throw httpError(403, tempPasswordPolicy.EXPIRED_MESSAGE);
+	}
+
 	// Đăng nhập đúng trên thiết bị quen không xóa bộ đếm/khóa của thiết bị lạ
 	// — nếu không, kẻ tấn công được làm lại từ đầu mỗi khi chủ tài khoản đăng
 	// nhập. Bộ đếm của thiết bị quen được reset trong issueDeviceToken().
@@ -143,7 +167,7 @@ const changePassword = async (
 		.input('password', sql.VarChar(255), hashed)
 		.query(
 			`UPDATE users SET password = @password, password_changed_at = GETDATE(), must_change_password = 0,
-			 updated_at = GETDATE(), updated_by = @id WHERE id = @id`,
+			 temp_password_issued_at = NULL, updated_at = GETDATE(), updated_by = @id WHERE id = @id`,
 		);
 
 	// Thu hồi mọi refresh token hiện có: đổi mật khẩu thường vì nghi lộ, nên
