@@ -47,7 +47,7 @@ const warnStalePasswords = async (pool) => {
 		await pool.request().input('days', sql.Int, PASSWORD_MAX_AGE_DAYS).query(`
 			SELECT id, email, full_name
 			FROM users
-			WHERE is_active = 1
+			WHERE is_active = 'true'
 			  AND password_changed_at IS NOT NULL
 			  AND DATEDIFF(DAY, password_changed_at, GETDATE()) >= @days
 		`)

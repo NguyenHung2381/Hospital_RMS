@@ -381,7 +381,7 @@ const listLessonDocuments = async (lessonId) => {
            d.source_type, d.external_url,
            f.file_name, f.file_url, f.mime_type, f.file_size
     FROM lesson_documents d
-    LEFT JOIN training_files f ON f.id = d.file_id AND f.is_deleted = 0
+    LEFT JOIN training_files f ON f.id = d.file_id AND f.is_deleted = 'false'
     WHERE d.lesson_id = @lesson_id
     ORDER BY d.created_at DESC
   `);

@@ -192,7 +192,7 @@ const loadStaffNames = async () => {
 		SELECT u.full_name, q.code AS qualification
 		FROM users u
 		LEFT JOIN qualifications q ON q.id = u.qualification_id
-		WHERE u.is_active = 1 AND u.role_id <> @dept_head_role AND u.full_name IS NOT NULL
+		WHERE u.is_active = 'true' AND u.role_id <> @dept_head_role AND u.full_name IS NOT NULL
 	`);
 	// Sắp theo tên (tên riêng rồi họ đệm, kiểu danh bạ VN), không theo học vị đứng đầu
 	const firstName = (n) => n.trim().split(/\s+/).reverse().join(' ');

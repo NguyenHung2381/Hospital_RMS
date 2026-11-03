@@ -29,7 +29,7 @@ const all = process.argv.includes('--all');
 		await pool
 			.request()
 			.query(
-				`SELECT id, username, password FROM users ${all ? '' : 'WHERE must_change_password = 1'} ORDER BY username`,
+				`SELECT id, username, password FROM users ${all ? '' : "WHERE must_change_password = 'true'"} ORDER BY username`,
 			)
 	).recordset;
 	console.log(`Kiểm tra ${users.length} tài khoản...`);

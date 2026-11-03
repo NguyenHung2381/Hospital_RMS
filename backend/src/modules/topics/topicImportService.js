@@ -166,7 +166,7 @@ const loadLookups = async () => {
 		pool
 			.request()
 			.query(
-				'SELECT full_name, staff_number, department_id FROM users WHERE staff_number IS NOT NULL AND is_active = 1',
+				"SELECT full_name, staff_number, department_id FROM users WHERE staff_number IS NOT NULL AND is_active = 'true'",
 			),
 		pool.request().query('SELECT title, round_id FROM topics'),
 		// Cấp độ ăn theo đợt — cùng quy tắc roundService.getAllowedLevelIds cho mọi đợt

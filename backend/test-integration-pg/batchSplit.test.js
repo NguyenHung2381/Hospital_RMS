@@ -21,8 +21,10 @@ const db = require('../src/config/db');
 const { run } = require('../test-integration/batchSplit.cases');
 
 test('lô đã tách trên PostgreSQL thật (rollback)', async (t) => {
-	// Các ca dưới còn cú pháp T-SQL khác ngoài phạm vi mục này (CROSS APPLY, GETDATE,
-	// YEAR / CONVERT, so sánh BIT = 1) — bật lại khi các mục đó xong.
+	// Các ca dưới còn cú pháp T-SQL khác ngoài phạm vi mục này — bật lại khi các mục đó xong:
+	// phân trang (CROSS APPLY), dashboard (CONVERT / YEAR), vòng thực hành + khoá tài khoản
+	// (GETDATE), đồng bộ bài học + xoá buổi học (lessonProgressService: UPDATE … FROM rồi
+	// SELECT @@ROWCOUNT trong 1 lô).
 	await run(t, db, {
 		skip: [
 			'danh sách phân trang tách câu: dữ liệu + tổng + thống kê',

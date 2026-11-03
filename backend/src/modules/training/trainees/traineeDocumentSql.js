@@ -10,7 +10,7 @@ const DOC_REQUIRED_SQL = (t, dt) => `EXISTS (
       AND CHARINDEX(',' + rc.training_type_id + ',', ',' + REPLACE(${dt}.required_for_types, ' ', '') + ',') > 0
   )`;
 const DOC_SUBMITTED_SQL = (t, dt) => `EXISTS (
-    SELECT 1 FROM trainee_documents sd JOIN training_files sf ON sf.id = sd.file_id AND sf.is_deleted = 0
+    SELECT 1 FROM trainee_documents sd JOIN training_files sf ON sf.id = sd.file_id AND sf.is_deleted = 'false'
     WHERE sd.trainee_id = ${t}.id AND sd.doc_type = ${dt}.id AND sd.status = 'approved'
   )`;
 // Cột "Hồ sơ x/y" + lọc "thiếu hồ sơ" ở danh sách học viên (traineeService.getAll)
@@ -20,7 +20,7 @@ const DOC_COUNT_APPLY = `OUTER APPLY (
     FROM trainee_document_types dt
     OUTER APPLY (
       SELECT TOP 1 1 AS x FROM trainee_documents sd
-      JOIN training_files sf ON sf.id = sd.file_id AND sf.is_deleted = 0
+      JOIN training_files sf ON sf.id = sd.file_id AND sf.is_deleted = 'false'
       WHERE sd.trainee_id = t.id AND sd.doc_type = dt.id AND sd.status = 'approved'
     ) ok
     WHERE ${DOC_REQUIRED_SQL('t', 'dt')}

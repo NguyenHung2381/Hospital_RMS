@@ -218,7 +218,7 @@ const loadUsers = async () => {
 		SELECT u.id, u.full_name, u.staff_number, d.name AS department_name
 		FROM users u
 		LEFT JOIN departments d ON d.id = u.department_id
-		WHERE u.is_active = 1 AND u.role_id <> @dept_head_role
+		WHERE u.is_active = 'true' AND u.role_id <> @dept_head_role
 	`);
 	const byStaff = new Map();
 	const byName = new Map();

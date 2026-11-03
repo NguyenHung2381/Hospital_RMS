@@ -83,7 +83,7 @@ const findStaff = async (fullName, staffNumber) => {
       FROM users u
       LEFT JOIN qualifications q ON q.id = u.qualification_id
       LEFT JOIN departments d ON d.id = u.department_id
-      WHERE u.staff_number = @sn AND u.is_active = 1 AND u.role_id <> @dept_head_role`);
+      WHERE u.staff_number = @sn AND u.is_active = 'true' AND u.role_id <> @dept_head_role`);
 	const u = r.recordset[0];
 	if (!u || norm(u.full_name) !== norm(fullName))
 		throw httpError(404, 'Không tìm thấy nhân viên khớp họ tên và mã nhân viên đã nhập.');

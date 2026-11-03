@@ -96,7 +96,7 @@ const findActiveUserIdsWhere = async (predicate) => {
 		return `@r${i}`;
 	});
 	const result = await req.query(
-		`SELECT id FROM users WHERE is_active = 1 AND role_id IN (${params.join(',')})`,
+		`SELECT id FROM users WHERE is_active = 'true' AND role_id IN (${params.join(',')})`,
 	);
 	return result.recordset.map((r) => r.id);
 };

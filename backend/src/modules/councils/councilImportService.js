@@ -168,10 +168,10 @@ const loadDb = async (roundId) => {
 			FROM users u
 			LEFT JOIN departments d ON d.id = u.department_id
 			LEFT JOIN qualifications q ON q.id = u.qualification_id
-			WHERE u.is_active = 1 AND u.role_id <> @dept_head_role -- loại tài khoản khoa dùng chung (vai trò dept_head)
+			WHERE u.is_active = 'true' AND u.role_id <> @dept_head_role -- loại tài khoản khoa dùng chung (vai trò dept_head)
 		`),
 		pool.request().query(`
-			SELECT id, full_name, organization FROM external_reviewers WHERE is_active = 1
+			SELECT id, full_name, organization FROM external_reviewers WHERE is_active = 'true'
 		`),
 		pool.request().input('round_id', sql.VarChar(10), roundId).query(`
 			SELECT t.id, t.title, t.council_id FROM topics t WHERE t.round_id = @round_id

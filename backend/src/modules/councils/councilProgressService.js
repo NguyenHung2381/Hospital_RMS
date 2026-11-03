@@ -121,7 +121,7 @@ const getMyProgress = async (userId) => {
       FROM files f
       INNER JOIN file_batches fb ON fb.id = f.batch_id
       LEFT JOIN users u ON u.id = f.created_by
-      WHERE f.is_deleted = 0 AND fb.note IN (@eval_note, @minutes_note)
+      WHERE f.is_deleted = 'false' AND fb.note IN (@eval_note, @minutes_note)
         AND f.topic_id IN (SELECT seat.topic_id FROM (${SEAT_CTE}) seat)
       ORDER BY f.created_at DESC
 		`,
@@ -133,7 +133,7 @@ const getMyProgress = async (userId) => {
       FROM files f
       INNER JOIN file_batches fb ON fb.id = f.batch_id
       LEFT JOIN users u ON u.id = f.created_by
-      WHERE f.is_deleted = 0
+      WHERE f.is_deleted = 'false'
         AND (fb.note IS NULL OR fb.note NOT IN (@eval_note, @minutes_note))
         AND f.topic_id IN (SELECT seat.topic_id FROM (${SEAT_CTE}) seat)
       ORDER BY f.created_at DESC
@@ -284,7 +284,7 @@ const deleteEvalFileByNote = async (topicId, fileId, userId, note, label) => {
       SELECT 1 FROM files f
       INNER JOIN file_batches fb ON fb.id = f.batch_id
       WHERE f.id = @file_id AND f.topic_id = @topic_id
-        AND f.is_deleted = 0 AND fb.note = @note
+        AND f.is_deleted = 'false' AND fb.note = @note
     `);
 	if (!check.recordset.length) {
 		throw httpError(404, `Không tìm thấy file ${label}.`);

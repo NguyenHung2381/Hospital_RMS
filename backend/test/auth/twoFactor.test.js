@@ -34,7 +34,7 @@ let backup = []; // { hash, used }
 install(async (text, inputs) => {
 	if (/SELECT id, username, password, failed_login_count, locked_until FROM users/.test(text))
 		return [user];
-	if (/UPDATE users SET totp_secret = NULL, totp_enabled = 0/.test(text)) {
+	if (/UPDATE users SET totp_secret = NULL, totp_enabled = 'false'/.test(text)) {
 		Object.assign(user, { totp_secret: null, totp_enabled: 0, totp_last_step: null });
 		return [];
 	}
@@ -50,7 +50,7 @@ install(async (text, inputs) => {
 		user.totp_secret = inputs.secret;
 		return [];
 	}
-	if (/UPDATE users SET totp_enabled = 1/.test(text)) {
+	if (/UPDATE users SET totp_enabled = 'true'/.test(text)) {
 		user.totp_enabled = 1;
 		return [];
 	}

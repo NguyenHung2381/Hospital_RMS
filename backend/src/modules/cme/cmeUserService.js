@@ -35,7 +35,7 @@ const getUserCme = async (userId, year) => {
            ${RESULT_FILES_SQL}
     FROM cme_records r
     LEFT JOIN cme_credit_categories c ON c.id = r.category_id
-    LEFT JOIN training_files f ON f.id = r.evidence_file_id AND f.is_deleted = 0
+    LEFT JOIN training_files f ON f.id = r.evidence_file_id AND f.is_deleted = 'false'
     WHERE r.user_id = @uid AND (@year IS NULL OR r.year = @year)
     ORDER BY r.year DESC, r.activity_date DESC, r.created_at DESC
 		`,

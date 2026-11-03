@@ -104,7 +104,7 @@ const getMentors = async ({
 	limit = 20,
 } = {}) => {
 	const pool = await getPool();
-	const where = ['u.staff_number IS NOT NULL', 'u.is_active = 1'];
+	const where = ['u.staff_number IS NOT NULL', "u.is_active = 'true'"];
 	const req = pool
 		.request()
 		.input('limit', sql.Int, Math.min(Math.max(parseInt(String(limit), 10) || 20, 1), 50));

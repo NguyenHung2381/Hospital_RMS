@@ -82,6 +82,14 @@ const PATTERNS = [
 		re: /\bAS\s+(NVARCHAR|NCHAR|NTEXT|BIT|DATETIME2?|SMALLDATETIME|TINYINT|UNIQUEIDENTIFIER)\b/gi,
 		pg: '::text / ::boolean / ::timestamp',
 	},
+	{
+		// Cột BIT / boolean so với số: PG không so boolean = integer, không gán SET x = 1.
+		// Danh sách = các cột boolean trong database/pg/baseline/01_tables.sql. Mốc còn lại
+		// là chỗ trong comment.
+		key: 'bit_literal',
+		re: /\b(account_granted|allow_split|blind_grading|can_chair_council|can_sit_council|grants_cme|is_active|is_corresponding|is_default|is_deleted|is_employee|is_executed|is_external|is_featured|is_foreign|is_internal|is_legacy|is_public|is_public_registration|is_read|is_rolling|is_superuser|is_system|is_verified|must_change_password|remember_me|test_open|test_shuffle_options|test_shuffle_questions|totp_enabled)\s*(=|<>|!=)\s*[01](?![\w.])/gi,
+		pg: "= 'true' / 'false' (chạy cả 2 DB)",
+	},
 	{ key: 'convert', re: /\b(CONVERT|TRY_CAST|TRY_CONVERT|TRY_PARSE)\s*\(/g, pg: 'CAST / to_char' },
 	{
 		key: 'string_fn',

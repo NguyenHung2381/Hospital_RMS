@@ -139,7 +139,7 @@ const listPendingForGrader = async (userId) => {
 	const r = await pool.request().input('uid', sql.VarChar(20), userId).query(`
     SELECT a.id AS attempt_id, a.submitted_at, p.id AS paper_id, p.title AS paper_title, p.exam_part,
            p.blind_grading, c.id AS course_id, c.name AS course_name,
-           CASE WHEN p.blind_grading = 1 THEN NULL ELSE t.full_name END AS trainee_name,
+           CASE WHEN p.blind_grading = 'true' THEN NULL ELSE t.full_name END AS trainee_name,
            (SELECT COUNT(*) FROM exam_answers ea WHERE ea.attempt_id = a.id AND ea.score_awarded IS NULL) AS pending_count
     FROM exam_attempts a
     JOIN exam_papers p ON p.id = a.paper_id

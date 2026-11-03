@@ -77,7 +77,7 @@ const syncLessons = async (enrollmentId, { replace = false } = {}) => {
       SELECT CAST(@id AS VARCHAR(20)), lp.lesson_id, lp.display_order
       FROM lesson_programs lp
       JOIN program_lessons pl ON pl.id = lp.lesson_id
-      WHERE lp.program_id = @program_id AND pl.lesson_kind = 'theory' AND pl.is_active = 1
+      WHERE lp.program_id = @program_id AND pl.lesson_kind = 'theory' AND pl.is_active = 'true'
         AND NOT EXISTS (SELECT 1 FROM enrollment_lessons el WHERE el.enrollment_id = @id AND el.lesson_id = lp.lesson_id)`);
 		return r.rowsAffected[0] ?? 0;
 	});

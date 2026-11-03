@@ -39,7 +39,7 @@ const getById = async (fileId) => {
 	const r = await pool
 		.request()
 		.input('id', sql.VarChar(20), fileId)
-		.query('SELECT * FROM training_files WHERE id = @id AND is_deleted = 0');
+		.query("SELECT * FROM training_files WHERE id = @id AND is_deleted = 'false'");
 	return r.recordset[0] || null;
 };
 
@@ -53,7 +53,7 @@ const softDelete = async (fileId, actorId) => {
 		.input('id', sql.VarChar(20), fileId)
 		.input('actor_id', sql.VarChar(20), actorId || null)
 		.query(
-			'UPDATE training_files SET is_deleted = 1, updated_at = GETDATE(), updated_by = @actor_id WHERE id = @id',
+			"UPDATE training_files SET is_deleted = 'true', updated_at = GETDATE(), updated_by = @actor_id WHERE id = @id",
 		);
 	removeUploadedFile(file.file_url);
 };

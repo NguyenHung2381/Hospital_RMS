@@ -147,7 +147,7 @@ const grantAccountsNoEmail = async (topicId, memberIds, actorId) => {
 			INNER JOIN topics t ON t.id = tm.topic_id
 			INNER JOIN research_rounds rr ON rr.id = t.round_id
 			WHERE tm.topic_id = @topic_id
-			  AND tm.account_granted = 0
+			  AND tm.account_granted = 'false'
 		`);
 
 	const filterIds = Array.isArray(memberIds) && memberIds.length > 0 ? new Set(memberIds) : null;
@@ -278,7 +278,7 @@ const grantAccountsNoEmail = async (topicId, memberIds, actorId) => {
 						UPDATE users
 						SET role_id = @role_id,
 						    is_active = CASE
-						        WHEN is_active = 0 AND account_expires_at < CAST(GETDATE() AS DATE) THEN 1
+						        WHEN is_active = 'false' AND account_expires_at < CAST(GETDATE() AS DATE) THEN 1
 						        ELSE is_active END,
 						    account_expires_at = CASE
 						        WHEN account_expires_at IS NULL OR @expires_at IS NULL THEN account_expires_at
@@ -312,7 +312,7 @@ const grantAccountsNoEmail = async (topicId, memberIds, actorId) => {
 				.input('actor_id', sql.VarChar(20), actorId).query(`
 					UPDATE topic_members
 					SET user_id = @uid,
-					    account_granted = 1,
+					    account_granted = 'true',
 					    account_granted_at = GETDATE(),
 					    updated_at = GETDATE(),
 					    updated_by = @actor_id
@@ -390,7 +390,7 @@ const grantAccountsNoEmail = async (topicId, memberIds, actorId) => {
 				FROM users u
 				INNER JOIN topics t ON t.department_id = u.department_id
 				WHERE t.id = @topic_id
-				  AND u.is_active = 1
+				  AND u.is_active = 'true'
 				  AND u.id NOT IN (${excludeParams})
 				UNION
 				SELECT tm.user_id

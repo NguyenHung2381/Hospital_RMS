@@ -10,7 +10,7 @@ const logger = require('../../config/logger');
 const getForUser = async (userId, { page = 1, limit = 20, unread_only = false } = {}) => {
 	const pool = await getPool();
 	const offset = (page - 1) * limit;
-	const filter = unread_only ? 'AND is_read = 0' : '';
+	const filter = unread_only ? "AND is_read = 'false'" : '';
 
 	const sets = await db.queryAll(
 		pool
@@ -45,7 +45,9 @@ const getUnreadCount = async (userId) => {
 	const result = await pool
 		.request()
 		.input('user_id', sql.VarChar(20), userId)
-		.query('SELECT COUNT(*) AS count FROM notifications WHERE user_id = @user_id AND is_read = 0');
+		.query(
+			"SELECT COUNT(*) AS count FROM notifications WHERE user_id = @user_id AND is_read = 'false'",
+		);
 	return result.recordset[0].count;
 };
 
@@ -55,7 +57,7 @@ const markRead = async (notifId, userId) => {
 		.request()
 		.input('id', sql.VarChar(30), notifId)
 		.input('user_id', sql.VarChar(20), userId)
-		.query('UPDATE notifications SET is_read = 1 WHERE id = @id AND user_id = @user_id');
+		.query("UPDATE notifications SET is_read = 'true' WHERE id = @id AND user_id = @user_id");
 	return result.rowsAffected[0] > 0;
 };
 
@@ -64,7 +66,9 @@ const markAllRead = async (userId) => {
 	await pool
 		.request()
 		.input('user_id', sql.VarChar(20), userId)
-		.query('UPDATE notifications SET is_read = 1 WHERE user_id = @user_id AND is_read = 0');
+		.query(
+			"UPDATE notifications SET is_read = 'true' WHERE user_id = @user_id AND is_read = 'false'",
+		);
 };
 
 // Mỗi câu INSERT tối đa CHUNK người nhận (SQL Server giới hạn 2.100 tham số / câu)
@@ -183,7 +187,7 @@ const pushWithEmail = async (
 const getUsersByTarget = async (targetType, targetIds = []) => {
 	const pool = await getPool();
 	if (targetType === 'all') {
-		const res = await pool.request().query('SELECT id FROM users WHERE is_active = 1');
+		const res = await pool.request().query("SELECT id FROM users WHERE is_active = 'true'");
 		return res.recordset.map((r) => r.id);
 	}
 	if (targetType === 'department') {
@@ -192,7 +196,7 @@ const getUsersByTarget = async (targetType, targetIds = []) => {
 			.request()
 			.input('dept_ids', sql.NVarChar(sql.MAX), JSON.stringify(targetIds))
 			.query(
-				`SELECT id FROM users WHERE is_active = 1
+				`SELECT id FROM users WHERE is_active = 'true'
          AND department_id IN ${jsonValues('@dept_ids')}`,
 			);
 		return res.recordset.map((r) => r.id);
@@ -236,7 +240,7 @@ const adminGetAll = async ({ page = 1, limit = 20, type = undefined, search = un
            MIN(n.ref_type)            AS ref_type,
            MIN(n.created_at)          AS created_at,
            COUNT(*)                   AS recipient_count,
-           SUM(CASE WHEN n.is_read = 1 THEN 1 ELSE 0 END) AS read_count
+           SUM(CASE WHEN n.is_read = 'true' THEN 1 ELSE 0 END) AS read_count
     FROM   notifications n
     ${where}
     GROUP  BY COALESCE(n.batch_id, n.id)

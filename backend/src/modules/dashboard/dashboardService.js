@@ -262,8 +262,8 @@ const getTrainingStats = async () =>
     SELECT
       ${COURSES_OPEN_SQL} AS open_courses,
       (SELECT COUNT(*) FROM courses) AS total_courses,
-      (SELECT COUNT(*) FROM trainees WHERE is_active = 1) AS total_trainees,
-      (SELECT COUNT(*) FROM lecturers WHERE is_active = 1) AS total_lecturers,
+      (SELECT COUNT(*) FROM trainees WHERE is_active = 'true') AS total_trainees,
+      (SELECT COUNT(*) FROM lecturers WHERE is_active = 'true') AS total_lecturers,
       (SELECT COUNT(*) FROM course_enrollments WHERE status = 'pending') AS pending_enrollments,
       (SELECT COUNT(*) FROM certificates WHERE status = 'active') AS certificates_issued,
       (SELECT COUNT(*) FROM certificates WHERE status = 'active'
@@ -301,7 +301,7 @@ const getTrainingStats = async () =>
     SELECT COALESCE(tt.name, N'Chưa phân loại') AS name, COUNT(*) AS cnt
     FROM trainees t
     LEFT JOIN trainee_types tt ON tt.id = t.trainee_type_id
-    WHERE t.is_active = 1
+    WHERE t.is_active = 'true'
     GROUP BY tt.name
     ORDER BY cnt DESC
 			`,
@@ -354,7 +354,7 @@ const getOverviewStats = async () =>
     -- KPI tổng quan
     SELECT
       (SELECT COUNT(*) FROM users) AS users_total,
-      (SELECT COUNT(*) FROM users WHERE is_active = 1) AS users_active,
+      (SELECT COUNT(*) FROM users WHERE is_active = 'true') AS users_active,
       (SELECT COUNT(*) FROM users WHERE locked_until IS NOT NULL AND locked_until > GETDATE()) AS users_locked,
       (SELECT COUNT(*) FROM departments) AS departments_total,
       (SELECT COUNT(*) FROM topics) AS topics_total,
@@ -365,8 +365,8 @@ const getOverviewStats = async () =>
       (SELECT COUNT(*) FROM councils) AS councils_total,
       (SELECT COUNT(*) FROM courses) AS courses_total,
       ${COURSES_OPEN_SQL} AS courses_open,
-      (SELECT COUNT(*) FROM trainees WHERE is_active = 1) AS trainees_active,
-      (SELECT COUNT(*) FROM lecturers WHERE is_active = 1) AS lecturers_active,
+      (SELECT COUNT(*) FROM trainees WHERE is_active = 'true') AS trainees_active,
+      (SELECT COUNT(*) FROM lecturers WHERE is_active = 'true') AS lecturers_active,
       (SELECT COUNT(*) FROM course_enrollments WHERE status = 'pending') AS enrollments_pending,
       (SELECT COUNT(*) FROM certificates WHERE status = 'active') AS certificates_active,
       (SELECT COUNT(*) FROM seminars WHERE event_year = @year) AS seminars_this_year,
@@ -397,7 +397,7 @@ const getOverviewStats = async () =>
     SELECT COALESCE(r.description, r.name, N'Chưa gán vai trò') AS name, COUNT(*) AS cnt
     FROM users u
     LEFT JOIN roles r ON r.id = u.role_id
-    WHERE u.is_active = 1
+    WHERE u.is_active = 'true'
     GROUP BY COALESCE(r.description, r.name, N'Chưa gán vai trò')
     ORDER BY cnt DESC
 			`,
@@ -406,9 +406,9 @@ const getOverviewStats = async () =>
     -- Người tham dự hội thảo gắn khoa qua tài khoản; không có tài khoản thì khớp
     -- department_raw với tên khoa.
     SELECT d.name,
-      (SELECT COUNT(*) FROM users u WHERE u.department_id = d.id AND u.is_active = 1) AS users_cnt,
+      (SELECT COUNT(*) FROM users u WHERE u.department_id = d.id AND u.is_active = 'true') AS users_cnt,
       (SELECT COUNT(*) FROM topics t WHERE t.department_id = d.id) AS topics_cnt,
-      (SELECT COUNT(*) FROM trainees tr WHERE tr.department_id = d.id AND tr.is_active = 1) AS trainees_cnt,
+      (SELECT COUNT(*) FROM trainees tr WHERE tr.department_id = d.id AND tr.is_active = 'true') AS trainees_cnt,
       (SELECT COUNT(*) FROM certificates c
          INNER JOIN course_enrollments e ON e.id = c.enrollment_id
          INNER JOIN trainees tr ON tr.id = e.trainee_id
@@ -473,7 +473,7 @@ const getSeminarStats = async () =>
       (SELECT COUNT(*) FROM seminars WHERE event_year = @year) AS seminars_this_year,
       (SELECT COUNT(*) FROM seminars WHERE event_year = @year AND scope = 'hosted') AS hosted_this_year,
       (SELECT COUNT(*) FROM seminars WHERE event_year = @year AND scope = 'external') AS external_this_year,
-      (SELECT COUNT(*) FROM seminars WHERE event_year = @year AND grants_cme = 1) AS cme_seminars_this_year,
+      (SELECT COUNT(*) FROM seminars WHERE event_year = @year AND grants_cme = 'true') AS cme_seminars_this_year,
       (SELECT COUNT(*) FROM seminars WHERE start_date >= @today) AS upcoming_total,
       (SELECT COUNT(*) FROM seminar_participants sp
          INNER JOIN seminars s ON s.id = sp.seminar_id

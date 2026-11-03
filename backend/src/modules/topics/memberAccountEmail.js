@@ -17,7 +17,7 @@ const emailFromStaffAccount = async (staffNumber) => {
 	const rows = (
 		await req.query(`
 			SELECT TOP 2 email FROM users
-			WHERE staff_number = @sn AND is_active = 1
+			WHERE staff_number = @sn AND is_active = 'true'
 			  AND (role_id IS NULL OR role_id <> @trainee_role)
 			  AND email IS NOT NULL AND email NOT LIKE '%.local'
 		`)

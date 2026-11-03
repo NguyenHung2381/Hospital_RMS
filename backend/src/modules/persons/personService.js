@@ -52,7 +52,7 @@ const SOURCES = {
 		dob: 'dob',
 		gender: 'gender',
 		linkedUser: 'user_id',
-		internal: 'CASE WHEN is_external = 1 THEN 0 ELSE 1 END',
+		internal: "CASE WHEN is_external = 'true' THEN 0 ELSE 1 END",
 	},
 	external_reviewers: {
 		table: 'external_reviewers',
@@ -286,7 +286,7 @@ const updatePerson = async (tx, source, personId, row, actorId) => {
 	fill('gender', 'gender', !!cfg.gender);
 	fill('national_id', 'national_id', !!cfg.nationalId);
 	if (cfg.internal) sets.push('is_internal = COALESCE(is_internal, @internal)');
-	if (cfg.verified) sets.push('is_verified = 1');
+	if (cfg.verified) sets.push("is_verified = 'true'");
 	if (!sets.length) return;
 	sets.push('updated_at = SYSDATETIME()', 'updated_by = @actor');
 
@@ -555,7 +555,7 @@ const linkTopicMemberToUser = async (memberId, userId, { actorId = undefined } =
 				await new sql.Request(tx)
 					.input('mp', sql.VarChar(20), mp)
 					.query(
-						`UPDATE dbo.persons SET is_verified = 1, is_internal = 1, updated_at = SYSDATETIME() WHERE id = @mp`,
+						`UPDATE dbo.persons SET is_verified = 'true', is_internal = 'true', updated_at = SYSDATETIME() WHERE id = @mp`,
 					);
 				await resolveOne(tx, 'users', userId, actorId);
 				return mp;

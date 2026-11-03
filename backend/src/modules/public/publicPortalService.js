@@ -38,7 +38,7 @@ const getOpenCourses = async () => {
                    -- Khóa ĐTLT / CTCV: sĩ số lớp (programClassService) — báo trước khi gửi đăng ký
                    -- là vào lớp hay vào danh sách chờ khóa sau.
                    ${programClassService.CLASS_COLUMNS},
-                   (SELECT COUNT(*) FROM lesson_programs lp JOIN program_lessons pl ON pl.id = lp.lesson_id AND pl.is_active = 1
+                   (SELECT COUNT(*) FROM lesson_programs lp JOIN program_lessons pl ON pl.id = lp.lesson_id AND pl.is_active = 'true'
                     WHERE lp.program_id = tp.id) AS lesson_count,
                    -- Nội dung: bài lý thuyết / vòng thực hành GPHN (khoa + thời lượng) theo thứ tự
                    (SELECT pl.title, pl.lesson_kind AS kind, pl.theory_hours, pl.practice_hours,
@@ -46,7 +46,7 @@ const getOpenCourses = async () => {
                            (SELECT STRING_AGG(d.name, ' / ') WITHIN GROUP (ORDER BY ld.display_order)
                               FROM lesson_departments ld JOIN departments d ON d.id = ld.department_id
                              WHERE ld.lesson_id = pl.id) AS departments
-                      FROM lesson_programs lp JOIN program_lessons pl ON pl.id = lp.lesson_id AND pl.is_active = 1
+                      FROM lesson_programs lp JOIN program_lessons pl ON pl.id = lp.lesson_id AND pl.is_active = 'true'
                      WHERE lp.program_id = tp.id
                      ORDER BY lp.display_order, pl.created_at
                      FOR JSON PATH) AS lessons
@@ -54,7 +54,7 @@ const getOpenCourses = async () => {
             LEFT JOIN trainee_types tt ON tt.id = tp.trainee_type_id
             WHERE cp.course_id = c.id ORDER BY tp.name FOR JSON PATH) AS programs
     FROM courses c
-    WHERE c.status <> 'cancelled' AND c.is_public_registration = 1
+    WHERE c.status <> 'cancelled' AND c.is_public_registration = 'true'
     ORDER BY c.start_date ASC
   `);
 
@@ -367,7 +367,7 @@ const getFeaturedTopics = async () => {
     LEFT JOIN departments d ON d.id = t.department_id
     LEFT JOIN research_rounds r ON r.id = t.round_id
     LEFT JOIN categories c ON c.id = t.category_id
-    WHERE t.is_featured = 1 AND t.status = 'approved'
+    WHERE t.is_featured = 'true' AND t.status = 'approved'
     ORDER BY t.publish_date DESC, t.created_at DESC
   `);
 	return result.recordset;

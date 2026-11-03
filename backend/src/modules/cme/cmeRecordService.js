@@ -18,7 +18,7 @@ const formCustomValueService = require('../forms/formCustomValueService');
 // entity_type='cme_result', entity_id = id ghi nhận; không cần cột riêng.
 const RESULT_FILE_TYPE = 'cme_result';
 const RESULT_FILES_SQL = `(SELECT tf.id, tf.file_name, tf.file_url, tf.created_at FROM training_files tf
-           WHERE tf.entity_type = '${RESULT_FILE_TYPE}' AND tf.entity_id = r.id AND tf.is_deleted = 0
+           WHERE tf.entity_type = '${RESULT_FILE_TYPE}' AND tf.entity_id = r.id AND tf.is_deleted = 'false'
            ORDER BY tf.created_at FOR JSON PATH) AS result_files`;
 const withResultFiles = (row) =>
 	row && { ...row, result_files: row.result_files ? JSON.parse(row.result_files) : [] };
@@ -32,7 +32,7 @@ const recordSelect = `
   LEFT JOIN departments d ON d.id = u.department_id
   LEFT JOIN cme_credit_categories c ON c.id = r.category_id
   LEFT JOIN cme_credit_groups g ON g.id = c.group_id
-  LEFT JOIN training_files f ON f.id = r.evidence_file_id AND f.is_deleted = 0
+  LEFT JOIN training_files f ON f.id = r.evidence_file_id AND f.is_deleted = 'false'
 `;
 
 const getAll = async ({
@@ -248,7 +248,7 @@ const removeResultFiles = async (recordIds, actorId) => {
 		.request()
 		.input('ids', sql.NVarChar(sql.MAX), JSON.stringify(recordIds))
 		.query(
-			`SELECT id FROM training_files WHERE entity_type = '${RESULT_FILE_TYPE}' AND is_deleted = 0
+			`SELECT id FROM training_files WHERE entity_type = '${RESULT_FILE_TYPE}' AND is_deleted = 'false'
        AND entity_id IN ${jsonValues('@ids')}`,
 		);
 	for (const f of files.recordset) await trainingFileService.softDelete(f.id, actorId);

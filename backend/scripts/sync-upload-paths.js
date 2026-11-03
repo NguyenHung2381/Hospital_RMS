@@ -17,8 +17,8 @@ const { UPLOADS_ROOT } = require('../src/utils/uploadPaths');
 // Các cột lưu đường dẫn "/uploads/...". Ảnh bài test hội thảo nằm trong JSON câu
 // hỏi (seminarService) — không quét, sẽ hiện ở danh sách "file không ai trỏ tới".
 const COLUMNS = [
-	{ table: 'files', column: 'file_url', where: 'is_deleted = 0' },
-	{ table: 'training_files', column: 'file_url', where: 'is_deleted = 0' },
+	{ table: 'files', column: 'file_url', where: "is_deleted = 'false'" },
+	{ table: 'training_files', column: 'file_url', where: "is_deleted = 'false'" },
 	{ table: 'question_bank', column: 'image_url' },
 	{ table: 'trainees', column: 'avatar_url' },
 	{ table: 'lecturers', column: 'avatar_url' },

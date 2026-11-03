@@ -166,7 +166,7 @@ const changePassword = async (
 		.input('id', sql.VarChar(20), userId)
 		.input('password', sql.VarChar(255), hashed)
 		.query(
-			`UPDATE users SET password = @password, password_changed_at = GETDATE(), must_change_password = 0,
+			`UPDATE users SET password = @password, password_changed_at = GETDATE(), must_change_password = 'false',
 			 temp_password_issued_at = NULL, updated_at = GETDATE(), updated_by = @id WHERE id = @id`,
 		);
 

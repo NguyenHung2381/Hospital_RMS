@@ -39,7 +39,7 @@ const documentChecklist = async (traineeId) => {
     SELECT d.id, d.doc_type, d.status, d.review_note, d.created_at, d.reviewed_at,
            ru.full_name AS reviewed_by_name, f.file_name, f.file_url, f.mime_type, f.file_size
     FROM trainee_documents d
-    JOIN training_files f ON f.id = d.file_id AND f.is_deleted = 0
+    JOIN training_files f ON f.id = d.file_id AND f.is_deleted = 'false'
     LEFT JOIN users ru ON ru.id = d.reviewed_by
     WHERE d.trainee_id = @trainee_id
     ORDER BY d.created_at DESC

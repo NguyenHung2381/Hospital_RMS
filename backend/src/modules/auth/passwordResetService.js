@@ -49,7 +49,7 @@ const findActiveUser = async (pool, login) => {
 	const rows = (
 		await pool.request().input('login', sql.VarChar(100), login)
 			.query(`SELECT TOP 2 id, username, full_name, email FROM users
-				WHERE ${login.includes('@') ? 'email' : 'username'} = @login AND is_active = 1`)
+				WHERE ${login.includes('@') ? 'email' : 'username'} = @login AND is_active = 'true'`)
 	).recordset;
 	return rows.length === 1 ? rows[0] : null;
 };
@@ -154,7 +154,7 @@ const resetPassword = async (login, code, newPassword, ip = null) => {
 		.request()
 		.input('id', sql.VarChar(20), row.id)
 		.input('password', sql.VarChar(255), hashed).query(`
-			UPDATE users SET password = @password, password_changed_at = GETDATE(), must_change_password = 0,
+			UPDATE users SET password = @password, password_changed_at = GETDATE(), must_change_password = 'false',
 			       temp_password_issued_at = NULL, failed_login_count = 0, locked_until = NULL,
 			       updated_at = GETDATE(), updated_by = @id
 			WHERE id = @id;

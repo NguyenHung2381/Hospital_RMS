@@ -41,7 +41,7 @@ const getMyTraining = async (actor) => {
            (SELECT COUNT(*) FROM class_sessions s WHERE s.course_id = c.id AND ${SESSION_IN_PROGRAM_SQL('s', 'e')}) AS session_count,
            (SELECT COUNT(*) FROM attendance a JOIN class_sessions s ON s.id = a.session_id
             WHERE a.enrollment_id = e.id AND a.status IN ('present', 'late') AND ${SESSION_IN_PROGRAM_SQL('s', 'e')}) AS attended_count,
-           (SELECT COUNT(*) FROM course_documents d WHERE d.course_id = c.id AND d.is_public = 1) AS document_count
+           (SELECT COUNT(*) FROM course_documents d WHERE d.course_id = c.id AND d.is_public = 'true') AS document_count
     FROM course_enrollments e
     JOIN trainees t ON t.id = e.trainee_id AND ${TRAINEE_OF_USER_SQL('t')}
     JOIN courses c ON c.id = e.course_id
@@ -174,8 +174,8 @@ const getMyCourse = async (courseId, actor) => {
     SELECT d.id, d.doc_type, d.title, d.exam_type, d.source_type, d.external_url, d.created_at,
            f.file_name, f.file_url, f.mime_type, f.file_size
     FROM course_documents d
-    LEFT JOIN training_files f ON f.id = d.file_id AND f.is_deleted = 0
-    WHERE d.course_id = @id AND d.is_public = 1
+    LEFT JOIN training_files f ON f.id = d.file_id AND f.is_deleted = 'false'
+    WHERE d.course_id = @id AND d.is_public = 'true'
     ORDER BY d.created_at DESC
 		`,
 			`
@@ -185,7 +185,7 @@ const getMyCourse = async (courseId, actor) => {
     FROM course_programs cp
     JOIN training_programs tp ON tp.id = cp.program_id
     JOIN lesson_programs lp ON lp.program_id = cp.program_id
-    JOIN program_lessons pl ON pl.id = lp.lesson_id AND pl.is_active = 1
+    JOIN program_lessons pl ON pl.id = lp.lesson_id AND pl.is_active = 'true'
     WHERE cp.course_id = @id AND ${APPROVED_IN_COURSE('@id', 'cp.program_id')}
     ORDER BY tp.name, lp.display_order, pl.created_at
 		`,
@@ -193,8 +193,8 @@ const getMyCourse = async (courseId, actor) => {
     SELECT d.id, d.lesson_id, d.title, d.source_type, d.external_url, d.created_at,
            f.file_name, f.file_url, f.file_size
     FROM lesson_documents d
-    LEFT JOIN training_files f ON f.id = d.file_id AND f.is_deleted = 0
-    WHERE d.is_public = 1 AND d.lesson_id IN (
+    LEFT JOIN training_files f ON f.id = d.file_id AND f.is_deleted = 'false'
+    WHERE d.is_public = 'true' AND d.lesson_id IN (
       SELECT lp.lesson_id FROM course_programs cp
       JOIN lesson_programs lp ON lp.program_id = cp.program_id
       WHERE cp.course_id = @id AND ${APPROVED_IN_COURSE('@id', 'cp.program_id')})
@@ -227,11 +227,11 @@ const getMyCourse = async (courseId, actor) => {
 // được xem khi bài học thuộc chương trình mình đã ghi danh trong khóa đã được duyệt.
 const DOC_ACCESS_SQL = {
 	course: `SELECT 1 AS ok FROM course_documents d
-    WHERE d.id = @id AND d.is_public = 1 AND ${APPROVED_IN_COURSE('d.course_id')}`,
+    WHERE d.id = @id AND d.is_public = 'true' AND ${APPROVED_IN_COURSE('d.course_id')}`,
 	lesson: `SELECT 1 AS ok FROM lesson_documents d
     JOIN lesson_programs lp ON lp.lesson_id = d.lesson_id
     JOIN course_programs cp ON cp.program_id = lp.program_id
-    WHERE d.id = @id AND d.is_public = 1 AND ${APPROVED_IN_COURSE('cp.course_id', 'cp.program_id')}`,
+    WHERE d.id = @id AND d.is_public = 'true' AND ${APPROVED_IN_COURSE('cp.course_id', 'cp.program_id')}`,
 };
 
 const openDocument = async (docId, actor, kind = 'course') => {
@@ -259,7 +259,7 @@ const registerCourse = async (courseId, actor, programId = null) => {
 			.request()
 			.input('id', sql.VarChar(20), courseId)
 			.query(
-				"SELECT 1 AS ok FROM courses WHERE id = @id AND is_public_registration = 1 AND status <> 'cancelled'",
+				"SELECT 1 AS ok FROM courses WHERE id = @id AND is_public_registration = 'true' AND status <> 'cancelled'",
 			)
 	).recordset[0];
 	if (!row) {

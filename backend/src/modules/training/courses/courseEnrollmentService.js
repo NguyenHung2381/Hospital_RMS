@@ -163,7 +163,7 @@ const listStaffCandidates = async () => {
     SELECT u.id, u.full_name, u.staff_number, d.name AS department_name
     FROM users u
     LEFT JOIN departments d ON d.id = u.department_id
-    WHERE u.is_active = 1
+    WHERE u.is_active = 'true'
       AND COALESCE(u.role_id, '') <> @trainee_role
       AND NOT EXISTS (SELECT 1 FROM trainees t WHERE t.staff_user_id = u.id)
     ORDER BY u.full_name
@@ -202,7 +202,7 @@ const registerStaff = async (
 			.request()
 			.input('uid', sql.VarChar(20), userId)
 			.query(
-				'SELECT id, full_name, email, department_id FROM users WHERE id = @uid AND is_active = 1',
+				"SELECT id, full_name, email, department_id FROM users WHERE id = @uid AND is_active = 'true'",
 			);
 		const user = userRes.recordset[0];
 		if (!user) {

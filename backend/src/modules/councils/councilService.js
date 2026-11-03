@@ -297,7 +297,7 @@ const getEligibleUsers = async (councilId, search = '', type = 'internal') => {
 		const result = await req.query(`
       SELECT TOP 20 id, full_name, organization, specialty_group, phone, email
       FROM external_reviewers
-      WHERE is_active = 1
+      WHERE is_active = 'true'
         AND (@search = '%%' OR full_name LIKE @search OR organization LIKE @search)
       ORDER BY full_name
     `);
@@ -327,7 +327,7 @@ const getEligibleUsers = async (councilId, search = '', type = 'internal') => {
     FROM users u
     LEFT JOIN departments d ON d.id = u.department_id
     LEFT JOIN qualifications q ON q.id = u.qualification_id
-    WHERE u.is_active = 1
+    WHERE u.is_active = 'true'
       AND u.role_id <> @dept_head_role -- loại tài khoản khoa dùng chung khỏi nguồn thành viên hội đồng
       AND NOT EXISTS (
         SELECT 1 FROM council_members cm

@@ -25,7 +25,7 @@ const getRecipients = async (pool, deadline) => {
 			FROM users u
 			INNER JOIN role_permissions rp ON rp.role_id = u.role_id
 			INNER JOIN permissions p ON p.id = rp.permission_id
-			WHERE u.is_active = 1
+			WHERE u.is_active = 'true'
 			  AND CONCAT(p.resource, ':', p.action) IN ('topics:create', 'system:manage')
 		`);
 		return res.recordset.map((r) => r.id);

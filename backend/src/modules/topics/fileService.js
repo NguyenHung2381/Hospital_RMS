@@ -48,7 +48,7 @@ const getByTopic = async (topicId) => {
       FROM files f
       LEFT JOIN users u ON u.id = f.created_by
       LEFT JOIN file_batches fb ON fb.id = f.batch_id
-      WHERE f.topic_id = @topic_id AND f.is_deleted = 0
+      WHERE f.topic_id = @topic_id AND f.is_deleted = 'false'
       ORDER BY f.created_at DESC;
     `);
 	// Giữ shape { data, pagination } để client không phải đổi type
@@ -63,7 +63,7 @@ const getBatches = async (topicId) => {
 	const pool = await getPool();
 	const result = await pool.request().input('topic_id', sql.VarChar(15), topicId).query(`
       SELECT fb.*, u.full_name AS uploaded_by_name,
-             (SELECT COUNT(*) FROM files WHERE batch_id = fb.id AND is_deleted = 0) AS file_count
+             (SELECT COUNT(*) FROM files WHERE batch_id = fb.id AND is_deleted = 'false') AS file_count
       FROM file_batches fb
       LEFT JOIN users u ON u.id = fb.created_by
       WHERE fb.topic_id = @topic_id
@@ -79,7 +79,7 @@ const deleteFile = async (fileId, actorId) => {
 	const fileRow = await pool
 		.request()
 		.input('file_id', sql.VarChar(32), fileId)
-		.query(`SELECT file_url FROM files WHERE id = @file_id AND is_deleted = 0`);
+		.query(`SELECT file_url FROM files WHERE id = @file_id AND is_deleted = 'false'`);
 
 	if (!fileRow.recordset.length) {
 		throw httpError(404, 'Không tìm thấy file');
@@ -91,7 +91,7 @@ const deleteFile = async (fileId, actorId) => {
 			.request()
 			.input('file_id', sql.VarChar(32), fileId)
 			.input('actor_id', sql.VarChar(20), actorId).query(`
-      UPDATE files SET is_deleted = 1, updated_at = GETDATE(), updated_by = @actor_id
+      UPDATE files SET is_deleted = 'true', updated_at = GETDATE(), updated_by = @actor_id
       WHERE id = @file_id
     `),
 	);
@@ -107,7 +107,7 @@ const findTopicId = async (fileId) => {
 	const { recordset } = await pool
 		.request()
 		.input('fid', sql.VarChar(32), fileId)
-		.query(`SELECT topic_id FROM files WHERE id = @fid AND is_deleted = 0`);
+		.query(`SELECT topic_id FROM files WHERE id = @fid AND is_deleted = 'false'`);
 	return recordset[0]?.topic_id ?? null;
 };
 

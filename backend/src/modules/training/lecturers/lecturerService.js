@@ -52,7 +52,7 @@ const getAll = async ({
 	const where = ['1=1'];
 	const req = pool.request().input('offset', sql.Int, pg.offset).input('limit', sql.Int, pg.limit);
 
-	if (active_only !== 'false') where.push('l.is_active = 1');
+	if (active_only !== 'false') where.push("l.is_active = 'true'");
 	if (search) {
 		where.push('(l.full_name LIKE @search OR l.specialty LIKE @search OR l.email LIKE @search)');
 		req.input('search', sql.NVarChar, `%${search}%`);
@@ -255,7 +255,7 @@ const remove = async (id, actorId) => {
 				.request()
 				.input('id', sql.VarChar(20), id)
 				.input('actor_id', sql.VarChar(20), actorId)
-				.query('UPDATE lecturers SET is_active = 0 WHERE id = @id'),
+				.query("UPDATE lecturers SET is_active = 'false' WHERE id = @id"),
 		);
 	} else {
 		await withActorTransaction(actorId, (tx) =>

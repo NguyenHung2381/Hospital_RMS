@@ -159,7 +159,9 @@ const savePattern = async (id, { name, days, is_default }) => {
 		if (is_default)
 			await new sql.Request(tx)
 				.input('id', sql.Int, id ?? 0)
-				.query('UPDATE shift_patterns SET is_default = 0 WHERE is_default = 1 AND id <> @id');
+				.query(
+					"UPDATE shift_patterns SET is_default = 'false' WHERE is_default = 'true' AND id <> @id",
+				);
 		const req = new sql.Request(tx)
 			.input('name', sql.NVarChar(100), String(name).trim())
 			.input('days', sql.NVarChar(sql.MAX), JSON.stringify(norm))
@@ -204,7 +206,7 @@ const listCourses = async () => {
 	return (
 		await pool.request().input('today', sql.Date, todayKeyVN()).query(`
       SELECT c.id, c.name, c.start_date, c.end_date, c.is_rolling, c.shift_pattern_id,
-             ${boolExpr(`c.is_rolling = 0 AND c.end_date < @today`)} AS ended,
+             ${boolExpr(`c.is_rolling = 'false' AND c.end_date < @today`)} AS ended,
              (SELECT COUNT(*) FROM course_enrollments e WHERE e.course_id = c.id AND e.status = 'approved') AS trainee_count
       FROM courses c
       WHERE c.status <> 'cancelled'
@@ -269,13 +271,13 @@ const traineePeriods = async ({ from, to, userId, departmentId }) => {
       FROM course_enrollments e
       JOIN courses c ON c.id = e.course_id
       JOIN trainees t ON t.id = e.trainee_id
-      JOIN users u ON u.id = t.user_id AND u.is_active = 1
+      JOIN users u ON u.id = t.user_id AND u.is_active = 'true'
       LEFT JOIN departments d ON d.id = t.department_id
       CROSS APPLY (SELECT COALESCE(e.start_date, c.start_date) AS start_date,
                           COALESCE(e.end_date, c.end_date) AS end_date) p
       WHERE e.status = 'approved' AND c.status <> 'cancelled'
-        AND t.is_active = 1 AND t.hidden_at IS NULL
-        AND (p.start_date IS NOT NULL OR c.is_rolling = 1)
+        AND t.is_active = 'true' AND t.hidden_at IS NULL
+        AND (p.start_date IS NOT NULL OR c.is_rolling = 'true')
         AND (p.start_date IS NULL OR p.start_date <= @to)
         AND (p.end_date IS NULL OR p.end_date >= @from)
         ${where.map((w) => `AND ${w}`).join(' ')}
@@ -403,7 +405,7 @@ const setRoster = async ({ user_ids, dates, mode, shift_ids = [] }, actor) => {
 				await new sql.Request(tx)
 					.input('ids', sql.NVarChar(sql.MAX), JSON.stringify(shiftIds))
 					.query(
-						`SELECT id FROM work_shifts WHERE is_active = 1 AND id IN ${jsonValues('@ids', { type: 'INT' })}`,
+						`SELECT id FROM work_shifts WHERE is_active = 'true' AND id IN ${jsonValues('@ids', { type: 'INT' })}`,
 					)
 			).recordset.length;
 			if (found !== shiftIds.length) throw httpError(400, 'Có ca không tồn tại hoặc đã ngừng dùng');

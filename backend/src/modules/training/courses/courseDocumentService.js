@@ -16,7 +16,7 @@ const listDocuments = async (courseId) => {
            d.source_type, d.external_url,
            f.file_name, f.file_url, f.mime_type, f.file_size
     FROM course_documents d
-    LEFT JOIN training_files f ON f.id = d.file_id AND f.is_deleted = 0
+    LEFT JOIN training_files f ON f.id = d.file_id AND f.is_deleted = 'false'
     WHERE d.course_id = @course_id
     ORDER BY d.created_at DESC
   `);

@@ -140,7 +140,7 @@ const loadMentorCandidates = async (pool, doctor) => {
     FROM enrollment_rotations r
     JOIN course_enrollments e ON e.id = r.enrollment_id
     JOIN training_programs tp ON tp.id = e.program_id
-    JOIN users u ON u.id = r.mentor_user_id AND u.is_active = 1
+    JOIN users u ON u.id = r.mentor_user_id AND u.is_active = 'true'
     WHERE r.department_id IS NOT NULL
     GROUP BY r.department_id, r.mentor_user_id
     ORDER BY n DESC
@@ -150,7 +150,7 @@ const loadMentorCandidates = async (pool, doctor) => {
     FROM users u
     JOIN staff_practice_licenses sl ON sl.user_id = u.id AND sl.license_no IS NOT NULL
     LEFT JOIN qualifications q ON q.id = u.qualification_id
-    WHERE u.is_active = 1 AND u.department_id IS NOT NULL
+    WHERE u.is_active = 'true' AND u.department_id IS NOT NULL
 		`,
 	]);
 	const byDept = new Map();

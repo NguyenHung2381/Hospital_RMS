@@ -34,7 +34,7 @@ const list = async (actor = null) => {
 		.request()
 		.input('today', sql.Date, todayKeyVN())
 		.input('gphn', sql.VarChar(20), GPHN_TYPE);
-	const where = ['(c.is_rolling = 1 OR c.training_type_id = @gphn)'];
+	const where = ["(c.is_rolling = 'true' OR c.training_type_id = @gphn)"];
 	if (actor && scopeOf(actor, 'courses') === 'assigned') {
 		where.push(ASSIGNED_EXISTS_SQL);
 		req.input('actor_id', sql.VarChar(20), actor.id);

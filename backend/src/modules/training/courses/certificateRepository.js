@@ -14,7 +14,7 @@ const listByCourse = async (courseId) => {
     FROM certificates c
     JOIN course_enrollments e ON e.id = c.enrollment_id
     JOIN trainees t ON t.id = e.trainee_id
-    LEFT JOIN training_files f ON f.id = c.file_id AND f.is_deleted = 0
+    LEFT JOIN training_files f ON f.id = c.file_id AND f.is_deleted = 'false'
     WHERE e.course_id = @course_id
     ORDER BY c.issue_date DESC
   `);

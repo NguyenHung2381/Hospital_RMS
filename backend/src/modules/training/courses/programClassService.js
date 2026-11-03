@@ -24,7 +24,7 @@ const VN_TODAY = 'CAST(DATEADD(HOUR, 7, GETUTCDATE()) AS DATE)';
 
 const appliesTo = (c) => !!c && CLASS_TYPES.includes(c.training_type_id) && !c.is_rolling;
 const APPLIES_SQL = (c) =>
-	`(${c}.training_type_id IN (${CLASS_TYPES.map((t) => `'${t}'`).join(', ')}) AND ${c}.is_rolling = 0)`;
+	`(${c}.training_type_id IN (${CLASS_TYPES.map((t) => `'${t}'`).join(', ')}) AND ${c}.is_rolling = 'false')`;
 // Lớp đã khai giảng chưa: theo ngày của lớp, lớp chưa đặt ngày thì theo ngày khóa.
 const NOT_STARTED_SQL = (cp, c) =>
 	`(COALESCE(${cp}.start_date, ${c}.start_date) IS NULL OR COALESCE(${cp}.start_date, ${c}.start_date) > ${VN_TODAY})`;
@@ -248,7 +248,7 @@ const suggestDates = async (courseId, programId) => {
 			.input('program_id', sql.VarChar(20), programId).query(`
       SELECT tp.duration_value, tp.duration_unit,
              COALESCE((SELECT SUM(COALESCE(pl.theory_hours, 0) + COALESCE(pl.practice_hours, 0))
-                       FROM lesson_programs lp JOIN program_lessons pl ON pl.id = lp.lesson_id AND pl.is_active = 1
+                       FROM lesson_programs lp JOIN program_lessons pl ON pl.id = lp.lesson_id AND pl.is_active = 'true'
                        WHERE lp.program_id = tp.id),
                       COALESCE(tp.theory_hours, 0) + COALESCE(tp.practice_hours, 0)) AS total_hours
       FROM course_programs cp JOIN training_programs tp ON tp.id = cp.program_id

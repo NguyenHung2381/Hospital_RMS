@@ -26,7 +26,7 @@ const hasActiveDefinition = async (resource) => {
 			.request()
 			.input('resource', sql.VarChar(50), resource)
 			.query(
-				'SELECT TOP 1 id FROM workflow_definitions WHERE resource = @resource AND is_active = 1',
+				"SELECT TOP 1 id FROM workflow_definitions WHERE resource = @resource AND is_active = 'true'",
 			);
 		return !!r.recordset[0];
 	} catch (err) {
@@ -40,7 +40,9 @@ const getActiveDefinition = async (resource) => {
 	const defRes = await pool
 		.request()
 		.input('resource', sql.VarChar(50), resource)
-		.query('SELECT TOP 1 * FROM workflow_definitions WHERE resource = @resource AND is_active = 1');
+		.query(
+			"SELECT TOP 1 * FROM workflow_definitions WHERE resource = @resource AND is_active = 'true'",
+		);
 	const def = defRes.recordset[0];
 	if (!def) return null;
 	const stepsRes = await pool
@@ -142,7 +144,7 @@ const deactivateOthers = async (keepId, resource) => {
 		.input('keep_id', sql.VarChar(20), keepId)
 		.input('resource', sql.VarChar(50), resource)
 		.query(
-			'UPDATE workflow_definitions SET is_active = 0 WHERE id <> @keep_id AND resource = @resource',
+			"UPDATE workflow_definitions SET is_active = 'false' WHERE id <> @keep_id AND resource = @resource",
 		);
 };
 

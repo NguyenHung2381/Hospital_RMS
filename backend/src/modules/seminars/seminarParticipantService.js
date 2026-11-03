@@ -161,7 +161,7 @@ const bulkAdd = async (seminarId, rows, actorId) => {
 const staffFrom = `FROM users u
   LEFT JOIN departments d ON d.id = u.department_id
   ${deptAccountJoinSql('u')}`;
-const staffWhere = `u.is_active = 1 AND NOT ${isDeptAccountJoinedSql('u')}`;
+const staffWhere = `u.is_active = 'true' AND NOT ${isDeptAccountJoinedSql('u')}`;
 
 // Nhân sự 1 khoa, kèm cờ đã có trong danh sách người tham dự
 const staffOfDepartment = async (seminarId, departmentId) => {

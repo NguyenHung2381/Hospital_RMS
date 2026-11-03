@@ -13,7 +13,7 @@ const getAll = async ({
 	const req = pool.request();
 
 	if (active_only !== 'false') {
-		where += ' AND is_active = 1';
+		where += " AND is_active = 'true'";
 	}
 	if (specialty_group) {
 		where += ' AND specialty_group = @specialty_group';
@@ -124,7 +124,7 @@ const remove = async (id, actorId) => {
 			.input('id', sql.VarChar(20), id)
 			.input('actor_id', sql.VarChar(20), actorId || null)
 			.query(
-				'UPDATE external_reviewers SET is_active = 0, updated_at = GETDATE(), updated_by = @actor_id WHERE id = @id',
+				"UPDATE external_reviewers SET is_active = 'false', updated_at = GETDATE(), updated_by = @actor_id WHERE id = @id",
 			);
 	} else {
 		await pool

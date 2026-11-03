@@ -75,6 +75,31 @@ const run = async (t, db, { skip = [] } = {}) => {
 		assert.equal(Number(b[0].prev), 100);
 	});
 
+	// Cột BIT (SQL Server) / boolean (PG) so với chữ 'true' / 'false' — viết chung 2 DB
+	await step("cột BIT so / gán bằng 'true' / 'false': WHERE, SET, CASE, SUM", async () => {
+		const [cnt] = await q(`
+      SELECT SUM(CASE WHEN is_active = 'true' THEN 1 ELSE 0 END) AS on_n,
+             SUM(CASE WHEN is_active <> 'true' THEN 1 ELSE 0 END) AS off_n,
+             COUNT(*) AS n
+      FROM users`);
+		assert.equal(Number(cnt.on_n) + Number(cnt.off_n), Number(cnt.n));
+		assert.ok(Number(cnt.on_n) >= 1);
+		await q("UPDATE users SET totp_enabled = 'true' WHERE id = @id", { id: actor.id });
+		const [u] = await q("SELECT totp_enabled FROM users WHERE id = @id AND totp_enabled = 'true'", {
+			id: actor.id,
+		});
+		assert.equal(Boolean(u?.totp_enabled), true);
+		await q("UPDATE users SET totp_enabled = 'false' WHERE id = @id", { id: actor.id });
+		const [off] = await q(
+			"SELECT COUNT(*) AS n FROM users WHERE id = @id AND totp_enabled = 'false'",
+			{ id: actor.id },
+		);
+		assert.equal(Number(off.n), 1);
+		// Hàm dịch vụ đã đổi: lọc người phản biện ngoài đang hoạt động
+		const reviewers = await require('../src/modules/catalog/externalReviewerService').getAll();
+		assert.ok(reviewers.every((r) => Boolean(r.is_active)));
+	});
+
 	await step('danh mục / cấp độ / vai trò: mã <PREFIX>NN kế tiếp', async () => {
 		const cat = await require('../src/modules/catalog/categoryService').create(
 			{ name: 'Danh mục thử', abbr: 'DMT' },

@@ -96,7 +96,7 @@ const getComplianceReport = async (year) => {
       WHERE year = @year AND (department_id = u.department_id OR department_id IS NULL)
       ORDER BY CASE WHEN department_id IS NOT NULL THEN 0 ELSE 1 END
     ) req
-    WHERE u.is_active = 1 AND req.required_credits IS NOT NULL
+    WHERE u.is_active = 'true' AND req.required_credits IS NOT NULL
       -- Bỏ tài khoản khoa/phòng: tài khoản dùng chung, không phải nhân sự
       AND NOT ${isDeptAccountSql('u')}
     GROUP BY u.id, u.full_name, u.department_id, d.name, req.required_credits, cr.manual_credits

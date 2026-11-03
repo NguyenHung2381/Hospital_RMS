@@ -149,7 +149,7 @@ test('tự đổi mật khẩu xóa mốc mật khẩu tạm', async () => {
 	assert.ok(
 		log
 			.slice(before)
-			.some((q) => /must_change_password = 0,\s*temp_password_issued_at = NULL/.test(q.text)),
+			.some((q) => /must_change_password = 'false',\s*temp_password_issued_at = NULL/.test(q.text)),
 	);
 });
 
@@ -161,7 +161,7 @@ test('quản trị đặt lại mật khẩu: tính hạn mật khẩu tạm l�
 		log
 			.slice(before)
 			.some((q) =>
-				/must_change_password=1,\s*temp_password_issued_at=SYSUTCDATETIME\(\)/.test(q.text),
+				/must_change_password = 'true',\s*temp_password_issued_at=SYSUTCDATETIME\(\)/.test(q.text),
 			),
 	);
 });

@@ -63,7 +63,7 @@ const pickInternal = async (
       WHERE c.round_id = @round_id
       GROUP BY cm.user_id
     ) lt ON lt.user_id = u.id
-    WHERE u.is_active = 1 AND u.role_id <> @dept_head_role -- loại tài khoản khoa dùng chung (vai trò dept_head)
+    WHERE u.is_active = 'true' AND u.role_id <> @dept_head_role -- loại tài khoản khoa dùng chung (vai trò dept_head)
       ${deptParams.length ? `AND (u.department_id IS NULL OR u.department_id NOT IN (${deptParams.join(',')}))` : ''}
       ${usedParams.length ? `AND u.id NOT IN (${usedParams.join(',')})` : ''}
     ORDER BY
@@ -97,7 +97,7 @@ const pickExternal = async (pool, { specialtyGroup, usedExternalReviewerIds, all
 	const result = await req.query(`
     SELECT TOP 1 id, full_name
     FROM external_reviewers
-    WHERE is_active = 1 AND specialty_group = @sg
+    WHERE is_active = 'true' AND specialty_group = @sg
       ${allowedClause}
       ${usedParams.length ? `AND id NOT IN (${usedParams.join(',')})` : ''}
     ORDER BY full_name

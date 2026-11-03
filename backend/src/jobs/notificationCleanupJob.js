@@ -23,8 +23,8 @@ const deleteBatch = async () => {
 		.input('read_days', sql.Int, READ_RETENTION_DAYS)
 		.input('unread_days', sql.Int, UNREAD_RETENTION_DAYS).query(`
       DELETE TOP (@batch) FROM notifications
-      WHERE (is_read = 1 AND created_at < DATEADD(DAY, -@read_days, SYSDATETIME()))
-         OR (is_read = 0 AND created_at < DATEADD(DAY, -@unread_days, SYSDATETIME()));
+      WHERE (is_read = 'true' AND created_at < DATEADD(DAY, -@read_days, SYSDATETIME()))
+         OR (is_read = 'false' AND created_at < DATEADD(DAY, -@unread_days, SYSDATETIME()));
       SELECT @@ROWCOUNT AS deleted;
     `);
 	return r.recordset[0]?.deleted ?? 0;

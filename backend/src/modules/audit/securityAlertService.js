@@ -69,7 +69,7 @@ const recipients = async () => {
 		await pool.request().query(`
 			SELECT DISTINCT u.email FROM users u
 			JOIN roles r ON r.id = u.role_id
-			WHERE r.is_superuser = 1 AND u.is_active = 1
+			WHERE r.is_superuser = 'true' AND u.is_active = 'true'
 			  AND u.email IS NOT NULL AND u.email NOT LIKE '%.local'
 		`)
 	).recordset;

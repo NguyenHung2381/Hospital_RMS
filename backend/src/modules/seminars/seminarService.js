@@ -38,8 +38,8 @@ const countSelect = `
   (SELECT COUNT(*) FROM seminar_participants p WHERE p.seminar_id = s.id) AS participant_count,
   (SELECT COUNT(*) FROM seminar_participants p WHERE p.seminar_id = s.id AND p.cme_seq IS NOT NULL) AS cme_issued_count,
   (SELECT COUNT(*) FROM seminar_participants p WHERE p.seminar_id = s.id AND p.source = 'internal') AS internal_count,
-  (SELECT COUNT(*) FROM seminar_participants p WHERE p.seminar_id = s.id AND p.source = 'external' AND p.is_foreign = 0) AS external_count,
-  (SELECT COUNT(*) FROM seminar_participants p WHERE p.seminar_id = s.id AND p.is_foreign = 1) AS foreign_count
+  (SELECT COUNT(*) FROM seminar_participants p WHERE p.seminar_id = s.id AND p.source = 'external' AND p.is_foreign = 'false') AS external_count,
+  (SELECT COUNT(*) FROM seminar_participants p WHERE p.seminar_id = s.id AND p.is_foreign = 'true') AS foreign_count
 `;
 
 const getAll = async ({
@@ -70,7 +70,7 @@ const getAll = async ({
 		clauses.push('s.event_year = @year');
 	}
 	if (grants_cme === '1' || grants_cme === 'true' || grants_cme === true) {
-		clauses.push('s.grants_cme = 1');
+		clauses.push("s.grants_cme = 'true'");
 	}
 	clauses.push(ht.trainingFilter(hospital_training));
 	const where = buildWhere(clauses);
@@ -423,11 +423,11 @@ const statsHosted = async ({ year = undefined, from = undefined, to = undefined 
            ${countSelect},
            -- số hiển thị: ưu tiên số nhập tay, fallback về đếm từ danh sách chi tiết
            COALESCE(s.manual_internal_count,
-                    (SELECT COUNT(*) FROM seminar_participants p WHERE p.seminar_id = s.id AND p.source = 'internal' AND p.is_foreign = 0)) AS eff_internal_count,
+                    (SELECT COUNT(*) FROM seminar_participants p WHERE p.seminar_id = s.id AND p.source = 'internal' AND p.is_foreign = 'false')) AS eff_internal_count,
            COALESCE(s.manual_external_count,
-                    (SELECT COUNT(*) FROM seminar_participants p WHERE p.seminar_id = s.id AND p.source = 'external' AND p.is_foreign = 0)) AS eff_external_count,
+                    (SELECT COUNT(*) FROM seminar_participants p WHERE p.seminar_id = s.id AND p.source = 'external' AND p.is_foreign = 'false')) AS eff_external_count,
            COALESCE(s.manual_foreign_count,
-                    (SELECT COUNT(*) FROM seminar_participants p WHERE p.seminar_id = s.id AND p.is_foreign = 1)) AS eff_foreign_count,
+                    (SELECT COUNT(*) FROM seminar_participants p WHERE p.seminar_id = s.id AND p.is_foreign = 'true')) AS eff_foreign_count,
            COALESCE(s.manual_participant_count,
                     (SELECT COUNT(*) FROM seminar_participants p WHERE p.seminar_id = s.id)) AS eff_participant_count,
            COALESCE(s.manual_cme_count,

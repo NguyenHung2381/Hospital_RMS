@@ -326,7 +326,7 @@ const listDocuments = async (traineeId) => {
            f.file_name, f.file_url, f.mime_type, f.file_size
     FROM trainee_documents d
     LEFT JOIN trainee_document_types dt ON dt.id = d.doc_type
-    JOIN training_files f ON f.id = d.file_id AND f.is_deleted = 0
+    JOIN training_files f ON f.id = d.file_id AND f.is_deleted = 'false'
     WHERE d.trainee_id = @trainee_id
     ORDER BY d.created_at DESC
   `);

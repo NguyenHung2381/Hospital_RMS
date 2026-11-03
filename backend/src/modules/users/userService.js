@@ -70,8 +70,8 @@ const getGlobalStats = async (pool) => {
     SET NOCOUNT ON;
     SELECT
       COUNT(*) AS total,
-      SUM(CASE WHEN is_active = 1 THEN 1 ELSE 0 END) AS active,
-      SUM(CASE WHEN is_active = 0 THEN 1 ELSE 0 END) AS inactive,
+      SUM(CASE WHEN is_active = 'true' THEN 1 ELSE 0 END) AS active,
+      SUM(CASE WHEN is_active = 'false' THEN 1 ELSE 0 END) AS inactive,
       SUM(CASE WHEN password_changed_at IS NULL
                OR DATEDIFF(day, password_changed_at, GETDATE()) > 90
           THEN 1 ELSE 0 END) AS pwd_warn
@@ -410,8 +410,8 @@ const remove = async (id, actorId) => {
 	await withActorTransaction(actorId, (tx) =>
 		tx.request().input('id', sql.VarChar(20), id).input('actor_id', sql.VarChar(20), actorId)
 			.query(`
-			UPDATE topic_members SET user_id = NULL, account_granted = 0, account_granted_at = NULL WHERE user_id = @id;
-			UPDATE trainees SET user_id = NULL, account_granted = 0, account_granted_at = NULL WHERE user_id = @id;
+			UPDATE topic_members SET user_id = NULL, account_granted = 'false', account_granted_at = NULL WHERE user_id = @id;
+			UPDATE trainees SET user_id = NULL, account_granted = 'false', account_granted_at = NULL WHERE user_id = @id;
 			UPDATE trainees SET staff_user_id = NULL WHERE staff_user_id = @id;
 			UPDATE round_deadlines SET created_by = @actor_id WHERE created_by = @id;
 			UPDATE departments SET head_user_id = NULL WHERE head_user_id = @id;
@@ -453,7 +453,7 @@ const resetPassword = async (id, newPassword, actorId, ip = null) => {
 			.input('password', sql.VarChar(255), hashed)
 			.input('actor_id', sql.VarChar(20), actorId)
 			.query(
-				`UPDATE users SET password=@password, password_changed_at=GETDATE(), must_change_password=1,
+				`UPDATE users SET password=@password, password_changed_at=GETDATE(), must_change_password = 'true',
 			   temp_password_issued_at=SYSUTCDATETIME(), updated_at=GETDATE(), updated_by=@actor_id WHERE id=@id;
 			 DELETE FROM refresh_tokens WHERE user_id=@id;`,
 			),
@@ -479,7 +479,7 @@ const searchForMember = async ({ q, department_id, limit = 10 }) => {
 		'trainee_role',
 		ROLE.TRAINEE,
 	);
-	let where = `WHERE u.is_active = 1 AND ${notTraineeSql('u')}`;
+	let where = `WHERE u.is_active = 'true' AND ${notTraineeSql('u')}`;
 
 	if (q && q.trim()) {
 		const term = q.trim();

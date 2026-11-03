@@ -253,7 +253,7 @@ const setup2FA = async (userId) => {
 		.request()
 		.input('id', sql.VarChar(20), userId)
 		.input('secret', sql.NVarChar(255), secretBox.encrypt(secret))
-		.query(`UPDATE users SET totp_secret = @secret, totp_enabled = 0, totp_verified_at = NULL,
+		.query(`UPDATE users SET totp_secret = @secret, totp_enabled = 'false', totp_verified_at = NULL,
 		          totp_last_step = NULL WHERE id = @id`);
 
 	const otpauthUri = otplib.generateURI({
@@ -285,7 +285,7 @@ const confirm2FASetup = async (userId, code) => {
 	await pool
 		.request()
 		.input('id', sql.VarChar(20), userId)
-		.query('UPDATE users SET totp_enabled = 1, totp_verified_at = GETDATE() WHERE id = @id');
+		.query("UPDATE users SET totp_enabled = 'true', totp_verified_at = GETDATE() WHERE id = @id");
 	// Middleware auth đọc totp_enabled qua cache — xóa để hết bị chặn / nhắc ngay
 	userStatusCache.clear(userId);
 	const backupCodes = await replaceBackupCodes(pool, userId);
@@ -345,7 +345,7 @@ const disable2FA = async (userId, password, code, ip = null) => {
 	}
 
 	await pool.request().input('id', sql.VarChar(20), userId)
-		.query(`UPDATE users SET totp_secret = NULL, totp_enabled = 0, totp_verified_at = NULL,
+		.query(`UPDATE users SET totp_secret = NULL, totp_enabled = 'false', totp_verified_at = NULL,
 		          totp_last_step = NULL WHERE id = @id;
 		        DELETE FROM user_backup_codes WHERE user_id = @id;`);
 	userStatusCache.clear(userId);

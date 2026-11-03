@@ -108,7 +108,7 @@ const getData = async ({ year, fromYear, toYear: to, userId, department, search 
     ) x ON x.user_id = u.id
     ${deptAccountJoinSql('u')}
     WHERE (@uid IS NULL OR u.id = @uid) AND (@dept IS NULL OR d.name = @dept)
-      AND (u.is_active = 1 OR x.user_id IS NOT NULL OR @uid IS NOT NULL)
+      AND (u.is_active = 'true' OR x.user_id IS NOT NULL OR @uid IS NOT NULL)
       -- Bỏ tài khoản khoa/phòng: tài khoản dùng chung, không phải nhân sự
       AND (@uid IS NOT NULL OR NOT ${isDeptAccountJoinedSql('u')})
     GROUP BY u.id, u.staff_number, u.full_name, u.is_active, u.department_id, d.name, x.group_id, x.year

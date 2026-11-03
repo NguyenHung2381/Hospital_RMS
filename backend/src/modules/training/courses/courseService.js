@@ -60,7 +60,7 @@ const computeDisplayStatus = (c, enrollmentOpen) => {
 const VN_TODAY = 'CAST(DATEADD(HOUR, 7, GETUTCDATE()) AS DATE)';
 const COURSE_DISPLAY_STATUS = `CASE
     WHEN c.status = 'cancelled' THEN 'cancelled'
-    WHEN c.is_rolling = 1 THEN 'in_progress'
+    WHEN c.is_rolling = 'true' THEN 'in_progress'
     WHEN c.end_date IS NOT NULL AND ${VN_TODAY} > c.end_date THEN 'completed'
     WHEN c.start_date IS NOT NULL AND ${VN_TODAY} >= c.start_date THEN 'in_progress'
     WHEN (c.enrollment_start_date IS NULL OR ${VN_TODAY} >= c.enrollment_start_date)

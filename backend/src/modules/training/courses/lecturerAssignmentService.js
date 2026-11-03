@@ -36,7 +36,7 @@ const listCourseLessons = async (courseId) => {
     FROM course_programs cp
     JOIN training_programs tp ON tp.id = cp.program_id
     JOIN lesson_programs lp ON lp.program_id = cp.program_id
-    JOIN program_lessons pl ON pl.id = lp.lesson_id AND pl.lesson_kind <> 'rotation' AND pl.is_active = 1
+    JOIN program_lessons pl ON pl.id = lp.lesson_id AND pl.lesson_kind <> 'rotation' AND pl.is_active = 'true'
     WHERE cp.course_id = @course_id
     GROUP BY pl.id, pl.code, pl.title, pl.theory_hours, pl.practice_hours, pl.total_hours
     ORDER BY MIN(tp.name), MIN(lp.display_order), pl.title
@@ -66,7 +66,7 @@ const listLecturerCandidates = async (courseId) => {
     FROM lecturers l
     LEFT JOIN users u ON u.id = l.user_id
     LEFT JOIN departments d ON d.id = u.department_id
-    WHERE l.is_active = 1
+    WHERE l.is_active = 'true'
       AND (NOT EXISTS ${depts} OR u.department_id IS NULL OR u.department_id IN ${depts}
         OR l.id IN (SELECT lecturer_id FROM lecturer_assignments WHERE course_id = @course_id))
     UNION ALL
@@ -75,7 +75,7 @@ const listLecturerCandidates = async (courseId) => {
     FROM staff_practice_licenses sl
     JOIN users u ON u.id = sl.user_id
     LEFT JOIN departments d ON d.id = u.department_id
-    WHERE sl.license_no IS NOT NULL AND u.is_active = 1
+    WHERE sl.license_no IS NOT NULL AND u.is_active = 'true'
       AND u.department_id IN ${depts}
       AND NOT EXISTS (SELECT 1 FROM lecturers l WHERE l.user_id = u.id)
     ORDER BY full_name;

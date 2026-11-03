@@ -101,5 +101,5 @@ test('đổi mật khẩu: mới trùng cũ bị từ chối; hợp lệ thì g�
 	);
 	const before = log.length;
 	await authService.changePassword('U1', 'Dung#matkhau2026', 'Moi#matkhau2027');
-	assert.ok(log.slice(before).some((q) => /must_change_password = 0/.test(q.text)));
+	assert.ok(log.slice(before).some((q) => /must_change_password = 'false'/.test(q.text)));
 });

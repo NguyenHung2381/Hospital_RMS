@@ -60,7 +60,7 @@ const fmt = (d) => (d ? new Date(d).toISOString().slice(0, 16).replace('T', ' ')
 	const users = (
 		await pool.request().query(`
 			SELECT id, username, password, must_change_password, temp_password_issued_at, created_at
-			FROM users WHERE is_active = 1 ORDER BY username
+			FROM users WHERE is_active = 'true' ORDER BY username
 		`)
 	).recordset;
 
@@ -88,8 +88,8 @@ const fmt = (d) => (d ? new Date(d).toISOString().slice(0, 16).replace('T', ' ')
 	if (apply) {
 		for (const u of [...flagged, ...missingIssued]) {
 			await pool.request().input('id', sql.VarChar(20), u.id).query(`
-				UPDATE users SET must_change_password = 1, temp_password_issued_at = SYSUTCDATETIME()
-				WHERE id = @id AND (must_change_password = 0 OR temp_password_issued_at IS NULL)
+				UPDATE users SET must_change_password = 'true', temp_password_issued_at = SYSUTCDATETIME()
+				WHERE id = @id AND (must_change_password = 'false' OR temp_password_issued_at IS NULL)
 			`);
 		}
 	}

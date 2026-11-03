@@ -9,7 +9,7 @@ const loadLookups = async () => {
 	const [users, categories, departments, taken, known] = await Promise.all([
 		// Loại tài khoản khoa dùng chung (vai trò dept_head) — không phải một người
 		(await inputRoleId(pool.request(), 'dept_head_role', ROLE.DEPT_HEAD)).query(
-			'SELECT id, full_name, staff_number FROM users WHERE is_active = 1 AND role_id <> @dept_head_role',
+			"SELECT id, full_name, staff_number FROM users WHERE is_active = 'true' AND role_id <> @dept_head_role",
 		),
 		pool
 			.request()
