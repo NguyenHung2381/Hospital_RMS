@@ -1,4 +1,5 @@
 const { getPool, sql } = require('../../config/db');
+const { randomId } = require('../../utils/idGenerator');
 const { isUniqueViolation } = require('../../utils/dbErrors');
 const { parseJsonArray } = require('../../utils/sqlFilters');
 const { broadcast } = require('../events/eventService');
@@ -80,6 +81,7 @@ const setQuestions = async (surveyId, questions, actorId) => {
 		if (!q || !q.question_text || !QUESTION_TYPES.includes(q.question_type)) continue;
 		const options =
 			q.question_type === 'text' ? null : JSON.stringify((q.options || []).filter(Boolean));
+		const newId = randomId('CH', 18);
 		await pool
 			.request()
 			.input('survey_id', sql.VarChar(20), surveyId)
@@ -87,8 +89,8 @@ const setQuestions = async (surveyId, questions, actorId) => {
 			.input('question_type', sql.VarChar(20), q.question_type)
 			.input('options', sql.NVarChar(sql.MAX), options)
 			.input('actor_id', sql.VarChar(20), actorId || null)
-			.input('sort_order', sql.Int, order).query(`
-        DECLARE @new_id VARCHAR(20) = 'CH' + LEFT(REPLACE(NEWID(),'-',''), 18);
+			.input('sort_order', sql.Int, order)
+			.input('new_id', sql.VarChar(20), newId).query(`
         INSERT INTO survey_questions (id, survey_id, question_text, question_type, options, sort_order, created_by)
         VALUES (@new_id, @survey_id, @question_text, @question_type, @options, @sort_order, @actor_id);
       `);
@@ -100,19 +102,19 @@ const setQuestions = async (surveyId, questions, actorId) => {
 
 const create = async (data, actorId) => {
 	const pool = await getPool();
-	const result = await pool
+	const newId = randomId('KS', 18);
+	await pool
 		.request()
 		.input('actor_id', sql.VarChar(20), actorId)
 		.input('title', sql.NVarChar(255), data.title)
 		.input('description', sql.NVarChar(sql.MAX), data.description || null)
 		.input('status', sql.VarChar(20), data.status || 'draft')
-		.input('target_role', sql.VarChar(20), data.target_role || null).query(`
-      DECLARE @new_id VARCHAR(20) = 'KS' + LEFT(REPLACE(NEWID(),'-',''), 18);
+		.input('target_role', sql.VarChar(20), data.target_role || null)
+		.input('new_id', sql.VarChar(20), newId).query(`
       INSERT INTO surveys (id, title, description, status, target_role, created_by)
       VALUES (@new_id, @title, @description, @status, @target_role, @actor_id);
-      SELECT @new_id AS id;
     `);
-	const id = result.recordset[0].id;
+	const id = newId;
 	if (Array.isArray(data.questions) && data.questions.length)
 		await setQuestions(id, data.questions, actorId);
 	broadcast('update', { entity: 'survey' });
@@ -252,16 +254,16 @@ const submitResponse = async (surveyId, answers, actor) => {
 	const questionMap = new Map(survey.questions.map((q) => [q.id, q]));
 
 	const pool = await getPool();
-	const responseResult = await pool
+	const newId = randomId('PH', 18);
+	await pool
 		.request()
 		.input('survey_id', sql.VarChar(20), surveyId)
 		.input('user_id', sql.VarChar(20), actor.id)
+		.input('new_id', sql.VarChar(20), newId)
 		.query(
 			`
-      DECLARE @new_id VARCHAR(20) = 'PH' + LEFT(REPLACE(NEWID(),'-',''), 18);
       INSERT INTO survey_responses (id, survey_id, respondent_user_id, created_by)
       VALUES (@new_id, @survey_id, @user_id, @user_id);
-      SELECT @new_id AS id;
     `,
 		)
 		.catch((err) => {
@@ -270,11 +272,12 @@ const submitResponse = async (surveyId, answers, actor) => {
 			}
 			throw err;
 		});
-	const responseId = responseResult.recordset[0].id;
+	const responseId = newId;
 
 	for (const [questionId, question] of questionMap) {
 		const ans = (answers || []).find((a) => a.question_id === questionId);
 		const isText = question.question_type === 'text';
+		const answerId = randomId('DA', 18);
 		await pool
 			.request()
 			.input('response_id', sql.VarChar(20), responseId)
@@ -284,8 +287,8 @@ const submitResponse = async (surveyId, answers, actor) => {
 				'answer_options',
 				sql.NVarChar(sql.MAX),
 				!isText && ans?.answer_options ? JSON.stringify(ans.answer_options) : null,
-			).query(`
-        DECLARE @new_id VARCHAR(20) = 'DA' + LEFT(REPLACE(NEWID(),'-',''), 18);
+			)
+			.input('new_id', sql.VarChar(20), answerId).query(`
         INSERT INTO survey_answers (id, response_id, question_id, answer_text, answer_options)
         VALUES (@new_id, @response_id, @question_id, @answer_text, @answer_options);
       `);

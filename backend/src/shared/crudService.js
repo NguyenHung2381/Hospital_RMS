@@ -1,4 +1,5 @@
 const { getPool, sql, withActorTransaction } = require('../config/db');
+const { randomId } = require('../utils/idGenerator');
 const { broadcast } = require('../modules/events/eventService');
 const { paging } = require('../utils/paging');
 const { remember, invalidate } = require('../utils/cache');
@@ -70,11 +71,7 @@ const createCrudService = (
 	const create = async (data, actorId) => {
 		const suffixLen = idLength - idPrefix.length;
 		const customId = options.allowCustomId && data.id ? String(data.id).trim() : '';
-		const idExpr = customId
-			? '@custom_id'
-			: idPrefix
-				? `'${idPrefix}' + LEFT(REPLACE(NEWID(),'-',''), ${suffixLen})`
-				: `LEFT(REPLACE(NEWID(),'-',''), ${idLength})`;
+		const newId = customId || randomId(idPrefix || '', idPrefix ? suffixLen : idLength);
 		const extraCols = extraFields.map((f) => f.column);
 		const insertCols = ['id', 'name', 'description', ...extraCols, 'created_by'].join(', ');
 		const insertVals = [
@@ -85,10 +82,10 @@ const createCrudService = (
 			'@actor_id',
 		].join(', ');
 
-		const result = await withActorTransaction(actorId, (tx) => {
+		const result = await withActorTransaction(actorId, async (tx) => {
 			const req = tx
 				.request()
-				.input('custom_id', sql.VarChar(idLength), customId || null)
+				.input('new_id', sql.VarChar(idLength), newId)
 				.input('actor_id', sql.VarChar(20), actorId)
 				.input('name', sql.NVarChar(500), data.name)
 				.input('description', sql.NVarChar(sql.MAX), data.description || null);
@@ -99,13 +96,11 @@ const createCrudService = (
 					data[f.column] !== undefined ? data[f.column] : (f.default ?? null),
 				);
 			}
-			return req.query(`
-        DECLARE @new_id VARCHAR(${idLength});
-        SET @new_id = ${idExpr};
-        INSERT INTO ${tableName} (${insertCols})
-        VALUES (${insertVals});
-        SELECT * FROM ${tableName} WHERE id = @new_id;
-      `);
+			await req.query(`INSERT INTO ${tableName} (${insertCols}) VALUES (${insertVals})`);
+			return tx
+				.request()
+				.input('id', sql.VarChar(idLength), newId)
+				.query(`SELECT * FROM ${tableName} WHERE id = @id`);
 		});
 		await invalidate(cachePrefix);
 		broadcast('update', { entity });

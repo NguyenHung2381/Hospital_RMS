@@ -4,7 +4,7 @@ const { broadcast } = require('../events/eventService');
 const { createWithSeqId, getLevelIdsForRoundType } = require('./levelService');
 
 // Constraint CHK_round_types_id yêu cầu id LIKE 'RT[0-9][0-9]' → RT01, RT02, ...
-// crudService mặc định dùng NEWID() (hex) nên override hàm create riêng.
+// crudService mặc định sinh mã hex ngẫu nhiên (randomId) nên override hàm create riêng.
 const _rtBase = createCrudService('round_types', 6, 'RT');
 const rtService = {
 	..._rtBase,

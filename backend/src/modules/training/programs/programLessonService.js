@@ -1,4 +1,5 @@
-const { getPool, sql, jsonValues } = require('../../../config/db');
+const { getPool, sql, jsonValues, newIdSql } = require('../../../config/db');
+const { randomId } = require('../../../utils/idGenerator');
 const { appErrorCode } = require('../../../utils/dbErrors');
 const { broadcast } = require('../../events/eventService');
 const trainingFileService = require('../trainingFileService');
@@ -117,7 +118,8 @@ const listAllLessons = async () => {
 const createLesson = async (data, actorId) => {
 	assertLessonInput(data);
 	const pool = await getPool();
-	const result = await pool
+	const lessonId = randomId('BL', 18);
+	await pool
 		.request()
 		.input('code', sql.NVarChar(50), data.code || '')
 		.input('title', sql.NVarChar(255), data.title)
@@ -134,15 +136,14 @@ const createLesson = async (data, actorId) => {
 			data.duration_value ? data.duration_unit || null : null,
 		)
 		.input('allow_split', sql.Bit, data.allow_split ? 1 : 0)
-		.input('actor_id', sql.VarChar(20), actorId).query(`
-      DECLARE @lesson_id VARCHAR(20) = 'BL' + LEFT(REPLACE(NEWID(),'-',''), 18);
+		.input('actor_id', sql.VarChar(20), actorId)
+		.input('lesson_id', sql.VarChar(20), lessonId).query(`
       INSERT INTO program_lessons (id, code, title, description, is_active, theory_hours, practice_hours, credits,
                                    lesson_kind, duration_value, duration_unit, allow_split, created_by)
       VALUES (@lesson_id, @code, @title, @description, @is_active, @theory_hours, @practice_hours, @credits,
               @lesson_kind, @duration_value, @duration_unit, @allow_split, @actor_id);
-      SELECT @lesson_id AS id;
     `);
-	const id = result.recordset[0].id;
+	const id = lessonId;
 	if (Array.isArray(data.department_ids)) await setLessonDepartments(id, data.department_ids);
 	broadcast('update', { entity: 'program_lesson' });
 	return { id };
@@ -179,7 +180,7 @@ const setLessonPrograms = async (lessonId, programIds, actorId) => {
 			.input('ids', sql.NVarChar(sql.MAX), JSON.stringify(ids))
 			.input('actor_id', sql.VarChar(20), actorId).query(`
         INSERT INTO lesson_programs (id, lesson_id, program_id, display_order, created_by)
-        SELECT 'LP' + LEFT(REPLACE(NEWID(),'-',''), 18), @lesson_id, tp.id, j.idx, @actor_id
+        SELECT ${newIdSql('LP', 18)}, @lesson_id, tp.id, j.idx, @actor_id
         FROM ${jsonValues('@ids', { withIndex: true })} j JOIN training_programs tp ON tp.id = j.value
       `);
 	broadcast('update', { entity: 'program_lesson' });
@@ -190,22 +191,22 @@ const setLessonPrograms = async (lessonId, programIds, actorId) => {
 // thêm chương trình này.
 const linkLesson = async (programId, lessonId, displayOrder, actorId) => {
 	const pool = await getPool();
-	const result = await pool
+	const newId = randomId('LP', 18);
+	await pool
 		.request()
 		.input('program_id', sql.VarChar(20), programId)
 		.input('lesson_id', sql.VarChar(20), lessonId)
 		.input('display_order', sql.Int, displayOrder || 0)
 		.input('actor_id', sql.VarChar(20), actorId)
+		.input('new_id', sql.VarChar(20), newId)
 		.query(
 			`
       IF EXISTS (SELECT 1 FROM lesson_programs WHERE lesson_id = @lesson_id AND program_id = @program_id)
       BEGIN
         THROW 51003, N'Bài học này đã được gắn vào chương trình rồi.', 1;
       END
-      DECLARE @new_id VARCHAR(20) = 'LP' + LEFT(REPLACE(NEWID(),'-',''), 18);
       INSERT INTO lesson_programs (id, lesson_id, program_id, display_order, created_by)
       VALUES (@new_id, @lesson_id, @program_id, @display_order, @actor_id);
-      SELECT @new_id AS id;
     `,
 		)
 		.catch((err) => {
@@ -215,7 +216,7 @@ const linkLesson = async (programId, lessonId, displayOrder, actorId) => {
 			throw err;
 		});
 	broadcast('update', { entity: 'program_lesson' });
-	return { id: result.recordset[0].id };
+	return { id: newId };
 };
 
 // Đính kèm NHIỀU bài học có sẵn cùng lúc (checkbox multi-select ở FE) — bản
@@ -243,15 +244,16 @@ const linkLessons = async (programId, lessonIds, actorId) => {
 	let linked = 0;
 	for (const lessonId of ids) {
 		if (already.has(lessonId)) continue;
+		const newId = randomId('LP', 18);
 		await pool
 			.request()
 			.input('program_id', sql.VarChar(20), programId)
 			.input('lesson_id', sql.VarChar(20), lessonId)
 			.input('display_order', sql.Int, nextOrder)
-			.input('actor_id', sql.VarChar(20), actorId).query(`
+			.input('actor_id', sql.VarChar(20), actorId)
+			.input('new_id', sql.VarChar(20), newId).query(`
         IF EXISTS (SELECT 1 FROM program_lessons WHERE id = @lesson_id)
         BEGIN
-          DECLARE @new_id VARCHAR(20) = 'LP' + LEFT(REPLACE(NEWID(),'-',''), 18);
           INSERT INTO lesson_programs (id, lesson_id, program_id, display_order, created_by)
           VALUES (@new_id, @lesson_id, @program_id, @display_order, @actor_id);
         END
@@ -399,7 +401,8 @@ const addLessonDocument = async (lessonId, data, file, actorId) => {
 		);
 		fileId = savedFile.id;
 	}
-	const result = await pool
+	const newId = randomId('TB', 18);
+	await pool
 		.request()
 		.input('lesson_id', sql.VarChar(20), lessonId)
 		.input(
@@ -415,14 +418,13 @@ const addLessonDocument = async (lessonId, data, file, actorId) => {
 			sourceType === 'link' ? assertHttpUrl(data.external_url, 'Liên kết') : null,
 		)
 		.input('is_public', sql.Bit, data.is_public === 'false' || data.is_public === false ? 0 : 1)
-		.input('actor_id', sql.VarChar(20), actorId).query(`
-      DECLARE @new_id VARCHAR(20) = 'TB' + LEFT(REPLACE(NEWID(),'-',''), 18);
+		.input('actor_id', sql.VarChar(20), actorId)
+		.input('new_id', sql.VarChar(20), newId).query(`
       INSERT INTO lesson_documents (id, lesson_id, title, source_type, file_id, external_url, is_public, created_by)
       VALUES (@new_id, @lesson_id, @title, @source_type, @file_id, @external_url, @is_public, @actor_id);
-      SELECT @new_id AS id;
     `);
 	broadcast('update', { entity: 'lesson_document' });
-	return { id: result.recordset[0].id };
+	return { id: newId };
 };
 
 const removeLessonDocument = async (docId, actorId) => {

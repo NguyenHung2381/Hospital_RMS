@@ -342,6 +342,17 @@ const jsonValues = (param, { type = 'VARCHAR(50)', withIndex = false } = {}) =>
 const jsonRows = (param, alias, cols) =>
 	`jsonb_to_recordset(CAST(${param} AS jsonb)) AS ${alias}(${cols.map(([c, t]) => `${c} ${pgType(t)}`).join(', ')})`;
 
+// Mã ngẫu nhiên cho từng dòng — cùng giao diện với db.mssql.js (in hoa như NEWID()).
+/**
+ * @param {string} prefix
+ * @param {number} n
+ */
+const newIdSql = (prefix, n) => {
+	if (!/^\w*$/.test(prefix) || !Number.isInteger(n))
+		throw new Error('newIdSql: tham số không hợp lệ');
+	return `CONCAT('${prefix}', UPPER(LEFT(REPLACE(CAST(gen_random_uuid() AS VARCHAR(36)), '-', ''), ${n})))`;
+};
+
 module.exports = {
 	client: 'pg',
 	getPool,
@@ -355,6 +366,7 @@ module.exports = {
 	castBool,
 	jsonValues,
 	jsonRows,
+	newIdSql,
 	sslOptions,
 	toMssqlResult,
 };

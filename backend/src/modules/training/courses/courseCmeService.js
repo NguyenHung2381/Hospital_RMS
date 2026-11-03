@@ -13,7 +13,7 @@
  * Công tắc CME_AUTO_TRAINEE / CME_AUTO_LECTURER (mặc định bật). Thu hồi / xóa
  * luôn chạy (kể cả công tắc tắt) để CME không còn tính cho giấy đã hủy.
  */
-const { getPool, sql } = require('../../../config/db');
+const { getPool, sql, newIdSql } = require('../../../config/db');
 const { broadcast } = require('../../events/eventService');
 const systemSettingService = require('../../settings/systemSettingService');
 const { CLASS_TYPES } = require('./classTypes');
@@ -36,7 +36,7 @@ const UPSERT_SQL = (sourceType) => `
   WHEN NOT MATCHED THEN
     INSERT (id, user_id, category_id, title, activity_date, year, role, quantity, credits, note,
             approval_status, reviewed_by, reviewed_at, source_type, source_id, created_by)
-    VALUES ('CM' + LEFT(REPLACE(NEWID(), '-', ''), 18), s.user_id, s.category_id, s.title, s.activity_date,
+    VALUES (${newIdSql('CM', 18)}, s.user_id, s.category_id, s.title, s.activity_date,
             YEAR(s.activity_date), s.role, s.quantity, s.credits, s.note,
             'approved', @actor_id, GETDATE(), '${sourceType}', @course_id, @actor_id);
   SELECT @@ROWCOUNT AS n;`;

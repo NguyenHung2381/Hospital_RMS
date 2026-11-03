@@ -193,3 +193,12 @@ test('bộ đếm theo năm: có dòng thì tăng; chưa có thì thêm = 1', as
 		(err) => err.statusCode === 409,
 	);
 });
+
+test('randomId / randomHex32: tiền tố + hex in hoa như NEWID cũ, không trùng', () => {
+	const { randomId, randomHex32 } = require('../../src/utils/idGenerator');
+	const ids = new Set(Array.from({ length: 200 }, () => randomId('CM', 18)));
+	assert.equal(ids.size, 200);
+	for (const id of ids) assert.match(id, /^CM[0-9A-F]{18}$/);
+	assert.match(randomId('', 20), /^[0-9A-F]{20}$/);
+	assert.match(randomHex32(), /^[0-9a-f]{32}$/);
+});

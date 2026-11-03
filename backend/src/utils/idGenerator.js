@@ -15,6 +15,7 @@
  * Gọi nhiều lần trong cùng transaction (thêm nhiều dòng) vẫn đúng: lần sau thấy
  * dòng lần trước đã INSERT nên lấy số kế tiếp.
  */
+const { randomUUID } = require('crypto');
 const db = require('../config/db');
 const { httpError } = require('./httpError');
 const { VN_OFFSET_MS } = require('./vnDate');
@@ -335,7 +336,21 @@ const genCmeNo = async (tx, year, actorId = null) => {
 	});
 };
 
+/**
+ * Mã ngẫu nhiên như mã NEWID cũ của SQL Server ('CM' + 18 ký tự): tiền tố + n ký tự
+ * hex in hoa (n ≤ 32). Không cần khoá / transaction. Chèn nhiều dòng trong 1 câu
+ * thì dùng `newIdSql` của adapter (config/db).
+ * @param {string} prefix
+ * @param {number} n
+ */
+const randomId = (prefix, n) => prefix + randomUUID().replace(/-/g, '').toUpperCase().slice(0, n);
+
+/** Chuỗi hex ngẫu nhiên chữ thường, 32 ký tự (thay token NEWID chữ thường cũ). */
+const randomHex32 = () => randomUUID().replace(/-/g, '');
+
 module.exports = {
+	randomId,
+	randomHex32,
 	nextId,
 	maxSeq,
 	isIdLockTimeout,

@@ -1,7 +1,7 @@
 // Ghi 1 hồ sơ thực hành GPHN từ sổ đã đọc (practiceBookImportService): ghi danh + vòng thực hành,
 // bổ sung danh mục lĩnh vực / hình thức / đơn vị cử đi mới gặp.
 const { sql, withTransaction } = require('../../../config/db');
-const { genCourseEnrollmentId } = require('../../../utils/idGenerator');
+const { genCourseEnrollmentId, randomId } = require('../../../utils/idGenerator');
 const { broadcast } = require('../../events/eventService');
 const { invalidate } = require('../../../utils/cache');
 
@@ -66,9 +66,10 @@ const addToCatalogs = async (pool, records, actorId) => {
 			await pool
 				.request()
 				.input('name', sql.NVarChar(len), name)
+				.input('id', sql.VarChar(20), randomId('', 20))
 				.input('actor_id', sql.VarChar(20), actorId).query(`
           IF NOT EXISTS (SELECT 1 FROM ${table} WHERE name = @name)
-            INSERT INTO ${table} (id, name, created_by) VALUES (LEFT(REPLACE(NEWID(), '-', ''), 20), @name, @actor_id)`);
+            INSERT INTO ${table} (id, name, created_by) VALUES (@id, @name, @actor_id)`);
 		if (names.length) {
 			await invalidate(`lookup:${table}:`);
 			broadcast('update', { entity: table.slice(0, -1) });
@@ -155,9 +156,8 @@ const writeRecord = async (pool, it, traineeId, courseId, actorId) => {
 			};
 			for (const [f, t] of Object.entries(ROTATION_TYPES))
 				ins.input(`${f}_${i}`, t, row[f] ?? null);
-			return `('VR' + LEFT(REPLACE(NEWID(),'-',''), 18), @enrollment_id, ${Object.keys(
-				ROTATION_TYPES,
-			)
+			ins.input(`id_${i}`, sql.VarChar(20), randomId('VR', 18));
+			return `(@id_${i}, @enrollment_id, ${Object.keys(ROTATION_TYPES)
 				.map((f) => `@${f}_${i}`)
 				.join(', ')}, @actor_id)`;
 		});

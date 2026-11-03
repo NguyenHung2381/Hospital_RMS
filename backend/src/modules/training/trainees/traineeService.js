@@ -1,5 +1,5 @@
 const { getPool, sql, withActorTransaction, actorRequest } = require('../../../config/db');
-const { genTraineeId } = require('../../../utils/idGenerator');
+const { genTraineeId, randomId } = require('../../../utils/idGenerator');
 const { broadcast } = require('../../events/eventService');
 const { paging } = require('../../../utils/paging');
 const trainingFileService = require('../trainingFileService');
@@ -327,19 +327,19 @@ const addDocument = async (traineeId, docType, file, actorId) => {
 		file,
 		actorId,
 	);
-	const result = await pool
+	const newId = randomId('HS', 18);
+	await pool
 		.request()
 		.input('trainee_id', sql.VarChar(20), traineeId)
 		.input('doc_type', sql.VarChar(30), docType || 'other')
 		.input('file_id', sql.VarChar(20), savedFile.id)
-		.input('actor_id', sql.VarChar(20), actorId).query(`
-      DECLARE @new_id VARCHAR(20) = 'HS' + LEFT(REPLACE(NEWID(),'-',''), 18);
+		.input('actor_id', sql.VarChar(20), actorId)
+		.input('new_id', sql.VarChar(20), newId).query(`
       INSERT INTO trainee_documents (id, trainee_id, doc_type, file_id, created_by)
       VALUES (@new_id, @trainee_id, @doc_type, @file_id, @actor_id);
-      SELECT @new_id AS id;
     `);
 	broadcast('update', { entity: 'trainee_document' });
-	return { id: result.recordset[0].id };
+	return { id: newId };
 };
 
 const removeDocument = async (docId, actorId) => {

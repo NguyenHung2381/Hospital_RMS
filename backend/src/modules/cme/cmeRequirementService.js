@@ -1,4 +1,5 @@
 const { getPool, sql } = require('../../config/db');
+const { randomId } = require('../../utils/idGenerator');
 const { broadcast } = require('../events/eventService');
 const { isDeptAccountSql } = require('../../utils/deptAccount');
 
@@ -24,20 +25,20 @@ const getAll = async ({ year = undefined } = {}) => {
 
 const create = async (data, actorId) => {
 	const pool = await getPool();
-	const result = await pool
+	const newId = randomId('CR', 18);
+	await pool
 		.request()
 		.input('actor_id', sql.VarChar(20), actorId)
 		.input('year', sql.Int, Number(data.year))
 		.input('required_credits', sql.Decimal(6, 2), Number(data.required_credits))
 		.input('department_id', sql.VarChar(20), data.department_id || null)
-		.input('note', sql.NVarChar(255), data.note || null).query(`
-      DECLARE @new_id VARCHAR(20) = 'CR' + LEFT(REPLACE(NEWID(),'-',''), 18);
+		.input('note', sql.NVarChar(255), data.note || null)
+		.input('new_id', sql.VarChar(20), newId).query(`
       INSERT INTO cme_requirements (id, year, required_credits, department_id, note, created_by)
       VALUES (@new_id, @year, @required_credits, @department_id, @note, @actor_id);
-      SELECT @new_id AS id;
     `);
 	broadcast('update', { entity: 'cme_requirement' });
-	return { id: result.recordset[0].id };
+	return { id: newId };
 };
 
 const update = async (id, data, actorId) => {

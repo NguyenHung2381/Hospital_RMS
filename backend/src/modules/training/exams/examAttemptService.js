@@ -1,4 +1,4 @@
-const { getPool, sql, jsonRows } = require('../../../config/db');
+const { getPool, sql, jsonRows, newIdSql } = require('../../../config/db');
 const { broadcast } = require('../../events/eventService');
 const { randomUUID } = require('crypto');
 const { httpError } = require('../../../utils/httpError');
@@ -239,7 +239,7 @@ const submitAttempt = async (paperId, answers, actor) => {
 		.input('actor_id', sql.VarChar(20), actor.id)
 		.input('status', sql.VarChar(20), hasEssay ? 'submitted' : 'graded').query(`
       INSERT INTO exam_answers (id, attempt_id, question_id, selected_option, essay_text, score_awarded)
-      SELECT 'EAN' + LEFT(REPLACE(NEWID(),'-',''), 17), @id, j.question_id, j.selected_option, j.essay_text, j.score_awarded
+      SELECT ${newIdSql('EAN', 17)}, @id, j.question_id, j.selected_option, j.essay_text, j.score_awarded
       FROM ${jsonRows('@answers', 'j', [
 				['question_id', 'VARCHAR(20)'],
 				['selected_option', 'NVARCHAR(255)'],

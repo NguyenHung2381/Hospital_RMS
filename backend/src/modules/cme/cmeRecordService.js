@@ -6,6 +6,7 @@
  * .getComplianceReport) đã cộng dồn cả 2 nguồn.
  */
 const { getPool, sql, jsonValues } = require('../../config/db');
+const { randomId } = require('../../utils/idGenerator');
 const { broadcast } = require('../events/eventService');
 const { paging } = require('../../utils/paging');
 const trainingFileService = require('../training/trainingFileService');
@@ -95,7 +96,8 @@ const getById = async (id) => {
 // opts.fetch=false: bỏ query đọc lại bản ghi — dùng cho import hàng loạt
 const create = async (data, actorId, { fetch = true } = {}) => {
 	const pool = await getPool();
-	const result = await pool
+	const newId = randomId('CM', 18);
+	await pool
 		.request()
 		.input('actor_id', sql.VarChar(20), actorId)
 		.input('user_id', sql.VarChar(20), data.user_id)
@@ -108,13 +110,11 @@ const create = async (data, actorId, { fetch = true } = {}) => {
 		.input('quantity', sql.Decimal(8, 2), data.quantity ?? null)
 		.input('end_date', sql.Date, data.end_date || null)
 		.input('year', sql.Int, Number(data.year) || new Date(data.activity_date).getUTCFullYear())
-		.query(`
-      DECLARE @new_id VARCHAR(20) = 'CM' + LEFT(REPLACE(NEWID(),'-',''), 18);
+		.input('new_id', sql.VarChar(20), newId).query(`
       INSERT INTO cme_records (id, user_id, category_id, title, activity_date, end_date, year, role, quantity, credits, note, created_by)
       VALUES (@new_id, @user_id, @category_id, @title, @activity_date, @end_date, @year, @role, @quantity, @credits, @note, @actor_id);
-      SELECT @new_id AS id;
     `);
-	const id = result.recordset[0].id;
+	const id = newId;
 	broadcast('update', { entity: 'cme_record' });
 	return fetch ? getById(id) : { id };
 };

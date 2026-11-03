@@ -1,4 +1,5 @@
 const { getPool, sql, withTransaction } = require('../../../config/db');
+const { randomId } = require('../../../utils/idGenerator');
 const { broadcast } = require('../../events/eventService');
 const { removeUploadedFile, toStoredUploadPath } = require('../../../utils/uploadPaths');
 const { httpError } = require('../../../utils/httpError');
@@ -72,7 +73,8 @@ const getQuestion = async (id) => {
 // request: pool.request() hoặc transaction.request() — dùng chung cho tạo lẻ và nhập hàng loạt
 const insertQuestion = async (request, data, actorId) => {
 	const type = QUESTION_TYPES.includes(data.question_type) ? data.question_type : 'single_choice';
-	const result = await request
+	const newId = randomId('QB', 18);
+	await request
 		.input('subject_id', sql.VarChar(20), data.subject_id || null)
 		.input('program_id', sql.VarChar(20), data.program_id || null)
 		.input('qpool', sql.VarChar(10), POOLS.includes(data.pool) ? data.pool : 'final')
@@ -90,13 +92,12 @@ const insertQuestion = async (request, data, actorId) => {
 		)
 		.input('points', sql.Decimal(4, 1), data.points || 1)
 		.input('image_url', sql.NVarChar(500), imagePath(data.image_url))
-		.input('actor_id', sql.VarChar(20), actorId).query(`
-      DECLARE @new_id VARCHAR(20) = 'QB' + LEFT(REPLACE(NEWID(),'-',''), 18);
+		.input('actor_id', sql.VarChar(20), actorId)
+		.input('new_id', sql.VarChar(20), newId).query(`
       INSERT INTO question_bank (id, subject_id, program_id, pool, question_type, question_text, options, correct_option, points, image_url, created_by)
       VALUES (@new_id, @subject_id, @program_id, @qpool, @question_type, @question_text, @options, @correct_option, @points, @image_url, @actor_id);
-      SELECT @new_id AS id;
     `);
-	return result.recordset[0].id;
+	return newId;
 };
 
 const createQuestion = async (data, actorId) => {

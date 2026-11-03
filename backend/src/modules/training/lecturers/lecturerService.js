@@ -5,6 +5,7 @@ const {
 	actorRequest,
 	boolExpr,
 } = require('../../../config/db');
+const { randomId } = require('../../../utils/idGenerator');
 const { broadcast } = require('../../events/eventService');
 const { paging } = require('../../../utils/paging');
 const personService = require('../../persons/personService');
@@ -80,7 +81,8 @@ const getById = async (id) => {
 const create = async (data, actorId) => {
 	const pool = await getPool();
 	await assertNotTraineeAccount(pool, data.user_id);
-	const result = await withActorTransaction(actorId, (tx) =>
+	const newId = randomId('GV', 18);
+	await withActorTransaction(actorId, (tx) =>
 		tx
 			.request()
 			.input('actor_id', sql.VarChar(20), actorId)
@@ -94,14 +96,13 @@ const create = async (data, actorId) => {
 			.input('academic_rank', sql.NVarChar(50), data.academic_rank || null)
 			.input('dob', sql.Date, data.dob || null)
 			.input('gender', sql.VarChar(10), normalizeGender(data.gender))
-			.input('avatar_url', sql.NVarChar(500), data.avatar_url || null).query(`
-      DECLARE @new_id VARCHAR(20) = 'GV' + LEFT(REPLACE(NEWID(),'-',''), 18);
+			.input('avatar_url', sql.NVarChar(500), data.avatar_url || null)
+			.input('new_id', sql.VarChar(20), newId).query(`
       INSERT INTO lecturers (id, user_id, full_name, specialty, is_external, phone, email, academic_degree, academic_rank, dob, gender, avatar_url, created_by)
       VALUES (@new_id, @user_id, @full_name, @specialty, @is_external, @phone, @email, @academic_degree, @academic_rank, @dob, @gender, @avatar_url, @actor_id);
-      SELECT @new_id AS id;
     `),
 	);
-	const id = result.recordset[0].id;
+	const id = newId;
 	await personService.syncPerson('lecturers', id, { actorId });
 	broadcast('update', { entity: 'lecturer' });
 	return getById(id);

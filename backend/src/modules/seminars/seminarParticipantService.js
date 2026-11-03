@@ -21,6 +21,7 @@ const formCustomValueService = require('../forms/formCustomValueService');
 const personService = require('../persons/personService');
 const { normalizeGender } = require('../../utils/gender');
 const { httpError } = require('../../utils/httpError');
+const { randomId } = require('../../utils/idGenerator');
 const { deptAccountJoinSql, isDeptAccountJoinedSql } = require('../../utils/deptAccount');
 
 // Mã QR điểm danh hội thảo — JWT ngắn hạn ký seminar_id (mirror
@@ -31,7 +32,7 @@ const CHECKIN_QR_PURPOSE = 'seminar_checkin_qr';
 const PART_TYPES = ['attendee', 'speaker', 'chair', 'organizer', 'trainee'];
 const SOURCES = ['internal', 'external'];
 // Sinh id trong SQL: 'SPT' + 21 hex = 24 ký tự
-const NEW_ID_SQL = `'SPT' + LEFT(REPLACE(CONVERT(VARCHAR(36), NEWID()), '-', ''), 21)`;
+const newParticipantId = () => randomId('SPT', 21);
 
 const listBySeminar = async (seminarId) => {
 	const pool = await getPool();
@@ -115,13 +116,15 @@ const add = async (seminarId, data, actorId) => {
 	if (!data.full_name || !String(data.full_name).trim()) {
 		throw httpError(400, 'Họ tên không được để trống.');
 	}
-	const req = actorRequest(actorId).input('actor_id', sql.VarChar(20), actorId);
-	const insert = bindInsert(req, '@id', seminarId, data);
-	const r = await req.query(`
-    DECLARE @id VARCHAR(24) = ${NEW_ID_SQL};
-    ${insert}
-    SELECT * FROM seminar_participants WHERE id = @id;
-  `);
+	const id = newParticipantId();
+	const req = actorRequest(actorId)
+		.input('actor_id', sql.VarChar(20), actorId)
+		.input('id', sql.VarChar(24), id);
+	await req.query(bindInsert(req, '@id', seminarId, data));
+	const r = await pool
+		.request()
+		.input('id', sql.VarChar(24), id)
+		.query('SELECT * FROM seminar_participants WHERE id = @id');
 	if (r.recordset[0])
 		await personService.syncPerson('seminar_participants', r.recordset[0].id, { actorId });
 	broadcast('update', { entity: 'seminar' });
@@ -137,14 +140,12 @@ const bulkAdd = async (seminarId, rows, actorId) => {
 		await withActor(tx, actorId);
 		const inserted = [];
 		for (const row of valid) {
-			const req = new sql.Request(tx).input('actor_id', sql.VarChar(20), actorId);
-			const insert = bindInsert(req, '@id', seminarId, row);
-			const r = await req.query(`
-        DECLARE @id VARCHAR(24) = ${NEW_ID_SQL};
-        ${insert}
-        SELECT @id AS id;
-      `);
-			inserted.push(r.recordset[0].id);
+			const id = newParticipantId();
+			const req = new sql.Request(tx)
+				.input('actor_id', sql.VarChar(20), actorId)
+				.input('id', sql.VarChar(24), id);
+			await req.query(bindInsert(req, '@id', seminarId, row));
+			inserted.push(id);
 		}
 		return inserted;
 	}, pool);

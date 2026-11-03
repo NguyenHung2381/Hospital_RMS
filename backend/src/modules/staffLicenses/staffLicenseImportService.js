@@ -8,6 +8,7 @@
  */
 const { getPool, sql, actorRequest } = require('../../config/db');
 const { isUniqueViolation } = require('../../utils/dbErrors');
+const { randomId } = require('../../utils/idGenerator');
 const { broadcast } = require('../events/eventService');
 const { norm, normDept } = require('../../utils/vietnameseText');
 const { normalizeGender } = require('../../utils/gender');
@@ -275,11 +276,12 @@ const importExcel = async ({ buffer, dry_run }, actorId) => {
 				.input('actor_id', sql.VarChar(20), actorId)
 				.input('user_id', sql.VarChar(20), it.user_id);
 			for (const f of keys) req.input(f, typeOf[f], it.values[f]);
+			if (!it.license_id) req.input('new_id', sql.VarChar(20), randomId('LIC', 17));
 			const query = it.license_id
 				? `UPDATE staff_practice_licenses SET ${keys.map((f) => `${f} = @${f}`).join(', ')},
 				     updated_at = GETDATE(), updated_by = @actor_id WHERE user_id = @user_id`
 				: `INSERT INTO staff_practice_licenses (id, user_id, ${keys.join(', ')}, created_by)
-				   VALUES ('LIC' + LEFT(REPLACE(NEWID(),'-',''), 17), @user_id, ${keys.map((f) => `@${f}`).join(', ')}, @actor_id)`;
+				   VALUES (@new_id, @user_id, ${keys.map((f) => `@${f}`).join(', ')}, @actor_id)`;
 			try {
 				await req.query(`${query}`);
 				ok = true;

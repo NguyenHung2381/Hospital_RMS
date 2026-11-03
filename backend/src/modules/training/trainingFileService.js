@@ -1,4 +1,5 @@
 const { getPool, sql } = require('../../config/db');
+const { randomId } = require('../../utils/idGenerator');
 const { removeUploadedFile } = require('../../utils/uploadPaths');
 
 // multer/busboy đọc tên file từ header multipart bằng latin1 theo mặc định,
@@ -12,7 +13,8 @@ const decodeOriginalName = (name) => Buffer.from(name, 'latin1').toString('utf8'
 const saveUploadedFile = async (entityType, entityId, file, actorId) => {
 	const pool = await getPool();
 	const relativeUrl = `/uploads/training/${entityType}/${entityId}/${file.filename}`;
-	const result = await pool
+	const newId = randomId('TF', 18);
+	await pool
 		.request()
 		.input('entity_type', sql.VarChar(30), entityType)
 		.input('entity_id', sql.VarChar(20), entityId)
@@ -20,13 +22,16 @@ const saveUploadedFile = async (entityType, entityId, file, actorId) => {
 		.input('file_url', sql.NVarChar(500), relativeUrl)
 		.input('mime_type', sql.VarChar(150), file.mimetype || null)
 		.input('file_size', sql.BigInt, file.size || null)
-		.input('actor_id', sql.VarChar(20), actorId).query(`
-      DECLARE @new_id VARCHAR(20) = 'TF' + LEFT(REPLACE(NEWID(),'-',''), 18);
+		.input('actor_id', sql.VarChar(20), actorId)
+		.input('new_id', sql.VarChar(20), newId).query(`
       INSERT INTO training_files (id, entity_type, entity_id, file_name, file_url, mime_type, file_size, created_by)
-      VALUES (@new_id, @entity_type, @entity_id, @file_name, @file_url, @mime_type, @file_size, @actor_id);
-      SELECT * FROM training_files WHERE id = @new_id;
+      VALUES (@new_id, @entity_type, @entity_id, @file_name, @file_url, @mime_type, @file_size, @actor_id)
     `);
-	return result.recordset[0];
+	const r = await pool
+		.request()
+		.input('id', sql.VarChar(20), newId)
+		.query('SELECT * FROM training_files WHERE id = @id');
+	return r.recordset[0];
 };
 
 const getById = async (fileId) => {

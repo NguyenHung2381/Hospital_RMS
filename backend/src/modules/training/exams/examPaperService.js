@@ -1,4 +1,5 @@
-const { getPool, sql, withTransaction, jsonValues } = require('../../../config/db');
+const { getPool, sql, withTransaction, jsonValues, newIdSql } = require('../../../config/db');
+const { randomId } = require('../../../utils/idGenerator');
 const { broadcast } = require('../../events/eventService');
 const { httpError } = require('../../../utils/httpError');
 const { seededRandom } = require('./examGen');
@@ -99,7 +100,7 @@ const insertPaperQuestions = async (paperId, ids, codeNo, actorId, onlyType = nu
 		.input('code_no', sql.Int, codeNo)
 		.input('actor_id', sql.VarChar(20), actorId || null).query(`
       INSERT INTO exam_paper_questions (id, paper_id, question_id, sort_order, code_no, created_by)
-      SELECT 'EPQ' + LEFT(REPLACE(NEWID(),'-',''), 17), @paper_id, q.id, j.idx, @code_no, @actor_id
+      SELECT ${newIdSql('EPQ', 17)}, @paper_id, q.id, j.idx, @code_no, @actor_id
       FROM ${jsonValues('@ids', { withIndex: true })} j
       JOIN question_bank q ON q.id = j.value
       WHERE @only_type IS NULL OR q.question_type = @only_type
@@ -181,7 +182,8 @@ const normPaper = (data) => {
 const createPaper = async (data, actorId) => {
 	const { random, code_mode } = normPaper(data);
 	const pool = await getPool();
-	const result = await pool
+	const newId = randomId('EP', 18);
+	await pool
 		.request()
 		.input('course_id', sql.VarChar(20), data.course_id)
 		.input('subject_id', sql.VarChar(20), data.subject_id || null)
@@ -211,15 +213,14 @@ const createPaper = async (data, actorId) => {
 			sql.Decimal(5, 2),
 			data.weight === '' || data.weight == null ? null : Number(data.weight),
 		)
-		.input('actor_id', sql.VarChar(20), actorId).query(`
-      DECLARE @new_id VARCHAR(20) = 'EP' + LEFT(REPLACE(NEWID(),'-',''), 18);
+		.input('actor_id', sql.VarChar(20), actorId)
+		.input('new_id', sql.VarChar(20), newId).query(`
       INSERT INTO exam_papers (id, course_id, subject_id, title, paper_type, duration_minutes, status, exam_part, blind_grading,
                                purpose, program_id, gen_mc_count, gen_essay_count, code_mode, code_count, weight, created_by)
       VALUES (@new_id, @course_id, @subject_id, @title, @paper_type, @duration_minutes, @status, @exam_part, @blind_grading,
               @purpose, @program_id, @gen_mc_count, @gen_essay_count, @code_mode, @code_count, @weight, @actor_id);
-      SELECT @new_id AS id;
     `);
-	const id = result.recordset[0].id;
+	const id = newId;
 	try {
 		if (random) await generatePaperQuestions(id, actorId);
 		else if (Array.isArray(data.question_ids) && data.question_ids.length)

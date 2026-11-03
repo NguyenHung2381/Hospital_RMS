@@ -10,7 +10,7 @@
  * Vòng đã có kết quả (Đạt / Không đạt) là lịch sử: sinh lại / xếp lại không xóa, không đổi ngày.
  * Danh sách trả kèm cảnh báo từng dòng (không chặn).
  */
-const { getPool, sql } = require('../../../config/db');
+const { getPool, sql, newIdSql } = require('../../../config/db');
 const { appErrorCode } = require('../../../utils/dbErrors');
 const { broadcast } = require('../../events/eventService');
 const { httpError } = require('../../../utils/httpError');
@@ -20,7 +20,7 @@ const { planSchedule, describeSpan, findWarnings } = require('./rotationPlanner'
 
 const SEQ_STEP = 10;
 const RESULTS = ['pending', 'pass', 'fail'];
-const newId = "'VR' + LEFT(REPLACE(NEWID(),'-',''), 18)";
+const newId = newIdSql('VR', 18);
 
 const notify = () => broadcast('update', { entity: 'course_enrollment' });
 

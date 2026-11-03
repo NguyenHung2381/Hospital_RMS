@@ -3,7 +3,7 @@ const { createCrudService } = require('../../shared/crudService');
 const { broadcast } = require('../events/eventService');
 
 // Constraint CHK_cat_id yêu cầu id LIKE 'LDT[0-9][0-9]' → LDT01, LDT02, ...
-// crudService dùng NEWID() (hex) nên phải override hàm create riêng.
+// crudService sinh mã hex ngẫu nhiên (randomId) nên phải override hàm create riêng.
 const _catBase = createCrudService('categories', 5, 'LDT', [
 	{ table: 'topics', column: 'category_id', label: 'đề tài' },
 ]);

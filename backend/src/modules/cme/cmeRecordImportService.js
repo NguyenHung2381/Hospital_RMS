@@ -239,7 +239,7 @@ const importExcel = async ({ buffer, dry_run, defaults }, actorId) => {
 	}
 	for (const p of preview) if (p.new_staff && !p.user_id) p.user_id = p.new_staff.user_id || null;
 
-	// Id sinh bằng NEWID() nên chèn song song an toàn — chạy theo lô CONCURRENCY
+	// Id ngẫu nhiên (không cần khoá) nên chèn song song an toàn — chạy theo lô CONCURRENCY
 	// dòng thay vì tuần tự từng dòng (pool DB tối đa 10 kết nối). Dòng lỗi không làm
 	// hỏng cả lần nhập: ghi lại để báo, các dòng khác vẫn nhập (nhập lại cả file sẽ trùng).
 	const CONCURRENCY = 5;

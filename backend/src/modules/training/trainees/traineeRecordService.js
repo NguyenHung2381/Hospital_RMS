@@ -1,4 +1,5 @@
 const { getPool, sql } = require('../../../config/db');
+const { randomId } = require('../../../utils/idGenerator');
 const { broadcast } = require('../../events/eventService');
 const { httpError } = require('../../../utils/httpError');
 const trainingFileService = require('../trainingFileService');
@@ -125,13 +126,14 @@ const addMyDocument = async (userId, docType, file) => {
 		file,
 		userId,
 	);
+	const newId = randomId('HS', 18);
 	await pool
 		.request()
 		.input('trainee_id', sql.VarChar(20), traineeId)
 		.input('doc_type', sql.VarChar(30), type.id)
 		.input('file_id', sql.VarChar(20), saved.id)
-		.input('actor_id', sql.VarChar(20), userId).query(`
-      DECLARE @new_id VARCHAR(20) = 'HS' + LEFT(REPLACE(NEWID(),'-',''), 18);
+		.input('actor_id', sql.VarChar(20), userId)
+		.input('new_id', sql.VarChar(20), newId).query(`
       INSERT INTO trainee_documents (id, trainee_id, doc_type, file_id, status, created_by)
       VALUES (@new_id, @trainee_id, @doc_type, @file_id, 'pending', @actor_id);
     `);

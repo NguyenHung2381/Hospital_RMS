@@ -185,6 +185,18 @@ const jsonValues = (param, { type = 'VARCHAR(50)', withIndex = false } = {}) =>
 const jsonRows = (param, alias, cols) =>
 	`OPENJSON(${param}) WITH (${cols.map(([c, t]) => `${c} ${t}`).join(', ')}) ${alias}`;
 
+// Mã ngẫu nhiên cho từng dòng khi chèn nhiều dòng 1 câu (INSERT ... SELECT):
+// tiền tố + n ký tự hex in hoa. 1 dòng thì sinh bằng JS (utils/idGenerator.randomId).
+/**
+ * @param {string} prefix chỉ chữ / số / _
+ * @param {number} n
+ */
+const newIdSql = (prefix, n) => {
+	if (!/^\w*$/.test(prefix) || !Number.isInteger(n))
+		throw new Error('newIdSql: tham số không hợp lệ');
+	return `CONCAT('${prefix}', LEFT(REPLACE(CAST(NEWID() AS VARCHAR(36)), '-', ''), ${n}))`;
+};
+
 module.exports = {
 	client: 'mssql',
 	getPool,
@@ -198,5 +210,6 @@ module.exports = {
 	castBool,
 	jsonValues,
 	jsonRows,
+	newIdSql,
 	tlsOptions,
 };

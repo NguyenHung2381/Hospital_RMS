@@ -1,4 +1,5 @@
 const { getPool, sql } = require('../../config/db');
+const { randomId } = require('../../utils/idGenerator');
 const { broadcast } = require('../events/eventService');
 
 const listAuthors = async (topicId) => {
@@ -24,6 +25,7 @@ const setAuthors = async (topicId, authors, actorId) => {
 	let order = 0;
 	for (const a of authors || []) {
 		if (!a || !a.author_name) continue;
+		const newId = randomId('TG', 18);
 		await pool
 			.request()
 			.input('topic_id', sql.VarChar(15), topicId)
@@ -31,8 +33,8 @@ const setAuthors = async (topicId, authors, actorId) => {
 			.input('affiliation', sql.NVarChar(255), a.affiliation || null)
 			.input('author_order', sql.Int, order)
 			.input('is_corresponding', sql.Bit, a.is_corresponding ? 1 : 0)
-			.input('actor_id', sql.VarChar(20), actorId).query(`
-        DECLARE @new_id VARCHAR(20) = 'TG' + LEFT(REPLACE(NEWID(),'-',''), 18);
+			.input('actor_id', sql.VarChar(20), actorId)
+			.input('new_id', sql.VarChar(20), newId).query(`
         INSERT INTO topic_authors (id, topic_id, author_name, affiliation, author_order, is_corresponding, created_by)
         VALUES (@new_id, @topic_id, @author_name, @affiliation, @author_order, @is_corresponding, @actor_id);
       `);

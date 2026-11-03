@@ -105,9 +105,9 @@ bước A và giữ máy Windows hiện tại tới khi xong bước B.
 | `ISNULL(` | 108 (33) — **đã đổi hết** | `COALESCE(` (chạy được trên cả 2 DB) |
 | `EXEC sp_set_actor @actor_id; ...` | 76 (27) | `set_config('app.current_user_id', $1, true)` trong transaction |
 | `EXEC sp_gen_*` / `.execute(...)` | ~20 / 10 → 0 (đã xong) | Hàm sinh mã `src/utils/idGenerator.js` (mục 5.4) |
-| `DECLARE @...` (batch nhiều câu) | 80 (47) | Viết lại: CTE, nhiều lời gọi JS, hoặc hàm PL/pgSQL |
+| `DECLARE @...` (batch nhiều câu) | 80 (47) → 32 | Viết lại: CTE, nhiều lời gọi JS, hoặc hàm PL/pgSQL |
 | `TOP n` | 71 (45) | `LIMIT n` (hoặc `FETCH FIRST n ROWS ONLY`, chạy cả 2 DB) |
-| `NEWID()` | 42 (27) | `gen_random_uuid()` |
+| `NEWID()` | 42 (27) — **đã đổi hết** | `randomId` / `randomHex32` (JS) hoặc `newIdSql` của adapter |
 | `OPENJSON(@ids)` | 31 (15) | `= ANY($1::text[])` hoặc `jsonb_array_elements_text($1)` |
 | `DATEADD` / `DATEDIFF` | 31 (18) | `+ interval '...'`, `date_part`, phép trừ ngày |
 | `STRING_AGG(...) WITHIN GROUP (ORDER BY ...)` | 25 (13) | `string_agg(x, ',' ORDER BY ...)` |
@@ -456,7 +456,7 @@ thường. Mỗi nhóm là 1 PR nhỏ theo module.
     tham số trong `COALESCE(cột, @x)`.
 - [ ] Đợt sau: 34 chuỗi `N'...'` tiếng Việt còn lại (đa số trong lô nhiều câu / bảng tạm của
   dashboard, báo cáo CME, `courseCmeService`, các `THROW`) đổi sang tham số khi viết lại các lô đó;
-  `+` nối chuỗi trong mã sinh từ `NEWID()` (mục newid).
+  ~~`+` nối chuỗi trong mã sinh từ `NEWID()`~~ (đã xong cùng đợt 1 mục DECLARE).
 - [x] `OPENJSON` → helper của adapter (31 → 0): `jsonValues('@ids', { type, withIndex })` (mảng →
   bảng cột `value`, `idx` từ 0; PG: `jsonb_array_elements_text ... WITH ORDINALITY`) và
   `jsonRows('@rows', alias, cột)` thay `OPENJSON ... WITH` (PG: `jsonb_to_recordset`, `NVARCHAR` tự đổi
@@ -466,6 +466,16 @@ thường. Mỗi nhóm là 1 PR nhỏ theo module.
   Lưu ý: `ORDER BY` cột có NULL — SQL Server xếp NULL **đầu**, PG xếp **cuối** (cần thì ghi rõ
   `CASE WHEN x IS NULL THEN 0 ELSE 1 END, x`).
 - [ ] Tách các batch `DECLARE ...` và `recordsets[i]` thành nhiều lời gọi JS (mục 5.2).
+  - [x] Đợt 1 — mã ngẫu nhiên (`DECLARE @new_id = 'XX' + LEFT(REPLACE(NEWID()...))`): 1 dòng thì sinh
+    bằng JS `randomId(prefix, n)` / `randomHex32()` (`utils/idGenerator`), truyền vào bằng tham số và
+    bỏ `SELECT @new_id AS id`; chèn nhiều dòng 1 câu thì `newIdSql(prefix, n)` của adapter (PG:
+    `gen_random_uuid()` in hoa). `crudService.create`, người tham dự hội thảo, file đào tạo: INSERT
+    rồi SELECT là 2 câu. newid 42 → 0, declare 60 → 32 (tổng ratchet 719 → 646). Kiểm bằng
+    `test-integration/randomIds.cases.js` (PG bỏ ca `bulkAdd` vì `personService` còn dùng `OBJECT_ID`).
+  - [ ] Đợt sau: 32 lô `DECLARE` còn lại là lô logic (`@r TABLE`, `@seq`, `@depts`, `@year/@from` của
+    dashboard, `enrollmentRotationService`, `courseCmeService`, `seminarPublicService`,
+    `practiceBookWriter`, `traineeAccountService`, CRUD danh mục / vai trò) và 110 chỗ `recordsets[i]`
+    (31 ở `dashboardService`).
 - [ ] Bỏ các chỗ phụ thuộc thứ tự ngầm: mọi câu trả danh sách phải có `ORDER BY`.
 - [x] Ghi baseline smoke test (`UPDATE_SNAPSHOTS=1 npm run test:smoke`, đã ghi 2026-11-03;
   bản 24/10 lưu ở `get-shapes.2026-10-24.bak.json`) **trước**

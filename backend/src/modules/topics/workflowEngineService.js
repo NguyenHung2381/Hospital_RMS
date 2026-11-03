@@ -9,6 +9,7 @@
  * tự suy diễn generic vì mỗi resource có luật đổi trạng thái riêng.
  */
 const { getPool, sql } = require('../../config/db');
+const { randomId } = require('../../utils/idGenerator');
 const { isMissingTable } = require('../../utils/dbErrors');
 const { broadcast } = require('../events/eventService');
 const { httpError } = require('../../utils/httpError');
@@ -94,6 +95,7 @@ const setSteps = async (definitionId, steps, actorId) => {
 	for (const s of steps || []) {
 		if (!s || !s.name) continue;
 		order += 1;
+		const newId = randomId('WFS', 17);
 		await pool
 			.request()
 			.input('definition_id', sql.VarChar(20), definitionId)
@@ -101,8 +103,8 @@ const setSteps = async (definitionId, steps, actorId) => {
 			.input('name', sql.NVarChar(255), s.name)
 			.input('approver_role_id', sql.VarChar(20), s.approver_role_id || null)
 			.input('sla_days', sql.Int, s.sla_days || null)
-			.input('actor_id', sql.VarChar(20), actorId || null).query(`
-        DECLARE @new_id VARCHAR(20) = 'WFS' + LEFT(REPLACE(NEWID(),'-',''), 17);
+			.input('actor_id', sql.VarChar(20), actorId || null)
+			.input('new_id', sql.VarChar(20), newId).query(`
         INSERT INTO workflow_steps (id, definition_id, step_order, name, approver_role_id, sla_days, created_by)
         VALUES (@new_id, @definition_id, @step_order, @name, @approver_role_id, @sla_days, @actor_id);
       `);
@@ -115,18 +117,18 @@ const setSteps = async (definitionId, steps, actorId) => {
 // trên cùng loại đối tượng.
 const createDefinition = async (data, actorId) => {
 	const pool = await getPool();
-	const result = await pool
+	const newId = randomId('WFD', 17);
+	await pool
 		.request()
 		.input('resource', sql.VarChar(50), data.resource)
 		.input('name', sql.NVarChar(255), data.name)
 		.input('is_active', sql.Bit, data.is_active ? 1 : 0)
-		.input('actor_id', sql.VarChar(20), actorId).query(`
-      DECLARE @new_id VARCHAR(20) = 'WFD' + LEFT(REPLACE(NEWID(),'-',''), 17);
+		.input('actor_id', sql.VarChar(20), actorId)
+		.input('new_id', sql.VarChar(20), newId).query(`
       INSERT INTO workflow_definitions (id, resource, name, is_active, created_by)
       VALUES (@new_id, @resource, @name, @is_active, @actor_id);
-      SELECT @new_id AS id;
     `);
-	const id = result.recordset[0].id;
+	const id = newId;
 	if (data.is_active) await deactivateOthers(id, data.resource);
 	if (Array.isArray(data.steps)) await setSteps(id, data.steps, actorId);
 	broadcast('update', { entity: 'workflow_definition' });
@@ -190,25 +192,26 @@ const getOrCreateInstance = async (definition, entityId, actorId) => {
 	if (existing.recordset[0]) return existing.recordset[0];
 
 	const firstStep = definition.steps[0];
-	const created = await pool
+	const newId = randomId('WFI', 17);
+	await pool
 		.request()
 		.input('definition_id', sql.VarChar(20), definition.id)
 		.input('entity_id', sql.VarChar(20), entityId)
-		.input('actor_id', sql.VarChar(20), actorId || null).query(`
-      DECLARE @new_id VARCHAR(20) = 'WFI' + LEFT(REPLACE(NEWID(),'-',''), 17);
+		.input('actor_id', sql.VarChar(20), actorId || null)
+		.input('new_id', sql.VarChar(20), newId).query(`
       INSERT INTO workflow_instances (id, definition_id, entity_id, created_by) VALUES (@new_id, @definition_id, @entity_id, @actor_id);
-      SELECT @new_id AS id;
     `);
-	const instanceId = created.recordset[0].id;
+	const instanceId = newId;
 
 	if (firstStep) {
+		const taskId = randomId('WFT', 17);
 		await pool
 			.request()
 			.input('instance_id', sql.VarChar(20), instanceId)
 			.input('step_id', sql.VarChar(20), firstStep.id)
 			.input('assignee_role_id', sql.VarChar(20), firstStep.approver_role_id || null)
-			.input('actor_id', sql.VarChar(20), actorId || null).query(`
-        DECLARE @new_id VARCHAR(20) = 'WFT' + LEFT(REPLACE(NEWID(),'-',''), 17);
+			.input('actor_id', sql.VarChar(20), actorId || null)
+			.input('new_id', sql.VarChar(20), taskId).query(`
         INSERT INTO workflow_tasks (id, instance_id, step_id, assignee_role_id, created_by)
         VALUES (@new_id, @instance_id, @step_id, @assignee_role_id, @actor_id);
       `);
@@ -342,13 +345,14 @@ const advance = async (resource, entityId, decision, actor, comment) => {
 		.query(
 			'UPDATE workflow_instances SET current_step = @step, updated_at = GETDATE(), updated_by = @actor_id WHERE id = @id',
 		);
+	const taskId = randomId('WFT', 17);
 	await pool
 		.request()
 		.input('instance_id', sql.VarChar(20), instance.id)
 		.input('step_id', sql.VarChar(20), nextStep.id)
 		.input('assignee_role_id', sql.VarChar(20), nextStep.approver_role_id || null)
-		.input('actor_id', sql.VarChar(20), actor.id).query(`
-      DECLARE @new_id VARCHAR(20) = 'WFT' + LEFT(REPLACE(NEWID(),'-',''), 17);
+		.input('actor_id', sql.VarChar(20), actor.id)
+		.input('new_id', sql.VarChar(20), taskId).query(`
       INSERT INTO workflow_tasks (id, instance_id, step_id, assignee_role_id, created_by)
       VALUES (@new_id, @instance_id, @step_id, @assignee_role_id, @actor_id);
     `);

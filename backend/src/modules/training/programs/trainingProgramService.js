@@ -1,5 +1,6 @@
 // Chương trình đào tạo. Bài học + tài liệu bài học ở programLessonService (export lại ở đây để nơi gọi giữ nguyên).
 const { getPool, sql, withActorTransaction, actorRequest } = require('../../../config/db');
+const { randomId } = require('../../../utils/idGenerator');
 const { isUniqueViolation } = require('../../../utils/dbErrors');
 const { broadcast } = require('../../events/eventService');
 const { paging } = require('../../../utils/paging');
@@ -194,17 +195,17 @@ const create = async (data, actorId) => {
 			field === 'display_order' ? input[field] || 0 : emptyToNull(input[field]),
 		);
 	}
-	const result = await req
+	const newId = randomId('CT', 18);
+	await req
+		.input('new_id', sql.VarChar(20), newId)
 		.query(
 			`
-      DECLARE @new_id VARCHAR(20) = 'CT' + LEFT(REPLACE(NEWID(),'-',''), 18);
       INSERT INTO training_programs (id, ${cols.join(', ')}, created_by)
       VALUES (@new_id, ${cols.map((c) => `@${c}`).join(', ')}, @actor_id);
-      SELECT @new_id AS id;
     `,
 		)
 		.catch(rethrowDuplicateCode);
-	const id = result.recordset[0].id;
+	const id = newId;
 	if (typeIds) await setProgramTraineeTypes(id, typeIds);
 	broadcast('update', { entity: 'training_program' });
 	return getById(id);

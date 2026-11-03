@@ -5,6 +5,7 @@
  * seminarParticipantService; ở đây chỉ CRUD sự kiện + số liệu tổng hợp.
  */
 const { getPool, sql, withActorTransaction, actorRequest } = require('../../config/db');
+const { randomId, randomHex32 } = require('../../utils/idGenerator');
 const { broadcast } = require('../events/eventService');
 const { paging } = require('../../utils/paging');
 const { splitList, inClause, buildWhere } = require('../../utils/sqlFilters');
@@ -31,8 +32,6 @@ const EVENT_TYPES = [
 	'other',
 ];
 const SCOPES = ['external', 'hosted'];
-
-const genIdExpr = `'SEM' + LEFT(REPLACE(CONVERT(VARCHAR(36), NEWID()), '-', ''), 17)`;
 
 // Cột đếm dùng chung cho list + detail
 const countSelect = `
@@ -185,9 +184,12 @@ const optionalNumber = (v, label, { min, max, integer = false }) => {
 const create = async (input, actorId) => {
 	const data = ht.applyLessonCredits(input);
 	const pool = await getPool();
-	const result = await withActorTransaction(actorId, (tx) =>
+	const newId = randomId('SEM', 17);
+	await withActorTransaction(actorId, (tx) =>
 		tx
 			.request()
+			.input('new_id', sql.VarChar(20), newId)
+			.input('public_token', sql.VarChar(32), randomHex32())
 			.input('actor_id', sql.VarChar(20), actorId)
 			.input('title', sql.NVarChar(500), data.title)
 			.input('event_type', sql.VarChar(30), normalizeType(data.event_type))
@@ -220,7 +222,6 @@ const create = async (input, actorId) => {
 			.input('organizer_department_id', sql.VarChar(20), data.organizer_department_id || null)
 			.input('topic_id', sql.VarChar(20), data.topic_id || null)
 			.input('lesson_hours', sql.Decimal(4, 1), data.lesson_hours ?? null).query(`
-      DECLARE @new_id VARCHAR(20) = ${genIdExpr};
       INSERT INTO seminars
         (id, title, event_type, event_type_raw, scope, location, start_date, end_date,
          start_time, end_time, date_text, event_year, host_chair, speakers, permit_doc_no, co_organizers,
@@ -234,13 +235,12 @@ const create = async (input, actorId) => {
          @grants_cme, @cme_default_credits, @coordinator, @notes,
          @manual_participant_count, @manual_internal_count, @manual_external_count,
          @manual_foreign_count, @manual_cme_count, @organizer_department_id, @topic_id, @lesson_hours,
-         LOWER(REPLACE(CONVERT(VARCHAR(36), NEWID()), '-', '')), @actor_id);
-      SELECT @new_id AS id;
+         @public_token, @actor_id)
     `),
 	);
-	await ht.setRequiredDepartments(pool, result.recordset[0].id, data.required_department_ids);
+	await ht.setRequiredDepartments(pool, newId, data.required_department_ids);
 	broadcast('update', { entity: 'seminar' });
-	return getById(result.recordset[0].id);
+	return getById(newId);
 };
 
 const FIELD_TYPES = {

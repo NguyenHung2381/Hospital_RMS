@@ -1,4 +1,5 @@
 const { getPool, sql, withActorTransaction, actorRequest } = require('../../config/db');
+const { randomId } = require('../../utils/idGenerator');
 const { broadcast } = require('../events/eventService');
 const { paging } = require('../../utils/paging');
 const { httpError } = require('../../utils/httpError');
@@ -144,13 +145,12 @@ const create = async (data, actorId) => {
 	const cols = ['id', 'user_id', ...fieldDefs.map(([f]) => f), 'created_by'];
 	const vals = ['@new_id', '@user_id', ...fieldDefs.map(([f]) => `@${f}`), '@actor_id'];
 
-	const result = await req.query(`
-      DECLARE @new_id VARCHAR(20) = 'LIC' + LEFT(REPLACE(NEWID(),'-',''), 17);
+	const newId = randomId('LIC', 17);
+	await req.input('new_id', sql.VarChar(20), newId).query(`
       INSERT INTO staff_practice_licenses (${cols.join(', ')})
       VALUES (${vals.join(', ')});
-      SELECT @new_id AS id;
     `);
-	const id = result.recordset[0].id;
+	const id = newId;
 	broadcast('update', { entity: 'staff_license' });
 	return getById(id);
 };

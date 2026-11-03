@@ -7,7 +7,7 @@ const {
 	withActor,
 	boolExpr,
 } = require('../../config/db');
-const { genRoundId } = require('../../utils/idGenerator');
+const { genRoundId, randomHex32 } = require('../../utils/idGenerator');
 const { broadcast } = require('../events/eventService');
 const { paging } = require('../../utils/paging');
 const deadlineService = require('./deadlineService');
@@ -222,13 +222,14 @@ const create = async (data, actorId) => {
 			.input('round_type_id', sql.VarChar(6), data.round_type_id || null)
 			.input('start_date', sql.Date, new Date(data.start_date))
 			.input('end_date', sql.Date, new Date(data.end_date))
-			.input('status', sql.VarChar(10), STATUS_TO_DB[data.status] ?? data.status ?? 'draft');
+			.input('status', sql.VarChar(10), STATUS_TO_DB[data.status] ?? data.status ?? 'draft')
+			.input('public_token', sql.VarChar(32), randomHex32());
 		await req.query(`
         INSERT INTO research_rounds
           (id, name, year, round_number, round_type_id, start_date, end_date, status, public_token, created_by)
         VALUES
           (@id, @name, @year, @round_number, @round_type_id, @start_date, @end_date, @status,
-           LOWER(REPLACE(NEWID(),'-','')), @actor_id);
+           @public_token, @actor_id);
       `);
 		if (Array.isArray(data.level_ids) && data.level_ids.length)
 			await writeLevels(() => new sql.Request(tx), id, data.level_ids);

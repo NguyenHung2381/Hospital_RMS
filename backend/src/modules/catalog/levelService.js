@@ -5,7 +5,7 @@ const roundService = require('../rounds/roundService');
 
 // ─── Levels ───────────────────────────────────────────────────────────────────
 // Constraint CHK_lv_id yêu cầu id LIKE 'CD[0-9][0-9]' → CD01, CD02, ...
-// crudService dùng NEWID() (hex) nên phải override hàm create riêng.
+// crudService sinh mã hex ngẫu nhiên (randomId) nên phải override hàm create riêng.
 
 // ── round_type_levels: cấp độ được phép theo loại đợt ────────────────────────
 const getLevelIdsForRoundType = async (roundTypeId) => {
