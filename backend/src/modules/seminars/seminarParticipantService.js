@@ -1,7 +1,7 @@
 /**
  * seminarParticipantService.js — người tham dự / được cử đi + cấp CME.
  *
- * Số quyết định CME (SQĐ) sinh qua sp_gen_cme_no: dãy chạy theo NĂM, 1..N liên
+ * Số quyết định CME (SQĐ) sinh qua genCmeNo (utils/idGenerator): dãy chạy theo NĂM, 1..N liên
  * tục cho mọi hội nghị trong năm; sang năm mới reset. Cấp nhiều người một lần
  * thì cấp tuần tự trong 1 transaction để giữ dãy liền mạch.
  */

@@ -1,5 +1,6 @@
 const { signToken, verifyToken } = require('../../../utils/keys');
-const { getPool, sql } = require('../../../config/db');
+const { getPool, sql, withTransaction } = require('../../../config/db');
+const { genAttendanceId } = require('../../../utils/idGenerator');
 const { broadcast } = require('../../events/eventService');
 const { httpError } = require('../../../utils/httpError');
 const { SESSION_IN_PROGRAM_SQL } = require('./sessionScope');
@@ -41,6 +42,18 @@ const listAttendance = async (sessionId) => {
 };
 
 // recompute=false khi lưu hàng loạt — bulkSetAttendance tính lại 1 lần sau cùng.
+// Đã có dòng điểm danh của lượt ghi danh này ở buổi này chưa
+const attendanceExists = async (tx, sessionId, enrollmentId) =>
+	(
+		await tx
+			.request()
+			.input('session_id', sql.VarChar(20), sessionId)
+			.input('enrollment_id', sql.VarChar(20), enrollmentId)
+			.query(
+				'SELECT 1 AS x FROM attendance WHERE session_id = @session_id AND enrollment_id = @enrollment_id',
+			)
+	).recordset.length > 0;
+
 const setAttendance = async (
 	sessionId,
 	enrollmentId,
@@ -49,25 +62,25 @@ const setAttendance = async (
 	actorId,
 	{ recompute = true } = {},
 ) => {
-	const pool = await getPool();
-	await pool
-		.request()
-		.input('session_id', sql.VarChar(20), sessionId)
-		.input('enrollment_id', sql.VarChar(20), enrollmentId)
-		.input('status', sql.VarChar(10), status)
-		.input('note', sql.NVarChar(255), note || null)
-		.input('actor_id', sql.VarChar(20), actorId).query(`
-      IF EXISTS (SELECT 1 FROM attendance WHERE session_id = @session_id AND enrollment_id = @enrollment_id)
-        UPDATE attendance SET status = @status, note = @note, updated_at = GETDATE(), updated_by = @actor_id
-        WHERE session_id = @session_id AND enrollment_id = @enrollment_id;
-      ELSE
-      BEGIN
-        DECLARE @new_id VARCHAR(20);
-        EXEC sp_gen_attendance_id @actor_id = @actor_id, @new_id = @new_id OUTPUT;
+	await withTransaction(async (tx) => {
+		const req = () =>
+			tx
+				.request()
+				.input('session_id', sql.VarChar(20), sessionId)
+				.input('enrollment_id', sql.VarChar(20), enrollmentId)
+				.input('status', sql.VarChar(10), status)
+				.input('note', sql.NVarChar(255), note || null)
+				.input('actor_id', sql.VarChar(20), actorId);
+		if (await attendanceExists(tx, sessionId, enrollmentId)) {
+			await req().query(`
+        UPDATE attendance SET status = @status, note = @note, updated_at = CURRENT_TIMESTAMP, updated_by = @actor_id
+        WHERE session_id = @session_id AND enrollment_id = @enrollment_id`);
+			return;
+		}
+		await req().input('new_id', sql.VarChar(20), await genAttendanceId(tx)).query(`
         INSERT INTO attendance (id, session_id, enrollment_id, status, note, created_by, updated_by, updated_at)
-        VALUES (@new_id, @session_id, @enrollment_id, @status, @note, @actor_id, @actor_id, GETDATE());
-      END
-    `);
+        VALUES (@new_id, @session_id, @enrollment_id, @status, @note, @actor_id, @actor_id, CURRENT_TIMESTAMP)`);
+	});
 	broadcast('update', { entity: 'attendance' });
 	// Bài học "đã học" tính theo điểm danh (quyết định 13)
 	if (recompute) await lessonProgressService.recompute({ sessionId });
@@ -137,34 +150,33 @@ const checkInSelf = async (token, deviceId, actor) => {
 	// lần lượt tài khoản người khác để điểm danh hộ. Chính học viên quét lại
 	// (kể cả từ máy khác) vẫn được, ghi đè mã thiết bị.
 	for (const enrollment of enrollments) {
-		const res = await pool
-			.request()
-			.input('session_id', sql.VarChar(20), decoded.session_id)
-			.input('enrollment_id', sql.VarChar(20), enrollment.enrollment_id)
-			.input('trainee_id', sql.VarChar(20), enrollment.trainee_id)
-			.input('device_id', sql.VarChar(64), deviceId)
-			.input('actor_id', sql.VarChar(20), actor.id).query(`
-        IF EXISTS (SELECT 1 FROM attendance a JOIN course_enrollments ae ON ae.id = a.enrollment_id
-                   WHERE a.session_id = @session_id AND a.checkin_device_id = @device_id
-                     AND ae.trainee_id <> @trainee_id)
-          SELECT CAST(1 AS BIT) AS device_taken;
-        ELSE
-        BEGIN
-          IF EXISTS (SELECT 1 FROM attendance WHERE session_id = @session_id AND enrollment_id = @enrollment_id)
-            UPDATE attendance SET status = 'present', method = 'qr', checked_in_at = GETUTCDATE(),
-                   checkin_device_id = @device_id, updated_at = GETDATE(), updated_by = @actor_id
-            WHERE session_id = @session_id AND enrollment_id = @enrollment_id;
-          ELSE
-          BEGIN
-            DECLARE @new_id VARCHAR(20);
-            EXEC sp_gen_attendance_id @actor_id = @actor_id, @new_id = @new_id OUTPUT;
-            INSERT INTO attendance (id, session_id, enrollment_id, status, method, checked_in_at, checkin_device_id, created_by, updated_by, updated_at)
-            VALUES (@new_id, @session_id, @enrollment_id, 'present', 'qr', GETUTCDATE(), @device_id, @actor_id, @actor_id, GETDATE());
-          END
-          SELECT CAST(0 AS BIT) AS device_taken;
-        END
-      `);
-		if (res.recordset[0].device_taken) {
+		const deviceTaken = await withTransaction(async (tx) => {
+			const req = () =>
+				tx
+					.request()
+					.input('session_id', sql.VarChar(20), decoded.session_id)
+					.input('enrollment_id', sql.VarChar(20), enrollment.enrollment_id)
+					.input('trainee_id', sql.VarChar(20), enrollment.trainee_id)
+					.input('device_id', sql.VarChar(64), deviceId)
+					.input('actor_id', sql.VarChar(20), actor.id);
+			const taken = await req().query(`
+        SELECT 1 AS x FROM attendance a JOIN course_enrollments ae ON ae.id = a.enrollment_id
+        WHERE a.session_id = @session_id AND a.checkin_device_id = @device_id
+          AND ae.trainee_id <> @trainee_id`);
+			if (taken.recordset.length) return true;
+			if (await attendanceExists(tx, decoded.session_id, enrollment.enrollment_id)) {
+				await req().query(`
+          UPDATE attendance SET status = 'present', method = 'qr', checked_in_at = GETUTCDATE(),
+                 checkin_device_id = @device_id, updated_at = CURRENT_TIMESTAMP, updated_by = @actor_id
+          WHERE session_id = @session_id AND enrollment_id = @enrollment_id`);
+			} else {
+				await req().input('new_id', sql.VarChar(20), await genAttendanceId(tx)).query(`
+          INSERT INTO attendance (id, session_id, enrollment_id, status, method, checked_in_at, checkin_device_id, created_by, updated_by, updated_at)
+          VALUES (@new_id, @session_id, @enrollment_id, 'present', 'qr', GETUTCDATE(), @device_id, @actor_id, @actor_id, CURRENT_TIMESTAMP)`);
+			}
+			return false;
+		});
+		if (deviceTaken) {
 			throw httpError(403, DEVICE_TAKEN_MSG);
 		}
 	}

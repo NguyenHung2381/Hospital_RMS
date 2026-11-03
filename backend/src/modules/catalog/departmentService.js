@@ -1,4 +1,5 @@
 const { getPool, sql, withActorTransaction, actorRequest } = require('../../config/db');
+const { genDeptId } = require('../../utils/idGenerator');
 const { broadcast } = require('../events/eventService');
 const { paging } = require('../../utils/paging');
 const { remember, invalidate } = require('../../utils/cache');
@@ -70,19 +71,14 @@ const getById = async (id) => {
 };
 
 const create = async (data, actorId) => {
-	const pool = await getPool();
-	const idResult = await pool
-		.request()
-		.input('abbreviation', sql.VarChar(20), data.abbreviation)
-		.output('new_id', sql.VarChar(20))
-		.execute('sp_gen_dept_id');
-	const newId = idResult.output.new_id;
-
-	await withActorTransaction(actorId, (tx) =>
-		tx
+	// Mã DVxxx sinh ở đây (trước là trigger trg_dept_gen_id — INSTEAD OF INSERT bỏ
+	// mất mã truyền vào và các cột nó không chép; migration 2026-12-14 đã bỏ trigger).
+	const newId = await withActorTransaction(actorId, async (tx) => {
+		const id = await genDeptId(tx);
+		await tx
 			.request()
 			.input('actor_id', sql.VarChar(20), actorId)
-			.input('id', sql.VarChar(20), newId)
+			.input('id', sql.VarChar(20), id)
 			.input('name', sql.NVarChar(255), data.name)
 			.input('code', sql.VarChar(20), data.code)
 			.input('abbreviation', sql.VarChar(20), data.abbreviation)
@@ -95,8 +91,9 @@ const create = async (data, actorId) => {
 			.input('bed_count', sql.Int, data.bed_count ?? null).query(`
       INSERT INTO departments (id, name, code, abbreviation, description, specialty_group, unit_type, head_user_id, phone, email, bed_count, created_by)
       VALUES (@id, @name, @code, @abbreviation, @description, @specialty_group, @unit_type, @head_user_id, @phone, @email, @bed_count, @actor_id);
-    `),
-	);
+    `);
+		return id;
+	});
 	await invalidate(CACHE_PREFIX);
 	const dept = await getById(newId);
 	broadcast('update', { entity: 'department' });

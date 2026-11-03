@@ -1,6 +1,6 @@
 /**
  * deptAccount.js — Nhận diện tài khoản dùng chung của khoa/phòng (không phải nhân sự).
- * Tài khoản khoa có mã 'NV' + mã khoa + '0000' (sp_gen_user_id @is_dept_account = 1;
+ * Tài khoản khoa có mã 'NV' + mã khoa + '0000' (idGenerator.genUserId isDeptAccount;
  * mã nhân viên thường luôn bỏ qua đuôi 0000) và thường được departments.dept_account_id
  * trỏ tới. Xét cả hai vì có tài khoản khoa cũ không còn khoa nào liên kết.
  */

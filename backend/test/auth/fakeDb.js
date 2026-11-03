@@ -48,6 +48,11 @@ const install = (handler) => {
 			return makeRequest();
 		}
 	};
+	// Khoá sinh mã (utils/idGenerator) — luôn lấy được, ghi vào log
+	db.lockResource = async (_tx, key) => {
+		log.push({ text: `LOCK ${key}`, inputs: {} });
+		return true;
+	};
 	// withTransaction gọi getPool nội bộ của config/db (không qua db.getPool đã
 	// thay ở trên) ⇒ phải thay riêng, cùng ngữ nghĩa commit / rollback rồi ném lại.
 	db.withTransaction = async (fn) => {

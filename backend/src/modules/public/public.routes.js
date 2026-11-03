@@ -142,7 +142,7 @@ router.post(
 		body('title').trim().notEmpty().withMessage('Vui lòng nhập tiêu đề đề tài'),
 		body('round_id').trim().notEmpty().withMessage('Vui lòng chọn đợt đăng ký'),
 		body('department_id').trim().notEmpty().withMessage('Vui lòng chọn khoa/phòng'),
-		// Mã đề tài sinh theo ký hiệu danh mục (sp_gen_topic_id) ⇒ bắt buộc
+		// Mã đề tài sinh theo ký hiệu danh mục (genTopicId) ⇒ bắt buộc
 		body('category_id').trim().notEmpty().withMessage('Vui lòng chọn danh mục đề tài'),
 		body('captcha_token').notEmpty().withMessage('Thiếu mã xác nhận'),
 		// captcha_answer = nonce proof-of-work (Turnstile không có) — utils/captcha.js tự kiểm tra

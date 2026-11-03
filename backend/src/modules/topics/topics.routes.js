@@ -92,7 +92,7 @@ router.post(
 	[
 		body('title').notEmpty(),
 		body('round_id').notEmpty(),
-		// Mã đề tài sinh theo ký hiệu thể loại (sp_gen_topic_id) ⇒ bắt buộc
+		// Mã đề tài sinh theo ký hiệu thể loại (genTopicId) ⇒ bắt buộc
 		body('category_id').trim().notEmpty().withMessage('Vui lòng chọn danh mục đề tài'),
 		body('article_type').optional().isIn(['de_tai', 'bai_bao']),
 		body('publish_date').optional({ checkFalsy: true }).isISO8601(),
@@ -110,7 +110,7 @@ router.post(
 	[
 		body('title').trim().notEmpty().withMessage('Tên đề tài không được để trống'),
 		body('round_id').trim().notEmpty().withMessage('Vui lòng chọn đợt nghiên cứu'),
-		// Mã đề tài sinh theo ký hiệu thể loại (sp_gen_topic_id) ⇒ bắt buộc
+		// Mã đề tài sinh theo ký hiệu thể loại (genTopicId) ⇒ bắt buộc
 		body('category_id').trim().notEmpty().withMessage('Vui lòng chọn danh mục đề tài'),
 		body('department_id').trim().notEmpty().withMessage('Vui lòng chọn khoa/phòng'),
 		body('acceptance_rating')

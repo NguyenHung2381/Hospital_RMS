@@ -1,5 +1,5 @@
 const { getPool, sql, withActorTransaction, actorRequest, withActor } = require('../../config/db');
-const { appErrorCode } = require('../../utils/dbErrors');
+const { genUserId, genMemberId } = require('../../utils/idGenerator');
 const bcrypt = require('bcrypt');
 const notifSvc = require('../notifications/notificationService');
 const { broadcast } = require('../events/eventService');
@@ -42,9 +42,10 @@ const getMembers = async (topicId) => {
 };
 
 const addMember = async (topicId, memberData, actorId) => {
-	const result = await withActorTransaction(actorId, (tx) =>
+	const result = await withActorTransaction(actorId, async (tx) =>
 		tx
 			.request()
+			.input('new_id', sql.VarChar(22), await genMemberId(tx, topicId))
 			.input('actor_id', sql.VarChar(20), actorId)
 			.input('topic_id', sql.VarChar(15), topicId)
 			.input('ho_ten', sql.NVarChar(200), memberData.ho_ten)
@@ -60,12 +61,8 @@ const addMember = async (topicId, memberData, actorId) => {
 			)
 			.input('department_id', sql.VarChar(20), memberData.department_id || null)
 			.input('role', sql.VarChar(20), memberData.role || 'member').query(`
-      BEGIN TRANSACTION;
-      DECLARE @new_id VARCHAR(22);
-      EXEC sp_gen_member_id @topic_id, @new_id OUTPUT;
       INSERT INTO topic_members (id, topic_id, name, email, phone_number, position, staff_number, department_id, role, created_by)
       VALUES (@new_id, @topic_id, @ho_ten, @email, @so_dien_thoai, @chuc_vu, @staff_number, @department_id, @role, @actor_id);
-      COMMIT TRANSACTION;
       SELECT @new_id AS id;
     `),
 	);
@@ -108,74 +105,16 @@ const ensureUniqueUsername = async (executor, baseUsername, userId) => {
 	}
 };
 
-const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
-
-// sp_gen_user_id dùng sp_getapplock (LockOwner = Transaction) nên khóa "sinh mã"
-// được giữ tới khi transaction bao ngoài COMMIT/ROLLBACK. Vì vậy transaction gọi
-// proc này PHẢI NGẮN: sinh mã -> INSERT users -> commit ngay (xem grantAccountsNoEmail).
-// Nếu khóa vẫn timeout (nhiều thao tác song song trên cùng khoa), proc RAISERROR
-// với error number 50000 -> thử lại vài lần trước khi bỏ cuộc.
-const isGenLockTimeout = (err) => {
-	if (!err) return false;
-	const msg = String(err.message || '');
-	return appErrorCode(err) === 50000 || /kh[oó]a sinh m[ãa]/i.test(msg);
-};
-
-const genUserIdWithRetry = async (tx, deptCode, isDeptAccount = false, attempts = 3) => {
-	for (let attempt = 1; attempt <= attempts; attempt += 1) {
-		try {
-			const req = new sql.Request(tx);
-			req
-				.input('dept_code', sql.VarChar(20), deptCode)
-				.input('is_dept_account', sql.Bit, isDeptAccount ? 1 : 0)
-				.output('new_id', sql.VarChar(20));
-			// Giá trị OUTPUT nằm ở result.output — req.output là hàm khai báo tham số
-			// (trước đây đọc req.output.new_id luôn ra undefined ⇒ luôn rơi vào nhánh dự phòng).
-			const result = await req.execute('sp_gen_user_id');
-			return result.output.new_id;
-		} catch (err) {
-			if (!isGenLockTimeout(err) || attempt === attempts) throw err;
-			await sleep(200 * attempt);
-		}
-	}
-	return undefined;
-};
-
-// Sinh mã NV bên trong transaction ngắn của từng thành viên.
-// Ưu tiên sp_gen_user_id. Nếu proc trả lỗi khóa (ví dụ DB chưa chạy migration
-// 2026-08-28_fix_gen_id_applock_owner.sql — bug @owner NVARCHAR(10) cắt cụt
-// 'Transaction' -> sp_getapplock luôn thất bại khi gọi trong transaction) thì
-// tự sinh bằng SELECT có (UPDLOCK, HOLDLOCK): range lock trên dải id 'NV<khoa>'
-// được giữ tới khi tx commit nên vẫn chống trùng mã khi chạy song song.
-const genUserIdInTx = async (tx, deptCode) => {
-	try {
-		const id = await genUserIdWithRetry(tx, deptCode, false, 2);
-		if (id) return id;
-	} catch (err) {
-		if (!isGenLockTimeout(err)) throw err;
-		logger.warn(
-			'grantAccountsNoEmail: sp_gen_user_id lỗi khóa, dùng fallback sinh mã trong transaction:',
-			err.message,
-		);
-	}
-	const res = await new sql.Request(tx).input('dept_code', sql.VarChar(20), deptCode).query(`
-			DECLARE @prefix VARCHAR(12) = 'NV' + @dept_code;
-			DECLARE @count INT;
-			SELECT @count = ISNULL(MAX(CAST(RIGHT(id,4) AS INT)), 0) + 1
-			FROM users WITH (UPDLOCK, HOLDLOCK)
-			WHERE id LIKE @prefix + '[0-9][0-9][0-9][0-9]'
-			  AND RIGHT(id,4) <> '0000';
-			IF @count < 1 SET @count = 1;
-			SELECT @prefix + RIGHT('0000' + CAST(@count AS VARCHAR(4)), 4) AS new_id;
-		`);
-	return res.recordset[0]?.new_id;
-};
+// Mã NV mới cho thành viên. genUserId giữ khoá sinh mã theo khoa tới khi
+// transaction bao ngoài commit ⇒ transaction gọi hàm này PHẢI NGẮN: sinh mã ->
+// INSERT users -> commit ngay (xem grantAccountsNoEmail).
+const genUserIdInTx = (tx, deptCode) => genUserId(tx, deptCode);
 
 // Cấp tài khoản cho thành viên đề tài (luồng không dùng email).
 //
 // QUAN TRỌNG: mỗi thành viên được xử lý trong MỘT transaction riêng, ngắn gọn
 // (sinh mã -> INSERT/UPDATE users -> gắn user_id vào topic_members -> commit).
-// sp_gen_user_id giữ applock "sinh mã" tới khi transaction commit, nên nếu gộp
+// genUserId giữ khoá "sinh mã" tới khi transaction commit, nên nếu gộp
 // cả vòng lặp + bcrypt + notification vào một transaction lớn (như trước đây) thì
 // khóa bị giữ quá lâu -> thao tác cấp tài khoản chạy song song trên cùng khoa sẽ
 // timeout và văng lỗi "Không lấy được khóa sinh mã nhân viên".

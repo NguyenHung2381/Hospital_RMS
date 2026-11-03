@@ -625,7 +625,7 @@ Hospital_RMS/
 | Procedure | Mục đích |
 |---|---|
 | `sp_set_actor` | Đặt `user_id` vào session context trước mỗi lệnh ghi (phục vụ audit). Code gọi qua `withActor` / `withActorTransaction` / `actorRequest` (`backend/src/config/db.js`), không viết `EXEC sp_set_actor` trong câu SQL |
-| `sp_gen_topic_id`, `sp_gen_user_id`, `sp_gen_member_id`, `sp_gen_batch_id`, `sp_gen_file_id` | Sinh mã đề tài / người dùng / thành viên / batch / file |
+| `sp_gen_batch_id`, `sp_gen_file_id` | Sinh mã batch / file (chỉ `sp_upload_files` gọi). Mã khác sinh ở `backend/src/utils/idGenerator.js` |
 | `sp_grant_member_accounts` | **Không còn dùng** — ứng dụng cấp tài khoản qua `topicMemberService` (mật khẩu tạm ngẫu nhiên). Nên xoá khỏi DB |
 | `sp_approve_topic` | Luồng duyệt đề tài một bước |
 | `sp_upload_files` | Ghi nhiều file trong một batch |

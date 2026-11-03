@@ -1,4 +1,11 @@
-const { getPool, sql, withActorTransaction, actorRequest } = require('../../../config/db');
+const {
+	getPool,
+	sql,
+	withActorTransaction,
+	actorRequest,
+	withTransaction,
+} = require('../../../config/db');
+const { genCourseId, genCourseProgramId } = require('../../../utils/idGenerator');
 const { broadcast } = require('../../events/eventService');
 const { paging } = require('../../../utils/paging');
 const { scopeOf } = require('../../../permissions/authz');
@@ -184,9 +191,10 @@ const getById = async (id, actor = null) => {
 };
 
 const create = async (data, actorId) => {
-	const result = await withActorTransaction(actorId, (tx) =>
+	const result = await withActorTransaction(actorId, async (tx) =>
 		tx
 			.request()
+			.input('new_id', sql.VarChar(20), await genCourseId(tx))
 			.input('actor_id', sql.VarChar(20), actorId)
 			.input('name', sql.NVarChar(255), data.name)
 			.input('training_form_id', sql.VarChar(20), data.training_form_id || null)
@@ -202,8 +210,6 @@ const create = async (data, actorId) => {
 			.input('description', sql.NVarChar(sql.MAX), data.description || null)
 			.input('prerequisites', sql.NVarChar(sql.MAX), JSON.stringify(data.prerequisites || []))
 			.input('objectives', sql.NVarChar(sql.MAX), JSON.stringify(data.objectives || [])).query(`
-      DECLARE @new_id VARCHAR(20);
-      EXEC sp_gen_course_id @actor_id = @actor_id, @new_id = @new_id OUTPUT;
       INSERT INTO courses (id, name, training_form_id, training_type_id, batch_no, is_rolling, start_date, end_date, enrollment_start_date, enrollment_end_date, status, is_public_registration, description, prerequisites, objectives, created_by)
       VALUES (@new_id, @name, @training_form_id, @training_type_id, @batch_no, @is_rolling, @start_date, @end_date, @enrollment_start_date, @enrollment_end_date, @status, @is_public_registration, @description, @prerequisites, @objectives, @actor_id);
       SELECT @new_id AS id;
@@ -311,19 +317,20 @@ const setPrograms = async (courseId, programIds, actorId) => {
 	}
 	const have = new Set(current.map((l) => l.program_id));
 	for (const programId of [...wanted].filter((id) => !have.has(id))) {
-		await pool
-			.request()
-			.input('actor_id', sql.VarChar(20), actorId)
-			.input('course_id', sql.VarChar(20), courseId)
-			.input('program_id', sql.VarChar(20), programId).query(`
+		await withTransaction(async (tx) =>
+			tx
+				.request()
+				.input('new_id', sql.VarChar(20), await genCourseProgramId(tx))
+				.input('actor_id', sql.VarChar(20), actorId)
+				.input('course_id', sql.VarChar(20), courseId)
+				.input('program_id', sql.VarChar(20), programId).query(`
         IF EXISTS (SELECT 1 FROM training_programs WHERE id = @program_id)
         BEGIN
-          DECLARE @new_id VARCHAR(20);
-          EXEC sp_gen_course_program_id @actor_id = @actor_id, @new_id = @new_id OUTPUT;
           INSERT INTO course_programs (id, course_id, program_id, status, created_by)
           VALUES (@new_id, @course_id, @program_id, 'active', @actor_id);
         END
-      `);
+      `),
+		);
 	}
 };
 

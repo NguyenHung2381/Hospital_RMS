@@ -1,6 +1,7 @@
 // Ghi 1 hồ sơ thực hành GPHN từ sổ đã đọc (practiceBookImportService): ghi danh + vòng thực hành,
 // bổ sung danh mục lĩnh vực / hình thức / đơn vị cử đi mới gặp.
-const { sql } = require('../../../config/db');
+const { sql, withTransaction } = require('../../../config/db');
+const { genCourseEnrollmentId } = require('../../../utils/idGenerator');
 const { broadcast } = require('../../events/eventService');
 const { invalidate } = require('../../../utils/cache');
 
@@ -89,21 +90,24 @@ const writeRecord = async (pool, it, traineeId, courseId, actorId) => {
 		main_mentor_user_id: it.main_mentor?.user_id ?? null,
 		progress_status: rec.dropped ? 'dropped' : rec.completed ? 'completed' : 'in_progress',
 	};
-	const req = pool
-		.request()
-		.input('course_id', sql.VarChar(20), courseId)
-		.input('trainee_id', sql.VarChar(20), traineeId)
-		.input('program_id', sql.VarChar(20), it.program_id)
-		.input('actor_id', sql.VarChar(20), actorId)
-		.input('enrollment_id', sql.VarChar(20), it.enrollment_id);
-	for (const [f, t] of Object.entries(ENROLLMENT_FIELDS)) req.input(f, t, values[f]);
-	const r = await req.query(`
+	// Đăng ký mới cần mã sinh trong transaction (khoá sinh mã giữ tới khi commit)
+	const r = await withTransaction(async (tx) => {
+		const req = tx
+			.request()
+			.input('new_id', sql.VarChar(20), it.enrollment_id ? null : await genCourseEnrollmentId(tx))
+			.input('course_id', sql.VarChar(20), courseId)
+			.input('trainee_id', sql.VarChar(20), traineeId)
+			.input('program_id', sql.VarChar(20), it.program_id)
+			.input('actor_id', sql.VarChar(20), actorId)
+			.input('enrollment_id', sql.VarChar(20), it.enrollment_id);
+		for (const [f, t] of Object.entries(ENROLLMENT_FIELDS)) req.input(f, t, values[f]);
+		return req.query(`
     DECLARE @id VARCHAR(20) = ISNULL(@enrollment_id, (
       SELECT TOP 1 id FROM course_enrollments
       WHERE course_id = @course_id AND trainee_id = @trainee_id AND ISNULL(program_id, '') = ISNULL(@program_id, '')));
     IF @id IS NULL
     BEGIN
-      EXEC sp_gen_course_enrollment_id @actor_id = @actor_id, @new_id = @id OUTPUT;
+      SET @id = @new_id;
       INSERT INTO course_enrollments (id, course_id, trainee_id, program_id, status, decided_by, decided_at, created_by,
         ${Object.keys(ENROLLMENT_FIELDS).join(', ')})
       VALUES (@id, @course_id, @trainee_id, @program_id, 'approved', @actor_id, GETDATE(), @actor_id,
@@ -122,6 +126,7 @@ const writeRecord = async (pool, it, traineeId, courseId, actorId) => {
       WHERE id = @id;
     SELECT @id AS id;
   `);
+	});
 	const enrollmentId = r.recordset[0].id;
 
 	if (it.rotations.length) {

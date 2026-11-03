@@ -252,8 +252,8 @@ const create = async (data, actorId) => {
 	const { genUserIdInTx } = require('../topics/topicMemberService');
 	const roleId = data.role_id || (await requireRoleId(ROLE.MEMBER));
 
-	// Mã người dùng 'NV' + mã khoa + NNNN như các luồng cấp tài khoản khác (sp_gen_user_id).
-	// sp_gen_user_id giữ applock sinh mã tới khi commit ⇒ transaction ngắn: sinh mã → INSERT → commit.
+	// Mã người dùng 'NV' + mã khoa + NNNN như các luồng cấp tài khoản khác (genUserId).
+	// genUserId giữ khoá sinh mã tới khi commit ⇒ transaction ngắn: sinh mã → INSERT → commit.
 	const newId = await withTransaction(async (tx) => {
 		const dept = data.department_id
 			? (

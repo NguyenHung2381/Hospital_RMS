@@ -1,7 +1,7 @@
 /**
  * seminarParticipantService.js — người tham dự / được cử đi + cấp CME.
  *
- * Số quyết định CME (SQĐ) sinh qua sp_gen_cme_no: dãy chạy theo NĂM, 1..N liên
+ * Số quyết định CME (SQĐ) sinh qua genCmeNo (utils/idGenerator): dãy chạy theo NĂM, 1..N liên
  * tục cho mọi hội nghị trong năm; sang năm mới reset. Cấp nhiều người một lần
  * thì cấp tuần tự trong 1 transaction để giữ dãy liền mạch.
  */
@@ -13,6 +13,7 @@ const {
 	actorRequest,
 	withActor,
 } = require('../../config/db');
+const { genCmeNo } = require('../../utils/idGenerator');
 const { broadcast } = require('../events/eventService');
 const { ensureSeminar } = require('./seminarParticipantService');
 const { httpError } = require('../../utils/httpError');
@@ -73,12 +74,7 @@ const issueCme = async (seminarId, participantIds, actorId, { year } = {}) => {
 		let first = null;
 		let last = null;
 		for (const pid of ordered) {
-			const gen = await new sql.Request(tx)
-				.input('year', sql.Int, cmeYear)
-				.input('actor_id', sql.VarChar(20), actorId)
-				.output('new_seq', sql.Int)
-				.execute('sp_gen_cme_no');
-			const seq = gen.output.new_seq;
+			const seq = await genCmeNo(tx, cmeYear, actorId);
 			if (first === null) first = seq;
 			last = seq;
 			await new sql.Request(tx)

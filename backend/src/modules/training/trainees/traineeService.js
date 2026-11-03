@@ -1,4 +1,5 @@
 const { getPool, sql, withActorTransaction, actorRequest } = require('../../../config/db');
+const { genTraineeId } = require('../../../utils/idGenerator');
 const { broadcast } = require('../../events/eventService');
 const { paging } = require('../../../utils/paging');
 const trainingFileService = require('../trainingFileService');
@@ -140,9 +141,10 @@ const getById = async (id, actor = null) => {
 
 // opts.fetch=false: bỏ query đọc lại bản ghi — dùng cho import hàng loạt
 const create = async (data, actorId, { fetch = true } = {}) => {
-	const result = await withActorTransaction(actorId, (tx) =>
+	const result = await withActorTransaction(actorId, async (tx) =>
 		tx
 			.request()
+			.input('new_id', sql.VarChar(20), await genTraineeId(tx, undefined, actorId))
 			.input('actor_id', sql.VarChar(20), actorId)
 			.input('full_name', sql.NVarChar(150), data.full_name)
 			.input('dob', sql.Date, data.dob || null)
@@ -169,8 +171,6 @@ const create = async (data, actorId, { fetch = true } = {}) => {
 			.input('notes', sql.NVarChar(sql.MAX), data.notes || null)
 			.input('is_active', sql.Bit, data.is_active !== undefined ? !!data.is_active : true)
 			.input('is_employee', sql.Bit, !!data.is_employee).query(`
-      DECLARE @new_id VARCHAR(20);
-      EXEC sp_gen_trainee_id @actor_id = @actor_id, @new_id = @new_id OUTPUT;
       INSERT INTO trainees (
         id, full_name, dob, gender, national_id, phone, email, address, permanent_address, trainee_type_id, department_id,
         national_id_issued_date, national_id_issued_place, graduated_school, graduated_year, workplace, position, avatar_url,

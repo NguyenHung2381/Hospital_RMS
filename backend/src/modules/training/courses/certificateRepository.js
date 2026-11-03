@@ -1,4 +1,5 @@
-const { getPool, sql } = require('../../../config/db');
+const { getPool, sql, withTransaction } = require('../../../config/db');
+const { genCertificateId, genCertificateNo } = require('../../../utils/idGenerator');
 const { appErrorCode } = require('../../../utils/dbErrors');
 
 // Truy cập dữ liệu chứng chỉ khóa học — CHỈ SQL, không quy tắc nghiệp vụ,
@@ -30,32 +31,34 @@ const findEnrollmentStatus = async (enrollmentId) => {
 	return r.recordset[0]?.status ?? null;
 };
 
-// Cấp chứng chỉ: số CC<năm><4 số> (sp_gen_certificate_no) + mã (sp_gen_certificate_id).
+// Cấp chứng chỉ: số CC<năm><4 số> (genCertificateNo) + mã (genCertificateId).
 // Trả { id, cert_no, course_id }; null nếu đăng ký này đã có chứng chỉ (kiểm tra trong
 // cùng câu lệnh với INSERT — không có khe giữa kiểm tra và ghi).
 const DUPLICATE = 51001;
 const insert = async ({ enrollmentId, actorId, year, expiryDate }) => {
-	const pool = await getPool();
 	try {
-		const r = await pool
-			.request()
-			.input('actor_id', sql.VarChar(20), actorId)
-			.input('enrollment_id', sql.VarChar(20), enrollmentId)
-			.input('year', sql.VarChar(4), String(year))
-			.input('expiry_date', sql.Date, expiryDate || null).query(`
+		const r = await withTransaction(async (tx) =>
+			tx
+				.request()
+				.input(
+					'cert_no',
+					sql.VarChar(30),
+					await genCertificateNo(tx, year ? Number(year) : undefined),
+				)
+				.input('new_id', sql.VarChar(20), await genCertificateId(tx))
+				.input('actor_id', sql.VarChar(20), actorId)
+				.input('enrollment_id', sql.VarChar(20), enrollmentId)
+				.input('expiry_date', sql.Date, expiryDate || null).query(`
       IF EXISTS (SELECT 1 FROM certificates WHERE enrollment_id = @enrollment_id)
       BEGIN
         THROW ${DUPLICATE}, N'Học viên này đã được cấp chứng chỉ cho khóa học này rồi.', 1;
       END
-      DECLARE @cert_no VARCHAR(30);
-      EXEC sp_gen_certificate_no @year = @year, @actor_id = @actor_id, @new_no = @cert_no OUTPUT;
-      DECLARE @new_id VARCHAR(20);
-      EXEC sp_gen_certificate_id @actor_id = @actor_id, @new_id = @new_id OUTPUT;
       INSERT INTO certificates (id, enrollment_id, cert_no, expiry_date, created_by)
       VALUES (@new_id, @enrollment_id, @cert_no, @expiry_date, @actor_id);
       SELECT @new_id AS id, @cert_no AS cert_no,
              (SELECT course_id FROM course_enrollments WHERE id = @enrollment_id) AS course_id;
-    `);
+    `),
+		);
 		return r.recordset[0];
 	} catch (err) {
 		if (appErrorCode(err) === DUPLICATE) return null;

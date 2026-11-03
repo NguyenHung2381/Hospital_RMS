@@ -6,6 +6,7 @@ const {
 	actorRequest,
 	withActor,
 } = require('../../config/db');
+const { genRoundId } = require('../../utils/idGenerator');
 const { broadcast } = require('../events/eventService');
 const { paging } = require('../../utils/paging');
 const deadlineService = require('./deadlineService');
@@ -201,19 +202,8 @@ const create = async (data, actorId) => {
 	const year = Number(data.year) || new Date().getFullYear();
 	const round_number = Number(data.round_number) || 1;
 
-	// Dùng SP để sinh ID (đồng thời kiểm tra trùng)
-	let id;
-	try {
-		const idResult = await pool
-			.request()
-			.input('year', sql.Int, year)
-			.input('round_number', sql.TinyInt, round_number)
-			.output('new_id', sql.VarChar(10))
-			.execute('sp_gen_round_id');
-		id = idResult.output.new_id;
-	} catch (spErr) {
-		throw httpError(409, `Đợt số ${round_number} năm ${year} đã tồn tại`);
-	}
+	// Mã DOT<năm><số đợt>; trùng đợt đã có ⇒ 409
+	const id = await genRoundId(pool, year, round_number);
 
 	// Mốc thời gian gửi kèm: kiểm tra hết trước khi ghi (ngày 'yyyy-mm-dd').
 	const deadlineRows = deadlineService.prepareBatch(

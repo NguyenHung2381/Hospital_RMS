@@ -126,6 +126,24 @@ const withActor = (tx, actorId) => {
 		.query('EXEC sp_set_actor @actor_id;');
 };
 
+// Khoá loại trừ theo tên (vd. 'gen_course_id_KH20261103'), giữ tới khi
+// transaction COMMIT/ROLLBACK. Dùng cho sinh mã MAX+1 (utils/idGenerator.js).
+// Trả true nếu lấy được khoá, false nếu chờ quá timeoutMs.
+const lockResource = async (tx, resource, timeoutMs = 5000) => {
+	if (!(tx instanceof sql.Transaction)) {
+		throw new Error('lockResource() phải gọi trong transaction');
+	}
+	const r = await tx
+		.request()
+		.input('res', sql.NVarChar(255), resource)
+		.input('timeout', sql.Int, timeoutMs).query(`
+			DECLARE @rc INT;
+			EXEC @rc = sp_getapplock @Resource = @res, @LockMode = 'Exclusive',
+			     @LockOwner = 'Transaction', @LockTimeout = @timeout;
+			SELECT @rc AS rc;`);
+	return r.recordset[0].rc >= 0;
+};
+
 module.exports = {
 	client: 'mssql',
 	getPool,
@@ -133,5 +151,6 @@ module.exports = {
 	dbConfig,
 	withTransaction,
 	withActor,
+	lockResource,
 	tlsOptions,
 };

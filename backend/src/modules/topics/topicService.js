@@ -1,4 +1,5 @@
 const { getPool, sql, withActorTransaction, actorRequest } = require('../../config/db');
+const { genTopicId } = require('../../utils/idGenerator');
 const { broadcast } = require('../events/eventService');
 const { paging } = require('../../utils/paging');
 const { splitList, inClause, buildWhere } = require('../../utils/sqlFilters');
@@ -239,9 +240,10 @@ const levelForRound = (roundId, articleType) =>
 
 const create = async (data, actorId) => {
 	const levelId = await levelForRound(data.round_id, data.article_type);
-	const result = await withActorTransaction(actorId, (tx) =>
+	const result = await withActorTransaction(actorId, async (tx) =>
 		tx
 			.request()
+			.input('new_id', sql.VarChar(15), await genTopicId(tx, data.category_id, data.round_id))
 			.input('actor_id', sql.VarChar(20), actorId)
 			.input('title', sql.NVarChar(500), data.title)
 			.input('description', sql.NVarChar(sql.MAX), data.description || null)
@@ -259,8 +261,6 @@ const create = async (data, actorId) => {
 			.input('acceptance_rating', sql.VarChar(20), data.acceptance_rating || null)
 			.input('acceptance_score', sql.Decimal(5, 2), data.acceptance_score ?? null)
 			.input('acceptance_date', sql.Date, data.acceptance_date || null).query(`
-      DECLARE @new_id VARCHAR(15);
-      EXEC sp_gen_topic_id @category_id, @round_id, @new_id OUTPUT;
       INSERT INTO topics (id, title, description, round_id, category_id, level_id, department_id, status, created_by, article_type, journal_name, doi, publish_date, budget_estimated,
                           is_legacy, acceptance_rating, acceptance_score, acceptance_date)
       VALUES (@new_id, @title, @description, @round_id, @category_id, @level_id, @department_id, 'submitted', @actor_id, @article_type, @journal_name, @doi, @publish_date, @budget_estimated,

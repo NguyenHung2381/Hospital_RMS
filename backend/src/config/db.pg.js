@@ -274,6 +274,36 @@ const withActor = (tx, actorId) => {
 		.query("SELECT set_config('app.current_user_id', coalesce(@actor_id, ''), true)");
 };
 
+// Khoá loại trừ theo tên, giữ tới khi transaction kết thúc (advisory lock,
+// cùng vai trò sp_getapplock LockOwner = Transaction ở bản mssql). Trả false
+// nếu chờ quá timeoutMs — khi đó transaction đã hỏng (lỗi lock_timeout), người
+// gọi phải ném lỗi để rollback.
+const lockResource = async (tx, resource, timeoutMs = 5000) => {
+	if (!(tx instanceof Transaction)) {
+		throw new Error('lockResource() trên PostgreSQL phải gọi trong transaction');
+	}
+	const old = (await tx.request().query("SELECT current_setting('lock_timeout') AS v")).recordset[0]
+		.v;
+	await tx
+		.request()
+		.input('t', sql.VarChar(20), `${Math.max(1, Math.trunc(timeoutMs))}ms`)
+		.query("SELECT set_config('lock_timeout', @t, true)");
+	try {
+		await tx
+			.request()
+			.input('res', sql.NVarChar(255), resource)
+			.query('SELECT pg_advisory_xact_lock(hashtextextended(@res, 0))');
+	} catch (err) {
+		if (/** @type {any} */ (err).code === '55P03') return false; // lock_not_available
+		throw err;
+	}
+	await tx
+		.request()
+		.input('t', sql.VarChar(20), old)
+		.query("SELECT set_config('lock_timeout', @t, true)");
+	return true;
+};
+
 module.exports = {
 	client: 'pg',
 	getPool,
@@ -281,6 +311,7 @@ module.exports = {
 	dbConfig,
 	withTransaction,
 	withActor,
+	lockResource,
 	sslOptions,
 	toMssqlResult,
 };

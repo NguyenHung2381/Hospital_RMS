@@ -16,7 +16,8 @@
  *   nhập hệ thống tự điền mã, vòng, khoa, NHD (practiceAutoService); chương trình
  *   chưa có vòng thì rút mẫu vòng từ chính các hồ sơ trong sổ.
  */
-const { getPool, sql } = require('../../../config/db');
+const { getPool, sql, withTransaction } = require('../../../config/db');
+const { genCourseProgramId } = require('../../../utils/idGenerator');
 const { isUniqueViolation } = require('../../../utils/dbErrors');
 const { broadcast } = require('../../events/eventService');
 const { norm } = require('../../../utils/vietnameseText');
@@ -393,16 +394,17 @@ const importBook = async (courseId, { buffer, dry_run }, actorId) => {
 		(id) => !lookups.linkedPrograms.has(id),
 	);
 	for (const programId of programIds)
-		await pool
-			.request()
-			.input('course_id', sql.VarChar(20), courseId)
-			.input('program_id', sql.VarChar(20), programId)
-			.input('actor_id', sql.VarChar(20), actorId).query(`
-        DECLARE @new_id VARCHAR(20);
-        EXEC sp_gen_course_program_id @actor_id = @actor_id, @new_id = @new_id OUTPUT;
+		await withTransaction(async (tx) =>
+			tx
+				.request()
+				.input('new_id', sql.VarChar(20), await genCourseProgramId(tx))
+				.input('course_id', sql.VarChar(20), courseId)
+				.input('program_id', sql.VarChar(20), programId)
+				.input('actor_id', sql.VarChar(20), actorId).query(`
         INSERT INTO course_programs (id, course_id, program_id, status, created_by)
         VALUES (@new_id, @course_id, @program_id, 'active', @actor_id);
-      `);
+      `),
+		);
 
 	const failed = [];
 	let written = 0;

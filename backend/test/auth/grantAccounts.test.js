@@ -48,7 +48,9 @@ const log = install(async (text, inputs) => {
 		const u = EXISTING[inputs.staff_number];
 		return u ? [u] : [];
 	}
-	if (/EXEC sp_gen_user_id/.test(text)) return [{ new_id: 'NVK10999' }];
+	// idGenerator.genUserId: MAX(id) của dải NVK1 ⇒ mã kế tiếp NVK10999
+	if (/SELECT MAX\(id\) AS v FROM users WHERE id LIKE @pattern/.test(text))
+		return [{ v: 'NVK10998' }];
 	return [];
 });
 require('../../src/modules/persons/personService').linkTopicMemberToUser = async () => {};

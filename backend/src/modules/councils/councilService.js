@@ -1,4 +1,5 @@
 const { getPool, sql, withActorTransaction, actorRequest } = require('../../config/db');
+const { genCouncilId, genCouncilMemberId } = require('../../utils/idGenerator');
 const { broadcast } = require('../events/eventService');
 const { paging } = require('../../utils/paging');
 const { ROLE, inputRoleId } = require('../access/roleCodes');
@@ -141,17 +142,16 @@ const getById = async (id) => {
 };
 
 const create = async (data, actorId) => {
-	const result = await withActorTransaction(actorId, (tx) =>
+	const result = await withActorTransaction(actorId, async (tx) =>
 		tx
 			.request()
+			.input('new_id', sql.VarChar(15), await genCouncilId(tx, data.round_id))
 			.input('actor_id', sql.VarChar(20), actorId)
 			.input('round_id', sql.VarChar(10), data.round_id)
 			.input('name', sql.NVarChar(255), data.name)
 			.input('specialty_group', sql.NVarChar(100), data.specialty_group || null)
 			.input('location', sql.NVarChar(255), data.location || null)
 			.input('defense_date', sql.Date, data.defense_date || null).query(`
-      DECLARE @new_id VARCHAR(15);
-      EXEC sp_gen_council_id @round_id, @new_id OUTPUT;
       INSERT INTO councils (id, round_id, name, specialty_group, location, defense_date, status, created_by)
       VALUES (@new_id, @round_id, @name, @specialty_group, @location, @defense_date, 'draft', @actor_id);
       SELECT @new_id AS id;
@@ -231,16 +231,15 @@ const getMemberById = async (memberId) => {
 // Ghế nhận đúng 1 trong 2: user_id (trong viện) hoặc external_reviewer_id
 // (ngoài viện) — ràng buộc bởi CK_council_members_seat_owner ở DB.
 const addMember = async (councilId, data, actorId) => {
-	const result = await withActorTransaction(actorId, (tx) =>
+	const result = await withActorTransaction(actorId, async (tx) =>
 		tx
 			.request()
+			.input('new_id', sql.VarChar(25), await genCouncilMemberId(tx, councilId))
 			.input('actor_id', sql.VarChar(20), actorId)
 			.input('council_id', sql.VarChar(15), councilId)
 			.input('user_id', sql.VarChar(20), data.user_id || null)
 			.input('external_reviewer_id', sql.VarChar(20), data.external_reviewer_id || null)
 			.input('role', sql.VarChar(15), data.role).query(`
-      DECLARE @new_id VARCHAR(25);
-      EXEC sp_gen_council_member_id @council_id, @new_id OUTPUT;
       INSERT INTO council_members (id, council_id, user_id, external_reviewer_id, role, created_by)
       VALUES (@new_id, @council_id, @user_id, @external_reviewer_id, @role, @actor_id);
       SELECT @new_id AS id;

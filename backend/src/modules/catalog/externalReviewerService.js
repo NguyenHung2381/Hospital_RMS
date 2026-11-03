@@ -1,4 +1,5 @@
-const { getPool, sql } = require('../../config/db');
+const { getPool, sql, withTransaction } = require('../../config/db');
+const { genExternalReviewerId } = require('../../utils/idGenerator');
 const { broadcast } = require('../events/eventService');
 const personService = require('../persons/personService');
 
@@ -41,26 +42,23 @@ const getById = async (id) => {
 };
 
 const create = async (data, actorId) => {
-	const pool = await getPool();
-	const idResult = await pool
-		.request()
-		.output('new_id', sql.VarChar(20))
-		.execute('sp_gen_external_reviewer_id');
-	const newId = idResult.output.new_id;
-
-	await pool
-		.request()
-		.input('id', sql.VarChar(20), newId)
-		.input('full_name', sql.NVarChar(150), data.full_name)
-		.input('organization', sql.NVarChar(200), data.organization || null)
-		.input('specialty_group', sql.NVarChar(100), data.specialty_group || null)
-		.input('phone', sql.VarChar(20), data.phone || null)
-		.input('email', sql.VarChar(100), data.email || null)
-		.input('note', sql.NVarChar(500), data.note || null)
-		.input('actor_id', sql.VarChar(20), actorId).query(`
+	const newId = await withTransaction(async (tx) => {
+		const id = await genExternalReviewerId(tx);
+		await tx
+			.request()
+			.input('id', sql.VarChar(20), id)
+			.input('full_name', sql.NVarChar(150), data.full_name)
+			.input('organization', sql.NVarChar(200), data.organization || null)
+			.input('specialty_group', sql.NVarChar(100), data.specialty_group || null)
+			.input('phone', sql.VarChar(20), data.phone || null)
+			.input('email', sql.VarChar(100), data.email || null)
+			.input('note', sql.NVarChar(500), data.note || null)
+			.input('actor_id', sql.VarChar(20), actorId).query(`
       INSERT INTO external_reviewers (id, full_name, organization, specialty_group, phone, email, note, created_by)
       VALUES (@id, @full_name, @organization, @specialty_group, @phone, @email, @note, @actor_id);
     `);
+		return id;
+	});
 	await personService.syncPerson('external_reviewers', newId, { actorId });
 	const reviewer = await getById(newId);
 	broadcast('update', { entity: 'external_reviewer' });

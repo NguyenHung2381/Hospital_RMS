@@ -209,7 +209,7 @@ const importExcel = async ({ buffer, dry_run, defaults }, actorId) => {
 		return { dry_run: true, rows: preview, summary, warnings };
 	}
 
-	// Tạo nhân viên mới trước — mỗi người 1 transaction ngắn (sp_gen_user_id giữ
+	// Tạo nhân viên mới trước — mỗi người 1 transaction ngắn (genUserId giữ
 	// applock sinh mã tới khi commit), tuần tự để không tranh khóa sinh mã cùng khoa.
 	const created_staff = [];
 	const failedStaff = new Set();

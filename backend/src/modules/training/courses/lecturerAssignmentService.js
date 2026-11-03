@@ -1,4 +1,5 @@
 const { getPool, sql, withTransaction } = require('../../../config/db');
+const { genLecturerAssignmentId } = require('../../../utils/idGenerator');
 const { isUniqueViolation } = require('../../../utils/dbErrors');
 const { broadcast } = require('../../events/eventService');
 const { ROLE, roleIdOf } = require('../../access/roleCodes');
@@ -134,11 +135,13 @@ const assertAssignable = async (request, courseId, lecturerId) => {
 	}
 };
 
-const insertAssignment = (
-	request,
+// tx: transaction (khoá sinh mã giữ tới khi commit)
+const insertAssignment = async (
+	tx,
 	{ courseId, lecturerId, subjectId, role, hours, note, actorId },
 ) =>
-	request
+	new sql.Request(tx)
+		.input('new_id', sql.VarChar(20), await genLecturerAssignmentId(tx))
 		.input('actor_id', sql.VarChar(20), actorId)
 		.input('course_id', sql.VarChar(20), courseId)
 		.input('lecturer_id', sql.VarChar(20), lecturerId)
@@ -146,8 +149,6 @@ const insertAssignment = (
 		.input('role', sql.VarChar(10), role === 'assistant' ? 'assistant' : 'main')
 		.input('hours', sql.Int, hours ?? null)
 		.input('note', sql.NVarChar(255), note || null).query(`
-      DECLARE @new_id VARCHAR(20);
-      EXEC sp_gen_lecturer_assignment_id @actor_id = @actor_id, @new_id = @new_id OUTPUT;
       INSERT INTO lecturer_assignments (id, course_id, lecturer_id, subject_id, role, hours, note, created_by)
       VALUES (@new_id, @course_id, @lecturer_id, @subject_id, @role, @hours, @note, @actor_id);
       SELECT @new_id AS id;
@@ -165,15 +166,17 @@ const assignLecturer = async (courseId, data, actorId) => {
 	const pool = await getPool();
 	await assertAssignable(pool.request(), courseId, lecturerId);
 	try {
-		const result = await insertAssignment(pool.request(), {
-			courseId,
-			lecturerId,
-			subjectId: data.subject_id,
-			role: data.role,
-			hours: toHours(data.hours),
-			note: data.note,
-			actorId,
-		});
+		const result = await withTransaction((tx) =>
+			insertAssignment(tx, {
+				courseId,
+				lecturerId,
+				subjectId: data.subject_id,
+				role: data.role,
+				hours: toHours(data.hours),
+				note: data.note,
+				actorId,
+			}),
+		);
 		broadcast('update', { entity: 'lecturer_assignment' });
 		return { id: result.recordset[0].id };
 	} catch (err) {
@@ -255,7 +258,7 @@ const setLessonLecturers = async (courseId, lessonId, data, actorId) => {
             WHERE id = @id
           `);
 			} else {
-				await insertAssignment(new sql.Request(tx), {
+				await insertAssignment(tx, {
 					courseId,
 					lecturerId,
 					subjectId: lessonId,

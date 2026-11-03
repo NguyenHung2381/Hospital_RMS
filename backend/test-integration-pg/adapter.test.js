@@ -235,15 +235,23 @@ test('withActorTransaction: người thao tác tới trigger; lỗi thì rollbac
 	assert.equal(left.recordset[0].n, 0);
 });
 
-test('trigger departments tự sinh mã DVxxx (bỏ qua id truyền vào)', async () => {
+test('departments giữ mã truyền vào (migration 2026-12-14 bỏ trigger sinh mã)', async (t) => {
 	await inRollback(async (tx) => {
+		const trig = await tx
+			.request()
+			.query(
+				"SELECT 1 AS x FROM pg_trigger WHERE tgname = 'trg_dept_gen_id' AND tgrelid = 'departments'::regclass",
+			);
+		if (trig.recordset.length)
+			return t.skip('DB chưa chạy migration 2026-12-14_bo_trigger_sinh_ma_khoa');
 		const { recordset } = await tx
 			.request()
 			.query(
-				"INSERT INTO departments (id, name, code, abbreviation) VALUES ('BO_QUA', 'Khoa thử', 'KT_THU_ADAPTER', 'KT') RETURNING id, created_at",
+				"INSERT INTO departments (id, name, code, abbreviation, bed_count) VALUES ('DV9999', 'Khoa thử', 'KT_THU_ADAPTER', 'KT', 5) RETURNING id, bed_count, created_at",
 			);
-		assert.match(recordset[0].id, /^DV\d{3,}$/);
-		assert.ok(recordset[0].created_at instanceof Date);
+		assert.equal(recordset[0].id, 'DV9999');
+		assert.equal(recordset[0].bed_count, 5);
+		assert.ok(recordset[0].created_at instanceof Date); // DEFAULT LOCALTIMESTAMP
 	});
 });
 

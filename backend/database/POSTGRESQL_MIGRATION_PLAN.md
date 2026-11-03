@@ -104,7 +104,7 @@ bước A và giữ máy Windows hiện tại tới khi xong bước B.
 | Định danh `[ten]` | 658 (156) | `"ten"` hoặc bỏ ngoặc |
 | `ISNULL(` | 108 (33) | `COALESCE(` (chạy được trên cả 2 DB) |
 | `EXEC sp_set_actor @actor_id; ...` | 76 (27) | `set_config('app.current_user_id', $1, true)` trong transaction |
-| `EXEC sp_gen_*` / `.execute(...)` | ~20 / 10 | Hàm sinh mã mới (mục 5.4) |
+| `EXEC sp_gen_*` / `.execute(...)` | ~20 / 10 → 0 (đã xong) | Hàm sinh mã `src/utils/idGenerator.js` (mục 5.4) |
 | `DECLARE @...` (batch nhiều câu) | 80 (47) | Viết lại: CTE, nhiều lời gọi JS, hoặc hàm PL/pgSQL |
 | `TOP n` | 71 (45) | `LIMIT n` (hoặc `FETCH FIRST n ROWS ONLY`, chạy cả 2 DB) |
 | `NEWID()` | 42 (27) | `gen_random_uuid()` |
@@ -364,11 +364,11 @@ Làm theo thứ tự, **ưu tiên chuyển về JS ngay trên SQL Server** (đú
 | Object | Việc |
 |---|---|
 | 7 `sp_gen_*` không ai gọi, `sp_process_daily_deadlines`, `sp_remind_deadlines` (no-op), `sp_close_supplement_window`, `sp_use_refresh_token` | Xoá bằng migration (sau khi kiểm tra SQL Agent trên prod). Không chuyển. |
-| 23 `sp_gen_*` đang dùng (gọi từ JS hoặc từ procedure khác) | Viết 1 hàm JS `nextCode({ table, prefix, digits, lockKey })` có khoá (trên SQL Server: `sp_getapplock`; trên PG: `pg_advisory_xact_lock`). Có sẵn mẫu `levelService.createWithSeqId`. Thay dần từng chỗ gọi. |
+| 23 `sp_gen_*` đang dùng (gọi từ JS hoặc từ procedure khác) | **Đã xong phần JS:** `src/utils/idGenerator.js` (`nextId` + 1 hàm cho mỗi loại mã, cùng định dạng), khoá `lockResource(tx, key, timeoutMs)` ở 2 adapter (SQL Server: `sp_getapplock` LockOwner = Transaction; PG: `pg_advisory_xact_lock`). Không còn code JS gọi `sp_gen_*`. Còn 4 thủ tục chỉ được thủ tục khác gọi: `sp_gen_token_id` (`sp_create_refresh_token`), `sp_gen_user_id` (`sp_grant_member_accounts`, không còn dùng), `sp_gen_batch_id` / `sp_gen_file_id` (`sp_upload_files`) — chuyển cùng thủ tục gọi chúng. |
 | `trg_topic_auto_approval` | Chuyển về service duyệt đề tài trong JS (logic hiện đang "ẩn"). |
 | `sp_approve_topic` + `sp_grant_member_accounts` | Chuyển về JS service có test (150 dòng, gộp 3 việc). |
 | `sp_push_notification` + `sp_resolve_recipients` | Chuyển về `notifications` service JS. |
-| `sp_upload_files`, `trg_file_batch_count`, `trg_dept_gen_id`, `sp_create_refresh_token`, `sp_deactivate_expired_accounts`, `sp_cleanup_*` | Chuyển về JS (đã có job Node cho việc định kỳ). |
+| `sp_upload_files`, `trg_file_batch_count`, `sp_create_refresh_token`, `sp_deactivate_expired_accounts`, `sp_cleanup_*` | Chuyển về JS (đã có job Node cho việc định kỳ). `trg_dept_gen_id`: **đã bỏ** (migration `2026-12-14_bo_trigger_sinh_ma_khoa`, mã DVxxx sinh ở `genDeptId`). |
 | 13 trigger audit `trg_*_audit` | Giữ ở DB. Trên PG: 1 hàm `audit_set_updated()` dùng chung, `BEFORE UPDATE ... FOR EACH ROW`, đọc `current_setting('app.current_user_id', true)`, chỉ cập nhật khi các cột theo dõi thay đổi (`NEW.col IS DISTINCT FROM OLD.col`). |
 | `sp_set_actor` | Bỏ; thay bằng `withActor` (mục 5.1). |
 | `fn_normalize_phone` | Viết lại PL/pgSQL hoặc chuyển về JS. |
@@ -424,7 +424,12 @@ thường. Mỗi nhóm là 1 PR nhỏ theo module.
   Câu ghi trên pool chuyển sang `withActorTransaction` / `actorRequest` (mỗi câu
   ghi giờ chạy trong 1 transaction ngắn). Kiểm bằng `test-integration/actorAudit.test.js`
   (SQL Server) và `test-integration-pg/adapter.test.js` (PG); `check:tsql` set_actor = 0.
-- [ ] Hàm sinh mã JS dùng chung; thay các `EXEC sp_gen_*` (mục 5.4).
+- [x] Hàm sinh mã JS dùng chung; thay các `EXEC sp_gen_*` (mục 5.4): `src/utils/idGenerator.js`,
+  `lockResource` ở 2 adapter; `check:tsql` exec_proc 31 → 7 (còn các thủ tục khác).
+  Kiểm bằng `test/utils/idGenerator.test.js`, `test-integration/idGenerator.test.js` (SQL Server,
+  so với thủ tục cũ trên cùng dữ liệu) và `test-integration-pg/idGenerator.test.js`.
+  Bỏ luôn trigger `trg_dept_gen_id` (INSTEAD OF INSERT làm mất cột khi tạo khoa) bằng
+  migration `2026-12-14_bo_trigger_sinh_ma_khoa` (có bản PG).
 - [ ] Chuyển `trg_topic_auto_approval`, `sp_approve_topic`, `sp_push_notification`,
   `sp_upload_files`... về JS, có test. Xoá procedure không dùng.
 - [ ] Đổi cú pháp chạy được trên cả 2 DB: `ISNULL` → `COALESCE`, `+` nối chuỗi →

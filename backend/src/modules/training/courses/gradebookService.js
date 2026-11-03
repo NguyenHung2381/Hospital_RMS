@@ -1,4 +1,5 @@
 const { getPool, sql, withTransaction } = require('../../../config/db');
+const { genGradeId } = require('../../../utils/idGenerator');
 const { broadcast } = require('../../events/eventService');
 const { httpError } = require('../../../utils/httpError');
 const systemSettingService = require('../../settings/systemSettingService');
@@ -188,25 +189,30 @@ const recompute = async (courseId, enrollmentIds) => {
 };
 
 // ─── Ghi điểm ──────────────────────────────────────────────────────────────
-const ensureGradeRow = async (request, enrollmentId, programId, actorId) =>
-	(
-		await request
-			.input('enrollment_id', sql.VarChar(20), enrollmentId)
-			.input('program_id', sql.VarChar(20), programId || null)
-			.input('actor_id', sql.VarChar(20), actorId).query(`
-      DECLARE @id VARCHAR(20) = (SELECT id FROM grades WITH (UPDLOCK, HOLDLOCK)
-                                 WHERE enrollment_id = @enrollment_id AND subject_id IS NULL);
-      IF @id IS NULL
-      BEGIN
-        EXEC sp_gen_grade_id @actor_id = @actor_id, @new_id = @id OUTPUT;
-        INSERT INTO grades (id, enrollment_id, subject_id, program_id, created_by)
-        VALUES (@id, @enrollment_id, NULL, @program_id, @actor_id);
-      END
+// Dòng điểm tổng của lượt ghi danh; chưa có thì tạo. Tạo mới phải giữ khoá sinh
+// mã (genGradeId) rồi xem lại: người tạo song song đã commit thì dùng dòng đó.
+const ensureGradeRow = async (tx, enrollmentId, programId, actorId) => {
+	const find = async () =>
+		(
+			await new sql.Request(tx).input('enrollment_id', sql.VarChar(20), enrollmentId).query(`
       SELECT g.id, g.locked_at, g.theory_score, g.practice_score, g.theory_flag, g.practice_flag,
              g.theory_attempt, g.practice_attempt
-      FROM grades g WHERE g.id = @id;
-    `)
-	).recordset[0];
+      FROM grades g WHERE g.enrollment_id = @enrollment_id AND g.subject_id IS NULL`)
+		).recordset[0];
+	const found = await find();
+	if (found) return found;
+	const newId = await genGradeId(tx);
+	const again = await find();
+	if (again) return again;
+	await new sql.Request(tx)
+		.input('id', sql.VarChar(20), newId)
+		.input('enrollment_id', sql.VarChar(20), enrollmentId)
+		.input('program_id', sql.VarChar(20), programId || null)
+		.input('actor_id', sql.VarChar(20), actorId).query(`
+      INSERT INTO grades (id, enrollment_id, subject_id, program_id, created_by)
+      VALUES (@id, @enrollment_id, NULL, @program_id, @actor_id)`);
+	return find();
+};
 
 // Thi lại: bảng điểm giữ điểm CAO NHẤT các lần (GRADE_MAX_RETAKES), lịch sử ghi điểm thật từng lần.
 const writePart = async (tx, grade, enrollmentId, part, score, flag, source, actorId, note) => {
@@ -308,12 +314,7 @@ const saveBulk = async (
 			if (row.locked_at)
 				throw httpError(409, `Điểm của ${row.trainee_name} đã khóa, cần mở khóa trước khi sửa.`);
 
-			const grade = await ensureGradeRow(
-				new sql.Request(tx),
-				row.enrollment_id,
-				row.program_id,
-				actorId,
-			);
+			const grade = await ensureGradeRow(tx, row.enrollment_id, row.program_id, actorId);
 			for (const e of edits)
 				await writePart(tx, grade, row.enrollment_id, e.part, e.score, e.flag, source, actorId);
 			if (noteChanged)
@@ -344,7 +345,7 @@ const setPartFromExam = async (enrollmentId, part, score10, actorId) => {
 	if (!info) return;
 	let skipped = false;
 	await withTransaction(async (tx) => {
-		const grade = await ensureGradeRow(new sql.Request(tx), enrollmentId, info.program_id, actorId);
+		const grade = await ensureGradeRow(tx, enrollmentId, info.program_id, actorId);
 		if (grade.locked_at) {
 			skipped = true;
 			return;
@@ -362,12 +363,7 @@ const lock = async (courseId, actorId) => {
 	if (!rows.length) throw httpError(400, 'Khóa học chưa có học viên được duyệt.');
 	await withTransaction(async (tx) => {
 		for (const row of rows) {
-			const grade = await ensureGradeRow(
-				new sql.Request(tx),
-				row.enrollment_id,
-				row.program_id,
-				actorId,
-			);
+			const grade = await ensureGradeRow(tx, row.enrollment_id, row.program_id, actorId);
 			if (grade.locked_at) continue;
 			await new sql.Request(tx)
 				.input('id', sql.VarChar(20), grade.id)

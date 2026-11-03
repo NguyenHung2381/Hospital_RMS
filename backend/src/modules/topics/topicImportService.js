@@ -298,7 +298,7 @@ const importExcel = async ({ buffer, dry_run, defaults }, actorId) => {
 	};
 	if (dry_run) return { dry_run: true, summary, rows };
 
-	// Tuần tự: sp_gen_topic_id / sp_gen_member_id giữ applock sinh mã theo đợt/đề tài
+	// Tuần tự: genTopicId / genMemberId giữ khoá sinh mã theo đợt/đề tài
 	let inserted = 0;
 	const failures = [];
 	for (const r of importable) {

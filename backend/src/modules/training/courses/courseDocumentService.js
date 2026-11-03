@@ -1,4 +1,5 @@
-const { getPool, sql } = require('../../../config/db');
+const { getPool, sql, withTransaction } = require('../../../config/db');
+const { genCourseDocumentId } = require('../../../utils/idGenerator');
 const { broadcast } = require('../../events/eventService');
 const trainingFileService = require('../trainingFileService');
 const { assertHttpUrl } = require('../../../utils/safeUrl');
@@ -23,7 +24,6 @@ const listDocuments = async (courseId) => {
 };
 
 const addDocument = async (courseId, data, file, actorId) => {
-	const pool = await getPool();
 	const sourceType = data.source_type === 'link' ? 'link' : 'file';
 	let fileId = null;
 	if (sourceType === 'file') {
@@ -35,31 +35,33 @@ const addDocument = async (courseId, data, file, actorId) => {
 		);
 		fileId = savedFile.id;
 	}
-	const result = await pool
-		.request()
-		.input('course_id', sql.VarChar(20), courseId)
-		.input('doc_type', sql.VarChar(20), data.doc_type || 'material')
-		.input(
-			'title',
-			sql.NVarChar(255),
-			data.title || (file ? trainingFileService.decodeOriginalName(file.originalname) : 'Liên kết'),
-		)
-		.input('source_type', sql.VarChar(10), sourceType)
-		.input('file_id', sql.VarChar(20), fileId)
-		.input(
-			'external_url',
-			sql.NVarChar(500),
-			sourceType === 'link' ? assertHttpUrl(data.external_url, 'Liên kết') : null,
-		)
-		.input('is_public', sql.Bit, data.is_public === 'false' || data.is_public === false ? 0 : 1)
-		.input('exam_type', sql.VarChar(20), data.exam_type || null)
-		.input('actor_id', sql.VarChar(20), actorId).query(`
-      DECLARE @new_id VARCHAR(20);
-      EXEC sp_gen_course_document_id @actor_id = @actor_id, @new_id = @new_id OUTPUT;
+	const result = await withTransaction(async (tx) =>
+		tx
+			.request()
+			.input('new_id', sql.VarChar(20), await genCourseDocumentId(tx))
+			.input('course_id', sql.VarChar(20), courseId)
+			.input('doc_type', sql.VarChar(20), data.doc_type || 'material')
+			.input(
+				'title',
+				sql.NVarChar(255),
+				data.title ||
+					(file ? trainingFileService.decodeOriginalName(file.originalname) : 'Liên kết'),
+			)
+			.input('source_type', sql.VarChar(10), sourceType)
+			.input('file_id', sql.VarChar(20), fileId)
+			.input(
+				'external_url',
+				sql.NVarChar(500),
+				sourceType === 'link' ? assertHttpUrl(data.external_url, 'Liên kết') : null,
+			)
+			.input('is_public', sql.Bit, data.is_public === 'false' || data.is_public === false ? 0 : 1)
+			.input('exam_type', sql.VarChar(20), data.exam_type || null)
+			.input('actor_id', sql.VarChar(20), actorId).query(`
       INSERT INTO course_documents (id, course_id, doc_type, title, source_type, file_id, external_url, is_public, exam_type, created_by)
       VALUES (@new_id, @course_id, @doc_type, @title, @source_type, @file_id, @external_url, @is_public, @exam_type, @actor_id);
       SELECT @new_id AS id;
-    `);
+    `),
+	);
 	broadcast('update', { entity: 'course_document' });
 	return { id: result.recordset[0].id };
 };
