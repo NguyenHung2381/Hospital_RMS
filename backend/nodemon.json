@@ -2,5 +2,6 @@
   "watch": ["src"],
   "ext": "js,json",
   "ignore": ["uploads/**", "logs/**", "migrations/**", "*.log"],
-  "pollingInterval": 1000
+  "pollingInterval": 2500,
+  "delay": 1500
 }
