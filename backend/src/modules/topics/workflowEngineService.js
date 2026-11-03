@@ -9,6 +9,7 @@
  * tự suy diễn generic vì mỗi resource có luật đổi trạng thái riêng.
  */
 const { getPool, sql } = require('../../config/db');
+const { isMissingTable } = require('../../utils/dbErrors');
 const { broadcast } = require('../events/eventService');
 const { httpError } = require('../../utils/httpError');
 
@@ -28,7 +29,7 @@ const hasActiveDefinition = async (resource) => {
 			);
 		return !!r.recordset[0];
 	} catch (err) {
-		if (err.number === 208) return false; // Invalid object name — bảng chưa migrate
+		if (isMissingTable(err)) return false; // Invalid object name — bảng chưa migrate
 		throw err;
 	}
 };

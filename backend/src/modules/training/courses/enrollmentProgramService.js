@@ -9,6 +9,7 @@
  *     tiến độ). Vòng khoa + NHD từng vòng làm ở giai đoạn sau.
  */
 const { getPool, sql } = require('../../../config/db');
+const { isUniqueViolation } = require('../../../utils/dbErrors');
 const { broadcast } = require('../../events/eventService');
 const { httpError } = require('../../../utils/httpError');
 const lessonProgressService = require('./lessonProgressService');
@@ -140,7 +141,7 @@ const updateEnrollment = async (enrollmentId, data, actorId) => {
 	await req
 		.query(`UPDATE course_enrollments SET ${sets.join(', ')} WHERE id = @id`)
 		.catch((err) => {
-			if (err.number === 2601 || err.number === 2627) {
+			if (isUniqueViolation(err)) {
 				throw httpError(
 					409,
 					String(err.message).includes('practice_code')

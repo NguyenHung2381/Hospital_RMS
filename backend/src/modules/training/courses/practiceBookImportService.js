@@ -17,6 +17,7 @@
  *   chưa có vòng thì rút mẫu vòng từ chính các hồ sơ trong sổ.
  */
 const { getPool, sql } = require('../../../config/db');
+const { isUniqueViolation } = require('../../../utils/dbErrors');
 const { broadcast } = require('../../events/eventService');
 const { norm } = require('../../../utils/vietnameseText');
 const { loadWorkbook, findHeader, cellText, parseDateCell } = require('../../../utils/excelImport');
@@ -412,7 +413,7 @@ const importBook = async (courseId, { buffer, dry_run }, actorId) => {
 			written++;
 			if (needsArrange(it)) toArrange.push({ id, it });
 		} catch (err) {
-			const dup = err.number === 2601 || err.number === 2627;
+			const dup = isUniqueViolation(err);
 			failed.push(
 				`Dòng ${it.row} (${it.practice_code}): ${dup ? 'học viên đã có hồ sơ cùng chương trình trong khóa' : err.message}`,
 			);

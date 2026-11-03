@@ -322,16 +322,20 @@ Sau bước này, DB PG chỉ còn: bảng, index, sequence, 1 hàm trigger audi
   - Danh sách login/user, ai kết nối vào DB (`sys.dm_exec_sessions` theo `program_name`, `host_name` trong vài ngày).
   - Object trong DB không có trong `database/objects/` (so lại bằng `npm run dump:db-objects`).
   - Top truy vấn tốn tài nguyên (`sys.dm_exec_query_stats`) để so hiệu năng sau này.
-- [ ] Viết `backend/scripts/check-tsql-usage.js`: đếm các mẫu ở mục 2.2 theo
+- [x] Viết `backend/scripts/check-tsql-usage.js`: đếm các mẫu ở mục 2.2 theo
   từng file, in bảng tiến độ. Chạy trong CI ở chế độ "ratchet" (chỉ cho giảm,
   không cho tăng) — giống `typecheckRatchet.test.js` đang có.
+  → `npm run check:tsql` (`--files` xem theo file, `--update` hạ mốc);
+  mốc ở `scripts/tsql-usage-baseline.json`, test `test/contract/tsqlUsageRatchet.test.js`.
+  Mốc ban đầu (03/11/2026): 1.156 chỗ.
 
 ### Chặng 1 — Trung lập hoá trên SQL Server (3–5 tuần, phát hành dần)
 
 Mọi việc dưới đây chạy trên SQL Server hiện tại, test và smoke test như bình
 thường. Mỗi nhóm là 1 PR nhỏ theo module.
 
-- [ ] `dbErrors.js` + sửa 19 file đang kiểm `err.number` (mục 4.5).
+- [x] `dbErrors.js` + sửa 19 file đang kiểm `err.number` (mục 4.5).
+  → `src/utils/dbErrors.js`; 15 file đã chuyển, mẫu `err_number` trong ratchet = 0.
 - [ ] `withActor()` thay 76 chỗ `EXEC sp_set_actor @actor_id;` (trên SQL Server
   vẫn gọi `sp_set_actor` bên trong, nhưng tách thành lời gọi riêng trong transaction).
 - [ ] Hàm sinh mã JS dùng chung; thay các `EXEC sp_gen_*` (mục 5.4).

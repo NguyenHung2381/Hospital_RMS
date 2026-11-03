@@ -7,6 +7,7 @@
  * chụp người hướng dẫn thực hành trên Phiếu nhận xét).
  */
 const { getPool, sql } = require('../../config/db');
+const { isUniqueViolation } = require('../../utils/dbErrors');
 const { broadcast } = require('../events/eventService');
 const { norm, normDept } = require('../../utils/vietnameseText');
 const { normalizeGender } = require('../../utils/gender');
@@ -285,7 +286,7 @@ const importExcel = async ({ buffer, dry_run }, actorId) => {
 				ok = true;
 			} catch (err) {
 				// 2601/2627: số CCHN đã thuộc nhân sự khác (UQ_stafflic_license_no)
-				if (err.number !== 2601 && err.number !== 2627) throw err;
+				if (!isUniqueViolation(err)) throw err;
 				warnings.push(
 					`Dòng ${it.row} (MNV ${it.staff_number}): số CCHN ${it.values.license_no} đã gán cho nhân sự khác — bỏ qua`,
 				);

@@ -1,4 +1,5 @@
 const { getPool, sql } = require('../../../config/db');
+const { appErrorCode } = require('../../../utils/dbErrors');
 const { broadcast } = require('../../events/eventService');
 const mailService = require('../../notifications/mailService');
 const mailQueue = require('../../notifications/mailQueue');
@@ -131,7 +132,7 @@ const registerTrainee = async (
     `,
 		)
 		.catch((err) => {
-			if (err.number === 51000) {
+			if (appErrorCode(err) === 51000) {
 				throw httpError(
 					409,
 					programId

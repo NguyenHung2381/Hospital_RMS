@@ -3,6 +3,13 @@ const { error } = require('../utils/response');
 const logger = require('../config/logger');
 // Đường dẫn có thể chứa mã vé / token QR (cổng công khai) — không để lọt vào log lỗi
 const { redactUrl } = require('../utils/logRedact');
+const {
+	isDbError,
+	dbErrorNumber,
+	isUniqueViolation,
+	isForeignKeyViolation,
+	isCheckViolation,
+} = require('../utils/dbErrors');
 
 const validate = (req, res, next) => {
 	const errors = validationResult(req);
@@ -15,14 +22,14 @@ const validate = (req, res, next) => {
 const isProd = process.env.NODE_ENV === 'production';
 
 const errorHandler = (err, req, res, next) => {
-	// SQL Server errors — không trả nguyên văn err.message ra ngoài ở production
+	// Lỗi từ CSDL — không trả nguyên văn err.message ra ngoài ở production
 	// vì nó có thể lộ tên bảng/cột hoặc đoạn câu lệnh SQL; log đầy đủ ở server.
-	if (err.number) {
+	if (isDbError(err)) {
 		logger.error(
-			`❌ SQL Error [${err.number}] on ${req.method} ${redactUrl(req.path)}:`,
+			`❌ SQL Error [${dbErrorNumber(err)}] on ${req.method} ${redactUrl(req.path)}:`,
 			err.message,
 		);
-		if (err.number === 2627 || err.number === 2601) {
+		if (isUniqueViolation(err)) {
 			if (/U[QX]_users_email/.test(err.message))
 				return error(res, 'Email này đã được dùng cho tài khoản khác', 409);
 			if (/UQ_stafflic_user/.test(err.message))
@@ -31,7 +38,7 @@ const errorHandler = (err, req, res, next) => {
 				return error(res, 'Số CCHN này đã gán cho nhân sự khác', 409);
 			return error(res, 'Dữ liệu bị trùng với bản ghi đã có', 409);
 		}
-		if (err.number === 547) {
+		if (isForeignKeyViolation(err) || isCheckViolation(err)) {
 			return error(res, 'Không thể thực hiện vì dữ liệu đang được liên kết ở nơi khác', 409);
 		}
 		return error(res, isProd ? 'Lỗi cơ sở dữ liệu' : err.message || 'Lỗi cơ sở dữ liệu', 500);

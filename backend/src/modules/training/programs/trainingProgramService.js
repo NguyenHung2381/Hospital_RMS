@@ -1,5 +1,6 @@
 // Chương trình đào tạo. Bài học + tài liệu bài học ở programLessonService (export lại ở đây để nơi gọi giữ nguyên).
 const { getPool, sql } = require('../../../config/db');
+const { isUniqueViolation } = require('../../../utils/dbErrors');
 const { broadcast } = require('../../events/eventService');
 const { paging } = require('../../../utils/paging');
 const { httpError } = require('../../../utils/httpError');
@@ -176,8 +177,7 @@ const getById = async (id) => {
 
 // Vi phạm UQ_trprog_code (mã chương trình trùng) → 409 thay vì 500.
 const rethrowDuplicateCode = (err) => {
-	if (err.number === 2601 || err.number === 2627)
-		throw httpError(409, 'Mã chương trình đã tồn tại.');
+	if (isUniqueViolation(err)) throw httpError(409, 'Mã chương trình đã tồn tại.');
 	throw err;
 };
 

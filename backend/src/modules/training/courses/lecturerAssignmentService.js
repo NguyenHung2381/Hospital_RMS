@@ -1,4 +1,5 @@
 const { getPool, sql, withTransaction } = require('../../../config/db');
+const { isUniqueViolation } = require('../../../utils/dbErrors');
 const { broadcast } = require('../../events/eventService');
 const { ROLE, roleIdOf } = require('../../access/roleCodes');
 const { httpError } = require('../../../utils/httpError');
@@ -8,9 +9,6 @@ const logger = require('../../../config/logger');
 // lecturer_assignments.subject_id trỏ program_lessons (tên cột cũ từ thời "môn học").
 // role: 'main' = GV chính (mỗi bài tối đa 1, UQ_lecass_main) | 'assistant' = GV phụ.
 // subject_id NULL = phân công cả khóa. Xem 2026-11-20_lecturer_assignment_roles.sql.
-
-const isUniqueViolation = (err) =>
-	[2601, 2627].includes(err?.number ?? err?.originalError?.info?.number);
 
 // ─── Phân công giảng viên ────────────────────────────────────────────────
 const listAssignments = async (courseId) => {

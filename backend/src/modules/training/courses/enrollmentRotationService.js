@@ -11,6 +11,7 @@
  * Danh sách trả kèm cảnh báo từng dòng (không chặn).
  */
 const { getPool, sql } = require('../../../config/db');
+const { appErrorCode } = require('../../../utils/dbErrors');
 const { broadcast } = require('../../events/eventService');
 const { httpError } = require('../../../utils/httpError');
 const { formatDuration } = require('../../../utils/trainingDuration');
@@ -189,7 +190,7 @@ const addSegment = async (enrollmentId, lessonId, actorId) => {
     `,
 		)
 		.catch((err) => {
-			if (err.number === 51010) throw httpError(400, 'Vòng này chưa có trong hồ sơ.');
+			if (appErrorCode(err) === 51010) throw httpError(400, 'Vòng này chưa có trong hồ sơ.');
 			throw err;
 		});
 	notify();
@@ -346,7 +347,7 @@ const retake = async (rotationId, actorId) => {
     `,
 		)
 		.catch((err) => {
-			if (err.number === 51011) throw httpError(404, 'Không tìm thấy vòng thực hành.');
+			if (appErrorCode(err) === 51011) throw httpError(404, 'Không tìm thấy vòng thực hành.');
 			throw err;
 		});
 	notify();
@@ -375,7 +376,7 @@ const move = async (rotationId, up, actorId) => {
     `,
 		)
 		.catch((err) => {
-			if (err.number === 51012) throw httpError(404, 'Không tìm thấy vòng thực hành.');
+			if (appErrorCode(err) === 51012) throw httpError(404, 'Không tìm thấy vòng thực hành.');
 			throw err;
 		});
 	notify();

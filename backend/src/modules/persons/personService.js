@@ -1,4 +1,5 @@
 const { getPool, sql, withTransaction } = require('../../config/db');
+const { isMissingObject } = require('../../utils/dbErrors');
 const { normalizeGender } = require('../../utils/gender');
 const logger = require('../../config/logger');
 
@@ -384,7 +385,7 @@ const withTx = (pool, fn) =>
 	}, pool);
 
 const logFailure = (what, err) => {
-	if (err && (err.number === 208 || err.number === 207)) {
+	if (isMissingObject(err)) {
 		schemaReady = false; // thiếu bảng/cột (migration chưa chạy hoặc bị gỡ) → kiểm tra lại sau
 		schemaCheckedAt = Date.now();
 	}

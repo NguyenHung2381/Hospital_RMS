@@ -1,4 +1,5 @@
 const { getPool, sql } = require('../config/db');
+const { isUniqueViolation } = require('../utils/dbErrors');
 
 /**
  * Đánh dấu (jobName, key) đã chạy — trả về true nếu đây là LẦN ĐẦU (nên xử
@@ -18,7 +19,7 @@ const markOnce = async (jobName, key) => {
 			);
 		return true;
 	} catch (err) {
-		if (err.number === 2627 || err.number === 2601) return false; // vi phạm UNIQUE = đã chạy rồi
+		if (isUniqueViolation(err)) return false; // vi phạm UNIQUE = đã chạy rồi
 		throw err;
 	}
 };

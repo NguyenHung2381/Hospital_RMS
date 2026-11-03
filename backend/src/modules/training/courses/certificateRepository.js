@@ -1,4 +1,5 @@
 const { getPool, sql } = require('../../../config/db');
+const { appErrorCode } = require('../../../utils/dbErrors');
 
 // Truy cập dữ liệu chứng chỉ khóa học — CHỈ SQL, không quy tắc nghiệp vụ,
 // không ném lỗi HTTP, không phát sự kiện (việc của certificateService.js).
@@ -57,7 +58,7 @@ const insert = async ({ enrollmentId, actorId, year, expiryDate }) => {
     `);
 		return r.recordset[0];
 	} catch (err) {
-		if (err.number === DUPLICATE) return null;
+		if (appErrorCode(err) === DUPLICATE) return null;
 		throw err;
 	}
 };

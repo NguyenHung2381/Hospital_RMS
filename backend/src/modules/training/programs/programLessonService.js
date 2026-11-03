@@ -1,4 +1,5 @@
 const { getPool, sql } = require('../../../config/db');
+const { appErrorCode } = require('../../../utils/dbErrors');
 const { broadcast } = require('../../events/eventService');
 const trainingFileService = require('../trainingFileService');
 const { assertHttpUrl } = require('../../../utils/safeUrl');
@@ -208,7 +209,7 @@ const linkLesson = async (programId, lessonId, displayOrder, actorId) => {
     `,
 		)
 		.catch((err) => {
-			if (err.number === 51003) {
+			if (appErrorCode(err) === 51003) {
 				throw httpError(409, 'Bài học này đã được gắn vào chương trình rồi.');
 			}
 			throw err;

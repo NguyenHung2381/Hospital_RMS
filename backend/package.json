@@ -19,6 +19,7 @@
     "check:routes": "node scripts/check-route-permissions.js",
     "check:requires": "node scripts/check-requires.js",
     "check:deps": "node scripts/check-deps.js",
+    "check:tsql": "node scripts/check-tsql-usage.js",
     "gen:perm-types": "node scripts/gen-permission-types.js",
     "sync:permissions": "node scripts/sync-permissions.js",
     "flag:default-passwords": "node scripts/flag-default-passwords.js",

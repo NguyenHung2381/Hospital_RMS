@@ -1,4 +1,5 @@
 const { getPool, sql } = require('../../config/db');
+const { appErrorCode } = require('../../utils/dbErrors');
 const bcrypt = require('bcrypt');
 const notifSvc = require('../notifications/notificationService');
 const { broadcast } = require('../events/eventService');
@@ -117,11 +118,7 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const isGenLockTimeout = (err) => {
 	if (!err) return false;
 	const msg = String(err.message || '');
-	return (
-		err.number === 50000 ||
-		err.originalError?.info?.number === 50000 ||
-		/kh[oó]a sinh m[ãa]/i.test(msg)
-	);
+	return appErrorCode(err) === 50000 || /kh[oó]a sinh m[ãa]/i.test(msg);
 };
 
 const genUserIdWithRetry = async (tx, deptCode, isDeptAccount = false, attempts = 3) => {

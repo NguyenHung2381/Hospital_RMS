@@ -1,4 +1,5 @@
 const { getPool, sql } = require('../../config/db');
+const { isUniqueViolation } = require('../../utils/dbErrors');
 const { parseJsonArray } = require('../../utils/sqlFilters');
 const { broadcast } = require('../events/eventService');
 const { paging } = require('../../utils/paging');
@@ -264,7 +265,7 @@ const submitResponse = async (surveyId, answers, actor) => {
     `,
 		)
 		.catch((err) => {
-			if (err.number === 2627 || err.number === 2601) {
+			if (isUniqueViolation(err)) {
 				throw httpError(409, 'Bạn đã nộp khảo sát này rồi.');
 			}
 			throw err;
