@@ -12,6 +12,7 @@ const {
 	withActorTransaction,
 	actorRequest,
 	withActor,
+	boolExpr,
 } = require('../../config/db');
 const { genCmeNo } = require('../../utils/idGenerator');
 const { broadcast } = require('../events/eventService');
@@ -24,10 +25,9 @@ const { httpError } = require('../../utils/httpError');
 // chức thêm/nhập Excel (không có vé) giữ nghiệp vụ cũ: BTC tự chịu trách nhiệm.
 // Có bài test thì phải nộp bài và đạt điểm đạt (nếu đặt); bài nộp trước khi có
 // điểm theo trọng số (test_score NULL) tính mỗi câu đúng 1 điểm.
-const CME_ELIGIBLE_SQL = `CAST(CASE WHEN p.ticket_code IS NULL OR (p.checked_in_at IS NOT NULL
+const CME_ELIGIBLE_SQL = `${boolExpr(`p.ticket_code IS NULL OR (p.checked_in_at IS NOT NULL
   AND (s.test_questions IS NULL OR (p.test_submitted_at IS NOT NULL
-    AND (s.test_pass_score IS NULL OR COALESCE(p.test_score, p.test_correct) >= s.test_pass_score))))
-  THEN 1 ELSE 0 END AS BIT)`;
+    AND (s.test_pass_score IS NULL OR COALESCE(p.test_score, p.test_correct) >= s.test_pass_score))))`)}`;
 
 // Cấp số CME cho 1 hoặc nhiều người (tuần tự, giữ dãy liền mạch).
 /**

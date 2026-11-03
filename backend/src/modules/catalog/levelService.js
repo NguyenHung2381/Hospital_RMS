@@ -33,7 +33,7 @@ const createWithSeqId = (table, prefix, errNo, limitMsg, entity) => async (data,
 			.input('name', sql.NVarChar(500), data.name)
 			.input('description', sql.NVarChar(sql.MAX), data.description || null).query(`
 			DECLARE @seq INT;
-			SELECT @seq = ISNULL(MAX(CAST(RIGHT(id, 2) AS INT)), 0) + 1
+			SELECT @seq = COALESCE(MAX(CAST(RIGHT(id, 2) AS INT)), 0) + 1
 			FROM ${table}
 			WHERE id LIKE '${prefix}[0-9][0-9]';
 			IF @seq > 99 THROW ${errNo}, '${limitMsg}', 1;

@@ -1,4 +1,10 @@
-const { getPool, sql, withActorTransaction, actorRequest } = require('../../../config/db');
+const {
+	getPool,
+	sql,
+	withActorTransaction,
+	actorRequest,
+	boolExpr,
+} = require('../../../config/db');
 const { broadcast } = require('../../events/eventService');
 const { paging } = require('../../../utils/paging');
 const personService = require('../../persons/personService');
@@ -179,7 +185,7 @@ const createFromStaff = async (userIds, actorId) => {
 	const rs = await req.query(`
     SELECT u.id, u.full_name, u.email, u.phone_number, u.date_of_birth, u.gender,
            sl.primary_specialty,
-           CAST(CASE WHEN EXISTS (SELECT 1 FROM lecturers l WHERE l.user_id = u.id) THEN 1 ELSE 0 END AS BIT) AS is_lecturer
+           ${boolExpr(`EXISTS (SELECT 1 FROM lecturers l WHERE l.user_id = u.id)`)} AS is_lecturer
     FROM users u
     LEFT JOIN staff_practice_licenses sl ON sl.user_id = u.id
     WHERE u.id IN (${ids.map((_, i) => `@u${i}`).join(', ')})`);

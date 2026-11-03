@@ -441,14 +441,14 @@ const statsCme = async ({ year = undefined } = {}) => {
 	req.input('year', sql.Int, y);
 	const r = await req.query(`
     SELECT
-      (SELECT ISNULL(last_seq, 0) FROM cme_year_register WHERE [year] = @year) AS last_seq,
+      (SELECT COALESCE(last_seq, 0) FROM cme_year_register WHERE [year] = @year) AS last_seq,
       COUNT(*) AS total,
       SUM(CASE WHEN participation_type = 'speaker' THEN 1 ELSE 0 END) AS speakers,
       SUM(CASE WHEN participation_type = 'attendee' THEN 1 ELSE 0 END) AS attendees,
       SUM(CASE WHEN source = 'internal' THEN 1 ELSE 0 END) AS internal_count,
       SUM(CASE WHEN source = 'external' THEN 1 ELSE 0 END) AS external_count,
       SUM(CASE WHEN cme_status = 'signed' THEN 1 ELSE 0 END) AS signed_count,
-      ISNULL(SUM(cme_credits), 0) AS total_credits
+      COALESCE(SUM(cme_credits), 0) AS total_credits
     FROM seminar_participants
     WHERE cme_year = @year AND cme_seq IS NOT NULL;
   `);
@@ -493,7 +493,7 @@ const cmeRegister = async ({ year = undefined, search = undefined, page = 1, lim
       INNER JOIN seminars s ON s.id = p.seminar_id
       ${where};
 
-      SELECT ISNULL(last_seq, 0) AS last_seq FROM cme_year_register WHERE [year] = @year;
+      SELECT COALESCE(last_seq, 0) AS last_seq FROM cme_year_register WHERE [year] = @year;
     `);
 	return {
 		year: y,
@@ -514,7 +514,7 @@ const updateRegisterSeq = async (year, lastSeq, actorId) => {
 		.request()
 		.input('year', sql.Int, y)
 		.query(
-			`SELECT ISNULL(MAX(cme_seq), 0) AS max_seq FROM seminar_participants WHERE cme_year = @year`,
+			`SELECT COALESCE(MAX(cme_seq), 0) AS max_seq FROM seminar_participants WHERE cme_year = @year`,
 		);
 	if (seq < maxRes.recordset[0].max_seq) {
 		throw httpError(

@@ -141,8 +141,8 @@ const mssqlDriver = {
 	// 1 kết nối riêng, không timeout: migration lớn chạy lâu hơn requestTimeout của app.
 	open: () => new sql.ConnectionPool({ ...dbConfig, requestTimeout: 0, pool: { max: 1, min: 0 } }).connect(),
 	close: (conn) => conn.close(),
-	hasTable: async (conn) => (await scalar(conn, `SELECT OBJECT_ID(N'${TABLE}', N'U')`)) != null,
-	hasChecksum: async (conn) => (await scalar(conn, `SELECT COL_LENGTH(N'${TABLE}', N'checksum')`)) != null,
+	hasTable: async (conn) => (await scalar(conn, `SELECT OBJECT_ID('${TABLE}', 'U')`)) != null,
+	hasChecksum: async (conn) => (await scalar(conn, `SELECT COL_LENGTH('${TABLE}', 'checksum')`)) != null,
 	rows: async (conn, withChecksum) =>
 		(await conn.request().query(`SELECT filename${withChecksum ? ', checksum' : ''}, applied_at FROM ${TABLE}`))
 			.recordset,
@@ -156,14 +156,14 @@ const mssqlDriver = {
 	},
 	ensureTable: (conn) =>
 		conn.request().query(`
-    IF OBJECT_ID(N'${TABLE}', N'U') IS NULL
+    IF OBJECT_ID('${TABLE}', 'U') IS NULL
       CREATE TABLE ${TABLE} (
         filename   NVARCHAR(200) NOT NULL PRIMARY KEY,
         applied_at DATETIME2     NOT NULL DEFAULT SYSUTCDATETIME(),
         git_sha    VARCHAR(40)   NULL,
         checksum   CHAR(64)      NULL
       );
-    ELSE IF COL_LENGTH(N'${TABLE}', N'checksum') IS NULL
+    ELSE IF COL_LENGTH('${TABLE}', 'checksum') IS NULL
       ALTER TABLE ${TABLE} ADD checksum CHAR(64) NULL;
   `),
 	rename: (conn, from, to) =>
@@ -182,7 +182,7 @@ const mssqlDriver = {
 	lock: async (conn) => {
 		const lock = await scalar(conn, `
       DECLARE @r INT;
-      EXEC @r = sp_getapplock @Resource = N'${LOCK}', @LockMode = 'Exclusive', @LockOwner = 'Session', @LockTimeout = 600000;
+      EXEC @r = sp_getapplock @Resource = '${LOCK}', @LockMode = 'Exclusive', @LockOwner = 'Session', @LockTimeout = 600000;
       SELECT @r`);
 		if (lock < 0) throw new Error(`Không lấy được khóa ${LOCK} (mã ${lock})`);
 	},

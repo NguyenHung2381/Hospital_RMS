@@ -28,11 +28,11 @@ const getStats = async (year = null) =>
 
     -- Topics by department: article_type + status + category breakdown (for full dept stats table)
     SELECT
-      ISNULL(d.name, N'Chưa xác định') AS dept_name,
-      ISNULL(d.specialty_group, N'Chưa xác định') AS specialty_group,
+      COALESCE(d.name, N'Chưa xác định') AS dept_name,
+      COALESCE(d.specialty_group, N'Chưa xác định') AS specialty_group,
       t.article_type,
       t.status,
-      ISNULL(c.name, N'Chưa xác định') AS category_name,
+      COALESCE(c.name, N'Chưa xác định') AS category_name,
       COUNT(t.id) AS cnt
     FROM #t t
     LEFT JOIN departments d ON d.id = t.department_id
@@ -61,7 +61,7 @@ const getStats = async (year = null) =>
     -- Topics by category per round year
     SELECT
       CAST(r.year AS VARCHAR(4)) AS year,
-      ISNULL(c.name, N'Chưa phân loại') AS category_name,
+      COALESCE(c.name, N'Chưa phân loại') AS category_name,
       COUNT(*) AS cnt
     FROM #t t
     LEFT JOIN research_rounds r ON r.id = t.round_id
@@ -103,7 +103,7 @@ const getStats = async (year = null) =>
 
     -- Council progress-review completion theo phòng ban: số đánh giá cần chấm
     SELECT
-      ISNULL(d.name, N'Chưa xác định') AS dept_name,
+      COALESCE(d.name, N'Chưa xác định') AS dept_name,
       COUNT(*) AS expected
     FROM council_members cm
     INNER JOIN #t t ON t.council_id = cm.council_id
@@ -112,7 +112,7 @@ const getStats = async (year = null) =>
 
     -- Council progress-review completion theo phòng ban: số đánh giá đã chấm
     SELECT
-      ISNULL(d.name, N'Chưa xác định') AS dept_name,
+      COALESCE(d.name, N'Chưa xác định') AS dept_name,
       COUNT(*) AS completed
     FROM council_progress_reviews pr
     INNER JOIN #t t ON t.id = pr.topic_id
@@ -273,7 +273,7 @@ const getTrainingStats = async () =>
     ORDER BY sess.session_date, sess.start_time;
 
     -- Top lớp đầy chỗ nhất (lớp = chương trình trong khóa, sĩ số tối đa của chương trình)
-    SELECT TOP 10 c.id, CONCAT(c.name, N' · ', ISNULL(tp.code, tp.name)) AS name, tp.max_capacity AS capacity, a.n AS approved_count
+    SELECT TOP 10 c.id, CONCAT(c.name, ' · ', COALESCE(tp.code, tp.name)) AS name, tp.max_capacity AS capacity, a.n AS approved_count
     FROM course_programs cp
     JOIN courses c ON c.id = cp.course_id AND c.status <> 'cancelled'
     JOIN training_programs tp ON tp.id = cp.program_id
@@ -283,7 +283,7 @@ const getTrainingStats = async () =>
     ORDER BY a.n * 1.0 / tp.max_capacity DESC;
 
     -- Học viên theo đối tượng
-    SELECT ISNULL(tt.name, N'Chưa phân loại') AS name, COUNT(*) AS cnt
+    SELECT COALESCE(tt.name, N'Chưa phân loại') AS name, COUNT(*) AS cnt
     FROM trainees t
     LEFT JOIN trainee_types tt ON tt.id = t.trainee_type_id
     WHERE t.is_active = 1
@@ -386,8 +386,8 @@ const getOverviewStats = async () =>
          INNER JOIN course_enrollments e ON e.id = c.enrollment_id
          INNER JOIN trainees tr ON tr.id = e.trainee_id
          WHERE tr.department_id = d.id AND c.status = 'active') AS certificates_cnt,
-      ISNULL(sp.participants_cnt, 0) AS participants_cnt,
-      ISNULL(sp.cme_cnt, 0) AS cme_cnt
+      COALESCE(sp.participants_cnt, 0) AS participants_cnt,
+      COALESCE(sp.cme_cnt, 0) AS cme_cnt
     FROM departments d
     LEFT JOIN (
       SELECT COALESCE(u.department_id, dr.id) AS dept_id,
@@ -454,7 +454,7 @@ const getSeminarStats = async () =>
       (SELECT COUNT(*) FROM seminar_participants
          WHERE cme_year = @year AND cme_status IN ('issued', 'signed')) AS cme_issued_this_year,
       (SELECT COUNT(*) FROM seminar_participants WHERE cme_status = 'pending') AS cme_pending,
-      (SELECT ISNULL(SUM(cme_credits), 0) FROM seminar_participants
+      (SELECT COALESCE(SUM(cme_credits), 0) FROM seminar_participants
          WHERE cme_year = @year AND cme_status IN ('issued', 'signed')) AS cme_credits_this_year,
       @year AS current_year;
 
@@ -482,13 +482,13 @@ const getSeminarStats = async () =>
     ORDER BY s.start_date ASC;
 
     -- Khoa/phòng có nhiều lượt tham dự nhất trong năm (nhân sự nội viện)
-    SELECT TOP 8 ISNULL(NULLIF(LTRIM(RTRIM(sp.department_raw)), ''), N'Chưa xác định') AS name,
+    SELECT TOP 8 COALESCE(NULLIF(LTRIM(RTRIM(sp.department_raw)), ''), N'Chưa xác định') AS name,
       COUNT(*) AS cnt,
       SUM(CASE WHEN sp.cme_status IN ('issued', 'signed') THEN 1 ELSE 0 END) AS cme_cnt
     FROM seminar_participants sp
     INNER JOIN seminars s ON s.id = sp.seminar_id
     WHERE s.event_year = @year AND sp.source = 'internal'
-    GROUP BY ISNULL(NULLIF(LTRIM(RTRIM(sp.department_raw)), ''), N'Chưa xác định')
+    GROUP BY COALESCE(NULLIF(LTRIM(RTRIM(sp.department_raw)), ''), N'Chưa xác định')
     ORDER BY cnt DESC;
   `);
 

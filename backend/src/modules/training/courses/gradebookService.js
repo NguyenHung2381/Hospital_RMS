@@ -61,7 +61,7 @@ const teachingAccess = async (courseId, userId) => {
         CASE WHEN EXISTS (SELECT 1 FROM lecturer_assignments la JOIN lecturers lec ON lec.id = la.lecturer_id
                           LEFT JOIN program_lessons pl ON pl.id = la.subject_id
                           WHERE la.course_id = @course_id AND lec.user_id = @uid
-                            AND (la.subject_id IS NULL OR pl.lesson_kind = 'rotation' OR ISNULL(pl.practice_hours, 0) > 0))
+                            AND (la.subject_id IS NULL OR pl.lesson_kind = 'rotation' OR COALESCE(pl.practice_hours, 0) > 0))
                OR EXISTS (SELECT 1 FROM exam_papers p WHERE p.course_id = @course_id AND p.exam_part = 'practice'
                           AND ${PAPER_GRADER_SQL('p')}) THEN 1 ELSE 0 END AS practice
     `)

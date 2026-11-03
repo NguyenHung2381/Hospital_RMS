@@ -1,7 +1,7 @@
 {
 	"getdate": 193,
-	"n_prefix": 76,
-	"isnull": 107,
+	"n_prefix": 34,
+	"isnull": 0,
 	"set_actor": 0,
 	"exec_proc": 2,
 	"declare": 60,
@@ -17,7 +17,7 @@
 	"like_class": 9,
 	"output_clause": 19,
 	"identity_fn": 18,
-	"cast_tsql_type": 23,
+	"cast_tsql_type": 6,
 	"convert": 20,
 	"string_fn": 3,
 	"merge": 7,

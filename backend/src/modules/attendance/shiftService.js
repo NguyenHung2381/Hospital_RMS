@@ -1,4 +1,4 @@
-const { getPool, sql, withTransaction } = require('../../config/db');
+const { getPool, sql, withTransaction, boolExpr } = require('../../config/db');
 const { broadcast } = require('../events/eventService');
 const {
 	validateShift,
@@ -204,7 +204,7 @@ const listCourses = async () => {
 	return (
 		await pool.request().input('today', sql.Date, todayKeyVN()).query(`
       SELECT c.id, c.name, c.start_date, c.end_date, c.is_rolling, c.shift_pattern_id,
-             CAST(CASE WHEN c.is_rolling = 0 AND c.end_date < @today THEN 1 ELSE 0 END AS BIT) AS ended,
+             ${boolExpr(`c.is_rolling = 0 AND c.end_date < @today`)} AS ended,
              (SELECT COUNT(*) FROM course_enrollments e WHERE e.course_id = c.id AND e.status = 'approved') AS trainee_count
       FROM courses c
       WHERE c.status <> 'cancelled'
@@ -269,8 +269,8 @@ const traineePeriods = async ({ from, to, userId, departmentId }) => {
       JOIN trainees t ON t.id = e.trainee_id
       JOIN users u ON u.id = t.user_id AND u.is_active = 1
       LEFT JOIN departments d ON d.id = t.department_id
-      CROSS APPLY (SELECT ISNULL(e.start_date, c.start_date) AS start_date,
-                          ISNULL(e.end_date, c.end_date) AS end_date) p
+      CROSS APPLY (SELECT COALESCE(e.start_date, c.start_date) AS start_date,
+                          COALESCE(e.end_date, c.end_date) AS end_date) p
       WHERE e.status = 'approved' AND c.status <> 'cancelled'
         AND t.is_active = 1 AND t.hidden_at IS NULL
         AND (p.start_date IS NOT NULL OR c.is_rolling = 1)

@@ -211,7 +211,7 @@ const updateMany = async (ids, data, actorId) => {
 
 	const sets = ['updated_at = GETDATE()', 'updated_by = @actor_id', ...fields];
 	if (!has('credits') && (has('category_id') || has('quantity'))) {
-		const total = `c.conversion_value * ISNULL(${newVal('quantity')}, 1)`;
+		const total = `c.conversion_value * COALESCE(${newVal('quantity')}, 1)`;
 		sets.push(
 			`credits = CASE WHEN c.conversion_value > 0 AND ${total} < 10000 THEN ROUND(${total}, 2) ELSE r.credits END`,
 		);
@@ -389,7 +389,7 @@ const review = async (id, approve, reason, actorId, credits) => {
 		.input('actor', sql.VarChar(20), actorId)
 		.input('credits', sql.Decimal(6, 2), hasCredits ? Number(credits) : null)
 		.query(`UPDATE cme_records SET approval_status = @status, reject_reason = @reason, reviewed_by = @actor,
-		        reviewed_at = GETDATE(), credits = ISNULL(@credits, credits) WHERE id = @id`);
+		        reviewed_at = GETDATE(), credits = COALESCE(@credits, credits) WHERE id = @id`);
 	if (!r.rowsAffected[0]) return null;
 	broadcast('update', { entity: 'cme_record' });
 	return getById(id);

@@ -21,7 +21,7 @@ const apply = process.argv.includes('--apply');
 			SELECT u.id, u.username, u.full_name, u.staff_number
 			FROM users u
 			LEFT JOIN roles r ON r.id = u.role_id
-			WHERE ISNULL(r.code, '') NOT IN ('admin', 'dept_head', 'trainee')
+			WHERE COALESCE(r.code, '') NOT IN ('admin', 'dept_head', 'trainee')
 			  AND u.full_name IS NOT NULL AND LTRIM(u.full_name) <> ''
 			  -- Không có MNV thường là tài khoản dùng chung/test ("Tài khoản Ban Giám đốc") → không đổi
 			  AND u.staff_number IS NOT NULL

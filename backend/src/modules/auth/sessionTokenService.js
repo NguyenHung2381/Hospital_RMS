@@ -287,7 +287,7 @@ const logout = async (refreshToken) => {
 	const pool = await getPool();
 	await pool.request().input('token', sql.VarChar(64), hashToken(refreshToken)).query(`
 			DECLARE @family VARCHAR(60) =
-				(SELECT TOP 1 ISNULL(family_id, id) FROM refresh_tokens WHERE token = @token);
+				(SELECT TOP 1 COALESCE(family_id, id) FROM refresh_tokens WHERE token = @token);
 			DELETE FROM refresh_tokens WHERE token = @token OR family_id = @family OR id = @family;
 		`);
 };

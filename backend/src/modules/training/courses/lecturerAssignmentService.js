@@ -307,7 +307,7 @@ const syncLessonsFromSessions = async (courseId, lessonIds, actorId) => {
 				.input('course_id', sql.VarChar(20), courseId)
 				.input('lesson_id', sql.VarChar(20), lessonId).query(`
           SELECT lecturer_id, COUNT(*) AS n,
-                 MIN(CONVERT(CHAR(10), session_date, 23) + ISNULL(start_time, '')) AS first_slot
+                 MIN(CONVERT(CHAR(10), session_date, 23) + COALESCE(start_time, '')) AS first_slot
           FROM class_sessions
           WHERE course_id = @course_id AND subject_id = @lesson_id AND lecturer_id IS NOT NULL
           GROUP BY lecturer_id

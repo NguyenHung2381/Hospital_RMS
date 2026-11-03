@@ -6,6 +6,7 @@ const {
 	withActorTransaction,
 	actorRequest,
 	withActor,
+	boolExpr,
 } = require('../../config/db');
 const { broadcast } = require('../events/eventService');
 const personService = require('../persons/personService');
@@ -175,7 +176,7 @@ const getAll = async ({
            u.role_id, r.name AS role_name, r.code AS role_code,
            u.can_sit_council, u.can_chair_council,
            u.password_changed_at, u.created_at, u.updated_at,
-           CAST(CASE WHEN ${paged ? isDeptAccountSql('u') : isDeptAccountJoinedSql('u')} THEN 1 ELSE 0 END AS BIT) AS is_dept_account
+           ${boolExpr(`${paged ? isDeptAccountSql('u') : isDeptAccountJoinedSql('u')}`)} AS is_dept_account
     FROM users u
     LEFT JOIN departments d ON d.id = u.department_id
     LEFT JOIN roles r ON r.id = u.role_id

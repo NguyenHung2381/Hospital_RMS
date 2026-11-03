@@ -285,9 +285,9 @@ const grantAccountsNoEmail = async (topicId, memberIds, actorId) => {
 						        WHEN @expires_at > account_expires_at THEN @expires_at
 						        ELSE account_expires_at END,
 						    topic_member_id = @topic_member_id,
-						    staff_number = ISNULL(staff_number, @staff_number),
-						    phone_number = ISNULL(phone_number, @phone_number),
-						    position_detail = ISNULL(position_detail, @position_detail),
+						    staff_number = COALESCE(staff_number, @staff_number),
+						    phone_number = COALESCE(phone_number, @phone_number),
+						    position_detail = COALESCE(position_detail, @position_detail),
 						    updated_at = GETDATE(),
 						    updated_by = @actor_id
 						WHERE id = @uid

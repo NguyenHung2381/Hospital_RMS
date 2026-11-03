@@ -3,7 +3,7 @@
  * cổng "của tôi" (portalService.getMyCme) và hồ sơ học viên (GET /trainees/:id/cme).
  * Caller tự kiểm tra quyền.
  */
-const { getPool, sql } = require('../../config/db');
+const { getPool, sql, boolExpr } = require('../../config/db');
 const { httpError } = require('../../utils/httpError');
 const { RESULT_FILES_SQL, withResultFiles } = require('./cmeRecordService');
 const formCustomValueService = require('../forms/formCustomValueService');
@@ -22,13 +22,13 @@ const getUserCme = async (userId, year) => {
     FROM seminar_participants p
     JOIN seminars s ON s.id = p.seminar_id
     WHERE p.user_id = @uid
-      AND (@year IS NULL OR p.cme_year = @year OR (p.cme_year IS NULL AND ISNULL(s.event_year, YEAR(s.start_date)) = @year))
+      AND (@year IS NULL OR p.cme_year = @year OR (p.cme_year IS NULL AND COALESCE(s.event_year, YEAR(s.start_date)) = @year))
     ORDER BY s.start_date DESC;
 
     SELECT r.id, r.title, r.activity_date, r.end_date, r.year, r.role, r.quantity, r.credits, r.note,
            r.category_id, c.name AS category_name, r.approval_status, r.reject_reason, r.source_type,
            f.file_name AS evidence_file_name, f.file_url AS evidence_file_url,
-           CAST(CASE WHEN r.evidence_file_id IS NULL THEN 0 ELSE 1 END AS BIT) AS has_evidence,
+           ${boolExpr(`r.evidence_file_id IS NOT NULL`)} AS has_evidence,
            ${RESULT_FILES_SQL}
     FROM cme_records r
     LEFT JOIN cme_credit_categories c ON c.id = r.category_id

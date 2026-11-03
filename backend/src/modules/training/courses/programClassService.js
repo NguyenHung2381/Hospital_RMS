@@ -39,7 +39,7 @@ const WAITLIST_POSITION_SQL = (e) => `(SELECT COUNT(*) FROM course_enrollments w
 
 // Sĩ số từng lớp (chương trình) của khóa — dùng cho tab Học viên lẫn các kiểm tra bên dưới.
 // class_waiting: cả danh sách chờ của chương trình (mọi khóa).
-const CLASS_COLUMNS = `ISNULL(tp.min_capacity, 1) AS class_min,
+const CLASS_COLUMNS = `COALESCE(tp.min_capacity, 1) AS class_min,
        tp.max_capacity AS class_max,
        cp.opened_at AS class_opened_at,
        cp.start_date AS class_start, cp.end_date AS class_end,
@@ -246,10 +246,10 @@ const suggestDates = async (courseId, programId) => {
 			.input('course_id', sql.VarChar(20), courseId)
 			.input('program_id', sql.VarChar(20), programId).query(`
       SELECT tp.duration_value, tp.duration_unit,
-             COALESCE((SELECT SUM(ISNULL(pl.theory_hours, 0) + ISNULL(pl.practice_hours, 0))
+             COALESCE((SELECT SUM(COALESCE(pl.theory_hours, 0) + COALESCE(pl.practice_hours, 0))
                        FROM lesson_programs lp JOIN program_lessons pl ON pl.id = lp.lesson_id AND pl.is_active = 1
                        WHERE lp.program_id = tp.id),
-                      ISNULL(tp.theory_hours, 0) + ISNULL(tp.practice_hours, 0)) AS total_hours
+                      COALESCE(tp.theory_hours, 0) + COALESCE(tp.practice_hours, 0)) AS total_hours
       FROM course_programs cp JOIN training_programs tp ON tp.id = cp.program_id
       WHERE cp.course_id = @course_id AND cp.program_id = @program_id`)
 	).recordset[0];

@@ -398,7 +398,7 @@ const CARRY_FROM = `
   WHERE o.result = 'pass'
     AND NOT EXISTS (SELECT 1 FROM enrollment_rotations x
                     WHERE x.enrollment_id = @id AND x.result = 'pass' AND x.lesson_id = m.id
-                      AND ISNULL(x.department_id, '') = ISNULL(o.department_id, ''))`;
+                      AND COALESCE(x.department_id, '') = COALESCE(o.department_id, ''))`;
 
 /** Chép vòng Đạt từ hồ sơ trước sang hồ sơ này (giữ ngày, khoa, NHD). Trả số vòng đã chép. */
 const carryOver = async (enrollmentId, actorId) => {
@@ -418,7 +418,7 @@ const carryOver = async (enrollmentId, actorId) => {
                                         ${cols.join(', ')}, result, note, created_by)
       SELECT ${newId}, @id, m.id, m.title, o.seq, o.department_id, o.department_name,
              ${cols.map((c) => `o.${c}`).join(', ')}, 'pass',
-             N'Công nhận từ hồ sơ ' + ISNULL(oe.practice_code, oe.id), @actor_id
+             N'Công nhận từ hồ sơ ' + COALESCE(oe.practice_code, oe.id), @actor_id
       ${CARRY_FROM};
       SELECT @@ROWCOUNT AS n;`);
 	return r.recordset[0].n;
@@ -471,8 +471,8 @@ const schedule = async (enrollmentId, startDate, actorId) => {
 			.input('end_date', sql.Date, last)
 			.input('total', sql.NVarChar(50), describeSpan(first, last)).query(`
         UPDATE course_enrollments
-        SET start_date = ISNULL(start_date, @start_date), end_date = ISNULL(end_date, @end_date),
-            total_duration = ISNULL(total_duration, @total)
+        SET start_date = COALESCE(start_date, @start_date), end_date = COALESCE(end_date, @end_date),
+            total_duration = COALESCE(total_duration, @total)
         WHERE id = @id`);
 	}
 	notify();

@@ -16,7 +16,7 @@ const { pushExamScore } = require('./examGradingService');
 
 // Lần thi hiện tại của phần (grades.theory_attempt / practice_attempt) — đề cuối khóa
 // thi lại = lượt mới đúng số lần này. Đề đầu vào chỉ 1 lần.
-const WANT_ATTEMPT_SQL = (p, e) => `CASE WHEN ${p}.purpose = 'final' THEN ISNULL((
+const WANT_ATTEMPT_SQL = (p, e) => `CASE WHEN ${p}.purpose = 'final' THEN COALESCE((
     SELECT CASE ${p}.exam_part WHEN 'practice' THEN g.practice_attempt ELSE g.theory_attempt END
     FROM grades g WHERE g.enrollment_id = ${e}.id AND g.subject_id IS NULL), 1) ELSE 1 END`;
 // ─── Học viên làm bài ────────────────────────────────────────────────────────

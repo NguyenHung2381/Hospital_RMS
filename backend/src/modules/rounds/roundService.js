@@ -5,6 +5,7 @@ const {
 	withActorTransaction,
 	actorRequest,
 	withActor,
+	boolExpr,
 } = require('../../config/db');
 const { genRoundId } = require('../../utils/idGenerator');
 const { broadcast } = require('../events/eventService');
@@ -24,16 +25,13 @@ const REG_WINDOW_COLS = `
           WHERE rd.round_id = r.id AND rd.deadline_type = 'topic_registration')     AS registration_start,
        (SELECT MAX(rd.deadline_date) FROM round_deadlines rd
           WHERE rd.round_id = r.id AND rd.deadline_type = 'topic_registration')     AS registration_end,
-       CAST(CASE
-         WHEN NOT EXISTS (SELECT 1 FROM round_deadlines rd
-                          WHERE rd.round_id = r.id AND rd.deadline_type = 'topic_registration') THEN 1
-         WHEN EXISTS (SELECT 1 FROM round_deadlines rd
+       ${boolExpr(`NOT EXISTS (SELECT 1 FROM round_deadlines rd
+                          WHERE rd.round_id = r.id AND rd.deadline_type = 'topic_registration')
+         OR EXISTS (SELECT 1 FROM round_deadlines rd
                       WHERE rd.round_id = r.id AND rd.deadline_type = 'topic_registration'
                         AND (rd.start_date IS NULL
                              OR rd.start_date <= CAST(DATEADD(HOUR, 7, GETUTCDATE()) AS DATE))
-                        AND rd.deadline_date >= CAST(DATEADD(HOUR, 7, GETUTCDATE()) AS DATE)) THEN 1
-         ELSE 0
-       END AS BIT)                                                                  AS registration_open,
+                        AND rd.deadline_date >= CAST(DATEADD(HOUR, 7, GETUTCDATE()) AS DATE))`)} AS registration_open,
        (SELECT STRING_AGG(rl.level_id, ',') FROM research_round_levels rl
           WHERE rl.round_id = r.id)                                                  AS level_ids`;
 

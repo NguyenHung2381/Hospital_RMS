@@ -93,7 +93,7 @@ const getData = async ({ year, fromYear, toYear: to, userId, department, search 
     LEFT JOIN (
       SELECT p.user_id, '${SEMINAR_GROUP.id}' AS group_id, p.cme_year AS year, p.cme_credits AS credits
       FROM seminar_participants p
-      WHERE p.cme_year IS NOT NULL AND ISNULL(p.cme_credits, 0) > 0
+      WHERE p.cme_year IS NOT NULL AND COALESCE(p.cme_credits, 0) > 0
         AND (@from IS NULL OR p.cme_year >= @from) AND (@to IS NULL OR p.cme_year <= @to)
       UNION ALL
       SELECT r.user_id, c.group_id, r.year, r.credits
@@ -117,7 +117,7 @@ const getData = async ({ year, fromYear, toYear: to, userId, department, search 
              p.cme_year AS year, p.cme_credits AS credits, p.cme_certificate_no AS cert_no
       FROM seminar_participants p
       JOIN seminars s ON s.id = p.seminar_id
-      WHERE p.cme_year IS NOT NULL AND ISNULL(p.cme_credits, 0) > 0
+      WHERE p.cme_year IS NOT NULL AND COALESCE(p.cme_credits, 0) > 0
         AND (@from IS NULL OR p.cme_year >= @from) AND (@to IS NULL OR p.cme_year <= @to)
       UNION ALL
       SELECT r.user_id, N'Ghi nhận độc lập', c.group_id, c.name,

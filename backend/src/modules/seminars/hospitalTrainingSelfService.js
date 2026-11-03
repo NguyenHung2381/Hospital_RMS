@@ -7,7 +7,7 @@
  *   - Hủy: chỉ dòng mình tự đăng ký, chưa điểm danh, trước ngày học, và khoa mình
  *     không thuộc khoa bắt buộc (khoa bắt buộc do phòng Đào tạo thêm cả khoa).
  */
-const { getPool, sql } = require('../../config/db');
+const { getPool, sql, boolExpr } = require('../../config/db');
 const { httpError } = require('../../utils/httpError');
 const { HOSPITAL_TRAINING_SQL } = require('./hospitalTraining');
 const participantService = require('./seminarParticipantService');
@@ -17,13 +17,12 @@ const VN_TODAY = 'CAST(DATEADD(HOUR, 7, GETUTCDATE()) AS DATE)';
 const SELECT_SQL = `
   SELECT s.id, s.title, s.start_date, s.end_date, s.start_time, s.end_time, s.date_text, s.location,
          s.lesson_hours, s.grants_cme, s.speakers, od.name AS organizer_department_name, ht.name AS topic_name,
-         CAST(CASE WHEN EXISTS (SELECT 1 FROM seminar_required_departments r JOIN users me ON me.id = @uid
-                                WHERE r.seminar_id = s.id AND r.department_id = me.department_id)
-              THEN 1 ELSE 0 END AS BIT) AS required,
+         ${boolExpr(`EXISTS (SELECT 1 FROM seminar_required_departments r JOIN users me ON me.id = @uid
+                                WHERE r.seminar_id = s.id AND r.department_id = me.department_id)`)} AS required,
          p.id AS participant_id, p.checked_in_at, p.cme_status, p.cme_credits,
-         CAST(CASE WHEN p.created_by = @uid THEN 1 ELSE 0 END AS BIT) AS self_registered,
-         CAST(CASE WHEN s.start_date IS NULL OR s.start_date >= ${VN_TODAY} THEN 1 ELSE 0 END AS BIT) AS [open],
-         CAST(CASE WHEN s.start_date IS NULL OR s.start_date > ${VN_TODAY} THEN 1 ELSE 0 END AS BIT) AS before_day
+         ${boolExpr(`p.created_by = @uid`)} AS self_registered,
+         ${boolExpr(`s.start_date IS NULL OR s.start_date >= ${VN_TODAY}`)} AS [open],
+         ${boolExpr(`s.start_date IS NULL OR s.start_date > ${VN_TODAY}`)} AS before_day
   FROM seminars s
   LEFT JOIN departments od ON od.id = s.organizer_department_id
   LEFT JOIN hospital_training_topics ht ON ht.id = s.topic_id

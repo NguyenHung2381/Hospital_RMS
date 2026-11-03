@@ -32,7 +32,7 @@ const findSchemaProblems = async () => {
 	const result = await pool.request().query(`
     SELECT ${cols};
     IF OBJECT_ID('permissions', 'U') IS NOT NULL
-      SELECT resource + ':' + action AS k FROM permissions
+      SELECT CONCAT(resource, ':', action) AS k FROM permissions
       WHERE action IN ('read_all', 'read_department', 'read_assigned')
          OR (resource = 'system' AND action = 'manage');
   `);

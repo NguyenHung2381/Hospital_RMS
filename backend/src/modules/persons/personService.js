@@ -1,4 +1,4 @@
-const { getPool, sql, withTransaction } = require('../../config/db');
+const { getPool, sql, withTransaction, castBool } = require('../../config/db');
 const { isMissingObject } = require('../../utils/dbErrors');
 const { normalizeGender } = require('../../utils/gender');
 const logger = require('../../config/logger');
@@ -94,7 +94,7 @@ const SOURCE_ORDER = [
 
 // Cùng biểu thức với cột tính `persons.name_key`
 const NAME_KEY = (p) =>
-	`LOWER(LTRIM(RTRIM(REPLACE(REPLACE(REPLACE(${p}, N'  ', N' '), N'  ', N' '), N'  ', N' '))))`;
+	`LOWER(LTRIM(RTRIM(REPLACE(REPLACE(REPLACE(${p}, '  ', ' '), '  ', ' '), '  ', ' '))))`;
 
 // ─── Trạng thái schema (migration đã chạy chưa) ──────────────────────────────
 let schemaReady = false;
@@ -108,9 +108,9 @@ const checkSchema = async (pool) => {
 	if (Date.now() - schemaCheckedAt < SCHEMA_RECHECK_MS) return false;
 	schemaCheckedAt = Date.now();
 	const r = await pool.request().query(`
-		SELECT CASE WHEN OBJECT_ID(N'dbo.persons', N'U') IS NOT NULL
-		             AND OBJECT_ID(N'dbo.seq_person_id', N'SO') IS NOT NULL
-		             AND OBJECT_ID(N'dbo.fn_normalize_phone') IS NOT NULL
+		SELECT CASE WHEN OBJECT_ID('dbo.persons', 'U') IS NOT NULL
+		             AND OBJECT_ID('dbo.seq_person_id', 'SO') IS NOT NULL
+		             AND OBJECT_ID('dbo.fn_normalize_phone') IS NOT NULL
 		             AND COL_LENGTH('dbo.users', 'person_id') IS NOT NULL
 		            THEN 1 ELSE 0 END AS ok`);
 	schemaReady = r.recordset[0].ok === 1;
@@ -149,7 +149,7 @@ const selectSourceSql = (cfg) => `
 	       ${cfg.nationalId || 'CAST(NULL AS VARCHAR(20))'} AS national_id,
 	       ${cfg.staff || 'CAST(NULL AS INT)'} AS staff_number,
 	       ${cfg.linkedUser || 'CAST(NULL AS VARCHAR(20))'} AS linked_user_id,
-	       CAST(${cfg.internal || 'NULL'} AS BIT) AS is_internal
+	       ${castBool(cfg.internal || 'NULL')} AS is_internal
 	FROM dbo.${cfg.table}
 	WHERE id = @id`;
 
@@ -168,8 +168,8 @@ const bindPerson = (req, row) =>
 const lock = async (tx) => {
 	const r = await new sql.Request(tx).query(`
 		DECLARE @rc INT;
-		EXEC @rc = sp_getapplock @Resource = N'person_sync', @LockMode = N'Exclusive',
-		     @LockOwner = N'Transaction', @LockTimeout = 15000;
+		EXEC @rc = sp_getapplock @Resource = 'person_sync', @LockMode = 'Exclusive',
+		     @LockOwner = 'Transaction', @LockTimeout = 15000;
 		SELECT @rc AS rc`);
 	if (r.recordset[0].rc < 0)
 		throw new Error('Không lấy được khóa person_sync (quá thời gian chờ).');
@@ -282,7 +282,7 @@ const updatePerson = async (tx, source, personId, row, actorId) => {
 	const sets = [];
 	const fill = (col, param, has) => {
 		if (!has) return;
-		sets.push(primary ? `${col} = @${param}` : `${col} = ISNULL(${col}, @${param})`);
+		sets.push(primary ? `${col} = @${param}` : `${col} = COALESCE(${col}, @${param})`);
 	};
 	if (primary && clean(row.full_name)) sets.push('full_name = @name');
 	fill('email', 'email', !!cfg.email);
@@ -290,7 +290,7 @@ const updatePerson = async (tx, source, personId, row, actorId) => {
 	fill('date_of_birth', 'dob', !!cfg.dob);
 	fill('gender', 'gender', !!cfg.gender);
 	fill('national_id', 'national_id', !!cfg.nationalId);
-	if (cfg.internal) sets.push('is_internal = ISNULL(is_internal, @internal)');
+	if (cfg.internal) sets.push('is_internal = COALESCE(is_internal, @internal)');
 	if (cfg.verified) sets.push('is_verified = 1');
 	if (!sets.length) return;
 	sets.push('updated_at = SYSDATETIME()', 'updated_by = @actor');
@@ -325,7 +325,7 @@ const setSourcePerson = async (tx, source, id, personId) => {
 		.input('pid', sql.VarChar(20), personId)
 		.query(
 			`UPDATE dbo.${cfg.table} SET person_id = @pid${cfg.keepUpdatedAt ? ', updated_at = updated_at' : ''}
-			 WHERE id = @id AND ISNULL(person_id, '') <> @pid`,
+			 WHERE id = @id AND COALESCE(person_id, '') <> @pid`,
 		);
 };
 

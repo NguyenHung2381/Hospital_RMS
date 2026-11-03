@@ -15,7 +15,7 @@ const {
 // ─── Đề thi ──────────────────────────────────────────────────────────────────
 const paperSelect = `
   SELECT p.*, c.name AS course_name, s.title AS subject_name, tp.code AS program_code, tp.name AS program_name,
-         (SELECT COUNT(*) FROM exam_paper_questions epq WHERE epq.paper_id = p.id AND ISNULL(epq.code_no, 1) = 1) AS question_count,
+         (SELECT COUNT(*) FROM exam_paper_questions epq WHERE epq.paper_id = p.id AND COALESCE(epq.code_no, 1) = 1) AS question_count,
          (SELECT COUNT(*) FROM exam_attempts a WHERE a.paper_id = p.id) AS attempt_count,
          (SELECT STRING_AGG(g.lecturer_id, ',') FROM exam_paper_graders g WHERE g.paper_id = p.id) AS grader_ids,
          (SELECT STRING_AGG(l.full_name, ', ') FROM exam_paper_graders g JOIN lecturers l ON l.id = g.lecturer_id
@@ -51,7 +51,7 @@ const listPaperQuestionsFull = async (paperId) => {
     FROM exam_paper_questions epq
     JOIN question_bank q ON q.id = epq.question_id
     WHERE epq.paper_id = @paper_id
-    ORDER BY ISNULL(epq.code_no, 0), epq.sort_order ASC
+    ORDER BY COALESCE(epq.code_no, 0), epq.sort_order ASC
   `);
 	return r.recordset.map(parseOptions);
 };

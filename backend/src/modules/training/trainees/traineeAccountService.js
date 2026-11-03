@@ -47,7 +47,7 @@ const genTraineeUsernameInTx = async (tx, fullName, traineeRoleId) => {
 // 'HV' tới khi tx commit nên chạy song song vẫn không trùng.
 const genTraineeUserIdInTx = async (tx) => {
 	const res = await new sql.Request(tx).input('prefix', sql.VarChar(4), TRAINEE_USER_PREFIX).query(`
-      SELECT @prefix + RIGHT('000000' + CAST(ISNULL(MAX(CAST(RIGHT(id, 6) AS INT)), 0) + 1 AS VARCHAR(6)), 6) AS new_id
+      SELECT @prefix + RIGHT('000000' + CAST(COALESCE(MAX(CAST(RIGHT(id, 6) AS INT)), 0) + 1 AS VARCHAR(6)), 6) AS new_id
       FROM users WITH (UPDLOCK, HOLDLOCK)
       WHERE id LIKE @prefix + '[0-9][0-9][0-9][0-9][0-9][0-9]'
     `);
@@ -64,9 +64,11 @@ const grantAccounts = async (traineeIds, actorId) => {
 	const pool = await getPool();
 	const traineesResult = await pool
 		.request()
-		.input('ids', sql.NVarChar(sql.MAX), JSON.stringify(ids)).query(`
+		.input('ids', sql.NVarChar(sql.MAX), JSON.stringify(ids))
+		// Cột BIT: so / mặc định qua tham số (PG là boolean, COALESCE với số 0 không chạy)
+		.input('no', sql.Bit, false).query(`
     SELECT t.id, t.full_name, t.email, t.phone, t.is_active, t.hidden_at,
-           ISNULL(t.account_granted, 0) AS account_granted
+           COALESCE(t.account_granted, @no) AS account_granted
     FROM trainees t
     WHERE t.id IN (SELECT value FROM OPENJSON(@ids))
   `);
@@ -143,11 +145,12 @@ const grantAccounts = async (traineeIds, actorId) => {
 			const linked = await new sql.Request(tx)
 				.input('trainee_id', sql.VarChar(20), trainee.id)
 				.input('uid', sql.VarChar(20), userId)
-				.input('actor_id', sql.VarChar(20), actorId).query(`
+				.input('actor_id', sql.VarChar(20), actorId)
+				.input('no', sql.Bit, false).query(`
           UPDATE trainees
           SET user_id = @uid, account_granted = 1, account_granted_at = GETDATE(),
               updated_at = GETDATE(), updated_by = @actor_id
-          WHERE id = @trainee_id AND ISNULL(account_granted, 0) = 0
+          WHERE id = @trainee_id AND COALESCE(account_granted, @no) = @no
         `);
 			// Người khác vừa cấp cho cùng học viên (bấm 2 lần / 2 tab) ⇒ rollback tài khoản thừa
 			if (linked.rowsAffected[0] === 0) throw new Error('Học viên đã có tài khoản');

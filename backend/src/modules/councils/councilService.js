@@ -58,9 +58,9 @@ const getAll = async ({ page = 1, limit = 20, round_id = undefined, status = und
               LEFT JOIN external_reviewers er ON er.id = cm.external_reviewer_id
             WHERE cm.council_id = c.id AND cm.role = 'chairman') AS chairman_name,
            (SELECT STRING_AGG(CONCAT(
-              CASE cm.role WHEN 'chairman' THEN N'CT' WHEN 'secretary' THEN N'TK'
-                WHEN 'reviewer1' THEN N'PB1' WHEN 'reviewer2' THEN N'PB2' ELSE N'TV' END,
-              ': ', COALESCE(u.full_name, er.full_name)), N', ') WITHIN GROUP (ORDER BY ${ROLE_ORDER})
+              CASE cm.role WHEN 'chairman' THEN 'CT' WHEN 'secretary' THEN 'TK'
+                WHEN 'reviewer1' THEN 'PB1' WHEN 'reviewer2' THEN 'PB2' ELSE 'TV' END,
+              ': ', COALESCE(u.full_name, er.full_name)), ', ') WITHIN GROUP (ORDER BY ${ROLE_ORDER})
             FROM council_members cm
               LEFT JOIN users u ON u.id = cm.user_id
               LEFT JOIN external_reviewers er ON er.id = cm.external_reviewer_id

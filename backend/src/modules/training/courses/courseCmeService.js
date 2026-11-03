@@ -42,7 +42,7 @@ const UPSERT_SQL = (sourceType) => `
   SELECT @@ROWCOUNT AS n;`;
 
 const conversionOf = (categoryId) =>
-	`ISNULL((SELECT conversion_value FROM cme_credit_categories WHERE id = '${categoryId}'), 1)`;
+	`COALESCE((SELECT conversion_value FROM cme_credit_categories WHERE id = '${categoryId}'), 1)`;
 
 /**
  * Học viên: ghi CME cho giấy chứng nhận còn hiệu lực của khóa (enrollmentId: chỉ 1 hồ sơ).
@@ -59,12 +59,12 @@ const syncTrainees = async (courseId, actorId, { enrollmentId = null } = {}) => 
       DECLARE @only_program VARCHAR(20) = (
         SELECT CASE WHEN COUNT(*) = 1 THEN MIN(program_id) END FROM course_programs WHERE course_id = @course_id);
       SELECT t.staff_user_id AS user_id,
-             LEFT(c.name + ISNULL(N' — ' + tp.name, N''), 255) AS title,
+             LEFT(c.name + COALESCE(' — ' + tp.name, ''), 255) AS title,
              CAST(N'Học viên' AS NVARCHAR(100)) AS role,
              'DT_KHOAHOC' AS category_id,
-             CAST(ISNULL(tp.theory_hours, 0) + ISNULL(tp.practice_hours, 0) AS DECIMAL(8, 2)) AS quantity,
+             CAST(COALESCE(tp.theory_hours, 0) + COALESCE(tp.practice_hours, 0) AS DECIMAL(8, 2)) AS quantity,
              CAST(COALESCE(tp.credit_hours,
-                           (ISNULL(tp.theory_hours, 0) + ISNULL(tp.practice_hours, 0)) * ${conversionOf('DT_KHOAHOC')})
+                           (COALESCE(tp.theory_hours, 0) + COALESCE(tp.practice_hours, 0)) * ${conversionOf('DT_KHOAHOC')})
                   AS DECIMAL(6, 2)) AS credits,
              COALESCE(c.end_date, cert.issue_date) AS activity_date,
              CAST(N'Giấy chứng nhận số ' + cert.cert_no AS NVARCHAR(500)) AS note
@@ -129,7 +129,7 @@ const syncLecturers = async (courseId, actorId) => {
       SELECT lec.user_id,
              SUM(COALESCE(la.hours,
                           CASE WHEN la.role = 'main' AND pl.id IS NOT NULL
-                               THEN ISNULL(pl.theory_hours, 0) + ISNULL(pl.practice_hours, 0) END,
+                               THEN COALESCE(pl.theory_hours, 0) + COALESCE(pl.practice_hours, 0) END,
                           0)) AS hours
       INTO #hours
       FROM lecturer_assignments la

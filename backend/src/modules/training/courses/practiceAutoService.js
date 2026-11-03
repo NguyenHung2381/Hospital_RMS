@@ -210,7 +210,7 @@ const arrangeOne = async (
         FROM enrollment_rotations r
         JOIN course_enrollments e ON e.id = r.enrollment_id
         WHERE r.enrollment_id <> @id AND r.start_date IS NOT NULL AND r.end_date >= @start
-          AND r.result <> 'fail' AND ISNULL(e.progress_status, 'in_progress') <> 'dropped'`),
+          AND r.result <> 'fail' AND COALESCE(e.progress_status, 'in_progress') <> 'dropped'`),
 		loadMentorCandidates(pool, isDoctorProgram(e.program_code)),
 	]);
 	const busy = busyRes.recordset.map((b) => ({
@@ -267,8 +267,11 @@ const arrangeOne = async (
       WHERE id = @id`);
 	}
 
-	const placed = await pool.request().input('id', sql.VarChar(20), enrollmentId).query(`
-    SELECT r.department_name, r.round_title, ISNULL(pl.allow_split, 0) AS allow_split
+	const placed = await pool
+		.request()
+		.input('id', sql.VarChar(20), enrollmentId)
+		.input('no', sql.Bit, false).query(`
+    SELECT r.department_name, r.round_title, COALESCE(pl.allow_split, @no) AS allow_split
     FROM enrollment_rotations r LEFT JOIN program_lessons pl ON pl.id = r.lesson_id
     WHERE r.enrollment_id = @id ORDER BY r.seq`);
 	// Lĩnh vực / hình thức hành nghề: mặc định của chương trình (danh mục) trước,
@@ -304,9 +307,9 @@ const arrangeOne = async (
 		.input('actor_id', sql.VarChar(20), actorId).query(`
       UPDATE course_enrollments
       SET practice_code = @practice_code,
-          professional_field = ISNULL(professional_field, @professional_field),
-          practice_form = ISNULL(practice_form, @practice_form),
-          total_duration = ISNULL(total_duration, @total_duration),
+          professional_field = COALESCE(professional_field, @professional_field),
+          practice_form = COALESCE(practice_form, @practice_form),
+          total_duration = COALESCE(total_duration, @total_duration),
           start_date = @start_date, end_date = @end_date, practice_location = @practice_location,
           updated_at = GETDATE(), updated_by = @actor_id
       WHERE id = @id;
@@ -330,7 +333,7 @@ const arrangeCourse = async (courseId, actorId) => {
     SELECT e.id, e.start_date, e.practice_code, t.full_name
     FROM course_enrollments e JOIN trainees t ON t.id = e.trainee_id
     WHERE e.course_id = @course_id AND e.program_id IS NOT NULL AND e.status = 'approved'
-      AND ISNULL(e.progress_status, 'in_progress') = 'in_progress'
+      AND COALESCE(e.progress_status, 'in_progress') = 'in_progress'
       AND (e.end_date IS NULL OR e.end_date >= @today)
       AND NOT EXISTS (SELECT 1 FROM enrollment_rotations r WHERE r.enrollment_id = e.id)
     ORDER BY e.start_date, e.registered_at`);
@@ -355,7 +358,7 @@ const completeFinished = async () => {
 	const r = await pool.request().input('today', sql.Date, todayVN()).query(`
     UPDATE e SET progress_status = 'completed', progress_date = e.end_date, updated_at = GETDATE()
     FROM course_enrollments e
-    WHERE e.status = 'approved' AND ISNULL(e.progress_status, 'in_progress') = 'in_progress'
+    WHERE e.status = 'approved' AND COALESCE(e.progress_status, 'in_progress') = 'in_progress'
       AND e.end_date < @today
       AND EXISTS (SELECT 1 FROM enrollment_rotations r WHERE r.enrollment_id = e.id)
       AND NOT EXISTS (SELECT 1 FROM enrollment_rotations p WHERE p.enrollment_id = e.id AND p.result = 'pending')

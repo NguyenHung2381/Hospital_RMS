@@ -161,20 +161,27 @@ const getStats = async () => {
 };
 
 const recordsOf = async (pool, personId) => {
-	const r = await pool.request().input('pid', sql.VarChar(20), personId).query(`
+	// Nhãn tiếng Việt qua tham số: DB SQL Server dùng bảng mã CP1252, chuỗi không N'...' mất dấu
+	const r = await pool
+		.request()
+		.input('pid', sql.VarChar(20), personId)
+		.input('no_dept', sql.NVarChar(50), 'chưa có khoa')
+		.input('trainee', sql.NVarChar(50), 'Học viên')
+		.input('lecturer', sql.NVarChar(50), 'Giảng viên')
+		.input('reviewer', sql.NVarChar(50), 'Chuyên gia ngoài viện').query(`
 		SELECT TOP (60) source, ref_id, label FROM (
-			SELECT 'users' AS source, u.id AS ref_id, CONCAT(u.username, N' · ', ISNULL(d.name, N'chưa có khoa')) AS label
+			SELECT 'users' AS source, u.id AS ref_id, CONCAT(u.username, ' · ', COALESCE(d.name, @no_dept)) AS label
 			FROM dbo.users u LEFT JOIN dbo.departments d ON d.id = u.department_id WHERE u.person_id = @pid
 			UNION ALL
-			SELECT 'trainees', t.id, ISNULL(tt.name, N'Học viên')
+			SELECT 'trainees', t.id, COALESCE(tt.name, @trainee)
 			FROM dbo.trainees t LEFT JOIN dbo.trainee_types tt ON tt.id = t.trainee_type_id WHERE t.person_id = @pid
 			UNION ALL
-			SELECT 'lecturers', l.id, ISNULL(l.specialty, N'Giảng viên') FROM dbo.lecturers l WHERE l.person_id = @pid
+			SELECT 'lecturers', l.id, COALESCE(l.specialty, @lecturer) FROM dbo.lecturers l WHERE l.person_id = @pid
 			UNION ALL
-			SELECT 'external_reviewers', r.id, ISNULL(r.organization, N'Chuyên gia ngoài viện')
+			SELECT 'external_reviewers', r.id, COALESCE(r.organization, @reviewer)
 			FROM dbo.external_reviewers r WHERE r.person_id = @pid
 			UNION ALL
-			SELECT 'topic_members', m.id, CONCAT(t.title, N' (', m.role, N')')
+			SELECT 'topic_members', m.id, CONCAT(t.title, ' (', m.role, ')')
 			FROM dbo.topic_members m JOIN dbo.topics t ON t.id = m.topic_id WHERE m.person_id = @pid
 			UNION ALL
 			SELECT 'seminar_participants', p.id, s.title
@@ -340,20 +347,24 @@ const mergeCandidate = async (
 			.input('k', sql.VarChar(20), keepId)
 			.input('l', sql.VarChar(20), loseId)
 			.input('actor', sql.VarChar(20), actorId || null)
-			.input('note', sql.NVarChar(500), note || null).query(`
+			.input('note', sql.NVarChar(500), note || null)
+			// Ghi chú ghép sẵn bằng JS (chạy được trên PG, không cần N'...' + nối chuỗi)
+			.input('note_same', sql.NVarChar(500), `Đã gộp cùng lượt (cặp #${id})`)
+			.input('note_from', sql.NVarChar(500), `Chuyển từ hồ sơ đã gộp ${loseId}`)
+			.input('note_to', sql.NVarChar(500), `Chuyển sang hồ sơ ${keepId}`).query(`
 				UPDATE dbo.person_merge_candidates SET status = 'MERGED', reviewed_by = @actor, reviewed_at = SYSDATETIME(),
 				       note = COALESCE(@note, note) WHERE id = @cid;
 
 				-- cặp khác giữa đúng hai hồ sơ này (lý do khác) → cũng đã giải quyết
 				UPDATE dbo.person_merge_candidates SET status = 'MERGED', reviewed_by = @actor, reviewed_at = SYSDATETIME(),
-				       note = N'Đã gộp cùng lượt (cặp #' + CAST(@cid AS NVARCHAR(12)) + N')'
+				       note = @note_same
 				WHERE status = 'PENDING' AND id <> @cid
 				  AND ((person_a_id = @k AND person_b_id = @l) OR (person_a_id = @l AND person_b_id = @k));
 
 				-- cặp chờ giữa hồ sơ bị gộp và người thứ ba → chuyển sang hồ sơ giữ lại (nếu chưa có)
 				INSERT INTO dbo.person_merge_candidates (person_a_id, person_b_id, reason, note, created_by)
 				SELECT CASE WHEN o.other < @k THEN o.other ELSE @k END, CASE WHEN o.other < @k THEN @k ELSE o.other END,
-				       o.reason, N'Chuyển từ hồ sơ đã gộp ' + @l
+				       o.reason, @note_from
 				FROM (SELECT CASE WHEN c.person_a_id = @l THEN c.person_b_id ELSE c.person_a_id END AS other, c.reason
 				      FROM dbo.person_merge_candidates c
 				      WHERE c.status = 'PENDING' AND (c.person_a_id = @l OR c.person_b_id = @l)) o
@@ -363,7 +374,7 @@ const mergeCandidate = async (
 				                    AND x.person_b_id = CASE WHEN o.other < @k THEN @k ELSE o.other END
 				                    AND x.reason = o.reason);
 				UPDATE dbo.person_merge_candidates SET status = 'MERGED', reviewed_by = @actor, reviewed_at = SYSDATETIME(),
-				       note = N'Chuyển sang hồ sơ ' + @k
+				       note = @note_to
 				WHERE status = 'PENDING' AND (person_a_id = @l OR person_b_id = @l);`);
 
 		// 5) nhật ký gộp (không xóa được)

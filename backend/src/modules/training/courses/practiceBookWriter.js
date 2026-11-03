@@ -102,9 +102,9 @@ const writeRecord = async (pool, it, traineeId, courseId, actorId) => {
 			.input('enrollment_id', sql.VarChar(20), it.enrollment_id);
 		for (const [f, t] of Object.entries(ENROLLMENT_FIELDS)) req.input(f, t, values[f]);
 		return req.query(`
-    DECLARE @id VARCHAR(20) = ISNULL(@enrollment_id, (
+    DECLARE @id VARCHAR(20) = COALESCE(@enrollment_id, (
       SELECT TOP 1 id FROM course_enrollments
-      WHERE course_id = @course_id AND trainee_id = @trainee_id AND ISNULL(program_id, '') = ISNULL(@program_id, '')));
+      WHERE course_id = @course_id AND trainee_id = @trainee_id AND COALESCE(program_id, '') = COALESCE(@program_id, '')));
     IF @id IS NULL
     BEGIN
       SET @id = @new_id;
@@ -117,10 +117,10 @@ const writeRecord = async (pool, it, traineeId, courseId, actorId) => {
     END
     ELSE
       UPDATE course_enrollments
-      SET trainee_id = @trainee_id, program_id = ISNULL(@program_id, program_id),
+      SET trainee_id = @trainee_id, program_id = COALESCE(@program_id, program_id),
           ${Object.keys(ENROLLMENT_FIELDS)
 						// Dòng chưa có mã / chưa có ngày: giữ giá trị đã tự điền lần trước
-						.map((f) => (KEEP_IF_BLANK.has(f) ? `${f} = ISNULL(@${f}, ${f})` : `${f} = @${f}`))
+						.map((f) => (KEEP_IF_BLANK.has(f) ? `${f} = COALESCE(@${f}, ${f})` : `${f} = @${f}`))
 						.join(', ')},
           updated_at = GETDATE(), updated_by = @actor_id
       WHERE id = @id;

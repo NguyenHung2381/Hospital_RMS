@@ -317,6 +317,12 @@ const nextSequenceValues = async (txOrPool, name, count) => {
 	return r.recordset.map((x) => Number(x.v));
 };
 
+// Cột kết quả kiểu boolean — cùng giao diện với db.mssql.js (bên đó đổi sang BIT).
+/** @param {string} cond */
+const boolExpr = (cond) => `(CASE WHEN ${cond} THEN TRUE ELSE FALSE END)`;
+/** @param {string} expr */
+const castBool = (expr) => `CAST(${expr} AS BOOLEAN)`;
+
 module.exports = {
 	client: 'pg',
 	getPool,
@@ -326,6 +332,8 @@ module.exports = {
 	withActor,
 	lockResource,
 	nextSequenceValues,
+	boolExpr,
+	castBool,
 	sslOptions,
 	toMssqlResult,
 };

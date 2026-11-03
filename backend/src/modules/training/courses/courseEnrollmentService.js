@@ -1,4 +1,4 @@
-const { getPool, sql, withTransaction } = require('../../../config/db');
+const { getPool, sql, withTransaction, boolExpr } = require('../../../config/db');
 const { genCourseEnrollmentId } = require('../../../utils/idGenerator');
 const { appErrorCode } = require('../../../utils/dbErrors');
 const { broadcast } = require('../../events/eventService');
@@ -16,7 +16,7 @@ const formCustomValueService = require('../../forms/formCustomValueService');
 // 1 dòng ghi danh kèm học viên / chương trình / tiến độ — dùng chung cho danh sách của khóa và 1 hồ sơ.
 const enrollmentSelect = (whereSql) => `
     SELECT e.*, t.full_name AS trainee_name, t.phone AS trainee_phone, t.email AS trainee_email,
-           CAST(CASE WHEN t.staff_user_id IS NULL THEN 0 ELSE 1 END AS BIT) AS is_internal,
+           ${boolExpr(`t.staff_user_id IS NOT NULL`)} AS is_internal,
            u.full_name AS decided_by_name,
            tp.code AS program_code, tp.name AS program_name, mm.full_name AS main_mentor_name,
            (SELECT COUNT(*) FROM enrollment_lessons el WHERE el.enrollment_id = e.id) AS lesson_total,
@@ -122,7 +122,7 @@ const registerTrainee = async (
 			.query(
 				`
       IF EXISTS (SELECT 1 FROM course_enrollments WHERE trainee_id = @trainee_id AND course_id = @course_id
-                 AND ISNULL(program_id, '') = ISNULL(@program_id, ''))
+                 AND COALESCE(program_id, '') = COALESCE(@program_id, ''))
       BEGIN
         THROW 51000, N'Học viên này đã đăng ký khóa học rồi.', 1;
       END
@@ -164,7 +164,7 @@ const listStaffCandidates = async () => {
     FROM users u
     LEFT JOIN departments d ON d.id = u.department_id
     WHERE u.is_active = 1
-      AND ISNULL(u.role_id, '') <> @trainee_role
+      AND COALESCE(u.role_id, '') <> @trainee_role
       AND NOT EXISTS (SELECT 1 FROM trainees t WHERE t.staff_user_id = u.id)
     ORDER BY u.full_name
   `);

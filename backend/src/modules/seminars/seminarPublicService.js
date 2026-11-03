@@ -6,7 +6,7 @@
  * thì cấp tuần tự trong 1 transaction để giữ dãy liền mạch.
  */
 const crypto = require('crypto');
-const { getPool, sql, withActorTransaction } = require('../../config/db');
+const { getPool, sql, withActorTransaction, boolExpr } = require('../../config/db');
 const { broadcast } = require('../events/eventService');
 const { lazyRequire } = require('../../utils/lazyRequire');
 /** @type {typeof import('qrcode')} */
@@ -49,8 +49,8 @@ const SEMINAR_PUBLIC_COLS = `s.id, s.title, s.location, s.start_date, s.end_date
 const SEMINAR_TEST_COLS = `s.test_questions, s.test_open, s.test_date, s.test_end_date, s.test_start_time,
   s.test_end_time, s.test_duration_minutes, s.test_pass_score, s.test_shuffle_questions, s.test_shuffle_options`;
 // Hết hạn đăng ký sau ngày kết thúc (không có ngày kết thúc thì theo ngày bắt đầu)
-const REG_OPEN_SQL = `CAST(CASE WHEN s.scope = 'hosted' AND COALESCE(s.end_date, s.start_date, '9999-12-31')
-  >= CAST(GETDATE() AS DATE) THEN 1 ELSE 0 END AS BIT)`;
+const REG_OPEN_SQL = `${boolExpr(`s.scope = 'hosted' AND COALESCE(s.end_date, s.start_date, '9999-12-31')
+  >= CAST(GETDATE() AS DATE)`)}`;
 
 const getPublicSeminar = async (token) => {
 	const pool = await getPool();
@@ -419,7 +419,7 @@ const checkInTicket = async (seminarId, code, actorId) => {
         UPDATE seminar_participants SET checked_in_at = GETUTCDATE() WHERE id = @pid;
       END
       SELECT p.id, p.seminar_id, p.title_prefix, p.full_name, p.organization, p.checked_in_at,
-             CAST(CASE WHEN @prev IS NULL THEN 0 ELSE 1 END AS BIT) AS already
+             ${boolExpr(`@prev IS NOT NULL`)} AS already
       FROM seminar_participants p WHERE p.id = @pid;
     `),
 	);

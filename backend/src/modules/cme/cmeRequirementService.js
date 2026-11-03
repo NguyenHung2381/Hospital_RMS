@@ -81,8 +81,8 @@ const getComplianceReport = async (year) => {
 	const result = await pool.request().input('year', sql.Int, Number(year)).query(`
     SELECT u.id, u.full_name, u.department_id, d.name AS department_name,
            req.required_credits,
-           ISNULL(SUM(CASE WHEN p.cme_year = @year THEN p.cme_credits ELSE 0 END), 0)
-             + ISNULL(cr.manual_credits, 0) AS earned_credits
+           COALESCE(SUM(CASE WHEN p.cme_year = @year THEN p.cme_credits ELSE 0 END), 0)
+             + COALESCE(cr.manual_credits, 0) AS earned_credits
     FROM users u
     LEFT JOIN departments d ON d.id = u.department_id
     LEFT JOIN seminar_participants p ON p.user_id = u.id
@@ -99,8 +99,8 @@ const getComplianceReport = async (year) => {
       -- Bỏ tài khoản khoa/phòng: tài khoản dùng chung, không phải nhân sự
       AND NOT ${isDeptAccountSql('u')}
     GROUP BY u.id, u.full_name, u.department_id, d.name, req.required_credits, cr.manual_credits
-    HAVING ISNULL(SUM(CASE WHEN p.cme_year = @year THEN p.cme_credits ELSE 0 END), 0)
-             + ISNULL(cr.manual_credits, 0) < req.required_credits
+    HAVING COALESCE(SUM(CASE WHEN p.cme_year = @year THEN p.cme_credits ELSE 0 END), 0)
+             + COALESCE(cr.manual_credits, 0) < req.required_credits
     ORDER BY d.name, u.full_name
   `);
 	return result.recordset;

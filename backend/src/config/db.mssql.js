@@ -158,6 +158,13 @@ const nextSequenceValues = async (txOrPool, name, count) => {
 	return r.recordset.map((x) => Number(x.v));
 };
 
+// Cột kết quả kiểu boolean (JS nhận true/false) từ 1 điều kiện / 1 biểu thức:
+// SQL Server không có kiểu boolean trong SELECT nên đổi sang BIT. Bản PG ở db.pg.js.
+/** @param {string} cond điều kiện SQL (vd `x IS NOT NULL`) */
+const boolExpr = (cond) => `CAST(CASE WHEN ${cond} THEN 1 ELSE 0 END AS BIT)`;
+/** @param {string} expr cột / biểu thức boolean, hoặc NULL */
+const castBool = (expr) => `CAST(${expr} AS BIT)`;
+
 module.exports = {
 	client: 'mssql',
 	getPool,
@@ -167,5 +174,7 @@ module.exports = {
 	withActor,
 	lockResource,
 	nextSequenceValues,
+	boolExpr,
+	castBool,
 	tlsOptions,
 };

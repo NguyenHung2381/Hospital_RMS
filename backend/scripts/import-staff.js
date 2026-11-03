@@ -287,9 +287,9 @@ const ymd = (d) => (d ? d.toISOString().slice(0, 10) : '—');
 				.input('qual', sql.VarChar(20), r.qual_id)
 				.input('actor_id', sql.VarChar(20), actorId).query(`
 				UPDATE users
-				SET department_id = ISNULL(department_id, @dept),
-				    date_of_birth = ISNULL(date_of_birth, @dob),
-				    qualification_id = ISNULL(qualification_id, @qual),
+				SET department_id = COALESCE(department_id, @dept),
+				    date_of_birth = COALESCE(date_of_birth, @dob),
+				    qualification_id = COALESCE(qualification_id, @qual),
 				    updated_at = GETDATE(), updated_by = @actor_id
 				WHERE id = @id
 				  AND ((department_id IS NULL AND @dept IS NOT NULL)

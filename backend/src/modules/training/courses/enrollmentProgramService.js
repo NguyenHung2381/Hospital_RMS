@@ -94,8 +94,8 @@ const fillPracticeDefaults = async (enrollmentId) => {
 	const pool = await getPool();
 	await pool.request().input('id', sql.VarChar(20), enrollmentId).query(`
     UPDATE e
-    SET professional_field = ISNULL(e.professional_field, pf.name),
-        practice_form = ISNULL(e.practice_form, f.name)
+    SET professional_field = COALESCE(e.professional_field, pf.name),
+        practice_form = COALESCE(e.practice_form, f.name)
     FROM course_enrollments e
     JOIN training_programs tp ON tp.id = e.program_id
     LEFT JOIN professional_fields pf ON pf.id = tp.professional_field_id

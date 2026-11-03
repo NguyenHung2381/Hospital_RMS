@@ -14,8 +14,8 @@ const lecturerAssignmentService = require('./lecturerAssignmentService');
 // giờ = cả ngày), khóa chưa hủy. Chỉ cảnh báo, không chặn — GV có thể dạy ghép.
 const LECTURER_CLASH_SQL = (s, o) => `
   ${o}.lecturer_id = ${s}.lecturer_id AND ${o}.session_date = ${s}.session_date AND ${o}.id <> ${s}.id
-  AND ISNULL(${o}.start_time, '00:00') < ISNULL(${s}.end_time, '23:59')
-  AND ISNULL(${s}.start_time, '00:00') < ISNULL(${o}.end_time, '23:59')
+  AND COALESCE(${o}.start_time, '00:00') < COALESCE(${s}.end_time, '23:59')
+  AND COALESCE(${s}.start_time, '00:00') < COALESCE(${o}.end_time, '23:59')
   AND EXISTS (SELECT 1 FROM courses oc WHERE oc.id = ${o}.course_id AND oc.status <> 'cancelled')`;
 
 const timeRange = (r) => (r.start_time ? ` ${r.start_time}–${r.end_time ?? ''}` : ' (cả ngày)');
@@ -116,7 +116,7 @@ const listTraineeSessions = async ({ from, to, traineeId = null, userId = null }
     WHERE sess.session_date BETWEEN @from AND @to AND ${SESSION_IN_PROGRAM_SQL('sess', 'm')}
     ORDER BY sess.session_date, sess.start_time;
     -- Thanh thời gian: ngày của lớp (chương trình đã ghi danh), không có thì ngày khóa
-    SELECT c.id, CONCAT(c.name, CASE WHEN tp.code IS NULL THEN '' ELSE CONCAT(N' · ', tp.code) END) AS name,
+    SELECT c.id, CONCAT(c.name, CASE WHEN tp.code IS NULL THEN '' ELSE CONCAT(' · ', tp.code) END) AS name,
            COALESCE(cp.start_date, c.start_date) AS start_date, COALESCE(cp.end_date, c.end_date) AS end_date, c.status
     FROM @mine m
     JOIN courses c ON c.id = m.course_id AND c.status <> 'cancelled'
@@ -136,7 +136,7 @@ const listSessions = async (courseId) => {
     LEFT JOIN program_lessons s ON s.id = sess.subject_id
     LEFT JOIN lecturers l ON l.id = sess.lecturer_id
     OUTER APPLY (
-      SELECT STRING_AGG(CONCAT(oc.name, ' ', ISNULL(o.start_time, ''), '–', ISNULL(o.end_time, '')), '; ')
+      SELECT STRING_AGG(CONCAT(oc.name, ' ', COALESCE(o.start_time, ''), '–', COALESCE(o.end_time, '')), '; ')
              AS lecturer_clashes
       FROM class_sessions o
       JOIN courses oc ON oc.id = o.course_id
@@ -306,7 +306,7 @@ const createSessionsBulk = async (courseId, data, actorId) => {
         IF EXISTS (
           SELECT 1 FROM class_sessions
           WHERE course_id = @course_id AND session_date = @session_date
-            AND ISNULL(start_time, '') = ISNULL(@start_time, '')
+            AND COALESCE(start_time, '') = COALESCE(@start_time, '')
         )
           SELECT CAST(NULL AS VARCHAR(20)) AS id;
         ELSE

@@ -102,7 +102,7 @@ bước A và giữ máy Windows hiện tại tới khi xong bước B.
 | `GETDATE()`, `SYSDATETIME()`, `SYSUTCDATETIME()` | 212 (86) | `LOCALTIMESTAMP` / `now()` — xem mục 4.3 về múi giờ |
 | `N'...'` | 339 (98) | `'...'` (PG luôn là UTF-8) |
 | Định danh `[ten]` | 658 (156) | `"ten"` hoặc bỏ ngoặc |
-| `ISNULL(` | 108 (33) | `COALESCE(` (chạy được trên cả 2 DB) |
+| `ISNULL(` | 108 (33) — **đã đổi hết** | `COALESCE(` (chạy được trên cả 2 DB) |
 | `EXEC sp_set_actor @actor_id; ...` | 76 (27) | `set_config('app.current_user_id', $1, true)` trong transaction |
 | `EXEC sp_gen_*` / `.execute(...)` | ~20 / 10 → 0 (đã xong) | Hàm sinh mã `src/utils/idGenerator.js` (mục 5.4) |
 | `DECLARE @...` (batch nhiều câu) | 80 (47) | Viết lại: CTE, nhiều lời gọi JS, hoặc hàm PL/pgSQL |
@@ -115,7 +115,7 @@ bước A và giữ máy Windows hiện tại tới khi xong bước B.
 | `LIKE ... ESCAPE`, `LIKE '[0-9]'` | 25 (4) + nhiều mẫu `[0-9]` | PG `LIKE` **không** có lớp ký tự `[...]` → dùng `~ '^...[0-9]{3}$'` |
 | `OUTPUT INSERTED/DELETED` | 19 (13) | `RETURNING` |
 | `SCOPE_IDENTITY()`, `@@ROWCOUNT`, `@@TRANCOUNT` | 18 (13) | `RETURNING id`, `rowCount`, không có tương đương trực tiếp |
-| `CAST(... AS NVARCHAR/BIT/DATETIME)` | 59 (35) | `::text`, `::boolean`, `::timestamp` |
+| `CAST(... AS NVARCHAR/BIT/DATETIME)` | 59 (35) | `::text`, `::boolean`, `::timestamp`. Cột boolean trong SELECT: `boolExpr(đk)` / `castBool(x)` của adapter (SQL Server ra BIT, PG ra boolean) |
 | `CONVERT(`, `TRY_CAST(` | 20 (8) | `CAST`, `to_char`; `TRY_CAST` cần hàm tự viết |
 | `MERGE` (có `WITH (HOLDLOCK)`) | 10 (9) | `INSERT ... ON CONFLICT DO UPDATE` |
 | Gợi ý khoá `UPDLOCK/HOLDLOCK`, `sp_getapplock` | 5 + 6 | `SELECT ... FOR UPDATE`; khoá dải mã → `pg_advisory_xact_lock(hashtext(...))` |
@@ -442,8 +442,21 @@ thường. Mỗi nhóm là 1 PR nhỏ theo module.
   `sp_grant_member_accounts`, `sp_push_notification`, `sp_resolve_recipients`,
   `sp_upload_files`, `sp_create_refresh_token`, `sp_deactivate_expired_accounts`, các
   `sp_gen_*`, `sp_cleanup_*`.
-- [ ] Đổi cú pháp chạy được trên cả 2 DB: `ISNULL` → `COALESCE`, `+` nối chuỗi →
-  `CONCAT`, `CAST AS NVARCHAR` → `CAST AS VARCHAR`, bỏ `[...]` không cần thiết.
+- [x] Đổi cú pháp chạy được trên cả 2 DB (đợt 1): `ISNULL` → `COALESCE` (107 → 0; cột BIT
+  mặc định qua tham số `sql.Bit`); `CAST(CASE ... AS BIT)` → `boolExpr` / `castBool` của adapter
+  (23 → 6); bỏ `N` ở chuỗi chỉ có ký tự CP1252 (76 → 34); `+` nối chuỗi → `CONCAT` ở câu
+  đơn. `check:tsql` tổng 917 → 751. Kiểm bằng `test-integration/portableSql.cases.js` (2 DB).
+  Lưu ý khi viết SQL chung:
+  - **Không đổi `CAST AS NVARCHAR` → `VARCHAR`, không bỏ `N` ở chuỗi tiếng Việt**: DB SQL Server
+    dùng collation `SQL_Latin1_General_CP1_CI_AS` (CP1252), chuỗi / kiểu không N mất dấu
+    (`Chưa xác định` → `Chua xác d?nh`). Chữ Việt truyền qua tham số `sql.NVarChar`, hoặc ghép sẵn bằng JS.
+  - Trên PG, `N'...'` là kiểu `char` ⇒ **mất khoảng trắng cuối** (`N' · '` → `' ·'`,
+    `REPLACE(x, N'  ', N' ')` thành thay chuỗi rỗng). Nhãn không có khoảng trắng cuối thì vẫn đúng.
+  - PG không suy được kiểu tham số chuỗi nằm trong `CONCAT(...)` — ghép sẵn bằng JS, hoặc để
+    tham số trong `COALESCE(cột, @x)`.
+- [ ] Đợt sau: 34 chuỗi `N'...'` tiếng Việt còn lại (đa số trong lô nhiều câu / bảng tạm của
+  dashboard, báo cáo CME, `courseCmeService`, các `THROW`) đổi sang tham số khi viết lại các lô đó;
+  `+` nối chuỗi trong mã sinh từ `NEWID()` (mục newid); `[key]` / `[value]` của `OPENJSON`.
 - [ ] `OPENJSON(@ids)` → `inClause` (đã có ở `src/utils/sqlFilters.js`) hoặc 1
   helper `anyOf()` để adapter PG đổi sang `= ANY($1)`.
 - [ ] Tách các batch `DECLARE ...` và `recordsets[i]` thành nhiều lời gọi JS (mục 5.2).

@@ -95,7 +95,7 @@ const getAll = async (
 
 	const result = await req.query(`
     ${traineeSelectWith(
-			`, dc.doc_required, ISNULL(dc.doc_done, 0) AS doc_done${training_type_id ? ', le.*' : ''}`,
+			`, dc.doc_required, COALESCE(dc.doc_done, 0) AS doc_done${training_type_id ? ', le.*' : ''}`,
 			`${latestEnrollment} ${DOC_COUNT_APPLY}`,
 		)} ${whereSql}
     ORDER BY t.created_at DESC
@@ -129,7 +129,7 @@ const getById = async (id, actor = null) => {
 		// Kèm số giấy tờ bắt buộc + số lượt ghi danh cho thẻ tóm tắt ở trang hồ sơ học viên
 		.query(
 			`${traineeSelectWith(
-				`, dc.doc_required, ISNULL(dc.doc_done, 0) AS doc_done,
+				`, dc.doc_required, COALESCE(dc.doc_done, 0) AS doc_done,
 				  (SELECT COUNT(*) FROM course_enrollments ce WHERE ce.trainee_id = t.id AND ce.status <> 'rejected') AS enrollment_count`,
 				DOC_COUNT_APPLY,
 			)} WHERE t.id = @id`,

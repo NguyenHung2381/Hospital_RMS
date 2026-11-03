@@ -18,7 +18,7 @@ const catService = {
 				.input('description', sql.NVarChar(sql.MAX), data.description || null)
 				.input('abbr', sql.VarChar(10), data.abbr || null).query(`
 				DECLARE @seq INT;
-				SELECT @seq = ISNULL(MAX(CAST(RIGHT(id, 2) AS INT)), 0) + 1
+				SELECT @seq = COALESCE(MAX(CAST(RIGHT(id, 2) AS INT)), 0) + 1
 				FROM categories
 				WHERE id LIKE 'LDT[0-9][0-9]';
 				IF @seq > 99 THROW 50001, N'Đã đạt giới hạn 99 danh mục', 1;

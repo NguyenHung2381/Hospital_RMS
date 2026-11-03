@@ -13,6 +13,7 @@ const {
 	withActorTransaction,
 	actorRequest,
 	withActor,
+	boolExpr,
 } = require('../../config/db');
 const { broadcast } = require('../events/eventService');
 const formCustomValueService = require('../forms/formCustomValueService');
@@ -168,8 +169,8 @@ const staffOfDepartment = async (seminarId, departmentId) => {
 		.input('sid', sql.VarChar(20), seminarId)
 		.input('dept', sql.VarChar(20), departmentId).query(`
       SELECT u.id, u.staff_number, u.full_name, d.name AS department_name,
-             CAST(CASE WHEN EXISTS (SELECT 1 FROM seminar_participants p
-                  WHERE p.seminar_id = @sid AND p.user_id = u.id) THEN 1 ELSE 0 END AS BIT) AS in_list
+             ${boolExpr(`EXISTS (SELECT 1 FROM seminar_participants p
+                  WHERE p.seminar_id = @sid AND p.user_id = u.id)`)} AS in_list
       ${staffFrom}
       WHERE u.department_id = @dept AND ${staffWhere}
       ORDER BY u.full_name;

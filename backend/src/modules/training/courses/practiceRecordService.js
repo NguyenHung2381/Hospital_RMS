@@ -7,7 +7,7 @@
  * (vài trăm – vài nghìn hồ sơ).
  * Phạm vi 'assigned' (giảng viên) chỉ thấy khóa mình được phân công.
  */
-const { getPool, sql } = require('../../../config/db');
+const { getPool, sql, boolExpr } = require('../../../config/db');
 const { scopeOf } = require('../../../permissions/authz');
 const { todayKeyVN } = require('../../../utils/vnDate');
 const { ASSIGNED_EXISTS_SQL } = require('./coursePolicy');
@@ -23,7 +23,7 @@ const GPHN_TYPE = 'TRNTP-GPHN';
 const STAGE_SQL = `CASE
     WHEN e.status = 'pending' THEN 'pending'
     WHEN e.status <> 'approved' THEN 'other'
-    WHEN ISNULL(e.progress_status, 'in_progress') = 'completed' THEN 'completed'
+    WHEN COALESCE(e.progress_status, 'in_progress') = 'completed' THEN 'completed'
     WHEN e.progress_status = 'dropped' THEN 'dropped'
     WHEN rc.total = 0 THEN 'unscheduled'
     ELSE 'practicing' END`;
@@ -41,16 +41,16 @@ const list = async (actor = null) => {
 	}
 	const r = await req.query(`
     SELECT e.id, e.course_id, c.name AS course_name, e.trainee_id, t.full_name AS trainee_name,
-           t.phone AS trainee_phone, CAST(CASE WHEN t.staff_user_id IS NULL THEN 0 ELSE 1 END AS BIT) AS is_internal,
+           t.phone AS trainee_phone, ${boolExpr(`t.staff_user_id IS NOT NULL`)} AS is_internal,
            e.status, e.progress_status, e.practice_code, e.program_id, tp.code AS program_code, tp.name AS program_name,
            e.start_date, e.end_date, e.sending_unit, e.registered_at,
            ${STAGE_SQL} AS stage,
            rc.total AS rotation_total, rc.passed AS rotation_passed, rc.failed AS rotation_failed,
            rc.awaiting AS rotation_awaiting,
            cur.round_title AS current_round, cur.department_id AS current_department_id,
-           ISNULL(cd.name, cur.department_name) AS current_department, cur.mentor_user_id AS current_mentor_user_id,
+           COALESCE(cd.name, cur.department_name) AS current_department, cur.mentor_user_id AS current_mentor_user_id,
            cur.mentor_name AS current_mentor, cur.end_date AS current_end_date,
-           nx.round_title AS next_round, ISNULL(nd.name, nx.department_name) AS next_department, nx.start_date AS next_start_date
+           nx.round_title AS next_round, COALESCE(nd.name, nx.department_name) AS next_department, nx.start_date AS next_start_date
     FROM course_enrollments e
     JOIN courses c ON c.id = e.course_id
     JOIN trainees t ON t.id = e.trainee_id

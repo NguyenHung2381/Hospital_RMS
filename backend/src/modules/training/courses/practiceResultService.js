@@ -18,7 +18,7 @@ const { ASSIGNED_EXISTS_SQL, assertCourseChildInScope } = require('./coursePolic
 
 const ROW_SELECT = `
   SELECT r.id, r.enrollment_id, r.round_title, r.seq, r.attempt_no, r.start_date, r.end_date, r.duration_text,
-         r.department_id, ISNULL(d.name, r.department_name) AS department_name,
+         r.department_id, COALESCE(d.name, r.department_name) AS department_name,
          r.mentor_user_id, r.mentor_name,
          r.result, r.result_comment, r.result_at, r.result_source, ub.full_name AS result_by_name,
          e.practice_code, e.course_id, c.name AS course_name,
@@ -33,7 +33,7 @@ const ROW_SELECT = `
   LEFT JOIN users ub ON ub.id = r.result_by`;
 
 // Hồ sơ còn hiệu lực: đã duyệt, chưa nghỉ học
-const ACTIVE_SQL = `e.status = 'approved' AND ISNULL(e.progress_status, 'in_progress') <> 'dropped'`;
+const ACTIVE_SQL = `e.status = 'approved' AND COALESCE(e.progress_status, 'in_progress') <> 'dropped'`;
 
 const day = (v) => (v ? new Date(v).toISOString().slice(0, 10) : null);
 
@@ -74,7 +74,7 @@ const listForTrainee = async (enrollmentId) => {
 	const pool = await getPool();
 	const r = await pool.request().input('id', sql.VarChar(20), enrollmentId).query(`
       SELECT r.id, r.round_title, r.seq, r.attempt_no, r.start_date, r.end_date, r.duration_text,
-             ISNULL(d.name, r.department_name) AS department_name,
+             COALESCE(d.name, r.department_name) AS department_name,
              r.mentor_salutation, r.mentor_name, r.mentor_qualification, r.mentor_phone,
              r.result, r.result_comment, r.result_at
       FROM enrollment_rotations r

@@ -69,7 +69,7 @@ const pickInternal = async (
     ORDER BY
       CASE WHEN u.${flagCol} = 1 THEN 0 ELSE 1 END,
       CASE WHEN d.specialty_group = @sg THEN 0 ELSE 1 END,
-      ISNULL(lt.load_count, 0) ASC,
+      COALESCE(lt.load_count, 0) ASC,
       u.full_name ASC
   `);
 	return result.recordset[0] || null;

@@ -236,7 +236,7 @@ const linkLessons = async (programId, lessonIds, actorId) => {
 		.request()
 		.input('program_id', sql.VarChar(20), programId)
 		.query(
-			'SELECT ISNULL(MAX(display_order), -1) AS max_order FROM lesson_programs WHERE program_id = @program_id',
+			'SELECT COALESCE(MAX(display_order), -1) AS max_order FROM lesson_programs WHERE program_id = @program_id',
 		);
 	let nextOrder = maxRow.recordset[0].max_order + 1;
 
