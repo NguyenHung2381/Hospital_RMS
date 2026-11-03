@@ -1,4 +1,4 @@
-const { getPool, sql } = require('../../config/db');
+const { getPool, sql, withActorTransaction, actorRequest } = require('../../config/db');
 const { broadcast } = require('../events/eventService');
 const { paging } = require('../../utils/paging');
 const { ROLE, inputRoleId } = require('../access/roleCodes');
@@ -141,32 +141,30 @@ const getById = async (id) => {
 };
 
 const create = async (data, actorId) => {
-	const pool = await getPool();
-	const result = await pool
-		.request()
-		.input('actor_id', sql.VarChar(20), actorId)
-		.input('round_id', sql.VarChar(10), data.round_id)
-		.input('name', sql.NVarChar(255), data.name)
-		.input('specialty_group', sql.NVarChar(100), data.specialty_group || null)
-		.input('location', sql.NVarChar(255), data.location || null)
-		.input('defense_date', sql.Date, data.defense_date || null).query(`
+	const result = await withActorTransaction(actorId, (tx) =>
+		tx
+			.request()
+			.input('actor_id', sql.VarChar(20), actorId)
+			.input('round_id', sql.VarChar(10), data.round_id)
+			.input('name', sql.NVarChar(255), data.name)
+			.input('specialty_group', sql.NVarChar(100), data.specialty_group || null)
+			.input('location', sql.NVarChar(255), data.location || null)
+			.input('defense_date', sql.Date, data.defense_date || null).query(`
       DECLARE @new_id VARCHAR(15);
       EXEC sp_gen_council_id @round_id, @new_id OUTPUT;
-      EXEC sp_set_actor @actor_id;
       INSERT INTO councils (id, round_id, name, specialty_group, location, defense_date, status, created_by)
       VALUES (@new_id, @round_id, @name, @specialty_group, @location, @defense_date, 'draft', @actor_id);
       SELECT @new_id AS id;
-    `);
+    `),
+	);
 	const council = await getById(result.recordset[0].id);
 	broadcast('update', { entity: 'council' });
 	return council;
 };
 
 const update = async (id, data, actorId) => {
-	const pool = await getPool();
 	const sets = [];
-	const req = pool
-		.request()
+	const req = actorRequest(actorId)
 		.input('id', sql.VarChar(15), id)
 		.input('actor_id', sql.VarChar(20), actorId);
 
@@ -192,23 +190,21 @@ const update = async (id, data, actorId) => {
 	}
 
 	if (sets.length) {
-		await req.query(
-			`EXEC sp_set_actor @actor_id; UPDATE councils SET ${sets.join(', ')} WHERE id = @id`,
-		);
+		await req.query(`UPDATE councils SET ${sets.join(', ')} WHERE id = @id`);
 		broadcast('update', { entity: 'council' });
 	}
 	return getById(id);
 };
 
 const remove = async (id, actorId) => {
-	const pool = await getPool();
-	await pool.request().input('id', sql.VarChar(15), id).input('actor_id', sql.VarChar(20), actorId)
-		.query(`
-      EXEC sp_set_actor @actor_id;
+	await withActorTransaction(actorId, (tx) =>
+		tx.request().input('id', sql.VarChar(15), id).input('actor_id', sql.VarChar(20), actorId)
+			.query(`
       UPDATE topics SET council_id = NULL WHERE council_id = @id;
       DELETE FROM council_members WHERE council_id = @id;
       DELETE FROM councils WHERE id = @id;
-    `);
+    `),
+	);
 	broadcast('update', { entity: 'council' });
 };
 
@@ -235,30 +231,28 @@ const getMemberById = async (memberId) => {
 // Ghế nhận đúng 1 trong 2: user_id (trong viện) hoặc external_reviewer_id
 // (ngoài viện) — ràng buộc bởi CK_council_members_seat_owner ở DB.
 const addMember = async (councilId, data, actorId) => {
-	const pool = await getPool();
-	const result = await pool
-		.request()
-		.input('actor_id', sql.VarChar(20), actorId)
-		.input('council_id', sql.VarChar(15), councilId)
-		.input('user_id', sql.VarChar(20), data.user_id || null)
-		.input('external_reviewer_id', sql.VarChar(20), data.external_reviewer_id || null)
-		.input('role', sql.VarChar(15), data.role).query(`
+	const result = await withActorTransaction(actorId, (tx) =>
+		tx
+			.request()
+			.input('actor_id', sql.VarChar(20), actorId)
+			.input('council_id', sql.VarChar(15), councilId)
+			.input('user_id', sql.VarChar(20), data.user_id || null)
+			.input('external_reviewer_id', sql.VarChar(20), data.external_reviewer_id || null)
+			.input('role', sql.VarChar(15), data.role).query(`
       DECLARE @new_id VARCHAR(25);
       EXEC sp_gen_council_member_id @council_id, @new_id OUTPUT;
-      EXEC sp_set_actor @actor_id;
       INSERT INTO council_members (id, council_id, user_id, external_reviewer_id, role, created_by)
       VALUES (@new_id, @council_id, @user_id, @external_reviewer_id, @role, @actor_id);
       SELECT @new_id AS id;
-    `);
+    `),
+	);
 	broadcast('update', { entity: 'council' });
 	return getMemberById(result.recordset[0].id);
 };
 
 const updateMember = async (councilId, memberId, data, actorId) => {
-	const pool = await getPool();
 	const sets = [];
-	const req = pool
-		.request()
+	const req = actorRequest(actorId)
 		.input('id', sql.VarChar(25), memberId)
 		.input('council_id', sql.VarChar(15), councilId)
 		.input('actor_id', sql.VarChar(20), actorId);
@@ -280,7 +274,7 @@ const updateMember = async (councilId, memberId, data, actorId) => {
 	if (!sets.length) return getMemberById(memberId);
 
 	await req.query(
-		`EXEC sp_set_actor @actor_id; UPDATE council_members SET ${sets.join(', ')}, updated_at = GETDATE(), updated_by = @actor_id WHERE id = @id AND council_id = @council_id`,
+		`UPDATE council_members SET ${sets.join(', ')}, updated_at = GETDATE(), updated_by = @actor_id WHERE id = @id AND council_id = @council_id`,
 	);
 	broadcast('update', { entity: 'council' });
 	return getMemberById(memberId);
@@ -353,15 +347,14 @@ const getEligibleUsers = async (councilId, search = '', type = 'internal') => {
 };
 
 const removeMember = async (councilId, memberId, actorId) => {
-	const pool = await getPool();
-	await pool
-		.request()
-		.input('id', sql.VarChar(25), memberId)
-		.input('council_id', sql.VarChar(15), councilId)
-		.input('actor_id', sql.VarChar(20), actorId)
-		.query(
-			`EXEC sp_set_actor @actor_id; DELETE FROM council_members WHERE id = @id AND council_id = @council_id`,
-		);
+	await withActorTransaction(actorId, (tx) =>
+		tx
+			.request()
+			.input('id', sql.VarChar(25), memberId)
+			.input('council_id', sql.VarChar(15), councilId)
+			.input('actor_id', sql.VarChar(20), actorId)
+			.query(`DELETE FROM council_members WHERE id = @id AND council_id = @council_id`),
+	);
 	broadcast('update', { entity: 'council' });
 };
 

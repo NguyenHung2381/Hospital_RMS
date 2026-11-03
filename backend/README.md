@@ -201,7 +201,7 @@ Authorization: Bearer <access_token>
 
 ## Stored Procedures được sử dụng
 
-- `sp_set_actor` — Set session context user_id trước mỗi thao tác write
+- `sp_set_actor` — Set session context user_id trước mỗi thao tác write. Code không gọi trực tiếp: dùng `withActor(tx, actorId)` / `withActorTransaction` / `actorRequest` ở `src/config/db.js` (chạy được cả trên PostgreSQL)
 - `sp_gen_topic_id` — Sinh ID đề tài
 - `sp_gen_user_id` — Sinh ID người dùng
 - `sp_gen_member_id` — Sinh ID thành viên

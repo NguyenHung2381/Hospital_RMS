@@ -1,4 +1,4 @@
-const { getPool, sql } = require('../../config/db');
+const { getPool, sql, withActorTransaction, actorRequest, withActor } = require('../../config/db');
 const { appErrorCode } = require('../../utils/dbErrors');
 const bcrypt = require('bcrypt');
 const notifSvc = require('../notifications/notificationService');
@@ -42,33 +42,33 @@ const getMembers = async (topicId) => {
 };
 
 const addMember = async (topicId, memberData, actorId) => {
-	const pool = await getPool();
-	const result = await pool
-		.request()
-		.input('actor_id', sql.VarChar(20), actorId)
-		.input('topic_id', sql.VarChar(15), topicId)
-		.input('ho_ten', sql.NVarChar(200), memberData.ho_ten)
-		.input('email', sql.VarChar(100), memberData.email || null)
-		.input('so_dien_thoai', sql.VarChar(20), memberData.so_dien_thoai || null)
-		.input('chuc_vu', sql.NVarChar(200), memberData.chuc_vu || null)
-		.input(
-			'staff_number',
-			sql.Int,
-			memberData.staff_number != null && memberData.staff_number !== ''
-				? parseInt(String(memberData.staff_number), 10)
-				: null,
-		)
-		.input('department_id', sql.VarChar(20), memberData.department_id || null)
-		.input('role', sql.VarChar(20), memberData.role || 'member').query(`
+	const result = await withActorTransaction(actorId, (tx) =>
+		tx
+			.request()
+			.input('actor_id', sql.VarChar(20), actorId)
+			.input('topic_id', sql.VarChar(15), topicId)
+			.input('ho_ten', sql.NVarChar(200), memberData.ho_ten)
+			.input('email', sql.VarChar(100), memberData.email || null)
+			.input('so_dien_thoai', sql.VarChar(20), memberData.so_dien_thoai || null)
+			.input('chuc_vu', sql.NVarChar(200), memberData.chuc_vu || null)
+			.input(
+				'staff_number',
+				sql.Int,
+				memberData.staff_number != null && memberData.staff_number !== ''
+					? parseInt(String(memberData.staff_number), 10)
+					: null,
+			)
+			.input('department_id', sql.VarChar(20), memberData.department_id || null)
+			.input('role', sql.VarChar(20), memberData.role || 'member').query(`
       BEGIN TRANSACTION;
       DECLARE @new_id VARCHAR(22);
       EXEC sp_gen_member_id @topic_id, @new_id OUTPUT;
-      EXEC sp_set_actor @actor_id;
       INSERT INTO topic_members (id, topic_id, name, email, phone_number, position, staff_number, department_id, role, created_by)
       VALUES (@new_id, @topic_id, @ho_ten, @email, @so_dien_thoai, @chuc_vu, @staff_number, @department_id, @role, @actor_id);
       COMMIT TRANSACTION;
       SELECT @new_id AS id;
-    `);
+    `),
+	);
 	await personService.syncPerson('topic_members', result.recordset[0].id, { actorId });
 	broadcast('update', { entity: 'topic' });
 	return result.recordset[0];
@@ -244,9 +244,7 @@ const grantAccountsNoEmail = async (topicId, memberIds, actorId) => {
 			began = true;
 
 			// Ghi actor cho trigger audit (trg_users_audit đọc SESSION_CONTEXT)
-			await new sql.Request(tx)
-				.input('actor_id', sql.VarChar(20), actorId)
-				.query(`EXEC sp_set_actor @actor_id`);
+			await withActor(tx, actorId);
 
 			// Tài khoản đã tồn tại (theo topic_member_id / mã NV / email)?
 			const existingUserResult = await new sql.Request(tx)
@@ -487,8 +485,7 @@ const grantAccountsNoEmail = async (topicId, memberIds, actorId) => {
 const updateMember = async (topicId, memberId, data, actorId) => {
 	const pool = await getPool();
 	const sets = ['updated_at = GETDATE()', 'updated_by = @actor_id'];
-	const req = pool
-		.request()
+	const req = actorRequest(actorId)
 		.input('id', sql.VarChar(20), memberId)
 		.input('topic_id', sql.VarChar(15), topicId)
 		.input('actor_id', sql.VarChar(20), actorId);
@@ -519,7 +516,7 @@ const updateMember = async (topicId, memberId, data, actorId) => {
 	}
 
 	await req.query(
-		`EXEC sp_set_actor @actor_id; UPDATE topic_members SET ${sets.join(', ')} WHERE id = @id AND topic_id = @topic_id`,
+		`UPDATE topic_members SET ${sets.join(', ')} WHERE id = @id AND topic_id = @topic_id`,
 	);
 	await personService.syncPerson('topic_members', memberId, { actorId });
 	const result = await pool.request().input('id', sql.VarChar(20), memberId).query(`
@@ -545,14 +542,14 @@ const deleteMember = async (topicId, memberId, actorId) => {
 		.request()
 		.input('id', sql.VarChar(20), memberId)
 		.query(`UPDATE users SET topic_member_id = NULL WHERE topic_member_id = @id`);
-	await pool
-		.request()
-		.input('id', sql.VarChar(20), memberId)
-		.input('topic_id', sql.VarChar(15), topicId)
-		.input('actor_id', sql.VarChar(20), actorId)
-		.query(
-			`EXEC sp_set_actor @actor_id; DELETE FROM topic_members WHERE id = @id AND topic_id = @topic_id`,
-		);
+	await withActorTransaction(actorId, (tx) =>
+		tx
+			.request()
+			.input('id', sql.VarChar(20), memberId)
+			.input('topic_id', sql.VarChar(15), topicId)
+			.input('actor_id', sql.VarChar(20), actorId)
+			.query(`DELETE FROM topic_members WHERE id = @id AND topic_id = @topic_id`),
+	);
 	broadcast('update', { entity: 'topic' });
 };
 

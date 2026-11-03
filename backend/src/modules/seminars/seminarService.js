@@ -4,7 +4,7 @@
  * Độc lập với nghiệp vụ NCKH. Danh sách người tham dự nằm ở
  * seminarParticipantService; ở đây chỉ CRUD sự kiện + số liệu tổng hợp.
  */
-const { getPool, sql } = require('../../config/db');
+const { getPool, sql, withActorTransaction, actorRequest } = require('../../config/db');
 const { broadcast } = require('../events/eventService');
 const { paging } = require('../../utils/paging');
 const { splitList, inClause, buildWhere } = require('../../utils/sqlFilters');
@@ -185,42 +185,42 @@ const optionalNumber = (v, label, { min, max, integer = false }) => {
 const create = async (input, actorId) => {
 	const data = ht.applyLessonCredits(input);
 	const pool = await getPool();
-	const result = await pool
-		.request()
-		.input('actor_id', sql.VarChar(20), actorId)
-		.input('title', sql.NVarChar(500), data.title)
-		.input('event_type', sql.VarChar(30), normalizeType(data.event_type))
-		.input('event_type_raw', sql.NVarChar(100), data.event_type_raw || null)
-		.input('scope', sql.VarChar(20), normalizeScope(data.scope))
-		.input('location', sql.NVarChar(255), data.location || null)
-		.input('start_date', sql.Date, data.start_date || null)
-		.input('end_date', sql.Date, data.end_date || null)
-		.input(
-			'start_time',
-			sql.VarChar(5),
-			normalizeTime(data.start_time, TIME_FIELDS.start_time) ?? null,
-		)
-		.input('end_time', sql.VarChar(5), normalizeTime(data.end_time, TIME_FIELDS.end_time) ?? null)
-		.input('date_text', sql.NVarChar(100), data.date_text || null)
-		.input('event_year', sql.Int, yearOf(data))
-		.input('host_chair', sql.NVarChar(255), data.host_chair || null)
-		.input('speakers', sql.NVarChar(sql.MAX), data.speakers || null)
-		.input('permit_doc_no', sql.NVarChar(255), data.permit_doc_no || null)
-		.input('co_organizers', sql.NVarChar(500), data.co_organizers || null)
-		.input('grants_cme', sql.Bit, data.grants_cme ? 1 : 0)
-		.input('cme_default_credits', sql.Decimal(4, 1), data.cme_default_credits ?? null)
-		.input('coordinator', sql.NVarChar(100), data.coordinator || null)
-		.input('notes', sql.NVarChar(sql.MAX), data.notes || null)
-		.input('manual_participant_count', sql.Int, data.manual_participant_count ?? null)
-		.input('manual_internal_count', sql.Int, data.manual_internal_count ?? null)
-		.input('manual_external_count', sql.Int, data.manual_external_count ?? null)
-		.input('manual_foreign_count', sql.Int, data.manual_foreign_count ?? null)
-		.input('manual_cme_count', sql.Int, data.manual_cme_count ?? null)
-		.input('organizer_department_id', sql.VarChar(20), data.organizer_department_id || null)
-		.input('topic_id', sql.VarChar(20), data.topic_id || null)
-		.input('lesson_hours', sql.Decimal(4, 1), data.lesson_hours ?? null).query(`
+	const result = await withActorTransaction(actorId, (tx) =>
+		tx
+			.request()
+			.input('actor_id', sql.VarChar(20), actorId)
+			.input('title', sql.NVarChar(500), data.title)
+			.input('event_type', sql.VarChar(30), normalizeType(data.event_type))
+			.input('event_type_raw', sql.NVarChar(100), data.event_type_raw || null)
+			.input('scope', sql.VarChar(20), normalizeScope(data.scope))
+			.input('location', sql.NVarChar(255), data.location || null)
+			.input('start_date', sql.Date, data.start_date || null)
+			.input('end_date', sql.Date, data.end_date || null)
+			.input(
+				'start_time',
+				sql.VarChar(5),
+				normalizeTime(data.start_time, TIME_FIELDS.start_time) ?? null,
+			)
+			.input('end_time', sql.VarChar(5), normalizeTime(data.end_time, TIME_FIELDS.end_time) ?? null)
+			.input('date_text', sql.NVarChar(100), data.date_text || null)
+			.input('event_year', sql.Int, yearOf(data))
+			.input('host_chair', sql.NVarChar(255), data.host_chair || null)
+			.input('speakers', sql.NVarChar(sql.MAX), data.speakers || null)
+			.input('permit_doc_no', sql.NVarChar(255), data.permit_doc_no || null)
+			.input('co_organizers', sql.NVarChar(500), data.co_organizers || null)
+			.input('grants_cme', sql.Bit, data.grants_cme ? 1 : 0)
+			.input('cme_default_credits', sql.Decimal(4, 1), data.cme_default_credits ?? null)
+			.input('coordinator', sql.NVarChar(100), data.coordinator || null)
+			.input('notes', sql.NVarChar(sql.MAX), data.notes || null)
+			.input('manual_participant_count', sql.Int, data.manual_participant_count ?? null)
+			.input('manual_internal_count', sql.Int, data.manual_internal_count ?? null)
+			.input('manual_external_count', sql.Int, data.manual_external_count ?? null)
+			.input('manual_foreign_count', sql.Int, data.manual_foreign_count ?? null)
+			.input('manual_cme_count', sql.Int, data.manual_cme_count ?? null)
+			.input('organizer_department_id', sql.VarChar(20), data.organizer_department_id || null)
+			.input('topic_id', sql.VarChar(20), data.topic_id || null)
+			.input('lesson_hours', sql.Decimal(4, 1), data.lesson_hours ?? null).query(`
       DECLARE @new_id VARCHAR(20) = ${genIdExpr};
-      EXEC sp_set_actor @actor_id;
       INSERT INTO seminars
         (id, title, event_type, event_type_raw, scope, location, start_date, end_date,
          start_time, end_time, date_text, event_year, host_chair, speakers, permit_doc_no, co_organizers,
@@ -236,7 +236,8 @@ const create = async (input, actorId) => {
          @manual_foreign_count, @manual_cme_count, @organizer_department_id, @topic_id, @lesson_hours,
          LOWER(REPLACE(CONVERT(VARCHAR(36), NEWID()), '-', '')), @actor_id);
       SELECT @new_id AS id;
-    `);
+    `),
+	);
 	await ht.setRequiredDepartments(pool, result.recordset[0].id, data.required_department_ids);
 	broadcast('update', { entity: 'seminar' });
 	return getById(result.recordset[0].id);
@@ -270,8 +271,7 @@ const update = async (id, input, actorId) => {
 	const data = ht.applyLessonCredits(input);
 	const pool = await getPool();
 	const sets = ['updated_at = GETDATE()', 'updated_by = @actor_id'];
-	const req = pool
-		.request()
+	const req = actorRequest(actorId)
 		.input('id', sql.VarChar(20), id)
 		.input('actor_id', sql.VarChar(20), actorId);
 
@@ -357,9 +357,7 @@ const update = async (id, input, actorId) => {
 		req.input('event_year', sql.Int, yearOf(data));
 	}
 
-	await req.query(
-		`EXEC sp_set_actor @actor_id; UPDATE seminars SET ${sets.join(', ')} WHERE id = @id`,
-	);
+	await req.query(`UPDATE seminars SET ${sets.join(', ')} WHERE id = @id`);
 	await ht.setRequiredDepartments(pool, id, data.required_department_ids);
 	removedImages.forEach(removeUploadedFile);
 	broadcast('update', { entity: 'seminar' });
@@ -381,11 +379,13 @@ const remove = async (id, actorId) => {
 			`Không thể xóa: đã có ${check.recordset[0].n} người được cấp số CME trong sự kiện này. Hãy thu hồi số CME trước.`,
 		);
 	}
-	await pool
-		.request()
-		.input('id', sql.VarChar(20), id)
-		.input('actor_id', sql.VarChar(20), actorId)
-		.query(`EXEC sp_set_actor @actor_id; DELETE FROM seminars WHERE id = @id`);
+	await withActorTransaction(actorId, (tx) =>
+		tx
+			.request()
+			.input('id', sql.VarChar(20), id)
+			.input('actor_id', sql.VarChar(20), actorId)
+			.query(`DELETE FROM seminars WHERE id = @id`),
+	);
 	// Ảnh bài test của sự kiện (uploads/seminars/<id>/)
 	if (SAFE_ID.test(id))
 		fs.rm(path.join(UPLOADS_ROOT, 'seminars', id), { recursive: true, force: true }, () => {});

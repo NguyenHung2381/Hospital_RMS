@@ -1,4 +1,4 @@
-const { getPool, sql } = require('../../config/db');
+const { getPool, sql, withActorTransaction, actorRequest } = require('../../config/db');
 const { broadcast } = require('../events/eventService');
 const { httpError } = require('../../utils/httpError');
 
@@ -31,17 +31,14 @@ const getTopics = async (councilId) => {
 // Chỉ gán được đề tài cùng đợt (round_id) với hội đồng.
 const assignTopics = async (councilId, topicIds, actorId) => {
 	if (!Array.isArray(topicIds) || topicIds.length === 0) return { assigned: 0 };
-	const pool = await getPool();
 
-	const req = pool
-		.request()
+	const req = actorRequest(actorId)
 		.input('actor_id', sql.VarChar(20), actorId)
 		.input('council_id', sql.VarChar(15), councilId);
 	topicIds.forEach((id, i) => req.input(`id${i}`, sql.VarChar(15), id));
 	const idParams = topicIds.map((_, i) => `@id${i}`).join(',');
 
 	const result = await req.query(`
-    EXEC sp_set_actor @actor_id;
     UPDATE topics
     SET council_id = @council_id
     WHERE id IN (${idParams})
@@ -53,32 +50,32 @@ const assignTopics = async (councilId, topicIds, actorId) => {
 };
 
 const unassignTopic = async (councilId, topicId, actorId) => {
-	const pool = await getPool();
-	await pool
-		.request()
-		.input('actor_id', sql.VarChar(20), actorId)
-		.input('council_id', sql.VarChar(15), councilId)
-		.input('topic_id', sql.VarChar(15), topicId).query(`
-      EXEC sp_set_actor @actor_id;
+	await withActorTransaction(actorId, (tx) =>
+		tx
+			.request()
+			.input('actor_id', sql.VarChar(20), actorId)
+			.input('council_id', sql.VarChar(15), councilId)
+			.input('topic_id', sql.VarChar(15), topicId).query(`
       UPDATE topics SET council_id = NULL WHERE id = @topic_id AND council_id = @council_id;
-    `);
+    `),
+	);
 	broadcast('update', { entity: 'topic' });
 };
 
 // Đặt buổi bảo vệ (sáng/chiều) cho một đề tài đã gán vào hội đồng.
 const setTopicSession = async (councilId, topicId, session, actorId) => {
-	const pool = await getPool();
-	const result = await pool
-		.request()
-		.input('actor_id', sql.VarChar(20), actorId)
-		.input('council_id', sql.VarChar(15), councilId)
-		.input('topic_id', sql.VarChar(15), topicId)
-		.input('session', sql.VarChar(10), session || null).query(`
-      EXEC sp_set_actor @actor_id;
+	const result = await withActorTransaction(actorId, (tx) =>
+		tx
+			.request()
+			.input('actor_id', sql.VarChar(20), actorId)
+			.input('council_id', sql.VarChar(15), councilId)
+			.input('topic_id', sql.VarChar(15), topicId)
+			.input('session', sql.VarChar(10), session || null).query(`
       UPDATE topics SET [session] = @session
       WHERE id = @topic_id AND council_id = @council_id;
       SELECT @@ROWCOUNT AS updated;
-    `);
+    `),
+	);
 	if (!result.recordset[0].updated) {
 		throw Object.assign(new Error('Đề tài không thuộc hội đồng này.'), { status: 404 });
 	}
@@ -88,15 +85,14 @@ const setTopicSession = async (councilId, topicId, session, actorId) => {
 // Ghế thay thế theo đề tài: với một đề tài cụ thể, thay người ngồi một ghế của
 // hội đồng (thành viên gốc là tác giả, hoặc cần chuyên gia đúng ngành phản biện).
 const setSeatSubstitute = async (councilId, topicId, role, userId, actorId) => {
-	const pool = await getPool();
-	const result = await pool
-		.request()
-		.input('actor_id', sql.VarChar(20), actorId)
-		.input('council_id', sql.VarChar(15), councilId)
-		.input('topic_id', sql.VarChar(15), topicId)
-		.input('role', sql.VarChar(15), role)
-		.input('user_id', sql.VarChar(20), userId).query(`
-      EXEC sp_set_actor @actor_id;
+	const result = await withActorTransaction(actorId, (tx) =>
+		tx
+			.request()
+			.input('actor_id', sql.VarChar(20), actorId)
+			.input('council_id', sql.VarChar(15), councilId)
+			.input('topic_id', sql.VarChar(15), topicId)
+			.input('role', sql.VarChar(15), role)
+			.input('user_id', sql.VarChar(20), userId).query(`
       IF NOT EXISTS (SELECT 1 FROM topics WHERE id = @topic_id AND council_id = @council_id)
         SELECT 0 AS ok;
       ELSE
@@ -109,7 +105,8 @@ const setSeatSubstitute = async (councilId, topicId, role, userId, actorId) => {
           VALUES (@topic_id, @role, @user_id, @actor_id);
         SELECT 1 AS ok;
       END
-    `);
+    `),
+	);
 	if (!result.recordset[0].ok) {
 		throw httpError(404, 'Đề tài không thuộc hội đồng này.');
 	}
@@ -117,18 +114,18 @@ const setSeatSubstitute = async (councilId, topicId, role, userId, actorId) => {
 };
 
 const removeSeatSubstitute = async (councilId, topicId, role, actorId) => {
-	const pool = await getPool();
-	await pool
-		.request()
-		.input('actor_id', sql.VarChar(20), actorId)
-		.input('council_id', sql.VarChar(15), councilId)
-		.input('topic_id', sql.VarChar(15), topicId)
-		.input('role', sql.VarChar(15), role).query(`
-      EXEC sp_set_actor @actor_id;
+	await withActorTransaction(actorId, (tx) =>
+		tx
+			.request()
+			.input('actor_id', sql.VarChar(20), actorId)
+			.input('council_id', sql.VarChar(15), councilId)
+			.input('topic_id', sql.VarChar(15), topicId)
+			.input('role', sql.VarChar(15), role).query(`
       DELETE s FROM council_seat_substitutes s
       INNER JOIN topics t ON t.id = s.topic_id
       WHERE s.topic_id = @topic_id AND s.role = @role AND t.council_id = @council_id;
-    `);
+    `),
+	);
 	broadcast('update', { entity: 'council' });
 };
 

@@ -1,4 +1,4 @@
-const { getPool, sql } = require('../../config/db');
+const { getPool, sql, withActorTransaction, actorRequest } = require('../../config/db');
 const { broadcast } = require('../events/eventService');
 const { paging } = require('../../utils/paging');
 const { splitList, inClause, buildWhere } = require('../../utils/sqlFilters');
@@ -238,36 +238,36 @@ const levelForRound = (roundId, articleType) =>
 	articleType === 'bai_bao' ? null : roundService.getRoundLevelId(roundId);
 
 const create = async (data, actorId) => {
-	const pool = await getPool();
 	const levelId = await levelForRound(data.round_id, data.article_type);
-	const result = await pool
-		.request()
-		.input('actor_id', sql.VarChar(20), actorId)
-		.input('title', sql.NVarChar(500), data.title)
-		.input('description', sql.NVarChar(sql.MAX), data.description || null)
-		.input('round_id', sql.VarChar(10), data.round_id)
-		.input('category_id', sql.VarChar(6), data.category_id || null)
-		.input('level_id', sql.VarChar(5), levelId)
-		.input('department_id', sql.VarChar(20), data.department_id || null)
-		.input('article_type', sql.VarChar(20), data.article_type || 'de_tai')
-		.input('journal_name', sql.NVarChar(255), data.journal_name || null)
-		.input('doi', sql.VarChar(100), data.doi || null)
-		.input('publish_date', sql.Date, data.publish_date || null)
-		.input('budget_estimated', sql.Decimal(18, 2), data.budget_estimated ?? null)
-		// Đề tài nhập bổ sung (đã hoàn thành) — chỉ topicLegacyService truyền vào
-		.input('is_legacy', sql.Bit, data.is_legacy ? 1 : 0)
-		.input('acceptance_rating', sql.VarChar(20), data.acceptance_rating || null)
-		.input('acceptance_score', sql.Decimal(5, 2), data.acceptance_score ?? null)
-		.input('acceptance_date', sql.Date, data.acceptance_date || null).query(`
+	const result = await withActorTransaction(actorId, (tx) =>
+		tx
+			.request()
+			.input('actor_id', sql.VarChar(20), actorId)
+			.input('title', sql.NVarChar(500), data.title)
+			.input('description', sql.NVarChar(sql.MAX), data.description || null)
+			.input('round_id', sql.VarChar(10), data.round_id)
+			.input('category_id', sql.VarChar(6), data.category_id || null)
+			.input('level_id', sql.VarChar(5), levelId)
+			.input('department_id', sql.VarChar(20), data.department_id || null)
+			.input('article_type', sql.VarChar(20), data.article_type || 'de_tai')
+			.input('journal_name', sql.NVarChar(255), data.journal_name || null)
+			.input('doi', sql.VarChar(100), data.doi || null)
+			.input('publish_date', sql.Date, data.publish_date || null)
+			.input('budget_estimated', sql.Decimal(18, 2), data.budget_estimated ?? null)
+			// Đề tài nhập bổ sung (đã hoàn thành) — chỉ topicLegacyService truyền vào
+			.input('is_legacy', sql.Bit, data.is_legacy ? 1 : 0)
+			.input('acceptance_rating', sql.VarChar(20), data.acceptance_rating || null)
+			.input('acceptance_score', sql.Decimal(5, 2), data.acceptance_score ?? null)
+			.input('acceptance_date', sql.Date, data.acceptance_date || null).query(`
       DECLARE @new_id VARCHAR(15);
       EXEC sp_gen_topic_id @category_id, @round_id, @new_id OUTPUT;
-      EXEC sp_set_actor @actor_id;
       INSERT INTO topics (id, title, description, round_id, category_id, level_id, department_id, status, created_by, article_type, journal_name, doi, publish_date, budget_estimated,
                           is_legacy, acceptance_rating, acceptance_score, acceptance_date)
       VALUES (@new_id, @title, @description, @round_id, @category_id, @level_id, @department_id, 'submitted', @actor_id, @article_type, @journal_name, @doi, @publish_date, @budget_estimated,
               @is_legacy, @acceptance_rating, @acceptance_score, @acceptance_date);
       SELECT @new_id AS id;
-    `);
+    `),
+	);
 	if (Array.isArray(data.related_department_ids) && data.related_department_ids.length)
 		await setRelatedDepartments(result.recordset[0].id, data.related_department_ids);
 	const topic = await getById(result.recordset[0].id);
@@ -282,8 +282,6 @@ const create = async (data, actorId) => {
 const OWN_EDITABLE = ['title', 'description', 'category_id', 'department_id'];
 
 const update = async (id, data, actorId, actor = null) => {
-	const pool = await getPool();
-
 	// actor có thể là object (req.user), true (bỏ qua kiểm tra), hoặc null.
 	const bypass = actor === true;
 	const scope = bypass ? 'all' : topicScope(actor);
@@ -351,8 +349,7 @@ const update = async (id, data, actorId, actor = null) => {
 	}
 
 	const sets = [];
-	const req = pool
-		.request()
+	const req = actorRequest(actorId)
 		.input('id', sql.VarChar(15), id)
 		.input('actor_id', sql.VarChar(20), actorId);
 
@@ -470,7 +467,7 @@ const update = async (id, data, actorId, actor = null) => {
 	// Chỉ map trạng thái có tương ứng ở approvals (CHK: pending|approved|rejected|
 	// supplement); cancelled/completed không map ⇒ giữ nguyên bản ghi duyệt.
 	// updated_at/updated_by của approvals do trigger trg_approvals_audit tự ghi
-	// từ SESSION_CONTEXT (đã set bởi sp_set_actor trong cùng batch).
+	// từ SESSION_CONTEXT (actorRequest đã ghi người thao tác trong cùng transaction).
 	const APV_STATUS_BY_TOPIC = {
 		submitted: 'pending',
 		approved: 'approved',
@@ -486,9 +483,7 @@ const update = async (id, data, actorId, actor = null) => {
 			' WHERE topic_id = @id AND status <> @apv_status;';
 	}
 
-	await req.query(
-		`EXEC sp_set_actor @actor_id; UPDATE topics SET ${sets.join(', ')} WHERE id = @id;${apvSyncSql}`,
-	);
+	await req.query(`UPDATE topics SET ${sets.join(', ')} WHERE id = @id;${apvSyncSql}`);
 	const topic = await getById(id);
 	broadcast('update', { entity: 'topic' });
 	return topic;
@@ -503,11 +498,13 @@ const remove = async (id, actorId) => {
       JOIN topic_members tm ON tm.id = u.topic_member_id
       WHERE tm.topic_id = @topic_id
     `);
-	await pool
-		.request()
-		.input('id', sql.VarChar(15), id)
-		.input('actor_id', sql.VarChar(20), actorId)
-		.query(`EXEC sp_set_actor @actor_id; DELETE FROM topics WHERE id = @id`);
+	await withActorTransaction(actorId, (tx) =>
+		tx
+			.request()
+			.input('id', sql.VarChar(15), id)
+			.input('actor_id', sql.VarChar(20), actorId)
+			.query(`DELETE FROM topics WHERE id = @id`),
+	);
 	await formCustomValueService.remove('topic', id);
 	broadcast('update', { entity: 'topic' });
 };

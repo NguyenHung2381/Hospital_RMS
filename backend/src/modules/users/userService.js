@@ -1,5 +1,12 @@
 const bcrypt = require('bcrypt');
-const { getPool, sql, withTransaction } = require('../../config/db');
+const {
+	getPool,
+	sql,
+	withTransaction,
+	withActorTransaction,
+	actorRequest,
+	withActor,
+} = require('../../config/db');
 const { broadcast } = require('../events/eventService');
 const personService = require('../persons/personService');
 const securityEvents = require('../audit/securityEventService');
@@ -257,6 +264,7 @@ const create = async (data, actorId) => {
 			: null;
 		const id = await genUserIdInTx(tx, dept?.code || '');
 		if (!id) throw new Error('Không sinh được mã nhân viên mới');
+		await withActor(tx, actorId);
 		await new sql.Request(tx)
 			.input('new_id', sql.VarChar(20), id)
 			.input('actor_id', sql.VarChar(20), actorId)
@@ -273,7 +281,6 @@ const create = async (data, actorId) => {
 			.input('email', sql.VarChar(100), data.email?.trim() || null)
 			.input('department_id', sql.VarChar(20), data.department_id || null)
 			.input('role_id', sql.VarChar(20), roleId).query(`
-      EXEC sp_set_actor @actor_id;
       -- Mật khẩu do quản trị đặt ⇒ người dùng phải tự đổi ở lần đăng nhập đầu
       INSERT INTO users (id, username, password, staff_number, full_name, email, department_id, role_id, created_by,
                          must_change_password, temp_password_issued_at)
@@ -304,8 +311,7 @@ const update = async (id, data, actorId) => {
 	}
 
 	const sets = [];
-	const req = pool
-		.request()
+	const req = actorRequest(actorId)
 		.input('id', sql.VarChar(20), id)
 		.input('actor_id', sql.VarChar(20), actorId);
 
@@ -352,9 +358,7 @@ const update = async (id, data, actorId) => {
 	if (!sets.length) return getById(id);
 
 	sets.push('updated_at = GETDATE()', 'updated_by = @actor_id');
-	await req.query(
-		`EXEC sp_set_actor @actor_id; UPDATE users SET ${sets.join(', ')} WHERE id = @id`,
-	);
+	await req.query(`UPDATE users SET ${sets.join(', ')} WHERE id = @id`);
 	// Vai trò / khoa / trạng thái mới phải có hiệu lực ngay với phiên đang mở
 	// (middlewares/auth.js đọc các field này qua userStatusCache, không tin JWT).
 	userStatusCache.clear(id);
@@ -411,9 +415,9 @@ const remove = async (id, actorId) => {
 
 	// Lấy trước khi xóa — sau khi xóa thì dọn person (bảng persons không có FK tới users)
 	const personId = await personService.personIdOf('users', id);
-	await pool.request().input('id', sql.VarChar(20), id).input('actor_id', sql.VarChar(20), actorId)
-		.query(`
-			EXEC sp_set_actor @actor_id;
+	await withActorTransaction(actorId, (tx) =>
+		tx.request().input('id', sql.VarChar(20), id).input('actor_id', sql.VarChar(20), actorId)
+			.query(`
 			UPDATE topic_members SET user_id = NULL, account_granted = 0, account_granted_at = NULL WHERE user_id = @id;
 			UPDATE trainees SET user_id = NULL, account_granted = 0, account_granted_at = NULL WHERE user_id = @id;
 			UPDATE trainees SET staff_user_id = NULL WHERE staff_user_id = @id;
@@ -421,7 +425,8 @@ const remove = async (id, actorId) => {
 			UPDATE departments SET head_user_id = NULL WHERE head_user_id = @id;
 			UPDATE lecturers SET user_id = NULL WHERE user_id = @id;
 			DELETE FROM users WHERE id = @id;
-		`);
+		`),
+	);
 	await personService.releasePerson('users', id, personId, { actorId });
 	userStatusCache.clear(id);
 	invalidateStatsCache();
@@ -449,17 +454,18 @@ const resetPassword = async (id, newPassword, actorId, ip = null) => {
 		generated = defaultPassword(username);
 	}
 	const hashed = await bcrypt.hash(newPassword || generated, 12);
-	await pool
-		.request()
-		.input('id', sql.VarChar(20), id)
-		.input('password', sql.VarChar(255), hashed)
-		.input('actor_id', sql.VarChar(20), actorId)
-		.query(
-			`EXEC sp_set_actor @actor_id;
-			 UPDATE users SET password=@password, password_changed_at=GETDATE(), must_change_password=1,
+	await withActorTransaction(actorId, (tx) =>
+		tx
+			.request()
+			.input('id', sql.VarChar(20), id)
+			.input('password', sql.VarChar(255), hashed)
+			.input('actor_id', sql.VarChar(20), actorId)
+			.query(
+				`UPDATE users SET password=@password, password_changed_at=GETDATE(), must_change_password=1,
 			   temp_password_issued_at=SYSUTCDATETIME(), updated_at=GETDATE(), updated_by=@actor_id WHERE id=@id;
 			 DELETE FROM refresh_tokens WHERE user_id=@id;`,
-		);
+			),
+	);
 	// Thu hồi ngay cả access token đang lưu hành (không chờ hết hạn 8h)
 	await bumpTokenVersion(id, pool);
 	await securityEvents.log({
@@ -543,9 +549,7 @@ const createStaffAccount = async (
 	const roleId = await requireRoleId(ROLE.MEMBER);
 
 	const { userId, username } = await withTransaction(async (tx) => {
-		await new sql.Request(tx)
-			.input('actor_id', sql.VarChar(20), actorId)
-			.query('EXEC sp_set_actor @actor_id');
+		await withActor(tx, actorId);
 		const userId = await genUserIdInTx(tx, department_code || '');
 		if (!userId) throw new Error('Không sinh được mã nhân viên mới');
 		const username = await ensureUniqueUsername(

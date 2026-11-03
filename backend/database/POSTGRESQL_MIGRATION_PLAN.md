@@ -307,9 +307,11 @@ Adapter PG (`src/config/db.pg.js`) cung cấp cùng giao diện:
   Kiểu `sql.*` dùng để ép kiểu khi cần (`$1::int`, `$2::timestamp`).
 - Trả `{ recordset: rows, recordsets: [rows], rowsAffected: [rowCount] }`.
 - `withTransaction(fn)`: lấy 1 client, `BEGIN` / `COMMIT` / `ROLLBACK`; `tx.request()` dùng client đó.
-- `withActor(txOrPool, actorId, fn)`: thay `EXEC sp_set_actor @actor_id;` —
+- `withActor(tx, actorId)`: thay `EXEC sp_set_actor @actor_id;` —
   chạy `SELECT set_config('app.current_user_id', $1, true)` trong cùng
-  transaction. Với `true` (`is_local`), giá trị hết hạn khi transaction kết thúc
+  transaction (cả 2 bản đều từ chối khi không truyền transaction). Không có
+  transaction sẵn thì dùng `withActorTransaction(actorId, (tx) => ...)` hoặc
+  `actorRequest(actorId)` (dựng dần `.input()` rồi `.query()`) ở `config/db.js`. Với `true` (`is_local`), giá trị hết hạn khi transaction kết thúc
   nên không rò sang request khác dùng chung kết nối (an toàn với cả PgBouncer
   chế độ transaction).
 - Type parser cho `timestamp`, `date`, `numeric`, `int8` (mục 4.1, 4.3).
@@ -417,8 +419,11 @@ thường. Mỗi nhóm là 1 PR nhỏ theo module.
 
 - [x] `dbErrors.js` + sửa 19 file đang kiểm `err.number` (mục 4.5).
   → `src/utils/dbErrors.js`; 15 file đã chuyển, mẫu `err_number` trong ratchet = 0.
-- [ ] `withActor()` thay 76 chỗ `EXEC sp_set_actor @actor_id;` (trên SQL Server
+- [x] `withActor()` thay 76 chỗ `EXEC sp_set_actor @actor_id;` (trên SQL Server
   vẫn gọi `sp_set_actor` bên trong, nhưng tách thành lời gọi riêng trong transaction).
+  Câu ghi trên pool chuyển sang `withActorTransaction` / `actorRequest` (mỗi câu
+  ghi giờ chạy trong 1 transaction ngắn). Kiểm bằng `test-integration/actorAudit.test.js`
+  (SQL Server) và `test-integration-pg/adapter.test.js` (PG); `check:tsql` set_actor = 0.
 - [ ] Hàm sinh mã JS dùng chung; thay các `EXEC sp_gen_*` (mục 5.4).
 - [ ] Chuyển `trg_topic_auto_approval`, `sp_approve_topic`, `sp_push_notification`,
   `sp_upload_files`... về JS, có test. Xoá procedure không dùng.
@@ -428,7 +433,8 @@ thường. Mỗi nhóm là 1 PR nhỏ theo module.
   helper `anyOf()` để adapter PG đổi sang `= ANY($1)`.
 - [ ] Tách các batch `DECLARE ...` và `recordsets[i]` thành nhiều lời gọi JS (mục 5.2).
 - [ ] Bỏ các chỗ phụ thuộc thứ tự ngầm: mọi câu trả danh sách phải có `ORDER BY`.
-- [ ] Ghi baseline smoke test (`UPDATE_SNAPSHOTS=1 npm run test:smoke`) **trước**
+- [x] Ghi baseline smoke test (`UPDATE_SNAPSHOTS=1 npm run test:smoke`, đã ghi 2026-11-03;
+  bản 24/10 lưu ở `get-shapes.2026-10-24.bak.json`) **trước**
   khi bắt đầu chặng 1 và chạy lại sau mỗi PR.
 
 ### Chặng 2 — Dựng PostgreSQL song song (2 tuần)

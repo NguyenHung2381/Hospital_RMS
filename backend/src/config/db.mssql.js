@@ -109,13 +109,22 @@ const withTransaction = async (fn, pool) => {
 // Ghi người thao tác cho trigger audit (updated_by). Thay cho việc viết
 // `EXEC sp_set_actor @actor_id;` trong câu SQL — bản PG (db.pg.js) dùng
 // set_config, nên code gọi hàm này chạy được trên cả 2 DB.
+// Bắt buộc truyền transaction (như bản PG): gọi trên pool thì câu sau chạy ở
+// kết nối khác, trigger không thấy người thao tác. Không có transaction sẵn thì
+// dùng withActorTransaction (config/db.js).
 // Lưu ý: SESSION_CONTEXT của SQL Server gắn với KẾT NỐI (không tự hết khi xong
 // transaction) — giống hành vi `EXEC sp_set_actor` hiện nay.
-const withActor = (txOrPool, actorId) =>
-	txOrPool
+const withActor = (tx, actorId) => {
+	if (!(tx instanceof sql.Transaction)) {
+		throw new Error(
+			'withActor() phải gọi trong transaction (withTransaction / withActorTransaction)',
+		);
+	}
+	return tx
 		.request()
 		.input('actor_id', sql.VarChar(20), actorId ?? null)
 		.query('EXEC sp_set_actor @actor_id;');
+};
 
 module.exports = {
 	client: 'mssql',

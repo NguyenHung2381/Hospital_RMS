@@ -1,4 +1,11 @@
-const { getPool, sql, withTransaction } = require('../../config/db');
+const {
+	getPool,
+	sql,
+	withTransaction,
+	withActorTransaction,
+	actorRequest,
+	withActor,
+} = require('../../config/db');
 const { broadcast } = require('../events/eventService');
 const { paging } = require('../../utils/paging');
 const deadlineService = require('./deadlineService');
@@ -106,16 +113,16 @@ const ROUND_LEVEL_APPLY = `
 const syncTopicLevels = async (roundId, actorId) => {
 	const levelId = await getRoundLevelId(roundId);
 	if (!levelId) return;
-	const pool = await getPool();
-	await pool
-		.request()
-		.input('rid', sql.VarChar(10), roundId)
-		.input('lid', sql.VarChar(5), levelId)
-		.input('actor_id', sql.VarChar(20), actorId).query(`
-      EXEC sp_set_actor @actor_id;
+	await withActorTransaction(actorId, (tx) =>
+		tx
+			.request()
+			.input('rid', sql.VarChar(10), roundId)
+			.input('lid', sql.VarChar(5), levelId)
+			.input('actor_id', sql.VarChar(20), actorId).query(`
       UPDATE topics SET level_id = @lid, updated_at = GETDATE(), updated_by = @actor_id
       WHERE round_id = @rid AND article_type <> 'bai_bao'
-        AND (level_id IS NULL OR level_id <> @lid);`);
+        AND (level_id IS NULL OR level_id <> @lid);`),
+	);
 	broadcast('update', { entity: 'topic' });
 };
 
@@ -217,6 +224,7 @@ const create = async (data, actorId) => {
 
 	// Đợt + cấp độ + mốc thời gian ghi trong cùng một transaction.
 	await withTransaction(async (tx) => {
+		await withActor(tx, actorId);
 		const req = new sql.Request(tx)
 			.input('actor_id', sql.VarChar(20), actorId)
 			.input('id', sql.VarChar(10), id)
@@ -228,7 +236,6 @@ const create = async (data, actorId) => {
 			.input('end_date', sql.Date, new Date(data.end_date))
 			.input('status', sql.VarChar(10), STATUS_TO_DB[data.status] ?? data.status ?? 'draft');
 		await req.query(`
-        EXEC sp_set_actor @actor_id;
         INSERT INTO research_rounds
           (id, name, year, round_number, round_type_id, start_date, end_date, status, public_token, created_by)
         VALUES
@@ -248,8 +255,7 @@ const create = async (data, actorId) => {
 const update = async (id, data, actorId) => {
 	const pool = await getPool();
 	const sets = ['updated_at = GETDATE()', 'updated_by = @actor_id'];
-	const req = pool
-		.request()
+	const req = actorRequest(actorId)
 		.input('id', sql.VarChar(10), id)
 		.input('actor_id', sql.VarChar(20), actorId);
 
@@ -281,9 +287,7 @@ const update = async (id, data, actorId) => {
 		sets.push('status = @status');
 		req.input('status', sql.VarChar(10), STATUS_TO_DB[data.status] ?? data.status);
 	}
-	await req.query(
-		`EXEC sp_set_actor @actor_id; UPDATE research_rounds SET ${sets.join(', ')} WHERE id = @id`,
-	);
+	await req.query(`UPDATE research_rounds SET ${sets.join(', ')} WHERE id = @id`);
 	if (Array.isArray(data.level_ids)) await writeLevels(() => pool.request(), id, data.level_ids);
 	if (Array.isArray(data.level_ids) || data.round_type_id !== undefined)
 		await syncTopicLevels(id, actorId);
@@ -313,11 +317,13 @@ const remove = async (id, actorId) => {
 		);
 	}
 
-	await pool
-		.request()
-		.input('id', sql.VarChar(10), id)
-		.input('actor_id', sql.VarChar(20), actorId)
-		.query(`EXEC sp_set_actor @actor_id; DELETE FROM research_rounds WHERE id = @id`);
+	await withActorTransaction(actorId, (tx) =>
+		tx
+			.request()
+			.input('id', sql.VarChar(10), id)
+			.input('actor_id', sql.VarChar(20), actorId)
+			.query(`DELETE FROM research_rounds WHERE id = @id`),
+	);
 	broadcast('update', { entity: 'round' });
 };
 

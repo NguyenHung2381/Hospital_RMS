@@ -1,4 +1,4 @@
-const { getPool, sql } = require('../../../config/db');
+const { getPool, sql, withActorTransaction, actorRequest } = require('../../../config/db');
 const { broadcast } = require('../../events/eventService');
 const { paging } = require('../../../utils/paging');
 const { scopeOf } = require('../../../permissions/authz');
@@ -184,31 +184,31 @@ const getById = async (id, actor = null) => {
 };
 
 const create = async (data, actorId) => {
-	const pool = await getPool();
-	const result = await pool
-		.request()
-		.input('actor_id', sql.VarChar(20), actorId)
-		.input('name', sql.NVarChar(255), data.name)
-		.input('training_form_id', sql.VarChar(20), data.training_form_id || null)
-		.input('training_type_id', sql.VarChar(20), data.training_type_id || null)
-		.input('batch_no', sql.Int, data.batch_no || null)
-		.input('is_rolling', sql.Bit, data.is_rolling ? 1 : 0)
-		.input('start_date', sql.Date, data.start_date || null)
-		.input('end_date', sql.Date, data.end_date || null)
-		.input('enrollment_start_date', sql.Date, data.enrollment_start_date || null)
-		.input('enrollment_end_date', sql.Date, data.enrollment_end_date || null)
-		.input('status', sql.VarChar(15), data.status || 'draft')
-		.input('is_public_registration', sql.Bit, data.is_public_registration ? 1 : 0)
-		.input('description', sql.NVarChar(sql.MAX), data.description || null)
-		.input('prerequisites', sql.NVarChar(sql.MAX), JSON.stringify(data.prerequisites || []))
-		.input('objectives', sql.NVarChar(sql.MAX), JSON.stringify(data.objectives || [])).query(`
+	const result = await withActorTransaction(actorId, (tx) =>
+		tx
+			.request()
+			.input('actor_id', sql.VarChar(20), actorId)
+			.input('name', sql.NVarChar(255), data.name)
+			.input('training_form_id', sql.VarChar(20), data.training_form_id || null)
+			.input('training_type_id', sql.VarChar(20), data.training_type_id || null)
+			.input('batch_no', sql.Int, data.batch_no || null)
+			.input('is_rolling', sql.Bit, data.is_rolling ? 1 : 0)
+			.input('start_date', sql.Date, data.start_date || null)
+			.input('end_date', sql.Date, data.end_date || null)
+			.input('enrollment_start_date', sql.Date, data.enrollment_start_date || null)
+			.input('enrollment_end_date', sql.Date, data.enrollment_end_date || null)
+			.input('status', sql.VarChar(15), data.status || 'draft')
+			.input('is_public_registration', sql.Bit, data.is_public_registration ? 1 : 0)
+			.input('description', sql.NVarChar(sql.MAX), data.description || null)
+			.input('prerequisites', sql.NVarChar(sql.MAX), JSON.stringify(data.prerequisites || []))
+			.input('objectives', sql.NVarChar(sql.MAX), JSON.stringify(data.objectives || [])).query(`
       DECLARE @new_id VARCHAR(20);
       EXEC sp_gen_course_id @actor_id = @actor_id, @new_id = @new_id OUTPUT;
-      EXEC sp_set_actor @actor_id;
       INSERT INTO courses (id, name, training_form_id, training_type_id, batch_no, is_rolling, start_date, end_date, enrollment_start_date, enrollment_end_date, status, is_public_registration, description, prerequisites, objectives, created_by)
       VALUES (@new_id, @name, @training_form_id, @training_type_id, @batch_no, @is_rolling, @start_date, @end_date, @enrollment_start_date, @enrollment_end_date, @status, @is_public_registration, @description, @prerequisites, @objectives, @actor_id);
       SELECT @new_id AS id;
-    `);
+    `),
+	);
 	const id = result.recordset[0].id;
 	if (Array.isArray(data.program_ids)) await setPrograms(id, data.program_ids, actorId);
 	broadcast('update', { entity: 'course' });
@@ -219,10 +219,8 @@ const create = async (data, actorId) => {
 };
 
 const update = async (id, data, actorId) => {
-	const pool = await getPool();
 	const sets = ['updated_at = GETDATE()', 'updated_by = @actor_id'];
-	const req = pool
-		.request()
+	const req = actorRequest(actorId)
 		.input('id', sql.VarChar(20), id)
 		.input('actor_id', sql.VarChar(20), actorId);
 
@@ -255,9 +253,7 @@ const update = async (id, data, actorId) => {
 		req.input('objectives', sql.NVarChar(sql.MAX), JSON.stringify(data.objectives || []));
 	}
 
-	await req.query(
-		`EXEC sp_set_actor @actor_id; UPDATE courses SET ${sets.join(', ')} WHERE id = @id`,
-	);
+	await req.query(`UPDATE courses SET ${sets.join(', ')} WHERE id = @id`);
 	if (Array.isArray(data.program_ids)) await setPrograms(id, data.program_ids, actorId);
 	broadcast('update', { entity: 'course' });
 	const saved = await getById(id);
@@ -270,12 +266,13 @@ const update = async (id, data, actorId) => {
 };
 
 const remove = async (id, actorId) => {
-	const pool = await getPool();
-	await pool
-		.request()
-		.input('id', sql.VarChar(20), id)
-		.input('actor_id', sql.VarChar(20), actorId)
-		.query('EXEC sp_set_actor @actor_id; DELETE FROM courses WHERE id = @id');
+	await withActorTransaction(actorId, (tx) =>
+		tx
+			.request()
+			.input('id', sql.VarChar(20), id)
+			.input('actor_id', sql.VarChar(20), actorId)
+			.query('DELETE FROM courses WHERE id = @id'),
+	);
 	broadcast('update', { entity: 'course' });
 };
 

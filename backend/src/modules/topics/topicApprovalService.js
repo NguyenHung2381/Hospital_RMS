@@ -1,4 +1,4 @@
-const { getPool, sql } = require('../../config/db');
+const { getPool, sql, withActorTransaction } = require('../../config/db');
 const notifSvc = require('../notifications/notificationService');
 const { broadcast } = require('../events/eventService');
 const { scopeOf, hasPermission } = require('../../permissions/authz');
@@ -48,12 +48,11 @@ const approve = async (topicId, status, comment, actorId) => {
 };
 
 const submit = async (topicId, actorId) => {
-	const pool = await getPool();
-	await pool
-		.request()
-		.input('topic_id', sql.VarChar(15), topicId)
-		.input('actor_id', sql.VarChar(20), actorId).query(`
-      EXEC sp_set_actor @actor_id;
+	await withActorTransaction(actorId, (tx) =>
+		tx
+			.request()
+			.input('topic_id', sql.VarChar(15), topicId)
+			.input('actor_id', sql.VarChar(20), actorId).query(`
       UPDATE topics SET status = 'submitted', updated_at = GETDATE(), updated_by = @actor_id
       WHERE id = @topic_id AND status = 'supplement';
       -- Nộp lại: reset verdict cũ, nếu không getApprovals vẫn trả kết quả duyệt lần trước
@@ -61,7 +60,8 @@ const submit = async (topicId, actorId) => {
         UPDATE approvals SET status = 'pending', comment = NULL,
           updated_at = GETDATE(), updated_by = @actor_id
         WHERE topic_id = @topic_id;
-    `);
+    `),
+	);
 
 	// Thông báo cho các tài khoản có quyền duyệt / xem toàn bộ đề tài
 	const ids = await findActiveUserIdsWhere(

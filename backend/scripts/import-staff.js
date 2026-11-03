@@ -18,7 +18,7 @@ const path = require('path');
 require('dotenv').config({ path: path.join(__dirname, '../.env'), quiet: true });
 
 const ExcelJS = require('exceljs');
-const { getPool, sql } = require('../src/config/db');
+const { getPool, sql, withActorTransaction } = require('../src/config/db');
 const { norm, normDept } = require('../src/utils/vietnameseText');
 const { ROLE, requireRoleId } = require('../src/modules/access/roleCodes');
 
@@ -259,16 +259,17 @@ const ymd = (d) => (d ? d.toISOString().slice(0, 10) : '—');
 				},
 				actorId,
 			);
-			await pool
-				.request()
-				.input('id', sql.VarChar(20), acc.id)
-				.input('dob', sql.Date, r.dob)
-				.input('qual', sql.VarChar(20), r.qual_id)
-				.input('actor_id', sql.VarChar(20), actorId).query(`
-					EXEC sp_set_actor @actor_id;
+			await withActorTransaction(actorId, (tx) =>
+				tx
+					.request()
+					.input('id', sql.VarChar(20), acc.id)
+					.input('dob', sql.Date, r.dob)
+					.input('qual', sql.VarChar(20), r.qual_id)
+					.input('actor_id', sql.VarChar(20), actorId).query(`
 					UPDATE users SET date_of_birth = @dob, qualification_id = @qual, updated_at = GETDATE(), updated_by = @actor_id
 					WHERE id = @id
-				`);
+				`),
+			);
 			created.push({ ...r, ...acc });
 		} catch (err) {
 			failed.push({ r, err: err.message });
@@ -277,14 +278,14 @@ const ymd = (d) => (d ? d.toISOString().slice(0, 10) : '—');
 
 	let filled = 0;
 	for (const { r, u } of toFill) {
-		const res = await pool
-			.request()
-			.input('id', sql.VarChar(20), u.id)
-			.input('dept', sql.VarChar(20), r.dept?.id || null)
-			.input('dob', sql.Date, r.dob)
-			.input('qual', sql.VarChar(20), r.qual_id)
-			.input('actor_id', sql.VarChar(20), actorId).query(`
-				EXEC sp_set_actor @actor_id;
+		const res = await withActorTransaction(actorId, (tx) =>
+			tx
+				.request()
+				.input('id', sql.VarChar(20), u.id)
+				.input('dept', sql.VarChar(20), r.dept?.id || null)
+				.input('dob', sql.Date, r.dob)
+				.input('qual', sql.VarChar(20), r.qual_id)
+				.input('actor_id', sql.VarChar(20), actorId).query(`
 				UPDATE users
 				SET department_id = ISNULL(department_id, @dept),
 				    date_of_birth = ISNULL(date_of_birth, @dob),
@@ -294,7 +295,8 @@ const ymd = (d) => (d ? d.toISOString().slice(0, 10) : '—');
 				  AND ((department_id IS NULL AND @dept IS NOT NULL)
 				    OR (date_of_birth IS NULL AND @dob IS NOT NULL)
 				    OR (qualification_id IS NULL AND @qual IS NOT NULL))
-			`);
+			`),
+		);
 		filled += res.rowsAffected.at(-1) || 0;
 	}
 

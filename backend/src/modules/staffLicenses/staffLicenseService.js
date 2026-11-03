@@ -1,4 +1,4 @@
-const { getPool, sql } = require('../../config/db');
+const { getPool, sql, withActorTransaction, actorRequest } = require('../../config/db');
 const { broadcast } = require('../events/eventService');
 const { paging } = require('../../utils/paging');
 const { httpError } = require('../../utils/httpError');
@@ -136,9 +136,7 @@ const create = async (data, actorId) => {
 	if (!data.user_id) {
 		throw httpError(400, 'Thiếu user_id');
 	}
-	const pool = await getPool();
-	const req = pool
-		.request()
+	const req = actorRequest(actorId)
 		.input('actor_id', sql.VarChar(20), actorId)
 		.input('user_id', sql.VarChar(20), data.user_id);
 	for (const [field, type] of fieldDefs) req.input(field, type, data[field] || null);
@@ -148,7 +146,6 @@ const create = async (data, actorId) => {
 
 	const result = await req.query(`
       DECLARE @new_id VARCHAR(20) = 'LIC' + LEFT(REPLACE(NEWID(),'-',''), 17);
-      EXEC sp_set_actor @actor_id;
       INSERT INTO staff_practice_licenses (${cols.join(', ')})
       VALUES (${vals.join(', ')});
       SELECT @new_id AS id;
@@ -159,10 +156,8 @@ const create = async (data, actorId) => {
 };
 
 const update = async (id, data, actorId) => {
-	const pool = await getPool();
 	const sets = ['updated_at = GETDATE()', 'updated_by = @actor_id'];
-	const req = pool
-		.request()
+	const req = actorRequest(actorId)
 		.input('id', sql.VarChar(20), id)
 		.input('actor_id', sql.VarChar(20), actorId);
 
@@ -173,20 +168,19 @@ const update = async (id, data, actorId) => {
 		}
 	}
 
-	await req.query(
-		`EXEC sp_set_actor @actor_id; UPDATE staff_practice_licenses SET ${sets.join(', ')} WHERE id = @id`,
-	);
+	await req.query(`UPDATE staff_practice_licenses SET ${sets.join(', ')} WHERE id = @id`);
 	broadcast('update', { entity: 'staff_license' });
 	return getById(id);
 };
 
 const remove = async (id, actorId) => {
-	const pool = await getPool();
-	await pool
-		.request()
-		.input('id', sql.VarChar(20), id)
-		.input('actor_id', sql.VarChar(20), actorId)
-		.query('EXEC sp_set_actor @actor_id; DELETE FROM staff_practice_licenses WHERE id = @id');
+	await withActorTransaction(actorId, (tx) =>
+		tx
+			.request()
+			.input('id', sql.VarChar(20), id)
+			.input('actor_id', sql.VarChar(20), actorId)
+			.query('DELETE FROM staff_practice_licenses WHERE id = @id'),
+	);
 	broadcast('update', { entity: 'staff_license' });
 };
 

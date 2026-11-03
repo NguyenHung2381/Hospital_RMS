@@ -1,4 +1,4 @@
-const { getPool, sql } = require('../../config/db');
+const { getPool, sql, withActorTransaction, withActor } = require('../../config/db');
 const { broadcast } = require('../events/eventService');
 const { fmtDateVN: fmtDate } = require('../../utils/vnDate');
 const { httpError } = require('../../utils/httpError');
@@ -63,22 +63,22 @@ const upsert = async (roundId, phase, data, actorId) => {
 				)
 			: null;
 
-	await pool
-		.request()
-		.input('actor_id', sql.VarChar(20), actorId)
-		.input('id', sql.VarChar(12), id)
-		.input('round_id', sql.VarChar(10), roundId)
-		.input('phase', sql.TinyInt, phase)
-		.input('name', sql.NVarChar(255), data.name)
-		.input('start_date', sql.Date, startDate)
-		.input('deadline_date', sql.Date, new Date(data.deadline_date))
-		.input('deadline_type', sql.VarChar(30), deadlineType)
-		.input(
-			'supplement_fields',
-			sql.VarChar(120),
-			supplementFields ? supplementFields.join(',') : null,
-		).query(`
-      EXEC sp_set_actor @actor_id;
+	await withActorTransaction(actorId, (tx) =>
+		tx
+			.request()
+			.input('actor_id', sql.VarChar(20), actorId)
+			.input('id', sql.VarChar(12), id)
+			.input('round_id', sql.VarChar(10), roundId)
+			.input('phase', sql.TinyInt, phase)
+			.input('name', sql.NVarChar(255), data.name)
+			.input('start_date', sql.Date, startDate)
+			.input('deadline_date', sql.Date, new Date(data.deadline_date))
+			.input('deadline_type', sql.VarChar(30), deadlineType)
+			.input(
+				'supplement_fields',
+				sql.VarChar(120),
+				supplementFields ? supplementFields.join(',') : null,
+			).query(`
       IF EXISTS (
         SELECT 1 FROM round_deadlines
         WHERE round_id = @round_id AND phase = @phase
@@ -95,7 +95,8 @@ const upsert = async (roundId, phase, data, actorId) => {
       ELSE
         INSERT INTO round_deadlines (id, round_id, phase, name, start_date, deadline_date, deadline_type, supplement_fields, created_by)
         VALUES (@id, @round_id, @phase, @name, @start_date, @deadline_date, @deadline_type, @supplement_fields, @actor_id);
-    `);
+    `),
+	);
 
 	const r = await pool
 		.request()
@@ -127,14 +128,15 @@ const remove = async (roundId, phase, actorId) => {
 		);
 	}
 
-	await pool
-		.request()
-		.input('round_id', sql.VarChar(10), roundId)
-		.input('phase', sql.TinyInt, phase)
-		.input('actor_id', sql.VarChar(20), actorId).query(`
-      EXEC sp_set_actor @actor_id;
+	await withActorTransaction(actorId, (tx) =>
+		tx
+			.request()
+			.input('round_id', sql.VarChar(10), roundId)
+			.input('phase', sql.TinyInt, phase)
+			.input('actor_id', sql.VarChar(20), actorId).query(`
       DELETE FROM round_deadlines WHERE round_id = @round_id AND phase = @phase;
-    `);
+    `),
+	);
 	broadcast('update', { entity: 'round' });
 };
 
@@ -189,6 +191,7 @@ const prepareBatch = (list, roundStart, roundEnd) => {
 
 // Ghi các mốc đã prepareBatch vào DB trong transaction của người gọi.
 const insertBatch = async (tx, roundId, rows, actorId) => {
+	await withActor(tx, actorId);
 	for (const row of rows) {
 		await new sql.Request(tx)
 			.input('actor_id', sql.VarChar(20), actorId)
@@ -200,7 +203,6 @@ const insertBatch = async (tx, roundId, rows, actorId) => {
 			.input('deadline_date', sql.Date, new Date(row.deadline_date))
 			.input('deadline_type', sql.VarChar(30), row.deadline_type)
 			.input('supplement_fields', sql.VarChar(120), row.supplement_fields).query(`
-        EXEC sp_set_actor @actor_id;
         INSERT INTO round_deadlines (id, round_id, phase, name, start_date, deadline_date, deadline_type, supplement_fields, created_by)
         VALUES (@id, @round_id, @phase, @name, @start_date, @deadline_date, @deadline_type, @supplement_fields, @actor_id);
       `);

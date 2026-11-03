@@ -1,4 +1,4 @@
-const { getPool, sql } = require('../../config/db');
+const { getPool, sql, withActor } = require('../../config/db');
 const { paging } = require('../../utils/paging');
 const { broadcast } = require('../events/eventService');
 const personService = require('./personService');
@@ -236,10 +236,7 @@ const loadOpenCandidate = async (tx, id) => {
 	return c;
 };
 
-const setActor = (tx, actorId) =>
-	new sql.Request(tx)
-		.input('actor_id', sql.VarChar(20), actorId || null)
-		.query('EXEC sp_set_actor @actor_id');
+const setActor = (tx, actorId) => withActor(tx, actorId || null);
 
 /**
  * Gộp cặp `id`. keep = 'A' | 'B' (hồ sơ giữ lại). fields[f] = 'keep' | 'lose' chọn giá trị từng trường;

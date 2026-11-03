@@ -215,6 +215,26 @@ test('trigger audit: withActor ghi updated_by; chỉ cột theo dõi mới bật
 	assert.ok(!after.recordset[0].v); // không rò sang kết nối dùng lại
 });
 
+test('withActorTransaction: người thao tác tới trigger; lỗi thì rollback hết', async () => {
+	let seen;
+	await assert.rejects(
+		db.withActorTransaction('NV_TX', async (tx) => {
+			await tx.request().query("INSERT INTO categories (id, name) VALUES ('LDT94', 'Tx thử')");
+			await tx.request().query("UPDATE categories SET name = 'Tx thử 2' WHERE id = 'LDT94'");
+			seen = (await tx.request().query("SELECT updated_by FROM categories WHERE id = 'LDT94'"))
+				.recordset[0].updated_by;
+			throw new Error('rollback có chủ đích');
+		}),
+		/rollback có chủ đích/,
+	);
+	assert.equal(seen, 'NV_TX');
+	const pool = await getPool();
+	const left = await pool
+		.request()
+		.query("SELECT count(*)::int AS n FROM categories WHERE id = 'LDT94'");
+	assert.equal(left.recordset[0].n, 0);
+});
+
 test('trigger departments tự sinh mã DVxxx (bỏ qua id truyền vào)', async () => {
 	await inRollback(async (tx) => {
 		const { recordset } = await tx

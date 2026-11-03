@@ -6,7 +6,14 @@
  * thì cấp tuần tự trong 1 transaction để giữ dãy liền mạch.
  */
 const { signToken, verifyToken } = require('../../utils/keys');
-const { getPool, sql, withTransaction } = require('../../config/db');
+const {
+	getPool,
+	sql,
+	withTransaction,
+	withActorTransaction,
+	actorRequest,
+	withActor,
+} = require('../../config/db');
 const { broadcast } = require('../events/eventService');
 const formCustomValueService = require('../forms/formCustomValueService');
 const personService = require('../persons/personService');
@@ -106,10 +113,9 @@ const add = async (seminarId, data, actorId) => {
 	if (!data.full_name || !String(data.full_name).trim()) {
 		throw httpError(400, 'Họ tên không được để trống.');
 	}
-	const req = pool.request().input('actor_id', sql.VarChar(20), actorId);
+	const req = actorRequest(actorId).input('actor_id', sql.VarChar(20), actorId);
 	const insert = bindInsert(req, '@id', seminarId, data);
 	const r = await req.query(`
-    EXEC sp_set_actor @actor_id;
     DECLARE @id VARCHAR(24) = ${NEW_ID_SQL};
     ${insert}
     SELECT * FROM seminar_participants WHERE id = @id;
@@ -126,9 +132,7 @@ const bulkAdd = async (seminarId, rows, actorId) => {
 	const valid = (rows || []).filter((r) => r.full_name && String(r.full_name).trim());
 	if (!valid.length) return { inserted: 0, ids: [] };
 	const ids = await withTransaction(async (tx) => {
-		await new sql.Request(tx)
-			.input('actor_id', sql.VarChar(20), actorId)
-			.query('EXEC sp_set_actor @actor_id');
+		await withActor(tx, actorId);
 		const inserted = [];
 		for (const row of valid) {
 			const req = new sql.Request(tx).input('actor_id', sql.VarChar(20), actorId);
@@ -259,10 +263,8 @@ const UPDATABLE = {
 };
 
 const update = async (seminarId, pid, data, actorId) => {
-	const pool = await getPool();
 	const sets = ['updated_at = GETDATE()', 'updated_by = @actor_id'];
-	const req = pool
-		.request()
+	const req = actorRequest(actorId)
 		.input('sid', sql.VarChar(20), seminarId)
 		.input('pid', sql.VarChar(24), pid)
 		.input('actor_id', sql.VarChar(20), actorId);
@@ -295,7 +297,6 @@ const update = async (seminarId, pid, data, actorId) => {
 	}
 
 	const r = await req.query(`
-    EXEC sp_set_actor @actor_id;
     UPDATE seminar_participants SET ${sets.join(', ')}
     WHERE id = @pid AND seminar_id = @sid;
     SELECT * FROM seminar_participants WHERE id = @pid AND seminar_id = @sid;
@@ -306,15 +307,15 @@ const update = async (seminarId, pid, data, actorId) => {
 };
 
 const remove = async (seminarId, pid, actorId) => {
-	const pool = await getPool();
-	await pool
-		.request()
-		.input('sid', sql.VarChar(20), seminarId)
-		.input('pid', sql.VarChar(24), pid)
-		.input('actor_id', sql.VarChar(20), actorId).query(`
-      EXEC sp_set_actor @actor_id;
+	await withActorTransaction(actorId, (tx) =>
+		tx
+			.request()
+			.input('sid', sql.VarChar(20), seminarId)
+			.input('pid', sql.VarChar(24), pid)
+			.input('actor_id', sql.VarChar(20), actorId).query(`
       DELETE FROM seminar_participants WHERE id = @pid AND seminar_id = @sid;
-    `);
+    `),
+	);
 	await formCustomValueService.remove('seminar_participant', pid);
 	broadcast('update', { entity: 'seminar' });
 };

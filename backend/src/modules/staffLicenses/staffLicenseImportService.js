@@ -6,7 +6,7 @@
  * Ngoài hồ sơ CCHN còn bổ sung ngày sinh / giới tính vào users (dùng cho bản
  * chụp người hướng dẫn thực hành trên Phiếu nhận xét).
  */
-const { getPool, sql } = require('../../config/db');
+const { getPool, sql, actorRequest } = require('../../config/db');
 const { isUniqueViolation } = require('../../utils/dbErrors');
 const { broadcast } = require('../events/eventService');
 const { norm, normDept } = require('../../utils/vietnameseText');
@@ -271,8 +271,7 @@ const importExcel = async ({ buffer, dry_run }, actorId) => {
 		let ok = false;
 		const keys = Object.keys(it.values);
 		if (keys.length) {
-			const req = pool
-				.request()
+			const req = actorRequest(actorId)
 				.input('actor_id', sql.VarChar(20), actorId)
 				.input('user_id', sql.VarChar(20), it.user_id);
 			for (const f of keys) req.input(f, typeOf[f], it.values[f]);
@@ -282,7 +281,7 @@ const importExcel = async ({ buffer, dry_run }, actorId) => {
 				: `INSERT INTO staff_practice_licenses (id, user_id, ${keys.join(', ')}, created_by)
 				   VALUES ('LIC' + LEFT(REPLACE(NEWID(),'-',''), 17), @user_id, ${keys.map((f) => `@${f}`).join(', ')}, @actor_id)`;
 			try {
-				await req.query(`EXEC sp_set_actor @actor_id; ${query}`);
+				await req.query(`${query}`);
 				ok = true;
 			} catch (err) {
 				// 2601/2627: số CCHN đã thuộc nhân sự khác (UQ_stafflic_license_no)
@@ -294,14 +293,12 @@ const importExcel = async ({ buffer, dry_run }, actorId) => {
 		}
 		const userKeys = userFields.map(([c]) => c).filter((c) => it.user_values[c] !== undefined);
 		if (userKeys.length) {
-			const req = pool
-				.request()
+			const req = actorRequest(actorId)
 				.input('actor_id', sql.VarChar(20), actorId)
 				.input('user_id', sql.VarChar(20), it.user_id);
 			for (const [c, type] of userFields)
 				if (userKeys.includes(c)) req.input(c, type, it.user_values[c]);
-			await req.query(`EXEC sp_set_actor @actor_id;
-			  UPDATE users SET ${userKeys.map((c) => `${c} = @${c}`).join(', ')},
+			await req.query(`UPDATE users SET ${userKeys.map((c) => `${c} = @${c}`).join(', ')},
 			    updated_at = GETDATE(), updated_by = @actor_id WHERE id = @user_id`);
 			touchedUsers.push(it.user_id);
 			ok = true;

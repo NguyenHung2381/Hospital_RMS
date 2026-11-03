@@ -1,4 +1,4 @@
-const { getPool, sql } = require('../../../config/db');
+const { getPool, sql, withActorTransaction, actorRequest } = require('../../../config/db');
 const { broadcast } = require('../../events/eventService');
 const { paging } = require('../../../utils/paging');
 const personService = require('../../persons/personService');
@@ -74,26 +74,27 @@ const getById = async (id) => {
 const create = async (data, actorId) => {
 	const pool = await getPool();
 	await assertNotTraineeAccount(pool, data.user_id);
-	const result = await pool
-		.request()
-		.input('actor_id', sql.VarChar(20), actorId)
-		.input('user_id', sql.VarChar(20), data.user_id || null)
-		.input('full_name', sql.NVarChar(150), data.full_name)
-		.input('specialty', sql.NVarChar(150), data.specialty || null)
-		.input('is_external', sql.Bit, !!data.is_external)
-		.input('phone', sql.VarChar(20), data.phone || null)
-		.input('email', sql.VarChar(100), data.email || null)
-		.input('academic_degree', sql.NVarChar(50), data.academic_degree || null)
-		.input('academic_rank', sql.NVarChar(50), data.academic_rank || null)
-		.input('dob', sql.Date, data.dob || null)
-		.input('gender', sql.VarChar(10), normalizeGender(data.gender))
-		.input('avatar_url', sql.NVarChar(500), data.avatar_url || null).query(`
+	const result = await withActorTransaction(actorId, (tx) =>
+		tx
+			.request()
+			.input('actor_id', sql.VarChar(20), actorId)
+			.input('user_id', sql.VarChar(20), data.user_id || null)
+			.input('full_name', sql.NVarChar(150), data.full_name)
+			.input('specialty', sql.NVarChar(150), data.specialty || null)
+			.input('is_external', sql.Bit, !!data.is_external)
+			.input('phone', sql.VarChar(20), data.phone || null)
+			.input('email', sql.VarChar(100), data.email || null)
+			.input('academic_degree', sql.NVarChar(50), data.academic_degree || null)
+			.input('academic_rank', sql.NVarChar(50), data.academic_rank || null)
+			.input('dob', sql.Date, data.dob || null)
+			.input('gender', sql.VarChar(10), normalizeGender(data.gender))
+			.input('avatar_url', sql.NVarChar(500), data.avatar_url || null).query(`
       DECLARE @new_id VARCHAR(20) = 'GV' + LEFT(REPLACE(NEWID(),'-',''), 18);
-      EXEC sp_set_actor @actor_id;
       INSERT INTO lecturers (id, user_id, full_name, specialty, is_external, phone, email, academic_degree, academic_rank, dob, gender, avatar_url, created_by)
       VALUES (@new_id, @user_id, @full_name, @specialty, @is_external, @phone, @email, @academic_degree, @academic_rank, @dob, @gender, @avatar_url, @actor_id);
       SELECT @new_id AS id;
-    `);
+    `),
+	);
 	const id = result.recordset[0].id;
 	await personService.syncPerson('lecturers', id, { actorId });
 	broadcast('update', { entity: 'lecturer' });
@@ -103,8 +104,7 @@ const create = async (data, actorId) => {
 const update = async (id, data, actorId) => {
 	const pool = await getPool();
 	const sets = ['updated_at = GETDATE()', 'updated_by = @actor_id'];
-	const req = pool
-		.request()
+	const req = actorRequest(actorId)
 		.input('id', sql.VarChar(20), id)
 		.input('actor_id', sql.VarChar(20), actorId);
 
@@ -158,9 +158,7 @@ const update = async (id, data, actorId) => {
 		req.input('avatar_url', sql.NVarChar(500), data.avatar_url || null);
 	}
 
-	await req.query(
-		`EXEC sp_set_actor @actor_id; UPDATE lecturers SET ${sets.join(', ')} WHERE id = @id`,
-	);
+	await req.query(`UPDATE lecturers SET ${sets.join(', ')} WHERE id = @id`);
 	await personService.syncPerson('lecturers', id, { actorId });
 	broadcast('update', { entity: 'lecturer' });
 	return getById(id);
@@ -240,17 +238,21 @@ const remove = async (id, actorId) => {
 		// Bảng lecturer_assignments chưa tồn tại (Giai đoạn 4 chưa chạy) ⇒ coi như chưa dùng.
 	}
 	if (used.recordset.length) {
-		await pool
-			.request()
-			.input('id', sql.VarChar(20), id)
-			.input('actor_id', sql.VarChar(20), actorId)
-			.query('EXEC sp_set_actor @actor_id; UPDATE lecturers SET is_active = 0 WHERE id = @id');
+		await withActorTransaction(actorId, (tx) =>
+			tx
+				.request()
+				.input('id', sql.VarChar(20), id)
+				.input('actor_id', sql.VarChar(20), actorId)
+				.query('UPDATE lecturers SET is_active = 0 WHERE id = @id'),
+		);
 	} else {
-		await pool
-			.request()
-			.input('id', sql.VarChar(20), id)
-			.input('actor_id', sql.VarChar(20), actorId)
-			.query('EXEC sp_set_actor @actor_id; DELETE FROM lecturers WHERE id = @id');
+		await withActorTransaction(actorId, (tx) =>
+			tx
+				.request()
+				.input('id', sql.VarChar(20), id)
+				.input('actor_id', sql.VarChar(20), actorId)
+				.query('DELETE FROM lecturers WHERE id = @id'),
+		);
 		// Xóa cứng ⇒ bỏ luôn giá trị trường tùy chỉnh (Cấu hình form 'lecturer')
 		await formCustomValueService.remove('lecturer', id);
 	}

@@ -1,4 +1,4 @@
-const { getPool, sql } = require('../../config/db');
+const { getPool, sql, withActorTransaction, actorRequest } = require('../../config/db');
 const { broadcast } = require('../events/eventService');
 const { paging } = require('../../utils/paging');
 const { remember, invalidate } = require('../../utils/cache');
@@ -78,24 +78,25 @@ const create = async (data, actorId) => {
 		.execute('sp_gen_dept_id');
 	const newId = idResult.output.new_id;
 
-	await pool
-		.request()
-		.input('actor_id', sql.VarChar(20), actorId)
-		.input('id', sql.VarChar(20), newId)
-		.input('name', sql.NVarChar(255), data.name)
-		.input('code', sql.VarChar(20), data.code)
-		.input('abbreviation', sql.VarChar(20), data.abbreviation)
-		.input('description', sql.NVarChar(sql.MAX), data.description || null)
-		.input('specialty_group', sql.NVarChar(100), data.specialty_group || null)
-		.input('unit_type', sql.VarChar(20), data.unit_type || 'khoa')
-		.input('head_user_id', sql.VarChar(20), data.head_user_id || null)
-		.input('phone', sql.VarChar(20), data.phone || null)
-		.input('email', sql.VarChar(100), data.email || null)
-		.input('bed_count', sql.Int, data.bed_count ?? null).query(`
-      EXEC sp_set_actor @actor_id;
+	await withActorTransaction(actorId, (tx) =>
+		tx
+			.request()
+			.input('actor_id', sql.VarChar(20), actorId)
+			.input('id', sql.VarChar(20), newId)
+			.input('name', sql.NVarChar(255), data.name)
+			.input('code', sql.VarChar(20), data.code)
+			.input('abbreviation', sql.VarChar(20), data.abbreviation)
+			.input('description', sql.NVarChar(sql.MAX), data.description || null)
+			.input('specialty_group', sql.NVarChar(100), data.specialty_group || null)
+			.input('unit_type', sql.VarChar(20), data.unit_type || 'khoa')
+			.input('head_user_id', sql.VarChar(20), data.head_user_id || null)
+			.input('phone', sql.VarChar(20), data.phone || null)
+			.input('email', sql.VarChar(100), data.email || null)
+			.input('bed_count', sql.Int, data.bed_count ?? null).query(`
       INSERT INTO departments (id, name, code, abbreviation, description, specialty_group, unit_type, head_user_id, phone, email, bed_count, created_by)
       VALUES (@id, @name, @code, @abbreviation, @description, @specialty_group, @unit_type, @head_user_id, @phone, @email, @bed_count, @actor_id);
-    `);
+    `),
+	);
 	await invalidate(CACHE_PREFIX);
 	const dept = await getById(newId);
 	broadcast('update', { entity: 'department' });
@@ -103,10 +104,8 @@ const create = async (data, actorId) => {
 };
 
 const update = async (id, data, actorId) => {
-	const pool = await getPool();
 	const sets = ['updated_at = GETDATE()', 'updated_by = @actor_id'];
-	const req = pool
-		.request()
+	const req = actorRequest(actorId)
 		.input('id', sql.VarChar(20), id)
 		.input('actor_id', sql.VarChar(20), actorId);
 
@@ -151,9 +150,7 @@ const update = async (id, data, actorId) => {
 		req.input('bed_count', sql.Int, data.bed_count ?? null);
 	}
 
-	await req.query(
-		`EXEC sp_set_actor @actor_id; UPDATE departments SET ${sets.join(', ')} WHERE id = @id`,
-	);
+	await req.query(`UPDATE departments SET ${sets.join(', ')} WHERE id = @id`);
 	await invalidate(CACHE_PREFIX);
 	const dept = await getById(id);
 	broadcast('update', { entity: 'department' });
@@ -164,12 +161,11 @@ const update = async (id, data, actorId) => {
 // thay vì xóa kèm, để giữ lại user / đề tài. Riêng topic_related_departments có
 // department_id NOT NULL nên phải xóa dòng. Toàn bộ chạy trong 1 transaction.
 const remove = async (id, actorId) => {
-	const pool = await getPool();
-	await pool.request().input('id', sql.VarChar(20), id).input('actor_id', sql.VarChar(20), actorId)
-		.query(`
+	await withActorTransaction(actorId, (tx) =>
+		tx.request().input('id', sql.VarChar(20), id).input('actor_id', sql.VarChar(20), actorId)
+			.query(`
       BEGIN TRANSACTION;
       BEGIN TRY
-        EXEC sp_set_actor @actor_id;
         UPDATE users SET department_id = NULL WHERE department_id = @id;
         UPDATE topics SET department_id = NULL WHERE department_id = @id;
         UPDATE topic_members SET department_id = NULL WHERE department_id = @id;
@@ -182,7 +178,8 @@ const remove = async (id, actorId) => {
         IF @@TRANCOUNT > 0 ROLLBACK TRANSACTION;
         THROW;
       END CATCH;
-    `);
+    `),
+	);
 	await invalidate(CACHE_PREFIX);
 	broadcast('update', { entity: 'department' });
 };

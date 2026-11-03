@@ -1,5 +1,5 @@
 const bcrypt = require('bcrypt');
-const { getPool, sql } = require('../../../config/db');
+const { getPool, sql, withActorTransaction, withActor } = require('../../../config/db');
 const { broadcast } = require('../../events/eventService');
 const { ROLE, requireRoleId } = require('../../access/roleCodes');
 const { defaultPassword } = require('../../../utils/passwordPolicy');
@@ -99,9 +99,7 @@ const grantAccounts = async (traineeIds, actorId) => {
 			await tx.begin();
 			began = true;
 
-			await new sql.Request(tx)
-				.input('actor_id', sql.VarChar(20), actorId)
-				.query(`EXEC sp_set_actor @actor_id`);
+			await withActor(tx, actorId);
 
 			const userId = await genTraineeUserIdInTx(tx);
 			if (!userId) {
@@ -209,21 +207,19 @@ const resetAccountPassword = async (traineeId, actorId, ip = null) => {
 
 // Khóa tài khoản học viên (nếu có) — dùng khi xóa / ngừng hồ sơ học viên.
 const lockAccountOf = async (traineeId, actorId) => {
-	const pool = await getPool();
 	// Không dùng OUTPUT: bảng users có trigger audit (trg_users_audit)
-	const r = await pool
-		.request()
-		.input('id', sql.VarChar(20), traineeId)
-		.input('actor_id', sql.VarChar(20), actorId).query(`
+	const r = await withActorTransaction(actorId, (tx) =>
+		tx.request().input('id', sql.VarChar(20), traineeId).input('actor_id', sql.VarChar(20), actorId)
+			.query(`
       DECLARE @uid VARCHAR(20) = (SELECT user_id FROM trainees WHERE id = @id);
       IF @uid IS NOT NULL
       BEGIN
-        EXEC sp_set_actor @actor_id;
         UPDATE users SET is_active = 0, updated_at = GETDATE(), updated_by = @actor_id
         WHERE id = @uid AND is_active = 1;
       END
       SELECT @uid AS user_id;
-    `);
+    `),
+	);
 	const userId = r.recordset[0]?.user_id;
 	// middlewares/auth.js đọc is_active qua cache — xóa để khóa có hiệu lực ngay
 	if (userId) userStatusCache.clear(userId);
@@ -244,16 +240,16 @@ const setAccountActive = async (traineeId, isActive, actorId) => {
 			400,
 			'Học viên đang ngừng hoạt động — bật lại hồ sơ trước khi mở khóa tài khoản',
 		);
-	const pool = await getPool();
-	await pool
-		.request()
-		.input('id', sql.VarChar(20), userId)
-		.input('is_active', sql.Bit, !!isActive)
-		.input('actor_id', sql.VarChar(20), actorId).query(`
-      EXEC sp_set_actor @actor_id;
+	await withActorTransaction(actorId, (tx) =>
+		tx
+			.request()
+			.input('id', sql.VarChar(20), userId)
+			.input('is_active', sql.Bit, !!isActive)
+			.input('actor_id', sql.VarChar(20), actorId).query(`
       UPDATE users SET is_active = @is_active, updated_at = GETDATE(), updated_by = @actor_id
       WHERE id = @id
-    `);
+    `),
+	);
 	// middlewares/auth.js đọc is_active qua cache — xóa để khóa có hiệu lực ngay
 	userStatusCache.clear(userId);
 	broadcast('update', { entity: 'trainee' });

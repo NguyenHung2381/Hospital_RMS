@@ -1,5 +1,5 @@
 // Chương trình đào tạo. Bài học + tài liệu bài học ở programLessonService (export lại ở đây để nơi gọi giữ nguyên).
-const { getPool, sql } = require('../../../config/db');
+const { getPool, sql, withActorTransaction, actorRequest } = require('../../../config/db');
 const { isUniqueViolation } = require('../../../utils/dbErrors');
 const { broadcast } = require('../../events/eventService');
 const { paging } = require('../../../utils/paging');
@@ -182,10 +182,9 @@ const rethrowDuplicateCode = (err) => {
 };
 
 const create = async (data, actorId) => {
-	const pool = await getPool();
 	const typeIds = traineeTypeIdsOf(data);
 	const input = withDurationText(withTraineeType(data, typeIds));
-	const req = pool.request().input('actor_id', sql.VarChar(20), actorId);
+	const req = actorRequest(actorId).input('actor_id', sql.VarChar(20), actorId);
 	const cols = [];
 	for (const [field, type] of Object.entries(PROGRAM_FIELDS)) {
 		cols.push(field);
@@ -199,7 +198,6 @@ const create = async (data, actorId) => {
 		.query(
 			`
       DECLARE @new_id VARCHAR(20) = 'CT' + LEFT(REPLACE(NEWID(),'-',''), 18);
-      EXEC sp_set_actor @actor_id;
       INSERT INTO training_programs (id, ${cols.join(', ')}, created_by)
       VALUES (@new_id, ${cols.map((c) => `@${c}`).join(', ')}, @actor_id);
       SELECT @new_id AS id;
@@ -213,12 +211,10 @@ const create = async (data, actorId) => {
 };
 
 const update = async (id, data, actorId) => {
-	const pool = await getPool();
 	const typeIds = traineeTypeIdsOf(data);
 	const input = withDurationText(withTraineeType(data, typeIds));
 	const sets = ['updated_at = GETDATE()', 'updated_by = @actor_id'];
-	const req = pool
-		.request()
+	const req = actorRequest(actorId)
 		.input('id', sql.VarChar(20), id)
 		.input('actor_id', sql.VarChar(20), actorId);
 
@@ -231,9 +227,7 @@ const update = async (id, data, actorId) => {
 
 	if (sets.length > 2)
 		await req
-			.query(
-				`EXEC sp_set_actor @actor_id; UPDATE training_programs SET ${sets.join(', ')} WHERE id = @id`,
-			)
+			.query(`UPDATE training_programs SET ${sets.join(', ')} WHERE id = @id`)
 			.catch(rethrowDuplicateCode);
 	if (typeIds) await setProgramTraineeTypes(id, typeIds);
 	broadcast('update', { entity: 'training_program' });
@@ -260,16 +254,17 @@ const remove = async (id, actorId) => {
 			`Chương trình đang được dùng ở ${parts.join(' và ')} — không xóa được. Hãy đổi chương trình của các hồ sơ đó trước.`,
 		);
 	}
-	await pool.request().input('id', sql.VarChar(20), id).input('actor_id', sql.VarChar(20), actorId)
-		.query(`
+	await withActorTransaction(actorId, (tx) =>
+		tx.request().input('id', sql.VarChar(20), id).input('actor_id', sql.VarChar(20), actorId)
+			.query(`
     SET XACT_ABORT ON;
     BEGIN TRAN;
-    EXEC sp_set_actor @actor_id;
     DELETE FROM lesson_programs WHERE program_id = @id;
     DELETE FROM course_programs WHERE program_id = @id;
     DELETE FROM training_programs WHERE id = @id;
     COMMIT;
-  `);
+  `),
+	);
 	broadcast('update', { entity: 'training_program' });
 	broadcast('update', { entity: 'program_lesson' });
 };

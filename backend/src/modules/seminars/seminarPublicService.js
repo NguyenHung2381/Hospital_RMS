@@ -6,7 +6,7 @@
  * thì cấp tuần tự trong 1 transaction để giữ dãy liền mạch.
  */
 const crypto = require('crypto');
-const { getPool, sql } = require('../../config/db');
+const { getPool, sql, withActorTransaction } = require('../../config/db');
 const { broadcast } = require('../events/eventService');
 const { lazyRequire } = require('../../utils/lazyRequire');
 /** @type {typeof import('qrcode')} */
@@ -405,24 +405,24 @@ const submitTest = async (code, answers) => {
 // checked_in_at lưu giờ UTC (GETUTCDATE): driver mssql đọc DATETIME như UTC,
 // GETDATE() là giờ VN của máy CSDL → FE hiển thị lệch +7 giờ.
 const checkInTicket = async (seminarId, code, actorId) => {
-	const pool = await getPool();
-	const r = await pool
-		.request()
-		.input('sid', sql.VarChar(20), seminarId)
-		.input('code', sql.VarChar(32), code)
-		.input('actor_id', sql.VarChar(20), actorId).query(`
+	const r = await withActorTransaction(actorId, (tx) =>
+		tx
+			.request()
+			.input('sid', sql.VarChar(20), seminarId)
+			.input('code', sql.VarChar(32), code)
+			.input('actor_id', sql.VarChar(20), actorId).query(`
       DECLARE @prev DATETIME, @pid VARCHAR(24), @psid VARCHAR(20);
       SELECT @pid = id, @psid = seminar_id, @prev = checked_in_at
       FROM seminar_participants WHERE ticket_code = @code;
       IF @pid IS NOT NULL AND @psid = @sid AND @prev IS NULL
       BEGIN
-        EXEC sp_set_actor @actor_id;
         UPDATE seminar_participants SET checked_in_at = GETUTCDATE() WHERE id = @pid;
       END
       SELECT p.id, p.seminar_id, p.title_prefix, p.full_name, p.organization, p.checked_in_at,
              CAST(CASE WHEN @prev IS NULL THEN 0 ELSE 1 END AS BIT) AS already
       FROM seminar_participants p WHERE p.id = @pid;
-    `);
+    `),
+	);
 	const row = r.recordset[0];
 	if (!row) throw httpError(404, 'Mã QR không phải vé hội nghị hợp lệ.');
 	if (row.seminar_id !== seminarId)

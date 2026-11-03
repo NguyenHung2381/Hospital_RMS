@@ -1,4 +1,4 @@
-const { getPool, sql } = require('../../../config/db');
+const { getPool, sql, withActorTransaction, actorRequest } = require('../../../config/db');
 const { broadcast } = require('../../events/eventService');
 const { paging } = require('../../../utils/paging');
 const trainingFileService = require('../trainingFileService');
@@ -140,38 +140,37 @@ const getById = async (id, actor = null) => {
 
 // opts.fetch=false: bỏ query đọc lại bản ghi — dùng cho import hàng loạt
 const create = async (data, actorId, { fetch = true } = {}) => {
-	const pool = await getPool();
-	const result = await pool
-		.request()
-		.input('actor_id', sql.VarChar(20), actorId)
-		.input('full_name', sql.NVarChar(150), data.full_name)
-		.input('dob', sql.Date, data.dob || null)
-		.input('gender', sql.VarChar(10), normalizeGender(data.gender))
-		.input('national_id', sql.VarChar(20), data.national_id || null)
-		.input('phone', sql.VarChar(20), data.phone || null)
-		.input('email', sql.VarChar(100), data.email || null)
-		.input('address', sql.NVarChar(255), data.address || null)
-		.input('permanent_address', sql.NVarChar(255), data.permanent_address || null)
-		.input('trainee_type_id', sql.VarChar(20), data.trainee_type_id || null)
-		.input('department_id', sql.VarChar(20), data.department_id || null)
-		.input('national_id_issued_date', sql.Date, data.national_id_issued_date || null)
-		.input('national_id_issued_place', sql.NVarChar(200), data.national_id_issued_place || null)
-		.input('graduated_school', sql.NVarChar(200), data.graduated_school || null)
-		.input('graduated_year', sql.SmallInt, data.graduated_year || null)
-		.input('workplace', sql.NVarChar(200), data.workplace || null)
-		.input('position', sql.NVarChar(100), data.position || null)
-		.input('avatar_url', sql.NVarChar(500), data.avatar_url || null)
-		.input('qualification', sql.NVarChar(150), data.qualification || null)
-		.input('birth_province', sql.NVarChar(100), data.birth_province || null)
-		.input('graduated_date', sql.Date, data.graduated_date || null)
-		.input('degree_issued_date', sql.Date, data.degree_issued_date || null)
-		.input('legacy_code', sql.NVarChar(30), data.legacy_code || null)
-		.input('notes', sql.NVarChar(sql.MAX), data.notes || null)
-		.input('is_active', sql.Bit, data.is_active !== undefined ? !!data.is_active : true)
-		.input('is_employee', sql.Bit, !!data.is_employee).query(`
+	const result = await withActorTransaction(actorId, (tx) =>
+		tx
+			.request()
+			.input('actor_id', sql.VarChar(20), actorId)
+			.input('full_name', sql.NVarChar(150), data.full_name)
+			.input('dob', sql.Date, data.dob || null)
+			.input('gender', sql.VarChar(10), normalizeGender(data.gender))
+			.input('national_id', sql.VarChar(20), data.national_id || null)
+			.input('phone', sql.VarChar(20), data.phone || null)
+			.input('email', sql.VarChar(100), data.email || null)
+			.input('address', sql.NVarChar(255), data.address || null)
+			.input('permanent_address', sql.NVarChar(255), data.permanent_address || null)
+			.input('trainee_type_id', sql.VarChar(20), data.trainee_type_id || null)
+			.input('department_id', sql.VarChar(20), data.department_id || null)
+			.input('national_id_issued_date', sql.Date, data.national_id_issued_date || null)
+			.input('national_id_issued_place', sql.NVarChar(200), data.national_id_issued_place || null)
+			.input('graduated_school', sql.NVarChar(200), data.graduated_school || null)
+			.input('graduated_year', sql.SmallInt, data.graduated_year || null)
+			.input('workplace', sql.NVarChar(200), data.workplace || null)
+			.input('position', sql.NVarChar(100), data.position || null)
+			.input('avatar_url', sql.NVarChar(500), data.avatar_url || null)
+			.input('qualification', sql.NVarChar(150), data.qualification || null)
+			.input('birth_province', sql.NVarChar(100), data.birth_province || null)
+			.input('graduated_date', sql.Date, data.graduated_date || null)
+			.input('degree_issued_date', sql.Date, data.degree_issued_date || null)
+			.input('legacy_code', sql.NVarChar(30), data.legacy_code || null)
+			.input('notes', sql.NVarChar(sql.MAX), data.notes || null)
+			.input('is_active', sql.Bit, data.is_active !== undefined ? !!data.is_active : true)
+			.input('is_employee', sql.Bit, !!data.is_employee).query(`
       DECLARE @new_id VARCHAR(20);
       EXEC sp_gen_trainee_id @actor_id = @actor_id, @new_id = @new_id OUTPUT;
-      EXEC sp_set_actor @actor_id;
       INSERT INTO trainees (
         id, full_name, dob, gender, national_id, phone, email, address, permanent_address, trainee_type_id, department_id,
         national_id_issued_date, national_id_issued_place, graduated_school, graduated_year, workplace, position, avatar_url,
@@ -187,7 +186,8 @@ const create = async (data, actorId, { fetch = true } = {}) => {
         @actor_id
       );
       SELECT @new_id AS id;
-    `);
+    `),
+	);
 	const id = result.recordset[0].id;
 	await personService.syncPerson('trainees', id, { actorId });
 	broadcast('update', { entity: 'trainee' });
@@ -195,10 +195,8 @@ const create = async (data, actorId, { fetch = true } = {}) => {
 };
 
 const update = async (id, data, actorId) => {
-	const pool = await getPool();
 	const sets = ['updated_at = GETDATE()', 'updated_by = @actor_id'];
-	const req = pool
-		.request()
+	const req = actorRequest(actorId)
 		.input('id', sql.VarChar(20), id)
 		.input('actor_id', sql.VarChar(20), actorId);
 
@@ -255,9 +253,7 @@ const update = async (id, data, actorId) => {
 		req.input('graduated_year', sql.SmallInt, data.graduated_year || null);
 	}
 
-	await req.query(
-		`EXEC sp_set_actor @actor_id; UPDATE trainees SET ${sets.join(', ')} WHERE id = @id`,
-	);
+	await req.query(`UPDATE trainees SET ${sets.join(', ')} WHERE id = @id`);
 	// Ngừng học viên ⇒ khóa luôn tài khoản. Bật lại KHÔNG tự mở khóa: tài khoản có
 	// thể đã bị khóa vì lý do khác — mở khóa thủ công tại hồ sơ học viên.
 	if (data.is_active !== undefined && !data.is_active) await lockAccountOf(id, actorId);
@@ -267,15 +263,14 @@ const update = async (id, data, actorId) => {
 };
 
 const remove = async (id, actorId) => {
-	const pool = await getPool();
 	// Chỉ ẩn khỏi danh sách: học viên còn FK từ course_enrollments... nên không DELETE cứng.
-	await pool
-		.request()
-		.input('id', sql.VarChar(20), id)
-		.input('actor_id', sql.VarChar(20), actorId)
-		.query(
-			'EXEC sp_set_actor @actor_id; UPDATE trainees SET hidden_at = SYSDATETIME() WHERE id = @id',
-		);
+	await withActorTransaction(actorId, (tx) =>
+		tx
+			.request()
+			.input('id', sql.VarChar(20), id)
+			.input('actor_id', sql.VarChar(20), actorId)
+			.query('UPDATE trainees SET hidden_at = SYSDATETIME() WHERE id = @id'),
+	);
 	// Hồ sơ đã xóa thì tài khoản học viên cũng không được đăng nhập nữa
 	await lockAccountOf(id, actorId);
 	broadcast('update', { entity: 'trainee' });

@@ -5,7 +5,14 @@
  * tục cho mọi hội nghị trong năm; sang năm mới reset. Cấp nhiều người một lần
  * thì cấp tuần tự trong 1 transaction để giữ dãy liền mạch.
  */
-const { getPool, sql, withTransaction } = require('../../config/db');
+const {
+	getPool,
+	sql,
+	withTransaction,
+	withActorTransaction,
+	actorRequest,
+	withActor,
+} = require('../../config/db');
 const { broadcast } = require('../events/eventService');
 const { ensureSeminar } = require('./seminarParticipantService');
 const { httpError } = require('../../utils/httpError');
@@ -42,9 +49,7 @@ const issueCme = async (seminarId, participantIds, actorId, { year } = {}) => {
 	if (!ids.length) return { issued: 0, from: null, to: null, year: cmeYear, skipped: 0 };
 
 	const result = await withTransaction(async (tx) => {
-		await new sql.Request(tx)
-			.input('actor_id', sql.VarChar(20), actorId)
-			.query('EXEC sp_set_actor @actor_id');
+		await withActor(tx, actorId);
 
 		// chỉ người chưa có số, giữ đúng thứ tự gửi lên. Người tự đăng ký qua QR
 		// (có ticket_code) phải điểm danh + nộp bài test (nếu hội nghị có bài
@@ -96,17 +101,17 @@ const issueCme = async (seminarId, participantIds, actorId, { year } = {}) => {
 
 // Thu hồi số CME — tạo lỗ hổng trong sổ, không tự dồn.
 const revokeCme = async (seminarId, pid, actorId) => {
-	const pool = await getPool();
-	await pool
-		.request()
-		.input('sid', sql.VarChar(20), seminarId)
-		.input('pid', sql.VarChar(24), pid)
-		.input('actor_id', sql.VarChar(20), actorId).query(`
-      EXEC sp_set_actor @actor_id;
+	await withActorTransaction(actorId, (tx) =>
+		tx
+			.request()
+			.input('sid', sql.VarChar(20), seminarId)
+			.input('pid', sql.VarChar(24), pid)
+			.input('actor_id', sql.VarChar(20), actorId).query(`
       UPDATE seminar_participants
       SET cme_year = NULL, cme_seq = NULL, cme_status = 'none', cme_issued_date = NULL
       WHERE id = @pid AND seminar_id = @sid;
-    `);
+    `),
+	);
 	broadcast('update', { entity: 'seminar' });
 };
 
@@ -117,9 +122,7 @@ const setCmeStatus = async (seminarId, ids, status, actorId) => {
 	}
 	const list = (ids || []).filter(Boolean);
 	if (!list.length) return { updated: 0 };
-	const pool = await getPool();
-	const req = pool
-		.request()
+	const req = actorRequest(actorId)
 		.input('sid', sql.VarChar(20), seminarId)
 		.input('status', sql.VarChar(15), status)
 		.input('actor_id', sql.VarChar(20), actorId);
@@ -130,7 +133,6 @@ const setCmeStatus = async (seminarId, ids, status, actorId) => {
 		})
 		.join(',');
 	const r = await req.query(`
-    EXEC sp_set_actor @actor_id;
     UPDATE seminar_participants SET cme_status = @status
     WHERE seminar_id = @sid AND cme_seq IS NOT NULL AND id IN (${inParams});
     SELECT @@ROWCOUNT AS updated;

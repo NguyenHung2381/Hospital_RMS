@@ -1,4 +1,4 @@
-const { getPool, sql } = require('../../config/db');
+const { getPool, sql, withActorTransaction } = require('../../config/db');
 const { broadcast } = require('../events/eventService');
 const { removeUploadedFile } = require('../../utils/uploadPaths');
 const { httpError } = require('../../utils/httpError');
@@ -62,14 +62,15 @@ const deleteFile = async (fileId, actorId) => {
 	}
 
 	// Soft-delete trong DB
-	await pool
-		.request()
-		.input('file_id', sql.VarChar(32), fileId)
-		.input('actor_id', sql.VarChar(20), actorId).query(`
-      EXEC sp_set_actor @actor_id;
+	await withActorTransaction(actorId, (tx) =>
+		tx
+			.request()
+			.input('file_id', sql.VarChar(32), fileId)
+			.input('actor_id', sql.VarChar(20), actorId).query(`
       UPDATE files SET is_deleted = 1, updated_at = GETDATE(), updated_by = @actor_id
       WHERE id = @file_id
-    `);
+    `),
+	);
 
 	// Xóa file vật lý (file_url dạng /uploads/topics/xxx/filename.pdf)
 	removeUploadedFile(fileRow.recordset[0].file_url);

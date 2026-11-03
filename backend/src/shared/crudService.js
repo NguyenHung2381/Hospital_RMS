@@ -1,4 +1,4 @@
-const { getPool, sql } = require('../config/db');
+const { getPool, sql, withActorTransaction } = require('../config/db');
 const { broadcast } = require('../modules/events/eventService');
 const { paging } = require('../utils/paging');
 const { remember, invalidate } = require('../utils/cache');
@@ -68,7 +68,6 @@ const createCrudService = (
 	};
 
 	const create = async (data, actorId) => {
-		const pool = await getPool();
 		const suffixLen = idLength - idPrefix.length;
 		const customId = options.allowCustomId && data.id ? String(data.id).trim() : '';
 		const idExpr = customId
@@ -76,20 +75,6 @@ const createCrudService = (
 			: idPrefix
 				? `'${idPrefix}' + LEFT(REPLACE(NEWID(),'-',''), ${suffixLen})`
 				: `LEFT(REPLACE(NEWID(),'-',''), ${idLength})`;
-		const req = pool
-			.request()
-			.input('custom_id', sql.VarChar(idLength), customId || null)
-			.input('actor_id', sql.VarChar(20), actorId)
-			.input('name', sql.NVarChar(500), data.name)
-			.input('description', sql.NVarChar(sql.MAX), data.description || null);
-
-		for (const f of extraFields) {
-			req.input(
-				f.column,
-				f.sqlType,
-				data[f.column] !== undefined ? data[f.column] : (f.default ?? null),
-			);
-		}
 		const extraCols = extraFields.map((f) => f.column);
 		const insertCols = ['id', 'name', 'description', ...extraCols, 'created_by'].join(', ');
 		const insertVals = [
@@ -100,45 +85,57 @@ const createCrudService = (
 			'@actor_id',
 		].join(', ');
 
-		const result = await req.query(`
+		const result = await withActorTransaction(actorId, (tx) => {
+			const req = tx
+				.request()
+				.input('custom_id', sql.VarChar(idLength), customId || null)
+				.input('actor_id', sql.VarChar(20), actorId)
+				.input('name', sql.NVarChar(500), data.name)
+				.input('description', sql.NVarChar(sql.MAX), data.description || null);
+			for (const f of extraFields) {
+				req.input(
+					f.column,
+					f.sqlType,
+					data[f.column] !== undefined ? data[f.column] : (f.default ?? null),
+				);
+			}
+			return req.query(`
         DECLARE @new_id VARCHAR(${idLength});
         SET @new_id = ${idExpr};
-        EXEC sp_set_actor @actor_id;
         INSERT INTO ${tableName} (${insertCols})
         VALUES (${insertVals});
         SELECT * FROM ${tableName} WHERE id = @new_id;
       `);
+		});
 		await invalidate(cachePrefix);
 		broadcast('update', { entity });
 		return result.recordset[0];
 	};
 
 	const update = async (id, data, actorId) => {
-		const pool = await getPool();
-		const sets = ['updated_at = GETDATE()', 'updated_by = @actor_id'];
-		const req = pool
-			.request()
-			.input('id', sql.VarChar(idLength), id)
-			.input('actor_id', sql.VarChar(20), actorId);
+		await withActorTransaction(actorId, (tx) => {
+			const sets = ['updated_at = GETDATE()', 'updated_by = @actor_id'];
+			const req = tx
+				.request()
+				.input('id', sql.VarChar(idLength), id)
+				.input('actor_id', sql.VarChar(20), actorId);
 
-		if (data.name !== undefined) {
-			sets.push('name = @name');
-			req.input('name', sql.NVarChar(500), data.name);
-		}
-		if (data.description !== undefined) {
-			sets.push('description = @description');
-			req.input('description', sql.NVarChar(sql.MAX), data.description);
-		}
-		for (const f of extraFields) {
-			if (data[f.column] !== undefined) {
-				sets.push(`${f.column} = @${f.column}`);
-				req.input(f.column, f.sqlType, data[f.column]);
+			if (data.name !== undefined) {
+				sets.push('name = @name');
+				req.input('name', sql.NVarChar(500), data.name);
 			}
-		}
-
-		await req.query(
-			`EXEC sp_set_actor @actor_id; UPDATE ${tableName} SET ${sets.join(', ')} WHERE id = @id`,
-		);
+			if (data.description !== undefined) {
+				sets.push('description = @description');
+				req.input('description', sql.NVarChar(sql.MAX), data.description);
+			}
+			for (const f of extraFields) {
+				if (data[f.column] !== undefined) {
+					sets.push(`${f.column} = @${f.column}`);
+					req.input(f.column, f.sqlType, data[f.column]);
+				}
+			}
+			return req.query(`UPDATE ${tableName} SET ${sets.join(', ')} WHERE id = @id`);
+		});
 		// Xóa cache trước khi getById để không trả lại bản ghi cũ vừa cache.
 		await invalidate(cachePrefix);
 		broadcast('update', { entity });
@@ -168,11 +165,12 @@ const createCrudService = (
 			}
 		}
 
-		await pool
-			.request()
-			.input('id', sql.VarChar(idLength), id)
-			.input('actor_id', sql.VarChar(20), actorId)
-			.query(`EXEC sp_set_actor @actor_id; DELETE FROM ${tableName} WHERE id = @id`);
+		await withActorTransaction(actorId, (tx) =>
+			tx
+				.request()
+				.input('id', sql.VarChar(idLength), id)
+				.query(`DELETE FROM ${tableName} WHERE id = @id`),
+		);
 		await invalidate(cachePrefix);
 		broadcast('update', { entity });
 	};
