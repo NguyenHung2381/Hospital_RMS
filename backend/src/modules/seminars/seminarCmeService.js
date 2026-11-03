@@ -13,6 +13,7 @@ const {
 	actorRequest,
 	withActor,
 	boolExpr,
+	nowSql,
 } = require('../../config/db');
 const { genCmeNo } = require('../../utils/idGenerator');
 const { broadcast } = require('../events/eventService');
@@ -84,7 +85,7 @@ const issueCme = async (seminarId, participantIds, actorId, { year } = {}) => {
 				.input('credits', sql.Decimal(4, 1), seminar.cme_default_credits ?? null).query(`
           UPDATE seminar_participants
           SET cme_year = @year, cme_seq = @seq, cme_status = 'issued',
-              cme_issued_date = COALESCE(cme_issued_date, CAST(GETDATE() AS DATE)),
+              cme_issued_date = COALESCE(cme_issued_date, CAST(${nowSql} AS DATE)),
               cme_credits = COALESCE(cme_credits, @credits)
           WHERE id = @pid;
         `);

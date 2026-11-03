@@ -16,7 +16,7 @@ const path = require('path');
 require('dotenv').config({ path: path.join(__dirname, '../.env'), quiet: true });
 
 const bcrypt = require('bcrypt');
-const { getPool, sql } = require('../src/config/db');
+const { getPool, sql, nowSql } = require('../src/config/db');
 const { defaultPassword } = require('../src/utils/passwordPolicy');
 const {
 	traineeUsernamePrefix,
@@ -76,10 +76,10 @@ const apply = process.argv.includes('--apply');
 				let setPassword = '';
 				if (c.must_change_password) {
 					req.input('password', sql.VarChar(255), await bcrypt.hash(defaultPassword(c.next), 12));
-					setPassword = ', password = @password, password_changed_at = GETDATE()';
+					setPassword = `, password = @password, password_changed_at = ${nowSql}`;
 				}
 				await req.query(
-					`UPDATE users SET username = @username${setPassword}, updated_at = GETDATE() WHERE id = @id`,
+					`UPDATE users SET username = @username${setPassword}, updated_at = ${nowSql} WHERE id = @id`,
 				);
 			}
 			await tx.commit();

@@ -1,5 +1,5 @@
 {
-	"getdate": 188,
+	"getdate": 5,
 	"n_prefix": 29,
 	"isnull": 0,
 	"set_actor": 0,
@@ -11,7 +11,7 @@
 	"openjson": 0,
 	"json_fn": 0,
 	"for_json": 5,
-	"date_fn": 28,
+	"date_fn": 21,
 	"within_group": 12,
 	"apply": 25,
 	"like_class": 7,

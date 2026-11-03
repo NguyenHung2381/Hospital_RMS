@@ -1,4 +1,4 @@
-const { getPool, sql, queryAll } = require('../../config/db');
+const { getPool, sql, queryAll, nowSql } = require('../../config/db');
 const { remember } = require('../../utils/cache');
 const { todayVN } = require('../../utils/vnDate');
 const { COURSE_DISPLAY_STATUS } = require('../training/courses/courseService');
@@ -134,11 +134,11 @@ const getStats = async (year = null) =>
 			`
     -- Tóm tắt nhanh riêng NCKH: đợt, hội đồng, đề tài trong năm
     SELECT
-      (SELECT COUNT(*) FROM ${TOPICS} t WHERE YEAR(t.created_at) = YEAR(GETDATE())) AS topics_this_year,
+      (SELECT COUNT(*) FROM ${TOPICS} t WHERE YEAR(t.created_at) = YEAR(${nowSql})) AS topics_this_year,
       (SELECT COUNT(*) FROM research_rounds WHERE status = 'active') AS rounds_active,
       (SELECT COUNT(*) FROM councils) AS councils_total,
       (SELECT COUNT(*) FROM councils
-         WHERE defense_date >= CAST(GETDATE() AS DATE)) AS councils_upcoming
+         WHERE defense_date >= CAST(${nowSql} AS DATE)) AS councils_upcoming
 			`,
 		]);
 
@@ -267,12 +267,12 @@ const getTrainingStats = async () =>
       (SELECT COUNT(*) FROM course_enrollments WHERE status = 'pending') AS pending_enrollments,
       (SELECT COUNT(*) FROM certificates WHERE status = 'active') AS certificates_issued,
       (SELECT COUNT(*) FROM certificates WHERE status = 'active'
-         AND expiry_date >= CAST(GETDATE() AS DATE)
-         AND expiry_date <= DATEADD(DAY, 30, CAST(GETDATE() AS DATE))) AS certificates_expiring,
-      (SELECT COUNT(*) FROM trainees WHERE YEAR(created_at) = YEAR(GETDATE())) AS trainees_this_year,
+         AND expiry_date >= CAST(${nowSql} AS DATE)
+         AND expiry_date <= DATEADD(DAY, 30, CAST(${nowSql} AS DATE))) AS certificates_expiring,
+      (SELECT COUNT(*) FROM trainees WHERE YEAR(created_at) = YEAR(${nowSql})) AS trainees_this_year,
       (SELECT COUNT(*) FROM class_sessions
-         WHERE session_date >= CAST(GETDATE() AS DATE)
-           AND session_date <= DATEADD(DAY, 7, CAST(GETDATE() AS DATE))) AS sessions_next_7_days
+         WHERE session_date >= CAST(${nowSql} AS DATE)
+           AND session_date <= DATEADD(DAY, 7, CAST(${nowSql} AS DATE))) AS sessions_next_7_days
 			`,
 			`
     -- Lịch học 7 ngày tới
@@ -282,7 +282,7 @@ const getTrainingStats = async () =>
     JOIN courses c ON c.id = sess.course_id
     LEFT JOIN program_lessons s ON s.id = sess.subject_id
     LEFT JOIN lecturers l ON l.id = sess.lecturer_id
-    WHERE sess.session_date >= CAST(GETDATE() AS DATE) AND sess.session_date <= DATEADD(DAY, 7, CAST(GETDATE() AS DATE))
+    WHERE sess.session_date >= CAST(${nowSql} AS DATE) AND sess.session_date <= DATEADD(DAY, 7, CAST(${nowSql} AS DATE))
     ORDER BY sess.session_date, sess.start_time
 			`,
 			`
@@ -311,7 +311,7 @@ const getTrainingStats = async () =>
     -- lần gọi đầu khi CLR nguội tốn 76–1071ms (Query Store), CONVERT ~1ms.
     SELECT CONVERT(CHAR(7), registered_at, 126) AS month, COUNT(*) AS cnt
     FROM course_enrollments
-    WHERE registered_at >= DATEADD(MONTH, -11, CAST(GETDATE() AS DATE))
+    WHERE registered_at >= DATEADD(MONTH, -11, CAST(${nowSql} AS DATE))
     GROUP BY CONVERT(CHAR(7), registered_at, 126)
     ORDER BY month
 			`,
@@ -355,7 +355,7 @@ const getOverviewStats = async () =>
     SELECT
       (SELECT COUNT(*) FROM users) AS users_total,
       (SELECT COUNT(*) FROM users WHERE is_active = 'true') AS users_active,
-      (SELECT COUNT(*) FROM users WHERE locked_until IS NOT NULL AND locked_until > GETDATE()) AS users_locked,
+      (SELECT COUNT(*) FROM users WHERE locked_until IS NOT NULL AND locked_until > ${nowSql}) AS users_locked,
       (SELECT COUNT(*) FROM departments) AS departments_total,
       (SELECT COUNT(*) FROM topics) AS topics_total,
       (SELECT COUNT(*) FROM topics WHERE YEAR(created_at) = @year) AS topics_this_year,
@@ -389,7 +389,7 @@ const getOverviewStats = async () =>
 			`,
 				`
     SELECT CONVERT(CHAR(7), start_date, 126) AS month, COUNT(*) AS cnt
-    FROM seminars WHERE start_date >= @from AND start_date <= GETDATE()
+    FROM seminars WHERE start_date >= @from AND start_date <= ${nowSql}
     GROUP BY CONVERT(CHAR(7), start_date, 126)
 			`,
 				`

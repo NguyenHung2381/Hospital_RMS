@@ -9,7 +9,7 @@
  * danh và khi thêm / sửa / xóa buổi học. Dữ liệu cũ chỉ tính lại khi khóa có thay đổi
  * (không chạy hàng loạt — tránh hạ trạng thái bài đã đánh dấu tay ở khóa cũ chưa điểm danh).
  */
-const { getPool, sql } = require('../../../config/db');
+const { getPool, sql, nowSql } = require('../../../config/db');
 const { broadcast } = require('../../events/eventService');
 const { SESSION_IN_PROGRAM_SQL } = require('./sessionScope');
 
@@ -57,7 +57,7 @@ const recompute = async ({ sessionId = null, courseId = null, enrollmentId = nul
       UPDATE el
       SET status = n.status,
           completed_at = CASE WHEN n.status = 'done' THEN n.last_attended END,
-          updated_at = GETDATE()
+          updated_at = ${nowSql}
       FROM enrollment_lessons el
       JOIN next n ON n.enrollment_id = el.enrollment_id AND n.lesson_id = el.lesson_id
       WHERE el.status <> n.status

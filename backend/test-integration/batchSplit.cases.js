@@ -76,6 +76,27 @@ const run = async (t, db, { skip = [] } = {}) => {
 	});
 
 	// Cột BIT (SQL Server) / boolean (PG) so với chữ 'true' / 'false' — viết chung 2 DB
+	// Giờ VN lưu không kèm múi giờ, JS đọc như UTC (mục 4.3 kế hoạch PG)
+	await step('nowSql / utcNowSql / vnTodaySql: giờ VN, giờ UTC, ngày VN', async () => {
+		const [r] = await q(
+			`SELECT ${db.nowSql} AS vn, ${db.utcNowSql} AS utc, ${db.vnTodaySql} AS today,
+              CAST(${db.nowSql} AS DATE) AS vn_date`,
+		);
+		const hours = (r.vn.getTime() - r.utc.getTime()) / 3600000;
+		assert.ok(Math.abs(hours - 7) < 0.01, `lệch ${hours} giờ`);
+		assert.ok(Math.abs(r.utc.getTime() - Date.now()) < 5 * 60000, 'utcNowSql lệch giờ máy');
+		const { todayKeyVN } = require('../src/utils/vnDate');
+		assert.equal(r.today.toISOString().slice(0, 10), todayKeyVN());
+		assert.equal(r.vn_date.toISOString().slice(0, 10), todayKeyVN());
+		// Ghi / so sánh với cột thời gian
+		await q(`UPDATE users SET updated_at = ${db.nowSql} WHERE id = @id`, { id: actor.id });
+		const [u] = await q(
+			`SELECT updated_at FROM users WHERE id = @id AND updated_at <= ${db.nowSql}`,
+			{ id: actor.id },
+		);
+		assert.ok(Math.abs(u.updated_at.getTime() - r.vn.getTime()) < 60000);
+	});
+
 	await step("cột BIT so / gán bằng 'true' / 'false': WHERE, SET, CASE, SUM", async () => {
 		const [cnt] = await q(`
       SELECT SUM(CASE WHEN is_active = 'true' THEN 1 ELSE 0 END) AS on_n,

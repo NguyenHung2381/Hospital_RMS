@@ -15,6 +15,8 @@ const {
 	withActor,
 	boolExpr,
 	jsonValues,
+	nowSql,
+	utcNowSql,
 } = require('../../config/db');
 const { broadcast } = require('../events/eventService');
 const formCustomValueService = require('../forms/formCustomValueService');
@@ -266,7 +268,7 @@ const UPDATABLE = {
 };
 
 const update = async (seminarId, pid, data, actorId) => {
-	const sets = ['updated_at = GETDATE()', 'updated_by = @actor_id'];
+	const sets = [`updated_at = ${nowSql}`, 'updated_by = @actor_id'];
 	const req = actorRequest(actorId)
 		.input('sid', sql.VarChar(20), seminarId)
 		.input('pid', sql.VarChar(24), pid)
@@ -361,7 +363,7 @@ const checkInSelf = async (token, deviceId, actor) => {
 	}
 	if (!row.device_taken) {
 		await req().query(`
-      UPDATE seminar_participants SET checked_in_at = GETUTCDATE(), checkin_device_id = @device_id
+      UPDATE seminar_participants SET checked_in_at = ${utcNowSql}, checkin_device_id = @device_id
       WHERE seminar_id = @seminar_id AND user_id = @user_id`);
 	}
 	if (row.device_taken) {

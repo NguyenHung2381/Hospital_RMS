@@ -1,4 +1,4 @@
-const { getPool, sql, withActorTransaction, actorRequest } = require('../../config/db');
+const { getPool, sql, withActorTransaction, actorRequest, nowSql } = require('../../config/db');
 const { broadcast } = require('../events/eventService');
 const { httpError } = require('../../utils/httpError');
 
@@ -98,7 +98,7 @@ const setSeatSubstitute = async (councilId, topicId, role, userId, actorId) => {
       ELSE
       BEGIN
         UPDATE council_seat_substitutes
-        SET user_id = @user_id, created_by = @actor_id, updated_at = GETDATE(), updated_by = @actor_id
+        SET user_id = @user_id, created_by = @actor_id, updated_at = ${nowSql}, updated_by = @actor_id
         WHERE topic_id = @topic_id AND role = @role;
         IF @@ROWCOUNT = 0
           INSERT INTO council_seat_substitutes (topic_id, role, user_id, created_by)

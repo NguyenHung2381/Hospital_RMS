@@ -46,7 +46,7 @@ const PATTERNS = [
 		key: 'getdate',
 		// (?<!\.): bỏ qua phương thức JS như date.getUTCDate()
 		re: /(?<!\.)\b(GETDATE|GETUTCDATE|SYSDATETIME|SYSUTCDATETIME)\s*\(/gi,
-		pg: 'LOCALTIMESTAMP / now()',
+		pg: 'nowSql / utcNowSql / vnTodaySql (adapter)',
 	},
 	{ key: 'n_prefix', re: /(?<![\w'])N'/g, pg: "'...' (bỏ N)" },
 	{ key: 'isnull', re: /\bISNULL\s*\(/gi, pg: 'COALESCE (chạy cả 2 DB)' },

@@ -5,6 +5,8 @@ const {
 	actorRequest,
 	withTransaction,
 	queryAll,
+	vnTodaySql,
+	nowSql,
 } = require('../../../config/db');
 const { genCourseId, genCourseProgramId } = require('../../../utils/idGenerator');
 const { broadcast } = require('../../events/eventService');
@@ -57,7 +59,7 @@ const computeDisplayStatus = (c, enrollmentOpen) => {
 };
 
 // Bản SQL của computeDisplayStatus (ngày giờ VN) — dùng trong thống kê/báo cáo.
-const VN_TODAY = 'CAST(DATEADD(HOUR, 7, GETUTCDATE()) AS DATE)';
+const VN_TODAY = vnTodaySql;
 const COURSE_DISPLAY_STATUS = `CASE
     WHEN c.status = 'cancelled' THEN 'cancelled'
     WHEN c.is_rolling = 'true' THEN 'in_progress'
@@ -232,7 +234,7 @@ const create = async (data, actorId) => {
 };
 
 const update = async (id, data, actorId) => {
-	const sets = ['updated_at = GETDATE()', 'updated_by = @actor_id'];
+	const sets = [`updated_at = ${nowSql}`, 'updated_by = @actor_id'];
 	const req = actorRequest(actorId)
 		.input('id', sql.VarChar(20), id)
 		.input('actor_id', sql.VarChar(20), actorId);

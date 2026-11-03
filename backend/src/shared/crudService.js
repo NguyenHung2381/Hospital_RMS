@@ -1,4 +1,4 @@
-const { getPool, sql, withActorTransaction, queryAll } = require('../config/db');
+const { getPool, sql, withActorTransaction, queryAll, nowSql } = require('../config/db');
 const { randomId } = require('../utils/idGenerator');
 const { broadcast } = require('../modules/events/eventService');
 const { paging } = require('../utils/paging');
@@ -113,7 +113,7 @@ const createCrudService = (
 
 	const update = async (id, data, actorId) => {
 		await withActorTransaction(actorId, (tx) => {
-			const sets = ['updated_at = GETDATE()', 'updated_by = @actor_id'];
+			const sets = [`updated_at = ${nowSql}`, 'updated_by = @actor_id'];
 			const req = tx
 				.request()
 				.input('id', sql.VarChar(idLength), id)

@@ -1,5 +1,5 @@
 const { signToken } = require('../../utils/keys');
-const { getPool, sql } = require('../../config/db');
+const { getPool, sql, nowSql } = require('../../config/db');
 const { bumpTokenVersion } = require('./sessionVersion');
 const { v4: uuidv4 } = require('uuid');
 const trustedDevices = require('./trustedDeviceService');
@@ -166,8 +166,8 @@ const changePassword = async (
 		.input('id', sql.VarChar(20), userId)
 		.input('password', sql.VarChar(255), hashed)
 		.query(
-			`UPDATE users SET password = @password, password_changed_at = GETDATE(), must_change_password = 'false',
-			 temp_password_issued_at = NULL, updated_at = GETDATE(), updated_by = @id WHERE id = @id`,
+			`UPDATE users SET password = @password, password_changed_at = ${nowSql}, must_change_password = 'false',
+			 temp_password_issued_at = NULL, updated_at = ${nowSql}, updated_by = @id WHERE id = @id`,
 		);
 
 	// Thu hồi mọi refresh token hiện có: đổi mật khẩu thường vì nghi lộ, nên

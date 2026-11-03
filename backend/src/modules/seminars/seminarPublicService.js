@@ -12,6 +12,8 @@ const {
 	withActorTransaction,
 	boolExpr,
 	updateReturning,
+	nowSql,
+	utcNowSql,
 } = require('../../config/db');
 const { broadcast } = require('../events/eventService');
 const { lazyRequire } = require('../../utils/lazyRequire');
@@ -56,7 +58,7 @@ const SEMINAR_TEST_COLS = `s.test_questions, s.test_open, s.test_date, s.test_en
   s.test_end_time, s.test_duration_minutes, s.test_pass_score, s.test_shuffle_questions, s.test_shuffle_options`;
 // Hết hạn đăng ký sau ngày kết thúc (không có ngày kết thúc thì theo ngày bắt đầu)
 const REG_OPEN_SQL = `${boolExpr(`s.scope = 'hosted' AND COALESCE(s.end_date, s.start_date, '9999-12-31')
-  >= CAST(GETDATE() AS DATE)`)}`;
+  >= CAST(${nowSql} AS DATE)`)}`;
 
 const getPublicSeminar = async (token) => {
 	const pool = await getPool();
@@ -229,7 +231,7 @@ const loadTicket = async (code) => {
 	const pool = await getPool();
 	const r = await pool.request().input('code', sql.VarChar(32), code).query(`
       SELECT p.id AS participant_id, p.ticket_code, p.title_prefix, p.full_name, p.organization, p.checked_in_at,
-             p.test_started_at, DATEDIFF(SECOND, p.test_started_at, GETDATE()) AS test_elapsed_sec,
+             p.test_started_at, DATEDIFF(SECOND, p.test_started_at, ${nowSql}) AS test_elapsed_sec,
              p.test_submitted_at, p.test_correct, p.test_total, p.test_score, p.test_max_score,
              p.cme_certificate_no, p.cme_year, p.cme_credits,
              ${SEMINAR_TEST_COLS}, ${SEMINAR_PUBLIC_COLS}
@@ -357,7 +359,7 @@ const startTest = async (code) => {
 			.request()
 			.input('id', sql.VarChar(24), row.participant_id)
 			.query(
-				'UPDATE seminar_participants SET test_started_at = GETDATE() WHERE id = @id AND test_started_at IS NULL',
+				`UPDATE seminar_participants SET test_started_at = ${nowSql} WHERE id = @id AND test_started_at IS NULL`,
 			);
 		broadcast('update', { entity: 'seminar' });
 	}
@@ -391,7 +393,7 @@ const submitTest = async (code, answers) => {
 		.input('max_score', sql.Decimal(7, 2), g.max_score).query(`
       UPDATE seminar_participants
       SET test_answers = @answers, test_correct = @correct, test_total = @total,
-          test_score = @score, test_max_score = @max_score, test_submitted_at = GETDATE()
+          test_score = @score, test_max_score = @max_score, test_submitted_at = ${nowSql}
       WHERE id = @id AND test_submitted_at IS NULL;
       SELECT @@ROWCOUNT AS n;
     `);
@@ -427,7 +429,7 @@ const checkInTicket = async (seminarId, code, actorId) => {
 			.input('id', sql.VarChar(24), before.id)
 			.query(
 				updateReturning(
-					'UPDATE seminar_participants SET checked_in_at = GETUTCDATE()',
+					`UPDATE seminar_participants SET checked_in_at = ${utcNowSql}`,
 					'id = @id AND checked_in_at IS NULL',
 					[['new.id', 'id', 'VARCHAR(24)']],
 				),

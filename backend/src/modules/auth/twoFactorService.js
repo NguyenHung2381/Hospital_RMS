@@ -1,7 +1,7 @@
 const { verifyToken } = require('../../utils/keys');
 const crypto = require('crypto');
 const otplib = require('otplib');
-const { getPool, sql, updateReturning } = require('../../config/db');
+const { getPool, sql, updateReturning, utcNowSql, nowSql } = require('../../config/db');
 const userStatusCache = require('../../permissions/userStatusCache');
 const securityEvents = require('../audit/securityEventService');
 const trustedDevices = require('./trustedDeviceService');
@@ -122,7 +122,7 @@ const consumeBackupCode = async (pool, userId, code) => {
 		.request()
 		.input('user_id', sql.VarChar(20), userId)
 		.input('hash', sql.Char(64), secretBox.keyedHash(normalizeBackupCode(code))).query(`
-			UPDATE user_backup_codes SET used_at = SYSUTCDATETIME()
+			UPDATE user_backup_codes SET used_at = ${utcNowSql}
 			OUTPUT INSERTED.id
 			WHERE user_id = @user_id AND code_hash = @hash AND used_at IS NULL
 		`);
@@ -285,7 +285,7 @@ const confirm2FASetup = async (userId, code) => {
 	await pool
 		.request()
 		.input('id', sql.VarChar(20), userId)
-		.query("UPDATE users SET totp_enabled = 'true', totp_verified_at = GETDATE() WHERE id = @id");
+		.query(`UPDATE users SET totp_enabled = 'true', totp_verified_at = ${nowSql} WHERE id = @id`);
 	// Middleware auth đọc totp_enabled qua cache — xóa để hết bị chặn / nhắc ngay
 	userStatusCache.clear(userId);
 	const backupCodes = await replaceBackupCodes(pool, userId);

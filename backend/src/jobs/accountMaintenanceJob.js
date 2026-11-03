@@ -1,4 +1,4 @@
-const { getPool, sql, withTransaction } = require('../config/db');
+const { getPool, sql, withTransaction, nowSql } = require('../config/db');
 const notificationService = require('../modules/notifications/notificationService');
 const { markOnce } = require('./dedupe');
 const { todayKeyVN, todayVN } = require('../utils/vnDate');
@@ -49,7 +49,7 @@ const warnStalePasswords = async (pool) => {
 			FROM users
 			WHERE is_active = 'true'
 			  AND password_changed_at IS NOT NULL
-			  AND DATEDIFF(DAY, password_changed_at, GETDATE()) >= @days
+			  AND DATEDIFF(DAY, password_changed_at, ${nowSql}) >= @days
 		`)
 	).recordset;
 
@@ -78,7 +78,7 @@ const warnStalePasswords = async (pool) => {
 const purgeExpiredRefreshTokens = async (pool) => {
 	const result = await pool
 		.request()
-		.query('DELETE FROM refresh_tokens WHERE expires_at < GETDATE()');
+		.query(`DELETE FROM refresh_tokens WHERE expires_at < ${nowSql}`);
 	const purged = result.rowsAffected?.[0] ?? 0;
 	if (purged > 0) logger.info(`[job:account_maintenance] Đã xóa ${purged} refresh token hết hạn.`);
 };

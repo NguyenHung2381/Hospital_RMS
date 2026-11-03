@@ -1,4 +1,11 @@
-const { getPool, sql, withTransaction, boolExpr } = require('../../../config/db');
+const {
+	getPool,
+	sql,
+	withTransaction,
+	boolExpr,
+	vnTodaySql,
+	nowSql,
+} = require('../../../config/db');
 const { genCourseEnrollmentId } = require('../../../utils/idGenerator');
 const { appErrorCode } = require('../../../utils/dbErrors');
 const { broadcast } = require('../../events/eventService');
@@ -75,7 +82,7 @@ const assertSingleProgram = async (traineeId, programId) => {
       WHERE e.trainee_id = @trainee_id AND e.program_id <> @program_id
         AND e.status IN ('pending', 'approved', 'waitlisted')
         AND (COALESCE(cp.end_date, c.end_date) IS NULL
-             OR COALESCE(cp.end_date, c.end_date) >= CAST(DATEADD(HOUR, 7, GETUTCDATE()) AS DATE))`)
+             OR COALESCE(cp.end_date, c.end_date) >= ${vnTodaySql})`)
 	).recordset[0];
 	if (busy)
 		throw httpError(
@@ -260,8 +267,8 @@ const decideEnrollment = async (enrollmentId, decision, actorId, note) => {
 		.input('decided_by', sql.VarChar(20), actorId)
 		.input('note', sql.NVarChar(500), note || null).query(`
       UPDATE course_enrollments
-      SET status = @status, decided_by = @decided_by, decided_at = GETDATE(), note = @note,
-          updated_at = GETDATE(), updated_by = @decided_by
+      SET status = @status, decided_by = @decided_by, decided_at = ${nowSql}, note = @note,
+          updated_at = ${nowSql}, updated_by = @decided_by
       WHERE id = @id
     `);
 

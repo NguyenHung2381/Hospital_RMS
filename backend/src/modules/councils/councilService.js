@@ -1,4 +1,11 @@
-const { getPool, sql, withActorTransaction, actorRequest, queryAll } = require('../../config/db');
+const {
+	getPool,
+	sql,
+	withActorTransaction,
+	actorRequest,
+	queryAll,
+	nowSql,
+} = require('../../config/db');
 const { genCouncilId, genCouncilMemberId } = require('../../utils/idGenerator');
 const { broadcast } = require('../events/eventService');
 const { paging } = require('../../utils/paging');
@@ -277,7 +284,7 @@ const updateMember = async (councilId, memberId, data, actorId) => {
 	if (!sets.length) return getMemberById(memberId);
 
 	await req.query(
-		`UPDATE council_members SET ${sets.join(', ')}, updated_at = GETDATE(), updated_by = @actor_id WHERE id = @id AND council_id = @council_id`,
+		`UPDATE council_members SET ${sets.join(', ')}, updated_at = ${nowSql}, updated_by = @actor_id WHERE id = @id AND council_id = @council_id`,
 	);
 	broadcast('update', { entity: 'council' });
 	return getMemberById(memberId);

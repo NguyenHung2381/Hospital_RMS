@@ -5,7 +5,7 @@
  * 2026-09-16_cme_records.sql. Trang "Cảnh báo tín chỉ CME" (cmeRequirementService
  * .getComplianceReport) đã cộng dồn cả 2 nguồn.
  */
-const { getPool, sql, jsonValues, queryAll } = require('../../config/db');
+const { getPool, sql, jsonValues, queryAll, nowSql } = require('../../config/db');
 const { randomId } = require('../../utils/idGenerator');
 const { broadcast } = require('../events/eventService');
 const { paging } = require('../../utils/paging');
@@ -166,7 +166,7 @@ const update = async (id, data, actorId, { extraSets = [] } = {}) => {
 		.input('id', sql.VarChar(20), id)
 		.input('actor_id', sql.VarChar(20), actorId);
 	const sets = [
-		'updated_at = GETDATE()',
+		`updated_at = ${nowSql}`,
 		'updated_by = @actor_id',
 		...extraSets,
 		...fieldSets(req, data),
@@ -210,7 +210,7 @@ const updateMany = async (ids, data, actorId) => {
 			);
 	}
 
-	const sets = ['updated_at = GETDATE()', 'updated_by = @actor_id', ...fields];
+	const sets = [`updated_at = ${nowSql}`, 'updated_by = @actor_id', ...fields];
 	if (!has('credits') && (has('category_id') || has('quantity'))) {
 		const total = `c.conversion_value * COALESCE(${newVal('quantity')}, 1)`;
 		sets.push(
@@ -390,7 +390,7 @@ const review = async (id, approve, reason, actorId, credits) => {
 		.input('actor', sql.VarChar(20), actorId)
 		.input('credits', sql.Decimal(6, 2), hasCredits ? Number(credits) : null)
 		.query(`UPDATE cme_records SET approval_status = @status, reject_reason = @reason, reviewed_by = @actor,
-		        reviewed_at = GETDATE(), credits = COALESCE(@credits, credits) WHERE id = @id`);
+		        reviewed_at = ${nowSql}, credits = COALESCE(@credits, credits) WHERE id = @id`);
 	if (!r.rowsAffected[0]) return null;
 	broadcast('update', { entity: 'cme_record' });
 	return getById(id);

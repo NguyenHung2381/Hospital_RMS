@@ -15,7 +15,7 @@
  *     vòng nào trượt ⇒ hoàn thành.
  * Mọi thứ tự điền vẫn sửa tay được ở hồ sơ; cảnh báo vòng vẫn hiện như cũ.
  */
-const { getPool, sql, queryAll } = require('../../../config/db');
+const { getPool, sql, queryAll, nowSql } = require('../../../config/db');
 const { broadcast } = require('../../events/eventService');
 const { httpError } = require('../../../utils/httpError');
 const { norm } = require('../../../utils/vietnameseText');
@@ -273,7 +273,7 @@ const arrangeOne = async (
           ${Object.keys(rotationService.SNAPSHOT_TYPES)
 						.map((f) => `${f} = @${f}`)
 						.join(', ')},
-          updated_at = GETDATE(), updated_by = @actor_id
+          updated_at = ${nowSql}, updated_by = @actor_id
       WHERE id = @id`);
 	}
 
@@ -321,7 +321,7 @@ const arrangeOne = async (
           practice_form = COALESCE(practice_form, @practice_form),
           total_duration = COALESCE(total_duration, @total_duration),
           start_date = @start_date, end_date = @end_date, practice_location = @practice_location,
-          updated_at = GETDATE(), updated_by = @actor_id
+          updated_at = ${nowSql}, updated_by = @actor_id
       WHERE id = @id;
       UPDATE trainees SET legacy_code = @number WHERE id = @trainee_id AND legacy_code IS NULL AND @number IS NOT NULL;`);
 	return { rotations: plan.length };
@@ -366,7 +366,7 @@ const arrangeCourse = async (courseId, actorId) => {
 const completeFinished = async () => {
 	const pool = await getPool();
 	const r = await pool.request().input('today', sql.Date, todayVN()).query(`
-    UPDATE e SET progress_status = 'completed', progress_date = e.end_date, updated_at = GETDATE()
+    UPDATE e SET progress_status = 'completed', progress_date = e.end_date, updated_at = ${nowSql}
     FROM course_enrollments e
     WHERE e.status = 'approved' AND COALESCE(e.progress_status, 'in_progress') = 'in_progress'
       AND e.end_date < @today

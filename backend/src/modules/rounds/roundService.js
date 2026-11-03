@@ -7,6 +7,8 @@ const {
 	withActor,
 	boolExpr,
 	queryAll,
+	vnTodaySql,
+	nowSql,
 } = require('../../config/db');
 const { genRoundId, randomHex32 } = require('../../utils/idGenerator');
 const { broadcast } = require('../events/eventService');
@@ -31,8 +33,8 @@ const REG_WINDOW_COLS = `
          OR EXISTS (SELECT 1 FROM round_deadlines rd
                       WHERE rd.round_id = r.id AND rd.deadline_type = 'topic_registration'
                         AND (rd.start_date IS NULL
-                             OR rd.start_date <= CAST(DATEADD(HOUR, 7, GETUTCDATE()) AS DATE))
-                        AND rd.deadline_date >= CAST(DATEADD(HOUR, 7, GETUTCDATE()) AS DATE))`)} AS registration_open,
+                             OR rd.start_date <= ${vnTodaySql})
+                        AND rd.deadline_date >= ${vnTodaySql})`)} AS registration_open,
        (SELECT STRING_AGG(rl.level_id, ',') FROM research_round_levels rl
           WHERE rl.round_id = r.id)                                                  AS level_ids`;
 
@@ -124,7 +126,7 @@ const syncTopicLevels = async (roundId, actorId) => {
 			.input('rid', sql.VarChar(10), roundId)
 			.input('lid', sql.VarChar(5), levelId)
 			.input('actor_id', sql.VarChar(20), actorId).query(`
-      UPDATE topics SET level_id = @lid, updated_at = GETDATE(), updated_by = @actor_id
+      UPDATE topics SET level_id = @lid, updated_at = ${nowSql}, updated_by = @actor_id
       WHERE round_id = @rid AND article_type <> 'bai_bao'
         AND (level_id IS NULL OR level_id <> @lid);`),
 	);
@@ -252,7 +254,7 @@ const create = async (data, actorId) => {
 
 const update = async (id, data, actorId) => {
 	const pool = await getPool();
-	const sets = ['updated_at = GETDATE()', 'updated_by = @actor_id'];
+	const sets = [`updated_at = ${nowSql}`, 'updated_by = @actor_id'];
 	const req = actorRequest(actorId)
 		.input('id', sql.VarChar(10), id)
 		.input('actor_id', sql.VarChar(20), actorId);

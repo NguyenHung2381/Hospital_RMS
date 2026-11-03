@@ -4,6 +4,7 @@ const {
 	withActorTransaction,
 	actorRequest,
 	queryAll,
+	nowSql,
 } = require('../../../config/db');
 const { genTraineeId, randomId } = require('../../../utils/idGenerator');
 const { broadcast } = require('../../events/eventService');
@@ -87,7 +88,7 @@ const getAll = async (
 		           e.end_date AS enrollment_end_date, e.status AS enrollment_status,
 		           c.name AS course_name, tp.name AS program_name,
 		           (SELECT TOP 1 r.department_name FROM enrollment_rotations r
-		            WHERE r.enrollment_id = e.id AND CAST(GETDATE() AS DATE) BETWEEN r.start_date AND r.end_date
+		            WHERE r.enrollment_id = e.id AND CAST(${nowSql} AS DATE) BETWEEN r.start_date AND r.end_date
 		            ORDER BY r.seq) AS current_department,
 		           (SELECT COUNT(*) FROM course_enrollments e2 JOIN courses c2 ON c2.id = e2.course_id
 		            WHERE e2.trainee_id = t.id AND e2.status <> 'rejected' AND c2.training_type_id = @training_type_id) AS type_enrollment_count
@@ -209,7 +210,7 @@ const create = async (data, actorId, { fetch = true } = {}) => {
 };
 
 const update = async (id, data, actorId) => {
-	const sets = ['updated_at = GETDATE()', 'updated_by = @actor_id'];
+	const sets = [`updated_at = ${nowSql}`, 'updated_by = @actor_id'];
 	const req = actorRequest(actorId)
 		.input('id', sql.VarChar(20), id)
 		.input('actor_id', sql.VarChar(20), actorId);
@@ -283,7 +284,7 @@ const remove = async (id, actorId) => {
 			.request()
 			.input('id', sql.VarChar(20), id)
 			.input('actor_id', sql.VarChar(20), actorId)
-			.query('UPDATE trainees SET hidden_at = SYSDATETIME() WHERE id = @id'),
+			.query(`UPDATE trainees SET hidden_at = ${nowSql} WHERE id = @id`),
 	);
 	// Hồ sơ đã xóa thì tài khoản học viên cũng không được đăng nhập nữa
 	await lockAccountOf(id, actorId);

@@ -1,7 +1,7 @@
 const jwt = require('jsonwebtoken');
 const { signToken, ISSUER } = require('../../utils/keys');
 const crypto = require('crypto');
-const { getPool, sql } = require('../../config/db');
+const { getPool, sql, utcNowSql, nowSql } = require('../../config/db');
 const permCache = require('../../permissions/permissionCache');
 const { twoFactorState } = require('../../permissions/twoFactorPolicy');
 const tempPasswordPolicy = require('../../permissions/tempPasswordPolicy');
@@ -196,9 +196,9 @@ const refreshAccessToken = async (refreshToken, ip = null, userAgent = null) => 
 	const tokenHash = hashToken(refreshToken);
 	const claimed = (
 		await pool.request().input('token', sql.VarChar(64), tokenHash).query(`
-				UPDATE refresh_tokens SET revoked_at = SYSUTCDATETIME()
+				UPDATE refresh_tokens SET revoked_at = ${utcNowSql}
 				OUTPUT INSERTED.id, INSERTED.user_id, INSERTED.family_id, INSERTED.remember_me
-				WHERE token = @token AND revoked_at IS NULL AND expires_at > GETDATE()
+				WHERE token = @token AND revoked_at IS NULL AND expires_at > ${nowSql}
 			`)
 	).recordset[0];
 
@@ -336,7 +336,7 @@ const listSessions = async (userId) => {
 	const result = await pool.request().input('user_id', sql.VarChar(20), userId).query(`
 			SELECT *
 			FROM refresh_tokens
-			WHERE user_id = @user_id AND expires_at > GETDATE() AND revoked_at IS NULL
+			WHERE user_id = @user_id AND expires_at > ${nowSql} AND revoked_at IS NULL
 			ORDER BY expires_at DESC
 		`);
 	return result.recordset.map((r) => ({

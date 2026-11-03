@@ -1,4 +1,4 @@
-const { getPool, sql, withTransaction, jsonRows, queryAll } = require('../../../config/db');
+const { getPool, sql, withTransaction, jsonRows, queryAll, nowSql } = require('../../../config/db');
 const { genGradeId } = require('../../../utils/idGenerator');
 const { broadcast } = require('../../events/eventService');
 const { httpError } = require('../../../utils/httpError');
@@ -239,7 +239,7 @@ const writePart = async (tx, grade, enrollmentId, part, score, flag, source, act
 		.input('flag', sql.VarChar(10), flag)
 		.input('actor_id', sql.VarChar(20), actorId)
 		.query(
-			`UPDATE grades SET ${part}_score = @score, ${part}_flag = @flag, updated_at = GETDATE(), updated_by = @actor_id WHERE id = @id`,
+			`UPDATE grades SET ${part}_score = @score, ${part}_flag = @flag, updated_at = ${nowSql}, updated_by = @actor_id WHERE id = @id`,
 		);
 	await new sql.Request(tx)
 		.input('enrollment_id', sql.VarChar(20), enrollmentId)
@@ -371,7 +371,7 @@ const lock = async (courseId, actorId) => {
 			await new sql.Request(tx)
 				.input('id', sql.VarChar(20), grade.id)
 				.input('actor_id', sql.VarChar(20), actorId)
-				.query('UPDATE grades SET locked_at = GETDATE(), locked_by = @actor_id WHERE id = @id');
+				.query(`UPDATE grades SET locked_at = ${nowSql}, locked_by = @actor_id WHERE id = @id`);
 		}
 	});
 	await recompute(courseId);
@@ -390,7 +390,7 @@ const unlock = async (courseId, actorId, reason) => {
 		.input('course_id', sql.VarChar(20), courseId)
 		.input('actor_id', sql.VarChar(20), actorId)
 		.input('note', sql.NVarChar(255), reason ? `Mở khóa điểm: ${reason}` : 'Mở khóa điểm').query(`
-      UPDATE g SET locked_at = NULL, locked_by = NULL, updated_at = GETDATE(), updated_by = @actor_id
+      UPDATE g SET locked_at = NULL, locked_by = NULL, updated_at = ${nowSql}, updated_by = @actor_id
       FROM grades g JOIN course_enrollments e ON e.id = g.enrollment_id
       WHERE e.course_id = @course_id AND g.subject_id IS NULL AND g.locked_at IS NOT NULL;
       -- Ghi nhật ký vào lịch sử điểm (phần lý thuyết, giữ nguyên điểm hiện có)
@@ -437,7 +437,7 @@ const retake = async (enrollmentId, part, actorId) => {
 			.input('actor_id', sql.VarChar(20), actorId)
 			.query(
 				`UPDATE grades SET ${part}_attempt = ${part}_attempt + 1, ${part}_score = NULL, ${part}_flag = NULL,
-				 updated_at = GETDATE(), updated_by = @actor_id WHERE id = @id`,
+				 updated_at = ${nowSql}, updated_by = @actor_id WHERE id = @id`,
 			);
 		await writePart(
 			tx,

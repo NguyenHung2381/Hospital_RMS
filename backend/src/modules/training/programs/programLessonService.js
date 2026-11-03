@@ -1,4 +1,4 @@
-const { getPool, sql, jsonValues, newIdSql } = require('../../../config/db');
+const { getPool, sql, jsonValues, newIdSql, nowSql } = require('../../../config/db');
 const { randomId } = require('../../../utils/idGenerator');
 const { appErrorCode } = require('../../../utils/dbErrors');
 const { broadcast } = require('../../events/eventService');
@@ -277,7 +277,7 @@ const reorderLessons = async (programId, linkIds, actorId) => {
 			.input('ids', sql.NVarChar(sql.MAX), JSON.stringify(ids))
 			.input('program_id', sql.VarChar(20), programId)
 			.input('actor_id', sql.VarChar(20), actorId).query(`
-        UPDATE lp SET display_order = j.idx, updated_at = GETDATE(), updated_by = @actor_id
+        UPDATE lp SET display_order = j.idx, updated_at = ${nowSql}, updated_by = @actor_id
         FROM lesson_programs lp JOIN ${jsonValues('@ids', { withIndex: true })} j ON j.value = lp.id
         WHERE lp.program_id = @program_id
       `);
@@ -296,7 +296,7 @@ const updateLessonLink = async (linkId, data, actorId) => {
 		.input('display_order', sql.Int, data.display_order)
 		.input('actor_id', sql.VarChar(20), actorId)
 		.query(
-			'UPDATE lesson_programs SET display_order = @display_order, updated_at = GETDATE(), updated_by = @actor_id WHERE id = @id',
+			`UPDATE lesson_programs SET display_order = @display_order, updated_at = ${nowSql}, updated_by = @actor_id WHERE id = @id`,
 		);
 	broadcast('update', { entity: 'program_lesson' });
 };
@@ -319,7 +319,7 @@ const unlinkLesson = async (linkId) => {
 const updateLesson = async (lessonId, data, actorId) => {
 	assertLessonInput(data);
 	const pool = await getPool();
-	const sets = ['updated_at = GETDATE()', 'updated_by = @actor_id'];
+	const sets = [`updated_at = ${nowSql}`, 'updated_by = @actor_id'];
 	const req = pool
 		.request()
 		.input('id', sql.VarChar(20), lessonId)

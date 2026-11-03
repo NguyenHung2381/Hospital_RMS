@@ -1,7 +1,7 @@
 const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
 const { v4: uuidv4 } = require('uuid');
-const { getPool, sql } = require('../../config/db');
+const { getPool, sql, nowSql } = require('../../config/db');
 const securityEvents = require('../audit/securityEventService');
 const logger = require('../../config/logger');
 
@@ -48,7 +48,7 @@ const isRevoked = async (did) => {
 		.input('days', sql.Int, DEVICE_TOKEN_TTL_DAYS + 1).query(`
 			SELECT TOP 1 1 AS revoked FROM security_events
 			WHERE event_type = 'device_untrusted' AND target_type = 'device'
-				AND target_id = @did AND created_at > DATEADD(DAY, -@days, GETDATE())
+				AND target_id = @did AND created_at > DATEADD(DAY, -@days, ${nowSql})
 		`);
 	if (!result.recordset.length) return false;
 	if (revokedCache.size >= MAX_TRACKED_DEVICES) revokedCache.clear();

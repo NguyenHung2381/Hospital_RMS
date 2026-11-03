@@ -1,4 +1,4 @@
-const { getPool, sql, queryAll } = require('../../config/db');
+const { getPool, sql, queryAll, nowSql } = require('../../config/db');
 const { randomId } = require('../../utils/idGenerator');
 const { isUniqueViolation } = require('../../utils/dbErrors');
 const { parseJsonArray } = require('../../utils/sqlFilters');
@@ -127,7 +127,7 @@ const create = async (data, actorId) => {
 
 const update = async (id, data, actorId) => {
 	const pool = await getPool();
-	const sets = ['updated_at = GETDATE()', 'updated_by = @actor_id'];
+	const sets = [`updated_at = ${nowSql}`, 'updated_by = @actor_id'];
 	const req = pool
 		.request()
 		.input('id', sql.VarChar(20), id)

@@ -8,6 +8,8 @@ const {
 	withActor,
 	boolExpr,
 	queryAll,
+	nowSql,
+	utcNowSql,
 } = require('../../config/db');
 const { broadcast } = require('../events/eventService');
 const personService = require('../persons/personService');
@@ -73,7 +75,7 @@ const getGlobalStats = async (pool) => {
       SUM(CASE WHEN is_active = 'true' THEN 1 ELSE 0 END) AS active,
       SUM(CASE WHEN is_active = 'false' THEN 1 ELSE 0 END) AS inactive,
       SUM(CASE WHEN password_changed_at IS NULL
-               OR DATEDIFF(day, password_changed_at, GETDATE()) > 90
+               OR DATEDIFF(day, password_changed_at, ${nowSql}) > 90
           THEN 1 ELSE 0 END) AS pwd_warn
     FROM users u
     WHERE ${notTraineeSql('u')};
@@ -277,7 +279,7 @@ const create = async (data, actorId) => {
       INSERT INTO users (id, username, password, staff_number, full_name, email, department_id, role_id, created_by,
                          must_change_password, temp_password_issued_at)
       VALUES (@new_id, @username, @password, @staff_number, @full_name, @email, @department_id, @role_id, @actor_id,
-              1, SYSUTCDATETIME());
+              1, ${utcNowSql});
     `);
 		return id;
 	}, pool);
@@ -349,7 +351,7 @@ const update = async (id, data, actorId) => {
 
 	if (!sets.length) return getById(id);
 
-	sets.push('updated_at = GETDATE()', 'updated_by = @actor_id');
+	sets.push(`updated_at = ${nowSql}`, 'updated_by = @actor_id');
 	await req.query(`UPDATE users SET ${sets.join(', ')} WHERE id = @id`);
 	// Vai trò / khoa / trạng thái mới phải có hiệu lực ngay với phiên đang mở
 	// (middlewares/auth.js đọc các field này qua userStatusCache, không tin JWT).
@@ -453,8 +455,8 @@ const resetPassword = async (id, newPassword, actorId, ip = null) => {
 			.input('password', sql.VarChar(255), hashed)
 			.input('actor_id', sql.VarChar(20), actorId)
 			.query(
-				`UPDATE users SET password=@password, password_changed_at=GETDATE(), must_change_password = 'true',
-			   temp_password_issued_at=SYSUTCDATETIME(), updated_at=GETDATE(), updated_by=@actor_id WHERE id=@id;
+				`UPDATE users SET password=@password, password_changed_at=${nowSql}, must_change_password = 'true',
+			   temp_password_issued_at=${utcNowSql}, updated_at=${nowSql}, updated_by=@actor_id WHERE id=@id;
 			 DELETE FROM refresh_tokens WHERE user_id=@id;`,
 			),
 	);
@@ -562,7 +564,7 @@ const createStaffAccount = async (
         INSERT INTO users (id, username, password, full_name, staff_number, department_id, role_id, created_by,
                            must_change_password, temp_password_issued_at)
         VALUES (@uid, @username, @password, @full_name, @staff_number, @department_id, @role_id, @actor_id,
-                1, SYSUTCDATETIME())
+                1, ${utcNowSql})
       `);
 		return { userId, username };
 	}, pool);

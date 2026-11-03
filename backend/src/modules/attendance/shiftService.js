@@ -1,4 +1,11 @@
-const { getPool, sql, withTransaction, boolExpr, jsonValues } = require('../../config/db');
+const {
+	getPool,
+	sql,
+	withTransaction,
+	boolExpr,
+	jsonValues,
+	utcNowSql,
+} = require('../../config/db');
 const { broadcast } = require('../events/eventService');
 const {
 	validateShift,
@@ -79,7 +86,7 @@ const saveShift = async (id, body) => {
 				await req.input('id', sql.Int, id).query(`
           UPDATE work_shifts SET name = @name, code = @code, color = @color, start_time = @start_time,
             end_time = @end_time, checkin_before_min = @before, checkout_after_min = @after, grace_min = @grace,
-            is_active = @active, updated_at = SYSUTCDATETIME()
+            is_active = @active, updated_at = ${utcNowSql}
           OUTPUT inserted.* WHERE id = @id
         `)
 			).recordset[0]
@@ -169,7 +176,7 @@ const savePattern = async (id, { name, days, is_default }) => {
 		return id
 			? (
 					await req.input('id', sql.Int, id).query(`
-            UPDATE shift_patterns SET name = @name, days = @days, is_default = @is_default, updated_at = SYSUTCDATETIME()
+            UPDATE shift_patterns SET name = @name, days = @days, is_default = @is_default, updated_at = ${utcNowSql}
             OUTPUT inserted.* WHERE id = @id
           `)
 				).recordset[0]

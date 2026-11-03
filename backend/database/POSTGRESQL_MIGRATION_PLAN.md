@@ -99,7 +99,7 @@ bước A và giữ máy Windows hiện tại tới khi xong bước B.
 | `@ten` tham số đặt tên + `.input(name, sql.Type, v)` | 1.848 (118) | `$1, $2…` (thứ tự) — xử lý tự động trong lớp adapter, mục 5.1 |
 | `sql.NVarChar`, `sql.Int`, `sql.DateTime`... | 2.115 (119) | Bỏ, hoặc chỉ dùng để ép kiểu `$1::int` khi cần |
 | `recordset` / `recordsets[i]` (nhiều kết quả trong 1 batch) | 673 / 91 — **recordsets đã hết** (`queryAll`) | `rows`; nhiều kết quả → tách thành nhiều câu |
-| `GETDATE()`, `SYSDATETIME()`, `SYSUTCDATETIME()` | 212 (86) | `LOCALTIMESTAMP` / `now()` — xem mục 4.3 về múi giờ |
+| `GETDATE()`, `SYSDATETIME()`, `SYSUTCDATETIME()` | 212 (86) → 5 (comment + migrator SQL Server) | `nowSql` / `utcNowSql` / `vnTodaySql` của adapter — xem mục 4.3 về múi giờ |
 | `N'...'` | 339 (98) | `'...'` (PG luôn là UTF-8) |
 | Định danh `[ten]` | 658 (156) | `"ten"` hoặc bỏ ngoặc |
 | `ISNULL(` | 108 (33) — **đã đổi hết** | `COALESCE(` (chạy được trên cả 2 DB) |
@@ -246,7 +246,7 @@ như thể giờ đó là UTC**. Cách làm:
 |---|---|---|
 | `ISNULL(a, b)` | `COALESCE(a, b)` | ✓ — đổi ngay ở chặng 1 |
 | `SELECT TOP 10 ...` | `... LIMIT 10` | Dùng `OFFSET 0 ROWS FETCH NEXT 10 ROWS ONLY` (cần `ORDER BY`) nếu muốn chạy cả 2 |
-| `GETDATE()` | `LOCALTIMESTAMP` | `CURRENT_TIMESTAMP` chạy cả 2 nhưng PG trả `timestamptz` → nên đổi trong adapter/chặng 3 |
+| `GETDATE()` | `LOCALTIMESTAMP` | ✓ qua adapter: `${nowSql}` (giờ VN), `${utcNowSql}`, `${vnTodaySql}`. Không dùng `CURRENT_TIMESTAMP`: PG trả `timestamptz`, JS đọc lệch 7 giờ |
 | `LEN(s)` | `length(s)` | ✗ (LEN bỏ khoảng trắng cuối) |
 | `a + b` (nối chuỗi) | `a \|\| b` hoặc `concat(a, b)` | `CONCAT(a, b)` ✓ |
 | `CAST(x AS NVARCHAR(20))` | `x::text` | `CAST(x AS VARCHAR(20))` ✓ |
@@ -505,6 +505,22 @@ thường. Mỗi nhóm là 1 PR nhỏ theo module.
   (`lessonProgressService`: `UPDATE … FROM` + `SELECT @@ROWCOUNT` trong 1 lô).
   Còn lại (phát hiện dần qua test PG): `VALUES (…, 1)` / `CASE … THEN 1 ELSE 0` ghi vào cột
   boolean, `COALESCE(cột_bit, 0)` — PG cũng không tự ép số sang boolean ở các chỗ này.
+- [x] Giờ hiện tại (`GETDATE` / `SYSDATETIME` / `GETUTCDATE` / `SYSUTCDATETIME`, 188 → 5): 185 chỗ
+  đổi bằng script sang đoạn SQL của adapter chèn vào chuỗi (chuỗi `'...'` chuyển sang template):
+  - `${nowSql}` giờ VN: SQL Server `GETDATE()`; PG `(now() AT TIME ZONE 'Asia/Ho_Chi_Minh')` —
+    đổi múi giờ tường minh, không phụ thuộc `timezone` của DB. `SYSDATETIME()` cũng thành
+    `nowSql` (độ chính xác DATETIME đủ cho `updated_at` / `reviewed_at`).
+  - `${utcNowSql}` cho các cột lưu giờ UTC (`locked_until`, `expires_at`, `checked_in_at`, mật khẩu
+    tạm…): SQL Server `SYSUTCDATETIME()` (thay cả `GETUTCDATE()`); PG `(now() AT TIME ZONE 'UTC')`.
+  - `${vnTodaySql}` thay `CAST(DATEADD(HOUR, 7, GETUTCDATE()) AS DATE)` (ngày VN không phụ thuộc
+    múi giờ máy chủ; date_fn 28 → 21).
+  - Khác biệt: PG `now()` là lúc **bắt đầu transaction** (SQL Server: lúc chạy câu) — trong 1
+    transaction mọi dòng cùng 1 mốc.
+  - Không đổi: `src/database/migrator.js` (nhánh SQL Server riêng), `scripts/pg/tsqlToPg.js`
+    (bộ dịch DEFAULT, chuỗi là dữ liệu), comment. Tổng ratchet 457 → 267.
+  - Kiểm bằng ca "nowSql / utcNowSql / vnTodaySql" trong `test-integration/batchSplit.cases.js`
+    (2 DB, lệch đúng 7 giờ, ngày VN khớp `todayKeyVN`); PG bật thêm ca vòng thực hành và khoá tài
+    khoản học viên.
 - [ ] Bỏ các chỗ phụ thuộc thứ tự ngầm: mọi câu trả danh sách phải có `ORDER BY`.
 - [x] Ghi baseline smoke test (`UPDATE_SNAPSHOTS=1 npm run test:smoke`, đã ghi 2026-11-03;
   bản 24/10 lưu ở `get-shapes.2026-10-24.bak.json`) **trước**

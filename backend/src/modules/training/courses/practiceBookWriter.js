@@ -1,6 +1,6 @@
 // Ghi 1 hồ sơ thực hành GPHN từ sổ đã đọc (practiceBookImportService): ghi danh + vòng thực hành,
 // bổ sung danh mục lĩnh vực / hình thức / đơn vị cử đi mới gặp.
-const { sql, withTransaction } = require('../../../config/db');
+const { sql, withTransaction, nowSql } = require('../../../config/db');
 const { genCourseEnrollmentId, randomId } = require('../../../utils/idGenerator');
 const { broadcast } = require('../../events/eventService');
 const { invalidate } = require('../../../utils/cache');
@@ -121,7 +121,7 @@ const writeRecord = async (pool, it, traineeId, courseId, actorId) => {
 						// Dòng chưa có mã / chưa có ngày: giữ giá trị đã tự điền lần trước
 						.map((f) => (KEEP_IF_BLANK.has(f) ? `${f} = COALESCE(@${f}, ${f})` : `${f} = @${f}`))
 						.join(', ')},
-          updated_at = GETDATE(), updated_by = @actor_id
+          updated_at = ${nowSql}, updated_by = @actor_id
       WHERE id = @id`);
 			return found;
 		}
@@ -129,7 +129,7 @@ const writeRecord = async (pool, it, traineeId, courseId, actorId) => {
 		await bind(newId).query(`
       INSERT INTO course_enrollments (id, course_id, trainee_id, program_id, status, decided_by, decided_at, created_by,
         ${Object.keys(ENROLLMENT_FIELDS).join(', ')})
-      VALUES (@id, @course_id, @trainee_id, @program_id, 'approved', @actor_id, GETDATE(), @actor_id,
+      VALUES (@id, @course_id, @trainee_id, @program_id, 'approved', @actor_id, ${nowSql}, @actor_id,
         ${Object.keys(ENROLLMENT_FIELDS)
 					.map((f) => `@${f}`)
 					.join(', ')})`);

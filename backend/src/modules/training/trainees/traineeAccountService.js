@@ -1,5 +1,13 @@
 const bcrypt = require('bcrypt');
-const { getPool, sql, withActorTransaction, withActor, jsonValues } = require('../../../config/db');
+const {
+	getPool,
+	sql,
+	withActorTransaction,
+	withActor,
+	jsonValues,
+	utcNowSql,
+	nowSql,
+} = require('../../../config/db');
 const { broadcast } = require('../../events/eventService');
 const { ROLE, requireRoleId } = require('../../access/roleCodes');
 const { defaultPassword } = require('../../../utils/passwordPolicy');
@@ -138,7 +146,7 @@ const grantAccounts = async (traineeIds, actorId) => {
           )
           VALUES (
             @uid, @username, @password, @full_name, @email,
-            @phone_number, @role_id, @actor_id, 1, SYSUTCDATETIME()
+            @phone_number, @role_id, @actor_id, 1, ${utcNowSql}
           )
         `);
 
@@ -148,8 +156,8 @@ const grantAccounts = async (traineeIds, actorId) => {
 				.input('actor_id', sql.VarChar(20), actorId)
 				.input('no', sql.Bit, false).query(`
           UPDATE trainees
-          SET user_id = @uid, account_granted = 'true', account_granted_at = GETDATE(),
-              updated_at = GETDATE(), updated_by = @actor_id
+          SET user_id = @uid, account_granted = 'true', account_granted_at = ${nowSql},
+              updated_at = ${nowSql}, updated_by = @actor_id
           WHERE id = @trainee_id AND COALESCE(account_granted, @no) = @no
         `);
 			// Người khác vừa cấp cho cùng học viên (bấm 2 lần / 2 tab) ⇒ rollback tài khoản thừa
@@ -223,7 +231,7 @@ const lockAccountOf = async (traineeId, actorId) => {
 				.request()
 				.input('uid', sql.VarChar(20), uid)
 				.input('actor_id', sql.VarChar(20), actorId).query(`
-          UPDATE users SET is_active = 'false', updated_at = GETDATE(), updated_by = @actor_id
+          UPDATE users SET is_active = 'false', updated_at = ${nowSql}, updated_by = @actor_id
           WHERE id = @uid AND is_active = 'true'`);
 		}
 		return uid;
@@ -253,7 +261,7 @@ const setAccountActive = async (traineeId, isActive, actorId) => {
 			.input('id', sql.VarChar(20), userId)
 			.input('is_active', sql.Bit, !!isActive)
 			.input('actor_id', sql.VarChar(20), actorId).query(`
-      UPDATE users SET is_active = @is_active, updated_at = GETDATE(), updated_by = @actor_id
+      UPDATE users SET is_active = @is_active, updated_at = ${nowSql}, updated_by = @actor_id
       WHERE id = @id
     `),
 	);

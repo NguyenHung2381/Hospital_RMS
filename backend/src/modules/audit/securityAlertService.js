@@ -1,5 +1,5 @@
 const systemSettingService = require('../settings/systemSettingService');
-const { getPool, sql } = require('../../config/db');
+const { getPool, sql, nowSql } = require('../../config/db');
 const mailService = require('../notifications/mailService');
 const { consumeOnce } = require('../../utils/oneTimeToken');
 const logger = require('../../config/logger');
@@ -82,7 +82,7 @@ const countRecent = async (eventType, windowMin) => {
 		await pool.request().input('type', sql.VarChar(50), eventType).input('min', sql.Int, windowMin)
 			.query(`
 				SELECT COUNT(*) AS n FROM security_events
-				WHERE event_type = @type AND created_at > DATEADD(MINUTE, -@min, GETDATE())
+				WHERE event_type = @type AND created_at > DATEADD(MINUTE, -@min, ${nowSql})
 			`)
 	).recordset[0].n;
 };

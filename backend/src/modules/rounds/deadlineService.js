@@ -1,4 +1,4 @@
-const { getPool, sql, withActorTransaction, withActor } = require('../../config/db');
+const { getPool, sql, withActorTransaction, withActor, nowSql } = require('../../config/db');
 const { broadcast } = require('../events/eventService');
 const { fmtDateVN: fmtDate } = require('../../utils/vnDate');
 const { httpError } = require('../../utils/httpError');
@@ -89,7 +89,7 @@ const upsert = async (roundId, phase, data, actorId) => {
                deadline_date     = @deadline_date,
                deadline_type     = @deadline_type,
                supplement_fields = @supplement_fields,
-               updated_at        = GETDATE(),
+               updated_at        = ${nowSql},
                updated_by        = @actor_id
          WHERE round_id = @round_id AND phase = @phase;
       ELSE

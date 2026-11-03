@@ -1,4 +1,4 @@
-const { getPool, sql } = require('../config/db');
+const { getPool, sql, utcNowSql } = require('../config/db');
 const { ALL_PERMISSIONS } = require('./catalog');
 const userStatusCache = require('./userStatusCache');
 const systemSettingService = require('../modules/settings/systemSettingService');
@@ -44,7 +44,7 @@ const twoFactorState = async ({ userId, totpEnabled, requiredSince }, permission
 	if (!since) {
 		const pool = await getPool();
 		const r = await pool.request().input('id', sql.VarChar(20), userId).query(`
-				UPDATE users SET twofa_required_since = SYSUTCDATETIME()
+				UPDATE users SET twofa_required_since = ${utcNowSql}
 				WHERE id = @id AND twofa_required_since IS NULL;
 				SELECT twofa_required_since FROM users WHERE id = @id;
 			`);

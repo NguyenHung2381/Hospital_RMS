@@ -1,4 +1,11 @@
-const { getPool, sql, withTransaction, castBool, lockResource } = require('../../config/db');
+const {
+	getPool,
+	sql,
+	withTransaction,
+	castBool,
+	lockResource,
+	nowSql,
+} = require('../../config/db');
 const { isMissingObject } = require('../../utils/dbErrors');
 const { normalizeGender } = require('../../utils/gender');
 const logger = require('../../config/logger');
@@ -288,7 +295,7 @@ const updatePerson = async (tx, source, personId, row, actorId) => {
 	if (cfg.internal) sets.push('is_internal = COALESCE(is_internal, @internal)');
 	if (cfg.verified) sets.push("is_verified = 'true'");
 	if (!sets.length) return;
-	sets.push('updated_at = SYSDATETIME()', 'updated_by = @actor');
+	sets.push(`updated_at = ${nowSql}`, 'updated_by = @actor');
 
 	const req = bindPerson(new sql.Request(tx), row)
 		.input('pid', sql.VarChar(20), personId)
@@ -513,7 +520,7 @@ const releasePerson = async (source, id, personId, { actorId = undefined } = {})
 						.input('oid', sql.VarChar(30), other.id)
 						.input('actor', sql.VarChar(20), actorId || null)
 						.query(`UPDATE dbo.persons SET origin_table = @src, origin_id = @oid,
-						               updated_at = SYSDATETIME(), updated_by = @actor
+						               updated_at = ${nowSql}, updated_by = @actor
 						        WHERE id = @pid`);
 					break;
 				}
@@ -555,7 +562,7 @@ const linkTopicMemberToUser = async (memberId, userId, { actorId = undefined } =
 				await new sql.Request(tx)
 					.input('mp', sql.VarChar(20), mp)
 					.query(
-						`UPDATE dbo.persons SET is_verified = 'true', is_internal = 'true', updated_at = SYSDATETIME() WHERE id = @mp`,
+						`UPDATE dbo.persons SET is_verified = 'true', is_internal = 'true', updated_at = ${nowSql} WHERE id = @mp`,
 					);
 				await resolveOne(tx, 'users', userId, actorId);
 				return mp;

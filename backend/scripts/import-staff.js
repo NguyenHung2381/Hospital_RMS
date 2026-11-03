@@ -18,7 +18,7 @@ const path = require('path');
 require('dotenv').config({ path: path.join(__dirname, '../.env'), quiet: true });
 
 const ExcelJS = require('exceljs');
-const { getPool, sql, withActorTransaction } = require('../src/config/db');
+const { getPool, sql, withActorTransaction, nowSql } = require('../src/config/db');
 const { norm, normDept } = require('../src/utils/vietnameseText');
 const { ROLE, requireRoleId } = require('../src/modules/access/roleCodes');
 
@@ -266,7 +266,7 @@ const ymd = (d) => (d ? d.toISOString().slice(0, 10) : '—');
 					.input('dob', sql.Date, r.dob)
 					.input('qual', sql.VarChar(20), r.qual_id)
 					.input('actor_id', sql.VarChar(20), actorId).query(`
-					UPDATE users SET date_of_birth = @dob, qualification_id = @qual, updated_at = GETDATE(), updated_by = @actor_id
+					UPDATE users SET date_of_birth = @dob, qualification_id = @qual, updated_at = ${nowSql}, updated_by = @actor_id
 					WHERE id = @id
 				`),
 			);
@@ -290,7 +290,7 @@ const ymd = (d) => (d ? d.toISOString().slice(0, 10) : '—');
 				SET department_id = COALESCE(department_id, @dept),
 				    date_of_birth = COALESCE(date_of_birth, @dob),
 				    qualification_id = COALESCE(qualification_id, @qual),
-				    updated_at = GETDATE(), updated_by = @actor_id
+				    updated_at = ${nowSql}, updated_by = @actor_id
 				WHERE id = @id
 				  AND ((department_id IS NULL AND @dept IS NOT NULL)
 				    OR (date_of_birth IS NULL AND @dob IS NOT NULL)

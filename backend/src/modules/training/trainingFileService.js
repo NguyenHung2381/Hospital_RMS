@@ -1,4 +1,4 @@
-const { getPool, sql } = require('../../config/db');
+const { getPool, sql, nowSql } = require('../../config/db');
 const { randomId } = require('../../utils/idGenerator');
 const { removeUploadedFile } = require('../../utils/uploadPaths');
 
@@ -53,7 +53,7 @@ const softDelete = async (fileId, actorId) => {
 		.input('id', sql.VarChar(20), fileId)
 		.input('actor_id', sql.VarChar(20), actorId || null)
 		.query(
-			"UPDATE training_files SET is_deleted = 'true', updated_at = GETDATE(), updated_by = @actor_id WHERE id = @id",
+			`UPDATE training_files SET is_deleted = 'true', updated_at = ${nowSql}, updated_by = @actor_id WHERE id = @id`,
 		);
 	removeUploadedFile(file.file_url);
 };

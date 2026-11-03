@@ -1,4 +1,11 @@
-const { getPool, sql, jsonValues, updateReturning } = require('../../../config/db');
+const {
+	getPool,
+	sql,
+	jsonValues,
+	updateReturning,
+	vnTodaySql,
+	nowSql,
+} = require('../../../config/db');
 const { broadcast } = require('../../events/eventService');
 const mailService = require('../../notifications/mailService');
 const mailQueue = require('../../notifications/mailQueue');
@@ -20,7 +27,7 @@ const { suggestClassDates } = require('../../../utils/classDates');
 //     khóa khác: đợt mới cùng chương trình gợi ý danh sách "Người chờ từ đợt trước",
 //     cán bộ chọn rồi bấm chuyển (waitlistTransferService).
 const { CLASS_TYPES } = require('./classTypes');
-const VN_TODAY = 'CAST(DATEADD(HOUR, 7, GETUTCDATE()) AS DATE)';
+const VN_TODAY = vnTodaySql;
 
 const appliesTo = (c) => !!c && CLASS_TYPES.includes(c.training_type_id) && !c.is_rolling;
 const APPLIES_SQL = (c) =>
@@ -188,7 +195,7 @@ const fillFromWaitlist = async (courseId, actorId, { programId = null } = {}) =>
 				.input('actor_id', sql.VarChar(20), actorId)
 				.query(
 					updateReturning(
-						"UPDATE course_enrollments SET status = 'approved', updated_at = GETDATE(), updated_by = @actor_id",
+						`UPDATE course_enrollments SET status = 'approved', updated_at = ${nowSql}, updated_by = @actor_id`,
 						`id IN (
             SELECT e.id FROM course_enrollments e
             WHERE e.course_id = @course_id AND e.program_id = @program_id AND e.status = 'waitlisted'
@@ -268,7 +275,7 @@ const suggestDates = async (courseId, programId) => {
 // Ngày khóa = sớm nhất → muộn nhất của các lớp đã đặt ngày (lớp chưa đặt thì giữ ngày khóa).
 const syncCourseDates = (req) =>
 	req.query(`
-    UPDATE c SET start_date = x.s, end_date = x.e, updated_at = GETDATE()
+    UPDATE c SET start_date = x.s, end_date = x.e, updated_at = ${nowSql}
     FROM courses c
     CROSS APPLY (SELECT MIN(start_date) AS s, MAX(end_date) AS e FROM course_programs WHERE course_id = c.id) x
     WHERE c.id = @course_id AND x.s IS NOT NULL`);
@@ -291,7 +298,7 @@ const setClassDates = async (courseId, programId, dates, actorId) => {
 		.input('program_id', sql.VarChar(20), programId)
 		.input('actor_id', sql.VarChar(20), actorId);
 	await req.query(`
-      UPDATE course_programs SET start_date = @start_date, end_date = @end_date, updated_at = GETDATE(), updated_by = @actor_id
+      UPDATE course_programs SET start_date = @start_date, end_date = @end_date, updated_at = ${nowSql}, updated_by = @actor_id
       WHERE course_id = @course_id AND program_id = @program_id`);
 	await syncCourseDates(pool.request().input('course_id', sql.VarChar(20), courseId));
 	broadcast('update', { entity: 'course' });
@@ -315,7 +322,7 @@ const openClass = async (courseId, programId, actorId, dates = {}) => {
 		.input('program_id', sql.VarChar(20), programId)
 		.input('actor_id', sql.VarChar(20), actorId).query(`
       UPDATE course_programs
-      SET opened_at = GETDATE(), opened_by = @actor_id, updated_at = GETDATE(), updated_by = @actor_id,
+      SET opened_at = ${nowSql}, opened_by = @actor_id, updated_at = ${nowSql}, updated_by = @actor_id,
           start_date = COALESCE(@start_date, start_date), end_date = COALESCE(@end_date, end_date)
       WHERE course_id = @course_id AND program_id = @program_id AND opened_at IS NULL;
       SELECT id FROM course_enrollments WHERE course_id = @course_id AND program_id = @program_id AND status = 'approved';`);
@@ -373,7 +380,7 @@ const cancelOpenClass = async (courseId, programId, actorId) => {
 		);
 	const r = await params(pool.request()).input('actor_id', sql.VarChar(20), actorId).query(`
       UPDATE course_programs
-      SET opened_at = NULL, opened_by = NULL, updated_at = GETDATE(), updated_by = @actor_id
+      SET opened_at = NULL, opened_by = NULL, updated_at = ${nowSql}, updated_by = @actor_id
       WHERE course_id = @course_id AND program_id = @program_id AND opened_at IS NOT NULL;
       SELECT id FROM course_enrollments WHERE course_id = @course_id AND program_id = @program_id AND status = 'approved';`);
 	broadcast('update', { entity: 'course' });

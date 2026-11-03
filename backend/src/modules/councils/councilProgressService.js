@@ -8,7 +8,7 @@
  *
  * File đánh giá tái dùng bảng files: batch có note = EVAL_NOTE.
  */
-const { getPool, sql, queryAll } = require('../../config/db');
+const { getPool, sql, queryAll, nowSql } = require('../../config/db');
 const fileService = require('../topics/fileService');
 const { lazyRequire } = require('../../utils/lazyRequire');
 /** @type {typeof import('sanitize-html')} */
@@ -199,7 +199,7 @@ const upsertReview = async (topicId, userId, { progress_percent, rating, comment
 		.input('comment', sql.NVarChar(sql.MAX), sanitizeComment(comment, topicId)).query(`
       UPDATE council_progress_reviews
       SET progress_percent = @progress_percent, rating = @rating,
-          comment = @comment, role = @role, updated_at = GETDATE(), updated_by = @user_id
+          comment = @comment, role = @role, updated_at = ${nowSql}, updated_by = @user_id
       WHERE topic_id = @topic_id AND user_id = @user_id;
       IF @@ROWCOUNT = 0
         INSERT INTO council_progress_reviews
@@ -241,12 +241,12 @@ const upsertResult = async (topicId, userId, { conclusion, general_comment }) =>
 		.query(`
       UPDATE council_topic_results
       SET conclusion = @conclusion, general_comment = @general_comment,
-          decided_by = @user_id, updated_at = GETDATE(), updated_by = @user_id
+          decided_by = @user_id, updated_at = ${nowSql}, updated_by = @user_id
       WHERE topic_id = @topic_id;
       IF @@ROWCOUNT = 0
         INSERT INTO council_topic_results
           (topic_id, conclusion, general_comment, decided_by, updated_at, created_by, updated_by)
-        VALUES (@topic_id, @conclusion, @general_comment, @user_id, GETDATE(), @user_id, @user_id);
+        VALUES (@topic_id, @conclusion, @general_comment, @user_id, ${nowSql}, @user_id, @user_id);
     `);
 };
 

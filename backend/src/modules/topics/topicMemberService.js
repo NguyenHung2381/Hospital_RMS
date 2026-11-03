@@ -1,4 +1,12 @@
-const { getPool, sql, withActorTransaction, actorRequest, withActor } = require('../../config/db');
+const {
+	getPool,
+	sql,
+	withActorTransaction,
+	actorRequest,
+	withActor,
+	utcNowSql,
+	nowSql,
+} = require('../../config/db');
 const { genUserId, genMemberId } = require('../../utils/idGenerator');
 const bcrypt = require('bcrypt');
 const notifSvc = require('../notifications/notificationService');
@@ -245,7 +253,7 @@ const grantAccountsNoEmail = async (topicId, memberIds, actorId) => {
 					VALUES (
 						@uid, @username, @password, @full_name, @staff_number, @email,
 						@phone_number, @position_detail, @department_id, @role_id,
-						@topic_member_id, @expires_at, @actor_id, 1, SYSUTCDATETIME()
+						@topic_member_id, @expires_at, @actor_id, 1, ${utcNowSql}
 					)
 				`);
 			} else {
@@ -278,7 +286,7 @@ const grantAccountsNoEmail = async (topicId, memberIds, actorId) => {
 						UPDATE users
 						SET role_id = @role_id,
 						    is_active = CASE
-						        WHEN is_active = 'false' AND account_expires_at < CAST(GETDATE() AS DATE) THEN 1
+						        WHEN is_active = 'false' AND account_expires_at < CAST(${nowSql} AS DATE) THEN 1
 						        ELSE is_active END,
 						    account_expires_at = CASE
 						        WHEN account_expires_at IS NULL OR @expires_at IS NULL THEN account_expires_at
@@ -288,7 +296,7 @@ const grantAccountsNoEmail = async (topicId, memberIds, actorId) => {
 						    staff_number = COALESCE(staff_number, @staff_number),
 						    phone_number = COALESCE(phone_number, @phone_number),
 						    position_detail = COALESCE(position_detail, @position_detail),
-						    updated_at = GETDATE(),
+						    updated_at = ${nowSql},
 						    updated_by = @actor_id
 						WHERE id = @uid
 					`);
@@ -298,7 +306,7 @@ const grantAccountsNoEmail = async (topicId, memberIds, actorId) => {
 					await req.query(`
 						UPDATE users
 						SET topic_member_id = @topic_member_id,
-						    updated_at = GETDATE(),
+						    updated_at = ${nowSql},
 						    updated_by = @actor_id
 						WHERE id = @uid
 					`);
@@ -313,8 +321,8 @@ const grantAccountsNoEmail = async (topicId, memberIds, actorId) => {
 					UPDATE topic_members
 					SET user_id = @uid,
 					    account_granted = 'true',
-					    account_granted_at = GETDATE(),
-					    updated_at = GETDATE(),
+					    account_granted_at = ${nowSql},
+					    updated_at = ${nowSql},
 					    updated_by = @actor_id
 					WHERE id = @member_id
 				`);
@@ -423,7 +431,7 @@ const grantAccountsNoEmail = async (topicId, memberIds, actorId) => {
 
 const updateMember = async (topicId, memberId, data, actorId) => {
 	const pool = await getPool();
-	const sets = ['updated_at = GETDATE()', 'updated_by = @actor_id'];
+	const sets = [`updated_at = ${nowSql}`, 'updated_by = @actor_id'];
 	const req = actorRequest(actorId)
 		.input('id', sql.VarChar(20), memberId)
 		.input('topic_id', sql.VarChar(15), topicId)

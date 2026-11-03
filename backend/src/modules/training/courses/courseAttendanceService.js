@@ -1,5 +1,5 @@
 const { signToken, verifyToken } = require('../../../utils/keys');
-const { getPool, sql, withTransaction } = require('../../../config/db');
+const { getPool, sql, withTransaction, utcNowSql } = require('../../../config/db');
 const { genAttendanceId } = require('../../../utils/idGenerator');
 const { broadcast } = require('../../events/eventService');
 const { httpError } = require('../../../utils/httpError');
@@ -166,13 +166,13 @@ const checkInSelf = async (token, deviceId, actor) => {
 			if (taken.recordset.length) return true;
 			if (await attendanceExists(tx, decoded.session_id, enrollment.enrollment_id)) {
 				await req().query(`
-          UPDATE attendance SET status = 'present', method = 'qr', checked_in_at = GETUTCDATE(),
+          UPDATE attendance SET status = 'present', method = 'qr', checked_in_at = ${utcNowSql},
                  checkin_device_id = @device_id, updated_at = CURRENT_TIMESTAMP, updated_by = @actor_id
           WHERE session_id = @session_id AND enrollment_id = @enrollment_id`);
 			} else {
 				await req().input('new_id', sql.VarChar(20), await genAttendanceId(tx)).query(`
           INSERT INTO attendance (id, session_id, enrollment_id, status, method, checked_in_at, checkin_device_id, created_by, updated_by, updated_at)
-          VALUES (@new_id, @session_id, @enrollment_id, 'present', 'qr', GETUTCDATE(), @device_id, @actor_id, @actor_id, CURRENT_TIMESTAMP)`);
+          VALUES (@new_id, @session_id, @enrollment_id, 'present', 'qr', ${utcNowSql}, @device_id, @actor_id, @actor_id, CURRENT_TIMESTAMP)`);
 			}
 			return false;
 		});

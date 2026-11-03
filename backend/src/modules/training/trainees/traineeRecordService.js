@@ -1,4 +1,4 @@
-const { getPool, sql, queryAll } = require('../../../config/db');
+const { getPool, sql, queryAll, nowSql } = require('../../../config/db');
 const { randomId } = require('../../../utils/idGenerator');
 const { broadcast } = require('../../events/eventService');
 const { httpError } = require('../../../utils/httpError');
@@ -74,7 +74,7 @@ const reviewDocument = async (docId, status, note, actorId) => {
 		.input('note', sql.NVarChar(255), note || null)
 		.input('actor_id', sql.VarChar(20), actorId)
 		.query(
-			`UPDATE trainee_documents SET status = @status, review_note = @note, reviewed_at = GETDATE(), reviewed_by = @actor_id
+			`UPDATE trainee_documents SET status = @status, review_note = @note, reviewed_at = ${nowSql}, reviewed_by = @actor_id
 			 WHERE id = @id`,
 		);
 	if (!r.rowsAffected[0]) throw httpError(404, 'Không tìm thấy hồ sơ.');
@@ -194,7 +194,7 @@ const attendance = async (traineeId) => {
     LEFT JOIN program_lessons pl ON pl.id = s.subject_id
     LEFT JOIN attendance a ON a.session_id = s.id AND a.enrollment_id = e.id
     WHERE e.trainee_id = @trainee_id AND e.status = 'approved'
-      AND s.session_date <= CAST(GETDATE() AS DATE) AND ${SESSION_IN_PROGRAM_SQL('s', 'e')}
+      AND s.session_date <= CAST(${nowSql} AS DATE) AND ${SESSION_IN_PROGRAM_SQL('s', 'e')}
     ORDER BY s.session_date DESC, s.start_time DESC
 		`,
 		`

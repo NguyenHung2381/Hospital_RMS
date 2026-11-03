@@ -1,4 +1,4 @@
-const { getPool, sql, withActorTransaction } = require('../../config/db');
+const { getPool, sql, withActorTransaction, nowSql } = require('../../config/db');
 const notifSvc = require('../notifications/notificationService');
 const { broadcast } = require('../events/eventService');
 const { scopeOf, hasPermission } = require('../../permissions/authz');
@@ -83,12 +83,12 @@ const submit = async (topicId, actorId) => {
 			.request()
 			.input('topic_id', sql.VarChar(15), topicId)
 			.input('actor_id', sql.VarChar(20), actorId).query(`
-      UPDATE topics SET status = 'submitted', updated_at = GETDATE(), updated_by = @actor_id
+      UPDATE topics SET status = 'submitted', updated_at = ${nowSql}, updated_by = @actor_id
       WHERE id = @topic_id AND status = 'supplement';
       -- Nộp lại: reset verdict cũ, nếu không getApprovals vẫn trả kết quả duyệt lần trước
       IF @@ROWCOUNT > 0
         UPDATE approvals SET status = 'pending', comment = NULL,
-          updated_at = GETDATE(), updated_by = @actor_id
+          updated_at = ${nowSql}, updated_by = @actor_id
         WHERE topic_id = @topic_id;
     `),
 	);

@@ -1,4 +1,4 @@
-const { getPool, sql, withTransaction } = require('../config/db');
+const { getPool, sql, withTransaction, nowSql } = require('../config/db');
 const permCache = require('./permissionCache');
 const { invalidate } = require('../utils/cache');
 const { ALL_PERMISSIONS } = require('./catalog');
@@ -87,7 +87,7 @@ const syncPermissions = async ({ dryRun = false } = {}) => {
 					.input('sort_order', sql.Int, perm.sortOrder).query(`
             UPDATE permissions
             SET name = @name, description = @description, module = @module,
-                sort_order = @sort_order, updated_at = GETDATE()
+                sort_order = @sort_order, updated_at = ${nowSql}
             WHERE id = @id
           `);
 			}

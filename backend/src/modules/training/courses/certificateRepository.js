@@ -1,4 +1,4 @@
-const { getPool, sql, withTransaction } = require('../../../config/db');
+const { getPool, sql, withTransaction, nowSql } = require('../../../config/db');
 const { genCertificateId, genCertificateNo } = require('../../../utils/idGenerator');
 const { appErrorCode } = require('../../../utils/dbErrors');
 
@@ -83,8 +83,8 @@ const revoke = async ({ certId, reason, actorId }) => {
 		.input('reason', sql.NVarChar(255), reason || null)
 		.input('actor_id', sql.VarChar(20), actorId).query(`
       UPDATE certificates
-      SET status = 'revoked', revoked_at = GETDATE(), revoked_by = @actor_id, revoke_reason = @reason,
-          updated_at = GETDATE(), updated_by = @actor_id
+      SET status = 'revoked', revoked_at = ${nowSql}, revoked_by = @actor_id, revoke_reason = @reason,
+          updated_at = ${nowSql}, updated_by = @actor_id
       WHERE id = @id AND status <> 'revoked';
       SELECT @@ROWCOUNT AS affected;
     `);

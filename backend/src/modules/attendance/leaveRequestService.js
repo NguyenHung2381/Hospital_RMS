@@ -1,4 +1,4 @@
-const { getPool, sql, jsonValues } = require('../../config/db');
+const { getPool, sql, jsonValues, nowSql } = require('../../config/db');
 const { broadcast } = require('../events/eventService');
 const notificationService = require('../notifications/notificationService');
 const { findActiveUserIdsWhere } = require('../access/permissionService');
@@ -200,7 +200,7 @@ const cancelMine = async (userId, id) => {
 		.input('id', sql.Int, id)
 		.input('user_id', sql.VarChar(20), userId).query(`
       UPDATE attendance_leave_requests
-      SET status = 'cancelled', updated_at = GETDATE(), updated_by = @user_id
+      SET status = 'cancelled', updated_at = ${nowSql}, updated_by = @user_id
       WHERE id = @id AND user_id = @user_id AND status = 'pending'
     `);
 	if (!res.rowsAffected[0]) throw conflict('Chỉ hủy được đơn của bạn đang chờ duyệt');
@@ -290,7 +290,7 @@ const review = async (id, { decision, note }, actor) => {
 		.input('now', sql.DateTime2, new Date()).query(`
       UPDATE attendance_leave_requests
       SET status = @status, review_note = @note, reviewed_by = @actor_id, reviewed_at = @now,
-          updated_at = GETDATE(), updated_by = @actor_id
+          updated_at = ${nowSql}, updated_by = @actor_id
       WHERE id = @id AND status = 'pending'
     `);
 	if (!res.rowsAffected[0]) throw conflict('Đơn này đã được xử lý');

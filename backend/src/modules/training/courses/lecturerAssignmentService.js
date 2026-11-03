@@ -1,4 +1,4 @@
-const { getPool, sql, withTransaction, queryAll } = require('../../../config/db');
+const { getPool, sql, withTransaction, queryAll, nowSql } = require('../../../config/db');
 const { genLecturerAssignmentId } = require('../../../utils/idGenerator');
 const { isUniqueViolation } = require('../../../utils/dbErrors');
 const { broadcast } = require('../../events/eventService');
@@ -251,7 +251,7 @@ const setLessonLecturers = async (courseId, lessonId, data, actorId) => {
 					.input('hours', sql.Int, hours)
 					.input('actor_id', sql.VarChar(20), actorId).query(`
             UPDATE lecturer_assignments
-            SET role = @role, hours = @hours, updated_at = SYSDATETIME(), updated_by = @actor_id
+            SET role = @role, hours = @hours, updated_at = ${nowSql}, updated_by = @actor_id
             WHERE id = @id
           `);
 			} else {

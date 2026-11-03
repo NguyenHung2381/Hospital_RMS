@@ -1,4 +1,4 @@
-const { getPool, sql, jsonRows, newIdSql, updateReturning } = require('../../../config/db');
+const { getPool, sql, jsonRows, newIdSql, updateReturning, nowSql } = require('../../../config/db');
 const { broadcast } = require('../../events/eventService');
 const { randomUUID } = require('crypto');
 const { httpError } = require('../../../utils/httpError');
@@ -188,8 +188,8 @@ const submitAttempt = async (paperId, answers, actor) => {
 			.input('actor_id', sql.VarChar(20), actor.id)
 			.query(
 				updateReturning(
-					`UPDATE exam_attempts SET status = 'submitted', submitted_at = GETDATE(),
-					updated_at = GETDATE(), updated_by = @actor_id`,
+					`UPDATE exam_attempts SET status = 'submitted', submitted_at = ${nowSql},
+					updated_at = ${nowSql}, updated_by = @actor_id`,
 					"paper_id = @paper_id AND enrollment_id = @enrollment_id AND status = 'in_progress'",
 					[
 						['new.id', 'id', 'VARCHAR(20)'],
@@ -251,8 +251,8 @@ const submitAttempt = async (paperId, answers, actor) => {
 				['essay_text', 'NVARCHAR(MAX)'],
 				['score_awarded', 'DECIMAL(4, 1)'],
 			])};
-      UPDATE exam_attempts SET submitted_at = GETDATE(), auto_score = @auto_score, status = @status,
-        updated_at = GETDATE(), updated_by = @actor_id WHERE id = @id
+      UPDATE exam_attempts SET submitted_at = ${nowSql}, auto_score = @auto_score, status = @status,
+        updated_at = ${nowSql}, updated_by = @actor_id WHERE id = @id
     `);
 
 	broadcast('update', { entity: 'exam_attempt' });

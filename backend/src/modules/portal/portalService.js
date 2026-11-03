@@ -4,7 +4,7 @@
  * actor.id (trainees.user_id / staff_user_id, lecturers.user_id, seminar_participants.user_id,
  * cme_records.user_id) nên không cần quyền courses:read / seminars:read.
  */
-const { getPool, sql, queryAll } = require('../../config/db');
+const { getPool, sql, queryAll, vnTodaySql } = require('../../config/db');
 const courseDocumentService = require('../training/courses/courseDocumentService');
 const courseEnrollmentService = require('../training/courses/courseEnrollmentService');
 const courseService = require('../training/courses/courseService');
@@ -18,7 +18,7 @@ const trainingProgramService = require('../training/programs/trainingProgramServ
 const { httpError } = require('../../utils/httpError');
 const { getUserCme } = require('../cme/cmeUserService');
 
-const VN_TODAY = 'CAST(DATEADD(HOUR, 7, GETUTCDATE()) AS DATE)';
+const VN_TODAY = vnTodaySql;
 const UPCOMING_DAYS = 30;
 
 const withStatus = ({ enrollment_start_date, enrollment_end_date, ...c }) => ({

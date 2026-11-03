@@ -1,4 +1,4 @@
-const { getPool, sql, withActorTransaction } = require('../../config/db');
+const { getPool, sql, withActorTransaction, nowSql } = require('../../config/db');
 const { broadcast } = require('../events/eventService');
 const { removeUploadedFile } = require('../../utils/uploadPaths');
 const { httpError } = require('../../utils/httpError');
@@ -91,7 +91,7 @@ const deleteFile = async (fileId, actorId) => {
 			.request()
 			.input('file_id', sql.VarChar(32), fileId)
 			.input('actor_id', sql.VarChar(20), actorId).query(`
-      UPDATE files SET is_deleted = 'true', updated_at = GETDATE(), updated_by = @actor_id
+      UPDATE files SET is_deleted = 'true', updated_at = ${nowSql}, updated_by = @actor_id
       WHERE id = @file_id
     `),
 	);

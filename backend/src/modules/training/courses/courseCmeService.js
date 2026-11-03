@@ -13,7 +13,7 @@
  * Công tắc CME_AUTO_TRAINEE / CME_AUTO_LECTURER (mặc định bật). Thu hồi / xóa
  * luôn chạy (kể cả công tắc tắt) để CME không còn tính cho giấy đã hủy.
  */
-const { getPool, sql, newIdSql } = require('../../../config/db');
+const { getPool, sql, newIdSql, nowSql } = require('../../../config/db');
 const { broadcast } = require('../../events/eventService');
 const systemSettingService = require('../../settings/systemSettingService');
 const { CLASS_TYPES } = require('./classTypes');
@@ -32,13 +32,13 @@ const UPSERT_SQL = (sourceType) => `
   WHEN MATCHED THEN UPDATE SET
     title = s.title, role = s.role, category_id = s.category_id, quantity = s.quantity, credits = s.credits,
     activity_date = s.activity_date, year = YEAR(s.activity_date), note = s.note,
-    approval_status = 'approved', reject_reason = NULL, updated_at = GETDATE(), updated_by = @actor_id
+    approval_status = 'approved', reject_reason = NULL, updated_at = ${nowSql}, updated_by = @actor_id
   WHEN NOT MATCHED THEN
     INSERT (id, user_id, category_id, title, activity_date, year, role, quantity, credits, note,
             approval_status, reviewed_by, reviewed_at, source_type, source_id, created_by)
     VALUES (${newIdSql('CM', 18)}, s.user_id, s.category_id, s.title, s.activity_date,
             YEAR(s.activity_date), s.role, s.quantity, s.credits, s.note,
-            'approved', @actor_id, GETDATE(), '${sourceType}', @course_id, @actor_id);
+            'approved', @actor_id, ${nowSql}, '${sourceType}', @course_id, @actor_id);
   SELECT @@ROWCOUNT AS n;`;
 
 const conversionOf = (categoryId) =>
@@ -110,7 +110,7 @@ const withdrawForCertificate = async (certId, actorId, { remove = false, reason 
 			remove
 				? `DELETE FROM cme_records WHERE source_type = '${SOURCE.trainee}' AND source_id = @course_id AND user_id = @user_id`
 				: `UPDATE cme_records SET approval_status = 'rejected', reject_reason = @reason,
-                 reviewed_by = @actor_id, reviewed_at = GETDATE(), updated_at = GETDATE(), updated_by = @actor_id
+                 reviewed_by = @actor_id, reviewed_at = ${nowSql}, updated_at = ${nowSql}, updated_by = @actor_id
          WHERE source_type = '${SOURCE.trainee}' AND source_id = @course_id AND user_id = @user_id`,
 		);
 	const n = r.rowsAffected[0] ?? 0;
@@ -148,7 +148,7 @@ const syncLecturers = async (courseId, actorId) => {
              'GIANGDAY' AS category_id,
              CAST(h.hours AS DECIMAL(8, 2)) AS quantity,
              CAST(h.hours * ${conversionOf('GIANGDAY')} AS DECIMAL(6, 2)) AS credits,
-             COALESCE(c.end_date, CAST(GETDATE() AS DATE)) AS activity_date,
+             COALESCE(c.end_date, CAST(${nowSql} AS DATE)) AS activity_date,
              CAST(CONCAT(N'Tự động khi khóa điểm — ', h.hours, N' tiết') AS NVARCHAR(500)) AS note
       INTO #cme
       FROM #hours h JOIN courses c ON c.id = @course_id

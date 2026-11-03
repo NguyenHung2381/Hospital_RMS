@@ -1,4 +1,4 @@
-const { getPool, sql, withTransaction, queryAll } = require('../../../config/db');
+const { getPool, sql, withTransaction, queryAll, nowSql } = require('../../../config/db');
 const { genClassSessionId } = require('../../../utils/idGenerator');
 const { broadcast } = require('../../events/eventService');
 const { scopeOf } = require('../../../permissions/authz');
@@ -222,7 +222,7 @@ const updateSession = async (sessionId, data, actorId) => {
 			movedFromCourse = row.course_id;
 		}
 	}
-	const sets = ['updated_at = GETDATE()', 'updated_by = @actor_id'];
+	const sets = [`updated_at = ${nowSql}`, 'updated_by = @actor_id'];
 	const req = pool
 		.request()
 		.input('id', sql.VarChar(20), sessionId)

@@ -353,6 +353,16 @@ const newIdSql = (prefix, n) => {
 	return `CONCAT('${prefix}', UPPER(LEFT(REPLACE(CAST(gen_random_uuid() AS VARCHAR(36)), '-', ''), ${n})))`;
 };
 
+// Thời điểm hiện tại, chèn thẳng vào SQL (cùng tên ở db.mssql.js). DB lưu giờ VN không kèm
+// múi giờ (mục 4.3 kế hoạch PG): nowSql = giờ VN (thay GETDATE / SYSDATETIME), utcNowSql =
+// giờ UTC cho các cột ghi chú "lưu giờ UTC" (thay GETUTCDATE / SYSUTCDATETIME), vnTodaySql =
+// ngày hôm nay theo giờ VN, không phụ thuộc múi giờ máy chủ DB.
+// PG: now() là lúc bắt đầu transaction (SQL Server: lúc chạy câu) — trong 1 transaction
+// mọi dòng cùng 1 mốc. Đổi múi giờ tường minh nên không phụ thuộc cấu hình timezone của DB.
+const nowSql = "(now() AT TIME ZONE 'Asia/Ho_Chi_Minh')";
+const utcNowSql = "(now() AT TIME ZONE 'UTC')";
+const vnTodaySql = "CAST(now() AT TIME ZONE 'Asia/Ho_Chi_Minh' AS DATE)";
+
 // Cùng giao diện với db.mssql.js; PG ≥ 18 cho `RETURNING old.x, new.x`.
 /**
  * @param {string} update
@@ -395,6 +405,9 @@ module.exports = {
 	jsonValues,
 	jsonRows,
 	newIdSql,
+	nowSql,
+	utcNowSql,
+	vnTodaySql,
 	queryAll,
 	updateReturning,
 	sslOptions,

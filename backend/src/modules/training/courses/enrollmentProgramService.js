@@ -8,7 +8,7 @@
  *     vực, hình thức hành nghề, thời gian, địa điểm, đơn vị cử đi, NHD chính,
  *     tiến độ). Vòng khoa + NHD từng vòng làm ở giai đoạn sau.
  */
-const { getPool, sql, withTransaction } = require('../../../config/db');
+const { getPool, sql, withTransaction, nowSql } = require('../../../config/db');
 const { isUniqueViolation } = require('../../../utils/dbErrors');
 const { broadcast } = require('../../events/eventService');
 const { httpError } = require('../../../utils/httpError');
@@ -134,7 +134,7 @@ const updateEnrollment = async (enrollmentId, data, actorId) => {
 	if (programChanged && data.program_id)
 		await assertProgramInCourse(cur.course_id, data.program_id);
 
-	const sets = ['updated_at = GETDATE()', 'updated_by = @actor_id'];
+	const sets = [`updated_at = ${nowSql}`, 'updated_by = @actor_id'];
 	const req = pool
 		.request()
 		.input('id', sql.VarChar(20), enrollmentId)

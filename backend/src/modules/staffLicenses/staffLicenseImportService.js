@@ -6,7 +6,7 @@
  * Ngoài hồ sơ CCHN còn bổ sung ngày sinh / giới tính vào users (dùng cho bản
  * chụp người hướng dẫn thực hành trên Phiếu nhận xét).
  */
-const { getPool, sql, actorRequest } = require('../../config/db');
+const { getPool, sql, actorRequest, nowSql } = require('../../config/db');
 const { isUniqueViolation } = require('../../utils/dbErrors');
 const { randomId } = require('../../utils/idGenerator');
 const { broadcast } = require('../events/eventService');
@@ -279,7 +279,7 @@ const importExcel = async ({ buffer, dry_run }, actorId) => {
 			if (!it.license_id) req.input('new_id', sql.VarChar(20), randomId('LIC', 17));
 			const query = it.license_id
 				? `UPDATE staff_practice_licenses SET ${keys.map((f) => `${f} = @${f}`).join(', ')},
-				     updated_at = GETDATE(), updated_by = @actor_id WHERE user_id = @user_id`
+				     updated_at = ${nowSql}, updated_by = @actor_id WHERE user_id = @user_id`
 				: `INSERT INTO staff_practice_licenses (id, user_id, ${keys.join(', ')}, created_by)
 				   VALUES (@new_id, @user_id, ${keys.map((f) => `@${f}`).join(', ')}, @actor_id)`;
 			try {
@@ -301,7 +301,7 @@ const importExcel = async ({ buffer, dry_run }, actorId) => {
 			for (const [c, type] of userFields)
 				if (userKeys.includes(c)) req.input(c, type, it.user_values[c]);
 			await req.query(`UPDATE users SET ${userKeys.map((c) => `${c} = @${c}`).join(', ')},
-			    updated_at = GETDATE(), updated_by = @actor_id WHERE id = @user_id`);
+			    updated_at = ${nowSql}, updated_by = @actor_id WHERE id = @user_id`);
 			touchedUsers.push(it.user_id);
 			ok = true;
 		}

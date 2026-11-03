@@ -1,4 +1,4 @@
-const { getPool, sql, withTransaction } = require('../../../config/db');
+const { getPool, sql, withTransaction, nowSql } = require('../../../config/db');
 const { randomId } = require('../../../utils/idGenerator');
 const { broadcast } = require('../../events/eventService');
 const { removeUploadedFile, toStoredUploadPath } = require('../../../utils/uploadPaths');
@@ -127,7 +127,7 @@ const updateQuestion = async (id, data, actorId) => {
 			? data.question_type
 			: current.question_type;
 	const sets = [
-		'updated_at = GETDATE()',
+		`updated_at = ${nowSql}`,
 		'updated_by = @actor_id',
 		'question_type = @question_type',
 	];

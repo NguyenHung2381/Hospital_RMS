@@ -1,4 +1,4 @@
-const { getPool, sql } = require('../../config/db');
+const { getPool, sql, nowSql } = require('../../config/db');
 const { broadcast } = require('../events/eventService');
 const { httpError } = require('../../utils/httpError');
 const registry = require('./formRegistry');
@@ -73,7 +73,7 @@ const save = async (formKey, override, actorId) => {
 		.input('actor_id', sql.VarChar(20), actorId).query(`
       MERGE form_configs AS tgt
       USING (SELECT @key AS form_key) AS src ON tgt.form_key = src.form_key
-      WHEN MATCHED THEN UPDATE SET config = @config, updated_at = SYSDATETIME(), updated_by = @actor_id
+      WHEN MATCHED THEN UPDATE SET config = @config, updated_at = ${nowSql}, updated_by = @actor_id
       WHEN NOT MATCHED THEN INSERT (form_key, config, created_by, updated_by) VALUES (@key, @config, @actor_id, @actor_id);
     `);
 	cache = null;

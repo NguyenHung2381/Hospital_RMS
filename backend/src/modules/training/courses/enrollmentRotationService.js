@@ -10,7 +10,7 @@
  * Vòng đã có kết quả (Đạt / Không đạt) là lịch sử: sinh lại / xếp lại không xóa, không đổi ngày.
  * Danh sách trả kèm cảnh báo từng dòng (không chặn).
  */
-const { getPool, sql, newIdSql, withTransaction } = require('../../../config/db');
+const { getPool, sql, newIdSql, withTransaction, nowSql } = require('../../../config/db');
 const { broadcast } = require('../../events/eventService');
 const { httpError } = require('../../../utils/httpError');
 const { formatDuration } = require('../../../utils/trainingDuration');
@@ -268,7 +268,7 @@ const update = async (rotationId, data, actorId, { source = 'staff' } = {}) => {
 	if (data.result !== undefined && !RESULTS.includes(data.result))
 		throw httpError(400, 'Kết quả không hợp lệ');
 	const pool = await getPool();
-	const sets = ['updated_at = GETDATE()', 'updated_by = @actor_id'];
+	const sets = [`updated_at = ${nowSql}`, 'updated_by = @actor_id'];
 	const req = pool
 		.request()
 		.input('id', sql.VarChar(20), rotationId)
@@ -286,7 +286,7 @@ const update = async (rotationId, data, actorId, { source = 'staff' } = {}) => {
 	if (data.result !== undefined) {
 		const changed = (col, val) =>
 			`${col} = CASE WHEN @result = 'pending' THEN NULL WHEN result = @result THEN ${col} ELSE ${val} END`;
-		sets.push(changed('result_at', 'GETDATE()'));
+		sets.push(changed('result_at', nowSql));
 		sets.push(changed('result_by', '@actor_id'));
 		sets.push(changed('result_source', '@result_source'));
 		req.input('result_source', sql.VarChar(10), source);
@@ -349,8 +349,8 @@ const retake = async (rotationId, actorId) => {
 				.input('enrollment_id', sql.VarChar(20), cur.enrollment_id)
 				.input('seq', sql.Int, cur.seq);
 		await req().query(`
-      UPDATE enrollment_rotations SET result = 'fail', updated_at = GETDATE(), updated_by = @actor_id,
-        result_at = CASE WHEN result = 'fail' THEN result_at ELSE GETDATE() END,
+      UPDATE enrollment_rotations SET result = 'fail', updated_at = ${nowSql}, updated_by = @actor_id,
+        result_at = CASE WHEN result = 'fail' THEN result_at ELSE ${nowSql} END,
         result_by = CASE WHEN result = 'fail' THEN result_by ELSE @actor_id END,
         result_source = CASE WHEN result = 'fail' THEN result_source ELSE 'staff' END
       WHERE id = @id`);
@@ -389,7 +389,7 @@ const move = async (rotationId, up, actorId) => {
 			.input('other_seq', sql.Int, other.seq)
 			.input('actor_id', sql.VarChar(20), actorId).query(`
         UPDATE enrollment_rotations
-        SET seq = CASE WHEN id = @id THEN @other_seq ELSE @seq END, updated_at = GETDATE(), updated_by = @actor_id
+        SET seq = CASE WHEN id = @id THEN @other_seq ELSE @seq END, updated_at = ${nowSql}, updated_by = @actor_id
         WHERE id IN (@id, @other)`);
 	});
 	notify();
@@ -471,7 +471,7 @@ const schedule = async (enrollmentId, startDate, actorId) => {
 			.input('end_date', sql.Date, p.end_date)
 			.input('actor_id', sql.VarChar(20), actorId).query(`
         UPDATE enrollment_rotations SET start_date = @start_date, end_date = @end_date,
-               updated_at = GETDATE(), updated_by = @actor_id
+               updated_at = ${nowSql}, updated_by = @actor_id
         WHERE id = @id`);
 	}
 	if (plan.length) {

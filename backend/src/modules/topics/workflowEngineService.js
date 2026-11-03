@@ -8,7 +8,7 @@
  * status thật) — muốn dùng cho resource khác cần thêm nhánh tương tự, KHÔNG
  * tự suy diễn generic vì mỗi resource có luật đổi trạng thái riêng.
  */
-const { getPool, sql, updateReturning } = require('../../config/db');
+const { getPool, sql, updateReturning, nowSql } = require('../../config/db');
 const { randomId } = require('../../utils/idGenerator');
 const { isMissingTable } = require('../../utils/dbErrors');
 const { broadcast } = require('../events/eventService');
@@ -152,7 +152,7 @@ const updateDefinition = async (id, data, actorId) => {
 	const pool = await getPool();
 	const current = await getDefinition(id);
 	if (!current) return null;
-	const sets = ['updated_at = GETDATE()', 'updated_by = @actor_id'];
+	const sets = [`updated_at = ${nowSql}`, 'updated_by = @actor_id'];
 	const req = pool
 		.request()
 		.input('id', sql.VarChar(20), id)
@@ -292,8 +292,8 @@ const advance = async (resource, entityId, decision, actor, comment) => {
 		.input('decided_by', sql.VarChar(20), actor.id)
 		.input('comment', sql.NVarChar(sql.MAX), comment || null).query(`
 			${updateReturning(
-				`UPDATE workflow_tasks SET status = @status, decided_by = @decided_by, decided_at = GETDATE(),
-				comment = @comment, updated_at = GETDATE(), updated_by = @decided_by`,
+				`UPDATE workflow_tasks SET status = @status, decided_by = @decided_by, decided_at = ${nowSql},
+				comment = @comment, updated_at = ${nowSql}, updated_by = @decided_by`,
 				"id = @id AND status = 'pending'",
 				[['new.id', 'id', 'VARCHAR(20)']],
 			)}`);
@@ -307,7 +307,7 @@ const advance = async (resource, entityId, decision, actor, comment) => {
 			.input('id', sql.VarChar(20), instance.id)
 			.input('actor_id', sql.VarChar(20), actor.id)
 			.query(
-				"UPDATE workflow_instances SET status = 'rejected', updated_at = GETDATE(), updated_by = @actor_id WHERE id = @id",
+				`UPDATE workflow_instances SET status = 'rejected', updated_at = ${nowSql}, updated_by = @actor_id WHERE id = @id`,
 			);
 		await applyOutcomeToEntity(resource, entityId, 'rejected', actor.id);
 		broadcast('update', { entity: 'workflow_instance' });
@@ -326,7 +326,7 @@ const advance = async (resource, entityId, decision, actor, comment) => {
 			.input('id', sql.VarChar(20), instance.id)
 			.input('actor_id', sql.VarChar(20), actor.id)
 			.query(
-				"UPDATE workflow_instances SET status = 'approved', updated_at = GETDATE(), updated_by = @actor_id WHERE id = @id",
+				`UPDATE workflow_instances SET status = 'approved', updated_at = ${nowSql}, updated_by = @actor_id WHERE id = @id`,
 			);
 		await applyOutcomeToEntity(resource, entityId, 'approved', actor.id);
 		broadcast('update', { entity: 'workflow_instance' });
@@ -344,7 +344,7 @@ const advance = async (resource, entityId, decision, actor, comment) => {
 		.input('step', sql.Int, nextStep.step_order)
 		.input('actor_id', sql.VarChar(20), actor.id)
 		.query(
-			'UPDATE workflow_instances SET current_step = @step, updated_at = GETDATE(), updated_by = @actor_id WHERE id = @id',
+			`UPDATE workflow_instances SET current_step = @step, updated_at = ${nowSql}, updated_by = @actor_id WHERE id = @id`,
 		);
 	const taskId = randomId('WFT', 17);
 	await pool

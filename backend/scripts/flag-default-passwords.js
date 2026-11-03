@@ -19,7 +19,7 @@ const path = require('path');
 require('dotenv').config({ path: path.join(__dirname, '../.env'), quiet: true });
 
 const bcrypt = require('bcrypt');
-const { getPool, sql } = require('../src/config/db');
+const { getPool, sql, utcNowSql } = require('../src/config/db');
 const { defaultPassword } = require('../src/utils/passwordPolicy');
 const tempPasswordPolicy = require('../src/permissions/tempPasswordPolicy');
 
@@ -88,7 +88,7 @@ const fmt = (d) => (d ? new Date(d).toISOString().slice(0, 16).replace('T', ' ')
 	if (apply) {
 		for (const u of [...flagged, ...missingIssued]) {
 			await pool.request().input('id', sql.VarChar(20), u.id).query(`
-				UPDATE users SET must_change_password = 'true', temp_password_issued_at = SYSUTCDATETIME()
+				UPDATE users SET must_change_password = 'true', temp_password_issued_at = ${utcNowSql}
 				WHERE id = @id AND (must_change_password = 'false' OR temp_password_issued_at IS NULL)
 			`);
 		}

@@ -197,6 +197,14 @@ const newIdSql = (prefix, n) => {
 	return `CONCAT('${prefix}', LEFT(REPLACE(CAST(NEWID() AS VARCHAR(36)), '-', ''), ${n}))`;
 };
 
+// Thời điểm hiện tại, chèn thẳng vào SQL (cùng tên ở db.pg.js). DB lưu giờ VN không kèm
+// múi giờ (mục 4.3 kế hoạch PG): nowSql = giờ VN (thay GETDATE / SYSDATETIME), utcNowSql =
+// giờ UTC cho các cột ghi chú "lưu giờ UTC" (thay GETUTCDATE / SYSUTCDATETIME), vnTodaySql =
+// ngày hôm nay theo giờ VN, không phụ thuộc múi giờ máy chủ DB.
+const nowSql = 'GETDATE()';
+const utcNowSql = 'SYSUTCDATETIME()';
+const vnTodaySql = 'CAST(DATEADD(HOUR, 7, SYSUTCDATETIME()) AS DATE)';
+
 // UPDATE trả về các dòng vừa sửa: `${update} WHERE ${where}` + cột lấy ra. Biểu thức
 // cột ghi `new.cột` (giá trị sau khi sửa) / `old.cột` (trước khi sửa). SQL Server:
 // OUTPUT ... INTO biến bảng (bảng có trigger thì không được OUTPUT trần); PG: RETURNING.
@@ -238,6 +246,9 @@ module.exports = {
 	jsonValues,
 	jsonRows,
 	newIdSql,
+	nowSql,
+	utcNowSql,
+	vnTodaySql,
 	queryAll,
 	updateReturning,
 	tlsOptions,

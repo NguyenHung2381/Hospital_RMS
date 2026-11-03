@@ -1,5 +1,5 @@
 const crypto = require('crypto');
-const { getPool, sql } = require('../../config/db');
+const { getPool, sql, nowSql, utcNowSql } = require('../../config/db');
 const mailService = require('../notifications/mailService');
 const secretBox = require('../../utils/secretBox');
 const credentialService = require('./credentialService');
@@ -30,7 +30,7 @@ const recentFailures = async (pool, userId) =>
 			.input('id', sql.VarChar(50), userId).query(`
 				SELECT COUNT(*) AS n FROM security_events
 				WHERE event_type = @type AND target_id = @id
-					AND created_at > DATEADD(HOUR, -24, GETDATE())
+					AND created_at > DATEADD(HOUR, -24, ${nowSql})
 			`)
 	).recordset[0].n;
 
@@ -69,7 +69,7 @@ const requestOtp = async (login) => {
 			.input('id', sql.VarChar(20), user.id)
 			.input('sec', sql.Int, RESEND_COOLDOWN_SEC)
 			.query(
-				`SELECT 1 AS x FROM password_reset_otps WHERE user_id = @id AND created_at > DATEADD(SECOND, -@sec, SYSUTCDATETIME())`,
+				`SELECT 1 AS x FROM password_reset_otps WHERE user_id = @id AND created_at > DATEADD(SECOND, -@sec, ${utcNowSql})`,
 			)
 	).recordset[0];
 	if (recent) return;
@@ -83,7 +83,7 @@ const requestOtp = async (login) => {
 		.input('min', sql.Int, OTP_TTL_MIN).query(`
 			DELETE FROM password_reset_otps WHERE user_id = @id;
 			INSERT INTO password_reset_otps (user_id, code_hash, expires_at)
-			VALUES (@id, @hash, DATEADD(MINUTE, @min, SYSUTCDATETIME()));
+			VALUES (@id, @hash, DATEADD(MINUTE, @min, ${utcNowSql}));
 		`);
 
 	// Gửi nền, KHÔNG chờ: SMTP mất hàng trăm ms – vài giây và chỉ chạy khi tài
@@ -126,7 +126,7 @@ const resetPassword = async (login, code, newPassword, ip = null) => {
 			.query(`
 				UPDATE password_reset_otps SET attempts = attempts + 1
 				OUTPUT INSERTED.user_id AS id, INSERTED.code_hash
-				WHERE user_id = @id AND attempts < @max AND expires_at > SYSUTCDATETIME()
+				WHERE user_id = @id AND attempts < @max AND expires_at > ${utcNowSql}
 			`)
 	).recordset[0];
 	if (!row) throw invalidOtp();
@@ -154,9 +154,9 @@ const resetPassword = async (login, code, newPassword, ip = null) => {
 		.request()
 		.input('id', sql.VarChar(20), row.id)
 		.input('password', sql.VarChar(255), hashed).query(`
-			UPDATE users SET password = @password, password_changed_at = GETDATE(), must_change_password = 'false',
+			UPDATE users SET password = @password, password_changed_at = ${nowSql}, must_change_password = 'false',
 			       temp_password_issued_at = NULL, failed_login_count = 0, locked_until = NULL,
-			       updated_at = GETDATE(), updated_by = @id
+			       updated_at = ${nowSql}, updated_by = @id
 			WHERE id = @id;
 			DELETE FROM password_reset_otps WHERE user_id = @id;
 			DELETE FROM refresh_tokens WHERE user_id = @id;

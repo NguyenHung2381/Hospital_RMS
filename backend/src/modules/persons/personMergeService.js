@@ -1,4 +1,4 @@
-const { getPool, sql, withActor, queryAll, updateReturning } = require('../../config/db');
+const { getPool, sql, withActor, queryAll, updateReturning, nowSql } = require('../../config/db');
 const { paging } = require('../../utils/paging');
 const { broadcast } = require('../events/eventService');
 const personService = require('./personService');
@@ -328,7 +328,7 @@ const mergeCandidate = async (
 			.input('l', sql.VarChar(20), loseId)
 			.input('actor', sql.VarChar(20), actorId || null).query(`
 				UPDATE dbo.persons SET status = 'MERGED', merged_into_id = @k, national_id = NULL,
-				       updated_at = SYSDATETIME(), updated_by = @actor WHERE id = @l;
+				       updated_at = ${nowSql}, updated_by = @actor WHERE id = @l;
 				UPDATE dbo.persons SET merged_into_id = @k WHERE merged_into_id = @l;`);
 
 		// 3) hồ sơ giữ lại
@@ -345,7 +345,7 @@ const mergeCandidate = async (
 			.input('verified', sql.Bit, !!(keepP.is_verified || loseP.is_verified)).query(`
 				UPDATE dbo.persons SET full_name = @full_name, date_of_birth = @dob, gender = @gender, national_id = @national_id,
 				       email = @email, phone = @phone, is_internal = @internal, is_verified = @verified,
-				       updated_at = SYSDATETIME(), updated_by = @actor
+				       updated_at = ${nowSql}, updated_by = @actor
 				WHERE id = @k`);
 
 		// 4) đóng cặp này + xử lý các cặp khác đang chờ có dính hồ sơ bị gộp
@@ -359,11 +359,11 @@ const mergeCandidate = async (
 			.input('note_same', sql.NVarChar(500), `Đã gộp cùng lượt (cặp #${id})`)
 			.input('note_from', sql.NVarChar(500), `Chuyển từ hồ sơ đã gộp ${loseId}`)
 			.input('note_to', sql.NVarChar(500), `Chuyển sang hồ sơ ${keepId}`).query(`
-				UPDATE dbo.person_merge_candidates SET status = 'MERGED', reviewed_by = @actor, reviewed_at = SYSDATETIME(),
+				UPDATE dbo.person_merge_candidates SET status = 'MERGED', reviewed_by = @actor, reviewed_at = ${nowSql},
 				       note = COALESCE(@note, note) WHERE id = @cid;
 
 				-- cặp khác giữa đúng hai hồ sơ này (lý do khác) → cũng đã giải quyết
-				UPDATE dbo.person_merge_candidates SET status = 'MERGED', reviewed_by = @actor, reviewed_at = SYSDATETIME(),
+				UPDATE dbo.person_merge_candidates SET status = 'MERGED', reviewed_by = @actor, reviewed_at = ${nowSql},
 				       note = @note_same
 				WHERE status = 'PENDING' AND id <> @cid
 				  AND ((person_a_id = @k AND person_b_id = @l) OR (person_a_id = @l AND person_b_id = @k));
@@ -380,7 +380,7 @@ const mergeCandidate = async (
 				                  WHERE x.person_a_id = CASE WHEN o.other < @k THEN o.other ELSE @k END
 				                    AND x.person_b_id = CASE WHEN o.other < @k THEN @k ELSE o.other END
 				                    AND x.reason = o.reason);
-				UPDATE dbo.person_merge_candidates SET status = 'MERGED', reviewed_by = @actor, reviewed_at = SYSDATETIME(),
+				UPDATE dbo.person_merge_candidates SET status = 'MERGED', reviewed_by = @actor, reviewed_at = ${nowSql},
 				       note = @note_to
 				WHERE status = 'PENDING' AND (person_a_id = @l OR person_b_id = @l);`);
 
@@ -420,8 +420,8 @@ const rejectCandidate = async (id, note, actorId) => {
 			.input('note', sql.NVarChar(500), note || null)
 			.input('actor', sql.VarChar(20), actorId || null)
 			.query(`UPDATE dbo.person_merge_candidates SET status = 'REJECTED', reviewed_by = @actor,
-			               reviewed_at = SYSDATETIME(), note = COALESCE(@note, note),
-			               updated_at = SYSDATETIME(), updated_by = @actor WHERE id = @id`);
+			               reviewed_at = ${nowSql}, note = COALESCE(@note, note),
+			               updated_at = ${nowSql}, updated_by = @actor WHERE id = @id`);
 	});
 	broadcast('update', { entity: 'person_merge' });
 	return { id, status: 'REJECTED' };
@@ -443,7 +443,7 @@ const reopenCandidate = async (id, actorId) => {
 			.input('id', sql.Int, id)
 			.input('actor', sql.VarChar(20), actorId || null)
 			.query(`UPDATE dbo.person_merge_candidates SET status = 'PENDING', reviewed_by = NULL, reviewed_at = NULL,
-			               updated_at = SYSDATETIME(), updated_by = @actor WHERE id = @id`);
+			               updated_at = ${nowSql}, updated_by = @actor WHERE id = @id`);
 	});
 	broadcast('update', { entity: 'person_merge' });
 	return { id, status: 'PENDING' };

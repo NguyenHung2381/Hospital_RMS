@@ -9,7 +9,7 @@
 const path = require('path');
 require('dotenv').config({ path: path.join(__dirname, '../.env'), quiet: true });
 
-const { getPool, sql } = require('../src/config/db');
+const { getPool, sql, nowSql } = require('../src/config/db');
 const { buildMemberUsername } = require('../src/modules/topics/topicMemberService');
 
 const apply = process.argv.includes('--apply');
@@ -51,7 +51,7 @@ const apply = process.argv.includes('--apply');
 				.request()
 				.input('id', sql.VarChar(20), c.id)
 				.input('username', sql.VarChar(100), c.next)
-				.query('UPDATE users SET username = @username, updated_at = GETDATE() WHERE id = @id');
+				.query(`UPDATE users SET username = @username, updated_at = ${nowSql} WHERE id = @id`);
 		}
 	}
 

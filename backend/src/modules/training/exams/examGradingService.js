@@ -1,4 +1,4 @@
-const { getPool, sql } = require('../../../config/db');
+const { getPool, sql, nowSql } = require('../../../config/db');
 const { broadcast } = require('../../events/eventService');
 const gradebookService = require('../courses/gradebookService');
 const { toTen } = require('../courses/gradeRules');
@@ -80,7 +80,7 @@ const finalizeAttemptIfComplete = async (attemptId, actorId) => {
 		.input('manual_score', sql.Decimal(6, 2), r.total ?? 0)
 		.input('actor_id', sql.VarChar(20), actorId || null)
 		.query(
-			"UPDATE exam_attempts SET manual_score = @manual_score, status = 'graded', updated_at = GETDATE(), updated_by = @actor_id WHERE id = @id",
+			`UPDATE exam_attempts SET manual_score = @manual_score, status = 'graded', updated_at = ${nowSql}, updated_by = @actor_id WHERE id = @id`,
 		);
 	await pushExamScore(attemptId, actorId);
 };

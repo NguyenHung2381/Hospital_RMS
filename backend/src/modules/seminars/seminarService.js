@@ -4,7 +4,14 @@
  * Độc lập với nghiệp vụ NCKH. Danh sách người tham dự nằm ở
  * seminarParticipantService; ở đây chỉ CRUD sự kiện + số liệu tổng hợp.
  */
-const { getPool, sql, withActorTransaction, actorRequest, queryAll } = require('../../config/db');
+const {
+	getPool,
+	sql,
+	withActorTransaction,
+	actorRequest,
+	queryAll,
+	nowSql,
+} = require('../../config/db');
 const { randomId, randomHex32 } = require('../../utils/idGenerator');
 const { broadcast } = require('../events/eventService');
 const { paging } = require('../../utils/paging');
@@ -276,7 +283,7 @@ const FIELD_TYPES = {
 const update = async (id, input, actorId) => {
 	const data = ht.applyLessonCredits(input);
 	const pool = await getPool();
-	const sets = ['updated_at = GETDATE()', 'updated_by = @actor_id'];
+	const sets = [`updated_at = ${nowSql}`, 'updated_by = @actor_id'];
 	const req = actorRequest(actorId)
 		.input('id', sql.VarChar(20), id)
 		.input('actor_id', sql.VarChar(20), actorId);
@@ -539,7 +546,7 @@ const updateRegisterSeq = async (year, lastSeq, actorId) => {
 		.input('actor_id', sql.VarChar(20), actorId).query(`
       MERGE cme_year_register AS t
       USING (SELECT @year AS y) AS s ON t.[year] = s.y
-      WHEN MATCHED THEN UPDATE SET last_seq = @seq, updated_at = GETDATE(), updated_by = @actor_id
+      WHEN MATCHED THEN UPDATE SET last_seq = @seq, updated_at = ${nowSql}, updated_by = @actor_id
       WHEN NOT MATCHED THEN INSERT ([year], last_seq, created_by, updated_by) VALUES (@year, @seq, @actor_id, @actor_id);
     `);
 	broadcast('update', { entity: 'seminar' });

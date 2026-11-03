@@ -5,6 +5,7 @@ const {
 	withActorTransaction,
 	actorRequest,
 	queryAll,
+	nowSql,
 } = require('../../../config/db');
 const { randomId } = require('../../../utils/idGenerator');
 const { isUniqueViolation } = require('../../../utils/dbErrors');
@@ -224,7 +225,7 @@ const create = async (data, actorId) => {
 const update = async (id, data, actorId) => {
 	const typeIds = traineeTypeIdsOf(data);
 	const input = withDurationText(withTraineeType(data, typeIds));
-	const sets = ['updated_at = GETDATE()', 'updated_by = @actor_id'];
+	const sets = [`updated_at = ${nowSql}`, 'updated_by = @actor_id'];
 	const req = actorRequest(actorId)
 		.input('id', sql.VarChar(20), id)
 		.input('actor_id', sql.VarChar(20), actorId);
