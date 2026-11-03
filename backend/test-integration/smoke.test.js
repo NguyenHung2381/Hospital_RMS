@@ -28,10 +28,11 @@ const path = require('path');
 
 process.env.NODE_ENV = process.env.NODE_ENV || 'development';
 
+// routeWalker phải nạp TRƯỚC app.js (nó ghi lại đường mount khi router được gắn)
+const { listRoutes } = require('../src/permissions/routeWalker');
 const app = require('../src/app');
 const { getPool, sql } = require('../src/config/db');
 const { signToken } = require('../src/utils/keys');
-const { listRoutes } = require('../src/permissions/routeWalker');
 
 const BASELINE = path.join(__dirname, '.baseline', 'get-shapes.json');
 // SSE giữ kết nối mãi — không phải API trả lời 1 lần
