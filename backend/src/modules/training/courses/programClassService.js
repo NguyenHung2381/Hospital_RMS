@@ -1,4 +1,4 @@
-const { getPool, sql } = require('../../../config/db');
+const { getPool, sql, jsonValues } = require('../../../config/db');
 const { broadcast } = require('../../events/eventService');
 const mailService = require('../../notifications/mailService');
 const mailQueue = require('../../notifications/mailQueue');
@@ -81,7 +81,7 @@ const mailTrainees = (enrollmentIds, title, message) =>
         SELECT t.full_name, t.email, c.name AS course_name, tp.name AS program_name
         FROM course_enrollments e JOIN trainees t ON t.id = e.trainee_id JOIN courses c ON c.id = e.course_id
         LEFT JOIN training_programs tp ON tp.id = e.program_id
-        WHERE e.id IN (SELECT CAST([value] AS VARCHAR(50)) FROM OPENJSON(@ids)) AND t.email IS NOT NULL AND t.email <> ''`)
+        WHERE e.id IN ${jsonValues('@ids')} AND t.email IS NOT NULL AND t.email <> ''`)
 		).recordset;
 		for (const r of rows) {
 			const subject = title(r);

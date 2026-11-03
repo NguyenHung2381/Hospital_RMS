@@ -456,9 +456,15 @@ thường. Mỗi nhóm là 1 PR nhỏ theo module.
     tham số trong `COALESCE(cột, @x)`.
 - [ ] Đợt sau: 34 chuỗi `N'...'` tiếng Việt còn lại (đa số trong lô nhiều câu / bảng tạm của
   dashboard, báo cáo CME, `courseCmeService`, các `THROW`) đổi sang tham số khi viết lại các lô đó;
-  `+` nối chuỗi trong mã sinh từ `NEWID()` (mục newid); `[key]` / `[value]` của `OPENJSON`.
-- [ ] `OPENJSON(@ids)` → `inClause` (đã có ở `src/utils/sqlFilters.js`) hoặc 1
-  helper `anyOf()` để adapter PG đổi sang `= ANY($1)`.
+  `+` nối chuỗi trong mã sinh từ `NEWID()` (mục newid).
+- [x] `OPENJSON` → helper của adapter (31 → 0): `jsonValues('@ids', { type, withIndex })` (mảng →
+  bảng cột `value`, `idx` từ 0; PG: `jsonb_array_elements_text ... WITH ORDINALITY`) và
+  `jsonRows('@rows', alias, cột)` thay `OPENJSON ... WITH` (PG: `jsonb_to_recordset`, `NVARCHAR` tự đổi
+  sang `varchar` / `text`). Vẫn 1 tham số JSON cho cả danh sách (không vướng giới hạn ~2100
+  tham số của SQL Server như `inClause`). Cột số (`work_shifts.id`, năm) phải ghi `type: 'INT'`: PG
+  không so `integer = varchar`. Kiểm bằng `test-integration/portableSql.cases.js`.
+  Lưu ý: `ORDER BY` cột có NULL — SQL Server xếp NULL **đầu**, PG xếp **cuối** (cần thì ghi rõ
+  `CASE WHEN x IS NULL THEN 0 ELSE 1 END, x`).
 - [ ] Tách các batch `DECLARE ...` và `recordsets[i]` thành nhiều lời gọi JS (mục 5.2).
 - [ ] Bỏ các chỗ phụ thuộc thứ tự ngầm: mọi câu trả danh sách phải có `ORDER BY`.
 - [x] Ghi baseline smoke test (`UPDATE_SNAPSHOTS=1 npm run test:smoke`, đã ghi 2026-11-03;
@@ -699,6 +705,6 @@ trong DB) kể cả khi cuối cùng quyết định không chuyển.
 3. Chạy các truy vấn kiểm kê ở chặng 0 trên production, thêm các kiểm tra ở mục 6.5.2.
 4. Ghi baseline smoke test trên DB dev hiện tại.
 5. Bắt đầu bước A (`deploy.sh`) và các việc chặng 1 không phụ thuộc nhau:
-   `withActor()`, `ISNULL` → `COALESCE`, `OPENJSON` → helper.
+   ~~`withActor()`, `ISNULL` → `COALESCE`, `OPENJSON` → helper.~~ Xong (chặng 1, mục 6).
 6. ~~Làm ngay trên SQL Server các việc dọn dữ liệu ở `DB_SCALING_PLAN.md` mục 6
    (giai đoạn 1).~~ Xong 03/11/2026 (`dataRetentionJob`, migration `2026-12-13_toi_uu_index_giai_doan_1`).

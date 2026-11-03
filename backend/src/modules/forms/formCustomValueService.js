@@ -1,4 +1,4 @@
-const { getPool, sql } = require('../../config/db');
+const { getPool, sql, jsonValues } = require('../../config/db');
 
 // Giá trị trường tùy chỉnh (form_custom_values) — 1 dòng JSON / bản ghi.
 // save() GỘP vào dữ liệu cũ: trường admin đã xóa khỏi cấu hình vẫn giữ giá trị
@@ -83,7 +83,7 @@ const removeMany = async (formKey, recordIds) => {
 		.input('form_key', sql.VarChar(60), formKey)
 		.input('ids', sql.NVarChar(sql.MAX), JSON.stringify(ids))
 		.query(
-			'DELETE FROM form_custom_values WHERE form_key = @form_key AND record_id IN (SELECT [value] FROM OPENJSON(@ids))',
+			`DELETE FROM form_custom_values WHERE form_key = @form_key AND record_id IN ${jsonValues('@ids')}`,
 		);
 };
 

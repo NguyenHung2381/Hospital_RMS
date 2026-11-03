@@ -1,6 +1,6 @@
 // Xem trước file nhập ghi nhận CME (cmeRecordImportService): khớp nhân viên / khoa / danh mục,
 // kiểm tra từng dòng, lên kế hoạch tạo nhân viên mới, đánh dấu dòng trùng.
-const { getPool, sql } = require('../../config/db');
+const { getPool, sql, jsonValues } = require('../../config/db');
 const { norm, normDept, stripQualification } = require('../../utils/vietnameseText');
 const { ROLE, inputRoleId } = require('../access/roleCodes');
 
@@ -351,8 +351,8 @@ const markDuplicates = async (preview) => {
 			.input('users', sql.NVarChar(sql.MAX), JSON.stringify(userIds))
 			.input('years', sql.NVarChar(sql.MAX), JSON.stringify([...new Set(valid.map((p) => p.year))]))
 			.query(`SELECT user_id, year, title, activity_date, credits FROM cme_records
-			        WHERE user_id IN (SELECT CAST([value] AS VARCHAR(50)) FROM OPENJSON(@users))
-			          AND year IN (SELECT CAST([value] AS INT) FROM OPENJSON(@years))`);
+			        WHERE user_id IN ${jsonValues('@users')}
+			          AND year IN ${jsonValues('@years', { type: 'INT' })}`);
 		for (const e of r.recordset) {
 			const date = e.activity_date ? new Date(e.activity_date).toISOString().slice(0, 10) : null;
 			existing.add(dupKey(e.user_id, e.year, e.title, date, e.credits));

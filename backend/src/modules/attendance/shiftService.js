@@ -1,4 +1,4 @@
-const { getPool, sql, withTransaction, boolExpr } = require('../../config/db');
+const { getPool, sql, withTransaction, boolExpr, jsonValues } = require('../../config/db');
 const { broadcast } = require('../events/eventService');
 const {
 	validateShift,
@@ -150,7 +150,7 @@ const savePattern = async (id, { name, days, is_default }) => {
 			await pool
 				.request()
 				.input('ids', sql.NVarChar(sql.MAX), JSON.stringify(ids))
-				.query('SELECT id FROM work_shifts WHERE id IN (SELECT value FROM OPENJSON(@ids))')
+				.query(`SELECT id FROM work_shifts WHERE id IN ${jsonValues('@ids', { type: 'INT' })}`)
 		).recordset.length;
 		if (found !== ids.length) throw httpError(400, 'Mẫu có ca không tồn tại');
 	}
@@ -228,16 +228,18 @@ const setPatternCourses = async (id, courseIds) => {
 			.query('SELECT 1 AS x FROM shift_patterns WHERE id = @id')
 	).recordset[0];
 	if (!exists) throw httpError(404, 'Không tìm thấy mẫu ca');
-	await withTransaction((tx) =>
-		new sql.Request(tx)
-			.input('id', sql.Int, id)
-			.input('ids', sql.NVarChar(sql.MAX), JSON.stringify([...new Set(courseIds.map(String))]))
-			.query(`
-        UPDATE courses SET shift_pattern_id = NULL
-        WHERE shift_pattern_id = @id AND id NOT IN (SELECT value FROM OPENJSON(@ids));
-        UPDATE courses SET shift_pattern_id = @id WHERE id IN (SELECT value FROM OPENJSON(@ids));
-      `),
-	);
+	const idsJson = JSON.stringify([...new Set(courseIds.map(String))]);
+	// 2 câu riêng trong 1 transaction (PG không ghép nhiều câu có tham số)
+	await withTransaction(async (tx) => {
+		const req = () =>
+			new sql.Request(tx).input('id', sql.Int, id).input('ids', sql.NVarChar(sql.MAX), idsJson);
+		await req().query(
+			`UPDATE courses SET shift_pattern_id = NULL WHERE shift_pattern_id = @id AND id NOT IN ${jsonValues('@ids')}`,
+		);
+		await req().query(
+			`UPDATE courses SET shift_pattern_id = @id WHERE id IN ${jsonValues('@ids')}`,
+		);
+	});
 	changed();
 };
 
@@ -364,7 +366,7 @@ const assertTrainees = async (userIds, limit) => {
 	if (limit !== undefined) req.input('dept', sql.VarChar(20), String(limit));
 	const outside = (
 		await req.query(`
-      SELECT j.value AS id FROM OPENJSON(@users) j
+      SELECT j.value AS id FROM ${jsonValues('@users')} j
       WHERE NOT EXISTS (SELECT 1 FROM trainees t WHERE t.user_id = j.value${limit !== undefined ? ' AND t.department_id = @dept' : ''})
     `)
 	).recordset;
@@ -392,7 +394,7 @@ const setRoster = async ({ user_ids, dates, mode, shift_ids = [] }, actor) => {
 				.input('dates', sql.NVarChar(sql.MAX), JSON.stringify(days));
 		await req().query(`
       DELETE FROM shift_assignments
-      WHERE user_id IN (SELECT value FROM OPENJSON(@users)) AND work_date IN (SELECT CAST(value AS DATE) FROM OPENJSON(@dates))
+      WHERE user_id IN ${jsonValues('@users')} AND work_date IN ${jsonValues('@dates', { type: 'DATE' })}
     `);
 		if (!shifts.length) return;
 		const shiftIds = shifts.filter((s) => s != null);
@@ -401,7 +403,7 @@ const setRoster = async ({ user_ids, dates, mode, shift_ids = [] }, actor) => {
 				await new sql.Request(tx)
 					.input('ids', sql.NVarChar(sql.MAX), JSON.stringify(shiftIds))
 					.query(
-						'SELECT id FROM work_shifts WHERE is_active = 1 AND id IN (SELECT value FROM OPENJSON(@ids))',
+						`SELECT id FROM work_shifts WHERE is_active = 1 AND id IN ${jsonValues('@ids', { type: 'INT' })}`,
 					)
 			).recordset.length;
 			if (found !== shiftIds.length) throw httpError(400, 'Có ca không tồn tại hoặc đã ngừng dùng');
@@ -410,11 +412,11 @@ const setRoster = async ({ user_ids, dates, mode, shift_ids = [] }, actor) => {
 			.input('shifts', sql.NVarChar(sql.MAX), JSON.stringify(shifts))
 			.input('actor', sql.VarChar(20), actor.id).query(`
         INSERT INTO shift_assignments (user_id, work_date, shift_id, updated_by)
-        SELECT u.id, CAST(d.value AS DATE), TRY_CAST(s.value AS INT), @actor
+        SELECT u.id, d.value, s.value, @actor
         FROM users u
-        CROSS JOIN OPENJSON(@dates) d
-        CROSS JOIN OPENJSON(@shifts) s
-        WHERE u.id IN (SELECT value FROM OPENJSON(@users))
+        CROSS JOIN ${jsonValues('@dates', { type: 'DATE' })} d
+        CROSS JOIN ${jsonValues('@shifts', { type: 'INT' })} s
+        WHERE u.id IN ${jsonValues('@users')}
       `);
 	});
 	broadcast('update', { entity: 'shift_assignments' });

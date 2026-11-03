@@ -29,7 +29,7 @@ const log = install(async (text, inputs) => {
 			end_date: null,
 		}));
 	}
-	if (/FROM OPENJSON\(@users\) j/.test(text)) {
+	if (/SELECT j\.value AS id FROM/.test(text)) {
 		return JSON.parse(inputs.users)
 			.filter((id) => !isTrainee(id, inputs.dept))
 			.map((id) => ({ id }));
@@ -129,7 +129,7 @@ test('setRoster toàn viện / lượt cấp cũ / superuser: không kiểm tra 
 	for (const a of [HR, LEGACY, SU]) {
 		const n = log.length;
 		await shiftService.setRoster({ ...PUT, user_ids: ['U1', 'U3'] }, a);
-		const check = log.slice(n).find((q) => /FROM OPENJSON\(@users\) j/.test(q.text));
+		const check = log.slice(n).find((q) => /SELECT j\.value AS id FROM/.test(q.text));
 		assert.doesNotMatch(check.text, /@dept/);
 		await assert.rejects(
 			shiftService.setRoster({ ...PUT, user_ids: ['NV1'] }, a),

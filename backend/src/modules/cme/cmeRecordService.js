@@ -5,7 +5,7 @@
  * 2026-09-16_cme_records.sql. Trang "Cảnh báo tín chỉ CME" (cmeRequirementService
  * .getComplianceReport) đã cộng dồn cả 2 nguồn.
  */
-const { getPool, sql } = require('../../config/db');
+const { getPool, sql, jsonValues } = require('../../config/db');
 const { broadcast } = require('../events/eventService');
 const { paging } = require('../../utils/paging');
 const trainingFileService = require('../training/trainingFileService');
@@ -200,7 +200,7 @@ const updateMany = async (ids, data, actorId) => {
 	// Đổi 1 đầu khoảng ngày có thể làm "Đến ngày" < "Từ ngày" ở ghi nhận khác → chặn trước
 	if (has('activity_date') || has('end_date')) {
 		const bad = await newReq().req.query(`SELECT COUNT(*) AS n FROM cme_records r
-			WHERE r.id IN (SELECT CAST([value] AS VARCHAR(50)) FROM OPENJSON(@ids))
+			WHERE r.id IN ${jsonValues('@ids')}
 			AND ${newVal('end_date')} < ${newVal('activity_date')}`);
 		if (bad.recordset[0].n)
 			throw httpError(
@@ -218,7 +218,7 @@ const updateMany = async (ids, data, actorId) => {
 	}
 	const r = await req.query(`UPDATE r SET ${sets.join(', ')}
 		FROM cme_records r LEFT JOIN cme_credit_categories c ON c.id = ${newVal('category_id')}
-		WHERE r.id IN (SELECT CAST([value] AS VARCHAR(50)) FROM OPENJSON(@ids))`);
+		WHERE r.id IN ${jsonValues('@ids')}`);
 	broadcast('update', { entity: 'cme_record' });
 	return { updated: r.rowsAffected[0] };
 };
@@ -248,7 +248,7 @@ const removeResultFiles = async (recordIds, actorId) => {
 		.input('ids', sql.NVarChar(sql.MAX), JSON.stringify(recordIds))
 		.query(
 			`SELECT id FROM training_files WHERE entity_type = '${RESULT_FILE_TYPE}' AND is_deleted = 0
-       AND entity_id IN (SELECT CAST([value] AS VARCHAR(50)) FROM OPENJSON(@ids))`,
+       AND entity_id IN ${jsonValues('@ids')}`,
 		);
 	for (const f of files.recordset) await trainingFileService.softDelete(f.id, actorId);
 };
@@ -262,7 +262,7 @@ const removeMany = async (ids, actorId) => {
 		.request()
 		.input('ids', sql.NVarChar(sql.MAX), JSON.stringify(list))
 		.query(
-			'DELETE FROM cme_records OUTPUT deleted.evidence_file_id WHERE id IN (SELECT CAST([value] AS VARCHAR(50)) FROM OPENJSON(@ids))',
+			`DELETE FROM cme_records OUTPUT deleted.evidence_file_id WHERE id IN ${jsonValues('@ids')}`,
 		);
 	for (const { evidence_file_id } of result.recordset) {
 		if (evidence_file_id) await trainingFileService.softDelete(evidence_file_id, actorId);

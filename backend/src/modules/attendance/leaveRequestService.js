@@ -1,4 +1,4 @@
-const { getPool, sql } = require('../../config/db');
+const { getPool, sql, jsonValues } = require('../../config/db');
 const { broadcast } = require('../events/eventService');
 const notificationService = require('../notifications/notificationService');
 const { findActiveUserIdsWhere } = require('../access/permissionService');
@@ -47,9 +47,7 @@ const approversFor = async (departmentId) => {
 			.request()
 			.input('dept', sql.VarChar(20), String(departmentId))
 			.input('ids', sql.NVarChar(sql.MAX), JSON.stringify(deptScoped))
-			.query(
-				'SELECT id FROM users WHERE department_id = @dept AND id IN (SELECT CAST([value] AS VARCHAR(50)) FROM OPENJSON(@ids))',
-			)
+			.query(`SELECT id FROM users WHERE department_id = @dept AND id IN ${jsonValues('@ids')}`)
 	).recordset.map((r) => r.id);
 	return [...new Set([...all, ...sameDept])];
 };

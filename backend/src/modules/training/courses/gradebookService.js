@@ -1,4 +1,4 @@
-const { getPool, sql, withTransaction } = require('../../../config/db');
+const { getPool, sql, withTransaction, jsonRows } = require('../../../config/db');
 const { genGradeId } = require('../../../utils/idGenerator');
 const { broadcast } = require('../../events/eventService');
 const { httpError } = require('../../../utils/httpError');
@@ -182,9 +182,12 @@ const recompute = async (courseId, enrollmentIds) => {
 	await pool.request().input('rows', sql.NVarChar(sql.MAX), JSON.stringify(updates)).query(`
     UPDATE g SET score = j.score, result = j.result, classification = j.classification
     FROM grades g
-    JOIN OPENJSON(@rows) WITH (
-      id VARCHAR(20), score DECIMAL(5, 2), result VARCHAR(20), classification NVARCHAR(20)
-    ) j ON j.id = g.id
+    JOIN ${jsonRows('@rows', 'j', [
+			['id', 'VARCHAR(20)'],
+			['score', 'DECIMAL(5, 2)'],
+			['result', 'VARCHAR(20)'],
+			['classification', 'NVARCHAR(20)'],
+		])} ON j.id = g.id
   `);
 };
 

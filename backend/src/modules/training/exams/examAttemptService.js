@@ -1,4 +1,4 @@
-const { getPool, sql } = require('../../../config/db');
+const { getPool, sql, jsonRows } = require('../../../config/db');
 const { broadcast } = require('../../events/eventService');
 const { randomUUID } = require('crypto');
 const { httpError } = require('../../../utils/httpError');
@@ -240,9 +240,12 @@ const submitAttempt = async (paperId, answers, actor) => {
 		.input('status', sql.VarChar(20), hasEssay ? 'submitted' : 'graded').query(`
       INSERT INTO exam_answers (id, attempt_id, question_id, selected_option, essay_text, score_awarded)
       SELECT 'EAN' + LEFT(REPLACE(NEWID(),'-',''), 17), @id, j.question_id, j.selected_option, j.essay_text, j.score_awarded
-      FROM OPENJSON(@answers) WITH (
-        question_id VARCHAR(20), selected_option NVARCHAR(255), essay_text NVARCHAR(MAX), score_awarded DECIMAL(4, 1)
-      ) j;
+      FROM ${jsonRows('@answers', 'j', [
+				['question_id', 'VARCHAR(20)'],
+				['selected_option', 'NVARCHAR(255)'],
+				['essay_text', 'NVARCHAR(MAX)'],
+				['score_awarded', 'DECIMAL(4, 1)'],
+			])};
       UPDATE exam_attempts SET submitted_at = GETDATE(), auto_score = @auto_score, status = @status,
         updated_at = GETDATE(), updated_by = @actor_id WHERE id = @id
     `);

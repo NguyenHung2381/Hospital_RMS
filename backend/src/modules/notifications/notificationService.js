@@ -2,7 +2,7 @@ const db = require('../../config/db');
 const { VN_OFFSET_MS } = require('../../utils/vnDate');
 const { inClause } = require('../../utils/sqlFilters');
 
-const { getPool, sql } = db;
+const { getPool, sql, jsonValues } = db;
 const mailService = require('./mailService');
 const mailQueue = require('./mailQueue');
 const logger = require('../../config/logger');
@@ -161,7 +161,7 @@ const pushWithEmail = async (
 			.request()
 			.input('user_ids', sql.NVarChar(sql.MAX), JSON.stringify(userIds)).query(`
 				SELECT id, email, full_name FROM users
-				WHERE id IN (SELECT CAST([value] AS VARCHAR(50)) FROM OPENJSON(@user_ids))
+				WHERE id IN ${jsonValues('@user_ids')}
 				  AND email IS NOT NULL AND email <> ''
 			`);
 		for (const u of res.recordset) {
@@ -187,7 +187,7 @@ const getUsersByTarget = async (targetType, targetIds = []) => {
 			.input('dept_ids', sql.NVarChar(sql.MAX), JSON.stringify(targetIds))
 			.query(
 				`SELECT id FROM users WHERE is_active = 1
-         AND department_id IN (SELECT value FROM OPENJSON(@dept_ids))`,
+         AND department_id IN ${jsonValues('@dept_ids')}`,
 			);
 		return res.recordset.map((r) => r.id);
 	}

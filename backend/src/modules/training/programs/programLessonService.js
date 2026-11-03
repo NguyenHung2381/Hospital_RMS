@@ -1,4 +1,4 @@
-const { getPool, sql } = require('../../../config/db');
+const { getPool, sql, jsonValues } = require('../../../config/db');
 const { appErrorCode } = require('../../../utils/dbErrors');
 const { broadcast } = require('../../events/eventService');
 const trainingFileService = require('../trainingFileService');
@@ -52,8 +52,8 @@ const setLessonDepartments = async (lessonId, departmentIds) => {
 		.input('lesson_id', sql.VarChar(20), lessonId)
 		.input('ids', sql.NVarChar(sql.MAX), JSON.stringify(ids)).query(`
       INSERT INTO lesson_departments (lesson_id, department_id, display_order)
-      SELECT @lesson_id, d.id, CAST(j.[key] AS INT)
-      FROM OPENJSON(@ids) j JOIN departments d ON d.id = CAST(j.[value] AS VARCHAR(50))
+      SELECT @lesson_id, d.id, j.idx
+      FROM ${jsonValues('@ids', { withIndex: true })} j JOIN departments d ON d.id = j.value
     `);
 };
 
@@ -179,8 +179,8 @@ const setLessonPrograms = async (lessonId, programIds, actorId) => {
 			.input('ids', sql.NVarChar(sql.MAX), JSON.stringify(ids))
 			.input('actor_id', sql.VarChar(20), actorId).query(`
         INSERT INTO lesson_programs (id, lesson_id, program_id, display_order, created_by)
-        SELECT 'LP' + LEFT(REPLACE(NEWID(),'-',''), 18), @lesson_id, tp.id, CAST(j.[key] AS INT), @actor_id
-        FROM OPENJSON(@ids) j JOIN training_programs tp ON tp.id = CAST(j.[value] AS VARCHAR(50))
+        SELECT 'LP' + LEFT(REPLACE(NEWID(),'-',''), 18), @lesson_id, tp.id, j.idx, @actor_id
+        FROM ${jsonValues('@ids', { withIndex: true })} j JOIN training_programs tp ON tp.id = j.value
       `);
 	broadcast('update', { entity: 'program_lesson' });
 	return getLessonProgramIds(lessonId);
@@ -275,8 +275,8 @@ const reorderLessons = async (programId, linkIds, actorId) => {
 			.input('ids', sql.NVarChar(sql.MAX), JSON.stringify(ids))
 			.input('program_id', sql.VarChar(20), programId)
 			.input('actor_id', sql.VarChar(20), actorId).query(`
-        UPDATE lp SET display_order = CAST(j.[key] AS INT), updated_at = GETDATE(), updated_by = @actor_id
-        FROM lesson_programs lp JOIN OPENJSON(@ids) j ON CAST(j.[value] AS VARCHAR(50)) = lp.id
+        UPDATE lp SET display_order = j.idx, updated_at = GETDATE(), updated_by = @actor_id
+        FROM lesson_programs lp JOIN ${jsonValues('@ids', { withIndex: true })} j ON j.value = lp.id
         WHERE lp.program_id = @program_id
       `);
 	broadcast('update', { entity: 'program_lesson' });

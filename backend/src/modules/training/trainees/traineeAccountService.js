@@ -1,5 +1,5 @@
 const bcrypt = require('bcrypt');
-const { getPool, sql, withActorTransaction, withActor } = require('../../../config/db');
+const { getPool, sql, withActorTransaction, withActor, jsonValues } = require('../../../config/db');
 const { broadcast } = require('../../events/eventService');
 const { ROLE, requireRoleId } = require('../../access/roleCodes');
 const { defaultPassword } = require('../../../utils/passwordPolicy');
@@ -70,7 +70,7 @@ const grantAccounts = async (traineeIds, actorId) => {
     SELECT t.id, t.full_name, t.email, t.phone, t.is_active, t.hidden_at,
            COALESCE(t.account_granted, @no) AS account_granted
     FROM trainees t
-    WHERE t.id IN (SELECT value FROM OPENJSON(@ids))
+    WHERE t.id IN ${jsonValues('@ids')}
   `);
 	const byId = new Map(traineesResult.recordset.map((row) => [row.id, row]));
 

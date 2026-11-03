@@ -323,6 +323,25 @@ const boolExpr = (cond) => `(CASE WHEN ${cond} THEN TRUE ELSE FALSE END)`;
 /** @param {string} expr */
 const castBool = (expr) => `CAST(${expr} AS BOOLEAN)`;
 
+// Mảng JSON dùng như bảng — cùng giao diện với db.mssql.js. Kiểu viết theo SQL
+// Server được đổi: NVARCHAR(MAX) → text, NVARCHAR(n) → varchar(n).
+/** @param {string} t */
+const pgType = (t) =>
+	t.replace(/\bN?VARCHAR\s*\(\s*MAX\s*\)/gi, 'text').replace(/\bNVARCHAR\b/gi, 'varchar');
+/**
+ * @param {string} param
+ * @param {{ type?: string, withIndex?: boolean }} [opts]
+ */
+const jsonValues = (param, { type = 'VARCHAR(50)', withIndex = false } = {}) =>
+	`(SELECT CAST(j.value AS ${pgType(type)}) AS value${withIndex ? ', CAST(j.ord - 1 AS INT) AS idx' : ''} FROM jsonb_array_elements_text(CAST(${param} AS jsonb)) WITH ORDINALITY AS j(value, ord))`;
+/**
+ * @param {string} param
+ * @param {string} alias
+ * @param {Array<[string, string]>} cols
+ */
+const jsonRows = (param, alias, cols) =>
+	`jsonb_to_recordset(CAST(${param} AS jsonb)) AS ${alias}(${cols.map(([c, t]) => `${c} ${pgType(t)}`).join(', ')})`;
+
 module.exports = {
 	client: 'pg',
 	getPool,
@@ -334,6 +353,8 @@ module.exports = {
 	nextSequenceValues,
 	boolExpr,
 	castBool,
+	jsonValues,
+	jsonRows,
 	sslOptions,
 	toMssqlResult,
 };

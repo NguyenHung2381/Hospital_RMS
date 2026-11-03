@@ -1,5 +1,5 @@
 // Hằng số + hàm dùng chung của các service đề thi (ngân hàng, đề, chấm, làm bài).
-const { getPool, sql } = require('../../../config/db');
+const { getPool, sql, jsonValues } = require('../../../config/db');
 const { parseJsonArray } = require('../../../utils/sqlFilters');
 const { httpError } = require('../../../utils/httpError');
 const { drawQuestions } = require('./examGen');
@@ -74,9 +74,7 @@ const loadQuestions = async (ids, columns) => {
 		await pool
 			.request()
 			.input('ids', sql.NVarChar(sql.MAX), JSON.stringify(ids))
-			.query(
-				`SELECT ${columns} FROM question_bank q WHERE q.id IN (SELECT CAST([value] AS VARCHAR(50)) FROM OPENJSON(@ids))`,
-			)
+			.query(`SELECT ${columns} FROM question_bank q WHERE q.id IN ${jsonValues('@ids')}`)
 	).recordset;
 	const byId = new Map(rows.map((r) => [r.id, r]));
 	return ids.map((id, i) => byId.get(id) && { ...byId.get(id), sort_order: i }).filter(Boolean);

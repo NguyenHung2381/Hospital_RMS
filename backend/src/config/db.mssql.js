@@ -165,6 +165,26 @@ const boolExpr = (cond) => `CAST(CASE WHEN ${cond} THEN 1 ELSE 0 END AS BIT)`;
 /** @param {string} expr cột / biểu thức boolean, hoặc NULL */
 const castBool = (expr) => `CAST(${expr} AS BIT)`;
 
+// Mảng JSON (1 tham số NVarChar(MAX) = JSON.stringify(mảng)) dùng như 1 bảng:
+//   `id IN ${jsonValues('@ids')}`, `FROM ${jsonValues('@ids', { withIndex: true })} j`
+// Cột `value` (ép sang `type`), thêm `idx` (vị trí, từ 0) nếu withIndex. Danh sách
+// dài vẫn chỉ là 1 tham số (SQL Server giới hạn ~2100 tham số / câu). Bản PG ở db.pg.js.
+/**
+ * @param {string} param tên tham số, vd '@ids'
+ * @param {{ type?: string, withIndex?: boolean }} [opts] type: VARCHAR(50) (mặc định), INT, DATE...
+ */
+const jsonValues = (param, { type = 'VARCHAR(50)', withIndex = false } = {}) =>
+	`(SELECT CAST([value] AS ${type}) AS value${withIndex ? ', CAST([key] AS INT) AS idx' : ''} FROM OPENJSON(${param}))`;
+
+// Mảng JSON các object → bảng có cột đặt kiểu: `JOIN ${jsonRows('@rows', 'j', [['id', 'VARCHAR(20)']])} ON ...`
+/**
+ * @param {string} param
+ * @param {string} alias
+ * @param {Array<[string, string]>} cols [tên khoá, kiểu SQL Server]
+ */
+const jsonRows = (param, alias, cols) =>
+	`OPENJSON(${param}) WITH (${cols.map(([c, t]) => `${c} ${t}`).join(', ')}) ${alias}`;
+
 module.exports = {
 	client: 'mssql',
 	getPool,
@@ -176,5 +196,7 @@ module.exports = {
 	nextSequenceValues,
 	boolExpr,
 	castBool,
+	jsonValues,
+	jsonRows,
 	tlsOptions,
 };

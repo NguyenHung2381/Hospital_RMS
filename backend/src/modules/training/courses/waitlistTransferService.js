@@ -5,7 +5,7 @@
  * phòng Đào tạo chọn rồi bấm chuyển. Chuyển = đổi course_id của hồ sơ sang đợt này
  * và duyệt luôn (giữ decided_at để thứ tự chờ không đổi), trong giới hạn chỗ trống.
  */
-const { getPool, sql } = require('../../../config/db');
+const { getPool, sql, jsonValues } = require('../../../config/db');
 const { broadcast } = require('../../events/eventService');
 const { httpError } = require('../../../utils/httpError');
 const programClassService = require('./programClassService');
@@ -81,7 +81,7 @@ const transfer = async (courseId, enrollmentIds, actorId) => {
 			await q()
 				.input('course_id', sql.VarChar(20), courseId)
 				.input('ids', sql.NVarChar(sql.MAX), JSON.stringify(enrollmentIds))
-				.query(`${CANDIDATE_SQL} AND e.id IN (SELECT CAST([value] AS VARCHAR(50)) FROM OPENJSON(@ids))
+				.query(`${CANDIDATE_SQL} AND e.id IN ${jsonValues('@ids')}
                 ORDER BY e.decided_at, e.registered_at, e.id`)
 		).recordset;
 		for (const e of valid) {

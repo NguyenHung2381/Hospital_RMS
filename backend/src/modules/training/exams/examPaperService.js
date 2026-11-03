@@ -1,4 +1,4 @@
-const { getPool, sql, withTransaction } = require('../../../config/db');
+const { getPool, sql, withTransaction, jsonValues } = require('../../../config/db');
 const { broadcast } = require('../../events/eventService');
 const { httpError } = require('../../../utils/httpError');
 const { seededRandom } = require('./examGen');
@@ -99,9 +99,9 @@ const insertPaperQuestions = async (paperId, ids, codeNo, actorId, onlyType = nu
 		.input('code_no', sql.Int, codeNo)
 		.input('actor_id', sql.VarChar(20), actorId || null).query(`
       INSERT INTO exam_paper_questions (id, paper_id, question_id, sort_order, code_no, created_by)
-      SELECT 'EPQ' + LEFT(REPLACE(NEWID(),'-',''), 17), @paper_id, q.id, CAST(j.[key] AS INT), @code_no, @actor_id
-      FROM OPENJSON(@ids) j
-      JOIN question_bank q ON q.id = CAST(j.[value] AS VARCHAR(50))
+      SELECT 'EPQ' + LEFT(REPLACE(NEWID(),'-',''), 17), @paper_id, q.id, j.idx, @code_no, @actor_id
+      FROM ${jsonValues('@ids', { withIndex: true })} j
+      JOIN question_bank q ON q.id = j.value
       WHERE @only_type IS NULL OR q.question_type = @only_type
     `);
 };
