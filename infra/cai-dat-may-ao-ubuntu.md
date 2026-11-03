@@ -15,6 +15,8 @@ Trình duyệt ──► :8084 frontend (Nginx, container) ──► backend:300
 
 SQL Server **không** chạy trong Docker. Container backend gọi về máy host qua tên `host.docker.internal` (đã khai báo sẵn trong `docker-compose.prod.yml`).
 
+> Khi chuyển sang PostgreSQL: PostgreSQL cũng cài thẳng trên máy này theo [cai-dat-postgresql.md](cai-dat-postgresql.md), cùng cách container gọi ra host.
+
 > **Vì sao để Docker và dữ liệu SQL Server trên ổ 2?** Ổ hệ điều hành chỉ 50 GB. Image Docker, cache build, file người dùng upload, file `.mdf/.ldf` và file backup của SQL Server đều tăng dần. Để chung với hệ điều hành thì sớm muộn ổ 1 đầy và máy treo. Ổ 2 chứa toàn bộ phần dữ liệu, ổ 1 chỉ còn hệ điều hành và chương trình.
 
 ---

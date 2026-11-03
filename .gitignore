@@ -57,6 +57,10 @@ desktop.ini
 !backend/database/migrations/*.sql
 !backend/database/objects/**/*.sql
 !backend/database/manual/*.sql
+# Schema PostgreSQL (sinh từ schema, không có dữ liệu) và script tạo DB/role
+# (mật khẩu truyền bằng biến psql lúc chạy, không ghi trong file).
+!backend/database/pg/**/*.sql
+!infra/postgresql/*.sql
 
 # Lock files (keep only one, remove if you prefer to commit these)
 # package-lock.json
