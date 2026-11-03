@@ -2,9 +2,10 @@
 // Migration CSDL (database/migrations/*.sql) — xem database/README.md.
 // Một lệnh duy nhất, việc chọn bằng lệnh con (xem USAGE). Cờ cũ --dry-run /
 // --baseline / --init vẫn nhận (= status / baseline / init).
-// MIGRATION_BACKUP_DIR (thư mục TRÊN MÁY SQL Server): có file mới thì
-// BACKUP DATABASE ... COPY_ONLY vào đó trước khi chạy — điểm phục hồi khi
-// migration hỏng (rollback ứng dụng không hoàn tác được schema).
+// MIGRATION_BACKUP_DIR: có file mới thì backup trước khi chạy — điểm phục hồi
+// khi migration hỏng (rollback ứng dụng không hoàn tác được schema).
+//   SQL Server: thư mục TRÊN MÁY SQL Server, BACKUP DATABASE ... COPY_ONLY.
+//   PostgreSQL (DB_CLIENT=pg): thư mục ở máy chạy lệnh, pg_dump -Fc.
 const fs = require('fs');
 const path = require('path');
 require('../src/config/loadEnv');
@@ -46,6 +47,19 @@ const TEMPLATE = (
 -- IF COL_LENGTH(N'dbo.<bảng>', N'<cột>') IS NULL
 --     ALTER TABLE [dbo].[<bảng>] ADD [<cột>] NVARCHAR(255) NULL;
 -- GO
+`;
+
+const PG_TEMPLATE = (
+	name,
+) => `/* ============================================================================
+ * ${name.replace(/\.sql$/, '')}  (PostgreSQL — bản SQL Server cùng tên ở database/migrations/)
+ * ----------------------------------------------------------------------------
+ *   <Mô tả thay đổi: bảng / cột nào, để làm gì, ai dùng>
+ * Chạy trong 1 transaction (thêm dòng "-- @no-transaction" nếu cần CREATE
+ * INDEX CONCURRENTLY). Idempotent: IF NOT EXISTS / CREATE OR REPLACE.
+ * ==========================================================================*/
+
+-- ALTER TABLE <bảng> ADD COLUMN IF NOT EXISTS <cột> varchar(255);
 `;
 
 const printStatus = (s) => {
@@ -113,7 +127,7 @@ const COMMANDS = {
 	new: () => {
 		const name = migrator.nextFilename(rest.join(' '));
 		const file = path.join(migrator.MIGRATIONS_DIR, name);
-		fs.writeFileSync(file, TEMPLATE(name));
+		fs.writeFileSync(file, (migrator.client === 'pg' ? PG_TEMPLATE : TEMPLATE)(name));
 		console.log(`Đã tạo ${path.relative(process.cwd(), file)}`);
 	},
 	help: () => console.log(USAGE),

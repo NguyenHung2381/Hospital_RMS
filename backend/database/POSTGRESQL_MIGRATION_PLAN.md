@@ -1,8 +1,62 @@
 # Kế hoạch chuẩn bị chuyển CSDL: SQL Server → PostgreSQL
 
-> Trạng thái: **bản nháp để thảo luận** (28/10/2026). Chưa có quyết định chuyển.
+> Trạng thái: **bản nháp để thảo luận** (28/10/2026, rà soát lại 03/11/2026). Chưa có quyết định chuyển.
 > Mục tiêu tài liệu: biết chính xác phải sửa những gì, làm theo thứ tự nào để
 > hệ thống vẫn chạy ổn trong suốt quá trình, và có đường lui khi chuyển hỏng.
+>
+> Tài liệu đi kèm: [`DB_SCALING_PLAN.md`](DB_SCALING_PLAN.md) — tối ưu bảng, index,
+> cấu hình PostgreSQL để vận hành lâu dài khi dữ liệu phình to.
+
+## 0. Rà soát 03/11/2026: đã sẵn sàng chưa?
+
+**Kết luận ngắn:**
+
+- **Chạy trên Linux: gần sẵn sàng.** Ứng dụng đã chạy trong container Linux
+  (`node:24-alpine`, Nginx, Redis, ClamAV) và đã có hướng dẫn dựng máy Ubuntu
+  (`infra/cai-dat-may-ao-ubuntu.md`). Còn thiếu khâu **triển khai tự động**, vì
+  nó viết bằng PowerShell cho server Windows. Ước lượng khoảng 1 tuần.
+- **Chạy trên PostgreSQL: chưa sẵn sàng.** Mới xong 2 việc chuẩn bị (`dbErrors.js`,
+  script đếm `check:tsql`). Số chỗ T-SQL còn **1.135** (mốc đã sửa lỗi đếm nhầm, mục 6 chặng 0).
+  Chưa có adapter `pg`, chưa có schema PG, chưa có script chuyển dữ liệu, CI
+  chưa chạy với PG. Còn khoảng **8–11 tuần** cho 1 người (mục 9).
+
+**Đề xuất: tách 2 việc, không đổi hệ điều hành và DB cùng lúc.**
+
+1. **Bước A — Lên Linux, vẫn dùng SQL Server** (theo `infra/cai-dat-may-ao-ubuntu.md`,
+   nên dùng Ubuntu **24.04 LTS**, bản SQL Server được hỗ trợ chính thức). Rủi ro
+   thấp vì code DB không đổi.
+2. **Bước B — Đổi sang PostgreSQL** trên cùng máy Linux, theo chặng 1–4 bên dưới.
+   PostgreSQL 18 có gói chính thức (kho PGDG) cho cả Ubuntu 24.04 và 26.04.
+
+Nếu bắt buộc bỏ SQL Server ngay (bản quyền, giới hạn bản Express), có thể bỏ
+bước A và giữ máy Windows hiện tại tới khi xong bước B.
+
+### 0.1 Bảng đánh giá
+
+| Hạng mục | Trạng thái | Chi tiết |
+|---|---|---|
+| Ứng dụng chạy trên Linux | ✅ | Image `node:24-alpine`; đường dẫn dùng `path.join/resolve`; entrypoint tự bỏ CRLF; font cho `@napi-rs/canvas` nằm trong `src/assets/fonts`; DB lưu đường dẫn file dạng `/uploads/...` (gạch chéo xuôi) |
+| Hướng dẫn dựng server Linux | ✅ | `infra/cai-dat-may-ao-ubuntu.md` (Ubuntu 26.04 + SQL Server 2025 bản cho 24.04, chưa được Microsoft hỗ trợ chính thức) |
+| Triển khai tự động (CI/CD) | ❌ | `.github/workflows/deploy.yml` dùng `shell: powershell` và gọi `scripts/deploy.ps1`. Cần viết lại `deploy.sh` (bash), hoặc cài `pwsh` trên runner Linux và sửa script cho chạy được trên PowerShell 7. Tương tự `scripts/rotate-jwt-secrets.ps1`, `backend/scripts/import-dtlt.ps1` |
+| Backup trước migration | ⚠️ | `MIGRATION_BACKUP_DIR` là thư mục **trên máy SQL Server** (`BACKUP DATABASE`). Lên Linux vẫn chạy được nếu SQL Server cùng máy. Với PG phải đổi sang `pg_dump` |
+| Driver và lớp truy cập DB | ❌ | Chỉ có `mssql`. Chưa có `db.pg.js`, chưa có biến `DB_CLIENT` |
+| Câu SQL trong code | ❌ | 1.135 chỗ / 27 loại cú pháp chỉ T-SQL có (`npm run check:tsql`) |
+| Logic nằm trong DB | ❌ | 44 procedure, 16 trigger, 2 view, 1 function, chưa chuyển cái nào về JS |
+| Schema gốc trong repo | ❌ | Các bảng lõi (`users`, `topics`, `notifications`, `refresh_tokens`, `files`, `departments`, `roles`...) **không có** câu `CREATE TABLE` trong `migrations/`, vì được tạo tay trước khi có migration. Schema PG phải sinh từ DB thật (mục 5.3), không dựng lại được từ repo |
+| Mã lỗi DB | ✅ | `src/utils/dbErrors.js`, không còn chỗ so `err.number` |
+| Theo dõi tiến độ | ✅ | `check:tsql` + test ratchet trong CI |
+| Test trên PG | ❌ | CI không có DB; `fakeDb` trong test khớp theo chuỗi SQL, sẽ phải sửa theo |
+| Script chuyển dữ liệu | ❌ | Chưa có (thiết kế ở mục 6.5) |
+| Dữ liệu sẵn sàng để chuyển | ⚠️ | Đo trên DB dev: 10 ràng buộc `CHECK` ở trạng thái "không tin cậy" (dữ liệu cũ có thể vi phạm), 48 khoá ngoại không có index (PG không tự tạo), 4 cột tính toán, collation `SQL_Latin1_General_CP1_CI_AS` (không phân biệt hoa/thường) |
+
+### 0.2 Số liệu DB dev (03/11/2026, chỉ đọc)
+
+- SQL Server 2025 **Express**, DB `RMS_HOSPITAL` 144 MB, 108 bảng. Bảng lớn nhất là
+  `users` (1.860 dòng), `persons` (1.936), `staff_practice_licenses` (1.479),
+  `program_lessons` (1.764). Dữ liệu dev còn nhỏ, chuyển dữ liệu chỉ mất vài phút.
+- Bản Express giới hạn **10 GB mỗi DB** và ~1,4 GB RAM cho bộ đệm. Nếu production
+  cũng là Express thì đây là một lý do chính đáng để chuyển (Q1).
+- Cần đo lại trên **production** ở chặng 0 (kích thước, số dòng, collation).
 
 ## 1. Tóm tắt
 
@@ -122,10 +176,10 @@
 |---|---|---|
 | Q1 | Lý do chuyển (bản quyền, chi phí, hạ tầng, chính sách)? Có hạn chót không? | Ghi rõ lý do. Lý do quyết định mức đầu tư hợp lý. |
 | Q2 | Phiên bản PostgreSQL | **18** (hoặc mới hơn, đã có vài bản vá). Cần ≥ 17 nếu muốn `MERGE ... RETURNING`. |
-| Q3 | Đặt PG ở đâu: container trong compose, VM riêng, hay dịch vụ quản lý? | VM/máy riêng như SQL Server hiện tại. Dev dùng container trong `docker-compose.yml`. |
+| Q3 | Đặt PG ở đâu: container trong compose, VM riêng, hay dịch vụ quản lý? | **Đã chốt:** cài thẳng trên server Ubuntu (systemd, ngoài Docker), giống SQL Server hiện tại. Container gọi ra qua `host.docker.internal`. Hướng dẫn: `infra/cai-dat-postgresql.md`. |
 | Q4 | Thời gian dừng hệ thống cho phép khi cutover | Nếu DB < vài chục GB: 1 khung bảo trì 2–4 giờ ngoài giờ hành chính là đủ, không cần đồng bộ liên tục (CDC). |
 | Q5 | Có hệ thống ngoài đọc/ghi thẳng DB không (SQL Agent job, báo cáo, Power BI, Excel kết nối DB, hai view `vw_*_audit`)? | Kiểm kê trên production (mục 6.1). Mỗi thứ tìm được đều phải có phương án. |
-| Q6 | Cách xử lý không phân biệt hoa/thường | `citext` cho cột định danh (`username`, `email`, mã) + `ILIKE` cho tìm kiếm. Xem mục 4.2. |
+| Q6 | Cách xử lý không phân biệt hoa/thường | Collation `rms_ci` (ICU, không tất định) cho cột định danh (`username`, `email`, mã) + `ILIKE` cho tìm kiếm. Xem mục 4.2. |
 | Q7 | Có dừng thêm migration schema trong thời gian chuyển không? | Từ khi bắt đầu chặng 2: **mỗi migration mới phải viết kèm bản PG**. Trước cutover 1–2 tuần: đóng băng schema. |
 
 ## 4. Quy tắc chuyển đổi
@@ -134,7 +188,7 @@
 
 | SQL Server | PostgreSQL | Ghi chú |
 |---|---|---|
-| `VARCHAR(n)`, `NVARCHAR(n)` | `varchar(n)` (hoặc `citext` cho cột cần không phân biệt hoa/thường) | PG đếm ký tự, không đếm byte |
+| `VARCHAR(n)`, `NVARCHAR(n)` | `varchar(n)` (thêm `COLLATE "rms_ci"` cho cột cần không phân biệt hoa/thường) | PG đếm ký tự, không đếm byte |
 | `NVARCHAR(MAX)`, `VARCHAR(MAX)`, `NTEXT` | `text` | Cột chứa JSON (`options`, `answer_options`...) → cân nhắc `jsonb` ở bước sau, chưa đổi ngay |
 | `CHAR(n)`, `NCHAR(n)` | `char(n)` | Cẩn thận khoảng trắng đệm |
 | `BIT` | `boolean` | Sửa `= 1` → `= true` (hoặc `IS TRUE`) |
@@ -154,8 +208,12 @@
 ### 4.2 Không phân biệt hoa/thường
 
 - Cột định danh người dùng gõ vào (`users.username`, `email`, `staff_number`, mã
-  khoa/danh mục): dùng `citext` (extension có sẵn). `=`, `UNIQUE`, `IN` hoạt
-  động như cũ, không phải sửa câu SQL.
+  khoa/danh mục): dùng collation ICU không tất định `rms_ci`
+  (`00_extensions.sql`, cần PG ≥ 18 để `LIKE` chạy được trên cột này). `=`,
+  `UNIQUE`, `IN` không phân biệt hoa/thường như cũ, vẫn phân biệt dấu như
+  `_CI_AS`, không phải sửa câu SQL. **Không dùng `citext`**: tham số kiểu
+  `text` (`$1::text`, cách adapter gửi chuỗi) so với cột `citext` lại thành
+  so sánh phân biệt hoa/thường và bỏ qua index; với `rms_ci` thì không.
 - Tìm kiếm `LIKE @search` (27 file): đổi sang `ILIKE`. Nếu cần tìm không dấu
   ("nguyen" khớp "Nguyễn"), thêm extension `unaccent` và index theo biểu thức.
   Hiện tại SQL Server `_CI_AS` **có** phân biệt dấu, nên tìm không dấu là tính
@@ -174,6 +232,10 @@ như thể giờ đó là UTC**. Cách làm:
 - Trong adapter: `types.setTypeParser(1114, s => new Date(s.replace(' ', 'T') + 'Z'))`
   cho `timestamp`, và `1082` (`date`) → `new Date(s + 'T00:00:00Z')`. Khi gửi
   tham số `Date` xuống, định dạng theo UTC (giống `useUTC: true`).
+- Cột `jsonb`/`json` (danh sách ở `scripts/pg/schemaRules.js`): `pg` mặc định
+  trả **object** đã parse, còn code hiện tại nhận chuỗi rồi tự `JSON.parse`.
+  Adapter phải đặt `setTypeParser(3802, s => s)` và `(114, s => s)` để trả chuỗi
+  nguyên văn, nếu không các chỗ `JSON.parse(row.config)` sẽ lỗi.
 - Viết test riêng cho các chỗ đang ghi chú "useUTC" (`credentialService.js`,
   `seminarPublicService.js`, `attendancePolicy.js`, `vnDate.js`...).
 - Không đổi sang `timestamptz` trong đợt này. Muốn chuẩn hoá thì làm sau, trên PG.
@@ -273,10 +335,12 @@ Phần lớn việc này **làm được ngay trên SQL Server** (chặng 1) mà
 ### 5.3 Migration
 
 - **Không dịch** 11.900 dòng lịch sử T-SQL. Thay vào đó:
-  1. Sinh `database/pg/0000_baseline.sql` từ **schema hiện tại** của production
-     (bảng, cột, khoá, index, sequence, ràng buộc), đã đổi kiểu theo mục 4.1.
-     Có thể dùng `pgloader` để sinh khung rồi sửa tay, hoặc script đọc
-     `INFORMATION_SCHEMA` / `sys.*`.
+  1. **Đã làm:** `npm run pg:baseline` (`scripts/pg/gen-baseline.js`) đọc `sys.*`
+     của SQL Server, sinh `database/pg/baseline/01_tables.sql` và
+     `02_constraints_indexes.sql`; `00_extensions.sql` và `03_toi_uu.sql` viết tay.
+     Quy tắc đổi kiểu ở `scripts/pg/tsqlToPg.js` và `schemaRules.js`; mẫu lạ thì
+     script dừng, không đoán. Trước cutover **chạy lại trên bản sao production**
+     (schema dev có thể lệch) và so diff.
   2. Dữ liệu danh mục cố định (quyền, vai trò, danh mục mặc định) đưa vào
      `0001_seed.sql` hoặc lấy từ dữ liệu thật khi chuyển.
   3. Migration sau cutover viết bằng SQL PostgreSQL, tiếp tục quy ước đặt tên và idempotent hiện có.
@@ -312,6 +376,22 @@ Sau bước này, DB PG chỉ còn: bảng, index, sequence, 1 hàm trigger audi
 
 ## 6. Lộ trình chi tiết
 
+### Bước A — Lên Linux, vẫn dùng SQL Server (khoảng 1 tuần, làm song song chặng 0–1)
+
+- [ ] Dựng máy Ubuntu 24.04 theo `infra/cai-dat-may-ao-ubuntu.md`; restore bản
+      backup production vào SQL Server trên Linux; kiểm tra collation giống bản cũ.
+- [ ] Viết `scripts/deploy.sh` làm đúng các bước của `deploy.ps1` (kéo image theo
+      SHA, migrate bằng image mới, `compose up`, smoke test, tự rollback, ghi
+      `logs/deploy-history.log`). Đổi `deploy.yml` sang `shell: bash` cho runner Linux.
+      Giữ `deploy.ps1` tới khi bỏ hẳn server Windows.
+- [ ] Bản bash (hoặc Node) cho `rotate-jwt-secrets.ps1`; `import-dtlt.ps1` chỉ
+      cần nếu còn dùng.
+- [ ] Cài self-hosted runner trên máy Linux (nhãn `rms-staging`, `rms-production`).
+- [ ] Chuyển file upload: `rsync -a` volume `uploads` sang máy mới, rồi
+      `npm run sync:upload-paths` (chỉ liệt kê) để chắc mọi đường dẫn còn đúng.
+- [ ] Giờ hệ thống `Asia/Ho_Chi_Minh` (`timedatectl`), vì `GETDATE()` lấy giờ máy chủ DB.
+- [ ] Chạy smoke test so với baseline trên Windows, rồi mới đổi DNS/cổng.
+
 ### Chặng 0 — Kiểm kê và chốt quyết định (1 tuần)
 
 - [ ] Trả lời các câu hỏi ở mục 3.
@@ -327,7 +407,8 @@ Sau bước này, DB PG chỉ còn: bảng, index, sequence, 1 hàm trigger audi
   không cho tăng) — giống `typecheckRatchet.test.js` đang có.
   → `npm run check:tsql` (`--files` xem theo file, `--update` hạ mốc);
   mốc ở `scripts/tsql-usage-baseline.json`, test `test/contract/tsqlUsageRatchet.test.js`.
-  Mốc ban đầu (03/11/2026): 1.156 chỗ.
+  Mốc ban đầu (03/11/2026): 1.156 chỗ. Sửa lỗi đếm nhầm hàm JS `getUTCDate()`
+  thành `GETUTCDATE()` của T-SQL: mốc đúng là **1.135** chỗ (`getdate` 197, không phải 218).
 
 ### Chặng 1 — Trung lập hoá trên SQL Server (3–5 tuần, phát hành dần)
 
@@ -352,14 +433,35 @@ thường. Mỗi nhóm là 1 PR nhỏ theo module.
 
 ### Chặng 2 — Dựng PostgreSQL song song (2 tuần)
 
-- [ ] Thêm service `postgres` vào `docker-compose.yml` (dev) với volume riêng.
-- [ ] Adapter `db.pg.js` + biến `DB_CLIENT` (mục 5.1), có unit test cho việc đổi
-  `@ten` → `$n`, type parser ngày giờ, mã lỗi.
-- [ ] `database/pg/0000_baseline.sql` + hàm trigger audit + extension `citext`.
-- [ ] Migrator chạy được với PG (mục 5.3).
-- [ ] Script chuyển dữ liệu lần đầu (mục 6.5) từ bản sao DB dev → PG dev.
-- [ ] CI: thêm job có service container `postgres`, chạy migrate baseline +
-  1 bộ test tích hợp nhỏ (đăng nhập, phân quyền, CRUD danh mục).
+- [x] Cài PostgreSQL 18 trực tiếp trên server (không chạy trong Docker):
+  `infra/cai-dat-postgresql.md`, cấu hình `infra/postgresql/`. Máy dev cài
+  PostgreSQL trên Windows/WSL hoặc dùng tạm container chỉ để thử.
+- [x] Adapter `src/config/db.pg.js` + biến `DB_CLIENT` (mục 5.1): `config/db.js`
+  chọn `db.mssql.js` hoặc `db.pg.js`, cùng giao diện `request().input().query()`,
+  `recordset`/`rowsAffected`, `withTransaction`, `withActor`. Unit test
+  `test/database/pgAdapter.test.js` (đổi `@ten` → `$n`, type parser, pgpass);
+  mã lỗi 2 DB ở `utils/dbErrors.js` (`test/utils/dbErrors.test.js`).
+- [x] Schema baseline `database/pg/baseline/00–04` (`npm run pg:baseline`), có
+  collation `rms_ci`, `jsonb`, `inet`, collation tiếng Việt, partition
+  `security_events`. 107 bảng, 165 FK, 112 CHECK (10 CHECK `WITH NOCHECK` ở
+  SQL Server → `NOT VALID` ở PG, giữ đúng ý đồ không hồi tố dữ liệu cũ).
+- [x] Hàm trigger audit (`updated_at`/`updated_by`, `04_trigger.sql`); người sửa
+  lấy từ `set_config('app.current_user_id')` qua `withActor(tx, userId)`. Cùng
+  file: trigger sinh mã khoa `DVxxx`, đếm file theo batch, tự tạo phiếu duyệt đề tài.
+- [x] Khi `DB_CLIENT=pg`: `dataRetentionJob` gọi
+  `rms_maintain_monthly_partitions('security_events', 0, 2, <số tháng giữ>)`
+  thay cho `DELETE` theo lô (tạo partition tháng tới, bỏ partition cũ, chuyển
+  dòng lạc ở DEFAULT về đúng partition).
+- [x] Migrator chạy được với PG (mục 5.3): migration PG ở `database/pg/migrations/`,
+  `migrate init` trên DB trống chạy baseline 00–04.
+- [x] Script chuyển dữ liệu (mục 6.5): `npm run pg:transfer precheck|load|verify`
+  (`scripts/pg-transfer/`). Đã chạy DB dev → PostgreSQL 18 trên máy dev:
+  107 bảng, 9.604 dòng, verify khớp checksum từng bảng.
+- [x] CI: job `backend-postgres` (service container `postgres:18`) chạy
+  `01_tao_db_va_role.sql` → `migrate init` → `npm run test:pg`
+  (`test-integration-pg/`: adapter, mã lỗi, transaction, trigger, `rms_ci`,
+  partition). Test đăng nhập/phân quyền/CRUD trên PG để sang chặng 3, khi SQL
+  của các module đã chuyển.
 
 ### Chặng 3 — Chuyển SQL còn lại + diễn tập (2–3 tuần)
 
@@ -404,22 +506,101 @@ Runbook (điền thời gian thật sau diễn tập):
 - Sau bước 10: cần script chuyển ngược PG → SQL Server cho dữ liệu phát sinh.
   Nên viết sẵn (dùng lại phần lớn script ở 6.5), dù hy vọng không phải dùng.
 
-### 6.5 Chuyển và kiểm tra dữ liệu
+### 6.5 Chuyển dữ liệu SQL Server → PostgreSQL
 
-- Công cụ: **pgloader** (hỗ trợ đọc trực tiếp từ MS SQL) để chuyển nhanh, kèm
-  file cấu hình ép kiểu theo mục 4.1. Nếu pgloader khó dùng với môi trường
-  Windows/SQL Server, viết script Node đọc theo lô từ `mssql` và `COPY` vào PG.
-- Thứ tự: tạo bảng (chưa có FK/index) → nạp dữ liệu → tạo index, FK, ràng buộc
-  → `setval` → `ANALYZE`. Tắt trigger audit trong lúc nạp để không ghi đè `updated_at`.
-- Kiểm tra tự động (script, chạy sau mỗi lần chuyển):
-  - Số dòng từng bảng bằng nhau.
-  - Checksum từng bảng: băm các dòng đã chuẩn hoá (sắp theo khoá chính, ngày
-    giờ định dạng ISO, boolean → 0/1) ở cả 2 phía rồi so.
-  - Chữ tiếng Việt: lấy mẫu ngẫu nhiên các cột `NVARCHAR`, so từng byte.
-  - Giá trị lớn nhất của cột identity/sequence nhỏ hơn giá trị tiếp theo của sequence PG.
-  - Không có giá trị vi phạm `citext UNIQUE` (2 dòng chỉ khác hoa/thường đã
-    tồn tại trên SQL Server là không thể vì collation CI, nhưng vẫn kiểm).
-- File upload nằm trên đĩa, không trong DB → không phải chuyển; chỉ kiểm cột đường dẫn.
+Quy trình này chạy **nhiều lần**: lần đầu trên DB dev (chặng 2), ít nhất 2 lần
+diễn tập trên bản sao production (chặng 3), và 1 lần thật lúc cutover (chặng 4).
+Vì vậy mọi bước phải là script, chạy lại được, không có thao tác tay.
+
+#### 6.5.1 Công cụ
+
+Viết script Node riêng trong `backend/scripts/pg-transfer/`, chạy trong container
+backend (Linux):
+
+- Đọc từ SQL Server bằng `mssql` ở chế độ stream (`request.stream = true`), ghi
+  vào PG bằng `COPY ... FROM STDIN` (gói `pg-copy-streams`). Đọc và ghi theo lô,
+  không nạp cả bảng vào RAM.
+- Bảng ánh xạ kiểu và cột lấy từ baseline PG (`database/pg/baseline/`):
+  script đọc cột của bảng đích từ `information_schema.columns`, chỉ chép các cột
+  có ở cả hai phía, theo thứ tự của PG.
+- Lý do không dùng **pgloader** làm công cụ chính: pgloader đọc SQL Server qua
+  FreeTDS, khó kiểm soát việc ép `BIT`/JSON/collation, và khó tích hợp vào bước
+  kiểm tra. Vẫn có thể dùng pgloader **1 lần** để sinh khung schema tham khảo
+  khi viết baseline.
+
+```
+npm run pg:transfer precheck   # kiểm tra dữ liệu nguồn, không ghi gì
+npm run pg:transfer load       # tạo bảng, nạp dữ liệu, tạo index/FK, setval
+npm run pg:transfer verify     # so số dòng, checksum, mẫu tiếng Việt
+```
+
+#### 6.5.2 Kiểm tra trước khi chuyển (`precheck`, chạy trên SQL Server)
+
+Mỗi mục dưới đây đều làm lần nạp PG thất bại hoặc làm đổi nghĩa dữ liệu. Phải
+sửa trên SQL Server (bằng migration hoặc `database/manual/`) **trước** lần
+diễn tập đầu tiên.
+
+| Kiểm tra | Vì sao | Cách sửa |
+|---|---|---|
+| Dòng vi phạm 10 ràng buộc `CHECK` "không tin cậy" (`CHK_attendance_id`, `CHK_courses_id`, `CHK_trainees_id`...) | SQL Server bỏ qua dữ liệu cũ, PG kiểm tra hết khi tạo ràng buộc | Đã xử lý: baseline tạo các CHECK này `NOT VALID` (dòng mới vẫn bị kiểm); precheck chỉ cảnh báo số dòng cũ vi phạm |
+| Dòng mồ côi theo khoá ngoại (kể cả FK bị tắt hoặc `NOCHECK` trên production) | Tạo FK trên PG sẽ lỗi | Xoá hoặc gắn lại dòng mồ côi |
+| Ký tự NUL (`CHAR(0)`) trong cột chuỗi | PG không cho lưu NUL trong `text` | Bỏ ký tự này (thường từ dữ liệu import Excel cũ) |
+| Giá trị chỉ khác hoa/thường hoặc khoảng trắng cuối ở cột `rms_ci UNIQUE` (`username`, `email`, `staff_number`, mã danh mục) | SQL Server coi `'a '` = `'A'`; PG `rms_ci` chỉ bỏ qua hoa/thường, không bỏ khoảng trắng cuối | Cắt khoảng trắng; gộp tay nếu trùng |
+| JSON không hợp lệ ở cột sẽ đổi sang `jsonb` | `jsonb` từ chối JSON sai | Sửa dữ liệu, hoặc giữ cột đó là `text` |
+| Cột `DATETIME2(7)` có phần lẻ dưới micro giây | PG chỉ lưu tới micro giây | Không cần sửa, ghi nhận trong so sánh checksum (làm tròn về 6 chữ số) |
+| Object và job ngoài repo (SQL Agent, login, view) | Không chuyển sẽ mất chức năng mà không ai biết | Kiểm kê chặng 0 (Q5) |
+
+#### 6.5.3 Thứ tự nạp (`load`)
+
+1. Tạo DB PG mới, rỗng (`infra/postgresql/01_tao_db_va_role.sql`): extension (`pg_trgm`, `unaccent`), collation `rms_ci`, role
+   `rms_migrate`/`rms_app`, `timezone = 'Asia/Ho_Chi_Minh'`.
+2. Tạo **bảng và khoá chính** từ baseline: `00_extensions.sql`, `01_tables.sql`
+   (tạo sẵn partition tháng của `security_events` trong 24 tháng qua + DEFAULT).
+   Chưa tạo FK, index phụ, CHECK, trigger.
+3. Nạp từng bảng bằng `COPY`, 2–4 bảng song song. Chuyển giá trị trong lúc nạp:
+   - `BIT` → `true/false`; `TINYINT` → `smallint`.
+   - `DATETIME/DATETIME2` → chuỗi `YYYY-MM-DD HH:MM:SS.ffffff` **nguyên văn**,
+     không đổi múi giờ (giữ quy ước "giờ VN không múi giờ", mục 4.3).
+   - `DATE` → `YYYY-MM-DD`, đọc từ SQL Server dạng chuỗi để tránh lệch ngày do múi giờ của Node.
+   - `NVARCHAR` chứa JSON → `jsonb` cho các cột đã chọn ở `DB_SCALING_PLAN.md`.
+   - Không chép 4 cột tính toán (`persons.name_key`, `program_lessons.total_hours`,
+     `seminar_participants.cme_certificate_no`, `training_programs.total_hours`).
+     PG tự tính bằng `GENERATED ALWAYS AS (...) STORED`.
+4. `02_constraints_indexes.sql` (chạy **1 lần**): index, `UNIQUE`, CHECK, FK dạng
+   `NOT VALID` rồi `VALIDATE CONSTRAINT` (nhanh hơn và báo rõ dòng sai). Rồi
+   `03_toi_uu.sql`: index bổ sung, `pg_trgm`, autovacuum riêng từng bảng.
+5. `setval` cho mọi identity và sequence (`seq_person_id`, `seq_notification_suffix`,
+   11 cột identity) = `MAX(id) + 1`.
+6. Tạo hàm và trigger audit **sau** khi nạp (`04_trigger.sql`), để không ghi đè `updated_at` / `updated_by`; tạo bảng `schema_migrations`.
+7. `VACUUM (ANALYZE)` toàn DB, để planner có thống kê ngay từ truy vấn đầu tiên.
+
+#### 6.5.4 Kiểm tra sau khi chuyển (`verify`)
+
+Script in bảng kết quả và trả mã lỗi khác 0 khi có chênh lệch. Có chênh lệch lúc
+cutover thì **dừng, quay lại SQL Server** (chặng 4, bước 7).
+
+- Số dòng từng bảng bằng nhau.
+- Checksum từng bảng: sắp theo khoá chính, chuẩn hoá giá trị (ngày giờ ISO 6 chữ
+  số lẻ, boolean → 0/1, `NULL` → ký hiệu riêng, JSON chuẩn hoá khoá), băm SHA-256
+  ở cả 2 phía bằng JS rồi so. Bảng lớn: băm theo từng khoảng khoá để biết khoảng nào lệch.
+- Tiếng Việt: lấy ngẫu nhiên 1.000 giá trị `NVARCHAR` mỗi bảng, so từng byte UTF-8.
+- Sequence: `nextval` của PG > `MAX(id)` hiện có.
+- Mọi FK đã `VALIDATE` xong; không còn ràng buộc `NOT VALID` ngoài danh sách đã chấp nhận.
+- Ứng dụng: smoke test (`npm run test:smoke`) trên PG so với baseline SQL Server
+  cùng bản dữ liệu; đăng nhập bằng username viết **hoa**; mở file upload cũ.
+
+#### 6.5.5 File upload
+
+File nằm trên đĩa, không nằm trong DB, nên không đi qua script này. Chỉ cần
+`rsync` thư mục upload (đã làm ở bước A) và chạy `npm run sync:upload-paths` để
+kiểm tra cột đường dẫn.
+
+#### 6.5.6 Đo thời gian và đường lui
+
+- Mỗi lần diễn tập ghi lại thời gian từng bước vào runbook. DB dev 144 MB nạp
+  trong vài phút. Với production, khung bảo trì = thời gian đo được × 2.
+- Viết sẵn chiều ngược lại (`pg:transfer` với nguồn PG, đích SQL Server) dùng chung
+  bảng ánh xạ, để có đường lui sau mốc go/no-go (chặng 4, bước 10).
 
 ## 7. Kiểm thử
 
@@ -442,7 +623,8 @@ Runbook (điền thời gian thật sau diễn tập):
 - **Kết nối**: `max_connections` ≥ `WEB_CONCURRENCY × DB_POOL_MAX` + dự phòng;
   hoặc PgBouncer chế độ transaction.
 - **Bảo trì**: autovacuum mặc định là đủ lúc đầu; theo dõi bảng ghi nhiều
-  (`notifications`, `audit`, điểm danh, refresh token).
+  (`notifications`, `audit`, điểm danh, refresh token). Cấu hình, giữ dữ liệu
+  theo thời gian và tách bảng: xem `DB_SCALING_PLAN.md`.
 - **SSL**: `sslmode=require` (hoặc `verify-full` khi có chứng chỉ CA), thay cho `DB_ENCRYPT`.
 - **Tài liệu**: cập nhật `README.md` (cài đặt, biến môi trường, xử lý sự cố),
   `backend/database/README.md`, `.github/CICD.md`, `scripts/deploy.ps1`.
@@ -451,6 +633,7 @@ Runbook (điền thời gian thật sau diễn tập):
 
 | Chặng | Tuần |
 |---|---|
+| A — Lên Linux với SQL Server, viết lại deploy (song song chặng 0–1) | 1 |
 | 0 — Kiểm kê, quyết định, script ratchet | 1 |
 | 1 — Trung lập hoá trên SQL Server, chuyển SP/trigger về JS | 3–5 |
 | 2 — Adapter, baseline schema, migrator, chuyển dữ liệu thử, CI | 2 |
@@ -467,16 +650,21 @@ trong DB) kể cả khi cuối cùng quyết định không chuyển.
 | Rủi ro | Khả năng | Ảnh hưởng | Giảm thiểu |
 |---|---|---|---|
 | Lệch giờ 7 tiếng sau khi đổi driver | Cao nếu không xử lý | Khoá tài khoản, hạn nộp, điểm danh sai | Mục 4.3, test riêng, so smoke giá trị |
-| Phân biệt hoa/thường làm hỏng đăng nhập, kiểm trùng | Cao | Người dùng không đăng nhập được, tạo trùng tài khoản | `citext`, `ILIKE`, test đăng nhập với chữ hoa |
+| Phân biệt hoa/thường làm hỏng đăng nhập, kiểm trùng | Cao | Người dùng không đăng nhập được, tạo trùng tài khoản | Collation `rms_ci`, `ILIKE`, test đăng nhập với chữ hoa |
 | Transaction bị huỷ sau lỗi bắt được (mục 2.4 ý 7) | Trung bình | Lỗi 500 ở luồng import/ghi hàng loạt | Tìm mọi `catch` trong `withTransaction`, dùng `ON CONFLICT`/`SAVEPOINT` |
 | Sót câu T-SQL ít dùng (xuất báo cáo cuối năm...) | Trung bình | Lỗi ở chức năng ít người dùng | Script ratchet về 0, smoke gọi mọi GET, test tay các luồng xuất file |
 | Hệ thống ngoài đọc thẳng SQL Server | Chưa rõ | Báo cáo ngừng chạy | Kiểm kê chặng 0 (Q5) |
 | Hiệu năng truy vấn khác (planner khác, thiếu index) | Trung bình | Chậm trang dashboard/danh sách | `EXPLAIN ANALYZE`, `pg_stat_statements` trước cutover |
 | Schema thay đổi trong lúc chuyển | Trung bình | Lệch 2 DB | Quy tắc 2 bản migration + đóng băng trước cutover |
 
-## 11. Việc làm đầu tiên (tuần này)
+## 11. Việc làm tiếp theo (cập nhật 03/11/2026)
 
-1. Chốt Q1–Q5 với người phụ trách hệ thống và vận hành.
-2. Chạy các truy vấn kiểm kê ở chặng 0 trên production.
-3. PR nhỏ đầu tiên, không ảnh hưởng hành vi: `dbErrors.js` + `check-tsql-usage.js` (ratchet).
+1. ~~PR nhỏ đầu tiên: `dbErrors.js` + `check-tsql-usage.js` (ratchet).~~ Xong (`38c6087`).
+2. Chốt Q1–Q5 với người phụ trách hệ thống và vận hành. Hỏi thêm: production
+   đang dùng bản SQL Server nào (Express có giới hạn 10 GB/DB).
+3. Chạy các truy vấn kiểm kê ở chặng 0 trên production, thêm các kiểm tra ở mục 6.5.2.
 4. Ghi baseline smoke test trên DB dev hiện tại.
+5. Bắt đầu bước A (`deploy.sh`) và các việc chặng 1 không phụ thuộc nhau:
+   `withActor()`, `ISNULL` → `COALESCE`, `OPENJSON` → helper.
+6. ~~Làm ngay trên SQL Server các việc dọn dữ liệu ở `DB_SCALING_PLAN.md` mục 6
+   (giai đoạn 1).~~ Xong 03/11/2026 (`dataRetentionJob`, migration `2026-12-13_toi_uu_index_giai_doan_1`).

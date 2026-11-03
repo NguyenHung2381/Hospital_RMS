@@ -21,12 +21,17 @@ Chạy trong thư mục `backend`. Chỉ có một lệnh `npm run migrate`, vi�
 | `npm run migrate baseline` | **1 lần** trên DB đã nâng cấp tay: đánh dấu mọi file hiện có là đã chạy |
 | `npm run migrate init` | DB trống: tạo bảng theo dõi rồi chạy hết |
 | `npm run dump:db-objects` | Xuất lại `objects/` sau khi sửa SP/trigger/view trong DB |
+| `npm run pg:baseline` | Sinh lại schema PostgreSQL `pg/baseline/01–02` từ DB SQL Server đang kết nối (`-- --check` chỉ in thống kê). Chuẩn bị chuyển DB, xem `POSTGRESQL_MIGRATION_PLAN.md` |
+| `npm run pg:transfer precheck\|load\|verify` | Chuyển dữ liệu SQL Server (`DB_*`) → PostgreSQL (`PG_TARGET_*`): kiểm dữ liệu nguồn, nạp vào DB PG rỗng, so checksum từng bảng. Xem `infra/cai-dat-postgresql.md` mục 6 |
+| `npm run test:pg` | Test tích hợp với PostgreSQL thật (`test-integration-pg/`, biến `PG_TEST_*`); CI chạy ở job `backend-postgres` |
 
 Cờ cũ vẫn dùng được: `--dry-run` (= `status`), `--baseline`, `--init`. Các script `migrate:status` / `migrate:new` đã bỏ.
 
 Lúc khởi động, server tự chạy migration khi `DB_AUTO_MIGRATE=true`. Mặc định biến này bật ngoài production và tắt ở production. Ở production, `scripts/deploy.ps1` chạy `node scripts/migrate.js` bằng login có quyền ALTER/BACKUP, trước khi đổi container. Nếu có file chưa chạy, server chỉ cảnh báo. Riêng khi thiếu cột bắt buộc của phân quyền/đăng nhập (`permissions/index.js`), server **dừng**.
 
 ## Cách hoạt động (`src/database/migrator.js`)
+
+Khi `DB_CLIENT=pg` (PostgreSQL), migrator đọc `pg/migrations/` thay cho `migrations/`, bảng theo dõi là `schema_migrations`, mỗi file chạy trong 1 transaction cùng bản ghi của nó (`-- @no-transaction` để tắt), khoá bằng `pg_advisory_lock`, backup bằng `pg_dump` (thư mục trên máy chạy lệnh). `migrate init` trên DB PG trống chạy baseline `pg/baseline/00–04` trước. Migration SQL Server mới phải có bản PG cùng tên (`pg/migrations/README.md`). Phần dưới đây mô tả SQL Server.
 
 - Bảng `dbo.schema_migrations` lưu `filename`, `applied_at`, `git_sha`, `checksum` (SHA-256 nội dung file).
 - Mỗi file được tách batch theo dòng `GO`, giống sqlcmd. Mọi batch chạy trên cùng một kết nối, không timeout. `USE [RMS_HOSPITAL]` được đổi sang DB đang cấu hình.
@@ -85,6 +90,9 @@ Mọi việc định kỳ chạy bằng job Node (`src/jobs/index.js`, giờ VN)
 | 02:00 | `deadlineReminderJob` | Nhắc deadline sắp tới / quá hạn |
 | 03:00 | `personLinkJob` | Gắn `person_id` còn thiếu |
 | 04:00 | `notificationCleanupJob` | Xoá thông báo **đã đọc > 90 ngày**, **chưa đọc > 180 ngày**, theo lô 2000 dòng. Proc cũ chỉ xoá loại đã đọc, và `sp_process_daily_deadlines` gọi sai tên tham số nên bước này luôn lỗi. |
+| 04:30 | `dataRetentionJob` | Xoá `security_events` cũ hơn `SECURITY_EVENTS_RETENTION_MONTHS` tháng (mặc định 24, tối thiểu 12, `0` = không xoá) và dòng `job_execution_log` > 180 ngày của các job có khoá theo ngày. Không xoá khoá "đã làm việc X cho bản ghi Y" (nhắc mật khẩu, nhắc deadline, tự từ chối bổ sung) để job không gửi lại. Xem `DB_SCALING_PLAN.md`. |
+
+`accountMaintenanceJob` (01:00) cũng xoá mã OTP quên mật khẩu đã hết hạn.
 
 Trên production, nếu SQL Agent còn job gọi các proc cũ thì nay job đó vô hại (no-op), nhưng nên tắt cho gọn. Kiểm tra:
 

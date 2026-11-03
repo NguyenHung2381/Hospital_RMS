@@ -20,6 +20,7 @@ const userService = require('../users/userService');
 const notificationService = require('../notifications/notificationService');
 const xl = require('../../utils/excelTemplate');
 const { httpError } = require('../../utils/httpError');
+const { constraintName } = require('../../utils/dbErrors');
 const { loadLookups, buildPreview, markDuplicates } = require('./cmeRecordImportPreview');
 
 // Cột file mẫu nhập — header khớp COLUMN_MATCHERS. Năm (cho dòng không có Từ ngày), Nhóm/Loại
@@ -229,7 +230,7 @@ const importExcel = async ({ buffer, dry_run, defaults }, actorId) => {
 			failedStaff.add(st.staff_number);
 			warnings.push(
 				`Không tạo được nhân viên ${st.full_name} (Mã NV ${st.staff_number}): ${
-					/UQ_users_staff_number/.test(err?.message)
+					constraintName(err) === 'uq_users_staff_number'
 						? 'Mã NV vừa được dùng cho tài khoản khác'
 						: err.message
 				} — bỏ qua các dòng của người này.`,

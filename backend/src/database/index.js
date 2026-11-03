@@ -13,9 +13,14 @@ const logger = require('../config/logger');
 // Không kết nối được CSDL (SQL Server chưa lên...) thì chỉ cảnh báo, server
 // vẫn chạy — mọi API cần DB tự lỗi cho tới khi DB sẵn sàng.
 
+// mssql: mã riêng của driver; pg: lỗi mạng của Node + SQLSTATE nhóm 08 (kết
+// nối), 28 (đăng nhập), 57P0x (server đang tắt / khởi động lại).
 const isConnectionError = (err) =>
 	['ESOCKET', 'ETIMEOUT', 'ELOGIN', 'ECONNCLOSED', 'ENOTOPEN'].includes(err?.code) ||
-	err?.name === 'ConnectionError';
+	err?.name === 'ConnectionError' ||
+	['ECONNREFUSED', 'ECONNRESET', 'ETIMEDOUT', 'ENOTFOUND', 'EHOSTUNREACH'].includes(err?.code) ||
+	(typeof err?.code === 'string' && /^(08|28)...$|^57P0[1-3]$/.test(err.code)) ||
+	/Connection terminated|timeout expired/i.test(String(err?.message || ''));
 
 const autoMigrate = () =>
 	process.env.DB_AUTO_MIGRATE ? process.env.DB_AUTO_MIGRATE === 'true' : process.env.NODE_ENV !== 'production';

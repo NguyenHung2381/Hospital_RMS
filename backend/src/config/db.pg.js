@@ -1,0 +1,286 @@
+const fs = require('fs');
+const tls = require('tls');
+const { Pool, types: pgTypes } = require('pg');
+const { config } = require('./env');
+const logger = require('./logger');
+const { TYPES, toPositional, TYPE_PARSERS, pgpassFile, pgpassLookup } = require('./pgParams');
+
+// Lớp truy cập PostgreSQL có CÙNG giao diện với db.mssql.js, để service giữ
+// nguyên cách gọi (POSTGRESQL_MIGRATION_PLAN.md mục 5.1):
+//   const { recordset } = await pool.request().input('id', sql.VarChar(20), id)
+//     .query('SELECT ... WHERE id = @id');
+// Chỉ đổi cách gọi, KHÔNG dịch cú pháp T-SQL: câu SQL phải viết được trên PG
+// (chặng 1 và 3 của kế hoạch). Khác biệt cần biết khi sửa SQL:
+//   - Lỗi trong transaction làm hỏng cả transaction (mọi câu sau báo 25P02) —
+//     SQL Server thì cho chạy tiếp. Đừng bắt lỗi rồi chạy tiếp trong cùng tx.
+//   - Một lời gọi có tham số chỉ được 1 câu lệnh; nhiều câu (recordsets[1]...)
+//     chỉ chạy được khi không có tham số.
+//   - execute('sp_...') không hỗ trợ: chuyển stored procedure về JS.
+//   - Tham số chuỗi chỉ được ép `::text` trước `IS [NOT] NULL` (pgParams.js).
+//     Chỗ khác PG không tự suy được kiểu (`SELECT @x AS ten`) thì viết rõ `@x::text`.
+
+// Kiểm tra chứng chỉ khi dùng SSL (biến môi trường dùng chung với SQL Server):
+//   DB_ENCRYPT=true → SSL; DB_CA_CERT_FILE → chỉ tin chứng chỉ trong file và
+//   kiểm tra tên (DB_CERT_SERVER_NAME nếu tên trong chứng chỉ khác DB_SERVER).
+const sslOptions = (cfg) => {
+	if (!cfg.DB_ENCRYPT) return false;
+	if (!cfg.DB_CA_CERT_FILE) return { rejectUnauthorized: !cfg.DB_TRUST_SERVER_CERT };
+	return {
+		rejectUnauthorized: true,
+		ca: fs.readFileSync(cfg.DB_CA_CERT_FILE, 'utf8'),
+		...(cfg.DB_CERT_SERVER_NAME
+			? {
+					checkServerIdentity: (_host, cert) =>
+						tls.checkServerIdentity(cfg.DB_CERT_SERVER_NAME, cert),
+				}
+			: {}),
+	};
+};
+
+const typeParsers = {
+	getTypeParser: (oid, format) =>
+		(format !== 'binary' && TYPE_PARSERS[oid]) || pgTypes.getTypeParser(oid, format),
+};
+
+// DB_PASSWORD trống: đọc file pgpass (hoặc PGPASSWORD) lúc mở kết nối.
+const passwordFrom = (cfg) => {
+	if (cfg.DB_PASSWORD) return cfg.DB_PASSWORD;
+	if (process.env.PGPASSWORD) return process.env.PGPASSWORD;
+	return async () => {
+		let content = '';
+		try {
+			content = fs.readFileSync(pgpassFile(), 'utf8');
+		} catch {
+			/* không có file pgpass */
+		}
+		const key = {
+			host: cfg.DB_SERVER,
+			port: cfg.DB_PORT,
+			database: cfg.DB_DATABASE,
+			user: cfg.DB_USER,
+		};
+		return pgpassLookup(content, key) ?? '';
+	};
+};
+
+const dbConfig = {
+	host: config.DB_SERVER,
+	port: config.DB_PORT,
+	database: config.DB_DATABASE,
+	user: config.DB_USER,
+	password: passwordFrom(config),
+	ssl: sslOptions(config),
+	// Mỗi worker có pool riêng: tổng kết nối = WEB_CONCURRENCY × DB_POOL_MAX
+	max: config.DB_POOL_MAX,
+	idleTimeoutMillis: 60000,
+	connectionTimeoutMillis: 30000,
+	// Giống requestTimeout 30s của mssql (role rms_app còn có trần 60s ở DB)
+	statement_timeout: 30000,
+	application_name: 'hospital-rms',
+	types: typeParsers,
+};
+
+// Kết quả theo dạng của mssql: recordset = tập kết quả đầu tiên, recordsets =
+// mọi tập kết quả (câu có cột trả về), rowsAffected = số dòng từng câu.
+const toMssqlResult = (res) => {
+	const list = Array.isArray(res) ? res : [res];
+	const recordsets = list.filter((r) => r.fields?.length).map((r) => r.rows);
+	return {
+		recordset: recordsets[0],
+		recordsets,
+		rowsAffected: list.map((r) => r.rowCount ?? 0),
+	};
+};
+
+const unsupported = (what) =>
+	new Error(
+		`${what} chưa hỗ trợ trên PostgreSQL — chuyển stored procedure về JS (POSTGRESQL_MIGRATION_PLAN.md chặng 1)`,
+	);
+
+class Request {
+	/** @param {any} [parent] PoolFacade hoặc Transaction; bỏ trống = pool chung */
+	constructor(parent) {
+		this.parent = parent;
+		this.params = new Map();
+	}
+
+	input(name, type, value) {
+		if (arguments.length === 2) {
+			value = type;
+			type = undefined;
+		}
+		this.params.set(String(name).toLowerCase(), { name, type, value });
+		return this;
+	}
+
+	output() {
+		throw unsupported('output()');
+	}
+
+	async execute(proc) {
+		throw unsupported(`execute('${proc}')`);
+	}
+
+	async query(text) {
+		const parent = this.parent ?? (await getPool());
+		const { text: pgText, values } = toPositional(String(text), this.params);
+		return toMssqlResult(await parent.run(pgText, values));
+	}
+
+	// mssql: batch = chạy không chuẩn bị câu lệnh; ở PG giống query
+	batch(text) {
+		return this.query(text);
+	}
+}
+
+class PoolFacade {
+	constructor(pg) {
+		this.pg = pg;
+		this.connected = true;
+	}
+
+	request() {
+		return new Request(this);
+	}
+
+	run(text, values) {
+		return values.length ? this.pg.query(text, values) : this.pg.query(text);
+	}
+
+	on(event, fn) {
+		this.pg.on(event, fn);
+		return this;
+	}
+
+	async close() {
+		this.connected = false;
+		await this.pg.end();
+	}
+}
+
+class Transaction {
+	/** @param {PoolFacade} [pool] */
+	constructor(pool) {
+		this.pool = pool;
+		this.client = null;
+	}
+
+	async begin() {
+		const pool = this.pool ?? (await getPool());
+		const client = await pool.pg.connect();
+		try {
+			await client.query('BEGIN');
+		} catch (err) {
+			client.release(err);
+			throw err;
+		}
+		this.client = client;
+		return this;
+	}
+
+	request() {
+		return new Request(this);
+	}
+
+	run(text, values) {
+		if (!this.client) throw new Error('Transaction has not begun');
+		return values.length ? this.client.query(text, values) : this.client.query(text);
+	}
+
+	async end(command) {
+		if (!this.client) throw new Error('Transaction has not begun');
+		const client = this.client;
+		this.client = null;
+		try {
+			await client.query(command);
+			client.release();
+		} catch (err) {
+			client.release(err); // kết nối hỏng → bỏ khỏi pool
+			throw err;
+		}
+	}
+
+	commit() {
+		return this.end('COMMIT');
+	}
+
+	rollback() {
+		return this.end('ROLLBACK');
+	}
+}
+
+/** @type {Record<string, any> & { MAX: number, Request: typeof Request, Transaction: typeof Transaction }} */
+const sql = { ...TYPES, MAX: -1, Request, Transaction };
+
+let poolPromise = null;
+
+const connect = async () => {
+	const pg = new Pool(dbConfig);
+	// Lỗi của kết nối đang rảnh (PG restart, mạng rớt): pool tự bỏ kết nối đó
+	// và tạo kết nối mới khi cần — chỉ ghi log.
+	pg.on('error', (err) => logger.error('[DB] Pool error:', err.message));
+	try {
+		(await pg.connect()).release();
+	} catch (err) {
+		await pg.end().catch(() => {});
+		throw err;
+	}
+	logger.info('✅ Connected to PostgreSQL');
+	return new PoolFacade(pg);
+};
+
+const getPool = async () => {
+	if (poolPromise) {
+		try {
+			const pool = await poolPromise;
+			if (pool.connected) return pool;
+		} catch {
+			/* lần trước lỗi — thử lại bên dưới */
+		}
+		poolPromise = null;
+	}
+	poolPromise = connect().catch((err) => {
+		poolPromise = null;
+		throw err;
+	});
+	return poolPromise;
+};
+
+// Như db.mssql.js: commit khi xong, lỗi thì rollback rồi ném lại lỗi GỐC.
+const withTransaction = async (fn, pool) => {
+	const tx = new Transaction(pool ?? (await getPool()));
+	await tx.begin();
+	try {
+		const result = await fn(tx);
+		await tx.commit();
+		return result;
+	} catch (err) {
+		await tx.rollback().catch(() => {});
+		throw err;
+	}
+};
+
+// Người thao tác cho trigger audit (database/pg/baseline/04_trigger.sql đọc
+// current_setting('app.current_user_id')). is_local = true: hết hiệu lực khi
+// transaction kết thúc, không rò sang request khác dùng lại kết nối → PHẢI gọi
+// trong transaction.
+const withActor = (tx, actorId) => {
+	if (!(tx instanceof Transaction)) {
+		throw new Error('withActor() trên PostgreSQL phải gọi trong transaction (withTransaction)');
+	}
+	return tx
+		.request()
+		.input('actor_id', sql.VarChar(20), actorId ?? null)
+		.query("SELECT set_config('app.current_user_id', coalesce(@actor_id, ''), true)");
+};
+
+module.exports = {
+	client: 'pg',
+	getPool,
+	sql,
+	dbConfig,
+	withTransaction,
+	withActor,
+	sslOptions,
+	toMssqlResult,
+};

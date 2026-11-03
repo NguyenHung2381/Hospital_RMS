@@ -143,3 +143,35 @@ test('DB_CA_CERT_FILE: file PEM hợp lệ thì hết cảnh báo; thiếu file 
 	assert.equal(tls.serverName, 'sqlvm01');
 	fs.rmSync(dir, { recursive: true, force: true });
 });
+
+test('DB_CLIENT=pg: mặc định cổng/tên DB của PostgreSQL, DB_PASSWORD được bỏ trống (pgpass)', () => {
+	const { DB_PASSWORD: _pw, ...noPassword } = BASE;
+	const pg = loadConfig({ ...noPassword, DB_CLIENT: 'pg' });
+	assert.deepEqual(pg.errors, []);
+	assert.equal(pg.config.DB_CLIENT, 'pg');
+	assert.equal(pg.config.DB_PORT, 5432);
+	assert.equal(pg.config.DB_DATABASE, 'rms_hospital');
+	// Đặt rõ thì giữ nguyên
+	const custom = loadConfig({
+		...BASE,
+		DB_CLIENT: 'pg',
+		DB_PORT: '6432',
+		DB_DATABASE: 'rms_staging',
+	});
+	assert.equal(custom.config.DB_PORT, 6432);
+	assert.equal(custom.config.DB_DATABASE, 'rms_staging');
+	// SQL Server vẫn bắt buộc mật khẩu
+	assert.match(loadConfig(noPassword).errors.join('\n'), /DB_PASSWORD/);
+	assert.equal(loadConfig(BASE).config.DB_CLIENT, 'mssql');
+});
+
+test('DB_CLIENT sai → cảnh báo, dùng mssql', () => {
+	const { config, warnings } = loadConfig({ ...BASE, DB_CLIENT: 'oracle' });
+	assert.equal(config.DB_CLIENT, 'mssql');
+	assert.match(warnings.join('\n'), /DB_CLIENT/);
+});
+
+test('production + pg: cảnh báo khi dùng role postgres', () => {
+	const { warnings } = loadConfig({ ...PROD, DB_CLIENT: 'pg', DB_USER: 'postgres' });
+	assert.match(warnings.join('\n'), /rms_app/);
+});

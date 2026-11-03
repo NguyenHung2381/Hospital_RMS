@@ -5,10 +5,11 @@ const logger = require('../config/logger');
 const { redactUrl } = require('../utils/logRedact');
 const {
 	isDbError,
-	dbErrorNumber,
+	dbErrorCode,
 	isUniqueViolation,
 	isForeignKeyViolation,
 	isCheckViolation,
+	constraintName,
 } = require('../utils/dbErrors');
 
 const validate = (req, res, next) => {
@@ -26,15 +27,16 @@ const errorHandler = (err, req, res, next) => {
 	// vì nó có thể lộ tên bảng/cột hoặc đoạn câu lệnh SQL; log đầy đủ ở server.
 	if (isDbError(err)) {
 		logger.error(
-			`❌ SQL Error [${dbErrorNumber(err)}] on ${req.method} ${redactUrl(req.path)}:`,
+			`❌ SQL Error [${dbErrorCode(err)}] on ${req.method} ${redactUrl(req.path)}:`,
 			err.message,
 		);
 		if (isUniqueViolation(err)) {
-			if (/U[QX]_users_email/.test(err.message))
+			// Tên ràng buộc chữ thường (PG hạ chữ thường tên object)
+			const name = constraintName(err) ?? '';
+			if (/^u[qx]_users_email/.test(name))
 				return error(res, 'Email này đã được dùng cho tài khoản khác', 409);
-			if (/UQ_stafflic_user/.test(err.message))
-				return error(res, 'Nhân sự này đã có hồ sơ CCHN', 409);
-			if (/UQ_stafflic_license_no/.test(err.message))
+			if (name === 'uq_stafflic_user') return error(res, 'Nhân sự này đã có hồ sơ CCHN', 409);
+			if (name === 'uq_stafflic_license_no')
 				return error(res, 'Số CCHN này đã gán cho nhân sự khác', 409);
 			return error(res, 'Dữ liệu bị trùng với bản ghi đã có', 409);
 		}

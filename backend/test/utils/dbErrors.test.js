@@ -46,6 +46,50 @@ test('mã lỗi nghiệp vụ tự ném (>= 50000)', () => {
 	assert.equal(db.appErrorCode(new Error('x')), null);
 });
 
+// Lỗi của driver pg: SQLSTATE ở `code`, luôn có `severity`
+const pgErr = (code, extra = {}) =>
+	Object.assign(new Error('x'), { code, severity: 'ERROR', ...extra });
+
+test('PostgreSQL: nhận diện theo SQLSTATE', () => {
+	assert.equal(db.isUniqueViolation(pgErr('23505')), true);
+	assert.equal(db.isForeignKeyViolation(pgErr('23503')), true);
+	assert.equal(db.isCheckViolation(pgErr('23514')), true);
+	assert.equal(db.isCheckViolation(pgErr('23503')), false);
+	assert.equal(db.isMissingTable(pgErr('42P01')), true);
+	assert.equal(db.isMissingColumn(pgErr('42703')), true);
+	assert.equal(db.isDeadlock(pgErr('40P01')), true);
+	assert.equal(db.isDbError(pgErr('23505')), true);
+	assert.equal(db.dbErrorCode(pgErr('23505')), '23505');
+	// Lỗi mạng của Node cũng có code 5 ký tự nhưng không có severity
+	assert.equal(db.isDbError(Object.assign(new Error('x'), { code: 'EPIPE' })), false);
+	assert.equal(db.appErrorCode(pgErr('P0001', { detail: '51003' })), 51003);
+	assert.equal(db.appErrorCode(pgErr('P0001', { detail: 'abc' })), null);
+	assert.equal(db.appErrorCode(pgErr('23505')), null);
+});
+
+test('constraintName: pg có sẵn, SQL Server lấy từ message; trả chữ thường', () => {
+	assert.equal(
+		db.constraintName(pgErr('23505', { constraint: 'uq_users_email' })),
+		'uq_users_email',
+	);
+	assert.equal(
+		db.constraintName(
+			mssqlErr(2627, "Violation of UNIQUE KEY constraint 'UQ_users_email'. Cannot insert"),
+		),
+		'uq_users_email',
+	);
+	assert.equal(
+		db.constraintName(
+			mssqlErr(
+				2601,
+				"Cannot insert duplicate key row in object 'dbo.users' with unique index 'UX_users_email'.",
+			),
+		),
+		'ux_users_email',
+	);
+	assert.equal(db.constraintName(new Error('khác')), null);
+});
+
 test('isDbError chỉ nhận lỗi có mã số từ DB', () => {
 	assert.equal(db.isDbError(mssqlErr(1205)), true);
 	assert.equal(db.isDeadlock(mssqlErr(1205)), true);

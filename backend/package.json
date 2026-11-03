@@ -30,7 +30,10 @@
     "sync:upload-paths": "node scripts/sync-upload-paths.js",
     "dump:db-objects": "node scripts/dump-db-objects.js",
     "migrate": "node scripts/migrate.js",
-    "import:staff": "node scripts/import-staff.js"
+    "pg:baseline": "node scripts/pg/gen-baseline.js",
+    "pg:transfer": "node scripts/pg-transfer/index.js",
+    "import:staff": "node scripts/import-staff.js",
+    "test:pg": "node --test --test-force-exit --test-concurrency=1 \"test-integration-pg/**/*.test.js\""
   },
   "dependencies": {
     "@napi-rs/canvas": "^1.0.13",
@@ -51,6 +54,8 @@
     "node-cron": "^4.6.0",
     "nodemailer": "^10.2.0",
     "otplib": "^13.5.0",
+    "pg": "^8.23.1",
+    "pg-copy-streams": "^7.0.0",
     "pino": "^10.4.0",
     "pino-roll": "^4.0.0",
     "pizzip": "^3.3.0",

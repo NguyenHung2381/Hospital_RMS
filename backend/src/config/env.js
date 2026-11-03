@@ -53,11 +53,17 @@ const SPEC = {
 	NODE_ENV: str('development'),
 	PORT: int(3000),
 
+	// mssql (SQL Server, mặc định) | pg (PostgreSQL) — chọn adapter ở config/db.js.
+	// Với pg: DB_PORT mặc định 5432, DB_DATABASE mặc định rms_hospital; DB_ENCRYPT
+	// = dùng SSL, DB_CA_CERT_FILE = kiểm tra chứng chỉ (verify-full).
+	DB_CLIENT: optional(z.enum(['mssql', 'pg']), 'mssql', '"mssql" hoặc "pg"'),
 	DB_SERVER: str('localhost'),
 	DB_PORT: int(1433),
 	DB_DATABASE: str('RMS_HOSPITAL'),
 	DB_USER: required,
-	DB_PASSWORD: required,
+	// Bắt buộc với mssql. Với pg được bỏ trống: driver đọc ~/.pgpass
+	// (Windows: %APPDATA%\postgresql\pgpass.conf) hoặc PGPASSWORD.
+	DB_PASSWORD: str(undefined),
 	DB_ENCRYPT: bool(false),
 	DB_TRUST_SERVER_CERT: bool(true),
 	// File PEM để kiểm tra chứng chỉ của SQL Server: chứng chỉ CA (nội bộ) đã ký
@@ -113,6 +119,12 @@ const loadConfig = (source = process.env) => {
 		else errors.push(`${key}: ${r.error.issues.map((i) => i.message).join(', ')}`);
 	}
 	const isProduction = raw.NODE_ENV === 'production';
+	if (raw.DB_CLIENT !== 'pg' && isBlank(raw.DB_PASSWORD)) errors.push('DB_PASSWORD: bắt buộc');
+	// Mặc định riêng của PostgreSQL (chỉ khi không đặt biến)
+	if (raw.DB_CLIENT === 'pg') {
+		if (isBlank(source.DB_PORT)) raw.DB_PORT = 5432;
+		if (isBlank(source.DB_DATABASE)) raw.DB_DATABASE = 'rms_hospital';
+	}
 
 	// Swagger UI liệt kê toàn bộ API + cho gọi thử — tắt ở production, trừ khi
 	// bật có chủ đích (SWAGGER_ENABLED=true, vd tạm thời khi tích hợp hệ thống khác).
@@ -176,9 +188,14 @@ const loadConfig = (source = process.env) => {
 						'(giả mạo được server). Đặt DB_CA_CERT_FILE (xem README, mục chứng chỉ SQL Server).',
 				);
 			}
-			if (raw.DB_USER.toLowerCase() === 'sa') {
+			if (raw.DB_CLIENT === 'mssql' && raw.DB_USER.toLowerCase() === 'sa') {
 				warnings.push(
 					'DB_USER=sa ở production — nên dùng 1 SQL login riêng, chỉ cấp quyền trên DB RMS_HOSPITAL.',
+				);
+			}
+			if (raw.DB_CLIENT === 'pg' && raw.DB_USER.toLowerCase() === 'postgres') {
+				warnings.push(
+					'DB_USER=postgres ở production — ứng dụng nên dùng role rms_app (chỉ đọc/ghi dữ liệu, infra/cai-dat-postgresql.md).',
 				);
 			}
 		}

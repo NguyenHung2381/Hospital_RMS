@@ -5,7 +5,8 @@
 #    → deploy production (tự động có duyệt, hoặc chạy tay deploy.yml). Kiểm tra
 #    nào hỏng thì dừng.
 # Không cần SQL Server hay Redis: test backend dùng CSDL giả (test/**/fakeDb.js)
-# và tự rơi về bộ nhớ khi không có Redis.
+# và tự rơi về bộ nhớ khi không có Redis. Riêng job backend-postgres chạy
+# PostgreSQL thật trong service container.
 name: CI
 
 on:
@@ -128,6 +129,67 @@ jobs:
             --test-coverage-include='src/**' --test-coverage-lines=45 --test-coverage-functions=20 \
             "test/**/*.test.js" | grep -E '^# (all files|tests|pass|fail)' | tee -a "$GITHUB_STEP_SUMMARY"
 
+  # PostgreSQL (POSTGRESQL_MIGRATION_PLAN.md chặng 2): DB PG thật trong container,
+  # dựng schema đúng như production (01_tao_db_va_role.sql → migrate init = baseline
+  # 00–04 + migration PG) rồi chạy test-integration-pg/ (adapter, trigger, rms_ci...).
+  # Hỏng ở đây = baseline / adapter / migration PG không còn chạy được.
+  backend-postgres:
+    name: Backend · PostgreSQL (baseline + adapter)
+    timeout-minutes: 15
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          # Container dùng 1 lần, chỉ runner này kết nối được → không cần mật khẩu
+          POSTGRES_HOST_AUTH_METHOD: trust
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres" --health-interval 5s
+          --health-timeout 5s --health-retries 12
+    env:
+      REDIS_HOST: 127.0.0.1
+      REDIS_PORT: 1
+      PGHOST: 127.0.0.1
+      PGPORT: 5432
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - run: npm ci --no-fund
+      - name: Tạo DB + role (infra/postgresql/01_tao_db_va_role.sql)
+        run: |
+          psql -U postgres -d postgres -v ON_ERROR_STOP=1 \
+            -v migrate_password="$(openssl rand -hex 16)" -v app_password="$(openssl rand -hex 16)" \
+            -f ../infra/postgresql/01_tao_db_va_role.sql
+      - name: Dựng schema (migrate init)
+        env:
+          DB_CLIENT: pg
+          DB_SERVER: 127.0.0.1
+          DB_USER: rms_migrate
+          JWT_SECRET: ci-only-access
+          JWT_REFRESH_SECRET: ci-only-refresh
+        run: npm run migrate -- init
+      - name: Test PostgreSQL
+        run: |
+          set -o pipefail
+          npm run test:pg -- --test-reporter=spec | tee result.txt
+      - name: Tóm tắt
+        if: always()
+        run: |
+          {
+            echo "### Backend · PostgreSQL"
+            echo '```'
+            cat result.txt 2>/dev/null || echo "không có kết quả"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
   frontend:
     name: Frontend · kiểm tra tĩnh + build
     timeout-minutes: 15
@@ -204,7 +266,7 @@ jobs:
   # không build lại). Tag = commit SHA → truy vết production về commit + lần chạy CI.
   image:
     name: Image · ${{ matrix.app }}
-    needs: [backend-test, backend-static, frontend, secrets, sast]
+    needs: [backend-test, backend-static, backend-postgres, frontend, secrets, sast]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 30
@@ -302,7 +364,7 @@ jobs:
   # (GitHub cũng gửi email). PR hỏng thì tác giả đã thấy ngay trên PR.
   notify:
     name: Báo lỗi pipeline
-    needs: [backend-test, backend-static, frontend, secrets, sast, image, deploy-staging, deploy-production]
+    needs: [backend-test, backend-static, backend-postgres, frontend, secrets, sast, image, deploy-staging, deploy-production]
     if: failure() && github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     timeout-minutes: 5

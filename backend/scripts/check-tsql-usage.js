@@ -20,10 +20,23 @@ const path = require('path');
 const ROOT = path.join(__dirname, '..');
 const DIRS = ['src', 'scripts'];
 const BASELINE = path.join(__dirname, 'tsql-usage-baseline.json');
-// File cố ý chứa mã lỗi / mẫu T-SQL: chính script này và nơi gom mã lỗi DB.
+// File cố ý chứa mã lỗi / mẫu T-SQL: chính script này, nơi gom mã lỗi DB, và
+// công cụ đọc schema SQL Server để sinh schema PostgreSQL (scripts/pg/).
 const SKIP = new Set(
-	['scripts/check-tsql-usage.js', 'src/utils/dbErrors.js'].map((f) => path.join(ROOT, f)),
+	[
+		'scripts/check-tsql-usage.js',
+		'src/utils/dbErrors.js',
+		'scripts/pg/tsqlToPg.js',
+		'scripts/pg/gen-baseline.js',
+		// Adapter SQL Server: chỉ chạy khi DB_CLIENT=mssql, xoá sau cutover
+		'src/config/db.mssql.js',
+		// Adapter PG: dựng lại recordsets/rowsAffected... để code cũ chạy được
+		'src/config/db.pg.js',
+	].map((f) => path.join(ROOT, f)),
 );
+// Cả thư mục: script chuyển dữ liệu đọc SQL Server bằng T-SQL (sys.*, CONVERT) có chủ đích.
+const SKIP_DIRS = ['scripts/pg-transfer'].map((d) => path.join(ROOT, d) + path.sep);
+const skipped = (f) => SKIP.has(f) || SKIP_DIRS.some((d) => f.startsWith(d));
 
 // Từ khoá dễ trùng chữ thường trong JS (top, convert, throw, merge...) thì so
 // đúng chữ HOA; còn lại không phân biệt hoa/thường.
@@ -31,7 +44,8 @@ const SKIP = new Set(
 const PATTERNS = [
 	{
 		key: 'getdate',
-		re: /\b(GETDATE|GETUTCDATE|SYSDATETIME|SYSUTCDATETIME)\s*\(/gi,
+		// (?<!\.): bỏ qua phương thức JS như date.getUTCDate()
+		re: /(?<!\.)\b(GETDATE|GETUTCDATE|SYSDATETIME|SYSUTCDATETIME)\s*\(/gi,
 		pg: 'LOCALTIMESTAMP / now()',
 	},
 	{ key: 'n_prefix', re: /(?<![\w'])N'/g, pg: "'...' (bỏ N)" },
@@ -111,7 +125,7 @@ const countUsage = () => {
 	/** @type {Record<string, { total: number, files: Record<string, number> }>} */
 	const result = {};
 	for (const p of PATTERNS) result[p.key] = { total: 0, files: {} };
-	const files = DIRS.flatMap((d) => walk(path.join(ROOT, d))).filter((f) => !SKIP.has(f));
+	const files = DIRS.flatMap((d) => walk(path.join(ROOT, d))).filter((f) => !skipped(f));
 	for (const f of files) {
 		const text = fs.readFileSync(f, 'utf8');
 		for (const p of PATTERNS) {
