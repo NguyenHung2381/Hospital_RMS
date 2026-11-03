@@ -8,7 +8,7 @@
  *     vực, hình thức hành nghề, thời gian, địa điểm, đơn vị cử đi, NHD chính,
  *     tiến độ). Vòng khoa + NHD từng vòng làm ở giai đoạn sau.
  */
-const { getPool, sql } = require('../../../config/db');
+const { getPool, sql, withTransaction } = require('../../../config/db');
 const { isUniqueViolation } = require('../../../utils/dbErrors');
 const { broadcast } = require('../../events/eventService');
 const { httpError } = require('../../../utils/httpError');
@@ -49,30 +49,41 @@ const assertProgramInCourse = async (courseId, programId) => {
 // bỏ bài không còn trong chương trình (giữ nguyên tiến độ bài còn lại).
 const syncLessons = async (enrollmentId, { replace = false } = {}) => {
 	const pool = await getPool();
-	const r = await pool.request().input('id', sql.VarChar(20), enrollmentId).query(`
-    DECLARE @program_id VARCHAR(20) = (SELECT program_id FROM course_enrollments WHERE id = @id);
-    ${
-			replace
-				? `DELETE el FROM enrollment_lessons el
-       WHERE el.enrollment_id = @id
-         AND NOT EXISTS (SELECT 1 FROM lesson_programs lp WHERE lp.program_id = @program_id AND lp.lesson_id = el.lesson_id);`
-				: ''
+	const programId =
+		(
+			await pool
+				.request()
+				.input('id', sql.VarChar(20), enrollmentId)
+				.query('SELECT program_id FROM course_enrollments WHERE id = @id')
+		).recordset[0]?.program_id ?? null;
+	// Bài của chương trình ứng với dòng enrollment_lessons đang xét
+	const inProgram = `SELECT lp.display_order FROM lesson_programs lp
+       WHERE lp.program_id = @program_id AND lp.lesson_id = enrollment_lessons.lesson_id`;
+	const added = await withTransaction(async (tx) => {
+		const run = (text) =>
+			tx
+				.request()
+				.input('id', sql.VarChar(20), enrollmentId)
+				.input('program_id', sql.VarChar(20), programId)
+				.query(text);
+		if (replace) {
+			await run(`DELETE FROM enrollment_lessons
+       WHERE enrollment_id = @id AND NOT EXISTS (${inProgram})`);
 		}
-    UPDATE el SET display_order = lp.display_order
-    FROM enrollment_lessons el
-    JOIN lesson_programs lp ON lp.lesson_id = el.lesson_id AND lp.program_id = @program_id
-    WHERE el.enrollment_id = @id;
-    INSERT INTO enrollment_lessons (enrollment_id, lesson_id, display_order)
-    SELECT @id, lp.lesson_id, lp.display_order
-    FROM lesson_programs lp
-    JOIN program_lessons pl ON pl.id = lp.lesson_id
-    WHERE lp.program_id = @program_id AND pl.lesson_kind = 'theory' AND pl.is_active = 1
-      AND NOT EXISTS (SELECT 1 FROM enrollment_lessons el WHERE el.enrollment_id = @id AND el.lesson_id = lp.lesson_id);
-    SELECT @@ROWCOUNT AS added;
-  `);
+		await run(`UPDATE enrollment_lessons SET display_order = (${inProgram})
+       WHERE enrollment_id = @id AND EXISTS (${inProgram})`);
+		const r = await run(`
+      INSERT INTO enrollment_lessons (enrollment_id, lesson_id, display_order)
+      SELECT CAST(@id AS VARCHAR(20)), lp.lesson_id, lp.display_order
+      FROM lesson_programs lp
+      JOIN program_lessons pl ON pl.id = lp.lesson_id
+      WHERE lp.program_id = @program_id AND pl.lesson_kind = 'theory' AND pl.is_active = 1
+        AND NOT EXISTS (SELECT 1 FROM enrollment_lessons el WHERE el.enrollment_id = @id AND el.lesson_id = lp.lesson_id)`);
+		return r.rowsAffected[0] ?? 0;
+	});
 	// Bài vừa chép: trạng thái tính theo điểm danh đã có (lessonProgressService)
 	await lessonProgressService.recompute({ enrollmentId });
-	return { added: r.recordset[0]?.added ?? 0 };
+	return { added };
 };
 
 const listLessons = async (enrollmentId) => {

@@ -5,7 +5,7 @@
  * 2026-09-16_cme_records.sql. Trang "Cảnh báo tín chỉ CME" (cmeRequirementService
  * .getComplianceReport) đã cộng dồn cả 2 nguồn.
  */
-const { getPool, sql, jsonValues } = require('../../config/db');
+const { getPool, sql, jsonValues, queryAll } = require('../../config/db');
 const { randomId } = require('../../utils/idGenerator');
 const { broadcast } = require('../events/eventService');
 const { paging } = require('../../utils/paging');
@@ -66,18 +66,19 @@ const getAll = async ({
 	}
 	const whereSql = `WHERE ${where.join(' AND ')}`;
 
-	const result = await req.query(`
+	const sets = await queryAll(req, [
+		`
     ${recordSelect} ${whereSql} ORDER BY r.activity_date DESC, r.created_at DESC
-    ${pg.fetchClause};
-    SELECT COUNT(*) AS total FROM cme_records r ${whereSql};
-  `);
+    ${pg.fetchClause}
+		`,
+		`
+    SELECT COUNT(*) AS total FROM cme_records r ${whereSql}
+		`,
+	]);
 	return {
 		// custom = trường tùy chỉnh người khai điền (Cấu hình form 'cme_record')
-		data: await formCustomValueService.attach(
-			'cme_record',
-			result.recordsets[0].map(withResultFiles),
-		),
-		pagination: { page: pg.page, limit: pg.limit, total: result.recordsets[1][0].total },
+		data: await formCustomValueService.attach('cme_record', sets[0].map(withResultFiles)),
+		pagination: { page: pg.page, limit: pg.limit, total: sets[1][0].total },
 	};
 };
 

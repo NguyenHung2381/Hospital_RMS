@@ -348,8 +348,32 @@ const randomId = (prefix, n) => prefix + randomUUID().replace(/-/g, '').toUpperC
 /** Chuỗi hex ngẫu nhiên chữ thường, 32 ký tự (thay token NEWID chữ thường cũ). */
 const randomHex32 = () => randomUUID().replace(/-/g, '');
 
+/**
+ * Mã <PREFIX>NN của bảng danh mục nhỏ (danh mục LDT, cấp độ CD, loại đợt RT, vai
+ * trò VT): MAX+1, có khoá; hết 99 số thì 409 với thông báo `full`.
+ * @param {any} tx
+ * @param {string} table hằng trong code
+ * @param {string} prefix
+ * @param {string} full
+ */
+const genSeq2Id = async (tx, table, prefix, full) => {
+	try {
+		return await nextId(tx, {
+			table,
+			prefix,
+			digits: 2,
+			what: 'mã',
+			lockKey: `gen_${table}_${prefix}`,
+		});
+	} catch (err) {
+		if (err.statusCode === 409) throw httpError(409, full);
+		throw err;
+	}
+};
+
 module.exports = {
 	randomId,
+	genSeq2Id,
 	randomHex32,
 	nextId,
 	maxSeq,

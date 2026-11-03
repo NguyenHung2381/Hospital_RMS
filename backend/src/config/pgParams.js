@@ -86,6 +86,9 @@ const truthy = (v) => v === true || v === 1 || v === '1' || v === 'true';
 // Kiểu ép trước `IS [NOT] NULL` cho tham số không có trong CASTS (chuỗi, hoặc
 // input(tên, giá trị) không khai báo kiểu): suy theo giá trị.
 const IS_NULL_AFTER = /\s*IS\s+(NOT\s+)?NULL\b/iy;
+// `OFFSET @x ROWS` / `FETCH NEXT @x ROWS ONLY`: PG chỉ nhận số / tham số trần hoặc
+// biểu thức trong ngoặc ở đây — `$1::int ROWS` là lỗi cú pháp nên phải bọc ngoặc.
+const ROWS_AFTER = /\s*ROWS?\b/iy;
 const nullCheckCast = (p) => {
 	if (p.type) return 'text';
 	const v = p.value;
@@ -180,7 +183,9 @@ const toPositional = (text, params) => {
 				IS_NULL_AFTER.lastIndex = after;
 				const cast =
 					CASTS[typeNameOf(p.type)] ?? (IS_NULL_AFTER.test(text) ? nullCheckCast(p) : null);
-				out += `$${index.get(key)}${cast ? `::${cast}` : ''}`;
+				ROWS_AFTER.lastIndex = after;
+				const ref = `$${index.get(key)}${cast ? `::${cast}` : ''}`;
+				out += cast && ROWS_AFTER.test(text) ? `(${ref})` : ref;
 				i = after;
 				continue;
 			}

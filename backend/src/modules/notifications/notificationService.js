@@ -12,25 +12,31 @@ const getForUser = async (userId, { page = 1, limit = 20, unread_only = false } 
 	const offset = (page - 1) * limit;
 	const filter = unread_only ? 'AND is_read = 0' : '';
 
-	const result = await pool
-		.request()
-		.input('user_id', sql.VarChar(20), userId)
-		.input('offset', sql.Int, offset)
-		.input('limit', sql.Int, limit).query(`
+	const sets = await db.queryAll(
+		pool
+			.request()
+			.input('user_id', sql.VarChar(20), userId)
+			.input('offset', sql.Int, offset)
+			.input('limit', sql.Int, limit),
+		[
+			`
       SELECT id, type, title, message, ref_id, ref_type, is_read, created_at
       FROM   notifications
       WHERE  user_id = @user_id ${filter}
       ORDER  BY created_at DESC
-      OFFSET @offset ROWS FETCH NEXT @limit ROWS ONLY;
-
+      OFFSET @offset ROWS FETCH NEXT @limit ROWS ONLY
+		`,
+			`
       SELECT COUNT(*) AS total
       FROM   notifications
-      WHERE  user_id = @user_id ${filter};
-    `);
+      WHERE  user_id = @user_id ${filter}
+		`,
+		],
+	);
 
 	return {
-		data: result.recordsets[0],
-		pagination: { page, limit, total: result.recordsets[1][0].total },
+		data: sets[0],
+		pagination: { page, limit, total: sets[1][0].total },
 	};
 };
 
@@ -219,7 +225,8 @@ const adminGetAll = async ({ page = 1, limit = 20, type = undefined, search = un
 		req.input('search', sql.NVarChar(255), `%${search}%`);
 	}
 	const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
-	const result = await req.query(`
+	const sets = await db.queryAll(req, [
+		`
     SELECT
            COALESCE(n.batch_id, n.id) AS batch_key,
            MIN(n.type)                AS type,
@@ -234,15 +241,17 @@ const adminGetAll = async ({ page = 1, limit = 20, type = undefined, search = un
     ${where}
     GROUP  BY COALESCE(n.batch_id, n.id)
     ORDER  BY created_at DESC
-    OFFSET @offset ROWS FETCH NEXT @limit ROWS ONLY;
-
+    OFFSET @offset ROWS FETCH NEXT @limit ROWS ONLY
+		`,
+		`
     SELECT COUNT(DISTINCT COALESCE(n.batch_id, n.id)) AS total
     FROM   notifications n
-    ${where};
-  `);
+    ${where}
+		`,
+	]);
 	return {
-		data: result.recordsets[0],
-		pagination: { page, limit, total: result.recordsets[1][0].total },
+		data: sets[0],
+		pagination: { page, limit, total: sets[1][0].total },
 	};
 };
 

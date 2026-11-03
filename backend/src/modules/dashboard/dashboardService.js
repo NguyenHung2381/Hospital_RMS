@@ -1,31 +1,33 @@
-const { getPool, sql } = require('../../config/db');
+const { getPool, sql, queryAll } = require('../../config/db');
 const { remember } = require('../../utils/cache');
+const { todayVN } = require('../../utils/vnDate');
 const { COURSE_DISPLAY_STATUS } = require('../training/courses/courseService');
 
 // TTL 90s: đủ ngắn để dashboard không lệch số liệu quá lâu sau khi có đề tài
 // mới/duyệt, đủ dài để tránh chạy lại chuỗi query aggregate nặng này mỗi lần
 // ai đó mở trang Dashboard.
 // year = năm của đợt nghiên cứu (như bộ lọc "Năm" của danh sách đề tài); null = mọi năm.
+// Tập đề tài của năm đang xem (thay bảng tạm #t cũ): mọi câu thống kê đọc từ đây.
+const TOPICS = `(
+    SELECT t.id, t.title, t.status, t.department_id, t.category_id, t.level_id,
+           t.article_type, t.round_id, t.council_id, t.created_at
+    FROM topics t
+    LEFT JOIN research_rounds r ON r.id = t.round_id
+    WHERE @year IS NULL OR r.year = @year)`;
+
 /** @param {number|null} [year] */
 const getStats = async (year = null) =>
 	remember(`dash:stats:${year ?? 'all'}`, 90, async () => {
 		const pool = await getPool();
 
-		const result = await pool.request().input('year', sql.Int, year).query(`
-    -- Tập đề tài của năm đang xem — mọi truy vấn bên dưới đọc từ #t thay vì topics
-    DROP TABLE IF EXISTS #t;
-    SELECT t.id, t.title, t.status, t.department_id, t.category_id, t.level_id,
-           t.article_type, t.round_id, t.council_id, t.created_at
-    INTO #t
-    FROM topics t
-    LEFT JOIN research_rounds r ON r.id = t.round_id
-    WHERE @year IS NULL OR r.year = @year;
-
+		const resultSets = await queryAll(pool.request().input('year', sql.Int, year), [
+			`
     -- Overview counts by status
     SELECT status, COUNT(*) AS cnt
-    FROM #t
-    GROUP BY status;
-
+    FROM ${TOPICS} t
+    GROUP BY status
+			`,
+			`
     -- Topics by department: article_type + status + category breakdown (for full dept stats table)
     SELECT
       COALESCE(d.name, N'Chưa xác định') AS dept_name,
@@ -34,42 +36,47 @@ const getStats = async (year = null) =>
       t.status,
       COALESCE(c.name, N'Chưa xác định') AS category_name,
       COUNT(t.id) AS cnt
-    FROM #t t
+    FROM ${TOPICS} t
     LEFT JOIN departments d ON d.id = t.department_id
     LEFT JOIN categories c ON c.id = t.category_id
-    GROUP BY d.name, d.specialty_group, t.article_type, t.status, c.name;
-
+    GROUP BY d.name, d.specialty_group, t.article_type, t.status, c.name
+			`,
+			`
     -- Overall totals by article_type (đề tài NCKH vs bài báo/tập san)
     SELECT t.article_type, COUNT(t.id) AS cnt
-    FROM #t t
-    GROUP BY t.article_type;
-
+    FROM ${TOPICS} t
+    GROUP BY t.article_type
+			`,
+			`
     -- Topics by category
     SELECT c.name AS name, COUNT(t.id) AS cnt
-    FROM #t t
+    FROM ${TOPICS} t
     LEFT JOIN categories c ON c.id = t.category_id
     GROUP BY c.name
-    ORDER BY cnt DESC;
-
+    ORDER BY cnt DESC
+			`,
+			`
     -- Topics by level
     SELECT l.name AS name, COUNT(t.id) AS cnt
-    FROM #t t
+    FROM ${TOPICS} t
     LEFT JOIN levels l ON l.id = t.level_id
     GROUP BY l.name
-    ORDER BY cnt DESC;
-
+    ORDER BY cnt DESC
+			`,
+			`
     -- Topics by category per round year
     SELECT
       CAST(r.year AS VARCHAR(4)) AS year,
       COALESCE(c.name, N'Chưa phân loại') AS category_name,
       COUNT(*) AS cnt
-    FROM #t t
+    FROM ${TOPICS} t
     LEFT JOIN research_rounds r ON r.id = t.round_id
     LEFT JOIN categories c ON c.id = t.category_id
     WHERE r.year IS NOT NULL
     GROUP BY r.year, c.name
-    ORDER BY year ASC;
-
+    ORDER BY year ASC
+			`,
+			`
     -- Recent approvals (last 20) — chỉ đề tài đã có quyết định, mới nhất trước.
     -- • status lấy theo topics: đây là nguồn sự thật hiển thị ở mọi màn khác
     --   (bảng đề tài, màn Phê duyệt, "Đề tài của tôi"). approvals.status có thể
@@ -84,54 +91,58 @@ const getStats = async (year = null) =>
       COALESCE(a.updated_at, a.created_at) AS created_at,
       u.full_name AS approver_name
     FROM approvals a
-    INNER JOIN #t t ON t.id = a.topic_id
+    INNER JOIN ${TOPICS} t ON t.id = a.topic_id
     LEFT JOIN users u ON u.id = COALESCE(a.updated_by, a.created_by)
     WHERE t.status IN ('approved', 'rejected', 'supplement')
-    ORDER BY COALESCE(a.updated_at, a.created_at) DESC;
-
+    ORDER BY COALESCE(a.updated_at, a.created_at) DESC
+			`,
+			`
     -- Council progress-review completion: expected = mỗi ghế hội đồng × mỗi đề tài của hội đồng đó
     SELECT
-      (SELECT COUNT(*) FROM council_members cm INNER JOIN #t t ON t.council_id = cm.council_id) AS expected,
-      (SELECT COUNT(*) FROM council_progress_reviews pr INNER JOIN #t t ON t.id = pr.topic_id WHERE pr.progress_percent IS NOT NULL) AS completed;
-
+      (SELECT COUNT(*) FROM council_members cm INNER JOIN ${TOPICS} t ON t.council_id = cm.council_id) AS expected,
+      (SELECT COUNT(*) FROM council_progress_reviews pr INNER JOIN ${TOPICS} t ON t.id = pr.topic_id WHERE pr.progress_percent IS NOT NULL) AS completed
+			`,
+			`
     -- Xếp loại tiến độ trong số các đánh giá đã hoàn thành
     SELECT pr.rating, COUNT(*) AS cnt
     FROM council_progress_reviews pr
-    INNER JOIN #t t ON t.id = pr.topic_id
+    INNER JOIN ${TOPICS} t ON t.id = pr.topic_id
     WHERE pr.progress_percent IS NOT NULL AND pr.rating IS NOT NULL
-    GROUP BY pr.rating;
-
+    GROUP BY pr.rating
+			`,
+			`
     -- Council progress-review completion theo phòng ban: số đánh giá cần chấm
     SELECT
       COALESCE(d.name, N'Chưa xác định') AS dept_name,
       COUNT(*) AS expected
     FROM council_members cm
-    INNER JOIN #t t ON t.council_id = cm.council_id
+    INNER JOIN ${TOPICS} t ON t.council_id = cm.council_id
     LEFT JOIN departments d ON d.id = t.department_id
-    GROUP BY d.name;
-
+    GROUP BY d.name
+			`,
+			`
     -- Council progress-review completion theo phòng ban: số đánh giá đã chấm
     SELECT
       COALESCE(d.name, N'Chưa xác định') AS dept_name,
       COUNT(*) AS completed
     FROM council_progress_reviews pr
-    INNER JOIN #t t ON t.id = pr.topic_id
+    INNER JOIN ${TOPICS} t ON t.id = pr.topic_id
     LEFT JOIN departments d ON d.id = t.department_id
     WHERE pr.progress_percent IS NOT NULL
-    GROUP BY d.name;
-
+    GROUP BY d.name
+			`,
+			`
     -- Tóm tắt nhanh riêng NCKH: đợt, hội đồng, đề tài trong năm
     SELECT
-      (SELECT COUNT(*) FROM #t WHERE YEAR(created_at) = YEAR(GETDATE())) AS topics_this_year,
+      (SELECT COUNT(*) FROM ${TOPICS} t WHERE YEAR(t.created_at) = YEAR(GETDATE())) AS topics_this_year,
       (SELECT COUNT(*) FROM research_rounds WHERE status = 'active') AS rounds_active,
       (SELECT COUNT(*) FROM councils) AS councils_total,
       (SELECT COUNT(*) FROM councils
-         WHERE defense_date >= CAST(GETDATE() AS DATE)) AS councils_upcoming;
+         WHERE defense_date >= CAST(GETDATE() AS DATE)) AS councils_upcoming
+			`,
+		]);
 
-    DROP TABLE #t;
-  `);
-
-		const statusRows = result.recordsets[0];
+		const statusRows = resultSets[0];
 		const byStatus = {
 			submitted: 0,
 			approved: 0,
@@ -147,16 +158,16 @@ const getStats = async (year = null) =>
 		}
 
 		const deptExpected = {};
-		for (const row of result.recordsets[9]) deptExpected[row.dept_name] = row.expected;
+		for (const row of resultSets[9]) deptExpected[row.dept_name] = row.expected;
 		const deptCompleted = {};
-		for (const row of result.recordsets[10]) deptCompleted[row.dept_name] = row.completed;
+		for (const row of resultSets[10]) deptCompleted[row.dept_name] = row.completed;
 
 		return {
 			overview: { total, by_status: byStatus },
-			summary: result.recordsets[11][0],
+			summary: resultSets[11][0],
 			by_department: (() => {
 				const deptMap = {};
-				for (const row of result.recordsets[1]) {
+				for (const row of resultSets[1]) {
 					const dept = row.dept_name;
 					if (!deptMap[dept])
 						deptMap[dept] = {
@@ -197,20 +208,20 @@ const getStats = async (year = null) =>
 					}))
 					.sort((a, b) => b.total - a.total);
 			})(),
-			by_article_type: result.recordsets[2].map((r) => ({
+			by_article_type: resultSets[2].map((r) => ({
 				type: r.article_type === 'bai_bao' ? 'bai_bao' : 'de_tai',
 				count: r.cnt,
 			})),
-			by_category: result.recordsets[3].map((r) => ({
+			by_category: resultSets[3].map((r) => ({
 				name: r.name || 'Chưa xác định',
 				count: r.cnt,
 			})),
-			by_level: result.recordsets[4].map((r) => ({
+			by_level: resultSets[4].map((r) => ({
 				name: r.name || 'Chưa xác định',
 				count: r.cnt,
 			})),
 			trend_by_category: (() => {
-				const raw = result.recordsets[5];
+				const raw = resultSets[5];
 				const yearMap = {};
 				const catSet = new Set();
 				for (const row of raw) {
@@ -223,11 +234,11 @@ const getStats = async (year = null) =>
 					categories: Array.from(catSet),
 				};
 			})(),
-			recent_approvals: result.recordsets[6],
+			recent_approvals: resultSets[6],
 			council_progress: {
-				expected: result.recordsets[7][0]?.expected ?? 0,
-				completed: result.recordsets[7][0]?.completed ?? 0,
-				by_rating: result.recordsets[8].map((r) => ({
+				expected: resultSets[7][0]?.expected ?? 0,
+				completed: resultSets[7][0]?.completed ?? 0,
+				by_rating: resultSets[8].map((r) => ({
 					rating: r.rating,
 					count: r.cnt,
 				})),
@@ -245,7 +256,8 @@ const COURSES_OPEN_SQL = `(SELECT COUNT(*) FROM courses c
 const getTrainingStats = async () =>
 	remember('dash:training-stats', 90, async () => {
 		const pool = await getPool();
-		const result = await pool.request().query(`
+		const sets = await queryAll(pool.request(), [
+			`
     -- KPI tổng quan
     SELECT
       ${COURSES_OPEN_SQL} AS open_courses,
@@ -260,8 +272,9 @@ const getTrainingStats = async () =>
       (SELECT COUNT(*) FROM trainees WHERE YEAR(created_at) = YEAR(GETDATE())) AS trainees_this_year,
       (SELECT COUNT(*) FROM class_sessions
          WHERE session_date >= CAST(GETDATE() AS DATE)
-           AND session_date <= DATEADD(DAY, 7, CAST(GETDATE() AS DATE))) AS sessions_next_7_days;
-
+           AND session_date <= DATEADD(DAY, 7, CAST(GETDATE() AS DATE))) AS sessions_next_7_days
+			`,
+			`
     -- Lịch học 7 ngày tới
     SELECT TOP 20 sess.id, sess.session_date, sess.start_time, sess.end_time, sess.room,
            c.name AS course_name, s.title AS subject_name, l.full_name AS lecturer_name
@@ -270,8 +283,9 @@ const getTrainingStats = async () =>
     LEFT JOIN program_lessons s ON s.id = sess.subject_id
     LEFT JOIN lecturers l ON l.id = sess.lecturer_id
     WHERE sess.session_date >= CAST(GETDATE() AS DATE) AND sess.session_date <= DATEADD(DAY, 7, CAST(GETDATE() AS DATE))
-    ORDER BY sess.session_date, sess.start_time;
-
+    ORDER BY sess.session_date, sess.start_time
+			`,
+			`
     -- Top lớp đầy chỗ nhất (lớp = chương trình trong khóa, sĩ số tối đa của chương trình)
     SELECT TOP 10 c.id, CONCAT(c.name, ' · ', COALESCE(tp.code, tp.name)) AS name, tp.max_capacity AS capacity, a.n AS approved_count
     FROM course_programs cp
@@ -280,16 +294,18 @@ const getTrainingStats = async () =>
     CROSS APPLY (SELECT COUNT(*) AS n FROM course_enrollments e
                  WHERE e.course_id = c.id AND e.program_id = cp.program_id AND e.status = 'approved') a
     WHERE tp.max_capacity > 0
-    ORDER BY a.n * 1.0 / tp.max_capacity DESC;
-
+    ORDER BY a.n * 1.0 / tp.max_capacity DESC
+			`,
+			`
     -- Học viên theo đối tượng
     SELECT COALESCE(tt.name, N'Chưa phân loại') AS name, COUNT(*) AS cnt
     FROM trainees t
     LEFT JOIN trainee_types tt ON tt.id = t.trainee_type_id
     WHERE t.is_active = 1
     GROUP BY tt.name
-    ORDER BY cnt DESC;
-
+    ORDER BY cnt DESC
+			`,
+			`
     -- Xu hướng đăng ký theo tháng (12 tháng gần nhất).
     -- CONVERT(CHAR(7), x, 126) = 'yyyy-MM', không dùng FORMAT(): FORMAT chạy qua CLR,
     -- lần gọi đầu khi CLR nguội tốn 76–1071ms (Query Store), CONVERT ~1ms.
@@ -297,25 +313,27 @@ const getTrainingStats = async () =>
     FROM course_enrollments
     WHERE registered_at >= DATEADD(MONTH, -11, CAST(GETDATE() AS DATE))
     GROUP BY CONVERT(CHAR(7), registered_at, 126)
-    ORDER BY month;
-
+    ORDER BY month
+			`,
+			`
     -- Khóa học theo trạng thái hiển thị (suy ra từ ngày tháng)
     SELECT status, COUNT(*) AS cnt
     FROM (SELECT ${COURSE_DISPLAY_STATUS} AS status FROM courses c) x
     GROUP BY status
-    ORDER BY cnt DESC;
-  `);
+    ORDER BY cnt DESC
+			`,
+		]);
 
 		return {
-			kpi: result.recordsets[0][0],
-			courses_by_status: result.recordsets[5],
-			upcoming_sessions: result.recordsets[1],
-			top_full_courses: result.recordsets[2].map((c) => ({
+			kpi: sets[0][0],
+			courses_by_status: sets[5],
+			upcoming_sessions: sets[1],
+			top_full_courses: sets[2].map((c) => ({
 				...c,
 				fill_rate: c.capacity > 0 ? Math.round((c.approved_count / c.capacity) * 1000) / 10 : 0,
 			})),
-			trainees_by_type: result.recordsets[3],
-			enrollment_trend: result.recordsets[4],
+			trainees_by_type: sets[3],
+			enrollment_trend: sets[4],
 		};
 	});
 
@@ -325,9 +343,14 @@ const getTrainingStats = async () =>
 const getOverviewStats = async () =>
 	remember('dash:overview-stats', 90, async () => {
 		const pool = await getPool();
-		const result = await pool.request().query(`
-    DECLARE @year INT = YEAR(GETDATE());
-
+		const today = todayVN();
+		const year = today.getUTCFullYear();
+		// Ngày 1 của tháng cách đây 11 tháng (đầu chuỗi 12 tháng)
+		const from = new Date(Date.UTC(year, today.getUTCMonth() - 11, 1));
+		const resultSets = await queryAll(
+			pool.request().input('year', sql.Int, year).input('from', sql.Date, from),
+			[
+				`
     -- KPI tổng quan
     SELECT
       (SELECT COUNT(*) FROM users) AS users_total,
@@ -351,30 +374,34 @@ const getOverviewStats = async () =>
          INNER JOIN seminars s ON s.id = sp.seminar_id
          WHERE s.event_year = @year) AS participants_this_year,
       (SELECT COUNT(*) FROM seminar_participants WHERE cme_year = @year AND cme_status IN ('issued', 'signed')) AS cme_issued_this_year,
-      @year AS current_year;
-
+      @year AS current_year
+			`,
+				`
     -- Hoạt động theo tháng (12 tháng gần nhất): đề tài mới, lượt đăng ký khóa học, hội thảo
-    DECLARE @from DATE = DATEFROMPARTS(YEAR(DATEADD(MONTH, -11, GETDATE())), MONTH(DATEADD(MONTH, -11, GETDATE())), 1);
     SELECT CONVERT(CHAR(7), created_at, 126) AS month, COUNT(*) AS cnt
     FROM topics WHERE created_at >= @from
-    GROUP BY CONVERT(CHAR(7), created_at, 126);
-
+    GROUP BY CONVERT(CHAR(7), created_at, 126)
+			`,
+				`
     SELECT CONVERT(CHAR(7), registered_at, 126) AS month, COUNT(*) AS cnt
     FROM course_enrollments WHERE registered_at >= @from
-    GROUP BY CONVERT(CHAR(7), registered_at, 126);
-
+    GROUP BY CONVERT(CHAR(7), registered_at, 126)
+			`,
+				`
     SELECT CONVERT(CHAR(7), start_date, 126) AS month, COUNT(*) AS cnt
     FROM seminars WHERE start_date >= @from AND start_date <= GETDATE()
-    GROUP BY CONVERT(CHAR(7), start_date, 126);
-
+    GROUP BY CONVERT(CHAR(7), start_date, 126)
+			`,
+				`
     -- Tài khoản đang hoạt động theo vai trò
     SELECT COALESCE(r.description, r.name, N'Chưa gán vai trò') AS name, COUNT(*) AS cnt
     FROM users u
     LEFT JOIN roles r ON r.id = u.role_id
     WHERE u.is_active = 1
     GROUP BY COALESCE(r.description, r.name, N'Chưa gán vai trò')
-    ORDER BY cnt DESC;
-
+    ORDER BY cnt DESC
+			`,
+				`
     -- Khoa/Phòng (đủ mọi đơn vị): tài khoản, NCKH, Đào tạo, Hội thảo-CME trong năm.
     -- Người tham dự hội thảo gắn khoa qua tài khoản; không có tài khoản thì khớp
     -- department_raw với tên khoa.
@@ -400,14 +427,16 @@ const getOverviewStats = async () =>
       WHERE s.event_year = @year OR p.cme_year = @year
       GROUP BY COALESCE(u.department_id, dr.id)
     ) sp ON sp.dept_id = d.id
-    ORDER BY topics_cnt DESC, users_cnt DESC, d.name;
-  `);
+    ORDER BY topics_cnt DESC, users_cnt DESC, d.name
+			`,
+			],
+		);
 
 		// Ghép 3 chuỗi theo tháng thành 1 dãy 12 tháng liên tục (tháng trống = 0).
 		const toMap = (rows) => Object.fromEntries(rows.map((r) => [r.month, r.cnt]));
-		const topicsByMonth = toMap(result.recordsets[1]);
-		const enrollByMonth = toMap(result.recordsets[2]);
-		const seminarsByMonth = toMap(result.recordsets[3]);
+		const topicsByMonth = toMap(resultSets[1]);
+		const enrollByMonth = toMap(resultSets[2]);
+		const seminarsByMonth = toMap(resultSets[3]);
 		const now = new Date();
 		const monthly = [];
 		for (let i = 11; i >= 0; i--) {
@@ -422,10 +451,10 @@ const getOverviewStats = async () =>
 		}
 
 		return {
-			kpi: result.recordsets[0][0],
+			kpi: resultSets[0][0],
 			monthly_activity: monthly,
-			users_by_role: result.recordsets[4],
-			top_departments: result.recordsets[5],
+			users_by_role: resultSets[4],
+			top_departments: resultSets[5],
 		};
 	});
 
@@ -434,10 +463,11 @@ const getOverviewStats = async () =>
 const getSeminarStats = async () =>
 	remember('dash:seminar-stats', 90, async () => {
 		const pool = await getPool();
-		const result = await pool.request().query(`
-    DECLARE @year INT = YEAR(GETDATE());
-    DECLARE @today DATE = CAST(GETDATE() AS DATE);
-
+		const today = todayVN();
+		const resultSets = await queryAll(
+			pool.request().input('year', sql.Int, today.getUTCFullYear()).input('today', sql.Date, today),
+			[
+				`
     -- KPI trong năm
     SELECT
       (SELECT COUNT(*) FROM seminars WHERE event_year = @year) AS seminars_this_year,
@@ -456,15 +486,17 @@ const getSeminarStats = async () =>
       (SELECT COUNT(*) FROM seminar_participants WHERE cme_status = 'pending') AS cme_pending,
       (SELECT COALESCE(SUM(cme_credits), 0) FROM seminar_participants
          WHERE cme_year = @year AND cme_status IN ('issued', 'signed')) AS cme_credits_this_year,
-      @year AS current_year;
-
+      @year AS current_year
+			`,
+				`
     -- Sự kiện trong năm theo loại hình
     SELECT event_type, COUNT(*) AS cnt
     FROM seminars
     WHERE event_year = @year
     GROUP BY event_type
-    ORDER BY cnt DESC;
-
+    ORDER BY cnt DESC
+			`,
+				`
     -- Sự kiện & lượt tham dự theo tháng trong năm
     SELECT MONTH(s.start_date) AS m,
       COUNT(DISTINCT s.id) AS seminars,
@@ -472,15 +504,17 @@ const getSeminarStats = async () =>
     FROM seminars s
     LEFT JOIN seminar_participants sp ON sp.seminar_id = s.id
     WHERE s.start_date IS NOT NULL AND YEAR(s.start_date) = @year
-    GROUP BY MONTH(s.start_date);
-
+    GROUP BY MONTH(s.start_date)
+			`,
+				`
     -- Hội thảo sắp diễn ra
     SELECT TOP 8 s.id, s.title, s.start_date, s.end_date, s.location, s.scope, s.grants_cme,
       (SELECT COUNT(*) FROM seminar_participants sp WHERE sp.seminar_id = s.id) AS participant_count
     FROM seminars s
     WHERE s.start_date >= @today
-    ORDER BY s.start_date ASC;
-
+    ORDER BY s.start_date ASC
+			`,
+				`
     -- Khoa/phòng có nhiều lượt tham dự nhất trong năm (nhân sự nội viện)
     SELECT TOP 8 COALESCE(NULLIF(LTRIM(RTRIM(sp.department_raw)), ''), N'Chưa xác định') AS name,
       COUNT(*) AS cnt,
@@ -489,10 +523,12 @@ const getSeminarStats = async () =>
     INNER JOIN seminars s ON s.id = sp.seminar_id
     WHERE s.event_year = @year AND sp.source = 'internal'
     GROUP BY COALESCE(NULLIF(LTRIM(RTRIM(sp.department_raw)), ''), N'Chưa xác định')
-    ORDER BY cnt DESC;
-  `);
+    ORDER BY cnt DESC
+			`,
+			],
+		);
 
-		const byMonth = Object.fromEntries(result.recordsets[2].map((r) => [r.m, r]));
+		const byMonth = Object.fromEntries(resultSets[2].map((r) => [r.m, r]));
 		const monthly = [];
 		for (let m = 1; m <= 12; m++) {
 			monthly.push({
@@ -504,13 +540,13 @@ const getSeminarStats = async () =>
 
 		return {
 			kpi: {
-				...result.recordsets[0][0],
-				cme_credits_this_year: Number(result.recordsets[0][0].cme_credits_this_year),
+				...resultSets[0][0],
+				cme_credits_this_year: Number(resultSets[0][0].cme_credits_this_year),
 			},
-			by_event_type: result.recordsets[1],
+			by_event_type: resultSets[1],
 			monthly,
-			upcoming: result.recordsets[3],
-			top_departments: result.recordsets[4],
+			upcoming: resultSets[3],
+			top_departments: resultSets[4],
 		};
 	});
 

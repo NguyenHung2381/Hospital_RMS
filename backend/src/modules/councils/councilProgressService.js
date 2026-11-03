@@ -8,7 +8,7 @@
  *
  * File đánh giá tái dùng bảng files: batch có note = EVAL_NOTE.
  */
-const { getPool, sql } = require('../../config/db');
+const { getPool, sql, queryAll } = require('../../config/db');
 const fileService = require('../topics/fileService');
 const { lazyRequire } = require('../../utils/lazyRequire');
 /** @type {typeof import('sanitize-html')} */
@@ -82,20 +82,21 @@ const getRolesForTopic = async (topicId, userId) => {
 // cả hội đồng, file đánh giá — trả về phẳng, client tự gom nhóm theo hội đồng.
 const getMyProgress = async (userId) => {
 	const pool = await getPool();
-	const result = await pool
-		.request()
-		.input('user_id', sql.VarChar(20), userId)
-		.input('eval_note', sql.NVarChar(500), EVAL_NOTE)
-		.input('minutes_note', sql.NVarChar(500), MINUTES_NOTE).query(`
-      SELECT seat.topic_id, seat.role INTO #seat FROM (${SEAT_CTE}) seat;
-
+	const sets = await queryAll(
+		pool
+			.request()
+			.input('user_id', sql.VarChar(20), userId)
+			.input('eval_note', sql.NVarChar(500), EVAL_NOTE)
+			.input('minutes_note', sql.NVarChar(500), MINUTES_NOTE),
+		[
+			`
       SELECT s.topic_id AS id, s.role AS my_role,
              t.title, t.[session], t.status,
              d.name AS department_name, cat.name AS category_name,
              c.id AS council_id, c.name AS council_name, c.location,
              CONVERT(VARCHAR(10), c.defense_date, 103) AS defense_date,
              r.name AS round_name, r.year AS round_year
-      FROM #seat s
+      FROM (${SEAT_CTE}) s
       INNER JOIN topics t ON t.id = s.topic_id
       INNER JOIN councils c ON c.id = t.council_id
       LEFT JOIN departments d ON d.id = t.department_id
@@ -103,14 +104,16 @@ const getMyProgress = async (userId) => {
       LEFT JOIN research_rounds r ON r.id = c.round_id
       ORDER BY c.round_id DESC, c.id,
         CASE t.[session] WHEN 'morning' THEN 0 WHEN 'afternoon' THEN 1 ELSE 2 END,
-        t.created_at;
-
+        t.created_at
+		`,
+			`
       SELECT pr.topic_id, pr.user_id, pr.role, pr.progress_percent, pr.rating,
              pr.comment, u.full_name
       FROM council_progress_reviews pr
       LEFT JOIN users u ON u.id = pr.user_id
-      WHERE pr.topic_id IN (SELECT topic_id FROM #seat);
-
+      WHERE pr.topic_id IN (SELECT seat.topic_id FROM (${SEAT_CTE}) seat)
+		`,
+			`
       SELECT f.id, f.topic_id, f.file_name, f.file_url, f.file_size,
              f.created_by, u.full_name AS uploaded_by_name,
              CONVERT(VARCHAR(16), f.created_at, 120) AS created_at,
@@ -119,9 +122,10 @@ const getMyProgress = async (userId) => {
       INNER JOIN file_batches fb ON fb.id = f.batch_id
       LEFT JOIN users u ON u.id = f.created_by
       WHERE f.is_deleted = 0 AND fb.note IN (@eval_note, @minutes_note)
-        AND f.topic_id IN (SELECT topic_id FROM #seat)
-      ORDER BY f.created_at DESC;
-
+        AND f.topic_id IN (SELECT seat.topic_id FROM (${SEAT_CTE}) seat)
+      ORDER BY f.created_at DESC
+		`,
+			`
       -- Tài liệu đề tài do chủ nhiệm/khoa tải lên (không phải file đánh giá/biên bản) — hội đồng xem để tham khảo khi đánh giá.
       SELECT f.id, f.topic_id, f.file_name, f.file_url, f.file_size,
              f.created_by, u.full_name AS uploaded_by_name,
@@ -131,18 +135,21 @@ const getMyProgress = async (userId) => {
       LEFT JOIN users u ON u.id = f.created_by
       WHERE f.is_deleted = 0
         AND (fb.note IS NULL OR fb.note NOT IN (@eval_note, @minutes_note))
-        AND f.topic_id IN (SELECT topic_id FROM #seat)
-      ORDER BY f.created_at DESC;
-
+        AND f.topic_id IN (SELECT seat.topic_id FROM (${SEAT_CTE}) seat)
+      ORDER BY f.created_at DESC
+		`,
+			`
       SELECT tr.topic_id, tr.conclusion, tr.general_comment, tr.decided_by,
              u.full_name AS decided_by_name,
              CONVERT(VARCHAR(16), tr.updated_at, 120) AS updated_at
       FROM council_topic_results tr
       LEFT JOIN users u ON u.id = tr.decided_by
-      WHERE tr.topic_id IN (SELECT topic_id FROM #seat);
-    `);
+      WHERE tr.topic_id IN (SELECT seat.topic_id FROM (${SEAT_CTE}) seat)
+		`,
+		],
+	);
 
-	const [topics, reviews, files, topicFiles, results] = result.recordsets;
+	const [topics, reviews, files, topicFiles, results] = sets;
 	const reviewsByTopic = new Map();
 	for (const r of reviews) {
 		if (!reviewsByTopic.has(r.topic_id)) reviewsByTopic.set(r.topic_id, []);

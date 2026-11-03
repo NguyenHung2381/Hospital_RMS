@@ -9,7 +9,7 @@
  * - File đính kèm tải lên sau qua POST /topics/:id/files — deadlineGuard cho chủ
  *   nhiệm/thư ký thao tác với đề tài is_legacy đang chờ duyệt/bổ sung.
  */
-const { getPool, sql } = require('../../config/db');
+const { getPool, sql, queryAll } = require('../../config/db');
 const notifSvc = require('../notifications/notificationService');
 const { findActiveUserIdsWhere } = require('../access/permissionService');
 const { scopeOf, hasPermission } = require('../../permissions/authz');
@@ -32,15 +32,21 @@ const num = (v) => (v === '' || v == null ? null : Number(v));
 
 const loadContext = async (roundId, actorId) => {
 	const pool = await getPool();
-	const r = await pool
-		.request()
-		.input('rid', sql.VarChar(10), roundId)
-		.input('uid', sql.VarChar(20), actorId).query(`
-      SELECT id, name, status FROM research_rounds WHERE id = @rid;
-      SELECT title FROM topics WHERE round_id = @rid;
-      SELECT staff_number FROM users WHERE id = @uid;
-    `);
-	const [rounds, titles, users] = r.recordsets;
+	const sets = await queryAll(
+		pool.request().input('rid', sql.VarChar(10), roundId).input('uid', sql.VarChar(20), actorId),
+		[
+			`
+      SELECT id, name, status FROM research_rounds WHERE id = @rid
+		`,
+			`
+      SELECT title FROM topics WHERE round_id = @rid
+		`,
+			`
+      SELECT staff_number FROM users WHERE id = @uid
+		`,
+		],
+	);
+	const [rounds, titles, users] = sets;
 	return {
 		round: rounds[0] ?? null,
 		titles: new Set(titles.map((t) => norm(t.title))),

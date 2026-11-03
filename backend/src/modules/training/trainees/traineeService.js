@@ -1,4 +1,10 @@
-const { getPool, sql, withActorTransaction, actorRequest } = require('../../../config/db');
+const {
+	getPool,
+	sql,
+	withActorTransaction,
+	actorRequest,
+	queryAll,
+} = require('../../../config/db');
 const { genTraineeId, randomId } = require('../../../utils/idGenerator');
 const { broadcast } = require('../../events/eventService');
 const { paging } = require('../../../utils/paging');
@@ -93,30 +99,38 @@ const getAll = async (
 		  ) le`
 		: '';
 
-	const result = await req.query(`
+	const sets = await queryAll(req, [
+		`
     ${traineeSelectWith(
 			`, dc.doc_required, COALESCE(dc.doc_done, 0) AS doc_done${training_type_id ? ', le.*' : ''}`,
 			`${latestEnrollment} ${DOC_COUNT_APPLY}`,
 		)} ${whereSql}
     ORDER BY t.created_at DESC
-    ${pg.fetchClause};
-    SELECT COUNT(*) AS total FROM trainees t ${whereSql};
+    ${pg.fetchClause}
+		`,
+		`
+    SELECT COUNT(*) AS total FROM trainees t ${whereSql}
+		`,
+		`
     SELECT c.training_type_id, COUNT(DISTINCT t.id) AS total
     FROM trainees t
     JOIN course_enrollments e ON e.trainee_id = t.id AND e.status <> 'rejected'
     JOIN courses c ON c.id = e.course_id
     ${countWhereSql} AND c.training_type_id IS NOT NULL
-    GROUP BY c.training_type_id;
-    SELECT COUNT(*) AS total FROM trainees t ${countWhereSql};
-  `);
+    GROUP BY c.training_type_id
+		`,
+		`
+    SELECT COUNT(*) AS total FROM trainees t ${countWhereSql}
+		`,
+	]);
 
 	const canSeeSensitive = canReadSensitive(actor);
 	return {
-		data: result.recordsets[0].map((r) => maskSensitive(r, canSeeSensitive)),
-		pagination: { page: pg.page, limit: pg.limit, total: result.recordsets[1][0].total },
+		data: sets[0].map((r) => maskSensitive(r, canSeeSensitive)),
+		pagination: { page: pg.page, limit: pg.limit, total: sets[1][0].total },
 		type_counts: {
-			'': result.recordsets[3][0].total,
-			...Object.fromEntries(result.recordsets[2].map((r) => [r.training_type_id, r.total])),
+			'': sets[3][0].total,
+			...Object.fromEntries(sets[2].map((r) => [r.training_type_id, r.total])),
 		},
 	};
 };

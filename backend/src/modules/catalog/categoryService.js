@@ -1,6 +1,7 @@
 const { sql, withActorTransaction } = require('../../config/db');
 const { createCrudService } = require('../../shared/crudService');
 const { broadcast } = require('../events/eventService');
+const { genSeq2Id } = require('../../utils/idGenerator');
 
 // Constraint CHK_cat_id yêu cầu id LIKE 'LDT[0-9][0-9]' → LDT01, LDT02, ...
 // crudService sinh mã hex ngẫu nhiên (randomId) nên phải override hàm create riêng.
@@ -10,26 +11,29 @@ const _catBase = createCrudService('categories', 5, 'LDT', [
 const catService = {
 	..._catBase,
 	create: async (data, actorId) => {
-		const result = await withActorTransaction(actorId, (tx) =>
-			tx
+		const PREFIX = 'LDT';
+		const FULL = 'Đã đạt giới hạn 99 danh mục';
+		const row = await withActorTransaction(actorId, async (tx) => {
+			const newId = await genSeq2Id(tx, 'categories', PREFIX, FULL);
+			await tx
 				.request()
+				.input('id', sql.VarChar(20), newId)
 				.input('actor_id', sql.VarChar(20), actorId)
 				.input('name', sql.NVarChar(500), data.name)
 				.input('description', sql.NVarChar(sql.MAX), data.description || null)
-				.input('abbr', sql.VarChar(10), data.abbr || null).query(`
-				DECLARE @seq INT;
-				SELECT @seq = COALESCE(MAX(CAST(RIGHT(id, 2) AS INT)), 0) + 1
-				FROM categories
-				WHERE id LIKE 'LDT[0-9][0-9]';
-				IF @seq > 99 THROW 50001, N'Đã đạt giới hạn 99 danh mục', 1;
-				DECLARE @new_id VARCHAR(5) = 'LDT' + RIGHT('0' + CAST(@seq AS VARCHAR(2)), 2);
-				INSERT INTO categories (id, name, description, abbr, created_by)
-				VALUES (@new_id, @name, @description, @abbr, @actor_id);
-				SELECT * FROM categories WHERE id = @new_id;
-			`),
-		);
+				.input('abbr', sql.VarChar(10), data.abbr || null)
+				.query(
+					`INSERT INTO categories (id, name, description, abbr, created_by) VALUES (@id, @name, @description, @abbr, @actor_id)`,
+				);
+			return (
+				await tx
+					.request()
+					.input('id', sql.VarChar(20), newId)
+					.query('SELECT * FROM categories WHERE id = @id')
+			).recordset[0];
+		});
 		broadcast('update', { entity: 'category' });
-		return result.recordset[0];
+		return row;
 	},
 };
 

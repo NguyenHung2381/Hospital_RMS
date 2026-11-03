@@ -6,6 +6,7 @@ const {
 	actorRequest,
 	withActor,
 	boolExpr,
+	queryAll,
 } = require('../../config/db');
 const { genRoundId, randomHex32 } = require('../../utils/idGenerator');
 const { broadcast } = require('../events/eventService');
@@ -72,14 +73,19 @@ const getAllowedLevelIds = async (roundId) => {
 	if (!roundId) return [];
 	const pool = await getPool();
 	try {
-		const r = await pool.request().input('rid', sql.VarChar(10), roundId).query(`
-			SELECT level_id FROM research_round_levels WHERE round_id = @rid;
+		const sets = await queryAll(pool.request().input('rid', sql.VarChar(10), roundId), [
+			`
+			SELECT level_id FROM research_round_levels WHERE round_id = @rid
+			`,
+			`
 			SELECT rtl.level_id
 			FROM research_rounds r
 			JOIN round_type_levels rtl ON rtl.round_type_id = r.round_type_id
-			WHERE r.id = @rid;`);
-		const own = r.recordsets[0].map((x) => x.level_id);
-		return own.length ? own : r.recordsets[1].map((x) => x.level_id);
+			WHERE r.id = @rid
+			`,
+		]);
+		const own = sets[0].map((x) => x.level_id);
+		return own.length ? own : sets[1].map((x) => x.level_id);
 	} catch {
 		return []; // bảng chưa tồn tại (migration chưa chạy)
 	}
@@ -151,7 +157,8 @@ const getAll = async ({
 		req.input('public_token', sql.VarChar(255), public_token);
 	}
 
-	const result = await req.query(`
+	const sets = await queryAll(req, [
+		`
     SELECT r.*, u.full_name AS created_by_name, rt.name AS round_type_name,
            rl.level_id, lv.name AS level_name,
            (SELECT COUNT(*) FROM topics WHERE round_id = r.id)                               AS topic_total,
@@ -165,14 +172,16 @@ ${REG_WINDOW_COLS}
 ${ROUND_LEVEL_APPLY}
     ${where}
     ORDER BY r.year DESC, r.round_number DESC
-    ${pg.fetchClause};
-
-    SELECT COUNT(*) AS total FROM research_rounds r ${where};
-  `);
+    ${pg.fetchClause}
+		`,
+		`
+    SELECT COUNT(*) AS total FROM research_rounds r ${where}
+		`,
+	]);
 
 	return {
-		data: result.recordsets[0].map(normalize),
-		pagination: { page: pg.page, limit: pg.limit, total: result.recordsets[1][0].total },
+		data: sets[0].map(normalize),
+		pagination: { page: pg.page, limit: pg.limit, total: sets[1][0].total },
 	};
 };
 

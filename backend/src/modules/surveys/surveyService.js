@@ -1,4 +1,4 @@
-const { getPool, sql } = require('../../config/db');
+const { getPool, sql, queryAll } = require('../../config/db');
 const { randomId } = require('../../utils/idGenerator');
 const { isUniqueViolation } = require('../../utils/dbErrors');
 const { parseJsonArray } = require('../../utils/sqlFilters');
@@ -36,14 +36,18 @@ const getAll = async ({ page = 1, limit = 20, search = undefined, status = undef
 	}
 	const whereSql = `WHERE ${where.join(' AND ')}`;
 
-	const result = await req.query(`
+	const sets = await queryAll(req, [
+		`
     ${surveySelect} ${whereSql} ORDER BY s.created_at DESC
-    ${pg.fetchClause};
-    SELECT COUNT(*) AS total FROM surveys s ${whereSql};
-  `);
+    ${pg.fetchClause}
+		`,
+		`
+    SELECT COUNT(*) AS total FROM surveys s ${whereSql}
+		`,
+	]);
 	return {
-		data: result.recordsets[0],
-		pagination: { page: pg.page, limit: pg.limit, total: result.recordsets[1][0].total },
+		data: sets[0],
+		pagination: { page: pg.page, limit: pg.limit, total: sets[1][0].total },
 	};
 };
 

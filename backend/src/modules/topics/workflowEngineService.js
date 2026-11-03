@@ -8,7 +8,7 @@
  * status thật) — muốn dùng cho resource khác cần thêm nhánh tương tự, KHÔNG
  * tự suy diễn generic vì mỗi resource có luật đổi trạng thái riêng.
  */
-const { getPool, sql } = require('../../config/db');
+const { getPool, sql, updateReturning } = require('../../config/db');
 const { randomId } = require('../../utils/idGenerator');
 const { isMissingTable } = require('../../utils/dbErrors');
 const { broadcast } = require('../events/eventService');
@@ -289,14 +289,13 @@ const advance = async (resource, entityId, decision, actor, comment) => {
 		.input('status', sql.VarChar(20), decision)
 		.input('decided_by', sql.VarChar(20), actor.id)
 		.input('comment', sql.NVarChar(sql.MAX), comment || null).query(`
-			DECLARE @r TABLE (id VARCHAR(20));
-			UPDATE workflow_tasks SET status = @status, decided_by = @decided_by, decided_at = GETDATE(), comment = @comment,
-				updated_at = GETDATE(), updated_by = @decided_by
-			OUTPUT INSERTED.id INTO @r
-			WHERE id = @id AND status = 'pending';
-			SELECT COUNT(*) AS n FROM @r;
-		`);
-	if (decided.recordset[0].n !== 1) {
+			${updateReturning(
+				`UPDATE workflow_tasks SET status = @status, decided_by = @decided_by, decided_at = GETDATE(),
+				comment = @comment, updated_at = GETDATE(), updated_by = @decided_by`,
+				"id = @id AND status = 'pending'",
+				[['new.id', 'id', 'VARCHAR(20)']],
+			)}`);
+	if (decided.recordset.length !== 1) {
 		throw httpError(409, 'Bước duyệt này vừa được người khác xử lý, vui lòng tải lại.');
 	}
 

@@ -1,4 +1,4 @@
-const { getPool, sql } = require('../../../config/db');
+const { getPool, sql, queryAll } = require('../../../config/db');
 const { randomId } = require('../../../utils/idGenerator');
 const { broadcast } = require('../../events/eventService');
 const { httpError } = require('../../../utils/httpError');
@@ -28,21 +28,24 @@ const assertTrainee = async (pool, traineeId) => {
 const documentChecklist = async (traineeId) => {
 	const pool = await getPool();
 	await assertTrainee(pool, traineeId);
-	const r = await pool.request().input('trainee_id', sql.VarChar(20), traineeId).query(`
+	const sets = await queryAll(pool.request().input('trainee_id', sql.VarChar(20), traineeId), [
+		`
     SELECT dt.id, dt.name, dt.display_order,
            CASE WHEN ${DOC_REQUIRED_SQL('t', 'dt')} THEN 1 ELSE 0 END AS required
     FROM trainee_document_types dt CROSS JOIN (SELECT @trainee_id AS id) t
-    ORDER BY dt.display_order, dt.name;
-
+    ORDER BY dt.display_order, dt.name
+		`,
+		`
     SELECT d.id, d.doc_type, d.status, d.review_note, d.created_at, d.reviewed_at,
            ru.full_name AS reviewed_by_name, f.file_name, f.file_url, f.mime_type, f.file_size
     FROM trainee_documents d
     JOIN training_files f ON f.id = d.file_id AND f.is_deleted = 0
     LEFT JOIN users ru ON ru.id = d.reviewed_by
     WHERE d.trainee_id = @trainee_id
-    ORDER BY d.created_at DESC;
-  `);
-	const [types, docs] = r.recordsets;
+    ORDER BY d.created_at DESC
+		`,
+	]);
+	const [types, docs] = sets;
 	const items = types.map((ty) => {
 		const own = docs.filter((d) => d.doc_type === ty.id);
 		const state = own.some((d) => d.status === 'approved')
@@ -170,7 +173,8 @@ const SESSION_KIND_SQL = `COALESCE(s.session_kind, CASE WHEN pl.lesson_kind = 'r
 const attendance = async (traineeId) => {
 	const pool = await getPool();
 	await assertTrainee(pool, traineeId);
-	const r = await pool.request().input('trainee_id', sql.VarChar(20), traineeId).query(`
+	const sets = await queryAll(pool.request().input('trainee_id', sql.VarChar(20), traineeId), [
+		`
     SELECT e.id AS enrollment_id, c.id AS course_id, c.name AS course_name, c.training_type_id,
            tt.name AS training_type_name, c.start_date, c.end_date,
            tp.code AS program_code, tp.name AS program_name
@@ -179,8 +183,9 @@ const attendance = async (traineeId) => {
     LEFT JOIN training_types tt ON tt.id = c.training_type_id
     LEFT JOIN training_programs tp ON tp.id = e.program_id
     WHERE e.trainee_id = @trainee_id AND e.status = 'approved'
-    ORDER BY c.start_date DESC;
-
+    ORDER BY c.start_date DESC
+		`,
+		`
     -- Buổi đã diễn ra của chương trình đã ghi danh (kể cả buổi chưa điểm danh người này)
     SELECT e.id AS enrollment_id, s.id AS session_id, s.session_date, s.start_time, s.end_time,
            pl.title AS lesson_title, ${SESSION_KIND_SQL} AS kind, a.status, a.method, a.note
@@ -190,17 +195,19 @@ const attendance = async (traineeId) => {
     LEFT JOIN attendance a ON a.session_id = s.id AND a.enrollment_id = e.id
     WHERE e.trainee_id = @trainee_id AND e.status = 'approved'
       AND s.session_date <= CAST(GETDATE() AS DATE) AND ${SESSION_IN_PROGRAM_SQL('s', 'e')}
-    ORDER BY s.session_date DESC, s.start_time DESC;
-
+    ORDER BY s.session_date DESC, s.start_time DESC
+		`,
+		`
     -- GPHN: theo lượt khoa
     SELECT r.enrollment_id, r.id, r.seq, r.round_title, r.department_name, r.start_date, r.end_date,
            r.mentor_name, r.result, r.attempt_no
     FROM enrollment_rotations r
     JOIN course_enrollments e ON e.id = r.enrollment_id
     WHERE e.trainee_id = @trainee_id
-    ORDER BY r.enrollment_id, r.seq, r.attempt_no;
-  `);
-	const [courses, sessions, rotations] = r.recordsets;
+    ORDER BY r.enrollment_id, r.seq, r.attempt_no
+		`,
+	]);
+	const [courses, sessions, rotations] = sets;
 	return courses.map((c) => {
 		const own = sessions.filter((s) => s.enrollment_id === c.enrollment_id);
 		const sum = (kind) => {
@@ -227,7 +234,8 @@ const attendance = async (traineeId) => {
 const grades = async (traineeId) => {
 	const pool = await getPool();
 	await assertTrainee(pool, traineeId);
-	const r = await pool.request().input('trainee_id', sql.VarChar(20), traineeId).query(`
+	const sets = await queryAll(pool.request().input('trainee_id', sql.VarChar(20), traineeId), [
+		`
     SELECT e.id AS enrollment_id, e.course_id, c.name AS course_name, c.training_type_id,
            tt.name AS training_type_name, c.start_date, c.end_date,
            cert.id AS certificate_id, cert.cert_no, cert.issue_date, cert.expiry_date, cert.status AS certificate_status,
@@ -238,8 +246,9 @@ const grades = async (traineeId) => {
     LEFT JOIN training_programs tp ON tp.id = e.program_id
     LEFT JOIN certificates cert ON cert.enrollment_id = e.id
     WHERE e.trainee_id = @trainee_id AND e.status = 'approved'
-    ORDER BY c.start_date DESC;
-
+    ORDER BY c.start_date DESC
+		`,
+		`
     -- Điểm cũ TX/GK/CK hoặc theo bài (subject_id) — để xem lại dữ liệu trước giai đoạn 4
     SELECT g.enrollment_id, g.subject_id, pl.title AS subject_name, g.regular_score, g.midterm_score,
            g.final_score, g.score, g.result, g.classification
@@ -247,20 +256,23 @@ const grades = async (traineeId) => {
     JOIN course_enrollments e ON e.id = g.enrollment_id
     LEFT JOIN program_lessons pl ON pl.id = g.subject_id
     WHERE e.trainee_id = @trainee_id AND (g.subject_id IS NOT NULL OR g.regular_score IS NOT NULL
-          OR g.midterm_score IS NOT NULL OR g.final_score IS NOT NULL);
-
+          OR g.midterm_score IS NOT NULL OR g.final_score IS NOT NULL)
+		`,
+		`
     SELECT h.enrollment_id, h.part, h.attempt_no, h.score, h.flag, h.source, h.changed_at
     FROM grade_history h
     JOIN course_enrollments e ON e.id = h.enrollment_id
     WHERE e.trainee_id = @trainee_id AND h.source IN ('manual', 'exam', 'import')
-    ORDER BY h.changed_at;
-
+    ORDER BY h.changed_at
+		`,
+		`
     SELECT r.enrollment_id, r.seq, r.round_title, r.department_name, r.result, r.attempt_no
     FROM enrollment_rotations r JOIN course_enrollments e ON e.id = r.enrollment_id
     WHERE e.trainee_id = @trainee_id
-    ORDER BY r.enrollment_id, r.seq, r.attempt_no;
-  `);
-	const [courses, legacy, history, rotations] = r.recordsets;
+    ORDER BY r.enrollment_id, r.seq, r.attempt_no
+		`,
+	]);
+	const [courses, legacy, history, rotations] = sets;
 
 	// Kết quả 2 phần tính cùng hàm với bảng điểm của khóa (gradeRules.evaluate)
 	const out = [];

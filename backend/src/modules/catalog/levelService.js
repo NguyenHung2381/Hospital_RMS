@@ -1,6 +1,7 @@
 const { getPool, sql, withActorTransaction } = require('../../config/db');
 const { createCrudService } = require('../../shared/crudService');
 const { broadcast } = require('../events/eventService');
+const { genSeq2Id } = require('../../utils/idGenerator');
 const roundService = require('../rounds/roundService');
 
 // ─── Levels ───────────────────────────────────────────────────────────────────
@@ -25,26 +26,27 @@ const getLevelIdsForRoundType = async (roundTypeId) => {
 
 // create() cho bảng có CHECK id dạng <PREFIX>NN (CD01, RT02…) — crudService mặc
 // định sinh id hex nên phải tự cấp số tiếp theo. table/prefix là hằng trong file.
-const createWithSeqId = (table, prefix, errNo, limitMsg, entity) => async (data, actorId) => {
-	const result = await withActorTransaction(actorId, (tx) =>
-		tx
+const createWithSeqId = (table, prefix, limitMsg, entity) => async (data, actorId) => {
+	const row = await withActorTransaction(actorId, async (tx) => {
+		const newId = await genSeq2Id(tx, table, prefix, limitMsg);
+		await tx
 			.request()
+			.input('id', sql.VarChar(20), newId)
 			.input('actor_id', sql.VarChar(20), actorId)
 			.input('name', sql.NVarChar(500), data.name)
-			.input('description', sql.NVarChar(sql.MAX), data.description || null).query(`
-			DECLARE @seq INT;
-			SELECT @seq = COALESCE(MAX(CAST(RIGHT(id, 2) AS INT)), 0) + 1
-			FROM ${table}
-			WHERE id LIKE '${prefix}[0-9][0-9]';
-			IF @seq > 99 THROW ${errNo}, '${limitMsg}', 1;
-			DECLARE @new_id VARCHAR(20) = '${prefix}' + RIGHT('0' + CAST(@seq AS VARCHAR(2)), 2);
-			INSERT INTO ${table} (id, name, description, created_by)
-			VALUES (@new_id, @name, @description, @actor_id);
-			SELECT * FROM ${table} WHERE id = @new_id;
-		`),
-	);
+			.input('description', sql.NVarChar(sql.MAX), data.description || null)
+			.query(
+				`INSERT INTO ${table} (id, name, description, created_by) VALUES (@id, @name, @description, @actor_id)`,
+			);
+		return (
+			await tx
+				.request()
+				.input('id', sql.VarChar(20), newId)
+				.query(`SELECT * FROM ${table} WHERE id = @id`)
+		).recordset[0];
+	});
 	broadcast('update', { entity });
-	return result.recordset[0];
+	return row;
 };
 
 const _lvlBase = createCrudService('levels', 4, 'CD', [
@@ -52,7 +54,7 @@ const _lvlBase = createCrudService('levels', 4, 'CD', [
 ]);
 const lvlService = {
 	..._lvlBase,
-	create: createWithSeqId('levels', 'CD', 50001, 'Đã đạt giới hạn 99 cấp độ', 'level'),
+	create: createWithSeqId('levels', 'CD', 'Đã đạt giới hạn 99 cấp độ', 'level'),
 };
 
 // Cấp độ dùng ở form đăng ký đề tài, lọc theo đợt (cấu hình riêng của đợt,

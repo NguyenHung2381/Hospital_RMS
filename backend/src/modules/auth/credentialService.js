@@ -1,6 +1,6 @@
 const bcrypt = require('bcrypt');
 const crypto = require('crypto');
-const { sql } = require('../../config/db');
+const { sql, updateReturning } = require('../../config/db');
 const redis = require('../../config/redis');
 const securityEvents = require('../audit/securityEventService');
 const { passwordGate, BUSY_ERROR } = require('../../utils/cpuGate');
@@ -69,16 +69,18 @@ const recordFailedLogin = async (pool, user, ip, reason = 'sai mật khẩu') =>
 			-- trần không được phép khi trigger đang bật.
 			-- locked_until lưu giờ UTC (driver mssql useUTC mặc định, JS so sánh
 			-- theo UTC) — dùng GETUTCDATE(), KHÔNG dùng GETDATE() (giờ địa phương).
-			DECLARE @r TABLE (prev_count INT, locked_until DATETIME);
-			UPDATE users SET
+			${updateReturning(
+				`UPDATE users SET
 				locked_until = CASE WHEN failed_login_count + 1 >= @max
 					THEN DATEADD(MINUTE, @minutes, GETUTCDATE()) ELSE locked_until END,
 				failed_login_count = CASE WHEN failed_login_count + 1 >= @max
-					THEN 0 ELSE failed_login_count + 1 END
-			OUTPUT DELETED.failed_login_count, INSERTED.locked_until INTO @r
-			WHERE id = @id;
-			SELECT prev_count, locked_until FROM @r;
-		`);
+					THEN 0 ELSE failed_login_count + 1 END`,
+				'id = @id',
+				[
+					['old.failed_login_count', 'prev_count', 'INT'],
+					['new.locked_until', 'locked_until', 'DATETIME'],
+				],
+			)}`);
 	const row = result.recordset[0];
 	if (!row || row.prev_count + 1 < MAX_FAILED_LOGIN_ATTEMPTS) return null;
 

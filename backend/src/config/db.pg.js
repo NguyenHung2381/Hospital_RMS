@@ -353,6 +353,34 @@ const newIdSql = (prefix, n) => {
 	return `CONCAT('${prefix}', UPPER(LEFT(REPLACE(CAST(gen_random_uuid() AS VARCHAR(36)), '-', ''), ${n})))`;
 };
 
+// Cùng giao diện với db.mssql.js; PG ≥ 18 cho `RETURNING old.x, new.x`.
+/**
+ * @param {string} update
+ * @param {string} where
+ * @param {Array<[string, string, string]>} cols
+ */
+const updateReturning = (update, where, cols) =>
+	`${update} WHERE ${where} RETURNING ${cols.map(([e, n]) => `${e} AS ${n}`).join(', ')}`;
+
+// Cùng giao diện với db.mssql.js: mỗi câu 1 lời gọi, cùng tham số của `req`. Trong
+// transaction thì chạy lần lượt (1 kết nối); ngoài transaction chạy song song.
+/**
+ * @param {Request} req
+ * @param {string[]} statements
+ * @returns {Promise<any[][]>}
+ */
+const queryAll = async (req, statements) => {
+	const run = (text) => {
+		const r = new Request(req.parent);
+		r.params = new Map(req.params);
+		return r.query(text.replace(/;\s*$/, '')).then((x) => x.recordset ?? []);
+	};
+	if (!(req.parent instanceof Transaction)) return Promise.all(statements.map(run));
+	const out = [];
+	for (const s of statements) out.push(await run(s));
+	return out;
+};
+
 module.exports = {
 	client: 'pg',
 	getPool,
@@ -367,6 +395,8 @@ module.exports = {
 	jsonValues,
 	jsonRows,
 	newIdSql,
+	queryAll,
+	updateReturning,
 	sslOptions,
 	toMssqlResult,
 };

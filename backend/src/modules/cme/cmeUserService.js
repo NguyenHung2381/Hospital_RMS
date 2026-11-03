@@ -3,7 +3,7 @@
  * cổng "của tôi" (portalService.getMyCme) và hồ sơ học viên (GET /trainees/:id/cme).
  * Caller tự kiểm tra quyền.
  */
-const { getPool, sql, boolExpr } = require('../../config/db');
+const { getPool, sql, boolExpr, queryAll } = require('../../config/db');
 const { httpError } = require('../../utils/httpError');
 const { RESULT_FILES_SQL, withResultFiles } = require('./cmeRecordService');
 const formCustomValueService = require('../forms/formCustomValueService');
@@ -14,8 +14,10 @@ const formCustomValueService = require('../forms/formCustomValueService');
 // year = null → toàn bộ các năm (không có ngưỡng yêu cầu).
 const getUserCme = async (userId, year) => {
 	const pool = await getPool();
-	const r = await pool.request().input('uid', sql.VarChar(20), userId).input('year', sql.Int, year)
-		.query(`
+	const sets = await queryAll(
+		pool.request().input('uid', sql.VarChar(20), userId).input('year', sql.Int, year),
+		[
+			`
     SELECT p.id, p.seminar_id, s.title AS seminar_title, s.event_type, s.scope, s.location,
            s.start_date, s.end_date, s.date_text, p.participation_type,
            p.cme_year, p.cme_certificate_no, p.cme_credits, p.cme_status, p.cme_issued_date
@@ -23,8 +25,9 @@ const getUserCme = async (userId, year) => {
     JOIN seminars s ON s.id = p.seminar_id
     WHERE p.user_id = @uid
       AND (@year IS NULL OR p.cme_year = @year OR (p.cme_year IS NULL AND COALESCE(s.event_year, YEAR(s.start_date)) = @year))
-    ORDER BY s.start_date DESC;
-
+    ORDER BY s.start_date DESC
+		`,
+			`
     SELECT r.id, r.title, r.activity_date, r.end_date, r.year, r.role, r.quantity, r.credits, r.note,
            r.category_id, c.name AS category_name, r.approval_status, r.reject_reason, r.source_type,
            f.file_name AS evidence_file_name, f.file_url AS evidence_file_url,
@@ -34,16 +37,19 @@ const getUserCme = async (userId, year) => {
     LEFT JOIN cme_credit_categories c ON c.id = r.category_id
     LEFT JOIN training_files f ON f.id = r.evidence_file_id AND f.is_deleted = 0
     WHERE r.user_id = @uid AND (@year IS NULL OR r.year = @year)
-    ORDER BY r.year DESC, r.activity_date DESC, r.created_at DESC;
-
+    ORDER BY r.year DESC, r.activity_date DESC, r.created_at DESC
+		`,
+			`
     SELECT TOP 1 req.required_credits
     FROM users u
     JOIN cme_requirements req ON req.year = @year
      AND (req.department_id = u.department_id OR req.department_id IS NULL)
     WHERE u.id = @uid
-    ORDER BY CASE WHEN req.department_id IS NOT NULL THEN 0 ELSE 1 END;
-  `);
-	const [seminars, records, req] = r.recordsets;
+    ORDER BY CASE WHEN req.department_id IS NOT NULL THEN 0 ELSE 1 END
+		`,
+		],
+	);
+	const [seminars, records, req] = sets;
 	const sum = (rows, key) => rows.reduce((t, x) => t + Number(x[key] || 0), 0);
 	const earned =
 		sum(

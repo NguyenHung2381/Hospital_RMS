@@ -7,7 +7,7 @@
 const { lazyRequire } = require('../../../utils/lazyRequire');
 /** @type {typeof import('exceljs')} */
 const ExcelJS = lazyRequire('exceljs');
-const { getPool, sql } = require('../../../config/db');
+const { getPool, sql, queryAll } = require('../../../config/db');
 const { httpError } = require('../../../utils/httpError');
 const { describeSpan, shortDept, practiceFieldLabel } = require('./rotationPlanner');
 
@@ -68,8 +68,11 @@ const rotationCells = (r) =>
 
 const load = async (courseId) => {
 	const pool = await getPool();
-	const r = await pool.request().input('course_id', sql.VarChar(20), courseId).query(`
-    SELECT name FROM courses WHERE id = @course_id;
+	const sets = await queryAll(pool.request().input('course_id', sql.VarChar(20), courseId), [
+		`
+    SELECT name FROM courses WHERE id = @course_id
+		`,
+		`
     SELECT e.*, t.legacy_code, t.full_name, t.gender, t.dob, t.qualification, t.permanent_address, t.address,
            t.birth_province, t.national_id, t.national_id_issued_date, t.national_id_issued_place, t.phone,
            t.graduated_year, t.graduated_school, t.degree_issued_date, t.graduated_date,
@@ -81,13 +84,16 @@ const load = async (courseId) => {
     JOIN trainees t ON t.id = e.trainee_id
     LEFT JOIN users mm ON mm.id = e.main_mentor_user_id
     LEFT JOIN staff_practice_licenses sl ON sl.user_id = mm.id
-    WHERE e.course_id = @course_id;
+    WHERE e.course_id = @course_id
+		`,
+		`
     SELECT r.* FROM enrollment_rotations r
     JOIN course_enrollments e ON e.id = r.enrollment_id
     WHERE e.course_id = @course_id AND r.result <> 'fail'
-    ORDER BY r.enrollment_id, r.seq, r.created_at;
-  `);
-	const [[course], enrollments, rotations] = r.recordsets;
+    ORDER BY r.enrollment_id, r.seq, r.created_at
+		`,
+	]);
+	const [[course], enrollments, rotations] = sets;
 	if (!course) throw httpError(404, 'Khóa học không tồn tại.');
 	const byEnrollment = new Map();
 	for (const rot of rotations)

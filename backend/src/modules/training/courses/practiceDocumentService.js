@@ -13,7 +13,7 @@ const { lazyRequire } = require('../../../utils/lazyRequire');
 const PizZip = lazyRequire('pizzip');
 /** @type {typeof import('docxtemplater')} */
 const Docxtemplater = lazyRequire('docxtemplater');
-const { getPool, sql } = require('../../../config/db');
+const { getPool, sql, queryAll } = require('../../../config/db');
 const { httpError } = require('../../../utils/httpError');
 const { describeSpan } = require('./rotationPlanner');
 
@@ -137,12 +137,18 @@ const render = (type, fields) => {
 
 const loadRecord = async (enrollmentId) => {
 	const pool = await getPool();
-	const r = await pool.request().input('id', sql.VarChar(20), enrollmentId).query(`
-    SELECT e.* FROM course_enrollments e WHERE e.id = @id;
-    SELECT t.* FROM trainees t JOIN course_enrollments e ON e.trainee_id = t.id WHERE e.id = @id;
-    SELECT * FROM enrollment_rotations WHERE enrollment_id = @id ORDER BY seq, created_at;
-  `);
-	const [[enrollment], [trainee], rotations] = r.recordsets;
+	const sets = await queryAll(pool.request().input('id', sql.VarChar(20), enrollmentId), [
+		`
+    SELECT e.* FROM course_enrollments e WHERE e.id = @id
+		`,
+		`
+    SELECT t.* FROM trainees t JOIN course_enrollments e ON e.trainee_id = t.id WHERE e.id = @id
+		`,
+		`
+    SELECT * FROM enrollment_rotations WHERE enrollment_id = @id ORDER BY seq, created_at
+		`,
+	]);
+	const [[enrollment], [trainee], rotations] = sets;
 	if (!enrollment || !trainee) throw httpError(404, 'Không tìm thấy hồ sơ ghi danh.');
 	return { enrollment, trainee, rotations };
 };

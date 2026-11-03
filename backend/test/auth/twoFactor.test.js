@@ -44,7 +44,7 @@ install(async (text, inputs) => {
 	if (/SET totp_last_step = @step/.test(text)) {
 		const ok = user.totp_last_step === null || user.totp_last_step < inputs.step;
 		if (ok) user.totp_last_step = inputs.step;
-		return [{ n: ok ? 1 : 0 }];
+		return ok ? [{ id: user.id }] : [];
 	}
 	if (/UPDATE users SET totp_secret = @secret WHERE id = @id/.test(text)) {
 		user.totp_secret = inputs.secret;

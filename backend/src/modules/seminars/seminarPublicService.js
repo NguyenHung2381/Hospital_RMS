@@ -6,7 +6,13 @@
  * thì cấp tuần tự trong 1 transaction để giữ dãy liền mạch.
  */
 const crypto = require('crypto');
-const { getPool, sql, withActorTransaction, boolExpr } = require('../../config/db');
+const {
+	getPool,
+	sql,
+	withActorTransaction,
+	boolExpr,
+	updateReturning,
+} = require('../../config/db');
 const { broadcast } = require('../events/eventService');
 const { lazyRequire } = require('../../utils/lazyRequire');
 /** @type {typeof import('qrcode')} */
@@ -405,25 +411,29 @@ const submitTest = async (code, answers) => {
 // checked_in_at lưu giờ UTC (GETUTCDATE): driver mssql đọc DATETIME như UTC,
 // GETDATE() là giờ VN của máy CSDL → FE hiển thị lệch +7 giờ.
 const checkInTicket = async (seminarId, code, actorId) => {
-	const r = await withActorTransaction(actorId, (tx) =>
-		tx
+	const row = await withActorTransaction(actorId, async (tx) => {
+		const read = async () =>
+			(
+				await tx.request().input('code', sql.VarChar(32), code).query(`
+          SELECT id, seminar_id, title_prefix, full_name, organization, checked_in_at
+          FROM seminar_participants WHERE ticket_code = @code`)
+			).recordset[0];
+		const before = await read();
+		if (!before || before.seminar_id !== seminarId || before.checked_in_at != null)
+			return before && { ...before, already: before.checked_in_at != null };
+		// Chỉ ghi khi chưa có giờ: 2 lần quét song song thì lần sau thấy đã điểm danh
+		const claimed = await tx
 			.request()
-			.input('sid', sql.VarChar(20), seminarId)
-			.input('code', sql.VarChar(32), code)
-			.input('actor_id', sql.VarChar(20), actorId).query(`
-      DECLARE @prev DATETIME, @pid VARCHAR(24), @psid VARCHAR(20);
-      SELECT @pid = id, @psid = seminar_id, @prev = checked_in_at
-      FROM seminar_participants WHERE ticket_code = @code;
-      IF @pid IS NOT NULL AND @psid = @sid AND @prev IS NULL
-      BEGIN
-        UPDATE seminar_participants SET checked_in_at = GETUTCDATE() WHERE id = @pid;
-      END
-      SELECT p.id, p.seminar_id, p.title_prefix, p.full_name, p.organization, p.checked_in_at,
-             ${boolExpr(`@prev IS NOT NULL`)} AS already
-      FROM seminar_participants p WHERE p.id = @pid;
-    `),
-	);
-	const row = r.recordset[0];
+			.input('id', sql.VarChar(24), before.id)
+			.query(
+				updateReturning(
+					'UPDATE seminar_participants SET checked_in_at = GETUTCDATE()',
+					'id = @id AND checked_in_at IS NULL',
+					[['new.id', 'id', 'VARCHAR(24)']],
+				),
+			);
+		return { ...(await read()), already: !claimed.recordset.length };
+	});
 	if (!row) throw httpError(404, 'Mã QR không phải vé hội nghị hợp lệ.');
 	if (row.seminar_id !== seminarId)
 		throw httpError(409, `Vé của ${row.full_name} thuộc hội nghị khác.`);

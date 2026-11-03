@@ -4,6 +4,7 @@ const {
 	withActorTransaction,
 	actorRequest,
 	boolExpr,
+	queryAll,
 } = require('../../../config/db');
 const { randomId } = require('../../../utils/idGenerator');
 const { broadcast } = require('../../events/eventService');
@@ -58,14 +59,18 @@ const getAll = async ({
 	}
 	const whereSql = `WHERE ${where.join(' AND ')}`;
 
-	const result = await req.query(`
+	const sets = await queryAll(req, [
+		`
     ${lecturerSelect} ${whereSql} ORDER BY l.full_name
-    ${pg.fetchClause};
-    SELECT COUNT(*) AS total FROM lecturers l ${whereSql};
-  `);
+    ${pg.fetchClause}
+		`,
+		`
+    SELECT COUNT(*) AS total FROM lecturers l ${whereSql}
+		`,
+	]);
 	return {
-		data: result.recordsets[0],
-		pagination: { page: pg.page, limit: pg.limit, total: result.recordsets[1][0].total },
+		data: sets[0],
+		pagination: { page: pg.page, limit: pg.limit, total: sets[1][0].total },
 	};
 };
 

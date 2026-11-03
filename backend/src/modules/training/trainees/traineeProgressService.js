@@ -11,7 +11,7 @@
  *   - nhịp học: % đã hoàn thành so với % thời gian đã trôi qua.
  * Chỉ đọc, không sửa hồ sơ (đồng bộ lại vẫn làm ở màn hình khóa học).
  */
-const { getPool, sql } = require('../../../config/db');
+const { getPool, sql, queryAll } = require('../../../config/db');
 const { todayKeyVN } = require('../../../utils/vnDate');
 const { formatDuration, toDays } = require('../../../utils/trainingDuration');
 
@@ -267,7 +267,8 @@ const buildProgress = ({
 
 const getProgress = async (traineeId) => {
 	const pool = await getPool();
-	const r = await pool.request().input('trainee_id', sql.VarChar(20), traineeId).query(`
+	const sets = await queryAll(pool.request().input('trainee_id', sql.VarChar(20), traineeId), [
+		`
     SELECT e.id, e.course_id, e.status, e.program_id, e.progress_status, e.progress_date,
            e.start_date AS practice_start_date, e.end_date AS practice_end_date,
            c.name AS course_name, c.start_date AS course_start_date, c.end_date AS course_end_date,
@@ -276,8 +277,9 @@ const getProgress = async (traineeId) => {
     FROM course_enrollments e
     JOIN courses c ON c.id = e.course_id
     LEFT JOIN training_programs tp ON tp.id = e.program_id
-    WHERE e.trainee_id = @trainee_id AND e.status <> 'rejected';
-
+    WHERE e.trainee_id = @trainee_id AND e.status <> 'rejected'
+		`,
+		`
     SELECT lp.program_id, pl.id, pl.code, pl.title, pl.total_hours, pl.lesson_kind, pl.is_active,
            pl.duration_value, pl.duration_unit, lp.display_order
     FROM lesson_programs lp
@@ -285,16 +287,18 @@ const getProgress = async (traineeId) => {
     WHERE lp.program_id IN (
       SELECT program_id FROM course_enrollments
       WHERE trainee_id = @trainee_id AND program_id IS NOT NULL AND status <> 'rejected')
-    ORDER BY lp.display_order, pl.title;
-
+    ORDER BY lp.display_order, pl.title
+		`,
+		`
     SELECT el.enrollment_id, el.lesson_id, el.status, el.completed_at, el.display_order,
            pl.code, pl.title, pl.total_hours
     FROM enrollment_lessons el
     JOIN course_enrollments e ON e.id = el.enrollment_id
     JOIN program_lessons pl ON pl.id = el.lesson_id
     WHERE e.trainee_id = @trainee_id
-    ORDER BY el.display_order, pl.title;
-
+    ORDER BY el.display_order, pl.title
+		`,
+		`
     SELECT r.id, r.enrollment_id, r.lesson_id, r.round_title, r.seq, r.attempt_no, r.result,
            r.department_id, r.department_name, d.name AS current_department_name,
            r.start_date, r.end_date, r.duration_text, r.mentor_name, pl.code AS round_code
@@ -303,9 +307,10 @@ const getProgress = async (traineeId) => {
     LEFT JOIN program_lessons pl ON pl.id = r.lesson_id
     LEFT JOIN departments d ON d.id = r.department_id
     WHERE e.trainee_id = @trainee_id
-    ORDER BY r.seq, r.created_at;
-  `);
-	const [enrollments, programLessons, recordLessons, recordRotations] = r.recordsets;
+    ORDER BY r.seq, r.created_at
+		`,
+	]);
+	const [enrollments, programLessons, recordLessons, recordRotations] = sets;
 	const today = todayKeyVN();
 	const byKey = (list, key) => {
 		const m = new Map();

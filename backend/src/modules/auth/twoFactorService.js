@@ -1,7 +1,7 @@
 const { verifyToken } = require('../../utils/keys');
 const crypto = require('crypto');
 const otplib = require('otplib');
-const { getPool, sql } = require('../../config/db');
+const { getPool, sql, updateReturning } = require('../../config/db');
 const userStatusCache = require('../../permissions/userStatusCache');
 const securityEvents = require('../audit/securityEventService');
 const trustedDevices = require('./trustedDeviceService');
@@ -68,14 +68,12 @@ const claimTotpStep = async (pool, userId, step) => {
 		.request()
 		.input('id', sql.VarChar(20), userId)
 		.input('step', sql.BigInt, step).query(`
-			-- OUTPUT ... INTO: bảng users có trigger audit, OUTPUT trần không được phép
-			DECLARE @r TABLE (id VARCHAR(20));
-			UPDATE users SET totp_last_step = @step
-			OUTPUT INSERTED.id INTO @r
-			WHERE id = @id AND (totp_last_step IS NULL OR totp_last_step < @step);
-			SELECT COUNT(*) AS n FROM @r;
-		`);
-	return r.recordset[0].n === 1;
+			${updateReturning(
+				'UPDATE users SET totp_last_step = @step',
+				'id = @id AND (totp_last_step IS NULL OR totp_last_step < @step)',
+				[['new.id', 'id', 'VARCHAR(20)']],
+			)}`);
+	return r.recordset.length === 1;
 };
 
 // Mã 6 số từ ứng dụng xác thực: đúng + chưa từng dùng.

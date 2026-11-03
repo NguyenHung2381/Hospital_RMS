@@ -4,6 +4,7 @@ const {
 	withActorTransaction,
 	actorRequest,
 	withTransaction,
+	queryAll,
 } = require('../../../config/db');
 const { genCourseId, genCourseProgramId } = require('../../../utils/idGenerator');
 const { broadcast } = require('../../events/eventService');
@@ -150,17 +151,23 @@ const getAll = async (
 	}
 	const whereSql = `WHERE ${where.join(' AND ')}`;
 
-	const result = await req.query(`
+	const sets = await queryAll(req, [
+		`
     ${courseSelect} ${whereSql} ORDER BY c.created_at DESC
-    ${pg.fetchClause};
-    SELECT COUNT(*) AS total FROM courses c ${whereSql};
-    SELECT c.training_type_id, COUNT(*) AS total FROM courses c ${countWhereSql} GROUP BY c.training_type_id;
-  `);
+    ${pg.fetchClause}
+		`,
+		`
+    SELECT COUNT(*) AS total FROM courses c ${whereSql}
+		`,
+		`
+    SELECT c.training_type_id, COUNT(*) AS total FROM courses c ${countWhereSql} GROUP BY c.training_type_id
+		`,
+	]);
 	return {
-		data: result.recordsets[0].map(normalize),
-		pagination: { page: pg.page, limit: pg.limit, total: result.recordsets[1][0].total },
+		data: sets[0].map(normalize),
+		pagination: { page: pg.page, limit: pg.limit, total: sets[1][0].total },
 		// '' = tất cả loại (gồm khóa chưa gán loại)
-		type_counts: result.recordsets[2].reduce(
+		type_counts: sets[2].reduce(
 			(acc, r) => {
 				acc[''] += r.total;
 				if (r.training_type_id) acc[r.training_type_id] = r.total;

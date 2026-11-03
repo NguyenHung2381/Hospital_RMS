@@ -343,15 +343,19 @@ const removeEnrollment = async (enrollmentId, actorId = null) => {
 	const pool = await getPool();
 	const r = await pool.request().input('id', sql.VarChar(20), enrollmentId).query(`
     SELECT e.program_id, e.course_id, e.status, c.training_type_id, c.is_rolling
-    FROM course_enrollments e JOIN courses c ON c.id = e.course_id WHERE e.id = @id;
-    DELETE FROM attendance WHERE enrollment_id = @id;
-    DELETE FROM course_enrollments WHERE id = @id;
-  `);
+    FROM course_enrollments e JOIN courses c ON c.id = e.course_id WHERE e.id = @id`);
+	await withTransaction(async (tx) => {
+		for (const stmt of [
+			'DELETE FROM attendance WHERE enrollment_id = @id',
+			'DELETE FROM course_enrollments WHERE id = @id',
+		])
+			await tx.request().input('id', sql.VarChar(20), enrollmentId).query(stmt);
+	});
 	await formCustomValueService.remove('course_registration', enrollmentId);
 	await formCustomValueService.remove('enrollment', enrollmentId);
 	broadcast('update', { entity: 'course_enrollment' });
 	// Rút khỏi lớp chưa khai giảng ⇒ người đầu danh sách chờ của chương trình được gọi vào.
-	const gone = r.recordsets[0][0];
+	const gone = r.recordset[0];
 	if (gone?.status === 'approved' && gone.program_id && programClassService.appliesTo(gone))
 		await programClassService.fillFromWaitlist(gone.course_id, actorId, {
 			programId: gone.program_id,

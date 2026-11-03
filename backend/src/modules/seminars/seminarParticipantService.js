@@ -342,25 +342,27 @@ const checkInSelf = async (token, deviceId, actor) => {
 	}
 
 	const pool = await getPool();
-	const result = await pool
-		.request()
-		.input('seminar_id', sql.VarChar(20), decoded.seminar_id)
-		.input('user_id', sql.VarChar(20), actor.id)
-		.input('device_id', sql.VarChar(64), deviceId).query(`
-      -- 1 thiết bị chỉ điểm danh cho 1 người mỗi hội thảo (xem courseService.checkInSelf)
-      DECLARE @device_taken BIT = CASE WHEN EXISTS (
-        SELECT 1 FROM seminar_participants WHERE seminar_id = @seminar_id
-          AND checkin_device_id = @device_id AND (user_id IS NULL OR user_id <> @user_id)
-      ) THEN 1 ELSE 0 END;
-      IF @device_taken = 0
-        UPDATE seminar_participants SET checked_in_at = GETUTCDATE(), checkin_device_id = @device_id
-        WHERE seminar_id = @seminar_id AND user_id = @user_id;
-      SELECT id, @device_taken AS device_taken
-      FROM seminar_participants WHERE seminar_id = @seminar_id AND user_id = @user_id;
-    `);
-	const row = result.recordset[0];
+	const req = () =>
+		pool
+			.request()
+			.input('seminar_id', sql.VarChar(20), decoded.seminar_id)
+			.input('user_id', sql.VarChar(20), actor.id)
+			.input('device_id', sql.VarChar(64), deviceId);
+	const row = (
+		await req().query(`
+      SELECT id, ${boolExpr(`EXISTS (
+        -- 1 thiết bị chỉ điểm danh cho 1 người mỗi hội thảo (xem courseService.checkInSelf)
+        SELECT 1 FROM seminar_participants o WHERE o.seminar_id = @seminar_id
+          AND o.checkin_device_id = @device_id AND (o.user_id IS NULL OR o.user_id <> @user_id))`)} AS device_taken
+      FROM seminar_participants WHERE seminar_id = @seminar_id AND user_id = @user_id`)
+	).recordset[0];
 	if (!row) {
 		throw httpError(403, 'Bạn không có trong danh sách tham dự hội thảo/hội nghị này.');
+	}
+	if (!row.device_taken) {
+		await req().query(`
+      UPDATE seminar_participants SET checked_in_at = GETUTCDATE(), checkin_device_id = @device_id
+      WHERE seminar_id = @seminar_id AND user_id = @user_id`);
 	}
 	if (row.device_taken) {
 		throw httpError(

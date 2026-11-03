@@ -211,19 +211,23 @@ const resetAccountPassword = async (traineeId, actorId, ip = null) => {
 // Khóa tài khoản học viên (nếu có) — dùng khi xóa / ngừng hồ sơ học viên.
 const lockAccountOf = async (traineeId, actorId) => {
 	// Không dùng OUTPUT: bảng users có trigger audit (trg_users_audit)
-	const r = await withActorTransaction(actorId, (tx) =>
-		tx.request().input('id', sql.VarChar(20), traineeId).input('actor_id', sql.VarChar(20), actorId)
-			.query(`
-      DECLARE @uid VARCHAR(20) = (SELECT user_id FROM trainees WHERE id = @id);
-      IF @uid IS NOT NULL
-      BEGIN
-        UPDATE users SET is_active = 0, updated_at = GETDATE(), updated_by = @actor_id
-        WHERE id = @uid AND is_active = 1;
-      END
-      SELECT @uid AS user_id;
-    `),
-	);
-	const userId = r.recordset[0]?.user_id;
+	const userId = await withActorTransaction(actorId, async (tx) => {
+		const uid = (
+			await tx
+				.request()
+				.input('id', sql.VarChar(20), traineeId)
+				.query('SELECT user_id FROM trainees WHERE id = @id')
+		).recordset[0]?.user_id;
+		if (uid) {
+			await tx
+				.request()
+				.input('uid', sql.VarChar(20), uid)
+				.input('actor_id', sql.VarChar(20), actorId).query(`
+          UPDATE users SET is_active = 0, updated_at = GETDATE(), updated_by = @actor_id
+          WHERE id = @uid AND is_active = 1`);
+		}
+		return uid;
+	});
 	// middlewares/auth.js đọc is_active qua cache — xóa để khóa có hiệu lực ngay
 	if (userId) userStatusCache.clear(userId);
 };

@@ -62,7 +62,7 @@ const setup = () => {
 				if (rows[i].family_id === inputs.family || rows[i].id === inputs.family) rows.splice(i, 1);
 			return [];
 		}
-		if (/DECLARE @family/.test(text)) {
+		if (/DELETE FROM refresh_tokens WHERE token = @token/.test(text)) {
 			// logout(): xóa cả họ của token
 			const r = rows.find((x) => x.token === inputs.token);
 			const family = r ? r.family_id || r.id : null;

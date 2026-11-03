@@ -1,4 +1,4 @@
-const { getPool, sql, withActorTransaction, actorRequest } = require('../../config/db');
+const { getPool, sql, withActorTransaction, actorRequest, queryAll } = require('../../config/db');
 const { genCouncilId, genCouncilMemberId } = require('../../utils/idGenerator');
 const { broadcast } = require('../events/eventService');
 const { paging } = require('../../utils/paging');
@@ -48,7 +48,8 @@ const getAll = async ({ page = 1, limit = 20, round_id = undefined, status = und
 		req.input('status', sql.VarChar(15), status);
 	}
 
-	const result = await req.query(`
+	const sets = await queryAll(req, [
+		`
     SELECT c.*, r.name AS round_name,
            (SELECT COUNT(*) FROM topics t WHERE t.council_id = c.id) AS topic_count,
            (SELECT COUNT(DISTINCT cm.role) FROM council_members cm WHERE cm.council_id = c.id) AS member_count,
@@ -69,22 +70,25 @@ const getAll = async ({ page = 1, limit = 20, round_id = undefined, status = und
     LEFT JOIN research_rounds r ON r.id = c.round_id
     ${where}
     ORDER BY c.created_at DESC
-    ${pg.fetchClause};
-
-    SELECT COUNT(*) AS total FROM councils c ${where};
-
+    ${pg.fetchClause}
+		`,
+		`
+    SELECT COUNT(*) AS total FROM councils c ${where}
+		`,
+		`
     SELECT
       COUNT(*) AS total,
       SUM(CASE WHEN c.status = 'draft' THEN 1 ELSE 0 END) AS draft,
       SUM(CASE WHEN c.status = 'finalized' THEN 1 ELSE 0 END) AS finalized,
       (SELECT COUNT(*) FROM topics t WHERE t.council_id IS NOT NULL) AS topic_sum
-    FROM councils c;
-  `);
+    FROM councils c
+		`,
+	]);
 
-	const statsRow = result.recordsets[2][0];
+	const statsRow = sets[2][0];
 	return {
-		data: result.recordsets[0].map(normalize),
-		pagination: { page: pg.page, limit: pg.limit, total: result.recordsets[1][0].total },
+		data: sets[0].map(normalize),
+		pagination: { page: pg.page, limit: pg.limit, total: sets[1][0].total },
 		// Tổng quan toàn bộ hội đồng, bỏ qua bộ lọc round_id/status trên UI.
 		stats: {
 			total: statsRow.total,

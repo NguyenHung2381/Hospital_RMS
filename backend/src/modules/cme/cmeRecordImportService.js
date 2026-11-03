@@ -5,7 +5,7 @@
  * mục quy đổi theo tên — không đính kèm minh chứng qua import (thêm sau ở
  * từng dòng nếu cần, qua addEvidence).
  */
-const { getPool, sql } = require('../../config/db');
+const { getPool, sql, queryAll } = require('../../config/db');
 const { lazyRequire } = require('../../utils/lazyRequire');
 /** @type {typeof import('exceljs')} */
 const ExcelJS = lazyRequire('exceljs');
@@ -302,14 +302,18 @@ const createMissingStaff = async ({ staff_number, full_name, department_id }, ac
 	if (!department_id) throw fail('Vui lòng chọn khoa/phòng');
 
 	const pool = await getPool();
-	const r = await pool
-		.request()
-		.input('sn', sql.Int, staffNumber)
-		.input('dept', sql.VarChar(20), department_id).query(`
-      SELECT TOP 1 id, full_name, is_active FROM users WHERE staff_number = @sn;
-      SELECT id, name, code FROM departments WHERE id = @dept;
-    `);
-	const [existing] = r.recordsets[0];
+	const sets = await queryAll(
+		pool.request().input('sn', sql.Int, staffNumber).input('dept', sql.VarChar(20), department_id),
+		[
+			`
+      SELECT TOP 1 id, full_name, is_active FROM users WHERE staff_number = @sn
+		`,
+			`
+      SELECT id, name, code FROM departments WHERE id = @dept
+		`,
+		],
+	);
+	const [existing] = sets[0];
 	if (existing) {
 		throw fail(
 			existing.is_active
@@ -318,7 +322,7 @@ const createMissingStaff = async ({ staff_number, full_name, department_id }, ac
 			409,
 		);
 	}
-	const [dept] = r.recordsets[1];
+	const [dept] = sets[1];
 	if (!dept) throw fail('Khoa/phòng không tồn tại');
 
 	const u = await userService.createStaffAccount(

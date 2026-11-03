@@ -1,4 +1,4 @@
-const { getPool, sql, withActor } = require('../../config/db');
+const { getPool, sql, withActor, queryAll, updateReturning } = require('../../config/db');
 const { paging } = require('../../utils/paging');
 const { broadcast } = require('../events/eventService');
 const personService = require('./personService');
@@ -132,15 +132,20 @@ const listCandidates = async (
 	}
 	const whereSql = `WHERE ${where.join(' AND ')}`;
 
-	const r = await req.query(`
+	const sets = await queryAll(req, [
+		`
 		SELECT ${CAND_COLS} ${CAND_FROM} ${whereSql}
 		ORDER BY CASE c.reason WHEN 'SAME_NAME_DOB' THEN 0 WHEN 'SAME_STAFF_NUMBER' THEN 1 WHEN 'SAME_EMAIL' THEN 2
 		                       WHEN 'SAME_PHONE' THEN 3 ELSE 4 END, c.created_at, c.id
-		${pg.fetchClause};
-		SELECT COUNT(*) AS total ${CAND_FROM} ${whereSql};`);
+		${pg.fetchClause}
+		`,
+		`
+		SELECT COUNT(*) AS total ${CAND_FROM} ${whereSql}
+		`,
+	]);
 	return {
-		data: r.recordsets[0].map((row) => shapeCandidate(row, canSee)),
-		pagination: { page: pg.page, limit: pg.limit, total: r.recordsets[1][0].total },
+		data: sets[0].map((row) => shapeCandidate(row, canSee)),
+		pagination: { page: pg.page, limit: pg.limit, total: sets[1][0].total },
 	};
 };
 
@@ -306,12 +311,14 @@ const mergeCandidate = async (
 		for (const { table, keepUpdatedAt } of SOURCE_TABLES) {
 			const m = await new sql.Request(tx)
 				.input('k', sql.VarChar(20), keepId)
-				.input('l', sql.VarChar(20), loseId).query(`
-					DECLARE @m TABLE (id VARCHAR(30));
-					UPDATE dbo.${table} SET person_id = @k${keepUpdatedAt ? ', updated_at = updated_at' : ''}
-					OUTPUT INSERTED.id INTO @m
-					WHERE person_id = @l;
-					SELECT id FROM @m;`);
+				.input('l', sql.VarChar(20), loseId)
+				.query(
+					updateReturning(
+						`UPDATE dbo.${table} SET person_id = @k${keepUpdatedAt ? ', updated_at = updated_at' : ''}`,
+						'person_id = @l',
+						[['new.id', 'id', 'VARCHAR(30)']],
+					),
+				);
 			if (m.recordset.length) moved[table] = m.recordset.map((x) => x.id);
 		}
 

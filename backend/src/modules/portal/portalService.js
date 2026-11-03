@@ -4,7 +4,7 @@
  * actor.id (trainees.user_id / staff_user_id, lecturers.user_id, seminar_participants.user_id,
  * cme_records.user_id) nên không cần quyền courses:read / seminars:read.
  */
-const { getPool, sql } = require('../../config/db');
+const { getPool, sql, queryAll } = require('../../config/db');
 const courseDocumentService = require('../training/courses/courseDocumentService');
 const courseEnrollmentService = require('../training/courses/courseEnrollmentService');
 const courseService = require('../training/courses/courseService');
@@ -31,7 +31,8 @@ const withStatus = ({ enrollment_start_date, enrollment_end_date, ...c }) => ({
 
 const getMyTraining = async (actor) => {
 	const pool = await getPool();
-	const r = await pool.request().input('uid', sql.VarChar(20), actor.id).query(`
+	const sets = await queryAll(pool.request().input('uid', sql.VarChar(20), actor.id), [
+		`
     SELECT c.id, c.name, c.start_date, c.end_date, c.status,
            c.enrollment_start_date, c.enrollment_end_date,
            e.id AS enrollment_id, e.status AS enrollment_status, e.registered_at, tp.name AS program_name,
@@ -46,16 +47,18 @@ const getMyTraining = async (actor) => {
     JOIN courses c ON c.id = e.course_id
     LEFT JOIN training_programs tp ON tp.id = e.program_id
     LEFT JOIN certificates cert ON cert.enrollment_id = e.id
-    ORDER BY c.start_date DESC;
-
+    ORDER BY c.start_date DESC
+		`,
+		`
     SELECT g.enrollment_id, s.title AS subject_name, g.theory_score, g.practice_score,
            g.theory_flag, g.practice_flag, g.regular_score, g.midterm_score,
            g.final_score, g.score, g.result, g.classification
     FROM grades g
     JOIN course_enrollments e ON e.id = g.enrollment_id
     JOIN trainees t ON t.id = e.trainee_id AND ${TRAINEE_OF_USER_SQL('t')}
-    LEFT JOIN program_lessons s ON s.id = g.subject_id;
-
+    LEFT JOIN program_lessons s ON s.id = g.subject_id
+		`,
+		`
     SELECT c.id, c.name, c.start_date, c.end_date, c.status,
            c.enrollment_start_date, c.enrollment_end_date, x.subjects,
            (SELECT COUNT(*) FROM course_enrollments WHERE course_id = c.id AND status = 'approved') AS approved_count,
@@ -69,8 +72,9 @@ const getMyTraining = async (actor) => {
       WHERE la.course_id = c.id
     ) x
     WHERE x.n > 0
-    ORDER BY c.start_date DESC;
-
+    ORDER BY c.start_date DESC
+		`,
+		`
     SELECT sess.id, sess.course_id, c.name AS course_name, s.title AS subject_name,
            l.full_name AS lecturer_name, sess.session_date, sess.start_time, sess.end_time, sess.room,
            CASE WHEN EXISTS (
@@ -90,8 +94,9 @@ const getMyTraining = async (actor) => {
         OR EXISTS (SELECT 1 FROM lecturer_assignments la JOIN lecturers lec ON lec.id = la.lecturer_id
                    WHERE la.course_id = c.id AND lec.user_id = @uid)
       )
-    ORDER BY sess.session_date, sess.start_time;
-
+    ORDER BY sess.session_date, sess.start_time
+		`,
+		`
     -- Bài tôi dạy: từng bài được phân (GV chính / phụ) + số buổi mình đã được xếp dạy bài đó
     SELECT la.id, la.course_id, c.name AS course_name, c.start_date, c.end_date,
            s.code AS lesson_code, s.title AS lesson_title, la.role, la.hours,
@@ -102,9 +107,10 @@ const getMyTraining = async (actor) => {
     JOIN lecturers l ON l.id = la.lecturer_id AND l.user_id = @uid
     JOIN courses c ON c.id = la.course_id AND c.status <> 'cancelled'
     JOIN program_lessons s ON s.id = la.subject_id
-    ORDER BY c.start_date DESC, c.name, s.title;
-  `);
-	const [enrolled, grades, teaching, sessions, myLessons] = r.recordsets;
+    ORDER BY c.start_date DESC, c.name, s.title
+		`,
+	]);
+	const [enrolled, grades, teaching, sessions, myLessons] = sets;
 	// Đề đang mở mà mình chưa nộp — nhắc trên thẻ khóa học (tab "Thi online" đã gộp vào đây).
 	const papers = await examService.listAvailablePapersForUser(actor);
 	const openExamCount = (courseId) =>
@@ -142,10 +148,10 @@ const APPROVED_IN_COURSE = (courseCol, programCol) => `EXISTS (
 // Chỉ học viên đã được duyệt mới thấy nội dung; đang chờ duyệt thì chỉ thấy thông tin khóa.
 const getMyCourse = async (courseId, actor) => {
 	const pool = await getPool();
-	const r = await pool
-		.request()
-		.input('id', sql.VarChar(20), courseId)
-		.input('uid', sql.VarChar(20), actor.id).query(`
+	const sets = await queryAll(
+		pool.request().input('id', sql.VarChar(20), courseId).input('uid', sql.VarChar(20), actor.id),
+		[
+			`
     SELECT TOP 1 c.id, c.name, c.description, c.start_date, c.end_date, c.status,
            c.enrollment_start_date, c.enrollment_end_date, e.status AS enrollment_status,
            c.is_rolling, e.id AS enrollment_id,
@@ -162,15 +168,17 @@ const getMyCourse = async (courseId, actor) => {
     JOIN courses c ON c.id = e.course_id
     LEFT JOIN training_programs tp ON tp.id = e.program_id
     WHERE c.id = @id
-    ORDER BY CASE WHEN e.status = 'approved' THEN 0 ELSE 1 END;
-
+    ORDER BY CASE WHEN e.status = 'approved' THEN 0 ELSE 1 END
+		`,
+			`
     SELECT d.id, d.doc_type, d.title, d.exam_type, d.source_type, d.external_url, d.created_at,
            f.file_name, f.file_url, f.mime_type, f.file_size
     FROM course_documents d
     LEFT JOIN training_files f ON f.id = d.file_id AND f.is_deleted = 0
     WHERE d.course_id = @id AND d.is_public = 1
-    ORDER BY d.created_at DESC;
-
+    ORDER BY d.created_at DESC
+		`,
+			`
     -- Bài học: khóa → chương trình học viên đã chọn khi ghi danh → bài học theo thứ tự trong chương trình.
     SELECT tp.id AS program_id, tp.name AS program_name, pl.id, pl.code, pl.title, pl.description,
            pl.theory_hours, pl.practice_hours, pl.total_hours, pl.credits
@@ -179,8 +187,9 @@ const getMyCourse = async (courseId, actor) => {
     JOIN lesson_programs lp ON lp.program_id = cp.program_id
     JOIN program_lessons pl ON pl.id = lp.lesson_id AND pl.is_active = 1
     WHERE cp.course_id = @id AND ${APPROVED_IN_COURSE('@id', 'cp.program_id')}
-    ORDER BY tp.name, lp.display_order, pl.created_at;
-
+    ORDER BY tp.name, lp.display_order, pl.created_at
+		`,
+			`
     SELECT d.id, d.lesson_id, d.title, d.source_type, d.external_url, d.created_at,
            f.file_name, f.file_url, f.file_size
     FROM lesson_documents d
@@ -189,15 +198,17 @@ const getMyCourse = async (courseId, actor) => {
       SELECT lp.lesson_id FROM course_programs cp
       JOIN lesson_programs lp ON lp.program_id = cp.program_id
       WHERE cp.course_id = @id AND ${APPROVED_IN_COURSE('@id', 'cp.program_id')})
-    ORDER BY d.created_at;
-  `);
-	const [, , lessons, lessonDocs] = r.recordsets;
-	const course = r.recordsets[0][0];
+    ORDER BY d.created_at
+		`,
+		],
+	);
+	const [, , lessons, lessonDocs] = sets;
+	const course = sets[0][0];
 	if (!course) throw httpError(404, 'Bạn không tham gia khóa học này.');
 	const approved = course.enrollment_status === 'approved';
 	return {
 		...withStatus(course),
-		documents: approved ? r.recordsets[1] : [],
+		documents: approved ? sets[1] : [],
 		lessons: approved
 			? lessons.map((l) => ({ ...l, documents: lessonDocs.filter((d) => d.lesson_id === l.id) }))
 			: [],

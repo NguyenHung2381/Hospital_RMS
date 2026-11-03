@@ -1,5 +1,11 @@
 // Chương trình đào tạo. Bài học + tài liệu bài học ở programLessonService (export lại ở đây để nơi gọi giữ nguyên).
-const { getPool, sql, withActorTransaction, actorRequest } = require('../../../config/db');
+const {
+	getPool,
+	sql,
+	withActorTransaction,
+	actorRequest,
+	queryAll,
+} = require('../../../config/db');
 const { randomId } = require('../../../utils/idGenerator');
 const { isUniqueViolation } = require('../../../utils/dbErrors');
 const { broadcast } = require('../../events/eventService');
@@ -155,14 +161,18 @@ const getAll = async ({
 	}
 	const whereSql = `WHERE ${where.join(' AND ')}`;
 
-	const result = await req.query(`
+	const sets = await queryAll(req, [
+		`
     ${programSelect} ${whereSql} ORDER BY p.display_order ASC, p.created_at DESC
-    ${pg.fetchClause};
-    SELECT COUNT(*) AS total FROM training_programs p ${whereSql};
-  `);
+    ${pg.fetchClause}
+		`,
+		`
+    SELECT COUNT(*) AS total FROM training_programs p ${whereSql}
+		`,
+	]);
 	return {
-		data: result.recordsets[0].map(withRotations),
-		pagination: { page: pg.page, limit: pg.limit, total: result.recordsets[1][0].total },
+		data: sets[0].map(withRotations),
+		pagination: { page: pg.page, limit: pg.limit, total: sets[1][0].total },
 	};
 };
 

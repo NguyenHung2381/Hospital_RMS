@@ -1,4 +1,4 @@
-const { getPool, sql } = require('../config/db');
+const { getPool, sql, queryAll } = require('../config/db');
 const cacheBus = require('../utils/cacheBus');
 
 // role_id → { perms: { keys: Set<"resource:action">, scopes: Map<key, scope> }, ts }
@@ -38,22 +38,26 @@ const load = async (roleId) => {
 	if (cached) return cached;
 
 	const pool = await getPool();
-	const result = await pool.request().input('role_id', sql.VarChar(20), roleId).query(`
+	const sets = await queryAll(pool.request().input('role_id', sql.VarChar(20), roleId), [
+		`
       SELECT p.resource, p.action, rp.scope
       FROM permissions p
       INNER JOIN role_permissions rp ON rp.permission_id = p.id
-      WHERE rp.role_id = @role_id;
-      SELECT is_superuser FROM roles WHERE id = @role_id;
-    `);
+      WHERE rp.role_id = @role_id
+		`,
+		`
+      SELECT is_superuser FROM roles WHERE id = @role_id
+		`,
+	]);
 
 	const keys = new Set();
 	const scopes = new Map();
-	for (const r of result.recordsets[0]) {
+	for (const r of sets[0]) {
 		const key = `${r.resource}:${r.action}`;
 		keys.add(key);
 		if (r.scope) scopes.set(key, r.scope);
 	}
-	if (result.recordsets[1][0]?.is_superuser) keys.add(SUPERUSER_KEY);
+	if (sets[1][0]?.is_superuser) keys.add(SUPERUSER_KEY);
 	const perms = { keys, scopes };
 	set(roleId, perms);
 	return perms;

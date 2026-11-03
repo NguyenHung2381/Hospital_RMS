@@ -23,24 +23,26 @@ const REQUIRED_COLUMNS = [
 	['users', 'temp_password_issued_at', '2026-12-12_han_dung_mat_khau_tam.sql'],
 ];
 
-// Danh sách vấn đề (rỗng = CSDL đã sẵn sàng cho mô hình phân quyền mới) — 1 round-trip.
+// Danh sách vấn đề (rỗng = CSDL đã sẵn sàng cho mô hình phân quyền mới). Đọc cột
+// qua information_schema (có ở cả SQL Server và PG); tên bảng / cột là hằng trong code.
 const findSchemaProblems = async () => {
 	const pool = await getPool();
-	const cols = REQUIRED_COLUMNS.map(([t, c], i) => `COL_LENGTH('${t}', '${c}') AS c${i}`).join(
-		', ',
-	);
-	const result = await pool.request().query(`
-    SELECT ${cols};
-    IF OBJECT_ID('permissions', 'U') IS NOT NULL
-      SELECT CONCAT(resource, ':', action) AS k FROM permissions
-      WHERE action IN ('read_all', 'read_department', 'read_assigned')
-         OR (resource = 'system' AND action = 'manage');
-  `);
-	const lengths = result.recordsets[0][0];
-	const problems = REQUIRED_COLUMNS.filter((_, i) => lengths[`c${i}`] == null).map(
+	const tables = [...new Set([...REQUIRED_COLUMNS.map(([t]) => t), 'permissions'])];
+	const { recordset: found } = await pool.request().query(`
+    SELECT LOWER(table_name) AS t, LOWER(column_name) AS c FROM information_schema.columns
+    WHERE LOWER(table_name) IN (${tables.map((t) => `'${t}'`).join(', ')})`);
+	const has = new Set(found.map((r) => `${r.t}.${r.c}`));
+	const problems = REQUIRED_COLUMNS.filter(([t, c]) => !has.has(`${t}.${c}`)).map(
 		([table, column, file]) => `thiếu cột ${table}.${column} (${file})`,
 	);
-	const legacy = (result.recordsets[1] ?? []).map((r) => r.k);
+	const legacy = found.some((r) => r.t === 'permissions')
+		? (
+				await pool.request().query(`
+          SELECT CONCAT(resource, ':', action) AS k FROM permissions
+          WHERE action IN ('read_all', 'read_department', 'read_assigned')
+             OR (resource = 'system' AND action = 'manage')`)
+			).recordset.map((r) => r.k)
+		: [];
 	if (legacy.length)
 		problems.push(`còn quyền kiểu cũ: ${legacy.join(', ')} (2026-09-28_00_permission_scopes.sql)`);
 	return problems;

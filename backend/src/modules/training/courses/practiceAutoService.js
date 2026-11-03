@@ -15,7 +15,7 @@
  *     vòng nào trượt ⇒ hoàn thành.
  * Mọi thứ tự điền vẫn sửa tay được ở hồ sơ; cảnh báo vòng vẫn hiện như cũ.
  */
-const { getPool, sql } = require('../../../config/db');
+const { getPool, sql, queryAll } = require('../../../config/db');
 const { broadcast } = require('../../events/eventService');
 const { httpError } = require('../../../utils/httpError');
 const { norm } = require('../../../utils/vietnameseText');
@@ -113,22 +113,28 @@ const buildTemplates = async (programIds, actorId) => {
 const practiceCodeFor = async (pool, e) => {
 	const suffix = codeSuffix(e.program_code);
 	if (!suffix) return { code: null, number: null };
-	const r = await pool.request().query(`
-    SELECT practice_code FROM course_enrollments WHERE practice_code IS NOT NULL;
-    SELECT MAX(TRY_CAST(legacy_code AS INT)) AS max_legacy FROM trainees;`);
-	const used = new Set(r.recordsets[0].map((x) => x.practice_code));
+	const sets = await queryAll(pool.request(), [
+		`
+    SELECT practice_code FROM course_enrollments WHERE practice_code IS NOT NULL
+		`,
+		`
+    SELECT MAX(TRY_CAST(legacy_code AS INT)) AS max_legacy FROM trainees
+		`,
+	]);
+	const used = new Set(sets[0].map((x) => x.practice_code));
 	const own = /^\d+$/.test(String(e.legacy_code ?? '').trim()) ? Number(e.legacy_code) : null;
 	if (own != null && !used.has(`${own}.${suffix}`))
 		return { code: `${own}.${suffix}`, number: own };
 	const nums = [...used].map((c) => parseInt(c, 10)).filter(Number.isFinite);
-	const number = Math.max(0, r.recordsets[1][0].max_legacy ?? 0, ...nums) + 1;
+	const number = Math.max(0, sets[1][0].max_legacy ?? 0, ...nums) + 1;
 	return { code: `${number}.${suffix}`, number };
 };
 
 // NHD ứng viên cho từng khoa: người từng kèm khoa đó cho học viên cùng nhóm (bác sĩ /
 // không phải bác sĩ), kèm nhiều xếp trước; rồi nhân sự của khoa có CCHN cùng nhóm.
 const loadMentorCandidates = async (pool, doctor) => {
-	const r = await pool.request().query(`
+	const sets = await queryAll(pool.request(), [
+		`
     SELECT r.department_id, r.mentor_user_id AS user_id, COUNT(*) AS n,
            MAX(CASE WHEN tp.code LIKE 'GPHN[_]BS%' OR tp.code LIKE 'GPHN[_]YS%' THEN 1 ELSE 0 END) AS doctor
     FROM enrollment_rotations r
@@ -137,20 +143,24 @@ const loadMentorCandidates = async (pool, doctor) => {
     JOIN users u ON u.id = r.mentor_user_id AND u.is_active = 1
     WHERE r.department_id IS NOT NULL
     GROUP BY r.department_id, r.mentor_user_id
-    ORDER BY n DESC;
+    ORDER BY n DESC
+		`,
+		`
     SELECT u.id AS user_id, u.department_id, COALESCE(sl.qualification, q.name) AS qualification
     FROM users u
     JOIN staff_practice_licenses sl ON sl.user_id = u.id AND sl.license_no IS NOT NULL
     LEFT JOIN qualifications q ON q.id = u.qualification_id
-    WHERE u.is_active = 1 AND u.department_id IS NOT NULL;`);
+    WHERE u.is_active = 1 AND u.department_id IS NOT NULL
+		`,
+	]);
 	const byDept = new Map();
 	const add = (dept, id) => {
 		const list = byDept.get(dept) ?? [];
 		if (!list.includes(id)) list.push(id);
 		byDept.set(dept, list);
 	};
-	for (const h of r.recordsets[0]) if (!!h.doctor === doctor) add(h.department_id, h.user_id);
-	for (const u of r.recordsets[1])
+	for (const h of sets[0]) if (!!h.doctor === doctor) add(h.department_id, h.user_id);
+	for (const u of sets[1])
 		if (isDoctorQualification(u.qualification) === doctor) add(u.department_id, u.user_id);
 	return byDept;
 };

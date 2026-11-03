@@ -10,8 +10,7 @@
  * Vòng đã có kết quả (Đạt / Không đạt) là lịch sử: sinh lại / xếp lại không xóa, không đổi ngày.
  * Danh sách trả kèm cảnh báo từng dòng (không chặn).
  */
-const { getPool, sql, newIdSql } = require('../../../config/db');
-const { appErrorCode } = require('../../../utils/dbErrors');
+const { getPool, sql, newIdSql, withTransaction } = require('../../../config/db');
 const { broadcast } = require('../../events/eventService');
 const { httpError } = require('../../../utils/httpError');
 const { formatDuration } = require('../../../utils/trainingDuration');
@@ -173,28 +172,45 @@ const generate = async (enrollmentId, { replace = false } = {}, actorId) => {
 
 // Thêm 1 khoa nữa cho vòng chia nhiều khoa (chuyên khoa lẻ) — chèn ngay sau dòng cuối của vòng đó.
 const addSegment = async (enrollmentId, lessonId, actorId) => {
-	const pool = await getPool();
-	const r = await pool
-		.request()
-		.input('enrollment_id', sql.VarChar(20), enrollmentId)
-		.input('lesson_id', sql.VarChar(20), lessonId)
-		.input('actor_id', sql.VarChar(20), actorId)
-		.query(
-			`
-      DECLARE @after INT = (SELECT MAX(seq) FROM enrollment_rotations WHERE enrollment_id = @enrollment_id AND lesson_id = @lesson_id);
-      IF @after IS NULL THROW 51010, N'Vòng này chưa có trong hồ sơ.', 1;
-      UPDATE enrollment_rotations SET seq = seq + 1 WHERE enrollment_id = @enrollment_id AND seq > @after;
+	const rowsAffected = await withTransaction(async (tx) => {
+		const req = () =>
+			tx
+				.request()
+				.input('enrollment_id', sql.VarChar(20), enrollmentId)
+				.input('lesson_id', sql.VarChar(20), lessonId)
+				.input('actor_id', sql.VarChar(20), actorId);
+		const after = (
+			await req().query(
+				'SELECT MAX(seq) AS seq FROM enrollment_rotations WHERE enrollment_id = @enrollment_id AND lesson_id = @lesson_id',
+			)
+		).recordset[0]?.seq;
+		if (after == null) throw httpError(400, 'Vòng này chưa có trong hồ sơ.');
+		const shift = await req()
+			.input('after', sql.Int, after)
+			.query(
+				'UPDATE enrollment_rotations SET seq = seq + 1 WHERE enrollment_id = @enrollment_id AND seq > @after',
+			);
+		const ins = await req().input('after', sql.Int, after).query(`
       INSERT INTO enrollment_rotations (id, enrollment_id, lesson_id, round_title, seq, created_by)
-      SELECT TOP 1 ${newId}, @enrollment_id, @lesson_id, round_title, @after + 1, @actor_id
-      FROM enrollment_rotations WHERE enrollment_id = @enrollment_id AND lesson_id = @lesson_id;
-    `,
-		)
-		.catch((err) => {
-			if (appErrorCode(err) === 51010) throw httpError(400, 'Vòng này chưa có trong hồ sơ.');
-			throw err;
-		});
+      SELECT ${newId}, enrollment_id, lesson_id, round_title, @after + 1, CAST(@actor_id AS VARCHAR(20))
+      FROM enrollment_rotations WHERE enrollment_id = @enrollment_id AND lesson_id = @lesson_id
+      ORDER BY seq OFFSET 0 ROWS FETCH NEXT 1 ROWS ONLY`);
+		return [...shift.rowsAffected, ...ins.rowsAffected];
+	});
 	notify();
-	return r.rowsAffected;
+	return rowsAffected;
+};
+
+// Vòng thực hành (hồ sơ + thứ tự) — không có thì 404.
+const findRotation = async (tx, rotationId) => {
+	const cur = (
+		await tx
+			.request()
+			.input('id', sql.VarChar(20), rotationId)
+			.query('SELECT enrollment_id, seq FROM enrollment_rotations WHERE id = @id')
+	).recordset[0];
+	if (!cur) throw httpError(404, 'Không tìm thấy vòng thực hành.');
+	return cur;
 };
 
 // Bản chụp NHD từ hồ sơ nhân sự + CCHN (cùng nguồn với GET /staff-licenses/mentors).
@@ -323,62 +339,59 @@ const refreshMentor = async (rotationId, actorId) => {
 
 // Học lại vòng: đánh dấu dòng hiện tại "không đạt", thêm dòng mới cùng vòng/khoa ngay sau.
 const retake = async (rotationId, actorId) => {
-	const pool = await getPool();
-	await pool
-		.request()
-		.input('id', sql.VarChar(20), rotationId)
-		.input('actor_id', sql.VarChar(20), actorId)
-		.query(
-			`
-      DECLARE @enrollment_id VARCHAR(20), @seq INT;
-      SELECT @enrollment_id = enrollment_id, @seq = seq FROM enrollment_rotations WHERE id = @id;
-      IF @enrollment_id IS NULL THROW 51011, N'Không tìm thấy vòng thực hành.', 1;
+	await withTransaction(async (tx) => {
+		const cur = await findRotation(tx, rotationId);
+		const req = () =>
+			tx
+				.request()
+				.input('id', sql.VarChar(20), rotationId)
+				.input('actor_id', sql.VarChar(20), actorId)
+				.input('enrollment_id', sql.VarChar(20), cur.enrollment_id)
+				.input('seq', sql.Int, cur.seq);
+		await req().query(`
       UPDATE enrollment_rotations SET result = 'fail', updated_at = GETDATE(), updated_by = @actor_id,
         result_at = CASE WHEN result = 'fail' THEN result_at ELSE GETDATE() END,
         result_by = CASE WHEN result = 'fail' THEN result_by ELSE @actor_id END,
         result_source = CASE WHEN result = 'fail' THEN result_source ELSE 'staff' END
-      WHERE id = @id;
-      UPDATE enrollment_rotations SET seq = seq + 1 WHERE enrollment_id = @enrollment_id AND seq > @seq;
+      WHERE id = @id`);
+		await req().query(
+			'UPDATE enrollment_rotations SET seq = seq + 1 WHERE enrollment_id = @enrollment_id AND seq > @seq',
+		);
+		await req().input('note', sql.NVarChar(500), 'Học lại vòng').query(`
       INSERT INTO enrollment_rotations (id, enrollment_id, lesson_id, round_title, seq, department_id, department_name,
                                         duration_text, attempt_no, note, created_by)
       SELECT ${newId}, enrollment_id, lesson_id, round_title, @seq + 1, department_id, department_name,
-             duration_text, attempt_no + 1, N'Học lại vòng', @actor_id
-      FROM enrollment_rotations WHERE id = @id;
-    `,
-		)
-		.catch((err) => {
-			if (appErrorCode(err) === 51011) throw httpError(404, 'Không tìm thấy vòng thực hành.');
-			throw err;
-		});
+             duration_text, attempt_no + 1, @note, CAST(@actor_id AS VARCHAR(20))
+      FROM enrollment_rotations WHERE id = @id`);
+	});
 	notify();
 };
 
 // Đổi chỗ với vòng liền trên / dưới (học khoa khác trước rồi mới sang Cấp cứu…).
 const move = async (rotationId, up, actorId) => {
-	const pool = await getPool();
-	await pool
-		.request()
-		.input('id', sql.VarChar(20), rotationId)
-		.input('up', sql.Bit, up ? 1 : 0)
-		.input('actor_id', sql.VarChar(20), actorId)
-		.query(
-			`
-      DECLARE @enrollment_id VARCHAR(20), @seq INT, @other VARCHAR(20), @other_seq INT;
-      SELECT @enrollment_id = enrollment_id, @seq = seq FROM enrollment_rotations WHERE id = @id;
-      IF @enrollment_id IS NULL THROW 51012, N'Không tìm thấy vòng thực hành.', 1;
-      SELECT TOP 1 @other = id, @other_seq = seq FROM enrollment_rotations
-      WHERE enrollment_id = @enrollment_id AND ((@up = 1 AND seq < @seq) OR (@up = 0 AND seq > @seq))
-      ORDER BY CASE WHEN @up = 1 THEN -seq ELSE seq END;
-      IF @other IS NOT NULL
+	await withTransaction(async (tx) => {
+		const cur = await findRotation(tx, rotationId);
+		const other = (
+			await tx
+				.request()
+				.input('enrollment_id', sql.VarChar(20), cur.enrollment_id)
+				.input('seq', sql.Int, cur.seq).query(`
+          SELECT id, seq FROM enrollment_rotations
+          WHERE enrollment_id = @enrollment_id AND seq ${up ? '<' : '>'} @seq
+          ORDER BY seq ${up ? 'DESC' : 'ASC'} OFFSET 0 ROWS FETCH NEXT 1 ROWS ONLY`)
+		).recordset[0];
+		if (!other) return;
+		await tx
+			.request()
+			.input('id', sql.VarChar(20), rotationId)
+			.input('other', sql.VarChar(20), other.id)
+			.input('seq', sql.Int, cur.seq)
+			.input('other_seq', sql.Int, other.seq)
+			.input('actor_id', sql.VarChar(20), actorId).query(`
         UPDATE enrollment_rotations
         SET seq = CASE WHEN id = @id THEN @other_seq ELSE @seq END, updated_at = GETDATE(), updated_by = @actor_id
-        WHERE id IN (@id, @other);
-    `,
-		)
-		.catch((err) => {
-			if (appErrorCode(err) === 51012) throw httpError(404, 'Không tìm thấy vòng thực hành.');
-			throw err;
-		});
+        WHERE id IN (@id, @other)`);
+	});
 	notify();
 };
 

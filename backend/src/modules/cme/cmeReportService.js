@@ -15,7 +15,7 @@
  * thảo đã cấp CME (seminar_participants.cme_year) + ghi nhận độc lập đã duyệt.
  * Dùng cho file xuất trang Ghi nhận CME (toàn viện) và phiếu CME cá nhân (userId).
  */
-const { getPool, sql } = require('../../config/db');
+const { getPool, sql, queryAll } = require('../../config/db');
 const { deptAccountJoinSql, isDeptAccountJoinedSql } = require('../../utils/deptAccount');
 const { httpError } = require('../../utils/httpError');
 
@@ -78,14 +78,18 @@ const rangeLabel = ({ fromYear, toYear: to }) => {
 const getData = async ({ year, fromYear, toYear: to, userId, department, search } = {}) => {
 	const range = parseYearRange({ year, fromYear, toYear: to });
 	const pool = await getPool();
-	const r = await pool
-		.request()
-		.input('from', sql.Int, range.fromYear)
-		.input('to', sql.Int, range.toYear)
-		.input('uid', sql.VarChar(20), userId || null)
-		.input('dept', sql.NVarChar(255), department || null).query(`
-    SELECT id, name FROM cme_credit_groups ORDER BY sort_order, name;
-
+	const sets = await queryAll(
+		pool
+			.request()
+			.input('from', sql.Int, range.fromYear)
+			.input('to', sql.Int, range.toYear)
+			.input('uid', sql.VarChar(20), userId || null)
+			.input('dept', sql.NVarChar(255), department || null),
+		[
+			`
+    SELECT id, name FROM cme_credit_groups ORDER BY sort_order, name
+		`,
+			`
     SELECT u.id, u.staff_number, u.full_name, u.is_active, u.department_id, d.name AS department_name,
            x.group_id, x.year, SUM(x.credits) AS credits
     FROM users u
@@ -108,8 +112,9 @@ const getData = async ({ year, fromYear, toYear: to, userId, department, search 
       -- Bỏ tài khoản khoa/phòng: tài khoản dùng chung, không phải nhân sự
       AND (@uid IS NOT NULL OR NOT ${isDeptAccountJoinedSql('u')})
     GROUP BY u.id, u.staff_number, u.full_name, u.is_active, u.department_id, d.name, x.group_id, x.year
-    ORDER BY d.name, u.full_name;
-
+    ORDER BY d.name, u.full_name
+		`,
+			`
     SELECT x.*
     FROM (
       SELECT p.user_id, N'Hội thảo/Hội nghị' AS source, '${SEMINAR_GROUP.id}' AS group_id, NULL AS category_name,
@@ -128,12 +133,15 @@ const getData = async ({ year, fromYear, toYear: to, userId, department, search 
         AND (@from IS NULL OR r.year >= @from) AND (@to IS NULL OR r.year <= @to)
     ) x
     WHERE (@uid IS NULL OR x.user_id = @uid)
-    ORDER BY x.year, x.from_date, x.title;
-
+    ORDER BY x.year, x.from_date, x.title
+		`,
+			`
     SELECT year, department_id, required_credits FROM cme_requirements
-    WHERE (@from IS NULL OR year >= @from) AND (@to IS NULL OR year <= @to);
-  `);
-	const [groupRows, creditRows, activityRows, reqRows] = r.recordsets;
+    WHERE (@from IS NULL OR year >= @from) AND (@to IS NULL OR year <= @to)
+		`,
+		],
+	);
+	const [groupRows, creditRows, activityRows, reqRows] = sets;
 
 	// Các năm của báo cáo (cột năm): đủ khoảng khi chọn cả 2 đầu, không thì
 	// lấy các năm thực có dữ liệu / có cấu hình ngưỡng trong khoảng

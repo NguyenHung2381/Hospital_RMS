@@ -1,10 +1,11 @@
-const { getPool, sql, withActorTransaction } = require('../../config/db');
+const { getPool, sql, withActorTransaction, queryAll } = require('../../config/db');
 const { createCrudService } = require('../../shared/crudService');
 const { broadcast } = require('../events/eventService');
 const { paging } = require('../../utils/paging');
 const { remember, invalidate } = require('../../utils/cache');
 const permCache = require('../../permissions/permissionCache');
 const { httpError } = require('../../utils/httpError');
+const { genSeq2Id } = require('../../utils/idGenerator');
 
 // Cùng prefix `lookup:roles:` mà createCrudService('roles', ...) tự invalidate
 // sau update/remove — getAll/create ở dưới bị override nên tự quản cache riêng.
@@ -33,27 +34,32 @@ const getAll = async ({ page = 1, limit = 100, search = undefined } = {}) => {
 			req.input('search', sql.NVarChar, `%${search}%`);
 		}
 
-		const result = await req.query(`
+		const sets = await queryAll(req, [
+			`
       SELECT r.*,
              (SELECT COUNT(*) FROM users u WHERE u.role_id = r.id) AS user_count,
              (SELECT COUNT(*) FROM role_permissions rp WHERE rp.role_id = r.id) AS permission_count
       FROM roles r ${where} ORDER BY r.created_at DESC
-      ${pg.fetchClause};
-      SELECT COUNT(*) AS total FROM roles r ${where};
-
+      ${pg.fetchClause}
+			`,
+			`
+      SELECT COUNT(*) AS total FROM roles r ${where}
+			`,
+			`
       SELECT COUNT(*) AS total,
              SUM(CASE WHEN uc.user_count > 0 THEN 1 ELSE 0 END) AS with_users,
              SUM(uc.user_count) AS total_users
       FROM roles r
-      CROSS APPLY (SELECT COUNT(*) AS user_count FROM users u WHERE u.role_id = r.id) uc;
-    `);
-		const statsRow = result.recordsets[2][0];
+      CROSS APPLY (SELECT COUNT(*) AS user_count FROM users u WHERE u.role_id = r.id) uc
+			`,
+		]);
+		const statsRow = sets[2][0];
 		return {
-			data: result.recordsets[0],
+			data: sets[0],
 			pagination: {
 				page: pg.page,
 				limit: pg.limit,
-				total: result.recordsets[1][0].total,
+				total: sets[1][0].total,
 			},
 			// Tổng quan toàn bộ vai trò, bỏ qua search/phân trang (server tính, tránh
 			// lệch khi client chỉ còn giữ 1 trang dữ liệu).
@@ -67,28 +73,27 @@ const getAll = async ({ page = 1, limit = 100, search = undefined } = {}) => {
 };
 
 const create = async (data, actorId) => {
-	const result = await withActorTransaction(actorId, (tx) =>
-		tx
+	const row = await withActorTransaction(actorId, async (tx) => {
+		const newId = await genSeq2Id(tx, 'roles', 'VT', 'Đã đạt giới hạn 99 vai trò');
+		await tx
 			.request()
+			.input('id', sql.VarChar(20), newId)
 			.input('actor_id', sql.VarChar(20), actorId)
 			.input('name', sql.NVarChar(500), data.name)
-			.input('description', sql.NVarChar(sql.MAX), data.description || null).query(`
-      DECLARE @count INT, @new_id VARCHAR(4);
-      SELECT @count = COUNT(*) + 1 FROM roles;
-      SET @new_id = 'VT' + RIGHT('00' + CAST(@count AS VARCHAR(2)), 2);
-      WHILE EXISTS (SELECT 1 FROM roles WHERE id = @new_id)
-      BEGIN
-        SET @count = @count + 1;
-        SET @new_id = 'VT' + RIGHT('00' + CAST(@count AS VARCHAR(2)), 2);
-      END
-      INSERT INTO roles (id, name, description, created_by)
-      VALUES (@new_id, @name, @description, @actor_id);
-      SELECT * FROM roles WHERE id = @new_id;
-    `),
-	);
+			.input('description', sql.NVarChar(sql.MAX), data.description || null)
+			.query(
+				'INSERT INTO roles (id, name, description, created_by) VALUES (@id, @name, @description, @actor_id)',
+			);
+		return (
+			await tx
+				.request()
+				.input('id', sql.VarChar(20), newId)
+				.query('SELECT * FROM roles WHERE id = @id')
+		).recordset[0];
+	});
 	await invalidate(CACHE_PREFIX);
 	broadcast('update', { entity: 'role' });
-	return result.recordset[0];
+	return row;
 };
 
 // Vai trò hệ thống (roles.is_system — 8 vai trò gốc, code nghiệp vụ tham chiếu

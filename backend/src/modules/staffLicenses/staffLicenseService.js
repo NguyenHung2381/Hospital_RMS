@@ -1,4 +1,4 @@
-const { getPool, sql, withActorTransaction, actorRequest } = require('../../config/db');
+const { getPool, sql, withActorTransaction, actorRequest, queryAll } = require('../../config/db');
 const { randomId } = require('../../utils/idGenerator');
 const { broadcast } = require('../events/eventService');
 const { paging } = require('../../utils/paging');
@@ -41,14 +41,18 @@ const getAll = async ({
 	if (has_license === '0') where.push('sl.license_no IS NULL');
 	const whereSql = `WHERE ${where.join(' AND ')}`;
 
-	const result = await req.query(`
+	const sets = await queryAll(req, [
+		`
     ${licenseSelect} ${whereSql} ORDER BY u.full_name
-    ${pg.fetchClause};
-    SELECT COUNT(*) AS total FROM staff_practice_licenses sl JOIN users u ON u.id = sl.user_id ${whereSql};
-  `);
+    ${pg.fetchClause}
+		`,
+		`
+    SELECT COUNT(*) AS total FROM staff_practice_licenses sl JOIN users u ON u.id = sl.user_id ${whereSql}
+		`,
+	]);
 	return {
-		data: result.recordsets[0],
-		pagination: { page: pg.page, limit: pg.limit, total: result.recordsets[1][0].total },
+		data: sets[0],
+		pagination: { page: pg.page, limit: pg.limit, total: sets[1][0].total },
 	};
 };
 

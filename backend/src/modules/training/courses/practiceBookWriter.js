@@ -92,31 +92,29 @@ const writeRecord = async (pool, it, traineeId, courseId, actorId) => {
 		progress_status: rec.dropped ? 'dropped' : rec.completed ? 'completed' : 'in_progress',
 	};
 	// Đăng ký mới cần mã sinh trong transaction (khoá sinh mã giữ tới khi commit)
-	const r = await withTransaction(async (tx) => {
-		const req = tx
-			.request()
-			.input('new_id', sql.VarChar(20), it.enrollment_id ? null : await genCourseEnrollmentId(tx))
-			.input('course_id', sql.VarChar(20), courseId)
-			.input('trainee_id', sql.VarChar(20), traineeId)
-			.input('program_id', sql.VarChar(20), it.program_id)
-			.input('actor_id', sql.VarChar(20), actorId)
-			.input('enrollment_id', sql.VarChar(20), it.enrollment_id);
-		for (const [f, t] of Object.entries(ENROLLMENT_FIELDS)) req.input(f, t, values[f]);
-		return req.query(`
-    DECLARE @id VARCHAR(20) = COALESCE(@enrollment_id, (
-      SELECT TOP 1 id FROM course_enrollments
-      WHERE course_id = @course_id AND trainee_id = @trainee_id AND COALESCE(program_id, '') = COALESCE(@program_id, '')));
-    IF @id IS NULL
-    BEGIN
-      SET @id = @new_id;
-      INSERT INTO course_enrollments (id, course_id, trainee_id, program_id, status, decided_by, decided_at, created_by,
-        ${Object.keys(ENROLLMENT_FIELDS).join(', ')})
-      VALUES (@id, @course_id, @trainee_id, @program_id, 'approved', @actor_id, GETDATE(), @actor_id,
-        ${Object.keys(ENROLLMENT_FIELDS)
-					.map((f) => `@${f}`)
-					.join(', ')});
-    END
-    ELSE
+	const enrollmentId = await withTransaction(async (tx) => {
+		const bind = (id) => {
+			const req = tx
+				.request()
+				.input('id', sql.VarChar(20), id)
+				.input('course_id', sql.VarChar(20), courseId)
+				.input('trainee_id', sql.VarChar(20), traineeId)
+				.input('program_id', sql.VarChar(20), it.program_id)
+				.input('actor_id', sql.VarChar(20), actorId);
+			for (const [f, t] of Object.entries(ENROLLMENT_FIELDS)) req.input(f, t, values[f]);
+			return req;
+		};
+		const found =
+			it.enrollment_id ??
+			(
+				await bind(null).query(`
+        SELECT id FROM course_enrollments
+        WHERE course_id = @course_id AND trainee_id = @trainee_id
+          AND COALESCE(program_id, '') = COALESCE(@program_id, '')
+        ORDER BY id OFFSET 0 ROWS FETCH NEXT 1 ROWS ONLY`)
+			).recordset[0]?.id;
+		if (found) {
+			await bind(found).query(`
       UPDATE course_enrollments
       SET trainee_id = @trainee_id, program_id = COALESCE(@program_id, program_id),
           ${Object.keys(ENROLLMENT_FIELDS)
@@ -124,11 +122,19 @@ const writeRecord = async (pool, it, traineeId, courseId, actorId) => {
 						.map((f) => (KEEP_IF_BLANK.has(f) ? `${f} = COALESCE(@${f}, ${f})` : `${f} = @${f}`))
 						.join(', ')},
           updated_at = GETDATE(), updated_by = @actor_id
-      WHERE id = @id;
-    SELECT @id AS id;
-  `);
+      WHERE id = @id`);
+			return found;
+		}
+		const newId = await genCourseEnrollmentId(tx);
+		await bind(newId).query(`
+      INSERT INTO course_enrollments (id, course_id, trainee_id, program_id, status, decided_by, decided_at, created_by,
+        ${Object.keys(ENROLLMENT_FIELDS).join(', ')})
+      VALUES (@id, @course_id, @trainee_id, @program_id, 'approved', @actor_id, GETDATE(), @actor_id,
+        ${Object.keys(ENROLLMENT_FIELDS)
+					.map((f) => `@${f}`)
+					.join(', ')})`);
+		return newId;
 	});
-	const enrollmentId = r.recordset[0].id;
 
 	if (it.rotations.length) {
 		const ins = pool

@@ -1,4 +1,4 @@
-const { getPool, sql, withActorTransaction, actorRequest } = require('../../config/db');
+const { getPool, sql, withActorTransaction, actorRequest, queryAll } = require('../../config/db');
 const { genTopicId } = require('../../utils/idGenerator');
 const { ensureApproval, withApprovalSync } = require('./approvalRecord');
 const { broadcast } = require('../events/eventService');
@@ -94,7 +94,8 @@ const getAll = async (filters, actor = null) => {
 	// — giữ đúng hành vi cũ khi client còn tự đếm trên toàn bộ danh sách.
 	const whereGlobal = buildWhere(actorClauses);
 
-	const result = await req.query(`
+	const sets = await queryAll(req, [
+		`
     SELECT t.id, t.title, t.description, t.status, t.created_at,
            t.round_id, r.name AS round_name, r.year AS round_year,
            t.category_id, c.name AS category_name,
@@ -113,19 +114,22 @@ const getAll = async (filters, actor = null) => {
     LEFT JOIN users u ON u.id = t.created_by
     ${whereAll}
     ORDER BY t.created_at DESC
-    ${pg.fetchClause};
-
+    ${pg.fetchClause}
+		`,
+		`
     SELECT COUNT(*) AS total FROM topics t
     LEFT JOIN research_rounds r ON r.id = t.round_id
     LEFT JOIN users u ON u.id = t.created_by -- bộ lọc search có u.full_name
-    ${whereAll};
-
+    ${whereAll}
+		`,
+		`
     SELECT t.status, COUNT(*) AS count FROM topics t
     ${whereGlobal}
-    GROUP BY t.status;
-  `);
+    GROUP BY t.status
+		`,
+	]);
 
-	const [rows, totalRows, globalStatusRows] = result.recordsets;
+	const [rows, totalRows, globalStatusRows] = sets;
 	const byStatus = Object.fromEntries(globalStatusRows.map((r) => [r.status, r.count]));
 	// Trường tùy chỉnh của các dòng trang này — form sửa mở từ danh sách cần đủ
 	// giá trị cũ, nếu không lưu lại sẽ ghi đè bằng rỗng

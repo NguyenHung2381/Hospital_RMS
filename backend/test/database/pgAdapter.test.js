@@ -51,6 +51,14 @@ test('tên tham số không phân biệt hoa/thường; thiếu tham số thì n
 	assert.throws(() => toPositional('SELECT @missing', params({})), /@missing/);
 });
 
+test('OFFSET / FETCH: tham số có ép kiểu được bọc ngoặc (PG không nhận $1::int ROWS)', () => {
+	const p = params({ offset: [sql.Int, 0], limit: [sql.Int, 10] });
+	assert.equal(
+		toPositional('SELECT 1 OFFSET @offset ROWS FETCH NEXT @limit ROWS ONLY', p).text,
+		'SELECT 1 OFFSET ($1::int) ROWS FETCH NEXT ($2::int) ROWS ONLY',
+	);
+});
+
 test('giá trị: Date theo UTC (giống useUTC), Bit → boolean', () => {
 	const d = new Date('2026-11-03T08:30:00.123Z');
 	assert.equal(toPgValue(sql.DateTime2, d), '2026-11-03 08:30:00.123');

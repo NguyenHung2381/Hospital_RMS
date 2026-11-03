@@ -102,7 +102,10 @@ test('nộp bài thi: lượt đã được nộp (hoặc request song song đ�
 });
 
 test('nộp đúng giờ: chấm điểm; quá giờ: đóng bài nhưng bỏ đáp án (late = true)', async () => {
-	claimRow = { id: 'EA1', late: false };
+	// Đề 30 phút + 120 giây ân hạn; trễ = nộp sau started_at + thời lượng đó
+	const started_at = new Date('2026-11-01T08:00:00Z');
+	const at = (min) => new Date(started_at.getTime() + min * 60000);
+	claimRow = { id: 'EA1', started_at, submitted_at: at(29) };
 	writes.length = 0;
 	const onTime = await examService.submitAttempt(
 		'DT1',
@@ -112,7 +115,7 @@ test('nộp đúng giờ: chấm điểm; quá giờ: đóng bài nhưng bỏ đ
 	assert.equal(onTime.auto_score, 10);
 	assert.equal(onTime.late, false);
 
-	claimRow = { id: 'EA2', late: true };
+	claimRow = { id: 'EA2', started_at, submitted_at: at(33) };
 	const late = await examService.submitAttempt(
 		'DT1',
 		[{ question_id: 'Q1', selected_option: 'A' }],

@@ -1,4 +1,4 @@
-const { getPool, sql, jsonValues } = require('../../../config/db');
+const { getPool, sql, jsonValues, updateReturning } = require('../../../config/db');
 const { broadcast } = require('../../events/eventService');
 const mailService = require('../../notifications/mailService');
 const mailQueue = require('../../notifications/mailQueue');
@@ -185,17 +185,18 @@ const fillFromWaitlist = async (courseId, actorId, { programId = null } = {}) =>
 				.input('course_id', sql.VarChar(20), courseId)
 				.input('program_id', sql.VarChar(20), k.program_id)
 				.input('room', sql.Int, Number.isFinite(room) ? room : 100000)
-				.input('actor_id', sql.VarChar(20), actorId).query(`
-          DECLARE @picked TABLE (id VARCHAR(20));
-          INSERT INTO @picked (id)
-          SELECT TOP (@room) e.id
-          FROM course_enrollments e
-          WHERE e.course_id = @course_id AND e.program_id = @program_id AND e.status = 'waitlisted'
-          ORDER BY e.decided_at, e.registered_at, e.id;
-          UPDATE course_enrollments
-          SET status = 'approved', updated_at = GETDATE(), updated_by = @actor_id
-          WHERE id IN (SELECT id FROM @picked);
-          SELECT id FROM @picked;`);
+				.input('actor_id', sql.VarChar(20), actorId)
+				.query(
+					updateReturning(
+						"UPDATE course_enrollments SET status = 'approved', updated_at = GETDATE(), updated_by = @actor_id",
+						`id IN (
+            SELECT e.id FROM course_enrollments e
+            WHERE e.course_id = @course_id AND e.program_id = @program_id AND e.status = 'waitlisted'
+            ORDER BY e.decided_at, e.registered_at, e.id
+            OFFSET 0 ROWS FETCH NEXT @room ROWS ONLY)`,
+						[['new.id', 'id', 'VARCHAR(20)']],
+					),
+				);
 			const ids = r.recordset.map((x) => x.id);
 			if (ids.length) added.push([k.program_id, ids.length]);
 			moved.push(...ids);

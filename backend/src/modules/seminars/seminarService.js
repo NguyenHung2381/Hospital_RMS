@@ -4,7 +4,7 @@
  * Độc lập với nghiệp vụ NCKH. Danh sách người tham dự nằm ở
  * seminarParticipantService; ở đây chỉ CRUD sự kiện + số liệu tổng hợp.
  */
-const { getPool, sql, withActorTransaction, actorRequest } = require('../../config/db');
+const { getPool, sql, withActorTransaction, actorRequest, queryAll } = require('../../config/db');
 const { randomId, randomHex32 } = require('../../utils/idGenerator');
 const { broadcast } = require('../events/eventService');
 const { paging } = require('../../utils/paging');
@@ -75,30 +75,35 @@ const getAll = async ({
 	clauses.push(ht.trainingFilter(hospital_training));
 	const where = buildWhere(clauses);
 
-	const result = await req.query(`
+	const sets = await queryAll(req, [
+		`
     SELECT s.*, ${countSelect}, ${ht.trainingSelect}
     FROM seminars s ${ht.trainingJoin}
     ${where}
     ORDER BY COALESCE(s.start_date, s.created_at) DESC, s.created_at DESC
-    ${pg.fetchClause};
-
-    SELECT COUNT(*) AS total FROM seminars s ${where};
-  `);
+    ${pg.fetchClause}
+		`,
+		`
+    SELECT COUNT(*) AS total FROM seminars s ${where}
+		`,
+	]);
 	return {
-		data: result.recordsets[0].map(ht.parseTraining),
+		data: sets[0].map(ht.parseTraining),
 		pagination: {
 			page: pg.page,
 			limit: pg.limit,
-			total: result.recordsets[1][0].total,
+			total: sets[1][0].total,
 		},
 	};
 };
 
 const getById = async (id) => {
 	const pool = await getPool();
-	const result = await pool.request().input('id', sql.VarChar(20), id).query(`
-      SELECT s.*, ${countSelect}, ${ht.trainingSelect} FROM seminars s ${ht.trainingJoin} WHERE s.id = @id;
-
+	const sets = await queryAll(pool.request().input('id', sql.VarChar(20), id), [
+		`
+      SELECT s.*, ${countSelect}, ${ht.trainingSelect} FROM seminars s ${ht.trainingJoin} WHERE s.id = @id
+		`,
+		`
       SELECT p.*,
              u.full_name  AS user_full_name,
              u.staff_number AS user_staff_number,
@@ -110,11 +115,12 @@ const getById = async (id) => {
       ORDER BY
         CASE p.participation_type WHEN 'chair' THEN 0 WHEN 'speaker' THEN 1
              WHEN 'organizer' THEN 2 WHEN 'attendee' THEN 3 ELSE 4 END,
-        p.cme_seq, p.full_name;
-    `);
-	const seminar = result.recordsets[0][0] && ht.parseTraining(result.recordsets[0][0]);
+        p.cme_seq, p.full_name
+		`,
+	]);
+	const seminar = sets[0][0] && ht.parseTraining(sets[0][0]);
 	if (!seminar) return null;
-	seminar.participants = result.recordsets[1];
+	seminar.participants = sets[1];
 	return seminar;
 };
 
@@ -477,7 +483,8 @@ const cmeRegister = async ({ year = undefined, search = undefined, page = 1, lim
 	}
 	const where = `WHERE ${clauses.join(' AND ')}`;
 
-	const r = await req.query(`
+	const sets = await queryAll(req, [
+		`
       SELECT p.id, p.cme_year, p.cme_seq, p.cme_certificate_no, p.title_prefix,
              p.full_name, p.dob, p.dob_text, p.gender, p.organization, p.source,
              p.participation_type, p.cme_credits, p.cme_status, p.cme_issued_date, p.notes,
@@ -486,20 +493,23 @@ const cmeRegister = async ({ year = undefined, search = undefined, page = 1, lim
       INNER JOIN seminars s ON s.id = p.seminar_id
       ${where}
       ORDER BY p.cme_seq
-      ${pg.fetchClause};
-
+      ${pg.fetchClause}
+		`,
+		`
       SELECT COUNT(*) AS total
       FROM seminar_participants p
       INNER JOIN seminars s ON s.id = p.seminar_id
-      ${where};
-
-      SELECT COALESCE(last_seq, 0) AS last_seq FROM cme_year_register WHERE [year] = @year;
-    `);
+      ${where}
+		`,
+		`
+      SELECT COALESCE(last_seq, 0) AS last_seq FROM cme_year_register WHERE [year] = @year
+		`,
+	]);
 	return {
 		year: y,
-		last_seq: r.recordsets[2][0]?.last_seq ?? 0,
-		entries: r.recordsets[0],
-		pagination: { page: pg.page, limit: pg.limit, total: r.recordsets[1][0].total },
+		last_seq: sets[2][0]?.last_seq ?? 0,
+		entries: sets[0],
+		pagination: { page: pg.page, limit: pg.limit, total: sets[1][0].total },
 	};
 };
 

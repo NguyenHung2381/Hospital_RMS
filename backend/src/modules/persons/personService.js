@@ -1,4 +1,4 @@
-const { getPool, sql, withTransaction, castBool } = require('../../config/db');
+const { getPool, sql, withTransaction, castBool, lockResource } = require('../../config/db');
 const { isMissingObject } = require('../../utils/dbErrors');
 const { normalizeGender } = require('../../utils/gender');
 const logger = require('../../config/logger');
@@ -166,12 +166,7 @@ const bindPerson = (req, row) =>
 
 // ─── Tiện ích SQL trong transaction ──────────────────────────────────────────
 const lock = async (tx) => {
-	const r = await new sql.Request(tx).query(`
-		DECLARE @rc INT;
-		EXEC @rc = sp_getapplock @Resource = 'person_sync', @LockMode = 'Exclusive',
-		     @LockOwner = 'Transaction', @LockTimeout = 15000;
-		SELECT @rc AS rc`);
-	if (r.recordset[0].rc < 0)
+	if (!(await lockResource(tx, 'person_sync', 15000)))
 		throw new Error('Không lấy được khóa person_sync (quá thời gian chờ).');
 };
 

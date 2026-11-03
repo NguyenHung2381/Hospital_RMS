@@ -1,4 +1,4 @@
-const { getPool, sql, withActorTransaction, actorRequest } = require('../../config/db');
+const { getPool, sql, withActorTransaction, actorRequest, queryAll } = require('../../config/db');
 const { genDeptId } = require('../../utils/idGenerator');
 const { broadcast } = require('../events/eventService');
 const { paging } = require('../../utils/paging');
@@ -44,17 +44,20 @@ const getAll = async ({ page = 1, limit = 100, search = undefined } = {}) => {
 			req.input('search', sql.NVarChar, `%${search}%`);
 		}
 
-		const result = await req.query(`
+		const sets = await queryAll(req, [
+			`
       ${departmentSelect}
       ${where}
       ORDER BY d.created_at DESC
-      ${pg.fetchClause};
-
-      SELECT COUNT(*) AS total FROM departments ${where};
-    `);
+      ${pg.fetchClause}
+			`,
+			`
+      SELECT COUNT(*) AS total FROM departments ${where}
+			`,
+		]);
 		return {
-			data: result.recordsets[0],
-			pagination: { page: pg.page, limit: pg.limit, total: result.recordsets[1][0].total },
+			data: sets[0],
+			pagination: { page: pg.page, limit: pg.limit, total: sets[1][0].total },
 		};
 	});
 };

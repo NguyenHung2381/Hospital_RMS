@@ -8,7 +8,7 @@ const { createWithSeqId, getLevelIdsForRoundType } = require('./levelService');
 const _rtBase = createCrudService('round_types', 6, 'RT');
 const rtService = {
 	..._rtBase,
-	create: createWithSeqId('round_types', 'RT', 50002, 'Đã đạt giới hạn 99 loại đợt', 'round_type'),
+	create: createWithSeqId('round_types', 'RT', 'Đã đạt giới hạn 99 loại đợt', 'round_type'),
 };
 
 // Cấp độ được phép theo loại đợt (round_type_levels)

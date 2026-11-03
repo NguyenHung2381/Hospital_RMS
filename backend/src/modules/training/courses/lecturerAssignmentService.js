@@ -1,4 +1,4 @@
-const { getPool, sql, withTransaction } = require('../../../config/db');
+const { getPool, sql, withTransaction, queryAll } = require('../../../config/db');
 const { genLecturerAssignmentId } = require('../../../utils/idGenerator');
 const { isUniqueViolation } = require('../../../utils/dbErrors');
 const { broadcast } = require('../../events/eventService');
@@ -56,21 +56,18 @@ const STAFF_PREFIX = 'user:';
  */
 const listLecturerCandidates = async (courseId) => {
 	const pool = await getPool();
+	// Khoa của các chương trình trong khóa (rỗng ⇒ không giới hạn theo khoa)
+	const depts = `(SELECT tp.department_id FROM course_programs cp JOIN training_programs tp ON tp.id = cp.program_id
+          WHERE cp.course_id = @course_id AND tp.department_id IS NOT NULL)`;
 	const r = await pool.request().input('course_id', sql.VarChar(20), courseId).query(`
-    DECLARE @depts TABLE (id VARCHAR(20) PRIMARY KEY);
-    INSERT INTO @depts SELECT DISTINCT tp.department_id
-    FROM course_programs cp JOIN training_programs tp ON tp.id = cp.program_id
-    WHERE cp.course_id = @course_id AND tp.department_id IS NOT NULL;
-    DECLARE @scoped BIT = CASE WHEN EXISTS (SELECT 1 FROM @depts) THEN 1 ELSE 0 END;
-
     SELECT l.id, l.full_name, l.specialty, l.is_external, l.academic_degree, l.academic_rank,
            d.name AS department_name,
-           CASE WHEN u.department_id IN (SELECT id FROM @depts) THEN 'department' ELSE 'other' END AS [group]
+           CASE WHEN u.department_id IN ${depts} THEN 'department' ELSE 'other' END AS [group]
     FROM lecturers l
     LEFT JOIN users u ON u.id = l.user_id
     LEFT JOIN departments d ON d.id = u.department_id
     WHERE l.is_active = 1
-      AND (@scoped = 0 OR u.department_id IS NULL OR u.department_id IN (SELECT id FROM @depts)
+      AND (NOT EXISTS ${depts} OR u.department_id IS NULL OR u.department_id IN ${depts}
         OR l.id IN (SELECT lecturer_id FROM lecturer_assignments WHERE course_id = @course_id))
     UNION ALL
     SELECT '${STAFF_PREFIX}' + u.id, u.full_name, sl.primary_specialty, CAST(0 AS BIT), NULL, NULL,
@@ -79,7 +76,7 @@ const listLecturerCandidates = async (courseId) => {
     JOIN users u ON u.id = sl.user_id
     LEFT JOIN departments d ON d.id = u.department_id
     WHERE sl.license_no IS NOT NULL AND u.is_active = 1
-      AND u.department_id IN (SELECT id FROM @depts)
+      AND u.department_id IN ${depts}
       AND NOT EXISTS (SELECT 1 FROM lecturers l WHERE l.user_id = u.id)
     ORDER BY full_name;
   `);
@@ -302,22 +299,32 @@ const syncLessonsFromSessions = async (courseId, lessonIds, actorId) => {
 	const pool = await getPool();
 	for (const lessonId of new Set(lessonIds.filter(Boolean))) {
 		try {
-			const r = await pool
-				.request()
-				.input('course_id', sql.VarChar(20), courseId)
-				.input('lesson_id', sql.VarChar(20), lessonId).query(`
+			const sets = await queryAll(
+				pool
+					.request()
+					.input('course_id', sql.VarChar(20), courseId)
+					.input('lesson_id', sql.VarChar(20), lessonId),
+				[
+					`
           SELECT lecturer_id, COUNT(*) AS n,
                  MIN(CONVERT(CHAR(10), session_date, 23) + COALESCE(start_time, '')) AS first_slot
           FROM class_sessions
           WHERE course_id = @course_id AND subject_id = @lesson_id AND lecturer_id IS NOT NULL
           GROUP BY lecturer_id
-          ORDER BY COUNT(*) DESC, first_slot, lecturer_id;
+          ORDER BY COUNT(*) DESC, first_slot, lecturer_id
+				`,
+					`
           SELECT lecturer_id, hours FROM lecturer_assignments
-          WHERE course_id = @course_id AND subject_id = @lesson_id;
+          WHERE course_id = @course_id AND subject_id = @lesson_id
+				`,
+					`
           SELECT TOP 1 1 AS ok FROM course_programs cp
           JOIN lesson_programs lp ON lp.program_id = cp.program_id
-          WHERE cp.course_id = @course_id AND lp.lesson_id = @lesson_id;`);
-			const [rows, existing, inCourse] = r.recordsets;
+          WHERE cp.course_id = @course_id AND lp.lesson_id = @lesson_id
+				`,
+				],
+			);
+			const [rows, existing, inCourse] = sets;
 			const data = lessonLecturersFromSessions(
 				rows,
 				new Map(existing.map((x) => [x.lecturer_id, x.hours])),

@@ -56,8 +56,6 @@ const syncTrainees = async (courseId, actorId, { enrollmentId = null } = {}) => 
 		.input('course_id', sql.VarChar(20), courseId)
 		.input('enrollment_id', sql.VarChar(20), enrollmentId)
 		.input('actor_id', sql.VarChar(20), actorId).query(`
-      DECLARE @only_program VARCHAR(20) = (
-        SELECT CASE WHEN COUNT(*) = 1 THEN MIN(program_id) END FROM course_programs WHERE course_id = @course_id);
       SELECT t.staff_user_id AS user_id,
              LEFT(c.name + COALESCE(' — ' + tp.name, ''), 255) AS title,
              CAST(N'Học viên' AS NVARCHAR(100)) AS role,
@@ -73,7 +71,9 @@ const syncTrainees = async (courseId, actorId, { enrollmentId = null } = {}) => 
       JOIN course_enrollments e ON e.id = cert.enrollment_id
       JOIN courses c ON c.id = e.course_id
       JOIN trainees t ON t.id = e.trainee_id
-      LEFT JOIN training_programs tp ON tp.id = COALESCE(e.program_id, @only_program)
+      -- Khóa chỉ 1 chương trình ⇒ lượt ghi danh chưa chọn chương trình lấy chương trình đó
+      LEFT JOIN training_programs tp ON tp.id = COALESCE(e.program_id,
+        (SELECT CASE WHEN COUNT(*) = 1 THEN MIN(program_id) END FROM course_programs WHERE course_id = @course_id))
       WHERE e.course_id = @course_id AND (@enrollment_id IS NULL OR e.id = @enrollment_id)
         AND cert.status <> 'revoked' AND t.staff_user_id IS NOT NULL
         AND c.training_type_id IN (${TYPES_SQL});
@@ -87,30 +87,33 @@ const syncTrainees = async (courseId, actorId, { enrollmentId = null } = {}) => 
 /** Giấy chứng nhận bị thu hồi (remove=false) hoặc xóa vì cấp nhầm (remove=true). */
 const withdrawForCertificate = async (certId, actorId, { remove = false, reason = null } = {}) => {
 	const pool = await getPool();
+	const owner = (
+		await pool.request().input('cert_id', sql.VarChar(20), certId).query(`
+      SELECT e.course_id, t.staff_user_id AS user_id
+      FROM certificates cert
+      JOIN course_enrollments e ON e.id = cert.enrollment_id
+      JOIN trainees t ON t.id = e.trainee_id
+      WHERE cert.id = @cert_id`)
+	).recordset[0];
+	if (!owner?.user_id) return 0;
 	const r = await pool
 		.request()
-		.input('cert_id', sql.VarChar(20), certId)
+		.input('course_id', sql.VarChar(20), owner.course_id)
+		.input('user_id', sql.VarChar(20), owner.user_id)
 		.input('actor_id', sql.VarChar(20), actorId)
 		.input(
 			'reason',
 			sql.NVarChar(500),
 			reason ? `Thu hồi giấy chứng nhận: ${reason}` : 'Thu hồi giấy chứng nhận',
-		).query(`
-      DECLARE @course_id VARCHAR(20), @user_id VARCHAR(20);
-      SELECT @course_id = e.course_id, @user_id = t.staff_user_id
-      FROM certificates cert
-      JOIN course_enrollments e ON e.id = cert.enrollment_id
-      JOIN trainees t ON t.id = e.trainee_id
-      WHERE cert.id = @cert_id;
-      ${
-				remove
-					? `DELETE FROM cme_records WHERE source_type = '${SOURCE.trainee}' AND source_id = @course_id AND user_id = @user_id;`
-					: `UPDATE cme_records SET approval_status = 'rejected', reject_reason = @reason,
+		)
+		.query(
+			remove
+				? `DELETE FROM cme_records WHERE source_type = '${SOURCE.trainee}' AND source_id = @course_id AND user_id = @user_id`
+				: `UPDATE cme_records SET approval_status = 'rejected', reject_reason = @reason,
                  reviewed_by = @actor_id, reviewed_at = GETDATE(), updated_at = GETDATE(), updated_by = @actor_id
-         WHERE source_type = '${SOURCE.trainee}' AND source_id = @course_id AND user_id = @user_id;`
-			}
-      SELECT @@ROWCOUNT AS n;`);
-	const n = r.recordset[0]?.n ?? 0;
+         WHERE source_type = '${SOURCE.trainee}' AND source_id = @course_id AND user_id = @user_id`,
+		);
+	const n = r.rowsAffected[0] ?? 0;
 	if (n) broadcast('update', { entity: 'cme_record' });
 	return n;
 };

@@ -7,6 +7,7 @@ const {
 	actorRequest,
 	withActor,
 	boolExpr,
+	queryAll,
 } = require('../../config/db');
 const { broadcast } = require('../events/eventService');
 const personService = require('../persons/personService');
@@ -168,9 +169,8 @@ const getAll = async ({
 	// - Có phân trang: EXISTS chỉ tính cho trang hiện tại nên giữ; COUNT(*) OVER()
 	//   vẫn spool toàn bộ ⇒ đếm bằng câu riêng nhanh hơn (4,9 → 1,8ms; có tìm kiếm 3,7 → 3,5ms).
 	const paged = Boolean(pg.fetchClause);
-	let query = `
-    SET NOCOUNT ON;
-
+	const statements = [
+		`
     SELECT u.id, u.username, u.staff_number, u.full_name, u.email, u.is_active,
            u.department_id, d.name AS department_name,
            u.role_id, r.name AS role_name, r.code AS role_code,
@@ -183,30 +183,21 @@ const getAll = async ({
     ${paged ? '' : deptAccountJoinSql('u')}
     ${whereAll}
     ORDER BY CASE WHEN u.staff_number IS NULL THEN 1 ELSE 0 END, u.staff_number
-    ${pg.fetchClause};
-  `;
+    ${pg.fetchClause}`,
+	];
 
 	// JOIN departments/roles là LEFT JOIN theo khóa chính ⇒ không đổi số dòng, đếm trên users là đủ.
-	if (paged) {
-		query += `
-    SELECT COUNT(*) AS total FROM users u ${whereAll};
-  `;
-	}
+	if (paged) statements.push(`SELECT COUNT(*) AS total FROM users u ${whereAll}`);
 
 	if (withMeta) {
-		query += `
-    SELECT u.role_id, COUNT(*) AS count
-    FROM users u ${whereForRoleFacet}
-    GROUP BY u.role_id;
-
-    SELECT u.department_id, COUNT(*) AS count
-    FROM users u ${whereForDeptFacet}
-    GROUP BY u.department_id;
-  `;
+		statements.push(
+			`SELECT u.role_id, COUNT(*) AS count FROM users u ${whereForRoleFacet} GROUP BY u.role_id`,
+			`SELECT u.department_id, COUNT(*) AS count FROM users u ${whereForDeptFacet}
+       GROUP BY u.department_id`,
+		);
 	}
 
-	const result = await req.query(query);
-	const [rows, ...rest] = result.recordsets;
+	const [rows, ...rest] = await queryAll(req, statements);
 	const total = paged ? rest.shift()[0].total : rows.length;
 
 	const out = {

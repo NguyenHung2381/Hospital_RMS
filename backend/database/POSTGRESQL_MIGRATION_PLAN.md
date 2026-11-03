@@ -98,14 +98,14 @@ bước A và giữ máy Windows hiện tại tới khi xong bước B.
 |---|---|---|
 | `@ten` tham số đặt tên + `.input(name, sql.Type, v)` | 1.848 (118) | `$1, $2…` (thứ tự) — xử lý tự động trong lớp adapter, mục 5.1 |
 | `sql.NVarChar`, `sql.Int`, `sql.DateTime`... | 2.115 (119) | Bỏ, hoặc chỉ dùng để ép kiểu `$1::int` khi cần |
-| `recordset` / `recordsets[i]` (nhiều kết quả trong 1 batch) | 673 / 91 | `rows`; nhiều kết quả → tách thành nhiều câu |
+| `recordset` / `recordsets[i]` (nhiều kết quả trong 1 batch) | 673 / 91 — **recordsets đã hết** (`queryAll`) | `rows`; nhiều kết quả → tách thành nhiều câu |
 | `GETDATE()`, `SYSDATETIME()`, `SYSUTCDATETIME()` | 212 (86) | `LOCALTIMESTAMP` / `now()` — xem mục 4.3 về múi giờ |
 | `N'...'` | 339 (98) | `'...'` (PG luôn là UTF-8) |
 | Định danh `[ten]` | 658 (156) | `"ten"` hoặc bỏ ngoặc |
 | `ISNULL(` | 108 (33) — **đã đổi hết** | `COALESCE(` (chạy được trên cả 2 DB) |
 | `EXEC sp_set_actor @actor_id; ...` | 76 (27) | `set_config('app.current_user_id', $1, true)` trong transaction |
 | `EXEC sp_gen_*` / `.execute(...)` | ~20 / 10 → 0 (đã xong) | Hàm sinh mã `src/utils/idGenerator.js` (mục 5.4) |
-| `DECLARE @...` (batch nhiều câu) | 80 (47) → 32 | Viết lại: CTE, nhiều lời gọi JS, hoặc hàm PL/pgSQL |
+| `DECLARE @...` (batch nhiều câu) | 80 (47) → 1 (chỉ còn `sp_getapplock` trong `db.mssql.js`) | Viết lại: CTE, nhiều lời gọi JS, hoặc hàm PL/pgSQL |
 | `TOP n` | 71 (45) | `LIMIT n` (hoặc `FETCH FIRST n ROWS ONLY`, chạy cả 2 DB) |
 | `NEWID()` | 42 (27) — **đã đổi hết** | `randomId` / `randomHex32` (JS) hoặc `newIdSql` của adapter |
 | `OPENJSON(@ids)` | 31 (15) | `= ANY($1::text[])` hoặc `jsonb_array_elements_text($1)` |
@@ -113,7 +113,7 @@ bước A và giữ máy Windows hiện tại tới khi xong bước B.
 | `STRING_AGG(...) WITHIN GROUP (ORDER BY ...)` | 25 (13) | `string_agg(x, ',' ORDER BY ...)` |
 | `CROSS APPLY` / `OUTER APPLY` | 25 (19) | `CROSS JOIN LATERAL` / `LEFT JOIN LATERAL ... ON true` |
 | `LIKE ... ESCAPE`, `LIKE '[0-9]'` | 25 (4) + nhiều mẫu `[0-9]` | PG `LIKE` **không** có lớp ký tự `[...]` → dùng `~ '^...[0-9]{3}$'` |
-| `OUTPUT INSERTED/DELETED` | 19 (13) | `RETURNING` |
+| `OUTPUT INSERTED/DELETED` | 19 (13) → 14 | `RETURNING` (`updateReturning` của adapter) |
 | `SCOPE_IDENTITY()`, `@@ROWCOUNT`, `@@TRANCOUNT` | 18 (13) | `RETURNING id`, `rowCount`, không có tương đương trực tiếp |
 | `CAST(... AS NVARCHAR/BIT/DATETIME)` | 59 (35) | `::text`, `::boolean`, `::timestamp`. Cột boolean trong SELECT: `boolExpr(đk)` / `castBool(x)` của adapter (SQL Server ra BIT, PG ra boolean) |
 | `CONVERT(`, `TRY_CAST(` | 20 (8) | `CAST`, `to_char`; `TRY_CAST` cần hàm tự viết |
@@ -465,17 +465,36 @@ thường. Mỗi nhóm là 1 PR nhỏ theo module.
   không so `integer = varchar`. Kiểm bằng `test-integration/portableSql.cases.js`.
   Lưu ý: `ORDER BY` cột có NULL — SQL Server xếp NULL **đầu**, PG xếp **cuối** (cần thì ghi rõ
   `CASE WHEN x IS NULL THEN 0 ELSE 1 END, x`).
-- [ ] Tách các batch `DECLARE ...` và `recordsets[i]` thành nhiều lời gọi JS (mục 5.2).
+- [x] Tách các batch `DECLARE ...` và `recordsets[i]` thành nhiều lời gọi JS (mục 5.2).
   - [x] Đợt 1 — mã ngẫu nhiên (`DECLARE @new_id = 'XX' + LEFT(REPLACE(NEWID()...))`): 1 dòng thì sinh
     bằng JS `randomId(prefix, n)` / `randomHex32()` (`utils/idGenerator`), truyền vào bằng tham số và
     bỏ `SELECT @new_id AS id`; chèn nhiều dòng 1 câu thì `newIdSql(prefix, n)` của adapter (PG:
     `gen_random_uuid()` in hoa). `crudService.create`, người tham dự hội thảo, file đào tạo: INSERT
     rồi SELECT là 2 câu. newid 42 → 0, declare 60 → 32 (tổng ratchet 719 → 646). Kiểm bằng
     `test-integration/randomIds.cases.js` (PG bỏ ca `bulkAdd` vì `personService` còn dùng `OBJECT_ID`).
-  - [ ] Đợt sau: 32 lô `DECLARE` còn lại là lô logic (`@r TABLE`, `@seq`, `@depts`, `@year/@from` của
-    dashboard, `enrollmentRotationService`, `courseCmeService`, `seminarPublicService`,
-    `practiceBookWriter`, `traineeAccountService`, CRUD danh mục / vai trò) và 110 chỗ `recordsets[i]`
-    (31 ở `dashboardService`).
+  - [x] Đợt 2 — lô nhiều câu / lô logic (declare 32 → 1, recordsets 110 → 0, bảng tạm 35 → 6; tổng
+    ratchet 646 → 443):
+    - `queryAll(req, [câu1, câu2…])` của adapter thay `req.query('câu1; câu2')` + `recordsets[i]`:
+      SQL Server vẫn ghép 1 lô (1 lượt gọi); PG chạy từng câu với cùng tham số (trong transaction thì
+      lần lượt, ngoài thì song song). Mỗi câu phải trả đúng 1 tập kết quả. ~35 chỗ đổi bằng script.
+    - `updateReturning(update, where, cột)` thay `DECLARE @r TABLE … OUTPUT … INTO @r … SELECT FROM @r`
+      (cột ghi `new.x` / `old.x`; PG ≥ 18 dùng `RETURNING old./new.`): TOTP, khoá đăng nhập, duyệt
+      bước workflow, nộp bài thi (trễ hạn tính trong JS từ `started_at` / `submitted_at`), gộp hồ sơ
+      người, gọi danh sách chờ, quét vé hội nghị.
+    - Bảng tạm / biến bảng thành bảng con dùng chung: `#t` (dashboard NCKH), `#seat` (đánh giá tiến độ),
+      `@mine` (lịch học viên), `@depts` (ứng viên giảng viên); `@only_program` thành subquery.
+    - Biến `@year / @from / @today` của dashboard tính bằng JS (`todayVN`), truyền tham số.
+    - Lô có IF / THROW viết lại bằng JS trong `withTransaction`: vòng thực hành (thêm khoa, học lại, đổi
+      chỗ), ghi danh từ sổ thực hành, đồng bộ bài học (`UPDATE … FROM` → subquery tương quan), khoá tài
+      khoản học viên, thu hồi CME theo giấy chứng nhận, điểm danh QR hội thảo, đăng xuất (subquery).
+    - Mã `<PREFIX>NN` (danh mục LDT, cấp độ CD, loại đợt RT, vai trò VT): `genSeq2Id` (MAX+1 có khoá,
+      hết số → 409). Khoá `person_sync` dùng `lockResource`.
+    - Kiểm tra schema phân quyền đọc `information_schema.columns` thay `COL_LENGTH` / `OBJECT_ID`.
+    - Sửa adapter PG: tham số có ép kiểu trước `ROWS` (`OFFSET @x ROWS`) được bọc ngoặc — trước đây
+      mọi câu phân trang có tham số đều lỗi cú pháp trên PG.
+    - Kiểm bằng `test-integration/batchSplit.cases.js` (SQL Server 10/10; PG 4 ca, bỏ 6 ca còn vướng
+      `CROSS APPLY`, `GETDATE`, `YEAR` / `CONVERT`, `BIT = 1` — các mục cú pháp khác).
+    - Còn lại (mục khác): 6 bảng tạm `#…` (`courseCmeService` + `MERGE`), `THROW` trong 3 lô kiểm tra trùng (`certificateRepository`, `courseEnrollmentService`, `programLessonService`).
 - [ ] Bỏ các chỗ phụ thuộc thứ tự ngầm: mọi câu trả danh sách phải có `ORDER BY`.
 - [x] Ghi baseline smoke test (`UPDATE_SNAPSHOTS=1 npm run test:smoke`, đã ghi 2026-11-03;
   bản 24/10 lưu ở `get-shapes.2026-10-24.bak.json`) **trước**

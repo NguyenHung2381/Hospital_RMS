@@ -197,6 +197,33 @@ const newIdSql = (prefix, n) => {
 	return `CONCAT('${prefix}', LEFT(REPLACE(CAST(NEWID() AS VARCHAR(36)), '-', ''), ${n}))`;
 };
 
+// UPDATE trả về các dòng vừa sửa: `${update} WHERE ${where}` + cột lấy ra. Biểu thức
+// cột ghi `new.cột` (giá trị sau khi sửa) / `old.cột` (trước khi sửa). SQL Server:
+// OUTPUT ... INTO biến bảng (bảng có trigger thì không được OUTPUT trần); PG: RETURNING.
+/**
+ * @param {string} update `UPDATE bảng SET ...` (chưa có WHERE)
+ * @param {string} where
+ * @param {Array<[string, string, string]>} cols [biểu thức, tên cột kết quả, kiểu SQL Server]
+ */
+const updateReturning = (update, where, cols) => {
+	const expr = (e) => e.replace(/\bnew\./g, 'INSERTED.').replace(/\bold\./g, 'DELETED.');
+	return `DECLARE @r TABLE (${cols.map(([, n, t]) => `${n} ${t}`).join(', ')});
+${update}
+OUTPUT ${cols.map(([e]) => expr(e)).join(', ')} INTO @r
+WHERE ${where};
+SELECT ${cols.map(([, n]) => n).join(', ')} FROM @r`;
+};
+
+// Nhiều câu SELECT dùng chung tham số đã gắn vào `req` → mảng tập kết quả, câu thứ
+// i ứng với phần tử thứ i (mỗi câu phải trả về đúng 1 tập kết quả). SQL Server: ghép
+// thành 1 lô, 1 lượt gọi như trước. Bản PG (db.pg.js) chạy từng câu riêng.
+/**
+ * @param {any} req request đã `.input(...)` đủ tham số
+ * @param {string[]} statements
+ * @returns {Promise<any[][]>}
+ */
+const queryAll = async (req, statements) => (await req.query(statements.join(';\n'))).recordsets;
+
 module.exports = {
 	client: 'mssql',
 	getPool,
@@ -211,5 +238,7 @@ module.exports = {
 	jsonValues,
 	jsonRows,
 	newIdSql,
+	queryAll,
+	updateReturning,
 	tlsOptions,
 };

@@ -1,4 +1,4 @@
-const { getPool, sql, withTransaction, jsonRows } = require('../../../config/db');
+const { getPool, sql, withTransaction, jsonRows, queryAll } = require('../../../config/db');
 const { genGradeId } = require('../../../utils/idGenerator');
 const { broadcast } = require('../../events/eventService');
 const { httpError } = require('../../../utils/httpError');
@@ -79,11 +79,8 @@ const loadRows = async (courseId, enrollmentIds) => {
 	const only = enrollmentIds?.length
 		? `AND e.id IN (${enrollmentIds.map((id, i) => (req.input(`e${i}`, sql.VarChar(20), id), `@e${i}`)).join(',')})`
 		: '';
-	const r = await req.query(`
-    -- Khóa chỉ 1 chương trình ⇒ lượt ghi danh chưa chọn chương trình lấy chương trình đó
-    DECLARE @only_program VARCHAR(20) = (
-      SELECT CASE WHEN COUNT(*) = 1 THEN MIN(program_id) END FROM course_programs WHERE course_id = @course_id);
-
+	const sets = await queryAll(req, [
+		`
     SELECT e.id AS enrollment_id, e.trainee_id, t.full_name AS trainee_name,
            tp.id AS program_id, tp.name AS program_name, tp.theory_hours, tp.practice_hours, tp.exam_parts,
            g.id AS grade_id, g.theory_score, g.practice_score, g.theory_flag, g.practice_flag,
@@ -95,13 +92,15 @@ const loadRows = async (courseId, enrollmentIds) => {
             WHERE x.enrollment_id = e.id AND ep.purpose = 'entrance' AND x.status = 'graded') AS entrance_score
     FROM course_enrollments e
     JOIN trainees t ON t.id = e.trainee_id
-    LEFT JOIN training_programs tp ON tp.id = COALESCE(e.program_id, @only_program)
+    -- Khóa chỉ 1 chương trình ⇒ lượt ghi danh chưa chọn chương trình lấy chương trình đó
+    LEFT JOIN training_programs tp ON tp.id = COALESCE(e.program_id, (SELECT CASE WHEN COUNT(*) = 1 THEN MIN(program_id) END FROM course_programs WHERE course_id = @course_id))
     LEFT JOIN grades g ON g.enrollment_id = e.id AND g.subject_id IS NULL
     LEFT JOIN users lu ON lu.id = g.locked_by
     LEFT JOIN certificates cert ON cert.enrollment_id = e.id
     WHERE e.course_id = @course_id AND e.status = 'approved' ${only}
-    ORDER BY t.full_name, e.id;
-
+    ORDER BY t.full_name, e.id
+		`,
+		`
     -- Chuyên cần: chỉ tính buổi đã điểm danh người đó, thuộc chương trình người đó
     -- theo học (bỏ bản ghi cũ ở buổi của lớp khác); 'late' tính là có mặt.
     SELECT a.enrollment_id, ${SESSION_KIND_SQL} AS kind,
@@ -111,9 +110,10 @@ const loadRows = async (courseId, enrollmentIds) => {
     JOIN attendance a ON a.session_id = s.id
     JOIN course_enrollments e ON e.id = a.enrollment_id
     WHERE s.course_id = @course_id AND ${SESSION_IN_PROGRAM_SQL('s', 'e')}
-    GROUP BY a.enrollment_id, ${SESSION_KIND_SQL};
-  `);
-	const [rows, att] = r.recordsets;
+    GROUP BY a.enrollment_id, ${SESSION_KIND_SQL}
+		`,
+	]);
+	const [rows, att] = sets;
 	const attOf = (enrollmentId, kind) => {
 		const x = att.find((a) => a.enrollment_id === enrollmentId && a.kind === kind);
 		return x ? { held: x.held, absent: x.absent } : { held: 0, absent: 0 };

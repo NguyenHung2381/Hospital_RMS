@@ -1,4 +1,4 @@
-const { getPool, sql, jsonRows, newIdSql } = require('../../../config/db');
+const { getPool, sql, jsonRows, newIdSql, updateReturning } = require('../../../config/db');
 const { broadcast } = require('../../events/eventService');
 const { randomUUID } = require('crypto');
 const { httpError } = require('../../../utils/httpError');
@@ -177,33 +177,38 @@ const submitAttempt = async (paperId, answers, actor) => {
 
 	// "Nhận" lượt làm bài NGUYÊN TỬ: chỉ 1 request đổi được in_progress → submitted.
 	// Trước đây SELECT rồi mới UPDATE — nộp 2 lần song song thì cả 2 cùng ghi đáp án.
-	// Đồng thời tính trễ hạn theo giờ SQL Server (không tin đồng hồ trình duyệt):
+	// Đồng thời tính trễ hạn theo giờ của DB (không tin đồng hồ trình duyệt):
 	// quá started_at + thời lượng + SUBMIT_GRACE_SEC thì đáp án không được tính.
+	const limitSec = (Number(info.duration_minutes) || 0) * 60 + SUBMIT_GRACE_SEC;
 	const claimed = (
 		await pool
 			.request()
 			.input('paper_id', sql.VarChar(20), paperId)
 			.input('enrollment_id', sql.VarChar(20), info.enrollment_id)
 			.input('actor_id', sql.VarChar(20), actor.id)
-			.input('limit_sec', sql.Int, (Number(info.duration_minutes) || 0) * 60 + SUBMIT_GRACE_SEC)
-			.query(`
-				DECLARE @r TABLE (id VARCHAR(20), late BIT, question_ids NVARCHAR(MAX));
-				UPDATE exam_attempts SET status = 'submitted', submitted_at = GETDATE(), updated_at = GETDATE(), updated_by = @actor_id
-				OUTPUT INSERTED.id,
-				       CASE WHEN @limit_sec > ${SUBMIT_GRACE_SEC}
-				             AND INSERTED.submitted_at > DATEADD(SECOND, @limit_sec, INSERTED.started_at)
-				            THEN 1 ELSE 0 END,
-				       INSERTED.question_ids
-				INTO @r
-				WHERE paper_id = @paper_id AND enrollment_id = @enrollment_id AND status = 'in_progress';
-				SELECT id, late, question_ids FROM @r;
-			`)
+			.query(
+				updateReturning(
+					`UPDATE exam_attempts SET status = 'submitted', submitted_at = GETDATE(),
+					updated_at = GETDATE(), updated_by = @actor_id`,
+					"paper_id = @paper_id AND enrollment_id = @enrollment_id AND status = 'in_progress'",
+					[
+						['new.id', 'id', 'VARCHAR(20)'],
+						['new.started_at', 'started_at', 'DATETIME'],
+						['new.submitted_at', 'submitted_at', 'DATETIME'],
+						['new.question_ids', 'question_ids', 'NVARCHAR(MAX)'],
+					],
+				),
+			)
 	).recordset[0];
 	if (!claimed) {
 		throw httpError(409, 'Không tìm thấy lượt làm bài đang mở, hoặc bạn đã nộp rồi.');
 	}
 	const attempt = { id: claimed.id };
-	const late = !!claimed.late;
+	const late =
+		limitSec > SUBMIT_GRACE_SEC &&
+		claimed.started_at != null &&
+		new Date(claimed.submitted_at).getTime() - new Date(claimed.started_at).getTime() >
+			limitSec * 1000;
 	// Nộp quá giờ: vẫn đóng lượt làm bài (không làm lại được) nhưng bỏ đáp án
 	if (late) answers = [];
 

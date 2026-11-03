@@ -1,4 +1,4 @@
-const { getPool, sql, withActorTransaction } = require('../config/db');
+const { getPool, sql, withActorTransaction, queryAll } = require('../config/db');
 const { randomId } = require('../utils/idGenerator');
 const { broadcast } = require('../modules/events/eventService');
 const { paging } = require('../utils/paging');
@@ -45,14 +45,18 @@ const createCrudService = (
 				req.input('search', sql.NVarChar, `%${search}%`);
 			}
 
-			const result = await req.query(`
+			const sets = await queryAll(req, [
+				`
         SELECT * FROM ${tableName} ${where} ORDER BY created_at DESC
-        ${pg.fetchClause};
-        SELECT COUNT(*) AS total FROM ${tableName} ${where};
-      `);
+        ${pg.fetchClause}
+				`,
+				`
+        SELECT COUNT(*) AS total FROM ${tableName} ${where}
+				`,
+			]);
 			return {
-				data: result.recordsets[0],
-				pagination: { page: pg.page, limit: pg.limit, total: result.recordsets[1][0].total },
+				data: sets[0],
+				pagination: { page: pg.page, limit: pg.limit, total: sets[1][0].total },
 			};
 		});
 	};
