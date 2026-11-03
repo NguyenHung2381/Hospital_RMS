@@ -157,6 +157,38 @@ const genMemberId = (tx, topicId) =>
 		lockKey: `gen_member_id_${topicId}`,
 	});
 
+// Lượt tải file đề tài: BATCH + mã đề tài + yyyymmdd + 2 số; file: FILE + ... + 2 số
+const genFileBatchId = (tx, topicId) => {
+	const prefix = `BATCH${topicId}${todayCompactVN()}`;
+	return nextId(tx, {
+		table: 'file_batches',
+		prefix,
+		digits: 2,
+		what: 'mã lượt tải file',
+		lockKey: `gen_batch_id_${prefix}`,
+	});
+};
+const genFileId = (tx, topicId) => {
+	const prefix = `FILE${topicId}${todayCompactVN()}`;
+	return nextId(tx, {
+		table: 'files',
+		prefix,
+		digits: 2,
+		what: 'mã file',
+		lockKey: `gen_file_id_${prefix}`,
+	});
+};
+
+// Dòng tiến độ đề tài: TT + mã đề tài + '_' + 2 số
+const genProgressId = (tx, topicId) =>
+	nextId(tx, {
+		table: 'topic_progress',
+		prefix: `TT${topicId}_`,
+		digits: 2,
+		what: 'mã tiến độ đề tài',
+		lockKey: `gen_progress_id_${topicId}`,
+	});
+
 const genExternalReviewerId = (tx) =>
 	nextId(tx, {
 		table: 'external_reviewers',
@@ -320,6 +352,9 @@ module.exports = {
 	genCouncilId,
 	genCouncilMemberId,
 	genMemberId,
+	genProgressId,
+	genFileBatchId,
+	genFileId,
 	genExternalReviewerId,
 	genDeptId,
 	genUserId,

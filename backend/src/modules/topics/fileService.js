@@ -2,18 +2,42 @@ const { getPool, sql, withActorTransaction } = require('../../config/db');
 const { broadcast } = require('../events/eventService');
 const { removeUploadedFile } = require('../../utils/uploadPaths');
 const { httpError } = require('../../utils/httpError');
+const { genFileBatchId, genFileId } = require('../../utils/idGenerator');
 
+// 1 lượt tải lên = 1 file_batches + các dòng files, trong 1 transaction (trước là
+// sp_upload_files). file_batches.file_count do trigger trg_file_batch_count đếm.
 const uploadFiles = async (topicId, filesData, batchNote, actorId) => {
-	const pool = await getPool();
-	const result = await pool
-		.request()
-		.input('topic_id', sql.VarChar(15), topicId)
-		.input('actor_id', sql.VarChar(20), actorId)
-		.input('batch_note', sql.NVarChar(500), batchNote || null)
-		.input('files_json', sql.NVarChar(sql.MAX), JSON.stringify(filesData))
-		.execute('sp_upload_files');
+	const result = await withActorTransaction(actorId, async (tx) => {
+		const req = () =>
+			tx
+				.request()
+				.input('topic_id', sql.VarChar(15), topicId)
+				.input('actor_id', sql.VarChar(20), actorId);
+		const topic = await req().query('SELECT 1 AS x FROM topics WHERE id = @topic_id');
+		if (!topic.recordset.length) throw httpError(404, `Đề tài ${topicId} không tồn tại`);
+		const batchId = await genFileBatchId(tx, topicId);
+		await req()
+			.input('batch_id', sql.VarChar(30), batchId)
+			.input('note', sql.NVarChar(500), batchNote || null)
+			.query(
+				'INSERT INTO file_batches (id, topic_id, note, created_by) VALUES (@batch_id, @topic_id, @note, @actor_id)',
+			);
+		for (const f of filesData) {
+			await req()
+				.input('id', sql.VarChar(32), await genFileId(tx, topicId))
+				.input('batch_id', sql.VarChar(30), batchId)
+				.input('file_name', sql.NVarChar(500), f.file_name ?? null)
+				.input('file_url', sql.VarChar(1000), f.file_url ?? null)
+				.input('file_size', sql.BigInt, f.file_size ?? null)
+				.input('mime_type', sql.VarChar(100), f.mime_type ?? null)
+				.input('description', sql.NVarChar(sql.MAX), f.description ?? null).query(`
+          INSERT INTO files (id, topic_id, batch_id, file_name, file_url, file_size, mime_type, description, created_by)
+          VALUES (@id, @topic_id, @batch_id, @file_name, @file_url, @file_size, @mime_type, @description, @actor_id)`);
+		}
+		return { batch_id: batchId, files_uploaded: filesData.length };
+	});
 	broadcast('update', { entity: 'file' });
-	return result.recordset[0];
+	return result;
 };
 
 // File của một đề tài luôn ít — trả toàn bộ, không phân trang

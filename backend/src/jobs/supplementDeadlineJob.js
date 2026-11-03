@@ -8,7 +8,7 @@ const logger = require('../config/logger');
 // định nghiệp vụ 18/10/2026). Thay phần B của proc SQL cũ sp_process_daily_deadlines
 // (proc đó tự DUYỆT, và chỉ chạy nếu có SQL Agent job — xem database/README.md).
 //
-// Từ chối qua đúng đường của người duyệt (topicApprovalService.approve → sp_approve_topic):
+// Từ chối qua đúng đường của người duyệt (topicApprovalService.approve):
 // cập nhật approvals, trạng thái, topic_progress, thông báo chủ nhiệm + thành viên.
 // Chặt hơn proc cũ:
 //   - Xét mốc bổ sung MUỘN NHẤT của đợt (đợt có nhiều mốc bổ sung thì chưa

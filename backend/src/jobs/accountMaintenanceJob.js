@@ -1,22 +1,43 @@
-const { getPool, sql } = require('../config/db');
+const { getPool, sql, withTransaction } = require('../config/db');
 const notificationService = require('../modules/notifications/notificationService');
 const { markOnce } = require('./dedupe');
-const { todayKeyVN } = require('../utils/vnDate');
+const { todayKeyVN, todayVN } = require('../utils/vnDate');
 const logger = require('../config/logger');
 
 // Job nền bảo trì tài khoản:
-//  1. Gọi sp_deactivate_expired_accounts — stored proc đã tồn tại từ trước
-//     nhưng CHƯA có gì gọi tới (gap đã xác nhận khi khảo sát code).
+//  1. Khoá tài khoản thành viên (VT06) đã quá hạn (trước là sp_deactivate_expired_accounts).
 //  2. Cảnh báo người dùng có mật khẩu quá hạn lâu ngày chưa đổi.
 const PASSWORD_MAX_AGE_DAYS = 90;
 const PASSWORD_WARNING_INTERVAL_DAYS = 30; // nhắc lại mỗi 30 ngày, không phải mỗi ngày
 
+// Khoá tài khoản thành viên quá hạn; trả số tài khoản đã khoá. Hạn là ngày
+// (account_expires_at < hôm nay theo giờ VN). Đếm trước rồi khoá trong cùng
+// transaction: rowsAffected của SQL Server tính cả câu trong trigger audit.
+const deactivateExpired = async (tx) => {
+	const req = () =>
+		tx
+			.request()
+			.input('role_id', sql.VarChar(10), 'VT06') // chỉ tài khoản thành viên (tạm thời)
+			.input('today', sql.Date, todayVN())
+			// Cột BIT so / gán qua tham số: PG là boolean, không nhận số 0/1
+			.input('on', sql.Bit, true)
+			.input('off', sql.Bit, false);
+	const cond = `is_active = @on AND role_id = @role_id
+		AND account_expires_at IS NOT NULL AND account_expires_at < @today`;
+	const n = Number(
+		(await req().query(`SELECT COUNT(*) AS n FROM users WHERE ${cond}`)).recordset[0].n,
+	);
+	if (n > 0)
+		await req().query(
+			`UPDATE users SET is_active = @off, updated_at = CURRENT_TIMESTAMP WHERE ${cond}`,
+		);
+	return n;
+};
+
 const deactivateExpiredAccounts = async (pool) => {
 	const firstTimeToday = await markOnce('deactivate_expired_accounts', todayKeyVN());
 	if (!firstTimeToday) return; // đã chạy hôm nay (vd server restart nhiều lần)
-
-	const result = await pool.request().execute('sp_deactivate_expired_accounts');
-	const deactivated = result.recordset?.[0]?.deactivated_count ?? 0;
+	const deactivated = await withTransaction(deactivateExpired, pool);
 	if (deactivated > 0)
 		logger.info(`[job:account_maintenance] Đã vô hiệu hóa ${deactivated} tài khoản hết hạn.`);
 };
@@ -82,4 +103,4 @@ const run = async () => {
 	await purgeExpiredResetOtps(pool);
 };
 
-module.exports = { run, purgeExpiredResetOtps };
+module.exports = { run, purgeExpiredResetOtps, deactivateExpired };

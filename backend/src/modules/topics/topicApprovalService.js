@@ -4,16 +4,46 @@ const { broadcast } = require('../events/eventService');
 const { scopeOf, hasPermission } = require('../../permissions/authz');
 const { findActiveUserIdsWhere } = require('../access/permissionService');
 const { getById } = require('./topicService');
+const { httpError } = require('../../utils/httpError');
+const { genProgressId } = require('../../utils/idGenerator');
 
+const DECISIONS = ['approved', 'rejected', 'supplement'];
+// Dòng tiến độ ghi kèm mỗi quyết định
+const PROGRESS_TEXT = {
+	approved: 'Đề tài được phê duyệt',
+	supplement: 'Đề tài cần bổ sung, chỉnh sửa',
+	rejected: 'Đề tài bị từ chối',
+};
+
+// Ghi quyết định duyệt: phiếu duyệt + trạng thái đề tài + 1 dòng tiến độ, trong
+// 1 transaction (trước là sp_approve_topic). Không tự cấp tài khoản thành viên
+// nữa — việc đó làm ở "Cấp tài khoản" (topicMemberService.grantAccounts, có mật
+// khẩu tạm thật). Thông báo gửi 1 lần ở dưới (thủ tục cũ gửi thêm 1 lần trong DB).
 const approve = async (topicId, status, comment, actorId) => {
+	if (!DECISIONS.includes(status)) throw httpError(400, 'Quyết định không hợp lệ');
+	await withActorTransaction(actorId, async (tx) => {
+		const req = () =>
+			tx
+				.request()
+				.input('topic_id', sql.VarChar(15), topicId)
+				.input('decision', sql.VarChar(15), status)
+				.input('comment', sql.NVarChar(sql.MAX), comment || null)
+				.input('actor_id', sql.VarChar(20), actorId);
+		const found = await req().query('SELECT 1 AS x FROM approvals WHERE topic_id = @topic_id');
+		if (!found.recordset.length) {
+			throw httpError(404, `Không tìm thấy bản ghi phê duyệt cho đề tài ${topicId}`);
+		}
+		await req().query(
+			'UPDATE approvals SET status = @decision, comment = @comment WHERE topic_id = @topic_id',
+		);
+		await req().query('UPDATE topics SET status = @decision WHERE id = @topic_id');
+		await req()
+			.input('id', sql.VarChar(22), await genProgressId(tx, topicId))
+			.input('note_status', sql.NVarChar(255), PROGRESS_TEXT[status]).query(`
+        INSERT INTO topic_progress (id, topic_id, status, note, created_by)
+        VALUES (@id, @topic_id, @note_status, @comment, @actor_id)`);
+	});
 	const pool = await getPool();
-	const result = await pool
-		.request()
-		.input('actor_id', sql.VarChar(20), actorId)
-		.input('topic_id', sql.VarChar(15), topicId)
-		.input('decision', sql.VarChar(15), status)
-		.input('comment', sql.NVarChar(sql.MAX), comment || null)
-		.execute('sp_approve_topic');
 
 	// Notify topic creator + all members who have accounts
 	const userRes = await pool.request().input('topic_id', sql.VarChar(15), topicId).query(`
@@ -44,7 +74,7 @@ const approve = async (topicId, status, comment, actorId) => {
 	});
 
 	broadcast('update', { entity: 'topic' });
-	return result.recordset[0];
+	return { message: 'Thành công', topic_id: topicId, decision: status };
 };
 
 const submit = async (topicId, actorId) => {

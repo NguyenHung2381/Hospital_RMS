@@ -1,5 +1,6 @@
 const { getPool, sql, withActorTransaction, actorRequest } = require('../../config/db');
 const { genTopicId } = require('../../utils/idGenerator');
+const { ensureApproval, withApprovalSync } = require('./approvalRecord');
 const { broadcast } = require('../events/eventService');
 const { paging } = require('../../utils/paging');
 const { splitList, inClause, buildWhere } = require('../../utils/sqlFilters');
@@ -240,10 +241,11 @@ const levelForRound = (roundId, articleType) =>
 
 const create = async (data, actorId) => {
 	const levelId = await levelForRound(data.round_id, data.article_type);
-	const result = await withActorTransaction(actorId, async (tx) =>
-		tx
+	const newId = await withActorTransaction(actorId, async (tx) => {
+		const id = await genTopicId(tx, data.category_id, data.round_id);
+		await tx
 			.request()
-			.input('new_id', sql.VarChar(15), await genTopicId(tx, data.category_id, data.round_id))
+			.input('new_id', sql.VarChar(15), id)
 			.input('actor_id', sql.VarChar(20), actorId)
 			.input('title', sql.NVarChar(500), data.title)
 			.input('description', sql.NVarChar(sql.MAX), data.description || null)
@@ -264,13 +266,14 @@ const create = async (data, actorId) => {
       INSERT INTO topics (id, title, description, round_id, category_id, level_id, department_id, status, created_by, article_type, journal_name, doi, publish_date, budget_estimated,
                           is_legacy, acceptance_rating, acceptance_score, acceptance_date)
       VALUES (@new_id, @title, @description, @round_id, @category_id, @level_id, @department_id, 'submitted', @actor_id, @article_type, @journal_name, @doi, @publish_date, @budget_estimated,
-              @is_legacy, @acceptance_rating, @acceptance_score, @acceptance_date);
-      SELECT @new_id AS id;
-    `),
-	);
+              @is_legacy, @acceptance_rating, @acceptance_score, @acceptance_date)
+    `);
+		await ensureApproval(tx, id, actorId); // đề tài mới luôn 'submitted'
+		return id;
+	});
 	if (Array.isArray(data.related_department_ids) && data.related_department_ids.length)
-		await setRelatedDepartments(result.recordset[0].id, data.related_department_ids);
-	const topic = await getById(result.recordset[0].id);
+		await setRelatedDepartments(newId, data.related_department_ids);
+	const topic = await getById(newId);
 	broadcast('update', { entity: 'topic' });
 	return topic;
 };
@@ -459,31 +462,11 @@ const update = async (id, data, actorId, actor = null) => {
 		if (relatedChanged) broadcast('update', { entity: 'topic' });
 		return getById(id);
 	}
-	sets.push('updated_at = GETDATE()', 'updated_by = @actor_id');
+	sets.push('updated_at = CURRENT_TIMESTAMP', 'updated_by = @actor_id');
 
-	// Đổi status đề tài qua đường update chung (không phải sp_approve_topic) thì
-	// đồng bộ luôn approvals.status, nếu không bảng approvals sẽ kẹt ở giá trị cũ
-	// và các chỗ đọc nó (vd card "Phê duyệt gần đây" ở Dashboard) hiển thị sai.
-	// Chỉ map trạng thái có tương ứng ở approvals (CHK: pending|approved|rejected|
-	// supplement); cancelled/completed không map ⇒ giữ nguyên bản ghi duyệt.
-	// updated_at/updated_by của approvals do trigger trg_approvals_audit tự ghi
-	// từ SESSION_CONTEXT (actorRequest đã ghi người thao tác trong cùng transaction).
-	const APV_STATUS_BY_TOPIC = {
-		submitted: 'pending',
-		approved: 'approved',
-		rejected: 'rejected',
-		supplement: 'supplement',
-	};
-	const apvStatus = data.status !== undefined ? APV_STATUS_BY_TOPIC[data.status] : undefined;
-	let apvSyncSql = '';
-	if (apvStatus) {
-		req.input('apv_status', sql.VarChar(15), apvStatus);
-		apvSyncSql =
-			' UPDATE approvals SET status = @apv_status' +
-			' WHERE topic_id = @id AND status <> @apv_status;';
-	}
-
-	await req.query(`UPDATE topics SET ${sets.join(', ')} WHERE id = @id;${apvSyncSql}`);
+	// Đổi trạng thái ⇒ đồng bộ phiếu duyệt trong cùng transaction (approvalRecord.withApprovalSync)
+	const updateSql = `UPDATE topics SET ${sets.join(', ')} WHERE id = @id`;
+	await req.query(withApprovalSync(req, updateSql, id, data.status));
 	const topic = await getById(id);
 	broadcast('update', { entity: 'topic' });
 	return topic;

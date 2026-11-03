@@ -1,4 +1,8 @@
-const { getPool, sql } = require('../../config/db');
+const db = require('../../config/db');
+const { VN_OFFSET_MS } = require('../../utils/vnDate');
+const { inClause } = require('../../utils/sqlFilters');
+
+const { getPool, sql } = db;
 const mailService = require('./mailService');
 const mailQueue = require('./mailQueue');
 const logger = require('../../config/logger');
@@ -57,8 +61,66 @@ const markAllRead = async (userId) => {
 		.query('UPDATE notifications SET is_read = 1 WHERE user_id = @user_id AND is_read = 0');
 };
 
+// Mỗi câu INSERT tối đa CHUNK người nhận (SQL Server giới hạn 2.100 tham số / câu)
+const CHUNK = 300;
+
+// yyyyMMddHHmmss theo giờ VN — 1 lần cho cả lượt gửi
+const stampVN = () =>
+	new Date(Date.now() + VN_OFFSET_MS).toISOString().slice(0, 19).replace(/\D/g, '');
+
+const chunks = (arr, n) => {
+	const out = [];
+	for (let i = 0; i < arr.length; i += n) out.push(arr.slice(i, i + n));
+	return out;
+};
+
 /**
- * Push a notification to a list of user IDs via sp_push_notification.
+ * Ghi thông báo cho danh sách user (chỉ tài khoản đang hoạt động). Trước là
+ * sp_push_notification. Mã: 'NTF' + yyyyMMddHHmmss + 5 số từ SEQUENCE
+ * seq_notification_suffix; cả lượt gửi chung 1 batch_id 'NTFB...' để phía quản
+ * trị gộp thành 1 dòng. Trả số thông báo đã ghi.
+ */
+const insertNotifications = async (type, title, userIds, { message, refId, refType }) => {
+	const pool = await getPool();
+	const wanted = [...new Set(userIds.filter(Boolean).map(String))];
+	const active = [];
+	for (const part of chunks(wanted, CHUNK)) {
+		// So cột BIT qua tham số: PG là boolean, không so được với số 1
+		const req = pool.request().input('active', sql.Bit, true);
+		const where = inClause(req, 'id', 'u', part, sql.VarChar(20));
+		const r = await req.query(`SELECT id FROM users WHERE is_active = @active AND ${where}`);
+		active.push(...r.recordset.map((x) => x.id));
+	}
+	if (!active.length) return 0;
+	active.sort();
+	const stamp = stampVN();
+	const pad5 = (n) => String(n).padStart(5, '0');
+	const seq = await db.nextSequenceValues(pool, 'seq_notification_suffix', active.length + 1);
+	const batchId = `NTFB${stamp}${pad5(seq[0])}`;
+	let k = 1;
+	for (const part of chunks(active, CHUNK)) {
+		const req = pool
+			.request()
+			.input('type', sql.VarChar(50), type)
+			.input('title', sql.NVarChar(255), title)
+			.input('message', sql.NVarChar(sql.MAX), message)
+			.input('ref_id', sql.VarChar(30), refId)
+			.input('ref_type', sql.VarChar(20), refType)
+			.input('batch_id', sql.VarChar(30), batchId);
+		const rows = part.map((uid, i) => {
+			req.input(`i${i}`, sql.VarChar(30), `NTF${stamp}${pad5(seq[k++])}`);
+			req.input(`u${i}`, sql.VarChar(20), uid);
+			return `(@i${i}, @u${i}, @type, @title, @message, @ref_id, @ref_type, @batch_id)`;
+		});
+		await req.query(
+			`INSERT INTO notifications (id, user_id, type, title, message, ref_id, ref_type, batch_id) VALUES ${rows.join(', ')}`,
+		);
+	}
+	return active.length;
+};
+
+/**
+ * Push a notification to a list of user IDs.
  * Errors are swallowed so callers are never broken by notification failures.
  */
 const push = async (
@@ -69,16 +131,7 @@ const push = async (
 ) => {
 	if (!userIds?.length) return;
 	try {
-		const pool = await getPool();
-		await pool
-			.request()
-			.input('type', sql.VarChar(50), type)
-			.input('title', sql.NVarChar(255), title)
-			.input('message', sql.NVarChar(sql.MAX), message)
-			.input('ref_id', sql.VarChar(30), refId)
-			.input('ref_type', sql.VarChar(20), refType)
-			.input('user_ids', sql.NVarChar(sql.MAX), JSON.stringify(userIds))
-			.execute('sp_push_notification');
+		await insertNotifications(type, title, userIds, { message, refId, refType });
 	} catch (err) {
 		logger.error('[notification] push failed:', err.message);
 	}

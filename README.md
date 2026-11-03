@@ -540,7 +540,7 @@ Hospital_RMS/
 - **Đề tài**: đăng ký với loại, cấp độ, đợt nghiên cứu. Hệ thống kiểm tra cấp độ hợp lệ theo loại đợt và chỉ cho đăng ký trong cửa sổ thời gian của đợt. Quản lý thành viên, cấp tài khoản cho thành viên, upload hồ sơ theo lô, xuất Excel danh sách và hồ sơ đầy đủ.
 - **Đợt nghiên cứu & lịch trình**: nhiều loại deadline (đăng ký, nộp bổ sung…), tự động nhắc deadline, trang lịch tổng hợp các mốc.
 - **Hội đồng chấm đề cương**: tạo hội đồng, phân ghế thủ công hoặc tự động, thêm người ngoài viện, import từ file, chấm điểm/nhận xét, theo dõi tiến độ chấm, xuất Excel.
-- **Phê duyệt**: nộp, duyệt hoặc trả lại kèm ghi chú, lưu lịch sử duyệt. **Workflow engine** cho phép định nghĩa quy trình duyệt nhiều bước (`/admin/workflows`). Khi không có định nghĩa nào đang bật, hệ thống dùng luồng duyệt một bước (`sp_approve_topic`).
+- **Phê duyệt**: nộp, duyệt hoặc trả lại kèm ghi chú, lưu lịch sử duyệt. **Workflow engine** cho phép định nghĩa quy trình duyệt nhiều bước (`/admin/workflows`). Khi không có định nghĩa nào đang bật, hệ thống dùng luồng duyệt một bước (`topicApprovalService.approve`).
 - **Cổng công khai**: đăng ký/đề xuất đề tài không cần tài khoản (có captcha), tra cứu trạng thái bằng mã hồ sơ, thư viện đề tài tiêu biểu.
 
 ### Đào tạo & CME
@@ -625,10 +625,7 @@ Hospital_RMS/
 | Procedure | Mục đích |
 |---|---|
 | `sp_set_actor` | Đặt `user_id` vào session context trước mỗi lệnh ghi (phục vụ audit). Code gọi qua `withActor` / `withActorTransaction` / `actorRequest` (`backend/src/config/db.js`), không viết `EXEC sp_set_actor` trong câu SQL |
-| `sp_gen_batch_id`, `sp_gen_file_id` | Sinh mã batch / file (chỉ `sp_upload_files` gọi). Mã khác sinh ở `backend/src/utils/idGenerator.js` |
-| `sp_grant_member_accounts` | **Không còn dùng** — ứng dụng cấp tài khoản qua `topicMemberService` (mật khẩu tạm ngẫu nhiên). Nên xoá khỏi DB |
-| `sp_approve_topic` | Luồng duyệt đề tài một bước |
-| `sp_upload_files` | Ghi nhiều file trong một batch |
+| `sp_gen_*`, `sp_approve_topic`, `sp_grant_member_accounts`, `sp_upload_files`, `sp_push_notification`, `sp_create_refresh_token`, `sp_deactivate_expired_accounts` | **Không còn dùng** — đã chuyển về JS (sinh mã ở `backend/src/utils/idGenerator.js`; duyệt đề tài ở `topicApprovalService`, không tự cấp tài khoản — cấp qua `topicMemberService`). Xoá khỏi DB ở bản phát hành sau |
 
 ### Ghi chú nghiệp vụ
 

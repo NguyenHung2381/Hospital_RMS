@@ -128,7 +128,7 @@ const submit = asyncHandler(async (req, res) => {
 // Nếu có workflow_definitions đang active cho resource 'topics' (admin phải
 // chủ động tạo + bật, xem 2026-10-06_workflow_engine.sql) → đi qua engine mới
 // (nhiều bước, gán theo vai trò). Mặc định KHÔNG có định nghĩa nào active nên
-// luôn rơi vào nhánh cũ (sp_approve_topic) — không đổi hành vi hiện tại.
+// luôn rơi vào nhánh cũ (topicApprovalService.approve) — không đổi hành vi hiện tại.
 const approve = asyncHandler(async (req, res) => {
 	const useWorkflow = await workflowEngineService.hasActiveDefinition('topics');
 	if (useWorkflow) {

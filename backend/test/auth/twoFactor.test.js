@@ -72,7 +72,7 @@ install(async (text, inputs) => {
 	if (/OUTPUT DELETED\.failed_login_count/.test(text))
 		return [{ prev_count: 0, locked_until: null }];
 	if (/SELECT token_version FROM users/.test(text)) return [{ token_version: 0 }];
-	if (/EXEC sp_create_refresh_token/.test(text)) return [{ id: `RT${crypto.randomUUID()}` }];
+	if (/INSERT INTO refresh_tokens/.test(text)) return [];
 	return [];
 });
 require('../../src/modules/audit/securityEventService').log = async () => {};

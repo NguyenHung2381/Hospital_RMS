@@ -364,11 +364,11 @@ Làm theo thứ tự, **ưu tiên chuyển về JS ngay trên SQL Server** (đú
 | Object | Việc |
 |---|---|
 | 7 `sp_gen_*` không ai gọi, `sp_process_daily_deadlines`, `sp_remind_deadlines` (no-op), `sp_close_supplement_window`, `sp_use_refresh_token` | Xoá bằng migration (sau khi kiểm tra SQL Agent trên prod). Không chuyển. |
-| 23 `sp_gen_*` đang dùng (gọi từ JS hoặc từ procedure khác) | **Đã xong phần JS:** `src/utils/idGenerator.js` (`nextId` + 1 hàm cho mỗi loại mã, cùng định dạng), khoá `lockResource(tx, key, timeoutMs)` ở 2 adapter (SQL Server: `sp_getapplock` LockOwner = Transaction; PG: `pg_advisory_xact_lock`). Không còn code JS gọi `sp_gen_*`. Còn 4 thủ tục chỉ được thủ tục khác gọi: `sp_gen_token_id` (`sp_create_refresh_token`), `sp_gen_user_id` (`sp_grant_member_accounts`, không còn dùng), `sp_gen_batch_id` / `sp_gen_file_id` (`sp_upload_files`) — chuyển cùng thủ tục gọi chúng. |
-| `trg_topic_auto_approval` | Chuyển về service duyệt đề tài trong JS (logic hiện đang "ẩn"). |
-| `sp_approve_topic` + `sp_grant_member_accounts` | Chuyển về JS service có test (150 dòng, gộp 3 việc). |
-| `sp_push_notification` + `sp_resolve_recipients` | Chuyển về `notifications` service JS. |
-| `sp_upload_files`, `trg_file_batch_count`, `sp_create_refresh_token`, `sp_deactivate_expired_accounts`, `sp_cleanup_*` | Chuyển về JS (đã có job Node cho việc định kỳ). `trg_dept_gen_id`: **đã bỏ** (migration `2026-12-14_bo_trigger_sinh_ma_khoa`, mã DVxxx sinh ở `genDeptId`). |
+| 23 `sp_gen_*` đang dùng (gọi từ JS hoặc từ procedure khác) | **Đã xong phần JS:** `src/utils/idGenerator.js` (`nextId` + 1 hàm cho mỗi loại mã, cùng định dạng), khoá `lockResource(tx, key, timeoutMs)` ở 2 adapter (SQL Server: `sp_getapplock` LockOwner = Transaction; PG: `pg_advisory_xact_lock`). Không còn code JS gọi `sp_gen_*`. 4 thủ tục chỉ được thủ tục khác gọi (`sp_gen_token_id`, `sp_gen_user_id`, `sp_gen_batch_id`, `sp_gen_file_id`) cũng thôi dùng vì các thủ tục gọi chúng đã chuyển về JS (`genFileBatchId` / `genFileId`). |
+| `trg_topic_auto_approval` | **Đã xong phần JS:** `src/modules/topics/approvalRecord.js` (`ensureApproval` khi tạo đề tài, `withApprovalSync` khi đổi trạng thái). Câu chỉ thêm khi chưa có phiếu ⇒ trigger còn trong DB vẫn đúng. |
+| `sp_approve_topic` + `sp_grant_member_accounts` | **Đã xong phần JS:** `topicApprovalService.approve` (phiếu duyệt + đề tài + `topic_progress`, thông báo 1 lần). **Bỏ việc tự cấp tài khoản thành viên khi duyệt** (thủ tục cũ tạo tài khoản không đăng nhập được và báo mật khẩu "123456", thông báo bị gửi 2 lần); cấp tài khoản qua nút "Cấp tài khoản" (`topicMemberService`). |
+| `sp_push_notification` + `sp_resolve_recipients` | **Đã xong phần JS:** `notificationService.push` (lọc người đang hoạt động, mã `NTF…` / batch `NTFB…` lấy từ `seq_notification_suffix` qua `nextSequenceValues` ở 2 adapter, ghi nhiều dòng 1 câu). |
+| `sp_upload_files`, `trg_file_batch_count`, `sp_create_refresh_token`, `sp_deactivate_expired_accounts`, `sp_cleanup_*` | **Đã xong phần JS** (trừ `trg_file_batch_count`, trigger đếm file — có bản PG, giữ): `fileService.uploadFiles`, `sessionTokenService` (INSERT `refresh_tokens`), `accountMaintenanceJob.deactivateExpired`; `sp_cleanup_*` đã được job Node thay từ trước. `trg_dept_gen_id`: **đã bỏ** (migration `2026-12-14_bo_trigger_sinh_ma_khoa`, mã DVxxx sinh ở `genDeptId`). |
 | 13 trigger audit `trg_*_audit` | Giữ ở DB. Trên PG: 1 hàm `audit_set_updated()` dùng chung, `BEFORE UPDATE ... FOR EACH ROW`, đọc `current_setting('app.current_user_id', true)`, chỉ cập nhật khi các cột theo dõi thay đổi (`NEW.col IS DISTINCT FROM OLD.col`). |
 | `sp_set_actor` | Bỏ; thay bằng `withActor` (mục 5.1). |
 | `fn_normalize_phone` | Viết lại PL/pgSQL hoặc chuyển về JS. |
@@ -430,8 +430,18 @@ thường. Mỗi nhóm là 1 PR nhỏ theo module.
   so với thủ tục cũ trên cùng dữ liệu) và `test-integration-pg/idGenerator.test.js`.
   Bỏ luôn trigger `trg_dept_gen_id` (INSTEAD OF INSERT làm mất cột khi tạo khoa) bằng
   migration `2026-12-14_bo_trigger_sinh_ma_khoa` (có bản PG).
-- [ ] Chuyển `trg_topic_auto_approval`, `sp_approve_topic`, `sp_push_notification`,
-  `sp_upload_files`... về JS, có test. Xoá procedure không dùng.
+- [x] Chuyển `trg_topic_auto_approval`, `sp_approve_topic`, `sp_push_notification`,
+  `sp_upload_files`, `sp_create_refresh_token`, `sp_deactivate_expired_accounts` về JS
+  (bảng mục 5.4); `check:tsql` exec_proc 7 → 2. Duyệt đề tài **không còn tự cấp tài khoản
+  thành viên**. Kiểm bằng `test/topics/approvalRecord.test.js` và
+  `test-integration/procToJs.cases.js` (chạy trên SQL Server và PG, rollback).
+  Code mới so cột BIT qua tham số `sql.Bit` và chạy từng câu riêng (`actorRequest().query(mảng)`):
+  PG không so boolean với số và không ghép nhiều câu có tham số bằng `;`.
+- [ ] Xoá khỏi DB (migration ở **bản phát hành sau**, khi không còn backend cũ chạy song song
+  lúc deploy cuốn chiếu): trigger `trg_topic_auto_approval`; thủ tục `sp_approve_topic`,
+  `sp_grant_member_accounts`, `sp_push_notification`, `sp_resolve_recipients`,
+  `sp_upload_files`, `sp_create_refresh_token`, `sp_deactivate_expired_accounts`, các
+  `sp_gen_*`, `sp_cleanup_*`.
 - [ ] Đổi cú pháp chạy được trên cả 2 DB: `ISNULL` → `COALESCE`, `+` nối chuỗi →
   `CONCAT`, `CAST AS NVARCHAR` → `CAST AS VARCHAR`, bỏ `[...]` không cần thiết.
 - [ ] `OPENJSON(@ids)` → `inClause` (đã có ở `src/utils/sqlFilters.js`) hoặc 1

@@ -144,6 +144,20 @@ const lockResource = async (tx, resource, timeoutMs = 5000) => {
 	return r.recordset[0].rc >= 0;
 };
 
+// Lấy `count` số kế tiếp của SEQUENCE `name` (1 câu lệnh). Thứ tự trả về không
+// quan trọng. Dùng cho mã có hậu tố từ sequence (vd. thông báo NTF...).
+const nextSequenceValues = async (txOrPool, name, count) => {
+	if (!/^\w+$/.test(name)) throw new Error(`Tên sequence không hợp lệ: ${name}`);
+	if (count < 1) return [];
+	const r = await txOrPool
+		.request()
+		.input('arr', sql.NVarChar(sql.MAX), JSON.stringify(new Array(count).fill(0)))
+		.query(
+			`SELECT NEXT VALUE FOR dbo.${name} OVER (ORDER BY CAST([key] AS INT)) AS v FROM OPENJSON(@arr)`,
+		);
+	return r.recordset.map((x) => Number(x.v));
+};
+
 module.exports = {
 	client: 'mssql',
 	getPool,
@@ -152,5 +166,6 @@ module.exports = {
 	withTransaction,
 	withActor,
 	lockResource,
+	nextSequenceValues,
 	tlsOptions,
 };

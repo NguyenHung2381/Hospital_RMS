@@ -35,6 +35,8 @@ const withActorTransaction = (actorId, fn) =>
  *   const req = actorRequest(actorId).input('id', sql.VarChar(20), id);
  *   if (data.name !== undefined) req.input('name', sql.NVarChar(255), data.name);
  *   await req.query(`UPDATE ... WHERE id = @id`);
+ * Nhiều câu thì truyền mảng: chạy lần lượt trong cùng 1 transaction, trả kết quả
+ * câu đầu (PG không cho ghép nhiều câu có tham số vào 1 lệnh bằng ';').
  * @param {string | null | undefined} actorId
  */
 const actorRequest = (actorId) => {
@@ -46,12 +48,16 @@ const actorRequest = (actorId) => {
 			inputs.push(args);
 			return req;
 		},
-		/** @param {string} text */
+		/** @param {string | string[]} text */
 		query: (text) =>
-			withActorTransaction(actorId, (tx) => {
-				const r = tx.request();
-				for (const a of inputs) r.input(.../** @type {[string, any, any]} */ (a));
-				return r.query(text);
+			withActorTransaction(actorId, async (tx) => {
+				const results = [];
+				for (const stmt of Array.isArray(text) ? text : [text]) {
+					const r = tx.request();
+					for (const a of inputs) r.input(.../** @type {[string, any, any]} */ (a));
+					results.push(await r.query(stmt));
+				}
+				return results[0];
 			}),
 	};
 	return req;

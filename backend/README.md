@@ -203,8 +203,4 @@ Authorization: Bearer <access_token>
 
 - `sp_set_actor` — Set session context user_id trước mỗi thao tác write. Code không gọi trực tiếp: dùng `withActor(tx, actorId)` / `withActorTransaction` / `actorRequest` ở `src/config/db.js` (chạy được cả trên PostgreSQL)
 - Mã đề tài / người dùng / thành viên / khóa học... sinh ở `src/utils/idGenerator.js` (thay các `sp_gen_*`, chạy được cả trên PostgreSQL)
-- `sp_gen_batch_id` — Sinh ID batch upload
-- `sp_gen_file_id` — Sinh ID file
-- `sp_grant_member_accounts` — Cấp tài khoản cho thành viên
-- `sp_approve_topic` — Phê duyệt đề tài
-- `sp_upload_files` — Upload nhiều file trong một batch
+- Duyệt đề tài, tải file, thông báo, refresh token, khoá tài khoản hết hạn: viết bằng JS (`topicApprovalService`, `fileService`, `notificationService`, `sessionTokenService`, `accountMaintenanceJob`). Các thủ tục cũ (`sp_approve_topic`, `sp_upload_files`, `sp_push_notification`...) còn trong DB nhưng code không gọi; xoá ở bản phát hành sau

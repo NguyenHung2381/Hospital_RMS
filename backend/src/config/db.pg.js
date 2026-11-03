@@ -304,6 +304,19 @@ const lockResource = async (tx, resource, timeoutMs = 5000) => {
 	return true;
 };
 
+// Lấy `count` số kế tiếp của SEQUENCE `name` (1 câu lệnh). Thứ tự trả về không
+// quan trọng. Dùng cho mã có hậu tố từ sequence (vd. thông báo NTF...).
+const nextSequenceValues = async (txOrPool, name, count) => {
+	if (!/^\w+$/.test(name)) throw new Error(`Tên sequence không hợp lệ: ${name}`);
+	if (count < 1) return [];
+	const r = await txOrPool
+		.request()
+		.input('name', sql.VarChar(128), name)
+		.input('n', sql.Int, count)
+		.query('SELECT nextval(CAST(@name AS regclass)) AS v FROM generate_series(1, @n)');
+	return r.recordset.map((x) => Number(x.v));
+};
+
 module.exports = {
 	client: 'pg',
 	getPool,
@@ -312,6 +325,7 @@ module.exports = {
 	withTransaction,
 	withActor,
 	lockResource,
+	nextSequenceValues,
 	sslOptions,
 	toMssqlResult,
 };

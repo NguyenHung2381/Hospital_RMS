@@ -10,6 +10,7 @@ const { v4: uuidv4 } = require('uuid');
 const securityEvents = require('../audit/securityEventService');
 const trustedDevices = require('./trustedDeviceService');
 const { httpError } = require('../../utils/httpError');
+const { VN_OFFSET_MS } = require('../../utils/vnDate');
 const logger = require('../../config/logger');
 
 // refresh_tokens.token lưu HASH, không lưu JWT gốc — nếu DB bị lộ (backup,
@@ -58,7 +59,7 @@ const signSession = async (
 	// jti ngẫu nhiên: payload chỉ có {id} + JWT iat chỉ chính xác tới giây, nên
 	// 2 lần sign trong cùng 1 giây (không hiếm với round-trip DB nhanh) cho ra
 	// CHUỖI TOKEN GIỐNG NHAU — phá vỡ bảo đảm "token cũ sau rotate bị từ chối".
-	// Hạn JWT khớp hạn trong DB (sp_create_refresh_token: 30 ngày nếu ghi nhớ).
+	// Hạn JWT khớp hạn trong DB (30 ngày nếu ghi nhớ, xem INSERT refresh_tokens dưới).
 	const refreshToken = jwt.sign({ id: user.id, jti: uuidv4() }, process.env.JWT_REFRESH_SECRET, {
 		algorithm: 'HS256',
 		expiresIn: /** @type {import('jsonwebtoken').SignOptions['expiresIn']} */ (
@@ -68,21 +69,21 @@ const signSession = async (
 		audience: 'refresh',
 	});
 
-	// Store refresh token via SP (handles id generation + remember_me)
-	const created = await pool
+	// Lưu refresh token (trước là sp_create_refresh_token): mã 'RT' + 32 ký tự hex
+	// hoa, hạn 30 ngày nếu ghi nhớ, 7 ngày nếu không — lưu giờ VN như các cột thời gian khác.
+	const tokenId = `RT${uuidv4().replace(/-/g, '').toUpperCase()}`;
+	const days = remember ? 30 : 7;
+	await pool
 		.request()
+		.input('id', sql.VarChar(60), tokenId)
 		.input('user_id', sql.VarChar(20), user.id)
 		.input('token', sql.VarChar(64), hashToken(refreshToken))
-		.input('remember_me', sql.Bit, remember ? 1 : 0)
-		.execute('sp_create_refresh_token');
+		.input('expires_at', sql.DateTime2, new Date(Date.now() + VN_OFFSET_MS + days * 86400000))
+		.input('remember_me', sql.Bit, remember ? 1 : 0).query(`
+      INSERT INTO refresh_tokens (id, user_id, token, expires_at, remember_me)
+      VALUES (@id, @user_id, @token, @expires_at, @remember_me)`);
 
-	await tagRefreshTokenSession(
-		pool,
-		hashToken(refreshToken),
-		ip,
-		userAgent,
-		familyId || created.recordset?.[0]?.id || uuidv4(),
-	);
+	await tagRefreshTokenSession(pool, hashToken(refreshToken), ip, userAgent, familyId || tokenId);
 	return { accessToken, refreshToken, remember: !!remember };
 };
 

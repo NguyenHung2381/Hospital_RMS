@@ -1,9 +1,9 @@
 {
-	"getdate": 194,
+	"getdate": 193,
 	"n_prefix": 76,
 	"isnull": 107,
 	"set_actor": 0,
-	"exec_proc": 7,
+	"exec_proc": 2,
 	"declare": 60,
 	"recordsets": 110,
 	"top": 72,

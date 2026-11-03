@@ -26,8 +26,8 @@ const setup = () => {
 			return inputs.login === user.username ? [user] : [];
 		if (/WHERE u\.email = @login/.test(text))
 			return user.email && inputs.login === user.email ? [user] : [];
-		if (/EXEC sp_create_refresh_token/.test(text)) {
-			const id = `RT${++seq}`;
+		if (/INSERT INTO refresh_tokens/.test(text)) {
+			const id = inputs.id || `RT${++seq}`;
 			const days = inputs.remember_me ? 30 : 7;
 			rows.push({
 				id,
