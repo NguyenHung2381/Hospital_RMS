@@ -62,11 +62,24 @@ const purgeExpiredRefreshTokens = async (pool) => {
 	if (purged > 0) logger.info(`[job:account_maintenance] Đã xóa ${purged} refresh token hết hạn.`);
 };
 
+// Mã OTP quên mật khẩu chỉ bị xoá khi xin mã mới hoặc đặt lại thành công; mã
+// hết hạn mà không dùng thì nằm lại mãi. expires_at lưu giờ UTC (SYSUTCDATETIME,
+// passwordResetService) nên so với new Date() — driver gửi Date theo UTC.
+const purgeExpiredResetOtps = async (pool) => {
+	const result = await pool
+		.request()
+		.input('now', sql.DateTime2, new Date())
+		.query('DELETE FROM password_reset_otps WHERE expires_at < @now');
+	const purged = result.rowsAffected?.[0] ?? 0;
+	if (purged > 0) logger.info(`[job:account_maintenance] Đã xóa ${purged} mã OTP hết hạn.`);
+};
+
 const run = async () => {
 	const pool = await getPool();
 	await deactivateExpiredAccounts(pool);
 	await warnStalePasswords(pool);
 	await purgeExpiredRefreshTokens(pool);
+	await purgeExpiredResetOtps(pool);
 };
 
-module.exports = { run };
+module.exports = { run, purgeExpiredResetOtps };

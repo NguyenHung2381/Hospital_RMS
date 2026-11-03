@@ -4,6 +4,7 @@ const accountMaintenanceJob = require('./accountMaintenanceJob');
 const personLinkJob = require('./personLinkJob');
 const supplementDeadlineJob = require('./supplementDeadlineJob');
 const notificationCleanupJob = require('./notificationCleanupJob');
+const dataRetentionJob = require('./dataRetentionJob');
 const practiceAutoService = require('../modules/training/courses/practiceAutoService');
 const logger = require('../config/logger');
 
@@ -57,6 +58,11 @@ const start = () => {
 
 	// 04:00 sáng: xóa thông báo cũ (đã đọc > 90 ngày, chưa đọc > 180 ngày)
 	cron.schedule('0 4 * * *', runSafely('notification_cleanup', notificationCleanupJob.run), {
+		timezone: TZ,
+	});
+
+	// 04:30 sáng: xóa nhật ký cũ (security_events > 24 tháng, job_execution_log theo ngày > 180 ngày)
+	cron.schedule('30 4 * * *', runSafely('data_retention', dataRetentionJob.run), {
 		timezone: TZ,
 	});
 
