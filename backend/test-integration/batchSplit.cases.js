@@ -1038,10 +1038,91 @@ const run = async (t, db, { skip = [] } = {}) => {
 					(s) => require('../src/modules/catalog/levelService').getAll({ search: s }),
 				],
 			];
-			// Chưa chạy được trên PG (ngoài mục tìm kiếm): gộp hồ sơ — tiền tố schema dbo. ở personMergeService
-			const pgTodo = ['gộp hồ sơ'];
-			for (const [label, fn] of calls)
-				if (!(db.client === 'pg' && pgTodo.includes(label))) await same(label, fn, kw);
+			for (const [label, fn] of calls) await same(label, fn, kw);
+		},
+	);
+
+	// Bỏ tiền tố dbo. (PG không có schema dbo), hàm fn_normalize_phone qua udf(), lô nhiều câu của
+	// mergeCandidate tách từng câu. mergeCandidate chạy trong withTransaction (đã thay bằng tx rollback).
+	await step(
+		'gộp hồ sơ: danh sách, chi tiết, gộp cặp, chuyển cặp chờ sang hồ sơ giữ lại, từ chối / mở lại',
+		async () => {
+			const [ph] = await q(`SELECT ${db.udf('fn_normalize_phone', "'+84 912-345-678'")} AS p`);
+			assert.equal(ph.p, '912345678');
+			const merge = require('../src/modules/persons/personMergeService');
+			const ps = await q(`
+      SELECT p.id FROM persons p WHERE p.status = 'ACTIVE'
+        AND NOT EXISTS (SELECT 1 FROM users u WHERE u.person_id = p.id)
+        -- học viên dữ liệu cũ có mã sai CHECK (NOT VALID) ⇒ UPDATE person_id bị chặn
+        AND NOT EXISTS (SELECT 1 FROM trainees t WHERE t.person_id = p.id)
+        AND NOT EXISTS (SELECT 1 FROM person_merge_candidates c WHERE c.person_a_id = p.id OR c.person_b_id = p.id)
+        AND NOT EXISTS (SELECT 1 FROM person_merge_log l WHERE l.kept_id = p.id OR l.merged_id = p.id)
+      ORDER BY p.id OFFSET 0 ROWS FETCH NEXT 4 ROWS ONLY`);
+			if (ps.length < 4) return;
+			const [a, b, c, d] = ps.map((x) => x.id); // a < b < c < d
+			await q(
+				`INSERT INTO person_merge_candidates (person_a_id, person_b_id, reason) VALUES
+         (@a, @b, 'SAME_NAME'), (@b, @c, 'SAME_PHONE'), (@c, @d, 'SAME_EMAIL')`,
+				{ a, b, c, d },
+			);
+			const idOf = async (x, y) =>
+				(
+					await q(
+						'SELECT id FROM person_merge_candidates WHERE person_a_id = @x AND person_b_id = @y',
+						{ x, y },
+					)
+				)[0]?.id;
+			const ab = await idOf(a, b);
+			const cd = await idOf(c, d);
+
+			const list = await merge.listCandidates({ search: 'a' });
+			assert.ok(Array.isArray(list.data ?? list));
+			const stats = await merge.getStats();
+			assert.equal(typeof stats.by_status.PENDING, 'number');
+			assert.ok(stats.by_status.PENDING >= 3 && stats.pending_by_reason.SAME_NAME >= 1);
+			// SQL Server: getCandidate chạy song song 2 câu (Promise.all) — trên 1 transaction test thì
+			// EREQINPROG; chạy thật dùng pool nên không sao. PG: client xếp hàng các câu.
+			if (db.client === 'pg') assert.equal((await merge.getCandidate(ab, true)).a.id, a);
+
+			// Giữ A: b gộp vào a; cặp (b, c) chờ → chuyển thành (a, c)
+			const r = await merge.mergeCandidate(ab, { keep: 'A', note: 'thử' }, actor.id);
+			assert.deepEqual([r.kept_id, r.merged_id], [a, b]);
+			const [pb] = await q('SELECT status, merged_into_id FROM persons WHERE id = @b', { b });
+			assert.deepEqual({ ...pb }, { status: 'MERGED', merged_into_id: a });
+			const rows = await q(
+				`SELECT person_a_id AS x, person_b_id AS y, status, note FROM person_merge_candidates
+       WHERE person_a_id IN (@a, @b) ORDER BY person_a_id, person_b_id`,
+				{ a, b },
+			);
+			assert.deepEqual(
+				rows.map((x) => [x.x, x.y, x.status]),
+				[
+					[a, b, 'MERGED'],
+					[a, c, 'PENDING'],
+					[b, c, 'MERGED'],
+				],
+			);
+			assert.equal(rows[1].note, `Chuyển từ hồ sơ đã gộp ${b}`);
+			assert.equal(rows[2].note, `Chuyển sang hồ sơ ${a}`);
+			const [log] = await q(
+				'SELECT kept_id, merged_id FROM person_merge_log WHERE candidate_id = @id',
+				{ id: ab },
+			);
+			assert.deepEqual({ ...log }, { kept_id: a, merged_id: b });
+
+			// Từ chối rồi mở lại
+			await merge.rejectCandidate(cd, 'khác người', actor.id);
+			assert.equal(
+				(await q('SELECT status FROM person_merge_candidates WHERE id = @id', { id: cd }))[0]
+					.status,
+				'REJECTED',
+			);
+			await merge.reopenCandidate(cd, actor.id);
+			assert.equal(
+				(await q('SELECT status FROM person_merge_candidates WHERE id = @id', { id: cd }))[0]
+					.status,
+				'PENDING',
+			);
 		},
 	);
 

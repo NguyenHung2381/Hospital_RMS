@@ -487,6 +487,8 @@ const likeCi = (expr, pattern) => `${expr} LIKE ${pattern} ESCAPE ''`;
 const strPos = (haystack, needle) => `strpos(${haystack}, ${needle})`;
 /** @param {string} expr */
 const strLen = (expr) => `length(rtrim(${expr}))`;
+/** @param {string} name @param {...string} args */
+const udf = (name, ...args) => `${name}(${args.join(', ')})`;
 
 // Cùng giao diện với db.mssql.js (xem chú thích ở đó). INSERT … ON CONFLICT … DO UPDATE:
 // `EXCLUDED.cột` giữ nguyên nghĩa của PG; khoá có cột NULL cần UNIQUE NULLS NOT DISTINCT.
@@ -565,6 +567,7 @@ module.exports = {
 	likeCi,
 	strPos,
 	strLen,
+	udf,
 	sslOptions,
 	toMssqlResult,
 };

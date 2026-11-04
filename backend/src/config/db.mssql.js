@@ -349,6 +349,11 @@ const strPos = (haystack, needle) => `CHARINDEX(${needle}, ${haystack})`;
 /** @param {string} expr */
 const strLen = (expr) => `LEN(${expr})`;
 
+// Gọi hàm vô hướng tự viết: SQL Server bắt buộc ghi schema (dbo.fn_x(...)), PG không có schema dbo.
+//   udf('fn_normalize_phone', 'p.phone')
+/** @param {string} name @param {...string} args */
+const udf = (name, ...args) => `dbo.${name}(${args.join(', ')})`;
+
 // Thêm, trùng khoá thì sửa (upsert) — 1 câu, an toàn khi 2 request cùng lúc.
 //   table   bảng đích (bí danh tgt — dùng được trong update)
 //   key     cột khoá xung đột: phải là khoá chính / UNIQUE (PG cần cho ON CONFLICT)
@@ -439,5 +444,6 @@ module.exports = {
 	likeCi,
 	strPos,
 	strLen,
+	udf,
 	tlsOptions,
 };

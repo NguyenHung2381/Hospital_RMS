@@ -48,12 +48,12 @@ const SOURCE_TABLES = [
 ];
 
 const REF_COUNT_SQL = (alias) => `(
-	  (SELECT COUNT(*) FROM dbo.users x WHERE x.person_id = ${alias}.id)
-	+ (SELECT COUNT(*) FROM dbo.trainees x WHERE x.person_id = ${alias}.id)
-	+ (SELECT COUNT(*) FROM dbo.lecturers x WHERE x.person_id = ${alias}.id)
-	+ (SELECT COUNT(*) FROM dbo.external_reviewers x WHERE x.person_id = ${alias}.id)
-	+ (SELECT COUNT(*) FROM dbo.topic_members x WHERE x.person_id = ${alias}.id)
-	+ (SELECT COUNT(*) FROM dbo.seminar_participants x WHERE x.person_id = ${alias}.id))`;
+	  (SELECT COUNT(*) FROM users x WHERE x.person_id = ${alias}.id)
+	+ (SELECT COUNT(*) FROM trainees x WHERE x.person_id = ${alias}.id)
+	+ (SELECT COUNT(*) FROM lecturers x WHERE x.person_id = ${alias}.id)
+	+ (SELECT COUNT(*) FROM external_reviewers x WHERE x.person_id = ${alias}.id)
+	+ (SELECT COUNT(*) FROM topic_members x WHERE x.person_id = ${alias}.id)
+	+ (SELECT COUNT(*) FROM seminar_participants x WHERE x.person_id = ${alias}.id))`;
 
 const personCols = (alias, prefix) => `
 	${alias}.id AS ${prefix}_id, ${alias}.full_name AS ${prefix}_full_name, ${alias}.date_of_birth AS ${prefix}_date_of_birth,
@@ -61,7 +61,7 @@ const personCols = (alias, prefix) => `
 	${alias}.phone AS ${prefix}_phone, ${alias}.is_internal AS ${prefix}_is_internal, ${alias}.is_verified AS ${prefix}_is_verified,
 	${alias}.status AS ${prefix}_status, ${alias}.origin_table AS ${prefix}_origin_table, ${alias}.created_at AS ${prefix}_created_at,
 	${REF_COUNT_SQL(alias)} AS ${prefix}_ref_count,
-	CASE WHEN EXISTS (SELECT 1 FROM dbo.users ux WHERE ux.person_id = ${alias}.id) THEN 1 ELSE 0 END AS ${prefix}_has_account`;
+	CASE WHEN EXISTS (SELECT 1 FROM users ux WHERE ux.person_id = ${alias}.id) THEN 1 ELSE 0 END AS ${prefix}_has_account`;
 
 // CCCD chỉ hiện đầy đủ cho người có quyền xem dữ liệu nhạy cảm
 const maskId = (v, canSee) => (v && !canSee ? `••••••${String(v).slice(-4)}` : v);
@@ -89,10 +89,10 @@ const CAND_COLS = `
 	${personCols('a', 'a')},
 	${personCols('b', 'b')}`;
 const CAND_FROM = `
-	FROM dbo.person_merge_candidates c
-	JOIN dbo.persons a ON a.id = c.person_a_id
-	JOIN dbo.persons b ON b.id = c.person_b_id
-	LEFT JOIN dbo.users ru ON ru.id = c.reviewed_by`;
+	FROM person_merge_candidates c
+	JOIN persons a ON a.id = c.person_a_id
+	JOIN persons b ON b.id = c.person_b_id
+	LEFT JOIN users ru ON ru.id = c.reviewed_by`;
 
 const shapeCandidate = (r, canSee) => ({
 	id: r.id,
@@ -163,7 +163,7 @@ const getStats = async () => {
 	const r = await pool
 		.request()
 		.query(
-			`SELECT status, reason, COUNT(*) AS n FROM dbo.person_merge_candidates GROUP BY status, reason`,
+			`SELECT status, reason, COUNT(*) AS n FROM person_merge_candidates GROUP BY status, reason`,
 		);
 	const byStatus = { PENDING: 0, MERGED: 0, REJECTED: 0 };
 	const pendingByReason = {};
@@ -185,21 +185,21 @@ const recordsOf = async (pool, personId) => {
 		.input('reviewer', sql.NVarChar(50), 'Chuyên gia ngoài viện').query(`
 		SELECT source, ref_id, label FROM (
 			SELECT 'users' AS source, u.id AS ref_id, CONCAT(u.username, ' · ', COALESCE(d.name, @no_dept)) AS label
-			FROM dbo.users u LEFT JOIN dbo.departments d ON d.id = u.department_id WHERE u.person_id = @pid
+			FROM users u LEFT JOIN departments d ON d.id = u.department_id WHERE u.person_id = @pid
 			UNION ALL
 			SELECT 'trainees', t.id, COALESCE(tt.name, @trainee)
-			FROM dbo.trainees t LEFT JOIN dbo.trainee_types tt ON tt.id = t.trainee_type_id WHERE t.person_id = @pid
+			FROM trainees t LEFT JOIN trainee_types tt ON tt.id = t.trainee_type_id WHERE t.person_id = @pid
 			UNION ALL
-			SELECT 'lecturers', l.id, COALESCE(l.specialty, @lecturer) FROM dbo.lecturers l WHERE l.person_id = @pid
+			SELECT 'lecturers', l.id, COALESCE(l.specialty, @lecturer) FROM lecturers l WHERE l.person_id = @pid
 			UNION ALL
 			SELECT 'external_reviewers', r.id, COALESCE(r.organization, @reviewer)
-			FROM dbo.external_reviewers r WHERE r.person_id = @pid
+			FROM external_reviewers r WHERE r.person_id = @pid
 			UNION ALL
 			SELECT 'topic_members', m.id, CONCAT(t.title, ' (', m.role, ')')
-			FROM dbo.topic_members m JOIN dbo.topics t ON t.id = m.topic_id WHERE m.person_id = @pid
+			FROM topic_members m JOIN topics t ON t.id = m.topic_id WHERE m.person_id = @pid
 			UNION ALL
 			SELECT 'seminar_participants', p.id, s.title
-			FROM dbo.seminar_participants p JOIN dbo.seminars s ON s.id = p.seminar_id WHERE p.person_id = @pid
+			FROM seminar_participants p JOIN seminars s ON s.id = p.seminar_id WHERE p.person_id = @pid
 		) z ORDER BY source, ref_id OFFSET 0 ROWS FETCH NEXT 60 ROWS ONLY`);
 	return r.recordset;
 };
@@ -250,7 +250,7 @@ const loadOpenCandidate = async (tx, id) => {
 	const r = await new sql.Request(tx)
 		.input('id', sql.Int, id)
 		.query(
-			`SELECT id, person_a_id, person_b_id, reason, status FROM dbo.person_merge_candidates WHERE id = @id`,
+			`SELECT id, person_a_id, person_b_id, reason, status FROM person_merge_candidates WHERE id = @id`,
 		);
 	const c = r.recordset[0];
 	if (!c) throw httpError(404, 'Không tìm thấy cặp nghi trùng.');
@@ -258,6 +258,16 @@ const loadOpenCandidate = async (tx, id) => {
 };
 
 const setActor = (tx, actorId) => withActor(tx, actorId || null);
+
+// PG: mỗi lời gọi có tham số chỉ được 1 câu ⇒ chạy lần lượt từng câu (cùng tham số, cùng transaction).
+// inputs: [[tên, kiểu, giá trị], ...]
+const runEach = async (tx, inputs, statements) => {
+	for (const text of statements) {
+		const req = new sql.Request(tx);
+		for (const [name, type, value] of inputs) req.input(name, type, value);
+		await req.query(text);
+	}
+};
 
 /**
  * Gộp cặp `id`. keep = 'A' | 'B' (hồ sơ giữ lại). fields[f] = 'keep' | 'lose' chọn giá trị từng trường;
@@ -287,7 +297,7 @@ const mergeCandidate = async (
 			.input('l', sql.VarChar(20), loseId)
 			.query(`SELECT id, full_name, date_of_birth, gender, national_id, email, phone, is_internal, is_verified, status,
 			               origin_table, origin_id, merged_into_id
-			        FROM dbo.persons WHERE id IN (@k, @l)`);
+			        FROM persons WHERE id IN (@k, @l)`);
 		const keepP = pr.recordset.find((x) => x.id === keepId);
 		const loseP = pr.recordset.find((x) => x.id === loseId);
 		if (!keepP || !loseP) throw httpError(404, 'Không tìm thấy hồ sơ.');
@@ -297,7 +307,7 @@ const mergeCandidate = async (
 		const acc = await new sql.Request(tx)
 			.input('k', sql.VarChar(20), keepId)
 			.input('l', sql.VarChar(20), loseId)
-			.query(`SELECT person_id FROM dbo.users WHERE person_id IN (@k, @l)`);
+			.query(`SELECT person_id FROM users WHERE person_id IN (@k, @l)`);
 		if (new Set(acc.recordset.map((x) => x.person_id)).size > 1) {
 			throw httpError(
 				409,
@@ -323,7 +333,7 @@ const mergeCandidate = async (
 				.input('l', sql.VarChar(20), loseId)
 				.query(
 					updateReturning(
-						`UPDATE dbo.${table} SET person_id = @k${keepUpdatedAt ? ', updated_at = updated_at' : ''}`,
+						`UPDATE ${table} SET person_id = @k${keepUpdatedAt ? ', updated_at = updated_at' : ''}`,
 						'person_id = @l',
 						[['new.id', 'id', 'VARCHAR(30)']],
 					),
@@ -332,13 +342,16 @@ const mergeCandidate = async (
 		}
 
 		// 2) hồ sơ bị gộp (xóa CCCD trước để nhường ràng buộc UNIQUE cho hồ sơ giữ lại)
-		await new sql.Request(tx)
-			.input('k', sql.VarChar(20), keepId)
-			.input('l', sql.VarChar(20), loseId)
-			.input('actor', sql.VarChar(20), actorId || null).query(`
-				UPDATE dbo.persons SET status = 'MERGED', merged_into_id = @k, national_id = NULL,
-				       updated_at = ${nowSql}, updated_by = @actor WHERE id = @l;
-				UPDATE dbo.persons SET merged_into_id = @k WHERE merged_into_id = @l;`);
+		const kl = [
+			['k', sql.VarChar(20), keepId],
+			['l', sql.VarChar(20), loseId],
+			['actor', sql.VarChar(20), actorId || null],
+		];
+		await runEach(tx, kl, [
+			`UPDATE persons SET status = 'MERGED', merged_into_id = @k, national_id = NULL,
+			        updated_at = ${nowSql}, updated_by = @actor WHERE id = @l`,
+			'UPDATE persons SET merged_into_id = @k WHERE merged_into_id = @l',
+		]);
 
 		// 3) hồ sơ giữ lại
 		await new sql.Request(tx)
@@ -352,46 +365,48 @@ const mergeCandidate = async (
 			.input('phone', sql.VarChar(20), finalVal.phone || null)
 			.input('internal', sql.Bit, finalVal.is_internal == null ? null : !!finalVal.is_internal)
 			.input('verified', sql.Bit, !!(keepP.is_verified || loseP.is_verified)).query(`
-				UPDATE dbo.persons SET full_name = @full_name, date_of_birth = @dob, gender = @gender, national_id = @national_id,
+				UPDATE persons SET full_name = @full_name, date_of_birth = @dob, gender = @gender, national_id = @national_id,
 				       email = @email, phone = @phone, is_internal = @internal, is_verified = @verified,
 				       updated_at = ${nowSql}, updated_by = @actor
 				WHERE id = @k`);
 
 		// 4) đóng cặp này + xử lý các cặp khác đang chờ có dính hồ sơ bị gộp
-		await new sql.Request(tx)
-			.input('cid', sql.Int, id)
-			.input('k', sql.VarChar(20), keepId)
-			.input('l', sql.VarChar(20), loseId)
-			.input('actor', sql.VarChar(20), actorId || null)
-			.input('note', sql.NVarChar(500), note || null)
-			// Ghi chú ghép sẵn bằng JS (chạy được trên PG, không cần chuỗi có tiền tố N + nối chuỗi)
-			.input('note_same', sql.NVarChar(500), `Đã gộp cùng lượt (cặp #${id})`)
-			.input('note_from', sql.NVarChar(500), `Chuyển từ hồ sơ đã gộp ${loseId}`)
-			.input('note_to', sql.NVarChar(500), `Chuyển sang hồ sơ ${keepId}`).query(`
-				UPDATE dbo.person_merge_candidates SET status = 'MERGED', reviewed_by = @actor, reviewed_at = ${nowSql},
-				       note = COALESCE(@note, note) WHERE id = @cid;
-
-				-- cặp khác giữa đúng hai hồ sơ này (lý do khác) → cũng đã giải quyết
-				UPDATE dbo.person_merge_candidates SET status = 'MERGED', reviewed_by = @actor, reviewed_at = ${nowSql},
+		// Ghi chú ghép sẵn bằng JS (chạy được trên PG, không cần chuỗi có tiền tố N + nối chuỗi)
+		await runEach(
+			tx,
+			[
+				...kl,
+				['cid', sql.Int, id],
+				['note', sql.NVarChar(500), note || null],
+				['note_same', sql.NVarChar(500), `Đã gộp cùng lượt (cặp #${id})`],
+				['note_from', sql.NVarChar(500), `Chuyển từ hồ sơ đã gộp ${loseId}`],
+				['note_to', sql.NVarChar(500), `Chuyển sang hồ sơ ${keepId}`],
+			],
+			[
+				`UPDATE person_merge_candidates SET status = 'MERGED', reviewed_by = @actor, reviewed_at = ${nowSql},
+				        note = COALESCE(@note, note) WHERE id = @cid`,
+				// cặp khác giữa đúng hai hồ sơ này (lý do khác) → cũng đã giải quyết
+				`UPDATE person_merge_candidates SET status = 'MERGED', reviewed_by = @actor, reviewed_at = ${nowSql},
 				       note = @note_same
 				WHERE status = 'PENDING' AND id <> @cid
-				  AND ((person_a_id = @k AND person_b_id = @l) OR (person_a_id = @l AND person_b_id = @k));
-
-				-- cặp chờ giữa hồ sơ bị gộp và người thứ ba → chuyển sang hồ sơ giữ lại (nếu chưa có)
-				INSERT INTO dbo.person_merge_candidates (person_a_id, person_b_id, reason, note, created_by)
+				  AND ((person_a_id = @k AND person_b_id = @l) OR (person_a_id = @l AND person_b_id = @k))`,
+				// cặp chờ giữa hồ sơ bị gộp và người thứ ba → chuyển sang hồ sơ giữ lại (nếu chưa có)
+				`INSERT INTO person_merge_candidates (person_a_id, person_b_id, reason, note, created_by)
 				SELECT CASE WHEN o.other < @k THEN o.other ELSE @k END, CASE WHEN o.other < @k THEN @k ELSE o.other END,
-				       o.reason, @note_from
+				       o.reason, @note_from, @actor
 				FROM (SELECT CASE WHEN c.person_a_id = @l THEN c.person_b_id ELSE c.person_a_id END AS other, c.reason
-				      FROM dbo.person_merge_candidates c
+				      FROM person_merge_candidates c
 				      WHERE c.status = 'PENDING' AND (c.person_a_id = @l OR c.person_b_id = @l)) o
 				WHERE o.other <> @k
-				  AND NOT EXISTS (SELECT 1 FROM dbo.person_merge_candidates x
+				  AND NOT EXISTS (SELECT 1 FROM person_merge_candidates x
 				                  WHERE x.person_a_id = CASE WHEN o.other < @k THEN o.other ELSE @k END
 				                    AND x.person_b_id = CASE WHEN o.other < @k THEN @k ELSE o.other END
-				                    AND x.reason = o.reason);
-				UPDATE dbo.person_merge_candidates SET status = 'MERGED', reviewed_by = @actor, reviewed_at = ${nowSql},
+				                    AND x.reason = o.reason)`,
+				`UPDATE person_merge_candidates SET status = 'MERGED', reviewed_by = @actor, reviewed_at = ${nowSql},
 				       note = @note_to
-				WHERE status = 'PENDING' AND (person_a_id = @l OR person_b_id = @l);`);
+				WHERE status = 'PENDING' AND (person_a_id = @l OR person_b_id = @l)`,
+			],
+		);
 
 		// 5) nhật ký gộp (không xóa được)
 		await new sql.Request(tx)
@@ -403,7 +418,7 @@ const mergeCandidate = async (
 			.input('moved', sql.NVarChar(sql.MAX), JSON.stringify(moved))
 			.input('note', sql.NVarChar(500), note || null)
 			.input('actor', sql.VarChar(20), actorId || null)
-			.query(`INSERT INTO dbo.person_merge_log (candidate_id, kept_id, merged_id, merged_snapshot, kept_before, moved_json, note, merged_by)
+			.query(`INSERT INTO person_merge_log (candidate_id, kept_id, merged_id, merged_snapshot, kept_before, moved_json, note, merged_by)
 			        VALUES (@cid, @k, @l, @lose_snap, @keep_snap, @moved, @note, @actor)`);
 
 		return {
@@ -428,7 +443,7 @@ const rejectCandidate = async (id, note, actorId) => {
 			.input('id', sql.Int, id)
 			.input('note', sql.NVarChar(500), note || null)
 			.input('actor', sql.VarChar(20), actorId || null)
-			.query(`UPDATE dbo.person_merge_candidates SET status = 'REJECTED', reviewed_by = @actor,
+			.query(`UPDATE person_merge_candidates SET status = 'REJECTED', reviewed_by = @actor,
 			               reviewed_at = ${nowSql}, note = COALESCE(@note, note),
 			               updated_at = ${nowSql}, updated_by = @actor WHERE id = @id`);
 	});
@@ -445,13 +460,13 @@ const reopenCandidate = async (id, actorId) => {
 		const p = await new sql.Request(tx)
 			.input('a', sql.VarChar(20), cand.person_a_id)
 			.input('b', sql.VarChar(20), cand.person_b_id)
-			.query(`SELECT COUNT(*) AS n FROM dbo.persons WHERE id IN (@a, @b) AND status = 'ACTIVE'`);
+			.query(`SELECT COUNT(*) AS n FROM persons WHERE id IN (@a, @b) AND status = 'ACTIVE'`);
 		if (p.recordset[0].n !== 2)
 			throw httpError(409, 'Một trong hai hồ sơ đã được gộp — không thể mở lại.');
 		await new sql.Request(tx)
 			.input('id', sql.Int, id)
 			.input('actor', sql.VarChar(20), actorId || null)
-			.query(`UPDATE dbo.person_merge_candidates SET status = 'PENDING', reviewed_by = NULL, reviewed_at = NULL,
+			.query(`UPDATE person_merge_candidates SET status = 'PENDING', reviewed_by = NULL, reviewed_at = NULL,
 			               updated_at = ${nowSql}, updated_by = @actor WHERE id = @id`);
 	});
 	broadcast('update', { entity: 'person_merge' });

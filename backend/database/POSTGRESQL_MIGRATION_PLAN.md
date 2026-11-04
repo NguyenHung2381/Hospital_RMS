@@ -594,13 +594,34 @@ thường. Mỗi nhóm là 1 PR nhỏ theo module.
     bằng `+` duy nhất còn trong SQL (đã quét); làm hỏng danh sách / hồ sơ học viên trên PG kể cả khi không lọc.
   - `personService`: `LEN(dbo.fn_normalize_phone(@phone)) >= 8` → `strLen(…)` (PG baseline có
     `fn_normalize_phone`); `LEN(LTRIM(RTRIM(x))) > 0` → `LTRIM(RTRIM(x)) <> ''` (NULL vẫn bị loại như cũ).
-    `personService` vẫn chưa chạy trên PG (`dbo.`, `OBJECT_ID` / `COL_LENGTH`) — mục riêng.
+    `personService` vẫn chưa chạy trên PG (`dbo.`, `OBJECT_ID` / `COL_LENGTH`) — đã xong ở mục `dbo.` bên dưới.
   - Lưu ý: `CHARINDEX` theo collation (CI_AS) không phân biệt hoa/thường, `strpos` có ⇒ `strPos` chỉ dùng
     cho mã / số, không cho chữ người dùng gõ (tìm kiếm dùng `ilike`).
   - Kiểm bằng ca "strPos / strLen" (2 DB): mã trong danh sách có khoảng trắng khớp, mã ngắn hơn không
     khớp; `strLen('ab  ')` = 2; thêm 2 loại giấy tờ (1 khớp đúng mã, 1 có mã dài hơn) ⇒ số giấy tờ bắt buộc
     ở hồ sơ học viên +1, danh sách ra cùng số. Ca "ilike / likeCi" bỏ ngoại lệ học viên trên PG. Thử
     ngược: `strPos` của PG cộng thêm 1 ⇒ ca này báo lỗi.
+- [x] Tiền tố schema `dbo.` (luật ratchet mới `dbo_prefix`: 73 → 0 ngoài `migrator.js`, còn 2 ở phần SQL Server
+  của migrator, đổi ở mục 5.3) — chỉ còn ở `personService` / `personMergeService`. Kèm các chỗ chặn 2 module
+  này trên PG, nên giờ cả 2 chạy được trên PG:
+  - Tên bảng bỏ `dbo.` (SQL Server dùng schema mặc định, như mọi file khác). Hàm vô hướng tự viết SQL Server
+    bắt buộc ghi schema ⇒ helper `udf('fn_normalize_phone', '@phone')` của adapter (SQL Server
+    `dbo.fn_x(…)`, PG `fn_x(…)` — PG baseline đã có hàm này ở `04_trigger.sql`).
+  - `checkSchema` của `personService`: `OBJECT_ID` / `COL_LENGTH` → `information_schema` (tables, sequences,
+    routines, columns — có ở cả 2 DB).
+  - `DELETE p FROM persons p WHERE …` → `DELETE FROM persons WHERE … persons.id` (không alias, chạy cả 2 DB).
+    Luật ratchet mới `delete_alias` đếm 2 chỗ còn lại: `councilAssignmentService` (`DELETE s FROM … JOIN`) và
+    `programLessonService` (nằm trong lô nhiều câu) — mục sau.
+  - `mergeCandidate`: 2 lô nhiều câu có tham số (PG chỉ cho 1 câu mỗi lời gọi) → `runEach(tx, inputs, [câu…])`
+    chạy lần lượt trong cùng transaction.
+  - Sửa lỗi cũ (có từ trước đợt PG): câu chuyển cặp chờ sang hồ sơ giữ lại `INSERT INTO
+    person_merge_candidates (…, note, created_by) SELECT …, @note_from` thiếu giá trị `created_by` ⇒ gộp
+    cặp mà hồ sơ bị gộp còn cặp chờ với người thứ ba luôn báo lỗi. Thêm `@actor`.
+  - Kiểm bằng ca "gộp hồ sơ" (2 DB): `udf` chuẩn hoá SĐT; danh sách / thống kê / chi tiết; gộp cặp (a, b)
+    giữ A ⇒ b MERGED trỏ về a, cặp chờ (b, c) thành (a, c) PENDING + (b, c) MERGED đúng ghi chú, có nhật
+    ký; từ chối rồi mở lại. SQL Server bỏ `getCandidate` trong ca (Promise.all trên 1 transaction test ⇒
+    EREQINPROG; chạy thật dùng pool). Bật lại trên PG: ca "person mới: mã PS + 8 số" (batchSplit) và
+    "bulkAdd sinh mã SPT" (randomIds) — chỉ còn bỏ qua ca chờ migration 2026-12-15.
 - [x] Giờ hiện tại (`GETDATE` / `SYSDATETIME` / `GETUTCDATE` / `SYSUTCDATETIME`, 188 → 5): 185 chỗ
   đổi bằng script sang đoạn SQL của adapter chèn vào chuỗi (chuỗi `'...'` chuyển sang template):
   - `${nowSql}` giờ VN: SQL Server `GETDATE()`; PG `(now() AT TIME ZONE 'Asia/Ho_Chi_Minh')` —

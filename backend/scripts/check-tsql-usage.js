@@ -84,6 +84,18 @@ const PATTERNS = [
 		pg: "LIKE thô + lọc JS / LEFT(x, n) = '...'",
 	},
 	{
+		// Tiền tố schema dbo. — PG không có schema dbo (hàm vô hướng: udf() của adapter)
+		key: 'dbo_prefix',
+		re: /\bdbo\.[A-Za-z_$]/g,
+		pg: "tên trần; hàm: udf('fn_x', ...) (adapter)",
+	},
+	{
+		// `DELETE x FROM bảng x JOIN …` — chỉ T-SQL có
+		key: 'delete_alias',
+		re: /\bDELETE\s+\w+\s+FROM\b/g,
+		pg: 'DELETE FROM bảng WHERE … EXISTS (…) (không alias)',
+	},
+	{
 		// Tìm kiếm `cột LIKE @search`: SQL Server không phân biệt hoa/thường (CI_AS), PG có
 		key: 'like_search',
 		re: /\bLIKE\s+@(search|kw)\w*/gi,

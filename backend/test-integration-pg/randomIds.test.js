@@ -21,8 +21,7 @@ const db = require('../src/config/db');
 const { run } = require('../test-integration/randomIds.cases');
 
 test('mã ngẫu nhiên trên PostgreSQL thật (rollback)', async (t) => {
-	// bulkAdd gọi personService.syncPersons — còn kiểm tra schema bằng OBJECT_ID (chưa chuyển PG)
-	await run(t, db, { skip: ['người tham dự hội thảo: bulkAdd sinh mã SPT'] });
+	await run(t, db);
 	// Sau rollback của run() (hook chạy theo thứ tự đăng ký)
 	t.after(async () => (await db.getPool()).close());
 });

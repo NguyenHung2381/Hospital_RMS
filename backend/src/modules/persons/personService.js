@@ -7,6 +7,7 @@ const {
 	nextSequenceValues,
 	nowSql,
 	strLen,
+	udf,
 } = require('../../config/db');
 const { isMissingObject } = require('../../utils/dbErrors');
 const { normalizeGender } = require('../../utils/gender');
@@ -116,13 +117,13 @@ const checkSchema = async (pool) => {
 	if (schemaReady) return true;
 	if (Date.now() - schemaCheckedAt < SCHEMA_RECHECK_MS) return false;
 	schemaCheckedAt = Date.now();
+	// information_schema có ở cả SQL Server và PG — đủ 4 đối tượng thì ra 4 tên
 	const r = await pool.request().query(`
-		SELECT CASE WHEN OBJECT_ID('dbo.persons', 'U') IS NOT NULL
-		             AND OBJECT_ID('dbo.seq_person_id', 'SO') IS NOT NULL
-		             AND OBJECT_ID('dbo.fn_normalize_phone') IS NOT NULL
-		             AND COL_LENGTH('dbo.users', 'person_id') IS NOT NULL
-		            THEN 1 ELSE 0 END AS ok`);
-	schemaReady = r.recordset[0].ok === 1;
+		SELECT table_name AS n FROM information_schema.tables WHERE LOWER(table_name) = 'persons'
+		UNION ALL SELECT sequence_name FROM information_schema.sequences WHERE LOWER(sequence_name) = 'seq_person_id'
+		UNION ALL SELECT routine_name FROM information_schema.routines WHERE LOWER(routine_name) = 'fn_normalize_phone'
+		UNION ALL SELECT column_name FROM information_schema.columns WHERE LOWER(table_name) = 'users' AND LOWER(column_name) = 'person_id'`);
+	schemaReady = new Set(r.recordset.map((x) => String(x.n).toLowerCase())).size === 4;
 	if (!schemaReady) {
 		logger.warn(
 			'[persons] Chưa có bảng persons/cột person_id — bỏ qua dual-write (chạy migration 2026-09-25_persons_foundation.sql).',
@@ -159,7 +160,7 @@ const selectSourceSql = (cfg) => `
 	       ${cfg.staff || 'CAST(NULL AS INT)'} AS staff_number,
 	       ${cfg.linkedUser || 'CAST(NULL AS VARCHAR(20))'} AS linked_user_id,
 	       ${castBool(cfg.internal || 'NULL')} AS is_internal
-	FROM dbo.${cfg.table}
+	FROM ${cfg.table}
 	WHERE id = @id`;
 
 const bindPerson = (req, row) =>
@@ -191,7 +192,7 @@ const pickUnique = async (tx, queryText, bind) => {
 // Điều kiện loại các person đã gắn cho một tài khoản users KHÁC (1 người chỉ có 1 tài khoản).
 const notClaimedByOtherUser = (source) =>
 	source === 'users'
-		? ` AND NOT EXISTS (SELECT 1 FROM dbo.users u2 WHERE u2.person_id = p.id AND u2.id <> @id)`
+		? ` AND NOT EXISTS (SELECT 1 FROM users u2 WHERE u2.person_id = p.id AND u2.id <> @id)`
 		: '';
 
 // ─── So khớp R1..R5 ──────────────────────────────────────────────────────────
@@ -201,7 +202,7 @@ const matchExisting = async (tx, source, id, row) => {
 	const phone = cleanPhone(row.phone);
 	const nationalId = clean(row.national_id);
 	const excl = notClaimedByOtherUser(source);
-	const base = `SELECT p.id AS pid FROM dbo.persons p WHERE p.status = 'ACTIVE'${excl}`;
+	const base = `SELECT p.id AS pid FROM persons p WHERE p.status = 'ACTIVE'${excl}`;
 	const bind = (req) => bindPerson(req.input('id', sql.VarChar(30), id), row);
 
 	// R1: CCCD
@@ -215,11 +216,11 @@ const matchExisting = async (tx, source, id, row) => {
 		if (source === 'users') {
 			// tài khoản mới: khớp person đã tạo từ thành viên đề tài / người dự hội thảo cùng staff_number + tên
 			q = `${base} AND p.name_key = ${NAME_KEY('@name')} AND (
-					EXISTS (SELECT 1 FROM dbo.topic_members x WHERE x.person_id = p.id AND x.staff_number = @staff)
-				 OR EXISTS (SELECT 1 FROM dbo.seminar_participants x WHERE x.person_id = p.id AND x.staff_number = @staff))`;
+					EXISTS (SELECT 1 FROM topic_members x WHERE x.person_id = p.id AND x.staff_number = @staff)
+				 OR EXISTS (SELECT 1 FROM seminar_participants x WHERE x.person_id = p.id AND x.staff_number = @staff))`;
 		} else {
 			q = `${base} AND p.name_key = ${NAME_KEY('@name')} AND EXISTS (
-					SELECT 1 FROM dbo.users u WHERE u.person_id = p.id AND u.staff_number = @staff)`;
+					SELECT 1 FROM users u WHERE u.person_id = p.id AND u.staff_number = @staff)`;
 		}
 		const pid = await pickUnique(tx, q, bind);
 		if (pid) return pid;
@@ -238,8 +239,8 @@ const matchExisting = async (tx, source, id, row) => {
 		const pid = await pickUnique(
 			tx,
 			`${base} AND p.name_key = ${NAME_KEY('@name')}
-			   AND ${strLen('dbo.fn_normalize_phone(@phone)')} >= 8
-			   AND dbo.fn_normalize_phone(p.phone) = dbo.fn_normalize_phone(@phone)`,
+			   AND ${strLen(udf('fn_normalize_phone', '@phone'))} >= 8
+			   AND ${udf('fn_normalize_phone', 'p.phone')} = ${udf('fn_normalize_phone', '@phone')}`,
 			bind,
 		);
 		if (pid) return pid;
@@ -268,7 +269,7 @@ const createPerson = async (tx, source, id, row, actorId) => {
 		.input('verified', sql.Bit, !!cfg.verified)
 		.input('actor', sql.VarChar(20), actorId || null);
 	await req.query(`
-		INSERT INTO dbo.persons (id, full_name, date_of_birth, gender, national_id, email, phone,
+		INSERT INTO persons (id, full_name, date_of_birth, gender, national_id, email, phone,
 		                         is_internal, is_verified, origin_table, origin_id, created_by)
 		VALUES (@pid, @name, @dob, @gender, @national_id, @email, LEFT(@phone, 20),
 		        @internal, @verified, @origin_table, @origin_id, @actor)`);
@@ -281,7 +282,7 @@ const updatePerson = async (tx, source, personId, row, actorId) => {
 	const cfg = SOURCES[source];
 	const cur = await new sql.Request(tx)
 		.input('pid', sql.VarChar(20), personId)
-		.query('SELECT origin_table FROM dbo.persons WHERE id = @pid');
+		.query('SELECT origin_table FROM persons WHERE id = @pid');
 	if (!cur.recordset.length) return;
 	const primary = source === 'users' || cur.recordset[0].origin_table === source;
 
@@ -304,24 +305,24 @@ const updatePerson = async (tx, source, personId, row, actorId) => {
 	const req = bindPerson(new sql.Request(tx), row)
 		.input('pid', sql.VarChar(20), personId)
 		.input('actor', sql.VarChar(20), actorId || null);
-	await req.query(`UPDATE dbo.persons SET ${sets.join(', ')} WHERE id = @pid`);
+	await req.query(`UPDATE persons SET ${sets.join(', ')} WHERE id = @pid`);
 };
 
 // Xóa person "mồ côi" do chính dual-write tạo ra (không bản ghi nguồn hay cặp duyệt nào còn trỏ tới).
 const deleteOrphanPerson = async (tx, personId) => {
 	if (!personId) return;
 	await new sql.Request(tx).input('pid', sql.VarChar(20), personId).query(`
-		DELETE p FROM dbo.persons p
-		WHERE p.id = @pid AND p.origin_table IS NOT NULL AND p.status = 'ACTIVE'
-		  AND NOT EXISTS (SELECT 1 FROM dbo.users x WHERE x.person_id = p.id)
-		  AND NOT EXISTS (SELECT 1 FROM dbo.trainees x WHERE x.person_id = p.id)
-		  AND NOT EXISTS (SELECT 1 FROM dbo.lecturers x WHERE x.person_id = p.id)
-		  AND NOT EXISTS (SELECT 1 FROM dbo.external_reviewers x WHERE x.person_id = p.id)
-		  AND NOT EXISTS (SELECT 1 FROM dbo.topic_members x WHERE x.person_id = p.id)
-		  AND NOT EXISTS (SELECT 1 FROM dbo.seminar_participants x WHERE x.person_id = p.id)
-		  AND NOT EXISTS (SELECT 1 FROM dbo.person_merge_candidates c WHERE c.person_a_id = p.id OR c.person_b_id = p.id)
-		  AND NOT EXISTS (SELECT 1 FROM dbo.person_merge_log l WHERE l.kept_id = p.id OR l.merged_id = p.id)
-		  AND NOT EXISTS (SELECT 1 FROM dbo.persons c WHERE c.merged_into_id = p.id)`);
+		DELETE FROM persons
+		WHERE id = @pid AND origin_table IS NOT NULL AND status = 'ACTIVE'
+		  AND NOT EXISTS (SELECT 1 FROM users x WHERE x.person_id = persons.id)
+		  AND NOT EXISTS (SELECT 1 FROM trainees x WHERE x.person_id = persons.id)
+		  AND NOT EXISTS (SELECT 1 FROM lecturers x WHERE x.person_id = persons.id)
+		  AND NOT EXISTS (SELECT 1 FROM external_reviewers x WHERE x.person_id = persons.id)
+		  AND NOT EXISTS (SELECT 1 FROM topic_members x WHERE x.person_id = persons.id)
+		  AND NOT EXISTS (SELECT 1 FROM seminar_participants x WHERE x.person_id = persons.id)
+		  AND NOT EXISTS (SELECT 1 FROM person_merge_candidates c WHERE c.person_a_id = persons.id OR c.person_b_id = persons.id)
+		  AND NOT EXISTS (SELECT 1 FROM person_merge_log l WHERE l.kept_id = persons.id OR l.merged_id = persons.id)
+		  AND NOT EXISTS (SELECT 1 FROM persons c WHERE c.merged_into_id = persons.id)`);
 };
 
 const setSourcePerson = async (tx, source, id, personId) => {
@@ -330,7 +331,7 @@ const setSourcePerson = async (tx, source, id, personId) => {
 		.input('id', sql.VarChar(30), id)
 		.input('pid', sql.VarChar(20), personId)
 		.query(
-			`UPDATE dbo.${cfg.table} SET person_id = @pid${cfg.keepUpdatedAt ? ', updated_at = updated_at' : ''}
+			`UPDATE ${cfg.table} SET person_id = @pid${cfg.keepUpdatedAt ? ', updated_at = updated_at' : ''}
 			 WHERE id = @id AND COALESCE(person_id, '') <> @pid`,
 		);
 };
@@ -351,7 +352,7 @@ const resolveOne = async (tx, source, id, actorId, depth = 0) => {
 		let userPerson = (
 			await new sql.Request(tx)
 				.input('uid', sql.VarChar(20), row.linked_user_id)
-				.query('SELECT person_id FROM dbo.users WHERE id = @uid')
+				.query('SELECT person_id FROM users WHERE id = @uid')
 		).recordset[0]?.person_id;
 		if (!userPerson)
 			userPerson = await resolveOne(tx, 'users', row.linked_user_id, actorId, depth + 1);
@@ -363,7 +364,7 @@ const resolveOne = async (tx, source, id, actorId, depth = 0) => {
 				? (
 						await new sql.Request(tx)
 							.input('o', sql.VarChar(20), old)
-							.query(`SELECT origin_table FROM dbo.persons WHERE id = @o`)
+							.query(`SELECT origin_table FROM persons WHERE id = @o`)
 					).recordset[0]?.origin_table
 				: null;
 			if (old && stillOwn === source) await deleteOrphanPerson(tx, old);
@@ -452,7 +453,7 @@ const syncPending = async (source, { limit = 500, actorId = undefined } = {}) =>
 			.request()
 			.input('limit', sql.Int, limit)
 			.query(
-				`SELECT id FROM dbo.${cfg.table} WHERE person_id IS NULL AND LTRIM(RTRIM(${cfg.name})) <> '' ORDER BY id OFFSET 0 ROWS FETCH NEXT @limit ROWS ONLY`,
+				`SELECT id FROM ${cfg.table} WHERE person_id IS NULL AND LTRIM(RTRIM(${cfg.name})) <> '' ORDER BY id OFFSET 0 ROWS FETCH NEXT @limit ROWS ONLY`,
 			);
 		return await syncPersons(
 			source,
@@ -474,7 +475,7 @@ const personIdOf = async (source, id) => {
 		const r = await pool
 			.request()
 			.input('id', sql.VarChar(30), id)
-			.query(`SELECT person_id FROM dbo.${SOURCES[source].table} WHERE id = @id`);
+			.query(`SELECT person_id FROM ${SOURCES[source].table} WHERE id = @id`);
 		return r.recordset[0]?.person_id || null;
 	} catch (err) {
 		logFailure(`personIdOf(${source}, ${id})`, err);
@@ -498,14 +499,14 @@ const releasePerson = async (source, id, personId, { actorId = undefined } = {})
 				.input('src', sql.VarChar(40), source)
 				.input('id', sql.VarChar(30), id)
 				.query(
-					`SELECT id FROM dbo.persons WHERE id = @pid OR (origin_table = @src AND origin_id = @id)`,
+					`SELECT id FROM persons WHERE id = @pid OR (origin_table = @src AND origin_id = @id)`,
 				);
 			for (const { id: pid } of r.recordset) {
 				await deleteOrphanPerson(tx, pid);
 				const cur = (
 					await new sql.Request(tx)
 						.input('pid', sql.VarChar(20), pid)
-						.query('SELECT origin_table, origin_id FROM dbo.persons WHERE id = @pid')
+						.query('SELECT origin_table, origin_id FROM persons WHERE id = @pid')
 				).recordset[0];
 				if (!cur || cur.origin_table !== source || cur.origin_id !== id) continue;
 				// Còn bản ghi khác trỏ tới → bản ghi đó thành nguồn gốc mới
@@ -514,7 +515,7 @@ const releasePerson = async (source, id, personId, { actorId = undefined } = {})
 						await new sql.Request(tx)
 							.input('pid', sql.VarChar(20), pid)
 							.query(
-								`SELECT id FROM dbo.${SOURCES[next].table} WHERE person_id = @pid ORDER BY id OFFSET 0 ROWS FETCH NEXT 1 ROWS ONLY`,
+								`SELECT id FROM ${SOURCES[next].table} WHERE person_id = @pid ORDER BY id OFFSET 0 ROWS FETCH NEXT 1 ROWS ONLY`,
 							)
 					).recordset[0];
 					if (!other) continue;
@@ -523,7 +524,7 @@ const releasePerson = async (source, id, personId, { actorId = undefined } = {})
 						.input('src', sql.VarChar(40), next)
 						.input('oid', sql.VarChar(30), other.id)
 						.input('actor', sql.VarChar(20), actorId || null)
-						.query(`UPDATE dbo.persons SET origin_table = @src, origin_id = @oid,
+						.query(`UPDATE persons SET origin_table = @src, origin_id = @oid,
 						               updated_at = ${nowSql}, updated_by = @actor
 						        WHERE id = @pid`);
 					break;
@@ -548,8 +549,8 @@ const linkTopicMemberToUser = async (memberId, userId, { actorId = undefined } =
 			const r = await new sql.Request(tx)
 				.input('m', sql.VarChar(22), memberId)
 				.input('u', sql.VarChar(20), userId)
-				.query(`SELECT (SELECT person_id FROM dbo.topic_members WHERE id = @m) AS mp,
-				               (SELECT person_id FROM dbo.users WHERE id = @u) AS up`);
+				.query(`SELECT (SELECT person_id FROM topic_members WHERE id = @m) AS mp,
+				               (SELECT person_id FROM users WHERE id = @u) AS up`);
 			const { mp } = r.recordset[0];
 			let { up } = r.recordset[0];
 			if (!up && !mp) {
@@ -562,11 +563,11 @@ const linkTopicMemberToUser = async (memberId, userId, { actorId = undefined } =
 				await new sql.Request(tx)
 					.input('u', sql.VarChar(20), userId)
 					.input('mp', sql.VarChar(20), mp)
-					.query(`UPDATE dbo.users SET person_id = @mp WHERE id = @u AND person_id IS NULL`);
+					.query(`UPDATE users SET person_id = @mp WHERE id = @u AND person_id IS NULL`);
 				await new sql.Request(tx)
 					.input('mp', sql.VarChar(20), mp)
 					.query(
-						`UPDATE dbo.persons SET is_verified = 'true', is_internal = 'true', updated_at = ${nowSql} WHERE id = @mp`,
+						`UPDATE persons SET is_verified = 'true', is_internal = 'true', updated_at = ${nowSql} WHERE id = @mp`,
 					);
 				await resolveOne(tx, 'users', userId, actorId);
 				return mp;
