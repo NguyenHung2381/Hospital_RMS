@@ -15,7 +15,7 @@ const DOC_SUBMITTED_SQL = (t, dt) => `EXISTS (
     WHERE sd.trainee_id = ${t}.id AND sd.doc_type = ${dt}.id AND sd.status = 'approved'
   )`;
 // Cột "Hồ sơ x/y" + lọc "thiếu hồ sơ" ở danh sách học viên (traineeService.getAll)
-// (SQL Server không cho subquery trong SUM ⇒ đếm qua OUTER APPLY)
+// (SQL Server không cho subquery trong SUM ⇒ đếm qua outerApply; PG: LEFT JOIN LATERAL)
 const DOC_COUNT_APPLY = outerApply(
 	`
     SELECT COUNT(*) AS doc_required, COUNT(ok.x) AS doc_done

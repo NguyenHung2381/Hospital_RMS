@@ -65,7 +65,12 @@ const PATTERNS = [
 	},
 	{ key: 'declare', re: /\bDECLARE\s+@/gi, pg: 'tách lời gọi JS / CTE' },
 	{ key: 'recordsets', re: /\brecordsets\b/g, pg: 'mỗi câu 1 kết quả' },
-	{ key: 'top', re: /\bTOP\s*\(?\s*(\d+|@\w+|\$\{)/g, pg: 'ORDER BY … FETCH NEXT n ROWS ONLY' },
+	// (?<!\(): bỏ qua chữ trong nhãn như "(TOP 20)" — SQL không viết "(TOP n" (câu con là "(SELECT TOP")
+	{
+		key: 'top',
+		re: /(?<!\()\bTOP\s*\(?\s*(\d+|@\w+|\$\{)/g,
+		pg: 'ORDER BY … FETCH NEXT n ROWS ONLY',
+	},
 	{ key: 'newid', re: /\bNEWID\s*\(/gi, pg: 'gen_random_uuid()' },
 	{ key: 'openjson', re: /\bOPENJSON\b/gi, pg: '= ANY($1)' },
 	{ key: 'json_fn', re: /\b(JSON_VALUE|JSON_QUERY|JSON_MODIFY|ISJSON)\s*\(/gi, pg: '->> / jsonb' },

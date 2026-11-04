@@ -40,7 +40,7 @@ bước A và giữ máy Windows hiện tại tới khi xong bước B.
 | Triển khai tự động (CI/CD) | ❌ | `.github/workflows/deploy.yml` dùng `shell: powershell` và gọi `scripts/deploy.ps1`. Cần viết lại `deploy.sh` (bash), hoặc cài `pwsh` trên runner Linux và sửa script cho chạy được trên PowerShell 7. Tương tự `scripts/rotate-jwt-secrets.ps1`, `backend/scripts/import-dtlt.ps1` |
 | Backup trước migration | ⚠️ | `MIGRATION_BACKUP_DIR` là thư mục **trên máy SQL Server** (`BACKUP DATABASE`). Lên Linux vẫn chạy được nếu SQL Server cùng máy. Với PG phải đổi sang `pg_dump` |
 | Driver và lớp truy cập DB | ❌ | Chỉ có `mssql`. Chưa có `db.pg.js`, chưa có biến `DB_CLIENT` |
-| Câu SQL trong code | ❌ | 1.135 chỗ / 27 loại cú pháp chỉ T-SQL có (`npm run check:tsql`) |
+| Câu SQL trong code | ❌ → ✅ | 1.135 chỗ / 27 loại cú pháp chỉ T-SQL có (`npm run check:tsql`). **04/11/2026: ratchet về 0** (ngoài các file T-SQL có chủ đích ratchet bỏ qua: `db.mssql.js`, `migrator.mssql.js`, công cụ đọc schema / chuyển dữ liệu) — xem checklist chặng 1 |
 | Logic nằm trong DB | ❌ | 44 procedure, 16 trigger, 2 view, 1 function, chưa chuyển cái nào về JS |
 | Schema gốc trong repo | ❌ | Các bảng lõi (`users`, `topics`, `notifications`, `refresh_tokens`, `files`, `departments`, `roles`...) **không có** câu `CREATE TABLE` trong `migrations/`, vì được tạo tay trước khi có migration. Schema PG phải sinh từ DB thật (mục 5.3), không dựng lại được từ repo |
 | Mã lỗi DB | ✅ | `src/utils/dbErrors.js`, không còn chỗ so `err.number` |
@@ -106,12 +106,12 @@ bước A và giữ máy Windows hiện tại tới khi xong bước B.
 | `EXEC sp_set_actor @actor_id; ...` | 76 (27) | `set_config('app.current_user_id', $1, true)` trong transaction |
 | `EXEC sp_gen_*` / `.execute(...)` | ~20 / 10 → 0 (đã xong) | Hàm sinh mã `src/utils/idGenerator.js` (mục 5.4) |
 | `DECLARE @...` (batch nhiều câu) | 80 (47) → 0 (chỉ còn trong `db.mssql.js` / `migrator.mssql.js`, ratchet bỏ qua) | Viết lại: CTE, nhiều lời gọi JS, hoặc hàm PL/pgSQL |
-| `TOP n` | 71 (45) → 1 (nhãn Excel, không phải SQL) | `ORDER BY … OFFSET 0 ROWS FETCH NEXT n ROWS ONLY` (chạy cả 2 DB) |
+| `TOP n` | 71 (45) → 0 | `ORDER BY … OFFSET 0 ROWS FETCH NEXT n ROWS ONLY` (chạy cả 2 DB) |
 | `NEWID()` | 42 (27) — **đã đổi hết** | `randomId` / `randomHex32` (JS) hoặc `newIdSql` của adapter |
 | `OPENJSON(@ids)` | 31 (15) | `= ANY($1::text[])` hoặc `jsonb_array_elements_text($1)` |
 | `DATEADD` / `DATEDIFF` | 31 (18) → 0 | `dateAdd` / `dateDiff` của adapter (PG: `+ n * interval`, `date - date`, `date_trunc`) |
 | `STRING_AGG(...) WITHIN GROUP (ORDER BY ...)` | 25 (13) → 0 | `stringAgg(x, sep, thứ tự)` của adapter (PG: `string_agg(CAST(x AS TEXT), sep ORDER BY ...)`) |
-| `CROSS APPLY` / `OUTER APPLY` | 25 (19) → 2 (comment) | `crossApply` / `outerApply` của adapter (PG: `CROSS JOIN LATERAL` / `LEFT JOIN LATERAL ... ON true`) |
+| `CROSS APPLY` / `OUTER APPLY` | 25 (19) → 0 | `crossApply` / `outerApply` của adapter (PG: `CROSS JOIN LATERAL` / `LEFT JOIN LATERAL ... ON true`) |
 | `LIKE ... ESCAPE`, `LIKE '[0-9]'` | 25 (4) + nhiều mẫu `[0-9]` → 0 | PG `LIKE` **không** có lớp ký tự `[...]` → LIKE thô (`_`) + lọc đúng bằng JS, hoặc `LEFT(x, n) = '...'` (chạy cả 2 DB) |
 | `DELETE alias FROM bảng alias [JOIN …]` | 3 → 0 (ratchet `delete_alias`) | `DELETE FROM bảng WHERE …`, bảng khác đưa vào `IN` / `EXISTS` (cột gọi bằng tên bảng đầy đủ — chạy cả 2 DB) |
 | `OUTPUT INSERTED/DELETED` | 19 (13) → 0 | `RETURNING` (`insertReturning` / `updateReturning` / `deleteReturning` của adapter) |
@@ -676,6 +676,14 @@ thường. Mỗi nhóm là 1 PR nhỏ theo module.
     Server) export từ `migrator.mssql.js`, test cập nhật theo.
   - Không đổi logic: kiểm bằng unit test `test/database/` (40) và `migrator.status()` chỉ đọc trên cả 2 DB —
     kết quả trùng với bản cũ (SQL Server 18/19 file, PG 1/2 file; cùng chờ `2026-12-15_unique_nulls_not_distinct`).
+- [x] **Ratchet về 0** (tổng 3 → 0, 04/11/2026). 3 chỗ cuối không phải SQL:
+  - 2 comment `OUTER APPLY` (`traineeDocumentSql.js`, `traineeService.js`) → viết theo helper `outerApply`.
+  - Nhãn Excel "IV. THEO KHOA/PHÒNG (TOP 20)" (`topicReportSheets.js`) giữ nguyên chữ người dùng thấy; luật `top`
+    thêm `(?<!\()` — SQL không bao giờ viết `(TOP n` (câu con là `(SELECT TOP n`), vẫn bắt `TOP 5`, `TOP (@n)`,
+    `TOP (${n})`.
+  - Từ nay test ratchet (`test/contract/tsqlUsageRatchet.test.js`) chặn **mọi** cú pháp T-SQL mới ngoài các file bỏ
+    qua. Việc còn lại để chạy được trên PG không còn là cú pháp mà là hành vi (mục 2.4) và test các module trên PG
+    (chặng 3).
 - [x] `TOP n` (67 → 1): viết lại bằng cú pháp chuẩn chạy cả 2 DB.
   - Câu / subquery / `APPLY` đã có `ORDER BY` (44 chỗ, script): bỏ `TOP n`, thêm
     `OFFSET 0 ROWS FETCH NEXT n ROWS ONLY` sau `ORDER BY` (tham số `@limit` được, adapter PG bọc
@@ -1056,3 +1064,5 @@ trong DB) kể cả khi cuối cùng quyết định không chuyển.
    ~~`withActor()`, `ISNULL` → `COALESCE`, `OPENJSON` → helper.~~ Xong (chặng 1, mục 6).
 6. ~~Làm ngay trên SQL Server các việc dọn dữ liệu ở `DB_SCALING_PLAN.md` mục 6
    (giai đoạn 1).~~ Xong 03/11/2026 (`dataRetentionJob`, migration `2026-12-13_toi_uu_index_giai_doan_1`).
+7. ~~Chặng 1: đưa `check:tsql` về 0.~~ Xong 04/11/2026. Còn: chạy migration `2026-12-15_unique_nulls_not_distinct`
+   trên PG (user chủ schema), rồi sang chặng 3.

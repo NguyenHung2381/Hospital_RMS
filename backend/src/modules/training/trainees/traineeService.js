@@ -19,7 +19,7 @@ const { hasPermission } = require('../../../permissions/authz');
 const { DOC_COUNT_APPLY, DOC_MISSING_SQL } = require('./traineeDocumentSql');
 const { lockAccountOf } = require('./traineeAccountService');
 
-// extraCols/extraJoins: cột & OUTER APPLY thêm cho danh sách lọc theo loại khóa.
+// extraCols/extraJoins: cột & outerApply thêm cho danh sách lọc theo loại khóa.
 const traineeSelectWith = (extraCols = '', extraJoins = '') => `
   SELECT t.*, tt.name AS trainee_type_name, d.name AS department_name,
          au.username AS account_username, au.is_active AS account_active${extraCols}
