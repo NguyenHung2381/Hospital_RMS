@@ -6,6 +6,8 @@ const {
 	jsonValues,
 	utcNowSql,
 	crossApply,
+	updateReturning,
+	insertReturning,
 } = require('../../config/db');
 const { broadcast } = require('../events/eventService');
 const {
@@ -84,19 +86,24 @@ const saveShift = async (id, body) => {
 		.input('active', sql.Bit, s.is_active);
 	const row = id
 		? (
-				await req.input('id', sql.Int, id).query(`
-          UPDATE work_shifts SET name = @name, code = @code, color = @color, start_time = @start_time,
+				await req.input('id', sql.Int, id).query(
+					updateReturning(
+						`UPDATE work_shifts SET name = @name, code = @code, color = @color, start_time = @start_time,
             end_time = @end_time, checkin_before_min = @before, checkout_after_min = @after, grace_min = @grace,
-            is_active = @active, updated_at = ${utcNowSql}
-          OUTPUT inserted.* WHERE id = @id
-        `)
+            is_active = @active, updated_at = ${utcNowSql}`,
+						'id = @id',
+						'new.*',
+					),
+				)
 			).recordset[0]
 		: (
-				await req.query(`
-          INSERT INTO work_shifts (name, code, color, start_time, end_time, checkin_before_min, checkout_after_min, grace_min, is_active)
-          OUTPUT inserted.*
-          VALUES (@name, @code, @color, @start_time, @end_time, @before, @after, @grace, @active)
-        `)
+				await req.query(
+					insertReturning(
+						'INSERT INTO work_shifts (name, code, color, start_time, end_time, checkin_before_min, checkout_after_min, grace_min, is_active)',
+						'VALUES (@name, @code, @color, @start_time, @end_time, @before, @after, @grace, @active)',
+						'new.*',
+					),
+				)
 			).recordset[0];
 	if (!row) throw httpError(404, 'Không tìm thấy ca');
 	changed();
@@ -176,15 +183,24 @@ const savePattern = async (id, { name, days, is_default }) => {
 			.input('is_default', sql.Bit, !!is_default);
 		return id
 			? (
-					await req.input('id', sql.Int, id).query(`
-            UPDATE shift_patterns SET name = @name, days = @days, is_default = @is_default, updated_at = ${utcNowSql}
-            OUTPUT inserted.* WHERE id = @id
-          `)
+					await req
+						.input('id', sql.Int, id)
+						.query(
+							updateReturning(
+								`UPDATE shift_patterns SET name = @name, days = @days, is_default = @is_default, updated_at = ${utcNowSql}`,
+								'id = @id',
+								'new.*',
+							),
+						)
 				).recordset[0]
 			: (
-					await req.query(`
-            INSERT INTO shift_patterns (name, days, is_default) OUTPUT inserted.* VALUES (@name, @days, @is_default)
-          `)
+					await req.query(
+						insertReturning(
+							'INSERT INTO shift_patterns (name, days, is_default)',
+							'VALUES (@name, @days, @is_default)',
+							'new.*',
+						),
+					)
 				).recordset[0];
 	});
 	if (!row) throw httpError(404, 'Không tìm thấy mẫu ca');

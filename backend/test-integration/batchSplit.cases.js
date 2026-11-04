@@ -534,6 +534,93 @@ const run = async (t, db, { skip = [] } = {}) => {
 			});
 		},
 	);
+
+	// OUTPUT INSERTED / DELETED → insertReturning / updateReturning (chuỗi) / deleteReturning
+	await step(
+		'insertReturning / updateReturning / deleteReturning: dòng mới, giá trị cũ',
+		async () => {
+			const run1 = (text) => new sql.Request(tx).query(text).then((r) => r.recordset);
+			const [ins] = await run1(
+				db.insertReturning(
+					'INSERT INTO shift_patterns (name, days, is_default)',
+					"VALUES (N'Mẫu thử', '{}', 'false')",
+					'new.*',
+				),
+			);
+			assert.equal(ins.name, 'Mẫu thử');
+			assert.ok(ins.id);
+			const [up] = await run1(
+				db.updateReturning(
+					"UPDATE shift_patterns SET name = N'Mẫu thử 2'",
+					`id = ${Number(ins.id)}`,
+					'old.name AS old_name, new.name AS name, new.id',
+				),
+			);
+			assert.deepEqual({ ...up }, { old_name: 'Mẫu thử', name: 'Mẫu thử 2', id: ins.id });
+			assert.deepEqual(
+				await run1(db.updateReturning("UPDATE shift_patterns SET name = 'x'", '1 = 0', 'new.id')),
+				[],
+			);
+			const del = await run1(
+				db.deleteReturning('DELETE FROM shift_patterns', `id = ${Number(ins.id)}`, 'old.name'),
+			);
+			assert.deepEqual(
+				del.map((r) => r.name),
+				['Mẫu thử 2'],
+			);
+
+			// Dịch vụ dùng các helper
+			const shifts = require('../src/modules/attendance/shiftService');
+			const p = await shifts.savePattern(null, { name: 'Mẫu thử', days: {}, is_default: false });
+			assert.equal(p.name, 'Mẫu thử');
+			const p2 = await shifts.savePattern(p.id, { name: 'Mẫu đổi', days: {}, is_default: false });
+			assert.equal(p2.name, 'Mẫu đổi');
+			await assert.rejects(
+				shifts.savePattern(-1, { name: 'x', days: {}, is_default: false }),
+				/Không tìm thấy/,
+			);
+
+			const cmeRecords = require('../src/modules/cme/cmeRecordService');
+			const [rec] = await q('SELECT id FROM cme_records ORDER BY id');
+			assert.deepEqual(await cmeRecords.removeMany(['KHONG_CO'], actor.id), { deleted: 0 });
+			if (rec) {
+				assert.deepEqual(await cmeRecords.removeMany([rec.id], actor.id), { deleted: 1 });
+				assert.equal(
+					(await q('SELECT id FROM cme_records WHERE id = @id', { id: rec.id })).length,
+					0,
+				);
+			}
+
+			const bank = require('../src/modules/training/exams/questionBankService');
+			await bank.removeQuestion('KHONG_CO');
+			const [used] = await q(
+				'SELECT question_id AS id FROM exam_paper_questions ORDER BY question_id',
+			);
+			if (used) await assert.rejects(bank.removeQuestion(used.id), /đang được dùng/);
+		},
+	);
+
+	await step('person mới: mã PS + 8 số lấy từ sequence', async () => {
+		const [u] = await q('SELECT id, person_id FROM users WHERE person_id IS NOT NULL ORDER BY id');
+		if (!u) return;
+		// Tách khỏi person cũ, đổi thông tin để không khớp person nào → phải tạo mới
+		await q(
+			"UPDATE persons SET origin_id = CONCAT(origin_id, '_cu') WHERE origin_table = 'users' AND origin_id = @id",
+			{ id: u.id },
+		);
+		await q(
+			`UPDATE users SET person_id = NULL, full_name = N'Người thử mã PS', email = NULL,
+         phone_number = NULL, date_of_birth = NULL WHERE id = @id`,
+			{ id: u.id },
+		);
+		const pid = await require('../src/modules/persons/personService').syncPerson('users', u.id, {
+			actorId: actor.id,
+		});
+		assert.match(String(pid), /^PS\d{8}$/);
+		assert.notEqual(pid, u.person_id);
+		const [p] = await q('SELECT origin_id FROM persons WHERE id = @id', { id: pid });
+		assert.equal(p.origin_id, u.id);
+	});
 };
 
 module.exports = { run };

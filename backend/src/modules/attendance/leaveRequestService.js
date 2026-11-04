@@ -1,4 +1,11 @@
-const { getPool, sql, jsonValues, nowSql, crossApply } = require('../../config/db');
+const {
+	getPool,
+	sql,
+	jsonValues,
+	nowSql,
+	crossApply,
+	insertReturning,
+} = require('../../config/db');
 const { broadcast } = require('../events/eventService');
 const notificationService = require('../notifications/notificationService');
 const { findActiveUserIdsWhere } = require('../access/permissionService');
@@ -169,14 +176,17 @@ const createMine = async (userId, body) => {
 			.input('reason', sql.NVarChar(1000), reason)
 			.input('course_id', sql.VarChar(20), course.course_id)
 			.input('course_name', sql.NVarChar(255), course.course_name ?? null)
-			.input('now', sql.DateTime2, new Date()).query(`
-        INSERT INTO attendance_leave_requests
+			.input('now', sql.DateTime2, new Date())
+			.query(
+				insertReturning(
+					`INSERT INTO attendance_leave_requests
           (user_id, type, from_date, to_date, shift_id, shift_name, arrive_time, reason,
-           course_id, course_name, status, created_at, created_by)
-        OUTPUT inserted.*
-        VALUES (@user_id, @type, @from, @to, @shift_id, @shift_name, @arrive_time, @reason,
-           @course_id, @course_name, 'pending', @now, @user_id)
-      `)
+           course_id, course_name, status, created_at, created_by)`,
+					`VALUES (@user_id, @type, @from, @to, @shift_id, @shift_name, @arrive_time, @reason,
+           @course_id, @course_name, 'pending', @now, @user_id)`,
+					'new.*',
+				),
+			)
 	).recordset[0];
 	const saved = normalize(row);
 	changed();

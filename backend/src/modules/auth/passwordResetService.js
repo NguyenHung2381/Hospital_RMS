@@ -1,5 +1,5 @@
 const crypto = require('crypto');
-const { getPool, sql, nowSql, utcNowSql, dateAdd } = require('../../config/db');
+const { getPool, sql, nowSql, utcNowSql, dateAdd, updateReturning } = require('../../config/db');
 const mailService = require('../notifications/mailService');
 const secretBox = require('../../utils/secretBox');
 const credentialService = require('./credentialService');
@@ -123,12 +123,17 @@ const resetPassword = async (login, code, newPassword, ip = null) => {
 	// Giữ chỗ 1 lượt thử NGUYÊN TỬ trước khi so mã — đọc attempts rồi mới tăng
 	// thì nhiều request cùng lúc đều thấy attempts = 0 và vượt MAX_ATTEMPTS.
 	const row = (
-		await pool.request().input('id', sql.VarChar(20), user.id).input('max', sql.Int, MAX_ATTEMPTS)
-			.query(`
-				UPDATE password_reset_otps SET attempts = attempts + 1
-				OUTPUT INSERTED.user_id AS id, INSERTED.code_hash
-				WHERE user_id = @id AND attempts < @max AND expires_at > ${utcNowSql}
-			`)
+		await pool
+			.request()
+			.input('id', sql.VarChar(20), user.id)
+			.input('max', sql.Int, MAX_ATTEMPTS)
+			.query(
+				updateReturning(
+					'UPDATE password_reset_otps SET attempts = attempts + 1',
+					`user_id = @id AND attempts < @max AND expires_at > ${utcNowSql}`,
+					'new.user_id AS id, new.code_hash',
+				),
+			)
 	).recordset[0];
 	if (!row) throw invalidOtp();
 

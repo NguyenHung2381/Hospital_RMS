@@ -427,14 +427,20 @@ const nowSql = "(now() AT TIME ZONE 'Asia/Ho_Chi_Minh')";
 const utcNowSql = "(now() AT TIME ZONE 'UTC')";
 const vnTodaySql = "CAST(now() AT TIME ZONE 'Asia/Ho_Chi_Minh' AS DATE)";
 
-// Cùng giao diện với db.mssql.js; PG ≥ 18 cho `RETURNING old.x, new.x`.
+// Cùng giao diện với db.mssql.js; PG ≥ 18 cho `RETURNING old.x, new.x, new.*`.
 /**
  * @param {string} update
  * @param {string} where
- * @param {Array<[string, string, string]>} cols
+ * @param {string | Array<[string, string, string]>} cols
  */
 const updateReturning = (update, where, cols) =>
-	`${update} WHERE ${where} RETURNING ${cols.map(([e, n]) => `${e} AS ${n}`).join(', ')}`;
+	`${update} WHERE ${where} RETURNING ${
+		typeof cols === 'string' ? cols : cols.map(([e, n]) => `${e} AS ${n}`).join(', ')
+	}`;
+/** @param {string} insert @param {string} rest @param {string} cols */
+const insertReturning = (insert, rest, cols) => `${insert} ${rest} RETURNING ${cols}`;
+/** @param {string} del @param {string} where @param {string} cols */
+const deleteReturning = (del, where, cols) => `${del} WHERE ${where} RETURNING ${cols}`;
 
 // Cùng giao diện với db.mssql.js: mỗi câu 1 lời gọi, cùng tham số của `req`. Trong
 // transaction thì chạy lần lượt (1 kết nối); ngoài transaction chạy song song.
@@ -481,6 +487,8 @@ module.exports = {
 	vnTodaySql,
 	queryAll,
 	updateReturning,
+	insertReturning,
+	deleteReturning,
 	sslOptions,
 	toMssqlResult,
 };

@@ -113,7 +113,7 @@ bước A và giữ máy Windows hiện tại tới khi xong bước B.
 | `STRING_AGG(...) WITHIN GROUP (ORDER BY ...)` | 25 (13) | `string_agg(x, ',' ORDER BY ...)` |
 | `CROSS APPLY` / `OUTER APPLY` | 25 (19) → 2 (comment) | `crossApply` / `outerApply` của adapter (PG: `CROSS JOIN LATERAL` / `LEFT JOIN LATERAL ... ON true`) |
 | `LIKE ... ESCAPE`, `LIKE '[0-9]'` | 25 (4) + nhiều mẫu `[0-9]` | PG `LIKE` **không** có lớp ký tự `[...]` → dùng `~ '^...[0-9]{3}$'` |
-| `OUTPUT INSERTED/DELETED` | 19 (13) → 14 | `RETURNING` (`updateReturning` của adapter) |
+| `OUTPUT INSERTED/DELETED` | 19 (13) → 1 (`MERGE`) | `RETURNING` (`insertReturning` / `updateReturning` / `deleteReturning` của adapter) |
 | `SCOPE_IDENTITY()`, `@@ROWCOUNT`, `@@TRANCOUNT` | 18 (13) → 1 | `rowsAffected[0]` của câu ghi (PG: `rowCount`); upsert `IF @@ROWCOUNT = 0` viết bằng JS |
 | `CAST(... AS NVARCHAR/BIT/DATETIME)` | 59 (35) | `::text`, `::boolean`, `::timestamp`. Cột boolean trong SELECT: `boolExpr(đk)` / `castBool(x)` của adapter (SQL Server ra BIT, PG ra boolean) |
 | `CONVERT(`, `TRY_CAST(` | 20 (8) → 0 | `formatDate` / `tryCastInt` của adapter (PG: `to_char`, regex rồi `CAST`) |
@@ -254,7 +254,7 @@ như thể giờ đó là UTC**. Cách làm:
 | `DATEADD(day, n, d)` | `d + n * interval '1 day'` | ✓ qua adapter: `${dateAdd('DAY', n, 'd')}` |
 | `DATEDIFF(day, a, b)` | `b::date - a::date` | ✓ qua adapter: `${dateDiff('DAY', a, b)}` |
 | `CONVERT(VARCHAR, d, 103)` | `to_char(d, 'DD/MM/YYYY')` | ✓ qua adapter: `${formatDate('d', 'DD/MM/YYYY')}`; `YEAR(x)` → `${datePart('YEAR', 'x')}` |
-| `OUTPUT INSERTED.*` | `RETURNING *` | ✗ |
+| `OUTPUT INSERTED.*` | `RETURNING *` | ✓ qua adapter: `insertReturning` / `updateReturning` / `deleteReturning` (cột ghi `new.x` / `old.x`, PG ≥ 18) |
 | `MERGE ... WITH (HOLDLOCK)` | `INSERT ... ON CONFLICT (...) DO UPDATE` | ✗ — cần index `UNIQUE` trên khoá xung đột |
 | `CROSS APPLY (SELECT TOP 1 ...)` | `CROSS JOIN LATERAL (SELECT ... LIMIT 1)` | ✓ qua adapter: `${crossApply(`SELECT … ORDER BY … OFFSET 0 ROWS FETCH NEXT 1 ROWS ONLY`, 'x')}` |
 | `OPENJSON(@ids)` | `= ANY($1::text[])` (truyền mảng JS) | ✗ — có thể chuyển về `IN (@id0, @id1...)` qua `inClause` ở chặng 1 |
@@ -587,6 +587,24 @@ thường. Mỗi nhóm là 1 PR nhỏ theo module.
     (2 DB: upsert chạy 2 lần vẫn 1 dòng, nộp lại chỉ reset phiếu khi đang `supplement`, tính lại lần 2 = 0,
     sai hội đồng → 404). PG bật lại ca đồng bộ bài học và xoá buổi học; chỉ bỏ ca "đặt buổi bảo vệ"
     (tên cột `[session]`). Tổng ratchet 139 → 125.
+- [x] `OUTPUT INSERTED / DELETED` (output_clause 14 → 1): helper của adapter, cột ghi `new.x` (sau khi ghi) /
+  `old.x` (trước khi ghi), được `new.*` và `AS tên`. SQL Server đổi thành `INSERTED.` / `DELETED.` đặt đúng chỗ
+  của `OUTPUT`; PG ≥ 18 để nguyên trong `RETURNING` ở cuối câu (đã thử PG 18.6: `new.*`, `old.x` với INSERT /
+  UPDATE / DELETE).
+  - `insertReturning(insert, 'VALUES …' | 'SELECT …', cột)`: đơn xin phép, ca làm việc, mẫu ca.
+  - `updateReturning(update, where, 'cột')` — dạng chuỗi là `OUTPUT` trần, chỉ cho bảng **không có trigger**
+    (dạng mảng [biểu thức, tên, kiểu] giữ cách qua biến bảng): ca / mẫu ca, giữ lượt thử OTP quên mật khẩu,
+    dùng mã khôi phục 2FA, đổi refresh token, thay minh chứng CME (`old.evidence_file_id`).
+  - `deleteReturning(del, where, cột)`: xoá CME hàng loạt (lấy file minh chứng để gỡ), xoá câu hỏi.
+  - Sửa tay: xoá câu hỏi bỏ lô `IF EXISTS … ELSE DELETE` → kiểm tra đang dùng rồi mới xoá (JS);
+    tạo person bỏ `OUTPUT INSERTED.id` + `'PS' + RIGHT(… NEXT VALUE FOR …)` → `nextSequenceValues` rồi dựng mã
+    `PS` + 8 số bằng JS.
+  - Mọi bảng đã đổi đều không có trigger (`database/objects/triggers/`). Còn lại: `staffAttendanceService`
+    (`MERGE … OUTPUT inserted.*, $action`) — làm cùng mục `MERGE`.
+  - Kiểm bằng ca "insertReturning / updateReturning / deleteReturning" (2 DB: helper trực tiếp, mẫu ca thêm /
+    sửa / 404, xoá CME, xoá câu hỏi đang dùng → 409) và "person mới: mã PS + 8 số" (SQL Server; PG bỏ vì
+    `personService` kiểm schema bằng `OBJECT_ID` / `COL_LENGTH`) trong `test-integration/batchSplit.cases.js`.
+    Tổng ratchet 125 → 112.
 - [ ] Bỏ các chỗ phụ thuộc thứ tự ngầm: mọi câu trả danh sách phải có `ORDER BY`.
 - [x] Ghi baseline smoke test (`UPDATE_SNAPSHOTS=1 npm run test:smoke`, đã ghi 2026-11-03;
   bản 24/10 lưu ở `get-shapes.2026-10-24.bak.json`) **trước**

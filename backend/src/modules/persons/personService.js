@@ -4,6 +4,7 @@ const {
 	withTransaction,
 	castBool,
 	lockResource,
+	nextSequenceValues,
 	nowSql,
 } = require('../../config/db');
 const { isMissingObject } = require('../../utils/dbErrors');
@@ -256,19 +257,21 @@ const matchExisting = async (tx, source, id, row) => {
 
 const createPerson = async (tx, source, id, row, actorId) => {
 	const cfg = SOURCES[source];
+	// Mã PS + 8 số cuối của sequence (như RIGHT('00000000' + n, 8) trước đây)
+	const [n] = await nextSequenceValues(tx, 'seq_person_id', 1);
+	const personId = `PS${String(n).padStart(8, '0').slice(-8)}`;
 	const req = bindPerson(new sql.Request(tx), row)
+		.input('pid', sql.VarChar(20), personId)
 		.input('origin_table', sql.VarChar(40), source)
 		.input('origin_id', sql.VarChar(30), id)
 		.input('verified', sql.Bit, !!cfg.verified)
 		.input('actor', sql.VarChar(20), actorId || null);
-	const r = await req.query(`
+	await req.query(`
 		INSERT INTO dbo.persons (id, full_name, date_of_birth, gender, national_id, email, phone,
 		                         is_internal, is_verified, origin_table, origin_id, created_by)
-		OUTPUT INSERTED.id
-		VALUES ('PS' + RIGHT('00000000' + CAST(NEXT VALUE FOR dbo.seq_person_id AS VARCHAR(8)), 8),
-		        @name, @dob, @gender, @national_id, @email, LEFT(@phone, 20),
+		VALUES (@pid, @name, @dob, @gender, @national_id, @email, LEFT(@phone, 20),
 		        @internal, @verified, @origin_table, @origin_id, @actor)`);
-	return r.recordset[0].id;
+	return personId;
 };
 
 // person đã gắn: đồng bộ thông tin. Nguồn "chính" (chính bảng đã sinh ra person, hoặc users) ghi đè

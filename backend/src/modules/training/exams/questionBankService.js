@@ -1,4 +1,4 @@
-const { getPool, sql, withTransaction, nowSql } = require('../../../config/db');
+const { getPool, sql, withTransaction, nowSql, deleteReturning } = require('../../../config/db');
 const { randomId } = require('../../../utils/idGenerator');
 const { broadcast } = require('../../events/eventService');
 const { removeUploadedFile, toStoredUploadPath } = require('../../../utils/uploadPaths');
@@ -192,19 +192,19 @@ const updateQuestion = async (id, data, actorId) => {
 const removeQuestion = async (id) => {
 	const pool = await getPool();
 	// FK exam_paper_questions/exam_answers không cascade — báo rõ thay vì lỗi SQL 547
-	const r = await pool.request().input('id', sql.VarChar(20), id).query(`
-    IF EXISTS (SELECT 1 FROM exam_paper_questions WHERE question_id = @id)
-       OR EXISTS (SELECT 1 FROM exam_answers WHERE question_id = @id)
-      SELECT 1 AS in_use
-    ELSE
-      DELETE FROM question_bank OUTPUT DELETED.image_url WHERE id = @id;
-  `);
-	if (r.recordset?.[0]?.in_use) {
+	const inUse = await pool.request().input('id', sql.VarChar(20), id).query(`
+    SELECT 1 AS in_use WHERE EXISTS (SELECT 1 FROM exam_paper_questions WHERE question_id = @id)
+                          OR EXISTS (SELECT 1 FROM exam_answers WHERE question_id = @id)`);
+	if (inUse.recordset.length) {
 		throw httpError(
 			409,
 			'Câu hỏi đang được dùng trong đề thi, không thể xóa. Hãy bỏ câu hỏi khỏi các đề trước.',
 		);
 	}
+	const r = await pool
+		.request()
+		.input('id', sql.VarChar(20), id)
+		.query(deleteReturning('DELETE FROM question_bank', 'id = @id', 'old.image_url'));
 	await removeImageIfUnused(r.recordset?.[0]?.image_url);
 	broadcast('update', { entity: 'question_bank' });
 };

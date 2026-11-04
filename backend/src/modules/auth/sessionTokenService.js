@@ -1,7 +1,7 @@
 const jwt = require('jsonwebtoken');
 const { signToken, ISSUER } = require('../../utils/keys');
 const crypto = require('crypto');
-const { getPool, sql, utcNowSql, nowSql } = require('../../config/db');
+const { getPool, sql, utcNowSql, nowSql, updateReturning } = require('../../config/db');
 const permCache = require('../../permissions/permissionCache');
 const { twoFactorState } = require('../../permissions/twoFactorPolicy');
 const tempPasswordPolicy = require('../../permissions/tempPasswordPolicy');
@@ -195,11 +195,16 @@ const refreshAccessToken = async (refreshToken, ip = null, userAgent = null) => 
 	const pool = await getPool();
 	const tokenHash = hashToken(refreshToken);
 	const claimed = (
-		await pool.request().input('token', sql.VarChar(64), tokenHash).query(`
-				UPDATE refresh_tokens SET revoked_at = ${utcNowSql}
-				OUTPUT INSERTED.id, INSERTED.user_id, INSERTED.family_id, INSERTED.remember_me
-				WHERE token = @token AND revoked_at IS NULL AND expires_at > ${nowSql}
-			`)
+		await pool
+			.request()
+			.input('token', sql.VarChar(64), tokenHash)
+			.query(
+				updateReturning(
+					`UPDATE refresh_tokens SET revoked_at = ${utcNowSql}`,
+					`token = @token AND revoked_at IS NULL AND expires_at > ${nowSql}`,
+					'new.id, new.user_id, new.family_id, new.remember_me',
+				),
+			)
 	).recordset[0];
 
 	if (!claimed) {

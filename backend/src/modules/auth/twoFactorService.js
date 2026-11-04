@@ -121,11 +121,14 @@ const consumeBackupCode = async (pool, userId, code) => {
 	const r = await pool
 		.request()
 		.input('user_id', sql.VarChar(20), userId)
-		.input('hash', sql.Char(64), secretBox.keyedHash(normalizeBackupCode(code))).query(`
-			UPDATE user_backup_codes SET used_at = ${utcNowSql}
-			OUTPUT INSERTED.id
-			WHERE user_id = @user_id AND code_hash = @hash AND used_at IS NULL
-		`);
+		.input('hash', sql.Char(64), secretBox.keyedHash(normalizeBackupCode(code)))
+		.query(
+			updateReturning(
+				`UPDATE user_backup_codes SET used_at = ${utcNowSql}`,
+				'user_id = @user_id AND code_hash = @hash AND used_at IS NULL',
+				'new.id',
+			),
+		);
 	return r.recordset.length === 1;
 };
 

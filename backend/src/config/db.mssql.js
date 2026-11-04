@@ -256,22 +256,45 @@ const nowSql = 'GETDATE()';
 const utcNowSql = 'SYSUTCDATETIME()';
 const vnTodaySql = 'CAST(DATEADD(HOUR, 7, SYSUTCDATETIME()) AS DATE)';
 
-// UPDATE trả về các dòng vừa sửa: `${update} WHERE ${where}` + cột lấy ra. Biểu thức
-// cột ghi `new.cột` (giá trị sau khi sửa) / `old.cột` (trước khi sửa). SQL Server:
-// OUTPUT ... INTO biến bảng (bảng có trigger thì không được OUTPUT trần); PG: RETURNING.
+// Câu ghi trả về các dòng vừa ghi. Cột ghi `new.cột` (giá trị sau khi ghi) / `old.cột`
+// (trước khi ghi), được `new.*`, `AS tên`. SQL Server: OUTPUT INSERTED. / DELETED.; PG ≥ 18:
+// RETURNING new. / old. (vị trí trong câu khác nhau nên phải qua helper).
+/** @param {string} e */
+const outputExpr = (e) => e.replace(/\bnew\./g, 'INSERTED.').replace(/\bold\./g, 'DELETED.');
+
+// UPDATE trả về các dòng vừa sửa: `${update} WHERE ${where}` + cột lấy ra.
+//   - cols là chuỗi (`'new.id, old.x AS old_x'`): OUTPUT trần — chỉ cho bảng KHÔNG có trigger.
+//   - cols là mảng [biểu thức, tên, kiểu]: OUTPUT ... INTO biến bảng (bảng có trigger thì
+//     SQL Server không cho OUTPUT trần).
 /**
  * @param {string} update `UPDATE bảng SET ...` (chưa có WHERE)
  * @param {string} where
- * @param {Array<[string, string, string]>} cols [biểu thức, tên cột kết quả, kiểu SQL Server]
+ * @param {string | Array<[string, string, string]>} cols
  */
 const updateReturning = (update, where, cols) => {
-	const expr = (e) => e.replace(/\bnew\./g, 'INSERTED.').replace(/\bold\./g, 'DELETED.');
+	if (typeof cols === 'string') return `${update} OUTPUT ${outputExpr(cols)} WHERE ${where}`;
 	return `DECLARE @r TABLE (${cols.map(([, n, t]) => `${n} ${t}`).join(', ')});
 ${update}
-OUTPUT ${cols.map(([e]) => expr(e)).join(', ')} INTO @r
+OUTPUT ${cols.map(([e]) => outputExpr(e)).join(', ')} INTO @r
 WHERE ${where};
 SELECT ${cols.map(([, n]) => n).join(', ')} FROM @r`;
 };
+
+// INSERT trả về dòng vừa thêm (bảng không có trigger). `rest` là `VALUES (...)` hoặc `SELECT ...`.
+/**
+ * @param {string} insert `INSERT INTO bảng (cột, ...)`
+ * @param {string} rest
+ * @param {string} cols vd. `'new.*'`, `'new.id'`
+ */
+const insertReturning = (insert, rest, cols) => `${insert} OUTPUT ${outputExpr(cols)} ${rest}`;
+
+// DELETE trả về dòng vừa xoá (bảng không có trigger); cột ghi `old.cột`.
+/**
+ * @param {string} del `DELETE FROM bảng`
+ * @param {string} where
+ * @param {string} cols
+ */
+const deleteReturning = (del, where, cols) => `${del} OUTPUT ${outputExpr(cols)} WHERE ${where}`;
 
 // Nhiều câu SELECT dùng chung tham số đã gắn vào `req` → mảng tập kết quả, câu thứ
 // i ứng với phần tử thứ i (mỗi câu phải trả về đúng 1 tập kết quả). SQL Server: ghép
@@ -309,5 +332,7 @@ module.exports = {
 	vnTodaySql,
 	queryAll,
 	updateReturning,
+	insertReturning,
+	deleteReturning,
 	tlsOptions,
 };

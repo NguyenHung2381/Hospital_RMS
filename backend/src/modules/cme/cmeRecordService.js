@@ -5,7 +5,15 @@
  * 2026-09-16_cme_records.sql. Trang "Cảnh báo tín chỉ CME" (cmeRequirementService
  * .getComplianceReport) đã cộng dồn cả 2 nguồn.
  */
-const { getPool, sql, jsonValues, queryAll, nowSql } = require('../../config/db');
+const {
+	getPool,
+	sql,
+	jsonValues,
+	queryAll,
+	nowSql,
+	updateReturning,
+	deleteReturning,
+} = require('../../config/db');
 const { randomId } = require('../../utils/idGenerator');
 const { broadcast } = require('../events/eventService');
 const { paging } = require('../../utils/paging');
@@ -263,7 +271,11 @@ const removeMany = async (ids, actorId) => {
 		.request()
 		.input('ids', sql.NVarChar(sql.MAX), JSON.stringify(list))
 		.query(
-			`DELETE FROM cme_records OUTPUT deleted.evidence_file_id WHERE id IN ${jsonValues('@ids')}`,
+			deleteReturning(
+				'DELETE FROM cme_records',
+				`id IN ${jsonValues('@ids')}`,
+				'old.evidence_file_id',
+			),
 		);
 	for (const { evidence_file_id } of result.recordset) {
 		if (evidence_file_id) await trainingFileService.softDelete(evidence_file_id, actorId);
@@ -279,13 +291,17 @@ const removeMany = async (ids, actorId) => {
 const addEvidence = async (id, file, actorId) => {
 	const pool = await getPool();
 	const savedFile = await trainingFileService.saveUploadedFile('cme_evidence', id, file, actorId);
-	// OUTPUT deleted.* = minh chứng cũ bị thay → gỡ luôn, không để file mồ côi
+	// old_id = minh chứng cũ bị thay (giá trị trước khi sửa) → gỡ luôn, không để file mồ côi
 	const r = await pool
 		.request()
 		.input('id', sql.VarChar(20), id)
 		.input('file_id', sql.VarChar(20), savedFile.id)
 		.query(
-			'UPDATE cme_records SET evidence_file_id = @file_id OUTPUT deleted.evidence_file_id AS old_id WHERE id = @id',
+			updateReturning(
+				'UPDATE cme_records SET evidence_file_id = @file_id',
+				'id = @id',
+				'old.evidence_file_id AS old_id',
+			),
 		);
 	const oldId = r.recordset[0]?.old_id;
 	if (oldId && oldId !== savedFile.id) await trainingFileService.softDelete(oldId, actorId);
