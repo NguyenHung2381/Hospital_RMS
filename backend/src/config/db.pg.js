@@ -520,6 +520,8 @@ const queryAll = async (req, statements) => {
 	const run = (text) => {
 		const r = new Request(req.parent);
 		r.params = new Map(req.params);
+		// Câu SQL viết sẵn trong code, giá trị người dùng đi qua tham số (r.params) → Semgrep báo nhầm
+		// nosemgrep: ajinabraham.njsscan.database.sql_injection.node_sqli_injection
 		return r.query(text.replace(/;\s*$/, '')).then((x) => x.recordset ?? []);
 	};
 	if (!(req.parent instanceof Transaction)) return Promise.all(statements.map(run));
