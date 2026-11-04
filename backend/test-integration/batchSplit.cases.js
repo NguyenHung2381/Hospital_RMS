@@ -908,6 +908,148 @@ const run = async (t, db, { skip = [] } = {}) => {
 		},
 	);
 
+	// IF EXISTS … BEGIN … ELSE (rẽ nhánh T-SQL, PG không có) → SELECT kiểm tra rồi INSERT … VALUES, hoặc
+	// UPDATE rồi INSERT khi 0 dòng (hạn nộp của đợt). Mã không tồn tại bị bỏ qua như trước.
+	// (Không dùng INSERT … SELECT @x … WHERE cột = @x: PG suy @x là text ở SELECT, varchar ở WHERE ⇒ lỗi
+	// "inconsistent types deduced"; CAST AS VARCHAR thì SQL Server mất dấu tiếng Việt ở cột NVARCHAR.)
+	await step(
+		'IF EXISTS → kiểm tra rồi INSERT: cấp độ, hạn nộp, buổi học hàng loạt, chương trình, danh mục',
+		async () => {
+			const [lvl] = await q(
+				'SELECT id FROM levels ORDER BY id OFFSET 0 ROWS FETCH NEXT 1 ROWS ONLY',
+			);
+			const [rt] = await q(
+				'SELECT id FROM round_types ORDER BY id OFFSET 0 ROWS FETCH NEXT 1 ROWS ONLY',
+			);
+			const [round] = await q(
+				'SELECT id FROM research_rounds ORDER BY id OFFSET 0 ROWS FETCH NEXT 1 ROWS ONLY',
+			);
+			if (lvl && rt) {
+				const rts = require('../src/modules/catalog/roundTypeService');
+				assert.deepEqual((await rts.setLevels(rt.id, [lvl.id, 'ZZZZZ'])).map(String), [
+					String(lvl.id),
+				]);
+			}
+			if (lvl && round) {
+				await require('../src/modules/rounds/roundService').update(
+					round.id,
+					{ level_ids: [lvl.id, 'ZZZZZ'] },
+					actor.id,
+				);
+				const rows = await q('SELECT level_id FROM research_round_levels WHERE round_id = @r', {
+					r: round.id,
+				});
+				assert.deepEqual(
+					rows.map((x) => String(x.level_id)),
+					[String(lvl.id)],
+				);
+			}
+			if (round) {
+				const dl = require('../src/modules/rounds/deadlineService');
+				const save = (name) =>
+					dl.upsert(
+						round.id,
+						9,
+						{ name, deadline_type: 'edit', deadline_date: '2099-03-01' },
+						actor.id,
+					);
+				assert.equal((await save('ZZ hạn 1')).name, 'ZZ hạn 1');
+				assert.equal((await save('ZZ hạn 2')).name, 'ZZ hạn 2');
+				const n = await q(
+					'SELECT COUNT(*) AS n FROM round_deadlines WHERE round_id = @r AND phase = 9',
+					{ r: round.id },
+				);
+				assert.equal(Number(n[0].n), 1);
+			}
+
+			// Khóa mới tạo trong tx, chưa gắn chương trình nào (assertClassOpen bỏ qua)
+			const co = { id: await require('../src/utils/idGenerator').genCourseId(tx) };
+			await q(
+				"INSERT INTO courses (id, name, status, created_by) VALUES (@id, 'ZZ khóa IF', 'draft', @u)",
+				{
+					id: co.id,
+					u: actor.id,
+				},
+			);
+			if (co) {
+				const sessions = require('../src/modules/training/courses/classSessionService');
+				const bulk = () =>
+					sessions.createSessionsBulk(
+						co.id,
+						{
+							start_date: '2099-02-02',
+							end_date: '2099-02-08',
+							weekdays: [1, 3],
+							start_time: '07:30',
+							end_time: '09:00',
+						},
+						actor.id,
+					);
+				const first = await bulk();
+				assert.deepEqual([first.created, first.skipped], [2, 0]);
+				const again = await bulk();
+				assert.deepEqual([again.created, again.skipped], [0, 2]);
+
+				const programs = require('../src/modules/training/programs/trainingProgramService');
+				const [tt] = await q(
+					'SELECT id FROM trainee_types ORDER BY id OFFSET 0 ROWS FETCH NEXT 1 ROWS ONLY',
+				);
+				const p = await programs.create(
+					{ name: 'ZZ CT IF', trainee_type_ids: tt ? [tt.id, 'ZZZZZ'] : [] },
+					actor.id,
+				);
+				if (tt) {
+					const types = await q(
+						'SELECT trainee_type_id AS t FROM program_trainee_types WHERE program_id = @p',
+						{ p: p.id },
+					);
+					assert.deepEqual(
+						types.map((x) => x.t),
+						[tt.id],
+					);
+				}
+				// courseService.update → setPrograms (mã chương trình không tồn tại bị bỏ qua)
+				await require('../src/modules/training/courses/courseService').update(
+					co.id,
+					{ program_ids: [p.id, 'ZZZZZ'] },
+					actor.id,
+				);
+				const links = await q('SELECT program_id AS p FROM course_programs WHERE course_id = @c', {
+					c: co.id,
+				});
+				assert.deepEqual(
+					links.map((x) => x.p),
+					[p.id],
+				);
+
+				const [lesson] = await q(
+					'SELECT id FROM program_lessons ORDER BY id OFFSET 0 ROWS FETCH NEXT 1 ROWS ONLY',
+				);
+				if (lesson) {
+					const lessons = require('../src/modules/training/programs/programLessonService');
+					await lessons.linkLessons(p.id, [lesson.id, 'ZZZZZ'], actor.id);
+					const lp = await q('SELECT lesson_id AS l FROM lesson_programs WHERE program_id = @p', {
+						p: p.id,
+					});
+					assert.deepEqual(
+						lp.map((x) => x.l),
+						[lesson.id],
+					);
+				}
+			}
+
+			// Danh mục thực hành: tên mới thêm 1 lần, gặp lại không thêm
+			const writer = require('../src/modules/training/courses/practiceBookWriter');
+			const recs = [{ professional_field: 'ZZ lĩnh vực thử' }];
+			await writer.addToCatalogs(await db.getPool(), recs, actor.id);
+			await writer.addToCatalogs(await db.getPool(), recs, actor.id);
+			const pf = await q('SELECT COUNT(*) AS n FROM professional_fields WHERE name = @n', {
+				n: recs[0].professional_field,
+			});
+			assert.equal(Number(pf[0].n), 1);
+		},
+	);
+
 	// STRING_AGG(x, sep) WITHIN GROUP (ORDER BY o) → stringAgg(x, sep, o)
 	await step('stringAgg: nối theo thứ tự, cột số, dịch vụ dùng stringAgg chạy được', async () => {
 		// SQL Server: các STRING_AGG cùng 1 SELECT phải cùng thứ tự → câu riêng cho DESC

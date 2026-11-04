@@ -33,7 +33,7 @@
 	"err_number": 0,
 	"string_split": 0,
 	"tx_control": 0,
-	"if_block": 8,
+	"if_block": 0,
 	"update_alias": 8,
-	"multi_statement": 35
+	"multi_statement": 34
 }

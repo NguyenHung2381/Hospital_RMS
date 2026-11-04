@@ -327,6 +327,12 @@ const setPrograms = async (courseId, programIds, actorId) => {
 	}
 	const have = new Set(current.map((l) => l.program_id));
 	for (const programId of [...wanted].filter((id) => !have.has(id))) {
+		// Mã chương trình không tồn tại thì bỏ qua
+		const exists = await pool
+			.request()
+			.input('program_id', sql.VarChar(20), programId)
+			.query('SELECT 1 AS x FROM training_programs WHERE id = @program_id');
+		if (!exists.recordset.length) continue;
 		await withTransaction(async (tx) =>
 			tx
 				.request()
@@ -334,12 +340,8 @@ const setPrograms = async (courseId, programIds, actorId) => {
 				.input('actor_id', sql.VarChar(20), actorId)
 				.input('course_id', sql.VarChar(20), courseId)
 				.input('program_id', sql.VarChar(20), programId).query(`
-        IF EXISTS (SELECT 1 FROM training_programs WHERE id = @program_id)
-        BEGIN
-          INSERT INTO course_programs (id, course_id, program_id, status, created_by)
-          VALUES (@new_id, @course_id, @program_id, 'active', @actor_id);
-        END
-      `),
+        INSERT INTO course_programs (id, course_id, program_id, status, created_by)
+        VALUES (@new_id, @course_id, @program_id, 'active', @actor_id)`),
 		);
 	}
 };

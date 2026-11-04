@@ -250,19 +250,19 @@ const linkLessons = async (programId, lessonIds, actorId) => {
 	for (const lessonId of ids) {
 		if (already.has(lessonId)) continue;
 		const newId = randomId('LP', 18);
-		await pool
-			.request()
-			.input('program_id', sql.VarChar(20), programId)
-			.input('lesson_id', sql.VarChar(20), lessonId)
-			.input('display_order', sql.Int, nextOrder)
-			.input('actor_id', sql.VarChar(20), actorId)
-			.input('new_id', sql.VarChar(20), newId).query(`
-        IF EXISTS (SELECT 1 FROM program_lessons WHERE id = @lesson_id)
-        BEGIN
-          INSERT INTO lesson_programs (id, lesson_id, program_id, display_order, created_by)
-          VALUES (@new_id, @lesson_id, @program_id, @display_order, @actor_id);
-        END
-      `);
+		const req = () => pool.request().input('lesson_id', sql.VarChar(20), lessonId);
+		// Mã bài học không tồn tại thì bỏ qua (vẫn tính vào linked như trước)
+		if (
+			(await req().query('SELECT 1 AS x FROM program_lessons WHERE id = @lesson_id')).recordset
+				.length
+		)
+			await req()
+				.input('program_id', sql.VarChar(20), programId)
+				.input('display_order', sql.Int, nextOrder)
+				.input('actor_id', sql.VarChar(20), actorId)
+				.input('new_id', sql.VarChar(20), newId).query(`
+        INSERT INTO lesson_programs (id, lesson_id, program_id, display_order, created_by)
+        VALUES (@new_id, @lesson_id, @program_id, @display_order, @actor_id)`);
 		nextOrder += 1;
 		linked += 1;
 	}

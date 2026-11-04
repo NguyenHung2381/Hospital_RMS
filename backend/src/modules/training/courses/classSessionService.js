@@ -318,34 +318,32 @@ const createSessionsBulk = async (courseId, data, actorId) => {
 	const createdIds = [];
 	let skipped = 0;
 	for (const sessionDate of dates) {
-		const result = await withTransaction(async (tx) =>
-			tx
-				.request()
-				.input('new_id', sql.VarChar(20), await genClassSessionId(tx))
-				.input('actor_id', sql.VarChar(20), actorId)
-				.input('course_id', sql.VarChar(20), courseId)
-				.input('subject_id', sql.VarChar(20), subject_id || null)
-				.input('lecturer_id', sql.VarChar(20), lecturer_id || null)
-				.input('session_date', sql.Date, sessionDate)
-				.input('start_time', sql.VarChar(5), start_time || null)
-				.input('end_time', sql.VarChar(5), end_time || null)
-				.input('session_kind', sql.VarChar(10), kindOf(data.session_kind))
-				.input('room', sql.NVarChar(255), room || null).query(`
-        IF EXISTS (
-          SELECT 1 FROM class_sessions
+		// Trùng ngày + giờ bắt đầu thì bỏ qua: kiểm tra rồi mới thêm (chạy cả 2 DB)
+		const id = await withTransaction(async (tx) => {
+			const newId = await genClassSessionId(tx);
+			const req = () =>
+				tx
+					.request()
+					.input('new_id', sql.VarChar(20), newId)
+					.input('actor_id', sql.VarChar(20), actorId)
+					.input('course_id', sql.VarChar(20), courseId)
+					.input('subject_id', sql.VarChar(20), subject_id || null)
+					.input('lecturer_id', sql.VarChar(20), lecturer_id || null)
+					.input('session_date', sql.Date, sessionDate)
+					.input('start_time', sql.VarChar(5), start_time || null)
+					.input('end_time', sql.VarChar(5), end_time || null)
+					.input('session_kind', sql.VarChar(10), kindOf(data.session_kind))
+					.input('room', sql.NVarChar(255), room || null);
+			const dup = await req().query(`
+          SELECT 1 AS x FROM class_sessions
           WHERE course_id = @course_id AND session_date = @session_date
-            AND COALESCE(start_time, '') = COALESCE(@start_time, '')
-        )
-          SELECT CAST(NULL AS VARCHAR(20)) AS id;
-        ELSE
-        BEGIN
+            AND COALESCE(start_time, '') = COALESCE(@start_time, '')`);
+			if (dup.recordset.length) return null;
+			await req().query(`
           INSERT INTO class_sessions (id, course_id, subject_id, lecturer_id, session_date, start_time, end_time, room, session_kind, created_by)
-          VALUES (@new_id, @course_id, @subject_id, @lecturer_id, @session_date, @start_time, @end_time, @room, @session_kind, @actor_id);
-          SELECT @new_id AS id;
-        END
-      `),
-		);
-		const id = result.recordset[0]?.id;
+          VALUES (@new_id, @course_id, @subject_id, @lecturer_id, @session_date, @start_time, @end_time, @room, @session_kind, @actor_id)`);
+			return newId;
+		});
 		if (id) createdIds.push(id);
 		else skipped += 1;
 	}

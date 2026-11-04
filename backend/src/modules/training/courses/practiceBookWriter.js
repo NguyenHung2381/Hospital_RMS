@@ -62,14 +62,15 @@ const CATALOG_OF = {
 const addToCatalogs = async (pool, records, actorId) => {
 	for (const [field, [table, len]] of Object.entries(CATALOG_OF)) {
 		const names = [...new Set(records.map((r) => cut(r[field]?.trim(), len)).filter(Boolean))];
-		for (const name of names)
-			await pool
-				.request()
-				.input('name', sql.NVarChar(len), name)
+		for (const name of names) {
+			const req = () => pool.request().input('name', sql.NVarChar(len), name);
+			if ((await req().query(`SELECT 1 AS x FROM ${table} WHERE name = @name`)).recordset.length)
+				continue;
+			await req()
 				.input('id', sql.VarChar(20), randomId('', 20))
-				.input('actor_id', sql.VarChar(20), actorId).query(`
-          IF NOT EXISTS (SELECT 1 FROM ${table} WHERE name = @name)
-            INSERT INTO ${table} (id, name, created_by) VALUES (@id, @name, @actor_id)`);
+				.input('actor_id', sql.VarChar(20), actorId)
+				.query(`INSERT INTO ${table} (id, name, created_by) VALUES (@id, @name, @actor_id)`);
+		}
 		if (names.length) {
 			await invalidate(`lookup:${table}:`);
 			broadcast('update', { entity: table.slice(0, -1) });

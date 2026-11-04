@@ -63,9 +63,9 @@ const upsert = async (roundId, phase, data, actorId) => {
 				)
 			: null;
 
-	await withActorTransaction(actorId, (tx) =>
-		tx
-			.request()
+	// Có thì sửa, chưa có thì thêm (trước là rẽ nhánh T-SQL trong 1 câu — PG không có IF ngoài PL/pgSQL)
+	const bind = (req) =>
+		req
 			.input('actor_id', sql.VarChar(20), actorId)
 			.input('id', sql.VarChar(12), id)
 			.input('round_id', sql.VarChar(10), roundId)
@@ -78,11 +78,9 @@ const upsert = async (roundId, phase, data, actorId) => {
 				'supplement_fields',
 				sql.VarChar(120),
 				supplementFields ? supplementFields.join(',') : null,
-			).query(`
-      IF EXISTS (
-        SELECT 1 FROM round_deadlines
-        WHERE round_id = @round_id AND phase = @phase
-      )
+			);
+	await withActorTransaction(actorId, async (tx) => {
+		const upd = await bind(tx.request()).query(`
         UPDATE round_deadlines
            SET name              = @name,
                start_date        = @start_date,
@@ -91,12 +89,12 @@ const upsert = async (roundId, phase, data, actorId) => {
                supplement_fields = @supplement_fields,
                updated_at        = ${nowSql},
                updated_by        = @actor_id
-         WHERE round_id = @round_id AND phase = @phase;
-      ELSE
+         WHERE round_id = @round_id AND phase = @phase`);
+		if (upd.rowsAffected[0]) return;
+		await bind(tx.request()).query(`
         INSERT INTO round_deadlines (id, round_id, phase, name, start_date, deadline_date, deadline_type, supplement_fields, created_by)
-        VALUES (@id, @round_id, @phase, @name, @start_date, @deadline_date, @deadline_type, @supplement_fields, @actor_id);
-    `),
-	);
+        VALUES (@id, @round_id, @phase, @name, @start_date, @deadline_date, @deadline_type, @supplement_fields, @actor_id)`);
+	});
 
 	const r = await pool
 		.request()

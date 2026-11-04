@@ -64,9 +64,11 @@ const writeLevels = async (request, roundId, levelIds) => {
 		.input('rid', sql.VarChar(10), roundId)
 		.query('DELETE FROM research_round_levels WHERE round_id = @rid');
 	for (const lid of ids) {
-		await request().input('rid', sql.VarChar(10), roundId).input('lid', sql.VarChar(5), lid).query(`
-				IF EXISTS (SELECT 1 FROM levels WHERE id = @lid)
-				INSERT INTO research_round_levels (round_id, level_id) VALUES (@rid, @lid)`);
+		const req = () =>
+			request().input('rid', sql.VarChar(10), roundId).input('lid', sql.VarChar(5), lid);
+		if (!(await req().query('SELECT 1 AS x FROM levels WHERE id = @lid')).recordset.length)
+			continue;
+		await req().query('INSERT INTO research_round_levels (round_id, level_id) VALUES (@rid, @lid)');
 	}
 };
 

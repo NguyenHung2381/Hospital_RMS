@@ -127,15 +127,19 @@ const setProgramTraineeTypes = async (programId, typeIds) => {
 		.input('program_id', sql.VarChar(20), programId)
 		.query('DELETE FROM program_trainee_types WHERE program_id = @program_id');
 	for (let i = 0; i < typeIds.length; i++) {
-		await pool
-			.request()
+		const req = () => pool.request().input('trainee_type_id', sql.VarChar(20), typeIds[i]);
+		// Mã đối tượng không tồn tại thì bỏ qua
+		if (
+			!(await req().query('SELECT 1 AS x FROM trainee_types WHERE id = @trainee_type_id')).recordset
+				.length
+		)
+			continue;
+		await req()
 			.input('program_id', sql.VarChar(20), programId)
-			.input('trainee_type_id', sql.VarChar(20), typeIds[i])
-			.input('display_order', sql.Int, i).query(`
-        IF EXISTS (SELECT 1 FROM trainee_types WHERE id = @trainee_type_id)
-          INSERT INTO program_trainee_types (program_id, trainee_type_id, display_order)
-          VALUES (@program_id, @trainee_type_id, @display_order);
-      `);
+			.input('display_order', sql.Int, i)
+			.query(
+				'INSERT INTO program_trainee_types (program_id, trainee_type_id, display_order) VALUES (@program_id, @trainee_type_id, @display_order)',
+			);
 	}
 };
 

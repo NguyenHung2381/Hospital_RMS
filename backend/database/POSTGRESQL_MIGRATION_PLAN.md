@@ -694,7 +694,15 @@ thường. Mỗi nhóm là 1 PR nhỏ theo module.
   - Đã sửa: `classSessionService.findLecturerClashes` `STRING_SPLIT` → `jsonValues` (cảnh báo trùng lịch GV khi tạo /
     sửa buổi học); `trainingProgramService.remove` → 3 câu `DELETE` lần lượt trong transaction có sẵn. Kiểm bằng ca
     "trùng lịch giảng viên … xoá chương trình đào tạo" (2 DB; code cũ trên PG báo `string_split does not exist`).
-  - Còn lại: `if_block`, `update_alias`, `multi_statement` — sửa theo từng nhóm.
+  - [x] `if_block` 8 → 0 (tổng 51 → 42; 1 `multi_statement` nằm trong khối IF cũng hết): cấp độ của loại đợt /
+    đợt, chương trình ↔ đối tượng / khóa / bài học, danh mục thực hành (tự thêm khi nhập sổ), buổi học hàng loạt
+    (bỏ ngày trùng) → `SELECT 1` kiểm tra rồi `INSERT … VALUES`; hạn nộp của đợt (`IF EXISTS UPDATE ELSE INSERT`)
+    → `UPDATE`, 0 dòng thì `INSERT` (cùng transaction). Không dùng `INSERT … SELECT @x … WHERE cột = @x`: PG suy
+    `@x` là `text` ở danh sách SELECT và `varchar` ở phép so ⇒ "inconsistent types deduced for parameter";
+    `CAST(@x AS VARCHAR)` thì SQL Server mất dấu tiếng Việt ở cột NVARCHAR. Kiểm bằng ca "IF EXISTS → kiểm tra
+    rồi INSERT" (2 DB, tạo khóa trong tx; mã không tồn tại bị bỏ qua, gọi lại không thêm trùng). Code cũ trên PG ⇒
+    `syntax error at or near "IF"`.
+  - Còn lại: `update_alias`, `multi_statement` — sửa theo từng nhóm.
 - [x] `TOP n` (67 → 1): viết lại bằng cú pháp chuẩn chạy cả 2 DB.
   - Câu / subquery / `APPLY` đã có `ORDER BY` (44 chỗ, script): bỏ `TOP n`, thêm
     `OFFSET 0 ROWS FETCH NEXT n ROWS ONLY` sau `ORDER BY` (tham số `@limit` được, adapter PG bọc

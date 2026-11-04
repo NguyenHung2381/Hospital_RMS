@@ -24,11 +24,13 @@ const setLevels = async (roundTypeId, levelIds) => {
 			.input('rt', sql.VarChar(6), roundTypeId)
 			.query('DELETE FROM round_type_levels WHERE round_type_id = @rt');
 		for (const lid of ids) {
-			await tx.request().input('rt', sql.VarChar(6), roundTypeId).input('lid', sql.VarChar(5), lid)
-				.query(`
-					IF EXISTS (SELECT 1 FROM levels WHERE id = @lid)
-					INSERT INTO round_type_levels (round_type_id, level_id)
-					VALUES (@rt, @lid)`);
+			const req = () =>
+				tx.request().input('rt', sql.VarChar(6), roundTypeId).input('lid', sql.VarChar(5), lid);
+			if (!(await req().query('SELECT 1 AS x FROM levels WHERE id = @lid')).recordset.length)
+				continue;
+			await req().query(
+				'INSERT INTO round_type_levels (round_type_id, level_id) VALUES (@rt, @lid)',
+			);
 		}
 	});
 	broadcast('update', { entity: 'round_type' });
