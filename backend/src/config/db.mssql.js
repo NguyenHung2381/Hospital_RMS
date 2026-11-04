@@ -226,6 +226,32 @@ const dateAdd = (unit, n, expr) => `DATEADD(${dateUnit(unit)}, ${n}, ${expr})`;
 /** @param {string} unit @param {string} from @param {string} to */
 const dateDiff = (unit, from, to) => `DATEDIFF(${dateUnit(unit)}, ${from}, ${to})`;
 
+// Định dạng ngày / tách năm-tháng / ép số an toàn (cùng tên ở db.pg.js).
+// formatDate(expr, mẫu) — mẫu: 'DD/MM/YYYY' | 'YYYY-MM-DD' | 'YYYY-MM' | 'YYYY-MM-DD HH:MI'.
+// datePart('YEAR' | 'MONTH' | 'DAY', expr) → số nguyên. tryCastInt(expr) → INT hoặc NULL nếu
+// không phải số nguyên (như TRY_CAST).
+const DATE_FORMATS = {
+	'DD/MM/YYYY': [10, 103],
+	'YYYY-MM-DD': [10, 23],
+	'YYYY-MM': [7, 126],
+	'YYYY-MM-DD HH:MI': [16, 120],
+};
+/** @param {string} expr @param {keyof typeof DATE_FORMATS} format */
+const formatDate = (expr, format) => {
+	const f = DATE_FORMATS[format];
+	if (!f) throw new Error(`formatDate: mẫu không hỗ trợ ${format}`);
+	return `CONVERT(VARCHAR(${f[0]}), ${expr}, ${f[1]})`;
+};
+const DATE_PARTS = ['YEAR', 'MONTH', 'DAY'];
+/** @param {string} part @param {string} expr */
+const datePart = (part, expr) => {
+	const p = String(part).toUpperCase();
+	if (!DATE_PARTS.includes(p)) throw new Error(`datePart: không hỗ trợ ${part}`);
+	return `${p}(${expr})`;
+};
+/** @param {string} expr */
+const tryCastInt = (expr) => `TRY_CAST(${expr} AS INT)`;
+
 const nowSql = 'GETDATE()';
 const utcNowSql = 'SYSUTCDATETIME()';
 const vnTodaySql = 'CAST(DATEADD(HOUR, 7, SYSUTCDATETIME()) AS DATE)';
@@ -275,6 +301,9 @@ module.exports = {
 	outerApply,
 	dateAdd,
 	dateDiff,
+	formatDate,
+	datePart,
+	tryCastInt,
 	nowSql,
 	utcNowSql,
 	vnTodaySql,

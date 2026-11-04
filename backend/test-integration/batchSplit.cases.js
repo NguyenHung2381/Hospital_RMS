@@ -181,6 +181,48 @@ const run = async (t, db, { skip = [] } = {}) => {
 		await require('../src/jobs/supplementDeadlineJob').findOverdue(new Date());
 	});
 
+	// CONVERT / YEAR / TRY_CAST qua formatDate / datePart / tryCastInt của adapter
+	await step(
+		'formatDate / datePart / tryCastInt: chuỗi ngày, năm-tháng, ép số an toàn',
+		async () => {
+			const { formatDate: fd, datePart: dp, tryCastInt: ti } = db;
+			const [r] = (
+				await new sql.Request(tx)
+					.input('t', sql.DateTime2, new Date('2026-03-05T07:08:09Z'))
+					.input('s1', sql.VarChar(20), ' 42 ')
+					.input('s2', sql.VarChar(20), 'A12')
+					.input('s3', sql.VarChar(20), '12345678901').query(`
+        SELECT ${fd('@t', 'DD/MM/YYYY')} AS f1, ${fd('@t', 'YYYY-MM-DD')} AS f2,
+               ${fd('@t', 'YYYY-MM')} AS f3, ${fd('@t', 'YYYY-MM-DD HH:MI')} AS f4,
+               ${dp('YEAR', '@t')} AS y, ${dp('MONTH', '@t')} AS m, ${dp('DAY', '@t')} AS d,
+               ${ti('@s1')} AS i1, ${ti('@s2')} AS i2, ${ti('@s3')} AS i3`)
+			).recordset;
+			assert.deepEqual(
+				{ ...r, y: Number(r.y), m: Number(r.m), d: Number(r.d) },
+				{
+					f1: '05/03/2026',
+					f2: '2026-03-05',
+					f3: '2026-03',
+					f4: '2026-03-05 07:08',
+					y: 2026,
+					m: 3,
+					d: 5,
+					i1: 42,
+					i2: null,
+					i3: null, // tràn INT ⇒ NULL như TRY_CAST
+				},
+			);
+			assert.throws(() => fd('@t', /** @type {any} */ ('MM/YYYY')));
+			// Nhóm theo tháng và báo cáo đào tạo theo năm
+			const g = await q(`SELECT ${fd('created_at', 'YYYY-MM')} AS month, COUNT(*) AS n FROM users
+      GROUP BY ${fd('created_at', 'YYYY-MM')} ORDER BY month`);
+			assert.ok(g.length >= 1 && /^\d{4}-\d{2}$/.test(g[0].month));
+			const report = require('../src/modules/training/reports/trainingReportService');
+			await report.courses(2026);
+			await report.trainees(2026);
+		},
+	);
+
 	await step("cột BIT so / gán bằng 'true' / 'false': WHERE, SET, CASE, SUM", async () => {
 		const [cnt] = await q(`
       SELECT SUM(CASE WHEN is_active = 'true' THEN 1 ELSE 0 END) AS on_n,

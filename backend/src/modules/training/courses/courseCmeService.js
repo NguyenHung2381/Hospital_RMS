@@ -13,7 +13,7 @@
  * Công tắc CME_AUTO_TRAINEE / CME_AUTO_LECTURER (mặc định bật). Thu hồi / xóa
  * luôn chạy (kể cả công tắc tắt) để CME không còn tính cho giấy đã hủy.
  */
-const { getPool, sql, newIdSql, nowSql } = require('../../../config/db');
+const { getPool, sql, newIdSql, nowSql, datePart } = require('../../../config/db');
 const { broadcast } = require('../../events/eventService');
 const systemSettingService = require('../../settings/systemSettingService');
 const { CLASS_TYPES } = require('./classTypes');
@@ -31,13 +31,13 @@ const UPSERT_SQL = (sourceType) => `
     ON r.source_type = '${sourceType}' AND r.source_id = @course_id AND r.user_id = s.user_id
   WHEN MATCHED THEN UPDATE SET
     title = s.title, role = s.role, category_id = s.category_id, quantity = s.quantity, credits = s.credits,
-    activity_date = s.activity_date, year = YEAR(s.activity_date), note = s.note,
+    activity_date = s.activity_date, year = ${datePart('YEAR', 's.activity_date')}, note = s.note,
     approval_status = 'approved', reject_reason = NULL, updated_at = ${nowSql}, updated_by = @actor_id
   WHEN NOT MATCHED THEN
     INSERT (id, user_id, category_id, title, activity_date, year, role, quantity, credits, note,
             approval_status, reviewed_by, reviewed_at, source_type, source_id, created_by)
     VALUES (${newIdSql('CM', 18)}, s.user_id, s.category_id, s.title, s.activity_date,
-            YEAR(s.activity_date), s.role, s.quantity, s.credits, s.note,
+            ${datePart('YEAR', 's.activity_date')}, s.role, s.quantity, s.credits, s.note,
             'approved', @actor_id, ${nowSql}, '${sourceType}', @course_id, @actor_id);
   SELECT @@ROWCOUNT AS n;`;
 

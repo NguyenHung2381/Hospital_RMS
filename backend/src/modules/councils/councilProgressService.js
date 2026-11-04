@@ -8,7 +8,7 @@
  *
  * File đánh giá tái dùng bảng files: batch có note = EVAL_NOTE.
  */
-const { getPool, sql, queryAll, nowSql } = require('../../config/db');
+const { getPool, sql, queryAll, nowSql, formatDate } = require('../../config/db');
 const fileService = require('../topics/fileService');
 const { lazyRequire } = require('../../utils/lazyRequire');
 /** @type {typeof import('sanitize-html')} */
@@ -94,7 +94,7 @@ const getMyProgress = async (userId) => {
              t.title, t.[session], t.status,
              d.name AS department_name, cat.name AS category_name,
              c.id AS council_id, c.name AS council_name, c.location,
-             CONVERT(VARCHAR(10), c.defense_date, 103) AS defense_date,
+             ${formatDate('c.defense_date', 'DD/MM/YYYY')} AS defense_date,
              r.name AS round_name, r.year AS round_year
       FROM (${SEAT_CTE}) s
       INNER JOIN topics t ON t.id = s.topic_id
@@ -116,7 +116,7 @@ const getMyProgress = async (userId) => {
 			`
       SELECT f.id, f.topic_id, f.file_name, f.file_url, f.file_size,
              f.created_by, u.full_name AS uploaded_by_name,
-             CONVERT(VARCHAR(16), f.created_at, 120) AS created_at,
+             ${formatDate('f.created_at', 'YYYY-MM-DD HH:MI')} AS created_at,
              CASE WHEN fb.note = @minutes_note THEN 1 ELSE 0 END AS is_minutes
       FROM files f
       INNER JOIN file_batches fb ON fb.id = f.batch_id
@@ -129,7 +129,7 @@ const getMyProgress = async (userId) => {
       -- Tài liệu đề tài do chủ nhiệm/khoa tải lên (không phải file đánh giá/biên bản) — hội đồng xem để tham khảo khi đánh giá.
       SELECT f.id, f.topic_id, f.file_name, f.file_url, f.file_size,
              f.created_by, u.full_name AS uploaded_by_name,
-             CONVERT(VARCHAR(16), f.created_at, 120) AS created_at
+             ${formatDate('f.created_at', 'YYYY-MM-DD HH:MI')} AS created_at
       FROM files f
       INNER JOIN file_batches fb ON fb.id = f.batch_id
       LEFT JOIN users u ON u.id = f.created_by
@@ -141,7 +141,7 @@ const getMyProgress = async (userId) => {
 			`
       SELECT tr.topic_id, tr.conclusion, tr.general_comment, tr.decided_by,
              u.full_name AS decided_by_name,
-             CONVERT(VARCHAR(16), tr.updated_at, 120) AS updated_at
+             ${formatDate('tr.updated_at', 'YYYY-MM-DD HH:MI')} AS updated_at
       FROM council_topic_results tr
       LEFT JOIN users u ON u.id = tr.decided_by
       WHERE tr.topic_id IN (SELECT seat.topic_id FROM (${SEAT_CTE}) seat)

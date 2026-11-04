@@ -15,7 +15,7 @@
  *     vòng nào trượt ⇒ hoàn thành.
  * Mọi thứ tự điền vẫn sửa tay được ở hồ sơ; cảnh báo vòng vẫn hiện như cũ.
  */
-const { getPool, sql, queryAll, nowSql } = require('../../../config/db');
+const { getPool, sql, queryAll, nowSql, tryCastInt } = require('../../../config/db');
 const { broadcast } = require('../../events/eventService');
 const { httpError } = require('../../../utils/httpError');
 const { norm } = require('../../../utils/vietnameseText');
@@ -118,7 +118,7 @@ const practiceCodeFor = async (pool, e) => {
     SELECT practice_code FROM course_enrollments WHERE practice_code IS NOT NULL
 		`,
 		`
-    SELECT MAX(TRY_CAST(legacy_code AS INT)) AS max_legacy FROM trainees
+    SELECT MAX(${tryCastInt('legacy_code')}) AS max_legacy FROM trainees
 		`,
 	]);
 	const used = new Set(sets[0].map((x) => x.practice_code));

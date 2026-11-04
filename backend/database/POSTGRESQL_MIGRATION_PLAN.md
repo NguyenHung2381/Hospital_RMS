@@ -116,7 +116,7 @@ bước A và giữ máy Windows hiện tại tới khi xong bước B.
 | `OUTPUT INSERTED/DELETED` | 19 (13) → 14 | `RETURNING` (`updateReturning` của adapter) |
 | `SCOPE_IDENTITY()`, `@@ROWCOUNT`, `@@TRANCOUNT` | 18 (13) | `RETURNING id`, `rowCount`, không có tương đương trực tiếp |
 | `CAST(... AS NVARCHAR/BIT/DATETIME)` | 59 (35) | `::text`, `::boolean`, `::timestamp`. Cột boolean trong SELECT: `boolExpr(đk)` / `castBool(x)` của adapter (SQL Server ra BIT, PG ra boolean) |
-| `CONVERT(`, `TRY_CAST(` | 20 (8) | `CAST`, `to_char`; `TRY_CAST` cần hàm tự viết |
+| `CONVERT(`, `TRY_CAST(` | 20 (8) → 0 | `formatDate` / `tryCastInt` của adapter (PG: `to_char`, regex rồi `CAST`) |
 | `MERGE` (có `WITH (HOLDLOCK)`) | 10 (9) | `INSERT ... ON CONFLICT DO UPDATE` |
 | Gợi ý khoá `UPDLOCK/HOLDLOCK`, `sp_getapplock` | 5 + 6 | `SELECT ... FOR UPDATE`; khoá dải mã → `pg_advisory_xact_lock(hashtext(...))` |
 | Bảng tạm `#t`, biến bảng `@t TABLE` | 21 (3) + 8 | `CREATE TEMP TABLE ... ON COMMIT DROP`, CTE |
@@ -253,7 +253,7 @@ như thể giờ đó là UTC**. Cách làm:
 | `IIF`, `CASE` | `CASE` | `CASE` ✓ |
 | `DATEADD(day, n, d)` | `d + n * interval '1 day'` | ✓ qua adapter: `${dateAdd('DAY', n, 'd')}` |
 | `DATEDIFF(day, a, b)` | `b::date - a::date` | ✓ qua adapter: `${dateDiff('DAY', a, b)}` |
-| `CONVERT(VARCHAR, d, 103)` | `to_char(d, 'DD/MM/YYYY')` | ✗ — nên định dạng ở JS |
+| `CONVERT(VARCHAR, d, 103)` | `to_char(d, 'DD/MM/YYYY')` | ✓ qua adapter: `${formatDate('d', 'DD/MM/YYYY')}`; `YEAR(x)` → `${datePart('YEAR', 'x')}` |
 | `OUTPUT INSERTED.*` | `RETURNING *` | ✗ |
 | `MERGE ... WITH (HOLDLOCK)` | `INSERT ... ON CONFLICT (...) DO UPDATE` | ✗ — cần index `UNIQUE` trên khoá xung đột |
 | `CROSS APPLY (SELECT TOP 1 ...)` | `CROSS JOIN LATERAL (SELECT ... LIMIT 1)` | ✓ qua adapter: `${crossApply(`SELECT … ORDER BY … OFFSET 0 ROWS FETCH NEXT 1 ROWS ONLY`, 'x')}` |
@@ -553,6 +553,18 @@ thường. Mỗi nhóm là 1 PR nhỏ theo module.
   - Ratchet `date_fn` phân biệt hoa / thường để không đếm tên helper. Tổng 176 → 155.
   - Kiểm bằng ca "dateAdd / dateDiff" trong `test-integration/batchSplit.cases.js` (2 DB); PG bật thêm ca
     phân trang người dùng và xoá thông báo theo lô.
+- [x] `CONVERT` / `TRY_CAST` / `YEAR` / `MONTH` (convert 16 → 0, cùng 11 chỗ `YEAR` / `MONTH` ngoài ratchet):
+  helper của adapter, SQL Server giữ nguyên câu cũ:
+  - `formatDate(expr, mẫu)` — `'DD/MM/YYYY'` (style 103), `'YYYY-MM-DD'` (23), `'YYYY-MM'` (126),
+    `'YYYY-MM-DD HH:MI'` (120 cắt 16 ký tự); PG `to_char`. Mẫu khác báo lỗi.
+  - `datePart('YEAR' | 'MONTH' | 'DAY', expr)` — SQL Server `YEAR(x)`; PG `CAST(EXTRACT(… FROM x) AS INTEGER)`.
+  - `tryCastInt(expr)` — SQL Server `TRY_CAST(x AS INT)`; PG kiểm regex `^\s*-?[0-9]{1,9}\s*$` rồi `CAST`
+    (không số / tràn ⇒ NULL như TRY_CAST).
+  - Sửa tay: `COURSE_IN_YEAR` sang template; khe giờ đầu tiên của giảng viên `+` → `CONCAT`;
+    `scripts/import-staff.js` `STRING_SPLIT` + `TRY_CAST` → `jsonValues('@mnvs', { type: 'INT' })`.
+  - Kiểm bằng ca "formatDate / datePart / tryCastInt" trong `test-integration/batchSplit.cases.js` (2 DB;
+    báo cáo đào tạo theo năm); PG bật thêm ca dashboard. Còn vướng mục khác trên PG: tiến độ hội đồng
+    (tên cột `[…]`), CME cá nhân (`FOR JSON`). Tổng ratchet 155 → 139.
 - [ ] Bỏ các chỗ phụ thuộc thứ tự ngầm: mọi câu trả danh sách phải có `ORDER BY`.
 - [x] Ghi baseline smoke test (`UPDATE_SNAPSHOTS=1 npm run test:smoke`, đã ghi 2026-11-03;
   bản 24/10 lưu ở `get-shapes.2026-10-24.bak.json`) **trước**

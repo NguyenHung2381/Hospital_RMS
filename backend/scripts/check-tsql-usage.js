@@ -91,7 +91,11 @@ const PATTERNS = [
 		re: /\b(account_granted|allow_split|blind_grading|can_chair_council|can_sit_council|grants_cme|is_active|is_corresponding|is_default|is_deleted|is_employee|is_executed|is_external|is_featured|is_foreign|is_internal|is_legacy|is_public|is_public_registration|is_read|is_rolling|is_superuser|is_system|is_verified|must_change_password|remember_me|test_open|test_shuffle_options|test_shuffle_questions|totp_enabled)\s*(=|<>|!=)\s*[01](?![\w.])/gi,
 		pg: "= 'true' / 'false' (chạy cả 2 DB)",
 	},
-	{ key: 'convert', re: /\b(CONVERT|TRY_CAST|TRY_CONVERT|TRY_PARSE)\s*\(/g, pg: 'CAST / to_char' },
+	{
+		key: 'convert',
+		re: /\b(CONVERT|TRY_CAST|TRY_CONVERT|TRY_PARSE)\s*\(/g,
+		pg: 'formatDate / tryCastInt (adapter)',
+	},
 	{
 		key: 'string_fn',
 		re: /\b(LEN|CHARINDEX|PATINDEX|STUFF|IIF)\s*\(/g,

@@ -19,7 +19,7 @@
 	"identity_fn": 15,
 	"cast_tsql_type": 5,
 	"bit_literal": 14,
-	"convert": 16,
+	"convert": 0,
 	"string_fn": 3,
 	"merge": 7,
 	"lock_hint": 6,

@@ -3,7 +3,7 @@
  * cổng "của tôi" (portalService.getMyCme) và hồ sơ học viên (GET /trainees/:id/cme).
  * Caller tự kiểm tra quyền.
  */
-const { getPool, sql, boolExpr, queryAll } = require('../../config/db');
+const { getPool, sql, boolExpr, queryAll, datePart } = require('../../config/db');
 const { httpError } = require('../../utils/httpError');
 const { RESULT_FILES_SQL, withResultFiles } = require('./cmeRecordService');
 const formCustomValueService = require('../forms/formCustomValueService');
@@ -24,7 +24,7 @@ const getUserCme = async (userId, year) => {
     FROM seminar_participants p
     JOIN seminars s ON s.id = p.seminar_id
     WHERE p.user_id = @uid
-      AND (@year IS NULL OR p.cme_year = @year OR (p.cme_year IS NULL AND COALESCE(s.event_year, YEAR(s.start_date)) = @year))
+      AND (@year IS NULL OR p.cme_year = @year OR (p.cme_year IS NULL AND COALESCE(s.event_year, ${datePart('YEAR', 's.start_date')}) = @year))
     ORDER BY s.start_date DESC
 		`,
 			`

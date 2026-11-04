@@ -4,11 +4,11 @@
  *   2. trainees() — danh sách học viên đã duyệt + điểm, xếp loại, chuyên cần
  * Năm của khóa = năm ngày bắt đầu (chưa có ngày bắt đầu thì lấy ngày tạo).
  */
-const { getPool, sql, outerApply } = require('../../../config/db');
+const { getPool, sql, outerApply, datePart } = require('../../../config/db');
 const { COURSE_DISPLAY_STATUS } = require('../courses/courseService');
 const { SESSION_IN_PROGRAM_SQL } = require('../courses/sessionScope');
 
-const COURSE_IN_YEAR = '(@year IS NULL OR YEAR(COALESCE(c.start_date, c.created_at)) = @year)';
+const COURSE_IN_YEAR = `(@year IS NULL OR ${datePart('YEAR', 'COALESCE(c.start_date, c.created_at)')} = @year)`;
 
 /** @param {number|null} year */
 const courses = async (year) => {

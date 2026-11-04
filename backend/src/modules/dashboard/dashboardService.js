@@ -1,4 +1,13 @@
-const { getPool, sql, queryAll, nowSql, crossApply, dateAdd } = require('../../config/db');
+const {
+	getPool,
+	sql,
+	queryAll,
+	nowSql,
+	crossApply,
+	dateAdd,
+	datePart,
+	formatDate,
+} = require('../../config/db');
 const { remember } = require('../../utils/cache');
 const { todayVN } = require('../../utils/vnDate');
 const { COURSE_DISPLAY_STATUS } = require('../training/courses/courseService');
@@ -133,7 +142,7 @@ const getStats = async (year = null) =>
 			`
     -- Tóm tắt nhanh riêng NCKH: đợt, hội đồng, đề tài trong năm
     SELECT
-      (SELECT COUNT(*) FROM ${TOPICS} t WHERE YEAR(t.created_at) = YEAR(${nowSql})) AS topics_this_year,
+      (SELECT COUNT(*) FROM ${TOPICS} t WHERE ${datePart('YEAR', 't.created_at')} = ${datePart('YEAR', nowSql)}) AS topics_this_year,
       (SELECT COUNT(*) FROM research_rounds WHERE status = 'active') AS rounds_active,
       (SELECT COUNT(*) FROM councils) AS councils_total,
       (SELECT COUNT(*) FROM councils
@@ -268,7 +277,7 @@ const getTrainingStats = async () =>
       (SELECT COUNT(*) FROM certificates WHERE status = 'active'
          AND expiry_date >= CAST(${nowSql} AS DATE)
          AND expiry_date <= ${dateAdd('DAY', 30, `CAST(${nowSql} AS DATE)`)}) AS certificates_expiring,
-      (SELECT COUNT(*) FROM trainees WHERE YEAR(created_at) = YEAR(${nowSql})) AS trainees_this_year,
+      (SELECT COUNT(*) FROM trainees WHERE ${datePart('YEAR', 'created_at')} = ${datePart('YEAR', nowSql)}) AS trainees_this_year,
       (SELECT COUNT(*) FROM class_sessions
          WHERE session_date >= CAST(${nowSql} AS DATE)
            AND session_date <= ${dateAdd('DAY', 7, `CAST(${nowSql} AS DATE)`)}) AS sessions_next_7_days
@@ -308,13 +317,12 @@ const getTrainingStats = async () =>
     ORDER BY cnt DESC
 			`,
 			`
-    -- Xu hướng đăng ký theo tháng (12 tháng gần nhất).
-    -- CONVERT(CHAR(7), x, 126) = 'yyyy-MM', không dùng FORMAT(): FORMAT chạy qua CLR,
-    -- lần gọi đầu khi CLR nguội tốn 76–1071ms (Query Store), CONVERT ~1ms.
-    SELECT CONVERT(CHAR(7), registered_at, 126) AS month, COUNT(*) AS cnt
+    -- Xu hướng đăng ký theo tháng (12 tháng gần nhất). formatDate 'YYYY-MM' = CONVERT style 126
+    -- trên SQL Server (không dùng FORMAT(): chạy qua CLR, lần đầu tốn 76–1071ms), to_char trên PG.
+    SELECT ${formatDate('registered_at', 'YYYY-MM')} AS month, COUNT(*) AS cnt
     FROM course_enrollments
     WHERE registered_at >= ${dateAdd('MONTH', -11, `CAST(${nowSql} AS DATE)`)}
-    GROUP BY CONVERT(CHAR(7), registered_at, 126)
+    GROUP BY ${formatDate('registered_at', 'YYYY-MM')}
     ORDER BY month
 			`,
 			`
@@ -360,7 +368,7 @@ const getOverviewStats = async () =>
       (SELECT COUNT(*) FROM users WHERE locked_until IS NOT NULL AND locked_until > ${nowSql}) AS users_locked,
       (SELECT COUNT(*) FROM departments) AS departments_total,
       (SELECT COUNT(*) FROM topics) AS topics_total,
-      (SELECT COUNT(*) FROM topics WHERE YEAR(created_at) = @year) AS topics_this_year,
+      (SELECT COUNT(*) FROM topics WHERE ${datePart('YEAR', 'created_at')} = @year) AS topics_this_year,
       (SELECT COUNT(*) FROM topics WHERE status = 'submitted') AS topics_pending,
       (SELECT COUNT(*) FROM topics WHERE status = 'approved') AS topics_approved,
       (SELECT COUNT(*) FROM research_rounds WHERE status = 'active') AS rounds_active,
@@ -380,19 +388,19 @@ const getOverviewStats = async () =>
 			`,
 				`
     -- Hoạt động theo tháng (12 tháng gần nhất): đề tài mới, lượt đăng ký khóa học, hội thảo
-    SELECT CONVERT(CHAR(7), created_at, 126) AS month, COUNT(*) AS cnt
+    SELECT ${formatDate('created_at', 'YYYY-MM')} AS month, COUNT(*) AS cnt
     FROM topics WHERE created_at >= @from
-    GROUP BY CONVERT(CHAR(7), created_at, 126)
+    GROUP BY ${formatDate('created_at', 'YYYY-MM')}
 			`,
 				`
-    SELECT CONVERT(CHAR(7), registered_at, 126) AS month, COUNT(*) AS cnt
+    SELECT ${formatDate('registered_at', 'YYYY-MM')} AS month, COUNT(*) AS cnt
     FROM course_enrollments WHERE registered_at >= @from
-    GROUP BY CONVERT(CHAR(7), registered_at, 126)
+    GROUP BY ${formatDate('registered_at', 'YYYY-MM')}
 			`,
 				`
-    SELECT CONVERT(CHAR(7), start_date, 126) AS month, COUNT(*) AS cnt
+    SELECT ${formatDate('start_date', 'YYYY-MM')} AS month, COUNT(*) AS cnt
     FROM seminars WHERE start_date >= @from AND start_date <= ${nowSql}
-    GROUP BY CONVERT(CHAR(7), start_date, 126)
+    GROUP BY ${formatDate('start_date', 'YYYY-MM')}
 			`,
 				`
     -- Tài khoản đang hoạt động theo vai trò
@@ -500,13 +508,13 @@ const getSeminarStats = async () =>
 			`,
 				`
     -- Sự kiện & lượt tham dự theo tháng trong năm
-    SELECT MONTH(s.start_date) AS m,
+    SELECT ${datePart('MONTH', 's.start_date')} AS m,
       COUNT(DISTINCT s.id) AS seminars,
       COUNT(sp.id) AS participants
     FROM seminars s
     LEFT JOIN seminar_participants sp ON sp.seminar_id = s.id
-    WHERE s.start_date IS NOT NULL AND YEAR(s.start_date) = @year
-    GROUP BY MONTH(s.start_date)
+    WHERE s.start_date IS NOT NULL AND ${datePart('YEAR', 's.start_date')} = @year
+    GROUP BY ${datePart('MONTH', 's.start_date')}
 			`,
 				`
     -- Hội thảo sắp diễn ra

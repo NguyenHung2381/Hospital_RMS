@@ -395,6 +395,34 @@ const dateDiff = (unit, from, to) => {
 	return `CAST(EXTRACT(EPOCH FROM date_trunc('${t}', ${to}) - date_trunc('${t}', ${from})) / ${sec} AS INTEGER)`;
 };
 
+// Định dạng ngày / tách năm-tháng / ép số an toàn (cùng tên ở db.mssql.js).
+// formatDate(expr, mẫu) — mẫu: 'DD/MM/YYYY' | 'YYYY-MM-DD' | 'YYYY-MM' | 'YYYY-MM-DD HH:MI'.
+// datePart('YEAR' | 'MONTH' | 'DAY', expr) → số nguyên. tryCastInt(expr) → INT hoặc NULL nếu
+// không phải số nguyên (như TRY_CAST).
+const DATE_FORMATS = {
+	'DD/MM/YYYY': 'DD/MM/YYYY',
+	'YYYY-MM-DD': 'YYYY-MM-DD',
+	'YYYY-MM': 'YYYY-MM',
+	'YYYY-MM-DD HH:MI': 'YYYY-MM-DD HH24:MI',
+};
+/** @param {string} expr @param {keyof typeof DATE_FORMATS} format */
+const formatDate = (expr, format) => {
+	const f = DATE_FORMATS[format];
+	if (!f) throw new Error(`formatDate: mẫu không hỗ trợ ${format}`);
+	return `to_char(${expr}, '${f}')`;
+};
+const DATE_PARTS = ['YEAR', 'MONTH', 'DAY'];
+/** @param {string} part @param {string} expr */
+const datePart = (part, expr) => {
+	const p = String(part).toUpperCase();
+	if (!DATE_PARTS.includes(p)) throw new Error(`datePart: không hỗ trợ ${part}`);
+	return `CAST(EXTRACT(${p} FROM ${expr}) AS INTEGER)`;
+};
+// Tối đa 9 chữ số: không tràn integer (TRY_CAST cũng trả NULL khi tràn)
+/** @param {string} expr */
+const tryCastInt = (expr) =>
+	`(CASE WHEN CAST(${expr} AS TEXT) ~ '^\\s*-?[0-9]{1,9}\\s*$' THEN CAST(TRIM(CAST(${expr} AS TEXT)) AS INTEGER) END)`;
+
 const nowSql = "(now() AT TIME ZONE 'Asia/Ho_Chi_Minh')";
 const utcNowSql = "(now() AT TIME ZONE 'UTC')";
 const vnTodaySql = "CAST(now() AT TIME ZONE 'Asia/Ho_Chi_Minh' AS DATE)";
@@ -445,6 +473,9 @@ module.exports = {
 	outerApply,
 	dateAdd,
 	dateDiff,
+	formatDate,
+	datePart,
+	tryCastInt,
 	nowSql,
 	utcNowSql,
 	vnTodaySql,

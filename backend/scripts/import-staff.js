@@ -18,7 +18,7 @@ const path = require('path');
 require('dotenv').config({ path: path.join(__dirname, '../.env'), quiet: true });
 
 const ExcelJS = require('exceljs');
-const { getPool, sql, withActorTransaction, nowSql } = require('../src/config/db');
+const { getPool, sql, withActorTransaction, nowSql, jsonValues } = require('../src/config/db');
 const { norm, normDept } = require('../src/utils/vietnameseText');
 const { ROLE, requireRoleId } = require('../src/modules/access/roleCodes');
 
@@ -178,10 +178,10 @@ const ymd = (d) => (d ? d.toISOString().slice(0, 10) : '—');
 	if (usable.length) {
 		const res = await pool
 			.request()
-			.input('mnvs', sql.NVarChar(sql.MAX), usable.map((r) => r.mnv).join(',')).query(`
+			.input('mnvs', sql.NVarChar(sql.MAX), JSON.stringify(usable.map((r) => r.mnv))).query(`
 				SELECT id, staff_number, full_name, department_id, date_of_birth, qualification_id
 				FROM users
-				WHERE staff_number IN (SELECT TRY_CAST(value AS INT) FROM STRING_SPLIT(@mnvs, ','))
+				WHERE staff_number IN ${jsonValues('@mnvs', { type: 'INT' })}
 			`);
 		for (const u of res.recordset) existing.set(u.staff_number, u);
 	}

@@ -1,4 +1,11 @@
-const { getPool, sql, withTransaction, queryAll, nowSql } = require('../../../config/db');
+const {
+	getPool,
+	sql,
+	withTransaction,
+	queryAll,
+	nowSql,
+	formatDate,
+} = require('../../../config/db');
 const { genLecturerAssignmentId } = require('../../../utils/idGenerator');
 const { isUniqueViolation } = require('../../../utils/dbErrors');
 const { broadcast } = require('../../events/eventService');
@@ -307,7 +314,7 @@ const syncLessonsFromSessions = async (courseId, lessonIds, actorId) => {
 				[
 					`
           SELECT lecturer_id, COUNT(*) AS n,
-                 MIN(CONVERT(CHAR(10), session_date, 23) + COALESCE(start_time, '')) AS first_slot
+                 MIN(CONCAT(${formatDate('session_date', 'YYYY-MM-DD')}, COALESCE(start_time, ''))) AS first_slot
           FROM class_sessions
           WHERE course_id = @course_id AND subject_id = @lesson_id AND lecturer_id IS NOT NULL
           GROUP BY lecturer_id
