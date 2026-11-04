@@ -814,6 +814,80 @@ const run = async (t, db, { skip = [] } = {}) => {
 		assert.equal(b.merge_action, 'UPDATE');
 		assert.equal(String(a.id), String(b.id));
 	});
+
+	// (SELECT … ORDER BY … FOR JSON PATH) → jsonArray(select, orderBy, { nested })
+	await step(
+		'jsonArray: thứ tự, bỏ key NULL, lồng mảng, rỗng = NULL, dịch vụ dùng jsonArray',
+		async () => {
+			const V = "(VALUES (1, N'b', NULL), (2, N'a', 1.5), (3, N'c', 2)) AS x(id, name, val)";
+			const ks = db.jsonArray(
+				"SELECT y.k FROM (VALUES (1, 'p'), (1, 'q'), (2, 'r')) AS y(id, k) WHERE y.id = x.id",
+				'y.k DESC',
+				{ nested: true },
+			);
+			const [r] = await q(`
+      SELECT ${db.jsonArray(`SELECT x.id, x.name, x.val, ${ks} AS ks FROM ${V}`, 'x.name')} AS j,
+             ${db.jsonArray(`SELECT x.id FROM ${V} WHERE 1 = 0`, 'x.id')} AS empty`);
+			assert.equal(typeof r.j, 'string');
+			assert.deepEqual(JSON.parse(r.j), [
+				{ id: 2, name: 'a', val: 1.5, ks: [{ k: 'r' }] },
+				{ id: 1, name: 'b', ks: [{ k: 'q' }, { k: 'p' }] },
+				{ id: 3, name: 'c', val: 2 },
+			]);
+			assert.equal(r.empty, null);
+
+			// Khoa bắt buộc của buổi tập huấn: mảng theo tên khoa
+			const [s] = await q('SELECT id FROM seminars ORDER BY id');
+			const depts = await q('SELECT id, name FROM departments ORDER BY id DESC');
+			const seminars = require('../src/modules/seminars/seminarService');
+			if (s && depts.length >= 2) {
+				await q('DELETE FROM seminar_required_departments WHERE seminar_id = @s', { s: s.id });
+				for (const d of depts.slice(0, 2))
+					await q(
+						'INSERT INTO seminar_required_departments (seminar_id, department_id) VALUES (@s, @d)',
+						{ s: s.id, d: d.id },
+					);
+				const got = await seminars.getById(s.id);
+				const want = await q(
+					`SELECT d.id, d.name FROM seminar_required_departments r JOIN departments d ON d.id = r.department_id
+         WHERE r.seminar_id = @s ORDER BY d.name`,
+					{ s: s.id },
+				);
+				assert.ok(want.length >= 2);
+				assert.deepEqual(
+					got.required_departments,
+					want.map((x) => ({ ...x })),
+				);
+			}
+			await seminars.getAll({ limit: 3 });
+
+			// File kết quả CME: mảng (rỗng khi chưa có)
+			const cmeRecords = require('../src/modules/cme/cmeRecordService');
+			const [rec] = await q('SELECT id, user_id FROM cme_records ORDER BY id');
+			if (rec) {
+				await q(
+					`INSERT INTO training_files (id, entity_type, entity_id, file_name, file_url)
+         VALUES ('TFZZ1', 'cme_result', @id, N'kết quả.pdf', '/uploads/zz.pdf')`,
+					{ id: rec.id },
+				);
+				const got = await cmeRecords.getById(rec.id);
+				assert.deepEqual(
+					got.result_files.map((f) => f.id),
+					['TFZZ1'],
+				);
+				const mine = await require('../src/modules/cme/cmeUserService').getUserCme(rec.user_id);
+				assert.ok(Array.isArray(mine.records ?? mine));
+			}
+			await cmeRecords.getAll({ limit: 3 });
+
+			// Chương trình đào tạo (vòng thực hành) và khóa mở đăng ký ở cổng công khai (JSON lồng 2 tầng)
+			const programs = require('../src/modules/training/programs/trainingProgramService');
+			const list = await programs.getAll({ limit: 5 });
+			for (const p of list.data ?? list) assert.ok(Array.isArray(p.rotations));
+			const open = await require('../src/modules/public/publicPortalService').getOpenCourses();
+			for (const c of open) for (const p of c.programs) assert.ok(Array.isArray(p.lessons ?? []));
+		},
+	);
 };
 
 module.exports = { run };

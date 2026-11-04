@@ -3,7 +3,7 @@
  * Buổi tập huấn = seminars có event_type 'training' + scope 'hosted' (menu
  * /admin/hospital-trainings). Xem migration 2026-11-21_hospital_trainings.sql.
  */
-const { sql } = require('../../config/db');
+const { sql, jsonArray } = require('../../config/db');
 
 // Tập huấn bệnh viện = loại 'training' do BV tổ chức — có menu riêng; trang
 // Hội thảo gửi hospital_training=0 để không hiện các buổi này.
@@ -18,8 +18,11 @@ const trainingFilter = (v) =>
 
 // Tên khoa tổ chức + chủ đề + khoa bắt buộc (JSON) — trường riêng của tập huấn bệnh viện
 const trainingSelect = `od.name AS organizer_department_name, ht.name AS topic_name,
-  (SELECT d.id, d.name FROM seminar_required_departments r JOIN departments d ON d.id = r.department_id
-   WHERE r.seminar_id = s.id ORDER BY d.name FOR JSON PATH) AS required_departments`;
+  ${jsonArray(
+		`SELECT d.id, d.name FROM seminar_required_departments r JOIN departments d ON d.id = r.department_id
+   WHERE r.seminar_id = s.id`,
+		'd.name',
+	)} AS required_departments`;
 const parseTraining = (row) => ({
 	...row,
 	required_departments: JSON.parse(row.required_departments || '[]'),

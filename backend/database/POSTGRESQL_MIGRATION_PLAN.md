@@ -123,7 +123,7 @@ bước A và giữ máy Windows hiện tại tới khi xong bước B.
 | `THROW 5xxxx` / `RAISERROR` + kiểm `err.number` | 7 + 45 (19) | `RAISE EXCEPTION ... USING ERRCODE`; đọc `err.code` (mã SQLSTATE) |
 | `err.number === 2627/2601` (trùng khoá), `547` (FK), `207/208` | ~20 | `23505`, `23503`, `42703/42P01` |
 | `OFFSET ... FETCH NEXT` | 6 (3) | Giữ nguyên (PG hỗ trợ cú pháp chuẩn này) |
-| `FOR JSON` | 5 (4) | `json_agg`, `jsonb_build_object` |
+| `FOR JSON` | 5 (4) → 0 | `jsonArray(select, orderBy)` của adapter (PG: `jsonb_agg(jsonb_strip_nulls(to_jsonb(j)) ORDER BY …)`) |
 | `ROW_NUMBER() OVER` | 5 (3) | Giữ nguyên |
 
 > Số liệu đếm bằng `grep`, có thể lệch vài chỗ (chuỗi trong comment). Mục 6.1
@@ -259,7 +259,7 @@ như thể giờ đó là UTC**. Cách làm:
 | `CROSS APPLY (SELECT TOP 1 ...)` | `CROSS JOIN LATERAL (SELECT ... LIMIT 1)` | ✓ qua adapter: `${crossApply(`SELECT … ORDER BY … OFFSET 0 ROWS FETCH NEXT 1 ROWS ONLY`, 'x')}` |
 | `OPENJSON(@ids)` | `= ANY($1::text[])` (truyền mảng JS) | ✗ — có thể chuyển về `IN (@id0, @id1...)` qua `inClause` ở chặng 1 |
 | `STRING_AGG(x, ',') WITHIN GROUP (ORDER BY y)` | `string_agg(x, ',' ORDER BY y)` | ✓ qua adapter: `${stringAgg('x', ',', 'y')}`; `STRING_AGG(x, ',')` không thứ tự chạy nguyên cả 2 DB khi `x` là chuỗi |
-| `FOR JSON PATH` | `json_agg(json_build_object(...))` | ✗ — hoặc gom ở JS |
+| `FOR JSON PATH` | `json_agg(json_build_object(...))` | ✓ qua adapter: `${jsonArray('SELECT … FROM … WHERE …', 'thứ tự')}` (lồng trong jsonArray khác: `{ nested: true }`) |
 | `NEWID()` | `gen_random_uuid()` | ✗ |
 | `WHERE id LIKE 'LDT[0-9][0-9]'` | `WHERE id ~ '^LDT[0-9]{2}$'` | ✗ |
 | `[col]` | `"col"` hoặc bỏ ngoặc | Bỏ ngoặc ✓ (khi tên không trùng từ khoá) |
@@ -615,7 +615,8 @@ thường. Mỗi nhóm là 1 PR nhỏ theo module.
   - Không đổi: 10 chỗ `STRING_AGG(x, sep)` không thứ tự — cột đều `varchar`, PG chạy nguyên.
   - Kiểm bằng ca "stringAgg" trong `test-integration/batchSplit.cases.js` (2 DB: thứ tự tăng / giảm, cột số,
     `councilService.getAll` — trước đây lỗi trên PG —, danh sách bài học đúng thứ tự khoa, vòng thực hành).
-    Còn vướng mục khác trên PG: `FOR JSON` (cổng công khai, chi tiết chương trình). Tổng ratchet 112 → 100.
+    Còn vướng mục khác trên PG: `FOR JSON` (cổng công khai, chi tiết chương trình — đã xong ở mục `FOR JSON`).
+    Tổng ratchet 112 → 100.
 - [x] `MERGE` (merge 7 → 0, kéo theo temp_table 6 → 0, output_clause 1 → 0, identity_fn 1 → 0): helper
   `upsert({ table, key, values, update, source?, nullable?, conflictWhere?, returning?, action? })` của adapter —
   SQL Server `MERGE … WITH (HOLDLOCK) AS tgt USING (…) AS src`, PG `INSERT … AS tgt … ON CONFLICT (key) DO UPDATE`.
@@ -637,6 +638,17 @@ thường. Mỗi nhóm là 1 PR nhỏ theo module.
   - Kiểm bằng ca "upsert" (2 DB: thêm rồi sửa, nhiều dòng, `merge_action`, 3 dịch vụ gọi 2 lần vẫn 1 dòng, CME
     khóa chạy lại không thêm dòng) và "upsert khoá có cột NULL" (SQL Server; PG tự bỏ qua tới khi DB chạy migration
     — đã thử câu PG trên bảng tạm có `NULLS NOT DISTINCT`: thêm rồi sửa cùng dòng). Tổng ratchet 100 → 79.
+- [x] `FOR JSON PATH` (for_json 5 → 0): helper `jsonArray(select, orderBy, { nested })` của adapter — `select` là
+  `SELECT … FROM … WHERE …` chưa có `ORDER BY`. SQL Server giữ `(… ORDER BY … FOR JSON PATH)`; PG thêm cột tạm
+  `ROW_NUMBER() OVER (ORDER BY …) AS __ord` rồi `jsonb_agg(jsonb_strip_nulls(to_jsonb(j) - '__ord') ORDER BY j.__ord)`:
+  - cùng nghĩa với FOR JSON PATH: key NULL bị bỏ, đúng thứ tự, không có dòng → NULL;
+  - trả TEXT (driver PG không tự parse, code vẫn `JSON.parse` như cũ); `nested: true` trả jsonb để lồng thành mảng
+    (FOR JSON lồng trong FOR JSON — SQL Server tự hiểu). Khác duy nhất: thứ tự key trong object (jsonb tự sắp).
+  - 5 chỗ: file kết quả CME (`RESULT_FILES_SQL`, dùng cả ở CME cá nhân), khoa bắt buộc của tập huấn bệnh viện,
+    vòng thực hành của chương trình, cổng công khai — khóa mở đăng ký (chương trình → bài học, lồng 2 tầng).
+  - Kiểm bằng ca "jsonArray" trong `test-integration/batchSplit.cases.js` (2 DB: helper trực tiếp — thứ tự, bỏ NULL,
+    lồng, rỗng; khoa bắt buộc đúng thứ tự DB, file kết quả CME, CME cá nhân, danh sách chương trình, khóa mở đăng
+    ký). Các hàm này nay chạy được trên PG. Tổng ratchet 79 → 74.
 - [ ] Bỏ các chỗ phụ thuộc thứ tự ngầm: mọi câu trả danh sách phải có `ORDER BY`.
 - [x] Ghi baseline smoke test (`UPDATE_SNAPSHOTS=1 npm run test:smoke`, đã ghi 2026-11-03;
   bản 24/10 lưu ở `get-shapes.2026-10-24.bak.json`) **trước**

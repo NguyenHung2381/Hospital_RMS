@@ -452,6 +452,24 @@ const insertReturning = (insert, rest, cols) => `${insert} ${rest} RETURNING ${c
 /** @param {string} del @param {string} where @param {string} cols */
 const deleteReturning = (del, where, cols) => `${del} WHERE ${where} RETURNING ${cols}`;
 
+// Cùng giao diện với db.mssql.js: thứ tự giữ bằng cột ROW_NUMBER tạm __ord (bỏ khỏi kết quả),
+// jsonb_strip_nulls bỏ key NULL như FOR JSON PATH. Kết quả TEXT (driver không tự parse,
+// code gọi JSON.parse như với SQL Server); nested → jsonb để lồng vào jsonArray ngoài.
+/**
+ * @param {string} select
+ * @param {string} orderBy
+ * @param {{ nested?: boolean }} [opts]
+ */
+const jsonArray = (select, orderBy, { nested = false } = {}) => {
+	if (!/^\s*SELECT\s/i.test(select)) throw new Error('jsonArray: select phải bắt đầu bằng SELECT');
+	const inner = select.replace(
+		/^\s*SELECT\s/i,
+		`SELECT ROW_NUMBER() OVER (ORDER BY ${orderBy}) AS __ord, `,
+	);
+	const agg = `jsonb_agg(jsonb_strip_nulls(to_jsonb(j) - '__ord') ORDER BY j.__ord)`;
+	return `(SELECT ${nested ? agg : `CAST(${agg} AS TEXT)`} FROM (${inner}) j)`;
+};
+
 // Cùng giao diện với db.mssql.js (xem chú thích ở đó). INSERT … ON CONFLICT … DO UPDATE:
 // `EXCLUDED.cột` giữ nguyên nghĩa của PG; khoá có cột NULL cần UNIQUE NULLS NOT DISTINCT.
 /**
@@ -523,6 +541,7 @@ module.exports = {
 	insertReturning,
 	deleteReturning,
 	upsert,
+	jsonArray,
 	sslOptions,
 	toMssqlResult,
 };

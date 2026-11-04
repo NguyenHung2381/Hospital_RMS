@@ -309,6 +309,18 @@ const insertReturning = (insert, rest, cols) => `${insert} OUTPUT ${outputExpr(c
  */
 const deleteReturning = (del, where, cols) => `${del} OUTPUT ${outputExpr(cols)} WHERE ${where}`;
 
+// Subquery trả các dòng của `select` thành 1 chuỗi JSON mảng (không có dòng → NULL), như
+// `(SELECT … ORDER BY … FOR JSON PATH)`: key NULL bị bỏ, theo thứ tự `orderBy`.
+// `select` là câu SELECT … FROM … WHERE … chưa có ORDER BY. nested: true khi nằm TRONG
+// 1 jsonArray khác (PG cần jsonb để lồng thành mảng, không thành chuỗi); SQL Server tự hiểu.
+/**
+ * @param {string} select
+ * @param {string} orderBy
+ * @param {{ nested?: boolean }} [opts]
+ */
+// eslint-disable-next-line no-unused-vars
+const jsonArray = (select, orderBy, opts = {}) => `(${select} ORDER BY ${orderBy} FOR JSON PATH)`;
+
 // Thêm, trùng khoá thì sửa (upsert) — 1 câu, an toàn khi 2 request cùng lúc.
 //   table   bảng đích (bí danh tgt — dùng được trong update)
 //   key     cột khoá xung đột: phải là khoá chính / UNIQUE (PG cần cho ON CONFLICT)
@@ -393,5 +405,6 @@ module.exports = {
 	insertReturning,
 	deleteReturning,
 	upsert,
+	jsonArray,
 	tlsOptions,
 };

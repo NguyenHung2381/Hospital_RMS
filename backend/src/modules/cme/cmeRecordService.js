@@ -13,6 +13,7 @@ const {
 	nowSql,
 	updateReturning,
 	deleteReturning,
+	jsonArray,
 } = require('../../config/db');
 const { randomId } = require('../../utils/idGenerator');
 const { broadcast } = require('../events/eventService');
@@ -25,9 +26,11 @@ const formCustomValueService = require('../forms/formCustomValueService');
 // (minh chứng chính evidence_file_id bị khóa lúc đó). Lưu ở training_files theo
 // entity_type='cme_result', entity_id = id ghi nhận; không cần cột riêng.
 const RESULT_FILE_TYPE = 'cme_result';
-const RESULT_FILES_SQL = `(SELECT tf.id, tf.file_name, tf.file_url, tf.created_at FROM training_files tf
-           WHERE tf.entity_type = '${RESULT_FILE_TYPE}' AND tf.entity_id = r.id AND tf.is_deleted = 'false'
-           ORDER BY tf.created_at FOR JSON PATH) AS result_files`;
+const RESULT_FILES_SQL = `${jsonArray(
+	`SELECT tf.id, tf.file_name, tf.file_url, tf.created_at FROM training_files tf
+           WHERE tf.entity_type = '${RESULT_FILE_TYPE}' AND tf.entity_id = r.id AND tf.is_deleted = 'false'`,
+	'tf.created_at',
+)} AS result_files`;
 const withResultFiles = (row) =>
 	row && { ...row, result_files: row.result_files ? JSON.parse(row.result_files) : [] };
 

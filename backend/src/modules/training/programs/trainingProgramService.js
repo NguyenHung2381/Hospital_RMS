@@ -7,6 +7,7 @@ const {
 	queryAll,
 	nowSql,
 	stringAgg,
+	jsonArray,
 } = require('../../../config/db');
 const { randomId } = require('../../../utils/idGenerator');
 const { isUniqueViolation } = require('../../../utils/dbErrors');
@@ -75,16 +76,17 @@ const programSelect = `
          (SELECT COUNT(*) FROM course_programs cp WHERE cp.program_id = p.id) AS course_count,
          (SELECT COUNT(*) FROM lesson_programs lp WHERE lp.program_id = p.id) AS lesson_count,
          -- Vòng thực hành GPHN: mỗi vòng 1 khoa (hoặc nhiều khoa để chọn) + thời lượng riêng.
-         (SELECT lp.id AS link_id, pl.id AS lesson_id, pl.title, pl.duration_value, pl.duration_unit,
+         ${jsonArray(
+						`SELECT lp.id AS link_id, pl.id AS lesson_id, pl.title, pl.duration_value, pl.duration_unit,
                  (SELECT ${stringAgg('ld.department_id', ',', 'ld.display_order')}
                     FROM lesson_departments ld WHERE ld.lesson_id = pl.id) AS department_ids,
                  (SELECT ${stringAgg('d2.name', ' / ', 'ld.display_order')}
                     FROM lesson_departments ld JOIN departments d2 ON d2.id = ld.department_id
                     WHERE ld.lesson_id = pl.id) AS department_names
             FROM lesson_programs lp JOIN program_lessons pl ON pl.id = lp.lesson_id
-           WHERE lp.program_id = p.id AND pl.lesson_kind = 'rotation'
-           ORDER BY lp.display_order, pl.created_at
-           FOR JSON PATH) AS rotations
+           WHERE lp.program_id = p.id AND pl.lesson_kind = 'rotation'`,
+						'lp.display_order, pl.created_at',
+					)} AS rotations
   FROM training_programs p
   LEFT JOIN departments d ON d.id = p.department_id
   LEFT JOIN trainee_types tt ON tt.id = p.trainee_type_id
