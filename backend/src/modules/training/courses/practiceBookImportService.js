@@ -191,7 +191,7 @@ const loadLookups = async (courseId) => {
 	const [course, depts, programs, links, users, enrollments, rounds] = await Promise.all([
 		q('SELECT id, name, is_rolling FROM courses WHERE id = @course_id'),
 		q('SELECT id, name FROM departments'),
-		q("SELECT id, code, name FROM training_programs WHERE code LIKE 'GPHN[_]%'"),
+		q("SELECT id, code, name FROM training_programs WHERE LEFT(code, 5) = 'GPHN_'"),
 		q('SELECT program_id FROM course_programs WHERE course_id = @course_id'),
 		q(
 			'SELECT id, staff_number, full_name FROM users WHERE staff_number IS NOT NULL ORDER BY is_active DESC',

@@ -684,6 +684,65 @@ const run = async (t, db, { skip = [] } = {}) => {
 		}
 	});
 
+	// LIKE '[0-9]' / '[_]' (lớp ký tự chỉ SQL Server có) → LIKE thô + lọc JS, LEFT(x, n) = '...'
+	await step(
+		'LIKE không lớp ký tự: tài khoản khoa, mã HV, tên đăng nhập học viên, NHD',
+		async () => {
+			const { isDeptAccountSql } = require('../src/utils/deptAccount');
+			const dept = await q(`
+      SELECT u.id FROM (VALUES ('NV120000'), ('NV0000'), ('NV000'), ('NV120001'), ('HV120000')) AS u(id)
+      WHERE ${isDeptAccountSql('u')} ORDER BY u.id`);
+			assert.deepEqual(
+				dept.map((r) => r.id),
+				['NV0000', 'NV120000'],
+			);
+
+			const acc = require('../src/modules/training/trainees/traineeAccountService');
+			// Mã HV kế tiếp = số lớn nhất của 'HV' + đúng 6 chữ số, + 1
+			const hv = await q("SELECT id FROM users WHERE id LIKE 'HV%'");
+			const maxHv = Math.max(0, ...hv.map((r) => /^HV(\d{6})$/.exec(r.id)?.[1] ?? 0).map(Number));
+			assert.equal(await acc.genTraineeUserIdInTx(tx), `HV${String(maxHv + 1).padStart(6, '0')}`);
+
+			// Tên đăng nhập: thấy NVZ_0001 đã có (mẫu `[_]` trên PG không khớp ⇒ cấp trùng)
+			const { ROLE, requireRoleId } = require('../src/modules/access/roleCodes');
+			const traineeRole = await requireRoleId(ROLE.TRAINEE);
+			const first = await acc.genTraineeUsernameInTx(tx, 'Nguyễn Văn Zzz', traineeRole);
+			assert.equal(first, 'NVZ_0001');
+			const [other] = await q('SELECT id FROM users WHERE id <> @a ORDER BY id', { a: actor.id });
+			await q('UPDATE users SET username = @u, role_id = @r WHERE id = @id', {
+				u: first,
+				r: traineeRole,
+				id: other.id,
+			});
+			assert.equal(await acc.genTraineeUsernameInTx(tx, 'Nguyễn Văn Zzz', traineeRole), 'NVZ_0002');
+
+			// NHD ứng viên theo nhóm bác sĩ (LEFT(code, 7) IN ('GPHN_BS', 'GPHN_YS'))
+			// — so với tính bằng JS trên dữ liệu thô (arrangeOne chạy song song nhiều câu nên
+			// không gọi được trong 1 transaction của test)
+			const isDoctorCode = (c) => /^GPHN_(BS|YS)/i.test(c);
+			const hist = await q(`
+      SELECT r.department_id, r.mentor_user_id, tp.code FROM enrollment_rotations r
+      JOIN course_enrollments e ON e.id = r.enrollment_id
+      JOIN training_programs tp ON tp.id = e.program_id
+      JOIN users u ON u.id = r.mentor_user_id AND u.is_active = 'true'
+      WHERE r.department_id IS NOT NULL`);
+			const practice = require('../src/modules/training/courses/practiceAutoService');
+			const doctors = await practice.loadMentorCandidates(await db.getPool(), true);
+			for (const h of hist.filter((x) => isDoctorCode(x.code)))
+				assert.ok(doctors.get(h.department_id)?.includes(h.mentor_user_id));
+			// Chương trình GPHN_ của nhập sổ thực hành
+			const all = await q('SELECT code FROM training_programs');
+			const gphn = await q("SELECT code FROM training_programs WHERE LEFT(code, 5) = 'GPHN_'");
+			assert.deepEqual(
+				gphn.map((r) => r.code).sort(),
+				all
+					.map((r) => r.code)
+					.filter((c) => /^GPHN_/i.test(c))
+					.sort(),
+			);
+		},
+	);
+
 	// STRING_AGG(x, sep) WITHIN GROUP (ORDER BY o) → stringAgg(x, sep, o)
 	await step('stringAgg: nối theo thứ tự, cột số, dịch vụ dùng stringAgg chạy được', async () => {
 		// SQL Server: các STRING_AGG cùng 1 SELECT phải cùng thứ tự → câu riêng cho DESC

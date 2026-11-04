@@ -5,7 +5,7 @@ const { genSeq2Id } = require('../../utils/idGenerator');
 const roundService = require('../rounds/roundService');
 
 // ─── Levels ───────────────────────────────────────────────────────────────────
-// Constraint CHK_lv_id yêu cầu id LIKE 'CD[0-9][0-9]' → CD01, CD02, ...
+// Constraint CHK_lv_id: id = CD + 2 chữ số → CD01, CD02, ...
 // crudService sinh mã hex ngẫu nhiên (randomId) nên phải override hàm create riêng.
 
 // ── round_type_levels: cấp độ được phép theo loại đợt ────────────────────────

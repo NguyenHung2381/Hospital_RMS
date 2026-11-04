@@ -136,7 +136,7 @@ const loadMentorCandidates = async (pool, doctor) => {
 	const sets = await queryAll(pool.request(), [
 		`
     SELECT r.department_id, r.mentor_user_id AS user_id, COUNT(*) AS n,
-           MAX(CASE WHEN tp.code LIKE 'GPHN[_]BS%' OR tp.code LIKE 'GPHN[_]YS%' THEN 1 ELSE 0 END) AS doctor
+           MAX(CASE WHEN LEFT(tp.code, 7) IN ('GPHN_BS', 'GPHN_YS') THEN 1 ELSE 0 END) AS doctor
     FROM enrollment_rotations r
     JOIN course_enrollments e ON e.id = r.enrollment_id
     JOIN training_programs tp ON tp.id = e.program_id
@@ -394,4 +394,6 @@ module.exports = {
 	arrangeCourse,
 	completeFinished,
 	codeSuffix,
+	// Cho test-integration (arrangeOne chạy song song nhiều câu, không chạy được trong 1 tx test)
+	loadMentorCandidates,
 };

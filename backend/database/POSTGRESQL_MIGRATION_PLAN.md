@@ -112,13 +112,13 @@ bước A và giữ máy Windows hiện tại tới khi xong bước B.
 | `DATEADD` / `DATEDIFF` | 31 (18) → 0 | `dateAdd` / `dateDiff` của adapter (PG: `+ n * interval`, `date - date`, `date_trunc`) |
 | `STRING_AGG(...) WITHIN GROUP (ORDER BY ...)` | 25 (13) → 0 | `stringAgg(x, sep, thứ tự)` của adapter (PG: `string_agg(CAST(x AS TEXT), sep ORDER BY ...)`) |
 | `CROSS APPLY` / `OUTER APPLY` | 25 (19) → 2 (comment) | `crossApply` / `outerApply` của adapter (PG: `CROSS JOIN LATERAL` / `LEFT JOIN LATERAL ... ON true`) |
-| `LIKE ... ESCAPE`, `LIKE '[0-9]'` | 25 (4) + nhiều mẫu `[0-9]` | PG `LIKE` **không** có lớp ký tự `[...]` → dùng `~ '^...[0-9]{3}$'` |
+| `LIKE ... ESCAPE`, `LIKE '[0-9]'` | 25 (4) + nhiều mẫu `[0-9]` → 0 | PG `LIKE` **không** có lớp ký tự `[...]` → LIKE thô (`_`) + lọc đúng bằng JS, hoặc `LEFT(x, n) = '...'` (chạy cả 2 DB) |
 | `OUTPUT INSERTED/DELETED` | 19 (13) → 0 | `RETURNING` (`insertReturning` / `updateReturning` / `deleteReturning` của adapter) |
 | `SCOPE_IDENTITY()`, `@@ROWCOUNT`, `@@TRANCOUNT` | 18 (13) → 0 | `rowsAffected[0]` của câu ghi (PG: `rowCount`); upsert `IF @@ROWCOUNT = 0` viết bằng JS |
 | `CAST(... AS NVARCHAR/BIT/DATETIME)` | 59 (35) | `::text`, `::boolean`, `::timestamp`. Cột boolean trong SELECT: `boolExpr(đk)` / `castBool(x)` của adapter (SQL Server ra BIT, PG ra boolean) |
 | `CONVERT(`, `TRY_CAST(` | 20 (8) → 0 | `formatDate` / `tryCastInt` của adapter (PG: `to_char`, regex rồi `CAST`) |
 | `MERGE` (có `WITH (HOLDLOCK)`) | 10 (9) → 0 | `upsert({...})` của adapter (PG: `INSERT ... ON CONFLICT DO UPDATE`) |
-| Gợi ý khoá `UPDLOCK/HOLDLOCK`, `sp_getapplock` | 5 + 6 | `SELECT ... FOR UPDATE`; khoá dải mã → `pg_advisory_xact_lock(hashtext(...))` |
+| Gợi ý khoá `UPDLOCK/HOLDLOCK`, `sp_getapplock` | 5 → 0 + 6 | `SELECT ... FOR UPDATE`; khoá dải mã → `pg_advisory_xact_lock(hashtext(...))` |
 | Bảng tạm `#t`, biến bảng `@t TABLE` | 21 (3) + 8 | `CREATE TEMP TABLE ... ON COMMIT DROP`, CTE |
 | `THROW 5xxxx` / `RAISERROR` + kiểm `err.number` | 7 + 45 (19) | `RAISE EXCEPTION ... USING ERRCODE`; đọc `err.code` (mã SQLSTATE) |
 | `err.number === 2627/2601` (trùng khoá), `547` (FK), `207/208` | ~20 | `23505`, `23503`, `42703/42P01` |
@@ -261,10 +261,10 @@ như thể giờ đó là UTC**. Cách làm:
 | `STRING_AGG(x, ',') WITHIN GROUP (ORDER BY y)` | `string_agg(x, ',' ORDER BY y)` | ✓ qua adapter: `${stringAgg('x', ',', 'y')}`; `STRING_AGG(x, ',')` không thứ tự chạy nguyên cả 2 DB khi `x` là chuỗi |
 | `FOR JSON PATH` | `json_agg(json_build_object(...))` | ✓ qua adapter: `${jsonArray('SELECT … FROM … WHERE …', 'thứ tự')}` (lồng trong jsonArray khác: `{ nested: true }`) |
 | `NEWID()` | `gen_random_uuid()` | ✗ |
-| `WHERE id LIKE 'LDT[0-9][0-9]'` | `WHERE id ~ '^LDT[0-9]{2}$'` | ✗ |
+| `WHERE id LIKE 'LDT[0-9][0-9]'` | `WHERE id ~ '^LDT[0-9]{2}$'` | ✓ không dùng nữa: LIKE thô + regex JS (`idGenerator.maxSeq`), `LEFT(code, n) = '...'`; CHECK của PG baseline dùng `SIMILAR TO` |
 | `[col]` | `"col"` hoặc bỏ ngoặc | ✓ bỏ ngoặc (`session`, `year` không là từ khoá ở cả 2 DB); alias trùng từ khoá → `"open"`, `"group"` (nháy kép chạy cả 2 DB) |
 | `N'chuỗi'` | `'chuỗi'` | ✓ qua adapter: `${nstr('chuỗi')}` (SQL Server cần `N` cho chữ Việt) |
-| `SELECT ... WITH (UPDLOCK, HOLDLOCK)` | `SELECT ... FOR UPDATE` | ✗ — khoá dải mã chưa tồn tại → advisory lock |
+| `SELECT ... WITH (UPDLOCK, HOLDLOCK)` | `SELECT ... FOR UPDATE` | ✓ không còn: khoá dải mã → `lockResource` của adapter (`idGenerator.nextId`) |
 | `sp_getapplock 'x'` | `SELECT pg_advisory_xact_lock(hashtext('x'))` | ✗ |
 | `SCOPE_IDENTITY()` | `INSERT ... RETURNING id` | ✗ |
 | `@@ROWCOUNT` trong JS | `result.rowCount` | adapter trả `rowsAffected` |
@@ -531,6 +531,23 @@ thường. Mỗi nhóm là 1 PR nhỏ theo module.
     câu trên. Cấp tài khoản học viên / thành viên đề tài **không** gọi trong test — 2 hàm tự mở
     transaction riêng rồi commit, sẽ ghi thật vào DB dev. Ratchet chưa bắt được dạng `VALUES (…, 1)`
     (cần biết vị trí cột) — viết SQL mới nhớ dùng `'true'` / `'false'`. Tổng ratchet 50 → 35.
+- [x] `LIKE '[0-9]'` / `'[_]'` — lớp ký tự chỉ SQL Server có (like_class 7 → 0, lock_hint 4 → 0). Ratchet
+  `like_class` bắt thêm mẫu `[_]` / `[%]` / `[0-9]` trong chuỗi JS truyền làm tham số LIKE (dạng đã lọt
+  trước đây: bắt được 10 chỗ trên code cũ). Lỗi thật trên PG:
+  - Tên đăng nhập học viên kế tiếp: tham số `${prefix}[_]%` — PG coi `[` là ký tự thường ⇒ không thấy
+    `NVA_0001` đã có ⇒ cấp lại `NVA_0001` (trùng UNIQUE). → `${prefix}_%` (`_` là ký tự đại diện, lấy
+    rộng hơn; `nextTraineeUsername` lọc đúng dạng bằng JS — prefix chỉ có chữ cái).
+  - Mã tài khoản học viên `HV` + 6 số: `WITH (UPDLOCK, HOLDLOCK)` + `LIKE @prefix + '[0-9]…'` →
+    `idGenerator.nextId` (khoá sinh mã `gen_trainee_user_id` + LIKE thô + regex JS) như các mã khác.
+  - NHD ứng viên theo nhóm bác sĩ: `code LIKE 'GPHN[_]BS%'` → `LEFT(code, 7) IN ('GPHN_BS', 'GPHN_YS')`;
+    chương trình GPHN của nhập sổ thực hành → `LEFT(code, 5) = 'GPHN_'`.
+  - Tài khoản khoa `NV%[0-9]{4}` + `RIGHT(id, 4) = '0000'` → `LIKE 'NV%0000'` (cùng nghĩa).
+  - 3 comment mô tả CHECK `LDT[0-9][0-9]`… viết lại bằng lời.
+  - Kiểm bằng ca "LIKE không lớp ký tự" (2 DB): tài khoản khoa trên bộ mã mẫu, mã HV kế tiếp, tên đăng
+    nhập thấy `NVZ_0001` ⇒ ra `NVZ_0002`, NHD nhóm bác sĩ (11 vòng có NHD) so với tính bằng JS, danh sách
+    GPHN. Đã thử: `'NVZ_0001' LIKE 'NVZ[_]%'` → SQL Server 1, PG 0. Chưa gọi `arrangeOne` trong test (chạy
+    song song nhiều câu trên 1 transaction; PG còn lô nhiều câu ở `enrollmentRotationService.generate`).
+  - Tìm kiếm `LIKE @search` phân biệt hoa/thường trên PG là mục riêng (4.2 — `ILIKE`). Tổng ratchet 35 → 24.
 - [x] Giờ hiện tại (`GETDATE` / `SYSDATETIME` / `GETUTCDATE` / `SYSUTCDATETIME`, 188 → 5): 185 chỗ
   đổi bằng script sang đoạn SQL của adapter chèn vào chuỗi (chuỗi `'...'` chuyển sang template):
   - `${nowSql}` giờ VN: SQL Server `GETDATE()`; PG `(now() AT TIME ZONE 'Asia/Ho_Chi_Minh')` —

@@ -44,7 +44,7 @@ const escapeRegex = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 /**
  * Số lớn nhất đang dùng sau `prefix` (đúng `digits` chữ số, hoặc ≥ digits nếu
  * `minDigits`), 0 nếu chưa có. LIKE chỉ lọc thô (ký tự đặc biệt của LIKE trong
- * prefix đổi thành `_`, cú pháp `[0-9]` không có ở PG); regex trong JS lọc đúng.
+ * prefix đổi thành `_`, lớp ký tự chữ số của LIKE không có ở PG); regex trong JS lọc đúng.
  * @param {any} tx
  * @param {{table: string, column?: string, prefix: string, digits: number,
  *   minDigits?: boolean, skip?: (digits: string) => boolean}} opts

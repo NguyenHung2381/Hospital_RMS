@@ -76,7 +76,13 @@ const PATTERNS = [
 	},
 	{ key: 'within_group', re: /\bWITHIN\s+GROUP\b/gi, pg: 'string_agg(x, sep ORDER BY ...)' },
 	{ key: 'apply', re: /\b(CROSS|OUTER)\s+APPLY\b/gi, pg: 'crossApply / outerApply (adapter)' },
-	{ key: 'like_class', re: /\bLIKE\s+'[^'\n]*\[[^'\n]*'/gi, pg: "~ '^...[0-9]$'" },
+	{
+		// LIKE '...[0-9]...' trong câu SQL, và mẫu `[_]` / `[%]` / `[0-9]` trong chuỗi JS truyền
+		// làm tham số LIKE (`${prefix}[_]%`) — PG LIKE không có lớp ký tự.
+		key: 'like_class',
+		re: /\bLIKE\s+'[^'\n]*\[[^'\n]*'|['`][^'`\n]*\[(_|%|\d-\d)\][^'`\n]*['`]/gi,
+		pg: "LIKE thô + lọc JS / LEFT(x, n) = '...'",
+	},
 	{
 		// Tên cột / alias trong ngoặc vuông: `t.[session]`, `AS [open]`. Chỉ bắt sau `x.` hoặc
 		// từ khoá SQL viết HOA để không trùng mảng JS (`[text]`, `obj?.[key]`).

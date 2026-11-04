@@ -14,6 +14,7 @@ const { defaultPassword } = require('../../../utils/passwordPolicy');
 const { traineeUsernamePrefix, nextTraineeUsername } = require('./traineeUsername');
 const userService = require('../../users/userService');
 const { httpError } = require('../../../utils/httpError');
+const { nextId } = require('../../../utils/idGenerator');
 const userStatusCache = require('../../../permissions/userStatusCache');
 
 // ─── Cấp tài khoản đăng nhập cho học viên (D0) ──────────────────────────────
@@ -37,7 +38,9 @@ const genTraineeUsernameInTx = async (tx, fullName, traineeRoleId) => {
 	const prefix = traineeUsernamePrefix(fullName);
 	const rows = (
 		await new sql.Request(tx)
-			.input('pattern', sql.VarChar(110), `${prefix}[_]%`)
+			// `_` ở đây là ký tự đại diện của LIKE ⇒ lấy rộng hơn "<prefix>_…" một chút;
+			// nextTraineeUsername lọc đúng dạng bằng JS (prefix chỉ có chữ cái)
+			.input('pattern', sql.VarChar(110), `${prefix}_%`)
 			.input('role_id', sql.VarChar(6), traineeRoleId)
 			.query(
 				`SELECT username, CASE WHEN role_id = @role_id THEN 1 ELSE 0 END AS is_trainee
@@ -51,16 +54,16 @@ const genTraineeUsernameInTx = async (tx, fullName, traineeRoleId) => {
 	);
 };
 
-// Sinh mã tài khoản học viên trong transaction: (UPDLOCK, HOLDLOCK) khóa dải mã
-// 'HV' tới khi tx commit nên chạy song song vẫn không trùng.
-const genTraineeUserIdInTx = async (tx) => {
-	const res = await new sql.Request(tx).input('prefix', sql.VarChar(4), TRAINEE_USER_PREFIX).query(`
-      SELECT @prefix + RIGHT('000000' + CAST(COALESCE(MAX(CAST(RIGHT(id, 6) AS INT)), 0) + 1 AS VARCHAR(6)), 6) AS new_id
-      FROM users WITH (UPDLOCK, HOLDLOCK)
-      WHERE id LIKE @prefix + '[0-9][0-9][0-9][0-9][0-9][0-9]'
-    `);
-	return res.recordset[0]?.new_id;
-};
+// Sinh mã tài khoản học viên 'HV' + 6 số trong transaction: khoá sinh mã giữ tới khi tx
+// commit nên chạy song song vẫn không trùng (idGenerator.nextId — chạy cả SQL Server và PG).
+const genTraineeUserIdInTx = (tx) =>
+	nextId(tx, {
+		table: 'users',
+		prefix: TRAINEE_USER_PREFIX,
+		digits: 6,
+		what: 'mã tài khoản học viên',
+		lockKey: 'gen_trainee_user_id',
+	});
 
 // traineeIds BẮT BUỘC (route đã kiểm tra) — trước đây bỏ trống = cấp cho mọi học
 // viên chưa có tài khoản, kể cả hồ sơ đã xóa. Hồ sơ đã xóa / ngừng hoạt động /
@@ -275,4 +278,7 @@ module.exports = {
 	resetAccountPassword,
 	setAccountActive,
 	lockAccountOf,
+	// Cho test-integration (chạy trong transaction rollback của test)
+	genTraineeUserIdInTx,
+	genTraineeUsernameInTx,
 };
