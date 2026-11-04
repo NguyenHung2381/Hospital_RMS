@@ -321,6 +321,13 @@ const deleteReturning = (del, where, cols) => `${del} OUTPUT ${outputExpr(cols)}
 // eslint-disable-next-line no-unused-vars
 const jsonArray = (select, orderBy, opts = {}) => `(${select} ORDER BY ${orderBy} FOR JSON PATH)`;
 
+// Hằng chuỗi Unicode trong câu SQL: nstr('Chưa xác định'). SQL Server cần N'...' — DB dùng
+// collation CP1252, chuỗi không N mất dấu tiếng Việt. PG ra '...' thường (N'...' của PG là
+// kiểu char, mất khoảng trắng cuối). Chỉ cho hằng viết trong code — dữ liệu người dùng
+// đi qua tham số.
+/** @param {string} text */
+const nstr = (text) => `N'${text.replace(/'/g, "''")}'`;
+
 // Thêm, trùng khoá thì sửa (upsert) — 1 câu, an toàn khi 2 request cùng lúc.
 //   table   bảng đích (bí danh tgt — dùng được trong update)
 //   key     cột khoá xung đột: phải là khoá chính / UNIQUE (PG cần cho ON CONFLICT)
@@ -406,5 +413,6 @@ module.exports = {
 	deleteReturning,
 	upsert,
 	jsonArray,
+	nstr,
 	tlsOptions,
 };

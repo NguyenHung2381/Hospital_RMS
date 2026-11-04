@@ -15,7 +15,7 @@
  * thảo đã cấp CME (seminar_participants.cme_year) + ghi nhận độc lập đã duyệt.
  * Dùng cho file xuất trang Ghi nhận CME (toàn viện) và phiếu CME cá nhân (userId).
  */
-const { getPool, sql, queryAll } = require('../../config/db');
+const { getPool, sql, queryAll, nstr } = require('../../config/db');
 const { deptAccountJoinSql, isDeptAccountJoinedSql } = require('../../utils/deptAccount');
 const { httpError } = require('../../utils/httpError');
 
@@ -117,7 +117,7 @@ const getData = async ({ year, fromYear, toYear: to, userId, department, search 
 			`
     SELECT x.*
     FROM (
-      SELECT p.user_id, N'Hội thảo/Hội nghị' AS source, '${SEMINAR_GROUP.id}' AS group_id, NULL AS category_name,
+      SELECT p.user_id, ${nstr('Hội thảo/Hội nghị')} AS source, '${SEMINAR_GROUP.id}' AS group_id, NULL AS category_name,
              s.title, p.participation_type AS role, s.start_date AS from_date, s.end_date AS to_date,
              p.cme_year AS year, p.cme_credits AS credits, p.cme_certificate_no AS cert_no
       FROM seminar_participants p
@@ -125,7 +125,7 @@ const getData = async ({ year, fromYear, toYear: to, userId, department, search 
       WHERE p.cme_year IS NOT NULL AND COALESCE(p.cme_credits, 0) > 0
         AND (@from IS NULL OR p.cme_year >= @from) AND (@to IS NULL OR p.cme_year <= @to)
       UNION ALL
-      SELECT r.user_id, N'Ghi nhận độc lập', c.group_id, c.name,
+      SELECT r.user_id, ${nstr('Ghi nhận độc lập')}, c.group_id, c.name,
              r.title, r.role, r.activity_date, r.end_date, r.year, r.credits, NULL
       FROM cme_records r
       LEFT JOIN cme_credit_categories c ON c.id = r.category_id

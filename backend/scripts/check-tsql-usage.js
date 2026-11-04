@@ -48,7 +48,12 @@ const PATTERNS = [
 		re: /(?<!\.)\b(GETDATE|GETUTCDATE|SYSDATETIME|SYSUTCDATETIME)\s*\(/gi,
 		pg: 'nowSql / utcNowSql / vnTodaySql (adapter)',
 	},
-	{ key: 'n_prefix', re: /(?<![\w'])N'/g, pg: "'...' (bỏ N)" },
+	{
+		// Không tính chữ có dấu kết thúc bằng N (`MÔN'`) và mã chân trang Excel `&N`
+		key: 'n_prefix',
+		re: /(?<![\p{L}\p{N}_'&])N'/gu,
+		pg: "nstr('...') của adapter",
+	},
 	{ key: 'isnull', re: /\bISNULL\s*\(/gi, pg: 'COALESCE (chạy cả 2 DB)' },
 	{ key: 'set_actor', re: /\bsp_set_actor\b/gi, pg: 'withActor() / set_config' },
 	{

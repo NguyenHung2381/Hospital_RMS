@@ -18,6 +18,7 @@ const {
 	nowSql,
 	crossApply,
 	stringAgg,
+	nstr,
 } = require('../../../config/db');
 const { broadcast } = require('../../events/eventService');
 const { httpError } = require('../../../utils/httpError');
@@ -440,7 +441,7 @@ const carryOver = async (enrollmentId, actorId) => {
                                         ${cols.join(', ')}, result, note, created_by)
       SELECT ${newId}, @id, m.id, m.title, o.seq, o.department_id, o.department_name,
              ${cols.map((c) => `o.${c}`).join(', ')}, 'pass',
-             CONCAT(N'Công nhận từ hồ sơ ', COALESCE(oe.practice_code, oe.id)), @actor_id
+             CONCAT(${nstr('Công nhận từ hồ sơ ')}, COALESCE(oe.practice_code, oe.id)), @actor_id
       ${CARRY_FROM}`);
 	return r.rowsAffected[0] ?? 0;
 };

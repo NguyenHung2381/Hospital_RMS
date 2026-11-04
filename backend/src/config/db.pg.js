@@ -470,6 +470,11 @@ const jsonArray = (select, orderBy, { nested = false } = {}) => {
 	return `(SELECT ${nested ? agg : `CAST(${agg} AS TEXT)`} FROM (${inner}) j)`;
 };
 
+// Cùng giao diện với db.mssql.js: hằng chuỗi '...' (PG luôn UTF-8; không dùng N'...' vì là
+// kiểu char, mất khoảng trắng cuối).
+/** @param {string} text */
+const nstr = (text) => `'${text.replace(/'/g, "''")}'`;
+
 // Cùng giao diện với db.mssql.js (xem chú thích ở đó). INSERT … ON CONFLICT … DO UPDATE:
 // `EXCLUDED.cột` giữ nguyên nghĩa của PG; khoá có cột NULL cần UNIQUE NULLS NOT DISTINCT.
 /**
@@ -542,6 +547,7 @@ module.exports = {
 	deleteReturning,
 	upsert,
 	jsonArray,
+	nstr,
 	sslOptions,
 	toMssqlResult,
 };

@@ -166,7 +166,7 @@ const getStats = async () => {
 };
 
 const recordsOf = async (pool, personId) => {
-	// Nhãn tiếng Việt qua tham số: DB SQL Server dùng bảng mã CP1252, chuỗi không N'...' mất dấu
+	// Nhãn tiếng Việt qua tham số: DB SQL Server dùng bảng mã CP1252, chuỗi thiếu tiền tố N mất dấu
 	const r = await pool
 		.request()
 		.input('pid', sql.VarChar(20), personId)
@@ -355,7 +355,7 @@ const mergeCandidate = async (
 			.input('l', sql.VarChar(20), loseId)
 			.input('actor', sql.VarChar(20), actorId || null)
 			.input('note', sql.NVarChar(500), note || null)
-			// Ghi chú ghép sẵn bằng JS (chạy được trên PG, không cần N'...' + nối chuỗi)
+			// Ghi chú ghép sẵn bằng JS (chạy được trên PG, không cần chuỗi có tiền tố N + nối chuỗi)
 			.input('note_same', sql.NVarChar(500), `Đã gộp cùng lượt (cặp #${id})`)
 			.input('note_from', sql.NVarChar(500), `Chuyển từ hồ sơ đã gộp ${loseId}`)
 			.input('note_to', sql.NVarChar(500), `Chuyển sang hồ sơ ${keepId}`).query(`

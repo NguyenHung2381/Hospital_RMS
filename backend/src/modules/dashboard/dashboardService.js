@@ -7,6 +7,7 @@ const {
 	dateAdd,
 	datePart,
 	formatDate,
+	nstr,
 } = require('../../config/db');
 const { remember } = require('../../utils/cache');
 const { todayVN } = require('../../utils/vnDate');
@@ -39,11 +40,11 @@ const getStats = async (year = null) =>
 			`
     -- Topics by department: article_type + status + category breakdown (for full dept stats table)
     SELECT
-      COALESCE(d.name, N'Chưa xác định') AS dept_name,
-      COALESCE(d.specialty_group, N'Chưa xác định') AS specialty_group,
+      COALESCE(d.name, ${nstr('Chưa xác định')}) AS dept_name,
+      COALESCE(d.specialty_group, ${nstr('Chưa xác định')}) AS specialty_group,
       t.article_type,
       t.status,
-      COALESCE(c.name, N'Chưa xác định') AS category_name,
+      COALESCE(c.name, ${nstr('Chưa xác định')}) AS category_name,
       COUNT(t.id) AS cnt
     FROM ${TOPICS} t
     LEFT JOIN departments d ON d.id = t.department_id
@@ -76,7 +77,7 @@ const getStats = async (year = null) =>
     -- Topics by category per round year
     SELECT
       CAST(r.year AS VARCHAR(4)) AS year,
-      COALESCE(c.name, N'Chưa phân loại') AS category_name,
+      COALESCE(c.name, ${nstr('Chưa phân loại')}) AS category_name,
       COUNT(*) AS cnt
     FROM ${TOPICS} t
     LEFT JOIN research_rounds r ON r.id = t.round_id
@@ -121,7 +122,7 @@ const getStats = async (year = null) =>
 			`
     -- Council progress-review completion theo phòng ban: số đánh giá cần chấm
     SELECT
-      COALESCE(d.name, N'Chưa xác định') AS dept_name,
+      COALESCE(d.name, ${nstr('Chưa xác định')}) AS dept_name,
       COUNT(*) AS expected
     FROM council_members cm
     INNER JOIN ${TOPICS} t ON t.council_id = cm.council_id
@@ -131,7 +132,7 @@ const getStats = async (year = null) =>
 			`
     -- Council progress-review completion theo phòng ban: số đánh giá đã chấm
     SELECT
-      COALESCE(d.name, N'Chưa xác định') AS dept_name,
+      COALESCE(d.name, ${nstr('Chưa xác định')}) AS dept_name,
       COUNT(*) AS completed
     FROM council_progress_reviews pr
     INNER JOIN ${TOPICS} t ON t.id = pr.topic_id
@@ -309,7 +310,7 @@ const getTrainingStats = async () =>
 			`,
 			`
     -- Học viên theo đối tượng
-    SELECT COALESCE(tt.name, N'Chưa phân loại') AS name, COUNT(*) AS cnt
+    SELECT COALESCE(tt.name, ${nstr('Chưa phân loại')}) AS name, COUNT(*) AS cnt
     FROM trainees t
     LEFT JOIN trainee_types tt ON tt.id = t.trainee_type_id
     WHERE t.is_active = 'true'
@@ -404,11 +405,11 @@ const getOverviewStats = async () =>
 			`,
 				`
     -- Tài khoản đang hoạt động theo vai trò
-    SELECT COALESCE(r.description, r.name, N'Chưa gán vai trò') AS name, COUNT(*) AS cnt
+    SELECT COALESCE(r.description, r.name, ${nstr('Chưa gán vai trò')}) AS name, COUNT(*) AS cnt
     FROM users u
     LEFT JOIN roles r ON r.id = u.role_id
     WHERE u.is_active = 'true'
-    GROUP BY COALESCE(r.description, r.name, N'Chưa gán vai trò')
+    GROUP BY COALESCE(r.description, r.name, ${nstr('Chưa gán vai trò')})
     ORDER BY cnt DESC
 			`,
 				`
@@ -526,13 +527,13 @@ const getSeminarStats = async () =>
 			`,
 				`
     -- Khoa/phòng có nhiều lượt tham dự nhất trong năm (nhân sự nội viện)
-    SELECT COALESCE(NULLIF(LTRIM(RTRIM(sp.department_raw)), ''), N'Chưa xác định') AS name,
+    SELECT COALESCE(NULLIF(LTRIM(RTRIM(sp.department_raw)), ''), ${nstr('Chưa xác định')}) AS name,
       COUNT(*) AS cnt,
       SUM(CASE WHEN sp.cme_status IN ('issued', 'signed') THEN 1 ELSE 0 END) AS cme_cnt
     FROM seminar_participants sp
     INNER JOIN seminars s ON s.id = sp.seminar_id
     WHERE s.event_year = @year AND sp.source = 'internal'
-    GROUP BY COALESCE(NULLIF(LTRIM(RTRIM(sp.department_raw)), ''), N'Chưa xác định')
+    GROUP BY COALESCE(NULLIF(LTRIM(RTRIM(sp.department_raw)), ''), ${nstr('Chưa xác định')})
     ORDER BY cnt DESC OFFSET 0 ROWS FETCH NEXT 8 ROWS ONLY
 			`,
 			],

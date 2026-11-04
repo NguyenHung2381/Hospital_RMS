@@ -21,6 +21,7 @@ const {
 	nowSql,
 	datePart,
 	upsert,
+	nstr,
 } = require('../../../config/db');
 const { broadcast } = require('../../events/eventService');
 const systemSettingService = require('../../settings/systemSettingService');
@@ -103,14 +104,14 @@ const TRAINEE_SOURCE = `
     SELECT x.* FROM (
       SELECT t.staff_user_id AS user_id,
              LEFT(CONCAT(c.name, CASE WHEN tp.name IS NOT NULL THEN CONCAT(' — ', tp.name) END), 255) AS title,
-             N'Học viên' AS role,
+             ${nstr('Học viên')} AS role,
              'DT_KHOAHOC' AS category_id,
              CAST(COALESCE(tp.theory_hours, 0) + COALESCE(tp.practice_hours, 0) AS DECIMAL(8, 2)) AS quantity,
              CAST(COALESCE(tp.credit_hours,
                            (COALESCE(tp.theory_hours, 0) + COALESCE(tp.practice_hours, 0)) * ${conversionOf('DT_KHOAHOC')})
                   AS DECIMAL(6, 2)) AS credits,
              COALESCE(c.end_date, cert.issue_date) AS activity_date,
-             CONCAT(N'Giấy chứng nhận số ', cert.cert_no) AS note
+             CONCAT(${nstr('Giấy chứng nhận số ')}, cert.cert_no) AS note
       FROM certificates cert
       JOIN course_enrollments e ON e.id = cert.enrollment_id
       JOIN courses c ON c.id = e.course_id
@@ -183,13 +184,13 @@ const syncLecturers = async (courseId, actorId) => {
 // Số tiết của từng GV có tài khoản trong khóa @course_id (> 0)
 const LECTURER_SOURCE = `
     SELECT h.user_id,
-           LEFT(CONCAT(N'Giảng dạy: ', c.name), 255) AS title,
-           N'Giảng viên' AS role,
+           LEFT(CONCAT(${nstr('Giảng dạy: ')}, c.name), 255) AS title,
+           ${nstr('Giảng viên')} AS role,
            'GIANGDAY' AS category_id,
            CAST(h.hours AS DECIMAL(8, 2)) AS quantity,
            CAST(h.hours * ${conversionOf('GIANGDAY')} AS DECIMAL(6, 2)) AS credits,
            COALESCE(c.end_date, CAST(${nowSql} AS DATE)) AS activity_date,
-           CONCAT(N'Tự động khi khóa điểm — ', h.hours, N' tiết') AS note
+           CONCAT(${nstr('Tự động khi khóa điểm — ')}, h.hours, ${nstr(' tiết')}) AS note
     FROM (
       SELECT lec.user_id,
              SUM(COALESCE(la.hours,

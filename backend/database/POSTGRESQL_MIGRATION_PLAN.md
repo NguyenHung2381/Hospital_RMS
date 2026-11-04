@@ -100,7 +100,7 @@ bước A và giữ máy Windows hiện tại tới khi xong bước B.
 | `sql.NVarChar`, `sql.Int`, `sql.DateTime`... | 2.115 (119) | Bỏ, hoặc chỉ dùng để ép kiểu `$1::int` khi cần |
 | `recordset` / `recordsets[i]` (nhiều kết quả trong 1 batch) | 673 / 91 — **recordsets đã hết** (`queryAll`) | `rows`; nhiều kết quả → tách thành nhiều câu |
 | `GETDATE()`, `SYSDATETIME()`, `SYSUTCDATETIME()` | 212 (86) → 5 (comment + migrator SQL Server) | `nowSql` / `utcNowSql` / `vnTodaySql` của adapter — xem mục 4.3 về múi giờ |
-| `N'...'` | 339 (98) | `'...'` (PG luôn là UTF-8) |
+| `N'...'` | 339 (98) → 5 (3 `THROW` + mẫu migration SQL Server) | `nstr('...')` của adapter (SQL Server `N'...'`, PG `'...'`) |
 | Định danh `[ten]` | 658 (156) → 0 trong câu SQL (ratchet `bracket_ident`; con số 658 đếm thô, gồm cả mảng JS) | Bỏ ngoặc; tên trùng từ khoá → `"ten"` |
 | `ISNULL(` | 108 (33) — **đã đổi hết** | `COALESCE(` (chạy được trên cả 2 DB) |
 | `EXEC sp_set_actor @actor_id; ...` | 76 (27) | `set_config('app.current_user_id', $1, true)` trong transaction |
@@ -263,7 +263,7 @@ như thể giờ đó là UTC**. Cách làm:
 | `NEWID()` | `gen_random_uuid()` | ✗ |
 | `WHERE id LIKE 'LDT[0-9][0-9]'` | `WHERE id ~ '^LDT[0-9]{2}$'` | ✗ |
 | `[col]` | `"col"` hoặc bỏ ngoặc | ✓ bỏ ngoặc (`session`, `year` không là từ khoá ở cả 2 DB); alias trùng từ khoá → `"open"`, `"group"` (nháy kép chạy cả 2 DB) |
-| `N'chuỗi'` | `'chuỗi'` | ✗ (SQL Server cần `N` cho chữ Việt) |
+| `N'chuỗi'` | `'chuỗi'` | ✓ qua adapter: `${nstr('chuỗi')}` (SQL Server cần `N` cho chữ Việt) |
 | `SELECT ... WITH (UPDLOCK, HOLDLOCK)` | `SELECT ... FOR UPDATE` | ✗ — khoá dải mã chưa tồn tại → advisory lock |
 | `sp_getapplock 'x'` | `SELECT pg_advisory_xact_lock(hashtext('x'))` | ✗ |
 | `SCOPE_IDENTITY()` | `INSERT ... RETURNING id` | ✗ |
@@ -454,9 +454,19 @@ thường. Mỗi nhóm là 1 PR nhỏ theo module.
     `REPLACE(x, N'  ', N' ')` thành thay chuỗi rỗng). Nhãn không có khoảng trắng cuối thì vẫn đúng.
   - PG không suy được kiểu tham số chuỗi nằm trong `CONCAT(...)` — ghép sẵn bằng JS, hoặc để
     tham số trong `COALESCE(cột, @x)`.
-- [ ] Đợt sau: 34 chuỗi `N'...'` tiếng Việt còn lại (đa số trong lô nhiều câu / bảng tạm của
-  dashboard, báo cáo CME, `courseCmeService`, các `THROW`) đổi sang tham số khi viết lại các lô đó;
-  ~~`+` nối chuỗi trong mã sinh từ `NEWID()`~~ (đã xong cùng đợt 1 mục DECLARE).
+- [x] Đợt sau: chuỗi `N'...'` tiếng Việt còn lại (n_prefix 29 → 5) → helper `nstr('…')` của adapter
+  (thay vì tham số: PG không suy được kiểu tham số trong `CONCAT`). SQL Server ra `N'…'` (giữ dấu với
+  collation CP1252); PG ra `'…'` thường — `N'…'` của PG là `char`: `N'a ' || 'b'` → `'ab'`, ép
+  `VARCHAR` cũng mất khoảng trắng cuối (riêng `CONCAT` thì giữ — đã thử PG 18.6). `'` trong chuỗi tự
+  nhân đôi. Chỉ dùng cho hằng viết trong code; dữ liệu người dùng vẫn qua tham số.
+  - 20 chỗ: dashboard (nhãn "Chưa xác định" / "Chưa phân loại" / "Chưa gán vai trò"), báo cáo CME (nguồn),
+    CME tự động từ khóa (vai trò, tiêu đề, ghi chú), công nhận vòng thực hành từ hồ sơ cũ.
+  - Ratchet `n_prefix` không bắt nhầm nữa: bỏ qua chữ có dấu kết thúc bằng N (`MÔN'`) và `&N` (chân trang
+    Excel). Còn 5: 3 `THROW` (làm ở mục `THROW`), 2 trong mẫu migration SQL Server của `scripts/migrate.js`.
+  - Kiểm bằng ca "nstr" trong `test-integration/batchSplit.cases.js` (2 DB: dấu, khoảng trắng trước phần
+    nối, `'`; thống kê đào tạo, dashboard, báo cáo CME) và ca upsert: GV có số tiết ⇒ ghi CME, nhãn
+    "Giảng dạy: …", "Tự động khi khóa điểm — 3 tiết" đúng trên cả 2 DB. Tổng ratchet 74 → 50.
+  - ~~`+` nối chuỗi trong mã sinh từ `NEWID()`~~ (đã xong cùng đợt 1 mục DECLARE).
 - [x] `OPENJSON` → helper của adapter (31 → 0): `jsonValues('@ids', { type, withIndex })` (mảng →
   bảng cột `value`, `idx` từ 0; PG: `jsonb_array_elements_text ... WITH ORDINALITY`) và
   `jsonRows('@rows', alias, cột)` thay `OPENJSON ... WITH` (PG: `jsonb_to_recordset`, `NVARCHAR` tự đổi

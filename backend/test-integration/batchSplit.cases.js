@@ -799,13 +799,41 @@ const run = async (t, db, { skip = [] } = {}) => {
 						)
 					)[0].n,
 				);
+			// Có số tiết ⇒ GV có tài khoản được ghi CME (kiểm nhãn bên dưới)
+			await q('UPDATE lecturer_assignments SET hours = 3 WHERE course_id = @c', { c: c.id });
 			const t1 = await courseCme.syncTrainees(c.id, actor.id);
 			const l1 = await courseCme.syncLecturers(c.id, actor.id);
 			const n1 = await count();
 			assert.equal(await courseCme.syncTrainees(c.id, actor.id), t1);
 			assert.equal(await courseCme.syncLecturers(c.id, actor.id), l1);
 			assert.equal(await count(), n1);
+			// Nhãn nstr: đủ dấu, còn khoảng trắng trước phần nối
+			const recs = await q(
+				"SELECT source_type, role, title, note FROM cme_records WHERE source_id = @c AND source_type LIKE 'course_%'",
+				{ c: c.id },
+			);
+			for (const r of recs) {
+				if (r.role === 'Học viên') assert.match(r.note, /^Giấy chứng nhận số \S/);
+				else {
+					assert.equal(r.role, 'Giảng viên');
+					assert.match(r.title, /^Giảng dạy: \S/);
+					assert.match(r.note, /^Tự động khi khóa điểm — \S+ tiết$/);
+				}
+			}
 		}
+	});
+
+	await step('nstr: chữ Việt giữ dấu, giữ khoảng trắng cuối, dịch vụ dùng nstr', async () => {
+		const { nstr } = db;
+		const [row] = await q(
+			`SELECT ${nstr('Chưa xác định')} AS a, CONCAT(${nstr('số ')}, 'x') AS b, ${nstr("it's")} AS c`,
+		);
+		assert.deepEqual({ ...row }, { a: 'Chưa xác định', b: 'số x', c: "it's" });
+		const dash = require('../src/modules/dashboard/dashboardService');
+		assert.ok(await dash.getTrainingStats());
+		const s = await dash.getStats(null);
+		assert.ok(s);
+		await require('../src/modules/cme/cmeReportService').getData({ year: 2026 });
 	});
 
 	await step('upsert khoá có cột NULL: điểm danh không theo ca 2 lần vẫn 1 dòng', async (st) => {
