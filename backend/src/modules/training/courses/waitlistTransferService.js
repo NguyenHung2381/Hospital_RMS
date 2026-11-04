@@ -5,7 +5,7 @@
  * phòng Đào tạo chọn rồi bấm chuyển. Chuyển = đổi course_id của hồ sơ sang đợt này
  * và duyệt luôn (giữ decided_at để thứ tự chờ không đổi), trong giới hạn chỗ trống.
  */
-const { getPool, sql, jsonValues, nowSql } = require('../../../config/db');
+const { getPool, sql, jsonValues, nowSql, withTransaction } = require('../../../config/db');
 const { broadcast } = require('../../events/eventService');
 const { httpError } = require('../../../utils/httpError');
 const programClassService = require('./programClassService');
@@ -60,18 +60,13 @@ const listCandidates = async (courseId) => {
  * chờ, đúng chương trình của khóa, không trùng) và không vượt chỗ trống của lớp.
  */
 const transfer = async (courseId, enrollmentIds, actorId) => {
-	const pool = await getPool();
-	const tx = new sql.Transaction(pool);
-	await tx.begin();
-	const q = () => new sql.Request(tx);
 	const moved = [];
 	const added = new Map(); // program_id → số người, để báo lớp vừa đủ sĩ số
 	const full = []; // hồ sơ không chuyển được vì lớp hết chỗ
-	try {
+	await withTransaction(async (tx) => {
+		const q = () => new sql.Request(tx);
 		// Cùng khóa với fillFromWaitlist: không 2 thao tác cùng chiếm 1 chỗ trống.
-		await q().query(
-			"EXEC sp_getapplock @Resource = 'course-class-waitlist', @LockMode = 'Exclusive', @LockOwner = 'Transaction', @LockTimeout = 15000",
-		);
+		await programClassService.lockWaitlist(tx);
 		const rooms = new Map(
 			(await programClassService.classesOf(courseId, q))
 				.filter((k) => k.class_rule)
@@ -109,11 +104,7 @@ const transfer = async (courseId, enrollmentIds, actorId) => {
 					: 'Không còn hồ sơ chờ hợp lệ để chuyển (có thể đã được chuyển trước đó).',
 			);
 		}
-		await tx.commit();
-	} catch (err) {
-		await tx.rollback().catch(() => {});
-		throw err;
-	}
+	});
 	broadcast('update', { entity: 'course' });
 	broadcast('update', { entity: 'course_enrollment' });
 	programClassService.mailTrainees(

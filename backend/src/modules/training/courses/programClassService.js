@@ -6,6 +6,8 @@ const {
 	vnTodaySql,
 	nowSql,
 	crossApply,
+	withTransaction,
+	lockResource,
 } = require('../../../config/db');
 const { broadcast } = require('../../events/eventService');
 const mailService = require('../../notifications/mailService');
@@ -166,23 +168,28 @@ const notifyIfReady = async (courseId, programId, added = 1) => {
 	);
 };
 
+// Khóa chung cho mọi thao tác kéo người chờ vào lớp (fillFromWaitlist, waitlistTransferService.transfer),
+// giữ tới hết transaction. Trước đây gọi thẳng khóa của SQL Server, quá hạn thì lặng lẽ chạy tiếp không có khóa — giờ báo 503.
+const WAITLIST_LOCK = 'course-class-waitlist';
+const lockWaitlist = async (tx) => {
+	if (!(await lockResource(tx, WAITLIST_LOCK, 15000)))
+		throw httpError(503, 'Đang có thao tác xếp lớp khác, vui lòng thử lại', {
+			code: 'WAITLIST_LOCK_TIMEOUT',
+		});
+};
+
 /**
  * Lớp (chưa khai giảng) còn chỗ ⇒ gọi người chờ CỦA CHÍNH KHÓA vào, ai chờ lâu vào
  * trước. Người chờ ở khóa khác không tự chuyển (12c) — xem waitlistTransferService.
  * programId: chỉ xét 1 chương trình (null = mọi lớp của khóa).
  */
 const fillFromWaitlist = async (courseId, actorId, { programId = null } = {}) => {
-	const pool = await getPool();
-	const tx = new sql.Transaction(pool);
-	await tx.begin();
-	const q = () => new sql.Request(tx);
 	const moved = [];
 	const added = []; // [program_id, số người] — để báo lớp vừa đủ sĩ số
-	try {
+	await withTransaction(async (tx) => {
+		const q = () => new sql.Request(tx);
 		// 1 khóa chung: 2 khóa cùng kéo 1 hồ sơ thì chỉ 1 khóa nhận, không vượt sĩ số.
-		await q().query(
-			"EXEC sp_getapplock @Resource = 'course-class-waitlist', @LockMode = 'Exclusive', @LockOwner = 'Transaction', @LockTimeout = 15000",
-		);
+		await lockWaitlist(tx);
 		const classes = (await classesOf(courseId, q)).filter(
 			(k) => k.class_rule && !k.started && (!programId || k.program_id === programId),
 		);
@@ -209,11 +216,7 @@ const fillFromWaitlist = async (courseId, actorId, { programId = null } = {}) =>
 			if (ids.length) added.push([k.program_id, ids.length]);
 			moved.push(...ids);
 		}
-		await tx.commit();
-	} catch (err) {
-		await tx.rollback().catch(() => {});
-		throw err;
-	}
+	});
 	if (moved.length) {
 		broadcast('update', { entity: 'course' });
 		broadcast('update', { entity: 'course_enrollment' });
@@ -435,6 +438,8 @@ module.exports = {
 	statusOnApprove,
 	notifyIfReady,
 	fillFromWaitlist,
+	WAITLIST_LOCK,
+	lockWaitlist,
 	classesOf,
 	mailTrainees,
 	isInternalTrainee,

@@ -3,7 +3,7 @@
 	"n_prefix": 2,
 	"isnull": 0,
 	"set_actor": 0,
-	"exec_proc": 2,
+	"exec_proc": 0,
 	"declare": 1,
 	"recordsets": 0,
 	"top": 1,
@@ -27,7 +27,7 @@
 	"string_fn": 0,
 	"merge": 0,
 	"lock_hint": 0,
-	"applock": 3,
+	"applock": 1,
 	"temp_table": 0,
 	"throw": 0,
 	"err_number": 0

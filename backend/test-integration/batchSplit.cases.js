@@ -47,6 +47,52 @@ const run = async (t, db, { skip = [] } = {}) => {
 		assert.deepEqual(sets[2], []);
 	});
 
+	// sp_getapplock gọi thẳng → lockWaitlist = lockResource của adapter (PG: pg_advisory_xact_lock).
+	// fillFromWaitlist / transfer chạy trong withTransaction (đã thay bằng tx rollback) ⇒ khóa giữ tới hết tx
+	// test. Đặt sớm: các bước sau (ghi danh, sửa khóa) có thể gọi fillFromWaitlist.
+	await step(
+		'khóa danh sách chờ: lấy khóa trong transaction của xếp lớp / chuyển người chờ',
+		async () => {
+			const pcs = require('../src/modules/training/courses/programClassService');
+			const wts = require('../src/modules/training/courses/waitlistTransferService');
+			const held = async () =>
+				db.client === 'pg'
+					? Number(
+							(
+								await q(
+									`SELECT COUNT(*) AS n FROM pg_locks
+                 WHERE locktype = 'advisory' AND pid = pg_backend_pid() AND granted AND objsubid = 1
+                   AND ((classid::bigint << 32) | objid::bigint) = hashtextextended(@r, 0)`,
+									{ r: pcs.WAITLIST_LOCK },
+								)
+							)[0].n,
+						) > 0
+					: (
+							await q("SELECT APPLOCK_MODE('public', @r, 'Transaction') AS m", {
+								r: pcs.WAITLIST_LOCK,
+							})
+						)[0].m === 'Exclusive';
+			assert.equal(await held(), false);
+			// Khóa không tồn tại ⇒ không lớp nào, không ai được chuyển (không gửi thư)
+			assert.deepEqual(await pcs.fillFromWaitlist('KHONG_CO', actor.id), []);
+			assert.equal(await held(), true);
+
+			// transfer gọi programClassService.lockWaitlist với đúng tx, hồ sơ không hợp lệ ⇒ 409
+			const real = pcs.lockWaitlist;
+			const seen = [];
+			pcs.lockWaitlist = async (x) => (seen.push(x === tx), real(x));
+			try {
+				await assert.rejects(
+					wts.transfer('KHONG_CO', ['KHONG_CO'], actor.id),
+					/Không còn hồ sơ chờ hợp lệ/,
+				);
+			} finally {
+				pcs.lockWaitlist = real;
+			}
+			assert.deepEqual(seen, [true]);
+		},
+	);
+
 	await step('updateReturning: trả old./new. của dòng vừa sửa, không khớp thì rỗng', async () => {
 		const run1 = (step) =>
 			new sql.Request(tx)

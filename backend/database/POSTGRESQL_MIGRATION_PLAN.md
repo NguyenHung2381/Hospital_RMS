@@ -119,7 +119,7 @@ bước A và giữ máy Windows hiện tại tới khi xong bước B.
 | `CAST(... AS NVARCHAR/BIT/DATETIME)` | 59 (35) | `::text`, `::boolean`, `::timestamp`. Cột boolean trong SELECT: `boolExpr(đk)` / `castBool(x)` của adapter (SQL Server ra BIT, PG ra boolean) |
 | `CONVERT(`, `TRY_CAST(` | 20 (8) → 0 | `formatDate` / `tryCastInt` của adapter (PG: `to_char`, regex rồi `CAST`) |
 | `MERGE` (có `WITH (HOLDLOCK)`) | 10 (9) → 0 | `upsert({...})` của adapter (PG: `INSERT ... ON CONFLICT DO UPDATE`) |
-| Gợi ý khoá `UPDLOCK/HOLDLOCK`, `sp_getapplock` | 5 → 0 + 6 | `SELECT ... FOR UPDATE`; khoá dải mã → `pg_advisory_xact_lock(hashtext(...))` |
+| Gợi ý khoá `UPDLOCK/HOLDLOCK`, `sp_getapplock` | 5 → 0 + 6 → 1 (migrator SQL Server) | `SELECT ... FOR UPDATE`; khoá dải mã → `pg_advisory_xact_lock(hashtext(...))` |
 | Bảng tạm `#t`, biến bảng `@t TABLE` | 21 (3) + 8 | `CREATE TEMP TABLE ... ON COMMIT DROP`, CTE |
 | `THROW 5xxxx` / `RAISERROR` + kiểm `err.number` | 7 → 0 + 45 (19) | `RAISE EXCEPTION ... USING ERRCODE`; đọc `err.code` (mã SQLSTATE) |
 | `err.number === 2627/2601` (trùng khoá), `547` (FK), `207/208` | ~20 | `23505`, `23503`, `42703/42P01` |
@@ -269,7 +269,7 @@ như thể giờ đó là UTC**. Cách làm:
 | `N'chuỗi'` | `'chuỗi'` | ✓ qua adapter: `${nstr('chuỗi')}` (SQL Server cần `N` cho chữ Việt) |
 | `col LIKE @search` (CI_AS) | `col ILIKE $1 ESCAPE ''`; cột `rms_ci`: `col LIKE $1 ESCAPE ''` | ✓ qua adapter: `${ilike('u.full_name', '@search')}`, cột rms_ci (username, email, mã) `${likeCi('u.username', '@search')}` |
 | `SELECT ... WITH (UPDLOCK, HOLDLOCK)` | `SELECT ... FOR UPDATE` | ✓ không còn: khoá dải mã → `lockResource` của adapter (`idGenerator.nextId`) |
-| `sp_getapplock 'x'` | `SELECT pg_advisory_xact_lock(hashtext('x'))` | ✗ |
+| `sp_getapplock 'x'` | `SELECT pg_advisory_xact_lock(hashtextextended('x', 0))` | ✓ qua adapter: `lockResource(tx, 'x', timeoutMs)` (khoá theo transaction, quá hạn trả false); còn ở `migrator.js` (nhánh SQL Server, mục 5.3) |
 | `SCOPE_IDENTITY()` | `INSERT ... RETURNING id` | ✗ |
 | `@@ROWCOUNT` trong JS | `result.rowCount` | adapter trả `rowsAffected` |
 | `THROW 51000, N'...', 1` | `RAISE EXCEPTION '...' USING ERRCODE = 'P0001', DETAIL = '51000'` | ✓ không dùng nữa: `IF EXISTS … THROW` trước INSERT → `INSERT … SELECT … WHERE NOT EXISTS` + `rowsAffected`, trùng do chạy song song bắt theo tên UNIQUE (`constraintName`) |
@@ -633,6 +633,18 @@ thường. Mỗi nhóm là 1 PR nhỏ theo module.
   - Kiểm (2 DB): ca "rowsAffected: … ghế thay …" thêm xoá ghế thay sai hội đồng (giữ nguyên) / đúng hội đồng (xoá);
     ca mới "xoá bài học": bài học có 1 phân công GV trùng dòng cả khóa (bị xoá) và 1 phân công khác (gỡ
     `subject_id`), dòng cả khóa giữ nguyên, bài học hết. Thử ngược: code cũ trên PG ⇒ ca ghế thay báo lỗi.
+- [x] `sp_getapplock` gọi thẳng (ratchet applock 3 → 1, exec_proc 2 → 0, tổng 18 → 14; còn `migrator.js`, mục 5.3).
+  - `programClassService.fillFromWaitlist` và `waitlistTransferService.transfer` dùng chung khoá
+    `course-class-waitlist` → helper `lockWaitlist(tx)` (export cùng `WAITLIST_LOCK`) gọi `lockResource` của adapter
+    (SQL Server `sp_getapplock` LockOwner = Transaction; PG `pg_advisory_xact_lock`), chờ tối đa 15 giây.
+  - Đổi hành vi: `sp_getapplock` quá hạn trả mã < 0 mà không báo lỗi ⇒ code cũ chạy tiếp **không có khoá**. Giờ
+    quá hạn thì báo 503 `WAITLIST_LOCK_TIMEOUT` (rollback, người dùng thử lại).
+  - 2 hàm tự mở `new sql.Transaction(pool)` → `withTransaction` (cùng commit / rollback; thư và thông báo vẫn gửi sau
+    commit) — nhờ vậy test gọi được trong transaction rollback.
+  - Kiểm bằng ca "khóa danh sách chờ" (2 DB, đặt sớm vì bước ghi danh / sửa khóa sau có thể gọi fillFromWaitlist):
+    trước khi gọi tx test chưa giữ khoá; `fillFromWaitlist` ⇒ tx test giữ đúng khoá (SQL Server `APPLOCK_MODE`, PG
+    `pg_locks` advisory khớp `hashtextextended`); `transfer` gọi `lockWaitlist` với đúng tx rồi báo 409. Tranh khoá
+    giữa 2 kết nối đã có ca `lockResource` ở `idGenerator.cases.js`. Thử ngược: bỏ dòng lấy khoá ⇒ ca báo lỗi.
 - [x] Giờ hiện tại (`GETDATE` / `SYSDATETIME` / `GETUTCDATE` / `SYSUTCDATETIME`, 188 → 5): 185 chỗ
   đổi bằng script sang đoạn SQL của adapter chèn vào chuỗi (chuỗi `'...'` chuyển sang template):
   - `${nowSql}` giờ VN: SQL Server `GETDATE()`; PG `(now() AT TIME ZONE 'Asia/Ho_Chi_Minh')` —
