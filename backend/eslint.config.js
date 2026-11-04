@@ -75,7 +75,7 @@ module.exports = [
 		rules: { 'no-console': 'error' },
 	},
 	{
-		files: ['test/**/*.js', 'test-integration/**/*.js'],
+		files: ['test/**/*.js', 'test-integration/**/*.js', 'test-integration-pg/**/*.js'],
 		rules: { 'max-lines': 'off' },
 	},
 ];

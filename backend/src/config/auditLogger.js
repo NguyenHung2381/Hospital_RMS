@@ -4,7 +4,7 @@ const pino = require('pino');
 // Logger CHUYÊN cho audit/activity log — tách hẳn khỏi console.log ứng dụng.
 // Mỗi sự kiện ghi ra 1 dòng JSON vào file, xoay theo ngày, tự xóa file cũ.
 // Đây là NGUỒN DỮ LIỆU CHÍNH của trang /activity-logs — không còn INSERT vào
-// SQL Server nên bảng activity_logs không phình nữa.
+// DB nên bảng activity_logs không phình nữa.
 //
 //   LOG_DIR      -> mặc định <server>/logs (neo theo mã nguồn, KHÔNG phụ thuộc
 //                   thư mục chạy). Đặt LOG_DIR để đổi; đường dẫn tương đối tính

@@ -9,7 +9,7 @@ const rows = new Map();
 install(async (text, inputs) => {
 	if (/SELECT \* FROM system_settings/.test(text))
 		return [...rows].map(([setting_key, value]) => ({ setting_key, value }));
-	if (/MERGE system_settings/.test(text)) rows.set(inputs.key, inputs.value);
+	if (/INSERT INTO system_settings/.test(text)) rows.set(inputs.key, inputs.value);
 	else if (/SET value = NULL.*'SMTP_PASS'/s.test(text)) rows.set('SMTP_PASS', null);
 	return [];
 });

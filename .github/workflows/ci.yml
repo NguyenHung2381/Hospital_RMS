@@ -4,7 +4,7 @@
 #    quét image, đẩy lên GHCR kèm SBOM + provenance → deploy staging (nếu bật)
 #    → deploy production (tự động có duyệt, hoặc chạy tay deploy.yml). Kiểm tra
 #    nào hỏng thì dừng.
-# Không cần SQL Server hay Redis: test backend dùng CSDL giả (test/**/fakeDb.js)
+# Không cần DB thật hay Redis: test backend dùng CSDL giả (test/**/fakeDb.js)
 # và tự rơi về bộ nhớ khi không có Redis. Riêng job backend-postgres chạy
 # PostgreSQL thật trong service container.
 name: CI
@@ -170,7 +170,6 @@ jobs:
             -f ../infra/postgresql/01_tao_db_va_role.sql
       - name: Dựng schema (migrate init)
         env:
-          DB_CLIENT: pg
           DB_SERVER: 127.0.0.1
           DB_USER: rms_migrate
           JWT_SECRET: ci-only-access

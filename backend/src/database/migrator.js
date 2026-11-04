@@ -1,7 +1,6 @@
 const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
-const { client } = require('../config/db');
 
 // Bộ chạy migration DUY NHẤT của backend — dùng chung cho CLI (scripts/migrate.js,
 // pipeline deploy) và lúc server khởi động ở môi trường dev (database/index.js).
@@ -13,40 +12,16 @@ const { client } = require('../config/db');
 //   phần xong ghi tên file cũ; đủ hết thì ghi tên file gộp, xóa bản ghi phần.
 //   DB đã chạy đủ các file cũ = file gộp đã chạy, không chạy lại gì.
 //
-// Phần chạm DB nằm ở 1 "driver" cho mỗi loại DB, cùng các hàm (như cặp
-// config/db.mssql.js / db.pg.js): migrator.mssql.js (T-SQL, tách batch theo GO,
-// khoá ứng dụng của SQL Server, BACKUP DATABASE — xoá sau cutover) và migrator.pg.js (mỗi file
-// 1 transaction, pg_advisory_lock, pg_dump, baseline cho DB trống).
+// Phần chạm DB (PostgreSQL) nằm ở migrator.pg.js: mỗi file 1 transaction,
+// pg_advisory_lock, pg_dump, baseline cho DB trống.
 //
 // Quy ước viết file: database/README.md.
 
-const driver = client === 'pg' ? require('./migrator.pg') : require('./migrator.mssql');
+const driver = require('./migrator.pg');
 const { TABLE } = driver;
 
-// Theo DB_CLIENT: SQL Server chạy database/migrations/ (T-SQL), PostgreSQL chạy
-// database/pg/migrations/ (SQL PG; schema ban đầu ở database/pg/baseline/).
-// MIGRATIONS_DIR ghi đè được (test với thư mục tạm).
-const MIGRATIONS_DIR =
-	process.env.MIGRATIONS_DIR ||
-	path.resolve(__dirname, client === 'pg' ? '../../database/pg/migrations' : '../../database/migrations');
-
-// Tên cũ → tên mới. DB đã ghi tên cũ trong schema_migrations được đổi tên tại
-// chỗ, không chạy lại file.
-const RENAMED = {
-	'20260924_01_permission_scopes.sql': '2026-09-28_00_permission_scopes.sql',
-	'20260924_02_token_version_role_codes.sql': '2026-09-28_01_token_version_role_codes.sql',
-};
-
-// File đã xóa vì nội dung được gộp vào file khác → file gộp. Bản ghi cũ trong
-// schema_migrations không bị coi là "thiếu file"; xóa đi khi file gộp đã chạy.
-// File gộp vẫn chạy bình thường ở DB chưa có nó (phải idempotent).
-// (Gộp nhiều file nguyên văn thì dùng dòng "-- @migration", không cần thêm vào đây.)
-const MERGED = {
-	'2026-11-12_training_program_min_capacity.sql': '2026-11-12_dtlt_programs_lessons.sql',
-	'2026-11-13_dtlt_programs_lessons_data.sql': '2026-11-12_dtlt_programs_lessons.sql',
-	'2026-11-13_dtlt_programs_department_codes.sql': '2026-11-13_training_program_catalog.sql',
-	'2026-11-14_program_trainee_types.sql': '2026-11-13_training_program_catalog.sql',
-};
+// Schema ban đầu ở database/baseline/. MIGRATIONS_DIR ghi đè được (test với thư mục tạm).
+const MIGRATIONS_DIR = process.env.MIGRATIONS_DIR || path.resolve(__dirname, '../../database/migrations');
 
 const listFiles = () =>
 	fs
@@ -72,25 +47,18 @@ const parseSections = (text) => {
 	}));
 };
 
-// Bản ghi thừa khi file gộp đã ghi nhận: từng phần + bản ghi MERGED trỏ vào phần đó.
-const coveredNames = (parts) => [
-	...parts,
-	...Object.entries(MERGED)
-		.filter(([, to]) => parts.includes(to))
-		.map(([from]) => from),
-];
+// Bản ghi thừa khi file gộp đã ghi nhận: bản ghi của từng phần.
+const coveredNames = (parts) => parts;
 
 /**
  * Trạng thái thuần (không cần DB) từ danh sách file + bản ghi schema_migrations.
- *   recorded — bản ghi trong bảng (đã quy đổi RENAMED, bỏ MERGED), gồm cả tên phần.
+ *   recorded — bản ghi trong bảng, gồm cả tên phần.
  *   applied  — file coi là đã chạy: có bản ghi, hoặc file gộp có đủ bản ghi mọi phần.
  *   sections — file gộp → tên các phần.
  *   squashed — file gộp đã chạy đủ phần nhưng chưa ghi tên file gộp.
  */
 const computeStatus = (files, rows, read = readFile) => {
-	const recorded = new Map(
-		rows.filter((r) => !MERGED[r.filename]).map((r) => [RENAMED[r.filename] ?? r.filename, r]),
-	);
+	const recorded = new Map(rows.map((r) => [r.filename, r]));
 	const texts = new Map(files.map((f) => [f, read(f)]));
 	const sections = new Map();
 	for (const f of files) {
@@ -125,7 +93,7 @@ const openConnection = () => driver.open();
 const readStatus = async (conn) => {
 	const files = listFiles();
 	if (!(await driver.hasTable(conn))) return { ...computeStatus(files, []), tracked: false };
-	const rows = await driver.rows(conn, await driver.hasChecksum(conn));
+	const rows = await driver.rows(conn);
 	return { ...computeStatus(files, rows), tracked: true };
 };
 
@@ -144,13 +112,11 @@ const forget = async (conn, names) => {
 	if (names.length) await driver.forget(conn, names);
 };
 
-// Tạo / nâng cấp bảng theo dõi, đổi tên file cũ, điền checksum còn trống
+// Tạo / nâng cấp bảng theo dõi, điền checksum còn trống
 // (bản ghi có từ trước khi có cột checksum = coi như file hiện tại), ghi nhận
 // file gộp mà DB đã chạy đủ các phần.
 const prepareTable = async (conn, log) => {
 	await driver.ensureTable(conn);
-	for (const [from, to] of Object.entries(RENAMED)) await driver.rename(conn, from, to);
-	for (const [from, to] of Object.entries(MERGED)) await driver.dropMerged(conn, from, to);
 	const files = listFiles();
 	for (const { filename } of await driver.blankChecksums(conn)) {
 		if (!files.includes(filename)) continue;
@@ -173,9 +139,8 @@ const prepareTable = async (conn, log) => {
  *   baseline — DB đã nâng cấp tay: đánh dấu mọi file chưa ghi nhận là đã chạy.
  *   requireTracked — chưa có bảng schema_migrations thì DỪNG (tránh chạy lại
  *              toàn bộ lịch sử trên DB đã nâng cấp tay); false = DB trống, tạo
- *              bảng (PG: DB chưa có bảng nào thì tạo schema từ baseline trước).
- *   backupDir — SQL Server: thư mục TRÊN MÁY SQL Server, BACKUP COPY_ONLY;
- *              PG: thư mục ở máy chạy lệnh, pg_dump -Fc. Chỉ khi có file mới.
+ *              bảng (DB chưa có bảng nào thì tạo schema từ baseline trước).
+ *   backupDir — thư mục ở máy chạy lệnh, pg_dump -Fc. Chỉ khi có file mới.
  *   log      — hàm in tiến độ.
  * Trả { ...trạng thái trước khi chạy, ran: [file đã chạy / đánh dấu] }.
  */
@@ -255,10 +220,7 @@ const nextFilename = (description, today = new Date()) => {
 };
 
 module.exports = {
-	client,
 	MIGRATIONS_DIR,
-	RENAMED,
-	MERGED,
 	listFiles,
 	readFile,
 	checksum,
@@ -267,6 +229,6 @@ module.exports = {
 	status,
 	migrate,
 	nextFilename,
-	// Mẫu file mới cho `npm run migrate new`, theo DB_CLIENT
+	// Mẫu file mới cho `npm run migrate new`
 	template: driver.template,
 };

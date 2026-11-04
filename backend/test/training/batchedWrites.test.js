@@ -1,6 +1,6 @@
-// Các thao tác ghi cả danh sách gửi ĐÚNG 1 câu SQL (OPENJSON) thay vì 1 round-trip
-// / dòng, và payload JSON mang đủ dữ liệu từng dòng. Câu SQL chạy thật trên SQL
-// Server ở test-integration/batchedWrites.test.js.
+// Các thao tác ghi cả danh sách gửi ĐÚNG 1 câu SQL (jsonValues / jsonRows) thay vì
+// 1 round-trip / dòng, và payload JSON mang đủ dữ liệu từng dòng. Câu SQL chạy thật
+// trên PostgreSQL ở test-integration/batchedWrites.test.js.
 process.env.JWT_SECRET = 'test-secret';
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -16,7 +16,7 @@ const log = install(async (text) => {
 		return [
 			{ id: 'EP1', status: 'published', enrollment_id: 'E1', duration_minutes: 45, want_no: 1 },
 		];
-	if (/OUTPUT INSERTED\.id/.test(text))
+	if (/RETURNING new\.id AS id/.test(text))
 		return [{ id: 'EA1', late: 0, question_ids: JSON.stringify(QUESTIONS.map((q) => q.id)) }];
 	if (/FROM question_bank q WHERE q\.id IN/.test(text)) return QUESTIONS;
 	if (/SELECT paper_type FROM exam_papers/.test(text)) return [{ paper_type: 'multiple_choice' }];

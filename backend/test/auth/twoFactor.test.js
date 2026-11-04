@@ -69,8 +69,7 @@ install(async (text, inputs) => {
 	if (/SELECT COUNT\(\*\) AS n FROM user_backup_codes/.test(text))
 		return [{ n: backup.filter((b) => !b.used).length }];
 	if (/COUNT\(\*\) AS locks/.test(text)) return [{ locks: 0 }];
-	if (/OUTPUT DELETED\.failed_login_count/.test(text))
-		return [{ prev_count: 0, locked_until: null }];
+	if (/old\.failed_login_count/.test(text)) return [{ prev_count: 0, locked_until: null }];
 	if (/SELECT token_version FROM users/.test(text)) return [{ token_version: 0 }];
 	if (/INSERT INTO refresh_tokens/.test(text)) return [];
 	return [];

@@ -5,21 +5,21 @@ const { config } = require('./env');
 const logger = require('./logger');
 const { TYPES, toPositional, TYPE_PARSERS, pgpassFile, pgpassLookup } = require('./pgParams');
 
-// Lớp truy cập PostgreSQL có CÙNG giao diện với db.mssql.js, để service giữ
-// nguyên cách gọi (POSTGRESQL_MIGRATION_PLAN.md mục 5.1):
+// Lớp truy cập PostgreSQL. Giữ cách gọi kiểu mssql có từ thời dùng SQL Server
+// (request / input / recordset), để service không phải viết lại:
 //   const { recordset } = await pool.request().input('id', sql.VarChar(20), id)
 //     .query('SELECT ... WHERE id = @id');
-// Chỉ đổi cách gọi, KHÔNG dịch cú pháp T-SQL: câu SQL phải viết được trên PG
-// (chặng 1 và 3 của kế hoạch). Khác biệt cần biết khi sửa SQL:
-//   - Lỗi trong transaction làm hỏng cả transaction (mọi câu sau báo 25P02) —
-//     SQL Server thì cho chạy tiếp. Đừng bắt lỗi rồi chạy tiếp trong cùng tx.
+// Chỉ đổi cách gọi, KHÔNG dịch cú pháp: câu SQL phải là SQL của PostgreSQL.
+// Điều cần biết khi viết SQL:
+//   - Lỗi trong transaction làm hỏng cả transaction (mọi câu sau báo 25P02).
+//     Đừng bắt lỗi rồi chạy tiếp trong cùng tx.
 //   - Một lời gọi có tham số chỉ được 1 câu lệnh; nhiều câu (recordsets[1]...)
 //     chỉ chạy được khi không có tham số.
 //   - execute('sp_...') không hỗ trợ: chuyển stored procedure về JS.
 //   - Tham số chuỗi chỉ được ép `::text` trước `IS [NOT] NULL` (pgParams.js).
 //     Chỗ khác PG không tự suy được kiểu (`SELECT @x AS ten`) thì viết rõ `@x::text`.
 
-// Kiểm tra chứng chỉ khi dùng SSL (biến môi trường dùng chung với SQL Server):
+// Kiểm tra chứng chỉ khi dùng SSL (biến DB_*):
 //   DB_ENCRYPT=true → SSL; DB_CA_CERT_FILE → chỉ tin chứng chỉ trong file và
 //   kiểm tra tên (DB_CERT_SERVER_NAME nếu tên trong chứng chỉ khác DB_SERVER).
 const sslOptions = (cfg) => {
@@ -93,9 +93,7 @@ const toMssqlResult = (res) => {
 };
 
 const unsupported = (what) =>
-	new Error(
-		`${what} chưa hỗ trợ trên PostgreSQL — chuyển stored procedure về JS (POSTGRESQL_MIGRATION_PLAN.md chặng 1)`,
-	);
+	new Error(`${what} chưa hỗ trợ trên PostgreSQL — không dùng stored procedure, viết bằng JS`);
 
 class Request {
 	/** @param {any} [parent] PoolFacade hoặc Transaction; bỏ trống = pool chung */
@@ -246,7 +244,7 @@ const getPool = async () => {
 	return poolPromise;
 };
 
-// Như db.mssql.js: commit khi xong, lỗi thì rollback rồi ném lại lỗi GỐC.
+// Commit khi xong, lỗi thì rollback rồi ném lại lỗi GỐC.
 const withTransaction = async (fn, pool) => {
 	const tx = new Transaction(pool ?? (await getPool()));
 	await tx.begin();
@@ -260,7 +258,7 @@ const withTransaction = async (fn, pool) => {
 	}
 };
 
-// Người thao tác cho trigger audit (database/pg/baseline/04_trigger.sql đọc
+// Người thao tác cho trigger audit (database/baseline/04_trigger.sql đọc
 // current_setting('app.current_user_id')). is_local = true: hết hiệu lực khi
 // transaction kết thúc, không rò sang request khác dùng lại kết nối → PHẢI gọi
 // trong transaction.
@@ -274,8 +272,7 @@ const withActor = (tx, actorId) => {
 		.query("SELECT set_config('app.current_user_id', coalesce(@actor_id, ''), true)");
 };
 
-// Khoá loại trừ theo tên, giữ tới khi transaction kết thúc (advisory lock,
-// cùng vai trò sp_getapplock LockOwner = Transaction ở bản mssql). Trả false
+// Khoá loại trừ theo tên, giữ tới khi transaction kết thúc (advisory lock). Trả false
 // nếu chờ quá timeoutMs — khi đó transaction đã hỏng (lỗi lock_timeout), người
 // gọi phải ném lỗi để rollback.
 const lockResource = async (tx, resource, timeoutMs = 5000) => {
@@ -317,13 +314,13 @@ const nextSequenceValues = async (txOrPool, name, count) => {
 	return r.recordset.map((x) => Number(x.v));
 };
 
-// Cột kết quả kiểu boolean — cùng giao diện với db.mssql.js (bên đó đổi sang BIT).
+// Cột kết quả kiểu boolean.
 /** @param {string} cond */
 const boolExpr = (cond) => `(CASE WHEN ${cond} THEN TRUE ELSE FALSE END)`;
 /** @param {string} expr */
 const castBool = (expr) => `CAST(${expr} AS BOOLEAN)`;
 
-// Mảng JSON dùng như bảng — cùng giao diện với db.mssql.js. Kiểu viết theo SQL
+// Mảng JSON dùng như bảng. Kiểu viết theo SQL
 // Server được đổi: NVARCHAR(MAX) → text, NVARCHAR(n) → varchar(n).
 /** @param {string} t */
 const pgType = (t) =>
@@ -342,7 +339,7 @@ const jsonValues = (param, { type = 'VARCHAR(50)', withIndex = false } = {}) =>
 const jsonRows = (param, alias, cols) =>
 	`jsonb_to_recordset(CAST(${param} AS jsonb)) AS ${alias}(${cols.map(([c, t]) => `${c} ${pgType(t)}`).join(', ')})`;
 
-// Mã ngẫu nhiên cho từng dòng — cùng giao diện với db.mssql.js (in hoa như NEWID()).
+// Mã ngẫu nhiên cho từng dòng (in hoa).
 /**
  * @param {string} prefix
  * @param {number} n
@@ -353,13 +350,13 @@ const newIdSql = (prefix, n) => {
 	return `CONCAT('${prefix}', UPPER(LEFT(REPLACE(CAST(gen_random_uuid() AS VARCHAR(36)), '-', ''), ${n})))`;
 };
 
-// Thời điểm hiện tại, chèn thẳng vào SQL (cùng tên ở db.mssql.js). DB lưu giờ VN không kèm
+// Thời điểm hiện tại, chèn thẳng vào SQL. DB lưu giờ VN không kèm
 // múi giờ (mục 4.3 kế hoạch PG): nowSql = giờ VN (thay GETDATE / SYSDATETIME), utcNowSql =
 // giờ UTC cho các cột ghi chú "lưu giờ UTC" (thay GETUTCDATE / SYSUTCDATETIME), vnTodaySql =
 // ngày hôm nay theo giờ VN, không phụ thuộc múi giờ máy chủ DB.
 // PG: now() là lúc bắt đầu transaction (SQL Server: lúc chạy câu) — trong 1 transaction
 // mọi dòng cùng 1 mốc. Đổi múi giờ tường minh nên không phụ thuộc cấu hình timezone của DB.
-// Subquery tương quan theo từng dòng (cùng tên ở db.mssql.js): crossApply bỏ dòng khi
+// Subquery tương quan theo từng dòng: crossApply bỏ dòng khi
 // subquery rỗng, outerApply giữ dòng (cột NULL). SQL Server: CROSS / OUTER APPLY; PG: JOIN LATERAL.
 /**
  * @param {string} subquery câu SELECT (không có ngoặc ngoài)
@@ -369,7 +366,7 @@ const crossApply = (subquery, alias) => `CROSS JOIN LATERAL (${subquery}) ${alia
 /** @param {string} subquery @param {string} alias */
 const outerApply = (subquery, alias) => `LEFT JOIN LATERAL (${subquery}) ${alias} ON true`;
 
-// Cùng tên ở db.mssql.js. string_agg chỉ nhận text → ép kiểu (cột số như trainee_type_id).
+// string_agg chỉ nhận text → ép kiểu (cột số như trainee_type_id).
 /** @param {string} sep */
 const sqlSep = (sep) => {
 	if (/['\\]/.test(sep)) throw new Error(`stringAgg: dấu phân cách không hợp lệ: ${sep}`);
@@ -379,7 +376,7 @@ const sqlSep = (sep) => {
 const stringAgg = (expr, sep, orderBy) =>
 	`string_agg(CAST(${expr} AS TEXT), ${sqlSep(sep)}${orderBy ? ` ORDER BY ${orderBy}` : ''})`;
 
-// Cộng / trừ thời gian và đếm khoảng cách (cùng tên ở db.mssql.js). unit: SECOND | MINUTE | HOUR |
+// Cộng / trừ thời gian và đếm khoảng cách. unit: SECOND | MINUTE | HOUR |
 // DAY | MONTH | YEAR; n: số, tham số ('@days', '-@days') hoặc biểu thức SQL. dateDiff đếm số
 // mốc ranh giới đi qua như DATEDIFF của SQL Server (DAY: 23:59 → 00:01 hôm sau = 1).
 const DATE_UNITS = ['SECOND', 'MINUTE', 'HOUR', 'DAY', 'MONTH', 'YEAR'];
@@ -405,7 +402,7 @@ const dateDiff = (unit, from, to) => {
 	return `CAST(EXTRACT(EPOCH FROM date_trunc('${t}', ${to}) - date_trunc('${t}', ${from})) / ${sec} AS INTEGER)`;
 };
 
-// Định dạng ngày / tách năm-tháng / ép số an toàn (cùng tên ở db.mssql.js).
+// Định dạng ngày / tách năm-tháng / ép số an toàn.
 // formatDate(expr, mẫu) — mẫu: 'DD/MM/YYYY' | 'YYYY-MM-DD' | 'YYYY-MM' | 'YYYY-MM-DD HH:MI'.
 // datePart('YEAR' | 'MONTH' | 'DAY', expr) → số nguyên. tryCastInt(expr) → INT hoặc NULL nếu
 // không phải số nguyên (như TRY_CAST).
@@ -437,7 +434,7 @@ const nowSql = "(now() AT TIME ZONE 'Asia/Ho_Chi_Minh')";
 const utcNowSql = "(now() AT TIME ZONE 'UTC')";
 const vnTodaySql = "CAST(now() AT TIME ZONE 'Asia/Ho_Chi_Minh' AS DATE)";
 
-// Cùng giao diện với db.mssql.js; PG ≥ 18 cho `RETURNING old.x, new.x, new.*`.
+// PG ≥ 18 cho `RETURNING old.x, new.x, new.*`.
 /**
  * @param {string} update
  * @param {string} where
@@ -452,7 +449,7 @@ const insertReturning = (insert, rest, cols) => `${insert} ${rest} RETURNING ${c
 /** @param {string} del @param {string} where @param {string} cols */
 const deleteReturning = (del, where, cols) => `${del} WHERE ${where} RETURNING ${cols}`;
 
-// Cùng giao diện với db.mssql.js: thứ tự giữ bằng cột ROW_NUMBER tạm __ord (bỏ khỏi kết quả),
+// Thứ tự giữ bằng cột ROW_NUMBER tạm __ord (bỏ khỏi kết quả),
 // jsonb_strip_nulls bỏ key NULL như FOR JSON PATH. Kết quả TEXT (driver không tự parse,
 // code gọi JSON.parse như với SQL Server); nested → jsonb để lồng vào jsonArray ngoài.
 /**
@@ -470,19 +467,19 @@ const jsonArray = (select, orderBy, { nested = false } = {}) => {
 	return `(SELECT ${nested ? agg : `CAST(${agg} AS TEXT)`} FROM (${inner}) j)`;
 };
 
-// Cùng giao diện với db.mssql.js: hằng chuỗi '...' (PG luôn UTF-8; không dùng N'...' vì là
+// Hằng chuỗi '...' (PG luôn UTF-8; không dùng N'...' vì là
 // kiểu char, mất khoảng trắng cuối).
 /** @param {string} text */
 const nstr = (text) => `'${text.replace(/'/g, "''")}'`;
 
-// Cùng giao diện với db.mssql.js (xem chú thích ở đó). Không dùng `COLLATE "default"` để
+// Không dùng `COLLATE "default"` để
 // gộp 2 hàm: đổi collation làm PG bỏ index trigram (03_toi_uu.sql) — đã thử EXPLAIN.
 /** @param {string} expr @param {string} pattern */
 const ilike = (expr, pattern) => `${expr} ILIKE ${pattern} ESCAPE ''`;
 /** @param {string} expr @param {string} pattern */
 const likeCi = (expr, pattern) => `${expr} LIKE ${pattern} ESCAPE ''`;
 
-// Cùng giao diện với db.mssql.js. strLen bỏ khoảng trắng cuối cho giống LEN của SQL Server.
+// strLen bỏ khoảng trắng cuối cho giống LEN của SQL Server.
 /** @param {string} haystack @param {string} needle */
 const strPos = (haystack, needle) => `strpos(${haystack}, ${needle})`;
 /** @param {string} expr */
@@ -490,7 +487,7 @@ const strLen = (expr) => `length(rtrim(${expr}))`;
 /** @param {string} name @param {...string} args */
 const udf = (name, ...args) => `${name}(${args.join(', ')})`;
 
-// Cùng giao diện với db.mssql.js (xem chú thích ở đó). INSERT … ON CONFLICT … DO UPDATE:
+// INSERT … ON CONFLICT … DO UPDATE:
 // `EXCLUDED.cột` giữ nguyên nghĩa của PG; khoá có cột NULL cần UNIQUE NULLS NOT DISTINCT.
 /**
  * @param {{ table: string, key: string[], values: Record<string, string>,
@@ -512,7 +509,7 @@ DO UPDATE SET ${Object.entries(update)
 		.join(', ')}${ret.length ? `\nRETURNING ${ret.join(', ')}` : ''}`;
 };
 
-// Cùng giao diện với db.mssql.js: mỗi câu 1 lời gọi, cùng tham số của `req`. Trong
+// Mỗi câu 1 lời gọi, cùng tham số của `req`. Trong
 // transaction thì chạy lần lượt (1 kết nối); ngoài transaction chạy song song.
 /**
  * @param {Request} req
@@ -531,7 +528,7 @@ const queryAll = async (req, statements) => {
 	return out;
 };
 
-// Cùng giao diện với db.mssql.js: các câu chạy lần lượt (kể cả ngoài transaction), mỗi
+// Các câu chạy lần lượt (kể cả ngoài transaction), mỗi
 // câu 1 lời gọi với tham số của `req`; gộp kết quả như mssql trả cho 1 lô nhiều câu.
 /**
  * @param {Request} req
@@ -549,7 +546,6 @@ const queryBatch = async (req, statements) => {
 
 module.exports = {
 	queryBatch,
-	client: 'pg',
 	getPool,
 	sql,
 	dbConfig,

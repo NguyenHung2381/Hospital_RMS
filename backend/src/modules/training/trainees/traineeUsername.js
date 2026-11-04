@@ -2,8 +2,7 @@
 // vd Nguyễn Văn An → NVA_0001, người tiếp theo cùng viết tắt → NVA_0002.
 // Số thứ tự đếm RIÊNG theo từng viết tắt và chỉ trong tài khoản học viên —
 // username nhân viên cùng dạng (NVA_0123 = chữ cái đầu + MNV) không đẩy số lên,
-// chỉ bị nhảy qua khi trùng đúng tên. Dùng chung cho traineeAccountService
-// (cấp mới) và scripts/rename-trainee-usernames.js (đổi tên tài khoản cũ).
+// chỉ bị nhảy qua khi trùng đúng tên. Dùng khi cấp tài khoản mới (traineeAccountService).
 const { buildMemberUsername } = require('../../topics/topicMemberService');
 
 const INDEX_DIGITS = 4;

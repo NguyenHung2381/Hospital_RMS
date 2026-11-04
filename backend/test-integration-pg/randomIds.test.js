@@ -1,5 +1,5 @@
 // Mã ngẫu nhiên sinh bằng JS / newIdSql trên PostgreSQL THẬT.
-// Cùng các ca với bản SQL Server (test-integration/randomIds.cases.js); chạy
+// Các ca ở randomIds.cases.js; chạy
 // trong transaction rồi ROLLBACK.
 //
 //   npm run test:pg
@@ -8,7 +8,6 @@
 const test = require('node:test');
 
 Object.assign(process.env, {
-	DB_CLIENT: 'pg',
 	DB_SERVER: process.env.PG_TEST_HOST || '127.0.0.1',
 	DB_PORT: process.env.PG_TEST_PORT || '5432',
 	DB_DATABASE: process.env.PG_TEST_DATABASE || 'rms_hospital',
@@ -18,7 +17,7 @@ Object.assign(process.env, {
 });
 
 const db = require('../src/config/db');
-const { run } = require('../test-integration/randomIds.cases');
+const { run } = require('./randomIds.cases');
 
 test('mã ngẫu nhiên trên PostgreSQL thật (rollback)', async (t) => {
 	await run(t, db);

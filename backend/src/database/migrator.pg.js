@@ -1,5 +1,4 @@
-// Driver PostgreSQL của bộ chạy migration (src/database/migrator.js), cùng các hàm với
-// migrator.mssql.js. Mỗi file chạy trong 1 transaction cùng bản ghi schema_migrations
+// Phần chạm DB của bộ chạy migration (src/database/migrator.js). Mỗi file chạy trong 1 transaction cùng bản ghi schema_migrations
 // (hỏng giữa chừng thì không để lại gì; PG cho DDL trong transaction), khoá
 // pg_advisory_lock, backup = pg_dump.
 const fs = require('fs');
@@ -8,7 +7,7 @@ const { dbConfig } = require('../config/db');
 
 const TABLE = 'schema_migrations';
 const LOCK = 'rms:schema_migrations';
-const BASELINE_DIR = path.resolve(__dirname, '../../database/pg/baseline');
+const BASELINE_DIR = path.resolve(__dirname, '../../database/baseline');
 const BASELINE_FILES = [
 	'00_extensions.sql',
 	'01_tables.sql',
@@ -20,9 +19,9 @@ const BASELINE_FILES = [
 // File PG có dòng này thì chạy ngoài transaction (vd CREATE INDEX CONCURRENTLY).
 const NO_TRANSACTION = /^--[ \t]*@no-transaction[ \t]*$/m;
 
-// Mẫu cho `npm run migrate new` (database/pg/migrations/)
+// Mẫu cho `npm run migrate new` (database/migrations/)
 const template = (name) => `/* ============================================================================
- * ${name.replace(/\.sql$/, '')}  (PostgreSQL — bản SQL Server cùng tên ở database/migrations/)
+ * ${name.replace(/\.sql$/, '')}
  * ----------------------------------------------------------------------------
  *   <Mô tả thay đổi: bảng / cột nào, để làm gì, ai dùng>
  * Chạy trong 1 transaction (thêm dòng "-- @no-transaction" nếu cần CREATE
@@ -69,7 +68,6 @@ module.exports = {
 	},
 	close: (conn) => conn.end(),
 	hasTable: async (conn) => (await conn.query(`SELECT to_regclass('public.${TABLE}') AS t`)).rows[0].t != null,
-	hasChecksum: async () => true,
 	rows: async (conn) => (await conn.query(`SELECT filename, checksum, applied_at FROM ${TABLE}`)).rows,
 	record: (conn, filename, sum) =>
 		conn.query(`INSERT INTO ${TABLE} (filename, checksum, git_sha) VALUES ($1, $2, $3)`, [
@@ -85,21 +83,10 @@ module.exports = {
       git_sha    varchar(40),
       checksum   char(64)
     )`),
-	rename: (conn, from, to) =>
-		conn.query(
-			`UPDATE ${TABLE} SET filename = $2 WHERE filename = $1
-       AND NOT EXISTS (SELECT 1 FROM ${TABLE} WHERE filename = $2)`,
-			[from, to],
-		),
-	dropMerged: (conn, from, to) =>
-		conn.query(
-			`DELETE FROM ${TABLE} WHERE filename = $1 AND EXISTS (SELECT 1 FROM ${TABLE} WHERE filename = $2)`,
-			[from, to],
-		),
 	blankChecksums: async (conn) => (await conn.query(`SELECT filename FROM ${TABLE} WHERE checksum IS NULL`)).rows,
 	setChecksum: (conn, filename, sum) =>
 		conn.query(`UPDATE ${TABLE} SET checksum = $2 WHERE filename = $1`, [filename, sum]),
-	// Khoá theo phiên, tự nhả khi đóng kết nối. Chờ tối đa 10 phút như khoá bên SQL Server.
+	// Khoá theo phiên, tự nhả khi đóng kết nối. Chờ tối đa 10 phút.
 	lock: async (conn) => {
 		await conn.query("SET lock_timeout = '600s'");
 		await conn.query('SELECT pg_advisory_lock(hashtext($1))', [LOCK]);
@@ -142,7 +129,7 @@ module.exports = {
 				[TABLE],
 			)
 		).rows[0].n === 0,
-	// `migrate init` trên DB PG trống: tạo schema từ database/pg/baseline/ (00 → 04)
+	// `migrate init` trên DB PG trống: tạo schema từ database/baseline/ (00 → 04)
 	applyBaseline: async (conn, log) => {
 		for (const f of BASELINE_FILES) {
 			log(`→ baseline ${f}`);

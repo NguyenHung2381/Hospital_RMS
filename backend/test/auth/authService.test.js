@@ -55,8 +55,7 @@ const log = install(async (text, inputs) => {
 		return [byId[inputs.id]];
 	if (/SELECT failed_login_count, locked_until FROM users/.test(text)) return [byId[inputs.id]];
 	if (/COUNT\(\*\) AS locks/.test(text)) return [{ locks: 0 }];
-	if (/OUTPUT DELETED\.failed_login_count/.test(text))
-		return [{ prev_count: 0, locked_until: null }];
+	if (/old\.failed_login_count/.test(text)) return [{ prev_count: 0, locked_until: null }];
 	if (/SELECT token_version/.test(text)) return [{ token_version: 0 }];
 	if (/SELECT \* FROM users WHERE id = @id/.test(text)) return [byId[inputs.id]];
 	return [];

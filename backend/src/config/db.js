@@ -1,14 +1,7 @@
-const { config } = require('./env');
-
-// Chọn lớp truy cập DB theo DB_CLIENT (mặc định mssql). Hai bản có cùng giao
-// diện: getPool(), sql (kiểu tham số, Request, Transaction), withTransaction(),
-// withActor(). Trong thời gian chuyển DB (POSTGRESQL_MIGRATION_PLAN.md mục 5.1)
-// cùng một nhánh code chạy được trên cả SQL Server và PostgreSQL; sau cutover
-// xoá db.mssql.js.
-// Kiểu (tsc) theo bản mssql: db.pg.js dựng lại đúng giao diện đó cho code gọi.
-/** @type {typeof import('./db.mssql') & { client: 'mssql' | 'pg' }} */
-const adapter =
-	config.DB_CLIENT === 'pg' ? /** @type {any} */ (require('./db.pg')) : require('./db.mssql');
+// Lớp truy cập DB (PostgreSQL, db.pg.js): getPool(), sql (kiểu tham số, Request,
+// Transaction), withTransaction(), withActor() và các helper SQL. Code gọi qua
+// file này, không require thẳng db.pg.js.
+const adapter = require('./db.pg');
 
 /**
  * Chạy `fn(tx)` trong 1 transaction đã ghi người thao tác (trigger audit đọc ra
@@ -19,7 +12,7 @@ const adapter =
  * Gọi qua module.exports để test thay được withTransaction / withActor.
  * @template T
  * @param {string | null | undefined} actorId
- * @param {(tx: import('mssql').Transaction) => Promise<T>} fn
+ * @param {(tx: InstanceType<typeof adapter.sql.Transaction>) => Promise<T>} fn
  * @returns {Promise<T>}
  */
 const withActorTransaction = (actorId, fn) =>

@@ -2,10 +2,10 @@
 // Migration CSDL (database/migrations/*.sql) — xem database/README.md.
 // Một lệnh duy nhất, việc chọn bằng lệnh con (xem USAGE). Cờ cũ --dry-run /
 // --baseline / --init vẫn nhận (= status / baseline / init).
-// MIGRATION_BACKUP_DIR: có file mới thì backup trước khi chạy — điểm phục hồi
-// khi migration hỏng (rollback ứng dụng không hoàn tác được schema).
-//   SQL Server: thư mục TRÊN MÁY SQL Server, BACKUP DATABASE ... COPY_ONLY.
-//   PostgreSQL (DB_CLIENT=pg): thư mục ở máy chạy lệnh, pg_dump -Fc.
+// MIGRATION_BACKUP_DIR: có file mới thì pg_dump -Fc ra thư mục này (ở máy chạy
+// lệnh, cần pg_dump) trước khi chạy — điểm phục hồi khi migration hỏng (rollback
+// ứng dụng không hoàn tác được schema). Image Docker không có pg_dump: khi
+// deploy, scripts/deploy.sh tự backup trên máy host trước khi gọi lệnh này.
 const fs = require('fs');
 const path = require('path');
 require('../src/config/loadEnv');

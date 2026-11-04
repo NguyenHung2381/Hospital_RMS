@@ -3,7 +3,7 @@
 // (chúng destructure getPool lúc nạp module). `handler(sqlText, inputs)` trả về
 // recordset (mảng) cho từng câu truy vấn / stored procedure ("EXEC <tên>");
 // mọi câu đều được ghi vào `log`. Mỗi file test chạy ở tiến trình riêng nên
-// việc vá module mssql không ảnh hưởng file khác.
+// việc vá module db không ảnh hưởng file khác.
 const db = require('../../src/config/db');
 
 const install = (handler) => {
@@ -48,6 +48,22 @@ const install = (handler) => {
 			return makeRequest();
 		}
 	};
+	// Lô nhiều câu: adapter thật chạy từng câu bằng tham số nội bộ của Request thật.
+	// Ở đây ghép thành 1 chuỗi cho handler khớp cả lô (như khi xem log). queryBatch
+	// phải thay ở module adapter: db.queryBatch / actorRequest gọi qua đó lúc chạy.
+	const pgAdapter = require('../../src/config/db.pg');
+	pgAdapter.queryBatch = (req, statements) => req.query(statements.join(';\n'));
+	db.queryAll = async (req, statements) => {
+		const r = await req.query(statements.join(';\n'));
+		return statements.map((_, i) => r.recordsets[i] ?? []);
+	};
+	// withActor thật chỉ nhận Transaction thật của adapter → thay bằng câu ghi người
+	// thao tác chạy trên transaction giả (vẫn ghi vào log)
+	db.withActor = (tx, actorId) =>
+		tx
+			.request()
+			.input('actor_id', db.sql.VarChar(20), actorId ?? null)
+			.query("SELECT set_config('app.current_user_id', coalesce(@actor_id, ''), true)");
 	// Khoá sinh mã (utils/idGenerator) — luôn lấy được, ghi vào log
 	db.lockResource = async (_tx, key) => {
 		log.push({ text: `LOCK ${key}`, inputs: {} });

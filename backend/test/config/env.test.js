@@ -28,8 +28,8 @@ test('đủ biến bắt buộc: không lỗi, mặc định đúng như hành v
 	assert.deepEqual(warnings, []);
 	assert.equal(config.PORT, 3000);
 	assert.equal(config.DB_SERVER, 'localhost');
-	assert.equal(config.DB_PORT, 1433);
-	assert.equal(config.DB_DATABASE, 'RMS_HOSPITAL');
+	assert.equal(config.DB_PORT, 5432);
+	assert.equal(config.DB_DATABASE, 'rms_hospital');
 	assert.equal(config.DB_ENCRYPT, false);
 	assert.equal(config.DB_TRUST_SERVER_CERT, true);
 	assert.equal(config.DB_POOL_MAX, 10);
@@ -42,7 +42,7 @@ test('đủ biến bắt buộc: không lỗi, mặc định đúng như hành v
 test('thiếu (hoặc chỉ có khoảng trắng) biến bắt buộc ⇒ lỗi, các biến khác vẫn có mặc định', () => {
 	const { config, errors } = loadConfig({ ...BASE, DB_USER: '', JWT_SECRET: '   ' });
 	assert.deepEqual(errors.map((e) => e.split(':')[0]).sort(), ['DB_USER', 'JWT_SECRET']);
-	assert.equal(config.DB_PORT, 1433);
+	assert.equal(config.DB_PORT, 5432);
 });
 
 test('Swagger bật (mặc định ngoài production) thì bắt buộc SWAGGER_USER/PASS', () => {
@@ -63,8 +63,8 @@ test('production: secret ngắn, trùng nhau, thiếu CORS_ORIGIN ⇒ lỗi', ()
 	assert.match(noCors[0], /CORS_ORIGIN/);
 });
 
-test('production: DB không mã hóa / dùng sa ⇒ chỉ cảnh báo, không chặn', () => {
-	const { errors, warnings } = loadConfig({ ...PROD, DB_ENCRYPT: 'false', DB_USER: 'SA' });
+test('production: DB không mã hóa / dùng role postgres ⇒ chỉ cảnh báo, không chặn', () => {
+	const { errors, warnings } = loadConfig({ ...PROD, DB_ENCRYPT: 'false', DB_USER: 'Postgres' });
 	assert.deepEqual(errors, []);
 	assert.equal(warnings.length, 2);
 });
@@ -99,7 +99,7 @@ test('CORS_ORIGIN tách theo dấu phẩy; TRUST_PROXY số ⇒ number, còn l�
 	assert.equal(loadConfig(BASE).config.TRUST_PROXY, undefined);
 });
 
-test('chứng chỉ SQL Server: production mã hóa mà không kiểm tra chứng chỉ ⇒ cảnh báo', () => {
+test('chứng chỉ PostgreSQL: production mã hóa mà không kiểm tra chứng chỉ ⇒ cảnh báo', () => {
 	const { errors, warnings } = loadConfig(PROD);
 	assert.deepEqual(errors, []);
 	assert.equal(warnings.length, 1);
@@ -131,47 +131,38 @@ test('DB_CA_CERT_FILE: file PEM hợp lệ thì hết cảnh báo; thiếu file 
 	);
 
 	// Cấu hình kết nối: có file ⇒ luôn kiểm tra chứng chỉ, chỉ tin đúng file đó
-	const { tlsOptions } = require('../../src/config/db');
-	assert.deepEqual(tlsOptions({ DB_TRUST_SERVER_CERT: true }), { trustServerCertificate: true });
-	const tls = tlsOptions({
+	const { sslOptions } = require('../../src/config/db');
+	assert.deepEqual(sslOptions({ DB_ENCRYPT: true, DB_TRUST_SERVER_CERT: true }), {
+		rejectUnauthorized: false,
+	});
+	const tls = sslOptions({
+		DB_ENCRYPT: true,
 		DB_TRUST_SERVER_CERT: true,
 		DB_CA_CERT_FILE: good,
-		DB_CERT_SERVER_NAME: 'sqlvm01',
+		DB_CERT_SERVER_NAME: 'pgvm01',
 	});
-	assert.equal(tls.trustServerCertificate, false);
-	assert.match(tls.cryptoCredentialsDetails.ca, /BEGIN CERTIFICATE/);
-	assert.equal(tls.serverName, 'sqlvm01');
+	assert.equal(tls.rejectUnauthorized, true);
+	assert.match(tls.ca, /BEGIN CERTIFICATE/);
+	assert.equal(typeof tls.checkServerIdentity, 'function');
 	fs.rmSync(dir, { recursive: true, force: true });
 });
 
-test('DB_CLIENT=pg: mặc định cổng/tên DB của PostgreSQL, DB_PASSWORD được bỏ trống (pgpass)', () => {
+test('DB_PASSWORD được bỏ trống (pgpass); đặt rõ cổng / tên DB thì giữ nguyên', () => {
 	const { DB_PASSWORD: _pw, ...noPassword } = BASE;
-	const pg = loadConfig({ ...noPassword, DB_CLIENT: 'pg' });
-	assert.deepEqual(pg.errors, []);
-	assert.equal(pg.config.DB_CLIENT, 'pg');
-	assert.equal(pg.config.DB_PORT, 5432);
-	assert.equal(pg.config.DB_DATABASE, 'rms_hospital');
-	// Đặt rõ thì giữ nguyên
-	const custom = loadConfig({
-		...BASE,
-		DB_CLIENT: 'pg',
-		DB_PORT: '6432',
-		DB_DATABASE: 'rms_staging',
-	});
+	assert.deepEqual(loadConfig(noPassword).errors, []);
+	const custom = loadConfig({ ...BASE, DB_PORT: '6432', DB_DATABASE: 'rms_staging' });
 	assert.equal(custom.config.DB_PORT, 6432);
 	assert.equal(custom.config.DB_DATABASE, 'rms_staging');
-	// SQL Server vẫn bắt buộc mật khẩu
-	assert.match(loadConfig(noPassword).errors.join('\n'), /DB_PASSWORD/);
-	assert.equal(loadConfig(BASE).config.DB_CLIENT, 'mssql');
 });
 
-test('DB_CLIENT sai → cảnh báo, dùng mssql', () => {
-	const { config, warnings } = loadConfig({ ...BASE, DB_CLIENT: 'oracle' });
-	assert.equal(config.DB_CLIENT, 'mssql');
-	assert.match(warnings.join('\n'), /DB_CLIENT/);
+test('DB_CLIENT: mssql (.env cũ) ⇒ lỗi; pg ⇒ chỉ cảnh báo bỏ dòng thừa', () => {
+	assert.match(loadConfig({ ...BASE, DB_CLIENT: 'mssql' }).errors.join('\n'), /DB_CLIENT/);
+	const pg = loadConfig({ ...BASE, DB_CLIENT: 'pg' });
+	assert.deepEqual(pg.errors, []);
+	assert.match(pg.warnings.join('\n'), /DB_CLIENT/);
 });
 
-test('production + pg: cảnh báo khi dùng role postgres', () => {
-	const { warnings } = loadConfig({ ...PROD, DB_CLIENT: 'pg', DB_USER: 'postgres' });
+test('production: cảnh báo khi dùng role postgres', () => {
+	const { warnings } = loadConfig({ ...PROD, DB_USER: 'postgres' });
 	assert.match(warnings.join('\n'), /rms_app/);
 });

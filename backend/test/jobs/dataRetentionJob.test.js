@@ -25,7 +25,6 @@ const log = install((text) => {
 
 const job = require('../../src/jobs/dataRetentionJob');
 const accountMaintenance = require('../../src/jobs/accountMaintenanceJob');
-const { countUsage } = require('../../scripts/check-tsql-usage');
 
 const deletes = (table) => log.filter((q) => q.text.includes(`DELETE FROM ${table}`));
 
@@ -95,10 +94,7 @@ test('SECURITY_EVENTS_RETENTION_MONTHS=0: không xoá security_events', async ()
 	delete process.env.SECURITY_EVENTS_RETENTION_MONTHS;
 });
 
-test('PostgreSQL: mỗi ngày tạo/bỏ partition security_events, kể cả khi không xoá', async () => {
-	const db = require('../../src/config/db');
-	const realClient = db.client;
-	db.client = 'pg';
+test('mỗi ngày tạo/bỏ partition security_events, kể cả khi không xoá', async () => {
 	try {
 		for (const [env, keep] of [
 			[undefined, 24],
@@ -115,14 +111,8 @@ test('PostgreSQL: mỗi ngày tạo/bỏ partition security_events, kể cả kh
 			assert.equal(q[0].inputs.keep, keep);
 		}
 	} finally {
-		db.client = realClient;
 		delete process.env.SECURITY_EVENTS_RETENTION_MONTHS;
 	}
-	// SQL Server: không gọi hàm của PG
-	marked.clear();
-	log.length = 0;
-	await job.run({ pauseMs: 0 });
-	assert.equal(log.filter((x) => x.text.includes('rms_maintain')).length, 0);
 });
 
 test('xoá OTP quên mật khẩu đã hết hạn, so với giờ UTC hiện tại', async () => {
@@ -134,10 +124,4 @@ test('xoá OTP quên mật khẩu đã hết hạn, so với giờ UTC hiện t�
 	const q = deletes('password_reset_otps')[0];
 	assert.match(q.text, /expires_at < @now/);
 	assert.ok(Math.abs(q.inputs.now.getTime() - before) < 5000);
-});
-
-test('SQL của job không dùng cú pháp chỉ T-SQL', () => {
-	const usage = countUsage();
-	for (const [key, { files }] of Object.entries(usage))
-		assert.equal(files['src/jobs/dataRetentionJob.js'] ?? 0, 0, key);
 });

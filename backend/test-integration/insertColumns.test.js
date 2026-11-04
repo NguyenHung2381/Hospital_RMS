@@ -1,7 +1,7 @@
 // Đối chiếu code với schema THẬT: mọi câu "INSERT INTO <bảng> (<cột>...)" viết
 // sẵn trong src/ chỉ được ghi cột đang có trên DB. Bắt lỗi kiểu "Invalid column
 // name 'created_by'" — chỉ lộ ra khi chạy đúng thao tác đó (test đơn vị dùng CSDL
-// giả nên không thấy). Chỉ đọc sys.tables / sys.columns. Không chạy trên CI.
+// giả nên không thấy). Chỉ đọc information_schema. Không chạy trên CI.
 //
 //   docker exec hospital_rms_dev-backend-1 npm run test:smoke
 //
@@ -31,10 +31,10 @@ test('INSERT trong src/ chỉ ghi cột có trên DB', async (t) => {
 	const rows = (
 		await pool
 			.request()
-			.input('schema', sql.NVarChar(20), 'dbo')
+			.input('schema', sql.VarChar(20), 'public')
 			.query(
-				`SELECT t.name AS t, c.name AS c FROM sys.tables t
-				 JOIN sys.columns c ON c.object_id = t.object_id WHERE t.schema_id = SCHEMA_ID(@schema)`,
+				`SELECT table_name AS t, column_name AS c FROM information_schema.columns
+				 WHERE table_schema = @schema`,
 			)
 	).recordset;
 	const columns = new Map();

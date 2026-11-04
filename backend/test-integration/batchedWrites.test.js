@@ -1,5 +1,5 @@
-// Test tích hợp các câu ghi gộp (OPENJSON — 1 câu cho cả danh sách thay vì 1
-// round-trip / dòng) trên SQL Server THẬT. Mọi thứ chạy trong 1 transaction và
+// Test tích hợp các câu ghi gộp (jsonValues / jsonRows — 1 câu cho cả danh sách
+// thay vì 1 round-trip / dòng) trên PostgreSQL THẬT. Mọi thứ chạy trong 1 transaction và
 // ROLLBACK ở cuối ⇒ không để lại dữ liệu, an toàn trên DB dev. Không chạy trên CI.
 //
 //   docker exec hospital_rms_dev-backend-1 npm run test:smoke   (chạy cùng smoke.test.js)
@@ -33,6 +33,13 @@ const txRequest = () => {
 		query: (text) => serial(() => req.query(text)),
 		batch: (text) => serial(() => req.batch(text)),
 		execute: (proc) => serial(() => req.execute(proc)),
+		// queryAll / queryBatch của adapter đọc tham số + transaction của request
+		get params() {
+			return req.params;
+		},
+		get parent() {
+			return req.parent;
+		},
 	};
 	return wrap;
 };
@@ -49,6 +56,7 @@ const examAttemptService = require('../src/modules/training/exams/examAttemptSer
 const examGradingService = require('../src/modules/training/exams/examGradingService');
 const gradebookService = require('../src/modules/training/courses/gradebookService');
 const lessonService = require('../src/modules/training/programs/programLessonService');
+const { genGradeId } = require('../src/utils/idGenerator');
 
 const q = async (text, inputs = {}) => {
 	const req = txRequest();
@@ -56,7 +64,7 @@ const q = async (text, inputs = {}) => {
 	return (await req.query(text)).recordset;
 };
 
-test('ghi gộp OPENJSON trên SQL Server thật (rollback)', async (t) => {
+test('ghi gộp trên PostgreSQL thật (rollback)', async (t) => {
 	const pool = await realGetPool();
 	tx = new sql.Transaction(pool);
 	await tx.begin();
@@ -67,9 +75,10 @@ test('ghi gộp OPENJSON trên SQL Server thật (rollback)', async (t) => {
 
 	await t.test('đề thi: thêm câu vào đề, làm bài, nộp, chấm tự luận', async (s) => {
 		const [enr] = await q(`
-		  SELECT TOP 1 e.id AS enrollment_id, e.course_id, COALESCE(t.user_id, t.staff_user_id) AS user_id
+		  SELECT e.id AS enrollment_id, e.course_id, COALESCE(t.user_id, t.staff_user_id) AS user_id
 		  FROM course_enrollments e JOIN trainees t ON t.id = e.trainee_id
-		  WHERE e.status = 'approved' AND COALESCE(t.user_id, t.staff_user_id) IS NOT NULL`);
+		  WHERE e.status = 'approved' AND COALESCE(t.user_id, t.staff_user_id) IS NOT NULL
+		  LIMIT 1`);
 		if (!enr) return s.skip('DB chưa có lượt ghi danh đã duyệt gắn tài khoản');
 		const actor = { id: enr.user_id };
 
@@ -181,8 +190,8 @@ test('ghi gộp OPENJSON trên SQL Server thật (rollback)', async (t) => {
 
 	await t.test('bảng điểm: recompute ghi score/result/classification cả lớp 1 câu', async (s) => {
 		const [row] = await q(`
-		  SELECT TOP 1 course_id FROM course_enrollments WHERE status = 'approved'
-		  GROUP BY course_id ORDER BY COUNT(*) DESC`);
+		  SELECT course_id FROM course_enrollments WHERE status = 'approved'
+		  GROUP BY course_id ORDER BY COUNT(*) DESC LIMIT 1`);
 		if (!row) return s.skip('DB chưa có lượt ghi danh đã duyệt');
 		// Điểm mẫu khác nhau cho từng học viên của lớp (dòng nào chưa có thì tạo)
 		const noGrade = await q(
@@ -193,26 +202,23 @@ test('ghi gộp OPENJSON trên SQL Server thật (rollback)', async (t) => {
 		);
 		for (const e of noGrade)
 			await q(
-				`DECLARE @id VARCHAR(20);
-				 EXEC sp_gen_grade_id @actor_id = 'TEST', @new_id = @id OUTPUT;
-				 INSERT INTO grades (id, enrollment_id, subject_id, program_id, created_by)
-				 VALUES (@id, @e, NULL, @p, 'TEST');`,
-				{ e: e.id, p: e.program_id },
+				`INSERT INTO grades (id, enrollment_id, subject_id, program_id, created_by)
+				 VALUES (@id, @e, NULL, @p, 'TEST')`,
+				{ id: await genGradeId(tx), e: e.id, p: e.program_id },
 			);
 		await q(
-			`UPDATE g SET theory_score = 4 + (x.n % 7), practice_score = 3 + (x.n % 8), locked_at = NULL
-			 FROM grades g
-			 JOIN (SELECT id, ROW_NUMBER() OVER (ORDER BY id) AS n FROM course_enrollments
-			       WHERE course_id = @c AND status = 'approved') x ON x.id = g.enrollment_id
-			 WHERE g.subject_id IS NULL;`,
+			`UPDATE grades g SET theory_score = 4 + (x.n % 7), practice_score = 3 + (x.n % 8), locked_at = NULL
+			 FROM (SELECT id, ROW_NUMBER() OVER (ORDER BY id) AS n FROM course_enrollments
+			       WHERE course_id = @c AND status = 'approved') x
+			 WHERE x.id = g.enrollment_id AND g.subject_id IS NULL`,
 			{ c: row.course_id },
 		);
 		const book = await gradebookService.getGradebook(row.course_id);
 		const withGrade = book.rows.filter((r) => r.grade_id);
 		await q(
-			`UPDATE g SET score = NULL, result = NULL, classification = NULL
-		         FROM grades g JOIN course_enrollments e ON e.id = g.enrollment_id
-		         WHERE e.course_id = @c AND g.subject_id IS NULL`,
+			`UPDATE grades g SET score = NULL, result = NULL, classification = NULL
+		         FROM course_enrollments e
+		         WHERE e.id = g.enrollment_id AND e.course_id = @c AND g.subject_id IS NULL`,
 			{ c: row.course_id },
 		);
 
@@ -235,9 +241,9 @@ test('ghi gộp OPENJSON trên SQL Server thật (rollback)', async (t) => {
 
 	await t.test('bài học: sắp xếp lại, gán chương trình, gán khoa', async (s) => {
 		const [prog] = await q(`
-		  SELECT TOP 1 program_id FROM lesson_programs GROUP BY program_id HAVING COUNT(*) >= 2 ORDER BY COUNT(*) DESC`);
-		const progs = await q('SELECT TOP 2 id FROM training_programs ORDER BY id');
-		const depts = await q('SELECT TOP 2 id FROM departments ORDER BY id');
+		  SELECT program_id FROM lesson_programs GROUP BY program_id HAVING COUNT(*) >= 2 ORDER BY COUNT(*) DESC LIMIT 1`);
+		const progs = await q('SELECT id FROM training_programs ORDER BY id LIMIT 2');
+		const depts = await q('SELECT id FROM departments ORDER BY id LIMIT 2');
 		if (!prog || progs.length < 2 || depts.length < 2)
 			return s.skip('Thiếu dữ liệu chương trình / khoa');
 

@@ -45,7 +45,7 @@ const setup = () => {
 			if (r) r.family_id = inputs.family_id;
 			return [];
 		}
-		if (/SET revoked_at = SYSUTCDATETIME\(\)/.test(text)) {
+		if (/SET revoked_at = \(now\(\) AT TIME ZONE 'UTC'\)/.test(text)) {
 			const r = rows.find(
 				(x) => x.token === inputs.token && !x.revoked_at && x.expires_at > new Date(),
 			);

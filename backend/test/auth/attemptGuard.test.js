@@ -30,7 +30,7 @@ install(async (text, inputs) => {
 	if (/SELECT id, username, password, failed_login_count, locked_until FROM users/.test(text))
 		return [{ ...user }];
 	if (/COUNT\(\*\) AS locks/.test(text)) return [{ locks: 0 }];
-	if (/OUTPUT DELETED\.failed_login_count/.test(text)) {
+	if (/old\.failed_login_count/.test(text)) {
 		failures++;
 		const prev = user.failed_login_count;
 		if (prev + 1 >= inputs.max) {

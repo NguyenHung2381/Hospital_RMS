@@ -1,4 +1,4 @@
-// Smoke test tích hợp: gọi THẬT mọi API GET qua app Express + SQL Server + Redis
+// Smoke test tích hợp: gọi THẬT mọi API GET qua app Express + PostgreSQL + Redis
 // đang cấu hình (.env / biến môi trường của container). Chỉ GET — không ghi dữ
 // liệu nghiệp vụ, an toàn để chạy trên DB dev. Không chạy trên CI (cần DB thật).
 //
@@ -84,7 +84,6 @@ const pickUser = async () => {
 		assert.ok(r.recordset[0], `SMOKE_USER_ID=${process.env.SMOKE_USER_ID} không tồn tại`);
 		return r.recordset;
 	}
-	// Cú pháp chạy cả SQL Server và PG (smoke chạy được với DB_CLIENT=pg)
 	const r = await pool.request().query(`
 		SELECT u.id, u.username, u.token_version
 		FROM users u

@@ -3,21 +3,19 @@ const migrator = require('./migrator');
 const logger = require('../config/logger');
 
 // Chạy lúc server khởi động, TRƯỚC khi nhận request (server.js / cluster.js):
-//   1. Migration (database/migrations/*.sql):
+//   1. Migration (database/migrations/*.sql, PostgreSQL):
 //        DB_AUTO_MIGRATE=true  (mặc định ngoài production) — tự chạy file mới.
 //        DB_AUTO_MIGRATE=false (mặc định production) — chỉ cảnh báo file chưa
 //          chạy; pipeline deploy chạy `node scripts/migrate.js` bằng login có
-//          quyền ALTER trước khi đổi container (scripts/deploy.ps1).
+//          quyền ALTER trước khi đổi container (scripts/deploy.sh).
 //   2. permissions.initPermissions(): kiểm tra CSDL đủ cho mô hình phân quyền
 //      (thiếu thì DỪNG server) + đồng bộ catalog quyền.
-// Không kết nối được CSDL (SQL Server chưa lên...) thì chỉ cảnh báo, server
+// Không kết nối được CSDL (PostgreSQL chưa lên...) thì chỉ cảnh báo, server
 // vẫn chạy — mọi API cần DB tự lỗi cho tới khi DB sẵn sàng.
 
-// mssql: mã riêng của driver; pg: lỗi mạng của Node + SQLSTATE nhóm 08 (kết
-// nối), 28 (đăng nhập), 57P0x (server đang tắt / khởi động lại).
+// Lỗi mạng của Node + SQLSTATE nhóm 08 (kết nối), 28 (đăng nhập), 57P0x
+// (server đang tắt / khởi động lại).
 const isConnectionError = (err) =>
-	['ESOCKET', 'ETIMEOUT', 'ELOGIN', 'ECONNCLOSED', 'ENOTOPEN'].includes(err?.code) ||
-	err?.name === 'ConnectionError' ||
 	['ECONNREFUSED', 'ECONNRESET', 'ETIMEDOUT', 'ENOTFOUND', 'EHOSTUNREACH'].includes(err?.code) ||
 	(typeof err?.code === 'string' && /^(08|28)...$|^57P0[1-3]$/.test(err.code)) ||
 	/Connection terminated|timeout expired/i.test(String(err?.message || ''));

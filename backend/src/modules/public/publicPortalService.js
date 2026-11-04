@@ -420,7 +420,7 @@ const getTopicStatus = async (topicId, contact) => {
 };
 
 // Danh sách công khai (không cần đăng nhập, không rate-limit) — trước đây mỗi
-// request truy vấn thẳng SQL Server, ai cũng dội được vào DB. Cache Redis ngắn
+// request truy vấn thẳng DB, ai cũng dội được vào DB. Cache Redis ngắn
 // (utils/cache.js, Redis lỗi thì đọc DB như cũ): dữ liệu đổi (gắn cờ đề tài
 // nổi bật, mở đợt, sửa danh mục...) hiện ra trang công khai chậm tối đa 60s.
 const PUBLIC_TTL_SEC = 60;

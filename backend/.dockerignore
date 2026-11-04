@@ -14,6 +14,7 @@ logs
 # làm `COPY . .` mất cache → không phải build lại image.
 test
 test-integration
+test-integration-pg
 eslint.config.js
 tsconfig.json
 .prettierrc.json

@@ -10,7 +10,7 @@ const { install } = require('./fakeDb');
 const DAY = 24 * 60 * 60 * 1000;
 const writes = [];
 install(async (text, inputs) => {
-	if (/SET twofa_required_since = SYSUTCDATETIME\(\)/.test(text)) {
+	if (/SET twofa_required_since = \(now\(\) AT TIME ZONE 'UTC'\)/.test(text)) {
 		writes.push(inputs.id);
 		return [{ twofa_required_since: new Date() }];
 	}

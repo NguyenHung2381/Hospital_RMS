@@ -53,21 +53,17 @@ const SPEC = {
 	NODE_ENV: str('development'),
 	PORT: int(3000),
 
-	// mssql (SQL Server, mặc định) | pg (PostgreSQL) — chọn adapter ở config/db.js.
-	// Với pg: DB_PORT mặc định 5432, DB_DATABASE mặc định rms_hospital; DB_ENCRYPT
-	// = dùng SSL, DB_CA_CERT_FILE = kiểm tra chứng chỉ (verify-full).
-	DB_CLIENT: optional(z.enum(['mssql', 'pg']), 'mssql', '"mssql" hoặc "pg"'),
+	// PostgreSQL. DB_ENCRYPT = dùng SSL, DB_CA_CERT_FILE = kiểm tra chứng chỉ (verify-full).
 	DB_SERVER: str('localhost'),
-	DB_PORT: int(1433),
-	DB_DATABASE: str('RMS_HOSPITAL'),
+	DB_PORT: int(5432),
+	DB_DATABASE: str('rms_hospital'),
 	DB_USER: required,
-	// Bắt buộc với mssql. Với pg được bỏ trống: driver đọc ~/.pgpass
-	// (Windows: %APPDATA%\postgresql\pgpass.conf) hoặc PGPASSWORD.
+	// Được bỏ trống: driver đọc ~/.pgpass (hoặc file PGPASSFILE) hoặc PGPASSWORD.
 	DB_PASSWORD: str(undefined),
 	DB_ENCRYPT: bool(false),
 	DB_TRUST_SERVER_CERT: bool(true),
-	// File PEM để kiểm tra chứng chỉ của SQL Server: chứng chỉ CA (nội bộ) đã ký
-	// cho SQL Server, HOẶC chính chứng chỉ tự ký của SQL Server (ghim chứng chỉ).
+	// File PEM để kiểm tra chứng chỉ của PostgreSQL: chứng chỉ CA (nội bộ) đã ký
+	// cho server, HOẶC chính chứng chỉ tự ký của server (ghim chứng chỉ).
 	// Đặt biến này ⇒ luôn kiểm tra chứng chỉ (bỏ qua DB_TRUST_SERVER_CERT).
 	DB_CA_CERT_FILE: str(undefined),
 	// Tên trong chứng chỉ (CN / SAN) khi khác DB_SERVER — vd DB_SERVER là IP hoặc
@@ -119,11 +115,14 @@ const loadConfig = (source = process.env) => {
 		else errors.push(`${key}: ${r.error.issues.map((i) => i.message).join(', ')}`);
 	}
 	const isProduction = raw.NODE_ENV === 'production';
-	if (raw.DB_CLIENT !== 'pg' && isBlank(raw.DB_PASSWORD)) errors.push('DB_PASSWORD: bắt buộc');
-	// Mặc định riêng của PostgreSQL (chỉ khi không đặt biến)
-	if (raw.DB_CLIENT === 'pg') {
-		if (isBlank(source.DB_PORT)) raw.DB_PORT = 5432;
-		if (isBlank(source.DB_DATABASE)) raw.DB_DATABASE = 'rms_hospital';
+	// Hệ thống chỉ còn PostgreSQL. .env cũ còn DB_CLIENT=mssql (cổng 1433, DB RMS_HOSPITAL)
+	// thì dừng hẳn, không để app nối nhầm chỗ.
+	if (!isBlank(source.DB_CLIENT) && String(source.DB_CLIENT).trim() !== 'pg') {
+		errors.push(
+			'DB_CLIENT: chỉ còn hỗ trợ PostgreSQL — xoá dòng DB_CLIENT, đặt DB_* trỏ tới PostgreSQL',
+		);
+	} else if (!isBlank(source.DB_CLIENT)) {
+		warnings.push('DB_CLIENT không còn dùng (luôn là PostgreSQL) — xoá dòng này khỏi .env');
 	}
 
 	// Swagger UI liệt kê toàn bộ API + cho gọi thử — tắt ở production, trừ khi
@@ -174,26 +173,21 @@ const loadConfig = (source = process.env) => {
 			if (!raw.CORS_ORIGIN) errors.push('CORS_ORIGIN: bắt buộc ở production.');
 
 			// Chỉ cảnh báo (hạ tầng/DBA cần thời gian xử lý):
-			//   - Không mã hóa: password hash, token đi plaintext giữa app và SQL Server.
-			//   - Tài khoản 'sa': lộ là mất toàn quyền CẢ INSTANCE, không chỉ DB này.
+			//   - Không mã hóa: password hash, token đi plaintext giữa app và DB.
+			//   - Tài khoản postgres: lộ là mất toàn quyền CẢ CLUSTER, không chỉ DB này.
 			if (!raw.DB_ENCRYPT) {
 				warnings.push(
-					'DB_ENCRYPT khác "true" ở production — kết nối tới SQL Server không được mã hóa.',
+					'DB_ENCRYPT khác "true" ở production — kết nối tới PostgreSQL không được mã hóa.',
 				);
 			} else if (raw.DB_TRUST_SERVER_CERT && !raw.DB_CA_CERT_FILE) {
 				//   - Mã hóa nhưng không kiểm tra chứng chỉ: ai chen được vào đường mạng
-				//     tới SQL Server giả làm server được (đọc mật khẩu DB, dữ liệu).
+				//     tới DB giả làm server được (đọc mật khẩu DB, dữ liệu).
 				warnings.push(
-					'DB_TRUST_SERVER_CERT=true ở production — mã hóa nhưng KHÔNG kiểm tra chứng chỉ SQL Server ' +
-						'(giả mạo được server). Đặt DB_CA_CERT_FILE (xem README, mục chứng chỉ SQL Server).',
+					'DB_TRUST_SERVER_CERT=true ở production — mã hóa nhưng KHÔNG kiểm tra chứng chỉ PostgreSQL ' +
+						'(giả mạo được server). Đặt DB_CA_CERT_FILE (xem infra/cai-dat-postgresql.md).',
 				);
 			}
-			if (raw.DB_CLIENT === 'mssql' && raw.DB_USER.toLowerCase() === 'sa') {
-				warnings.push(
-					'DB_USER=sa ở production — nên dùng 1 SQL login riêng, chỉ cấp quyền trên DB RMS_HOSPITAL.',
-				);
-			}
-			if (raw.DB_CLIENT === 'pg' && raw.DB_USER.toLowerCase() === 'postgres') {
+			if (raw.DB_USER.toLowerCase() === 'postgres') {
 				warnings.push(
 					'DB_USER=postgres ở production — ứng dụng nên dùng role rms_app (chỉ đọc/ghi dữ liệu, infra/cai-dat-postgresql.md).',
 				);

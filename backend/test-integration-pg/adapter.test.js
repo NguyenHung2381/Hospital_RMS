@@ -1,4 +1,4 @@
-// Adapter PostgreSQL (src/config/db.pg.js) + baseline database/pg/baseline/ trên
+// Adapter PostgreSQL (src/config/db.pg.js) + baseline database/baseline/ trên
 // PostgreSQL THẬT. Mọi thay đổi dữ liệu chạy trong transaction và ROLLBACK →
 // không để lại gì, chạy được trên DB đã có dữ liệu.
 //
@@ -11,7 +11,6 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 
 Object.assign(process.env, {
-	DB_CLIENT: 'pg',
 	DB_SERVER: process.env.PG_TEST_HOST || '127.0.0.1',
 	DB_PORT: process.env.PG_TEST_PORT || '5432',
 	DB_DATABASE: process.env.PG_TEST_DATABASE || 'rms_hospital',
@@ -39,7 +38,6 @@ const inRollback = async (fn) => {
 test.after(async () => (await getPool()).close());
 
 test('chọn đúng adapter, kết nối được, đúng múi giờ và role', async () => {
-	assert.equal(db.client, 'pg');
 	const pool = await getPool();
 	const { recordset } = await pool
 		.request()

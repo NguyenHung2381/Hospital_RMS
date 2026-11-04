@@ -5,7 +5,7 @@ const logger = require('./logger');
 // Redis ở đây chỉ đóng vai trò cache phụ (cache-aside) cho dữ liệu đọc nặng —
 // KHÔNG phải nguồn dữ liệu chính. Vì vậy client phải "fail-open": Redis chết
 // hoặc chưa kết nối kịp không được làm chậm/crash request, mọi lỗi rơi xuống
-// fallback đọc thẳng MSSQL ở utils/cache.js.
+// fallback đọc thẳng DB ở utils/cache.js.
 const redis = new Redis({
 	host: config.REDIS_HOST,
 	port: config.REDIS_PORT,

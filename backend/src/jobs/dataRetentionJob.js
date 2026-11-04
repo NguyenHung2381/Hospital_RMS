@@ -16,14 +16,13 @@ const logger = require('../config/logger');
 //     (password_expiry_warning, deadline_reminder, supplement_auto_reject): xoá
 //     đi thì job coi như chưa làm và gửi lại thông báo.
 //
-// SQL viết theo cú pháp chạy được trên cả SQL Server và PostgreSQL (mốc thời
-// gian tính ở JS, xoá theo lô bằng OFFSET ... FETCH) để không thêm T-SQL.
+// Mốc thời gian tính ở JS, xoá theo lô bằng OFFSET ... FETCH.
 //
-// PostgreSQL (DB_CLIENT=pg): security_events chia partition theo tháng. Mỗi ngày
+// security_events chia partition theo tháng. Mỗi ngày
 // gọi rms_maintain_monthly_partitions — tạo sẵn partition 2 tháng tới (luôn
 // chạy, kể cả khi không xoá: thiếu partition thì dòng mới rơi vào DEFAULT) và
 // DROP partition cũ hơn hạn giữ (nhanh, không để lại bảng phình). Phần lẻ trong
-// tháng ranh giới vẫn xoá theo lô như SQL Server, để kết quả giống nhau.
+// tháng ranh giới vẫn xoá theo lô.
 
 const JOB = 'data_retention';
 const DEFAULT_SECURITY_EVENT_MONTHS = 24;
@@ -124,7 +123,7 @@ const run = async ({ pauseMs = PAUSE_MS } = {}) => {
 	if (!(await markOnce(JOB, todayKeyVN()))) return { skipped: true };
 
 	const months = securityEventMonths();
-	if (db.client === 'pg') await module.exports.maintainPartitions(months);
+	await module.exports.maintainPartitions(months);
 	const securityEvents = months
 		? await drain(() => module.exports.deleteSecurityEventsBatch(cutoffVN({ months })), pauseMs)
 		: 0;
