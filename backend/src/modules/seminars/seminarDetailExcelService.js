@@ -49,7 +49,7 @@ const fmtDate = (d) => {
 	if (Number.isNaN(x.getTime())) return '';
 	return `${pad2(x.getUTCDate())}/${pad2(x.getUTCMonth() + 1)}/${x.getUTCFullYear()}`;
 };
-// DATETIME (GETDATE() của server) — hiển thị đúng như lưu
+// Cột giờ ghi bằng nowSql (giờ VN, không múi giờ); driver đọc như UTC ⇒ getUTC* hiển thị đúng như lưu
 const fmtDateTime = (d) => {
 	if (!d) return '';
 	const x = d instanceof Date ? d : new Date(d);

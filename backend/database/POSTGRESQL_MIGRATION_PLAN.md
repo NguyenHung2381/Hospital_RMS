@@ -99,7 +99,7 @@ bước A và giữ máy Windows hiện tại tới khi xong bước B.
 | `@ten` tham số đặt tên + `.input(name, sql.Type, v)` | 1.848 (118) | `$1, $2…` (thứ tự) — xử lý tự động trong lớp adapter, mục 5.1 |
 | `sql.NVarChar`, `sql.Int`, `sql.DateTime`... | 2.115 (119) | Bỏ, hoặc chỉ dùng để ép kiểu `$1::int` khi cần |
 | `recordset` / `recordsets[i]` (nhiều kết quả trong 1 batch) | 673 / 91 — **recordsets đã hết** (`queryAll`) | `rows`; nhiều kết quả → tách thành nhiều câu |
-| `GETDATE()`, `SYSDATETIME()`, `SYSUTCDATETIME()` | 212 (86) → 5 (comment + migrator SQL Server) | `nowSql` / `utcNowSql` / `vnTodaySql` của adapter — xem mục 4.3 về múi giờ |
+| `GETDATE()`, `SYSDATETIME()`, `SYSUTCDATETIME()` | 212 (86) → 1 (migrator SQL Server) | `nowSql` / `utcNowSql` / `vnTodaySql` của adapter — xem mục 4.3 về múi giờ |
 | `N'...'` | 339 (98) → 2 (mẫu migration SQL Server) | `nstr('...')` của adapter (SQL Server `N'...'`, PG `'...'`) |
 | Định danh `[ten]` | 658 (156) → 0 trong câu SQL (ratchet `bracket_ident`; con số 658 đếm thô, gồm cả mảng JS) | Bỏ ngoặc; tên trùng từ khoá → `"ten"` |
 | `ISNULL(` | 108 (33) — **đã đổi hết** | `COALESCE(` (chạy được trên cả 2 DB) |
@@ -661,6 +661,9 @@ thường. Mỗi nhóm là 1 PR nhỏ theo module.
   - Kiểm bằng ca "nowSql / utcNowSql / vnTodaySql" trong `test-integration/batchSplit.cases.js`
     (2 DB, lệch đúng 7 giờ, ngày VN khớp `todayKeyVN`); PG bật thêm ca vòng thực hành và khoá tài
     khoản học viên.
+  - Sau đó (getdate 5 → 1, tổng 14 → 10): 4 chỗ còn lại là comment, viết lại theo tên helper (`nowSql` /
+    `utcNowSql`) và ghi rõ cả 2 driver đọc cột giờ không múi giờ như UTC. Còn 1 ở phần SQL Server của
+    `migrator.js` (mục 5.3).
 - [x] `TOP n` (67 → 1): viết lại bằng cú pháp chuẩn chạy cả 2 DB.
   - Câu / subquery / `APPLY` đã có `ORDER BY` (44 chỗ, script): bỏ `TOP n`, thêm
     `OFFSET 0 ROWS FETCH NEXT n ROWS ONLY` sau `ORDER BY` (tham số `@limit` được, adapter PG bọc

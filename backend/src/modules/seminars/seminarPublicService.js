@@ -228,7 +228,7 @@ const sendBadgeMail = async (seminar, data, code) => {
 };
 
 // Vé + bài test của 1 người (p.id đặt tên khác vì trùng s.id). test_elapsed_sec tính trong SQL vì test_started_at
-// ghi bằng GETDATE() (giờ máy chủ CSDL) — tránh lệch múi giờ khi so ở Node.
+// ghi bằng nowSql (giờ VN do CSDL tính) — tránh lệch múi giờ khi so ở Node.
 const loadTicket = async (code) => {
 	const pool = await getPool();
 	const r = await pool.request().input('code', sql.VarChar(32), code).query(`
@@ -411,8 +411,8 @@ const submitTest = async (code, answers) => {
 
 // Ban tổ chức quét vé QR của người tham dự. Quét lại người đã điểm danh thì
 // giữ giờ cũ, báo `already` để màn quét hiện cảnh báo.
-// checked_in_at lưu giờ UTC (GETUTCDATE): driver mssql đọc DATETIME như UTC,
-// GETDATE() là giờ VN của máy CSDL → FE hiển thị lệch +7 giờ.
+// checked_in_at lưu giờ UTC (utcNowSql): driver (cả mssql và pg) đọc cột giờ không múi giờ
+// như UTC — lưu giờ VN (nowSql) thì FE hiển thị lệch +7 giờ.
 const checkInTicket = async (seminarId, code, actorId) => {
 	const row = await withActorTransaction(actorId, async (tx) => {
 		const read = async () =>

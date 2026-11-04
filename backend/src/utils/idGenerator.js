@@ -34,7 +34,7 @@ const lock = async (tx, resource, what, timeoutMs = LOCK_TIMEOUT_MS) => {
 	if (!(await db.lockResource(tx, resource, timeoutMs))) throw lockError(what);
 };
 
-// Ngày hôm nay theo giờ VN dạng yyyymmdd (thủ tục cũ dùng GETDATE() của SQL Server, giờ VN).
+// Ngày hôm nay theo giờ VN dạng yyyymmdd (thủ tục sp_gen_* cũ lấy ngày giờ VN của máy SQL Server).
 const todayCompactVN = () =>
 	new Date(Date.now() + VN_OFFSET_MS).toISOString().slice(0, 10).replace(/-/g, '');
 const yearVN = () => new Date(Date.now() + VN_OFFSET_MS).getUTCFullYear();
